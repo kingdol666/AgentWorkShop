@@ -13,6 +13,7 @@
 import { lookup } from 'node:dns/promises'
 import { isIP } from 'node:net'
 import { AppError } from '../../../../utils/errors'
+import { mesWriteCheckHookCode, mesWriteHookCode, runMesWriteCheckHook, runMesWriteHook } from '../../mes/mes-hook'
 import type { DcwFetchHistoryInput, DcwFetchHistoryResult, DcwHistoryFormat, DcwHistoryRow, DcwReadInput, DcwReadResult, DcwWriteDriver, DcwWriteInput, DcwWriteResult } from './shared'
 import { num, readbackAck } from './shared'
 
@@ -497,6 +498,11 @@ async function readOnce(cfg: Record<string, unknown>, map: MesReadMap): Promise<
 // 驱动本体
 // ============================================================
 
+/** 写钩子产物目录键(secretRef 优先,非法路径字符折叠下划线;避免 baseUrl 的 :// 破坏目录名) */
+function writeHookKey(cfg: Record<string, unknown>): string {
+  return `write-${String(cfg.secretRef ?? cfg.baseUrl ?? 'mes').replace(/[^\w-]+/g, '_').slice(0, 64)}`
+}
+
 /** 节点历史格式速查(目录/控制器展示与模式分流用;坏配置按 scalar 兜底不抛) */
 export function historyFormatOf(cfg: Record<string, unknown>): DcwHistoryFormat {
   try {
@@ -518,11 +524,41 @@ export const mesRestDcwDriver: DcwWriteDriver = {
       const cfg = input.driverConfig
       const map = parseWriteMap(cfg)
       if (!map) throw new AppError(400, 'BAD_REQUEST', '未配置 writeMap(写映射),无法写入 MES')
-      const { path, query } = applyPathTemplate(map.path, map.query)
-      const body = renderBodyTemplate(map.bodyTemplate ?? { value: '{{value}}' }, input.eng)
-      const { status, json } = await mesRequest(cfg, { method: map.method, path, query, headers: map.headers, body })
+      // writeHook(可选,用户自写代码):声明本节点写 API 的真实调用方式 —— 多字段 JSON API
+      // ({tem,vol,rot}) 场景下,节点只对**一个字段**负责:hook 把工程值组装成单字段请求体。
+      // 覆盖键:method/path/query/headers/body(未覆盖的键回退 writeMap 声明;body 缺省 {{value}} 模板)。
+      let hookReq: { method?: string, path?: string, query?: Record<string, string>, headers?: Record<string, string>, body?: unknown } | null = null
+      const writeHook = mesWriteHookCode(cfg)
+      if (writeHook) {
+        try {
+          hookReq = await runMesWriteHook(writeHook, input.eng, { nodeId: writeHookKey(cfg) })
+        }
+        catch (hookErr) {
+          // 配置期错误(代码超长 400)原样上抛;运行期失败(hook 抛错/超时/形状不对)收敛 ok=false
+          if (hookErr instanceof AppError && hookErr.status === 400) throw hookErr
+          return { ok: false, message: `writeHook 执行失败:${hookErr instanceof Error ? hookErr.message : String(hookErr)}`, raw: null, readback: null }
+        }
+      }
+      const method = hookReq?.method ?? map.method
+      const basePath = hookReq?.path ?? map.path
+      const query = { ...map.query, ...(hookReq?.query ?? {}) }
+      const headers = { ...map.headers, ...(hookReq?.headers ?? {}) }
+      const { path, query: qs } = applyPathTemplate(basePath, query)
+      const body = hookReq && 'body' in hookReq
+        ? hookReq.body
+        : renderBodyTemplate(map.bodyTemplate ?? { value: '{{value}}' }, input.eng)
+      const { status, json } = await mesRequest(cfg, { method, path, query: qs, headers, body })
       if (!map.successOn.includes(status)) {
         return { ok: false, message: classifyHttpFail(status), raw: null, readback: null }
+      }
+      // writeCheckHook(可选,用户自写):对 MES 响应 data 做二次校验(回读之外的业务正确性判定;
+      // 如 applied 字段必须等于本次设定)。ok=false → 写失败(诚实语义,不静默吞)。
+      const checkHook = mesWriteCheckHookCode(cfg)
+      if (checkHook) {
+        const check = await runMesWriteCheckHook(checkHook, status, json, input.eng, { nodeId: writeHookKey(cfg) })
+        if (!check.ok) {
+          return { ok: false, message: `MES 已受理(HTTP ${status}),但二次校验未通过:${check.message}`, raw: input.eng, readback: null }
+        }
       }
       // ackPath:MES 业务受理语义(如 {ack:true});配置了就必须真值才算受理
       const ackPath = map.response?.ackPath
@@ -650,6 +686,8 @@ export const mesRestDcwDriver: DcwWriteDriver = {
       const readMap = parseReadMap(cfg)
       parseWriteMap(cfg)
       parseHistoryMap(cfg) // 已配置的映射全部过一遍形状校验(可选映射缺省跳过)
+      mesWriteHookCode(cfg) // 已配置的钩子代码过长度校验(语法在执行期诚实报错)
+      mesWriteCheckHookCode(cfg)
       if (readMap) {
         const t0 = Date.now()
         const { value } = await readOnce(cfg, readMap)

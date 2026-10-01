@@ -11,7 +11,7 @@
  * 校验全部 fail-closed:任何节点不满足 → 整单拒绝并列出明细,不做部分授予。
  */
 import { AppError, ErrorCodes } from '../../../utils/errors'
-import { getAgentNodeBindingRepo, type AgentNodeBinding, type AgentNodeBindingMode } from './node-bindings.repo'
+import { getAgentNodeBindingRepo, type AgentNodeBinding, type AgentNodeBindingMode, type AgentNodeBindingKind } from './node-bindings.repo'
 
 export interface DelegationMember {
   id: string
@@ -30,7 +30,7 @@ export interface DelegationGrantInput {
 
 export interface DelegationPlanItem {
   nodeId: string
-  kind: 'dcw' | 'daq'
+  kind: AgentNodeBindingKind
   mode: AgentNodeBindingMode
   tuning?: AgentNodeBinding['tuning']
 }
@@ -112,7 +112,7 @@ export interface DelegationRevokeInput {
 }
 
 /** 撤销授予:可撤「自己授予的」或「自己也持有的」绑定;两者都不是 → 拒绝该节点 */
-export function revokeDelegation(input: DelegationRevokeInput): Array<{ nodeId: string, kind: 'dcw' | 'daq', revoked: boolean }> {
+export function revokeDelegation(input: DelegationRevokeInput): Array<{ nodeId: string, kind: AgentNodeBindingKind, revoked: boolean }> {
   const leaderAgentId = String(input.leaderAgentId ?? '')
   const targetAgentId = String(input.targetAgentId ?? '')
   const nodeIds = (Array.isArray(input.nodeIds) ? input.nodeIds : []).map(x => String(x ?? '').trim()).filter(Boolean)
@@ -130,7 +130,7 @@ export function revokeDelegation(input: DelegationRevokeInput): Array<{ nodeId: 
 
   const repo = getAgentNodeBindingRepo()
   const leaderNodes = new Set(repo.byAgent(leaderAgentId).map(b => b.nodeId))
-  const out: Array<{ nodeId: string, kind: 'dcw' | 'daq', revoked: boolean }> = []
+  const out: Array<{ nodeId: string, kind: AgentNodeBindingKind, revoked: boolean }> = []
   for (const nodeId of nodeIds) {
     const workerBindings = repo.byAgent(targetAgentId).filter(b => b.nodeId === nodeId)
     if (!workerBindings.length) {

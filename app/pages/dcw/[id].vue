@@ -36,6 +36,10 @@ const approvals = useDcwParamApprovals(scope)
 const expConfirms = useExpConfirmations({ lineId: () => scope.lineId.value })
 // 整包方案审批(recipe_propose 结构化审批单;nodeId 前缀 recipe-propose: 分流)
 const recipeDispatch = useRecipeDispatchApprovals()
+const rdGateItems = recipeDispatch.gateItems
+function decideRecipeGate(id: string, approved: boolean, comment: string): void {
+  void recipeDispatch.decideGate(id, approved, comment)
+}
 
 const { dcw, line, lineId, ls, lineNodes, lineProducts, lineRecipesAll, lineRuns, lineHistory, unassignedNodes, unassignedProducts, stateLabel, dcwTemplateRefCh, nodeMin, nodeMax, lineDaqNodes, daqNodeCh, adoptNode, adoptProduct, productName, paramStatus, paramNodeName, daqWindowStatus, nodeDeviceNames } = scope
 const { setInputs, writingId, writeError, writeOk, readingId, togglingId, stepPatchingId, doWrite, doRead, toggleControl, patchStepLimit } = writes
@@ -197,6 +201,16 @@ const { items: rdItems, comments: rdComments, decidingId: rdDecidingId, decideEr
       :deciding-id="rdDecidingId"
       :decide-error="rdDecideError"
       @decide="decideRecipeDispatch"
+    />
+
+    <!-- Recipe 逐动作审批(权限模型 v2:参数写入/下发/试验/回退的 HITL;空态不渲染) -->
+    <DcwRecipeGateApprovalCard
+      v-if="rdGateItems.length"
+      :items="rdGateItems"
+      :comments="rdComments"
+      :deciding-id="rdDecidingId"
+      :error="rdDecideError"
+      @decide="decideRecipeGate"
     />
 
     <!-- 本地调整确认(经验采集推断的非平台写入待人工转正;空态不渲染避免噪音) -->

@@ -285,6 +285,8 @@ function timePoints(fromMs, toMs, beat) {
   return out
 }
 
+// 多字段写状态(tem/vol/rot;E2E 断言用:验证只写了声明字段)
+let multiState = { tem: 55, vol: 1200, rot: 80, at: Date.now() }
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, `http://127.0.0.1:${PORT}`)
   const path = url.pathname
@@ -305,6 +307,10 @@ const server = http.createServer((req, res) => {
     const mCur = path.match(/^\/api\/v1\/params\/([\w-]+)\/current$/)
     if (mCur) {
       const tag = mCur[1]
+      // multi 字段组当前值(writeHook 节点的回读映射读这里)
+      if (tag === 'multi') {
+        return json(res, 200, { data: { value: multiState.tem ?? 55, fields: multiState, ts: multiState.at ?? Date.now() } })
+      }
       const v = scalarAt(tag, Date.now())
       if (v === null) return json(res, 404, { error: `unknown tag: ${tag}` })
       return json(res, 200, { data: { value: v, ts: Date.now() } })
@@ -347,6 +353,35 @@ const server = http.createServer((req, res) => {
         return { ts: new Date(t).toISOString(), mime: 'image/png', width: 160, height: 120, data: f.png, defects: f.defects }
       })
       return json(res, 200, { data: { frames } })
+    }
+    // 多字段设定写入(POST JSON {tem?,vol?,rot?}):只受理提供的字段 —— 配合 mes-rest
+    // writeHook 的「一个节点只写一个字段」语义;记录 applied 供二次校验与 E2E 断言
+    if (path === '/api/v1/params/multi/set' && req.method === 'POST') {
+      let body = ''
+      req.on('data', (c) => {
+        body += c
+      })
+      req.on('end', () => {
+        let payload
+        try {
+          payload = JSON.parse(body || '{}')
+        }
+        catch { return json(res, 400, { error: 'bad json' }) }
+        const allowed = ['tem', 'vol', 'rot']
+        const applied = {}
+        for (const k of allowed) {
+          if (payload[k] !== undefined) {
+            const v = Number(payload[k])
+            if (!Number.isFinite(v)) return json(res, 400, { error: `field ${k} must be number` })
+            if (k === 'tem' && (v < 20 || v > 260)) return json(res, 400, { error: `tem out of range [20,260]`, limit: [20, 260] })
+            applied[k] = v
+          }
+        }
+        if (Object.keys(applied).length === 0) return json(res, 400, { error: 'no writable field provided (tem/vol/rot)' })
+        multiState = { ...multiState, ...applied, at: Date.now() }
+        json(res, 201, { ack: true, applied })
+      })
+      return
     }
     // 事件
     if (path === '/api/v1/events') {

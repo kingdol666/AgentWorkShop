@@ -10,6 +10,10 @@ import type { StaleRef } from '../../pages/dcw/composables/useDcwDetailScope'
 import { emptyRecipeDaqWindowRow, emptyRecipeParamRow } from '~/utils/dcw-recipe-form'
 import { dcwDriverBadgeKey } from '~/utils/dcw-driver-badge'
 
+// ---------- 二级权限:授权 Agent 候选(全部频道成员聚合;弹窗打开时拉一次) ----------
+import { computed, ref, watch } from 'vue'
+import { apiFetch } from '~/composables/workshop/apiClient'
+
 defineProps<{
   lineProducts: ProductView[]
   lineNodes: DcwNodeView[]
@@ -37,6 +41,44 @@ const { t } = useI18n()
 function drvBadgeSuffix(driver: string): string {
   const key = dcwDriverBadgeKey(driver)
   return key ? ` · ${t(key)}` : ''
+}
+
+interface AgentOption { id: string, label: string }
+const agentOptions = ref<AgentOption[]>([])
+const agentsLoading = ref(false)
+
+watch(recipeOpen, (v) => {
+  if (v) void loadAgentOptions()
+})
+
+async function loadAgentOptions(): Promise<void> {
+  if (agentsLoading.value) return
+  agentsLoading.value = true
+  try {
+    const chans = await apiFetch<{ channels?: Array<{ id: string, name: string }> }>({ base: '/api/workshop/channels', path: '' })
+    const list = (chans.channels ?? []).slice(0, 20)
+    const out: AgentOption[] = []
+    for (const c of list) {
+      try {
+        const members = await apiFetch<Array<{ id: string, name?: string, role?: string }>>({ base: `/api/workshop/channels/${c.id}/agents`, path: '' })
+        for (const m of (Array.isArray(members) ? members : (members as { agents?: Array<{ id: string, name?: string, role?: string }> }).agents ?? [])) {
+          if (m.id && !out.some(o => o.id === m.id)) out.push({ id: m.id, label: `${m.name ?? m.id.slice(0, 8)}(${c.name})` })
+        }
+      }
+      catch { /* 单频道失败跳过 */ }
+    }
+    agentOptions.value = out
+  }
+  catch { /* 聚合失败保持空(手输 id 仍可经表单字段) */ }
+  finally { agentsLoading.value = false }
+}
+
+const pickedIds = computed(() => new Set(recipeForm.value.accessAgentIds))
+function toggleAgent(id: string): void {
+  const ids = recipeForm.value.accessAgentIds
+  const i = ids.indexOf(id)
+  if (i >= 0) ids.splice(i, 1)
+  else ids.push(id)
 }
 </script>
 
@@ -219,6 +261,53 @@ function drvBadgeSuffix(driver: string): string {
       >
         {{ $t('dcwDetail.kv1de1p105') }}
       </button>
+      <p class="sec-label">
+        {{ $t('dcwDetail.accessTitle') }}
+      </p>
+      <label class="f access-row">
+        <input
+          v-model="recipeForm.accessRequireAuth"
+          type="checkbox"
+        >
+        <span>{{ $t('dcwDetail.accessRequire') }}{{ $t('dcwDetail.accessHint') }}</span>
+      </label>
+      <div
+        v-if="recipeForm.accessRequireAuth"
+        class="access-agents"
+      >
+        <p
+          v-if="agentsLoading"
+          class="dim"
+        >
+          {{ $t('dcwDetail.accessLoading') }}
+        </p>
+        <p
+          v-else-if="agentOptions.length === 0"
+          class="dim"
+        >
+          {{ $t('dcwDetail.accessNoAgents') }}
+        </p>
+        <template v-else>
+          <label
+            v-for="o in agentOptions"
+            :key="o.id"
+            class="access-agent"
+          >
+            <input
+              type="checkbox"
+              :checked="pickedIds.has(o.id)"
+              @change="toggleAgent(o.id)"
+            >
+            <span>{{ o.label }}</span>
+          </label>
+        </template>
+        <p
+          v-if="recipeForm.accessAgentIds.length === 0"
+          class="row-stale"
+        >
+          {{ $t('dcwDetail.accessEmptyWarn') }}
+        </p>
+      </div>
       <p
         v-if="recipeStaleNote"
         class="m-note"
@@ -303,4 +392,8 @@ function drvBadgeSuffix(driver: string): string {
   .m-actions { flex-wrap: wrap; }
   .m-actions > * { flex: 1 1 auto; }
 }
+
+.access-row { display: flex; align-items: center; gap: 8px; }
+.access-agents { display: flex; flex-wrap: wrap; gap: 6px 14px; max-height: 160px; overflow: auto; border: 1px dashed var(--line-faint, rgba(255,255,255,.12)); border-radius: 8px; padding: 8px 10px; }
+.access-agent { display: flex; align-items: center; gap: 6px; font-size: 13px; }
 </style>

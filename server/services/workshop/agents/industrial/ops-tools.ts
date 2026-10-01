@@ -13,6 +13,7 @@ import { getDcwRecipeRepo } from '../../dcw/dcw-recipe.repo'
 import { getOps } from '../../ops/ops'
 import { settingOf } from '../../settings'
 import { fanoutQuery, windowOf } from './audit-query'
+import { assertRecipeOperation, recipeApprovalPayload } from './recipe-gate'
 
 // ================================================================
 // 运维日志 / Recipe 变更史查询(Agent 自查面:负责产线 scoped)
@@ -31,16 +32,30 @@ function channelBoundLineId(agentId: string): string | null {
   }
 }
 
-/** Agent 负责范围 = 绑定节点的全集(节点 id 集 + 这些节点所属产线集;写权限依据)
- *  ∪ 频道绑定产线(boundLineIds;v18 只读扩权:日志/配方史/上下文可读,写仍走节点授权)。 */
+/** Agent 负责范围 = 绑定节点的全集(节点 id 集 + 这些节点所属产线集)
+ *  ∪ 绑定配方所在产线(kind='recipe';v2 权限模型:配方绑定授予该线的读面+配方操作面)
+ *  ∪ 频道绑定产线(boundLineIds;v18 只读扩权:日志/配方史/上下文可读)。 */
 export function agentOpsScope(agentId: string): { lineIds: string[], nodeIds: Set<string>, boundLineIds: string[] } | null {
   const bindings = getAgentNodeBindingRepo().byAgent(agentId)
   const boundLine = channelBoundLineId(agentId)
-  const boundLineIds = boundLine ? [boundLine] : []
-  if (bindings.length === 0 && boundLineIds.length === 0) return null
+  const boundLineIds = new Set<string>(boundLine ? [boundLine] : [])
+  if (bindings.length === 0 && boundLineIds.size === 0) return null
   const lineIds = new Set<string>()
   const nodeIds = new Set<string>()
   for (const b of bindings) {
+    if (b.kind === 'recipe') {
+      // 配方绑定:配方所在产线进读面(boundLineIds);配方参数节点进可见节点集(mes_fetch/line_context)
+      try {
+        const recipe = getDcwController().listRecipes().find(r => r.id === b.nodeId)
+        if (recipe?.lineId) {
+          boundLineIds.add(recipe.lineId)
+          lineIds.add(recipe.lineId)
+          for (const p of recipe.params) nodeIds.add(p.nodeId)
+        }
+      }
+      catch { /* 配方刚被删等情况忽略 */ }
+      continue
+    }
     nodeIds.add(b.nodeId)
     try {
       const n = b.kind === 'dcw' ? getDcwController().byId(b.nodeId) : getDaqNodeRepo().byId(b.nodeId)
@@ -48,7 +63,7 @@ export function agentOpsScope(agentId: string): { lineIds: string[], nodeIds: Se
     }
     catch { /* 节点刚被删等情况忽略 */ }
   }
-  return { lineIds: [...lineIds], nodeIds, boundLineIds }
+  return { lineIds: [...lineIds], nodeIds, boundLineIds: [...boundLineIds] }
 }
 
 /** 读工具的可见产线全集 = 节点授权线 ∪ 频道绑定线(去重) */
@@ -285,7 +300,9 @@ export async function toolRecipeVersions(agentId: string, args: { recipe_id?: st
 }
 
 /** 工具:recipe_update —— 把验证过的最佳参数保存进配方(生成新版本,带归因与原因)。
- *  只改配方定义(下一批次生效);不改运行中 PLC 当前值(那用 dcw_control 逐节点下发)。 */
+ *  权限模型 v2:需绑定该 recipe(kind='recipe')且通过二级认证与运行门(配方须在执行);
+ *  绑定 manual 时本次保存挂 HITL 等人工批准(理由随审批卡展示)。
+ *  只改配方定义;要把参数推到运行中的产线用 recipe_apply(整批下发)。 */
 export async function toolRecipeUpdate(agentId: string, args: {
   recipe_id?: string
   params?: Array<{ node_id?: string, value?: number | string, min?: number | string, max?: number | string }>
@@ -295,22 +312,52 @@ export async function toolRecipeUpdate(agentId: string, args: {
   const recipeId = String(args.recipe_id ?? '').trim()
   const reason = String(args.reason ?? '').trim()
   if (!recipeId) return { text: 'recipe_id 必填(line_context 可看到当前配方的 id)。', isError: true }
-  if (!reason) return { text: 'reason 必填:保存参数必须说明依据(如数采证据/判定结论),便于版本史追溯。', isError: true }
+  if (!reason) return { text: 'reason 必填:保存参数必须说明依据(如数采证据/判定结论),便于版本史追溯与人工审批判断。', isError: true }
   const list = (args.params ?? []).filter(p => p && String(p.node_id ?? '').trim() && Number.isFinite(Number(p.value)))
   if (list.length === 0) return { text: 'params 至少提供一条 {node_id, value}(value 必须为数字)。', isError: true }
   const recipe = getDcwController().listRecipes().find(r => r.id === recipeId)
   if (!recipe) return { text: `配方 ${recipeId} 不存在。`, isError: true }
-  const repo = getAgentNodeBindingRepo()
+  // 权限模型 v2:绑定 → 二级认证 → 运行门(未在执行的配方不可操作)
+  const gate = assertRecipeOperation(agentId, recipe, 'update')
+  if (!gate.ok) return { text: gate.text, isError: true }
   for (const p of list) {
     const nodeId = String(p.node_id).trim()
     const node = getDcwController().byId(nodeId)
     if (!node) return { text: `节点 ${nodeId} 已删除,不能作为配方参数保存。请改用仍在线的节点。`, isError: true }
     if (node.lineId !== recipe.lineId) return { text: `节点「${node.name}」已取消绑定(不在配方「${recipe.name}」所在产线),不可混入。`, isError: true }
     if (!node.enabled) return { text: `节点「${node.name}」已停用,参数保存被拒。请先让用户恢复节点控制,或保存到其他节点。`, isError: true }
-    if (!repo.find(agentId, nodeId, 'dcw')) {
-      return { text: `无权修改节点「${node.name}」的配方参数(仅可改自己绑定 dcw 的节点)。`, isError: true }
-    }
   }
+  // HITL:manual 绑定(或全局下发审批开关)→ 保存前挂人工审批,理由随审批卡展示
+  let hitlNote = ''
+  if (gate.hitlRequired) {
+    const gateDecision = await hitlDispatchGate(
+      agentId,
+      recipe.id,
+      `配方参数写入:「${recipe.name}」v${recipe.version ?? 1} 拟保存 ${list.map((p) => {
+        const node = getDcwController().byId(String(p.node_id).trim())
+        const old = recipe.params.find(x => x.nodeId === String(p.node_id).trim())?.value
+        return `${node?.name ?? p.node_id} ${old ?? '?'}→${Number(p.value)}${node?.unit ?? ''}`
+      }).join(';')} | 理由:${reason} | 批准=写入新版本(不下发产线);拒绝可附指导`,
+      '配方参数写入审批',
+      { payload: recipeApprovalPayload('update', recipe.id, recipe.name, {
+        reason,
+        params: list.map((p) => {
+          const node = getDcwController().byId(String(p.node_id).trim())
+          const old = recipe.params.find(x => x.nodeId === String(p.node_id).trim())?.value
+          return { nodeId: String(p.node_id).trim(), name: node?.name ?? String(p.node_id), from: old ?? null, to: Number(p.value), unit: node?.unit }
+        }),
+        runId: gate.activeRunId,
+      }) },
+    )
+    if (!gateDecision.approved) {
+      return {
+        text: `人工未批准本次参数写入。人工指导:${gateDecision.comment || '(无附言)'}。请按人工指导修订参数与理由后重新提交 recipe_update。`,
+      }
+    }
+    if (gateDecision.comment) hitlNote = `\n人工附言:${gateDecision.comment}`
+  }
+  // 旧值快照(repo.update 原地改写 recipe.params,事后再取会把 before 读成新值)
+  const beforeOf = new Map(recipe.params.map(p => [p.nodeId, p.value]))
   // 部分合并:只更新提供的节点,其余参数保持不变;
   // 基线中的失效参数(节点已删除/已解绑/已改挂)自动剪除并如实告知 —— 否则整次保存会被归一化拒绝
   const dropped: string[] = []
@@ -350,12 +397,12 @@ export async function toolRecipeUpdate(agentId: string, args: {
     })
     const changedNodes = list.map((p) => {
       const node = getDcwController().byId(String(p.node_id).trim())
-      const before = recipe.params.find(x => x.nodeId === String(p.node_id).trim())?.value
+      const before = beforeOf.get(String(p.node_id).trim())
       return `${node?.name ?? p.node_id} ${before ?? '?'}→${Number(p.value)}`
     }).join(';')
     const droppedNote = dropped.length > 0 ? `\n注意:已自动剔除失效参数(${dropped.join('、')}:节点已删除或改挂其他产线),这些参数不再属于本配方。` : ''
     return {
-      text: `已保存为 v${updated.version ?? 1}:「${updated.name}」参数 ${changedNodes};原因:${reason}。${droppedNote}\n注意:配方定义已更新,运行中批次仍按开跑时冻结的参数生产,新参数从下次开跑/一键下发生效;要把新值写入运行中的 PLC,用 dcw_control 逐节点下发(走安全联锁)。回退用 recipe_rollback。`,
+      text: `已保存为 v${updated.version ?? 1}:「${updated.name}」参数 ${changedNodes};原因:${reason}。${droppedNote}${hitlNote}\n注意:配方定义已更新,运行中批次仍按开跑时冻结的参数生产;要把新参数推到运行中的产线(经治理联锁整批下发),用 recipe_apply。回退用 recipe_rollback。`,
     }
   }
   catch (err) {
@@ -383,12 +430,28 @@ export async function toolRecipeRollback(agentId: string, args: {
   if (!toLastGood && !Number.isFinite(version)) return { text: '需提供 version(历史版本号)或 to_last_good=true。', isError: true }
   const recipe = getDcwController().listRecipes().find(r => r.id === recipeId)
   if (!recipe) return { text: `配方 ${recipeId} 不存在。`, isError: true }
-  const scope = agentOpsScope(agentId)
-  if (!scope || !recipe.lineId || !scope.lineIds.includes(recipe.lineId)) {
-    return { text: `无权回退配方 ${recipeId}(该配方不在你负责的产线上)。`, isError: true }
-  }
+  // 权限模型 v2:绑定 → 二级认证 → 运行门(未在执行的配方不可回退)
+  const gate = assertRecipeOperation(agentId, recipe, 'rollback')
+  if (!gate.ok) return { text: gate.text, isError: true }
   if (!toLastGood && Number.isFinite(version) && version >= (recipe.version ?? 1)) {
     return { text: `不能回退到 v${version}(当前已是 v${recipe.version ?? 1};回退目标是更早的版本)。`, isError: true }
+  }
+  // HITL:manual 绑定(或全局开关)→ 回退前挂人工审批(定义回退与统一回退都改状态,同受门控)
+  let hitlNote = ''
+  if (gate.hitlRequired) {
+    const gateDecision = await hitlDispatchGate(
+      agentId,
+      recipe.id,
+      `配方回退:「${recipe.name}」→ ${toLastGood ? '已知良好批次冻结' : `v${version}`}${dispatch ? '(统一回退:定义回退+整批重下发)' : '(仅定义回退)'} | 理由:${reason} | 批准=执行回退;拒绝可附指导`,
+      '配方回退审批',
+      { payload: recipeApprovalPayload('rollback', recipe.id, recipe.name, { reason, runId: gate.activeRunId }) },
+    )
+    if (!gateDecision.approved) {
+      return {
+        text: `人工未批准本次回退。人工指导:${gateDecision.comment || '(无附言)'}。请按人工指导补充证据或调整回退目标后重新提交。`,
+      }
+    }
+    if (gateDecision.comment) hitlNote = `\n人工附言:${gateDecision.comment}`
   }
   try {
     if (dispatch) {
@@ -416,7 +479,7 @@ export async function toolRecipeRollback(agentId: string, args: {
         ? `\n注意:整批重下发部分成功(${okN}/${run.results.length}),未落盘节点请用 dcw_control 复查。`
         : ''
       return {
-        text: `统一回退完成:配方「${updated.name}」${defNote},参数恢复为目标版本(${toLastGood ? '已知良好批次冻结' : `v${version}`}),并已整批重下发到 PLC(${okN}/${run.results.length} 参数成功);原因:${reason}。${partialWarn}\n用 daq_query 复测确认恢复效果;版本史用 recipe_versions 复核。`,
+        text: `统一回退完成:配方「${updated.name}」${defNote},参数恢复为目标版本(${toLastGood ? '已知良好批次冻结' : `v${version}`}),并已整批重下发到 PLC(${okN}/${run.results.length} 参数成功);原因:${reason}。${hitlNote}${partialWarn}\n用 daq_query 复测确认恢复效果;版本史用 recipe_versions 复核。`,
       }
     }
     const updated = getDcwController().revertRecipe(recipeId, {
@@ -429,7 +492,7 @@ export async function toolRecipeRollback(agentId: string, args: {
       description: reason,
     })
     return {
-      text: `回退完成:配方「${updated.name}」已生成 v${updated.version ?? 1},参数恢复为目标版本(${toLastGood ? '已知良好批次冻结' : `v${version}`});原因:${reason}。\n注意:仅回退了配方定义,运行中 PLC 未变动;要把恢复参数写入产线(统一回退),用 recipe_rollback 并带 dispatch=true。版本史用 recipe_versions 复核。`,
+      text: `回退完成:配方「${updated.name}」已生成 v${updated.version ?? 1},参数恢复为目标版本(${toLastGood ? '已知良好批次冻结' : `v${version}`});原因:${reason}。${hitlNote}\n注意:仅回退了配方定义,运行中 PLC 未变动;要把恢复参数写入产线(统一回退),用 recipe_rollback 并带 dispatch=true。版本史用 recipe_versions 复核。`,
     }
   }
   catch (err) {
@@ -438,22 +501,30 @@ export async function toolRecipeRollback(agentId: string, args: {
 }
 
 /**
- * v19.5 HITL 下发裁决门:security.recipeDispatchApproval 开启时,配方下发动作
- * 不直接执行 —— 挂起等待人工裁决(复用 ToolApprovalService,人类批/拒理由原样回流):
+ * v19.5 HITL 下发裁决门:绑定 manual(或全局开关)时,配方动作不直接执行 ——
+ * 挂起等待人工裁决(复用 ToolApprovalService,人类批/拒理由原样回流;结构化 payload
+ * 随单落库,审批卡可渲染 Agent 的理由与参数明细):
  *   批准       → 按原逻辑执行下发,回执附人工附言;
  *   拒绝(可附指导)→ 工具回包携带人工指导文本,Agent 按指导修订候选后重新提交 ——
  *   即"改好配方交给人类判断是否下发;不下发则人告诉 Agent 怎么修"的真实作业语义。
- * 超时(默认 180s,security.hitl_timeout_ms)自动按拒绝收敛。
+ * 超时(默认 security.recipe_dispatch_timeout_ms,30min)自动按拒绝收敛。
  */
-async function hitlDispatchGate(agentId: string, detail: string, title: string): Promise<{ approved: boolean, comment: string }> {
+async function hitlDispatchGate(agentId: string, recipeId: string, detail: string, title: string, opts?: { payload?: unknown }): Promise<{ approved: boolean, comment: string }> {
   const { getToolApprovals } = await import('../tool-approvals')
-  const decision = await getToolApprovals().request(agentId, 'recipe-dispatch', 'dcw', detail, { title })
+  const timeoutMs = Number(settingOf('security.recipe_dispatch_timeout_ms')) || undefined
+  // nodeId = `recipe:<id>`:审批卡分流键(与 recipe-propose:<id> 平行;kind 保持 'dcw' 兼容既有裁决端点)
+  const decision = await getToolApprovals().request(agentId, `recipe:${recipeId}`, 'dcw', detail, {
+    title,
+    ...(opts?.payload !== undefined ? { payload: opts.payload } : {}),
+    ...(timeoutMs ? { timeoutMs } : {}),
+  })
   return { approved: decision.approved, comment: decision.comment }
 }
 
 /** 工具:recipe_trial —— 多参数候选整批试验下发(v19 配方链路核心)。
- *  候选值只覆盖列出节点(**必须是自己绑定的数控节点**);整批一次落产线,**不写配方版本** ——
- *  复测判读:有进步/达标 → recipe_update 固化(同 id 版本+1);劣化 → recipe_rollback(dispatch=true) 统一回退。
+ *  权限模型 v2:需绑定该 recipe 且过二级认证+运行门;候选值只覆盖列出节点(须为配方内节点)。
+ *  绑定 manual 时整批试验挂 HITL(理由随审批卡);整批一次落产线,不写配方版本 ——
+ *  复测判读:有进步/达标 → recipe_update 固化;劣化 → recipe_rollback(dispatch=true) 统一回退。
  *  受同线试验节拍卡控(默认 ≥5 分钟,防连发震荡);四层限界(量程∩参数∩产品)照常拦截。 */
 export async function toolRecipeTrial(agentId: string, args: {
   recipe_id?: string
@@ -463,42 +534,54 @@ export async function toolRecipeTrial(agentId: string, args: {
   const recipeId = String(args.recipe_id ?? '').trim()
   const hypothesis = String(args.hypothesis ?? '').trim()
   if (!recipeId) return { text: 'recipe_id 必填(line_context 可看到当前配方 id)。', isError: true }
-  if (!hypothesis) return { text: 'hypothesis 必填:试验必须声明依据(知识库条目/数据分析结论),便于审计追溯。', isError: true }
+  if (!hypothesis) return { text: 'hypothesis 必填:试验必须声明依据(知识库条目/数据分析结论),便于审计追溯与人工审批判断。', isError: true }
   const list = (args.params ?? []).filter(p => p && String(p.node_id ?? '').trim() && Number.isFinite(Number(p.value)))
     .map(p => ({ nodeId: String(p.node_id).trim(), value: Number(p.value) }))
   if (list.length === 0) return { text: 'params 至少提供一条 {node_id, value}(value 必须为数字);试验的意义就是多参数一次整批改动。', isError: true }
   const recipe = getDcwController().listRecipes().find(r => r.id === recipeId)
   if (!recipe) return { text: `配方 ${recipeId} 不存在。`, isError: true }
-  const repo = getAgentNodeBindingRepo()
+  // 权限模型 v2:绑定 → 二级认证 → 运行门(未在执行的配方不可试验)
+  const gate = assertRecipeOperation(agentId, recipe, 'trial')
+  if (!gate.ok) return { text: gate.text, isError: true }
   for (const p of list) {
     const node = getDcwController().byId(p.nodeId)
     if (!node) return { text: `节点 ${p.nodeId} 已删除,不能纳入试验。`, isError: true }
     if (node.lineId !== recipe.lineId) return { text: `节点「${node.name}」不在配方「${recipe.name}」所在产线,不可混入试验。`, isError: true }
     if (!node.enabled) return { text: `节点「${node.name}」已停用,试验被拒。`, isError: true }
-    if (!repo.find(agentId, p.nodeId, 'dcw')) {
-      return { text: `无权试验节点「${node.name}」(仅可改自己绑定的数控节点;缺授权找 lead 用 team_grant_nodes 授予)。`, isError: true }
+    if (!recipe.params.some(x => x.nodeId === p.nodeId)) {
+      return { text: `节点「${node.name}」不是配方「${recipe.name}」的参数节点;试验候选只能覆盖配方内参数。`, isError: true }
     }
   }
   try {
-    // v19.5 HITL 门:开启人工审批时,整批试验前先挂起等人工裁决(拒绝附指导 → 回给 Agent 修订)
+    // HITL 门:manual 绑定(或全局开关)时,整批试验前先挂起等人工裁决(拒绝附指导 → 回给 Agent 修订)
     let hitlNote = ''
-    if (settingOf('security.recipeDispatchApproval') === true) {
-      const gate = await hitlDispatchGate(
+    if (gate.hitlRequired) {
+      const gateDecision = await hitlDispatchGate(
         agentId,
+        recipe.id,
         `配方试验候选(整批 ${list.length} 参数):${list.map((p) => {
           const node = getDcwController().byId(p.nodeId)
           const old = recipe.params.find(x => x.nodeId === p.nodeId)?.value
           return `${node?.name ?? p.nodeId} ${old ?? '?'}→${p.value}${node?.unit ?? ''}`
         }).join(';')} | 假设:${hypothesis} | 批准=整批下发试验(不写版本);拒绝可附指导`,
         '配方试验(整批候选)下发审批',
+        { payload: recipeApprovalPayload('trial', recipe.id, recipe.name, {
+          reason: hypothesis,
+          params: list.map((p) => {
+            const node = getDcwController().byId(p.nodeId)
+            const old = recipe.params.find(x => x.nodeId === p.nodeId)?.value
+            return { nodeId: p.nodeId, name: node?.name ?? p.nodeId, from: old ?? null, to: p.value, unit: node?.unit }
+          }),
+          runId: gate.activeRunId,
+        }) },
       )
-      if (!gate.approved) {
+      if (!gateDecision.approved) {
         return {
-          text: `人工未批准本次试验下发。人工指导:${gate.comment || '(无附言,仅不同意候选)'}。请按人工指导修订候选参数(必要时先 recipe_update 调整基线),然后重新提交 recipe_trial。`,
+          text: `人工未批准本次试验下发。人工指导:${gateDecision.comment || '(无附言,仅不同意候选)'}。请按人工指导修订候选参数(必要时先 recipe_update 调整基线),然后重新提交 recipe_trial。`,
         }
       }
       // 人工附言随批准回执回流(Agent 与审计都能看到放行时人的原话)
-      if (gate.comment) hitlNote = `\n人工附言:${gate.comment}`
+      if (gateDecision.comment) hitlNote = `\n人工附言:${gateDecision.comment}`
     }
     const run = await getDcwController().applyRecipe(recipeId, { overrides: list, trial: true })
     const okN = run.results.filter(r => r.ok).length
@@ -527,7 +610,7 @@ export async function toolRecipeTrial(agentId: string, args: {
 }
 
 /** 工具:recipe_apply —— 把配方当前已固化参数整批下发到产线(改配方(recipe_update)之后用)。
- *  与 recipe_trial 的区别:apply 下发的是**已固化版本**(无候选覆盖),用于"改配方 → 配方下发"链路的正式下发。 */
+ *  权限模型 v2:需绑定该 recipe 且过二级认证+运行门;绑定 manual 时挂 HITL(理由随审批卡)。 */
 export async function toolRecipeApply(agentId: string, args: {
   recipe_id?: string
   reason?: string
@@ -536,34 +619,38 @@ export async function toolRecipeApply(agentId: string, args: {
   if (!recipeId) return { text: 'recipe_id 必填(line_context 可看到当前配方 id)。', isError: true }
   const recipe = getDcwController().listRecipes().find(r => r.id === recipeId)
   if (!recipe) return { text: `配方 ${recipeId} 不存在。`, isError: true }
-  const scope = agentOpsScope(agentId)
-  if (!scope || !recipe.lineId || !scope.lineIds.includes(recipe.lineId)) {
-    return { text: `无权下发配方 ${recipeId}(该配方不在你负责的产线上)。`, isError: true }
-  }
-  const boundInRecipe = getAgentNodeBindingRepo().byAgent(agentId)
-    .some(b => b.kind === 'dcw' && recipe.params.some(p => p.nodeId === b.nodeId))
-  if (!boundInRecipe) {
-    return { text: `无权下发配方 ${recipeId}(需持有该配方至少一个数控节点的授权;找 lead 用 team_grant_nodes 授予)。`, isError: true }
-  }
+  // 权限模型 v2:绑定 → 二级认证 → 运行门
+  const gate = assertRecipeOperation(agentId, recipe, 'dispatch')
+  if (!gate.ok) return { text: gate.text, isError: true }
+  const reason = String(args.reason ?? '').trim()
   try {
-    // v19.5 HITL 门:开启人工审批时,正式下发前先挂起等人工裁决(拒绝附指导 → 回给 Agent 修订)
+    // HITL 门:manual 绑定(或全局开关)时,正式下发前先挂起等人工裁决(拒绝附指导 → 回给 Agent 修订)
     let hitlNote = ''
-    if (settingOf('security.recipeDispatchApproval') === true) {
-      const gate = await hitlDispatchGate(
+    if (gate.hitlRequired) {
+      const gateDecision = await hitlDispatchGate(
         agentId,
+        recipe.id,
         `配方正式下发:「${recipe.name}」v${recipe.version ?? 1} 全参数整批(${recipe.params.length} 项):${recipe.params.map((p) => {
           const node = getDcwController().byId(p.nodeId)
           return `${node?.name ?? p.nodeId}=${p.value}${node?.unit ?? ''}`
-        }).join(';')} | 批准=整批下发到 PLC;拒绝可附指导`,
+        }).join(';')}${reason ? ` | 理由:${reason}` : ' | 理由:未提供(建议始终给 reason)'} | 批准=整批下发;拒绝可附指导`,
         '配方下发审批',
+        { payload: recipeApprovalPayload('dispatch', recipe.id, recipe.name, {
+          reason: reason || '(未提供)',
+          params: recipe.params.map((p) => {
+            const node = getDcwController().byId(p.nodeId)
+            return { nodeId: p.nodeId, name: node?.name ?? p.nodeId, from: null, to: p.value, unit: node?.unit }
+          }),
+          runId: gate.activeRunId,
+        }) },
       )
-      if (!gate.approved) {
+      if (!gateDecision.approved) {
         return {
-          text: `人工未批准本次配方下发。人工指导:${gate.comment || '(无附言)'}。请按人工指导修订配方(recipe_update)后重新提交 recipe_apply。`,
+          text: `人工未批准本次配方下发。人工指导:${gateDecision.comment || '(无附言)'}。请按人工指导修订配方(recipe_update)后重新提交 recipe_apply。`,
         }
       }
       // 人工附言随批准回执回流(与 recipe_trial 同口径)
-      if (gate.comment) hitlNote = `\n人工附言:${gate.comment}`
+      if (gateDecision.comment) hitlNote = `\n人工附言:${gateDecision.comment}`
     }
     const run = await getDcwController().applyRecipe(recipeId)
     const okN = run.results.filter(r => r.ok).length

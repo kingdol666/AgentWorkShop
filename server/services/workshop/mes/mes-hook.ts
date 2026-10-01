@@ -97,7 +97,7 @@ export interface MesHookData {
 // 代码清洗(hook 源码取自 driverConfig text 字段)
 // ============================================================
 
-function safeHookCode(cfg: Record<string, unknown>, key: 'dataHook' | 'requestHook'): string | null {
+function safeHookCode(cfg: Record<string, unknown>, key: 'dataHook' | 'requestHook' | 'writeHook' | 'writeCheckHook'): string | null {
   const raw = cfg[key]
   if (raw === null || raw === undefined) return null
   const code = String(raw).trim()
@@ -114,6 +114,12 @@ export function mesDataHookCode(cfg: Record<string, unknown>): string | null {
 }
 export function mesRequestHookCode(cfg: Record<string, unknown>): string | null {
   return safeHookCode(cfg, 'requestHook')
+}
+export function mesWriteHookCode(cfg: Record<string, unknown>): string | null {
+  return safeHookCode(cfg, 'writeHook')
+}
+export function mesWriteCheckHookCode(cfg: Record<string, unknown>): string | null {
+  return safeHookCode(cfg, 'writeCheckHook')
 }
 
 // ============================================================
@@ -250,7 +256,7 @@ const WORKER_SOURCE = [
   'try {',
   '  const fn = __aw_hook',
   '  if (typeof fn !== "function") throw new Error("hook 必须求值为函数(如 function(param, data, ctx){...} 或 (param, data, ctx) => {...})")',
-  '  const args = req.kind === "request" ? [req.param, ctx] : [req.param, req.data, ctx]',
+  '  const args = req.kind === "data" ? [req.param, req.data, ctx] : [req.param, ctx]',
   '  const raw = fn.apply(null, args)',
   '  let summary, context, stats',
   '  if (raw === null || raw === undefined) {',
@@ -263,7 +269,7 @@ const WORKER_SOURCE = [
   '    if (raw.stats !== null && typeof raw.stats === "object" && !Array.isArray(raw.stats)) stats = raw.stats',
   '    if (!summary && !context) context = "hook 已执行但未返回 summary/context;产物见 artifacts。"',
   '  }',
-  '  emit({ ok: true, summary: summary, context: context, stats: stats === undefined ? null : stats, artifacts: artifacts, logs: logs, raw: req.kind === "request" ? raw : undefined })',
+  '  emit({ ok: true, summary: summary, context: context, stats: stats === undefined ? null : stats, artifacts: artifacts, logs: logs, raw: (req.kind === "request" || req.kind === "write" || req.kind === "write-check") ? raw : undefined })',
   '} catch (err) {',
   '  emit({ ok: false, error: String(err && err.message ? err.message : err), artifacts: artifacts, logs: logs })',
   '} finally {',
@@ -294,7 +300,7 @@ interface WorkerReply {
   error?: string
 }
 
-async function runHookModule(kind: 'data' | 'request', code: string, payload: {
+async function runHookModule(kind: 'data' | 'request' | 'write' | 'write-check', code: string, payload: {
   param: unknown
   data?: MesHookData
   nodeId: string
@@ -503,6 +509,40 @@ export async function runMesDataHook(code: string, param: unknown, data: MesHook
   }
   catch { /* 清理失败不影响结果 */ }
   return outcome
+}
+
+/** 执行节点的 writeHook(写请求构造):返回 {method?,path?,query?,headers?,body?} 白名单键 */
+export async function runMesWriteHook(code: string, eng: number, opts: { nodeId: string }): Promise<{ method?: string, path?: string, query?: Record<string, string>, headers?: Record<string, string>, body?: unknown }> {
+  const { reply } = await runHookModule('write', code, { param: eng, nodeId: opts.nodeId })
+  if (!reply.ok) throw new AppError(422, 'MES_HOOK_FAILED', `writeHook 执行失败:${reply.error ?? '未知原因'}`)
+  const o = reply.raw !== null && typeof reply.raw === 'object' && !Array.isArray(reply.raw)
+    ? reply.raw as Record<string, unknown>
+    : {}
+  if (reply.raw !== null && typeof reply.raw !== 'object') {
+    throw new AppError(422, 'MES_HOOK_FAILED', `writeHook 必须返回对象(可含 method/path/query/headers/body),实际返回 ${typeof reply.raw}`)
+  }
+  const out: { method?: string, path?: string, query?: Record<string, string>, headers?: Record<string, string>, body?: unknown } = {}
+  if (typeof o.method === 'string' && o.method.trim()) out.method = o.method.trim()
+  if (typeof o.path === 'string' && o.path.trim()) out.path = o.path.trim()
+  for (const key of ['query', 'headers'] as const) {
+    if (o[key] !== null && typeof o[key] === 'object' && !Array.isArray(o[key])) {
+      out[key] = Object.fromEntries(Object.entries(o[key] as Record<string, unknown>).map(([k, v]) => [k, String(v)]))
+    }
+  }
+  if ('body' in o) out.body = o.body
+  return out
+}
+
+/** 执行节点的 writeCheckHook(写响应二次校验):返回 {ok, message};失败即写失败(诚实语义) */
+export async function runMesWriteCheckHook(code: string, status: number, replyJson: unknown, eng: number, opts: { nodeId: string }): Promise<{ ok: boolean, message: string }> {
+  const { reply } = await runHookModule('write-check', code, { param: { status, reply: replyJson, eng }, nodeId: opts.nodeId })
+  if (!reply.ok) return { ok: false, message: `writeCheckHook 执行失败:${reply.error ?? '未知原因'}` }
+  const o = reply.raw !== null && typeof reply.raw === 'object' && !Array.isArray(reply.raw)
+    ? reply.raw as Record<string, unknown>
+    : {}
+  const ok = o.ok === true
+  const message = typeof o.message === 'string' && o.message.trim() ? o.message.trim() : (ok ? '二次校验通过' : '二次校验未通过(hook 未给出 ok=true)')
+  return { ok, message: clip(message, 300) }
 }
 
 /** 执行节点的 requestHook(请求构造覆盖;返回 path/query/headers 白名单键);配置/协议错误抛 AppError */

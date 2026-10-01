@@ -79,6 +79,19 @@ export async function toolMyIndustrialNodes(agentId: string): Promise<{ text: st
 /** 工具:dcw_control —— 数控下发(鉴权 → 停线守卫 → 手动审批 → 安全联锁 → 回读语义结果)。
  *  调控闭环:下发自动开优化记录;args.hypothesis 声明本次假设(入册),args.task_id 关联任务。 */
 export async function toolDcwControl(agentId: string, args: { node_id?: string, value?: number | string, hypothesis?: string, task_id?: string }, channelId?: string): Promise<{ text: string, isError?: boolean }> {
+  // 权限模型 v2:Agent 不直接操作数控节点 —— 参数写入与下发全部收敛到绑定的 recipe
+  // (defense in depth:工具面已摘除定义,handler 侧仍拒绝,防直连 invoke 绕行)
+  void agentId
+  void args
+  void channelId
+  return {
+    text: '直接节点写控已禁用(权限模型 v2):Agent 不再直接操作数控节点。请改用绑定的配方完成同样动作 —— recipe_update(参数写入,生成新版本)/ recipe_apply(整批下发)/ recipe_trial(候选整批试验,不写版本)/ recipe_rollback(回退);均为带理由与 HITL 的配方面操作,治理联锁(量程/步长/限速)照常生效。',
+    isError: true,
+  }
+}
+
+/** v2 前的直写实现(已停用;保留供回溯/内部审计阅读,不再被任何入口调用) */
+async function _toolDcwControlDisabled(agentId: string, args: { node_id?: string, value?: number | string, hypothesis?: string, task_id?: string }, channelId?: string): Promise<{ text: string, isError?: boolean }> {
   const twinGuard = guardTwinWrite(agentId, channelId)
   if (!twinGuard.allowed) return { text: `${twinGuard.code}: ${twinGuard.message}`, isError: true }
   const nodeId = String(args.node_id ?? '').trim()

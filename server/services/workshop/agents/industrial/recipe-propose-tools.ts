@@ -17,6 +17,7 @@ import { agentBadgeLabel } from '../agent-badge'
 import { getToolApprovals } from '../tool-approvals'
 import { getAgentNodeBindingRepo } from '../node-bindings.repo'
 import { securityRecipeDispatchTimeoutMs } from '../../settings'
+import { assertRecipeOperation } from './recipe-gate'
 import { getDcwController } from '../../dcw/dcw-controller'
 import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
 import { recordOps } from '../../ops/ops'
@@ -131,6 +132,9 @@ export async function toolRecipePropose(agentId: string, args: {
   // ---------- ② 配方存在性与产线归属(权限 mirror toolRecipeApply:节点授权线 ∪ 频道绑线 + 配方内至少一个授权节点) ----------
   const recipe = getDcwController().listRecipes().find(r => r.id === recipeId)
   if (!recipe) return { text: `配方 ${recipeId} 不存在。`, isError: true }
+  // 权限模型 v2:绑定 → 二级认证 → 运行门(整包审批本身即 HITL,门只做准入)
+  const gate = assertRecipeOperation(agentId, recipe, 'dispatch')
+  if (!gate.ok) return { text: gate.text, isError: true }
   const scope = agentOpsScope(agentId)
   const readableLineIds = scope ? [...new Set([...scope.lineIds, ...scope.boundLineIds])] : []
   if (!scope || !recipe.lineId || !readableLineIds.includes(recipe.lineId)) {

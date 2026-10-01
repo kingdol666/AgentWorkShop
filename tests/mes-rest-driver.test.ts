@@ -4,13 +4,29 @@
 import { test, before, after } from 'node:test'
 import assert from 'node:assert/strict'
 import { createServer, type Server } from 'node:http'
+import { mkdtempSync, rmSync } from 'node:fs'
 import type { AddressInfo } from 'node:net'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { mesRestDcwDriver } from '../server/services/workshop/dcw/drivers/mes-rest'
+import { configureMesHooks } from '../server/services/workshop/mes/mes-hook'
 
 // ── mock MES(读 /current、写 /params/{name}/setpoint、历史 /history cursor 分页) ──
 
 let server: Server
 let base = '' // http://127.0.0.1:<随机端口>
+// writeHook/writeCheckHook 子进程运行时需要产物根(生产由插件启动接线;测试指临时目录)
+let hookRoot = ''
+before(() => {
+  hookRoot = mkdtempSync(join(tmpdir(), 'aw-mesdrv-'))
+  configureMesHooks(hookRoot)
+})
+after(() => {
+  try {
+    rmSync(hookRoot, { recursive: true, force: true })
+  }
+  catch { /* 忽略 */ }
+})
 const writes: Array<{ url: string, body: { value?: number } }> = []
 
 before(async () => {
@@ -45,6 +61,25 @@ before(async () => {
         if (typeof body.value !== 'number' || !Number.isFinite(body.value)) return reply(400, { error: 'bad value' })
         if (body.value > 100) return reply(400, { error: 'out of range', limit: 100 })
         return reply(201, { ack: true, applied: body.value })
+      }
+      // 多字段写入(writeHook 语义:只受理提供的字段;tem 限 [20,260])
+      if (url.pathname === '/api/v1/params/multi/set' && req.method === 'POST') {
+        const body = JSON.parse(raw || '{}') as Record<string, unknown>
+        const applied: Record<string, number> = {}
+        for (const k of ['tem', 'vol', 'rot'] as const) {
+          if (body[k] !== undefined) {
+            const v = Number(body[k])
+            if (!Number.isFinite(v)) return reply(400, { error: 'nan' })
+            if (k === 'tem' && (v < 20 || v > 260)) return reply(400, { error: 'tem range', limit: [20, 260] })
+            applied[k] = v
+          }
+        }
+        if (Object.keys(applied).length === 0) return reply(400, { error: 'no field' })
+        return reply(201, { ack: true, applied })
+      }
+      // multi 当前值(回读)
+      if (url.pathname === '/api/v1/params/multi/current') {
+        return reply(200, { data: { value: 60, ts: Date.now() } })
       }
       // 向量历史:profile 断面 3 帧(cursor 分页同标量机制)
       if (url.pathname === '/vectors') {
@@ -288,4 +323,42 @@ test('mes-rest historyMap: vector 缺 valuesPath / image 缺 dataPath → 配置
     path: '/x', response: { rowsPath: 'data.rows[*]', tsPath: 'ts', format: 'wav' },
   }) }))
   assert.match(badFormat.message, /format/)
+})
+
+// ── writeHook( write 构造钩子) + writeCheckHook(二次校验):recipe 参数→MES 单字段下发 ──
+
+test('mes-rest writeHook: 多字段 API 只下发声明字段(tem),ack 受理', async () => {
+  const dcfg = cfg({
+    writeMap: JSON.stringify({ method: 'POST', path: '/api/v1/params/multi/set', successOn: [200, 201] }),
+    writeHook: '(eng, ctx) => ({ method: "POST", path: "/api/v1/params/multi/set", body: { tem: eng } })',
+  })
+  const r = await mesRestDcwDriver.write({ eng: 62.5, tolerance: 0.5, domain: { min: 0, max: 100 }, driverConfig: dcfg })
+  assert.equal(r.ok, true, r.message)
+  assert.match(r.message, /HTTP 201/)
+})
+
+test('mes-rest writeCheckHook: applied.tem === 设定值二次校验通过/失败两向', async () => {
+  const base = {
+    writeMap: JSON.stringify({ method: 'POST', path: '/api/v1/params/multi/set', successOn: [200, 201] }),
+    writeHook: '(eng, ctx) => ({ body: { tem: eng } })',
+  }
+  // 校验通过:applied.tem === eng(201 受理)
+  const okCfg = cfg({ ...base, writeCheckHook: '(p, ctx) => ({ ok: !!(p.reply && p.reply.applied && p.reply.applied.tem === p.eng), message: "applied.tem===设定" })' })
+  const okRes = await mesRestDcwDriver.write({ eng: 62.5, tolerance: 0.5, domain: { min: 0, max: 100 }, driverConfig: okCfg })
+  assert.equal(okRes.ok, true, okRes.message)
+  // 校验失败:故意断言错误字段(applied.vol 不存在)→ ok=false 诚实失败
+  const badCfg = cfg({ ...base, writeCheckHook: '(p, ctx) => ({ ok: !!(p.reply && p.reply.applied && p.reply.applied.vol === p.eng), message: "applied.vol===设定" })' })
+  const badRes = await mesRestDcwDriver.write({ eng: 62.5, tolerance: 0.5, domain: { min: 0, max: 100 }, driverConfig: badCfg })
+  assert.equal(badRes.ok, false)
+  assert.match(badRes.message, /二次校验未通过/)
+})
+
+test('mes-rest writeHook 错误代码: hook 抛错 → ok=false 且消息透传(不抛)', async () => {
+  const dcfg = cfg({
+    writeMap: JSON.stringify({ method: 'POST', path: '/api/v1/params/multi/set', successOn: [200, 201] }),
+    writeHook: '(eng, ctx) => { throw new Error("hook-boom") }',
+  })
+  const r = await mesRestDcwDriver.write({ eng: 60, tolerance: 0.5, domain: { min: 0, max: 100 }, driverConfig: dcfg })
+  assert.equal(r.ok, false)
+  assert.match(r.message, /hook-boom|writeHook/)
 })

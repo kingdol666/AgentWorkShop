@@ -226,6 +226,12 @@ export interface RecipeView {
   }>
   /** 已知良好批次(判定 keep / 手动标记;基准恢复的目标) */
   lastGoodRunId?: string | null
+  /** 二级操作权限:默认绑定即可操作;requireAuth=true 时仅 authorizedAgentIds 清单内的 Agent 可操作 */
+  access?: {
+    requireAuth?: boolean
+    /** 授权 Agent 成员实例 id 清单(requireAuth=true 时生效;空清单 = 无人可操作,fail-closed) */
+    authorizedAgentIds?: string[]
+  }
   createdAt: string
   updatedAt: string
 }
@@ -237,6 +243,11 @@ export interface RecipeInput {
   params?: RecipeParam[]
   /** 配方级数采监控窗口(目标数采节点 + 越限上下限) */
   daqWindows?: RecipeDaqWindow[]
+  /** 二级操作权限(缺省 undefined = 未配置,绑定即可操作) */
+  access?: {
+    requireAuth?: boolean
+    authorizedAgentIds?: string[]
+  }
 }
 
 /** 生产批次(Recipe 应用的隔离窗口:数采数据/写历史按窗口归属产品) */

@@ -78,6 +78,17 @@ export async function toolDcwJudge(agentId: string, args: { record_id?: string, 
  *  manual 模式绑定与 dcw_control 同源 —— 回退也会改 PLC,必须推请用户确认。
  *  args: record_id(回退该记录到其 from 值)或 node_id(单步撤销到最近稳定锚);to = 指定目标锚。 */
 export async function toolDcwRollback(agentId: string, args: { record_id?: string, node_id?: string, to?: string }): Promise<{ text: string, isError?: boolean }> {
+  // 权限模型 v2:节点级单点回退收敛到 recipe 面(统一回退 = recipe_rollback dispatch=true,含 PLC 整批恢复)
+  void agentId
+  void args
+  return {
+    text: '节点级回退已禁用(权限模型 v2):Agent 不直接操作数控节点。请改用 recipe_rollback(recipe_id, to_last_good=true 或 version=N, dispatch=true, reason=…)—— 统一回退会恢复配方定义并把该版本参数整批重下发(PLC/MES 恢复一体)。',
+    isError: true,
+  }
+}
+
+/** v2 前的节点级回退实现(已停用;保留供回溯,不再被任何入口调用) */
+async function _toolDcwRollbackDisabled(agentId: string, args: { record_id?: string, node_id?: string, to?: string }): Promise<{ text: string, isError?: boolean }> {
   const rb = getRecipeRollBackManager()
   const recordId = String(args.record_id ?? '').trim()
   const nodeId = String(args.node_id ?? '').trim()

@@ -64,6 +64,24 @@ export async function toolParamControl(agentId: string, args: {
   task_id?: string
   line_id?: string
 }, channelId?: string): Promise<{ text: string, isError?: boolean }> {
+  void agentId
+  void args
+  void channelId
+  return {
+    text: '参数直写已禁用(权限模型 v2):Agent 不再直接改写运行中的工艺参数。请改用绑定的配方 —— recipe_update(写入新版本)/ recipe_apply(整批下发)/ recipe_trial(候选试验);治理联锁与 HITL 在配方面照常生效。',
+    isError: true,
+  }
+}
+
+/** v2 前的语义参数直写实现(已停用;保留供回溯,不再被任何入口调用) */
+async function _toolParamControlDisabled(agentId: string, args: {
+  param?: string
+  value?: number | string
+  hypothesis?: string
+  task_id?: string
+  line_id?: string
+}, channelId?: string): Promise<{ text: string, isError?: boolean }> {
+  void channelId
   const twinGuard = guardTwinWrite(agentId, channelId)
   if (!twinGuard.allowed) return { text: `${twinGuard.code}: ${twinGuard.message}`, isError: true }
   const resolved = resolveParamRef(String(args.param ?? ''), args.line_id ? String(args.line_id) : undefined)

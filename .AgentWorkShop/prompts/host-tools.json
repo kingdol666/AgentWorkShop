@@ -522,36 +522,6 @@
   }
  },
  {
-  "name": "dcw_control",
-  "label": "DCW Control",
-  "description": "对绑定的数控节点下发工艺设定值(真实物理量纲)。仅限你有权控制的节点;设定值会被安全量程与活动配方工艺窗口联锁校验,越窗直接拒绝。手动确认模式下需等待用户批准,用户备注会随结果返回。下发前先调用 my_industrial_nodes 理解节点物理含义。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "node_id": {
-     "type": "string",
-     "description": "数控节点 id(见 my_industrial_nodes)"
-    },
-    "value": {
-     "type": "number",
-     "description": "目标设定值(真实物理量纲,如 ℃)"
-    },
-    "hypothesis": {
-     "type": "string",
-     "description": "本次调参假设(入优化记录档案):目标 + 预期效果 + 观察计划,如「提温 1℃ 预期张力上升 2%,5 分钟后复测」"
-    },
-    "task_id": {
-     "type": "string",
-     "description": "关联的优化任务 id(可选,入优化记录档案)"
-    }
-   },
-   "required": [
-    "node_id",
-    "value"
-   ]
-  }
- },
- {
   "name": "dcw_read",
   "label": "DCW Read",
   "description": "读取绑定的数控节点的 PLC 当前值(读写集成的读半边)。返回 PLC 实时读数(经标定解码的物理量纲)与设定值对照;用于下发前取证、下发后复核设定是否生效。读取是被动观测,不影响控制状态,也不需要审批。",
@@ -565,40 +535,6 @@
    },
    "required": [
     "node_id"
-   ]
-  }
- },
- {
-  "name": "param_control",
-  "label": "Param Control",
-  "description": "按工艺参数下发设定值(推荐的参数语义寻址面;param=工艺参数 id 或 key)。参数 → PLC 执行点的映射由系统封装,你只面对真实物理量纲,不需要也不可见寄存器/数据类型等底层细节。设定值受四层限界联锁(节点安全量程 ∩ 工艺参数基准限界 ∩ 活动产品限界 ∩ 活动配方工艺窗口)逐层收窄,用户与 Agent 一体约束,越界直接拒绝。手动确认模式下需等待用户批准。下发前先调用 my_industrial_nodes 理解参数语义。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "param": {
-     "type": "string",
-     "description": "工艺参数 id(pp-*)或参数 key(产线内唯一,见 my_industrial_nodes / line_context)"
-    },
-    "value": {
-     "type": "number",
-     "description": "目标设定值(真实物理量纲,如 ℃)"
-    },
-    "line_id": {
-     "type": "string",
-     "description": "产线 id(可选;参数 key 跨产线同名时用于消歧)"
-    },
-    "hypothesis": {
-     "type": "string",
-     "description": "本次调参假设(入优化记录档案):目标 + 预期效果 + 观察计划"
-    },
-    "task_id": {
-     "type": "string",
-     "description": "关联的优化任务 id(可选,入优化记录档案)"
-    }
-   },
-   "required": [
-    "param",
-    "value"
    ]
   }
  },
@@ -707,28 +643,6 @@
     "verdict",
     "reason"
    ]
-  }
- },
- {
-  "name": "dcw_rollback",
-  "label": "DCW Rollback",
-  "description": "执行参数回退(经与下发相同的安全门控,回退本身入册可审计)。record_id=回退你自己发起的优化记录到其设定前值;node_id=单步撤销到最近稳定锚。回退后必须 daq_query 复测确认恢复。冷却期内同向重写/重复回退会被拒绝。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "record_id": {
-     "type": "string",
-     "description": "要回退的优化记录 id(与 node_id 二选一)"
-    },
-    "node_id": {
-     "type": "string",
-     "description": "节点单步回退(撤销栈栈顶;与 record_id 二选一)"
-    },
-    "to": {
-     "type": "string",
-     "description": "可选:指定目标锚 id(dcw_journal 可查)"
-    }
-   }
   }
  },
  {
@@ -951,7 +865,7 @@
  {
   "name": "recipe_update",
   "label": "Recipe Update",
-  "description": "把验证过的最佳工艺参数保存进配方(部分合并,生成新版本并记录你的名字与原因)。只改配方定义,下一批次生效;不改运行中 PLC 当前值(用 dcw_control)。必须提供 reason(数采证据/判定结论)。",
+  "description": "把验证过的最佳参数保存进指定配方(生成新版本,带归因与理由)。权限模型:须已绑定该 recipe(可绑定多个配方)且通过其二级认证;配方必须正在执行(运行门,未运行拒绝);绑定 manual 时本次保存挂 HITL 等人工批准——reason 必填且要给出判断依据(数采证据/分析结论),审批卡会向人类展示。只改配方定义,要把参数推到运行中的产线用 recipe_apply。",
   "parameters": {
    "type": "object",
    "properties": {
@@ -998,7 +912,7 @@
  {
   "name": "recipe_rollback",
   "label": "Recipe Rollback",
-  "description": "回退配方参数到稳定版本:指定历史版本(version)或已知良好批次冻结(to_last_good=true)。生成新版本(非破坏,历史保留);默认只回退定义不动 PLC —— 带 dispatch=true 则统一回退:定义回退+该版本参数整批重下发到 PLC(批次级恢复)。必须提供 reason。",
+  "description": "回退配方参数到稳定版本(指定历史版本或已知良好批次),生成新版本(非破坏);dispatch=true 时统一回退(定义回退+参数整批重下发)。权限模型:须已绑定该 recipe 且过二级认证与运行门;绑定 manual 时挂 HITL——reason 必填说明回退原因(如优化劣化/越限)。",
   "parameters": {
    "type": "object",
    "properties": {
@@ -2129,7 +2043,7 @@
  {
   "name": "recipe_trial",
   "label": "Recipe Trial",
-  "description": "多参数候选整批试验下发(配方链路核心):候选值只覆盖列出节点(必须是自己绑定的数控节点),整批一次落产线,不写配方版本 —— 复测判读:有进步/达标用 recipe_update 固化;劣化用 recipe_rollback(dispatch=true)统一回退。受同线试验节拍卡控(默认≥5分钟);四层限界照常拦截。必须提供 hypothesis(试验依据)。",
+  "description": "多参数候选整批试验下发(不写配方版本)。权限模型:须已绑定该 recipe 且过二级认证与运行门;候选只能覆盖配方内参数节点;绑定 manual 时挂 HITL(假设 hypothesis 必填,审批卡展示)。整批一次落产线;复测判读后有进步用 recipe_update 固化,劣化用 recipe_rollback(dispatch=true) 统一回退。受同线试验节拍(默认 ≥5 分钟)与四层限界卡控。",
   "parameters": {
    "type": "object",
    "properties": {
@@ -2173,7 +2087,7 @@
  {
   "name": "recipe_apply",
   "label": "Recipe Apply",
-  "description": "把配方当前已固化参数整批下发到产线(改配方 recipe_update 之后用)。与 recipe_trial 的区别:apply 下发已固化版本(无候选覆盖),是「改配方→配方下发」链路的正式下发。需持有该配方至少一个数控节点授权。",
+  "description": "把配方当前已固化参数整批下发到运行中的产线(改配方 recipe_update 之后用)。权限模型:须已绑定该 recipe 且过二级认证与运行门(配方须在执行);绑定 manual 时挂 HITL 等人工批准——reason 必填,说明为什么要下发、依据是什么。批准后整批经治理联锁(量程/步长/限速)下发,逐参数回执;拒绝可附指导,按指导修订后重提。",
   "parameters": {
    "type": "object",
    "properties": {

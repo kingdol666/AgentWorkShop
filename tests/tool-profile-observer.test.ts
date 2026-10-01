@@ -144,7 +144,8 @@ test('hostToolsForRole:line-doctor 频道含 AML 只读面,零写族且无优化
 
 test('hostToolsForRole:legacy 频道工具面不受观察面白名单影响(对照回归)', () => {
   const surface = namesOf(hostToolsForRole('lead', chLegacy))
-  assert.ok(surface.has('dcw_control'), 'legacy 频道应保持全功能面(含 dcw_control)')
+  assert.ok(!surface.has('dcw_control') && !surface.has('param_control'), '权限模型 v2:直写工具已从工具面摘除')
+  assert.ok(surface.has('recipe_update') && surface.has('recipe_apply'), 'legacy 频道保持配方操作面')
 })
 
 // ===== 4) 内置模板:双模板 + KB 名单 + 任务书纪律 =====

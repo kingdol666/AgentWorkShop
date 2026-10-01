@@ -153,6 +153,39 @@ export function useRecipeDispatchApprovals() {
     await load()
   }
 
+  // ---------- 逐动作审批(权限模型 v2:nodeId = `recipe:<recipeId>`,payload=recipeApprovalPayload) ----------
+  /** 逐动作待批单(参数写入/下发/试验/回退;单动作无 choice 语义,批准/拒绝即可) */
+  const gateItems = computed<RecipeDispatchApprovalRow[]>(() => {
+    return raw.value.filter(a => typeof a.nodeId === 'string'
+      && a.nodeId.startsWith('recipe:')
+      && !a.nodeId.startsWith('recipe-propose:')
+      && a.status === 'pending')
+  })
+
+  /** 逐动作裁决(approved + comment;意见逐字回流 Agent) */
+  async function decideGate(id: string, approved: boolean, comment: string): Promise<void> {
+    if (decidingId.value) return
+    decidingId.value = id
+    decideError.value = ''
+    const snapshot = raw.value
+    try {
+      await apiFetch({
+        base: '/api/workshop/agent-tools/approvals',
+        path: `/${encodeURIComponent(id)}/decide`,
+        init: { method: 'POST', body: JSON.stringify({ approved, comment: comment ?? '' }) },
+      })
+    }
+    catch (err) {
+      raw.value = snapshot
+      decideError.value = apiErrorMessage(err, t('recipePropose.decideFail'))
+      return
+    }
+    finally {
+      decidingId.value = ''
+    }
+    await load()
+  }
+
   // 30s 数据轮询(与 useDcwParamApprovals 各自轮询同一端点,轻量 GET 可接受);页面卸载清理
   const timer = setInterval(() => {
     void load()
@@ -161,5 +194,5 @@ export function useRecipeDispatchApprovals() {
 
   void load()
 
-  return { items, loading, comments, decidingId, decideError, refresh, decide }
+  return { items, gateItems, loading, comments, decidingId, decideError, refresh, decide, decideGate }
 }

@@ -278,7 +278,11 @@ export function normalizeRecipeProposeDecision(
   decision: { approved: boolean, choice?: number },
 ): NormalizedRecipeProposeDecision {
   const payload = pending?.payload as { schemaVersion?: unknown, packages?: unknown } | undefined
-  if (!payload || payload.schemaVersion !== 1) {
+  // 结构化单的签名 = schemaVersion=1 **且带 packages 方案集**:fail-closed 只该管
+  // 多方案整包审批。其余带 payload 的审批单(如 recipe-gate 逐动作单:v2 配方
+  // 参数写入/下发/试验/回退,单动作无 choice 语义)不得被本归一拦截 ——
+  // 否则「批准」会被无 choice fail-closed 静默转拒绝(实测:e3d9aef 后 E2E M9-M11)。
+  if (!payload || payload.schemaVersion !== 1 || !Array.isArray(payload.packages)) {
     return { approved: decision.approved, ...(decision.choice !== undefined ? { choice: decision.choice } : {}) }
   }
   if (decision.approved !== true) return { approved: false }

@@ -103,8 +103,19 @@ function defaultDeps(): MesControllerDeps {
       return getDcwNodeRepo().all()
     },
     boundNodeIds: async (agentId) => {
+      // 权限模型 v2:dcw 绑定(存量)∪ 绑定配方内的参数节点(kind='recipe' 的配方可见节点)
       const { getAgentNodeBindingRepo } = await import('../agents/node-bindings.repo')
-      return new Set(getAgentNodeBindingRepo().byAgent(agentId).filter(b => b.kind === 'dcw').map(b => b.nodeId))
+      const { getDcwController } = await import('../dcw/dcw-controller')
+      const bindings = getAgentNodeBindingRepo().byAgent(agentId)
+      const ids = new Set(bindings.filter(b => b.kind === 'dcw').map(b => b.nodeId))
+      const recipeIds = new Set(bindings.filter(b => b.kind === 'recipe').map(b => b.nodeId))
+      if (recipeIds.size > 0) {
+        for (const r of getDcwController().listRecipes()) {
+          if (!recipeIds.has(r.id)) continue
+          for (const p of r.params) ids.add(p.nodeId)
+        }
+      }
+      return ids
     },
     resolveDriver: kind => resolveDcwDriver(kind as Parameters<typeof resolveDcwDriver>[0]),
     nowMs: () => Date.now(),

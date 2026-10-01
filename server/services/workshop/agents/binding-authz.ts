@@ -25,11 +25,13 @@ import { getDcwController } from '../dcw/dcw-controller'
 import { lineMode } from '../permissions'
 import { AppError, ErrorCodes } from '../../../utils/errors'
 
-/** 绑定 → 所属产线 id(节点不存在返回 null) */
+/** 绑定 → 所属产线 id(节点/配方不存在返回 null;recipe 绑定的 nodeId 字段 = 配方 id) */
 export function lineIdOfBinding(binding: Pick<AgentNodeBinding, 'nodeId' | 'kind'>): string | null | undefined {
-  return binding.kind === 'daq'
-    ? getDaqController().byId(binding.nodeId)?.lineId
-    : getDcwController().byId(binding.nodeId)?.lineId
+  if (binding.kind === 'daq') return getDaqController().byId(binding.nodeId)?.lineId
+  if (binding.kind === 'recipe') {
+    return getDcwController().listRecipes().find(r => r.id === binding.nodeId)?.lineId ?? null
+  }
+  return getDcwController().byId(binding.nodeId)?.lineId
 }
 
 /**
@@ -47,7 +49,8 @@ export function requireBindingAccess(
     throw new AppError(404, ErrorCodes.NOT_FOUND, `${what} ${binding.id} 指向的节点已不存在: ${binding.nodeId}`)
   }
   const mode = lineMode(user, lineId)
-  const needOperate = binding.kind === 'dcw'
+  // 写向绑定(dcw 直写存量 + recipe 配方操作)需「可操控」;daq 只读绑定「仅查看」即可
+  const needOperate = binding.kind !== 'daq'
   if (mode === 'operate' || (needOperate === false && mode === 'readonly')) return
   const need = needOperate ? '可操控' : '仅查看'
   if (mode === 'readonly') {

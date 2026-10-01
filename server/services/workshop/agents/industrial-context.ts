@@ -207,26 +207,27 @@ export function buildIndustrialContext(agentId: string): string {
 export function industrialLoopGuide(agentId: string): string {
   const bindings = getAgentNodeBindingRepo().byAgent(agentId)
   if (bindings.length === 0) return ''
-  const hasDcw = bindings.some(b => b.kind === 'dcw')
-  const hasManual = bindings.some(b => b.kind === 'dcw' && b.mode === 'manual')
+  // 权限模型 v2:写面收敛到 recipe(节点直写工具已摘除);hasDcw 仅剩存量兼容绑定
+  const hasRecipe = bindings.some(b => b.kind === 'recipe')
+  const hasManualRecipe = bindings.some(b => b.kind === 'recipe' && b.mode === 'manual')
   const steps: string[] = [
-    '1. 观察:daq_query 获取绑定节点的真实时序数据(支持按产品/配方/时间窗过滤),结合返回的工况判读理解当前状态。',
-    '2. 理解:my_industrial_nodes 读取节点语义卡 —— 物理量含义/单位/安全量程/活动配方工艺窗口/单次调幅步进,以及调控闭环状态(进行中的优化记录/上次良好值/最近判定)。',
+    '1. 观察:daq_query / mes_fetch 获取绑定产线的真实时序数据(数采/检测/MES 多源;支持按产品/配方/时间窗过滤),结合返回的工况判读理解当前状态。',
+    '2. 理解:my_industrial_nodes 与 line_context 读取语义卡 —— 物理量含义/单位/安全量程/活动配方工艺窗口/单次调幅步进,以及调控闭环状态(进行中的优化记录/上次良好值/最近判定)。',
   ]
-  if (hasDcw) {
+  if (hasRecipe) {
     steps.push(
-      '3. 假设:调参前先声明假设(写入 dcw_control 的 hypothesis 参数)—— 目标值 + 预期效果 + 观察计划;目标必须落在「安全量程 ∩ 活动配方工艺窗口」内,优先小步幅(≤量程 2%)、单向逼近。',
-      '4. 设定:dcw_control 下发(自动开优化记录);等待工艺响应(热惯性/传动惯量),勿连续大幅调整。',
-      '5. 判定:daq_query 复测窗口数据后,dcw_judge 落判定 —— keep(已验证经验)/ rollback(判应回退)/ uncertain(证据不足)。未判定前再下发,旧记录会被标记 superseded;判定必须引用具体数值与时间窗证据。',
-      '6. 回退/保持:判 rollback 后用 dcw_rollback(record_id) 执行回退(判定不自动改 PLC),回退后 daq_query 复测确认恢复;回退冷却期内禁止同向重写。收敛异常时分析根因或上报,而非盲目加码。',
-      '7. 复盘:dcw_journal 查看该节点参数变更史与判定结论;keep 的记录是已验证经验,rollback 的记录写进结论修正下次假设 —— 禁止重复已失败的调参方向。',
+      '3. 假设:调参前先声明假设与理由 —— 目标值 + 预期效果 + 判断依据(数采/MES 证据);目标必须落在「安全量程 ∩ 活动配方工艺窗口」内,优先小步幅(≤量程 2%)、单向逼近。理由必填且会被人类在审批卡上看到。',
+      '4. 设定:对绑定的配方操作 —— recipe_trial(候选整批试验,不写版本)或 recipe_update(写入新版本)+ recipe_apply(整批下发);治理联锁(量程∩参数∩产品∩配方 + 步长 + 限速)在配方面照常生效,底层数控节点(PLC/MES)由配置层承接,无需关心差异。运行中的批次一次只改本配方绑定的参数;等待工艺响应,勿连续大幅调整。',
+      '5. 判定:daq_query / mes_fetch 复测窗口数据后,dcw_judge 落判定 —— keep(已验证经验)/ rollback(判应回退)/ uncertain(证据不足)。判定必须引用具体数值与时间窗证据。',
+      '6. 回退/保持:判 rollback 后用 recipe_rollback(dispatch=true, reason=…) 统一回退(定义回退+参数整批恢复),回退后复测确认;回退冷却期内禁止同向重写。收敛异常时分析根因或上报,而非盲目加码。',
+      '7. 复盘:recipe_versions / dcw_journal 查看变更史与判定结论;keep 的记录是已验证经验,rollback 的记录写进结论修正下次假设 —— 禁止重复已失败的调参方向。',
     )
   }
   else {
     steps.push('3. 判读:你是量测侧 —— 数据越过配方监控窗口会触发节点报警与孪生告警;判读时区分「同线数控设定-响应滞后」与「真实过程异常」,结论引用具体数值与时间窗。')
   }
-  if (hasManual) {
-    steps.push('8. 权限边界:手动确认模式的节点,下发前必须说明理由并等待用户批准(用户备注会随结果返回,请响应其关切);自动模式节点直接执行,但同样受联锁约束;其判定回退会推请用户确认。')
+  if (hasManualRecipe) {
+    steps.push('8. 权限边界:你绑定的配方为 manual 模式 —— 每次参数写入/下发/试验/回退前必须给出理由并等待人类批准(批准附言会随结果返回,请响应其关切;审批 30 分钟窗内无人裁决=默认拒绝);经显式确认切到 auto 的配方免批,但同样受联锁与运行门约束(配方未在执行时一律不可操作)。')
   }
   steps.push(`${steps.length + 1}. 数值口径:工具返回的采集/设定值均为经标定钩子处理后的真实物理量纲;引用数值时带上单位与时间,便于人工复核。`)
   const history = recentOptimizationNotes(agentId)

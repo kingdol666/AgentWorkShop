@@ -14,6 +14,9 @@ export interface DcwRecipeForm {
   description: string
   params: Array<DcwRecipeParamRow>
   daqWindows: Array<DcwRecipeDaqWindowRow>
+  /** 二级操作权限:开启后仅授权清单内的 Agent 可操作(绑定仍需) */
+  accessRequireAuth: boolean
+  accessAgentIds: string[]
 }
 
 /** 配方版本历史行(整体修改变更记录:来源/操作者/原因/参数 diff) */
@@ -105,6 +108,8 @@ export function useDcwRecipes(
     description: '',
     params: [] as DcwRecipeParamRow[],
     daqWindows: [] as DcwRecipeDaqWindowRow[],
+    accessRequireAuth: false,
+    accessAgentIds: [] as string[],
   })
   const applyResult = ref<{ runId: string, ok: number, total: number } | null>(null)
   const runDataView = ref<{ runId: string, data: RecipeRunData } | null>(null)
@@ -118,6 +123,8 @@ export function useDcwRecipes(
     recipeForm.description = ''
     recipeForm.params = [emptyRecipeParamRow(lineNodes.value[0]?.id ?? '')]
     recipeForm.daqWindows = []
+    recipeForm.accessRequireAuth = false
+    recipeForm.accessAgentIds = []
     recipeOpen.value = true
   }
 
@@ -146,6 +153,8 @@ export function useDcwRecipes(
       min: w.min ?? '',
       max: w.max ?? '',
     }))
+    recipeForm.accessRequireAuth = r.access?.requireAuth === true
+    recipeForm.accessAgentIds = [...(r.access?.authorizedAgentIds ?? [])]
     recipeOpen.value = true
   }
 
@@ -173,6 +182,11 @@ export function useDcwRecipes(
             ...(w.min !== '' && Number.isFinite(Number(w.min)) ? { min: Number(w.min) } : {}),
             ...(w.max !== '' && Number.isFinite(Number(w.max)) ? { max: Number(w.max) } : {}),
           })),
+        access: {
+          requireAuth: recipeForm.accessRequireAuth,
+          // 开认证但未勾选任何 Agent = fail-closed(无人可操作),与后端归一口径一致
+          authorizedAgentIds: recipeForm.accessAgentIds.filter(Boolean),
+        },
       }
       if (recipeEditing.value) await dcw.updateRecipe(recipeEditing.value, input)
       else await dcw.createRecipe(input)

@@ -1,10 +1,11 @@
 /**
- * AgentNodeBindingRepo —— Agent ↔ 工业节点绑定持久化(agent-node-bindings.json)。
+ * AgentNodeBindingRepo —— Agent ↔ 工业对象绑定持久化(agent-node-bindings.json)。
  *
- * 一个绑定 = 某 Channel 内的 Agent 对某个数采(daq)/数控(dcw)节点的授权:
- *   - kind: 'dcw' = 可下发控制; 'daq' = 可查询采集数据
+ * 一个绑定 = 某 Channel 内的 Agent 对某个工业对象的授权:
+ *   - kind: 'daq' = 可查询数采; 'recipe' = 可操作配方(参数写入+下发;nodeId 字段存 recipeId);
+ *     'dcw' = (已废弃)直写数控节点 —— 新绑定一律拒绝,存量绑定仅保留只读可见性,
+ *     写路径在工具层全部收敛到 recipe(权限模型 v2:Agent 不直碰节点,只碰配方)。
  *   - mode: 'auto' = 工具调用自动执行; 'manual' = 每次执行需用户批准(可附备注)
- * 工具层(daq_query/dcw_control)据此鉴权;未绑定节点一律拒绝。
  */
 
 import { createLogger } from '../logger'
@@ -16,7 +17,7 @@ import { loadJsonFile, saveJsonFileAtomic } from '../json-store.mjs'
 
 const log = createLogger('workshop.node-bindings')
 
-export type AgentNodeBindingKind = 'dcw' | 'daq'
+export type AgentNodeBindingKind = 'dcw' | 'daq' | 'recipe'
 export type AgentNodeBindingMode = 'auto' | 'manual'
 
 /** 绑定级调试元数据(工况提示词组装与探索步长来源;优先于节点自带元数据) */
@@ -90,7 +91,7 @@ export class AgentNodeBindingRepo {
   bind(agentId: string, nodeId: string, kind: AgentNodeBindingKind, mode: AgentNodeBindingMode, tuning?: AgentNodeBindingTuning, provenance?: { grantedByAgentId?: string }): AgentNodeBinding {
     if (!agentId) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'agentId 必填')
     if (!nodeId) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'nodeId 必填')
-    if (kind !== 'dcw' && kind !== 'daq') throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `未知节点类型: ${kind}`)
+    if (kind !== 'dcw' && kind !== 'daq' && kind !== 'recipe') throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `未知节点类型: ${kind}`)
     if (mode !== 'auto' && mode !== 'manual') throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `未知控制模式: ${mode}`)
     const prev = this.find(agentId, nodeId, kind)
     if (prev) {

@@ -130,6 +130,14 @@ test('normalize:schemaVersion=1 合法 choice 原样放行;拒绝路径不干预
   assert.deepEqual(deny, { approved: false })
 })
 
+test('normalize:schemaVersion=1 但无 packages 的 payload(如 recipe-gate 逐动作单)不干预 —— 批准照常放行', () => {
+  // v2 权限模型回归:配方逐动作 HITL 单带 payload(schemaVersion=1,无 packages),
+  // 不得被多方案 fail-closed 拦截(实测:e3d9aef 后批准被静默转拒绝)
+  const gatePayload = { schemaVersion: 1, kind: 'recipe-gate', op: 'dispatch', recipeId: 'rc-x', recipeName: 'x', reason: 'r' }
+  const out = normalizeRecipeProposeDecision({ payload: gatePayload }, { approved: true })
+  assert.deepEqual(out, { approved: true })
+})
+
 test('normalize:legacy 审批单(无 payload/schemaVersion≠1)完全不干预', () => {
   const noPayload = normalizeRecipeProposeDecision(undefined, { approved: true })
   assert.deepEqual(noPayload, { approved: true })

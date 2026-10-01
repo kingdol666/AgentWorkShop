@@ -224,6 +224,14 @@ class DcwRecipeRepo {
       r.params = fresh
     }
     if (patch.daqWindows !== undefined) r.daqWindows = normDaqWindows(patch.daqWindows, r.lineId)
+    if (patch.access !== undefined) {
+      // 二级权限归一:requireAuth 布尔;授权清单去重去空(requireAuth=true 且清单空 = fail-closed 无人可操作)
+      const raw = (patch.access ?? {}) as { requireAuth?: unknown, authorizedAgentIds?: unknown }
+      const ids = Array.isArray(raw.authorizedAgentIds)
+        ? [...new Set(raw.authorizedAgentIds.map(x => String(x ?? '').trim()).filter(Boolean))]
+        : []
+      r.access = { requireAuth: raw.requireAuth === true, authorizedAgentIds: ids }
+    }
     r.updatedAt = new Date().toISOString()
     this.flushRecipes()
     return r
