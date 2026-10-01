@@ -105,21 +105,20 @@ test('谓词 skipRecipe 语义镜像配方下发路径:配方工艺窗口不参�
 
 // ---------- combineAmlActivitySignals(纯归并) ----------
 
-test('信号归并:三路全空 = 不活动;任一命中即活动且理由去重', () => {
-  const idle = combineAmlActivitySignals({ profileReasons: [], jobReasons: [], auditReasons: [] })
+test('信号归并:两路全空 = 不活动;任一命中即活动且理由去重', () => {
+  const idle = combineAmlActivitySignals({ profileReasons: [], jobReasons: [] })
   assert.deepEqual(idle, { active: false, reasons: [] })
   const mixed = combineAmlActivitySignals({
     profileReasons: ['频道 A 投用模型 m1'],
     jobReasons: ['作业 j1 进行中'],
-    auditReasons: [],
   })
   assert.equal(mixed.active, true)
   assert.equal(mixed.reasons.length, 2)
-  const dup = combineAmlActivitySignals({ profileReasons: ['同一理由'], jobReasons: ['同一理由'], auditReasons: ['同一理由'] })
+  const dup = combineAmlActivitySignals({ profileReasons: ['同一理由'], jobReasons: ['同一理由'] })
   assert.equal(dup.active, true)
   assert.deepEqual(dup.reasons, ['同一理由'])
   // 空白理由行不触发活动
-  assert.equal(combineAmlActivitySignals({ profileReasons: ['  '], jobReasons: [], auditReasons: [] }).active, false)
+  assert.equal(combineAmlActivitySignals({ profileReasons: ['  '], jobReasons: [] }).active, false)
 })
 
 // ---------- amlActivityForLine(真实查询;夹具注入三路信号) ----------
@@ -180,14 +179,15 @@ test('amlActivityForLine 信号②:在跑优化作业经 datasetId 联查产线 
   assert.ok(active.reasons.some(r => r.includes('job-2')), '活动理由应点名在跑作业')
 })
 
-test('amlActivityForLine 信号③:近 30 分钟优化开窗事件(兜底)→ 活动', () => {
+test('amlActivityForLine:普通 Agent 写的 optimization.open 事件不再误判为 AML 活动(假阳性修复)', () => {
+  // 干净产线(无投用模型/无在跑作业):仅有普通 Agent 写的优化开窗审计 → 不得判活动
   getOps()!.audit.append({
     actor: 'u1', actorKind: 'agent', action: 'optimization.open', targetKind: 'dcw', targetId: 'n1',
-    lineId: 'ln-aml', kind: 'write', summary: '优化开窗:节点 n1 试探', at: new Date().toISOString(),
+    lineId: 'ln-aml-fresh', kind: 'write', summary: '优化开窗:节点 n1 试探', at: new Date().toISOString(),
   })
-  const active = amlActivityForLine('ln-aml')
-  assert.equal(active.active, true)
-  assert.ok(active.reasons.some(r => r.includes('近 30 分钟')), '活动理由应走兜底窗口')
+  const active = amlActivityForLine('ln-aml-fresh')
+  assert.equal(active.active, false)
+  assert.equal(active.reasons.length, 0)
 })
 
 test('aml_activity 工具:可见产线输出活动判定与理由行,越权产线拒绝', async () => {
@@ -197,7 +197,7 @@ test('aml_activity 工具:可见产线输出活动判定与理由行,越权产�
   getAgentNodeBindingRepo().bind('ag-doctor', probe.id, 'dcw', 'manual')
   const ok = await toolAmlActivity('ag-doctor', { line_id: 'ln-aml' })
   assert.match(ok.text, /AML 优化循环\*\*活动\*\*/)
-  assert.match(ok.text, /投用 AML 优化模型|在跑优化作业|近 30 分钟/)
+  assert.match(ok.text, /投用 AML 优化模型|在跑优化作业/)
   const denied = await toolAmlActivity('ag-doctor', { line_id: 'ln-secret' })
   assert.equal(denied.isError, true)
   assert.match(denied.text, /无权查询/)

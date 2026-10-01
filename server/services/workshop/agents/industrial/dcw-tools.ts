@@ -110,7 +110,8 @@ export async function toolDcwControl(agentId: string, args: { node_id?: string, 
   // 停线守卫:产线未开跑时手动写允许(调试),但提示当前无配方窗口约束
   const tpl = findDcwTemplate(node.templateKey)
 
-  // 手动确认模式:与 param_control 同源审批面(manual-approval),备注会回给 Agent
+  // 手动确认模式:与 param_control 同源审批面(manual-approval),批准附言回进回执
+  let manualFeedback = ''
   if (binding.mode === 'manual') {
     const bd = limitsBreakdownOf(node)
     const ap = await requestManualApproval({
@@ -119,6 +120,7 @@ export async function toolDcwControl(agentId: string, args: { node_id?: string, 
       detail: `${node.name}(${tpl?.ch ?? node.templateKey})设定 ${value}${node.unit},有效写入区间 ${bd.effective.min}~${bd.effective.max}${node.unit}(${bd.layers.map(l => l.label).join(' ∩ ')})`,
     })
     if (!ap.ok) return { text: ap.text, isError: ap.isError }
+    manualFeedback = ap.comment ?? ''
   }
 
   try {
@@ -148,7 +150,7 @@ export async function toolDcwControl(agentId: string, args: { node_id?: string, 
         policyHint,
       ].filter(Boolean).join(';')
       return {
-        text: `下发成功:${node.name}(${tpl?.ch ?? node.templateKey})设定 ${value}${node.unit} → PLC 原始值 ${outcome.raw ?? '-'};回读 ${outcome.readback != null ? `${outcome.readback}${node.unit}` : '不支持'}一致。${winTxt}。${outcome.message}\n[调控闭环] ${loopTxt}`,
+        text: `下发成功:${node.name}(${tpl?.ch ?? node.templateKey})设定 ${value}${node.unit} → PLC 原始值 ${outcome.raw ?? '-'};回读 ${outcome.readback != null ? `${outcome.readback}${node.unit}` : '不支持'}一致。${winTxt}。${outcome.message}\n[调控闭环] ${loopTxt}${manualFeedback ? `\n[人工反馈] ${manualFeedback}` : ''}`,
       }
     }
     // 失败文案带自我纠正线索:当前保持原值 + 建议动作(缩小步进/稍后重试)

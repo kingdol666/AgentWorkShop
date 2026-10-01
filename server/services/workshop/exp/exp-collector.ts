@@ -236,8 +236,13 @@ export async function collectEpisodes(lineId: string, opts: { nowMs?: number } =
     // 将来由 tsdb raw 序列阶跃检测覆盖(主路已注释局限:改了又改回的瞬变盲区)
     if (semantic === 'sp' && daqKeys.has(node.templateKey)) continue
     try {
-      const r = await getDcwController().readNow(node.id)
-      if (!r.ok || r.value == null) continue
+      // readNow 与节点周期读共用在飞互斥,偶发 409/失败 —— 重试两次再放弃(快照缺样本=漏检阶跃)
+      let r: { ok: boolean, value: number | null, raw: number | null, message: string, at: string } | null = null
+      for (let attempt = 0; attempt < 3 && !r?.ok; attempt++) {
+        if (attempt > 0) await new Promise(res => setTimeout(res, 1500))
+        r = await getDcwController().readNow(node.id)
+      }
+      if (!r || !r.ok || r.value == null) continue
       current[node.id] = { set: r.value, readAt: Date.parse(r.at) }
     }
     catch { /* 单节点失败(离线/驱动异常)跳过,不阻塞整轮 */ }

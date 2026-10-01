@@ -7,23 +7,17 @@
  *      +(control_policy 非 recommendation_only 或 optimization_mode='aml')
  *      —— 投用中的优化 Channel 是真实的「双写者」;
  *   ② aml_jobs 最近 running/queued 的优化作业,经 datasetId 联查 dataset.lineId
- *      (AmlJobRow 无 lineId 列);训练在跑 = 循环在动;
- *   ③ 兜底:audit_log 近 30min 的优化开窗/判定/回退事件(optimization.*)
- *      —— 覆盖前两路不可见的历史窗口(如 e2e/极短探索步)。
+ *      (AmlJobRow 无 lineId 列);训练在跑 = 循环在动。
+ *   注:不再用 audit 的 optimization.* 事件做兜底 —— 平台对每次 Agent 写都会记
+ *   优化开窗(写路径 afterWrite),该口径会把普通 Agent 写误判成 AML 循环活动,
+ *   令 Co-Pilot 被硬禁 30 分钟(实测假阳性,2026-10-01 主套件抓出后移除)。
  */
 import { getAmlRuntime } from '../../aml/runtime'
-import { getOps } from '../../ops/ops'
 import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
 import { agentOpsScope } from './ops-tools'
 
-/** 兜底窗口:近 30 分钟的优化事件视为「活动」 */
-const OPTIMIZATION_EVENT_WINDOW_MS = 30 * 60_000
-
 /** 信号②:仍在跑的作业状态(queued 起步,evaluating 收尾;done/failed/cancelled/interrupted/timeout 不算) */
 const ACTIVE_JOB_STATUSES = ['queued', 'provisioning', 'training', 'evaluating'] as const
-
-/** 信号③:审计里的优化事件 action 白名单(与 recipe_log 的优化开窗/判定/回退三联同源) */
-const OPTIMIZATION_ACTIONS = ['optimization.open', 'optimization.judge', 'optimization.rollback'] as const
 
 export interface AmlActivity {
   active: boolean
@@ -31,15 +25,14 @@ export interface AmlActivity {
 }
 
 /**
- * 信号归并(纯函数,可测):三路信号的理由行归并去重;任一理由即 active。
+ * 信号归并(纯函数,可测):两路信号的理由行归并去重;任一理由即 active。
  * 单路信号自身异常由调用方消化(try/catch 后按「无信号」传入),不在此吞错。
  */
 export function combineAmlActivitySignals(signals: {
   profileReasons: string[]
   jobReasons: string[]
-  auditReasons: string[]
 }): AmlActivity {
-  const reasons = [...signals.profileReasons, ...signals.jobReasons, ...signals.auditReasons]
+  const reasons = [...signals.profileReasons, ...signals.jobReasons]
     .map(r => r.trim())
     .filter(r => r.length > 0)
   const seen = new Set<string>()
@@ -101,32 +94,11 @@ function jobSignal(lineId: string): string[] {
   }
 }
 
-/** 信号③:audit_log 近 30min 的优化开窗/判定/回退事件(异常按无信号) */
-function auditSignal(lineId: string): string[] {
-  try {
-    const audit = getOps()?.audit
-    if (!audit) return []
-    const from = new Date(Date.now() - OPTIMIZATION_EVENT_WINDOW_MS).toISOString()
-    const reasons: string[] = []
-    for (const action of OPTIMIZATION_ACTIONS) {
-      for (const row of audit.query({ lineId, action, from, limit: 5 })) {
-        const at = String(row.at ?? '')
-        reasons.push(`近 30 分钟有优化事件:${action} @ ${at.slice(5, 19).replace('T', ' ')} ${String(row.summary ?? '').slice(0, 60)}`)
-      }
-    }
-    return reasons
-  }
-  catch {
-    return []
-  }
-}
-
 /** 产线 AML 优化循环活动判定(内部查询面;recipe_propose 硬闸与 aml_activity 工具共用) */
 export function amlActivityForLine(lineId: string): AmlActivity {
   return combineAmlActivitySignals({
     profileReasons: profileSignal(lineId),
     jobReasons: jobSignal(lineId),
-    auditReasons: auditSignal(lineId),
   })
 }
 
@@ -149,11 +121,11 @@ export async function toolAmlActivity(agentId: string, args: {
     const state = amlActivityForLine(lid)
     const head = `■ 产线 ${line?.name ?? lid}(${lid}):AML 优化循环${state.active ? '**活动**' : '不活动'}`
     if (!state.active) {
-      return `${head}\n  判定依据:三路信号(频道投用模型 / 在跑优化作业 / 近 30 分钟优化事件)均无命中。`
+      return `${head}\n  判定依据:两路信号(频道投用模型 / 在跑优化作业)均无命中。`
     }
     return `${head}\n${state.reasons.map(r => `  - ${r}`).join('\n')}`
   })
   return {
-    text: `AML 优化循环活动状态(产线 ${lineIds.length} 条):\n\n${sections.join('\n\n')}\n\n说明:活动 = 存在投用中的 AML 优化 Channel(production 模型)或在跑的优化作业或近 30 分钟的优化事件。**活动期间禁止整包下发(recipe_propose 会被硬闸拒绝)**,请降级为建议报告;时间互斥是防「双写者」的铁律,不适用于单参数只读查询。`,
+    text: `AML 优化循环活动状态(产线 ${lineIds.length} 条):\n\n${sections.join('\n\n')}\n\n说明:活动 = 存在投用中的 AML 优化 Channel(production 模型)或在跑的优化作业。**活动期间禁止整包下发(recipe_propose 会被硬闸拒绝)**,请降级为建议报告;时间互斥是防「双写者」的铁律,不适用于单参数只读查询。普通 Agent 参数写的优化记录不计入(非 AML 循环)。`,
   }
 }
