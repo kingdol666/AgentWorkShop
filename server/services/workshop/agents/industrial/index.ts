@@ -17,6 +17,7 @@
 export { toolMyIndustrialNodes, toolDcwControl, toolDcwRead } from './dcw-tools'
 export { toolParamControl, toolParamRead } from './param-tools'
 export { toolDaqQuery, toolDaqFrames } from './daq-tools'
+export { toolDaqExport } from './daq-export'
 export { toolDcwJudge, toolDcwRollback, toolDcwJournal } from './dcw-judge-tools'
 export { toolOpsLog, toolRecipeLog, toolLineContext, toolRecipeVersions, toolRecipeUpdate, toolRecipeRollback, toolRecipeTrial, toolRecipeApply } from './ops-tools'
 export { toolMesCatalog, toolMesFetch, toolMesDatasetRead, toolMesDatasets } from './mes-tools'

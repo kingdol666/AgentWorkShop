@@ -725,6 +725,45 @@
   }
  },
  {
+  "name": "daq_export",
+  "label": "DAQ Export",
+  "description": "Export the FULL raw time-series (no downsampling) of your BOUND daq nodes(仅限你绑定的数采节点,越权 id 一律拒绝) to the platform data directory: one CSV per node (columns ts_iso,ts_ms,value,state) plus manifest.json containing the node mapping (name/unit/range/semantics), line-product-recipe-run context, recipe monitor windows and alarm statistics. Use when analysis needs complete waveforms rather than daq_query statistics: hand the export_id to diag_run (deep root-cause diagnosis) or hand the absolute directory to other workers for offline analysis.",
+  "parameters": {
+   "type": "object",
+   "properties": {
+    "node_ids": {
+     "type": "string",
+     "description": "Comma/space separated node ids to export (default = all bound daq nodes); out-of-scope ids are rejected"
+    },
+    "line_id": {
+     "type": "string",
+     "description": "Only export nodes of this line (narrowing filter)"
+    },
+    "from_ms": {
+     "type": "number",
+     "description": "Window start epoch ms (together with to_ms; overrides last_minutes)"
+    },
+    "to_ms": {
+     "type": "number",
+     "description": "Window end epoch ms (default now)"
+    },
+    "last_minutes": {
+     "type": "number",
+     "description": "Last N minutes (default 60; window capped at 7 days)"
+    },
+    "title": {
+     "type": "string",
+     "description": "Short title of this export recorded in manifest.json (e.g. 膜厚越限诊断数据集)"
+    },
+    "note": {
+     "type": "string",
+     "description": "Scenario note for the analyst/IDD written into manifest.json (symptoms, suspected cause, what to look at)"
+    }
+   },
+   "required": []
+  }
+ },
+ {
   "name": "daq_frames",
   "label": "DAQ Frames",
   "description": "Query multi-modal DAQ frames for your BOUND daq nodes: multi-point profiles (thickness scanners, profile scanners — returns point-count summary, a point preview and derived metrics) and camera image frames (CCD — returns resolution, object reference and derived metrics like brightness/contrast; pixels are NOT loaded into context, view them in the frontend gallery). Supports kind=vector|image filter and time windows. Use BEFORE judging surface quality or profile measurements.",

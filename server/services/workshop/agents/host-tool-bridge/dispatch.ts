@@ -196,6 +196,7 @@ export async function dispatchHostTool(ctx: HostToolBridgeContext, req: HostTool
       case 'param_read':
       case 'daq_query':
       case 'daq_frames':
+      case 'daq_export':
       case 'dcw_judge':
       case 'dcw_rollback':
       case 'dcw_journal':

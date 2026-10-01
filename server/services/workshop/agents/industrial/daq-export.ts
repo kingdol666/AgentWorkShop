@@ -1,0 +1,317 @@
+/**
+ * daq_export —— 绑定数采节点的**全量原始时序**导出(CSV + 节点映射 manifest.json)。
+ *
+ * 与 daq_query(文本统计面)/diag-bridge 快照(5s 降采样单 CSV)互补:本工具把
+ * Agent 自选节点的**逐样本完整时序**分页拉全,落盘到数据目录
+ * `<dataDir>/daq-exports/<exportId>/`,并附 manifest.json(节点映射/单位量程/
+ * 语义描述/产线-产品-配方-批次上下文/报警统计),供:
+ *   - diag-bridge 的 diag_run(export_id=…)上传 IDD 做深度根因诊断;
+ *   - Channel 下 worker(harness agent)直接按目录绝对路径读全量数据做分析。
+ * 导出核心 exportDaqDataset 不依赖仓储单例(readPoints/nodeOf 注入),单测可全内存构造。
+ */
+import { randomBytes } from 'node:crypto'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
+import { ensureDataDir } from '@/shared/config/home.mjs'
+import { getTsdb } from '../../daq/storage/index'
+import { findDaqTemplate } from '../../daq/daq-templates'
+import { getAgentNodeBindingRepo } from '../node-bindings.repo'
+import { getDaqNodeRepo } from '../../daq/daq-node.repo'
+import { getActiveLineRun } from '../../dcw/line-run'
+import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
+import { getDcwController } from '../../dcw/dcw-controller'
+
+const PAGE_LIMIT = 5000 // 与 tsdb 适配器单查硬上限一致(满页即续拉)
+const MAX_PAGES_PER_NODE = 400 // 单节点上限 200 万点(超限截断并在 manifest 标注)
+const MAX_WINDOW_MS = 7 * 24 * 60 * 60 * 1000 // 与 MES 取数同款 7 天窗护栏
+const MAX_TOTAL_ROWS = 4_000_000 // 单次导出总行数护栏(磁盘与上传体量)
+
+export interface ExportNodeMeta {
+  id: string
+  name: string
+  unit: string
+  lineId: string
+  min?: number
+  max?: number
+  warnLow?: number | null
+  warnHigh?: number | null
+  intervalMs?: number | null
+  decimals?: number
+  semantics?: string
+}
+
+export interface ExportLineContext {
+  lineId: string
+  lineName: string
+  description?: string
+  runId?: string
+  productId?: string
+  productName?: string
+  recipeId?: string
+  recipeName?: string
+  recipeVersion?: number
+  daqWindows?: Array<{ nodeId: string, min?: number | null, max?: number | null }>
+}
+
+export interface DaqExportResult {
+  exportId: string
+  dir: string
+  manifest: Record<string, unknown>
+  files: Array<{ nodeId: string, file: string, rows: number }>
+  totalRows: number
+  truncated: string[]
+}
+
+/** 数值格式化(6 位小数去尾零;非有限值 → 空串) */
+function fmtNum(v: number | undefined | null): string {
+  if (typeof v !== 'number' || !Number.isFinite(v)) return ''
+  return String(Math.round(v * 1e6) / 1e6)
+}
+
+/** CSV 单元格转义 */
+function csvCell(v: unknown): string {
+  const s = String(v ?? '')
+  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
+}
+
+/** 节点 id → 安全文件名(路径穿越防护;id 本身已由白名单校验,这里兜底) */
+function safeFileId(id: string): string {
+  return id.replace(/[^A-Za-z0-9_-]+/g, '_').slice(0, 80) || 'node'
+}
+
+/**
+ * 导出核心:逐节点分页拉全原始时序 → 每节点一份 CSV + manifest.json。
+ * readPoints/nodeOf 由调用方注入(tsdb 取数与节点元数据),本函数只管取数、落盘与清单。
+ */
+export async function exportDaqDataset(opts: {
+  targets: string[]
+  nodeOf: (id: string) => ExportNodeMeta | undefined
+  readPoints: (nodeId: string, win: { fromMs: number, toMs: number, limit: number }) => Promise<Array<{ at: number, value?: number, state?: string }>>
+  fromMs: number
+  toMs: number
+  title?: string
+  note?: string
+  lines?: ExportLineContext[]
+  rootDir: string
+  now?: () => number
+  /** 上限覆盖(单测用;缺省 400 页/节点、400 万行总量) */
+  caps?: { pagesPerNode?: number, totalRows?: number }
+}): Promise<DaqExportResult> {
+  const { targets, nodeOf, readPoints, fromMs, toMs, title, note, lines, rootDir } = opts
+  const maxPages = opts.caps?.pagesPerNode ?? MAX_PAGES_PER_NODE
+  const maxTotal = opts.caps?.totalRows ?? MAX_TOTAL_ROWS
+  const now = opts.now ?? Date.now
+  const exportId = `daqexp-${new Date(now()).toISOString().replace(/[-:T]/g, '').slice(0, 14)}-${randomBytes(3).toString('hex')}`
+  const dir = join(rootDir, exportId)
+  const nodesDir = join(dir, 'nodes')
+  mkdirSync(nodesDir, { recursive: true })
+
+  const files: DaqExportResult['files'] = []
+  const truncated: string[] = []
+  const nodeMetas: Array<Record<string, unknown>> = []
+  let totalRows = 0
+
+  for (const id of targets) {
+    const meta = nodeOf(id)
+    if (!meta) continue
+    // 分页拉全:单查上限 PAGE_LIMIT,满页则以本页最大 ts+1 续拉(适配器无游标)
+    const byAt = new Map<number, { at: number, value?: number, state?: string }>()
+    let cursor = fromMs
+    let pages = 0
+    let hitCap = false
+    while (cursor <= toMs) {
+      if (++pages > maxPages || totalRows >= maxTotal) {
+        hitCap = true
+        break
+      }
+      const page = await readPoints(id, { fromMs: cursor, toMs, limit: PAGE_LIMIT })
+      if (!Array.isArray(page) || page.length === 0) break
+      let lastAt = cursor - 1
+      for (const p of page) {
+        if (!p || typeof p.at !== 'number' || p.at < cursor || p.at > toMs) continue
+        if (typeof p.value === 'number' || p.state) byAt.set(p.at, { at: p.at, value: p.value, state: p.state })
+        if (p.at > lastAt) lastAt = p.at
+      }
+      totalRows += byAt.size // 近似累计(护栏用;精确总量在下方重算)
+      if (page.length < PAGE_LIMIT || lastAt >= toMs) break
+      if (lastAt < cursor) break // 适配器未按 fromMs 过滤的防御:避免死循环
+      cursor = lastAt + 1
+    }
+    const points = [...byAt.values()].sort((a, b) => a.at - b.at)
+    if (hitCap) truncated.push(id)
+
+    const fileRel = `nodes/${safeFileId(id)}.csv`
+    const rowsCsv = ['ts_iso,ts_ms,value,state']
+    const stateCount: Record<string, number> = {}
+    let minV = Number.POSITIVE_INFINITY
+    let maxV = Number.NEGATIVE_INFINITY
+    for (const p of points) {
+      const state = p.state || 'ok'
+      stateCount[state] = (stateCount[state] ?? 0) + 1
+      if (typeof p.value === 'number' && Number.isFinite(p.value)) {
+        if (p.value < minV) minV = p.value
+        if (p.value > maxV) maxV = p.value
+      }
+      rowsCsv.push([new Date(p.at).toISOString(), p.at, fmtNum(p.value), state].map(csvCell).join(','))
+    }
+    writeFileSync(join(dir, fileRel), rowsCsv.join('\r\n'), 'utf8')
+    files.push({ nodeId: id, file: fileRel, rows: points.length })
+    nodeMetas.push({
+      id: meta.id,
+      name: meta.name,
+      unit: meta.unit,
+      line_id: meta.lineId,
+      range: { min: meta.min ?? null, max: meta.max ?? null },
+      warn: { low: meta.warnLow ?? null, high: meta.warnHigh ?? null },
+      interval_ms: meta.intervalMs ?? null,
+      decimals: meta.decimals ?? null,
+      semantics: meta.semantics || '',
+      file: fileRel,
+      rows: points.length,
+      value_range_observed: points.length ? { min: Number(minV.toFixed(4)), max: Number(maxV.toFixed(4)) } : null,
+      state_summary: stateCount,
+    })
+  }
+
+  const manifest: Record<string, unknown> = {
+    schema: 'aw.daq-export/1',
+    export_id: exportId,
+    created_at: new Date(now()).toISOString(),
+    title: title || '',
+    note: note || '',
+    window: { from_ms: fromMs, to_ms: toMs, from: new Date(fromMs).toISOString(), to: new Date(toMs).toISOString() },
+    lines: lines ?? [],
+    nodes: nodeMetas,
+    totals: { files: files.length, rows: files.reduce((s, f) => s + f.rows, 0) },
+    truncated_nodes: truncated,
+    usage: 'nodes/ 下每节点一份全量原始时序 CSV(ts_iso,ts_ms,value,state;无降采样)。请结合本清单的节点语义/量程/产线-配方上下文做分析;深度根因诊断请用 diag-bridge 的 diag_run(export_id=本 export_id)。',
+  }
+  writeFileSync(join(dir, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf8')
+  return { exportId, dir, manifest, files, totalRows: manifest.totals.rows as number, truncated }
+}
+
+/**
+ * 工具:daq_export —— 导出绑定数采节点全量原始时序到数据目录(CSV + manifest.json)。
+ * 权限边界与 daq_query 一致:只能收窄到自己的绑定(node_ids/line_id 越权即拒)。
+ */
+export async function toolDaqExport(agentId: string, args: {
+  node_ids?: string | string[]
+  line_id?: string
+  from_ms?: number | string
+  to_ms?: number | string
+  last_minutes?: number | string
+  title?: string
+  note?: string
+}): Promise<{ text: string, isError?: boolean }> {
+  const bindings = getAgentNodeBindingRepo().byAgent(agentId).filter(b => b.kind === 'daq')
+  if (bindings.length === 0) {
+    return { text: '你尚未绑定任何数采节点,无权导出采集数据。请在数字孪生界面绑定数采节点。', isError: true }
+  }
+  const allowed = new Set(bindings.map(b => b.nodeId))
+  // 目标解析:node_ids(可多个)> line_id 过滤 > 全部绑定
+  let targets = bindings.map(b => b.nodeId)
+  const wantedRaw = args.node_ids
+  if (wantedRaw != null && String(wantedRaw).trim() !== '') {
+    const wanted = (Array.isArray(wantedRaw) ? wantedRaw : String(wantedRaw).split(/[,\s;]+/))
+      .map(s => s.trim()).filter(Boolean)
+    if (wanted.length > 0) {
+      const illegal = wanted.filter(id => !allowed.has(id))
+      if (illegal.length > 0) {
+        return { text: `无权导出节点:${illegal.join(', ')}。你有权访问的数采节点:${[...allowed].join(', ')}。`, isError: true }
+      }
+      targets = wanted
+    }
+  }
+  const lineFilter = String(args.line_id ?? '').trim()
+  if (lineFilter) {
+    const onLine = targets.filter(id => getDaqNodeRepo().byId(id)?.lineId === lineFilter)
+    if (onLine.length === 0) {
+      return { text: `你绑定的数采节点中没有归属产线 ${lineFilter} 的,无法导出。`, isError: true }
+    }
+    targets = onLine
+  }
+  targets = [...new Set(targets)].filter(id => getDaqNodeRepo().byId(id))
+
+  // 时间窗:from/to 优先,否则 last_minutes(缺省 60);护栏 ≤7 天
+  const toMs = Number(args.to_ms) > 0 ? Number(args.to_ms) : Date.now()
+  const fromMs = Number(args.from_ms) > 0
+    ? Number(args.from_ms)
+    : toMs - (Number(args.last_minutes) > 0 ? Number(args.last_minutes) : 60) * 60_000
+  if (fromMs >= toMs) return { text: 'from_ms 必须小于 to_ms。', isError: true }
+  if (toMs - fromMs > MAX_WINDOW_MS) {
+    return { text: `时间窗超限(最大 7 天):请缩小窗口(当前 ${(Math.round((toMs - fromMs) / 3600_000) / 10).toFixed(1)} 小时)。`, isError: true }
+  }
+
+  // 节点元数据(语义 = 节点级备注 > 模板语义)与产线上下文(产线/产品/配方/批次/监控窗)
+  const nodeOf = (id: string): ExportNodeMeta | undefined => {
+    const n = getDaqNodeRepo().byId(id)
+    if (!n) return undefined
+    const tpl = findDaqTemplate(n.templateKey)
+    return {
+      id: n.id,
+      name: n.name,
+      unit: n.unit,
+      lineId: n.lineId ?? '',
+      min: n.min,
+      max: n.max,
+      warnLow: n.warnLow,
+      warnHigh: n.warnHigh,
+      intervalMs: n.intervalMs ?? null,
+      decimals: n.decimals,
+      semantics: n.semantics || tpl?.semantics || tpl?.ch || '',
+    }
+  }
+  const lineIds = [...new Set(targets.map(id => getDaqNodeRepo().byId(id)?.lineId ?? '').filter(Boolean))]
+  const lines: ExportLineContext[] = []
+  for (const lid of lineIds) {
+    const line = getDcwLineRepo().byId(lid)
+    const run = getActiveLineRun(lid)
+    const recipe = run?.recipeId ? getDcwController().listRecipes().find(r => r.id === run.recipeId) : undefined
+    lines.push({
+      lineId: lid,
+      lineName: line?.name ?? lid,
+      description: (line as { description?: string } | null)?.description ?? '',
+      runId: run?.runId,
+      productId: run?.productId,
+      productName: run?.productName,
+      recipeId: recipe?.id,
+      recipeName: recipe?.name,
+      recipeVersion: recipe?.version,
+      daqWindows: (recipe?.daqWindows ?? []).map(w => ({ nodeId: w.nodeId, min: w.min ?? null, max: w.max ?? null })),
+    })
+  }
+
+  let result: DaqExportResult
+  try {
+    result = await exportDaqDataset({
+      targets,
+      nodeOf,
+      readPoints: (nodeId, win) => getTsdb().query(nodeId, win),
+      fromMs,
+      toMs,
+      title: args.title ? String(args.title) : '',
+      note: args.note ? String(args.note) : '',
+      lines,
+      rootDir: join(ensureDataDir(), 'daq-exports'),
+    })
+  }
+  catch (err) {
+    return { text: `导出失败: ${err instanceof Error ? err.message : String(err)}`, isError: true }
+  }
+
+  const perNode = result.files.map(f => `${f.nodeId}(${f.rows} 行)`).join(', ')
+  const truncNote = result.truncated.length > 0
+    ? `\n⚠ 以下节点超出单节点 200 万点上限已截断:${result.truncated.join(', ')}(如需完整数据请拆小时间窗分批导出)`
+    : ''
+  return {
+    text: `已导出 ${result.files.length} 个节点的全量原始时序(无降采样):
+- export_id: ${result.exportId}
+- 目录: ${result.dir}
+- 文件: manifest.json(节点映射/单位量程/语义描述/产线-产品-配方-批次上下文/报警统计)+ nodes/<node_id>.csv(逐样本时序,列 ts_iso,ts_ms,value,state)
+- 明细: ${perNode};共 ${result.totalRows} 行;窗口 ${new Date(fromMs).toISOString()} ~ ${new Date(toMs).toISOString()}${truncNote}
+
+下一步:
+1. 深度根因诊断:调用 diag_run(export_id="${result.exportId}", scene=<场景名>, question=<诊断问题>)——会把 manifest 与全部 CSV 上传诊断服务做多文件分析;mode=async 提交即返(缺省),mode=sync 同步等待结果。
+2. 交由其他 worker 离线分析:直接把目录绝对路径(${result.dir})交给对方,manifest.json 内含全部映射与语义说明。`,
+  }
+}

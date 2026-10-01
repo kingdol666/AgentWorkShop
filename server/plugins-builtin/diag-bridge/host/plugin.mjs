@@ -6,12 +6,13 @@ import { AUTO_COOLDOWN_MS, DEFAULT_BASE, MIN } from './constants.mjs'
 import { authHeadersOf, authHint, autoEnabledOf, autoRulesOf, baseOf, diagTokenOf, harnessOf, jget, kvRuns, parseAutoRules, runKey } from './helpers.mjs'
 import { snapshotCore } from './snapshot.mjs'
 import { startDiagnosis } from './diagnosis.mjs'
+import { uploadExportDataset } from './exports.mjs'
 import { sweepOnce } from './sweep.mjs'
 
 export default {
   name: 'diag-bridge',
-  version: '2.1.0',
-  description: '深度诊断桥接 v2.1:异步任务式深度诊断(提交即返 task_id,Channel 免等待);完成后 diag_status 给出报告 md 路径,由 Agent 调 rag-bridge 的 kb_agent 入库知识库(插件协同)。',
+  version: '2.2.0',
+  description: '深度诊断桥接 v2.2:异步任务式深度诊断(提交即返 task_id)+ daq-export 数据集多文件分析(diag_run export_id= 全量时序+manifest)+ 同步等待模式(mode=sync)+ 完成自动回执 Channel(修复发起者身份丢失)+ 报告在线查看。完成后经 rag-bridge kb_agent 入库知识库。',
   auth: 'user',
   client: './client.mjs', // 前端面板(插件页注入;i18n 见 i18n.json)
   // 插件配置分组(声明式):连接 / 执行 / 自动化 三个独立分区
@@ -94,43 +95,109 @@ export default {
     ctx.omp.registerTool({
       name: 'diag_run',
       label: '深度诊断',
-      description: '导出产线指定时窗的 DAQ 快照 CSV 并发起深度根因诊断(异步任务,提交即返 task_id,无需等待)。Channel 可继续其他任务,空闲时用 diag_status 查询;完成后按其给出的指引调 kb_agent 入库知识库。',
+      description: '发起深度根因诊断(异步任务,提交即返 task_id,无需等待)。三种数据来源:① line+时间窗:导出产线 DAQ 快照 CSV;② data_path:诊断服务内已有数据文件;③ export_id(推荐):上传宿主工具 daq_export 导出的数据集(manifest 节点映射 + 全量原始时序多文件)。Channel 可继续其他任务;完成后平台自动把结果回执到本频道,空闲时也可 diag_status 查询;mode=sync 可同步等待完成。',
       parameters: {
         type: 'object',
         properties: {
-          line: { type: 'string', description: '产线 id(与 data_path 二选一)' },
-          data_path: { type: 'string', description: '可选:直接指定诊断数据 CSV 绝对路径(跳过 DAQ 快照导出,适合离线数据分析);给了 data_path 则 line 可填 any' },
-          from_ms: { type: 'number', description: '窗口起点(epoch 毫秒;缺省 now-60min)' },
-          to_ms: { type: 'number', description: '窗口终点(epoch 毫秒;缺省 now)' },
-          question: { type: 'string', description: '诊断问题(缺省为该产线时窗数据深度根因诊断)' },
-          scene: { type: 'string', description: '场景名(缺省 <line>_diag)' },
+          line: { type: 'string', description: '产线 id(与 data_path/export_id 三选一;export/data_path 模式可填 any)' },
+          export_id: { type: 'string', description: 'daq_export 返回的数据集 id(daqexp-…):上传 manifest+全部节点全量时序 CSV 做多文件深度分析' },
+          data_path: { type: 'string', description: '可选:诊断服务内数据文件相对路径(如 data/aw-snapshots/x.csv;跳过快照导出,适合离线数据分析)' },
+          from_ms: { type: 'number', description: '窗口起点(epoch 毫秒;仅 line 模式;缺省 now-60min)' },
+          to_ms: { type: 'number', description: '窗口终点(epoch 毫秒;仅 line 模式;缺省 now)' },
+          question: { type: 'string', description: '诊断问题(缺省按数据来源自动组题;export 模式自动携带 manifest 场景备注)' },
+          scene: { type: 'string', description: '场景名(缺省 <line>_diag);场景为自由标签,诊断管线按数据特征自适应' },
+          mode: { type: 'string', enum: ['async', 'sync'], description: 'async(缺省)=提交即返后台跑;sync=同步等待完成(最长 sync_timeout_s,超时自动转后台继续)' },
+          sync_timeout_s: { type: 'number', description: 'sync 模式等待上限秒(缺省 240,上限 540)' },
+          harness: { type: 'string', description: '诊断引擎按次覆盖(omp/claude/mock;缺省用插件设置)' },
         },
-        required: ['line'],
+        required: [],
       },
       roles: ['lead', 'worker'],
       handler: async (args, agent) => {
         try {
           const line = String(args.line ?? '').trim()
           const dataPathDirect = String(args.data_path ?? '').trim()
-          if (!line && !dataPathDirect) return { text: 'line 与 data_path 至少给一个(产线 id 或诊断数据 CSV 绝对路径)。', isError: true }
+          const exportId = String(args.export_id ?? '').trim()
+          if (!line && !dataPathDirect && !exportId) return { text: 'line / data_path / export_id 至少给一个。', isError: true }
           const toMs = Number(args.to_ms) > 0 ? Number(args.to_ms) : Date.now()
           const fromMs = Number(args.from_ms) > 0 ? Number(args.from_ms) : toMs - 60 * MIN
           if (fromMs >= toMs) return { text: 'from_ms 必须小于 to_ms。', isError: true }
+
+          // 数据集模式:上传 manifest + 全部节点 CSV(manifest 首位,IDD multi 模式)
+          let dataPaths
+          let via = ''
+          let manifest = null
+          if (exportId) {
+            const up = await uploadExportDataset(ctx, exportId)
+            if (!up.ok) return { text: up.error, isError: true }
+            dataPaths = up.dataPaths
+            manifest = up.manifest
+            const nodeCount = Array.isArray(manifest?.nodes) ? manifest.nodes.length : dataPaths.length - 1
+            const win = manifest?.window ? `窗口 ${String(manifest.window.from ?? '').slice(0, 16)} ~ ${String(manifest.window.to ?? '').slice(0, 16)}` : ''
+            via = `数据集 ${up.folder}(${nodeCount} 节点全量时序 + manifest,${win})`
+          }
+
+          // 问题缺省:按数据来源自动组题(export 模式带产线与场景备注)
+          let question = args.question ? String(args.question) : ''
+          if (!question) {
+            if (manifest) {
+              const lineNames = (Array.isArray(manifest.lines) ? manifest.lines : []).map(l => l?.lineName || l?.lineId).filter(Boolean).join('、') || line || 'offline'
+              const note = manifest.note ? `;场景备注:${String(manifest.note).slice(0, 200)}` : ''
+              question = `${lineNames} 产线数据集深度根因诊断(${via})${note}`
+            }
+            else {
+              question = `${line || 'offline-data'} 产线该时窗数据深度根因诊断`
+            }
+          }
           const r = await startDiagnosis(ctx, {
             line: line || 'offline-data',
             fromMs, toMs,
-            question: args.question ? String(args.question) : '',
+            question,
             scene: args.scene ? String(args.scene) : '',
             source: 'agent',
-            dataPath: dataPathDirect || '',
+            dataPath: dataPathDirect || undefined,
+            dataPaths,
+            harness: args.harness ? String(args.harness) : undefined,
             // 归因(分发层注入的调用方上下文):诊断完成后平台据此把结果回执给发起 Agent
             agentId: agent?.agentId ?? '',
             channelId: agent?.channelId ?? '',
           })
           if (!r.ok) return { text: r.error, isError: true }
-          const via = dataPathDirect ? `离线数据 ${r.csvPath}` : `产线 ${line} 窗口 ${new Date(fromMs).toISOString()} ~ ${new Date(toMs).toISOString()} 快照 ${r.rows} 行 × ${r.nodes} 节点`
+          if (!via) via = dataPathDirect ? `离线数据 ${r.csvPath}` : `产线 ${line} 窗口 ${new Date(fromMs).toISOString()} ~ ${new Date(toMs).toISOString()} 快照 ${r.rows} 行 × ${r.nodes} 节点`
+
+          // 同步模式:轮询到终态或超时(超时自动转后台,sweep 完成仍会回执)
+          if (String(args.mode ?? '').toLowerCase() === 'sync') {
+            const base = baseOf(ctx)
+            const timeoutS = Math.min(Math.max(Number(args.sync_timeout_s) || 240, 10), 540)
+            if (base) {
+              const deadline = Date.now() + timeoutS * 1000
+              while (Date.now() < deadline) {
+                await new Promise(resolve => setTimeout(resolve, 5000))
+                let st = null
+                try {
+                  st = (await jget(ctx, `${base}/api/diagnosis/tasks/${encodeURIComponent(r.runId)}`, 8000)).data ?? null
+                }
+                catch { /* 单次轮询失败继续等 */ }
+                const status = String(st?.status ?? 'running')
+                if (status === 'completed') {
+                  // 已同步拿到结果,认领回执防 sweep 补送重复
+                  try {
+                    const notify = await ctx.services.get('notify')
+                    await notify?.claim?.('diag_run', r.runId)
+                  }
+                  catch { /* 未接线时忽略 */ }
+                  const rep = st?.result?.report_md_path ?? '-'
+                  return { text: `✅ 同步诊断完成 task_id=${r.runId}(${via})\n评分=${st?.result?.score ?? '-'} 结论=${st?.result?.verdict ?? '-'}\nreport_md_path=${rep}\n总结:${String(st?.result?.summary ?? '').slice(0, 800)}\n\n入库知识库:调用 rag-bridge 的 kb_agent(mode=async,prompt=「请把这份深度诊断报告入库到 aw-industrial 知识库:读取文件 ${rep} 的全文内容并入库,完成后报告 doc_path 与分块数。标签:诊断、深度诊断。」),完成后 kb_agent_status(task_id) 查询。` }
+                }
+                if (status === 'failed' || status === 'stopped') {
+                  return { text: `诊断 ${r.runId} 以 ${status} 结束:${st?.result?.error ?? '详见 diag_status'}`, isError: true }
+                }
+              }
+              return { text: `已发起深度诊断 task_id=${r.runId}(${via})。同步等待 ${timeoutS}s 超时,诊断仍在后台运行——完成后平台会自动把结果回执到你的信箱并唤醒你;也可 diag_status(run_id=${r.runId}) 主动查询。` }
+            }
+          }
           return {
-            text: `已发起深度诊断异步任务 task_id=${r.runId}(${via})。知识库 IDD 在后台执行,Channel 无需等待——可继续其他任务;完成后平台会自动把结果回执到你的信箱并唤醒你(空闲时也可用 diag_status(run_id=${r.runId}) 主动查询)。`,
+            text: `已发起深度诊断异步任务 task_id=${r.runId}(${via})。知识库 IDD 在后台执行,Channel 无需等待——可继续其他任务;完成后平台会自动把结果回执到你的信箱并唤醒你(空闲时也可用 diag_status(run_id=${r.runId}) 主动查询;完成后按指引调 kb_agent 入库知识库)。`,
           }
         }
         catch (err) {
@@ -306,6 +373,34 @@ export default {
       }
     })
 
-    ctx.logger.info('diag-bridge 就绪:工具 diag_run/diag_status + 路由 health/runs/snapshot,轮询 15s 已启动')
+    // 报告查看(面板/前端):run_id → 诊断任务 → workspace run 目录 → report md 内容
+    ctx.route('GET', '/report', async (event) => {
+      try {
+        const u = new URL(String(event?.path ?? event?.node?.req?.url ?? ''), 'http://local')
+        const runId = String(u.searchParams.get('run_id') ?? '').trim()
+        if (!runId) return { success: false, error: 'run_id 必填' }
+        const base = baseOf(ctx)
+        if (!base) return { success: false, error: 'diag.base_url 非法' }
+        const st = (await jget(ctx, `${base}/api/diagnosis/tasks/${encodeURIComponent(runId)}`, 8000)).data ?? {}
+        if (String(st.status ?? '') !== 'completed') {
+          return { success: false, error: `诊断 ${runId} 状态 ${st.status ?? 'unknown'},报告未就绪` }
+        }
+        const ws = (await jget(ctx, `${base}/api/files/workspace`, 8000)).data ?? []
+        const names = (Array.isArray(ws) ? ws : [])
+        const meta = ctx.kv.get(runKey(runId)) ?? {}
+        // 目录命名不统一(<ts>_<scene> 或 <ts>_<scene>_<runId>):runId → scene → 最新 逐级兜底
+        const hit = names.find(e => String(e?.name ?? '').includes(runId))
+          ?? names.find(e => meta?.scene && String(e?.name ?? '').toLowerCase().includes(String(meta.scene).toLowerCase()))
+          ?? (names.length ? names.slice().sort((a, b) => Number(b?.created ?? 0) - Number(a?.created ?? 0))[0] : null)
+        if (!hit) return { success: false, error: `诊断服务 workspace 未找到 ${runId} 的运行目录` }
+        const rep = (await jget(ctx, `${base}/api/files/workspace/report/${encodeURIComponent(hit.name)}`, 15000)).data
+        return { success: true, run_id: runId, run_name: hit.name, report: rep ?? null }
+      }
+      catch (err) {
+        return { success: false, error: String(err?.message ?? err) }
+      }
+    })
+
+    ctx.logger.info('diag-bridge 就绪:工具 diag_run/diag_status + 路由 health/runs/snapshot/report,轮询 15s 已启动')
   },
 }

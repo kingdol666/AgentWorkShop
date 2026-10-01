@@ -9,7 +9,7 @@
  * 该族**不依赖 workspace**,由 dispatch 在 workspace 门控之前分流(保持原分发顺序)。
  */
 import type { HostToolResult } from '../types'
-import { toolAmlDatasetBuild, toolAmlDatasetStats, toolAmlJobCancel, toolAmlJobLogs, toolAmlJobStatus, toolAmlJobSubmit, toolAmlLeaderboard, toolAmlModelFind, toolAmlModelPromote, toolAmlModelReference, toolAmlNodeCatalog, toolAmlTrainingPlanCreate, toolAmlTrainingPlanList, toolAmlTrainingPlanTrain, toolDaqFrames, toolDaqQuery, toolDcwControl, toolDcwJudge, toolDcwJournal, toolDcwRead, toolDcwRollback, toolLineContext, toolMesCatalog, toolMesDatasetRead, toolMesDatasets, toolMesFetch, toolMyIndustrialNodes, toolOpsLog, toolParamControl, toolParamRead, toolRecipeApply, toolRecipeLog, toolRecipeRollback, toolRecipeTrial, toolRecipeUpdate, toolRecipeVersions, toolOptimizationExplore, toolTwinProviderCatalog, toolTwinSceneDiscover, toolTwinSceneCompile, toolTwinSceneFreeze, toolTwinSceneRead, toolTwinPhysicsSpecDraft, toolTwinPhysicsSpecValidate, toolTwinPhysicsSpecCompile, toolTwinSnapshotCreate, toolTwinTrialRun, toolMpcOptimize, toolTwinGateEvaluate, toolTwinBayesOptimize, toolTwinCalibrationRequest } from '../../industrial'
+import { toolAmlDatasetBuild, toolAmlDatasetStats, toolAmlJobCancel, toolAmlJobLogs, toolAmlJobStatus, toolAmlJobSubmit, toolAmlLeaderboard, toolAmlModelFind, toolAmlModelPromote, toolAmlModelReference, toolAmlNodeCatalog, toolAmlTrainingPlanCreate, toolAmlTrainingPlanList, toolAmlTrainingPlanTrain, toolDaqExport, toolDaqFrames, toolDaqQuery, toolDcwControl, toolDcwJudge, toolDcwJournal, toolDcwRead, toolDcwRollback, toolLineContext, toolMesCatalog, toolMesDatasetRead, toolMesDatasets, toolMesFetch, toolMyIndustrialNodes, toolOpsLog, toolParamControl, toolParamRead, toolRecipeApply, toolRecipeLog, toolRecipeRollback, toolRecipeTrial, toolRecipeUpdate, toolRecipeVersions, toolOptimizationExplore, toolTwinProviderCatalog, toolTwinSceneDiscover, toolTwinSceneCompile, toolTwinSceneFreeze, toolTwinSceneRead, toolTwinPhysicsSpecDraft, toolTwinPhysicsSpecValidate, toolTwinPhysicsSpecCompile, toolTwinSnapshotCreate, toolTwinTrialRun, toolMpcOptimize, toolTwinGateEvaluate, toolTwinBayesOptimize, toolTwinCalibrationRequest } from '../../industrial'
 import { toolExpCollect } from '../../industrial/exp-tools'
 import { toolRecipePropose } from '../../industrial/recipe-propose-tools'
 import { toolAmlActivity } from '../../industrial/aml-activity'
@@ -53,6 +53,7 @@ const INDUSTRIAL_HANDLERS = new Map<string, IndustrialToolHandler>([
   ['param_control', (agentId, args, channelId) => toolParamControl(agentId, args as { param?: string, value?: number | string, hypothesis?: string, task_id?: string, line_id?: string }, channelId)],
   ['param_read', (agentId, args) => toolParamRead(agentId, args as { param?: string, line_id?: string })],
   ['daq_query', (agentId, args) => toolDaqQuery(agentId, args as Parameters<typeof toolDaqQuery>[1])],
+  ['daq_export', (agentId, args) => toolDaqExport(agentId, args as Parameters<typeof toolDaqExport>[1])],
   ['daq_frames', (agentId, args) => toolDaqFrames(agentId, args as Parameters<typeof toolDaqFrames>[1])],
   ['dcw_judge', (agentId, args) => toolDcwJudge(agentId, args as { record_id?: string, verdict?: string, reason?: string })],
   ['dcw_rollback', (agentId, args) => toolDcwRollback(agentId, args as { record_id?: string, node_id?: string, to?: string })],

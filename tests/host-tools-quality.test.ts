@@ -19,7 +19,7 @@ function loadDefs(): ToolDef[] {
 // 需绑定/授权前提的工具 → 描述必须点明绑定语义(否则 Agent 不知道自己能不能调、调了会怎样)
 const BINDING_TOOLS = [
   'recipe_update', 'recipe_apply', 'recipe_trial', 'recipe_rollback',
-  'mes_catalog', 'mes_fetch', 'daq_query',
+  'mes_catalog', 'mes_fetch', 'daq_query', 'daq_export',
   'my_industrial_nodes', 'line_context', 'team_grant_nodes',
 ]
 

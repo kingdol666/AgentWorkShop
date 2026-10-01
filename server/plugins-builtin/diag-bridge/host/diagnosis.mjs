@@ -6,7 +6,7 @@ import { baseOf, harnessOf, jpost, maxMinutesOf, maxTurnsOf, runKey, runningOfLi
 import { snapshotCore } from './snapshot.mjs'
 import { startingLines } from './constants.mjs'
 
-export async function startDiagnosis(ctx, { line, fromMs, toMs, question, scene, source, dataPath, agentId, channelId }) {
+export async function startDiagnosis(ctx, { line, fromMs, toMs, question, scene, source, dataPath, dataPaths, harness, agentId, channelId }) {
   const base = baseOf(ctx)
   if (!base) return { ok: false, error: 'diag.base_url 非法(仅允许 http/https 且 host 为 127.0.0.1/localhost)。' }
   if (startingLines.has(line)) return { ok: false, error: `产线 ${line} 已有诊断正在启动,请稍后再试。` }
@@ -15,7 +15,7 @@ export async function startDiagnosis(ctx, { line, fromMs, toMs, question, scene,
   startingLines.add(line)
   try {
     let snap = { ok: true, csvPath: '', rows: 0, nodes: 0 }
-    if (!dataPath) {
+    if (!dataPath && !(Array.isArray(dataPaths) && dataPaths.length > 0)) {
       snap = await snapshotCore(ctx, line, fromMs, toMs)
       if (!snap.ok) return { ok: false, error: snap.error }
     }
@@ -23,11 +23,15 @@ export async function startDiagnosis(ctx, { line, fromMs, toMs, question, scene,
     const sceneName = scene || `${line}_diag`
     // v2.1:统一走 IDD 任务管理面 /api/diagnosis/tasks——接收即返 task_id,
     // 诊断在 IDD 后台线程执行(内部 start+execute),Channel 绝不等待。
+    // v2.2:dataPaths(多文件,manifest 首位)走 IDD multi 模式;harness 可按次覆盖。
+    const payload = Array.isArray(dataPaths) && dataPaths.length > 0
+      ? { dataPaths }
+      : { dataPath: dataPath || snap.csvPath }
     const started = await jpost(ctx, `${base}/api/diagnosis/tasks`, {
-      dataPath: dataPath || snap.csvPath,
+      ...payload,
       sceneName,
       userQuestion: q,
-      harness: harnessOf(ctx), // 缺省落 claude 引擎会因无 key 失败,必须显式(系统配置 plugins.diag-bridge.harness → kv → omp)
+      harness: harness || harnessOf(ctx), // 缺省落 claude 引擎会因无 key 失败,必须显式(系统配置 plugins.diag-bridge.harness → kv → omp;diag_run 可按次覆盖)
       enhancement: 'off',
       reportLanguage: 'zh',
       maxTurns: maxTurnsOf(ctx), // 修复循环会加转数;150 不够走完全管线
@@ -38,11 +42,14 @@ export async function startDiagnosis(ctx, { line, fromMs, toMs, question, scene,
     if (!runId) return { ok: false, error: `tasks 响应缺少 data.task_id: ${short(started)}` }
     ctx.kv.set(runKey(runId), {
       line, fromMs, toMs, question: q, scene: sceneName,
-      status: 'running', createdAt: Date.now(), source, csvPath: snap.csvPath, name,
+      status: 'running', createdAt: Date.now(), source,
+      csvPath: snap.csvPath,
+      files: Array.isArray(dataPaths) ? dataPaths.length : 0,
+      name,
       // 归因:发起 Agent 完成后的结果回执靠它寻址(平台通告面 deliver)
       agentId: agentId || '', channelId: channelId || '',
     })
-    return { ok: true, runId, name, csvPath: snap.csvPath, rows: snap.rows, nodes: snap.nodes }
+    return { ok: true, runId, name, csvPath: snap.csvPath, rows: snap.rows, nodes: snap.nodes, files: Array.isArray(dataPaths) ? dataPaths.length : 0 }
   }
   catch (err) {
     return { ok: false, error: `发起诊断失败: ${err?.message ?? err}` }

@@ -31,7 +31,12 @@
       "st_stopped": "已停止",
       "st_other": "其他",
       "yes": "是",
-      "no": "否"
+      "no": "否",
+      "report": "报告",
+      "view": "查看",
+      "close": "关闭",
+      "loading": "加载中…",
+      "report_fail": "报告获取失败"
     }
   },
   "en": {
@@ -66,7 +71,12 @@
       "st_stopped": "Stopped",
       "st_other": "Other",
       "yes": "Yes",
-      "no": "No"
+      "no": "No",
+      "report": "Report",
+      "view": "View",
+      "close": "Close",
+      "loading": "Loading…",
+      "report_fail": "Failed to load report"
     }
   }
 }

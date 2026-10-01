@@ -67,6 +67,8 @@ export async function toolMyIndustrialNodes(agentId: string): Promise<{ text: st
    配方必须正在执行(运行门),未运行时任何操作被拒。
 3. 数据获取 daq_query(不传 node_id = 全部数采节点),支持按产线/产品/配方/时间检索;解读数据时结合语义卡的判读方法;
    MES 数据用 mes_catalog / mes_fetch(检测向量/图像帧/表格/事件全格式;统计摘要回包,原文落盘)。
+   需要完整波形(非统计摘要)做深度分析时用 daq_export:自选节点全量原始时序导出为 CSV + manifest.json
+   (节点映射/语义/产线-配方上下文);把 export_id 交 diag_run 发起深度根因诊断,或把目录绝对路径交给其他 worker 离线分析。
 4. 改动设定后等待工艺响应(热惯性/传动惯量)再评估,避免连续大幅调整。
 5. 调控闭环:每次下发自动开一条优化记录(open);观察数采后用 dcw_judge 落判定(keep/rollback/uncertain);
    判 rollback 后用 recipe_rollback(dispatch=true, reason) 统一回退;dcw_journal 可查节点参数变更史。未判定前再下发,旧记录会被标记 superseded。
