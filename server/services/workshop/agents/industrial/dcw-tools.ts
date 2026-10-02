@@ -97,6 +97,15 @@ export async function toolDcwControl(agentId: string, args: { node_id?: string, 
   }
 }
 
+/**
+ * v2 前的直写实现(工具面已摘除,但**治理链完整**:四层限界/HITL/60s 联锁/journal/open 记录)。
+ * 仍允许**平台内部治理工具**复用:optimization_explore(工艺优化 Channel 的闭环探索,
+ * profile 门控)的写入委托它执行 —— Agent 可调用面依然收敛在配方面,此处非 Agent 入口。
+ */
+export async function dcwControlGovernedInternal(agentId: string, args: { node_id?: string, value?: number | string, hypothesis?: string, task_id?: string }, channelId?: string): Promise<{ text: string, isError?: boolean }> {
+  return _toolDcwControlDisabled(agentId, args, channelId)
+}
+
 /** v2 前的直写实现(已停用;保留供回溯/内部审计阅读,不再被任何入口调用) */
 async function _toolDcwControlDisabled(agentId: string, args: { node_id?: string, value?: number | string, hypothesis?: string, task_id?: string }, channelId?: string): Promise<{ text: string, isError?: boolean }> {
   const twinGuard = guardTwinWrite(agentId, channelId)
@@ -105,12 +114,21 @@ async function _toolDcwControlDisabled(agentId: string, args: { node_id?: string
   const value = Number(args.value)
   const repo = getAgentNodeBindingRepo()
   const binding: AgentNodeBinding | undefined = nodeId ? repo.find(agentId, nodeId, 'dcw') : undefined
-  if (!binding) {
+  // 权限模型 v2:配方绑定(kind=recipe)覆盖其参数节点 —— 该节点在绑定配方参数内即算授权
+  let recipeAuthorized = false
+  if (!binding && nodeId) {
+    const recipes = repo.byAgent(agentId).filter(b => b.kind === 'recipe')
+    recipeAuthorized = recipes.some((b) => {
+      const r = getDcwController().listRecipes().find(x => x.id === b.nodeId)
+      return r?.params.some(p => p.nodeId === nodeId) ?? false
+    })
+  }
+  if (!binding && !recipeAuthorized) {
     const mine = repo.byAgent(agentId).filter(b => b.kind === 'dcw')
     return {
       text: mine.length
         ? `无权操作节点 ${nodeId || '(空)'}。你有权控制的数控节点:${mine.map(b => b.nodeId).join(', ')}(可用 my_industrial_nodes 查看物理含义)。`
-        : '你尚未绑定任何数控节点,无权下发控制指令。请在数字孪生界面绑定数控节点。',
+        : '你尚未绑定任何数控节点,也无含该参数的配方绑定,无权下发控制指令(权限模型 v2:持有含该参数的配方绑定即可)。',
       isError: true,
     }
   }
@@ -119,8 +137,8 @@ async function _toolDcwControlDisabled(agentId: string, args: { node_id?: string
   }
   const node = getDcwController().byId(nodeId)
   if (!node) {
-    // 节点已被删除 → 绑定失效自清理,提示重新绑定
-    repo.removeAgentNode(agentId, nodeId, 'dcw')
+    // 节点已被删除 → 绑定失效自清理,提示重新绑定(仅 dcw 直绑;配方路径无绑定可清)
+    if (binding) repo.removeAgentNode(agentId, nodeId, 'dcw')
     return { text: `数控节点 ${nodeId} 已不存在(可能被删除),原绑定已自动清理,请重新绑定。`, isError: true }
   }
   // 停用/解绑守卫:停用节点拒绝下发(与手动/配方同源语义,给出恢复路径)
@@ -132,7 +150,7 @@ async function _toolDcwControlDisabled(agentId: string, args: { node_id?: string
 
   // 手动确认模式:与 param_control 同源审批面(manual-approval),批准附言回进回执
   let manualFeedback = ''
-  if (binding.mode === 'manual') {
+  if (binding?.mode === 'manual') {
     const bd = limitsBreakdownOf(node)
     const ap = await requestManualApproval({
       agentId,
@@ -161,7 +179,7 @@ async function _toolDcwControlDisabled(agentId: string, args: { node_id?: string
       // 调控闭环回包:记录 id + 上一稳定锚 + 策略提示(安全网信息,Agent 据此规划判定)
       const rb = getRecipeRollBackManager()
       const stable = rb.journal({ nodeId, limit: 10 }).find(a => a.prevValue != null && a.prevValue !== a.newValue)
-      const policyHint = binding.mode === 'manual'
+      const policyHint = binding?.mode === 'manual'
         ? '本节点为手动确认模式:判定回退将推请用户确认'
         : '本节点为自动模式:越配方监控窗将触发系统自动回退'
       const loopTxt = [

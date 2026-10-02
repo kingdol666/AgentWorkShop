@@ -122,7 +122,7 @@ const api = async (method, path, body) => {
 }
 
 console.log('[S1] 建线 + 优化频道 + worker 绑定')
-let lineId, productId, workerId
+let lineId, productId, workerId, hitlRecipeId
 const dcw = {}, daq = {}
 {
   const simDevices = (await getJson(`${SIM}/api/nodes`))?.data ?? []
@@ -158,7 +158,7 @@ const dcw = {}, daq = {}
   const agents = await call('aw_request', { method: 'GET', path: `/api/workshop/channels/${channelId}/agents` })
   workerId = (agents.data ?? []).find(a => a.role === 'worker')?.id
   ok('优化频道 + worker 实例', Boolean(workerId))
-  for (const nodeId of Object.values(dcw)) await call('aw_agent_tool_bind', { agentId: workerId, nodeId, kind: 'dcw', mode: 'auto' })
+  // 权限模型 v2:数控直绑已废弃 —— worker 经**配方绑定**(基线配方参数节点)获得探索授权;daq 保持直绑
   for (const nodeId of Object.values(daq)) await call('aw_agent_tool_bind', { agentId: workerId, nodeId, kind: 'daq', mode: 'auto' })
 
   const recipe = await call('aw_recipe_create', {
@@ -171,6 +171,8 @@ const dcw = {}, daq = {}
     daqWindows: [{ nodeId: daq['film-thickness'], min: 30, max: 90 }],
   })
   const baselineRecipeId = recipe.data?.recipe?.id ?? recipe.data?.id
+  const baseBind = await call('aw_agent_tool_bind', { agentId: workerId, nodeId: baselineRecipeId, kind: 'recipe' })
+  ok('worker 配方绑定(权限 v2 授权面)', !baseBind.isError, (baseBind.text ?? '').slice(0, 100))
   const start = await call('aw_line_start', { lineId, recipeId: baselineRecipeId })
   ok('基线开跑', !start.isError && Boolean(baselineRecipeId), start.text.slice(0, 120))
   await sleep(66_000) // 配方下发锚定 60s 写入冷却,等满再探索(与 skill 指引一致)
@@ -246,6 +248,7 @@ console.log('[S4] 配方管理:版本化 → revert → 基准恢复 → 一键�
     ],
   })
   const rid = mk.data?.recipe?.id ?? mk.data?.id
+  hitlRecipeId = rid
   ok('审计配方创建', !mk.isError && rid)
 
   await call('aw_recipe_update', { id: rid, description: '功能审计:v2 调整线速与模口', params: [
@@ -281,16 +284,16 @@ console.log('[S4] 配方管理:版本化 → revert → 基准恢复 → 一键�
   ok('apply 一键下发(建批次+写 PLC)', apply.status === 200 && Boolean(apply.json?.data?.run ?? apply.json?.data?.recipeRun ?? apply.json?.data), JSON.stringify(apply.json?.data ?? apply.json).slice(0, 120))
 }
 
-/* ── S5 · HITL:manual 绑定 → pending → 批准 → 执行 ── */
-console.log('[S5] HITL:manual 绑定的 dcw_control 走审批(超时 20s 已预置)')
+/* ── S5 · HITL:配方绑定(恒 manual)→ recipe_trial 挂起 → 批准 → 执行 ── */
+console.log('[S5] HITL:recipe_trial 走审批(权限模型 v2;配方运行门由 S4 apply 保证)')
 {
   await sleep(63_000) // S4 的 rollback-good/apply 刚写过 zone1:HITL 批准不豁免 60s 联锁,须等衰减
-  const bind = await api('POST', '/api/workshop/agent-tools/bindings', { agentId: workerId, nodeId: dcw['zone1-sp'], kind: 'dcw', mode: 'manual' })
-  ok('manual 模式绑定', bind.status === 200)
+  const bind = await api('POST', '/api/workshop/agent-tools/bindings', { agentId: workerId, nodeId: hitlRecipeId, kind: 'recipe' })
+  ok('配方绑定(恒 manual)', bind.status === 200)
   await sleep(1000)
-  const invokePromise = call('aw_agent_tool_invoke', { agentId: workerId, tool: 'dcw_control', args: { node_id: dcw['zone1-sp'], value: 198, hypothesis: 'HITL 审批:审计写入' } }, 60_000)
+  const invokePromise = call('aw_agent_tool_invoke', { agentId: workerId, tool: 'recipe_trial', args: { recipe_id: hitlRecipeId, params: [{ node_id: dcw['zone1-sp'], value: 198 }], hypothesis: 'HITL 审批:审计写入' } }, 90_000)
   let approved = false
-  for (let i = 0; i < 10 && !approved; i++) {
+  for (let i = 0; i < 12 && !approved; i++) {
     await sleep(1500)
     const pend = await api('GET', '/api/workshop/agent-tools/approvals')
     const list = pend.json?.data?.approvals ?? pend.json?.data ?? []
@@ -301,7 +304,7 @@ console.log('[S5] HITL:manual 绑定的 dcw_control 走审批(超时 20s 已预�
     }
   }
   const invokeRes = await invokePromise
-  ok('审批通过后写入执行(HITL 回路闭合)', approved && !invokeRes.isError, JSON.stringify({ approved, text: invokeRes.text.slice(0, 120) }))
+  ok('审批通过后试验执行(HITL 回路闭合)', approved && !invokeRes.isError, JSON.stringify({ approved, text: invokeRes.text.slice(0, 120) }))
   const readAfter = await call('aw_dcw_read', { id: dcw['zone1-sp'] })
   ok('HITL 写入真实落 PLC(≈198)', Math.abs(Number(readAfter.data?.read?.value) - 198) <= 1.5, `值=${readAfter.data?.read?.value}`)
 }

@@ -10,7 +10,7 @@
  * 导出核心 exportDaqDataset 不依赖仓储单例(readPoints/nodeOf 注入),单测可全内存构造。
  */
 import { randomBytes } from 'node:crypto'
-import { mkdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { ensureDataDir } from '@/shared/config/home.mjs'
 import { getTsdb } from '../../daq/storage/index'
@@ -25,6 +25,7 @@ const PAGE_LIMIT = 5000 // 与 tsdb 适配器单查硬上限一致(满页即续�
 const MAX_PAGES_PER_NODE = 400 // 单节点上限 200 万点(超限截断并在 manifest 标注)
 const MAX_WINDOW_MS = 7 * 24 * 60 * 60 * 1000 // 与 MES 取数同款 7 天窗护栏
 const MAX_TOTAL_ROWS = 4_000_000 // 单次导出总行数护栏(磁盘与上传体量)
+const RETAIN_EXPORTS = 50 // 数据目录保留策略:只留最近 50 个导出(全量时序体量大,防无限增长)
 
 export interface ExportNodeMeta {
   id: string
@@ -173,6 +174,7 @@ export async function exportDaqDataset(opts: {
     })
   }
 
+  const exactRows = files.reduce((s, f) => s + f.rows, 0)
   const manifest: Record<string, unknown> = {
     schema: 'aw.daq-export/1',
     export_id: exportId,
@@ -182,12 +184,23 @@ export async function exportDaqDataset(opts: {
     window: { from_ms: fromMs, to_ms: toMs, from: new Date(fromMs).toISOString(), to: new Date(toMs).toISOString() },
     lines: lines ?? [],
     nodes: nodeMetas,
-    totals: { files: files.length, rows: files.reduce((s, f) => s + f.rows, 0) },
+    totals: { files: files.length, rows: exactRows },
     truncated_nodes: truncated,
     usage: 'nodes/ 下每节点一份全量原始时序 CSV(ts_iso,ts_ms,value,state;无降采样)。请结合本清单的节点语义/量程/产线-配方上下文做分析;深度根因诊断请用 diag-bridge 的 diag_run(export_id=本 export_id)。',
   }
   writeFileSync(join(dir, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf8')
-  return { exportId, dir, manifest, files, totalRows: manifest.totals.rows as number, truncated }
+  // 保留策略:超出 RETAIN_EXPORTS 的最旧导出目录直接清理(mes-artifacts 同款思路)
+  try {
+    const siblings = readdirSync(rootDir, { withFileTypes: true })
+      .filter(e => e.isDirectory() && e.name.startsWith('daqexp-'))
+      .map(e => e.name)
+      .sort()
+    for (const old of siblings.slice(0, Math.max(0, siblings.length - RETAIN_EXPORTS))) {
+      rmSync(join(rootDir, old), { recursive: true, force: true })
+    }
+  }
+  catch { /* 清理失败不阻断导出 */ }
+  return { exportId, dir, manifest, files, totalRows: exactRows, truncated }
 }
 
 /**

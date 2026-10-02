@@ -5,6 +5,7 @@
  * /mes-artifacts/file 内联预览(csv/json 新窗口打开)。组件自取数,页面零状态。
  */
 import { ref, watch } from 'vue'
+import { narrowFetch } from '~/stores/workshop/narrow-fetch'
 
 const props = defineProps<{
   nodeId: string
@@ -24,7 +25,8 @@ async function refresh(): Promise<void> {
   loading.value = true
   error.value = ''
   try {
-    const r = await $fetch<{ data?: { artifacts?: ArtifactItem[] } }>('/api/workshop/dcw/mes-artifacts', {
+    // narrowFetch:narrow 化的 $fetch,绕开 Nuxt 路由类型推导的 TS2589(运行时同一函数)
+    const r = await narrowFetch<{ data?: { artifacts?: ArtifactItem[] } }>('/api/workshop/dcw/mes-artifacts', {
       query: { node_id: props.nodeId, limit: 60 },
     })
     items.value = r.data?.artifacts ?? []

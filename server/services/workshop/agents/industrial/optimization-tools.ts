@@ -16,7 +16,7 @@ import { getAgentNodeBindingRepo } from '../node-bindings.repo'
 import { getDaqController } from '../../daq/daq-controller'
 import { getDcwController } from '../../dcw/dcw-controller'
 import type { HostToolResult } from '../host-tool-bridge/types'
-import { toolDcwControl } from './dcw-tools'
+import { dcwControlGovernedInternal } from './dcw-tools'
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
@@ -48,21 +48,31 @@ export async function toolOptimizationExplore(agentId: string, args: {
     const goalText = Object.keys(goal).length > 0 ? JSON.stringify(goal) : '(Channel 未设置 goal —— 建议先在 Channel 设置中定义优化目标)'
 
     const repo = getAgentNodeBindingRepo()
-    const dcwBindings = repo.byAgent(agentId).filter(b => b.kind === 'dcw')
-    const controlNodeId = String(args.control_node_id ?? '').trim() || dcwBindings[0]?.nodeId || ''
-    if (!controlNodeId) return { text: '未指定控制节点且当前无数控绑定;请传 control_node_id 或先绑定数控节点。', isError: true }
+    const allBindings = repo.byAgent(agentId)
+    const dcwBindings = allBindings.filter(b => b.kind === 'dcw')
+    const recipeBindings = allBindings.filter(b => b.kind === 'recipe')
+    // 配方绑定覆盖的控制节点集合(权限模型 v2:recipe 授权 = 配方参数节点授权)
+    const recipeControlled = new Set<string>()
+    for (const rb of recipeBindings) {
+      const r = getDcwController().listRecipes().find(x => x.id === rb.nodeId)
+      for (const p of (r?.params ?? [])) recipeControlled.add(p.nodeId)
+    }
+    const controlNodeId = String(args.control_node_id ?? '').trim() || dcwBindings[0]?.nodeId || [...recipeControlled][0] || ''
+    if (!controlNodeId) return { text: '未指定控制节点且当前无数控授权(数控绑定或配方绑定);请传 control_node_id 或先绑定。', isError: true }
     const binding = repo.find(agentId, controlNodeId, 'dcw')
     const node = getDcwController().byId(controlNodeId)
-    if (!binding || !node) return { text: `控制节点 ${controlNodeId} 无效(未绑定或不存在)。`, isError: true }
+    if ((!binding && !recipeControlled.has(controlNodeId)) || !node) {
+      return { text: `控制节点 ${controlNodeId} 无效(无数控授权或节点不存在;权限模型 v2 下持有含该参数的配方绑定即可)。`, isError: true }
+    }
 
     // 步长来源优先级:显式 args > 绑定 tuning.step > 场景 control.maxStep > 量程 1/20
     const sceneControl = (profile.sceneContract as { controls?: Array<{ nodeId?: string, maxStep?: number }> } | undefined)?.controls?.find(c => c.nodeId === controlNodeId)
-    const tuningStep = binding.tuning?.step
+    const tuningStep = binding?.tuning?.step
     const fallbackStep = Math.abs((node.max - node.min) / 20)
     const step = Number(args.step ?? tuningStep ?? sceneControl?.maxStep ?? fallbackStep)
     if (!Number.isFinite(step) || step <= 0) return { text: `激励步长无效:${step}(可传 step 或在绑定上设置 tuning.step)。`, isError: true }
-    const tuneMin = binding.tuning?.min ?? node.min
-    const tuneMax = binding.tuning?.max ?? node.max
+    const tuneMin = binding?.tuning?.min ?? node.min
+    const tuneMax = binding?.tuning?.max ?? node.max
     const direction = args.direction === 'down' ? -1 : 1
     const proposed = Number(node.value ?? 0) + direction * step
     const target = Math.min(tuneMax, Math.max(tuneMin, proposed))
@@ -76,7 +86,7 @@ export async function toolOptimizationExplore(agentId: string, args: {
 
     // 真实写入:复用 dcw_control 全治理链(手动绑定会挂 HITL,auto+bounded 走限界直写)
     const settleSec = Math.min(300, Math.max(10, Number(args.settle_seconds ?? 45)))
-    const write = await toolDcwControl(agentId, {
+    const write = await dcwControlGovernedInternal(agentId, {
       node_id: controlNodeId,
       value: target,
       hypothesis: args.hypothesis ?? `探索激励(${direction > 0 ? 'up' : 'down'} ${Number(step).toFixed(3)};goal=${goalText.slice(0, 120)})`,
