@@ -41,7 +41,8 @@ export default defineApiHandler(async (event) => {
   // 排查成本极高(实测:脚本按 /api/workshop/agents 返回的 id 绑定,任务全被拒绝)。
   // 这里把无声错误变成可执行提示:模板 id → 告知应改用哪个成员 id;两者都不是 → 404。
   const manager = getWorkshopManager()
-  if (!manager.findChannelAgentById(agentId)) {
+  const memberRow = manager.findChannelAgentById(agentId)
+  if (!memberRow) {
     const instances = manager.listChannelAgentInstances(agentId)
     if (instances.length > 0) {
       const hint = instances.map(i => `${i.id}(频道「${i.name}」)`).join('、')
@@ -50,6 +51,19 @@ export default defineApiHandler(async (event) => {
     }
     throw new AppError(404, ErrorCodes.NOT_FOUND,
       `Agent 成员不存在: ${agentId || '(空)'}(需传频道成员 id,可经 GET /api/workshop/channels/:id/agents 获取)`)
+  }
+
+  // 权限模型 v3:绑线 channel 的产线一致性 —— channel 绑了产线后,其成员 agent 只能
+  // 绑定同产线的节点/配方(产线隔离的工作空间语义;未绑线的纯协作频道不受此限)。
+  const nodeLineOf = (nid: string, k: 'daq' | 'recipe'): string | null | undefined => {
+    if (k === 'recipe') return getDcwController().listRecipes().find(r => r.id === nid)?.lineId
+    return k === 'daq' ? getDaqController().byId(nid)?.lineId : getDcwController().byId(nid)?.lineId
+  }
+  const targetLine = nodeLineOf(nodeId, kind)
+  const channelRow = manager.deps.repos.channels.findById(memberRow.channelId)
+  if (channelRow?.lineId && targetLine && channelRow.lineId !== targetLine) {
+    throw new AppError(403, 'LINE_SCOPE_MISMATCH',
+      `该频道已绑定产线「${channelRow.lineId}」,成员 agent 只能绑定同产线的节点/配方(目标 ${nodeId} 属于产线「${targetLine}」)。请改绑同产线对象,或将频道解绑/换绑。`)
   }
 
   if (kind === 'recipe') {

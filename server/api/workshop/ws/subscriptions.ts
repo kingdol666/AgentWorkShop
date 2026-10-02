@@ -4,7 +4,11 @@
  */
 import type { AgentChannelManager } from '../../../services/workshop/runtime/manager'
 import type { ChannelStream } from './shared'
-import { hitlAudience } from './audience'
+import { hitlAudience, adminUserIds } from './audience'
+
+import { lineOfHitlItem } from '../../../services/workshop/agents/hitl-decision/line-of'
+import { lineMode } from '../../../services/workshop/permissions'
+import { userRepository } from '../../../repositories/user.repository'
 import { internalsOf } from './hub'
 import { mapAgentEvent } from './event-mapping'
 import { publish, rootQueueViewOf } from './publish'
@@ -105,6 +109,9 @@ export function bindStreamSubscriptions(manager: AgentChannelManager, stream: Ch
  *  **不再**调用 broadcastPeerEvent。 */
 export function bindHitlSubscription(manager: AgentChannelManager, stream: ChannelStream): void {
   stream.hitlUnsub?.()
+  // 权限模型 v3:条目产线锚点的受众过滤依赖(每次事件现算 admin 集,量级个位数)
+  const adminIds = new Set(adminUserIds())
+  const channel = manager.deps.repos.channels.findById(stream.channelId)
   stream.hitlUnsub = subscribeHitlEvents(stream.channelId, (e) => {
     // ① 频道流(seq/环形缓冲/落库/回放)—— 这是**审计与回放**轨迹,不是可操作通道。
     //    审批动作本身另受两道闸门约束:REST pending 快照按可裁决性过滤、
@@ -113,7 +120,14 @@ export function bindHitlSubscription(manager: AgentChannelManager, stream: Chann
     publish(manager, stream, e.type, e.payload, { agentId: e.agentId })
     // ② 定向通知(用户级 hub):**按审批资格**扇出,而不是按频道成员资格 ——
     //    owner_only 频道里普通成员不该收到"需要你处理"的定向提示。
+    //    权限模型 v3:再按条目产线锚点过滤 —— 对该产线无 grant 的用户不推送
+    //    (锚点从载荷推导,回退 channel.line_id;admin 恒收,锚点缺失不过滤)。
+    const itemLine = lineOfHitlItem((e.payload ?? {}) as { nodeId?: string, kind?: string }, channel?.lineId)
     for (const userId of hitlAudience(manager, stream.channelId)) {
+      if (itemLine && !adminIds.has(userId)) {
+        const u = userRepository.findById(userId)
+        if (!u || lineMode(u, itemLine) === 'none') continue
+      }
       publishToUser(userId, e.type, e.payload, { eventId: `${e.type}:${(e.payload as { kind?: string, id?: string }).kind}:${(e.payload as { id?: string }).id}` })
     }
   })

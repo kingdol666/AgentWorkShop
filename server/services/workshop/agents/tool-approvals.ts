@@ -88,6 +88,7 @@ class ToolApprovalService {
       detail: approval.detail,
       createdAt: approval.createdAt,
       expiresAt: approval.expiresAt,
+      nodeId: approval.nodeId,
     })
     // 出生即留痕:审批单落 approval_history(status=pending)。此前只在裁决/超时时落库,
     // 重启后遗留的 pending 单在历史里"查无此单"——对账把 HITL 面标 failed,历史面却无迹可查。

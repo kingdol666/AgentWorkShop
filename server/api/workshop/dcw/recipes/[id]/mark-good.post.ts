@@ -3,15 +3,19 @@
  * body: { runId: string }
  */
 import { getRouterParam, readBody } from 'h3'
-import { requireRole } from '@/server/api/workshop/caller'
+import { resolveUser } from '@/server/api/workshop/caller'
+import { requireLineMode } from '@/server/services/workshop/permissions'
 import { defineApiHandler } from '@/server/utils/response'
 import { AppError, ErrorCodes } from '@/server/utils/errors'
 import { getDcwRecipeRepo } from '@/server/services/workshop/dcw/dcw-recipe.repo'
 import { audit } from '@/server/services/workshop/ops/ops'
 
 export default defineApiHandler(async (event) => {
-  const user = requireRole(event)
+  const user = resolveUser(event)
   const id = getRouterParam(event, 'id') ?? ''
+  // 权限模型 v3:线域操作切 grant 制 —— 对该配方产线要求 operate(admin 天然放行)
+  const recipe = getDcwRecipeRepo().byId(id)
+  requireLineMode(user, recipe?.lineId, 'operate')
   const body = await readBody<{ runId?: string }>(event) ?? {}
   if (!body.runId)
     throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'runId 必填')

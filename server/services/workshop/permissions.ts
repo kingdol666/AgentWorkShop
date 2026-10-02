@@ -2,8 +2,8 @@
  * 产线级权限服务 —— 用户 × 产线的三态访问控制(none / readonly / operate)。
  *
  * 模型:
- *   - admin / editor:全量全权(运营管理角色,不受 grant 约束);
- *   - user(普通用户):默认无任何产线权限,由管理员在权限管理页逐线授予:
+ *   - admin:全量全权(不受 grant 约束);
+ *   - editor/user(普通角色):默认无任何产线权限,由管理员在权限管理页逐线授予:
  *       readonly = 仅查看(数采节点读取;无数控/写向能力)
  *       operate  = 可操控(数采读取 + 数控写向 + 产线操作全量)
  *     无记录 = none(后端数据面直接不返回该产线信息)。
@@ -22,9 +22,9 @@ import type { ResolvedUser } from '@/server/api/workshop/caller'
 export type LineMode = 'none' | 'readonly' | 'operate'
 export type GrantMode = 'readonly' | 'operate'
 
-/** 管理角色(admin/editor)不受产线 grant 约束 */
+/** 管理角色(admin)不受产线 grant 约束;editor 已收紧为普通角色(与 user 同受 grant 约束) */
 export function isPrivilegedRole(user: { role: string } | null | undefined): boolean {
-  return user?.role === 'admin' || user?.role === 'editor'
+  return user?.role === 'admin'
 }
 
 /** 用户对某产线的有效访问模式 */

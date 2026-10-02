@@ -10,6 +10,7 @@ import { bindUserPeer } from '../../../services/workshop/runtime/user-notificati
 import { buildSnapshot } from './publish'
 import { ensureStream } from './streams'
 import { resolveUserByToken } from '../../../services/user.service'
+import { lineMode } from '../../../services/workshop/permissions'
 // 非管理者快照白名单投影(拆段时生成器漏了这一条:标识符只出现在三元表达式的对象展开里)
 import { projectManagementSnapshotForMember } from '../../../services/workshop/runtime/chat-projection'
 
@@ -30,6 +31,12 @@ export function subscribePeer(manager: AgentChannelManager, peer: WsPeer, channe
     // 成员守卫:owner 或 active 群成员可订阅(群聊读取/发言/WS/HITL 可见性同口径);
     // 管理能力另行判定,仅用于快照投影深度。
     manager.requireChannelMember(channelId, user)
+    // 权限模型 v3:绑线 channel 的产线隔离 —— 对该线无 grant 的用户不可订阅
+    // (与 listChannelsVisibleTo 同口径;撤权后既有订阅者下次 sub 起被拒,事件不再直达)
+    const ch = manager.deps.repos.channels.findById(channelId)
+    if (ch?.lineId && lineMode(user, ch.lineId) === 'none') {
+      throw Object.assign(new Error(`无产线「${ch.lineId}」授权,频道事件不可订阅`), { code: 'LINE_FORBIDDEN' })
+    }
     canManage = manager.channelPermissionsOf(channelId, user).canManage
   }
   catch (err) {

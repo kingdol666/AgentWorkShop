@@ -14,6 +14,9 @@ import { resolveUser } from '../../caller'
 import { zValidator } from '../../../../utils/validate'
 import { defineApiHandler } from '../../../../utils/response'
 import { getWorkshopManager } from '../../../../plugins/workshop'
+import { requireLineMode } from '../../../../services/workshop/permissions'
+import { getDcwLineRepo } from '../../../../services/workshop/dcw/dcw-line.repo'
+import { AppError, ErrorCodes } from '../../../../utils/errors'
 
 const bindLineSchema = z.object({
   lineId: z.string().trim().nullable().optional(),
@@ -25,6 +28,14 @@ export default defineApiHandler(async (event) => {
   const body = await readValidatedBody(event, zValidator(bindLineSchema))
   const manager = getWorkshopManager()
   manager.requireChannelOwner(channelId, user, 'channel')
+  // 权限模型 v3:绑线者须对该产线有 grant(readonly 即可绑,成员仅只读上下文;
+  // operate 才可经此 channel 管理产线);admin 天然放行;产线必须存在
+  if (body.lineId) {
+    if (!getDcwLineRepo().byId(body.lineId)) {
+      throw new AppError(404, ErrorCodes.NOT_FOUND, `产线不存在: ${body.lineId}`)
+    }
+    requireLineMode(user, body.lineId, 'readonly')
+  }
   const channel = await manager.bindChannelLine(channelId, body.lineId ?? '')
   return { ok: true, lineId: channel.lineId, channel }
 })

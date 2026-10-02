@@ -15,6 +15,8 @@ const createChannelSchema = z.object({
   description: z.string().optional(),
   /** channel 级作业场景 prompt(注入全部成员 harness;用户场景 × 系统设计组合) */
   scenarioPrompt: z.string().optional(),
+  /** 创建时绑定产线(可选;须对该线有 grant,admin 天然放行;不绑 = 纯协作频道) */
+  lineId: z.string().trim().optional(),
   /** channel 独立工作目录(omp 子进程 cwd);缺省 data/workspaces/<channelId> */
   workspace: z.string().optional(),
   /** 团队级插件开关(创建时即写入;未选中的插件其工具不注入该团队 Agent) */
@@ -54,6 +56,17 @@ export default defineApiHandler(async (event) => {
       result.channelId,
       body.plugins.filter(p => p && typeof p.name === 'string' && registered.has(p.name)),
     )
+  }
+  // 权限模型 v3:创建时绑线(可选)——须对该产线有 grant 且产线存在(与 line.put 同口径)
+  if (body.lineId) {
+    const { requireLineMode } = await import('@/server/services/workshop/permissions')
+    const { getDcwLineRepo } = await import('@/server/services/workshop/dcw/dcw-line.repo')
+    if (!getDcwLineRepo().byId(body.lineId)) {
+      const { AppError, ErrorCodes } = await import('@/server/utils/errors')
+      throw new AppError(404, ErrorCodes.NOT_FOUND, `产线不存在: ${body.lineId}`)
+    }
+    requireLineMode(user, body.lineId, 'readonly')
+    await manager.bindChannelLine(result.channelId, body.lineId)
   }
   // 全时事件录制:新 channel 即时建立常驻流(server 驱动落库,与订阅者无关)
   const { ensureStream } = await import('./ws')

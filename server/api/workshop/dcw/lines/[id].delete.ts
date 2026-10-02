@@ -4,7 +4,7 @@
  * 否则仅解除挂载(lineId=''),历史数据保留。
  */
 import { getQuery, getRouterParam } from 'h3'
-import { resolveUser } from '@/server/api/workshop/caller'
+import { requireRole } from '@/server/api/workshop/caller'
 import { defineApiHandler } from '@/server/utils/response'
 import { bindDcwBroadcast, getDcwController } from '@/server/services/workshop/dcw/dcw-controller'
 import { broadcastSceneEvent } from '@/server/services/workshop/scene-events'
@@ -12,7 +12,8 @@ import { getDcwLineRepo } from '@/server/services/workshop/dcw/dcw-line.repo'
 import { recordOps } from '@/server/services/workshop/ops/ops'
 
 export default defineApiHandler(async (event) => {
-  const user = resolveUser(event)
+  // 权限模型 v3:删除产线(可级联清理)仅 admin
+  const user = requireRole(event)
   bindDcwBroadcast(broadcastSceneEvent)
   const id = getRouterParam(event, 'id')!
   const q = getQuery(event).purge

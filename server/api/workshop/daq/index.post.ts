@@ -11,11 +11,16 @@ import { bindDaqHost } from '@/server/services/workshop/daq/host-bindings'
 import { getDaqController, type DaqCreateInput } from '@/server/services/workshop/daq/daq-controller'
 import { broadcastSceneEvent } from '../../../services/workshop/scene-events'
 import { recordOps } from '../../../services/workshop/ops/ops'
+import { getDcwLineRepo } from '../../../services/workshop/dcw/dcw-line.repo'
+import { AppError, ErrorCodes } from '../../../utils/errors'
 
 export default defineApiHandler(async (event) => {
-  const user = requireRole(event, ['admin', 'editor'])
+  const user = requireRole(event)
   bindDaqHost(broadcastSceneEvent)
   const body = await readBody<DaqCreateInput>(event) ?? {}
+  if (body.lineId && !getDcwLineRepo().byId(body.lineId)) {
+    throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `产线不存在: ${body.lineId}`)
+  }
   const node = getDaqController().create(body)
   recordOps({
     actor: user.id,

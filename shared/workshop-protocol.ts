@@ -206,6 +206,10 @@ export interface AepHitlItem {
   /** park 截止时刻(omp 对话框零订阅倒计时;null = 有订阅者,计时暂停) */
   expiresAt?: string | null
   // ===== v17 增量(全部可选:旧消费者按原字段工作,不破坏兼容)=====
+  /** 权限模型 v3:dcw-approval 的目标对象 id(recipe-propose:<配方id> 或 节点 id;产线锚点推导用) */
+  nodeId?: string
+  /** 权限模型 v3:条目归属产线(注册时可直填;缺省由 nodeId/channel.line_id 推导) */
+  lineId?: string
   /** question(提问) | approval(授权);缺省按 kind 推定 */
   requestType?: AepHitlRequestType
   /** 引擎原生 requestId(与 id 区分:omp 用 id,codex/opencode 另有 rpcId) */

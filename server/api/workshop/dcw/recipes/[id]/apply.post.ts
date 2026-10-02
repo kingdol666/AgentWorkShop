@@ -4,7 +4,8 @@
  * 另一 admin 批准后申请人携 approvalId 重放放行)。
  */
 import { getRouterParam, readBody, setResponseStatus } from 'h3'
-import { requireRole } from '@/server/api/workshop/caller'
+import { resolveUser } from '@/server/api/workshop/caller'
+import { requireLineMode } from '@/server/services/workshop/permissions'
 import { defineApiHandler } from '@/server/utils/response'
 import { gateDangerous } from '@/server/utils/approval-gate'
 import { bindDcwBroadcast, getDcwController } from '@/server/services/workshop/dcw/dcw-controller'
@@ -12,9 +13,12 @@ import { broadcastSceneEvent } from '@/server/services/workshop/scene-events'
 import { recordOps } from '@/server/services/workshop/ops/ops'
 
 export default defineApiHandler(async (event) => {
-  const user = requireRole(event)
+  const user = resolveUser(event)
   bindDcwBroadcast(broadcastSceneEvent)
   const id = getRouterParam(event, 'id') ?? ''
+  // 权限模型 v3:线域操作切 grant 制 —— 对该配方产线要求 operate(admin 天然放行)
+  const recipe = getDcwController().listRecipes().find(r => r.id === id)
+  requireLineMode(user, recipe?.lineId, 'operate')
   const body = await readBody<{ approvalId?: string }>(event) ?? {}
   const gate = gateDangerous(useRuntimeConfig(event).approvalGate === true, user, { action: 'recipe.apply', targetId: id, summary: `一键下发配方 ${id}` }, body.approvalId)
   if (gate.pending) {

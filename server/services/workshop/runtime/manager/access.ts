@@ -12,6 +12,7 @@ import type { NotificationRepo } from '../../db/notification.repo'
 import type { OutboxRepo } from '../../db/outbox.repo'
 import { AppError } from '../../../../utils/errors'
 import { userRepository } from '../../../../repositories/user.repository'
+import { visibleLineIds } from '../../permissions'
 import { audit } from '../../ops/ops'
 import { createChannelMemberRepo } from '../../db/channel-member.repo'
 import { createChatMessageRepo } from '../../db/chat-message.repo'
@@ -343,11 +344,15 @@ export abstract class ManagerAccess extends ManagerWorkspace {
 
   /**
    * 用户可见 Channel(读视角):本人 owner 的 + active 成员的 + 公开可发现的。
+   * 权限模型 v3:绑了产线的 channel 按 grant 过滤 —— 对该线无授权(含被撤权)的用户
+   * 完全不可见(列表/消息/事件/HITL 同口径);未绑线的纯协作 channel 不受限。
    * 管理面写操作仍须 requireChannelOwner。
    */
   listChannelsVisibleTo(user: ActingUser): ChannelRow[] {
-    if (user.role === 'admin') return this.deps.repos.channels.list()
-    return this.deps.repos.channels.listVisibleToUser(user.id)
+    const rows = user.role === 'admin' ? this.deps.repos.channels.list() : this.deps.repos.channels.listVisibleToUser(user.id)
+    const visibleLines = visibleLineIds(user)
+    if (!visibleLines) return rows
+    return rows.filter(c => !c.lineId || visibleLines.has(c.lineId))
   }
 
   /** 公开可发现清单(已开启群聊的 public Channel;owner=NULL 遗留行不在内) */

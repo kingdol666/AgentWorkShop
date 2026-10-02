@@ -19,6 +19,8 @@ import { defineApiHandler } from '@/server/utils/response'
 import { getWorkshopManager } from '@/server/plugins/workshop'
 import { getHitlRegistry } from '@/server/services/workshop/agents/hitl-registry'
 import { canDecideHitlChannel, ensureHitlReconciled, snapshotOfRow } from '@/server/services/workshop/agents/hitl-decision'
+import { lineOfHitlItem } from '@/server/services/workshop/agents/hitl-decision/line-of'
+import { lineMode } from '@/server/services/workshop/permissions'
 import type { AepHitlItem } from '../../../../shared/workshop-protocol'
 
 export default defineApiHandler(async (event) => {
@@ -37,6 +39,11 @@ export default defineApiHandler(async (event) => {
     .snapshot(channelId || undefined)
     .filter((i: AepHitlItem) => {
       if (!i.channelId) return false
+      // 权限模型 v3:按条目产线锚点过滤 —— 对该产线无 grant 的用户不在快照中
+      // (admin 恒全量;锚点缺失 = 纯协作频道的通用待办,不过滤)
+      const chLine = manager.deps.repos.channels.findById(i.channelId)?.lineId
+      const itemLine = lineOfHitlItem(i, chLine)
+      if (itemLine && user.role !== 'admin' && lineMode(user, itemLine) === 'none') return false
       // 策略/资格以持久化行为准(创建时冻结);无行(降级登记)按当前 Channel 策略判定
       const row = repo.find(i.kind, i.id)
       const opts = row

@@ -17,6 +17,7 @@ import { twinWriteGuard } from '../../aml/twin/feature-flags'
 import { listPluginTools, pluginOfTool } from '../plugin-tools'
 import type { HostToolBridgeContext, HostToolCall, HostToolResult } from './types'
 import { INDUSTRIAL_TOOL_NAMES, dispatchIndustrialTool } from './tools/industrial'
+import { guardIndustrialToolGrant } from '../industrial/grant-guard'
 import { handleCompleteTask, handleReportProgress } from './tools/progress'
 import { handleCancelTask, handleDispatchTask, handleGetMyTaskQueue, handleGetTaskDetails, handleListChannelTasks, handleReassignTask, handleRefuseTask, handleSubmitTask, handleUpdateTask } from './tools/tasks'
 import { handleGrantNodes, handleRevokeNodes } from './tools/team-delegation'
@@ -105,6 +106,9 @@ export async function dispatchHostTool(ctx: HostToolBridgeContext, req: HostTool
   // 工业工具族不依赖 workspace(只按 agentId 查绑定与节点),先于 workspace 门控执行 ——
   // 否则 worker 首回合前的 REST/MCP 直调(my_industrial_nodes 等)会被误拒
   if (INDUSTRIAL_TOOL_NAMES.has(req.toolName)) {
+    // 权限模型 v3:运行时 grant 复核(收权即失活;绑定面是静态授权,撤销后此处拦截)
+    const denied = await guardIndustrialToolGrant(identity, req.toolName, args)
+    if (denied) return denied
     return await dispatchIndustrialTool(identity.agentId, req.toolName, args, identity.channelId)
   }
 
