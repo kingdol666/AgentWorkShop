@@ -28,7 +28,7 @@
 
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.7.54</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST 集成 · 116 个运行时设置项 · 双语文档（简体中文 / English）</sub>
+<sub><b>v0.7.54</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST 集成 · 117 个运行时设置项 · 双语文档（简体中文 / English）</sub>
 
 <br />
 
@@ -186,7 +186,7 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 | **运行时可观测** | `GET /api/system/monitor` 把 Agent 团队内部暴露成数字：根队列深度、看门狗介入次数、Harness 会话复用、记忆 outbox 积压——每项都有对应的文档化回退开关，新机制可以不重新部署就关掉。 |
 | **产线操作单页（`/operations`）** | 一页看全对产线的每一次触碰：实时操作流水（REST 快照 + WS 推流）把写控、数采、建模、配方、回退、报警、产线、人工、系统动作归入**九类分类**，写控行渲染结构化 **前值 → 后值 diff 徽章**（失败标红），并直接从事件流推断**闭环阶段**（监视 → 探索·小步 → 推荐搜索 → 影子验证 → 生产）。同一数据面也供工作台控制台的「产线作业」面板使用。 |
 | **外部 MCP 网关** | `aw mcp` 启动零依赖的 **stdio MCP 服务**（38 个工具），自动发现运行中的实例（环境变量 → 锁文件 → 配置文件），把产线、配方（含 mark-good）、受治理 DCW 写入、工艺参数语义映射、数采查询、频道、团队供给、模型晋升、判卷/回退与插件管理暴露给任意 MCP 客户端——受 `mcp.enabled` 运行时设置门控，附 `--doctor` 与 `--print-config` 辅助指令。 |
-| **全量配置驱动运行时** | 全部运行旋钮（记忆预算、上下文压缩、回退护栏、保留策略、备份、日志级别、系统时区、MCP 开关…）在设置描述符注册表声明一次，优先级 **config.yml < runtime-settings < env**——**113 个设置项、18 组**（37 live / 79 restart），代码零硬编码默认。 |
+| **全量配置驱动运行时** | 全部运行旋钮（记忆预算、上下文压缩、回退护栏、保留策略、备份、日志级别、系统时区、MCP 开关…）在设置描述符注册表声明一次，优先级 **config.yml < runtime-settings < env**——**117 个设置项、18 组**（39 live / 78 restart），代码零硬编码默认。 |
 | **可配置系统时区** | 一个 `time.timeZone` 设置项（IANA 时区，live 热生效）统一驱动人读时间——日志、聊天、审计、Agent 记录与定时任务；机器时间轴（数采样本、`timestamptz`）仍保存绝对时间。 |
 | **可配置节拍** | 采样与查询的默认值/下限全部是 **live 设置**（`daq.sampling.*`、`daq.query.*`）：热重载、create/patch 时钳制，Agent 工具描述实时携带当前值。 |
 
@@ -264,7 +264,7 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 <td width="50%"><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-monitor.png" alt="运行时监控" width="100%" /><br/><sub><b>运行时监控。</b>每条已接线频道、成员数、依赖环与归属用户。</sub></td>
 </tr>
 <tr>
-<td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-settings.png" alt="系统设置" width="100%" /><br/><sub><b>系统设置。</b>18 组 113 个设置项，由描述符驱动——CLI 读的是同一份注册表。</sub></td>
+<td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-settings.png" alt="系统设置" width="100%" /><br/><sub><b>系统设置。</b>18 组 117 个设置项，由描述符驱动——CLI 读的是同一份注册表。</sub></td>
 <td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-plugins.png" alt="插件管理" width="100%" /><br/><sub><b>插件管理。</b>三种作用域、改代码即热重载、按团队开关。</sub></td>
 </tr>
 </table>
@@ -651,7 +651,7 @@ AgentWorkShop/
 ├── sdk/                        # agentworkshop/sdk——插件上下文、钩子总线、REST 客户端、浏览器 SDK
 ├── tui/                        # 终端工作台（aw tui）
 ├── shared/
-│   └── config/                 # schema.json（113 个设置描述符）+ 引擎（合并/校验/持久化）+ 路径解析器
+│   └── config/                 # schema.json（117 个设置描述符）+ 引擎（合并/校验/持久化）+ 路径解析器
 ├── config.yml                  # 工厂默认值（构建/启动时读取；版本号来自 package.json）
 ├── .AgentWorkShop/             # 检出内的配置根——prompts（版本化）+ 运行时覆盖 · 数据 · 日志 · 指令（git 忽略）
 ├── data/                       # 迁移前的旧版位置（自动迁移进配置根）

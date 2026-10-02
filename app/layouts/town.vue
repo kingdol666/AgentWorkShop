@@ -10,12 +10,31 @@
  * 调用代价只是一次 resize 监听(同一全局监听器复用计数)。
  */
 import { useResponsive } from '@/app/composables/useResponsive'
+import { useSiteConfig } from '@/app/composables/useSiteConfig'
 
 useResponsive()
+
+const site = useSiteConfig()
 </script>
 
 <template>
   <div class="town-layout">
     <slot />
+    <!-- 全屏场景也保持版本可见:弱化角标,difference 混合保证亮暗背景可读 -->
+    <span class="town-version-stamp">v{{ site.version }}</span>
   </div>
 </template>
+
+<style scoped>
+.town-version-stamp {
+  position: fixed;
+  right: 16px;
+  bottom: 12px;
+  z-index: 10;
+  pointer-events: none;
+  font-size: 12px;
+  color: #fff;
+  opacity: 0.55;
+  mix-blend-mode: difference;
+}
+</style>

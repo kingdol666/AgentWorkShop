@@ -237,6 +237,56 @@ section('[4/6] 文档里宣称的版本号必须等于 package.json')
   }
 }
 
+section('[4b/6] 版本呈现面全链一致(config.yml / README / 站点 hero / 界面显示面)')
+// [4/6] 只守 docs 六份指南;这里补齐其余「当前版本」呈现点:
+//   · config.yml 的 app.version 回退副本(权威值在 package.json,但历史曾停在 0.7.9 长期漂移)
+//   · README 双语的「当前版本」段(读者据此判断装的是不是最新版)
+//   · 文档站首页 hero 的版本角标(中英两份,site 独有、无同源对守护)
+//   · 前端界面 5 个版本显示面(全部绑定 site.version ← package.json,断链即界面失显)
+{
+  const pkgVersion = JSON.parse(read('package.json') ?? '{}').version
+
+  const cfg = read('config.yml')
+  if (cfg === null) bad('config.yml 不存在')
+  else {
+    const m = /^ {2}version: ([0-9]+\.[0-9]+\.[0-9]+)$/m.exec(cfg)
+    if (!m) bad('config.yml 匹配不到 app.version 回退副本(结构变了就同步改本守卫)')
+    else if (m[1] === pkgVersion) ok(`config.yml app.version = ${m[1]} = package.json`)
+    else bad(`config.yml app.version 为 ${m[1]},而 package.json 是 ${pkgVersion}`)
+  }
+
+  for (const [file, re] of [
+    ['README.md', /Current version: \*\*v([0-9]+\.[0-9]+\.[0-9]+)\*\*/],
+    ['README-zh.md', /当前版本：\*\*v([0-9]+\.[0-9]+\.[0-9]+)\*\*/],
+    ['docs/site/index.md', /版本 <i>v([0-9]+\.[0-9]+\.[0-9]+)<\/i>/],
+    ['docs/site/en/index.md', /Version <i>v([0-9]+\.[0-9]+\.[0-9]+)<\/i>/],
+  ]) {
+    const text = read(file)
+    if (text === null) {
+      bad(`${file} 不存在`)
+      continue
+    }
+    const m = re.exec(text)
+    if (!m) bad(`${file} 匹配不到当前版本声明(措辞改了就同步改本守卫,不允许静默空过)`)
+    else if (m[1] === pkgVersion) ok(`${file} 版本声明 = ${m[1]} = package.json`)
+    else bad(`${file} 版本声明为 ${m[1]},而 package.json 是 ${pkgVersion} —— 发版时漏改`)
+  }
+
+  const UI_SURFACES = [
+    'app/layouts/default.vue', // 页脚右下角铭牌
+    'app/layouts/town.vue', // /town 全屏场景角标
+    'app/components/AppSidebar.vue', // 侧栏底部
+    'app/pages/settings.vue', // 设置页头部 stamp
+    'app/components/settings/SystemPane.vue', // 设置-系统信息面板
+  ]
+  for (const rel of UI_SURFACES) {
+    const text = read(rel)
+    if (text === null) bad(`界面版本显示面缺失:${rel}`)
+    else if (!text.includes('site.version')) bad(`${rel} 不再包含 site.version 绑定 —— 界面版本显示面断链,版本更新将不再可见`)
+    else ok(`界面版本显示面在位:${rel}`)
+  }
+}
+
 section('[5/6] VitePress 模板安全:正文裸尖括号不得被当成未闭合标签')
 // VitePress 把每个 .md 编译成 Vue SFC 模板。正文里写 <home>/plugins-state.json 这类
 // 占位符,Vue 会把它当成自定义元素并因缺少 </home> 直接**构建失败**

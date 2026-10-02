@@ -156,7 +156,7 @@ $ aw start
 
 - 优先级（CLI 与网页设置页、dev/prod 启动脚本共用同一引擎 `shared/config/engine.mjs`）：
   `config.yml 默认 < runtime-settings.json 运行时覆盖 < 环境变量 / CLI 显式参数`。
-- 设置描述符共 **113 项、18 组**（`aw config list` 即打印 113 行）：
+- 设置描述符共 **117 项、18 组**（`aw config list` 即打印 117 行）：
 
 | 组 | 项数 | 组 | 项数 | 组 | 项数 | 组 | 项数 |
 |---|---|---|---|---|---|---|---|
@@ -166,7 +166,7 @@ $ aw start
 | `workshop` | 15 | `backup` | 3 | `retention` | 5 | `log` | 1 |
 | `aml` | 16 | `mcp` | 1 | | | | |
 
-  其中 `live`（保存即生效）34 项、`restart`（重启对应模式后生效）79 项，
+  其中 `live`（保存即生效）39 项、`restart`（重启对应模式后生效）78 项，
   `aw config list` 每行末尾会标注 `live` 或 `restart`。
 - 环境变量映射：`AW_<KEY 大写、点转下划线>`（如 `AW_SERVER_DEV_PORT`），
   另加描述符显式声明的历史 `aliases`（优先级：`AW_<KEY>` 高于 `aliases` 声明顺序）。
@@ -243,7 +243,7 @@ $ aw start
 aw config set server.prod.port 8080     # 改生产端口(重启生效)
 aw config set theme.primaryColor '#41c8f4'
 aw config get server.dev.port           # 值 + 来源
-aw config list                          # 113 个设置项(18 组) + 来源 + 生效方式
+aw config list                          # 117 个设置项(18 组) + 来源 + 生效方式
 aw config validate                      # 校验 config.yml 与运行时覆盖合法性
 aw start --port 3002                    # CLI 参数最高优先(输出标注 端口来源: CLI)
 aw doctor                               # 体检:Node/pnpm/AW Home/Docker/MQTT/端口/密钥/产物
