@@ -186,11 +186,13 @@ export function useRecipeDispatchApprovals() {
     await load()
   }
 
-  // 30s 数据轮询(与 useDcwParamApprovals 各自轮询同一端点,轻量 GET 可接受);页面卸载清理
-  const timer = setInterval(() => {
-    void load()
-  }, 30_000)
-  onUnmounted(() => clearInterval(timer))
+  // 30s 数据轮询(与 useDcwParamApprovals 各自轮询同一端点,轻量 GET 可接受);页面卸载清理(仅客户端:SSR 顶层 setInterval 会被 Nuxt 拒绝)
+  if (import.meta.client) {
+    const timer = setInterval(() => {
+      void load()
+    }, 30_000)
+    onUnmounted(() => clearInterval(timer))
+  }
 
   void load()
 

@@ -94,11 +94,13 @@ export function useExpConfirmations(opts: {
     await load()
   }
 
-  // 数据轮询(详情卡 30s / 总览角标 60s);页面卸载清理
-  const timer = setInterval(() => {
-    void load()
-  }, opts.intervalMs ?? 30_000)
-  onUnmounted(() => clearInterval(timer))
+  // 数据轮询(详情卡 30s / 总览角标 60s);页面卸载清理(仅客户端:SSR 顶层 setInterval 会被 Nuxt 拒绝)
+  if (import.meta.client) {
+    const timer = setInterval(() => {
+      void load()
+    }, opts.intervalMs ?? 30_000)
+    onUnmounted(() => clearInterval(timer))
+  }
 
   void load()
 

@@ -94,14 +94,16 @@ export function useDcwParamApprovals(scope: ReturnType<typeof useDcwDetailScope>
     }
   }
 
-  // 30s 数据轮询 + 1s 倒计时心跳(同一定时器计数,避免双计时器漂移)
-  let tick = 0
-  const timer = setInterval(() => {
-    nowMs.value = Date.now()
-    tick++
-    if (tick % 30 === 0) void load()
-  }, 1000)
-  onUnmounted(() => clearInterval(timer))
+  // 30s 数据轮询 + 1s 倒计时心跳(同一定时器计数,避免双计时器漂移;仅客户端:SSR 顶层 setInterval 会被 Nuxt 拒绝)
+  if (import.meta.client) {
+    let tick = 0
+    const timer = setInterval(() => {
+      nowMs.value = Date.now()
+      tick++
+      if (tick % 30 === 0) void load()
+    }, 1000)
+    onUnmounted(() => clearInterval(timer))
+  }
 
   void load()
   // 发起者名依赖全局 HITL 待办快照(幂等;挂载基线对齐,后续由 AEP hitl.* 帧增量收敛)
