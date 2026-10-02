@@ -196,6 +196,22 @@ export default function workshopPlugin(nitroApp: {
   // 懒加载恢复:仅激活有待办任务的 channel(装配 lead + 调度循环);其余纯持久化
   manager.restore()
 
+  // DAQ 采集恢复(时序竞态补挂):daq 插件按 nitro 装配序先于本插件执行,其 boot
+  // startAll 时节点运行时多半尚未从 repo 重建(空集,startAll 空转);本插件此处节点
+  // 已就绪,补一次 startAll(幂等:已在采的节点 rearm,停用节点不受影响)。dev 下
+  // 30s 自动重连循环会掩盖该竞态,生产单次启动必须依赖此处。plugin 为同步函数,
+  // 动态 import 落到 microtask,不阻塞其余启动步骤。
+  void (async () => {
+    try {
+      const mod = await import('../services/workshop/daq/daq-controller')
+      const st = mod.getDaqController().resumeAll()
+      console.log(`[workshop] DAQ 采集补挂完成(running=${st.running})`)
+    }
+    catch (err) {
+      console.error('[workshop] DAQ 采集补挂失败(30s 自动重连可恢复):', err instanceof Error ? err.message : err)
+    }
+  })()
+
   // v17 HITL 重启对账(§13.4):把**本进程启动前**的非终态 HITL 条目收敛为 failed,
   // 绝不自动批准。决策服务首次触碰时也会幂等执行,这里显式调一次让语义更早确定
   // (重启后立刻查 pending 就能看到确定状态,而不是等下一个人操作才收敛)。

@@ -2,12 +2,12 @@
  * 闭环调优优化曲线生成器 —— 拉取熔体温度全窗口采样,渲染 SVG(SPV 阶跃 + 事件标注)。
  * 用法:node scripts/render-opt-curve.mjs <adminToken> <outSvg>
  */
-const BASE = 'http://localhost:3000'
+const BASE = 'http://localhost:3001'
 const token = process.argv[2] ?? ''
 const out = process.argv[3] ?? 'opt-curve.svg'
 
 const NODE = 'dn-0183240d' // 熔体温度(modbus PV)
-const WINDOW_MS = 45 * 60_000
+const WINDOW_MS = 80 * 60_000
 const to = Date.now()
 const from = to - WINDOW_MS
 
@@ -25,19 +25,29 @@ if (points.length < 5) {
 }
 console.log(`采样点: ${points.length}, 窗口 ${new Date(points[0].t).toISOString()} ~ ${new Date(points.at(-1).t).toISOString()}`)
 
-// 实验事件线(本地 +08):混合配方开跑 15:19:28Z;R1 审批发送 15:23:08Z;R2 复测窗口 15:26:30Z 起
+// DOE 阶梯事件(审计核验的审批下发时刻,+08 本地)
 const events = [
-  { t: Date.parse('2026-10-02T15:19:28Z'), label: '混合配方开跑 SP=193', color: '#41c8f4' },
-  { t: Date.parse('2026-10-02T15:23:08Z'), label: 'R1 审批发送 SP 193→195', color: '#f4a941' },
-  { t: Date.parse('2026-10-02T15:26:30Z'), label: 'R2 复测窗口', color: '#35e0a0' },
+  { t: Date.parse('2026-10-02T16:46:44Z'), label: 'R1 SP→197', color: '#41c8f4' },
+  { t: Date.parse('2026-10-03T01:01:17+08:00'), label: 'R2 SP→200', color: '#f4a941' },
+  { t: Date.parse('2026-10-03T01:08:07+08:00'), label: 'R3 SP→205', color: '#e06060' },
+  { t: Date.parse('2026-10-03T01:16:49+08:00'), label: 'R4 SP→210', color: '#b58cf0' },
+  { t: Date.parse('2026-10-03T01:35:00+08:00'), label: '回基线 193', color: '#35e0a0' },
 ].filter(e => e.t >= from && e.t <= to)
 
-// SP 阶跃(193 → 195 @ R1 审批)
+// SP 阶跃(DOE 五级梯度和回基线;时刻 = 审计下发时刻)
 const spStep = [
-  { t: points[0].t, v: 193 },
-  { t: Date.parse('2026-10-02T15:23:08Z'), v: 193 },
-  { t: Date.parse('2026-10-02T15:23:08Z'), v: 195 },
-  { t: points.at(-1).t, v: 195 },
+  { t: points[0].t, v: 195 },
+  { t: Date.parse('2026-10-02T16:46:44Z'), v: 195 },
+  { t: Date.parse('2026-10-02T16:46:44Z'), v: 197 },
+  { t: Date.parse('2026-10-03T01:01:17+08:00'), v: 197 },
+  { t: Date.parse('2026-10-03T01:01:17+08:00'), v: 200 },
+  { t: Date.parse('2026-10-03T01:08:07+08:00'), v: 200 },
+  { t: Date.parse('2026-10-03T01:08:07+08:00'), v: 205 },
+  { t: Date.parse('2026-10-03T01:16:49+08:00'), v: 205 },
+  { t: Date.parse('2026-10-03T01:16:49+08:00'), v: 210 },
+  { t: Date.parse('2026-10-03T01:35:00+08:00'), v: 210 },
+  { t: Date.parse('2026-10-03T01:35:00+08:00'), v: 193 },
+  { t: points.at(-1).t, v: 193 },
 ].filter(p => p.t >= from)
 
 // ── SVG 几何 ──
@@ -77,7 +87,7 @@ ${grid}${xticks}${eventLines}
 <circle cx="${X(points.at(-1).t).toFixed(1)}" cy="${Y(points.at(-1).v).toFixed(1)}" r="3" fill="#3565e0"/>
 <rect x="${ML}" y="${H - MB + 26}" width="12" height="3" fill="#3565e0"/><text x="${ML + 18}" y="${H - MB + 30}" font-size="11" fill="#555">熔体温度 PV(daq 实采)</text>
 <rect x="${ML + 190}" y="${H - MB + 26}" width="12" height="3" fill="#e06060"/><text x="${ML + 208}" y="${H - MB + 30}" font-size="11" fill="#555">加热区1SP(配方下发阶跃)</text>
-<text x="${ML + 420}" y="${H - MB + 30}" font-size="11" fill="#888">R1:193→195℃(+2℃) 经 HITL 审批由 omp Agent 提案下发 · 批次 rr-90e5b362</text>
+<text x="${ML + 420}" y="${H - MB + 30}" font-size="11" fill="#888">DOE 五级梯度 195→197→200→205→210 全经 HITL 审批由 omp Agent 提案下发 · 残差分析:zone1-SP 耦合≈0</text>
 </svg>`
 
 const { writeFileSync, mkdirSync } = await import('node:fs')

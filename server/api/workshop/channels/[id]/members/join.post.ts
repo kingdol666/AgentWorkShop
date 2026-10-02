@@ -16,11 +16,16 @@ import { getRouterParam } from 'h3'
 import { resolveUser } from '@/server/api/workshop/caller'
 import { defineApiHandler } from '@/server/utils/response'
 import { getWorkshopManager } from '@/server/plugins/workshop'
+import { requireLineMode } from '@/server/services/workshop/permissions'
 
 export default defineApiHandler(async (event) => {
   const channelId = getRouterParam(event, 'id')!
   const user = resolveUser(event)
   const manager = getWorkshopManager()
+  // 权限模型 v3:绑线频道的加入须对该产线有授权(readonly 及以上;admin 天然放行)
+  // —— 与可见性/订阅同口径,防止无权用户绕过订阅闸成为成员
+  const channel = manager.deps.repos.channels.findById(channelId)
+  if (channel?.lineId) requireLineMode(user, channel.lineId, 'readonly')
   const result = manager.joinChannel(channelId, user)
   const row = manager.groupChat.members.findOne(channelId, user.id)
   if (row) {
