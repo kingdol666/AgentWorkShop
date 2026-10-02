@@ -246,11 +246,12 @@ export function migrateDropOwnerFks(db: DatabaseSync): void {
           id            TEXT PRIMARY KEY,
           name          TEXT NOT NULL,
           description   TEXT NOT NULL DEFAULT '',
+          visibility    TEXT NOT NULL DEFAULT 'private',
           owner_user_id TEXT,
           created_at    TEXT NOT NULL,
           updated_at    TEXT NOT NULL
         );
-        INSERT INTO teams_new SELECT id, name, description, owner_user_id, created_at, updated_at FROM teams;`,
+        INSERT INTO teams_new SELECT id, name, description, visibility, owner_user_id, created_at, updated_at FROM teams;`,
     })
   }
   if (rebuilds.length === 0) return
