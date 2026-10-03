@@ -8,8 +8,11 @@ import { IDLE_TICK_CAP_MS, LEAD_DECISION_RETRY_MS, log } from './helpers'
 import { TERMINAL_TASK_STATES } from '../../types/task'
 import { findModeTask } from '../execution-mode'
 import { isOrdinaryRoot } from '../task-engine/policy'
+import { workshopSettings } from '../../settings'
 
 export abstract class SchedulerLoopTick extends SchedulerLoopState {
+  /** HITL 等待豁免登记:同一根任务只发一次顺延日志(落定后清理) */
+  protected hitlDeferred = new Set<string>()
   protected async runRound(): Promise<void> {
     this.running = true
     try {
@@ -47,6 +50,33 @@ export abstract class SchedulerLoopTick extends SchedulerLoopState {
       && task.deadlineAt
       && Date.parse(task.deadlineAt) <= Date.now())
     if (expiredRoots.length > 0) {
+      // HITL 等待豁免(鲁棒性增强):频道内有待批审批(整包方案/单参下发)时,根任务
+      // 执行预算顺延一个 root_timeout,不做 ROOT_TIMEOUT 收口 —— 审批自身有 fail-closed
+      // 超时(security.recipe_dispatch_timeout_ms),人类思考期不应处决整棵任务树。
+      // 豁免仅在「有待批」时生效;审批落定(批准执行/超时关闭)后预算仍耗尽则照常收口。
+      const hitlPending = await (async () => {
+        try {
+          const { getToolApprovals } = await import('../../agents/tool-approvals')
+          return getToolApprovals().listPending().length > 0
+        }
+        catch { return false }
+      })()
+      if (hitlPending) {
+        const budget = new Date(Date.now() + (Number(workshopSettings().root_timeout_ms) || 900_000)).toISOString()
+        for (const root of expiredRoots) {
+          if (!this.hitlDeferred.has(root.id)) {
+            this.hitlDeferred.add(root.id)
+            log.warn(`[SchedulerLoop:${this.lead.agentId}] 根任务 ${root.id.slice(0, 8)} 预算耗尽,但频道有 HITL 待批 —— 执行预算顺延至 ${budget}`)
+          }
+          try {
+            this.lead.taskEngine.refreshDeadline(root.id, budget)
+          }
+          catch { /* 任务恰好终态:下一 tick 自然收敛 */ }
+        }
+        this.lead.refreshStatus()
+        return
+      }
+      this.hitlDeferred.clear()
       for (const root of expiredRoots) {
         const closed = this.lead.taskEngine.timeoutTree(root.id, this.lead.agentId)
         for (const task of closed) {
