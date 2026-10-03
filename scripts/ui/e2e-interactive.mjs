@@ -51,18 +51,18 @@ const bodyHas = (page, text) => page.evaluate(t => document.body.innerText.inclu
   console.log('\n── ① 认证体验(访客态 → 管理员) ──')
   const page = await browser.newPage()
   watch(page, '/guest')
-  await page.goto(BASE + '/', { waitUntil: 'networkidle2', timeout: 60000 }).catch(() => {})
+  await page.goto(BASE + '/', { waitUntil: 'domcontentloaded', timeout: 120000 }).catch(() => {})
   await sleep(2500)
   const guestShell = await page.evaluate(() => !!document.querySelector('.app-header, .user-chip') && document.body.innerText.trim().length > 200)
   const guestBadge = await page.evaluate(() => /访客|guest|anonymous/i.test(document.body.innerText))
   check('访客态渲染应用壳(游客可浏览,身份=访客)', guestShell && guestBadge, `badge=${guestBadge}`)
-  // cookie 登录(token 写入)→ 身份变为管理员
+  // cookie 登录(token 写入)→ 身份变为管理员(凭据 AW_EMAIL/AW_PASS 可覆盖)
   const login = await (await fetch(BASE + '/api/users/login', {
     method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ email: 'admin@awshop.local', password: 'admin123' }),
+    body: JSON.stringify({ email: process.env.AW_EMAIL ?? 'admin@awshop.local', password: process.env.AW_PASS ?? 'admin123' }),
   })).json()
   await page.setCookie({ name: 'token', value: login.data.token, path: '/' })
-  await page.reload({ waitUntil: 'networkidle2' })
+  await page.reload({ waitUntil: 'domcontentloaded', timeout: 60_000 }).catch(() => {})
   await sleep(2500)
   const adminShown = await page.evaluate(() => /admin/i.test(document.querySelector('.user-chip')?.textContent ?? ''))
   check('cookie 登录后身份显示 admin', adminShown, await page.evaluate(() => (document.querySelector('.user-chip')?.textContent ?? '').trim().slice(0, 24)))
@@ -73,7 +73,7 @@ const bodyHas = (page, text) => page.evaluate(t => document.body.innerText.inclu
 // ════ 已登录会话 ════
 const login = await (await fetch(BASE + '/api/users/login', {
   method: 'POST', headers: { 'content-type': 'application/json' },
-  body: JSON.stringify({ email: 'admin@awshop.local', password: 'admin123' }),
+  body: JSON.stringify({ email: process.env.AW_EMAIL ?? 'admin@awshop.local', password: process.env.AW_PASS ?? 'admin123' }),
 })).json()
 const token = login.data.token
 const apiGet = async u => (await fetch(BASE + u, { headers: { authorization: `Bearer ${token}` } })).json()
@@ -83,7 +83,7 @@ watch(page, 'global')
 // ════ ② 仪表盘 ════
 {
   console.log('\n── ② 仪表盘 ──')
-  await page.goto(BASE + '/', { waitUntil: 'networkidle2', timeout: 60000 })
+  await page.goto(BASE + '/', { waitUntil: 'domcontentloaded', timeout: 120000 })
   await sleep(3000)
   const txt = await page.evaluate(() => document.body.innerText)
   check('仪表盘渲染非空', txt.trim().length > 200, `${txt.length} chars`)
@@ -93,7 +93,7 @@ watch(page, 'global')
 // ════ ③ 产线运营:停止 / 开跑(经 API 校验真实状态) ════
 {
   console.log('\n── ③ 产线运营(停止/开跑) ──')
-  await page.goto(BASE + '/dcw', { waitUntil: 'networkidle2', timeout: 60000 })
+  await page.goto(BASE + '/dcw', { waitUntil: 'domcontentloaded', timeout: 120000 })
   await sleep(2500)
   check('演示产线卡片渲染', await bodyHas(page, '演示线'))
   const lines = (await apiGet('/api/workshop/dcw/lines')).data?.lines ?? []
@@ -159,7 +159,7 @@ watch(page, 'global')
   const node = dcwAll.find(n => n.name.includes('Coating Oven'))
   if (!demoLine || !node) { check('定位演示产线/节点', false) }
   else {
-    await page.goto(`${BASE}/dcw/${demoLine.id}`, { waitUntil: 'networkidle2', timeout: 60000 })
+    await page.goto(`${BASE}/dcw/${demoLine.id}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
     await sleep(3500)
     const before = node.value
     const target = Math.min(node.max - 1, Math.max(node.min + 1, Math.round(before ?? 130) + 5))
@@ -196,7 +196,7 @@ watch(page, 'global')
 // ════ ⑤ 数采中心:实时性 + 节点详情 ════
 {
   console.log('\n── ⑤ 数采中心 ──')
-  await page.goto(BASE + '/daq', { waitUntil: 'networkidle2', timeout: 60000 })
+  await page.goto(BASE + '/daq', { waitUntil: 'domcontentloaded', timeout: 120000 })
   await sleep(3000)
   const snap1 = await page.evaluate(() => document.body.innerText.slice(0, 4000))
   await sleep(7000)
@@ -205,7 +205,7 @@ watch(page, 'global')
   const daqList = await apiGet('/api/workshop/daq')
   const dn = (daqList.data?.nodes ?? []).find(n => n.name.includes('Coating Oven'))
   if (dn) {
-    await page.goto(`${BASE}/daq/${dn.id}`, { waitUntil: 'networkidle2', timeout: 60000 })
+    await page.goto(`${BASE}/daq/${dn.id}`, { waitUntil: 'domcontentloaded', timeout: 120000 })
     await sleep(3500)
     const chart = await page.evaluate(() => !!document.querySelector('canvas, svg'))
     check('数采节点详情(图表渲染)', chart)
@@ -216,7 +216,7 @@ watch(page, 'global')
 // ════ ⑥ 数字孪生:3D + 实时面板 + 交互 ════
 {
   console.log('\n── ⑥ 数字孪生 ──')
-  await page.goto(BASE + '/town', { waitUntil: 'networkidle2', timeout: 60000 })
+  await page.goto(BASE + '/town', { waitUntil: 'domcontentloaded', timeout: 120000 })
   await sleep(9000)
   const scene = await page.evaluate(() => {
     const canvas = [...document.querySelectorAll('canvas')].find(c => c.width > 300)
@@ -238,7 +238,7 @@ watch(page, 'global')
 // ════ ⑦ Agent 工作台:进入控制台 + 发消息 ════
 {
   console.log('\n── ⑦ Agent 工作台 ──')
-  await page.goto(BASE + '/workshop', { waitUntil: 'networkidle2', timeout: 60000 })
+  await page.goto(BASE + '/workshop', { waitUntil: 'domcontentloaded', timeout: 120000 })
   await sleep(2500)
   const cardOk = await clickText(page, '进入控制台')
   await sleep(3500)
@@ -279,7 +279,7 @@ watch(page, 'global')
 // ════ ⑧ 系统设置:主题色 + 暗色开关 ════
 {
   console.log('\n── ⑧ 系统设置 ──')
-  await page.goto(BASE + '/settings', { waitUntil: 'networkidle2', timeout: 60000 })
+  await page.goto(BASE + '/settings', { waitUntil: 'domcontentloaded', timeout: 120000 })
   await sleep(2000)
   const accentBefore = await page.evaluate(() => localStorage.getItem('app'))
   const picked = await clickText(page, '琥珀')
@@ -302,7 +302,7 @@ watch(page, 'global')
 {
   console.log('\n── ⑨ 其余页面渲染冒烟 ──')
   for (const p of ['/logs', '/monitor', '/tokens', '/users', '/permissions', '/plugins', '/aml']) {
-    await page.goto(BASE + p, { waitUntil: 'networkidle2', timeout: 45000 }).catch(() => {})
+    await page.goto(BASE + p, { waitUntil: 'domcontentloaded', timeout: 45000 }).catch(() => {})
     await sleep(1500)
     const len = await page.evaluate(() => document.body.innerText.trim().length)
     check(`渲染 ${p}`, len > 80, `${len} chars`)

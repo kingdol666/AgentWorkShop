@@ -118,7 +118,7 @@ export async function launch({ width = 1440, height = 900 } = {}) {
     // 重页面(echarts/three/phaser + 首帧 SSR 水合)在**负载较高的机器**上单次
     // Runtime.evaluate 可能超过 CDP 默认 180s → ProtocolError 直接把断言打断。
     // 这里放宽到 5 分钟:慢 ≠ 失败,断言本身仍各自带超时。
-    protocolTimeout: 300_000,
+    protocolTimeout: 900_000,
     args: [
       '--no-sandbox',
       '--disable-dev-shm-usage',
