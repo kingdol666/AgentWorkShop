@@ -475,3 +475,13 @@ export interface AepDaqControllerState {
   /** 写库侧丢弃(重试耗尽/攒批溢出;与 dropped 的队列侧丢弃分列) */
   tsdbDropped?: number
 }
+
+/** driverConfig 出口脱敏:键名含 password/secret/token/passwd/api_key 的值置换为 '******'(REST/AEP 投影用;持久化与驱动内部不经过此函数) */
+export function maskDriverConfigSecrets<T extends Record<string, unknown>>(cfg: T | undefined | null): T {
+  if (!cfg || typeof cfg !== 'object') return {} as T
+  const out: Record<string, unknown> = { ...cfg }
+  for (const k of Object.keys(out)) {
+    if (/pass(word)?|secret|token|passwd|api[-_]?key/i.test(k)) out[k] = '******'
+  }
+  return out as T
+}

@@ -9,7 +9,7 @@ import { DaqNode } from '../daq-node'
 import { daqKeyFromRef, normalizeDataTransform } from '../../../../../shared/daq-protocol'
 import { findDaqTemplate } from '../daq-templates'
 import { getDaqHostPorts } from '../host-ports'
-import { normalizeDriverKind } from '../drivers'
+import { requireDriverKind } from '../drivers'
 import { randomUUID } from 'node:crypto'
 
 export abstract class DaqControllerCrud extends DaqControllerRuntimeControl {
@@ -29,7 +29,7 @@ export abstract class DaqControllerCrud extends DaqControllerRuntimeControl {
       id: `dn-${randomUUID().slice(0, 8)}`,
       templateRef: input.templateRef,
       name: input.name ?? (tpl ? `${tpl.name} ${String(seq).padStart(2, '0')}` : (input.driver && input.driver !== 'mock' ? `${input.driver.toUpperCase()} 通道` : undefined)),
-      driver: input.driver ? normalizeDriverKind(input.driver) : undefined,
+      driver: input.driver ? requireDriverKind(input.driver) : undefined,
       driverConfig: input.driverConfig ?? {},
       transform: normalizeDataTransform(input.transform),
       enabled: input.enabled,
@@ -59,7 +59,7 @@ export abstract class DaqControllerCrud extends DaqControllerRuntimeControl {
     const node = this.repo.byId(id)
     if (!node) throw Object.assign(new Error(`数采节点不存在: ${id}`), { status: 404 })
     if (patch.name !== undefined) node.name = patch.name
-    if (patch.driver !== undefined) node.driver = normalizeDriverKind(patch.driver)
+    if (patch.driver !== undefined) node.driver = requireDriverKind(patch.driver)
     if (patch.driverConfig !== undefined) node.driverConfig = { ...node.driverConfig, ...patch.driverConfig }
     if (patch.transform !== undefined) {
       if (patch.transform.kind === 'linear' && (!Number.isFinite(Number(patch.transform.scale)) || Number(patch.transform.scale) === 0)) {

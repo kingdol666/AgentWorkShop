@@ -33,7 +33,7 @@ async function pidLooksLikeAw(pid) {
       const r = spawnSync('powershell', ['-NoProfile', '-Command',
         `(Get-CimInstance Win32_Process -Filter 'ProcessId=${Number(pid)}').CommandLine`], { encoding: 'utf8', timeout: 8000 })
       const line = String(r.stdout ?? '')
-      return /node|aw|agentworkshop/i.test(line) && /start\.mjs|aw\.mjs|\.output/i.test(line)
+      return /node|aw|agentworkshop/i.test(line) && /start.mjs|aw.mjs|dev-guard.mjs|.output/i.test(line)
     }
     const fs = await import('node:fs')
     const line = fs.readFileSync(`/proc/${pid}/cmdline`, 'utf8').replace(/\0/g, ' ')
@@ -154,4 +154,31 @@ export async function checkPort(host, port) {
       srv.close(() => resolveProbe(null))
     })
   })
+}
+
+/**
+ * 锁心跳(2026-10-04 事故补强):锁文件可能被第三方引导流程改写,导致原持锁进程
+ * "失锁隐形",与后续实例形成数据目录多写者(JSON 快照库最后写者赢 = 他人的写入蒸发,
+ * 实测曾抹掉新建数控节点)。持锁期间每 10s 校验锁归属;被他人接管 → 立即自杀退出。
+ */
+export function enforceLockHeartbeat(lock, configRoot, onConflict) {
+  const lockPath = join(configRoot, '.runtime', 'aw.lock')
+  const timer = setInterval(() => {
+    let cur = null
+    try {
+      cur = JSON.parse(readFileSync(lockPath, 'utf-8'))
+    }
+    catch { /* 锁文件瞬时缺失(接管者重写中):下一拍再验 */ }
+    if (!cur || cur.pid === process.pid) return
+    clearInterval(timer)
+    const msg = '[single-instance] 数据目录实例锁已被 pid=' + cur.pid + ' 接管(多写者会互相毁灭 JSON 快照)—— 本进程主动退出以保护数据'
+    console.error(msg)
+    try {
+      onConflict?.(cur)
+    }
+    catch { /* ignore */ }
+    process.exit(78)
+  }, 10_000)
+  timer.unref?.()
+  return timer
 }

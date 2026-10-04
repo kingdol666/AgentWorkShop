@@ -1,3 +1,4 @@
+import { maskDriverConfigSecrets } from '../../../../shared/daq-protocol'
 /**
  * DcwNode —— 数据写控制节点领域对象(与 DaqNode 对称)。
  *
@@ -255,7 +256,8 @@ export class DcwNode {
       max: this.max,
       deviceBindingId: this.deviceBindingId,
       deviceIds: this.deviceIds,
-      driverConfig: this.driverConfig,
+      // 凭据脱敏(同 daq 侧 toView;toRow 持久化不掩码)
+      driverConfig: maskDriverConfigSecrets(this.driverConfig),
       transform: this.transform,
       posX: this.posX,
       posZ: this.posZ,

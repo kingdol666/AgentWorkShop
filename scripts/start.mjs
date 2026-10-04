@@ -68,7 +68,7 @@ const portSource = eff.sources['server.prod.port']
 
 // ---- 单实例互斥(hardening ST-1):同配置根双开直接退出码 2,防 SQLite 锁崩溃 ----
 // ---- 单实例互斥 + 自动顶替:同配置根已有实例 → 自动停止后重启新实例(防 SQLite 锁崩溃) ----
-const { acquireLock, checkPort, terminatePid } = await import('../shared/config/single-instance.mjs')
+const { acquireLock, checkPort, terminatePid, enforceLockHeartbeat } = await import('../shared/config/single-instance.mjs')
 let requestedPort = argPort ? Number(argPort) : prodPort
 // CLI 传参校验:--port -1 之类会被 parseArgs 弄成怪值,这里显式拒绝而非绑定到端口 1
 if (!Number.isInteger(requestedPort) || requestedPort < 1 || requestedPort > 65535) {
@@ -90,6 +90,8 @@ if (!lock.ok) {
     process.exit(2)
   }
 }
+// 锁心跳:持锁期间锁被他人接管(多写者=JSON 快照互相毁灭,2026-10-04 实测事故)→ 本进程主动退出
+enforceLockHeartbeat(lock, rm.configRoot)
 
 // ---- 端口顺延:配置端口被任意进程占用(含其他配置根的实例)→ 逐个 +1(最多 10 次) ----
 let port = requestedPort

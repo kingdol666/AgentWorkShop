@@ -18,7 +18,7 @@ import { resolveUser } from '@/server/api/workshop/caller'
 import { defineApiHandler } from '@/server/utils/response'
 import { getWorkshopManager } from '@/server/plugins/workshop'
 import { getHitlRegistry } from '@/server/services/workshop/agents/hitl-registry'
-import { canDecideHitlChannel, ensureHitlReconciled, snapshotOfRow } from '@/server/services/workshop/agents/hitl-decision'
+import { canDecideHitlChannel, ensureHitlReconciled, snapshotOfRow, sweepPhantomHitl } from '@/server/services/workshop/agents/hitl-decision'
 import { lineOfHitlItem } from '@/server/services/workshop/agents/hitl-decision/line-of'
 import { lineMode } from '@/server/services/workshop/permissions'
 import type { AepHitlItem } from '../../../../shared/workshop-protocol'
@@ -31,6 +31,8 @@ export default defineApiHandler(async (event) => {
   // 重启后第一次触碰 HITL 面:先把上一进程遗留的非终态待办收敛为 failed(绝不自动批准),
   // 避免"死待办"在快照里复活(惰性对账,幂等;插件显式调用等价)。
   ensureHitlReconciled()
+  // 幻影清账:DB 残留非终态待办(内存面无对应)置 failed,不再永世悬挂(2026-10-04 实测 9 行)
+  sweepPhantomHitl()
 
   const manager = getWorkshopManager()
   const repo = manager.groupChat.hitl

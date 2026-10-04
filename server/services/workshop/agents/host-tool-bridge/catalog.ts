@@ -163,7 +163,14 @@ export function hostToolsForRole(role: 'lead' | 'worker', channelId?: string): R
   }
   else {
     const hybrid = channelId ? kind === 'hybrid_twin' : false
-    scoped = hybrid ? base : base.filter(t => !HYBRID_TWIN_TOOL_NAMES.has(t.name))
+    // legacy:孪生/训练/优化三族全族摘除(dispatch 对 legacy 拒绝这些工具 —— 注入面与
+    // 分发守卫同口径,免得 worker 对着必拒工具烧 token 试错;2026-10-04 工具面评审实测
+    // legacy worker 注入 73 工具其中 ~14 个 dispatch 必拒)。
+    scoped = hybrid
+      ? base
+      : base.filter(t => !HYBRID_TWIN_TOOL_NAMES.has(t.name)
+        && !AML_TRAINING_TOOL_NAMES.has(t.name)
+        && !AML_OPTIMIZATION_TOOL_NAMES.has(t.name))
   }
   // 直写工具守卫:hybrid 沿用 bounded_auto 开关;工艺优化 Channel 一律不给 dcw 直写
   // (真实写入统一走 optimization_explore 的治理链),训练 Channel 无写语义;

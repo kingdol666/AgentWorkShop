@@ -18,7 +18,7 @@ export type { HitlActingUser, HitlDecisionPayload, HitlDecisionInput, HitlDecisi
 export { assertDecisionPayload, statusOfDecision } from './payload'
 export { resolveAnswers } from './answers'
 export { assertCanDecideHitlChannel, canDecideHitlChannel, snapshotOfRow } from './visibility'
-export { reconcileHitlOnStartup } from './reconcile'
+export { reconcileHitlOnStartup, sweepPhantomHitl } from './reconcile'
 export { registerHitlNativeDispatcher } from './dispatcher'
 export type { HitlNativeDispatchContext, HitlNativeDispatcher } from './dispatcher'
 export { decideHitlRequest, ensureHitlReconciled } from './decide'

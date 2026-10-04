@@ -7,7 +7,7 @@
  * 采样历史仅驻内存(环形缓冲),不进磁盘快照 —— 磁盘只存"配置 + 最近一次读数"。
  */
 
-import { daqKeyFromRef, type DaqDriverKind, type DaqNodeState, type DaqNodeView, type DataTransform } from '../../../../shared/daq-protocol'
+import { daqKeyFromRef, maskDriverConfigSecrets, type DaqDriverKind, type DaqNodeState, type DaqNodeView, type DataTransform } from '../../../../shared/daq-protocol'
 import { findDaqTemplate } from './daq-templates'
 
 /** 采样历史环形缓冲长度(前端趋势图/火花线消费;1s 周期 ≈ 5 分钟窗口) */
@@ -256,7 +256,9 @@ export class DaqNode {
       warnHigh: this.warnHigh,
       deviceBindingId: this.deviceBindingId,
       deviceIds: this.deviceIds,
-      driverConfig: this.driverConfig,
+      // 凭据脱敏(2026-10-04 评审):REST/AEP 投影不回显 password/secret/token 类字段;
+      // 编辑流从仓储取原值,掩码只影响外发视图
+      driverConfig: maskDriverConfigSecrets(this.driverConfig),
       transform: this.transform,
       posX: this.posX,
       posZ: this.posZ,

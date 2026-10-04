@@ -3,7 +3,7 @@
  * (由 server/services/workshop/agents/hitl-decision.ts 按职责拆出;内容逐行原文搬运)
  */
 import { log } from './shared'
-import { resolveHitlRuntime } from '../hitl-registry'
+import { getHitlRegistry, resolveHitlRuntime } from '../hitl-registry'
 import { sendHitlNote } from '../../runtime/platform-notice'
 import { getOps } from '../../ops/ops'
 
@@ -116,5 +116,37 @@ export function reconcileHitlOnStartup(opts: { force?: boolean, error?: string, 
   catch (err) {
     log.error('[hitl] 启动对账失败:', err instanceof Error ? err.message : err)
     return { failed: 0, entries: [] }
+  }
+}
+
+// ============================================================================
+// 幻影清账(2026-10-04 实测:崩溃-重启窗后 DB 残留 9 行 pending,内存 registry
+// 无对应条目 —— /hitl/pending 只读内存快照,这些行既不可见也不可裁,永世悬挂)
+// ============================================================================
+
+/**
+ * 以**内存 registry 为本进程 live 权威**:DB 非终态行若不在 registry 中
+ * (崩溃窗/对账遗漏/历史残留),一律 finalize('failed'),绝不自动批准。
+ * 幂等且廉价:清干净后每次调用都是一次 listNonTerminal 零匹配扫描。
+ * 供 /hitl/pending 等触碰面在 ensureHitlReconciled 之后调用。
+ */
+export function sweepPhantomHitl(): number {
+  try {
+    const manager = resolveHitlRuntime()
+    const repo = manager?.groupChat?.hitl
+    if (!manager || !repo) return 0
+    const live = new Set(getHitlRegistry().snapshot().map(i => `${i.kind}:${i.id}`))
+    let failed = 0
+    const error = '幻影清账:本进程内存面无此待办(崩溃窗残留),不可应答;按 fail-closed 置失败(未自动批准)'
+    for (const r of repo.listNonTerminal()) {
+      if (live.has(`${r.kind}:${r.id}`)) continue
+      if (repo.finalize(r.id, 'failed', { nativeConfirmed: false, error })) failed += 1
+    }
+    if (failed > 0) log.warn(`[hitl] 幻影清账:${failed} 条 DB 残留非终态待办置 failed(内存面无对应)`)
+    return failed
+  }
+  catch (err) {
+    log.warn('[hitl] 幻影清账失败(不影响主流程):', err instanceof Error ? err.message : err)
+    return 0
   }
 }

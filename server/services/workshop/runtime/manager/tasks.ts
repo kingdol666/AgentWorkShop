@@ -4,12 +4,12 @@
  */
 import { ManagerChannelTemplates } from './channel-templates'
 import type { A2AArtifact, Part } from '../../types/a2a'
-import type { AgentStatusView, AgentTaskQueueView, WorkspaceTask } from '../../types/task'
+import type { AgentStatusView, AgentTaskQueueView, WorkspaceTask, TERMINAL_TASK_STATES, type TaskState } from '../../types/task'
 import type { ExecutionMode } from '../../agents/agent-interface'
 import type { ModeConfig } from '../execution-mode'
 import type { TaskPatch } from '../../db/task.repo'
 import { AppError } from '../../../../utils/errors'
-import { TERMINAL_TASK_STATES } from '../../types/task'
+
 import { assertHarnessUsable } from '../../agents/harness-availability'
 import { buildMessage, rowToTask } from './helpers'
 import { encodeTaskMode, isGoalSummaryArtifact } from '../execution-mode'
@@ -69,6 +69,15 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
     const deadlineAt = input.mode
       ? undefined
       : new Date(Date.now() + Math.max(10_000, Number(workshopSettings().root_timeout_ms ?? 900_000))).toISOString()
+    // 活动根判重(2026-10-04 场景C实录:同一工作包被重复派成多个根,靠 prompt「减噪约定」
+    // 收口 —— 机制缺位)。规则:同频道+同收件人存在**非终态**根且归一化标题一致 → 复用该根,
+    // 不再造重复行(终态任务不参与判重,保留「同标题并排重跑」的既有语义)。
+    const normTitle = (s: string) => s.replace(/\s+/g, '')
+    const dupRoot = this.deps.repos.tasks.listRoots(input.channelId).find(r =>
+      !TERMINAL_TASK_STATES[r.state as TaskState]
+      && r.assigneeId === assigneeId
+      && normTitle(r.title) === normTitle(input.title))
+    if (dupRoot) return rowToTask(dupRoot)
     let task = this.getTaskEngine().create({
       channelId: input.channelId,
       creatorId: '',

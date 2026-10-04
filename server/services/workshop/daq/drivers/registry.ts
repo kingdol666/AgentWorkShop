@@ -76,6 +76,14 @@ export function listPluginDriverMetas(): PluginDriverMeta[] {
   return plugins.listMetas()
 }
 
+/** 严格解析:未知 kind 显式报错(配置错协议名静默采 mock 数据属工业高危默认;2026-10-04 评审) */
+export function requireDriverKind(kind: string): DaqDriverKind {
+  if (kind === 'modbus') return 'modbus-tcp'
+  if (kind === 'rtu' || kind === 'modbus-rtu-tcp') return 'modbus-rtu'
+  if (kind in REGISTRY || pluginRegistry().has(kind)) return kind as DaqDriverKind
+  throw new Error('未知数采驱动协议: ' + JSON.stringify(kind) + '(已注册: ' + [...Object.keys(REGISTRY), ...pluginRegistry().keys()].join(', ') + ')')
+}
+
 export function normalizeDriverKind(kind: string): DaqDriverKind {
   if (kind === 'modbus') return 'modbus-tcp'
   if (kind === 'rtu' || kind === 'modbus-rtu-tcp') return 'modbus-rtu'

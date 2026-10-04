@@ -85,7 +85,7 @@ console.log(`[config] worker PORT env -> ${effectivePort}`)
 
 // --- 单实例互斥 + 端口占用显式报错(hardening ST-1/ST-4):不再静默换端口 ---
 {
-  const { acquireLock, checkPort } = await import('../shared/config/single-instance.mjs')
+  const { acquireLock, checkPort, enforceLockHeartbeat } = await import('../shared/config/single-instance.mjs')
   const lock = acquireLock(rmDev.configRoot, { mode: 'dev', port: effectivePort })
   if (!lock.ok) {
     const h = lock.holder
@@ -94,6 +94,7 @@ console.log(`[config] worker PORT env -> ${effectivePort}`)
     console.error(`  › 如确认是残留锁文件,可删除 ${lock.lockPath} 后重试`)
     process.exit(2)
   }
+  enforceLockHeartbeat(lock, rmDev.configRoot)
   const probeHost = devHost === '0.0.0.0' || devHost === '::' ? '127.0.0.1' : devHost
   const occupied = await checkPort(probeHost, effectivePort)
   if (occupied) {
