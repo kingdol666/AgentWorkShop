@@ -201,11 +201,20 @@ export default function workshopPlugin(nitroApp: {
   // 已就绪,补一次 startAll(幂等:已在采的节点 rearm,停用节点不受影响)。dev 下
   // 30s 自动重连循环会掩盖该竞态,生产单次启动必须依赖此处。plugin 为同步函数,
   // 动态 import 落到 microtask,不阻塞其余启动步骤。
+  // 端口装配必须先于 resumeAll(2026-10-04 实测事故):bindDaqHostPorts 此前只在
+  // daq REST 路由处理时绑定 —— 冷启动无人访问 DAQ 页面时 sweep() 因
+  // getDaqHostPorts()=null 永久空转,开机补挂形同虚设(实测 8min 零采样死窗,
+  // 首次 API 探测才"顺手救活")。启动即装配端口(幂等),把绑定从"有人访问"收窄为"进程存在"。
   void (async () => {
     try {
-      const mod = await import('../services/workshop/daq/daq-controller')
-      const st = mod.getDaqController().resumeAll()
-      console.log(`[workshop] DAQ 采集补挂完成(running=${st.running})`)
+      const [{ getDaqController }, { bindDaqHost }] = await Promise.all([
+        import('../services/workshop/daq/daq-controller'),
+        import('../services/workshop/daq/host-bindings'),
+      ])
+      const { broadcastSceneEvent } = await import('../services/workshop/scene-events')
+      bindDaqHost(broadcastSceneEvent)
+      const st = getDaqController().resumeAll()
+      console.log(`[workshop] DAQ 采集补挂完成(running=${st.running},宿主端口已装配)`)
     }
     catch (err) {
       console.error('[workshop] DAQ 采集补挂失败(30s 自动重连可恢复):', err instanceof Error ? err.message : err)
