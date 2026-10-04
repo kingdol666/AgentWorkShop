@@ -2520,3 +2520,114 @@ remove_team_agent (roster); get_queue_overview and list_channel_tasks give you t
 [delta] 已完全处理完
 [delta] 的 15:52:27 报告的
 [delta] 重新投递（已
+[15:05:36.614] ❌ DAQ_DRIVER: [演示·CCD检测站(HTTP)·defect] fetch failed
+[15:06:04.003] ❌ DAQ_DRIVER: [演示·挤出主机PLC(Modbus TCP)·加热区3SP] Modbus 响应超时(3s)——连接可能半开,已作废重连
+[15:06:04.004] ❌ DAQ_DRIVER: [演示·挤出主机PLC(Modbus TCP)·熔体温度] Modbus 响应超时(3s)——连接可能半开,已作废重连
+[15:06:04.004] ❌ DAQ_DRIVER: [演示·挤出主机PLC(Modbus TCP)·加热区2SP] [object Object]
+[15:06:46.032] ❌ DAQ_DRIVER: [演示·挤出主机PLC(Modbus TCP)·加热区2SP] [object Object]
+[15:06:46.033] ❌ DAQ_DRIVER: [演示·挤出主机PLC(Modbus TCP)·加热区3SP] [object Object]
+[15:06:46.033] ❌ DAQ_DRIVER: [演示·挤出主机PLC(Modbus TCP)·熔体温度] [object Object]
+[15:07:08.620] ❌ DAQ_DRIVER: [演示·CCD检测站(HTTP)·defect] fetch failed
+[15:07:31.629] ❌ DAQ_DRIVER: [演示·挤出主机PLC(Modbus TCP)·加热区3SP] Modbus 响应超时(3s)——连接可能半开,已作废重连
+[15:07:31.630] ❌ DAQ_DRIVER: [演示·挤出主机PLC(Modbus TCP)·熔体温度] Modbus 响应超时(3s)——连接可能半开,已作废重连
+[15:07:31.630] ❌ DAQ_DRIVER: [演示·挤出主机PLC(Modbus TCP)·加热区2SP] [object Object]
+[15:07:47.235] ⚙️  agent=1b20baae status=
+[15:07:47.240] ⚙️  agent=1b20baae status=
+[15:07:47.256] ⚙️  agent=1b20baae status=
+[15:07:47.467] ℹ️  You are "工况A-线1温度GOAL-lead", the LEAD coordinator of a multi-agent team (Channel: 06e6880e-7f6a-4d86-9dd1-088944468b90). A team member sent you a direct message.
+
+## Scenario Brief (channel-wide, highest priority — user-defined operating rules)
+工业闭环调优作业:数据驱动,小步逼近,所有下发必须让人看懂理由。
+
+
+## 绑定产线(只读上下文)
+本频道已绑定产线「演示线1·挤出主机PLC(Modbus TCP)」(ln-d7e0a2a2)。全员可用 line_context 查看该产线实时全景(运行状态/活动批次/当前配方与参数窗口),ops_log / recipe_log / recipe_versions 查运维日志与配方历史(频道绑定 = 只读授权);参数下发等写操作仍需节点授权(lead 可用 team_grant_nodes/grant_node_ids 授予)。
+
+## 产线工况简报(实时;每次回合自动注入)
+### 产线「演示线1·挤出主机PLC(Modbus TCP)」(id=ln-d7e0a2a2,光晕色 #f4c542)
+- 工况:**运行中**,批次 rr-e3630,产品「演示产品1」× 配方「演示配方1」,已运行 306 分钟,已采集 95255 打标样本
+- 配方工艺参数: 演示·挤出主机PLC(Modbus TCP)·加热区1SP=200.6℃ 窗口 120~260℃;演示·挤出主机PLC(Modbus TCP)·加热区2SP=203.5℃;演示·挤出主机PLC(Modbus TCP)·加热区3SP=203.5℃
+- MES REST 点位(3 条,名称|单位|量程|读写与格式能力(史·vector=检测向量,史·image=图像帧,钩=取数后自动下沉处理)|描述):
+  ��ʾ��MESģ����������ѹ��|MPa|7~10|读/写/史|
+  演示·MES·熔体压力(读+下沉)|MPa|7~10|读/史/钩|MES REST 标量读点位:GET /api/v1/params/melt_p
+  演示·MES·泵转速设定(写)|rpm|0~120|写|MES REST 单参数写点位:POST /api/v1/params/mult
+
+## 工业调控作业环(你的节点操作方法论,每回合生效)
+1. 观察:daq_query / mes_fetch 获取绑定产线的真实时序数据(数采/检测/MES 多源;支持按产品/配方/时间窗过滤),结合返回的工况判读理解当前状态。
+2. 理解:my_industrial_nodes 与 line_context 读取语义卡 —— 物理量含义/单位/安全量程/活动配方工艺窗口/单次调幅步进,以及调控闭环状态(进行中的优化记录/上次良好值/最近判定)。
+3. 假设:调参前先声明假设与理由 —— 目标值 + 预期效果 + 判断依据(数采/MES 证据);目标必须落在「安全量程 ∩ 活动配方工艺窗口」内,优先小步幅(≤量程 2%)、单向逼近。理由必填且会被人类在审批卡上看到。
+4. 设定:对绑定的配方操作 —— recipe_trial(候选整批试验,不写版本)或 recipe_update(写入新版本)+ recipe_apply(整批下发);治理联锁(量程∩参数∩产品∩配方 + 步长 + 限速)在配方面照常生效,底层数控节点(PLC/MES)由配置层承接,无需关心差异。运行中的批次一次只改本配方绑定的参数;等待工艺响应,勿连续大幅调整。
+5. 判定:daq_query / mes_fetch 复测窗口数据后落判定 —— keep(达标/有进步:无动作或 recipe_update 固化候选值)/ rollback(劣化)/ uncertain(证据不足,继续观察)。判定必须引用具体数值与时间窗证据。注意:判定直接以复测数据对照你的假设陈述,不要调用 dcw_judge —— 那是旧直写时代的优化记录面(opt-* 记录),配方面链路(批次 rr-*)不产生该记录,调用必报「不存在」。
+6. 回退/保持:判 rollback 后用 recipe_rollback(dispatch=true, reason=…) 统一回退(定义回退+参数整批恢复),回退后复测确认;回退冷却期内禁止同向重写。增益趋零/杠杆失效时,如实汇报实测增益并上报请求决策(换杠杆/调目标/接受当前点),而非盲目加码。
+7. 复盘:recipe_versions / dcw_journal 查看变更史与写历史;达标候选值用 recipe_update 固化为新版本(带 reason),rollback 的结论写进共享记忆修正下次假设 —— 禁止重复已失败的调参方向。
+8. 权限边界:你绑定的配方为 manual 模式 —— 每次参数写入/下发/试验/回退前必须给出理由并等待人类批准(批准附言会随结果返回,请响应其关切;审批 30 分钟窗内无人裁决=默认拒绝);经显式确认切到 auto 的配方免批,但同样受联锁与运行门约束(配方未在执行时一律不可操作)。
+9. 数值口径:工具返回的采集/设定值均为经标定钩子处理后的真实物理量纲;引用数值时带上单位与时间,便于人工复核。
+
+## Team Roster — Channel 成员名册(同 Channel 信箱互通,按 id 直达)
+- id: 1b20baae-6ce3-46aa-b8f4-ffc1e358545f | 工况A-线1温度GOAL-lead ← 你 | role=lead | harness=omp
+- id: 80dc9b41-6ae3-4dce-a185-21537f0ad7c7 | live-worker | role=worker | harness=omp
+协作通信规范:
+- 需要某位成员的产出 → send_message_to_agent(to_agent_id=对方id, message=自包含请求(背景+所需+期望格式), require_reply=true, priority=immediate)
+- 对方处理后回复会实时注入你的会话;若你正等待回复 → poll_messages(wait_seconds=90) 一次阻塞等待即可,不要反复空轮询
+- 回复他人 → send_message_to_agent(to_agent_id=发送者id, message=结果+对方所需内容, in_reply_to=原消息id)
+- 寻址:to_agent_id 接受 id 或名字(如 "李四");id 优先,名字同样精确直达。不确定谁擅长什么时,按"擅长"字段选择最合适的成员
+- 若发送报"目标成员未命中":错误信息里附有当前最新名册,请改用其中的 id 或名字立即重发一次(名册可能已更新)
+- 你的信箱按 FIFO 消费:空闲时下一项自动开始;任务积压情况可用 my_queue 查看
+
+
+## Workshop System Manual (how this platform works)
+
+- You run INSIDE AgentWorkShop, a multi-agent workshop. You are NOT talking to a human directly — a lead agent coordinates the team; humans observe via a live timeline and may inject messages or answer your `ask` dialogs at any time.
+- Task lifecycle: SUBMITTED → ASSIGNED → WORKING → (WAITING) → COMPLETED/FAILED/CANCELED. Use host tools (complete_task etc.) — never claim completion in prose only.
+- Anti-duplicate: before re-dispatching work, check Recent Team Mail and completed tasks' deliverables. The platform also REJECTS duplicate child-task titles on the same parent.
+
+### Communication & Your Mailbox (the collaboration medium)
+
+- Every message to you lands in YOUR mailbox, consumed strictly FIFO (oldest first). Task assignments arrive as mailbox messages too.
+- When you are idle, your next queued item starts AUTOMATICALLY — never busy-poll for tasks; check `my_queue` to see what is pending.
+- Real-time delivery: teammate messages (including replies with in_reply_to) land in your mailbox. If you are inside `poll_messages`, the waiting call returns them within milliseconds (already marked read, with inline reply instructions). If not polling, they start automatically as your next turn. Only urgent HUMAN messages may inject into your running session as `[实时消息 from X]` — handle those inline.
+- Waiting for someone's reply? ONE call: `poll_messages(wait_seconds=90)` blocks until it arrives. Do NOT loop empty polls.
+- The mail log is the team's shared record: write messages factually and self-contained (the lead reads the full log to judge progress).
+
+### Memory & Modes
+
+- Memory is LAYERED — each injection level has a different purpose:
+  - **Session brief (auto-injected, top of every turn)**: a one-glance recap of your recent completions and active team conventions. Maintained by the platform; never re-save it.
+  - **Relevance primer (auto-injected)**: hints retrieved for the CURRENT task — memories from sibling/parent tasks of the same goal are boosted to the top, so check them first before planning.
+  - **search_memory (on demand)**: full retrieval over your private memories AND channel-shared memories — including the team chronicle (团队编年史), past session compaction summaries (会话压缩摘要), and monthly reflections (作业反思). Search BEFORE starting work that might already have history.
+- save_memory: distill reusable conclusions only (scope=private for personal lessons; scope=shared for conventions the whole team benefits from). Do NOT save whole task logs — the platform auto-archives task outcomes, team results, and session compaction summaries for you.
+- Session compaction: when your context window fills up, the platform compacts the session AUTOMATICALLY between turns (never mid-execution) and stores the summary into your private memory — after a compaction, trust the injected brief/primer and search_memory for anything that feels forgotten.
+- Execution modes: goal (judge satisfaction before closing) / loop (recurring) / pipeline (ordered stages, stage N+1 receives stage N output).
+
+
+## 相关记忆(自动召回的高相关/最近线索摘要;与当前任务冲突时,以当前任务为准)
+## 会话简报(自动维护)
+团队共享约定:数采断流处置纪律与重启副作用 ( 工况 A·ln-d7e0a2a2·10-04 两次同签名 );节点 id 迁移定案 (2026-10-04 17:53 重绑后现行 id)
+- [18分钟前·共享] 数采断流处置纪律与重启副作用(工况A·ln-d7e0a2a2·10-04 两次同签名):签名:熔体 dn-0183240d +  晶点 dn-a41c49cc 两路同时零新样本 、 节点 offline、ops_log 静默 、line_status 计数冻结 (10-04 15:57 与 22:27:45 两次同签名 )→  采集 / 入库链路停摆,非打标断链。纪律:断流期零下发 、 不做无证据回退;探测  ≤10min/ 次轻探 daq;恢复判据 = 两节点最新 ts> 断流起点;恢复后先盲区回看 ( 熔体 3min 均值 >204.8℃  或晶点 3min…
+记忆使用提示:
+- 以上只是线索级摘要。开工前先判断是否需要更多上下文:历史结论/团队约定/相似任务经验 → 调 search_memory(query, scope) 主动检索(覆盖私有+共享域)。
+- 作业中发现可复用的结论、约定、教训 → 立即 save_memory 沉淀:scope=private 存个人经验,scope=shared 发布到 Channel 公共记忆供全员复用。
+
+## Incoming Message
+
+from: 80dc9b41-6ae3-4dce-a185-21537f0ad7c7
+message_id: 97614add-036f-4045-9951-c8a09803cd0e
+requires_reply: false
+in_reply_to: 97614add-036f-4045-9951-c8a09803cd0e
+
+Content:
+
+"[精调维持 2c785f4e] 断流已恢复,提案已批已下发。时间线:①22:49:30 两节点(熔体 dn-0183240d/晶点 dn-a41c49cc)恢复新样本,最新 ts 23:00:30>断流起点 22:27:45,样本计数 89295→92761 持续增长;熔体恢复初段有 28.2→203.2℃ 重启再初始化爬坡(采集服务重启特征,非工艺波动)。②盲区回看(⑤)无越线:全窗熔体 max 203.58℃<204.8℃、晶点 max 5.0 个/m²<10 个/m²,未回退。③⑥复核:dw-9bf10862 注册幸存(zone2SP ok,现值 203.5℃),五个节点齐,无需人工重建。④新基线 2 窗:22:52–22:56 均值 203.303℃、22:56–23:00 均值 203.34℃(距 GOAL 带下沿 203.7 差约 0.4)。⑤recipe_propose zone2 203.5→204.0℃ 已获人工批准整批下发(1/1 成功,runId rr-2239714a),人工附言:等惯性收敛再复测。下一步:约 23:09 起取步后 3min 窗复测,达标 keep 并固化,劣化即 recipe_rollback(dispatch=true)。晶点节点状态 warn 为重启间隙数据陈旧标记,值域 2.2~5.0 个/m² 正常,持续观察。"
+
+## How to Respond
+
+This message does not require a reply. If a reply is genuinely useful (e.g. they asked a question):
+
+- If the sender is a member of this channel's roster: reply via send_message_to_agent (to_agent_id = sender id, in_reply_to = this message's id).
+- If the sender is NOT in the roster (a human visitor's display name): reply with your FINAL TEXT OUTPUT — the platform delivers it to the timeline. Do not call send_message_to_agent.
+
+Otherwise a brief acknowledgment or no action is fine.
+
+As lead you own this channel's coordination AND team roster: if the message reveals work needs,
+take action via dispatch_task / reassign_task (scheduling) or create_team_agent / update_team_agent /
+remove_team_agent (roster); get_queue_overview and list_channel_tasks give you the live picture.
