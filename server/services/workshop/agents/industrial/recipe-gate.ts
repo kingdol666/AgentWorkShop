@@ -13,6 +13,7 @@
  */
 import { getAgentNodeBindingRepo, type AgentNodeBinding } from '../node-bindings.repo'
 import { getDcwController } from '../../dcw/dcw-controller'
+import { getActiveLineRun } from '../../dcw/line-run'
 
 export type RecipeOp = 'update' | 'dispatch' | 'trial' | 'rollback'
 
@@ -23,7 +24,14 @@ export type RecipeGateResult
 /** 运行门:该配方当前是否有活动批次(未结束的 run) */
 export function activeRunOfRecipe(recipeId: string): { id: string } | null {
   const run = getDcwController().listRuns().find(r => r.recipeId === recipeId && !r.endedAt)
-  return run ? { id: run.id } : null
+  if (!run) return null
+  // 反僵尸交叉校验(鲁棒性):DB 行未结束 ≠ 产线在运行 —— 多次 apply/崩溃/重启会泄漏
+  // endedAt=null 的历史行,若只查 DB,运行门会被僵尸批次永久放行(停止后仍可下发)。
+  // 权威运行态是 line-run 注册表(内存+line-runs.json 落盘,崩溃可恢复):
+  // run 所属产线必须在注册表中运行,且注册表的活跃批次就是本批次。
+  const active = getActiveLineRun(run.lineId)
+  if (!active || active.runId !== run.id) return null
+  return { id: run.id }
 }
 
 /** 统一鉴权门:绑定 → 二级认证 → 运行门;返回绑定与 HITL 判定(不做挂起,挂起由调用方执行) */

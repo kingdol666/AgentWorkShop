@@ -94,6 +94,14 @@ export abstract class DcwControllerLines extends DcwControllerRecipes {
     if (!product) {
       throw new AppError(400, ErrorCodes.VALIDATION_ERROR, '开跑前必须先设定配方:Recipe 未归属有效产品,请先补全产品信息')
     }
+    // 运行门防僵尸:开跑即取代本产线全部历史未结束批次(超跑/重启泄漏的
+    // endedAt=null 行会让 activeRunOfRecipe 的运行门被永久放行)
+    for (const stale of repo.listRuns().filter(r => r.lineId === lineId && !r.endedAt)) {
+      try {
+        repo.closeRun(stale.id)
+      }
+      catch { /* 单行清理失败不阻断开跑 */ }
+    }
     const run = repo.createRun(recipe)
     setActiveLineRun({
       lineId,
@@ -117,6 +125,14 @@ export abstract class DcwControllerLines extends DcwControllerRecipes {
     const prev = clearActiveLineRun(lineId)
     if (!prev) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `产线「${line.name}」未在运行`)
     const run = getDcwRecipeRepo().closeRun(prev.runId)
+    // 运行门防僵尸:结清本产线**全部**未结束批次(多次 apply/崩溃/重启会泄漏
+    // endedAt=null 的历史行;只结清注册表批次会让运行门被僵尸批次永久放行)
+    for (const stale of getDcwRecipeRepo().listRuns().filter(r => r.lineId === lineId && !r.endedAt && r.id !== run.id)) {
+      try {
+        getDcwRecipeRepo().closeRun(stale.id)
+      }
+      catch { /* 单行清理失败不阻断停线 */ }
+    }
     // 调控闭环封窗:该线 open 优化记录随批次窗口关闭(防跨批次污染)
     getRecipeRollBackManager().closeForLine(lineId)
     this.broadcast?.('dcw.controller', this.controllerState())
