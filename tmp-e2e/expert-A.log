@@ -1,0 +1,51 @@
+[08:24:07] === 专家代理v2启动 scenario=A channel=06e6880e 方向=向上 ===
+[08:31:19] === 本场景任务终态(COMPLETED),专家代理退出 ===
+[08:31:19] === 结束统计: 批准0 拒绝0 ===
+[08:35:28] === 专家代理v2启动 scenario=A channel=06e6880e 方向=向上 ===
+[08:35:40] === 本场景任务终态(COMPLETED),专家代理退出 ===
+[08:35:40] === 结束统计: 批准0 拒绝0 ===
+[08:40:51] === 专家代理v2启动 scenario=A channel=06e6880e 方向=向上 ===
+[08:44:28] ────────────────────────────────────
+[08:44:28] 🙋 审批单 ap-85944c27 title=配方参数写入审批 node=recipe:rc-bbab24bc
+[08:44:28] 📄 detail:
+   配方参数写入:「演示配方1」v1 拟保存 演示·挤出主机PLC(Modbus TCP)·加热区2SP ?→200℃;演示·挤出主机PLC(Modbus TCP)·加热区3SP ?→200℃ | 理由:[Gongkuang-C step-1] Register zone2/zone3 SP into recipe rc-bbab24bc at CURRENT actual values (both 200.0C, expert readback 16:35:18), zero process change, zero dispatch. Basis: zone1 SP lever measured gain 0.05-0.1C/C decaying (+10.6C SP yielded only +0.55C melt), expert ruling 16:05:38 switched lever to multi-zone joint raise (Gongkuang-C). Nodes rebuilt after registry deletion incident: dw-4d980ff1 (zone2 SP, holding@40023, float32/big), dw-752ad470 (zone3 SP, holding@40025), both range 120-260C. Precheck note: param_read probe REJECTED (worker holds no dcw binding under v2 model: 'no dcw nodes bound'); baseline adopted = expert 16:35:18 readback 200.0C, cross-checked by bound daq dn-0183240d melt 200.1C realtime; first recipe-side readback will confirm. Plan after registration: +2.0C steps on both zones, target melt 3min-avg >=202.5C, guard: defect count 3min-avg <=10 per m2, melt >204.5C immediate rollback. | 批准=写入新版本(不下发产线);拒绝可附指导
+[08:44:28] ✅ 批准#1 respond code=0
+[08:50:40] ────────────────────────────────────
+[08:50:40] 🙋 审批单 ap-fa43feb4 title=配方试验(整批候选)下发审批 node=recipe:rc-bbab24bc
+[08:50:40] 📄 detail:
+   配方试验候选(整批 2 参数):演示·挤出主机PLC(Modbus TCP)·加热区2SP 200→202℃;演示·挤出主机PLC(Modbus TCP)·加热区3SP 200→202℃ | 假设:[Gongkuang-C step-2] Trial: zone2 SP dw-4d980ff1 200->202.0C and zone3 SP dw-752ad470 200->202.0C (+2.0C each, ~1.7% of 120-260C range, single small bidirectional-consistent step, no oscillation). Basis: zone1-only lever measured gain 0.05-0.1C/C decaying (+10.6C SP yielded only +0.55C melt); expert ruling 16:05:38 switched lever to multi-zone joint raise. Expectation: with 3-4 min thermal inertia, melt temp 3min-avg rises from baseline toward >=202.5C goal. Baseline evidence (daq dn-0183240d, run rr-0a5fd19c): 16:39-16:45 mean 200.06C; 16:45-16:50 mean 200.07C (stable, zero disturbance from step-1 registration). Guards: defect count 3min-avg <=10 per m2 (baseline 4.01 then 3.84, dn-a41c49cc); melt >204.5C -> immediate rollback via recipe_rollback(dispatch=true). Zone1 untouched: stays 195C actual (recipe v1 target 190 NOT applied, to preserve Gongkuang-A result; trial covers zone2/3 only). Note: zone2/3 baseline value = expert readback 16:35:18 (200.0C each; param_read probe blocked under v2 - no dcw binding; recipe v2 registration echo confirmed 200). | 批准=整批下发试验(不写版本);拒绝可附指导
+[08:50:40] ⚙️ 工况注入: heaterDecay 1→4, feedDrift 0.15→0.4 (code=400 {"code":"BAD_INPUT","message":"plantModel 必填且含 controls/outputs 绑定"})
+[08:50:40] ✅ 批准#2 respond code=0
+[08:54:41] ────────────────────────────────────
+[08:54:41] 🙋 审批单 ap-7b70271e title=配方参数写入审批 node=recipe:rc-bbab24bc
+[08:54:41] 📄 detail:
+   配方参数写入:「演示配方1」v2 拟保存 演示·挤出主机PLC(Modbus TCP)·加热区1SP 190→200.6℃;演示·挤出主机PLC(Modbus TCP)·加热区2SP 200→200℃;演示·挤出主机PLC(Modbus TCP)·加热区3SP 200→200℃ | 理由:[Gongkuang-C hotfix v3] RESTORE pre-trial physical state after mis-dispatch. Ledger: recipe.trial 16:50:40 dispatched FULL batch 3/3 incl zone1 dw-679bb3d2 -> 190C (ops_log dcw.write.recipe x3), overwriting lastGood 200.6C (set 15:33:07, zero writes since). This update aligns definition face to physical lastGood: zone1=200.6C, zone2 dw-4d980ff1=200.0C, zone3 dw-752ad470=200.0C (pre-trial values, expert readback 16:35:18). Zero net process change vs pre-trial state. Also fixes rollback-target landmine: v1/v2 carry stale zone1=190C, any rollback/apply would redo the -10.6C step. NOTE: pending step-1' card (zone1=200C) conflicts with this restore, recommend REJECT; step-2 propose 16:56 tombstone contradiction (dw-4d980ff1/dw-752ad470 rejected as deleted though v2 registered them) still needs platform-side fix before next raise attempt. | 批准=写入新版本(不下发产线);拒绝可附指导
+[08:54:41] ✅ 批准#3 respond code=0
+[08:55:05] ────────────────────────────────────
+[08:55:05] 🙋 审批单 ap-a0c801fc title=配方下发审批 node=recipe:rc-bbab24bc
+[08:55:05] 📄 detail:
+   配方正式下发:「演示配方1」v3 全参数整批(3 项):演示·挤出主机PLC(Modbus TCP)·加热区1SP=200.6℃;演示·挤出主机PLC(Modbus TCP)·加热区2SP=200℃;演示·挤出主机PLC(Modbus TCP)·加热区3SP=200℃ | 理由:[Gongkuang-C hotfix apply] Dispatch approved v3 to restore pre-trial physical state. Mis-dispatch at 16:50:40 (recipe.trial full-batch 3/3) left running PLC at zone1=190C (was lastGood 200.6C set 15:33:07, ledger-proven) + zone2/3=202C. v3 definition = zone1 dw-679bb3d2=200.6C, zone2 dw-4d980ff1=200.0C, zone3 dw-752ad470=200.0C (pre-trial values, expert readback 16:35:18). Expected: melt returns to ~200.05C plateau within ~4min thermal inertia; guards armed (melt 3min>204.5C rollback, <199.0C notify, defect 3min>10 rollback). Human already approved v3 definition card with note 'approve execution, wait inertia then retest'. | 批准=整批下发;拒绝可附指导
+[08:55:05] ✅ 批准#4 respond code=0
+[09:01:29] ────────────────────────────────────
+[09:01:29] 🙋 审批单 ap-f5bca0db title=配方参数写入审批 node=recipe:rc-bbab24bc
+[09:01:29] 📄 detail:
+   配方参数写入:「演示配方1」v3 拟保存 演示·挤出主机PLC(Modbus TCP)·加热区2SP 200→202℃;演示·挤出主机PLC(Modbus TCP)·加热区3SP 200→202℃ | 理由:[Gongkuang-C step-2] Raise zone2/zone3 SP 200->202.0C each (+2.0C, ~1.7% of 120-260C window, single small step, bidirectional-consistent). Executed from lead lane because worker lane is tombstone-blocked (worker submissions 16:56/16:58/17:08 all rejected 'node deleted' while lead-lane v3 update 16:54:41 + apply 16:55:05 rr-cca00 succeeded 3/3 - per-actor stale view; division of labor: lead executes writes, worker guards). Basis: expert ruling 16:05:38 lever switch to multi-zone joint raise (zone1-only gain 0.05-0.1C/C decaying); measured joint gain evidence from rr-85508 window: zone2/3 +2C -> melt +1.4C (200.07 -> 201.4-201.5 plateau 16:51-16:54, ~0.36C/C); baseline reset 200.05C (16:56-16:58, post-restore). Expected melt ~201.4-201.5C (<202.5 GOAL): if retest lands in [201.3,202.5) = significant progress, second step (+2.0 -> 204) will be requested via human ruling, no auto-continuation. zone1 untouched at 200.6C (lastGood). Guards: melt 3min >204.5 rollback, <199.0 notify, defect 3min >10 rollback; 4min inertia before judgment. | 批准=写入新版本(不下发产线);拒绝可附指导
+[09:01:29] ✅ 批准#5 respond code=0
+[09:01:54] ────────────────────────────────────
+[09:01:54] 🙋 审批单 ap-827daa3e title=配方下发审批 node=recipe:rc-bbab24bc
+[09:01:54] 📄 detail:
+   配方正式下发:「演示配方1」v4 全参数整批(3 项):演示·挤出主机PLC(Modbus TCP)·加热区1SP=200.6℃;演示·挤出主机PLC(Modbus TCP)·加热区2SP=202℃;演示·挤出主机PLC(Modbus TCP)·加热区3SP=202℃ | 理由:[Gongkuang-C step-2 apply] Dispatch approved v4: zone2 dw-4d980ff1 200->202C, zone3 dw-752ad470 200->202C (+2.0C each, single small step); zone1 stays 200.6C (lastGood). Full-batch echo is harmless: v4 definition = current physical except the intended +2.0 raise (v3 restored definition=physical at 16:55:05 rr-cca00). Basis and expected outcome as on v4 card: joint gain ~0.36C/C measured in rr-85508 window, expected melt ~201.4-201.5C after ~4min inertia vs GOAL 202.5C; second step subject to human ruling if retest in [201.3,202.5). Guards: melt 3min >204.5 rollback, <199.0 notify, defect 3min >10 rollback. | 批准=整批下发;拒绝可附指导
+[09:01:54] ✅ 批准#6 respond code=0
+[09:04:11] === 专家代理v2启动 scenario=A channel=06e6880e 方向=向上 ===
+[09:05:06] ────────────────────────────────────
+[09:05:06] 🙋 审批单 ap-a800cb57 title=配方参数写入审批 node=recipe:rc-bbab24bc
+[09:05:06] 📄 detail:
+   配方参数写入:「演示配方1」v4 拟保存 演示·挤出主机PLC(Modbus TCP)·加热区2SP 202→203.5℃;演示·挤出主机PLC(Modbus TCP)·加热区3SP 202→203.5℃ | 理由:[Gongkuang-C step-3 finishing step] Request ruling: raise zone2/zone3 202.0->203.5C each (+1.5C, ~1.25% of window, within single-step cap 2.8C). Measured step-2 response (v4, rr-ca453): melt 200.05 baseline -> 201.7C mean over 17:02-17:04 (buckets 201.29/201.80/201.82/201.86/201.77), gain ~0.42C melt per 1C combined setpoint, stronger than phantom-window 0.36 (zone1 at full 200.6C supply). Gap to GOAL 202.5C = 0.7C; +1.5C/zone (+3.0C combined) projects melt ~203.0-203.1C >= 202.5 with 1.4C margin to 204.5C guard; a +1.0C step would land ~202.6C - too thin against noise. Judgment plan after approval+apply+inertia (observed 30-60s): if 3min mean >= 202.5C -> judge keep, v5 is the final solidified recipe for Gongkuang-C; guards unchanged (melt 3min >204.5 rollback, <199.0 notify, defect >10 rollback). Executed from lead lane (worker lane tombstone-blocked, per-actor stale view - see shared memory 17:14). | 批准=写入新版本(不下发产线);拒绝可附指导
+[09:05:06] ✅ 批准#7 respond code=0
+[09:05:18] ────────────────────────────────────
+[09:05:18] 🙋 审批单 ap-86a5e66d title=配方下发审批 node=recipe:rc-bbab24bc
+[09:05:18] 📄 detail:
+   配方正式下发:「演示配方1」v5 全参数整批(3 项):演示·挤出主机PLC(Modbus TCP)·加热区1SP=200.6℃;演示·挤出主机PLC(Modbus TCP)·加热区2SP=203.5℃;演示·挤出主机PLC(Modbus TCP)·加热区3SP=203.5℃ | 理由:[Gongkuang-C step-3 apply] Dispatch approved v5 finishing step: zone2/zone3 202->203.5C each (+1.5C, within cap), zone1 unchanged 200.6C. Full-batch echo harmless (v5 definition = current physical except the intended +1.5 raise). Measured basis on v5 card: step-2 gain ~0.42C/setpoint-C, projection melt ~203.0-203.1C >= GOAL 202.5C, margin 1.4C to 204.5C guard. After apply: short inertia (observed 30-60s), then 3min-mean retest -> judge per bands; >=202.5 => keep, v5 is the final solidified Gongkuang-C recipe. Guards: melt 3min >204.5 rollback, <199.0 notify, defect 3min >10 rollback. | 批准=整批下发;拒绝可附指导
+[09:05:18] ✅ 批准#8 respond code=0
+[09:08:35] === 本场景任务终态(COMPLETED),专家代理退出 ===
+[09:08:35] === 结束统计: 批准0 拒绝0 ===
