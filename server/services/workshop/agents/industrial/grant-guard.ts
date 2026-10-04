@@ -27,6 +27,9 @@ const WRITE_TOOLS = new Set([
   'recipe_rollback',
   'optimization_explore',
   'twin_calibration_request',
+  // 产线管理面(启停直接改物理状态与批次窗口)
+  'line_start',
+  'line_stop',
 ])
 
 /** 无需复核的纯协作/管理面工具(不触达产线数据) */

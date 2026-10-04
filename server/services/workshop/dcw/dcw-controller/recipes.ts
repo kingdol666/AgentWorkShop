@@ -133,9 +133,11 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
 
   /**
    * Recipe 手动应用 / Agent 试验(一键下发工艺参数集;不激活产线窗口)。
-   * v19 trial 语义:overrides = 候选覆盖集(仅覆盖列出节点的值,必须已是配方内节点)——
-   * 整批下发候选参数但**不写配方版本**(复测有进步才由 Agent recipe_update 固化);
-   * trial 受同线节拍卡控;四层限界在 write() 咽喉点照常拦截(量程∩参数∩产品)。
+   * v19 trial 语义:**声明式覆盖集** —— 提供 overrides 时只写 overrides 列出的节点
+   * (实测教训 2026-10-04 场景C:两参试验曾把配方内未提及的 zone1 一并写向旧值,
+   * 覆盖 lastGood 200.6 → 190);不提供 overrides = 整批(全部配方参数)。
+   * trial 不写配方版本(复测有进步才由 Agent recipe_update 固化);受同线节拍卡控;
+   * 四层限界在 write() 咽喉点照常拦截(量程∩参数∩产品)。
    */
   async applyRecipe(recipeId: string, opts: { overrides?: Array<{ nodeId: string, value: number }>, trial?: boolean } = {}) {
     this.ensureLoop()
@@ -149,12 +151,16 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
       throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `覆盖参数不在配方内: ${unknown.map(o => o.nodeId).join(', ')}(试验只能修改配方已有参数的值;新增参数请先 recipe_update)`)
     }
     if (opts.trial) this.assertTrialCadence(recipe.lineId)
-    const merged = recipe.params.map((p) => {
-      const ov = overrides.find(x => x.nodeId === p.nodeId)
-      return ov ? { ...p, value: ov.value } : p
-    })
-    const run = repo.createRun(recipe, merged)
-    await this.writeRecipeParams({ ...recipe, params: merged }, run)
+    // 声明式覆盖集:有 overrides 只写声明的节点(未声明参数保持现状,绝不顺带整批);
+    // 无 overrides(手动应用/统一回退重下发)= 整批语义
+    const effective = overrides.length > 0
+      ? overrides.map((o) => {
+          const p = recipe.params.find(x => x.nodeId === o.nodeId)!
+          return { ...p, value: o.value }
+        })
+      : recipe.params
+    const run = repo.createRun(recipe, effective)
+    await this.writeRecipeParams({ ...recipe, params: effective }, run)
     if (opts.trial) this.trialLastAt.set(recipe.lineId, Date.now())
     return run
   }

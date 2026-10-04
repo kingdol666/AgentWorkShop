@@ -2250,5 +2250,59 @@
         "packages"
       ]
     }
+  },
+  {
+    "name": "line_start",
+    "label": "Line Start",
+    "description": "产线开跑(仅频道 lead):以指定配方开线并下发参数,激活该产线的批次窗口与数采打标。恒为 HITL —— 必须人工批准才执行;运行门/配方归属校验照常。reason 必填(工单/排产/实验依据)。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "recipe_id": {
+          "type": "string",
+          "description": "配方 id(必填,须属于本频道绑定的产线)"
+        },
+        "reason": {
+          "type": "string",
+          "description": "开线理由(必填):工单/排产/实验目的,人工审批要能看懂"
+        }
+      },
+      "required": [
+        "recipe_id",
+        "reason"
+      ]
+    }
+  },
+  {
+    "name": "line_stop",
+    "label": "Line Stop",
+    "description": "产线停线(仅频道 lead):关闭当前批次窗口(防跨批次污染)并停止该线数采。恒为 HITL —— 必须人工批准;reason 必填。停后数据保留可查。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "reason": {
+          "type": "string",
+          "description": "停线理由(必填):完工/检修/异常"
+        }
+      },
+      "required": [
+        "reason"
+      ]
+    }
+  },
+  {
+    "name": "line_status",
+    "label": "Line Status",
+    "description": "产线运行状态(只读):本频道绑定产线的活动批次/配方/打标样本数;未运行返回未运行态。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "line_id": {
+          "type": "string",
+          "description": "产线 id(缺省=本频道绑定的产线)"
+        }
+      },
+      "required": []
+    }
   }
 ]
