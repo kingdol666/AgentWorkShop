@@ -12,8 +12,24 @@
 //  - saveJsonFileAtomic:先写同目录临时文件再 rename(同卷原子替换);
 //    rename 失败(Windows 杀软占用等)退回直写,保证可用性。
 // ============================================================
-import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
-import { dirname } from 'node:path'
+import { mkdirSync, readFileSync, renameSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { basename, dirname, join } from 'node:path'
+
+/** load 时顺手清理本库的陈旧 tmp(崩溃/终态失败遗留;当前 pid 正在用的跳过) */
+function sweepStaleTmp(filePath) {
+  try {
+    const name = basename(filePath)
+    for (const ent of readdirSync(dirname(filePath))) {
+      if (!ent.startsWith(`${name}.tmp-`)) continue
+      if (ent === `${name}.tmp-${process.pid}`) continue
+      try {
+        rmSync(join(dirname(filePath), ent), { force: true })
+      }
+      catch { /* 被占用则下次再清 */ }
+    }
+  }
+  catch { /* 目录不可读则忽略 */ }
+}
 
 /**
  * 读取 JSON 文件;缺失或损坏时返回 fallback。
@@ -22,6 +38,7 @@ import { dirname } from 'node:path'
  * @returns
  */
 export function loadJsonFile(filePath, fallback) {
+  sweepStaleTmp(filePath)
   let raw
   try {
     raw = readFileSync(filePath, 'utf-8')
@@ -79,27 +96,42 @@ function serializeJson(data) {
 }
 
 /**
- * 原子落盘:写临时文件 → rename 替换;失败退回直写。
+ * 原子落盘:写临时文件 → rename 替换。
  * 序列化形态按库规模自动选择(见 serializeJson)。
+ *
+ * 失败语义(2026-10-04 事故修复:Windows 杀软/索引器瞬时占用导致
+ * 「退回直写」先截断目标再写失败,device-twins.json 被清成 0 字节):
+ *  - tmp 写与 rename 各带退避重试(瞬时占用 100/200/400ms 内自愈);
+ *  - 重试仍失败 → 抛错,**目标文件分文不动**,新数据完整留在 tmp
+ *    (下次成功 flush 顶替;load 侧自动清理陈旧 tmp)——
+ *    绝不做「截断目标的直写兜底」,宁抛错不丢数据。
  * @param {string} filePath
  * @param {unknown} data
  */
+const RETRY_DELAYS = [100, 200, 400]
+
+function withRetry(fn, label) {
+  let lastErr
+  for (let i = 0; i <= RETRY_DELAYS.length; i++) {
+    try {
+      return fn()
+    }
+    catch (err) {
+      lastErr = err
+      if (i < RETRY_DELAYS.length) {
+        Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, RETRY_DELAYS[i])
+      }
+    }
+  }
+  console.error(`[json-store] ${label} 重试 ${RETRY_DELAYS.length + 1} 次仍失败: ${lastErr?.message ?? lastErr}`)
+  throw lastErr
+}
+
 export function saveJsonFileAtomic(filePath, data) {
   mkdirSync(dirname(filePath), { recursive: true })
   const tmp = `${filePath}.tmp-${process.pid}`
   const payload = serializeJson(data)
-  try {
-    writeFileSync(tmp, payload, 'utf-8')
-    try {
-      renameSync(tmp, filePath)
-      return
-    }
-    catch {
-      // rename 失败(目标被占用等):退回直写,可用性优先
-    }
-  }
-  catch (tmpErr) {
-    console.error(`[json-store] 临时文件写入失败(${tmpErr.message}),退回直写`)
-  }
-  writeFileSync(filePath, payload, 'utf-8')
+  // 终态失败直接上抛(目标未动,数据留在 tmp —— 它是最新一份完整数据,勿删)
+  withRetry(() => writeFileSync(tmp, payload, 'utf-8'), `临时文件写入(${filePath})`)
+  withRetry(() => renameSync(tmp, filePath), `原子替换(${filePath})`)
 }

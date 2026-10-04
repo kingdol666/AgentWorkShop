@@ -43,7 +43,7 @@ export async function toolDcwJudge(agentId: string, args: { record_id?: string, 
   const verdict = String(args.verdict ?? '').trim() as 'keep' | 'rollback' | 'uncertain'
   const reason = String(args.reason ?? '').trim()
   if (!recordId)
-    return { text: 'record_id 必填(优化记录 id,dcw_control 下发成功后会返回)。', isError: true }
+    return { text: 'record_id 必填(优化记录 id,opt-*,仅限既有 open 优化记录)。注意:配方面链路(recipe_trial/recipe_apply/recipe_propose,批次 rr-*)不产生优化记录 —— 那条链路的判定直接用复测数据对照假设陈述:达标用 recipe_update 固化,劣化用 recipe_rollback,不要走 dcw_judge。', isError: true }
   if (!['keep', 'rollback', 'uncertain'].includes(verdict))
     return { text: 'verdict 必须为 keep / rollback / uncertain。', isError: true }
   if (!reason)
@@ -51,7 +51,7 @@ export async function toolDcwJudge(agentId: string, args: { record_id?: string, 
   const rb = getRecipeRollBackManager()
   const record = rb.recordById(recordId)
   if (!record)
-    return { text: `优化记录 ${recordId} 不存在。`, isError: true }
+    return { text: `优化记录 ${recordId} 不存在。若你拿到的是批次号(rr-*)或审批单号(ap-*):配方面链路不产生优化记录,判定直接用复测数据陈述(达标 recipe_update 固化 / 劣化 recipe_rollback),不走 dcw_judge。`, isError: true }
   const takeover = record.agentId !== agentId && rb.isStale(record)
   if (record.agentId !== agentId && !takeover)
     return { text: `记录 ${recordId} 不是你发起的优化(发起者:${record.agentId ?? '用户'}),Agent 仅可判定自己的记录;他人记录请请用户在界面判定。`, isError: true }

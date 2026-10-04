@@ -313,9 +313,9 @@ export function industrialLoopGuide(agentId: string): string {
     steps.push(
       '3. 假设:调参前先声明假设与理由 —— 目标值 + 预期效果 + 判断依据(数采/MES 证据);目标必须落在「安全量程 ∩ 活动配方工艺窗口」内,优先小步幅(≤量程 2%)、单向逼近。理由必填且会被人类在审批卡上看到。',
       '4. 设定:对绑定的配方操作 —— recipe_trial(候选整批试验,不写版本)或 recipe_update(写入新版本)+ recipe_apply(整批下发);治理联锁(量程∩参数∩产品∩配方 + 步长 + 限速)在配方面照常生效,底层数控节点(PLC/MES)由配置层承接,无需关心差异。运行中的批次一次只改本配方绑定的参数;等待工艺响应,勿连续大幅调整。',
-      '5. 判定:daq_query / mes_fetch 复测窗口数据后,dcw_judge 落判定 —— keep(已验证经验)/ rollback(判应回退)/ uncertain(证据不足)。判定必须引用具体数值与时间窗证据。',
-      '6. 回退/保持:判 rollback 后用 recipe_rollback(dispatch=true, reason=…) 统一回退(定义回退+参数整批恢复),回退后复测确认;回退冷却期内禁止同向重写。收敛异常时分析根因或上报,而非盲目加码。',
-      '7. 复盘:recipe_versions / dcw_journal 查看变更史与判定结论;keep 的记录是已验证经验,rollback 的记录写进结论修正下次假设 —— 禁止重复已失败的调参方向。',
+      '5. 判定:daq_query / mes_fetch 复测窗口数据后落判定 —— keep(达标/有进步:无动作或 recipe_update 固化候选值)/ rollback(劣化)/ uncertain(证据不足,继续观察)。判定必须引用具体数值与时间窗证据。注意:判定直接以复测数据对照你的假设陈述,不要调用 dcw_judge —— 那是旧直写时代的优化记录面(opt-* 记录),配方面链路(批次 rr-*)不产生该记录,调用必报「不存在」。',
+      '6. 回退/保持:判 rollback 后用 recipe_rollback(dispatch=true, reason=…) 统一回退(定义回退+参数整批恢复),回退后复测确认;回退冷却期内禁止同向重写。增益趋零/杠杆失效时,如实汇报实测增益并上报请求决策(换杠杆/调目标/接受当前点),而非盲目加码。',
+      '7. 复盘:recipe_versions / dcw_journal 查看变更史与写历史;达标候选值用 recipe_update 固化为新版本(带 reason),rollback 的结论写进共享记忆修正下次假设 —— 禁止重复已失败的调参方向。',
     )
   }
   else {
