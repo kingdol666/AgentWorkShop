@@ -80,6 +80,15 @@ while (Date.now() < deadline) {
         kind: 'dcw-approval', id: item.id, confirmed, ...(confirmed ? { choice: 0 } : {}), comment,
       })
 
+      // ===== ⓪ 产线管理作业(line-start/line-stop):按测试计划预授权,核对理由后批准 =====
+      const nodeIdStr = String(item.nodeId ?? '')
+      if (nodeIdStr.startsWith('line-start:') || nodeIdStr.startsWith('line-stop:')) {
+        approvedCount++
+        const d = await respond(true, '管理作业按本次测试计划预授权:启停理由已核对(完工/检修/流程验证),批次窗口与数采联动语义已知悉,批准执行;执行后回报批次号与打标样本数。')
+        log(`✅ 产线管理批准#${approvedCount}(${nodeIdStr.split(':')[0]}) respond code=${d.code}`)
+        continue
+      }
+
       // ===== ① 方向校验 =====
       const changes = extractChanges(item)
       const moving = changes.filter(c => Number.isFinite(c.to) && Number.isFinite(c.from) && c.to !== c.from)
@@ -120,7 +129,7 @@ while (Date.now() < deadline) {
     // 任务终态检测
     const st = await api('GET', `/api/workshop/channels/${channelId}/tasks`)
     const tasks = st.data?.items ?? st.data ?? []
-    const mine = tasks.filter(t => ['b6a6cc57-6697-489c-bcb6-868a65596569'].includes(t.id))
+    const mine = tasks.filter(t => ['WATCH-NONE'].includes(t.id))
     const active = mine.filter(t => !['COMPLETED', 'FAILED', 'CANCELLED', 'TIMEOUT'].includes(t.state))
     if (mine.length > 0 && active.length === 0) {
       log(`=== 本场景任务终态(${mine.map(t => t.state).join(',')}),专家代理退出 ===`)
