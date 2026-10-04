@@ -71,6 +71,8 @@ export interface HitlRegisterInput {
   questions?: AepHitlQuestion[]
   /** 结构化应答 schema(引擎原生) */
   schema?: Record<string, unknown>
+  /** 权限模型 v3:dcw-approval 的目标对象 id(recipe-propose:<配方id> 或 节点 id;产线锚点推导用) */
+  nodeId?: string
 }
 
 /**
@@ -352,6 +354,9 @@ class HitlRegistryService {
       harness: input.harness ?? harnessOfKind(input.kind),
       questions: input.questions,
       schema: input.schema,
+      // 权限模型 v3:工具审批单锚点(recipe-propose:<id>/节点 id)必须透传,
+      // 否则 lineOfHitlItem 退化到 channel.lineId,未绑线频道的审批漏过产线过滤
+      ...(input.nodeId ? { nodeId: input.nodeId } : {}),
       status: 'pending',
       policy: snapshot?.policy,
       approvalPolicyVersion: snapshot?.policyVersion,

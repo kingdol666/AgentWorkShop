@@ -23,7 +23,7 @@ export type LineMode = 'none' | 'readonly' | 'operate'
 export type GrantMode = 'readonly' | 'operate'
 
 /** 管理角色(admin)不受产线 grant 约束;editor 已收紧为普通角色(与 user 同受 grant 约束) */
-export function isPrivilegedRole(user: { role: string } | null | undefined): boolean {
+export function isPrivilegedRole(user: { role?: string } | null | undefined): boolean {
   return user?.role === 'admin'
 }
 
@@ -36,13 +36,13 @@ export function lineMode(user: ResolvedUser | { id: string, role: string }, line
 }
 
 /** 可见产线集合:null = 不限(admin/editor);否则为授权产线 id 集(普通用户) */
-export function visibleLineIds(user: { id: string, role: string }): Set<string> | null {
+export function visibleLineIds(user: { id: string, role?: string }): Set<string> | null {
   if (isPrivilegedRole(user)) return null
   return new Set(userRepository.lineAccessMap(user.id).keys())
 }
 
 /** 按 lineId 过滤实体列表(admin/editor 原样返回) */
-export function filterByLine<T>(user: { id: string, role: string }, items: T[], lineIdOf: (item: T) => string | null | undefined): T[] {
+export function filterByLine<T>(user: { id: string, role?: string }, items: T[], lineIdOf: (item: T) => string | null | undefined): T[] {
   const visible = visibleLineIds(user)
   if (!visible) return items
   return items.filter((it) => {

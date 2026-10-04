@@ -69,7 +69,9 @@ export abstract class SchedulerLoopTick extends SchedulerLoopState {
             log.warn(`[SchedulerLoop:${this.lead.agentId}] 根任务 ${root.id.slice(0, 8)} 预算耗尽,但频道有 HITL 待批 —— 执行预算顺延至 ${budget}`)
           }
           try {
-            this.lead.taskEngine.refreshDeadline(root.id, budget)
+            // 能力探测(mirror execute.ts):极简 TaskEngine 替身可能缺 refreshDeadline,缺失时跳过
+            const engine = this.lead.taskEngine as { refreshDeadline?: (id: string, iso: string) => unknown }
+            engine.refreshDeadline?.(root.id, budget)
           }
           catch { /* 任务恰好终态:下一 tick 自然收敛 */ }
         }

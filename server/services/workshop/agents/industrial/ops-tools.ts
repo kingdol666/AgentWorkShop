@@ -632,10 +632,12 @@ export async function toolRecipeApply(agentId: string, args: {
   if (!recipeId) return { text: 'recipe_id 必填(line_context 可看到当前配方 id)。', isError: true }
   const recipe = getDcwController().listRecipes().find(r => r.id === recipeId)
   if (!recipe) return { text: `配方 ${recipeId} 不存在。`, isError: true }
+  // 理由强制:下发必须让人(产线专家)看懂为什么这样调 —— 无描述的下发不得进入审批/执行
+  const reason = String(args.reason ?? '').trim()
+  if (!reason) return { text: 'reason 必填:整批下发必须说明依据(如数采证据/试验结论/GOAL 差距分析),产线专家要在审批卡上看懂你为什么这样调。', isError: true }
   // 权限模型 v2:绑定 → 二级认证 → 运行门
   const gate = assertRecipeOperation(agentId, recipe, 'dispatch')
   if (!gate.ok) return { text: gate.text, isError: true }
-  const reason = String(args.reason ?? '').trim()
   try {
     // HITL 门:manual 绑定(或全局开关)时,正式下发前先挂起等人工裁决(拒绝附指导 → 回给 Agent 修订)
     let hitlNote = ''
@@ -646,10 +648,10 @@ export async function toolRecipeApply(agentId: string, args: {
         `配方正式下发:「${recipe.name}」v${recipe.version ?? 1} 全参数整批(${recipe.params.length} 项):${recipe.params.map((p) => {
           const node = getDcwController().byId(p.nodeId)
           return `${node?.name ?? p.nodeId}=${p.value}${node?.unit ?? ''}`
-        }).join(';')}${reason ? ` | 理由:${reason}` : ' | 理由:未提供(建议始终给 reason)'} | 批准=整批下发;拒绝可附指导`,
+        }).join(';')} | 理由:${reason} | 批准=整批下发;拒绝可附指导`,
         '配方下发审批',
         { payload: recipeApprovalPayload('dispatch', recipe.id, recipe.name, {
-          reason: reason || '(未提供)',
+          reason,
           params: recipe.params.map((p) => {
             const node = getDcwController().byId(p.nodeId)
             return { nodeId: p.nodeId, name: node?.name ?? p.nodeId, from: null, to: p.value, unit: node?.unit }
@@ -680,7 +682,7 @@ export async function toolRecipeApply(agentId: string, args: {
       recordOps({
         actor: agentId, actorName: agentBadgeLabel(agentId), actorKind: 'agent',
         action: 'recipe.apply', kind: 'recipe', targetKind: 'recipe', targetId: recipeId, recipeId, lineId: recipe.lineId,
-        summary: `Agent 整批下发配方 v${recipe.version ?? 1}(${okN}/${run.results.length} 参数成功,批次 ${run.id.slice(0, 8)})${args.reason ? ` | 原因:${String(args.reason).trim()}` : ''}`,
+        summary: `Agent 整批下发配方 v${recipe.version ?? 1}(${okN}/${run.results.length} 参数成功,批次 ${run.id.slice(0, 8)}) | 原因:${reason}`,
       })
     }
     catch { /* 审计失败不影响下发结果 */ }

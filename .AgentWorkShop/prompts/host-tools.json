@@ -1,2253 +1,2254 @@
 [
- {
-  "name": "report_progress",
-  "label": "Report Progress",
-  "description": "Report your current task progress as a percentage (0-100). Call this whenever you make meaningful progress on your task.",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "progress": {
-     "type": "number",
-     "description": "Progress percentage 0-100"
-    },
-    "message": {
-     "type": "string",
-     "description": "Brief status message describing what you are doing"
-    }
-   },
-   "required": [
-    "progress"
-   ]
-  }
- },
- {
-  "name": "complete_task",
-  "label": "Complete Task",
-  "description": "Mark a task as completed with final deliverables. Workers call this when their assigned task is done. Lead calls this for parent tasks when all children are done.",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "summary": {
-     "type": "string",
-     "description": "Summary of what was accomplished"
-    },
-    "deliverable": {
-     "type": "string",
-     "description": "Final deliverable: code, analysis result, document content, etc."
-    },
-    "task_id": {
-     "type": "string",
-     "description": "Task ID to complete. If omitted, completes your current assigned task."
-    }
-   },
-   "required": [
-    "summary"
-   ]
-  }
- },
- {
-  "name": "submit_task",
-  "label": "Submit Task",
-  "description": "(Lead only) Register one tracked root task for a genuinely multi-step HUMAN request. A single source chat message has exactly one root, even if the title changes. Do not create a second root to polish or revise wording; reuse the existing root and close it with an ordered acceptance summary. If the request is simple, answer directly without submit_task.",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "title": {
-     "type": "string",
-     "description": "Short, verifiable title of the request (becomes the root task title)"
-    },
-    "description": {
-     "type": "string",
-     "description": "The full user request plus its constraints, in the user's own terms — this is what you will decompose and later verify each deliverable against"
-    }
-   },
-   "required": [
-    "title",
-    "description"
-   ]
-  }
- },
- {
-  "name": "dispatch_task",
-  "label": "Dispatch Task",
-  "description": "(Lead only) Create one bounded child under an existing parent and assign it to a worker. The platform enforces finite root budgets (total child attempts, active children, canceled children, and ordinary depth); changing the title does not reset them. Freeze the child ID/title/contract after dispatch. Prefer update_task, send_message_to_agent, or reassign_task over cancel-and-recreate. Always include parent_task_id, route_reason, and a self-contained objective/deliverable/acceptance/boundary brief.",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "assignee_id": {
-     "type": "string",
-     "description": "ID of the worker agent to assign this task to"
-    },
-    "title": {
-     "type": "string",
-     "description": "Short task title"
-    },
-    "route_reason": {
-     "type": "string",
-     "description": "Why this agent was chosen (specialty fit / load / past success evidence) — one short line, kept as the auditable routing decision"
-    },
-    "description": {
-     "type": "string",
-     "description": "Detailed task description with requirements"
-    },
-    "parent_task_id": {
-     "type": "string",
-     "description": "The ID of the submitted parent task this subtask belongs to (from the task list)"
-    },
-    "grant_node_ids": {
-     "type": "array",
-     "items": {
-      "type": "string"
-     },
-     "description": "可选(Lead only):随本任务把节点授权授予 assignee —— 数组元素为节点 id,每个节点必须是 lead 自己已绑定的节点(daq/dcw 均可);任一节点不在 lead 绑定面则整单失败、任务不创建。用于派发时一并下发 DAQ/DCW 权限,worker 无需再等手动绑定。"
-    },
-    "grant_mode": {
-     "type": "string",
-     "enum": [
-      "auto",
-      "manual"
-     ],
-     "description": "可选:随任务授予的绑定模式;缺省随 lead 自己的绑定模式(manual=每次写入需用户批准)"
-    }
-   },
-   "required": [
-    "assignee_id",
-    "title",
-    "parent_task_id"
-   ]
-  }
- },
- {
-  "name": "send_message_to_agent",
-  "label": "Send Message",
-  "description": "Send a message to another agent (lead or worker) in the same channel via the channel mailbox (routed to the recipient's own mailbox). Use priority \"immediate\" for urgent real-time messages that the recipient sees instantly during work; use \"task\" (default) for messages that queue until the recipient finishes their current task. Set require_reply=true to demand a response: the recipient must reply with their result via this same tool. When replying to a message, pass its message_id as in_reply_to — replies are auto-upgraded to real-time delivery and pushed straight into the recipient's running session, so the answer reaches a waiting sender instantly.",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "to_agent_id": {
-     "type": "string",
-     "description": "Recipient agent ID"
-    },
-    "message": {
-     "type": "string",
-     "description": "Message content (when replying: your execution result + the content they asked for)"
-    },
-    "priority": {
-     "type": "string",
-     "enum": [
-      "immediate",
-      "task"
-     ],
-     "description": "Message priority: \"immediate\" = inject into recipient's running session instantly; \"task\" = queue for later consumption (default)"
-    },
-    "require_reply": {
-     "type": "boolean",
-     "description": "Trigger: true = recipient MUST reply with result/content (default false)"
-    },
-    "in_reply_to": {
-     "type": "string",
-     "description": "Message ID this reply refers to (set when replying to a trigger message)"
-    }
-   },
-   "required": [
-    "to_agent_id",
-    "message"
-   ]
-  }
- },
- {
-  "name": "poll_messages",
-  "label": "Poll Inbox",
-  "description": "Check your own mailbox for unread messages from other agents. When waiting for a reply, pass wait_seconds (e.g. 90) to block until it arrives or the wait expires — one blocking call replaces repeated empty polling. Returned collaboration messages are acknowledged on read (removed from the queue); task assignments are left for execution. Replies to your trigger messages are also pushed into your running session in real time — if you already saw an injected \"[实时消息 from X]\", that IS the reply, no need to poll again.",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "limit": {
-     "type": "number",
-     "description": "Max messages to return (default 10)"
-    },
-    "wait_seconds": {
-     "type": "number",
-     "description": "Block up to N seconds (0-180) waiting for a message before returning empty (default 0 = immediate check)"
-    }
-   }
-  }
- },
- {
-  "name": "read_channel_mail",
-  "label": "Read Channel Mail",
-  "description": "(Lead only) Read the FULL channel mail log: every message routed through the channel mailbox (peer messages, real-time replies with in_reply_to chains, and task deliveries), newest first, with read/unread state. Pass agent_id to inspect a specific member's mailbox. Use this BEFORE dispatching a task whose result may already exist — if a worker already computed/delivered the value via mail, do NOT re-dispatch it; reference the concrete result from the mail instead.",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "limit": {
-     "type": "number",
-     "description": "Max mails to return (default 50, max 500)"
-    },
-    "agent_id": {
-     "type": "string",
-     "description": "Optional: only show mails involving this agent (as sender or recipient)"
-    }
-   }
-  }
- },
- {
-  "name": "broadcast_message",
-  "label": "Broadcast",
-  "description": "Broadcast a message to ALL agents in the channel (lead + all workers). Useful for announcements.",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "message": {
-     "type": "string",
-     "description": "Message content to broadcast"
-    },
-    "priority": {
-     "type": "string",
-     "enum": [
-      "immediate",
-      "task"
-     ],
-     "description": "Message priority (default \"task\")"
-    }
-   },
-   "required": [
-    "message"
-   ]
-  }
- },
- {
-  "name": "list_channel_tasks",
-  "label": "List Tasks",
-  "description": "List all tasks in the current channel, including their status, progress, and assignee.",
-  "parameters": {
-   "type": "object",
-   "properties": {}
-  }
- },
- {
-  "name": "list_team_agents",
-  "label": "List Team",
-  "description": "List all agents in the current channel (lead + workers) with their roles and names.",
-  "parameters": {
-   "type": "object",
-   "properties": {}
-  }
- },
- {
-  "name": "get_task_details",
-  "label": "Get Task",
-  "description": "Get detailed information about a specific task, including artifacts and history.",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "task_id": {
-     "type": "string",
-     "description": "Task ID"
-    }
-   },
-   "required": [
-    "task_id"
-   ]
-  }
- },
- {
-  "name": "get_my_task_queue",
-  "label": "My Queue",
-  "description": "View your own task queue: pending tasks (FIFO order), the task you are currently executing, and completed tasks. Use this to check if you have unfinished work.",
-  "parameters": {
-   "type": "object",
-   "properties": {}
-  }
- },
- {
-  "name": "get_queue_overview",
-  "label": "Queue Overview",
-  "description": "(Lead only) Real-time overview of every team member: status (idle/busy), current task, pending queue length, completed count. Use this to make optimal scheduling and rebalancing decisions.",
-  "parameters": {
-   "type": "object",
-   "properties": {}
-  }
- },
- {
-  "name": "reassign_task",
-  "label": "Reassign Task",
-  "description": "(Lead only) Move a pending (not yet started) or failed task from one worker to another. Use for load rebalancing or when a worker is stuck. The old worker's queued delivery is revoked automatically.",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "task_id": {
-     "type": "string",
-     "description": "Task ID to move"
-    },
-    "to_agent_id": {
-     "type": "string",
-     "description": "Worker agent ID to receive the task"
-    }
-   },
-   "required": [
-    "task_id",
-    "to_agent_id"
-   ]
-  }
- },
- {
-  "name": "update_task",
-  "label": "Update Task",
-  "description": "(Lead only) Modify the title/description of a pending (queued, not started) task. The assignee's queued delivery is refreshed with the new content automatically.",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "task_id": {
-     "type": "string",
-     "description": "Task ID to update"
-    },
-    "title": {
-     "type": "string",
-     "description": "New title (optional)"
-    },
-    "description": {
-     "type": "string",
-     "description": "New description (optional)"
-    }
-   },
-   "required": [
-    "task_id"
-   ]
-  }
- },
- {
-  "name": "cancel_task",
-  "label": "Cancel Task",
-  "description": "Cancel a task only when it is genuinely abandoned or blocked. Canceling a parent cascades to all non-terminal descendants and stops matching active runs; cancellation consumes the root budget. Do not cancel to rename/polish/revise a task. Prefer messaging, update_task, or reassign_task. Pending queued deliveries are revoked automatically.",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "task_id": {
-     "type": "string",
-     "description": "Task ID to cancel"
-    }
-   },
-   "required": [
-    "task_id"
-   ]
-  }
- },
- {
-  "name": "search_memory",
-  "label": "Search Memory",
-  "description": "Search your persistent memory (hybrid keyword+semantic retrieval over your private memories and the channel's shared team memories). Results may include: your task history, the TEAM CHRONICLE (团队编年史 = rolling log of everything the team finished), past SESSION COMPACTION SUMMARIES (会话压缩摘要 = conclusions from earlier context windows), monthly reflections (作业反思), and shared conventions. Use this ANY TIME you need prior context: before starting a task, when you suspect relevant past work exists, or when the injected memory hints/brief mention something you need details on. Pass a focused query describing what you want to remember.",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "query": {
-     "type": "string",
-     "description": "What you want to recall, e.g. \"数据库连接池配置结论\" or \"previous deployment checklist\""
-    },
-    "scope": {
-     "type": "string",
-     "enum": [
-      "auto",
-      "private",
-      "shared"
-     ],
-     "description": "Which memory domain to search: \"auto\" = your private + channel shared (default), \"private\" = only your own, \"shared\" = only channel-wide shared memories"
-    },
-    "limit": {
-     "type": "number",
-     "description": "Max results (default 5, max 20)"
-    }
-   },
-   "required": [
-    "query"
-   ]
-  }
- },
- {
-  "name": "save_memory",
-  "label": "Save Memory",
-  "description": "Persist a distilled, reusable insight into memory for future tasks. scope=\"private\" saves to YOUR personal memory (only you recall it); scope=\"shared\" saves to the CHANNEL shared memory visible to ALL teammates (use for conclusions, conventions, or knowledge the whole team benefits from — not task-specific minutiae). Distill before saving: title = short topic, content = the reusable conclusion. Use a stable dedup_key to update an existing memory instead of duplicating. NOTE: the platform already auto-archives task outcomes, team results, the team chronicle, and session compaction summaries — never save whole task logs or raw session transcripts.",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "title": {
-     "type": "string",
-     "description": "Short topic title, e.g. \"API 网关限流方案结论\""
-    },
-    "content": {
-     "type": "string",
-     "description": "The distilled reusable knowledge/conclusion (plain text)"
-    },
-    "importance": {
-     "type": "number",
-     "description": "0-1 importance (default 0.7 private / 0.85 shared)"
-    },
-    "scope": {
-     "type": "string",
-     "enum": [
-      "private",
-      "shared"
-     ],
-     "description": "\"private\" = your memory only; \"shared\" = channel-wide shared memory for all teammates"
-    },
-    "dedup_key": {
-     "type": "string",
-     "description": "Stable key for idempotent update (same key overwrites instead of duplicating)"
-    }
-   },
-   "required": [
-    "title",
-    "content",
-    "scope"
-   ]
-  }
- },
- {
-  "name": "create_team_agent",
-  "label": "Create Team Agent",
-  "description": "(Lead only) Create a NEW worker only when capability/load evidence shows existing members cannot handle the work. Reuse existing workers first. The platform enforces a per-Channel worker roster cap, including disabled members; do not retry with another name after TEAM_WORKER_LIMIT.",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "name": {
-     "type": "string",
-     "description": "Short, descriptive member name, e.g. \"db-migrator\" or \"test-writer\""
-    },
-    "harness": {
-     "type": "string",
-     "enum": [
-      "omp",
-      "mock",
-      "claude"
-     ],
-     "description": "Agent harness: \"omp\" = full LLM agent with native work tools (default, use this for real work), \"mock\" = scripted test agent, \"claude\" = claude harness"
-    },
-    "system_prompt": {
-     "type": "string",
-     "description": "System prompt prefix defining this member's specialty, working style, and conventions (maps to its systemPromptPrefix config)"
-    },
-    "reason": {
-     "type": "string",
-     "description": "Why this member is being added (shown to the user in the team event timeline)"
-    }
-   },
-   "required": [
-    "name"
-   ]
-  }
- },
- {
-  "name": "update_team_agent",
-  "label": "Update Team Agent",
-  "description": "(Lead only) Update an existing team member (worker): rename it, revise its system prompt (e.g. to specialize or correct its behavior), or enable/disable it. The member's runtime reloads with the new config on its next assignment. You cannot update yourself.",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "agent_id": {
-     "type": "string",
-     "description": "ID of the worker agent to update (from list_team_agents)"
-    },
-    "name": {
-     "type": "string",
-     "description": "New name (optional)"
-    },
-    "system_prompt": {
-     "type": "string",
-     "description": "New system prompt prefix defining its specialty/conventions (optional)"
-    },
-    "enabled": {
-     "type": "boolean",
-     "description": "true = activate member, false = disable member (disabled members receive no new tasks; default true)"
-    },
-    "reason": {
-     "type": "string",
-     "description": "Why this change is made (shown in the team event timeline)"
-    }
-   },
-   "required": [
-    "agent_id"
-   ]
-  }
- },
- {
-  "name": "remove_team_agent",
-  "label": "Remove Team Agent",
-  "description": "(Lead only) Remove a worker from your channel's team. Its queued tasks are automatically re-dispatched to the remaining worker with the shortest queue (or failed for retry if it was mid-execution), so no work is lost — but the member's context is. Use ONLY for sustained idle surplus or persistent underperformance; never as an experiment, and avoid removing members with active work. You cannot remove yourself.",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "agent_id": {
-     "type": "string",
-     "description": "ID of the worker agent to remove"
-    },
-    "reason": {
-     "type": "string",
-     "description": "Why this member is removed (shown in the team event timeline)"
-    }
-   },
-   "required": [
-    "agent_id"
-   ]
-  }
- },
- {
-  "name": "refuse_task",
-  "label": "Refuse Task",
-  "description": "Reject a task assigned to you because it is outside your capability or work scope (wrong recipient, unrelated domain, or missing prerequisites). The task is marked FAILED with your reason and a rejection notice is immediately sent back to the dispatcher (task creator, or the channel lead), who should reassign it to a fitting member. Use this INSTEAD of silently ignoring the task or doing unrelated work; do NOT use it for tasks you are able to do, and do NOT use cancel_task for refusals.",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "task_id": {
-     "type": "string",
-     "description": "ID of the task you are refusing (must be assigned to you)"
-    },
-    "reason": {
-     "type": "string",
-     "description": "Why the task is out of your scope: capability mismatch / wrong recipient / prerequisites missing. Be specific so the dispatcher can reassign properly."
-    }
-   },
-   "required": [
-    "task_id",
-    "reason"
-   ]
-  }
- },
- {
-  "name": "my_industrial_nodes",
-  "label": "My Industrial Nodes",
-  "description": "列出你的全部工业绑定与语义卡 —— 数控节点(PLC/MES 集成点位)与数采节点逐张卡:物理量/单位/量程/精度、工艺语义(物理机理与调参守则)、安全量程与活动配方工艺窗口、当前设定值、下发链路(PLC 驱动或 MES writeHook 单字段)、单步上限与操作守则;以及你绑定的配方操作面(运行状态/绑定模式 manual=逐动作 HITL 或 auto=免批/二级认证状态/参数对照表含参数键与描述)。在进行任何工业操作前必须先调用本工具;绑定前提:节点需 daq/dcw(存量)绑定,配方需 recipe 绑定 —— 未绑定对象不出现在清单中。",
-  "parameters": {
-   "type": "object",
-   "properties": {}
-  }
- },
- {
-  "name": "dcw_read",
-  "label": "DCW Read",
-  "description": "读取绑定的数控节点的 PLC 当前值(读写集成的读半边)。返回 PLC 实时读数(经标定解码的物理量纲)与设定值对照;用于下发前取证、下发后复核设定是否生效。读取是被动观测,不影响控制状态,也不需要审批。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "node_id": {
-     "type": "string",
-     "description": "数控节点 id(见 my_industrial_nodes)"
-    }
-   },
-   "required": [
-    "node_id"
-   ]
-  }
- },
- {
-  "name": "param_read",
-  "label": "Param Read",
-  "description": "按工艺参数(key 语义键或 pp-id)读取执行节点当前值与分层限界明细(节点量程∩参数基准∩产品限界∩配方窗口,单步上限来源)。被动观测免审批;参数键目录(含每参数的描述)在回包中给出。参数写入已收敛到配方面(recipe_update/recipe_apply),本工具只读。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "param": {
-     "type": "string",
-     "description": "工艺参数 id(pp-*)或参数 key"
-    },
-    "line_id": {
-     "type": "string",
-     "description": "产线 id(可选;参数 key 跨产线同名时用于消歧)"
-    }
-   },
-   "required": [
-    "param"
-   ]
-  }
- },
- {
-  "name": "daq_query",
-  "label": "DAQ Query",
-  "description": "从时序数据库检索你绑定的数采节点的历史/实时数据。支持按产线/产品/配方/批次/时间窗/降采样多维过滤(产品/配方过滤基于逐样本打标,可精确取某批次数据);返回结果携带物理含义(参数语义/单位/量程/统计摘要/最近序列)。默认只取**当前活动批次(活动配方)**的数据:产线正在跑什么配方就只查那个配方,不会把上一轮配方的样本混进本轮判读;需要跨配方看整段历史时显式传 scope=all。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "node_id": {
-     "type": "string",
-     "description": "限定单个数采节点 id(缺省 = 全部绑定节点)"
-    },
-    "line_id": {
-     "type": "string",
-     "description": "按产线过滤(数据归属产线)"
-    },
-    "product_id": {
-     "type": "string",
-     "description": "按产品过滤(逐样本打标);显式传入即覆盖默认的活动批次过滤"
-    },
-    "recipe_id": {
-     "type": "string",
-     "description": "按配方过滤(逐样本打标);显式传入即覆盖默认过滤。缺省 = 该节点所在产线的活动配方(产线未开跑则不过滤)"
-    },
-    "run_id": {
-     "type": "string",
-     "description": "按批次 run 过滤(同一配方多次开跑时精确定位某一次);显式传入即覆盖默认过滤"
-    },
-    "scope": {
-     "type": "string",
-     "description": "作用域:active(缺省)= 只取当前活动批次;all = 不做配方过滤,返回窗口内全部样本(跨配方对比/历史复盘用)"
-    },
-    "last_minutes": {
-     "type": "number",
-     "description": "最近 N 分钟(缺省 30)"
-    },
-    "from_ms": {
-     "type": "number",
-     "description": "起始 epoch ms(与 to_ms 配合,优先于 last_minutes)"
-    },
-    "to_ms": {
-     "type": "number",
-     "description": "结束 epoch ms"
-    },
-    "bucket_ms": {
-     "type": "number",
-     "description": "时间间隔(降采样桶宽 ms):缺省 {queryDefaultBucketMs}(15s);可调,下限 {queryMinBucketMs}。不传即用缺省;系统配置变更后以新值为准"
-    },
-    "limit": {
-     "type": "number",
-     "description": "返回点数上限(缺省 500)"
-    }
-   }
-  }
- },
- {
-  "name": "dcw_judge",
-  "label": "DCW Judge",
-  "description": "对你发起的优化记录(调控 step)落判定。keep=已验证经验(配方可标 lastGood);rollback=判定应回退(判定入册后必须再调 dcw_rollback 执行,判定不自动改 PLC);uncertain=证据不足保持观察。判定必须引用数采证据(daq_query 窗口数据),禁止无证据判定。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "record_id": {
-     "type": "string",
-     "description": "优化记录 id(dcw_control 下发成功后返回)"
-    },
-    "verdict": {
-     "type": "string",
-     "description": "判定结论:keep / rollback / uncertain",
-     "enum": [
-      "keep",
-      "rollback",
-      "uncertain"
-     ]
-    },
-    "reason": {
-     "type": "string",
-     "description": "判定理由(必须引用具体数值/时间窗证据)"
-    }
-   },
-   "required": [
-    "record_id",
-    "verdict",
-    "reason"
-   ]
-  }
- },
- {
-  "name": "dcw_journal",
-  "label": "DCW Journal",
-  "description": "查询参数变更史与优化记录(在册审计):谁/何时/从多少到多少/判定结论/假设声明。优化前先读史可避免重复试错;回退定位也在此查。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "node_id": {
-     "type": "string",
-     "description": "限定数控节点 id(仅限自己绑定的节点)"
-    },
-    "recipe_id": {
-     "type": "string",
-     "description": "按配方过滤优化记录"
-    },
-    "limit": {
-     "type": "number",
-     "description": "返回条数上限(缺省 20,最大 100)"
-    }
-   }
-  }
- },
- {
-  "name": "send_cross_channel_message",
-  "label": "Cross-Channel Message",
-  "description": "[Leader only] Send a message to the LEADER of another channel, so the two teams can collaborate without being siloed. The message lands directly in the target channel leader mailbox; that leader will read your request and act on it (dispatch tasks in their channel, gather info, etc.) and can reply to you via the mailbox. Params: to_channel_id accepts the target channel id OR its exact name; message is your request to the other leader (state your need, deadline and what you expect back); require_reply=true to demand a response. Only channel leaders may call this tool - workers will be rejected. When replying to a cross-channel request you received, use this same tool addressed to the requester channel.",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "to_channel_id": {
-     "type": "string",
-     "description": "Target channel id or exact name (must be another channel, not your own)"
-    },
-    "message": {
-     "type": "string",
-     "description": "Request text for the target channel leader: what you need, why, and what to return"
-    },
-    "require_reply": {
-     "type": "boolean",
-     "description": "true = demand the target leader reply with their result/answer"
-    }
-   },
-   "required": [
-    "to_channel_id",
-    "message"
-   ]
-  }
- },
- {
-  "name": "list_other_teams",
-  "label": "List Other Teams",
-  "description": "[Leader only] Overview of the OTHER teams (channels) in this workspace: each team name, description, lead, its in-progress scenario tasks, recently completed tasks, and how many shared memories it has (shared_memories > 0 means searchable knowledge exists - use search_other_teams_memory with that team). Decision flow: found knowledge -> reuse it directly; relevant work in progress but no knowledge yet -> message their leader via send_cross_channel_message; nothing -> consider whether your request justifies starting collaboration. Workers cannot call this tool.",
-  "parameters": {
-   "type": "object",
-   "properties": {},
-   "required": []
-  }
- },
- {
-  "name": "search_other_teams_memory",
-  "label": "Search Other Teams Memory",
-  "description": "[All members] Read-only search across the SHARED memory of other teams (channels) in this workspace - what other teams have learned/concluded/done. Use it to reuse existing knowledge instead of asking for it: if you find relevant results, apply them directly; if nothing relevant exists but the other team is working on it, ask your leader to message that team leader via send_cross_channel_message. Results are attributed to their team.",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "query": {
-     "type": "string",
-     "description": "What to look for (keywords of the knowledge/conclusion)"
-    },
-    "limit": {
-     "type": "number",
-     "description": "Max results (default 5)"
-    }
-   },
-   "required": [
-    "query"
-   ]
-  }
- },
- {
-  "name": "daq_export",
-  "label": "DAQ Export",
-  "description": "Export the FULL raw time-series (no downsampling) of your BOUND daq nodes(仅限你绑定的数采节点,越权 id 一律拒绝) to the platform data directory: one CSV per node (columns ts_iso,ts_ms,value,state) plus manifest.json containing the node mapping (name/unit/range/semantics), line-product-recipe-run context, recipe monitor windows and alarm statistics. Use when analysis needs complete waveforms rather than daq_query statistics: hand the export_id to diag_run (deep root-cause diagnosis) or hand the absolute directory to other workers for offline analysis.",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "node_ids": {
-     "type": "string",
-     "description": "Comma/space separated node ids to export (default = all bound daq nodes); out-of-scope ids are rejected"
-    },
-    "line_id": {
-     "type": "string",
-     "description": "Only export nodes of this line (narrowing filter)"
-    },
-    "from_ms": {
-     "type": "number",
-     "description": "Window start epoch ms (together with to_ms; overrides last_minutes)"
-    },
-    "to_ms": {
-     "type": "number",
-     "description": "Window end epoch ms (default now)"
-    },
-    "last_minutes": {
-     "type": "number",
-     "description": "Last N minutes (default 60; window capped at 7 days)"
-    },
-    "title": {
-     "type": "string",
-     "description": "Short title of this export recorded in manifest.json (e.g. 膜厚越限诊断数据集)"
-    },
-    "note": {
-     "type": "string",
-     "description": "Scenario note for the analyst/IDD written into manifest.json (symptoms, suspected cause, what to look at)"
-    }
-   },
-   "required": []
-  }
- },
- {
-  "name": "daq_frames",
-  "label": "DAQ Frames",
-  "description": "Query multi-modal DAQ frames for your BOUND daq nodes: multi-point profiles (thickness scanners, profile scanners — returns point-count summary, a point preview and derived metrics) and camera image frames (CCD — returns resolution, object reference and derived metrics like brightness/contrast; pixels are NOT loaded into context, view them in the frontend gallery). Supports kind=vector|image filter and time windows. Use BEFORE judging surface quality or profile measurements.",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "node_id": {
-     "type": "string",
-     "description": "Limit to one bound daq node id (optional; default all your bound daq nodes)"
-    },
-    "line_id": {
-     "type": "string",
-     "description": "Filter by line id (can only narrow, never widen your access)"
-    },
-    "kind": {
-     "type": "string",
-     "enum": [
-      "vector",
-      "image"
-     ],
-     "description": "Frame kind filter (optional)"
-    },
-    "last_minutes": {
-     "type": "number",
-     "description": "Time window in minutes back from now (default 30)"
-    },
-    "from_ms": {
-     "type": "number",
-     "description": "Window start (epoch ms; overrides last_minutes)"
-    },
-    "to_ms": {
-     "type": "number",
-     "description": "Window end (epoch ms; default now)"
-    },
-    "limit": {
-     "type": "number",
-     "description": "Max frames per node (default 20, max 100)"
-    }
-   }
-  }
- },
- {
-  "name": "ops_log",
-  "label": "Ops Log",
-  "description": "查询你负责产线的运维日志(数控下发/优化判定/回退/配方下发/产线事件,新→旧)。来源区分 Agent/用户/系统:Agent 的操作者格式为「Channel名/成员名」。用于作业前后自查:你对节点做过哪些操作、他人或系统做过哪些干预。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "line_id": {
-     "type": "string",
-     "description": "限定产线 id(须为你绑定节点所属产线;缺省=全部负责产线)"
-    },
-    "node_id": {
-     "type": "string",
-     "description": "限定数控/数采节点 id(须为你绑定的节点)"
-    },
-    "kind": {
-     "type": "string",
-     "description": "按分类过滤:write(下发)/recipe(配方)/rollback(回退)/daq(采集)/line(产线)"
-    },
-    "actor_kind": {
-     "type": "string",
-     "description": "按来源过滤:agent/user/system"
-    },
-    "minutes": {
-     "type": "number",
-     "description": "回看窗口(分钟,缺省 1440=24 小时)"
-    },
-    "limit": {
-     "type": "number",
-     "description": "返回条数上限(缺省 20,最大 100)"
-    },
-    "mine": {
-     "type": "boolean",
-     "description": "true=只看你自己发起的操作"
-    }
-   }
-  }
- },
- {
-  "name": "recipe_log",
-  "label": "Recipe Change Log",
-  "description": "查询你负责产线的 Recipe 变更史:配方一键下发(recipe.apply)、优化开窗、判定、回退执行(新→旧)。你据此知道配方层面对当前节点做过哪些下发变更、由谁执行、是否已回退。节点级参数值逐笔历史用 dcw_journal。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "line_id": {
-     "type": "string",
-     "description": "限定产线 id(须为你绑定节点所属产线;缺省=全部负责产线)"
-    },
-    "recipe_id": {
-     "type": "string",
-     "description": "按配方 id 过滤"
-    },
-    "minutes": {
-     "type": "number",
-     "description": "回看窗口(分钟,缺省 1440=24 小时)"
-    },
-    "limit": {
-     "type": "number",
-     "description": "返回条数上限(缺省 20,最大 100)"
-    }
-   }
-  }
- },
- {
-  "name": "line_context",
-  "label": "Line Context",
-  "description": "读取你控制的产线/产品/配方全景(动手前必读):产线场景说明、运行状态与活动批次、产品说明、活动配方(名称/版本/描述)逐参数目标值 vs PLC 当前值 vs 工艺窗口(附参数键与参数描述)、我绑定的节点与配方清单(含执行中/未运行标注)、已知良好批次;无活动批次时列出产线配方定义。可见性=节点授权线 ∪ 绑定配方所在线 ∪ 频道绑定线(只读);确认归属与现状后再用 recipe_* 工具操作。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "line_id": {
-     "type": "string",
-     "description": "限定产线 id(须为你绑定节点所属产线;缺省=全部负责产线)"
-    }
-   }
-  }
- },
- {
-  "name": "recipe_versions",
-  "label": "Recipe Versions",
-  "description": "查看指定配方的参数版本史(旧→新):每条含版本号、时间、来源(用户/Agent/系统)、操作者人话名、变更原因与参数 diff。用途:回退前确认目标版本内容、复盘谁改了什么为什么改。可见性=该配方所在产线可读即可(节点授权线 ∪ 绑定配方线 ∪ 频道绑定线);回退操作走 recipe_rollback(写门,manual 绑定需 HITL)。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "recipe_id": {
-     "type": "string",
-     "description": "配方 id(必填;line_context 可看到)"
-    },
-    "limit": {
-     "type": "number",
-     "description": "返回最近 N 条(缺省 20,最大 50)"
-    }
-   }
-  }
- },
- {
-  "name": "recipe_update",
-  "label": "Recipe Update",
-  "description": "把验证过的最佳参数保存进指定配方(生成新版本,带归因与理由)。权限模型:须已绑定该 recipe(可绑定多个配方)且通过其二级认证;配方必须正在执行(运行门,未运行拒绝);绑定 manual 时本次保存挂 HITL 等人工批准——reason 必填且要给出判断依据(数采证据/分析结论),审批卡会向人类展示。只改配方定义,要把参数推到运行中的产线用 recipe_apply。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "recipe_id": {
-     "type": "string",
-     "description": "配方 id(必填)"
-    },
-    "params": {
-     "type": "array",
-     "description": "要更新的参数列表(部分合并,只列要改的节点)",
-     "items": {
+  {
+    "name": "report_progress",
+    "label": "Report Progress",
+    "description": "Report your current task progress as a percentage (0-100). Call this whenever you make meaningful progress on your task.",
+    "parameters": {
       "type": "object",
       "properties": {
-       "node_id": {
-        "type": "string",
-        "description": "数控节点 id(须为你绑定 dcw 的节点)"
-       },
-       "value": {
-        "type": "number",
-        "description": "新的目标值"
-       },
-       "min": {
-        "type": "number",
-        "description": "可选:新配方窗口下限"
-       },
-       "max": {
-        "type": "number",
-        "description": "可选:新配方窗口上限"
-       }
-      }
-     }
-    },
-    "reason": {
-     "type": "string",
-     "description": "保存原因(必填;写明依据)"
-    },
-    "task_id": {
-     "type": "string",
-     "description": "关联任务 id(可选)"
-    }
-   }
-  }
- },
- {
-  "name": "recipe_rollback",
-  "label": "Recipe Rollback",
-  "description": "回退配方参数到稳定版本(指定历史版本或已知良好批次),生成新版本(非破坏);dispatch=true 时统一回退(定义回退+参数整批重下发)。权限模型:须已绑定该 recipe 且过二级认证与运行门;绑定 manual 时挂 HITL——reason 必填说明回退原因(如优化劣化/越限)。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "recipe_id": {
-     "type": "string",
-     "description": "配方 id(必填)"
-    },
-    "version": {
-     "type": "number",
-     "description": "回退到该历史版本(version 与 to_last_good 二选一)"
-    },
-    "to_last_good": {
-     "type": "boolean",
-     "description": "true=回退到已知良好批次参数冻结"
-    },
-    "reason": {
-     "type": "string",
-     "description": "回退原因(必填)"
-    },
-    "dispatch": {
-     "type": "boolean",
-     "description": "true=统一回退:定义回退后把恢复参数整批重下发到 PLC(优化闭环劣化时用);缺省 false=仅回退配方定义"
-    }
-   }
-  }
- },
- {
-  "name": "mes_catalog",
-  "label": "MES Catalog",
-  "description": "检索 MES REST 点位目录(driver=mes-rest 的数控点位)。每条含 id/名称/产线/单位/量程与能力位(读=当前值,写=设定值,史=可取历史;史·vector=每时间点一个检测向量如膜厚断面/双折射光谱,史·image=图像帧如 CCD 相机,史·table/史·event=表格/事件记录流,钩子=该点位已配置数据下沉处理)与点位描述。是 mes_fetch 取数的寻址入口;支持按关键字(q,匹配名称与描述)与产线(line_id)过滤。只读目录,不触达设备。可见性=你绑定的数控点位与你绑定配方内的参数点位(未绑定点位不可见,不触达设备)。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "q": {
-     "type": "string",
-     "description": "关键字子串过滤(匹配点位名称与描述)"
-    },
-    "line_id": {
-     "type": "string",
-     "description": "限定产线 id"
-    },
-    "limit": {
-     "type": "number",
-     "description": "返回条数上限(缺省 20,最大 100)"
-    }
-   }
-  }
- },
- {
-  "name": "mes_fetch",
-  "label": "MES Fetch",
-  "description": "从 MES REST 点位取数(代码级护栏:仅限你绑定的数控点位;时间窗 ≤7 天;单次 ≤5000 行;每 60 秒最多 6 次)。格式自适应:标量点位回统计摘要;向量点位(每时间点一个检测向量,如膜厚断面 48 道)回按行均值的统计+维度+首中末采样;图像点位(如 CCD 帧)自动把帧落盘为文件、回包只给文件名与大小,图像 base64 永不进入对话;表格/事件点位回记录采样。若点位配置了数据钩子(dataHook),取数后会自动执行用户预设的下沉处理(绘图存档/存 CSV/统计),回包附处理摘要、处理说明与产物文件清单——直接引用它们,不要要求再给原文。param 对象会透传给钩子(如 {\"lane\": 12} 只看某车道)。三种模式:不传 from/to = 当前值快照直读;from/to 且 max_rows≤2000 = 同步内联;max_rows>2000 = 异步落 CSV 数据集(仅标量/向量;图像/表格/事件只支持内联),返回 job_id/dataset_id —— 勿轮询,用 mes_datasets 查状态、mes_dataset_read 读内容。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "ids": {
-     "type": "array",
-     "items": {
-      "type": "string"
-     },
-     "description": "目标点位 id 数组(mes_catalog 输出的 id;须为你绑定的数控点位)"
-    },
-    "from": {
-     "type": "string",
-     "description": "窗口起点 ISO 时间(与 to 成对;都不传=当前值快照模式)"
-    },
-    "to": {
-     "type": "string",
-     "description": "窗口终点 ISO 时间(与 from 成对;窗口 ≤7 天)"
-    },
-    "max_rows": {
-     "type": "number",
-     "description": "行数上限(缺省 500,硬上限 5000;>2000 走异步数据集)"
-    },
-    "param": {
-     "type": "object",
-     "description": "透传给点位数据钩子的参数对象(Agent 只传业务参数,如 {\"lane\":12,\"agg\":\"mean\"};请求构造与数据处理逻辑由点位配置决定);无钩子点位可省略"
-    }
-   },
-   "required": [
-    "ids"
-   ]
-  }
- },
- {
-  "name": "mes_dataset_read",
-  "label": "MES Dataset Read",
-  "description": "读取 MES 取数数据集(mode=head=列名+总行数概览;mode=stats=count/min/max/mean/stddev/首末时间;mode=rows=offset 起每页 20 行分页)。仅创建者、该点位绑定者或该产线可读者可读;回包只带 ≤3 行采样,统计判读请用 mode=stats。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "dataset_id": {
-     "type": "string",
-     "description": "数据集 id(mes_fetch 异步回包或 mes_datasets 清单)"
-    },
-    "mode": {
-     "type": "string",
-     "description": "head(缺省)| stats | rows"
-    },
-    "offset": {
-     "type": "number",
-     "description": "rows 模式的起始行号(缺省 0)"
-    }
-   },
-   "required": [
-    "dataset_id"
-   ]
-  }
- },
- {
-  "name": "mes_datasets",
-  "label": "MES Datasets",
-  "description": "列出你可读的 MES 数据集清单(新→旧;含 dataset_id/点位/时间窗/行数/状态)。用于找回 mes_fetch 异步作业的 dataset_id 与确认取数状态 —— 替代轮询,作业未完成时先做别的任务。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "limit": {
-     "type": "number",
-     "description": "返回条数上限(缺省 20,最大 100)"
-    }
-   }
-  }
- },
- {
-  "name": "aml_node_catalog",
-  "label": "AML Node Catalog",
-  "description": "列出你可用的 AML 建模节点(全部 daq 绑定):节点 id/名称/物理语义/单位/量程/所属产线/近 24h 是否有批次打标数据。开始任何自动建模前先调用本工具选节点(control=可控输入/target=预测目标/feature=仅历史特征);无绑定会给出指引。",
-  "parameters": {
-   "type": "object",
-   "properties": {}
-  }
- },
- {
-  "name": "aml_dataset_build",
-  "label": "AML Dataset Build",
-  "description": "构建 AML 训练数据集:按隔离三元组(产线/产品/配方,防配方串味)拉取批次打标数据,清洗(状态/量程/Hampel)后对齐到 beat_ms 网格,按批次滑窗切分 train/val/test。鉴权:每个 node_id 都必须有你的 daq 绑定且归属 line_id(绑定只缩不放)。返回 dataset_id、行数、窗口计数、逐节点清洗摘要、控制→目标滞后估计。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "line_id": {
-     "type": "string",
-     "description": "产线 id(必填;line_context 可查)"
-    },
-    "product_id": {
-     "type": "string",
-     "description": "产品 id(必填)"
-    },
-    "recipe_id": {
-     "type": "string",
-     "description": "配方 id(必填)"
-    },
-    "nodes": {
-     "type": "array",
-     "description": "节点与角色列表(≥2 项,必须含 1 个 target)",
-     "items": {
-      "type": "object",
-      "properties": {
-       "node_id": {
-        "type": "string",
-        "description": "数采节点 id(须有你的 daq 绑定)"
-       },
-       "role": {
-        "type": "string",
-        "enum": [
-         "control",
-         "feature",
-         "target"
-        ],
-        "description": "control=可控输入(未来轨迹已知)/ target=预测目标 / feature=仅历史特征"
-       }
-      },
-      "required": [
-       "node_id",
-       "role"
-      ]
-     }
-    },
-    "beat_ms": {
-     "type": "number",
-     "description": "数据对齐节拍(ms,≥1000,常用 5000~15000)"
-    },
-    "history_steps": {
-     "type": "number",
-     "description": "历史窗口步数(1~2048;覆盖主要滞后即可)"
-    },
-    "horizon_steps": {
-     "type": "number",
-     "description": "预测步长(1~512;mpc_surrogate 建议覆盖调控响应期)"
-    },
-    "split_seed": {
-     "type": "number",
-     "description": "切分随机种子(缺省 42)"
-    },
-    "val_ratio": {
-     "type": "number",
-     "description": "验证集比例(缺省 0.15)"
-    },
-    "test_ratio": {
-     "type": "number",
-     "description": "测试集比例(缺省 0.15)"
-    },
-    "purpose": {
-     "type": "string",
-     "enum": [
-      "mpc_surrogate",
-      "quality_predict"
-     ],
-     "description": "建模目的:mpc_surrogate=代理模型(缺省)/ quality_predict=质量预测"
-    },
-    "note": {
-     "type": "string",
-     "description": "数据集备注(为什么建这个数据集)"
-    },
-    "run_ids": {
-     "type": "array",
-     "items": {
-      "type": "string"
-     },
-     "description": "限定批次 id 列表(缺省 = 该配方全部已完结批次)"
-    },
-    "from_ms": {
-     "type": "number",
-     "description": "起始 epoch ms(可选)"
-    },
-    "to_ms": {
-     "type": "number",
-     "description": "结束 epoch ms(可选)"
-    }
-   },
-   "required": [
-    "line_id",
-    "product_id",
-    "recipe_id",
-    "nodes",
-    "beat_ms",
-    "history_steps",
-    "horizon_steps"
-   ]
-  }
- },
- {
-  "name": "aml_dataset_stats",
-  "label": "AML Dataset Stats",
-  "description": "查看数据集完整统计报告:逐节点 mean/std/p05/p50/p95/缺失率/清洗率、控制→目标滞后估计、逐批次目标均值轮廓(漂移检测)、train/val/test 窗口计数。提交训练前用它确认数据质量。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "dataset_id": {
-     "type": "string",
-     "description": "数据集 id(aml_dataset_build 返回)"
-    }
-   },
-   "required": [
-    "dataset_id"
-   ]
-  }
- },
- {
-  "name": "aml_job_submit",
-  "label": "AML Job Submit",
-  "description": "提交训练作业(内联 train.py 全文,≤500KB)。代码契约:必须 import amlkit;amlkit.load_bundle(datasetPath) 加载数据集;amlkit.report_progress(pct, note) 上报进度(防停摆误杀);amlkit.export_torch_onnx(model, manifest) 导出模型到 artifacts/model.onnx(契约缺失=永久失败);模型接口=one-step:输入 [batch, history_steps, 全节点数](归一化)→ 输出 [batch, 目标数](归一化)。change_note 遵守单组件改动纪律:每次实验只改一个组件(网络/特征/超参之一)并写明。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "dataset_id": {
-     "type": "string",
-     "description": "数据集 id(aml_dataset_build 返回)"
-    },
-    "code": {
-     "type": "string",
-     "description": "train.py 全文(≤500KB,须 import amlkit 并导出 artifacts/model.onnx)。job_kind=hybrid_residual 时可省略:平台自动使用内置参考训练器(物理参数校准→有界残差集成→UQ 校准)"
-    },
-    "change_note": {
-     "type": "string",
-     "description": "本次实验改动说明(必填;单组件改动纪律:只改一个组件,写明改了什么与预期)"
-    },
-    "params": {
-     "type": "object",
-     "description": "超参数字典(如 {\"epochs\": 50, \"lr\": 0.001};传入训练代码的 job.json.params)"
-    },
-    "seed": {
-     "type": "number",
-     "description": "随机种子(缺省 42)"
-    },
-    "purpose": {
-     "type": "string",
-     "enum": [
-      "mpc_surrogate",
-      "quality_predict"
-     ],
-     "description": "建模目的(缺省继承数据集 spec)"
-    },
-    "parent_experiment_id": {
-     "type": "string",
-     "description": "父实验 id(谱系对照:本次是在哪个实验基础上改的)"
-    },
-    "scene_id": {
-     "type": "string",
-     "description": "Hybrid Twin 场景 id（可选；写入作业谱系）"
-    },
-    "scene_version": {
-     "type": "string",
-     "description": "Hybrid Twin 场景版本"
-    },
-    "objective_id": {
-     "type": "string",
-     "description": "ObjectiveProfile id"
-    },
-    "job_kind": {
-     "type": "string",
-     "enum": [
-      "supervised",
-      "physics_calibration",
-      "hybrid_residual",
-      "uncertainty_calibration"
-     ],
-     "description": "训练阶段；legacy 留空"
-    },
-    "physics_spec": {
-     "type": "object",
-     "description": "已冻结 SceneContract 对应的声明式 PhysicsSpec；平台会在隔离 workspace 写入 physics_spec.json"
-    },
-    "physics_manifest": {
-     "type": "object",
-     "description": "物理模型 manifest 快照"
-    },
-    "twin_snapshot": {
-     "type": "object",
-     "description": "训练所依据的 TwinSnapshot"
-    },
-    "objective_profile": {
-     "type": "object",
-     "description": "优化目标契约"
-    },
-    "model_name": {
-     "type": "string",
-     "description": "模型人读标识(可选,≤80 字符):注册时作 label 前缀;平台会自动追加「产品/配方·优化目标」谱系尾,换配方或换目标的模型必须能从名字区分"
-    },
-    "model_description": {
-     "type": "string",
-     "description": "建模意图描述(可选,≤500 字符):写清本模型针对的场景/配方与优化目标;缺省由平台按谱系派生"
-    }
-   },
-   "required": [
-    "dataset_id",
-    "code",
-    "change_note"
-   ]
-  }
- },
- {
-  "name": "aml_job_status",
-  "label": "AML Job Status",
-  "description": "查看训练作业状态:状态/阶段(provision→train→evaluate)/进度/平台门禁逐项(G1 单步/G2 滚动 NRMSE 等)/错误。不带 job_id 列出最近 10 个;带 job_id 看单作业详情。训练中建议 30~60 秒轮询一次。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "job_id": {
-     "type": "string",
-     "description": "作业 id(缺省 = 列最近 10 个)"
-    }
-   }
-  }
- },
- {
-  "name": "aml_job_logs",
-  "label": "AML Job Logs",
-  "description": "查看 AML 训练/评估作业的日志行(按 job_id;含加载/训练/门禁/导出各阶段输出)。用于失败归因(如数据不足/门禁未过)与进度确认;作业终态回执已自动送达信箱,本工具用于补看细节。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "job_id": {
-     "type": "string",
-     "description": "作业 id"
-    },
-    "lines": {
-     "type": "number",
-     "description": "返回行数(缺省 80,上限 400)"
-    }
-   },
-   "required": [
-    "job_id"
-   ]
-  }
- },
- {
-  "name": "aml_job_cancel",
-  "label": "AML Job Cancel",
-  "description": "取消排队/运行中的训练作业(运行中的会终止进程树;取消动作入册可审计)。数据集不受影响,可复用重训。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "job_id": {
-     "type": "string",
-     "description": "作业 id"
-    }
-   },
-   "required": [
-    "job_id"
-   ]
-  }
- },
- {
-  "name": "aml_leaderboard",
-  "label": "AML Leaderboard",
-  "description": "查看数据集的实验谱系表(新→旧):每条实验的 change_note/父实验/状态/G1 单步与 G2 滚动 NRMSE/门禁通过情况,并标注当前最优(门禁通过且 G1 最小);同时列出已登记模型(model_id,晋升对象)。优化前先读榜,避免重复试错。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "dataset_id": {
-     "type": "string",
-     "description": "数据集 id"
-    }
-   },
-   "required": [
-    "dataset_id"
-   ]
-  }
- },
- {
-  "name": "aml_model_find",
-  "label": "AML Model Find",
-  "description": "模型发现与选型:按产线/产品/配方/purpose/优化目标/阶段过滤模型注册表,每个模型给出「label(产线·配方·优化目标标识)/阶段/G1+G2 指标/描述」,生产模型置顶,并按当前情况给出 选型指引:复用已有生产模型(aml_model_reference)→ 晋升候选(aml_model_promote,lead 专属)→ 新建模型(aml_dataset_build → aml_job_submit)。开始优化任务前先查:模型按 (产品, 配方, purpose) 隔离,不同 recipe 的模型不可跨用。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "line_id": {
-     "type": "string",
-     "description": "限定产线 id(须为你绑定节点所属产线;缺省 = 全部负责产线)"
-    },
-    "product_id": {
-     "type": "string",
-     "description": "限定产品 id"
-    },
-    "recipe_id": {
-     "type": "string",
-     "description": "限定配方 id(配方隔离:换配方必须换模型,选型前务必指定)"
-    },
-    "purpose": {
-     "type": "string",
-     "enum": [
-      "mpc_surrogate",
-      "quality_predict"
-     ],
-     "description": "限定建模目的"
-    },
-    "objective_id": {
-     "type": "string",
-     "description": "限定优化目标(ObjectiveProfile id;hybrid twin 模型携带)"
-    },
-    "stage": {
-     "type": "string",
-     "enum": [
-      "candidate",
-      "shadow",
-      "production",
-      "retired"
-     ],
-     "description": "限定阶段(缺省 = 全部,production 置顶)"
-    }
-   }
-  }
- },
- {
-  "name": "aml_model_promote",
-  "label": "AML Model Promote",
-  "description": "(Lead only) 晋升模型阶段:to_stage=shadow(影子观测)或 production(生产生效)。必须经人工审批(HITL 挂起,用户批准/拒绝/超时);批准晋升 production 时同组旧生产模型自动退役。worker 无此工具;模型 id 从 aml_leaderboard 查。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "model_id": {
-     "type": "string",
-     "description": "模型 id(aml_leaderboard 的已登记模型段)"
-    },
-    "to_stage": {
-     "type": "string",
-     "enum": [
-      "shadow",
-      "production"
-     ],
-     "description": "目标阶段:shadow=影子观测 / production=生产生效"
-    }
-   },
-   "required": [
-    "model_id",
-    "to_stage"
-   ]
-  }
- },
- {
-  "name": "aml_model_reference",
-  "label": "AML Model Reference",
-  "description": "影子模型参考(调参前先问影子模型):拉取最近历史数据组装生产模型输入,按当前/指定控制轨迹预测未来每拍的目标值(物理量纲)。用于 dcw_control 下发前对比不同设定方案的目标响应;预测仅供参考,真实下发仍走安全联锁。product/recipe 缺省时取你绑定节点所属产线的唯一活动批次。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "line_id": {
-     "type": "string",
-     "description": "限定产线 id(须为你绑定节点所属产线;多产线绑定且未给全 product/recipe 时必传以消歧)"
-    },
-    "product_id": {
-     "type": "string",
-     "description": "产品 id(缺省 = 活动批次)"
-    },
-    "recipe_id": {
-     "type": "string",
-     "description": "配方 id(缺省 = 活动批次)"
-    },
-    "purpose": {
-     "type": "string",
-     "enum": [
-      "mpc_surrogate",
-      "quality_predict"
-     ],
-     "description": "建模目的(缺省 mpc_surrogate)"
-    },
-    "controls": {
-     "type": "object",
-     "description": "控制节点设定值映射 {node_id: value}(候选方案;缺省 = 持最后观测)"
-    },
-    "steps": {
-     "type": "number",
-     "description": "滚动预测步数(≤ 模型 horizon;缺省 = 全 horizon)"
-    }
-   }
-  }
- },
- {
-  "name": "twin_provider_catalog",
-  "label": "Twin Provider Catalog",
-  "description": "读取当前已注册的场景 Provider、ScenePack、SolverAdapter 及 generation/health 元数据；只读，不执行控制。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "scene_kind": {
-     "type": "string",
-     "description": "可选场景类型过滤"
-    }
-   }
-  }
- },
- {
-  "name": "twin_scene_discover",
-  "label": "Twin Scene Discover",
-  "description": "读取当前 Agent 已绑定的 DAQ/DCW 节点，推断 control/state/disturbance/target/guard 语义并返回证据与置信度；只读，不执行控制。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "scene_kind": {
-     "type": "string",
-     "description": "可选场景类型"
-    }
-   }
-  }
- },
- {
-  "name": "twin_scene_compile",
-  "label": "Twin Scene Compile",
-  "description": "根据已绑定节点和场景提示词生成 SceneContract Draft；默认 draft，首次训练/上线前必须由用户确认后冻结。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "scene_id": {
-     "type": "string"
-    },
-    "scene_version": {
-     "type": "string"
-    },
-    "line_id": {
-     "type": "string"
-    },
-    "product_id": {
-     "type": "string"
-    },
-    "recipe_id": {
-     "type": "string"
-    },
-    "prompt": {
-     "type": "string"
-    },
-    "physics_profile_id": {
-     "type": "string"
-    },
-    "objective_profile_ids": {
-     "type": "array",
-     "items": {
-      "type": "string"
-     }
-    },
-    "node_ids": {
-     "type": "array",
-     "items": {
-      "type": "string"
-     }
-    }
-   },
-   "required": [
-    "scene_id",
-    "line_id"
-   ]
-  }
- },
- {
-  "name": "twin_scene_freeze",
-  "label": "Twin Scene Freeze",
-  "description": "在用户明确确认后冻结 SceneContract；冻结后同一 scene_id/version 的契约不可覆盖，变更必须新建版本。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "scene_id": {
-     "type": "string"
-    },
-    "scene_version": {
-     "type": "string"
-    },
-    "expected_hash": {
-     "type": "string"
-    },
-    "approved_by": {
-     "type": "string"
-    },
-    "confirmation": {
-     "type": "string",
-     "description": "必须为 USER_CONFIRMED_SCENE_CONTRACT"
-    }
-   },
-   "required": [
-    "scene_id",
-    "scene_version",
-    "confirmation"
-   ]
-  }
- },
- {
-  "name": "twin_physics_spec_draft",
-  "label": "Twin PhysicsSpec Draft",
-  "description": "从场景(SceneContract,须含 nodeId 映射)自动生成骨架 PhysicsSpec:每个状态变量=一阶惯性弛豫方程(τ/控制增益为带先验盒的可校准参数),观测=持久性恒等基线,约束继承场景。这是任意工况建模的起点:生成后按真实物理润色方程 → twin_physics_spec_validate → twin_physics_spec_compile → aml_job_submit(job_kind=hybrid_residual,训练 stage A 会自动按数据拟合 τ/增益)。传 dt_sec 指定与数据集 beat 一致的步长(缺省 1s)。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "scene_json": {
-     "type": "object",
-     "description": "SceneContract 全文(hybrid Channel 已绑定冻结场景时可省略)"
-    },
-    "dt_sec": {
-     "type": "number",
-     "description": "求解步长(秒;应与训练数据集 beatMs/1000 一致,缺省 1)"
-    }
-   }
-  }
- },
- {
-  "name": "twin_physics_spec_validate",
-  "label": "Twin PhysicsSpec Validate",
-  "description": "校验孪生物理规格(PhysicsSpec)的结构与参数完整性:方程/常量/输入输出维度/量纲是否自洽。训练与评估前先校验,坏规格会在运行期才爆;校验回包给出逐项问题定位。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "physics_spec": {
-     "type": "object"
-    },
-    "spec_json": {
-     "type": "string"
-    }
-   },
-   "required": [
-    "physics_spec"
-   ]
-  }
- },
- {
-  "name": "twin_physics_spec_compile",
-  "label": "Twin PhysicsSpec Compile",
-  "description": "将已冻结场景的 PhysicsSpec 编译为隔离的 Generic Declarative Provider 候选并保存 artifact；不注册 production、不写 PLC。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "physics_spec": {
-     "type": "object"
-    },
-    "spec_json": {
-     "type": "string"
-    },
-    "scene_json": {
-     "type": "object"
-    }
-   },
-   "required": [
-    "physics_spec",
-    "scene_json"
-   ]
-  }
- },
- {
-  "name": "twin_scene_read",
-  "label": "Twin Scene Read",
-  "description": "读取绑定场景的机器可验证 SceneContract 与控制策略；仅返回场景/节点语义，不执行任何控制。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "scene_id": {
-     "type": "string",
-     "description": "场景 id，缺省使用当前注塑 MVP 场景"
-    }
-   }
-  }
- },
- {
-  "name": "twin_snapshot_create",
-  "label": "Twin Snapshot Create",
-  "description": "根据服务端绑定的 DAQ 样本创建带 freshness/watermark/hash/binding epoch 的不可变 TwinSnapshot；Hybrid Twin 必须 auto_daq=true、冻结场景和 BindingSnapshot，禁止 Agent 伪造样本。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "scene_json": {
-     "type": "object",
-     "description": "SceneContract JSON（可选）"
-    },
-    "channel_id": {
-     "type": "string"
-    },
-    "phase": {
-     "type": "string"
-    },
-    "controls": {
-     "type": "object"
-    },
-    "states": {
-     "type": "object"
-    },
-    "disturbances": {
-     "type": "object"
-    },
-    "samples": {
-     "type": "array",
-     "description": "[{nodeId,at,value,sequence}]"
-    },
-    "now_ms": {
-     "type": "number"
-    }
-   },
-   "required": [
-    "samples",
-    "controls"
-   ]
-  }
- },
- {
-  "name": "twin_trial_run",
-  "label": "Twin Virtual Trial",
-  "description": "在隔离模型副本中注入候选控制轨迹，输出全轨迹约束、UQ/OOD 与收益；candidateExecuted=false，不触碰 PLC/DCW。传 model_id 时 rollout 由该训练注册的 hybrid 模型驱动(校准后物理主干+有界残差集成，UQ coverage 来自训练工件)，且模型谱系必须与场景 line/product/recipe 一致；不传则用场景物理 provider。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "scene_json": {
-     "type": "object"
-    },
-    "snapshot_json": {
-     "type": "object"
-    },
-    "snapshot_id": {
-     "type": "string",
-     "description": "生产 VirtualTrial 使用已持久化 TwinSnapshot id；Hybrid Twin 必填"
-    },
-    "model_id": {
-     "type": "string",
-     "description": "驱动 rollout 的 AML 模型 id(须为 hybrid 模型且与场景同谱系；aml_model_find 可查)；缺省=场景物理 provider"
-    },
-    "baseline_controls": {
-     "type": "object"
-    },
-    "candidate_controls": {
-     "type": "array"
-    },
-    "objective": {
-     "type": "object"
-    },
-    "uncertainty": {
-     "type": "object"
-    }
-   },
-   "required": [
-    "snapshot_json",
-    "candidate_controls"
-   ]
-  }
- },
- {
-  "name": "mpc_optimize",
-  "label": "MPC Recommendation Only",
-  "description": "先检查冻结 SceneContract、绑定快照、模型门禁；未通过时只生成 safe_small_step 小步参数试探，门禁通过后才允许更精确的候选搜索；始终 recommendation-only。传 model_id 时候选评估由该训练注册的 hybrid 模型 rollout(残差修正+集成 UQ)；不传则用场景物理 provider。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "scene_json": {
-     "type": "object"
-    },
-    "snapshot_id": {
-     "type": "string",
-     "description": "生产 MPC 使用已持久化 TwinSnapshot id；Hybrid Twin 必填"
-    },
-    "baseline_controls": {
-     "type": "object"
-    },
-    "model_ready": {
-     "type": "boolean"
-    },
-    "horizon_steps": {
-     "type": "number"
-    }
-   },
-   "required": [
-    "baseline_controls"
-   ]
-  }
- },
- {
-  "name": "twin_gate_evaluate",
-  "label": "Twin Gate Evaluate",
-  "description": "评估 AML 数据门、物理门、UQ/OOD、VirtualTrial 候选数量和硬约束；零候选/零分母自动拒绝。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "rows": {
-     "type": "number"
-    },
-    "runs": {
-     "type": "number"
-    },
-    "one_step_nrmse": {
-     "type": "number"
-    },
-    "rollout_nrmse": {
-     "type": "number"
-    },
-    "val_test_gap": {
-     "type": "number"
-    },
-    "calibration_rows": {
-     "type": "number"
-    },
-    "coverage": {
-     "type": "number"
-    },
-    "physics_failure_rate": {
-     "type": "number"
-    },
-    "candidate_trials": {
-     "type": "array"
-    }
-   },
-   "required": [
-    "rows",
-    "runs",
-    "candidate_trials"
-   ]
-  }
- },
- {
-  "name": "twin_calibration_request",
-  "label": "Twin Calibration Request",
-  "description": "按新 DAQ run/rows、漂移或误差阈值登记一次去重的自动校准候选；只进入 AgentTeam 校准队列，不覆盖 production，不写 DCW。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "scene_id": {
-     "type": "string"
-    },
-    "line_id": {
-     "type": "string"
-    },
-    "recipe_id": {
-     "type": "string"
-    },
-    "new_runs": {
-     "type": "number"
-    },
-    "new_rows": {
-     "type": "number"
-    },
-    "drift_score": {
-     "type": "number"
-    },
-    "error_score": {
-     "type": "number"
-    },
-    "reason": {
-     "type": "string"
-    }
-   },
-   "required": [
-    "line_id",
-    "new_runs",
-    "new_rows"
-   ]
-  }
- },
- {
-  "name": "optimization_explore",
-  "label": "Optimization Explore Step",
-  "description": "工艺优化探索步(探索模式核心):按 goal 与指定方向/步长生成激励值,经数控下发治理链(绑定鉴权/HITL/写限界)真实写入产线,等待工艺响应后读回目标量均值,并把【写入值↔响应值】配对落库为探索记录(训练数据回流的事实源)。步长缺省取绑定 tuning.step 或场景调试跨度;方向 up/down 由你依据节点物理意义判断。多轮迭代以积累「参数波动↔目标响应」数据,供 AML 修正训练与后续模型寻优。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "control_node_id": {
-     "type": "string",
-     "description": "数控节点 id(缺省=第一个数控绑定)"
-    },
-    "target_node_id": {
-     "type": "string",
-     "description": "目标观测节点 id(缺省=第一个数采绑定)"
-    },
-    "direction": {
-     "type": "string",
-     "enum": [
-      "up",
-      "down"
-     ],
-     "description": "激励方向(依据节点物理意义与 goal 偏差判断)"
-    },
-    "step": {
-     "type": "number",
-     "description": "激励步长(缺省=绑定 tuning.step 或场景 maxStep)"
-    },
-    "settle_seconds": {
-     "type": "number",
-     "description": "写入后等待工艺响应的秒数(10~300,缺省 45)"
-    },
-    "hypothesis": {
-     "type": "string",
-     "description": "本次探索假设(入册追溯)"
-    }
-   }
-  }
- },
- {
-  "name": "twin_bayes_optimize",
-  "label": "Twin Bayesian Optimize",
-  "description": "AML 模式贝叶斯寻优(须已绑定通过门禁的 AML 模型):以绑定模型 rollout 为代理,围绕当前最优邻域多轮生成候选,UCB(μ-κ·σ)权衡利用与探索,产出收敛轨迹与最终受治理推荐(recommendation-only,写入须审批)。快照/绑定校验与 mpc_optimize 同源。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "scene_json": {
-     "type": "object"
-    },
-    "snapshot_id": {
-     "type": "string",
-     "description": "已持久化 TwinSnapshot id(必填,requireFresh)"
-    },
-    "baseline_controls": {
-     "type": "object"
-    },
-    "objective": {
-     "type": "object",
-     "description": "ObjectiveProfile(缺省=Channel goal)"
-    },
-    "rounds": {
-     "type": "number",
-     "description": "搜索轮数(1~10,缺省 4)"
-    },
-    "candidates_per_round": {
-     "type": "number",
-     "description": "每轮候选数(2~20,缺省 6)"
-    },
-    "kappa": {
-     "type": "number",
-     "description": "UCB 探索系数(缺省 1.96)"
-    },
-    "horizon_steps": {
-     "type": "number",
-     "description": "rollout 步数(缺省 4)"
-    }
-   },
-   "required": [
-    "snapshot_id",
-    "baseline_controls"
-   ]
-  }
- },
- {
-  "name": "aml_training_plan_list",
-  "label": "AML Training Plan List",
-  "description": "建模任务清单(解耦编排面):列出全部建模任务的谱系绑定/策略(auto=新批次自动修正训练)/状态/最新模型与 spec 固化情况。",
-  "parameters": {
-   "type": "object",
-   "properties": {}
-  }
- },
- {
-  "name": "aml_training_plan_create",
-  "label": "AML Training Plan Create",
-  "description": "创建建模任务(绑定产线/产品/配方三元组 + 数据集 IO 契约:control=DCW 输入,target=DAQ 输出 + 固化训练 spec)。auto 策略的任务在新批次(含工艺优化 Channel 的探索数据)到达时由平台自动修正训练;模型入册后可在 AML 界面绑定到工艺优化 Channel。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "name": {
-     "type": "string"
-    },
-    "line_id": {
-     "type": "string"
-    },
-    "product_id": {
-     "type": "string"
-    },
-    "recipe_id": {
-     "type": "string"
-    },
-    "scene_id": {
-     "type": "string"
-    },
-    "scene_version": {
-     "type": "string"
-    },
-    "objective_id": {
-     "type": "string"
-    },
-    "strategy": {
-     "type": "string",
-     "enum": [
-      "auto",
-      "manual"
-     ]
-    },
-    "dataset_spec": {
-     "type": "object",
-     "description": "AmlDatasetSpec 完整契约"
-    },
-    "training_spec": {
-     "type": "object",
-     "description": "固化的 PhysicsSpec(含 modelId;来自 twin_physics_spec_draft/compile 流程)"
-    },
-    "model_name_prefix": {
-     "type": "string"
-    },
-    "params": {
-     "type": "object"
-    },
-    "seed": {
-     "type": "number"
-    },
-    "min_interval_sec": {
-     "type": "number"
-    }
-   },
-   "required": [
-    "line_id",
-    "product_id",
-    "recipe_id",
-    "dataset_spec"
-   ]
-  }
- },
- {
-  "name": "aml_training_plan_train",
-  "label": "AML Training Plan Train",
-  "description": "立即触发建模任务的修正训练:重建数据集(历史+新批次)→ 平台参考训练器 → 门禁 → 模型入册;plan 状态回写,AML 界面可渲染。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "plan_id": {
-     "type": "string",
-     "description": "建模任务 id"
-    }
-   },
-   "required": [
-    "plan_id"
-   ]
-  }
- },
- {
-  "name": "team_grant_nodes",
-  "label": "Grant Nodes",
-  "description": "(Lead only) Grant industrial node permissions (DAQ read / DCW control) to a worker in this channel. HARD RULE: every node must already be bound to YOU (the lead) — you cannot grant permissions beyond your own bindings. Grants are all-or-nothing: if any node is not in your binding surface, the whole request is rejected and nothing is granted. Use this before dispatching (so the worker can act immediately) or mid-execution when scope expands. The worker sees granted nodes via my_industrial_nodes. To grant together with a task, prefer dispatch_task(grant_node_ids=[...]). 可委派对象:数采节点(观察)与配方(recipe;被授予者获得该配方的参数写入/下发能力,受运行门与 HITL 约束)。每个对象必须已绑定你自己(绑定即前提,权限不可超越授予者)。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "agent_id": {
-     "type": "string",
-     "description": "Worker member instance id in this channel"
-    },
-    "node_ids": {
-     "type": "array",
-     "items": {
-      "type": "string"
-     },
-     "description": "Node ids to grant (DAQ and/or DCW nodes; must all be bound to you, the lead)"
-    },
-    "mode": {
-     "type": "string",
-     "enum": [
-      "auto",
-      "manual"
-     ],
-     "description": "Optional binding mode for the granted nodes; default = the mode of YOUR own binding for that node (manual = every write needs user approval)"
-    }
-   },
-   "required": [
-    "agent_id",
-    "node_ids"
-   ]
-  }
- },
- {
-  "name": "team_revoke_nodes",
-  "label": "Revoke Nodes",
-  "description": "(Lead only) Take back node permissions previously granted to a worker in this channel. You can revoke bindings you granted, or bindings for nodes you hold yourself; other bindings are reported as not revoked. Use when a task closes or scope narrows.",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "agent_id": {
-     "type": "string",
-     "description": "Worker member instance id in this channel"
-    },
-    "node_ids": {
-     "type": "array",
-     "items": {
-      "type": "string"
-     },
-     "description": "Node ids to revoke from this worker"
-    }
-   },
-   "required": [
-    "agent_id",
-    "node_ids"
-   ]
-  }
- },
- {
-  "name": "recipe_trial",
-  "label": "Recipe Trial",
-  "description": "多参数候选整批试验下发(不写配方版本)。权限模型:须已绑定该 recipe 且过二级认证与运行门;候选只能覆盖配方内参数节点;绑定 manual 时挂 HITL 等人工批准 —— hypothesis 必填,即本次试验的理由与判断依据,审批卡会向人类展示。整批一次落产线;复测判读后有进步用 recipe_update 固化,劣化用 recipe_rollback(dispatch=true) 统一回退。受同线试验节拍(默认 ≥5 分钟)与四层限界卡控。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "recipe_id": {
-     "type": "string",
-     "description": "配方 id(必填;line_context 可看到当前配方)"
-    },
-    "params": {
-     "type": "array",
-     "description": "候选参数集(≥1条;一次把要改的参数都带上,整批下发防震荡)",
-     "items": {
-      "type": "object",
-      "properties": {
-       "node_id": {
-        "type": "string",
-        "description": "数控节点 id"
-       },
-       "value": {
-        "type": "number",
-        "description": "候选工程量值"
-       }
-      },
-      "required": [
-       "node_id",
-       "value"
-      ]
-     }
-    },
-    "hypothesis": {
-     "type": "string",
-     "description": "试验假设/依据(必填:知识库条目或数据分析结论)"
-    }
-   },
-   "required": [
-    "recipe_id",
-    "params",
-    "hypothesis"
-   ]
-  }
- },
- {
-  "name": "recipe_apply",
-  "label": "Recipe Apply",
-  "description": "把配方当前已固化参数整批下发到运行中的产线(改配方 recipe_update 之后用)。权限模型:须已绑定该 recipe 且过二级认证与运行门(配方须在执行);绑定 manual 时挂 HITL 等人工批准——reason 必填,说明为什么要下发、依据是什么。批准后整批经治理联锁(量程/步长/限速)下发,逐参数回执;拒绝可附指导,按指导修订后重提。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "recipe_id": {
-     "type": "string",
-     "description": "配方 id(必填)"
-    },
-    "reason": {
-     "type": "string",
-     "description": "下发原因(建议提供,便于审计)"
-    }
-   },
-   "required": [
-    "recipe_id"
-   ]
-  }
- },
- {
-  "name": "exp_collect",
-  "label": "Exp Collect",
-  "description": "采集产线经验动作(经验工程师/产线医生共用):平台动作=平台有写入留痕的变更(锚账本增量,带来源归因/证据锚/人工裁决意见);推断动作=SET 变化且时间窗内平台无写入(疑似现场本地调整),只入待确认队列,人工确认后才进入经验总结。产出 episode 供总结入库;水位+哈希双剔重,重复调用幂等。纯只读,不写产线。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "line_id": {
-     "type": "string",
-     "description": "限定产线 id(缺省=全部可读产线:节点授权线 ∪ 频道绑线)"
-    }
-   }
-  }
- },
- {
-  "name": "aml_activity",
-  "label": "AML Activity",
-  "description": "查询产线 AML 优化循环是否活动(只读自查):频道投用模型(production)/在跑优化作业/近 30 分钟优化事件三路信号。活动期间整包下发(recipe_propose)会被硬闸拒绝并降级为建议报告,提交方案前必须先查。纯只读,不写产线。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "line_id": {
-     "type": "string",
-     "description": "限定产线 id(缺省=全部可读产线:节点授权线 ∪ 频道绑线)"
-    }
-   }
-  }
- },
- {
-  "name": "recipe_propose",
-  "label": "Recipe Propose",
-  "description": "提交整包优化方案审批(诊断工程师下发面,1~3 套候选方案一次审批):逐参数必须带 basis(为什么这样调)与 exp_ref(经验/证据引用);服务端先按配方真实限界预检(越界参数剔除,全部失效打回),再挂一张结构化审批单,等待人类在产线页选定方案批准。AML 优化活动期被硬闸拒绝(降级为建议);同一配方已有在飞审批单时软提示等待。批准后整批下发并回执逐参数结果+runId;拒绝/超时人工意见逐字回流。审批与绑定模式无关,永远人工裁决,绝不直写。",
-  "parameters": {
-   "type": "object",
-   "properties": {
-    "recipe_id": {
-     "type": "string",
-     "description": "配方 id(必填;line_context 可看到当前配方 id)"
-    },
-    "packages": {
-     "type": "array",
-     "description": "候选方案集(1~3 套;每套 { name, rationale?, params })",
-     "items": {
-      "type": "object",
-      "properties": {
-       "name": {
-        "type": "string",
-        "description": "方案名(审批卡展示,必填)"
-       },
-       "rationale": {
-        "type": "string",
-        "description": "方案总体思路与预期效果(建议提供)"
-       },
-       "params": {
-        "type": "array",
-        "description": "参数组(每条 { node_id, to, basis, exp_ref };from 缺省=服务端自取当前值)",
-        "items": {
-         "type": "object",
-         "properties": {
-          "node_id": {
-           "type": "string",
-           "description": "数控节点 id(须为配方内节点)"
-          },
-          "from": {
-           "type": "number",
-           "description": "当前值(可缺省;缺省时服务端自取节点现值)"
-          },
-          "to": {
-           "type": "number",
-           "description": "目标值(必填,数字)"
-          },
-          "unit": {
-           "type": "string",
-           "description": "单位(缺省取节点单位)"
-          },
-          "basis": {
-           "type": "string",
-           "description": "依据:为什么这样调(必填;缺失该参数拒绝入包)"
-          },
-          "exp_ref": {
-           "type": "string",
-           "description": "经验/证据引用(知识库条目标题或数据证据;必填,缺失拒绝入包)"
-          }
-         },
-         "required": [
-          "node_id",
-          "to",
-          "basis",
-          "exp_ref"
-         ]
+        "progress": {
+          "type": "number",
+          "description": "Progress percentage 0-100"
+        },
+        "message": {
+          "type": "string",
+          "description": "Brief status message describing what you are doing"
         }
-       }
       },
       "required": [
-       "name",
-       "params"
+        "progress"
       ]
-     }
     }
-   },
-   "required": [
-    "recipe_id",
-    "packages"
-   ]
+  },
+  {
+    "name": "complete_task",
+    "label": "Complete Task",
+    "description": "Mark a task as completed with final deliverables. Workers call this when their assigned task is done. Lead calls this for parent tasks when all children are done.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "summary": {
+          "type": "string",
+          "description": "Summary of what was accomplished"
+        },
+        "deliverable": {
+          "type": "string",
+          "description": "Final deliverable: code, analysis result, document content, etc."
+        },
+        "task_id": {
+          "type": "string",
+          "description": "Task ID to complete. If omitted, completes your current assigned task."
+        }
+      },
+      "required": [
+        "summary"
+      ]
+    }
+  },
+  {
+    "name": "submit_task",
+    "label": "Submit Task",
+    "description": "(Lead only) Register one tracked root task for a genuinely multi-step HUMAN request. A single source chat message has exactly one root, even if the title changes. Do not create a second root to polish or revise wording; reuse the existing root and close it with an ordered acceptance summary. If the request is simple, answer directly without submit_task.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Short, verifiable title of the request (becomes the root task title)"
+        },
+        "description": {
+          "type": "string",
+          "description": "The full user request plus its constraints, in the user's own terms — this is what you will decompose and later verify each deliverable against"
+        }
+      },
+      "required": [
+        "title",
+        "description"
+      ]
+    }
+  },
+  {
+    "name": "dispatch_task",
+    "label": "Dispatch Task",
+    "description": "(Lead only) Create one bounded child under an existing parent and assign it to a worker. The platform enforces finite root budgets (total child attempts, active children, canceled children, and ordinary depth); changing the title does not reset them. Freeze the child ID/title/contract after dispatch. Prefer update_task, send_message_to_agent, or reassign_task over cancel-and-recreate. Always include parent_task_id, route_reason, and a self-contained objective/deliverable/acceptance/boundary brief.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "assignee_id": {
+          "type": "string",
+          "description": "ID of the worker agent to assign this task to"
+        },
+        "title": {
+          "type": "string",
+          "description": "Short task title"
+        },
+        "route_reason": {
+          "type": "string",
+          "description": "Why this agent was chosen (specialty fit / load / past success evidence) — one short line, kept as the auditable routing decision"
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed task description with requirements"
+        },
+        "parent_task_id": {
+          "type": "string",
+          "description": "The ID of the submitted parent task this subtask belongs to (from the task list)"
+        },
+        "grant_node_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "可选(Lead only):随本任务把节点授权授予 assignee —— 数组元素为节点 id,每个节点必须是 lead 自己已绑定的节点(daq/dcw 均可);任一节点不在 lead 绑定面则整单失败、任务不创建。用于派发时一并下发 DAQ/DCW 权限,worker 无需再等手动绑定。"
+        },
+        "grant_mode": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "manual"
+          ],
+          "description": "可选:随任务授予的绑定模式;缺省随 lead 自己的绑定模式(manual=每次写入需用户批准)"
+        }
+      },
+      "required": [
+        "assignee_id",
+        "title",
+        "parent_task_id"
+      ]
+    }
+  },
+  {
+    "name": "send_message_to_agent",
+    "label": "Send Message",
+    "description": "Send a message to another agent (lead or worker) in the same channel via the channel mailbox (routed to the recipient's own mailbox). Use priority \"immediate\" for urgent real-time messages that the recipient sees instantly during work; use \"task\" (default) for messages that queue until the recipient finishes their current task. Set require_reply=true to demand a response: the recipient must reply with their result via this same tool. When replying to a message, pass its message_id as in_reply_to — replies are auto-upgraded to real-time delivery and pushed straight into the recipient's running session, so the answer reaches a waiting sender instantly.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "to_agent_id": {
+          "type": "string",
+          "description": "Recipient agent ID"
+        },
+        "message": {
+          "type": "string",
+          "description": "Message content (when replying: your execution result + the content they asked for)"
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "immediate",
+            "task"
+          ],
+          "description": "Message priority: \"immediate\" = inject into recipient's running session instantly; \"task\" = queue for later consumption (default)"
+        },
+        "require_reply": {
+          "type": "boolean",
+          "description": "Trigger: true = recipient MUST reply with result/content (default false)"
+        },
+        "in_reply_to": {
+          "type": "string",
+          "description": "Message ID this reply refers to (set when replying to a trigger message)"
+        }
+      },
+      "required": [
+        "to_agent_id",
+        "message"
+      ]
+    }
+  },
+  {
+    "name": "poll_messages",
+    "label": "Poll Inbox",
+    "description": "Check your own mailbox for unread messages from other agents. When waiting for a reply, pass wait_seconds (e.g. 90) to block until it arrives or the wait expires — one blocking call replaces repeated empty polling. Returned collaboration messages are acknowledged on read (removed from the queue); task assignments are left for execution. Replies to your trigger messages are also pushed into your running session in real time — if you already saw an injected \"[实时消息 from X]\", that IS the reply, no need to poll again.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": "number",
+          "description": "Max messages to return (default 10)"
+        },
+        "wait_seconds": {
+          "type": "number",
+          "description": "Block up to N seconds (0-180) waiting for a message before returning empty (default 0 = immediate check)"
+        }
+      }
+    }
+  },
+  {
+    "name": "read_channel_mail",
+    "label": "Read Channel Mail",
+    "description": "(Lead only) Read the FULL channel mail log: every message routed through the channel mailbox (peer messages, real-time replies with in_reply_to chains, and task deliveries), newest first, with read/unread state. Pass agent_id to inspect a specific member's mailbox. Use this BEFORE dispatching a task whose result may already exist — if a worker already computed/delivered the value via mail, do NOT re-dispatch it; reference the concrete result from the mail instead.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": "number",
+          "description": "Max mails to return (default 50, max 500)"
+        },
+        "agent_id": {
+          "type": "string",
+          "description": "Optional: only show mails involving this agent (as sender or recipient)"
+        }
+      }
+    }
+  },
+  {
+    "name": "broadcast_message",
+    "label": "Broadcast",
+    "description": "Broadcast a message to ALL agents in the channel (lead + all workers). Useful for announcements.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "message": {
+          "type": "string",
+          "description": "Message content to broadcast"
+        },
+        "priority": {
+          "type": "string",
+          "enum": [
+            "immediate",
+            "task"
+          ],
+          "description": "Message priority (default \"task\")"
+        }
+      },
+      "required": [
+        "message"
+      ]
+    }
+  },
+  {
+    "name": "list_channel_tasks",
+    "label": "List Tasks",
+    "description": "List all tasks in the current channel, including their status, progress, and assignee.",
+    "parameters": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "list_team_agents",
+    "label": "List Team",
+    "description": "List all agents in the current channel (lead + workers) with their roles and names.",
+    "parameters": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "get_task_details",
+    "label": "Get Task",
+    "description": "Get detailed information about a specific task, including artifacts and history.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "description": "Task ID"
+        }
+      },
+      "required": [
+        "task_id"
+      ]
+    }
+  },
+  {
+    "name": "get_my_task_queue",
+    "label": "My Queue",
+    "description": "View your own task queue: pending tasks (FIFO order), the task you are currently executing, and completed tasks. Use this to check if you have unfinished work.",
+    "parameters": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "get_queue_overview",
+    "label": "Queue Overview",
+    "description": "(Lead only) Real-time overview of every team member: status (idle/busy), current task, pending queue length, completed count. Use this to make optimal scheduling and rebalancing decisions.",
+    "parameters": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "reassign_task",
+    "label": "Reassign Task",
+    "description": "(Lead only) Move a pending (not yet started) or failed task from one worker to another. Use for load rebalancing or when a worker is stuck. The old worker's queued delivery is revoked automatically.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "description": "Task ID to move"
+        },
+        "to_agent_id": {
+          "type": "string",
+          "description": "Worker agent ID to receive the task"
+        }
+      },
+      "required": [
+        "task_id",
+        "to_agent_id"
+      ]
+    }
+  },
+  {
+    "name": "update_task",
+    "label": "Update Task",
+    "description": "(Lead only) Modify the title/description of a pending (queued, not started) task. The assignee's queued delivery is refreshed with the new content automatically.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "description": "Task ID to update"
+        },
+        "title": {
+          "type": "string",
+          "description": "New title (optional)"
+        },
+        "description": {
+          "type": "string",
+          "description": "New description (optional)"
+        }
+      },
+      "required": [
+        "task_id"
+      ]
+    }
+  },
+  {
+    "name": "cancel_task",
+    "label": "Cancel Task",
+    "description": "Cancel a task only when it is genuinely abandoned or blocked. Canceling a parent cascades to all non-terminal descendants and stops matching active runs; cancellation consumes the root budget. Do not cancel to rename/polish/revise a task. Prefer messaging, update_task, or reassign_task. Pending queued deliveries are revoked automatically.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "description": "Task ID to cancel"
+        }
+      },
+      "required": [
+        "task_id"
+      ]
+    }
+  },
+  {
+    "name": "search_memory",
+    "label": "Search Memory",
+    "description": "Search your persistent memory (hybrid keyword+semantic retrieval over your private memories and the channel's shared team memories). Results may include: your task history, the TEAM CHRONICLE (团队编年史 = rolling log of everything the team finished), past SESSION COMPACTION SUMMARIES (会话压缩摘要 = conclusions from earlier context windows), monthly reflections (作业反思), and shared conventions. Use this ANY TIME you need prior context: before starting a task, when you suspect relevant past work exists, or when the injected memory hints/brief mention something you need details on. Pass a focused query describing what you want to remember.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "What you want to recall, e.g. \"数据库连接池配置结论\" or \"previous deployment checklist\""
+        },
+        "scope": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "private",
+            "shared"
+          ],
+          "description": "Which memory domain to search: \"auto\" = your private + channel shared (default), \"private\" = only your own, \"shared\" = only channel-wide shared memories"
+        },
+        "limit": {
+          "type": "number",
+          "description": "Max results (default 5, max 20)"
+        }
+      },
+      "required": [
+        "query"
+      ]
+    }
+  },
+  {
+    "name": "save_memory",
+    "label": "Save Memory",
+    "description": "Persist a distilled, reusable insight into memory for future tasks. scope=\"private\" saves to YOUR personal memory (only you recall it); scope=\"shared\" saves to the CHANNEL shared memory visible to ALL teammates (use for conclusions, conventions, or knowledge the whole team benefits from — not task-specific minutiae). Distill before saving: title = short topic, content = the reusable conclusion. Use a stable dedup_key to update an existing memory instead of duplicating. NOTE: the platform already auto-archives task outcomes, team results, the team chronicle, and session compaction summaries — never save whole task logs or raw session transcripts.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Short topic title, e.g. \"API 网关限流方案结论\""
+        },
+        "content": {
+          "type": "string",
+          "description": "The distilled reusable knowledge/conclusion (plain text)"
+        },
+        "importance": {
+          "type": "number",
+          "description": "0-1 importance (default 0.7 private / 0.85 shared)"
+        },
+        "scope": {
+          "type": "string",
+          "enum": [
+            "private",
+            "shared"
+          ],
+          "description": "\"private\" = your memory only; \"shared\" = channel-wide shared memory for all teammates"
+        },
+        "dedup_key": {
+          "type": "string",
+          "description": "Stable key for idempotent update (same key overwrites instead of duplicating)"
+        }
+      },
+      "required": [
+        "title",
+        "content",
+        "scope"
+      ]
+    }
+  },
+  {
+    "name": "create_team_agent",
+    "label": "Create Team Agent",
+    "description": "(Lead only) Create a NEW worker only when capability/load evidence shows existing members cannot handle the work. Reuse existing workers first. The platform enforces a per-Channel worker roster cap, including disabled members; do not retry with another name after TEAM_WORKER_LIMIT.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Short, descriptive member name, e.g. \"db-migrator\" or \"test-writer\""
+        },
+        "harness": {
+          "type": "string",
+          "enum": [
+            "omp",
+            "mock",
+            "claude"
+          ],
+          "description": "Agent harness: \"omp\" = full LLM agent with native work tools (default, use this for real work), \"mock\" = scripted test agent, \"claude\" = claude harness"
+        },
+        "system_prompt": {
+          "type": "string",
+          "description": "System prompt prefix defining this member's specialty, working style, and conventions (maps to its systemPromptPrefix config)"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why this member is being added (shown to the user in the team event timeline)"
+        }
+      },
+      "required": [
+        "name"
+      ]
+    }
+  },
+  {
+    "name": "update_team_agent",
+    "label": "Update Team Agent",
+    "description": "(Lead only) Update an existing team member (worker): rename it, revise its system prompt (e.g. to specialize or correct its behavior), or enable/disable it. The member's runtime reloads with the new config on its next assignment. You cannot update yourself.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "agent_id": {
+          "type": "string",
+          "description": "ID of the worker agent to update (from list_team_agents)"
+        },
+        "name": {
+          "type": "string",
+          "description": "New name (optional)"
+        },
+        "system_prompt": {
+          "type": "string",
+          "description": "New system prompt prefix defining its specialty/conventions (optional)"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "true = activate member, false = disable member (disabled members receive no new tasks; default true)"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why this change is made (shown in the team event timeline)"
+        }
+      },
+      "required": [
+        "agent_id"
+      ]
+    }
+  },
+  {
+    "name": "remove_team_agent",
+    "label": "Remove Team Agent",
+    "description": "(Lead only) Remove a worker from your channel's team. Its queued tasks are automatically re-dispatched to the remaining worker with the shortest queue (or failed for retry if it was mid-execution), so no work is lost — but the member's context is. Use ONLY for sustained idle surplus or persistent underperformance; never as an experiment, and avoid removing members with active work. You cannot remove yourself.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "agent_id": {
+          "type": "string",
+          "description": "ID of the worker agent to remove"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why this member is removed (shown in the team event timeline)"
+        }
+      },
+      "required": [
+        "agent_id"
+      ]
+    }
+  },
+  {
+    "name": "refuse_task",
+    "label": "Refuse Task",
+    "description": "Reject a task assigned to you because it is outside your capability or work scope (wrong recipient, unrelated domain, or missing prerequisites). The task is marked FAILED with your reason and a rejection notice is immediately sent back to the dispatcher (task creator, or the channel lead), who should reassign it to a fitting member. Use this INSTEAD of silently ignoring the task or doing unrelated work; do NOT use it for tasks you are able to do, and do NOT use cancel_task for refusals.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "description": "ID of the task you are refusing (must be assigned to you)"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why the task is out of your scope: capability mismatch / wrong recipient / prerequisites missing. Be specific so the dispatcher can reassign properly."
+        }
+      },
+      "required": [
+        "task_id",
+        "reason"
+      ]
+    }
+  },
+  {
+    "name": "my_industrial_nodes",
+    "label": "My Industrial Nodes",
+    "description": "列出你的全部工业绑定与语义卡 —— 数控节点(PLC/MES 集成点位)与数采节点逐张卡:物理量/单位/量程/精度、工艺语义(物理机理与调参守则)、安全量程与活动配方工艺窗口、当前设定值、下发链路(PLC 驱动或 MES writeHook 单字段)、单步上限与操作守则;以及你绑定的配方操作面(运行状态/绑定模式 manual=逐动作 HITL 或 auto=免批/二级认证状态/参数对照表含参数键与描述)。在进行任何工业操作前必须先调用本工具;绑定前提:节点需 daq/dcw(存量)绑定,配方需 recipe 绑定 —— 未绑定对象不出现在清单中。",
+    "parameters": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "dcw_read",
+    "label": "DCW Read",
+    "description": "读取绑定的数控节点的 PLC 当前值(读写集成的读半边)。返回 PLC 实时读数(经标定解码的物理量纲)与设定值对照;用于下发前取证、下发后复核设定是否生效。读取是被动观测,不影响控制状态,也不需要审批。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "node_id": {
+          "type": "string",
+          "description": "数控节点 id(见 my_industrial_nodes)"
+        }
+      },
+      "required": [
+        "node_id"
+      ]
+    }
+  },
+  {
+    "name": "param_read",
+    "label": "Param Read",
+    "description": "按工艺参数(key 语义键或 pp-id)读取执行节点当前值与分层限界明细(节点量程∩参数基准∩产品限界∩配方窗口,单步上限来源)。被动观测免审批;参数键目录(含每参数的描述)在回包中给出。参数写入已收敛到配方面(recipe_update/recipe_apply),本工具只读。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "param": {
+          "type": "string",
+          "description": "工艺参数 id(pp-*)或参数 key"
+        },
+        "line_id": {
+          "type": "string",
+          "description": "产线 id(可选;参数 key 跨产线同名时用于消歧)"
+        }
+      },
+      "required": [
+        "param"
+      ]
+    }
+  },
+  {
+    "name": "daq_query",
+    "label": "DAQ Query",
+    "description": "从时序数据库检索你绑定的数采节点的历史/实时数据。支持按产线/产品/配方/批次/时间窗/降采样多维过滤(产品/配方过滤基于逐样本打标,可精确取某批次数据);返回结果携带物理含义(参数语义/单位/量程/统计摘要/最近序列)。默认只取**当前活动批次(活动配方)**的数据:产线正在跑什么配方就只查那个配方,不会把上一轮配方的样本混进本轮判读;需要跨配方看整段历史时显式传 scope=all。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "node_id": {
+          "type": "string",
+          "description": "限定单个数采节点 id(缺省 = 全部绑定节点)"
+        },
+        "line_id": {
+          "type": "string",
+          "description": "按产线过滤(数据归属产线)"
+        },
+        "product_id": {
+          "type": "string",
+          "description": "按产品过滤(逐样本打标);显式传入即覆盖默认的活动批次过滤"
+        },
+        "recipe_id": {
+          "type": "string",
+          "description": "按配方过滤(逐样本打标);显式传入即覆盖默认过滤。缺省 = 该节点所在产线的活动配方(产线未开跑则不过滤)"
+        },
+        "run_id": {
+          "type": "string",
+          "description": "按批次 run 过滤(同一配方多次开跑时精确定位某一次);显式传入即覆盖默认过滤"
+        },
+        "scope": {
+          "type": "string",
+          "description": "作用域:active(缺省)= 只取当前活动批次;all = 不做配方过滤,返回窗口内全部样本(跨配方对比/历史复盘用)"
+        },
+        "last_minutes": {
+          "type": "number",
+          "description": "最近 N 分钟(缺省 30)"
+        },
+        "from_ms": {
+          "type": "number",
+          "description": "起始 epoch ms(与 to_ms 配合,优先于 last_minutes)"
+        },
+        "to_ms": {
+          "type": "number",
+          "description": "结束 epoch ms"
+        },
+        "bucket_ms": {
+          "type": "number",
+          "description": "时间间隔(降采样桶宽 ms):缺省 {queryDefaultBucketMs}(15s);可调,下限 {queryMinBucketMs}。不传即用缺省;系统配置变更后以新值为准"
+        },
+        "limit": {
+          "type": "number",
+          "description": "返回点数上限(缺省 500)"
+        }
+      }
+    }
+  },
+  {
+    "name": "dcw_judge",
+    "label": "DCW Judge",
+    "description": "对你发起的优化记录(调控 step)落判定。keep=已验证经验(配方可标 lastGood);rollback=判定应回退(判定入册后必须再调 dcw_rollback 执行,判定不自动改 PLC);uncertain=证据不足保持观察。判定必须引用数采证据(daq_query 窗口数据),禁止无证据判定。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "record_id": {
+          "type": "string",
+          "description": "优化记录 id(dcw_control 下发成功后返回)"
+        },
+        "verdict": {
+          "type": "string",
+          "description": "判定结论:keep / rollback / uncertain",
+          "enum": [
+            "keep",
+            "rollback",
+            "uncertain"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "description": "判定理由(必须引用具体数值/时间窗证据)"
+        }
+      },
+      "required": [
+        "record_id",
+        "verdict",
+        "reason"
+      ]
+    }
+  },
+  {
+    "name": "dcw_journal",
+    "label": "DCW Journal",
+    "description": "查询参数变更史与优化记录(在册审计):谁/何时/从多少到多少/判定结论/假设声明。优化前先读史可避免重复试错;回退定位也在此查。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "node_id": {
+          "type": "string",
+          "description": "限定数控节点 id(仅限自己绑定的节点)"
+        },
+        "recipe_id": {
+          "type": "string",
+          "description": "按配方过滤优化记录"
+        },
+        "limit": {
+          "type": "number",
+          "description": "返回条数上限(缺省 20,最大 100)"
+        }
+      }
+    }
+  },
+  {
+    "name": "send_cross_channel_message",
+    "label": "Cross-Channel Message",
+    "description": "[Leader only] Send a message to the LEADER of another channel, so the two teams can collaborate without being siloed. The message lands directly in the target channel leader mailbox; that leader will read your request and act on it (dispatch tasks in their channel, gather info, etc.) and can reply to you via the mailbox. Params: to_channel_id accepts the target channel id OR its exact name; message is your request to the other leader (state your need, deadline and what you expect back); require_reply=true to demand a response. Only channel leaders may call this tool - workers will be rejected. When replying to a cross-channel request you received, use this same tool addressed to the requester channel.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "to_channel_id": {
+          "type": "string",
+          "description": "Target channel id or exact name (must be another channel, not your own)"
+        },
+        "message": {
+          "type": "string",
+          "description": "Request text for the target channel leader: what you need, why, and what to return"
+        },
+        "require_reply": {
+          "type": "boolean",
+          "description": "true = demand the target leader reply with their result/answer"
+        }
+      },
+      "required": [
+        "to_channel_id",
+        "message"
+      ]
+    }
+  },
+  {
+    "name": "list_other_teams",
+    "label": "List Other Teams",
+    "description": "[Leader only] Overview of the OTHER teams (channels) in this workspace: each team name, description, lead, its in-progress scenario tasks, recently completed tasks, and how many shared memories it has (shared_memories > 0 means searchable knowledge exists - use search_other_teams_memory with that team). Decision flow: found knowledge -> reuse it directly; relevant work in progress but no knowledge yet -> message their leader via send_cross_channel_message; nothing -> consider whether your request justifies starting collaboration. Workers cannot call this tool.",
+    "parameters": {
+      "type": "object",
+      "properties": {},
+      "required": []
+    }
+  },
+  {
+    "name": "search_other_teams_memory",
+    "label": "Search Other Teams Memory",
+    "description": "[All members] Read-only search across the SHARED memory of other teams (channels) in this workspace - what other teams have learned/concluded/done. Use it to reuse existing knowledge instead of asking for it: if you find relevant results, apply them directly; if nothing relevant exists but the other team is working on it, ask your leader to message that team leader via send_cross_channel_message. Results are attributed to their team.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "query": {
+          "type": "string",
+          "description": "What to look for (keywords of the knowledge/conclusion)"
+        },
+        "limit": {
+          "type": "number",
+          "description": "Max results (default 5)"
+        }
+      },
+      "required": [
+        "query"
+      ]
+    }
+  },
+  {
+    "name": "daq_export",
+    "label": "DAQ Export",
+    "description": "Export the FULL raw time-series (no downsampling) of your BOUND daq nodes(仅限你绑定的数采节点,越权 id 一律拒绝) to the platform data directory: one CSV per node (columns ts_iso,ts_ms,value,state) plus manifest.json containing the node mapping (name/unit/range/semantics), line-product-recipe-run context, recipe monitor windows and alarm statistics. Use when analysis needs complete waveforms rather than daq_query statistics: hand the export_id to diag_run (deep root-cause diagnosis) or hand the absolute directory to other workers for offline analysis.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "node_ids": {
+          "type": "string",
+          "description": "Comma/space separated node ids to export (default = all bound daq nodes); out-of-scope ids are rejected"
+        },
+        "line_id": {
+          "type": "string",
+          "description": "Only export nodes of this line (narrowing filter)"
+        },
+        "from_ms": {
+          "type": "number",
+          "description": "Window start epoch ms (together with to_ms; overrides last_minutes)"
+        },
+        "to_ms": {
+          "type": "number",
+          "description": "Window end epoch ms (default now)"
+        },
+        "last_minutes": {
+          "type": "number",
+          "description": "Last N minutes (default 60; window capped at 7 days)"
+        },
+        "title": {
+          "type": "string",
+          "description": "Short title of this export recorded in manifest.json (e.g. 膜厚越限诊断数据集)"
+        },
+        "note": {
+          "type": "string",
+          "description": "Scenario note for the analyst/IDD written into manifest.json (symptoms, suspected cause, what to look at)"
+        }
+      },
+      "required": []
+    }
+  },
+  {
+    "name": "daq_frames",
+    "label": "DAQ Frames",
+    "description": "Query multi-modal DAQ frames for your BOUND daq nodes: multi-point profiles (thickness scanners, profile scanners — returns point-count summary, a point preview and derived metrics) and camera image frames (CCD — returns resolution, object reference and derived metrics like brightness/contrast; pixels are NOT loaded into context, view them in the frontend gallery). Supports kind=vector|image filter and time windows. Use BEFORE judging surface quality or profile measurements.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "node_id": {
+          "type": "string",
+          "description": "Limit to one bound daq node id (optional; default all your bound daq nodes)"
+        },
+        "line_id": {
+          "type": "string",
+          "description": "Filter by line id (can only narrow, never widen your access)"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "vector",
+            "image"
+          ],
+          "description": "Frame kind filter (optional)"
+        },
+        "last_minutes": {
+          "type": "number",
+          "description": "Time window in minutes back from now (default 30)"
+        },
+        "from_ms": {
+          "type": "number",
+          "description": "Window start (epoch ms; overrides last_minutes)"
+        },
+        "to_ms": {
+          "type": "number",
+          "description": "Window end (epoch ms; default now)"
+        },
+        "limit": {
+          "type": "number",
+          "description": "Max frames per node (default 20, max 100)"
+        }
+      }
+    }
+  },
+  {
+    "name": "ops_log",
+    "label": "Ops Log",
+    "description": "查询你负责产线的运维日志(数控下发/优化判定/回退/配方下发/产线事件,新→旧)。来源区分 Agent/用户/系统:Agent 的操作者格式为「Channel名/成员名」。用于作业前后自查:你对节点做过哪些操作、他人或系统做过哪些干预。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "line_id": {
+          "type": "string",
+          "description": "限定产线 id(须为你绑定节点所属产线;缺省=全部负责产线)"
+        },
+        "node_id": {
+          "type": "string",
+          "description": "限定数控/数采节点 id(须为你绑定的节点)"
+        },
+        "kind": {
+          "type": "string",
+          "description": "按分类过滤:write(下发)/recipe(配方)/rollback(回退)/daq(采集)/line(产线)"
+        },
+        "actor_kind": {
+          "type": "string",
+          "description": "按来源过滤:agent/user/system"
+        },
+        "minutes": {
+          "type": "number",
+          "description": "回看窗口(分钟,缺省 1440=24 小时)"
+        },
+        "limit": {
+          "type": "number",
+          "description": "返回条数上限(缺省 20,最大 100)"
+        },
+        "mine": {
+          "type": "boolean",
+          "description": "true=只看你自己发起的操作"
+        }
+      }
+    }
+  },
+  {
+    "name": "recipe_log",
+    "label": "Recipe Change Log",
+    "description": "查询你负责产线的 Recipe 变更史:配方一键下发(recipe.apply)、优化开窗、判定、回退执行(新→旧)。你据此知道配方层面对当前节点做过哪些下发变更、由谁执行、是否已回退。节点级参数值逐笔历史用 dcw_journal。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "line_id": {
+          "type": "string",
+          "description": "限定产线 id(须为你绑定节点所属产线;缺省=全部负责产线)"
+        },
+        "recipe_id": {
+          "type": "string",
+          "description": "按配方 id 过滤"
+        },
+        "minutes": {
+          "type": "number",
+          "description": "回看窗口(分钟,缺省 1440=24 小时)"
+        },
+        "limit": {
+          "type": "number",
+          "description": "返回条数上限(缺省 20,最大 100)"
+        }
+      }
+    }
+  },
+  {
+    "name": "line_context",
+    "label": "Line Context",
+    "description": "读取你控制的产线/产品/配方全景(动手前必读):产线场景说明、运行状态与活动批次、产品说明、活动配方(名称/版本/描述)逐参数目标值 vs PLC 当前值 vs 工艺窗口(附参数键与参数描述)、我绑定的节点与配方清单(含执行中/未运行标注)、已知良好批次;无活动批次时列出产线配方定义。可见性=节点授权线 ∪ 绑定配方所在线 ∪ 频道绑定线(只读);确认归属与现状后再用 recipe_* 工具操作。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "line_id": {
+          "type": "string",
+          "description": "限定产线 id(须为你绑定节点所属产线;缺省=全部负责产线)"
+        }
+      }
+    }
+  },
+  {
+    "name": "recipe_versions",
+    "label": "Recipe Versions",
+    "description": "查看指定配方的参数版本史(旧→新):每条含版本号、时间、来源(用户/Agent/系统)、操作者人话名、变更原因与参数 diff。用途:回退前确认目标版本内容、复盘谁改了什么为什么改。可见性=该配方所在产线可读即可(节点授权线 ∪ 绑定配方线 ∪ 频道绑定线);回退操作走 recipe_rollback(写门,manual 绑定需 HITL)。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "recipe_id": {
+          "type": "string",
+          "description": "配方 id(必填;line_context 可看到)"
+        },
+        "limit": {
+          "type": "number",
+          "description": "返回最近 N 条(缺省 20,最大 50)"
+        }
+      }
+    }
+  },
+  {
+    "name": "recipe_update",
+    "label": "Recipe Update",
+    "description": "把验证过的最佳参数保存进指定配方(生成新版本,带归因与理由)。权限模型:须已绑定该 recipe(可绑定多个配方)且通过其二级认证;配方必须正在执行(运行门,未运行拒绝);绑定 manual 时本次保存挂 HITL 等人工批准——reason 必填且要给出判断依据(数采证据/分析结论),审批卡会向人类展示。只改配方定义,要把参数推到运行中的产线用 recipe_apply。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "recipe_id": {
+          "type": "string",
+          "description": "配方 id(必填)"
+        },
+        "params": {
+          "type": "array",
+          "description": "要更新的参数列表(部分合并,只列要改的节点)",
+          "items": {
+            "type": "object",
+            "properties": {
+              "node_id": {
+                "type": "string",
+                "description": "数控节点 id(须为你绑定 dcw 的节点)"
+              },
+              "value": {
+                "type": "number",
+                "description": "新的目标值"
+              },
+              "min": {
+                "type": "number",
+                "description": "可选:新配方窗口下限"
+              },
+              "max": {
+                "type": "number",
+                "description": "可选:新配方窗口上限"
+              }
+            }
+          }
+        },
+        "reason": {
+          "type": "string",
+          "description": "保存原因(必填;写明依据)"
+        },
+        "task_id": {
+          "type": "string",
+          "description": "关联任务 id(可选)"
+        }
+      }
+    }
+  },
+  {
+    "name": "recipe_rollback",
+    "label": "Recipe Rollback",
+    "description": "回退配方参数到稳定版本(指定历史版本或已知良好批次),生成新版本(非破坏);dispatch=true 时统一回退(定义回退+参数整批重下发)。权限模型:须已绑定该 recipe 且过二级认证与运行门;绑定 manual 时挂 HITL——reason 必填说明回退原因(如优化劣化/越限)。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "recipe_id": {
+          "type": "string",
+          "description": "配方 id(必填)"
+        },
+        "version": {
+          "type": "number",
+          "description": "回退到该历史版本(version 与 to_last_good 二选一)"
+        },
+        "to_last_good": {
+          "type": "boolean",
+          "description": "true=回退到已知良好批次参数冻结"
+        },
+        "reason": {
+          "type": "string",
+          "description": "回退原因(必填)"
+        },
+        "dispatch": {
+          "type": "boolean",
+          "description": "true=统一回退:定义回退后把恢复参数整批重下发到 PLC(优化闭环劣化时用);缺省 false=仅回退配方定义"
+        }
+      }
+    }
+  },
+  {
+    "name": "mes_catalog",
+    "label": "MES Catalog",
+    "description": "检索 MES REST 点位目录(driver=mes-rest 的数控点位)。每条含 id/名称/产线/单位/量程与能力位(读=当前值,写=设定值,史=可取历史;史·vector=每时间点一个检测向量如膜厚断面/双折射光谱,史·image=图像帧如 CCD 相机,史·table/史·event=表格/事件记录流,钩子=该点位已配置数据下沉处理)与点位描述。是 mes_fetch 取数的寻址入口;支持按关键字(q,匹配名称与描述)与产线(line_id)过滤。只读目录,不触达设备。可见性=你绑定的数控点位与你绑定配方内的参数点位(未绑定点位不可见,不触达设备)。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "q": {
+          "type": "string",
+          "description": "关键字子串过滤(匹配点位名称与描述)"
+        },
+        "line_id": {
+          "type": "string",
+          "description": "限定产线 id"
+        },
+        "limit": {
+          "type": "number",
+          "description": "返回条数上限(缺省 20,最大 100)"
+        }
+      }
+    }
+  },
+  {
+    "name": "mes_fetch",
+    "label": "MES Fetch",
+    "description": "从 MES REST 点位取数(代码级护栏:仅限你绑定的数控点位;时间窗 ≤7 天;单次 ≤5000 行;每 60 秒最多 6 次)。格式自适应:标量点位回统计摘要;向量点位(每时间点一个检测向量,如膜厚断面 48 道)回按行均值的统计+维度+首中末采样;图像点位(如 CCD 帧)自动把帧落盘为文件、回包只给文件名与大小,图像 base64 永不进入对话;表格/事件点位回记录采样。若点位配置了数据钩子(dataHook),取数后会自动执行用户预设的下沉处理(绘图存档/存 CSV/统计),回包附处理摘要、处理说明与产物文件清单——直接引用它们,不要要求再给原文。param 对象会透传给钩子(如 {\"lane\": 12} 只看某车道)。三种模式:不传 from/to = 当前值快照直读;from/to 且 max_rows≤2000 = 同步内联;max_rows>2000 = 异步落 CSV 数据集(仅标量/向量;图像/表格/事件只支持内联),返回 job_id/dataset_id —— 勿轮询,用 mes_datasets 查状态、mes_dataset_read 读内容。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "目标点位 id 数组(mes_catalog 输出的 id;须为你绑定的数控点位)"
+        },
+        "from": {
+          "type": "string",
+          "description": "窗口起点 ISO 时间(与 to 成对;都不传=当前值快照模式)"
+        },
+        "to": {
+          "type": "string",
+          "description": "窗口终点 ISO 时间(与 from 成对;窗口 ≤7 天)"
+        },
+        "max_rows": {
+          "type": "number",
+          "description": "行数上限(缺省 500,硬上限 5000;>2000 走异步数据集)"
+        },
+        "param": {
+          "type": "object",
+          "description": "透传给点位数据钩子的参数对象(Agent 只传业务参数,如 {\"lane\":12,\"agg\":\"mean\"};请求构造与数据处理逻辑由点位配置决定);无钩子点位可省略"
+        }
+      },
+      "required": [
+        "ids"
+      ]
+    }
+  },
+  {
+    "name": "mes_dataset_read",
+    "label": "MES Dataset Read",
+    "description": "读取 MES 取数数据集(mode=head=列名+总行数概览;mode=stats=count/min/max/mean/stddev/首末时间;mode=rows=offset 起每页 20 行分页)。仅创建者、该点位绑定者或该产线可读者可读;回包只带 ≤3 行采样,统计判读请用 mode=stats。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "dataset_id": {
+          "type": "string",
+          "description": "数据集 id(mes_fetch 异步回包或 mes_datasets 清单)"
+        },
+        "mode": {
+          "type": "string",
+          "description": "head(缺省)| stats | rows"
+        },
+        "offset": {
+          "type": "number",
+          "description": "rows 模式的起始行号(缺省 0)"
+        }
+      },
+      "required": [
+        "dataset_id"
+      ]
+    }
+  },
+  {
+    "name": "mes_datasets",
+    "label": "MES Datasets",
+    "description": "列出你可读的 MES 数据集清单(新→旧;含 dataset_id/点位/时间窗/行数/状态)。用于找回 mes_fetch 异步作业的 dataset_id 与确认取数状态 —— 替代轮询,作业未完成时先做别的任务。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "limit": {
+          "type": "number",
+          "description": "返回条数上限(缺省 20,最大 100)"
+        }
+      }
+    }
+  },
+  {
+    "name": "aml_node_catalog",
+    "label": "AML Node Catalog",
+    "description": "列出你可用的 AML 建模节点(全部 daq 绑定):节点 id/名称/物理语义/单位/量程/所属产线/近 24h 是否有批次打标数据。开始任何自动建模前先调用本工具选节点(control=可控输入/target=预测目标/feature=仅历史特征);无绑定会给出指引。",
+    "parameters": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "aml_dataset_build",
+    "label": "AML Dataset Build",
+    "description": "构建 AML 训练数据集:按隔离三元组(产线/产品/配方,防配方串味)拉取批次打标数据,清洗(状态/量程/Hampel)后对齐到 beat_ms 网格,按批次滑窗切分 train/val/test。鉴权:每个 node_id 都必须有你的 daq 绑定且归属 line_id(绑定只缩不放)。返回 dataset_id、行数、窗口计数、逐节点清洗摘要、控制→目标滞后估计。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "line_id": {
+          "type": "string",
+          "description": "产线 id(必填;line_context 可查)"
+        },
+        "product_id": {
+          "type": "string",
+          "description": "产品 id(必填)"
+        },
+        "recipe_id": {
+          "type": "string",
+          "description": "配方 id(必填)"
+        },
+        "nodes": {
+          "type": "array",
+          "description": "节点与角色列表(≥2 项,必须含 1 个 target)",
+          "items": {
+            "type": "object",
+            "properties": {
+              "node_id": {
+                "type": "string",
+                "description": "数采节点 id(须有你的 daq 绑定)"
+              },
+              "role": {
+                "type": "string",
+                "enum": [
+                  "control",
+                  "feature",
+                  "target"
+                ],
+                "description": "control=可控输入(未来轨迹已知)/ target=预测目标 / feature=仅历史特征"
+              }
+            },
+            "required": [
+              "node_id",
+              "role"
+            ]
+          }
+        },
+        "beat_ms": {
+          "type": "number",
+          "description": "数据对齐节拍(ms,≥1000,常用 5000~15000)"
+        },
+        "history_steps": {
+          "type": "number",
+          "description": "历史窗口步数(1~2048;覆盖主要滞后即可)"
+        },
+        "horizon_steps": {
+          "type": "number",
+          "description": "预测步长(1~512;mpc_surrogate 建议覆盖调控响应期)"
+        },
+        "split_seed": {
+          "type": "number",
+          "description": "切分随机种子(缺省 42)"
+        },
+        "val_ratio": {
+          "type": "number",
+          "description": "验证集比例(缺省 0.15)"
+        },
+        "test_ratio": {
+          "type": "number",
+          "description": "测试集比例(缺省 0.15)"
+        },
+        "purpose": {
+          "type": "string",
+          "enum": [
+            "mpc_surrogate",
+            "quality_predict"
+          ],
+          "description": "建模目的:mpc_surrogate=代理模型(缺省)/ quality_predict=质量预测"
+        },
+        "note": {
+          "type": "string",
+          "description": "数据集备注(为什么建这个数据集)"
+        },
+        "run_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "限定批次 id 列表(缺省 = 该配方全部已完结批次)"
+        },
+        "from_ms": {
+          "type": "number",
+          "description": "起始 epoch ms(可选)"
+        },
+        "to_ms": {
+          "type": "number",
+          "description": "结束 epoch ms(可选)"
+        }
+      },
+      "required": [
+        "line_id",
+        "product_id",
+        "recipe_id",
+        "nodes",
+        "beat_ms",
+        "history_steps",
+        "horizon_steps"
+      ]
+    }
+  },
+  {
+    "name": "aml_dataset_stats",
+    "label": "AML Dataset Stats",
+    "description": "查看数据集完整统计报告:逐节点 mean/std/p05/p50/p95/缺失率/清洗率、控制→目标滞后估计、逐批次目标均值轮廓(漂移检测)、train/val/test 窗口计数。提交训练前用它确认数据质量。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "dataset_id": {
+          "type": "string",
+          "description": "数据集 id(aml_dataset_build 返回)"
+        }
+      },
+      "required": [
+        "dataset_id"
+      ]
+    }
+  },
+  {
+    "name": "aml_job_submit",
+    "label": "AML Job Submit",
+    "description": "提交训练作业(内联 train.py 全文,≤500KB)。代码契约:必须 import amlkit;amlkit.load_bundle(datasetPath) 加载数据集;amlkit.report_progress(pct, note) 上报进度(防停摆误杀);amlkit.export_torch_onnx(model, manifest) 导出模型到 artifacts/model.onnx(契约缺失=永久失败);模型接口=one-step:输入 [batch, history_steps, 全节点数](归一化)→ 输出 [batch, 目标数](归一化)。change_note 遵守单组件改动纪律:每次实验只改一个组件(网络/特征/超参之一)并写明。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "dataset_id": {
+          "type": "string",
+          "description": "数据集 id(aml_dataset_build 返回)"
+        },
+        "code": {
+          "type": "string",
+          "description": "train.py 全文(≤500KB,须 import amlkit 并导出 artifacts/model.onnx)。job_kind=hybrid_residual 时可省略:平台自动使用内置参考训练器(物理参数校准→有界残差集成→UQ 校准)"
+        },
+        "change_note": {
+          "type": "string",
+          "description": "本次实验改动说明(必填;单组件改动纪律:只改一个组件,写明改了什么与预期)"
+        },
+        "params": {
+          "type": "object",
+          "description": "超参数字典(如 {\"epochs\": 50, \"lr\": 0.001};传入训练代码的 job.json.params)"
+        },
+        "seed": {
+          "type": "number",
+          "description": "随机种子(缺省 42)"
+        },
+        "purpose": {
+          "type": "string",
+          "enum": [
+            "mpc_surrogate",
+            "quality_predict"
+          ],
+          "description": "建模目的(缺省继承数据集 spec)"
+        },
+        "parent_experiment_id": {
+          "type": "string",
+          "description": "父实验 id(谱系对照:本次是在哪个实验基础上改的)"
+        },
+        "scene_id": {
+          "type": "string",
+          "description": "Hybrid Twin 场景 id（可选；写入作业谱系）"
+        },
+        "scene_version": {
+          "type": "string",
+          "description": "Hybrid Twin 场景版本"
+        },
+        "objective_id": {
+          "type": "string",
+          "description": "ObjectiveProfile id"
+        },
+        "job_kind": {
+          "type": "string",
+          "enum": [
+            "supervised",
+            "physics_calibration",
+            "hybrid_residual",
+            "uncertainty_calibration"
+          ],
+          "description": "训练阶段；legacy 留空"
+        },
+        "physics_spec": {
+          "type": "object",
+          "description": "已冻结 SceneContract 对应的声明式 PhysicsSpec；平台会在隔离 workspace 写入 physics_spec.json"
+        },
+        "physics_manifest": {
+          "type": "object",
+          "description": "物理模型 manifest 快照"
+        },
+        "twin_snapshot": {
+          "type": "object",
+          "description": "训练所依据的 TwinSnapshot"
+        },
+        "objective_profile": {
+          "type": "object",
+          "description": "优化目标契约"
+        },
+        "model_name": {
+          "type": "string",
+          "description": "模型人读标识(可选,≤80 字符):注册时作 label 前缀;平台会自动追加「产品/配方·优化目标」谱系尾,换配方或换目标的模型必须能从名字区分"
+        },
+        "model_description": {
+          "type": "string",
+          "description": "建模意图描述(可选,≤500 字符):写清本模型针对的场景/配方与优化目标;缺省由平台按谱系派生"
+        }
+      },
+      "required": [
+        "dataset_id",
+        "code",
+        "change_note"
+      ]
+    }
+  },
+  {
+    "name": "aml_job_status",
+    "label": "AML Job Status",
+    "description": "查看训练作业状态:状态/阶段(provision→train→evaluate)/进度/平台门禁逐项(G1 单步/G2 滚动 NRMSE 等)/错误。不带 job_id 列出最近 10 个;带 job_id 看单作业详情。训练中建议 30~60 秒轮询一次。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "job_id": {
+          "type": "string",
+          "description": "作业 id(缺省 = 列最近 10 个)"
+        }
+      }
+    }
+  },
+  {
+    "name": "aml_job_logs",
+    "label": "AML Job Logs",
+    "description": "查看 AML 训练/评估作业的日志行(按 job_id;含加载/训练/门禁/导出各阶段输出)。用于失败归因(如数据不足/门禁未过)与进度确认;作业终态回执已自动送达信箱,本工具用于补看细节。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "job_id": {
+          "type": "string",
+          "description": "作业 id"
+        },
+        "lines": {
+          "type": "number",
+          "description": "返回行数(缺省 80,上限 400)"
+        }
+      },
+      "required": [
+        "job_id"
+      ]
+    }
+  },
+  {
+    "name": "aml_job_cancel",
+    "label": "AML Job Cancel",
+    "description": "取消排队/运行中的训练作业(运行中的会终止进程树;取消动作入册可审计)。数据集不受影响,可复用重训。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "job_id": {
+          "type": "string",
+          "description": "作业 id"
+        }
+      },
+      "required": [
+        "job_id"
+      ]
+    }
+  },
+  {
+    "name": "aml_leaderboard",
+    "label": "AML Leaderboard",
+    "description": "查看数据集的实验谱系表(新→旧):每条实验的 change_note/父实验/状态/G1 单步与 G2 滚动 NRMSE/门禁通过情况,并标注当前最优(门禁通过且 G1 最小);同时列出已登记模型(model_id,晋升对象)。优化前先读榜,避免重复试错。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "dataset_id": {
+          "type": "string",
+          "description": "数据集 id"
+        }
+      },
+      "required": [
+        "dataset_id"
+      ]
+    }
+  },
+  {
+    "name": "aml_model_find",
+    "label": "AML Model Find",
+    "description": "模型发现与选型:按产线/产品/配方/purpose/优化目标/阶段过滤模型注册表,每个模型给出「label(产线·配方·优化目标标识)/阶段/G1+G2 指标/描述」,生产模型置顶,并按当前情况给出 选型指引:复用已有生产模型(aml_model_reference)→ 晋升候选(aml_model_promote,lead 专属)→ 新建模型(aml_dataset_build → aml_job_submit)。开始优化任务前先查:模型按 (产品, 配方, purpose) 隔离,不同 recipe 的模型不可跨用。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "line_id": {
+          "type": "string",
+          "description": "限定产线 id(须为你绑定节点所属产线;缺省 = 全部负责产线)"
+        },
+        "product_id": {
+          "type": "string",
+          "description": "限定产品 id"
+        },
+        "recipe_id": {
+          "type": "string",
+          "description": "限定配方 id(配方隔离:换配方必须换模型,选型前务必指定)"
+        },
+        "purpose": {
+          "type": "string",
+          "enum": [
+            "mpc_surrogate",
+            "quality_predict"
+          ],
+          "description": "限定建模目的"
+        },
+        "objective_id": {
+          "type": "string",
+          "description": "限定优化目标(ObjectiveProfile id;hybrid twin 模型携带)"
+        },
+        "stage": {
+          "type": "string",
+          "enum": [
+            "candidate",
+            "shadow",
+            "production",
+            "retired"
+          ],
+          "description": "限定阶段(缺省 = 全部,production 置顶)"
+        }
+      }
+    }
+  },
+  {
+    "name": "aml_model_promote",
+    "label": "AML Model Promote",
+    "description": "(Lead only) 晋升模型阶段:to_stage=shadow(影子观测)或 production(生产生效)。必须经人工审批(HITL 挂起,用户批准/拒绝/超时);批准晋升 production 时同组旧生产模型自动退役。worker 无此工具;模型 id 从 aml_leaderboard 查。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "model_id": {
+          "type": "string",
+          "description": "模型 id(aml_leaderboard 的已登记模型段)"
+        },
+        "to_stage": {
+          "type": "string",
+          "enum": [
+            "shadow",
+            "production"
+          ],
+          "description": "目标阶段:shadow=影子观测 / production=生产生效"
+        }
+      },
+      "required": [
+        "model_id",
+        "to_stage"
+      ]
+    }
+  },
+  {
+    "name": "aml_model_reference",
+    "label": "AML Model Reference",
+    "description": "影子模型参考(调参前先问影子模型):拉取最近历史数据组装生产模型输入,按当前/指定控制轨迹预测未来每拍的目标值(物理量纲)。用于 dcw_control 下发前对比不同设定方案的目标响应;预测仅供参考,真实下发仍走安全联锁。product/recipe 缺省时取你绑定节点所属产线的唯一活动批次。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "line_id": {
+          "type": "string",
+          "description": "限定产线 id(须为你绑定节点所属产线;多产线绑定且未给全 product/recipe 时必传以消歧)"
+        },
+        "product_id": {
+          "type": "string",
+          "description": "产品 id(缺省 = 活动批次)"
+        },
+        "recipe_id": {
+          "type": "string",
+          "description": "配方 id(缺省 = 活动批次)"
+        },
+        "purpose": {
+          "type": "string",
+          "enum": [
+            "mpc_surrogate",
+            "quality_predict"
+          ],
+          "description": "建模目的(缺省 mpc_surrogate)"
+        },
+        "controls": {
+          "type": "object",
+          "description": "控制节点设定值映射 {node_id: value}(候选方案;缺省 = 持最后观测)"
+        },
+        "steps": {
+          "type": "number",
+          "description": "滚动预测步数(≤ 模型 horizon;缺省 = 全 horizon)"
+        }
+      }
+    }
+  },
+  {
+    "name": "twin_provider_catalog",
+    "label": "Twin Provider Catalog",
+    "description": "读取当前已注册的场景 Provider、ScenePack、SolverAdapter 及 generation/health 元数据；只读，不执行控制。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "scene_kind": {
+          "type": "string",
+          "description": "可选场景类型过滤"
+        }
+      }
+    }
+  },
+  {
+    "name": "twin_scene_discover",
+    "label": "Twin Scene Discover",
+    "description": "读取当前 Agent 已绑定的 DAQ/DCW 节点，推断 control/state/disturbance/target/guard 语义并返回证据与置信度；只读，不执行控制。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "scene_kind": {
+          "type": "string",
+          "description": "可选场景类型"
+        }
+      }
+    }
+  },
+  {
+    "name": "twin_scene_compile",
+    "label": "Twin Scene Compile",
+    "description": "根据已绑定节点和场景提示词生成 SceneContract Draft；默认 draft，首次训练/上线前必须由用户确认后冻结。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "scene_id": {
+          "type": "string"
+        },
+        "scene_version": {
+          "type": "string"
+        },
+        "line_id": {
+          "type": "string"
+        },
+        "product_id": {
+          "type": "string"
+        },
+        "recipe_id": {
+          "type": "string"
+        },
+        "prompt": {
+          "type": "string"
+        },
+        "physics_profile_id": {
+          "type": "string"
+        },
+        "objective_profile_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "node_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "scene_id",
+        "line_id"
+      ]
+    }
+  },
+  {
+    "name": "twin_scene_freeze",
+    "label": "Twin Scene Freeze",
+    "description": "在用户明确确认后冻结 SceneContract；冻结后同一 scene_id/version 的契约不可覆盖，变更必须新建版本。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "scene_id": {
+          "type": "string"
+        },
+        "scene_version": {
+          "type": "string"
+        },
+        "expected_hash": {
+          "type": "string"
+        },
+        "approved_by": {
+          "type": "string"
+        },
+        "confirmation": {
+          "type": "string",
+          "description": "必须为 USER_CONFIRMED_SCENE_CONTRACT"
+        }
+      },
+      "required": [
+        "scene_id",
+        "scene_version",
+        "confirmation"
+      ]
+    }
+  },
+  {
+    "name": "twin_physics_spec_draft",
+    "label": "Twin PhysicsSpec Draft",
+    "description": "从场景(SceneContract,须含 nodeId 映射)自动生成骨架 PhysicsSpec:每个状态变量=一阶惯性弛豫方程(τ/控制增益为带先验盒的可校准参数),观测=持久性恒等基线,约束继承场景。这是任意工况建模的起点:生成后按真实物理润色方程 → twin_physics_spec_validate → twin_physics_spec_compile → aml_job_submit(job_kind=hybrid_residual,训练 stage A 会自动按数据拟合 τ/增益)。传 dt_sec 指定与数据集 beat 一致的步长(缺省 1s)。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "scene_json": {
+          "type": "object",
+          "description": "SceneContract 全文(hybrid Channel 已绑定冻结场景时可省略)"
+        },
+        "dt_sec": {
+          "type": "number",
+          "description": "求解步长(秒;应与训练数据集 beatMs/1000 一致,缺省 1)"
+        }
+      }
+    }
+  },
+  {
+    "name": "twin_physics_spec_validate",
+    "label": "Twin PhysicsSpec Validate",
+    "description": "校验孪生物理规格(PhysicsSpec)的结构与参数完整性:方程/常量/输入输出维度/量纲是否自洽。训练与评估前先校验,坏规格会在运行期才爆;校验回包给出逐项问题定位。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "physics_spec": {
+          "type": "object"
+        },
+        "spec_json": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "physics_spec"
+      ]
+    }
+  },
+  {
+    "name": "twin_physics_spec_compile",
+    "label": "Twin PhysicsSpec Compile",
+    "description": "将已冻结场景的 PhysicsSpec 编译为隔离的 Generic Declarative Provider 候选并保存 artifact；不注册 production、不写 PLC。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "physics_spec": {
+          "type": "object"
+        },
+        "spec_json": {
+          "type": "string"
+        },
+        "scene_json": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "physics_spec",
+        "scene_json"
+      ]
+    }
+  },
+  {
+    "name": "twin_scene_read",
+    "label": "Twin Scene Read",
+    "description": "读取绑定场景的机器可验证 SceneContract 与控制策略；仅返回场景/节点语义，不执行任何控制。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "scene_id": {
+          "type": "string",
+          "description": "场景 id，缺省使用当前注塑 MVP 场景"
+        }
+      }
+    }
+  },
+  {
+    "name": "twin_snapshot_create",
+    "label": "Twin Snapshot Create",
+    "description": "根据服务端绑定的 DAQ 样本创建带 freshness/watermark/hash/binding epoch 的不可变 TwinSnapshot；Hybrid Twin 必须 auto_daq=true、冻结场景和 BindingSnapshot，禁止 Agent 伪造样本。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "scene_json": {
+          "type": "object",
+          "description": "SceneContract JSON（可选）"
+        },
+        "channel_id": {
+          "type": "string"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "controls": {
+          "type": "object"
+        },
+        "states": {
+          "type": "object"
+        },
+        "disturbances": {
+          "type": "object"
+        },
+        "samples": {
+          "type": "array",
+          "description": "[{nodeId,at,value,sequence}]"
+        },
+        "now_ms": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "samples",
+        "controls"
+      ]
+    }
+  },
+  {
+    "name": "twin_trial_run",
+    "label": "Twin Virtual Trial",
+    "description": "在隔离模型副本中注入候选控制轨迹，输出全轨迹约束、UQ/OOD 与收益；candidateExecuted=false，不触碰 PLC/DCW。传 model_id 时 rollout 由该训练注册的 hybrid 模型驱动(校准后物理主干+有界残差集成，UQ coverage 来自训练工件)，且模型谱系必须与场景 line/product/recipe 一致；不传则用场景物理 provider。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "scene_json": {
+          "type": "object"
+        },
+        "snapshot_json": {
+          "type": "object"
+        },
+        "snapshot_id": {
+          "type": "string",
+          "description": "生产 VirtualTrial 使用已持久化 TwinSnapshot id；Hybrid Twin 必填"
+        },
+        "model_id": {
+          "type": "string",
+          "description": "驱动 rollout 的 AML 模型 id(须为 hybrid 模型且与场景同谱系；aml_model_find 可查)；缺省=场景物理 provider"
+        },
+        "baseline_controls": {
+          "type": "object"
+        },
+        "candidate_controls": {
+          "type": "array"
+        },
+        "objective": {
+          "type": "object"
+        },
+        "uncertainty": {
+          "type": "object"
+        }
+      },
+      "required": [
+        "snapshot_json",
+        "candidate_controls"
+      ]
+    }
+  },
+  {
+    "name": "mpc_optimize",
+    "label": "MPC Recommendation Only",
+    "description": "先检查冻结 SceneContract、绑定快照、模型门禁；未通过时只生成 safe_small_step 小步参数试探，门禁通过后才允许更精确的候选搜索；始终 recommendation-only。传 model_id 时候选评估由该训练注册的 hybrid 模型 rollout(残差修正+集成 UQ)；不传则用场景物理 provider。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "scene_json": {
+          "type": "object"
+        },
+        "snapshot_id": {
+          "type": "string",
+          "description": "生产 MPC 使用已持久化 TwinSnapshot id；Hybrid Twin 必填"
+        },
+        "baseline_controls": {
+          "type": "object"
+        },
+        "model_ready": {
+          "type": "boolean"
+        },
+        "horizon_steps": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "baseline_controls"
+      ]
+    }
+  },
+  {
+    "name": "twin_gate_evaluate",
+    "label": "Twin Gate Evaluate",
+    "description": "评估 AML 数据门、物理门、UQ/OOD、VirtualTrial 候选数量和硬约束；零候选/零分母自动拒绝。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "rows": {
+          "type": "number"
+        },
+        "runs": {
+          "type": "number"
+        },
+        "one_step_nrmse": {
+          "type": "number"
+        },
+        "rollout_nrmse": {
+          "type": "number"
+        },
+        "val_test_gap": {
+          "type": "number"
+        },
+        "calibration_rows": {
+          "type": "number"
+        },
+        "coverage": {
+          "type": "number"
+        },
+        "physics_failure_rate": {
+          "type": "number"
+        },
+        "candidate_trials": {
+          "type": "array"
+        }
+      },
+      "required": [
+        "rows",
+        "runs",
+        "candidate_trials"
+      ]
+    }
+  },
+  {
+    "name": "twin_calibration_request",
+    "label": "Twin Calibration Request",
+    "description": "按新 DAQ run/rows、漂移或误差阈值登记一次去重的自动校准候选；只进入 AgentTeam 校准队列，不覆盖 production，不写 DCW。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "scene_id": {
+          "type": "string"
+        },
+        "line_id": {
+          "type": "string"
+        },
+        "recipe_id": {
+          "type": "string"
+        },
+        "new_runs": {
+          "type": "number"
+        },
+        "new_rows": {
+          "type": "number"
+        },
+        "drift_score": {
+          "type": "number"
+        },
+        "error_score": {
+          "type": "number"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "line_id",
+        "new_runs",
+        "new_rows"
+      ]
+    }
+  },
+  {
+    "name": "optimization_explore",
+    "label": "Optimization Explore Step",
+    "description": "工艺优化探索步(探索模式核心):按 goal 与指定方向/步长生成激励值,经数控下发治理链(绑定鉴权/HITL/写限界)真实写入产线,等待工艺响应后读回目标量均值,并把【写入值↔响应值】配对落库为探索记录(训练数据回流的事实源)。步长缺省取绑定 tuning.step 或场景调试跨度;方向 up/down 由你依据节点物理意义判断。多轮迭代以积累「参数波动↔目标响应」数据,供 AML 修正训练与后续模型寻优。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "control_node_id": {
+          "type": "string",
+          "description": "数控节点 id(缺省=第一个数控绑定)"
+        },
+        "target_node_id": {
+          "type": "string",
+          "description": "目标观测节点 id(缺省=第一个数采绑定)"
+        },
+        "direction": {
+          "type": "string",
+          "enum": [
+            "up",
+            "down"
+          ],
+          "description": "激励方向(依据节点物理意义与 goal 偏差判断)"
+        },
+        "step": {
+          "type": "number",
+          "description": "激励步长(缺省=绑定 tuning.step 或场景 maxStep)"
+        },
+        "settle_seconds": {
+          "type": "number",
+          "description": "写入后等待工艺响应的秒数(10~300,缺省 45)"
+        },
+        "hypothesis": {
+          "type": "string",
+          "description": "本次探索假设(入册追溯)"
+        }
+      }
+    }
+  },
+  {
+    "name": "twin_bayes_optimize",
+    "label": "Twin Bayesian Optimize",
+    "description": "AML 模式贝叶斯寻优(须已绑定通过门禁的 AML 模型):以绑定模型 rollout 为代理,围绕当前最优邻域多轮生成候选,UCB(μ-κ·σ)权衡利用与探索,产出收敛轨迹与最终受治理推荐(recommendation-only,写入须审批)。快照/绑定校验与 mpc_optimize 同源。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "scene_json": {
+          "type": "object"
+        },
+        "snapshot_id": {
+          "type": "string",
+          "description": "已持久化 TwinSnapshot id(必填,requireFresh)"
+        },
+        "baseline_controls": {
+          "type": "object"
+        },
+        "objective": {
+          "type": "object",
+          "description": "ObjectiveProfile(缺省=Channel goal)"
+        },
+        "rounds": {
+          "type": "number",
+          "description": "搜索轮数(1~10,缺省 4)"
+        },
+        "candidates_per_round": {
+          "type": "number",
+          "description": "每轮候选数(2~20,缺省 6)"
+        },
+        "kappa": {
+          "type": "number",
+          "description": "UCB 探索系数(缺省 1.96)"
+        },
+        "horizon_steps": {
+          "type": "number",
+          "description": "rollout 步数(缺省 4)"
+        }
+      },
+      "required": [
+        "snapshot_id",
+        "baseline_controls"
+      ]
+    }
+  },
+  {
+    "name": "aml_training_plan_list",
+    "label": "AML Training Plan List",
+    "description": "建模任务清单(解耦编排面):列出全部建模任务的谱系绑定/策略(auto=新批次自动修正训练)/状态/最新模型与 spec 固化情况。",
+    "parameters": {
+      "type": "object",
+      "properties": {}
+    }
+  },
+  {
+    "name": "aml_training_plan_create",
+    "label": "AML Training Plan Create",
+    "description": "创建建模任务(绑定产线/产品/配方三元组 + 数据集 IO 契约:control=DCW 输入,target=DAQ 输出 + 固化训练 spec)。auto 策略的任务在新批次(含工艺优化 Channel 的探索数据)到达时由平台自动修正训练;模型入册后可在 AML 界面绑定到工艺优化 Channel。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "line_id": {
+          "type": "string"
+        },
+        "product_id": {
+          "type": "string"
+        },
+        "recipe_id": {
+          "type": "string"
+        },
+        "scene_id": {
+          "type": "string"
+        },
+        "scene_version": {
+          "type": "string"
+        },
+        "objective_id": {
+          "type": "string"
+        },
+        "strategy": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "manual"
+          ]
+        },
+        "dataset_spec": {
+          "type": "object",
+          "description": "AmlDatasetSpec 完整契约"
+        },
+        "training_spec": {
+          "type": "object",
+          "description": "固化的 PhysicsSpec(含 modelId;来自 twin_physics_spec_draft/compile 流程)"
+        },
+        "model_name_prefix": {
+          "type": "string"
+        },
+        "params": {
+          "type": "object"
+        },
+        "seed": {
+          "type": "number"
+        },
+        "min_interval_sec": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "line_id",
+        "product_id",
+        "recipe_id",
+        "dataset_spec"
+      ]
+    }
+  },
+  {
+    "name": "aml_training_plan_train",
+    "label": "AML Training Plan Train",
+    "description": "立即触发建模任务的修正训练:重建数据集(历史+新批次)→ 平台参考训练器 → 门禁 → 模型入册;plan 状态回写,AML 界面可渲染。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "plan_id": {
+          "type": "string",
+          "description": "建模任务 id"
+        }
+      },
+      "required": [
+        "plan_id"
+      ]
+    }
+  },
+  {
+    "name": "team_grant_nodes",
+    "label": "Grant Nodes",
+    "description": "(Lead only) Grant industrial node permissions (DAQ read / DCW control) to a worker in this channel. HARD RULE: every node must already be bound to YOU (the lead) — you cannot grant permissions beyond your own bindings. Grants are all-or-nothing: if any node is not in your binding surface, the whole request is rejected and nothing is granted. Use this before dispatching (so the worker can act immediately) or mid-execution when scope expands. The worker sees granted nodes via my_industrial_nodes. To grant together with a task, prefer dispatch_task(grant_node_ids=[...]). 可委派对象:数采节点(观察)与配方(recipe;被授予者获得该配方的参数写入/下发能力,受运行门与 HITL 约束)。每个对象必须已绑定你自己(绑定即前提,权限不可超越授予者)。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "agent_id": {
+          "type": "string",
+          "description": "Worker member instance id in this channel"
+        },
+        "node_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Node ids to grant (DAQ and/or DCW nodes; must all be bound to you, the lead)"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "auto",
+            "manual"
+          ],
+          "description": "Optional binding mode for the granted nodes; default = the mode of YOUR own binding for that node (manual = every write needs user approval)"
+        }
+      },
+      "required": [
+        "agent_id",
+        "node_ids"
+      ]
+    }
+  },
+  {
+    "name": "team_revoke_nodes",
+    "label": "Revoke Nodes",
+    "description": "(Lead only) Take back node permissions previously granted to a worker in this channel. You can revoke bindings you granted, or bindings for nodes you hold yourself; other bindings are reported as not revoked. Use when a task closes or scope narrows.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "agent_id": {
+          "type": "string",
+          "description": "Worker member instance id in this channel"
+        },
+        "node_ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Node ids to revoke from this worker"
+        }
+      },
+      "required": [
+        "agent_id",
+        "node_ids"
+      ]
+    }
+  },
+  {
+    "name": "recipe_trial",
+    "label": "Recipe Trial",
+    "description": "多参数候选整批试验下发(不写配方版本)。权限模型:须已绑定该 recipe 且过二级认证与运行门;候选只能覆盖配方内参数节点;绑定 manual 时挂 HITL 等人工批准 —— hypothesis 必填,即本次试验的理由与判断依据,审批卡会向人类展示。整批一次落产线;复测判读后有进步用 recipe_update 固化,劣化用 recipe_rollback(dispatch=true) 统一回退。受同线试验节拍(默认 ≥5 分钟)与四层限界卡控。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "recipe_id": {
+          "type": "string",
+          "description": "配方 id(必填;line_context 可看到当前配方)"
+        },
+        "params": {
+          "type": "array",
+          "description": "候选参数集(≥1条;一次把要改的参数都带上,整批下发防震荡)",
+          "items": {
+            "type": "object",
+            "properties": {
+              "node_id": {
+                "type": "string",
+                "description": "数控节点 id"
+              },
+              "value": {
+                "type": "number",
+                "description": "候选工程量值"
+              }
+            },
+            "required": [
+              "node_id",
+              "value"
+            ]
+          }
+        },
+        "hypothesis": {
+          "type": "string",
+          "description": "试验假设/依据(必填:知识库条目或数据分析结论)"
+        }
+      },
+      "required": [
+        "recipe_id",
+        "params",
+        "hypothesis"
+      ]
+    }
+  },
+  {
+    "name": "recipe_apply",
+    "label": "Recipe Apply",
+    "description": "把配方当前已固化参数整批下发到运行中的产线(改配方 recipe_update 之后用)。权限模型:须已绑定该 recipe 且过二级认证与运行门(配方须在执行);绑定 manual 时挂 HITL 等人工批准——reason 必填,说明为什么要下发、依据是什么。批准后整批经治理联锁(量程/步长/限速)下发,逐参数回执;拒绝可附指导,按指导修订后重提。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "recipe_id": {
+          "type": "string",
+          "description": "配方 id(必填)"
+        },
+        "reason": {
+          "type": "string",
+          "description": "下发理由(必填):说明为什么这样调 —— 数据依据/试验结论/GOAL 差距分析,产线专家在审批卡上要能看懂你的判断逻辑"
+        }
+      },
+      "required": [
+        "recipe_id",
+        "reason"
+      ]
+    }
+  },
+  {
+    "name": "exp_collect",
+    "label": "Exp Collect",
+    "description": "采集产线经验动作(经验工程师/产线医生共用):平台动作=平台有写入留痕的变更(锚账本增量,带来源归因/证据锚/人工裁决意见);推断动作=SET 变化且时间窗内平台无写入(疑似现场本地调整),只入待确认队列,人工确认后才进入经验总结。产出 episode 供总结入库;水位+哈希双剔重,重复调用幂等。纯只读,不写产线。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "line_id": {
+          "type": "string",
+          "description": "限定产线 id(缺省=全部可读产线:节点授权线 ∪ 频道绑线)"
+        }
+      }
+    }
+  },
+  {
+    "name": "aml_activity",
+    "label": "AML Activity",
+    "description": "查询产线 AML 优化循环是否活动(只读自查):频道投用模型(production)/在跑优化作业/近 30 分钟优化事件三路信号。活动期间整包下发(recipe_propose)会被硬闸拒绝并降级为建议报告,提交方案前必须先查。纯只读,不写产线。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "line_id": {
+          "type": "string",
+          "description": "限定产线 id(缺省=全部可读产线:节点授权线 ∪ 频道绑线)"
+        }
+      }
+    }
+  },
+  {
+    "name": "recipe_propose",
+    "label": "Recipe Propose",
+    "description": "提交整包优化方案审批(诊断工程师下发面,1~3 套候选方案一次审批):逐参数必须带 basis(为什么这样调)与 exp_ref(经验/证据引用);服务端先按配方真实限界预检(越界参数剔除,全部失效打回),再挂一张结构化审批单,等待人类在产线页选定方案批准。AML 优化活动期被硬闸拒绝(降级为建议);同一配方已有在飞审批单时软提示等待。批准后整批下发并回执逐参数结果+runId;拒绝/超时人工意见逐字回流。审批与绑定模式无关,永远人工裁决,绝不直写。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "recipe_id": {
+          "type": "string",
+          "description": "配方 id(必填;line_context 可看到当前配方 id)"
+        },
+        "packages": {
+          "type": "array",
+          "description": "候选方案集(1~3 套;每套 { name, rationale?, params })",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "方案名(审批卡展示,必填)"
+              },
+              "rationale": {
+                "type": "string",
+                "description": "方案总体思路与预期效果(建议提供)"
+              },
+              "params": {
+                "type": "array",
+                "description": "参数组(每条 { node_id, to, basis, exp_ref };from 缺省=服务端自取当前值)",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "node_id": {
+                      "type": "string",
+                      "description": "数控节点 id(须为配方内节点)"
+                    },
+                    "from": {
+                      "type": "number",
+                      "description": "当前值(可缺省;缺省时服务端自取节点现值)"
+                    },
+                    "to": {
+                      "type": "number",
+                      "description": "目标值(必填,数字)"
+                    },
+                    "unit": {
+                      "type": "string",
+                      "description": "单位(缺省取节点单位)"
+                    },
+                    "basis": {
+                      "type": "string",
+                      "description": "依据:为什么这样调(必填;缺失该参数拒绝入包)"
+                    },
+                    "exp_ref": {
+                      "type": "string",
+                      "description": "经验/证据引用(知识库条目标题或数据证据;必填,缺失拒绝入包)"
+                    }
+                  },
+                  "required": [
+                    "node_id",
+                    "to",
+                    "basis",
+                    "exp_ref"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "name",
+              "params"
+            ]
+          }
+        }
+      },
+      "required": [
+        "recipe_id",
+        "packages"
+      ]
+    }
   }
- }
 ]
