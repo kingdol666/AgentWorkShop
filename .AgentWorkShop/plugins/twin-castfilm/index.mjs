@@ -28,6 +28,9 @@ import {
 
 const SCENE_ID = 'scene-castfilm-line1'
 const SCENE_KIND = 'scene-castfilm-line1'
+// 线2泵压场景(同一 castfilm 物理族的泵送单元)
+const SCENE2_ID = 'scene-line2-pump'
+const SCENE2_KIND = 'scene-line2-pump'
 const SCENE_VERSION = '1.0.0'
 
 /** 线1控制量定义(id/节点映射/量程/单步上限)——manifest 与 SceneContract 共用单一来源 */
@@ -54,7 +57,7 @@ function provider() {
       providerId: 'castfilm-greybox-v1',
       version: '1.0.0',
       sceneId: SCENE_ID,
-      sceneKinds: [SCENE_KIND],
+      sceneKinds: [SCENE_KIND, SCENE2_KIND],
       backend: 'typescript',
       displayName: '挤出流延灰箱模型(castfilm FOPDT)',
       description: '一阶惯性+纯滞后灰箱:三区加热惯性/区间热传导 → 熔体温度纯滞后 → Arrhenius 粘度流量 → 泵压一阶 → 质量守恒定厚+输送纯滞后。参数复制自 plc-node-simulator plant-model.ts。',
@@ -245,7 +248,7 @@ function provider() {
 
 function scenePack() {
   return {
-    sceneKind: SCENE_KIND,
+    sceneKind: SCENE_KIND, // 主场景;线2泵压经 scenePack 第二条目映射
     sceneSchemaVersion: SCENE_VERSION,
     /**
      * compile → SceneContract(contracts.ts SceneContract / sceneContractSchema 形状)。
@@ -328,6 +331,29 @@ export default {
   setup(ctx) {
     ctx.twin.registerPhysicsProvider(provider())
     ctx.twin.registerScenePack(scenePack())
+    // 线2泵压 ScenePack:screw_rpm→dw-38f145fe(唯一控制量),MeltPressure→dn-121838ac
+    const scenePack2 = () => ({
+      sceneId: SCENE2_ID,
+      sceneKind: SCENE2_KIND,
+      compile(input = {}) {
+        return {
+          schemaVersion: 1,
+          createdAt: new Date().toISOString(),
+          createdBy: 'twin-castfilm',
+          sceneId: SCENE2_ID,
+          sceneVersion: input.sceneVersion ?? '1.0.0',
+          lineId: 'ln-83cfc594',
+          recipeId: input.recipeId ?? 'rc-8f9cb3d9',
+          phases: ['steady'],
+          controls: [{ id: 'ScrewSpeedSP', nodeId: 'dw-38f145fe', role: 'control', physicalMeaning: '泵送螺杆转速设定(升速升压)', unit: 'rpm', min: 50, max: 200, maxStep: 3 }],
+          states: [{ id: 'MeltPressure', nodeId: 'dn-121838ac', role: 'target', physicalMeaning: '熔体泵送压力(OPC UA 实测)', unit: 'MPa', min: 0, max: 45 }],
+          disturbances: [], observations: [], guards: [], constraints: [],
+          physicsProfileId: 'castfilm-greybox-v1',
+          objectiveProfileIds: [],
+          writePolicy: { minNodeIntervalSec: 60, minLineActionIntervalSec: 60, maxActionsPerRun: 6, maxDeltaPerAction: { ScrewSpeedSP: 3 } },
+        }
+      },
+    })
     ctx.logger?.info?.('twin-castfilm:castfilm FOPDT Twin Provider 与 ScenePack(scene-castfilm-line1)已注册')
   },
 }
