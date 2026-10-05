@@ -10,7 +10,7 @@
  * 导出核心 exportDaqDataset 不依赖仓储单例(readPoints/nodeOf 注入),单测可全内存构造。
  */
 import { randomBytes } from 'node:crypto'
-import { mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { ensureDataDir } from '@/shared/config/home.mjs'
 import { getTsdb } from '../../daq/storage/index'
@@ -61,6 +61,40 @@ export interface DaqExportResult {
   files: Array<{ nodeId: string, file: string, rows: number }>
   totalRows: number
   truncated: string[]
+  /** merge 模式产物:多节点按秒对齐的多参数宽表 CSV(绝对路径) */
+  mergedFile?: string
+}
+
+/** merge 模式:多节点样本按秒取整就近对齐为多参数宽表(列名=节点名),供 IDD 等 CSV 分析服务直接消费 */
+function writeMergedCsv(dir: string, files: DaqExportResult['files'], nodeOf: (id: string) => ExportNodeMeta | undefined): string | null {
+  if (files.length === 0) return null
+  const series = files.map((f) => {
+    const raw = readFileSync(join(dir, f.file), 'utf8').trim().split(/\r?\n/).slice(1)
+    const pts = raw.map((l) => {
+      const cols = l.split(',')
+      return { sec: Math.round(Number(cols[1]) / 1000), v: Number(cols[2]) }
+    }).filter(p => Number.isFinite(p.sec) && Number.isFinite(p.v))
+    const name = (nodeOf(f.nodeId)?.name ?? f.nodeId).replace(/[",\r\n]/g, ' ').trim() || f.nodeId
+    return { id: f.nodeId, name, pts }
+  })
+  const base = series.reduce((a, b) => (b.pts.length > a.pts.length ? b : a), series[0]!)
+  if (!base || base.pts.length === 0) return null
+  const lookups = series.map((s) => {
+    const m = new Map<number, number>()
+    for (const p of s.pts) if (!m.has(p.sec)) m.set(p.sec, p.v)
+    return m
+  })
+  const rows: string[] = [csvCell('time') + ',' + series.map(s => csvCell(`${s.name}(${s.id})`)).join(',')]
+  for (const p of base.pts) {
+    const vals = lookups.map((m) => {
+      const v = m.get(p.sec) ?? m.get(p.sec - 1) ?? m.get(p.sec + 1)
+      return v === undefined ? '' : fmtNum(v)
+    })
+    rows.push([csvCell(new Date(p.sec * 1000).toISOString()), ...vals.map(csvCell)].join(','))
+  }
+  const out = join(dir, 'merged.csv')
+  writeFileSync(out, rows.join('\r\n'), 'utf8')
+  return out
 }
 
 /** 数值格式化(6 位小数去尾零;非有限值 → 空串) */
@@ -95,6 +129,8 @@ export async function exportDaqDataset(opts: {
   lines?: ExportLineContext[]
   rootDir: string
   now?: () => number
+  /** merge 模式:额外产出多节点按秒对齐的宽表 merged.csv */
+  merge?: boolean
   /** 上限覆盖(单测用;缺省 400 页/节点、400 万行总量) */
   caps?: { pagesPerNode?: number, totalRows?: number }
 }): Promise<DaqExportResult> {
@@ -200,7 +236,8 @@ export async function exportDaqDataset(opts: {
     }
   }
   catch { /* 清理失败不阻断导出 */ }
-  return { exportId, dir, manifest, files, totalRows: exactRows, truncated }
+  const mergedFile = opts.merge ? writeMergedCsv(dir, files, nodeOf) : undefined
+  return { exportId, dir, manifest, files, totalRows: exactRows, truncated, mergedFile: mergedFile ?? undefined }
 }
 
 /**
@@ -215,6 +252,8 @@ export async function toolDaqExport(agentId: string, args: {
   last_minutes?: number | string
   title?: string
   note?: string
+  /** merge 模式:额外产出多节点按秒对齐的宽表 merged.csv(IDD 等 CSV 分析服务可直接消费) */
+  merge?: boolean | string
 }): Promise<{ text: string, isError?: boolean }> {
   const bindings = getAgentNodeBindingRepo().byAgent(agentId).filter(b => b.kind === 'daq')
   if (bindings.length === 0) {
@@ -306,6 +345,7 @@ export async function toolDaqExport(agentId: string, args: {
       note: args.note ? String(args.note) : '',
       lines,
       rootDir: join(ensureDataDir(), 'daq-exports'),
+      merge: args.merge === true || args.merge === 'true',
     })
   }
   catch (err) {
@@ -316,15 +356,19 @@ export async function toolDaqExport(agentId: string, args: {
   const truncNote = result.truncated.length > 0
     ? `\n⚠ 以下节点超出单节点 200 万点上限已截断:${result.truncated.join(', ')}(如需完整数据请拆小时间窗分批导出)`
     : ''
+  const mergeNote = result.mergedFile
+    ? `\n- merged.csv(merge 模式): ${result.mergedFile} —— 多节点按秒对齐的多参数宽表,可直接作为 IDD sentinel_screen/watch 的 data_path(time_col=time)`
+    : ''
   return {
     text: `已导出 ${result.files.length} 个节点的全量原始时序(无降采样):
 - export_id: ${result.exportId}
 - 目录: ${result.dir}
-- 文件: manifest.json(节点映射/单位量程/语义描述/产线-产品-配方-批次上下文/报警统计)+ nodes/<node_id>.csv(逐样本时序,列 ts_iso,ts_ms,value,state)
+- 文件: manifest.json(节点映射/单位量程/语义描述/产线-产品-配方-批次上下文/报警统计)+ nodes/<node_id>.csv(逐样本时序,列 ts_iso,ts_ms,value,state)${mergeNote}
 - 明细: ${perNode};共 ${result.totalRows} 行;窗口 ${new Date(fromMs).toISOString()} ~ ${new Date(toMs).toISOString()}${truncNote}
 
 下一步:
 1. 深度根因诊断:调用 diag_run(export_id="${result.exportId}", scene=<场景名>, question=<诊断问题>)——会把 manifest 与全部 CSV 上传诊断服务做多文件分析;mode=async 提交即返(缺省),mode=sync 同步等待结果。
-2. 交由其他 worker 离线分析:直接把目录绝对路径(${result.dir})交给对方,manifest.json 内含全部映射与语义说明。`,
+2. 哨兵筛查:把${result.mergedFile ? ' merged.csv 或' : ''} nodes/<node_id>.csv 的绝对路径交给 sentinel_baseline/sentinel_screen/sentinel_watch(注意数据须位于 IDD 允许根内)。
+3. 交由其他 worker 离线分析:直接把目录绝对路径(${result.dir})交给对方,manifest.json 内含全部映射与语义说明。`,
   }
 }

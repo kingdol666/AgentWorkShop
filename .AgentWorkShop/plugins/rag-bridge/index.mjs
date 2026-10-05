@@ -8,7 +8,7 @@
  * 服务不可达时工具返回 isError 文本(含原因与修复建议),绝不抛异常拖垮宿主。
  */
 const KB_NAME = 'aw-industrial'
-const DEFAULT_BASE = 'http://127.0.0.1:8771' // FastAPI 后端(rag-knowledge .env BACKEND_PORT=8771)
+const DEFAULT_BASE = 'http://127.0.0.1:8770' // FastAPI 后端(部署端口以 backend config.yml server.backend_port 为准;可在插件 settings 热更)
 const DEFAULT_WEB = 'http://127.0.0.1:6789' // Nuxt web(文档写盘)
 
 export default {

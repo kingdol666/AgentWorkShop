@@ -18,6 +18,7 @@ export default {
   settings: [
     { key: 'base_url', type: 'string', default: DEFAULT_BASE, group: 'default', label: 'IDD 后端地址', description: 'industrial-deep-diagnostic 后端(host 限 127.0.0.1/localhost);保存即热生效' },
     { key: 'token', type: 'string', default: '', group: 'default', label: 'IDD API Token', description: 'X-API-Key / Bearer;空=匿名;保存即热生效' },
+    { key: 'exchange_dir', type: 'string', default: '', group: 'default', label: '数据交换目录', description: '与 IDD 共享的数据交换目录(须位于 IDD 允许根内,如 IDD workspace/aw-exchange);sentinel/experience 的 data_path 必须指向此处,否则被 IDD 路径沙箱拒绝' },
   ],
   setup(ctx) {
     // 15s sweep:跟踪 sentinel_watch / attribution / optimizer 等异步任务
@@ -127,10 +128,14 @@ export default {
         const r = await jget(ctx, base + IDD_ROUTES.sentinelStatus(taskId), 10000)
         const d = r.body?.data ?? r.body ?? {}
         const alerts = d.alerts ?? []
+        const failed = String(d.status ?? '').toLowerCase() === 'failed'
         const head = alerts.length
           ? `告警 ${alerts.length} 条:\n` + alerts.slice(0, 8).map(a => `- [${a.severity}/${a.rule_name}] ${a.parameter ?? a.indicator ?? '?'}`).join('\n')
-          : '无告警(status=ok)。'
-        return text(`task ${taskId} 状态=${d.status ?? local?.meta?.status ?? 'unknown'}。\n${head}\n${d.report_path ? `报告: ${d.report_path}\n` : ''}${d.alert_path ? `alert.json: ${d.alert_path}\n` : ''}入库知识库请调 kb_agent(prompt 注明标题与工况场景 regime_key,如 PG31DS|磨机|steady)。`)
+          : (failed ? '无告警(任务失败,原因见下)。' : '无告警(status=ok)。')
+        const errNote = failed
+          ? `\n⚠ 失败原因: ${d.error ?? d.error_message ?? '未知'}${d.stdout_tail ? `\n日志尾: ${String(d.stdout_tail).slice(0, 300)}` : ''}\n常见原因:数据路径不在 IDD 允许根内(把 CSV 放入插件 settings 的 exchange_dir 交换目录后重试)/CSV 缺时间列或参数列。`
+          : ''
+        return text(`task ${taskId} 状态=${d.status ?? local?.meta?.status ?? 'unknown'}。\n${head}${errNote}\n${d.report_path ? `报告: ${d.report_path}\n` : ''}${d.alert_path ? `alert.json: ${d.alert_path}\n` : ''}入库知识库请调 kb_agent(prompt 注明标题与工况场景 regime_key,如 PG31DS|磨机|steady)。`)
       },
     })
 

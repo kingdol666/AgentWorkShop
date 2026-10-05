@@ -789,6 +789,10 @@
         "note": {
           "type": "string",
           "description": "Scenario note for the analyst/IDD written into manifest.json (symptoms, suspected cause, what to look at)"
+        },
+        "merge": {
+          "type": "boolean",
+          "description": "合并导出:额外在导出目录生成 merged.csv(多节点按时间秒级对齐的多参数宽表,列名=节点名),可直接交给 IDD 哨兵/experience 等按 CSV 文件分析的服务"
         }
       },
       "required": [],
