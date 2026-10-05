@@ -1,6 +1,6 @@
 /* eslint-disable @stylistic/max-statements-per-line */
 // SDK 行为级实调 v2(sdk/index 聚合面):HookBus 语义 + createPlatformClient 真实调用链
-import { HookBus, createClientContext, createPlatformClient, CLIENT_SDK_VERSION } from '../sdk/index.mjs'
+import { HookBus, createClientContext, createPlatformClient, CLIENT_SDK_VERSION } from '../../sdk/index.mjs'
 
 let pass = 0, fail = 0
 const ok = (n, c, d = '') => { console.log(`${c ? '✅' : '❌'} ${n}${d ? ' — ' + d : ''}`); c ? pass++ : fail++ }
