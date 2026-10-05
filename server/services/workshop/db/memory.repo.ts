@@ -34,7 +34,7 @@ export interface MemoryUpsertInput {
 
 export type MemoryRepo = ReturnType<typeof createMemoryRepo>
 
-const COLS = `m.id, m.channel_id AS channelId, m.agent_id AS agentId, m.kind, m.title, m.content,
+const COLS = `m.id, m.channel_id AS channelId, m.agent_id AS agentId, m.kind, m.title, m.content, m.dedup_key AS dedupKey, m.title_fts AS titleFts,
   m.importance, m.task_id AS taskId, m.access_count AS accessCount,
   m.last_accessed_at AS lastAccessedAt, m.created_at AS createdAt`
 

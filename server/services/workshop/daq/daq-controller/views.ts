@@ -2,6 +2,7 @@
  * DaqControllerViews —— 视图投影 / 状态与广播装配 / 队列重挂
  * (拆分层,承 DaqControllerTsdbTwin;方法体与原文件逐行一致)
  */
+import { AppError } from '../../../../utils/errors'
 import { DaqControllerTsdbTwin } from './tsdb-twin'
 import type { AepDaqControllerState, AepDaqNodeChange, DaqNodeView } from '../../../../../shared/daq-protocol'
 import type { BroadcastFn } from './types'
@@ -78,7 +79,7 @@ export abstract class DaqControllerViews extends DaqControllerTsdbTwin {
     this.ensureLoop()
     await tsdbReady
     const node = this.repo.byId(id)
-    if (!node) throw Object.assign(new Error(`数采节点不存在: ${id}`), { status: 404 })
+    if (!node) throw new AppError(404, 'NOT_FOUND', `数采节点不存在: ${id}`)
     return getTsdb().query(id, opts)
   }
 }

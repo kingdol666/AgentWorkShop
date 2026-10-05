@@ -51,6 +51,8 @@ class ToolApprovalService {
     approval: ToolApproval
     resolve: (r: ToolApprovalDecision) => void
     timer: NodeJS.Timeout
+    /** 未读升级提醒 timers(50%/85% TTL;decide/超时统一清理) */
+    remindTimers: NodeJS.Timeout[]
   }>()
 
   private history: ToolApproval[] = []
@@ -94,7 +96,28 @@ class ToolApprovalService {
     // 重启后遗留的 pending 单在历史里"查无此单"——对账把 HITL 面标 failed,历史面却无迹可查。
     this.remember(approval)
     return new Promise((resolve) => {
+      // 未读升级(2026-10-05 评审):此前超时=静默 approved:false —— 「人没看到→自动拒绝」。
+      // 50%/85% TTL 各发一次升级提醒(复用 HITL 通知面);超时语义不软化,仍 fail-closed。
+      const escalated = new Set<number>()
+      const remindAt = (frac: number) => {
+        const t = setTimeout(() => {
+          if (!this.pending.has(approval.id) || escalated.has(frac)) return
+          escalated.add(frac)
+          try {
+            sendHitlNote({
+              agentId: approval.agentId,
+              title: `⏰ 审批即将超时(${Math.round(frac * 100)}% 时限)—— 请向频道催办`,
+              summary: `${approval.kind.toUpperCase()} 审批 ${approval.id}(${opts?.title ?? approval.nodeId})尚未裁决;${Math.round((1 - frac) * 100)}% 时限后默认拒绝(指令不执行)。请立即在频道提醒人工,或准备按拒绝口径修订方案。`,
+            })
+          }
+          catch { /* 通知失败不影响审批主流程 */ }
+        }, Math.round(timeoutMs * frac))
+        t.unref?.()
+        return t
+      }
+      const remindTimers = [remindAt(0.5), remindAt(0.85)]
       const timer = setTimeout(() => {
+        remindTimers.forEach(clearTimeout)
         if (!this.pending.has(approval.id)) return
         this.pending.delete(approval.id)
         approval.status = 'expired'
@@ -105,7 +128,12 @@ class ToolApprovalService {
         resolve({ approved: false, comment: approval.comment, id: approval.id })
       }, timeoutMs)
       timer.unref?.()
-      this.pending.set(approval.id, { approval, resolve, timer })
+      const prevEntry = this.pending.get(approval.id)
+      if (prevEntry) {
+        // 幂等重复 request:清掉旧提醒(原实现同样覆盖 timer)
+        prevEntry.remindTimers?.forEach(clearTimeout)
+      }
+      this.pending.set(approval.id, { approval, resolve, timer, remindTimers })
     })
   }
 
@@ -115,6 +143,7 @@ class ToolApprovalService {
     if (!entry) throw new Error(`审批不存在或已处理: ${id}`)
     const choiceNorm = Number.isInteger(choice) ? (choice as number) : null
     clearTimeout(entry.timer)
+    entry.remindTimers.forEach(clearTimeout)
     this.pending.delete(id)
     entry.approval.status = approved ? 'approved' : 'denied'
     entry.approval.comment = String(comment ?? '').trim()

@@ -4,7 +4,7 @@ import { createPluginDriverRegistry } from '../server/services/workshop/plugin-d
 
 interface FakeDriver {
   kind: string
-  meta?: { label?: unknown, status?: unknown, configFields?: unknown }
+  meta?: { label?: unknown, status?: unknown, configFields?: unknown, replaces?: unknown }
 }
 
 function driver(kind: string, meta?: FakeDriver['meta']): FakeDriver {
@@ -41,7 +41,7 @@ test('plugin driver registry: meta-less registration clears stale meta on hot re
 
 test('plugin driver registry: merged catalog overrides builtin entry and marks plugin', () => {
   const p = make()
-  p.register(driver('modbus', { label: '自定义 Modbus', status: 'real', configFields: [] }))
+  p.register(driver('modbus', { label: '自定义 Modbus', status: 'real', configFields: [], replaces: ['modbus'] }))
   p.register(driver('acme', { label: 'Acme', status: 'planned', configFields: [] }))
   const cat = p.mergedCatalog([
     { kind: 'mock', label: 'Mock', status: 'builtin', configFields: [] },
@@ -57,6 +57,19 @@ test('plugin driver registry: merged catalog overrides builtin entry and marks p
   assert.equal(mock?.plugin, undefined)
 })
 
+test('plugin driver registry: overriding a builtin without replaces declaration is rejected', () => {
+  let fired = false
+  const strict = createPluginDriverRegistry<FakeDriver>({
+    builtinKinds: { mock: true, modbus: true },
+    driversKey: '__testStrictDrivers',
+    metasKey: '__testStrictMetas',
+    onOverrideBuiltin: () => { fired = true },
+  })
+  assert.throws(() => strict.register(driver('modbus', { label: 'X', status: 'real', configFields: [] })), /PLUGIN_OVERRIDE_NOT_DECLARED/)
+  assert.equal(fired, false)
+  assert.equal(strict.listKeys().includes('modbus'), false)
+})
+
 test('plugin driver registry: overriding a builtin kind fires the override warning hook', () => {
   const seen: string[] = []
   const p = createPluginDriverRegistry<FakeDriver>({
@@ -66,7 +79,7 @@ test('plugin driver registry: overriding a builtin kind fires the override warni
     onOverrideBuiltin: kind => seen.push(kind),
   })
   p.register(driver('acme'))
-  p.register(driver('mock'))
+  p.register(driver('mock', { replaces: ['mock'] }))
   assert.deepEqual(seen, ['mock'])
 })
 

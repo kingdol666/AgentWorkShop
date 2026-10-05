@@ -5,7 +5,7 @@
 import { AgentMemoryRecall } from './recall'
 import type { A2AMessage } from '../../types/a2a'
 import type { WorkspaceTask } from '../../types/task'
-import { CONTENT_STORE_LIMIT, partsText, segmentCJK, vectorizeMemory } from './helpers'
+import { CONTENT_STORE_LIMIT, partsText, segmentCJK, unsegmentCJK, vectorizeMemory } from './helpers'
 import { TEAM_AGENT_ID } from '../../db/memory.repo'
 import { randomUUID } from 'node:crypto'
 
@@ -21,21 +21,71 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
     // 共享域命名空间:同 channel 多 agent 各自的沉淀互不覆盖
     const dedupKey = shared ? `agent:${this.opts.agentId}:${rawKey}` : rawKey
     const owner = shared ? TEAM_AGENT_ID : this.opts.agentId
+    // 共享域近邻治理(2026-10-05 记忆治理最小版):同一事实多 agent 各写一条永不合并
+    // (lead ~1.0 与 worker ~0.09 并存靠当场甄别)。写入前查共享域近邻:
+    //   标题高度重合 + 数值一致 → 并入既有条目(追加并存来源,不新建);
+    //   数值矛盾 → 新条目标 [contested](两条并存,矛盾显式化)。
+    let title = input.title
+    const content = input.content
+    let finalKey = dedupKey
+    if (shared) {
+      const near = this.repo.search(TEAM_AGENT_ID, segmentCJK(input.title), 3).filter(r => r.kind === 'semantic')
+      const tokensOf = (t: string) => new Set(segmentCJK(t).split(/\s+/).filter(Boolean))
+      const jaccard = (a: Set<string>, b: Set<string>) => {
+        const inter = [...a].filter(x => b.has(x)).length
+        return inter / Math.max(1, a.size + b.size - inter)
+      }
+      const numsOf = (t: string) => (t.match(/-?\d+(?:\.\d+)?/g) ?? []).map(Number)
+      for (const row of near) {
+        if (jaccard(tokensOf(input.title), tokensOf(row.title)) < 0.75) continue
+        const oldContent = unsegmentCJK(String(row.content ?? ''))
+        const oldNums = numsOf(oldContent)
+        const newNums = numsOf(input.content)
+        const numbersAgree = oldNums.length > 0
+          && oldNums.length === newNums.length
+          && oldNums.every((v, i) => {
+            const w = newNums[i] ?? Number.NaN
+            return Math.abs(v - w) <= Math.max(1e-6, Math.abs(v) * 0.01)
+          })
+        if (numbersAgree) {
+          const confirmNote = `[并存确认 ${this.opts.agentId} @${new Date().toISOString().slice(0, 16)}]`
+          const merged = `${oldContent}${confirmNote}`
+          const mergedTitleFts = row.titleFts ?? segmentCJK(row.title)
+          const mergedDedup = row.dedupKey ?? `legacy:${row.id}`
+          this.repo.upsert({
+            channelId: row.channelId,
+            agentId: row.agentId,
+            kind: row.kind,
+            title: row.title,
+            titleFts: mergedTitleFts,
+            content: segmentCJK(merged).slice(0, CONTENT_STORE_LIMIT),
+            importance: Math.min(1, (row.importance ?? 0.8) + 0.05),
+            taskId: row.taskId,
+            dedupKey: mergedDedup,
+          })
+          await vectorizeMemory(this.repo, this.embedder, this.opts.channelId, row.agentId, mergedDedup, merged)
+          return { scope: input.scope, dedupKey: mergedDedup }
+        }
+        title = `[contested:${row.id.slice(0, 8)}] ${title}`
+        finalKey = `${dedupKey}:contested`
+        break
+      }
+    }
     this.repo.upsert({
       channelId: this.opts.channelId,
       agentId: owner,
       kind: 'semantic',
-      title: input.title,
-      titleFts: segmentCJK(input.title),
-      content: segmentCJK(input.content).slice(0, CONTENT_STORE_LIMIT),
+      title,
+      titleFts: segmentCJK(title),
+      content: segmentCJK(content).slice(0, CONTENT_STORE_LIMIT),
       importance: input.importance ?? (shared ? 0.85 : 0.7),
       taskId: null,
-      dedupKey,
+      dedupKey: finalKey,
     })
-    await vectorizeMemory(this.repo, this.embedder, this.opts.channelId, owner, dedupKey, input.content)
+    await vectorizeMemory(this.repo, this.embedder, this.opts.channelId, owner, finalKey, content)
     // 共享约定进入简报"团队共享约定"行
     if (shared) await this.updateBrief()
-    return { scope: input.scope, dedupKey }
+    return { scope: input.scope, dedupKey: finalKey }
   }
 
   /** run 后(任务路径;仅终态调用):harvest TaskEngine 终态 + deliverable,并刷新 L0 简报 */

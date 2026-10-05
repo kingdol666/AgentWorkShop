@@ -44,11 +44,16 @@ export abstract class SchedulerLoopTick extends SchedulerLoopState {
     this.tick += 1
     const snapshot = this.collectSnapshot()
     // 普通根任务绝对 deadline 优先于 Lead supervise，防止旧决策在超时后继续派发。
+    // 排队根豁免(2026-10-05 实测缺陷修复):deadline 语义是「执行预算」而非「提交后总时长」,
+    // 预算刷新发生在入场(dispatch SUBMITTED→WORKING)时刻 —— 因此**从未入场的排队根**
+    // (SUBMITTED 且非 activeRoot)不应参与过期判定,否则前序根占住执行位时,
+    // 后面从未运行的任务会被静默判死(实测:同一工作包两次入队两次 ROOT_TIMEOUT)。
     const expiredRoots = snapshot.tasks.filter(task =>
       isOrdinaryRoot(task)
       && !TERMINAL_TASK_STATES[task.state]
       && task.deadlineAt
-      && Date.parse(task.deadlineAt) <= Date.now())
+      && Date.parse(task.deadlineAt) <= Date.now()
+      && !(task.state === 'SUBMITTED' && snapshot.activeRootId && task.id !== snapshot.activeRootId))
     if (expiredRoots.length > 0) {
       // HITL 等待豁免(鲁棒性增强):频道内有待批审批(整包方案/单参下发)时,根任务
       // 执行预算顺延一个 root_timeout,不做 ROOT_TIMEOUT 收口 —— 审批自身有 fail-closed

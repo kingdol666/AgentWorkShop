@@ -192,7 +192,13 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
   async recallRows(query: string, opts: { scope?: MemoryScope, limit?: number, relatedTaskIds?: string[] } = {}): Promise<MemorySnippet[]> {
     const scope = opts.scope ?? 'auto'
     const limit = Math.min(Math.max(opts.limit ?? 5, 1), 20)
-    const scored = (await this.rank(query, scope, { relatedTaskIds: opts.relatedTaskIds })).slice(0, limit)
+    // 召回度量(2026-10-05 记忆治理最小版):hit/miss 计数 —— 72% 记忆从未被召回的
+    // 问题先变成可观测数据,再决定是否值得做自动合并。
+    const stats = recallStatsOf()
+    const scoredAll = await this.rank(query, scope, { relatedTaskIds: opts.relatedTaskIds })
+    if (scoredAll.length > 0) stats.hits++
+    else stats.misses++
+    const scored = scoredAll.slice(0, limit)
     for (const s of scored) this.repo.touch(s.row.id)
     return scored.map((s) => {
       const shared = s.row.agentId === TEAM_AGENT_ID
@@ -213,4 +219,17 @@ export abstract class AgentMemoryRecall extends AgentMemoryState {
       }
     })
   }
+}
+
+const gRecall = globalThis as typeof globalThis & { __awRecallStats?: { hits: number, misses: number } }
+function recallStatsOf(): { hits: number, misses: number } {
+  gRecall.__awRecallStats ??= { hits: 0, misses: 0 }
+  return gRecall.__awRecallStats
+}
+
+/** 召回度量(进程内;restart 归零 —— 趋势观测用,不承诺持久) */
+export function memoryRecallStats(): { hits: number, misses: number, hitRate: string } {
+  const s = recallStatsOf()
+  const total = s.hits + s.misses
+  return { hits: s.hits, misses: s.misses, hitRate: total ? `${Math.round((s.hits / total) * 100)}%` : 'n/a' }
 }

@@ -29,7 +29,27 @@ import { handleCreateTeamAgent, handleGetQueueOverview, handleListTeamAgents, ha
  * 分发一次 host tool 调用(全引擎唯一入口):
  * 插件工具优先 → workspace 面 → 工业工具族 → 插件兜底 → 未知工具。
  */
+/** 统一出口:所有工具结果经截断收口(单点修改,全族生效) */
 export async function dispatchHostTool(ctx: HostToolBridgeContext, req: HostToolCall): Promise<HostToolResult> {
+  return truncateToolResult(await dispatchHostToolInner(ctx, req), req.toolName)
+}
+
+/** 工具结果统一出口上限:超长文本截断+尾注(2026-10-05 评审;export/diag 类可经 optOut 放行) */
+const TOOL_RESULT_MAX_CHARS = 16_000
+const TRUNCATE_OPT_OUT_TOOLS = new Set(['daq_export', 'diag_run'])
+function truncateToolResult(result: HostToolResult, toolName: string): HostToolResult {
+  if (TRUNCATE_OPT_OUT_TOOLS.has(toolName)) return result
+  const text = result.text ?? ''
+  if (text.length <= TOOL_RESULT_MAX_CHARS) return result
+  const head = text.slice(0, TOOL_RESULT_MAX_CHARS)
+  return {
+    ...result,
+    text: head + `
+[truncated: ${text.length} → ${TOOL_RESULT_MAX_CHARS} 字符;请收窄时间窗/减少点位/分页后重试]`,
+  }
+}
+
+async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCall): Promise<HostToolResult> {
   const identity = ctx.identity
   const state = ctx.state
   // 插件工具分发(ctx.omp.registerTool 注册的自定义工具;不依赖 workspace,优先于内置面)

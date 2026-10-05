@@ -25,7 +25,10 @@ export async function handleSearchMemory(args: Record<string, unknown>, ws: Agen
     ].filter(Boolean).join(' · ')
     return `  [${provenance}] ${s.title}\n    ${s.content}`
   })
-  return { text: `记忆检索结果(${snippets.length} 条, scope=${scope}):\n${lines.join('\n')}` }
+  // 召回度量透出(2026-10-05 记忆治理最小版):hit/miss 计数随每次检索可见
+  const { memoryRecallStats } = await import('@/server/services/workshop/runtime/memory/recall')
+  const st = memoryRecallStats()
+  return { text: `记忆检索结果(${snippets.length} 条, scope=${scope};召回度量 hits=${st.hits}/misses=${st.misses}/命中率=${st.hitRate}):\n${lines.join('\n')}` }
 }
 
 export async function handleSaveMemory(args: Record<string, unknown>, ws: AgentWorkspace): Promise<HostToolResult> {

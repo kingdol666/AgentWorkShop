@@ -17,7 +17,8 @@
       },
       "required": [
         "progress"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -42,7 +43,8 @@
       },
       "required": [
         "summary"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -64,7 +66,8 @@
       "required": [
         "title",
         "description"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -114,7 +117,8 @@
         "assignee_id",
         "title",
         "parent_task_id"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -152,7 +156,8 @@
       "required": [
         "to_agent_id",
         "message"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -170,7 +175,8 @@
           "type": "number",
           "description": "Block up to N seconds (0-180) waiting for a message before returning empty (default 0 = immediate check)"
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   {
@@ -188,7 +194,8 @@
           "type": "string",
           "description": "Optional: only show mails involving this agent (as sender or recipient)"
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   {
@@ -213,7 +220,8 @@
       },
       "required": [
         "message"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -222,7 +230,8 @@
     "description": "List all tasks in the current channel, including their status, progress, and assignee.",
     "parameters": {
       "type": "object",
-      "properties": {}
+      "properties": {},
+      "additionalProperties": false
     }
   },
   {
@@ -231,7 +240,8 @@
     "description": "List all agents in the current channel (lead + workers) with their roles and names.",
     "parameters": {
       "type": "object",
-      "properties": {}
+      "properties": {},
+      "additionalProperties": false
     }
   },
   {
@@ -248,7 +258,8 @@
       },
       "required": [
         "task_id"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -257,7 +268,8 @@
     "description": "View your own task queue: pending tasks (FIFO order), the task you are currently executing, and completed tasks. Use this to check if you have unfinished work.",
     "parameters": {
       "type": "object",
-      "properties": {}
+      "properties": {},
+      "additionalProperties": false
     }
   },
   {
@@ -266,7 +278,8 @@
     "description": "(Lead only) Real-time overview of every team member: status (idle/busy), current task, pending queue length, completed count. Use this to make optimal scheduling and rebalancing decisions.",
     "parameters": {
       "type": "object",
-      "properties": {}
+      "properties": {},
+      "additionalProperties": false
     }
   },
   {
@@ -288,7 +301,8 @@
       "required": [
         "task_id",
         "to_agent_id"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -313,7 +327,8 @@
       },
       "required": [
         "task_id"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -330,7 +345,8 @@
       },
       "required": [
         "task_id"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -360,7 +376,8 @@
       },
       "required": [
         "query"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -399,7 +416,8 @@
         "title",
         "content",
         "scope"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -433,7 +451,8 @@
       },
       "required": [
         "name"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -466,7 +485,8 @@
       },
       "required": [
         "agent_id"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -487,7 +507,8 @@
       },
       "required": [
         "agent_id"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -509,7 +530,8 @@
       "required": [
         "task_id",
         "reason"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -518,13 +540,14 @@
     "description": "列出你的全部工业绑定与语义卡 —— 数控节点(PLC/MES 集成点位)与数采节点逐张卡:物理量/单位/量程/精度、工艺语义(物理机理与调参守则)、安全量程与活动配方工艺窗口、当前设定值、下发链路(PLC 驱动或 MES writeHook 单字段)、单步上限与操作守则;以及你绑定的配方操作面(运行状态/绑定模式 manual=逐动作 HITL 或 auto=免批/二级认证状态/参数对照表含参数键与描述)。在进行任何工业操作前必须先调用本工具;绑定前提:节点需 daq/dcw(存量)绑定,配方需 recipe 绑定 —— 未绑定对象不出现在清单中。",
     "parameters": {
       "type": "object",
-      "properties": {}
+      "properties": {},
+      "additionalProperties": false
     }
   },
   {
     "name": "dcw_read",
     "label": "DCW Read",
-    "description": "读取绑定的数控节点的 PLC 当前值(读写集成的读半边)。返回 PLC 实时读数(经标定解码的物理量纲)与设定值对照;用于下发前取证、下发后复核设定是否生效。读取是被动观测,不影响控制状态,也不需要审批。",
+    "description": "读取绑定的数控节点的 PLC 当前值(读写集成的读半边)。返回 PLC 实时读数(经标定解码的物理量纲)与设定值对照;用于下发前取证、下发后复核设定是否生效。读取是被动观测,不影响控制状态,也不需要审批。 【数值口径:value=平台下发设定值,readValue=PLC 实测反馈;写保持窗/断链期两者可能短暂不一致,引用时注明口径】",
     "parameters": {
       "type": "object",
       "properties": {
@@ -535,13 +558,14 @@
       },
       "required": [
         "node_id"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
     "name": "param_read",
     "label": "Param Read",
-    "description": "按工艺参数(key 语义键或 pp-id)读取执行节点当前值与分层限界明细(节点量程∩参数基准∩产品限界∩配方窗口,单步上限来源)。被动观测免审批;参数键目录(含每参数的描述)在回包中给出。参数写入已收敛到配方面(recipe_update/recipe_apply),本工具只读。",
+    "description": "按工艺参数(key 语义键或 pp-id)读取执行节点当前值与分层限界明细(节点量程∩参数基准∩产品限界∩配方窗口,单步上限来源)。被动观测免审批;参数键目录(含每参数的描述)在回包中给出。参数写入已收敛到配方面(recipe_update/recipe_apply),本工具只读。 【数值口径:value=平台下发设定值,readValue=PLC 实测反馈;写保持窗/断链期两者可能短暂不一致,引用时注明口径】",
     "parameters": {
       "type": "object",
       "properties": {
@@ -556,7 +580,8 @@
       },
       "required": [
         "param"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -610,7 +635,8 @@
           "type": "number",
           "description": "返回点数上限(缺省 500)"
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   {
@@ -642,7 +668,8 @@
         "record_id",
         "verdict",
         "reason"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -664,7 +691,8 @@
           "type": "number",
           "description": "返回条数上限(缺省 20,最大 100)"
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   {
@@ -690,7 +718,8 @@
       "required": [
         "to_channel_id",
         "message"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -700,7 +729,8 @@
     "parameters": {
       "type": "object",
       "properties": {},
-      "required": []
+      "required": [],
+      "additionalProperties": false
     }
   },
   {
@@ -721,7 +751,8 @@
       },
       "required": [
         "query"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -760,7 +791,8 @@
           "description": "Scenario note for the analyst/IDD written into manifest.json (symptoms, suspected cause, what to look at)"
         }
       },
-      "required": []
+      "required": [],
+      "additionalProperties": false
     }
   },
   {
@@ -802,7 +834,8 @@
           "type": "number",
           "description": "Max frames per node (default 20, max 100)"
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   {
@@ -840,7 +873,8 @@
           "type": "boolean",
           "description": "true=只看你自己发起的操作"
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   {
@@ -866,13 +900,14 @@
           "type": "number",
           "description": "返回条数上限(缺省 20,最大 100)"
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   {
     "name": "line_context",
     "label": "Line Context",
-    "description": "读取你控制的产线/产品/配方全景(动手前必读):产线场景说明、运行状态与活动批次、产品说明、活动配方(名称/版本/描述)逐参数目标值 vs PLC 当前值 vs 工艺窗口(附参数键与参数描述)、我绑定的节点与配方清单(含执行中/未运行标注)、已知良好批次;无活动批次时列出产线配方定义。可见性=节点授权线 ∪ 绑定配方所在线 ∪ 频道绑定线(只读);确认归属与现状后再用 recipe_* 工具操作。",
+    "description": "读取你控制的产线/产品/配方全景(动手前必读):产线场景说明、运行状态与活动批次、产品说明、活动配方(名称/版本/描述)逐参数目标值 vs PLC 当前值 vs 工艺窗口(附参数键与参数描述)、我绑定的节点与配方清单(含执行中/未运行标注)、已知良好批次;无活动批次时列出产线配方定义。可见性=节点授权线 ∪ 绑定配方所在线 ∪ 频道绑定线(只读);确认归属与现状后再用 recipe_* 工具操作。 【数值口径:value=平台下发设定值,readValue=PLC 实测反馈;写保持窗/断链期两者可能短暂不一致,引用时注明口径】",
     "parameters": {
       "type": "object",
       "properties": {
@@ -880,7 +915,8 @@
           "type": "string",
           "description": "限定产线 id(须为你绑定节点所属产线;缺省=全部负责产线)"
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   {
@@ -898,7 +934,8 @@
           "type": "number",
           "description": "返回最近 N 条(缺省 20,最大 50)"
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   {
@@ -945,7 +982,8 @@
           "type": "string",
           "description": "关联任务 id(可选)"
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   {
@@ -975,7 +1013,8 @@
           "type": "boolean",
           "description": "true=统一回退:定义回退后把恢复参数整批重下发到 PLC(优化闭环劣化时用);缺省 false=仅回退配方定义"
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   {
@@ -997,7 +1036,8 @@
           "type": "number",
           "description": "返回条数上限(缺省 20,最大 100)"
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   {
@@ -1033,7 +1073,8 @@
       },
       "required": [
         "ids"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -1058,7 +1099,8 @@
       },
       "required": [
         "dataset_id"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -1072,7 +1114,8 @@
           "type": "number",
           "description": "返回条数上限(缺省 20,最大 100)"
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   {
@@ -1081,7 +1124,8 @@
     "description": "列出你可用的 AML 建模节点(全部 daq 绑定):节点 id/名称/物理语义/单位/量程/所属产线/近 24h 是否有批次打标数据。开始任何自动建模前先调用本工具选节点(control=可控输入/target=预测目标/feature=仅历史特征);无绑定会给出指引。",
     "parameters": {
       "type": "object",
-      "properties": {}
+      "properties": {},
+      "additionalProperties": false
     }
   },
   {
@@ -1189,7 +1233,8 @@
         "beat_ms",
         "history_steps",
         "horizon_steps"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -1206,7 +1251,8 @@
       },
       "required": [
         "dataset_id"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -1299,7 +1345,8 @@
         "dataset_id",
         "code",
         "change_note"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -1313,7 +1360,8 @@
           "type": "string",
           "description": "作业 id(缺省 = 列最近 10 个)"
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   {
@@ -1334,7 +1382,8 @@
       },
       "required": [
         "job_id"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -1351,7 +1400,8 @@
       },
       "required": [
         "job_id"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -1368,7 +1418,8 @@
       },
       "required": [
         "dataset_id"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -1412,7 +1463,8 @@
           ],
           "description": "限定阶段(缺省 = 全部,production 置顶)"
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   {
@@ -1438,7 +1490,8 @@
       "required": [
         "model_id",
         "to_stage"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -1476,7 +1529,8 @@
           "type": "number",
           "description": "滚动预测步数(≤ 模型 horizon;缺省 = 全 horizon)"
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   {
@@ -1490,7 +1544,8 @@
           "type": "string",
           "description": "可选场景类型过滤"
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   {
@@ -1504,7 +1559,8 @@
           "type": "string",
           "description": "可选场景类型"
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   {
@@ -1551,7 +1607,8 @@
       "required": [
         "scene_id",
         "line_id"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -1582,7 +1639,8 @@
         "scene_id",
         "scene_version",
         "confirmation"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -1600,7 +1658,8 @@
           "type": "number",
           "description": "求解步长(秒;应与训练数据集 beatMs/1000 一致,缺省 1)"
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   {
@@ -1619,7 +1678,8 @@
       },
       "required": [
         "physics_spec"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -1642,7 +1702,8 @@
       "required": [
         "physics_spec",
         "scene_json"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -1656,7 +1717,8 @@
           "type": "string",
           "description": "场景 id，缺省使用当前注塑 MVP 场景"
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   {
@@ -1696,7 +1758,8 @@
       "required": [
         "samples",
         "controls"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -1736,7 +1799,8 @@
       "required": [
         "snapshot_json",
         "candidate_controls"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -1765,7 +1829,8 @@
       },
       "required": [
         "baseline_controls"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -1807,7 +1872,8 @@
         "rows",
         "runs",
         "candidate_trials"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -1846,7 +1912,8 @@
         "line_id",
         "new_runs",
         "new_rows"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -1884,7 +1951,8 @@
           "type": "string",
           "description": "本次探索假设(入册追溯)"
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   {
@@ -1928,7 +1996,8 @@
       "required": [
         "snapshot_id",
         "baseline_controls"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -1937,7 +2006,8 @@
     "description": "建模任务清单(解耦编排面):列出全部建模任务的谱系绑定/策略(auto=新批次自动修正训练)/状态/最新模型与 spec 固化情况。",
     "parameters": {
       "type": "object",
-      "properties": {}
+      "properties": {},
+      "additionalProperties": false
     }
   },
   {
@@ -2001,7 +2071,8 @@
         "product_id",
         "recipe_id",
         "dataset_spec"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -2018,7 +2089,8 @@
       },
       "required": [
         "plan_id"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -2051,7 +2123,8 @@
       "required": [
         "agent_id",
         "node_ids"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -2076,7 +2149,8 @@
       "required": [
         "agent_id",
         "node_ids"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -2120,7 +2194,8 @@
         "recipe_id",
         "params",
         "hypothesis"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -2142,7 +2217,8 @@
       "required": [
         "recipe_id",
         "reason"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -2156,7 +2232,8 @@
           "type": "string",
           "description": "限定产线 id(缺省=全部可读产线:节点授权线 ∪ 频道绑线)"
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   {
@@ -2170,7 +2247,8 @@
           "type": "string",
           "description": "限定产线 id(缺省=全部可读产线:节点授权线 ∪ 频道绑线)"
         }
-      }
+      },
+      "additionalProperties": false
     }
   },
   {
@@ -2248,7 +2326,8 @@
       "required": [
         "recipe_id",
         "packages"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -2270,7 +2349,8 @@
       "required": [
         "recipe_id",
         "reason"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -2287,7 +2367,8 @@
       },
       "required": [
         "reason"
-      ]
+      ],
+      "additionalProperties": false
     }
   },
   {
@@ -2302,7 +2383,8 @@
           "description": "产线 id(缺省=本频道绑定的产线)"
         }
       },
-      "required": []
+      "required": [],
+      "additionalProperties": false
     }
   }
 ]

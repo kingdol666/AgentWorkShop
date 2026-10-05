@@ -55,7 +55,16 @@ export function createPluginDriverRegistry<T extends DriverWithOptionalMeta>(opt
   }
 
   function register(driver: T): void {
-    if (isBuiltin(driver.kind)) opts.onOverrideBuiltin(driver.kind)
+    // replaces 声明(2026-10-05 评审):覆盖内置驱动须在 driver.meta.replaces 显式 opt-in
+    // (replaces 含该 kind);未声明 → 拒绝注册并提示,防插件意外顶掉内置协议栈
+    if (isBuiltin(driver.kind)) {
+      const replaces = (driver as DriverWithOptionalMeta & { meta?: { replaces?: unknown } }).meta?.replaces
+      const declared = Array.isArray(replaces) && (replaces as unknown[]).includes(driver.kind)
+      if (!declared) {
+        throw new Error(`PLUGIN_OVERRIDE_NOT_DECLARED:${driver.kind}(覆盖内置驱动须在 meta.replaces 数组中显式声明含 "${driver.kind}";如确需覆盖,补 meta.replaces:["${driver.kind}"])`)
+      }
+      opts.onOverrideBuiltin(driver.kind)
+    }
     pluginRegistry().set(driver.kind, driver)
     const meta = (driver as DriverWithOptionalMeta).meta
     if (meta && typeof meta.label === 'string') {
@@ -100,6 +109,12 @@ export function createPluginDriverRegistry<T extends DriverWithOptionalMeta>(opt
       const entry = { kind: m.kind, label: m.label, status: m.status, configFields: m.configFields ?? [], plugin: true }
       if (i >= 0) out[i] = entry
       else out.push(entry)
+    }
+    // 无 meta 的插件驱动兜底入目录(2026-10-05 测试发现:仅注册驱动的插件在目录中
+    // 不可见 —— 前端表单与 Agent 目录都看不到;无表单降级语义与 daq/drivers/registry.ts 同源)
+    for (const kind of pluginRegistry().keys()) {
+      if (out.some(d => d.kind === kind)) continue
+      out.push({ kind, label: kind, status: 'real', configFields: [], plugin: true })
     }
     return out
   }

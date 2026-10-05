@@ -6,6 +6,7 @@ import { TaskEngineTransition } from './transition'
 import type { A2AArtifact } from '../../types/a2a'
 import type { WorkspaceTask } from '../../types/task'
 import { AppError } from '../../../../utils/errors'
+import { workshopSettings } from '../../settings'
 import { extractTaskMode, isGoalSummaryArtifact, synthesizeGoalSummary } from '../execution-mode'
 import { rowToTask } from './helpers'
 import type { ExecutionFence } from './lease'
@@ -109,6 +110,16 @@ export abstract class TaskEngineLifecycle extends TaskEngineTransition {
       retryCount: isRetry ? task.retryCount + 1 : task.retryCount,
     })
     if (!updated) throw new AppError(404, 'NOT_FOUND', `任务不存在: ${taskId}`)
+    // 重试/改派即重置执行预算(2026-10-05 实测缺陷修复):deadline 若保留旧值
+    // (FAILED 根的预算早已耗尽),重试后下一 tick 立即再进 expiredRoots —— 秒死循环。
+    // deadline 语义 = 执行预算:重新指派 = 新一轮执行,预算从现在起算。
+    if (isRetry) {
+      const budget = new Date(Date.now() + (Number(workshopSettings().root_timeout_ms) || 900_000)).toISOString()
+      try {
+        this.repos.tasks.update(taskId, { deadlineAt: budget })
+      }
+      catch { /* 极简替身缺 update 时忽略:最坏回到旧行为 */ }
+    }
     if (isRetry) this.transition(taskId, 'ASSIGNED', previousAssigneeId)
     // 旧 assignee 队列中的 assign 投递已过期:作废后仅向新 assignee 投递
     this.repos.messages.consumePendingByTask(taskId)

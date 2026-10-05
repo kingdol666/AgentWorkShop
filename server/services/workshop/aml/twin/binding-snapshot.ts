@@ -235,20 +235,54 @@ function liveBindingSources(input: NodeBindingSnapshotInput): BindingSource[] {
   if (!agents.size) throw new Error('BINDING_CHANNEL_UNRESOLVED')
   const rows = readJson('agent-node-bindings.json')
   const bindings = Array.isArray(rows) ? rows as Array<Record<string, unknown>> : []
-  const selected = bindings
-    .filter(row => input.agentId ? text(row.agentId) === input.agentId : agents.has(text(row.agentId)))
-    .filter(row => agents.get(text(row.agentId))?.channelId === input.channelId)
-    .filter(row => agents.get(text(row.agentId))?.enabled !== false)
-    .map(row => ({
+  const recipes = readJson('dcw-recipes.json')
+  const recipeRows = Array.isArray(recipes) ? recipes as Array<Record<string, unknown>> : []
+  const selected: BindingSource[] = []
+  const seen = new Set<string>()
+  for (const row of bindings) {
+    if (input.agentId ? text(row.agentId) !== input.agentId : !agents.has(text(row.agentId))) continue
+    if (agents.get(text(row.agentId))?.channelId !== input.channelId) continue
+    if (agents.get(text(row.agentId))?.enabled === false) continue
+    const kind = text(row.kind)
+    // 权限模型 v2 配方展开(2026-10-05 闭环修复):kind='recipe' 的绑定行按配方参数
+    // 展开为 dcw 项(mode 继承绑定行)—— 否则 hybrid 频道的绑定快照在此抛
+    // BINDING_KIND_INVALID,寻优闭环断在快照步。原始 recipe 行不再进入 selected。
+    if (kind === 'recipe') {
+      const recipeId = text(row.nodeId)
+      const recipe = recipeRows.find(r => text(record(r)?.id) === recipeId)
+      const params = Array.isArray(record(recipe)?.params) ? record(recipe)?.params as Array<Record<string, unknown>> : []
+      for (const param of params) {
+        const nodeId = text(param.nodeId)
+        if (!nodeId || seen.has(nodeId)) continue
+        seen.add(nodeId)
+        selected.push({
+          id: `${text(row.id)}:${nodeId}`,
+          channelId: input.channelId,
+          agentId: text(row.agentId),
+          agentRole: agents.get(text(row.agentId))?.role ?? input.agentRole,
+          nodeId,
+          kind: 'dcw',
+          mode: text(row.mode) as BindingMode,
+          createdAt: text(row.createdAt),
+          min: finite(param.min) ? Number(param.min) : undefined,
+          max: finite(param.max) ? Number(param.max) : undefined,
+        })
+      }
+      continue
+    }
+    if (seen.has(text(row.nodeId))) continue
+    seen.add(text(row.nodeId))
+    selected.push({
       id: text(row.id),
       channelId: input.channelId,
       agentId: text(row.agentId),
       agentRole: agents.get(text(row.agentId))?.role ?? input.agentRole,
       nodeId: text(row.nodeId),
-      kind: text(row.kind) as BindingNodeKind,
+      kind: kind as BindingNodeKind,
       mode: text(row.mode) as BindingMode,
       createdAt: text(row.createdAt),
-    }))
+    })
+  }
   if (input.agentId && !agents.has(input.agentId)) throw new Error('BINDING_AGENT_CHANNEL_MISMATCH')
   return selected
 }

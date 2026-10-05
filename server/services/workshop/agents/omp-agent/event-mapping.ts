@@ -59,6 +59,28 @@ export abstract class OmpRpcAgentImplEventMapping extends OmpRpcAgentImplToolsSt
         }]
       }
 
+      case 'tool_execution_end': {
+        // 工具结果事件(2026-10-05 评审):此前只有 start,end 被默认分支静默丢弃 ——
+        // 工具调用不可审计。end 帧带 isError 与结果摘要(短截断)。
+        const endToolName = event.toolName ?? 'tool'
+        const isError = event.isError === true
+        const raw = String(event.result ?? event.output ?? '')
+        const summary = raw.slice(0, 300)
+        return [{
+          kind: 'status',
+          status: {
+            state: 'WORKING',
+            message: {
+              messageId: randomUUID(),
+              contextId: this.channelId,
+              role: 'ROLE_AGENT',
+              parts: [{ text: `🔧 ${endToolName} ${isError ? '❌ 失败' : '✅ 完成'}${summary ? ': ' + summary : ''}` }],
+            },
+            timestamp: new Date().toISOString(),
+          },
+        }]
+      }
+
       case 'agent_end': {
         if (event.isTerminal === false) return []
         const events: AgentEvent[] = []

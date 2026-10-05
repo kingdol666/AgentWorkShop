@@ -30,6 +30,12 @@ export async function handleSendMessageToAgent(
     metadata['x-aw-in-reply-to'] = inReplyTo
     if (priority === 'task') priority = 'immediate'
   }
+  // 线程根(2026-10-05 最小版,近似):x-aw-thread-root = 被回复消息 id(直接父)。
+  // 不做跨消息闭包查询(工具层无消息寻址 API);poll 侧对批次内链做闭包折叠,
+  // 链式深层回复在折叠视图中仍归入其首层线程。存储走 metadata_json(零迁移)。
+  if (inReplyTo) {
+    metadata['x-aw-thread-root'] = inReplyTo
+  }
   metadata['x-aw-msg-priority'] = priority
   const sent = await ws.sendMessage({ toAgentId, parts: [{ text: message }], metadata })
   const triggerNote = inReplyTo
@@ -121,17 +127,45 @@ export async function handlePollMessages(
       messageId: trigger.messageId,
     }
   }
-  const text = msgs.map((m, i) => {
-    const from = m.metadata?.['x-aw-from-agent'] ?? '?'
-    const reply = m.metadata?.['x-aw-in-reply-to']
-      ? ` (回复 ${String(m.metadata['x-aw-in-reply-to']).slice(0, 8)}…)`
-      : ''
-    const needReply = m.metadata?.['x-aw-require-reply'] === 'true'
-      ? ` [需回复:用 send_message_to_agent 回 ${from},in_reply_to=${m.messageId}]`
-      : ''
-    const body = m.parts.map(p => 'text' in p ? p.text : '').join(' ')
-    return `  [${i + 1}/${msgs.length}] [from ${from}]${needReply}${reply} ${body.slice(0, 2000)}`
-  }).join('\n')
+  const text = (() => {
+    // 线程折叠(2026-10-05 最小版):批次内按 x-aw-thread-root 闭包分组,
+    // 同线程 ≥2 条折叠为首条+计数(收件箱可读性;assign 投递不参与折叠)。
+    type Fold = { idx: number, from: string, needReply: string, reply: string, body: string }
+    const rootOf = (m: (typeof msgs)[number]): string => {
+      const root = m.metadata?.['x-aw-thread-root']
+      return typeof root === 'string' && msgs.some(x => x.messageId === root) ? root : m.messageId
+    }
+    const groups = new Map<string, Fold[]>()
+    msgs.forEach((m, i) => {
+      const from = String(m.metadata?.['x-aw-from-agent'] ?? '?')
+      const needReply = m.metadata?.['x-aw-require-reply'] === 'true'
+        ? ` [需回复:用 send_message_to_agent 回 ${from},in_reply_to=${m.messageId}]`
+        : ''
+      const reply = m.metadata?.['x-aw-in-reply-to']
+        ? ` (回复 ${String(m.metadata['x-aw-in-reply-to']).slice(0, 8)}…)`
+        : ''
+      const body = m.parts.map(p => 'text' in p ? p.text : '').join(' ')
+      const fold: Fold = { idx: i + 1, from, needReply, reply, body }
+      const key = rootOf(m)
+      const arr = groups.get(key) ?? []
+      arr.push(fold)
+      groups.set(key, arr)
+    })
+    const rendered: string[] = []
+    let seq = 0
+    for (const [, folds] of groups) {
+      seq += 1
+      const first = folds[0]!
+      if (folds.length >= 2) {
+        const heads = folds.map(f => `[${f.idx}] ${f.from}: ${f.body.slice(0, 200)}${f.needReply}`).join('\n        ')
+        rendered.push(`  [线程 ${seq} · ${folds.length} 条]\n        ${heads}`)
+      }
+      else {
+        rendered.push(`  [${first.idx}/${msgs.length}] [from ${first.from}]${first.needReply}${first.reply} ${first.body.slice(0, 2000)}`)
+      }
+    }
+    return rendered.join('\n')
+  })()
   return {
     text:
       `未消费消息(${msgs.length},已读即取):\n${text}`

@@ -187,6 +187,15 @@ export function loadHostToolDefs(): HostToolDef[] {
       throw new AppError(500, 'HOST_TOOLS_INVALID', `host 工具定义不完整: ${JSON.stringify(t).slice(0, 80)}`)
     }
   }
-  hostToolsCache = { mtimeMs, tools: parsed }
-  return parsed
+  // 宽松开关(2026-10-05 schema 严格化逃生门):AW_TOOLS_SCHEMA_STRICT=0 时剥离
+  // additionalProperties:false —— 老引擎对多传参数严格报错时,不重排工具面即可回退宽松模式
+  const tools = process.env.AW_TOOLS_SCHEMA_STRICT === '0'
+    ? parsed.map((t) => {
+        const parameters = JSON.parse(JSON.stringify(t.parameters ?? {}))
+        delete parameters.additionalProperties
+        return { ...t, parameters }
+      })
+    : parsed
+  hostToolsCache = { mtimeMs, tools }
+  return tools
 }

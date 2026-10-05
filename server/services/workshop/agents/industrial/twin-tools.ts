@@ -22,6 +22,7 @@ import { requestCalibration, DEFAULT_TWIN_CALIBRATION_POLICY } from '../../aml/t
 import { getTwinProviderRegistry } from '../../aml/twin/provider-registry'
 import { compileSceneDraft, discoverSceneNodes, type NodeSemanticInput } from '../../aml/twin/scene-builder'
 import { getDcwController } from '../../dcw/dcw-controller'
+import { getDcwRecipeRepo } from '../../dcw/dcw-recipe.repo'
 import { getDaqNodeRepo } from '../../daq/daq-node.repo'
 import { compileDeclarativeProvider } from '../../aml/twin/declarative-provider'
 import { validatePhysicsSpec } from '../../aml/twin/physics-spec'
@@ -228,17 +229,39 @@ function boundSceneNodes(agentId: string): NodeSemanticInput[] {
   const bindings = getAgentNodeBindingRepo().byAgent(agentId)
   const daq = getDaqNodeRepo()
   const dcw = getDcwController()
+  const recipes = getDcwRecipeRepo()
   const out: NodeSemanticInput[] = []
+  const seen = new Set<string>()
+  const pushDcw = (nodeId: string, paramWindow?: { min?: number, max?: number }, evidence: string[] = []) => {
+    if (seen.has(nodeId)) return
+    const node = dcw.byId(nodeId)
+    if (!node) return
+    seen.add(nodeId)
+    // 量程 = 节点量程 ∩ 配方参数工艺窗口(两者都有才收窄;窗口缺失取节点量程)
+    const min = paramWindow?.min != null && node.min != null ? Math.max(node.min, paramWindow.min) : (node.min ?? paramWindow?.min)
+    const max = paramWindow?.max != null && node.max != null ? Math.min(node.max, paramWindow.max) : (node.max ?? paramWindow?.max)
+    out.push({ nodeId: node.id, kind: 'dcw', name: node.name, physicalMeaning: node.semantics ?? node.name, unit: node.unit, min, max, maxStep: Math.max(Math.abs(max - min) * 0.02, 0.001), lineId: node.lineId, protocol: node.driver, writable: true, evidence: [...evidence, node.semantics ?? '', node.name, node.templateRef].filter(Boolean) })
+  }
   for (const binding of bindings) {
     if (binding.kind === 'daq') {
       const node = daq.byId(binding.nodeId)
       if (!node) continue
+      if (seen.has(node.id)) continue
+      seen.add(node.id)
       out.push({ nodeId: node.id, kind: 'daq', name: node.name, physicalMeaning: node.semantics ?? node.name, unit: node.unit, min: node.min, max: node.max, lineId: node.lineId, protocol: node.driver, evidence: [node.semantics ?? '', node.templateKey].filter(Boolean) })
     }
+    else if (binding.kind === 'recipe') {
+      // 权限模型 v2 配方展开(2026-10-05 闭环修复):配方绑定 = 配方参数面授权,
+      // 参数节点(dcw)以 kind='dcw'/writable 进入发现面 —— 否则 hybrid 频道
+      // (只有 daq+recipe 绑定)永远 SCENE_NO_CONTROLS,寻优闭环断在第一步。
+      const recipe = recipes.byId(binding.nodeId)
+      if (!recipe) continue
+      for (const param of recipe.params) {
+        pushDcw(param.nodeId, { min: param.min, max: param.max }, [`配方「${recipe.name}」v${recipe.version ?? 1} 参数(工艺窗口)`])
+      }
+    }
     else {
-      const node = dcw.byId(binding.nodeId)
-      if (!node) continue
-      out.push({ nodeId: node.id, kind: 'dcw', name: node.name, physicalMeaning: node.semantics ?? node.name, unit: node.unit, min: node.min, max: node.max, maxStep: Math.max(Math.abs((node.max ?? 1) - (node.min ?? 0)) * 0.02, 0.001), lineId: node.lineId, protocol: node.driver, writable: true, evidence: [node.semantics ?? '', node.name, node.templateRef].filter(Boolean) })
+      pushDcw(binding.nodeId)
     }
   }
   return out
@@ -381,13 +404,24 @@ export async function toolTwinSnapshotCreate(agentId: string, args: Record<strin
     const samples = args.auto_daq === true || suppliedSamples.length === 0
       ? await autoDaqSamples(agentId, scene, nowMs, freshnessMaxMs)
       : suppliedSamples
+    // 控制值服务端化(2026-10-05 方案 D):controls 缺省时由 dcw 节点现值/当前设定填充,
+    // 消除 Agent 自报基线;显式传入的 controls 仍被尊重(便于 what-if 假设检验)。
+    const suppliedControls = jsonArg<Record<string, number>>(args, 'controls', {}) ?? {}
+    const controls: Record<string, number> = { ...suppliedControls }
+    for (const control of scene.controls ?? []) {
+      const key = String(control.id ?? control.nodeId ?? '')
+      if (!key || controls[key] != null) continue
+      const node = control.nodeId ? getDcwController().byId(control.nodeId) : undefined
+      if (node && typeof node.value === 'number') controls[key] = node.value
+      else if (node && typeof node.readValue === 'number') controls[key] = node.readValue
+    }
     const snapshot = createTwinSnapshot({
       scene,
       frozenScene: authoritative.hybrid ? scene : undefined,
       channelId,
       createdBy: agentId,
       phase: String(args.phase ?? 'holding'),
-      controls: jsonArg<Record<string, number>>(args, 'controls', {}) ?? {},
+      controls,
       states: jsonArg<Record<string, number>>(args, 'states', {}) ?? {},
       disturbances: jsonArg<Record<string, number>>(args, 'disturbances', {}) ?? {},
       samples,

@@ -253,6 +253,10 @@ export interface MemoryRow {
   agentId: string
   kind: MemoryKind
   title: string
+  /** 去重键(搜索投影含;写侧 upsert 用;可选:历史行兼容) */
+  dedupKey?: string
+  /** 标题分词(FTS 存储列;搜索投影含) */
+  titleFts?: string
   content: string
   importance: number
   taskId: string | null

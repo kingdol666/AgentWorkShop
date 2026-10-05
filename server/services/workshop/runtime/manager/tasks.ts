@@ -4,7 +4,8 @@
  */
 import { ManagerChannelTemplates } from './channel-templates'
 import type { A2AArtifact, Part } from '../../types/a2a'
-import type { AgentStatusView, AgentTaskQueueView, WorkspaceTask, TERMINAL_TASK_STATES, type TaskState } from '../../types/task'
+import { TERMINAL_TASK_STATES } from '../../types/task'
+import type { AgentStatusView, AgentTaskQueueView, WorkspaceTask, TaskState } from '../../types/task'
 import type { ExecutionMode } from '../../agents/agent-interface'
 import type { ModeConfig } from '../execution-mode'
 import type { TaskPatch } from '../../db/task.repo'
@@ -538,5 +539,43 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
     const updated = this.getTaskEngine().reassign(taskId, target.id, 'LEAD_REASSIGN')
     this.wakeAgent(channelId, target.id)
     return updated
+  }
+
+  /**
+   * 重开终态根任务(2026-10-05 机制补位):创建承接新根,替代"改标题重派"。
+   * - 仅根任务、仅 FAILED/CANCELED(COMPLETED 拒绝);description 头部 [reopen:<id8>] 标记溯源;
+   * - 同源在途重开单已存在(非终态根描述含同标记)→ 409 防多根再生;
+   * - 走 submitChannelTask:自动获得 lead 校验/判重/FIFO 排队/新预算(reopen≠重试,预算全新)。
+   */
+  async reopenTask(input: {
+    channelId: string
+    taskId: string
+    title?: string
+    description?: string
+    fromLabel?: string
+  }): Promise<WorkspaceTask> {
+    const origin = this.deps.repos.tasks.findById(input.taskId)
+    if (!origin || origin.channelId !== input.channelId) {
+      throw new AppError(404, 'NOT_FOUND', `任务不存在: ${input.taskId}`)
+    }
+    if (origin.parentId) throw new AppError(400, 'INVALID_STATE', '仅根任务可 reopen(子任务请重派其根)')
+    if (origin.state !== 'FAILED' && origin.state !== 'CANCELED') {
+      throw new AppError(409, 'INVALID_STATE', `任务状态 ${origin.state} 不可 reopen(仅 FAILED/CANCELED)`)
+    }
+    const marker = `[reopen:${origin.id.slice(0, 8)}]`
+    const inFlight = this.deps.repos.tasks.listRoots(input.channelId).find(r =>
+      !TERMINAL_TASK_STATES[r.state as TaskState]
+      && (r.description ?? '').includes(marker))
+    if (inFlight) {
+      throw new AppError(409, 'ROOT_REOPEN_IN_FLIGHT', `该任务已有在途重开单(根 ${inFlight.id.slice(0, 8)}),防多根再生;等待其终态后再试`)
+    }
+    const description = `${marker} ${input.description ?? origin.description ?? ''}`.trim()
+    return this.submitChannelTask({
+      channelId: input.channelId,
+      title: input.title ?? origin.title,
+      description,
+      assigneeId: origin.assigneeId || undefined,
+      fromLabel: input.fromLabel ?? 'reopen',
+    })
   }
 }
