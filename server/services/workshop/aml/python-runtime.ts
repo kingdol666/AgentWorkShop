@@ -25,8 +25,8 @@ const log = createLogger('aml.py')
 
 /** uv 安装/venv 供给的硬超时(下载 40MB 二进制 + 装依赖,给足但必须有上限) */
 const UV_INSTALL_TIMEOUT_MS = 10 * 60_000
-const VENV_CREATE_TIMEOUT_MS = 5 * 60_000
-const PIP_INSTALL_TIMEOUT_MS = 20 * 60_000
+const VENV_CREATE_TIMEOUT_MS = 300_000
+const PIP_INSTALL_TIMEOUT_MS = 600_000
 
 const g = globalThis as typeof globalThis & {
   __amlPyProbe?: PythonProbe
@@ -308,13 +308,55 @@ export async function probePython(): Promise<PythonProbe> {
       return result
     }
   }
+  // uv 托管解释器兜底(2026-10-05 uv 优先):uv python install 之后(甚至之前主动装),
+  // 用 uv python find 解析托管解释器路径 —— 它不在系统 PATH 上,常规候选探测不到
+  if (uv?.ok && uv.path) {
+    const ver = process.env.AML_UV_PYTHON || '3.11'
+    const find = await runCapture(uv.path, ['python', 'find', ver], 30_000)
+    const managed = find.code === 0 ? find.out.trim().split(/\r?\n/).pop()?.trim() : ''
+    if (find.code === 0 && managed && existsSync(managed)) {
+      const probe2 = await runCapture(managed, ['--version'], 10_000)
+      if (probe2.code === 0) {
+        const result: PythonProbe = {
+          ok: true,
+          pythonPath: managed,
+          version: `uv-managed ${probe2.out.trim() || probe2.err.trim()}`,
+          uvPath: uv.path,
+        }
+        g.__amlPyProbe = result
+        log.info(`[aml-python] 探测成功(uv 托管):${result.version} @ ${managed}`)
+        return result
+      }
+    }
+  }
   const result: PythonProbe = {
     ok: false,
     uvPath: uv?.ok ? uv.path : undefined,
-    reason: '未找到可用的 Python 3 解释器:安装 Python 3.10+ 或 uv,或设置 aml.python.pythonBin 指向解释器绝对路径',
+    // uv 优先(2026-10-05 用户需求):无 uv 才引导安装 uv;有 uv 时由平台自举托管解释器
+    reason: uv?.ok
+      ? '系统无 Python,但已检测到 uv —— 直接点「创建训练环境」,平台将用 uv 自动安装托管解释器并配置依赖(uv 优先,无需预装 Python)'
+      : '未检测到 uv 与可用的 Python:推荐安装 uv(https://docs.astral.sh/uv/ 一条命令、免管理员),或点击「一键安装 uv」由平台装入 ./aml/tools;也可设置 aml.python.pythonBin 指向已有解释器',
   }
   g.__amlPyProbe = result
   return result
+}
+
+/**
+ * uv 优先的自举解释器(2026-10-05 用户需求):系统无 Python 时,由 uv 直接安装
+ * 托管解释器(uv python install)并解析路径(uv python find)—— 用户无需预装 Python。
+ * 版本偏好:env AML_UV_PYTHON > 默认 3.11;幂等(uv 对已装版本直接命中)。
+ */
+export async function ensurePythonViaUv(rt: AmlRuntime, uvPath: string, onLog?: ProgressFn): Promise<string> {
+  const ver = process.env.AML_UV_PYTHON || '3.11'
+  emitLog(onLog, `系统无 Python —— uv 优先自举:uv python install ${ver}(首次会下载托管解释器,数十秒到数分钟)…`)
+  const inst = await runCapture(uvPath, ['python', 'install', ver], UV_INSTALL_TIMEOUT_MS, onLog)
+  if (inst.code !== 0) throw new AppError(500, 'AML_UV_PYTHON_FAILED', `uv python install 失败:${(inst.err || inst.out).slice(-400)}`)
+  const find = await runCapture(uvPath, ['python', 'find', ver], 30_000, onLog)
+  if (find.code !== 0) throw new AppError(500, 'AML_UV_PYTHON_FAILED', `uv python find 失败:${(find.err || find.out).slice(-400)}`)
+  const pyPath = find.out.trim().split(/\r?\n/).pop()?.trim() ?? ''
+  if (!pyPath) throw new AppError(500, 'AML_UV_PYTHON_FAILED', 'uv python find 未返回解释器路径')
+  emitLog(onLog, `托管解释器就绪:${pyPath}`)
+  return pyPath
 }
 
 /** 探测时 runtime 可能尚未装配(CLI/测试路径);缺失返回 null 而非抛错 */
@@ -473,8 +515,14 @@ export async function ensureVenv(rt: AmlRuntime, opts: { force?: boolean, onLog?
       return vpy
     }
     const probe = await probePython()
-    if (!probe.ok || !probe.pythonPath) {
-      throw new AppError(503, 'AML_PYTHON_MISSING', `训练运行时不可用:${probe.reason}`)
+    let basePython = probe.ok ? probe.pythonPath : undefined
+    // uv 优先自举(2026-10-05 用户需求):系统无 Python 但有 uv → uv 安装托管解释器,
+    // 用户无需预装 Python(uv python install 幂等,已装版本直接命中)。
+    if (!basePython && probe.uvPath) {
+      basePython = await ensurePythonViaUv(rt, probe.uvPath, opts.onLog)
+    }
+    if (!basePython) {
+      throw new AppError(503, 'AML_PYTHON_MISSING', `训练运行时不可用:${probe.reason ?? '未检测到 uv 且无系统 Python;推荐安装 uv'}`)
     }
     const s = amlSettings()
     const idxArgs = s.python.indexUrl ? ['--index-url', s.python.indexUrl] : []
@@ -483,8 +531,8 @@ export async function ensureVenv(rt: AmlRuntime, opts: { force?: boolean, onLog?
     emitLog(opts.onLog, `开始供给 Python 环境(首次可能需数分钟下载依赖)…`)
 
     if (probe.uvPath) {
-      emitLog(opts.onLog, `uv venv ${vdir} --python ${probe.pythonPath}`)
-      const mk = await runCapture(probe.uvPath, ['venv', vdir, '--python', probe.pythonPath], VENV_CREATE_TIMEOUT_MS, opts.onLog)
+      emitLog(opts.onLog, `uv venv ${vdir} --python ${basePython}`)
+      const mk = await runCapture(probe.uvPath, ['venv', vdir, '--python', basePython], VENV_CREATE_TIMEOUT_MS, opts.onLog)
       if (mk.code !== 0) throw new AppError(500, 'AML_VENV_FAILED', `uv venv 失败:${mk.err.slice(-400)}`)
       emitLog(opts.onLog, `uv pip install -r requirements.txt`)
       const inst = await runCapture(probe.uvPath, ['pip', 'install', '--python', vpy, '-r', reqPath, ...idxArgs], PIP_INSTALL_TIMEOUT_MS, opts.onLog)
@@ -492,7 +540,7 @@ export async function ensureVenv(rt: AmlRuntime, opts: { force?: boolean, onLog?
     }
     else {
       emitLog(opts.onLog, `未检测到 uv,回退 python -m venv(较慢)`)
-      const mk = await runCapture(probe.pythonPath, ['-m', 'venv', vdir], VENV_CREATE_TIMEOUT_MS, opts.onLog)
+      const mk = await runCapture(basePython, ['-m', 'venv', vdir], VENV_CREATE_TIMEOUT_MS, opts.onLog)
       if (mk.code !== 0) throw new AppError(500, 'AML_VENV_FAILED', `python -m venv 失败:${mk.err.slice(-400)}`)
       const inst = await runCapture(vpy, ['-m', 'pip', 'install', '-r', reqPath, ...idxArgs], PIP_INSTALL_TIMEOUT_MS, opts.onLog)
       if (inst.code !== 0) throw new AppError(500, 'AML_VENV_FAILED', `pip install 失败:${(inst.err || inst.out).slice(-400)}`)

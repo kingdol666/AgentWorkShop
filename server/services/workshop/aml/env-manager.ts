@@ -223,7 +223,7 @@ export function startCreateVenv(opts: { force?: boolean } = {}): AmlEnvTask {
       const uv = await probeUv(rt)
       emit(uv.ok
         ? `使用 uv ${uv.version}(来源:${uv.source})`
-        : '未检测到 uv,将回退 python -m venv(建议先点「一键安装 uv」以获得更快更稳的供给)')
+        : '未检测到 uv —— 请先点「一键安装 uv」(uv 优先,更快更稳;无 uv 将回退 python -m venv)')
       const vpy = await ensureVenv(rt, { force: opts.force, onLog: emit })
       emit(`解释器:${vpy}`)
       finishTask(task)

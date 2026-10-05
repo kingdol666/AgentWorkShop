@@ -118,8 +118,8 @@ const { shortId } = useAmlFormat()
         <div class="ec-actions">
           <button
             class="mini-btn primary"
-            :disabled="envBusy || !env.python.ok"
-            :title="env.python.ok ? '' : (env.python.reason ?? '')"
+            :disabled="envBusy || (!env.python.ok && !env.uv.ok)"
+            :title="env.python.ok ? '' : (env.uv.ok ? '系统无 Python —— 将由 uv 自动安装托管解释器并创建环境(uv 优先)' : (env.python.reason ?? ''))"
             @click="$emit('createVenv', false)"
           >
             <span class="i-tabler-plus" />

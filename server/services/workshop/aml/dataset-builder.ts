@@ -175,6 +175,9 @@ export async function buildDataset(spec: AmlDatasetSpec, by: { id: string, kind:
       const tagged = await tsdb.queryTagged({
         lineId: spec.lineId, productId: spec.productId, recipeId: spec.recipeId, runId: run.id,
         nodeIds: order.map(n => n.nodeId), fromMs, toMs,
+        // 长跑批次数采可达数万行/节点:显式放大取数上限(适配器硬顶 100 万),
+        // 否则默认 2000 行把长批次截成稀疏点,滑窗为 0 → 数据集只剩短批次(实测缺陷 2026-10-05)
+        limit: 500_000,
       })
       series = new Map()
       for (const [nodeId, points] of tagged) {

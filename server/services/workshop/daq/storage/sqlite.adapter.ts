@@ -179,7 +179,7 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
     params.push(q.fromMs ?? 0)
     where.push('ts_ms <= ?')
     params.push(q.toMs ?? Date.now())
-    const limit = Math.min(q.limit ?? 2000, 10_000)
+    const limit = Math.min(q.limit ?? 2000, 1_000_000)
     if (q.bucketMs && q.bucketMs >= 100) {
       // 桶宽内插(整数,同 query():绑定参数会走 REAL 浮点除,塌不了桶)
       const bucket = Math.round(Number(q.bucketMs))

@@ -154,7 +154,7 @@ export class TimescaleAdapter implements TsdbPort {
     params.push(new Date(q.fromMs ?? 0).toISOString())
     where.push(`ts <= $${params.length + 1}`)
     params.push(new Date(q.toMs ?? Date.now()).toISOString())
-    const limit = Math.min(q.limit ?? 2000, 10_000)
+    const limit = Math.min(q.limit ?? 2000, 1_000_000)
     const whereSql = where.join(' AND ')
     if (q.bucketMs && q.bucketMs >= 100) {
       const { rows } = await this.pool.query(
