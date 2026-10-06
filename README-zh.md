@@ -28,7 +28,7 @@
 
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.7.55</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST 集成 · 117 个运行时设置项 · 双语文档（简体中文 / English）</sub>
+<sub><b>v0.7.56</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST 集成 · 117 个运行时设置项 · 双语文档（简体中文 / English）</sub>
 
 <br />
 
@@ -149,7 +149,7 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 | **Harness 无关** | 一个 `AgentInterface`，**14 个引擎**分三类传输形态：**进程内**——`mock`（无 LLM）、`claude`（Claude Agent SDK，常驻会话，同轮 steer）；**经协议常驻会话**——`omp`（RPC 子进程）、`codex`（app-server JSON-RPC）、`dsh` / `qwen` / `hermes`（ACP）、`opencode`（serve + HTTP/SSE）；**带结构化事件流的无头 CLI**——`gemini`（stream-json）、`copilot`（JSONL）、`cursor`（stream-json）、`crush`（非交互运行）、`goose`（stream-json）、`pi`（`-p --mode json`）。平台永远不知道跑的是哪个。 |
 | **Channel 级 LLM 选择** | 每个 Channel 从 Harness 实时目录中选 **harness → provider → model（+effort）**（如 omp 的 `zhipu-coding-plan/glm-5.3-flash`）。成员未显式覆盖即继承——一个团队混用多种 harness 是一等公民设定，不是绕行。 |
 | **Harness 可用性检查** | `GET /api/workshop/harnesses` 逐引擎探测 PATH 上的 CLI。前端禁用未安装项，且每个入口在执行前都做强校验。 |
-| **停滞安全的监督与任务治理** | 提交的目标进入 **FIFO 根任务队列**，排队位次可见。**监督看门狗**区分「卡死」与「慢」——Agent 工具调用被当作活性信号，健康的长工业作业不会被误回收，真停滞仍会呈报 lead。每次派发携带**派发代 + 执行租约**，被取代 worker 的迟到事件在准入层直接丢弃，而不是寄希望于事后对账。 |
+| **停滞安全的监督与任务治理** | 提交的目标进入 **FIFO 根任务队列**，排队位次可见。排队根**等待期间不消耗执行预算**——预算从入场起算，并有确定性的 **lead 救援扫**兜底（lead 运行时失活/任务卡排队时自动卸载重组并重新派发，不等人工察觉）。**监督看门狗**区分「卡死」与「慢」——Agent 工具调用被当作活性信号，健康的长工业作业不会被误回收，真停滞仍会呈报 lead。每次派发携带**派发代 + 执行租约**，被取代 worker 的迟到事件在准入层直接丢弃，而不是寄希望于事后对账。 |
 | **Harness 连续性** | 每个引擎声明连续性形态（`persistent` / `per_turn`）；常驻会话在连续性租约下跨轮复用（pid / 会话 / 复用计数 / 最近重启原因），服务重启能恢复的恢复，而不是悄悄重新拉起。 |
 | **Channel 群聊与原生 HITL** | 频道时间线是真正的群聊：成员请求升级为**可追踪作业**（不是一条会丢的消息）；带原生 ask 能力的引擎（如 `omp`）把 HITL 提问路由进平台——您批准一次，引擎带着回执继续跑。成员权限与用户通知是一等公民。 |
 | **定时任务** | 任意 Channel 任务可挂上**调度**——固定 `interval`（60s 下限）或 `daily` 每日定点——在 `/workshop/schedules` 页或 REST API 管理，带逐次运行历史、忙等守卫（频道仍有在飞任务时触发顺延）与 Channel 级可见性。 |
@@ -388,7 +388,7 @@ aw update --check                      # 只报告，不安装
 npm install -g agentworkshop@latest    # 手动等效
 ```
 
-版本遵循 semver。每次 `aw start` 都会校验配置根，并把 `home` 之前的旧版 `data/` 布局迁移进来（以最新文件为准），因此数据可以跨版本存活。SQLite schema 迁移在服务端启动时执行。当前版本：**v0.7.55**——见[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)。
+版本遵循 semver。每次 `aw start` 都会校验配置根，并把 `home` 之前的旧版 `data/` 布局迁移进来（以最新文件为准），因此数据可以跨版本存活。SQLite schema 迁移在服务端启动时执行。当前版本：**v0.7.56**——见[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)。
 
 ### 第一次「Agent × 产线」会话（约 2 分钟）
 

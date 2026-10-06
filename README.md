@@ -28,7 +28,7 @@
 
 **[简体中文](./README-zh.md)** · **[Documentation](https://kingdol666.github.io/AgentWorkShop)** · **[Releases](https://github.com/kingdol666/AgentWorkShop/releases)** · **[Changelog](./changelog.md)** · **[Plugin API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.7.55</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST integration · 117 runtime settings · bilingual docs (简体中文 / English)</sub>
+<sub><b>v0.7.56</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST integration · 117 runtime settings · bilingual docs (简体中文 / English)</sub>
 
 <br />
 
@@ -150,7 +150,7 @@ Recorded against a running instance: real DAQ history, real write control, real 
 | **Harness-agnostic** | One `AgentInterface`, **14 engines** in three transport classes: **in-process** — `mock` (no LLM), `claude` (Claude Agent SDK, resident session, same-turn steer); **persistent session over a protocol** — `omp` (RPC subprocess), `codex` (app-server JSON-RPC), `dsh` / `qwen` / `hermes` (ACP), `opencode` (serve + HTTP/SSE); **headless CLI with a structured event stream** — `gemini` (stream-json), `copilot` (JSONL), `cursor` (stream-json), `crush` (non-interactive run), `goose` (stream-json), `pi` (`-p --mode json`). The platform never knows which one runs. |
 | **Per-channel LLM selection** | Each channel picks a **harness → provider → model (+effort)** triple from the harness's live catalog (e.g. `zhipu-coding-plan/glm-5.3-flash` on omp). Members inherit it unless they override — mixing harnesses in one team is a first-class setup, not a workaround. |
 | **Harness availability check** | `GET /api/workshop/harnesses` probes each engine's CLI on PATH. The UI disables not-installed engines, and dispatch is hard-checked at every entry point. |
-| **Stall-safe supervision & task governance** | Submitted goals enter a **FIFO root queue** with visible queue positions. A **supervision watchdog** distinguishes *stuck* from *slow* — agent tool invocations count as liveness, so healthy long-running industrial work survives while genuinely stalled tasks surface to the lead. Every assignment carries a **generation + execution lease**, so events from a superseded worker are dropped by admission, not reconciled by hope. |
+| **Stall-safe supervision & task governance** | Submitted goals enter a **FIFO root queue** with visible queue positions. Queued roots **never burn their execution budget while waiting** — the budget starts at admission, and a deterministic **lead-rescue sweep** revives starved entries (stopped/idle lead runtime + fresh assignment) before a human ever notices. A **supervision watchdog** distinguishes *stuck* from *slow* — agent tool invocations count as liveness, so healthy long-running industrial work survives while genuinely stalled tasks surface to the lead. Every assignment carries a **generation + execution lease**, so events from a superseded worker are dropped by admission, not reconciled by hope. |
 | **Harness continuity** | Engines declare a continuity mode (`persistent` / `per_turn`); persistent sessions are reused across turns under a read-only continuity lease (pid / session / reuse count / last restart reason), and a server restart restores what can be restored instead of silently re-forking. |
 | **Channel group chat & native HITL** | The channel timeline is a real group chat: a member's request becomes a **trackable job** (not a lost message), and engines with a native ask surface (e.g. `omp`) route HITL questions through the platform — approve once, the engine continues with the receipt. Member permissions and notifications are first-class. |
 | **Scheduled tasks** | Any channel task can run on a **schedule** — fixed `interval` (60 s floor) or `daily` at a set time — managed from `/workshop/schedules` or the REST API, with per-run history, busy-guard (no overlapping runs of the same schedule) and channel-scoped visibility. |
@@ -256,7 +256,7 @@ page headers stack, dense tables become scrollable ledgers with a pinned identit
 <td width="50%"><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-monitor.png" alt="Runtime monitor" width="100%" /><br/><sub><b>Runtime monitor.</b> Every wired channel, member count, dependency cycle and owner.</sub></td>
 </tr>
 <tr>
-<td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-settings.png" alt="Settings" width="100%" /><br/><sub><b>Settings.</b> 116 keys across 18 groups, descriptor-driven — the same registry the CLI reads.</sub></td>
+<td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-settings.png" alt="Settings" width="100%" /><br/><sub><b>Settings.</b> 117 keys across 18 groups, descriptor-driven — the same registry the CLI reads.</sub></td>
 <td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-plugins.png" alt="Plugins" width="100%" /><br/><sub><b>Plugins.</b> Three scopes, hot reload on edit, per-team switches.</sub></td>
 </tr>
 </table>
@@ -379,7 +379,7 @@ aw update --check                      # only report; nothing is installed
 npm install -g agentworkshop@latest    # manual equivalent
 ```
 
-Releases follow semver. `aw start` verifies the config root on every launch and migrates the legacy pre-`home` `data/` layout into it (newest file wins), so data survives upgrades. SQLite schema migrations run server-side at boot. Current version: **v0.7.55** — see [Releases](https://github.com/kingdol666/AgentWorkShop/releases).
+Releases follow semver. `aw start` verifies the config root on every launch and migrates the legacy pre-`home` `data/` layout into it (newest file wins), so data survives upgrades. SQLite schema migrations run server-side at boot. Current version: **v0.7.56** — see [Releases](https://github.com/kingdol666/AgentWorkShop/releases).
 
 ### Your first agent × line session (~2 minutes)
 
@@ -731,8 +731,6 @@ building, so those files are the single source of truth for the single-page guid
 | Recipe versioning with attribution + non-destructive rollback (UI + agent tools) | Shipped |
 | Recipe-chain optimization loop: recipe_trial batch trials (no version) → adopt on progress → unified rollback with PLC restore | Shipped |
 | Channel-bound lines: read-only log/recipe/status access for all members, line brief injected into prompts | Shipped |
-| Recipe-chain optimization loop: recipe_trial batch trials (no version) → adopt on progress → unified rollback with PLC restore | Shipped |
-| Channel-bound lines: read-only log/recipe/status access for all members, line brief injected into prompts | Shipped |
 | Agent self-audit: line_context / ops_log / recipe_log / recipe_versions / dcw_journal | Shipped |
 | Multi-harness parallel live E2E on a real protocol line (four engines, one line) | Shipped |
 | HITL approval flow verified over real OPC UA writes | Shipped |
@@ -745,7 +743,7 @@ building, so those files are the single source of truth for the single-page guid
 | Plugin system v2: browser panel injection, plugin-scoped settings/groups, plugin i18n, host runtime services (`ctx.services`/`ctx.daq`/`ctx.omp`) | Shipped |
 | Instrument Glass material layer (v0.7.36): three-tier translucent materials, vibrancy, specular edges, spring motion, per-page route transitions | Shipped |
 | Realtime pipeline optimizations: DAQ frame indexing O(n²)→O(n), incremental per-agent event index, chart in-place updates, size-aware JSON persistence | Shipped |
-| AML auto-modeling lab: dataset build · job orchestration (uv-managed Python) · leaderboard · promotion gates · 10 agent tools | Shipped |
+| AML auto-modeling lab: dataset build · job orchestration (uv-managed Python) · leaderboard · promotion gates · 14 agent tools | Shipped |
 | Claude Agent SDK adapter — resident sessions with same-turn steer and `canUseTool` HITL | Shipped |
 | Semantic parameter mapping: `param_control`/`param_read` by process parameter, four-layer write bound, tuning loop (`dcw_judge`/`dcw_rollback`) | Shipped |
 | Channel group chat: requests become trackable jobs; native HITL (`omp` ask → approval → receipt) | Shipped |

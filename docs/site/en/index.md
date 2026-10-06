@@ -75,7 +75,7 @@ footer:
         14 harnesses (<code>agents/registry.ts</code>) / 117 settings in 18 groups (<code>aw config list</code>) / 7 task states.
       </p>
       <div class="aw-statusbar">
-        <span>Version <i>v0.7.55</i></span>
+        <span>Version <i>v0.7.56</i></span>
         <span>License <i>PolyForm Noncommercial 1.0.0</i></span>
         <span>Runtime <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>Docs <i>简体中文 / English</i></span>
@@ -318,7 +318,7 @@ footer:
       <div class="hw-f"><span class="tag">MEM</span><h3>Persistent memory</h3><p>Private + shared domains, FTS5 with CJK segmentation, optional vector hybrid recall; team chronicle and idle reflections accrue.</p></div>
       <div class="hw-f"><span class="tag">CHAT</span><h3>Channel group chat</h3><p>A member's request becomes a trackable job, not a lost message; native HITL (omp ask → approval → receipt), member permissions and notifications first-class.</p></div>
       <div class="hw-f"><span class="tag">SCHED</span><h3>Scheduled tasks</h3><p>Attach any channel task to an interval or daily schedule — per-run history, busy-guard, consecutive-failure circuit breaker. Line patrol runs unattended.</p></div>
-      <div class="hw-f"><span class="tag">QOS</span><h3>Root queue &amp; leases</h3><p>FIFO root queue with visible queue positions; assignment generation + execution-lease fencing drops stale worker events; the supervision watchdog tells stuck from slow.</p></div>
+      <div class="hw-f"><span class="tag">QOS</span><h3>Root queue &amp; leases</h3><p>FIFO root queue with visible queue positions; queued roots never burn execution budget while waiting, and a deterministic lead-rescue sweep revives starved admissions; assignment generation + execution-lease fencing drops stale worker events; the supervision watchdog tells stuck from slow.</p></div>
     </div>
   </section>
 
