@@ -5,7 +5,7 @@
 import { AgentMemoryRecall } from './recall'
 import type { A2AMessage } from '../../types/a2a'
 import type { WorkspaceTask } from '../../types/task'
-import { CONTENT_STORE_LIMIT, partsText, segmentCJK, unsegmentCJK, vectorizeMemory } from './helpers'
+import { CONTENT_STORE_LIMIT, buildMatchQuery, partsText, segmentCJK, unsegmentCJK, vectorizeMemory } from './helpers'
 import { TEAM_AGENT_ID } from '../../db/memory.repo'
 import { randomUUID } from 'node:crypto'
 
@@ -29,7 +29,13 @@ export abstract class AgentMemoryWrite extends AgentMemoryRecall {
     const content = input.content
     let finalKey = dedupKey
     if (shared) {
-      const near = this.repo.search(TEAM_AGENT_ID, segmentCJK(input.title), 3).filter(r => r.kind === 'semantic')
+      // 近邻检索必须走 buildMatchQuery:标题原文直喂 FTS5 时,`10:30`/`2026-10-07` 这类
+      // "数字:数字/含:+-"片段会被解析成列过滤器/短语算子 → "no such column: 10"
+      // (实测:跨频道冻结约定标题含时间戳,save_memory 全量炸掉)。
+      const matchQuery = buildMatchQuery(input.title)
+      const near = matchQuery
+        ? this.repo.search(TEAM_AGENT_ID, matchQuery, 3).filter(r => r.kind === 'semantic')
+        : []
       const tokensOf = (t: string) => new Set(segmentCJK(t).split(/\s+/).filter(Boolean))
       const jaccard = (a: Set<string>, b: Set<string>) => {
         const inter = [...a].filter(x => b.has(x)).length
