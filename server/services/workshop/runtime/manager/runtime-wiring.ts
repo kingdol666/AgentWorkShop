@@ -13,7 +13,8 @@ import { Mailbox } from '../mailbox'
 import { SchedulerLoop } from '../scheduler-loop'
 import { buildMessage, instanceToAgentInfo, log, parseChannelLlm, rowToChannelMail, runtimeKey } from './helpers'
 import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
-import { harnessContinuityEnabled, workshopSettings } from '../../settings'
+import { harnessContinuityEnabled, rootQueueEnabled, workshopSettings } from '../../settings'
+import { TERMINAL_TASK_STATES, type TaskState } from '../../types/task'
 import { composeChannelSystemPrompt } from '../../aml/twin/prompt-composer'
 
 export abstract class ManagerRuntimeWiring extends ManagerBus {
@@ -320,11 +321,95 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
           idleSince.delete(key)
         }
       }
+      void this.rescueStaleRoots().catch((err) => {
+        log.error(`[AgentChannelManager] D1 兜底扫异常(下轮继续):`, err)
+      })
     }, intervalMs)
     return () => {
       if (this.idleSweeperTimer) {
         clearInterval(this.idleSweeperTimer)
         this.idleSweeperTimer = null
+      }
+    }
+  }
+
+  /**
+   * D1 兜底(2026-10-06):lead 根任务的入场依赖 omp 监督回合;会话握手抖动/自停/卸载时
+   * 队列根无限滞留 SUBMITTED(实测两例,activate+immediate 消息 nudge 即愈 —— 证明
+   * 「lead 领到消息的回合」是稳健入场路径)。把人工救援固化为管理层周期扫:
+   * 无活跃根 + 最老排队根滞留 >90s → ensureChannelActive(幂等复活 lead 运行时与
+   * 调度循环)+ immediate 领取提示唤醒消费循环。健康频道入场在秒级完成,不会触发;
+   * 同一根 10 分钟冷却,防消息刷屏。
+   */
+  protected rescueSeen = new Map<string, number>()
+
+  protected async rescueStaleRoots(): Promise<void> {
+    if (!rootQueueEnabled()) return
+    const now = Date.now()
+    const RESCUE_STALE_MS = 90_000
+    const RESCUE_COOLDOWN_MS = 10 * 60_000
+    if (this.rescueSeen.size > 500) this.rescueSeen.clear()
+    for (const channel of this.deps.repos.channels.list()) {
+      if (channel.enabled !== 1 || !channel.leadAgentId) continue
+      let roots
+      try {
+        roots = this.deps.repos.tasks.listRoots(channel.id)
+      }
+      catch { continue }
+      // 入场资格 = 队头**开放**根本身是滞留的 SUBMITTED lead 根:rootQueue 语义里「队头
+      // 非终态根即 activeRoot」,因此不能用 activeRootOf 判空(它对卡死场景恒真,救援会
+      // 成死代码);必须先滤掉终态根(FAILED 旧根占着 seq=1 会挡住重开的 seq=2 根,实测)。
+      // 队头若是 WORKING/WAITING 说明有根在跑,绝不插入。
+      const head = roots.find(r => !TERMINAL_TASK_STATES[r.state as TaskState])
+      if (!head || head.state !== 'SUBMITTED' || head.assigneeId !== channel.leadAgentId) continue
+      if (now - Date.parse(head.createdAt) < RESCUE_STALE_MS) continue
+      const last = this.rescueSeen.get(head.id) ?? 0
+      if (now - last < RESCUE_COOLDOWN_MS) continue
+      this.rescueSeen.set(head.id, now)
+      log.warn(`[AgentChannelManager] D1 兜底:channel ${channel.id.slice(0, 8)} 排队根 ${head.id.slice(0, 8)}「${String(head.title).slice(0, 40)}」滞留 SUBMITTED —— 复活 lead 并投递 assign 领取消息`)
+      try {
+        // 一律卸载后重组:restore 恢复的运行时可能 state 显示 idle 但消费循环从未启动
+        // (自停态恢复不 start,实测消息表 pending 永滞而 omp RPC 仍应答 compact)——
+        // 与其猜状态,不如给一次干净的 stop→dispose→重新 wire→start()。
+        // 救援路径本身罕见(90s 滞留 + 10min 冷却),omp 冷启动 30~90s 代价可接受。
+        if (this.runtimeOf(channel.id, channel.leadAgentId)) {
+          log.warn(`[AgentChannelManager] D1 兜底:卸载既有 lead 运行时后重组(消费循环可疑失活)`)
+          await this.unloadAgent(channel.id, channel.leadAgentId)
+        }
+        this.ensureChannelActive(channel.id)
+        // 入场即刷新执行预算(deadline 语义=执行预算,预算从入场起算):滞留根的旧预算
+        // 早已耗尽,不刷新则 tick 的过期收口会在 WORKING 后立即处决它。
+        try {
+          const engine = this.getTaskEngine() as { refreshDeadline?: (id: string, iso: string) => unknown }
+          const budgetMs = Math.max(10_000, Number(workshopSettings().root_timeout_ms ?? 900_000))
+          engine.refreshDeadline?.(head.id, new Date(Date.now() + budgetMs).toISOString())
+        }
+        catch { /* 极简引擎替身缺方法:跳过,入场后由既有预算语义接管 */ }
+      }
+      catch (err) {
+        log.warn(`[AgentChannelManager] D1 兜底复活失败(下轮重试): ${err instanceof Error ? err.message : String(err)}`)
+        continue
+      }
+      // 正规 assign 消息(与人类直发 worker 同构):FIFO 准入已满足(无活跃根+最老 seq),
+      // assign 语义让 lead 消息路径自动 SUBMITTED→WORKING(补 RUNNING 中间态可见性),
+      // 回合载荷=任务简报,走消息消费循环的稳健入场路径。
+      const brief = [head.title, head.description ?? ''].filter(Boolean).join('\n')
+      const rescueMessage = buildMessage(
+        channel.id,
+        'ROLE_USER',
+        [{ text: brief || head.title }],
+        {
+          'x-aw-target-agent': channel.leadAgentId,
+          'x-aw-msg-priority': 'immediate',
+          'x-aw-task-kind': 'assign',
+          'x-aw-task-id': head.id,
+          'x-aw-from-label': '调度兜底',
+        },
+      )
+      rescueMessage.taskId = head.id
+      const delivered = this.route(channel.id, rescueMessage)
+      if (!delivered.includes(channel.leadAgentId)) {
+        log.warn(`[AgentChannelManager] D1 兜底 assign 消息投递失败(下轮重试): root=${head.id.slice(0, 8)}`)
       }
     }
   }

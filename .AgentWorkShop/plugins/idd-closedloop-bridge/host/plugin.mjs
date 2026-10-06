@@ -5,7 +5,7 @@
  * 完成后由 Agent 依返回指引：查状态工具取结果 → rag-bridge kb_agent 以 regime_key 场景化入库。
  */
 import { DEFAULT_BASE, IDD_ROUTES, MIN, ROLES, SWEEP_INTERVAL_MS } from './constants.mjs'
-import { baseOf, jget, jpost, kvRuns, runKey, text, trackTask } from './helpers.mjs'
+import { baseOf, exchangeDirOf, jget, jpost, kvRuns, kvSaveRuns, runKey, text, trackTask } from './helpers.mjs'
 
 export default {
   name: 'idd-closedloop-bridge',
@@ -40,7 +40,9 @@ export default {
           const status = d.status ?? d.phase ?? meta.status
           const done = ['completed', 'converged', 'failed', 'stopped', 'paused', 'exhausted', 'aborted'].includes(String(status))
           if (done) {
+            // 结果缓存写单任务键;清单(RUNS_KEY)必须同步收敛,否则 sweep 永久重轮询已终态任务
             ctx.kv.set(runKey(id), { id, kind, meta: { ...meta, status, completedAt: Date.now(), result: d } })
+            kvSaveRuns(ctx, kvRuns(ctx).map(x => (x.id === id ? { ...x, meta: { ...x.meta, status, completedAt: Date.now() } } : x)))
             ctx.logger.info(`IDD ${kind} 任务 ${id} 结束:${status}——Agent 可用对应 status 工具取结果;分析结论入库经 kb_agent(场景 regime_key)。`)
           } else if (String(status) !== String(meta.status)) {
             const runs = kvRuns(ctx).map(x => (x.id === id ? { ...x, meta: { ...x.meta, status } } : x))
@@ -133,7 +135,7 @@ export default {
           ? `告警 ${alerts.length} 条:\n` + alerts.slice(0, 8).map(a => `- [${a.severity}/${a.rule_name}] ${a.parameter ?? a.indicator ?? '?'}`).join('\n')
           : (failed ? '无告警(任务失败,原因见下)。' : '无告警(status=ok)。')
         const errNote = failed
-          ? `\n⚠ 失败原因: ${d.error ?? d.error_message ?? '未知'}${d.stdout_tail ? `\n日志尾: ${String(d.stdout_tail).slice(0, 300)}` : ''}\n常见原因:数据路径不在 IDD 允许根内(把 CSV 放入插件 settings 的 exchange_dir 交换目录后重试)/CSV 缺时间列或参数列。`
+          ? `\n⚠ 失败原因: ${d.error ?? d.error_message ?? '未知'}${d.stdout_tail ? `\n日志尾: ${String(d.stdout_tail).slice(0, 300)}` : ''}\n常见原因:数据路径不在 IDD 允许根内(把 CSV 放入交换目录后重试${exchangeDirOf(ctx) ? `,当前配置: ${exchangeDirOf(ctx)}` : '——在插件 settings 配置 exchange_dir'})/CSV 缺时间列或参数列。`
           : ''
         return text(`task ${taskId} 状态=${d.status ?? local?.meta?.status ?? 'unknown'}。\n${head}${errNote}\n${d.report_path ? `报告: ${d.report_path}\n` : ''}${d.alert_path ? `alert.json: ${d.alert_path}\n` : ''}入库知识库请调 kb_agent(prompt 注明标题与工况场景 regime_key,如 PG31DS|磨机|steady)。`)
       },

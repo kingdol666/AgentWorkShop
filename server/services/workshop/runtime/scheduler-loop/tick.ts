@@ -53,7 +53,13 @@ export abstract class SchedulerLoopTick extends SchedulerLoopState {
       && !TERMINAL_TASK_STATES[task.state]
       && task.deadlineAt
       && Date.parse(task.deadlineAt) <= Date.now()
-      && !(task.state === 'SUBMITTED' && snapshot.activeRootId && task.id !== snapshot.activeRootId))
+      // SUBMITTED = 从未入场(入场即 WORKING),deadline 语义是执行预算而非提交后总时长,
+      // 预算刷新发生在入场时刻 —— 因此一切 SUBMITTED 根都不参与过期判定。
+      // 旧条件只豁免「非队头」的排队根:队头 SUBMITTED 根(=activeRootId 指向者)在
+      // lead 入场饥饿时(2026-10-06 组合大考实测)照样被处决 —— 饿死 15 分钟后被
+      // ROOT_TIMEOUT 收口,与 D1 入场缺陷叠加成"必死"组合。入场兜底见 manager
+      // rescueStaleRoots:两者配合后,SUBMITTED 根要么被兜底唤醒入场,要么被用户显式处理。
+      && task.state !== 'SUBMITTED')
     if (expiredRoots.length > 0) {
       // HITL 等待豁免(鲁棒性增强):频道内有待批审批(整包方案/单参下发)时,根任务
       // 执行预算顺延一个 root_timeout,不做 ROOT_TIMEOUT 收口 —— 审批自身有 fail-closed

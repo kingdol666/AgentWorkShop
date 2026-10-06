@@ -20,6 +20,7 @@ import { getDaqNodeRepo } from '../../daq/daq-node.repo'
 import { getActiveLineRun } from '../../dcw/line-run'
 import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
 import { getDcwController } from '../../dcw/dcw-controller'
+import { settingOf } from '../../settings'
 
 const PAGE_LIMIT = 5000 // 与 tsdb 适配器单查硬上限一致(满页即续拉)
 const MAX_PAGES_PER_NODE = 400 // 单节点上限 200 万点(超限截断并在 manifest 标注)
@@ -359,16 +360,22 @@ export async function toolDaqExport(agentId: string, args: {
   const mergeNote = result.mergedFile
     ? `\n- merged.csv(merge 模式): ${result.mergedFile} —— 多节点按秒对齐的多参数宽表,可直接作为 IDD sentinel_screen/watch 的 data_path(time_col=time)`
     : ''
+  // IDD 交换目录免疫提示:配置了 exchange_dir 时直接给出可用的 data_path 落点,
+  // 避免 Agent 把导出目录(平台数据区,在 IDD 沙箱外)当哨兵输入而首试被拒
+  const exchangeDir = String(settingOf('plugins.idd-closedloop-bridge.exchange_dir') ?? '').trim()
+  const exchangeNote = exchangeDir
+    ? `\n- IDD 交换目录已配置: ${exchangeDir} —— 哨兵分析前把${result.mergedFile ? ' merged.csv' : ' 各 nodes/<node_id>.csv'}复制到该目录下,再以 <交换目录>/<文件名> 作为 data_path(平台导出目录在 IDD 允许根外,直接传会被路径沙箱拒绝)。`
+    : ''
   return {
     text: `已导出 ${result.files.length} 个节点的全量原始时序(无降采样):
 - export_id: ${result.exportId}
 - 目录: ${result.dir}
-- 文件: manifest.json(节点映射/单位量程/语义描述/产线-产品-配方-批次上下文/报警统计)+ nodes/<node_id>.csv(逐样本时序,列 ts_iso,ts_ms,value,state)${mergeNote}
+- 文件: manifest.json(节点映射/单位量程/语义描述/产线-产品-配方-批次上下文/报警统计)+ nodes/<node_id>.csv(逐样本时序,列 ts_iso,ts_ms,value,state)${mergeNote}${exchangeNote}
 - 明细: ${perNode};共 ${result.totalRows} 行;窗口 ${new Date(fromMs).toISOString()} ~ ${new Date(toMs).toISOString()}${truncNote}
 
 下一步:
 1. 深度根因诊断:调用 diag_run(export_id="${result.exportId}", scene=<场景名>, question=<诊断问题>)——会把 manifest 与全部 CSV 上传诊断服务做多文件分析;mode=async 提交即返(缺省),mode=sync 同步等待结果。
-2. 哨兵筛查:把${result.mergedFile ? ' merged.csv 或' : ''} nodes/<node_id>.csv 的绝对路径交给 sentinel_baseline/sentinel_screen/sentinel_watch(注意数据须位于 IDD 允许根内)。
+2. 哨兵筛查:把${result.mergedFile ? ' merged.csv 或' : ''} nodes/<node_id>.csv 的绝对路径交给 sentinel_baseline/sentinel_screen/sentinel_watch(注意数据须位于 IDD 允许根内${exchangeDir ? ';已配置的交换目录见上方' : ';可在 idd-closedloop-bridge 插件 settings 配置 exchange_dir'})。
 3. 交由其他 worker 离线分析:直接把目录绝对路径(${result.dir})交给对方,manifest.json 内含全部映射与语义说明。`,
   }
 }

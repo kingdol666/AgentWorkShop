@@ -53,6 +53,16 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
         const task = this.deps.taskEngine.get(taskId)
         if (task && (task.state === 'SUBMITTED' || task.state === 'ASSIGNED')) {
           await this.deps.taskEngine.transition(taskId, 'WORKING', this.agentId)
+          // 入场即刷新执行预算(deadline=执行预算,从入场起算):消息路径入场曾缺这步,
+          // 排队饿久了的根一入场就带着陈旧 deadline,几分钟内被 tick 过期收口处决
+          // (实测:组合大考 lead 干到 12:36 阶段一过半,12:42 被 ROOT_TIMEOUT 处决)。
+          // 与 scheduler-loop/execute.ts dispatch 的入场刷新同源同语义。
+          if (!task.parentId) {
+            const engine = this.deps.taskEngine as { refreshDeadline?: (id: string, iso: string) => unknown }
+            const { workshopSettings } = await import('../../settings')
+            const budgetMs = Math.max(10_000, Number(workshopSettings().root_timeout_ms ?? 900_000))
+            engine.refreshDeadline?.(taskId, new Date(Date.now() + budgetMs).toISOString())
+          }
         }
       }
       // 每次 run 新建 AbortController;abort 后事件流终止

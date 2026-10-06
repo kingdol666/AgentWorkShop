@@ -10,6 +10,10 @@ export function tokenOf(ctx) {
   return String(ctx.config.get('plugins.idd-closedloop-bridge.token') ?? '').trim()
 }
 
+export function exchangeDirOf(ctx) {
+  return String(ctx.config.get('plugins.idd-closedloop-bridge.exchange_dir') ?? '').trim()
+}
+
 export function authHeadersOf(ctx) {
   const t = tokenOf(ctx)
   return t ? { Authorization: `Bearer ${t}` } : {}

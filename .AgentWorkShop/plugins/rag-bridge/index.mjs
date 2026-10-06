@@ -219,11 +219,12 @@ export default {
     ctx.omp.registerTool({
       name: 'kb_agent_status',
       label: '知识库任务状态',
-      description: '查询知识库异步任务的执行状态与结果(kb_agent 以 mode=async 提交后,用返回的 task_id 查询;任务完成后返回知识库 Agent 的完整结果)。',
+      description: '查询知识库异步任务的执行状态与结果(kb_agent 以 mode=async 提交后,用返回的 task_id 查询;任务完成后返回知识库 Agent 的完整结果)。可传 wait_seconds 最长等 120s:任务在窗口内完成则直接返回结果,免反复轮询。',
       parameters: {
         type: 'object',
         properties: {
           task_id: { type: 'string', description: 'kb_agent 异步提交时返回的 task_id' },
+          wait_seconds: { type: 'number', description: '长轮询等待秒数(0=立即返回,默认 0,上限 120);入库类任务建议 90~120' },
         },
         required: ['task_id'],
       },
@@ -234,21 +235,32 @@ export default {
         }
         const taskId = String(args.task_id ?? '').trim()
         if (!taskId) return { text: 'task_id 必填(kb_agent 异步提交时返回的 id)。', isError: true }
-        const r = await callJson('GET', web() + '/api/kb/agent/tasks/' + encodeURIComponent(taskId), null, { timeoutMs: 15000, retries: 0 })
-        if (!r.ok) {
-          return { text: '任务查询失败:' + String(r.error ?? '') + '(不存在/已过期 2h/服务重启过,或任务从未提交)。', isError: true }
+        const waitSec = Math.min(Math.max(Math.round(Number(args.wait_seconds ?? 0) || 0), 0), 120)
+        const queryOnce = async () => {
+          const r = await callJson('GET', web() + '/api/kb/agent/tasks/' + encodeURIComponent(taskId), null, { timeoutMs: 15000, retries: 0 })
+          if (!r.ok) {
+            return { text: '任务查询失败:' + String(r.error ?? '') + '(不存在/已过期 2h/服务重启过,或任务从未提交)。', isError: true }
+          }
+          const body = r.body || {}
+          const status = String(body.status ?? 'unknown')
+          if (status === 'running') return null
+          const result = body.result || {}
+          const reply = String(result.reply ?? result.partial_text ?? '').trim()
+          if (status === 'completed' && reply) {
+            return { text: '任务 ' + taskId + ' 已完成。知识库 Agent 结果:\n\n' + reply }
+          }
+          return { text: '任务 ' + taskId + ' 状态:' + status + '\n' + String(result.error ?? '').slice(0, 300) + (result.partial_text ? '\n[部分输出]\n' + String(result.partial_text).slice(0, 600) : '') }
         }
-        const body = r.body || {}
-        const status = String(body.status ?? 'unknown')
-        if (status === 'running') {
-          return { text: '任务 ' + taskId + ' 仍在后台执行中(running)。稍后再次查询。' }
+        // 长轮询:5s 步进,窗口内完成即返回结果
+        const deadline = Date.now() + waitSec * 1000
+        for (;;) {
+          const got = await queryOnce()
+          if (got) return got
+          if (Date.now() >= deadline) {
+            return { text: '任务 ' + taskId + ' 仍在后台执行中(running,已等待 ' + waitSec + 's)。稍后再次查询。' }
+          }
+          await new Promise(resolve => setTimeout(resolve, 5000))
         }
-        const result = body.result || {}
-        const reply = String(result.reply ?? result.partial_text ?? '').trim()
-        if (status === 'completed' && reply) {
-          return { text: '任务 ' + taskId + ' 已完成。知识库 Agent 结果:\n\n' + reply }
-        }
-        return { text: '任务 ' + taskId + ' 状态:' + status + '\n' + String(result.error ?? '').slice(0, 300) + (result.partial_text ? '\n[部分输出]\n' + String(result.partial_text).slice(0, 600) : '') }
       },
     })
 

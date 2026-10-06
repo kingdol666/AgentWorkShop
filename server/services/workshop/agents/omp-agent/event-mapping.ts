@@ -62,9 +62,23 @@ export abstract class OmpRpcAgentImplEventMapping extends OmpRpcAgentImplToolsSt
       case 'tool_execution_end': {
         // 工具结果事件(2026-10-05 评审):此前只有 start,end 被默认分支静默丢弃 ——
         // 工具调用不可审计。end 帧带 isError 与结果摘要(短截断)。
+        // 结果可能是字符串或结构化对象:对象直接 String() 会变成 "[object Object]",
+        // 这里 JSON 序列化后截断(循环引用等异常回落为占位文本)。
         const endToolName = event.toolName ?? 'tool'
         const isError = event.isError === true
-        const raw = String(event.result ?? event.output ?? '')
+        const rawResult = event.result ?? event.output ?? ''
+        let raw: string
+        if (typeof rawResult === 'string') {
+          raw = rawResult
+        }
+        else {
+          try {
+            raw = JSON.stringify(rawResult) ?? ''
+          }
+          catch {
+            raw = '(不可序列化结果)'
+          }
+        }
         const summary = raw.slice(0, 300)
         return [{
           kind: 'status',
