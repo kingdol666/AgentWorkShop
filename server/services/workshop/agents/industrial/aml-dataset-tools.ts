@@ -147,6 +147,8 @@ export async function toolAmlDatasetBuild(agentId: string, args: {
   run_ids?: string[]
   from_ms?: number | string
   to_ms?: number | string
+  /** D7 熔断逃生口:确需重建同规格数据集时显式传 true */
+  force?: boolean
 }): Promise<{ text: string, isError?: boolean }> {
   const lineId = String(args.line_id ?? '').trim()
   const productId = String(args.product_id ?? '').trim()
@@ -198,6 +200,25 @@ export async function toolAmlDatasetBuild(agentId: string, args: {
       purpose,
       note: args.note ? String(args.note) : undefined,
     })
+    // D7 熔断(2026-10-06):同规格指纹 10 分钟内重复构建 → 拒绝并指向既有数据集。
+    // 实测某 lead 重试循环 15 分钟连续构建 30 个同 sha256 数据集,烧穿 2GB 磁盘配额。
+    // spec 由 parseDatasetSpec 规范化,同参调用 specJson 逐字相同,可作指纹。
+    if (args.force !== true) {
+      const specKey = JSON.stringify(spec)
+      const recentDup = getAmlRuntime().repo.dataset.list({ limit: 50 })
+        .filter(d => Date.now() - Date.parse(d.createdAt) < 10 * 60_000)
+        .find((d) => {
+          try {
+            return JSON.stringify(JSON.parse(d.specJson)) === specKey
+          }
+          catch {
+            return false
+          }
+        })
+      if (recentDup) {
+        return { text: `熔断:10 分钟内已构建过同规格数据集 ${recentDup.id}(sha256 ${String(recentDup.sha256 ?? '').slice(0, 12)}…)。重复构建只会烧穿磁盘配额(实测 15 分钟 30 个/2GB)——直接用该 dataset_id 提交训练即可。确因数据已更新需要重建,请传 force=true。`, isError: true }
+      }
+    }
     const { dataset, report } = await buildDataset(spec, { id: agentId, kind: 'agent' })
     recordOps({
       actor: agentId,

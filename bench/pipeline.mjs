@@ -2006,6 +2006,17 @@ await timed('P9', 'subsystems', 'Platform subsystems (team dispatch · team memo
 // ═══════════════ 收尾 · 量化 + HTML + 复现指纹 ═══════════════
 for (const l of lines) { if (l.teardown) await l.teardown().catch(() => {}) }
 for (const l of port.lines) { if (l.teardown) await l.teardown().catch(() => {}) }
+// 共享模拟器复原(2026-10-06):bench 的 preset/phase 操作会把共享 :4010 的演示引擎
+// 打停/重置,跑完后 demo 产线"消失"(数采断流,实测收敛验收轮被迫手动恢复)。
+// 这里在收尾时重放 cast-film-physics 预设——boot 引擎+设备,恢复共享实例的演示工况。
+if (!process.env.AW_BENCH_NO_PRESET_RESTORE) {
+  try {
+    await applyPreset(simPreset)
+    console.log(`  · 收尾复原:已重放预设 ${simPreset}(共享模拟器演示工况恢复)`)
+  } catch (err) {
+    console.log(`  · 收尾复原失败(可 AW_BENCH_NO_PRESET_RESTORE=1 跳过): ${err?.message ?? err}`)
+  }
+}
 
 const fail = checks.filter(c => c.status === 'fail').length
 const warn = checks.filter(c => c.status === 'warn').length

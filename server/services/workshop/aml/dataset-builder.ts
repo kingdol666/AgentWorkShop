@@ -60,7 +60,10 @@ export interface BuildDatasetResult {
 
 // ---------- 工具 ----------
 
-/** data/aml 目录现用体积(MB;60s 缓存,防频繁 du) */
+/** data/aml 目录现用体积(MB;60s 缓存,防频繁 du)。
+ * 排除基础设施目录(.venv/tools/runtime):uv Python 环境一次安装即 ~936MB,若计入配额,
+ * 用户数据只剩 ~1.1GB 可用(实测 2026-10-06:venv 占 46%,零用户数据时配额已近半耗尽)。 */
+const QUOTA_EXCLUDED_DIRS = new Set(['.venv', 'tools', 'runtime'])
 let duCache: { at: number, mb: number } | null = null
 export function amlDiskUsageMb(root: string, opts: { force?: boolean } = {}): number {
   if (!opts.force && duCache && Date.now() - duCache.at < 60_000) return duCache.mb
@@ -72,6 +75,7 @@ export function amlDiskUsageMb(root: string, opts: { force?: boolean } = {}): nu
     }
     catch { return }
     for (const e of entries) {
+      if (dir === root && QUOTA_EXCLUDED_DIRS.has(e)) continue
       const p = join(dir, e)
       const st = statSync(p, { throwIfNoEntry: false })
       if (!st) continue

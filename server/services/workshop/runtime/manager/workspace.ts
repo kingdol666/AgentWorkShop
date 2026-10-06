@@ -83,7 +83,7 @@ export abstract class ManagerWorkspace extends ManagerRuntimeObserve {
   protected async submitLeadRootTask(
     channelId: string,
     callerAgentId: string,
-    input: { title: string, description?: string, parts?: Part[], sourceChatMessageId?: string, sourceChatDeliveryId?: string },
+    input: { title: string, description?: string, parts?: Part[], sourceChatMessageId?: string, sourceChatDeliveryId?: string, budgetMinutes?: number },
   ): Promise<WorkspaceTask> {
     const caller = this.requireMember(channelId, callerAgentId)
     if (caller.role !== 'lead') {
@@ -91,9 +91,15 @@ export abstract class ManagerWorkspace extends ManagerRuntimeObserve {
     }
     const title = String(input.title ?? '').trim()
     if (!title) throw new AppError(400, 'BAD_REQUEST', 'submit_task 需要非空 title')
+    // 预算:lead 可显式声明 budgetMinutes —— 长工业链路(如 8 步巡检)在 15min 默认预算下
+    // 会被预算处决(实测 2026-10-06);未声明沿用 root_timeout_ms。上限 6h 防滥用。
+    const declaredMinutes = Number(input.budgetMinutes)
+    const budgetMs = Number.isFinite(declaredMinutes) && declaredMinutes > 0
+      ? Math.min(declaredMinutes * 60_000, 6 * 3_600_000)
+      : Math.max(10_000, Number(workshopSettings().root_timeout_ms ?? 900_000))
     const deadlineAt = /^\[mode:(goal|loop|pipeline)\]/.test(input.description ?? '')
       ? undefined
-      : new Date(Date.now() + Math.max(10_000, Number(workshopSettings().root_timeout_ms ?? 900_000))).toISOString()
+      : new Date(Date.now() + Math.max(10_000, budgetMs)).toISOString()
 
     // sourceChatMessageId 是 canonical root identity。createOrGetRoot 在 repo 层以
     // partial unique index 做最终并发闸门；即使 Lead 改标题或重复 submit，仍返回原 root。

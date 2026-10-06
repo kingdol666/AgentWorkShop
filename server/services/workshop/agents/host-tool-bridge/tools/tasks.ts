@@ -12,14 +12,18 @@ export async function handleSubmitTask(args: Record<string, unknown>, state: Hos
   const title = String(args.title ?? '').trim()
   const description = args.description as string | undefined
   if (!title) return { text: 'submit_task 需要非空 title', isError: true }
+  // budget_minutes:长工业链路显式预算(分钟;如 8 步巡检链在 15min 默认预算下会被处决)
+  const budgetRaw = Number(args.budget_minutes)
+  const budgetMinutes = Number.isFinite(budgetRaw) && budgetRaw > 0 ? Math.round(budgetRaw) : undefined
   const task = await ws.submitTask({
     title,
     description,
+    budgetMinutes,
     sourceChatMessageId: state.sourceChatMessageId ?? undefined,
     sourceChatDeliveryId: state.sourceChatDeliveryId ?? undefined,
   })
   return {
-    text: `根任务 ${task.id} 已登记(assignee=你,state=${task.state})。若需要专业分工:对每个子任务调用 dispatch_task(parent_task_id=${task.id}, assignee_id=..., title=..., description=含目标/上下文/交付格式/验收标准/边界);若你自己就能回答,直接 complete_task(task_id=${task.id}, summary=..., deliverable=...) 并把结论回给提问者。`,
+    text: `根任务 ${task.id} 已登记(assignee=你,state=${task.state}${budgetMinutes ? `,预算=${budgetMinutes}min` : ''})。若需要专业分工:对每个子任务调用 dispatch_task(parent_task_id=${task.id}, assignee_id=..., title=..., description=含目标/上下文/交付格式/验收标准/边界);若你自己就能回答,直接 complete_task(task_id=${task.id}, summary=..., deliverable=...) 并把结论回给提问者。`,
   }
 }
 

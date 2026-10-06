@@ -61,6 +61,10 @@
         "description": {
           "type": "string",
           "description": "The full user request plus its constraints, in the user's own terms — this is what you will decompose and later verify each deliverable against"
+        },
+        "budget_minutes": {
+          "type": "number",
+          "description": "任务执行预算(分钟,可选;缺省用平台 root_timeout_ms)。长链路(多阶段巡检/AML 训练链)建议显式给足,如 60 —— 预算从入场起算,超预算未完成会被超时收口。"
         }
       },
       "required": [
@@ -1227,6 +1231,10 @@
         "to_ms": {
           "type": "number",
           "description": "结束 epoch ms(可选)"
+        },
+        "force": {
+          "type": "boolean",
+          "description": "熔断逃生口:10 分钟内已构建过同规格数据集时,默认拒绝并复用既有 dataset_id;确因数据已更新需要重建才传 true(防重试循环烧穿磁盘配额)。"
         }
       },
       "required": [
