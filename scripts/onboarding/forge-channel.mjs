@@ -88,7 +88,7 @@ for (const b of cfg.bindings ?? []) {
     ok(`绑定[${b.agentRole}→${b.nodeId}]`, false, `agentId=${agentId} nodeId=${nodeId}(检查 provision 摘要与 worker 序号)`)
     continue
   }
-  const mode = scenario === 'tuning' ? 'manual' : (b.mode ?? 'manual') // 微调场景强制 manual
+  const mode = scenario === 'tuning' && b.kind === 'recipe' ? 'manual' : (b.mode ?? 'manual') // 微调场景仅写面(配方)强制 manual,daq 只读绑定不受影响
   const j = await api('POST', '/api/workshop/agent-tools/bindings', { agentId, nodeId, kind: b.kind, mode }, tok)
   ok(`绑定[${b.agentRole}→${b.kind}:${String(b.nodeId).slice(0, 24)} mode=${mode}]`, !!j.data?.binding?.id || j.code === 0, j.data?.binding?.id ?? j.message ?? '')
 }
@@ -100,14 +100,21 @@ for (const uid of userIds) {
   ok(`线域授权[${String(uid).slice(0, 8)}]`, j.code === 0 || !!j.data, j.message ?? '')
 }
 
-// ---------- 5. 种子任务 ----------
+// ---------- 5. 种子任务(同题幂等:频道复用时不得重复派发) ----------
 if (cfg.seedTask) {
-  const j = await api('POST', `/api/workshop/channels/${channelId}/tasks`, {
-    title: cfg.seedTask.title,
-    description: cfg.seedTask.description,
-    ...(cfg.seedTask.budget_minutes ? { budget_minutes: cfg.seedTask.budget_minutes } : {}),
-  }, tok)
-  ok('种子任务派发', !!j.data?.id, j.data?.id ?? j.message ?? '')
+  const existing = await api('GET', `/api/workshop/channels/${channelId}/tasks`, undefined, tok)
+  const dup = (existing.data ?? []).find(t => t.title === cfg.seedTask.title)
+  if (dup) {
+    ok('种子任务已存在(同题跳过)', true, dup.id)
+  }
+  else {
+    const j = await api('POST', `/api/workshop/channels/${channelId}/tasks`, {
+      title: cfg.seedTask.title,
+      description: cfg.seedTask.description,
+      ...(cfg.seedTask.budget_minutes ? { budget_minutes: cfg.seedTask.budget_minutes } : {}),
+    }, tok)
+    ok('种子任务派发', !!j.data?.id, j.data?.id ?? j.message ?? '')
+  }
 }
 
 console.log('\n' + JSON.stringify({ channelId, scenario }))
