@@ -93,3 +93,26 @@
 | RAG 检索 | ⚠️外部瞬态 | rag-knowledge 内部 LLM 供应商熔断(503);日间已验证可用 |
 
 回归结论:经过当日九轮改动与两处 P1 修复后,核心链路(采集/读取契约/真写控制/HITL/治理门/多源/IDD)零退化;三项"失败"分别为脚本窗口伪影、另一种 fail-closed 路径、外部依赖瞬态。
+
+## 9 附:采集机制全景实证 + 新建 Channel 闭环 R2(当晚第二轮)
+
+### 9.1 三路采集的落实方式(原始形态→平台节点→真库)
+
+| 路径 | 原始形态(实测抓包) | 平台节点配置 | 入库对账(真库 SQL) |
+| --- | --- | --- | --- |
+| PLC 协议 | 模拟器协议桥 :16052,保持寄存器 40001=float32 big-endian | `driver=modbus-tcp {host,port:16052,unitId:1,register:40001,dataType float32,byteOrder big}` + 模板量程语义 | daq_samples 225 行/节点/30min(12 节点,max(ts) 实时) |
+| MES API·镜像 | `GET /api/v1/quality/thickness`(x-api-token)→一次一组行集 `{ts,profile[48],mean,lane_unit}` | `driver=http {url,headersJSON,jsonPath=data.rows.0.mean / data.rows.0.profile}` 4s/6s 轮询 | 与 PLC 同一 sweep→打标→入库管线 |
+| MES API·直取 | `GET /api/v1/series?fields&from&to&interval`→区间聚合行集 | `dcw mes-rest + historyMap`(时间段/游标平台注入) | 查询期聚合,不落镜像库 |
+| 图像/向量 | `GET /sim-http/.../api/ccd`→PNG 二进制;`/api/profile`→`{points[48],value}` | 模板 signalKind=image/vector;图像像素入对象存储(本地 5326 帧),上下文零像素泄漏 | daq_frames:vector 736+image 675/30min |
+
+### 9.2 新建 Channel 闭环 R2
+
+- 模板实例化全新优化频道 `a85291bf`(lead+worker+绑定+委托约 30 秒);PATCH v12 故意降保压 50(欠补缩起点);开线 run 179fe0f1,**设备侧=50 真写**。
+- 新频道 worker 全权执行:daq_query 观测→诊断→recipe_trial 50→58→HITL 批准→下发(设备=58)→journal 值链 `64→60→62→50→58` 全程留痕。
+- 物理面:克重 32.377→32.373 平坦——50bar 驻留仅 4 分钟,长滞后(τ≈分钟级)克重尚未跌出窗口即被拉回;**教训:慢动力学过程短驻留不显 excursion,闭环窗口判定要按弛豫时标设计**。
+- IDD:daqexp-20261007213818-fd15f7 → 交换目录 inj-r2.csv → 哨兵批筛 30 条(受控阶跃特征)。
+- RAG:R2 记录入库任务完成,但**嵌入层报 CUDA OOM**(rag-knowledge 后端 GPU 显存耗尽,全库 30 篇无法建索引——库级基础设施故障,非平台缺陷;KB Agent 三次恢复尝试+如实报告+拒绝破坏性操作,纪律正确;恢复路径=重启后端释放显存后 kb_reindex force)。晨间 RAG 检索已全链验证可用。
+
+### 9.3 判定
+
+**真实场景闭环优化的全要素(多源采集→真库→新频道接管→诊断→HITL 下发→设备验证→IDD→RAG)再次全程走通**;唯一红灯是 rag 后端 GPU 显存(环境资源),恢复手段明确。
