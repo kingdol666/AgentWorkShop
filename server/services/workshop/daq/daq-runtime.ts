@@ -117,7 +117,8 @@ export class DaqNodeRuntime {
           at: new Date(now).toISOString(),
           frame: f.kind === 'vector'
             ? { kind: 'vector', points: (f.points ?? []).slice(0, 4096), metrics }
-            : { kind: 'image', objectKey: f.objectKey, thumbKey: f.thumbKey, mime: f.mime, width: f.width, height: f.height, metrics },
+            // P0-2:sha256/size 随信封透传(生产侧已算,此处不得丢 —— 丢则 daq_frames.meta 无完整性指纹)
+            : { kind: 'image', objectKey: f.objectKey, thumbKey: f.thumbKey, mime: f.mime, width: f.width, height: f.height, sha256: f.sha256, size: f.size, metrics },
         })
         return
       }

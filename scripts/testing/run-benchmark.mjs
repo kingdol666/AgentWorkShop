@@ -177,7 +177,36 @@ async function s2() {
   const from = new Date(to.getTime() - 15 * 60000)
   const direct = await inv(cfg.workerId, 'mes_fetch', { ids: [cfg.nodes.dcw.mesDirect], from: from.toISOString(), to: to.toISOString(), max_rows: 20 })
   check('S2', 'MES 直取路(mes_fetch)', /行|dataset|样本|data|CSV/.test(direct) && !/必填|被拒|不支持/.test(direct), direct.split('\n')[0].slice(0, 90))
-  event('S2', 'heterogeneous-snapshot', JSON.stringify({ scalarBuckets: (scalar?.data?.points ?? []).length, vecFrames: vecRows.length, imgFrames: imgRows.length, imgSha256: withSha.length }))
+  // 协议集成矩阵:动态枚举在线节点驱动族,逐族验证新鲜数据(标量 samples 或帧 frames 任一即可)
+  const daqAll = await api('GET', '/api/workshop/daq')
+  const fams = new Map()
+  for (const n of daqAll?.data?.nodes ?? []) {
+    if (!n.driver || n.driver === 'mock' || n.driver === 's7') continue
+    if (!fams.has(n.driver)) fams.set(n.driver, [])
+    if (fams.get(n.driver).length < 4) fams.get(n.driver).push(n)
+  }
+  const protoRows = []
+  for (const [driver, famNodes] of fams) {
+    let fresh = 0
+    let probe = ''
+    for (const n of famNodes) {
+      const r = await api('GET', `/api/workshop/daq/${n.id}/samples?from=${now - 180000}&to=${now}&bucketMs=30000`)
+      if ((r?.data?.points ?? []).length > 0) {
+        fresh++
+        probe = `${n.name}(${(r.data.points).length} 桶/3min)`
+        break
+      }
+      const f = await api('GET', `/api/workshop/daq/${n.id}/frames?from=${now - 300000}&to=${now}&limit=1`)
+      if ((f?.data?.frames ?? []).length > 0) {
+        fresh++
+        probe = `${n.name}(帧 ${(f.data.frames).length})`
+        break
+      }
+    }
+    check('S2', `协议族 ${driver} 在采`, fresh > 0, probe || `抽测 ${famNodes.length} 台无新鲜数据`)
+    protoRows.push({ driver, nodes: famNodes.length, fresh })
+  }
+  event('S2', 'heterogeneous-snapshot', JSON.stringify({ scalarBuckets: (scalar?.data?.points ?? []).length, vecFrames: vecRows.length, imgFrames: imgRows.length, imgSha256: withSha.length, protocolFamilies: protoRows }))
   stageEnd('S2')
 }
 
@@ -207,12 +236,13 @@ async function s4() {
   event('S4', 'observation', JSON.stringify({ holdP: cur, weight: w == null ? null : Number(w.toFixed(2)), sink: sink == null ? null : Number(sink.toFixed(2)), window: '8min' }))
   check('S4', '镜像观测有效(克重/缩痕)', w != null, `weight=${w == null ? '?' : w.toFixed(2)}g sink=${sink == null ? '?' : sink.toFixed(2)}%`)
 
-  // 控制律:朝 32.5 中心小步;已收敛(≤deadband)时做 1bar 灵敏度激励步(基准需实证下发链路,如实记录)
+  // 控制律:朝 32.5 中心小步;已收敛(≤deadband)时做有界往复激励步(zigzag 围绕基准设定点,
+  // 多轮连跑不漂移工艺点)——基准需实证下发链路,决策依据如实记录
   const err = cfg.target.center - (w ?? cfg.target.center)
   let to
   if (Math.abs(err) <= cfg.target.deadband) {
-    to = Math.min(cfg.limits.holdP.max - 2, cur + 1)
-    event('S4', 'decision', JSON.stringify({ mode: 'converged-sensitivity-step', err: Number(err.toFixed(3)), to, rationale: '已收敛,做 +1bar 灵敏度激励步以实证闭环下发链路(激励后由后续轮次回拉)' }))
+    to = cur > cfg.benchmark.anchorSetpoint ? cur - 1 : cur + 1
+    event('S4', 'decision', JSON.stringify({ mode: 'converged-bounded-zigzag', err: Number(err.toFixed(3)), to, rationale: `已收敛,围绕基准设定点 ${cfg.benchmark.anchorSetpoint} 做有界激励步以实证闭环下发链路` }))
   }
   else {
     to = Math.round(Math.max(cfg.limits.holdP.min + 2, Math.min(cfg.limits.holdP.max - 2, cur + Math.sign(err) * Math.min(2, Math.max(1, Math.abs(err) / cfg.target.slopePerBar)))))

@@ -7,6 +7,7 @@
   "workerId": "52b5eb4d-f87b-4517-85ee-450c45d60932",
   "diagAgentId": "4ac934e7-b2c8-43fe-b92d-14dcb0b6ea2e",
   "target": { "metric": "weight", "center": 32.5, "deadband": 0.15, "slopePerBar": 0.052 },
+  "benchmark": { "anchorSetpoint": 63 },
   "nodes": {
     "daq": {
       "weight": "dn-5ec3ed17",
