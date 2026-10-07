@@ -9,6 +9,7 @@ import { useRuntimeConfig } from '#imports'
 import { daqUrls, ensureDaqInfrastructure, scheduleAutoReconnect, type DaqInfraConfig } from '../services/workshop/daq/infra'
 import { rebuildTsdb } from '../services/workshop/daq/storage'
 import { rebuildObjectStore } from '../services/workshop/daq/objectstore'
+import { startDaqObjectGc } from '../services/workshop/daq/objectstore/gc'
 import { rebuildDaqQueue } from '../services/workshop/daq/bus'
 import { getDaqController } from '../services/workshop/daq/daq-controller'
 
@@ -71,6 +72,8 @@ export default async function daqPlugin() {
   scheduleAutoReconnect(() => {
     void applyInfra(cfg).catch(() => {})
   })
+  // P0-2 对象存储 GC:帧行出清后像素文件孤儿回收(90s 首轮 + 24h 周期;disk 后端)
+  startDaqObjectGc()
   // 重连端点复用同一装配函数
   ;(globalThis as unknown as { __daqApplyInfra?: (c: DaqInfraConfig) => Promise<void> }).__daqApplyInfra = applyInfra
 }

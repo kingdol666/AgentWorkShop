@@ -28,6 +28,8 @@ export interface DcwWriteOutcome {
 export interface DcwRuntimeHost {
   running(): boolean
   defaults(): { holdIntervalMs: number, readIntervalMs: number }
+  /** 产线活动判定(P0-1 保写产线门):绑定产线在跑(有活动批次窗口)才允许保写心跳 */
+  lineActive(lineId: string): boolean
   /** 网关执行写命令(驱动写 + ACK 记账 + 写历史 + WS 广播) */
   executeWrite(node: DcwNode, eng: number, tolerance: number, recipeRunId: string | null): Promise<DcwWriteOutcome>
   /** 网关执行读数(驱动读 + 读状态记账 + WS 广播;返回物理值) */
@@ -101,7 +103,10 @@ export class DcwNodeRuntime {
     // 语义:写冲突时心跳**跳过本拍**(不排队、不补发),下一拍自然重试 —— 保写是幂等重下发。
     if (!this.writing && node.enabled && node.value != null && node.state !== 'writing') {
       const hold = node.holdIntervalMs ?? this.host.defaults().holdIntervalMs
-      if (hold && hold > 0 && now - this.lastHoldAt >= hold) {
+      // P0-1 保写产线门:绑定产线的节点仅在产线活动(有运行批次窗口)时保写,停线即挂起,
+      // 开线后下一拍自然恢复(10-07 事故根因④:停线不挂起心跳,残留节点持续直写)。
+      // lineId=''(未分配产线的独立通道)不受门控,保持独立节点用法。
+      if (hold && hold > 0 && now - this.lastHoldAt >= hold && (!node.lineId || this.host.lineActive(node.lineId))) {
         this.lastHoldAt = now
         this.writing = true
         node.state = 'writing'

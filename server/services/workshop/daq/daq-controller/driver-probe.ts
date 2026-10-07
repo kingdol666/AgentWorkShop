@@ -5,13 +5,13 @@
 import { DaqControllerCrud } from './crud'
 import type { DaqDriverKind, DriverTestResult } from '../../../../../shared/daq-protocol'
 import { DaqNode } from '../daq-node'
-import { driverCatalog, normalizeDriverKind, probeDriverAvailability, resolveDaqDriver } from '../drivers'
+import { driverCatalog, probeDriverAvailability, requireDriverKind, resolveDaqDriver } from '../drivers'
 import { getDaqHostPorts } from '../host-ports'
 
 export abstract class DaqControllerDriverProbe extends DaqControllerCrud {
-  /** 连接测试:按协议参数建连 + 读一次(前端"测试连接"按钮直达) */
+  /** 连接测试:按协议参数建连 + 读一次(前端"测试连接"按钮直达;未知协议显式报错 —— P0-5) */
   async testDriver(kind: DaqDriverKind, driverConfig: Record<string, unknown>): Promise<DriverTestResult> {
-    const drv = resolveDaqDriver(normalizeDriverKind(kind))
+    const drv = resolveDaqDriver(requireDriverKind(kind))
     if (!(await drv.available())) {
       return { ok: false, message: `协议栈不可用(包未安装或加载失败): ${kind}` }
     }

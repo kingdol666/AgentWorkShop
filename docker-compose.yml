@@ -21,6 +21,10 @@ services:
   daq-timescale:
     image: timescale/timescaledb:latest-pg16
     container_name: awshop-daq-timescale
+    # TSL license(自托管免费):列存压缩(compression policy)是 Community 特性,
+    # 默认 apache license 下 ALTER TABLE ... SET(timescaledb.compress) 直接报错
+    # (P0-3;服务端逐条守护只告警不阻断,但要真开压缩必须用本参数启动)。
+    command: ["postgres", "-c", "timescaledb.license=timescale"]
     # ⚠️ 必须显式放大 /dev/shm:Docker 默认只给 64MB,而 PostgreSQL 的并行查询
     # 会按需扩容共享内存段 —— 不够时报的错是
     #   could not resize shared memory segment "...": No space left on device

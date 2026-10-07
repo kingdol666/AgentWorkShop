@@ -9,19 +9,39 @@ import { join } from 'node:path'
 import { DcwNode } from './dcw-node'
 import { ensureDataDir } from '@/shared/config/home.mjs'
 import { loadJsonFile, saveJsonFileAtomic } from '../json-store.mjs'
+import { migrateDcwDriverKind } from './drivers'
 
 const log = createLogger('dcw.node-repo')
 
 // 配置根 .AgentWorkShop/data（ensureDataDir 自动迁移旧 cwd/server/data 位置）
 const DB_PATH = join(ensureDataDir(), 'dcws.json')
 
-function load(): DcwNode[] {
+function load(): { nodes: DcwNode[], migrated: number } {
   try {
     const parsed = loadJsonFile(DB_PATH, null)
-    return Array.isArray(parsed) ? parsed.map(r => DcwNode.fromRow(r as Record<string, unknown>)) : []
+    if (!Array.isArray(parsed)) return { nodes: [], migrated: 0 }
+    let migrated = 0
+    const nodes = (parsed as Record<string, unknown>[]).map((r) => {
+      const node = DcwNode.fromRow(r)
+      // P0-5 启动迁移:旧命名归一(modbus→modbus-tcp 等);无法归一的未知 kind
+      // 降级 mock 并打标(fail-visible,不砖启动)—— 该节点后续写路径显式失败待重配。
+      if (r.driver != null) {
+        const m = migrateDcwDriverKind(String(r.driver))
+        if (m.kind !== node.driver) {
+          node.driver = m.kind
+          migrated++
+          if (m.downgraded) {
+            node.lastError = `驱动「${String(r.driver)}」未注册,已降级 mock —— 请重新配置节点驱动后重写`
+            log.warn(`[dcw] 节点 ${node.id}(${node.name}) 驱动「${String(r.driver)}」未注册,已降级 mock`)
+          }
+        }
+      }
+      return node
+    })
+    return { nodes, migrated }
   }
   catch {
-    return []
+    return { nodes: [], migrated: 0 }
   }
 }
 
@@ -30,7 +50,10 @@ class DcwNodeRepo {
   private flushTimer: NodeJS.Timeout | null = null
 
   constructor() {
-    this.list = load()
+    const { nodes, migrated } = load()
+    this.list = nodes
+    // 迁移结果立即落盘(别名归一/降级打标持久化,避免每次启动重复告警)
+    if (migrated > 0) this.flushNow()
   }
 
   all(): DcwNode[] {

@@ -8,6 +8,7 @@ import type { RecipeInput, RecipeRunView, RecipeView } from '../../../../../shar
 import { AppError, ErrorCodes } from '../../../../utils/errors'
 import { getDcwRecipeRepo } from '../dcw-recipe.repo'
 import { assertRecipeOpIntervalForExecution, recordRecipeOpAnchor } from '../recipe-op-anchor'
+import { hydrateTrialLastAt, setTrialLastAt } from './gate-persist'
 import { recordOps } from '../../ops/ops'
 
 export abstract class DcwControllerRecipes extends DcwControllerParams {
@@ -119,9 +120,12 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
     getDcwRecipeRepo().updateRun(run)
   }
 
-  /** v19 试验节拍:同产线两次 trial 的最小间隔(防连发震荡;env 可调)。 */
+  /** v19 试验节拍:同产线两次 trial 的最小间隔(防连发震荡;env 可调)。
+   *  P1-5 落盘:重启读盘续算(防"重启即绕试验节拍")。 */
   private static readonly TRIAL_INTERVAL_MS = Math.max(0, Number(process.env.AW_TRIAL_INTERVAL_MS) || 5 * 60_000)
-  private trialLastAt = new Map<string, number>()
+  private trialLastAt = new Map<string, number>(
+    Object.entries(hydrateTrialLastAt()).map(([k, v]) => [k, Number(v)]),
+  )
 
   private assertTrialCadence(lineId: string): void {
     if (DcwControllerRecipes.TRIAL_INTERVAL_MS <= 0) return
@@ -173,7 +177,10 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
       : recipe.params
     const run = repo.createRun(recipe, effective)
     await this.writeRecipeParams({ ...recipe, params: effective }, run)
-    if (opts.trial) this.trialLastAt.set(recipe.lineId, Date.now())
+    if (opts.trial) {
+      this.trialLastAt.set(recipe.lineId, Date.now())
+      setTrialLastAt(recipe.lineId, Date.now()) // P1-5 落盘
+    }
     // Agent 下发成功即前移锚(封 auto 绑定无审批连发:两次已生效下发也须 ≥ opIntervalMs)
     if (opts.agentDispatch) {
       recordRecipeOpAnchor({

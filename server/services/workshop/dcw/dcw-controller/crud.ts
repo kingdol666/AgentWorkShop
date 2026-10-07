@@ -10,7 +10,7 @@ import { dcwKeyFromRef, normalizeDataTransform } from '../../../../../shared/dcw
 import { findDcwTemplate } from '../dcw-templates'
 import { getDcwLineRepo } from '../dcw-line.repo'
 import { getDcwParamRepo } from '../param-map.repo'
-import { normalizeDcwDriverKind } from '../drivers'
+import { requireDcwDriverKind } from '../drivers'
 import { randomUUID } from 'node:crypto'
 
 function normalizeStepLimitInput(value: unknown): number | null | undefined {
@@ -36,7 +36,7 @@ export abstract class DcwControllerCrud extends DcwControllerControl {
       id: `dw-${randomUUID().slice(0, 8)}`,
       templateRef: input.templateRef,
       name: input.name ?? `${tpl.name} ${String(seq).padStart(2, '0')}`,
-      driver: input.driver ? normalizeDcwDriverKind(input.driver) : undefined,
+      driver: input.driver ? requireDcwDriverKind(input.driver) : undefined,
       driverConfig: input.driverConfig ?? {},
       transform: normalizeDataTransform(input.transform),
       enabled: input.enabled,
@@ -68,9 +68,19 @@ export abstract class DcwControllerCrud extends DcwControllerControl {
     const node = this.repo.byId(id)
     if (!node) throw new AppError(404, ErrorCodes.NOT_FOUND, `控制节点不存在: ${id}`)
     let rearm = false
+    // P0-1 变更点清值:驱动/连接配置/产线变更后,旧 value 不再指向当前写目标 ——
+    // 保写心跳若继续按旧值周期重下发,会把陈旧设定写向新目标(10-07 换绑残留事故根因①)。
+    // 清值后心跳自动停驻,须新写成功才重新锚定。
+    let invalidateValue = false
     if (patch.name !== undefined) node.name = patch.name
-    if (patch.driver !== undefined) node.driver = normalizeDcwDriverKind(patch.driver)
-    if (patch.driverConfig !== undefined) node.driverConfig = { ...node.driverConfig, ...patch.driverConfig }
+    if (patch.driver !== undefined) {
+      node.driver = requireDcwDriverKind(patch.driver)
+      invalidateValue = true
+    }
+    if (patch.driverConfig !== undefined) {
+      node.driverConfig = { ...node.driverConfig, ...patch.driverConfig }
+      invalidateValue = true
+    }
     if (patch.transform !== undefined) {
       if (patch.transform.kind === 'linear' && (!Number.isFinite(Number(patch.transform.scale)) || Number(patch.transform.scale) === 0)) {
         throw new AppError(400, ErrorCodes.VALIDATION_ERROR, '标定系数 scale 必须为非零数字(物理值 = scale × PLC值 + offset)')
@@ -123,6 +133,7 @@ export abstract class DcwControllerCrud extends DcwControllerControl {
     if (patch.lineId !== undefined) {
       const lid = String(patch.lineId)
       if (lid && !getDcwLineRepo().byId(lid)) throw new AppError(404, ErrorCodes.NOT_FOUND, `产线不存在: ${lid}`)
+      if (node.lineId !== lid) invalidateValue = true
       node.lineId = lid
     }
     if (patch.semantics !== undefined) node.semantics = String(patch.semantics)
@@ -134,6 +145,10 @@ export abstract class DcwControllerCrud extends DcwControllerControl {
       node.writeLockSeconds = Math.round(v)
     }
     if (patch.stepLimit !== undefined) node.stepLimit = normalizeStepLimitInput(patch.stepLimit) ?? null
+    if (invalidateValue && node.value != null) {
+      node.value = null
+      rearm = true
+    }
     if (rearm) this.runtimes.get(id)?.rearm()
     this.repo.flushNow()
     this.emitNodeChanged('updated', node)

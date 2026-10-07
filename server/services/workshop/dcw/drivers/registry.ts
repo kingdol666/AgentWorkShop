@@ -83,14 +83,56 @@ export async function dcwDriverCatalog(): Promise<Array<{
   return plugins.mergedCatalog(DCW_DRIVERS)
 }
 
-export function normalizeDcwDriverKind(kind: string): DcwDriverKind {
+function aliasDcwDriverKind(kind: string): string {
   if (kind === 'modbus') return 'modbus-tcp'
   if (kind === 'rtu' || kind === 'modbus-rtu-tcp') return 'modbus-rtu'
-  return ((kind in REGISTRY || pluginRegistry().has(kind) ? kind : 'mock')) as DcwDriverKind
+  return kind
+}
+
+export function normalizeDcwDriverKind(kind: string): DcwDriverKind {
+  const k = aliasDcwDriverKind(kind)
+  return ((k in REGISTRY || pluginRegistry().has(k) ? k : 'mock')) as DcwDriverKind
+}
+
+/**
+ * 严格解析(入口级:create/patch/testDriver):未知 kind 显式报错。
+ * 配置错协议名静默采 mock 驱动 = 写路径假成功(工业高危默认,2026-10-08 P0-5;
+ * 与 daq 侧 requireDriverKind 2026-10-04 评审同口径)。
+ */
+export function requireDcwDriverKind(kind: string): DcwDriverKind {
+  const k = aliasDcwDriverKind(kind)
+  if (k in REGISTRY || pluginRegistry().has(k)) return k as DcwDriverKind
+  throw new Error('未知写控驱动协议: ' + JSON.stringify(kind) + '(已注册: ' + [...Object.keys(REGISTRY), ...pluginRegistry().keys()].join(', ') + ')')
+}
+
+/**
+ * 启动迁移:磁盘遗留 kind 别名归一;无法归一的未知 kind 降级 mock 并打标
+ * (fail-visible,不砖启动 —— 由 repo load() 调用,降级节点写路径会显式失败待重配)。
+ */
+export function migrateDcwDriverKind(kind: string): { kind: DcwDriverKind, downgraded: boolean } {
+  const k = aliasDcwDriverKind(kind)
+  if (k in REGISTRY || pluginRegistry().has(k)) return { kind: k as DcwDriverKind, downgraded: false }
+  return { kind: 'mock', downgraded: true }
+}
+
+/**
+ * 驱动缺失占位(插件未加载/已卸载、磁盘遗留坏 kind 经 resolve 直达):
+ * 写/读/测试一律显式失败 —— 曾经的 `?? mockDcwDriver` 兜底会让真实协议节点
+ * 在驱动缺失时静默按 mock 成功(假成功,2026-10-07 事故链一环)。
+ */
+function unavailableDcwDriver(kind: string): DcwWriteDriver {
+  const msg = `写控驱动「${kind}」未注册(插件未加载或已卸载),已拒绝执行 —— 请重新配置节点驱动`
+  return {
+    kind: kind as DcwDriverKind,
+    available: async () => false,
+    write: async () => ({ ok: false, message: msg, raw: null, readback: null }),
+    test: async () => ({ ok: false, message: msg }),
+    read: async () => ({ ok: false, message: msg, eng: null, raw: null }),
+  }
 }
 
 export function resolveDcwDriver(kind: DcwDriverKind): DcwWriteDriver {
-  return pluginRegistry().get(kind) ?? REGISTRY[kind] ?? mockDcwDriver
+  return pluginRegistry().get(kind) ?? REGISTRY[kind] ?? unavailableDcwDriver(kind)
 }
 
 /** 读能力判定(网关调度周期读前先收敛,不支持读的驱动不空转)。

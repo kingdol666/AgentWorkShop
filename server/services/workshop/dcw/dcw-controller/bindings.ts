@@ -8,6 +8,15 @@ import type { DcwNode } from '../dcw-node'
 import { getDeviceTwinRepo } from '../../assets/device-twin.repo'
 
 export abstract class DcwControllerBindings extends DcwControllerCrud {
+  /** P0-1 变更点清值:设备绑定变更后,旧 value 不再指向当前写目标 —— 清值停驻保写,
+   *  须新写成功才复驻。否则换绑残留节点的保写心跳会把陈旧设定值周期写向新设备
+   *  (10-07 五节点 66/75/60/185/215 污染事故根因①)。 */
+  protected invalidateHoldValue(node: DcwNode): void {
+    if (node.value == null) return
+    node.value = null
+    this.runtimes.get(node.id)?.rearm()
+  }
+
   bind(id: string, deviceId: string | null): DcwNode {
     const node = this.repo.byId(id)
     if (!node) throw new AppError(404, ErrorCodes.NOT_FOUND, `控制节点不存在: ${id}`)
@@ -18,6 +27,7 @@ export abstract class DcwControllerBindings extends DcwControllerCrud {
     // 排他语义保留;多对多增删用 bindDevice/unbindDeviceNode/setDeviceBindings
     node.deviceIds = deviceId ? [deviceId] : []
     node.deviceBindingId = deviceId
+    this.invalidateHoldValue(node)
     this.repo.flushNow()
     this.emitNodeChanged('updated', node)
     return node
@@ -32,6 +42,7 @@ export abstract class DcwControllerBindings extends DcwControllerCrud {
     if (node.deviceIds.includes(deviceId)) return node
     node.deviceIds = [...node.deviceIds, deviceId]
     node.deviceBindingId = node.deviceIds[0] ?? null
+    this.invalidateHoldValue(node)
     this.repo.flushNow()
     this.emitNodeChanged('updated', node)
     return node
@@ -44,6 +55,7 @@ export abstract class DcwControllerBindings extends DcwControllerCrud {
     if (!node.deviceIds.includes(deviceId)) return node
     node.deviceIds = node.deviceIds.filter(d => d !== deviceId)
     node.deviceBindingId = node.deviceIds[0] ?? null
+    this.invalidateHoldValue(node)
     this.repo.flushNow()
     this.emitNodeChanged('updated', node)
     return node
@@ -61,6 +73,7 @@ export abstract class DcwControllerBindings extends DcwControllerCrud {
     }
     node.deviceIds = unique
     node.deviceBindingId = unique[0] ?? null
+    this.invalidateHoldValue(node)
     this.repo.flushNow()
     this.emitNodeChanged('updated', node)
     return node
@@ -73,6 +86,7 @@ export abstract class DcwControllerBindings extends DcwControllerCrud {
       if (!node.deviceIds.includes(deviceId)) continue
       node.deviceIds = node.deviceIds.filter(d => d !== deviceId)
       node.deviceBindingId = node.deviceIds[0] ?? null
+      this.invalidateHoldValue(node)
       touched = true
       this.emitNodeChanged('updated', node)
     }

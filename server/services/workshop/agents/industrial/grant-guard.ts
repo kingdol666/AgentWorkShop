@@ -116,9 +116,15 @@ export async function guardIndustrialToolGrant(identity: GuardIdentity, toolName
     if (owner.role === 'admin') return null
 
     const need: LineMode = WRITE_TOOLS.has(toolName) ? 'operate' : 'readonly'
-    const lines = await resolveTargetLines(identity.agentId, toolName, args ?? {})
-    if (!lines) return null
-    for (const lineId of lines) {
+    const resolved = await resolveTargetLines(identity.agentId, toolName, args ?? {})
+    // P1-6:频道绑线并入复核集 —— line_start/line_stop 等产线管理工具的目标产线
+    // 来自频道绑线(ch.lineId)而非调用参数,agent 无节点绑定时 resolveTargetLines
+    // 返回 null → 守卫在此直接放行,属主被撤权后绑线频道的启停/读面照常工作
+    // (收权即失活的结构性缺口,2026-10-08 评审)。
+    const lineSet = new Set(resolved ?? [])
+    if (channel.lineId) lineSet.add(channel.lineId)
+    if (lineSet.size === 0) return null
+    for (const lineId of lineSet) {
       const mode = lineMode({ id: owner.id, role: owner.role }, lineId)
       const ok = mode === 'operate' || (need === 'readonly' && mode === 'readonly')
       if (!ok) {

@@ -49,12 +49,15 @@ export abstract class DcwControllerActuation extends DcwControllerState {
     // dcws.json 会随节点数放大成周期性 fs 抖动;防抖窗内崩溃丢失的设定值可从 PLC 回读恢复
     this.repo.flushDebounced()
     const repo = getDcwRecipeRepo()
+    // P0-1 审计保真:eng 记「本次尝试值」—— 失败写不再占位 node.value(P0-1),
+    // 旧写法 `node.value ?? eng` 在失败行会记成旧确认值,丢失失败尝试的证据。
+    const attemptEng = outcome.ok ? (node.value ?? eng) : eng
     const entry: DcwWriteHistoryEntry = {
       id: `wh-${randomUUID().slice(0, 8)}`,
       nodeId: node.id,
       nodeName: node.name,
       param: findDcwTemplate(node.templateKey)?.ch ?? node.templateKey,
-      eng: node.value ?? eng,
+      eng: attemptEng,
       raw: outcome.raw,
       ok: outcome.ok,
       message: outcome.message,
@@ -66,7 +69,7 @@ export abstract class DcwControllerActuation extends DcwControllerState {
       nodeId: node.id,
       templateRef: node.templateRef,
       lineId: node.lineId ?? null,
-      value: node.value ?? eng,
+      value: attemptEng,
       raw: outcome.raw,
       ok: outcome.ok,
       message: outcome.message,

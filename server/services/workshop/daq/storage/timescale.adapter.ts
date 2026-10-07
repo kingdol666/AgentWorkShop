@@ -57,11 +57,42 @@ export class TimescaleAdapter implements TsdbPort {
     await this.pool.query('CREATE TABLE IF NOT EXISTS daq_frames (node_id text NOT NULL, ts timestamptz NOT NULL, kind text NOT NULL, template_key text, device_binding_id text, line_id text, product_id text, recipe_id text, run_id text, points integer NOT NULL DEFAULT 0, meta jsonb NOT NULL DEFAULT \'{}\'::jsonb, metrics jsonb NOT NULL DEFAULT \'{}\'::jsonb, PRIMARY KEY (node_id, ts))').catch(() => {})
     await this.pool.query(`SELECT create_hypertable('daq_frames', 'ts', if_not_exists => TRUE, migrate_data => TRUE)`).catch(() => {})
     await this.pool.query(`CREATE INDEX IF NOT EXISTS idx_daq_frames_node_ts ON daq_frames (node_id, ts DESC)`).catch(() => {})
+    // P0-3 物理参数(chunk=1 天 + 列存压缩;逐条守护)
+    await this.applyPhysicalPolicies()
     // 保留期:drop_chunks 周期执行(30min;未装扩展时静默跳过)
     void this.sweepRetention()
     if (!this.retentionTimer) {
       this.retentionTimer = setInterval(() => void this.sweepRetention(), 30 * 60_000)
       this.retentionTimer.unref?.()
+    }
+  }
+
+  /**
+   * P0-3 物理(chunk/压缩)策略 —— 逐条守护,任一失败只告警不阻断 init:
+   * init 整体失败会被工厂降级 SQLite(等于扔掉生产库),绝不允许。
+   *  - chunk 钉 1 天(扩展默认 7 天 → drop_chunks 粒度过粗,空间回收滞后保留期一个 chunk);
+   *    与对象存储 GC 的 UTC 天前缀、保留期注释同一粒度。set_chunk_time_interval 只影响未来 chunk,
+   *    存量 7 天 chunk 靠 retention 自然出清。
+   *  - 列存压缩 segmentby=node_id / orderby=ts DESC(PK 全覆盖,ON CONFLICT 语义保持);
+   *    压缩窗 1 天 —— 活动 chunk 永不解压,写入冲突恒落未压缩 chunk;迟到 >1 天写入由
+   *    TS 2.11+ 压缩 chunk DML 支持。压缩是 TSL 特性:社区镜像默认 apache license 会报错,
+   *    需 docker-compose 以 `timescaledb.license=timescale` 启动(见 docker-compose.yml)。
+   */
+  private async applyPhysicalPolicies(): Promise<void> {
+    if (!this.pool) return
+    const steps: Array<[string, string]> = [
+      ['chunk_interval@daq_samples', `SELECT set_chunk_time_interval('daq_samples', INTERVAL '1 day')`],
+      ['chunk_interval@daq_frames', `SELECT set_chunk_time_interval('daq_frames', INTERVAL '1 day')`],
+      ['compress@daq_samples', `ALTER TABLE daq_samples SET (timescaledb.compress, timescaledb.compress_segmentby = 'node_id', timescaledb.compress_orderby = 'ts DESC')`],
+      ['compress@daq_frames', `ALTER TABLE daq_frames SET (timescaledb.compress, timescaledb.compress_segmentby = 'node_id', timescaledb.compress_orderby = 'ts DESC')`],
+      ['compress_policy@daq_samples', `SELECT add_compression_policy('daq_samples', INTERVAL '1 day', if_not_exists => TRUE)`],
+      ['compress_policy@daq_frames', `SELECT add_compression_policy('daq_frames', INTERVAL '1 day', if_not_exists => TRUE)`],
+    ]
+    for (const [name, sql] of steps) {
+      await this.pool.query(sql).catch((err: unknown) => {
+        const msg = err instanceof Error ? (err.message.split('\n')[0] ?? '') : String(err)
+        console.warn(`[timescale] 物理策略 ${name} 未生效: ${msg} —— 列存压缩需 timescaledb.license=timescale(TSL,自托管免费)`)
+      })
     }
   }
 

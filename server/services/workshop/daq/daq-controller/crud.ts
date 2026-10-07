@@ -10,6 +10,7 @@ import { daqKeyFromRef, normalizeDataTransform } from '../../../../../shared/daq
 import { findDaqTemplate } from '../daq-templates'
 import { getDaqHostPorts } from '../host-ports'
 import { requireDriverKind } from '../drivers'
+import { getObjectStore } from '../objectstore'
 import { randomUUID } from 'node:crypto'
 
 export abstract class DaqControllerCrud extends DaqControllerRuntimeControl {
@@ -110,7 +111,10 @@ export abstract class DaqControllerCrud extends DaqControllerRuntimeControl {
     const node = this.repo.byId(id)
     if (!node) throw Object.assign(new Error(`数采节点不存在: ${id}`), { status: 404 })
     this.repo.remove(id)
-    this.runtimes.delete(id) // 运行时随节点注销
+    this.runtimes.delete(id) // 运行时随节点注销(先停采样,再删对象)
+    // P0-2 级联:该节点的像素对象(daqs 下 daq/<nodeId>/** 全部天目录)随节点删除。
+    // fire-and-forget:在飞 put 最多漏 1 个文件,由周期 GC 兜底;失败不影响节点删除。
+    void getObjectStore().removePrefix?.(`daq/${id}/`).catch(() => {})
     // 键为 `${nodeId}::${metricKey}` 的告警态:节点删除后必须一并清理,
     // 否则「建-删节点」循环会让该 Map 单调增长(长跑内存泄漏),且重建同名节点会继承陈旧告警态。
     const prefix = `${id}::`

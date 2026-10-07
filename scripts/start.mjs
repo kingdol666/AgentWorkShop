@@ -8,6 +8,7 @@
 // 注入,绝不写入 config.yml/仓库;已导出的真实环境变量优先）。
 // ============================================================
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
+import { spawn } from 'node:child_process'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { resolveRunMode } from '../shared/config/home.mjs'
@@ -125,4 +126,125 @@ process.env.NITRO_PORT = process.env.PORT
 
 console.log(`[config] 生产服务启动 -> http://${process.env.HOST}:${process.env.PORT}  (模式: ${rm.mode}, port source: ${portSource}${bumped > 0 ? ' + 顺延' : ''})`)
 
-await import('../.output/server/index.mjs')
+// ---- P0-4 子进程监管(spawn + respawn)----
+// 此前 `await import(.output)` 同进程直载:OOM(exit 134)= start.mjs 自身死亡,无人重启。
+// 现由本父进程 spawn 服务子进程并监管:崩溃/健康失联/堆水位持续越限自动 respawn
+// (退避 2s→60s,滑动 1h 窗口最多 10 次);父进程任何退出路径先杀子进程 ——
+// 孤儿子进程占端口会让新实例顺延 +1(双实例假象);子进程侧另有 parent-watch 插件双保险。
+
+const outputEntry = join(packageRoot, '.output', 'server', 'index.mjs')
+if (!existsSync(outputEntry)) {
+  console.error('✖ 未找到构建产物 .output/server/index.mjs —— 请先执行 aw build')
+  process.exit(1)
+}
+
+const childEnv = { ...process.env, AW_PARENT_PID: String(process.pid) }
+// 堆限额固化:父进程未带 --max-old-space-size 时给子进程补默认 4096MB(3GB 事故线以上)
+if (!/max-old-space-size/.test(String(childEnv.NODE_OPTIONS ?? ''))) {
+  const cfg = Number(childEnv.AW_HEAP_LIMIT_MB ?? 4096)
+  const heapMb = Number.isFinite(cfg) && cfg >= 1024 ? cfg : 4096
+  childEnv.NODE_OPTIONS = `${childEnv.NODE_OPTIONS ? `${childEnv.NODE_OPTIONS} ` : ''}--max-old-space-size=${heapMb}`
+}
+
+const HEALTH_URL = `http://127.0.0.1:${process.env.PORT}/api/health`
+const RESTART_WINDOW_MS = 3_600_000
+const MAX_RESTARTS_PER_WINDOW = 10
+const START_GRACE_MS = 45_000
+const PROACTIVE_HEAP_RATIO = 0.94
+
+let serviceChild = null
+let givingUp = false
+let restartTimes = []
+let healthFailStreak = 0
+let heapHotStreak = 0
+
+function killChild(sig = 'SIGTERM') {
+  const c = serviceChild
+  if (!c || c.exitCode !== null || c.signalCode) return
+  try {
+    c.kill(sig)
+  }
+  catch { /* 已死 */ }
+}
+
+function spawnServiceChild() {
+  const gen = restartTimes.length + 1
+  const heapMb = String(childEnv.NODE_OPTIONS ?? '').match(/max-old-space-size=(\d+)/)?.[1] ?? 'default'
+  console.log(`[start] 拉起服务子进程 #${gen}(heap ${heapMb}MB)`)
+  const c = spawn(process.execPath, [outputEntry], { stdio: 'inherit', env: childEnv })
+  c.spawnTime = Date.now()
+  serviceChild = c
+  c.on('exit', (code, signal) => {
+    if (givingUp || serviceChild !== c) return
+    const now = Date.now()
+    restartTimes = restartTimes.filter(t => now - t < RESTART_WINDOW_MS)
+    restartTimes.push(now)
+    if (restartTimes.length > MAX_RESTARTS_PER_WINDOW) {
+      givingUp = true
+      console.error(`[start] 子进程 1 小时内第 ${restartTimes.length} 次退出,超出上限 —— 放弃重启,请人工排查(exit=${code} signal=${signal})`)
+      process.exit(1)
+    }
+    const backoff = Math.min(60_000, 2000 * 2 ** Math.min(restartTimes.length - 1, 5))
+    console.error(`[start] 服务子进程 #${gen} 退出 code=${code} signal=${signal} —— ${Math.round(backoff / 1000)}s 后自动重启`)
+    setTimeout(() => {
+      if (!givingUp) spawnServiceChild()
+    }, backoff)
+  })
+}
+
+async function probeHealth() {
+  try {
+    const ac = new AbortController()
+    const t = setTimeout(() => ac.abort(), 3000)
+    const res = await fetch(HEALTH_URL, { signal: ac.signal })
+    clearTimeout(t)
+    if (!res.ok) return null
+    const body = await res.json().catch(() => null)
+    return body?.data?.memory ?? body?.memory ?? null
+  }
+  catch {
+    return null
+  }
+}
+
+const healthTimer = setInterval(async () => {
+  const c = serviceChild
+  if (!c || c.exitCode !== null || givingUp) return
+  if (Date.now() - (c.spawnTime ?? 0) < START_GRACE_MS) return
+  const mem = await probeHealth()
+  if (!mem) {
+    healthFailStreak++
+    if (healthFailStreak >= 3) {
+      console.error('[start] 健康探针连续 3 次失联 —— 判定服务僵死,重启子进程')
+      healthFailStreak = 0
+      heapHotStreak = 0
+      killChild('SIGKILL') // Windows = TerminateProcess;启动对账链自愈(crash-safe)
+    }
+    return
+  }
+  healthFailStreak = 0
+  if (typeof mem?.heapRatio === 'number' && mem.heapRatio >= PROACTIVE_HEAP_RATIO) {
+    heapHotStreak++
+    if (heapHotStreak >= 3) {
+      console.error(`[start] 堆水位 ${Math.round(mem.heapRatio * 100)}% 连续 ${heapHotStreak} 拍越限 —— 主动重启(先于 V8 OOM abort)`)
+      heapHotStreak = 0
+      killChild('SIGTERM')
+    }
+  }
+  else {
+    heapHotStreak = 0
+  }
+}, 30_000)
+healthTimer.unref?.()
+
+// 父进程任何退出路径先杀子进程(含锁心跳自杀 process.exit → 'exit' 事件)
+for (const sig of ['SIGINT', 'SIGTERM', 'SIGBREAK']) {
+  process.on(sig, () => {
+    killChild('SIGTERM')
+    const t = setTimeout(() => process.exit(0), 500)
+    t.unref?.()
+  })
+}
+process.on('exit', () => killChild('SIGKILL'))
+
+spawnServiceChild()

@@ -117,7 +117,7 @@ export abstract class DaqControllerIngest extends DaqControllerState {
       runId: lineRun?.runId ?? null,
       points: f.kind === 'vector' ? (f.points?.length ?? 0) : 0,
       meta: f.kind === 'image'
-        ? { objectKey: f.objectKey, thumbKey: f.thumbKey, mime: f.mime, width: f.width, height: f.height }
+        ? { objectKey: f.objectKey, thumbKey: f.thumbKey, mime: f.mime, width: f.width, height: f.height, sha256: f.sha256, size: f.size }
         : { points: f.points ?? [] },
       metrics,
     })

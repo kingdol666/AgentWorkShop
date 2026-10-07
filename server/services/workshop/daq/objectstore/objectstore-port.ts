@@ -14,7 +14,19 @@ export interface DaqObjectStore {
   put(key: string, data: Buffer, contentType: string): Promise<void>
   get(key: string): Promise<Buffer>
   remove(key: string): Promise<void>
+  /** 天目录枚举(GC 用;返回 daq/<nodeId>/<yyyy>/<mm>/<dd> 前缀与其 UTC 天起止。
+   *  可选原语:首轮 GC 只对 disk 启用,minio 未实现返回 undefined。) */
+  listDayDirs?(): Promise<DaqObjectDayDir[]>
+  /** 前缀删除(天目录出清/删节点级联;返回删除对象数,未知记 -1)。可选原语。 */
+  removePrefix?(prefix: string): Promise<number>
   close?(): Promise<void> | void
+}
+
+/** 天目录条目(listDayDirs;UTC 日界,与 daqObjectKey 的 UTC 取日一致) */
+export interface DaqObjectDayDir {
+  prefix: string
+  dayStartMs: number
+  dayEndMs: number
 }
 
 /** 对象键生成(daq/<nodeId>/<yyyy>/<mm>/<dd>/<ts><suffix>) */

@@ -8,8 +8,9 @@ import type { DcwNode } from '../dcw-node'
 import { AppError, ErrorCodes } from '../../../../utils/errors'
 import { assertWithinLimits, assertStepLimit } from '../param-limits'
 import { getRecipeRollBackManager } from '../recipe-rollback-manager'
-import { normalizeDcwDriverKind, resolveDcwDriver } from '../drivers'
+import { requireDcwDriverKind, resolveDcwDriver } from '../drivers'
 import { recordDcwWriteOps } from './write-audit'
+import { setWriteLockUntil } from './gate-persist'
 import { recordOps } from '../../ops/ops'
 
 // ================================================================
@@ -161,7 +162,10 @@ export abstract class DcwControllerWrite extends DcwControllerBindings {
     // 窗口聚合异步回填(F2)
     if (outcome.ok !== false) {
       // 写成功 → 锁定写入保持窗(agent/manual 路径;recipe/rollback 豁免)
-      if (lockable) this.writeLocks.set(id, Date.now() + lockMs)
+      if (lockable) {
+        this.writeLocks.set(id, Date.now() + lockMs)
+        setWriteLockUntil(id, Date.now() + lockMs) // P1-5 落盘:重启窗口延续
+      }
       try {
         const rbInfo = getRecipeRollBackManager().afterWrite(
           node,
@@ -189,9 +193,9 @@ export abstract class DcwControllerWrite extends DcwControllerBindings {
     return outcome
   }
 
-  /** 连接测试 */
+  /** 连接测试(显式声明的驱动 kind 必须可解析;未知协议显式报错,不静默 mock —— P0-5) */
   async testDriver(kind: DcwDriverKind, driverConfig: Record<string, unknown>) {
-    return resolveDcwDriver(normalizeDcwDriverKind(kind)).test(driverConfig)
+    return resolveDcwDriver(requireDcwDriverKind(kind)).test(driverConfig)
   }
 
   async testNode(id: string) {

@@ -84,6 +84,32 @@ export function requireDriverKind(kind: string): DaqDriverKind {
   throw new Error('未知数采驱动协议: ' + JSON.stringify(kind) + '(已注册: ' + [...Object.keys(REGISTRY), ...pluginRegistry().keys()].join(', ') + ')')
 }
 
+/**
+ * 启动迁移:磁盘遗留 kind 别名归一;无法归一的未知 kind 降级 mock 并打标
+ * (fail-visible,不砖启动 —— 由 daq-node.repo load() 调用,该节点采样路径显式失败待重配)。
+ */
+export function migrateDriverKind(kind: string): { kind: DaqDriverKind, downgraded: boolean } {
+  if (kind === 'modbus') return { kind: 'modbus-tcp', downgraded: false }
+  if (kind === 'rtu' || kind === 'modbus-rtu-tcp') return { kind: 'modbus-rtu', downgraded: false }
+  if (kind in REGISTRY || pluginRegistry().has(kind)) return { kind: kind as DaqDriverKind, downgraded: false }
+  return { kind: 'mock', downgraded: true }
+}
+
+/**
+ * 驱动缺失占位(插件未加载/已卸载、磁盘遗留坏 kind 经 resolve 直达):
+ * 采样/测试一律显式失败 —— 曾经的 `?? mockDaqDriver` 兜底会让真实协议节点
+ * 在驱动缺失时静默产出 mock 数据(假数据,2026-10-08 P0-5)。
+ */
+function unavailableDaqDriver(kind: string): DaqDriver {
+  const msg = `数采驱动「${kind}」未注册(插件未加载或已卸载),已拒绝采样 —— 请重新配置节点驱动`
+  return {
+    kind: kind as DaqDriverKind,
+    available: async () => false,
+    sample: () => { throw new Error(msg) },
+    test: async () => ({ ok: false, message: msg }),
+  }
+}
+
 export function normalizeDriverKind(kind: string): DaqDriverKind {
   if (kind === 'modbus') return 'modbus-tcp'
   if (kind === 'rtu' || kind === 'modbus-rtu-tcp') return 'modbus-rtu'
@@ -91,7 +117,7 @@ export function normalizeDriverKind(kind: string): DaqDriverKind {
 }
 
 export function resolveDaqDriver(kind: DaqDriverKind): DaqDriver {
-  return pluginRegistry().get(kind) ?? REGISTRY[kind] ?? mockDaqDriver
+  return pluginRegistry().get(kind) ?? REGISTRY[kind] ?? unavailableDaqDriver(kind)
 }
 
 /** 驱动可用性探测(meta 报告:包缺失时 UI 显示"未安装"而非硬失败;含插件驱动) */

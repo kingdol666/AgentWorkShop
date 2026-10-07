@@ -9,6 +9,8 @@ import type { DcwNode } from '../dcw-node'
 import { DcwNodeRuntime } from '../dcw-runtime'
 import { getDcwNodeRepo } from '../dcw-node.repo'
 import { getRecipeRollBackManager } from '../recipe-rollback-manager'
+import { getActiveLineRun } from '../line-run'
+import { hydrateWriteLocks } from './gate-persist'
 
 export abstract class DcwControllerState extends DcwControllerContracts {
   protected repo = getDcwNodeRepo()
@@ -20,8 +22,10 @@ export abstract class DcwControllerState extends DcwControllerContracts {
   running = true
   protected writesTotal = 0
   protected writesFailed = 0
-  /** 写入保持窗注册表(nodeId → lockUntil epoch ms;仅内存,重启即清) */
-  protected writeLocks = new Map<string, number>()
+  /** 写入保持窗注册表(nodeId → lockUntil epoch ms;P1-5 落盘:重启读盘续算,防"重启即绕保持窗") */
+  protected writeLocks = new Map<string, number>(
+    Object.entries(hydrateWriteLocks()).map(([k, v]) => [k, Number(v)]),
+  )
 
   // ---------- 生命周期 ----------
 
@@ -59,6 +63,7 @@ export abstract class DcwControllerState extends DcwControllerContracts {
   protected host = {
     running: () => this.running,
     defaults: () => ({ holdIntervalMs: 0, readIntervalMs: DEFAULT_READ_INTERVAL_MS }),
+    lineActive: (lineId: string) => Boolean(getActiveLineRun(lineId)),
     executeWrite: async (node: DcwNode, eng: number, tolerance: number, recipeRunId: string | null) =>
       this.executeWrite(node, eng, tolerance, recipeRunId),
     executeRead: async (node: DcwNode) => this.executeRead(node),

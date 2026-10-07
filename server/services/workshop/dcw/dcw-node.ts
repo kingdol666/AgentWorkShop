@@ -132,11 +132,14 @@ export class DcwNode {
     return null
   }
 
-  /** 记录一次写 ACK(成功)/失败 */
+  /** 记录一次写 ACK(成功)/失败。
+   *  P0-1 失败写不占位:value 只承载「设备确认过的值」(成功取回读,缺失回退指令值)。
+   *  此前失败写把从未被 PLC 接受的指令值占进 value —— 保写心跳按 value 周期重下发,
+   *  会把幻影指令值反复写向设备(10-07 事故放大器);同时污染步长基准与回退账本 prevValue。 */
   applyWriteResult(eng: number, ok: boolean, message: string, at: string): void {
-    this.value = Number(eng.toFixed(this.decimals))
     this.lastWriteAt = at
     if (ok) {
+      this.value = Number(eng.toFixed(this.decimals))
       this.lastAckAt = at
       this.state = 'ok'
       this.lastError = null

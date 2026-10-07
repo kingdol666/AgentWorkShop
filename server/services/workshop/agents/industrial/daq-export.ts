@@ -476,7 +476,9 @@ export async function toolDaqExport(agentId: string, args: {
   }
 
   const perNode = result.files.map(f => `${f.nodeId}(${f.rows} 行)`).join(', ')
-  const frameNodes = result.manifest.nodes.filter(n => n.kind === 'vector' || n.kind === 'image')
+  // manifest 声明为 Record<string, unknown>(跨进程产物契约);消费侧按写入形状收窄
+  const manifestNodes = (result.manifest.nodes ?? []) as Array<{ id: string, kind?: string, frames: number, file?: string, saved?: number }>
+  const frameNodes = manifestNodes.filter(n => n.kind === 'vector' || n.kind === 'image')
   const frameNote = frameNodes.length > 0
     ? `\n- 帧节点: ${frameNodes.map(n => `${n.id}[${n.kind}] ${n.frames} 帧${n.kind === 'image' ? `(已存 ${n.saved} 个原文件 → frames/${String(n.id).replace(/[^A-Za-z0-9_-]+/g, '_')}/)` : `(→ ${n.file})`}`).join(', ')}`
     : ''

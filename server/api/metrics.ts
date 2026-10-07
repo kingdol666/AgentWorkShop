@@ -62,6 +62,17 @@ export default defineEventHandler(async (event) => {
   // ---- WS 实时通道(落库失败静默重试,只能靠计数观测) ----
   lines.push({ name: 'awshop_ws_db_flush_fails_total', help: 'Channel event batch DB-insert failures', value: g.__wsDbFlushFails ?? 0 })
 
+  // ---- P0-4 进程内存水位(exit 134 = 堆耗尽,heapUsed 与其同源;limit 来自 --max-old-space-size) ----
+  {
+    const { getHeapStatistics } = await import('node:v8')
+    const mu = process.memoryUsage()
+    lines.push(
+      { name: 'awshop_process_heap_used_bytes', help: 'Process V8 heap used bytes', value: mu.heapUsed },
+      { name: 'awshop_process_heap_limit_bytes', help: 'Process V8 heap limit bytes(--max-old-space-size)', value: getHeapStatistics().heap_size_limit },
+      { name: 'awshop_process_rss_bytes', help: 'Process resident set size bytes', value: mu.rss },
+    )
+  }
+
   // ---- HITL:工具审批 + 高危操作复核待办 ----
   const toolPending = g.__toolApprovals?.listPending().length ?? 0
   const opsPending = getOps()?.approvalRequests.listPending().length ?? 0

@@ -10,6 +10,7 @@ import type { DaqFrameWorking } from '../frames'
 import type { DaqSampleEnvelope } from '../bus/queue-port'
 import type { DaqNode } from '../daq-node'
 import type { DaqNodeRuntime } from '../daq-runtime'
+import { createHash } from 'node:crypto'
 import { daqObjectKey } from '../objectstore/objectstore-port'
 import { daqRuntimeSettings } from '../../settings'
 import { findDaqTemplate } from '../daq-templates'
@@ -177,6 +178,10 @@ export abstract class DaqControllerState extends DaqControllerContracts {
     const os = getObjectStore()
     const objectKey = daqObjectKey(node.id, now, '.png')
     await os.put(objectKey, wf.blob!, wf.mime ?? 'image/png')
+    // P0-2 像素完整性:sha256+size 随帧入 daq_frames.meta(blob 就手计算,1Hz 下开销可忽略;
+    // 存量文件不回填 —— 保留期内自然出清)
+    const sha256 = createHash('sha256').update(wf.blob!).digest('hex')
+    const size = wf.blob!.length
     let thumbKey: string | undefined
     if (wf.thumbBlob) {
       thumbKey = daqObjectKey(node.id, now, '.thumb.png')
@@ -190,6 +195,8 @@ export abstract class DaqControllerState extends DaqControllerContracts {
         mime: wf.mime ?? 'image/png',
         width: wf.width,
         height: wf.height,
+        sha256,
+        size,
         metrics: wf.metrics,
       },
     }

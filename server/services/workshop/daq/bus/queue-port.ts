@@ -35,6 +35,9 @@ export interface DaqSampleEnvelope {
     mime?: string
     width?: number
     height?: number
+    /** image:主图像素完整性(P0-2;sha256 hex + 字节数,入库随 meta 持久化) */
+    sha256?: string
+    size?: number
     /** 下沉管线派生指标(avg/max/brightness/zone_*…) */
     metrics?: Record<string, number>
   }
