@@ -143,6 +143,21 @@ const normDaqWindows = (windows: RecipeDaqWindow[] | undefined, lineId = ''): Re
     return out
   })
 
+/** opIntervalMs 归一:undefined/null/'' = 缺省(60000);0~86400000 整数合法(0=显式禁用);其余 400 */
+export const OP_INTERVAL_DEFAULT_MS = 60_000
+function normOpIntervalMs(v: unknown): number | undefined {
+  if (v === undefined || v === null || v === '') return undefined
+  const n = Number(v)
+  if (!Number.isFinite(n) || n < 0 || n > 86_400_000 || !Number.isInteger(n))
+    throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'opIntervalMs 需为 0~86400000 的整数毫秒(0=禁用频控;缺省=默认 60s)')
+  return n
+}
+
+/** 配方下发间隔读取器(老数据无字段 → 默认 60000;0 = 显式禁用) */
+export function recipeOpIntervalMs(r: Pick<RecipeView, 'opIntervalMs'> | undefined): number {
+  return typeof r?.opIntervalMs === 'number' && r.opIntervalMs >= 0 ? r.opIntervalMs : OP_INTERVAL_DEFAULT_MS
+}
+
 class DcwRecipeRepo {
   private recipes: RecipeView[] = loadJson<RecipeView[]>(RECIPES_PATH, [])
   private runs: RecipeRunView[] = loadJson<RecipeRunView[]>(RUNS_PATH, [])
@@ -179,6 +194,7 @@ class DcwRecipeRepo {
       version: 1,
       paramsHistory: [],
       lastGoodRunId: null,
+      ...(normOpIntervalMs(input.opIntervalMs) !== undefined ? { opIntervalMs: normOpIntervalMs(input.opIntervalMs) } : {}),
       createdAt: now,
       updatedAt: now,
     }
@@ -231,6 +247,12 @@ class DcwRecipeRepo {
         ? [...new Set(raw.authorizedAgentIds.map(x => String(x ?? '').trim()).filter(Boolean))]
         : []
       r.access = { requireAuth: raw.requireAuth === true, authorizedAgentIds: ids }
+    }
+    // 治理配置(非工艺参数):与 access 同口径原地改,不进 paramsHistory/不增版本
+    if (patch.opIntervalMs !== undefined) {
+      const v = normOpIntervalMs(patch.opIntervalMs)
+      if (v === undefined) delete r.opIntervalMs
+      else r.opIntervalMs = v
     }
     r.updatedAt = new Date().toISOString()
     this.flushRecipes()

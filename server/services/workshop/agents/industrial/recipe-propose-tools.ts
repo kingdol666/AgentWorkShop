@@ -19,6 +19,7 @@ import { getAgentNodeBindingRepo } from '../node-bindings.repo'
 import { securityRecipeDispatchTimeoutMs } from '../../settings'
 import { assertRecipeOperation } from './recipe-gate'
 import { getDcwController } from '../../dcw/dcw-controller'
+import { assertRecipeOpInterval } from '../../dcw/recipe-op-anchor'
 import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
 import { recordOps } from '../../ops/ops'
 import { evaluateRecipeParamLimits } from '../../dcw/dcw-controller/write'
@@ -76,6 +77,7 @@ function paramLine(p: RecipeProposePayloadParam, nodeLabel: string): string {
 export async function toolRecipePropose(agentId: string, args: {
   recipe_id?: string
   packages?: RecipeProposePackageInput[]
+  emergency?: boolean | string
 }): Promise<{ text: string, isError?: boolean }> {
   // ---------- ① 参数校验(packages 1..3;每参数 node_id/to/basis/exp_ref 必填) ----------
   const recipeId = String(args.recipe_id ?? '').trim()
@@ -170,6 +172,14 @@ export async function toolRecipePropose(agentId: string, args: {
     return {
       text: `已有在飞方案审批单(${inflight.map(a => a.id).join(', ')}),等待人类裁决;同一配方同时只保留一张在飞单。拒绝/超时后该单收敛,即可吸收意见修订重提;请勿重复提交,可先在汇报中提醒人类尽快处置。`,
     }
+  }
+
+  // ---------- ④b Recipe 级下发间隔卡控(提案早拒):距上次已批准下发不足 opIntervalMs 即拒,不建卡 ----------
+  try {
+    assertRecipeOpInterval(recipe, { emergency: args.emergency === true || args.emergency === 'true' })
+  }
+  catch (err) {
+    return { text: err instanceof Error ? err.message : String(err), isError: true }
   }
 
   // ---------- ⑤ 预检(镜像 recipe 真实执行限界:量程∩参数∩产品;步长/60s/保持窗本就不适用 recipe) ----------
@@ -272,8 +282,15 @@ export async function toolRecipePropose(agentId: string, args: {
   const overrides = chosen.params.map(p => ({ nodeId: p.nodeId, value: p.to }))
   let run
   try {
-    // mirror toolRecipeApply 实际下发路径:trial 语义(整批候选、不写配方版本),overrides 限配方内节点
-    run = await getDcwController().applyRecipe(recipeId, { overrides, trial: true })
+    // mirror toolRecipeApply 实际下发路径:trial 语义(整批候选、不写配方版本),overrides 限配方内节点;
+    // Agent 下发族标记 + 审批单 id 透传(recipe 级下发间隔执行兜底与成功计锚)
+    run = await getDcwController().applyRecipe(recipeId, {
+      overrides,
+      trial: true,
+      agentDispatch: true,
+      agentApprovalId: decision.id,
+      emergency: args.emergency === true || args.emergency === 'true',
+    })
   }
   catch (err) {
     // 响亮失败(典型:同线试验节拍未放行):方案已批准但产线未动 —— 指引稍后重试/直发,口径同 recipe_rollback

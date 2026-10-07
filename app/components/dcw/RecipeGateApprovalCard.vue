@@ -17,6 +17,8 @@ interface GatePayload {
   reason?: string
   params?: GateParam[]
   runId?: string
+  /** 应急豁免频控标记(审批不可豁免;高亮提示裁决人) */
+  emergency?: boolean
 }
 
 const props = defineProps<{
@@ -70,6 +72,12 @@ const title = computed(() => t('dcwDetail.recipeGateTitle'))
       <div class="gate-head">
         <span class="op-pill">{{ opOf(a) }}</span>
         <strong>{{ a.payload?.recipeName || a.nodeId }}</strong>
+        <span
+          v-if="a.payload?.emergency"
+          class="op-pill"
+          style="background:#e5484d;color:#fff;"
+          title="本次审批附带应急豁免频控(仅跳过下发间隔,审批与安全限界照常)"
+        >【应急】</span>
         <small
           v-if="a.payload?.runId"
           class="dim"

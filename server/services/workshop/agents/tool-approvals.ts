@@ -11,6 +11,7 @@ import { getOps } from '../ops/ops'
 import { securityHitlTimeoutMs } from '../settings'
 import { getHitlRegistry } from './hitl-registry'
 import { sendHitlNote } from '../runtime/platform-notice'
+import { recordRecipeOpAnchor } from '../dcw/recipe-op-anchor'
 
 export interface ToolApproval {
   id: string
@@ -152,6 +153,29 @@ class ToolApprovalService {
     entry.approval.decidedBy = decidedBy
     entry.approval.decidedName = decidedName
     this.remember(entry.approval)
+    // Recipe 下发频控锚:仅"已批准"的下发族审批落锚(审批=计时起点;未批准不计时)。
+    // recipe_update 只写定义不触产线,排除;失败仅告警不反噬裁决主流程。
+    if (approved) {
+      try {
+        const m = entry.approval.nodeId.match(/^(?:recipe|recipe-propose):(.+)$/)
+        const payload = (entry.approval.payload ?? {}) as { op?: string, kind?: string }
+        if (m && payload.op !== 'update') {
+          const rawOp = String(payload.op)
+          const op = (['trial', 'apply', 'rollback'].includes(rawOp) ? rawOp : rawOp === 'dispatch' ? 'apply' : 'propose') as 'trial' | 'apply' | 'rollback' | 'propose'
+          recordRecipeOpAnchor({
+            recipeId: m[1]!,
+            at: Date.parse(entry.approval.decidedAt ?? '') || Date.now(),
+            approvalId: id,
+            agentId: entry.approval.agentId,
+            op,
+            source: 'hitl-approved',
+          })
+        }
+      }
+      catch (err) {
+        console.warn('[tool-approvals] recipe 下发锚记录失败(不影响裁决):', err instanceof Error ? err.message : err)
+      }
+    }
     getHitlRegistry().resolve('dcw-approval', id, 'answered', decidedBy || undefined)
     entry.resolve({ approved, comment: entry.approval.comment, id, ...(choiceNorm != null ? { choice: choiceNorm } : {}) })
     return entry.approval

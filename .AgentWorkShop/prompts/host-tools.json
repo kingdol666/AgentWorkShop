@@ -1020,6 +1020,10 @@
         "dispatch": {
           "type": "boolean",
           "description": "true=统一回退:定义回退后把恢复参数整批重下发到 PLC(优化闭环劣化时用);缺省 false=仅回退配方定义"
+        },
+        "emergency": {
+          "type": "boolean",
+          "description": "应急豁免配方下发间隔频控(不豁免审批;审批卡将标注【应急】并仍需人工批准;滥用会留审计痕迹)"
         }
       },
       "additionalProperties": false
@@ -2200,6 +2204,10 @@
         "hypothesis": {
           "type": "string",
           "description": "试验假设/依据(必填:知识库条目或数据分析结论)"
+        },
+        "emergency": {
+          "type": "boolean",
+          "description": "应急豁免配方下发间隔频控(不豁免审批;审批卡将标注【应急】并仍需人工批准;滥用会留审计痕迹)"
         }
       },
       "required": [
@@ -2224,6 +2232,10 @@
         "reason": {
           "type": "string",
           "description": "下发理由(必填):说明为什么这样调 —— 数据依据/试验结论/GOAL 差距分析,产线专家在审批卡上要能看懂你的判断逻辑"
+        },
+        "emergency": {
+          "type": "boolean",
+          "description": "应急豁免配方下发间隔频控(不豁免审批;审批卡将标注【应急】并仍需人工批准;滥用会留审计痕迹)"
         }
       },
       "required": [
@@ -2333,6 +2345,10 @@
               "params"
             ]
           }
+        },
+        "emergency": {
+          "type": "boolean",
+          "description": "应急豁免配方下发间隔频控(不豁免审批;审批卡将标注【应急】并仍需人工批准;滥用会留审计痕迹)"
         }
       },
       "required": [

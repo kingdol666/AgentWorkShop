@@ -229,6 +229,8 @@ export interface RecipeView {
   }>
   /** 已知良好批次(判定 keep / 手动标记;基准恢复的目标) */
   lastGoodRunId?: string | null
+  /** 下发操作间隔卡控(ms):该配方两次已批准/已执行的 Agent 下发最小间隔(锚=审批时刻);缺省=默认 60000;0=显式禁用 */
+  opIntervalMs?: number
   /** 二级操作权限:默认绑定即可操作;requireAuth=true 时仅 authorizedAgentIds 清单内的 Agent 可操作 */
   access?: {
     requireAuth?: boolean
@@ -251,6 +253,8 @@ export interface RecipeInput {
     requireAuth?: boolean
     authorizedAgentIds?: string[]
   }
+  /** 下发操作间隔卡控(ms);缺省=默认 60000;0=显式禁用 */
+  opIntervalMs?: number
 }
 
 /** 生产批次(Recipe 应用的隔离窗口:数采数据/写历史按窗口归属产品) */

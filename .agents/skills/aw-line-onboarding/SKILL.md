@@ -107,6 +107,9 @@ V4 配方在册且参数映射正确 → V5 频道绑线/成员/插件生效 →
 - 受保护资源(`ln-d7e0a2a2` 及非本次创建的 id)只读;lib.mjs 在脚本层硬拦。
 - Agent 写路径权限模型 v2:不绑配方就没有写能力;首绑 manual 逐动作审批是**刻意设计**,
   除非用户明确要求否则不切 auto。
+- 配方级下发间隔频控:recipe 可配 `opIntervalMs`(缺省 60s;0=禁用),Agent 下发族
+  (trial/apply/propose/rollback-dispatch)两次**已批准**下发间隔不得小于该值,计时锚=审批时刻
+  (未批准不计时);窗内被拒时可用 `emergency=true` 豁免频控(审批照挂且卡片标注【应急】)。
 - 模拟器整包替换型预设不得在共存验收中使用。
 
 回滚:供给失败按 配方→节点→线 逆序删除;频道删除用 `DELETE /api/workshop/channels/:id`。

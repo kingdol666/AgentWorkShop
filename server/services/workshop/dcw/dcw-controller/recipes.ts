@@ -7,6 +7,7 @@ import type { DcwWriteHistoryEntry } from '../dcw-recipe.repo'
 import type { RecipeInput, RecipeRunView, RecipeView } from '../../../../../shared/dcw-protocol'
 import { AppError, ErrorCodes } from '../../../../utils/errors'
 import { getDcwRecipeRepo } from '../dcw-recipe.repo'
+import { assertRecipeOpIntervalForExecution, recordRecipeOpAnchor } from '../recipe-op-anchor'
 import { recordOps } from '../../ops/ops'
 
 export abstract class DcwControllerRecipes extends DcwControllerParams {
@@ -139,7 +140,16 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
    * trial 不写配方版本(复测有进步才由 Agent recipe_update 固化);受同线节拍卡控;
    * 四层限界在 write() 咽喉点照常拦截(量程∩参数∩产品)。
    */
-  async applyRecipe(recipeId: string, opts: { overrides?: Array<{ nodeId: string, value: number }>, trial?: boolean } = {}) {
+  async applyRecipe(recipeId: string, opts: {
+    overrides?: Array<{ nodeId: string, value: number }>
+    trial?: boolean
+    /** Agent 下发族标记:置真才受 recipe 级下发间隔卡控(人工 REST/系统路径豁免) */
+    agentDispatch?: boolean
+    /** 本次下发的审批单 id(锚自豁免:自己刚获批的那次不卡自己;不同 id 且锚新鲜 = 竞态拦截) */
+    agentApprovalId?: string
+    /** 应急豁免:仅跳过 recipe 级频控(审批/四层限界/试验节拍照常) */
+    emergency?: boolean
+  } = {}) {
     this.ensureLoop()
     const repo = getDcwRecipeRepo()
     const recipe = repo.byId(recipeId)
@@ -151,6 +161,8 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
       throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `覆盖参数不在配方内: ${unknown.map(o => o.nodeId).join(', ')}(试验只能修改配方已有参数的值;新增参数请先 recipe_update)`)
     }
     if (opts.trial) this.assertTrialCadence(recipe.lineId)
+    // Recipe 级下发间隔卡控(执行时兜底):仅 Agent 路径;approvalId 自豁免防审批竞态
+    if (opts.agentDispatch) assertRecipeOpIntervalForExecution(recipe, { approvalId: opts.agentApprovalId, emergency: opts.emergency })
     // 声明式覆盖集:有 overrides 只写声明的节点(未声明参数保持现状,绝不顺带整批);
     // 无 overrides(手动应用/统一回退重下发)= 整批语义
     const effective = overrides.length > 0
@@ -162,6 +174,17 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
     const run = repo.createRun(recipe, effective)
     await this.writeRecipeParams({ ...recipe, params: effective }, run)
     if (opts.trial) this.trialLastAt.set(recipe.lineId, Date.now())
+    // Agent 下发成功即前移锚(封 auto 绑定无审批连发:两次已生效下发也须 ≥ opIntervalMs)
+    if (opts.agentDispatch) {
+      recordRecipeOpAnchor({
+        recipeId,
+        at: Date.now(),
+        approvalId: opts.agentApprovalId ?? '',
+        agentId: '',
+        op: opts.trial ? 'trial' : 'apply',
+        source: 'agent-executed',
+      })
+    }
     return run
   }
 
@@ -181,6 +204,9 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
     actorName?: string
     actor?: string
     description?: string
+    agentDispatch?: boolean
+    agentApprovalId?: string
+    emergency?: boolean
   }): Promise<{ recipe: RecipeView, run: RecipeRunView, definitionNoop?: boolean }> {
     const versionBefore = getDcwRecipeRepo().byId(recipeId)?.version ?? 1
     const updated = this.revertRecipe(recipeId, {
@@ -194,7 +220,11 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
     }, { allowNoop: true })
     // 定义已在目标态(allowNoop)≠PLC 已在目标态:整批恢复照常执行
     const definitionNoop = (updated.version ?? 1) === versionBefore
-    const run = await this.applyRecipe(recipeId)
+    const run = await this.applyRecipe(recipeId, {
+      agentDispatch: opts.agentDispatch,
+      agentApprovalId: opts.agentApprovalId,
+      emergency: opts.emergency,
+    })
     return { recipe: updated, run, definitionNoop }
   }
 
