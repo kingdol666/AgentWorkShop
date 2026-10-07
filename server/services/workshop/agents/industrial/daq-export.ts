@@ -26,6 +26,7 @@ const PAGE_LIMIT = 5000 // 与 tsdb 适配器单查硬上限一致(满页即续�
 const MAX_PAGES_PER_NODE = 400 // 单节点上限 200 万点(超限截断并在 manifest 标注)
 const MAX_WINDOW_MS = 7 * 24 * 60 * 60 * 1000 // 与 MES 取数同款 7 天窗护栏
 const MAX_TOTAL_ROWS = 4_000_000 // 单次导出总行数护栏(磁盘与上传体量)
+const MAX_FRAMES_PER_NODE = 200 // 帧节点单次导出帧数上限(图像原文件体量大)
 const RETAIN_EXPORTS = 50 // 数据目录保留策略:只留最近 50 个导出(全量时序体量大,防无限增长)
 
 export interface ExportNodeMeta {
@@ -40,6 +41,8 @@ export interface ExportNodeMeta {
   intervalMs?: number | null
   decimals?: number
   semantics?: string
+  /** 信号形态(vector/image=帧节点:导出帧文件而非标量 CSV;缺省 scalar) */
+  signalKind?: 'scalar' | 'vector' | 'image'
 }
 
 export interface ExportLineContext {
@@ -115,9 +118,99 @@ function safeFileId(id: string): string {
   return id.replace(/[^A-Za-z0-9_-]+/g, '_').slice(0, 80) || 'node'
 }
 
+/** 帧记录(导出注入面:与 tsdb.queryFrames 返回形状一致) */
+export interface ExportFrameRow {
+  at: number
+  kind: 'vector' | 'image'
+  points?: number[]
+  meta?: Record<string, unknown>
+  metrics?: Record<string, number>
+}
+
+/** mime → 文件扩展名(未知 mime 兜底 bin) */
+function mimeExt(mime: string): string {
+  if (mime.includes('png')) return 'png'
+  if (mime.includes('jpeg') || mime.includes('jpg')) return 'jpg'
+  if (mime.includes('webp')) return 'webp'
+  if (mime.includes('bmp')) return 'bmp'
+  if (mime.includes('gif')) return 'gif'
+  return 'bin'
+}
+
+/**
+ * 帧节点导出:向量 → 单 CSV 长表(ts_iso,ts_ms,point_index,value);
+ * 图像 → frames/<nodeId>/ 下逐帧原文件(对象存储取回)+ 清单行。
+ * 返回 manifest 节点条目;readFrameContent 失败按丢帧计数不阻断。
+ */
+async function exportFrames(
+  dir: string,
+  meta: ExportNodeMeta,
+  frames: ExportFrameRow[],
+  readFrameContent: (nodeId: string, at: number) => Promise<{ data: Buffer, mime: string } | null>,
+  truncated: boolean,
+): Promise<Record<string, unknown>> {
+  const id = meta.id
+  if (meta.signalKind === 'vector') {
+    const rows: string[] = ['ts_iso,ts_ms,point_index,value']
+    let n = 0
+    for (const f of frames) {
+      const pts = f.points ?? []
+      for (let i = 0; i < pts.length; i++) {
+        rows.push([new Date(f.at).toISOString(), f.at, i, fmtNum(pts[i])].map(csvCell).join(','))
+      }
+      n += 1
+    }
+    const fileRel = `frames/${safeFileId(id)}.csv`
+    writeFileSync(join(dir, fileRel), rows.join('\r\n'), 'utf8')
+    const metricEntries = frames.flatMap(f => Object.entries(f.metrics ?? {}))
+    const metricSummary: Record<string, number> = {}
+    for (const [k, v] of metricEntries) if (Number.isFinite(v)) metricSummary[k] = v
+    return {
+      id, name: meta.name, kind: 'vector', line_id: meta.lineId,
+      semantics: meta.semantics || '', unit: meta.unit,
+      file: fileRel, frames: n, points: rows.length - 1,
+      value_range_observed: null, state_summary: {},
+      metrics_summary: metricSummary,
+      ...(truncated ? { truncated: true } : {}),
+    }
+  }
+  // image:逐帧取回对象存储原文件落盘
+  const nodeDirRel = `frames/${safeFileId(id)}`
+  const nodeDir = join(dir, nodeDirRel)
+  mkdirSync(nodeDir, { recursive: true })
+  let saved = 0
+  const files: string[] = []
+  let mimeSeen = ''
+  for (const f of frames) {
+    try {
+      const content = await readFrameContent(id, f.at)
+      if (!content || content.data.length === 0) continue
+      const ext = mimeExt(content.mime)
+      const rel = `${nodeDirRel}/${f.at}.${ext}`
+      writeFileSync(join(dir, rel), content.data)
+      files.push(rel)
+      mimeSeen = mimeSeen || content.mime
+      saved += 1
+    }
+    catch { /* 单帧取回失败不阻断导出 */ }
+  }
+  const metricSummary: Record<string, number> = {}
+  for (const f of frames) for (const [k, v] of Object.entries(f.metrics ?? {})) if (Number.isFinite(v)) metricSummary[k] = v
+  return {
+    id, name: meta.name, kind: 'image', line_id: meta.lineId,
+    semantics: meta.semantics || '', unit: meta.unit,
+    dir: nodeDirRel, frames: frames.length, saved,
+    mime: mimeSeen || 'image/png',
+    files: files.slice(0, 8),
+    metrics_summary: metricSummary,
+    ...(truncated ? { truncated: true } : {}),
+  }
+}
+
 /**
  * 导出核心:逐节点分页拉全原始时序 → 每节点一份 CSV + manifest.json。
  * readPoints/nodeOf 由调用方注入(tsdb 取数与节点元数据),本函数只管取数、落盘与清单。
+ * 帧节点(signalKind=vector/image)走 readFrames/readFrameContent 导出帧文件。
  */
 export async function exportDaqDataset(opts: {
   targets: string[]
@@ -132,17 +225,22 @@ export async function exportDaqDataset(opts: {
   now?: () => number
   /** merge 模式:额外产出多节点按秒对齐的宽表 merged.csv */
   merge?: boolean
+  /** 帧节点取数(vector/image 元数据行)与图像内容取回;缺省=帧节点按零样本跳过 */
+  readFrames?: (nodeId: string, win: { fromMs: number, toMs: number, limit: number }) => Promise<ExportFrameRow[]>
+  readFrameContent?: (nodeId: string, at: number) => Promise<{ data: Buffer, mime: string } | null>
   /** 上限覆盖(单测用;缺省 400 页/节点、400 万行总量) */
-  caps?: { pagesPerNode?: number, totalRows?: number }
+  caps?: { pagesPerNode?: number, totalRows?: number, framesPerNode?: number }
 }): Promise<DaqExportResult> {
   const { targets, nodeOf, readPoints, fromMs, toMs, title, note, lines, rootDir } = opts
   const maxPages = opts.caps?.pagesPerNode ?? MAX_PAGES_PER_NODE
   const maxTotal = opts.caps?.totalRows ?? MAX_TOTAL_ROWS
+  const maxFrames = opts.caps?.framesPerNode ?? MAX_FRAMES_PER_NODE
   const now = opts.now ?? Date.now
   const exportId = `daqexp-${new Date(now()).toISOString().replace(/[-:T]/g, '').slice(0, 14)}-${randomBytes(3).toString('hex')}`
   const dir = join(rootDir, exportId)
   const nodesDir = join(dir, 'nodes')
   mkdirSync(nodesDir, { recursive: true })
+  if (opts.readFrames) mkdirSync(join(dir, 'frames'), { recursive: true })
 
   const files: DaqExportResult['files'] = []
   const truncated: string[] = []
@@ -152,6 +250,23 @@ export async function exportDaqDataset(opts: {
   for (const id of targets) {
     const meta = nodeOf(id)
     if (!meta) continue
+    // 帧节点(vector/image):导出帧文件而非标量 CSV —— 标量管线的 readPoints 查不到
+    // 帧(帧只入 daq_frames),按标量导出会得到零行假象
+    if (meta.signalKind === 'vector' || meta.signalKind === 'image') {
+      if (!opts.readFrames) {
+        nodeMetas.push({ id: meta.id, name: meta.name, kind: meta.signalKind, line_id: meta.lineId, semantics: meta.semantics || '', file: '', frames: 0, note: '未提供帧取数器(readFrames),帧节点跳过' })
+        continue
+      }
+      const frames = await opts.readFrames(id, { fromMs, toMs, limit: maxFrames })
+      // 时序契约:升序导出(适配器 queryFrames 为 DESC 最新在前,与 tsdb.query 同病)
+      frames.sort((a, b) => a.at - b.at)
+      const hitFrameCap = frames.length >= maxFrames
+      if (hitFrameCap) truncated.push(id)
+      const entry = await exportFrames(dir, meta, frames, opts.readFrameContent ?? (async () => null), hitFrameCap)
+      nodeMetas.push(entry)
+      totalRows += meta.signalKind === 'vector' ? (entry.points as number ?? 0) : (entry.saved as number ?? 0)
+      continue
+    }
     // 分页拉全:单查上限 PAGE_LIMIT,满页则以本页最大 ts+1 续拉(适配器无游标)
     const byAt = new Map<number, { at: number, value?: number, state?: string }>()
     let cursor = fromMs
@@ -223,7 +338,7 @@ export async function exportDaqDataset(opts: {
     nodes: nodeMetas,
     totals: { files: files.length, rows: exactRows },
     truncated_nodes: truncated,
-    usage: 'nodes/ 下每节点一份全量原始时序 CSV(ts_iso,ts_ms,value,state;无降采样)。请结合本清单的节点语义/量程/产线-配方上下文做分析;深度根因诊断请用 diag-bridge 的 diag_run(export_id=本 export_id)。',
+    usage: 'nodes/ 下每标量节点一份全量原始时序 CSV(ts_iso,ts_ms,value,state;无降采样);帧节点(vector/image)在 frames/ 下:向量=单 CSV 长表(ts_iso,ts_ms,point_index,value),图像=逐帧原文件 frames/<node_id>/<ts>.<ext>。请结合本清单的节点语义/量程/产线-配方上下文做分析;深度根因诊断请用 diag-bridge 的 diag_run(export_id=本 export_id)。',
   }
   writeFileSync(join(dir, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf8')
   // 保留策略:超出 RETAIN_EXPORTS 的最旧导出目录直接清理(mes-artifacts 同款思路)
@@ -312,6 +427,7 @@ export async function toolDaqExport(agentId: string, args: {
       intervalMs: n.intervalMs ?? null,
       decimals: n.decimals,
       semantics: n.semantics || tpl?.semantics || tpl?.ch || '',
+      signalKind: tpl?.signalKind === 'vector' || tpl?.signalKind === 'image' ? tpl.signalKind : 'scalar',
     }
   }
   const lineIds = [...new Set(targets.map(id => getDaqNodeRepo().byId(id)?.lineId ?? '').filter(Boolean))]
@@ -347,6 +463,12 @@ export async function toolDaqExport(agentId: string, args: {
       lines,
       rootDir: join(ensureDataDir(), 'daq-exports'),
       merge: args.merge === true || args.merge === 'true',
+      // 帧节点(vector/image):元数据经 tsdb.queryFrames,图像原文件经对象存储(frameContent)
+      readFrames: (nodeId, win) => getTsdb().queryFrames(nodeId, win),
+      readFrameContent: async (nodeId, at) => {
+        const { getDaqController } = await import('../../daq/daq-controller')
+        return getDaqController().frameContent(nodeId, at, false)
+      },
     })
   }
   catch (err) {
@@ -354,6 +476,10 @@ export async function toolDaqExport(agentId: string, args: {
   }
 
   const perNode = result.files.map(f => `${f.nodeId}(${f.rows} 行)`).join(', ')
+  const frameNodes = result.manifest.nodes.filter(n => n.kind === 'vector' || n.kind === 'image')
+  const frameNote = frameNodes.length > 0
+    ? `\n- 帧节点: ${frameNodes.map(n => `${n.id}[${n.kind}] ${n.frames} 帧${n.kind === 'image' ? `(已存 ${n.saved} 个原文件 → frames/${String(n.id).replace(/[^A-Za-z0-9_-]+/g, '_')}/)` : `(→ ${n.file})`}`).join(', ')}`
+    : ''
   const truncNote = result.truncated.length > 0
     ? `\n⚠ 以下节点超出单节点 200 万点上限已截断:${result.truncated.join(', ')}(如需完整数据请拆小时间窗分批导出)`
     : ''
@@ -367,15 +493,16 @@ export async function toolDaqExport(agentId: string, args: {
     ? `\n- IDD 交换目录已配置: ${exchangeDir} —— 哨兵分析前把${result.mergedFile ? ' merged.csv' : ' 各 nodes/<node_id>.csv'}复制到该目录下,再以 <交换目录>/<文件名> 作为 data_path(平台导出目录在 IDD 允许根外,直接传会被路径沙箱拒绝)。`
     : ''
   return {
-    text: `已导出 ${result.files.length} 个节点的全量原始时序(无降采样):
+    text: `已导出 ${result.files.length} 个标量节点 + ${frameNodes.length} 个帧节点的数据(标量无降采样):
 - export_id: ${result.exportId}
 - 目录: ${result.dir}
-- 文件: manifest.json(节点映射/单位量程/语义描述/产线-产品-配方-批次上下文/报警统计)+ nodes/<node_id>.csv(逐样本时序,列 ts_iso,ts_ms,value,state)${mergeNote}${exchangeNote}
-- 明细: ${perNode};共 ${result.totalRows} 行;窗口 ${new Date(fromMs).toISOString()} ~ ${new Date(toMs).toISOString()}${truncNote}
+- 文件: manifest.json(节点映射/单位量程/语义描述/产线-产品-配方-批次上下文/报警统计)+ nodes/<node_id>.csv(逐样本时序,列 ts_iso,ts_ms,value,state)${frameNote}${mergeNote}${exchangeNote}
+- 明细: ${perNode};共 ${result.totalRows} 行/帧;窗口 ${new Date(fromMs).toISOString()} ~ ${new Date(toMs).toISOString()}${truncNote}
 
 下一步:
 1. 深度根因诊断:调用 diag_run(export_id="${result.exportId}", scene=<场景名>, question=<诊断问题>)——会把 manifest 与全部 CSV 上传诊断服务做多文件分析;mode=async 提交即返(缺省),mode=sync 同步等待结果。
 2. 哨兵筛查:把${result.mergedFile ? ' merged.csv 或' : ''} nodes/<node_id>.csv 的绝对路径交给 sentinel_baseline/sentinel_screen/sentinel_watch(注意数据须位于 IDD 允许根内${exchangeDir ? ';已配置的交换目录见上方' : ';可在 idd-closedloop-bridge 插件 settings 配置 exchange_dir'})。
-3. 交由其他 worker 离线分析:直接把目录绝对路径(${result.dir})交给对方,manifest.json 内含全部映射与语义说明。`,
+3. 图像/向量帧离线分析:frames/ 下图像原文件(PNG)与向量长表 CSV 直接交给 IDD/worker,manifest.nodes 里带各帧节点的语义与 metrics_summary。
+4. 交由其他 worker 离线分析:直接把目录绝对路径(${result.dir})交给对方,manifest.json 内含全部映射与语义说明。`,
   }
 }

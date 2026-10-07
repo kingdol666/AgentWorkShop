@@ -127,6 +127,28 @@ MES 区间取数契约(多字段+时间段+间隔 API 的 historyMap 接入,2026
 - 大窗取数纪律:窗口≤7 天、max_rows≤5000;>2000 行走异步 CSV 数据集(`mes_dataset_read`
   读统计/分页),行级原文永不进对话。
 
+MES 双模式接入(2026-10-07 实测定稿;同一 MES API 按用户意愿二选一或并用):
+
+- **镜像入库模式**(数据进平台时序库,Agent 从库读,与 PLC 同管线):建**数采节点**
+  (`POST /api/workshop/daq`,driver=`http`),`driverConfig.url`=MES"最新一组数据"端点
+  (API 每次只回最新值/最新帧),`headersJSON` 放 token,标量加 `jsonPath`;形态由模板
+  决定——标量(缺省)/向量(模板 `signalKind:'vector'`,jsonPath 指点列数组)/图像
+  (模板 `signalKind:'image'`,端点回 image/* 字节或 JSON{png:base64})。轮询节拍
+  `intervalMs` 与 PLC 采集同源,样本/帧自动带活动批次打标(run/recipe/line)。
+  自定义模板用 `POST /api/workshop/daq/templates`(注意:unit 必填;注册表会忽略传入
+  key 生成 `ct-*`,须用**返回的 key** 拼 `daq-<key>` 作 templateRef)。
+- **参数直取模式**(不镜像,Agent 传时间段直接调 API):建 **dcw 节点**
+  (`POST /api/workshop/dc`,driver=`mes-rest`)+ `historyMap`(from/to/cursor 平台注入,
+  分页 API 必配 `nextCursorPath`),标量/向量/图像(`format:'image'`,dataPath 指 base64
+  字段)全格式;`mes_fetch(ids,[from,to],max_rows)` 取数——标量/向量大窗落 CSV 数据集,
+  图像帧自动落盘 `<数据根>/mes-artifacts/<节点id>/`,像素永不进对话。
+- 模式判据(替用户选型):要"定时持续积累+批次打标+告警/导出/IDD 诊断"→ 镜像;
+  要"按需回看历史区间、API 只支持查询"→ 直取。两者可同 API 并用(镜像入库存最新流,
+  直取节点查历史窗)。前端区分:数采管理页节点(driver 徽标+形态徽标 标量/向量/图像)
+  = 镜像;数字孪生写控页 mes-rest 点位 = 直取。
+- 在线控制:控制面走 mes-rest `writeMap`(POST 设定值),Agent 侧 recipe 绑定+HITL 审批
+  下发,与 PLC 控制同治理(四层限界/步长/频控全适用)。
+
 ## 验收清单
 
 - [ ] 连通性预检全绿(每驱动一条 ✅)

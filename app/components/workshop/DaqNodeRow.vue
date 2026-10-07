@@ -127,6 +127,14 @@ function daqTemplateRefCh(templateRef: string): string {
   return tpl ? `${tpl.name} · ${tpl.ch}` : templateRef || '-'
 }
 
+/** 信号形态徽标(多源异构可视化:标量时序/向量轮廓/图像帧;模板缺失按标量) */
+const signalKindOf = (templateRef: string): 'scalar' | 'vector' | 'image' => {
+  const tpl = daq.templates.find(x => x.key === daqKeyFromRef(templateRef))
+  return tpl?.signalKind ?? 'scalar'
+}
+const signalKindLabel = (kind: 'scalar' | 'vector' | 'image'): string =>
+  kind === 'vector' ? '向量' : kind === 'image' ? '图像' : '标量'
+
 const intervalOf = (intervalMs: number | null): string => {
   if (intervalMs == null) return t('daq.k9vnp9h124', { p0: daq.controller.defaultIntervalMs })
   return `${intervalMs}ms`
@@ -303,6 +311,12 @@ async function removeNodeDevice(deviceId: string): Promise<void> {
         :class="{ planned: driverPlanned(n.driver) }"
         :title="driverPlanned(n.driver) ? $t('daq.k1plndrv138') : ''"
       >{{ n.driver }}</span>
+      <span
+        v-if="signalKindOf(n.templateRef) !== 'scalar'"
+        class="sig-tag"
+        :class="signalKindOf(n.templateRef)"
+        :title="signalKindOf(n.templateRef) === 'image' ? '图像帧节点:像素入对象存储,帧列表/画廊可查,daq_export 落原文件' : '向量帧节点:多点轮廓,daq_frames 检索'"
+      >{{ signalKindLabel(signalKindOf(n.templateRef)) }}</span>
     </td>
     <td>
       <select
@@ -474,6 +488,16 @@ tr.row-recipe-alarm td:first-child { box-shadow: inset 3px 0 0 var(--tone-danger
   color: var(--ink-soft);
 }
 .drv-tag.planned { opacity: 0.55; border-style: dashed; }
+.sig-tag {
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  padding: 2px 7px;
+  margin-left: 4px;
+  border-radius: var(--radius-chip);
+  color: #fff;
+}
+.sig-tag.vector { background: #7c5cff; }
+.sig-tag.image { background: #e58a2f; }
 
 .console-link { display: inline-flex; gap: 5px; align-items: center; font-size: 12.5px; color: var(--accent); }
 
