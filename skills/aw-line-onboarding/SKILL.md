@@ -149,6 +149,27 @@ MES 双模式接入(2026-10-07 实测定稿;同一 MES API 按用户意愿二选
 - 在线控制:控制面走 mes-rest `writeMap`(POST 设定值),Agent 侧 recipe 绑定+HITL 审批
   下发,与 PLC 控制同治理(四层限界/步长/频控全适用)。
 
+孪生/AML 链契约坑(2026-10-07 注塑大考定稿,四连坑+两缺陷):
+
+- **场景三元组必须完整**:`twin_scene_compile` 漏传 `product_id` → 快照 BINDING_PRODUCT_MISMATCH;
+  `physics_profile_id` 必须是注册 provider(如 injection-greybox-v1,查 twin_provider_catalog)→
+  自造 declarative-* 会 TWIN_PROVIDER_UNAVAILABLE。
+- **帧节点(向量/图像)不得进入场景状态**:auto_daq 快照只采标量样本 → AUTO_DAQ_SAMPLE_MISSING;
+  编谱场景前先把帧节点从编谱 Agent 的绑定里摘除。
+- **snapshot phase 必须取自场景 phases 表**(如 exploration),传 steady 会被拒。
+- **hybrid 频道场景谱系**:实例化模板时传 `scene`(冻结契约)才会把 profile.sceneId 指向真实场景;
+  缺省落到模板通用场景(line-injection-01)→ BINDING_LINE_MISMATCH。
+- **mark-good 固化的是批次起点快照**,试验中改的值不会进良好版;收敛值要 PATCH 新版本固化。
+- **供给数控节点必须带 `driver` 字段**,缺省落 mock 驱动——mock 写入"成功"且 journal 照常留痕
+  但设备零触达;交付前务必做「配方|设备|镜像回读」三方对照。
+- **换设备/换线前先清遗留保写心跳**:旧数控节点(holdIntervalMs>0)会周期性把旧设定重写回同一
+  设备,覆盖新配方(PATCH holdIntervalMs=null 缴械)。
+- **场景控制量↔数据集控制量桥**:AML 数据集 control 角色只能取数采节点(SP 回读镜像),而场景
+  spec 控制变量绑定 dcw——amlkit 按 nodeId 建别名会全 MISSING→物理 NaN。现修法:spec 控制变量
+  nodeId 重映射到镜像数采节点+方程引用同步重写;根治待平台自动桥接。
+- **stage-A 标定小样本会退化**(calibrationError 反升):物理系数用 min=max 锁定,只放开 τ 给
+  一维网格;门禁 G1/G2 不过会 fail-closed 拒绝升格,VirtualTrial UQ 缺失→OOD 拒签,属安全设计。
+
 ## 验收清单
 
 - [ ] 连通性预检全绿(每驱动一条 ✅)
