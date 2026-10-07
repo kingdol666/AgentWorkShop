@@ -383,6 +383,59 @@ const server = http.createServer((req, res) => {
       })
       return
     }
+    // 字段目录:多字段区间查询的元数据面(fields 选项/单位/raw beat)
+    if (path === '/api/v1/fields') {
+      return json(res, 200, {
+        data: {
+          fields: Object.entries(SCALARS).map(([tag, m]) => ({ field: tag, unit: m.unit, base: m.base, raw_beat_ms: beats.scalar })),
+          range_api: '/api/v1/series?fields=a,b&from=ISO&to=ISO&interval=<seconds>',
+        },
+      })
+    }
+    // 多字段区间查询(典型 MES 历史库形态):fields=逗号分隔字段;interval=聚合秒数
+    // (缺省/0=raw 1s 拍);聚合=桶内 raw 均值,ts=桶对齐点。cursor 分页与 /history 同款。
+    if (path === '/api/v1/series') {
+      const fields = String(url.searchParams.get('fields') ?? '').split(',').map(s => s.trim()).filter(Boolean)
+      const unknown = fields.filter(f => !SCALARS[f])
+      if (fields.length === 0) return json(res, 400, { error: `fields 必填(逗号分隔,可选:${Object.keys(SCALARS).join('/')})` })
+      if (unknown.length > 0) return json(res, 400, { error: `unknown fields: ${unknown.join(',')}(可选:${Object.keys(SCALARS).join('/')})` })
+      const rawInterval = Number(url.searchParams.get('interval'))
+      const intervalS = Number.isFinite(rawInterval) && rawInterval > 0 ? Math.floor(rawInterval) : 0
+      const stepMs = intervalS > 0 ? intervalS * 1000 : beats.scalar
+      // raw 采样点全集(1s 拍,封顶 20000)→ 聚合桶(均值);桶 ts 对齐到 step 网格
+      const rawPts = timePoints(fromMs, toMs, beats.scalar)
+      const buckets = new Map()
+      for (const t of rawPts) {
+        const b = intervalS > 0 ? Math.floor(t / stepMs) * stepMs : t
+        let acc = buckets.get(b)
+        if (!acc) {
+          acc = {}
+          buckets.set(b, acc)
+        }
+        for (const f of fields) {
+          const v = scalarAt(f, t)
+          acc[f] = acc[f] || { sum: 0, n: 0 }
+          acc[f].sum += v
+          acc[f].n += 1
+        }
+      }
+      const all = [...buckets.keys()].sort((a, b) => a - b).map((b) => {
+        const acc = buckets.get(b)
+        const values = {}
+        for (const f of fields) values[f] = Number((acc[f].sum / acc[f].n).toFixed(4))
+        return { ts: new Date(b).toISOString(), values }
+      })
+      const { rows, nextCursor } = pageSlice(all, cursor, pageSize)
+      return json(res, 200, {
+        data: {
+          rows, nextCursor,
+          fields, interval_s: intervalS,
+          raw_points: rawPts.length,
+          aggregated: intervalS > 0,
+          note: intervalS > 0 ? `raw 1s 拍已按 ${intervalS}s 桶均值聚合(${rawPts.length} raw → ${all.length} 行)` : 'raw 1s 拍(未聚合)',
+        },
+      })
+    }
     // 事件
     if (path === '/api/v1/events') {
       return json(res, 200, { data: { rows: eventsBetween(fromMs, toMs).slice(0, pageSize) } })

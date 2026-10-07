@@ -138,14 +138,14 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
                AVG(value) AS avg, MIN(value) AS min, MAX(value) AS max, COUNT(*) AS cnt
         FROM daq_samples
         WHERE node_id = :id AND ts_ms >= :from AND ts_ms <= :to
-        GROUP BY b_at ORDER BY b_at DESC LIMIT :lim
+        GROUP BY b_at ORDER BY b_at ASC LIMIT :lim
       `).all({ ':id': nodeId, ':from': from, ':to': to, ':lim': limit }) as Array<{ b_at: number, avg: number, min: number, max: number, cnt: number }>
       return rows.map(r => ({ at: Number(r.b_at), avg: r.avg, min: r.min, max: r.max, cnt: Number(r.cnt) }))
     }
     const rows = this.db.prepare(`
       SELECT ts_ms, value, state FROM daq_samples
       WHERE node_id = :id AND ts_ms >= :from AND ts_ms <= :to
-      ORDER BY ts_ms DESC LIMIT :lim
+      ORDER BY ts_ms ASC LIMIT :lim
     `).all({ ':id': nodeId, ':from': from, ':to': to, ':lim': limit }) as Array<{ ts_ms: number, value: number, state: string }>
     return rows.map(r => ({ at: Number(r.ts_ms), value: Number(r.value), state: String(r.state) }))
   }

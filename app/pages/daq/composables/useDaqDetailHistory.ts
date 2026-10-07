@@ -33,8 +33,8 @@ export function useDaqDetailHistory(nodeId: ComputedRef<string>, node: ComputedR
         bucketMs: bucketMs.value || undefined,
         limit: 400,
       })
-      // 接口 DESC 返回 → 图表时间正序
-      historyPoints.value = [...pts].reverse() as ChartRow[]
+      // 时序库契约:时间正序(ASC,queryTagged 同款);图表直接绘制
+      historyPoints.value = pts as ChartRow[]
     }
     finally {
       histLoading.value = false

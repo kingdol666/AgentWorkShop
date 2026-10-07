@@ -115,6 +115,18 @@ V4 配方在册且参数映射正确 → V5 频道绑线/成员/插件生效 →
 回滚:供给失败按 配方→节点→线 逆序删除;频道删除用 `DELETE /api/workshop/channels/:id`。
 量程类失败发生在写入期(四层限界),供给期以 verify 的 V2 断言为联锁证据,不做破坏性回滚。
 
+MES 区间取数契约(多字段+时间段+间隔 API 的 historyMap 接入,2026-10-07 实测定稿):
+
+- 时间段/游标平台注入,不必配进 query:`from`/`to`(ISO)/`pageSize`/`cursor` 由 mes_fetch 按
+  historyMap 自动携带;`query.fields=<本节点字段>` 按节点声明,`valuePath` 写行内路径
+  (如 `values.melt_pressure`)。
+- **分页 API 必须配 `response.nextCursorPath`**,漏配=驱动按"无游标=取完"只取第一页
+  (实测:3h 窗 5000+ 行只回 500)。
+- 调用期参数(如 `interval` 聚合秒)用 `requestHook` 注入:Agent 传 `param.interval`,
+  hook 返回 `{query:{interval:String(param.interval)}}`;内联与异步数据集两模式同样生效。
+- 大窗取数纪律:窗口≤7 天、max_rows≤5000;>2000 行走异步 CSV 数据集(`mes_dataset_read`
+  读统计/分页),行级原文永不进对话。
+
 ## 验收清单
 
 - [ ] 连通性预检全绿(每驱动一条 ✅)

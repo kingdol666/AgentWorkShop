@@ -107,19 +107,22 @@ export class TimescaleAdapter implements TsdbPort {
   async query(nodeId: string, opts: DaqQueryOpts): Promise<TsdbPoint[]> {
     if (!this.pool) return []
     const limit = Math.min(opts.limit ?? 500, 5000)
+    // 时间正序(ASC):与 queryTagged 契约一致 —— 消费方(daq_query 最新/最近序列、
+    // daq_export 游标续页、AML 网格对齐)都按升序假设;窗口超 limit 时截取的是**最旧**段,
+    // 续页游标(lastAt+1)依赖升序才能翻完整窗。
     if (opts.bucketMs && opts.bucketMs >= 100) {
       const { rows } = await this.pool.query(
         `SELECT time_bucket($1::interval, ts) AS bucket,
                 avg(value)::double precision AS avg, min(value) AS min, max(value) AS max, count(*) AS cnt
          FROM daq_samples WHERE node_id = $2 AND ts >= $3 AND ts <= $4
-         GROUP BY bucket ORDER BY bucket DESC LIMIT $5`,
+         GROUP BY bucket ORDER BY bucket ASC LIMIT $5`,
         [`${opts.bucketMs} milliseconds`, nodeId, new Date(opts.fromMs ?? 0).toISOString(), new Date(opts.toMs ?? Date.now()).toISOString(), limit],
       )
       return rows.map(r => ({ at: Date.parse(r.bucket), avg: Number(r.avg), min: Number(r.min), max: Number(r.max), cnt: Number(r.cnt) }))
     }
     const { rows } = await this.pool.query(
       `SELECT ts, value, state FROM daq_samples WHERE node_id = $1 AND ts >= $2 AND ts <= $3
-       ORDER BY ts DESC LIMIT $4`,
+       ORDER BY ts ASC LIMIT $4`,
       [nodeId, new Date(opts.fromMs ?? 0).toISOString(), new Date(opts.toMs ?? Date.now()).toISOString(), limit],
     )
     return rows.map(r => ({ at: tsToMs(r.ts), value: Number(r.value), state: String(r.state) }))
