@@ -1,9 +1,30 @@
 # AgentWorkShop 系统全功能测试 SKILL
 
 > **用途**:读取本文件即可对 AgentWorkShop 执行一套完整的、生产环境真实作业级的功能测试。
-> 适用版本:v0.7.57+(含 2026-10-05 加固批次)。测试脚本资产:`scripts/testing/`(常驻)与 `tmp-e2e/`(实验迭代)。
+> 适用版本:v0.7.57+(含 2026-10-05 加固批次与 2026-10-08 P0 生产化硬化)。测试脚本资产:`scripts/testing/`(常驻)与 `tmp-e2e/`(实验迭代)。
 > **增补**:docs/testing/SKILL-GAP-ADDENDUM.md(L9 加固特性回归 / L10 前后端交互核查 / 全表面矩阵)—— 与本文件同读。
 > 铁律:**测试零系统代码改动**;只允许新增测试脚本与测试数据(频道/任务/绑定用后可留痕)。
+
+---
+
+## ⚡ 一键基准 PIPELINE(首选执行方式;2026-10-08 起与本 skill 同源)
+
+手工分层(L1-L11)适合定位问题;**日常验收/回归直接跑 PIPELINE**,一条命令产出完整 benchmark:
+
+```bash
+node scripts/testing/run-benchmark.mjs                # 全量(S0-S7,约 10-15 分钟,含闭环真实下发)
+node scripts/testing/run-benchmark.mjs --skip S1      # 跳过 API 矩阵(已跑过时)
+node scripts/testing/run-benchmark.mjs --config <path> --out <dir>  # 自定义基准产线/输出
+```
+
+**产物**(`docs/benchmarks/<runId>/`):
+- `report.md` —— 人读基准报告:总分、八阶段断言表、**闭环优化场景全过程时间线**(observation→decision→propose→HITL→dispatch→verify→verdict 逐事件落表)
+- `benchmark.json` —— 机器可读全量结果(断言数组/评分/环境/时长),供 CI/看板消费
+- `timeline.jsonl` —— 闭环过程逐事件流(JSONL,增量落盘,中断也不丢过程)
+
+**阶段覆盖**:S0 环境预检 → S1 API 全表面矩阵(复用 L1 脚本 44 断言)→ S2 多源异构+MES 双模(L11)→ S3 治理负路径(越界/mock 封堵)→ **S4 闭环优化场景(optimize:观测→控制律→五要素提案→HITL 自动裁决→整批下发→三方核验,全程落时间线)** → **S5 稳定微调场景(tuning:小步→频控拦截→窗后回退→复原)** → **S6 数据诊断场景(diagnose:全窗导出→分段统计→规格占比)** → S7 报告生成。
+**基准产线**:配置在 `scripts/testing/benchmark.config.json`(注塑一线 ln-5b12e11a 及频道/节点 id);PIPELINE 不触受保护演示线,写动作全部落配置产线内。
+**闭环场景语义**:已收敛(误差≤0.15g)时做 +1bar 灵敏度激励步并如实记录(基准必须实证下发链路);节拍窗未放行时以「节拍拦截=治理在岗」记正分。
 
 ---
 
@@ -68,10 +89,32 @@ hybrid_twin 频道(模板 chtpl-hybrid-twin-mpc-default 实例化)注入 16 孪�
 ### L8 · UI 实机(browser-use)
 登录(cookie 注入 token)→ 仪表盘数字非零 → 产线运营统一流水(写控/配方/系统事件同屏,可截到「提案→批准→下发」三连)→ 运行时监控 HITL 面 → Agent 工作台频道时间线。截图存 artifacts。
 
+### L11 · 多源异构采集 + MES 双模式(2026-10-08 入册;PIPELINE S2 同源)
+1. **标量镜像**:四协议族节点(modbus-tcp/rtu、opcua、http)2min 窗 samples 有桶。
+2. **向量帧**:壁厚轮廓/MES 剖面节点 `GET /daq/:id/frames` 5min 有帧(数据在 daq_frames 不在 samples——samples 面查不到≠断流)。
+3. **图像帧**:CCD 节点帧 meta 含 objectKey,且**新帧带 sha256+size 完整性指纹**(P0 回归:daq-runtime 信封重建不得丢字段)。
+4. **MES 双模**:镜像路=daq_query(mesMean http 节点);直取路=mes_fetch(dcw mes-rest 节点,15min 窗)。两路独立断言。
+5. GUI 侧:数采中心节点表实时值/形态徽标;注意对象键按 **UTC 取日**(本地日期≠UTC 日期,查文件别查错天目录)。
+
+### L12 · P0 生产化硬化回归(2026-10-08 批次;PIPELINE S3 部分同源)
+| 特性 | 断言方法 |
+|---|---|
+| mock 静默兜底封堵 | create/testDriver 传未知 driver → 显式报错(非静默 mock);显式 'mock' 仍合法 |
+| 失败写不占位 | 不可达 modbus 节点写失败 → node.value 保持 null(不得被幻影指令值占位) |
+| 保写心跳变更点清值 | PATCH driverConfig/lineId/设备绑定后 value→null,心跳停驻至新写成功 |
+| 保写产线门 | 停线后绑线节点心跳挂起(lineActive 门),开线下一拍自恢复 |
+| 对象存储 GC | 伪造过期 UTC 天目录 + DB 无行 → 24h 周期删除;窗内有行必跳过 |
+| 治理窗落盘(P1-5) | 成功写后 dcw-gate-persist.json 有该节点条目;重启窗口延续 |
+| grant 复核并绑线(P1-6) | 撤权后经**绑线频道**的 line_stop/daq_query 必须被 v3 拒(修复前放行缺口) |
+| OOM 自愈(P0-4) | 杀服务子进程 → respawn 日志"自动重启"→ health 30s 内恢复;health.memory 字段在 |
+| Timescale 物理参数 | 两表压缩策略注册(compress_after 1d)+ license=timescale;init 零"物理策略未生效"告警 |
+| UI 路由资源竞态(F1,已知缺陷) | 客户端路由切换后 stylesheets 可能 0~4(裸样式/黑屏),交互或 reload 自愈——回归判据:**功能不丢、可自愈**;修复后应零出现 |
+
 ---
 
 ## 2. 判定与报告格式
-- 每层给 pass/fail 计数 + 证据(审批单 id/任务 id/批次号/曲线数据文件)。
+- 手工分层:每层给 pass/fail 计数 + 证据(审批单 id/任务 id/批次号/曲线数据文件)。
+- **PIPELINE 一键基准(推荐)**:`node scripts/testing/run-benchmark.mjs` → `docs/benchmarks/<runId>/` 下自动产出 report.md + benchmark.json + timeline.jsonl(闭环过程逐事件),作为日常验收/回归的标准产物。
 - 缺陷三问:是否可复现?根因 file:line?是否修复+回归?
 - 报告落 `docs/audit/<date>-<主题>-report.md`,附提交号。
 
