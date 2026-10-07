@@ -28,7 +28,7 @@
 
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.7.56</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST 集成 · 117 个运行时设置项 · 双语文档（简体中文 / English）</sub>
+<sub><b>v0.7.57</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST 集成 · 117 个运行时设置项 · 双语文档（简体中文 / English）</sub>
 
 <br />
 
@@ -170,6 +170,7 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 | **工艺参数语义映射与调控闭环** | Agent 用工程语义思考：`param_control(param, value)` 按**工艺参数**寻址（跨批次/换配方语义稳定），`param_read` 读回 PLC 当前值取证。每次写入被**四层限界**逐层收窄——节点安全量程 ∩ 工艺参数基准限界 ∩ 活动产品限界 ∩ 活动配方工艺窗口——且每次下发自动开一条调控记录，由 `dcw_judge` 落判定（keep / rollback / uncertain），`dcw_rollback` 执行回退。 |
 | **产线运营** | 产线 → 产品 → 配方 → 批次。配方窗口门控采集并联锁写入；每条样本打标 `product/recipe/run`，实现按批次隔离。 |
 | **多形态数采帧管线** | 多点轮廓（测厚仪/扫描仪）与 CCD 图像帧流经模板 sink 管线：向量与元数据入 Timescale（`daq_frames`），像素入对象存储（MinIO，不可达时自动降级到本地磁盘）；派生指标阈值越限走既有告警链路。 |
+| **生产化硬化（v0.7.57）** | 保写心跳生命周期根治——失败写不占位（心跳不再直发幻影指令值）、驱动/连接/产线变更即清值、停线自动挂起保写；mock 静默兜底封堵（未知协议显式报错，插件卸载不再假成功）；帧像素 sha256 完整性指纹 + 对象存储按天 GC（删前 DB 交叉校验防误删）；Timescale 按天 chunk + 列存压缩（TSL）；堆水位监控 + 崩溃/失联/水位三重自动重生；写保持窗与试验节拍落盘（重启不绕频控）；grant 运行时复核并入频道绑线（撤权即失活无死角）。 |
 | **Agent 自查工具** | `line_context`、`ops_log`、`recipe_log`、`recipe_versions`、`dcw_journal`——Agent 清楚自己操控的产线/产品/配方，谁做过什么，每个值怎么变。 |
 
 #### 治理、配置与扩展
@@ -388,7 +389,7 @@ aw update --check                      # 只报告，不安装
 npm install -g agentworkshop@latest    # 手动等效
 ```
 
-版本遵循 semver。每次 `aw start` 都会校验配置根，并把 `home` 之前的旧版 `data/` 布局迁移进来（以最新文件为准），因此数据可以跨版本存活。SQLite schema 迁移在服务端启动时执行。当前版本：**v0.7.56**——见[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)。
+版本遵循 semver。每次 `aw start` 都会校验配置根，并把 `home` 之前的旧版 `data/` 布局迁移进来（以最新文件为准），因此数据可以跨版本存活。SQLite schema 迁移在服务端启动时执行。当前版本：**v0.7.57**——见[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)。
 
 ### 第一次「Agent × 产线」会话（约 2 分钟）
 

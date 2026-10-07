@@ -21,13 +21,16 @@ import { api, login, ok, summary, readConfig, pollUntil } from './lib.mjs'
 const cfg = await readConfig()
 const tok = await login()
 
-// V1 数采落库(滑动窗口:每次轮询重算 now,避免 to=启动时刻冻结导致新样本落窗外)
+// V1 数采落库(滑动窗口:每次轮询重算 now,避免 to=启动时刻冻结导致新样本落窗外)。
+// 多形态节点(向量/图像)数据在 daq_frames 不在 daq_samples:标量面 60s 内无点时回查帧面。
 for (const id of cfg.daq ?? []) {
   try {
     await pollUntil(async () => {
       const now = Date.now()
       const j = await api('GET', `/api/workshop/daq/${id}/samples?from=${now - 90000}&to=${now}&bucketMs=30000`, undefined, tok)
-      return (j.data?.points ?? []).length > 0
+      if ((j.data?.points ?? []).length > 0) return true
+      const f = await api('GET', `/api/workshop/daq/${id}/frames?from=${now - 120000}&to=${now}&limit=1`, undefined, tok).catch(() => null)
+      return (f?.data?.frames ?? f?.data ?? []).length > 0
     }, { timeoutMs: 120000, label: `采样[${id}]` })
     ok(`V1 数采落库[${id}]`, true)
   }

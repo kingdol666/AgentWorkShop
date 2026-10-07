@@ -28,7 +28,7 @@
 
 **[简体中文](./README-zh.md)** · **[Documentation](https://kingdol666.github.io/AgentWorkShop)** · **[Releases](https://github.com/kingdol666/AgentWorkShop/releases)** · **[Changelog](./changelog.md)** · **[Plugin API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.7.56</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST integration · 117 runtime settings · bilingual docs (简体中文 / English)</sub>
+<sub><b>v0.7.57</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST integration · 117 runtime settings · bilingual docs (简体中文 / English)</sub>
 
 <br />
 
@@ -171,6 +171,7 @@ Recorded against a running instance: real DAQ history, real write control, real 
 | **Semantic parameter mapping & tuning loop** | Agents reason in engineering semantics: `param_control(param, value)` addresses a **process parameter** (stable across batches and recipe swaps) instead of a raw node, and `param_read` reads back the PLC value for evidence. Every write is narrowed by a **four-layer bound** — node safe range ∩ parameter baseline bounds ∩ active product bounds ∩ active recipe window — and each adjustment opens a tuning record that `dcw_judge` must close (keep / rollback / uncertain), with `dcw_rollback` executing the undo. |
 | **Line operations** | Lines → products → recipes → batch runs. Recipe windows gate acquisition and interlock writes; every sample is tagged `product/recipe/run` for per-batch isolation. |
 | **Multi-modal DAQ frame pipeline** | Multi-point profiles (thickness/scanner) and CCD image frames flow through template sink pipelines: vectors & metadata into Timescale (`daq_frames`), pixels into object storage (MinIO, auto disk fallback); derived-metric thresholds ride the existing alarm chain. |
+| **Production hardening (v0.7.57)** | Hold-heartbeat lifecycle fixed — failed writes never occupy the setpoint (no phantom re-dispatch), driver/connection/line changes clear the value, line stop suspends hold automatically; silent mock fallback blocked (unknown protocols fail loudly, plugin unload can't fake success); frame pixel sha256 fingerprints + day-directory object GC (DB cross-check before delete); Timescale daily chunks + columnstore compression (TSL); heap-watermark watch with crash/liveness/watermark auto-respawn; write-hold windows & trial cadence persisted across restarts; runtime grant re-checks include the channel-bound line (revocation takes effect everywhere). |
 | **Agent self-audit tools** | `line_context`, `ops_log`, `recipe_log`, `recipe_versions`, `dcw_journal` — agents see exactly which line/product/recipe they control, who did what, and how every value changed. |
 
 #### Governance, configuration & extension
@@ -379,7 +380,7 @@ aw update --check                      # only report; nothing is installed
 npm install -g agentworkshop@latest    # manual equivalent
 ```
 
-Releases follow semver. `aw start` verifies the config root on every launch and migrates the legacy pre-`home` `data/` layout into it (newest file wins), so data survives upgrades. SQLite schema migrations run server-side at boot. Current version: **v0.7.56** — see [Releases](https://github.com/kingdol666/AgentWorkShop/releases).
+Releases follow semver. `aw start` verifies the config root on every launch and migrates the legacy pre-`home` `data/` layout into it (newest file wins), so data survives upgrades. SQLite schema migrations run server-side at boot. Current version: **v0.7.57** — see [Releases](https://github.com/kingdol666/AgentWorkShop/releases).
 
 ### Your first agent × line session (~2 minutes)
 

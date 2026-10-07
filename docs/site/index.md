@@ -73,7 +73,7 @@ footer:
         14 个 harness(<code>agents/registry.ts</code>) / 117 个设置项分 18 组(<code>aw config list</code>) / 7 态任务机。
       </p>
       <div class="aw-statusbar">
-        <span>版本 <i>v0.7.56</i></span>
+        <span>版本 <i>v0.7.57</i></span>
         <span>许可 <i>PolyForm Noncommercial 1.0.0</i></span>
         <span>运行时 <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>文档 <i>简体中文 / English</i></span>
@@ -313,6 +313,7 @@ footer:
       <div class="hw-f"><span class="tag">CHAT</span><h3>Channel 群聊作业</h3><p>成员请求升级为可追踪作业而非一条会丢的消息;原生 HITL(omp ask → 审批 → 回执),成员权限与通知一等公民。</p></div>
       <div class="hw-f"><span class="tag">SCHED</span><h3>定时任务</h3><p>interval / daily 双模式挂任意 Channel 任务——逐次运行历史、忙等守卫、连续失败熔断,巡线无人值守。</p></div>
       <div class="hw-f"><span class="tag">QOS</span><h3>根任务队列与租约</h3><p>FIFO 根队列带可见排队位次;排队等待不消耗执行预算,lead 救援扫自动复活失活入场;派发代 + 执行租约围栏丢弃迟到事件;监督看门狗区分卡死与慢。</p></div>
+      <div class="hw-f"><span class="tag">PROD</span><h3>生产化硬化(v0.7.57)</h3><p>保写心跳生命周期治理(失败写不占位 · 变更点清值 · 产线活动门);mock 静默兜底封堵;帧像素 sha256 指纹 + 对象存储按天 GC(删前 DB 交叉校验);Timescale 按天 chunk + 列存压缩;堆水位监控 + 子进程自动重生;治理窗落盘;grant 复核并入频道绑线。</p></div>
     </div>
   </section>
 
