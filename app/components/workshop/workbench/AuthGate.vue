@@ -13,6 +13,8 @@ defineProps<{
   loading: boolean
   /** 系统尚无管理员:切换为"注册管理员"文案并隐藏登录/Token 页签 */
   needsSetup: boolean
+  /** 自助注册闸门(security.allowRegistration=false 且首管理员就位 → false = 隐藏注册页签);缺省 true 兼容既有页面 */
+  allowRegister?: boolean
 }>()
 
 /** 注意:必须把 defineEmits 的返回值赋给 emit —— 模板里的 `emit(...)` 才解析得到(setup 绑定) */
@@ -84,6 +86,7 @@ const onTabChange = (key: string | number): void => {
           </a-space>
         </a-tab-pane>
         <a-tab-pane
+          v-if="needsSetup || allowRegister !== false"
           key="register"
           :tab="needsSetup ? $t('wsHome.tabRegAdmin') : $t('wsHome.tabRegUser')"
         >

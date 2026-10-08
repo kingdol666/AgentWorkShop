@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import type { MenuProps } from 'ant-design-vue'
 import { useUserStore } from '@/app/stores/workshop/user'
+import { useAuthUiStore } from '@/app/stores/workshop/auth-ui'
 
 const { t } = useI18n()
 const userStore = useUserStore()
+const authUi = useAuthUiStore()
 
 // 用户铭牌:真实身份(workshop 用户系统;未登录 = 访客)
 const userInitial = computed(() => (userStore.user?.name ?? '?').trim().charAt(0).toUpperCase())
@@ -19,10 +21,15 @@ interface AvatarMenuEntry {
 }
 
 const avatarItems = computed<AvatarMenuEntry[]>(() => {
-  const items: AvatarMenuEntry[] = [
+  const items: AvatarMenuEntry[] = []
+  // 访客首项 = 登录(F2 修复:主壳此前无任何登录入口)
+  if (!userStore.isLoggedIn) {
+    items.push({ key: 'login', icon: 'i-tabler-login', label: t('header.login') })
+  }
+  items.push(
     { key: 'tokens', icon: 'i-tabler-key', label: t('menu.tokens') },
     { key: 'settings', icon: 'i-tabler-adjustments', label: t('menu.settings') },
-  ]
+  )
   if (userStore.isLoggedIn) {
     items.push({ key: 'd-logout', label: '', divider: true })
     items.push({ key: 'logout', icon: 'i-tabler-logout', label: t('header.logout'), danger: true })
@@ -31,7 +38,10 @@ const avatarItems = computed<AvatarMenuEntry[]>(() => {
 })
 
 const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
-  if (key === 'settings') {
+  if (key === 'login') {
+    authUi.openLogin('manual')
+  }
+  else if (key === 'settings') {
     navigateTo('/settings')
   }
   else if (key === 'tokens') {
@@ -39,7 +49,8 @@ const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
   }
   else if (key === 'logout') {
     await userStore.logout()
-    navigateTo('/workshop')
+    // 登出后留在当前页并弹出登录门(匿名态数据已隔离为 0,顺手给出进门通道)
+    authUi.openLogin('anonymous')
   }
 }
 </script>

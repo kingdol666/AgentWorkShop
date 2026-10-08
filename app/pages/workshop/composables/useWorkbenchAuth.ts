@@ -29,12 +29,17 @@ export function useWorkbenchAuth() {
 
   // 首启初始化:系统尚无管理员 → 登录门切换为"注册管理员"模式(首个注册账号自动成为 admin)
   const needsSetup = ref(false)
+  /** 自助注册闸门(security.allowRegistration=false 且首管理员就位 → 隐藏注册页签) */
+  const allowRegister = ref(true)
   onMounted(async () => {
     try {
-      const res = await narrowFetch<{ code: number, data?: { needsSetup: boolean } }>('/api/users/setup-status')
-      if (res.code === 0 && res.data?.needsSetup) {
-        needsSetup.value = true
-        authTab.value = 'register'
+      const res = await narrowFetch<{ code: number, data?: { needsSetup: boolean, allowRegistration?: boolean } }>('/api/users/setup-status')
+      if (res.code === 0 && res.data) {
+        if (res.data.needsSetup) {
+          needsSetup.value = true
+          authTab.value = 'register'
+        }
+        if (res.data.allowRegistration === false) allowRegister.value = false
       }
     }
     catch { /* 探测失败按常规登录门呈现 */ }
@@ -117,6 +122,7 @@ export function useWorkbenchAuth() {
     authTokenInput,
     authLoading,
     needsSetup,
+    allowRegister,
     doRegister,
     doLogin,
     doLoginWithToken,

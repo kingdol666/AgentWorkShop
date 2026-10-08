@@ -48,6 +48,9 @@ export type DaqFrameSample = {
       /** 驱动侧通常未设;controller 落对象存储后回填引用(队列信封只传引用) */
       objectKey?: string
       thumbKey?: string
+      /** 像素完整性指纹(P0-2;生产侧信封携带,驱动侧通常未设) */
+      sha256?: string
+      size?: number
     }
 }
 

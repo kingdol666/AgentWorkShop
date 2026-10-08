@@ -6,6 +6,7 @@ import axios, {
 } from 'axios'
 import { message } from 'ant-design-vue'
 import { useUserStore } from '~/stores/workshop/user'
+import { useAuthUiStore } from '~/stores/workshop/auth-ui'
 
 const g = globalThis as typeof globalThis & { __awShown401?: boolean }
 
@@ -58,6 +59,11 @@ export default defineNuxtPlugin((nuxtApp) => {
             g.__awShown401 = false
           }, 3000)
         }
+        // F2 修复:401 不再只弹 toast —— 弹出全局登录对话框给出进门通道
+        try {
+          if (import.meta.client) useAuthUiStore(nuxtApp.$pinia).openLogin('expired')
+        }
+        catch { /* 无 pinia 上下文(极端时序) */ }
       }
       else if (status >= 500) {
         if (import.meta.client) message.error('服务器异常，请稍后重试')

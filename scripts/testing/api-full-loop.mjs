@@ -138,6 +138,13 @@ const memSearch = await api('POST', '/api/workshop/channels/06e6880e-7f6a-4d86-9
 const msArr = memSearch.data?.items ?? memSearch.data?.results ?? memSearch.data ?? []
 ok('memory:语义检索(断流)', Array.isArray(msArr) && msArr.length > 0, `hits=${Array.isArray(msArr) ? msArr.length : JSON.stringify(memSearch.data).slice(0, 60)}`)
 
+// ---------- ⑩.5 登录防爆破锁定(负向;IP+邮箱滑窗,阈值 5 次/15min) ----------
+// 用一次性不存在邮箱(不触任何真实账号;admin 不受影响);连续 5 次错密 → 第 6 次 429 LOGIN_LOCKED
+const lockEmail = `lock-${suffix}@t.local`
+for (let i = 0; i < 5; i++) await api('POST', '/api/users/login', { email: lockEmail, password: 'wrong-pass' })
+const lock6 = await api('POST', '/api/users/login', { email: lockEmail, password: 'wrong-pass' })
+ok('auth:防爆破锁定(5 次失败后 429)', lock6.code === 429 || lock6.code === 'LOGIN_LOCKED', `code=${lock6.code} ${String(lock6.message ?? '').slice(0, 60)}`)
+
 // ---------- ⑪ 测试数据清理(删测试频道与用户;不触产线) ----------
 const del = await api('DELETE', `/api/workshop/channels/${chId}`, undefined, ADM)
 ok('cleanup:删测试频道', del.code === 0 || del.code === undefined, del.message ?? '')

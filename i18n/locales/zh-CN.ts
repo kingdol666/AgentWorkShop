@@ -53,6 +53,8 @@ export default {
     notifications: '通知',
     profile: '个人中心',
     guest: '访客',
+    login: '登录',
+    guestBanner: '以访客身份浏览:登录后可查看与操作您的产线',
     logout: '退出登录',
     trail: '航迹导航(点击返回对应页面)',
     workspace: '工作台',

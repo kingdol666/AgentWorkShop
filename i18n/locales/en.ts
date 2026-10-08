@@ -53,6 +53,8 @@ export default {
     notifications: 'Notifications',
     profile: 'Profile',
     guest: 'Guest',
+    login: 'Sign in',
+    guestBanner: 'Browsing as guest — sign in to view and operate your production lines',
     logout: 'Log out',
     trail: 'Route trail (click to return)',
     workspace: 'Workspace',

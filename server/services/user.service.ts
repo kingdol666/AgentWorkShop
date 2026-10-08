@@ -4,6 +4,7 @@ import type { UserCreate, UserUpdate, UserLogin, UserRegister } from '../schemas
 import { AppError, ErrorCodes } from '../utils/errors'
 import { useServerConfig } from '../utils/config'
 import { randomBytes } from 'node:crypto'
+import { recordOps } from './workshop/ops/ops'
 /**
  * 用户业务逻辑层（Service）
  * 职责：领域规则、认证（注册/登录/token 签发）、token 隔离（仅本人可 CRUD）、
@@ -123,6 +124,11 @@ export const userService = {
     // 已达阈值且窗口未过 → 锁定;偶发失败(1-4 次)不锁,窗口滑过即重置
     if (rec && rec.count >= LOCK_THRESHOLD && Date.now() - rec.firstAt < FAIL_WINDOW_MS) {
       const waitMin = Math.ceil((FAIL_WINDOW_MS - (Date.now() - rec.firstAt)) / 60_000)
+      recordOps({
+        actor: input.email, actorName: input.email, actorKind: 'user',
+        action: 'auth.login.locked', kind: 'system', targetKind: 'user', targetId: input.email,
+        summary: `登录锁定:账号 ${input.email} 连续失败过多,已临时锁定(约 ${waitMin} 分钟,来源 IP ${opts.ip ?? 'local'})`,
+      })
       throw new AppError(429, 'LOGIN_LOCKED', `失败次数过多,账号已临时锁定,请约 ${waitMin} 分钟后再试`)
     }
     const { id, hash } = userRepository.getPasswordHash(input.email) ?? {}
@@ -140,6 +146,11 @@ export const userService = {
     }
     fails.delete(lockKey)
     const { raw } = userRepository.createToken(id, `session-${Date.now()}`)
+    recordOps({
+      actor: id, actorName: user.name, actorKind: 'user',
+      action: 'auth.login', kind: 'system', targetKind: 'user', targetId: id,
+      summary: `用户 ${user.name}(${user.email})登录成功(IP ${opts.ip ?? 'local'})`,
+    })
     return { user: this.publicProfile(user), token: raw }
   },
 

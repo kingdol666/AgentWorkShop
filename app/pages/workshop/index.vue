@@ -34,6 +34,7 @@ const {
   authTokenInput,
   authLoading,
   needsSetup,
+  allowRegister,
   doRegister,
   doLogin,
   doLoginWithToken,
@@ -61,6 +62,7 @@ useHead({ title: () => t('titles.workshop') })
       v-model:token-input="authTokenInput"
       :loading="authLoading"
       :needs-setup="needsSetup"
+      :allow-register="allowRegister"
       @register="doRegister"
       @login="doLogin"
       @login-with-token="doLoginWithToken"
