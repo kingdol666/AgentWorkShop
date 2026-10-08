@@ -299,6 +299,7 @@ export default {
       },
       security: {
         hitlTimeoutMs: 'HITL 审批超时(ms)',
+        hitlTimeoutMode: 'HITL 超时语义',
         approvalGate: '高危操作双人复核',
         allowRegistration: '开放自助注册',
         hstsEnabled: '下发 HSTS 头',

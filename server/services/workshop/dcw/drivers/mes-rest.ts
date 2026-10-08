@@ -536,7 +536,7 @@ export const mesRestDcwDriver: DcwWriteDriver = {
         catch (hookErr) {
           // 配置期错误(代码超长 400)原样上抛;运行期失败(hook 抛错/超时/形状不对)收敛 ok=false
           if (hookErr instanceof AppError && hookErr.status === 400) throw hookErr
-          return { ok: false, message: `writeHook 执行失败:${hookErr instanceof Error ? hookErr.message : String(hookErr)}`, raw: null, readback: null }
+          return { ok: false, message: `writeHook 执行失败:${hookErr instanceof Error ? hookErr.message : String(hookErr)}`, raw: null, readback: null, ack: 'unverified' }
         }
       }
       const method = hookReq?.method ?? map.method
@@ -549,7 +549,7 @@ export const mesRestDcwDriver: DcwWriteDriver = {
         : renderBodyTemplate(map.bodyTemplate ?? { value: '{{value}}' }, input.eng)
       const { status, json } = await mesRequest(cfg, { method, path, query: qs, headers, body })
       if (!map.successOn.includes(status)) {
-        return { ok: false, message: classifyHttpFail(status), raw: null, readback: null }
+        return { ok: false, message: classifyHttpFail(status), raw: null, readback: null, ack: 'unverified' }
       }
       // writeCheckHook(可选,用户自写):对 MES 响应 data 做二次校验(回读之外的业务正确性判定;
       // 如 applied 字段必须等于本次设定)。ok=false → 写失败(诚实语义,不静默吞)。
@@ -579,7 +579,10 @@ export const mesRestDcwDriver: DcwWriteDriver = {
       }
       return {
         ok: true,
-        message: `MES 写入受理(HTTP ${status}${ackPath ? ',ack 已确认' : ''});无回读映射,以 MES ack 为准`,
+        // MES 业务 ack(HTTP+ackPath)只是**应用层受理**,设备/工位侧未回读证实 → transport-ack,
+        // 交写后验证器经 readMap/readNow 补验;有回读映射时 readbackAck 已给 readback-verified。
+        ack: 'transport-ack',
+        message: `MES 写入受理(HTTP ${status}${ackPath ? ',ack 已确认' : ''});无回读映射,以 MES ack 为准(设备侧待验证)`,
         raw: input.eng,
         readback: null,
       }
@@ -587,7 +590,7 @@ export const mesRestDcwDriver: DcwWriteDriver = {
     catch (err) {
       // 配置类错误(坏映射/协议/内网)原样上抛,网关会收敛为写失败;运行时错误收敛为 ok=false
       if (err instanceof AppError) throw err
-      return { ok: false, message: `MES 写入失败:${err instanceof Error ? err.message : String(err)}`, raw: null, readback: null }
+      return { ok: false, message: `MES 写入失败:${err instanceof Error ? err.message : String(err)}`, raw: null, readback: null, ack: 'unverified' }
     }
   },
 

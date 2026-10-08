@@ -6,7 +6,7 @@
  * 选项列表按当前口径过滤(与结果表同一套归属维度语义,取自 useLogsScope)。
  */
 import { computed } from 'vue'
-import { LOG_KINDS } from '@/app/pages/logs/composables/useLogsQuery'
+import { LOG_KINDS, LOG_LEVELS } from '@/app/pages/logs/composables/useLogsQuery'
 import { useLogsScope } from '@/app/pages/logs/composables/useLogsScope'
 
 defineProps<{
@@ -26,6 +26,7 @@ const productId = defineModel<string>('productId', { required: true })
 const recipeId = defineModel<string>('recipeId', { required: true })
 const actorKind = defineModel<string>('actorKind', { required: true })
 const kind = defineModel<string>('kind', { required: true })
+const level = defineModel<string>('level', { required: true })
 const text = defineModel<string>('text', { required: true })
 
 const { lines, productsOfLine, recipesOfScope } = useLogsScope()
@@ -139,6 +140,24 @@ function onProductChange(): void {
           :value="k"
         >
           {{ $t(`logs.kind.${k}`) }}
+        </option>
+      </select>
+    </label>
+    <label class="flt">
+      <span>严重级</span>
+      <select
+        v-model="level"
+        class="inp-sel"
+      >
+        <option value="">
+          {{ $t('logs.all') }}
+        </option>
+        <option
+          v-for="lv in LOG_LEVELS"
+          :key="lv"
+          :value="lv"
+        >
+          {{ lv === 'error' ? '⛔ error(失败)' : lv === 'warn' ? '⚠️ warn(未证实)' : 'info' }}
         </option>
       </select>
     </label>

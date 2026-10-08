@@ -50,6 +50,8 @@ export interface DcwWriteHistoryEntry {
   eng: number
   raw: number | null
   ok: boolean
+  /** 写 ACK 鉴定等级(2026-10-08;历史行缺省=旧口径未分级) */
+  ack?: 'readback-verified' | 'transport-ack' | 'unverified'
   message: string
   recipeRunId: string | null
   at: string

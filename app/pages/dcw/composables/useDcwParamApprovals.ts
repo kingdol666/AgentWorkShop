@@ -58,9 +58,11 @@ export function useDcwParamApprovals(scope: ReturnType<typeof useDcwDetailScope>
     return dcw.nodeById(a.nodeId)?.name ?? a.nodeId.slice(0, 8)
   }
 
-  /** 剩余秒数(读取 nowMs 心跳;超时默认不同意) */
+  /** 剩余秒数(读取 nowMs 心跳;超时默认不同意;hold 模式/无到期 = Infinity 永不限时) */
   function approvalRemainingSec(a: DcwApprovalRow): number {
-    return Math.max(0, Math.ceil((Date.parse(a.expiresAt) - nowMs.value) / 1000))
+    const at = Date.parse(a.expiresAt)
+    if (!Number.isFinite(at)) return Number.POSITIVE_INFINITY
+    return Math.max(0, Math.ceil((at - nowMs.value) / 1000))
   }
 
   async function load(): Promise<void> {

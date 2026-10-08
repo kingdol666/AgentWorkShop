@@ -13,7 +13,7 @@
 export { DCW_TEMPLATE_ICONS, DCW_TEMPLATES, dcwTemplateByKey, dcwKeyFromRef, DCW_DRIVERS } from './catalog'
 export type { DcwTemplateDef, DcwTemplateIcon, DcwTemplateInput, DcwDriverKind, DcwScaleConfig, DcwDriverMeta } from './catalog'
 export { DCW_LINE_COLORS, dcwLineColorFor } from './line'
-export type { LineView, LineInput, DcwNodeState, DcwNodeView, AepDcwWritten, AepDcwNodeChange, AepDcwRead, AepDcwControllerState } from './line'
+export type { LineView, LineInput, DcwNodeState, DcwNodeView, AepDcwWritten, AepDcwNodeChange, AepDcwRead, AepDcwControllerState, WriteAckLevel, WriteVerifyOutcome } from './line'
 export type { ParamLimitRange, ParamConversion, ParamAccessSpec, DcwParamView, DcwParamInput, ParamLimitLayer, ParamLimitsBreakdown, ProductView, ProductInput, RecipeDaqWindow, RecipeParam, RecipeView, RecipeInput, RecipeRunView, LineRunState, RecipeRunData, LineQueryOpts, LineQueryResult } from './recipe'
 export type { DcwWriteSource, DcwWriteMeta, DcwJournalAnchor, OptimizationChannelMetrics, OptimizationMetrics, OptimizationStatus, OptimizationVerdict, OptimizationJudge, OptimizationRecord, DcwParamLedger, AepDcwOptimizationChange } from './closed-loop'
 export { applyTransform, inverseTransform, normalizeDataTransform, type DataTransform } from './catalog'

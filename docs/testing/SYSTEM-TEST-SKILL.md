@@ -110,6 +110,24 @@ hybrid_twin 频道(模板 chtpl-hybrid-twin-mpc-default 实例化)注入 16 孪�
 | Timescale 物理参数 | 两表压缩策略注册(compress_after 1d)+ license=timescale;init 零"物理策略未生效"告警 |
 | UI 路由资源竞态(F1,已知缺陷) | 客户端路由切换后 stylesheets 可能 0~4(裸样式/黑屏),交互或 reload 自愈——回归判据:**功能不丢、可自愈**;修复后应零出现 |
 
+### L13 · 写控 ACK 鉴定 + HITL 手动总闸(2026-10-08 生产化;专项 e2e 同源)
+专项脚本:`node tmp-e2e/hardening-ack-gate.mjs`(七腿 34 断言,自建资源用后清理)。
+| 特性 | 断言方法 |
+|---|---|
+| ACK 三级语义 | modbus/opcua 驱动回读一致 → ack=readback-verified;mqtt QoS puback → transport-ack;发布失败 → unverified |
+| 写后验证器 | mock 写(transport-ack)→ readNow 独立回读容差内 → 升级 verified(attempts≥1);mqtt 无读通道 → 3 次后 unverified 不虚报 |
+| 批次三段汇总 | run.ackSummary = {verified, unverified, failed, total};results 行带 ack/verify |
+| 判定落账 | applyRecipe 后 ops_log 有 recipe.dispatch.ack:failed≥1→level=error;仅 unverified→warn;全证实→info |
+| 线域定向告警 | error/warn 时 operate 授权用户收到通知(notification hitl_request) |
+| 未证实=响亮失败 | recipe_propose/apply/trial/rollback 回执:有 unverified/failed 一律 isError=true + 逐参数 [未证实⚠]/[证实✓] 标注 |
+| 线级总闸缺省 | 新建线 controlMode=manual;存量线读侧归一 manual(fail-safe) |
+| confirm 守卫 | PATCH controlMode:'auto' 无 confirm → 400 MODE_CONFIRM_REQUIRED;confirm:true → 放行;auto→manual 自由 |
+| 总闸拦截 | manual 线内 auto 绑定 recipe_apply/propose/update/trial/rollback 一律挂审批卡(不执行);批准=执行,拒绝=意见逐字回流 |
+| 定向触达 | 审批卡创建/50%+85% 升级提醒/hold 催办 → 该线 operate 用户收到 hitl_request(与频道通知同 eventId 幂等去重) |
+| hold 模式 | security.hitl_timeout_mode=hold:审批卡 expiresAt 空、不自动拒、5min 周期催办;人工批准后正常执行;回合终止仍收敛拒绝 |
+| 断言布点 | api-full-loop ⑥b 段 9 断言(ackSummary/ack 字段/dispatch.ack 落账/controlMode 守卫);PIPELINE S0 总闸自适应 + S4 设备证实断言 |
+| 设置面 | shared/config/schema.json 键 security.hitl_timeout_mode(reject|hold,live 热生效;缺 reject) |
+
 ---
 
 ## 2. 判定与报告格式

@@ -58,7 +58,7 @@ export const modbusRtuDcwDriver: DcwWriteDriver = {
     }
     catch (err) {
       if (err instanceof AppError) throw err
-      return { ok: false, message: `Modbus RTU 写入失败: ${classifyCommError(err)}`, raw: null, readback: null }
+      return { ok: false, message: `Modbus RTU 写入失败: ${classifyCommError(err)}`, raw: null, readback: null, ack: 'unverified' }
     }
   },
   async read(input) {

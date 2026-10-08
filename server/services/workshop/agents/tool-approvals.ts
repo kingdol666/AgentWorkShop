@@ -8,9 +8,11 @@
 
 import { randomUUID } from 'node:crypto'
 import { getOps } from '../ops/ops'
-import { securityHitlTimeoutMs } from '../settings'
+import { securityHitlTimeoutMode, securityHitlTimeoutMs } from '../settings'
 import { getHitlRegistry } from './hitl-registry'
 import { sendHitlNote } from '../runtime/platform-notice'
+import { notifyLineOperators } from '../runtime/line-notify'
+import { getDcwController } from '../dcw/dcw-controller'
 import { recordRecipeOpAnchor } from '../dcw/recipe-op-anchor'
 
 export interface ToolApproval {
@@ -51,9 +53,12 @@ class ToolApprovalService {
   private pending = new Map<string, {
     approval: ToolApproval
     resolve: (r: ToolApprovalDecision) => void
-    timer: NodeJS.Timeout
-    /** 未读升级提醒 timers(50%/85% TTL;decide/超时统一清理) */
+    /** 自动拒绝 timer(reject 模式;hold 模式无 → 不自动拒,仅周期催办) */
+    timer?: NodeJS.Timeout
+    /** 未读升级提醒 timers(50%/85% TTL;decide/超时统一清理;hold 模式为周期催办) */
     remindTimers: NodeJS.Timeout[]
+    /** 审批单归属产线(线域定向通知用;可空 = 推导不出) */
+    lineId?: string
   }>()
 
   private history: ToolApproval[] = []
@@ -64,7 +69,10 @@ class ToolApprovalService {
    *  opts.payload 携带结构化审批载荷(随 pending/history 落库,前端渲染结构化审批卡)。
    *  不传 opts 的既有调用(param_control/manual-approval/recipe 门)行为不变。 */
   request(agentId: string, nodeId: string, kind: 'dcw' | 'daq', detail: string, opts?: { title?: string, timeoutMs?: number, payload?: unknown }): Promise<ToolApprovalDecision> {
-    const timeoutMs = opts?.timeoutMs ?? TIMEOUT_MS()
+    // hold 模式(手动生产语义):审批不自动拒、周期催办;显式传 timeoutMs 的调用方
+    // (整包方案 30min)同样被 hold 覆盖 —— 真人在环时"等人"优先于"限时"。
+    const hold = securityHitlTimeoutMode() === 'hold'
+    const timeoutMs = hold ? 0 : (opts?.timeoutMs ?? TIMEOUT_MS())
     const approval: ToolApproval = {
       id: `ap-${randomUUID().slice(0, 8)}`,
       agentId,
@@ -73,7 +81,7 @@ class ToolApprovalService {
       detail,
       ...(opts?.payload !== undefined ? { payload: opts.payload } : {}),
       createdAt: new Date().toISOString(),
-      expiresAt: new Date(Date.now() + timeoutMs).toISOString(),
+      expiresAt: timeoutMs > 0 ? new Date(Date.now() + timeoutMs).toISOString() : '',
       status: 'pending',
       comment: '',
       choice: null,
@@ -82,7 +90,7 @@ class ToolApprovalService {
       decidedName: '',
     }
     // 全局 HITL 待办登记(channelId/agentName 由插件注入的 resolver 补全;
-    // expiresAt 与审批超时窗同源,前端可显示倒计时)
+    // expiresAt 与审批超时窗同源,前端可显示倒计时;hold 模式为空 = 等待中)
     getHitlRegistry().register({
       kind: 'dcw-approval',
       id: approval.id,
@@ -90,13 +98,57 @@ class ToolApprovalService {
       title: opts?.title ?? `${approval.kind.toUpperCase()} 下发审批`,
       detail: approval.detail,
       createdAt: approval.createdAt,
-      expiresAt: approval.expiresAt,
+      expiresAt: approval.expiresAt || null,
       nodeId: approval.nodeId,
     })
     // 出生即留痕:审批单落 approval_history(status=pending)。此前只在裁决/超时时落库,
     // 重启后遗留的 pending 单在历史里"查无此单"——对账把 HITL 面标 failed,历史面却无迹可查。
     this.remember(approval)
+    // 线域定向触达(生产化 2026-10-08):按审批锚点推导产线,通知该线 operate 授权用户
+    // (他们不一定在 Agent 频道里);eventId 与 hitl-registry 频道通知同键,(recipient,eventId)
+    // 唯一键幂等去重,重叠接收人不重复打扰。
+    const lineId = this.lineIdOf(nodeId)
+    if (lineId) {
+      notifyLineOperators(lineId, {
+        eventId: `hitl_request:dcw-approval:${approval.id}`,
+        title: opts?.title ?? `${approval.kind.toUpperCase()} 下发审批`,
+        body: detail,
+        hitlKind: 'dcw-approval',
+        hitlId: approval.id,
+        payload: { requestType: 'approval', harness: 'dcw', agentId, approvalId: approval.id, lineId },
+      })
+    }
     return new Promise((resolve) => {
+      if (hold) {
+        // hold:无自动拒绝 timer;每 5 分钟催办一次(线域定向 + 频道通告),直至人工裁决
+        const escalated = new Set<number>()
+        const REMIND_EVERY_MS = 5 * 60_000
+        const remind = () => {
+          if (!this.pending.has(approval.id)) return
+          const tick = Math.floor((Date.now() - Date.parse(approval.createdAt)) / REMIND_EVERY_MS)
+          if (tick > 0 && !escalated.has(tick)) {
+            escalated.add(tick)
+            const summary = `${approval.kind.toUpperCase()} 审批 ${approval.id}(${opts?.title ?? approval.nodeId})仍待人工裁决(hold 模式不自动拒绝)。请尽快在审批面板处置。`
+            try {
+              sendHitlNote({ agentId: approval.agentId, title: '⏰ 审批催办(hold 模式)', summary })
+            }
+            catch { /* 通知失败不影响审批主流程 */ }
+            if (lineId) {
+              notifyLineOperators(lineId, {
+                eventId: `hitl_escalate:dcw-approval:${approval.id}:${tick}`,
+                title: '⏰ 审批催办(hold 模式)',
+                body: summary,
+                hitlKind: 'dcw-approval',
+                hitlId: approval.id,
+              })
+            }
+          }
+        }
+        const remindTimer = setInterval(remind, REMIND_EVERY_MS)
+        remindTimer.unref?.()
+        this.pending.set(approval.id, { approval, resolve, remindTimers: [remindTimer], ...(lineId ? { lineId } : {}) })
+        return
+      }
       // 未读升级(2026-10-05 评审):此前超时=静默 approved:false —— 「人没看到→自动拒绝」。
       // 50%/85% TTL 各发一次升级提醒(复用 HITL 通知面);超时语义不软化,仍 fail-closed。
       const escalated = new Set<number>()
@@ -104,14 +156,24 @@ class ToolApprovalService {
         const t = setTimeout(() => {
           if (!this.pending.has(approval.id) || escalated.has(frac)) return
           escalated.add(frac)
+          const summary = `${approval.kind.toUpperCase()} 审批 ${approval.id}(${opts?.title ?? approval.nodeId})尚未裁决;${Math.round((1 - frac) * 100)}% 时限后默认拒绝(指令不执行)。请立即在频道提醒人工,或准备按拒绝口径修订方案。`
           try {
             sendHitlNote({
               agentId: approval.agentId,
               title: `⏰ 审批即将超时(${Math.round(frac * 100)}% 时限)—— 请向频道催办`,
-              summary: `${approval.kind.toUpperCase()} 审批 ${approval.id}(${opts?.title ?? approval.nodeId})尚未裁决;${Math.round((1 - frac) * 100)}% 时限后默认拒绝(指令不执行)。请立即在频道提醒人工,或准备按拒绝口径修订方案。`,
+              summary,
             })
           }
           catch { /* 通知失败不影响审批主流程 */ }
+          if (lineId) {
+            notifyLineOperators(lineId, {
+              eventId: `hitl_escalate:dcw-approval:${approval.id}:${frac}`,
+              title: `⏰ 审批即将超时(${Math.round(frac * 100)}% 时限)`,
+              body: summary,
+              hitlKind: 'dcw-approval',
+              hitlId: approval.id,
+            })
+          }
         }, Math.round(timeoutMs * frac))
         t.unref?.()
         return t
@@ -134,8 +196,23 @@ class ToolApprovalService {
         // 幂等重复 request:清掉旧提醒(原实现同样覆盖 timer)
         prevEntry.remindTimers?.forEach(clearTimeout)
       }
-      this.pending.set(approval.id, { approval, resolve, timer, remindTimers })
+      this.pending.set(approval.id, { approval, resolve, timer, remindTimers, ...(lineId ? { lineId } : {}) })
     })
+  }
+
+  /** 审批锚点 → 产线 id(节点 id 直查;recipe:/recipe-propose: 前缀查配方产线) */
+  private lineIdOf(nodeId: string): string {
+    const m = /^(?:recipe|recipe-propose):(.+)$/.exec(nodeId)
+    try {
+      if (m) {
+        const recipe = getDcwController().listRecipes().find(r => r.id === m[1])
+        return recipe?.lineId ?? ''
+      }
+      return getDcwController().byId(nodeId)?.lineId ?? ''
+    }
+    catch {
+      return ''
+    }
   }
 
   /** 裁决一次挂起审批;choice = 多方案选定包下标(可选;仅结构化审批单语义化使用,落历史留痕) */

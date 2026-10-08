@@ -4,12 +4,15 @@
  */
 import { DcwControllerParams } from './params'
 import type { DcwWriteHistoryEntry } from '../dcw-recipe.repo'
-import type { RecipeInput, RecipeRunView, RecipeView } from '../../../../../shared/dcw-protocol'
+import type { RecipeInput, RecipeRunView, RecipeView, WriteVerifyOutcome } from '../../../../../shared/dcw-protocol'
 import { AppError, ErrorCodes } from '../../../../utils/errors'
 import { getDcwRecipeRepo } from '../dcw-recipe.repo'
 import { assertRecipeOpIntervalForExecution, recordRecipeOpAnchor } from '../recipe-op-anchor'
 import { hydrateTrialLastAt, setTrialLastAt } from './gate-persist'
 import { recordOps } from '../../ops/ops'
+import { summarizeAck, verifyRecipeWrite } from './write-verify'
+import { writeTolerance } from '../dcw-runtime'
+import { notifyLineOperators } from '../../runtime/line-notify'
 
 export abstract class DcwControllerRecipes extends DcwControllerParams {
   listRecipes() {
@@ -89,6 +92,8 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
    * 控制节点(节点才是真实控制 PLC 工艺参数的执行体)→ 逐参数写命令
    * (runId 入写历史)→ 结果快照。节点不存在 → 该参数记失败不阻塞其余。
    * v19 trial:传入 merged params(候选覆盖集),批次与写命令按候选值落账。
+   * 2026-10-08 ACK 鉴定:每参数写后经 verifyRecipeWrite 补验(链路受理→独立回读
+   * 证实),结果行携带 ack/verify —— 「ok」不再被当成「设备已生效」。
    */
   protected async writeRecipeParams(recipe: RecipeView, run: RecipeRunView): Promise<void> {
     const results: RecipeRunView['results'] = []
@@ -110,13 +115,25 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
       }
       try {
         const outcome = await this.write(node.id, param.value, run.id, { source: 'recipe', actor: 'recipe' })
-        results.push({ templateRef: node.templateRef, nodeId: node.id, ok: outcome.ok, message: outcome.message, value: param.value })
+        // ACK 鉴定:命令 ok 但仅链路受理(mqtt/http-no-echo/mock)→ 独立回读补验
+        const v: WriteVerifyOutcome = await verifyRecipeWrite(this, node, param.value, outcome, { tolerance: writeTolerance(node) })
+        const ackTag = v.verdict === 'verified' ? '' : v.verdict === 'failed' ? '' : ` · ${v.message}`
+        results.push({
+          templateRef: node.templateRef,
+          nodeId: node.id,
+          ok: outcome.ok,
+          message: outcome.ok ? `${outcome.message}${ackTag}` : outcome.message,
+          value: param.value,
+          ack: v.ack,
+          verify: { verdict: v.verdict, attempts: v.attempts },
+        })
       }
       catch (err) {
         results.push({ templateRef: node.templateRef, nodeId: node.id, ok: false, message: err instanceof Error ? err.message : String(err), value: param.value })
       }
     }
     run.results = results
+    run.ackSummary = summarizeAck(results)
     getDcwRecipeRepo().updateRun(run)
   }
 
@@ -177,6 +194,36 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
       : recipe.params
     const run = repo.createRun(recipe, effective)
     await this.writeRecipeParams({ ...recipe, params: effective }, run)
+    // ACK 鉴定判定落账(单一咽喉点:REST 手动/Agent 工具/回退/系统路径全覆盖):
+    // failed≥1 → error;仅 unverified(链路受理未证实)→ warn;全部设备证实 → info。
+    // error/warn 同时向该线 operate 授权用户定向告警(生产化:假成功必须有人看到)。
+    const acks = run.ackSummary ?? summarizeAck(run.results)
+    const level: 'info' | 'warn' | 'error' = acks.failed > 0 ? 'error' : acks.unverified > 0 ? 'warn' : 'info'
+    try {
+      recordOps({
+        actor: opts.agentDispatch ? 'agent-dispatch' : 'system',
+        actorName: opts.agentDispatch ? 'Agent 整批下发' : '产线系统',
+        actorKind: 'system',
+        action: 'recipe.dispatch.ack',
+        kind: 'write',
+        targetKind: 'recipe',
+        targetId: recipeId,
+        recipeId,
+        lineId: recipe.lineId ?? '',
+        level,
+        summary: `批次 ${run.id.slice(0, 8)} ACK 鉴定:证实 ${acks.verified}/${acks.total},未证实 ${acks.unverified},失败 ${acks.failed}${level === 'error' ? '(存在写入失败)' : level === 'warn' ? '(部分参数仅链路受理,设备侧未证实)' : ''}`,
+        detail: { runId: run.id, ackSummary: acks, trial: opts.trial === true, agentDispatch: opts.agentDispatch === true },
+      })
+      if (level !== 'info' && recipe.lineId) {
+        notifyLineOperators(recipe.lineId, {
+          eventId: `recipe_dispatch_ack:${run.id}`,
+          title: level === 'error' ? `⛔ 下发存在写入失败(${recipe.name})` : `⚠️ 下发部分参数未获设备证实(${recipe.name})`,
+          body: `批次 ${run.id.slice(0, 8)}:证实 ${acks.verified}/${acks.total},未证实 ${acks.unverified},失败 ${acks.failed}。请核查产线侧执行情况。`,
+          payload: { runId: run.id, ackSummary: acks, lineId: recipe.lineId, level },
+        })
+      }
+    }
+    catch { /* 判定留痕失败不影响下发结果 */ }
     if (opts.trial) {
       this.trialLastAt.set(recipe.lineId, Date.now())
       setTrialLastAt(recipe.lineId, Date.now()) // P1-5 落盘

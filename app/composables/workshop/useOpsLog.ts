@@ -30,6 +30,8 @@ export interface OpsLogRow {
   recipeId: string
   kind: string
   summary: string
+  /** 严重级(2026-10-08 ACK 鉴定):error 红 / warn 黄;历史行/实时帧缺省 info */
+  level?: 'info' | 'warn' | 'error'
 }
 
 export interface OpsLogQuery {
@@ -38,6 +40,7 @@ export interface OpsLogQuery {
   recipeId?: string
   actorKind?: string
   kind?: string
+  level?: string
   q?: string
   from?: string
   to?: string

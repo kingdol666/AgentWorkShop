@@ -84,6 +84,11 @@ const { lineName, productName, recipeName } = useLogsScope()
               >{{ kindLabel(row.kind) }}</span>
             </td>
             <td class="summary">
+              <span
+                v-if="row.level === 'error' || row.level === 'warn'"
+                class="level-chip"
+                :class="row.level"
+              >{{ row.level === 'error' ? '⛔' : '⚠️' }} {{ row.level }}</span>
               {{ row.summary }}
               <small class="mono dim action">{{ row.action }}</small>
             </td>
@@ -208,6 +213,13 @@ const { lineName, productName, recipeName } = useLogsScope()
 .kind-chip.write { color: var(--tone-info-dot); }
 .kind-chip.rollback { color: var(--tone-warning-dot); }
 .kind-chip.manual { color: var(--tone-success-dot); }
+/* 严重级徽标(2026-10-08 ACK 鉴定):error=写入失败 红;warn=仅链路受理未证实 黄 */
+.level-chip {
+  display: inline-block; padding: 1px 7px; margin-right: 6px; font-size: 11px;
+  border-radius: 5px; white-space: nowrap;
+}
+.level-chip.error { color: var(--tone-danger-dot); background: var(--tone-danger-bg); }
+.level-chip.warn { color: var(--tone-warning-dot); background: var(--tone-warning-bg); }
 
 /* ══ 窄屏(≤899px):7 列表格在 375px 上被卡片裁掉四列(实测只剩"时间/来源/操作者"),
    每行高达 154px,字号被压到 10px。窄屏不再横向拖动"账页",

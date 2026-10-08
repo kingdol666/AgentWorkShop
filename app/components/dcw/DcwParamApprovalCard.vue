@@ -40,9 +40,14 @@ const comments = defineModel<Record<string, string>>('comments', { required: tru
         <small class="ap-meta">
           <span class="mono">{{ $t('dcwDetail.apInitiator') }} {{ agentName(ap) }}</span>
           <span
+            v-if="Number.isFinite(remainingSec(ap))"
             class="ap-ttl mono"
             :class="{ urgent: remainingSec(ap) <= 30 }"
           >⏱ {{ remainingSec(ap) }}s {{ $t('dcwDetail.apTimeout') }}</span>
+          <span
+            v-else
+            class="ap-ttl mono hold"
+          >⏱ 等待人工裁决(hold 模式,不自动拒绝)</span>
         </small>
       </div>
       <input
@@ -91,6 +96,7 @@ const comments = defineModel<Record<string, string>>('comments', { required: tru
 .ap-meta { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; font-size: 11px; color: var(--ink-faint); }
 .ap-ttl { color: var(--tone-warning-dot); }
 .ap-ttl.urgent { color: var(--tone-danger-dot); }
+.ap-ttl.hold { color: var(--tone-info-dot); }
 .ap-comment { flex: none; width: 240px; padding: 5px 9px; font-size: 12px; }
 .ap-actions { display: flex; flex: none; gap: 6px; }
 .ap-ok { color: var(--tone-success-dot); }

@@ -54,6 +54,8 @@ export function initWorkshopDb(db: DatabaseSync): void {
   migrateAddColumn(db, 'audit_log', 'recipe_id', 'TEXT NOT NULL DEFAULT \'\'')
   migrateAddColumn(db, 'audit_log', 'kind', 'TEXT NOT NULL DEFAULT \'\'')
   migrateAddColumn(db, 'audit_log', 'summary', 'TEXT NOT NULL DEFAULT \'\'')
+  // 2026-10-08 写控 ACK 鉴定:严重级列(info/warn/error;既有库补列,历史行按 info 语义)
+  migrateAddColumn(db, 'audit_log', 'level', 'TEXT NOT NULL DEFAULT \'info\'')
   migrateMissingForeignKeys(db)
   // Run after legacy task-table rebuilds so guardrail metadata and its index survive upgrades.
   migrateAgentTeamTaskQueueColumns(db)

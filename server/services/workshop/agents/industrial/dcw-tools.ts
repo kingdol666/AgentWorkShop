@@ -187,8 +187,15 @@ async function _toolDcwControlDisabled(agentId: string, args: { node_id?: string
         stable ? `上一稳定锚:${stable.prevValue}${node.unit}(可 dcw_rollback 回退)` : null,
         policyHint,
       ].filter(Boolean).join(';')
+      // ACK 鉴定如实表述(2026-10-08):ok 只是命令受理 —— 回读证实与仅链路受理必须区分,
+      // 不许对无回读驱动(mqtt/http-no-echo)虚报"回读一致"。
+      const ackTxt = outcome.ack === 'readback-verified'
+        ? `回读 ${outcome.readback != null ? `${outcome.readback}${node.unit}` : '-'}一致 [设备证实✓]`
+        : outcome.ack === 'transport-ack'
+          ? '设备侧未回读证实,仅链路受理 [未证实⚠,建议 daq_query 复测]'
+          : '无确认通道 [未证实⚠]'
       return {
-        text: `下发成功:${node.name}(${tpl?.ch ?? node.templateKey})设定 ${value}${node.unit} → PLC 原始值 ${outcome.raw ?? '-'};回读 ${outcome.readback != null ? `${outcome.readback}${node.unit}` : '不支持'}一致。${winTxt}。${outcome.message}\n[调控闭环] ${loopTxt}${manualFeedback ? `\n[人工反馈] ${manualFeedback}` : ''}`,
+        text: `下发受理:${node.name}(${tpl?.ch ?? node.templateKey})设定 ${value}${node.unit} → PLC 原始值 ${outcome.raw ?? '-'};${ackTxt}。${winTxt}。${outcome.message}\n[调控闭环] ${loopTxt}${manualFeedback ? `\n[人工反馈] ${manualFeedback}` : ''}`,
       }
     }
     // 失败文案带自我纠正线索:当前保持原值 + 建议动作(缩小步进/稍后重试)

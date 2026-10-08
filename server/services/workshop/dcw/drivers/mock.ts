@@ -23,11 +23,14 @@ export const mockDcwDriver: DcwWriteDriver = {
     mockState.__dcwMockPlc!.set(key, input.eng)
     // 模拟 PLC 写入 + 回读时延
     await new Promise(r => setTimeout(r, 60 + Math.random() * 80))
+    // ACK 鉴定如实上报:mock 的 readback 是**指令值回显**(非独立读) —— 按 transport-ack
+    // 上报,由写后验证器经 mock.read(独立状态查询)补验升级。这让 mock 线也全程走 ACK 链。
     return {
       ok: true,
-      message: `Mock PLC 写入成功:${input.eng} → raw ${Number(raw.toFixed(4))},回读一致`,
+      ack: 'transport-ack',
+      message: `Mock PLC 写入成功:${input.eng} → raw ${Number(raw.toFixed(4))},待写后验证`,
       raw,
-      readback: input.eng,
+      readback: null,
     }
   },
   async read(input) {

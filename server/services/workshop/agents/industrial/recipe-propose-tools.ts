@@ -302,30 +302,40 @@ export async function toolRecipePropose(agentId: string, args: {
       isError: true,
     }
   }
+  // ---------- ⑦c ACK 鉴定回执(2026-10-08):三段口径 + 未证实/失败一律 isError ----------
+  // 「ok」只是命令受理;回执按 设备证实(verified)/未证实(unverified)/失败(failed) 三段计,
+  // 只要有 unverified 或 failed 就 isError —— Agent 必须如实知道哪个参数未获设备确认。
+  const acks = run.ackSummary ?? { verified: run.results.filter(r => r.ok).length, unverified: 0, failed: run.results.filter(r => !r.ok).length, total: run.results.length }
   const okN = run.results.filter(r => r.ok).length
   // 批准下发留痕(mirror toolRecipeApply 的 recipe.apply 审计;附审批单与选定包溯源)
   try {
     recordOps({
       actor: agentId, actorName: agentBadgeLabel(agentId), actorKind: 'agent',
       action: 'recipe.apply', kind: 'recipe', targetKind: 'recipe', targetId: recipeId, recipeId, lineId: recipe.lineId,
-      summary: `整包方案审批后下发(${okN}/${run.results.length} 参数成功,批次 ${run.id.slice(0, 8)},单 ${decision.id},选定方案「${chosen.name}」#${chosenIdx})`,
-      detail: { approvalId: decision.id, choice: chosenIdx, runId: run.id },
+      level: acks.failed > 0 ? 'error' : acks.unverified > 0 ? 'warn' : 'info',
+      summary: `整包方案审批后下发(证实 ${acks.verified}/${acks.total},未证实 ${acks.unverified},失败 ${acks.failed},批次 ${run.id.slice(0, 8)},单 ${decision.id},选定方案「${chosen.name}」#${chosenIdx})`,
+      detail: { approvalId: decision.id, choice: chosenIdx, runId: run.id, ackSummary: acks },
     })
   }
   catch { /* 审计失败不影响下发结果 */ }
 
   // 逐参数回执:选定包参数对照 from→to;配方内其余参数随批下发(值未改动)
   const chosenByNode = new Map(chosen.params.map(p => [p.nodeId, p]))
+  const ackTagOf = (r: typeof run.results[number]): string => {
+    if (!r.ok) return ''
+    if (r.verify?.verdict === 'verified' || r.ack === 'readback-verified') return ' [设备证实✓]'
+    return ' [未证实⚠ 仅链路受理]'
+  }
   const rows = run.results.map((r) => {
     const node = r.nodeId ? getDcwController().byId(r.nodeId) : undefined
     const label = node?.name ?? r.templateRef ?? r.nodeId ?? '?'
     const spec = r.nodeId ? chosenByNode.get(r.nodeId) : undefined
     const change = spec ? `${spec.from ?? '?'}→${spec.to}` : `${r.value}(随批整发,本方案未改动)`
-    return `- ${label} ${change}${node?.unit ?? ''}${r.ok ? '' : ` 被拒:${String(r.message).slice(0, 80)}`}`
+    return `- ${label} ${change}${node?.unit ?? ''}${ackTagOf(r)}${r.ok ? '' : ` 被拒:${String(r.message).slice(0, 80)}`}`
   })
   const feedback = decision.comment ? `\n[人工反馈] ${decision.comment}` : ''
   const runIdNote = `runId:${run.id}(后续轮次按此回访效果并回写经验)`
-  // 部分失败/全失败响亮化(口径 mirror recipe_trial/recipe_rollback 先例:统一回退指引)
+  // 全失败:响亮失败(isError;统一回退指引,口径 mirror recipe_trial/recipe_rollback)
   if (run.results.length > 0 && okN === 0) {
     return {
       text: [
@@ -335,14 +345,21 @@ export async function toolRecipePropose(agentId: string, args: {
       isError: true,
     }
   }
-  const partialWarn = okN < run.results.length
-    ? `\n注意:部分参数未生效(${okN}/${run.results.length}),未落盘节点请用 dcw_control 复查后单独直发;必要时 recipe_rollback(dispatch=true) 统一回退。`
-    : ''
+  // 部分未证实/失败(2026-10-08 ACK 鉴定铁律):一律 isError 如实上报,不得报成成功
+  if (acks.failed > 0 || acks.unverified > 0) {
+    return {
+      text: [
+        `整批下发 ACK 鉴定未全绿:方案「${chosen.name}」已获批并下发,但设备证实 ${acks.verified}/${acks.total},未证实 ${acks.unverified}(仅链路受理),失败 ${acks.failed}。${runIdNote}${feedback}`,
+        ...rows,
+        '「未证实」=命令已发到链路但设备侧未确认生效(mqtt/http 等无回读驱动或回读超时);「失败」=写入被拒。请:①逐条核查未证实参数的产线侧真实状态(daq_query 复测);②必要时用 dcw_control 对未证实参数单独重发;③把未证实/失败清单写入汇报提醒人类,劣化风险下用 recipe_rollback(recipe_id, dispatch=true) 统一回退。',
+      ].join('\n'),
+      isError: true,
+    }
+  }
   return {
     text: [
-      `方案「${chosen.name}」已获批准并整批下发(${okN}/${run.results.length} 参数成功,批次 ${run.id.slice(0, 8)})。${runIdNote}${feedback}`,
+      `方案「${chosen.name}」已获批准并整批下发,全部参数设备证实(${acks.verified}/${acks.total},批次 ${run.id.slice(0, 8)})。${runIdNote}${feedback}`,
       ...rows,
-      partialWarn,
       '请等待工艺惯性后 daq_query 复测判读:有进步 → 效果回访时回写经验到知识库;劣化 → 立即 recipe_rollback(recipe_id, dispatch=true) 统一回退并通报。',
     ].filter(Boolean).join('\n'),
   }

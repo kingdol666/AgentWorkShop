@@ -337,6 +337,12 @@ export const userRepository = {
     return new Map(rows.map(r => [r.lineId, r.mode]))
   },
 
+  /** 产线 → 授权用户反查(线域定向通知用:审批触达/写控错误告警;2026-10-08) */
+  usersOfLine(lineId: string): Array<{ userId: string, mode: string }> {
+    const d = getDb()
+    return d.prepare('SELECT user_id AS userId, mode FROM user_line_grants WHERE line_id = ?').all(lineId) as Array<{ userId: string, mode: string }>
+  },
+
   /** 内部：取密码哈希（仅认证路径使用，不参与领域对象外泄）。
    *  登录账号:邮箱或用户名均可(用户名注册时唯一;参数绑定防注入) */
   getPasswordHash(account: string): { id: string, hash: string } | null {

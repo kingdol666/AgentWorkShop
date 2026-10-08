@@ -3,7 +3,7 @@
  * (拆分层,承 DcwControllerState;方法体与原文件逐行一致)
  */
 import { DcwControllerState } from './state'
-import type { AepDcwNodeChange } from '../../../../../shared/dcw-protocol'
+import type { AepDcwNodeChange, WriteAckLevel } from '../../../../../shared/dcw-protocol'
 import type { DcwWriteHistoryEntry } from '../dcw-recipe.repo'
 import { AppError, ErrorCodes } from '../../../../utils/errors'
 import type { DcwNode } from '../dcw-node'
@@ -12,6 +12,13 @@ import { findDcwTemplate } from '../dcw-templates'
 import { getDcwRecipeRepo } from '../dcw-recipe.repo'
 import { randomUUID } from 'node:crypto'
 import { resolveDcwDriver } from '../drivers'
+
+/** 驱动未显式上报 ack 时的旧口径归一(ok+回读→设备证实;ok 无回读→链路受理;失败→未证实) */
+function normalizeAck(outcome: { ok: boolean, readback: number | null, ack?: WriteAckLevel }): WriteAckLevel {
+  if (outcome.ack) return outcome.ack
+  if (!outcome.ok) return 'unverified'
+  return outcome.readback != null ? 'readback-verified' : 'transport-ack'
+}
 
 export abstract class DcwControllerActuation extends DcwControllerState {
   /**
@@ -25,7 +32,7 @@ export abstract class DcwControllerActuation extends DcwControllerState {
     const t = node.transform
     const plcValue = inverseTransform(eng, t)
     const plcTolerance = Math.max(tolerance, 1e-9) / (t?.kind === 'linear' && Math.abs(t.scale ?? 1) > 0 ? Math.abs(t.scale!) : 1)
-    let outcome: { ok: boolean, message: string, raw: number | null, readback: number | null }
+    let outcome: { ok: boolean, message: string, raw: number | null, readback: number | null, ack?: WriteAckLevel }
     try {
       outcome = await resolveDcwDriver(node.driver).write({
         eng: plcValue,
@@ -40,6 +47,7 @@ export abstract class DcwControllerActuation extends DcwControllerState {
     catch (err) {
       outcome = { ok: false, message: err instanceof Error ? err.message : String(err), raw: null, readback: null }
     }
+    outcome.ack = normalizeAck(outcome)
     this.writesTotal++
     if (!outcome.ok) this.writesFailed++
     // set 后 hook:节点暴露值 = PLC 回读经 decoder 解码的**真实物理值**(而非指令值);
@@ -60,6 +68,7 @@ export abstract class DcwControllerActuation extends DcwControllerState {
       eng: attemptEng,
       raw: outcome.raw,
       ok: outcome.ok,
+      ack: outcome.ack,
       message: outcome.message,
       recipeRunId,
       at,
@@ -72,6 +81,7 @@ export abstract class DcwControllerActuation extends DcwControllerState {
       value: attemptEng,
       raw: outcome.raw,
       ok: outcome.ok,
+      ack: outcome.ack,
       message: outcome.message,
       recipeRunId,
       at,

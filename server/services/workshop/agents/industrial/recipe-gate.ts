@@ -10,9 +10,12 @@
  *   ④ HITL 判定:绑定 mode='manual' → 每次动作挂起等人工批准(必带 Agent 理由);
  *      mode='auto'(显式确认切换)→ 免批直执行。全局开关 security.recipeDispatchApproval
  *      保持兼容:开启时即便 auto 绑定也挂审批。
+ *      线级总闸(2026-10-08):line.controlMode='manual'(缺省,fail-safe)时 auto 绑定
+ *      也强制人工审批 —— 手动模式下人类必须过目每一次写动作。
  */
 import { getAgentNodeBindingRepo, type AgentNodeBinding } from '../node-bindings.repo'
 import { getDcwController } from '../../dcw/dcw-controller'
+import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
 import { getActiveLineRun } from '../../dcw/line-run'
 
 export type RecipeOp = 'update' | 'dispatch' | 'trial' | 'rollback'
@@ -64,10 +67,14 @@ export function assertRecipeOperation(
       text: `配方「${recipe.name}」当前未在执行(产线上没有本配方的活动批次),按运行门约束${opLabel}被拒。请先由用户在产线开跑本配方,再进行参数写入/下发。`,
     }
   }
-  // ④ HITL 判定:manual 绑定 → 逐动作人工批准;auto → 免批(全局开关保持兼容)
+  // ④ HITL 判定:manual 绑定 → 逐动作人工批准;auto → 免批。
+  //    线级总闸(2026-10-08 生产化):line.controlMode='manual'(缺省)时,即便绑定为
+  //    auto 也强制人工审批 —— 手动模式下人类必须过目每一次写动作(fail-safe)。
+  const lineManual = recipe.lineId ? getDcwLineRepo().controlModeOf(recipe.lineId) === 'manual' : false
+  // ⑤ 全局开关兼容位:security.recipeDispatchApproval 开启时即便 auto 也挂审批(保留语义)
   const globalGate = false // 由调用方按 settingOf('security.recipeDispatchApproval') 叠加(本模块不依赖设置服务)
   void globalGate
-  return { ok: true, binding, hitlRequired: binding.mode === 'manual', activeRunId: run.id }
+  return { ok: true, binding, hitlRequired: binding.mode === 'manual' || lineManual, activeRunId: run.id }
 }
 
 /** 审批单载荷(结构化;前端审批卡渲染理由/参数/批次) */

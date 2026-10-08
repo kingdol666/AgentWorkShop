@@ -6,13 +6,14 @@
       @manual="openManual"
     />
 
-    <!-- 维度筛选:产线 → 产品 → Recipe 级联 + 来源/分类/关键词 -->
+    <!-- 维度筛选:产线 → 产品 → Recipe 级联 + 来源/分类/严重级/关键词 -->
     <LogsFilterCard
       v-model:line-id="q.lineId"
       v-model:product-id="q.productId"
       v-model:recipe-id="q.recipeId"
       v-model:actor-kind="q.actorKind"
       v-model:kind="q.kind"
+      v-model:level="q.level"
       v-model:text="q.text"
       :has-filter="hasFilter"
       :loading="opsLog.loading.list"

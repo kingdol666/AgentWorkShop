@@ -84,6 +84,21 @@ ok('dcw:写历史留痕', hist.length > 10, `rows=${hist.length}`)
 const runs = dcw.data?.runs ?? []
 ok('dcw:批次台账', runs.length > 3, `rows=${runs.length}`)
 
+// ---------- ⑥b 写控 ACK 鉴定 + 线级控制总闸(2026-10-08 生产化回归) ----------
+ok('dcw:批次 ACK 鉴定汇总(run.ackSummary)', runs.some(r => r.ackSummary && Number(r.ackSummary.total) > 0 && (r.ackSummary.verified + r.ackSummary.unverified + r.ackSummary.failed) === r.ackSummary.total),
+  JSON.stringify((runs.find(r => r.ackSummary) ?? {}).ackSummary ?? '(无)').slice(0, 80))
+ok('dcw:批次结果行携带 ack/verify 字段', runs.some(r => (r.results ?? []).some(x => x.ack !== undefined || x.verify !== undefined)), 'ack/verify 字段在批')
+ok('dcw:写历史条目携带 ack 字段', hist.some(h => h.ack !== undefined), 'ack 字段在史')
+ok('dcw:ACK 判定审计(recipe.dispatch.ack)落账', (await api('GET', '/api/workshop/ops-logs?action=recipe.dispatch.ack&limit=5', undefined, ADM)).data?.logs?.length > 0, 'ops 判定条目在账')
+ok('dcw:线视图携带 controlMode(缺省归一 manual)', Array.isArray(dcw.data?.lines) && dcw.data.lines.every(l => l.controlMode === 'auto' || l.controlMode === 'manual'), `modes=${[...new Set((dcw.data?.lines ?? []).map(l => l.controlMode))].join(',')}`)
+const gLine = (await api('POST', '/api/workshop/dcw/lines', { name: 'loop-总闸-' + suffix }, ADM))
+ok('dcw:新建线缺省 manual(fail-safe)', gLine.data?.line?.controlMode === 'manual', `got=${gLine.data?.line?.controlMode}`)
+const gNo = await api('PATCH', `/api/workshop/dcw/lines/${gLine.data?.line?.id}`, { controlMode: 'auto' }, ADM)
+ok('dcw:manual→auto 无 confirm 拒绝(400)', gNo.code === 'MODE_CONFIRM_REQUIRED' && /确认/.test(gNo.message ?? ''), `${gNo.code ?? gNo.status} ${String(gNo.message ?? '').slice(0, 40)}`)
+const gYes = await api('PATCH', `/api/workshop/dcw/lines/${gLine.data?.line?.id}`, { controlMode: 'auto', confirm: true }, ADM)
+ok('dcw:manual→auto 带 confirm 放行', gYes.data?.line?.controlMode === 'auto', `got=${gYes.data?.line?.controlMode}`)
+await api('DELETE', `/api/workshop/dcw/lines/${gLine.data?.line?.id}`, undefined, ADM)
+
 // ---------- ⑦ DAQ 面 ----------
 const daq = await api('GET', '/api/workshop/daq', undefined, ADM)
 // 节点数随环境增长(多环境测试会建节点),断言"控制器在线且在编节点全部采样"而非冻结数

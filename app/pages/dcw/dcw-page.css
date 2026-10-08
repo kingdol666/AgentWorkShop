@@ -112,6 +112,22 @@
   color: var(--ink-faint);
 }
 .lc-state.on { color: var(--tone-success-dot); }
+/* 线级控制模式总闸标签(2026-10-08):手动=缺省安全色,自动=警示橙(审批闸门已摘) */
+.lc-mode {
+  flex: none;
+  font-size: 10.5px;
+  line-height: 1;
+  padding: 3px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--tone-success-dot, #35e0a0);
+  color: var(--tone-success-dot, #35e0a0);
+  background: color-mix(in srgb, var(--tone-success-dot, #35e0a0) 10%, transparent);
+}
+.lc-mode.auto {
+  border-color: #ff8a5c;
+  color: #ff8a5c;
+  background: rgba(255, 138, 92, 0.1);
+}
 /* 头部图标钮:编辑/删除,悬停语义色染色 */
 .lc-act {
   display: inline-flex;

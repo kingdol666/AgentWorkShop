@@ -3,7 +3,7 @@
  * (由 shared/dcw-protocol.ts 按职责拆出;内容逐行原文搬运)
  */
 import type { DcwDriverKind } from './catalog'
-import type { DcwNodeState } from './line'
+import type { DcwNodeState, WriteAckLevel } from './line'
 
 // ============================================================
 // Product 产品 + Recipe 配方(产品-配方-批次三级隔离)
@@ -267,8 +267,20 @@ export interface RecipeRunView {
   lineId: string
   startedAt: string
   endedAt: string | null
-  /** apply 时逐参数写结果快照(节点级寻址) */
-  results: Array<{ templateRef: string, nodeId: string | null, ok: boolean, message: string, value: number }>
+  /** apply 时逐参数写结果快照(节点级寻址);ack/verify 为 2026-10-08 ACK 鉴定增量 */
+  results: Array<{
+    templateRef: string
+    nodeId: string | null
+    ok: boolean
+    message: string
+    value: number
+    /** 写 ACK 鉴定等级(ok=true 时区分设备证实 vs 仅链路受理;历史批次无此字段) */
+    ack?: WriteAckLevel
+    /** 写后验证结论(readback-verified 不再补验;transport-ack/unverified 经补验归一) */
+    verify?: { verdict: 'verified' | 'unverified' | 'failed', attempts: number }
+  }>
+  /** 批次 ACK 鉴定汇总(2026-10-08;历史批次缺省) */
+  ackSummary?: { verified: number, unverified: number, failed: number, total: number }
   /** 建批时的参数冻结(配方事后修改不影响审计与回放) */
   paramsSnapshot?: RecipeParam[]
 }

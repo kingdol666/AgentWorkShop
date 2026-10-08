@@ -176,17 +176,19 @@ export interface AuditEntry {
   recipeId?: string
   kind?: 'write' | 'manual' | 'alarm' | 'line' | 'recipe' | 'rollback' | 'daq' | 'system'
   summary?: string
+  /** 严重级(2026-10-08 写控 ACK 鉴定):info 缺省 / warn(未证实) / error(写入失败);日志页红黄标 */
+  level?: 'info' | 'warn' | 'error'
 }
 
 const AUDIT_COLS = `id, actor, actor_name AS actorName, actor_kind AS actorKind, action,
   target_kind AS targetKind, target_id AS targetId, detail_json AS detailJson, at,
-  line_id AS lineId, product_id AS productId, recipe_id AS recipeId, kind, summary`
+  line_id AS lineId, product_id AS productId, recipe_id AS recipeId, kind, summary, level`
 
 export function createAuditRepo(db: DatabaseSync) {
   const insertStmt = db.prepare(
     `INSERT INTO audit_log (actor, actor_name, actor_kind, action, target_kind, target_id, detail_json, at,
-       line_id, product_id, recipe_id, kind, summary)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       line_id, product_id, recipe_id, kind, summary, level)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   const stmtCache = new Map<string, ReturnType<DatabaseSync['prepare']>>()
 
@@ -196,7 +198,7 @@ export function createAuditRepo(db: DatabaseSync) {
         e.actor, e.actorName ?? '', e.actorKind ?? 'user', e.action,
         e.targetKind ?? '', e.targetId ?? '', JSON.stringify(e.detail ?? {}),
         e.at ?? new Date().toISOString(),
-        e.lineId ?? '', e.productId ?? '', e.recipeId ?? '', e.kind ?? '', e.summary ?? '',
+        e.lineId ?? '', e.productId ?? '', e.recipeId ?? '', e.kind ?? '', e.summary ?? '', e.level ?? 'info',
       )
     },
     query(opts: {
@@ -208,6 +210,7 @@ export function createAuditRepo(db: DatabaseSync) {
       recipeId?: string
       actorKind?: string
       kind?: string
+      level?: string
       q?: string
       from?: string
       to?: string
@@ -246,6 +249,10 @@ export function createAuditRepo(db: DatabaseSync) {
       if (opts.kind) {
         where.push('kind = ?')
         args.push(opts.kind)
+      }
+      if (opts.level) {
+        where.push('level = ?')
+        args.push(opts.level)
       }
       if (opts.q) {
         where.push('(summary LIKE ? OR action LIKE ? OR actor_name LIKE ? OR detail_json LIKE ?)')

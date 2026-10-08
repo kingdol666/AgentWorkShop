@@ -19,6 +19,8 @@ export interface DcwWriteOutcome {
   message: string
   raw: number | null
   readback: number | null
+  /** 写 ACK 鉴定等级(2026-10-08):设备证实 / 仅链路受理 / 未证实(网关归一后必有) */
+  ack?: 'readback-verified' | 'transport-ack' | 'unverified'
   /** 调控闭环:本次写产生的参数锚(入册成功时) */
   anchorId?: string
   /** 调控闭环:Agent/回退路径开出的优化记录 id(manual/recipe 路径无) */

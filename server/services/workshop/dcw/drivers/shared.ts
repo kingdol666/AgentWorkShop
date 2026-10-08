@@ -2,7 +2,7 @@
  * 模块头 / 写读输入输出类型 / 工程量↔原始值纯函数
  * (由 server/services/workshop/dcw/drivers.ts 按职责拆出;内容逐行原文搬运)
  */
-import type { DcwDriverKind } from '../../../../../shared/dcw-protocol'
+import type { DcwDriverKind, WriteAckLevel } from '../../../../../shared/dcw-protocol'
 import { createRequire } from 'node:module'
 
 /**
@@ -38,6 +38,14 @@ export interface DcwWriteResult {
   raw: number | null
   /** 回读换算回的工程值 */
   readback: number | null
+  /**
+   * 写 ACK 鉴定等级(2026-10-08 生产化):驱动必须**如实**上报自己拿到的确认强度——
+   *  - 'readback-verified':独立回读且容差通过(寄存器/OPC UA 驱动内回读);
+   *  - 'transport-ack':仅链路受理(mqtt puback / http 2xx 无数值回传);
+   *  - 'unverified':发送失败或无任何确认。
+   * 缺省时由网关按旧口径归一(ok+readback→verified);新驱动应显式携带。
+   */
+  ack?: WriteAckLevel
 }
 
 export interface DcwWriteDriver {
@@ -160,7 +168,7 @@ export function readbackAck(
   const message = ok
     ? `写入并回读一致:${input.eng}${opts.rawNote ? ` → raw ${opts.rawNote}` : ''},回读 ${backTxt}`
     : `回读偏差超容差:写 ${input.eng},回读 ${backTxt}(容差 ${input.tolerance})`
-  return { ok, message, raw: opts.raw, readback }
+  return { ok, message, raw: opts.raw, readback, ack: ok ? 'readback-verified' : 'unverified' }
 }
 
 /** 原始值 → 寄存器字序(数据类型 + 字节序;与数采 decodeRegisters 互逆) */

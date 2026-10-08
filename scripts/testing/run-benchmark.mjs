@@ -121,6 +121,15 @@ async function s0() {
   const line = await api('GET', '/api/workshop/dcw')
   const ln = (line?.data?.lines ?? []).find(l => l.id === cfg.lineId)
   check('S0', '基准产线在册', !!ln, ln?.name ?? '')
+  // 线级控制总闸自适应(2026-10-08):harness 自动化线显式 auto(manual→auto 须 confirm:true,
+  // 顺带回归 confirm 守卫);真实产线缺省 manual 不受影响
+  if (ln && ln.controlMode !== 'auto') {
+    const g = await api('PATCH', `/api/workshop/dcw/lines/${cfg.lineId}`, { controlMode: 'auto', confirm: true })
+    check('S0', '基准线总闸切 auto(harness 显式 confirm)', g?.data?.line?.controlMode === 'auto', `got=${g?.data?.line?.controlMode}`)
+  }
+  else {
+    check('S0', '基准线总闸已 auto(harness 显式)', ln?.controlMode === 'auto', `mode=${ln?.controlMode}`)
+  }
   stageEnd('S0')
 }
 
@@ -287,7 +296,8 @@ async function s4() {
     prop = await propPromise
     // 文本含两个 id:「批次 rr-xxx」(批次号)与「runId:rr-xxxxxxx」(台账键)——必须取后者
     runId = /runId[:：]\s*(rr-[\w-]+)/.exec(prop)?.[1] ?? /rr-[\w-]+/.exec(prop)?.[0]
-    okDispatch = /已批准|成功/.test(prop) && !/失败|超时未批/.test(prop)
+    // 成功语义(2026-10-08 ACK 鉴定文案):已获批准并整批下发(全部设备证实);失败/未证实/超时未批都按未完成
+    okDispatch = /已获批准|已批准|成功/.test(prop) && !/失败|超时未批|isError/.test(prop) && /设备证实/.test(prop)
     if (okDispatch) break
     const waitSec = Number(/请等待 (\d+)s/.exec(prop)?.[1] ?? 0)
     if (waitSec > 0 && attempt < 3) {
@@ -309,6 +319,12 @@ async function s4() {
   const run = runId ? await api('GET', '/api/workshop/dcw/runs?limit=2000').then(d => (d?.data?.runs ?? []).find(x => x.id === runId)) : null
   const runOk = (run?.results ?? []).some(r => r.nodeId === cfg.nodes.dcw.holdP && r.ok)
   check('S4', '批次台账 holdP 落账 ok', !!runOk, `run=${runId}`)
+  // ACK 鉴定(2026-10-08):modbus 回读驱动应整批「设备证实」—— ok≠生效,证实才算数
+  const holdRow = (run?.results ?? []).find(r => r.nodeId === cfg.nodes.dcw.holdP)
+  check('S4', 'ACK 鉴定:holdP 写入设备证实(readback-verified)', holdRow?.ack === 'readback-verified' && holdRow?.verify?.verdict === 'verified',
+    JSON.stringify({ ack: holdRow?.ack, verdict: holdRow?.verify?.verdict, attempts: holdRow?.verify?.attempts }))
+  check('S4', 'ACK 鉴定:整批汇总全绿(ackSummary)', !!run?.ackSummary && run.ackSummary.verified === run.ackSummary.total,
+    JSON.stringify(run?.ackSummary ?? {}))
   const after = await dcwNode(cfg.nodes.dcw.holdP)
   const rd = await api('POST', `/api/workshop/dcw/${cfg.nodes.dcw.holdP}/read`, {})
   const devVal = rd?.data?.read?.value ?? rd?.data?.value

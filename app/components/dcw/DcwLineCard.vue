@@ -40,6 +40,11 @@ const pick = defineModel<string | undefined>('pick')
       <span class="lc-dot" />
       <b class="lc-name">{{ card.line.name }}</b>
       <span
+        class="lc-mode"
+        :class="{ auto: card.line.controlMode === 'auto' }"
+        :title="card.line.controlMode === 'auto' ? '自动模式:按各绑定模式执行(auto 免批)' : '手动模式:本线全部配方写动作强制人工批准(缺省)'"
+      >{{ card.line.controlMode === 'auto' ? '自动' : '手动' }}</span>
+      <span
         class="lc-state"
         :class="{ on: state.active }"
       >{{ state.active ? $t('dcw.k1eox1el055') : $t('dcw.k149r6y7059') }}</span>

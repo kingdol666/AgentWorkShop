@@ -242,6 +242,18 @@ export function securityHitlTimeoutMs(): number {
   return Number(effective()['security.hitl_timeout_ms'] ?? 180_000)
 }
 
+/**
+ * HITL 超时语义(2026-10-08 生产化):security.hitl_timeout_mode
+ *  - 'reject'(缺省):超时按拒绝收敛(fail-closed,原行为);
+ *  - 'hold':手动模式生产语义 —— 审批**不自动拒**,周期催办直至人工裁决
+ *    (回合终止/解绑照旧收敛拒绝,不会悬挂)。真人在环的产线用 hold,
+ *    无人值守环境保持 reject。
+ */
+export function securityHitlTimeoutMode(): 'reject' | 'hold' {
+  const v = String(effective()['security.hitl_timeout_mode'] ?? 'reject').trim().toLowerCase()
+  return v === 'hold' ? 'hold' : 'reject'
+}
+
 /** 整包方案审批超时窗(security.recipe_dispatch_timeout_ms,默认 30min;超时按拒绝收敛;独立于单参数 HITL 超时) */
 export function securityRecipeDispatchTimeoutMs(): number {
   return Number(effective()['security.recipe_dispatch_timeout_ms'] ?? 1_800_000)

@@ -47,6 +47,8 @@ export interface OpsLogFrame {
   lineId: string
   productId: string
   recipeId: string
+  /** 严重级(2026-10-08 ACK 鉴定):error 红 / warn 黄 / info 缺省 */
+  level?: 'info' | 'warn' | 'error'
 }
 
 /**
@@ -70,6 +72,7 @@ export function recordOps(entry: Parameters<ReturnType<typeof createAuditRepo>['
       lineId: entry.lineId ?? '',
       productId: entry.productId ?? '',
       recipeId: entry.recipeId ?? '',
+      ...(entry.level && entry.level !== 'info' ? { level: entry.level } : {}),
     } satisfies OpsLogFrame)
   }
   catch {

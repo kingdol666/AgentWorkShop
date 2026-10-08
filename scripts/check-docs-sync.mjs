@@ -75,7 +75,7 @@ const LANG_PAIRS = [
 /** 已知陈旧/错误断言(曾在文档里真实出现过,禁止回归) */
 const BANNED = [
   { re: /73\s*(个)?\s*(设置项|settings)/i, why: '设置项数早已是 98(config.yml 有 79 个键,73 对不上任何东西)' },
-  { re: /18\s*个设置项/, why: 'aw config list 实际打印 98 行' },
+  { re: /(?<!\d)18\s*个设置项/, why: 'aw config list 实际打印 98 行(注意数字边界:118 含「18」子串,不得误伤)' },
   { re: /6\s*(个)?\s*(执行引擎|engines?)/i, why: '执行引擎是 14 个,不是 6 个' },
   { re: /kv\.reset\s*\(/, why: 'ctx.kv 没有 reset()(只有 get/set/all/bump),示例会 TypeError' },
   { re: /npx\s+-p\s+agentworkshop\s+doctor/, why: 'package.json 只有 aw / agentworkshop 两个 bin,没有 doctor' },

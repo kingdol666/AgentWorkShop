@@ -23,12 +23,24 @@ export interface LineView {
   color: string
   description: string
   createdAt: string
+  /**
+   * 线级控制模式总闸(HITL 生产化,2026-10-08):
+   *  - 'manual'(缺省,fail-safe):本线全部配方写族动作(recipe_update/apply/trial/rollback/propose)
+   *    即使节点绑定 mode='auto' 也强制挂人工审批 —— 人必须批;
+   *  - 'auto':按各绑定的 mode 语义(auto 免批);manual→auto 切换须显式 confirm:true。
+   * 存量数据无此字段时按 'manual' 生效(读侧归一,见 DcwLineRepo.controlModeOf)。
+   */
+  controlMode?: 'auto' | 'manual'
 }
 
 export interface LineInput {
   name: string
   color?: string
   description?: string
+  /** 线级控制模式总闸;缺省 'manual';manual→auto 须 confirm:true(服务端强制) */
+  controlMode?: 'auto' | 'manual'
+  /** manual→auto 的显式风险确认(严格 === true;仅 patch 入参用,不落盘) */
+  confirm?: boolean
 }
 
 // ============================================================
@@ -98,10 +110,32 @@ export interface AepDcwWritten {
   /** 原始值(PLC 语义,换算后) */
   raw: number | null
   ok: boolean
+  /** 写 ACK 鉴定等级(2026-10-08):缺省按旧口径归一(ok+readback→readback-verified) */
+  ack?: WriteAckLevel
   message: string
   /** 关联的配方批次(单发/保写为 null) */
   recipeRunId: string | null
   at: string
+}
+
+/**
+ * 写 ACK 鉴定三级(生产化:区分「链路受理」与「设备证实」,堵 mqtt/http 假成功):
+ *  - readback-verified:写入后经**独立回读**且容差比对通过(modbus/opcua 驱动内回读,或写后验证器补验);
+ *  - transport-ack:仅链路/网关受理(mqtt QoS puback、http 2xx 无回传数值)——设备侧未证实;
+ *  - unverified:命令未成功发出或驱动不支持任何确认 —— 一律不得计为生效。
+ */
+export type WriteAckLevel = 'readback-verified' | 'transport-ack' | 'unverified'
+
+/** 写后验证结论(verify 层产出;ack 的升级依据) */
+export interface WriteVerifyOutcome {
+  /** verified=回读证实 / unverified=未能证实(设备不回读或超次) / failed=命令本身失败 */
+  verdict: 'verified' | 'unverified' | 'failed'
+  /** 最终 ACK 等级(verify 可将 transport-ack 升级为 readback-verified) */
+  ack: WriteAckLevel
+  /** 实际执行的回读次数(0=无需回读) */
+  attempts: number
+  /** 人读结论(进批次结果与回执) */
+  message: string
 }
 
 /** dcw.node.changed 帧载荷 */

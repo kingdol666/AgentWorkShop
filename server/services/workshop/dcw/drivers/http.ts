@@ -27,7 +27,7 @@ export const httpDcwDriver: DcwWriteDriver = {
       }
       const body = cfg.bodyKey ? JSON.stringify({ [String(cfg.bodyKey)]: input.eng }) : JSON.stringify({ value: input.eng })
       const res = await fetch(String(cfg.url), { method: 'POST', headers, body, signal: AbortSignal.timeout(6000) })
-      if (!res.ok) return { ok: false, message: `接口返回 HTTP ${res.status},设定未受理`, raw: null, readback: null }
+      if (!res.ok) return { ok: false, message: `接口返回 HTTP ${res.status},设定未受理`, raw: null, readback: null, ack: 'unverified' }
       let readback: number | null = null
       try {
         const j: unknown = await res.json()
@@ -38,18 +38,20 @@ export const httpDcwDriver: DcwWriteDriver = {
         if (Number.isFinite(n)) readback = n
       }
       catch { /* 非 JSON 响应忽略回读 */ }
+      // ACK 鉴定如实上报:2xx+数值回传 = 设备证实;2xx 无数值 = 仅链路受理,交写后验证器补验
       return {
         ok: true,
+        ack: readback != null ? 'readback-verified' : 'transport-ack',
         message: readback != null
           ? `POST 成功(HTTP ${res.status}),接口回读 ${readback}`
-          : `POST 成功(HTTP ${res.status};接口未回传数值)`,
+          : `POST 成功(HTTP ${res.status};接口未回传数值,设备侧待验证)`,
         raw: input.eng,
         readback,
       }
     }
     catch (err) {
       if (err instanceof AppError) throw err
-      return { ok: false, message: `HTTP 写入失败: ${err instanceof Error ? err.message : String(err)}`, raw: null, readback: null }
+      return { ok: false, message: `HTTP 写入失败: ${err instanceof Error ? err.message : String(err)}`, raw: null, readback: null, ack: 'unverified' }
     }
   },
   async test(driverConfig) {

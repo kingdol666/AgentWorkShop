@@ -22,6 +22,7 @@ export default defineApiHandler(async (event) => {
     recipeId: q.recipeId || undefined,
     actorKind: q.actorKind || undefined,
     kind: q.kind || undefined,
+    level: q.level || undefined,
     q: q.q || undefined,
     from: q.from || undefined,
     to: q.to || undefined,

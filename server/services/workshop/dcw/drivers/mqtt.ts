@@ -73,16 +73,19 @@ export const mqttDcwDriver: DcwWriteDriver = {
           client.end(false, {}, () => resolve())
         })
       }
+      // ACK 鉴定如实上报:QoS puback 只是 **broker 受理**(transport-ack),设备侧未证实 ——
+      // 生效判定交给写后验证器(readNow/兄弟节点补验),不在此虚报 readback-verified。
       return {
         ok: true,
-        message: `已发布 ${input.eng} → ${String(cfg.topic)}(QoS ${Number(cfg.qos ?? 1)};MQTT 无回读,建议以同主题数采节点验证)`,
+        ack: 'transport-ack',
+        message: `已发布 ${input.eng} → ${String(cfg.topic)}(QoS ${Number(cfg.qos ?? 1)};broker 已受理,设备侧待验证)`,
         raw: input.eng,
         readback: null,
       }
     }
     catch (err) {
       if (err instanceof AppError) throw err
-      return { ok: false, message: `MQTT 发布失败: ${err instanceof Error ? err.message : String(err)}`, raw: null, readback: null }
+      return { ok: false, message: `MQTT 发布失败: ${err instanceof Error ? err.message : String(err)}`, raw: null, readback: null, ack: 'unverified' }
     }
   },
   async test(driverConfig) {

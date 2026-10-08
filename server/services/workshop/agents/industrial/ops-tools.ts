@@ -490,6 +490,7 @@ export async function toolRecipeRollback(agentId: string, args: {
         emergency,
       })
       const okN = run.results.filter(r => r.ok).length
+      const acks = run.ackSummary ?? { verified: okN, unverified: 0, failed: run.results.length - okN, total: run.results.length }
       const defNote = definitionNoop
         ? `定义已在目标版本 v${updated.version ?? 1}(未生成新版本)`
         : `已生成 v${updated.version ?? 1}`
@@ -501,11 +502,18 @@ export async function toolRecipeRollback(agentId: string, args: {
           isError: true,
         }
       }
-      const partialWarn = okN < run.results.length
-        ? `\n注意:整批重下发部分成功(${okN}/${run.results.length}),未落盘节点请用 dcw_control 复查。`
-        : ''
+      // ACK 鉴定铁律:回退是安全动作,未证实/失败必须响亮(否则人以为已恢复实际没有)
+      if (acks.failed > 0 || acks.unverified > 0) {
+        return {
+          text: [
+            `统一回退执行,但 ACK 鉴定未全绿:配方「${updated.name}」${defNote},设备证实 ${acks.verified}/${acks.total},未证实 ${acks.unverified},失败 ${acks.failed}(回退目标:${toLastGood ? '已知良好批次冻结' : `v${version}`});原因:${reason}。${hitlNote}`,
+            '「未证实」参数可能未真正恢复到目标值 —— 请立即用 daq_query/dcw_read 核实产线侧现值,必要时 dcw_control 逐节点直发目标值,并把清单写入汇报提醒人类。',
+          ].join('\n'),
+          isError: true,
+        }
+      }
       return {
-        text: `统一回退完成:配方「${updated.name}」${defNote},参数恢复为目标版本(${toLastGood ? '已知良好批次冻结' : `v${version}`}),并已整批重下发到 PLC(${okN}/${run.results.length} 参数成功);原因:${reason}。${hitlNote}${partialWarn}\n用 daq_query 复测确认恢复效果;版本史用 recipe_versions 复核。`,
+        text: `统一回退完成:配方「${updated.name}」${defNote},参数恢复为目标版本(${toLastGood ? '已知良好批次冻结' : `v${version}`}),并已整批重下发到 PLC 且全部设备证实(${acks.verified}/${acks.total});原因:${reason}。${hitlNote}\n用 daq_query 复测确认恢复效果;版本史用 recipe_versions 复核。`,
       }
     }
     const updated = getDcwController().revertRecipe(recipeId, {
@@ -631,25 +639,41 @@ export async function toolRecipeTrial(agentId: string, args: {
       if (gateDecision.comment) hitlNote = `\n人工附言:${gateDecision.comment}`
     }
     const run = await getDcwController().applyRecipe(recipeId, { overrides: list, trial: true, agentDispatch: true, agentApprovalId: gateApprovalId, emergency })
-    const okN = run.results.filter(r => r.ok).length
+    // ACK 鉴定三段口径(2026-10-08):ok 只是命令受理,未证实/失败必须如实回给 Agent
+    const acks = run.ackSummary ?? { verified: run.results.filter(r => r.ok).length, unverified: 0, failed: run.results.filter(r => !r.ok).length, total: run.results.length }
     // 批次级留痕:试验动作入审计(逐参数写已有 write-audit;这里是"一次试验"粒度)
     try {
       const { recordOps } = await import('../../ops/ops')
       recordOps({
         actor: agentId, actorName: agentBadgeLabel(agentId), actorKind: 'agent',
         action: 'recipe.trial', kind: 'recipe', targetKind: 'recipe', targetId: recipeId, recipeId, lineId: recipe.lineId,
-        summary: `${emergency ? '【应急】' : ''}配方试验整批下发(${okN}/${run.results.length} 成功,批次 ${run.id.slice(0, 8)}):${list.map(p => `${p.nodeId.slice(0, 8)}→${p.value}`).join(';')} | 假设:${hypothesis}`,
-        ...(emergency ? { detail: { emergency: true } } : {}),
+        level: acks.failed > 0 ? 'error' : acks.unverified > 0 ? 'warn' : 'info',
+        summary: `${emergency ? '【应急】' : ''}配方试验整批下发(证实 ${acks.verified}/${acks.total},未证实 ${acks.unverified},失败 ${acks.failed},批次 ${run.id.slice(0, 8)}):${list.map(p => `${p.nodeId.slice(0, 8)}→${p.value}`).join(';')} | 假设:${hypothesis}`,
+        detail: { runId: run.id, ackSummary: acks, ...(emergency ? { emergency: true } : {}) },
       })
     }
     catch { /* 审计失败不影响试验结果 */ }
+    const ackTagOf = (r: typeof run.results[number]): string => {
+      if (!r.ok) return ''
+      return r.verify?.verdict === 'verified' || r.ack === 'readback-verified' ? ' [证实✓]' : ' [未证实⚠]'
+    }
     const changed = run.results.map((r) => {
       const node = r.nodeId ? getDcwController().byId(r.nodeId) : undefined
       const reason = r.ok ? '' : `(${String(r.message).slice(0, 60)})`
-      return `${node?.name ?? r.templateRef}→${r.value}${node?.unit ?? ''}${r.ok ? '' : ` 被拒${reason}`}`
+      return `${node?.name ?? r.templateRef}→${r.value}${node?.unit ?? ''}${ackTagOf(r)}${r.ok ? '' : ` 被拒${reason}`}`
     }).join(';')
+    // 未证实/失败一律 isError(ACK 鉴定铁律:不许把"仅链路受理"报成试验成功)
+    if (acks.failed > 0 || acks.unverified > 0) {
+      return {
+        text: [
+          `试验下发 ACK 鉴定未全绿(证实 ${acks.verified}/${acks.total},未证实 ${acks.unverified},失败 ${acks.failed},批次 ${run.id.slice(0, 8)}):${changed}。假设:${hypothesis}。${hitlNote}`,
+          '「未证实」=命令已发到链路但设备侧未确认生效;请用 daq_query 复测这些参数的真实状态后再判读试验效果,必要时对未证实参数单独重发或 recipe_rollback 统一回退,并写入汇报提醒人类。',
+        ].join('\n'),
+        isError: true,
+      }
+    }
     return {
-      text: `试验已整批下发(${okN}/${run.results.length} 成功,批次 ${run.id.slice(0, 8)}):${changed}。假设:${hypothesis}。${hitlNote}注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC 整批恢复)。`,
+      text: `试验已整批下发并全部设备证实(${acks.verified}/${acks.total},批次 ${run.id.slice(0, 8)}):${changed}。假设:${hypothesis}。${hitlNote}注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC 整批恢复)。`,
     }
   }
   catch (err) {
@@ -710,7 +734,8 @@ export async function toolRecipeApply(agentId: string, args: {
       if (gateDecision.comment) hitlNote = `\n人工附言:${gateDecision.comment}`
     }
     const run = await getDcwController().applyRecipe(recipeId, { agentDispatch: true, agentApprovalId: gateApprovalId, emergency })
-    const okN = run.results.filter(r => r.ok).length
+    // ACK 鉴定三段口径(2026-10-08):ok 只是命令受理,未证实/失败必须如实回给 Agent
+    const acks = run.ackSummary ?? { verified: run.results.filter(r => r.ok).length, unverified: 0, failed: run.results.filter(r => !r.ok).length, total: run.results.length }
     // 逐参数标注:被跳过/失败的参数(节点停用/已删除/限界拒绝)必须透出给 Agent,
     // 否则回包只见 N/N 成功数,无法定位哪些参数未生效(与 recipe_trial 的逐参数渲染同口径)。
     const skipped = run.results.filter(r => !r.ok)
@@ -718,19 +743,37 @@ export async function toolRecipeApply(agentId: string, args: {
         const node = r.nodeId ? getDcwController().byId(r.nodeId) : undefined
         return `${node?.name ?? r.templateRef ?? r.nodeId ?? '?'}: ${String(r.message).slice(0, 80)}`
       })
+    // 未证实参数(ok 但仅链路受理)单独点名 —— 这正是"参数真实正确下发"要堵的盲区
+    const unverified = run.results.filter(r => r.ok && r.verify?.verdict !== 'verified' && r.ack !== 'readback-verified')
+      .map((r) => {
+        const node = r.nodeId ? getDcwController().byId(r.nodeId) : undefined
+        return `${node?.name ?? r.templateRef ?? r.nodeId ?? '?'}: ${String(r.message).slice(0, 100)}`
+      })
     const skippedNote = skipped.length > 0 ? `\n未生效参数(${skipped.length}):\n  - ${skipped.join('\n  - ')}` : ''
+    const unverifiedNote = unverified.length > 0 ? `\n未证实参数(${unverified.length};命令已受理但设备侧未确认):\n  - ${unverified.join('\n  - ')}` : ''
     try {
       const { recordOps } = await import('../../ops/ops')
       recordOps({
         actor: agentId, actorName: agentBadgeLabel(agentId), actorKind: 'agent',
         action: 'recipe.apply', kind: 'recipe', targetKind: 'recipe', targetId: recipeId, recipeId, lineId: recipe.lineId,
-        summary: `${emergency ? '【应急】' : ''}Agent 整批下发配方 v${recipe.version ?? 1}(${okN}/${run.results.length} 参数成功,批次 ${run.id.slice(0, 8)}) | 原因:${reason}`,
-        ...(emergency ? { detail: { emergency: true } } : {}),
+        level: acks.failed > 0 ? 'error' : acks.unverified > 0 ? 'warn' : 'info',
+        summary: `${emergency ? '【应急】' : ''}Agent 整批下发配方 v${recipe.version ?? 1}(证实 ${acks.verified}/${acks.total},未证实 ${acks.unverified},失败 ${acks.failed},批次 ${run.id.slice(0, 8)}) | 原因:${reason}`,
+        detail: { runId: run.id, ackSummary: acks, ...(emergency ? { emergency: true } : {}) },
       })
     }
     catch { /* 审计失败不影响下发结果 */ }
+    if (acks.failed > 0 || acks.unverified > 0) {
+      return {
+        text: [
+          `配方「${recipe.name}」v${recipe.version ?? 1} 整批下发 ACK 鉴定未全绿(证实 ${acks.verified}/${acks.total},未证实 ${acks.unverified},失败 ${acks.failed},批次 ${run.id.slice(0, 8)})。${hitlNote}`,
+          `${skippedNote}${unverifiedNote}`,
+          '请用 daq_query 复测未证实参数的真实状态;必要时 dcw_control 单独重发或 recipe_rollback(dispatch=true) 统一回退,并把清单写入汇报提醒人类。',
+        ].filter(Boolean).join('\n'),
+        isError: true,
+      }
+    }
     return {
-      text: `配方「${recipe.name}」v${recipe.version ?? 1} 已整批下发(${okN}/${run.results.length} 参数成功,批次 ${run.id.slice(0, 8)})。${skippedNote}${hitlNote}用 daq_query 复测确认工艺响应。`,
+      text: `配方「${recipe.name}」v${recipe.version ?? 1} 已整批下发并全部设备证实(${acks.verified}/${acks.total},批次 ${run.id.slice(0, 8)})。${skippedNote}${hitlNote}用 daq_query 复测确认工艺响应。`,
     }
   }
   catch (err) {
