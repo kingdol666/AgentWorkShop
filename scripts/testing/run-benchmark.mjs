@@ -130,6 +130,25 @@ async function s0() {
   else {
     check('S0', '基准线总闸已 auto(harness 显式)', ln?.controlMode === 'auto', `mode=${ln?.controlMode}`)
   }
+  // 配方自愈(2026-10-08):回退到 lastGood 会把配方整体替换为旧版参数集 —— mesDirect
+  // 若晚于该版本加入会被剪除(S2 MES 直取随之"无权"),holdP 也会偏离基准锚。
+  // 此处以 admin REST 修复参数面(补 mesDirect + holdP 回锚)并 REST apply 一次
+  // (apply 为系统路径,不经 HITL/步限;修复后 S2/S4/S6 从已知基线起步)。
+  const rec = (line?.data?.recipes ?? []).find(r => r.id === cfg.recipeId)
+  const needMes = !!rec && !(rec.params ?? []).some(p => p.nodeId === cfg.nodes.dcw.mesDirect)
+  const holdParam = (rec?.params ?? []).find(p => p.nodeId === cfg.nodes.dcw.holdP)
+  const needAnchor = !!holdParam && Number(holdParam.value) !== cfg.benchmark.anchorSetpoint
+  if (needMes || needAnchor) {
+    const params = (rec?.params ?? []).map(p => (p.nodeId === cfg.nodes.dcw.holdP ? { ...p, value: cfg.benchmark.anchorSetpoint } : { ...p }))
+    if (needMes) params.push({ nodeId: cfg.nodes.dcw.mesDirect, value: 185 })
+    const patched = await api('PATCH', `/api/workshop/dcw/recipes/${cfg.recipeId}`, { params, description: 'PIPELINE S0 自愈:补 mesDirect 参数 + holdP 回基准锚' })
+    const applied = patched?.code === 0 ? await api('POST', `/api/workshop/dcw/recipes/${cfg.recipeId}/apply`) : null
+    check('S0', '配方自愈(参数面 + 基准锚复位)', applied?.code === 0, `mesDirect补回=${needMes},holdP回锚=${needAnchor},批次=${String(applied?.data?.run?.id ?? '').slice(0, 8)}`)
+    await sleep(8000)
+  }
+  else {
+    check('S0', '配方参数面完整且在锚(mesDirect+holdP)', !!rec, `params=${rec?.params?.length}`)
+  }
   stageEnd('S0')
 }
 
@@ -273,17 +292,38 @@ async function s4() {
   let runId = null
   for (let attempt = 1; attempt <= 3; attempt++) {
     if (attempt > 1) event('S4', 'propose', JSON.stringify({ to, package: pkg.name, attempt }))
-    const propPromise = inv(cfg.workerId, 'recipe_propose', { recipe_id: cfg.recipeId, packages: [pkg] })
+    let propSettled = false
+    const propPromiseSettled = () => propSettled
+    const settleOk = (r) => {
+      propSettled = true
+      return r
+    }
+    const settleErr = (e) => {
+      propSettled = true
+      throw e
+    }
+    const propPromise = inv(cfg.workerId, 'recipe_propose', { recipe_id: cfg.recipeId, packages: [pkg] }).then(settleOk, settleErr)
     let card = null
     for (let i = 0; i < 30; i++) {
       await sleep(2000)
       const pend = await api('GET', '/api/workshop/hitl/pending')
       const cards = (pend?.data?.cards ?? pend?.data?.items ?? (Array.isArray(pend?.data) ? pend.data : [])).filter(c => c.kind === 'dcw-approval')
       card = cards.sort((a, b) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? '')))[0]
+      // 提案快速落定(频控早拒/在飞软提示等不建卡直接返回)→ 不再空等 60s
       if (card) break
+      if (propPromiseSettled()) break
     }
     if (!card) {
-      await propPromise.catch(() => {})
+      // 无卡路径(2026-10-08 修复):提案在挂卡前被早拒(60s 间隔锚/在飞单/无权)——
+      // 此前直接 break 放弃;现在按提示等待后重提(与"有卡被节拍拦"同一治理等待语义)
+      prop = await propPromise.catch(() => '')
+      runId = /runId[:：]\s*(rr-[\w-]+)/.exec(prop)?.[1] ?? null
+      const waitSec = Number(/请等待约?\s*(\d+)s/.exec(prop)?.[1] ?? 0)
+      if (waitSec > 0 && attempt < 3) {
+        event('S4', 'cadence-wait', `提案挂卡前被频控早拒(治理在岗)—— 等 ${waitSec + 10}s 后重提(attempt ${attempt} → ${attempt + 1})`)
+        await sleep((waitSec + 10) * 1000)
+        continue
+      }
       break
     }
     const cardTxt = JSON.stringify(card)
@@ -299,7 +339,9 @@ async function s4() {
     // 成功语义(2026-10-08 ACK 鉴定文案):已获批准并整批下发(全部设备证实);失败/未证实/超时未批都按未完成
     okDispatch = /已获批准|已批准|成功/.test(prop) && !/失败|超时未批|isError/.test(prop) && /设备证实/.test(prop)
     if (okDispatch) break
-    const waitSec = Number(/请等待 (\d+)s/.exec(prop)?.[1] ?? 0)
+    // 「请等待 Xs」(试验节拍)与「请等待约 Xs」(recipe opInterval 锚)两治理层共用本等待:
+    // attempt 1 批准即落间隔锚、又被节拍拦下时,attempt 2 会被第一批准的锚 429 —— 两层都要等
+    const waitSec = Number(/请等待约?\s*(\d+)s/.exec(prop)?.[1] ?? 0)
     if (waitSec > 0 && attempt < 3) {
       event('S4', 'cadence-wait', `试验节拍窗未放行(治理在岗)—— 等 ${waitSec + 10}s 后重提(attempt ${attempt} → ${attempt + 1})`)
       await sleep((waitSec + 10) * 1000)
