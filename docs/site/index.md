@@ -2,7 +2,7 @@
 layout: home
 
 footer:
-  message: 依据 PolyForm Noncommercial 1.0.0 发布 · 源码可得，未经许可不得商用
+  message: 依据 Apache License 2.0 发布 · 允许商用与生产部署
   copyright: Copyright © 2026 kingdol (kingdol666)
 ---
 
@@ -74,7 +74,7 @@ footer:
       </p>
       <div class="aw-statusbar">
         <span>版本 <i>v0.7.57</i></span>
-        <span>许可 <i>PolyForm Noncommercial 1.0.0</i></span>
+        <span>许可 <i>Apache License 2.0</i></span>
         <span>运行时 <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>文档 <i>简体中文 / English</i></span>
       </div>

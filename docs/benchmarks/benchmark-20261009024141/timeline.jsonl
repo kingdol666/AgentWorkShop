@@ -1,0 +1,21 @@
+{"ts":"2026-10-09T02:41:41.756Z","stage":"S0","type":"env","detail":"{\"version\":\"0.7.57\",\"channels\":112,\"memory\":{\"heapUsedMb\":81,\"heapLimitMb\":4288,\"rssMb\":215,\"externalMb\":11,\"heapRatio\":0.0188}}"}
+{"ts":"2026-10-09T02:41:42.595Z","stage":"S2","type":"heterogeneous-snapshot","detail":"{\"scalarBuckets\":9,\"vecFrames\":5,\"imgFrames\":10,\"imgSha256\":10,\"protocolFamilies\":[{\"driver\":\"modbus-tcp\",\"nodes\":4,\"fresh\":1},{\"driver\":\"modbus-rtu\",\"nodes\":4,\"fresh\":1},{\"driver\":\"opcua\",\"nodes\":4,\"fresh\":1},{\"driver\":\"mqtt\",\"nodes\":4,\"fresh\":1},{\"driver\":\"http\",\"nodes\":4,\"fresh\":1}]}"}
+{"ts":"2026-10-09T02:41:42.656Z","stage":"S4","type":"observation","detail":"{\"holdP\":63,\"weight\":32.33,\"sink\":1.42,\"window\":\"8min\"}"}
+{"ts":"2026-10-09T02:41:42.658Z","stage":"S4","type":"decision","detail":"{\"mode\":\"corrective\",\"err\":0.169,\"to\":65,\"rationale\":\"误差 0.17g / 斜率 0.052g/bar → 单变量小步\"}"}
+{"ts":"2026-10-09T02:41:42.658Z","stage":"S4","type":"propose","detail":"{\"to\":65,\"package\":\"BM-保压微升(灵敏度激励步)\"}"}
+{"ts":"2026-10-09T02:41:44.673Z","stage":"S4","type":"cadence-wait","detail":"提案挂卡前被频控早拒(治理在岗)—— 等 69s 后重提(attempt 1 → 2)"}
+{"ts":"2026-10-09T02:42:53.687Z","stage":"S4","type":"propose","detail":"{\"to\":65,\"package\":\"BM-保压微升(灵敏度激励步)\",\"attempt\":2}"}
+{"ts":"2026-10-09T02:42:55.708Z","stage":"S4","type":"hitl_card","detail":"{\"id\":\"ap-c6e722bf\",\"reasoning\":true,\"attempt\":2}"}
+{"ts":"2026-10-09T02:42:55.715Z","stage":"S4","type":"approved","detail":"{\"id\":\"ap-c6e722bf\",\"attempt\":2}"}
+{"ts":"2026-10-09T02:42:55.721Z","stage":"S4","type":"dispatch","detail":"{\"runId\":\"rr-3fd92561\",\"ok\":true,\"summary\":\"方案「BM-保压微升(灵敏度激励步)」已获批准并整批下发,全部参数设备证实(1/1,批次 rr-3fd92)。runId:rr-3fd92561(后续轮次按此回访效果并回写经验)\"}"}
+{"ts":"2026-10-09T02:43:03.764Z","stage":"S4","type":"settle-wait","detail":"等待镜像 SP 采样跟上(15s)"}
+{"ts":"2026-10-09T02:43:18.773Z","stage":"S4","type":"verify","detail":"{\"set\":65,\"device\":65,\"mirror\":65,\"threeWay\":true}"}
+{"ts":"2026-10-09T02:43:18.773Z","stage":"S4","type":"verdict","detail":"{\"converged\":false,\"dispatchedTo\":65,\"nextReview\":\"4min 惯性窗后复测\"}"}
+{"ts":"2026-10-09T02:43:18.800Z","stage":"S5","type":"observation","detail":"{\"moldT\":40,\"stepLimit\":10}"}
+{"ts":"2026-10-09T02:43:18.806Z","stage":"S5","type":"micro-step","detail":"{\"from\":40,\"to\":40.5,\"ok\":true,\"readback\":40.5}"}
+{"ts":"2026-10-09T02:43:18.809Z","stage":"S5","type":"rate-limited","detail":"{\"blocked\":true,\"message\":\"DCW 节点「注塑·模温机SP」两次在线写入间隔必须至少 60s，当前还需 60s\"}"}
+{"ts":"2026-10-09T02:43:18.810Z","stage":"S5","type":"settle-wait","detail":"等待 66s 治理窗放行"}
+{"ts":"2026-10-09T02:44:24.846Z","stage":"S5","type":"verdict","detail":"{\"restored\":true,\"value\":40}"}
+{"ts":"2026-10-09T02:44:25.038Z","stage":"S6","type":"export","detail":"{\"exportId\":\"daqexp-20261009104424-9ed53c\",\"path\":\"D:\\\\codes\\\\AgentWorkShop\\\\.AgentWorkShop\\\\data\\\\daq-exports\\\\daqexp-20261009104424-9ed53c\\\\merged.csv\"}"}
+{"ts":"2026-10-09T02:44:25.040Z","stage":"S6","type":"stats","detail":"{\"rows\":843,\"weight\":{\"n\":843,\"mean\":32.441,\"std\":0.186,\"inSpecRate\":0.964}}"}
+{"ts":"2026-10-09T02:44:25.043Z","stage":"S12","type":"hil-skip","detail":"AW_HIL_BASE 未设"}

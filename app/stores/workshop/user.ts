@@ -15,6 +15,8 @@ export interface CurrentUser {
   token: string
   /** 当前会话 token 的 id（吊销会话时比对用） */
   tokenId: string
+  /** 首登强制改密(admin 建号/重置后为 true;本人改密成功后服务端清除) */
+  mustChangePassword?: boolean
 }
 
 export interface TokenMeta {
@@ -140,6 +142,16 @@ export const useUserStore = defineStore('workshop.user', {
           // 吊销失败不阻塞本地登出
         }
       }
+    },
+    /** 本人修改密码(首登强制改密同一入口);成功后清除本地强制标记 */
+    async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+      const res = await http<ApiEnvelope<{ ok: boolean, mustChangePassword: boolean }>>('/api/users/change-password', {
+        method: 'POST',
+        body: { currentPassword, newPassword },
+        headers: this.authHeaders(),
+      })
+      if (res.code !== 0 || !res.data?.ok) throw new Error(res.message ?? '修改密码失败')
+      if (this.user) this.user.mustChangePassword = false
     },
     // ===== API Token CRUD（仅本人；$fetch 不走 axios 拦截器，需显式携带当前会话 Bearer）=====
     authHeaders(): Record<string, string> {

@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash TEXT NOT NULL,
   role          TEXT NOT NULL DEFAULT 'user',
   status        TEXT NOT NULL DEFAULT 'active',
-  created_at    TEXT NOT NULL
+  created_at    TEXT NOT NULL,
+  must_change_password INTEGER NOT NULL DEFAULT 0
 );
 CREATE TABLE IF NOT EXISTS user_tokens (
   id           TEXT PRIMARY KEY,
@@ -71,7 +72,7 @@ function getDb(): DatabaseSync {
   return db
 }
 
-/** 轻量迁移：旧库 user_tokens 补 token_plain 列（明文存档，支持随时查看）+ expires_at（R2 后端过期） */
+/** 轻量迁移：旧库 user_tokens 补 token_plain 列（明文存档，支持随时查看）+ expires_at（R2 后端过期）；users 补 must_change_password（2026-10-09 首登强制改密） */
 function migrateSchema(d: DatabaseSync): void {
   const cols = d.prepare('PRAGMA table_info(user_tokens)').all() as Array<{ name: string }>
   if (!cols.some(c => c.name === 'token_plain')) {
@@ -79,6 +80,10 @@ function migrateSchema(d: DatabaseSync): void {
   }
   if (!cols.some(c => c.name === 'expires_at')) {
     d.exec('ALTER TABLE user_tokens ADD COLUMN expires_at TEXT')
+  }
+  const ucols = d.prepare('PRAGMA table_info(users)').all() as Array<{ name: string }>
+  if (!ucols.some(c => c.name === 'must_change_password')) {
+    d.exec('ALTER TABLE users ADD COLUMN must_change_password INTEGER NOT NULL DEFAULT 0')
   }
   // 安全迁移:清空存量明文 token——库中只保留哈希,备份/文件拷贝不再等于凭据泄漏
   d.exec('UPDATE user_tokens SET token_plain = NULL WHERE token_plain IS NOT NULL')
@@ -210,7 +215,7 @@ export function findByToken(token: string): (User & { tokenId: string }) | null 
   const d = getDb()
   const hash = hashToken(token)
   const row = d.prepare(
-    `SELECT u.id, u.name, u.email, u.role, u.status, u.created_at AS createdAt, t.id AS tokenId, t.expires_at AS expiresAt
+    `SELECT u.id, u.name, u.email, u.role, u.status, u.created_at AS createdAt, u.must_change_password AS mustChangePassword, t.id AS tokenId, t.expires_at AS expiresAt
 FROM user_tokens t JOIN users u ON u.id = t.user_id
 WHERE t.token_hash = ?`,
   ).get(hash) as (User & { tokenId: string, expiresAt: string | null }) | undefined
@@ -236,6 +241,8 @@ function toUser(row: Record<string, unknown>): User {
     role: row.role as User['role'],
     status: row.status as User['status'],
     createdAt: String(row.created_at ?? row.createdAt),
+    // 两种行形状:查询列已别名 mustChangePassword;snake 原名兜底(INSERT 返回等)
+    mustChangePassword: Number(row.mustChangePassword ?? row.must_change_password ?? 0) === 1,
   }
 }
 
@@ -253,7 +260,7 @@ export const userRepository = {
     const params = kw ? [`%${kw}%`, `%${kw}%`] : []
     const total = (d.prepare(`SELECT COUNT(*) AS n FROM users ${where}`).get(...params) as { n: number }).n
     const rows = d.prepare(
-      `SELECT id, name, email, role, status, created_at AS createdAt FROM users ${where}
+      `SELECT id, name, email, role, status, created_at AS createdAt, must_change_password AS mustChangePassword FROM users ${where}
        ORDER BY created_at DESC LIMIT ? OFFSET ?`,
     ).all(...params, safeSize, (safePage - 1) * safeSize) as Array<Record<string, unknown>>
     return { items: rows.map(toUser), total, page: safePage, pageSize: safeSize }
@@ -262,7 +269,7 @@ export const userRepository = {
   /** 全量用户(不分页;管理面授权矩阵用,避免分页截断) */
   listAll(): User[] {
     const d = getDb()
-    const rows = d.prepare('SELECT id, name, email, role, status, created_at AS createdAt FROM users ORDER BY created_at DESC').all() as Array<Record<string, unknown>>
+    const rows = d.prepare('SELECT id, name, email, role, status, created_at AS createdAt, must_change_password AS mustChangePassword FROM users ORDER BY created_at DESC').all() as Array<Record<string, unknown>>
     return rows.map(toUser)
   },
 
@@ -287,19 +294,19 @@ export const userRepository = {
 
   findById(id: string): User | undefined {
     const d = getDb()
-    const row = d.prepare('SELECT id, name, email, role, status, created_at AS createdAt FROM users WHERE id = ?').get(id) as Record<string, unknown> | undefined
+    const row = d.prepare('SELECT id, name, email, role, status, created_at AS createdAt, must_change_password AS mustChangePassword FROM users WHERE id = ?').get(id) as Record<string, unknown> | undefined
     return row ? toUser(row) : undefined
   },
 
   findByEmail(email: string): User | undefined {
     const d = getDb()
-    const row = d.prepare('SELECT id, name, email, role, status, created_at AS createdAt FROM users WHERE LOWER(email) = LOWER(?)').get(email) as Record<string, unknown> | undefined
+    const row = d.prepare('SELECT id, name, email, role, status, created_at AS createdAt, must_change_password AS mustChangePassword FROM users WHERE LOWER(email) = LOWER(?)').get(email) as Record<string, unknown> | undefined
     return row ? toUser(row) : undefined
   },
 
   findByName(name: string): User | undefined {
     const d = getDb()
-    const row = d.prepare('SELECT id, name, email, role, status, created_at AS createdAt FROM users WHERE name = ?').get(name) as Record<string, unknown> | undefined
+    const row = d.prepare('SELECT id, name, email, role, status, created_at AS createdAt, must_change_password AS mustChangePassword FROM users WHERE name = ?').get(name) as Record<string, unknown> | undefined
     return row ? toUser(row) : undefined
   },
 
@@ -351,7 +358,7 @@ export const userRepository = {
     return row ?? null
   },
 
-  create(input: UserCreate & { password: string }): User {
+  create(input: UserCreate & { password: string, mustChangePassword?: boolean }): User {
     const d = getDb()
     const user: User = {
       id: randomUUID(),
@@ -360,9 +367,10 @@ export const userRepository = {
       role: input.role,
       status: input.status,
       createdAt: now(),
+      mustChangePassword: input.mustChangePassword ?? false,
     }
-    d.prepare('INSERT INTO users (id, name, email, password_hash, role, status, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-      .run(user.id, user.name, user.email, hashPassword(input.password), user.role, user.status, user.createdAt)
+    d.prepare('INSERT INTO users (id, name, email, password_hash, role, status, created_at, must_change_password) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(user.id, user.name, user.email, hashPassword(input.password), user.role, user.status, user.createdAt, user.mustChangePassword ? 1 : 0)
     return user
   },
 
@@ -385,7 +393,7 @@ export const userRepository = {
     }
   },
 
-  update(id: string, input: UserUpdate): User | undefined {
+  update(id: string, input: UserUpdate & { mustChangePassword?: boolean }): User | undefined {
     const d = getDb()
     const current = this.findById(id)
     if (!current) return undefined
@@ -406,6 +414,10 @@ export const userRepository = {
     if (input.status !== undefined) {
       fields.push('status = ?')
       params.push(input.status)
+    }
+    if (input.mustChangePassword !== undefined) {
+      fields.push('must_change_password = ?')
+      params.push(input.mustChangePassword ? 1 : 0)
     }
     if (input.password !== undefined) {
       fields.push('password_hash = ?')
@@ -479,6 +491,12 @@ export const userRepository = {
   revokeTokenByValue(token: string): boolean {
     const d = getDb()
     return d.prepare('DELETE FROM user_tokens WHERE token_hash = ?').run(hashToken(token)).changes > 0
+  },
+
+  /** 吊销某用户全部会话 token(管理面重置密码后强制重新登录,旧会话即死) */
+  revokeAllTokens(userId: string): number {
+    const d = getDb()
+    return d.prepare('DELETE FROM user_tokens WHERE user_id = ?').run(userId).changes
   },
 
   /** 测试钩子：替换内部 DB（重开内存库等） */

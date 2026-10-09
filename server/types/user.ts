@@ -5,6 +5,8 @@ import type { userCreateSchema, userListQuerySchema } from '../schemas/user.sche
 export interface User extends z.infer<typeof userCreateSchema> {
   id: string
   createdAt: string
+  /** 首登强制改密(admin 建号/重置密码后置 true;本人改密成功后清除) */
+  mustChangePassword: boolean
 }
 
 /** 分页结果 */
@@ -46,6 +48,8 @@ export interface AuthResult {
     email: string
     role: string
     createdAt: string
+    /** true = 必须先改密(admin 建号下发临时口令/管理员重置后),前端以此弹出强制改密门 */
+    mustChangePassword: boolean
   }
   token: string
 }

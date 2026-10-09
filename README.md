@@ -14,7 +14,7 @@
 [![Stars](https://img.shields.io/github/stars/kingdol666/AgentWorkShop?logo=github&label=stars&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/stargazers)
 [![Last commit](https://img.shields.io/github/last-commit/kingdol666/AgentWorkShop?logo=git&logoColor=white&label=last%20commit)](https://github.com/kingdol666/AgentWorkShop/commits)
 [![Issues](https://img.shields.io/github/issues/kingdol666/AgentWorkShop?logo=github&label=issues)](https://github.com/kingdol666/AgentWorkShop/issues)
-[![License](https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-8A2BE2?logo=openaccess&logoColor=white)](./LICENSE)
+[![License](https://img.shields.io/badge/license-Apache%202.0-8A2BE2?logo=apache&logoColor=white)](./LICENSE)
 
 [![Nuxt 4](https://img.shields.io/badge/Nuxt-4-00DC82?logo=nuxt&logoColor=white)](https://nuxt.com)
 [![Vue 3.5](https://img.shields.io/badge/Vue-3.5-42B883?logo=vuedotjs&logoColor=white)](https://vuejs.org)
@@ -713,6 +713,98 @@ cd docs/site && npx vitepress build      # production build → .vitepress/dist
 The workflow syncs `docs/{cli,plugins,sdk}.md` (and their `.en.md` twins) into the site before
 building, so those files are the single source of truth for the single-page guides.
 
+## Deployment (production)
+
+Target shape: **single instance on an intranet host, TLS terminated by a reverse proxy**.
+The server intentionally ships no TLS listener of its own — put caddy/nginx in front (they
+also give you HTTP→HTTPS redirect, access logs and a second rate-limit layer).
+
+```bash
+# 1) build + run (prod entry refuses to boot without .output)
+pnpm build
+NUXT_SESSION_PASSWORD=$(node -e "console.log(require('crypto').randomBytes(24).toString('hex'))") \
+PORT=3000 node scripts/start.mjs
+```
+
+**TLS reverse proxy.** caddy (automatic certificates, WebSocket pass-through built in):
+
+```caddy
+aw.example.com {
+    reverse_proxy 127.0.0.1:3000
+}
+```
+
+nginx (note the WebSocket `Upgrade` headers — the workbench, HITL panels and live logs are all WS-driven):
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name aw.example.com;
+    # ssl_certificate / ssl_certificate_key ...
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_read_timeout 300s;
+    }
+}
+```
+
+After the whole site is HTTPS-only, enable `security.hstsEnabled` (runtime settings) so
+responses carry `Strict-Transport-Security`.
+
+**Process supervision.** `scripts/start.mjs` already spawns the server as a child with
+crash back-off restart, a 30 s health probe and a heap-watermark proactive restart — put
+*that* under a service manager so the supervisor itself survives reboots:
+
+```ini
+# /etc/systemd/system/agentworkshop.service
+[Service]
+WorkingDirectory=/opt/agentworkshop
+Environment=NUXT_SESSION_PASSWORD=<generated-secret>
+Environment=PORT=3000
+ExecStart=/usr/bin/node scripts/start.mjs
+Restart=always
+User=aw
+[Install]
+WantedBy=multi-user.target
+```
+
+On Windows use `nssm install AgentWorkShop "C:\Program Files\nodejs\node.exe" scripts\start.mjs`.
+Do **not** run a second instance against the same config root — a single-instance lock
+(`.runtime/aw.lock` with heartbeat) makes the newer process take over and the older one exit.
+
+**Auth hardening for production.** `security.allowRegistration` defaults to **false**:
+with the first admin in place both register endpoints return 403, accounts are created by
+an admin, and admin-created accounts are flagged `mustChangePassword` — the workbench
+forces a password change at first login (admin password resets flag it again and revoke
+all existing sessions). The bootstrap path is unaffected: with zero users the first
+registered account still becomes the admin.
+
+**Backups and restore.** `server/plugins/backup.ts` snapshots, every 24 h (keep 7) into
+`<config root>/.AgentWorkShop/data/backups/`:
+
+- the three SQLite databases (`workshop/users/daq-timeseries.sqlite`, WAL-checkpointed, atomic rename)
+- all JSON stores plus `config.yml` / `runtime-settings.json` (`files-<stamp>/`)
+- local object store + exports `daq-objects/` and `daq-exports/` (`objects-<stamp>/`) —
+  skipped with a log line when larger than `AW_BACKUP_OBJECTS_MAX_MB` (default 200 MB)
+- a `manifest-<stamp>.json` per run; TimescaleDB/MinIO **docker volumes are not covered** —
+  back those up with `pg_dump` / `mc mirror` or volume snapshots
+
+Restore drill (do it once before go-live): stop the server → copy `backups/` aside →
+rebuild a data directory from the newest `*.bak` + `files-*` + `objects-*` bundles →
+start → check `/api/health`, admin login, lines/recipes present. `BACKUP_DISABLED=1`,
+`BACKUP_INTERVAL_HOURS` and `BACKUP_KEEP` tune the job.
+
+**Production checklist.** generated `NUXT_SESSION_PASSWORD` (boot refuses known dev
+secrets) · `security.allowRegistration=false` (default) · TLS via reverse proxy + HSTS ·
+service manager installed · restore drill passed · `/api/health` + `/api/metrics` wired
+into monitoring · `AW_HEAP_LIMIT_MB` sized for the host · `AW_RATE_LIMIT_OFF` **unset**
+(the built-in rate guard must stay on).
+
 ## Roadmap
 
 | Capability | Status |
@@ -765,13 +857,13 @@ building, so those files are the single source of truth for the single-page guid
 | Edge deployment shape: standalone edge-agent + central broker | Planned |
 | Alarm outbound delivery (email/webhook) + ack workflow | Planned |
 | CI pipeline (typecheck + lint + e2e) — docs deployment already runs on GitHub Actions | Planned |
-| License: PolyForm Noncommercial 1.0.0 (source-available, non-commercial) | Shipped |
+| License: Apache 2.0 (permissive, commercial & production use allowed) | Shipped |
 
 ## License
 
 AgentWorkShop is an independent project and is **not an official product of Anthropic** or any LLM vendor. It integrates with agent harnesses (e.g. `omp`) through their public interfaces.
 
-**AgentWorkShop is source-available software, licensed under the [PolyForm Noncommercial 1.0.0](./LICENSE).**
+**AgentWorkShop is open-source software, licensed under the [Apache License 2.0](./LICENSE).**
 
 - **Permitted** — personal study, research, hobby projects, teaching, and use by noncommercial organizations (charities, education, public research, government).
 - **Not permitted without prior written permission** — any **commercial use**: selling, paid services, integrating into commercial products, or production use serving a business. Commercial licenses are available from the copyright holder.

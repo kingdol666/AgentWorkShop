@@ -4,59 +4,51 @@ title: License
 
 # License
 
-AgentWorkShop is released under the **PolyForm Noncommercial 1.0.0** license — a
-source-available license: the source is public, readable, learnable, modifiable and
-redistributable, **but no commercial rights are granted**. The full legal text lives in the
-repository root ([LICENSE](https://github.com/kingdol666/AgentWorkShop/blob/main/LICENSE)).
+AgentWorkShop is released under the **Apache License 2.0** — a permissive open-source
+license with an **express patent grant**: any individual or organization may freely use,
+modify and redistribute the software, **including commercial and production use**. The only
+obligations are to keep the copyright and license notices, and to state significant
+changes. The full legal text lives in the repository root
+([LICENSE](https://github.com/kingdol666/AgentWorkShop/blob/main/LICENSE)).
 
 ```text
-Required Notice: Copyright kingdol (kingdol666) (https://github.com/kingdol666/AgentWorkShop)
+Copyright 2026 kingdol (kingdol666) (https://github.com/kingdol666/AgentWorkShop)
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at http://www.apache.org/licenses/LICENSE-2.0
 ```
 
-## Permitted (no license required)
+## What is granted
 
-- **Personal use**: personal study, research, experimentation and private entertainment
-- Hobby projects, amateur pursuits, religious activities and similar uses with **no
-  anticipated commercial application**
-- Use by **noncommercial organizations**: charities, educational institutions, public
-  research, public safety / health bodies, environmental organizations, government agencies
-- Statutory "fair use" rights are not restricted by this license
+- **Commercial use** — internal production deployments, integration into commercial
+  products, paid services: no separate license required
+- **Modification and redistribution** — change the source, distribute copies or
+  derivatives in any form
+- **Patent grant** — each contributor expressly grants a patent license over their
+  contributions (coterminous with the copyright license)
 
-## Prohibited (without the prior written permission of the copyright holder)
+## Obligations
 
-- Any distribution for a **commercial purpose**: selling, paid bundling, paid services
-- **Integrating** the software or a modified version into a commercial product or into a
-  commercially oriented new work
-- **Production use** in service of a business activity
+1. Include a copy of the **LICENSE text** (or a link to the official Apache-2.0 text)
+   with the software or any derivative work
+2. Keep existing copyright, patent, trademark and attribution notices
+3. **State significant changes** made to modified files (a header note is enough)
+4. If the original ships a `NOTICE` file, keep a readable copy of it when distributing
 
-::: warning Commercial licensing
-For commercial licensing (internal production deployments, OEM integration, embedding into
-commercial products, and so on), contact the copyright holder to negotiate a separate
-agreement:
-[GitHub @kingdol666](https://github.com/kingdol666) · kingdol6080@gmail.com
-:::
+## Patents and trademarks
 
-## Redistribution duties
-
-When you provide any part of this software to anyone, you must also pass on:
-
-1. the full text of this license or its official link <https://polyformproject.org/licenses/noncommercial/1.0.0>
-2. the `Required Notice:` copyright line above (kept verbatim)
-
-## Patents and breach
-
-- The licensor likewise grants a patent license covering the software; if you make a
-  written claim that the software infringes a patent, the patent license terminates
-  immediately.
-- If you cure the breach completely within **32 days** of the first written notice, the
-  license continues; otherwise all licenses terminate immediately.
+- If anyone initiates patent litigation claiming the software infringes a patent, the
+  patent license they received terminates that day (patent retaliation clause).
+- Apache-2.0 grants **no trademark rights** — derived works must not use the
+  "AgentWorkShop" name or marks for endorsement.
 - The software is provided "as is", **without any warranty**, and the licensor is not
   liable for any damages.
 
-## Why not MIT/Apache?
+## License change history
 
-MIT, Apache-2.0, AGPL and other common open-source licenses **all permit commercial use**
-(AGPL only requires derivative works to be open-sourced). If the goal is "no commercial use
-without permission", the industry-standard approach is a source-available license such as
-PolyForm Noncommercial — the source stays public and usable by the community while the full
-commercial rights remain reserved to the copyright holder.
+- **From 2026-10-09**: PolyForm Noncommercial 1.0.0 → **Apache License 2.0**
+  (enterprise production readiness: commercial and production use no longer need a
+  separate agreement).
+- Historical source remains available under the PolyForm Noncommercial 1.0.0 as it was
+  published; the current LICENSE governs.

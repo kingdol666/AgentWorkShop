@@ -48,6 +48,12 @@ export const userLoginSchema = z.object({
   password: z.string().min(1, '密码不能为空').max(128, '密码过长'),
 })
 
+/** 修改本人密码请求体（首登强制改密走同一端点；需当前密码验证） */
+export const userChangePasswordSchema = z.object({
+  currentPassword: z.string().min(1, '密码不能为空').max(128, '密码过长'),
+  newPassword: passwordSchema,
+})
+
 /** 创建 API Token 请求体 */
 export const userTokenCreateSchema = z.object({
   label: z.string().trim().max(64, '标签最多 64 字符').default(''),
@@ -63,5 +69,6 @@ export type UserUpdate = z.infer<typeof userUpdateSchema>
 export type UserListQueryInput = z.infer<typeof userListQuerySchema>
 export type UserRegister = z.infer<typeof userRegisterSchema>
 export type UserLogin = z.infer<typeof userLoginSchema>
+export type UserChangePassword = z.infer<typeof userChangePasswordSchema>
 export type UserTokenCreate = z.infer<typeof userTokenCreateSchema>
 export type UserTokenUpdate = z.infer<typeof userTokenUpdateSchema>

@@ -75,7 +75,7 @@ npx -p agentworkshop aw doctor     # 需要 aw 这个名字时用 -p 指定包
 | Node.js | `>= 23.4.0`（`engines.node`） |
 | 包管理器 | `pnpm@11.9.0`（`packageManager`，仅源码开发需要） |
 | 模块形态 | ESM（`type: module`） |
-| 许可证 | `PolyForm-Noncommercial-1.0.0` |
+| 许可证 | `Apache-2.0` |
 | 当前版本 | `0.7.57`（`package.json`） |
 
 ## 二、首次启动（Claude Code 式）

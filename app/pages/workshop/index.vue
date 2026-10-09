@@ -14,6 +14,7 @@
  * 把这些调用挪进子组件会让副作用跟随子组件的挂载时机注册,页面也不再持有订阅引用计数。
  */
 import AuthGate from '@/app/components/workshop/workbench/AuthGate.vue'
+import ChangePasswordModal from '@/app/components/workshop/workbench/ChangePasswordModal.vue'
 import CreateWorkspaceModal from '@/app/components/workshop/workbench/CreateWorkspaceModal.vue'
 import WorkbenchHead from '@/app/components/workshop/workbench/WorkbenchHead.vue'
 import WorkspaceCard from '@/app/components/workshop/workbench/WorkspaceCard.vue'
@@ -52,6 +53,8 @@ useHead({ title: () => t('titles.workshop') })
 
 <template>
   <div class="page">
+    <!-- 首登强制改密门:admin 建号/重置后弹出,改密成功前不得进入工作台 -->
+    <ChangePasswordModal />
     <!-- 登录门 -->
     <AuthGate
       v-if="!userStore.isLoggedIn"

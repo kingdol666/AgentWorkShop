@@ -12,7 +12,7 @@ authors:
     # given-names, affiliation, email) matching the manuscript author block.
 version: 0.7.39
 date-released: "2026-09-17"
-license: PolyForm-Noncommercial-1.0.0
+license: Apache-2.0
 repository-code: "https://github.com/kingdol666/AgentWorkShop"
 url: "https://github.com/kingdol666/AgentWorkShop"
 abstract: >-

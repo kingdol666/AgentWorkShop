@@ -128,6 +128,17 @@ hybrid_twin 频道(模板 chtpl-hybrid-twin-mpc-default 实例化)注入 16 孪�
 | 断言布点 | api-full-loop ⑥b 段 9 断言(ackSummary/ack 字段/dispatch.ack 落账/controlMode 守卫);PIPELINE S0 总闸自适应 + S4 设备证实断言 |
 | 设置面 | shared/config/schema.json 键 security.hitl_timeout_mode(reject|hold,live 热生效;缺 reject) |
 
+### L14 · 企业上线生产化第二轮(2026-10-09 批次;专项脚本 `node tmp-e2e/production-hardening2.mjs`,六腿 39 断言)
+| 特性 | 断言方法 |
+|---|---|
+| HITL 巡检豁免 | manual 线 recipe_update 挂卡不批 → 穿越空闲巡检窗(宽限 120s+扫描 30s,实测等 150s)→ 卡片仍 pending 且批准后正常固化;修复前此处被「回合已被中止」收敛拒绝 |
+| MQTT 陈值保护 | 节点 driverConfig.staleMs(缺省 300s,0=关):发布→采样入库;停发超窗→lastError「数据停发超过 Ns(陈值保护)」+冻值不再 ingest;恢复发布→自动回流。**报文契约:无 jsonPath 时必须发裸数字**(发 JSON 不配 jsonPath=提取失败不入库,是测试假失败) |
+| mqtts(TLS) | driverConfig.secure/caFile/rejectUnauthorized(回落全局 daq.mqtt.*);坏 CA 路径 → test-driver 显式报错「CA 证书文件不存在」(不静默降级明文) |
+| 首登强制改密 | admin 建号 → login//me 带 mustChangePassword=true → 错当前密码 401 → 改密清除 → 管理员 PUT 重置再次强制 + **旧会话全部吊销**(旧 token 即死 401) |
+| 注册闸门 | schema 缺省 false(新装 fail-safe);live 值经 setup-status 核验;开闸→注册放行→关闸→403(REGISTRATION_CLOSED) 双向验证 |
+| 备份扩围 | data/backups/manifest-*.json 含 dbs 数组 + objects 字段(daq-objects/daq-exports 入备,超 AW_BACKUP_OBJECTS_MAX_MB 缺省 200MB 显式跳过)+ infraNote 声明 Timescale/MinIO 卷边界 |
+| 恢复演练 | 最新 *.bak + files-* 平铺回 data 根(**dcw 线台账在 JSON 仓储不在 sqlite,漏平铺=线消失**)+ objects-* → AW_DATA_DIR 直启 .output/server/index.mjs 第二实例(须显式传 NUXT_SESSION_PASSWORD,start.mjs 的 .env 预载不生效)→ health + admin 登录 + 产线在册 → 清理 |
+
 ---
 
 ## 2. 判定与报告格式

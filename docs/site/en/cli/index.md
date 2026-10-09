@@ -78,7 +78,7 @@ npx -p agentworkshop aw doctor     # use -p when you want the name aw
 | Node.js | `>= 23.4.0` (`engines.node`) |
 | Package manager | `pnpm@11.9.0` (`packageManager`, needed only for source development) |
 | Module format | ESM (`type: module`) |
-| License | `PolyForm-Noncommercial-1.0.0` |
+| License | `Apache-2.0` |
 | Current version | `0.7.57` (`package.json`) |
 
 ## 2. First start (the Claude Code experience)

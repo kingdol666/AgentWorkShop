@@ -5,9 +5,13 @@
 import type { DcwWriteDriver } from './shared'
 import { AppError } from '../../../../utils/errors'
 import { reqNative } from './shared'
+import { mqttConnectOpts } from '../../daq/drivers/mqtt'
 
 // ============================================================
 // MQTT 写驱动(publish 设定值到 Broker;fire-and-forget,无回读)
+// 2026-10-09 生产化:mqtts(TLS)与采侧同源 —— TLS 参数合并/CA 校验走
+// daq/drivers/mqtt 的 mqttConnectOpts(节点 driverConfig.secure/caFile 优先,
+// 回落全局 daq.mqtt.*),采/控不再各说各话。
 // ============================================================
 
 export const mqttDcwDriver: DcwWriteDriver = {
@@ -27,19 +31,15 @@ export const mqttDcwDriver: DcwWriteDriver = {
       if (!cfg.host) throw new AppError(400, 'BAD_REQUEST', '缺少 Broker 地址 host')
       if (!cfg.topic) throw new AppError(400, 'BAD_REQUEST', '缺少下发主题 topic')
       const mqtt = reqNative('mqtt') as typeof import('mqtt')
-      const url = `mqtt://${String(cfg.host)}:${Number(cfg.port ?? 1883)}`
+      const secure = Boolean(cfg.secure ?? cfg.tls)
+      const url = `mqtt${secure ? 's' : ''}://${String(cfg.host)}:${Number(cfg.port ?? 1883)}`
       const payload = cfg.jsonKey
         ? JSON.stringify({ [String(cfg.jsonKey)]: input.eng })
         : String(input.eng)
-      // 控制发布用一次性连接(低频关键动作,不复用采样的长连接;发布即断,资源可控)
+      // 控制发布用一次性连接(低频关键动作,不复用采样的长连接;发布即断,资源可控)。
+      // TLS 语义经采侧 mqttConnectOpts 同源;一次性连接绝不能让 mqtt.js 默认重连后台空转。
       const client = await new Promise<import('mqtt').MqttClient>((resolve, reject) => {
-        const c = mqtt.connect(url, {
-          username: cfg.username ? String(cfg.username) : undefined,
-          password: cfg.password ? String(cfg.password) : undefined,
-          connectTimeout: 4000,
-          // 一次性连接:发布即断,绝不能让 mqtt.js 默认的 1s 无限重连在后台空转
-          reconnectPeriod: 0,
-        })
+        const c = mqtt.connect(url, { ...mqttConnectOpts(cfg), reconnectPeriod: 0 })
         c.once('connect', () => resolve(c))
         c.once('error', (err) => {
           try {
@@ -93,12 +93,10 @@ export const mqttDcwDriver: DcwWriteDriver = {
       if (!driverConfig.host) return { ok: false, message: '缺少 Broker 地址 host' }
       if (!driverConfig.topic) return { ok: false, message: '缺少下发主题 topic' }
       const mqtt = reqNative('mqtt') as typeof import('mqtt')
+      const secure = Boolean(driverConfig.secure ?? driverConfig.tls)
+      const url = `mqtt${secure ? 's' : ''}://${String(driverConfig.host)}:${Number(driverConfig.port ?? 1883)}`
       await new Promise<import('mqtt').MqttClient>((resolve, reject) => {
-        const c = mqtt.connect(`mqtt://${String(driverConfig.host)}:${Number(driverConfig.port ?? 1883)}`, {
-          username: driverConfig.username ? String(driverConfig.username) : undefined,
-          password: driverConfig.password ? String(driverConfig.password) : undefined,
-          connectTimeout: 4000,
-        })
+        const c = mqtt.connect(url, mqttConnectOpts(driverConfig))
         c.once('connect', () => resolve(c))
         c.once('error', err => reject(new Error(err.message)))
       }).then(c => new Promise<void>(r => c.end(false, {}, () => r())))

@@ -14,7 +14,7 @@
 [![Stars](https://img.shields.io/github/stars/kingdol666/AgentWorkShop?logo=github&label=stars&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/stargazers)
 [![Last commit](https://img.shields.io/github/last-commit/kingdol666/AgentWorkShop?logo=git&logoColor=white&label=last%20commit)](https://github.com/kingdol666/AgentWorkShop/commits)
 [![Issues](https://img.shields.io/github/issues/kingdol666/AgentWorkShop?logo=github&label=issues)](https://github.com/kingdol666/AgentWorkShop/issues)
-[![License](https://img.shields.io/badge/license-PolyForm%20Noncommercial%201.0.0-8A2BE2?logo=openaccess&logoColor=white)](./LICENSE)
+[![License](https://img.shields.io/badge/license-Apache%202.0-8A2BE2?logo=apache&logoColor=white)](./LICENSE)
 
 [![Nuxt 4](https://img.shields.io/badge/Nuxt-4-00DC82?logo=nuxt&logoColor=white)](https://nuxt.com)
 [![Vue 3.5](https://img.shields.io/badge/Vue-3.5-42B883?logo=vuedotjs&logoColor=white)](https://vuejs.org)
@@ -703,6 +703,91 @@ cd docs/site && npx vitepress build      # 生产构建 → .vitepress/dist
 
 该工作流在构建前把 `docs/{cli,plugins,sdk}.md`（及其 `.en.md` 双语对照）同步进文档站，因此这些文件是单页指南的唯一事实来源。
 
+## 部署（生产）
+
+目标形态：**内网单实例 + 反向代理终结 TLS**。服务本身刻意不做 TLS 监听 ——
+由 caddy/nginx 在前面终结（顺带获得 HTTP→HTTPS 跳转、访问日志与第二层限流）。
+
+```bash
+# 1) 构建并启动(缺 .output 产物时生产入口会拒启)
+pnpm build
+NUXT_SESSION_PASSWORD=$(node -e "console.log(require('crypto').randomBytes(24).toString('hex'))") \
+PORT=3000 node scripts/start.mjs
+```
+
+**TLS 反向代理。** caddy(自动证书,WebSocket 天然透传):
+
+```caddy
+aw.example.com {
+    reverse_proxy 127.0.0.1:3000
+}
+```
+
+nginx(注意 WebSocket `Upgrade` 头 —— 工作台、HITL 面板、实时日志全部走 WS):
+
+```nginx
+server {
+    listen 443 ssl;
+    server_name aw.example.com;
+    # ssl_certificate / ssl_certificate_key ...
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_read_timeout 300s;
+    }
+}
+```
+
+全站 HTTPS 后打开运行时设置 `security.hstsEnabled`,响应带 `Strict-Transport-Security`。
+
+**进程守护。** `scripts/start.mjs` 已自带子进程监管(崩溃退避重启、30s 健康探针、
+堆水位主动重启)—— 把**它**交给服务管理器,让守护进程本身也能扛住重启:
+
+```ini
+# /etc/systemd/system/agentworkshop.service
+[Service]
+WorkingDirectory=/opt/agentworkshop
+Environment=NUXT_SESSION_PASSWORD=<生成的密钥>
+Environment=PORT=3000
+ExecStart=/usr/bin/node scripts/start.mjs
+Restart=always
+User=aw
+[Install]
+WantedBy=multi-user.target
+```
+
+Windows 用 `nssm install AgentWorkShop "C:\Program Files\nodejs\node.exe" scripts\start.mjs`。
+**不要**对同一配置根起第二个实例 —— 单实例锁(`.runtime/aw.lock` 带心跳)会让新进程
+顶替、旧进程退出。
+
+**生产认证加固。** `security.allowRegistration` 缺省 **false**:首管理员就位后两个
+注册端点一律 403,账号由管理员创建;管理员建号/重置密码的账号带 `mustChangePassword`
+标记 —— 工作台在首次登录时强制改密(管理员重置会再次置位并吊销全部旧会话)。
+首启引导不受影响:零用户时首个注册账号仍自动成为管理员。
+
+**备份与恢复。** `server/plugins/backup.ts` 每 24h 快照(保留 7 份)到
+`<配置根>/.AgentWorkShop/data/backups/`:
+
+- 三个 SQLite 库(`workshop/users/daq-timeseries.sqlite`,WAL checkpoint + 原子改名)
+- 全部 JSON 仓储 + `config.yml` / `runtime-settings.json`(`files-<stamp>/`)
+- 本地对象存储与导出 `daq-objects/`、`daq-exports/`(`objects-<stamp>/`)——
+  超过 `AW_BACKUP_OBJECTS_MAX_MB`(缺省 200MB)时显式跳过并落日志
+- 每次附带 `manifest-<stamp>.json`;TimescaleDB/MinIO **docker 卷不在文件备份范围** ——
+  用 `pg_dump` / `mc mirror` 或卷快照另行备份
+
+恢复演练(上线前务必做一次):停服 → 移走 `backups/` → 用最新 `*.bak` + `files-*` +
+`objects-*` 重组数据目录 → 启动 → 核验 `/api/health`、管理员登录、产线/配方在册。
+`BACKUP_DISABLED=1`、`BACKUP_INTERVAL_HOURS`、`BACKUP_KEEP` 可调。
+
+**生产检查清单。** `NUXT_SESSION_PASSWORD` 随机生成(已知开发密钥会拒启) ·
+`security.allowRegistration=false`(缺省) · 反代 TLS + HSTS · 服务管理器就位 ·
+恢复演练已过 · `/api/health` + `/api/metrics` 接入监控 · `AW_HEAP_LIMIT_MB` 按主机
+配好 · `AW_RATE_LIMIT_OFF` **不设**(内置限流必须在线)。
+
 ## 路线图
 
 | 能力 | 状态 |
@@ -755,13 +840,13 @@ cd docs/site && npx vitepress build      # 生产构建 → .vitepress/dist
 | 边缘部署形态：独立 edge-agent + 中心 broker | 规划中 |
 | 报警外送（邮件/webhook）+ 确认工作流 | 规划中 |
 | CI 流水线（typecheck + lint + e2e）——文档部署已跑在 GitHub Actions 上 | 规划中 |
-| License：PolyForm Noncommercial 1.0.0（源码可得 · 禁止商用） | 已交付 |
+| License：Apache 2.0（宽松许可 · 允许商用与生产部署） | 已交付 |
 
 ## 许可证
 
 AgentWorkShop 是独立项目，**不是 Anthropic 或任何 LLM 厂商的官方产品**。它通过公开接口与 Agent harness（如 `omp`）集成。
 
-**AgentWorkShop 为源码可得（source-available）软件，依据 [PolyForm Noncommercial 1.0.0](./LICENSE) 发布。**
+**AgentWorkShop 为开源软件，依据 [Apache License 2.0](./LICENSE) 发布。**
 
 - **允许** —— 个人学习、科研、兴趣项目、教学，以及非商业组织（公益、教育、公共研究、政府机构）的使用。
 - **未经版权人事先书面许可不得商用** —— 任何**商业用途**：销售、付费服务、集成进商业产品、服务于经营活动的生产使用均未获授权。商用授权可向版权人申请。

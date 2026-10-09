@@ -266,6 +266,16 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     if (!runtime) return
     if (runtime.getState() !== 'idle') return
     if (this.deps.repos.messages.listPendingByChannelAgent(channelId, agentId).length > 0) return
+    // 生产化(2026-10-09):挂起中的 HITL 审批卡视为活跃 —— 真人审批常超空闲宽限
+    // (~120s),而 stopAndDetach → runtime.stop() → cancelAllForAgent 会把卡收敛为
+    // 「回合已被中止」的拒绝(误杀人工裁决,hold 模式也拦不住这条路径)。动态 import
+    // 取审批单例,避免与 tool-approvals → platform-notice → manager 的静态环。
+    // 删除实例/频道仍走 stopAndDetach 直达(管理动作,保持 fail-closed 收敛语义)。
+    try {
+      const { getToolApprovals } = await import('../../agents/tool-approvals')
+      if (getToolApprovals().listPending(agentId).length > 0) return
+    }
+    catch { /* 审批面未装配(测试/降级)→ 按原语义放行 */ }
     // §6.1 Runtime 卸载闸门(五条件)。§11 harness_continuity_enabled=false 时退回
     // 旧行为(只看 runtime idle),仅用于异常回滚 —— 默认必须走完整闸门。
     if (harnessContinuityEnabled()) {

@@ -19,7 +19,12 @@ export type UserProfile = AuthResult['user'] & { tokenId: string }
 export function resolveUserByToken(token: string): UserProfile | null {
   const user = findByToken(token)
   return user
-    ? { id: user.id, name: user.name, email: user.email, role: user.role, createdAt: user.createdAt, tokenId: user.tokenId }
+    ? {
+        id: user.id, name: user.name, email: user.email, role: user.role, createdAt: user.createdAt,
+        // findByToken 返回原生行(别名列为 0/1,非布尔):这里统一归一
+        mustChangePassword: Number((user as unknown as { mustChangePassword?: number | boolean }).mustChangePassword ?? 0) === 1,
+        tokenId: user.tokenId,
+      }
     : null
 }
 
@@ -55,7 +60,8 @@ export const userService = {
       throw new AppError(409, ErrorCodes.CONFLICT, '邮箱已被注册')
     }
     const password = input.password ?? randomPassword()
-    return userRepository.create({ ...input, password })
+    // 管理面建号一律首登强制改密:口令经管理员之手(或随机生成),不属于用户本人秘密
+    return userRepository.create({ ...input, password, mustChangePassword: true })
   },
 
   update(id: string, input: UserUpdate) {
@@ -65,10 +71,15 @@ export const userService = {
         throw new AppError(409, ErrorCodes.CONFLICT, '邮箱已被占用')
       }
     }
-    const user = userRepository.update(id, input)
+    // 管理面经 PUT 改密等同重置:置首登强制改密 + 吊销全部旧会话(旧 token 即死,
+    // 与 resetPassword 同语义;e2e M8 实证此前漏吊销)
+    const passwordChanged = input.password !== undefined
+    const patch = passwordChanged ? { ...input, mustChangePassword: true } : input
+    const user = userRepository.update(id, patch)
     if (!user) {
       throw new AppError(404, ErrorCodes.NOT_FOUND, '用户不存在')
     }
+    if (passwordChanged) userRepository.revokeAllTokens(id)
     return user
   },
 
@@ -79,13 +90,33 @@ export const userService = {
     return { id }
   },
 
-  /** 管理面：重置指定用户密码 */
+  /** 管理面：重置指定用户密码 → 首登强制改密 + 吊销全部旧会话(旧 token 即死) */
   resetPassword(id: string, password: string) {
-    const user = userRepository.update(id, { password })
+    const user = userRepository.update(id, { password, mustChangePassword: true })
     if (!user) {
       throw new AppError(404, ErrorCodes.NOT_FOUND, '用户不存在')
     }
-    return { id }
+    const revoked = userRepository.revokeAllTokens(id)
+    return { id, revokedSessions: revoked, mustChangePassword: true }
+  },
+
+  /** 本人修改密码(首登强制改密同一入口):当前密码验证 → 更新哈希并清除强制标记 */
+  changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = userRepository.findById(userId)
+    if (!user) {
+      throw new AppError(404, ErrorCodes.NOT_FOUND, '用户不存在')
+    }
+    const { hash } = userRepository.getPasswordHash(user.email) ?? {}
+    if (!hash || !verifyPassword(currentPassword, hash)) {
+      throw new AppError(401, 'UNAUTHORIZED', '当前密码不正确')
+    }
+    userRepository.update(userId, { password: newPassword, mustChangePassword: false })
+    recordOps({
+      actor: userId, actorName: user.name, actorKind: 'user',
+      action: 'auth.password.change', kind: 'system', targetKind: 'user', targetId: userId,
+      summary: `用户 ${user.name}(${user.email})修改了密码${user.mustChangePassword ? '(完成首登强制改密)' : ''}`,
+    })
+    return { ok: true, mustChangePassword: false }
   },
 
   // ===== 认证（公开端点）=====
@@ -212,8 +243,8 @@ export const userService = {
   },
 
   /** 公开档案（不含敏感字段） */
-  publicProfile(u: { id: string, name: string, email: string, role: string, createdAt: string }): AuthResult['user'] {
-    return { id: u.id, name: u.name, email: u.email, role: u.role, createdAt: u.createdAt }
+  publicProfile(u: { id: string, name: string, email: string, role: string, createdAt: string, mustChangePassword?: boolean }): AuthResult['user'] {
+    return { id: u.id, name: u.name, email: u.email, role: u.role, createdAt: u.createdAt, mustChangePassword: u.mustChangePassword === true }
   },
 }
 

@@ -6,7 +6,7 @@
  * setInterval + globalThis key 防 HMR 重复 + unref()。dev 与生产均生效
  * (备份无副作用,始终开启;BACKUP_DISABLED=1 可关)。
  */
-import { existsSync, mkdirSync, readdirSync, renameSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync, cpSync, writeFileSync } from 'node:fs'
 import { copyFile as copyFileAsync } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { ensureDataDir } from '@/shared/config/home.mjs'
@@ -16,6 +16,68 @@ import { backupRegistry } from '../services/workshop/db/backup-registry'
 const g = globalThis as typeof globalThis & { __awBackupTimer?: NodeJS.Timeout, __awBackupLastAt?: string }
 
 const DB_FILES = ['workshop.sqlite', 'users.sqlite', 'daq-timeseries.sqlite'] as const
+
+/** 目录树字节总量(快速 walk;仅 size 求和,用于备份上限判定) */
+function dirBytes(dir: string): number {
+  let total = 0
+  let entries: Array<import('node:fs').Dirent>
+  try {
+    entries = readdirSync(dir, { withFileTypes: true })
+  }
+  catch {
+    return 0
+  }
+  for (const e of entries) {
+    const p = resolve(dir, e.name)
+    if (e.isDirectory()) total += dirBytes(p)
+    else if (e.isFile()) {
+      try {
+        total += statSync(p).size
+      }
+      catch { /* 竞态:文件恰好消失,按 0 计 */ }
+    }
+  }
+  return total
+}
+
+/**
+ * 对象面备份(daq-objects 本地对象存储 + daq-exports 导出宽表)。
+ * 2026-10-09 生产化扩围:此前只备三库 + JSON 面,图像帧对象/导出数据不在备份
+ * 范围(真实产线丢单对象=丢检验证据)。带体量上限(AW_BACKUP_OBJECTS_MAX_MB,
+ * 缺省 200MB):超限跳过并显式落日志/账,提示走 infra 级卷备份,不做半份拷贝。
+ */
+async function backupObjects(dataDir: string, backupDir: string, stamp: string, manifest: Record<string, unknown>): Promise<void> {
+  const capMb = Math.max(0, Number(process.env.AW_BACKUP_OBJECTS_MAX_MB ?? 200))
+  if (capMb === 0) {
+    manifest.objects = { skipped: 'disabled(env AW_BACKUP_OBJECTS_MAX_MB=0)' }
+    return
+  }
+  const bundleDir = resolve(backupDir, `objects-${stamp}`)
+  const included: string[] = []
+  const skipped: string[] = []
+  mkdirSync(bundleDir, { recursive: true })
+  for (const dirName of ['daq-objects', 'daq-exports']) {
+    const src = resolve(dataDir, dirName)
+    if (!existsSync(src)) continue
+    const bytes = dirBytes(src)
+    if (bytes > capMb * 1024 * 1024) {
+      skipped.push(`${dirName}(${Math.round(bytes / 1024 / 1024)}MB > 上限 ${capMb}MB)`)
+      continue
+    }
+    try {
+      cpSync(src, resolve(bundleDir, dirName), { recursive: true })
+      included.push(`${dirName}(${Math.round(bytes / 1024 / 1024)}MB)`)
+    }
+    catch (err) {
+      skipped.push(`${dirName}(拷贝失败: ${err instanceof Error ? err.message : String(err)})`)
+    }
+  }
+  manifest.objects = { bundle: `objects-${stamp}`, included, skipped }
+  if (skipped.length) console.warn('[backup] 对象面部分跳过:', skipped.join('; '))
+}
+
+/** TIMESCALE/MINIO 卷说明(docker-compose 部署形态;文件级备份覆盖不到,RESTORE 文档写明) */
+const INFRA_VOLUMES_NOTE = 'TimescaleDB/MinIO 卷不在文件备份范围(docker 部署用 pg_dump/mc mirror 或卷快照)'
 
 /**
  * 单库在线快照(hardening ST-2 终版:零侵入文件拷贝)。
@@ -91,12 +153,14 @@ export async function backupOnce(dataDir: string): Promise<void> {
   const backupDir = resolve(dataDir, 'backups')
   mkdirSync(backupDir, { recursive: true })
   const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+  const done: string[] = []
   for (const file of DB_FILES) {
     const src = resolve(dataDir, file)
     if (!existsSync(src) || !backupRegistry.has(src)) continue
     const target = resolve(backupDir, `${file}.${stamp}.bak`)
     try {
       await backupOne(src, target)
+      done.push(file)
       console.log('[backup]', file, '快照完成(serialize)')
     }
     catch (err) {
@@ -105,6 +169,13 @@ export async function backupOnce(dataDir: string): Promise<void> {
   }
   // JSON 仓储 + 配置面快照(三库之外的可重建性半边)
   await backupFlatFiles(dataDir, backupDir, stamp)
+  // 对象面(图像帧对象存储 + 导出宽表;带体量上限,超限显式跳过)+ MANIFEST
+  const manifest: Record<string, unknown> = { stamp, dbs: done, infraNote: INFRA_VOLUMES_NOTE }
+  await backupObjects(dataDir, backupDir, stamp, manifest)
+  try {
+    writeFileSync(resolve(backupDir, `manifest-${stamp}.json`), JSON.stringify(manifest, null, 2))
+  }
+  catch { /* 清单写失败不影响备份本体 */ }
   // 轮转:每库仅保留最近 backup.keep 份(按文件名内时间戳倒序;env BACKUP_KEEP 兼容)
   const keep = Math.max(1, backupSettings().keep)
   for (const file of DB_FILES) {
@@ -119,17 +190,29 @@ export async function backupOnce(dataDir: string): Promise<void> {
       catch { /* 轮转失败不致命 */ }
     }
   }
-  // files-<stamp>/ 目录同 keep 轮转
-  const fileBundles = readdirSync(backupDir)
-    .filter(f => f.startsWith('files-') && !f.includes('.'))
-    .sort()
-    .reverse()
-  for (const stale of fileBundles.slice(keep)) {
-    try {
-      rmSync(resolve(backupDir, stale), { recursive: true })
+  // files-<stamp>/ 与 objects-<stamp>/、manifest-*.json 同 keep 轮转
+  for (const prefix of ['files-', 'objects-']) {
+    const bundles = readdirSync(backupDir)
+      .filter(f => f.startsWith(prefix) && !f.includes('.'))
+      .sort()
+      .reverse()
+    for (const stale of bundles.slice(keep)) {
+      try {
+        rmSync(resolve(backupDir, stale), { recursive: true })
+      }
+      catch { /* 轮转失败不致命 */ }
     }
-    catch { /* 轮转失败不致命 */ }
   }
+  try {
+    const mans = readdirSync(backupDir).filter(f => f.startsWith('manifest-') && f.endsWith('.json')).sort().reverse()
+    for (const stale of mans.slice(keep)) {
+      try {
+        rmSync(resolve(backupDir, stale))
+      }
+      catch { /* ignore */ }
+    }
+  }
+  catch { /* ignore */ }
   console.log('[backup] 快照完成 →', backupDir)
   // R4:记录最近一次成功备份时间,供 /api/metrics 观测
   g.__awBackupLastAt = new Date().toISOString()
@@ -138,7 +221,7 @@ export async function backupOnce(dataDir: string): Promise<void> {
     recordOps({
       actor: 'system', actorName: 'backup', actorKind: 'system',
       action: 'system.backup.run', kind: 'system',
-      summary: `数据库快照完成(${DB_FILES.length} 库 + JSON/配置)→ ${backupDir}`,
+      summary: `数据库快照完成(${done.length} 库 + JSON/配置 + 对象面)→ ${backupDir}`,
     })
   }).catch(() => {})
 }
