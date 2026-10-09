@@ -139,6 +139,17 @@ hybrid_twin 频道(模板 chtpl-hybrid-twin-mpc-default 实例化)注入 16 孪�
 | 备份扩围 | data/backups/manifest-*.json 含 dbs 数组 + objects 字段(daq-objects/daq-exports 入备,超 AW_BACKUP_OBJECTS_MAX_MB 缺省 200MB 显式跳过)+ infraNote 声明 Timescale/MinIO 卷边界 |
 | 恢复演练 | 最新 *.bak + files-* 平铺回 data 根(**dcw 线台账在 JSON 仓储不在 sqlite,漏平铺=线消失**)+ objects-* → AW_DATA_DIR 直启 .output/server/index.mjs 第二实例(须显式传 NUXT_SESSION_PASSWORD,start.mjs 的 .env 预载不生效)→ health + admin 登录 + 产线在册 → 清理 |
 
+### L15 · 验收级频道闭环大考(2026-10-09;`node tmp-e2e/channel-closedloop-acceptance.mjs`,五腿 26 断言)
+从零实例化频道跑全闭环 —— 验收/演示首选,补齐「既有频道复用型」多任务 e2e 的空白:
+| 腿 | 断言要点 |
+|---|---|
+| C 频道创建 | 模板 `chtpl-generic-optimize-default` 实例化(**完整 id,列表展示截断到 18 字符勿抄短**;instantiate 响应不带 leadAgentId,从频道台账取)→ 克隆 worker(00f3c815)→ lead 绑定 recipe manual+daq×2 → grant 委托 → bindLineId → activate |
+| L 闭环控制 | 工具桥 worker:line_status → daq_query 观测 → recipe_propose(五要素)→ 批准 → 设备证实+runId → 镜像复测。**治理窗三类重试**:60s op-interval 锚 / 300s 试验节拍 / 「已有在飞方案审批单(ap-xxx)」→ 采纳在飞单批准后重提 |
+| H HITL 正反 | 卡片 basis/exp_ref;拒绝意见**逐字回流**+节点值不变;audit_log approval.reject 可追溯(**channelId/status 在 detail 内,不在顶层**);线域 operate 用户收到 hitl_request |
+| D 数据分析 | daq_export(merge)→ merged.csv 本地统计(mean/std/inSpec 32.5±0.35)→ 与 daq_query 分桶均值对拍(±0.5g) |
+| Z 清理 | 频道删除(级联收敛在飞卡);REST 路恢复基准锚+apply 全证实 |
+| 环境铁律 | **测试前清孤儿实例**:数据锁被占(端口顺延实例,如 3013)会让新实例启动即自杀(「实例锁已被 pid=x 接管…主动退出」);清场按端口+锁文件,勿按仓库路径串(会误杀模拟器) |
+
 ---
 
 ## 2. 判定与报告格式

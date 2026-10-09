@@ -58,8 +58,8 @@ async function inv(tool, args, timeoutMs = 180_000) {
  *  归一按拒绝收敛(铁律:多方案批准未选包=拒绝);单动作 recipe-gate 单无需 choice。 */
 async function adjudicate(pattern, approved, comment, choice) {
   let card = null
-  for (let i = 0; i < 45 && !card; i++) {
-    await sleep(1000)
+  for (let i = 0; i < 60 && !card; i++) {
+    await sleep(2000)
     const pend = await api('GET', '/api/workshop/hitl/pending')
     const items = pend?.data?.items ?? []
     card = items.filter(x => x.kind === 'dcw-approval' && pattern.test(String(x.nodeId ?? '')))
