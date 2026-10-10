@@ -52,6 +52,8 @@ else {
     name: cfg.name,
     bindLineId: cfg.lineId,
     controlPolicy: DEFAULT_POLICY[scenario],
+    ...(cfg.scene ? { scene: cfg.scene } : {}),
+    ...(cfg.promptVariables ? { promptVariables: cfg.promptVariables } : {}),
   }, tok)
   channelId = j.data?.channelId
   ok(`模板实例化(${scenario})`, !!channelId, channelId ?? j.message ?? '')
@@ -91,6 +93,40 @@ for (const b of cfg.bindings ?? []) {
   const mode = scenario === 'tuning' && b.kind === 'recipe' ? 'manual' : (b.mode ?? 'manual') // 微调场景仅写面(配方)强制 manual,daq 只读绑定不受影响
   const j = await api('POST', '/api/workshop/agent-tools/bindings', { agentId, nodeId, kind: b.kind, mode }, tok)
   ok(`绑定[${b.agentRole}→${b.kind}:${String(b.nodeId).slice(0, 24)} mode=${mode}]`, !!j.data?.binding?.id || j.code === 0, j.data?.binding?.id ?? j.message ?? '')
+}
+
+// ---------- 3b. MES 取数授权配方(可见面 = dcw 存量绑定 ∪ 配方参数节点;kind='dcw' 绑定已废弃,
+//              history-only mes 节点的正道 = 参数面授权配方,只取数不下发) ----------
+if (Array.isArray(cfg.mesFetchGrants) && cfg.mesFetchGrants.length > 0) {
+  const recipes = await api('GET', '/api/workshop/dcw/recipes', undefined, tok)
+  const baseRecipe = (recipes.data?.recipes ?? []).find(r => r.id === prov.recipeId)
+  for (const g of cfg.mesFetchGrants) {
+    const agentId = resolveAgent(g.agentRole)
+    const nodeIds = (g.nodeIds ?? []).map(resolveNode).filter(Boolean)
+    if (!agentId || nodeIds.length === 0) {
+      ok(`MES授权[${g.agentRole}]`, false, `agentId=${agentId} nodeIds=${nodeIds.length}`)
+      continue
+    }
+    const grantName = g.name ?? `MES取数授权配方(${cfg.name})`
+    const dup = (recipes.data?.recipes ?? []).find(r => r.name === grantName)
+    let grantRecipeId = dup?.id
+    if (grantRecipeId) {
+      ok('MES授权配方复用', true, grantRecipeId)
+    }
+    else {
+      const j = await api('POST', '/api/workshop/dcw/recipes', {
+        name: grantName, productId: baseRecipe?.productId, lineId: cfg.lineId, opIntervalMs: 0,
+        params: nodeIds.map(id => ({ nodeId: id, value: 0 })),
+        reason: 'MES 直取节点可见面授权(仅取数面;不下发本配方)',
+      }, tok)
+      grantRecipeId = j.data?.recipe?.id ?? j.data?.id
+      ok('MES授权配方', !!grantRecipeId, grantRecipeId ?? j.message ?? '')
+    }
+    if (grantRecipeId) {
+      const b = await api('POST', '/api/workshop/agent-tools/bindings', { agentId, nodeId: grantRecipeId, kind: 'recipe', mode: 'manual' }, tok)
+      ok(`MES授权绑定[${g.agentRole}→${nodeIds.length} 点]`, !!b.data?.binding?.id || b.code === 0, b.data?.binding?.id ?? b.message ?? '')
+    }
+  }
 }
 
 // ---------- 4. 线域授权(权限 v3:频道成员可见/可操作) ----------

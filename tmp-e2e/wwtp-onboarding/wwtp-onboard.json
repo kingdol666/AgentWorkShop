@@ -1,0 +1,75 @@
+{
+  "line": { "name": "A2O污水生化处理线", "description": "A2O 污水线:曝气+加药+回流排泥+进出水;达标降耗多目标;来源=标准产线开发文档(污水线)" },
+  "connectivity": {
+    "tests": [
+      { "label": "风机SP(modbus-tcp)", "driver": "modbus-tcp", "driverConfig": { "host": "127.0.0.1", "port": 16054, "unitId": 1, "register": 40021, "registerType": "holding", "dataType": "float32", "byteOrder": "big" } },
+      { "label": "加药SP(opcua)", "driver": "opcua", "driverConfig": { "endpoint": "opc.tcp://127.0.0.1:5844", "nodeId": "ns=2;s=Wwtp.Dose.Naoh.Sp" } },
+      { "label": "回流SP(modbus-rtu)", "driver": "modbus-rtu", "driverConfig": { "host": "127.0.0.1", "port": 15054, "unitId": 1, "register": 40021, "registerType": "holding", "dataType": "float32", "byteOrder": "big" } },
+      { "label": "进水COD(mqtt)", "driver": "mqtt", "driverConfig": { "host": "127.0.0.1", "port": 18830, "topic": "aw/wwtp/codin", "jsonPath": "data.cod" } },
+      { "label": "出水COD(http)", "driver": "http", "driverConfig": { "url": "http://127.0.0.1:4010/sim-http/wwtp-effluent-http/api/cod", "jsonPath": "value" } }
+    ]
+  },
+  "nodes": [
+    { "kind": "dcw", "name": "风机频率SP", "driver": "modbus-tcp", "driverConfig": { "host": "127.0.0.1", "port": 16054, "unitId": 1, "register": 40021, "registerType": "holding", "dataType": "float32", "byteOrder": "big" }, "unit": "Hz", "decimals": 1, "min": 20, "max": 50, "stepLimit": 1.5, "holdIntervalMs": 120000, "templateRef": "temp-sp" },
+    { "kind": "daq", "name": "风压PV", "driver": "modbus-tcp", "driverConfig": { "host": "127.0.0.1", "port": 16054, "unitId": 1, "register": 40001, "registerType": "holding", "dataType": "float32", "byteOrder": "big" }, "unit": "kPa", "decimals": 1, "min": 20, "max": 90, "intervalMs": 2000, "templateRef": "daq-temp-tc" },
+    { "kind": "daq", "name": "好氧区DO", "driver": "modbus-tcp", "driverConfig": { "host": "127.0.0.1", "port": 16054, "unitId": 1, "register": 40003, "registerType": "holding", "dataType": "float32", "byteOrder": "big" }, "unit": "mg/L", "decimals": 2, "min": 0, "max": 10, "intervalMs": 2000, "templateRef": "daq-temp-tc", "warnLow": 1.5, "warnHigh": 6 },
+    { "kind": "dcw", "name": "碱投加SP", "driver": "opcua", "driverConfig": { "endpoint": "opc.tcp://127.0.0.1:5844", "nodeId": "ns=2;s=Wwtp.Dose.Naoh.Sp" }, "unit": "L/h", "decimals": 1, "min": 0, "max": 120, "stepLimit": 6, "holdIntervalMs": 120000, "templateRef": "temp-sp" },
+    { "kind": "dcw", "name": "除磷投加SP", "driver": "opcua", "driverConfig": { "endpoint": "opc.tcp://127.0.0.1:5844", "nodeId": "ns=2;s=Wwtp.Dose.Pac.Sp" }, "unit": "L/h", "decimals": 1, "min": 0, "max": 90, "stepLimit": 4, "holdIntervalMs": 120000, "templateRef": "temp-sp" },
+    { "kind": "daq", "name": "碱投加流量PV", "driver": "opcua", "driverConfig": { "endpoint": "opc.tcp://127.0.0.1:5844", "nodeId": "ns=2;s=Wwtp.Dose.Naoh.Pv" }, "unit": "L/h", "decimals": 1, "min": 0, "max": 130, "intervalMs": 2000, "templateRef": "daq-temp-tc" },
+    { "kind": "daq", "name": "除磷投加流量PV", "driver": "opcua", "driverConfig": { "endpoint": "opc.tcp://127.0.0.1:5844", "nodeId": "ns=2;s=Wwtp.Dose.Pac.Pv" }, "unit": "L/h", "decimals": 1, "min": 0, "max": 100, "intervalMs": 2000, "templateRef": "daq-temp-tc" },
+    { "kind": "dcw", "name": "内回流比SP", "driver": "modbus-rtu", "driverConfig": { "host": "127.0.0.1", "port": 15054, "unitId": 1, "register": 40021, "registerType": "holding", "dataType": "float32", "byteOrder": "big" }, "unit": "%", "decimals": 0, "min": 20, "max": 180, "stepLimit": 8, "holdIntervalMs": 120000, "templateRef": "temp-sp" },
+    { "kind": "dcw", "name": "污泥回流比SP", "driver": "modbus-rtu", "driverConfig": { "host": "127.0.0.1", "port": 15054, "unitId": 1, "register": 40023, "registerType": "holding", "dataType": "float32", "byteOrder": "big" }, "unit": "%", "decimals": 0, "min": 30, "max": 120, "stepLimit": 4, "holdIntervalMs": 120000, "templateRef": "temp-sp" },
+    { "kind": "dcw", "name": "排泥量SP", "driver": "modbus-rtu", "driverConfig": { "host": "127.0.0.1", "port": 15054, "unitId": 1, "register": 40025, "registerType": "holding", "dataType": "float32", "byteOrder": "big" }, "unit": "m3/d", "decimals": 0, "min": 50, "max": 400, "stepLimit": 17, "holdIntervalMs": 120000, "templateRef": "temp-sp" },
+    { "kind": "daq", "name": "污泥浓度MLSS", "driver": "modbus-rtu", "driverConfig": { "host": "127.0.0.1", "port": 15054, "unitId": 1, "register": 40001, "registerType": "holding", "dataType": "float32", "byteOrder": "big" }, "unit": "mg/L", "decimals": 0, "min": 1000, "max": 8000, "intervalMs": 5000, "templateRef": "daq-temp-tc" },
+    { "kind": "daq", "name": "进水COD", "driver": "mqtt", "driverConfig": { "host": "127.0.0.1", "port": 18830, "topic": "aw/wwtp/codin", "jsonPath": "data.cod" }, "unit": "mg/L", "decimals": 0, "min": 100, "max": 900, "intervalMs": 3000, "templateRef": "daq-temp-tc" },
+    { "kind": "daq", "name": "进水氨氮", "driver": "mqtt", "driverConfig": { "host": "127.0.0.1", "port": 18830, "topic": "aw/wwtp/nh3in", "jsonPath": "data.nh3" }, "unit": "mg/L", "decimals": 1, "min": 10, "max": 80, "intervalMs": 3000, "templateRef": "daq-temp-tc" },
+    { "kind": "dcw", "name": "进水流量SP", "driver": "mqtt", "driverConfig": { "host": "127.0.0.1", "port": 18830, "topic": "aw/wwtp/inflow/set", "jsonKey": "setpoint", "qos": 1 }, "unit": "m3/h", "decimals": 0, "min": 400, "max": 1600, "stepLimit": 60, "holdIntervalMs": 120000, "templateRef": "temp-sp" },
+    { "kind": "daq", "name": "出水COD", "driver": "http", "driverConfig": { "url": "http://127.0.0.1:4010/sim-http/wwtp-effluent-http/api/cod", "jsonPath": "value" }, "unit": "mg/L", "decimals": 1, "min": 0, "max": 300, "intervalMs": 5000, "templateRef": "daq-temp-tc", "warnHigh": 80 },
+    { "kind": "daq", "name": "出水氨氮", "driver": "http", "driverConfig": { "url": "http://127.0.0.1:4010/sim-http/wwtp-effluent-http/api/nh3", "jsonPath": "value" }, "unit": "mg/L", "decimals": 2, "min": 0, "max": 60, "intervalMs": 5000, "templateRef": "daq-temp-tc", "warnHigh": 8 },
+    { "kind": "daq", "name": "出水总磷", "driver": "http", "driverConfig": { "url": "http://127.0.0.1:4010/sim-http/wwtp-effluent-http/api/tp", "jsonPath": "value" }, "unit": "mg/L", "decimals": 2, "min": 0, "max": 8, "intervalMs": 5000, "templateRef": "daq-temp-tc", "warnHigh": 1 },
+    { "kind": "daq", "name": "出水pH", "driver": "http", "driverConfig": { "url": "http://127.0.0.1:4010/sim-http/wwtp-effluent-http/api/ph", "jsonPath": "value" }, "unit": "pH", "decimals": 2, "min": 4, "max": 11, "intervalMs": 5000, "templateRef": "daq-temp-tc", "warnLow": 6, "warnHigh": 9 },
+    { "kind": "daq", "name": "出水浊度", "driver": "http", "driverConfig": { "url": "http://127.0.0.1:4010/sim-http/wwtp-effluent-http/api/turbidity", "jsonPath": "value" }, "unit": "NTU", "decimals": 1, "min": 0, "max": 60, "intervalMs": 5000, "templateRef": "daq-temp-tc" },
+    { "kind": "daq", "name": "DO浓度剖面", "driver": "http", "driverConfig": { "url": "http://127.0.0.1:4010/sim-http/wwtp-effluent-http/api/doprofile", "jsonPath": "points" }, "unit": "mg/L", "decimals": 2, "min": 0, "max": 10, "intervalMs": 10000, "templateRef": "daq-ct-d4b27cfc" }
+  ],
+  "recipe": {
+    "name": "A2O达标降耗基线配方",
+    "params": [
+      { "node": "风机频率SP", "value": 35 },
+      { "node": "碱投加SP", "value": 60 },
+      { "node": "除磷投加SP", "value": 45 },
+      { "node": "内回流比SP", "value": 100 },
+      { "node": "污泥回流比SP", "value": 75 },
+      { "node": "排泥量SP", "value": 200 },
+      { "node": "进水流量SP", "value": 1000 }
+    ]
+  },
+  "startLine": true,
+  "channel": {
+    "scenario": "optimize",
+    "name": "A2O污水-闭环优化频道",
+    "plugins": { "idd-closedloop-bridge": true, "rag-bridge": true },
+    "bindings": [
+      { "agentRole": "worker:2", "kind": "recipe", "nodeId": "$RECIPE", "mode": "manual" },
+      { "agentRole": "worker:0", "kind": "daq", "nodeId": "$DAQ:风压PV", "mode": "auto" },
+      { "agentRole": "worker:0", "kind": "daq", "nodeId": "$DAQ:好氧区DO", "mode": "auto" },
+      { "agentRole": "worker:0", "kind": "daq", "nodeId": "$DAQ:碱投加流量PV", "mode": "auto" },
+      { "agentRole": "worker:0", "kind": "daq", "nodeId": "$DAQ:除磷投加流量PV", "mode": "auto" },
+      { "agentRole": "worker:0", "kind": "daq", "nodeId": "$DAQ:污泥浓度MLSS", "mode": "auto" },
+      { "agentRole": "worker:0", "kind": "daq", "nodeId": "$DAQ:进水COD", "mode": "auto" },
+      { "agentRole": "worker:0", "kind": "daq", "nodeId": "$DAQ:进水氨氮", "mode": "auto" },
+      { "agentRole": "worker:0", "kind": "daq", "nodeId": "$DAQ:出水COD", "mode": "auto" },
+      { "agentRole": "worker:0", "kind": "daq", "nodeId": "$DAQ:出水氨氮", "mode": "auto" },
+      { "agentRole": "worker:0", "kind": "daq", "nodeId": "$DAQ:出水总磷", "mode": "auto" },
+      { "agentRole": "worker:0", "kind": "daq", "nodeId": "$DAQ:出水pH", "mode": "auto" },
+      { "agentRole": "worker:0", "kind": "daq", "nodeId": "$DAQ:出水浊度", "mode": "auto" },
+      { "agentRole": "worker:0", "kind": "daq", "nodeId": "$DAQ:DO浓度剖面", "mode": "auto" }
+    ],
+    "seedTask": {
+      "title": "建立A2O基线档案并完成一轮达标降耗寻优",
+      "description": "目标:出水 COD≤80/氨氮≤8/总磷≤1 达标前提下降低曝气与加药。步骤:①sentinel_baseline 建档;②观察≥2 窗再提案;③提案带 basis+exp_ref,走 HITL 人工审批;④hard 限:出水超标即回退,风机下探步 ≤1.5Hz,每步 settle≥60s;⑤达标=出水三项连续 3 窗达标且单耗下降;每轮 kb 沉淀。",
+      "budget_minutes": 90
+    }
+  },
+  "smoke": { "param": "风机频率SP", "delta": 1 },
+  "verify": { "plugins": ["idd-closedloop-bridge", "rag-bridge"] }
+}

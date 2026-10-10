@@ -1,0 +1,374 @@
+{
+ "wwtp-blower-mbtcp": {
+  "device": {
+   "id": "wwtp-blower-mbtcp",
+   "name": "曝气风机站(Modbus TCP)",
+   "description": "生化池曝气风机站:风机频率是溶解氧的第一控制量,也是全厂最大电耗源(≈^2.6 指数)。",
+   "protocol": "modbus-tcp"
+  },
+  "items": [
+   {
+    "signal": "风机频率SP",
+    "driver": "modbus-tcp",
+    "description": "曝气风机频率(Hz);DO=f(kLa·f^1.8),电耗∝f^2.6——达标与降耗的核心权衡",
+    "unit": "Hz",
+    "min": 20,
+    "max": 50,
+    "decimals": 1,
+    "driverConfig": {
+     "host": "127.0.0.1",
+     "port": 16054,
+     "unitId": 1,
+     "register": 40021,
+     "registerType": "holding",
+     "dataType": "float32",
+     "byteOrder": "big"
+    },
+    "curl": "curl -s -X POST http://127.0.0.1:3021/api/workshop/daq/test-driver\\n  -H 'content-type: application/json'\\n  -d '{\"driver\":\"modbus-tcp\",\"driverConfig\":{\"host\":\"127.0.0.1\",\"port\":16054,\"unitId\":1,\"register\":40021,\"registerType\":\"holding\",\"dataType\":\"float32\",\"byteOrder\":\"big\"}}'"
+   },
+   {
+    "signal": "AirPress",
+    "driver": "modbus-tcp",
+    "description": "曝气总管风压(采集,kPa)",
+    "unit": "kPa",
+    "min": 20,
+    "max": 90,
+    "decimals": 1,
+    "driverConfig": {
+     "host": "127.0.0.1",
+     "port": 16054,
+     "unitId": 1,
+     "register": 40001,
+     "registerType": "holding",
+     "dataType": "float32",
+     "byteOrder": "big"
+    },
+    "curl": "curl -s -X POST http://127.0.0.1:3021/api/workshop/daq/test-driver\\n  -H 'content-type: application/json'\\n  -d '{\"driver\":\"modbus-tcp\",\"driverConfig\":{\"host\":\"127.0.0.1\",\"port\":16054,\"unitId\":1,\"register\":40001,\"registerType\":\"holding\",\"dataType\":\"float32\",\"byteOrder\":\"big\"}}'"
+   },
+   {
+    "signal": "DO",
+    "driver": "modbus-tcp",
+    "description": "好氧池溶解氧(采集,mg/L);硝化要求 ≥2.8,达标经济带 3.4±0.6",
+    "unit": "mg/L",
+    "min": 0,
+    "max": 10,
+    "decimals": 2,
+    "driverConfig": {
+     "host": "127.0.0.1",
+     "port": 16054,
+     "unitId": 1,
+     "register": 40003,
+     "registerType": "holding",
+     "dataType": "float32",
+     "byteOrder": "big"
+    },
+    "curl": "curl -s -X POST http://127.0.0.1:3021/api/workshop/daq/test-driver\\n  -H 'content-type: application/json'\\n  -d '{\"driver\":\"modbus-tcp\",\"driverConfig\":{\"host\":\"127.0.0.1\",\"port\":16054,\"unitId\":1,\"register\":40003,\"registerType\":\"holding\",\"dataType\":\"float32\",\"byteOrder\":\"big\"}}'"
+   }
+  ]
+ },
+ "wwtp-dosing-opcua": {
+  "device": {
+   "id": "wwtp-dosing-opcua",
+   "name": "加药单元(OPC UA)",
+   "description": "加药撬块:NaOH 中和(硝化碱耗补偿)与 PAC 化学除磷;两泵频率即药耗成本。",
+   "protocol": "opcua"
+  },
+  "items": [
+   {
+    "signal": "NaohDoseSP",
+    "driver": "opcua",
+    "description": "NaOH 计量泵频率(L/h);pH=6.1+0.041×药量−硝化碱耗,6.5~7.5 为经济带",
+    "unit": "L/h",
+    "min": 0,
+    "max": 120,
+    "decimals": 0,
+    "driverConfig": {
+     "endpoint": "opc.tcp://127.0.0.1:5844",
+     "nodeId": "ns=2;s=Wwtp.Dose.Naoh.Sp"
+    },
+    "curl": "curl -s -X POST http://127.0.0.1:3021/api/workshop/daq/test-driver\\n  -H 'content-type: application/json'\\n  -d '{\"driver\":\"opcua\",\"driverConfig\":{\"endpoint\":\"opc.tcp://127.0.0.1:5844\",\"nodeId\":\"ns=2;s=Wwtp.Dose.Naoh.Sp\"}}'"
+   },
+   {
+    "signal": "PacDoseSP",
+    "driver": "opcua",
+    "description": "PAC 投加泵频率(L/h);朗缪尔饱和吸附,收益递减,TP<0.5 的下限约 55~65",
+    "unit": "L/h",
+    "min": 0,
+    "max": 90,
+    "decimals": 0,
+    "driverConfig": {
+     "endpoint": "opc.tcp://127.0.0.1:5844",
+     "nodeId": "ns=2;s=Wwtp.Dose.Pac.Sp"
+    },
+    "curl": "curl -s -X POST http://127.0.0.1:3021/api/workshop/daq/test-driver\\n  -H 'content-type: application/json'\\n  -d '{\"driver\":\"opcua\",\"driverConfig\":{\"endpoint\":\"opc.tcp://127.0.0.1:5844\",\"nodeId\":\"ns=2;s=Wwtp.Dose.Pac.Sp\"}}'"
+   },
+   {
+    "signal": "NaohFlow",
+    "driver": "opcua",
+    "description": "NaOH 实际流量(采集,L/h)",
+    "unit": "L/h",
+    "min": 0,
+    "max": 130,
+    "decimals": 1,
+    "driverConfig": {
+     "endpoint": "opc.tcp://127.0.0.1:5844",
+     "nodeId": "ns=2;s=Wwtp.Dose.Naoh.Pv"
+    },
+    "curl": "curl -s -X POST http://127.0.0.1:3021/api/workshop/daq/test-driver\\n  -H 'content-type: application/json'\\n  -d '{\"driver\":\"opcua\",\"driverConfig\":{\"endpoint\":\"opc.tcp://127.0.0.1:5844\",\"nodeId\":\"ns=2;s=Wwtp.Dose.Naoh.Pv\"}}'"
+   },
+   {
+    "signal": "PacFlow",
+    "driver": "opcua",
+    "description": "PAC 实际流量(采集,L/h)",
+    "unit": "L/h",
+    "min": 0,
+    "max": 100,
+    "decimals": 1,
+    "driverConfig": {
+     "endpoint": "opc.tcp://127.0.0.1:5844",
+     "nodeId": "ns=2;s=Wwtp.Dose.Pac.Pv"
+    },
+    "curl": "curl -s -X POST http://127.0.0.1:3021/api/workshop/daq/test-driver\\n  -H 'content-type: application/json'\\n  -d '{\"driver\":\"opcua\",\"driverConfig\":{\"endpoint\":\"opc.tcp://127.0.0.1:5844\",\"nodeId\":\"ns=2;s=Wwtp.Dose.Pac.Pv\"}}'"
+   }
+  ]
+ },
+ "wwtp-return-rtu": {
+  "device": {
+   "id": "wwtp-return-rtu",
+   "name": "回流与排泥单元(Modbus RTU)",
+   "description": "回流撬块:内回流(脱氮)/污泥回流(泥浓维持)/剩余污泥排放(MLSS 定态)。",
+   "protocol": "modbus-rtu"
+  },
+  "items": [
+   {
+    "signal": "内回流比SP",
+    "driver": "modbus-rtu",
+    "description": "内回流比(%);>80 起改善脱氮(反硝化基质),过大增加能耗",
+    "unit": "%",
+    "min": 20,
+    "max": 180,
+    "decimals": 0,
+    "driverConfig": {
+     "host": "127.0.0.1",
+     "port": 15054,
+     "unitId": 1,
+     "register": 40021,
+     "registerType": "holding",
+     "dataType": "float32",
+     "byteOrder": "big"
+    },
+    "curl": "curl -s -X POST http://127.0.0.1:3021/api/workshop/daq/test-driver\\n  -H 'content-type: application/json'\\n  -d '{\"driver\":\"modbus-rtu\",\"driverConfig\":{\"host\":\"127.0.0.1\",\"port\":15054,\"unitId\":1,\"register\":40021,\"registerType\":\"holding\",\"dataType\":\"float32\",\"byteOrder\":\"big\"}}'"
+   },
+   {
+    "signal": "污泥回流比SP",
+    "driver": "modbus-rtu",
+    "description": "污泥回流比(%);维持曝气池 MLSS",
+    "unit": "%",
+    "min": 30,
+    "max": 120,
+    "decimals": 0,
+    "driverConfig": {
+     "host": "127.0.0.1",
+     "port": 15054,
+     "unitId": 1,
+     "register": 40023,
+     "registerType": "holding",
+     "dataType": "float32",
+     "byteOrder": "big"
+    },
+    "curl": "curl -s -X POST http://127.0.0.1:3021/api/workshop/daq/test-driver\\n  -H 'content-type: application/json'\\n  -d '{\"driver\":\"modbus-rtu\",\"driverConfig\":{\"host\":\"127.0.0.1\",\"port\":15054,\"unitId\":1,\"register\":40023,\"registerType\":\"holding\",\"dataType\":\"float32\",\"byteOrder\":\"big\"}}'"
+   },
+   {
+    "signal": "排泥量SP",
+    "driver": "modbus-rtu",
+    "description": "剩余污泥排放量(m³/d);MLSS=4900−7.5×(排泥−120),泥龄的执行器",
+    "unit": "m³/d",
+    "min": 50,
+    "max": 400,
+    "decimals": 0,
+    "driverConfig": {
+     "host": "127.0.0.1",
+     "port": 15054,
+     "unitId": 1,
+     "register": 40025,
+     "registerType": "holding",
+     "dataType": "float32",
+     "byteOrder": "big"
+    },
+    "curl": "curl -s -X POST http://127.0.0.1:3021/api/workshop/daq/test-driver\\n  -H 'content-type: application/json'\\n  -d '{\"driver\":\"modbus-rtu\",\"driverConfig\":{\"host\":\"127.0.0.1\",\"port\":15054,\"unitId\":1,\"register\":40025,\"registerType\":\"holding\",\"dataType\":\"float32\",\"byteOrder\":\"big\"}}'"
+   },
+   {
+    "signal": "MLSS",
+    "driver": "modbus-rtu",
+    "description": "曝气池污泥浓度(采集,mg/L);>6000 膨胀风险推高浊度",
+    "unit": "mg/L",
+    "min": 1000,
+    "max": 8000,
+    "decimals": 0,
+    "driverConfig": {
+     "host": "127.0.0.1",
+     "port": 15054,
+     "unitId": 1,
+     "register": 40001,
+     "registerType": "holding",
+     "dataType": "float32",
+     "byteOrder": "big"
+    },
+    "curl": "curl -s -X POST http://127.0.0.1:3021/api/workshop/daq/test-driver\\n  -H 'content-type: application/json'\\n  -d '{\"driver\":\"modbus-rtu\",\"driverConfig\":{\"host\":\"127.0.0.1\",\"port\":15054,\"unitId\":1,\"register\":40001,\"registerType\":\"holding\",\"dataType\":\"float32\",\"byteOrder\":\"big\"}}'"
+   }
+  ]
+ },
+ "wwtp-influent-mqtt": {
+  "device": {
+   "id": "wwtp-influent-mqtt",
+   "name": "进水泵房(MQTT)",
+   "description": "进水泵房:进水流量设定(MQTT 命令主题)+ 进水 COD/氨氮扰动物遥测。",
+   "protocol": "mqtt"
+  },
+  "items": [
+   {
+    "signal": "CodIn",
+    "driver": "mqtt",
+    "description": "进水 COD(采集,mg/L);扰动物,漂移由 disturbances 驱动",
+    "unit": "mg/L",
+    "min": 100,
+    "max": 900,
+    "decimals": 0,
+    "driverConfig": {
+     "host": "127.0.0.1",
+     "port": 18830,
+     "topic": "aw/wwtp/codin",
+     "jsonPath": "data.cod"
+    },
+    "curl": "curl -s -X POST http://127.0.0.1:3021/api/workshop/daq/test-driver\\n  -H 'content-type: application/json'\\n  -d '{\"driver\":\"mqtt\",\"driverConfig\":{\"host\":\"127.0.0.1\",\"port\":18830,\"topic\":\"aw/wwtp/codin\",\"jsonPath\":\"data.cod\"}}'"
+   },
+   {
+    "signal": "Nh3In",
+    "driver": "mqtt",
+    "description": "进水氨氮(采集,mg/L)",
+    "unit": "mg/L",
+    "min": 10,
+    "max": 80,
+    "decimals": 1,
+    "driverConfig": {
+     "host": "127.0.0.1",
+     "port": 18830,
+     "topic": "aw/wwtp/nh3in",
+     "jsonPath": "data.nh3"
+    },
+    "curl": "curl -s -X POST http://127.0.0.1:3021/api/workshop/daq/test-driver\\n  -H 'content-type: application/json'\\n  -d '{\"driver\":\"mqtt\",\"driverConfig\":{\"host\":\"127.0.0.1\",\"port\":18830,\"topic\":\"aw/wwtp/nh3in\",\"jsonPath\":\"data.nh3\"}}'"
+   },
+   {
+    "signal": "InflowSP",
+    "driver": "mqtt",
+    "description": "进水流量设定(m³/h,MQTT 命令主题下发);HRT 反比于流量",
+    "unit": "m³/h",
+    "min": 400,
+    "max": 1600,
+    "decimals": 0,
+    "driverConfig": {
+     "host": "127.0.0.1",
+     "port": 18830,
+     "topic": "aw/wwtp/inflow/set",
+     "jsonKey": "setpoint"
+    },
+    "curl": "curl -s -X POST http://127.0.0.1:3021/api/workshop/daq/test-driver\\n  -H 'content-type: application/json'\\n  -d '{\"driver\":\"mqtt\",\"driverConfig\":{\"host\":\"127.0.0.1\",\"port\":18830,\"topic\":\"aw/wwtp/inflow/set\",\"jsonKey\":\"setpoint\"}}'"
+   }
+  ]
+ },
+ "wwtp-effluent-http": {
+  "device": {
+   "id": "wwtp-effluent-http",
+   "name": "出水水质检测站(HTTP)",
+   "description": "出水在线水质仪:COD/氨氮/总磷/pH/浊度五参数 + 沿程 DO 轮廓向量帧。排放达标关。",
+   "protocol": "http"
+  },
+  "items": [
+   {
+    "signal": "CodOut",
+    "driver": "http",
+    "description": "出水 COD(采集,mg/L);排放限值 50",
+    "unit": "mg/L",
+    "min": 0,
+    "max": 300,
+    "decimals": 1,
+    "driverConfig": {
+     "url": "http://127.0.0.1:4010/sim-http/wwtp-effluent-http/api/cod",
+     "jsonPath": "value"
+    },
+    "curl": "curl -s -X POST http://127.0.0.1:3021/api/workshop/daq/test-driver\\n  -H 'content-type: application/json'\\n  -d '{\"driver\":\"http\",\"driverConfig\":{\"url\":\"http://127.0.0.1:4010/sim-http/wwtp-effluent-http/api/cod\",\"jsonPath\":\"value\"}}'"
+   },
+   {
+    "signal": "Nh3Out",
+    "driver": "http",
+    "description": "出水氨氮(采集,mg/L);排放限值 5,DO<0.8 硝化崩溃",
+    "unit": "mg/L",
+    "min": 0,
+    "max": 60,
+    "decimals": 2,
+    "driverConfig": {
+     "url": "http://127.0.0.1:4010/sim-http/wwtp-effluent-http/api/nh3",
+     "jsonPath": "value"
+    },
+    "curl": "curl -s -X POST http://127.0.0.1:3021/api/workshop/daq/test-driver\\n  -H 'content-type: application/json'\\n  -d '{\"driver\":\"http\",\"driverConfig\":{\"url\":\"http://127.0.0.1:4010/sim-http/wwtp-effluent-http/api/nh3\",\"jsonPath\":\"value\"}}'"
+   },
+   {
+    "signal": "TpOut",
+    "driver": "http",
+    "description": "出水总磷(采集,mg/L);排放限值 0.5",
+    "unit": "mg/L",
+    "min": 0,
+    "max": 8,
+    "decimals": 3,
+    "driverConfig": {
+     "url": "http://127.0.0.1:4010/sim-http/wwtp-effluent-http/api/tp",
+     "jsonPath": "value"
+    },
+    "curl": "curl -s -X POST http://127.0.0.1:3021/api/workshop/daq/test-driver\\n  -H 'content-type: application/json'\\n  -d '{\"driver\":\"http\",\"driverConfig\":{\"url\":\"http://127.0.0.1:4010/sim-http/wwtp-effluent-http/api/tp\",\"jsonPath\":\"value\"}}'"
+   },
+   {
+    "signal": "PhOut",
+    "driver": "http",
+    "description": "出水 pH(采集);排放限值 6~9",
+    "unit": "pH",
+    "min": 4,
+    "max": 11,
+    "decimals": 2,
+    "driverConfig": {
+     "url": "http://127.0.0.1:4010/sim-http/wwtp-effluent-http/api/ph",
+     "jsonPath": "value"
+    },
+    "curl": "curl -s -X POST http://127.0.0.1:3021/api/workshop/daq/test-driver\\n  -H 'content-type: application/json'\\n  -d '{\"driver\":\"http\",\"driverConfig\":{\"url\":\"http://127.0.0.1:4010/sim-http/wwtp-effluent-http/api/ph\",\"jsonPath\":\"value\"}}'"
+   },
+   {
+    "signal": "Turbidity",
+    "driver": "http",
+    "description": "出水浊度(采集,NTU);限值 10,膨胀/低 DO 抬升",
+    "unit": "NTU",
+    "min": 0,
+    "max": 60,
+    "decimals": 2,
+    "driverConfig": {
+     "url": "http://127.0.0.1:4010/sim-http/wwtp-effluent-http/api/turbidity",
+     "jsonPath": "value"
+    },
+    "curl": "curl -s -X POST http://127.0.0.1:3021/api/workshop/daq/test-driver\\n  -H 'content-type: application/json'\\n  -d '{\"driver\":\"http\",\"driverConfig\":{\"url\":\"http://127.0.0.1:4010/sim-http/wwtp-effluent-http/api/turbidity\",\"jsonPath\":\"value\"}}'"
+   },
+   {
+    "signal": "DoProfile",
+    "driver": "http",
+    "format": "vector",
+    "description": "沿程 DO 轮廓 7 池段向量帧(采集,mg/L)",
+    "unit": "mg/L",
+    "min": 0,
+    "max": 10,
+    "decimals": 3,
+    "driverConfig": {
+     "url": "http://127.0.0.1:4010/sim-http/wwtp-effluent-http/api/doprofile",
+     "jsonPath": "points"
+    },
+    "curl": "curl -s -X POST http://127.0.0.1:3021/api/workshop/daq/test-driver\\n  -H 'content-type: application/json'\\n  -d '{\"driver\":\"http\",\"driverConfig\":{\"url\":\"http://127.0.0.1:4010/sim-http/wwtp-effluent-http/api/doprofile\",\"jsonPath\":\"points\"}}'"
+   }
+  ]
+ }
+}

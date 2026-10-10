@@ -65,15 +65,25 @@ for (const n of cfg.nodes ?? []) {
     }
     continue
   }
+  // mes-rest 映射面自动字符串化(2026-10-10 投用轮坑:readMap/writeMap/historyMap/headers
+  // 必须是 JSON 字符串存 driverConfig —— 输入面允许写对象,这里统一转换,消灭编码坑)
+  const driverConfig = { ...(n.driverConfig ?? {}) }
+  if (n.driver === 'mes-rest') {
+    for (const key of ['readMap', 'writeMap', 'historyMap', 'headers']) {
+      if (driverConfig[key] != null && typeof driverConfig[key] === 'object') {
+        driverConfig[key] = JSON.stringify(driverConfig[key])
+      }
+    }
+  }
   const body = n.kind === 'daq'
     ? {
-        name: n.name, lineId, driver: n.driver, driverConfig: n.driverConfig ?? {},
+        name: n.name, lineId, driver: n.driver, driverConfig,
         templateRef: n.templateRef,
         unit: n.unit ?? '', decimals: n.decimals ?? 1, min: n.min, max: n.max,
         warnLow: n.warnLow, warnHigh: n.warnHigh, intervalMs: n.intervalMs,
       }
     : {
-        name: n.name, lineId, driver: n.driver, driverConfig: n.driverConfig ?? {},
+        name: n.name, lineId, driver: n.driver, driverConfig,
         unit: n.unit ?? '', decimals: n.decimals ?? 1, min: n.min, max: n.max,
         stepLimit: n.stepLimit, holdIntervalMs: n.holdIntervalMs ?? 120000,
         templateRef: n.templateRef, transform: n.transform,

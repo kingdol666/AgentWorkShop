@@ -14,6 +14,30 @@ description: AgentWorkShop 产线接入与作业频道锻造 skill。当用户�
 分工铁律:**你(助手)负责读文档、生成 driverConfig、选场景;逐点操作走 aw 工业 MCP 工具,
 批量供给/验收走 scripts/onboarding/ 脚本(输入是配置 JSON,永不理解文档)。**
 
+## 对产线负责的两条铁律(高于一切步骤)
+
+1. **不确定必问,禁止猜测**:凡是缺字段/两可的决策,停下来问用户 —— 必问清单:
+   ①点位的量程/单位/单步上限缺失(直接影响四层限界与工艺安全);
+   ②SP(可写)/PV(只读)判定不明(写错方向=对真实设备误动作);
+   ③MES 认证方式与凭据归属(bearer/header/none;token 放哪个 secretRef);
+   ④场景目标不清晰(找区间?诊断?微调?达标判据是什么);
+   ⑤配方下发治理档位(首绑一律 manual;用户明确要求才切 auto)。
+2. **测试自动裁决,投用用户裁决**:接入验收/冒烟期由助手自动创建并裁决 HITL(测试语义);
+   **投入使用必须由产线负责人在界面上 judge & taste 后放行** —— skill/脚本只到"可投用",
+   不得代用户宣告投产,交接时必须输出绑定矩阵/HITL 策略/安全限复核清单。
+
+## 一键接入(onboard.mjs,首选执行方式)
+
+```bash
+node scripts/onboarding/onboard.mjs <统一配置.json> [--skip-connectivity] [--smoke]
+```
+
+一条命令跑完全阶段:连通性预检 → 产线供给(mes-rest 映射自动字符串化)→ 频道锻造
+(含 **mesFetchGrants 自动授权配方**:history-only mes 节点的可见面 = 授权配方参数;
+场景 scene/promptVariables 透传)→ V1-V6 验收 →(`--smoke`)冒烟闭环步**自动 HITL 裁决** →
+交接声明(落袋 id + 投用复核清单)。统一配置 schema 见脚本头注;
+分阶段手工执行(下述阶段 1-5)仍是等价路径,适合定位问题。
+
 ## 前置条件
 
 - **MCP 集成开关已启用**:平台 Web「系统设置 → MCP 集成 → 启动 MCP 集成」打开(或为
