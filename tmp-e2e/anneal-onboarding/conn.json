@@ -1,0 +1,85 @@
+{
+ "tests": [
+  {
+   "label": "均热SP(modbus-tcp)",
+   "driver": "modbus-tcp",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 16056,
+    "unitId": 1,
+    "register": 40021,
+    "registerType": "holding",
+    "dataType": "float32",
+    "byteOrder": "big"
+   }
+  },
+  {
+   "label": "线速SP(opcua)",
+   "driver": "opcua",
+   "driverConfig": {
+    "endpoint": "opc.tcp://127.0.0.1:5845",
+    "nodeId": "ns=2;s=Anneal.Line.Speed.Sp"
+   }
+  },
+  {
+   "label": "线速PV(opcua)",
+   "driver": "opcua",
+   "driverConfig": {
+    "endpoint": "opc.tcp://127.0.0.1:5845",
+    "nodeId": "ns=2;s=Anneal.Line.Speed.Pv"
+   }
+  },
+  {
+   "label": "过时效SP(modbus-rtu)",
+   "driver": "modbus-rtu",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 15056,
+    "unitId": 1,
+    "register": 40021,
+    "registerType": "holding",
+    "dataType": "float32",
+    "byteOrder": "big"
+   }
+  },
+  {
+   "label": "露点PV(mqtt)",
+   "driver": "mqtt",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 18830,
+    "topic": "aw/anneal/dew",
+    "jsonPath": "data.dew"
+   }
+  },
+  {
+   "label": "氢气PV(mqtt)",
+   "driver": "mqtt",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 18830,
+    "topic": "aw/anneal/h2pv",
+    "jsonPath": "data.h2"
+   }
+  },
+  {
+   "label": "氢气SP(mqtt 写)",
+   "driver": "mqtt",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 18830,
+    "topic": "aw/anneal/h2/set",
+    "jsonKey": "setpoint",
+    "qos": 1
+   }
+  },
+  {
+   "label": "质检(http)",
+   "driver": "http",
+   "driverConfig": {
+    "url": "http://127.0.0.1:4010/sim-http/anneal-inspect-http/api/hardness",
+    "jsonPath": "value"
+   }
+  }
+ ]
+}

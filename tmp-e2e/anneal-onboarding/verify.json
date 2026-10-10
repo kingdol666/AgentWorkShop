@@ -1,0 +1,16 @@
+{
+  "lineId": "ln-c67805a6",
+  "recipeId": "rc-ef67af4e",
+  "channelId": "38a29212-720d-4cf4-98db-3e95b36cd61e",
+  "dcw": [
+    { "id": "dw-4f1f2a76", "name": "均热区1炉温SP", "min": 600, "max": 850, "stepLimit": 12, "probeValue": 700 },
+    { "id": "dw-22197cdf", "name": "均热区2炉温SP", "min": 600, "max": 850, "stepLimit": 12, "probeValue": 700 },
+    { "id": "dw-ae6e7fda", "name": "均热区3炉温SP", "min": 600, "max": 850, "stepLimit": 12, "probeValue": 700 },
+    { "id": "dw-c67f7ae7", "name": "线速SP", "min": 60, "max": 220, "stepLimit": 8, "probeValue": 120 },
+    { "id": "dw-c0dfa8df", "name": "过时效温度SP", "min": 320, "max": 480, "stepLimit": 10, "probeValue": 400 },
+    { "id": "dw-b86e4864", "name": "冷却档位SP", "min": 20, "max": 100, "stepLimit": 5, "probeValue": 60 },
+    { "id": "dw-0df08781", "name": "氢气占比SP", "min": 3, "max": 15, "stepLimit": 1, "probeValue": 8 }
+  ],
+  "daq": ["dn-920a787d", "dn-49122b47", "dn-3c3441e2", "dn-bdfc41ee", "dn-892ec727", "dn-8002ddca", "dn-7c4816bf", "dn-3d011133", "dn-24dc2e8b", "dn-30e3646a", "dn-8d6e48a0"],
+  "plugins": ["idd-closedloop-bridge", "rag-bridge"]
+}

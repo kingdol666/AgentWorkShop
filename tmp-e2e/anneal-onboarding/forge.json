@@ -1,0 +1,42 @@
+{
+  "scenario": "optimize",
+  "name": "连续退火-闭环优化频道",
+  "lineId": "ln-c67805a6",
+  "plugins": { "idd-closedloop-bridge": true, "rag-bridge": true },
+  "provision": {
+    "lineId": "ln-c67805a6",
+    "recipeId": "rc-ef67af4e",
+    "daq": {
+      "炉温PV": "dn-920a787d",
+      "带温PV": "dn-49122b47",
+      "实际线速PV": "dn-3c3441e2",
+      "过时效温度PV": "dn-bdfc41ee",
+      "保护气露点PV": "dn-892ec727",
+      "氢气占比PV": "dn-8002ddca",
+      "硬度HV": "dn-7c4816bf",
+      "抗拉强度": "dn-3d011133",
+      "屈服强度": "dn-24dc2e8b",
+      "晶粒度": "dn-30e3646a",
+      "表面缺陷率": "dn-8d6e48a0"
+    }
+  },
+  "bindings": [
+    { "agentRole": "worker:2", "kind": "recipe", "nodeId": "$RECIPE", "mode": "manual" },
+    { "agentRole": "worker:0", "kind": "daq", "nodeId": "$DAQ:炉温PV", "mode": "auto" },
+    { "agentRole": "worker:0", "kind": "daq", "nodeId": "$DAQ:带温PV", "mode": "auto" },
+    { "agentRole": "worker:0", "kind": "daq", "nodeId": "$DAQ:实际线速PV", "mode": "auto" },
+    { "agentRole": "worker:0", "kind": "daq", "nodeId": "$DAQ:过时效温度PV", "mode": "auto" },
+    { "agentRole": "worker:0", "kind": "daq", "nodeId": "$DAQ:保护气露点PV", "mode": "auto" },
+    { "agentRole": "worker:0", "kind": "daq", "nodeId": "$DAQ:氢气占比PV", "mode": "auto" },
+    { "agentRole": "worker:0", "kind": "daq", "nodeId": "$DAQ:硬度HV", "mode": "auto" },
+    { "agentRole": "worker:0", "kind": "daq", "nodeId": "$DAQ:抗拉强度", "mode": "auto" },
+    { "agentRole": "worker:0", "kind": "daq", "nodeId": "$DAQ:屈服强度", "mode": "auto" },
+    { "agentRole": "worker:0", "kind": "daq", "nodeId": "$DAQ:晶粒度", "mode": "auto" },
+    { "agentRole": "worker:0", "kind": "daq", "nodeId": "$DAQ:表面缺陷率", "mode": "auto" }
+  ],
+  "seedTask": {
+    "title": "建立退火基线档案并完成一轮质量窗内线速寻优",
+    "description": "目标:硬度落在 125~165HV 合格窗的前提下提升线速。步骤:①sentinel_baseline 建立基线档案;②观察≥2 窗再提案;③每参数提案必带 basis+exp_ref,recipe 提案走 HITL 人工审批,批准后下发并复测;④hard 安全限:均热温度≤800℃、线速≤180m/min、过时效≤460℃;每步 settle≥60s;⑤达标判据=硬度在窗内且连续 3 次复测稳定;每轮结论 kb 沉淀。",
+    "budget_minutes": 90
+  }
+}

@@ -127,6 +127,21 @@ MES 区间取数契约(多字段+时间段+间隔 API 的 historyMap 接入,2026
 - 大窗取数纪律:窗口≤7 天、max_rows≤5000;>2000 行走异步 CSV 数据集(`mes_dataset_read`
   读统计/分页),行级原文永不进对话。
 
+MES 接入实战契约坑(2026-10-10 退火线投用轮实证):
+
+- **historyMap/readMap/writeMap 必须是 JSON 字符串**(存 driverConfig 时 JSON.stringify):
+  传对象会让驱动按 "[object Object]" 解析失败(取数失败:historyMap 不是合法 JSON)。
+- **history-only(仅 historyMap)mes 节点的可见面授权**:kind='dcw' 绑定已废弃(BINDING_KIND_DEPRECATED),
+  正道 = 建一个**授权配方**(把 mes 节点列为 params,不下发该配方)并绑定给取数 Agent ——
+  mes_fetch 可见面 = dcw 存量绑定 ∪ 绑定配方参数节点。
+- **节点视图的 secretRef 是打码值("******")**:按视图回写 driverConfig 会把真实 secretRef
+  覆盖成掩码(401);PATCH 时必须显式给真值,或不要动 secretRef 字段。
+- secretRef→env 链:env 键 = AW_MES_<REF大写折叠>_TOKEN(如 MES_ANNEAL → AW_MES_MES_ANNEAL_TOKEN),
+  由 start.mjs 预载 .env 注入;仓库模式直启时 env 必须显式传给子进程。
+- mes-test-read 只覆盖 readMap(现值)面 —— historyMap-only 节点的连通验收走一次真实 mes_fetch。
+- mes_fetch 参数是 **from/to(ISO 字符串)**,不是 from_ms/to_ms;缺省无窗 → 落当前值快照(需 readMap)。
+- 写控/配方参数里的节点引用一律用**节点 id**(Agent 工具按 id 解析;传名字会报「节点已删除」误导错)。
+
 MES 双模式接入(2026-10-07 实测定稿;同一 MES API 按用户意愿二选一或并用):
 
 - **镜像入库模式**(数据进平台时序库,Agent 从库读,与 PLC 同管线):建**数采节点**

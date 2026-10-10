@@ -1,0 +1,436 @@
+{
+ "line": {
+  "name": "连续退火线",
+  "description": "连续退火产线(冷轧板带);质量窗内产能最大;来源=标准产线开发文档"
+ },
+ "nodes": [
+  {
+   "kind": "dcw",
+   "name": "均热区1炉温SP",
+   "driver": "modbus-tcp",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 16056,
+    "unitId": 1,
+    "register": 40021,
+    "registerType": "holding",
+    "dataType": "float32",
+    "byteOrder": "big"
+   },
+   "unit": "℃",
+   "decimals": 1,
+   "min": 600,
+   "max": 850,
+   "stepLimit": 12,
+   "holdIntervalMs": 120000,
+   "templateRef": "temp-sp"
+  },
+  {
+   "kind": "dcw",
+   "name": "均热区2炉温SP",
+   "driver": "modbus-tcp",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 16056,
+    "unitId": 1,
+    "register": 40023,
+    "registerType": "holding",
+    "dataType": "float32",
+    "byteOrder": "big"
+   },
+   "unit": "℃",
+   "decimals": 1,
+   "min": 600,
+   "max": 850,
+   "stepLimit": 12,
+   "holdIntervalMs": 120000,
+   "templateRef": "temp-sp"
+  },
+  {
+   "kind": "dcw",
+   "name": "均热区3炉温SP",
+   "driver": "modbus-tcp",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 16056,
+    "unitId": 1,
+    "register": 40025,
+    "registerType": "holding",
+    "dataType": "float32",
+    "byteOrder": "big"
+   },
+   "unit": "℃",
+   "decimals": 1,
+   "min": 600,
+   "max": 850,
+   "stepLimit": 12,
+   "holdIntervalMs": 120000,
+   "templateRef": "temp-sp"
+  },
+  {
+   "kind": "daq",
+   "name": "炉温PV",
+   "driver": "modbus-tcp",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 16056,
+    "unitId": 1,
+    "register": 40001,
+    "registerType": "holding",
+    "dataType": "float32",
+    "byteOrder": "big"
+   },
+   "unit": "℃",
+   "decimals": 1,
+   "min": 20,
+   "max": 900,
+   "intervalMs": 2000,
+   "templateRef": "daq-temp-tc",
+   "warnLow": 680,
+   "warnHigh": 847.2
+  },
+  {
+   "kind": "daq",
+   "name": "带温PV",
+   "driver": "modbus-tcp",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 16056,
+    "unitId": 1,
+    "register": 40003,
+    "registerType": "holding",
+    "dataType": "float32",
+    "byteOrder": "big"
+   },
+   "unit": "℃",
+   "decimals": 1,
+   "min": 20,
+   "max": 900,
+   "intervalMs": 2000,
+   "templateRef": "daq-temp-tc",
+   "warnLow": 680,
+   "warnHigh": 847.2
+  },
+  {
+   "kind": "dcw",
+   "name": "线速SP",
+   "driver": "opcua",
+   "driverConfig": {
+    "endpoint": "opc.tcp://127.0.0.1:5845",
+    "nodeId": "ns=2;s=Anneal.Line.Speed.Sp"
+   },
+   "unit": "m/min",
+   "decimals": 1,
+   "min": 60,
+   "max": 220,
+   "stepLimit": 8,
+   "holdIntervalMs": 120000,
+   "templateRef": "temp-sp"
+  },
+  {
+   "kind": "daq",
+   "name": "实际线速PV",
+   "driver": "opcua",
+   "driverConfig": {
+    "endpoint": "opc.tcp://127.0.0.1:5845",
+    "nodeId": "ns=2;s=Anneal.Line.Speed.Pv"
+   },
+   "unit": "m/min",
+   "decimals": 1,
+   "min": 0,
+   "max": 240,
+   "intervalMs": 2000,
+   "templateRef": "daq-temp-tc"
+  },
+  {
+   "kind": "dcw",
+   "name": "过时效温度SP",
+   "driver": "modbus-rtu",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 15056,
+    "unitId": 1,
+    "register": 40021,
+    "registerType": "holding",
+    "dataType": "float32",
+    "byteOrder": "big"
+   },
+   "unit": "℃",
+   "decimals": 1,
+   "min": 320,
+   "max": 480,
+   "stepLimit": 10,
+   "holdIntervalMs": 120000,
+   "templateRef": "temp-sp"
+  },
+  {
+   "kind": "dcw",
+   "name": "冷却档位SP",
+   "driver": "modbus-rtu",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 15056,
+    "unitId": 1,
+    "register": 40023,
+    "registerType": "holding",
+    "dataType": "float32",
+    "byteOrder": "big"
+   },
+   "unit": "%",
+   "decimals": 1,
+   "min": 20,
+   "max": 100,
+   "stepLimit": 5,
+   "holdIntervalMs": 120000,
+   "templateRef": "temp-sp"
+  },
+  {
+   "kind": "daq",
+   "name": "过时效温度PV",
+   "driver": "modbus-rtu",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 15056,
+    "unitId": 1,
+    "register": 40001,
+    "registerType": "holding",
+    "dataType": "float32",
+    "byteOrder": "big"
+   },
+   "unit": "℃",
+   "decimals": 1,
+   "min": 20,
+   "max": 520,
+   "intervalMs": 2000,
+   "templateRef": "daq-temp-tc"
+  },
+  {
+   "kind": "daq",
+   "name": "保护气露点PV",
+   "driver": "mqtt",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 18830,
+    "topic": "aw/anneal/dew",
+    "jsonPath": "data.dew"
+   },
+   "unit": "℃",
+   "decimals": 1,
+   "min": -70,
+   "max": 0,
+   "intervalMs": 3000,
+   "templateRef": "daq-temp-tc"
+  },
+  {
+   "kind": "daq",
+   "name": "氢气占比PV",
+   "driver": "mqtt",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 18830,
+    "topic": "aw/anneal/h2pv",
+    "jsonPath": "data.h2"
+   },
+   "unit": "%",
+   "decimals": 1,
+   "min": 0,
+   "max": 20,
+   "intervalMs": 3000,
+   "templateRef": "daq-temp-tc"
+  },
+  {
+   "kind": "dcw",
+   "name": "氢气占比SP",
+   "driver": "mqtt",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 18830,
+    "topic": "aw/anneal/h2/set",
+    "jsonKey": "setpoint",
+    "qos": 1
+   },
+   "unit": "%",
+   "decimals": 1,
+   "min": 3,
+   "max": 15,
+   "stepLimit": 1,
+   "holdIntervalMs": 120000,
+   "templateRef": "temp-sp"
+  },
+  {
+   "kind": "daq",
+   "name": "硬度HV",
+   "driver": "http",
+   "driverConfig": {
+    "url": "http://127.0.0.1:4010/sim-http/anneal-inspect-http/api/hardness",
+    "jsonPath": "value"
+   },
+   "unit": "HV",
+   "decimals": 1,
+   "min": 60,
+   "max": 200,
+   "intervalMs": 5000,
+   "templateRef": "daq-temp-tc"
+  },
+  {
+   "kind": "daq",
+   "name": "抗拉强度",
+   "driver": "http",
+   "driverConfig": {
+    "url": "http://127.0.0.1:4010/sim-http/anneal-inspect-http/api/tensile",
+    "jsonPath": "value"
+   },
+   "unit": "MPa",
+   "decimals": 1,
+   "min": 200,
+   "max": 500,
+   "intervalMs": 5000,
+   "templateRef": "daq-temp-tc"
+  },
+  {
+   "kind": "daq",
+   "name": "屈服强度",
+   "driver": "http",
+   "driverConfig": {
+    "url": "http://127.0.0.1:4010/sim-http/anneal-inspect-http/api/yield",
+    "jsonPath": "value"
+   },
+   "unit": "MPa",
+   "decimals": 1,
+   "min": 100,
+   "max": 400,
+   "intervalMs": 5000,
+   "templateRef": "daq-temp-tc"
+  },
+  {
+   "kind": "daq",
+   "name": "晶粒度",
+   "driver": "http",
+   "driverConfig": {
+    "url": "http://127.0.0.1:4010/sim-http/anneal-inspect-http/api/grain",
+    "jsonPath": "value"
+   },
+   "unit": "μm",
+   "decimals": 1,
+   "min": 2,
+   "max": 30,
+   "intervalMs": 5000,
+   "templateRef": "daq-temp-tc"
+  },
+  {
+   "kind": "daq",
+   "name": "表面缺陷率",
+   "driver": "http",
+   "driverConfig": {
+    "url": "http://127.0.0.1:4010/sim-http/anneal-inspect-http/api/surface",
+    "jsonPath": "value"
+   },
+   "unit": "%",
+   "decimals": 1,
+   "min": 0,
+   "max": 5,
+   "intervalMs": 5000,
+   "templateRef": "daq-temp-tc"
+  },
+  {
+   "kind": "dcw",
+   "name": "MES温度序列",
+   "driver": "mes-rest",
+   "driverConfig": {
+    "baseUrl": "http://127.0.0.1:15060",
+    "authType": "header",
+    "authHeaderName": "x-api-token",
+    "secretRef": "MES_ANNEAL",
+    "allowPrivateHost": "true",
+    "historyMap": {
+     "method": "GET",
+     "path": "/api/v1/series",
+     "query": {
+      "fields": "melt_temp"
+     },
+     "response": {
+      "rowsPath": "data.rows",
+      "valuePath": "values.melt_temp",
+      "tsPath": "ts",
+      "tsFormat": "iso",
+      "nextCursorPath": "data.nextCursor"
+     }
+    }
+   },
+   "unit": "℃",
+   "decimals": 1,
+   "min": 0,
+   "max": 400,
+   "stepLimit": 999,
+   "holdIntervalMs": 0,
+   "templateRef": "temp-sp"
+  },
+  {
+   "kind": "dcw",
+   "name": "MES压力序列",
+   "driver": "mes-rest",
+   "driverConfig": {
+    "baseUrl": "http://127.0.0.1:15060",
+    "authType": "header",
+    "authHeaderName": "x-api-token",
+    "secretRef": "MES_ANNEAL",
+    "allowPrivateHost": "true",
+    "historyMap": {
+     "method": "GET",
+     "path": "/api/v1/series",
+     "query": {
+      "fields": "melt_pressure"
+     },
+     "response": {
+      "rowsPath": "data.rows",
+      "valuePath": "values.melt_pressure",
+      "tsPath": "ts",
+      "tsFormat": "iso",
+      "nextCursorPath": "data.nextCursor"
+     }
+    }
+   },
+   "unit": "MPa",
+   "decimals": 2,
+   "min": 0,
+   "max": 40,
+   "stepLimit": 999,
+   "holdIntervalMs": 0,
+   "templateRef": "temp-sp"
+  }
+ ],
+ "recipe": {
+  "name": "退火基线配方",
+  "params": [
+   {
+    "node": "均热区1炉温SP",
+    "value": 745
+   },
+   {
+    "node": "均热区2炉温SP",
+    "value": 750
+   },
+   {
+    "node": "均热区3炉温SP",
+    "value": 748
+   },
+   {
+    "node": "线速SP",
+    "value": 120
+   },
+   {
+    "node": "过时效温度SP",
+    "value": 400
+   },
+   {
+    "node": "冷却档位SP",
+    "value": 60
+   },
+   {
+    "node": "氢气占比SP",
+    "value": 8
+   }
+  ]
+ },
+ "startLine": true
+}
