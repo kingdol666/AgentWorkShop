@@ -48,6 +48,48 @@ const daqList = await api('GET', '/api/workshop/daq', undefined, tok)
 const daqAll = daqList.data?.nodes ?? []
 const dcwMap = {}, daqMap = {}
 
+// ---------- 1b. 跨线写点冲突预检(对产线负责:两个产线的写控节点打到同一物理寄存器
+// = 双保写心跳互打,必然猎振 —— 2026-10-10 注塑二线推演实证发现,故设硬闸) ----------
+function writeFingerprint(n) {
+  const c = n.driverConfig ?? {}
+  switch (n.driver) {
+    case 'modbus-tcp':
+    case 'modbus-rtu':
+    case 'serial':
+      return `${n.driver}://${c.host}:${c.port}/${c.unitId ?? 1}:${c.register}:${c.registerType ?? 'holding'}`
+    case 'opcua':
+      return `opcua://${c.endpoint}::${c.nodeId}`
+    case 'mqtt':
+      return `mqtt://${c.host}:${c.port}::${c.topic}`
+    case 'http':
+      return `http://${c.url}`
+    default:
+      return null // mes-rest/mock 等共享面不参与
+  }
+}
+if (cfg.allowSharedSignals !== true) {
+  const existing = dcwAll.filter(x => x.lineId !== lineId)
+  const fpIndex = new Map()
+  for (const x of existing) {
+    const fp = writeFingerprint(x)
+    if (fp) fpIndex.set(fp, x)
+  }
+  const collisions = []
+  for (const n of cfg.nodes ?? []) {
+    if (n.kind !== 'dcw') continue
+    const fp = writeFingerprint(n)
+    const hit = fp ? fpIndex.get(fp) : null
+    if (hit) collisions.push(`${n.name} ↔ ${hit.name}(线 ${hit.lineId})@ ${fp}`)
+  }
+  if (collisions.length > 0) {
+    console.error(`✖ 跨线写点冲突(${collisions.length}):新线写控节点与既有产线命中同一物理点位,双线保写必然互打猎振:`)
+    for (const c of collisions) console.error('   ·', c)
+    console.error('  处置:改选不冲突信号,或确认两线共用同一物理点后配置 "allowSharedSignals": true 显式豁免。')
+    process.exit(1)
+  }
+  ok('跨线写点冲突预检', true, `既有他线写控 ${existing.length} 节点,冲突 0`)
+}
+
 for (const n of cfg.nodes ?? []) {
   const pool = n.kind === 'daq' ? daqAll : dcwAll
   const found = pool.find(x => x.lineId === lineId && x.name === n.name)

@@ -1,0 +1,477 @@
+{
+ "line": {
+  "name": "注塑成型二线",
+  "description": "精密结构件注塑二线;克重窗口 32.5±0.5g 稳产;信号面与一线零写点冲突;来源=标准产线开发文档(注塑二线)"
+ },
+ "connectivity": {
+  "tests": [
+   {
+    "label": "机筒区2SP(modbus-tcp)",
+    "driver": "modbus-tcp",
+    "driverConfig": {
+     "host": "127.0.0.1",
+     "port": 16052,
+     "unitId": 1,
+     "register": 40023,
+     "registerType": "holding",
+     "dataType": "float32",
+     "byteOrder": "big"
+    }
+   },
+   {
+    "label": "锁模力SP(modbus-rtu)",
+    "driver": "modbus-rtu",
+    "driverConfig": {
+     "host": "127.0.0.1",
+     "port": 15052,
+     "unitId": 1,
+     "register": 40023,
+     "registerType": "holding",
+     "dataType": "float32",
+     "byteOrder": "big"
+    }
+   },
+   {
+    "label": "注射压力PV(opcua)",
+    "driver": "opcua",
+    "driverConfig": {
+     "endpoint": "opc.tcp://127.0.0.1:5843",
+     "nodeId": "ns=2;s=Inj.Inj.P.Pv"
+    }
+   },
+   {
+    "label": "冷却水PV(mqtt)",
+    "driver": "mqtt",
+    "driverConfig": {
+     "host": "127.0.0.1",
+     "port": 18830,
+     "topic": "aw/inj/wtemp",
+     "jsonPath": "data.temp"
+    }
+   },
+   {
+    "label": "克重(http)",
+    "driver": "http",
+    "driverConfig": {
+     "url": "http://127.0.0.1:4010/sim-http/inj-inspect-http/api/weight",
+     "jsonPath": "value"
+    }
+   }
+  ]
+ },
+ "nodes": [
+  {
+   "kind": "dcw",
+   "name": "机筒温度区3SP",
+   "driver": "modbus-tcp",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 16052,
+    "unitId": 1,
+    "register": 40025,
+    "registerType": "holding",
+    "dataType": "float32",
+    "byteOrder": "big"
+   },
+   "unit": "℃",
+   "decimals": 1,
+   "min": 160,
+   "max": 300,
+   "stepLimit": 5,
+   "holdIntervalMs": 120000,
+   "templateRef": "temp-sp"
+  },
+  {
+   "kind": "dcw",
+   "name": "机筒温度区4SP",
+   "driver": "modbus-tcp",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 16052,
+    "unitId": 1,
+    "register": 40027,
+    "registerType": "holding",
+    "dataType": "float32",
+    "byteOrder": "big"
+   },
+   "unit": "℃",
+   "decimals": 1,
+   "min": 160,
+   "max": 300,
+   "stepLimit": 5,
+   "holdIntervalMs": 120000,
+   "templateRef": "temp-sp"
+  },
+  {
+   "kind": "dcw",
+   "name": "锁模力SP",
+   "driver": "modbus-rtu",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 15052,
+    "unitId": 1,
+    "register": 40023,
+    "registerType": "holding",
+    "dataType": "float32",
+    "byteOrder": "big"
+   },
+   "unit": "kN",
+   "decimals": 0,
+   "min": 800,
+   "max": 2500,
+   "stepLimit": 80,
+   "holdIntervalMs": 120000,
+   "templateRef": "temp-sp"
+  },
+  {
+   "kind": "daq",
+   "name": "熔体温度PV",
+   "driver": "modbus-tcp",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 16052,
+    "unitId": 1,
+    "register": 40001,
+    "registerType": "holding",
+    "dataType": "float32",
+    "byteOrder": "big"
+   },
+   "unit": "℃",
+   "decimals": 1,
+   "min": 20,
+   "max": 320,
+   "intervalMs": 2000,
+   "templateRef": "daq-temp-tc"
+  },
+  {
+   "kind": "daq",
+   "name": "熔体压力PV",
+   "driver": "modbus-tcp",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 16052,
+    "unitId": 1,
+    "register": 40003,
+    "registerType": "holding",
+    "dataType": "float32",
+    "byteOrder": "big"
+   },
+   "unit": "bar",
+   "decimals": 1,
+   "min": 0,
+   "max": 160,
+   "intervalMs": 2000,
+   "templateRef": "daq-temp-tc"
+  },
+  {
+   "kind": "daq",
+   "name": "模具温度PV",
+   "driver": "modbus-rtu",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 15052,
+    "unitId": 1,
+    "register": 40001,
+    "registerType": "holding",
+    "dataType": "float32",
+    "byteOrder": "big"
+   },
+   "unit": "℃",
+   "decimals": 1,
+   "min": 10,
+   "max": 110,
+   "intervalMs": 2000,
+   "templateRef": "daq-temp-tc"
+  },
+  {
+   "kind": "daq",
+   "name": "锁模力PV",
+   "driver": "modbus-rtu",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 15052,
+    "unitId": 1,
+    "register": 40003,
+    "registerType": "holding",
+    "dataType": "float32",
+    "byteOrder": "big"
+   },
+   "unit": "kN",
+   "decimals": 0,
+   "min": 0,
+   "max": 2600,
+   "intervalMs": 2000,
+   "templateRef": "daq-temp-tc"
+  },
+  {
+   "kind": "daq",
+   "name": "注射压力PV",
+   "driver": "opcua",
+   "driverConfig": {
+    "endpoint": "opc.tcp://127.0.0.1:5843",
+    "nodeId": "ns=2;s=Inj.Inj.P.Pv"
+   },
+   "unit": "bar",
+   "decimals": 1,
+   "min": 0,
+   "max": 180,
+   "intervalMs": 2000,
+   "templateRef": "daq-temp-tc"
+  },
+  {
+   "kind": "daq",
+   "name": "冷却水温度PV",
+   "driver": "mqtt",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 18830,
+    "topic": "aw/inj/wtemp",
+    "jsonPath": "data.temp"
+   },
+   "unit": "℃",
+   "decimals": 1,
+   "min": 5,
+   "max": 60,
+   "intervalMs": 3000,
+   "templateRef": "daq-temp-tc"
+  },
+  {
+   "kind": "daq",
+   "name": "冷却水流量PV",
+   "driver": "mqtt",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 18830,
+    "topic": "aw/inj/flow",
+    "jsonPath": "data.flow"
+   },
+   "unit": "L/min",
+   "decimals": 1,
+   "min": 0,
+   "max": 80,
+   "intervalMs": 3000,
+   "templateRef": "daq-temp-tc"
+  },
+  {
+   "kind": "daq",
+   "name": "制品克重",
+   "driver": "http",
+   "driverConfig": {
+    "url": "http://127.0.0.1:4010/sim-http/inj-inspect-http/api/weight",
+    "jsonPath": "value"
+   },
+   "unit": "g",
+   "decimals": 2,
+   "min": 25,
+   "max": 40,
+   "intervalMs": 5000,
+   "templateRef": "daq-temp-tc",
+   "warnLow": 32,
+   "warnHigh": 33
+  },
+  {
+   "kind": "daq",
+   "name": "飞边率",
+   "driver": "http",
+   "driverConfig": {
+    "url": "http://127.0.0.1:4010/sim-http/inj-inspect-http/api/flash",
+    "jsonPath": "value"
+   },
+   "unit": "%",
+   "decimals": 2,
+   "min": 0,
+   "max": 5,
+   "intervalMs": 5000,
+   "templateRef": "daq-temp-tc",
+   "warnHigh": 3
+  },
+  {
+   "kind": "daq",
+   "name": "缩痕率",
+   "driver": "http",
+   "driverConfig": {
+    "url": "http://127.0.0.1:4010/sim-http/inj-inspect-http/api/sink",
+    "jsonPath": "value"
+   },
+   "unit": "%",
+   "decimals": 2,
+   "min": 0,
+   "max": 10,
+   "intervalMs": 5000,
+   "templateRef": "daq-temp-tc",
+   "warnHigh": 4
+  },
+  {
+   "kind": "daq",
+   "name": "尺寸偏差",
+   "driver": "http",
+   "driverConfig": {
+    "url": "http://127.0.0.1:4010/sim-http/inj-inspect-http/api/dim",
+    "jsonPath": "value"
+   },
+   "unit": "mm",
+   "decimals": 3,
+   "min": -0.5,
+   "max": 0.5,
+   "intervalMs": 5000,
+   "templateRef": "daq-temp-tc"
+  },
+  {
+   "kind": "daq",
+   "name": "成型周期",
+   "driver": "http",
+   "driverConfig": {
+    "url": "http://127.0.0.1:4010/sim-http/inj-inspect-http/api/cycle",
+    "jsonPath": "value"
+   },
+   "unit": "s",
+   "decimals": 1,
+   "min": 5,
+   "max": 60,
+   "intervalMs": 5000,
+   "templateRef": "daq-temp-tc"
+  },
+  {
+   "kind": "daq",
+   "name": "壁厚轮廓剖面",
+   "driver": "http",
+   "driverConfig": {
+    "url": "http://127.0.0.1:4010/sim-http/inj-inspect-http/api/profile",
+    "jsonPath": "points"
+   },
+   "unit": "mm",
+   "decimals": 3,
+   "min": 1,
+   "max": 5,
+   "intervalMs": 10000,
+   "templateRef": "daq-ct-9a47895a"
+  }
+ ],
+ "recipe": {
+  "name": "二线克重窗口基线配方",
+  "params": [
+   {
+    "node": "机筒温度区3SP",
+    "value": 248
+   },
+   {
+    "node": "机筒温度区4SP",
+    "value": 246
+   },
+   {
+    "node": "锁模力SP",
+    "value": 1500
+   }
+  ]
+ },
+ "startLine": true,
+ "channel": {
+  "scenario": "optimize",
+  "name": "注塑二线-克重窗口优化频道",
+  "plugins": {
+   "idd-closedloop-bridge": true,
+   "rag-bridge": true
+  },
+  "bindings": [
+   {
+    "agentRole": "worker:2",
+    "kind": "recipe",
+    "nodeId": "$RECIPE",
+    "mode": "manual"
+   },
+   {
+    "agentRole": "worker:0",
+    "kind": "daq",
+    "nodeId": "$DAQ:熔体温度PV",
+    "mode": "auto"
+   },
+   {
+    "agentRole": "worker:0",
+    "kind": "daq",
+    "nodeId": "$DAQ:熔体压力PV",
+    "mode": "auto"
+   },
+   {
+    "agentRole": "worker:0",
+    "kind": "daq",
+    "nodeId": "$DAQ:模具温度PV",
+    "mode": "auto"
+   },
+   {
+    "agentRole": "worker:0",
+    "kind": "daq",
+    "nodeId": "$DAQ:锁模力PV",
+    "mode": "auto"
+   },
+   {
+    "agentRole": "worker:0",
+    "kind": "daq",
+    "nodeId": "$DAQ:注射压力PV",
+    "mode": "auto"
+   },
+   {
+    "agentRole": "worker:0",
+    "kind": "daq",
+    "nodeId": "$DAQ:冷却水温度PV",
+    "mode": "auto"
+   },
+   {
+    "agentRole": "worker:0",
+    "kind": "daq",
+    "nodeId": "$DAQ:冷却水流量PV",
+    "mode": "auto"
+   },
+   {
+    "agentRole": "worker:0",
+    "kind": "daq",
+    "nodeId": "$DAQ:制品克重",
+    "mode": "auto"
+   },
+   {
+    "agentRole": "worker:0",
+    "kind": "daq",
+    "nodeId": "$DAQ:飞边率",
+    "mode": "auto"
+   },
+   {
+    "agentRole": "worker:0",
+    "kind": "daq",
+    "nodeId": "$DAQ:缩痕率",
+    "mode": "auto"
+   },
+   {
+    "agentRole": "worker:0",
+    "kind": "daq",
+    "nodeId": "$DAQ:尺寸偏差",
+    "mode": "auto"
+   },
+   {
+    "agentRole": "worker:0",
+    "kind": "daq",
+    "nodeId": "$DAQ:成型周期",
+    "mode": "auto"
+   },
+   {
+    "agentRole": "worker:0",
+    "kind": "daq",
+    "nodeId": "$DAQ:壁厚轮廓剖面",
+    "mode": "auto"
+   }
+  ],
+  "seedTask": {
+   "title": "建立二线基线档案并完成一轮克重窗口寻优",
+   "description": "目标:制品克重落在 32.5±0.5g 合格窗,飞边/缩痕不劣化。步骤:①sentinel_baseline 建档;②观察≥2 窗再提案;③提案带 basis+exp_ref,recipe 提案走 HITL 人工审批,批准后下发并克重复测判向;④hard 限:机筒温度 ≤280℃、锁模力 ≤2200kN、冷却水 ≤35℃,每步 settle≥60s;飞边>3% 或缩痕>4% 即回退;⑤达标=克重连续 3 窗在窗且质量不劣化;每轮 kb 沉淀。",
+   "budget_minutes": 90
+  }
+ },
+ "smoke": {
+  "param": "机筒温度区4SP",
+  "delta": 2
+ },
+ "verify": {
+  "plugins": [
+   "idd-closedloop-bridge",
+   "rag-bridge"
+  ]
+ }
+}

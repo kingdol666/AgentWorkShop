@@ -1,0 +1,23 @@
+{
+ "line": {
+  "name": "冲突探测线(临时)"
+ },
+ "nodes": [
+  {
+   "kind": "dcw",
+   "name": "保压压力SP(冲突探测)",
+   "driver": "opcua",
+   "driverConfig": {
+    "endpoint": "opc.tcp://127.0.0.1:5843",
+    "nodeId": "ns=2;s=Inj.Hold.P.Sp"
+   },
+   "unit": "bar",
+   "min": 20,
+   "max": 110,
+   "stepLimit": 2,
+   "templateRef": "temp-sp"
+  }
+ ],
+ "recipe": null,
+ "startLine": false
+}
