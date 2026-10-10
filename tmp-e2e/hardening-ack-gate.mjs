@@ -12,6 +12,7 @@
  * 前置:生产服务 3001 已载入新代码;benchmark 线与 worker agent 存在(benchmark.config.json)。
  */
 import benchCfg from '../scripts/testing/benchmark.config.json' with { type: 'json' }
+import { resolve } from 'node:path'
 
 const cfg = benchCfg
 const BASE = 'http://127.0.0.1:3001'
@@ -133,33 +134,39 @@ ok('C3 ops 判定条目 level=error(写入失败如实记 error)', !!topErr && t
 
 // ================= 腿 D:mqtt 可达 broker → transport-ack → unverified =================
 console.log('\n── 腿 D:mqtt 可达 broker → 仅链路受理 → 未证实 → ops warn ──')
-const brokerUp = await (async () => {
-  try {
-    const net = await import('node:net')
-    await new Promise((resolve, reject) => {
-      const s = net.connect(1883, '127.0.0.1', () => {
-        s.destroy()
-        resolve(true)
-      })
-      s.on('error', (e) => {
-        s.destroy()
-        reject(e)
-      })
-      s.setTimeout(1500, () => {
-        s.destroy()
-        reject(new Error('timeout'))
-      })
-    })
-    return true
+// broker 探活升级(2026-10-10):TCP 通≠可用(僵死的 Docker 端口代理会 accept 但永不回
+// CONNACK,实测 Mosquitto 容器 wedged 全程 401/timeout)。做真实 MQTT CONNACK 握手,
+// 依序探测 [1883 系统总线, 18830 模拟器内置],首个可用者作为腿 D 的在线 broker。
+const { createRequire } = await import('node:module')
+const reqMqtt = createRequire(resolve('package.json'))
+const mqttLib = reqMqtt('mqtt')
+async function brokerConnackOk(port) {
+  return new Promise((resolve2) => {
+    const c = mqttLib.connect(`mqtt://127.0.0.1:${port}`, { connectTimeout: 3000, reconnectPeriod: 0 })
+    const done = (r) => {
+      try {
+        c.end(true)
+      }
+      catch { /* 已死 */ }
+      resolve2(r)
+    }
+    c.once('connect', () => done(true))
+    c.once('error', () => done(false))
+    setTimeout(() => done(false), 3500)
+  })
+}
+const brokerPort = await (async () => {
+  for (const p of [1883, 18830]) {
+    if (await brokerConnackOk(p)) return p
   }
-  catch {
-    return false
-  }
+  return 0
 })()
+const brokerUp = brokerPort > 0
 let nMqtt = ''
 let recLive = { data: {} }
 if (brokerUp) {
-  nMqtt = await mkNode(`mqtt在线-${suffix}`, 'mqtt', { host: '127.0.0.1', port: 1883, topic: `e2e/ack-live/${suffix}`, qos: 1 })
+  console.log(`  (腿 D 在线 broker=:${brokerPort})`)
+  nMqtt = await mkNode(`mqtt在线-${suffix}`, 'mqtt', { host: '127.0.0.1', port: brokerPort, topic: `e2e/ack-live/${suffix}`, qos: 1 })
   recLive = await api('POST', '/api/workshop/dcw/recipes', {
     name: `ACK在线配方-${suffix}`, productId, lineId, opIntervalMs: 0,
     params: [{ nodeId: nMqtt, value: 42 }],
