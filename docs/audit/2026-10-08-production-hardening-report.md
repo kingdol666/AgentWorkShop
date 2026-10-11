@@ -50,3 +50,8 @@ typecheck ✔ · scoped eslint ✔(0 错)· docs:check **91/91**(新设置键入
 
 ## 变更清单(commit 待填)
 代码 30 文件:协议 3(line/recipe/index)+ 驱动 7 + 控制器 4(actuation/recipes/write-verify/lines)+ repo 4(line/recipe-op/user/ops.repo)+ db 3(schema/open/rows 无涉)+ 服务 4(ops/settings/tool-approvals/recipe-gate)+ 工具 4(recipe-propose/ops-tools/param-tools 无涉/dcw-tools)+ 通知 1(line-notify)+ API 3(lines.patch/ops-logs/hitl 无涉)+ 前端 10 + 测试 3(hardening e2e/api-full-loop/run-benchmark)+ 文档 12。
+
+---
+
+## 勘误(2026-10-11)
+- §③「一键基准 PIPELINE 92/92(benchmark-20261008045434)」的 run ID 配对有误:该归档产物实际为 **91/91**(见其 `benchmark.json` score 与 `report.md`);92/92 属同日另一次运行 `benchmark-20261008135743`。同节「S4 闭环 62→64」应为 63→64(以该 run `timeline.jsonl` S4 decision 为准)。审计结论不受影响,特此注记。

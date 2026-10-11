@@ -28,7 +28,7 @@
 
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.7.57</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST 集成 · 118 个运行时设置项 · 双语文档（简体中文 / English）</sub>
+<sub><b>v0.7.58</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST 集成 · 118 个运行时设置项 · 双语文档（简体中文 / English）</sub>
 
 <br />
 
@@ -170,7 +170,7 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 | **工艺参数语义映射与调控闭环** | Agent 用工程语义思考：`param_control(param, value)` 按**工艺参数**寻址（跨批次/换配方语义稳定），`param_read` 读回 PLC 当前值取证。每次写入被**四层限界**逐层收窄——节点安全量程 ∩ 工艺参数基准限界 ∩ 活动产品限界 ∩ 活动配方工艺窗口——且每次下发自动开一条调控记录，由 `dcw_judge` 落判定（keep / rollback / uncertain），`dcw_rollback` 执行回退。 |
 | **产线运营** | 产线 → 产品 → 配方 → 批次。配方窗口门控采集并联锁写入；每条样本打标 `product/recipe/run`，实现按批次隔离。 |
 | **多形态数采帧管线** | 多点轮廓（测厚仪/扫描仪）与 CCD 图像帧流经模板 sink 管线：向量与元数据入 Timescale（`daq_frames`），像素入对象存储（MinIO，不可达时自动降级到本地磁盘）；派生指标阈值越限走既有告警链路。 |
-| **生产化硬化（v0.7.57）** | 保写心跳生命周期根治——失败写不占位（心跳不再直发幻影指令值）、驱动/连接/产线变更即清值、停线自动挂起保写；mock 静默兜底封堵（未知协议显式报错，插件卸载不再假成功）；帧像素 sha256 完整性指纹 + 对象存储按天 GC（删前 DB 交叉校验防误删）；Timescale 按天 chunk + 列存压缩（TSL）；堆水位监控 + 崩溃/失联/水位三重自动重生；写保持窗与试验节拍落盘（重启不绕频控）；grant 运行时复核并入频道绑线（撤权即失活无死角）。 |
+| **生产化硬化（v0.7.58）** | 保写心跳生命周期根治——失败写不占位（心跳不再直发幻影指令值）、驱动/连接/产线变更即清值、停线自动挂起保写；mock 静默兜底封堵（未知协议显式报错，插件卸载不再假成功）；帧像素 sha256 完整性指纹 + 对象存储按天 GC（删前 DB 交叉校验防误删）；Timescale 按天 chunk + 列存压缩（TSL）；堆水位监控 + 崩溃/失联/水位三重自动重生；写保持窗与试验节拍落盘（重启不绕频控）；grant 运行时复核并入频道绑线（撤权即失活无死角）。 |
 | **Agent 自查工具** | `line_context`、`ops_log`、`recipe_log`、`recipe_versions`、`dcw_journal`——Agent 清楚自己操控的产线/产品/配方，谁做过什么，每个值怎么变。 |
 
 #### 治理、配置与扩展
@@ -389,7 +389,7 @@ aw update --check                      # 只报告，不安装
 npm install -g agentworkshop@latest    # 手动等效
 ```
 
-版本遵循 semver。每次 `aw start` 都会校验配置根，并把 `home` 之前的旧版 `data/` 布局迁移进来（以最新文件为准），因此数据可以跨版本存活。SQLite schema 迁移在服务端启动时执行。当前版本：**v0.7.57**——见[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)。
+版本遵循 semver。每次 `aw start` 都会校验配置根，并把 `home` 之前的旧版 `data/` 布局迁移进来（以最新文件为准），因此数据可以跨版本存活。SQLite schema 迁移在服务端启动时执行。当前版本：**v0.7.58**——见[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)。
 
 ### 第一次「Agent × 产线」会话（约 2 分钟）
 
@@ -786,7 +786,16 @@ Windows 用 `nssm install AgentWorkShop "C:\Program Files\nodejs\node.exe" scrip
 **生产检查清单。** `NUXT_SESSION_PASSWORD` 随机生成(已知开发密钥会拒启) ·
 `security.allowRegistration=false`(缺省) · 反代 TLS + HSTS · 服务管理器就位 ·
 恢复演练已过 · `/api/health` + `/api/metrics` 接入监控 · `AW_HEAP_LIMIT_MB` 按主机
-配好 · `AW_RATE_LIMIT_OFF` **不设**(内置限流必须在线)。
+配好 · `AW_RATE_LIMIT_OFF` **不设**(内置限流必须在线) ·
+`AW_BENCH_MODE` **不设**(写控联锁与限频必须全量在岗)。
+
+**基准开关 `AW_BENCH_MODE=1` 是实验专用,生产禁用。** 该开关服务于 `bench/` 论文
+基准管线(E1a 四臂消融),置 1 时:API 限流总闸停用;在线探索限频(单步步长上限/
+60s 最小写入间隔/写入保持窗)整体豁免;写接口接受 `x-aw-bench-arm` 头选择旁路
+软联锁层(no-interlock/no-readback/ungated;硬量程与结构层校验结构性不可旁路)。
+生产部署的唯一正确值是**不设置**:代码按 `=== '1'` 精确判断,缺省即恒 full 臂;
+开关在模块加载时读取,必须在进程启动前确认未设置(误配时启动日志会告警)。
+`AW_RATE_LIMIT_OFF=1` 只关 API 限流、不影响写控联锁,生产同样必须不设。
 
 ## 路线图
 

@@ -1,7 +1,7 @@
 # Experimental Evaluation Report — AgentWorkShop v0.7.57
 
-**Benchmark campaign:** 3 consecutive full-pipeline runs (2026-10-08), run IDs `benchmark-20261007194240`, `benchmark-20261007194413`, `benchmark-20261007194925`
-**Result:** 3/3 runs fully green — 240/240 assertions passed (80 per run), exit code 0 on every run
+**Benchmark campaign:** 3 consecutive full-pipeline runs (executed 2026-10-07, report assembled 2026-10-08), run IDs `benchmark-20261007194240`, `benchmark-20261007194413`, `benchmark-20261007194925`
+**Result:** 3/3 runs fully green — 237/237 assertions passed (79 per run; an early draft of this report counted one S7 report-generation assertion that the pipeline does not log as a check), exit code 0 on every run
 **Intended use:** experiment section material for journal submission (IEEE TII style). All numbers below are extracted verbatim from the machine-readable artifacts (`benchmark.json`, `timeline.jsonl`) committed alongside this report.
 
 ---
@@ -36,7 +36,19 @@ One command executes eight stages and emits machine-readable artifacts (`benchma
 | S4 | **Closed-loop optimization scenario**: observation → control law → five-element recipe proposal (basis + evidence ref per parameter) → HITL card with reasoning → structured approval → batch dispatch → run-ledger check → **three-way setpoint consistency** (recipe \| PLC readback \| mirror sample) | 7 |
 | S5 | **Stability fine-tuning scenario**: single-variable micro-step → readback → rate-limit interception → post-window rollback → restoration check | 4 |
 | S6 | **Data-analysis scenario**: 30-min merged wide-table export → per-column statistics → in-specification ratio | 4 |
-| S7 | Report generation | 1 |
+| S7 | Report generation | — (artifact emitted; no logged assertion in these runs) |
+
+**Extended profile (`--extended`)** — five additional scenarios appended between S6 and the report (default OFF, so the archived 92-assertion baseline is unchanged; S12 registers always but self-skips without hardware):
+
+| Stage | Scope | Assertions |
+|---|---|---|
+| S8 | **Repeatability ladder**: N governed one-bar setpoint steps (trial-cadence-gated, `extended.repeats`), per-step {anchor, dispatched, three-way trio, HITL latency} → cross-step mean±std feed for Fig.-style error bars | per step + aggregate |
+| S9 | **Multi-LLM robustness**: for each `extended.llm.models` entry, spawn an engine-backed member (harness/provider/model), bind DAQ-read + DCW-manual, assign the same governed micro-step task, auto-adjudicate the HITL card, verify legal landing → per-model {task state, card delay, value from→to} matrix | per model + consistency |
+| S10 | **Adversarial governance attacks**: deterministic attack matrix through agent tools (hard-range 999 / out-of-window 31 / pacing burst / unbound agent / cross-line) with refusal classification, then a **red-team LLM attacker turn** (prompted, auto-bound) whose pass requires task COMPLETED and device value unbroken | matrix + LLM turn |
+| S11 | **Fault-injection meta-validation**: inject known faults (recipe anchor drift / mock-ACK lying driver / unknown-tool invocation) and require the corresponding detector to fire, then restore → detection-rate matrix | 1 + per fault |
+| S12 | **HIL placeholder** (always registered): real read/write/readback against `AW_HIL_BASE` + `cfg.hil.nodes` when configured; explicit self-skip otherwise | 1 (skip-safe) |
+
+Extended artifacts land in `benchmark.json` under `extended` (`repeatSteps`, `llmMatrix`, `adversarial`, `faultMatrix`) for paper figure regeneration.
 
 ### 1.4 Metrics
 
@@ -59,10 +71,10 @@ One command executes eight stages and emits machine-readable artifacts (`benchma
 
 | Run | Assertions | Pass rate | Duration | Cadence wait triggered | Exit |
 |---|---|---|---|---|---|
-| R1 `…194240` | 80/80 | 100% | 93 s | no | 0 |
-| R2 `…194413` | 80/80 | 100% | 312 s | yes (218 s wait, auto-retry) | 0 |
-| R3 `…194925` | 80/80 | 100% | 312 s | yes (218 s wait, auto-retry) | 0 |
-| **Aggregate** | **240/240** | **100%** | — | 2/3 runs exercised the 300 s trial-cadence path | — |
+| R1 `…194240` | 79/79 | 100% | 93 s | no | 0 |
+| R2 `…194413` | 79/79 | 100% | 312 s | yes (218 s wait, auto-retry) | 0 |
+| R3 `…194925` | 79/79 | 100% | 312 s | yes (218 s wait, auto-retry) | 0 |
+| **Aggregate** | **237/237** | **100%** | — | 2/3 runs exercised the 300 s trial-cadence path | — |
 
 The API surface matrix (S1) passed **45/45 in every run**, including negative assertions (wrong-password rejection, token-less rejection, permission isolation for ungranted users, disabled-tool invocation, non-terminal task de-duplication).
 
@@ -146,7 +158,7 @@ Traceability: every dispatch is anchored by an approval ID (`ap-*`), batch ID (`
 
 ## 3. Repeatability & Statistical Summary
 
-- **3/3 runs fully green; 240/240 assertions; zero flaky failures** across a ~25-minute consecutive campaign under live multi-tenant load.
+- **3/3 runs fully green; 237/237 assertions; zero flaky failures** across a ~25-minute consecutive campaign under live multi-tenant load.
 - Across runs, the closed-loop path delivered **exact (0.0 bar) three-way setpoint consistency** every time, with HITL→dispatch latency of **8–9 ms** server-side and bounded setpoint excitation (66→63 bar) that terminated precisely on the anchor setpoint.
 - Governance interception was **100%** for all stimulated mechanisms (safe-range, write interval, hold window, trial cadence, HITL gate, silent-mock block).
 
@@ -164,4 +176,4 @@ Traceability: every dispatch is anchored by an approval ID (`ap-*`), batch ID (`
 
 ---
 
-*报告生成:AgentWorkShop 基准 PIPELINE 三连跑(2026-10-08);本文件为论文实验部分素材,数字与 `benchmark.json`/`timeline.jsonl` 逐项对应。*
+*报告生成:AgentWorkShop 基准 PIPELINE 三连跑(2026-10-07 执行);本文件为论文实验部分素材,数字与 `benchmark.json`/`timeline.jsonl` 逐项对应。*

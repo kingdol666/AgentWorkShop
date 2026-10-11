@@ -53,6 +53,11 @@ pnpm start        # 端口取自 config.yml → server.prod.port
 > 在源码检出内,配置根是项目里的 **`.AgentWorkShop/`** 文件夹(运行时覆盖/数据/项目级插件),
 > 而 `config.yml` / `.env` 留在检出根,作为版本化的工厂默认值。
 
+> **生产环境变量红线**:`AW_BENCH_MODE` 与 `AW_RATE_LIMIT_OFF` 都必须**不设置**。
+> 前者是 `bench/` 基准管线的消融开关(置 1 会停用 API 限流、豁免在线探索限频,并允许
+> `x-aw-bench-arm` 头旁路软联锁层;硬量程与结构层校验不可旁路),缺省即恒 full 臂;
+> 后者只停用 API 限流。两者都在模块加载时读取——启动前确认不存在,误配时启动日志会告警。
+
 ## 更新
 
 ```bash

@@ -105,7 +105,9 @@ const daq = await api('GET', '/api/workshop/daq', undefined, ADM)
 ok('daq:控制器在线', daq.data?.controller?.running === true && daq.data?.controller?.nodesOnline > 0,
   `nodesOnline=${daq.data?.controller?.nodesOnline}/${daq.data?.controller?.nodesTotal}`)
 const now = Date.now()
-const samples = await api('GET', `/api/workshop/daq/dn-0183240d/samples?from=${now - 300000}&to=${now}&bucketMs=30000`, undefined, ADM)
+// 节点 id 随环境重建而变(演示布线幂等清理):动态选一个在采节点,不再硬编码
+const liveNode = (daq.data?.nodes ?? []).find(n => n.lastAt && Date.now() - Date.parse(n.lastAt) < 120000) ?? (daq.data?.nodes ?? [])[0]
+const samples = await api('GET', `/api/workshop/daq/${liveNode?.id}/samples?from=${now - 300000}&to=${now}&bucketMs=30000`, undefined, ADM)
 const pts = samples.data?.points ?? []
 ok('daq:真实时序样本', pts.length >= 5, `points=${pts.length},最新=${pts.length ? pts[pts.length - 1].avg.toFixed(2) : 'n/a'}℃`)
 const alarms = await api('GET', '/api/workshop/daq/alarms?limit=5', undefined, ADM)

@@ -1,13 +1,23 @@
 {
   "base": "http://127.0.0.1:3001",
-  "account": { "email": "visual@awshop.local", "password": "Visual2026" },
+  "account": {
+    "email": "visual@awshop.local",
+    "password": "Visual2026"
+  },
   "lineId": "ln-5b12e11a",
   "recipeId": "rc-7e2f6071",
   "channelId": "4b68f06a-955d-434c-a802-72b2aa160318",
   "workerId": "52b5eb4d-f87b-4517-85ee-450c45d60932",
   "diagAgentId": "4ac934e7-b2c8-43fe-b92d-14dcb0b6ea2e",
-  "target": { "metric": "weight", "center": 32.5, "deadband": 0.15, "slopePerBar": 0.052 },
-  "benchmark": { "anchorSetpoint": 63 },
+  "target": {
+    "metric": "weight",
+    "center": 32.5,
+    "deadband": 0.15,
+    "slopePerBar": 0.052
+  },
+  "benchmark": {
+    "anchorSetpoint": 63
+  },
   "nodes": {
     "daq": {
       "weight": "dn-5ec3ed17",
@@ -18,12 +28,39 @@
       "spMirror": "dn-b21e20cb"
     },
     "dcw": {
-      "holdP": "dw-7919a440",
-      "holdT": "dw-bfb065e7",
-      "moldT": "dw-b3c7d9ae",
-      "screw": "dw-4b55e9e6",
-      "mesDirect": "dw-cdbf5feb"
+      "holdP": "dw-e3f0a845",
+      "holdT": "dw-a44592d8",
+      "moldT": "dw-8636bdcf",
+      "screw": "dw-0a193401",
+      "mesDirect": "dw-08012b76"
     }
   },
-  "limits": { "holdP": { "min": 30, "max": 90, "step": 8 }, "moldT": { "min": 20, "max": 70, "step": 10 } }
+  "limits": {
+    "holdP": {
+      "min": 30,
+      "max": 90,
+      "step": 8
+    },
+    "moldT": {
+      "min": 20,
+      "max": 70,
+      "step": 10
+    }
+  },
+  "extended": {
+    "repeats": 3,
+    "llm": {
+      "harness": "omp",
+      "models": [
+        {
+          "provider": "zhipu-coding-plan",
+          "model": "glm-5.3-flash"
+        },
+        {
+          "provider": "zhipu-coding-plan",
+          "model": "glm-5.3"
+        }
+      ]
+    }
+  }
 }

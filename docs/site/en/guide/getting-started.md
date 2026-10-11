@@ -58,6 +58,14 @@ pnpm start        # port from config.yml → server.prod.port
 > folder (runtime overrides / data / project plugins), while `config.yml` / `.env` stay
 > at the checkout root as versioned factory defaults.
 
+> **Production environment-variable red line**: `AW_BENCH_MODE` and `AW_RATE_LIMIT_OFF`
+> must both stay **unset**. The former is the ablation switch for the `bench/` paper
+> pipeline (setting it to 1 disables the API rate guard, waives online-exploration rate
+> limits, and lets an `x-aw-bench-arm` header bypass soft interlock layers; hard range
+> and structural checks cannot be bypassed) — the default is always the full arm. The
+> latter only disables the API rate guard. Both are read at module load: confirm they
+> are absent before the process starts; a misconfiguration warns at boot.
+
 ## Updating
 
 ```bash
