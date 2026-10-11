@@ -1,0 +1,79 @@
+{
+ "source": "bench/results/20260921184204-10lc/scenarios.json (run 20260921184204-10lc, seed 42)",
+ "missions": [
+  {
+   "id": "injection",
+   "zh": "注塑成型质量窗口寻优",
+   "label": "制品克重",
+   "unit": "g",
+   "target": 32.5,
+   "tol": 0.35,
+   "series": [
+    31.252,
+    31.92,
+    32.17
+   ],
+   "final": 32.17,
+   "writes": 2,
+   "wallS": 26.48,
+   "note": ""
+  },
+  {
+   "id": "wwtp",
+   "zh": "A2O 污水生化处理达标降耗",
+   "label": "dissolved oxygen",
+   "unit": "mg/L",
+   "target": 3.4,
+   "tol": 0.6,
+   "series": [
+    0.214,
+    2.153,
+    2.743,
+    3.057,
+    3.183,
+    3.517
+   ],
+   "final": 3.504,
+   "writes": 15,
+   "wallS": 169.27,
+   "note": "DO-attainment stage; remaining governed writes trim pH/TP inside guards"
+  },
+  {
+   "id": "anneal",
+   "zh": "连续退火质量窗内产能最大化",
+   "label": "维氏硬度",
+   "unit": "HV",
+   "target": 95,
+   "tol": 6,
+   "series": [
+    134.52,
+    99.46,
+    97.88,
+    99.24,
+    100.08
+   ],
+   "final": 100.08,
+   "writes": 5,
+   "wallS": 102.76,
+   "note": ""
+  },
+  {
+   "id": "biax",
+   "zh": "双拉(BOPET)薄膜产线多节点闭环",
+   "label": "成品膜厚",
+   "unit": "μm",
+   "target": 25,
+   "tol": 0.7,
+   "series": [
+    28.1,
+    26.5,
+    26,
+    25.66
+   ],
+   "final": 25.66,
+   "writes": 3,
+   "wallS": null,
+   "note": ""
+  }
+ ]
+}

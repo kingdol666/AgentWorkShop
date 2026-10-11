@@ -1,10 +1,10 @@
 % refs.bib -- references for the TII draft.
-% 66 entries total; 41 are cited by the manuscript and appear in the reference
-% list. All 41 cited entries were audited: each carries authors, title, venue and
+% 30 entries are cited by the manuscript and appear in the reference list.
+% All cited entries were audited: each carries authors, title, venue and
 % year, and a DOI, URL, arXiv identifier, or standard designation. DOIs added in
 % the September 2026 audit were resolved against Crossref metadata before entry.
 % ISO 23247 and the historical ISA-95 edition remain unresolved (no DOI issued);
-% the 25 uncited entries are retained as background reading and were not audited.
+% the uncited entries are retained as background reading and were not audited.
 % Web access dates do not identify software/specification versions.
 % See .omc/research/tii-review-20260920/references-audit.md for scope and limitations.
 
@@ -164,9 +164,8 @@
 @inproceedings{liu2024agentbench,
   author    = {Liu, Xiao and Yu, Hao and Zhang, Hanchen and Xu, Yifan and Lei, Xuanyu and Lai, Hanyu and Gu, Yu and Ding, Hangliang and Men, Kaiwen and Yang, Kejuan and Zhang, Shudan and Deng, Xiang and Zeng, Aohan and Du, Zhengxiao and Zhang, Chenhui and Shen, Sheng and Zhang, Tianjun and Su, Yu and Sun, Huan and Huang, Minlie and Dong, Yuxiao and Tang, Jie},
   title     = {{AgentBench}: Evaluating {LLM}s as Agents},
-  booktitle = {Proc. ICLR},
-  year      = {2024},
-  note      = {arXiv preprint arXiv:2308.03688}
+  booktitle = {Proc. Int. Conf. Learn. Represent. (ICLR)},
+  year      = {2024}
 }
 
 @article{mialon2023gaia,
@@ -245,7 +244,7 @@
 }
 
 @misc{iec61511,
-  title        = {{IEC} 61511-1:2016: Functional Safety---Safety Instrumented Systems for the Process Industry Sector---Part 1: Framework, Definitions, System, Hardware and Application Programming Requirements},
+  title        = {{IEC} 61511-1:2016: Functional Safety---Safety Instrumented Systems for the Process Industry Sector},
   author       = {{International Electrotechnical Commission}},
   howpublished = {International Standard},
   year         = {2016}
@@ -401,7 +400,7 @@
 }
 @misc{isa182,
   author = {{International Society of Automation}},
-  title = {ANSI/ISA-18.2: Management of Alarm Systems for the Process Industries (IEC 62682)},
+  title = {ANSI/{ISA-18.2}: Management of Alarm Systems for the Process Industries (IEC 62682)},
   howpublished = {Standard},
   year = {2016}
 }
@@ -564,8 +563,7 @@
   booktitle = {Proc.\ 33rd USENIX Security Symposium (USENIX Security 24)},
   year      = {2024},
   pages     = {1831--1847},
-  publisher = {USENIX Association},
-  url       = {https://www.usenix.org/conference/usenixsecurity24/presentation/liu-yupei}
+  publisher = {USENIX Association}
 }
 
 % --- Added 2026-09-24 (rebuttal positioning: R2R lineage + LLM-agent runtime governance) ---
@@ -579,18 +577,71 @@
 @misc{xiang2024guardagent,
   author  = {Xiang, Zhen and others},
   title   = {{GuardAgent}: Safeguard {LLM} Agents by a Guard Agent via Knowledge-Enabled Reasoning},
-  journal = {arXiv preprint arXiv:2406.09187},
-  year    = {2024}
+  year    = {2024},
+  note    = {arXiv preprint arXiv:2406.09187}
 }
 @misc{debenedetti2025camel,
   author  = {Debenedetti, Edoardo and Shumailov, Ilia and Fan, Tianqi and Hayes, Jamie and Carlini, Nicholas and Fabian, Daniel and Kern, Christoph and Shi, Chongyang and Terzis, Andreas and Tram{\`e}r, Florian},
   title   = {Defeating Prompt Injections by Design},
-  journal = {arXiv preprint arXiv:2503.18813},
-  year    = {2025}
+  year    = {2025},
+  note    = {arXiv preprint arXiv:2503.18813}
 }
 @misc{wang2025agentspec,
   author  = {Wang, H. and Poskitt, C. M. and Sun, J.},
   title   = {{AgentSpec}: Customizable Runtime Enforcement for Safe and Reliable {LLM} Agents},
-  journal = {arXiv preprint arXiv:2503.18666},
-  year    = {2025}
+  year    = {2025},
+  note    = {arXiv preprint arXiv:2503.18666}
+}
+
+% --- Added 2026-10-08 (nearest-system positioning; metadata verified via Crossref/arXiv) ---
+@inproceedings{huang2026made,
+  author    = {Huang, Kuan-Chun and Lin, Hsiao-Tse and Lin, Chia-Hsuan and Huang, Meng-Tien},
+  title     = {Large Language Model Integration in Industrial Cyber-Physical Systems: A Multi-Modal Architecture for Automated Control Generation},
+  booktitle = {Proc. Int. Conf. on Control, Automation and Diagnosis (ICCAD)},
+  year      = {2026},
+  pages     = {1--6},
+  doi       = {10.1109/ICCAD69956.2026.11643124}
+}
+@inproceedings{koehle2026llmdriven,
+  author    = {K{\"o}hle, Kay and Anicic, Darko and Runkler, Thomas A. and Graf, Ren{\'e}},
+  title     = {{LLM}-Driven Multi-Agent Control for Skill-Based Smart Manufacturing},
+  booktitle = {Proc. IEEE 31st Int. Conf. on Emerging Technologies and Factory Automation (ETFA)},
+  year      = {2026}
+}
+@article{waseem2026pretrained,
+  author  = {Waseem, Muhammad and Bhatta, Kshitij and Li, Chen and Chang, Qing},
+  title   = {Pretrained {LLMs} as Real-Time Controllers for Robot Operated Serial Production Line},
+  journal = {Mach. Learn.: Eng.},
+  volume  = {2},
+  number  = {1},
+  year    = {2026},
+  note    = {Art. no. 015006},
+  doi     = {10.1088/3049-4761/ae4ee8}
+}
+@inproceedings{lim2025llmenabled,
+  author    = {Lim, Jonghan and Kovalenko, Ilya},
+  title     = {A Large Language Model-Enabled Control Architecture for Dynamic Resource Capability Exploration in Multi-Agent Manufacturing Systems},
+  booktitle = {Proc. IEEE 21st Int. Conf. on Automation Science and Engineering (CASE)},
+  year      = {2025},
+  doi       = {10.1109/CASE58245.2025.11163802}
+}
+@article{jiang2026agentic,
+  author  = {Jiang, Xiaoyu and Xie, Haotao and Wang, Jiayu and Yang, Zeyu and Zhou, Yuanqiang and Yao, Le and Zhu, Zheren},
+  title   = {Agentic {AI} for Safety-Aware Process Monitoring and Fault Diagnosis: A Review},
+  journal = {Processes},
+  volume  = {14},
+  year    = {2026},
+  note    = {Art. no. 2112},
+  doi     = {10.3390/pr14132112}
+}
+
+@article{crowe1996reconciliation,
+  author  = {Crowe, Cameron M.},
+  title   = {Data Reconciliation---Progress and Challenges},
+  journal = {J. Process Control},
+  volume  = {6},
+  number  = {2--3},
+  pages   = {89--98},
+  year    = {1996},
+  doi     = {10.1016/0959-1524(96)00012-1}
 }

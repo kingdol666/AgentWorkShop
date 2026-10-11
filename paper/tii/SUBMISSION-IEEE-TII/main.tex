@@ -2,26 +2,37 @@
 % IEEE Transactions on Industrial Informatics -- anonymous regular-paper draft
 % Compile: latexmk -pdf main.tex
 \usepackage{amsmath,amssymb,amsfonts}
+% Local XeTeX/Tectonic builds: route IEEEtran's ptm (Times) family requests to
+% the legacy Times Type1 faces so metrics match the pdfLaTeX reference build;
+% the latexmk -pdf (pdfLaTeX) path is unaffected.
+\usepackage{iftex}
+\ifxetex
+  \DeclareFontFamily{TU}{ptm}{}
+  \DeclareFontShape{TU}{ptm}{m}{n}{<->ptmr8t}{}
+  \DeclareFontShape{TU}{ptm}{b}{n}{<->ptmb8t}{}
+  \DeclareFontShape{TU}{ptm}{m}{it}{<->ptmri8t}{}
+  \DeclareFontShape{TU}{ptm}{b}{it}{<->ptmbi8t}{}
+  \DeclareFontShape{TU}{ptm}{m}{sl}{<->ptmro8t}{}
+  \DeclareFontShape{TU}{ptm}{m}{sc}{<->ptmr8t}{}
+\fi
 \usepackage{graphicx}
 \usepackage{booktabs}
 \usepackage{tabularx}
 \usepackage{array}
-\usepackage{xcolor}
+\usepackage[table]{xcolor}
 \usepackage{stfloats}
 \usepackage{placeins}
 \usepackage{url}
 \urlstyle{same}
-% Hyperlinked cross-references and citations (Ctrl+click navigation).
-% natbib numeric mode keeps IEEE-style compressed citations; it must load
-% before hyperref, and replaces the cite package, which is incompatible
-% with hyperlinked citations.
-\usepackage[numbers,sort&compress]{natbib}
-\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+% Cross-references and citations. The cite package renders IEEE-style citation
+% groups ([14]--[16], [20], [21]) with hyperref support.
+\usepackage{cite}
+\usepackage[colorlinks=true,linkcolor=black,citecolor=black,urlcolor=black]{hyperref}
 \hypersetup{bookmarksnumbered=true,
   pdftitle={AgentWorkShop: A Governed Supervisory Execution Layer for Industrial Agent Teams},
   pdfauthor={Anonymous Authors},
   pdfsubject={IEEE Transactions on Industrial Informatics},
-  pdfkeywords={agent teams, industrial informatics, recipe optimization, supervisory control, write governance}}
+  pdfkeywords={agent teams, human-in-the-loop, industrial informatics, LLM agents, recipe optimization, supervisory control, write governance}}
 
 % Float placement only; IEEEtran margins and body type remain unchanged.
 \setcounter{topnumber}{4}
@@ -57,35 +68,36 @@
 \maketitle
 
 \begin{abstract}
-Supervisory optimization above the regulatory control layer---tuning recipes,
-schedules, and setpoints against quality, throughput, energy, or discharge
-targets---is repeated in every plant; so is the integration work around it,
-because each deployment re-establishes which actor may change which parameter,
-which limits apply to the current product and run, whether the device accepted
-the command, and whether the process improved. This paper presents
-AgentWorkShop, a governed supervisory execution layer that turns those repeated
-concerns into one path for agent teams: each intervention is one governed
-transaction, with admission, approval, actuation, readback, observation,
-verdict, and compensation recorded as separate evidence states instead of one
-success flag. Team identities connect to semantic data-acquisition (DAQ) and
-write-control (DCW) nodes through explicit capabilities; line, product,
-recipe, and run context is resolved at execution time; and six protocol
-families, self-describing node and driver contracts, versioned production
-objects, plugin extension points, and a typed software development kit (SDK)
-form the integration surface, while process models, objectives, guards, and
-control policies remain external inputs. The evaluation exercises this single
-governed path through protocol closure and governance attribution, scripted-policy
-agent-team missions, a deterministic closed loop against an offline optimum, and
-concurrent process missions: the governed path intercepts every configured
-out-of-window probe without blocking an admissible write, both missions close
-their governed loops, and the process missions reach their archived
-predicates, while task completion, readback, and attainment stay separately
-recorded. The results support an inspectable, simulation-tier architecture for
-industrial supervisory execution.
+Large language model (LLM) agents increasingly generate industrial control
+changes, yet the surroundings of each proposal---who may write which
+parameter, which limits bind for the current product and recipe, whether a
+human approved, whether the device accepted, and whether the
+process improved---are rebuilt per deployment inside application code. This
+paper presents AgentWorkShop, a governed supervisory execution layer that
+turns those concerns into one path for agent teams: each intervention is one
+governed transaction whose admission, approval, actuation, graded write
+acknowledgment, three-way setpoint consistency, verdict, and compensation
+remain separately inspectable evidence states. Team identities reach semantic
+data-acquisition (DAQ) and write-control (DCW) nodes through explicit
+capabilities under a fail-safe line master switch; protocol drivers,
+versioned production objects, plugin points, and a typed SDK form the
+integration surface, with process models, objectives, and policies
+external. The evaluation exercises this path through protocol-closure
+and mechanism-ablation drills, agent-team missions, a deterministic controller
+loop, four concurrent process missions, and a deployment-scale regression
+campaign on one live multi-tenant instance (many provisioned lines and
+channels on a single host). Every dispatched setpoint closes with a graded
+acknowledgment and---where the endpoint supports readback---a three-way
+consistency check across the recipe, the device readback, and a mirror sample
+drawn over the acquisition path; pacing windows remain in force under
+automation, and each scenario's optimization trajectory is archived with
+per-step attribution. The result is an inspectable, simulation-tier
+verification of the governance mechanisms themselves, not an
+optimization-benefit claim.
 \end{abstract}
 
 \begin{IEEEkeywords}
-Agent teams, industrial informatics, recipe optimization, write governance.
+Agent teams, human-in-the-loop, industrial informatics, write governance.
 \end{IEEEkeywords}
 
 \IEEEpeerreviewmaketitle
@@ -99,11 +111,11 @@ Agent teams, industrial informatics, recipe optimization, write governance.
 \input{sections/discussion}
 
 \bibliographystyle{IEEEtran}
-% natbib's redefined thebibliography drops IEEEtran's small reference type;
-% restore the IEEE 8pt reference size and the tight IEEE entry spacing.
+% IEEE 8pt-equivalent reference size (scriptsize here because IEEEtran's
+% footnotesize baseline is 8pt for 10pt body) and tight IEEE entry spacing.
 \begingroup
-\footnotesize
-\setlength{\bibsep}{0pt}
+\linespread{0.82}\scriptsize
+\def\IEEEbibitemsep{0pt plus .3pt}
 \bibliography{resources/refs}
 \endgroup
 

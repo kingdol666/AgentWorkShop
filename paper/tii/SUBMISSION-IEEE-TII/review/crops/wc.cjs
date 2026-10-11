@@ -1,0 +1,10 @@
+const fs=require('fs');
+const src=fs.readFileSync('main.tex','utf8');
+const m=src.match(/\begin\{abstract\}([\s\S]*?)\end\{abstract\}/);
+const body=m[1].replace(/\[a-zA-Z]+|[{}%]/g,' ');
+const words=body.split(/\s+/).filter(Boolean);
+console.log('abstract words:',words.length);
+const kw=fs.readFileSync('main.tex','utf8').match(/\begin\{IEEEkeywords\}([\s\S]*?)\end\{IEEEkeywords\}/)[1];
+const parts=kw.replace('.','').split(',').map(s=>s.trim().toLowerCase());
+console.log('index terms:',parts.join(' | '));
+console.log('alphabetical:',JSON.stringify(parts)===JSON.stringify([...parts].sort()));

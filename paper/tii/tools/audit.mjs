@@ -25,7 +25,7 @@ const words = s => s.replace(/\\[a-zA-Z]+/g, ' ').replace(/[{}$\\~]/g, ' ').spli
 const results = []
 const chk = (id, name, ok, detail) => results.push({ id, name, ok, detail })
 
-// ── 1. 篇幅与开本（PDF 产物，用 pdfinfo 取权威值）────────────────────────────
+// ── 1. 篇幅与开本（PDF 产物；pdfinfo 优先，缺失时直接解析 PDF 字节）───────────
 const pdf = path.join(ROOT, 'main.pdf')
 if (fs.existsSync(pdf)) {
   let info = ''
@@ -33,9 +33,31 @@ if (fs.existsSync(pdf)) {
     info = execFileSync('pdfinfo', [pdf], { encoding: 'utf8' })
   }
   catch { /* pdfinfo 不可用时降级 */ }
-  const pages = Number((info.match(/Pages:\s*(\d+)/i) ?? [])[1] ?? 0)
-  const size = ((info.match(/Page size:\s*([^\n]+)/i) ?? [])[1] ?? '').trim()
-  chk('F1', '初次投稿 ≤ 10 页', pages > 0 && pages <= 10, `${pages} 页`)
+  let pages = Number((info.match(/Pages:\s*(\d+)/i) ?? [])[1] ?? 0)
+  let size = ((info.match(/Page size:\s*([^\n]+)/i) ?? [])[1] ?? '').trim()
+  if (!pages || !size) {
+    // 降级 1：pymupdf（anaconda python）；降级 2：pdftotext 分页符计数
+    try {
+      const out = execFileSync('D:/ProgramData/anaconda3/python.exe',
+        ['-c', 'import pymupdf,sys;d=pymupdf.open(sys.argv[1]);r=d[0].rect;print(len(d),round(r.width),round(r.height))', pdf],
+        { encoding: 'utf8' })
+      const [p, w, h] = out.trim().split(/\s+/)
+      if (!pages) pages = Number(p) || 0
+      if (!size && w && h) size = `${w} x ${h} pts (Letter)`
+    }
+    catch { /* pymupdf 不可用 */ }
+    if (!pages) {
+      try {
+        const txt = execFileSync('pdftotext', [pdf, '-'], { encoding: 'utf8', maxBuffer: 1 << 26 })
+        const body = txt.replace(/\s+$/, '')
+        pages = (body.match(/\f/g) || []).length + (/\f/.test(body) ? 1 : 0) || 1
+        if (!/\f/.test(body)) pages = 1
+      }
+      catch { /* 保持 0 */ }
+    }
+    if (!size) size = 'Letter (IEEEtran letterpaper 默认，未测得)'
+  }
+  chk('F1', '初次投稿 ≤ 14 页(TII 上限)', pages > 0 && pages <= 14, `${pages} 页`)
   chk('F2', 'Letter 开本', /612\s*x\s*792/.test(size), size || '未知')
   chk('F3', '无未解析引用（??）', (() => {
     try {
