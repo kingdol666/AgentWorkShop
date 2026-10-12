@@ -39,6 +39,8 @@
 \newcommand{\resNoReadbackIntercept}{18/18}
 \newcommand{\resUngatedIntercept}{12/18}
 \newcommand{\resBackstop}{130.2\,s}
+% 134.7 s: defined but NOT used in the body (the drill's archived timing is
+% 130.196 s, = \resBackstop); kept only so the symbol is not silently reused.
 \newcommand{\resBackstopDrill}{134.7\,s}
 \newcommand{\resPortFfive}{9/9}
 \newcommand{\resPortCode}{0}
@@ -117,7 +119,8 @@
 \newcommand{\resLadderTo}{63}
 \newcommand{\resConsistencyErr}{0.0\,bar}
 \newcommand{\resObsVerifyFast}{25.1\,s}
-\newcommand{\resObsVerifyCadence}{245.2/245.1\,s}
+% 245.204 s (benchmark-20261007194413) / 245.184 s (-07194925), exact values
+\newcommand{\resObsVerifyCadence}{245.20/245.18\,s}
 \newcommand{\resCadenceWait}{218\,s}
 \newcommand{\resWideRows}{869}
 \newcommand{\resInspecRatio}{$100\%/100\%/99.9\%$}
