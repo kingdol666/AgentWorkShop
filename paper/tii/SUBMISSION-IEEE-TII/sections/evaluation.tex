@@ -143,16 +143,16 @@ classes per arm, three deterministic repetitions. Hard-range probes
 (4 classes) are rejected in every arm; only the window-edge class flips.}
 \label{tab:ablation}
 \scriptsize
-\setlength{\tabcolsep}{3pt}
+\setlength{\tabcolsep}{2.2pt}
 \renewcommand{\arraystretch}{1.05}
 \begin{tabular}{@{}lcccc@{}}
 \toprule
-Arm & Soft window & Readback & Intercepted & Executed (HTTP 200) \\
+Arm & Soft win. & Readback & Intercept & Executed \\
 \midrule
 full & \checkmark & \checkmark & 18/18 & 0 \\
 no-readback & \checkmark & --- & 18/18 & 0 \\
-no-interlock & --- & \checkmark & 12/18 & 6 (journaled) \\
-ungated (relaxed) & --- & --- & 12/18 & 6 (journaled) \\
+no-interlock & --- & \checkmark & 12/18 & 6 jour. \\
+ungated & --- & --- & 12/18 & 6 jour. \\
 \bottomrule
 \end{tabular}
 \end{table}
