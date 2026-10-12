@@ -126,3 +126,11 @@ data.pre-clean-*/
 
 __pycache__/
 
+
+# AgentWorkShop 运行时主目录(实例状态,非项目产物;prompts 由 files 字段打包故保留可见)
+.AgentWorkShop/data/
+.AgentWorkShop/plugins/
+.AgentWorkShop/commands/
+.AgentWorkShop/aml/
+.AgentWorkShop/datasets/
+.AgentWorkShop/runtime-settings.json
