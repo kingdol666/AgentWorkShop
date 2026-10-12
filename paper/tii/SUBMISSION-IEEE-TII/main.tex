@@ -29,7 +29,7 @@
 \usepackage{cite}
 \usepackage[colorlinks=true,linkcolor=black,citecolor=black,urlcolor=black]{hyperref}
 \hypersetup{bookmarksnumbered=true,
-  pdftitle={AgentWorkShop: A Governed Supervisory Execution Layer for Industrial Agent Teams},
+  pdftitle={Grading Machine-Originated Plant Writes: Separately Inspectable Evidence for Industrial Agent Teams},
   pdfauthor={Anonymous Authors},
   pdfsubject={IEEE Transactions on Industrial Informatics},
   pdfkeywords={agent teams, human-in-the-loop, industrial informatics, LLM agents, recipe optimization, supervisory control, write governance}}
@@ -59,10 +59,10 @@
 
 \begin{document}
 
-\title{AgentWorkShop: A Governed Supervisory Execution Layer for Industrial Agent Teams}
+\title{Grading Machine-Originated Plant Writes: Separately Inspectable Evidence for Industrial Agent Teams}
 
 \author{Anonymous Authors}
-\markboth{IEEE Transactions on Industrial Informatics, Submitted Manuscript}{AgentWorkShop: A Governed Supervisory Execution Layer}
+\markboth{IEEE Transactions on Industrial Informatics, Submitted Manuscript}{Grading Machine-Originated Plant Writes}
 
 \maketitle
 
@@ -75,25 +75,22 @@ process improved---are rebuilt per deployment inside application code. This
 paper presents AgentWorkShop, a governed supervisory execution layer that
 turns these concerns into a single path for agent teams: every intervention
 is one governed transaction whose admission, approval, actuation, graded
-write acknowledgment, three-way setpoint consistency, verdict, and
-compensation remain separately inspectable evidence states. Team identities
+write acknowledgment, verdict, and compensation remain separately
+inspectable evidence states. Team identities
 reach semantic data-acquisition (DAQ) and write-control (DCW) nodes through
 explicit capabilities under a fail-safe line master switch; protocol
 drivers, versioned production objects, plugin points, and a typed software
 development kit (SDK) form the integration surface, with process models,
 objectives, and policies external. The evaluation exercises this path
 through protocol-closure and mechanism-ablation drills, agent-team
-missions, a deterministic controller loop, and four concurrent process
-missions, then stresses it with a deployment-scale regression campaign on
-one live multi-line instance. Across six campaign executions all 509
-logged checks pass, and removing the window interlock drops probe rejection
-from 18/18 to 12/18. Every dispatched setpoint closes with a graded
-acknowledgment, three-way-verified where the endpoint supports readback;
-pacing windows remain in force
-under automation, and every optimization trajectory is archived with
-per-step attribution. The result is an inspectable, simulation-tier
-verification of the governance mechanisms themselves; no
-optimization-benefit claim is made.
+missions under scripted policies, a deterministic controller loop, and four
+concurrent process missions, then stresses it with a deployment-scale
+regression campaign on one live multi-line instance. Across seven benchmark
+executions all 600 logged checks pass. The evidence grading is falsifiable:
+under success-flag semantics the archived failure receipts read success,
+and removing the window interlock drops probe interception from 18/18 to
+12/18 while the hard range holds at 18/18 in every arm. The evaluation is
+simulation-tier; no optimization-benefit claim is made.
 \end{abstract}
 
 \begin{IEEEkeywords}

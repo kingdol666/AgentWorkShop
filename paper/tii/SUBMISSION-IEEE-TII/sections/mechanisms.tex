@@ -95,36 +95,29 @@ A semantic card exposes quantity, unit, precision, range, value, freshness,
 and recipe context; the controller resolves binding and limits, the driver
 serializes the command, and the acknowledgment grade---not driver success
 alone---closes the command path (Section~\ref{sec:ack}), never the
-process-response path.
+process-response path. Two write-spacing windows pace governed loops, never
+the plant: online writes---agent- or human-origin---sit at least 60\,s
+apart, and a successful one installs a hold window (HTTP~429
+\texttt{WRITE\_FREQUENT} inside it); a per-recipe dispatch interval anchored
+at the \emph{approval} instant is keyed by recipe identity and
+restart-persistent, so alternating agent identities cannot reset it; and a
+coarser per-line trial cadence (300\,s default) damps same-line trials from
+any origin. The hold installs only after driver success; recipe-dispatch and
+rollback writes are exempt. \texttt{AW\_BENCH\_MODE=1} admits
+harness-declared arms that relax the soft window or the readback
+check---never the hard range.
 
-\looseness=-1 Two write-spacing windows pace governed loops, never the
-plant. Online writes---agent- or human-origin---sit at least 60\,s apart, and
-a successful one installs a hold window: a further request inside it
-receives HTTP~429 \texttt{WRITE\_FREQUENT}. Recipe dispatch adds a
-per-recipe interval anchored at the \emph{approval} instant of the preceding
-dispatch---pending, refused, or expired requests do not start the
-clock---keyed by recipe identity and restart-persistent, so alternating
-agent identities cannot reset it; a coarser per-line trial cadence (300\,s
-default) damps same-line trials from any origin. The hold installs only
-after driver success; recipe-dispatch and rollback writes are exempt.
-\texttt{AW\_BENCH\_MODE=1} admits harness-declared arms that relax the soft
-window or the readback check---never the hard range.
-
-\looseness=-1 Four governed routes---agent tools, human-origin writes, recipe dispatch, and
-rollback compensation---reach the same driver through one admission and
-journaling entry point, the hard range included; recipe dispatch adds run
-context---the line-scoped execution window that gates dispatch, the reduced
-ISA-88 batch/lot notion---validated against the recipe window at save time. Hold heartbeats---periodic
-re-dispatch of the stored setpoint---are the one non-governed re-dispatch:
-off by default, stopped by line stop, node disable, or driver change, and
-re-applying the stored value without re-admission. The stored value changes
-only through the governed path, so a narrowed window can leave a heartbeat
-reasserting a previously admitted value---plant-facing state maintenance,
-not an agent path.
-Line start installs active context
-before recipe parameters dispatch individually, and line stop clears context
-and closes retained open records; these multi-step operations are not atomic
-with device state.
+\looseness=-1 Four governed routes---agent tools, human-origin writes, recipe
+dispatch, and rollback compensation---reach the same driver through one
+admission and journaling entry point, the hard range included; recipe
+dispatch adds run context---the line-scoped execution window, the reduced
+ISA-88 batch/lot notion---validated at save time. Hold heartbeats (periodic
+re-dispatch of the stored setpoint) are the one non-governed re-dispatch:
+off by default, stopped by line stop or driver change, and re-applying the
+stored value without re-admission---plant-facing state maintenance, not an
+agent path. Line start installs active context before recipe parameters
+dispatch individually, and line stop clears it; these multi-step operations
+are not atomic with device state.
 
 \subsection{Write Acknowledgment as Three-Level Evidence}
 \label{sec:ack}
@@ -163,7 +156,8 @@ distinction belongs to observation and verdict.
 
 \subsection{Observation, Judgment, and Compensation}
 \label{sec:agentloop}
-\looseness=-1 An accepted write opens an optimization record; the verdict tool
+\looseness=-1 An agent- or rollback-source write opens an optimization record;
+the verdict tool
 \texttt{dcw\_judge} records \texttt{keep}, \texttt{rollback}, or
 \texttt{uncertain} plus a reason; the verdict, stored with the record it closes
 and the response window actually queried, performs no actuation and does not
@@ -171,47 +165,42 @@ independently validate the evidence, so a scripted keep can coexist with a
 missed objective---verdict integrity rests on attribution, journaling, and
 operator review: a kept-but-marked record stays visible with its
 disagreement attached, and the operations log raises parameter severity
-under alarm-rationalization practice (Section~\ref{sec:limits}). A three-way
-consistency test compares the recipe
+under alarm-rationalization practice (Section~\ref{sec:limits}). Three-way
+setpoint consistency is checked by the evaluation harness rather than the
+platform: the harness compares the recipe
 value, the device readback, and a mirror sample
 drawn from the acquisition runtime's separate polling path and store, each leg
 against a stated tolerance; the sampled legs meet at the plant endpoint, so a
 fault fabricating the endpoint is a common-mode boundary.
-Disagreement marks the record even when every grade verifies. Verdicts are attributable---actor and timestamp travel
+Disagreement fails the harness check and is reported with the run. Verdicts are attributable---actor and timestamp travel
 with them; corrections amend the stored reason visibly, and compensation
 opens a new record referencing the one it reverses.
 
 Compensation is a new, separately admitted write that may fail or partially
-complete; its dispatch is graded by the Section~\ref{sec:ack} levels, and a
-rollback record settles to
-rolled back once the compensating write is accepted---readback-verified where
-the endpoint supports readback, transport-acknowledged otherwise. If the
-compensating write is itself refused by admission (a baseline can drift out
-of a narrowed window), the source record closes \emph{as
-judged}, not rolled back, with the refusal appended to its verdict and
-surfaced in the operations log. These
-separations keep command status, record status, and process recovery
-independently inspectable.
+complete; it is graded by the Section~\ref{sec:ack} levels, and a rollback
+record settles to rolled back once the compensating write is
+accepted---readback-verified where the endpoint supports readback,
+transport-acknowledged otherwise. If the compensating write is itself
+refused by admission, the source record closes \emph{as judged}, with the
+refusal appended to its verdict. These separations keep command status,
+record status, and process recovery independently inspectable.
 
 \looseness=-1 The backstop is a record-integrity check for writes that no
 verdict has closed---not an independent protection layer: it evaluates only
-open records, and a caller's keep or rollback closes the record and stands it
-down, so its availability is contingent on a verdict being recorded and on
-observations continuing to arrive. When the
-recorded value of an open record leaves the admitting recipe window, the
-platform issues a system-attributed rollback verdict
-and restores the value preceding that write (one step; the admitted
-baseline is not restored), the
-compensating write graded as above. The stored policy waits at least
-120\,s, checks at most every 30\,s, and triggers once three out-of-window
-points or averages accumulate in the observation window---cumulatively, not
-necessarily consecutively. Points that do not return contribute no breach, so
-an acquisition outage leaves the record open, monitored but untriggered, a
-silence the platform does not currently alarm on. Recovery executes only
-while fewer than two
-retained rollback records stand on the node---past that, the backstop
-still judges and records but defers actuation to the approval policy that
-governed the write, bounding any rollback loop at the two-record cap.
+open records; a caller's \texttt{keep} closes the record and stands it down,
+while a \texttt{rollback} verdict stands the backstop down only once the
+compensating write executes---so its availability is contingent on verdicts
+being recorded and observations arriving. When collected samples of an open
+record's node leave the recipe's monitoring window (a DAQ-side envelope
+distinct from the admitting interval), the platform issues a
+system-attributed rollback verdict and restores the value preceding that
+write (one step; the admitted baseline is not restored), graded as above.
+The policy waits 120\,s, polls every 30\,s, and fires on three
+out-of-window samples---cumulatively, not necessarily consecutively;
+non-returning samples count no breach, so an acquisition outage leaves the
+record open and unalarmed. Recovery runs only while fewer than two retained
+rollback records stand on the node, past which the backstop judges but
+defers actuation to the governing approval policy.
 
 \subsection{Human Approval Boundary and the Line Master Switch}
 \label{sec:hitl}
@@ -227,25 +216,27 @@ the approval dialog---itself an injection surface (Section~\ref{sec:limits})---
 cannot promote a proposal past the checks; the comment returns verbatim
 to the proposing member on refusal and travels with the receipt on
 approval---feedback, not authority. The
-wait fails closed by default (expiry 180\,s, configurable): an expired request
-resolves as refusal, does not actuate, and is recorded with the expiry;
-duplicates are suppressed by holding at most one pending request per
-member--node pair regardless of the proposed value, and card creation
-inherits the write pacing windows, so the pending set is paced like the
-writes themselves. In \emph{hold} mode an unanswerable request persists---no expiry, periodic
-reminders to the line's operate-scoped users---until a human answers; a
-repeat governed request for the held node is refused as a duplicate, and
-other nodes proceed under their own policy.
+wait fails closed by default (expiry 180\,s): an expired request
+resolves as refusal and is recorded; duplicates are suppressed by holding
+one pending request per member--node pair; and in \emph{hold} mode an
+unanswerable request persists without expiry until a human answers, with
+repeat requests refused as duplicates.
 
 Human authority is anchored one level above individual requests: each line
 carries a control mode---the line master switch---whose fail-safe default
 is \emph{manual}. Under manual
-mode, writes from approval-free bindings on that line are intercepted and
-presented for approval regardless of binding policy, and switching a line
+mode, recipe-family operations (parameter update, dispatch, trial, and
+rollback) from approval-free bindings on that line are intercepted and
+presented for approval regardless of binding policy; direct node-tool
+writes remain gated by their binding mode and the admission interval, not
+by the line switch. Switching a line
 to automatic requires an explicit, admin-only user-side
-confirmation---agent identities hold no
-binding-administration capability, so an agent cannot reclassify its own
-writes as approval-free.
+confirmation---agent identities cannot touch the line switch. The residual
+agent-side path is delegation: a lead agent can grant held nodes to a
+worker through an attributed lead-only tool, and the grant's execution mode
+is chosen at grant time rather than gated by the user-side confirmation;
+grants are attributed to the granting agent, cannot exceed its own node
+face, and are individually revocable (Section~\ref{sec:limits}).
 
 The decision endpoint authenticates a user but does not enforce a line-scoped
 approver role, and reads, verdict recording, and some configuration changes do

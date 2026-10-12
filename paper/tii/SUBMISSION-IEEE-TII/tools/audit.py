@@ -71,10 +71,44 @@ if bad:
 else:
     print("F6 pass: no TODO markers")
 
+# F7: every cited key's title must appear in the RENDERED main.pdf text
+# (catches silent citation reversions that a .tex-derived check would miss),
+# plus a pinned must-cite list whose absence fails the build outright.
+full_text = " ".join(page.get_text() for page in doc)
+norm = lambda s: re.sub(r"[^a-z0-9]+", "", s.lower())
+hay = norm(full_text)
+title_of = {}
+for m in re.finditer(r"@\w+\{([^,]+),(.*?)\n\}", open("resources/refs.bib", encoding="utf-8").read(), re.S):
+    t = re.search(r"title\s*=\s*[{\"](.+?)[}\"]\s*,?\s*\n", m.group(2), re.S)
+    if t:
+        title_of[m.group(1).strip()] = re.sub(r"[{}\\]|(?<![a-zA-Z])\s", "", t.group(1))
+pinned = {"parasuraman2000model"}
+for k in sorted(cited):
+    t = title_of.get(k)
+    if not t:
+        continue
+    probe = norm(t)[:40]
+    if probe and probe not in hay:
+        fails.append(f"F7 cited title not in rendered PDF: {k}")
+for k in sorted(pinned):
+    if k not in cited:
+        fails.append(f"F7 pinned must-cite absent: {k}")
+if not any(x.startswith("F7") for x in fails):
+    print(f"F7 pass: all {len(cited)} cited titles render in main.pdf; pinned must-cites present")
+
+# F8: vector figures must keep minimum rendered font size >= 5pt at placed size
+for fig in sorted(glob.glob("resources/fig-*.pdf")) + ["resources/fig2-architecture.pdf"]:
+    fdoc = pymupdf.open(fig)
+    sizes = [s["size"] for b in fdoc[0].get_text("dict")["blocks"] for ln in b.get("lines", [])
+             for s in ln["spans"] if s["text"].strip()]
+    if sizes and min(sizes) < 5.0:
+        fails.append(f"F8 {fig}: min font {min(sizes):.2f}pt < 5pt")
+print("F8 pass: all vector figures >= 5pt source type" if not any(x.startswith("F8") for x in fails) else "")
+
 print("-" * 40)
 if fails:
     print(f"AUDIT FAIL ({len(fails)}):")
     for x in fails:
         print(" ", x)
     sys.exit(1)
-print(f"AUDIT PASS: 6/6 gates green (pages={pages}, cited={len(cited)}, bib={len(bib)})")
+print(f"AUDIT PASS: all gates green (pages={pages}, cited={len(cited)}, bib={len(bib)})")

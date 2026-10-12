@@ -65,24 +65,23 @@ they gate software tool calls, not plant writes, and their policies could
 compile onto the enforcement substrate contributed here.
 
 \looseness=-1 Permissions, range checks, approvals, and audit trails long existed in
-distributed-control-system (DCS) and SCADA practice---versioned batch recipes and electronic batch journals in
-batch-control systems---and IEC~62443 codifies their security counterpart \cite{iec62443-3-3},
-while formal shielding, control-barrier functions, and simplex run-time
-assurance offer stronger specified properties \cite{alshiekh2018shielding,ames2017cbf,sha2001simplex}.
-Against that practice the differences are substantive: the proposer is a
-machine-generated agent identity rather than a presupposed human operator,
-so admission binds to member authority and prompt content stays inert, and is
-re-evaluated per request against live product and recipe state through
-versioned objects rather than at role-assignment time; the
-governed path spans five exercised protocol families above any single control system;
-and the evidence states---graded acknowledgment, three-way consistency,
-verdict, compensation---survive strategy replacement, where the three-way
-check is a supervised special case of classical data reconciliation and
-gross-error detection \cite{crowe1996reconciliation}, applied across recipe,
-device, and mirrored views of one setpoint rather than across plant balance
-equations. Neither the five systems
-above, nor the review, nor a classical chain provides that combination
-in this form.
+distributed-control-system (DCS) and SCADA practice---versioned batch
+recipes and electronic batch journals under 21~CFR Part~11 and GAMP~5---and
+IEC~62443 codifies their security counterpart \cite{iec62443-3-3}, while
+formal shielding, control-barrier functions, and simplex run-time assurance
+offer stronger specified properties
+\cite{alshiekh2018shielding,ames2017cbf,sha2001simplex}. Against that
+practice the difference is the proposer: a machine-generated agent identity
+rather than a presupposed human operator, so admission binds to member
+authority and prompt content stays inert, re-evaluated per request against
+live product and recipe state through versioned objects rather than at
+role-assignment time; the governed path spans five exercised protocol
+families; and the evidence states---graded acknowledgment, verdict,
+compensation---survive strategy replacement, where the three-way check is a
+supervised special case of classical data reconciliation and gross-error
+detection \cite{crowe1996reconciliation}. Neither the five systems above,
+nor the review, nor a classical chain provides that combination in this
+form.
 \system{} implements source-dependent checks and a rule-based backstop and
 makes no formal protection guarantee, the backstop
 (Section~\ref{sec:agentloop}) being a rule-based recovery action in the spirit

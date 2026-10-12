@@ -8,7 +8,7 @@ deterministic controller loop (Q3), four concurrent missions (Q4), and
 deployment-scale regression with write-evidence verification (Q5). Q2--Q4
 occupy the strategy slot (scripted policies, with two live engine turns in
 Q2); Q5 stresses the hardened platform under load. Together the five
-exercise every plane of Section~\ref{sec:arch}.
+exercise each production-facing plane of Section~\ref{sec:arch}.
 
 \subsection{Testbed, Evidence Snapshot, and Scope}
 \label{sec:testbed}
@@ -27,13 +27,13 @@ two in-run traces (seeds 43--44 of the same campaign), and repeat
 evidence comes from Q5's consecutive deployment-tier campaigns---a different
 tier, not a re-run of these traces.
 
-\looseness=-1 The \emph{deployment-scale tier} for Q5 is a live v0.7.57 instance carrying
-\resLinesLive{} provisioned lines (\resLinesRunning{} running), \resChannelsLive{}
-active agent channels, \resDaqOnline{} online DAQ nodes,
-\resWriteNodesLive{} write nodes, \resRecipesLive{} recipes, and
-\resBindingsLive{} member--node bindings---simulator- and bench-backed
-objects, not physical plants; \emph{multi-line} means many provisioned
-lines and channels on one host.
+\looseness=-1 The \emph{deployment-scale tier} for Q5 is a live v0.7.57 instance
+carrying \resLinesLive{} provisioned lines, \resChannelsLive{} agent
+channels, \resDaqOnline{} online DAQ nodes, \resWriteNodesLive{} write
+nodes, \resRecipesLive{} recipes, and \resBindingsLive{}
+member--node bindings---simulator- and bench-backed objects, not physical
+plants; \emph{multi-line} means many provisioned lines and channels on one
+host.
 The benchmark line
 is a physics-based injection-molding cell (16 DAQ nodes over the four
 modalities, 6 control nodes over five protocol families plus MES); all Q5
@@ -71,14 +71,13 @@ mechanisms: the six window-edge probes that full governance rejects
 (Section~\ref{sec:protocol}, 18/18$\rightarrow$12/18)---a success-flag
 design reports them as accepted writes. The evidence control holds the
 receipts and varies the reporting rule (Section~\ref{sec:ack}); the
-success-flag outcome there is definitional---the pre-hardening harness
-itself reported a broker puback as success. The closed-loop harness also
+success-flag outcome is definitional---the pre-hardening harness itself
+reported a broker puback as success. The closed-loop harness also
 parameterizes the write injection---admin REST beside the agent's governed
-\texttt{dcw\_control}---so governance's cost in convergence and integration
-effort is measurable; that like-for-like pair is prepared and has since been
-executed once on the quick profile outside this paper's evidence snapshot,
-and no optimization-superiority claim is made. Fig.~\ref{fig:loop} summarizes
-the closed-loop instrument.
+\texttt{dcw\_control}; that like-for-like pair has since been executed once
+on the quick profile outside this paper's evidence snapshot, and no
+optimization-benefit claim is made. Fig.~\ref{fig:loop} summarizes the
+closed-loop instrument.
 
 \begin{figure}[!t]
 \centering
@@ -125,7 +124,8 @@ Q5 reports the server-side span alone).
 \looseness=-1 The ablation replays the same probes on companion run \resAblationRun{}
 and a standalone fixture (six probe classes per arm, three deterministic
 repetitions with identical counts); it isolates the window interlock,
-untouched by the October hardening pass. Full governance and the no-readback arm reject 18/18;
+untouched by the October hardening pass. Table~\ref{tab:ablation} reports
+the four arms: full governance and the no-readback arm reject 18/18;
 without the window interlock (alone or with the readback check) only
 \resNoInterlockIntercept{} reject and the six window-class probes execute
 and are journaled---prevention is the interlock's job; a relaxed
@@ -134,6 +134,27 @@ retained to make written-but-unconfirmed commands visible. The hard range is
 structurally unbypassable---all four governed routes re-admit it at one
 journaling entry point, per request (Section~\ref{sec:nodeexec})---and the
 soft window is its removable part.
+
+\begin{table}[!t]
+\centering
+\caption{Admission ablation on companion run \resAblationRun{}: six probe
+classes per arm, three deterministic repetitions. Hard-range probes
+(4 classes) are rejected in every arm; only the window-edge class flips.}
+\label{tab:ablation}
+\scriptsize
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.05}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Arm & Soft window & Readback & Intercepted & Executed (HTTP 200) \\
+\midrule
+full & \checkmark & \checkmark & 18/18 & 0 \\
+no-readback & \checkmark & --- & 18/18 & 0 \\
+no-interlock & --- & \checkmark & 12/18 & 6 (journaled) \\
+ungated (relaxed) & --- & --- & 12/18 & 6 (journaled) \\
+\bottomrule
+\end{tabular}
+\end{table}
 
 \subsection{Q2: The AgentTeam Optimization Workflow and Its Results}
 \label{sec:agentteam}
@@ -175,8 +196,9 @@ the best grid point $J^{*}=\resJstar$---an exhaustive grid search over the
 admissible setpoints (zone temperature 195--225\,$^{\circ}$C in
 2.5\,$^{\circ}$C steps, screw 50--200 in steps of five, line speed 20--120
 in steps of 2.5\,m/min) on the same simulator, so $J^{*}$ is a lower
-bound on the true optimum and the gap to unity is expected. What the benchmark
-establishes is narrower: the governed path
+bound on the true optimum and the reported $J/J^{*}$ is an upper bound on
+$J/J_{\text{true}}$: the true gap is at least as large as shown. What the
+benchmark establishes is narrower: the governed path
 passes a conventional controller's writes through unmodified---admissible,
 journaled, read back. The claim is transparency of evidence handling,
 not a performance delta.
@@ -194,8 +216,8 @@ records. \looseness=-1 Wastewater treatment is the write-heaviest
 mission (\resWwtpWrites{} governed writes): dissolved oxygen rises from
 \resWwtpStart{} into $3.4\pm0.6$\,mg/L (attainment window; terminal
 observation 3.50\,mg/L, Fig.~\ref{fig:missions}b) under five
-effluent guards: four finish wider than at baseline, the
-fifth, pH, drifting 6.59$\rightarrow$6.38. Its
+effluent guards: four guard margins finish wider than at baseline, and the
+fifth, pH, drifts 6.59$\rightarrow$6.38. Its
 most informative events are blower steps that were admissible and journaled
 yet lost compliance margin in the post-write observation; the verdict stage
 reverted them, so a bad proposal is rejected in the evidence, not at the
@@ -230,9 +252,10 @@ evidence grading, the line master switch, and the approval-anchored dispatch
 interval of Section~\ref{sec:mech} the explicit test surface of the
 closed-loop, fine-tuning, and write-evidence scenarios on the live instance
 of Section~\ref{sec:testbed}.
-\looseness=-1 \emph{Full-suite repeatability.} Three consecutive pipeline executions
+\looseness=-1 \emph{Full-suite repeatability.} Seven pipeline executions
 complete with zero failed checks---79 checks per run on October 7
-(237 total), 90--92 per run on October 9 (\resNovTotal{} total); two runs
+(237 total), 91 on the hardened-pipeline run, 90--92 per run on October 9
+(600 total); two runs
 land inside the per-line
 trial cadence
 (Section~\ref{sec:nodeexec}) and wait out the remaining \resCadenceWait---

@@ -2,23 +2,22 @@
 \label{sec:arch}
 \looseness=-1 \system{} fills this slot: it links team coordination to plant interaction through industrial nodes
 and production context (Fig.~\ref{fig:arch}). Five planes separate the
-concerns: a \emph{team} plane owns member identity, task state, and a
-member-written episodic memory retrieved by hybrid search; an
-\emph{integration} plane owns protocol acceptance, readback, freshness, and
-transport errors, presenting devices as semantic nodes whose stream feeds both
-the agent and a live plant-mirror view; a \emph{governance} plane owns
-admission, approval, actuation, acknowledgment grading, three-way consistency,
-verdict, compensation, and rollback; an \emph{operations} plane attaches line,
-product, recipe, and run context while PLC protection stays independent; and
-an \emph{extensibility} plane admits plugins, drivers, agent tools, panels,
-and SDK clients through sanctioned registration services. Scenario knowledge
-sits in blueprints, signal maps, predicates, and driver configuration---not
-in team scheduler, approval service, or persistence code; members are interchangeable
-across 14 engine adapters under preserved identity, and 118 declared
-settings (40 hot-reloadable, the rest restart-scoped) plus the typed SDK make
-team topology, bindings, and limits data rather than code. In every plane the
-execution path is unchanged---a scenario supplies data
-and strategy (Fig.~\ref{fig:arch}).
+concerns: a \emph{team} plane owns member identity, task state, and
+episodic memory; an \emph{integration} plane owns protocol acceptance,
+readback, freshness, and transport errors, presenting devices as semantic
+nodes whose stream feeds both the agent and a live plant-mirror view; a
+\emph{governance} plane owns admission, approval, actuation, acknowledgment
+grading, verdict, compensation, and rollback; an \emph{operations} plane
+attaches line, product, recipe, and run context while PLC protection stays
+independent; and an \emph{extensibility} plane admits plugins, drivers,
+agent tools, and SDK clients through sanctioned registration services.
+Scenario knowledge sits in blueprints, signal maps, predicates, and driver
+configuration---not in team scheduler, approval service, or persistence
+code; members are interchangeable across 14 engine adapters under preserved
+identity, and 118 declared settings (40 hot-reloadable) plus the typed SDK
+make team topology, bindings, and limits data rather than code. In every
+plane the execution path is unchanged---a scenario supplies data and
+strategy (Fig.~\ref{fig:arch}).
 
 \begin{figure*}[!t]
 \centering
@@ -111,14 +110,11 @@ bounded window, propose a setpoint inside the resolved interval, invoke the
 governed write, wait for the response, and record a verdict
 (Section~\ref{sec:procedure} instruments it).
 
-Each iteration leaves more than a written value: the write opens an
-optimization record carrying prior and requested values, the admitting
-interval, the acting member, and timestamps; the acknowledgment grade and,
-where supported, the readback close the command path; the journal attributes
-the change; and attainment is computed against the scenario predicate while
-the task closes with a workflow terminal state (per-intervention detail in
-Section~\ref{sec:mech}). This bounds what ``automatic optimization''
-means here: a
-controller, a scripted policy, a conventional optimizer, or an agent engine may
-occupy the strategy slot, while authority, evidence, and closure stay on the
-platform.
+Each iteration leaves more than a written value: agent- and rollback-source
+writes open an optimization record; the acknowledgment grade closes the
+command path; the journal attributes the change; attainment is computed
+against the scenario predicate while the task closes with a workflow
+terminal state (per-intervention detail in Section~\ref{sec:mech}). This
+bounds what ``automatic optimization'' means here: a controller, a scripted
+policy, a conventional optimizer, or an agent engine may occupy the strategy
+slot, while authority, evidence, and closure stay on the platform.

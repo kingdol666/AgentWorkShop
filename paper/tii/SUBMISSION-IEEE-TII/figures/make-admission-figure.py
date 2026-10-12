@@ -34,11 +34,11 @@ plt.rcParams.update({
 
 # Origin-style muted palette (one hue per governance layer, darkening inward)
 LAYERS = [
-    # label, lo, hi, color, note
-    ("$\\mathcal{H}_n$  node hard range",      50.0,    200.0,   "#9DB8D2", "[50, 200]"),
-    ("$\\mathcal{B}_n$  parameter baseline",   143.7,   156.3,   "#6C97C4", "[143.7, 156.3]"),
-    ("$\\mathcal{P}_n$  active product",       146.22,  153.78,  "#3E6FA3", "[146.22, 153.78]"),
-    ("$\\mathcal{R}_n$  active recipe",        141.0,   159.0,   "#D99A3D", "[141, 159]"),
+    # label, lo, hi, color, note  (plain-text symbols: every glyph >= 6pt)
+    ("H(n)  node hard range",      50.0,    200.0,   "#9DB8D2", "[50, 200]"),
+    ("B(n)  parameter baseline",   143.7,   156.3,   "#6C97C4", "[143.7, 156.3]"),
+    ("P(n)  active product",       146.22,  153.78,  "#3E6FA3", "[146.22, 153.78]"),
+    ("R(n)  active recipe",        141.0,   159.0,   "#D99A3D", "[141, 159]"),
 ]
 INTER_LO, INTER_HI = 146.22, 153.78
 DARK = "#262626"
@@ -71,9 +71,10 @@ for (label, lo, hi, color, note), y in zip(LAYERS, lanes):
                           alpha=0.85))
 
 # intersection markers on the admitted interval
-ax.annotate("admitted interval\n$\\mathcal{I}_n=[146.22, 153.78]$",
+ax.annotate("admitted interval  I(n) = [146.22, 153.78]",
             xy=((INTER_LO + INTER_HI) / 2, 3.85), xytext=(152.9, 4.30),
             fontsize=6.0, color="#2E7D3A", ha="center", va="bottom",
+            bbox=dict(facecolor="white", edgecolor="none", pad=1.0, alpha=0.9),
             arrowprops=dict(arrowstyle="->", color="#2E7D3A", lw=0.6))
 ax.annotate("", xy=(INTER_LO, 0.02), xytext=(INTER_LO, 4.1),
             arrowprops=dict(arrowstyle="-", color="#8C8C8C", lw=0.4, ls=":"))
