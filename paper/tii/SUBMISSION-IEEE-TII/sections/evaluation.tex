@@ -73,10 +73,11 @@ design reports them as accepted writes. The evidence control holds the
 receipts and varies the reporting rule (Section~\ref{sec:ack}); the
 success-flag outcome is definitional---the pre-hardening harness itself
 reported a broker puback as success. The closed-loop harness also
-parameterizes the write injection---admin REST beside the agent's governed
-\texttt{dcw\_control}; that like-for-like pair has since been executed once
-on the quick profile outside this paper's evidence snapshot, and no
-optimization-benefit claim is made. Fig.~\ref{fig:loop} summarizes the
+parameterizes the write injection (admin REST beside the agent's governed
+\texttt{dcw\_control}); a like-for-like pair on the shared instance was
+rejected in full on both routes (24/24 writes per arm, pacing
+exempted)---the write gates are route-invariant---so a quality comparison
+awaits a dedicated instance. Fig.~\ref{fig:loop} summarizes the
 closed-loop instrument.
 
 \begin{figure}[!t]
@@ -306,10 +307,10 @@ transition; (2)~a mock-acknowledged dispatch is promoted to readback-verified;
 verify; (4)~a publish-only endpoint accepts the write (broker puback,
 \texttt{ok=true}) yet stays \emph{unverified} through three verification
 attempts---the receipt Section~\ref{sec:ack}'s falsifiable rule is stated
-against; and (5)~on a manual-mode line an approval-free binding's dispatch is
+against; (5)~on a manual-mode line an approval-free binding's dispatch is
 intercepted into the queue, approval releasing all six parameters
-device-verified. Legs six and seven---an API regression and a
-documentation-consistency suite---close the campaign.
+device-verified; (6)--(7)~API regression and documentation-consistency
+suites close the campaign.
 
 \looseness=-1 Across the five questions the pattern holds: admission intercepts and
 attributes, grading degrades honestly, pacing holds under automation,

@@ -96,16 +96,13 @@ and recipe context; the controller resolves binding and limits, the driver
 serializes the command, and the acknowledgment grade---not driver success
 alone---closes the command path (Section~\ref{sec:ack}), never the
 process-response path. Two write-spacing windows pace governed loops, never
-the plant: online writes---agent- or human-origin---sit at least 60\,s
-apart, and a successful one installs a hold window (HTTP~429
-\texttt{WRITE\_FREQUENT} inside it); a per-recipe dispatch interval anchored
-at the \emph{approval} instant is keyed by recipe identity and
-restart-persistent, so alternating agent identities cannot reset it; and a
-coarser per-line trial cadence (300\,s default) damps same-line trials from
-any origin. The hold installs only after driver success; recipe-dispatch and
-rollback writes are exempt. \texttt{AW\_BENCH\_MODE=1} admits
-harness-declared arms that relax the soft window or the readback
-check---never the hard range.
+the plant: online writes---agent- or human-origin---sit at least 60\,s apart
+with a hold window after success (HTTP~429 inside it); a per-recipe dispatch
+interval anchored at the \emph{approval} instant is restart-persistent, so
+alternating identities cannot reset it; and a 300\,s per-line trial cadence
+damps same-line trials from any origin. Recipe-dispatch and rollback writes
+are exempt. \texttt{AW\_BENCH\_MODE=1} admits harness-declared arms that
+relax the soft window or readback---never the hard range.
 
 \looseness=-1 Four governed routes---agent tools, human-origin writes, recipe
 dispatch, and rollback compensation---reach the same driver through one
@@ -131,17 +128,13 @@ tolerance;
 accepted the command on an endpoint with no usable readback;
 \emph{unverified} when the transport failed or when post-write verification
 could not confirm the value. The grading rule is falsifiable. Under a
-success-flag receipt rule---the pattern in which a transport acknowledgment
-closes the report---the publish-only receipt archived in
-Section~\ref{sec:hardening} (broker \texttt{puback}, \texttt{ok=true}, no
-read channel, three verification attempts) reports \emph{success}; the
-graded rule reports it \emph{unverified}. That is what fail-honest means:
-absence of evidence degrades the
-grade, never the report---a write without confirmation is surfaced as
-unverified, with the transport error attached, rather than dropped from the
-receipt; the grade
-is fixed when the write closes, so later confirmation belongs to the record
-and to the three-way check, not retroactively to the receipt.
+success-flag receipt rule---a transport acknowledgment closes the
+report---the publish-only receipt archived in
+Section~\ref{sec:hardening} (broker puback, \texttt{ok=true}, no read
+channel, three verification attempts) reports \emph{success}; the graded
+rule reports it \emph{unverified}. That is what fail-honest means: absence
+of evidence degrades the grade, never the report, and the grade is fixed
+when the write closes.
 
 A transport-acknowledged write may still not have reached the device, so a
 post-write verifier re-reads the endpoint (three attempts, 2\,s apart) and
@@ -239,7 +232,8 @@ grants are attributed to the granting agent, cannot exceed its own node
 face, and are individually revocable (Section~\ref{sec:limits}).
 
 The decision endpoint authenticates a user but does not enforce a line-scoped
-approver role, and reads, verdict recording, and some configuration changes do
+approver role---the gap Section~\ref{sec:limits} carries---and reads,
+verdict recording, and some configuration changes do
 not use physical-write approval---workflow mediation, not segregation of
 duties; a recipe switch between approval and execution re-admits the value
 against the new window (Section~\ref{sec:limits}).

@@ -1,0 +1,576 @@
+{
+  "runId": "20261012055235-qug",
+  "env": {
+    "runId": "20261012055235-qug",
+    "profile": "quick",
+    "seed": 42,
+    "base": "http://127.0.0.1:3001",
+    "simBase": "http://127.0.0.1:4010",
+    "simDir": "D:\\codes\\AgentWorkShop\\plc-node-simulator",
+    "lines": 2,
+    "ownLines": 2,
+    "satelliteDaq": 0,
+    "protocols": "modbus-tcp/opcua",
+    "preset": "cast-film-physics",
+    "agentHarness": "(none)",
+    "toolHarness": "omp",
+    "startedAt": "2026-10-12T06:00:26.490Z",
+    "node": "v24.13.0",
+    "platform": "win32 x64",
+    "harnessHash": "86e4be8671e085d2",
+    "gitCommit": "8c16ab8",
+    "harnessFiles": 11,
+    "closedloop": {
+      "writeMode": "rest",
+      "n": 3,
+      "ratioMin": 0.867,
+      "ratioMean": 0.867,
+      "ratioMax": 0.867,
+      "J0mean": 75.328,
+      "JendMean": 77.902,
+      "Jstar": 89.894,
+      "itersMean": 8,
+      "writesTotal": 24,
+      "rejectedTotal": 24,
+      "convergedN": 0,
+      "wallSMean": 108.259
+    },
+    "portability": {
+      "preset": "film-line",
+      "devices": 5,
+      "lines": 2,
+      "ownLines": 2,
+      "sampling": 2,
+      "f5Rejected": 6,
+      "f5Total": 6,
+      "falseBlocks": 2,
+      "codeChanges": 0
+    },
+    "biax": {
+      "devices": 9,
+      "signals": 49,
+      "sp": 30,
+      "created": 9,
+      "platformDcw": 30,
+      "platformDaq": 19,
+      "missionWrites": 0,
+      "missionKnobs": 0,
+      "missionFinalUm": 28,
+      "missionAttained": false,
+      "missionTraj": [
+        {
+          "iter": 0,
+          "knob": null,
+          "node": null,
+          "from": null,
+          "to": null,
+          "record": null,
+          "thickness": 28
+        }
+      ]
+    },
+    "backstop": {
+      "fired": false,
+      "restored": false,
+      "latencyS": null,
+      "recordId": null,
+      "from": 180,
+      "to": 176.88
+    },
+    "aml": null,
+    "surfaces": null,
+    "verdict": {
+      "pass": 38,
+      "warn": 14,
+      "fail": 8,
+      "phaseFails": 4,
+      "ok": false
+    },
+    "reproCmd": "node bench/pipeline.mjs --profile quick --seed 42 --lines 2 --tool-harness omp --cl-seeds 3 --cl-write rest"
+  },
+  "verdict": {
+    "pass": 38,
+    "warn": 14,
+    "fail": 8,
+    "phaseFails": 4,
+    "ok": false
+  },
+  "kpis": [
+    {
+      "label": "Provisionable lines",
+      "value": 2,
+      "unit": "",
+      "note": "+0 satellite DAQ · modbus-tcp/opcua",
+      "tone": "good"
+    },
+    {
+      "label": "DAQ samples total",
+      "value": 15,
+      "unit": "",
+      "note": "2/2 nodes sampling",
+      "tone": "good"
+    },
+    {
+      "label": "Governance interception (pooled)",
+      "value": "100.0",
+      "unit": "%",
+      "note": "F5 attacks",
+      "tone": "good"
+    },
+    {
+      "label": "Write p50 (all protocols)",
+      "value": 2.793,
+      "unit": "ms",
+      "note": "incl. real protocol transactions"
+    },
+    {
+      "label": "Closed-loop J/J*",
+      "value": "86.7",
+      "unit": "%",
+      "note": "n=3 seeds · worst 86.7% · J*=89.894",
+      "tone": "warn"
+    },
+    {
+      "label": "Tool-level loops",
+      "value": 0,
+      "unit": "",
+      "note": "dcw→daq→judge ×3 convergence"
+    },
+    {
+      "label": "Param-layer governance",
+      "value": "3/4",
+      "unit": "",
+      "note": "semantic surface · 4-layer write limits · agent param_control",
+      "tone": "good"
+    },
+    {
+      "label": "System backstop",
+      "value": "not fired",
+      "unit": "",
+      "note": "P8b drill requires scenario 2",
+      "tone": "warn"
+    },
+    {
+      "label": "Scenario portability",
+      "value": "film-line",
+      "unit": "",
+      "note": "2nd scenario: 2 lines + 0 sat · F5 6/6 · 0 code changes",
+      "tone": "warn"
+    },
+    {
+      "label": "Biax line (BOPET)",
+      "value": "9 dev / 30 SP",
+      "unit": "",
+      "note": "AgentTeam 0 knobs · 0 writes → 28.00μm",
+      "tone": "warn"
+    },
+    {
+      "label": "LLM agent loop",
+      "value": "off",
+      "unit": "",
+      "note": "--agent omp enables",
+      "tone": "warn"
+    },
+    {
+      "label": "Verdict",
+      "value": "FAIL",
+      "unit": "",
+      "note": "38/60 checks · hard gate tripped",
+      "tone": "bad"
+    }
+  ],
+  "perLine": [
+    {
+      "index": 1,
+      "protocol": "modbus-tcp",
+      "simDevice": "dev-extruder-mbtcp",
+      "daqSamples": 7,
+      "writeP50": 3.017,
+      "writeP95": 9.048,
+      "readbackDelta": 3.36,
+      "f5": "6/6",
+      "falseBlock": 1,
+      "loopIterations": 0,
+      "convergenceS": 4.176,
+      "agentState": null,
+      "agentWallS": null,
+      "agentOracle": null
+    },
+    {
+      "index": 2,
+      "protocol": "opcua",
+      "simDevice": "dev-extruder-opcua",
+      "daqSamples": 8,
+      "writeP50": 2.57,
+      "writeP95": 3.047,
+      "readbackDelta": 3.6,
+      "f5": "6/6",
+      "falseBlock": 1,
+      "loopIterations": 0,
+      "convergenceS": 4.149,
+      "agentState": null,
+      "agentWallS": null,
+      "agentOracle": null
+    }
+  ],
+  "metrics": [
+    {
+      "section": "plant",
+      "key": "W_star_objective",
+      "value": 89.894,
+      "unit": "",
+      "note": "offline grid-search optimum (benchmark ground truth)"
+    },
+    {
+      "section": "provision",
+      "key": "lines_created",
+      "value": 2,
+      "unit": "",
+      "note": "可开跑Line（另有 0 satellite DAQ）"
+    },
+    {
+      "section": "provision",
+      "key": "daq_nodes",
+      "value": 2,
+      "unit": "",
+      "note": "real-protocol DAQ nodes"
+    },
+    {
+      "section": "gov",
+      "key": "intercept_modbus-tcp",
+      "value": 1,
+      "unit": "",
+      "note": "governance interception rate"
+    },
+    {
+      "section": "gov",
+      "key": "intercept_opcua",
+      "value": 1,
+      "unit": "",
+      "note": "governance interception rate"
+    },
+    {
+      "section": "provision",
+      "key": "lines_sampling",
+      "value": 2,
+      "unit": "",
+      "note": "real driver produced samples"
+    },
+    {
+      "section": "gov",
+      "key": "intercept_rate_all",
+      "value": 1,
+      "unit": "",
+      "note": "全协议合并"
+    },
+    {
+      "section": "loop",
+      "key": "tool_loops_ok",
+      "value": 0,
+      "unit": " lines",
+      "note": "工具级闭环达成"
+    },
+    {
+      "section": "loop",
+      "key": "mission_writes",
+      "value": 0,
+      "unit": "",
+      "note": "AgentTeam 优化任务受治理写次数"
+    },
+    {
+      "section": "loop",
+      "key": "mission_attained",
+      "value": 0,
+      "unit": "",
+      "note": "AgentTeam 优化任务达标"
+    },
+    {
+      "section": "gov",
+      "key": "record_keep_rollback_ok",
+      "value": 0,
+      "unit": "",
+      "note": "优化记录判定/执行分离"
+    },
+    {
+      "section": "audit",
+      "key": "journal_anchors",
+      "value": 1,
+      "unit": "",
+      "note": "本Line参数变更账本"
+    },
+    {
+      "section": "audit",
+      "key": "audit_entries",
+      "value": 200,
+      "unit": "",
+      "note": "全局审计目"
+    },
+    {
+      "section": "audit",
+      "key": "ops_logs",
+      "value": 200,
+      "unit": "",
+      "note": "全局运维日志"
+    },
+    {
+      "section": "recipe",
+      "key": "recipe_lifecycles_ok",
+      "value": 2,
+      "unit": " lines",
+      "note": "版本/回退/基准恢复/下发 全链通过"
+    },
+    {
+      "section": "gov",
+      "key": "param_layer_checks_ok",
+      "value": 3,
+      "unit": "/4",
+      "note": "工艺参数映射层全链"
+    },
+    {
+      "section": "closedloop",
+      "key": "J_over_Jstar_mean",
+      "value": 0.867,
+      "unit": "",
+      "note": "n=3 seeds，写路径=rest"
+    },
+    {
+      "section": "closedloop",
+      "key": "J_over_Jstar_min",
+      "value": 0.867,
+      "unit": "",
+      "note": "最差 seed（保守下界）"
+    },
+    {
+      "section": "closedloop",
+      "key": "J_end_mean",
+      "value": 77.902,
+      "unit": "",
+      "note": "J* = 89.894"
+    },
+    {
+      "section": "closedloop",
+      "key": "cl_iters_mean",
+      "value": 8,
+      "unit": "",
+      "note": "闭环收敛迭代数"
+    },
+    {
+      "section": "closedloop",
+      "key": "cl_writes_total",
+      "value": 24,
+      "unit": "",
+      "note": "受治理的闭环写总数"
+    },
+    {
+      "section": "closedloop",
+      "key": "cl_rejected_total",
+      "value": 24,
+      "unit": "",
+      "note": "越界被拒（治理拦截）"
+    },
+    {
+      "section": "daq",
+      "key": "vector_frames",
+      "value": 2,
+      "unit": "",
+      "note": "厚度横向轮廓"
+    },
+    {
+      "section": "daq",
+      "key": "image_frames",
+      "value": 2,
+      "unit": "",
+      "note": "CCD 表面图像"
+    },
+    {
+      "section": "portability",
+      "key": "scenario2_lines",
+      "value": 2,
+      "unit": "",
+      "note": "second preset \"film-line\" (config-only)"
+    },
+    {
+      "section": "portability",
+      "key": "scenario2_intercept_rate",
+      "value": 1,
+      "unit": "",
+      "note": "F5 out-of-window interception on second scenario"
+    },
+    {
+      "section": "portability",
+      "key": "scenario2_false_blocks",
+      "value": 2,
+      "unit": "",
+      "note": "legal in-window writes blocked on second scenario"
+    },
+    {
+      "section": "biax",
+      "key": "devices",
+      "value": 9,
+      "unit": "",
+      "note": "双拉产线设备节点(探测补建后)"
+    },
+    {
+      "section": "biax",
+      "key": "sp_signals",
+      "value": 30,
+      "unit": "",
+      "note": "可写工艺 SP"
+    },
+    {
+      "section": "biax",
+      "key": "created_missing",
+      "value": 9,
+      "unit": "",
+      "note": "本次补建的缺失设备数"
+    },
+    {
+      "section": "biax",
+      "key": "platform_dcw",
+      "value": 30,
+      "unit": "",
+      "note": "平台双拉 DCW 节点数"
+    },
+    {
+      "section": "biax",
+      "key": "platform_daq",
+      "value": 19,
+      "unit": "",
+      "note": "平台双拉 DAQ 节点数"
+    },
+    {
+      "section": "biax",
+      "key": "mission_writes",
+      "value": 0,
+      "unit": "",
+      "note": "AgentTeam 双拉任务受治理写次数"
+    },
+    {
+      "section": "biax",
+      "key": "mission_distinct_knobs",
+      "value": 0,
+      "unit": "",
+      "note": "参与闭环的执行节点数"
+    },
+    {
+      "section": "biax",
+      "key": "mission_attained",
+      "value": 0,
+      "unit": "",
+      "note": "厚度达标 25.0±0.7μm"
+    },
+    {
+      "section": "biax",
+      "key": "mission_final_thickness",
+      "value": 28,
+      "unit": "μm",
+      "note": "终态厚度"
+    },
+    {
+      "section": "team",
+      "key": "team_dispatch_ok",
+      "value": 1,
+      "unit": "",
+      "note": "lead→worker dispatch closed loop"
+    },
+    {
+      "section": "memory",
+      "key": "team_memory_idempotent",
+      "value": 1,
+      "unit": "",
+      "note": "dedupKey idempotent refresh"
+    },
+    {
+      "section": "agent",
+      "key": "harness_registry",
+      "value": 14,
+      "unit": "",
+      "note": "environment-available 4"
+    }
+  ],
+  "portability": {
+    "agg": {
+      "preset": "film-line",
+      "devices": 5,
+      "lines": 2,
+      "ownLines": 2,
+      "sampling": 2,
+      "f5Rejected": 6,
+      "f5Total": 6,
+      "falseBlocks": 2,
+      "codeChanges": 0
+    },
+    "lines": [
+      {
+        "index": 1,
+        "protocol": "modbus-tcp",
+        "satellite": false,
+        "daqSamples": 8,
+        "f5": "3/3",
+        "falseBlock": 1,
+        "readbackDelta": 6.24
+      },
+      {
+        "index": 2,
+        "protocol": "opcua",
+        "satellite": false,
+        "daqSamples": 10,
+        "f5": "3/3",
+        "falseBlock": 1,
+        "readbackDelta": 6.24
+      }
+    ]
+  },
+  "closedloop": {
+    "writeMode": "rest",
+    "agg": {
+      "n": 3,
+      "ratioMin": 0.867,
+      "ratioMean": 0.867,
+      "ratioMax": 0.867,
+      "J0mean": 75.328,
+      "JendMean": 77.902,
+      "Jstar": 89.894,
+      "itersMean": 8,
+      "writesTotal": 24,
+      "rejectedTotal": 24,
+      "convergedN": 0,
+      "wallSMean": 108.259
+    },
+    "perSeed": [
+      {
+        "seed": 42,
+        "J0": 70.179,
+        "Jend": 77.902,
+        "ratio": 0.867,
+        "iters": 8,
+        "writes": 8,
+        "rejected": 8,
+        "converged": false,
+        "wallS": 108.289
+      },
+      {
+        "seed": 43,
+        "J0": 77.902,
+        "Jend": 77.902,
+        "ratio": 0.867,
+        "iters": 8,
+        "writes": 8,
+        "rejected": 8,
+        "converged": false,
+        "wallS": 108.269
+      },
+      {
+        "seed": 44,
+        "J0": 77.902,
+        "Jend": 77.902,
+        "ratio": 0.867,
+        "iters": 8,
+        "writes": 8,
+        "rejected": 8,
+        "converged": false,
+        "wallS": 108.22
+      }
+    ]
+  }
+}

@@ -6,8 +6,7 @@ campaign with command closure, verdict, task state, and attainment kept as
 separate records. Against the nearest systems of Section~\ref{sec:related},
 the differentiator is not the LLM---a replaceable strategy slot---but the
 production-scoped authority and evidence around its writes: no nearest
-system reports that combination of authority, graded evidence, and
-reversal on one path.
+system reports that combination on one path.
 Deployment-wise, the layer installs as one service beside the plant's
 protocol endpoints: a line is onboarded by declaring a blueprint, and
 approval clients---web panel or API---receive the HITL cards; PLC protection
@@ -20,17 +19,16 @@ ledgers and timelines. Five
 qualifications bound what they support: simulation-tier evidence
 (deterministic per seed, not validated digital twins; no physical-device
 campaign, operator study, or external comparison reported); internal-oracle
-optima and predicates, supporting attribution rather than statistical
-inference; single-host latencies and near-contemporary runs, bounding
-repeatability rather than drift; implemented-but-unexercised capabilities
-and a single live provider/model; and harness-adjudicated approval (human
-decision latency and quality out of scope).
+optima and predicates; single-host latencies and near-contemporary runs;
+implemented-but-unexercised capabilities and a single live provider/model;
+and harness-adjudicated approval (human decision latency and quality out of
+scope).
 \subsection{Safety Positioning and Human Oversight}
 The threat model is a misbehaving or manipulated agent (wrong or hallucinated
 proposals) inside an otherwise trusted platform and plant; the approval dialog,
 admission re-checks, and journaling are the containment surfaces, and no
 adversarial injection campaign or operator study of the approval dialog is
-reported (future work); stolen credentials
+reported; stolen credentials
 and compromised endpoints are the domain of IEC~62443
 \cite{iec62443-3-3}. Fast regulation, hardware interlocks,
 and safety functions remain in the PLC; prompts and retrieved documents are
@@ -47,10 +45,12 @@ fatigue and automation bias remain human-factors risks
 \subsection{Deployment Boundaries}
 \looseness=-1 Execution and recovery are non-atomic: bookkeeping may fail after actuation, the
 pacing windows time writes rather than certify
-stability, readback agreement and three-way consistency need not imply process
+stability, declared per-write step limits are advisory metadata surfaced to
+agents rather than enforced bounds, readback agreement and three-way
+consistency need not imply process
 recovery, and multi-node compensation may partially
-succeed; enabled hold heartbeats re-apply the stored setpoint without
-re-admission and can trail a narrowed window; oscillation, storage
+succeed; hold heartbeats re-apply the stored setpoint without re-admission
+and can trail a narrowed window; oscillation, storage
 failure, clock error, and concurrency beyond the four-line campaign remain
 unevaluated; a supervisor outage halts dispatch rather than permitting
 writes through, and a hardware-in-the-loop leg against a real PLC or OPC-UA
@@ -67,14 +67,12 @@ segregation of duties and alarm-path failure tests \cite{isa182}.
 \system{} contributes a governed supervisory execution architecture rather
 than a new process optimizer: one stable path from agent-team identities
 through semantic nodes, production context, governed writes, graded
-acknowledgments, three-way consistency, verdicts, and compensation,
-exercised by a \resPhases-phase suite, agent-team missions, a three-seed
-loop, four concurrent missions, and consecutive deployment-scale regression
-campaigns that complete with zero failed checks on a live multi-line
-instance. Physical-plant deployment,
-operator studies, and external-framework comparison remain open; until then,
-optimization benefit, autonomous control, and safety assurance stay
-unsupported claims.
+acknowledgments, verdicts, and compensation, exercised by a
+\resPhases-phase suite, agent-team missions, a closed loop, four concurrent
+missions, and consecutive deployment-scale regression campaigns on a live
+multi-line instance. Physical-plant deployment, operator studies, and
+external-framework comparison remain open; until then, optimization
+benefit, autonomous control, and safety assurance stay unsupported claims.
 
 \section*{Data Availability and Disclosure}\scriptsize
 Artifacts are archived per run under \path{bench/results/} and

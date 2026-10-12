@@ -68,18 +68,17 @@
 
 \begin{abstract}
 Large language model (LLM) agents increasingly generate industrial control
-changes, yet the safeguards surrounding each proposal---who may write which
-parameter, which limits bind for the current product and recipe, whether a
-human approved, whether the device accepted, and whether the
-process improved---are rebuilt per deployment inside application code. This
+changes, yet the safeguards surrounding each proposal---write authority,
+active limits, human approval, device acceptance, process
+improvement---are rebuilt per deployment inside application code. This
 paper presents AgentWorkShop, a governed supervisory execution layer that
 turns these concerns into a single path for agent teams: every intervention
 is one governed transaction whose admission, approval, actuation, graded
 write acknowledgment, verdict, and compensation remain separately
 inspectable evidence states. Team identities
 reach semantic data-acquisition (DAQ) and write-control (DCW) nodes through
-explicit capabilities under a fail-safe line master switch; protocol
-drivers, versioned production objects, plugin points, and a typed software
+explicit capabilities under a fail-safe line master switch; drivers,
+versioned production objects, plugin points, and a typed software
 development kit (SDK) form the integration surface, with process models,
 objectives, and policies external. The evaluation exercises this path
 through protocol-closure and mechanism-ablation drills, agent-team
@@ -111,7 +110,7 @@ Agent teams, human-in-the-loop, industrial informatics, write governance.
 % IEEE 8pt-equivalent reference size (scriptsize here because IEEEtran's
 % footnotesize baseline is 8pt for 10pt body) and tight IEEE entry spacing.
 \begingroup
-\linespread{0.79}\scriptsize
+\linespread{0.74}\scriptsize
 \def\IEEEbibitemsep{0pt plus .3pt}
 \bibliography{resources/refs}
 \endgroup
