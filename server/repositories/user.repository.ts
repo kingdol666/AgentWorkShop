@@ -398,7 +398,7 @@ export const userRepository = {
     const current = this.findById(id)
     if (!current) return undefined
     const fields: string[] = []
-    const params: string[] = []
+    const params: Array<string | number> = []
     if (input.name !== undefined) {
       fields.push('name = ?')
       params.push(input.name)
@@ -496,7 +496,7 @@ export const userRepository = {
   /** 吊销某用户全部会话 token(管理面重置密码后强制重新登录,旧会话即死) */
   revokeAllTokens(userId: string): number {
     const d = getDb()
-    return d.prepare('DELETE FROM user_tokens WHERE user_id = ?').run(userId).changes
+    return Number(d.prepare('DELETE FROM user_tokens WHERE user_id = ?').run(userId).changes)
   },
 
   /** 测试钩子：替换内部 DB（重开内存库等） */
