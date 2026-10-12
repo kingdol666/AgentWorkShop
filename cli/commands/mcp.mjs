@@ -150,5 +150,11 @@ export async function run(argv) {
   if (flags.port) process.env.AW_PORT = String(flags.port)
   const { runStdio } = await import('../../mcp/aw-mcp-server.mjs')
   runStdio()
+  // runStdio 是事件驱动的:这里绝不能 return —— main() 返回会触发 bin 的 process.exit,
+  // stdio 服务刚启动就被自己杀掉(0.7.58 实测 `aw mcp` 秒退无输出)。挂起直至 stdin 关闭。
+  await new Promise((resolve) => {
+    if (process.stdin.readableEnded) resolve()
+    else process.stdin.on('end', resolve)
+  })
   return 0
 }

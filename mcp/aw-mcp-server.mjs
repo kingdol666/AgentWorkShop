@@ -25,6 +25,7 @@
 import { createInterface } from 'node:readline'
 import { resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { realpathSync } from 'node:fs'
 import { discoverInstance, discoverWithReport, readMcpEnabled } from './discovery.mjs'
 
 const DEFAULT_TIMEOUT_MS = Number(process.env.AW_MCP_TIMEOUT_MS ?? 30_000)
@@ -790,7 +791,9 @@ export function runStdio() {
   process.stdout.on('error', () => process.exit(0))
 }
 
-const isMain = process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href
+// argv 路径必须先 realpath 再对比:nvm-windows 全局安装经目录 junction(C:\nvm4w\nodejs → 实际版本目录),
+// import.meta.url 是 realpath 而 argv 不是 —— 直接字符串对比恒 false,全局用户的 MCP 直连会静默退出(0.7.58 实测)。
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(realpathSync(resolve(process.argv[1]))).href
 if (isMain) {
   runStdio()
 }
