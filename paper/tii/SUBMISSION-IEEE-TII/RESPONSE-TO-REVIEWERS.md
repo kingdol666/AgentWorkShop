@@ -62,7 +62,7 @@ holds the write path fixed and relaxes its mechanisms: the same six probes
 that full governance rejects (HTTP 400) return 200 executed under the relaxed
 arm (Section V-C, 18/18→12/18) — a success-flag design reports them as
 accepted writes. The evidence control holds the receipts and varies the
-reporting rule (Section IV-D). The closed-loop harness also parameterizes the
+reporting rule (Section IV-C). The closed-loop harness also parameterizes the
 write injection — admin REST beside the agent's governed dcw_control — so
 governance's cost in convergence and integration effort is measurable; that
 like-for-like pair is prepared but not yet executed in the archived

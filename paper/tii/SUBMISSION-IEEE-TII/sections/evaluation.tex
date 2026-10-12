@@ -66,17 +66,19 @@ campaign re-runs it three times.
 No prior system in Table~\ref{tab:nearest} owns a governed write path to
 plant endpoints, so the primary comparator is internal, and two controls are
 archived. The admission control holds the write path fixed and relaxes its
-mechanisms: the same six probes that full governance rejects (HTTP~400)
-return 200 \emph{executed} under the relaxed arm
+mechanisms: the six window-edge probes that full governance rejects
+(HTTP~400) return 200 \emph{executed} under the relaxed arm
 (Section~\ref{sec:protocol}, 18/18$\rightarrow$12/18)---a success-flag
 design reports them as accepted writes. The evidence control holds the
-receipts and varies the reporting rule (Section~\ref{sec:ack}). The
-closed-loop harness also parameterizes the write injection---admin REST
-beside the agent's governed \texttt{dcw\_control}---so governance's cost in
-convergence and integration effort is measurable; that like-for-like pair is
-prepared but not yet executed in the archived campaigns, and no
-optimization-superiority claim is made. Fig.~\ref{fig:loop} summarizes the
-closed-loop instrument.
+receipts and varies the reporting rule (Section~\ref{sec:ack}); the
+success-flag outcome there is definitional---the pre-hardening harness
+itself reported a broker puback as success. The closed-loop harness also
+parameterizes the write injection---admin REST beside the agent's governed
+\texttt{dcw\_control}---so governance's cost in convergence and integration
+effort is measurable; that like-for-like pair is prepared and has since been
+executed once on the quick profile outside this paper's evidence snapshot,
+and no optimization-superiority claim is made. Fig.~\ref{fig:loop} summarizes
+the closed-loop instrument.
 
 \begin{figure}[!t]
 \centering
@@ -229,7 +231,7 @@ interval of Section~\ref{sec:mech} the explicit test surface of the
 closed-loop, fine-tuning, and write-evidence scenarios on the live instance
 of Section~\ref{sec:testbed}.
 \looseness=-1 \emph{Full-suite repeatability.} Three consecutive pipeline executions
-complete with zero failed checks---79 checks per run on October 7--8
+complete with zero failed checks---79 checks per run on October 7
 (237 total), 90--92 per run on October 9 (\resNovTotal{} total); two runs
 land inside the per-line
 trial cadence
@@ -275,16 +277,16 @@ observation, not a process excursion.
 are replicated.
 
 \emph{Write-evidence legs.} A dedicated seven-leg suite verifies Sections~\ref{sec:ack}
-and~\ref{sec:hitl} directly: the master switch refuses an unconfirmed manual-to-automatic
-transition; a mock-acknowledged dispatch is promoted to readback-verified;
-a broker cut marks affected parameters unverified while healthy siblings
-verify; a publish-only endpoint accepts the write (broker puback,
+and~\ref{sec:hitl} directly: (1)~the master switch refuses an unconfirmed manual-to-automatic
+transition; (2)~a mock-acknowledged dispatch is promoted to readback-verified;
+(3)~a broker cut marks affected parameters unverified while healthy siblings
+verify; (4)~a publish-only endpoint accepts the write (broker puback,
 \texttt{ok=true}) yet stays \emph{unverified} through three verification
 attempts---the receipt Section~\ref{sec:ack}'s falsifiable rule is stated
-against; and
-on a manual-mode line an approval-free binding's dispatch is intercepted
-into the queue, approval releasing all six parameters device-verified. An
-API regression and a documentation-consistency suite close the campaign.
+against; and (5)~on a manual-mode line an approval-free binding's dispatch is
+intercepted into the queue, approval releasing all six parameters
+device-verified. Legs six and seven---an API regression and a
+documentation-consistency suite---close the campaign.
 
 \looseness=-1 Across the five questions the pattern holds: admission intercepts and
 attributes, grading degrades honestly, pacing holds under automation,
