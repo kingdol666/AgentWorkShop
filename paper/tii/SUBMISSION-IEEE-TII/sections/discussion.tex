@@ -3,10 +3,11 @@
 \subsection{Industrial-Informatics Interpretation}
 One supervisory path carried four different jobs and a deployment-scale
 campaign with command closure, verdict, task state, and attainment kept as
-separate records; against the nearest systems of Section~\ref{sec:related},
+separate records. Against the nearest systems of Section~\ref{sec:related},
 the differentiator is not the LLM---a replaceable strategy slot---but the
-production-scoped authority and evidence around its writes, which none of
-the six systems combines with reversal through one path.
+production-scoped authority and evidence around its writes: no nearest
+system reports that combination of authority, graded evidence, and
+reversal on one path.
 Deployment-wise, the layer installs as one service beside the plant's
 protocol endpoints: a line is onboarded by declaring a blueprint, and
 approval clients---web panel or API---receive the HITL cards; PLC protection
@@ -16,21 +17,22 @@ and DCS interlocks stay untouched.
 \looseness=-1 Run identifier, seed, commit, harness fingerprint, and raw artifacts are
 fixed, so counts are re-derivable rather than trusted; Q5 adds per-run
 ledgers and timelines. Five
-qualifications bound what they support: simulation-tier evidence (deterministic per seed, not
-validated digital twins; no physical-device campaign, operator study, or
-external comparison reported); internal-oracle optima and predicates,
-supporting attribution rather than statistical inference; single-host
-latencies and near-contemporary runs, bounding repeatability rather than
-drift; implemented-but-unexercised capabilities and a single live
-provider/model; and harness-adjudicated
-approval (human decision latency and quality out of scope).
+qualifications bound what they support: simulation-tier evidence
+(deterministic per seed, not validated digital twins; no physical-device
+campaign, operator study, or external comparison reported); internal-oracle
+optima and predicates, supporting attribution rather than statistical
+inference; single-host latencies and near-contemporary runs, bounding
+repeatability rather than drift; implemented-but-unexercised capabilities
+and a single live provider/model; and harness-adjudicated approval (human
+decision latency and quality out of scope).
 \subsection{Safety Positioning and Human Oversight}
 The threat model is a misbehaving or manipulated agent (wrong or hallucinated
 proposals) inside an otherwise trusted platform and plant; the approval dialog,
 admission re-checks, and journaling are the containment surfaces, and no
-adversarial injection campaign is reported (future work); stolen credentials
+adversarial injection campaign or operator study of the approval dialog is
+reported (future work); stolen credentials
 and compromised endpoints are the domain of IEC~62443
-\cite{iec62443-3-3,nist80082}. Fast regulation, hardware interlocks,
+\cite{iec62443-3-3}. Fast regulation, hardware interlocks,
 and safety functions remain in the PLC; prompts and retrieved documents are
 untrusted text, not authority
 \cite{greshake2023injection,liu2024pinjection}---the proposer is confined to
@@ -50,13 +52,15 @@ recovery, and multi-node compensation may partially
 succeed; enabled hold heartbeats re-apply the stored setpoint without
 re-admission and can trail a narrowed window; oscillation, storage
 failure, clock error, and concurrency beyond the four-line campaign remain
-unevaluated. In production, bindings govern
+unevaluated; a supervisor outage halts dispatch rather than permitting
+writes through, and a hardware-in-the-loop leg against a real PLC or OPC-UA
+endpoint is the next evidence tier. In production, bindings govern
 sanctioned tools, not arbitrary privileged-engine I/O---least privilege,
 endpoint security, and IT/OT separation remain necessary
-\cite{iec62443-3-3,nist80082}; \system{} is neither a safety
+\cite{iec62443-3-3}; \system{} is neither a safety
 instrumented function nor a plant-protection substitute \cite{iec61511};
 line-scoped approver authorization is still missing, so production needs
-segregation of duties and alarm-path failure tests \cite{eemua191}.
+segregation of duties and alarm-path failure tests \cite{isa182}.
 
 \section{Conclusion}
 \label{sec:conclusion}
@@ -66,7 +70,7 @@ through semantic nodes, production context, governed writes, graded
 acknowledgments, three-way consistency, verdicts, and compensation,
 exercised by a \resPhases-phase suite, agent-team missions, a three-seed
 loop, four concurrent missions, and consecutive deployment-scale regression
-campaigns that complete fully green on a live multi-tenant
+campaigns that complete with zero failed checks on a live multi-line
 instance. Physical-plant deployment,
 operator studies, and external-framework comparison remain open; until then,
 optimization superiority, autonomous control, and safety assurance stay
@@ -75,7 +79,5 @@ unsupported claims.
 \section*{Data Availability and Disclosure}\scriptsize
 Artifacts are archived per run under \path{bench/results/} and
 \path{docs/benchmarks/}; anonymized artifacts are available during review
-and released with the code upon publication (harness
-fingerprints are truncated SHA-256 over benchmark sources). AI
-assistants supported editing
+and released with the code upon publication. AI assistants supported editing
 under author direction; the authors remain responsible for all claims.

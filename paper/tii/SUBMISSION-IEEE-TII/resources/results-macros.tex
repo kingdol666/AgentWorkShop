@@ -24,6 +24,15 @@
 \newcommand{\resOpcP}{19.8\,ms}
 \newcommand{\resMqttP}{19.3\,ms}
 \newcommand{\resHttpP}{32.9\,ms}
+% p95 per protocol line, same run: ~6 writes each. Recorded in the archive's
+% metrics.csv (write_p95_ms) but reported in the body only since the 2026-10-12
+% revision, so they live here rather than inline. Names must be letters only:
+% \resTcpP95 would parse as \resTcpP followed by the characters "95".
+\newcommand{\resTcpTail}{248.9\,ms}
+\newcommand{\resOpcTail}{20.5\,ms}
+\newcommand{\resMqttTail}{20.1\,ms}
+\newcommand{\resHttpTail}{44.6\,ms}
+\newcommand{\resWriteNperLine}{6}
 \newcommand{\resAblationRun}{\texttt{20260921181234-e1lite}}
 \newcommand{\resFullIntercept}{18/18}
 \newcommand{\resNoInterlockIntercept}{12/18}

@@ -11,18 +11,18 @@ as real-time controllers of a robot production line
 everything that surrounds the proposal: who may change which parameter, which
 limits are active for the current product and recipe, whether a human
 approved, whether the device accepted the command, and whether the process
-improved. Because these concerns are normally embedded in application code,
-they are rebuilt per process, protocol, and agent framework---duplicated
-drivers, ad-hoc permission checks, logs untied to decisions---and a task
-state such as \texttt{COMPLETED} can coexist with a missed process
-objective. The
+improved.
+
+Because these concerns are normally embedded in application code, they are
+rebuilt per process, protocol, and agent framework---duplicated drivers,
+ad-hoc permission checks, logs untied to decisions---and a task state such as
+\texttt{COMPLETED} can coexist with a missed process objective. The
 plants differ---injection molding, wastewater treatment (WWTP), annealing,
-and BOPET (biaxially oriented polyethylene terephthalate) film lines, each
-coupling its objective to pressure, temperature, dosing, or line
-speed---but all need an auditable bridge from a
-team-level task to heterogeneous acquisition and control nodes, while
-LLM-oriented industrial work to date is mostly generation, diagnosis, and
-single-domain control (e.g., \cite{liu2026agents4plc,wu2025instructmpc}).
+and BOPET (biaxially oriented polyethylene terephthalate)
+film---but all need an auditable bridge from a
+team-level task to heterogeneous acquisition and control nodes. Industrial
+LLM work to date, by contrast, is mostly generation, diagnosis, and
+single-domain control (e.g., \cite{liu2026agents4plc}).
 
 \looseness=-1 \system{} addresses this execution gap through member--node bindings (a
 member being an engine-backed channel identity) and shared line, product,
@@ -32,8 +32,8 @@ transaction whose admission, approval, actuation, graded acknowledgment,
 three-way setpoint consistency, verdict, and compensation are left as
 separate evidence records. Nodes expose engineering quantities rather than register
 addresses; one governed member--node binding path serves every client,
-where application-specific integration would duplicate drivers, permissions,
-and logging per application. Fast regulation, certified protection, and the
+where per-application integration would duplicate drivers, permissions,
+and logging. Fast regulation, certified protection, and the
 choice of optimization algorithm remain outside the framework.
 
 The paper makes four contributions:
@@ -56,7 +56,7 @@ consistency, the caller's verdict, compensation, and backstop actions; and
 \item a \textbf{layered evaluation} exercising one governed path through
 protocol closure with mechanism ablation, agent-team missions, a
 deterministic controller loop, concurrent process missions, and a
-deployment-scale regression campaign on a live multi-tenant instance
+deployment-scale regression campaign on a live multi-line instance
 (Section~\ref{sec:eval}), task state and attainment reported separately
 throughout.
 \end{enumerate}

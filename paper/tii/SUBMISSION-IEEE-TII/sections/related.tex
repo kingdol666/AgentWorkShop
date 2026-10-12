@@ -1,8 +1,10 @@
 \section{Related Work}
 \label{sec:related}
 \subsection{LLM Agents in Industrial Control: From Generation to Governance}
-\looseness=-1 Agent-based manufacturing has long linked organizational roles to plant
-capabilities \cite{leitao2009agentbased}; LLM-oriented industrial work now
+\looseness=-1 Agent-based manufacturing and supervision have long linked
+organizational roles to plant
+capabilities \cite{leitao2009agentbased};
+LLM-oriented industrial work now
 spans PLC generation and verification \cite{liu2026agents4plc}. The closest
 systems, characterized in Table~\ref{tab:nearest}, target the control action
 itself: MADE couples multi-modal perception to control generation with a
@@ -22,7 +24,7 @@ layer governs how an allocated proposal reaches the plant and what evidence
 it leaves. A recent review frames agentic AI's industrial value as
 safety-aware, explainable, HITL decision support rather than autonomous
 control authority \cite{jiang2026agentic}; the contribution here is the
-mechanism set and benchmark that make that positioning concrete, and
+mechanism set that makes that positioning concrete, and
 Table~\ref{tab:nearest} characterizes each system as reported in its
 publication.
 
@@ -52,8 +54,7 @@ Waseem et al., Mach.\ Learn.\ Eng.\ 2026 \cite{waseem2026pretrained} & real-time
 
 \subsection{Frameworks, Standards, Run-Time Guarantees, and Automation Practice}
 Multi-agent frameworks coordinate tasks and tools, and the Model Context
-Protocol (MCP) and Agent-to-Agent (A2A) specifications standardize tool and
-inter-agent interfaces \cite{mcp2024,a2a2025}; the tool they expose, however,
+Protocol (MCP) standardizes tool and inter-agent interfaces \cite{mcp2024}; the tool it exposes, however,
 is a bare function signature carrying no line, product, or recipe context,
 with no record separating admission from execution. ISA-88 and ISA-95 supply
 complementary models for recipes and operations
@@ -63,7 +64,7 @@ life cycle transposes run-to-run control disciplines \cite{moyne2000r2r}
 onto a supervisory write path.
 A separate line enforces run-time guarantees on LLM agents---judge and guard
 agents, rule-based
-enforcement \cite{xiang2024guardagent,debenedetti2025camel,wang2025agentspec};
+enforcement \cite{xiang2024guardagent};
 they gate software tool calls, not plant writes, and their policies could
 compile onto the enforcement substrate contributed here.
 
@@ -83,15 +84,16 @@ verdict, compensation---survive strategy replacement, where the three-way
 check is a supervised special case of classical data reconciliation and
 gross-error detection \cite{crowe1996reconciliation}, applied across recipe,
 device, and mirrored views of one setpoint rather than across plant balance
-equations. Neither the six systems
-above nor a classical chain provides that combination as a unit.
+equations. Neither the five systems
+above, nor the review, nor a classical chain provides that combination
+in this form.
 \system{} implements source-dependent checks and a rule-based backstop and
 makes no formal protection guarantee, the backstop
 (Section~\ref{sec:agentloop}) being a rule-based recovery action in the spirit
-of ISA-18.2 and EEMUA-191 \cite{isa182,eemua191}; human oversight likewise
+of ISA-18.2 \cite{isa182}; human oversight likewise
 requires more than an approval dialog
 \cite{bainbridge1983ironies}. Agent benchmarks
-\cite{liu2024agentbench} and prompt-injection studies
+and prompt-injection studies
 \cite{greshake2023injection,liu2024pinjection} inform adjacent evaluations;
 ours separates source checks, protocol execution, mechanism ablation,
 controller trials, and multi-scenario missions. In sum: coordination frameworks supply no production context, standards no

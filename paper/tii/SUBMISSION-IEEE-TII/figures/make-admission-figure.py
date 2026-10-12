@@ -44,13 +44,14 @@ INTER_LO, INTER_HI = 146.22, 153.78
 DARK = "#262626"
 GREY = "#8C8C8C"
 
-fig, ax = plt.subplots(figsize=(3.5, 1.52))
-fig.subplots_adjust(left=0.005, right=0.995, top=0.90, bottom=0.17)
+fig, ax = plt.subplots(figsize=(3.5, 1.60))
+fig.subplots_adjust(left=0.005, right=0.995, top=0.905, bottom=0.165)
 
 lane_h = 0.52
 gap = 1.0
 lanes = [3.3, 2.3, 1.3, 0.3]  # top to bottom: H, B, P, R
-XLO, XHI = 138.0, 162.0
+XLO, XHI = 127.0, 162.0
+BAR_LO = 138  # bars start here; 127--138 is the reserved label gutter
 
 # admitted interval band across all lanes
 ax.add_patch(Rectangle((INTER_LO, 0.0), INTER_HI - INTER_LO, 3.85,
@@ -59,18 +60,20 @@ ax.axvline(INTER_LO, color="#3E8E55", lw=0.7, ls=(0, (3, 2)), zorder=2)
 ax.axvline(INTER_HI, color="#3E8E55", lw=0.7, ls=(0, (3, 2)), zorder=2)
 
 for (label, lo, hi, color, note), y in zip(LAYERS, lanes):
-    lo_v, hi_v = max(lo, XLO), min(hi, XHI)
+    lo_v, hi_v = max(lo, BAR_LO), min(hi, XHI)
     ax.add_patch(Rectangle((lo_v, y - lane_h / 2), hi_v - lo_v, lane_h,
                            facecolor=color, edgecolor="white", lw=0.5,
                            alpha=0.92, zorder=3))
-    ax.annotate(f"{label}   {note}", xy=(XLO + 0.4, y), fontsize=4.9,
+    ax.annotate(f"{label}   {note}", xy=(XLO + 0.4, y), fontsize=6.0,
                 color=DARK, va="center", ha="left", zorder=5,
-                xycoords=("data", "data"))
+                xycoords=("data", "data"),
+                bbox=dict(facecolor="white", edgecolor="none", pad=1.0,
+                          alpha=0.85))
 
 # intersection markers on the admitted interval
 ax.annotate("admitted interval\n$\\mathcal{I}_n=[146.22, 153.78]$",
-            xy=((INTER_LO + INTER_HI) / 2, 3.85), xytext=(154.6, 4.35),
-            fontsize=5.2, color="#2E7D3A", ha="center",
+            xy=((INTER_LO + INTER_HI) / 2, 3.85), xytext=(152.9, 4.30),
+            fontsize=6.0, color="#2E7D3A", ha="center", va="bottom",
             arrowprops=dict(arrowstyle="->", color="#2E7D3A", lw=0.6))
 ax.annotate("", xy=(INTER_LO, 0.02), xytext=(INTER_LO, 4.1),
             arrowprops=dict(arrowstyle="-", color="#8C8C8C", lw=0.4, ls=":"))
@@ -78,16 +81,17 @@ ax.annotate("", xy=(INTER_HI, 0.02), xytext=(INTER_HI, 4.1),
             arrowprops=dict(arrowstyle="-", color=GREY, lw=0.4, ls=":"))
 ax.annotate("", xy=(INTER_LO, -0.28), xytext=(INTER_HI, -0.28),
             arrowprops=dict(arrowstyle="<->", color="#2E7D3A", lw=0.8))
-ax.text(150.0, -0.70, "outside: rejected by its excluding layer", ha="center",
-        fontsize=4.8, color=GREY)
+ax.text(150.0, -0.75, "outside: rejected by its excluding layer", ha="center",
+        fontsize=5.6, color=GREY)
 
 ax.set_xlim(XLO, XHI)
-ax.set_ylim(-1.05, 5.05)
+ax.set_ylim(-1.15, 5.55)
 ax.set_yticks([])
 ax.set_xticks([140, 145, 150, 155, 160])
-ax.set_xticks(range(138, 163), minor=True)
-ax.set_xlabel("governing-setpoint value (rpm)  ---  Q1 four-layer drill", fontsize=5.4)
-ax.tick_params(labelsize=5.5)
+ax.set_xticks(range(BAR_LO, 163), minor=True)
+ax.set_xlabel("governing-setpoint value (rpm)  \u2013  Q1 four-layer drill",
+              fontsize=6.0)
+ax.tick_params(labelsize=6.0)
 ax.text(0.012, 0.965, "(a)", transform=ax.transAxes, fontsize=7,
         fontweight="bold", color=DARK, va="top", ha="left",
         bbox=dict(facecolor="white", edgecolor="none", pad=0.6))

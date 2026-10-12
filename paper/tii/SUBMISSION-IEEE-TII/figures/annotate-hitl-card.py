@@ -16,7 +16,9 @@ from PIL import Image, ImageDraw, ImageFont
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "..", "resources", "hitl-card-crop.png")
-SRC = os.path.join(HERE, "..", "resources", "hitl-card-crop.png")
+# Read from the archived original screenshot, never from OUT: the split
+# below is not idempotent, so re-reading OUT would double-process the card.
+SRC = os.path.join(HERE, "retired", "hitl-card-crop-orig.png")
 
 im = Image.open(SRC).convert("RGB")
 W, H = im.size  # 1212 x 168
@@ -64,7 +66,7 @@ print("trimmed x:", x0, x1, "-> width", x1 - x0)
 
 CW = x1 - x0
 GAP = 6
-GLOSS_H = 74
+GLOSS_H = 100
 PAD = 8
 OUTW = CW + 2 * PAD
 OUTH = PAD + top.height + GAP + bot.height + GAP + GLOSS_H + PAD
@@ -83,20 +85,29 @@ y = PAD
 canvas.paste(top, (PAD, y)); y += top.height + GAP
 canvas.paste(bot, (PAD, y)); y += bot.height + GAP
 
-# English gloss strip (sizes in source px: ~26px prints ~5.5-6pt at columnwidth)
+# English gloss strip: three short lines at 32px (~7 pt printed at
+# \columnwidth; the previous two-line 26px layout printed ~5.7 pt, at the
+# legibility floor). Each line must stay under ~74 characters.
 GREY = (90, 90, 90)
 BLUE = (46, 94, 140)
-f1 = font(26)
-f2 = font(26)
-line1 = "proposer (agent member)   \u00b7   batch rr-b7e6f   \u00b7   parameter   \u00b7   current 63 bar   \u00b7   proposed 64 bar"
-line2 = ("adjudication comment (returned to the agent on refusal)   \u00b7   "
-         "approve / reject")
+f1 = font(32)
+f2 = font(32)
+line1 = "proposer (agent member)  \u00b7  batch rr-b7e6f  \u00b7  parameter"
+line2 = "current 63 bar \u2192 proposed 64 bar  \u00b7  comment returns to the agent"
+line3 = "machine-checked fields  \u00b7  approve / reject"
 d.text((PAD + 2, y), line1, font=f1, fill=BLUE)
-y += 20
+y += 32
 d.text((PAD + 2, y), line2, font=f2, fill=GREY)
+y += 32
+d.text((PAD + 2, y), line3, font=f2, fill=GREY)
 
 # panel letter, bottom-right clear zone
-d.text((OUTW - 52, OUTH - 36), "(b)", font=font(30, bold=True), fill=(38, 38, 38))
+d.text((OUTW - 56, OUTH - 42), "(b)", font=font(34, bold=True), fill=(38, 38, 38))
+
+# width guard: no gloss line may run past the canvas
+for ln, fnt in ((line1, f1), (line2, f2), (line3, f2)):
+    w = d.textlength(ln, font=fnt)
+    assert PAD + 2 + w <= OUTW - 4, f"gloss line overflows: '{ln}' ({w:.0f}px)"
 
 canvas.save(OUT)
 print("written:", OUT, canvas.size)

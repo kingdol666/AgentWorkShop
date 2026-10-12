@@ -1,11 +1,11 @@
-\begin{figure*}[!t]
+\begin{figure}[!t]
 \centering
-\includegraphics[width=0.55\textwidth]{resources/aws_fig3-flat.png}
+\includegraphics[width=\columnwidth]{resources/aws_fig3-flat.png}
 \caption{Implemented agent-team runtime. A natural-language goal enters as
 a task; the lead agent decomposes and dispatches plans; retrieval and
 analysis produce the proposed setpoint (the LLM engine occupying a
 replaceable strategy slot). The governance stages are deterministic platform
-logic: Stage~1 applies the Eq.~\eqref{eq:admission} interlock, Stage~2 the
+logic: Gate~1 applies the Eq.~\eqref{eq:admission} interlock, Gate~2 the
 approval wait; the write agent reads back the value actually present (SET
 versus observed ACT), and the judge records keep, rollback, or uncertain;
 every step is journaled with actor attribution. The block labeled
@@ -13,7 +13,7 @@ every step is journaled with actor attribution. The block labeled
 model-bearing agent; the judge annotation is the caller's verdict-tool
 invocation.}
 \label{fig:runtime}
-\end{figure*}
+\end{figure}
 
 \section{Governed Execution Mechanisms}
 \label{sec:mech}
@@ -28,7 +28,7 @@ for inspection rather than absorbed into a success flag.
 Fig.~\ref{fig:runtime} shows the implemented agent-team
 runtime that carries these steps; the governance and write stages drawn in
 the figure are deterministic platform logic---no model output can admit,
-approve, or confirm a write (Stage~1: admission interlock; Stage~2: approval wait). A governed intervention is
+approve, or confirm a write (Gate~1: admission interlock; Gate~2: approval wait). A governed intervention is
 one transaction in the audit-trail sense: every step
 leaves its own evidence record, while execution and recovery are deliberately
 not atomic with device state (Section~\ref{sec:limits}).
@@ -39,13 +39,13 @@ timed, fail-closed approval wait; the write leaves a graded
 acknowledgment, not a success flag; three-way
 setpoint consistency can be checked before any verdict; and compensation is a
 separately admitted write referencing the record it reverses. Every
-agent-originated path to the plant passes through the same governed write.
+agent-originated path that \system{} exposes to the plant passes through the same governed write.
 
 \begin{figure}[!t]
 \centering
 \includegraphics[width=\columnwidth]{resources/fig-admission.pdf}
 \vspace{1pt}
-\includegraphics[width=\columnwidth]{resources/hitl-card-crop.png}
+\includegraphics[width=0.78\columnwidth]{resources/hitl-card-crop.png}
 \caption{The admission boundary and its human-approval gate, on the running
 benchmark line. (a)~The Eq.~\eqref{eq:admission} interval geometry: four declared,
 versioned bounds narrow to the admitted interval; a proposal
@@ -64,7 +64,7 @@ to propose and when to stop; the platform governs execution over semantic node
 parameters---pressure, dosing rate, line speed, rail
 width---in engineering units.
 
-For an ordinary agent setpoint request on node $n$, the
+\looseness=-1 For an ordinary agent setpoint request on node $n$, the
 admission interval is
 \begin{equation}
 \mathcal{I}_n(t)=\mathcal{H}_n\cap\mathcal{B}_n
@@ -81,7 +81,7 @@ misconfiguration surfaces at the first write. The interval form is
 deliberate: every bound is a declared, versioned object that an audit can
 replay against the active product and recipe, and rejection is decidable and layer-attributable, where a learned
 feasibility model offers neither
-(Fig.~\ref{fig:hitl}a).
+(Fig.~\ref{fig:hitl}a). The claim is decidability and replayability, not learned-model safety.
 It bounds one parameter at a time; joint,
 cross-variable windows live in scenario guards. It is not a
 physical safety certificate, and bounds magnitude, not
@@ -98,8 +98,8 @@ alone, closes the command path (Section~\ref{sec:ack}), never the
 process-response path.
 
 \looseness=-1 Two write-spacing windows pace governed loops; neither paces
-the plant, and the configurable windows are starting points to retune per
-line.
+the plant, and both are configurable starting points to retune per
+line against its response time and alarm-response practice.
 Online writes---agent- or human-origin---must sit at least
 60\,s apart, and a successful one installs a hold window
 (\texttt{writeLockSeconds}, floored at 60\,s): a further request inside it
@@ -116,18 +116,17 @@ both windows. \texttt{AW\_BENCH\_MODE=1} admits
 harness-declared arms that relax the soft window or the readback check,
 relaxes pacing bench-wide, and never bypasses the hard range.
 
-Four governed routes---agent tools, human-origin writes, recipe dispatch, and
+\looseness=-1 Four governed routes---agent tools, human-origin writes, recipe dispatch, and
 rollback compensation---reach the same driver through one admission and
 journaling entry point, the hard range included; recipe dispatch adds run
 context---the line-scoped execution window that gates dispatch, the reduced
-ISA-88 batch/lot notion---validated against the recipe window at save time. Hold heartbeats---the node
-runtime's periodic re-dispatch of the stored setpoint, off by default, skipped
-on write conflict, and stopped by line stop, node disable, or driver
-change---are the one non-governed re-dispatch: the stored value itself
-changes only through the governed path, but a heartbeat re-applies it without
-re-admission, so a narrowed recipe window can leave it reasserting a value
-admitted under the previous one; heartbeats are plant-facing state
-maintenance, not an agent path.
+ISA-88 batch/lot notion---validated against the recipe window at save time. Hold heartbeats---periodic
+re-dispatch of the stored setpoint---are the one non-governed re-dispatch:
+they are off by default, stop on line stop, node disable, or driver change,
+and re-apply the stored value without re-admission. The stored value itself
+changes only through the governed path, so a narrowed window can leave a
+heartbeat reasserting a previously admitted value; this is plant-facing
+state maintenance, not an agent path.
 Line start installs active context
 before recipe parameters dispatch individually, and line stop clears context
 and closes retained open records; these multi-step operations are not atomic
@@ -194,12 +193,15 @@ surfaced in the operations log. These
 separations keep command status, record status, and process recovery
 independently inspectable.
 
-\looseness=-1 The backstop is the platform's safety net for writes that no
-verdict has closed: it evaluates only open records---a caller's keep or
-rollback closes the record and stands the backstop down. When the
+\looseness=-1 The backstop is a record-integrity check for writes that no
+verdict has closed---not an independent protection layer: it evaluates only
+open records, and a caller's keep or rollback closes the record and stands it
+down, so its availability is contingent on a verdict being recorded and on
+observations continuing to arrive. When the
 recorded value of an open record leaves the admitting recipe window, the
 platform issues a system-attributed rollback verdict
-and restores the record's baseline (the value preceding the write), the
+and restores the value preceding that write (one step; the admitted
+baseline is not restored), the
 compensating write graded as above. The stored policy waits at least
 120\,s, checks at most every 30\,s, and triggers once three out-of-window
 points or averages accumulate in the observation window---cumulatively, not
@@ -222,8 +224,8 @@ deployed benchmark, plus the proposer's reasoning and per-parameter basis
 free-text reasoning display-only and non-authoritative. Because binding and admission are
 re-checked at execution, approval reserves neither interval nor device state;
 the approval dialog---itself an injection surface (Section~\ref{sec:limits})---
-cannot promote a proposal past the checks, and the comment returns verbatim
-to the proposing member on refusal and with the receipt on
+cannot promote a proposal past the checks; the comment returns verbatim
+to the proposing member on refusal and travels with the receipt on
 approval---feedback, not authority. The
 wait fails closed by default (expiry 180\,s, configurable): an expired request
 resolves as refusal, does not actuate, and is recorded with the expiry;

@@ -149,6 +149,9 @@ def fig_closedloop_runs():
     for i in x:
         ax2.text(total[i] + 6, i, f"{total[i]:.1f} s", va="center",
                  fontsize=7, color="#222222")
+    ax2.axvline(300, color=VERM, linewidth=0.9, linestyle=(0, (3, 2)), zorder=2)
+    ax2.text(296, -0.42, "300 s cadence bound", ha="right", va="center",
+             fontsize=6.3, color=VERM)
     ax2.text((platform[1] + total[1]) / 2, 1, "218 s governed trial-cadence wait",
              ha="center", va="center", fontsize=6.3, color="#5a3a00", zorder=4)
     ax2.text(0.98, 0.95, "(b)", transform=ax2.transAxes, fontsize=8,
@@ -273,16 +276,20 @@ def fig_four_missions():
               "anneal": "annealing (hardness, HV)",
               "biax": "BOPET (thickness, μm)"}
     fig, axs = plt.subplots(2, 2, figsize=(COL_W, 2.5))
+    unit_of = {"injection": "g", "wwtp": "mg/L", "anneal": "HV", "biax": "\u03bcm"}
     for ax, m in zip(axs.flat, data["missions"]):
         s = m["series"]; lo = m["target"] - m["tol"]; hi = m["target"] + m["tol"]
         x = list(range(len(s)))
-        ax.axhspan(lo, hi, color=GREEN, alpha=0.14, zorder=1)
+        ax.axhspan(lo, hi, color=GREEN, alpha=0.17, zorder=1)
         ax.axhline(m["target"], color=GREEN, linewidth=0.7,
                    linestyle="-.", zorder=2)
         ax.plot(x, s, color=BLUE, linewidth=1.3, marker="o", markersize=3.2,
                 zorder=3)
         ax.plot(x[-1], s[-1], marker="s", markersize=4.5, markerfacecolor=GREEN,
                 markeredgecolor=GREEN, zorder=4)
+        ax.annotate(f"{s[-1]:.2f} {unit_of[m['id']]}", xy=(x[-1], s[-1]),
+                    xytext=(4, -9), textcoords="offset points", fontsize=6.0,
+                    color=DARK if "DARK" in dir() else "#333333", zorder=5)
         pad = (hi - lo) * 0.9
         ax.set_ylim(min(lo, min(s)) - pad, max(hi, max(s)) + pad)
         ax.set_xlim(-0.3, len(s) - 0.7)

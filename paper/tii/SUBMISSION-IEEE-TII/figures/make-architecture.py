@@ -185,9 +185,7 @@ for e in edges:
                 style="italic" if e["style"] == "gov" else "normal", zorder=5,
                 bbox=dict(facecolor="white", edgecolor="none", pad=0.6, alpha=0.85))
 
-ax.text(858, 415, "shared persistent stores —
-identifiers shared, transaction
-domain not assumed", ha="center", va="top", fontsize=6.5, color="#666666", style="italic", zorder=4, linespacing=1.4)
+ax.text(858, 415, "shared persistent stores —\nidentifiers shared, transaction\ndomain not assumed", ha="center", va="top", fontsize=6.5, color="#666666", style="italic", zorder=4, linespacing=1.4)
 fig.tight_layout(pad=0.2)
 fig.savefig(os.path.join(OUT, "..", "resources", "fig1-architecture-excalidraw.pdf"),
             bbox_inches="tight", pad_inches=0.02)

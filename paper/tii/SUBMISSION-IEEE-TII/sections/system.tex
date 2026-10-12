@@ -1,12 +1,12 @@
 \section{System Architecture}
 \label{sec:arch}
-\looseness=-1 \system{} links team coordination to plant interaction through industrial nodes
+\looseness=-1 \system{} fills this slot: it links team coordination to plant interaction through industrial nodes
 and production context (Fig.~\ref{fig:arch}). Five planes separate the
 concerns: a \emph{team} plane owns member identity, task state, and a
 member-written episodic memory retrieved by hybrid search; an
 \emph{integration} plane owns protocol acceptance, readback, freshness, and
 transport errors, presenting devices as semantic nodes whose stream feeds both
-the agent and a live digital-twin view \cite{iso23247}; a \emph{governance} plane owns
+the agent and a live plant-mirror view; a \emph{governance} plane owns
 admission, approval, actuation, acknowledgment grading, three-way consistency,
 verdict, compensation, and rollback; an \emph{operations} plane attaches line,
 product, recipe, and run context while PLC protection stays independent; and
@@ -14,14 +14,17 @@ an \emph{extensibility} plane admits plugins, drivers, agent tools, panels,
 and SDK clients through sanctioned registration services. Scenario knowledge
 sits in blueprints, signal maps, predicates, and driver configuration---not
 in team scheduler, approval service, or persistence code; members are interchangeable
-across 14 engine adapters under preserved identity, and 118 hot-reloadable
-settings plus the typed SDK make team topology, bindings, and limits data
-rather than code. In every plane the execution path is unchanged---a scenario supplies data
+across 14 engine adapters under preserved identity, and 118 declared
+settings (40 hot-reloadable, the rest restart-scoped) plus the typed SDK make
+team topology, bindings, and limits data rather than code. In every plane the
+execution path is unchanged---a scenario supplies data
 and strategy (Fig.~\ref{fig:arch}).
 
 \begin{figure*}[!t]
 \centering
-\includegraphics[width=0.78\textwidth]{resources/fig2-architecture.pdf}
+% 0.88\textwidth with source fonts sized so the printed text stays >=6pt;
+% narrower includes drop the card body below the legibility floor
+\includegraphics[width=0.88\textwidth]{resources/fig2-architecture.pdf}
 \caption{System architecture and execution boundaries: platform services
 around shared stores, operator interfaces above, and agent engines, data
 stores, protocol endpoints, and the plant kept separate. Shared identifiers provide

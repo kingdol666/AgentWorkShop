@@ -56,7 +56,6 @@
 \input{resources/results-macros}
 
 \newcommand{\system}{\textsc{AgentWorkShop}}
-\newcommand{\bench}{\textsc{AW-IndustrialBench}}
 
 \begin{document}
 
@@ -69,31 +68,32 @@
 
 \begin{abstract}
 Large language model (LLM) agents increasingly generate industrial control
-changes, yet the surroundings of each proposal---who may write which
+changes, yet the safeguards surrounding each proposal---who may write which
 parameter, which limits bind for the current product and recipe, whether a
 human approved, whether the device accepted, and whether the
 process improved---are rebuilt per deployment inside application code. This
 paper presents AgentWorkShop, a governed supervisory execution layer that
-turns those concerns into one path for agent teams: each intervention is one
-governed transaction whose admission, approval, actuation, graded write
-acknowledgment, three-way setpoint consistency, verdict, and compensation
-remain separately inspectable evidence states. Team identities reach semantic
-data-acquisition (DAQ) and write-control (DCW) nodes through explicit
-capabilities under a fail-safe line master switch; protocol drivers,
-versioned production objects, plugin points, and a typed SDK form the
-integration surface, with process models, objectives, and policies
-external. The evaluation exercises this path through protocol-closure
-and mechanism-ablation drills, agent-team missions, a deterministic controller
-loop, four concurrent process missions, and a deployment-scale regression
-campaign on one live multi-tenant instance (many provisioned lines and
-channels on a single host). Every dispatched setpoint closes with a graded
-acknowledgment and---where the endpoint supports readback---a three-way
-consistency check across the recipe, the device readback, and a mirror sample
-drawn over the acquisition path; pacing windows remain in force under
-automation, and each scenario's optimization trajectory is archived with
+turns these concerns into a single path for agent teams: every intervention
+is one governed transaction whose admission, approval, actuation, graded
+write acknowledgment, three-way setpoint consistency, verdict, and
+compensation remain separately inspectable evidence states. Team identities
+reach semantic data-acquisition (DAQ) and write-control (DCW) nodes through
+explicit capabilities under a fail-safe line master switch; protocol
+drivers, versioned production objects, plugin points, and a typed software
+development kit (SDK) form the integration surface, with process models,
+objectives, and policies external. The evaluation exercises this path
+through protocol-closure and mechanism-ablation drills, agent-team
+missions, a deterministic controller loop, and four concurrent process
+missions, then stresses it with a deployment-scale regression campaign on
+one live multi-line instance. Across six campaign executions all 509
+logged checks pass, and removing the window interlock drops probe rejection
+from 18/18 to 12/18. Every dispatched setpoint closes with a graded
+acknowledgment, three-way-verified where the endpoint supports readback;
+pacing windows remain in force
+under automation, and every optimization trajectory is archived with
 per-step attribution. The result is an inspectable, simulation-tier
-verification of the governance mechanisms themselves, not an
-optimization-benefit claim.
+verification of the governance mechanisms themselves; no
+optimization-benefit claim is made.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -114,7 +114,7 @@ Agent teams, human-in-the-loop, industrial informatics, write governance.
 % IEEE 8pt-equivalent reference size (scriptsize here because IEEEtran's
 % footnotesize baseline is 8pt for 10pt body) and tight IEEE entry spacing.
 \begingroup
-\linespread{0.82}\scriptsize
+\linespread{0.79}\scriptsize
 \def\IEEEbibitemsep{0pt plus .3pt}
 \bibliography{resources/refs}
 \endgroup
