@@ -73,7 +73,7 @@ active limits, human approval, device acceptance, process
 improvement---are rebuilt per deployment inside application code. This
 paper presents AgentWorkShop, a governed supervisory execution layer that
 turns these concerns into a single path for agent teams: every intervention
-is one governed transaction whose admission, approval, actuation, graded
+is one governed intervention whose admission, approval, actuation, graded
 write acknowledgment, verdict, and compensation remain separately
 inspectable evidence states. Team identities
 reach semantic data-acquisition (DAQ) and write-control (DCW) nodes through
@@ -85,15 +85,17 @@ through protocol-closure and mechanism-ablation drills, agent-team
 missions under scripted policies, a deterministic controller loop, and four
 concurrent process missions, then stresses it with a deployment-scale
 regression campaign on one live multi-line instance. Across seven benchmark
-executions all 600 logged checks pass. The evidence grading is falsifiable:
-under success-flag semantics the archived failure receipts read success,
-and removing the window interlock drops probe interception from 18/18 to
-12/18 while the hard range holds at 18/18 in every arm. The evaluation is
-simulation-tier; no optimization-benefit claim is made.
+executions on the committed harness, all 600 logged checks pass. The
+evidence grading is falsifiable and separated from admission: under
+success-flag semantics an archived publish-only failure receipt reads
+success, and removing the admission window interlock drops probe
+interception from 18/18 to 12/18 while the hard range holds in every arm.
+The evaluation is simulation-tier; no optimization-benefit claim is made.
 \end{abstract}
 
 \begin{IEEEkeywords}
-Agent teams, human-in-the-loop, industrial informatics, write governance.
+Agent teams, human-in-the-loop, industrial informatics, LLM agents,
+supervisory control, write governance.
 \end{IEEEkeywords}
 
 \IEEEpeerreviewmaketitle

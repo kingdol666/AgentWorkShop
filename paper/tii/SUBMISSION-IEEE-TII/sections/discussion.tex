@@ -38,9 +38,18 @@ per-binding scope and journaled, attributable actions: a bounded blast
 radius, not a protection guarantee.
 Admission limits,
 acknowledgment grading, and the backstop run with or without human
-approval---enforcement never queues behind human attention, while approval
-fatigue and automation bias remain human-factors risks
-\cite{bainbridge1983ironies,parasuraman2000model}.
+approval---enforcement never queues behind human attention. The pacing
+windows bound approval demand per line (a write, a trial, or a batch release
+no oftener than the windows allow, and expiries resolve as refusals), and
+batch release itself---one approval covering a six-parameter dispatch
+(Section~\ref{sec:hardening}, leg~5)---is the demonstrated fatigue
+mitigation; approval fatigue and automation bias remain human-factors risks
+nonetheless, and reading graded evidence assumes trained approvers
+\cite{bainbridge1983ironies,parasuraman2000model}. A lead agent's
+delegation-mode choice (Section~\ref{sec:hitl}) is the one agent-reachable
+path around per-request approval; capping granted mode at the granter's own
+binding mode, or requiring the line-switch confirmation for it, is the
+queued guard.
 
 \subsection{Deployment Boundaries}
 \looseness=-1 Execution and recovery are non-atomic: bookkeeping may fail after actuation, the
@@ -52,9 +61,16 @@ recovery, and multi-node compensation may partially
 succeed; hold heartbeats re-apply the stored setpoint without re-admission
 and can trail a narrowed window; oscillation, storage
 failure, clock error, and concurrency beyond the four-line campaign remain
-unevaluated; a supervisor outage halts dispatch rather than permitting
-writes through, and a hardware-in-the-loop leg against a real PLC or OPC-UA
-endpoint is the next evidence tier. In production, bindings govern
+unevaluated; redundant supervisor deployments with divergent stores
+(split-brain) are unevaluated; a supervisor outage halts dispatch rather
+than permitting writes through, and a hardware-in-the-loop leg against a
+real PLC or OPC-UA endpoint is the next evidence tier. Production
+integration additionally requires: bound changes managed under
+change-control with process-evidence validation; approval-aging,
+open-record-aging, and backstop-deferred states surfaced on the plant alarm
+system; the bench-mode environment switch refused at production boot; and
+approval treated as workflow mediation---attribution and timestamp, not an
+electronic signature. In production, bindings govern
 sanctioned tools, not arbitrary privileged-engine I/O---least privilege,
 endpoint security, and IT/OT separation remain necessary
 \cite{iec62443-3-3}; \system{} is neither a safety
@@ -77,5 +93,9 @@ benefit, autonomous control, and safety assurance stay unsupported claims.
 \section*{Data Availability and Disclosure}\scriptsize
 Artifacts are archived per run under \path{bench/results/} and
 \path{docs/benchmarks/}; anonymized artifacts are available during review
-and released with the code upon publication. AI assistants supported editing
+and released with the code upon publication. The two live engine-turn
+console transcripts (Section~V-D) were excluded by the repository's
+log-retention rule and survive only as recorded outcomes; the write-evidence
+suite's checks are documented in the audit report and rerunnable from its
+script. AI assistants supported editing
 under author direction; the authors remain responsible for all claims.

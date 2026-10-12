@@ -42,6 +42,10 @@ numbers come from committed per-run reports, ledgers, and timelines
 consecutive full-suite runs; October 9: \resNovRuns); mechanisms are
 unchanged since the Q1--Q4 snapshot except the October hardening pass's
 acknowledgment grading and master switch; the campaign ran under live load.
+The harness explicitly sets the benchmark line's master switch to
+\emph{automatic} with a user-side confirmation---the automated path is the
+object under test---and verifies the switch's manual-mode interception
+separately (Section~\ref{sec:hardening}, leg~1).
 
 
 \subsection{Test Procedure and Campaign Overview}
@@ -74,11 +78,14 @@ receipts and varies the reporting rule (Section~\ref{sec:ack}); the
 success-flag outcome is definitional---the pre-hardening harness itself
 reported a broker puback as success. The closed-loop harness also
 parameterizes the write injection (admin REST beside the agent's governed
-\texttt{dcw\_control}); a like-for-like pair on the shared instance was
-rejected in full on both routes (24/24 writes per arm, pacing
-exempted)---the write gates are route-invariant---so a quality comparison
-awaits a dedicated instance. Fig.~\ref{fig:loop} summarizes the
-closed-loop instrument.
+\texttt{dcw\_control}); a like-for-like pair on the shared live instance
+(runs \texttt{-20261012042856}, \texttt{-043509}, \texttt{-051224},
+\texttt{-060026}) was rejected in full on both routes---24/24 writes per
+arm under production pacing, and 24/24 again with pacing exempted; the
+archived runs record aggregate rejections only, and a closed-loop quality
+comparison awaits a dedicated instance. The harness's own reports verdict
+these attempts \emph{fail}; they are archived as gate evidence.
+Fig.~\ref{fig:loop} summarizes the closed-loop instrument.
 
 \begin{figure}[!t]
 \centering
@@ -139,8 +146,8 @@ soft window is its removable part.
 \begin{table}[!t]
 \centering
 \caption{Admission ablation on companion run \resAblationRun{}: six probe
-classes per arm, three deterministic repetitions. Hard-range probes
-(4 classes) are rejected in every arm; only the window-edge class flips.}
+classes per arm, three deterministic repetitions. The four hard-range
+classes are rejected in every arm; only the two window-edge classes flip.}
 \label{tab:ablation}
 \scriptsize
 \setlength{\tabcolsep}{2.2pt}
@@ -298,7 +305,7 @@ observation, not a process excursion.
 
 \looseness=-1 Latency and mission figures are single-run point estimates
 (about \resWriteNperLine{} writes per line, one trajectory each); only Q3 and Q5
-are replicated.
+are repeated.
 
 \emph{Write-evidence legs.} A dedicated seven-leg suite verifies Sections~\ref{sec:ack}
 and~\ref{sec:hitl} directly: (1)~the master switch refuses an unconfirmed manual-to-automatic
