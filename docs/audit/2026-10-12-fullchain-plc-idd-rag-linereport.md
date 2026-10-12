@@ -61,4 +61,51 @@
 3. **"检索并继续分析"闭环**:R1 入库→检索定口径→新工况续诊→R2f 入库→双报告可检索,完整成立;评分区分度实证(79.3B→52.7C)。
 4. 遗留:MCP aw_daq_samples 参数描述修正;aw start 构建版本戳;深度诊断 LLM/VLM 依赖排查;经验 solution 摘要中 evidence 对象序列化([object Object])待格式化。
 
-—— 生成:全链路验收轮 2026-10-12(脚本 tmp-e2e/fullchain-idd-rag-20261012.mjs / line-report-quickdiag-20261012.mjs / line-report-r2-fresh.mjs;频道 30452679…;产线 ln-72eb1197;产物 .AgentWorkShop/analysis/line-report-20261012/)
+## 六、发布轮(npm 打包→远端→全局拉起→同套验收)
+
+**发布:agentworkshop@0.7.58 → 0.7.59(dist-tags.latest),registry.npmjs.org(kingdol)。**
+
+1. 0.7.58 发布后全局拉起验收中,**发现两颗 MCP 产品雷**(0.7.58 及之前所有版本均带):
+   - **`aw mcp` CLI stdio 秒退自杀**:`run()` 里 `runStdio(); return 0` → main 立即 `process.exit(0)`,stdio 服务刚启动即被杀(所有环境;此前无人踩中因客户端按 print-config 直连脚本文件)。
+   - **直连脚本文件在 nvm-windows 下静默失效**:`isMain` 用 argv 路径对比 `import.meta.url` —— `C:\nvm4w\nodejs` 是目录 junction,ESM realpath 后二者永不相等 → `runStdio` 不启动,进程 exit 0 无输出。**nvm-windows 全局用户的 MCP 客户端直连(文档推荐形态)全部中招**。
+   - 处置:isMain 改 `realpathSync` 对比;CLI 路径挂起至 stdin 关闭。以临时 junction 实测两修均生效。→ **0.7.59 修复发布**(commit a864a8b)。
+2. **全局包(0.7.59)全新 home 验收:33 PASS / 1 FAIL**,唯一 FAIL 为断言正则未随版本替换的假阴性(版本三证一致:aw --version / health / npm view 均 0.7.59)。覆盖:冷启动首注册 admin→7 内置插件三桥齐→MCP 通道→PLC 模拟(4029)→建线(3SV+3PV)→优化频道装配→数采自动抓取→两轮阶跃→产线报告 skill 两轮(R1=64/C 起步窗,R2=86.3/A 稳定窗,评分随真实窗口变化)→RAG 闭环(入库→检索命中→R2 引用 R1 定口径→双报告可检索)。
+3. 发布工程事实:默认 registry=npmmirror(只读),发布须 `--registry npmjs`;pack 含预构建 .output(40.6MB/3724 文件),全局首起免构建秒级;CDN 版本可用性延迟 ~7 分钟(按精确版本安装可先行,dist-tag latest 同步最慢);lint-staged 对暂存 mjs 全量 eslint --fix,scratch 脚本须 lint-clean 才可入库。
+
+## 七、遗留(更新)
+
+1. ~~MCP 双雷~~ 已修(0.7.59);**3001 repo 实例仍是 0.7.58 构建**,如需 MCP 直连请重建重启。
+2. 深度诊断 LLM/VLM 供应商耗时;aw start 陈旧构建版本戳;MinIO 校时。
+3. scratch 验收脚本(tmp-e2e/global-package-e2e.mjs 等 4 个)因 lint 风格暂未入库,本地可用。
+
+## 八、时区与时间正确性专项(联网精确时间 → 三时区 → 落库 → MES 时间窗)
+
+**命题**:从互联网获取精确时间;测试上海/UTC/US 三地时间选择;确认数据库时区统一;MES API 支持按时间查询。
+
+| 测试 | 结果 |
+|---|---|
+| T1 联网精确时间 | **三独立 NTP 源(ntp.aliyun/time.windows/time.cloudflare)两两相差 ≤74ms,双 HTTP Date 头(baidu/cloudflare)秒级一致**;精确时间 2026-10-12T13:44:36Z。**发现本机时钟慢 17.4s**(三源一致;`w32tm /resync` 需管理员权限未能自动校时) |
+| T2 数采落库 | 样本存 **Timescale `daq_samples.ts` = timestamptz**(绝对瞬间/库内 UTC 微秒),`at` 为 epoch ms;28.3 万行新鲜可查;全部 SQL 参数绑定 |
+| T3 三时区窗口一致性 | 同一瞬间(上海 21:40+08 = UTC 13:40Z = 纽约 09:40-04)三种墙钟表达 → **同一 epoch(1791812400000)**;三窗查询 **10935 行/24 节点/首末时间戳/数值总和逐字段一致** ✓ |
+| T4 运行时时区切换 | `PATCH /api/system/settings {'time.timeZone':'America/New_York'}` 热生效:平台输出 ISO **21:50:49+08:00 → 09:50:49-04:00(同一瞬间)**;切回即复原;存储时间轴不动(渲染层切换);注意:审计等已存储的历史字符串保持写入时刻渲染,不随切换重渲(合理) |
+| T5 MES 按时间查询 | mock MES(五格式仿真,ISO UTC 上游)→ mes-rest 节点(historyMap 须为 **JSON 字符串**,对象会被 "[object Object]")→ **v2 授权面经配方参数节点**(DCW 直绑已废弃)→ `mes_fetch(20:00~21:30+08)` → **mesds-ad5ce148:1801 行(30min×1s 精确),首末行统一渲染 +08:00,min/max/mean/stddev+sha256 齐全** ✓ |
+
+**结论:时间维度可投产** —— 存储层(timestamptz/epoch)绝对统一,查询层任意时区表达等价,人读层 IANA 时区热切换;MES 时间窗取数行数精确、时区归一。**投产前置:目标主机必须先校时**(本机慢 17.4s 实测;`管理员: w32tm /resync` 或启用 Windows Time 自动同步),平台不做自有 NTP 纪律,时钟偏差会原样进入落库时间轴。
+
+## 九、真实简单综合轮(数据获取/下发控制/AML 训练投用/IDD+RAG)
+
+**15 PASS / 6 FAIL;6 个失败全部收敛到一个根因:AML 门禁如实拒绝小样本模型——这是设计行为,不是缺陷。**
+
+| 环节 | 结果 |
+|---|---|
+| 数据获取 | ✅ 4 路 PV(含 SP 镜像)新鲜样本;时序入 Timescale |
+| 下发控制 | ✅ 写入受理(dieGap 1→1.02);http 驱动只写不读,读回须走 SP 镜像 DAQ 通道(bench spMirror 设计) |
+| AML 数据集自动构建 | ✅ 三批次(逐批开跑/闭合)从时序库自动拉批次打标数据;清洗门如实工作(1s 网格缺失率 32.2%>30% 拒绝 → beat 2000+插值放宽后通过;137 行 → 426 行) |
+| AML 真实训练×2 | ✅ 训练真实执行(mlp baseline 80 epochs,loss 2e-5);**晋升被评测门如实拒绝**:G1 0.49/0.1、G3 val 切分空(3 批次不足,需 ≥4-5)、G4 426 行<500 |
+| IDD 深诊 | ✅ 直连任务面提交(上传 CSV→建任务 d1df4bca),omp 引擎 running |
+| 产线报告 skill | ✅ 快诊出报告 |
+| RAG | ✅ 入库+检索命中 |
+
+**结论**:「数据获取→下发控制→AML 自动建模→诊断检索」的机制链 100% 打通且每一道门都在如实工作(清洗门拒脏网格、评测门拒小样本、鉴权面拒越权);**要过 AML 晋升门需要产线级数据campaign**(≥500 清洗行 ≈ 30-40 分钟连续批次、≥4-5 批次供 val 切分、配 hybrid 训练器——历史实证 stage6b 用 1724 行/10 runs+hybrid 达 G1 0.0992/G2 0.1092/G3 14.6% 晋升 production)。这不是机制缺口,是数据工程量问题,与 P13 bench 的设计一致。
+
+—— 综合轮追加 2026-10-12(3111;脚本 tmp-e2e/round-aml-idd-rag-20261012.mjs;数据集 ds-mv5iogha;IDD 748969db)
