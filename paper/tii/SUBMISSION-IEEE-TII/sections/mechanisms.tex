@@ -1,6 +1,6 @@
 \begin{figure}[!t]
 \centering
-\includegraphics[width=\columnwidth]{resources/aws_fig3-flat.png}
+\includegraphics[width=0.86\columnwidth]{resources/aws_fig3-flat.png}
 \caption{Implemented agent-team runtime. A natural-language goal enters as
 a task; the lead agent decomposes and dispatches plans; retrieval and
 analysis produce the proposed setpoint (the LLM engine occupying a
@@ -26,9 +26,7 @@ as an untrusted proposal, never as authority; evidence is graded by what is
 observed rather than by what was claimed; and failure states are surfaced
 for inspection rather than absorbed into a success flag.
 Fig.~\ref{fig:runtime} shows the implemented agent-team
-runtime that carries these steps; the governance and write stages drawn in
-the figure are deterministic platform logic---no model output can admit,
-approve, or confirm a write (Gates~1--2 of Fig.~\ref{fig:runtime}). A governed intervention is
+runtime that carries these steps. A governed intervention is
 one transaction in the audit-trail sense: every step
 leaves its own evidence record, while execution and recovery are deliberately
 not atomic with device state (Section~\ref{sec:limits}).
@@ -44,9 +42,10 @@ same governed write.
 \centering
 \includegraphics[width=\columnwidth]{resources/fig-admission.pdf}
 \vspace{1pt}
-\includegraphics[width=0.78\columnwidth]{resources/hitl-card-crop.png}
-\caption{The admission boundary and its human-approval gate, on the
-cast-film reference line. (a)~The Eq.~\eqref{eq:admission} interval geometry: four declared,
+\includegraphics[width=0.66\columnwidth]{resources/hitl-card-crop.png}
+\caption{The admission boundary and its human-approval gate.
+(a)~On the cast-film reference line, the Eq.~\eqref{eq:admission} interval
+geometry: four declared,
 versioned bounds narrow to the admitted interval; a proposal
 outside it is rejected by its excluding layer (the Q1 four-layer drill).
 (b)~The structured approval card on a manual binding (live system, gloss
@@ -78,8 +77,8 @@ admission instant, re-resolved at execution. Should a configuration empty the
 intersection, every write is rejected with the excluding layer named,
 surfacing the misconfiguration at the first write. The interval form is
 deliberate: every bound is a declared, versioned object that an audit can
-replay against the active product and recipe, and rejection is decidable and layer-attributable, where a learned
-feasibility model offers neither
+replay against the active product and recipe; rejection is decidable and
+layer-attributable
 (Fig.~\ref{fig:hitl}a)---a decidability claim, not a safety certificate.
 It bounds one parameter at a time---joint,
 cross-variable windows live in scenario guards---and bounds magnitude, not
@@ -93,7 +92,8 @@ A semantic card exposes quantity, unit, precision, range, value, freshness,
 and recipe context; the controller resolves binding and limits, the driver
 serializes the command, and the acknowledgment grade closes the
 command path, never the process-response path (Section~\ref{sec:ack}). Three pacing windows pace governed loops, never
-the plant: online writes---agent- or human-origin---sit at least 60\,s apart
+the plant: online writes \emph{on a node}---agent- or human-origin---sit at
+least 60\,s apart
 with a hold window after success (HTTP~429 inside it); a per-recipe dispatch
 interval anchored at the \emph{approval} instant is restart-persistent, so
 alternating identities cannot reset it; and a 300\,s per-line trial cadence
@@ -110,8 +110,7 @@ re-dispatch of the stored setpoint) are the one non-governed re-dispatch:
 off by default, stopped by line stop or driver change, and re-applying the
 stored value without re-admission---plant-facing state maintenance, not an
 agent path. Line start installs active context before recipe parameters
-dispatch individually, and line stop clears it; these multi-step operations
-are not atomic with device state.
+dispatch individually, and line stop clears it.
 
 \subsection{Write Acknowledgment as Three-Level Evidence}
 \label{sec:ack}
@@ -124,16 +123,16 @@ tolerance;
 \emph{transport-acknowledged} when the transport
 accepted the command on an endpoint with no usable readback;
 \emph{unverified} when the transport failed or when post-write verification
-could not confirm the value. The grading rule is falsifiable. Under a
+could not confirm the value. The grading rule is falsifiable: under a
 success-flag receipt rule---a transport acknowledgment closes the
 report---the publish-only receipt demonstrated in
 Section~\ref{sec:hardening} (broker puback, \texttt{ok=true}, no read
-channel, three verification attempts) reports \emph{success}; the graded
-rule reports it \emph{unverified}. That is what fail-honest means: absence
+channel, three verification attempts) reports \emph{success}, while the
+graded rule reports it \emph{unverified}. That is what fail-honest means: absence
 of evidence degrades the grade, never the report, and the grade is fixed
 when the write closes.
 
-A transport-acknowledged write may still not have reached the device, so a
+\looseness=-1 A transport-acknowledged write may still not have reached the device, so a
 post-write verifier re-reads the endpoint (three attempts, 2\,s apart) and
 promotes the grade when a read confirms the value. Batch receipts carry a
 per-parameter grade plus a summary; the write journal stores the per-write
@@ -161,11 +160,11 @@ platform: the harness compares the recipe
 value, the device readback, and a mirror sample
 drawn from the acquisition runtime's separate polling path and store, each leg
 against a stated tolerance; the sampled legs meet at the plant endpoint, so a
-fault fabricating the endpoint is a common-mode boundary, and disagreement is
+fault fabricating the endpoint is their common failure mode, and disagreement is
 reported with the run. Verdicts are attributable---actor and timestamp travel
-with them, and corrections amend the stored reason visibly.
+with them.
 
-Compensation is a new, separately admitted write that may fail or partially
+\looseness=-1 Compensation is a new, separately admitted write that may fail or partially
 complete; it is graded by the Section~\ref{sec:ack} levels, and a rollback
 record settles to rolled back once the compensating write is
 accepted---readback-verified where the endpoint supports readback,
@@ -174,7 +173,7 @@ refused by admission, the source record closes \emph{as judged}, with the
 refusal appended to its verdict. These separations keep command status,
 record status, and process recovery independently inspectable.
 
-\looseness=-1 \looseness=-1 The backstop is a record-integrity check for writes that no
+\looseness=-1 The backstop is a record-integrity check for writes that no
 verdict has closed---not an independent protection layer: it evaluates only
 open records; a caller's \texttt{keep} closes the record and stands it down,
 while a \texttt{rollback} verdict stands the backstop down only once the
@@ -198,8 +197,8 @@ an agent setpoint or
 compensation request; automatic bindings omit the wait but keep the checks.
 The pending request shows member, node, value, interval, and expiry---plus
 the proposer's reasoning and per-parameter basis
-(Fig.~\ref{fig:hitl}b): machine-checked fields are structured data, the
-free-text reasoning display-only and non-authoritative. Because binding and admission are
+(Fig.~\ref{fig:hitl}b): machine-checked fields are structured data; the
+free-text reasoning is display-only and non-authoritative. Because binding and admission are
 re-checked at execution, approval reserves neither interval nor device state;
 the approval dialog---itself an injection surface (Section~\ref{sec:limits})---
 cannot promote a proposal past the checks; the comment returns verbatim

@@ -18,23 +18,23 @@ ad-hoc permission checks, logs untied to decisions. The four scenario plants (si
 and BOPET (biaxially oriented polyethylene terephthalate)
 film---but all need an auditable bridge from a
 team-level task to heterogeneous acquisition and control nodes. Industrial
-LLM work to date is mostly generation, diagnosis, and
-single-domain control (e.g., \cite{liu2026agents4plc}).
+LLM work to date has largely targeted generation, diagnosis, and
+single-domain control \cite{liu2026agents4plc,jiang2026agentic}.
 
 \looseness=-1 \system{} addresses this execution gap through member--node bindings (a
 member being an engine-backed channel identity) and shared line, product,
 recipe, and run context. The response is
 organizational rather than algorithmic: each intervention leaves a
 separate evidence record per governed stage, from admission through
-compensation (Section~\ref{sec:mech}). Nodes expose engineering quantities rather than register
-addresses; one governed member--node binding path serves every client,
-where per-application integration would duplicate drivers, permissions,
-and logging.
+compensation (Section~\ref{sec:mech}). Nodes expose engineering quantities
+rather than register addresses, and one governed member--node binding path
+serves every client.
 
 The paper makes four contributions:
 \begin{enumerate}
 \item a \textbf{capability-based industrial execution architecture} connecting
-agent-team identity, semantic data-acquisition (DAQ) and write-control (DCW)
+agent-team identity, semantic data-acquisition (DAQ) and write-control (DCW,
+the platform's node-class tag)
 nodes, heterogeneous protocol drivers, and line--product--recipe--run context,
 with task membership distinct from physical-write authority and a
 default-manual line master switch;
@@ -54,7 +54,10 @@ deterministic controller loop, concurrent process missions, and a
 deployment-scale regression campaign on a multi-line instance
 (Section~\ref{sec:eval}).
 \end{enumerate}
-Scope (revisited in Section~\ref{sec:limits}): real protocol stacks execute
+Scope, revisited in Section~\ref{sec:limits}: real protocol stacks execute
 against author-implemented simulators; fast regulation,
 certified protection, physical-plant transfer, and optimizer ranking are
-outside the claims.
+outside the claims. The governed path is proposer-agnostic---prompt content
+is never authority and admission re-resolves per request---so the scripted
+proposers of Section~\ref{sec:eval} exercise the same contract an
+engine-issued proposal would face.

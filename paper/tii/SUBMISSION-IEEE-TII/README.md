@@ -169,3 +169,78 @@ check-refs 28/28, abstract digit-free, all honesty anchors present
 (abstract scope sentence, Section V framing, conclusion unsupported-claims),
 visual judge 10/10 pass (the known user-owned Fig. 2 label overflow remains
 the only open cosmetic defect).
+
+## P0 closure and optimization round (2026-10-12, night — post terminal review)
+
+The terminal review (see `review/final-acceptance-2026-10-12/DECISION.md`)
+returned 4×MINOR_REVISION + 2 validated DA CRITICALs + a 10-item P0 gate.
+This round closed the gate and added the requested campaign-progression
+table. Verification: tectonic 0 overfull, exactly 10 pages, audit 8/8
+(pages=10, cited=34, all macros/figures/titles resolve), check-refs 34/34,
+visual judge 9/10 → 10/10 after the Fig. 3(a) guide-line fix (final pass:
+all pages green).
+
+- Figures: Fig. 2 chips fixed pixel-level in place (`figures/fix-fig2-chips.py`,
+  original backed up as `aws_fig3-flat.png.bak-pre-fix`) — "Readback /
+  SET vs ACT" re-set with real leading, "Judge, complete" chip redrawn with
+  gold border, feedback dash now passes behind it. Fig. 4 regenerated with
+  leader lines anchored at the text bbox edge (`relpos`), no more glyph
+  crossings. Fig. 3(a) interval guide lines clipped to the plot band so
+  they cannot cross the "outside: rejected..." caption. Fig. 2 at 0.90,
+  Fig. 3(b) at 0.70, Fig. 4/5 at 0.92 columnwidth.
+- Table III (`tab:campaign`, Section V-G): the seven execution campaign
+  progression — October 7 (3×79=237), October 8 hardened pipeline (91),
+  October 9 v0.7.57 (3×90–92=272), 600 checks total, zero failed checks.
+- P0 text fixes: pacing scoped "on a node" (IV-B) + Q4 per-node note;
+  VI-C backstop deferred-mode exception; VI-B validity threat names the
+  author-implemented/author-adjudicated harness; intro scope states the
+  proposer-agnostic contract (DA CR-1 calibration); nearest-neighbor
+  action line cited and distinguished (InstructMPC, fault-tolerant control,
+  digital-twin fault handling, OPC UA natural-language control); TEP
+  positioned as the community-benchmark next tier; Parasuraman & Manzey
+  automation-bias cite; Fig. 3 caption scoped to (a); "(600 total)"
+  ambiguity resolved via Table III; source hygiene (internal paths,
+  process dates, "rebuttal" wording, stale counts, duplicate \looseness
+  removed); leg 1→legs 1 and 5; Q3/Q5 repetition wording; seven-leg scope;
+  like-for-like paragraph restructured; BOPET hand-recheck clause;
+  DCW node-class tag; abstract compressed to ~215 words with stage list
+  and SDK enumeration trimmed.
+- Bibliography: 28→34 cited entries at \scriptsize 7pt (scoped
+  \footnotesize redefinition — IEEEtran hardcodes \footnotesize inside
+  thebibliography), tight leading; fallback to \footnotesize with the
+  named text trims documented in main.tex comments if IEEE's composition
+  pass reflows.
+- Space paid by: related-work recap clause, VI-A compressed to one
+  paragraph, per-protocol latency quartet → cross-protocol range macros,
+  run-ID triple in V-A, "learned feasibility model" strawman clause
+  (DA MIN-4), J* duplication in V-B, figure widths, and the named
+  fallback trims.
+
+## Fig. 1 redesign and language polish round (2026-10-12, late night)
+
+Fig. 1 (`fig2-architecture.pdf`, `figures/make-architecture-figure.py`)
+was rebuilt: 1.72in -> 2.62in design height (printed 109 -> 166pt at
+0.88\textwidth, aspect 0.24 -> 0.37), flow channels 30pt/23pt at print
+(previous bottom-channel arrows were ~4pt and invisible), arrows
+thickened (lw 1.15, mutation 9) and colored by domain (blue orchestrator
+lane, green bridge/stores, teal supervisor/plant), legend line moved into
+the caption, middle-row boxes enlarged so the last bullet clears the
+border. The qinyan polish pass landed ~12 language-level edits (kept
+length-neutral-to-negative): merged falsifiability sentences, dropped
+"explainable"/strawman-ish qualifiers, "common-mode boundary" -> "their
+common failure mode", "queued guard" -> "queued as the guard", "sagging
+mirror weight" -> "downward drift in the mirrored weight", V-B comparator
+sentence split, scope-parenthesis smoothing, pending-request sentence
+smoothed, Q1 drill-scope sentence folded, abstract stage list tightened
+("approval where required", "fail-safe-manual line master switch",
+process models "stay external"), "governed-write counts" reconciliation
+sentence folded. Two more bib entries moved out of the citation set under
+the page constraint (fault-tolerant control preprint; Parasuraman &
+Manzey — its automation-bias ground remains covered by Bainbridge 1983 +
+Parasuraman 2000); keys stay in refs.bib for camera-ready. Space also
+paid by Fig.2 0.82 / Fig.3(b) 0.66 / Fig.4+5 0.90 columnwidth and
+Table III arraystretch 1.0.
+
+Verification: tectonic 0 overfull, exactly 10 pages, audit 8/8
+(pages=10, cited=32), check-refs 32/32, zero "??", visual judge 10/10
+(no regression; Fig.1 channels/arrows confirmed legible at 3-4x zoom).

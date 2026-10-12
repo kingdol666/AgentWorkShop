@@ -16,8 +16,8 @@ independent; and an \emph{extensibility} plane admits plugins, drivers,
 agent tools, and SDK clients through sanctioned registration services.
 Scenario knowledge sits in blueprints, signal maps, predicates, and driver
 configuration---not in team scheduler, approval service, or persistence
-code; members are interchangeable across 14 engine adapters, and 118
-declared settings plus the typed SDK make team topology,
+code; members are interchangeable across engine adapters, and the declared
+settings plus the typed SDK make team topology,
 bindings, and limits data rather than code---in every plane, a scenario
 supplies data and strategy (Fig.~\ref{fig:arch}).
 
@@ -27,9 +27,11 @@ supplies data and strategy (Fig.~\ref{fig:arch}).
 % narrower includes drop the card body below the legibility floor
 \includegraphics[width=0.88\textwidth]{resources/fig2-architecture.pdf}
 \caption{System architecture and execution boundaries: platform services
-around shared stores, operator interfaces above, and agent engines, data
-stores, protocol endpoints, and the plant kept separate. Shared identifiers provide
-attribution but do not make storage and actuation transactional.}
+around shared stores, with agent engines, data stores, protocol endpoints,
+and the plant kept separate. Shared identifiers
+provide attribution but do not make storage and actuation transactional.
+Solid arrows: request/control; dashed: observation/record; PLC
+safety and hard real-time control remain external.}
 \label{fig:arch}\end{figure*}
 
 \subsection{Supervisory Core and Nodes}
@@ -67,8 +69,7 @@ whether a readback is available, while the controller resolves member authority
 and active limits. Errors attach to the
 request, register addresses and byte order appear only here, and a new
 fieldbus family leaves the loop untouched.
-Undeclared drivers fail loudly: a node whose driver is not registered is
-rejected at creation and connection test rather than silently served by a
+Undeclared drivers fail loudly rather than being silently served by a
 mock.
 Acquisition is supervisory rather than hard real-time: each DAQ node runs its
 own cadence under a rotating sweep, and the verdict stage queries the timestamped, quality-stamped

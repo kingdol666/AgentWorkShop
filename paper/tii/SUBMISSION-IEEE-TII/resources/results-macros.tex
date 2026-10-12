@@ -1,12 +1,9 @@
 % Evidence snapshot: integrated run 20260921184204-10lc.
-% Artifacts: bench/results/20260921184204-10lc/{report.md,run.json,
-% scenarios-benchmark.md,scenarios.json,metrics.csv,summary.json}.
-% The agentteam-mission/agentteam-biax console logs and the two omp
-% engine-turn transcripts were excluded from the archive by the repo's
-% *.log ignore rule (see ARTIFACT-NOTES.md in that directory); their
-% checked outcomes are recorded inside report.md and run.json.
-% The four-arm ablation companion remains
-% bench/results/20260921181234-e1lite/run.json.
+% Raw reports, run manifest, scenario definitions, and metrics are archived
+% alongside the run. The two live engine-turn console transcripts were
+% excluded from the archive by the repository's log-retention rule, and
+% their checked outcomes are recorded inside the run report.
+% The four-arm ablation has its own companion run record.
 \newcommand{\resEvidenceDate}{September~21, 2026, 19:08~UTC}
 \newcommand{\resRun}{\texttt{20260921184204-10lc}}
 \newcommand{\resCommit}{\texttt{e692df1}}
@@ -32,6 +29,10 @@
 \newcommand{\resOpcTail}{20.5\,ms}
 \newcommand{\resMqttTail}{20.1\,ms}
 \newcommand{\resHttpTail}{44.6\,ms}
+% cross-protocol ranges over the four write families (min p50 = MQTT, max
+% p50 = Modbus TCP; min p95 = MQTT, max p95 = Modbus TCP)
+\newcommand{\resPfiftyRange}{19.3--47.8\,ms}
+\newcommand{\resPninetyfiveRange}{20.1--248.9\,ms}
 \newcommand{\resWriteNperLine}{6}
 \newcommand{\resAblationRun}{\texttt{20260921181234-e1lite}}
 \newcommand{\resFullIntercept}{18/18}
@@ -88,15 +89,10 @@
 \newcommand{\resWriteLock}{60\,s}
 
 % October 2026 deployment-scale campaign (v0.7.57), added with the revision.
-% Artifacts: docs/benchmarks/benchmark-20261008045434/{report.md,benchmark.json,
-% timeline.jsonl} (hardened pipeline; archived score 91/91 -- the 92/92 quoted
-% in some audit notes belongs to same-day rerun benchmark-20261008135743);
-% three consecutive full-suite runs benchmark-20261007194240|194413|194925
-% (79/79 each, 237 total; an earlier 80-per-run tally counted one S7 report
-% assertion that is not a logged check -- summarized in
-% docs/benchmarks/EXPERIMENT-REPORT.md); regression suites
-% scripts/testing/api-full-loop.mjs (53/53), tmp-e2e/hardening-ack-gate.mjs
-% (34/34); docs consistency scripts/check-docs-sync.mjs (91/91).
+% The hardened-pipeline run is archived at 91/91; three consecutive
+% full-suite runs score 79/79 each (237 total; an earlier 80-per-run tally
+% counted one S7 report assertion that is not a logged check). Per-run
+% reports, manifests, and timelines are archived with each benchmark run.
 \newcommand{\resPipeRun}{\texttt{benchmark-20261008045434}}
 \newcommand{\resPipeTotal}{91}
 \newcommand{\resPipeApi}{54}
@@ -123,12 +119,10 @@
 \newcommand{\resObsVerifyCadence}{245.20/245.18\,s}
 \newcommand{\resCadenceWait}{218\,s}
 \newcommand{\resWideRows}{869}
-\newcommand{\resInspecRatio}{$100\%/100\%/99.9\%$}
 
 % October 9, 2026 regression campaign (v0.7.57), same live instance.
-% Artifacts: docs/benchmarks/benchmark-20261009021149 (extended, 92/92),
-% benchmark-20261009024141 (90/90), benchmark-20261009033810 (90/90);
-% timeline.jsonl per run (S4/S5 process records, HITL card events).
+% Three runs archived at 92/92, 90/90, and 90/90; timeline.jsonl per run
+% (S4/S5 process records, HITL card events).
 \newcommand{\resNovRuns}{\texttt{benchmark-20261009021149}/\texttt{-024141}/\texttt{-033810}}
 \newcommand{\resNovTotal}{272}
 \newcommand{\resNovApi}{54}
@@ -145,8 +139,9 @@
 \newcommand{\resNovSlope}{0.052\,g/bar}
 % Oct 9 diagnostics: three-run distribution, not the single worst run.
 % runs 021149/024141/033810: rows 663/843/861, in-spec 100.0/96.4/94.0%,
-% std 0.042/0.186/0.237 g. \resNovInspec/\resNovWideRows/\resNovStd below are
-% the single third-run values, superseded by the range macros in the body.
+% std 0.042/0.186/0.237 g. \resNovInspec/\resNovWideRows/\resNovStd are the
+% single third-run values; the ranges above are defined for reference and
+% \resRowsRange is the one used in the body.
 \newcommand{\resNovInspecRange}{94.0--100.0\%}
 \newcommand{\resNovStdRange}{0.04--0.24\,g}
 \newcommand{\resRowsRange}{663--869}

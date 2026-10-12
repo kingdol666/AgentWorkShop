@@ -5,11 +5,16 @@
 organizational roles to plant
 capabilities \cite{leitao2009agentbased,biskupovic2025supervision};
 LLM-oriented industrial work now
-spans PLC generation and verification \cite{liu2026agents4plc}. The closest
-systems, characterized in Table~\ref{tab:nearest}, target the control action
+spans PLC generation and verification \cite{liu2026agents4plc}.
+A further line couples an LLM directly to plant-facing action---context-aware
+control \cite{wu2025instructmpc}, digital-twin fault handling
+\cite{gill2025llmdt}, and natural-language machine
+control over OPC UA \cite{hofmann2025nlc}---but reports no production-scoped
+admission, per-request re-checking, or graded write evidence on the path the
+action takes. The closest systems (Table~\ref{tab:nearest}, as reported in
+their publications) target the control action
 itself: MADE couples multi-modal perception to control generation behind a
-safety layer, scoring its own task success with no persistent
-production-scoped write-evidence path reported \cite{huang2026made};
+safety layer \cite{huang2026made};
 K{\"o}hle et al.\ dispatch module-scoped skills over a six-module plant
 \cite{koehle2026llmdriven}; Waseem et al.\ place pretrained LLMs
 \emph{inside} the control loop as real-time controllers
@@ -18,10 +23,9 @@ complementary; Lim and Kovalenko \cite{lim2025llmenabled} and Zhao et al.\
 \cite{zhao2026shopfloor} allocate work among agents, whereas this layer
 governs how an allocated proposal reaches the plant and what evidence it
 leaves. A recent review frames agentic AI's industrial value as
-safety-aware, explainable human-in-the-loop (HITL) decision support rather than autonomous
-control authority \cite{jiang2026agentic}---the mechanism set contributed
-here makes that positioning concrete. Table~\ref{tab:nearest}
-characterizes each system as reported in its publication.
+safety-aware human-in-the-loop (HITL) decision support rather than autonomous
+control authority \cite{jiang2026agentic}---the mechanism set here makes that
+positioning concrete.
 
 \begin{table*}[!t]
 \centering
@@ -49,9 +53,9 @@ Waseem et al., Mach.\ Learn.\ Eng.\ 2026 \cite{waseem2026pretrained} & real-time
 
 \subsection{Frameworks, Standards, Run-Time Guarantees, and Automation Practice}
 Multi-agent frameworks coordinate tasks and tools, and the Model Context
-Protocol (MCP) standardizes tool and inter-agent interfaces \cite{mcp2024}; the tool it exposes, however,
-is a bare function signature carrying no line, product, or recipe context,
-with no record separating admission from execution. ISA-88 and ISA-95 supply
+Protocol (MCP) standardizes tool and inter-agent interfaces \cite{mcp2024}; the tools it exposes, however,
+carry advisory annotations but no production context---line, product, or
+recipe---and no record separating admission from execution. ISA-88 and ISA-95 supply
 complementary models for recipes and operations
 \cite{isa88,isa95}; \system{}'s versioned recipes and
 run dispatch instantiate a reduced subset of that stack, and the governed
@@ -59,9 +63,8 @@ life cycle transposes run-to-run (R2R) control disciplines \cite{moyne2000r2r}
 onto a supervisory write path---open-ended proposal space,
 approval-mediated bindings, and compensation records where R2R has a fitted
 controller.
-A separate line enforces run-time guarantees on LLM agents---judge and guard
-agents, rule-based
-enforcement \cite{xiang2024guardagent};
+A separate line enforces run-time guarantees on LLM agents---judge and
+guard agents \cite{xiang2024guardagent};
 they gate software tool calls, not plant writes, and their policies could
 compile onto the substrate contributed here.
 
@@ -91,8 +94,4 @@ requires more than an approval dialog
 \cite{bainbridge1983ironies}. Agent benchmarks
 and prompt-injection studies
 \cite{greshake2023injection,liu2024pinjection} inform adjacent evaluations;
-ours separates them. Relative to regulated batch
-and DCS practice---where the operator is presupposed---the increment is
-admitting a machine-generated proposer into that governed, plant-facing
-write path, with each write's evidence graded and attributed to a machine
-actor.
+ours separates them.

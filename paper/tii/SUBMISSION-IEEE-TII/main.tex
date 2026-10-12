@@ -67,36 +67,34 @@
 \maketitle
 
 \begin{abstract}
-Large language model (LLM) agents increasingly propose control changes
-directly on industrial plants, yet the safeguards surrounding each
+Large language model (LLM) agents increasingly propose control changes on
+industrial plants, yet the safeguards surrounding each
 proposal---write authority, active limits, human approval, device
-acceptance, process improvement---are rebuilt per deployment inside
-application code, so a task reported complete can coexist with a missed
-process objective. AgentWorkShop, a governed
-supervisory execution layer, carries every agent-originated write of
-an industrial agent team along one path: admission against declared,
-versioned limits, approval where the binding requires it, actuation over
-semantic write-control nodes, graded write acknowledgment by independent
-post-write read, verdict recording, and compensation---each stage left as
-a separately inspectable evidence state attributed to its originating
-actor. Team identities reach data-acquisition (DAQ) and write-control
-(DCW) nodes only through explicit member--node capabilities, and prompt
-content is never admissible as authority; a line master switch whose
-fail-safe default is manual intercepts approval-free recipe dispatch,
-while protocol drivers, versioned production objects, plugin points, and
-a typed software development kit (SDK) keep process models, objectives,
-and policies external to the governed path. Each write is graded
-readback-verified, transport-acknowledged, or unverified by what an
-independent read observes, never by the transport receipt alone. Four
-process scenarios---injection molding, wastewater treatment, annealing,
-and biaxially oriented polyethylene terephthalate (BOPET) film---and a
-cast-film reference line exercise the layer across protocol-interception
-drills, agent-team missions, and a deployment-scale regression campaign
-on one multi-line instance---intercepting and attributing, grading
-honestly, pacing automation, mediating approval, and recovering on
-record; the evaluation is simulation-tier (simulator-backed, not
-physical plants), and no optimization-benefit or safety-assurance claim
-is made.
+acceptance---are rebuilt per deployment inside application code, so a task
+reported complete can coexist with a missed process objective.
+AgentWorkShop, a governed supervisory execution layer, carries every
+agent-originated write along one path:
+admission against declared, versioned limits, approval where required,
+actuation over semantic write-control nodes, graded
+acknowledgment by independent post-write read, verdict recording, and
+compensation---each stage a separately inspectable evidence state
+attributed to its originating actor. Team identities reach
+data-acquisition and write-control nodes only through explicit
+member--node capabilities, and prompt content is never admissible as
+authority; a fail-safe-manual line master switch
+intercepts approval-free recipe dispatch, and process models, objectives,
+and policies stay external to the governed
+path. Each write is graded readback-verified, transport-acknowledged, or
+unverified by what an independent read observes, never by the transport
+receipt alone. Four process scenarios---injection molding, wastewater
+treatment, annealing, and biaxially oriented polyethylene terephthalate
+(BOPET) film---and a cast-film reference line exercise the layer across
+protocol-interception drills, agent-team missions, and a deployment-scale
+regression campaign on one multi-line instance: intercepting and
+attributing, grading honestly, pacing automation, mediating approval, and
+recovering on record. The evaluation is simulation-tier (simulator-backed,
+not physical plants); no optimization-benefit or safety-assurance claim is
+made.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -115,14 +113,17 @@ supervisory control, write governance.
 \input{sections/discussion}
 
 \bibliographystyle{IEEEtran}
-% Reference list at IEEEtran's own 8pt (footnotesize) type size with mildly
-% tightened (0.78) leading; the default leading overflowed the 10-page
-% budget even after the body-trim passes.
-% Fallback trim if IEEE's composition pass reflows: related-work recap
-% clauses and the V-A onboarding sentence (identified 2026-10-12).
+% Reference list at \scriptsize (7pt) with tightened leading: the P0 citation
+% program (nine added entries) plus the campaign-progression table do not
+% fit the 10-page budget at IEEEtran's default 8pt bibliography size
+% (IEEEtran hardcodes \footnotesize inside thebibliography, hence the
+% scoped redefinition). First fallback if IEEE's composition pass reflows:
+% restore \footnotesize and trim the related-work recap clauses and the
+% V-A onboarding sentence instead.
 \begingroup
-\linespread{0.77}\footnotesize
-\def\IEEEbibitemsep{0pt plus .3pt}
+\raggedbottom
+\def\footnotesize{\fontsize{7}{4.9}\selectfont}
+\def\IEEEbibitemsep{-1pt plus .1pt}
 \bibliography{resources/refs}
 \endgroup
 

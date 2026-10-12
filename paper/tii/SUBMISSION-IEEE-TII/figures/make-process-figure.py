@@ -103,11 +103,14 @@ for x0, dur, color, hatch in segs_s5:
     ax.add_patch(Rectangle((x0, ROW_S5 - H / 2), dur, H, facecolor=color,
                            edgecolor="white", lw=0.4, hatch=hatch, alpha=0.95))
 
-def callout(x_anchor, y_anchor, x_text, y_text, text, ha="center"):
+def callout(x_anchor, y_anchor, x_text, y_text, text, ha="center", top=False):
+    # relpos anchors the leader at the text bbox edge (bottom by default, top
+    # when the anchor sits above the label), so the line cannot cross glyphs
     ax.annotate(text, xy=(x_anchor, y_anchor), xytext=(x_text, y_text),
                 fontsize=FS_ANNOT, color=DARK, ha=ha, va="center", zorder=6,
                 arrowprops=dict(arrowstyle="-", color=DARK, lw=0.4,
-                                shrinkA=0.0, shrinkB=0.5))
+                                shrinkA=0.0, shrinkB=0.5,
+                                relpos=(0.5, 1) if top else (0.5, 0)))
 
 def inbar(x, y, text):
     ax.text(x, y, text, ha="center", va="center", fontsize=FS_ANNOT,
@@ -126,7 +129,7 @@ ax.text(-4, ROW_S5, "fine-tuning (S5)", ha="right", va="center",
 callout(6,   ROW_S4 + H / 2, 22,  1.42, "observe, decide,\npropose")
 callout(88,  ROW_S4 + H / 2, 74,  1.42, "re-propose and\napprove (HITL card)")
 callout(114, ROW_S4 + H / 2, 140, 1.42, "verify 65|65|65,\nverdict")
-callout(103, ROW_S4 - H / 2, 142, 0.64, "settle 15 s")
+callout(103, ROW_S4 - H / 2, 142, 0.64, "settle 15 s", top=True)
 inbar(46.5, ROW_S4, "trial cadence early-rejects (69 s)")
 
 # --- between the lanes ------------------------------------------------------

@@ -56,8 +56,13 @@ BAR_LO = 138  # bars start here; 127--138 is the reserved label gutter
 # admitted interval band across all lanes
 ax.add_patch(Rectangle((INTER_LO, 0.0), INTER_HI - INTER_LO, 3.85,
                        facecolor="#3E8E55", alpha=0.13, lw=0, zorder=1))
-ax.axvline(INTER_LO, color="#3E8E55", lw=0.7, ls=(0, (3, 2)), zorder=2)
-ax.axvline(INTER_HI, color="#3E8E55", lw=0.7, ls=(0, (3, 2)), zorder=2)
+# interval boundary guides, clipped to the plotted band (y 0.02..4.1) so
+# they cannot cross the "outside: rejected..." caption below the axis
+Y0, Y1 = (0.02 + 1.15) / 6.7, (4.1 + 1.15) / 6.7
+ax.axvline(INTER_LO, color="#3E8E55", lw=0.7, ls=(0, (3, 2)),
+           ymin=Y0, ymax=Y1, zorder=2)
+ax.axvline(INTER_HI, color="#3E8E55", lw=0.7, ls=(0, (3, 2)),
+           ymin=Y0, ymax=Y1, zorder=2)
 
 for (label, lo, hi, color, note), y in zip(LAYERS, lanes):
     lo_v, hi_v = max(lo, BAR_LO), min(hi, XHI)

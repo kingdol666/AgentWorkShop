@@ -5,11 +5,10 @@ Against the nearest systems of Section~\ref{sec:related},
 the differentiator is not the LLM---a replaceable strategy slot---but the
 production-scoped authority and evidence around its writes: no nearest
 system reports that combination on one path.
-Deployment-wise, the layer installs as one service beside the plant's
-protocol endpoints; onboarding is declarative (blueprint, differential
-ensure pass, team-template channel, mission guards), approval
-clients---web panel or API---receive the HITL cards, and PLC protection
-and DCS interlocks stay untouched.
+The layer installs as one service beside the plant's protocol endpoints,
+onboards declaratively (Section~\ref{sec:reuse}), serves approval clients
+the HITL cards, and leaves
+PLC protection and DCS interlocks untouched.
 
 \subsection{Validity and Reproducibility}
 \looseness=-1 Run identifier, seed, commit, harness fingerprint, and raw artifacts are
@@ -18,7 +17,8 @@ ledgers and timelines. Five
 qualifications bound what they support: simulation-tier evidence
 (deterministic per seed; no physical-device
 campaign, operator study, or external comparison reported); internal-oracle
-optima and predicates; single-host latencies and near-contemporary runs;
+optima and predicates under an author-implemented, author-adjudicated
+harness and simulator set; single-host latencies and near-contemporary runs;
 implemented-but-unexercised capabilities and a
 single live provider/model;
 and harness-adjudicated approval (human decision latency and quality out of
@@ -37,16 +37,20 @@ per-binding scope and journaled, attributable actions: a bounded blast
 radius, not a protection guarantee.
 Admission limits,
 acknowledgment grading, and the backstop run with or without human
-approval---enforcement never queues behind human attention. The pacing
+approval---enforcement never queues behind human attention; one
+exception: the backstop's deferred mode judges autonomously but hands
+actuation back to the approval policy after repeated rollbacks
+(Section~\ref{sec:agentloop}). The pacing
 windows bound approval demand per line, and
 batch release (Section~\ref{sec:hardening}, leg~5) is the demonstrated
 fatigue mitigation; approval fatigue and automation bias remain
-human-factors risks, and reading graded evidence assumes trained approvers
-\cite{bainbridge1983ironies,parasuraman2000model}. A lead agent's
+human-factors risks
+\cite{bainbridge1983ironies,parasuraman2000model},
+and reading graded evidence assumes trained approvers. A lead agent's
 delegation-mode choice (Section~\ref{sec:hitl}) is the one agent-reachable
-path around per-request approval; capping granted mode at the granter's own
-binding mode, or requiring the line-switch confirmation for it, is the
-queued guard.
+path around per-request approval; capping the granted mode at the granter's
+own binding mode, or requiring the line-switch confirmation for it, is
+queued as the guard.
 
 \subsection{Deployment Boundaries}
 \looseness=-1 Execution and recovery are non-atomic: bookkeeping may fail after actuation, the
@@ -59,8 +63,11 @@ the stored setpoint without re-admission, trailing a narrowed window.
 Oscillation, storage failure, clock error, concurrency beyond the four-line
 campaign, and redundant supervisor deployments with divergent stores
 (split-brain) remain unevaluated; a supervisor outage halts dispatch rather
-than permitting writes through, and a hardware-in-the-loop leg against a
-real PLC or OPC-UA endpoint is the next evidence tier. Production
+than permitting writes through; the next evidence tiers are a
+hardware-in-the-loop leg against a
+real PLC or OPC-UA endpoint and community process
+benchmarks such as Tennessee Eastman \cite{downs1993tep} beyond the
+scenario plants. Production
 integration additionally requires: bound changes managed under
 change-control with process-evidence validation; approval-aging,
 open-record-aging, and backstop-deferred states surfaced on the plant alarm
@@ -77,8 +84,8 @@ segregation of duties and alarm-path failure tests \cite{isa182}.
 \section{Conclusion}
 \label{sec:conclusion}
 \looseness=-1 \system{} contributes a governed supervisory execution layer rather
-than a new process optimizer: one stable path from agent-team identities
-through semantic nodes, production context, governed writes, graded
+than a new process optimizer: one governed path from agent-team identities
+through semantic nodes and production context to governed writes, graded
 acknowledgments, verdicts, and compensation, with admission, approval, and
 recovery left as separately inspectable, actor-attributed evidence on every
 agent-originated write. Physical-plant
