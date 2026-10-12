@@ -287,7 +287,7 @@ footer:
       <div class="hw-p">
         <span class="no">05</span>
         <h3>Protocol-real verification</h3>
-        <p>E2E suites run on a real Modbus/OPC UA/MQTT/HTTP stack: real PLC writes, real readbacks, real approvals — not mock self-certification. The 2026-09-24 production-build wave matrix passed ~1100+ real assertions (closed loop 98/0 · protocol matrix 46/0; the v0.7.20 baseline was 156 assertions).</p>
+        <p>E2E suites run on a real Modbus/OPC UA/MQTT/HTTP stack: real PLC writes, real readbacks, real approvals — not mock self-certification. The two 2026-09-24 production-build waves passed ~1400+ real assertions (closed loop 98/0 · protocol matrix 46/0; the v0.7.20 baseline was 156 assertions).</p>
       </div>
       <div class="hw-p">
         <span class="no">06</span>
@@ -389,10 +389,32 @@ aw start            # → http://localhost:3001 · config root ~/.AgentWorkShop
 
   </section>
 
+  <section class="hw-sec">
+    <div class="hw-sec-head">
+      <span class="hw-sec-no">07</span>
+      <h2 class="hw-sec-title">Research paper</h2>
+      <span class="hw-sec-en">RESEARCH PAPER</span>
+    </div>
+    <div class="hw-sec-rule"></div>
+    <p class="hw-lead">
+      The platform's mechanisms are documented in a submission-ready manuscript:
+      <strong>"Grading Machine-Originated Plant Writes: Separately Inspectable Evidence for
+      Industrial Agent Teams"</strong> (IEEE Transactions on Industrial Informatics, anonymous
+      review draft, 10 pages, IEEEtran). Source and compiled PDF live in
+      <code>paper/tii/SUBMISSION-IEEE-TII/</code>. The paper's mechanism claims are backed by
+      archives in this repository: <code>docs/benchmarks/</code> (October 2026 deployment-scale
+      regression campaign — 7 pipeline executions, 600 checks, zero failed, including graded
+      write-acknowledgment and HITL evidence legs), <code>docs/experiments/</code> (cast-film
+      closed-loop reports) and <code>docs/audit/</code> (acceptance reports).
+      <code>AW_BENCH_MODE=1</code> re-runs the same paper pipeline locally via
+      <code>bench/PIPELINE.md</code>.
+    </p>
+  </section>
+
   <section class="hw-final">
     <h2>Put an agent team on a real production line</h2>
     <p>
-      14 engines, 6 field protocols, 113 runtime settings and 1100+ re-runnable acceptance assertions are
+      14 engines, 6 field protocols, 118 runtime settings and 1400+ re-runnable acceptance assertions are
       already in the repository. Supervisory by design, second-level soft real-time;
       protocol-real, assertion-reproducible.
     </p>

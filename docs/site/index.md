@@ -383,10 +383,29 @@ aw start            # → http://localhost:3001 · 配置根 ~/.AgentWorkShop
 
   </section>
 
+  <section class="hw-sec">
+    <div class="hw-sec-head">
+      <span class="hw-sec-no">07</span>
+      <h2 class="hw-sec-title">研究论文</h2>
+      <span class="hw-sec-en">RESEARCH PAPER</span>
+    </div>
+    <div class="hw-sec-rule"></div>
+    <p class="hw-lead">
+      平台机制已写成投稿级论文:<strong>《Grading Machine-Originated Plant Writes: Separately
+      Inspectable Evidence for Industrial Agent Teams》</strong>(IEEE Transactions on Industrial
+      Informatics 匿名评审稿,IEEEtran 双栏 10 页),源文件与编译稿在仓库
+      <code>paper/tii/SUBMISSION-IEEE-TII/</code>。论文的机制主张由仓库内归档证据支撑:
+      <code>docs/benchmarks/</code>(2026-10 部署级回归战役:7 次流水线执行、600 项检查零失败,
+      含分级写确认与 HITL 证据腿)、<code>docs/experiments/</code>(铸膜闭环报告)与
+      <code>docs/audit/</code>(验收报告)。<code>AW_BENCH_MODE=1</code> 可按
+      <code>bench/PIPELINE.md</code> 本地复跑同一条论文流水线。
+    </p>
+  </section>
+
   <section class="hw-final">
     <h2>把 Agent 接到真实产线上</h2>
     <p>
-      14 个执行引擎、6 种现场协议、118 个运行时设置项和 1100+ 条可复跑的验收断言都已经在仓库里。
+      14 个执行引擎、6 种现场协议、118 个运行时设置项和 1400+ 条可复跑的验收断言都已经在仓库里。
       监督层,秒级软实时;协议真实,断言可复跑。
     </p>
     <div class="hw-cta">

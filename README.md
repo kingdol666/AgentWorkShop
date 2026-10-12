@@ -818,6 +818,26 @@ load — confirm it is absent **before** the process starts (a misconfiguration 
 boot). `AW_RATE_LIMIT_OFF=1` only disables the API rate guard (write-control interlocks
 stay on) and must likewise remain unset in production.
 
+## Research paper
+
+The platform's governance mechanisms are documented in a submission-ready manuscript —
+**"Grading Machine-Originated Plant Writes: Separately Inspectable Evidence for Industrial
+Agent Teams"** (IEEE Transactions on Industrial Informatics, anonymous review draft,
+10 pages, IEEEtran). Source, compiled PDF and the five-seat review trail live in
+[`paper/tii/SUBMISSION-IEEE-TII/`](./paper/tii/SUBMISSION-IEEE-TII/). Every mechanism
+claim in the paper is backed by archives in this repository:
+
+- [`docs/benchmarks/`](./docs/benchmarks) — the October 2026 deployment-scale regression
+  campaign: 7 pipeline executions, 600 checks, zero failed (per-run `report.md` /
+  `benchmark.json` / `timeline.jsonl`), plus the admission-ablation companion run;
+- [`docs/experiments/`](./docs/experiments) — cast-film closed-loop experiment plan and
+  results (the paper's Q3 deterministic loop);
+- [`docs/audit/`](./docs/audit) — acceptance waves (~1400+ real assertions) referenced
+  by the evaluation section.
+
+Re-run the paper pipeline locally: set `AW_BENCH_MODE=1` and follow
+[`bench/PIPELINE.md`](./bench/PIPELINE.md).
+
 ## Roadmap
 
 | Capability | Status |

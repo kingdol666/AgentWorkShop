@@ -797,6 +797,23 @@ Windows 用 `nssm install AgentWorkShop "C:\Program Files\nodejs\node.exe" scrip
 开关在模块加载时读取,必须在进程启动前确认未设置(误配时启动日志会告警)。
 `AW_RATE_LIMIT_OFF=1` 只关 API 限流、不影响写控联锁,生产同样必须不设。
 
+## 研究论文
+
+平台的治理机制已写成投稿级论文——**《Grading Machine-Originated Plant Writes: Separately
+Inspectable Evidence for Industrial Agent Teams》**(IEEE Transactions on Industrial
+Informatics 匿名评审稿,IEEEtran 双栏 10 页)。源文件、编译稿与五席评审记录在
+[`paper/tii/SUBMISSION-IEEE-TII/`](./paper/tii/SUBMISSION-IEEE-TII/)。论文中的每一条机制
+主张都由仓库内归档证据支撑:
+
+- [`docs/benchmarks/`](./docs/benchmarks)——2026-10 部署级回归战役:7 次流水线执行、
+  600 项检查零失败(每次运行归档 `report.md` / `benchmark.json` / `timeline.jsonl`),
+  另含准入消融伴随运行;
+- [`docs/experiments/`](./docs/experiments)——铸膜闭环实验计划与结果(论文 Q3 确定性闭环);
+- [`docs/audit/`](./docs/audit)——评估节引用的验收波次(约 1400+ 条真实断言)。
+
+本地复跑论文流水线:设置 `AW_BENCH_MODE=1` 并按
+[`bench/PIPELINE.md`](./bench/PIPELINE.md) 执行。
+
 ## 路线图
 
 | 能力 | 状态 |
