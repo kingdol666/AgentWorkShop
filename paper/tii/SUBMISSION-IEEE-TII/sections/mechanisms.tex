@@ -93,28 +93,22 @@ compensation (Section~\ref{sec:scenarios} reports two).
 \label{sec:nodeexec}
 A semantic card exposes quantity, unit, precision, range, value, freshness,
 and recipe context; the controller resolves binding and limits, the driver
-serializes the command. The acknowledgment grade, not driver success
-alone, closes the command path (Section~\ref{sec:ack}), never the
+serializes the command, and the acknowledgment grade---not driver success
+alone---closes the command path (Section~\ref{sec:ack}), never the
 process-response path.
 
-\looseness=-1 Two write-spacing windows pace governed loops; neither paces
-the plant, and both are configurable starting points to retune per
-line against its response time and alarm-response practice.
-Online writes---agent- or human-origin---must sit at least
-60\,s apart, and a successful one installs a hold window
-(\texttt{writeLockSeconds}, floored at 60\,s): a further request inside it
-receives HTTP~429
-\texttt{WRITE\_FREQUENT}. Recipe dispatch adds a per-recipe online-write
-interval (\texttt{opIntervalMs}, default 60\,s, bounded at 24\,h) anchored
-at the \emph{approval} instant of the preceding dispatch---pending,
-refused, or expired requests do not start the clock---keyed by recipe
-identity and restart-persistent, so alternating agent identities cannot
-reset it; a coarser per-line trial cadence (default 300\,s), also
-restart-persistent, damps same-line trials from any origin. The hold installs only after
-driver success, and recipe-dispatch and rollback writes are exempt from
-both windows. \texttt{AW\_BENCH\_MODE=1} admits
-harness-declared arms that relax the soft window or the readback check,
-relaxes pacing bench-wide, and never bypasses the hard range.
+\looseness=-1 Two write-spacing windows pace governed loops, never the
+plant. Online writes---agent- or human-origin---sit at least 60\,s apart, and
+a successful one installs a hold window: a further request inside it
+receives HTTP~429 \texttt{WRITE\_FREQUENT}. Recipe dispatch adds a
+per-recipe interval anchored at the \emph{approval} instant of the preceding
+dispatch---pending, refused, or expired requests do not start the
+clock---keyed by recipe identity and restart-persistent, so alternating
+agent identities cannot reset it; a coarser per-line trial cadence (300\,s
+default) damps same-line trials from any origin. The hold installs only
+after driver success; recipe-dispatch and rollback writes are exempt.
+\texttt{AW\_BENCH\_MODE=1} admits harness-declared arms that relax the soft
+window or the readback check---never the hard range.
 
 \looseness=-1 Four governed routes---agent tools, human-origin writes, recipe dispatch, and
 rollback compensation---reach the same driver through one admission and
@@ -122,11 +116,11 @@ journaling entry point, the hard range included; recipe dispatch adds run
 context---the line-scoped execution window that gates dispatch, the reduced
 ISA-88 batch/lot notion---validated against the recipe window at save time. Hold heartbeats---periodic
 re-dispatch of the stored setpoint---are the one non-governed re-dispatch:
-they are off by default, stop on line stop, node disable, or driver change,
-and re-apply the stored value without re-admission. The stored value itself
-changes only through the governed path, so a narrowed window can leave a
-heartbeat reasserting a previously admitted value; this is plant-facing
-state maintenance, not an agent path.
+off by default, stopped by line stop, node disable, or driver change, and
+re-applying the stored value without re-admission. The stored value changes
+only through the governed path, so a narrowed window can leave a heartbeat
+reasserting a previously admitted value---plant-facing state maintenance,
+not an agent path.
 Line start installs active context
 before recipe parameters dispatch individually, and line stop clears context
 and closes retained open records; these multi-step operations are not atomic
@@ -143,7 +137,13 @@ tolerance;
 \emph{transport-acknowledged} when the transport
 accepted the command on an endpoint with no usable readback;
 \emph{unverified} when the transport failed or when post-write verification
-could not confirm the value. The grading is fail-honest: absence of evidence degrades the
+could not confirm the value. The grading rule is falsifiable. Under a
+success-flag receipt rule---the pattern in which a transport acknowledgment
+closes the report---the publish-only receipt archived in
+Section~\ref{sec:hardening} (broker \texttt{puback}, \texttt{ok=true}, no
+read channel, three verification attempts) reports \emph{success}; the
+graded rule reports it \emph{unverified}. That is what fail-honest means:
+absence of evidence degrades the
 grade, never the report---a write without confirmation is surfaced as
 unverified, with the transport error attached, rather than dropped from the
 receipt; the grade

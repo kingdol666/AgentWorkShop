@@ -39,10 +39,9 @@ is a physics-based injection-molding cell (16 DAQ nodes over the four
 modalities, 6 control nodes over five protocol families plus MES); all Q5
 numbers come from committed per-run reports, ledgers, and timelines
 (October 7--8: hardened-pipeline run \texttt{-20261008045434} plus three
-consecutive full-suite runs; October 9: \resNovRuns); its
-Section~\ref{sec:mech} mechanisms are unchanged from the Q1--Q4 snapshot
-except the acknowledgment grading and the master switch, both added by the
-October hardening pass; the campaign ran under live load.
+consecutive full-suite runs; October 9: \resNovRuns); mechanisms are
+unchanged since the Q1--Q4 snapshot except the October hardening pass's
+acknowledgment grading and master switch; the campaign ran under live load.
 
 
 \subsection{Test Procedure and Campaign Overview}
@@ -54,25 +53,30 @@ through protocol interception and the record, recipe, approval, and
 parameter-layer drills (Sections~\ref{sec:protocol} and~\ref{sec:scenarios}).
 
 \looseness=-1 The Q5 procedure is the one-command benchmark pipeline: eight stages
-(S0 pre-check; S1 API surface matrix, a positive-and-negative sweep of
-authentication, users, channels, tasks, permission isolation,
-both node families, agent tools, HITL, the operations and audit logs,
-memory, plugins, teams, and notifications; S2 multi-modal ingestion with
-MES dual-mode; S3 governance negative paths; S4 closed-loop optimization;
-S5 fine-tuning; S6 diagnostics; S7 report) under a harness that captures
-every check and a timestamped
-event timeline per run, so each stage exercises one functional surface of
+(S0 pre-check; S1 API surface matrix, a positive-and-negative sweep across
+authentication, users, channels, tasks, permissions, both node families,
+agent tools, HITL, logs, memory, plugins, teams, and notifications; S2
+multi-modal ingestion with MES dual-mode; S3 governance negative paths; S4
+closed-loop optimization; S5 fine-tuning; S6 diagnostics; S7 report) under a
+harness that captures every check and a timestamped event timeline per run,
+so each stage exercises one functional surface of
 Sections~\ref{sec:arch}--\ref{sec:mech}. The profile has since grown (S1
 adds login lockout, S4 the acknowledgment-grade summary); the October 9
 campaign re-runs it three times.
 No prior system in Table~\ref{tab:nearest} owns a governed write path to
-plant endpoints, so the comparator is internal---the ablation arms of
-Section~\ref{sec:protocol} and mechanism-level suites; no
-optimization-superiority claim is made. That absence describes Table~\ref{tab:nearest}'s
-publications, not the ablation arms, which relax mechanisms of the same
-governed path (Section~\ref{sec:protocol}); unmeasured remains governance's
-cost in convergence and integration effort. Fig.~\ref{fig:loop}
-summarizes the closed-loop instrument.
+plant endpoints, so the primary comparator is internal, and two controls are
+archived. The admission control holds the write path fixed and relaxes its
+mechanisms: the same six probes that full governance rejects (HTTP~400)
+return 200 \emph{executed} under the relaxed arm
+(Section~\ref{sec:protocol}, 18/18$\rightarrow$12/18)---a success-flag
+design reports them as accepted writes. The evidence control holds the
+receipts and varies the reporting rule (Section~\ref{sec:ack}). The
+closed-loop harness also parameterizes the write injection---admin REST
+beside the agent's governed \texttt{dcw\_control}---so governance's cost in
+convergence and integration effort is measurable; that like-for-like pair is
+prepared but not yet executed in the archived campaigns, and no
+optimization-superiority claim is made. Fig.~\ref{fig:loop} summarizes the
+closed-loop instrument.
 
 \begin{figure}[!t]
 \centering
@@ -125,7 +129,9 @@ without the window interlock (alone or with the readback check) only
 and are journaled---prevention is the interlock's job; a relaxed
 configuration degrades from prevention to detection, with the readback check
 retained to make written-but-unconfirmed commands visible. The hard range is
-structurally unbypassable and the soft window is its removable part.
+structurally unbypassable---all four governed routes re-admit it at one
+journaling entry point, per request (Section~\ref{sec:nodeexec})---and the
+soft window is its removable part.
 
 \subsection{Q2: The AgentTeam Optimization Workflow and Its Results}
 \label{sec:agentteam}
@@ -272,7 +278,10 @@ are replicated.
 and~\ref{sec:hitl} directly: the master switch refuses an unconfirmed manual-to-automatic
 transition; a mock-acknowledged dispatch is promoted to readback-verified;
 a broker cut marks affected parameters unverified while healthy siblings
-verify; a publish-only endpoint stays unverified; and
+verify; a publish-only endpoint accepts the write (broker puback,
+\texttt{ok=true}) yet stays \emph{unverified} through three verification
+attempts---the receipt Section~\ref{sec:ack}'s falsifiable rule is stated
+against; and
 on a manual-mode line an approval-free binding's dispatch is intercepted
 into the queue, approval releasing all six parameters device-verified. An
 API regression and a documentation-consistency suite close the campaign.
@@ -282,3 +291,4 @@ attributes, grading degrades honestly, pacing holds under automation,
 approval mediates without carrying the checks, and compensation and the
 backstop recover on record---Section~\ref{sec:mech}'s mechanisms behave as
 specified, with task state and attainment never merged into one number.
+

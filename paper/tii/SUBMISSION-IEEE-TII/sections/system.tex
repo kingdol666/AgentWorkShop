@@ -96,13 +96,9 @@ connectivity, and projects it into semantic nodes and a recipe; a channel is
 built from the team template, and a mission supplies objective, guards,
 response windows, and policy. A
 BOPET worker proposes casting-speed, fast-roll, or rail-width changes through
-bound DCW nodes; the other three scenarios reuse the same mission
-pattern with only blueprint, guards, and policy
-differing (Section~\ref{sec:scenarios}); the adapter demonstrates reuse of
-platform services, not configuration-only commissioning of physical plants.
-The stores share identifiers
-rather than a transaction domain: a device may accept a write even if
-bookkeeping fails, and time-range queries can cross runs unless bounded.
+bound DCW nodes; the other three scenarios reuse the same pattern
+(Section~\ref{sec:scenarios}). The stores share identifiers, not a
+transaction domain: a device may accept a write even if bookkeeping fails.
 
 \subsection{Governed Optimization Task Life Cycle}
 \label{sec:tasklifecycle}

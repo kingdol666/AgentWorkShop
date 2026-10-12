@@ -55,15 +55,34 @@ So the objection is not that the comparison is unavailable. It is one flag
 (`--cl-write rest`) away, and we did not run it. That is a gap in the work, not in
 the field, and we say so in the revision rather than letting the old exemption stand.
 
-**Action taken (revision).** §V-B now reads: *"That absence describes the
-publications in Table I, not what could be compared: the harness parameterizes a
-direct-REST write path beside the governed one to make governance measurable, and
-only the governed arm ran, so its cost in writes or convergence is unmeasured."*
+**Action taken (revision, round 2).** §V-B now reads: *"No prior system in
+Table I owns a governed write path to plant endpoints, so the primary
+comparator is internal, and two controls are archived. The admission control
+holds the write path fixed and relaxes its mechanisms: the same six probes
+that full governance rejects (HTTP 400) return 200 executed under the relaxed
+arm (Section V-C, 18/18→12/18) — a success-flag design reports them as
+accepted writes. The evidence control holds the receipts and varies the
+reporting rule (Section IV-D). The closed-loop harness also parameterizes the
+write injection — admin REST beside the agent's governed dcw_control — so
+governance's cost in convergence and integration effort is measurable; that
+like-for-like pair is prepared but not yet executed in the archived
+campaigns, and no optimization-superiority claim is made."* §IV-D now states
+the grading rule as falsifiable (success-flag semantics vs the archived
+publish-only receipt), and §V's write-evidence leg cites that receipt.
 
-**Action outstanding.** We regard the disclosure as a mitigation, not a resolution.
-The measurement itself is prepared and enumerated in §6 below; it is not run here
-because it provisions and tears down test lines on a live instance and requires the
-author's authorisation.
+**Comparator run attempt (round 2).** The pair was attempted four times on
+the shared live instance (`--profile quick --cl-seeds 3`, rest and governed,
+at 12 s and 61 s iteration spacing): every write in every arm was rejected by
+the platform's own production pacing (60 s spacing, 300 s per-line trial
+cadence) and run-gate checks — i.e., **the platform's governance gates block
+rapid multi-write closed loops on both routes by design**, and passive plant
+drift dominates J. A clean like-for-like measurement requires either a fresh
+instance or `AW_BENCH_MODE=1` (pacing exempted bench-wide); run artifacts are
+retained under `bench/results/20261012*`. Scheduled as the first item on a
+fresh instance.
+
+**Action outstanding.** We still regard the disclosure as a mitigation, not a
+resolution; see §6.
 
 ## 3. Secondary themes
 

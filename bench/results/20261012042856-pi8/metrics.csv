@@ -1,0 +1,11 @@
+phase,line,protocol,daq_samples,write_p50_ms,write_p95_ms,readback_delta,f5_rejected,f5_total,false_block,recipe_versions,recipe_lastgood,recipe_applied_run,seed,J0,Jend,Jstar,ratio,iters,writes,rejected,converged,wall_s,preset,team_state,team_dispatched,memory_idempotent,harnesses,harnesses_available
+P3,1,modbus-tcp,6,2.651,6.348,3.36,6,6,1,,,,,,,,,,,,,,,,,,,
+P3,2,opcua,8,2.474,2.56,3.6,6,6,1,,,,,,,,,,,,,,,,,,,
+P4e,1,modbus-tcp,,,,,,,,3,rr-dce1bd1a,rr-4a81357f,,,,,,,,,,,,,,,,
+P4e,2,opcua,,,,,,,,3,rr-ff026edc,rr-ed163fbc,,,,,,,,,,,,,,,,
+P6,,castfilm,,,,,,,,,,,42,70.088,72.781,89.894,0.81,8,8,8,false,108.289,,,,,,
+P6,,castfilm,,,,,,,,,,,43,72.781,72.781,89.894,0.81,8,8,8,false,108.279,,,,,,
+P6,,castfilm,,,,,,,,,,,44,72.781,72.781,89.894,0.81,8,8,8,false,108.258,,,,,,
+P8,1,modbus-tcp,9,,,6.24,3,3,1,,,,,,,,,,,,,,film-line,,,,,
+P8,2,opcua,9,,,6.24,3,3,1,,,,,,,,,,,,,,film-line,,,,,
+P9,,,,,,,,,,,,,,,,,,,,,,,,COMPLETED,true,true,14,4

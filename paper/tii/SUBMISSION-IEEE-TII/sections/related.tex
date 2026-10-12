@@ -7,21 +7,17 @@ capabilities \cite{leitao2009agentbased};
 LLM-oriented industrial work now
 spans PLC generation and verification \cite{liu2026agents4plc}. The closest
 systems, characterized in Table~\ref{tab:nearest}, target the control action
-itself: MADE couples multi-modal perception to control generation with a
-safety layer and HITL verification, scoring its own task success, with no
-persistent production-scoped write-evidence path reported
-\cite{huang2026made}; K{\"o}hle et al.\ resolve tasks over a six-module
-smart-factory plant of per-module LLM agents and tool servers---writes carry
-module-scoped skills, with no versioned production context or write-evidence
-chain reported \cite{koehle2026llmdriven}; Waseem et al.\ place pretrained
-LLMs \emph{inside} the control loop as real-time controllers of a robotic
-line \cite{waseem2026pretrained}---\system{} occupies a deliberately
-different layer, above fast regulation, so the roles are complementary; Lim
-and Kovalenko explore resource capabilities across manufacturing agents
-\cite{lim2025llmenabled} and Zhao et al.\ dispatch shop-floor tasks
-\cite{zhao2026shopfloor}---both allocate work among agents, whereas this
-layer governs how an allocated proposal reaches the plant and what evidence
-it leaves. A recent review frames agentic AI's industrial value as
+itself: MADE couples multi-modal perception to control generation behind a
+safety layer, scoring its own task success with no persistent
+production-scoped write-evidence path reported \cite{huang2026made};
+K{\"o}hle et al.\ dispatch module-scoped skills over a six-module plant
+\cite{koehle2026llmdriven}; Waseem et al.\ place pretrained LLMs
+\emph{inside} the control loop as real-time controllers
+\cite{waseem2026pretrained}---a layer below \system{}, so the roles are
+complementary; Lim and Kovalenko \cite{lim2025llmenabled} and Zhao et al.\
+\cite{zhao2026shopfloor} allocate work among agents, whereas this layer
+governs how an allocated proposal reaches the plant and what evidence it
+leaves. A recent review frames agentic AI's industrial value as
 safety-aware, explainable, HITL decision support rather than autonomous
 control authority \cite{jiang2026agentic}; the contribution here is the
 mechanism set that makes that positioning concrete, and

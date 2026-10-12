@@ -1037,7 +1037,7 @@ if (clSeeds > 0) {
       if (warm.ok) await plantPhase('steady').catch(() => {})
       const run = await runClosedLoop(api, {
         seed: s, lineId: twin.lineId, dcw: twin.dcw, daq: twin.daq, optimum: opt,
-        write, maxIters: clMaxIters, settleMs: 12_000, sfx: `${sfx}cl`,
+        write, maxIters: clMaxIters, settleMs: Number(arg('cl-settle-ms', '12000')), sfx: `${sfx}cl`,
       })
       cl.seeds.push({ seed: s, warmupS: warm.wallS, warmed: warm.ok, ...run })
       add('P6', `seed-${s}`, `seed=${s} 闭环优化（J/J*=${run.ratio ?? '—'}）`, run.ok ? 'pass' : 'warn',
