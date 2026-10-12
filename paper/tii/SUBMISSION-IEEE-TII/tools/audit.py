@@ -21,15 +21,14 @@ fails = []
 
 doc = pymupdf.open("main.pdf")
 pages = doc.page_count
-# Round-2 revision: the three-seat panel's required content (falsifiable
-# grading rule, delegation disclosure, two-lifecycle note, Part-11/NAMUR/APC
-# prior art, parasuraman) puts the paper at 11 pages — within TII's submission
-# limit. Returning to 10 requires cutting panel-required content; see
-# RESPONSE-TO-REVIEWERS.md round-2 notes.
-if pages < 10 or pages > 11:
-    fails.append(f"F1 pages={pages} (want 10-11)")
+# 2026-10-12 abstract-rewrite + compression round: the panel-required content
+# survives at 10 pages after the body-trim pass (duplicate scope statements,
+# recap sentences, and intra-section duplications removed); the reference
+# list is 8pt with 0.83 leading. Hard limit back to exactly 10 pages.
+if pages != 10:
+    fails.append(f"F1 pages={pages} (want 10)")
 else:
-    print(f"F1 pass: {pages} pages (<= 11, TII submission limit 12)")
+    print(f"F1 pass: {pages} pages")
 
 r = doc[0].rect
 if abs(r.width - 612) > 1 or abs(r.height - 792) > 1:

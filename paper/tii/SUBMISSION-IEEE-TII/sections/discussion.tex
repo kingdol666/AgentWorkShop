@@ -1,9 +1,7 @@
 \section{Discussion and Limitations}
 \label{sec:limits}
 \subsection{Industrial-Informatics Interpretation}
-One supervisory path carried four different jobs and a deployment-scale
-campaign with command closure, verdict, task state, and attainment kept as
-separate records. Against the nearest systems of Section~\ref{sec:related},
+Against the nearest systems of Section~\ref{sec:related},
 the differentiator is not the LLM---a replaceable strategy slot---but the
 production-scoped authority and evidence around its writes: no nearest
 system reports that combination on one path.
@@ -39,8 +37,7 @@ radius, not a protection guarantee.
 Admission limits,
 acknowledgment grading, and the backstop run with or without human
 approval---enforcement never queues behind human attention. The pacing
-windows bound approval demand per line (a write, a trial, or a batch release
-no oftener than the windows allow, and expiries resolve as refusals), and
+windows bound approval demand per line, and
 batch release itself---one approval covering a six-parameter dispatch
 (Section~\ref{sec:hardening}, leg~5)---is the demonstrated fatigue
 mitigation; approval fatigue and automation bias remain human-factors risks
@@ -60,9 +57,10 @@ consistency need not imply process
 recovery, and multi-node compensation may partially
 succeed; hold heartbeats re-apply the stored setpoint without re-admission
 and can trail a narrowed window; oscillation, storage
-failure, clock error, and concurrency beyond the four-line campaign remain
-unevaluated; redundant supervisor deployments with divergent stores
-(split-brain) are unevaluated; a supervisor outage halts dispatch rather
+failure, clock error, concurrency beyond the four-line campaign, and
+redundant supervisor deployments with divergent stores
+(split-brain) remain
+unevaluated; a supervisor outage halts dispatch rather
 than permitting writes through, and a hardware-in-the-loop leg against a
 real PLC or OPC-UA endpoint is the next evidence tier. Production
 integration additionally requires: bound changes managed under
@@ -80,22 +78,22 @@ segregation of duties and alarm-path failure tests \cite{isa182}.
 
 \section{Conclusion}
 \label{sec:conclusion}
-\system{} contributes a governed supervisory execution architecture rather
+\system{} contributes a governed supervisory execution layer rather
 than a new process optimizer: one stable path from agent-team identities
 through semantic nodes, production context, governed writes, graded
-acknowledgments, verdicts, and compensation, exercised by a
-\resPhases-phase suite, agent-team missions, a closed loop, four concurrent
-missions, and consecutive deployment-scale regression campaigns on a live
-multi-line instance. Physical-plant deployment, operator studies, and
+acknowledgments, verdicts, and compensation, with admission, approval, and
+recovery left as separately inspectable, machine-attributed evidence on
+every intervention. Physical-plant
+deployment, operator studies, and
 external-framework comparison remain open; until then, optimization
 benefit, autonomous control, and safety assurance stay unsupported claims.
 
-\section*{Data Availability and Disclosure}\scriptsize
-Artifacts are archived per run under \path{bench/results/} and
-\path{docs/benchmarks/}; anonymized artifacts are available during review
-and released with the code upon publication. The two live engine-turn
-console transcripts (Section~V-D) were excluded by the repository's
-log-retention rule and survive only as recorded outcomes; the write-evidence
-suite's checks are documented in the audit report and rerunnable from its
-script. AI assistants supported editing
+\vspace{2pt}\noindent\textit{Data availability and disclosure.}
+Artifacts are archived per run in the project's benchmark result tree;
+anonymized artifacts are available during review and released with the
+code upon publication. The two live engine-turn console transcripts
+(Section~\ref{sec:agentteam}) were excluded by the repository's
+log-retention rule and survive only as recorded outcomes; the
+write-evidence suite's checks are documented in the audit report and
+rerunnable from its script. AI assistants supported editing
 under author direction; the authors remain responsible for all claims.

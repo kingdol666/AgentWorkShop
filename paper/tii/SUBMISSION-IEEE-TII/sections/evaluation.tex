@@ -21,11 +21,10 @@ standing preset is a cast-film extrusion line tuned through the
 die-head heater setpoint (objective $J$ weights thickness conformance,
 defects, energy, and throughput under melt-temperature and pressure
 constraints, larger better). Each mission contributes one seed-42
-trajectory: Q1, Q2, and Q4 are single-trace case studies (every claim
-each makes is checkable in the archived artifacts), the deterministic loop adds
-two in-run traces (seeds 43--44 of the same campaign), and repeat
-evidence comes from Q5's consecutive deployment-tier campaigns---a different
-tier, not a re-run of these traces.
+trajectory: Q1, Q2, and Q4 are single-trace case studies, checkable claim
+by claim in the archived artifacts; the deterministic loop adds seeds
+43--44, and repeat evidence comes from Q5's consecutive deployment-tier
+campaigns---a different tier, not a re-run.
 
 \looseness=-1 The \emph{deployment-scale tier} for Q5 is a live v0.7.57 instance
 carrying \resLinesLive{} provisioned lines, \resChannelsLive{} agent
@@ -57,30 +56,26 @@ through protocol interception and the record, recipe, approval, and
 parameter-layer drills (Sections~\ref{sec:protocol} and~\ref{sec:scenarios}).
 
 \looseness=-1 The Q5 procedure is the one-command benchmark pipeline: eight stages
-(S0 pre-check; S1 API surface matrix, a positive-and-negative sweep across
-authentication, users, channels, tasks, permissions, both node families,
-agent tools, HITL, logs, memory, plugins, teams, and notifications; S2
+(S0 pre-check; S1 API-surface matrix, a positive-and-negative sweep across
+the functional surface of Sections~\ref{sec:arch}--\ref{sec:mech}; S2
 multi-modal ingestion with MES dual-mode; S3 governance negative paths; S4
 closed-loop optimization; S5 fine-tuning; S6 diagnostics; S7 report) under a
-harness that captures every check and a timestamped event timeline per run,
-so each stage exercises one functional surface of
-Sections~\ref{sec:arch}--\ref{sec:mech}. The profile has since grown (S1
-adds login lockout, S4 the acknowledgment-grade summary); the October 9
-campaign re-runs it three times.
+harness that captures every check and a timestamped event timeline per run;
+the October 9 campaign re-runs it three times.
 No prior system in Table~\ref{tab:nearest} owns a governed write path to
 plant endpoints, so the primary comparator is internal, and two controls are
 archived. The admission control holds the write path fixed and relaxes its
 mechanisms: the six window-edge probes that full governance rejects
 (HTTP~400) return 200 \emph{executed} under the relaxed arm
-(Section~\ref{sec:protocol}, 18/18$\rightarrow$12/18)---a success-flag
+(Section~\ref{sec:protocol}, Table~\ref{tab:ablation})---a success-flag
 design reports them as accepted writes. The evidence control holds the
 receipts and varies the reporting rule (Section~\ref{sec:ack}); the
 success-flag outcome is definitional---the pre-hardening harness itself
 reported a broker puback as success. The closed-loop harness also
 parameterizes the write injection (admin REST beside the agent's governed
 \texttt{dcw\_control}); a like-for-like pair on the shared live instance
-(runs \texttt{-20261012042856}, \texttt{-043509}, \texttt{-051224},
-\texttt{-060026}) was rejected in full on both routes---24/24 writes per
+(four archived runs of October~12) was rejected in full on both
+routes---24/24 writes per
 arm under production pacing, and 24/24 again with pacing exempted; the
 archived runs record aggregate rejections only, and a closed-loop quality
 comparison awaits a dedicated instance. The harness's own reports verdict
@@ -119,8 +114,9 @@ window) ends with a system-judged backstop rollback \resBackstop{} later, and a
 record-rollback drill restores the prior value by a separately admitted,
 readback-confirmed write. A second preset with different signals and dynamics
 is commissioned by configuration alone; across both presets 33 probes are
-rejected on seven writable lines, the same admission code discriminating on
-unseen signal maps. The parameter
+rejected on seven writable lines---24 on the first preset's four writable
+lines, 9 on the second preset's three---the same admission code
+discriminating on unseen signal maps. The parameter
 layer makes the interval geometry of Eq.~(\ref{eq:admission}) observable
 (Fig.~\ref{fig:hitl}a): a four-layer chain---node $[50,200]$, parameter
 $[143.7,156.3]$, product $[146.22,153.78]$, and recipe $[141,159]$\,rpm---narrowing
@@ -201,9 +197,8 @@ completion marker in the transcript.
 cast-film objective $J$ from $J_{0}\approx\resJzero$ to
 $J/J^{*}=\resControllerMin$--\resControllerMax{}, against
 the best grid point $J^{*}=\resJstar$---an exhaustive grid search over the
-admissible setpoints (zone temperature 195--225\,$^{\circ}$C in
-2.5\,$^{\circ}$C steps, screw 50--200 in steps of five, line speed 20--120
-in steps of 2.5\,m/min) on the same simulator, so $J^{*}$ is a lower
+admissible setpoints (zone temperature, screw speed, and line speed over
+their declared ranges) on the same simulator, so $J^{*}$ is a lower
 bound on the true optimum and the reported $J/J^{*}$ is an upper bound on
 $J/J_{\text{true}}$: the true gap is at least as large as shown. What the
 benchmark establishes is narrower: the governed path
@@ -247,7 +242,8 @@ per scripted policy---varies by more than a factor of seven (2, 15, 5, and 3).
 (run \resRun{}, seed 42): observed controlled quantity after each
 attainment-relevant governed write, against the archived objective window;
 the index counts those writes, so the 6 plotted points of (b) are 6 of its
-15 governed writes; (a) injection molding, (b) wastewater treatment (A2O),
+15 governed writes; (a) injection molding, (b) wastewater treatment
+(anaerobic--anoxic--oxic),
 (c) annealing, (d) BOPET film. DO, dissolved oxygen. Simulator
 observations under scripted policies.}
 \label{fig:missions}
@@ -278,11 +274,9 @@ step per run under converged dead-band excitation; October 9 answers a
 sagging mirror weight (\resNovWeights) with a bounded zigzag
 (\resNovZigzagFrom$\!\rightarrow\!$\resNovZigzagTo\,bar, converged) and
 corrective steps (\resNovCorrFrom$\!\rightarrow\!$\resNovCorrTo\,bar).
-The zigzag is a deliberate excitation, not a correction---the archived
-decision records the loop already converged ($0.014$\,g against a
-\resNovDeadband{} dead-band) and names exercising the dispatch chain as its
-purpose---while the two corrective steps answer residual error
-($0.169/0.276$\,g). Every step verifies
+The zigzag is a deliberate excitation, not a correction, while the two
+corrective steps answer residual error ($0.169/0.276$\,g). Every step
+verifies
 equal values across the three sources at maximum consistency error
 \resConsistencyErr{} ($0.05$\,bar device, $0.51$\,bar bucketed-mirror
 tolerances---all three legs equal exactly at the endpoint's recording
@@ -319,9 +313,7 @@ intercepted into the queue, approval releasing all six parameters
 device-verified; (6)--(7)~API regression and documentation-consistency
 suites close the campaign.
 
-\looseness=-1 Across the five questions the pattern holds: admission intercepts and
-attributes, grading degrades honestly, pacing holds under automation,
-approval mediates without carrying the checks, and compensation and the
-backstop recover on record---Section~\ref{sec:mech}'s mechanisms behave as
-specified, with task state and attainment never merged into one number.
+\looseness=-1 Across the five questions, Section~\ref{sec:mech}'s mechanisms
+behave as specified: interception with attribution, honest grading, pacing
+under automation, mediated approval, and on-record recovery.
 

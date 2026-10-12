@@ -14,11 +14,10 @@ independent; and an \emph{extensibility} plane admits plugins, drivers,
 agent tools, and SDK clients through sanctioned registration services.
 Scenario knowledge sits in blueprints, signal maps, predicates, and driver
 configuration---not in team scheduler, approval service, or persistence
-code; members are interchangeable across 14 engine adapters under preserved
-identity, and 118 declared settings (40 hot-reloadable) plus the typed SDK
-make team topology, bindings, and limits data rather than code. In every
-plane the execution path is unchanged---a scenario supplies data and
-strategy (Fig.~\ref{fig:arch}).
+code; members are interchangeable across 14 engine adapters, and 118
+declared settings plus the typed SDK make team topology,
+bindings, and limits data rather than code---in every plane, a scenario
+supplies data and strategy (Fig.~\ref{fig:arch}).
 
 \begin{figure*}[!t]
 \centering
@@ -34,7 +33,8 @@ attribution but do not make storage and actuation transactional.}
 \subsection{Supervisory Core and Nodes}
 \looseness=-1 The Node.js core hosts channel routing, industrial services, and protocol
 adapters. A channel contains a lead, workers, tasks, messages, and retrievable
-memory, deployed through WebSocket, MCP, A2A, REST, CLI, or TUI entry points;
+memory, deployed through WebSocket, MCP, agent-to-agent (A2A), REST, CLI, or
+TUI entry points;
 channel membership alone confers no write authority.
 
 DAQ nodes convert device readings to engineering quantities across four
@@ -49,16 +49,15 @@ supported, readback; per-node runtimes manage timing, and gateway services suppl
 connection state, recipe context, and write bookkeeping. The acquisition
 surface declares six protocol families, five with drivers today---Modbus TCP,
 Modbus RTU-over-TCP, OPC UA, MQTT, HTTP/REST, and an S7
-stub that fails loudly until its driver lands; the write surface is six
-drivers over the five writable families plus MES REST, with the evaluation's
-mock driver registered explicitly and outside that count; the evaluation
-instantiates five families as lines (Section~\ref{sec:protocol}).
+stub that fails loudly until its driver lands; the write surface adds one
+driver per writable family plus MES REST (the evaluation's mock driver lies
+outside these counts), and the evaluation instantiates five families as
+lines (Section~\ref{sec:protocol}).
 The deployment reaches author-implemented dynamic simulators through the same
 node and driver contracts a plant would use; they are deterministic per seed,
 not validated digital twins. The first reuse boundary is declarative---signals,
 units, scaling, precision, and driver configuration---and the team loop is
-unchanged; fast regulation and independent protection stay in plant
-controllers.
+unchanged.
 
 Driver contracts are deliberately narrow: a driver declares how a semantic
 quantity maps to its transport payload, whether the endpoint is writable, and
@@ -92,8 +91,8 @@ that was active when it was admitted. Plugins register hooks, routes, agent tool
 and panels only through sanctioned services, so an added driver inherits
 admission, readback, and evidence capture. Scenario reuse is bounded by an onboarding contract: the engineer declares a
 blueprint (devices, signals, units, roles, setpoints); a differential
-``ensure'' pass creates missing devices, repairs drift, verifies
-connectivity, and projects it into semantic nodes and a recipe; a channel is
+``ensure'' pass creates missing devices, repairs drift, and projects the
+blueprint into semantic nodes and a recipe; a channel is
 built from the team template, and a mission supplies objective, guards,
 response windows, and policy. A
 BOPET worker proposes casting-speed, fast-roll, or rail-width changes through

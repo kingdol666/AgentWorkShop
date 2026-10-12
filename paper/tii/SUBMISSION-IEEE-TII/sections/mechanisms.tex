@@ -28,18 +28,17 @@ for inspection rather than absorbed into a success flag.
 Fig.~\ref{fig:runtime} shows the implemented agent-team
 runtime that carries these steps; the governance and write stages drawn in
 the figure are deterministic platform logic---no model output can admit,
-approve, or confirm a write (Gate~1: admission interlock; Gate~2: approval wait). A governed intervention is
+approve, or confirm a write (Gates~1--2 of Fig.~\ref{fig:runtime}). A governed intervention is
 one transaction in the audit-trail sense: every step
 leaves its own evidence record, while execution and recovery are deliberately
 not atomic with device state (Section~\ref{sec:limits}).
-Six invariants organize the path: authority resolves from the member--node
-binding, never from channel membership or prompt content; the proposal must
-lie in the Eq.~\eqref{eq:admission} interval; a manual binding inserts a
-timed, fail-closed approval wait; the write leaves a graded
-acknowledgment, not a success flag; three-way
-setpoint consistency can be checked before any verdict; and compensation is a
-separately admitted write referencing the record it reverses. Every
-agent-originated path that \system{} exposes to the plant passes through the same governed write.
+Six invariants organize the path---binding-resolved authority (never channel
+membership or prompt content), Eq.~\eqref{eq:admission} admission,
+fail-closed approval waits on manual bindings, graded rather than
+success-flag acknowledgment, checkable three-way consistency, and
+separately admitted compensation---each specified in the subsections that
+follow, and every agent-originated path to the plant passes through the
+same governed write.
 
 \begin{figure}[!t]
 \centering
@@ -81,21 +80,19 @@ misconfiguration surfaces at the first write. The interval form is
 deliberate: every bound is a declared, versioned object that an audit can
 replay against the active product and recipe, and rejection is decidable and layer-attributable, where a learned
 feasibility model offers neither
-(Fig.~\ref{fig:hitl}a). The claim is decidability and replayability, not learned-model safety.
-It bounds one parameter at a time; joint,
-cross-variable windows live in scenario guards. It is not a
-physical safety certificate, and bounds magnitude, not
+(Fig.~\ref{fig:hitl}a)---a decidability claim, not a safety certificate.
+It bounds one parameter at a time---joint,
+cross-variable windows live in scenario guards---and bounds magnitude, not
 intent: availability, binding state, and approval policy are checked
-separately, and in-window but adverse sequences surface at judgment and
+separately, and in-window but adverse sequences surface at verdict and
 compensation (Section~\ref{sec:scenarios} reports two).
 
 \subsection{Semantic Write, Pacing, and Source-Specific Routes}
 \label{sec:nodeexec}
 A semantic card exposes quantity, unit, precision, range, value, freshness,
 and recipe context; the controller resolves binding and limits, the driver
-serializes the command, and the acknowledgment grade---not driver success
-alone---closes the command path (Section~\ref{sec:ack}), never the
-process-response path. Two write-spacing windows pace governed loops, never
+serializes the command, and the acknowledgment grade closes the
+command path, never the process-response path (Section~\ref{sec:ack}). Two write-spacing windows pace governed loops, never
 the plant: online writes---agent- or human-origin---sit at least 60\,s apart
 with a hold window after success (HTTP~429 inside it); a per-recipe dispatch
 interval anchored at the \emph{approval} instant is restart-persistent, so
@@ -147,7 +144,7 @@ three levels. The grade closes the command path only: readback-verified says the
 holds the value, not that the process responded as intended---that
 distinction belongs to observation and verdict.
 
-\subsection{Observation, Judgment, and Compensation}
+\subsection{Observation, Verdict, and Compensation}
 \label{sec:agentloop}
 \looseness=-1 An agent- or rollback-source write opens an optimization record;
 the verdict tool
@@ -166,8 +163,7 @@ drawn from the acquisition runtime's separate polling path and store, each leg
 against a stated tolerance; the sampled legs meet at the plant endpoint, so a
 fault fabricating the endpoint is a common-mode boundary.
 Disagreement fails the harness check and is reported with the run. Verdicts are attributable---actor and timestamp travel
-with them; corrections amend the stored reason visibly, and compensation
-opens a new record referencing the one it reverses.
+with them, and corrections amend the stored reason visibly.
 
 Compensation is a new, separately admitted write that may fail or partially
 complete; it is graded by the Section~\ref{sec:ack} levels, and a rollback
@@ -238,7 +234,5 @@ not use physical-write approval---workflow mediation, not segregation of
 duties; a recipe switch between approval and execution re-admits the value
 against the new window (Section~\ref{sec:limits}).
 The strategy engine is replaceable rather than trusted as a control
-primitive: the stable plane keeps bindings, semantic I/O, evidence, approval,
-compensation, and backstop handling, while scenario code declares and
-configures---never executing plant I/O---and the platform never infers a
-process objective.
+primitive: scenario code declares and configures but never executes plant
+I/O, and the platform never infers a process objective.

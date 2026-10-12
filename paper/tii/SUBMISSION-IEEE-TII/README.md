@@ -77,3 +77,38 @@ the guard that described it was wrong.
 
 Length is unchanged at exactly 10 pages (audit 6/6, `check-refs` 23/23).
 
+
+## Abstract rewrite and consistency-compression round (2026-10-12, afternoon)
+
+The abstract was rewritten to a results-free design narrative per author
+directive: problem (safeguards rebuilt per deployment; task state vs. process
+objective), governed-path design (admission, approval, actuation, graded
+acknowledgment, verdict, compensation as separately inspectable evidence),
+capability/authority model (member-node capabilities, default-manual line
+master switch, prompt content carries no authority), falsifiability as a
+design property (no numbers), and the four scenario plants plus the cast-film
+benchmark line. All experimental figures of merit ("600 logged checks",
+"18/18 -> 12/18") moved out of the abstract; the one-sentence simulation-tier
+/no-optimization-benefit scope hedge is retained (three-seat panel consensus:
+its removal would create an abstract/body overclaim mismatch). Body alignment
+and compression pass (~55 printed column lines): evidence-state enumeration
+in Sec. I compressed to a pointer (also fixes the three-way-consistency
+attribution -- it is harness-checked, now qualified in Table I); protocol
+family counts harmonized to "five instantiated, four exercised for governed
+writes"; line master switch anchored in contribution 1; duplicate scope
+sentence, related-work recap sentences ("In sum", "Neither the five systems"),
+S1 stage inventory, run-ID lists, grid-step details, and intra-section
+duplications removed; conclusion rewritten to summary + evidence framing with
+the unsupported-claims sentence kept as the final word; Data Availability
+folded into the Conclusion as a run-in paragraph (also generalizes
+repo-relative artifact paths); "Section V-D" hard-coded ref replaced with
+\ref; HITL/R2R/A2A/A2O expanded at first use; pdfkeywords aligned with the
+printed index terms; subsection retitled "Observation, Verdict, and
+Compensation". Reference list moved from scriptsize/0.74 (flagged as a
+page-limit workaround) to 8pt/footnotesize at 0.83 leading -- type size per
+spec, leading ~17% tight. Audit F1 gate tightened back to exactly 10 pages.
+Verification: tectonic clean (zero overfull), audit 8/8 (10 pages),
+check-refs 28/28, visual judge 9/10 pages pass. Remaining known figure defect
+(user-owned asset, deliberately untouched): Fig. 2 `aws_fig3-flat.png`
+"Readback / SET vs ACT" label overflows its white box in the source PNG --
+needs a re-export by the figure owner.

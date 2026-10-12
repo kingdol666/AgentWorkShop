@@ -32,7 +32,7 @@
   pdftitle={Grading Machine-Originated Plant Writes: Separately Inspectable Evidence for Industrial Agent Teams},
   pdfauthor={Anonymous Authors},
   pdfsubject={IEEE Transactions on Industrial Informatics},
-  pdfkeywords={agent teams, human-in-the-loop, industrial informatics, LLM agents, recipe optimization, supervisory control, write governance}}
+  pdfkeywords={agent teams, human-in-the-loop, industrial informatics, LLM agents, supervisory control, write governance}}
 
 % Float placement only; IEEEtran margins and body type remain unchanged.
 \setcounter{topnumber}{4}
@@ -67,30 +67,32 @@
 \maketitle
 
 \begin{abstract}
-Large language model (LLM) agents increasingly generate industrial control
-changes, yet the safeguards surrounding each proposal---write authority,
-active limits, human approval, device acceptance, process
-improvement---are rebuilt per deployment inside application code. This
-paper presents AgentWorkShop, a governed supervisory execution layer that
-turns these concerns into a single path for agent teams: every intervention
-is one governed intervention whose admission, approval, actuation, graded
-write acknowledgment, verdict, and compensation remain separately
-inspectable evidence states. Team identities
-reach semantic data-acquisition (DAQ) and write-control (DCW) nodes through
-explicit capabilities under a fail-safe line master switch; drivers,
-versioned production objects, plugin points, and a typed software
-development kit (SDK) form the integration surface, with process models,
-objectives, and policies external. The evaluation exercises this path
-through protocol-closure and mechanism-ablation drills, agent-team
-missions under scripted policies, a deterministic controller loop, and four
-concurrent process missions, then stresses it with a deployment-scale
-regression campaign on one live multi-line instance. Across seven benchmark
-executions on the committed harness, all 600 logged checks pass. The
-evidence grading is falsifiable and separated from admission: under
-success-flag semantics an archived publish-only failure receipt reads
-success, and removing the admission window interlock drops probe
-interception from 18/18 to 12/18 while the hard range holds in every arm.
-The evaluation is simulation-tier; no optimization-benefit claim is made.
+Large language model (LLM) agents increasingly propose control changes
+directly on industrial plants, yet the safeguards surrounding each
+proposal---write authority, active limits, human approval, device
+acceptance, process improvement---are rebuilt per deployment inside
+application code, so a task reported complete can coexist with a missed
+process objective. This paper presents AgentWorkShop, a governed
+supervisory execution layer that gives industrial agent teams a single
+path for every intervention: admission against declared, versioned
+limits, optional human approval, actuation over semantic write-control
+nodes, graded write acknowledgment with post-write verification, verdict
+recording, and compensation, each left as a separately inspectable
+evidence state attributed to a machine actor. Team identities reach
+data-acquisition (DAQ) and write-control (DCW) nodes only through
+explicit member--node capabilities under a line master switch whose
+fail-safe default is manual, so prompt content carries no authority;
+protocol drivers, versioned production objects, plugin points, and a
+typed software development kit (SDK) keep process models, objectives,
+and policies external to the governed path. The acknowledgment grading
+is stated so that archived failure receipts and interlock ablations can
+falsify it. Four process scenarios---injection molding, wastewater
+treatment, annealing, and biaxially oriented polyethylene terephthalate
+(BOPET) film---and a cast-film benchmark line exercise the layer across
+protocol-interception drills, agent-team missions, and a
+deployment-scale regression campaign on one live multi-line instance;
+the evaluation is simulation-tier, and no optimization-benefit or
+safety-assurance claim is made.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -109,10 +111,11 @@ supervisory control, write governance.
 \input{sections/discussion}
 
 \bibliographystyle{IEEEtran}
-% IEEE 8pt-equivalent reference size (scriptsize here because IEEEtran's
-% footnotesize baseline is 8pt for 10pt body) and tight IEEE entry spacing.
+% Reference list at IEEEtran's own 8pt (footnotesize) type size with mildly
+% tightened (0.85) leading; the default leading overflowed the 10-page
+% budget by roughly a third of a column even after the body-trim pass.
 \begingroup
-\linespread{0.74}\scriptsize
+\linespread{0.83}\footnotesize
 \def\IEEEbibitemsep{0pt plus .3pt}
 \bibliography{resources/refs}
 \endgroup

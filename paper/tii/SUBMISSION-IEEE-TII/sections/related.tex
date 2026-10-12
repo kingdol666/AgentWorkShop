@@ -18,11 +18,10 @@ complementary; Lim and Kovalenko \cite{lim2025llmenabled} and Zhao et al.\
 \cite{zhao2026shopfloor} allocate work among agents, whereas this layer
 governs how an allocated proposal reaches the plant and what evidence it
 leaves. A recent review frames agentic AI's industrial value as
-safety-aware, explainable, HITL decision support rather than autonomous
-control authority \cite{jiang2026agentic}; the contribution here is the
-mechanism set that makes that positioning concrete, and
-Table~\ref{tab:nearest} characterizes each system as reported in its
-publication.
+safety-aware, explainable human-in-the-loop (HITL) decision support rather than autonomous
+control authority \cite{jiang2026agentic}---the mechanism set contributed
+here makes that positioning concrete. Table~\ref{tab:nearest}
+characterizes each system as reported in its publication.
 
 \begin{table*}[!t]
 \centering
@@ -43,7 +42,7 @@ Zhao et al., AEI~2026 \cite{zhao2026shopfloor} & shop-floor task dispatch & work
 Waseem et al., Mach.\ Learn.\ Eng.\ 2026 \cite{waseem2026pretrained} & real-time controller in the loop & direct loop actuation (robot line) & prompt-level constraints & line KPIs under LLM control \\
 \midrule
 \rowcolor{gray!12}
-\textbf{\system{}} & \textbf{replaceable strategy slot} & \textbf{governed write path: admission, HITL, dispatch, readback} & \textbf{member--node bindings; line master switch; product/recipe-scoped limits} & \textbf{graded acknowledgment; three-way consistency; attributed journal; compensation; backstop} \\
+\textbf{\system{}} & \textbf{replaceable strategy slot} & \textbf{governed write path: admission, HITL, dispatch, readback} & \textbf{member--node bindings; line master switch; product/recipe-scoped limits} & \textbf{graded acknowledgment; harness-checked three-way consistency; attributed journal; compensation; backstop} \\
 \bottomrule
 \end{tabular}
 \end{table*}
@@ -56,7 +55,7 @@ with no record separating admission from execution. ISA-88 and ISA-95 supply
 complementary models for recipes and operations
 \cite{isa88,isa95}; \system{}'s versioned recipes and
 run dispatch instantiate a reduced subset of that stack, and the governed
-life cycle transposes run-to-run control disciplines \cite{moyne2000r2r}
+life cycle transposes run-to-run (R2R) control disciplines \cite{moyne2000r2r}
 onto a supervisory write path---with an open-ended proposal space,
 approval-mediated bindings, and compensation records where R2R has a fitted
 controller.
@@ -83,22 +82,17 @@ role-assignment time; the governed path spans four exercised write protocol
 families; and the evidence states---graded acknowledgment, verdict,
 compensation---survive strategy replacement, where the three-way check is a
 supervised special case of classical data reconciliation and gross-error
-detection \cite{crowe1996reconciliation}. Neither the five systems above,
-nor the review, nor a classical chain provides that combination in this
-form.
-\system{} implements source-dependent checks and a rule-based backstop and
-makes no formal protection guarantee, the backstop
-(Section~\ref{sec:agentloop}) being a rule-based recovery action in the spirit
-of ISA-18.2 \cite{isa182}; human oversight likewise
+detection \cite{crowe1996reconciliation}.
+\system{} implements source-dependent checks and a rule-based backstop
+(Section~\ref{sec:agentloop}) and
+makes no formal protection guarantee; human oversight likewise
 requires more than an approval dialog
 \cite{bainbridge1983ironies}. Agent benchmarks
 and prompt-injection studies
 \cite{greshake2023injection,liu2024pinjection} inform adjacent evaluations;
 ours separates source checks, protocol execution, mechanism ablation,
-controller trials, and multi-scenario missions. In sum: coordination frameworks supply no production context, standards no
-execution path, guard agents gate software tools, and nearest systems stop at
-the control action. Relative to regulated batch and DCS practice---where the
-operator is presupposed---the increment is narrow but specific: admitting a
-machine-generated proposer into that governed, plant-facing write path, with
-each write's evidence graded and attributed to a machine actor rather than
-reviewed post hoc.
+controller trials, and multi-scenario missions. Relative to regulated batch
+and DCS practice---where the operator is presupposed---the increment is
+admitting a machine-generated proposer into that governed, plant-facing
+write path, with each write's evidence graded and attributed to a machine
+actor.

@@ -3,10 +3,9 @@
 industrial operations to acting on them: recent systems generate control
 updates for industrial cyber-physical systems from multi-modal input
 \cite{huang2026made}, pair each factory module with an LLM agent that
-dispatches skills over a tool protocol \cite{koehle2026llmdriven}, explore
-resource capabilities in multi-agent manufacturing \cite{lim2025llmenabled},
-coordinate shop-floor tasks \cite{zhao2026shopfloor}, and have been studied
-as real-time controllers of a robot production line
+dispatches skills over a tool protocol \cite{koehle2026llmdriven}, allocate
+work among cooperating agents \cite{lim2025llmenabled,zhao2026shopfloor},
+and have been studied as real-time controllers of a robot production line
 \cite{waseem2026pretrained}. What these demonstrations leave implicit is
 everything that surrounds the proposal: who may change which parameter, which
 limits are active for the current product and recipe, whether a human
@@ -20,48 +19,43 @@ ad-hoc permission checks, logs untied to decisions---and a task state such as
 and BOPET (biaxially oriented polyethylene terephthalate)
 film---but all need an auditable bridge from a
 team-level task to heterogeneous acquisition and control nodes. Industrial
-LLM work to date, by contrast, is mostly generation, diagnosis, and
+LLM work to date is mostly generation, diagnosis, and
 single-domain control (e.g., \cite{liu2026agents4plc}).
 
 \looseness=-1 \system{} addresses this execution gap through member--node bindings (a
 member being an engine-backed channel identity) and shared line, product,
 recipe, and run context. The response is
-organizational rather than algorithmic: each intervention is one governed
-transaction whose admission, approval, actuation, graded acknowledgment,
-three-way setpoint consistency, verdict, and compensation are left as
-separate evidence records. Nodes expose engineering quantities rather than register
+organizational rather than algorithmic: each intervention leaves a
+separate evidence record per governed stage, from admission through
+compensation (Section~\ref{sec:mech}). Nodes expose engineering quantities rather than register
 addresses; one governed member--node binding path serves every client,
 where per-application integration would duplicate drivers, permissions,
-and logging. Fast regulation, certified protection, and the
-choice of optimization algorithm remain outside the framework.
+and logging.
 
 The paper makes four contributions:
 \begin{enumerate}
 \item a \textbf{capability-based industrial execution architecture} connecting
 agent-team identity, semantic data-acquisition (DAQ) and write-control (DCW)
 nodes, heterogeneous protocol drivers, and line--product--recipe--run context,
-with task membership distinct from physical-write authority;
+with task membership distinct from physical-write authority and a line master
+switch whose fail-safe default is manual;
 \item a \textbf{reusable integration boundary} of self-describing node and
-driver contracts across six protocol families (five exercised in the
-evaluation), versioned production objects, plugin extension points, and a
-typed software development kit (SDK), into which the reference adapter
-projects scenario blueprints while process models and policies stay
-external (a second preset is commissioned by configuration alone,
-Section~\ref{sec:protocol});
+driver contracts across six protocol families (five instantiated as lines,
+four exercised for governed writes), versioned production objects, plugin
+extension points, and a typed software development kit (SDK), into which the
+reference adapter projects scenario blueprints while process models and
+policies stay external;
 \item an \textbf{evidence-preserving governed intervention workflow}
 separating admission, optional approval, actuation, three-level write
-acknowledgment with post-write verification, observation, the caller's
-verdict, compensation, and backstop actions---with the grading rule stated
-falsifiably and exercised against archived failure receipts; and
+acknowledgment with post-write verification, verdict, compensation, and
+backstop actions---with the grading rule stated falsifiably; and
 \item a \textbf{layered evaluation} exercising one governed path through
 protocol closure with mechanism ablation, agent-team missions, a
 deterministic controller loop, concurrent process missions, and a
 deployment-scale regression campaign on a live multi-line instance
-(Section~\ref{sec:eval}), task state and attainment reported separately
-in every mission report.
+(Section~\ref{sec:eval}).
 \end{enumerate}
 Scope (revisited in Section~\ref{sec:limits}): real protocol stacks execute
-against author-implemented simulators, and scripted policies drive the
-governed tools (two live engine turns reported separately); fast regulation,
+against author-implemented simulators; fast regulation,
 certified protection, physical-plant transfer, and optimizer ranking are
 outside the claims.
