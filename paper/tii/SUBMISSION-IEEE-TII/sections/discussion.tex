@@ -6,8 +6,9 @@ the differentiator is not the LLM---a replaceable strategy slot---but the
 production-scoped authority and evidence around its writes: no nearest
 system reports that combination on one path.
 Deployment-wise, the layer installs as one service beside the plant's
-protocol endpoints: a line is onboarded by declaring a blueprint, and
-approval clients---web panel or API---receive the HITL cards; PLC protection
+protocol endpoints; onboarding is declarative (blueprint, differential
+ensure pass, team-template channel, mission guards), approval
+clients---web panel or API---receive the HITL cards, and PLC protection
 and DCS interlocks stay untouched.
 
 \subsection{Validity and Reproducibility}
@@ -15,18 +16,18 @@ and DCS interlocks stay untouched.
 fixed, so counts are re-derivable rather than trusted; Q5 adds per-run
 ledgers and timelines. Five
 qualifications bound what they support: simulation-tier evidence
-(deterministic per seed, not validated digital twins; no physical-device
+(deterministic per seed; no physical-device
 campaign, operator study, or external comparison reported); internal-oracle
 optima and predicates; single-host latencies and near-contemporary runs;
-implemented-but-unexercised capabilities and a single live provider/model;
+implemented-but-unexercised capabilities and a
+single live provider/model;
 and harness-adjudicated approval (human decision latency and quality out of
 scope).
 \subsection{Safety Positioning and Human Oversight}
 The threat model is a misbehaving or manipulated agent (wrong or hallucinated
 proposals) inside an otherwise trusted platform and plant; the approval dialog,
-admission re-checks, and journaling are the containment surfaces, and no
-adversarial injection campaign or operator study of the approval dialog is
-reported; stolen credentials
+admission re-checks, and journaling are the containment surfaces; no adversarial injection
+campaign or approval-dialog operator study is reported; stolen credentials
 and compromised endpoints are the domain of IEC~62443
 \cite{iec62443-3-3}. Fast regulation, hardware interlocks,
 and safety functions remain in the PLC; prompts and retrieved documents are
@@ -38,10 +39,9 @@ Admission limits,
 acknowledgment grading, and the backstop run with or without human
 approval---enforcement never queues behind human attention. The pacing
 windows bound approval demand per line, and
-batch release itself---one approval covering a six-parameter dispatch
-(Section~\ref{sec:hardening}, leg~5)---is the demonstrated fatigue
-mitigation; approval fatigue and automation bias remain human-factors risks
-nonetheless, and reading graded evidence assumes trained approvers
+batch release (Section~\ref{sec:hardening}, leg~5) is the demonstrated
+fatigue mitigation; approval fatigue and automation bias remain
+human-factors risks, and reading graded evidence assumes trained approvers
 \cite{bainbridge1983ironies,parasuraman2000model}. A lead agent's
 delegation-mode choice (Section~\ref{sec:hitl}) is the one agent-reachable
 path around per-request approval; capping granted mode at the granter's own
@@ -52,15 +52,13 @@ queued guard.
 \looseness=-1 Execution and recovery are non-atomic: bookkeeping may fail after actuation, the
 pacing windows time writes rather than certify
 stability, declared per-write step limits are advisory metadata surfaced to
-agents rather than enforced bounds, readback agreement and three-way
-consistency need not imply process
-recovery, and multi-node compensation may partially
-succeed; hold heartbeats re-apply the stored setpoint without re-admission
-and can trail a narrowed window; oscillation, storage
-failure, clock error, concurrency beyond the four-line campaign, and
-redundant supervisor deployments with divergent stores
-(split-brain) remain
-unevaluated; a supervisor outage halts dispatch rather
+agents rather than enforced bounds, and multi-node compensation may partially
+succeed. Readback agreement and three-way
+consistency need not imply process recovery, and hold heartbeats re-apply
+the stored setpoint without re-admission, trailing a narrowed window.
+Oscillation, storage failure, clock error, concurrency beyond the four-line
+campaign, and redundant supervisor deployments with divergent stores
+(split-brain) remain unevaluated; a supervisor outage halts dispatch rather
 than permitting writes through, and a hardware-in-the-loop leg against a
 real PLC or OPC-UA endpoint is the next evidence tier. Production
 integration additionally requires: bound changes managed under
@@ -78,12 +76,12 @@ segregation of duties and alarm-path failure tests \cite{isa182}.
 
 \section{Conclusion}
 \label{sec:conclusion}
-\system{} contributes a governed supervisory execution layer rather
+\looseness=-1 \system{} contributes a governed supervisory execution layer rather
 than a new process optimizer: one stable path from agent-team identities
 through semantic nodes, production context, governed writes, graded
 acknowledgments, verdicts, and compensation, with admission, approval, and
-recovery left as separately inspectable, machine-attributed evidence on
-every intervention. Physical-plant
+recovery left as separately inspectable, actor-attributed evidence on every
+agent-originated write. Physical-plant
 deployment, operator studies, and
 external-framework comparison remain open; until then, optimization
 benefit, autonomous control, and safety assurance stay unsupported claims.

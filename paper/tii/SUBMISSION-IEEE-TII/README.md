@@ -112,3 +112,60 @@ check-refs 28/28, visual judge 9/10 pages pass. Remaining known figure defect
 (user-owned asset, deliberately untouched): Fig. 2 `aws_fig3-flat.png`
 "Readback / SET vs ACT" label overflows its white box in the source PNG --
 needs a re-export by the figure owner.
+
+## Five-seat acceptance review and fix round (2026-10-12, evening)
+
+Full panel re-run on the abstract-rewrite draft (EIC/journal-fit, R1
+methodology, R2 domain/narrative, R3 practitioner, devil's advocate, plus a
+10/10 visual pass). All four seats returned MINOR_REVISION; the DA raised two
+CRITICALs, both adjudicated. Fixes landed, all verified in the recompiled PDF:
+
+- DA-CRITICAL-1 (validated): the abstract's universal claims contradicted the
+  body's own carve-outs (hold heartbeats are the one non-governed
+  re-dispatch; batch dispatch opens no records; humans act on the path).
+  Abstract now scopes to "every agent-originated write" with stages
+  "attributed to its originating actor"; conclusion aligned
+  ("actor-attributed evidence on every agent-originated write").
+- DA-CRITICAL-2 (mixed): the zero-outcome abstract gained a number-free
+  qualitative outcome clause lifted from Section V's closing ("intercepting
+  and attributing, grading honestly, pacing automation, mediating approval,
+  and recovering on record").
+- Consensus MAJOR: "benchmark line" named two plants; now the Q1-Q4 standing
+  preset is the "cast-film reference line" (abstract, Fig. 3 caption, V-A)
+  and the Q5 cell keeps "benchmark line", with an explicit bridge ("a
+  different plant from that cast-film reference").
+- R2 MAJOR: master-switch coverage honestly scoped in the abstract
+  ("intercepts approval-free recipe dispatch"); the "so prompt content
+  carries no authority" non sequitur replaced by the plain capability claim.
+- DA MAJOR: "can falsify it" inverted logic replaced by the grading contract
+  ("readback-verified / transport-acknowledged / unverified by what an
+  independent read observes, never by the receipt alone"); the falsifiable-
+  rule demonstration stays in IV-C and Q5 leg 4.
+- DA MAJOR: BOPET attainment disagreement resolved in text ("the verdict
+  matches the archived predicate---the prose narration erred").
+- R1 minors: Q2 single-node mission now carries its target window
+  (\resMissionTarget); "two runs" anchored per campaign (October 7-8 vs
+  October 9); "only Q3 and Q5 are repeated" reconciled with Table II's
+  deterministic ablation repetitions; testbed marks four of five families
+  exercised for governed writes.
+- R2/EIC minors: "AgentTeam" proper-noun remnants removed; "fills this slot"
+  dangling referent repaired at the II-III seam; "Two write-spacing windows"
+  corrected to three pacing windows; verdict/judgment unified; NAMUR NOA
+  recharacterized as decoupled second-channel monitoring/advisory; WWTP
+  named anaerobic-anoxic-oxic at first body use; Q3's absolute-vs-normalized
+  clause repaired with an explicit J>0 bound-direction note; VI-D split into
+  sentences; reference-adapter dangling term replaced by the onboarding
+  contract; V-A gains a compact deployment-path sentence (blueprint, ensure
+  pass, team-template channel, mission guards).
+- Reverted as page-budget payment (generic qualifiers already cover them):
+  VI-B unexercised-path enumeration, backstop 130.2 s reconstruction clause,
+  outage alarm-surfacing pointer.
+- Reference list now 8pt at 0.77 leading (type size per spec; leading ~19%
+  tight, documented as the identified page-budget mechanism with named
+  fallback trims for IEEE's composition pass).
+
+Verification: tectonic clean (0 overfull), exactly 10 pages, audit 8/8,
+check-refs 28/28, abstract digit-free, all honesty anchors present
+(abstract scope sentence, Section V framing, conclusion unsupported-claims),
+visual judge 10/10 pass (the known user-owned Fig. 2 label overflow remains
+the only open cosmetic defect).

@@ -56,19 +56,20 @@ complementary models for recipes and operations
 \cite{isa88,isa95}; \system{}'s versioned recipes and
 run dispatch instantiate a reduced subset of that stack, and the governed
 life cycle transposes run-to-run (R2R) control disciplines \cite{moyne2000r2r}
-onto a supervisory write path---with an open-ended proposal space,
+onto a supervisory write path---open-ended proposal space,
 approval-mediated bindings, and compensation records where R2R has a fitted
 controller.
 A separate line enforces run-time guarantees on LLM agents---judge and guard
 agents, rule-based
 enforcement \cite{xiang2024guardagent};
 they gate software tool calls, not plant writes, and their policies could
-compile onto the enforcement substrate contributed here.
+compile onto the substrate contributed here.
 
 \looseness=-1 Permissions, range checks, approvals, and audit trails long existed in
 distributed-control-system (DCS) and SCADA practice---versioned batch
 recipes and electronic batch journals under 21~CFR Part~11 and GAMP~5
-\cite{part11,gamp5}, second-channel writeback in NAMUR open architecture
+\cite{part11,gamp5}, decoupled second-channel monitoring and advisory
+operations in NAMUR open architecture
 \cite{namur2017noa}, and setpoint adaptation in run-to-run control---and
 IEC~62443 codifies their security counterpart \cite{iec62443-3-3}, while
 formal shielding, control-barrier functions, and simplex run-time assurance
@@ -77,7 +78,7 @@ offer stronger specified properties
 practice the difference is the proposer: a machine-generated agent identity
 rather than a presupposed human operator, so admission binds to member
 authority and prompt content stays inert, re-evaluated per request against
-live product and recipe state through versioned objects rather than at
+live product and recipe state rather than at
 role-assignment time; the governed path spans four exercised write protocol
 families; and the evidence states---graded acknowledgment, verdict,
 compensation---survive strategy replacement, where the three-way check is a
@@ -90,8 +91,7 @@ requires more than an approval dialog
 \cite{bainbridge1983ironies}. Agent benchmarks
 and prompt-injection studies
 \cite{greshake2023injection,liu2024pinjection} inform adjacent evaluations;
-ours separates source checks, protocol execution, mechanism ablation,
-controller trials, and multi-scenario missions. Relative to regulated batch
+ours separates them. Relative to regulated batch
 and DCS practice---where the operator is presupposed---the increment is
 admitting a machine-generated proposer into that governed, plant-facing
 write path, with each write's evidence graded and attributed to a machine

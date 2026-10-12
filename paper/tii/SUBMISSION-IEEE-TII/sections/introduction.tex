@@ -14,8 +14,7 @@ improved.
 
 Because these concerns are normally embedded in application code, they are
 rebuilt per process, protocol, and agent framework---duplicated drivers,
-ad-hoc permission checks, logs untied to decisions---and a task state such as
-\texttt{COMPLETED} can coexist with a missed process objective. The four scenario plants (simulated in this paper) differ---injection molding, wastewater treatment (WWTP), annealing,
+ad-hoc permission checks, logs untied to decisions. The four scenario plants (simulated in this paper) differ---injection molding, wastewater treatment (WWTP), annealing,
 and BOPET (biaxially oriented polyethylene terephthalate)
 film---but all need an auditable bridge from a
 team-level task to heterogeneous acquisition and control nodes. Industrial
@@ -37,22 +36,22 @@ The paper makes four contributions:
 \item a \textbf{capability-based industrial execution architecture} connecting
 agent-team identity, semantic data-acquisition (DAQ) and write-control (DCW)
 nodes, heterogeneous protocol drivers, and line--product--recipe--run context,
-with task membership distinct from physical-write authority and a line master
-switch whose fail-safe default is manual;
+with task membership distinct from physical-write authority and a
+default-manual line master switch;
 \item a \textbf{reusable integration boundary} of self-describing node and
 driver contracts across six protocol families (five instantiated as lines,
 four exercised for governed writes), versioned production objects, plugin
-extension points, and a typed software development kit (SDK), into which the
-reference adapter projects scenario blueprints while process models and
+extension points, and a typed software development kit (SDK), into which an
+onboarding contract projects scenario blueprints while process models and
 policies stay external;
 \item an \textbf{evidence-preserving governed intervention workflow}
 separating admission, optional approval, actuation, three-level write
 acknowledgment with post-write verification, verdict, compensation, and
-backstop actions---with the grading rule stated falsifiably; and
+backstop---the grading rule stated falsifiably; and
 \item a \textbf{layered evaluation} exercising one governed path through
 protocol closure with mechanism ablation, agent-team missions, a
 deterministic controller loop, concurrent process missions, and a
-deployment-scale regression campaign on a live multi-line instance
+deployment-scale regression campaign on a multi-line instance
 (Section~\ref{sec:eval}).
 \end{enumerate}
 Scope (revisited in Section~\ref{sec:limits}): real protocol stacks execute

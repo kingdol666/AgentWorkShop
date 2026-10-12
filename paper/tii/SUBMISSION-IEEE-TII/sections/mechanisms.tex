@@ -45,8 +45,8 @@ same governed write.
 \includegraphics[width=\columnwidth]{resources/fig-admission.pdf}
 \vspace{1pt}
 \includegraphics[width=0.78\columnwidth]{resources/hitl-card-crop.png}
-\caption{The admission boundary and its human-approval gate, on the running
-benchmark line. (a)~The Eq.~\eqref{eq:admission} interval geometry: four declared,
+\caption{The admission boundary and its human-approval gate, on the
+cast-film reference line. (a)~The Eq.~\eqref{eq:admission} interval geometry: four declared,
 versioned bounds narrow to the admitted interval; a proposal
 outside it is rejected by its excluding layer (the Q1 four-layer drill).
 (b)~The structured approval card on a manual binding (live system, gloss
@@ -75,8 +75,8 @@ non-empty at node creation) and the remaining terms the baseline,
 active-product, and active-recipe limits; a missing optional limit
 contributes no restriction, so the interval is always defined, and $t$ is the
 admission instant, re-resolved at execution. Should a configuration empty the
-intersection, every write is rejected with the excluding layer named, so the
-misconfiguration surfaces at the first write. The interval form is
+intersection, every write is rejected with the excluding layer named,
+surfacing the misconfiguration at the first write. The interval form is
 deliberate: every bound is a declared, versioned object that an audit can
 replay against the active product and recipe, and rejection is decidable and layer-attributable, where a learned
 feasibility model offers neither
@@ -92,7 +92,7 @@ compensation (Section~\ref{sec:scenarios} reports two).
 A semantic card exposes quantity, unit, precision, range, value, freshness,
 and recipe context; the controller resolves binding and limits, the driver
 serializes the command, and the acknowledgment grade closes the
-command path, never the process-response path (Section~\ref{sec:ack}). Two write-spacing windows pace governed loops, never
+command path, never the process-response path (Section~\ref{sec:ack}). Three pacing windows pace governed loops, never
 the plant: online writes---agent- or human-origin---sit at least 60\,s apart
 with a hold window after success (HTTP~429 inside it); a per-recipe dispatch
 interval anchored at the \emph{approval} instant is restart-persistent, so
@@ -115,7 +115,7 @@ are not atomic with device state.
 
 \subsection{Write Acknowledgment as Three-Level Evidence}
 \label{sec:ack}
-A driver-level success flag conflates two facts: the transport
+\looseness=-1 A driver-level success flag conflates two facts: the transport
 accepted the command, and the device now holds the value. \system{} grades
 every governed write into one of three acknowledgment levels:
 \emph{readback-verified} when an independent read---one issued outside the
@@ -137,7 +137,7 @@ A transport-acknowledged write may still not have reached the device, so a
 post-write verifier re-reads the endpoint (three attempts, 2\,s apart) and
 promotes the grade when a read confirms the value. Batch receipts carry a
 per-parameter grade plus a summary; the write journal stores the per-write
-grade, and the operations log records the judgment at worst-state
+grade, and the operations log records the verdict at worst-state
 severity. Recipe rollback restores a definition,
 not physical PLC values, and a compensating write is itself graded by the same
 three levels. The grade closes the command path only: readback-verified says the device
@@ -152,17 +152,17 @@ the verdict tool
 \texttt{uncertain} plus a reason; the verdict, stored with the record it closes
 and the response window actually queried, performs no actuation and does not
 independently validate the evidence, so a scripted keep can coexist with a
-missed objective---verdict integrity rests on attribution, journaling, and
+missed objective. Verdict integrity rests on attribution, journaling, and
 operator review: a kept-but-marked record stays visible with its
 disagreement attached, and the operations log raises parameter severity
-under alarm-rationalization practice (Section~\ref{sec:limits}). Three-way
+under alarm-rationalization practice. Three-way
 setpoint consistency is checked by the evaluation harness rather than the
 platform: the harness compares the recipe
 value, the device readback, and a mirror sample
 drawn from the acquisition runtime's separate polling path and store, each leg
 against a stated tolerance; the sampled legs meet at the plant endpoint, so a
-fault fabricating the endpoint is a common-mode boundary.
-Disagreement fails the harness check and is reported with the run. Verdicts are attributable---actor and timestamp travel
+fault fabricating the endpoint is a common-mode boundary, and disagreement is
+reported with the run. Verdicts are attributable---actor and timestamp travel
 with them, and corrections amend the stored reason visibly.
 
 Compensation is a new, separately admitted write that may fail or partially
@@ -174,12 +174,12 @@ refused by admission, the source record closes \emph{as judged}, with the
 refusal appended to its verdict. These separations keep command status,
 record status, and process recovery independently inspectable.
 
-\looseness=-1 The backstop is a record-integrity check for writes that no
+\looseness=-1 \looseness=-1 The backstop is a record-integrity check for writes that no
 verdict has closed---not an independent protection layer: it evaluates only
 open records; a caller's \texttt{keep} closes the record and stands it down,
 while a \texttt{rollback} verdict stands the backstop down only once the
-compensating write executes---so its availability is contingent on verdicts
-being recorded and observations arriving. When collected samples of an open
+compensating write executes---availability is therefore contingent on
+recorded verdicts and arriving observations. When collected samples of an open
 record's node leave the recipe's monitoring window (a DAQ-side envelope
 distinct from the admitting interval), the platform issues a
 system-attributed rollback verdict and restores the value preceding that
@@ -196,8 +196,8 @@ defers actuation to the governing approval policy.
 \looseness=-1 Manual bindings insert the timed approval wait before
 an agent setpoint or
 compensation request; automatic bindings omit the wait but keep the checks.
-The pending request shows member, node, value, interval, and expiry---in the
-deployed benchmark, plus the proposer's reasoning and per-parameter basis
+The pending request shows member, node, value, interval, and expiry---plus
+the proposer's reasoning and per-parameter basis
 (Fig.~\ref{fig:hitl}b): machine-checked fields are structured data, the
 free-text reasoning display-only and non-authoritative. Because binding and admission are
 re-checked at execution, approval reserves neither interval nor device state;
@@ -208,8 +208,8 @@ approval---feedback, not authority. The
 wait fails closed by default (expiry 180\,s): an expired request
 resolves as refusal and is recorded; duplicates are suppressed by holding
 one pending request per member--node pair; and in \emph{hold} mode an
-unanswerable request persists without expiry until a human answers, with
-repeat requests refused as duplicates.
+unanswerable request persists without expiry until a human answers, repeat
+requests refused as duplicates.
 
 Human authority is anchored one level above individual requests: each line
 carries a control mode---the line master switch---whose fail-safe default
@@ -222,10 +222,10 @@ by the line switch. Switching a line
 to automatic requires an explicit, admin-only user-side
 confirmation---agent identities cannot touch the line switch. The residual
 agent-side path is delegation: a lead agent can grant held nodes to a
-worker through an attributed lead-only tool, and the grant's execution mode
-is chosen at grant time rather than gated by the user-side confirmation;
-grants are attributed to the granting agent, cannot exceed its own node
-face, and are individually revocable (Section~\ref{sec:limits}).
+worker through an attributed lead-only tool; the grant's execution mode
+is chosen at grant time rather than gated by the user-side confirmation,
+is attributed to the granting agent, cannot exceed its own node
+face, and is individually revocable (Section~\ref{sec:limits}).
 
 The decision endpoint authenticates a user but does not enforce a line-scoped
 approver role---the gap Section~\ref{sec:limits} carries---and reads,

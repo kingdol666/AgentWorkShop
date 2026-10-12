@@ -72,27 +72,31 @@ directly on industrial plants, yet the safeguards surrounding each
 proposal---write authority, active limits, human approval, device
 acceptance, process improvement---are rebuilt per deployment inside
 application code, so a task reported complete can coexist with a missed
-process objective. This paper presents AgentWorkShop, a governed
-supervisory execution layer that gives industrial agent teams a single
-path for every intervention: admission against declared, versioned
-limits, optional human approval, actuation over semantic write-control
-nodes, graded write acknowledgment with post-write verification, verdict
-recording, and compensation, each left as a separately inspectable
-evidence state attributed to a machine actor. Team identities reach
-data-acquisition (DAQ) and write-control (DCW) nodes only through
-explicit member--node capabilities under a line master switch whose
-fail-safe default is manual, so prompt content carries no authority;
-protocol drivers, versioned production objects, plugin points, and a
-typed software development kit (SDK) keep process models, objectives,
-and policies external to the governed path. The acknowledgment grading
-is stated so that archived failure receipts and interlock ablations can
-falsify it. Four process scenarios---injection molding, wastewater
-treatment, annealing, and biaxially oriented polyethylene terephthalate
-(BOPET) film---and a cast-film benchmark line exercise the layer across
-protocol-interception drills, agent-team missions, and a
-deployment-scale regression campaign on one live multi-line instance;
-the evaluation is simulation-tier, and no optimization-benefit or
-safety-assurance claim is made.
+process objective. AgentWorkShop, a governed
+supervisory execution layer, carries every agent-originated write of
+an industrial agent team along one path: admission against declared,
+versioned limits, approval where the binding requires it, actuation over
+semantic write-control nodes, graded write acknowledgment by independent
+post-write read, verdict recording, and compensation---each stage left as
+a separately inspectable evidence state attributed to its originating
+actor. Team identities reach data-acquisition (DAQ) and write-control
+(DCW) nodes only through explicit member--node capabilities, and prompt
+content is never admissible as authority; a line master switch whose
+fail-safe default is manual intercepts approval-free recipe dispatch,
+while protocol drivers, versioned production objects, plugin points, and
+a typed software development kit (SDK) keep process models, objectives,
+and policies external to the governed path. Each write is graded
+readback-verified, transport-acknowledged, or unverified by what an
+independent read observes, never by the transport receipt alone. Four
+process scenarios---injection molding, wastewater treatment, annealing,
+and biaxially oriented polyethylene terephthalate (BOPET) film---and a
+cast-film reference line exercise the layer across protocol-interception
+drills, agent-team missions, and a deployment-scale regression campaign
+on one multi-line instance---intercepting and attributing, grading
+honestly, pacing automation, mediating approval, and recovering on
+record; the evaluation is simulation-tier (simulator-backed, not
+physical plants), and no optimization-benefit or safety-assurance claim
+is made.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -112,10 +116,12 @@ supervisory control, write governance.
 
 \bibliographystyle{IEEEtran}
 % Reference list at IEEEtran's own 8pt (footnotesize) type size with mildly
-% tightened (0.85) leading; the default leading overflowed the 10-page
-% budget by roughly a third of a column even after the body-trim pass.
+% tightened (0.78) leading; the default leading overflowed the 10-page
+% budget even after the body-trim passes.
+% Fallback trim if IEEE's composition pass reflows: related-work recap
+% clauses and the V-A onboarding sentence (identified 2026-10-12).
 \begingroup
-\linespread{0.83}\footnotesize
+\linespread{0.77}\footnotesize
 \def\IEEEbibitemsep{0pt plus .3pt}
 \bibliography{resources/refs}
 \endgroup

@@ -1,14 +1,16 @@
 \section{System Architecture}
 \label{sec:arch}
-\looseness=-1 \system{} fills this slot: it links team coordination to plant interaction through industrial nodes
+\looseness=-1 \system{} occupies the replaceable strategy slot that
+Section~\ref{sec:related}'s comparison leaves open: it links team
+coordination to plant interaction through industrial nodes
 and production context (Fig.~\ref{fig:arch}). Responsibilities group into
 five planes---logical groupings, not deployable units: a \emph{team} plane
 owns member identity, task state, and
 episodic memory; an \emph{integration} plane owns protocol acceptance,
 readback, freshness, and transport errors, presenting devices as semantic
-nodes whose stream feeds both the agent and a live plant-mirror view; a
-\emph{governance} plane owns admission, approval, actuation, acknowledgment
-grading, verdict, compensation, and rollback; an \emph{operations} plane
+nodes feeding both the agent and a live plant-mirror view; a
+\emph{governance} plane owns the governed life cycle---admission through
+compensation and rollback; an \emph{operations} plane
 attaches line, product, recipe, and run context while PLC protection stays
 independent; and an \emph{extensibility} plane admits plugins, drivers,
 agent tools, and SDK clients through sanctioned registration services.
@@ -42,7 +44,7 @@ modalities---scalars, vector profiles, image frames carrying content
 fingerprints, and mirrored manufacturing-execution-system (MES)
 records---so plant data-shape heterogeneity does not reach the team loop. MES endpoints are reached in two
 interchangeable modes---\emph{mirror}, pulling MES records through the same
-acquisition pipeline as any field device, and \emph{direct}, declaring read
+acquisition pipeline, and \emph{direct}, declaring read
 and write mappings against the MES interface. DCW
 nodes translate engineering setpoints into driver commands and, where
 supported, readback; per-node runtimes manage timing, and gateway services supply
@@ -63,14 +65,13 @@ Driver contracts are deliberately narrow: a driver declares how a semantic
 quantity maps to its transport payload, whether the endpoint is writable, and
 whether a readback is available, while the controller resolves member authority
 and active limits. Errors attach to the
-request rather than one success flag, and register addresses and byte order
-appear only here, so a new fieldbus family leaves the loop untouched.
+request, register addresses and byte order appear only here, and a new
+fieldbus family leaves the loop untouched.
 Undeclared drivers fail loudly: a node whose driver is not registered is
 rejected at creation and connection test rather than silently served by a
 mock.
 Acquisition is supervisory rather than hard real-time: each DAQ node runs its
-own cadence under a rotating sweep, so a slow endpoint delays only its own
-samples, and the verdict stage queries the timestamped, quality-stamped
+own cadence under a rotating sweep, and the verdict stage queries the timestamped, quality-stamped
 history rather than issuing a blocking read.
 
 \subsection{Bindings, Context, and Reuse Boundaries}
@@ -111,11 +112,10 @@ bounded window, propose a setpoint inside the resolved interval, invoke the
 governed write, wait for the response, and record a verdict
 (Section~\ref{sec:procedure} instruments it).
 
-Each iteration leaves more than a written value: agent- and rollback-source
-writes open an optimization record; the acknowledgment grade closes the
-command path; the journal attributes the change; attainment is computed
-against the scenario predicate while the task closes with a workflow
-terminal state (per-intervention detail in Section~\ref{sec:mech}). Two
+Each iteration leaves more than a written value: an
+optimization record, the acknowledgment grade, an attributed journal
+entry, predicate attainment, and a workflow terminal state
+(per-intervention detail in Section~\ref{sec:mech}). Two
 write lifecycles coexist: direct node writes (agent \texttt{dcw\_control} or
 admin REST) open these records, while recipe-chain operations (batch
 dispatch) are gated by the run ledger and open none
