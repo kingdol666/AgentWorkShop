@@ -1,58 +1,59 @@
 {
-  "runId": "benchmark-20261008045204",
-  "startedAt": "2026-10-08T04:52:04.216Z",
-  "durationMs": 71064,
+  "runId": "benchmark-20261012023138",
+  "startedAt": "2026-10-12T02:31:38.394Z",
+  "durationMs": 223270,
   "env": {
-    "version": "0.7.57",
-    "channels": 113,
-    "heapRatio": 0.0617,
-    "durationMs": 71064,
-    "runId": "benchmark-20261008045204",
+    "version": "0.7.58",
+    "channels": 129,
+    "heapRatio": 0.0389,
+    "durationMs": 223270,
+    "runId": "benchmark-20261012023138",
+    "extended": false,
     "config": {
       "lineId": "ln-5b12e11a",
       "recipeId": "rc-7e2f6071"
     }
   },
   "score": {
-    "passed": 86,
-    "total": 87,
-    "ratio": 0.9885
+    "passed": 92,
+    "total": 92,
+    "ratio": 1
   },
   "stages": [
     {
       "id": "S0",
       "desc": "环境预检",
-      "ms": 86
+      "ms": 87
     },
     {
       "id": "S1",
       "desc": "API 全表面功能矩阵(api-full-loop)",
-      "ms": 1274
+      "ms": 1288
     },
     {
       "id": "S2",
       "desc": "多源异构采集 + MES 双模式",
-      "ms": 81
+      "ms": 117
     },
     {
       "id": "S3",
       "desc": "治理负路径",
-      "ms": 32
+      "ms": 9
     },
     {
       "id": "S4",
       "desc": "闭环优化场景(optimize):观测→决策→提案→HITL→下发→三方核验",
-      "ms": 2117
+      "ms": 155226
     },
     {
       "id": "S5",
       "desc": "稳定微调场景(tuning):小步→回读→频控→回退",
-      "ms": 66959
+      "ms": 66067
     },
     {
       "id": "S6",
       "desc": "数据诊断场景(diagnose):全窗导出→分段统计",
-      "ms": 432
+      "ms": 387
     },
     {
       "id": "S7",
@@ -65,7 +66,7 @@
       "stage": "S0",
       "name": "服务健康",
       "pass": true,
-      "note": "version=0.7.57 uptime=4min"
+      "note": "version=0.7.58 uptime=61min"
     },
     {
       "stage": "S0",
@@ -83,7 +84,7 @@
       "stage": "S0",
       "name": "DAQ 控制器在采",
       "pass": true,
-      "note": "nodes=67"
+      "note": "nodes=152"
     },
     {
       "stage": "S0",
@@ -93,9 +94,15 @@
     },
     {
       "stage": "S0",
-      "name": "基准线总闸切 auto(harness 显式 confirm)",
+      "name": "基准线总闸已 auto(harness 显式)",
       "pass": true,
-      "note": "got=auto"
+      "note": "mode=auto"
+    },
+    {
+      "stage": "S0",
+      "name": "配方参数面完整且在锚(mesDirect+holdP)",
+      "pass": true,
+      "note": "params=5"
     },
     {
       "stage": "S1",
@@ -143,13 +150,13 @@
       "stage": "S1",
       "name": "channels:admin 全量可见",
       "pass": true,
-      "note": "count=113"
+      "note": "count=130"
     },
     {
       "stage": "S1",
       "name": "permissions:无 grant 用户看不到绑线频道",
       "pass": true,
-      "note": "visible=1,绑线=0"
+      "note": "visible=3,绑线=0"
     },
     {
       "stage": "S1",
@@ -215,19 +222,19 @@
       "stage": "S1",
       "name": "dcw:节点/配方/批次聚合",
       "pass": true,
-      "note": "nodes=77,recipes=52"
+      "note": "nodes=35,recipes=74"
     },
     {
       "stage": "S1",
       "name": "dcw:线1运行中(T7 复启批次)",
       "pass": true,
-      "note": "run=rr-7fee6,tagged=87471"
+      "note": "run=rr-c492e,tagged=33840"
     },
     {
       "stage": "S1",
       "name": "dcw:重复开线被拒(运行门)",
       "pass": true,
-      "note": "产线「演示线1·挤出主机PLC(Modbus TCP)」已在运行(批次 rr-7fee6f37),请"
+      "note": "产线「演示线1·挤出主机PLC(Modbus TCP)」已在运行(批次 rr-c492eb25),请"
     },
     {
       "stage": "S1",
@@ -239,13 +246,13 @@
       "stage": "S1",
       "name": "dcw:批次台账",
       "pass": true,
-      "note": "rows=180"
+      "note": "rows=200"
     },
     {
       "stage": "S1",
       "name": "dcw:批次 ACK 鉴定汇总(run.ackSummary)",
       "pass": true,
-      "note": "{\"verified\":6,\"unverified\":0,\"failed\":0,\"total\":6}"
+      "note": "{\"verified\":1,\"unverified\":0,\"failed\":0,\"total\":1}"
     },
     {
       "stage": "S1",
@@ -293,13 +300,13 @@
       "stage": "S1",
       "name": "daq:控制器在线",
       "pass": true,
-      "note": "nodesOnline=67/82"
+      "note": "nodesOnline=152/167"
     },
     {
       "stage": "S1",
       "name": "daq:真实时序样本",
       "pass": true,
-      "note": "points=9,最新=207.87℃"
+      "note": "points=11,最新=207.47℃"
     },
     {
       "stage": "S1",
@@ -321,9 +328,9 @@
     },
     {
       "stage": "S1",
-      "name": "tools:my_industrial_nodes 正向",
+      "name": "tools:my_industrial_nodes 正向 —",
       "pass": true,
-      "note": "#### ◇ 演示·挤出主机PLC(Modbus TCP)·熔体温度 [id=dn-0183240d]"
+      "note": ""
     },
     {
       "stage": "S1",
@@ -347,7 +354,7 @@
       "stage": "S1",
       "name": "tools:绑定清单",
       "pass": true,
-      "note": "count=385"
+      "note": "count=453"
     },
     {
       "stage": "S1",
@@ -455,43 +462,43 @@
       "stage": "S2",
       "name": "MES 直取路(mes_fetch)",
       "pass": true,
-      "note": "MES 历史取数(内联同步,1 个点位,窗口 10-08 04:37:05 ~ 10-08 04:52:05):"
+      "note": "MES 历史取数(内联同步,1 个点位,窗口 10-12 02:16:39 ~ 10-12 02:31:39):"
     },
     {
       "stage": "S2",
       "name": "协议族 modbus-tcp 在采",
       "pass": true,
-      "note": "演示·挤出主机PLC(Modbus TCP)·加热区2SP(7 桶/3min)"
-    },
-    {
-      "stage": "S2",
-      "name": "协议族 modbus-rtu 在采",
-      "pass": true,
-      "note": "演示·晶点计数从站(Modbus RTU)·晶点计数(7 桶/3min)"
+      "note": "熔体温度 ip16d8zgcl(7 桶/3min)"
     },
     {
       "stage": "S2",
       "name": "协议族 opcua 在采",
       "pass": true,
-      "note": "演示·熔体泵送单元(OPC UA)·MeltPressure(7 桶/3min)"
+      "note": "MeltPressure ip16d8zgcl(7 桶/3min)"
     },
     {
       "stage": "S2",
       "name": "协议族 mqtt 在采",
       "pass": true,
-      "note": "演示·在线测厚仪(MQTT)·thick(7 桶/3min)"
+      "note": "thick ip16d8zgcl(7 桶/3min)"
     },
     {
       "stage": "S2",
       "name": "协议族 http 在采",
       "pass": true,
-      "note": "演示·CCD检测站(HTTP)·defect(7 桶/3min)"
+      "note": "defect ip16d8zgcl(7 桶/3min)"
+    },
+    {
+      "stage": "S2",
+      "name": "协议族 modbus-rtu 在采",
+      "pass": true,
+      "note": "晶点计数 ip16d8zgcl(7 桶/3min)"
     },
     {
       "stage": "S3",
       "name": "越界写被拒(工艺安全量程)",
       "pass": true,
-      "note": "设定值 999bar 超出上限 节点工艺安全量程 的 90bar —— 约束层:节点安全量程(当前有效写入区间 30~90bar;各层限界按安全规约取交集,越界写入已拒绝)"
+      "note": "设定值 999bar 超出上限 节点工艺安全量程 的 110bar —— 约束层:节点安全量程(当前有效写入区间 30~90bar;各层限界按安全规约取交集,越界写入已拒绝)"
     },
     {
       "stage": "S3",
@@ -509,19 +516,19 @@
       "stage": "S4",
       "name": "镜像观测有效(克重/缩痕)",
       "pass": true,
-      "note": "weight=32.48g sink=1.19%"
+      "note": "weight=32.34g sink=1.12%"
     },
     {
       "stage": "S4",
       "name": "控制律出步(目标 32.5±0.35)",
       "pass": true,
-      "note": "62 → 63"
+      "note": "65 → 67"
     },
     {
       "stage": "S4",
       "name": "HITL 卡出现且含推理依据",
       "pass": true,
-      "note": "card=ap-5c8bd0be"
+      "note": "card=ap-e9b5c6d4"
     },
     {
       "stage": "S4",
@@ -532,148 +539,214 @@
     {
       "stage": "S4",
       "name": "提案批准并整批下发",
-      "pass": false,
-      "note": "方案「BM-保压微升(灵敏度激励步)」已获批准并整批下发,全部参数设备证实(1/1,批次 rr-997c9)。runId:rr-997c9c1f(后续轮次按此回访效果并回写经验)"
+      "pass": true,
+      "note": "方案「BM-保压微升(灵敏度激励步)」已获批准并整批下发,全部参数设备证实(1/1,批次 rr-e9b64)。runId:rr-e9b64f9b(后续轮次按此回访效果并回写经验)"
+    },
+    {
+      "stage": "S4",
+      "name": "批次台账 holdP 落账 ok",
+      "pass": true,
+      "note": "run=rr-e9b64f9b"
+    },
+    {
+      "stage": "S4",
+      "name": "ACK 鉴定:holdP 写入设备证实(readback-verified)",
+      "pass": true,
+      "note": "{\"ack\":\"readback-verified\",\"verdict\":\"verified\",\"attempts\":0}"
+    },
+    {
+      "stage": "S4",
+      "name": "ACK 鉴定:整批汇总全绿(ackSummary)",
+      "pass": true,
+      "note": "{\"verified\":1,\"unverified\":0,\"failed\":0,\"total\":1}"
+    },
+    {
+      "stage": "S4",
+      "name": "三方核验(配方|设备|镜像)一致",
+      "pass": true,
+      "note": "配方=67 设备=67 镜像=67"
     },
     {
       "stage": "S5",
       "name": "单变量小步修正(治理链内)",
       "pass": true,
-      "note": "32 → 32.5 写入并回读一致:32.5 → raw 32.5,回读 32.5(标定后物理值 32.5)"
+      "note": "45 → 45.5 写入并回读一致:45.5 → raw 45.5,回读 45.5(标定后物理值 45.5)"
     },
     {
       "stage": "S5",
       "name": "立即反向写被频控/保持窗拦截",
       "pass": true,
-      "note": "DCW 节点「注塑·模温机SP」两次在线写入间隔必须至少 60s，当前还需 60s"
+      "note": "DCW 节点「注塑一线·模具温度SP」两次在线写入间隔必须至少 60s，当前还需 60s"
     },
     {
       "stage": "S5",
       "name": "窗后回退到原值",
       "pass": true,
-      "note": "32.5 → 32 写入并回读一致:32 → raw 32,回读 32(标定后物理值 32)"
+      "note": "45.5 → 45 写入并回读一致:45 → raw 45,回读 45(标定后物理值 45)"
     },
     {
       "stage": "S5",
       "name": "复原判读(节点值=原值)",
       "pass": true,
-      "note": "value=32"
+      "note": "value=45"
     },
     {
       "stage": "S6",
       "name": "daq_export 全窗宽表",
       "pass": true,
-      "note": "daqexp-20261008125314-915673"
+      "note": "daqexp-20261012103521-a398f3"
     },
     {
       "stage": "S6",
       "name": "宽表行数达标(≥50 行)",
       "pass": true,
-      "note": "rows=678 cols=14"
+      "note": "rows=867 cols=14"
     },
     {
       "stage": "S6",
       "name": "克重列统计有效",
       "pass": true,
-      "note": "n=678 mean=32.492 std=0.042 min=32.37 max=32.62"
+      "note": "n=867 mean=32.330 std=0.070 min=32.18 max=32.60"
     },
     {
       "stage": "S6",
       "name": "规格内占比 ≥60%(32.5±0.35)",
       "pass": true,
-      "note": "100.0% (678/678)"
+      "note": "100.0% (867/867)"
     }
   ],
   "timeline": [
     {
-      "ts": "2026-10-08T04:52:04.303Z",
+      "ts": "2026-10-12T02:31:38.492Z",
       "stage": "S0",
       "type": "env",
-      "detail": "{\"version\":\"0.7.57\",\"channels\":113,\"memory\":{\"heapUsedMb\":281,\"heapLimitMb\":4288,\"rssMb\":396,\"externalMb\":21,\"heapRatio\":0.0655}}"
+      "detail": "{\"version\":\"0.7.58\",\"channels\":128,\"memory\":{\"heapUsedMb\":145,\"heapLimitMb\":4288,\"rssMb\":298,\"externalMb\":28,\"heapRatio\":0.0339}}"
     },
     {
-      "ts": "2026-10-08T04:52:05.735Z",
+      "ts": "2026-10-12T02:31:39.967Z",
       "stage": "S2",
       "type": "heterogeneous-snapshot",
-      "detail": "{\"scalarBuckets\":9,\"vecFrames\":5,\"imgFrames\":10,\"imgSha256\":10,\"protocolFamilies\":[{\"driver\":\"modbus-tcp\",\"nodes\":4,\"fresh\":1},{\"driver\":\"modbus-rtu\",\"nodes\":4,\"fresh\":1},{\"driver\":\"opcua\",\"nodes\":4,\"fresh\":1},{\"driver\":\"mqtt\",\"nodes\":4,\"fresh\":1},{\"driver\":\"http\",\"nodes\":4,\"fresh\":1}]}"
+      "detail": "{\"scalarBuckets\":9,\"vecFrames\":5,\"imgFrames\":10,\"imgSha256\":10,\"protocolFamilies\":[{\"driver\":\"modbus-tcp\",\"nodes\":4,\"fresh\":1},{\"driver\":\"opcua\",\"nodes\":4,\"fresh\":1},{\"driver\":\"mqtt\",\"nodes\":4,\"fresh\":1},{\"driver\":\"http\",\"nodes\":4,\"fresh\":1},{\"driver\":\"modbus-rtu\",\"nodes\":4,\"fresh\":1}]}"
     },
     {
-      "ts": "2026-10-08T04:52:05.855Z",
+      "ts": "2026-10-12T02:31:40.013Z",
       "stage": "S4",
       "type": "observation",
-      "detail": "{\"holdP\":62,\"weight\":32.48,\"sink\":1.19,\"window\":\"8min\"}"
+      "detail": "{\"holdP\":65,\"weight\":32.34,\"sink\":1.12,\"window\":\"8min\"}"
     },
     {
-      "ts": "2026-10-08T04:52:05.856Z",
+      "ts": "2026-10-12T02:31:40.014Z",
       "stage": "S4",
       "type": "decision",
-      "detail": "{\"mode\":\"converged-bounded-zigzag\",\"err\":0.016,\"to\":63,\"rationale\":\"已收敛,围绕基准设定点 63 做有界激励步以实证闭环下发链路\"}"
+      "detail": "{\"mode\":\"corrective\",\"err\":0.156,\"to\":67,\"rationale\":\"误差 0.16g / 斜率 0.052g/bar → 单变量小步\"}"
     },
     {
-      "ts": "2026-10-08T04:52:05.856Z",
+      "ts": "2026-10-12T02:31:40.014Z",
       "stage": "S4",
       "type": "propose",
-      "detail": "{\"to\":63,\"package\":\"BM-保压微升(灵敏度激励步)\"}"
+      "detail": "{\"to\":67,\"package\":\"BM-保压微升(灵敏度激励步)\"}"
     },
     {
-      "ts": "2026-10-08T04:52:07.865Z",
+      "ts": "2026-10-12T02:31:42.026Z",
       "stage": "S4",
       "type": "hitl_card",
-      "detail": "{\"id\":\"ap-5c8bd0be\",\"reasoning\":true,\"attempt\":1}"
+      "detail": "{\"id\":\"ap-e9b5c6d4\",\"reasoning\":true,\"attempt\":1}"
     },
     {
-      "ts": "2026-10-08T04:52:07.875Z",
+      "ts": "2026-10-12T02:31:42.036Z",
       "stage": "S4",
       "type": "approved",
-      "detail": "{\"id\":\"ap-5c8bd0be\",\"attempt\":1}"
+      "detail": "{\"id\":\"ap-e9b5c6d4\",\"attempt\":1}"
     },
     {
-      "ts": "2026-10-08T04:52:07.886Z",
+      "ts": "2026-10-12T02:31:42.036Z",
+      "stage": "S4",
+      "type": "cadence-wait",
+      "detail": "试验节拍窗未放行(治理在岗)—— 等 128s 后重提(attempt 1 → 2)"
+    },
+    {
+      "ts": "2026-10-12T02:33:50.047Z",
+      "stage": "S4",
+      "type": "propose",
+      "detail": "{\"to\":67,\"package\":\"BM-保压微升(灵敏度激励步)\",\"attempt\":2}"
+    },
+    {
+      "ts": "2026-10-12T02:33:52.092Z",
+      "stage": "S4",
+      "type": "hitl_card",
+      "detail": "{\"id\":\"ap-c69606b4\",\"reasoning\":true,\"attempt\":2}"
+    },
+    {
+      "ts": "2026-10-12T02:33:52.105Z",
+      "stage": "S4",
+      "type": "approved",
+      "detail": "{\"id\":\"ap-c69606b4\",\"attempt\":2}"
+    },
+    {
+      "ts": "2026-10-12T02:33:52.142Z",
       "stage": "S4",
       "type": "dispatch",
-      "detail": "{\"runId\":\"rr-997c9c1f\",\"ok\":false,\"summary\":\"方案「BM-保压微升(灵敏度激励步)」已获批准并整批下发,全部参数设备证实(1/1,批次 rr-997c9)。runId:rr-997c9c1f(后续轮次按此回访效果并回写经验)\"}"
+      "detail": "{\"runId\":\"rr-e9b64f9b\",\"ok\":true,\"summary\":\"方案「BM-保压微升(灵敏度激励步)」已获批准并整批下发,全部参数设备证实(1/1,批次 rr-e9b64)。runId:rr-e9b64f9b(后续轮次按此回访效果并回写经验)\"}"
     },
     {
-      "ts": "2026-10-08T04:52:07.931Z",
+      "ts": "2026-10-12T02:34:00.187Z",
+      "stage": "S4",
+      "type": "settle-wait",
+      "detail": "等待镜像 SP 采样跟上(15s)"
+    },
+    {
+      "ts": "2026-10-12T02:34:15.204Z",
+      "stage": "S4",
+      "type": "verify",
+      "detail": "{\"set\":67,\"device\":67,\"mirror\":67,\"threeWay\":true}"
+    },
+    {
+      "ts": "2026-10-12T02:34:15.204Z",
+      "stage": "S4",
+      "type": "verdict",
+      "detail": "{\"converged\":false,\"dispatchedTo\":67,\"nextReview\":\"4min 惯性窗后复测\"}"
+    },
+    {
+      "ts": "2026-10-12T02:34:15.220Z",
       "stage": "S5",
       "type": "observation",
-      "detail": "{\"moldT\":32,\"stepLimit\":10}"
+      "detail": "{\"moldT\":45,\"stepLimit\":1.5}"
     },
     {
-      "ts": "2026-10-08T04:52:07.946Z",
+      "ts": "2026-10-12T02:34:15.229Z",
       "stage": "S5",
       "type": "micro-step",
-      "detail": "{\"from\":32,\"to\":32.5,\"ok\":true,\"readback\":32.5}"
+      "detail": "{\"from\":45,\"to\":45.5,\"ok\":true,\"readback\":45.5}"
     },
     {
-      "ts": "2026-10-08T04:52:07.950Z",
+      "ts": "2026-10-12T02:34:15.232Z",
       "stage": "S5",
       "type": "rate-limited",
-      "detail": "{\"blocked\":true,\"message\":\"DCW 节点「注塑·模温机SP」两次在线写入间隔必须至少 60s，当前还需 60s\"}"
+      "detail": "{\"blocked\":true,\"message\":\"DCW 节点「注塑一线·模具温度SP」两次在线写入间隔必须至少 60s，当前还需 60s\"}"
     },
     {
-      "ts": "2026-10-08T04:52:07.950Z",
+      "ts": "2026-10-12T02:34:15.232Z",
       "stage": "S5",
       "type": "settle-wait",
       "detail": "等待 66s 治理窗放行"
     },
     {
-      "ts": "2026-10-08T04:53:14.844Z",
+      "ts": "2026-10-12T02:35:21.272Z",
       "stage": "S5",
       "type": "verdict",
-      "detail": "{\"restored\":true,\"value\":32}"
+      "detail": "{\"restored\":true,\"value\":45}"
     },
     {
-      "ts": "2026-10-08T04:53:15.274Z",
+      "ts": "2026-10-12T02:35:21.658Z",
       "stage": "S6",
       "type": "export",
-      "detail": "{\"exportId\":\"daqexp-20261008125314-915673\",\"path\":\"D:\\\\codes\\\\AgentWorkShop\\\\.AgentWorkShop\\\\data\\\\daq-exports\\\\daqexp-20261008125314-915673\\\\merged.csv\"}"
+      "detail": "{\"exportId\":\"daqexp-20261012103521-a398f3\",\"path\":\"D:\\\\codes\\\\AgentWorkShop\\\\.AgentWorkShop\\\\data\\\\daq-exports\\\\daqexp-20261012103521-a398f3\\\\merged.csv\"}"
     },
     {
-      "ts": "2026-10-08T04:53:15.277Z",
+      "ts": "2026-10-12T02:35:21.660Z",
       "stage": "S6",
       "type": "stats",
-      "detail": "{\"rows\":678,\"weight\":{\"n\":678,\"mean\":32.492,\"std\":0.042,\"inSpecRate\":1}}"
+      "detail": "{\"rows\":867,\"weight\":{\"n\":867,\"mean\":32.33,\"std\":0.07,\"inSpecRate\":1}}"
     }
   ]
 }

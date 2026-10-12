@@ -1,0 +1,19 @@
+{"ts":"2026-10-12T02:28:36.366Z","stage":"S0","type":"env","detail":"{\"version\":\"0.7.58\",\"channels\":130,\"memory\":{\"heapUsedMb\":122,\"heapLimitMb\":4288,\"rssMb\":299,\"externalMb\":15,\"heapRatio\":0.0283}}"}
+{"ts":"2026-10-12T02:28:37.375Z","stage":"S2","type":"heterogeneous-snapshot","detail":"{\"scalarBuckets\":9,\"vecFrames\":5,\"imgFrames\":10,\"imgSha256\":10,\"protocolFamilies\":[{\"driver\":\"modbus-tcp\",\"nodes\":4,\"fresh\":1},{\"driver\":\"opcua\",\"nodes\":4,\"fresh\":1},{\"driver\":\"mqtt\",\"nodes\":4,\"fresh\":1},{\"driver\":\"http\",\"nodes\":4,\"fresh\":1},{\"driver\":\"modbus-rtu\",\"nodes\":4,\"fresh\":1}]}"}
+{"ts":"2026-10-12T02:28:37.439Z","stage":"S4","type":"observation","detail":"{\"holdP\":63,\"weight\":32.3,\"sink\":1.16,\"window\":\"8min\"}"}
+{"ts":"2026-10-12T02:28:37.440Z","stage":"S4","type":"decision","detail":"{\"mode\":\"corrective\",\"err\":0.201,\"to\":65,\"rationale\":\"误差 0.20g / 斜率 0.052g/bar → 单变量小步\"}"}
+{"ts":"2026-10-12T02:28:37.440Z","stage":"S4","type":"propose","detail":"{\"to\":65,\"package\":\"BM-保压微升(灵敏度激励步)\"}"}
+{"ts":"2026-10-12T02:28:39.466Z","stage":"S4","type":"hitl_card","detail":"{\"id\":\"ap-2e27e481\",\"reasoning\":true,\"attempt\":1}"}
+{"ts":"2026-10-12T02:28:39.507Z","stage":"S4","type":"approved","detail":"{\"id\":\"ap-2e27e481\",\"attempt\":1}"}
+{"ts":"2026-10-12T02:28:39.524Z","stage":"S4","type":"dispatch","detail":"{\"runId\":\"rr-9401036d\",\"ok\":true,\"summary\":\"方案「BM-保压微升(灵敏度激励步)」已获批准并整批下发,全部参数设备证实(1/1,批次 rr-94010)。runId:rr-9401036d(后续轮次按此回访效果并回写经验)\"}"}
+{"ts":"2026-10-12T02:28:47.606Z","stage":"S4","type":"settle-wait","detail":"等待镜像 SP 采样跟上(15s)"}
+{"ts":"2026-10-12T02:29:02.614Z","stage":"S4","type":"verify","detail":"{\"set\":65,\"device\":65,\"mirror\":65,\"threeWay\":true}"}
+{"ts":"2026-10-12T02:29:02.615Z","stage":"S4","type":"verdict","detail":"{\"converged\":false,\"dispatchedTo\":65,\"nextReview\":\"4min 惯性窗后复测\"}"}
+{"ts":"2026-10-12T02:29:02.635Z","stage":"S5","type":"observation","detail":"{\"moldT\":45,\"stepLimit\":1.5}"}
+{"ts":"2026-10-12T02:29:02.644Z","stage":"S5","type":"micro-step","detail":"{\"from\":45,\"to\":45.5,\"ok\":true,\"readback\":45.5}"}
+{"ts":"2026-10-12T02:29:02.646Z","stage":"S5","type":"rate-limited","detail":"{\"blocked\":true,\"message\":\"DCW 节点「注塑一线·模具温度SP」两次在线写入间隔必须至少 60s，当前还需 60s\"}"}
+{"ts":"2026-10-12T02:29:02.646Z","stage":"S5","type":"settle-wait","detail":"等待 66s 治理窗放行"}
+{"ts":"2026-10-12T02:30:08.703Z","stage":"S5","type":"verdict","detail":"{\"restored\":true,\"value\":45}"}
+{"ts":"2026-10-12T02:30:09.231Z","stage":"S6","type":"export","detail":"{\"exportId\":\"daqexp-20261012103008-aa2cbb\",\"path\":\"D:\\\\codes\\\\AgentWorkShop\\\\.AgentWorkShop\\\\data\\\\daq-exports\\\\daqexp-20261012103008-aa2cbb\\\\merged.csv\"}"}
+{"ts":"2026-10-12T02:30:09.233Z","stage":"S6","type":"stats","detail":"{\"rows\":865,\"weight\":{\"n\":865,\"mean\":32.269,\"std\":1.099,\"inSpecRate\":0.999}}"}
+{"ts":"2026-10-12T02:30:09.239Z","stage":"S12","type":"hil-skip","detail":"AW_HIL_BASE 未设"}
