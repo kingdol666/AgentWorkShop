@@ -8,9 +8,12 @@ import { getActiveLineRun } from '../../dcw/line-run'
 import { getAgentNodeBindingRepo } from '../node-bindings.repo'
 import { getDaqNodeRepo } from '../../daq/daq-node.repo'
 import { getDcwController } from '../../dcw/dcw-controller'
+import { channelBoundLineId } from './ops-tools'
 
 /**
- * 数采目标集解析(工具共用鉴权面):Agent 绑定(kind=daq)为权限边界 ——
+ * 数采目标集解析(工具共用鉴权面):
+ *   ① Agent 绑定(kind=daq);② v28 频道绑线只读扩权 —— 频道绑定产线下的数采节点
+ *   并入读取集(与 ops_log/line_context 的绑线只读扩权同族;本函数仅服务只读查询面)。
  * node_id/line_id 只能缩小范围,不能放大(越权节点一律拒绝)。
  */
 export function daqTargetsOf(agentId: string, nodeIdArg: unknown, lineIdArg: unknown):
@@ -18,23 +21,29 @@ export function daqTargetsOf(agentId: string, nodeIdArg: unknown, lineIdArg: unk
   | { error: { text: string, isError: true } } {
   const repo = getAgentNodeBindingRepo()
   const daqBindings = repo.byAgent(agentId).filter(b => b.kind === 'daq')
-  if (daqBindings.length === 0) {
-    return { error: { text: '你尚未绑定任何数采节点,无权查询采集数据。请在数字孪生界面绑定数采节点。', isError: true } }
+  // v28:频道绑线的数采节点并入可见集(只读)
+  const boundLine = channelBoundLineId(agentId)
+  const boundLineNodes = boundLine
+    ? getDaqNodeRepo().all().filter(n => n.lineId === boundLine).map(n => n.id)
+    : []
+  const readable = new Set([...daqBindings.map(b => b.nodeId), ...boundLineNodes])
+  if (readable.size === 0) {
+    return { error: { text: '你尚未绑定任何数采节点,频道也未绑定产线,无权查询采集数据。请在数字孪生界面绑定数采节点,或将频道绑定到目标产线(绑线后可只读查询该线数采数据)。', isError: true } }
   }
   const wanted = nodeIdArg ? String(nodeIdArg) : ''
-  if (wanted && !daqBindings.some(b => b.nodeId === wanted)) {
-    return { error: { text: `无权查询节点 ${wanted}。你有权访问的数采节点:${daqBindings.map(b => b.nodeId).join(', ')}`, isError: true } }
+  if (wanted && !readable.has(wanted)) {
+    return { error: { text: `无权查询节点 ${wanted}。你有权访问的数采节点:${[...readable].join(', ')}`, isError: true } }
   }
   const lineFilter = lineIdArg ? String(lineIdArg).trim() : ''
   const lineOf = (id: string): string => getDaqNodeRepo().byId(id)?.lineId ?? ''
   if (lineFilter && wanted && lineOf(wanted) !== lineFilter) {
     return { error: { text: `节点 ${wanted} 不属于产线 ${lineFilter}(实际归属:${lineOf(wanted) || '未分配'}),line_id 与 node_id 过滤冲突。`, isError: true } }
   }
-  let targets = wanted ? [wanted] : daqBindings.map(b => b.nodeId)
+  let targets = wanted ? [wanted] : [...readable]
   if (lineFilter && !wanted) {
     const onLine = targets.filter(id => lineOf(id) === lineFilter)
     if (onLine.length === 0) {
-      return { error: { text: `你绑定的数采节点中没有归属产线 ${lineFilter} 的(各节点归属:${daqBindings.map(b => `${b.nodeId}=${lineOf(b.nodeId) || '未分配'}`).join('; ')})。`, isError: true } }
+      return { error: { text: `你有权访问的数采节点中没有归属产线 ${lineFilter} 的(各节点归属:${[...readable].map(id => `${id}=${lineOf(id) || '未分配'}`).join('; ')})。`, isError: true } }
     }
     targets = onLine
   }
