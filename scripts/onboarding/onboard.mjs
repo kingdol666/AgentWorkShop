@@ -192,5 +192,7 @@ console.log(`
   ③ 由人裁决首批真实提案后,方可视为正式投用。
 (对产线负责:任何不确定 —— 量程/步限/SP-PV 判定/认证方式/场景目标 —— skill 必须先询问用户,禁止猜测。)
 =====================================================`)
+// 机器可读摘要(末行 JSON;与 provision-line/forge-channel 摘要惯例对齐,供管道解析)
+console.log(JSON.stringify({ summary: true, lineId: prov.lineId, recipeId: prov.recipeId, channelId: chSummary.channelId, smokeRunId: runId ?? null, pass, fail }))
 console.log(`\n======== 一键接入: ${pass} 通过 / ${fail} 失败 ========`)
 process.exit(fail === 0 ? 0 : 1)

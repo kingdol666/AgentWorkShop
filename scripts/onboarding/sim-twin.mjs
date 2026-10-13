@@ -114,15 +114,21 @@ async function ensureSim() {
   if (!ready) throw new Error('模拟器路由未就绪(端口已开但 API 非 JSON)')
 }
 
-/* ── 信号动力学(hook 代码生成) ── */
+/* ── 信号动力学(hook 代码生成;首拍 state.v=undefined → 两项都必须取 fallback,否则 NaN 永久毒化) ── */
 const lagHook = (spName, tau, noise, fallback) =>
+  `const cur = Number.isFinite(state.v)?state.v:${fallback};` +
   `const tgt = Number.isFinite(vars['${spName}']) ? vars['${spName}'] : ${fallback};` +
-  `const k = Math.min(1, dt/1000/${tau}); state.v = (Number.isFinite(state.v)?state.v:${fallback}) + (tgt-state.v)*k + (rand()-0.5)*${noise}; return state.v`
-const causalHook = (d, fallback) => {
-  const terms = (d.follows ?? []).map(f => `${f.gain}*(Number.isFinite(vars['${f.sp}'])?vars['${f.sp}']:0)`)
+  `const k = Math.min(1, dt/1000/${tau}); state.v = cur + (tgt-cur)*k + (rand()-0.5)*${noise}; return state.v`
+const causalHook = (d, fallback, nominals = {}) => {
+  // 偏差语义:base=标称点输出,每项增益作用于 (SP 当前值 − SP 标称值) —— 与文档「工艺耦合」公式同构
+  const terms = (d.follows ?? []).map(f => {
+    const nom = Number.isFinite(f.at) ? f.at : (nominals[f.sp] ?? 0)
+    return `${f.gain}*((Number.isFinite(vars['${f.sp}'])?vars['${f.sp}']:0) - ${nom})`
+  })
   const base = d.base ?? fallback
   return `const tgt = ${base}${terms.length ? ' + ' + terms.join(' + ') : ''};` +
-    `const k = Math.min(1, dt/1000/${d.tau ?? 8}); state.v = (Number.isFinite(state.v)?state.v:${fallback}) + (tgt-state.v)*k + (rand()-0.5)*${d.noise ?? 1}; return state.v`
+    `const cur = Number.isFinite(state.v)?state.v:${fallback};` +
+    `const k = Math.min(1, dt/1000/${d.tau ?? 8}); state.v = cur + (tgt-cur)*k + (rand()-0.5)*${d.noise ?? 1}; return state.v`
 }
 const wanderHook = (mid, span) =>
   `state.v = (Number.isFinite(state.v)?state.v:${mid}) + (rand()-0.5)*${span}; ` +
@@ -144,8 +150,9 @@ async function fromPlatform(lineId, dynamicsFile) {
   const devices = []
   const svNamesByFam = {}
   for (const [family, nodes] of Object.entries(families)) {
-    const spNames = nodes.filter(n => n.templateRef?.startsWith('dcw') || dcw.some(d => d.id === n.id)).map(n => norm(n.name))
-    svNamesByFam[family] = spNames
+    const spNodes = nodes.filter(n => n.templateRef?.startsWith('dcw') || dcw.some(d => d.id === n.id))
+    const spNames = spNodes.map(n => norm(n.name))
+    const nominals = Object.fromEntries(spNodes.map(n => [norm(n.name), Number(n.value ?? ((Number(n.min ?? 0) + Number(n.max ?? 100)) / 2).toFixed(3))]))
     const signals = []
     for (const n of nodes) {
       const isSp = dcw.some(d => d.id === n.id)
@@ -158,7 +165,7 @@ async function fromPlatform(lineId, dynamicsFile) {
         // 同设备同名 SP 归属:strip 后缀匹配
         const spHit = spNames.find(sp => sp === norm(n.name))
         let code
-        if (d.follows?.length || d.base != null) code = causalHook(d, mid)
+        if (d.follows?.length || d.base != null) code = causalHook(d, mid, nominals)
         else if (spHit) code = lagHook(spHit, d.tau ?? 10, d.noise ?? 0.8, mid)
         else code = wanderHook(mid, Math.max((max - min) / 200, 0.2))
         signals.push({ id: n.id, name: n.name, unit: n.unit ?? '', min, max, decimals: n.decimals ?? 3, kind: 'pv', code, dynamics: { tau: d.tau ?? 10, noise: d.noise ?? 0.8, sp: spHit ?? null } })
@@ -173,6 +180,7 @@ async function fromPlatform(lineId, dynamicsFile) {
 function fromBlueprint(file) {
   const bp = JSON.parse(readFileSync(file, 'utf8'))
   const devices = (bp.devices ?? []).map(d => ({
+    id: d.id,
     family: d.protocol ?? 'modbus-tcp',
     port: d.port,
     unitId: d.unitId ?? 1,
@@ -191,7 +199,7 @@ let port = 37540
 async function materialize(devices, mqttPort) {
   const created = []
   for (const dev of devices) {
-    const id = `twin-${dev.family}-${created.length + 1}`
+    const id = dev.id ?? `twin-${dev.family}-${created.length + 1}`
     const protocol = dev.family
     const config = {}
     if (protocol === 'modbus-tcp' || protocol === 'modbus-rtu') {
@@ -205,11 +213,15 @@ async function materialize(devices, mqttPort) {
       const sp = dev.signals.find(s => s.kind === 'sp')
       if (sp) { config.commandTopic = `aw/twin/${id}/set`; config.commandSignalId = sp.id }
     }
+    const nominals = Object.fromEntries(dev.signals.filter(s => s.kind === 'sp').map(s => [s.name, Number(s.initial ?? (s.min + s.max) / 2)]))
     const signals = dev.signals.map(s => ({
       id: s.id, name: s.name, description: `孪生:${s.name}`, unit: s.unit, min: s.min, max: s.max, decimals: s.decimals,
       strategy: s.kind === 'sp'
         ? { kind: 'manual', value: s.initial ?? (s.min + s.max) / 2 }
-        : { kind: 'hook', code: s.code ?? wanderHook((s.min + s.max) / 2, Math.max((s.max - s.min) / 200, 0.2)) },
+        : { kind: 'hook', code: s.code
+            ?? (s.dynamics && (s.dynamics.follows?.length || s.dynamics.base != null)
+              ? causalHook(s.dynamics, (s.min + s.max) / 2, nominals)
+              : wanderHook((s.min + s.max) / 2, Math.max((s.max - s.min) / 200, 0.2))) },
     }))
     const r = await simApi('POST', '/api/nodes', { id, name: `${id}(孪生)`, description: `aw-plc-sim-twin 生成:${dev.signals.length} 信号`, protocol, enabled: true, tickMs: 1000, signals, config })
     ok(`设备 ${id}(${protocol},${signals.length} 信号)`, r?.code === 0, r?.message ?? '')
@@ -218,15 +230,15 @@ async function materialize(devices, mqttPort) {
   return created
 }
 
-/* ── 孪生活性自检(PV 应随时间波动) ── */
-async function livenessCheck() {
+/* ── 孪生活性自检(PV 应随时间波动;只查本轮创建的设备) ── */
+async function livenessCheck(createdIds) {
   await sleep(8000)
   const a = await simApi('GET', '/api/nodes')
-  const devs = (a?.data ?? []).filter(n => String(n.id).startsWith('twin-'))
+  const devs = (a?.data ?? []).filter(n => createdIds.includes(n.id))
   const snap = devs.map(n => ({ id: n.id, v: (n.signals ?? []).map(s => s.value) }))
   await sleep(6000)
   const b = await simApi('GET', '/api/nodes')
-  const devs2 = (b?.data ?? []).filter(n => String(n.id).startsWith('twin-'))
+  const devs2 = (b?.data ?? []).filter(n => createdIds.includes(n.id))
   let moved = 0; const dead = []
   for (const d2 of devs2) {
     const before = snap.find(x => x.id === d2.id)
@@ -259,7 +271,7 @@ if (args.includes('--from-platform')) {
   console.error('用法:sim-twin.mjs --from-platform --line <id> | --blueprint <file> [--sim-port 4034] [--dynamics file]')
   process.exit(1)
 }
-liveness = await livenessCheck()
+liveness = await livenessCheck(created.map(c => c.id))
 console.log('')
 console.log('════════════════════════════════════════')
 console.log(`  sim-twin:${pass} PASS / ${fails.length} FAIL`)
