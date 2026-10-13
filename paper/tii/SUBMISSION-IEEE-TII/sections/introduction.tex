@@ -1,36 +1,36 @@
 \section{Introduction}
 \IEEEPARstart{L}{arge} language model (LLM) agents are moving from advising
 industrial operations to acting on them: recent systems generate control
-updates for industrial cyber-physical systems from multi-modal input
+updates from multi-modal input
 \cite{huang2026made}, pair each factory module with an LLM agent that
 dispatches skills over a tool protocol \cite{koehle2026llmdriven}, allocate
 work among cooperating agents \cite{lim2025llmenabled,zhao2026shopfloor},
-and have been studied as real-time controllers of a robot production line
+and act as real-time controllers of a robot line
 \cite{waseem2026pretrained}. What these demonstrations leave implicit is
 everything that surrounds the proposal: who may change which parameter, which
 limits are active for the current product and recipe, whether a human
 approved, whether the device accepted the command, and whether the process
 improved.
 
-Because these concerns are normally embedded in application code, they are
+Because these concerns live in application code, they are
 rebuilt per process, protocol, and agent framework---duplicated drivers,
-ad-hoc permission checks, logs untied to decisions. The four scenario plants (simulated in this paper) differ---injection molding, wastewater treatment (WWTP), annealing,
-and BOPET (biaxially oriented polyethylene terephthalate)
-film---but all need an auditable bridge from a
-team-level task to heterogeneous acquisition and control nodes. Industrial
-LLM work to date has largely targeted generation, diagnosis, and
-single-domain control \cite{liu2026agents4plc,jiang2026agentic}.
+ad-hoc permission checks, logs untied to decisions. The four scenario
+plants (simulated in this paper)---injection molding, wastewater treatment,
+annealing, and BOPET (biaxially oriented polyethylene terephthalate)
+film---differ, but all need an auditable bridge from a
+team-level task to heterogeneous acquisition and control nodes.
 
-\looseness=-1 \system{} addresses this execution gap through member--node bindings (a
-member being an engine-backed channel identity) and shared line, product,
-recipe, and run context. The response is
+\looseness=-1 \system{}---an open-source governed supervisory execution
+layer (Section~\ref{sec:arch})---addresses this gap through member--node
+bindings (a member being an engine-backed channel identity) and shared
+line, product, recipe, and run context. The response is
 organizational rather than algorithmic: each intervention leaves a
 separate evidence record per governed stage, from admission through
 compensation (Section~\ref{sec:mech}). Nodes expose engineering quantities
 rather than register addresses, and one governed member--node binding path
 serves every client.
 
-The paper makes four contributions:
+\system{} makes four contributions:
 \begin{enumerate}
 \item a \textbf{capability-based industrial execution architecture} connecting
 agent-team identity, semantic data-acquisition (DAQ) and write-control (DCW,
@@ -41,18 +41,17 @@ default-manual line master switch;
 \item a \textbf{reusable integration boundary} of self-describing node and
 driver contracts across six protocol families (five instantiated as lines,
 four exercised for governed writes), versioned production objects, plugin
-extension points, and a typed software development kit (SDK), into which an
-onboarding contract projects scenario blueprints while process models and
-policies stay external;
+extension points, and a typed software development kit (SDK); an
+onboarding contract projects scenario blueprints into it while process
+models and policies stay external;
 \item an \textbf{evidence-preserving governed intervention workflow}
-separating admission, optional approval, actuation, three-level write
+separating admission, optional approval, actuation, graded write
 acknowledgment with post-write verification, verdict, compensation, and
 backstop---the grading rule stated falsifiably; and
-\item a \textbf{layered evaluation} exercising one governed path through
-protocol closure with mechanism ablation, agent-team missions, a
-deterministic controller loop, concurrent process missions, and a
-deployment-scale regression campaign on a multi-line instance
-(Section~\ref{sec:eval}).
+\item a \textbf{layered evaluation} of one governed path across protocol
+closure with mechanism ablation, agent-team missions, a deterministic
+controller loop, concurrent process missions, and a deployment-scale
+regression campaign on a multi-line instance (Section~\ref{sec:eval}).
 \end{enumerate}
 Scope, revisited in Section~\ref{sec:limits}: real protocol stacks execute
 against author-implemented simulators; fast regulation,
@@ -60,4 +59,10 @@ certified protection, physical-plant transfer, and optimizer ranking are
 outside the claims. The governed path is proposer-agnostic---prompt content
 is never authority and admission re-resolves per request---so the scripted
 proposers of Section~\ref{sec:eval} exercise the same contract an
-engine-issued proposal would face.
+engine-issued proposal would face. The remainder of this paper proceeds
+from the nearest systems (Section~\ref{sec:related}) and the platform
+architecture (Section~\ref{sec:arch}) through the governed write path
+(Section~\ref{sec:mech}) and its layered evaluation
+(Section~\ref{sec:eval}) to validity, safety positioning, deployment
+boundaries, and conclusions (Sections~\ref{sec:limits}
+and~\ref{sec:conclusion}).

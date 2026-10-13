@@ -104,7 +104,9 @@
 \newcommand{\resDocsTotal}{91}
 \newcommand{\resLinesLive}{34}
 \newcommand{\resLinesRunning}{17}
-\newcommand{\resChannelsLive}{112}
+% channel count across the three October 9 regression runs: 111/111/113;
+% the body reports the range rather than one run's value.
+\newcommand{\resChannelsLive}{111--113}
 \newcommand{\resDaqOnline}{67}
 \newcommand{\resWriteNodesLive}{77}
 \newcommand{\resRecipesLive}{52}
@@ -148,3 +150,13 @@
 \newcommand{\resNovInspec}{94.0\%}
 \newcommand{\resNovWideRows}{861}
 \newcommand{\resNovStd}{0.24\,g}
+
+% Seven-leg fault-suite outcomes (hardening ack-gate suite,
+% tmp-e2e/hardening-ack-gate.mjs; archived in
+% docs/audit/2026-10-08-production-hardening-report.md): 2 parameters
+% promoted transport-acknowledged -> readback-verified by post-write
+% re-read; 1 failed (broker unreachable, healthy sibling verified);
+% 1 unverified (publish-only endpoint, three verification attempts).
+\newcommand{\resAckPromoted}{2}
+\newcommand{\resAckFailed}{1}
+\newcommand{\resAckUnverified}{1}

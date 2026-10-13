@@ -29,7 +29,7 @@
 \usepackage{cite}
 \usepackage[colorlinks=true,linkcolor=black,citecolor=black,urlcolor=black]{hyperref}
 \hypersetup{bookmarksnumbered=true,
-  pdftitle={Grading Machine-Originated Plant Writes: Separately Inspectable Evidence for Industrial Agent Teams},
+  pdftitle={AgentWorkShop: A Governed Supervisory Execution Layer for LLM-Agent Plant Writes},
   pdfauthor={Anonymous Authors},
   pdfsubject={IEEE Transactions on Industrial Informatics},
   pdfkeywords={agent teams, human-in-the-loop, industrial informatics, LLM agents, supervisory control, write governance}}
@@ -59,10 +59,10 @@
 
 \begin{document}
 
-\title{Grading Machine-Originated Plant Writes: Separately Inspectable Evidence for Industrial Agent Teams}
+\title{AgentWorkShop: A Governed Supervisory Execution Layer for LLM-Agent Plant Writes}
 
 \author{Anonymous Authors}
-\markboth{IEEE Transactions on Industrial Informatics, Submitted Manuscript}{Grading Machine-Originated Plant Writes}
+\markboth{IEEE Transactions on Industrial Informatics, Submitted Manuscript}{AgentWorkShop: Governed Execution for LLM-Agent Plant Writes}
 
 \maketitle
 
@@ -72,29 +72,26 @@ industrial plants, yet the safeguards surrounding each
 proposal---write authority, active limits, human approval, device
 acceptance---are rebuilt per deployment inside application code, so a task
 reported complete can coexist with a missed process objective.
-AgentWorkShop, a governed supervisory execution layer, carries every
-agent-originated write along one path:
-admission against declared, versioned limits, approval where required,
-actuation over semantic write-control nodes, graded
-acknowledgment by independent post-write read, verdict recording, and
+AgentWorkShop, an open-source governed supervisory execution layer, carries
+every agent-originated write along one path: admission against declared,
+versioned limits; approval where required; actuation over semantic
+write-control nodes; graded
+acknowledgment---readback-verified, transport-acknowledged, or
+unverified---by what an independent post-write read observes, not the
+transport receipt alone; and verdict recording with
 compensation---each stage a separately inspectable evidence state
 attributed to its originating actor. Team identities reach
 data-acquisition and write-control nodes only through explicit
-member--node capabilities, and prompt content is never admissible as
-authority; a fail-safe-manual line master switch
-intercepts approval-free recipe dispatch, and process models, objectives,
-and policies stay external to the governed
-path. Each write is graded readback-verified, transport-acknowledged, or
-unverified by what an independent read observes, never by the transport
-receipt alone. Four process scenarios---injection molding, wastewater
-treatment, annealing, and biaxially oriented polyethylene terephthalate
-(BOPET) film---and a cast-film reference line exercise the layer across
+member--node capabilities, prompt content is never admissible as
+authority, and a fail-safe-manual line master switch
+intercepts approval-free recipe dispatch. Four process
+scenarios---injection molding, wastewater treatment, annealing, and
+biaxially oriented polyethylene terephthalate (BOPET)
+film---and a cast-film reference line exercise the layer across
 protocol-interception drills, agent-team missions, and a deployment-scale
-regression campaign on one multi-line instance: intercepting and
-attributing, grading honestly, pacing automation, mediating approval, and
-recovering on record. The evaluation is simulation-tier (simulator-backed,
-not physical plants); no optimization-benefit or safety-assurance claim is
-made.
+regression campaign on one multi-line instance. The evaluation is
+simulation-tier (simulator-backed, not physical plants); no
+optimization-benefit or safety-assurance claim is made.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -113,17 +110,14 @@ supervisory control, write governance.
 \input{sections/discussion}
 
 \bibliographystyle{IEEEtran}
-% Reference list at \scriptsize (7pt) with tightened leading: the P0 citation
-% program (nine added entries) plus the campaign-progression table do not
-% fit the 10-page budget at IEEEtran's default 8pt bibliography size
-% (IEEEtran hardcodes \footnotesize inside thebibliography, hence the
-% scoped redefinition). First fallback if IEEE's composition pass reflows:
-% restore \footnotesize and trim the related-work recap clauses and the
-% V-A onboarding sentence instead.
+% Reference list at IEEEtran's default \footnotesize (8pt) -- the 2026-10-13
+% revision restores the publisher-conformant font size (the earlier 7pt
+% compression was flagged as a desk-reject risk). Item separation uses
+% IEEEtran's author-adjustable \IEEEbibitemsep, tightened slightly to hold
+% the 10-page budget; body text was trimmed rather than shrinking the font.
 \begingroup
 \raggedbottom
-\def\footnotesize{\fontsize{7}{4.9}\selectfont}
-\def\IEEEbibitemsep{-1pt plus .1pt}
+\def\IEEEbibitemsep{-2.5pt plus .1pt}
 \bibliography{resources/refs}
 \endgroup
 

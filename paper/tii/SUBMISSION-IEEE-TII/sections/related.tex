@@ -3,29 +3,25 @@
 \subsection{LLM Agents in Industrial Control: From Generation to Governance}
 \looseness=-1 Agent-based manufacturing and supervision have long linked
 organizational roles to plant
-capabilities \cite{leitao2009agentbased,biskupovic2025supervision};
-LLM-oriented industrial work now
-spans PLC generation and verification \cite{liu2026agents4plc}.
-A further line couples an LLM directly to plant-facing action---context-aware
+capabilities \cite{leitao2009agentbased,biskupovic2025supervision}, and
+LLM-oriented industrial work now spans PLC generation and verification
+\cite{liu2026agents4plc} and direct plant-facing action---context-aware
 control \cite{wu2025instructmpc}, digital-twin fault handling
 \cite{gill2025llmdt}, and natural-language machine
-control over OPC UA \cite{hofmann2025nlc}---but reports no production-scoped
-admission, per-request re-checking, or graded write evidence on the path the
-action takes. The closest systems (Table~\ref{tab:nearest}, as reported in
-their publications) target the control action
-itself: MADE couples multi-modal perception to control generation behind a
-safety layer \cite{huang2026made};
-K{\"o}hle et al.\ dispatch module-scoped skills over a six-module plant
-\cite{koehle2026llmdriven}; Waseem et al.\ place pretrained LLMs
-\emph{inside} the control loop as real-time controllers
-\cite{waseem2026pretrained}---a layer below \system{}, so the roles are
-complementary; Lim and Kovalenko \cite{lim2025llmenabled} and Zhao et al.\
-\cite{zhao2026shopfloor} allocate work among agents, whereas this layer
-governs how an allocated proposal reaches the plant and what evidence it
-leaves. A recent review frames agentic AI's industrial value as
+control over OPC UA \cite{hofmann2025nlc}---without production-scoped
+admission, per-request re-checking, or graded write evidence.
+\looseness=-1 The closest systems (Table~\ref{tab:nearest}, as reported in
+their publications) target the control action itself---multi-modal
+control-update generation behind a safety layer \cite{huang2026made},
+module-scoped skill dispatch over a six-module plant
+\cite{koehle2026llmdriven}, and pretrained LLMs \emph{inside} the control
+loop as real-time controllers \cite{waseem2026pretrained}, a layer below
+\system{} so the roles are complementary---while agent-allocation work
+\cite{lim2025llmenabled,zhao2026shopfloor} distributes tasks, not governed
+writes. A recent review frames agentic AI's industrial value as
 safety-aware human-in-the-loop (HITL) decision support rather than autonomous
-control authority \cite{jiang2026agentic}---the mechanism set here makes that
-positioning concrete.
+control authority \cite{jiang2026agentic}---the mechanism set here makes
+that concrete.
 
 \begin{table*}[!t]
 \centering
@@ -52,46 +48,47 @@ Waseem et al., Mach.\ Learn.\ Eng.\ 2026 \cite{waseem2026pretrained} & real-time
 \end{table*}
 
 \subsection{Frameworks, Standards, Run-Time Guarantees, and Automation Practice}
-Multi-agent frameworks coordinate tasks and tools, and the Model Context
-Protocol (MCP) standardizes tool and inter-agent interfaces \cite{mcp2024}; the tools it exposes, however,
-carry advisory annotations but no production context---line, product, or
-recipe---and no record separating admission from execution. ISA-88 and ISA-95 supply
-complementary models for recipes and operations
-\cite{isa88,isa95}; \system{}'s versioned recipes and
-run dispatch instantiate a reduced subset of that stack, and the governed
+The Model Context
+Protocol (MCP) standardizes multi-agent tool interfaces \cite{mcp2024};
+its tools carry advisory annotations but no production
+context---line, product, or recipe---and no record separating admission
+from execution. ISA-88 and ISA-95 model recipes and operations
+\cite{isa88,isa95}, and \system{}'s versioned recipes instantiate
+a reduced subset of that stack; the governed
 life cycle transposes run-to-run (R2R) control disciplines \cite{moyne2000r2r}
-onto a supervisory write path---open-ended proposal space,
-approval-mediated bindings, and compensation records where R2R has a fitted
-controller.
-A separate line enforces run-time guarantees on LLM agents---judge and
-guard agents \cite{xiang2024guardagent};
-they gate software tool calls, not plant writes, and their policies could
-compile onto the substrate contributed here.
+onto a supervisory write path.
+A separate line enforces run-time guarantees on LLM agents---guard agents
+\cite{xiang2024guardagent}, schema-level behavioral constraints
+(AgentSpec \cite{wang2025agentspec}), and capability-based
+information-flow control (CaMeL \cite{debenedetti2025camel}), the closest
+software-agent analogue of the rule that prompt content is never authority;
+they gate software tool calls and data flow, not plant writes; their
+policies could compile onto this substrate.
 
 \looseness=-1 Permissions, range checks, approvals, and audit trails long existed in
 distributed-control-system (DCS) and SCADA practice---versioned batch
 recipes and electronic batch journals under 21~CFR Part~11 and GAMP~5
-\cite{part11,gamp5}, decoupled second-channel monitoring and advisory
+\cite{part11,gamp5}, second-channel monitoring and advisory
 operations in NAMUR open architecture
-\cite{namur2017noa}, and setpoint adaptation in run-to-run control---and
-IEC~62443 codifies their security counterpart \cite{iec62443-3-3}, while
+\cite{namur2017noa}, and setpoint adaptation in run-to-run control---while
+IEC~62443 codifies their security counterpart \cite{iec62443-3-3} and
 formal shielding, control-barrier functions, and simplex run-time assurance
-offer stronger specified properties
-\cite{alshiekh2018shielding,ames2017cbf,sha2001simplex}. Against that
+offer stronger properties
+\cite{alshiekh2018shielding,ames2017cbf,sha2001simplex}. Graded command
+confirmation itself has telecontrol ancestry: DNP3's select-before-operate
+exchange \cite{ieee1815dnp3} and IEC~60870-5's command-acknowledgment cycle
+\cite{iec60870104} confirm a command at the protocol and application layer;
+\system{} grades above them, against production context and actor
+attribution. Against that
 practice the difference is the proposer: a machine-generated agent identity
 rather than a presupposed human operator, so admission binds to member
-authority and prompt content stays inert, re-evaluated per request against
-live product and recipe state rather than at
-role-assignment time; the governed path spans four exercised write protocol
-families; and the evidence states---graded acknowledgment, verdict,
-compensation---survive strategy replacement, where the three-way check is a
-supervised special case of classical data reconciliation and gross-error
-detection \cite{crowe1996reconciliation}.
+authority, prompt content stays inert, and intervals are re-evaluated per
+request against live product and recipe state; the evidence
+states---graded acknowledgment, verdict, compensation---survive strategy
+replacement; the three-way check is a supervised special case of
+classical data reconciliation
+\cite{crowe1996reconciliation}.
 \system{} implements source-dependent checks and a rule-based backstop
-(Section~\ref{sec:agentloop}) and
-makes no formal protection guarantee; human oversight likewise
-requires more than an approval dialog
-\cite{bainbridge1983ironies}. Agent benchmarks
-and prompt-injection studies
-\cite{greshake2023injection,liu2024pinjection} inform adjacent evaluations;
-ours separates them.
+(Section~\ref{sec:agentloop}), no formal protection guarantee; human
+oversight likewise requires more than an approval dialog
+\cite{bainbridge1983ironies}.

@@ -1,15 +1,5 @@
 \section{Discussion and Limitations}
 \label{sec:limits}
-\subsection{Industrial-Informatics Interpretation}
-Against the nearest systems of Section~\ref{sec:related},
-the differentiator is not the LLM---a replaceable strategy slot---but the
-production-scoped authority and evidence around its writes: no nearest
-system reports that combination on one path.
-The layer installs as one service beside the plant's protocol endpoints,
-onboards declaratively (Section~\ref{sec:reuse}), serves approval clients
-the HITL cards, and leaves
-PLC protection and DCS interlocks untouched.
-
 \subsection{Validity and Reproducibility}
 \looseness=-1 Run identifier, seed, commit, harness fingerprint, and raw artifacts are
 fixed, so counts are re-derivable rather than trusted; Q5 adds per-run
@@ -24,12 +14,17 @@ single live provider/model;
 and harness-adjudicated approval (human decision latency and quality out of
 scope).
 \subsection{Safety Positioning and Human Oversight}
-The threat model is a misbehaving or manipulated agent (wrong or hallucinated
-proposals) inside an otherwise trusted platform and plant; the approval dialog,
-admission re-checks, and journaling are the containment surfaces; no adversarial injection
+\looseness=-1 The threat model is a misbehaving or manipulated agent inside
+an otherwise trusted platform and plant; approval dialog, admission
+re-checks, and journaling are the containment surfaces; no injection
 campaign or approval-dialog operator study is reported; stolen credentials
 and compromised endpoints are the domain of IEC~62443
-\cite{iec62443-3-3}. Fast regulation, hardware interlocks,
+\cite{iec62443-3-3}, and high-risk-AI regulatory
+duties---record keeping and human oversight---belong to instruments such
+as Regulation (EU) 2024/1689 \cite{eu2024aiact}; the
+attributed journal and approval gates serve its logging and
+oversight articles at the evidence layer, certification out of scope.
+Fast regulation, hardware interlocks,
 and safety functions remain in the PLC; prompts and retrieved documents are
 untrusted text, not authority
 \cite{greshake2023injection,liu2024pinjection}---the proposer is confined to
@@ -37,43 +32,56 @@ per-binding scope and journaled, attributable actions: a bounded blast
 radius, not a protection guarantee.
 Admission limits,
 acknowledgment grading, and the backstop run with or without human
-approval---enforcement never queues behind human attention; one
-exception: the backstop's deferred mode judges autonomously but hands
-actuation back to the approval policy after repeated rollbacks
-(Section~\ref{sec:agentloop}). The pacing
+approval---enforcement never queues behind human attention (the
+deferred-mode exception hands actuation back to the approval policy,
+Section~\ref{sec:agentloop}). The pacing
 windows bound approval demand per line, and
 batch release (Section~\ref{sec:hardening}, leg~5) is the demonstrated
 fatigue mitigation; approval fatigue and automation bias remain
 human-factors risks
-\cite{bainbridge1983ironies,parasuraman2000model},
-and reading graded evidence assumes trained approvers. A lead agent's
+\cite{parasuramanmanzey2010complacency,bainbridge1983ironies}. A lead agent's
 delegation-mode choice (Section~\ref{sec:hitl}) is the one agent-reachable
 path around per-request approval; capping the granted mode at the granter's
 own binding mode, or requiring the line-switch confirmation for it, is
-queued as the guard.
+queued as the guard, alongside the verdict-side guard of
+Section~\ref{sec:agentloop} (an independent adjudication identity, or a
+platform-side minimum re-check before \texttt{keep}).
 
 \subsection{Deployment Boundaries}
-\looseness=-1 Execution and recovery are non-atomic: bookkeeping may fail after actuation, the
+\looseness=-1 Against the nearest systems of Section~\ref{sec:related},
+the differentiator is not the LLM---a replaceable strategy slot---but the
+production-scoped authority and evidence around its writes: no nearest
+system reports that combination on one path. The layer installs beside the
+plant's protocol endpoints, onboards declaratively
+(Section~\ref{sec:reuse}), and leaves PLC protection and DCS interlocks
+untouched.
+Execution and recovery are non-atomic: bookkeeping may fail after actuation, the
 pacing windows time writes rather than certify
 stability, declared per-write step limits are advisory metadata surfaced to
 agents rather than enforced bounds, and multi-node compensation may partially
 succeed. Readback agreement and three-way
-consistency need not imply process recovery, and hold heartbeats re-apply
-the stored setpoint without re-admission, trailing a narrowed window.
+consistency need not imply process recovery; hold heartbeats re-apply the
+stored setpoint without re-admission, trailing a narrowed window.
 Oscillation, storage failure, clock error, concurrency beyond the four-line
-campaign, and redundant supervisor deployments with divergent stores
-(split-brain) remain unevaluated; a supervisor outage halts dispatch rather
-than permitting writes through; the next evidence tiers are a
+campaign, and split-brain supervisor deployments with divergent stores
+remain unevaluated; the journal is append-only but not
+tamper-evident---no hash chain or trusted timestamping---so forensic
+integrity rests on host security, and clock skew propagates into timeline
+evidence. A supervisor outage halts dispatch rather than permitting writes
+through; plant staff retain their conventional
+DCS/SCADA stations outside \system{}---the governed path mediates
+agent-originated and platform-client writes, not existing operator
+tooling: an integration boundary, not a takeover. The next
+evidence tiers are a
 hardware-in-the-loop leg against a
-real PLC or OPC-UA endpoint and community process
-benchmarks such as Tennessee Eastman \cite{downs1993tep} beyond the
-scenario plants. Production
-integration additionally requires: bound changes managed under
-change-control with process-evidence validation; approval-aging,
-open-record-aging, and backstop-deferred states surfaced on the plant alarm
-system; the bench-mode environment switch refused at production boot; and
-approval treated as workflow mediation---attribution and timestamp, not an
-electronic signature. In production, bindings govern
+real PLC or OPC-UA endpoint and community benchmarks such as Tennessee
+Eastman \cite{downs1993tep} or Secure Water Treatment \cite{goh2017swat}. Production
+integration additionally requires change-controlled bound changes with
+process-evidence validation, approval/open-record aging and
+backstop-deferred states surfaced on the plant alarm system, the
+bench-mode switch refused at production boot, and
+approval as workflow mediation---attribution and timestamp, not an
+electronic signature. \looseness=-1 In production, bindings govern
 sanctioned tools, not arbitrary privileged-engine I/O---least privilege,
 endpoint security, and IT/OT separation remain necessary
 \cite{iec62443-3-3}; \system{} is neither a safety
@@ -86,7 +94,7 @@ segregation of duties and alarm-path failure tests \cite{isa182}.
 \looseness=-1 \system{} contributes a governed supervisory execution layer rather
 than a new process optimizer: one governed path from agent-team identities
 through semantic nodes and production context to governed writes, graded
-acknowledgments, verdicts, and compensation, with admission, approval, and
+acknowledgments, verdicts, and compensation---admission, approval, and
 recovery left as separately inspectable, actor-attributed evidence on every
 agent-originated write. Physical-plant
 deployment, operator studies, and
@@ -94,11 +102,11 @@ external-framework comparison remain open; until then, optimization
 benefit, autonomous control, and safety assurance stay unsupported claims.
 
 \vspace{2pt}\noindent\textit{Data availability and disclosure.}
-Artifacts are archived per run in the project's benchmark result tree;
-anonymized artifacts are available during review and released with the
-code upon publication. The two live engine-turn console transcripts
-(Section~\ref{sec:agentteam}) were excluded by the repository's
-log-retention rule and survive only as recorded outcomes; the
-write-evidence suite's checks are documented in the audit report and
-rerunnable from its script. AI assistants supported editing
-under author direction; the authors remain responsible for all claims.
+Artifacts are archived per run in the project's benchmark result tree; the
+platform and its deterministic simulators are publicly available
+(Section~\ref{sec:arch}). The live engine-turn transcripts
+(Section~\ref{sec:agentteam}) were excluded by the log-retention rule and
+survive only as recorded outcomes; the
+write-evidence suite is rerunnable from its script. AI assistants supported
+editing under author direction; the authors remain responsible for all
+claims.
