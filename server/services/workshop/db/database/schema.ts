@@ -750,8 +750,9 @@ CREATE INDEX IF NOT EXISTS idx_mes_fetch_jobs_agent ON mes_fetch_jobs(agent_id, 
 
 CREATE INDEX IF NOT EXISTS idx_hitl_requests_agent ON hitl_requests(agent_id, status);
 
--- v26: 数据分析系统 · 分析报告台账(Agent Channel 经 analysis_save 留痕;append-only,Agent 面无改删)
+-- v26: 数据分析系统 · 分析报告台账(Agent Channel 经 analysis_save 留痕;Agent 面无改删)
 -- 归因与产线上下文在保存时快照固化(line_name/产品/批次),产线改名或删除后历史仍可读。
+-- v27: 人工修订面 —— 人类用户(产线 operate/admin)可经 REST 编辑,updated_* 固化修订归因。
 CREATE TABLE IF NOT EXISTS analysis_reports (
   id TEXT PRIMARY KEY,
   line_id TEXT NOT NULL DEFAULT '',
@@ -772,7 +773,10 @@ CREATE TABLE IF NOT EXISTS analysis_reports (
   channel_name TEXT NOT NULL DEFAULT '',
   actor TEXT NOT NULL DEFAULT '',
   actor_name TEXT NOT NULL DEFAULT '',
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  updated_at TEXT,
+  updated_by TEXT NOT NULL DEFAULT '',
+  updated_by_name TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_analysis_reports_line ON analysis_reports(line_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_analysis_reports_recipe ON analysis_reports(recipe_id);`

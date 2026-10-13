@@ -4,7 +4,7 @@
 import { getQuery } from 'h3'
 import { defineApiHandler } from '@/server/utils/response'
 import { resolveUser } from '@/server/api/workshop/caller'
-import { filterByLine } from '@/server/services/workshop/permissions'
+import { filterByLine, lineMode } from '@/server/services/workshop/permissions'
 import { getAnalysisRepo } from '@/server/services/workshop/analysis/analysis.repo'
 
 export default defineApiHandler(async (event) => {
@@ -29,5 +29,11 @@ export default defineApiHandler(async (event) => {
     limit: Math.min(500, Math.max(1, Number(q.limit) || 100)),
   })
   const visible = filterByLine(user, rows, r => r.lineId || null)
-  return { reports: visible, count: visible.length }
+  // v27 编辑能力位:admin 或产线 operate(与 PATCH 端点同口径,前端据此显隐编辑入口)
+  const canEdit = (lineId: string): boolean =>
+    user.role === 'admin' || (Boolean(lineId) && lineMode(user, lineId) === 'operate')
+  return {
+    reports: visible.map(r => ({ ...r, canEdit: canEdit(r.lineId) })),
+    count: visible.length,
+  }
 })

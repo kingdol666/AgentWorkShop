@@ -41,4 +41,10 @@ export interface AnalysisReportView {
   actor: string
   actorName: string
   createdAt: string
+  /** v27 人工修订归因(未修订 = null/空) */
+  updatedAt: string | null
+  updatedBy: string
+  updatedByName: string
+  /** 编辑能力位(服务端按 admin/产线 operate 判定) */
+  canEdit?: boolean
 }

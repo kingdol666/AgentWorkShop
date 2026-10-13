@@ -115,6 +115,42 @@ test('repo:坏 JSON 列容错(解析失败回退 []/{})', () => {
   getAnalysisRepo().remove('ar-bad')
 })
 
+test('repo:update 人工修订(部分字段/归因固化/不存在返回 undefined)', () => {
+  const repo = getAnalysisRepo()
+  repo.insert({
+    id: 'ar-edit1', lineId: lineA.id, lineName: '测试线A', title: '原始标题', category: 'quality',
+    summary: '原始结论', conclusions: ['一'], report: '原始正文', metrics: { k: 1 },
+    recipeId: '', recipeVersion: '', windowFrom: null, windowTo: null,
+    dataSources: '', context: {}, channelId: '', channelName: '', actor: AGENT, actorName: '',
+    createdAt: '2026-10-13T12:00:00.000Z',
+  })
+  // 未修订行:修订列为空
+  const before = repo.get('ar-edit1')!
+  assert.equal(before.updatedAt, null)
+  assert.equal(before.updatedBy, '')
+
+  // 部分修订:只改 summary/category,其余保留
+  const after = repo.update('ar-edit1', { summary: '修订后结论', category: 'alarm' }, { id: 'user-1', name: '值班工程师' })
+  assert.ok(after)
+  assert.equal(after.summary, '修订后结论')
+  assert.equal(after.category, 'alarm')
+  assert.equal(after.title, '原始标题', '未改字段应保留')
+  assert.deepEqual(after.conclusions, ['一'])
+  assert.equal(after.updatedBy, 'user-1')
+  assert.equal(after.updatedByName, '值班工程师')
+  assert.ok(after.updatedAt, '修订时间应固化')
+
+  // 结论数组整体替换 + 时间窗更新
+  repo.update('ar-edit1', { conclusions: ['新结论一', '新结论二'], windowFrom: '2026-10-13T08:00:00.000Z' }, { id: 'user-2', name: '白班' })
+  const again = repo.get('ar-edit1')!
+  assert.deepEqual(again.conclusions, ['新结论一', '新结论二'])
+  assert.equal(again.windowFrom, '2026-10-13T08:00:00.000Z')
+  assert.equal(again.updatedBy, 'user-2', '二次修订刷新归因')
+
+  assert.equal(repo.update('ar-nope', { summary: 'x' }, { id: 'u', name: 'u' }), undefined)
+  repo.remove('ar-edit1')
+})
+
 test('analysis_save:缺参拒绝(title/summary 必填)', async () => {
   const noTitle = await toolAnalysisSave(AGENT, { summary: 'x' })
   assert.equal(noTitle.isError, true)

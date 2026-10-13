@@ -19,6 +19,7 @@ defineProps<{
 const emit = defineEmits<{
   toggle: [row: AnalysisReportView]
   remove: [row: AnalysisReportView]
+  edit: [row: AnalysisReportView]
 }>()
 
 const expandedId = defineModel<string>('expandedId', { default: '' })
@@ -151,6 +152,14 @@ const contextText = (r: AnalysisReportView): string => {
                 v-else
                 class="dim"
               >{{ $t('analysis.noDetail') }}</span>
+              <button
+                v-if="row.canEdit"
+                class="mini-btn"
+                :title="$t('analysis.editTitle')"
+                @click="emit('edit', row)"
+              >
+                <span class="i-tabler-pencil" />
+              </button>
               <a-popconfirm
                 v-if="admin"
                 :title="$t('analysis.removeConfirm', { p0: row.title })"
@@ -174,6 +183,13 @@ const contextText = (r: AnalysisReportView): string => {
           >
             <td colspan="7">
               <div class="detail-grid">
+                <div
+                  v-if="row.updatedAt"
+                  class="kv kv-full revised"
+                >
+                  <span class="k">{{ $t('analysis.kRevised') }}</span>
+                  <span>{{ fmtTime(row.updatedAt) }} · {{ row.updatedByName || row.updatedBy }}</span>
+                </div>
                 <div class="kv">
                   <span class="k">{{ $t('analysis.kId') }}</span>
                   <span class="mono">{{ row.id }}</span>

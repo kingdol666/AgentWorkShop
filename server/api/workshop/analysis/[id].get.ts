@@ -5,7 +5,7 @@ import { getRouterParam } from 'h3'
 import { defineApiHandler } from '@/server/utils/response'
 import { AppError } from '@/server/utils/errors'
 import { resolveUser } from '@/server/api/workshop/caller'
-import { visibleLineIds } from '@/server/services/workshop/permissions'
+import { visibleLineIds, lineMode } from '@/server/services/workshop/permissions'
 import { getAnalysisRepo } from '@/server/services/workshop/analysis/analysis.repo'
 
 export default defineApiHandler(async (event) => {
@@ -19,5 +19,7 @@ export default defineApiHandler(async (event) => {
       throw new AppError(403, 'LINE_FORBIDDEN', `无权查看产线「${report.lineName || report.lineId}」的分析报告`)
     }
   }
-  return { report }
+  // v27 编辑能力位(与列表端点同口径:admin 或产线 operate)
+  const canEdit = user.role === 'admin' || (Boolean(report.lineId) && lineMode(user, report.lineId) === 'operate')
+  return { report: { ...report, canEdit } }
 })

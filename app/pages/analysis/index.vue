@@ -15,7 +15,7 @@
       @reset="feed.resetFilters"
     />
 
-    <!-- 分析报告台账:REST 快照为底,analysis 留痕 WS 帧去抖刷新;admin 可删(清污数据) -->
+    <!-- 分析报告台账:REST 快照为底,analysis 留痕 WS 帧去抖刷新;admin 可删,canEdit 可修订 -->
     <AnalysisTable
       v-model:expanded-id="expandedId"
       :rows="feed.rows.value"
@@ -24,6 +24,15 @@
       :admin="userStore.isAdmin"
       @toggle="toggleRow"
       @remove="removeReport"
+      @edit="openEdit"
+    />
+
+    <!-- 人工修订弹窗(v27 编辑面;canEdit 行可见) -->
+    <AnalysisEditModal
+      :report="editing"
+      :saving="savingEdit"
+      @close="editing = null"
+      @save="saveEdit"
     />
   </div>
 </template>
@@ -49,6 +58,7 @@ import type { AnalysisReportView } from './types'
 import AnalysisPageHead from '~/components/analysis/AnalysisPageHead.vue'
 import AnalysisFilterCard from '~/components/analysis/AnalysisFilterCard.vue'
 import AnalysisTable from '~/components/analysis/AnalysisTable.vue'
+import AnalysisEditModal from '~/components/analysis/AnalysisEditModal.vue'
 
 const ws = useWorkshopWs()
 const feed = useAnalysisFeed()
@@ -74,6 +84,32 @@ async function removeReport(row: AnalysisReportView): Promise<void> {
   }
   finally {
     removing.value = false
+  }
+}
+
+/** 人工修订(v27 编辑面):弹窗预填 → PATCH → 刷新(服务端按 canEdit 同口径鉴权) */
+const editing = ref<AnalysisReportView | null>(null)
+const savingEdit = ref(false)
+function openEdit(row: AnalysisReportView): void {
+  editing.value = row
+}
+async function saveEdit(patch: Record<string, unknown>): Promise<void> {
+  if (!editing.value || savingEdit.value) return
+  savingEdit.value = true
+  try {
+    await apiFetch({
+      base: '/api/workshop/analysis',
+      path: `/${editing.value.id}`,
+      init: { method: 'PATCH', body: JSON.stringify(patch) },
+    })
+    editing.value = null
+    await feed.doQuery()
+  }
+  catch (err) {
+    feed.error.value = apiErrorMessage(err)
+  }
+  finally {
+    savingEdit.value = false
   }
 }
 

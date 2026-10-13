@@ -37,6 +37,10 @@ export interface AnalysisReportRow {
   actor: string
   actorName: string
   createdAt: string
+  /** v27 人工修订归因(未修订 = null/空) */
+  updatedAt: string | null
+  updatedBy: string
+  updatedByName: string
 }
 
 export interface AnalysisReportInput {
@@ -81,7 +85,8 @@ const COLS = `id, line_id AS lineId, line_name AS lineName, title, category, sum
   recipe_id AS recipeId, recipe_version AS recipeVersion,
   window_from AS windowFrom, window_to AS windowTo, data_sources AS dataSources,
   context_json AS contextJson, channel_id AS channelId, channel_name AS channelName,
-  actor, actor_name AS actorName, created_at AS createdAt`
+  actor, actor_name AS actorName, created_at AS createdAt,
+  updated_at AS updatedAt, updated_by AS updatedBy, updated_by_name AS updatedByName`
 
 function rowToReport(r: Record<string, unknown>): AnalysisReportRow {
   const parseJson = (raw: unknown, dflt: unknown): unknown => {
@@ -107,6 +112,14 @@ export function createAnalysisRepo(db: DatabaseSync) {
        window_from, window_to, data_sources, context_json,
        channel_id, channel_name, actor, actor_name, created_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  )
+  // v27 人工修订:读改写单条全量 UPDATE(patch 在调用方合并,语句一次 prepare)
+  const updateStmt = db.prepare(
+    `UPDATE analysis_reports SET title = ?, category = ?, summary = ?, conclusions_json = ?,
+       report = ?, metrics_json = ?, recipe_id = ?, recipe_version = ?,
+       window_from = ?, window_to = ?, data_sources = ?,
+       updated_at = ?, updated_by = ?, updated_by_name = ?
+     WHERE id = ?`,
   )
   const getStmt = db.prepare(`SELECT ${COLS} FROM analysis_reports WHERE id = ?`)
   const removeStmt = db.prepare(`DELETE FROM analysis_reports WHERE id = ?`)
@@ -166,6 +179,45 @@ export function createAnalysisRepo(db: DatabaseSync) {
     },
     remove(id: string): boolean {
       return Number(removeStmt.run(id).changes) > 0
+    },
+    /**
+     * v27 人工修订:部分字段更新(patch 缺省 = 保留原值),固化修订归因。
+     * 编辑面属人类管理操作(Agent 面仍无改删);调用方负责权限校验与窗口归一。
+     */
+    update(id: string, patch: {
+      title?: string
+      category?: string
+      summary?: string
+      conclusions?: string[]
+      report?: string
+      metrics?: Record<string, unknown>
+      recipeId?: string
+      recipeVersion?: string
+      windowFrom?: string | null
+      windowTo?: string | null
+      dataSources?: string
+    }, editor: { id: string, name: string }): AnalysisReportRow | undefined {
+      const cur = getStmt.get(id) as Record<string, unknown> | undefined
+      if (!cur) return undefined
+      const merged = rowToReport(cur)
+      updateStmt.run(
+        patch.title !== undefined ? patch.title : merged.title,
+        patch.category !== undefined ? patch.category : merged.category,
+        patch.summary !== undefined ? patch.summary : merged.summary,
+        JSON.stringify(patch.conclusions !== undefined ? patch.conclusions : merged.conclusions),
+        patch.report !== undefined ? patch.report : merged.report,
+        JSON.stringify(patch.metrics !== undefined ? patch.metrics : merged.metrics),
+        patch.recipeId !== undefined ? patch.recipeId : merged.recipeId,
+        patch.recipeVersion !== undefined ? patch.recipeVersion : merged.recipeVersion,
+        patch.windowFrom !== undefined ? patch.windowFrom : merged.windowFrom,
+        patch.windowTo !== undefined ? patch.windowTo : merged.windowTo,
+        patch.dataSources !== undefined ? patch.dataSources : merged.dataSources,
+        new Date().toISOString(),
+        editor.id,
+        editor.name,
+        id,
+      )
+      return this.get(id)
     },
     count(): number {
       return Number((countStmt.get() as { c: number }).c)

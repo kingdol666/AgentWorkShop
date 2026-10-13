@@ -418,3 +418,13 @@ export function migrateAmlChannelOptimizationColumns(db: DatabaseSync): void {
   db.exec('CREATE INDEX IF NOT EXISTS idx_opt_explorations_channel ON optimization_explorations(channel_id, created_at DESC)')
   // aml_training_plans 建表由 SCHEMA_SQL 的 CREATE TABLE IF NOT EXISTS 兜底(启动时全量幂等执行,新旧库同效)
 }
+
+/**
+ * v27:数据分析报告人工修订列(updated_at/updated_by/updated_by_name)。
+ * 既有库补列(新库由 SCHEMA_SQL 直建);无索引需求 —— 修订列只随行读,不作检索键。
+ */
+export function migrateAnalysisEditColumns(db: DatabaseSync): void {
+  migrateAddColumn(db, 'analysis_reports', 'updated_at', 'TEXT')
+  migrateAddColumn(db, 'analysis_reports', 'updated_by', 'TEXT NOT NULL DEFAULT \'\'')
+  migrateAddColumn(db, 'analysis_reports', 'updated_by_name', 'TEXT NOT NULL DEFAULT \'\'')
+}
