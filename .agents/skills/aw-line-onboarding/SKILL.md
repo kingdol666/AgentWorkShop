@@ -5,55 +5,33 @@ description: AgentWorkShop 产线接入与作业频道锻造 skill。当用户�
 
 # AgentWorkShop 产线接入与作业频道锻造
 
-> 双位置说明:本 skill 的**校验基准副本**在仓库 `skills/aw-line-onboarding/`(scripts/test-aw-skills.mjs 校验对象),
-> **ZCode 发现副本**在 `.agents/skills/aw-line-onboarding/`(官方标准发现路径)。改动须两处同步;
-> 脚本实体在仓库 `scripts/onboarding/`(平台强绑定,不随 skill 目录走)。
+> 双位置说明:本 skill 的**校验基准副本**在仓库 `skills/aw-line-onboarding/`(scripts/test-aw-skills.mjs 校验对象),> **ZCode 发现副本**在 `.agents/skills/aw-line-onboarding/`(官方标准发现路径)。改动须两处同步;> 脚本实体在仓库 `scripts/onboarding/`(平台强绑定,不随 skill 目录走)。
 
-从用户文档(或口述规约)到"可作业的频道":提取点位与量程 → 连通性预检 → 产线供给
-(线+写控/数采节点+上下限+配方) → 按场景锻造频道(模板+插件+绑定+种子任务) → 验收。
-分工铁律:**你(助手)负责读文档、生成 driverConfig、选场景;逐点操作走 aw 工业 MCP 工具,
-批量供给/验收走 scripts/onboarding/ 脚本(输入是配置 JSON,永不理解文档)。**
+从用户文档(或口述规约)到"可作业的频道":提取点位与量程 → 连通性预检 → 产线供给(线+写控/数采节点+上下限+配方) → 按场景锻造频道(模板+插件+绑定+种子任务) → 验收。
+分工铁律:**你(助手)负责读文档、生成 driverConfig、选场景;逐点操作走 aw 工业 MCP 工具,批量供给/验收走 scripts/onboarding/ 脚本(输入是配置 JSON,永不理解文档)。**
 
 ## 对产线负责的两条铁律(高于一切步骤)
 
-1. **不确定必问,禁止猜测**:凡是缺字段/两可的决策,停下来问用户 —— 必问清单:
-   ①点位的量程/单位/单步上限缺失(直接影响四层限界与工艺安全);
-   ②SP(可写)/PV(只读)判定不明(写错方向=对真实设备误动作);
-   ③MES 认证方式与凭据归属(bearer/header/none;token 放哪个 secretRef);
-   ④场景目标不清晰(找区间?诊断?微调?达标判据是什么);
-   ⑤配方下发治理档位(首绑一律 manual;用户明确要求才切 auto)。
-2. **测试自动裁决,投用用户裁决**:接入验收/冒烟期由助手自动创建并裁决 HITL(测试语义);
-   **投入使用必须由产线负责人在界面上 judge & taste 后放行** —— skill/脚本只到"可投用",
-   不得代用户宣告投产,交接时必须输出绑定矩阵/HITL 策略/安全限复核清单。
+1. **不确定必问,禁止猜测**:凡是缺字段/两可的决策,停下来问用户 —— 必问清单: ①点位的量程/单位/单步上限缺失(直接影响四层限界与工艺安全); ②SP(可写)/PV(只读)判定不明(写错方向=对真实设备误动作); ③MES 认证方式与凭据归属(bearer/header/none;token 放哪个 secretRef); ④场景目标不清晰(找区间?诊断?微调?达标判据是什么); ⑤配方下发治理档位(首绑一律 manual;用户明确要求才切 auto)。
+2. **测试自动裁决,投用用户裁决**:接入验收/冒烟期由助手自动创建并裁决 HITL(测试语义); **投入使用必须由产线负责人在界面上 judge & taste 后放行** —— skill/脚本只到"可投用", 不得代用户宣告投产,交接时必须输出绑定矩阵/HITL 策略/安全限复核清单。
 
 ## 一键接入(onboard.mjs,首选执行方式)
 
-```bash
-node scripts/onboarding/onboard.mjs <统一配置.json> [--skip-connectivity] [--smoke]
-```
+```bashnode scripts/onboarding/onboard.mjs <统一配置.json> [--skip-connectivity] [--smoke]```
 
 一条命令跑完全阶段:连通性预检 → 产线供给(mes-rest 映射自动字符串化)→ 频道锻造
-(含 **mesFetchGrants 自动授权配方**:history-only mes 节点的可见面 = 授权配方参数;
-场景 scene/promptVariables 透传)→ V1-V6 验收 →(`--smoke`)冒烟闭环步**自动 HITL 裁决** →
-交接声明(落袋 id + 投用复核清单)。统一配置 schema 见脚本头注;
-分阶段手工执行(下述阶段 1-5)仍是等价路径,适合定位问题。
+(含 **mesFetchGrants 自动授权配方**:history-only mes 节点的可见面 = 授权配方参数;场景 scene/promptVariables 透传)→ V1-V6 验收 →(`--smoke`)冒烟闭环步**自动 HITL 裁决** →交接声明(落袋 id + 投用复核清单)。统一配置 schema 见脚本头注;分阶段手工执行(下述阶段 1-5)仍是等价路径,适合定位问题。
 
 ## 前置条件
 
-- **MCP 集成开关已启用**:平台 Web「系统设置 → MCP 集成 → 启动 MCP 集成」打开(或为
-  MCP 进程设 env `AW_MCP_ENABLED=true`)。未启用时 `aw_status` 返回 `mcpEnabled=false`,
-  除 `aw_status` 外所有工具调用都会被拒——先引导用户开启,不要绕过。
-- AgentWorkShop 实例运行中(默认 `http://127.0.0.1:3001`,env `AW_BASE` 可覆盖);凭据
-  env `AW_TOKEN`(优先)或 `AW_EMAIL`/`AW_PASS`;未鉴权先 `aw_login`。
-- 模拟器目标产线(如有):plc-node-simulator 默认 `:4010`;**禁用整包替换型预设
-  (film-line / cast-film-physics / biax-line)——会替换掉既有全部节点**;共存/验收只用
-  injection-line / wwtp-line / anneal-line(增量补建,不动其他设备)。
+- **MCP 集成开关已启用**:平台 Web「系统设置 → MCP 集成 → 启动 MCP 集成」打开(或为 MCP 进程设 env `AW_MCP_ENABLED=true`)。未启用时 `aw_status` 返回 `mcpEnabled=false`, 除 `aw_status` 外所有工具调用都会被拒——先引导用户开启,不要绕过。
+- AgentWorkShop 实例运行中(默认 `http://127.0.0.1:3001`,env `AW_BASE` 可覆盖);凭据 env `AW_TOKEN`(优先)或 `AW_EMAIL`/`AW_PASS`;未鉴权先 `aw_login`。
+- 模拟器目标产线(如有):plc-node-simulator 默认 `:4010`;**禁用整包替换型预设 (film-line / cast-film-physics / biax-line)——会替换掉既有全部节点**;共存/验收只用 injection-line / wwtp-line / anneal-line(增量补建,不动其他设备)。 **目标线没有现成预设时**(新场景/文档接入),用 aw-plc-sim-twin 按阶段 1 提炼的点位 (或平台既有节点)自动生成模拟孪生设备与模拟生产——虚拟预演→割接的标准路径,见阶段 7。
 - 受保护资源:演示线1 `ln-d7e0a2a2` 及其节点/配方/批次**只读参照,一律不得写入或删除**。
 
 ### 0. 连接检查
 
-调 `aw_status`:确认 base/port 与 `mcpEnabled=true`;未鉴权先 `aw_login`。
-实例从未初始化管理员时提示用户走 Web /setup,不要代注册。
+调 `aw_status`:确认 base/port 与 `mcpEnabled=true`;未鉴权先 `aw_login`。实例从未初始化管理员时提示用户走 Web /setup,不要代注册。
 
 ### 1. 输入识别与点位提取
 
@@ -77,32 +55,23 @@ node scripts/onboarding/onboard.mjs <统一配置.json> [--skip-connectivity] [-
 | http | url, headersJSON, bodyKey | 写 POST,读 GET 探测 |
 | mes-rest | baseUrl, authType(bearer/header/none), secretRef;readMap{method,path,query,response.valuePath,tsPath};writeMap{method,path,bodyTemplate(`{{value}}` 插值)} | secretRef 零明文:凭据存 env `AW_MES_<REF>_TOKEN` |
 
-同时提取:**工程量程(min/max)**、**单步上限(stepLimit,建议 ≤量程/20)**、采样周期
-(intervalMs 1~5s;写保持 holdIntervalMs ≥120000)。
+同时提取:**工程量程(min/max)**、**单步上限(stepLimit,建议 ≤量程/20)**、采样周期(intervalMs 1~5s;写保持 holdIntervalMs ≥120000)。
 
 ### 2. 连通性验证(未全绿不得进入供给)
 
-批量:把每个点位写成 `tests` 数组跑 `node scripts/onboarding/test-connection.mjs <config.json>`
-(逐驱动调平台 `POST /api/workshop/daq/test-driver`,mes-rest 走 `mes-test-read`)。
-单点抽查:用 `aw_request` 直接 POST 上述端点。任一失败即停:回报原始 message
-(超时/拒绝/路径 404),修正 driverConfig 后重跑。
+批量:把每个点位写成 `tests` 数组跑 `node scripts/onboarding/test-connection.mjs <config.json>`(逐驱动调平台 `POST /api/workshop/daq/test-driver`,mes-rest 走 `mes-test-read`)。
+单点抽查:用 `aw_request` 直接 POST 上述端点。任一失败即停:回报原始 message(超时/拒绝/路径 404),修正 driverConfig 后重跑。
 
 ### 3. 产线供给(线+节点+上下限+配方)
 
 批量(推荐,幂等):`node scripts/onboarding/provision-line.mjs <config.json>`——以指纹标签
-(`AW-LINE:<hash>`)复用既有线/节点,量程漂移自动 PATCH 对齐(配置为权威);配方 params 用
-节点名引用;脚本末行输出 JSON 摘要(`{lineId,dcw,daq,recipeId}`),**保存它**。
-手工逐点(等价工具面):`aw_line_create` → `aw_dcw_create`(必带 templateRef/min/max/
-stepLimit/holdIntervalMs)与 `aw_daq_create` → `aw_recipe_create`;随时 `aw_dcw_snapshot`
-核对落袋情况。缺 stepLimit 的配方在下发期会 fail-closed(`EXPLORATION_SAFE_STEP_REQUIRED`)
-——供给期必须显式配 stepLimit。
+(`AW-LINE:<hash>`)复用既有线/节点,量程漂移自动 PATCH 对齐(配置为权威);配方 params 用节点名引用;脚本末行输出 JSON 摘要(`{lineId,dcw,daq,recipeId}`),**保存它**。
+手工逐点(等价工具面):`aw_line_create` → `aw_dcw_create`(必带 templateRef/min/max/stepLimit/holdIntervalMs)与 `aw_daq_create` → `aw_recipe_create`;随时 `aw_dcw_snapshot`核对落袋情况。缺 stepLimit 的配方在下发期会 fail-closed(`EXPLORATION_SAFE_STEP_REQUIRED`)——供给期必须显式配 stepLimit。
 
 ### 4. 场景化频道锻造(按需求选最佳适配)
 
-批量(推荐):`node scripts/onboarding/forge-channel.mjs <config.json>`——模板实例化→
-团队级插件开关→Agent 绑定(权限模型 v2)→线域授权→种子任务一条龙。
-手工逐点(等价工具面):`aw_channel_template_list` 选模板 → `aw_channel_template_instantiate`
-(带 bindLineId 与 controlPolicy)→ `aw_agent_tool_bind`(agentId 必须是频道成员实例 id,
+批量(推荐):`node scripts/onboarding/forge-channel.mjs <config.json>`——模板实例化→团队级插件开关→Agent 绑定(权限模型 v2)→线域授权→种子任务一条龙。
+手工逐点(等价工具面):`aw_channel_template_list` 选模板 → `aw_channel_template_instantiate`(带 bindLineId 与 controlPolicy)→ `aw_agent_tool_bind`(agentId 必须是频道成员实例 id,
 可用 `aw_request` GET channels/:id/agents 取)→ `aw_task_create` 派种子任务。
 
 场景决策矩阵(`scenario` 字段;默认模板可用 templateId 覆盖):
@@ -118,96 +87,78 @@ bindings 写法:`{"agentRole":"worker:2","kind":"recipe","nodeId":"$RECIPE","mod
 
 ### 5. 验收(未全绿不得宣告完成)
 
-`node scripts/onboarding/verify-line.mjs <config.json>` 六组断言:
-V1 数采落库(每 daq 节点 2 分钟窗内有真实样本,等价抽查 `aw_daq_samples`)→
-V2 越界写必须被拒(量程联锁)→ V3 合法写回环(回读一致,单点可用 `aw_dcw_write`)→
-V4 配方在册且参数映射正确 → V5 频道绑线/成员/插件生效 → V6 受保护演示线零扰动
-(journal 锚点核对)。任一红即退出码 1,修复后重跑。
+`node scripts/onboarding/verify-line.mjs <config.json>` 六组断言:V1 数采落库(每 daq 节点 2 分钟窗内有真实样本,等价抽查 `aw_daq_samples`)→V2 越界写必须被拒(量程联锁)→ V3 合法写回环(回读一致,单点可用 `aw_dcw_write`)→V4 配方在册且参数映射正确 → V5 频道绑线/成员/插件生效 → V6 受保护演示线零扰动(journal 锚点核对)。任一红即退出码 1,修复后重跑。
 
 ### 6. 治理红线与回滚
 
 - driverConfig 只来自文档/设备 export/用户确认;缺失字段问用户,不猜。
 - secretRef 零明文:凭据进环境变量 `AW_MES_<REF>_TOKEN`,不进配置文件与对话。
 - 受保护资源(`ln-d7e0a2a2` 及非本次创建的 id)只读;lib.mjs 在脚本层硬拦。
-- Agent 写路径权限模型 v2:不绑配方就没有写能力;首绑 manual 逐动作审批是**刻意设计**,
-  除非用户明确要求否则不切 auto。
-- 配方级下发间隔频控:recipe 可配 `opIntervalMs`(缺省 60s;0=禁用),Agent 下发族
-  (trial/apply/propose/rollback-dispatch)两次**已批准**下发间隔不得小于该值,计时锚=审批时刻
-  (未批准不计时);窗内被拒时可用 `emergency=true` 豁免频控(审批照挂且卡片标注【应急】)。
+- Agent 写路径权限模型 v2:不绑配方就没有写能力;首绑 manual 逐动作审批是**刻意设计**, 除非用户明确要求否则不切 auto。
+- 配方级下发间隔频控:recipe 可配 `opIntervalMs`(缺省 60s;0=禁用),Agent 下发族 (trial/apply/propose/rollback-dispatch)两次**已批准**下发间隔不得小于该值,计时锚=审批时刻 (未批准不计时);窗内被拒时可用 `emergency=true` 豁免频控(审批照挂且卡片标注【应急】)。
 - 模拟器整包替换型预设不得在共存验收中使用。
 
-回滚:供给失败按 配方→节点→线 逆序删除;频道删除用 `DELETE /api/workshop/channels/:id`。
-量程类失败发生在写入期(四层限界),供给期以 verify 的 V2 断言为联锁证据,不做破坏性回滚。
+回滚:供给失败按 配方→节点→线 逆序删除;频道删除用 `DELETE /api/workshop/channels/:id`。量程类失败发生在写入期(四层限界),供给期以 verify 的 V2 断言为联锁证据,不做破坏性回滚。
+
+### 7. 割接真实设备(虚拟预演 → 落地;2026-10-13 定稿)
+
+标准路径 = **模拟孪生预演跑通 → 割接真实端点**(最安全):治理面(四层限界/HITL/分级/审计)与数据管线在模拟器与真机间完全同构,割接只换 driverConfig 端点,语义节点/限界/绑定/配方零改动。
+六步逐步放行,禁止跳步:
+
+| 步 | 动作 | 通过判据 |
+| --- | --- | --- |
+| 1 | 真实 driverConfig 重跑阶段 2 连通预检 | 全绿 |
+| 2 | 只读浸泡 ≥30min(只接 PV) | 量程/噪声/漂移符合文档口径;恒值/跳变先查接线量纲 |
+| 3 | 单点最小步写入首验 | 「写控\|设备\|镜像回读」三方一致(寄存器映射/字节序/量纲错误只在真机暴露) |
+| 4 | 其余节点 PATCH driverConfig(配方/绑定/限界不动) | 注意 secretRef 打码坑:显式给真值或不动该字段 |
+| 5 | verify-line V1-V6 重跑 | 全绿才算割接完成 |
+| 6 | 割接清单交付(端点/凭据变更+首验三方记录) | 投用仍由产线负责人 judge & taste(铁律 2) |
+
+割接/验收实战坑(2026-10-13 三轮实测定稿):
+
+- **DAQ 样本窗口参数是 `from`/`to`(epoch ms 数字)**,传 `fromMs/toMs` 静默忽略;MES 取数才是 `from/to(ISO 字符串)`,勿混。
+- **激励步长必须 ≤ 节点 stepLimit**(超限 409 来源:param 是治理正确行为);验收脚本先读 stepLimit 再定 delta。
+- **HITL 验收用「在飞并行」**:发起 invoke 不 await → 轮询 `/api/workshop/hitl/pending` → respond → 再 await 回执;顺序 await 超时自断后批准会落到僵尸卡(fail-closed 不下发,平台正确、验收白跑)。
+- **审批卡 nodeId 形态按动作而异**(recipe-propose: vs recipe:)——登记既有卡集合只认新增,勿用排除法。
+- **频道成员对象主键可能是 `id` 而非 `agentId`**(随模板版本),取值做双回退。
+- **模拟器孪生 tick 偶发静默死亡**(SP 写了 PV 不动):双读自检;冻结则整树重启模拟器(POST 修不了)——aw-plc-sim-twin 已内建自检。
+- **kb_agent 入参是 `prompt` 不是 `query`**;检索验收以 kb_agent(harness API)为准,rag-bridge search 对新入库经验有索引延迟。
 
 MES 区间取数契约(多字段+时间段+间隔 API 的 historyMap 接入,2026-10-07 实测定稿):
 
-- 时间段/游标平台注入,不必配进 query:`from`/`to`(ISO)/`pageSize`/`cursor` 由 mes_fetch 按
-  historyMap 自动携带;`query.fields=<本节点字段>` 按节点声明,`valuePath` 写行内路径
-  (如 `values.melt_pressure`)。
-- **分页 API 必须配 `response.nextCursorPath`**,漏配=驱动按"无游标=取完"只取第一页
-  (实测:3h 窗 5000+ 行只回 500)。
-- 调用期参数(如 `interval` 聚合秒)用 `requestHook` 注入:Agent 传 `param.interval`,
-  hook 返回 `{query:{interval:String(param.interval)}}`;内联与异步数据集两模式同样生效。
-- 大窗取数纪律:窗口≤7 天、max_rows≤5000;>2000 行走异步 CSV 数据集(`mes_dataset_read`
-  读统计/分页),行级原文永不进对话。
+- 时间段/游标平台注入,不必配进 query:`from`/`to`(ISO)/`pageSize`/`cursor` 由 mes_fetch 按 historyMap 自动携带;`query.fields=<本节点字段>` 按节点声明,`valuePath` 写行内路径 (如 `values.melt_pressure`)。
+- **分页 API 必须配 `response.nextCursorPath`**,漏配=驱动按"无游标=取完"只取第一页 (实测:3h 窗 5000+ 行只回 500)。
+- 调用期参数(如 `interval` 聚合秒)用 `requestHook` 注入:Agent 传 `param.interval`, hook 返回 `{query:{interval:String(param.interval)}}`;内联与异步数据集两模式同样生效。
+- 大窗取数纪律:窗口≤7 天、max_rows≤5000;>2000 行走异步 CSV 数据集(`mes_dataset_read` 读统计/分页),行级原文永不进对话。
 
 MES 接入实战契约坑(2026-10-10 退火线投用轮实证):
 
-- **historyMap/readMap/writeMap 必须是 JSON 字符串**(存 driverConfig 时 JSON.stringify):
-  传对象会让驱动按 "[object Object]" 解析失败(取数失败:historyMap 不是合法 JSON)。
-- **history-only(仅 historyMap)mes 节点的可见面授权**:kind='dcw' 绑定已废弃(BINDING_KIND_DEPRECATED),
-  正道 = 建一个**授权配方**(把 mes 节点列为 params,不下发该配方)并绑定给取数 Agent ——
-  mes_fetch 可见面 = dcw 存量绑定 ∪ 绑定配方参数节点。
-- **节点视图的 secretRef 是打码值("******")**:按视图回写 driverConfig 会把真实 secretRef
-  覆盖成掩码(401);PATCH 时必须显式给真值,或不要动 secretRef 字段。
-- secretRef→env 链:env 键 = AW_MES_<REF大写折叠>_TOKEN(如 MES_ANNEAL → AW_MES_MES_ANNEAL_TOKEN),
-  由 start.mjs 预载 .env 注入;仓库模式直启时 env 必须显式传给子进程。
+- **historyMap/readMap/writeMap 必须是 JSON 字符串**(存 driverConfig 时 JSON.stringify): 传对象会让驱动按 "[object Object]" 解析失败(取数失败:historyMap 不是合法 JSON)。
+- **history-only(仅 historyMap)mes 节点的可见面授权**:kind='dcw' 绑定已废弃(BINDING_KIND_DEPRECATED), 正道 = 建一个**授权配方**(把 mes 节点列为 params,不下发该配方)并绑定给取数 Agent —— mes_fetch 可见面 = dcw 存量绑定 ∪ 绑定配方参数节点。
+- **节点视图的 secretRef 是打码值("******")**:按视图回写 driverConfig 会把真实 secretRef 覆盖成掩码(401);PATCH 时必须显式给真值,或不要动 secretRef 字段。
+- secretRef→env 链:env 键 = AW_MES_<REF大写折叠>_TOKEN(如 MES_ANNEAL → AW_MES_MES_ANNEAL_TOKEN), 由 start.mjs 预载 .env 注入;仓库模式直启时 env 必须显式传给子进程。
 - mes-test-read 只覆盖 readMap(现值)面 —— historyMap-only 节点的连通验收走一次真实 mes_fetch。
 - mes_fetch 参数是 **from/to(ISO 字符串)**,不是 from_ms/to_ms;缺省无窗 → 落当前值快照(需 readMap)。
 - 写控/配方参数里的节点引用一律用**节点 id**(Agent 工具按 id 解析;传名字会报「节点已删除」误导错)。
 
 MES 双模式接入(2026-10-07 实测定稿;同一 MES API 按用户意愿二选一或并用):
 
-- **镜像入库模式**(数据进平台时序库,Agent 从库读,与 PLC 同管线):建**数采节点**
-  (`POST /api/workshop/daq`,driver=`http`),`driverConfig.url`=MES"最新一组数据"端点
-  (API 每次只回最新值/最新帧),`headersJSON` 放 token,标量加 `jsonPath`;形态由模板
-  决定——标量(缺省)/向量(模板 `signalKind:'vector'`,jsonPath 指点列数组)/图像
-  (模板 `signalKind:'image'`,端点回 image/* 字节或 JSON{png:base64})。轮询节拍
-  `intervalMs` 与 PLC 采集同源,样本/帧自动带活动批次打标(run/recipe/line)。
-  自定义模板用 `POST /api/workshop/daq/templates`(注意:unit 必填;注册表会忽略传入
-  key 生成 `ct-*`,须用**返回的 key** 拼 `daq-<key>` 作 templateRef)。
-- **参数直取模式**(不镜像,Agent 传时间段直接调 API):建 **dcw 节点**
-  (`POST /api/workshop/dc`,driver=`mes-rest`)+ `historyMap`(from/to/cursor 平台注入,
-  分页 API 必配 `nextCursorPath`),标量/向量/图像(`format:'image'`,dataPath 指 base64
-  字段)全格式;`mes_fetch(ids,[from,to],max_rows)` 取数——标量/向量大窗落 CSV 数据集,
-  图像帧自动落盘 `<数据根>/mes-artifacts/<节点id>/`,像素永不进对话。
-- 模式判据(替用户选型):要"定时持续积累+批次打标+告警/导出/IDD 诊断"→ 镜像;
-  要"按需回看历史区间、API 只支持查询"→ 直取。两者可同 API 并用(镜像入库存最新流,
-  直取节点查历史窗)。前端区分:数采管理页节点(driver 徽标+形态徽标 标量/向量/图像)
-  = 镜像;数字孪生写控页 mes-rest 点位 = 直取。
-- 在线控制:控制面走 mes-rest `writeMap`(POST 设定值),Agent 侧 recipe 绑定+HITL 审批
-  下发,与 PLC 控制同治理(四层限界/步长/频控全适用)。
+- **镜像入库模式**(数据进平台时序库,Agent 从库读,与 PLC 同管线):建**数采节点** (`POST /api/workshop/daq`,driver=`http`),`driverConfig.url`=MES"最新一组数据"端点 (API 每次只回最新值/最新帧),`headersJSON` 放 token,标量加 `jsonPath`;形态由模板 决定——标量(缺省)/向量(模板 `signalKind:'vector'`,jsonPath 指点列数组)/图像 (模板 `signalKind:'image'`,端点回 image/* 字节或 JSON{png:base64})。轮询节拍 `intervalMs` 与 PLC 采集同源,样本/帧自动带活动批次打标(run/recipe/line)。 自定义模板用 `POST /api/workshop/daq/templates`(注意:unit 必填;注册表会忽略传入 key 生成 `ct-*`,须用**返回的 key** 拼 `daq-<key>` 作 templateRef)。
+- **参数直取模式**(不镜像,Agent 传时间段直接调 API):建 **dcw 节点** (`POST /api/workshop/dc`,driver=`mes-rest`)+ `historyMap`(from/to/cursor 平台注入, 分页 API 必配 `nextCursorPath`),标量/向量/图像(`format:'image'`,dataPath 指 base64 字段)全格式;`mes_fetch(ids,[from,to],max_rows)` 取数——标量/向量大窗落 CSV 数据集, 图像帧自动落盘 `<数据根>/mes-artifacts/<节点id>/`,像素永不进对话。
+- 模式判据(替用户选型):要"定时持续积累+批次打标+告警/导出/IDD 诊断"→ 镜像; 要"按需回看历史区间、API 只支持查询"→ 直取。两者可同 API 并用(镜像入库存最新流, 直取节点查历史窗)。前端区分:数采管理页节点(driver 徽标+形态徽标 标量/向量/图像) = 镜像;数字孪生写控页 mes-rest 点位 = 直取。
+- 在线控制:控制面走 mes-rest `writeMap`(POST 设定值),Agent 侧 recipe 绑定+HITL 审批 下发,与 PLC 控制同治理(四层限界/步长/频控全适用)。
 
 孪生/AML 链契约坑(2026-10-07 注塑大考定稿,四连坑+两缺陷):
 
-- **场景三元组必须完整**:`twin_scene_compile` 漏传 `product_id` → 快照 BINDING_PRODUCT_MISMATCH;
-  `physics_profile_id` 必须是注册 provider(如 injection-greybox-v1,查 twin_provider_catalog)→
-  自造 declarative-* 会 TWIN_PROVIDER_UNAVAILABLE。
-- **帧节点(向量/图像)不得进入场景状态**:auto_daq 快照只采标量样本 → AUTO_DAQ_SAMPLE_MISSING;
-  编谱场景前先把帧节点从编谱 Agent 的绑定里摘除。
+- **场景三元组必须完整**:`twin_scene_compile` 漏传 `product_id` → 快照 BINDING_PRODUCT_MISMATCH; `physics_profile_id` 必须是注册 provider(如 injection-greybox-v1,查 twin_provider_catalog)→ 自造 declarative-* 会 TWIN_PROVIDER_UNAVAILABLE。
+- **帧节点(向量/图像)不得进入场景状态**:auto_daq 快照只采标量样本 → AUTO_DAQ_SAMPLE_MISSING; 编谱场景前先把帧节点从编谱 Agent 的绑定里摘除。
 - **snapshot phase 必须取自场景 phases 表**(如 exploration),传 steady 会被拒。
-- **hybrid 频道场景谱系**:实例化模板时传 `scene`(冻结契约)才会把 profile.sceneId 指向真实场景;
-  缺省落到模板通用场景(line-injection-01)→ BINDING_LINE_MISMATCH。
+- **hybrid 频道场景谱系**:实例化模板时传 `scene`(冻结契约)才会把 profile.sceneId 指向真实场景; 缺省落到模板通用场景(line-injection-01)→ BINDING_LINE_MISMATCH。
 - **mark-good 固化的是批次起点快照**,试验中改的值不会进良好版;收敛值要 PATCH 新版本固化。
-- **供给数控节点必须带 `driver` 字段**,缺省落 mock 驱动——mock 写入"成功"且 journal 照常留痕
-  但设备零触达;交付前务必做「配方|设备|镜像回读」三方对照。
-- **换设备/换线前先清遗留保写心跳**:旧数控节点(holdIntervalMs>0)会周期性把旧设定重写回同一
-  设备,覆盖新配方(PATCH holdIntervalMs=null 缴械)。
-- **场景控制量↔数据集控制量桥**:AML 数据集 control 角色只能取数采节点(SP 回读镜像),而场景
-  spec 控制变量绑定 dcw——amlkit 按 nodeId 建别名会全 MISSING→物理 NaN。现修法:spec 控制变量
-  nodeId 重映射到镜像数采节点+方程引用同步重写;根治待平台自动桥接。
-- **stage-A 标定小样本会退化**(calibrationError 反升):物理系数用 min=max 锁定,只放开 τ 给
-  一维网格;门禁 G1/G2 不过会 fail-closed 拒绝升格,VirtualTrial UQ 缺失→OOD 拒签,属安全设计。
+- **供给数控节点必须带 `driver` 字段**,缺省落 mock 驱动——mock 写入"成功"且 journal 照常留痕 但设备零触达;交付前务必做「配方|设备|镜像回读」三方对照。
+- **换设备/换线前先清遗留保写心跳**:旧数控节点(holdIntervalMs>0)会周期性把旧设定重写回同一 设备,覆盖新配方(PATCH holdIntervalMs=null 缴械)。
+- **场景控制量↔数据集控制量桥**:AML 数据集 control 角色只能取数采节点(SP 回读镜像),而场景 spec 控制变量绑定 dcw——amlkit 按 nodeId 建别名会全 MISSING→物理 NaN。现修法:spec 控制变量 nodeId 重映射到镜像数采节点+方程引用同步重写;根治待平台自动桥接。
+- **stage-A 标定小样本会退化**(calibrationError 反升):物理系数用 min=max 锁定,只放开 τ 给 一维网格;门禁 G1/G2 不过会 fail-closed 拒绝升格,VirtualTrial UQ 缺失→OOD 拒签,属安全设计。
 
 ## 验收清单
 
@@ -218,3 +169,5 @@ MES 双模式接入(2026-10-07 实测定稿;同一 MES API 按用户意愿二选
 - [ ] 频道场景与用户需求匹配(optimize/diagnose/tuning),种子任务已派发
 - [ ] 受保护演示线零扰动(journal/audit 核对)
 - [ ] 交付说明含:复用/新建清单、插件开关、绑定矩阵、HITL 策略、回退路径
+- [ ] (真实接入)割接六步全过:真实预检全绿 → 只读浸泡 ≥30min → 首验三方对照 → driverConfig 替换 → verify-line 重跑全绿 → 割接清单交付
+- [ ] (虚拟预演)模拟孪生经 aw-plc-sim-twin 生成且 tick 活性自检通过
