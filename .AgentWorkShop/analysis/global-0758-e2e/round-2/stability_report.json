@@ -1,0 +1,548 @@
+{
+  "contract_version": "line-stability-report/1.0",
+  "report_id": "LSR-1791811989-80pns3",
+  "generated_at": "2026-10-12T13:33:09Z",
+  "status": "ok",
+  "line": {
+    "line_id": null,
+    "product": null
+  },
+  "period": {
+    "start": "2026-10-12 13:30:06",
+    "end": "2026-10-12 13:33:06",
+    "requested": {
+      "start": null,
+      "end": null
+    }
+  },
+  "data": {
+    "path": "D:\\codes\\ABO\\AgentWorkShop\\.AgentWorkShop\\analysis\\global-0758-e2e\\round-2\\data.csv",
+    "sha256": "sha256:c82fe4e0a74b53ff8272d9f38316dcb2a756f48a5ed5ed4b21009123ea3fe09f",
+    "time_col": "timestamp",
+    "group_col": null,
+    "group_used": null,
+    "parameter_cols": [
+      "melt_temp",
+      "melt_pressure",
+      "film_thickness"
+    ],
+    "inspection_cols": [],
+    "ignored_cols": [],
+    "sampled": false,
+    "stride": 1,
+    "n_rows_raw": 91,
+    "n_rows_used": 91,
+    "time_span_seconds": 180.0,
+    "sampling_interval_median_seconds": 2.0,
+    "missing_rate": 0.0,
+    "coverage_ratio": 1.0,
+    "time_invariant_channels": {
+      "count": 0,
+      "total": 3,
+      "share": 0.0,
+      "examples": []
+    }
+  },
+  "condition": {
+    "ontology": {
+      "mode": "auto",
+      "path": null,
+      "source": null,
+      "reason": "no ontology artifact found (auto mode)"
+    },
+    "scene": null,
+    "columns": {
+      "melt_temp": {
+        "assigned_by": "auto",
+        "label": "melt_temp",
+        "unit": null,
+        "role": "parameter",
+        "spec": null,
+        "normal_range": null,
+        "stage": null,
+        "equipment": null,
+        "governing_law": null,
+        "physical_meaning": null,
+        "group": null
+      },
+      "melt_pressure": {
+        "assigned_by": "auto",
+        "label": "melt_pressure",
+        "unit": null,
+        "role": "parameter",
+        "spec": null,
+        "normal_range": null,
+        "stage": null,
+        "equipment": null,
+        "governing_law": null,
+        "physical_meaning": null,
+        "group": null
+      },
+      "film_thickness": {
+        "assigned_by": "auto",
+        "label": "film_thickness",
+        "unit": null,
+        "role": "parameter",
+        "spec": null,
+        "normal_range": null,
+        "stage": null,
+        "equipment": null,
+        "governing_law": null,
+        "physical_meaning": null,
+        "group": null
+      }
+    },
+    "relationships": [],
+    "regimes": {
+      "available": true,
+      "method": "fast",
+      "change_points": [],
+      "regimes": [
+        {
+          "start": 0,
+          "end": 90,
+          "label": "steady",
+          "n_rows": 91
+        }
+      ],
+      "abnormal_ratio": 0.0
+    }
+  },
+  "parameters": [
+    {
+      "name": "melt_temp",
+      "role": "parameter",
+      "condition": {
+        "label": "melt_temp",
+        "unit": null,
+        "assigned_by": "auto",
+        "governing_law": null,
+        "physical_meaning": null,
+        "group": null,
+        "stage": null,
+        "equipment": null
+      },
+      "n": 91,
+      "row_range": [
+        0,
+        90
+      ],
+      "data_source": "raw",
+      "mu": 199.986374,
+      "median": 199.98,
+      "sigma": 0.266514,
+      "sigma_within_mr": 0.26512,
+      "cv": 0.001325,
+      "min": 199.04,
+      "max": 200.645,
+      "spec": {
+        "lsl": null,
+        "usl": null,
+        "target": null,
+        "source": null
+      },
+      "capability": {
+        "cp": null,
+        "cpk": null,
+        "pp": null,
+        "ppk": null
+      },
+      "nelson": {
+        "NELSON_R1": {
+          "n_episodes": 1,
+          "indices": [
+            4
+          ]
+        }
+      },
+      "n_violation_points": 1,
+      "drift": {
+        "slope_per_second": 0.000625,
+        "per_day_relative": 0.270027,
+        "mk_p": 0.224851,
+        "significant": false
+      },
+      "baseline_ref": null,
+      "score": 99,
+      "score_breakdown": {
+        "base": 100,
+        "nelson_penalty": -1,
+        "cv_penalty": 0,
+        "capability_penalty": 0,
+        "drift_penalty": 0,
+        "baseline_penalty": 0,
+        "total": 99
+      }
+    },
+    {
+      "name": "melt_pressure",
+      "role": "parameter",
+      "condition": {
+        "label": "melt_pressure",
+        "unit": null,
+        "assigned_by": "auto",
+        "governing_law": null,
+        "physical_meaning": null,
+        "group": null,
+        "stage": null,
+        "equipment": null
+      },
+      "n": 91,
+      "row_range": [
+        0,
+        90
+      ],
+      "data_source": "raw",
+      "mu": 18.102198,
+      "median": 18.1,
+      "sigma": 0.054913,
+      "sigma_within_mr": 0.054462,
+      "cv": 0.003017,
+      "min": 17.977,
+      "max": 18.214,
+      "spec": {
+        "lsl": null,
+        "usl": null,
+        "target": null,
+        "source": null
+      },
+      "capability": {
+        "cp": null,
+        "cpk": null,
+        "pp": null,
+        "ppk": null
+      },
+      "nelson": {},
+      "n_violation_points": 0,
+      "drift": {
+        "slope_per_second": 0.000129,
+        "per_day_relative": 0.614766,
+        "mk_p": 0.20578,
+        "significant": false
+      },
+      "baseline_ref": null,
+      "score": 100,
+      "score_breakdown": {
+        "base": 100,
+        "nelson_penalty": 0,
+        "cv_penalty": 0,
+        "capability_penalty": 0,
+        "drift_penalty": 0,
+        "baseline_penalty": 0,
+        "total": 100
+      }
+    },
+    {
+      "name": "film_thickness",
+      "role": "parameter",
+      "condition": {
+        "label": "film_thickness",
+        "unit": null,
+        "assigned_by": "auto",
+        "governing_law": null,
+        "physical_meaning": null,
+        "group": null,
+        "stage": null,
+        "equipment": null
+      },
+      "n": 91,
+      "row_range": [
+        0,
+        90
+      ],
+      "data_source": "raw",
+      "mu": 50.215934,
+      "median": 49.67,
+      "sigma": 1.432956,
+      "sigma_within_mr": 0.370124,
+      "cv": 0.028379,
+      "min": 48.47,
+      "max": 53.62,
+      "spec": {
+        "lsl": null,
+        "usl": null,
+        "target": null,
+        "source": null
+      },
+      "capability": {
+        "cp": null,
+        "cpk": null,
+        "pp": null,
+        "ppk": null
+      },
+      "nelson": {
+        "NELSON_R2": {
+          "n_episodes": 2,
+          "indices": [
+            8,
+            61
+          ]
+        },
+        "NELSON_R3": {
+          "n_episodes": 2,
+          "indices": [
+            15,
+            28
+          ]
+        },
+        "NELSON_R1": {
+          "n_episodes": 2,
+          "indices": [
+            18,
+            22
+          ]
+        },
+        "NELSON_R5": {
+          "n_episodes": 3,
+          "indices": [
+            19,
+            22,
+            62
+          ]
+        },
+        "NELSON_R6": {
+          "n_episodes": 1,
+          "indices": [
+            19
+          ]
+        }
+      },
+      "n_violation_points": 10,
+      "drift": {
+        "slope_per_second": -0.008571,
+        "per_day_relative": 14.909833,
+        "mk_p": 6.5e-05,
+        "significant": true
+      },
+      "baseline_ref": null,
+      "score": 60,
+      "score_breakdown": {
+        "base": 100,
+        "nelson_penalty": -9,
+        "cv_penalty": -6,
+        "capability_penalty": 0,
+        "drift_penalty": -25,
+        "baseline_penalty": 0,
+        "total": 60
+      }
+    }
+  ],
+  "correlations": {
+    "max_lag": 10,
+    "pairs": [
+      {
+        "pearson": -0.186024,
+        "spearman": -0.131824,
+        "best_abs_r": 0.283265,
+        "best_lag_rows": 3,
+        "leader": "film_thickness",
+        "pearson_at_best": -0.253258,
+        "spearman_at_best": -0.283265,
+        "a": "melt_pressure",
+        "b": "film_thickness",
+        "n": 91
+      },
+      {
+        "pearson": 0.065322,
+        "spearman": 0.051157,
+        "best_abs_r": 0.282619,
+        "best_lag_rows": 9,
+        "leader": "melt_pressure",
+        "pearson_at_best": -0.274243,
+        "spearman_at_best": -0.282619,
+        "a": "melt_temp",
+        "b": "melt_pressure",
+        "n": 91
+      },
+      {
+        "pearson": -0.205262,
+        "spearman": -0.11571,
+        "best_abs_r": 0.198603,
+        "best_lag_rows": 1,
+        "leader": "melt_temp",
+        "pearson_at_best": -0.192819,
+        "spearman_at_best": -0.198603,
+        "a": "melt_temp",
+        "b": "film_thickness",
+        "n": 91
+      }
+    ],
+    "contributions": [],
+    "contributions_skipped": "未声明检测/响应指标（inspection_cols 或本体 role=response），贡献分析未执行——默认目标列不可解释"
+  },
+  "integrations": {
+    "sentinel_baseline": {
+      "used": false,
+      "path": null
+    },
+    "tuning_memory": {
+      "used": false
+    },
+    "doe_analyzer": {
+      "used": false
+    }
+  },
+  "degradations": [],
+  "limitations": {
+    "data_source": "raw (this skill never cleans or imputes; every number is recomputable from the raw table)",
+    "sampling": {
+      "n_rows_analyzed": 91,
+      "sampled": false,
+      "stride": 1,
+      "note": null
+    },
+    "missing_rate": 0.0,
+    "sampling_interval_seconds": 2.0,
+    "spec_coverage": {
+      "user": [],
+      "ontology": [],
+      "none": [
+        "melt_temp",
+        "melt_pressure",
+        "film_thickness"
+      ]
+    },
+    "model_assumptions": [
+      "lag-compensated Spearman window 0–10 rows (lead/lag beyond this window is invisible)",
+      "whole-period scoring assumes one dominant operating condition; use the regime table for segmented reading",
+      "Cpk treats within-sigma as MR̄/1.128 moving-range estimate"
+    ],
+    "confounders": [],
+    "derived_fields": [
+      "baseline_ref.robust_z",
+      "correlations.contributions.share",
+      "correlations.pairs.best_abs_r"
+    ]
+  },
+  "provenance": {
+    "input_sha256": "sha256:c82fe4e0a74b53ff8272d9f38316dcb2a756f48a5ed5ed4b21009123ea3fe09f",
+    "script_version": "1.0.0",
+    "authored_by": "lstcore/stability_analyzer.py",
+    "zero_llm": true,
+    "spc_source": "sentinelcore",
+    "regime_method": "fast",
+    "ontology_source": null,
+    "python": "3.12.7",
+    "numpy": "2.5.2",
+    "pandas": "3.0.5",
+    "methods": [
+      "sentinelcore_nelson_episodes",
+      "mrbar_sigma_1.128",
+      "cpk_within_ppk_overall",
+      "theil_sen_mk_drift",
+      "lagged_spearman_max10",
+      "contribution_r2_share",
+      "regime_segmentation_c3",
+      "ontology_first_condition",
+      "weighted_penalty_score_v1",
+      "darwin_limitations"
+    ]
+  },
+  "findings": [
+    {
+      "finding_id": "F001",
+      "severity": "high",
+      "category": "spc",
+      "title": "film_thickness 检出 SPC 违规",
+      "detail": "共 10 个判异剧集命中（每百点 11.0 个，规则：NELSON_R1/NELSON_R2/NELSON_R3/NELSON_R5/NELSON_R6），控制限为中心值49.67±3σ_within（σ=0.3701）。",
+      "evidence": [
+        {
+          "metric": "violation_episodes",
+          "value": 10,
+          "source": "lstcore",
+          "threshold": "0"
+        },
+        {
+          "metric": "rate_per_100",
+          "value": 10.99,
+          "source": "lstcore",
+          "threshold": "<2 for warn; >=2 for high"
+        },
+        {
+          "metric": "sigma_within_mr",
+          "value": 0.370124,
+          "source": "lstcore"
+        }
+      ],
+      "affected": [
+        "film_thickness"
+      ],
+      "confidence": 90
+    },
+    {
+      "finding_id": "F002",
+      "severity": "high",
+      "category": "drift",
+      "title": "film_thickness 存在显著漂移",
+      "detail": "Theil–Sen 斜率显著（Mann–Kendall p=6.5e-05，且相对漂移≥0.1%/天才计入），相对漂移约 1490.983%/天，方向对应斜率 -0.0086/秒。",
+      "evidence": [
+        {
+          "metric": "mk_p",
+          "value": 6.5e-05,
+          "source": "lstcore",
+          "threshold": "<0.01 且 >=0.1%/天"
+        },
+        {
+          "metric": "per_day_relative",
+          "value": 14.909833,
+          "source": "lstcore",
+          "threshold": "<0.001 ok; >=0.01 high"
+        },
+        {
+          "metric": "slope_per_second",
+          "value": -0.008571,
+          "source": "lstcore"
+        }
+      ],
+      "affected": [
+        "film_thickness"
+      ],
+      "confidence": 80
+    },
+    {
+      "finding_id": "F003",
+      "severity": "warn",
+      "category": "spc",
+      "title": "melt_temp 检出 SPC 违规",
+      "detail": "共 1 个判异剧集命中（每百点 1.1 个，规则：NELSON_R1），控制限为中心值199.98±3σ_within（σ=0.2651）。",
+      "evidence": [
+        {
+          "metric": "violation_episodes",
+          "value": 1,
+          "source": "lstcore",
+          "threshold": "0"
+        },
+        {
+          "metric": "rate_per_100",
+          "value": 1.1,
+          "source": "lstcore",
+          "threshold": "<2 for warn; >=2 for high"
+        },
+        {
+          "metric": "sigma_within_mr",
+          "value": 0.26512,
+          "source": "lstcore"
+        }
+      ],
+      "affected": [
+        "melt_temp"
+      ],
+      "confidence": 90
+    }
+  ],
+  "conclusion": {
+    "score": 86.3,
+    "grade": "A",
+    "grade_key": "stable",
+    "label": "稳定",
+    "statement": "该产线在本时段总体运行稳定（86.3 分，A 级）：评估 3 个参数，检出 11 个 SPC 违规剧集、1 项显著漂移；最需关注：film_thickness。",
+    "n_parameters_assessed": 3,
+    "n_findings": 3,
+    "findings_by_severity": {
+      "info": 0,
+      "warn": 1,
+      "high": 2,
+      "critical": 0
+    }
+  }
+}

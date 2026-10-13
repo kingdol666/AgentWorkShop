@@ -1,0 +1,49 @@
+{
+  "at": "2026-10-13T03:22:07.054Z",
+  "lineId": "ln-1ced9310",
+  "channelId": "74aa9214-0f28-4b0e-8d2d-7a11e3c14a30",
+  "recipeId": "rc-d8c2e9aa",
+  "dcw": {
+    "headTemp-sp": "dw-5d11369f",
+    "usPower-sp": "dw-67c5f3c7",
+    "bondForce-sp": "dw-ad263dfa",
+    "feedSpeed-sp": "dw-6ca42167",
+    "clampTension-sp": "dw-3410cafb",
+    "eject-sp": "dw-e14d86de"
+  },
+  "daq": {
+    "head_temp": "dn-b5ec6c7b",
+    "pull_force": "dn-2816c0db",
+    "vibration": "dn-df1b0ff6",
+    "headTemp-sp-mirror": "dn-91adfdc7",
+    "usPower-sp-mirror": "dn-ddb99bc7",
+    "bondForce-sp-mirror": "dn-9ba97021",
+    "wire_tension": "dn-c8123af4",
+    "loop_height": "dn-0f9f1a70",
+    "feedSpeed-sp-mirror": "dn-63ac2e0a",
+    "clampTension-sp-mirror": "dn-1cdd261b",
+    "ball_dia": "dn-c814f86a",
+    "tact": "dn-6a6e0ff5",
+    "eject-sp-mirror": "dn-396a6adf"
+  },
+  "pullPre": {
+    "mean": 60.57533333333333,
+    "n": 30
+  },
+  "pullPost": {
+    "mean": 62.742500000000014,
+    "n": 46
+  },
+  "pullShift": 2.167166666666681,
+  "loopPre": {
+    "mean": 151.59999999999997,
+    "n": 30
+  },
+  "loopPost": {
+    "mean": 151.6000000000001,
+    "n": 45
+  },
+  "loopShift": 1.4210854715202004e-13,
+  "iddTask": "d475ebce",
+  "iddDone": false
+}

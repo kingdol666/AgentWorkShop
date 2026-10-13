@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>产线运行稳定性报告 · LSR-1791806093-i0o0fb</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.5.0/dist/echarts.min.js"></script>
+<script src="https://unpkg.com/echarts@5.5.0/dist/echarts.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.5.0/echarts.min.js"></script>
+<style>
+  :root { --bg:#101418; --panel:#171d24; --line:#26303b; --tx:#dfe7ee; --mut:#8a99a8;
+          --acc:#e8a33d; --good:#22a06b; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--tx);
+        font:14px/1.65 "Segoe UI","Microsoft YaHei",sans-serif; }
+  .wrap { max-width:1180px; margin:0 auto; padding:28px 20px 60px; }
+  .hero { display:flex; gap:24px; background:var(--panel); border:1px solid var(--line);
+         border-radius:14px; padding:26px 28px; align-items:center; justify-content:space-between;
+         flex-wrap:wrap; }
+  .hero-title { font-size:24px; font-weight:700; letter-spacing:.5px; }
+  .hero-sub { margin:10px 0 12px; display:flex; gap:8px; flex-wrap:wrap; }
+  .chip { background:rgba(232,163,61,.14); color:var(--acc); border:1px solid rgba(232,163,61,.35);
+          border-radius:999px; padding:2px 12px; font-size:12px; }
+  .chip.ghost { background:transparent; color:var(--mut); border-color:var(--line); }
+  .statement { font-size:15px; max-width:640px; }
+  .hero-score { text-align:center; min-width:190px; border:1px solid var(--g);
+               border-radius:14px; padding:16px 22px; }
+  .score-num { font-size:46px; font-weight:800; color:var(--g); line-height:1.1; }
+  .score-grade { color:var(--g); font-weight:700; margin-top:4px; }
+  .score-cap { color:var(--mut); font-size:12px; margin-top:6px; }
+  h2 { font-size:17px; margin:34px 0 12px; padding-left:10px; border-left:3px solid var(--acc); }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:12px;
+          padding:16px 18px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:14px; }
+  .finding { background:var(--panel); border:1px solid var(--line); border-left:3px solid var(--s);
+            border-radius:10px; padding:14px 16px; margin-bottom:12px; }
+  .f-head { display:flex; align-items:center; gap:10px; }
+  .pill { background:var(--s); color:#fff; border-radius:999px; padding:1px 10px;
+          font-size:12px; flex:0 0 auto; }
+  .f-title { font-weight:700; }
+  .f-id { margin-left:auto; color:var(--mut); font-size:12px; }
+  .f-detail { color:#b9c6d2; margin:8px 0; }
+  .f-mech { font-size:12.5px; color:#a8c0d8; background:rgba(90,140,190,.08);
+           border:1px dashed rgba(90,140,190,.35); border-radius:6px; padding:6px 10px; margin:6px 0; }
+  .f-conf { margin-left:auto; color:var(--mut); font-size:12px; white-space:nowrap; }
+  .f-id { color:var(--mut); font-size:12px; margin-left:10px; }
+  .derived { font-size:10px; color:var(--acc); border:1px solid rgba(232,163,61,.4);
+            border-radius:4px; padding:0 4px; margin-left:4px; }
+  table { border-collapse:collapse; width:100%; }
+  th,td { border-bottom:1px solid var(--line); padding:7px 10px; text-align:left;
+         font-size:13px; vertical-align:top; }
+  th { color:var(--mut); font-weight:600; white-space:nowrap; }
+  td.num, .num { font-variant-numeric:tabular-nums; }
+  .ev-table { margin-top:8px; }
+  .ev-table th { font-size:12px; }
+  .role-tag { margin-left:8px; font-size:11px; color:var(--mut); border:1px solid var(--line);
+             border-radius:4px; padding:0 6px; }
+  .drift-flag { margin-left:6px; color:#e0703a; font-size:11px; border:1px solid #e0703a;
+               border-radius:4px; padding:0 5px; }
+  .score-cell { display:flex; align-items:center; gap:8px; min-width:130px; }
+  .score-bar { height:8px; width:var(--w); max-width:120px; background:var(--c);
+              border-radius:4px; }
+  .chart { height:300px; background:var(--panel); border:1px solid var(--line);
+          border-radius:12px; }
+  .chart + .chart { margin-top:14px; }
+  .chart-title { padding:10px 14px 0; color:var(--mut); font-size:13px; }
+  .empty { color:var(--mut); padding:10px 4px; }
+  .static-table { max-height:220px; overflow:auto; margin-top:8px; }
+  .foot { margin-top:40px; color:var(--mut); font-size:12px; border-top:1px solid var(--line);
+         padding-top:14px; }
+  .foot b { color:#b9c6d2; }
+  code { background:#0c1013; border:1px solid var(--line); border-radius:4px;
+        padding:0 5px; font-size:12px; }
+  @media print { body { background:#fff; color:#111; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  
+    <section class="hero">
+      <div class="hero-main">
+        <div class="hero-title">产线运行稳定性报告</div>
+        <div class="hero-sub">
+          <span class="chip">未命名产线</span>
+          
+          <span class="chip ghost">时段：2026-10-12 11:52:16 ~ 2026-10-12 11:54:50</span>
+        </div>
+        <div class="statement">该产线在本时段总体运行波动（52.7 分，C 级）：评估 3 个参数，检出 27 个 SPC 违规剧集、3 项显著漂移；最需关注：melt_temp、melt_pressure、film_thickness。</div>
+      </div>
+      <div class="hero-score" style="--g:#e0703a">
+        <div class="score-num">52.7</div>
+        <div class="score-grade">C · 波动</div>
+        <div class="score-cap">综合稳定性评分（0–100）</div>
+      </div>
+    </section>
+
+  <h2>工况理解（本体优先）</h2>
+  <div class='panel'><p style='margin:0 0 8px'>未命中本体资产（<code>00_input/ontology.json</code>、<code>01_ontology/</code>、本体资产库均未命中）——以下列角色/单位/规格为确定性启发推断（assigned_by=auto），可由 industrial-ontology-builder 先建本体后复跑以获得物理语义与控制方程级解读。</p><table></table><div style='overflow:auto;margin-top:8px'><table><thead><tr><th>参数（本体名）</th><th>单位</th><th>角色</th><th>规格/正常范围</th><th>控制方程</th><th>assigned_by</th></tr></thead><tbody><tr><td class=strong>melt_temp<span class='role-tag'>melt_temp</span></td><td>—</td><td>加工参数</td><td>—</td><td>—</td><td><span class='role-tag'>auto</span></td></tr><tr><td class=strong>melt_pressure<span class='role-tag'>melt_pressure</span></td><td>—</td><td>加工参数</td><td>—</td><td>—</td><td><span class='role-tag'>auto</span></td></tr><tr><td class=strong>film_thickness<span class='role-tag'>film_thickness</span></td><td>—</td><td>加工参数</td><td>—</td><td>—</td><td><span class='role-tag'>auto</span></td></tr></tbody></table></div><div style='margin-top:10px'><b>工况分段（sentinel C3，方法 fast；变点 0 个）</b><table><thead><tr><th>段</th><th>行范围</th><th>主导状态</th></tr></thead><tbody><tr><td>段 1</td><td class=num>行 0–77（78 行）</td><td>steady</td></tr></tbody></table></div></div>
+
+  <h2>核心发现（结论与证据）</h2>
+  
+        <div class="finding sev-high">
+          <div class="f-head">
+            <span class="pill" style="--s:#e0703a">严重</span>
+            <span class="f-title">melt_temp 检出 SPC 违规</span>
+            <span class="f-conf">置信度 90</span>
+            <span class="f-id">F001</span>
+          </div>
+          <div class="f-detail">共 8 个判异剧集命中（每百点 10.3 个，规则：NELSON_R1/NELSON_R2/NELSON_R3/NELSON_R5/NELSON_R6），控制限为中心值200.12±3σ_within（σ=1.5495）。</div>
+          
+          <table class="ev-table"><thead><tr>
+            <th>证据项</th><th>数值</th><th>阈值/口径</th><th>来源</th>
+          </tr></thead><tbody><tr><td>violation_episodes</td><td class=num>8</td><td class=num>0</td><td>lstcore</td></tr><tr><td>rate_per_100</td><td class=num>10.26</td><td class=num>&lt;2 for warn; &gt;=2 for high</td><td>lstcore</td></tr><tr><td>sigma_within_mr</td><td class=num>1.5495</td><td class=num>—</td><td>lstcore</td></tr></tbody></table>
+        </div>
+        <div class="finding sev-high">
+          <div class="f-head">
+            <span class="pill" style="--s:#e0703a">严重</span>
+            <span class="f-title">melt_pressure 检出 SPC 违规</span>
+            <span class="f-conf">置信度 90</span>
+            <span class="f-id">F002</span>
+          </div>
+          <div class="f-detail">共 8 个判异剧集命中（每百点 10.3 个，规则：NELSON_R1/NELSON_R2/NELSON_R5/NELSON_R6），控制限为中心值18.1295±3σ_within（σ=0.1016）。</div>
+          
+          <table class="ev-table"><thead><tr>
+            <th>证据项</th><th>数值</th><th>阈值/口径</th><th>来源</th>
+          </tr></thead><tbody><tr><td>violation_episodes</td><td class=num>8</td><td class=num>0</td><td>lstcore</td></tr><tr><td>rate_per_100</td><td class=num>10.26</td><td class=num>&lt;2 for warn; &gt;=2 for high</td><td>lstcore</td></tr><tr><td>sigma_within_mr</td><td class=num>0.1016</td><td class=num>—</td><td>lstcore</td></tr></tbody></table>
+        </div>
+        <div class="finding sev-high">
+          <div class="f-head">
+            <span class="pill" style="--s:#e0703a">严重</span>
+            <span class="f-title">film_thickness 检出 SPC 违规</span>
+            <span class="f-conf">置信度 90</span>
+            <span class="f-id">F003</span>
+          </div>
+          <div class="f-detail">共 11 个判异剧集命中（每百点 14.1 个，规则：NELSON_R1/NELSON_R2/NELSON_R3/NELSON_R5/NELSON_R6），控制限为中心值50.6825±3σ_within（σ=0.3775）。</div>
+          
+          <table class="ev-table"><thead><tr>
+            <th>证据项</th><th>数值</th><th>阈值/口径</th><th>来源</th>
+          </tr></thead><tbody><tr><td>violation_episodes</td><td class=num>11</td><td class=num>0</td><td>lstcore</td></tr><tr><td>rate_per_100</td><td class=num>14.1</td><td class=num>&lt;2 for warn; &gt;=2 for high</td><td>lstcore</td></tr><tr><td>sigma_within_mr</td><td class=num>0.3775</td><td class=num>—</td><td>lstcore</td></tr></tbody></table>
+        </div>
+        <div class="finding sev-high">
+          <div class="f-head">
+            <span class="pill" style="--s:#e0703a">严重</span>
+            <span class="f-title">melt_temp 存在显著漂移</span>
+            <span class="f-conf">置信度 80</span>
+            <span class="f-id">F004</span>
+          </div>
+          <div class="f-detail">Theil–Sen 斜率显著（Mann–Kendall p=0.0，且相对漂移≥0.1%/天才计入），相对漂移约 708.618%/天，方向对应斜率 -0.0164/秒。</div>
+          
+          <table class="ev-table"><thead><tr>
+            <th>证据项</th><th>数值</th><th>阈值/口径</th><th>来源</th>
+          </tr></thead><tbody><tr><td>mk_p</td><td class=num>0</td><td class=num>&lt;0.01 且 &gt;=0.1%/天</td><td>lstcore</td></tr><tr><td>per_day_relative</td><td class=num>7.0862</td><td class=num>&lt;0.001 ok; &gt;=0.01 high</td><td>lstcore</td></tr><tr><td>slope_per_second</td><td class=num>-0.0164</td><td class=num>—</td><td>lstcore</td></tr></tbody></table>
+        </div>
+        <div class="finding sev-high">
+          <div class="f-head">
+            <span class="pill" style="--s:#e0703a">严重</span>
+            <span class="f-title">melt_pressure 存在显著漂移</span>
+            <span class="f-conf">置信度 80</span>
+            <span class="f-id">F005</span>
+          </div>
+          <div class="f-detail">Theil–Sen 斜率显著（Mann–Kendall p=0.000174，且相对漂移≥0.1%/天才计入），相对漂移约 615.571%/天，方向对应斜率 -0.0013/秒。</div>
+          
+          <table class="ev-table"><thead><tr>
+            <th>证据项</th><th>数值</th><th>阈值/口径</th><th>来源</th>
+          </tr></thead><tbody><tr><td>mk_p</td><td class=num>0.0002</td><td class=num>&lt;0.01 且 &gt;=0.1%/天</td><td>lstcore</td></tr><tr><td>per_day_relative</td><td class=num>6.1557</td><td class=num>&lt;0.001 ok; &gt;=0.01 high</td><td>lstcore</td></tr><tr><td>slope_per_second</td><td class=num>-0.0013</td><td class=num>—</td><td>lstcore</td></tr></tbody></table>
+        </div>
+        <div class="finding sev-high">
+          <div class="f-head">
+            <span class="pill" style="--s:#e0703a">严重</span>
+            <span class="f-title">film_thickness 存在显著漂移</span>
+            <span class="f-conf">置信度 80</span>
+            <span class="f-id">F006</span>
+          </div>
+          <div class="f-detail">Theil–Sen 斜率显著（Mann–Kendall p=1.9e-05，且相对漂移≥0.1%/天才计入），相对漂移约 1449.021%/天，方向对应斜率 -0.0085/秒。</div>
+          
+          <table class="ev-table"><thead><tr>
+            <th>证据项</th><th>数值</th><th>阈值/口径</th><th>来源</th>
+          </tr></thead><tbody><tr><td>mk_p</td><td class=num>0</td><td class=num>&lt;0.01 且 &gt;=0.1%/天</td><td>lstcore</td></tr><tr><td>per_day_relative</td><td class=num>14.4902</td><td class=num>&lt;0.001 ok; &gt;=0.01 high</td><td>lstcore</td></tr><tr><td>slope_per_second</td><td class=num>-0.0085</td><td class=num>—</td><td>lstcore</td></tr></tbody></table>
+        </div>
+
+  <h2>参数稳定性总览</h2>
+  <div class="panel" style="overflow:auto">
+    <table>
+      <thead><tr>
+        <th>参数</th><th>样本数</th><th>中位数</th><th>CV</th><th>SPC违规点</th>
+        <th>漂移/天(相对)</th><th>Cpk</th><th>基线z</th><th>评分</th>
+      </tr></thead>
+      <tbody>
+        <tr>
+          <td>melt_temp<span class="role-tag">加工参数</span></td>
+          <td class=num>78</td>
+          <td class=num>200.12</td>
+          <td class=num>0.094463</td>
+          <td class=num>8</td>
+          <td class=num>7.086183<span class="drift-flag">显著</span></td>
+          <td class=num>—</td>
+          <td class=num>—</td>
+          <td><div class="score-cell"><div class="score-bar" style="--w:45%;--c:#c9312b"></div><span style="color:#c9312b">45</span></div></td>
+        </tr>
+        <tr>
+          <td>melt_pressure<span class="role-tag">加工参数</span></td>
+          <td class=num>78</td>
+          <td class=num>18.1295</td>
+          <td class=num>0.034632</td>
+          <td class=num>8</td>
+          <td class=num>6.155713<span class="drift-flag">显著</span></td>
+          <td class=num>—</td>
+          <td class=num>—</td>
+          <td><div class="score-cell"><div class="score-bar" style="--w:55%;--c:#e0703a"></div><span style="color:#e0703a">55</span></div></td>
+        </tr>
+        <tr>
+          <td>film_thickness<span class="role-tag">加工参数</span></td>
+          <td class=num>78</td>
+          <td class=num>50.6825</td>
+          <td class=num>0.029492</td>
+          <td class=num>11</td>
+          <td class=num>14.490209<span class="drift-flag">显著</span></td>
+          <td class=num>—</td>
+          <td class=num>—</td>
+          <td><div class="score-cell"><div class="score-bar" style="--w:58%;--c:#e0703a"></div><span style="color:#e0703a">58</span></div></td>
+        </tr></tbody>
+    </table>
+  </div>
+
+  <h2>趋势与控制限</h2>
+  <div id="trend-charts"></div>
+  <noscript><div class="panel empty">已禁用 JavaScript：请查看上方参数总览表与证据附录，
+    或使用导出的 charts.json。</div></noscript>
+
+  <h2>参数相关与波动驱动</h2>
+  <div class="grid">
+    <div class="panel" id="contrib-panel"><div class="chart-title">对检测/目标指标的方差解释占比</div>
+      <div id="contrib-chart" class="chart"></div><div class='empty' style='padding:8px'>未声明检测/响应指标（context.inspection_cols 或本体 role=response）——贡献分析未执行，声明目标指标后启用。</div></div>
+    <div class="panel" id="heat-panel"><div class="chart-title">参数相关热力图（滞后补偿 |Spearman|）</div>
+      <div id="heat-chart" class="chart"></div></div>
+  </div>
+
+  <h2>协同分析输入</h2>
+  <div class="panel" id="integrations"><table><tbody><tr><th>sentinel 基线对照</th><td>未启用（未提供基线）</td></tr><tr><th>tuning-memory 调优归因</th><td>未启用（未提供 action_log）</td></tr><tr><th>doe-analyzer 操作窗</th><td>未启用（未提供 doe_run_dir）</td></tr></tbody></table></div>
+
+  <h2>数据与口径（证据链附录）</h2>
+  <div class="panel">
+    <table>
+      <tr><th>数据文件</th><td>D:\codes\ABO\AgentWorkShop\.AgentWorkShop\analysis\line-report-20261012\round-2-fresh\data.csv</td></tr>
+      <tr><th>数据指纹</th><td class="num">sha256:a764b9392b4584a65cf642906ed3f906ec9c4a4c6dc8e93518091c98c711046c</td></tr>
+      <tr><th>行数（原始/入评）</th><td class="num">78 / 78</td></tr>
+      <tr><th>时间列 / 采样间隔</th><td>timestamp /
+        <span class="num">2 s</span></td></tr>
+      <tr><th>缺失率 / 覆盖率</th><td class="num">0.00% /
+        100.00%</td></tr>
+      <tr><th>评估参数</th><td>melt_temp、melt_pressure、film_thickness</td></tr>
+      <tr><th>检测指标</th><td>—</td></tr>
+      
+    </table>
+    <div style='margin-top:12px'><b>方法与阈值（可复算）</b><ul><li><code>sentinelcore_nelson_episodes</code> — Nelson 判异复用 industrial-sentinel sentinelcore （R1 单点越 3σ；R2 连续 9 点同侧；R3 连续 6 点同向；R5 三点中两点越 2σ；R6 五点中四点越 1σ），单一事实源。</li><li><code>mrbar_sigma_1.128</code> — σ_within 由移动极差估计：σ = MR̄ / 1.128（与 industrial-sentinel 同口径）。</li><li><code>cpk_within_ppk_overall</code> — Cpk 用组内 σ（MR̄ 法），Ppk 用整体标准差；规格限来源：用户上下文 > 本体资产 normal_range > 不计算。</li><li><code>theil_sen_mk_drift</code> — 漂移：Theil–Sen 稳健斜率（每行斜率 ÷ 采样间隔换算每秒）+ Mann–Kendall 显著性（p&lt;0.01 且相对漂移≥0.1%/天才计入）。</li><li><code>lagged_spearman_max10</code> — 相关性：滞后 0–10 行逐行 Spearman 取最强，并记录领先行数；物理机制由本体 relationships/参数组校验（darwin 四条件）。</li><li><code>contribution_r2_share</code> — 贡献分解：目标指标上各驱动参数滞后补偿后 |r|² 归一化占比（阈值 |r|≥0.3），领先行数一并记录。</li><li><code>regime_segmentation_c3</code> — 工况分段：复用 industrial-sentinel regime_map（方差比+漂移坡道融合 + 二分分割显著变点），变点与主导状态逐段列出。</li><li><code>ontology_first_condition</code> — 本体优先：先于任何统计构建工况理解（显式路径 > 00_input/01_ontology 产物 > 本体资产库），每个推断字段带 assigned_by=ontology|user|auto。</li><li><code>weighted_penalty_score_v1</code> — 评分：每参数 100 分起，按 SPC 违规剧集率/CV/Cpk/漂移/基线偏离分档扣分，综合分为参数加权均值；A≥85 稳定，B≥70 亚稳定，C≥50 波动，D&lt;50 不稳定。</li><li><code>darwin_limitations</code> — 数据真值与局限：全部数值可由原始表复算；推导字段标记 derived；假设、混杂因子与规格覆盖显式列出（见下）。</li></ul><span style='color:var(--mut)'>python 3.12.7 · numpy 2.5.2 · pandas 3.0.5 · spc sentinelcore · input sha256:a764b9392b4584a65cf642906ed3f906ec9c4a4c6dc8e93518091c98c711046c</span></div>
+    
+    <div style='margin-top:16px'>
+      <b>假设与局限（darwin 数据真值条款）</b>
+      <table>
+        <tr><th>数据来源</th><td>raw (this skill never cleans or imputes; every number is recomputable from the raw table)</td></tr>
+        <tr><th>抽样</th><td>全量入评（78 行）</td></tr>
+        <tr><th>规格覆盖</th><td>用户提供：无 ·
+          本体资产：无 ·
+          无规格（不评 Cpk）：melt_temp、melt_pressure、film_thickness</td></tr>
+      </table>
+      <div style='margin-top:6px'><b>模型假设</b><ul><li>lag-compensated Spearman window 0–10 rows (lead/lag beyond this window is invisible)</li><li>whole-period scoring assumes one dominant operating condition; use the regime table for segmented reading</li><li>Cpk treats within-sigma as MR̄/1.128 moving-range estimate</li></ul></div>
+      <div style='margin-top:6px'><b>混杂因子（本体登记）</b>
+        <table><thead><tr><th>变量</th><th>影响说明</th><th>状态</th></tr></thead>
+        <tbody><tr><td colspan=3 class=empty>本体未登记混杂因子</td></tr></tbody></table></div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <b>报告性质：</b>本报告由确定性统计脚本生成（零 LLM 参与，全部数值可复算），
+    属咨询性分析产物，不构成参数下发或控制指令；行动决策归生产线管理方。<br>
+    <b>生成物：</b>LSR-1791806093-i0o0fb ·
+    contract line-stability-report/1.0 ·
+    script v1.0.0 ·
+    2026-10-12T11:54:53Z
+  </div>
+</div>
+
+<script id="payload" type="application/json">{"report_id":"LSR-1791806093-i0o0fb","charts":{"contract_version":"line-stability-charts/1.0","trend":[{"name":"melt_temp","role":"parameter","n":78,"n_plotted":78,"t":[1791805936000,1791805938000,1791805940000,1791805942000,1791805944000,1791805946000,1791805948000,1791805950000,1791805952000,1791805954000,1791805956000,1791805958000,1791805960000,1791805962000,1791805964000,1791805966000,1791805968000,1791805970000,1791805972000,1791805974000,1791805976000,1791805978000,1791805980000,1791805982000,1791805984000,1791805986000,1791805988000,1791805990000,1791805992000,1791805994000,1791805996000,1791805998000,1791806000000,1791806002000,1791806004000,1791806006000,1791806008000,1791806010000,1791806012000,1791806014000,1791806016000,1791806018000,1791806020000,1791806022000,1791806024000,1791806026000,1791806028000,1791806030000,1791806032000,1791806034000,1791806036000,1791806038000,1791806040000,1791806042000,1791806044000,1791806046000,1791806048000,1791806050000,1791806052000,1791806054000,1791806056000,1791806058000,1791806060000,1791806062000,1791806064000,1791806066000,1791806068000,1791806070000,1791806072000,1791806074000,1791806076000,1791806078000,1791806080000,1791806082000,1791806084000,1791806086000,1791806088000,1791806090000],"v":[104.915,104.915,104.915,210.25,209.735,208.135,207.72,206.52,205.975,204.71,204.645,204.205,203.32,202.805,202.82,201.905,202.205,202.0,201.71,201.2,201.41,201.38,200.8,200.51,200.225,200.38,200.245,200.68,200.415,200.255,200.255,200.035,200.09,200.06,199.755,199.95,200.105,200.83,200.115,199.96,199.52,200.675,200.255,199.745,199.875,199.65,200.04,200.1,199.905,200.04,200.015,199.64,200.195,199.7,199.995,198.89,199.785,200.475,200.275,200.235,200.465,199.805,199.38,200.09,200.275,200.06,199.9,199.905,199.95,199.875,199.725,199.95,199.825,200.06,199.595,200.63,200.125,199.445],"center":200.12,"ucl":204.768383,"lcl":195.471617,"violation_indices_in_plot":[],"spec":{"lsl":null,"usl":null,"target":null,"source":null}},{"name":"melt_pressure","role":"parameter","n":78,"n_plotted":78,"t":[1791805936000,1791805938000,1791805940000,1791805942000,1791805944000,1791805946000,1791805948000,1791805950000,1791805952000,1791805954000,1791805956000,1791805958000,1791805960000,1791805962000,1791805964000,1791805966000,1791805968000,1791805970000,1791805972000,1791805974000,1791805976000,1791805978000,1791805980000,1791805982000,1791805984000,1791805986000,1791805988000,1791805990000,1791805992000,1791805994000,1791805996000,1791805998000,1791806000000,1791806002000,1791806004000,1791806006000,1791806008000,1791806010000,1791806012000,1791806014000,1791806016000,1791806018000,1791806020000,1791806022000,1791806024000,1791806026000,1791806028000,1791806030000,1791806032000,1791806034000,1791806036000,1791806038000,1791806040000,1791806042000,1791806044000,1791806046000,1791806048000,1791806050000,1791806052000,1791806054000,1791806056000,1791806058000,1791806060000,1791806062000,1791806064000,1791806066000,1791806068000,1791806070000,1791806072000,1791806074000,1791806076000,1791806078000,1791806080000,1791806082000,1791806084000,1791806086000,1791806088000,1791806090000],"v":[15.026,15.026,15.026,17.761,18.576,18.617,18.65,18.623,18.593,18.384,18.479,18.461,18.308,18.389,18.313,18.349,18.211,18.209,18.288,18.171,18.267,18.091,18.114,18.21,18.163,18.155,18.206,18.181,18.087,18.211,18.097,18.139,18.081,18.052,18.218,18.19,18.075,18.05,18.099,17.925,18.007,18.085,18.049,18.126,18.032,18.089,18.179,18.099,18.159,18.133,18.043,18.105,18.139,18.116,18.136,18.038,18.197,18.029,18.183,18.11,17.998,18.063,18.038,18.111,18.119,18.072,18.148,18.136,18.073,18.142,18.162,18.179,17.998,18.118,18.124,18.101,18.142,18.059],"center":18.1295,"ucl":18.434384,"lcl":17.824616,"violation_indices_in_plot":[],"spec":{"lsl":null,"usl":null,"target":null,"source":null}},{"name":"film_thickness","role":"parameter","n":78,"n_plotted":78,"t":[1791805936000,1791805938000,1791805940000,1791805942000,1791805944000,1791805946000,1791805948000,1791805950000,1791805952000,1791805954000,1791805956000,1791805958000,1791805960000,1791805962000,1791805964000,1791805966000,1791805968000,1791805970000,1791805972000,1791805974000,1791805976000,1791805978000,1791805980000,1791805982000,1791805984000,1791805986000,1791805988000,1791805990000,1791805992000,1791805994000,1791805996000,1791805998000,1791806000000,1791806002000,1791806004000,1791806006000,1791806008000,1791806010000,1791806012000,1791806014000,1791806016000,1791806018000,1791806020000,1791806022000,1791806024000,1791806026000,1791806028000,1791806030000,1791806032000,1791806034000,1791806036000,1791806038000,1791806040000,1791806042000,1791806044000,1791806046000,1791806048000,1791806050000,1791806052000,1791806054000,1791806056000,1791806058000,1791806060000,1791806062000,1791806064000,1791806066000,1791806068000,1791806070000,1791806072000,1791806074000,1791806076000,1791806078000,1791806080000,1791806082000,1791806084000,1791806086000,1791806088000,1791806090000],"v":[56.65,56.65,56.23,56.23,56.23,53.81,52.065,51.935,51.94,52.33,51.76,52.06,50.88,51.14,51.05,52.0,51.45,50.5,50.6,50.59,50.09,51.23,50.75,49.91,50.505,51.13,50.795,50.495,50.375,50.295,50.23,50.3,50.18,50.09,49.975,50.36,51.025,50.615,50.475,50.65,51.39,51.38,50.6,49.74,50.51,50.67,51.045,50.785,50.545,50.965,50.79,50.93,50.68,51.12,51.47,51.45,50.5,50.445,50.41,50.795,50.71,50.54,51.14,50.16,50.63,50.97,50.48,50.89,50.665,49.99,50.3,50.685,50.53,50.05,51.22,50.57,50.32,50.11],"center":50.6825,"ucl":51.815063,"lcl":49.549937,"violation_indices_in_plot":[],"spec":{"lsl":null,"usl":null,"target":null,"source":null}}],"score_bars":[{"name":"melt_temp","score":45,"role":"parameter"},{"name":"melt_pressure","score":55,"role":"parameter"},{"name":"film_thickness","score":58,"role":"parameter"}],"corr_heatmap":{"labels":["melt_temp","melt_pressure","film_thickness"],"matrix":[[1.0,0.60059,0.547559],[0.60059,1.0,0.557897],[0.547559,0.557897,1.0]]},"contribution_bar":[]},"notAssessable":false}</script>
+<script>
+(function () {
+  var DATA = {};
+  try { DATA = JSON.parse(document.getElementById('payload').textContent); } catch (e) {}
+  function fallback() {
+    var host = document.getElementById('trend-charts');
+    var rows = [];
+    (DATA.charts.trend || []).forEach(function (s) {
+      var vs = s.v.filter(function (x) { return x !== null; });
+      var mn = Math.min.apply(null, vs), mx = Math.max.apply(null, vs);
+      var nBad = s.violation_indices_in_plot.length;
+      rows.push('<tr><td>' + s.name + '</td><td>' + vs.length + '</td><td>' +
+        mn.toFixed(4) + '</td><td>' + mx.toFixed(4) + '</td><td>' + nBad + '</td></tr>');
+    });
+    host.innerHTML = '<div class="panel"><div class="chart-title">静态模式（ECharts CDN 不可用）' +
+      '——各参数趋势摘要</div><div class="static-table"><table><thead><tr>' +
+      '<th>参数</th><th>点数</th><th>最小</th><th>最大</th><th>违规点</th></tr></thead>' +
+      '<tbody>' + rows.join('') + '</tbody></table></div></div>';
+    ['contrib-chart', 'heat-chart'].forEach(function (id) {
+      var el = document.getElementById(id);
+      if (el) el.parentNode.style.display = 'none';
+    });
+  }
+  function init() {
+    if (!window.echarts) { fallback(); return; }
+    var charts = DATA.charts || {};
+    var host = document.getElementById('trend-charts');
+    (charts.trend || []).forEach(function (s) {
+      var box = document.createElement('div');
+      box.className = 'chart';
+      box.innerHTML = '<div class="chart-title">' + s.name +
+        '（中心=中位数，虚线=±3σ_within' + (s.spec && s.spec.lsl != null ? '，红线=规格限' : '') + '）</div>' +
+        '<div style="height:calc(100% - 30px)"></div>';
+      host.appendChild(box);
+      var el = box.lastChild;
+      var ch = echarts.init(el); allCharts.push(ch);
+      var series = [{ name: s.name, type: 'line', showSymbol: false,
+        data: s.t.map(function (t, i) { return [t, s.v[i]]; }),
+        lineStyle: { width: 1.2, color: '#5b8dbf' } }];
+      [['UCL', s.ucl, '#e0703a', 'dashed'], ['LCL', s.lcl, '#e0703a', 'dashed'],
+       ['LSL', s.spec && s.spec.lsl, '#c9312b', 'solid'],
+       ['USL', s.spec && s.spec.usl, '#c9312b', 'solid']].forEach(function (m) {
+        if (m[1] !== null && m[1] !== undefined)
+          series.push({ name: m[0], type: 'line', data: [[s.t[0], m[1]], [s.t[s.t.length - 1], m[1]]],
+            symbol: 'none', lineStyle: { color: m[2], type: m[3], width: 1 },
+            endLabel: { show: true, formatter: m[0], color: m[2] } });
+      });
+      var bad = s.violation_indices_in_plot || [];
+      if (bad.length)
+        series.push({ name: '违规点', type: 'scatter',
+          data: bad.map(function (i) { return [s.t[i], s.v[i]]; }),
+          itemStyle: { color: '#c9312b' }, symbolSize: 7 });
+      ch.setOption({
+        grid: { left: 60, right: 60, top: 18, bottom: 44 },
+        tooltip: { trigger: 'axis' },
+        xAxis: { type: 'time' },
+        yAxis: { type: 'value', scale: true },
+        series: series
+      });
+    });
+    if ((charts.trend || []).length === 0) {
+      host.innerHTML = '<div class="panel empty">无可绘制的趋势数据。</div>';
+    }
+    var contrib = document.getElementById('contrib-chart');
+    if (contrib && (charts.contribution_bar || []).length) {
+      var cb = echarts.init(contrib); allCharts.push(cb);
+      var items = charts.contribution_bar.slice(0, 10);
+      cb.setOption({
+        grid: { left: 90, right: 30, top: 18, bottom: 40 },
+        tooltip: {},
+        xAxis: { type: 'value', max: 1, axisLabel: { formatter: function (v) {
+          return (v * 100).toFixed(0) + '%'; } } },
+        yAxis: { type: 'category', data: items.map(function (d) {
+          return d.driver + ' → ' + d.target; }).reverse() },
+        series: [{ type: 'bar', data: items.map(function (d) {
+          return Math.round(d.share * 1000) / 10; }).reverse(),
+          itemStyle: { color: '#e8a33d' }, barMaxWidth: 18 }]
+      });
+    } else if (contrib) { contrib.parentNode.style.display = 'none'; }
+    var heat = document.getElementById('heat-chart');
+    if (heat && charts.corr_heatmap && charts.corr_heatmap.labels.length > 1) {
+      var hm = echarts.init(heat); allCharts.push(hm);
+      var pts = [];
+      charts.corr_heatmap.matrix.forEach(function (row, i) {
+        row.forEach(function (v, j) {
+          if (v !== null && i !== j)
+            pts.push([j, charts.corr_heatmap.labels.length - 1 - i, v]);
+        });
+      });
+      hm.setOption({
+        grid: { left: 110, right: 60, top: 18, bottom: 60 },
+        tooltip: { position: 'top' },
+        xAxis: { type: 'category', data: charts.corr_heatmap.labels,
+          axisLabel: { rotate: 30 } },
+        yAxis: { type: 'category', data: charts.corr_heatmap.labels.slice().reverse() },
+        visualMap: { min: 0, max: 1, calculable: true, orient: 'horizontal',
+          left: 'center', bottom: 0, inRange: { color: ['#1d2a36', '#e8a33d', '#c9312b'] } },
+        series: [{ type: 'heatmap', data: pts,
+          label: { show: charts.corr_heatmap.labels.length <= 8, formatter: function (p) {
+            return p.value[2].toFixed(2); } } }]
+      });
+    } else if (heat) { heat.parentNode.style.display = 'none'; }
+  }
+  var allCharts = [];
+  function reflowCharts() { allCharts.forEach(function (c) { try { c.resize(); } catch (e) {} }); }
+  window.addEventListener('resize', reflowCharts);
+  if (document.readyState === 'complete') init();
+  else window.addEventListener('load', init);
+  // 布局稳定后强制重测一次尺寸：在后台/延迟渲染环境下，init 时容器宽度
+  // 可能被读成 0（canvas 宽 0、图空白），双 rAF 确保 DOM 布局完成后再 resize。
+  function reflowWhenSettled() {
+    requestAnimationFrame(function () { requestAnimationFrame(reflowCharts); });
+  }
+  if (document.readyState === 'complete') reflowWhenSettled();
+  else window.addEventListener('load', reflowWhenSettled);
+  setTimeout(function () { if (!window.echarts) fallback(); }, 4000);
+})();
+</script>
+</body>
+</html>

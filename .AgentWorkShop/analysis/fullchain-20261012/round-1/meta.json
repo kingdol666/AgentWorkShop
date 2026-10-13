@@ -1,0 +1,69 @@
+{
+  "dataset": "流延膜全链验收 · R1(PLC 模拟产线,3 次阶跃激励)",
+  "scene": "SV=设定值(DCW);PV=实时检测(DAQ)",
+  "window": {
+    "fromIso": "2026-10-12T10:07:41.156Z",
+    "toIso": "2026-10-12T10:15:41.156Z"
+  },
+  "fields": [
+    {
+      "nodeId": "dw-344dc170",
+      "column": "zone1_sp",
+      "role": "SV",
+      "unit": "℃",
+      "meaning": "SV 设定点:一区加热温度,影响熔体温度进而影响膜厚"
+    },
+    {
+      "nodeId": "dw-896fe6ba",
+      "column": "linespeed_sp",
+      "role": "SV",
+      "unit": "m/min",
+      "meaning": "SV 设定点:产线速度,升速减薄、降速增厚"
+    },
+    {
+      "nodeId": "dw-0a48b7f2",
+      "column": "diegap_sp",
+      "role": "SV",
+      "unit": "mm",
+      "meaning": "SV 设定点:模口间隙,间隙增大膜厚近似线性增厚"
+    },
+    {
+      "nodeId": "dn-2853786c",
+      "column": "melt_temp",
+      "role": "PV",
+      "unit": "℃",
+      "meaning": "PV 实时检测:熔体温度,跟随加热 SV 滞后 1-2 分钟"
+    },
+    {
+      "nodeId": "dn-5126be1a",
+      "column": "melt_pressure",
+      "role": "PV",
+      "unit": "MPa",
+      "meaning": "PV 实时检测:熔体压力,反映泵送与滤网状态"
+    },
+    {
+      "nodeId": "dn-2311fcf2",
+      "column": "film_thickness",
+      "role": "PV",
+      "unit": "μm",
+      "meaning": "PV 实时检测:流延膜厚度(核心质量指标,优化目标 goal),随线速/模口滞后波动"
+    }
+  ],
+  "excitations": [
+    {
+      "seq": 1,
+      "node": "linespeed-sp",
+      "value": 97
+    },
+    {
+      "seq": 2,
+      "node": "diegap-sp",
+      "value": 1.03
+    },
+    {
+      "seq": 3,
+      "node": "linespeed-sp",
+      "value": 93
+    }
+  ]
+}

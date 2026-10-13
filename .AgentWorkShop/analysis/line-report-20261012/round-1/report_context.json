@@ -1,0 +1,17 @@
+{
+  "line_id": "ln-72eb1197",
+  "product": "流延膜(全链验收)",
+  "scene": "cast-film-extrusion",
+  "period": {
+    "start": "2026-10-12T11:11:13.580Z",
+    "end": "2026-10-12T11:16:13.580Z"
+  },
+  "excitations": [
+    {
+      "node": "linespeed-sp",
+      "from": 93,
+      "to": 97,
+      "at": "2026-10-12T11:13:43.580Z"
+    }
+  ]
+}

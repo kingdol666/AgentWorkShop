@@ -1,0 +1,299 @@
+{
+  "contract_version": "line-stability-report/1.0",
+  "report_id": "LSR-1791825598-jj90zy",
+  "generated_at": "2026-10-12T17:19:58Z",
+  "status": "ok",
+  "line": {
+    "line_id": null,
+    "product": null
+  },
+  "period": {
+    "start": "2026-10-12 16:55:25",
+    "end": "2026-10-12 17:10:30",
+    "requested": {
+      "start": null,
+      "end": null
+    }
+  },
+  "data": {
+    "path": "D:\\codes\\ABO\\AgentWorkShop\\.AgentWorkShop\\analysis\\round-aml-20261012\\r4.csv",
+    "sha256": "sha256:5a22266585ac1d592350c91892eb3ea59304d9929dd2ce07782ae904ce71a53d",
+    "time_col": "timestamp",
+    "group_col": null,
+    "group_used": null,
+    "parameter_cols": [
+      "film_thickness"
+    ],
+    "inspection_cols": [],
+    "ignored_cols": [],
+    "sampled": false,
+    "stride": 1,
+    "n_rows_raw": 175,
+    "n_rows_used": 175,
+    "time_span_seconds": 905.0,
+    "sampling_interval_median_seconds": 5.0,
+    "missing_rate": 0.0,
+    "coverage_ratio": 0.961538,
+    "time_invariant_channels": {
+      "count": 0,
+      "total": 1,
+      "share": 0.0,
+      "examples": []
+    }
+  },
+  "condition": {
+    "ontology": {
+      "mode": "auto",
+      "path": null,
+      "source": null,
+      "reason": "no ontology artifact found (auto mode)"
+    },
+    "scene": null,
+    "columns": {
+      "film_thickness": {
+        "assigned_by": "auto",
+        "label": "film_thickness",
+        "unit": null,
+        "role": "parameter",
+        "spec": null,
+        "normal_range": null,
+        "stage": null,
+        "equipment": null,
+        "governing_law": null,
+        "physical_meaning": null,
+        "group": null
+      }
+    },
+    "relationships": [],
+    "regimes": {
+      "available": false,
+      "method": "skipped_too_few_rows_or_params",
+      "change_points": [],
+      "regimes": [],
+      "abnormal_ratio": null
+    }
+  },
+  "parameters": [
+    {
+      "name": "film_thickness",
+      "role": "parameter",
+      "condition": {
+        "label": "film_thickness",
+        "unit": null,
+        "assigned_by": "auto",
+        "governing_law": null,
+        "physical_meaning": null,
+        "group": null,
+        "stage": null,
+        "equipment": null
+      },
+      "n": 175,
+      "row_range": [
+        0,
+        174
+      ],
+      "data_source": "raw",
+      "mu": 53.786257,
+      "median": 53.784,
+      "sigma": 0.325422,
+      "sigma_within_mr": 0.28941,
+      "cv": 0.006033,
+      "min": 52.88,
+      "max": 55.207,
+      "spec": {
+        "lsl": null,
+        "usl": null,
+        "target": null,
+        "source": null
+      },
+      "capability": {
+        "cp": null,
+        "cpk": null,
+        "pp": null,
+        "ppk": null
+      },
+      "nelson": {
+        "NELSON_R1": {
+          "n_episodes": 2,
+          "indices": [
+            0,
+            83
+          ]
+        },
+        "NELSON_R3": {
+          "n_episodes": 2,
+          "indices": [
+            43,
+            98
+          ]
+        },
+        "NELSON_R6": {
+          "n_episodes": 2,
+          "indices": [
+            47,
+            110
+          ]
+        },
+        "NELSON_R2": {
+          "n_episodes": 1,
+          "indices": [
+            112
+          ]
+        }
+      },
+      "n_violation_points": 7,
+      "drift": {
+        "slope_per_second": 5.3e-05,
+        "per_day_relative": 0.084868,
+        "mk_p": 0.571924,
+        "significant": false
+      },
+      "baseline_ref": null,
+      "score": 97,
+      "score_breakdown": {
+        "base": 100,
+        "nelson_penalty": -3,
+        "cv_penalty": 0,
+        "capability_penalty": 0,
+        "drift_penalty": 0,
+        "baseline_penalty": 0,
+        "total": 97
+      }
+    }
+  ],
+  "correlations": {
+    "max_lag": 10,
+    "pairs": [],
+    "contributions": []
+  },
+  "integrations": {
+    "sentinel_baseline": {
+      "used": false,
+      "path": null
+    },
+    "tuning_memory": {
+      "used": false
+    },
+    "doe_analyzer": {
+      "used": false
+    }
+  },
+  "degradations": [],
+  "limitations": {
+    "data_source": "raw (this skill never cleans or imputes; every number is recomputable from the raw table)",
+    "sampling": {
+      "n_rows_analyzed": 175,
+      "sampled": false,
+      "stride": 1,
+      "note": null
+    },
+    "missing_rate": 0.0,
+    "sampling_interval_seconds": 5.0,
+    "spec_coverage": {
+      "user": [],
+      "ontology": [],
+      "none": [
+        "film_thickness"
+      ]
+    },
+    "model_assumptions": [
+      "lag-compensated Spearman window 0–10 rows (lead/lag beyond this window is invisible)",
+      "whole-period scoring assumes one dominant operating condition; use the regime table for segmented reading",
+      "Cpk treats within-sigma as MR̄/1.128 moving-range estimate"
+    ],
+    "confounders": [],
+    "derived_fields": [
+      "baseline_ref.robust_z",
+      "correlations.contributions.share",
+      "correlations.pairs.best_abs_r"
+    ]
+  },
+  "provenance": {
+    "input_sha256": "sha256:5a22266585ac1d592350c91892eb3ea59304d9929dd2ce07782ae904ce71a53d",
+    "script_version": "1.0.0",
+    "authored_by": "lstcore/stability_analyzer.py",
+    "zero_llm": true,
+    "spc_source": "sentinelcore",
+    "regime_method": "skipped_too_few_rows_or_params",
+    "ontology_source": null,
+    "python": "3.12.7",
+    "numpy": "2.5.2",
+    "pandas": "3.0.5",
+    "methods": [
+      "sentinelcore_nelson_episodes",
+      "mrbar_sigma_1.128",
+      "cpk_within_ppk_overall",
+      "theil_sen_mk_drift",
+      "lagged_spearman_max10",
+      "contribution_r2_share",
+      "regime_segmentation_c3",
+      "ontology_first_condition",
+      "weighted_penalty_score_v1",
+      "darwin_limitations"
+    ]
+  },
+  "findings": [
+    {
+      "finding_id": "F001",
+      "severity": "high",
+      "category": "spc",
+      "title": "film_thickness 检出 SPC 违规",
+      "detail": "共 7 个判异剧集命中（每百点 4.0 个，规则：NELSON_R1/NELSON_R2/NELSON_R3/NELSON_R6），控制限为中心值53.784±3σ_within（σ=0.2894）。",
+      "evidence": [
+        {
+          "metric": "violation_episodes",
+          "value": 7,
+          "source": "lstcore",
+          "threshold": "0"
+        },
+        {
+          "metric": "rate_per_100",
+          "value": 4.0,
+          "source": "lstcore",
+          "threshold": "<2 for warn; >=2 for high"
+        },
+        {
+          "metric": "sigma_within_mr",
+          "value": 0.28941,
+          "source": "lstcore"
+        }
+      ],
+      "affected": [
+        "film_thickness"
+      ],
+      "confidence": 90
+    },
+    {
+      "finding_id": "F002",
+      "severity": "info",
+      "category": "data_quality",
+      "title": "时段覆盖不完整",
+      "detail": "按中位采样间隔推算的时段覆盖率 96.2%，可能存在停线或采样中断。",
+      "evidence": [
+        {
+          "metric": "coverage_ratio",
+          "value": 0.961538,
+          "source": "lstcore",
+          "threshold": ">=0.98"
+        }
+      ],
+      "affected": [],
+      "confidence": 80
+    }
+  ],
+  "conclusion": {
+    "score": 97.0,
+    "grade": "A",
+    "grade_key": "stable",
+    "label": "稳定",
+    "statement": "该产线在本时段总体运行稳定（97.0 分，A 级）：评估 1 个参数，检出 7 个 SPC 违规剧集、0 项显著漂移。",
+    "n_parameters_assessed": 1,
+    "n_findings": 2,
+    "findings_by_severity": {
+      "info": 1,
+      "warn": 0,
+      "high": 1,
+      "critical": 0
+    }
+  }
+}

@@ -1,0 +1,55 @@
+{
+  "dataset": "流延膜全链验收 · R2(引用 R1 结论,模口阶跃 0.97 后复核)",
+  "prior_round": {
+    "task": "",
+    "digest": "① 判定为「对象存在但授权缺失」,非任务失败,不得编造数据、不得操作未授权节点、不得降级为逐参数直调;② 授权修复:把数采节点与配方绑定到具体 agent(建议配方 mode=auto 以免逐动作 HITL 拖慢节拍);团队内先做交叉自检(lead + 各 worker 各跑一次 my_industrial_nodes)以定位授权边界;③ 唯一可绕开节点授权的只读取证路径:diag_run(line=<line_id>) 产线级 DAQ 快照,凭频道只读绑定即可触发。授权拒绝原文佐证:daq_query → 「你尚未绑定任何数采节点,无权查询采集数据」;mes_catalog → 「你还没有可读的产线绑定,无可见 MES 点位」。"
+  },
+  "window": {
+    "fromIso": "2026-10-12T09:39:34.991Z",
+    "toIso": "2026-10-12T09:43:34.991Z"
+  },
+  "fields": [
+    {
+      "nodeId": "dw-834c215a",
+      "column": "zone1_sp",
+      "role": "SV",
+      "unit": "℃",
+      "meaning": "SV 设定点:一区加热温度,影响熔体温度进而影响膜厚"
+    },
+    {
+      "nodeId": "dw-0e130359",
+      "column": "linespeed_sp",
+      "role": "SV",
+      "unit": "m/min",
+      "meaning": "SV 设定点:产线速度,升速减薄、降速增厚"
+    },
+    {
+      "nodeId": "dw-dea4041f",
+      "column": "diegap_sp",
+      "role": "SV",
+      "unit": "mm",
+      "meaning": "SV 设定点:模口间隙,间隙增大膜厚近似线性增厚"
+    },
+    {
+      "nodeId": "dn-4b2d5c01",
+      "column": "melt_temp",
+      "role": "PV",
+      "unit": "℃",
+      "meaning": "PV 实时检测:熔体温度,跟随加热 SV 滞后 1-2 分钟"
+    },
+    {
+      "nodeId": "dn-a27fbff5",
+      "column": "melt_pressure",
+      "role": "PV",
+      "unit": "MPa",
+      "meaning": "PV 实时检测:熔体压力,反映泵送与滤网状态"
+    },
+    {
+      "nodeId": "dn-03ceb7d3",
+      "column": "film_thickness",
+      "role": "PV",
+      "unit": "μm",
+      "meaning": "PV 实时检测:流延膜厚度(核心质量指标,优化目标 goal),随线速/模口滞后波动"
+    }
+  ]
+}

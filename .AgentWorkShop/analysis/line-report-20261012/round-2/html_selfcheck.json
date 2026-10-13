@@ -1,0 +1,23 @@
+{
+  "contract_version": "line-stability-html-selfcheck/1.0",
+  "html_path": "D:\\codes\\ABO\\AgentWorkShop\\.AgentWorkShop\\analysis\\line-report-20261012\\round-2\\line_stability_report.html",
+  "size_bytes": 90038,
+  "report_id": "LSR-1791803908-r9wcn7",
+  "checks": {
+    "min_size": true,
+    "hero_conclusion": true,
+    "condition_section": true,
+    "findings_section": true,
+    "evidence_table": true,
+    "limitations_section": true,
+    "charts_payload": true,
+    "echarts_cdn_3source": true,
+    "static_fallback": true,
+    "appendix_methods": true,
+    "advisory_disclaimer": true,
+    "no_placeholder": true,
+    "snapshot_iff": true
+  },
+  "pass": true,
+  "generated_at": "2026-10-12T11:18:28Z"
+}

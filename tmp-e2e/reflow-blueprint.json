@@ -1,0 +1,38 @@
+{
+  "simPort": 4035,
+  "devices": [
+    {
+      "id": "reflow-oven-mbtcp",
+      "name": "回流焊炉主机",
+      "protocol": "modbus-tcp",
+      "port": 37652,
+      "unitId": 1,
+      "signals": [
+        { "id": "zone1-sp", "name": "预热区温度SP", "unit": "℃", "min": 120, "max": 200, "decimals": 1, "kind": "sp", "initial": 165 },
+        { "id": "zone2-sp", "name": "回流区温度SP", "unit": "℃", "min": 200, "max": 280, "decimals": 1, "kind": "sp", "initial": 245 },
+        { "id": "conveyor-sp", "name": "输送速度SP", "unit": "m/min", "min": 0.6, "max": 1.4, "decimals": 2, "kind": "sp", "initial": 1.0 },
+        { "id": "boardTemp-pv", "name": "板温实测", "unit": "℃", "min": 50, "max": 300, "decimals": 2, "kind": "pv",
+          "dynamics": { "base": 242.65, "tau": 15, "noise": 1.2,
+            "follows": [ { "sp": "预热区温度SP", "gain": 0.55 }, { "sp": "回流区温度SP", "gain": 0.62 }, { "sp": "输送速度SP", "gain": -60 } ] } },
+        { "id": "ovenTemp-pv", "name": "炉膛实测温度", "unit": "℃", "min": 0, "max": 320, "decimals": 1, "kind": "pv",
+          "dynamics": { "base": 217, "tau": 18, "noise": 0.8,
+            "follows": [ { "sp": "预热区温度SP", "gain": 0.5 }, { "sp": "回流区温度SP", "gain": 0.5 } ] } },
+        { "id": "convActual-pv", "name": "输送实际速度", "unit": "m/min", "min": 0, "max": 2, "decimals": 3, "kind": "pv",
+          "dynamics": { "base": 1.0, "tau": 5, "noise": 0.008, "follows": [ { "sp": "输送速度SP", "gain": 1 } ] } }
+      ]
+    },
+    {
+      "id": "reflow-inspect-mqtt",
+      "name": "炉后检测站",
+      "protocol": "mqtt",
+      "signals": [
+        { "id": "peakTemp-pv", "name": "峰值温度PV", "unit": "℃", "min": 180, "max": 300, "decimals": 2, "kind": "pv",
+          "dynamics": { "base": 245, "tau": 20, "noise": 0.9 } },
+        { "id": "coolSlope-pv", "name": "冷却斜率PV", "unit": "℃/s", "min": 0, "max": 6, "decimals": 2, "kind": "pv",
+          "dynamics": { "base": 2.5, "tau": 25, "noise": 0.15 } },
+        { "id": "yield-pv", "name": "合格率PV", "unit": "%", "min": 50, "max": 100, "decimals": 2, "kind": "pv",
+          "dynamics": { "base": 97.6, "tau": 30, "noise": 0.5 } }
+      ]
+    }
+  ]
+}

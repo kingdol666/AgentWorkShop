@@ -1,0 +1,253 @@
+{
+  "line": {
+    "name": "SMT回流焊产线-mv67x5e1",
+    "description": "文档接入实测:回流焊+炉后检测"
+  },
+  "product": {
+    "name": "SMT 贴片组件"
+  },
+  "nodes": [
+    {
+      "kind": "dcw",
+      "name": "预热区温度SP",
+      "driver": "modbus-tcp",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 37652,
+        "unitId": 1,
+        "register": 40001,
+        "registerType": "holding",
+        "dataType": "float32",
+        "byteOrder": "big"
+      },
+      "unit": "℃",
+      "min": 120,
+      "max": 200,
+      "decimals": 1,
+      "stepLimit": 4,
+      "holdIntervalMs": 120000,
+      "templateRef": "dcw-temp-sp",
+      "semantics": "SV:预热区温度,板温基础分量"
+    },
+    {
+      "kind": "dcw",
+      "name": "回流区温度SP",
+      "driver": "modbus-tcp",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 37652,
+        "unitId": 1,
+        "register": 40003,
+        "registerType": "holding",
+        "dataType": "float32",
+        "byteOrder": "big"
+      },
+      "unit": "℃",
+      "min": 200,
+      "max": 280,
+      "decimals": 1,
+      "stepLimit": 4,
+      "holdIntervalMs": 120000,
+      "templateRef": "dcw-temp-sp",
+      "semantics": "SV:回流区温度,主导板温峰值"
+    },
+    {
+      "kind": "dcw",
+      "name": "输送速度SP",
+      "driver": "modbus-tcp",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 37652,
+        "unitId": 1,
+        "register": 40005,
+        "registerType": "holding",
+        "dataType": "float32",
+        "byteOrder": "big"
+      },
+      "unit": "m/min",
+      "min": 0.6,
+      "max": 1.4,
+      "decimals": 2,
+      "stepLimit": 0.04,
+      "holdIntervalMs": 120000,
+      "templateRef": "dcw-temp-sp",
+      "semantics": "SV:输送速度,升速板温降"
+    },
+    {
+      "kind": "daq",
+      "name": "板温实测",
+      "driver": "modbus-tcp",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 37652,
+        "unitId": 1,
+        "register": 40007,
+        "registerType": "holding",
+        "dataType": "float32",
+        "byteOrder": "big"
+      },
+      "unit": "℃",
+      "min": 50,
+      "max": 300,
+      "decimals": 2,
+      "intervalMs": 1000,
+      "templateRef": "daq-temp-tc",
+      "semantics": "PV:板温(质量核心,目标≈242.7@标称)"
+    },
+    {
+      "kind": "daq",
+      "name": "炉膛实测温度",
+      "driver": "modbus-tcp",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 37652,
+        "unitId": 1,
+        "register": 40009,
+        "registerType": "holding",
+        "dataType": "float32",
+        "byteOrder": "big"
+      },
+      "unit": "℃",
+      "min": 0,
+      "max": 320,
+      "decimals": 1,
+      "intervalMs": 1000,
+      "templateRef": "daq-temp-tc",
+      "semantics": "PV:炉膛温度"
+    },
+    {
+      "kind": "daq",
+      "name": "输送实际速度",
+      "driver": "modbus-tcp",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 37652,
+        "unitId": 1,
+        "register": 40011,
+        "registerType": "holding",
+        "dataType": "float32",
+        "byteOrder": "big"
+      },
+      "unit": "m/min",
+      "min": 0,
+      "max": 2,
+      "decimals": 3,
+      "intervalMs": 1000,
+      "templateRef": "daq-temp-tc",
+      "semantics": "PV:输送实际速度(SP 镜像)"
+    },
+    {
+      "kind": "daq",
+      "name": "峰值温度PV",
+      "driver": "mqtt",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 43830,
+        "topic": "aw/twin/reflow-inspect-mqtt/peakTemp-pv",
+        "jsonPath": "data.peakTemp-pv"
+      },
+      "unit": "℃",
+      "min": 180,
+      "max": 300,
+      "decimals": 2,
+      "intervalMs": 2000,
+      "templateRef": "daq-temp-tc",
+      "semantics": "PV:峰值温度(规格245±5)"
+    },
+    {
+      "kind": "daq",
+      "name": "冷却斜率PV",
+      "driver": "mqtt",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 43830,
+        "topic": "aw/twin/reflow-inspect-mqtt/coolSlope-pv",
+        "jsonPath": "data.coolSlope-pv"
+      },
+      "unit": "℃/s",
+      "min": 0,
+      "max": 6,
+      "decimals": 2,
+      "intervalMs": 2000,
+      "templateRef": "daq-temp-tc",
+      "semantics": "PV:冷却斜率(规格1~3)"
+    },
+    {
+      "kind": "daq",
+      "name": "合格率PV",
+      "driver": "mqtt",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 43830,
+        "topic": "aw/twin/reflow-inspect-mqtt/yield-pv",
+        "jsonPath": "data.yield-pv"
+      },
+      "unit": "%",
+      "min": 50,
+      "max": 100,
+      "decimals": 2,
+      "intervalMs": 2000,
+      "templateRef": "daq-temp-tc",
+      "semantics": "PV:批次合格率(规格≥95)"
+    }
+  ],
+  "recipe": {
+    "name": "回流焊标称配方",
+    "params": [
+      {
+        "node": "预热区温度SP",
+        "value": 165
+      },
+      {
+        "node": "回流区温度SP",
+        "value": 245
+      },
+      {
+        "node": "输送速度SP",
+        "value": 1
+      }
+    ]
+  },
+  "startLine": true,
+  "connectivity": {
+    "skip": true
+  },
+  "channel": {
+    "scenario": "optimize",
+    "name": "回流焊优化频道-mv67x5e1",
+    "plugins": {
+      "idd-closedloop-bridge": true,
+      "rag-bridge": true
+    },
+    "bindings": [
+      {
+        "agentRole": "worker:2",
+        "kind": "recipe",
+        "nodeId": "$RECIPE",
+        "mode": "manual"
+      },
+      {
+        "agentRole": "worker:1",
+        "kind": "daq",
+        "nodeId": "$DAQ:板温实测",
+        "mode": "auto"
+      },
+      {
+        "agentRole": "worker:1",
+        "kind": "daq",
+        "nodeId": "$DAQ:峰值温度PV",
+        "mode": "auto"
+      }
+    ],
+    "seedTask": {
+      "title": "回流焊基线建档",
+      "description": "建立板温/峰值温度基线档案,标定当前稳定性与优化空间(读为主,不动设备)",
+      "budget_minutes": 60
+    }
+  },
+  "smoke": {
+    "param": "回流区温度SP",
+    "delta": 2
+  },
+  "verify": {}
+}

@@ -1,0 +1,13 @@
+{
+  "at": "2026-10-12T18:34:19.503Z",
+  "lineId": "ln-7228f0b1",
+  "channelId": "231a7acd-0fd5-40c5-9f4e-896716376ff4",
+  "recipeId": "rc-ada346a1",
+  "thickness": {
+    "pre": 56.00175,
+    "post": 56.00175,
+    "shift": 0
+  },
+  "backGap": 1.04,
+  "replyHead": ""
+}
