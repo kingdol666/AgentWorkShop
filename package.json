@@ -1,6 +1,6 @@
 {
   "name": "agentworkshop",
-  "version": "0.7.59",
+  "version": "0.7.60",
   "type": "module",
   "description": "AgentWorkShop 软件开发系统 - 基于 Nuxt 4 的配置驱动运行范式",
   "license": "Apache-2.0",
@@ -136,7 +136,7 @@
     "minio": "^8.0.7",
     "modbus-serial": "^8.0.25",
     "mqtt": "^5.15.2",
-    "node-opcua": "^2.178.0",
+    "node-opcua": "2.178.0",
     "nuxt": "^4.0.0",
     "nuxt-auth-utils": "^0.5.0",
     "pg": "^8.23.0",

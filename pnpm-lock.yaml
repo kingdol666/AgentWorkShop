@@ -99,7 +99,7 @@ importers:
         specifier: ^5.15.2
         version: 5.15.2
       node-opcua:
-        specifier: ^2.178.0
+        specifier: 2.178.0
         version: 2.178.0
       nuxt:
         specifier: ^4.0.0
