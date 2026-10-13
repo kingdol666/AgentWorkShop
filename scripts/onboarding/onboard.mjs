@@ -35,6 +35,7 @@ if (!configPath) {
 const cfg = JSON.parse(readFileSync(configPath, 'utf8'))
 
 let pass = 0, fail = 0
+let smokeRunId = null
 const ok = (name, cond, detail = '') => {
   console.log(`${cond ? '✅' : '❌'} ${name}${detail ? ` — ${String(detail).slice(0, 150)}` : ''}`)
   cond ? pass++ : fail++
@@ -178,8 +179,8 @@ if (smoke) {
       }
     }
   }
-  const runId = /runId[:：]\s*(rr-[\w-]+)/.exec(propTxt)?.[1] ?? ''
-  ok('冒烟闭环步(自动 HITL):批准→下发→设备证实', okDispatch, `${propTxt.split('\n')[0]?.slice(0, 90)} runId=${runId}`)
+  smokeRunId = /runId[:：]\s*(rr-[\w-]+)/.exec(propTxt)?.[1] ?? null
+  ok('冒烟闭环步(自动 HITL):批准→下发→设备证实', okDispatch, `${propTxt.split('\n')[0]?.slice(0, 90)} runId=${smokeRunId}`)
 }
 
 // ---------- 交接声明 ----------
@@ -193,6 +194,6 @@ console.log(`
 (对产线负责:任何不确定 —— 量程/步限/SP-PV 判定/认证方式/场景目标 —— skill 必须先询问用户,禁止猜测。)
 =====================================================`)
 // 机器可读摘要(末行 JSON;与 provision-line/forge-channel 摘要惯例对齐,供管道解析)
-console.log(JSON.stringify({ summary: true, lineId: prov.lineId, recipeId: prov.recipeId, channelId: chSummary.channelId, smokeRunId: runId ?? null, pass, fail }))
+console.log(JSON.stringify({ summary: true, lineId: prov.lineId, recipeId: prov.recipeId, channelId: chSummary.channelId, smokeRunId, pass, fail }))
 console.log(`\n======== 一键接入: ${pass} 通过 / ${fail} 失败 ========`)
 process.exit(fail === 0 ? 0 : 1)

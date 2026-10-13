@@ -30,14 +30,17 @@
  * 孪生协议归一:mes-rest/http/opcua 族节点映射到 modbus-tcp 孪生设备(语义/量程保留;
  *   协议真实性由 onboard 期的 export driverConfig 保证——模拟器 export 什么,平台就接什么)。
  */
-import { spawn, spawnSync } from 'node:child_process'
-import { existsSync, mkdirSync, readFileSync, rmSync } from 'node:fs'
+import { spawnSync } from 'node:child_process'
+import { existsSync, readFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const args = process.argv.slice(2)
-const argOf = (k, d = '') => { const i = args.indexOf(k); return i >= 0 && args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : d }
+const argOf = (k, d = '') => {
+  const i = args.indexOf(k)
+  return i >= 0 && args[i + 1] && !args[i + 1].startsWith('--') ? args[i + 1] : d
+}
 const SIM_PORT = Number(argOf('--sim-port', '4034'))
 const SIM = `http://127.0.0.1:${SIM_PORT}`
 const SIM_DIR = resolve(argOf('--shadow', join(REPO, '..', `plc-node-simulator-twin-${SIM_PORT}`)))
@@ -49,8 +52,14 @@ process.env.HTTPS_PROXY = ''
 let pass = 0
 const fails = []
 const ok = (name, cond, detail = '') => {
-  if (cond) { pass++; console.log(`  ✔ ${name}`) }
-  else { fails.push(name); console.log(`  ✖ ${name}${detail ? ` — ${String(detail).slice(0, 200)}` : ''}`) }
+  if (cond) {
+    pass++
+    console.log(`  ✔ ${name}`)
+  }
+  else {
+    fails.push(name)
+    console.log(`  ✖ ${name}${detail ? ` — ${String(detail).slice(0, 200)}` : ''}`)
+  }
 }
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 
@@ -72,7 +81,7 @@ async function platformLogin() {
 const platform = async (method, path) => {
   await platformLogin()
   const r = await fetch(AW_BASE + path, {
-    method, headers: { 'content-type': 'application/json', authorization: `Bearer ${TOKEN}` }, signal: AbortSignal.timeout(60000),
+    method, headers: { 'content-type': 'application/json', 'authorization': `Bearer ${TOKEN}` }, signal: AbortSignal.timeout(60000),
   })
   return { status: r.status, ...(await r.json().catch(() => ({}))) }
 }
@@ -85,10 +94,16 @@ const simApi = async (method, path, body, tries = 5) => {
         method, headers: { 'content-type': 'application/json' },
         body: body === undefined ? undefined : JSON.stringify(body), signal: AbortSignal.timeout(30000),
       })
-      if (!String(r.headers.get('content-type') ?? '').includes('json')) { await sleep(3000); continue }
+      if (!String(r.headers.get('content-type') ?? '').includes('json')) {
+        await sleep(3000)
+        continue
+      }
       return await r.json()
     }
-    catch (e) { if (i === tries - 1) return { code: -1, message: e.message }; await sleep(3000) }
+    catch (e) {
+      if (i === tries - 1) return { code: -1, message: e.message }
+      await sleep(3000)
+    }
   }
   return { code: -1, message: 'sim 未就绪' }
 }
@@ -116,23 +131,23 @@ async function ensureSim() {
 
 /* ── 信号动力学(hook 代码生成;首拍 state.v=undefined → 两项都必须取 fallback,否则 NaN 永久毒化) ── */
 const lagHook = (spName, tau, noise, fallback) =>
-  `const cur = Number.isFinite(state.v)?state.v:${fallback};` +
-  `const tgt = Number.isFinite(vars['${spName}']) ? vars['${spName}'] : ${fallback};` +
-  `const k = Math.min(1, dt/1000/${tau}); state.v = cur + (tgt-cur)*k + (rand()-0.5)*${noise}; return state.v`
+  `const cur = Number.isFinite(state.v)?state.v:${fallback};`
+  + `const tgt = Number.isFinite(vars['${spName}']) ? vars['${spName}'] : ${fallback};`
+  + `const k = Math.min(1, dt/1000/${tau}); state.v = cur + (tgt-cur)*k + (rand()-0.5)*${noise}; return state.v`
 const causalHook = (d, fallback, nominals = {}) => {
   // 偏差语义:base=标称点输出,每项增益作用于 (SP 当前值 − SP 标称值) —— 与文档「工艺耦合」公式同构
-  const terms = (d.follows ?? []).map(f => {
+  const terms = (d.follows ?? []).map((f) => {
     const nom = Number.isFinite(f.at) ? f.at : (nominals[f.sp] ?? 0)
     return `${f.gain}*((Number.isFinite(vars['${f.sp}'])?vars['${f.sp}']:0) - ${nom})`
   })
   const base = d.base ?? fallback
-  return `const tgt = ${base}${terms.length ? ' + ' + terms.join(' + ') : ''};` +
-    `const cur = Number.isFinite(state.v)?state.v:${fallback};` +
-    `const k = Math.min(1, dt/1000/${d.tau ?? 8}); state.v = cur + (tgt-cur)*k + (rand()-0.5)*${d.noise ?? 1}; return state.v`
+  return `const tgt = ${base}${terms.length ? ' + ' + terms.join(' + ') : ''};`
+    + `const cur = Number.isFinite(state.v)?state.v:${fallback};`
+    + `const k = Math.min(1, dt/1000/${d.tau ?? 8}); state.v = cur + (tgt-cur)*k + (rand()-0.5)*${d.noise ?? 1}; return state.v`
 }
 const wanderHook = (mid, span) =>
-  `state.v = (Number.isFinite(state.v)?state.v:${mid}) + (rand()-0.5)*${span}; ` +
-  `if (state.v > ${mid + span * 4}) state.v = ${mid + span * 4}; if (state.v < ${mid - span * 4}) state.v = ${mid - span * 4}; return state.v`
+  `state.v = (Number.isFinite(state.v)?state.v:${mid}) + (rand()-0.5)*${span}; `
+  + `if (state.v > ${mid + span * 4}) state.v = ${mid + span * 4}; if (state.v < ${mid - span * 4}) state.v = ${mid - span * 4}; return state.v`
 
 const norm = n => String(n).replace(/(PV|实测|实际|回读|-回读|值)$/g, '').trim()
 
@@ -146,9 +161,7 @@ async function fromPlatform(lineId, dynamicsFile) {
   const fam = n => (['modbus-tcp', 'modbus-rtu', 'mqtt'].includes(n.driver) ? n.driver : 'modbus-tcp')
   const families = {}
   for (const n of [...dcw, ...daq]) (families[fam(n)] ??= []).push(n)
-  let port = 37540
   const devices = []
-  const svNamesByFam = {}
   for (const [family, nodes] of Object.entries(families)) {
     const spNodes = nodes.filter(n => n.templateRef?.startsWith('dcw') || dcw.some(d => d.id === n.id))
     const spNames = spNodes.map(n => norm(n.name))
@@ -160,7 +173,8 @@ async function fromPlatform(lineId, dynamicsFile) {
       const mid = Number(((min + max) / 2).toFixed(3))
       if (isSp) {
         signals.push({ id: n.id, name: n.name, unit: n.unit ?? '', min, max, decimals: n.decimals ?? 2, kind: 'sp', initial: Number(n.value ?? mid) })
-      } else {
+      }
+      else {
         const d = dyn[n.name] ?? {}
         // 同设备同名 SP 归属:strip 后缀匹配
         const spHit = spNames.find(sp => sp === norm(n.name))
@@ -207,11 +221,15 @@ async function materialize(devices, mqttPort) {
       config.port = dev.port ?? (port += 2)
       config.unitId = dev.unitId ?? 1
       config.registerMaps = dev.signals.map((s, i) => ({ address: 40001 + i * 2, area: 'holding', signalId: s.id, dataType: 'float32', byteOrder: 'big' }))
-    } else if (protocol === 'mqtt') {
+    }
+    else if (protocol === 'mqtt') {
       config.brokerUrl = `mqtt://127.0.0.1:${mqttPort}`
       config.topics = dev.signals.filter(s => s.kind === 'pv').map(s => ({ topic: `aw/twin/${id}/${s.id}`, signalId: s.id, payloadTemplate: `{"data":{"${s.id}":\${value}}}`, qos: 0 }))
       const sp = dev.signals.find(s => s.kind === 'sp')
-      if (sp) { config.commandTopic = `aw/twin/${id}/set`; config.commandSignalId = sp.id }
+      if (sp) {
+        config.commandTopic = `aw/twin/${id}/set`
+        config.commandSignalId = sp.id
+      }
     }
     const nominals = Object.fromEntries(dev.signals.filter(s => s.kind === 'sp').map(s => [s.name, Number(s.initial ?? (s.min + s.max) / 2)]))
     const signals = dev.signals.map(s => ({
@@ -219,9 +237,9 @@ async function materialize(devices, mqttPort) {
       strategy: s.kind === 'sp'
         ? { kind: 'manual', value: s.initial ?? (s.min + s.max) / 2 }
         : { kind: 'hook', code: s.code
-            ?? (s.dynamics && (s.dynamics.follows?.length || s.dynamics.base != null)
-              ? causalHook(s.dynamics, (s.min + s.max) / 2, nominals)
-              : wanderHook((s.min + s.max) / 2, Math.max((s.max - s.min) / 200, 0.2))) },
+          ?? (s.dynamics && (s.dynamics.follows?.length || s.dynamics.base != null)
+            ? causalHook(s.dynamics, (s.min + s.max) / 2, nominals)
+            : wanderHook((s.min + s.max) / 2, Math.max((s.max - s.min) / 200, 0.2))) },
     }))
     const r = await simApi('POST', '/api/nodes', { id, name: `${id}(孪生)`, description: `aw-plc-sim-twin 生成:${dev.signals.length} 信号`, protocol, enabled: true, tickMs: 1000, signals, config })
     ok(`设备 ${id}(${protocol},${signals.length} 信号)`, r?.code === 0, r?.message ?? '')
@@ -239,7 +257,8 @@ async function livenessCheck(createdIds) {
   await sleep(6000)
   const b = await simApi('GET', '/api/nodes')
   const devs2 = (b?.data ?? []).filter(n => createdIds.includes(n.id))
-  let moved = 0; const dead = []
+  let moved = 0
+  const dead = []
   for (const d2 of devs2) {
     const before = snap.find(x => x.id === d2.id)
     const pv = (d2.signals ?? []).filter(s => s.strategy?.kind === 'hook' || s.strategy?.kind === 'expression')
@@ -257,17 +276,25 @@ await ensureSim()
 let created, liveness
 if (args.includes('--from-platform')) {
   const lineId = argOf('--line')
-  if (!lineId) { console.error('用法:--from-platform 需要 --line <lineId>'); process.exit(1) }
+  if (!lineId) {
+    console.error('用法:--from-platform 需要 --line <lineId>')
+    process.exit(1)
+  }
   console.log(`[sim-twin] 从平台线 ${lineId} 反向构造孪生…`)
   const { devices } = await fromPlatform(lineId, argOf('--dynamics'))
   console.log(`  协议族归并:${devices.map(d => `${d.family}×${d.signals.length}`).join(' + ')}`)
   created = await materialize(devices, Number(argOf('--mqtt-port', String(18830 + (SIM_PORT - 4010) * 1000))))
-} else if (args.includes('--blueprint')) {
+}
+else if (args.includes('--blueprint')) {
   const bpFile = argOf('--blueprint')
-  if (!bpFile || !existsSync(bpFile)) { console.error('用法:--blueprint <file.json>'); process.exit(1) }
+  if (!bpFile || !existsSync(bpFile)) {
+    console.error('用法:--blueprint <file.json>')
+    process.exit(1)
+  }
   const { devices, mqttPort } = fromBlueprint(bpFile)
   created = await materialize(devices, Number(argOf('--mqtt-port', mqttPort ?? String(18830 + (SIM_PORT - 4010) * 1000))))
-} else {
+}
+else {
   console.error('用法:sim-twin.mjs --from-platform --line <id> | --blueprint <file> [--sim-port 4034] [--dynamics file]')
   process.exit(1)
 }

@@ -33,6 +33,20 @@ export default withNuxt(
       'no-empty': 'off',
     },
   },
+  // tmp-e2e 一次性验收/取证脚本:与 scripts/_audit 同性质——单文件自包含、密集单行是刻意选择,
+  // 为 docs/audit/*.md 与 .AgentWorkShop/analysis/* 的验收结论提供可复现证据,不是产品代码。
+  // 与 bench 同理:只豁免风格与卫生类规则,语义/正确性规则(no-undef 等)仍然生效。
+  {
+    files: ['tmp-e2e/**/*.mjs'],
+    rules: {
+      '@stylistic/max-statements-per-line': 'off',
+      '@stylistic/brace-style': 'off',
+      '@stylistic/no-mixed-operators': 'off',
+      'no-unused-vars': 'off',
+      'no-useless-assignment': 'off',
+      'no-empty': 'off',
+    },
+  },
   {
     files: ['scripts/live-aml-*.mjs', 'scripts/e2e-aml-decoupled.mjs'],
     rules: {
