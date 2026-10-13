@@ -141,6 +141,7 @@ export interface RetentionSettings {
   messages_days: number
   audit_days: number
   approval_days: number
+  analysis_days: number
 }
 export interface LogSettings {
   level: 'debug' | 'info' | 'warn' | 'error'

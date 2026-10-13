@@ -5,6 +5,7 @@
  *   messages          默认 30d   (retention.messages_days)
  *   audit_log         默认 90d   (retention.audit_days;合规观察期,从严保留)
  *   approval_history  默认 180d  (retention.approval_days;历史裁决主张不可变,放宽)
+ *   analysis_reports  默认 365d  (retention.analysis_days;数据分析留痕台账,最宽松)
  * retention.disabled 整体逃生门(env AW_RETENTION_DISABLED / RETENTION_DISABLED 兼容别名)。
  * 覆盖链:config.yml < runtime-settings < env(AW_<键> 或历史别名)。时间列均为 TEXT ISO。
  * channel_events 与 daq_samples 已有各自保留机制,此处不重复覆盖。
@@ -27,6 +28,7 @@ const TARGETS = [
   { table: 'messages', column: 'created_at', days: 30, cfgKey: 'messages_days' },
   { table: 'audit_log', column: 'at', days: 90, cfgKey: 'audit_days' },
   { table: 'approval_history', column: 'created_at', days: 180, cfgKey: 'approval_days' },
+  { table: 'analysis_reports', column: 'created_at', days: 365, cfgKey: 'analysis_days' },
 ] as const
 
 export interface RetentionResult { table: string, removed: number, days: number }

@@ -29,3 +29,4 @@ export { toolTwinProviderCatalog, toolTwinSceneDiscover, toolTwinSceneCompile, t
 export { toolAmlActivity } from './aml-activity'
 export { toolRecipePropose } from './recipe-propose-tools'
 export { toolLineStart, toolLineStop, toolLineStatus } from './line-tools'
+export { toolAnalysisSave, toolAnalysisQuery } from './analysis-tools'

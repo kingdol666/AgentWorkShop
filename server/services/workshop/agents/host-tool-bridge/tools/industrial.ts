@@ -1,5 +1,5 @@
 /**
- * 工业工具族(my_industrial_nodes / aml_* / dcw_* / param_* / daq_* / ops_log / recipe_* / line_context)。
+ * 工业工具族(my_industrial_nodes / aml_* / dcw_* / param_* / daq_* / ops_log / recipe_* / line_context / analysis_*)。
  *
  * 原 dispatchHostTool 首个 switch 的 26 个转发分支按行搬运到本模块:每个分支都只是
  * 「按 agentId 查绑定与节点后转交 industrial 模块的同名函数」,因此把闭包捕获的
@@ -9,7 +9,7 @@
  * 该族**不依赖 workspace**,由 dispatch 在 workspace 门控之前分流(保持原分发顺序)。
  */
 import type { HostToolResult } from '../types'
-import { toolLineStart, toolLineStop, toolLineStatus, toolAmlDatasetBuild, toolAmlDatasetStats, toolAmlJobCancel, toolAmlJobLogs, toolAmlJobStatus, toolAmlJobSubmit, toolAmlLeaderboard, toolAmlModelFind, toolAmlModelPromote, toolAmlModelReference, toolAmlNodeCatalog, toolAmlTrainingPlanCreate, toolAmlTrainingPlanList, toolAmlTrainingPlanTrain, toolDaqExport, toolDaqFrames, toolDaqQuery, toolDcwControl, toolDcwJudge, toolDcwJournal, toolDcwRead, toolDcwRollback, toolLineContext, toolMesCatalog, toolMesDatasetRead, toolMesDatasets, toolMesFetch, toolMyIndustrialNodes, toolOpsLog, toolParamControl, toolParamRead, toolRecipeApply, toolRecipeLog, toolRecipeRollback, toolRecipeTrial, toolRecipeUpdate, toolRecipeVersions, toolOptimizationExplore, toolTwinProviderCatalog, toolTwinSceneDiscover, toolTwinSceneCompile, toolTwinSceneFreeze, toolTwinSceneRead, toolTwinPhysicsSpecDraft, toolTwinPhysicsSpecValidate, toolTwinPhysicsSpecCompile, toolTwinSnapshotCreate, toolTwinTrialRun, toolMpcOptimize, toolTwinGateEvaluate, toolTwinBayesOptimize, toolTwinCalibrationRequest } from '../../industrial'
+import { toolLineStart, toolLineStop, toolLineStatus, toolAmlDatasetBuild, toolAmlDatasetStats, toolAmlJobCancel, toolAmlJobLogs, toolAmlJobStatus, toolAmlJobSubmit, toolAmlLeaderboard, toolAmlModelFind, toolAmlModelPromote, toolAmlModelReference, toolAmlNodeCatalog, toolAmlTrainingPlanCreate, toolAmlTrainingPlanList, toolAmlTrainingPlanTrain, toolDaqExport, toolDaqFrames, toolDaqQuery, toolDcwControl, toolDcwJudge, toolDcwJournal, toolDcwRead, toolDcwRollback, toolLineContext, toolMesCatalog, toolMesDatasetRead, toolMesDatasets, toolMesFetch, toolMyIndustrialNodes, toolOpsLog, toolParamControl, toolParamRead, toolRecipeApply, toolRecipeLog, toolRecipeRollback, toolRecipeTrial, toolRecipeUpdate, toolRecipeVersions, toolOptimizationExplore, toolTwinProviderCatalog, toolTwinSceneDiscover, toolTwinSceneCompile, toolTwinSceneFreeze, toolTwinSceneRead, toolTwinPhysicsSpecDraft, toolTwinPhysicsSpecValidate, toolTwinPhysicsSpecCompile, toolTwinSnapshotCreate, toolTwinTrialRun, toolMpcOptimize, toolTwinGateEvaluate, toolTwinBayesOptimize, toolTwinCalibrationRequest, toolAnalysisSave, toolAnalysisQuery } from '../../industrial'
 
 import { toolExpCollect } from '../../industrial/exp-tools'
 import { toolRecipePropose } from '../../industrial/recipe-propose-tools'
@@ -78,6 +78,9 @@ const INDUSTRIAL_HANDLERS = new Map<string, IndustrialToolHandler>([
   ['line_stop', (agentId, args, channelId) => toolLineStop(agentId, args as Parameters<typeof toolLineStop>[1], channelId)],
   ['line_status', (agentId, args, channelId) => toolLineStatus(agentId, args as Parameters<typeof toolLineStatus>[1], channelId)],
   ['aml_activity', (agentId, args) => toolAmlActivity(agentId, args as { line_id?: string })],
+  // 数据分析系统:分析结果留痕台账(save 可写台账(非产线写);query 查历史留痕)
+  ['analysis_save', (agentId, args, channelId) => toolAnalysisSave(agentId, args as Parameters<typeof toolAnalysisSave>[1], channelId)],
+  ['analysis_query', (agentId, args) => toolAnalysisQuery(agentId, args as Parameters<typeof toolAnalysisQuery>[1])],
 ])
 
 /** 工业工具名集合(与 INDUSTRIAL_HANDLERS 同源;dispatch 据此在 workspace 门控前分流) */

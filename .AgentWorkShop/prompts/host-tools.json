@@ -2414,5 +2414,113 @@
       "required": [],
       "additionalProperties": false
     }
+  },
+  {
+    "name": "analysis_save",
+    "label": "Analysis Save",
+    "description": "数据分析留痕:把本次分析的关键结论/完整正文/支撑指标持久化到平台分析台账,实现数据留痕。目标产线=频道绑定的产线(默认)或可见范围内的 line_id;配方可选关联(须属于该产线)。台账不可改删(append-only);title 与 summary(一句话关键结论)必填。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "分析主题(必填,如「膜厚漂移根因分析」),台账列表靠它辨认"
+        },
+        "summary": {
+          "type": "string",
+          "description": "一句话关键结论(必填):留痕的核心产出,人扫列表要能看懂"
+        },
+        "conclusions": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "关键结论数组(推荐;每条一个发现)"
+        },
+        "report": {
+          "type": "string",
+          "description": "完整分析正文(markdown;可选,建议附上供日后查回)"
+        },
+        "category": {
+          "type": "string",
+          "description": "分析类别(quality/oee/alarm/trend/optimization/general,缺省 general)"
+        },
+        "line_id": {
+          "type": "string",
+          "description": "产线 id(缺省=本频道绑定的产线;显式指定须在可见范围内)"
+        },
+        "recipe_id": {
+          "type": "string",
+          "description": "配方 id(可选;须属于目标产线,自动带出当前版本)"
+        },
+        "recipe_version": {
+          "type": "string",
+          "description": "配方版本(可选;缺省自动取该配方当前版本)"
+        },
+        "window_from": {
+          "type": "string",
+          "description": "分析数据窗起点(ISO 8601 或 epoch ms;可选)"
+        },
+        "window_to": {
+          "type": "string",
+          "description": "分析数据窗终点(ISO 8601 或 epoch ms;可选)"
+        },
+        "data_sources": {
+          "type": "string",
+          "description": "证据来源说明(daq 窗口/MES 数据集/批次号等,人读;可选)"
+        },
+        "metrics": {
+          "type": "object",
+          "description": "支撑指标键值对(可选,如 {\"cpk\": 1.32, \"reject_rate\": 0.8})"
+        }
+      },
+      "required": [
+        "title",
+        "summary"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "analysis_query",
+    "label": "Analysis Query",
+    "description": "查询历史分析报告(数据留痕台账,只读):report_id 精确查回单条完整正文与结论明细;或按产线/配方/类别/关键词/时间窗列表。只能看到自己可见产线(节点授权线/绑定配方线/频道绑线)的报告。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "report_id": {
+          "type": "string",
+          "description": "报告 id(如 ar-1a2b3c4d;给定则返回该条全文,忽略其余过滤)"
+        },
+        "line_id": {
+          "type": "string",
+          "description": "产线 id(缺省=全部可见产线)"
+        },
+        "recipe_id": {
+          "type": "string",
+          "description": "配方 id 过滤(可选)"
+        },
+        "category": {
+          "type": "string",
+          "description": "分析类别过滤(可选)"
+        },
+        "q": {
+          "type": "string",
+          "description": "关键词(匹配标题/一句话结论;可选)"
+        },
+        "from": {
+          "type": "string",
+          "description": "分析时间下界(ISO 8601 或 epoch ms;可选)"
+        },
+        "to": {
+          "type": "string",
+          "description": "分析时间上界(ISO 8601 或 epoch ms;可选)"
+        },
+        "limit": {
+          "type": "number",
+          "description": "返回条数上限(缺省 20,最大 50)"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    }
   }
 ]

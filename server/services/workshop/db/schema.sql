@@ -358,3 +358,30 @@ CREATE TABLE IF NOT EXISTS mes_fetch_jobs (
 );
 CREATE INDEX IF NOT EXISTS idx_mes_fetch_jobs_dataset ON mes_fetch_jobs(dataset_id);
 CREATE INDEX IF NOT EXISTS idx_mes_fetch_jobs_agent ON mes_fetch_jobs(agent_id, created_at DESC);
+
+-- v26: 数据分析系统 · 分析报告台账(Agent Channel 经 analysis_save 留痕;append-only,Agent 面无改删)
+-- 归因与产线上下文在保存时快照固化(line_name/产品/批次),产线改名或删除后历史仍可读。
+CREATE TABLE IF NOT EXISTS analysis_reports (
+  id TEXT PRIMARY KEY,
+  line_id TEXT NOT NULL DEFAULT '',
+  line_name TEXT NOT NULL DEFAULT '',
+  title TEXT NOT NULL,
+  category TEXT NOT NULL DEFAULT 'general',
+  summary TEXT NOT NULL DEFAULT '',
+  conclusions_json TEXT NOT NULL DEFAULT '[]',
+  report TEXT NOT NULL DEFAULT '',
+  metrics_json TEXT NOT NULL DEFAULT '{}',
+  recipe_id TEXT NOT NULL DEFAULT '',
+  recipe_version TEXT NOT NULL DEFAULT '',
+  window_from TEXT,
+  window_to TEXT,
+  data_sources TEXT NOT NULL DEFAULT '',
+  context_json TEXT NOT NULL DEFAULT '{}',
+  channel_id TEXT NOT NULL DEFAULT '',
+  channel_name TEXT NOT NULL DEFAULT '',
+  actor TEXT NOT NULL DEFAULT '',
+  actor_name TEXT NOT NULL DEFAULT '',
+  created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_analysis_reports_line ON analysis_reports(line_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_analysis_reports_recipe ON analysis_reports(recipe_id);

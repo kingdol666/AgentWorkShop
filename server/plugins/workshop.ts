@@ -56,6 +56,7 @@ import { envStatus, startCreateVenv } from '../services/workshop/aml/env-manager
 import { attachOmpPluginBridge } from '../services/workshop/agents/plugin-tools'
 import { startAmlRetentionTimer, stopAmlRetentionTimer } from '../services/workshop/aml/retention'
 import { configureMesDatasets, defaultDatasetsDir } from '../services/workshop/mes/mes-datasets'
+import { configureAnalysisRepo } from '../services/workshop/analysis/analysis.repo'
 import { configureMesHooks } from '../services/workshop/mes/mes-hook'
 
 declare global {
@@ -155,6 +156,9 @@ export default function workshopPlugin(nitroApp: {
   configureMesDatasets(db, defaultDatasetsDir(dataDir))
   // MES 数据下沉 hook 运行时(产物落 <configRoot>/data/mes-artifacts/<nodeId>/)
   configureMesHooks(dataDir)
+
+  // 数据分析系统:分析报告台账(v26 新表由 SCHEMA_SQL 启动建出)
+  configureAnalysisRepo(db)
 
   // 插件 omp 工具注册桥:启动即接管 pending 队列(此前首次 spawn omp agent 才挂桥,
   // 全新实例未 spawn 前 kb_agent/diag_run 等插件工具会一直"未知工具")

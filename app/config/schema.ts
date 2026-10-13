@@ -137,6 +137,7 @@ export const appConfigSchema = z.object({
     messages_days: z.number().min(1).max(3650).default(30),
     audit_days: z.number().min(1).max(3650).default(90),
     approval_days: z.number().min(1).max(3650).default(180),
+    analysis_days: z.number().min(1).max(3650).default(365),
   }).default({}),
   log: z.object({
     level: z.enum(['debug', 'info', 'warn', 'error']).default('info'),

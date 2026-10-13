@@ -21,8 +21,9 @@ import { assertRecipeOperation, recipeApprovalPayload } from './recipe-gate'
 // 运维日志 / Recipe 变更史查询(Agent 自查面:负责产线 scoped)
 // ================================================================
 
-/** v18:频道绑定产线(只读扩权)——经全局 manager 读;manager 未装配/未绑定 = null */
-function channelBoundLineId(agentId: string): string | null {
+/** v18:频道绑定产线(只读扩权)——经全局 manager 读;manager 未装配/未绑定 = null
+ *  (export 供 analysis-tools 等同族工具复用「频道绑线=默认目标产线」语义) */
+export function channelBoundLineId(agentId: string): string | null {
   try {
     const g = globalThis as typeof globalThis & {
       __workshopManager?: { channelLineBindingOf(id: string): string | null }

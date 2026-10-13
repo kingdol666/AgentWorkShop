@@ -48,7 +48,8 @@ export const AML_MODEL_BACKED_TOOL_NAMES = new Set([
  * 直接写族(agents/tool-classes 清单)在尾部 writesBlocked 再兜底过滤一道。
  * kb_agent/diag_run/diag_status 等 KB/诊断工具走 rag-bridge/diag-bridge 插件面,照常按频道插件开关注入,不进本白名单。
  */
-/** 只读观察读面(两档共用,全部只读;exp_collect 由经验采集底座注册,此处按名引用) */
+/** 只读观察读面(两档共用,全部只读;exp_collect 由经验采集底座注册,此处按名引用;
+ *  analysis_save/query 为数据分析留痕台账面 —— 台账写入非产线写,观察档位同样要留痕诊断结论) */
 export const OBSERVER_READ_TOOL_NAMES = new Set([
   'ops_log',
   'recipe_log',
@@ -57,6 +58,8 @@ export const OBSERVER_READ_TOOL_NAMES = new Set([
   'dcw_journal',
   'daq_query',
   'exp_collect',
+  'analysis_save',
+  'analysis_query',
 ])
 
 /**

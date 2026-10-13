@@ -32,6 +32,7 @@ export function useRouteMeta() {
     // 新增路由必须同时登记进这张表,否则标题就是"路径首字母大写"。
     '/aml': { key: 'menu.aml', icon: 'i-tabler-flask' },
     '/logs': { key: 'menu.logs', icon: 'i-tabler-list-details' },
+    '/analysis': { key: 'menu.analysis', icon: 'i-tabler-report-analytics' },
     '/permissions': { key: 'menu.permissions', icon: 'i-tabler-shield-lock' },
     '/plugins': { key: 'menu.plugins', icon: 'i-tabler-puzzle' },
     '/users': { key: 'menu.users', icon: 'i-tabler-users-group' },

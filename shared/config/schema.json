@@ -116,6 +116,7 @@
     { "key": "retention.messages_days", "type": "number", "group": "retention", "label": "消息保留(天)", "labelKey": "settings.runtime.retention.messagesDays", "description": "Channel 消息保留天数", "applies": "restart", "default": 30, "min": 1, "max": 3650 },
     { "key": "retention.audit_days", "type": "number", "group": "retention", "label": "审计日志保留(天)", "labelKey": "settings.runtime.retention.auditDays", "description": "审计日志保留天数(合规观察期,从严保留)", "applies": "restart", "default": 90, "min": 1, "max": 3650 },
     { "key": "retention.approval_days", "type": "number", "group": "retention", "label": "审批历史保留(天)", "labelKey": "settings.runtime.retention.approvalDays", "description": "审批历史保留天数(历史裁决主张不可变,放宽)", "applies": "restart", "default": 180, "min": 1, "max": 3650 },
+    { "key": "retention.analysis_days", "type": "number", "group": "retention", "label": "分析报告保留(天)", "labelKey": "settings.runtime.retention.analysisDays", "description": "数据分析报告台账保留天数(数据留痕,宽松保留)", "applies": "restart", "default": 365, "min": 1, "max": 3650 },
 
     { "key": "log.level", "type": "string", "group": "log", "label": "日志级别", "labelKey": "settings.runtime.log.level", "description": "服务端日志级别(debug/info/warn/error)", "applies": "restart", "default": "info", "aliases": ["AWSHOP_LOG_LEVEL"] },
 

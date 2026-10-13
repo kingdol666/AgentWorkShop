@@ -174,7 +174,7 @@ export interface AuditEntry {
   lineId?: string
   productId?: string
   recipeId?: string
-  kind?: 'write' | 'manual' | 'alarm' | 'line' | 'recipe' | 'rollback' | 'daq' | 'system'
+  kind?: 'write' | 'manual' | 'alarm' | 'line' | 'recipe' | 'rollback' | 'daq' | 'analysis' | 'system'
   summary?: string
   /** 严重级(2026-10-08 写控 ACK 鉴定):info 缺省 / warn(未证实) / error(写入失败);日志页红黄标 */
   level?: 'info' | 'warn' | 'error'
