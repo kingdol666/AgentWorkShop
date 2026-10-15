@@ -102,11 +102,13 @@ export async function toolDcwControl(agentId: string, args: { node_id?: string, 
  * profile 门控)的写入委托它执行 —— Agent 可调用面依然收敛在配方面,此处非 Agent 入口。
  */
 export async function dcwControlGovernedInternal(agentId: string, args: { node_id?: string, value?: number | string, hypothesis?: string, task_id?: string }, channelId?: string): Promise<{ text: string, isError?: boolean }> {
-  return _toolDcwControlDisabled(agentId, args, channelId)
+  return dcwControlGovernedLegacy(agentId, args, channelId)
 }
 
-/** v2 前的直写实现(已停用;保留供回溯/内部审计阅读,不再被任何入口调用) */
-async function _toolDcwControlDisabled(agentId: string, args: { node_id?: string, value?: number | string, hypothesis?: string, task_id?: string }, channelId?: string): Promise<{ text: string, isError?: boolean }> {
+/** v2 前的直写实现(治理链完整:四层限界/HITL/60s 联锁/journal/open 记录)。
+ *  非任何 Agent 工具入口 —— 仅由 dcwControlGovernedInternal 承载平台内部治理写
+ *  (optimization_explore 闭环探索的写入委托),Agent 可调用面依然收敛在配方面。 */
+async function dcwControlGovernedLegacy(agentId: string, args: { node_id?: string, value?: number | string, hypothesis?: string, task_id?: string }, channelId?: string): Promise<{ text: string, isError?: boolean }> {
   const twinGuard = guardTwinWrite(agentId, channelId)
   if (!twinGuard.allowed) return { text: `${twinGuard.code}: ${twinGuard.message}`, isError: true }
   const nodeId = String(args.node_id ?? '').trim()

@@ -1,16 +1,11 @@
 /**
- * 工艺参数读写(param_control / param_read)与量程/容差辅助
+ * 工艺参数语义面辅助(参数引用解析/量程文本/写容差)与 param_control 的 v2 禁用桩
  * (由 server/services/workshop/agents/industrial-tools.ts 按职责拆出;内容逐行原文搬运)
  */
 import type { DcwParamView } from '../../../../../shared/dcw-protocol'
-import { agentBadgeLabel } from '../agent-badge'
-import { getAgentNodeBindingRepo } from '../node-bindings.repo'
 import { getDcwController } from '../../dcw/dcw-controller'
 import { getDcwParamRepo } from '../../dcw/param-map.repo'
-import { getRecipeRollBackManager } from '../../dcw/recipe-rollback-manager'
 import { limitsBreakdownOf } from '../../dcw/param-limits'
-import { guardTwinWrite } from '../../aml/twin/write-guard'
-import { requestManualApproval } from './manual-approval'
 
 /** 读/设定偏差对照容差(与服务端回读死区同口径) */
 export function writeToleranceOf(node: { decimals: number, min: number, max: number }): number {
@@ -70,83 +65,5 @@ export async function toolParamControl(agentId: string, args: {
   return {
     text: '参数直写已禁用(权限模型 v2):Agent 不再直接改写运行中的工艺参数。请改用绑定的配方 —— recipe_update(写入新版本)/ recipe_apply(整批下发)/ recipe_trial(候选试验);治理联锁与 HITL 在配方面照常生效。',
     isError: true,
-  }
-}
-
-/** v2 前的语义参数直写实现(已停用;保留供回溯,不再被任何入口调用) */
-async function _toolParamControlDisabled(agentId: string, args: {
-  param?: string
-  value?: number | string
-  hypothesis?: string
-  task_id?: string
-  line_id?: string
-}, channelId?: string): Promise<{ text: string, isError?: boolean }> {
-  void channelId
-  const twinGuard = guardTwinWrite(agentId, channelId)
-  if (!twinGuard.allowed) return { text: `${twinGuard.code}: ${twinGuard.message}`, isError: true }
-  const resolved = resolveParamRef(String(args.param ?? ''), args.line_id ? String(args.line_id) : undefined)
-  if (!resolved.ok) return resolved
-  const param = resolved.param
-  const value = Number(args.value)
-  if (!Number.isFinite(value)) {
-    return { text: '设定值 value 必须为数字。', isError: true }
-  }
-  const repo = getAgentNodeBindingRepo()
-  const binding = repo.find(agentId, param.nodeId, 'dcw')
-  if (!binding) {
-    const mine = repo.byAgent(agentId).filter(b => b.kind === 'dcw')
-    return {
-      text: mine.length
-        ? `无权操作工艺参数「${param.key}」(执行节点 ${param.nodeId} 未绑定给你)。你有权控制的数控节点:${mine.map(b => b.nodeId).join(', ')}。`
-        : '你尚未绑定任何数控节点,无权下发控制指令。请在数字孪生界面绑定数控节点。',
-      isError: true,
-    }
-  }
-  const node = getDcwController().byId(param.nodeId)
-  if (!node) {
-    repo.removeAgentNode(agentId, param.nodeId, 'dcw')
-    return { text: `工艺参数「${param.key}」的执行节点已不存在(可能被删除),原绑定已自动清理。`, isError: true }
-  }
-  if (!node.enabled) {
-    return { text: `工艺参数「${param.key}」的执行节点「${node.name}」已停用(控制已暂停),无法下发。`, isError: true }
-  }
-  // 手动确认模式:与 dcw_control 同源审批面(manual-approval),备注回给 Agent。
-  // 调整依据(hypothesis)进审批详情 —— 人机交互透明化:人类在审批面板直接看到
-  // Agent 基于什么分析/判断要这样调;批准附言与拒绝意见均随回执回流。
-  let manualFeedback = ''
-  if (binding.mode === 'manual') {
-    const rationale = args.hypothesis ? String(args.hypothesis).trim() : ''
-    const ap = await requestManualApproval({
-      agentId,
-      nodeId: param.nodeId,
-      detail: `工艺参数「${param.key}」(${param.name})设定 ${value}${param.unit},${paramLimitsText(param)}${rationale ? `;调整依据:${rationale}` : ''}`,
-    })
-    if (!ap.ok) return { text: ap.text, isError: ap.isError }
-    manualFeedback = ap.comment ?? ''
-  }
-  try {
-    const meta = {
-      source: 'agent' as const,
-      actor: agentId,
-      actorName: agentBadgeLabel(agentId),
-      taskId: args.task_id ? String(args.task_id) : undefined,
-      hypothesis: args.hypothesis ? String(args.hypothesis) : '',
-    }
-    const outcome = await getDcwController().writeParam(param.id, value, meta)
-    if (outcome.ok) {
-      const stable = getRecipeRollBackManager().journal({ nodeId: param.nodeId, limit: 10 }).find(a => a.prevValue != null && a.prevValue !== a.newValue)
-      const loopTxt = [
-        outcome.recordId ? `优化记录 ${outcome.recordId} 已开窗(观察数采后 dcw_judge 落判定)` : null,
-        stable ? `上一稳定锚:${stable.prevValue}${param.unit}(可 dcw_rollback 回退)` : null,
-      ].filter(Boolean).join(';')
-      return {
-        text: `下发成功:工艺参数「${param.key}」(${param.name})设定 ${value}${param.unit} → 执行节点「${node.name}」;回读 ${outcome.readback != null ? `${outcome.readback}${param.unit}` : '不支持'}一致。${paramLimitsText(param)}。${outcome.message}${loopTxt ? `\n[调控闭环] ${loopTxt}` : ''}${manualFeedback ? `\n[人工反馈] ${manualFeedback}` : ''}`,
-      }
-    }
-    return { text: `下发失败:${outcome.message}(工艺参数 ${param.key},执行节点「${node.name}」;${paramLimitsText(param)};当前设定值保持 ${node.value ?? '原值'}${param.unit} 未被改动)`, isError: true }
-  }
-  catch (err) {
-    const msg = err instanceof Error ? err.message : String(err)
-    return { text: `下发被拒绝:${msg}(工艺参数 ${param.key};${paramLimitsText(param)})`, isError: true }
   }
 }
