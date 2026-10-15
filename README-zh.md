@@ -28,7 +28,7 @@
 
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.7.58</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST 集成 · 118 个运行时设置项 · 双语文档（简体中文 / English）</sub>
+<sub><b>v0.7.63</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST 集成 · 数据分析台账（产线级权限隔离）· 119 个运行时设置项 · 双语文档（简体中文 / English）</sub>
 
 <br />
 
@@ -167,7 +167,8 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 | **Recipe 版本化治理** | 参数修改按版本入史（归因 用户/Agent/系统 + 操作者 + 原因）。可非破坏地回退到任意修订版或最近一次良好批次。失效节点参数跳过并明确标识。 |
 | **配方链路优化闭环** | Agent 像人类工艺员一样通过配方管理做优化：`recipe_trial` 把多参数候选**整批试验（不写版本）**→ 复测 → 有进步用 `recipe_update` 固化（同一配方 id，版本+1）→ 劣化触发**统一回退**（`recipe_rollback` 带 `dispatch:true` = 定义回退 + PLC 整批恢复）。单参数直调移出闭环；试验受四层限界与同线节拍卡控。 |
 | **频道绑定产线（只读授权）** | 频道可绑定一条产线：全员无需节点绑定即可读取该线的运维日志、配方历史与实时状态（工具回执标注「频道绑定，只读」），写操作仍需节点授权。产线简报自动注入成员提示词；换绑即时回收成员运行时。 |
-| **工艺参数语义映射与调控闭环** | Agent 用工程语义思考：`param_control(param, value)` 按**工艺参数**寻址（跨批次/换配方语义稳定），`param_read` 读回 PLC 当前值取证。每次写入被**四层限界**逐层收窄——节点安全量程 ∩ 工艺参数基准限界 ∩ 活动产品限界 ∩ 活动配方工艺窗口——且每次下发自动开一条调控记录，由 `dcw_judge` 落判定（keep / rollback / uncertain），`dcw_rollback` 执行回退。 |
+| **数据分析台账（v0.7.62）** | Agent 的分析结果作为一等记录留痕：原生 `analysis_save` / `analysis_query` 宿主工具写入独立的 `analysis_reports` 表，按产线 + 配方 + 时间窗组织，含关键结论、指标、数据来源与操作者归因。台账对 Agent 只增不改；人类经 REST 修订并刷新编辑者归因。专属 `/analysis` 页面经 WS 实时前插新报告，支持产线 / 配方 / 时间 / 关键词多维检索，改删受产线权限门控（`operate` 可改、删除仅 admin）。外部分析插件经同一台账集成——`diag_run` 以后台任务运行 IDD 分析（`stability-report` 产线稳定报告 / `deep-diagnosis` 根因诊断），提交即返 `task_id`，`diag_status` 按taskId 查进度，完成后报告经 `analysis_save` 落账。 |
+| **工艺参数语义面与调控闭环** | 全部可下发写收敛到**配方面**（`recipe_update` / `recipe_apply` / `recipe_trial`，各受「绑定 → HITL 理由 → 运行门」三门约束）。写入仍被**四层限界**逐层收窄——节点安全量程 ∩ 工艺参数基准限界 ∩ 活动产品限界 ∩ 活动配方工艺窗口——且每次下发自动开一条调控记录，由 `dcw_judge` 落判定（keep / rollback / uncertain），`dcw_rollback` 执行回退。（v0.7.63 摘除了 `param_control` / `param_read` / `dcw_read` 直连节点的遗留死工具面，Agent 工具清单保持干净。） |
 | **产线运营** | 产线 → 产品 → 配方 → 批次。配方窗口门控采集并联锁写入；每条样本打标 `product/recipe/run`，实现按批次隔离。 |
 | **多形态数采帧管线** | 多点轮廓（测厚仪/扫描仪）与 CCD 图像帧流经模板 sink 管线：向量与元数据入 Timescale（`daq_frames`），像素入对象存储（MinIO，不可达时自动降级到本地磁盘）；派生指标阈值越限走既有告警链路。 |
 | **生产化硬化（v0.7.58）** | 保写心跳生命周期根治——失败写不占位（心跳不再直发幻影指令值）、驱动/连接/产线变更即清值、停线自动挂起保写；mock 静默兜底封堵（未知协议显式报错，插件卸载不再假成功）；帧像素 sha256 完整性指纹 + 对象存储按天 GC（删前 DB 交叉校验防误删）；Timescale 按天 chunk + 列存压缩（TSL）；堆水位监控 + 崩溃/失联/水位三重自动重生；写保持窗与试验节拍落盘（重启不绕频控）；grant 运行时复核并入频道绑线（撤权即失活无死角）。 |
@@ -187,7 +188,7 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 | **运行时可观测** | `GET /api/system/monitor` 把 Agent 团队内部暴露成数字：根队列深度、看门狗介入次数、Harness 会话复用、记忆 outbox 积压——每项都有对应的文档化回退开关，新机制可以不重新部署就关掉。 |
 | **产线操作单页（`/operations`）** | 一页看全对产线的每一次触碰：实时操作流水（REST 快照 + WS 推流）把写控、数采、建模、配方、回退、报警、产线、人工、系统动作归入**九类分类**，写控行渲染结构化 **前值 → 后值 diff 徽章**（失败标红），并直接从事件流推断**闭环阶段**（监视 → 探索·小步 → 推荐搜索 → 影子验证 → 生产）。同一数据面也供工作台控制台的「产线作业」面板使用。 |
 | **外部 MCP 网关** | `aw mcp` 启动零依赖的 **stdio MCP 服务**（38 个工具），自动发现运行中的实例（环境变量 → 锁文件 → 配置文件），把产线、配方（含 mark-good）、受治理 DCW 写入、工艺参数语义映射、数采查询、频道、团队供给、模型晋升、判卷/回退与插件管理暴露给任意 MCP 客户端——受 `mcp.enabled` 运行时设置门控，附 `--doctor` 与 `--print-config` 辅助指令。 |
-| **全量配置驱动运行时** | 全部运行旋钮（记忆预算、上下文压缩、回退护栏、保留策略、备份、日志级别、系统时区、MCP 开关…）在设置描述符注册表声明一次，优先级 **config.yml < runtime-settings < env**——**118 个设置项、18 组**（40 live / 78 restart），代码零硬编码默认。 |
+| **全量配置驱动运行时** | 全部运行旋钮（记忆预算、上下文压缩、回退护栏、保留策略、备份、日志级别、系统时区、MCP 开关…）在设置描述符注册表声明一次，优先级 **config.yml < runtime-settings < env**——**119 个设置项、18 组**（40 live / 79 restart），代码零硬编码默认。 |
 | **可配置系统时区** | 一个 `time.timeZone` 设置项（IANA 时区，live 热生效）统一驱动人读时间——日志、聊天、审计、Agent 记录与定时任务；机器时间轴（数采样本、`timestamptz`）仍保存绝对时间。 |
 | **可配置节拍** | 采样与查询的默认值/下限全部是 **live 设置**（`daq.sampling.*`、`daq.query.*`）：热重载、create/patch 时钳制，Agent 工具描述实时携带当前值。 |
 
@@ -265,7 +266,7 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 <td width="50%"><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-monitor.png" alt="运行时监控" width="100%" /><br/><sub><b>运行时监控。</b>每条已接线频道、成员数、依赖环与归属用户。</sub></td>
 </tr>
 <tr>
-<td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-settings.png" alt="系统设置" width="100%" /><br/><sub><b>系统设置。</b>18 组 118 个设置项，由描述符驱动——CLI 读的是同一份注册表。</sub></td>
+<td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-settings.png" alt="系统设置" width="100%" /><br/><sub><b>系统设置。</b>18 组 119 个设置项，由描述符驱动——CLI 读的是同一份注册表。</sub></td>
 <td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-plugins.png" alt="插件管理" width="100%" /><br/><sub><b>插件管理。</b>三种作用域、改代码即热重载、按团队开关。</sub></td>
 </tr>
 </table>
@@ -389,7 +390,7 @@ aw update --check                      # 只报告，不安装
 npm install -g agentworkshop@latest    # 手动等效
 ```
 
-版本遵循 semver。每次 `aw start` 都会校验配置根，并把 `home` 之前的旧版 `data/` 布局迁移进来（以最新文件为准），因此数据可以跨版本存活。SQLite schema 迁移在服务端启动时执行。当前版本：**v0.7.58**——见[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)。
+版本遵循 semver。每次 `aw start` 都会校验配置根，并把 `home` 之前的旧版 `data/` 布局迁移进来（以最新文件为准），因此数据可以跨版本存活。SQLite schema 迁移在服务端启动时执行。当前版本：**v0.7.63**——见[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)。
 
 ### 第一次「Agent × 产线」会话（约 2 分钟）
 

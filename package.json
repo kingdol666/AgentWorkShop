@@ -1,6 +1,6 @@
 {
   "name": "agentworkshop",
-  "version": "0.7.62",
+  "version": "0.7.63",
   "type": "module",
   "description": "AgentWorkShop 软件开发系统 - 基于 Nuxt 4 的配置驱动运行范式",
   "license": "Apache-2.0",

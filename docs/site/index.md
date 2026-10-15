@@ -60,7 +60,7 @@ footer:
         <div class="hw-stat"><span class="v">6</span><span class="k">现场协议</span></div>
         <div class="hw-stat"><span class="v">4</span><span class="k">接入入口</span></div>
         <div class="hw-stat"><span class="v">14</span><span class="k">执行引擎</span></div>
-        <div class="hw-stat"><span class="v">118</span><span class="k">运行时设置项</span></div>
+        <div class="hw-stat"><span class="v">119</span><span class="k">运行时设置项</span></div>
         <div class="hw-stat"><span class="v">1400+<i>*</i></span><span class="k">验收断言</span></div>
         <div class="hw-stat"><span class="v">7</span><span class="k">任务机状态</span></div>
       </div>
@@ -70,10 +70,10 @@ footer:
         <code>docs/audit/e2e-2026-09-24-full-coverage.md</code> 与
         <code>docs/audit/e2e-2026-09-24-all-features.md</code>)。
         其余是可数出来的静态事实:6 类驱动(5 内置 + serial-bridge 串口插件) / 4 个入口(WS · MCP · A2A · REST) /
-        14 个 harness(<code>agents/registry.ts</code>) / 118 个设置项分 18 组(<code>aw config list</code>) / 7 态任务机。
+        14 个 harness(<code>agents/registry.ts</code>) / 119 个设置项分 18 组(<code>aw config list</code>) / 7 态任务机。
       </p>
       <div class="aw-statusbar">
-        <span>版本 <i>v0.7.58</i></span>
+        <span>版本 <i>v0.7.63</i></span>
         <span>许可 <i>Apache License 2.0</i></span>
         <span>运行时 <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>文档 <i>简体中文 / English</i></span>
@@ -276,7 +276,7 @@ footer:
       <div class="hw-p">
         <span class="no">04</span>
         <h3>配置驱动</h3>
-        <p><code>config.yml &lt; runtime-settings &lt; env</code>,同一份描述符同时驱动 CLI 与设置页——118 个设置项(40 live / 78 restart),代码零硬编码默认。</p>
+        <p><code>config.yml &lt; runtime-settings &lt; env</code>,同一份描述符同时驱动 CLI 与设置页——119 个设置项(40 live / 79 restart),代码零硬编码默认。</p>
       </div>
       <div class="hw-p">
         <span class="no">05</span>
@@ -314,6 +314,7 @@ footer:
       <div class="hw-f"><span class="tag">SCHED</span><h3>定时任务</h3><p>interval / daily 双模式挂任意 Channel 任务——逐次运行历史、忙等守卫、连续失败熔断,巡线无人值守。</p></div>
       <div class="hw-f"><span class="tag">QOS</span><h3>根任务队列与租约</h3><p>FIFO 根队列带可见排队位次;排队等待不消耗执行预算,lead 救援扫自动复活失活入场;派发代 + 执行租约围栏丢弃迟到事件;监督看门狗区分卡死与慢。</p></div>
       <div class="hw-f"><span class="tag">PROD</span><h3>生产化硬化(v0.7.58)</h3><p>保写心跳生命周期治理(失败写不占位 · 变更点清值 · 产线活动门);mock 静默兜底封堵;帧像素 sha256 指纹 + 对象存储按天 GC(删前 DB 交叉校验);Timescale 按天 chunk + 列存压缩;堆水位监控 + 子进程自动重生;治理窗落盘;grant 复核并入频道绑线。</p></div>
+      <div class="hw-f"><span class="tag">DATA</span><h3>数据分析台账(v0.7.62)</h3><p>analysis_save / analysis_query 原生工具落账分析结论(产线×配方×时间窗),Agent 只增、人类修订留痕;/analysis 页多维检索实时前插;diag_run 后台跑 IDD 产线报告(stability-report)按 taskId 查进度;改删与可见性全受产线级权限门控。</p></div>
     </div>
   </section>
 
@@ -405,7 +406,7 @@ aw start            # → http://localhost:3001 · 配置根 ~/.AgentWorkShop
   <section class="hw-final">
     <h2>把 Agent 接到真实产线上</h2>
     <p>
-      14 个执行引擎、6 种现场协议、118 个运行时设置项和 1400+ 条可复跑的验收断言都已经在仓库里。
+      14 个执行引擎、6 种现场协议、119 个运行时设置项和 1400+ 条可复跑的验收断言都已经在仓库里。
       监督层,秒级软实时;协议真实,断言可复跑。
     </p>
     <div class="hw-cta">

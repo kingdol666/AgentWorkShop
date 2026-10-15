@@ -28,7 +28,7 @@
 
 **[简体中文](./README-zh.md)** · **[Documentation](https://kingdol666.github.io/AgentWorkShop)** · **[Releases](https://github.com/kingdol666/AgentWorkShop/releases)** · **[Changelog](./changelog.md)** · **[Plugin API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.7.58</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST integration · 117 runtime settings · bilingual docs (简体中文 / English)</sub>
+<sub><b>v0.7.63</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST integration · data-analysis ledger with line-scoped permissions · 119 runtime settings · bilingual docs (简体中文 / English)</sub>
 
 <br />
 
@@ -168,7 +168,8 @@ Recorded against a running instance: real DAQ history, real write control, real 
 | **Recipe versioning & governance** | Parameter changes are versioned with attribution (user/agent/system + operator + reason). Roll back to any revision or the last-good batch — non-destructively. Stale-node params are skipped and clearly marked. |
 | **Recipe-chain optimization loop** | Agents optimize through recipe management, the way human process engineers do: `recipe_trial` batch-dispatches multi-parameter candidates **without writing a version** → re-measure → progress adopts via `recipe_update` (same recipe id, version +1) → regression triggers a **unified rollback** (`recipe_rollback` with `dispatch: true` = definition revert + batch restore to the PLC). Single-knob direct dispatch is out of the loop; trials run under four-layer bounds and a per-line cadence. |
 | **Channel-bound lines (read-only grant)** | A channel can bind a line: every member reads that line's ops logs, recipe history and live status without any node binding (tool outputs are tagged "channel-bound, read-only"), while writes still require node authorization. The line brief is injected into member prompts; binding changes hot-recycle member runtimes. |
-| **Semantic parameter mapping & tuning loop** | Agents reason in engineering semantics: `param_control(param, value)` addresses a **process parameter** (stable across batches and recipe swaps) instead of a raw node, and `param_read` reads back the PLC value for evidence. Every write is narrowed by a **four-layer bound** — node safe range ∩ parameter baseline bounds ∩ active product bounds ∩ active recipe window — and each adjustment opens a tuning record that `dcw_judge` must close (keep / rollback / uncertain), with `dcw_rollback` executing the undo. |
+| **Data-analysis ledger (v0.7.62)** | Agents persist analysis results as first-class records: native `analysis_save` / `analysis_query` host tools write a dedicated `analysis_reports` table keyed by line + recipe + time window, with conclusions, metrics, data sources and actor attribution. The ledger is append-only for agents; humans revise via REST with editor attribution. A dedicated `/analysis` page streams new reports live (ops-log WS), filters by line / recipe / time / keyword, and edit/delete are permission-gated (`operate` line mode; admin-only delete). External analysis plugins integrate through the same ledger — `diag_run` runs IDD analyses in the background (`stability-report` for line health reports, `deep-diagnosis` for root cause), returns a `task_id` immediately, tracks progress via `diag_status`, and the finished report lands in the ledger via `analysis_save`. |
+| **Semantic parameter surface & tuning loop** | Every dispatchable write converges on the **recipe face** (`recipe_update` / `recipe_apply` / `recipe_trial`, each gated by binding → HITL reason → active-run). Writes stay narrowed by the **four-layer bound** — node safe range ∩ parameter baseline bounds ∩ active product bounds ∩ active recipe window — and each adjustment opens a tuning record that `dcw_judge` must close (keep / rollback / uncertain), with `dcw_rollback` executing the undo. (v0.7.63 removed the legacy `param_control` / `param_read` / `dcw_read` direct-node tools — dead surface under permission model v2 — so the agent tool list stays clean.) |
 | **Line operations** | Lines → products → recipes → batch runs. Recipe windows gate acquisition and interlock writes; every sample is tagged `product/recipe/run` for per-batch isolation. |
 | **Multi-modal DAQ frame pipeline** | Multi-point profiles (thickness/scanner) and CCD image frames flow through template sink pipelines: vectors & metadata into Timescale (`daq_frames`), pixels into object storage (MinIO, auto disk fallback); derived-metric thresholds ride the existing alarm chain. |
 | **Production hardening (v0.7.58)** | Hold-heartbeat lifecycle fixed — failed writes never occupy the setpoint (no phantom re-dispatch), driver/connection/line changes clear the value, line stop suspends hold automatically; silent mock fallback blocked (unknown protocols fail loudly, plugin unload can't fake success); frame pixel sha256 fingerprints + day-directory object GC (DB cross-check before delete); Timescale daily chunks + columnstore compression (TSL); heap-watermark watch with crash/liveness/watermark auto-respawn; write-hold windows & trial cadence persisted across restarts; runtime grant re-checks include the channel-bound line (revocation takes effect everywhere). |
@@ -188,7 +189,7 @@ Recorded against a running instance: real DAQ history, real write control, real 
 | **Runtime observability** | `GET /api/system/monitor` exposes the agent-team internals as numbers: root queue depth, watchdog interventions, harness session reuse, pending memory outbox — each guarded by a documented rollback switch, so new machinery can be turned off without a redeploy. |
 | **Line operations feed (`/operations`)** | One page for every touch on the plant: a live operation feed (REST snapshot + WS stream) classifies writes, DAQ, AML, recipe, rollback, alarm, line, manual and system actions into **nine categories**, renders structured **before → after diff badges** on write rows (failures marked red), and infers the **closed-loop phase** (monitor → exploration · small-step → recommendation search → shadow verification → production) straight from the event stream. The same feed powers a line-operations panel inside the workshop console. |
 | **External MCP gateway** | `aw mcp` starts a zero-dependency **stdio MCP server** (38 tools) that discovers a running instance automatically (env → lock file → config file) and exposes lines, recipes (incl. mark-good), governed DCW writes, semantic parameter mapping, DAQ queries, channels, team provisioning, model promotion, judge/rollback and plugin management to any MCP client — gated by the `mcp.enabled` runtime setting, with `--doctor` and `--print-config` helpers. |
-| **Fully config-driven runtime** | Every runtime knob (memory budgets, compaction, rollback guardrails, retention, backups, log level, system timezone, MCP gate…) is declared once in the settings descriptor registry with precedence **config.yml < runtime-settings < env** — **118 settings across 18 groups** (40 live / 78 restart), no hardcoded defaults in code. |
+| **Fully config-driven runtime** | Every runtime knob (memory budgets, compaction, rollback guardrails, retention, backups, log level, system timezone, MCP gate…) is declared once in the settings descriptor registry with precedence **config.yml < runtime-settings < env** — **119 settings across 18 groups** (40 live / 79 restart), no hardcoded defaults in code. |
 | **Configurable system timezone** | One `time.timeZone` setting (IANA id, live-applied) drives human-facing timestamps — logs, chat, audit, agent records and schedules — through a single formatter; machine timelines (DAQ samples, `timestamptz`) stay absolute. |
 | **Configurable cadences** | Sampling and query defaults/floors are **live settings** (`daq.sampling.*`, `daq.query.*`): hot-reloaded, clamped on node create/patch, and agent tool descriptions always carry the current values. |
 
@@ -257,7 +258,7 @@ page headers stack, dense tables become scrollable ledgers with a pinned identit
 <td width="50%"><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-monitor.png" alt="Runtime monitor" width="100%" /><br/><sub><b>Runtime monitor.</b> Every wired channel, member count, dependency cycle and owner.</sub></td>
 </tr>
 <tr>
-<td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-settings.png" alt="Settings" width="100%" /><br/><sub><b>Settings.</b> 118 keys across 18 groups, descriptor-driven — the same registry the CLI reads.</sub></td>
+<td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-settings.png" alt="Settings" width="100%" /><br/><sub><b>Settings.</b> 119 keys across 18 groups, descriptor-driven — the same registry the CLI reads.</sub></td>
 <td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-plugins.png" alt="Plugins" width="100%" /><br/><sub><b>Plugins.</b> Three scopes, hot reload on edit, per-team switches.</sub></td>
 </tr>
 </table>
@@ -380,7 +381,7 @@ aw update --check                      # only report; nothing is installed
 npm install -g agentworkshop@latest    # manual equivalent
 ```
 
-Releases follow semver. `aw start` verifies the config root on every launch and migrates the legacy pre-`home` `data/` layout into it (newest file wins), so data survives upgrades. SQLite schema migrations run server-side at boot. Current version: **v0.7.58** — see [Releases](https://github.com/kingdol666/AgentWorkShop/releases).
+Releases follow semver. `aw start` verifies the config root on every launch and migrates the legacy pre-`home` `data/` layout into it (newest file wins), so data survives upgrades. SQLite schema migrations run server-side at boot. Current version: **v0.7.63** — see [Releases](https://github.com/kingdol666/AgentWorkShop/releases).
 
 ### Your first agent × line session (~2 minutes)
 
@@ -658,7 +659,7 @@ AgentWorkShop/
 ├── sdk/                        # agentworkshop/sdk — plugin context, hook bus, REST client, browser SDK
 ├── tui/                        # terminal workbench (aw tui)
 ├── shared/
-│   └── config/                 # schema.json (118 setting descriptors) + engine (merge/validate/persist) + path resolver
+│   └── config/                 # schema.json (119 setting descriptors) + engine (merge/validate/persist) + path resolver
 ├── config.yml                  # factory defaults (read at build/start; version comes from package.json)
 ├── .AgentWorkShop/             # config root in a checkout — prompts (versioned) + runtime overrides · data · logs · commands (git-ignored)
 ├── data/                       # legacy pre-migration location (auto-migrated into the config root)
