@@ -33,7 +33,18 @@ diag_status({ run_id: task_id })   // 按 taskId 查进度/取结果
 → 状态 running(含阶段)→ completed + 报告文件路径
 ```
 
-`analysis_intent` 决定 IDD 侧执行的协议:`stability-report`=产线稳定报告(零根因分析,出分+等级+运行建议)、`deep-diagnosis`=九阶段深度根因诊断(缺省)。任务完成后平台把结果**自动回执**到发起频道,Agent 用 `analysis_save` 把结论(附 `run_id` 溯源)落账。
+`analysis_intent` 决定 IDD 侧执行的 skill 协议(全意图目录,IDD harness 执行,与平台解耦):
+
+| 意图 | 用途 |
+|---|---|
+| `deep-diagnosis`(缺省) | 九阶段深度根因诊断(最重) |
+| `stability-report` | 产线稳定报告:评分+等级+运行建议(零根因) |
+| `quick-screen` | 快速筛查:越限/漂移/冻结异常清单+HTML 看板(最快) |
+| `doe-analysis` | DOE 试验分析:因子效应/显著性/最优工况 |
+| `experience-mining` | 调参经验挖掘:结构化经验条目,供知识库沉淀 |
+| `optimizer-campaign` | 优化战役:寻优迭代+推荐工况(最重) |
+
+每种意图有按情景生成的缺省分析问题(业务语义由桥注入,IDD harness 执行);任务完成后平台把结果**自动回执**到发起频道(含评分/结论/总结/报告绝对路径),Agent 用 `analysis_save` 把结论(附 `run_id` 溯源)落账。
 
 RAG 侧对称:`kb_agent` 支持异步任务——`mode:"async"` 立即返回 `task_id`,知识库后台完成入库/经验沉淀,`kb_agent_status` 按 taskId 查询;检索问答用 `mode:"sync"` 立即返回带引用的答案。
 

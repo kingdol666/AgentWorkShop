@@ -33,7 +33,18 @@ diag_status({ run_id: task_id })   // track progress by taskId
 → running (with stage) → completed + report file path
 ```
 
-`analysis_intent` selects the IDD-side protocol: `stability-report` = line stability report (no root-cause analysis — score + grade + operational advice), `deep-diagnosis` = the nine-stage deep root-cause pipeline (default). On completion the platform **auto-delivers the result** to the originating channel, and the agent persists the conclusions (with `run_id` provenance) via `analysis_save`.
+`analysis_intent` selects the IDD-side skill protocol (full intent catalog; executed by IDD's harness, decoupled from the platform):
+
+| Intent | Purpose |
+|---|---|
+| `deep-diagnosis` (default) | nine-stage deep root-cause pipeline (heaviest) |
+| `stability-report` | line stability report: score + grade + advice (no root cause) |
+| `quick-screen` | fast screening: over-limit/drift/freeze anomaly list + HTML dashboard (fastest) |
+| `doe-analysis` | DOE analysis: factor effects / significance / optimal settings |
+| `experience-mining` | tuning-experience mining: structured entries for the knowledge base |
+| `optimizer-campaign` | optimization campaign: iterative search + recommended settings (heaviest) |
+
+Each intent carries a scenario-specific default question (business semantics injected by the bridge, executed by IDD). On completion the platform **auto-delivers the result** to the originating channel (score / verdict / summary / absolute report path), and the agent persists the conclusions (with `run_id` provenance) via `analysis_save`.
 
 RAG mirrors this: `kb_agent` supports async tasks — `mode:"async"` returns a `task_id` immediately while the knowledge base ingests in the background, with `kb_agent_status` tracking by taskId; retrieval Q&A uses `mode:"sync"` for an immediate cited answer.
 
