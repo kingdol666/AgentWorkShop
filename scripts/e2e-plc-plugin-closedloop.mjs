@@ -535,7 +535,7 @@ console.log('\n── H Harness 集成面 ──')
   const names = (list?.json?.data?.tools ?? list?.json?.tools ?? []).map(t => t?.name)
   // rag 侧工具面已收敛为单入口 kb_agent(+kb_agent_status);diag 侧仍是 diag_run/diag_status
   for (const t of ['kb_agent', 'kb_agent_status', 'diag_run', 'diag_status']) ok(names.includes(t), `omp 执行器工具清单含 ${t}`)
-  for (const t of ['daq_query', 'dcw_control', 'dcw_judge', 'dcw_read', 'line_context']) ok(names.includes(t), `omp 执行器工业工具含 ${t}`)
+  for (const t of ['daq_query', 'dcw_control', 'dcw_judge', 'line_context']) ok(names.includes(t), `omp 执行器工业工具含 ${t}`)
   const ctxT = await invoke(exec, 'line_context', {}, 60000)
   ok(!resultText(ctxT).startsWith('工具') || resultText(ctxT).length > 0, 'line_context 可用(工业链路)', resultText(ctxT).slice(0, 60))
 }

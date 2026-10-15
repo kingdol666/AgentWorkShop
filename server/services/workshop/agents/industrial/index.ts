@@ -14,8 +14,8 @@
  *   aml-job-tools.ts       AML 作业与模型(aml_job_* / aml_leaderboard / aml_model_*)
  *   mes-tools.ts           MES 数据集面(mes_catalog / mes_fetch / mes_dataset_read / mes_datasets)
  */
-export { toolMyIndustrialNodes, toolDcwControl, toolDcwRead } from './dcw-tools'
-export { toolParamControl, toolParamRead } from './param-tools'
+export { toolMyIndustrialNodes, toolDcwControl } from './dcw-tools'
+export { toolParamControl } from './param-tools'
 export { toolDaqQuery, toolDaqFrames } from './daq-tools'
 export { toolDaqExport } from './daq-export'
 export { toolDcwJudge, toolDcwRollback, toolDcwJournal } from './dcw-judge-tools'

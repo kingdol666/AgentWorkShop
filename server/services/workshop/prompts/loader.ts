@@ -62,7 +62,9 @@ function packagedPromptsDir(): string | null {
 }
 
 /** 首次/每次解析把包内初始 prompts 补种到 ~/.AgentWorkShop/prompts(逐文件只补缺,不覆盖)。
- *  每次解析都执行:包升级新增的提示词文件能进入已存在的 Home(用户已定制文件不回写)。 */
+ *  每次解析都执行:包升级新增的提示词文件能进入已存在的 Home(用户已定制文件不回写)。
+ *  例外:host-tools.json 是系统工具定义面(机器管理,非用户文案)—— 内容漂移即覆盖,
+ *  保证版本升级的工具面变更(如 v0.7.63 摘除死工具)能传导到存量安装,不残留幽灵定义。 */
 function seedHomePrompts(homePrompts: string): void {
   const src = packagedPromptsDir()
   if (!src || resolve(src) === resolve(homePrompts)) return
@@ -70,7 +72,18 @@ function seedHomePrompts(homePrompts: string): void {
   let seeded = 0
   for (const f of readdirSync(src)) {
     const dst = join(homePrompts, f)
-    if (existsSync(dst)) continue
+    if (existsSync(dst)) {
+      if (f === 'host-tools.json') {
+        try {
+          if (readFileSync(dst, 'utf-8') !== readFileSync(join(src, f), 'utf-8')) {
+            copyFileSync(join(src, f), dst)
+            seeded++
+          }
+        }
+        catch { /* 单文件失败不阻断播种 */ }
+      }
+      continue
+    }
     try {
       copyFileSync(join(src, f), dst)
       seeded++

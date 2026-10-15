@@ -215,9 +215,7 @@ async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCa
       case 'twin_gate_evaluate':
       case 'twin_calibration_request':
       case 'dcw_control':
-      case 'dcw_read':
       case 'param_control':
-      case 'param_read':
       case 'daq_query':
       case 'daq_frames':
       case 'daq_export':

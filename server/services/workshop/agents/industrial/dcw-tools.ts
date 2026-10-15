@@ -12,7 +12,6 @@ import { getDcwController } from '../../dcw/dcw-controller'
 import { getRecipeRollBackManager } from '../../dcw/recipe-rollback-manager'
 import { limitsBreakdownOf } from '../../dcw/param-limits'
 import { nodeSemanticCards, recipeOperationFace } from '../industrial-context'
-import { writeToleranceOf } from './param-tools'
 import { requestManualApproval } from './manual-approval'
 import { guardTwinWrite } from '../../aml/twin/write-guard'
 
@@ -207,49 +206,5 @@ async function _toolDcwControlDisabled(agentId: string, args: { node_id?: string
     const msg = err instanceof Error ? err.message : String(err)
     const retryHint = /忙|busy/i.test(msg) ? '链路忙属瞬时状态,可稍后重试' : '设定值必须落在安全量程与活动配方工艺窗口内'
     return { text: `下发被拒绝:${msg}(节点 ${node.name},物理量 ${tpl?.ch ?? node.templateKey};${retryHint})`, isError: true }
-  }
-}
-
-/** 工具:dcw_read —— 读取数控节点的 PLC 当前值(读写集成的读半边;被动观测免审批)。
- *  返回 PLC 实时读数(标定解码后的物理量)与当前设定值对照,供下发前取证/下发后复核。 */
-export async function toolDcwRead(agentId: string, args: { node_id?: string }): Promise<{ text: string, isError?: boolean }> {
-  const nodeId = String(args.node_id ?? '').trim()
-  const repo = getAgentNodeBindingRepo()
-  const binding: AgentNodeBinding | undefined = nodeId ? repo.find(agentId, nodeId, 'dcw') : undefined
-  if (!binding) {
-    const mine = repo.byAgent(agentId).filter(b => b.kind === 'dcw')
-    return {
-      text: mine.length
-        ? `无权读取节点 ${nodeId || '(空)'}。你有权读取的数控节点:${mine.map(b => b.nodeId).join(', ')}。`
-        : '你尚未绑定任何数控节点,无权读取控制通道数据。请在数字孪生界面绑定数控节点。',
-      isError: true,
-    }
-  }
-  const node = getDcwController().byId(nodeId)
-  if (!node) {
-    repo.removeAgentNode(agentId, nodeId, 'dcw')
-    return { text: `数控节点 ${nodeId} 已不存在(可能被删除),原绑定已自动清理,请重新绑定。`, isError: true }
-  }
-  const tpl = findDcwTemplate(node.templateKey)
-  try {
-    const read = await getDcwController().readNow(nodeId)
-    if (!read.ok && read.value == null && !node.readValue) {
-      return { text: `读取失败:${read.message}(节点 ${node.name},驱动 ${node.driver} 可能不支持读取;可改用 daq_query 查关联数采通道)`, isError: true }
-    }
-    const setTxt = node.value != null ? `${node.value}${node.unit}` : '从未下发'
-    const readTxt = read.value != null
-      ? `${Number(read.value.toFixed(node.decimals))}${node.unit}`
-      : (node.readValue != null ? `${node.readValue}${node.unit}(最近一次)` : '无读数')
-    const devTxt = read.value != null && node.value != null
-      ? (Math.abs(read.value - node.value) < writeToleranceOf(node)
-          ? '读数与设定一致(设定已生效)'
-          : '读数与设定存在偏差(可能工艺在响应或被本地修改)')
-      : '设定与读数暂不可对照'
-    return {
-      text: `读取成功:${node.name}(${tpl?.ch ?? node.templateKey})\n  PLC 读数(ACT): ${readTxt} @ ${read.at.slice(11, 19)}\n  当前设定(SET): ${setTxt}\n  对照: ${devTxt}${read.raw != null ? `\n  原始值(raw): ${Number(read.raw.toFixed(4))}` : ''}`,
-    }
-  }
-  catch (err) {
-    return { text: `读取被拒绝:${err instanceof Error ? err.message : String(err)}(节点 ${node.name})`, isError: true }
   }
 }

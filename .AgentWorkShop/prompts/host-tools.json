@@ -549,46 +549,6 @@
     }
   },
   {
-    "name": "dcw_read",
-    "label": "DCW Read",
-    "description": "读取绑定的数控节点的 PLC 当前值(读写集成的读半边)。返回 PLC 实时读数(经标定解码的物理量纲)与设定值对照;用于下发前取证、下发后复核设定是否生效。读取是被动观测,不影响控制状态,也不需要审批。 【数值口径:value=平台下发设定值,readValue=PLC 实测反馈;写保持窗/断链期两者可能短暂不一致,引用时注明口径】",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "node_id": {
-          "type": "string",
-          "description": "数控节点 id(见 my_industrial_nodes)"
-        }
-      },
-      "required": [
-        "node_id"
-      ],
-      "additionalProperties": false
-    }
-  },
-  {
-    "name": "param_read",
-    "label": "Param Read",
-    "description": "按工艺参数(key 语义键或 pp-id)读取执行节点当前值与分层限界明细(节点量程∩参数基准∩产品限界∩配方窗口,单步上限来源)。被动观测免审批;参数键目录(含每参数的描述)在回包中给出。参数写入已收敛到配方面(recipe_update/recipe_apply),本工具只读。 【数值口径:value=平台下发设定值,readValue=PLC 实测反馈;写保持窗/断链期两者可能短暂不一致,引用时注明口径】",
-    "parameters": {
-      "type": "object",
-      "properties": {
-        "param": {
-          "type": "string",
-          "description": "工艺参数 id(pp-*)或参数 key"
-        },
-        "line_id": {
-          "type": "string",
-          "description": "产线 id(可选;参数 key 跨产线同名时用于消歧)"
-        }
-      },
-      "required": [
-        "param"
-      ],
-      "additionalProperties": false
-    }
-  },
-  {
     "name": "daq_query",
     "label": "DAQ Query",
     "description": "从时序数据库检索你可访问的数采节点的历史/实时数据。授权两途径:绑定数采节点,或所在频道绑定产线(绑线后可只读查询该线全部数采节点)。支持按产线/产品/配方/批次/时间窗/降采样多维过滤(产品/配方过滤基于逐样本打标,可精确取某批次数据);返回结果携带物理含义(参数语义/单位/量程/统计摘要/最近序列)。默认只取**当前活动批次(活动配方)**的数据:产线正在跑什么配方就只查那个配方,不会把上一轮配方的样本混进本轮判读;需要跨配方看整段历史时显式传 scope=all。",
@@ -2432,7 +2392,9 @@
         },
         "conclusions": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "关键结论数组(推荐;每条一个发现)"
         },
         "report": {
