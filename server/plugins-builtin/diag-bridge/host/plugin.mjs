@@ -8,6 +8,7 @@ import { snapshotCore } from './snapshot.mjs'
 import { startDiagnosis } from './diagnosis.mjs'
 import { uploadExportDataset } from './exports.mjs'
 import { sweepOnce } from './sweep.mjs'
+import { intentLabel } from './intents.mjs'
 
 export default {
   name: 'diag-bridge',
@@ -94,22 +95,28 @@ export default {
     // 工具 ×2
     ctx.omp.registerTool({
       name: 'diag_run',
-      label: '深度诊断',
-      description: '发起深度根因诊断(异步任务,提交即返 task_id,无需等待)。三种数据来源:① line+时间窗:导出产线 DAQ 快照 CSV;② data_path:诊断服务内已有数据文件;③ export_id(推荐):上传宿主工具 daq_export 导出的数据集(manifest 节点映射 + 全量原始时序多文件)。Channel 可继续其他任务;完成后平台自动把结果回执到本频道,空闲时也可 diag_status 查询;mode=sync 可同步等待完成。',
+      label: '发起分析',
+      description: '发起 IDD 后台分析任务(提交即返 task_id,无需等待;完成后平台自动回执本频道,空闲时也可 diag_status 查询)。analysis_intent 选择分析模式,每种意图由 IDD 侧对应 skill 协议执行(harness 在 IDD 内,分析业务与平台解耦):deep-diagnosis=深度根因诊断(9 阶段管线,最重);stability-report=产线稳定报告(评分+等级+建议,零根因);quick-screen=快速筛查(越限/漂移/冻结异常清单+HTML 看板,最快);doe-analysis=DOE 试验分析(因子效应/显著性/最优工况);experience-mining=调参经验挖掘(结构化经验条目,供知识库沉淀);optimizer-campaign=优化战役(寻优迭代+推荐工况,最重)。数据来源三选一:① line+时间窗(导出产线 DAQ 快照);② data_path:诊断服务内已有数据文件;③ export_id(推荐):daq_export 导出的数据集。',
       parameters: {
         type: 'object',
         properties: {
           line: { type: 'string', description: '产线 id(与 data_path/export_id 三选一;export/data_path 模式可填 any)' },
-          export_id: { type: 'string', description: 'daq_export 返回的数据集 id(daqexp-…):上传 manifest+全部节点全量时序 CSV 做多文件深度分析' },
+          export_id: { type: 'string', description: 'daq_export 返回的数据集 id(daqexp-…):上传 manifest+全部节点全量时序 CSV 做多文件分析' },
           data_path: { type: 'string', description: '可选:诊断服务内数据文件相对路径(如 data/aw-snapshots/x.csv;跳过快照导出,适合离线数据分析)' },
           from_ms: { type: 'number', description: '窗口起点(epoch 毫秒;仅 line 模式;缺省 now-60min)' },
           to_ms: { type: 'number', description: '窗口终点(epoch 毫秒;仅 line 模式;缺省 now)' },
-          question: { type: 'string', description: '诊断问题(缺省按数据来源自动组题;export 模式自动携带 manifest 场景备注)' },
-          scene: { type: 'string', description: '场景名(缺省 <line>_diag);场景为自由标签,诊断管线按数据特征自适应' },
+          question: { type: 'string', description: '分析问题(缺省按意图自动生成情景化提示词;业务要求特殊时才覆写)' },
+          analysis_intent: {
+            type: 'string',
+            enum: ['deep-diagnosis', 'stability-report', 'quick-screen', 'doe-analysis', 'experience-mining', 'optimizer-campaign'],
+            description: '分析模式(缺省 deep-diagnosis)。按业务情景选择:要根因→deep-diagnosis;要运行健康度评分/等级→stability-report;要快速异常清单→quick-screen;要多因子试验数据→doe-analysis;要沉淀调参经验→experience-mining;要寻优推荐工况→optimizer-campaign',
+          },
+          scene: { type: 'string', description: '场景名(缺省 <line>_diag);场景为自由标签,分析管线按数据特征自适应' },
           mode: { type: 'string', enum: ['async', 'sync'], description: 'async(缺省)=提交即返后台跑;sync=同步等待完成(最长 sync_timeout_s,超时自动转后台继续)' },
           sync_timeout_s: { type: 'number', description: 'sync 模式等待上限秒(缺省 240,上限 540)' },
-          harness: { type: 'string', description: '诊断引擎按次覆盖(omp/claude/mock;缺省用插件设置)' },
-          analysis_intent: { type: 'string', description: '分析意图(可选):deep-diagnosis=深度根因诊断(缺省);stability-report=产线稳定报告(零根因分析,出分+等级+运行建议);quick-screen=快速筛查;doe-analysis=DOE 分析。非缺省意图由对应 skill 协议执行' },
+          harness: { type: 'string', description: '分析引擎按次覆盖(omp/claude/mock;缺省用插件设置)' },
+          model: { type: 'string', description: '可选:引擎模型按次覆盖(合法性由 IDD 校验,不合法返回 400 说明)' },
+          permission_mode: { type: 'string', description: '可选:引擎权限模式按次覆盖(合法性由 IDD 校验)' },
         },
         required: [],
       },
@@ -160,6 +167,8 @@ export default {
             dataPaths,
             harness: args.harness ? String(args.harness) : undefined,
             analysisIntent: args.analysis_intent ? String(args.analysis_intent) : undefined,
+            model: args.model ? String(args.model) : undefined,
+            permissionMode: args.permission_mode ? String(args.permission_mode) : undefined,
             // 归因(分发层注入的调用方上下文):诊断完成后平台据此把结果回执给发起 Agent
             agentId: agent?.agentId ?? '',
             channelId: agent?.channelId ?? '',
@@ -192,14 +201,14 @@ export default {
                   return { text: `✅ 同步诊断完成 task_id=${r.runId}(${via})\n评分=${st?.result?.score ?? '-'} 结论=${st?.result?.verdict ?? '-'}\nreport_md_path=${rep}\n总结:${String(st?.result?.summary ?? '').slice(0, 800)}\n\n入库知识库:调用 rag-bridge 的 kb_agent(mode=async,prompt=「请把这份深度诊断报告入库到 aw-industrial 知识库:读取文件 ${rep} 的全文内容并入库,完成后报告 doc_path 与分块数。标签:诊断、深度诊断。」),完成后 kb_agent_status(task_id) 查询。` }
                 }
                 if (status === 'failed' || status === 'stopped') {
-                  return { text: `诊断 ${r.runId} 以 ${status} 结束:${st?.result?.error ?? '详见 diag_status'}`, isError: true }
+                  return { text: `分析任务 ${r.runId} 以 ${status} 结束:${st?.result?.error ?? '详见 diag_status'}`, isError: true }
                 }
               }
-              return { text: `已发起深度诊断 task_id=${r.runId}(${via})。同步等待 ${timeoutS}s 超时,诊断仍在后台运行——完成后平台会自动把结果回执到你的信箱并唤醒你;也可 diag_status(run_id=${r.runId}) 主动查询。` }
+              return { text: `已发起${intentLabel(r.intent)}任务 task_id=${r.runId}(${via})。同步等待 ${timeoutS}s 超时,分析仍在后台运行——完成后平台会自动把结果回执到你的信箱并唤醒你;也可 diag_status(run_id=${r.runId}) 主动查询。注入的分析问题:${r.question}` }
             }
           }
           return {
-            text: `已发起深度诊断异步任务 task_id=${r.runId}(${via})。知识库 IDD 在后台执行,Channel 无需等待——可继续其他任务;完成后平台会自动把结果回执到你的信箱并唤醒你(空闲时也可用 diag_status(run_id=${r.runId}) 主动查询;完成后按指引调 kb_agent 入库知识库)。`,
+            text: `已发起「${intentLabel(r.intent)}」异步分析任务 task_id=${r.runId}(${via})。IDD 在后台以对应 skill 协议执行,Channel 无需等待——可继续其他任务;完成后平台会自动把结果回执到你的信箱并唤醒你(空闲时也可用 diag_status(run_id=${r.runId}) 主动查询;完成后按指引调 kb_agent 把报告入库知识库)。注入的分析问题:${r.question}`,
           }
         }
         catch (err) {
@@ -210,8 +219,8 @@ export default {
 
     ctx.omp.registerTool({
       name: 'diag_status',
-      label: '诊断状态',
-      description: '查询深度诊断进度:传 run_id 看单条实时状态(完成时含评分/结论/报告路径),不传看最近 5 条概要。',
+      label: '分析任务状态',
+      description: '查询后台分析任务进度:传 run_id 看单条实时状态(完成时含评分/结论/总结/报告路径),不传看最近 5 条概要。适用 diag_run 发起的全部意图(深度诊断/产线报告/快速筛查/DOE/经验挖掘/优化战役)。',
       parameters: {
         type: 'object',
         properties: {
@@ -228,7 +237,7 @@ export default {
               .slice(0, 5)
             if (!runs.length) return { text: '暂无诊断记录。用 diag_run 发起一次深度诊断。' }
             const lines = runs.map(({ id: rid, meta }) =>
-              `- ${rid} | ${meta.line} | ${meta.status}${meta.stored ? '(已入库)' : ''} | ${meta.source ?? 'agent'} | ${meta.createdAt ? new Date(meta.createdAt).toISOString() : '?'} | ${meta.question ?? ''}`)
+              `- ${rid} | ${meta.line} | [${intentLabel(meta.intent ?? 'deep-diagnosis')}] ${meta.status}${meta.stored ? '(已入库)' : ''} | ${meta.source ?? 'agent'} | ${meta.createdAt ? new Date(meta.createdAt).toISOString() : '?'} | ${meta.question ?? ''}`)
             return { text: `最近 ${runs.length} 条诊断:\n${lines.join('\n')}` }
           }
           const meta = ctx.kv.get(runKey(id))
@@ -245,6 +254,7 @@ export default {
                   engineStatus: st.status,
                   score: st.result.score ?? null,
                   judge_verdict: st.result.verdict ?? null,
+                  summary: st.result.summary ?? '',
                   report_path: st.result.report_md_path ?? st.report_path ?? null,
                   error_message: st.result.error ?? st.error_message ?? null,
                 }
@@ -263,6 +273,7 @@ export default {
             `run_id=${id}`,
             `name=${st?.name ?? meta?.name ?? '?'}`,
             `产线=${meta?.line ?? st?.scene_name ?? '?'}`,
+            `意图=${meta?.intent ?? 'deep-diagnosis'}(${intentLabel(meta?.intent ?? 'deep-diagnosis')})`,
             `状态=${status}`,
             `来源=${meta?.source ?? '?'}`,
           ]
@@ -272,10 +283,11 @@ export default {
             const reportPath = st?.report_path ?? meta?.reportPath ?? '-'
             parts.push(`评分=${st?.score ?? meta?.score ?? '-'}`)
             parts.push(`结论=${st?.judge_verdict ?? meta?.verdict ?? '-'}`)
+            if (st?.summary) parts.push(`总结=${String(st.summary).slice(0, 600)}`)
             parts.push(`report_md_path=${reportPath}`)
             parts.push('')
-            parts.push('✅ 诊断完成,报告已就绪。入库知识库请调用 rag-bridge 的 kb_agent 工具:')
-            parts.push(`  mode=async, prompt=「请把这份深度诊断报告入库到 aw-industrial 知识库:读取文件 ${reportPath} 的全文内容并入库(写盘+索引),完成后报告 doc_path 与分块数。标签:诊断、深度诊断。」`)
+            parts.push('✅ 分析完成,报告已就绪。入库知识库请调用 rag-bridge 的 kb_agent 工具:')
+            parts.push(`  mode=async, prompt=「请把这份分析报告入库到 aw-industrial 知识库:读取文件 ${reportPath} 的全文内容并入库(写盘+索引),完成后报告 doc_path 与分块数。标签:分析、${intentLabel(meta?.intent ?? 'deep-diagnosis')}。」`)
             parts.push('提交后频道无需等待,空闲时用 kb_agent_status(task_id) 查询入库结果。')
           }
           if (status === 'failed' || status === 'stopped') parts.push(`错误=${st?.error_message ?? meta?.error ?? '-'}`)

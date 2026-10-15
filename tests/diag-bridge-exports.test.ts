@@ -231,7 +231,8 @@ test('diag_run export_id+sync:轮询到完成,认领回执,文本含报告路径
 test('sweep:完成时 deliver 回执带 agentId/channelId 与 kb_agent 指引(Channel 接收链)', async () => {
   const m = makeCtx()
   m.kvStore.set('run:sw1', { line: 'line-a', status: 'running', source: 'agent', agentId: 'ag-9', channelId: 'ch-9', createdAt: Date.now(), question: 'q' })
-  statusScript = [{ status: 'completed', engineStatus: 'completed', score: 91, judge_verdict: 'ENDORSED', report_path: 'D:/idd/rep.md', name: 'x_sw1' }]
+  // v2.3:sweep 走 /tasks/:id 任务视图(result.summary/verdict/score/report_md_path 绝对路径)
+  statusScript = [{ status: 'completed', run_status: 'completed', name: 'x_sw1', result: { summary: '结论段摘要', verdict: 'ENDORSED', score: 91, report_md_path: 'D:/idd/rep.md' } }]
   await sweepOnce(m.ctx as never)
   assert.equal(m.delivered.length, 1)
   const n = m.delivered[0]!

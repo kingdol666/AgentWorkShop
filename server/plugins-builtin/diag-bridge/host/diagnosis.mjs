@@ -5,10 +5,15 @@
 import { baseOf, harnessOf, jpost, maxMinutesOf, maxTurnsOf, runKey, runningOfLine, short } from './helpers.mjs'
 import { snapshotCore } from './snapshot.mjs'
 import { startingLines } from './constants.mjs'
+import { defaultQuestionFor, resolveBridgeIntent } from './intents.mjs'
 
-export async function startDiagnosis(ctx, { line, fromMs, toMs, question, scene, source, dataPath, dataPaths, harness, agentId, channelId, analysisIntent }) {
+export async function startDiagnosis(ctx, { line, fromMs, toMs, question, scene, source, dataPath, dataPaths, harness, agentId, channelId, analysisIntent, model, permissionMode }) {
   const base = baseOf(ctx)
   if (!base) return { ok: false, error: 'diag.base_url 非法(仅允许 http/https 且 host 为 127.0.0.1/localhost)。' }
+  const intent = resolveBridgeIntent(analysisIntent)
+  if (analysisIntent && String(analysisIntent).trim() && !intent) {
+    return { ok: false, error: `未知分析意图: ${String(analysisIntent)}(支持 deep-diagnosis/stability-report/quick-screen/doe-analysis/experience-mining/optimizer-campaign)` }
+  }
   if (startingLines.has(line)) return { ok: false, error: `产线 ${line} 已有诊断正在启动,请稍后再试。` }
   const existing = runningOfLine(ctx, line)
   if (existing) return { ok: false, error: `产线 ${line} 已有运行中的诊断(run_id=${existing.id}),请稍后用 diag_status 查询。` }
@@ -19,8 +24,8 @@ export async function startDiagnosis(ctx, { line, fromMs, toMs, question, scene,
       snap = await snapshotCore(ctx, line, fromMs, toMs)
       if (!snap.ok) return { ok: false, error: snap.error }
     }
-    const intent = String(analysisIntent ?? '').trim()
-    const q = question || (intent && intent !== 'deep-diagnosis' ? `${line} 产线该时窗数据分析(${intent})` : `${line} 产线该时窗数据深度根因诊断`)
+    // 按情景注入业务提示词:调用方显式 question 优先,否则用意图目录的模板(分析语义在此,执行解耦在 IDD)
+    const q = question || defaultQuestionFor(intent, { line, fromMs, toMs })
     const sceneName = scene || `${line}_diag`
     // v2.1:统一走 IDD 任务管理面 /api/diagnosis/tasks——接收即返 task_id,
     // 诊断在 IDD 后台线程执行(内部 start+execute),Channel 绝不等待。
@@ -33,7 +38,9 @@ export async function startDiagnosis(ctx, { line, fromMs, toMs, question, scene,
       sceneName,
       userQuestion: q,
       harness: harness || harnessOf(ctx), // 缺省落 claude 引擎会因无 key 失败,必须显式(系统配置 plugins.diag-bridge.harness → kv → omp;diag_run 可按次覆盖)
-      ...(intent ? { analysisIntent: intent } : {}), // 分析意图透传(stability-report=产线稳定报告等;未知值由 IDD 400 拒,不做白名单硬编码)
+      ...(intent && intent !== 'deep-diagnosis' ? { analysisIntent: intent } : {}), // 分析意图透传(缺省意图不传,由 IDD 兜底)
+      ...(model ? { model: String(model) } : {}), // 引擎模型按次覆盖(合法性由 IDD validateEngineOption 校验,不合法 400)
+      ...(permissionMode ? { permissionMode: String(permissionMode) } : {}),
       enhancement: 'off',
       reportLanguage: 'zh',
       maxTurns: maxTurnsOf(ctx), // 修复循环会加转数;150 不够走完全管线
@@ -44,6 +51,7 @@ export async function startDiagnosis(ctx, { line, fromMs, toMs, question, scene,
     if (!runId) return { ok: false, error: `tasks 响应缺少 data.task_id: ${short(started)}` }
     ctx.kv.set(runKey(runId), {
       line, fromMs, toMs, question: q, scene: sceneName,
+      intent: intent || 'deep-diagnosis',
       status: 'running', createdAt: Date.now(), source,
       csvPath: snap.csvPath,
       files: Array.isArray(dataPaths) ? dataPaths.length : 0,
@@ -51,7 +59,7 @@ export async function startDiagnosis(ctx, { line, fromMs, toMs, question, scene,
       // 归因:发起 Agent 完成后的结果回执靠它寻址(平台通告面 deliver)
       agentId: agentId || '', channelId: channelId || '',
     })
-    return { ok: true, runId, name, csvPath: snap.csvPath, rows: snap.rows, nodes: snap.nodes, files: Array.isArray(dataPaths) ? dataPaths.length : 0 }
+    return { ok: true, runId, name, csvPath: snap.csvPath, rows: snap.rows, nodes: snap.nodes, files: Array.isArray(dataPaths) ? dataPaths.length : 0, intent: intent || 'deep-diagnosis', question: q }
   }
   catch (err) {
     return { ok: false, error: `发起诊断失败: ${err?.message ?? err}` }
