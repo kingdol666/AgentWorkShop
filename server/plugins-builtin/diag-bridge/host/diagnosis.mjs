@@ -6,7 +6,7 @@ import { baseOf, harnessOf, jpost, maxMinutesOf, maxTurnsOf, runKey, runningOfLi
 import { snapshotCore } from './snapshot.mjs'
 import { startingLines } from './constants.mjs'
 
-export async function startDiagnosis(ctx, { line, fromMs, toMs, question, scene, source, dataPath, dataPaths, harness, agentId, channelId }) {
+export async function startDiagnosis(ctx, { line, fromMs, toMs, question, scene, source, dataPath, dataPaths, harness, agentId, channelId, analysisIntent }) {
   const base = baseOf(ctx)
   if (!base) return { ok: false, error: 'diag.base_url 非法(仅允许 http/https 且 host 为 127.0.0.1/localhost)。' }
   if (startingLines.has(line)) return { ok: false, error: `产线 ${line} 已有诊断正在启动,请稍后再试。` }
@@ -19,7 +19,8 @@ export async function startDiagnosis(ctx, { line, fromMs, toMs, question, scene,
       snap = await snapshotCore(ctx, line, fromMs, toMs)
       if (!snap.ok) return { ok: false, error: snap.error }
     }
-    const q = question || `${line} 产线该时窗数据深度根因诊断`
+    const intent = String(analysisIntent ?? '').trim()
+    const q = question || (intent && intent !== 'deep-diagnosis' ? `${line} 产线该时窗数据分析(${intent})` : `${line} 产线该时窗数据深度根因诊断`)
     const sceneName = scene || `${line}_diag`
     // v2.1:统一走 IDD 任务管理面 /api/diagnosis/tasks——接收即返 task_id,
     // 诊断在 IDD 后台线程执行(内部 start+execute),Channel 绝不等待。
@@ -32,6 +33,7 @@ export async function startDiagnosis(ctx, { line, fromMs, toMs, question, scene,
       sceneName,
       userQuestion: q,
       harness: harness || harnessOf(ctx), // 缺省落 claude 引擎会因无 key 失败,必须显式(系统配置 plugins.diag-bridge.harness → kv → omp;diag_run 可按次覆盖)
+      ...(intent ? { analysisIntent: intent } : {}), // 分析意图透传(stability-report=产线稳定报告等;未知值由 IDD 400 拒,不做白名单硬编码)
       enhancement: 'off',
       reportLanguage: 'zh',
       maxTurns: maxTurnsOf(ctx), // 修复循环会加转数;150 不够走完全管线

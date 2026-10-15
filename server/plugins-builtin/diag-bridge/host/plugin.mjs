@@ -109,6 +109,7 @@ export default {
           mode: { type: 'string', enum: ['async', 'sync'], description: 'async(缺省)=提交即返后台跑;sync=同步等待完成(最长 sync_timeout_s,超时自动转后台继续)' },
           sync_timeout_s: { type: 'number', description: 'sync 模式等待上限秒(缺省 240,上限 540)' },
           harness: { type: 'string', description: '诊断引擎按次覆盖(omp/claude/mock;缺省用插件设置)' },
+          analysis_intent: { type: 'string', description: '分析意图(可选):deep-diagnosis=深度根因诊断(缺省);stability-report=产线稳定报告(零根因分析,出分+等级+运行建议);quick-screen=快速筛查;doe-analysis=DOE 分析。非缺省意图由对应 skill 协议执行' },
         },
         required: [],
       },
@@ -158,6 +159,7 @@ export default {
             dataPath: dataPathDirect || undefined,
             dataPaths,
             harness: args.harness ? String(args.harness) : undefined,
+            analysisIntent: args.analysis_intent ? String(args.analysis_intent) : undefined,
             // 归因(分发层注入的调用方上下文):诊断完成后平台据此把结果回执给发起 Agent
             agentId: agent?.agentId ?? '',
             channelId: agent?.channelId ?? '',
