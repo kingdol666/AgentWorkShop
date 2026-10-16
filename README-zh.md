@@ -28,7 +28,7 @@
 
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.7.63</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST 集成 · 数据分析台账（产线级权限隔离）· 119 个运行时设置项 · 双语文档（简体中文 / English）</sub>
+<sub><b>v0.7.65</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST 集成（镜像与直连双路径）· 数据分析台账（产线级权限隔离）· 82 个宿主工具 · 119 个运行时设置项 · 双语文档（简体中文 / English）</sub>
 
 <br />
 
@@ -154,7 +154,7 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 | **Channel 群聊与原生 HITL** | 频道时间线是真正的群聊：成员请求升级为**可追踪作业**（不是一条会丢的消息）；带原生 ask 能力的引擎（如 `omp`）把 HITL 提问路由进平台——您批准一次，引擎带着回执继续跑。成员权限与用户通知是一等公民。 |
 | **定时任务** | 任意 Channel 任务可挂上**调度**——固定 `interval`（60s 下限）或 `daily` 每日定点——在 `/workshop/schedules` 页或 REST API 管理，带逐次运行历史、忙等守卫（频道仍有在飞任务时触发顺延）与 Channel 级可见性。 |
 | **持久记忆与频道过程记忆** | 私有 + Channel 共享双域；FTS5 CJK 切分，可选向量混合检索，token 预算注入。其上是**过程记忆**：确定性的 root/child/lead 事件名契约、canonical root 摘要、持久 outbox（死信 + 补偿 worker），让一个目标的来龙去脉跨重启存活。 |
-| **四个入口** | 一个 manager 坐在每扇门后：**WS**（AEP v1 事件流，seq 续传）、**MCP**（约 25 个进程内工具）、**A2A**（JSON-RPC 2.0 + AgentCard）、**REST**。 |
+| **四个入口** | 一个 manager 坐在每扇门后：**WS**（AEP v1 事件流，seq 续传）、**MCP**（38 个进程内工具）、**A2A**（JSON-RPC 2.0 + AgentCard）、**REST**。 |
 
 #### 工业栈
 
@@ -167,9 +167,10 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 | **Recipe 版本化治理** | 参数修改按版本入史（归因 用户/Agent/系统 + 操作者 + 原因）。可非破坏地回退到任意修订版或最近一次良好批次。失效节点参数跳过并明确标识。 |
 | **配方链路优化闭环** | Agent 像人类工艺员一样通过配方管理做优化：`recipe_trial` 把多参数候选**整批试验（不写版本）**→ 复测 → 有进步用 `recipe_update` 固化（同一配方 id，版本+1）→ 劣化触发**统一回退**（`recipe_rollback` 带 `dispatch:true` = 定义回退 + PLC 整批恢复）。单参数直调移出闭环；试验受四层限界与同线节拍卡控。 |
 | **频道绑定产线（只读授权）** | 频道可绑定一条产线：全员无需节点绑定即可读取该线的运维日志、配方历史与实时状态（工具回执标注「频道绑定，只读」），写操作仍需节点授权。产线简报自动注入成员提示词；换绑即时回收成员运行时。 |
-| **数据分析台账（v0.7.62）** | Agent 的分析结果作为一等记录留痕：原生 `analysis_save` / `analysis_query` 宿主工具写入独立的 `analysis_reports` 表，按产线 + 配方 + 时间窗组织，含关键结论、指标、数据来源与操作者归因。台账对 Agent 只增不改；人类经 REST 修订并刷新编辑者归因。专属 `/analysis` 页面经 WS 实时前插新报告，支持产线 / 配方 / 时间 / 关键词多维检索，改删受产线权限门控（`operate` 可改、删除仅 admin）。外部分析插件经同一台账集成——`diag_run` 以后台任务运行 IDD 分析（`stability-report` 产线稳定报告 / `deep-diagnosis` 根因诊断），提交即返 `task_id`，`diag_status` 按taskId 查进度，完成后报告经 `analysis_save` 落账。 |
+| **数据分析台账（v0.7.62）** | Agent 的分析结果作为一等记录留痕：原生 `analysis_save` / `analysis_query` 宿主工具写入独立的 `analysis_reports` 表，按产线 + 配方 + 时间窗组织，含关键结论、指标、数据来源与操作者归因。台账对 Agent 只增不改；人类经 REST 修订并刷新编辑者归因。专属 `/analysis` 页面经 WS 实时前插新报告，支持产线 / 配方 / 时间 / 关键词多维检索，改删受产线权限门控（`operate` 可改、删除仅 admin）。外部分析插件经同一台账集成——`diag_run` 以后台任务运行 IDD **六种分析意图**（深度根因诊断 / 产线稳定报告 / 快速筛查 / DOE 试验分析 / 调参经验挖掘 / 优化战役，按情景注入分析提示词），提交即返 `task_id`，`diag_status` 按 taskId 查进度，完成后报告经 `analysis_save` 落账。 |
 | **工艺参数语义面与调控闭环** | 全部可下发写收敛到**配方面**（`recipe_update` / `recipe_apply` / `recipe_trial`，各受「绑定 → HITL 理由 → 运行门」三门约束）。写入仍被**四层限界**逐层收窄——节点安全量程 ∩ 工艺参数基准限界 ∩ 活动产品限界 ∩ 活动配方工艺窗口——且每次下发自动开一条调控记录，由 `dcw_judge` 落判定（keep / rollback / uncertain），`dcw_rollback` 执行回退。（v0.7.63 摘除了 `param_control` / `param_read` / `dcw_read` 直连节点的遗留死工具面，Agent 工具清单保持干净。） |
 | **产线运营** | 产线 → 产品 → 配方 → 批次。配方窗口门控采集并联锁写入；每条样本打标 `product/recipe/run`，实现按批次隔离。 |
+| **MES REST 集成（双数据路径）** | 生产管理数据进入同一受治理工作空间：`mes-rest` 节点用**声明式请求映射**对接 MES API 的目录/当前值/历史端点（`secretRef`→env token 凭证零明文；钩子可对取数做下沉后处理）。Agent 两种读法——**直连**：`mes_fetch` 按映射发请求实时拿 API 响应（大窗异步分页落 `mesds-*` CSV 数据集，经 `mes_datasets` / `mes_dataset_read` 读取，原始行不进对话）；**镜像**：`http` 数采节点轮询同一 API 入本地 TSDB，`daq_query` 与原生节点同面取数——API 宕机也不断供。`mes_catalog` 按产线严格过滤（fail-closed）。 |
 | **多形态数采帧管线** | 多点轮廓（测厚仪/扫描仪）与 CCD 图像帧流经模板 sink 管线：向量与元数据入 Timescale（`daq_frames`），像素入对象存储（MinIO，不可达时自动降级到本地磁盘）；派生指标阈值越限走既有告警链路。 |
 | **生产化硬化（v0.7.58）** | 保写心跳生命周期根治——失败写不占位（心跳不再直发幻影指令值）、驱动/连接/产线变更即清值、停线自动挂起保写；mock 静默兜底封堵（未知协议显式报错，插件卸载不再假成功）；帧像素 sha256 完整性指纹 + 对象存储按天 GC（删前 DB 交叉校验防误删）；Timescale 按天 chunk + 列存压缩（TSL）；堆水位监控 + 崩溃/失联/水位三重自动重生；写保持窗与试验节拍落盘（重启不绕频控）；grant 运行时复核并入频道绑线（撤权即失活无死角）。 |
 | **Agent 自查工具** | `line_context`、`ops_log`、`recipe_log`、`recipe_versions`、`dcw_journal`——Agent 清楚自己操控的产线/产品/配方，谁做过什么，每个值怎么变。 |
@@ -576,7 +577,7 @@ curl -X POST http://localhost:3000/api/workshop/schedules \
 | 入口 | 端点 | 面向 |
 |---|---|---|
 | **WS** | `/api/workshop/ws?channelId=…` | 仪表盘 / UI——AEP v1 信封，per-channel 单调 `seq`，5000 事件环形缓冲，`lastSeq` 续传，快照兜底。 |
-| **MCP** | 进程内服务，约 25 个工具 | Agent（omp host tools）——管理面 + 作业面工具，Channel 作用域。 |
+| **MCP** | 进程内服务，38 个工具 | Agent（omp host tools）——管理面 + 作业面工具，Channel 作用域。 |
 | **A2A** | `POST /api/workshop/a2a/:agentId/rpc` | 外部 Agent——JSON-RPC 2.0，`AgentCard` 在 `/card`，`tasks/sendSubscribe` SSE。 |
 | **REST** | `/api/workshop/**` | 人 / 脚本——完整管理面。 |
 
@@ -646,7 +647,7 @@ AgentWorkShop/
 │   │   ├── agents/             # AgentInterface：14 个引擎（+ 工业工具）
 │   │   ├── daq/ dcw/ aml/      # 边缘运行时 · 驱动 · 队列 · 存储 · 建模实验室
 │   │   └── db/                 # node:sqlite 仓储层
-│   ├── mcp/                    # MCP 服务（25 个工具，进程内 workshop 面）
+│   ├── mcp/                    # MCP 服务（38 个工具，进程内 workshop 面）
 │   ├── plugins-builtin/        # 随包发布的插件（serial-bridge · rag-bridge · diag-bridge · twin-injection-default）
 │   └── plugins/                # 运行时装配（单例）
 ├── mcp/                        # aw mcp —— 零依赖 stdio MCP 网关（38 个工具，实例自动发现）

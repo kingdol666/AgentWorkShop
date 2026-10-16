@@ -191,7 +191,7 @@ footer:
         <div class="hw-layer-tag"><span class="l1">入口</span><span class="l2">ENTRY</span></div>
         <div class="hw-cells">
           <div class="hw-cell"><span class="c1">WS</span><span class="c2">AEP v1 事件流 · seq 续传</span></div>
-          <div class="hw-cell"><span class="c1">MCP</span><span class="c2">约 25 个进程内工具</span></div>
+          <div class="hw-cell"><span class="c1">MCP</span><span class="c2">38 个进程内工具</span></div>
           <div class="hw-cell"><span class="c1">A2A</span><span class="c2">JSON-RPC 2.0 + AgentCard</span></div>
           <div class="hw-cell"><span class="c1">REST</span><span class="c2">/api/workshop/**</span></div>
         </div>
@@ -314,7 +314,7 @@ footer:
       <div class="hw-f"><span class="tag">SCHED</span><h3>定时任务</h3><p>interval / daily 双模式挂任意 Channel 任务——逐次运行历史、忙等守卫、连续失败熔断,巡线无人值守。</p></div>
       <div class="hw-f"><span class="tag">QOS</span><h3>根任务队列与租约</h3><p>FIFO 根队列带可见排队位次;排队等待不消耗执行预算,lead 救援扫自动复活失活入场;派发代 + 执行租约围栏丢弃迟到事件;监督看门狗区分卡死与慢。</p></div>
       <div class="hw-f"><span class="tag">PROD</span><h3>生产化硬化(v0.7.58)</h3><p>保写心跳生命周期治理(失败写不占位 · 变更点清值 · 产线活动门);mock 静默兜底封堵;帧像素 sha256 指纹 + 对象存储按天 GC(删前 DB 交叉校验);Timescale 按天 chunk + 列存压缩;堆水位监控 + 子进程自动重生;治理窗落盘;grant 复核并入频道绑线。</p></div>
-      <div class="hw-f"><span class="tag">DATA</span><h3>数据分析台账(v0.7.62)</h3><p>analysis_save / analysis_query 原生工具落账分析结论(产线×配方×时间窗),Agent 只增、人类修订留痕;/analysis 页多维检索实时前插;diag_run 后台跑 IDD 产线报告(stability-report)按 taskId 查进度;改删与可见性全受产线级权限门控。</p></div>
+      <div class="hw-f"><span class="tag">DATA</span><h3>数据分析台账(v0.7.62)</h3><p>analysis_save / analysis_query 原生工具落账分析结论(产线×配方×时间窗),Agent 只增、人类修订留痕;/analysis 页多维检索实时前插;diag_run 后台跑 IDD 六种分析意图(根因/产线报告/快筛/DOE/经验挖掘/优化战役)按 taskId 查进度;改删与可见性全受产线级权限门控。</p></div>
     </div>
   </section>
 

@@ -197,7 +197,7 @@ footer:
         <div class="hw-layer-tag"><span class="l1">Entry</span><span class="l2">ENTRY</span></div>
         <div class="hw-cells">
           <div class="hw-cell"><span class="c1">WS</span><span class="c2">AEP v1 stream · seq resume</span></div>
-          <div class="hw-cell"><span class="c1">MCP</span><span class="c2">~25 in-process tools</span></div>
+          <div class="hw-cell"><span class="c1">MCP</span><span class="c2">38 in-process tools</span></div>
           <div class="hw-cell"><span class="c1">A2A</span><span class="c2">JSON-RPC 2.0 + AgentCard</span></div>
           <div class="hw-cell"><span class="c1">REST</span><span class="c2">/api/workshop/**</span></div>
         </div>
