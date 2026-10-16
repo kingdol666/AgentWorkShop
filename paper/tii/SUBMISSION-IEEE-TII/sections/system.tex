@@ -6,7 +6,8 @@ coordination to plant interaction through industrial nodes
 and production context (Fig.~\ref{fig:arch}). Responsibilities group into
 five planes---logical groupings, not deployable units: a \emph{team} plane
 owns member identity, task state, and
-episodic memory; an \emph{integration} plane owns protocol acceptance,
+episodic memory, carrying the analysis that turns acquired data into
+proposals; an \emph{integration} plane owns protocol acceptance,
 readback, freshness, and transport errors, presenting devices as semantic
 nodes feeding both the agent and a live plant-mirror view; a
 \emph{governance} plane owns the governed life cycle---admission through
@@ -21,9 +22,8 @@ bindings, and limits are data rather than code---in every plane, a scenario
 supplies data and strategy (Fig.~\ref{fig:arch}).
 
 \looseness=-1 As a deployable project, \system{} is open source under the
-Apache-2.0 license,\footnote{\url{https://github.com/kingdol666/AgentWorkShop};
-deterministic plant simulators:
-\url{https://github.com/kingdol666/plc-node-simulator}.} and ships the
+Apache-2.0 license (repository links withheld for double-blind review) and
+ships the
 planes above as one service---team and channel runtime, multi-protocol
 acquisition, governed write control, versioned recipes and run ledgers, an
 adaptive-modeling training loop with candidate-to-production promotion, and
@@ -92,7 +92,7 @@ A member--node binding grants access to a sanctioned tool on a specific node and
 selects automatic or approval-mediated execution. Line permissions (none,
 read-only, operate) authorize binding creation and mutation; runtime
 invocation is authorized by the persisted capability, not channel membership.
-Intervals are re-checked every request instead of cached, so revoking
+Intervals are re-checked every request, so revoking
 a binding or switching the recipe takes effect on the next request; the same path
 serves a console, a harness, and an agent engine---authority does not
 depend on the client, only the evidence record differs.
@@ -124,7 +124,7 @@ bounded window, propose a setpoint inside the resolved interval, invoke the
 governed write, and record a verdict
 (Section~\ref{sec:procedure} instruments it).
 
-Each iteration leaves more than a written value: an
+\looseness=-1 Each iteration leaves more than a written value: an
 optimization record, the acknowledgment grade, an attributed journal
 entry, predicate attainment, and a workflow terminal state
 (per-intervention detail in Section~\ref{sec:mech}). Two

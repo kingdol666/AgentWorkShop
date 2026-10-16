@@ -2,14 +2,14 @@
 \centering
 \includegraphics[width=\columnwidth]{resources/aws_fig3-flat.png}
 \caption{Implemented agent-team runtime. A natural-language goal enters as
-a task; the lead agent decomposes and dispatches plans; retrieval and
-analysis produce the proposed setpoint (the LLM engine occupying a
-replaceable strategy slot). The governance stages are deterministic platform
+a task; the lead decomposes and dispatches plans; retrieval and
+analysis produce the setpoint (the LLM engine in its replaceable
+strategy slot). The governance stages are deterministic platform
 logic: Gate~1 applies the Eq.~\eqref{eq:admission} interlock, Gate~2 the
-approval wait; the write agent reads back the value actually present (SET
-versus observed ACT); the judge records keep, rollback, or uncertain; every
-step is journaled with actor attribution. ``Governance Agent'' denotes
-deterministic platform stages, not a model-bearing agent.}
+approval wait; the write agent reads back the actual value (SET versus ACT);
+the judge records keep, rollback, or uncertain; each step is journaled with
+attribution. ``Governance Agent'' boxes are platform stages, not
+model-bearing agents.}
 \label{fig:runtime}
 \end{figure}
 
@@ -37,22 +37,23 @@ agent-originated path to the plant passes through the same governed write.
 
 \begin{figure}[!t]
 \centering
-\includegraphics[width=\columnwidth]{resources/fig-admission.pdf}
-\vspace{1pt}
-% gloss strip (bottom 92pt of the 296pt natural height) duplicates the
-% caption and is trimmed away; the card renders at native column width
-\includegraphics[width=\columnwidth,trim=0 103 0 0,clip]{resources/hitl-card-crop.png}
-
-\vspace{-16pt}{\hfill\footnotesize (b)}\par\nopagebreak
-\vspace{8pt}
+% figures/fig-admission.pdf ships a white full-bleed background; the trim
+% removes only the blank margin above the ink (content scales up ~1.4%).
+\includegraphics[width=\columnwidth,trim=3.5 0 1 12.6,clip]{resources/fig-admission.pdf}
+% Rebuilt by figures/reflow-hitl-card.py from figures/retired/
+% hitl-card-crop-orig.png: the authentic card rows are re-packed so the UI
+% text prints at >=6.8pt at column width (the earlier 1.15x band stacking
+% printed it at ~4pt; visual-judge verdict 2026-10-16, page 4). The (b)
+% panel letter is baked into the image's clear top-right zone.
+\includegraphics[width=\columnwidth]{resources/hitl-card-render.png}
 \caption{The admission boundary and its human-approval gate.
-(a)~The Eq.~\eqref{eq:admission} interval geometry on the cast-film
-reference line: four declared,
+(a)~The Eq.~\eqref{eq:admission} interval geometry: four declared,
 versioned bounds narrow to the admitted interval; a proposal
-outside it is rejected by its excluding layer (the Q1 four-layer drill).
-(b)~The structured approval card on a manual binding
-(live system): machine-checkable fields separated from the proposer's
-display-only reasoning; the comment returns to the member on refusal
+outside it is rejected by its excluding layer (the Q1 drill).
+(b)~The structured approval card on a manual binding (live console;
+re-rendered for legibility). One setpoint---current 63\,bar,
+proposed 64\,bar---is separated from the proposer's display-only reasoning;
+the decision note returns to the member on refusal
 (Section~\ref{sec:hitl}).}
 \label{fig:hitl}
 \end{figure}
@@ -76,8 +77,7 @@ non-empty at node creation) and the remaining terms the baseline,
 active-product, and active-recipe limits; a missing optional limit
 contributes no restriction, and $t$ is the
 admission instant, re-resolved at execution. An emptying configuration
-rejects every write with the excluding layer named, surfacing the
-misconfiguration at the first write. The interval form is deliberate:
+rejects every write, naming the excluding layer at the first write. The interval form is deliberate:
 every bound is a declared, versioned object an audit can replay against
 active product and recipe; rejection is decidable and layer-attributable
 (Fig.~\ref{fig:hitl}a)---decidability, not a safety certificate.
@@ -107,7 +107,7 @@ dispatch, rollback compensation---reach
 one admission and journaling entry point, the hard range included; recipe
 dispatch adds run context---the line-scoped execution window, the reduced
 ISA-88 batch/lot notion---validated at save time. Hold heartbeats (periodic
-re-dispatch of the stored setpoint) are the one non-governed re-dispatch:
+stored-setpoint re-dispatch) are the one non-governed re-dispatch:
 off by default, stopped by line stop or driver change, and re-applying the
 stored value without re-admission---plant-facing state maintenance, not an
 agent path. Line start installs active context before recipe parameters
@@ -131,8 +131,8 @@ command never completed acceptance closes \emph{failed}---batch receipts
 carry a per-parameter grade plus a three-bucket summary
 (verified/unverified/failed), where the summary counts verification
 outcomes and the transport-acknowledged terminal grade lives in the
-per-write journal of acceptance-receipt routes; the write journal stores
-the per-write class,
+per-write journal of acceptance-receipt routes; the per-write
+class is journaled,
 and the operations log records worst-state severity. The
 falsifiable contrast: under a success-flag receipt rule---a transport
 acknowledgment closes the report---the publish-only receipt of
@@ -163,7 +163,7 @@ intended---that distinction belongs to observation and verdict.
 the verdict tool
 \texttt{dcw\_judge} records \texttt{keep}, \texttt{rollback}, or
 \texttt{uncertain} plus a reason; the verdict, stored with the record it closes
-and the response window actually queried, performs no actuation and does not
+and the window actually queried, performs no actuation and does not
 independently validate the evidence, so a scripted keep can coexist with a
 missed objective. Verdict integrity therefore rests on attribution,
 journaling, and operator review---a kept-but-marked record stays visible
@@ -242,7 +242,7 @@ is chosen at grant time rather than gated by the user-side confirmation,
 is attributed to the granting agent, cannot exceed its own node
 face, and is individually revocable (Section~\ref{sec:limits}).
 
-The decision endpoint authenticates a user but does not enforce a line-scoped
+\looseness=-1 The decision endpoint authenticates a user but does not enforce a line-scoped
 approver role---the gap Section~\ref{sec:limits} carries---and reads,
 verdict recording, and some configuration changes do
 not use physical-write approval---workflow mediation, not segregation of

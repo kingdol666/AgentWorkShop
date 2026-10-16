@@ -27,7 +27,7 @@ active = ["main.tex", "main.pdf", "main.blg", "main.log",
           "resources/fig2-architecture.pdf",
           "resources/aws_fig3-flat.png",
           "resources/fig-admission.pdf",
-          "resources/hitl-card-crop.png",
+          "resources/hitl-card-render.png",
           "resources/fig-process-campaign.pdf",
           "resources/fig-missions.pdf"]
 retired = ["figures/retired/fig-runtime.pdf",
@@ -69,25 +69,44 @@ manifest = {
         "figures": "matplotlib sources for the generated figures",
         "figures/retired": "assets no longer referenced by main.tex"
     },
-    "generated_at": "2026-10-10",
+    "generated_at": "2026-10-17",
     "files": files,
-    "quality_pass": ("2026-10-10 compression + figure-consistency pass: 11p -> 10p "
-                     "(redundancy cuts in Q1/Q4/Q5/VI/intro; no architecture or "
-                     "mechanism content removed); fig2-architecture rebuilt as "
-                     "reproducible matplotlib source (make-architecture-figure.py) "
-                     "replacing the Calibri HTML->PDF, unifying all generated "
-                     "figures on Arial/muted palette; Fig.4/Fig.5 heights reduced; "
-                     "stale resources moved to figures/retired/. Prior: 2026-10-09 "
-                     "page-budget pass; four-reviewer TII loop converged Accept x4 "
-                     "(R1 control/safety, R2 LLM-agents, R3 methodology, R4 format)"),
+    "quality_pass": (
+        "2026-10-17 acceptance re-check: reference item separation returned to "
+        "-2.5pt (600dpi crops showed -3.4pt touching at item boundaries); "
+        "Fig.5(b) terminal label moved below the marker (0.70 threshold) + "
+        "right-spine clearance; Fig.3(a) outside-label raised to 6.0pt; space "
+        "reclaimed from the Section V-A recap sentence, abstract trims, and a "
+        "Fig.2 caption line; 10 pages, 0 overfull, audit F1-F8 green, "
+        "check-refs 39/39, visual judge 10/10. "
+        "Prior: 2026-10-16 legibility + disclosure pass: Fig.3(b) rebuilt by "
+        "figures/reflow-hitl-card.py from the archived live screenshot "
+        "(row-wise reflow; printed type >=6.8pt, replacing the 1.15x band "
+        "stacking that printed ~4pt); Fig.4 top annotations moved clear of the "
+        "top spine and its generator gained frame-crossing / bar-straddle "
+        "self-checks; double-blind anonymization (author repository links "
+        "withheld in the license sentence and Data availability); pinned "
+        "Parasuraman 2000 must-cite restored (audit F7 green); "
+        "framework-contribution framing and the DCS-ancestry composition "
+        "disclosure added; page budget held at exactly 10 with 0 overfull. "
+        "Prior: 2026-10-10 compression + figure-consistency pass: 11p -> 10p "
+        "(redundancy cuts in Q1/Q4/Q5/VI/intro; no architecture or "
+        "mechanism content removed); fig2-architecture rebuilt as "
+        "reproducible matplotlib source (make-architecture-figure.py) "
+        "replacing the Calibri HTML->PDF, unifying all generated "
+        "figures on Arial/muted palette; Fig.4/Fig.5 heights reduced; "
+        "stale resources moved to figures/retired/. Prior: 2026-10-09 "
+        "page-budget pass; four-reviewer TII loop converged Accept x4 "
+        "(R1 control/safety, R2 LLM-agents, R3 methodology, R4 format)"),
     "figures_note": ("5 figures, all IEEE-width compliant: fig2-architecture "
                      "(Fig.1, 0.92\\textwidth, Arial rebuild), aws_fig3-flat.png "
                      "(Fig.2, 0.70\\textwidth, user-supplied runtime diagram), "
-                     "fig-admission + hitl-card-crop (Fig.3 combined admission "
-                     "geometry + live HITL card, \\columnwidth), "
+                     "fig-admission + hitl-card-render (Fig.3 combined admission "
+                     "geometry + live HITL card reflowed for legibility, "
+                     "\\columnwidth), "
                      "fig-process-campaign (Fig.4, \\columnwidth), fig-missions "
                      "(Fig.5, \\columnwidth); 1 table (Table I nearest-systems); "
-                     "30 references (\\scriptsize); observed page map: "
+                     "observed page map: "
                      + json.dumps(fig_pages, sort_keys=True))
 }
 

@@ -79,7 +79,7 @@ HUMAN = Patch(facecolor=GREEN, edgecolor="none", label="approval, dispatch, veri
 SETTLE = Patch(facecolor=GREY, edgecolor="none", hatch="///", label="device settle")
 
 fig, ax = plt.subplots(figsize=(W_IN, H_IN))
-fig.subplots_adjust(left=0.075, right=0.995, top=0.865, bottom=0.145)
+fig.subplots_adjust(left=0.075, right=0.995, top=0.865, bottom=0.17)
 
 ROW_S4, ROW_S5, H = 1.0, 0.0, 0.40
 
@@ -126,9 +126,13 @@ ax.text(-4, ROW_S5, "fine-tuning (S5)", ha="right", va="center",
         bbox=dict(facecolor="white", edgecolor="none", pad=1.4))
 
 # --- lane 1 annotations (above the bar) -------------------------------------
-callout(6,   ROW_S4 + H / 2, 22,  1.42, "observe, decide,\npropose")
-callout(88,  ROW_S4 + H / 2, 74,  1.42, "re-propose and\napprove (HITL card)")
-callout(114, ROW_S4 + H / 2, 140, 1.42, "verify 65|65|65,\nverdict")
+# Top labels sit at y=1.53 inside the headroom band (ylim top raised to 1.80,
+# 2026-10-16): the earlier geometry let the top spine cut through the second
+# annotation line (visual-judge verdict, page 7). The self-check below now
+# asserts that no text crosses the frame and that annotations clear the bars.
+callout(6,   ROW_S4 + H / 2, 22,  1.53, "observe, decide,\npropose")
+callout(88,  ROW_S4 + H / 2, 74,  1.53, "re-propose and\napprove (HITL card)")
+callout(114, ROW_S4 + H / 2, 140, 1.53, "verify 65|65|65,\nverdict")
 callout(103, ROW_S4 - H / 2, 142, 0.64, "settle 15 s", top=True)
 inbar(46.5, ROW_S4, "trial cadence early-rejects (69 s)")
 
@@ -144,12 +148,12 @@ ax.legend(handles=[AUTOM, WAIT, HUMAN, SETTLE], loc="center left",
           columnspacing=0.9, labelspacing=0.32)
 
 ax.set_xlim(-46, 208)
-ax.set_ylim(-0.42, 1.62)
+ax.set_ylim(-0.42, 1.80)
 ax.set_yticks([])
 ax.set_xticks([0, 30, 60, 90, 120, 150, 180])
 ax.set_xticks(range(0, 195, 15), minor=True)
 ax.set_xlabel("time from the S4 observation (s), run benchmark-20261009033810",
-              fontsize=FS_LABEL)
+              fontsize=FS_LABEL, labelpad=2)
 for s in ax.spines.values():
     s.set_visible(True)
 
@@ -184,6 +188,45 @@ collisions = [(round(_iou(spans[i][0], spans[j][0]), 2), spans[i][1], spans[j][1
               for i in range(len(spans)) for j in range(i + 1, len(spans))
               if _iou(spans[i][0], spans[j][0]) > 0.12]
 
+# --- geometry guards (visual-judge fixes 2026-10-16) ------------------------
+# 1) no text may cross the top spine (the earlier layout let the frame cut
+#    through the second line of the top annotations);
+# 2) no text may straddle a lane bar's edge (in-bar white-chip labels sit
+#    wholly inside their bar rect and are exempt; the 2-D test keeps the
+#    legend, which only shares vertical space, from false-positiving).
+H_PT = H_IN * 72.0
+axes_top = H_PT * (1 - 0.865)
+axes_bottom = H_PT * (1 - 0.17)
+axes_left = pg.rect.width * 0.075
+axes_right = pg.rect.width * 0.995
+yl0, yl1 = -0.42, 1.80
+xl0, xl1 = -46, 208
+
+def y_pdf(y):
+    return axes_top + (yl1 - y) / (yl1 - yl0) * (axes_bottom - axes_top)
+
+def x_pdf(x):
+    return axes_left + (x - xl0) / (xl1 - xl0) * (axes_right - axes_left)
+
+frame_cross = [t for r, t, _, _ in spans if r.y0 < axes_top - 0.2 < r.y1]
+bar_rects = []
+for x0, dur, _, _ in segs_s4:
+    bar_rects.append(pymupdf.Rect(x_pdf(x0), y_pdf(ROW_S4 + H / 2),
+                                  x_pdf(x0 + dur), y_pdf(ROW_S4 - H / 2)))
+for x0, dur, _, _ in segs_s5:
+    bar_rects.append(pymupdf.Rect(x_pdf(x0), y_pdf(ROW_S5 + H / 2),
+                                  x_pdf(x0 + dur), y_pdf(ROW_S5 - H / 2)))
+straddle = []
+for r, t, _, _ in spans:
+    c = pymupdf.Point((r.x0 + r.x1) / 2, (r.y0 + r.y1) / 2)
+    if any(br.contains(c) for br in bar_rects):
+        continue  # in-bar white-chip label sits wholly inside a bar
+    for br in bar_rects:
+        if (min(r.x1, br.x1) - max(r.x0, br.x0) > 0.5
+                and min(r.y1, br.y1) - max(r.y0, br.y0) > 0.3):
+            straddle.append(t)
+            break
+
 print(f"written {out}")
 print(f"  media {pg.rect.width:.1f}x{pg.rect.height:.1f}pt "
       f"({pg.rect.width/72:.2f}x{pg.rect.height/72:.2f}in)")
@@ -194,8 +237,12 @@ print(f"  overflow: {over if over else 'none'}")
 print(f"  text collisions: {len(collisions)}")
 for o, a, b in collisions[:8]:
     print(f"     {o} '{a}' <-> '{b}'")
+print(f"  frame crossings: {frame_cross if frame_cross else 'none'}")
+print(f"  bar straddles: {straddle if straddle else 'none'}")
 assert not over, f"content overflows the media box: {over}"
 assert not collisions, f"overlapping text: {collisions[:4]}"
+assert not frame_cross, f"text crosses the top spine: {frame_cross}"
+assert not straddle, f"text straddles a bar edge: {straddle}"
 assert min(sizes) >= 6.0, f"type below 6.0 pt: {sizes}"
 assert set(fonts) <= {"ArialMT", "Arial-BoldMT"}, f"font fallback: {fonts}"
 print("  SELF-CHECK PASS")

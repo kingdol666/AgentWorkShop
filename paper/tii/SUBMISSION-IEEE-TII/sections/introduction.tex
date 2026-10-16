@@ -12,17 +12,17 @@ limits are active for the current product and recipe, whether a human
 approved, whether the device accepted the command, and whether the process
 improved.
 
-Because these concerns live in application code, they are
+\looseness=-1 Because these concerns live in application code, they are
 rebuilt per process, protocol, and agent framework---duplicated drivers,
 ad-hoc permission checks, logs untied to decisions. The four scenario
-plants (simulated in this paper)---injection molding, wastewater treatment,
+plants---injection molding, wastewater treatment,
 annealing, and BOPET (biaxially oriented polyethylene terephthalate)
 film---differ, but all need an auditable bridge from a
 team-level task to heterogeneous acquisition and control nodes.
 
 \looseness=-1 \system{}---an open-source governed supervisory execution
 layer (Section~\ref{sec:arch})---addresses this gap through member--node
-bindings (a member being an engine-backed channel identity) and shared
+bindings (an engine-backed channel identity) and shared
 line, product, recipe, and run context. The response is
 organizational rather than algorithmic: each intervention leaves a
 separate evidence record per governed stage, from admission through
@@ -30,7 +30,10 @@ compensation (Section~\ref{sec:mech}). Nodes expose engineering quantities
 rather than register addresses, and one governed member--node binding path
 serves every client.
 
-\system{} makes four contributions:
+The primary contribution is a \emph{framework}: one integrated design for
+agent-based industrial data acquisition, analysis, and parameter execution
+whose plant-facing writes are governed end to end. Concretely, \system{}
+makes four contributions:
 \begin{enumerate}
 \item a \textbf{capability-based industrial execution architecture} connecting
 agent-team identity, semantic data-acquisition (DAQ) and write-control (DCW,
@@ -59,10 +62,9 @@ certified protection, physical-plant transfer, and optimizer ranking are
 outside the claims. The governed path is proposer-agnostic---prompt content
 is never authority and admission re-resolves per request---so the scripted
 proposers of Section~\ref{sec:eval} exercise the same contract an
-engine-issued proposal would face. The remainder of this paper proceeds
-from the nearest systems (Section~\ref{sec:related}) and the platform
-architecture (Section~\ref{sec:arch}) through the governed write path
+engine-issued proposal would face. The paper proceeds from the nearest
+systems (Section~\ref{sec:related}) and the architecture
+(Section~\ref{sec:arch}) through the governed write path
 (Section~\ref{sec:mech}) and its layered evaluation
-(Section~\ref{sec:eval}) to validity, safety positioning, deployment
-boundaries, and conclusions (Sections~\ref{sec:limits}
-and~\ref{sec:conclusion}).
+(Section~\ref{sec:eval}) to validity, deployment boundaries, and
+conclusions (Sections~\ref{sec:limits} and~\ref{sec:conclusion}).

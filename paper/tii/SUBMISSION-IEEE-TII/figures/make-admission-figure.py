@@ -88,7 +88,7 @@ ax.annotate("", xy=(INTER_HI, 0.02), xytext=(INTER_HI, 4.1),
 ax.annotate("", xy=(INTER_LO, -0.28), xytext=(INTER_HI, -0.28),
             arrowprops=dict(arrowstyle="<->", color="#2E7D3A", lw=0.8))
 ax.text(150.0, -0.75, "outside: rejected by its excluding layer", ha="center",
-        fontsize=5.6, color=GREY)
+        fontsize=6.0, color=GREY)
 
 ax.set_xlim(XLO, XHI)
 ax.set_ylim(-1.15, 5.55)

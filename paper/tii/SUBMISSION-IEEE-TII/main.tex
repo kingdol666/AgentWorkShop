@@ -67,30 +67,30 @@
 \maketitle
 
 \begin{abstract}
-Large language model (LLM) agents increasingly propose control changes on
-industrial plants, yet the safeguards surrounding each
+\looseness=-1 Large language model (LLM) agents increasingly propose control changes on
+industrial plants, yet the safeguards around each
 proposal---write authority, active limits, human approval, device
-acceptance---are rebuilt per deployment inside application code, so a task
+acceptance---are rebuilt per deployment in application code, so a task
 reported complete can coexist with a missed process objective.
 AgentWorkShop, an open-source governed supervisory execution layer, carries
-every agent-originated write along one path: admission against declared,
+agent-originated writes along one path: admission against declared,
 versioned limits; approval where required; actuation over semantic
 write-control nodes; graded
 acknowledgment---readback-verified, transport-acknowledged, or
-unverified---by what an independent post-write read observes, not the
+unverified---by what a post-write read observes, not the
 transport receipt alone; and verdict recording with
-compensation---each stage a separately inspectable evidence state
-attributed to its originating actor. Team identities reach
-data-acquisition and write-control nodes only through explicit
+compensation---each stage a separately inspectable, actor-attributed
+evidence state. Team identities reach
+nodes only through explicit
 member--node capabilities, prompt content is never admissible as
 authority, and a fail-safe-manual line master switch
 intercepts approval-free recipe dispatch. Four process
 scenarios---injection molding, wastewater treatment, annealing, and
 biaxially oriented polyethylene terephthalate (BOPET)
-film---and a cast-film reference line exercise the layer across
+film---plus a cast-film reference line exercise the layer across
 protocol-interception drills, agent-team missions, and a deployment-scale
-regression campaign on one multi-line instance. The evaluation is
-simulation-tier (simulator-backed, not physical plants); no
+regression campaign on one instance. The evaluation is
+simulation-tier (simulator-backed); no
 optimization-benefit or safety-assurance claim is made.
 \end{abstract}
 

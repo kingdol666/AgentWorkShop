@@ -2,9 +2,9 @@
 \label{sec:limits}
 \subsection{Validity and Reproducibility}
 \looseness=-1 Run identifier, seed, commit, harness fingerprint, and raw artifacts are
-fixed, so counts are re-derivable rather than trusted; Q5 adds per-run
+fixed, so counts are re-derivable; Q5 adds per-run
 ledgers and timelines. Five
-qualifications bound what they support: simulation-tier evidence
+qualifications bound them: simulation-tier evidence
 (deterministic per seed; no physical-device
 campaign, operator study, or external comparison reported); internal-oracle
 optima and predicates under an author-implemented, author-adjudicated
@@ -39,7 +39,7 @@ windows bound approval demand per line, and
 batch release (Section~\ref{sec:hardening}, leg~5) is the demonstrated
 fatigue mitigation; approval fatigue and automation bias remain
 human-factors risks
-\cite{parasuramanmanzey2010complacency,bainbridge1983ironies}. A lead agent's
+\cite{parasuramanmanzey2010complacency,parasuraman2000model,bainbridge1983ironies}. A lead agent's
 delegation-mode choice (Section~\ref{sec:hitl}) is the one agent-reachable
 path around per-request approval; capping the granted mode at the granter's
 own binding mode, or requiring the line-switch confirmation for it, is
@@ -51,11 +51,14 @@ platform-side minimum re-check before \texttt{keep}).
 \looseness=-1 Against the nearest systems of Section~\ref{sec:related},
 the differentiator is not the LLM---a replaceable strategy slot---but the
 production-scoped authority and evidence around its writes: no nearest
-system reports that combination on one path. The layer installs beside the
+system reports that combination on one path. The contribution is a
+framework claim---design, contracts, evidence semantics---assessed by
+construction and mechanism attribution, not outcome superiority; an
+outcome-level comparison against SCADA-mediated operation is out of scope. The layer installs beside the
 plant's protocol endpoints, onboards declaratively
 (Section~\ref{sec:reuse}), and leaves PLC protection and DCS interlocks
 untouched.
-Execution and recovery are non-atomic: bookkeeping may fail after actuation, the
+\looseness=-1 Execution and recovery are non-atomic: bookkeeping may fail after actuation, the
 pacing windows time writes rather than certify
 stability, declared per-write step limits are advisory metadata surfaced to
 agents rather than enforced bounds, and multi-node compensation may partially
@@ -102,9 +105,9 @@ external-framework comparison remain open; until then, optimization
 benefit, autonomous control, and safety assurance stay unsupported claims.
 
 \vspace{2pt}\noindent\textit{Data availability and disclosure.}
-Artifacts are archived per run in the project's benchmark result tree; the
+\looseness=-1 Artifacts are archived per run in the project's benchmark result tree; the
 platform and its deterministic simulators are publicly available
-(Section~\ref{sec:arch}). The live engine-turn transcripts
+(repository links withheld for double-blind review; Section~\ref{sec:arch}). The live engine-turn transcripts
 (Section~\ref{sec:agentteam}) were excluded by the log-retention rule and
 survive only as recorded outcomes; the
 write-evidence suite is rerunnable from its script. AI assistants supported

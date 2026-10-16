@@ -244,3 +244,78 @@ Table III arraystretch 1.0.
 Verification: tectonic 0 overfull, exactly 10 pages, audit 8/8
 (pages=10, cited=32), check-refs 32/32, zero "??", visual judge 10/10
 (no regression; Fig.1 channels/arrows confirmed legible at 3-4x zoom).
+
+## Legibility, disclosure, and double-blind round (2026-10-16)
+
+Triggered by a visual acceptance on the 2026-10-14 build (8/10 pass): page 4
+failed on the Fig.3(b) approval-card screenshot (~4 pt printed, Chinese-only
+surface) and page 7 failed on the Fig.4 top annotation touching the frame.
+
+- **Fig. 3(b)** — rebuilt by `figures/reflow-hitl-card.py` (supersedes
+  `annotate-hitl-card.py`) from the archived live screenshot
+  (`figures/retired/hitl-card-crop-orig.png`): the authentic rows are
+  re-flowed (the wide table row splits into its three label/value pairs; the
+  reason line wraps at its widest inter-word gap) so the printed UI type is
+  6.7-9.6 pt at \columnwidth; the (b) letter sits in the image's clear
+  top-right zone; the caption glosses the card values in English (63 bar
+  -> 64 bar). Script self-check asserts >= 6.3 pt.
+- **Fig. 4** — `figures/make-process-figure.py`: top annotations lowered to
+  y=1.33 inside headroom (ylim 1.80); the generator now asserts top-spine
+  crossings and (2-D) text-vs-bar straddles next to the existing
+  collision/overflow/minsize checks. A minimal `figures/pubfig.py` shim
+  restores reproducibility for the process/missions generators.
+- **Double-blind anonymization** — author repository links removed from the
+  §III license sentence and from Data availability ("withheld for
+  double-blind review"); the rendered PDF contains no github/kingdol
+  strings.
+- **Counter-argument disclosures** — §I frames the primary contribution as
+  the framework itself (agent-based acquisition, analysis, and parameter
+  execution, writes governed end to end); §II-B states that no safeguard is
+  claimed as an invention (composition, not parts); §VI-C frames the claim
+  as a framework claim assessed by construction and mechanism attribution,
+  with a SCADA-comparison explicitly out of scope.
+- **Pinned must-cite** — Parasuraman et al. 2000 (levels of human
+  interaction with automation) cited again beside P&M 2010; audit F7 was
+  failing at the previous revision and is green again.
+- **Page budget** — exactly 10 pages, 0 overfull, 0 LaTeX warnings after
+  the additions; space reclaimed via the admission-figure top-margin trim
+  (12.6 pt), card-canvas compaction, caption/body micro-trims, added
+  \looseness entries, and \IEEEbibitemsep -3.4 pt (item boundaries
+  zoom-verified below the -4 pt overprint line).
+
+Verification: latexmk -pdf 0 overfull / 0 warnings / exactly 10 pages;
+`python tools/audit.py` all gates green (pages=10, cited=39);
+`node check-refs.cjs` 39/39; visual judge 10/10 (Fig.3(b) measured
+6.7-9.6 pt and legible; Fig.4 clear of the frame; reference item
+boundaries free of overprint; no orphan floats; formula numbers visible).
+
+## Acceptance re-check round (2026-10-17)
+
+Second full acceptance pass (fresh per-page visual judge + programmatic
+gates) after a stricter re-review of the 2026-10-16 build flagged the
+reference item spacing and one figure annotation.
+
+- **Reference item separation** reverted from -3.4 pt to the previously
+  validated **-2.5 pt**: 600 dpi boundary crops showed -3.4 pt left 0-px
+  gaps (glyphs touching) between an item's last line and the next item's
+  first line, while -2.5 pt restores a visible white sliver. Space
+  reclaimed by dropping the Q1--Q4/plane recap sentence (Section V-A),
+  trimming ~13 words from the abstract, and a one-line Fig.2 caption trim.
+- **Fig. 5(b)** (`figures/make-missions-figure.py`): the terminal-value
+  label moves below the marker when the marker sits above 70% of the panel
+  (was 82%, which pushed panel (b)'s "3.50" into the legend row); the
+  shared x-limit 5.4 -> 5.55 gives the end marker clearance from the right
+  spine; bottom margin 0.128 -> 0.155 and supxlabel y=0.002 after the
+  matplotlib 3.10 re-run surfaced a tick-label/supxlabel collision (caught
+  by the generator's own collision check).
+- **Fig. 3(a)** (`figures/make-admission-figure.py`): the "outside:
+  rejected by its excluding layer" label raised 5.6 -> 6.0 pt — the last
+  sub-6 pt text among the vector figures; media box unchanged, collision
+  check clean.
+
+Verification: latexmk 0 overfull / 0 warnings / exactly 10 pages;
+`python tools/audit.py` all gates green (pages=10, cited=39);
+`node check-refs.cjs` 39/39; visual judge 10/10 on all pages with both
+prior fails confirmed fixed (reference item boundaries show visible white
+gaps at 150 dpi; Fig.5(b) label clear of the legend row); zero
+github/kingdol strings in the rendered PDF.

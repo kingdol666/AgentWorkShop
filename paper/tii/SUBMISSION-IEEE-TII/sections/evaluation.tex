@@ -7,8 +7,7 @@ closure and admission-gate attribution (Q1), the agent-team workflow (Q2), a
 deterministic controller loop (Q3), four concurrent missions (Q4), and
 deployment-scale regression with write-evidence verification (Q5). Q2--Q4
 occupy the strategy slot (scripted policies, with two live engine turns in
-Q2); Q5 stresses the hardened platform under load. Together the five
-exercise each production-facing plane of Section~\ref{sec:arch}.
+Q2); Q5 stresses the hardened platform under load.
 
 \subsection{Testbed, Evidence Snapshot, and Scope}
 \label{sec:testbed}
@@ -18,8 +17,8 @@ exercise each production-facing plane of Section~\ref{sec:arch}.
 harness \resHarness, completed \resEvidenceDate), archived with raw
 reports, plus ablation companion \resAblationRun. Its
 standing preset is a cast-film reference line tuned through the
-die-head heater setpoint (objective $J$ weights thickness conformance,
-defects, energy, and throughput). Each mission contributes one seed-42
+die-head heater setpoint (objective $J$: thickness conformance,
+defects, energy, throughput). Each mission contributes one seed-42
 trajectory: Q1, Q2, and Q4 are single-trace case studies, checkable claim
 by claim in the artifacts; the deterministic loop adds seeds
 43--44, and repeat evidence comes from Q5's deployment-tier
@@ -29,14 +28,14 @@ campaigns---a different tier, not a re-run.
 carrying \resLinesLive{} provisioned lines, \resChannelsLive{} agent
 channels, \resDaqOnline{} online DAQ nodes, \resWriteNodesLive{} write
 nodes, \resRecipesLive{} recipes, and \resBindingsLive{}
-member--node bindings---simulator- and bench-backed objects, not physical
+member--node bindings---simulator-backed, not physical
 plants; \emph{multi-line} means many provisioned lines and channels on one
 host.
-The tier's benchmark line---a different plant from that cast-film
+\looseness=-1 The tier's benchmark line---distinct from the cast-film
 reference---is a physics-based injection-molding cell (16 DAQ nodes, 6
 control nodes over five protocol families plus MES, four exercised for
 governed writes); all Q5
-numbers come from committed per-run reports, ledgers, and timelines
+numbers come from committed per-run reports and timelines
 (October 7: three baseline-suite runs; October 8: the hardened-pipeline
 run plus two full-suite runs; October 9: three consecutive regression
 runs; October 12: four control-pair replays); the campaign ran under
@@ -81,7 +80,7 @@ success-flag outcome is definitional---the pre-hardening harness
 reported a broker puback as success. The closed-loop harness also
 parameterizes the write injection (admin REST beside the agent's governed
 \texttt{dcw\_control}); a like-for-like pair---the same writes to both
-routes---replayed in four archived post-campaign runs per route
+routes---replayed in four archived runs per route
 (October~12) was rejected in full, 24/24 per arm with and
 without production pacing---gate evidence, not
 route quality; a quality comparison awaits a dedicated
@@ -109,7 +108,7 @@ families---about \resWriteNperLine{} writes each (\resPfiftyRange{} p50,
 \resPninetyfiveRange{} p95; per-protocol values in the archived
 metrics); the RTU-over-TCP
 satellite is acquisition-only---readback confirmation where
-supported---with one admission, record, and verdict path for every request. Each writable
+supported---with one admission-record-verdict path per request. Each writable
 line rejects 6/6 out-of-window probes (24/24) while accepting
 its legal write. \looseness=-1 Two drills separate truth paths one success flag would collapse: a
 frozen-measurement drill (write and readback consistent, measurement out of
@@ -132,8 +131,8 @@ the four arms: full governance and the no-readback arm reject 18/18;
 without the window interlock (alone or with the readback check) only
 \resNoInterlockIntercept{} reject and the six window-class probes execute
 and are journaled---prevention is the interlock's job; a relaxed
-configuration degrades from prevention to detection, with the readback check
-retained to make written-but-unconfirmed commands visible. The hard range is
+configuration degrades from prevention to detection, the readback check
+retained to surface written-but-unconfirmed commands. The hard range is
 structurally unbypassable---all four governed routes re-admit it at one
 journaling entry point, per request (Section~\ref{sec:nodeexec})---and the
 soft window is its removable part.
@@ -146,7 +145,7 @@ classes are rejected in every arm; only the two window-edge classes flip.}
 \label{tab:ablation}
 \scriptsize
 \setlength{\tabcolsep}{2.2pt}
-\renewcommand{\arraystretch}{1.05}
+\renewcommand{\arraystretch}{0.95}
 \begin{tabular}{@{}lcccc@{}}
 \toprule
 Arm & Soft win. & Readback & Intercept & Executed \\
@@ -189,8 +188,8 @@ drove the same slot on a scratch line---a bounded write
 (\resLlmWall), a goal-driven descent settling at
 \resGoalFinal\,$\mu$m against a harness-supplied target ($52.0\pm0.8$\,$\mu$m,
 in the task text, not the scenario predicate), and a recipe save
-with attributed authorship (\resGoalWall). They show that an engine
-can occupy the slot, not agent quality---the run's pass criterion is a
+with attributed authorship (\resGoalWall). They show an engine
+occupying the slot, not agent quality---the run's pass criterion is a
 completion marker in the transcript.
 
 \subsection{Q3: The Deterministic Closed Loop}
@@ -262,7 +261,7 @@ per-line trial cadence---pacing stays in force under automation.
 \begin{table}[!t]
 \centering
 \caption{Campaign progression across the October passes; every execution
-completes with zero failed checks.}
+completes with zero failures.}
 \label{tab:campaign}
 \scriptsize
 \setlength{\tabcolsep}{3.2pt}
@@ -338,18 +337,17 @@ every batch dispatch of the six hardened runs (October~8--9) closed
 \emph{readback-verified}---structured approval released it and the three-way
 check read equal values at \resConsistencyErr{} maximum error
 (Fig.~\ref{fig:loop}). The non-verified grades appear only under the fault
-suite's injected conditions, which is the distribution a healthy platform
+suite's injected conditions, the distribution a healthy platform
 should produce: \resAckFailed{} \emph{failed} (broker unreachable; healthy
 sibling verified), \resAckUnverified{} \emph{unverified} (publish-only
 endpoint, three attempts), and \resAckPromoted{} parameters promoted from
 transport-acknowledged receipts to readback-verified by post-write re-read.
 The remaining terminal grade, transport-acknowledged, occurs on MES-style
 endpoints that return an application-level acceptance without a readback
-mapping; the platform's MES route tests cover it, but the archived campaign
-instantiates MES in read mode only---a disclosed gap in the campaign's
+mapping; the platform's MES route tests cover it, but the campaign archives
+MES in read mode only---a disclosed gap in the campaign's
 write-evidence coverage.
 
-\looseness=-1 Across the five questions, Section~\ref{sec:mech}'s mechanisms
-behave as specified: interception with attribution, honest grading, pacing
-under automation, mediated approval, and on-record recovery.
+\looseness=-1 Across the five questions, the mechanisms of
+Section~\ref{sec:mech} behave as specified.
 

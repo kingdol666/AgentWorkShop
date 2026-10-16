@@ -95,10 +95,11 @@ data = json.load(open(os.path.join(HERE, "missions-data.json"), encoding="utf-8"
 missions = {m["id"]: m for m in data["missions"]}
 
 fig, axes = plt.subplots(2, 2, figsize=(W_IN, H_IN))
-fig.subplots_adjust(left=0.150, right=0.988, top=0.915, bottom=0.128,
+fig.subplots_adjust(left=0.150, right=0.988, top=0.915, bottom=0.155,
                     hspace=0.48, wspace=0.46)
 
-XMAX = 5.4  # shared index scale: panel (a) converging in two writes stays visible
+XMAX = 5.55  # shared index scale: panel (a) converging in two writes stays visible;
+# the extra 0.15 over 5.4 keeps the terminal marker clear of the right spine
 
 # rotated y-labels must not run past their own panel; checked after the draw
 _ylabel_boxes = []
@@ -139,7 +140,11 @@ for k, (ax, (mid, tag, qty, unit)) in enumerate(zip(axes.flat, PANELS)):
 
     # terminal value: stack it above the marker, or below it when the marker is
     # already near the top of its panel. A vertical offset keeps the label clear
-    # of the legend, which occupies a corner of panel (a).
+    # of the legend, which occupies a corner of panel (a), and of the figure's
+    # legend row above the axes (visual-judge verdict 2026-10-17, Fig. 5b: at a
+    # 0.82 threshold the label of panel (b) reached the legend row and its
+    # period touched the value; panels are only ~34 pt tall, so any marker above
+    # 70% would push the label out of its panel).
     y0 = min(series + [target - tol])
     y1 = max(series + [target + tol])
     pad = (y1 - y0) * 0.16
@@ -147,7 +152,7 @@ for k, (ax, (mid, tag, qty, unit)) in enumerate(zip(axes.flat, PANELS)):
     ax.set_ylim(lo, hi)
 
     frac = (final - lo) / (hi - lo)
-    above = frac < 0.82
+    above = frac < 0.70
     ax.annotate(f"{final:.2f}", xy=(x[-1], final),
                 xytext=(0, 3.4 if above else -3.4), textcoords="offset points",
                 fontsize=FS_ANNOT, color=DARK, zorder=5,
@@ -168,7 +173,7 @@ fig.legend(handles=legend, loc="upper center", bbox_to_anchor=(0.5, 1.0),
            columnspacing=0.9, handletextpad=0.4, borderaxespad=0.0)
 
 fig.supxlabel("attainment-relevant governed write index", fontsize=FS_LABEL,
-              y=0.005)
+              y=0.002)
 
 out = os.path.join(OUT, "fig-missions.pdf")
 pubfig.save_figure(fig, out, spec="nature", width="single",
