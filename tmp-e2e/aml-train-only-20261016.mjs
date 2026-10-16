@@ -84,7 +84,11 @@ if (dsId) {
   const hitPath = candidates.find(c => existsSync(c))
   if (hitPath) console.log(`  · model.onnx ${(statSync(hitPath).size / 1024).toFixed(1)}KB`)
   const models = await api('GET', '/api/workshop/aml/models', undefined, H())
-  const hit = (models.data?.models ?? []).find(m => String(m.name ?? '').includes(TAG) || m.jobId === jobId)
+  // 注册行字段:experimentId 与 id 均嵌入 jobId 后缀(mdl-<jobSuffix>);name 可能缺省
+  const jobSuffix = String(jobId ?? '').split('-').slice(1, 3).join('-')
+  const hit = (models.data?.models ?? []).find(m =>
+    String(m.jobId ?? '') === jobId || String(m.experimentId ?? '').includes(jobSuffix) || String(m.id ?? '').includes(jobSuffix)
+    || String(m.name ?? '').includes(TAG))
   ok('T5 模型注册在册', Boolean(hit), JSON.stringify(models.data?.models?.slice(0, 1)).slice(0, 200))
   if (hit) console.log('  · 模型:', JSON.stringify(hit).slice(0, 240))
   if (jd?.job?.metrics || hit?.metrics) console.log('  · 指标:', JSON.stringify(jd?.job?.metrics ?? hit?.metrics).slice(0, 200))
