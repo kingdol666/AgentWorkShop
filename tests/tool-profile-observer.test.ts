@@ -24,7 +24,8 @@ const { openWorkshopDb } = await import('../server/services/workshop/db/database
 const { configureAmlRuntime } = await import('../server/services/workshop/aml/runtime')
 const { setHybridChannelProfile } = await import('../server/services/workshop/aml/twin/channel-profile')
 const { DEFAULT_CHANNEL_TEMPLATES } = await import('../server/services/workshop/db/database/seed')
-const { KNOWLEDGE_BASE_TEMPLATE_IDS } = await import('../server/services/workshop/runtime/manager/channel-templates')
+// 纯常量模块(不经过 ManagerTeams → nitro #imports;此前本套件因此整文件无法加载)
+const { KNOWLEDGE_BASE_TEMPLATE_IDS } = await import('../server/services/workshop/runtime/manager/channel-template-constants')
 
 const { HOST_TOOLS, observerAllowedToolNames, scopedToolsForObserverProfile, hostToolsForRole } = catalog
 
