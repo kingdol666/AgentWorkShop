@@ -180,6 +180,20 @@ export async function toolAmlDatasetBuild(agentId: string, args: {
       return amlErr(`节点 ${amlNodeName(n.nodeId)}(${n.nodeId})归属产线 ${nodeLine || '未分配'},与 line_id=${lineId} 不一致;数据集节点必须全部归属同一条产线(绑定只缩不放)。`)
     }
   }
+  // 2026-10-17 补强:隔离三元组的存在性与同线一致性(此前 product/recipe/run_ids 无校验,
+  // 可用他线配方/批次 id 构造数据集 —— 谱系污染训练数据)
+  const recipe = getDcwRecipeRepo().byId(recipeId)
+  if (!recipe) return amlErr(`配方 ${recipeId} 不存在。line_context 可查看当前批次的三个 id。`)
+  if (recipe.lineId !== lineId) return amlErr(`配方「${recipe.name}」归属产线 ${recipe.lineId || '未分配'},与 line_id=${lineId} 不一致(隔离三元组必须同线)。`)
+  const product = getDcwProductRepo().byId(productId)
+  if (!product) return amlErr(`产品 ${productId} 不存在。line_context 可查看当前批次的三个 id。`)
+  if (product.lineId && product.lineId !== lineId) return amlErr(`产品「${product.name}」归属产线 ${product.lineId},与 line_id=${lineId} 不一致(隔离三元组必须同线)。`)
+  const runIdsArg = Array.isArray(args.run_ids) ? args.run_ids.map(r => String(r)).filter(Boolean) : []
+  for (const rid of runIdsArg) {
+    const run = getDcwRecipeRepo().listRuns().find(x => x.id === rid)
+    if (!run) return amlErr(`批次 ${rid} 不存在(仅可引用已落库批次;line_context 可查当前批次 id)。`)
+    if (run.lineId !== lineId) return amlErr(`批次 ${rid} 归属产线 ${run.lineId},与 line_id=${lineId} 不一致(隔离三元组必须同线)。`)
+  }
   const purpose = args.purpose === 'quality_predict' ? 'quality_predict' : 'mpc_surrogate'
   try {
     const spec = parseDatasetSpec({

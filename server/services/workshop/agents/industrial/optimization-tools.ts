@@ -17,6 +17,7 @@ import { getDaqController } from '../../daq/daq-controller'
 import { getDcwController } from '../../dcw/dcw-controller'
 import type { HostToolResult } from '../host-tool-bridge/types'
 import { dcwControlGovernedInternal } from './dcw-tools'
+import { resolveRefFaces } from './tool-verify'
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
@@ -81,6 +82,15 @@ export async function toolOptimizationExplore(agentId: string, args: {
     const daqBindings = repo.byAgent(agentId).filter(b => b.kind === 'daq')
     const targetNodeId = String(args.target_node_id ?? '').trim() || daqBindings[0]?.nodeId || ''
     if (!targetNodeId) return { text: '未指定目标观测节点且当前无数采绑定;请传 target_node_id 或先绑定数采节点。', isError: true }
+    // 2026-10-17 补强:目标观测节点必须在数采可见面内(绑定数采 ∪ 频道绑线只读,与 daq_query 同源;
+    // 此前任意 daq 节点 id 都能被读取均值并写入探索记录 —— 跨线数据会进训练回流)
+    const faces = resolveRefFaces(agentId)
+    if (!faces.daqBoundNodes.has(targetNodeId) && !faces.channelLineNodes.has(targetNodeId)) {
+      return {
+        text: `目标观测节点 ${targetNodeId} 不在你的数采可见范围(绑定数采节点:${[...faces.daqBoundNodes].join(', ') || '(无)'}${faces.channelLineNodes.size > 0 ? `;频道绑线只读节点:${[...faces.channelLineNodes].join(', ')}` : ''})。请让用户或 lead 绑定该数采节点,或改用上述节点重试。`,
+        isError: true,
+      }
+    }
 
     const targetBefore = await readTargetMean(targetNodeId)
 

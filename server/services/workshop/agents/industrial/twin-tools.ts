@@ -285,6 +285,11 @@ export async function toolTwinSceneCompile(agentId: string, args: Record<string,
     const lineId = String(args.line_id ?? '').trim()
     if (!sceneId || !lineId) return fail('scene_id 和 line_id 必填。')
     const nodes = boundSceneNodes(agentId).filter(node => !args.node_ids || (Array.isArray(args.node_ids) && args.node_ids.map(String).includes(node.nodeId)))
+    // 2026-10-17 补强:声明产线必须与(过滤后)绑定节点归属一致——防把他线合同挂到本机绑定面上
+    const nodeLines = new Set(nodes.map(n => String(n.lineId ?? '')).filter(Boolean))
+    if (nodeLines.size === 1 && !nodeLines.has(lineId)) {
+      return fail(`line_id=${lineId} 与绑定节点归属产线(${[...nodeLines].join(', ')})不一致:SceneContract 的产线必须来自你绑定节点所在产线。请改正 line_id,或先让 lead/用户把目标产线节点绑定给你。`)
+    }
     const draft = compileSceneDraft({ sceneId, sceneVersion: String(args.scene_version ?? '0.1.0-draft'), lineId, productId: args.product_id ? String(args.product_id) : undefined, recipeId: args.recipe_id ? String(args.recipe_id) : undefined, prompt: args.prompt ? String(args.prompt) : undefined, createdBy: agentId, nodes, physicsProfileId: args.physics_profile_id ? String(args.physics_profile_id) : undefined, objectiveProfileIds: Array.isArray(args.objective_profile_ids) ? args.objective_profile_ids.map(String) : undefined, freeze: false })
     const repo = createTwinRepo(getAmlRuntime().db)
     repo.upsertScene(draft, agentId)

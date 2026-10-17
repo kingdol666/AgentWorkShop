@@ -14,6 +14,7 @@ import { agentBadgeLabel } from '../agent-badge'
 import { getDcwController } from '../../dcw/dcw-controller'
 import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
 import { recordOps } from '../../ops/ops'
+import { resolveRefFaces } from './tool-verify'
 
 export interface LineStartInput { recipe_id?: string, reason?: string }
 export interface LineStopInput { reason?: string }
@@ -133,13 +134,25 @@ export async function toolLineStop(agentId: string, args: LineStopInput, channel
 
 /** 工具:line_status —— 本频道绑定产线的运行状态(只读)。 */
 export async function toolLineStatus(agentId: string, args: LineStatusInput, channelId?: string): Promise<{ text: string, isError?: boolean }> {
-  void agentId
   const ctrl = getDcwController()
   const manager = getWorkshopManager()
   const ch = channelId ? manager.deps.repos.channels.findById(channelId) : undefined
+  const faces = resolveRefFaces(agentId)
+  const readable = [...faces.readableLines]
   const wantLine = String(args.line_id ?? '').trim() || String(ch?.lineId ?? '').trim()
-  const lines = ctrl.listLines().filter(l => !wantLine || l.id === wantLine)
-  const states = ctrl.allLineStates().filter(s => !wantLine || s.lineId === wantLine)
+  // 2026-10-17 补强:产线参数必须落在可读面内(此前无 channelId 时任意 line_id 可查、缺省列全平台产线)
+  if (wantLine && !faces.readableLines.has(wantLine)) {
+    return {
+      text: `无权查看产线 ${wantLine}(你的可读产线:${readable.join(', ') || '(无)'}${faces.channelLineId ? `;频道绑线「${faces.channelLineId}」为只读来源` : ''})。如需访问,请让用户授予对应产线权限(权限管理),或把当前频道绑定到该产线;也可以改用上述可读产线重试。`,
+      isError: true,
+    }
+  }
+  if (!wantLine && readable.length === 0) {
+    return { text: '你当前没有可读产线(未绑定任何节点/配方,频道也未绑定产线)。请先让用户或 lead 完成绑定后重试。', isError: true }
+  }
+  const scopeLines = wantLine ? [wantLine] : readable
+  const lines = ctrl.listLines().filter(l => scopeLines.includes(l.id))
+  const states = ctrl.allLineStates().filter(s => scopeLines.includes(s.lineId))
   if (lines.length === 0) return { text: `产线不存在或不在你的可见范围: ${wantLine || '(未指定)'}`, isError: true }
   const rows = lines.map((l) => {
     const s = states.find(x => x.lineId === l.id)

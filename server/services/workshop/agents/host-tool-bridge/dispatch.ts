@@ -18,6 +18,7 @@ import { listPluginTools, pluginOfTool } from '../plugin-tools'
 import type { HostToolBridgeContext, HostToolCall, HostToolResult } from './types'
 import { INDUSTRIAL_TOOL_NAMES, dispatchIndustrialTool } from './tools/industrial'
 import { guardIndustrialToolGrant } from '../industrial/grant-guard'
+import { verifyIndustrialToolCall } from '../industrial/tool-verify'
 import { handleCompleteTask, handleReportProgress } from './tools/progress'
 import { handleCancelTask, handleDispatchTask, handleGetMyTaskQueue, handleGetTaskDetails, handleListChannelTasks, handleReassignTask, handleRefuseTask, handleSubmitTask, handleUpdateTask } from './tools/tasks'
 import { handleGrantNodes, handleRevokeNodes } from './tools/team-delegation'
@@ -129,6 +130,10 @@ async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCa
     // 权限模型 v3:运行时 grant 复核(收权即失活;绑定面是静态授权,撤销后此处拦截)
     const denied = await guardIndustrialToolGrant(identity, req.toolName, args)
     if (denied) return denied
+    // 统一预检:参数形状 + 引用归属(node_id/line_id/recipe_id/dataset_id… 必须落在
+    // 调用者的绑定面内;越界拒绝并把「你的绑定面 + 下一步」返回给 Agent)
+    const verifyDenied = verifyIndustrialToolCall(identity.agentId, req.toolName, args)
+    if (verifyDenied) return verifyDenied
     return await dispatchIndustrialTool(identity.agentId, req.toolName, args, identity.channelId)
   }
 

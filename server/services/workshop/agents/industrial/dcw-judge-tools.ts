@@ -141,8 +141,13 @@ export async function toolDcwJournal(agentId: string, args: { node_id?: string, 
   const limit = Math.min(Number(args.limit) || 20, 100)
   const repo = getAgentNodeBindingRepo()
   const bound = new Set(repo.byAgent(agentId).map(b => b.nodeId))
-  if (nodeId && !bound.has(nodeId))
-    return { text: `无权查询节点 ${nodeId} 的账本(仅可查自己绑定的节点)。`, isError: true }
+  if (nodeId && !bound.has(nodeId)) {
+    const mine = [...bound]
+    return {
+      text: `无权查询节点 ${nodeId} 的账本(仅可查你绑定范围内的对象:${mine.length ? mine.join(', ') : '(当前无绑定,请先绑定节点/配方,或改传 recipe_id 查配方面记录)'})。`,
+      isError: true,
+    }
+  }
   const records = rb.records({ nodeId: nodeId || undefined, recipeId: recipeId || undefined, limit })
   if (records.length === 0)
     return { text: '窗口内无优化记录(该节点/配方尚无 Agent 调控历史)。' }
