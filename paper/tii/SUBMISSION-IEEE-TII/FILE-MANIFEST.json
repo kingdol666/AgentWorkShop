@@ -13,18 +13,18 @@
   },
   "generated_at": "2026-10-17",
   "files": {
-    "main.tex": "d7af748e1419a5d1111fd1ef18514db0aac1ce787cad1dae98b0a0d5fe32ba7b",
-    "main.pdf": "c5750945412489858cea4fc211c1dae88f8e0ab7a3a4059ead9f4411c3fbb089",
-    "main.blg": "d481f15336abf94a544c0ef638f756ca1e7b82ac4034802ca4a22fd3ead2cf09",
-    "main.log": "984796aad71e3e95c8c0c3fc1a4b40c1719a9ca79883c44b56698181f6019e1b",
-    "resources/refs.bib": "0f6c984a7e84534eb782148644db56476ae6bb051de664945394d1b0a3bdb462",
+    "main.tex": "9b5740ce6461a2626720b5c0a49878b0cf9132059c9436c9768f52f008046113",
+    "main.pdf": "41f121c149235f8e7fa8aac0a801abc743441e8d66105ccf40cd211440cc9f60",
+    "main.blg": "e0665328db3cd48e4e5f822ddcfe78d31f6a00b25fbbfc819b22c652f601e97d",
+    "main.log": "9de69dd27452ac2201e524d7ab737819f79a90471b30080303e14dac5863df3c",
+    "resources/refs.bib": "a3f17b29c680609bf9fc7a6b5b7707ffa66be62563057d07d67d37e67247cb3a",
     "resources/results-macros.tex": "68655e64f8223f6e5dfaf0453b46ff43140e82a55f20e3340a65a8bb4065f750",
-    "resources/fig2-architecture.pdf": "7c12750c7b765050a8737a88cac98a827f36d1841e157b5659157c5284e5b08f",
-    "resources/aws_fig3-flat.png": "0dee1705b6bbad7d7469419adb0ab352f56e6541d12b11b21880ef60fc34483a",
-    "resources/fig-admission.pdf": "a61d422e6ac54e0936c37d96e468c0c97119bfa553d767d906478cfbfa63103e",
-    "resources/hitl-card-render.png": "443c32be0d0859af79d6e6d291597956b0414c12d2559686f2cebdd6c854cd5d",
-    "resources/fig-process-campaign.pdf": "616434fa61e004c29a196bc205adcad552ec02129edef8a6881773104b3ccf27",
-    "resources/fig-missions.pdf": "a70fc4ef741b77b0272bbc792a3b2c5949c9a9464ab9c4fe0e113e17516b3889",
+    "resources/fig2-architecture.pdf": "f0bafaf5ed552cb98a39e83527095eeb298c13c792e2b6901a1042e72dbbcfe9",
+    "resources/fig-runtime.pdf": "7a73dbeb73a206ad4ac8f714bd0c0f07020b13f23310dbb38d3edb9c086b2828",
+    "resources/fig-admission.pdf": "2fe5578d1b6c090d6d5ed437bc4e4c6c4016608b0ba29d9e9edea0b3c4dae758",
+    "resources/fig-hitl-card.pdf": "e397bbd97e9b7156924ecded83ab2e010312fa69fb7ebb27f1e9506f1fea4ba6",
+    "resources/fig-process-campaign.pdf": "48728f813fe2c33230f4193b76998f0650973fe22a72fb98255877e0945de714",
+    "resources/fig-missions.pdf": "1df6aca7a9d5737420ca133ff8cfd87a5d9d2380a55497165be4a55ebd811e33",
     "figures/retired/fig-runtime.pdf": "aa845678487220aab0b10ba889b130ee36f130198f53430520a643b278d7f10a",
     "figures/retired/fig-lifecycle.pdf": "2303c1d1ba53e574a310fb162f2a359e7a17818e6642774f0392a07dd582e45c",
     "figures/retired/fig-four-missions.pdf": "4c685ad5e4a5f8caa5d2443926ef48f0cfc8867041f98003e69a23206d46bad6",
@@ -35,6 +35,6 @@
     "figures/retired/fig1-governed-binding-v2.pdf": "29c0ccf2db4fdf834a788cae7668da6c8ec8e540933ca8f795facfe64764ed60",
     "figures/retired/aw_working-fig4-tall-print.jpg": "55d89198d9ebaef45396f47b7d004bb1d870186a0943db68e60b7a367cf79a19"
   },
-  "quality_pass": "2026-10-17 acceptance re-check: reference item separation returned to -2.5pt (600dpi crops showed -3.4pt touching at item boundaries); Fig.5(b) terminal label moved below the marker (0.70 threshold) + right-spine clearance; Fig.3(a) outside-label raised to 6.0pt; space reclaimed from the Section V-A recap sentence, abstract trims, and a Fig.2 caption line; 10 pages, 0 overfull, audit F1-F8 green, check-refs 39/39, visual judge 10/10. Prior: 2026-10-16 legibility + disclosure pass: Fig.3(b) rebuilt by figures/reflow-hitl-card.py from the archived live screenshot (row-wise reflow; printed type >=6.8pt, replacing the 1.15x band stacking that printed ~4pt); Fig.4 top annotations moved clear of the top spine and its generator gained frame-crossing / bar-straddle self-checks; double-blind anonymization (author repository links withheld in the license sentence and Data availability); pinned Parasuraman 2000 must-cite restored (audit F7 green); framework-contribution framing and the DCS-ancestry composition disclosure added; page budget held at exactly 10 with 0 overfull. Prior: 2026-10-10 compression + figure-consistency pass: 11p -> 10p (redundancy cuts in Q1/Q4/Q5/VI/intro; no architecture or mechanism content removed); fig2-architecture rebuilt as reproducible matplotlib source (make-architecture-figure.py) replacing the Calibri HTML->PDF, unifying all generated figures on Arial/muted palette; Fig.4/Fig.5 heights reduced; stale resources moved to figures/retired/. Prior: 2026-10-09 page-budget pass; four-reviewer TII loop converged Accept x4 (R1 control/safety, R2 LLM-agents, R3 methodology, R4 format)",
-  "figures_note": "5 figures, all IEEE-width compliant: fig2-architecture (Fig.1, 0.92\\textwidth, Arial rebuild), aws_fig3-flat.png (Fig.2, 0.70\\textwidth, user-supplied runtime diagram), fig-admission + hitl-card-render (Fig.3 combined admission geometry + live HITL card reflowed for legibility, \\columnwidth), fig-process-campaign (Fig.4, \\columnwidth), fig-missions (Fig.5, \\columnwidth); 1 table (Table I nearest-systems); observed page map: {\"1\": 3, \"2\": 4, \"3\": 4, \"4\": 7, \"5\": 8}"
+  "quality_pass": "2026-10-17 final TII revision: regenerated the BOPET archive summary (attained=yes), added the success-flag baseline (22/22; publish-only receipt success-flag=true vs graded unverified), rebuilt all figures at 8 pt (Fig.1 full width; Fig.2 vector runtime; Fig.3(a)/(b) side-by-side; Fig.4 S4/S5; Fig.5 full-width four panels), anonymized the system name for double-blind, consolidated to 30 references, removed all version/commit/run identifiers, corrected boundary margins/p95/live-load claims and the grade-state mapping, and added the thesis/falsifiable-contrast/takeaway framing; 10 pages, 0 overfull, audit F1-F8 green, figure audit pass, check-refs 30/30, abstract 214 words.",
+  "figures_note": "5 figures, all 8 pt at placed width: fig2-architecture (Fig.1, \\textwidth), fig-runtime (Fig.2, \\columnwidth), fig-admission + fig-hitl-card (Fig.3(a)/(b), half-width panels), fig-process-campaign (Fig.4, \\columnwidth), fig-missions (Fig.5, \\textwidth); 3 tables (nearest systems, ablation, campaign); observed page map: {\"1\": 3, \"2\": 4, \"3\": 5, \"4\": 7, \"5\": 9}"
 }

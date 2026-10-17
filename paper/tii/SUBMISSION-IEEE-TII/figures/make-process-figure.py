@@ -40,12 +40,12 @@ OUT = os.path.join(HERE, "..", "resources")
 
 W_MM = 89.0
 W_IN = W_MM / 25.4
-H_IN = 1.44
-FS_TICK = 6.0
-FS_LABEL = 6.0
-FS_ANNOT = 6.0
-FS_LANE = 6.5
-FS_LEGEND = 6.5
+H_IN = 1.65
+FS_TICK = 8.0
+FS_LABEL = 8.0
+FS_ANNOT = 8.0
+FS_LANE = 8.0
+FS_LEGEND = 8.0
 
 plt.rcParams.update({
     "font.family": "Arial",
@@ -74,12 +74,12 @@ BLUE, GREEN, AMBER, DARK, GREY = "#2E5E8C", "#3E8E55", "#D99A3D", "#262626", "#9
 
 # phase color grammar (one legend entry per class, not per segment)
 AUTOM = Patch(facecolor=BLUE, edgecolor="none", label="platform step")
-WAIT = Patch(facecolor=AMBER, edgecolor="none", hatch="///", label="pacing / blocked")
-HUMAN = Patch(facecolor=GREEN, edgecolor="none", label="approval, dispatch, verify")
-SETTLE = Patch(facecolor=GREY, edgecolor="none", hatch="///", label="device settle")
+WAIT = Patch(facecolor=AMBER, edgecolor="none", hatch="///", label="pacing")
+HUMAN = Patch(facecolor=GREEN, edgecolor="none", label="approval / verify")
+SETTLE = Patch(facecolor=GREY, edgecolor="none", hatch="///", label="settle")
 
 fig, ax = plt.subplots(figsize=(W_IN, H_IN))
-fig.subplots_adjust(left=0.075, right=0.995, top=0.865, bottom=0.17)
+fig.subplots_adjust(left=0.085, right=0.995, top=0.875, bottom=0.18)
 
 ROW_S4, ROW_S5, H = 1.0, 0.0, 0.40
 
@@ -118,10 +118,10 @@ def inbar(x, y, text):
             bbox=dict(facecolor="white", edgecolor="none", pad=0.9, alpha=0.92))
 
 # --- lane labels (white chip breaks the left spine behind the text) ---------
-ax.text(-4, ROW_S4, "closed loop (S4)", ha="right", va="center",
+ax.text(-4, ROW_S4, "S4 loop", ha="right", va="center",
         fontsize=FS_LANE, weight="bold", color=DARK, zorder=6,
         bbox=dict(facecolor="white", edgecolor="none", pad=1.4))
-ax.text(-4, ROW_S5, "fine-tuning (S5)", ha="right", va="center",
+ax.text(-4, ROW_S5, "S5 tuning", ha="right", va="center",
         fontsize=FS_LANE, weight="bold", color=DARK, zorder=6,
         bbox=dict(facecolor="white", edgecolor="none", pad=1.4))
 
@@ -130,29 +130,29 @@ ax.text(-4, ROW_S5, "fine-tuning (S5)", ha="right", va="center",
 # 2026-10-16): the earlier geometry let the top spine cut through the second
 # annotation line (visual-judge verdict, page 7). The self-check below now
 # asserts that no text crosses the frame and that annotations clear the bars.
-callout(6,   ROW_S4 + H / 2, 22,  1.53, "observe, decide,\npropose")
-callout(88,  ROW_S4 + H / 2, 74,  1.53, "re-propose and\napprove (HITL card)")
-callout(114, ROW_S4 + H / 2, 140, 1.53, "verify 65|65|65,\nverdict")
-callout(103, ROW_S4 - H / 2, 142, 0.64, "settle 15 s", top=True)
-inbar(46.5, ROW_S4, "trial cadence early-rejects (69 s)")
+callout(6,   ROW_S4 + H / 2, 12,  1.62, "observe, decide,\npropose")
+callout(88,  ROW_S4 + H / 2, 82,  1.62, "re-propose,\napprove")
+callout(114, ROW_S4 + H / 2, 150, 1.62, "verify 65|65|65,\nverdict")
+callout(103, ROW_S4 - H / 2, 142, 0.62, "settle 15 s", top=True)
+inbar(46.5, ROW_S4, "cadence 69 s")
 
 # --- between the lanes ------------------------------------------------------
 
 # --- lane 2 annotations (inside, and below the bar) -------------------------
-inbar(149, ROW_S5, "write-interval window (60 s)")
+inbar(149, ROW_S5, "60 s window")
 
 # --- phase color grammar: one legend entry per class, not per segment -------
-ax.legend(handles=[AUTOM, WAIT, HUMAN, SETTLE], loc="center left",
-          bbox_to_anchor=(0.005, 0.36), ncol=2, frameon=False,
+ax.legend(handles=[AUTOM, WAIT, HUMAN, SETTLE], loc="lower center",
+          bbox_to_anchor=(0.5, 0.015), ncol=4, frameon=False,
           fontsize=FS_LEGEND, handlelength=1.2, handletextpad=0.4,
           columnspacing=0.9, labelspacing=0.32)
 
 ax.set_xlim(-46, 208)
-ax.set_ylim(-0.42, 1.80)
+ax.set_ylim(-1.0, 1.95)
 ax.set_yticks([])
 ax.set_xticks([0, 30, 60, 90, 120, 150, 180])
 ax.set_xticks(range(0, 195, 15), minor=True)
-ax.set_xlabel("time from the S4 observation (s), run benchmark-20261009033810",
+ax.set_xlabel("time from the S4 observation (s)",
               fontsize=FS_LABEL, labelpad=2)
 for s in ax.spines.values():
     s.set_visible(True)
@@ -195,11 +195,11 @@ collisions = [(round(_iou(spans[i][0], spans[j][0]), 2), spans[i][1], spans[j][1
 #    wholly inside their bar rect and are exempt; the 2-D test keeps the
 #    legend, which only shares vertical space, from false-positiving).
 H_PT = H_IN * 72.0
-axes_top = H_PT * (1 - 0.865)
-axes_bottom = H_PT * (1 - 0.17)
-axes_left = pg.rect.width * 0.075
+axes_top = H_PT * (1 - 0.875)
+axes_bottom = H_PT * (1 - 0.18)
+axes_left = pg.rect.width * 0.085
 axes_right = pg.rect.width * 0.995
-yl0, yl1 = -0.42, 1.80
+yl0, yl1 = -1.0, 1.95
 xl0, xl1 = -46, 208
 
 def y_pdf(y):
@@ -243,6 +243,6 @@ assert not over, f"content overflows the media box: {over}"
 assert not collisions, f"overlapping text: {collisions[:4]}"
 assert not frame_cross, f"text crosses the top spine: {frame_cross}"
 assert not straddle, f"text straddles a bar edge: {straddle}"
-assert min(sizes) >= 6.0, f"type below 6.0 pt: {sizes}"
+assert min(sizes) >= 8.0, f"type below 6.0 pt: {sizes}"
 assert set(fonts) <= {"ArialMT", "Arial-BoldMT"}, f"font fallback: {fonts}"
 print("  SELF-CHECK PASS")

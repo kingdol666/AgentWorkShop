@@ -1,15 +1,13 @@
 \begin{figure}[!t]
 \centering
-\includegraphics[width=\columnwidth]{resources/aws_fig3-flat.png}
-\caption{Implemented agent-team runtime. A natural-language goal enters as
-a task; the lead decomposes and dispatches plans; retrieval and
-analysis produce the setpoint (the LLM engine in its replaceable
-strategy slot). The governance stages are deterministic platform
-logic: Gate~1 applies the Eq.~\eqref{eq:admission} interlock, Gate~2 the
-approval wait; the write agent reads back the actual value (SET versus ACT);
-the judge records keep, rollback, or uncertain; each step is journaled with
-attribution. ``Governance Agent'' boxes are platform stages, not
-model-bearing agents.}
+\includegraphics[width=\columnwidth]{resources/fig-runtime.pdf}
+\caption{Implemented agent-team runtime. A natural-language goal enters as a
+team task; retrieval, analysis, and the lead produce a setpoint; the
+governance stages admit the value against Eq.~\eqref{eq:admission} and, on a
+manual binding, wait for approval; the write path issues the command and reads
+back the actual value (SET versus ACT); the judge records keep, rollback, or
+uncertain with attribution. Governance rows are deterministic platform logic,
+not model-bearing agents.}
 \label{fig:runtime}
 \end{figure}
 
@@ -35,32 +33,31 @@ success-flag acknowledgment, checkable three-way consistency, and
 separately admitted compensation---each specified below; every
 agent-originated path to the plant passes through the same governed write.
 
-\begin{figure}[!t]
+\begin{figure*}[!t]
 \centering
-% figures/fig-admission.pdf ships a white full-bleed background; the trim
-% removes only the blank margin above the ink (content scales up ~1.4%).
-\includegraphics[width=\columnwidth,trim=3.5 0 1 12.6,clip]{resources/fig-admission.pdf}
-% Rebuilt by figures/reflow-hitl-card.py from figures/retired/
-% hitl-card-crop-orig.png: the authentic card rows are re-packed so the UI
-% text prints at >=6.8pt at column width (the earlier 1.15x band stacking
-% printed it at ~4pt; visual-judge verdict 2026-10-16, page 4). The (b)
-% panel letter is baked into the image's clear top-right zone.
-\includegraphics[width=\columnwidth]{resources/hitl-card-render.png}
+\begin{minipage}[t]{0.49\textwidth}
+\centering
+\includegraphics[width=\linewidth]{resources/fig-admission.pdf}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.49\textwidth}
+\centering
+\includegraphics[width=\linewidth]{resources/fig-hitl-card.pdf}
+\end{minipage}
 \caption{The admission boundary and its human-approval gate.
 (a)~The Eq.~\eqref{eq:admission} interval geometry: four declared,
-versioned bounds narrow to the admitted interval; a proposal
-outside it is rejected by its excluding layer (the Q1 drill).
-(b)~The structured approval card on a manual binding (live console;
-re-rendered for legibility). One setpoint---current 63\,bar,
-proposed 64\,bar---is separated from the proposer's display-only reasoning;
-the decision note returns to the member on refusal
-(Section~\ref{sec:hitl}).}
+versioned bounds narrow to the admitted interval; a proposal outside it is
+rejected by its excluding layer (the Q1 drill).
+(b)~The structured approval card on a manual binding (English vector redraw
+of the live console). One setpoint---current 63\,bar, proposed 64\,bar---is
+separated from the proposer's display-only reasoning; the decision note
+returns to the member on refusal (Section~\ref{sec:hitl}).}
 \label{fig:hitl}
-\end{figure}
+\end{figure*}
 
 \subsection{Task, Observation, and Admission}
 \label{sec:objective}
-The strategy receives a task and goal in production context and decides what
+The strategy receives a task and goal in
+production context and decides what
 to propose and when to stop; the platform governs semantic node
 parameters---pressure, dosing rate, line speed, rail
 width---in engineering units.
@@ -74,7 +71,8 @@ admission interval is
 \end{equation}
 where $\mathcal{H}_n$ is the mandatory hard engineering range (finite and
 non-empty at node creation) and the remaining terms the baseline,
-active-product, and active-recipe limits; a missing optional limit
+active-product, and active-recipe limits (together the soft window); a
+missing optional limit
 contributes no restriction, and $t$ is the
 admission instant, re-resolved at execution. An emptying configuration
 rejects every write, naming the excluding layer at the first write. The interval form is deliberate:
@@ -113,27 +111,29 @@ stored value without re-admission---plant-facing state maintenance, not an
 agent path. Line start installs active context before recipe parameters
 dispatch individually; line stop clears it.
 
-\subsection{Write Acknowledgment as Three-Level Evidence}
+\subsection{Write Acknowledgment as Graded Evidence}
 \label{sec:ack}
 \looseness=-1 A driver-level success flag conflates two facts: the transport
-accepted the command, and the device now holds the value. \system{} grades
+accepted the command, and the device now holds the value. The platform grades
 every governed write at two checkpoints. At \emph{acceptance}, the driver
-classifies the write as \emph{readback-verified} (its own post-command read
-returns the commanded value within the node's configured write tolerance),
-\emph{transport-acknowledged} (the transport accepted the command, nothing
-device-side observed yet---a broker receipt or an MES business
+records a provisional class: \emph{readback-verified} (its own post-command
+read returns the commanded value within the node's configured write
+tolerance), \emph{transport-acknowledged} (the transport accepted the command,
+nothing device-side observed yet---a broker receipt or an MES business
 acknowledgment), or \emph{unverified} (the transport failed). At
 \emph{verification}, a post-write verifier re-reads the endpoint through the
 node's read path (three attempts, 2\,s apart) and promotes
 transport-acknowledged parameters whose read returns the commanded value; a
-write that cannot be confirmed closes \emph{unverified}, and one whose
-command never completed acceptance closes \emph{failed}---batch receipts
-carry a per-parameter grade plus a three-bucket summary
-(verified/unverified/failed), where the summary counts verification
-outcomes and the transport-acknowledged terminal grade lives in the
-per-write journal of acceptance-receipt routes; the per-write
-class is journaled,
-and the operations log records worst-state severity. The
+write that cannot be confirmed closes \emph{unverified}, and a command that
+never completed acceptance closes \emph{failed}, overriding the provisional
+unverified. The terminal grade is fixed when the write closes; the per-write
+journal preserves the acceptance class and the terminal grade. We therefore
+distinguish three evidence levels---readback-verified, transport-acknowledged,
+and unverified---plus one terminal failure state, \emph{failed}. Batch receipts
+carry a per-parameter terminal grade and a three-bucket summary
+(verified/unverified/failed); the summary counts terminal outcomes, while
+transport-acknowledged is a per-write terminal grade on acceptance-receipt
+routes, not a batch bucket. The operations log records worst-state severity. The
 falsifiable contrast: under a success-flag receipt rule---a transport
 acknowledgment closes the report---the publish-only receipt of
 Section~\ref{sec:hardening} (broker puback, \texttt{ok=true}, no read
@@ -168,7 +168,7 @@ independently validate the evidence, so a scripted keep can coexist with a
 missed objective. Verdict integrity therefore rests on attribution,
 journaling, and operator review---a kept-but-marked record stays visible
 with its disagreement attached, and the operations log raises parameter
-severity under alarm-rationalization practice \cite{isa182}---with the next
+severity under alarm-rationalization practice---with the next
 guard queued: an independent adjudication identity, or a platform-side
 minimum re-check before a caller's \texttt{keep} may stand down the
 backstop (Section~\ref{sec:limits}). Three-way
@@ -196,7 +196,8 @@ open records; a caller's \texttt{keep} closes and stands it down, while a
 executes---availability is therefore contingent on
 recorded verdicts and arriving observations. When collected samples of an open
 record's node leave the recipe's monitoring window (a DAQ-side envelope
-distinct from the admitting interval), the platform issues a
+distinct from the admitting interval and from the mission's attainment
+window), the platform issues a
 system-attributed rollback verdict and restores the value preceding that
 write (one step; the admitted baseline is not restored), graded as above.
 The policy waits 120\,s, polls every 30\,s, and fires on three
@@ -227,7 +228,7 @@ one pending request per member--node pair; and in \emph{hold} mode an
 unanswerable request persists without expiry until a human answers.
 
 \looseness=-1 Human authority is anchored one level above individual requests: each line
-carries a control mode---the line master switch---whose fail-safe default
+carries a control mode---the recipe-dispatch master switch---whose fail-safe default
 is \emph{manual}. Under manual
 mode, recipe-family operations (parameter update, dispatch, trial, and
 rollback) from approval-free bindings on that line are intercepted and

@@ -3,7 +3,7 @@
 \subsection{LLM Agents in Industrial Control: From Generation to Governance}
 \looseness=-1 Agent-based manufacturing and supervision have long linked
 organizational roles to plant
-capabilities \cite{leitao2009agentbased,biskupovic2025supervision}, and
+capabilities \cite{biskupovic2025supervision}, and
 LLM-oriented industrial work now spans PLC generation and verification
 \cite{liu2026agents4plc} and direct plant-facing action---context-aware
 control \cite{wu2025instructmpc}, digital-twin fault handling
@@ -26,7 +26,9 @@ that concrete.
 \begin{table*}[!t]
 \centering
 \caption{Closest LLM-based industrial control systems versus \system{}
-(venue, LLM role, write path, production-scoped authority, write evidence).}
+(venue, LLM role, write path, production-scoped authority, write evidence;
+entries summarize what each cited publication reports, and a missing mechanism
+is not evidence of absence).}
 \label{tab:nearest}
 \scriptsize
 \setlength{\tabcolsep}{3.4pt}
@@ -42,7 +44,7 @@ Zhao et al., AEI~2026 \cite{zhao2026shopfloor} & shop-floor task dispatch & work
 Waseem et al., Mach.\ Learn.\ Eng.\ 2026 \cite{waseem2026pretrained} & real-time controller in the loop & direct loop actuation (robot line) & prompt-level constraints & line KPIs under LLM control \\
 \midrule
 \rowcolor{gray!12}
-\textbf{\system{}} & \textbf{replaceable strategy slot} & \textbf{governed write path: admission, HITL, dispatch, readback} & \textbf{member--node bindings; line master switch; product/recipe-scoped limits} & \textbf{graded acknowledgment; harness-checked three-way consistency; attributed journal; compensation; backstop} \\
+\textbf{The platform} & \textbf{proposer (replaceable strategy slot)} & \textbf{governed write path: admission, HITL, dispatch, readback} & \textbf{member--node bindings; recipe-dispatch master switch; product/recipe-scoped limits} & \textbf{graded acknowledgment; evaluation-harness-checked three-way consistency; attributed journal; compensation; backstop} \\
 \bottomrule
 \end{tabular}
 \end{table*}
@@ -53,12 +55,12 @@ Protocol (MCP) standardizes multi-agent tool interfaces \cite{mcp2024};
 its tools carry advisory annotations but no production
 context---line, product, or recipe---and no record separating admission
 from execution. ISA-88 and ISA-95 model recipes and operations
-\cite{isa88,isa95}, and \system{}'s versioned recipes instantiate
+\cite{isa88isa95}, and \system{}'s versioned recipes instantiate
 a reduced subset of that stack; the governed
 life cycle transposes run-to-run (R2R) control disciplines \cite{moyne2000r2r}
 onto a supervisory write path.
-A separate line enforces run-time guarantees on LLM agents---guard agents
-\cite{xiang2024guardagent}, schema-level behavioral constraints
+A separate line enforces run-time guarantees on LLM agents---schema-level
+behavioral constraints
 (AgentSpec \cite{wang2025agentspec}), and capability-based
 information-flow control (CaMeL \cite{debenedetti2025camel}), the closest
 software-agent analogue of the rule that prompt content is never authority;
@@ -67,19 +69,17 @@ policies could compile onto this substrate.
 
 \looseness=-1 Permissions, range checks, approvals, and audit trails long existed in
 distributed-control-system (DCS) and SCADA practice---versioned batch
-recipes and electronic batch journals under 21~CFR Part~11 and GAMP~5
-\cite{part11,gamp5}, second-channel monitoring and advisory
-operations in NAMUR open architecture
-\cite{namur2017noa}, and setpoint adaptation in run-to-run control---while
+recipes and electronic batch journals under 21~CFR Part~11
+\cite{part11}, second-channel monitoring and advisory operations, and
+setpoint adaptation in run-to-run control---while
 IEC~62443 codifies their security counterpart \cite{iec62443-3-3} and
 formal shielding, control-barrier functions, and simplex run-time assurance
 offer stronger properties
 \cite{alshiekh2018shielding,ames2017cbf,sha2001simplex}. Graded command
 confirmation itself has telecontrol ancestry: DNP3's select-before-operate
-exchange \cite{ieee1815dnp3} and IEC~60870-5's command-acknowledgment cycle
-\cite{iec60870104} confirm a command at the protocol and application layer;
-\system{} grades above them, against production context and actor
-attribution. Against that
+exchange \cite{ieee1815dnp3} confirms a command at the protocol and
+application layer; \system{} grades above it, against production context and
+actor attribution. Against that
 practice the difference is the proposer: a machine-generated agent identity
 rather than a presupposed human operator, so admission binds to member
 authority, prompt content stays inert, and intervals are re-evaluated per
@@ -87,10 +87,9 @@ request against live product and recipe state. No safeguard above is claimed
 as an invention---what is new is their composition into this one
 proposer-agnostic path, whose evidence
 states---graded acknowledgment, verdict, compensation---survive strategy
-replacement; the three-way check is a supervised special case of
-classical data reconciliation
-\cite{crowe1996reconciliation}.
-\system{} implements source-dependent checks and a rule-based backstop
+replacement; the three-way check is a supervised special case of classical
+data reconciliation.
+The platform implements source-dependent checks and a rule-based backstop
 (Section~\ref{sec:agentloop}), no formal protection guarantee; human
 oversight likewise requires more than an approval dialog
 \cite{bainbridge1983ironies}.

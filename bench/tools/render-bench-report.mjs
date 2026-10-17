@@ -78,7 +78,7 @@ const charts = [
 ].filter(Boolean).join('')
 
 const artifacts = collectArtifacts(outDir, [
-  'agentteam-mission.log', 'agentteam-biax.log',
+  'agentteam-mission.log', 'agentteam-biax.log', 'line-profile.json',
   'agent-loop-omp.log', 'agent-loop-opencode.log', 'agent-loop-codex.log',
   'agent-goal-loop-omp.log', 'agent-goal-loop-opencode.log', 'agent-goal-loop-codex.log',
   'metrics.csv', 'run.json', 'summary.json',

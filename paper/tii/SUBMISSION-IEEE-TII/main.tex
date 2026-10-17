@@ -29,7 +29,7 @@
 \usepackage{cite}
 \usepackage[colorlinks=true,linkcolor=black,citecolor=black,urlcolor=black]{hyperref}
 \hypersetup{bookmarksnumbered=true,
-  pdftitle={AgentWorkShop: A Governed Supervisory Execution Layer for LLM-Agent Plant Writes},
+  pdftitle={A Governed Supervisory Execution Layer for LLM-Agent Plant Writes},
   pdfauthor={Anonymous Authors},
   pdfsubject={IEEE Transactions on Industrial Informatics},
   pdfkeywords={agent teams, human-in-the-loop, industrial informatics, LLM agents, supervisory control, write governance}}
@@ -55,14 +55,14 @@
 
 \input{resources/results-macros}
 
-\newcommand{\system}{\textsc{AgentWorkShop}}
+\newcommand{\system}{the platform}
 
 \begin{document}
 
-\title{AgentWorkShop: A Governed Supervisory Execution Layer for LLM-Agent Plant Writes}
+\title{A Governed Supervisory Execution Layer for LLM-Agent Plant Writes}
 
 \author{Anonymous Authors}
-\markboth{IEEE Transactions on Industrial Informatics, Submitted Manuscript}{AgentWorkShop: Governed Execution for LLM-Agent Plant Writes}
+\markboth{IEEE Transactions on Industrial Informatics, Submitted Manuscript}{Governed Execution for LLM-Agent Plant Writes}
 
 \maketitle
 
@@ -72,26 +72,29 @@ industrial plants, yet the safeguards around each
 proposal---write authority, active limits, human approval, device
 acceptance---are rebuilt per deployment in application code, so a task
 reported complete can coexist with a missed process objective.
-AgentWorkShop, an open-source governed supervisory execution layer, carries
+The platform, an open-source governed supervisory execution layer, carries
 agent-originated writes along one path: admission against declared,
 versioned limits; approval where required; actuation over semantic
 write-control nodes; graded
 acknowledgment---readback-verified, transport-acknowledged, or
-unverified---by what a post-write read observes, not the
-transport receipt alone; and verdict recording with
-compensation---each stage a separately inspectable, actor-attributed
-evidence state. Team identities reach
+unverified, with failed as a terminal failure state---by what a
+post-write read observes, not the transport receipt alone; and verdict
+recording with compensation---each stage a separately inspectable,
+actor-attributed evidence state. Team identities reach
 nodes only through explicit
 member--node capabilities, prompt content is never admissible as
-authority, and a fail-safe-manual line master switch
+authority, and a fail-safe-manual recipe-dispatch master switch
 intercepts approval-free recipe dispatch. Four process
 scenarios---injection molding, wastewater treatment, annealing, and
 biaxially oriented polyethylene terephthalate (BOPET)
 film---plus a cast-film reference line exercise the layer across
-protocol-interception drills, agent-team missions, and a deployment-scale
-regression campaign on one instance. The evaluation is
-simulation-tier (simulator-backed); no
-optimization-benefit or safety-assurance claim is made.
+protocol-interception drills, agent-team missions, and a nine-run
+deployment-scale campaign. Across the archived runs, 33/33 out-of-window
+probes are rejected at the attributable layer, a publish-only endpoint that
+a success-flag rule would report as successful is graded unverified, and
+the campaign completes with zero failed assertions. The evaluation is
+simulation-tier; it establishes mechanism behavior and evidence integrity,
+not optimization benefit or safety assurance.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -110,14 +113,14 @@ supervisory control, write governance.
 \input{sections/discussion}
 
 \bibliographystyle{IEEEtran}
-% Reference list at IEEEtran's default \footnotesize (8pt) -- the 2026-10-13
-% revision restores the publisher-conformant font size (the earlier 7pt
-% compression was flagged as a desk-reject risk). Item separation uses
-% IEEEtran's author-adjustable \IEEEbibitemsep, tightened slightly to hold
-% the 10-page budget; body text was trimmed rather than shrinking the font.
+% Reference list at IEEEtran's default \footnotesize (8pt). Item separation is
+% 0pt with 0.98 leading -- no glyph overlap, verified at 600 dpi. The
+% manuscript uses the TII initial-submission 30-reference consolidation and
+% is exactly 10 pages; body text was trimmed rather than shrinking the font.
 \begingroup
 \raggedbottom
-\def\IEEEbibitemsep{-2.5pt plus .1pt}
+\linespread{0.98}\selectfont
+\def\IEEEbibitemsep{0pt plus .1pt}
 \bibliography{resources/refs}
 \endgroup
 

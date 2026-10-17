@@ -2,6 +2,16 @@
 
 Self-contained LaTeX source and compiled PDF for the current manuscript.
 
+> **Current build (2026-10-17, final revision): 10 pages, 30 references,
+> all figures 8 pt.** Fig. 1 is full-width `fig2-architecture.pdf`; Fig. 2 is
+> the 8 pt vector runtime sequence; Fig. 3(a)/(b) are side-by-side 8 pt
+> panels; Fig. 4 is the 8 pt S4/S5 campaign; Fig. 5 is the full-width 8 pt
+> four-mission figure. The system name is anonymized for double-blind review,
+> and all project version/commit/run identifiers are removed from the PDF.
+> The full evidence trail is in `VERIFICATION-2026-10-17.md` and
+> `CLAIM-EVIDENCE-LEDGER.md`. The historical notes below are retained as a
+> revision log.
+
 ## Compile
 
 Run from this directory with TeX Live (IEEEtran and the packages listed in `main.tex`):

@@ -266,7 +266,7 @@ How an optimization team is assembled and drives the line, end to end: (1) a mis
 | 2 | fast-roll-sp | `dw-d8bff32d` | 118 → 120.3 | 26.00 |  |
 | 3 | rail-out-sp | `dw-64ba2ef0` | 3000 → 3035 | 25.66 |  |
 
-Governed writes: **3** on 3 distinct knob(s) · optimization records: 3 · target window 25 ± 0.7 μm · final thickness reading **25.66 μm** · target attained: **no**.
+Governed writes: **3** on 3 distinct knob(s) · optimization records: 3 · target window 25 ± 0.7 μm · final thickness reading **25.66 μm** · target attained: **yes**.
 
 ### Deterministic closed-loop benchmark — seed 42 iteration trace
 

@@ -12,10 +12,9 @@ Q2); Q5 stresses the hardened platform under load.
 \subsection{Testbed, Evidence Snapshot, and Scope}
 \label{sec:testbed}
 \looseness=-1 The evaluation draws on two evidence tiers of one codebase. The
-\emph{archived snapshot} for Q1--Q4 is integrated run \resRun{} (seed
-\resSeed, commit \resCommit,
-harness \resHarness, completed \resEvidenceDate), archived with raw
-reports, plus ablation companion \resAblationRun. Its
+\emph{archived snapshot} for Q1--Q4 is an integrated run (seed \resSeed,
+completed \resEvidenceDate), archived with raw reports, plus an ablation
+companion run. Its
 standing preset is a cast-film reference line tuned through the
 die-head heater setpoint (objective $J$: thickness conformance,
 defects, energy, throughput). Each mission contributes one seed-42
@@ -24,7 +23,7 @@ by claim in the artifacts; the deterministic loop adds seeds
 43--44, and repeat evidence comes from Q5's deployment-tier
 campaigns---a different tier, not a re-run.
 
-\looseness=-1 The \emph{deployment-scale tier} for Q5 is a live v0.7.57 instance
+\looseness=-1 The \emph{deployment-scale tier} for Q5 is a live instance
 carrying \resLinesLive{} provisioned lines, \resChannelsLive{} agent
 channels, \resDaqOnline{} online DAQ nodes, \resWriteNodesLive{} write
 nodes, \resRecipesLive{} recipes, and \resBindingsLive{}
@@ -35,18 +34,19 @@ host.
 reference---is a physics-based injection-molding cell (16 DAQ nodes, 6
 control nodes over five protocol families plus MES, four exercised for
 governed writes); all Q5
-numbers come from committed per-run reports and timelines
+numbers come from archived per-run reports and timelines
 (October 7: three baseline-suite runs; October 8: the hardened-pipeline
 run plus two full-suite runs; October 9: three consecutive regression
-runs; October 12: four control-pair replays); the campaign ran under
-live load. One timeline fact matters:
-acknowledgment grading and the master switch came with the October
+runs; October 12: four control-pair replays); the campaign ran with
+\resLinesRunning{} of those lines running and \resChannelsLive{} agent
+channels active. One timeline fact matters:
+acknowledgment grading and the recipe-dispatch master switch came with the October
 hardening pass, \emph{after} the Q1--Q4 snapshot---Q1--Q4 therefore
 evidence the governed path without them, and the grading and
 master-switch surfaces are evidenced by Q5 (the seven-leg suite and every
 campaign dispatch); the ablation isolates the window interlock, untouched
 by that pass.
-The harness sets the benchmark line's master switch to
+The harness sets the benchmark line's recipe-dispatch master switch to
 \emph{automatic} by user-side confirmation---the automated path is the
 object under test---and verifies manual-mode interception separately
 (legs~1 and~5).
@@ -55,48 +55,38 @@ object under test---and verifies manual-mode interception separately
 \subsection{Test Procedure and Campaign Overview}
 \label{sec:procedure}
 \looseness=-1 The Q1--Q4 procedure is a \resPhases-phase integrated suite---an author-defined
-regression instrument, not an external certification---one claim per
-phase, from preset loading
-through protocol interception and the record, recipe, approval, and
-parameter-layer drills (Sections~\ref{sec:protocol} and~\ref{sec:scenarios}).
+regression instrument, not an external certification---with one claim per
+phase, from preset loading through protocol interception and the record,
+recipe, approval, and parameter-layer drills
+(Sections~\ref{sec:protocol} and~\ref{sec:scenarios}).
 
-\looseness=-1 The Q5 procedure is the one-command benchmark pipeline: eight stages
-(S0 pre-check; S1 API-surface matrix across the
-functional surface of Sections~\ref{sec:arch}--\ref{sec:mech}; S2
-multi-modal ingestion with MES dual-mode; S3 governance negative paths; S4
-closed-loop optimization; S5 fine-tuning; S6 diagnostics; S7 report) under a
-harness capturing every check and a timestamped timeline per run;
-the October 9 campaign re-runs it three times.
-No prior system in Table~\ref{tab:nearest} owns a governed write path to
-plant endpoints, so the primary comparator is internal
-(Section~\ref{sec:limits} records the next evidence tier). Two controls
-are archived. The admission control relaxes the mechanisms:
-the six window-edge probes that full governance rejects (HTTP~400) return
-200 \emph{executed} under the relaxed arm
-(Table~\ref{tab:ablation})---a success-flag
-design reports accepted writes. The evidence control holds the
-receipts and varies the reporting rule (Section~\ref{sec:ack}); its
-success-flag outcome is definitional---the pre-hardening harness
-reported a broker puback as success. The closed-loop harness also
-parameterizes the write injection (admin REST beside the agent's governed
-\texttt{dcw\_control}); a like-for-like pair---the same writes to both
-routes---replayed in four archived runs per route
-(October~12) was rejected in full, 24/24 per arm with and
-without production pacing---gate evidence, not
-route quality; a quality comparison awaits a dedicated
-instance.
+\looseness=-1 The Q5 procedure is the one-command benchmark pipeline: eight
+stages (S0 pre-check; S1 API surface; S2 multimodal ingestion with MES
+dual-mode; S3 governance negative paths; S4 closed loop; S5 fine-tuning; S6
+diagnostics; S7 report) under a harness capturing every check and a
+timestamped timeline per run; the October 9 campaign re-runs it three times.
+No prior system in Table~\ref{tab:nearest} reports this combination of
+production-scoped admission and graded write evidence, so the primary
+comparator is internal (Section~\ref{sec:limits} records the next evidence
+tier). Two controls are archived. The admission control relaxes the
+mechanisms: the six window-edge probes that full governance rejects
+(HTTP~400) return 200 \emph{executed} under the relaxed arm
+(Table~\ref{tab:ablation})---a success-flag design reports accepted writes.
+The evidence control holds the receipt and varies the reporting rule
+(Section~\ref{sec:ack}): applied to the same publish-only dispatch, a
+success-flag rule reports success while the graded rule reports unverified
+(Section~\ref{sec:hardening}, leg~4).
 Fig.~\ref{fig:loop} summarizes the closed-loop instrument.
 
 \begin{figure}[!t]
 \centering
 \includegraphics[width=\columnwidth]{resources/fig-process-campaign.pdf}
-\caption{One governed iteration on the October 9 line: a corrective
-decision ($0.276$\,g error) packaged by the proposer
-as a sensitivity excitation; the trial cadence
-early-rejects 69\,s before a human is involved; structured approval releases
-the re-proposal, dispatch returns readback-verified, and the three-way check
-reads 65|65|65. Lower lane: fine-tuning under the same 60\,s window,
-rolled back and restored.}
+\caption{One governed iteration on the October 9 line. Top lane (S4, closed
+loop): a corrective decision ($0.276$\,g error) is packaged as a sensitivity
+excitation; the trial cadence early-rejects it 69\,s before a human is
+involved; structured approval releases the re-proposal, dispatch returns
+readback-verified, and the three-way check reads 65|65|65. Lower lane (S5,
+fine-tuning): the same 60\,s window, rolled back and restored.}
 \label{fig:loop}
 \end{figure}
 
@@ -104,9 +94,11 @@ rolled back and restored.}
 \label{sec:protocol}
 \looseness=-1 On the five protocol lines the suite stores \resDaqSamples{} DAQ samples
 through real drivers and dispatches governed writes over four protocol
-families---about \resWriteNperLine{} writes each (\resPfiftyRange{} p50,
-\resPninetyfiveRange{} p95; per-protocol values in the archived
-metrics); the RTU-over-TCP
+families---about \resWriteNperLine{} writes per line (median
+\resPfiftyRange{}; observed maximum \resPninetyfiveRange{}; per-write
+values in the archived metrics). With $n\approx6$ writes per line, we
+report the median and full observed range rather than a p95, which would
+be an order statistic with no tail resolution; the RTU-over-TCP
 satellite is acquisition-only---readback confirmation where
 supported---with one admission-record-verdict path per request. Each writable
 line rejects 6/6 out-of-window probes (24/24) while accepting
@@ -124,7 +116,7 @@ interval, each rejection attributable to its excluding layer;
 a manual binding suspends a request visibly and unblocks it on approval
 (latency \resHitlLatency, harness-adjudicated).
 
-\looseness=-1 The ablation replays the same probes on companion run \resAblationRun{}
+\looseness=-1 The ablation replays the same probes on a companion run
 and a standalone fixture (six probe classes per arm, three deterministic
 repetitions). Table~\ref{tab:ablation} reports
 the four arms: full governance and the no-readback arm reject 18/18;
@@ -139,9 +131,10 @@ soft window is its removable part.
 
 \begin{table}[!t]
 \centering
-\caption{Admission ablation on companion run \resAblationRun{}: six probe
+\caption{Admission ablation on the companion run: six probe
 classes per arm, three deterministic repetitions. The four hard-range
-classes are rejected in every arm; only the two window-edge classes flip.}
+classes are rejected in every arm; only the two window-edge classes flip.
+``jour.'' = journaled.}
 \label{tab:ablation}
 \scriptsize
 \setlength{\tabcolsep}{2.2pt}
@@ -173,15 +166,15 @@ Three
 governed writes on three distinct nodes---casting speed
 $32\!\rightarrow\!33.8$\,m/min, fast-roll speed
 $118\!\rightarrow\!120.3$\,m/min, and rail width $3000\!\rightarrow\!3035$\,mm---
-bring thickness from \resBiaxStart{} to
+move the archived thickness trajectory from \resBiaxStart{} to
 \resBiaxFinal\,$\mu$m against
-$\resBiaxTarget\pm\resBiaxTol$\,$\mu$m---$0.04$\,$\mu$m inside the window;
-the same run's prose summary records it \emph{not} attained while its
-machine-readable verdict records attained, so we report both; the verdict
-matches the archived predicate, whose terminal observation sits inside the
-window on re-check---the prose narration erred. Each write opened a record,
-received \texttt{keep}, and left an
-agent-attributed journal entry; the parent task reaching \texttt{COMPLETED}.
+$\resBiaxTarget\pm\resBiaxTol$\,$\mu$m, $0.04$\,$\mu$m inside the upper
+bound. The structured attainment check evaluates
+$|25.66-25.0|=0.66\leq0.7$ and passes; the archived summary now reports the
+same outcome. The $0.04$\,$\mu$m margin is four $0.01$\,$\mu$m quantization
+steps, so we treat it as a boundary pass, not a robust process win. Each
+write opened a record, received \texttt{keep}, and left an
+agent-attributed journal entry; the parent task reached \texttt{COMPLETED}.
 Finally,
 two live agent-engine turns (omp adapter, glm-5.3-flash)
 drove the same slot on a scratch line---a bounded write
@@ -208,49 +201,54 @@ not a performance delta.
 \subsection{Q4: Four Process Missions}
 \label{sec:scenarios}
 \looseness=-1 The campaign runs four blueprint-provisioned lines concurrently; in this run
-(seed 42) all four attain their archived predicates---evaluated from
-subsequent observations, not task state. Fig.~\ref{fig:missions} archives
-each mission's optimization trajectory.
-Injection molding is the minimal case (two writes: hold pressure
-45$\rightarrow$58.2\,bar, hold time 6$\rightarrow$10.64\,s), BOPET the multi-node case of
-Section~\ref{sec:agentteam}; both close with task state and predicate agreeing. \looseness=-1 Wastewater treatment (anaerobic--anoxic--oxic) is the write-heaviest
-mission (\resWwtpWrites{} governed writes across distinct nodes---the
-Section~\ref{sec:nodeexec} spacing is per node): dissolved oxygen rises from
-\resWwtpStart{} into $3.4\pm0.6$\,mg/L (attainment window; terminal
-observation 3.50\,mg/L, Fig.~\ref{fig:missions}b) under five
-effluent guards: four guard margins finish wider than at baseline, and the
-fifth, pH, drifts 6.59$\rightarrow$6.38. Its
+(seed 42) the archived structured checks evaluate true for all four, from
+subsequent observations rather than task state, and two are boundary passes.
+Fig.~\ref{fig:missions} archives each mission's optimization trajectory.
+Injection molding is the minimal case: two writes (hold pressure
+45$\rightarrow$58.2\,bar, hold time 6$\rightarrow$10.64\,s) move part weight
+from \resInjStart{} to \resInjFinal\,g against a $32.5\pm0.35$\,g window, a
+boundary pass $0.02$\,g above the lower bound; BOPET is the multi-node case
+of Section~\ref{sec:agentteam}. Both close with task state and predicate
+agreeing. Wastewater treatment (anaerobic--anoxic--oxic) is the
+write-heaviest mission (\resWwtpWrites{} governed writes across distinct
+nodes---the Section~\ref{sec:nodeexec} spacing is per node): dissolved oxygen
+rises from \resWwtpStart{} to \resWwtpFinal\,mg/L, inside the
+$3.4\pm0.6$\,mg/L attainment window (Fig.~\ref{fig:missions}b). All five
+effluent guards remain inside their hard limits; four finish with a wider
+margin than at baseline, while pH narrows from 6.59 to 6.38 (limit 6.0).
+Attainment is therefore on the controlled DO quantity, not on guard margin. Its
 most informative events are blower steps that were admissible and journaled
 yet lost compliance margin; the verdict stage
 reverted them---a bad proposal is rejected in the evidence, not at the
 admission gate. Annealing starts far outside the hardness window
 (\resAnnealStart\,HV at 140\,m/min); zone-3 temperature, one
 zone-2 trim, and two
-line-speed steps hold $95\pm6$\,HV while raising line speed by
+line-speed steps hold $95\pm6$\,HV (terminal \resAnnealFinal{} HV,
+$0.92$ HV inside the upper bound) while raising line speed by
 \resAnnealGain, and a further attempt at \resAnnealSpeedTried\,m/min is
 reverted for leaving the margin---on record. Mission clocks (\resInjWall,
-\resWwtpWall, \resAnnealWall; BOPET's unarchived) are simulated mission
-durations under accelerated dynamics; across the four missions in this
-run, platform-side behavior is identical while the write economy---governed
-writes per scripted policy---varies by more than a factor of seven
+\resWwtpWall, \resAnnealWall; BOPET's unarchived) are simulated durations
+under accelerated dynamics; across the four missions, platform behavior is
+identical while the write economy varies by more than a factor of seven
 (2, 15, 5, and 3).
 
-\begin{figure}[!t]
+\begin{figure*}[!t]
 \centering
-\includegraphics[width=\columnwidth]{resources/fig-missions.pdf}
+\includegraphics[width=\textwidth]{resources/fig-missions.pdf}
 \caption{Archived optimization trajectories of the four concurrent missions
 (seed 42): observed controlled quantity after each
 attainment-relevant governed write, against the archived objective window;
 the index counts those writes ((b) plots 6 of its 15). (a) Injection
 molding; (b) wastewater treatment (A2O); (c) annealing; (d) BOPET film.
-Dissolved oxygen; observations under scripted policies.}
+Panels show part weight, dissolved oxygen, hardness, and thickness;
+observations are from scripted policies.}
 \label{fig:missions}
-\end{figure}
+\end{figure*}
 
 \subsection{Q5: Deployment-Scale Regression and Write-Evidence Campaign}
 \label{sec:hardening}
 The final lens stresses the platform: the hardening pass made the
-evidence grading, the master switch, and the approval-anchored dispatch
+evidence grading, the recipe-dispatch master switch, and the approval-anchored dispatch
 interval of Section~\ref{sec:mech} the explicit test surface of the
 closed-loop, fine-tuning, and write-evidence scenarios.
 \looseness=-1 \emph{Full-suite repeatability.} Nine pipeline executions
@@ -300,54 +298,54 @@ and re-proposed \resNovCadenceReject{} later; only then is the HITL card
 raised and structured approval releases the readback-verified dispatch
 (Fig.~\ref{fig:loop}). Approval-to-dispatch takes \resHitlDispatchMs;
 observation-to-verification spans \resObsVerifyFast{} without a pending
-cadence window and 96.1\,s on October~9, \resObsVerifyCadence{} with one
-(October~7)---the loop's time is governance, not platform overhead. The fine-tuning
-scenario rides the same windows (Fig.~\ref{fig:loop}, lower lane);
-the diagnostics scenario exports a 30-min merged wide
-table (\resRowsRange{} rows)---a data-quality observation, not
-a process excursion.
+cadence window and 96.1\,s with one on October~9; October~7 spans
+\resObsVerifyCadence{} with one. The loop's time is governance, not
+platform overhead. The fine-tuning scenario rides the same windows
+(Fig.~\ref{fig:loop}, lower lane); the diagnostics scenario exports a
+30-min merged wide table (\resRowsRange{} rows), a data-quality
+observation rather than a process excursion.
 
-\looseness=-1 Latency and mission figures are single-run point estimates
-(about \resWriteNperLine{} writes per line, one trajectory each); the Q1
-approval latency is the harness's mediation span, not a human-response
-measurement, and Q5's approval-to-dispatch span is server-side only. Only Q3
-repeats across seeds, Q5's repetition is across consecutive deployment-tier
-campaigns, and the Q1 ablation repeats deterministically
-(Table~\ref{tab:ablation}); the campaign re-exercises the governance
-surfaces (S1, S3) nine times with zero failures but does not re-run the
-Q1--Q4 missions, which remain single-trace case studies, as are the
-fault-suite grade outcomes (n=1--2 injected cases).
+\looseness=-1 Latency and mission figures are single-run point estimates;
+the Q1 approval latency is the harness's mediation span, not a
+human-response measurement, and Q5's approval-to-dispatch span is
+server-side only. Only Q3 repeats across seeds, Q5 repeats across
+consecutive campaigns, and the Q1 ablation repeats deterministically
+(Table~\ref{tab:ablation}). The campaign re-exercises S1/S3 nine times with
+zero failures but does not re-run Q1--Q4; those missions and the fault-suite
+grade outcomes (n=1--2) remain single-trace case studies.
 
 \looseness=-1 \emph{Write-evidence legs.} A dedicated seven-leg suite verifies Sections~\ref{sec:ack}
-and~\ref{sec:hitl} directly in legs~(1)--(5): (1)~the master switch refuses an unconfirmed manual-to-automatic
+and~\ref{sec:hitl} directly in legs~(1)--(5): (1)~the recipe-dispatch master switch refuses an unconfirmed manual-to-automatic
 transition; (2)~a mock-acknowledged (transport-acknowledged) dispatch is
 promoted to readback-verified by post-write re-read;
 (3)~a broker cut marks the affected parameter \emph{failed} at the batch
 summary (operations level error) while its healthy sibling verifies;
 (4)~a publish-only endpoint accepts the write (broker puback,
 \texttt{ok=true}) yet stays \emph{unverified} through three verification
-attempts---the receipt the Section~\ref{sec:ack} rule is stated
-against; (5)~on a manual-mode line an approval-free binding's dispatch is
-intercepted into the queue, approval releasing all six parameters
-device-verified; (6)--(7)~API regression and documentation-consistency
-suites close the campaign.
+attempts---the receipt the Section~\ref{sec:ack} rule is stated against;
+applied to the same receipt, a success-flag rule reports success while the
+graded rule reports unverified; (5)~on a manual-mode line an approval-free
+binding's dispatch is intercepted into the queue, approval releasing all six
+parameters readback-verified; (6)--(7)~API regression and
+documentation-consistency suites close the campaign.
 
 \looseness=-1 \emph{Observed grade distribution.} In fault-free operation,
-every batch dispatch of the six hardened runs (October~8--9) closed
-\emph{readback-verified}---structured approval released it and the three-way
-check read equal values at \resConsistencyErr{} maximum error
-(Fig.~\ref{fig:loop}). The non-verified grades appear only under the fault
-suite's injected conditions, the distribution a healthy platform
-should produce: \resAckFailed{} \emph{failed} (broker unreachable; healthy
-sibling verified), \resAckUnverified{} \emph{unverified} (publish-only
+every batch dispatch of the six hardened runs closed \emph{readback-verified}:
+structured approval released it and the three-way check read equal values at
+\resConsistencyErr{} maximum error (Fig.~\ref{fig:loop}). The non-verified
+grades appear only under injected faults, the distribution expected under the
+specified grading rule: \resAckFailed{} \emph{failed} (broker unreachable;
+healthy sibling verified), \resAckUnverified{} \emph{unverified} (publish-only
 endpoint, three attempts), and \resAckPromoted{} parameters promoted from
-transport-acknowledged receipts to readback-verified by post-write re-read.
-The remaining terminal grade, transport-acknowledged, occurs on MES-style
-endpoints that return an application-level acceptance without a readback
-mapping; the platform's MES route tests cover it, but the campaign archives
-MES in read mode only---a disclosed gap in the campaign's
-write-evidence coverage.
+transport-acknowledged to readback-verified by post-write re-read.
+Transport-acknowledged occurs on MES-style endpoints with application-level
+acceptance but no readback mapping; MES route tests cover it, but the campaign
+archives MES in read mode only---a disclosed coverage gap.
 
-\looseness=-1 Across the five questions, the mechanisms of
-Section~\ref{sec:mech} behave as specified.
+\looseness=-1 Across the five questions, every exercised governed write
+produced an attributable evidence state. The window-edge probes and the
+publish-only receipt resolved as the grading rule predicts
+(Table~\ref{tab:ablation}; Section~\ref{sec:hardening}); the receipt-grading
+and master-switch surfaces were exercised in Q5, while Q1--Q4 evidence the
+path without them.
 

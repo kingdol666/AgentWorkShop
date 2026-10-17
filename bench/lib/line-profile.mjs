@@ -209,8 +209,19 @@ export function renderAgentTeamMd({ biax, cl }) {
     }
     L.push('')
     if (biax?.writes != null) {
+      const lastThickness = bt.at(-1)?.thickness != null ? Number(bt.at(-1).thickness) : null
+      // Archived Q2 records store `final` as |thickness - target| and omit
+      // `attained`; fall back to that deviation so the summary cannot render an
+      // undefined field as "no".
+      const attained = biax.attained != null
+        ? Boolean(biax.attained)
+        : biax.final != null
+          ? Number(biax.final) <= 0.7
+          : lastThickness != null
+            ? Math.abs(lastThickness - 25.0) <= 0.7
+            : null
       L.push(`Governed writes: **${biax.writes}** on ${biax.distinctKnobs ?? '—'} distinct knob(s) · optimization records: ${biax.records ?? 0} · `
-        + `target window 25 ± 0.7 μm · final thickness reading **${bt.at(-1)?.thickness != null ? Number(bt.at(-1).thickness).toFixed(2) : '—'} μm** · target attained: **${biax.attained ? 'yes' : 'no'}**.`)
+        + `target window 25 ± 0.7 μm · final thickness reading **${lastThickness != null ? lastThickness.toFixed(2) : '—'} μm** · target attained: **${attained == null ? '—' : attained ? 'yes' : 'no'}**.`)
       L.push('')
     }
   }

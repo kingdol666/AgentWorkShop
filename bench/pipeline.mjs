@@ -2092,6 +2092,10 @@ const agentteam = {
     distinctKnobs: biax?.mission?.distinctNodes?.size ?? null,
     records: biax?.mission?.records?.length ?? null,
     final: biax?.mission?.thickness != null ? Number((Math.abs(Number(biax.mission.thickness) - 25)).toFixed(2)) : null,
+    attained: biax?.mission?.attained ?? null,
+    finalUm: biax?.mission?.thickness != null ? Number(Number(biax.mission.thickness).toFixed(2)) : null,
+    targetUm: 25,
+    toleranceUm: 0.7,
   },
   cl: {
     seeds: (cl.seeds ?? []).map(s => ({

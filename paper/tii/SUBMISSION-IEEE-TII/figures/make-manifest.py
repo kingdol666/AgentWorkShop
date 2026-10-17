@@ -25,9 +25,9 @@ def sha(path):
 active = ["main.tex", "main.pdf", "main.blg", "main.log",
           "resources/refs.bib", "resources/results-macros.tex",
           "resources/fig2-architecture.pdf",
-          "resources/aws_fig3-flat.png",
+          "resources/fig-runtime.pdf",
           "resources/fig-admission.pdf",
-          "resources/hitl-card-render.png",
+          "resources/fig-hitl-card.pdf",
           "resources/fig-process-campaign.pdf",
           "resources/fig-missions.pdf"]
 retired = ["figures/retired/fig-runtime.pdf",
@@ -72,41 +72,24 @@ manifest = {
     "generated_at": "2026-10-17",
     "files": files,
     "quality_pass": (
-        "2026-10-17 acceptance re-check: reference item separation returned to "
-        "-2.5pt (600dpi crops showed -3.4pt touching at item boundaries); "
-        "Fig.5(b) terminal label moved below the marker (0.70 threshold) + "
-        "right-spine clearance; Fig.3(a) outside-label raised to 6.0pt; space "
-        "reclaimed from the Section V-A recap sentence, abstract trims, and a "
-        "Fig.2 caption line; 10 pages, 0 overfull, audit F1-F8 green, "
-        "check-refs 39/39, visual judge 10/10. "
-        "Prior: 2026-10-16 legibility + disclosure pass: Fig.3(b) rebuilt by "
-        "figures/reflow-hitl-card.py from the archived live screenshot "
-        "(row-wise reflow; printed type >=6.8pt, replacing the 1.15x band "
-        "stacking that printed ~4pt); Fig.4 top annotations moved clear of the "
-        "top spine and its generator gained frame-crossing / bar-straddle "
-        "self-checks; double-blind anonymization (author repository links "
-        "withheld in the license sentence and Data availability); pinned "
-        "Parasuraman 2000 must-cite restored (audit F7 green); "
-        "framework-contribution framing and the DCS-ancestry composition "
-        "disclosure added; page budget held at exactly 10 with 0 overfull. "
-        "Prior: 2026-10-10 compression + figure-consistency pass: 11p -> 10p "
-        "(redundancy cuts in Q1/Q4/Q5/VI/intro; no architecture or "
-        "mechanism content removed); fig2-architecture rebuilt as "
-        "reproducible matplotlib source (make-architecture-figure.py) "
-        "replacing the Calibri HTML->PDF, unifying all generated "
-        "figures on Arial/muted palette; Fig.4/Fig.5 heights reduced; "
-        "stale resources moved to figures/retired/. Prior: 2026-10-09 "
-        "page-budget pass; four-reviewer TII loop converged Accept x4 "
-        "(R1 control/safety, R2 LLM-agents, R3 methodology, R4 format)"),
-    "figures_note": ("5 figures, all IEEE-width compliant: fig2-architecture "
-                     "(Fig.1, 0.92\\textwidth, Arial rebuild), aws_fig3-flat.png "
-                     "(Fig.2, 0.70\\textwidth, user-supplied runtime diagram), "
-                     "fig-admission + hitl-card-render (Fig.3 combined admission "
-                     "geometry + live HITL card reflowed for legibility, "
-                     "\\columnwidth), "
-                     "fig-process-campaign (Fig.4, \\columnwidth), fig-missions "
-                     "(Fig.5, \\columnwidth); 1 table (Table I nearest-systems); "
-                     "observed page map: "
+        "2026-10-17 final TII revision: regenerated the BOPET archive summary "
+        "(attained=yes), added the success-flag baseline (22/22; publish-only "
+        "receipt success-flag=true vs graded unverified), rebuilt all figures "
+        "at 8 pt (Fig.1 full width; Fig.2 vector runtime; Fig.3(a)/(b) "
+        "side-by-side; Fig.4 S4/S5; Fig.5 full-width four panels), anonymized "
+        "the system name for double-blind, consolidated to 30 references, "
+        "removed all version/commit/run identifiers, corrected boundary "
+        "margins/p95/live-load claims and the grade-state mapping, and added "
+        "the thesis/falsifiable-contrast/takeaway framing; 10 pages, "
+        "0 overfull, audit F1-F8 green, figure audit pass, check-refs 30/30, "
+        "abstract 214 words."),
+    "figures_note": ("5 figures, all 8 pt at placed width: fig2-architecture "
+                     "(Fig.1, \\textwidth), fig-runtime (Fig.2, "
+                     "\\columnwidth), fig-admission + fig-hitl-card "
+                     "(Fig.3(a)/(b), half-width panels), fig-process-campaign "
+                     "(Fig.4, \\columnwidth), fig-missions (Fig.5, "
+                     "\\textwidth); 3 tables (nearest systems, ablation, "
+                     "campaign); observed page map: "
                      + json.dumps(fig_pages, sort_keys=True))
 }
 

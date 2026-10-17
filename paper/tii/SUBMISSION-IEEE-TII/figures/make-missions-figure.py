@@ -44,13 +44,13 @@ OUT = os.path.join(HERE, "..", "resources")
 
 # --- design constants: everything below is in final printed points ----------
 W_MM = 89.0                 # IEEE single column
-W_IN = W_MM / 25.4
-H_IN = 1.50                 # built to size; see module docstring
-FS_TITLE = 6.5
-FS_TICK = 6.0
-FS_LABEL = 6.0
-FS_ANNOT = 6.0
-FS_LEGEND = 6.5
+W_IN = 7.16
+H_IN = 2.22                 # built to size; see module docstring
+FS_TITLE = 8.0
+FS_TICK = 8.0
+FS_LABEL = 8.0
+FS_ANNOT = 8.0
+FS_LEGEND = 8.0
 
 plt.rcParams.update({
     "font.family": "Arial",
@@ -95,8 +95,8 @@ data = json.load(open(os.path.join(HERE, "missions-data.json"), encoding="utf-8"
 missions = {m["id"]: m for m in data["missions"]}
 
 fig, axes = plt.subplots(2, 2, figsize=(W_IN, H_IN))
-fig.subplots_adjust(left=0.150, right=0.988, top=0.915, bottom=0.155,
-                    hspace=0.48, wspace=0.46)
+fig.subplots_adjust(left=0.065, right=0.985, top=0.905, bottom=0.175,
+                    hspace=0.38, wspace=0.24)
 
 XMAX = 5.55  # shared index scale: panel (a) converging in two writes stays visible;
 # the extra 0.15 over 5.4 keeps the terminal marker clear of the right spine
@@ -113,13 +113,13 @@ for k, (ax, (mid, tag, qty, unit)) in enumerate(zip(axes.flat, PANELS)):
     for ye in (target - tol, target + tol):  # band edges: inside/outside must be decodable
         ax.axhline(ye, color=GREEN, lw=0.45, alpha=0.8, zorder=2)
     ax.axhline(target, color=GREEN, lw=0.6, ls=(0, (3, 2)), zorder=2)
-    ax.plot(x, series, color=BLUE, lw=1.0, marker="o", ms=2.0,
+    ax.plot(x, series, color=BLUE, lw=1.0, marker="o", ms=2.6,
             mfc="white", mec=BLUE, mew=0.7, zorder=3)
     # terminal observation: the archived final value -- for wastewater (3.504)
     # it differs from the last write-anchored observation (3.517) and is the
     # number the text quotes (3.50 mg/L, Fig. 5b)
     final = m.get("final", series[-1])
-    ax.plot([x[-1]], [final], marker="s", ms=2.8, color=DARK, zorder=4)
+    ax.plot([x[-1]], [final], marker="s", ms=3.4, color=DARK, zorder=4)
 
     # The panel tag sits in whichever top corner the series leaves empty
     # (all four series rise or fall monotonically, so one corner is always
@@ -154,17 +154,17 @@ for k, (ax, (mid, tag, qty, unit)) in enumerate(zip(axes.flat, PANELS)):
     frac = (final - lo) / (hi - lo)
     above = frac < 0.70
     ax.annotate(f"{final:.2f}", xy=(x[-1], final),
-                xytext=(0, 3.4 if above else -3.4), textcoords="offset points",
+                xytext=(0, 4.2 if above else -4.2), textcoords="offset points",
                 fontsize=FS_ANNOT, color=DARK, zorder=5,
                 ha="center", va="bottom" if above else "top",
                 bbox=dict(facecolor="white", edgecolor="none", pad=0.6, alpha=0.9))
 
 legend = [
-    Patch(facecolor=GREEN, alpha=0.16, edgecolor="none", label="objective window"),
+    Patch(facecolor=GREEN, alpha=0.16, edgecolor="none", label="window"),
     Line2D([], [], color=GREEN, lw=0.6, ls=(0, (3, 2)), label="target"),
-    Line2D([], [], color=BLUE, lw=1.0, marker="o", ms=2.0, mfc="white",
-           mec=BLUE, mew=0.7, label="governed write"),
-    Line2D([], [], color=DARK, lw=0, marker="s", ms=2.8, label="terminal obs."),
+    Line2D([], [], color=BLUE, lw=1.0, marker="o", ms=2.6, mfc="white",
+           mec=BLUE, mew=0.7, label="write"),
+    Line2D([], [], color=DARK, lw=0, marker="s", ms=3.4, label="terminal"),
 ]
 # one legend row in the free top margin: an in-axes legend (panel (a) corner)
 # was tried and overlapped the terminal square and value annotation
@@ -241,6 +241,6 @@ for o, a, b in collisions[:8]:
     print(f"     {o} '{a}' <-> '{b}'")
 assert not collisions, f"overlapping text: {collisions[:4]}"
 
-assert min(sizes) >= 6.0, f"type below 6.0 pt: {sizes}"
+assert min(sizes) >= 8.0, f"type below 6.0 pt: {sizes}"
 assert set(fonts) <= {"ArialMT", "Arial-BoldMT"}, f"font fallback: {fonts}"
 print("  SELF-CHECK PASS")

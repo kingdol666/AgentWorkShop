@@ -20,7 +20,7 @@ annealing, and BOPET (biaxially oriented polyethylene terephthalate)
 film---differ, but all need an auditable bridge from a
 team-level task to heterogeneous acquisition and control nodes.
 
-\looseness=-1 \system{}---an open-source governed supervisory execution
+\looseness=-1 The platform---an open-source governed supervisory execution
 layer (Section~\ref{sec:arch})---addresses this gap through member--node
 bindings (an engine-backed channel identity) and shared
 line, product, recipe, and run context. The response is
@@ -30,17 +30,20 @@ compensation (Section~\ref{sec:mech}). Nodes expose engineering quantities
 rather than register addresses, and one governed member--node binding path
 serves every client.
 
-The primary contribution is a \emph{framework}: one integrated design for
+\looseness=-1 The primary contribution is a \emph{framework}: one integrated design for
 agent-based industrial data acquisition, analysis, and parameter execution
-whose plant-facing writes are governed end to end. Concretely, \system{}
-makes four contributions:
+whose plant-facing writes are governed end to end. The central thesis is that
+the unit of assurance for an agent-originated write should be a graded,
+attributable evidence record rather than a success flag; Section~\ref{sec:eval}
+includes a case where the two disagree. Concretely, \system{} makes four
+contributions:
 \begin{enumerate}
 \item a \textbf{capability-based industrial execution architecture} connecting
 agent-team identity, semantic data-acquisition (DAQ) and write-control (DCW,
 the platform's node-class tag)
 nodes, heterogeneous protocol drivers, and line--product--recipe--run context,
 with task membership distinct from physical-write authority and a
-default-manual line master switch;
+default-manual recipe-dispatch master switch;
 \item a \textbf{reusable integration boundary} of self-describing node and
 driver contracts across six protocol families (five instantiated as lines,
 four exercised for governed writes), versioned production objects, plugin
@@ -62,9 +65,4 @@ certified protection, physical-plant transfer, and optimizer ranking are
 outside the claims. The governed path is proposer-agnostic---prompt content
 is never authority and admission re-resolves per request---so the scripted
 proposers of Section~\ref{sec:eval} exercise the same contract an
-engine-issued proposal would face. The paper proceeds from the nearest
-systems (Section~\ref{sec:related}) and the architecture
-(Section~\ref{sec:arch}) through the governed write path
-(Section~\ref{sec:mech}) and its layered evaluation
-(Section~\ref{sec:eval}) to validity, deployment boundaries, and
-conclusions (Sections~\ref{sec:limits} and~\ref{sec:conclusion}).
+engine-issued proposal would face.

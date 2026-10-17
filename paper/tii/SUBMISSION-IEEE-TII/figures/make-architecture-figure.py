@@ -30,12 +30,12 @@ plt.rcParams.update({
 BLUE, GREEN, TEAL = "#2E5E8C", "#3E8E55", "#20706B"
 DARK, GREY, EDGE = "#262626", "#4A4A4A", "#8C8C8C"
 
-fig, ax = plt.subplots(figsize=(7.16, 2.56))
+fig, ax = plt.subplots(figsize=(7.16, 2.70))
 ax.set_xlim(0, 100)
 ax.set_ylim(0, 100)
 ax.axis("off")
 
-TFS, BFS, BSP, BOFF = 8.0, 6.9, 7.6, 11.0
+TFS, BFS, BSP, BOFF = 9.0, 8.0, 7.0, 9.2
 
 
 def box(x, y, w, h, title, lines, color, tfs=TFS, bfs=BFS):
@@ -57,11 +57,11 @@ def arrow(x0, y0, x1, y1, style="-", color=GREY, lw=1.15, ms=9):
 
 # --- top band: entry surfaces (y 83..99) -----------------------------------
 box(1, 83, 30, 16, "Operator UI / TUI + twin renderer",
-    ["UI $\\rightarrow$ API writes; renderer displays state"], BLUE)
+    ["UI → API; state shown"], BLUE)
 box(35, 83, 30, 16, "REST / WebSocket + A2A",
     ["shared authenticated entry points"], BLUE)
 box(69, 83, 30, 16, "MCP interface",
-    ["read-oriented subset; not all host tools"], BLUE)
+    ["read-only subset; not all tools"], BLUE)
 
 # --- middle band: platform process (band 29..67, boxes 31..65) -------------
 ax.add_patch(FancyBboxPatch(
@@ -69,35 +69,35 @@ ax.add_patch(FancyBboxPatch(
     facecolor="#F4F7FA", edgecolor="#B9C6D2", lw=0.7))
 
 box(2.5, 29, 29, 37, "Agent orchestrator",
-    ["harness adapters $\\cdot$ team channels",
-     "lead / workers $\\cdot$ tasks $\\cdot$ memory",
-     "host tools + scoped dispatch",
-     "shared node / team / run IDs"], BLUE)
+    ["adapters · team channels",
+     "lead/workers · tasks · memory",
+     "host tools + dispatch",
+     "node / team / run IDs"], BLUE)
 box(37.2, 29, 27.8, 37, "Binding + approval bridge",
-    ["node semantics $\\cdot$ read/write scope",
-     "manual / auto policy $\\cdot$ approvals",
-     "agent-write admission + readback",
-     "records $\\cdot$ separate backstop"], GREEN)
+    ["semantics · read/write scope",
+     "manual/auto · approvals",
+     "admission + readback",
+     "records · backstop"], GREEN)
 box(70.5, 29, 27.5, 37, "Industrial supervisor",
-    ["DAQ runtimes + gateway sweep",
-     "DCW dispatch + protocol drivers",
-     "alarms $\\cdot$ line / recipe / run state",
-     "device-twin state publication"], TEAL)
+    ["DAQ + gateway sweep",
+     "DCW + protocol drivers",
+     "alarms · line/recipe state",
+     "twin state publication"], TEAL)
 
 arrow(32.5, 48, 36.3, 48, color=BLUE)
-ax.text(34.4, 52.6, "intent", fontsize=6.9, color=BLUE, ha="center")
+ax.text(34.4, 52.6, "intent", fontsize=8.0, color=BLUE, ha="center")
 arrow(66.2, 48, 69.6, 48, color=GREEN)
-ax.text(67.9, 52.6, "write", fontsize=6.9, color=GREEN, ha="center")
+ax.text(67.9, 52.6, "write", fontsize=8.0, color=GREEN, ha="center")
 arrow(69.6, 37.5, 66.2, 37.5, style=(0, (2.2, 1.6)))
 arrow(36.3, 37.5, 32.5, 37.5, style=(0, (2.2, 1.6)))
 
 # --- bottom band: externals (y 1..17) ---------------------------------------
 box(1, 1, 30, 16, "External CLI engines",
-    ["separate processes; containment external"], BLUE)
+    ["separate processes"], BLUE)
 box(35, 1, 30, 16, "Separate persistent stores",
-    ["platform DB $\\cdot$ time series $\\cdot$ objects $\\cdot$ audit"], GREEN)
+    ["DB · series · objects · audit"], GREEN)
 box(69, 1, 30, 16, "Plant / protocol boundary",
-    ["physical devices or seeded scenarios"], TEAL)
+    ["devices or seeded scenarios"], TEAL)
 
 # vertical flows: channels are 16u (30pt) and 12u (23pt) at print scale
 arrow(16, 83, 16, 65.6, color=BLUE)

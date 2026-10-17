@@ -15,9 +15,30 @@ import benchCfg from '../scripts/testing/benchmark.config.json' with { type: 'js
 import { resolve } from 'node:path'
 
 const cfg = benchCfg
-const BASE = 'http://127.0.0.1:3001'
+const BASE = process.env.AW_BASE || cfg.base || 'http://127.0.0.1:3001'
 const checks = []
-let TOKEN = ''
+let TOKEN = process.env.AW_TOKEN || ''
+
+// Success-flag baseline: the legacy reporting rule closes a batch as success
+// when every driver call returns ok, regardless of whether the device value was
+// observed. The governed rule closes success only when every parameter was
+// readback-verified. Both are applied to the same archived receipt.
+function successFlagVerdict(run) {
+  const results = run?.results ?? []
+  const okN = results.filter(r => r.ok === true).length
+  return { ok: results.length > 0 && okN === results.length, okN, total: results.length }
+}
+function governedVerdict(run) {
+  const s = run?.ackSummary
+  const total = s?.total ?? (s ? (s.verified ?? 0) + (s.unverified ?? 0) + (s.failed ?? 0) : 0)
+  return {
+    ok: !!s && total > 0 && (s.verified ?? 0) === total && (s.unverified ?? 0) === 0 && (s.failed ?? 0) === 0,
+    verified: s?.verified ?? 0,
+    unverified: s?.unverified ?? 0,
+    failed: s?.failed ?? 0,
+    total,
+  }
+}
 
 function ok(name, pass, detail = '') {
   checks.push({ name, pass: !!pass, detail: String(detail).slice(0, 160) })
@@ -41,9 +62,14 @@ async function api(method, path, body, token = TOKEN) {
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 
 // ================= 登录 =================
-const login = await api('POST', '/api/users/login', { email: cfg.account.email, password: cfg.account.password })
-TOKEN = login?.data?.token ?? ''
-ok('登录(admin)', !!TOKEN, login?.message ?? '')
+if (TOKEN) {
+  ok('登录(admin)', true, 'AW_TOKEN')
+}
+else {
+  const login = await api('POST', '/api/users/login', { email: cfg.account.email, password: cfg.account.password })
+  TOKEN = login?.data?.token ?? ''
+  ok('登录(admin)', !!TOKEN, login?.message ?? '')
+}
 
 // ops-op 测试用户(线域通知接收人;现场确保存在)
 async function ensureOpsUser() {
@@ -114,6 +140,9 @@ const dcwAgg = await api('GET', '/api/workshop/dcw')
 const wh = (dcwAgg?.data?.history ?? []).filter(h => h.nodeId === n1).sort((a, b) => b.at.localeCompare(a.at))[0]
 // 写历史如实记录**驱动级** ack(mock 写=transport-ack 回显);设备证实升级记录在批次结果行(见 B1)
 ok('B4 写历史条目携带 ack 字段(驱动级如实)', wh?.ack === 'transport-ack', `ack=${wh?.ack ?? '(缺)'}`)
+const sfB = successFlagVerdict(run1)
+const gvB = governedVerdict(run1)
+ok('B5 baseline 对照:readback-verified 批次在两种规则下均为 success', sfB.ok && gvB.ok, JSON.stringify({ sf: sfB, gv: gvB }))
 
 // ================= 腿 C:mqtt 不可达 broker → failed → error =================
 console.log('\n── 腿 C:mqtt 不可达 broker → 写入失败 → ops error ──')
@@ -131,6 +160,9 @@ await sleep(300)
 const errLogs = await api('GET', '/api/workshop/ops-logs?action=recipe.dispatch.ack&level=error&limit=5')
 const topErr = (errLogs?.data?.logs ?? [])[0]
 ok('C3 ops 判定条目 level=error(写入失败如实记 error)', !!topErr && topErr.level === 'error', topErr?.summary ?? '(无)')
+const sfC = successFlagVerdict(runBad)
+const gvC = governedVerdict(runBad)
+ok('C4 baseline 对照:断链批次在两种规则下均非 success', !sfC.ok && !gvC.ok, JSON.stringify({ sf: sfC, gv: gvC }))
 
 // ================= 腿 D:mqtt 可达 broker → transport-ack → unverified =================
 console.log('\n── 腿 D:mqtt 可达 broker → 仅链路受理 → 未证实 → ops warn ──')
@@ -180,9 +212,28 @@ if (brokerUp) {
   await sleep(300)
   const warnLogs = await api('GET', '/api/workshop/ops-logs?action=recipe.dispatch.ack&level=warn&limit=5')
   ok('D4 ops 判定条目 level=warn(未证实)', (warnLogs?.data?.logs ?? []).some(l => String(l.summary).includes('批次')), (warnLogs?.data?.logs ?? [])[0]?.summary ?? '(无)')
+  const sfD = successFlagVerdict(runLive)
+  const gvD = governedVerdict(runLive)
+  ok('D5 baseline 分歧:publish-only receipt 在 success-flag 下为 success,在 graded 规则下为 unverified', sfD.ok && !gvD.ok && gvD.unverified === 1, JSON.stringify({ sf: sfD, gv: gvD }))
 }
 else {
   ok('D1 mqtt broker 不可达,腿 D 跳过(环境无 1883)', true, 'skip')
+  ok('D5 baseline 分歧:publish-only receipt(跳过:无 broker)', true, 'skip')
+}
+
+if (process.env.AW_ONLY_ACK === '1') {
+  console.log('\n── AW_ONLY_ACK=1: skip HITL legs, clean A–D resources ──')
+  for (const id of [recipeId, recBad?.data?.recipe?.id, recLive?.data?.recipe?.id].filter(Boolean)) {
+    await api('DELETE', `/api/workshop/dcw/recipes/${id}`, undefined, TOKEN).catch(() => {})
+  }
+  for (const id of [n1, n2, nBad, nMqtt].filter(Boolean)) {
+    await api('DELETE', `/api/workshop/dcw/${id}`, undefined, TOKEN).catch(() => {})
+  }
+  await api('DELETE', `/api/workshop/dcw/lines/${lineId}`).catch(() => {})
+  const pass = checks.filter(c => c.pass).length
+  console.log(`\n======== ACK baseline 子集结果:${pass}/${checks.length} ========`)
+  for (const c of checks.filter(c => !c.pass)) console.log(`  FAIL: ${c.name} — ${c.detail}`)
+  process.exit(pass === checks.length ? 0 : 1)
 }
 
 // ================= 腿 E:HITL 总闸(manual 线拦 auto 绑定)+ 定向通知 =================

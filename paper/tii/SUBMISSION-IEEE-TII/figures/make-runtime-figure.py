@@ -1,16 +1,14 @@
 # -*- coding: utf-8 -*-
-"""Runtime figure (Fig.2) for the TII manuscript -- faithful vector rebuild
-of the user-supplied aws_fig3-flat.png (now retired to figures/retired/).
+"""Fig. 2 -- governed agent-team runtime, rebuilt at final printed width.
 
-Same house style as make-architecture-figure.py: Arial, muted palette, thin
-rules. Content preserved: goal/task input, agent-team runtime (retrieval,
-lead, analysis; entry surfaces), governance stages (deterministic platform
-logic -- relabeled from the source's "Governance Agent" per the caption's
-platform-logic claim), write agent with SET/ACT readback, judge verdict loop.
-Footprint matches the retired raster (full-width x ~1.85in) so page layout
-is unchanged.
+The previous figure was a 7.16 in raster/vector design placed at column
+width, so its 5 pt labels printed at 2.5-3 pt.  This generator draws a
+column-width (89 mm) vertical sequence at 8 pt so source points equal
+printed points.  Content is the runtime path only: goal/task, retrieve and
+propose, admission and approval, write/readback, judge.  Governance boxes
+are platform stages, not model-bearing agents (stated in the caption).
 
-Run:  python make-runtime-figure.py   (writes PDF into ../resources/)
+Run: python make-runtime-figure.py   (writes ../resources/fig-runtime.pdf)
 """
 import os
 import matplotlib
@@ -20,109 +18,80 @@ import matplotlib.pyplot as plt
 from matplotlib.patches import FancyBboxPatch, FancyArrowPatch
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-OUT = os.path.join(HERE, "..", "resources")
+OUT = os.path.join(HERE, "..", "resources", "fig-runtime.pdf")
 
 BLUE, GREEN, TEAL = "#2E5E8C", "#3E8E55", "#20706B"
-DARK, GREY = "#262626", "#8C8C8C"
+DARK, GREY = "#262626", "#7A7A7A"
 
-plt.rcParams.update({"font.family": ["Arial", "DejaVu Sans"], "pdf.fonttype": 42})
+plt.rcParams.update({
+    "font.family": ["Arial", "DejaVu Sans"],
+    "pdf.fonttype": 42,
+    "font.size": 8.0,
+})
 
-fig, ax = plt.subplots(figsize=(7.16, 1.85))
-ax.set_xlim(0, 100)
-ax.set_ylim(0, 100)
+W_IN, H_IN = 3.50, 2.00
+fig = plt.figure(figsize=(W_IN, H_IN))
+ax = fig.add_axes([0, 0, 1, 1])
+ax.set_xlim(0, W_IN)
+ax.set_ylim(0, H_IN)
 ax.axis("off")
 
+X0, X1 = 0.06, 3.44
+ROW_H, GAP = 0.34, 0.020
+rows = [
+    ("Team \u00b7 Goal \u2192 task", "natural-language goal becomes a team task", BLUE),
+    ("Team \u00b7 Retrieve \u00b7 analyze \u00b7 propose", "knowledge base \u00b7 DAQ logs \u2192 setpoint", BLUE),
+    ("Governance \u00b7 Admit \u2192 approve", "H \u2229 product \u2229 recipe; manual wait", GREEN),
+    ("Plant \u00b7 Write \u2192 readback", "SET vs ACT; grade the acknowledgment", TEAL),
+    ("Governance \u00b7 Judge", "keep / rollback / uncertain + attribution", GREEN),
+]
 
-def box(x, y, w, h, title, lines, color, tfs=6.2, bfs=5.6, lls=5.2):
+# Top-down row placement; the first row (goal) sits at the top.
+y = H_IN - 0.08 - ROW_H
+bottoms = []
+for _ in rows:
+    bottoms.append(y)
+    y -= ROW_H + GAP
+
+for (head, detail, color), yb in zip(rows, bottoms):
     ax.add_patch(FancyBboxPatch(
-        (x, y), w, h, boxstyle="round,pad=0.5,rounding_size=1.0",
-        facecolor="white", edgecolor=color, lw=0.9))
-    ax.text(x + 1.8, y + h - 3.0, title, fontsize=tfs, weight="bold",
-            color=color, va="top", ha="left")
-    yy = y + h - 8.6
-    for ln in lines:
-        if isinstance(ln, tuple):  # (text, is-grey-second-line)
-            t, grey = ln
-        else:
-            t, grey = ln, False
-        ax.text(x + 1.8, yy, t, fontsize=bfs if not grey else bfs - 0.4,
-                color=GREY if grey else DARK, va="top", ha="left")
-        yy -= 6.4 if not grey else 5.6
+        (X0, yb), X1 - X0, ROW_H,
+        boxstyle="round,pad=0.006,rounding_size=0.018",
+        facecolor="white", edgecolor="#B8B8B8", lw=0.55))
+    ax.add_patch(plt.Rectangle(
+        (X0 + 0.006, yb + 0.006), 0.035, ROW_H - 0.012,
+        facecolor=color, edgecolor="none"))
+    ax.text(X0 + 0.075, yb + ROW_H - 0.090, head,
+            fontsize=8.0, weight="bold", color=color, va="top", ha="left")
+    ax.text(X0 + 0.075, yb + 0.035, detail,
+            fontsize=8.0, color=DARK, va="bottom", ha="left")
 
-
-def arrow(x0, y0, x1, y1, style="-", color=GREY, lw=0.9, label=None,
-          lx=None, ly=None, lc=None):
+# Control-flow arrows between consecutive rows (top to bottom).
+for i in range(len(bottoms) - 1):
+    y_from = bottoms[i]
+    y_to = bottoms[i + 1] + ROW_H
     ax.add_patch(FancyArrowPatch(
-        (x0, y0), (x1, y1), arrowstyle="-|>", mutation_scale=7,
-        linestyle=style, color=color, lw=lw, shrinkA=0, shrinkB=0))
-    if label:
-        ax.text(lx if lx is not None else (x0 + x1) / 2,
-                ly if ly is not None else (y0 + y1) / 2 + 2.5,
-                label, fontsize=5.0, color=lc or color, ha="center", va="center")
+        ((X0 + X1) / 2, y_from), ((X0 + X1) / 2, y_to),
+        arrowstyle="-|>", mutation_scale=7, color=GREY, lw=0.75,
+        shrinkA=0, shrinkB=0))
 
+fig.savefig(OUT, format="pdf")
+print("written", OUT)
 
-# --- goal / task input ----------------------------------------------------
-box(0.5, 26, 12.5, 48, "Goal / task",
-    ["natural-language goal", "becomes a team task",
-     ("", False),
-     ("\u201coptimize the melt-", False),
-     ("temperature setpoint\u201d", False)], BLUE, tfs=6.0, bfs=5.4)
-
-# --- agent-team runtime (dashed container) --------------------------------
-ax.add_patch(FancyBboxPatch(
-    (16.5, 4), 31.5, 92, boxstyle="round,pad=0.5,rounding_size=1.0",
-    facecolor="#F4F7FA", edgecolor=BLUE, lw=0.8, linestyle=(0, (3, 2))))
-ax.text(32.2, 93.5, "AGENT TEAM RUNTIME", fontsize=6.0, weight="bold",
-        color=BLUE, ha="center", va="top")
-
-box(18.5, 70, 27.5, 18, "Retrieval",
-    ["knowledge base $\\cdot$ DAQ logs", "$\\cdot$ DB search (retrieve)"], BLUE,
-    tfs=5.8, bfs=5.4)
-box(18.5, 39, 27.5, 24, "Lead agent",
-    ["decompose $\\rightarrow$ dispatch", "$\\rightarrow$ judge (keep / rollback",
-     "/ uncertain) $\\cdot$ N plans"], BLUE, tfs=5.8, bfs=5.4)
-box(18.5, 12, 27.5, 21, "Analysis",
-    ["query DB & analyse", "$\\rightarrow$ proposed setpoint"], BLUE,
-    tfs=5.8, bfs=5.4)
-ax.text(32.2, 6.5, "entry surfaces: WS $\\cdot$ MCP $\\cdot$ A2A $\\cdot$ REST",
-        fontsize=5.2, color=GREY, ha="center", va="center")
-
-# --- governance stages ------------------------------------------------------
-box(53, 20, 21.5, 60, "Governance stages",
-    [("(deterministic platform logic)", True),
-     ("", False),
-     ("Stage 1: admission", False),
-     ("interlock \u2014 hard range", False),
-     ("$\cap$ product $\cap$ recipe", False),
-     ("", False),
-     ("Stage 2: approval wait", False),
-     ("\u2014 human approval,", False),
-     ("signed history", False)], GREEN, tfs=6.0, bfs=5.4)
-
-# --- write agent ------------------------------------------------------------
-box(79, 30, 11.5, 40, "Write agent",
-    ["param write", "$\rightarrow$ readback", ("(SET vs. ACT)", True)], TEAL,
-    tfs=5.8, bfs=5.4)
-
-# --- plant -------------------------------------------------------------------
-box(95.5, 34, 4.2, 32, "Plant", ["PLC"], DARK, tfs=5.6, bfs=5.2)
-
-# --- flows --------------------------------------------------------------------
-arrow(13.4, 50, 16.3, 50, color=BLUE, label="task", ly=54.5)
-arrow(48.4, 22.5, 52.7, 34, color=BLUE, label="proposal", ly=27.5, lx=50.2)
-arrow(74.9, 50, 78.7, 50, color=GREEN, label="admit", ly=54.5)
-arrow(90.9, 56, 95.2, 56, color=TEAL, label="SET", ly=61.5)
-arrow(95.2, 42, 90.9, 42, style=(0, (2.2, 1.6)), color=TEAL, label="ACT", ly=37.0)
-# verify loop governance <-> write agent (kept above the boxes)
-arrow(84.5, 70.6, 72.5, 80.8, style=(0, (2.2, 1.6)), color=GREY,
-      label="verify", ly=80.0, lx=79.5)
-# verdict dashed return, routed below the governance box
-ax.add_patch(FancyArrowPatch(
-    (82, 29.5), (48.4, 15.5), arrowstyle="-|>", mutation_scale=7,
-    linestyle=(0, (2.2, 1.6)), color=GREY, lw=0.9))
-ax.text(64.5, 17.2, "verdict recorded", fontsize=5.0, color=GREY,
-        ha="center", va="center")
-
-fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
-fig.savefig(os.path.join(OUT, "fig-runtime.pdf"), format="pdf")
-print("written", os.path.join(OUT, "fig-runtime.pdf"))
+# Self-check: final-size type, one sans family, no CJK, media box height.
+try:
+    import pymupdf
+    doc = pymupdf.open(OUT)
+    page = doc[0]
+    spans = [s for b in page.get_text("dict")["blocks"] if b["type"] == 0
+             for l in b["lines"] for s in l["spans"] if s["text"].strip()]
+    sizes = [round(s["size"], 2) for s in spans]
+    fonts = sorted({s["font"] for s in spans})
+    text = "".join(s["text"] for s in spans)
+    assert sizes and min(sizes) >= 7.99, f"min font {min(sizes) if sizes else None}"
+    assert all("Arial" in f for f in fonts), f"fonts {fonts}"
+    assert not any("\u4e00" <= ch <= "\u9fff" for ch in text), "CJK text"
+    assert page.rect.height <= 166, f"height {page.rect.height}"
+    print(f"self-check ok: min={min(sizes)} pt, fonts={fonts}, h={page.rect.height:.1f} pt")
+except ImportError:
+    print("self-check skipped (pymupdf not installed)")
