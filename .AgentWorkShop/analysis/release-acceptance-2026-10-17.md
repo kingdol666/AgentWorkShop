@@ -60,5 +60,15 @@
 
 ## 发布坐标
 
-- 功能提交 `2b14379`、测试基础设施修复 `2106bdd`、版本提交 `5ed5c4e`
-- tag `v0.7.66`;npm `agentworkshop@0.7.66`
+- 功能提交 `2b14379`、测试基础设施修复 `2106bdd`、版本提交 `5ed5c4e`、验收报告 `a4d8e66`
+- tag `v0.7.66`(已推送);npm `agentworkshop@0.7.66`
+
+## 发布后验证(2026-10-17)
+
+| 项 | 结果 |
+|---|---|
+| registry 元数据 | `versions['0.7.66']` 存在,`dist-tags.latest = 0.7.66` |
+| npm 正式源重装 | `npm i -g agentworkshop@0.7.66 --registry=https://registry.npmjs.org` → added 1286 packages;`aw --version` = `agentworkshop 0.7.66` |
+| 重装后启动冒烟 | health 200 `version=0.7.66`;`/api/users/setup-status` 200 |
+| 发布时延 | `npm publish` 返回 202 Accepted(registry 异步处理),约 8 分钟后元数据与 latest 可见 |
+
