@@ -21,13 +21,13 @@ Three design commitments generate that separation: model output is an
 untrusted proposal, never authority; evidence is graded by what is
 observed, not claimed; and failure states surface for inspection rather
 than being absorbed into a success flag.
-Fig.~\ref{fig:runtime} shows the implemented agent-team
-runtime carrying these steps. A governed intervention is
+A governed intervention is
 one transaction in the audit-trail sense: every step
 leaves its own evidence record, while execution and recovery are deliberately
 not atomic with device state (Section~\ref{sec:limits}).
 Six invariants organize the path---binding-resolved authority (never channel
-membership or prompt content), Eq.~\eqref{eq:admission} admission,
+membership or prompt content), Eq.~\eqref{eq:admission} admission
+(Fig.~ef{fig:hitl}),
 fail-closed approval waits on manual bindings, graded rather than
 success-flag acknowledgment, checkable three-way consistency, and
 separately admitted compensation---each specified below; every

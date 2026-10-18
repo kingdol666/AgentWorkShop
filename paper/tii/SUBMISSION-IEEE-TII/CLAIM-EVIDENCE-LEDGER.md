@@ -26,7 +26,7 @@ means the artifact was re-read during this revision, not merely cited.
 | Q5 live load | 34 provisioned lines; 17 running; 111–113 channels; 67 DAQ nodes | `results-macros.tex`; run reports | verified; text now uses 17/111–113 |
 | Success-flag baseline | same publish-only receipt: success-flag = success; graded = unverified | `docs/audit/2026-10-17-ack-baseline.log` (22/22; D5 pass) | verified |
 | No version/commit/run ID/harness fingerprint in PDF | — | `pdftotext main.pdf` grep for `v0.7`, `e692df1`, date/run patterns | verified; identifiers moved to reviewer package |
-| Abstract length | 213 words | `main.tex` abstract extraction | verified (TII 150–250) |
+| Abstract length | 218 words; no result numerals | `main.tex` abstract extraction | verified (TII 150–250) |
 | Page/ref budget | 10 pages; 30 references (TII initial-submission consolidation) | `tools/audit.py`; `check-refs.cjs` | verified |
 | Double-blind | system name removed; title and Table I refer to “the platform” | `pdftotext main.pdf` grep for the former name | verified |
 
@@ -43,8 +43,13 @@ means the artifact was re-read during this revision, not merely cited.
 
 ## Figure sizes
 
-- All included figures print at 8 pt at their final placed width: Fig. 1
-  (full width), Fig. 2 (column), Fig. 3(a)/(b) (side-by-side half-width
-  panels), Fig. 4 (column), Fig. 5 (full width).
-- No raster figure remains; all are vector, Arial-only, and free of CJK text.
-- The previous 6 pt/7 pt exceptions are removed.
+- Fig. 1 is the supplied architecture artwork at full width
+  (`fig-arch-2026.png`, 2352x860, 328 dpi at 182 mm), above the 300 dpi
+  floor.
+- Fig. 2 is the column-width vector runtime sequence (`fig-runtime.pdf`,
+  8.0 pt); the supplied runtime artwork is not legible at single-column width.
+- Fig. 3(a)/(b) are vector, Arial-only, 8.0 pt, with matched placed heights
+  (116.6/120.1 pt native at the same aspect).
+- Fig. 4 is the vector process campaign at 8.0 pt.
+- Fig. 5 is the restored four-mission 2x2 panel at 3.50 x 3.60 in,
+  single-column, Arial-only, 8.0 pt.

@@ -28,10 +28,18 @@ SECTIONS = sorted((ROOT / "sections").glob("*.tex")) + [ROOT / "main.tex"]
 TARGETS = {
     "fig2-architecture.pdf": (8.0, 200.0),
     "fig-runtime.pdf": (8.0, 166.0),
+    "fig-arch-2026.png": (0.0, 210.0),
+    "fig-runtime-team.png": (0.0, 300.0),
     "fig-admission.pdf": (8.0, 120.0),
-    "fig-hitl-card.pdf": (8.0, 100.0),
+    "fig-hitl-card.pdf": (8.0, 122.0),
     "fig-process-campaign.pdf": (8.0, 122.0),
-    "fig-missions.pdf": (8.0, 165.0),
+    "fig-missions.pdf": (8.0, 265.0),
+}
+
+# Placed width for raster DPI accounting (full-width figures use 182 mm).
+RASTER_WIDTH_MM = {
+    "fig-arch-2026.png": 182.0,
+    "fig-runtime-team.png": 182.0,
 }
 
 def included_figures() -> set[str]:
@@ -67,6 +75,10 @@ def main() -> int:
         if not path.exists():
             failures.append(f"{name}: missing file")
             continue
+        if path.suffix.lower() in (".png", ".jpg", ".jpeg"):
+            # Raster figures are checked in the raster branch below; their
+            # type cannot be measured from the PDF text layer.
+            continue
         doc = pymupdf.open(path)
         page = doc[0]
         spans = [s for b in page.get_text("dict")["blocks"] if b["type"] == 0
@@ -98,8 +110,9 @@ def main() -> int:
             failures.append(f"{name}: PIL unavailable for raster DPI check")
             continue
         im = Image.open(ROOT / "resources" / name)
-        dpi = im.width / (89.0 / 25.4)
-        print(f"  {name}: raster {im.width}x{im.height}px -> {dpi:.0f} dpi at 89 mm")
+        width_mm = RASTER_WIDTH_MM.get(name, 89.0)
+        dpi = im.width / (width_mm / 25.4)
+        print(f"  {name}: raster {im.width}x{im.height}px -> {dpi:.0f} dpi at {width_mm:.0f} mm")
         if dpi < 300:
             failures.append(f"{name}: {dpi:.0f} dpi < 300 dpi")
 

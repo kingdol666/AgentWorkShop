@@ -14,7 +14,7 @@ admission, per-request re-checking, or graded write evidence.
 control-update generation behind a safety layer \cite{huang2026made},
 module-scoped skill dispatch over a six-module plant
 \cite{koehle2026llmdriven}, and pretrained LLMs \emph{inside} the control
-loop as real-time controllers \cite{waseem2026pretrained}, a layer below
+loop as real-time scheduling controllers \cite{waseem2026pretrained}, a layer below
 \system{} so the roles are complementary---while agent-allocation work
 \cite{lim2025llmenabled,zhao2026shopfloor} distributes tasks, not governed
 writes. A recent review frames agentic AI's industrial value as
@@ -36,11 +36,11 @@ is not evidence of absence).}
 \toprule
 System (venue) & Role of the LLM & Plant write path & Authority \& production context & Write evidence \& verification \\
 \midrule
-MADE, ICCAD~2026 \cite{huang2026made} & multi-modal control-update generation & generated commands + safety layer & HITL verification of outputs; task-level checks & task success over scripted evaluations \\
+MADE, ICCAD~2026 \cite{huang2026made} & multi-modal control-update generation & generated commands + safety layer & safety layer over generated outputs; task-level checks & task success over scripted evaluations \\
 K{\"o}hle et al., ETFA~2026 \cite{koehle2026llmdriven} & per-module agents, MCP skill dispatch & skill invocation via OPC UA/MQTT & module-scoped skills & task-resolution rate (6-module plant) \\
 Lim \& Kovalenko, CASE~2025 \cite{lim2025llmenabled} & capability exploration across agents & architecture-level & resource-matching scope & architecture evaluation \\
 Zhao et al., AEI~2026 \cite{zhao2026shopfloor} & shop-floor task dispatch & workshop experiments & coordination layer & dispatch/execution performance \\
-Waseem et al., Mach.\ Learn.\ Eng.\ 2026 \cite{waseem2026pretrained} & real-time controller in the loop & direct loop actuation (robot line) & prompt-level constraints & line KPIs under LLM control \\
+Waseem et al., Mach.\ Learn.\ Eng.\ 2026 \cite{waseem2026pretrained} & real-time scheduling controller & robot assignment decisions (simulated line) & prompt-level constraints & throughput under LLM scheduling \\
 \midrule
 \rowcolor{gray!12}
 \textbf{The platform} & \textbf{proposer (replaceable strategy slot)} & \textbf{governed write path: admission, HITL, dispatch, readback} & \textbf{member--node bindings; recipe-dispatch master switch; product/recipe-scoped limits} & \textbf{graded acknowledgment; evaluation-harness-checked three-way consistency; attributed journal; compensation; backstop} \\

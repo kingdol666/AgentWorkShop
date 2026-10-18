@@ -24,12 +24,12 @@ def sha(path):
 # figures/retired/, no longer referenced by main.tex) are listed separately.
 active = ["main.tex", "main.pdf", "main.blg", "main.log",
           "resources/refs.bib", "resources/results-macros.tex",
-          "resources/fig2-architecture.pdf",
+          "resources/fig-arch-2026.png",
           "resources/fig-runtime.pdf",
+          "resources/fig-missions.pdf",
           "resources/fig-admission.pdf",
           "resources/fig-hitl-card.pdf",
-          "resources/fig-process-campaign.pdf",
-          "resources/fig-missions.pdf"]
+          "resources/fig-process-campaign.pdf"]
 retired = ["figures/retired/fig-runtime.pdf",
            "figures/retired/fig-lifecycle.pdf",
            "figures/retired/fig-four-missions.pdf",
@@ -78,18 +78,23 @@ manifest = {
         "pipeline, the two controls, and the reported quantities; per-question "
         "run-ins separate procedure from result; campaign dates, the snapshot "
         "timestamp, and the unverified control-pair replay claim removed in "
-        "favor of three pass labels. Prior pass (2026-10-17): "
+        "favor of three pass labels; Fig. 1 uses the supplied architecture "
+        "artwork; Fig. 2 is the column-width vector runtime; Fig. 3(b) matches "
+        "Fig. 3(a) height; Fig. 5 is a restored single-column 2x2 panel; "
+        "phase-to-question labels added. Prior pass (2026-10-17): "
         "regenerated BOPET summary (attained=yes), success-flag baseline "
         "(22/22), all figures 8 pt, 30 references, identifiers removed, "
         "double-blind. Build: 10 pages, 0 overfull, audit F1-F8 green, "
-        "figure audit pass, check-refs 30/30, abstract 214 words."),
-    "figures_note": ("5 figures, all 8 pt at placed width: fig2-architecture "
-                     "(Fig.1, \\textwidth), fig-runtime (Fig.2, "
-                     "\\columnwidth), fig-admission + fig-hitl-card "
-                     "(Fig.3(a)/(b), half-width panels), fig-process-campaign "
-                     "(Fig.4, \\columnwidth), fig-missions (Fig.5, "
-                     "\\textwidth); 3 tables (nearest systems, ablation, "
-                     "campaign); observed page map: "
+        "figure audit pass, check-refs 30/30, abstract 218 words."),
+    "figures_note": ("5 figures: fig-arch-2026.png (Fig.1, raster 2352x860, "
+                     "\\textwidth, 328 dpi at 182 mm), fig-runtime.pdf "
+                     "(Fig.2, 8 pt vector, \\columnwidth), fig-admission + "
+                     "fig-hitl-card (Fig.3(a)/(b), 8 pt vector, matched "
+                     "placed height), fig-process-campaign (Fig.4, 8 pt "
+                     "vector, \\columnwidth), fig-missions.pdf (Fig.5, "
+                     "3.50x3.60 in 2x2, 8 pt vector, \\columnwidth); "
+                     "3 tables (nearest systems, ablation, campaign); "
+                     "observed page map: "
                      + json.dumps(fig_pages, sort_keys=True))
 }
 

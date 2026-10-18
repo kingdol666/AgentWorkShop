@@ -44,8 +44,8 @@ OUT = os.path.join(HERE, "..", "resources")
 
 # --- design constants: everything below is in final printed points ----------
 W_MM = 89.0                 # IEEE single column
-W_IN = 7.16
-H_IN = 2.22                 # built to size; see module docstring
+W_IN = 3.50
+H_IN = 3.60                 # built to size: single column, 2x2 panels
 FS_TITLE = 8.0
 FS_TICK = 8.0
 FS_LABEL = 8.0
@@ -95,8 +95,8 @@ data = json.load(open(os.path.join(HERE, "missions-data.json"), encoding="utf-8"
 missions = {m["id"]: m for m in data["missions"]}
 
 fig, axes = plt.subplots(2, 2, figsize=(W_IN, H_IN))
-fig.subplots_adjust(left=0.065, right=0.985, top=0.905, bottom=0.175,
-                    hspace=0.38, wspace=0.24)
+fig.subplots_adjust(left=0.145, right=0.985, top=0.905, bottom=0.115,
+                    hspace=0.42, wspace=0.30)
 
 XMAX = 5.55  # shared index scale: panel (a) converging in two writes stays visible;
 # the extra 0.15 over 5.4 keeps the terminal marker clear of the right spine

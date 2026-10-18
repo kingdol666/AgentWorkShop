@@ -2,18 +2,17 @@
 
 Self-contained LaTeX source and compiled PDF for the current manuscript.
 
-> **Current build (2026-10-18, architecture and protocol revision): 10 pages,
-> 30 references, all figures 8 pt.** Section III now names each plane's
-> modules and the evidence each produces; Section V enumerates the 20-phase
-> Q1--Q4 suite groups, the S0--S7 Q5 pipeline, both controls, and the reported
-> quantities, with per-question procedure/result run-ins. Fig. 1 is full-width
-> `fig2-architecture.pdf`; Fig. 2 is the 8 pt vector runtime sequence;
-> Fig. 3(a)/(b) are side-by-side 8 pt panels; Fig. 4 is the 8 pt S4/S5
-> campaign; Fig. 5 is the full-width 8 pt four-mission figure. The system name
-> is anonymized for double-blind review, and all project version/commit/run
-> identifiers are removed from the PDF. The full evidence trail is in
-> `VERIFICATION-2026-10-17.md` and `CLAIM-EVIDENCE-LEDGER.md`. The historical
-> notes below are retained as a revision log.
+> **Current build (2026-10-18, single-column figure pass): 10 pages,
+> 30 references.** Fig. 1 is the supplied architecture artwork
+> (`fig-arch-2026.png`, 328 dpi at full width). Fig. 2 is the column-width
+> vector runtime sequence; Fig. 3 is the vector admission/approval pair with
+> matched panel heights; Fig. 4 is the vector process campaign; Fig. 5 is the
+> four-mission panel restored as a single-column 2x2 grid. All column figures
+> fill `\columnwidth`. The system name is anonymized for double-blind review,
+> and all project version/commit/run identifiers are removed from the PDF. The
+> full evidence trail is in `VERIFICATION-2026-10-17.md` and
+> `CLAIM-EVIDENCE-LEDGER.md`. The historical notes below are retained as a
+> revision log.
 
 ## Compile
 

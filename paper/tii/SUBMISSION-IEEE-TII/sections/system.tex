@@ -25,10 +25,10 @@ registration services.
 Scenario knowledge sits in blueprints, signal maps, predicates, and driver
 configuration---not in scheduler, approval, or persistence code; members
 are interchangeable across engine adapters, and team topology,
-bindings, and limits are data rather than code (Fig.~\ref{fig:arch}).
-The subsections below describe the node classes, the binding boundary, and
-the task life cycle; Section~\ref{sec:mech} specifies the mechanisms the
-governance plane implements.
+bindings, and limits are data rather than code (Fig.~\ref{fig:arch});
+Fig.~\ref{fig:runtime} shows the resulting runtime.
+The subsections below cover the node classes, the binding boundary, and the
+task life cycle; Section~\ref{sec:mech} specifies the mechanisms.
 
 \looseness=-1 As an open-source project under the Apache-2.0 license (links
 withheld for double-blind review), \system{} ships these planes as one
@@ -39,7 +39,7 @@ benchmark pipeline of Section~\ref{sec:procedure}.
 \centering
 % 0.88\textwidth with source fonts sized so the printed text stays >=6pt;
 % narrower includes drop the card body below the legibility floor
-\includegraphics[width=\textwidth]{resources/fig2-architecture.pdf}
+\includegraphics[width=\textwidth]{resources/fig-arch-2026.png}
 \caption{System architecture and execution boundaries: platform services
 around shared stores, with agent engines, data stores, protocol endpoints,
 and the plant kept separate. Shared identifiers

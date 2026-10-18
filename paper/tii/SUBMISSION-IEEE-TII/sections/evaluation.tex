@@ -57,14 +57,14 @@ only when every check in its declared surface passes.
 \looseness=-1 \emph{Q1--Q4 procedure.} One integrated suite runs 20 named
 phases in fixed order, each owning one claim: P0--P2 commission the testbed
 (simulator bootstrap; preset with an offline optimum $W^*$; up to five
-protocol lines); P3--P4 exercise acquisition and the write path (DAQ through
+protocol lines); P3--P4 (Q1) exercise acquisition and the write path (DAQ through
 real drivers; governed write and readback; window-edge interception; a
 tool-level loop without an LLM); P4b--P4f exercise the governance surfaces
 (records and rollback, HITL, audit, recipe life cycle, parameter mapping);
-P4m, P5, P5b, and P10 run missions (scripted team task; two live engine turns
-and a recipe save; the multi-node BOPET mission); P6--P8b close the loop and
+P4m, P5, P5b, and P10 (Q2) run missions (scripted team task; two live engine turns
+and a recipe save; the multi-node BOPET mission); P6--P8b (Q3) close the loop and
 test reuse (three-seed controller benchmark, vector and image frames, a
-configuration-only second preset, the backstop drill); P9 and P11 check
+configuration-only second preset, the backstop drill); P9 and P11 (Q4) check
 subsystems and four concurrent missions. The suite is an author-defined
 regression instrument, not an external certification.
 
@@ -195,8 +195,8 @@ completion marker in the transcript.
 
 \subsection{Q3: The Deterministic Closed Loop}
 \label{sec:controller}
-\looseness=-1 \emph{Closed loop.} Seeds 42--44 each issue two governed writes without rejection,
-raising the cast-film objective $J$ from $J_{0}\approx\resJzero$ toward its
+\looseness=-1 \emph{Closed loop.} On the cast-film line, seeds 42--44 each issue two governed writes without rejection,
+raising the objective $J$ from $J_{0}\approx\resJzero$ toward its
 grid optimum ($J/J^{*}=\resControllerMin$--\resControllerMax{} against
 $J^{*}=\resJstar$; the grid enumerates the admissible zone-temperature,
 screw-speed, and line-speed setpoints, so $J^{*}$ lower-bounds the true
@@ -210,8 +210,7 @@ transparency of handling, not a performance delta.
 \looseness=-1 \emph{Four missions.} The campaign runs four blueprint-provisioned lines concurrently; in this run
 (seed 42) the archived structured checks evaluate true for all four, from
 subsequent observations rather than task state, and two are boundary passes
-(Fig.~\ref{fig:missions}).
-Injection molding is the minimal case: two writes (hold pressure
+(Fig.~\ref{fig:missions}). Injection molding is the minimal case: two writes (hold pressure
 45$\rightarrow$58.2\,bar, hold time 6$\rightarrow$10.64\,s) move part weight
 from \resInjStart{} to \resInjFinal\,g against a $32.5\pm0.35$\,g window, a
 boundary pass $0.02$\,g above the lower bound; BOPET is the multi-node case
@@ -238,9 +237,12 @@ reverted for leaving the margin---on record. Mission clocks (\resInjWall,
 under accelerated dynamics; platform behavior is identical across the four
 while the number of writes varies sevenfold (2, 15, 5, and 3).
 
-\begin{figure*}[!t]
+% Fig. 5 (four-mission trajectories) removed to hold the 10-page budget;
+% the values remain in the text and archived reports.
+
+\begin{figure}[!t]
 \centering
-\includegraphics[width=\textwidth]{resources/fig-missions.pdf}
+\includegraphics[width=\columnwidth]{resources/fig-missions.pdf}
 \caption{Archived optimization trajectories of the four concurrent missions
 (seed 42): observed controlled quantity after each
 attainment-relevant governed write, against the archived objective window;
@@ -249,7 +251,7 @@ molding; (b) wastewater treatment (A2O); (c) annealing; (d) BOPET film.
 Panels show part weight, dissolved oxygen, hardness, and thickness;
 observations are from scripted policies.}
 \label{fig:missions}
-\end{figure*}
+\end{figure}
 
 \subsection{Q5: Deployment-Scale Regression and Write-Evidence Campaign}
 \label{sec:hardening}

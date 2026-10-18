@@ -32,15 +32,15 @@ plt.rcParams.update({
     "font.size": 8.0,
 })
 
-W_IN, H_IN = 3.50, 1.38
+W_IN, H_IN = 3.50, 1.6675
 fig = plt.figure(figsize=(W_IN, H_IN))
 ax = fig.add_axes([0, 0, 1, 1])
 ax.set_xlim(0, W_IN)
-ax.set_ylim(0, H_IN)
+ax.set_ylim(0, 1.38)
 ax.axis("off")
 
 X0, X1 = 0.03, 3.47
-Y0, Y1 = 0.03, 1.35
+Y0, Y1 = 0.005, 1.375
 
 # card frame
 ax.add_patch(FancyBboxPatch(
@@ -122,7 +122,7 @@ try:
     assert sizes and min(sizes) >= 7.99, f"min font {min(sizes) if sizes else None}"
     assert all("Arial" in f for f in fonts), f"fonts {fonts}"
     assert not any("\u4e00" <= ch <= "\u9fff" for ch in text), "CJK text"
-    assert page.rect.height <= 100, f"height {page.rect.height}"
+    assert page.rect.height <= 122, f"height {page.rect.height}"
     for needle in ("63 bar", "64 bar", "Approve", "Reject"):
         assert needle in text, f"missing {needle}"
     print(f"self-check ok: min={min(sizes)} pt, fonts={fonts}, h={page.rect.height:.1f} pt")

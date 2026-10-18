@@ -67,34 +67,32 @@
 \maketitle
 
 \begin{abstract}
-\looseness=-1 Large language model (LLM) agents increasingly propose control changes on
-industrial plants, yet the safeguards around each
+\looseness=-1 Large language model (LLM) agents increasingly propose control
+changes on industrial plants, yet the safeguards around each
 proposal---write authority, active limits, human approval, device
-acceptance---are rebuilt per deployment in application code, so a task
-reported complete can coexist with a missed process objective.
-The platform, an open-source governed supervisory execution layer, carries
-agent-originated writes along one path: admission against declared,
-versioned limits; approval where required; actuation over semantic
-write-control nodes; graded
-acknowledgment---readback-verified, transport-acknowledged, or
-unverified, with failed as a terminal failure state---by what a
-post-write read observes, not the transport receipt alone; and verdict
-recording with compensation---each stage a separately inspectable,
-actor-attributed evidence state. Team identities reach
-nodes only through explicit
-member--node capabilities, prompt content is never admissible as
-authority, and a fail-safe-manual recipe-dispatch master switch
-intercepts approval-free recipe dispatch. Four process
-scenarios---injection molding, wastewater treatment, annealing, and
-biaxially oriented polyethylene terephthalate (BOPET)
-film---plus a cast-film reference line exercise the layer across
-protocol-interception drills, agent-team missions, and a nine-run
-deployment-scale campaign. Across the archived runs, 33/33 out-of-window
-probes are rejected at the attributable layer, a publish-only endpoint that
-a success-flag rule would report as successful is graded unverified, and
-the campaign completes with zero failed assertions. The evaluation is
-simulation-tier; it establishes mechanism behavior and evidence integrity,
-not optimization benefit or safety assurance.
+acceptance---are rebuilt per deployment, so a completed task can coexist with
+a missed process objective. This article presents a governed supervisory
+execution layer that carries agent-originated writes along one path:
+admission against declared, versioned limits; approval where required;
+actuation over semantic write-control nodes; acknowledgment graded by
+post-write observation, not the transport receipt; and verdict recording with
+compensation, each stage a separately inspectable, attributed evidence state.
+Team identities reach nodes only through explicit member--node capabilities,
+prompt content is never authority, and a fail-safe-manual
+recipe-dispatch master switch intercepts approval-free dispatch. The layer is
+organized as cooperating planes---team coordination, protocol integration,
+governance, production context, and extension---and ships as one service with
+a typed software development kit and an industrial tool surface.
+Evaluation spans injection molding, wastewater treatment, annealing, and
+biaxially oriented polyethylene terephthalate film, plus a cast-film reference
+line, across interception drills, agent-team missions, a deterministic
+controller loop, concurrent missions, and a deployment-scale campaign.
+Out-of-window proposals
+are rejected at the attributable admission layer, the governed path closes
+with graded evidence, and a success-flag rule reports success where grading
+reports unverified. The evaluation is simulation-tier: it establishes
+mechanism behavior and evidence integrity, not optimization benefit or safety
+assurance.
 \end{abstract}
 
 \begin{IEEEkeywords}
