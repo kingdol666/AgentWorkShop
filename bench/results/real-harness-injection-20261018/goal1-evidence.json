@@ -1,0 +1,14 @@
+{
+  "taskId": "009a8eb6-9fb0-4fb1-9db3-0ead3071de6d",
+  "channelId": "c87b86c9-84c6-4bc8-adb3-71e415f2a9c0",
+  "title": "GOAL-1 注塑质量窗口数据分析 live-mvdqd330",
+  "state": "COMPLETED",
+  "progress": 100,
+  "assignee": "39adc4a3-6a48-4238-9685-323eaba118e8",
+  "assigneeName": "注塑数据分析 worker live-mvdqd330",
+  "harness": "omp",
+  "provider": "deepseek",
+  "model": "deepseek-v4-pro",
+  "completedAt": "2026-10-18T19:17:33.828+08:00",
+  "summary": "判读结论:克重均值31.25g(窗32.15~32.85,欠重~0.9g)与缩痕均值2.15%(规格≤1.5)双报警且5min平坦→真实过程异常(保压不足),非滞后。飞边0.011%余量极大;守卫全安全(熔温246.7℃/注射压力52.0bar/模温40.0℃)。单变量方案:hold-pressure-sp +5bar至50bar(窗口20~110),假设提高补缩使克重↑缩痕↓,飞边风险低。已通过send_message_to_agent提交Leader。"
+}

@@ -14,6 +14,16 @@ import { summarizeAck, verifyRecipeWrite } from './write-verify'
 import { writeTolerance } from '../dcw-runtime'
 import { notifyLineOperators } from '../../runtime/line-notify'
 
+/**
+ * 试验节拍 env 解析(显式 0 = 关闭;空/非法 = 默认 5 分钟)。
+ * 独立导出供单测锁定「0 不能被 falsy 默认值翻回 5 分钟」。
+ */
+export function resolveTrialIntervalMs(raw: string | undefined): number {
+  if (raw == null || String(raw).trim() === '') return 5 * 60_000
+  const n = Number(raw)
+  return Number.isFinite(n) ? Math.max(0, n) : 5 * 60_000
+}
+
 export abstract class DcwControllerRecipes extends DcwControllerParams {
   listRecipes() {
     return getDcwRecipeRepo().list()
@@ -139,7 +149,7 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
 
   /** v19 试验节拍:同产线两次 trial 的最小间隔(防连发震荡;env 可调)。
    *  P1-5 落盘:重启读盘续算(防"重启即绕试验节拍")。 */
-  private static readonly TRIAL_INTERVAL_MS = Math.max(0, Number(process.env.AW_TRIAL_INTERVAL_MS) || 5 * 60_000)
+  private static readonly TRIAL_INTERVAL_MS = resolveTrialIntervalMs(process.env.AW_TRIAL_INTERVAL_MS)
   private trialLastAt = new Map<string, number>(
     Object.entries(hydrateTrialLastAt()).map(([k, v]) => [k, Number(v)]),
   )

@@ -30,6 +30,7 @@ const {
   assertRecipeOpInterval,
   assertRecipeOpIntervalForExecution,
 } = await import('../server/services/workshop/dcw/recipe-op-anchor')
+const { resolveTrialIntervalMs } = await import('../server/services/workshop/dcw/dcw-controller/recipes')
 const { getToolApprovals } = await import('../server/services/workshop/agents/tool-approvals')
 const { recipeApprovalPayload } = await import('../server/services/workshop/agents/industrial/recipe-gate')
 const { toolRecipeTrial } = await import('../server/services/workshop/agents/industrial/ops-tools')
@@ -210,4 +211,12 @@ test('锚过期/禁用间隔 → 判定放行;人工与系统路径豁免语义�
   const rc0 = { ...RC, opIntervalMs: 0 }
   recordRecipeOpAnchor({ recipeId: RC.id, at: Date.now(), approvalId: 'ap-x', agentId: 'ag-a', op: 'apply', source: 'agent-executed' })
   assert.doesNotThrow(() => assertRecipeOpInterval(rc0))
+})
+
+test('试验节拍 env:显式 0 关闭(不能被 falsy 默认值翻回 5 分钟)', () => {
+  assert.equal(resolveTrialIntervalMs('0'), 0)
+  assert.equal(resolveTrialIntervalMs('1'), 1)
+  assert.equal(resolveTrialIntervalMs(undefined), 5 * 60_000)
+  assert.equal(resolveTrialIntervalMs(''), 5 * 60_000)
+  assert.equal(resolveTrialIntervalMs('not-a-number'), 5 * 60_000)
 })

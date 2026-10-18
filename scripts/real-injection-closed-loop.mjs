@@ -1,3 +1,9 @@
+/**
+ * @deprecated 2026-10-18:本脚本仍调用权限模型 v2 已禁用的 `dcw_control`/`dcw_judge`
+ * 直写路径,在真实平台会正确返回「直接节点写控已禁用」。请改用配方面闭环:
+ * `scripts/e2e-injection-recipe-closedloop.mjs`(`npm run test:e2e-injection`)。
+ * 保留本文件仅作历史 AgentTeam/FIFO 任务流参考。
+ */
 import { mkdirSync, appendFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
