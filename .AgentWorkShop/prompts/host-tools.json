@@ -722,13 +722,14 @@
   {
     "name": "daq_export",
     "label": "DAQ Export",
-    "description": "Export the FULL raw time-series (no downsampling) of your BOUND daq nodes(仅限你绑定的数采节点,越权 id 一律拒绝) to the platform data directory: one CSV per node (columns ts_iso,ts_ms,value,state) plus manifest.json containing the node mapping (name/unit/range/semantics), line-product-recipe-run context, recipe monitor windows and alarm statistics. Use when analysis needs complete waveforms rather than daq_query statistics: hand the export_id to diag_run (deep root-cause diagnosis) or hand the absolute directory to other workers for offline analysis.",
+    "description": "Export the FULL raw time-series (no downsampling) of your BOUND daq nodes or read-only nodes of the channel-bound line(仅限你绑定的数采节点或频道绑线产线的节点,越权 id 一律拒绝) to the platform data directory: one CSV per node (columns ts_iso,ts_ms,value,state) plus manifest.json containing the node mapping (name/unit/range/semantics), line-product-recipe-run context, recipe monitor windows and alarm statistics. Use when analysis needs complete waveforms rather than daq_query statistics: hand the export_id to diag_run (deep root-cause diagnosis) or hand the absolute directory to other workers for offline analysis.",
     "parameters": {
       "type": "object",
       "properties": {
         "node_ids": {
-          "type": "string",
-          "description": "Comma/space separated node ids to export (default = all bound daq nodes); out-of-scope ids are rejected"
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Node id array to export (default = all visible daq nodes: bindings ∪ channel-bound line); out-of-scope ids are rejected"
         },
         "line_id": {
           "type": "string",

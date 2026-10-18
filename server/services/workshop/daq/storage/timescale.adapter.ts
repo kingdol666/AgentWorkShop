@@ -137,7 +137,7 @@ export class TimescaleAdapter implements TsdbPort {
 
   async query(nodeId: string, opts: DaqQueryOpts): Promise<TsdbPoint[]> {
     if (!this.pool) return []
-    const limit = Math.min(opts.limit ?? 500, 5000)
+    const limit = Math.max(1, Math.min(opts.limit ?? 500, 5000))
     // 时间正序(ASC):与 queryTagged 契约一致 —— 消费方(daq_query 最新/最近序列、
     // daq_export 游标续页、AML 网格对齐)都按升序假设;窗口超 limit 时截取的是**最旧**段,
     // 续页游标(lastAt+1)依赖升序才能翻完整窗。
@@ -188,7 +188,7 @@ export class TimescaleAdapter implements TsdbPort {
     params.push(new Date(q.fromMs ?? 0).toISOString())
     where.push(`ts <= $${params.length + 1}`)
     params.push(new Date(q.toMs ?? Date.now()).toISOString())
-    const limit = Math.min(q.limit ?? 2000, 1_000_000)
+    const limit = Math.max(1, Math.min(q.limit ?? 2000, 1_000_000))
     const whereSql = where.join(' AND ')
     if (q.bucketMs && q.bucketMs >= 100) {
       const { rows } = await this.pool.query(
@@ -262,7 +262,7 @@ export class TimescaleAdapter implements TsdbPort {
 
   async queryFrames(nodeId: string, opts: import('./tsdb-port').DaqFrameQueryOpts): Promise<import('./tsdb-port').DaqFrameRecord[]> {
     if (!this.pool) return []
-    const limit = Math.min(opts.limit ?? 100, 1000)
+    const limit = Math.max(1, Math.min(opts.limit ?? 100, 1000))
     const { rows } = await this.pool.query(
       `SELECT ts, kind, points, meta, metrics, device_binding_id, line_id, product_id, recipe_id, run_id
        FROM daq_frames WHERE node_id = $1 AND ($2::text IS NULL OR kind = $2) AND ts >= $3 AND ts <= $4

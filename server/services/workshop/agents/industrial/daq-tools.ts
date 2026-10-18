@@ -78,15 +78,37 @@ export async function toolDaqQuery(agentId: string, args: {
   const { targets } = auth
   const lineFilter = args.line_id ? String(args.line_id).trim() : ''
 
-  const toMs = Number(args.to_ms) || Date.now()
-  const fromMs = Number(args.from_ms) || toMs - (Number(args.last_minutes) || 30) * 60_000
+  // 参数校验:显式传入的非法值必须报错,不能静默回退(否则 Agent 以为按自己的窗口/条数查了)
+  const provided = (v: unknown): boolean => v !== undefined && v !== null && String(v).trim() !== ''
+  if (provided(args.to_ms) && (!Number.isFinite(Number(args.to_ms)) || Number(args.to_ms) <= 0)) {
+    return { text: `to_ms 必须是正的 epoch 毫秒(收到 ${String(args.to_ms)})。`, isError: true }
+  }
+  if (provided(args.from_ms) && (!Number.isFinite(Number(args.from_ms)) || Number(args.from_ms) <= 0)) {
+    return { text: `from_ms 必须是正的 epoch 毫秒(收到 ${String(args.from_ms)})。`, isError: true }
+  }
+  if (provided(args.last_minutes) && (!Number.isFinite(Number(args.last_minutes)) || Number(args.last_minutes) <= 0)) {
+    return { text: `last_minutes 必须大于 0(收到 ${String(args.last_minutes)})。`, isError: true }
+  }
+  const toMs = provided(args.to_ms) ? Number(args.to_ms) : Date.now()
+  const fromMs = provided(args.from_ms)
+    ? Number(args.from_ms)
+    : toMs - (provided(args.last_minutes) ? Number(args.last_minutes) : 30) * 60_000
+  if (fromMs >= toMs) {
+    return { text: `时间窗非法:from_ms(${fromMs})必须小于 to_ms(${toMs})。`, isError: true }
+  }
   // 时间间隔参数(bucket_ms 降采样桶宽):缺省与下限来自 daq.query.*(live 配置,热重载)
   const qCfg = daqRuntimeSettings().query
-  const rawBucket = Number(args.bucket_ms)
+  if (provided(args.bucket_ms) && (!Number.isFinite(Number(args.bucket_ms)) || Number(args.bucket_ms) < 0)) {
+    return { text: `bucket_ms 必须是非负数字(0=使用默认桶宽,收到 ${String(args.bucket_ms)})。`, isError: true }
+  }
+  const rawBucket = provided(args.bucket_ms) ? Number(args.bucket_ms) : NaN
   const bucketMs = Number.isFinite(rawBucket) && rawBucket > 0
     ? Math.max(qCfg.minBucketMs, Math.min(3_600_000, Math.round(rawBucket)))
     : qCfg.defaultBucketMs
-  const limit = Math.min(Number(args.limit) || 500, 2000)
+  if (provided(args.limit) && (!Number.isFinite(Number(args.limit)) || Number(args.limit) <= 0)) {
+    return { text: `limit 必须是正整数(收到 ${String(args.limit)})。`, isError: true }
+  }
+  const limit = Math.min(Math.max(Math.round(Number(args.limit)) || 500, 1), 2000)
 
   // 显式过滤优先级:recipe_id / run_id / product_id(任一给出即完全按调用方口径)
   const explicitProduct = args.product_id ? String(args.product_id) : ''
@@ -101,11 +123,17 @@ export async function toolDaqQuery(agentId: string, args: {
   const tsdb = getTsdb()
 
   const sections: string[] = []
+  let okNodes = 0
+  let failedNodes = 0
   /** 实际生效的过滤口径(逐节点累计,用于文末 provenance 与表头) */
   const applied: Array<{ nodeId: string, lineId: string, runId?: string, recipeId?: string, source: 'explicit' | 'active-run' | 'none' }> = []
   for (const nodeId of targets) {
     const node = getDaqNodeRepo().byId(nodeId)
-    if (!node) continue
+    if (!node) {
+      sections.push(`■ 节点 ${nodeId}:不存在或已删除,无法查询`)
+      failedNodes++
+      continue
+    }
     const tpl = findDaqTemplate(node.templateKey)
     const ch = tpl?.ch ?? node.templateKey
     // 默认口径:该节点所属产线的**活动批次**(未开跑 → 不过滤,保持原有语义)
@@ -150,6 +178,7 @@ export async function toolDaqQuery(agentId: string, args: {
       const readout: string[] = []
       if (points.length === 0) {
         sections.push(`${head}\n  窗口内无数据(产线未运行或过滤条件不匹配;仅产线运行中的样本被持久化打标)`)
+        okNodes++
         continue
       }
       const values = points.map(p => p.value ?? p.avg ?? 0).filter(Number.isFinite)
@@ -174,9 +203,11 @@ export async function toolDaqQuery(agentId: string, args: {
       sections.push(
         `${head}\n  样本 ${values.length} 点 | 最新 ${latest}${node.unit} | 均值 ${Number(avg.toFixed(3))} | 最小 ${Math.min(...values)} | 最大 ${Math.max(...values)}\n  最近序列: ${tail.join('; ')}${readout.length > 0 ? `\n  工况判读: ${readout.join(' | ')}` : ''}`,
       )
+      okNodes++
     }
     catch (err) {
       sections.push(`■ ${node.name}:查询失败 ${err instanceof Error ? err.message : String(err)}`)
+      failedNodes++
     }
   }
   // 文末口径声明:逐节点列出**实际生效**的过滤来源(显式 / 活动批次 / 未过滤),
@@ -198,7 +229,13 @@ export async function toolDaqQuery(agentId: string, args: {
     provLines.push(`—— 未过滤节点(所在产线未开跑,无活动批次可限定):${unscoped.map(a => a.nodeId).join(', ')}`)
   }
   const prov = provLines.length > 0 ? `\n(过滤条件:${provLines.join(' ')})` : ''
-  return { text: `数采数据查询结果(${targets.length} 个节点):\n\n${sections.join('\n\n')}${prov}\n\n数值均为经标定钩子处理后的真实物理量纲;调整工艺前请结合 my_industrial_nodes 的节点判读方法与操作守则。` }
+  const head = failedNodes > 0
+    ? `数采数据查询结果(${targets.length} 个节点,成功 ${okNodes} / 失败 ${failedNodes}):`
+    : `数采数据查询结果(${targets.length} 个节点):`
+  return {
+    text: `${head}\n\n${sections.join('\n\n')}${prov}\n\n数值均为经标定钩子处理后的真实物理量纲;调整工艺前请结合 my_industrial_nodes 的节点判读方法与操作守则。`,
+    ...(failedNodes > 0 ? { isError: true } : {}),
+  }
 }
 /** 工具:daq_frames —— 多形态帧检索(v2:测厚/扫描仪多点轮廓与 CCD 图像元数据)。
  *  向量返回点列摘要(≤16 点预览 + 派生指标);图像返回对象引用与内容 URL(像素不入 LLM)。 */
@@ -214,28 +251,57 @@ export async function toolDaqFrames(agentId: string, args: {
   const auth = daqTargetsOf(agentId, args.node_id, args.line_id)
   if ('error' in auth) return auth.error
   const { targets } = auth
+  if (args.kind != null && String(args.kind).trim() !== '' && args.kind !== 'vector' && args.kind !== 'image') {
+    return { text: `kind 只能是 vector 或 image(收到 ${String(args.kind)})。`, isError: true }
+  }
   const kind = args.kind === 'vector' || args.kind === 'image' ? args.kind : undefined
-  const toMs = Number(args.to_ms) || Date.now()
-  const fromMs = Number(args.from_ms) || toMs - (Number(args.last_minutes) || 30) * 60_000
-  const limit = Math.min(Number(args.limit) || 20, 100)
+  const provided = (v: unknown): boolean => v !== undefined && v !== null && String(v).trim() !== ''
+  if (provided(args.to_ms) && (!Number.isFinite(Number(args.to_ms)) || Number(args.to_ms) <= 0)) {
+    return { text: `to_ms 必须是正的 epoch 毫秒(收到 ${String(args.to_ms)})。`, isError: true }
+  }
+  if (provided(args.from_ms) && (!Number.isFinite(Number(args.from_ms)) || Number(args.from_ms) <= 0)) {
+    return { text: `from_ms 必须是正的 epoch 毫秒(收到 ${String(args.from_ms)})。`, isError: true }
+  }
+  if (provided(args.last_minutes) && (!Number.isFinite(Number(args.last_minutes)) || Number(args.last_minutes) <= 0)) {
+    return { text: `last_minutes 必须大于 0(收到 ${String(args.last_minutes)})。`, isError: true }
+  }
+  const toMs = provided(args.to_ms) ? Number(args.to_ms) : Date.now()
+  const fromMs = provided(args.from_ms)
+    ? Number(args.from_ms)
+    : toMs - (provided(args.last_minutes) ? Number(args.last_minutes) : 30) * 60_000
+  if (fromMs >= toMs) {
+    return { text: `时间窗非法:from_ms(${fromMs})必须小于 to_ms(${toMs})。`, isError: true }
+  }
+  if (provided(args.limit) && (!Number.isFinite(Number(args.limit)) || Number(args.limit) <= 0)) {
+    return { text: `limit 必须是正整数(收到 ${String(args.limit)})。`, isError: true }
+  }
+  const limit = Math.min(Math.max(Math.round(Number(args.limit)) || 20, 1), 100)
   const { getTsdb, tsdbReady } = await import('../../daq/storage')
   await tsdbReady
   const tsdb = getTsdb()
 
   const sections: string[] = []
+  let okNodes = 0
+  let failedNodes = 0
   for (const nodeId of targets) {
     const node = getDaqNodeRepo().byId(nodeId)
-    if (!node) continue
+    if (!node) {
+      sections.push(`■ 节点 ${nodeId}:不存在或已删除,无法查询`)
+      failedNodes++
+      continue
+    }
     const tpl = findDaqTemplate(node.templateKey)
     const signalKind = tpl?.signalKind ?? 'scalar'
     if (signalKind === 'scalar') {
       sections.push(`■ ${node.name}:单点标量节点(模板 ${node.templateKey}),无帧数据 —— 请用 daq_query 查时序数值。`)
+      okNodes++
       continue
     }
     try {
       const frames = await tsdb.queryFrames(nodeId, { fromMs, toMs, kind, limit })
       if (frames.length === 0) {
         sections.push(`■ ${node.name}(${tpl?.ch ?? node.templateKey}):窗口内无帧(产线未运行或过滤条件不匹配;仅产线运行中的帧被持久化)`)
+        okNodes++
         continue
       }
       const head = `■ ${node.name}(${tpl?.ch ?? node.templateKey})形态 ${signalKind},帧数 ${frames.length},时间窗 ${new Date(fromMs).toISOString().slice(0, 16)} ~ ${new Date(toMs).toISOString().slice(0, 16)}`
@@ -251,10 +317,18 @@ export async function toolDaqFrames(agentId: string, args: {
         return `  ${at} 图像 ${width}x${height} ${f.meta.mime ?? 'image/png'} 对象=${String(f.meta.objectKey ?? '-').slice(-24)} 指标 {${Object.entries(f.metrics).slice(0, 4).map(([k, v]) => `${k}=${v}`).join(', ')}}(像素不入上下文;前端画廊可看)`
       })
       sections.push(`${head}\n${lines.join('\n')}${frames.length > 10 ? `\n  (仅展示最近 10 帧)` : ''}`)
+      okNodes++
     }
     catch (err) {
       sections.push(`■ ${node.name}:帧查询失败 ${err instanceof Error ? err.message : String(err)}`)
+      failedNodes++
     }
   }
-  return { text: `数采帧查询结果(${targets.length} 个节点):\n\n${sections.join('\n\n')}\n\n向量=多点工程量轮廓(完整点列前端可查);图像=像素在对象存储,指标供判读(brightness 过低=曝光不足/遮挡)。` }
+  const head = failedNodes > 0
+    ? `数采帧查询结果(${targets.length} 个节点,成功 ${okNodes} / 失败 ${failedNodes}):`
+    : `数采帧查询结果(${targets.length} 个节点):`
+  return {
+    text: `${head}\n\n${sections.join('\n\n')}\n\n向量=多点工程量轮廓(完整点列前端可查);图像=像素在对象存储,指标供判读(brightness 过低=曝光不足/遮挡)。`,
+    ...(failedNodes > 0 ? { isError: true } : {}),
+  }
 }

@@ -1,5 +1,6 @@
 /**
- * daq_export —— 绑定数采节点的**全量原始时序**导出(CSV + 节点映射 manifest.json)。
+ * daq_export —— 可见数采节点(直接绑定 ∪ 频道绑线只读面)的**全量原始时序**导出
+ * (CSV + 节点映射 manifest.json)。
  *
  * 与 daq_query(文本统计面)/diag-bridge 快照(5s 降采样单 CSV)互补:本工具把
  * Agent 自选节点的**逐样本完整时序**分页拉全,落盘到数据目录
@@ -20,6 +21,7 @@ import { getDaqNodeRepo } from '../../daq/daq-node.repo'
 import { getActiveLineRun } from '../../dcw/line-run'
 import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
 import { getDcwController } from '../../dcw/dcw-controller'
+import { channelBoundLineId } from './ops-tools'
 import { settingOf } from '../../settings'
 
 const PAGE_LIMIT = 5000 // 与 tsdb 适配器单查硬上限一致(满页即续拉)
@@ -357,8 +359,8 @@ export async function exportDaqDataset(opts: {
 }
 
 /**
- * 工具:daq_export —— 导出绑定数采节点全量原始时序到数据目录(CSV + manifest.json)。
- * 权限边界与 daq_query 一致:只能收窄到自己的绑定(node_ids/line_id 越权即拒)。
+ * 工具:daq_export —— 导出可见数采节点(直接绑定 ∪ 频道绑线只读)全量原始时序到数据目录
+ * (CSV + manifest.json)。权限边界与 daq_query 一致:绑定面 ∪ 频道绑线,node_ids/line_id 越权即拒。
  */
 export async function toolDaqExport(agentId: string, args: {
   node_ids?: string | string[]
@@ -372,12 +374,17 @@ export async function toolDaqExport(agentId: string, args: {
   merge?: boolean | string
 }): Promise<{ text: string, isError?: boolean }> {
   const bindings = getAgentNodeBindingRepo().byAgent(agentId).filter(b => b.kind === 'daq')
-  if (bindings.length === 0) {
-    return { text: '你尚未绑定任何数采节点,无权导出采集数据。请在数字孪生界面绑定数采节点。', isError: true }
+  // 与 daq_query/daq_frames 同源:v28 频道绑线只读扩权同样覆盖全量导出
+  const boundLine = channelBoundLineId(agentId)
+  const lineNodes = boundLine
+    ? getDaqNodeRepo().all().filter(n => n.lineId === boundLine).map(n => n.id)
+    : []
+  const allowed = new Set([...bindings.map(b => b.nodeId), ...lineNodes])
+  if (allowed.size === 0) {
+    return { text: '你尚未绑定任何数采节点,频道也未绑定产线,无权导出采集数据。请在数字孪生界面绑定数采节点,或将频道绑定到目标产线(绑线后可只读导出该线数采数据)。', isError: true }
   }
-  const allowed = new Set(bindings.map(b => b.nodeId))
-  // 目标解析:node_ids(可多个)> line_id 过滤 > 全部绑定
-  let targets = bindings.map(b => b.nodeId)
+  // 目标解析:node_ids(可多个)> line_id 过滤 > 全部可见节点
+  let targets = [...allowed]
   const wantedRaw = args.node_ids
   if (wantedRaw != null && String(wantedRaw).trim() !== '') {
     const wanted = (Array.isArray(wantedRaw) ? wantedRaw : String(wantedRaw).split(/[,\s;]+/))
@@ -394,17 +401,30 @@ export async function toolDaqExport(agentId: string, args: {
   if (lineFilter) {
     const onLine = targets.filter(id => getDaqNodeRepo().byId(id)?.lineId === lineFilter)
     if (onLine.length === 0) {
-      return { text: `你绑定的数采节点中没有归属产线 ${lineFilter} 的,无法导出。`, isError: true }
+      return { text: `你的可见数采节点(绑定 ∪ 频道绑线)中没有归属产线 ${lineFilter} 的,无法导出。`, isError: true }
     }
     targets = onLine
   }
   targets = [...new Set(targets)].filter(id => getDaqNodeRepo().byId(id))
+  if (targets.length === 0) {
+    return { text: '没有可导出的节点:指定节点均不存在或已删除。请用 daq_query/mes_catalog 核对在线对象。', isError: true }
+  }
 
   // 时间窗:from/to 优先,否则 last_minutes(缺省 60);护栏 ≤7 天
-  const toMs = Number(args.to_ms) > 0 ? Number(args.to_ms) : Date.now()
-  const fromMs = Number(args.from_ms) > 0
+  const provided = (v: unknown): boolean => v !== undefined && v !== null && String(v).trim() !== ''
+  if (provided(args.to_ms) && (!Number.isFinite(Number(args.to_ms)) || Number(args.to_ms) <= 0)) {
+    return { text: `to_ms 必须是正的 epoch 毫秒(收到 ${String(args.to_ms)})。`, isError: true }
+  }
+  if (provided(args.from_ms) && (!Number.isFinite(Number(args.from_ms)) || Number(args.from_ms) <= 0)) {
+    return { text: `from_ms 必须是正的 epoch 毫秒(收到 ${String(args.from_ms)})。`, isError: true }
+  }
+  if (provided(args.last_minutes) && (!Number.isFinite(Number(args.last_minutes)) || Number(args.last_minutes) <= 0)) {
+    return { text: `last_minutes 必须大于 0(收到 ${String(args.last_minutes)})。`, isError: true }
+  }
+  const toMs = provided(args.to_ms) ? Number(args.to_ms) : Date.now()
+  const fromMs = provided(args.from_ms)
     ? Number(args.from_ms)
-    : toMs - (Number(args.last_minutes) > 0 ? Number(args.last_minutes) : 60) * 60_000
+    : toMs - (provided(args.last_minutes) ? Number(args.last_minutes) : 60) * 60_000
   if (fromMs >= toMs) return { text: 'from_ms 必须小于 to_ms。', isError: true }
   if (toMs - fromMs > MAX_WINDOW_MS) {
     return { text: `时间窗超限(最大 7 天):请缩小窗口(当前 ${(Math.round((toMs - fromMs) / 3600_000) / 10).toFixed(1)} 小时)。`, isError: true }

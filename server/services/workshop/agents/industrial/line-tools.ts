@@ -49,6 +49,10 @@ export async function toolLineStart(agentId: string, args: LineStartInput, chann
   const recipe = ctrl.listRecipes().find(r => r.id === recipeId)
   if (!recipe) return { text: `配方 ${recipeId} 不存在。`, isError: true }
   if (recipe.lineId !== lineId) return { text: `配方「${recipe.name}」不属于本频道绑定的产线「${lineName}」,不能用于开线。`, isError: true }
+  if (recipe.params.length === 0) return { text: `配方「${recipe.name}」没有工艺参数,不能开线。请先在配方中保存可下发参数。`, isError: true }
+  // 审批快照:人工批准的是「这个版本 + 这组参数」;审批期间配方被改必须重新申请
+  const approvedVersion = recipe.version ?? 1
+  const approvedParams = JSON.stringify(recipe.params.map(p => ({ nodeId: p.nodeId, value: p.value })))
   if (ctrl.lineState(lineId).active) {
     const cur = ctrl.lineState(lineId)
     return { text: `产线「${lineName}」已在运行(批次 ${cur.runId},配方 ${cur.recipeName});重复开线被拒。如需换配方,先 line_stop 再开。`, isError: true }
@@ -63,7 +67,7 @@ export async function toolLineStart(agentId: string, args: LineStartInput, chann
         const node = ctrl.byId(p.nodeId)
         return `${node?.name ?? p.nodeId}=${p.value}${node?.unit ?? ''}`
       }).join(';')})。理由:${reason} | 批准=开线并下发配方;拒绝可附指导。`,
-      { title: `产线开跑:${lineName}`, payload: { schemaVersion: 1, kind: 'line-start', lineId, recipeId, reason } },
+      { title: `产线开跑:${lineName}`, payload: { schemaVersion: 1, kind: 'line-start', lineId, recipeId, recipeVersion: approvedVersion, reason } },
     )
   }
   catch (err) {
@@ -72,20 +76,119 @@ export async function toolLineStart(agentId: string, args: LineStartInput, chann
   if (!decision.approved) {
     return { text: `开线未获批准(超时未批或人工拒绝),产线未做任何变更。人工意见:${decision.comment || '(无附言)'}` }
   }
+  // 审批期间频道绑线/成员角色/配方归属都可能变化:批准不等于授权仍有效
+  const again = await requireBoundLineLead(agentId, channelId)
+  if ('error' in again) return { text: `审批通过后复核失败,本次未开线:${again.error}`, isError: true }
+  if (again.lineId !== lineId) {
+    return { text: `审批通过后复核失败:频道绑定产线已从「${lineName}」变更为「${again.lineId}」,本次未开线。请重新提交开线申请。`, isError: true }
+  }
+  const recipeNow = ctrl.listRecipes().find(r => r.id === recipeId)
+  if (!recipeNow || recipeNow.lineId !== lineId) {
+    return { text: `审批通过后复核失败:配方「${recipe.name}」已删除或不再属于产线「${lineName}」,本次未开线。`, isError: true }
+  }
+  const versionNow = recipeNow.version ?? 1
+  const paramsNow = JSON.stringify(recipeNow.params.map(p => ({ nodeId: p.nodeId, value: p.value })))
+  if (versionNow !== approvedVersion || paramsNow !== approvedParams) {
+    return {
+      text: `审批通过后复核失败:配方「${recipe.name}」在审批期间已变更(批准 v${approvedVersion},当前 v${versionNow};参数${paramsNow === approvedParams ? '一致' : '已变更'}),本次未开线。请按当前配方重新提交开线申请。`,
+      isError: true,
+    }
+  }
+  if (ctrl.lineState(lineId).active) {
+    return { text: `审批通过后复核失败:产线「${lineName}」已在运行(批次 ${ctrl.lineState(lineId).runId}),本次未重复开线。`, isError: true }
+  }
   try {
     const run = await ctrl.lineStart(lineId, recipeId)
+    const results = run.results ?? []
+    const failed = results.filter(r => !r.ok)
+    const unverified = results.filter(r => r.ok && r.verify?.verdict !== 'verified' && r.ack !== 'readback-verified')
+    const detailOf = (r: typeof results[number]): string => {
+      const node = r.nodeId ? ctrl.byId(r.nodeId) : undefined
+      return `${node?.name ?? r.templateRef ?? r.nodeId ?? '?'}: ${String(r.message).slice(0, 100)}`
+    }
+    // 写参期间人工可能停线并重开:本批次不再活动时,不能把本次结果报成「当前已开跑」
+    const activeAfter = ctrl.lineState(lineId)
+    if (!activeAfter.active || activeAfter.runId !== run.id) {
+      try {
+        recordOps({
+          actor: agentId, actorName: agentBadgeLabel(agentId), actorKind: 'agent',
+          action: 'line.start', kind: 'line', targetKind: 'line', targetId: lineId, lineId,
+          level: 'error',
+          summary: `Agent 开线结果失效:批次 ${run.id.slice(0, 8)} 在写参期间被替代/停止(当前批次 ${activeAfter.runId ?? '无'});未报成功`,
+        })
+      }
+      catch { /* 审计失败不改变拒绝语义 */ }
+      return {
+        text: `开线执行期间产线批次已变更(本次批次 ${run.id.slice(0, 8)},当前批次 ${activeAfter.runId ?? '无'}),本次结果不能代表当前运行状态。请用 line_status/daq_query 复核实际工况;如需重开请重新提交申请。`,
+        isError: true,
+      }
+    }
+    // 全部参数失败 = 线已开但 PLC 未按配方生效:自动停线收窗,避免空跑采样与误判。
+    // 只停「本次刚开的批次」:写参数期间人工可能已停线并重开,不能误停新批次。
+    if (results.length > 0 && failed.length === results.length) {
+      const activeNow = ctrl.lineState(lineId)
+      let stopped = false
+      let stopNote = ''
+      if (activeNow.active && activeNow.runId === run.id) {
+        try {
+          ctrl.lineStop(lineId)
+          stopped = true
+        }
+        catch { /* 已停/停线失败在文案中如实说明 */ }
+      }
+      else {
+        stopNote = `本批次已被替代或已停止(当前批次 ${activeNow.runId ?? '无'}),未执行自动停线`
+      }
+      try {
+        recordOps({
+          actor: agentId, actorName: agentBadgeLabel(agentId), actorKind: 'agent',
+          action: 'line.start', kind: 'line', targetKind: 'line', targetId: lineId, lineId,
+          level: 'error',
+          summary: `Agent 开线失败:「${lineName}」配方「${recipe.name}」全部 ${results.length} 个参数未下发成功(批次 ${run.id.slice(0, 8)});${stopNote || (stopped ? '已自动停线' : '自动停线未成功')};理由:${reason}`,
+        })
+        if (stopped) {
+          recordOps({
+            actor: agentId, actorName: agentBadgeLabel(agentId), actorKind: 'agent',
+            action: 'line.stop', kind: 'line', targetKind: 'line', targetId: lineId, lineId,
+            level: 'warn',
+            summary: `Agent 自动停线:批次 ${run.id.slice(0, 8)} 收窗(开线后全部参数下发失败)`,
+          })
+        }
+      }
+      catch { /* 审计失败不改变拒绝语义 */ }
+      return {
+        text: `开线失败:配方「${recipe.name}」全部 ${results.length} 个参数均未下发成功。${stopped ? '已自动停线收窗,产线未保持运行状态。' : stopNote || '自动停线未成功,请立即人工检查并停止产线。'}\n失败明细:\n  - ${failed.map(detailOf).join('\n  - ')}`,
+        isError: true,
+      }
+    }
     try {
       recordOps({
         actor: agentId, actorName: agentBadgeLabel(agentId), actorKind: 'agent',
         action: 'line.start', kind: 'line', targetKind: 'line', targetId: lineId, lineId,
-        summary: `Agent 开线:「${lineName}」以配方「${recipe.name}」开跑(批次 ${run.id.slice(0, 8)});理由:${reason}`,
+        summary: `Agent 开线:「${lineName}」以配方「${recipe.name}」开跑(批次 ${run.id.slice(0, 8)};失败 ${failed.length},未证实 ${unverified.length});理由:${reason}`,
+        level: failed.length > 0 ? 'error' : unverified.length > 0 ? 'warn' : 'info',
       })
     }
     catch { /* 审计失败不影响执行 */ }
-    return { text: `产线「${lineName}」已开跑(批次 ${run.id.slice(0, 8)},配方「${recipe.name}」参数已下发)。用 daq_query 复测确认数采窗口激活。` }
+    if (failed.length > 0 || unverified.length > 0) {
+      const acks = run.ackSummary
+      const parts = [
+        `产线「${lineName}」已开跑(批次 ${run.id.slice(0, 8)},配方「${recipe.name}」),但参数下发未全部证实${acks ? `(证实 ${acks.verified}/${acks.total},未证实 ${acks.unverified},失败 ${acks.failed})` : ''}:`,
+        ...(failed.length > 0 ? [`失败参数:`, ...failed.map(r => `  - ${detailOf(r)}`)] : []),
+        ...(unverified.length > 0 ? [`未证实参数(命令已受理,设备侧未确认):`, ...unverified.map(r => `  - ${detailOf(r)}`)] : []),
+        '请先用 daq_query 复测实际工况;未生效参数需人工处置或 line_stop 后重试,禁止把本次开线当作全量生效。',
+      ]
+      return { text: parts.join('\n'), isError: true }
+    }
+    return { text: `产线「${lineName}」已开跑(批次 ${run.id.slice(0, 8)},配方「${recipe.name}」参数已全部设备证实)。用 daq_query 复测确认数采窗口激活。` }
   }
   catch (err) {
-    return { text: `开线执行失败(产线未变更):${err instanceof Error ? err.message : String(err)}`, isError: true }
+    // lineStart 可能已在创建批次后抛错:不能固定宣称「产线未变更」,按当前状态如实说明
+    const after = ctrl.lineState(lineId)
+    const stateNote = after.active
+      ? `产线当前显示运行中(批次 ${after.runId},配方 ${after.recipeName ?? '-'}),本次调用异常;请立即用 line_status/daq_query 复核,必要时人工停线`
+      : '产线当前未运行'
+    return { text: `开线执行失败:${err instanceof Error ? err.message : String(err)};${stateNote}。`, isError: true }
   }
 }
 
@@ -106,7 +209,7 @@ export async function toolLineStop(agentId: string, args: LineStopInput, channel
       `line-stop:${lineId}`,
       'dcw',
       `产线停线审批:产线「${lineName}」将关闭当前批次窗口(批次 ${st.runId},配方 ${st.recipeName},已打标 ${st.taggedSamples} 样本)。理由:${reason} | 批准=停线(数采同步停止);拒绝可附指导。`,
-      { title: `产线停线:${lineName}`, payload: { schemaVersion: 1, kind: 'line-stop', lineId, reason } },
+      { title: `产线停线:${lineName}`, payload: { schemaVersion: 1, kind: 'line-stop', lineId, runId: st.runId, reason } },
     )
   }
   catch (err) {
@@ -114,6 +217,23 @@ export async function toolLineStop(agentId: string, args: LineStopInput, channel
   }
   if (!decision.approved) {
     return { text: `停线未获批准(超时未批或人工拒绝),产线继续运行。人工意见:${decision.comment || '(无附言)'}` }
+  }
+  // 审批期间频道可能换线/换 lead,或产线已被人工停止:批准不等于状态未变
+  const again = await requireBoundLineLead(agentId, channelId)
+  if ('error' in again) return { text: `审批通过后复核失败,本次未停线:${again.error}`, isError: true }
+  if (again.lineId !== lineId) {
+    return { text: `审批通过后复核失败:频道绑定产线已从「${lineName}」变更为「${again.lineId}」,本次未停线。`, isError: true }
+  }
+  const now = ctrl.lineState(lineId)
+  if (!now.active) {
+    return { text: `审批通过后产线「${lineName}」已停止(可能由人工或其他操作完成),无需重复停线。` }
+  }
+  // 只停审批时看到的那一批:等待期间人工可能停线并重开,批准旧单不得误停新批次
+  if (st.runId && now.runId !== st.runId) {
+    return {
+      text: `审批通过后复核失败:产线「${lineName}」批次已变更(审批时 ${st.runId},当前 ${now.runId}),本次未停线。如仍需停止当前批次,请重新提交停线申请。`,
+      isError: true,
+    }
   }
   try {
     const run = ctrl.lineStop(lineId)

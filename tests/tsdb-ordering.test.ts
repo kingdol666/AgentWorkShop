@@ -75,3 +75,15 @@ test('导出:>5000 样本窗口游标续页取全(CSV 行数 == 样本数,不静
   assert.equal(csv.length - 1, total)
   assert.deepEqual(r.truncated, [], '不得标记截断')
 })
+
+test('契约:limit<=0 不得变成 SQL 无上限(适配器夹到 1)', async () => {
+  const a = new SqliteTimeSeriesAdapter()
+  await a.init()
+  const base = 1_700_000_000_000
+  const rows = Array.from({ length: 12 }, (_, i) => ({ nodeId: 'n-neg', tsMs: base + i * 1000, value: i, state: 'ok', lineId: 'ln-neg', recipeId: 'rc-neg' }))
+  await a.writeSamples(rows)
+  const raw = await a.query('n-neg', { fromMs: base - 1, toMs: base + 60_000, limit: -5 })
+  assert.equal(raw.length, 1, '负 limit 必须被夹到 1,而不是 SQLite 的“负值=无上限”')
+  const tagged = await a.queryTagged({ nodeIds: ['n-neg'], lineId: 'ln-neg', fromMs: base - 1, toMs: base + 60_000, limit: -5 })
+  assert.equal((tagged.get('n-neg') ?? []).length, 1)
+})

@@ -202,7 +202,9 @@ class ToolApprovalService {
 
   /** 审批锚点 → 产线 id(节点 id 直查;recipe:/recipe-propose: 前缀查配方产线) */
   private lineIdOf(nodeId: string): string {
-    const m = /^(?:recipe|recipe-propose):(.+)$/.exec(nodeId)
+    if (nodeId.startsWith('line-start:')) return nodeId.slice('line-start:'.length)
+    if (nodeId.startsWith('line-stop:')) return nodeId.slice('line-stop:'.length)
+    const m = nodeId.match(/^(?:recipe|recipe-propose):(.+)$/)
     try {
       if (m) {
         const recipe = getDcwController().listRecipes().find(r => r.id === m[1])

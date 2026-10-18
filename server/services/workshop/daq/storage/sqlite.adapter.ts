@@ -125,7 +125,7 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
 
   async query(nodeId: string, opts: DaqQueryOpts): Promise<TsdbPoint[]> {
     if (!this.db) return []
-    const limit = Math.min(opts.limit ?? 500, 5000)
+    const limit = Math.max(1, Math.min(opts.limit ?? 500, 5000))
     const from = opts.fromMs ?? 0
     const to = opts.toMs ?? Date.now()
     if (opts.bucketMs && opts.bucketMs >= 100) {
@@ -179,7 +179,7 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
     params.push(q.fromMs ?? 0)
     where.push('ts_ms <= ?')
     params.push(q.toMs ?? Date.now())
-    const limit = Math.min(q.limit ?? 2000, 1_000_000)
+    const limit = Math.max(1, Math.min(q.limit ?? 2000, 1_000_000))
     if (q.bucketMs && q.bucketMs >= 100) {
       // 桶宽内插(整数,同 query():绑定参数会走 REAL 浮点除,塌不了桶)
       const bucket = Math.round(Number(q.bucketMs))
@@ -245,7 +245,7 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
 
   async queryFrames(nodeId: string, opts: import('./tsdb-port').DaqFrameQueryOpts): Promise<import('./tsdb-port').DaqFrameRecord[]> {
     if (!this.db) return []
-    const limit = Math.min(opts.limit ?? 100, 1000)
+    const limit = Math.max(1, Math.min(opts.limit ?? 100, 1000))
     const rows = this.db.prepare(`
       SELECT ts_ms, kind, meta, metrics, device_binding_id, line_id, product_id, recipe_id, run_id
       FROM daq_frames

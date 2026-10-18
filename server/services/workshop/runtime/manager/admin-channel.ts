@@ -156,6 +156,56 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
     }
     if (next === channel.lineId) return channel
     const updated = this.deps.repos.channels.setLine(channelId, next)!
+    // 换线即失效:旧产线的启停审批单按拒绝收敛,避免批准后仍按旧线语义执行
+    if (channel.lineId) {
+      try {
+        const { getToolApprovals } = await import('../../agents/tool-approvals')
+        const approvals = getToolApprovals()
+        for (const agent of this.deps.repos.channelAgents.listByChannel(channelId)) {
+          approvals.cancelPendingFor(agent.id, `line-start:${channel.lineId}`)
+          approvals.cancelPendingFor(agent.id, `line-stop:${channel.lineId}`)
+        }
+      }
+      catch { /* 审批服务未接线时不影响换线 */ }
+    }
+    // 绑线一致性(与 bindings/index.post.ts 的创建期约束同源):频道绑定到新线后,
+    // 成员留在其他产线的节点/配方绑定会让「频道 = 单产线工作区」失效,且工具仍可跨线读写。
+    // 换线时清理并取消其挂起审批;解绑产线(next='')不清理(纯协作频道可保留显式绑定)。
+    if (next) {
+      try {
+        const { getAgentNodeBindingRepo } = await import('../../agents/node-bindings.repo')
+        const { getDcwController } = await import('../../dcw/dcw-controller')
+        const { getDaqNodeRepo } = await import('../../daq/daq-node.repo')
+        const { getToolApprovals } = await import('../../agents/tool-approvals')
+        const { recordOps } = await import('../../ops/ops')
+        const repo = getAgentNodeBindingRepo()
+        const approvals = getToolApprovals()
+        let cleared = 0
+        for (const agent of this.deps.repos.channelAgents.listByChannel(channelId)) {
+          for (const binding of repo.byAgent(agent.id)) {
+            const boundLine = binding.kind === 'recipe'
+              ? (getDcwController().listRecipes().find(r => r.id === binding.nodeId)?.lineId ?? '')
+              : binding.kind === 'dcw'
+                ? (getDcwController().byId(binding.nodeId)?.lineId ?? '')
+                : (getDaqNodeRepo().byId(binding.nodeId)?.lineId ?? '')
+            if (!boundLine || boundLine === next) continue
+            if (repo.unbind(binding.id)) {
+              approvals.cancelPendingForBinding(agent.id, binding)
+              cleared++
+            }
+          }
+        }
+        if (cleared > 0) {
+          recordOps({
+            actor: 'system', actorName: 'system', actorKind: 'system',
+            action: 'channel.line.rebind', kind: 'line', targetKind: 'channel', targetId: channelId,
+            summary: `频道换线「${channel.lineId || '(无)'}」→「${next}」:清理 ${cleared} 条跨线绑定并取消其挂起审批`,
+            detail: { fromLine: channel.lineId || '', toLine: next, cleared },
+          })
+        }
+      }
+      catch { /* 清理失败不阻断换线;工具层仍按绑定面+grant 复核(不放大权限) */ }
+    }
     // 与场景 prompt 变更同链路:回收成员运行时,下次装配注入新的产线简报
     await this.unloadChannelAgents(channelId)
     if (updated.leadAgentId) this.ensureChannelActive(channelId)

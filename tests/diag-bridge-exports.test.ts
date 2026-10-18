@@ -160,7 +160,9 @@ function makeCtx() {
             deliver: (n: Record<string, unknown>) => { delivered.push(n) },
             claim: (tool: string, jobId: string) => { claimed.push([tool, jobId]) },
           }
-        : null,
+        : name === 'agentScope'
+          ? { readableLines: () => ['ln-A'], boundNodes: () => [] }
+          : null,
     },
     logger: { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} },
     timer: { setInterval: () => {} },
@@ -256,4 +258,12 @@ test('/report 路由:任务 completed → workspace 匹配 run → 代理返回�
   assert.equal(out.success, true)
   assert.match(out.report?.content ?? '', /根因:进料波动/)
   assert.equal(reportHits, 1)
+})
+
+test('diag_run 产线模式:不可读产线在取数前拒绝(插件工具授权)', async () => {
+  const m = makeCtx()
+  const r = await m.tools['diag_run']!.handler({ line: 'ln-B' }, { agentId: 'ag-1', channelId: 'ch-1' })
+  assert.equal(r.isError, true)
+  assert.match(String(r.text), /不在你的可读范围/)
+  assert.match(String(r.text), /ln-A/)
 })
