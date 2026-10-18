@@ -41,7 +41,7 @@ ROW_H, GAP = 0.34, 0.020
 rows = [
     ("Team \u00b7 Goal \u2192 task", "natural-language goal becomes a team task", BLUE),
     ("Team \u00b7 Retrieve \u00b7 analyze \u00b7 propose", "knowledge base \u00b7 DAQ logs \u2192 setpoint", BLUE),
-    ("Governance \u00b7 Admit \u2192 approve", "H \u2229 product \u2229 recipe; manual wait", GREEN),
+    ("Governance \u00b7 Admit \u2192 approve", "H \u2229 B \u2229 P \u2229 R; manual wait", GREEN),
     ("Plant \u00b7 Write \u2192 readback", "SET vs ACT; grade the acknowledgment", TEAL),
     ("Governance \u00b7 Judge", "keep / rollback / uncertain + attribution", GREEN),
 ]

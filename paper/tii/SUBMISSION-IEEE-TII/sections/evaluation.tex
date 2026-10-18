@@ -331,13 +331,14 @@ releasing all six parameters readback-verified; (6)--(7)~API regression and
 documentation-consistency suites close the campaign.
 
 \looseness=-1 \emph{Observed grade distribution.} In fault-free operation,
-every batch dispatch of the six hardened runs closed \emph{readback-verified}:
+every batch dispatch of the six hardened-surface runs (Passes 2--3) closed \emph{readback-verified}:
 structured approval released it and the three-way check read equal values at
 \resConsistencyErr{} maximum error (Fig.~\ref{fig:loop}). The non-verified
 grades appear only under injected faults, the distribution expected under the
-specified grading rule: \resAckFailed{} \emph{failed} (broker unreachable;
-healthy sibling verified), \resAckUnverified{} \emph{unverified} (publish-only
-endpoint, three attempts), and \resAckPromoted{} parameters promoted from
+specified grading rule: \resAckFailed{} parameter graded \emph{failed} (broker
+unreachable; healthy sibling verified), \resAckUnverified{} parameter
+\emph{unverified} (publish-only endpoint, three attempts), and
+\resAckPromoted{} parameters promoted from
 transport-acknowledged to readback-verified by post-write re-read.
 Transport-acknowledged occurs on MES-style endpoints with application-level
 acceptance but no readback mapping; MES route tests cover it, but the campaign
