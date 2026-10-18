@@ -2,7 +2,7 @@
 import type { SelectProps } from 'ant-design-vue'
 import { useWsConnectionStore } from '@/app/stores/workshop/connection'
 
-defineProps<{
+const props = defineProps<{
   /** 连接状态点只在客户端挂载后出现(SSR 没有 WS 会话可指示) */
   hydrated: boolean
 }>()
@@ -14,10 +14,13 @@ const { isMobile } = useResponsive()
 /* 语言选择器在窄屏显示"短名":完整语言名(简体中文=56px @14px)配上
  * antd 给箭头预留的 24px 内距,92px 的选择器只剩 46px 文本位 ——
  * 实测被截成「简 体…」,这是每页都出现的破相。
- * 窄屏用 2 字标签,桌面保留完整语言名。 */
+ * 窄屏用 2 字标签,桌面保留完整语言名。
+ * ⚠️ 必须等 hydrated 再切短名:useResponsive 在客户端 setup 期即读真实视口,
+ * 若首帧直接按 isMobile 渲染,SSR(桌面默认)与客户端(窄屏)文案不一致
+ * → 每页报 "Hydration completed but contains mismatches"(实测 390 视口)。 */
 const localeOptions = computed(() =>
   (locales.value as Array<{ code: string, name: string }>).map(l => ({
-    label: isMobile.value ? l.code.split('-')[0]!.toUpperCase() : l.name,
+    label: (props.hydrated && isMobile.value) ? l.code.split('-')[0]!.toUpperCase() : l.name,
     value: l.code,
   })),
 )

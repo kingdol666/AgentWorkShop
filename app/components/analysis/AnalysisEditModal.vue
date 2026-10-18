@@ -178,6 +178,9 @@ function submit(): void {
 </template>
 
 <style scoped>
+/* 弹窗自适应:antd 的 width=720px 是内联宽度,max-width 在窄屏上收口(实测 390 下溢出) */
+:deep(.ant-modal) { max-width: calc(100vw - 24px); }
+:deep(.ant-modal .ant-modal-body) { padding-right: 4px; }
 .edit-form { display: flex; flex-direction: column; gap: 10px; max-height: 64vh; overflow: auto; padding-right: 4px; }
 .fld { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--ink-faint); }
 .fld-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
@@ -189,4 +192,9 @@ function submit(): void {
 .inp-sel:focus { border-color: color-mix(in srgb, var(--tone-info-dot) 55%, transparent); }
 textarea.inp-sel { resize: vertical; line-height: 1.6; }
 .mono { font-family: var(--font-mono, monospace); font-size: 11.5px; }
+@media (max-width: 640px) {
+  .edit-form { max-height: 58vh; gap: 8px; }
+  .fld-row { grid-template-columns: 1fr; gap: 8px; }
+  textarea.inp-sel { font-size: 12px; }
+}
 </style>

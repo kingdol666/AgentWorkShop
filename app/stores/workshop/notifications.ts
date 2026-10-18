@@ -171,11 +171,32 @@ export const useNotificationsStore = defineStore('workshop.notifications', () =>
   let inflightFetch: Promise<void> | null = null
   let lastAttemptAt = 0
   const FETCH_MIN_GAP_MS = 2000
+  // 熔断器:窗口内尝试数封顶,超限冷却静默丢弃(防上游紧循环把浏览器 socket 耗尽,
+  // 殃及同页全部请求 —— 实测 2.3 万次/15s 时 Chrome ERR_INSUFFICIENT_RESOURCES 风暴)
+  let breakerUntil = 0
+  let breakerWindowStart = 0
+  let breakerTries = 0
+  const BREAKER_WINDOW_MS = 10_000
+  const BREAKER_MAX_TRIES = 10
+  const BREAKER_COOLDOWN_MS = 30_000
   async function guardedFetch(fn: () => Promise<void>): Promise<void> {
     if (inflightFetch) return inflightFetch
-    const wait = FETCH_MIN_GAP_MS - (Date.now() - lastAttemptAt)
+    const now0 = Date.now()
+    if (now0 < breakerUntil) return
+    const wait = FETCH_MIN_GAP_MS - (now0 - lastAttemptAt)
     if (wait > 0) await new Promise(r => setTimeout(r, wait))
+    // 唤醒后复查:等待窗内的并发调用方都通过了入口检查,不复查会把整批一起放行
+    if (inflightFetch) return inflightFetch
     lastAttemptAt = Date.now()
+    if (lastAttemptAt - breakerWindowStart > BREAKER_WINDOW_MS) {
+      breakerWindowStart = lastAttemptAt
+      breakerTries = 0
+    }
+    breakerTries += 1
+    if (breakerTries > BREAKER_MAX_TRIES) {
+      breakerUntil = lastAttemptAt + BREAKER_COOLDOWN_MS
+      breakerTries = 0
+    }
     inflightFetch = (async () => {
       try {
         await fn()

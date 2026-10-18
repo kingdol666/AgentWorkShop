@@ -30,8 +30,20 @@ defineProps<{
 </template>
 
 <style scoped>
-.head-actions { display: flex; gap: 10px; align-items: center; padding-bottom: 4px; }
-.sub { margin: 8px 0 0; font-size: 13px; color: var(--ink-faint); }
+.head-actions { display: flex; gap: 10px; align-items: center; padding-bottom: 4px; flex-wrap: wrap; }
+.sub {
+  margin: 8px 0 0;
+  max-width: 72ch;
+  font-size: clamp(12.5px, 1.1vw, 13px);
+  line-height: 1.65;
+  color: var(--ink-faint);
+  text-wrap: pretty;
+}
+/* 标题随视口收敛(窄屏不挤成两行),保持页面头度量线不被撑破 */
+:deep(.aw-page-head h1) {
+  font-size: clamp(22px, 3vw, 30px);
+  text-wrap: pretty;
+}
 .live-dot {
   width: 8px; height: 8px; border-radius: 50%;
   background: var(--tone-success-dot);
@@ -43,5 +55,8 @@ defineProps<{
   70% { box-shadow: 0 0 0 8px transparent; }
   100% { box-shadow: 0 0 0 0 transparent; }
 }
-.live-txt { font-size: 11.5px; color: var(--ink-faint); }
+.live-txt { font-size: 11.5px; color: var(--ink-faint); white-space: nowrap; }
+@media (max-width: 640px) {
+  .head-actions { padding-bottom: 0; }
+}
 </style>

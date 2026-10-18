@@ -3,6 +3,8 @@
  * 服务端通过 /api/system/timezone 提供 IANA 时区；SSR/首屏默认 Asia/Shanghai，
  * 客户端 mounted 后同步当前设置。历史 ISO(带 Z/任意 offset)始终按绝对时刻解析。
  */
+import { apiFetch } from './apiClient'
+
 const DEFAULT_TIME_ZONE = 'Asia/Shanghai'
 let systemTimeZone = DEFAULT_TIME_ZONE
 let loaded = false
@@ -28,13 +30,14 @@ export function useSystemTimeZone() {
     if (loading.value) return
     loading.value = true
     try {
-      const fetchTimezone = $fetch as unknown as (url: string) => Promise<{ timeZone?: string }>
-      const data = await fetchTimezone('/api/system/timezone')
+      // 走统一客户端:自动带 Bearer(该端点 resolveUser 不读 cookie,裸 fetch 会 401)
+      const data = await apiFetch<{ timeZone?: string }>({ base: '/api/system', path: '/timezone', retries: 0 })
       if (data?.timeZone) {
         setSystemTimeZone(data.timeZone)
         timeZone.value = systemTimeZone
       }
     }
+    catch { /* 匿名/离线:保持默认时区 */ }
     finally {
       loading.value = false
       loaded = true

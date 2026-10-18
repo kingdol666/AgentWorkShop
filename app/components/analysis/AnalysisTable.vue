@@ -83,7 +83,9 @@ const contextText = (r: AnalysisReportView): string => {
           <th class="th-recipe">
             {{ $t('analysis.thRecipe') }}
           </th>
-          <th>{{ $t('analysis.thSummary') }}</th>
+          <th class="th-summary">
+            {{ $t('analysis.thSummary') }}
+          </th>
           <th class="th-src">
             {{ $t('analysis.thSource') }}
           </th>
@@ -113,11 +115,11 @@ const contextText = (r: AnalysisReportView): string => {
           v-for="row in rows"
           :key="row.id"
         >
-          <tr>
-            <td class="mono dim">
+          <tr class="report-row">
+            <td class="td-time mono dim">
               {{ fmtTime(row.createdAt) }}
             </td>
-            <td>
+            <td class="td-line">
               <span class="scope-chip">{{ row.lineName || lineName(row.lineId) || row.lineId || '—' }}</span>
             </td>
             <td class="title-cell">
@@ -127,7 +129,7 @@ const contextText = (r: AnalysisReportView): string => {
                 :class="row.category"
               >{{ catLabel(row.category) }}</small>
             </td>
-            <td class="mono dim">
+            <td class="td-recipe mono dim">
               {{ recipeLabel(row) }}
             </td>
             <td class="summary">
@@ -274,19 +276,26 @@ const contextText = (r: AnalysisReportView): string => {
   white-space: nowrap;
 }
 .ar-table tbody td { padding: 9px 12px; border-bottom: 1px solid color-mix(in srgb, var(--glass-line) 55%, transparent); vertical-align: top; }
+.ar-table tbody .report-row { transition: background 0.15s ease; }
+.ar-table tbody .report-row:hover { background: color-mix(in srgb, var(--tone-info-dot) 4%, transparent); }
 .th-time { width: 128px; }
 .th-line { width: 130px; }
 .th-recipe { width: 170px; }
 .th-src { width: 150px; }
 .th-detail { width: 92px; }
-.title-cell { max-width: 320px; font-weight: 600; }
+.title-cell { max-width: 320px; font-weight: 600; font-size: 13px; line-height: 1.55; text-wrap: pretty; }
 .cat-chip {
   display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px;
   font-size: 10.5px; font-weight: 500; color: var(--ink-faint);
   background: color-mix(in srgb, var(--glass-line) 40%, transparent);
   vertical-align: 1px;
 }
-.summary { max-width: 380px; }
+/* 类别语义色(沿用控制室 tone token,不引入新色相) */
+.cat-chip.optimization { color: var(--tone-success-dot); background: color-mix(in srgb, var(--tone-success-dot) 12%, transparent); }
+.cat-chip.quality { color: var(--tone-info-dot); background: color-mix(in srgb, var(--tone-info-dot) 12%, transparent); }
+.cat-chip.alarm { color: var(--tone-danger-dot); background: color-mix(in srgb, var(--tone-danger-dot) 12%, transparent); }
+.cat-chip.trend { color: var(--tone-warn-dot, var(--tone-info-dot)); background: color-mix(in srgb, var(--tone-warn-dot, var(--tone-info-dot)) 12%, transparent); }
+.summary { max-width: 380px; line-height: 1.7; text-wrap: pretty; }
 .src small { display: block; }
 .mono { font-family: var(--font-mono, monospace); font-size: 11.5px; }
 .dim { color: var(--ink-faint); }
@@ -315,8 +324,45 @@ const contextText = (r: AnalysisReportView): string => {
   border-radius: 8px;
   max-height: 340px; overflow: auto;
 }
-@media (max-width: 899px) {
-  .th-recipe, .th-src { display: none; }
-  .ar-table tbody td:nth-child(4), .ar-table tbody td:nth-child(6) { display: none; }
+
+/* ── 平板:收窄非关键列(配方/来源/时间压缩) ── */
+@media (max-width: 1099px) {
+  .th-recipe, .td-recipe { display: none; }
+  .th-src, .src { display: none; }
+  .th-time { width: 96px; }
+  .title-cell { max-width: none; }
+  .summary { max-width: none; }
+}
+
+/* ── 窄屏(≤760):表格转卡片列表(逐字竖排的根因修复) ── */
+@media (max-width: 760px) {
+  .card-meta { flex-wrap: wrap; gap: 4px 10px; }
+  .card-meta .hint { margin-left: 0; }
+  .ar-table { display: block; }
+  .ar-table thead { display: none; }
+  .ar-table tbody { display: flex; flex-direction: column; }
+  .ar-table tbody .report-row {
+    display: grid;
+    grid-template-columns: auto auto 1fr auto;
+    gap: 5px 10px;
+    padding: 12px 14px;
+    border-bottom: 1px solid color-mix(in srgb, var(--glass-line) 55%, transparent);
+  }
+  .ar-table tbody .report-row:active { background: color-mix(in srgb, var(--tone-info-dot) 6%, transparent); }
+  .ar-table tbody td { display: block; padding: 0; border: 0; max-width: none; }
+  .td-time { grid-column: 1; grid-row: 2; }
+  .td-line { grid-column: 2; grid-row: 2; }
+  .title-cell { grid-column: 1 / 4; grid-row: 1; font-size: 13.5px; }
+  .td-recipe { display: none; }
+  .summary { grid-column: 1 / -1; grid-row: 3; font-size: 12px; color: var(--ink-soft, var(--ink)); }
+  .src { grid-column: 1 / -1; grid-row: 4; font-size: 11px; color: var(--ink-faint); }
+  .src small { display: inline; margin-left: 4px; }
+  .detail-cell { grid-column: 4; grid-row: 1 / span 2; justify-self: end; align-self: start; }
+  .ar-detail-row td { display: block; border: 0; background: transparent; padding: 0 0 4px; }
+  .detail-grid { grid-template-columns: 1fr; padding: 10px 14px 14px; background: color-mix(in srgb, var(--frost-bg) 55%, transparent); }
+  .kv { flex-wrap: wrap; }
+  .kv .k { min-width: 56px; }
+  .report-body, .json-body { max-height: 46vh; font-size: 11px; }
+  .ar-table tbody .empty { padding: 28px 14px !important; }
 }
 </style>

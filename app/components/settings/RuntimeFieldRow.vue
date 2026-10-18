@@ -2,6 +2,7 @@
 import type { SettingsDescriptor } from '@/app/stores/runtime-config'
 import { useRuntimeConfigDraftContext } from '@/app/composables/workshop/useRuntimeConfigDraft'
 import { useSettingsGroupsContext } from '@/app/composables/workshop/useSettingsGroups'
+import { apiFetch } from '@/app/composables/workshop/apiClient'
 
 defineProps<{ item: SettingsDescriptor }>()
 
@@ -12,11 +13,12 @@ const { itemLabel, sourceClass } = useSettingsGroupsContext()
 const timezoneData = ref<{ timeZone?: string, supportedTimeZones?: string[] }>({})
 const timezoneOptions = computed(() => (timezoneData.value.supportedTimeZones ?? ['Asia/Shanghai', 'UTC', 'America/Los_Angeles', 'Europe/London']).map((zone: string) => ({ label: zone, value: zone })))
 if (import.meta.client) {
-  void fetch('/api/system/timezone')
-    .then(response => response.ok ? response.json() as Promise<{ timeZone?: string, supportedTimeZones?: string[] }> : {})
+  // 统一客户端自动带 Bearer(端点 resolveUser 不读 cookie;裸 fetch 会 401)
+  void apiFetch<{ timeZone?: string, supportedTimeZones?: string[] }>({ base: '/api/system', path: '/timezone', retries: 0 })
     .then((data) => {
-      timezoneData.value = data
+      timezoneData.value = data ?? {}
     })
+    .catch(() => { /* 匿名/离线:保留默认时区选项 */ })
 }
 </script>
 

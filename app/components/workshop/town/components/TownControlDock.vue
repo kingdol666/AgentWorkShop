@@ -194,6 +194,11 @@ defineProps<{
 </template>
 
 <style scoped>
+/* 桌面档隐藏坞折叠开关:窄屏形态才启用(媒体查询里 display:flex)。
+ * 必须在本组件内声明 —— 此前仅靠 TownLeftRail/TownTopNav 的 scoped 规则隐藏,
+ * 而本组件的按钮不在那些 scoped 属性范围内 → 桌面渲染成浏览器默认白块按钮,
+ * 暗色主题下横在 3D 舞台上(实测 1440 截图)。 */
+.dock-toggle { display: none; }
 .dock-hd { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
 .dock-hd h3 { margin: 0; font-size: 12.5px; font-weight: 700; flex: none; }
 /* 通道计数徽标:规模诚实可见(57 路不该藏在 chip 墙里) */
