@@ -134,3 +134,12 @@ __pycache__/
 .AgentWorkShop/aml/
 .AgentWorkShop/datasets/
 .AgentWorkShop/runtime-settings.json
+
+# 本地验收临时凭据(会话级;绝不入库)
+*.token.tmp
+.idd-token.tmp
+.kb-token.tmp
+.aw-admin-token.tmp
+
+# 本地端到端/截图 scratch(会话级;验收脚本与截图不入库)
+tmp-e2e/
