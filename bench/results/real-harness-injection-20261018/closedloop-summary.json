@@ -1,83 +1,87 @@
 {
-  "at": "2026-10-18T11:32:50.287Z",
+  "at": "2026-10-18T12:37:22.158Z",
   "base": "http://127.0.0.1:3000",
-  "line": "ln-bea81ffa",
-  "recipe": "rc-205e29f4",
-  "optimizer": "568e15ee-344f-47a1-8c78-ec4e9c14a7fa",
+  "line": "ln-45b71cb7",
+  "recipe": "rc-9f476d3d",
+  "optimizer": "008c71e4-aebd-400b-99d5-3e8eae1d6540",
   "baseline": {
     "p": 45,
     "t": 6,
     "q": {
-      "weight": 31.23,
-      "flash": 0.048,
-      "sink": 2.176,
-      "melt": 246.3
+      "weight": 31.28,
+      "flash": 0,
+      "sink": 1.977,
+      "melt": null,
+      "lastAt": 1792326776159,
+      "offline": false
     }
   },
   "final": {
-    "weight": 32.26,
-    "flash": 0.034,
-    "sink": 1.369,
-    "melt": 246.6
+    "weight": 32.3,
+    "flash": 0.019,
+    "sink": 1.277,
+    "melt": null,
+    "lastAt": 1792327040027,
+    "offline": false
   },
   "finalOk": true,
-  "update": "已保存为 v2:「scen-injection-recipe-real20261018」参数 scen-injection:dcw:hold-pressure-sp 45→65;scen-injection:dcw:hold-time-sp 6→6;原因:真实闭环复测达标(weight=32.26g flash=0.034% sink=1.369% melt=246.6℃),固化保压 65bar/保压时间 6s;依据多轮 HITL 批准的 recipe_trial 与 65s DAQ 复测。。\n人工附言:注塑真实闭环 E2E 批准\n注意:配方定义已更新,运行中批次仍按开跑时冻结的参数生产;要把新参数推到运行中的产线(经治理联锁整批下发),用 recipe_apply。回退用 recipe_rollback。",
+  "update": "已保存为 v2:「注塑配方-1cb7」参数 保压压力SP-1cb7 45→65;保压时间SP-1cb7 6→6;原因:真实闭环复测达标(weight=32.34g flash=0.012% sink=1.276% melt=-℃),固化保压 65bar/保压时间 6s;依据多轮 HITL 批准的 recipe_trial 与 65s DAQ 复测。。\n人工附言:注塑真实闭环 E2E 批准\n注意:配方定义已更新,运行中批次仍按开跑时冻结的参数生产;要把新参数推到运行中的产线(经治理联锁整批下发),用 recipe_apply。回退用 recipe_rollback。",
   "journal": "窗口内无优化记录(该节点/配方尚无 Agent 调控历史)。",
-  "recipeLog": "Recipe 变更史(可读产线 1 条,近 60 分钟,7 条,新→旧):\n- [10-18 19:32:50] recipe.update.agent 来源=Agent 操作者=注塑真实场景闭环控制 Channel live-mvdqd330/注塑工艺优化 worker live-mvdqd330 | 更新配方「scen-injection-recipe-real20261018」→ v2:真实闭环复测达标(weight=32.26g flash=0.034% sink=1.369% melt=246.6℃),固化保压 65bar/保压时间 6s;(配方 rc-205e2)\n- [10-18 19:31:44] recipe.trial 来源=Agent 操作者=注塑真实场景闭环控制 Channel live-mvdqd330/注塑工艺优化 worker live-mvdqd330 | 【应急】配方试验整批下发(证实 1/1,未证实 0,失败 0,批次 rr-3273b):dw-fb4c9→65 | 假设:真实闭环 P3-4:克重 31.97g、缩痕 1.596%,保压 60→65bar(单变量);65s 后 DAQ 复测。(配方 rc-205e2)\n- [10-18 19:30:38] recipe.trial 来源=Agent 操作者=注塑真实场景闭环控制 Channel live-mvdqd330/注塑工艺优化 worker live-mvdqd330 | 【应急】配方试验整批下发(证实 1/1,未证实 0,失败 0,批次 rr-edcab):dw-fb4c9→60 | 假设:真实闭环 P3-3:克重 31.75g、缩痕 1.638%,保压 55→60bar(单变量);65s 后 DAQ 复测。(配方 rc-205e2)\n- [10-18 19:29:32] recipe.trial 来源=Agent 操作者=注塑真实场景闭环控制 Channel live-mvdqd330/注塑工艺优化 worker live-mvdqd330 | 【应急】配方试验整批下发(证实 1/1,未证实 0,失败 0,批次 rr-e1bed):dw-fb4c9→55 | 假设:真实闭环 P3-2:克重 31.57g、缩痕 1.97%,保压 50→55bar(单变量);65s 后 DAQ 复测。(配方 rc-205e2)\n- [10-18 19:28:25] recipe.trial 来源=Agent 操作者=注塑真实场景闭环控制 Channel live-mvdqd330/注塑工艺优化 worker live-mvdqd330 | 【应急】配方试验整批下发(证实 1/1,未证实 0,失败 0,批次 rr-b444b):dw-fb4c9→50 | 假设:真实闭环 P3-1:克重 31.23g、缩痕 2.176%,保压 45→50bar(单变量);65s 后 DAQ 复测。(配方 rc-205e2)\n- [10-18 19:27:19] recipe.trial 来源=Agent 操作者=注塑真实场景闭环控制 Channel live-mvdqd330/注塑工艺优化 worker live-mvdqd330 | 【应急】配方试验整批下发(证实 2/2,未证实 0,失败 0,批次 rr-74189):dw-fb4c9→45;dw-e51ef→6 | 假设:真实闭环 P2:恢复配方基线保压 45bar/保压时间 6s,确保本轮从确定工况开始。(配方 rc-205e2)\n- [10-18 19:20:12] recipe.trial 来源=Agent 操作者=注塑真实场景闭环控制 Channel live-mvdqd330/注塑工艺优化 worker live-mvdqd330 | 【应急】配方试验整批下发(证实 1/1,未证实 0,失败 0,批次 rr-ddca5):dw-fb4c9→50 | 假设:真实闭环 C4:基线克重 31.2g 偏轻、缩痕 2.191% 超标;单变量保压 45→50bar,提高补缩,观察 65s 后 DAQ 复测。(配方 rc-205e2)\n\n说明:配方下发=整批参数写命令;优化开窗=单次设定变更(含 Agent 假设);回退执行=已恢复基线值。节点级参数值逐笔历史用 dcw_journal(node_id)。",
+  "recipeLog": "Recipe 变更史(可读产线 1 条,近 60 分钟,5 条,新→旧):\n- [10-18 20:37:22] recipe.update.agent 来源=Agent 操作者=注塑OPC频道-1cb7/注塑OPC工艺优化-1cb7 | 更新配方「注塑配方-1cb7」→ v2:真实闭环复测达标(weight=32.34g flash=0.012% sink=1.276% melt=-℃),固化保压 65bar/保压时间 6s;依据多轮(配方 rc-9f476)\n- [10-18 20:36:16] recipe.trial 来源=Agent 操作者=注塑OPC频道-1cb7/注塑OPC工艺优化-1cb7 | 【应急】配方试验整批下发(证实 1/1,未证实 0,失败 0,批次 rr-7a386):dw-ebbb8→65 | 假设:真实闭环 P3-4:克重 32.05g、缩痕 1.534%,保压 60→65bar(单变量);65s 后 DAQ 复测。(配方 rc-9f476)\n- [10-18 20:35:09] recipe.trial 来源=Agent 操作者=注塑OPC频道-1cb7/注塑OPC工艺优化-1cb7 | 【应急】配方试验整批下发(证实 1/1,未证实 0,失败 0,批次 rr-f0bca):dw-ebbb8→60 | 假设:真实闭环 P3-3:克重 31.74g、缩痕 1.76%,保压 55→60bar(单变量);65s 后 DAQ 复测。(配方 rc-9f476)\n- [10-18 20:34:03] recipe.trial 来源=Agent 操作者=注塑OPC频道-1cb7/注塑OPC工艺优化-1cb7 | 【应急】配方试验整批下发(证实 1/1,未证实 0,失败 0,批次 rr-da6c9):dw-ebbb8→55 | 假设:真实闭环 P3-2:克重 31.49g、缩痕 1.956%,保压 50→55bar(单变量);65s 后 DAQ 复测。(配方 rc-9f476)\n- [10-18 20:32:57] recipe.trial 来源=Agent 操作者=注塑OPC频道-1cb7/注塑OPC工艺优化-1cb7 | 【应急】配方试验整批下发(证实 1/1,未证实 0,失败 0,批次 rr-f8782):dw-ebbb8→50 | 假设:真实闭环 P3-1:克重 31.28g、缩痕 1.977%,保压 45→50bar(单变量);65s 后 DAQ 复测。(配方 rc-9f476)\n\n说明:配方下发=整批参数写命令;优化开窗=单次设定变更(含 Agent 假设);回退执行=已恢复基线值。节点级参数值逐笔历史用 dcw_journal(node_id)。",
   "results": [
     {
       "id": "P1",
       "name": "场景/配方/worker 就绪",
       "pass": true,
-      "detail": "line=ln-bea81ffa recipe=rc-205e29f4 optimizer=568e15ee-344f-47a1-8c78-ec4e9c14a7fa weight=31.49g flash=0.003% sink=2.029% melt=246.8℃"
+      "detail": "line=ln-45b71cb7 recipe=rc-9f476d3d optimizer=008c71e4-aebd-400b-99d5-3e8eae1d6540 weight=31.28g flash=0% sink=1.977% melt=-℃"
     },
     {
       "id": "P2",
-      "name": "恢复基线并完成 65s 复测",
+      "name": "当前已在配方基线",
       "pass": true,
-      "detail": "weight=31.23g flash=0.048% sink=2.176% melt=246.3℃ p=45 t=6"
+      "detail": "weight=31.28g flash=0% sink=1.977% melt=-℃ p=45 t=6"
     },
     {
       "id": "P3-1",
       "name": "保压 50bar 试验经 HITL 并设备证实",
       "pass": true,
-      "detail": "weight=31.57g flash=0.01% sink=1.97% melt=246.5℃ p=50 试验已整批下发并全部设备证实(1/1,批次 rr-b444b):scen-injection:dcw:hold-pressure-sp→50bar [证实✓]。假设:真实闭环 P3-1:克重 31.23g、缩痕 2.176%,保压 45→50bar(单变量);65s 后 DAQ 复测。。\n人工附言:注塑真实闭环 E2E 批准注意:本次试验**未写入配方版本*"
+      "detail": "weight=31.49g flash=0.014% sink=1.956% melt=-℃ p=50 lastAt=2026-10-18T12:34:02.131Z 试验已整批下发并全部设备证实(1/1,批次 rr-f8782):保压压力SP-1cb7→50bar [证实✓]。假设:真实闭环 P3-1:克重 31.28g、缩痕 1.977%,保压 45→50bar(单变量);65s 后 DAQ 复测。。\n人工附言:注塑真实闭环 E2E 批准注意:本次试验**未写入配方版本** ——"
     },
     {
       "id": "P3-2",
       "name": "保压 55bar 试验经 HITL 并设备证实",
       "pass": true,
-      "detail": "weight=31.75g flash=0% sink=1.638% melt=246.8℃ p=55 试验已整批下发并全部设备证实(1/1,批次 rr-e1bed):scen-injection:dcw:hold-pressure-sp→55bar [证实✓]。假设:真实闭环 P3-2:克重 31.57g、缩痕 1.97%,保压 50→55bar(单变量);65s 后 DAQ 复测。。\n人工附言:注塑真实闭环 E2E 批准注意:本次试验**未写入配方版本**"
+      "detail": "weight=31.74g flash=0.031% sink=1.76% melt=-℃ p=55 lastAt=2026-10-18T12:35:08.145Z 试验已整批下发并全部设备证实(1/1,批次 rr-da6c9):保压压力SP-1cb7→55bar [证实✓]。假设:真实闭环 P3-2:克重 31.49g、缩痕 1.956%,保压 50→55bar(单变量);65s 后 DAQ 复测。。\n人工附言:注塑真实闭环 E2E 批准注意:本次试验**未写入配方版本** ——"
     },
     {
       "id": "P3-3",
       "name": "保压 60bar 试验经 HITL 并设备证实",
       "pass": true,
-      "detail": "weight=31.97g flash=0% sink=1.596% melt=246.6℃ p=60 试验已整批下发并全部设备证实(1/1,批次 rr-edcab):scen-injection:dcw:hold-pressure-sp→60bar [证实✓]。假设:真实闭环 P3-3:克重 31.75g、缩痕 1.638%,保压 55→60bar(单变量);65s 后 DAQ 复测。。\n人工附言:注塑真实闭环 E2E 批准注意:本次试验**未写入配方版本*"
+      "detail": "weight=32.05g flash=0% sink=1.534% melt=-℃ p=60 lastAt=2026-10-18T12:36:14.071Z 试验已整批下发并全部设备证实(1/1,批次 rr-f0bca):保压压力SP-1cb7→60bar [证实✓]。假设:真实闭环 P3-3:克重 31.74g、缩痕 1.76%,保压 55→60bar(单变量);65s 后 DAQ 复测。。\n人工附言:注塑真实闭环 E2E 批准注意:本次试验**未写入配方版本** —— "
     },
     {
       "id": "P3-4",
       "name": "保压 65bar 试验经 HITL 并设备证实",
       "pass": true,
-      "detail": "weight=32.26g flash=0.034% sink=1.369% melt=246.6℃ p=65 试验已整批下发并全部设备证实(1/1,批次 rr-3273b):scen-injection:dcw:hold-pressure-sp→65bar [证实✓]。假设:真实闭环 P3-4:克重 31.97g、缩痕 1.596%,保压 60→65bar(单变量);65s 后 DAQ 复测。。\n人工附言:注塑真实闭环 E2E 批准注意:本次试验**未写入配方版本*"
+      "detail": "weight=32.3g flash=0.019% sink=1.277% melt=-℃ p=65 lastAt=2026-10-18T12:37:20.027Z 试验已整批下发并全部设备证实(1/1,批次 rr-7a386):保压压力SP-1cb7→65bar [证实✓]。假设:真实闭环 P3-4:克重 32.05g、缩痕 1.534%,保压 60→65bar(单变量);65s 后 DAQ 复测。。\n人工附言:注塑真实闭环 E2E 批准注意:本次试验**未写入配方版本** ——"
     },
     {
       "id": "P5",
-      "name": "最终质量入窗(克重/飞边/缩痕/熔温)",
+      "name": "最终质量入窗(克重/飞边/缩痕/熔温,DAQ 新鲜)",
       "pass": true,
-      "detail": "weight=32.26g flash=0.034% sink=1.369% melt=246.6℃"
+      "detail": "weight=32.3g flash=0.019% sink=1.277% melt=-℃ lastAt=2026-10-18T12:37:20.027Z offline=false"
     },
     {
       "id": "P6",
-      "name": "达标配方固化(v2,经 HITL)",
+      "name": "达标配方固化(v2 且参数独立回读)",
       "pass": true,
-      "detail": "已保存为 v2:「scen-injection-recipe-real20261018」参数 scen-injection:dcw:hold-pressure-sp 45→65;scen-injection:dcw:hold-time-sp 6→6;原因:真实闭环复测达标(weight=32.26g flash=0.034% sink=1.369% melt=246.6℃),固化保压 65bar/保压时间 6s;依据多轮 HITL 批准的 recipe_trial 与 65s DAQ 复测。。\n人工附言:注塑真实闭"
+      "detail": "v=2 p=65 t=6 已保存为 v2:「注塑配方-1cb7」参数 保压压力SP-1cb7 45→65;保压时间SP-1cb7 6→6;原因:真实闭环复测达标(weight=32.34g flash=0.012% sink=1.276% melt=-℃),固化保压 65bar/保压时间 6s;依据多轮 HITL 批准的 recipe_trial 与 65s DAQ 复测。。\n人工附言:注塑真实闭环 E2E 批准\n注意:配"
     },
     {
       "id": "P7",
       "name": "写控/配方日志可追溯",
       "pass": true,
-      "detail": "窗口内无优化记录(该节点/配方尚无 Agent 调控历史)。 | Recipe 变更史(可读产线 1 条,近 60 分钟,7 条,新→旧):\n- [10-18 19:32:50] recipe.update.agent 来源=Agent 操作者=注塑真实场景闭环控制 Channel live-mvdqd330/注塑工艺优化 worker live-mvdqd330 | 更新配方「sc"
+      "detail": "窗口内无优化记录(该节点/配方尚无 Agent 调控历史)。 | Recipe 变更史(可读产线 1 条,近 60 分钟,5 条,新→旧):\n- [10-18 20:37:22] recipe.update.agent 来源=Agent 操作者=注塑OPC频道-1cb7/注塑OPC工艺优化-1cb7 | 更新配方「注塑配方-1cb7」→ v2:真实闭环复测达标(weight=32.3"
     }
   ]
 }

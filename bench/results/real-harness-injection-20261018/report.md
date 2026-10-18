@@ -1,72 +1,75 @@
-# 注塑真实场景实机验收（PLC 模拟器 + 真实 omp Harness）
+# 注塑真实场景实机验收：PLC 模拟器 + 真实 omp（deepseek-flash）
 
-- 时间：2026-10-18 19:09–19:40（本地）
-- 平台：AgentWorkShop 0.7.66，隔离实例 `http://127.0.0.1:3000`，`AW_HOME=D:/tmp/aw-real-injection-home`
+- 时间：2026-10-18 20:25–20:39（本地）
+- 平台：AgentWorkShop 0.7.66，隔离实例 `http://127.0.0.1:3000`（直接运行 `.output/server/index.mjs`，无启动器 watchdog）
 - PLC 模拟器：`http://127.0.0.1:4010`（仓库内 `plc-node-simulator`，注塑场景）
-- 产线：`ln-bea81ffa`「注塑成型质量窗口寻优 injection-real20261018」
-- 配方：`rc-205e29f4`「scen-injection-recipe-real20261018」v1 → v2
-- 活动批次：`rr-dcfc8dc5`
+- 产线：`ln-45b71cb7`「注塑OPCUA实机线」
+- 配方：`rc-9f476d3d`「注塑配方-1cb7」v1 → v2
+- 真实协议：OPC UA（保压压力/时间、注射压力）+ HTTP（克重/飞边/缩痕）；不使用 Modbus
 
 ## 1. 真实 Harness 场景作业（通过）
 
-- 真实 omp worker：`注塑数据分析 worker live-mvdqd330`（harness=omp，provider=deepseek，model=deepseek-v4-pro）
-- GOAL-1：`009a8eb6-9fb0-4fb1-9db3-0ead3071de6d`，**COMPLETED / progress 100**
-- GOAL-1 真实分析结论（worker 产出）：
-  - 克重均值 **31.25 g**（规格 32.15–32.85，欠重约 0.9 g）
-  - 缩痕均值 **2.15%**（规格 ≤1.5%），5 分钟平坦 → 真实过程异常（保压不足），非滞后
-  - 飞边 0.011%（余量极大）；熔体温度 246.7℃、注射压力 52.0 bar、模温 40.0℃ 均安全
-  - 建议：`hold-pressure-sp` +5 bar
-- 说明：首次使用 omp 默认模型 `ustc/deepseek-flash` 时模型返回空文本，任务超时；切换 `deepseek/deepseek-v4-pro` 后 GOAL-1 正常完成。这是 harness 模型配置问题，不是平台任务引擎问题。
+- 真实 omp worker：`注塑OPC分析员-1cb7`（harness=omp，provider=deepseek，model=**deepseek-flash**）
+- GOAL-1：
+  - 父任务 `74b2523a-951f-447b-90fd-23617befec58`：**COMPLETED / 100**
+  - 子任务 `40d7a619-ad7d-4088-a3e3-786ee44809ba`：**COMPLETED**，assignee 为上述 omp worker
+  - 链路：任务引擎派发 → 真实 omp 读取 DAQ → 生成分析报告 → `send_message_to_agent` 汇报 Lead → 任务收口
+- 真实分析结论（worker 产出，节选）：
+  - 克重均值 **31.291 g**（规格 32.15–32.85，低于 LSL 0.859 g）
+  - 缩痕均值 **2.149%**（规格 ≤1.5%，超 43%）
+  - 飞边均值 0.008%、峰值 0.049%（≤0.4%，余量充足）
+  - 注射压力均值 51.78 bar，无爬升；根因：欠保压/补缩不足
+  - 单变量方案：`hold-pressure-sp` 45 → 50 bar；保压时间 6 s 保持不动
+  - 明确指出熔体温度无绑定节点，属证据缺口（诚实披露）
+- 证据：`goal1-flash-evidence.json`
 
-## 2. 闭环优化控制（通过）
+## 2. 闭环优化控制（通过，9/9）
 
-使用当前权限模型 v2 支持的 `recipe_trial`（不再使用已禁用的 `dcw_control`），每一步均：
-`recipe_trial` → HITL 人工批准 → 整批下发 → 设备证实 → 65 s 工艺响应 → DAQ 复测。
+使用当前权限模型 v2 支持的 `recipe_trial`：
 
-| 步骤 | 保压 (bar) | 克重 (g) | 缩痕 (%) | 飞边 (%) | 熔温 (℃) |
-|---|---:|---:|---:|---:|---:|
-| 基线 | 45 | 31.23 | 2.176 | 0.048 | 246.3 |
-| +5 | 50 | 31.57 | 1.970 | — | — |
-| +10 | 55 | 31.75 | 1.638 | — | — |
-| +15 | 60 | 31.97 | 1.596 | — | — |
-| +20 | 65 | **32.26** | **1.369** | **0.034** | **246.6** |
+`recipe_trial` → HITL 人工批准 → 整批下发 → 逐参数设备证实 → 65 s 工艺响应 → DAQ 复测
 
-- 最终质量：克重 32.26 g、缩痕 1.369%、飞边 0.034%、熔温 246.6℃ → **全部入窗**
+| 步骤 | 保压 (bar) | 克重 (g) | 缩痕 (%) | 飞边 (%) |
+|---|---:|---:|---:|---:|
+| 基线 | 45 | 31.28 | 1.977 | 0.000 |
+| +5 | 50 | 31.49 | 1.956 | — |
+| +10 | 55 | 31.74 | 1.760 | — |
+| +15 | 60 | 32.05 | 1.534 | — |
+| +20 | 65 | **32.30** | **1.277** | **0.019** |
+
+- 最终质量：克重 32.30 g、缩痕 1.277%、飞边 0.019% → 全部入窗
 - 每次 `recipe_trial` 回执均为「已整批下发并全部设备证实」
 - 达标后 `recipe_update` 经 HITL 固化：配方 v1 → **v2**，保压 45 → 65 bar
-- 证据：`bench/results/injection-pressure-loop-2026-10-18T11-32-50-286Z/summary.json`
-- 执行断言：**PASS 9/9**
+- 执行断言：**PASS 9/9**（P1–P7）
+- 证据：`closedloop-summary.json`
 
-## 3. 工具 Verify（真实场景负向/正向）
+## 3. 工具 Verify（真实场景）
 
-在同一真实场景、同一 Agent 身份下：
+同一真实场景、同一频道成员 Agent：
 
-- 工艺优化 worker 查询**未绑定**节点 `dn-432c9a45`（cycle-time）→ **isError**，回包含可访问节点清单
-- 工艺优化 worker 查询**已绑定**节点 `dn-4d103091`（part-weight）→ 成功返回真实 DAQ 统计
-- 分析 worker 绑定的 6 个 DAQ 读取均成功（GOAL-1 证据）
-- 产线管理/审批/换线/批次 TOCTOU 由已入库 `scripts/e2e-line-governance.mjs` 覆盖：**PASS 44/44**
-- 工具调用统一预检隔离实例 E2E：**PASS 13/13**
+- 他线未绑定节点 `dn-9574b7df`（line `ln-386d7d88`）查询 → **isError**：
+  「工具调用被拒(引用校验,daq_query)…不在你的授权范围内」，并列出绑定节点与频道绑线只读节点
+- 本线已绑定节点 `dn-dbfee129`（制品克重）查询 → 成功，返回活动批次真实统计
+- 同线但未直接绑定的节点经频道绑线只读面可读（v28 语义）；跨线仍拒绝
+- 工具调用统一预检隔离 E2E：**PASS 13/13**
+- 产线治理 E2E：**PASS 44/44**
 
-## 4. 数据采集与参数下发
+## 4. 本轮发现并修复/确认的问题
 
-- DAQ：注塑产线活动批次内真实采样持续增长（GOAL-1 读取 5 分钟窗口；基线阶段 `taggedSamples` 已 >200）
-- DCW：`recipe_trial` 逐参数写入由写控制网关执行，回执逐参数设备证实（`[证实✓]`）
-- 参数限界：由 `recipe_trial` 的四层限界检查和写后 ACK 鉴定执行；非法/未证实会在回执中 `isError`
-- HITL：每次 trial/update 均生成审批卡并由独立审批 API 批准，未绕过人工闸门
+1. **`AW_TRIAL_INTERVAL_MS=0` 被 falsy 默认值翻回 300000**
+   - 已修复为显式解析（0=关闭，空/非法=默认 300000），并加启动告警。
+   - 单测覆盖 0/1/空/非法；实测 65 s 节拍闭环使用 0 生效。
+2. **旧 `real-injection-closed-loop.mjs` 落后于权限模型 v2**
+   - 仍调用已禁用的 `dcw_control/dcw_judge`，已标注 `@deprecated` 并加运行时警告；
+   - 新路径：`scripts/e2e-injection-recipe-closedloop.mjs`（`npm run test:e2e-injection`）。
+3. **完整注塑线（含 Modbus TCP/RTU）在模拟器重启后出现 Modbus 半开连接**
+   - 现象：平台日志反复 `TCP/TcpRTUBufferedPort Connection Timed Out` / `ERR_STREAM_WRITE_AFTER_END`，事件循环被拖慢，启动器健康探针判定僵死并重启子进程。
+   - 处置：本轮验收改走同一注塑场景的 OPC UA + HTTP 真实协议端点，规避 Modbus 半开连接；Modbus 驱动重连/关闭阻塞问题作为独立生产稳定性问题保留，未在本轮改动。
+4. **omp 默认模型 `ustc/deepseek-flash` 返回空文本**
+   - 改用 `deepseek/deepseek-flash` 后真实任务正常完成；部署应固定可用 provider/model。
 
-## 5. 本轮发现并修复的真实问题
+## 5. 未覆盖边界
 
-1. **`AW_TRIAL_INTERVAL_MS=0` 无法关闭试验节拍**
-   - 原实现 `Math.max(0, Number(env) || 300000)` 把显式 0 当作 falsy 翻回 5 分钟，与“0=关闭”的注释/语义不符。
-   - 已修复为显式解析：空值才用默认 300000，显式 0 保持 0。
-2. **旧 `real-injection-closed-loop.mjs` 已落后于权限模型 v2**
-   - 脚本仍调用 `dcw_control`/`dcw_judge`，平台正确拒绝“直接节点写控已禁用”。
-   - 新场景测试改用 `recipe_trial` + `recipe_update`；建议把旧脚本迁移到配方面路径，避免以后误判为平台故障。
-3. **omp 默认模型 `ustc/deepseek-flash` 返回空文本**
-   - 真实 worker 任务因此长时间 WORKING；切 `deepseek/deepseek-v4-pro` 后正常。部署时应固定可用模型。
-
-## 6. 未覆盖边界
-
-- PLC 使用仓库内模拟器（OPC UA/Modbus/MQTT/HTTP 真实协议端点），非物理 PLC。
-- 本轮未启动真实 IDD/RAG 外部服务；插件生命周期由 fake-backend 单测覆盖。
-- 完整 `real-injection-closed-loop.mjs` 的旧写控脚本未改造成配方面版本；本轮以 `recipe_trial` 完成闭环控制验收。
+- PLC 为仓库内模拟器（真实 OPC UA/HTTP 端点），非物理 PLC。
+- 本轮 OPC UA/HTTP 子场景未建熔体温度节点，GOAL-1 已明确标注该证据缺口。
+- 完整 Modbus 注塑线因上述连接稳定性问题未在本轮闭环中跑通；该问题已如实记录，不能宣称 Modbus 实机链路全绿。

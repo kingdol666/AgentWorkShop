@@ -21,7 +21,13 @@ import { notifyLineOperators } from '../../runtime/line-notify'
 export function resolveTrialIntervalMs(raw: string | undefined): number {
   if (raw == null || String(raw).trim() === '') return 5 * 60_000
   const n = Number(raw)
-  return Number.isFinite(n) ? Math.max(0, n) : 5 * 60_000
+  if (!Number.isFinite(n)) return 5 * 60_000
+  if (n === 0) {
+    // 显式关闭防震荡节拍:允许测试/基准,但生产误设 0 必须留下启动告警
+    console.warn('[dcw] AW_TRIAL_INTERVAL_MS=0:试验防震荡节拍已关闭(仅用于测试/基准;生产环境请勿设置)')
+    return 0
+  }
+  return Math.max(0, n)
 }
 
 export abstract class DcwControllerRecipes extends DcwControllerParams {

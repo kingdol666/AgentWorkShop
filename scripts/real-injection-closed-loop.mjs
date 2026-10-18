@@ -7,6 +7,8 @@
 import { mkdirSync, appendFileSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 
+console.warn('[deprecated] real-injection-closed-loop.mjs 使用已禁用的 dcw_control;请改用 npm run test:e2e-injection')
+
 const BASE = process.env.AW_BASE ?? 'http://127.0.0.1:3000'
 const SIM = process.env.SIM_BASE ?? 'http://127.0.0.1:4010'
 const TOKEN = process.env.AW_TOKEN ?? 'ut-671bc5fdab1744698b9981a7b13f3967'
