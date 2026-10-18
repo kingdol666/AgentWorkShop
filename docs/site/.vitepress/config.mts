@@ -79,6 +79,8 @@ export default defineConfig({
   description: 'Agent 团队 × 产线 × 数字孪生 —— 配置驱动 · SDK 集成 · 插件增强',
   // GitHub Pages 项目页路径(https://kingdol666.github.io/AgentWorkShop/)
   base: '/AgentWorkShop/',
+  // 显式声明站点图标:否则浏览器会额外请求根路径 /favicon.ico(项目页下 404)
+  head: [['link', { rel: 'icon', type: 'image/svg+xml', href: '/AgentWorkShop/favicon.svg' }]],
   // 单一控制室色板,不提供明暗切换(theme/custom.css 以 --hud-* 令牌承载)
   appearance: false,
   // ⚠️ 必须显式声明 markdown 语法高亮主题:VitePress 默认按明暗切换注入两套 Shiki 主题,
@@ -88,7 +90,8 @@ export default defineConfig({
   // 前者为 #8B949E(实测 ≥6:1),整块代码无低于 AA 的 token。
   markdown: { theme: 'github-dark-default' },
   lastUpdated: true,
-  ignoreDeadLinks: true,
+  // 死链在构建期直接失败:双 base 前缀、错锚点不允许静默上线(2026-10-18 起)
+  ignoreDeadLinks: false,
   locales: {
     root: {
       label: '简体中文',
@@ -107,7 +110,7 @@ export default defineConfig({
         lastUpdated: { text: '最后更新' },
         returnToTopLabel: '回到顶部',
         footer: {
-          message: '依据 <a href="/AgentWorkShop/guide/license" style="color:inherit">PolyForm Noncommercial 1.0.0</a> 发布 · 源码可得，未经许可不得商用',
+          message: '依据 <a href="/AgentWorkShop/guide/license" style="color:inherit">Apache License 2.0</a> 发布 · 允许商用与生产部署',
           copyright: 'Copyright © 2026 kingdol (kingdol666)',
         },
       },
@@ -116,6 +119,7 @@ export default defineConfig({
       label: 'English',
       lang: 'en-US',
       link: '/en/',
+      description: 'Agent teams × production lines × digital twins — configuration-driven, SDK-extensible, plugin-enhanced',
       themeConfig: {
         nav: enNav,
         sidebar: {
@@ -130,7 +134,7 @@ export default defineConfig({
         lastUpdated: { text: 'Last updated' },
         returnToTopLabel: 'Back to top',
         footer: {
-          message: 'Licensed under the <a href="/AgentWorkShop/en/guide/license" style="color:inherit">PolyForm Noncommercial 1.0.0</a> · Source-available, noncommercial',
+          message: 'Licensed under the <a href="/AgentWorkShop/en/guide/license" style="color:inherit">Apache License 2.0</a> · Commercial and production use permitted',
           copyright: 'Copyright © 2026 kingdol (kingdol666)',
         },
       },

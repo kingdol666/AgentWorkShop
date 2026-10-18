@@ -172,12 +172,12 @@ are never overwritten:
 | Group | Count | Group | Count | Group | Count | Group | Count |
 |---|---|---|---|---|---|---|---|
 | `server` | 3 | `app` | 2 | `api` | 4 | `theme` | 2 |
-| `i18n` | 1 | `time` | 1 | `security` | 2 | `daq` | 27 |
+| `i18n` | 1 | `time` | 1 | `security` | 7 | `daq` | 27 |
 | `memory` | 10 | `omp` | 4 | `harness` | 12 | `dcw` | 4 |
-| `workshop` | 15 | `backup` | 3 | `retention` | 5 | `log` | 1 |
+| `workshop` | 15 | `backup` | 3 | `retention` | 6 | `log` | 1 |
 | `aml` | 16 | `mcp` | 1 | | | | |
 
-  39 of them are `live` (effective as soon as they are saved) and 78 are `restart` (effective after
+  40 of them are `live` (effective as soon as they are saved) and 79 are `restart` (effective after
   restarting the corresponding mode); `aw config list` marks every row with `live` or `restart`.
 - Environment-variable mapping: `AW_<KEY uppercased, dots turned into underscores>`
   (for example `AW_SERVER_DEV_PORT`), plus the legacy `aliases` a descriptor declares explicitly

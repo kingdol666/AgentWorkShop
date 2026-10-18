@@ -38,7 +38,7 @@ The host scans `builtin` → `project` → `user` and keeps the **first** match 
 
 | Scope | Entry path | Notes |
 |---|---|---|
-| `builtin` | `<packageRoot>/server/plugins-builtin/<name>/index.mjs` | shipped with the package, always present; the current release ships `diag-bridge` and `rag-bridge` |
+| `builtin` | `<packageRoot>/server/plugins-builtin/<name>/index.mjs` | shipped with the package, always present; the current release ships `diag-bridge`, `rag-bridge`, `serial-bridge` and `twin-injection-default` |
 | `project` | `<repo>/.AgentWorkShop/plugins/<name>/index.mjs` | travels with the checkout, can be versioned in git |
 | `user` | `$AW_HOME/plugins/<name>/index.mjs` (default `~/.AgentWorkShop/plugins`) | user-level, shared across projects |
 

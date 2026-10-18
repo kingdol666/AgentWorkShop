@@ -61,14 +61,15 @@ footer:
         <div class="hw-stat"><span class="v">4</span><span class="k">接入入口</span></div>
         <div class="hw-stat"><span class="v">14</span><span class="k">执行引擎</span></div>
         <div class="hw-stat"><span class="v">119</span><span class="k">运行时设置项</span></div>
-        <div class="hw-stat"><span class="v">1400+<i>*</i></span><span class="k">验收断言</span></div>
+        <div class="hw-stat"><span class="v">1100+<i>*</i></span><span class="k">验收断言</span></div>
         <div class="hw-stat"><span class="v">7</span><span class="k">任务机状态</span></div>
       </div>
       <p class="hw-stat-note">
-        * 全覆盖验收波次矩阵:约 1400+ 条真实断言全部通过(2026-09-24,生产构建 + 真实 PLC 模拟产线/
-        协议/浏览器/崩溃重启,隔离 <code>AW_HOME</code>;报告见
+        * 两轮验收波次(2026-09-24,生产构建 + 真实 PLC 模拟产线/协议/浏览器/崩溃重启,隔离
+        <code>AW_HOME</code>):基础矩阵约 1100+ 条断言最终轮全过;补充功能波按报告逐项记录
+        (其中环境/凭据受限项已归因,并非全部通过)。报告见
         <code>docs/audit/e2e-2026-09-24-full-coverage.md</code> 与
-        <code>docs/audit/e2e-2026-09-24-all-features.md</code>)。
+        <code>docs/audit/e2e-2026-09-24-all-features.md</code>。
         其余是可数出来的静态事实:6 类驱动(5 内置 + serial-bridge 串口插件) / 4 个入口(WS · MCP · A2A · REST) /
         14 个 harness(<code>agents/registry.ts</code>) / 119 个设置项分 18 组(<code>aw config list</code>) / 7 态任务机。
       </p>
@@ -191,7 +192,7 @@ footer:
         <div class="hw-layer-tag"><span class="l1">入口</span><span class="l2">ENTRY</span></div>
         <div class="hw-cells">
           <div class="hw-cell"><span class="c1">WS</span><span class="c2">AEP v1 事件流 · seq 续传</span></div>
-          <div class="hw-cell"><span class="c1">MCP</span><span class="c2">38 个进程内工具</span></div>
+          <div class="hw-cell"><span class="c1">MCP</span><span class="c2">25 个进程内工具(+ 38 工具 stdio 网关)</span></div>
           <div class="hw-cell"><span class="c1">A2A</span><span class="c2">JSON-RPC 2.0 + AgentCard</span></div>
           <div class="hw-cell"><span class="c1">REST</span><span class="c2">/api/workshop/**</span></div>
         </div>
@@ -304,7 +305,7 @@ footer:
       <div class="hw-f"><span class="tag">HITL</span><h3>人机协同写控</h3><p>安全量程 ∩ 配方窗口联锁 → 人工审批 → PLC 写入 → 回读校验 → 签名写历史;裁决人留痕审计。</p></div>
       <div class="hw-f"><span class="tag">RCT</span><h3>Recipe 版本化治理</h3><p>参数按版本入史(来源+操作者+原因),一键回退任意版本或最近一次良好批次——非破坏,历史完整。</p></div>
       <div class="hw-f"><span class="tag">BATCH</span><h3>取数默认按当前批次</h3><p><code>daq_query</code> 自动解析活动批次,按 <code>run_id</code> + <code>recipe_id</code> 过滤——换配方后 Agent 取到的永远是当前运行配方的样本,表头回显口径;跨配方复盘传 <code>scope:'all'</code>。</p></div>
-      <div class="hw-f"><span class="tag">TWIN</span><h3>混合孪生 × MPC</h3><p>灰箱物理主干 + 有界 PyTorch 残差;TwinSnapshot / VirtualTrial / RecommendationCertificate 配 UQ/OOD 与全轨迹门禁,<code>hybrid_twin</code> profile 注入 6 个 twin/mpc 工具,默认只推荐不落写。</p></div>
+      <div class="hw-f"><span class="tag">TWIN</span><h3>混合孪生 × MPC</h3><p>灰箱物理主干 + 有界 PyTorch 残差;TwinSnapshot / VirtualTrial / RecommendationCertificate 配 UQ/OOD 与全轨迹门禁,<code>hybrid_twin</code> profile 注入 12 个 twin/mpc 工具,默认只推荐不落写。</p></div>
       <div class="hw-f"><span class="tag">HRN</span><h3>多引擎 Agent 团队</h3><p>十四个引擎一个契约(进程内 / 常驻会话 / 无头 CLI 三类),每频道可选 harness → provider → model;可用性探测 + 执行前强校验。</p></div>
       <div class="hw-f"><span class="tag">TEAM</span><h3>团队级插件开关</h3><p>每 Channel 独立插件开关组——被关闭插件的工具不注入该团队;插件本体热管理。</p></div>
       <div class="hw-f"><span class="tag">PERM</span><h3>产线级权限</h3><p>三态授权在数据面强制,无权产线信息不离开服务端;Agent 绑定校验产线授权。</p></div>
@@ -396,7 +397,7 @@ aw start            # → http://localhost:3001 · 配置根 ~/.AgentWorkShop
       Inspectable Evidence for Industrial Agent Teams》</strong>(IEEE Transactions on Industrial
       Informatics 匿名评审稿,IEEEtran 双栏 10 页),源文件与编译稿在仓库
       <code>paper/tii/SUBMISSION-IEEE-TII/</code>。论文的机制主张由仓库内归档证据支撑:
-      <code>docs/benchmarks/</code>(2026-10 部署级回归战役:7 次流水线执行、600 项检查零失败,
+      <code>docs/benchmarks/</code>(2026-10 部署级回归战役:14 次流水线执行、1134 项检查零失败,
       含分级写确认与 HITL 证据腿)、<code>docs/experiments/</code>(铸膜闭环报告)与
       <code>docs/audit/</code>(验收报告)。<code>AW_BENCH_MODE=1</code> 可按
       <code>bench/PIPELINE.md</code> 本地复跑同一条论文流水线。
@@ -406,7 +407,7 @@ aw start            # → http://localhost:3001 · 配置根 ~/.AgentWorkShop
   <section class="hw-final">
     <h2>把 Agent 接到真实产线上</h2>
     <p>
-      14 个执行引擎、6 种现场协议、119 个运行时设置项和 1400+ 条可复跑的验收断言都已经在仓库里。
+      14 个执行引擎、6 种现场协议、119 个运行时设置项和 1100+ 条基础波验收断言(另有补充波报告)都已经在仓库里。
       监督层,秒级软实时;协议真实,断言可复跑。
     </p>
     <div class="hw-cta">

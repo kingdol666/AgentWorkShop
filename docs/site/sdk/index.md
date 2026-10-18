@@ -38,7 +38,7 @@ import { createClientContext } from 'agentworkshop/sdk/client'   // 仅浏览器
 | `agentworkshop/package.json` | `package.json` | 包元数据 |
 
 **版本**:SDK 自带常量 `SDK_VERSION = '0.3.0'`(服务端)与 `CLIENT_SDK_VERSION = '0.3.0'`(浏览器端)。
-它们是 **SDK 自身接口的版本号**,与 npm 包版本(当前 0.7.36)**独立演进**,不同步是预期行为。
+它们是 **SDK 自身接口的版本号**,与 npm 包版本(当前 0.7.66)**独立演进**,不同步是预期行为。
 
 自带 `index.d.mts` / `client.d.mts` 类型声明,TS 项目零配置获得 IntelliSense
 (声明覆盖范围的现状见[完整指南](/sdk/guide) §7)。

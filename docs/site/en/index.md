@@ -62,17 +62,19 @@ footer:
         <div class="hw-stat"><span class="v">6</span><span class="k">field protocols</span></div>
         <div class="hw-stat"><span class="v">4</span><span class="k">entry points</span></div>
         <div class="hw-stat"><span class="v">14</span><span class="k">engines</span></div>
-        <div class="hw-stat"><span class="v">118</span><span class="k">runtime settings</span></div>
-        <div class="hw-stat"><span class="v">1400+<i>*</i></span><span class="k">acceptance assertions</span></div>
+        <div class="hw-stat"><span class="v">119</span><span class="k">runtime settings</span></div>
+        <div class="hw-stat"><span class="v">1100+<i>*</i></span><span class="k">acceptance assertions</span></div>
         <div class="hw-stat"><span class="v">7</span><span class="k">task states</span></div>
       </div>
       <p class="hw-stat-note">
-        * Full-coverage acceptance wave matrix: ~1400+ real assertions, all passing (2026-09-24, production build with a
-        real PLC simulator / real field protocols / real browser / crash-and-restart; isolated <code>AW_HOME</code>;
-        reports at <code>docs/audit/e2e-2026-09-24-full-coverage.md</code> and
-        <code>docs/audit/e2e-2026-09-24-all-features.md</code>).
+        * Two acceptance waves (2026-09-24, production build with a real PLC simulator / real field protocols /
+        real browser / crash-and-restart; isolated <code>AW_HOME</code>): the ~1100+ assertion baseline matrix passed
+        in its final round; the follow-up feature wave is reported item by item, including environment- or
+        credential-limited failures (not an all-pass claim). Reports at
+        <code>docs/audit/e2e-2026-09-24-full-coverage.md</code> and
+        <code>docs/audit/e2e-2026-09-24-all-features.md</code>.
         The rest are countable facts: 6 driver classes (5 built-in + the serial-bridge plugin) / 4 entry points (WS · MCP · A2A · REST) /
-        14 harnesses (<code>agents/registry.ts</code>) / 118 settings in 18 groups (<code>aw config list</code>) / 7 task states.
+        14 harnesses (<code>agents/registry.ts</code>) / 119 settings in 18 groups (<code>aw config list</code>) / 7 task states.
       </p>
       <div class="aw-statusbar">
         <span>Version <i>v0.7.66</i></span>
@@ -197,7 +199,7 @@ footer:
         <div class="hw-layer-tag"><span class="l1">Entry</span><span class="l2">ENTRY</span></div>
         <div class="hw-cells">
           <div class="hw-cell"><span class="c1">WS</span><span class="c2">AEP v1 stream · seq resume</span></div>
-          <div class="hw-cell"><span class="c1">MCP</span><span class="c2">38 in-process tools</span></div>
+          <div class="hw-cell"><span class="c1">MCP</span><span class="c2">25 in-process tools (+ 38-tool stdio gateway)</span></div>
           <div class="hw-cell"><span class="c1">A2A</span><span class="c2">JSON-RPC 2.0 + AgentCard</span></div>
           <div class="hw-cell"><span class="c1">REST</span><span class="c2">/api/workshop/**</span></div>
         </div>
@@ -287,7 +289,7 @@ footer:
       <div class="hw-p">
         <span class="no">05</span>
         <h3>Protocol-real verification</h3>
-        <p>E2E suites run on a real Modbus/OPC UA/MQTT/HTTP stack: real PLC writes, real readbacks, real approvals — not mock self-certification. The two 2026-09-24 production-build waves passed ~1400+ real assertions (closed loop 98/0 · protocol matrix 46/0; the v0.7.20 baseline was 156 assertions).</p>
+        <p>E2E suites run on a real Modbus/OPC UA/MQTT/HTTP stack: real PLC writes, real readbacks, real approvals — not mock self-certification. The 2026-09-24 production-build baseline matrix passed ~1100+ real assertions (closed loop 98/0 · protocol matrix 46/0; the v0.7.20 baseline was 156 assertions); the follow-up feature wave is reported item by item, including environment-limited failures.</p>
       </div>
       <div class="hw-p">
         <span class="no">06</span>
@@ -310,7 +312,7 @@ footer:
       <div class="hw-f"><span class="tag">HITL</span><h3>Human-approved writes</h3><p>Safe-range ∩ recipe-window interlock → approval → PLC write → readback → signed history; every decision audited.</p></div>
       <div class="hw-f"><span class="tag">RCT</span><h3>Recipe versioning &amp; governance</h3><p>Parameter changes versioned with attribution (source + operator + reason); roll back to any revision or last-good batch, non-destructively.</p></div>
       <div class="hw-f"><span class="tag">BATCH</span><h3>Evidence scoped to the running batch</h3><p><code>daq_query</code> resolves the active run and filters by <code>run_id</code> + <code>recipe_id</code> — after a recipe switch an agent only ever reads the recipe currently running, with the scope echoed in the header; <code>scope:'all'</code> widens it for cross-recipe review.</p></div>
-      <div class="hw-f"><span class="tag">TWIN</span><h3>Hybrid twin × MPC</h3><p>Grey-box physics core + bounded PyTorch residual; TwinSnapshot / VirtualTrial / RecommendationCertificate with UQ/OOD screening and all-trajectory gates; the <code>hybrid_twin</code> profile injects six twin/mpc tools and stays recommendation-only by default.</p></div>
+      <div class="hw-f"><span class="tag">TWIN</span><h3>Hybrid twin × MPC</h3><p>Grey-box physics core + bounded PyTorch residual; TwinSnapshot / VirtualTrial / RecommendationCertificate with UQ/OOD screening and all-trajectory gates; the <code>hybrid_twin</code> profile injects twelve twin/mpc tools and stays recommendation-only by default.</p></div>
       <div class="hw-f"><span class="tag">HRN</span><h3>Multi-harness teams</h3><p>Fourteen engines behind one contract, in three transport classes (in-process / persistent session / headless CLI); each channel picks harness → provider → model, with availability probing and dispatch-time checks.</p></div>
       <div class="hw-f"><span class="tag">TEAM</span><h3>Team-scoped plugins</h3><p>Each channel keeps its own plugin switch set — a disabled plugin's tools never enter that team; plugins themselves are hot-managed.</p></div>
       <div class="hw-f"><span class="tag">PERM</span><h3>Line-level permissions</h3><p>Three-state grants enforced in the data plane; agent bindings validate line grants too.</p></div>
@@ -403,7 +405,7 @@ aw start            # → http://localhost:3001 · config root ~/.AgentWorkShop
       review draft, 10 pages, IEEEtran). Source and compiled PDF live in
       <code>paper/tii/SUBMISSION-IEEE-TII/</code>. The paper's mechanism claims are backed by
       archives in this repository: <code>docs/benchmarks/</code> (October 2026 deployment-scale
-      regression campaign — 7 pipeline executions, 600 checks, zero failed, including graded
+      regression campaign — 14 pipeline executions, 1134 checks, zero failed, including graded
       write-acknowledgment and HITL evidence legs), <code>docs/experiments/</code> (cast-film
       closed-loop reports) and <code>docs/audit/</code> (acceptance reports).
       <code>AW_BENCH_MODE=1</code> re-runs the same paper pipeline locally via
@@ -414,7 +416,7 @@ aw start            # → http://localhost:3001 · config root ~/.AgentWorkShop
   <section class="hw-final">
     <h2>Put an agent team on a real production line</h2>
     <p>
-      14 engines, 6 field protocols, 119 runtime settings and 1400+ re-runnable acceptance assertions are
+      14 engines, 6 field protocols, 119 runtime settings and 1100+ baseline acceptance assertions (plus the follow-up wave reports) are
       already in the repository. Supervisory by design, second-level soft real-time;
       protocol-real, assertion-reproducible.
     </p>

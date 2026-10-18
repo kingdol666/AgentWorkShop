@@ -93,11 +93,11 @@ Docs are bilingual — the [VitePress site](https://kingdol666.github.io/AgentWo
 
 | Topic | Online | In-repo | What it covers |
 |---|---|---|---|
-| **Getting started** | [Guide](https://kingdol666.github.io/AgentWorkShop/guide/getting-started) | `docs/site/guide/` | install → first run → first agent × line session, configuration, DAQ protocols, DCW read/write, HITL, recipe versioning, multi-harness teams, line permissions, AML |
-| **Plugin development** | [Plugin guide](https://kingdol666.github.io/AgentWorkShop/plugins/) | [`docs/plugins.md`](./docs/plugins.md) | the full extension contract: three scopes, `index.mjs` manifest, `ctx` server/browser surface, `settings`/`groups` declarations, lifecycle events, i18n, panels, team-scoped switches, a real example |
-| **SDK** | [SDK guide](https://kingdol666.github.io/AgentWorkShop/sdk/) | [`docs/sdk.md`](./docs/sdk.md) | `agentworkshop/sdk` as a programming client (platform REST client with envelope handling) and as the plugin extension base; TypeScript types; browser-side SDK |
-| **CLI** | [CLI manual](https://kingdol666.github.io/AgentWorkShop/cli/) | [`docs/cli.md`](./docs/cli.md) | all 15 `aw` commands, global options, exit codes, dual-mode path model, the command-registration system, maintainer publish guide |
-| **AML** | [AML guide](https://kingdol666.github.io/AgentWorkShop/guide/aml) | [`docs/aml.md`](./docs/aml.md) | auto-modeling lab: dataset build, job orchestration, model registry, promotion gates, agent tools |
+| **Getting started** | [Guide](https://kingdol666.github.io/AgentWorkShop/en/guide/getting-started) | `docs/site/en/guide/` | install → first run → first agent × line session, configuration, DAQ protocols, DCW read/write, HITL, recipe versioning, multi-harness teams, line permissions, AML |
+| **Plugin development** | [Plugin guide](https://kingdol666.github.io/AgentWorkShop/en/plugins/) | [`docs/plugins.en.md`](./docs/plugins.en.md) | the full extension contract: three scopes, `index.mjs` manifest, `ctx` server/browser surface, `settings`/`groups` declarations, lifecycle events, i18n, panels, team-scoped switches, a real example |
+| **SDK** | [SDK guide](https://kingdol666.github.io/AgentWorkShop/en/sdk/) | [`docs/sdk.en.md`](./docs/sdk.en.md) | `agentworkshop/sdk` as a programming client (platform REST client with envelope handling) and as the plugin extension base; TypeScript types; browser-side SDK |
+| **CLI** | [CLI manual](https://kingdol666.github.io/AgentWorkShop/en/cli/) | [`docs/cli.en.md`](./docs/cli.en.md) | all 15 `aw` commands, global options, exit codes, dual-mode path model, the command-registration system, maintainer publish guide |
+| **AML** | [AML guide](https://kingdol666.github.io/AgentWorkShop/en/guide/aml) | [`docs/aml.md`](./docs/aml.md) | auto-modeling lab: dataset build, job orchestration, model registry, promotion gates, agent tools |
 | **TUI** | — | [`docs/tui.md`](./docs/tui.md) · [`tui/README.md`](./tui/README.md) | terminal workbench: channels, agents, tasks, live monitor, HITL answering |
 | **Multi-harness architecture** | — | [`docs/multi-harness-architecture.md`](./docs/multi-harness-architecture.md) | engine taxonomy, normalized session contract, provider/model catalog, failure modes |
 
@@ -155,7 +155,7 @@ Recorded against a running instance: real DAQ history, real write control, real 
 | **Channel group chat & native HITL** | The channel timeline is a real group chat: a member's request becomes a **trackable job** (not a lost message), and engines with a native ask surface (e.g. `omp`) route HITL questions through the platform — approve once, the engine continues with the receipt. Member permissions and notifications are first-class. |
 | **Scheduled tasks** | Any channel task can run on a **schedule** — fixed `interval` (60 s floor) or `daily` at a set time — managed from `/workshop/schedules` or the REST API, with per-run history, busy-guard (no overlapping runs of the same schedule) and channel-scoped visibility. |
 | **Persistent memory & channel process memory** | Private + channel-shared domains; FTS5 with CJK segmentation, optional vector hybrid recall, token-budgeted injection. On top sit **process memories**: deterministic root/child/lead event contracts, a canonical root summary, and a durable outbox (dead-letter + compensation worker) so the story of a goal survives restarts. |
-| **Four entry points** | One manager behind every door: **WS** (AEP v1 event stream with seq-resume), **MCP** (38 in-process tools), **A2A** (JSON-RPC 2.0 + AgentCard), **REST**. |
+| **Four entry points** | One manager behind every door: **WS** (AEP v1 event stream with seq-resume), **MCP** (25 in-process tools), **A2A** (JSON-RPC 2.0 + AgentCard), **REST**. |
 
 #### Industrial stack
 
@@ -574,7 +574,7 @@ curl -X POST http://localhost:3000/api/workshop/schedules \
 | Entry | Endpoint | Audience |
 |---|---|---|
 | **WS** | `/api/workshop/ws?channelId=…` | Dashboards / UI — AEP v1 envelopes, per-channel monotonic `seq`, 5000-event ring, `lastSeq` resume, snapshot fallback. |
-| **MCP** | in-process server, 38 tools | Agents (omp host tools) — management + job-face tools, channel-scoped. |
+| **MCP** | in-process server, 25 tools | Agents (omp host tools) — management + job-face tools, channel-scoped. |
 | **A2A** | `POST /api/workshop/a2a/:agentId/rpc` | External agents — JSON-RPC 2.0, `AgentCard` at `/card`, `tasks/sendSubscribe` SSE. |
 | **REST** | `/api/workshop/**` | Humans / scripts — full management face. |
 
@@ -597,7 +597,8 @@ the event stream and the HTTP API — not on mocks. Two 2026-09-24 waves are arc
 the baseline matrix (~1100+ real assertions, v0.7.45 production build, isolated `AW_HOME`,
 real browser) in [`docs/audit/e2e-2026-09-24-full-coverage.md`](./docs/audit/e2e-2026-09-24-full-coverage.md),
 and the follow-up feature wave (real **PLC node simulator** + injection-molding AgentTeam
-closed loop, FIFO multi-goal, scheduled tasks, collaboration, ~1400+ assertions in total)
+closed loop, FIFO multi-goal, scheduled tasks, collaboration; the report records each result,
+including environment- or credential-limited failures and SKIPs)
 in [`docs/audit/e2e-2026-09-24-all-features.md`](./docs/audit/e2e-2026-09-24-all-features.md).
 
 | Suite | Latest result | What it covers | Reproduce |
@@ -613,15 +614,15 @@ in [`docs/audit/e2e-2026-09-24-all-features.md`](./docs/audit/e2e-2026-09-24-all
 | AgentTeam chat + native HITL | 112 passed / 0 failed / 1 blocked (2026-09-24, real `omp`) | group-chat request → trackable job; `omp` native ask → HITL approval → engine resumes with the receipt | `node scripts/e2e-agentteam-chat.mjs --phase=all` |
 | Terminal mirror + prompt composition | **26 / 0** and **16 / 0** (2026-09-24, real `omp`) | terminal mirror frames, `input`/`abort`/`ui_response` injection, native `ask` round-trip; five-section prompt assembly (scenario → profile → memory → manual → assignment) observed on the wire | `node scripts/test-terminal-e2e.mjs` · `node scripts/test-prompt-system.mjs` |
 | Real-engine collaboration | task-flow real **PASS**, `e2e-omp-workspace` **13 / 13**, group-chat real **PASS**, multi-user HIL **PASS** (2026-09-24) | real `omp` lead + workers: decomposition, dispatch, progress, artifacts, workspace-scoped file reads, unload; multi-user HITL visibility; multi-harness team 14/18 (omp + dsh green) | `npx tsx scripts/e2e-agentteam-task-flow-real.ts` · `npx tsx scripts/e2e-omp-workspace.ts` |
-| Front-end acceptance | responsive gate **16 / 16** routes, nav drawer **10 / 10** (2026-09-24, real Chromium) | every product page incl. the 3D town renders at the gate thresholds; drawer interaction, scroll lock, route change, zero page errors | `node scripts/ui/verify-responsive.mjs --routes all` · `node scripts/ui/verify-nav.mjs` |
+| Front-end acceptance | responsive gate **16 / 16** routes, nav drawer **10 / 10** (2026-09-24, real Chromium) | the 16 gated routes (of 22 page components) incl. the 3D town render at the gate thresholds; drawer interaction, scroll lock, route change, zero page errors | `node scripts/ui/verify-responsive.mjs --routes all` · `node scripts/ui/verify-nav.mjs` |
 | `_aw0746-stage12.mjs` | **10 / 0** (2026-09-25, globally installed **v0.7.49 packaged build**) | health gate (version=0.7.49) → admin login/role surface → channel creation with a real `omp` lead → group chat opened → **real omp reply** → omp child process visible in monitoring | `AW_BASE=<base> node scripts/_aw0746-stage12.mjs` |
-| `_aw0746-stage34.mjs` | **13 / 0** (2026-09-25, v0.7.49 packaged build + PLC simulator) | line provisioned from the simulator (11 DCW + 14 DAQ) → product/recipe triple → **every sample tagged with recipe_id/run_id** while running → `daq_query` **defaults to the active batch** (`scope=all` opts out, measured 1 vs 4) → Hybrid Twin template instantiated (lead + 3 workers, 6 twin tools injected, 57 total) | `AW_BASE=<base> node scripts/_aw0746-stage34.mjs` |
+| `_aw0746-stage34.mjs` | **13 / 0** (2026-09-25, v0.7.49 packaged build + PLC simulator) | line provisioned from the simulator (11 DCW + 14 DAQ) → product/recipe triple → **every sample tagged with recipe_id/run_id** while running → `daq_query` **defaults to the active batch** (`scope=all` opts out, measured 1 vs 4) → Hybrid Twin template instantiated (lead + 3 workers; that run injected 6 twin tools / 57 total — the profile now injects 12) | `AW_BASE=<base> node scripts/_aw0746-stage34.mjs` |
 | `_aw0746-stage6b-train-sweep.mjs` | gates **all green** (2026-09-25, v0.7.46 packaged build, real torch training) | 1 s grid dataset (**1724 rows / 10 runs**) → inline-code job trained for real → G1 one-step **0.0992** (≤0.10) / G2 rollout 0.1092 (≤0.25) / G3 generalisation 14.6% (≤20%) / G4 rows+runs → model registered and **promoted to production** | `AW_BASE=<base> AW_DATASET_ID=<ds> node scripts/_aw0746-stage6b-train-sweep.mjs` |
 | `_aw0746-stage7-twin.mjs` | **17 / 0** (2026-09-25, v0.7.49 packaged build, real DAQ + real model) | real samples → TwinSnapshot `fresh=true` → 65 real VirtualTrials (12 safe candidates, `candidateExecuted=false`) → 12-check recommendation gate **write_eligible** → verdict written back to the model as `twinEligibility` → `mpc_optimize` upgrades to **precise_search** → **0 DCW writes** throughout | `AW_BASE=<base> AW_REQUIRE_MODEL=1 node scripts/_aw0746-stage7-twin.mjs` |
 | `_aw0746-stage6c-jobsmoke.mjs` | **5 / 0** (2026-09-25, v0.7.49 packaged build) | AML job path: inline `code` accepted (no `workspace/train.py` required) → job reaches a terminal state → training logs/ONNX traces → experiment plus per-check gates persisted | `AW_BASE=<base> node scripts/_aw0746-stage6c-jobsmoke.mjs` |
 | `_aw0748-failclosed-probe.mjs` | **7 / 0** (2026-09-25, v0.7.49 packaged build) | hard-constraint **fail-closed** regression: `auto_daq` builds a snapshot from real bindings → a mappable `weight` constraint evaluates normally → an unmappable `part_weight` constraint is judged not passed with a precise detail (v0.7.47 passed it falsely) → an empty trajectory is also judged not passed | `AW_BASE=<base> node scripts/_aw0748-failclosed-probe.mjs` |
 | `_aw0748-mock-closedloop.mjs` | **13 / 0** (2026-09-25, v0.7.49 packaged build, in-process `mock`, no quota) | scheduler closed-loop regression: create a mock channel → the root task is genuinely dispatched and closed → `[mock:complex]` forces delegation into child tasks → the parent closes after they finish → **the second and third root tasks are dispatched too** (before the fix the lead was unloaded while idle, `cr.scheduler` became null and later root tasks only landed in the DB, sitting in SUBMITTED until `ROOT_TIMEOUT`) → the tool bridge explicitly rejects host tools for mock | `AW_BASE=<base> node scripts/_aw0748-mock-closedloop.mjs` |
-| Industrial bench — integrated | **83 / 83 checks, hard gate green** (2026-09-21) | five-protocol five-line bench: connectivity, sampling into Timescale, governed writes, governance, agent closed loop, semantic parameter layer | `node bench/pipeline.mjs --profile integrated` |
+| Industrial bench — integrated | **77 / 77 checks (current baseline contract**, `bench/PIPELINE.md`; an earlier 2026-09-21 run recorded 83/83) | five-protocol five-line bench: connectivity, sampling into Timescale, governed writes, governance, agent closed loop, semantic parameter layer | `node bench/pipeline.mjs --profile integrated` |
 | Multi-scenario closed loop | 4 scenarios · closed loops reached (2026-09-21) | injection-molding weight-window tuning · A²/O wastewater compliance with energy minimum · continuous-annealing quality window vs throughput · BOPET line mission | `node bench/scenarios.mjs --scenarios injection,wwtp,anneal` |
 | Line permissions / audit-negative | 21 / 21 + 9 / 9 (2026-09-12) | three-state line grants with human-readable 403s, binding-subject validation, revocation convergence, unauthenticated WS receives zero telemetry | `node scripts/_dbg-perms-e2e.mjs <base> <adminPass>` · `node scripts/_dbg-audit-neg-e2e.mjs <base> <adminPass>` |
 | Render regression | 30 / 30 (2026-09-12) | DAQ table integrity (row count aligned with the API), WS-driven row updates, filters, detail page, 3D town + model library, 7-page smoke, zero page errors | `node scripts/_dbg-render-regression.mjs <base> <email> <pass>` |
@@ -831,11 +832,11 @@ Agent Teams"** (IEEE Transactions on Industrial Informatics, anonymous review dr
 claim in the paper is backed by archives in this repository:
 
 - [`docs/benchmarks/`](./docs/benchmarks) — the October 2026 deployment-scale regression
-  campaign: 7 pipeline executions, 600 checks, zero failed (per-run `report.md` /
+  campaign: 14 pipeline executions, 1134 checks, zero failed (per-run `report.md` /
   `benchmark.json` / `timeline.jsonl`), plus the admission-ablation companion run;
 - [`docs/experiments/`](./docs/experiments) — cast-film closed-loop experiment plan and
   results (the paper's Q3 deterministic loop);
-- [`docs/audit/`](./docs/audit) — acceptance waves (~1400+ real assertions) referenced
+- [`docs/audit/`](./docs/audit) — acceptance waves (baseline 1100+ assertions; follow-up wave reported item by item) referenced
   by the evaluation section.
 
 Re-run the paper pipeline locally: set `AW_BENCH_MODE=1` and follow
@@ -901,11 +902,11 @@ AgentWorkShop is an independent project and is **not an official product of Anth
 
 **AgentWorkShop is open-source software, licensed under the [Apache License 2.0](./LICENSE).**
 
-- **Permitted** — personal study, research, hobby projects, teaching, and use by noncommercial organizations (charities, education, public research, government).
-- **Not permitted without prior written permission** — any **commercial use**: selling, paid services, integrating into commercial products, or production use serving a business. Commercial licenses are available from the copyright holder.
-- **When you redistribute** the software, you must pass through the `Required Notice` line and these terms.
+- **Permitted** — personal, academic, and **commercial use**, including production deployment, modification, and redistribution, under the terms of the Apache License 2.0.
+- **Conditions** — retain copyright and license notices, state significant changes, and include the `NOTICE` file when redistributing.
+- **No trademark or warranty** — the license grants no trademark rights and provides the software **"as is"**, without warranties or conditions of any kind.
 
-For commercial licensing, contact: [GitHub @kingdol666](https://github.com/kingdol666) · kingdol6080@gmail.com
+The full terms are in [LICENSE](./LICENSE). Questions: [GitHub @kingdol666](https://github.com/kingdol666).
 
 <div align="center">
 

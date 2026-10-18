@@ -35,7 +35,7 @@ aw plugin enable my-plugin          # 重新启用
 
 | 作用域 | 入口路径 | 说明 |
 |---|---|---|
-| `builtin` | `<包根>/server/plugins-builtin/<name>/index.mjs` | 随包发布,永远存在;当前发行内置 `diag-bridge`、`rag-bridge` |
+| `builtin` | `<包根>/server/plugins-builtin/<name>/index.mjs` | 随包发布,永远存在;当前发行内置 `diag-bridge`、`rag-bridge`、`serial-bridge`、`twin-injection-default` |
 | `project` | `<repo>/.AgentWorkShop/plugins/<name>/index.mjs` | 随检出分发,可 git 版本化 |
 | `user` | `$AW_HOME/plugins/<name>/index.mjs`(默认 `~/.AgentWorkShop/plugins`) | 用户级,跨项目生效 |
 

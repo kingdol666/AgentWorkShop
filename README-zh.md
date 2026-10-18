@@ -154,7 +154,7 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 | **Channel 群聊与原生 HITL** | 频道时间线是真正的群聊：成员请求升级为**可追踪作业**（不是一条会丢的消息）；带原生 ask 能力的引擎（如 `omp`）把 HITL 提问路由进平台——您批准一次，引擎带着回执继续跑。成员权限与用户通知是一等公民。 |
 | **定时任务** | 任意 Channel 任务可挂上**调度**——固定 `interval`（60s 下限）或 `daily` 每日定点——在 `/workshop/schedules` 页或 REST API 管理，带逐次运行历史、忙等守卫（频道仍有在飞任务时触发顺延）与 Channel 级可见性。 |
 | **持久记忆与频道过程记忆** | 私有 + Channel 共享双域；FTS5 CJK 切分，可选向量混合检索，token 预算注入。其上是**过程记忆**：确定性的 root/child/lead 事件名契约、canonical root 摘要、持久 outbox（死信 + 补偿 worker），让一个目标的来龙去脉跨重启存活。 |
-| **四个入口** | 一个 manager 坐在每扇门后：**WS**（AEP v1 事件流，seq 续传）、**MCP**（38 个进程内工具）、**A2A**（JSON-RPC 2.0 + AgentCard）、**REST**。 |
+| **四个入口** | 一个 manager 坐在每扇门后：**WS**（AEP v1 事件流，seq 续传）、**MCP**（25 个进程内工具）、**A2A**（JSON-RPC 2.0 + AgentCard）、**REST**。 |
 
 #### 工业栈
 
@@ -578,7 +578,7 @@ curl -X POST http://localhost:3000/api/workshop/schedules \
 | 入口 | 端点 | 面向 |
 |---|---|---|
 | **WS** | `/api/workshop/ws?channelId=…` | 仪表盘 / UI——AEP v1 信封，per-channel 单调 `seq`，5000 事件环形缓冲，`lastSeq` 续传，快照兜底。 |
-| **MCP** | 进程内服务，38 个工具 | Agent（omp host tools）——管理面 + 作业面工具，Channel 作用域。 |
+| **MCP** | 进程内服务，25 个工具 | Agent（omp host tools）——管理面 + 作业面工具，Channel 作用域。 |
 | **A2A** | `POST /api/workshop/a2a/:agentId/rpc` | 外部 Agent——JSON-RPC 2.0，`AgentCard` 在 `/card`，`tasks/sendSubscribe` SSE。 |
 | **REST** | `/api/workshop/**` | 人 / 脚本——完整管理面。 |
 
@@ -594,7 +594,7 @@ SUBMITTED ─▶ ASSIGNED ─▶ WORKING ─▶ WAITING ─▶ COMPLETED
 
 ## 端到端验证
 
-上面每一条论断，背后都有一个可复跑的套件。验收套件在**生产实例上、跑真实模拟产线协议**（Modbus TCP/RTU、OPC UA、MQTT、HTTP + MQTT/Timescale 管线），配真实引擎 CLI，断言落在数据库、事件流与 HTTP API 上——而不是 mock。2026-09-24 的两轮波次已归档：基础矩阵（约 **1100+ 条真实断言**，v0.7.45 生产构建、隔离 `AW_HOME`、真实浏览器）见 [`docs/audit/e2e-2026-09-24-full-coverage.md`](./docs/audit/e2e-2026-09-24-full-coverage.md)；补充功能波次（真实 **PLC 节点模拟器** + 注塑 AgentTeam 闭环、FIFO 多任务、定时任务、协作，合计约 **1400+ 条断言**）见 [`docs/audit/e2e-2026-09-24-all-features.md`](./docs/audit/e2e-2026-09-24-all-features.md)。
+上面每一条论断，背后都有一个可复跑的套件。验收套件在**生产实例上、跑真实模拟产线协议**（Modbus TCP/RTU、OPC UA、MQTT、HTTP + MQTT/Timescale 管线），配真实引擎 CLI，断言落在数据库、事件流与 HTTP API 上——而不是 mock。2026-09-24 的两轮波次已归档：基础矩阵（约 **1100+ 条真实断言**，v0.7.45 生产构建、隔离 `AW_HOME`、真实浏览器）见 [`docs/audit/e2e-2026-09-24-full-coverage.md`](./docs/audit/e2e-2026-09-24-full-coverage.md)；补充功能波次（真实 **PLC 节点模拟器** + 注塑 AgentTeam 闭环、FIFO 多任务、定时任务、协作；报告逐项记录结果，含环境/凭据受限的失败与 SKIP）见 [`docs/audit/e2e-2026-09-24-all-features.md`](./docs/audit/e2e-2026-09-24-all-features.md)。
 
 | 套件 | 最新结果 | 覆盖 | 复现 |
 |---|---|---|---|
@@ -609,15 +609,15 @@ SUBMITTED ─▶ ASSIGNED ─▶ WORKING ─▶ WAITING ─▶ COMPLETED
 | AgentTeam 群聊 + 原生 HITL | 112 通过 / 0 失败 / 1 阻塞（2026-09-24，真实 `omp`） | 群聊请求 → 可追踪作业；`omp` 原生 ask → HITL 审批 → 引擎带回执继续 | `node scripts/e2e-agentteam-chat.mjs --phase=all` |
 | 终端镜像 + 提示词组合 | **26 / 0** 与 **16 / 0**（2026-09-24，真实 `omp`） | 终端镜像帧、`input`/`abort`/`ui_response` 注入、原生 `ask` 往返；五段式 prompt 组合（场景 → 专长 → 记忆 → 手册 → 任务）在线上可观测 | `node scripts/test-terminal-e2e.mjs` · `node scripts/test-prompt-system.mjs` |
 | 真引擎协作 | 任务流真跑 **PASS**、`e2e-omp-workspace` **13 / 13**、群聊全真 **PASS**、多用户 HIL **PASS**（2026-09-24） | 真实 `omp` lead + worker：分解/派发/进度/成果/workspace 文件读取与卸载；多用户 HITL 可见性；多引擎团队 14/18（omp 与 dsh 全绿） | `npx tsx scripts/e2e-agentteam-task-flow-real.ts` · `npx tsx scripts/e2e-omp-workspace.ts` |
-| 前端验收 | 响应式门禁 **16 / 16** 页、抽屉交互 **10 / 10**（2026-09-24，真实 Chromium） | 全部产品页（含 3D 小镇）在门禁阈值下渲染通过；抽屉开合、滚动锁、路由跳转、零 pageerror | `node scripts/ui/verify-responsive.mjs --routes all` · `node scripts/ui/verify-nav.mjs` |
+| 前端验收 | 响应式门禁 **16 / 16** 页、抽屉交互 **10 / 10**（2026-09-24，真实 Chromium） | 受门禁的 16 个路由（应用共 22 个页面组件，含 3D 小镇）在阈值下渲染通过；抽屉开合、滚动锁、路由跳转、零 pageerror | `node scripts/ui/verify-responsive.mjs --routes all` · `node scripts/ui/verify-nav.mjs` |
 | `_aw0746-stage12.mjs` | **10 / 0**（2026-09-25,全局安装的 **v0.7.49 打包系统**） | 健康门(version=0.7.49)→ 管理员登录/角色面 → 创建 Channel(真实 `omp` lead)→ 开群聊 → **真实 omp 群聊回复** → 系统监控可见 omp 子进程 | `AW_BASE=<base> node scripts/_aw0746-stage12.mjs` |
-| `_aw0746-stage34.mjs` | **13 / 0**（2026-09-25,v0.7.49 打包系统 + PLC 模拟器） | 模拟器建线（11 数控 + 14 数采）→ 产品/配方三元组 → 开跑后**样本逐条带 recipe_id/run_id** → `daq_query` **默认只取当前活动批次**（`scope=all` 可放开，实测 1 vs 4）→ 实例化 Hybrid Twin 模板（lead + 3 worker,注入孪生 6 件套 / 总 57 工具） | `AW_BASE=<base> node scripts/_aw0746-stage34.mjs` |
+| `_aw0746-stage34.mjs` | **13 / 0**（2026-09-25,v0.7.49 打包系统 + PLC 模拟器） | 模拟器建线（11 数控 + 14 数采）→ 产品/配方三元组 → 开跑后**样本逐条带 recipe_id/run_id** → `daq_query` **默认只取当前活动批次**（`scope=all` 可放开，实测 1 vs 4）→ 实例化 Hybrid Twin 模板（lead + 3 worker;该轮注入孪生 6 件套 / 总 57 工具,当前 profile 已注入 12 件） | `AW_BASE=<base> node scripts/_aw0746-stage34.mjs` |
 | `_aw0746-stage6b-train-sweep.mjs` | 门禁**全绿**（2026-09-25,v0.7.46 打包系统,真实 torch 训练） | 1 s 拍格数据集（**1724 行 / 10 批次**）→ 内联 code 作业真实训练 → G1 单步 **0.0992**（≤0.10）/ G2 滚动 0.1092（≤0.25）/ G3 泛化 14.6%（≤20%）/ G4 行数与批次 → 模型注册并**晋升 production** | `AW_BASE=<base> AW_DATASET_ID=<ds> node scripts/_aw0746-stage6b-train-sweep.mjs` |
 | `_aw0746-stage7-twin.mjs` | **17 / 0**（2026-09-25,v0.7.49 打包系统,真实 DAQ + 真实模型） | 真实样本 → TwinSnapshot `fresh=true` → 65 组真实 VirtualTrial（12 条安全候选,`candidateExecuted=false`）→ 12 项推荐门禁 **write_eligible** → 门禁结论回写模型 `twinEligibility` → `mpc_optimize` 升档 **precise_search** → 全程 **0 DCW 写入** | `AW_BASE=<base> AW_REQUIRE_MODEL=1 node scripts/_aw0746-stage7-twin.mjs` |
 | `_aw0746-stage6c-jobsmoke.mjs` | **5 / 0**（2026-09-25,v0.7.49 打包系统） | AML 作业链路：内联 `code` 被接受（不再要求 `workspace/train.py`）→ 作业到终态 → 训练日志/ONNX 痕迹 → 实验与逐项门禁落库 | `AW_BASE=<base> node scripts/_aw0746-stage6c-jobsmoke.mjs` |
 | `_aw0748-failclosed-probe.mjs` | **7 / 0**（2026-09-25,v0.7.49 打包系统） | 硬约束**失败关闭**回归:auto_daq 按真实绑定取样建快照 → 可映射约束 `weight` 正常评估 → 不可映射的 `part_weight` 判不通过并给出明细（v0.7.47 会假通过）→ 空轨迹同样判不通过 | `AW_BASE=<base> node scripts/_aw0748-failclosed-probe.mjs` |
 | `_aw0748-mock-closedloop.mjs` | **13 / 0**（2026-09-25,v0.7.49 打包系统,进程内 `mock`,零额度） | 调度闭环回归:创建 mock Channel → 根任务被真实派发并收口 → `[mock:complex]` 强制委派出子任务 → 父任务汇总收口 → mock worker 就位后 [mock:complex] 委派子任务并汇总 → **第二个/第三个根任务同样被派发**（修复前:lead 空闲卸载后 `scheduler` 置空,后续根任务只落库、一直 SUBMITTED 直到 `ROOT_TIMEOUT`）→ mock 无 host tool 通道时工具桥显式拒绝 | `AW_BASE=<base> node scripts/_aw0748-mock-closedloop.mjs` |
-| 工业基准——integrated | **83 / 83 检查，硬门禁绿**（2026-09-21） | 五协议五产线基准：连通性、采样入 Timescale、受控下发、治理、Agent 闭环、工艺参数语义层 | `node bench/pipeline.mjs --profile integrated` |
+| 工业基准——integrated | **77 / 77 检查（当前基线契约**，见 `bench/PIPELINE.md`；2026-09-21 的早期运行记录为 83/83） | 五协议五产线基准：连通性、采样入 Timescale、受控下发、治理、Agent 闭环、工艺参数语义层 | `node bench/pipeline.mjs --profile integrated` |
 | 多场景闭环 | 4 场景 · 闭环达标（2026-09-21） | 注塑克重窗口寻优 · A²/O 污水排放达标 + 能耗最小化 · 连续退火质量窗与产能权衡 · BOPET 产线任务 | `node bench/scenarios.mjs --scenarios injection,wwtp,anneal` |
 | 产线权限 / 审计负向 | 21 / 21 + 9 / 9（2026-09-12） | 三态产线授权 + 人类可读 403、绑定主体校验、授权撤销收敛、无 token WS 零遥测 | `node scripts/_dbg-perms-e2e.mjs <base> <adminPass>` · `node scripts/_dbg-audit-neg-e2e.mjs <base> <adminPass>` |
 | 渲染回归 | 30 / 30（2026-09-12） | 数采表完整性（行数与 API 动态对齐）、WS 驱动行更新、筛选、详情页、3D 小镇 + 模型库、7 页 smoke、零 pageerror | `node scripts/_dbg-render-regression.mjs <base> <email> <pass>` |
@@ -648,14 +648,14 @@ AgentWorkShop/
 │   │   ├── agents/             # AgentInterface：14 个引擎（+ 工业工具）
 │   │   ├── daq/ dcw/ aml/      # 边缘运行时 · 驱动 · 队列 · 存储 · 建模实验室
 │   │   └── db/                 # node:sqlite 仓储层
-│   ├── mcp/                    # MCP 服务（38 个工具，进程内 workshop 面）
+│   ├── mcp/                    # MCP 服务（25 个工具，进程内 workshop 面）
 │   ├── plugins-builtin/        # 随包发布的插件（serial-bridge · rag-bridge · diag-bridge · twin-injection-default）
 │   └── plugins/                # 运行时装配（单例）
 ├── mcp/                        # aw mcp —— 零依赖 stdio MCP 网关（38 个工具，实例自动发现）
 ├── sdk/                        # agentworkshop/sdk——插件上下文、钩子总线、REST 客户端、浏览器 SDK
 ├── tui/                        # 终端工作台（aw tui）
 ├── shared/
-│   └── config/                 # schema.json（118 个设置描述符）+ 引擎（合并/校验/持久化）+ 路径解析器
+│   └── config/                 # schema.json（119 个设置描述符）+ 引擎（合并/校验/持久化）+ 路径解析器
 ├── config.yml                  # 工厂默认值（构建/启动时读取；版本号来自 package.json）
 ├── .AgentWorkShop/             # 检出内的配置根——prompts（版本化）+ 运行时覆盖 · 数据 · 日志 · 指令（git 忽略）
 ├── data/                       # 迁移前的旧版位置（自动迁移进配置根）
@@ -808,11 +808,11 @@ Informatics 匿名评审稿,IEEEtran 双栏 10 页)。源文件、编译稿与�
 [`paper/tii/SUBMISSION-IEEE-TII/`](./paper/tii/SUBMISSION-IEEE-TII/)。论文中的每一条机制
 主张都由仓库内归档证据支撑:
 
-- [`docs/benchmarks/`](./docs/benchmarks)——2026-10 部署级回归战役:7 次流水线执行、
-  600 项检查零失败(每次运行归档 `report.md` / `benchmark.json` / `timeline.jsonl`),
+- [`docs/benchmarks/`](./docs/benchmarks)——2026-10 部署级回归战役:14 次流水线执行、
+  1134 项检查零失败(每次运行归档 `report.md` / `benchmark.json` / `timeline.jsonl`),
   另含准入消融伴随运行;
 - [`docs/experiments/`](./docs/experiments)——铸膜闭环实验计划与结果(论文 Q3 确定性闭环);
-- [`docs/audit/`](./docs/audit)——评估节引用的验收波次(约 1400+ 条真实断言)。
+- [`docs/audit/`](./docs/audit)——评估节引用的验收波次(基础波 1100+ 条;补充波逐项记录,含受限项)。
 
 本地复跑论文流水线:设置 `AW_BENCH_MODE=1` 并按
 [`bench/PIPELINE.md`](./bench/PIPELINE.md) 执行。
@@ -877,11 +877,11 @@ AgentWorkShop 是独立项目，**不是 Anthropic 或任何 LLM 厂商的官方
 
 **AgentWorkShop 为开源软件，依据 [Apache License 2.0](./LICENSE) 发布。**
 
-- **允许** —— 个人学习、科研、兴趣项目、教学，以及非商业组织（公益、教育、公共研究、政府机构）的使用。
-- **未经版权人事先书面许可不得商用** —— 任何**商业用途**：销售、付费服务、集成进商业产品、服务于经营活动的生产使用均未获授权。商用授权可向版权人申请。
-- **再分发时** 必须随附本协议条款与 `Required Notice` 版权声明行。
+- **允许** —— 个人、学术与**商业使用**，包括生产部署、修改与再分发，均按 Apache License 2.0 条款授权。
+- **条件** —— 保留版权与许可声明、标注重大修改，再分发时附带 `NOTICE` 文件。
+- **无商标与担保** —— 许可不授予商标权；软件按 **“原样”** 提供，不附带任何明示或默示担保。
 
-商用授权联系：[GitHub @kingdol666](https://github.com/kingdol666) · kingdol6080@gmail.com
+完整条款见 [LICENSE](./LICENSE)。问题反馈：[GitHub @kingdol666](https://github.com/kingdol666)。
 
 <div align="center">
 

@@ -69,7 +69,7 @@ canonical one-step:输入 `history [batch, H, nAll]`(归一化)→ 输出 `y_nex
 ## 使用
 
 - **UI**:侧导航「建模」(`/aml`):运行环境(uv/venv/对账)/ 数据集 / 作业 / 排行榜 / 注册表 / 预测控制台。
-- **Agent**:内置团队「AML 影子建模团队」(`team-aml-shadow`,部署前先加成员)或任意成员直接调用工具族 `aml_node_catalog / aml_dataset_build / aml_dataset_stats / aml_job_submit / aml_job_status / aml_job_logs / aml_job_cancel / aml_leaderboard / aml_model_find / aml_model_promote(lead 专属)/ aml_model_reference / aml_training_plan_list / aml_training_plan_create / aml_training_plan_train`(见 `.AgentWorkShop/prompts/host-tools.json`,宿主工具面共 70 条);调参 what-if 经 `aml_model_reference` 的 `controls` 参数传入拟议参数值。模型带人读身份:`label`(产线 · 配方 · 目标)+ `description` + `line_id`/`objective_id`,`aml_model_find` 按场景语义选型。
+- **Agent**:内置团队「AML 影子建模团队」(`team-aml-shadow`,部署前先加成员)或任意成员直接调用工具族 `aml_node_catalog / aml_dataset_build / aml_dataset_stats / aml_job_submit / aml_job_status / aml_job_logs / aml_job_cancel / aml_leaderboard / aml_model_find / aml_model_promote(lead 专属)/ aml_model_reference / aml_training_plan_list / aml_training_plan_create / aml_training_plan_train`(见 `.AgentWorkShop/prompts/host-tools.json`,宿主工具面共 82 条);调参 what-if 经 `aml_model_reference` 的 `controls` 参数传入拟议参数值。模型带人读身份:`label`(产线 · 配方 · 目标)+ `description` + `line_id`/`objective_id`,`aml_model_find` 按场景语义选型。
 - **REST**:`/api/workshop/aml/{env,entities,datasets,jobs,experiments,models}`(见各路由文件头注释)。
 
 ## 混合孪生 × MPC(Core Hybrid Twin)

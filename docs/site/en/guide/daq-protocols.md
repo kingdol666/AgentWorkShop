@@ -16,7 +16,7 @@ protocol dropdown and dynamic forms (⌁ badge) with zero frontend changes.
 | OPC UA | ✅ session pool, any NodeId, anonymous/signed | ✅ write Double node + readback | `endpoint` `nodeId` |
 | MQTT | ✅ subscribe topic + jsonPath | ✅ publish `{jsonKey: value}` | `host` `port` `topic` `jsonPath` |
 | HTTP | ✅ GET + jsonPath | ✅ POST `{bodyKey: value}` + response readback | `url` `jsonPath` / `bodyKey` |
-| **Serial (serial-bridge plugin)** | ✅ Modbus RTU (FC03/FC04) + ASCII line protocol (numeric/JSON + freshness window) | ✅ Modbus RTU write holding registers (FC06/FC16) + same-address readback; ASCII template dispatch | `path` `baudRate` `parity` `unitId` `register` `dataType` `byteOrder`; [plugin docs](/AgentWorkShop/en/plugins/guide) |
+| **Serial (serial-bridge plugin)** | ✅ Modbus RTU (FC03/FC04) + ASCII line protocol (numeric/JSON + freshness window) | ✅ Modbus RTU write holding registers (FC06/FC16) + same-address readback; ASCII template dispatch | `path` `baudRate` `parity` `unitId` `register` `dataType` `byteOrder`; [plugin docs](/en/plugins/guide) (see "Communication-protocol plugins") |
 
 ## Connectivity tests
 

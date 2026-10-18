@@ -43,7 +43,7 @@ import { createClientContext } from 'agentworkshop/sdk/client'   // browser only
 
 **Version**: the SDK ships its own constants `SDK_VERSION = '0.3.0'` (server) and
 `CLIENT_SDK_VERSION = '0.3.0'` (browser). They are the **interface version of the SDK itself** and
-evolve **independently** from the npm package version (currently 0.7.36) — being out of sync is
+evolve **independently** from the npm package version (currently 0.7.66) — being out of sync is
 expected.
 
 `index.d.mts` / `client.d.mts` type declarations ship with the package, so TypeScript projects get

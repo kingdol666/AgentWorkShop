@@ -14,7 +14,7 @@ AgentWorkShop 的数采(DAQ)与写控(DCW)驱动面覆盖六种现场协议(5 �
 | OPC UA | ✅ 会话池,任意 NodeId,匿名/Sign | ✅ 写 Double 节点 + 回读 | `endpoint` `nodeId` |
 | MQTT | ✅ 订阅主题 + jsonPath 取值 | ✅ 发布 `{jsonKey: 值}` | `host` `port` `topic` `jsonPath` |
 | HTTP | ✅ GET + jsonPath | ✅ POST `{bodyKey: 值}` + 响应回读 | `url` `jsonPath` / `bodyKey` |
-| **串口 Serial(serial-bridge 插件)** | ✅ Modbus RTU(FC03/FC04)+ ASCII 行协议(数值/JSON + 保鲜窗) | ✅ Modbus RTU 写保持寄存器(FC06/FC16)+ 同址回读校验;ASCII 模板下行 | `path` `baudRate` `parity` `unitId` `register` `dataType` `byteOrder`;[插件文档](/AgentWorkShop/plugins/guide#串口插件-serial-bridge) |
+| **串口 Serial(serial-bridge 插件)** | ✅ Modbus RTU(FC03/FC04)+ ASCII 行协议(数值/JSON + 保鲜窗) | ✅ Modbus RTU 写保持寄存器(FC06/FC16)+ 同址回读校验;ASCII 模板下行 | `path` `baudRate` `parity` `unitId` `register` `dataType` `byteOrder`;[插件文档](/plugins/guide)(见「通信协议插件(自定义接口连接方式)」) |
 
 ## 连通性测试
 
