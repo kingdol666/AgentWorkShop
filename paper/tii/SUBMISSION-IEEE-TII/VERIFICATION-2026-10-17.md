@@ -71,6 +71,11 @@ Changes (text only; figures, references, and page count unchanged):
 - Redundant sentences removed to hold the 10-page budget: duplicated p95
   justification, repeated figure pointer, repeated live-load counts, and
   duplicated leg/grade wording.
+- Campaign dates, the snapshot timestamp, and the unverified "four
+  control-pair replays" claim are removed. The campaign is now identified by
+  three passes (Table III), which preserves the baseline → grading →
+  live-load progression without exposing internal run dates; seed 42 remains
+  as an experimental parameter.
 
 Verification:
 

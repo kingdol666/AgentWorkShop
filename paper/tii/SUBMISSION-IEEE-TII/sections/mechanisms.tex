@@ -74,8 +74,9 @@ non-empty at node creation) and the remaining terms the baseline,
 active-product, and active-recipe limits (together the soft window); a
 missing optional limit
 contributes no restriction, and $t$ is the
-admission instant, re-resolved at execution. An emptying configuration
-rejects every write, naming the excluding layer at the first write. The interval form is deliberate:
+admission instant, re-resolved at execution. A configuration whose admitted
+interval is empty rejects every write, naming the excluding layer on the
+first attempt. The interval form is deliberate:
 every bound is a declared, versioned object an audit can replay against
 active product and recipe; rejection is decidable and layer-attributable
 (Fig.~\ref{fig:hitl}a)---decidability, not a safety certificate.
