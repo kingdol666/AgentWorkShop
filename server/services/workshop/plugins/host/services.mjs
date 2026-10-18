@@ -61,6 +61,15 @@ export async function seedRuntimeServices() {
       claim: (tool, jobId) => mgr.claimPlatformNotice(tool, jobId),
     }
   })
+  // Agent 可读面(插件侧授权判定):绑定节点 ∪ 频道绑线产线。
+  // diag-bridge 等插件在读取产线数据前必须按调用者身份校验,不能拿全局只读面直读任意产线。
+  servicesExt.register('agentScope', async () => {
+    const m = await import('@/server/services/workshop/agents/industrial/tool-verify')
+    return {
+      readableLines: agentId => [...m.resolveRefFaces(agentId).readableLines],
+      boundNodes: agentId => [...m.resolveRefFaces(agentId).boundNodes],
+    }
+  })
   servicesExt.register('plugins', async () => pluginManifest())
 }
 

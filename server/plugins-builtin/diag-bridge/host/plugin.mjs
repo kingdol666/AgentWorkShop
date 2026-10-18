@@ -127,6 +127,24 @@ export default {
           const dataPathDirect = String(args.data_path ?? '').trim()
           const exportId = String(args.export_id ?? '').trim()
           if (!line && !dataPathDirect && !exportId) return { text: 'line / data_path / export_id 至少给一个。', isError: true }
+          // 产线模式按调用者可读面授权(插件工具不走工业工具 grant/verify 两道闸;
+          // 此前任意 Agent 可对任意产线导出快照做诊断,构成跨线数据读取)。
+          if (line && agent?.agentId) {
+            try {
+              const scope = await ctx.services.get('agentScope')
+              const readable = scope.readableLines(agent.agentId)
+              if (!readable.includes(line)) {
+                return {
+                  text: `产线「${line}」不在你的可读范围。你的可读产线:${readable.length ? readable.join(', ') : '(无)'}。如需诊断该产线,请让用户绑定该产线节点/把频道绑定到该产线,或改用上述产线重试。`,
+                  isError: true,
+                }
+              }
+            }
+            catch (err) {
+              // fail-closed:无法确认授权时不读取产线数据
+              return { text: `产线授权校验不可用,已拒绝本次分析:${err?.message ?? err}。请联系管理员检查插件运行时服务。`, isError: true }
+            }
+          }
           const toMs = Number(args.to_ms) > 0 ? Number(args.to_ms) : Date.now()
           const fromMs = Number(args.from_ms) > 0 ? Number(args.from_ms) : toMs - 60 * MIN
           if (fromMs >= toMs) return { text: 'from_ms 必须小于 to_ms。', isError: true }
@@ -182,14 +200,22 @@ export default {
             const timeoutS = Math.min(Math.max(Number(args.sync_timeout_s) || 240, 10), 540)
             if (base) {
               const deadline = Date.now() + timeoutS * 1000
+              let lastPollError = ''
               while (Date.now() < deadline) {
                 await new Promise(resolve => setTimeout(resolve, 5000))
                 let st = null
                 try {
                   st = (await jget(ctx, `${base}/api/diagnosis/tasks/${encodeURIComponent(r.runId)}`, 8000)).data ?? null
+                  lastPollError = ''
                 }
-                catch { /* 单次轮询失败继续等 */ }
-                const status = String(st?.status ?? 'running')
+                catch (err) {
+                  lastPollError = String(err?.message ?? err)
+                  // 鉴权失败/任务不存在:继续等只会空耗到超时,直接如实返回
+                  if (/HTTP (401|403|404)/.test(lastPollError)) {
+                    return { text: `同步等待中止 task_id=${r.runId}:${lastPollError}。任务可能仍在后台运行;修复后可用 diag_status(run_id=${r.runId}) 查询,完成后平台仍会回执。`, isError: true }
+                  }
+                }
+                const status = String(st?.status ?? r.status ?? 'running')
                 if (status === 'completed') {
                   // 已同步拿到结果,认领回执防 sweep 补送重复
                   try {
@@ -204,7 +230,7 @@ export default {
                   return { text: `分析任务 ${r.runId} 以 ${status} 结束:${st?.result?.error ?? '详见 diag_status'}`, isError: true }
                 }
               }
-              return { text: `已发起${intentLabel(r.intent)}任务 task_id=${r.runId}(${via})。同步等待 ${timeoutS}s 超时,分析仍在后台运行——完成后平台会自动把结果回执到你的信箱并唤醒你;也可 diag_status(run_id=${r.runId}) 主动查询。注入的分析问题:${r.question}` }
+              return { text: `已发起${intentLabel(r.intent)}任务 task_id=${r.runId}(${via})。同步等待 ${timeoutS}s 超时,分析仍在后台运行${lastPollError ? `(最近一次轮询失败:${lastPollError})` : ''}——完成后平台会自动把结果回执到你的信箱并唤醒你;也可 diag_status(run_id=${r.runId}) 主动查询。注入的分析问题:${r.question}` }
             }
           }
           return {
@@ -243,6 +269,7 @@ export default {
           const meta = ctx.kv.get(runKey(id))
           const base = baseOf(ctx)
           let st = null
+          let remoteError = ''
           if (base) {
             try {
               // v2.1:走任务管理面 /tasks/:id——result.report_md_path 是绝对路径,
@@ -260,9 +287,14 @@ export default {
                 }
               }
             }
-            catch { /* 3210 不可达时回退 kv 元数据 */ }
+            catch (err) {
+              // 保留原始错误(404=任务不存在 / 401=token / 网络不可达),不再一律吞成"不可达"
+              remoteError = String(err?.message ?? err)
+            }
           }
-          if (!st && !meta) return { text: `诊断 ${id} 不存在或诊断服务不可达。`, isError: true }
+          if (!st && !meta) {
+            return { text: `诊断 ${id} 不存在或诊断服务不可达${remoteError ? `(${remoteError})` : ''}。`, isError: true }
+          }
           const status = st?.engineStatus || st?.status || meta?.status || 'unknown'
           // 终态经轮询面亲自看到 → 认领结果所有权,取消平台的事后补送(先到先得)
           if (['completed', 'failed', 'stopped'].includes(status)) {
@@ -291,7 +323,12 @@ export default {
             parts.push('提交后频道无需等待,空闲时用 kb_agent_status(task_id) 查询入库结果。')
           }
           if (status === 'failed' || status === 'stopped') parts.push(`错误=${st?.error_message ?? meta?.error ?? '-'}`)
-          if (!st) parts.push('(诊断服务不可达,以上为本地记录)')
+          if (!st) {
+            parts.push(`(远端查询失败:${remoteError || '诊断服务不可达'};以上为本地记录)`)
+            if (remoteError.includes('HTTP 404') && ['queued', 'running'].includes(String(meta?.status))) {
+              parts.push('远端任务已不存在(可能被 IDD 清理或服务重启);sweep 将在连续 3 轮确认后把本地状态收敛为 failed 并回执,不会永久占用产线单飞锁。')
+            }
+          }
           return { text: parts.join('\n') }
         }
         catch (err) {

@@ -49,9 +49,12 @@ export function kvRuns(ctx) {
   return out
 }
 
-/** 该产线是否有运行中的诊断 */
+/** 未终态(仍占用产线单飞锁):queued 与 running 同等对待 */
+export const ACTIVE_RUN_STATUSES = new Set(['queued', 'running'])
+
+/** 该产线是否有未终态的诊断(queued 也占用,否则同线会并发两个任务) */
 export function runningOfLine(ctx, line) {
-  return kvRuns(ctx).find(r => r.meta?.status === 'running' && r.meta?.line === line) ?? null
+  return kvRuns(ctx).find(r => ACTIVE_RUN_STATUSES.has(r.meta?.status) && r.meta?.line === line) ?? null
 }
 
 /** 短 JSON 摘要(错误信息用) */

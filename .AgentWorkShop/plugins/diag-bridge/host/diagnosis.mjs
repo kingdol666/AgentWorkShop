@@ -5,29 +5,42 @@
 import { baseOf, harnessOf, jpost, maxMinutesOf, maxTurnsOf, runKey, runningOfLine, short } from './helpers.mjs'
 import { snapshotCore } from './snapshot.mjs'
 import { startingLines } from './constants.mjs'
+import { defaultQuestionFor, resolveBridgeIntent } from './intents.mjs'
 
-export async function startDiagnosis(ctx, { line, fromMs, toMs, question, scene, source, dataPath }) {
+export async function startDiagnosis(ctx, { line, fromMs, toMs, question, scene, source, dataPath, dataPaths, harness, agentId, channelId, analysisIntent, model, permissionMode }) {
   const base = baseOf(ctx)
   if (!base) return { ok: false, error: 'diag.base_url 非法(仅允许 http/https 且 host 为 127.0.0.1/localhost)。' }
+  const intent = resolveBridgeIntent(analysisIntent)
+  if (analysisIntent && String(analysisIntent).trim() && !intent) {
+    return { ok: false, error: `未知分析意图: ${String(analysisIntent)}(支持 deep-diagnosis/stability-report/quick-screen/doe-analysis/experience-mining/optimizer-campaign)` }
+  }
   if (startingLines.has(line)) return { ok: false, error: `产线 ${line} 已有诊断正在启动,请稍后再试。` }
   const existing = runningOfLine(ctx, line)
   if (existing) return { ok: false, error: `产线 ${line} 已有运行中的诊断(run_id=${existing.id}),请稍后用 diag_status 查询。` }
   startingLines.add(line)
   try {
     let snap = { ok: true, csvPath: '', rows: 0, nodes: 0 }
-    if (!dataPath) {
+    if (!dataPath && !(Array.isArray(dataPaths) && dataPaths.length > 0)) {
       snap = await snapshotCore(ctx, line, fromMs, toMs)
       if (!snap.ok) return { ok: false, error: snap.error }
     }
-    const q = question || `${line} 产线该时窗数据深度根因诊断`
+    // 按情景注入业务提示词:调用方显式 question 优先,否则用意图目录的模板(分析语义在此,执行解耦在 IDD)
+    const q = question || defaultQuestionFor(intent, { line, fromMs, toMs })
     const sceneName = scene || `${line}_diag`
     // v2.1:统一走 IDD 任务管理面 /api/diagnosis/tasks——接收即返 task_id,
     // 诊断在 IDD 后台线程执行(内部 start+execute),Channel 绝不等待。
+    // v2.2:dataPaths(多文件,manifest 首位)走 IDD multi 模式;harness 可按次覆盖。
+    const payload = Array.isArray(dataPaths) && dataPaths.length > 0
+      ? { dataPaths }
+      : { dataPath: dataPath || snap.csvPath }
     const started = await jpost(ctx, `${base}/api/diagnosis/tasks`, {
-      dataPath: dataPath || snap.csvPath,
+      ...payload,
       sceneName,
       userQuestion: q,
-      harness: harnessOf(ctx), // 缺省落 claude 引擎会因无 key 失败,必须显式(系统配置 plugins.diag-bridge.harness → kv → omp)
+      harness: harness || harnessOf(ctx), // 缺省落 claude 引擎会因无 key 失败,必须显式(系统配置 plugins.diag-bridge.harness → kv → omp;diag_run 可按次覆盖)
+      ...(intent && intent !== 'deep-diagnosis' ? { analysisIntent: intent } : {}), // 分析意图透传(缺省意图不传,由 IDD 兜底)
+      ...(model ? { model: String(model) } : {}), // 引擎模型按次覆盖(合法性由 IDD validateEngineOption 校验,不合法 400)
+      ...(permissionMode ? { permissionMode: String(permissionMode) } : {}),
       enhancement: 'off',
       reportLanguage: 'zh',
       maxTurns: maxTurnsOf(ctx), // 修复循环会加转数;150 不够走完全管线
@@ -36,11 +49,24 @@ export async function startDiagnosis(ctx, { line, fromMs, toMs, question, scene,
     const runId = String(started.data?.task_id ?? started.data?.runId ?? '')
     const name = String(started.data?.name ?? '')
     if (!runId) return { ok: false, error: `tasks 响应缺少 data.task_id: ${short(started)}` }
+    // 采用 IDD ack 的真实初始态:队列满时是 queued,触发失败时是 failed。
+    // 此前一律写 running —— queued 被 sweep 的 running 过滤条件丢弃,自动回执永久丢失。
+    const ackStatus = String(started.data?.status ?? '').toLowerCase()
+    if (ackStatus === 'failed') {
+      return { ok: false, error: `诊断任务已受理但立即失败(run_id=${runId}):${started.data?.error ?? started.data?.result?.error ?? 'IDD 未返回原因'}` }
+    }
+    const initialStatus = ['queued', 'running'].includes(ackStatus) ? ackStatus : 'running'
     ctx.kv.set(runKey(runId), {
       line, fromMs, toMs, question: q, scene: sceneName,
-      status: 'running', createdAt: Date.now(), source, csvPath: snap.csvPath, name,
+      intent: intent || 'deep-diagnosis',
+      status: initialStatus, createdAt: Date.now(), source,
+      csvPath: snap.csvPath,
+      files: Array.isArray(dataPaths) ? dataPaths.length : 0,
+      name,
+      // 归因:发起 Agent 完成后的结果回执靠它寻址(平台通告面 deliver)
+      agentId: agentId || '', channelId: channelId || '',
     })
-    return { ok: true, runId, name, csvPath: snap.csvPath, rows: snap.rows, nodes: snap.nodes }
+    return { ok: true, runId, name, status: initialStatus, csvPath: snap.csvPath, rows: snap.rows, nodes: snap.nodes, files: Array.isArray(dataPaths) ? dataPaths.length : 0, intent: intent || 'deep-diagnosis', question: q }
   }
   catch (err) {
     return { ok: false, error: `发起诊断失败: ${err?.message ?? err}` }

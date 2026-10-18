@@ -49,17 +49,24 @@ export async function startDiagnosis(ctx, { line, fromMs, toMs, question, scene,
     const runId = String(started.data?.task_id ?? started.data?.runId ?? '')
     const name = String(started.data?.name ?? '')
     if (!runId) return { ok: false, error: `tasks 响应缺少 data.task_id: ${short(started)}` }
+    // 采用 IDD ack 的真实初始态:队列满时是 queued,触发失败时是 failed。
+    // 此前一律写 running —— queued 被 sweep 的 running 过滤条件丢弃,自动回执永久丢失。
+    const ackStatus = String(started.data?.status ?? '').toLowerCase()
+    if (ackStatus === 'failed') {
+      return { ok: false, error: `诊断任务已受理但立即失败(run_id=${runId}):${started.data?.error ?? started.data?.result?.error ?? 'IDD 未返回原因'}` }
+    }
+    const initialStatus = ['queued', 'running'].includes(ackStatus) ? ackStatus : 'running'
     ctx.kv.set(runKey(runId), {
       line, fromMs, toMs, question: q, scene: sceneName,
       intent: intent || 'deep-diagnosis',
-      status: 'running', createdAt: Date.now(), source,
+      status: initialStatus, createdAt: Date.now(), source,
       csvPath: snap.csvPath,
       files: Array.isArray(dataPaths) ? dataPaths.length : 0,
       name,
       // 归因:发起 Agent 完成后的结果回执靠它寻址(平台通告面 deliver)
       agentId: agentId || '', channelId: channelId || '',
     })
-    return { ok: true, runId, name, csvPath: snap.csvPath, rows: snap.rows, nodes: snap.nodes, files: Array.isArray(dataPaths) ? dataPaths.length : 0, intent: intent || 'deep-diagnosis', question: q }
+    return { ok: true, runId, name, status: initialStatus, csvPath: snap.csvPath, rows: snap.rows, nodes: snap.nodes, files: Array.isArray(dataPaths) ? dataPaths.length : 0, intent: intent || 'deep-diagnosis', question: q }
   }
   catch (err) {
     return { ok: false, error: `发起诊断失败: ${err?.message ?? err}` }

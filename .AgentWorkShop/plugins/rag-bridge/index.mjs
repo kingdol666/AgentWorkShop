@@ -8,7 +8,7 @@
  * 服务不可达时工具返回 isError 文本(含原因与修复建议),绝不抛异常拖垮宿主。
  */
 const KB_NAME = 'aw-industrial'
-const DEFAULT_BASE = 'http://127.0.0.1:8770' // FastAPI 后端(部署端口以 backend config.yml server.backend_port 为准;可在插件 settings 热更)
+const DEFAULT_BASE = 'http://127.0.0.1:8770' // FastAPI 后端
 const DEFAULT_WEB = 'http://127.0.0.1:6789' // Nuxt web(文档写盘)
 
 export default {
@@ -123,6 +123,114 @@ export default {
 
     const outboundOff = () => ({ ok: false, error: '出站调用已禁用:kv["kb.base_url"] 非法(仅允许 http/https 且 host 为 127.0.0.1/localhost)' })
 
+    // ================= 异步任务生命周期(提交 → 跟踪 → 进度/结果 → 回执) =================
+    // rag-knowledge web 的任务登记表是进程内 Map(TTL 2h / 200 条),进程重启即丢失;
+    // 这里把 task_id 与发起者归因落到插件 kv,15s 轮询终态并主动投递平台通告 ——
+    // 否则 Agent 提交 async 入库后不主动轮询就永远不知道结果。
+    const KB_TASK_PREFIX = 'kbtask:'
+    const KB_TASK_TTL_MS = 3 * 60 * 60 * 1000
+    let kbPolling = false
+
+    const kbTaskKey = id => KB_TASK_PREFIX + id
+
+    async function kbNotify() {
+      try {
+        return await ctx.services.get('notify')
+      }
+      catch {
+        return null
+      }
+    }
+
+    async function queryKbTask(taskId) {
+      const r = await callJson('GET', web() + '/api/kb/agent/tasks/' + encodeURIComponent(taskId), null, { timeoutMs: 15000, retries: 0 })
+      if (!r.ok) return { ok: false, error: String(r.error ?? ''), status: r.status }
+      const body = r.body || {}
+      return {
+        ok: true,
+        status: String(body.status ?? 'unknown'),
+        reply: String(body.result?.reply ?? body.result?.partial_text ?? '').trim(),
+        error: String(body.result?.error ?? '').slice(0, 600),
+      }
+    }
+
+    async function deliverKbTask(task, ok, summary) {
+      // 无发起者归因(手动调用/旧任务)→ 无收件人,跳过平台回执
+      if (!task.agentId) return false
+      const notify = await kbNotify()
+      if (!notify) {
+        ctx.logger.warn(`知识库任务 ${task.taskId} 已结束,但平台通告面不可用(可用 kb_agent_status 查询)`)
+        return false
+      }
+      try {
+        const delivered = await notify.deliver({
+          kind: 'tool-result',
+          tool: 'kb_agent',
+          jobId: task.taskId,
+          agentId: task.agentId,
+          ...(task.channelId ? { channelId: task.channelId } : {}),
+          ok,
+          title: `知识库任务${ok ? '完成' : '失败'}`,
+          summary: String(summary || (ok ? '(知识库 Agent 返回空结果)' : '任务失败')).slice(0, 900),
+        })
+        return delivered !== false
+      }
+      catch (err) {
+        ctx.logger.warn(`知识库任务 ${task.taskId} 回执投递失败:${err?.message ?? err}`)
+        return false
+      }
+    }
+
+    async function pollKbTasks() {
+      if (kbPolling || !state.outbound) return
+      kbPolling = true
+      try {
+        const entries = Object.entries(ctx.kv.all())
+          .filter(([k, v]) => k.startsWith(KB_TASK_PREFIX) && v && typeof v === 'object' && !v.deliveredAt)
+        for (const [key, task] of entries) {
+          if (!task.taskId) continue
+          if (Date.now() - Number(task.createdAt || 0) > KB_TASK_TTL_MS) {
+            await deliverKbTask(task, false, '任务超过 3 小时仍未结束,已停止跟踪;可稍后用 kb_agent_status 再查一次。')
+            ctx.kv.set(key, { ...task, status: 'expired', error: '超过 3 小时未完成', deliveredAt: Date.now() })
+            continue
+          }
+          const q = await queryKbTask(task.taskId)
+          if (!q.ok) {
+            const attempts = Number(task.pollErrors || 0) + 1
+            // 404 = web 重启/任务被淘汰;连续 3 轮仍查不到 → 收敛为 failed 并回执
+            if (/HTTP 404/.test(q.error) && attempts >= 3) {
+              await deliverKbTask(task, false, `任务已无法查询(HTTP 404,可能因 web 重启或超过 2h 淘汰):${q.error}`)
+              ctx.kv.set(key, { ...task, status: 'failed', error: q.error, pollErrors: attempts, deliveredAt: Date.now() })
+            }
+            else {
+              ctx.kv.set(key, { ...task, pollErrors: attempts, lastPollError: q.error })
+            }
+            continue
+          }
+          if (q.status === 'running' || q.status === 'queued') {
+            ctx.kv.set(key, { ...task, status: q.status, pollErrors: 0 })
+            continue
+          }
+          const okStatus = q.status === 'completed'
+          await deliverKbTask(task, okStatus, okStatus ? q.reply : `任务以 ${q.status} 结束:${q.error || '(无错误详情)'}`)
+          ctx.kv.set(key, {
+            ...task,
+            status: q.status,
+            reply: q.reply.slice(0, 2000),
+            error: q.error,
+            deliveredAt: Date.now(),
+            deliverPending: false,
+          })
+        }
+      }
+      catch (err) {
+        ctx.logger.warn(`知识库任务轮询异常(下轮继续):${err?.message ?? err}`)
+      }
+      finally {
+        kbPolling = false
+      }
+    }
+
     // ================= ensureKB(catalog 查找 → 建库 → experience init) =================
 
     async function ensureKB() {
@@ -183,7 +291,7 @@ export default {
         required: ['prompt'],
       },
       roles: ['lead', 'worker'],
-      handler: async (args) => {
+      handler: async (args, agent) => {
         if (!state.outbound) {
           return { text: '知识库 Agent 不可用:' + outboundOff().error + '。修复后重启服务。', isError: true }
         }
@@ -204,10 +312,20 @@ export default {
           }
           const taskId = String(sub.body?.task_id ?? '')
           if (!taskId) return { text: '知识库异步任务提交异常:响应缺少 task_id。', isError: true }
-          return { text: '已提交知识库异步任务(后台执行中,无需等待):\ntask_id=' + taskId + '\n任务完成后可调用 kb_agent_status(task_id) 获取该任务的执行结果。' }
+          // 落 kv:异步任务与发起者归因,供后台轮询主动回执;进程重启后仍可继续跟踪
+          ctx.kv.set(kbTaskKey(taskId), {
+            taskId,
+            createdAt: Date.now(),
+            status: 'running',
+            agentId: agent?.agentId ?? '',
+            channelId: agent?.channelId ?? '',
+            prompt: prompt.slice(0, 160),
+          })
+          return { text: '已提交知识库异步任务(后台执行中,无需等待):\ntask_id=' + taskId + '\n完成后平台会自动回执到你的信箱并唤醒你;空闲时也可调用 kb_agent_status(task_id, wait_seconds=120) 等待并获取结果。' }
         }
 
-        const r = await ragCall('POST', web() + '/api/kb/agent/chat', body, { timeoutMs: 580000 })
+        // 同步请求禁止网络重试:POST 可能已在知识库侧启动回合,重试会重复入库/重复生成
+        const r = await ragCall('POST', web() + '/api/kb/agent/chat', body, { timeoutMs: 580000, retries: 0 })
         if (!r.ok) {
           return { text: '知识库 Agent 调用失败:' + String(r.error ?? '').slice(0, 200) + '。请确认 rag-knowledge web(' + web() + ') 已启动后重试。', isError: true }
         }
@@ -236,20 +354,27 @@ export default {
         const taskId = String(args.task_id ?? '').trim()
         if (!taskId) return { text: 'task_id 必填(kb_agent 异步提交时返回的 id)。', isError: true }
         const waitSec = Math.min(Math.max(Math.round(Number(args.wait_seconds ?? 0) || 0), 0), 120)
+        const finish = async (reply, ok) => {
+          // 终态由轮询面亲自看到 → 认领回执所有权,取消后台补送(先到先得)
+          try {
+            const notify = await kbNotify()
+            notify?.claim?.('kb_agent', taskId)
+          }
+          catch { /* 未接线时忽略 */ }
+          const known = ctx.kv.get(kbTaskKey(taskId))
+          if (known) ctx.kv.set(kbTaskKey(taskId), { ...known, deliveredAt: Date.now(), deliveredBy: 'kb_agent_status', ...(ok != null ? { status: ok ? 'completed' : 'failed' } : {}) })
+          return reply
+        }
         const queryOnce = async () => {
-          const r = await callJson('GET', web() + '/api/kb/agent/tasks/' + encodeURIComponent(taskId), null, { timeoutMs: 15000, retries: 0 })
-          if (!r.ok) {
-            return { text: '任务查询失败:' + String(r.error ?? '') + '(不存在/已过期 2h/服务重启过,或任务从未提交)。', isError: true }
+          const q = await queryKbTask(taskId)
+          if (!q.ok) {
+            return { text: '任务查询失败:' + q.error + '(不存在/已过期 2h/服务重启过,或任务从未提交)。', isError: true }
           }
-          const body = r.body || {}
-          const status = String(body.status ?? 'unknown')
-          if (status === 'running') return null
-          const result = body.result || {}
-          const reply = String(result.reply ?? result.partial_text ?? '').trim()
-          if (status === 'completed' && reply) {
-            return { text: '任务 ' + taskId + ' 已完成。知识库 Agent 结果:\n\n' + reply }
+          if (q.status === 'running' || q.status === 'queued') return null
+          if (q.status === 'completed') {
+            return { text: await finish('任务 ' + taskId + ' 已完成。知识库 Agent 结果:\n\n' + (q.reply || '(知识库 Agent 返回空结果)'), true) }
           }
-          return { text: '任务 ' + taskId + ' 状态:' + status + '\n' + String(result.error ?? '').slice(0, 300) + (result.partial_text ? '\n[部分输出]\n' + String(result.partial_text).slice(0, 600) : '') }
+          return { text: await finish('任务 ' + taskId + ' 状态:' + q.status + '\n' + (q.error || '(无错误详情)'), false) }
         }
         // 长轮询:5s 步进,窗口内完成即返回结果
         const deadline = Date.now() + waitSec * 1000
@@ -257,12 +382,18 @@ export default {
           const got = await queryOnce()
           if (got) return got
           if (Date.now() >= deadline) {
-            return { text: '任务 ' + taskId + ' 仍在后台执行中(running,已等待 ' + waitSec + 's)。稍后再次查询。' }
+            return { text: '任务 ' + taskId + ' 仍在后台执行中(running,已等待 ' + waitSec + 's)。稍后再次查询;完成后平台也会自动回执。' }
           }
-          await new Promise(resolve => setTimeout(resolve, 5000))
+          await sleep(5000)
         }
       },
     })
+
+    // 后台轮询:15s 一次,终态主动回执(与 diag-bridge sweep 同构)
+    ctx.timer.setInterval(() => {
+      pollKbTasks().catch(err => ctx.logger.warn(`知识库任务轮询异常(继续):${err?.message ?? err}`))
+    }, 15000)
+    pollKbTasks().catch(() => {})
 
     // ================= 插件 API ×3(/api/plugins/rag-bridge/**) =================
 
