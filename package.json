@@ -84,6 +84,7 @@
     "test:unit": "tsx --tsconfig .nuxt/tsconfig.server.json --test --test-force-exit tests/*.test.ts",
     "prepare": "husky",
     "test:api-live": "node scripts/api-live-e2e.mjs",
+    "test:e2e-line": "node scripts/e2e-line-governance.mjs",
     "test:mcp": "tsx --tsconfig .nuxt/tsconfig.server.json --test --test-force-exit tests/aw-mcp-server.test.ts",
     "test:skills": "node scripts/test-aw-skills.mjs",
     "test:mcp-live": "node scripts/_audit/aw-mcp-live-e2e.mjs",
