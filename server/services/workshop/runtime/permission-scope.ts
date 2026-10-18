@@ -26,12 +26,16 @@ const AML_HIGH_RISK_TOOL_NAMES = ['aml_job_submit', 'aml_job_cancel', 'aml_datas
  * 直接写族(dcw_control/param_control/dcw_rollback/recipe_update/recipe_rollback)取自
  * host-tool-bridge 的单一声明源 HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES —— dispatch 与
  * twin 网关的 fail-closed 亦同源于该集合,三处不再各自维护清单;
- * AML 治理动作(重负载作业/数据构建/模型晋升)为单独列举。
+ * AML 治理动作(重负载作业/数据构建/模型晋升)为单独列举;
+ * 产线启停/探索式写入虽不在双写清单内,同样改物理状态,一并计入(2026-10-18)。
  * 这些都是"会让现场设备或数据发生变化"的动作,只读的 *_read/_query/_frames/_status 不在其中。
  */
 export const HIGH_RISK_TOOL_NAMES: ReadonlySet<string> = new Set([
   ...HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES,
   ...AML_HIGH_RISK_TOOL_NAMES,
+  'optimization_explore',
+  'line_start',
+  'line_stop',
 ])
 
 export type ToolScopeVerdict

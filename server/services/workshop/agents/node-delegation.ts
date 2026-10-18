@@ -12,6 +12,7 @@
  */
 import { AppError, ErrorCodes } from '../../../utils/errors'
 import { getAgentNodeBindingRepo, type AgentNodeBinding, type AgentNodeBindingMode, type AgentNodeBindingKind } from './node-bindings.repo'
+import { getToolApprovals } from './tool-approvals'
 
 export interface DelegationMember {
   id: string
@@ -143,7 +144,15 @@ export function revokeDelegation(input: DelegationRevokeInput): Array<{ nodeId: 
         out.push({ nodeId, kind: b.kind, revoked: false })
         continue
       }
-      out.push({ nodeId, kind: b.kind, revoked: repo.unbind(b.id) })
+      const revoked = repo.unbind(b.id)
+      if (revoked) {
+        // 收回即失活:挂起审批按拒绝收敛(配方绑定连带 recipe:/参数节点审批单)
+        try {
+          getToolApprovals().cancelPendingForBinding(targetAgentId, b)
+        }
+        catch { /* 审批服务未接线时不影响收权 */ }
+      }
+      out.push({ nodeId, kind: b.kind, revoked })
     }
   }
   return out

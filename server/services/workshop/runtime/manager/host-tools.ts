@@ -8,7 +8,7 @@ import type { AgentInfo } from '../../agents/agent-interface'
 import { AppError } from '../../../../utils/errors'
 import { checkToolAgainstScope } from '../permission-scope'
 import { getChannelPluginsRepo } from '../../db/channel-plugins.repo'
-import { hostToolsForRole } from '../../agents/host-tool-bridge'
+import { HOST_TOOLS, hostToolsForRole } from '../../agents/host-tool-bridge'
 import { instanceToAgentInfo, rowToChannelMail } from './helpers'
 import { listPluginTools, pluginOfTool } from '../../agents/plugin-tools'
 import { rowToMessage } from '../mailbox'
@@ -99,7 +99,8 @@ export abstract class ManagerHostTools extends ManagerA2A {
       // 活性登记:调度器停滞看门狗以「最近工具调用」为健康信号(见 SchedulerLoopOptions.toolActivityOf)
       this.lastToolInvokeAt.set(input.agentId, Date.now())
       // 插件工具:团队开关过滤 + handler 直调(ctx.omp 注册的自定义工具全 harness 同源)
-      const pluginTool = listPluginTools().get(input.tool)
+      // 内置同名工具优先(与 dispatch 同口径):插件覆盖不得跳过工业门控
+      const pluginTool = HOST_TOOLS.some(t => t.name === input.tool) ? undefined : listPluginTools().get(input.tool)
       if (pluginTool) {
         const channelOff = getChannelPluginsRepo().explicitFor(row.channelId)
         const owner = pluginOfTool(input.tool)
@@ -114,6 +115,12 @@ export abstract class ManagerHostTools extends ManagerA2A {
           channelId: row.channelId,
           role: (row.role === 'lead' ? 'lead' : 'worker') as 'lead' | 'worker',
           name: row.name,
+        }
+        if (pluginTool.roles && !pluginTool.roles.includes(identity.role)) {
+          return {
+            text: `工具 ${input.tool} 仅对 ${pluginTool.roles.join('/')} 角色开放(当前 ${identity.role})。`,
+            isError: true,
+          }
         }
         return await pluginTool.handler(input.args ?? {}, identity)
       }

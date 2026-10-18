@@ -16,6 +16,11 @@ export async function requestManualApproval(args: {
   detail: string
   /** 动作口径(决定三处文案的动词):缺省 '下发'(参数面/节点面);回退面传 '回退' */
   action?: '下发' | '回退'
+  /**
+   * 批准后的授权复核(缺省 = 数控节点直绑仍存在)。
+   * 配方授权路径传「绑定配方仍存在且仍包含该参数节点」——否则批准时绑定已解除仍会执行。
+   */
+  verify?: () => boolean
 }): Promise<{ ok: true, comment: string } | { ok: false, text: string, isError?: boolean }> {
   const action = args.action ?? '下发'
   const pendingText = action === '回退'
@@ -34,10 +39,15 @@ export async function requestManualApproval(args: {
     }
   }
   // 审批期间节点可能被解绑/删除(权限在批准时失效):二次校验
-  if (!getAgentNodeBindingRepo().find(args.agentId, args.nodeId, 'dcw')) {
+  const stillAuthorized = args.verify
+    ? args.verify()
+    : !!getAgentNodeBindingRepo().find(args.agentId, args.nodeId, 'dcw')
+  if (!stillAuthorized) {
     return {
       ok: false,
-      text: `${resultPrefix}:审批通过时你的该节点绑定已被解除(权限在批准时失效)。`,
+      text: args.verify
+        ? `${resultPrefix}:审批通过时你的授权已被解除(权限在批准时失效)。`
+        : `${resultPrefix}:审批通过时你的该节点绑定已被解除(权限在批准时失效)。`,
       isError: true,
     }
   }

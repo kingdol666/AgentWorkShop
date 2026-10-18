@@ -168,3 +168,43 @@ test('迁移:旧库 approval_history(无 payload_json/choice)经 initWorkshopDb 
   // 既有行安全:历史行 payloadJson 为空串、choice 为 NULL(不回填改史)
   assert.equal(repo.list(10).length, 1)
 })
+
+// ---------- 解绑取消审批(2026-10-18) ----------
+
+test('cancelPendingForBinding:配方解绑同时取消 recipe:/recipe-propose:/参数节点审批', async () => {
+  const approvals = getToolApprovals()
+  const pRecipe = approvals.request('ag-bind-1', 'recipe:rc-bind', 'dcw', '配方下发', { timeoutMs: 60_000 })
+  const pPropose = approvals.request('ag-bind-1', 'recipe-propose:rc-bind', 'dcw', '整包方案', { timeoutMs: 60_000 })
+  const pParam = approvals.request('ag-bind-1', 'dw-param-1', 'dcw', '探索写入', { timeoutMs: 60_000 })
+  await new Promise(r => setTimeout(r, 50))
+  assert.equal(approvals.listPending('ag-bind-1').length, 3)
+  const n = approvals.cancelPendingForBinding('ag-bind-1', { nodeId: 'rc-bind', kind: 'recipe' })
+  // 配方不存在于控制器时无从枚举参数节点:至少取消 recipe:/recipe-propose: 两张单
+  assert.ok(n >= 2, `应至少取消 2 条(实际 ${n})`)
+  for (const p of [pRecipe, pPropose]) {
+    const d = await p
+    assert.equal(d.approved, false)
+    assert.match(d.comment, /绑定已解除/)
+  }
+  // 参数节点单仍待处理(配方可查时由 cancelPendingForBinding 一并取消);此处手动收尾
+  assert.equal(approvals.listPending('ag-bind-1').length, 1)
+  approvals.cancelPendingFor('ag-bind-1', 'dw-param-1')
+  assert.equal((await pParam).approved, false)
+  assert.equal(approvals.listPending('ag-bind-1').length, 0)
+})
+
+test('cancelPendingForBinding:节点直绑只取消该节点审批,不误伤其他节点', async () => {
+  const approvals = getToolApprovals()
+  const p1 = approvals.request('ag-bind-2', 'dw-direct-1', 'dcw', '直绑节点', { timeoutMs: 60_000 })
+  const p2 = approvals.request('ag-bind-2', 'dw-other-1', 'dcw', '其他节点', { timeoutMs: 60_000 })
+  await new Promise(r => setTimeout(r, 50))
+  const n = approvals.cancelPendingForBinding('ag-bind-2', { nodeId: 'dw-direct-1', kind: 'dcw' })
+  assert.equal(n, 1)
+  assert.equal((await p1).approved, false)
+  const pending = approvals.listPending('ag-bind-2')
+  assert.equal(pending.length, 1)
+  assert.equal(pending[0]!.nodeId, 'dw-other-1')
+  // 收尾:人工拒绝剩余单,避免计时器悬挂
+  approvals.decide(pending[0]!.id, false, '测试收尾')
+  assert.equal((await p2).approved, false)
+})

@@ -290,6 +290,28 @@ class ToolApprovalService {
   }
 
   /**
+   * 解绑/收回一条绑定对应的全部挂起审批:
+   *  - 节点/配方直绑:nodeId 原值;
+   *  - 配方绑定:除配方本身,还要清理 `recipe:<id>` / `recipe-propose:<id>` 审批单
+   *    与该配方参数节点上的挂起下发(optimization_explore 经配方授权的审批键是节点 id)。
+   * 2026-10-18 修复:此前只按 nodeId 等值匹配,删配方绑定不会取消配方审批单,
+   * 批准后越过撤权窗口照常执行。
+   */
+  cancelPendingForBinding(agentId: string, binding: { nodeId: string, kind: string }): number {
+    let n = this.cancelPendingFor(agentId, binding.nodeId)
+    if (binding.kind === 'recipe') {
+      n += this.cancelPendingFor(agentId, `recipe:${binding.nodeId}`)
+      n += this.cancelPendingFor(agentId, `recipe-propose:${binding.nodeId}`)
+      try {
+        const recipe = getDcwController().listRecipes().find(r => r.id === binding.nodeId)
+        for (const p of recipe?.params ?? []) n += this.cancelPendingFor(agentId, p.nodeId)
+      }
+      catch { /* 配方已删除 → 无参数节点可清理 */ }
+    }
+    return n
+  }
+
+  /**
    * 回合终止时收敛该 Agent 的全部挂起审批(运行时 stop / 成员移除前置):
    * 按「拒绝(回合已中止,指令未执行)」落定,绝不自动批准;返回收敛摘要供
    * 平台通告补送——等待工具结果的回合已死,人类稍后的决议必须换一条路送达。

@@ -12,13 +12,15 @@
  */
 import { getChannelPluginsRepo } from '../../db/channel-plugins.repo'
 import { getChannelTwinProfile, modelBackedToolPolicyFor, type AmlChannelProfileKind } from '../../aml/twin/channel-profile'
-import { AML_TRAINING_TOOL_NAMES, AML_MODEL_BACKED_TOOL_NAMES } from './catalog'
+import { AML_TRAINING_TOOL_NAMES, AML_MODEL_BACKED_TOOL_NAMES, HOST_TOOLS } from './catalog'
 import { twinWriteGuard } from '../../aml/twin/feature-flags'
 import { listPluginTools, pluginOfTool } from '../plugin-tools'
 import type { HostToolBridgeContext, HostToolCall, HostToolResult } from './types'
 import { INDUSTRIAL_TOOL_NAMES, dispatchIndustrialTool } from './tools/industrial'
 import { guardIndustrialToolGrant } from '../industrial/grant-guard'
 import { verifyIndustrialToolCall } from '../industrial/tool-verify'
+import { checkToolAgainstScope } from '../../runtime/permission-scope'
+import type { WorkshopPermissionScope } from '../../../../../shared/workshop-protocol'
 import { handleCompleteTask, handleReportProgress } from './tools/progress'
 import { handleCancelTask, handleDispatchTask, handleGetMyTaskQueue, handleGetTaskDetails, handleListChannelTasks, handleReassignTask, handleRefuseTask, handleSubmitTask, handleUpdateTask } from './tools/tasks'
 import { handleGrantNodes, handleRevokeNodes } from './tools/team-delegation'
@@ -34,6 +36,9 @@ import { handleCreateTeamAgent, handleGetQueueOverview, handleListTeamAgents, ha
 export async function dispatchHostTool(ctx: HostToolBridgeContext, req: HostToolCall): Promise<HostToolResult> {
   return truncateToolResult(await dispatchHostToolInner(ctx, req), req.toolName)
 }
+
+/** 内置工具名(插件同名注册不参与分发:注入面已显示内置定义,执行面必须同源) */
+const BUILTIN_TOOL_NAMES = new Set(HOST_TOOLS.map(t => t.name))
 
 /** 工具结果统一出口上限:超长文本截断+尾注(2026-10-05 评审;export/diag 类可经 optOut 放行) */
 const TOOL_RESULT_MAX_CHARS = 16_000
@@ -53,8 +58,21 @@ function truncateToolResult(result: HostToolResult, toolName: string): HostToolR
 async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCall): Promise<HostToolResult> {
   const identity = ctx.identity
   const state = ctx.state
-  // 插件工具分发(ctx.omp.registerTool 注册的自定义工具;不依赖 workspace,优先于内置面)
-  const pluginTool = listPluginTools().get(req.toolName)
+  // §13.3 人类发起者作用域:进程内工具调用同样受管理面/高危写限制。
+  // REST/MCP 路径已在 manager.invokeHostTool 检查;omp 的 host_tool_call 只经过本函数,
+  // 此前完全绕过(群成员 @Agent 可借 Agent 身份执行高危写)。
+  {
+    const g = globalThis as typeof globalThis & {
+      __workshopManager?: { invocationScopeOf?(agentId: string): WorkshopPermissionScope | null }
+    }
+    const scope = g.__workshopManager?.invocationScopeOf?.(identity.agentId) ?? null
+    const verdict = checkToolAgainstScope(scope, req.toolName)
+    if (!verdict.allowed) return { text: verdict.message, isError: true }
+  }
+  // 插件工具分发(ctx.omp.registerTool 注册的自定义工具;不依赖 workspace,优先于内置面)。
+  // 同名遮蔽内置工具不生效:否则插件 handler 会绕过 grant/verify/HITL 全部门控,
+  // 而注入面仍展示内置 schema(目录与执行语义分裂)。
+  const pluginTool = BUILTIN_TOOL_NAMES.has(req.toolName) ? undefined : listPluginTools().get(req.toolName)
   if (pluginTool) {
     // 团队级插件开关:显式关闭的插件,其工具在该团队拒绝执行(与注入过滤同源)
     const channelOff = getChannelPluginsRepo().explicitFor(identity.channelId)
@@ -62,6 +80,13 @@ async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCa
     if (channelOff && owner && channelOff.get(owner) === false) {
       return {
         text: `该团队未启用插件「${owner}」,${req.toolName} 不可用。可在团队设置→插件中开启。`,
+        isError: true,
+      }
+    }
+    // roles 是执行边界而非仅注入提示:worker 直调 lead 专属插件工具同样拒绝
+    if (pluginTool.roles && !pluginTool.roles.includes(identity.role)) {
+      return {
+        text: `工具 ${req.toolName} 仅对 ${pluginTool.roles.join('/')} 角色开放(当前 ${identity.role})。`,
         isError: true,
       }
     }
@@ -119,6 +144,17 @@ async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCa
 
   // 所有真实写入口在统一分发层再做一次服务端 fail-closed 守卫；工具目录隐藏不是安全边界。
   if (['dcw_control', 'param_control', 'dcw_rollback', 'recipe_update', 'recipe_rollback', 'recipe_trial', 'recipe_apply'].includes(req.toolName)) {
+    // Profile 级写面(2026-10-18):观察面零写、训练面无产线写、优化面只认 optimization_explore。
+    // 此前这些 Channel 只是目录不注入,按名直调(REST/MCP)仍可落到写 handler。
+    if (twinKind === 'exp-miner' || twinKind === 'line-doctor') {
+      return { text: `${req.toolName} 在产线观察面(exp-miner/line-doctor)不可用:该档位物理零写。请改用只读分析工具;若确需改参,请由用户在具备写权限的 Channel 中操作。`, isError: true }
+    }
+    if (twinKind === 'aml_training') {
+      return { text: `${req.toolName} 在 AML 训练 Channel 不可用:训练面不承担产线写入。请把执行放到工艺优化 Channel(optimization_explore 治理链)或由用户手动操作。`, isError: true }
+    }
+    if (twinKind === 'aml_optimization') {
+      return { text: `${req.toolName} 在工艺优化 Channel 不开放:真实写入统一走 optimization_explore 治理链(绑定/HITL/限界/回读同源)。请改用 optimization_explore。`, isError: true }
+    }
     const profile = getChannelTwinProfile(identity.channelId)
     const guard = twinWriteGuard(identity.channelId, profile)
     if (!guard.allowed) return { text: `${guard.code}: ${guard.message}`, isError: true }

@@ -17,6 +17,7 @@ import { AppError } from '@/server/utils/errors'
 import { userRepository } from '@/server/repositories/user.repository'
 import { lineMode, type LineMode } from '@/server/services/workshop/permissions'
 import { INDUSTRIAL_TOOL_NAMES } from '../host-tool-bridge/tools/industrial'
+import { recordOps } from '../../ops/ops'
 
 /** 写族工具:涉及产线写向/下发意图,要求 operate(其余工业工具按只读复核) */
 const WRITE_TOOLS = new Set([
@@ -93,6 +94,26 @@ async function resolveTargetLines(agentId: string, toolName: string, args: Recor
   return lines.size > 0 ? [...lines] : null
 }
 
+/** 授权性拒绝入册(与 tool-verify 同口径,/logs 可追溯撤权后的越权尝试) */
+function deny(identity: GuardIdentity, toolName: string, args: Record<string, unknown>, text: string, reason: string): { text: string, isError: true } {
+  try {
+    recordOps({
+      actor: identity.agentId,
+      actorName: identity.agentId,
+      actorKind: 'agent',
+      action: 'tool.call.denied',
+      kind: 'system',
+      level: 'warn',
+      targetKind: 'tool',
+      targetId: toolName,
+      summary: `工具调用被拒(权限复核):${reason}`,
+      detail: { tool: toolName, args, reason },
+    })
+  }
+  catch { /* 审计失败不影响拒绝语义 */ }
+  return { text, isError: true }
+}
+
 /**
  * 工业工具分发前的 grant 复核。通过 → 静默返回;
  * 不通过 → 返回面向 agent 的工具错误文本(fail-closed,不做部分放行)。
@@ -105,13 +126,13 @@ export async function guardIndustrialToolGrant(identity: GuardIdentity, toolName
     const manager = getWorkshopManager()
     const channel = manager.deps.repos.channels.findById(identity.channelId)
     if (!channel) {
-      return { text: `工具调用被拒:所属频道不存在或已删除(channel=${identity.channelId.slice(0, 8)})。`, isError: true }
+      return deny(identity, toolName, args, `工具调用被拒:所属频道不存在或已删除(channel=${identity.channelId.slice(0, 8)})。`, 'channel_missing')
     }
     // 遗留无主 channel 豁免(存量兼容;新 channel 均有属主)
     if (!channel.ownerUserId) return null
     const owner = userRepository.findById(channel.ownerUserId)
     if (!owner) {
-      return { text: '工具调用被拒:频道属主账号不存在(fail-closed)。请联系管理员。', isError: true }
+      return deny(identity, toolName, args, '工具调用被拒:频道属主账号不存在(fail-closed)。请联系管理员。', 'owner_missing')
     }
     if (owner.role === 'admin') return null
 
@@ -129,10 +150,13 @@ export async function guardIndustrialToolGrant(identity: GuardIdentity, toolName
       const ok = mode === 'operate' || (need === 'readonly' && mode === 'readonly')
       if (!ok) {
         const what = need === 'operate' ? '写控/下发' : '读取'
-        return {
-          text: `工具调用被拒(权限模型 v3):频道属主对产线「${lineId}」无${need === 'operate' ? '可操控' : '查看'}授权,无法${what}。请联系管理员在「权限管理」中重新授予;该限制在授权收回后即时生效。`,
-          isError: true,
-        }
+        return deny(
+          identity,
+          toolName,
+          args,
+          `工具调用被拒(权限模型 v3):频道属主对产线「${lineId}」无${need === 'operate' ? '可操控' : '查看'}授权,无法${what}。请联系管理员在「权限管理」中重新授予;该限制在授权收回后即时生效。`,
+          `line_grant_revoked:${lineId}:${need}`,
+        )
       }
     }
     return null
@@ -140,6 +164,6 @@ export async function guardIndustrialToolGrant(identity: GuardIdentity, toolName
   catch (err) {
     if (err instanceof AppError) throw err
     // 守卫自身故障 → fail-closed(不因实现缺陷放行)
-    return { text: `工具调用被拒:权限复核服务异常(${err instanceof Error ? err.message : String(err)})。`, isError: true }
+    return deny(identity, toolName, args, `工具调用被拒:权限复核服务异常(${err instanceof Error ? err.message : String(err)})。`, 'guard_error')
   }
 }

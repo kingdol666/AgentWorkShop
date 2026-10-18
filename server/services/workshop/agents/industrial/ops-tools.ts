@@ -370,6 +370,8 @@ export async function toolRecipeUpdate(agentId: string, args: {
       }
     }
     if (gateDecision.comment) hitlNote = `\n人工附言:${gateDecision.comment}`
+    const stale = await revalidateApprovedAction(agentId, recipe, 'update', 'recipe_update', { recipe_id: recipeId })
+    if (stale) return stale
   }
   // 旧值快照(repo.update 原地改写 recipe.params,事后再取会把 before 读成新值)
   const beforeOf = new Map(recipe.params.map(p => [p.nodeId, p.value]))
@@ -476,6 +478,8 @@ export async function toolRecipeRollback(agentId: string, args: {
       }
     }
     if (gateDecision.comment) hitlNote = `\n人工附言:${gateDecision.comment}`
+    const stale = await revalidateApprovedAction(agentId, recipe, 'rollback', 'recipe_rollback', { recipe_id: recipeId })
+    if (stale) return stale
   }
   try {
     if (dispatch) {
@@ -554,6 +558,42 @@ async function hitlDispatchGate(agentId: string, recipeId: string, detail: strin
     ...(timeoutMs ? { timeoutMs } : {}),
   })
   return { approved: decision.approved, comment: decision.comment, id: decision.id }
+}
+
+/**
+ * 审批返回「批准」后的二次授权复核(2026-10-18):审批可能挂起数分钟,
+ * 期间绑定/产线授权/运行批次都可能被撤销。批准不等于授权仍然有效:
+ *  - 重新跑 assertRecipeOperation(绑定/二级认证/运行门);
+ *  - 重新跑 grant-guard(频道属主的产线 grant,收权即失活)。
+ * 任一失败 → 本次不执行,回包说明原因(Agent 可据此重新申请)。
+ */
+export async function revalidateApprovedAction(
+  agentId: string,
+  recipe: { id: string, name: string, lineId?: string, access?: { requireAuth?: boolean, authorizedAgentIds?: string[] } },
+  op: 'update' | 'dispatch' | 'trial' | 'rollback',
+  toolName: string,
+  args: Record<string, unknown>,
+): Promise<{ text: string, isError: true } | null> {
+  const again = assertRecipeOperation(agentId, recipe, op)
+  if (!again.ok) {
+    return { text: `人工已批准,但审批期间授权已失效,本次未执行:${again.text}`, isError: true }
+  }
+  try {
+    // manager 未装配(单测/嵌入)→ 只做绑定与运行门复核;装配后叠加产线 grant 复核
+    const g = globalThis as typeof globalThis & {
+      __workshopManager?: { deps?: { repos?: { channelAgents?: { findById(id: string): { channelId?: string } | undefined } } } }
+    }
+    const channelId = g.__workshopManager?.deps?.repos?.channelAgents?.findById(agentId)?.channelId ?? ''
+    if (channelId) {
+      const { guardIndustrialToolGrant } = await import('./grant-guard')
+      const denied = await guardIndustrialToolGrant({ agentId, channelId }, toolName, args)
+      if (denied) return { text: `人工已批准,但审批期间产线授权已被收回,本次未执行:${denied.text}`, isError: true }
+    }
+  }
+  catch (err) {
+    return { text: `人工已批准,但审批后权限复核不可用,本次未执行:${err instanceof Error ? err.message : String(err)}。请稍后重试。`, isError: true }
+  }
+  return null
 }
 
 /**
@@ -638,6 +678,8 @@ export async function toolRecipeTrial(agentId: string, args: {
       }
       // 人工附言随批准回执回流(Agent 与审计都能看到放行时人的原话)
       if (gateDecision.comment) hitlNote = `\n人工附言:${gateDecision.comment}`
+      const stale = await revalidateApprovedAction(agentId, recipe, 'trial', 'recipe_trial', { recipe_id: recipeId })
+      if (stale) return stale
     }
     const run = await getDcwController().applyRecipe(recipeId, { overrides: list, trial: true, agentDispatch: true, agentApprovalId: gateApprovalId, emergency })
     // ACK 鉴定三段口径(2026-10-08):ok 只是命令受理,未证实/失败必须如实回给 Agent
@@ -733,6 +775,8 @@ export async function toolRecipeApply(agentId: string, args: {
       }
       // 人工附言随批准回执回流(与 recipe_trial 同口径)
       if (gateDecision.comment) hitlNote = `\n人工附言:${gateDecision.comment}`
+      const stale = await revalidateApprovedAction(agentId, recipe, 'dispatch', 'recipe_apply', { recipe_id: recipeId })
+      if (stale) return stale
     }
     const run = await getDcwController().applyRecipe(recipeId, { agentDispatch: true, agentApprovalId: gateApprovalId, emergency })
     // ACK 鉴定三段口径(2026-10-08):ok 只是命令受理,未证实/失败必须如实回给 Agent

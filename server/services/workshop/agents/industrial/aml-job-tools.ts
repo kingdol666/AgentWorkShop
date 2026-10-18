@@ -18,6 +18,7 @@ import { claimToolResult } from '../../runtime/platform-notice'
 import { predictProduction, readIoSpecFor } from '../../aml/predictor'
 import { recordOps } from '../../ops/ops'
 import { transitionModel } from '../../aml/model-registry'
+import { resolveRefFaces } from './tool-verify'
 
 /** 工具:aml_job_submit —— 提交训练作业(train.py 全文内联;归因 agentId;队列 FIFO) */
 export async function toolAmlJobSubmit(agentId: string, args: {
@@ -98,7 +99,7 @@ export async function toolAmlJobSubmit(agentId: string, args: {
 }
 
 /** 工具:aml_job_status —— 作业状态(单作业详情 / 缺省列最近 10 个) */
-export async function toolAmlJobStatus(_agentId: string, args: { job_id?: string }): Promise<{ text: string, isError?: boolean }> {
+export async function toolAmlJobStatus(agentId: string, args: { job_id?: string }): Promise<{ text: string, isError?: boolean }> {
   const rt = getAmlRuntime()
   const jobId = String(args.job_id ?? '').trim()
   if (jobId) {
@@ -108,9 +109,19 @@ export async function toolAmlJobStatus(_agentId: string, args: { job_id?: string
     if (['done', 'failed', 'cancelled'].includes(job.status)) claimToolResult('aml_job', jobId)
     return { text: `${amlJobCard(job)}\n\n轮询建议:training 阶段 30~60s 查一次;终态(done/failed)后看门禁与错误,失败原因可 in aml_job_logs 定位。训练完成后平台也会自动回执到你的信箱,无需持续轮询。` }
   }
-  const jobs = rt.repo.job.list({ limit: 10 })
+  // 无 job_id 的清单必须按调用者可读面过滤(2026-10-18):此前返回全平台最近 10 个,
+  // 任意零绑定 Agent 可读到其他产线/频道的作业 id 与数据集谱系。
+  const readableLines = resolveRefFaces(agentId).readableLines
+  const visible = (job: { datasetId: string, agentId?: string }): boolean => {
+    if (job.agentId === agentId) return true
+    const ds = rt.repo.dataset.get(job.datasetId)
+    return !!ds && readableLines.has(ds.lineId)
+  }
+  const jobs = rt.repo.job.list({ limit: 10 }).filter(visible)
   if (jobs.length === 0) {
-    return { text: '尚无训练作业。路径:aml_node_catalog 确认节点 → aml_dataset_build 组数据集 → aml_job_submit 提交训练。' }
+    return {
+      text: `你的可读范围内没有训练作业(可读产线:${readableLines.size ? [...readableLines].join(', ') : '(无)'})。路径:aml_node_catalog 确认节点 → aml_dataset_build 组数据集 → aml_job_submit 提交训练;如需查看他线作业,请让用户授予对应产线权限。`,
+    }
   }
   for (const j of jobs) {
     if (['done', 'failed', 'cancelled'].includes(j.status)) claimToolResult('aml_job', j.id)
@@ -480,10 +491,13 @@ export async function toolAmlModelReference(agentId: string, args: {
 /* ═══ 建模任务(aml_training_plan_*;2026-09-26 解耦计划:训练 Channel 的编排入口) ═══ */
 
 /** 工具:aml_training_plan_list —— 建模任务清单(状态/最新模型/新批次检测基数) */
-export async function toolAmlTrainingPlanList(_agentId: string, _args: Record<string, unknown>): Promise<{ text: string, isError?: boolean }> {
-  const plans = listTrainingPlans()
+export async function toolAmlTrainingPlanList(agentId: string, _args: Record<string, unknown>): Promise<{ text: string, isError?: boolean }> {
+  // 按调用者可读面过滤(2026-10-18):此前 listTrainingPlans() 全表返回,
+  // 任意 Agent 可枚举其他产线的计划/模型/作业 id。
+  const readableLines = resolveRefFaces(agentId).readableLines
+  const plans = listTrainingPlans().filter(p => p.createdBy === agentId || readableLines.has(p.lineId))
   if (plans.length === 0) {
-    return { text: '尚无建模任务。创建路径:AML 界面「建模任务」表单,或 aml_training_plan_create(绑定产线/产品/配方 + 数据集 IO 契约);auto 策略的任务在新批次数据到达时自动修正训练。' }
+    return { text: `你的可读范围内没有建模任务(可读产线:${readableLines.size ? [...readableLines].join(', ') : '(无)'})。创建路径:AML 界面「建模任务」表单,或 aml_training_plan_create(绑定产线/产品/配方 + 数据集 IO 契约);auto 策略的任务在新批次数据到达时自动修正训练。` }
   }
   const lines = plans.map((p) => {
     const specFixed = p.trainingSpecJson ? 'spec已固化' : 'spec未固化(需先完成 draft 流程后 PATCH 固化)'

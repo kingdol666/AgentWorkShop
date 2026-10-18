@@ -24,7 +24,7 @@ import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
 import { recordOps } from '../../ops/ops'
 import { evaluateRecipeParamLimits } from '../../dcw/dcw-controller/write'
 import { amlActivityForLine } from './aml-activity'
-import { agentOpsScope } from './ops-tools'
+import { agentOpsScope, revalidateApprovedAction } from './ops-tools'
 
 /** 候选包上限(防审批卡被刷屏;1~3 套) */
 const MAX_PACKAGES = 3
@@ -274,6 +274,10 @@ export async function toolRecipePropose(agentId: string, args: {
       ].join('\n'),
     }
   }
+
+  // 批准不等于授权仍有效:复核绑定/认证/运行门/产线 grant(审批期间可能被撤销)
+  const stale = await revalidateApprovedAction(agentId, recipe, 'dispatch', 'recipe_propose', { recipe_id: recipeId })
+  if (stale) return stale
 
   // ---------- ⑦b 批准(choice 已由 decide 链 fail-closed 归一):选定包整批下发 ----------
   // 归一后的 decision.choice 必为合法下标(由 normalizeRecipeProposeDecision 保证;此处兜底防呆)

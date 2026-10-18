@@ -9,6 +9,7 @@ import { getActiveLineRun } from '../../dcw/line-run'
 import { getAgentNodeBindingRepo } from '../node-bindings.repo'
 import { getDaqNodeRepo } from '../../daq/daq-node.repo'
 import { getDcwController } from '../../dcw/dcw-controller'
+import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
 import { getRecipeRollBackManager } from '../../dcw/recipe-rollback-manager'
 import { limitsBreakdownOf } from '../../dcw/param-limits'
 import { nodeSemanticCards, recipeOperationFace } from '../industrial-context'
@@ -117,12 +118,26 @@ async function dcwControlGovernedLegacy(agentId: string, args: { node_id?: strin
   const binding: AgentNodeBinding | undefined = nodeId ? repo.find(agentId, nodeId, 'dcw') : undefined
   // 权限模型 v2:配方绑定(kind=recipe)覆盖其参数节点 —— 该节点在绑定配方参数内即算授权
   let recipeAuthorized = false
+  let recipeBinding: AgentNodeBinding | undefined
+  let authorizedRecipe: ReturnType<ReturnType<typeof getDcwController>['listRecipes']>[number] | undefined
   if (!binding && nodeId) {
     const recipes = repo.byAgent(agentId).filter(b => b.kind === 'recipe')
-    recipeAuthorized = recipes.some((b) => {
+    for (const b of recipes) {
       const r = getDcwController().listRecipes().find(x => x.id === b.nodeId)
-      return r?.params.some(p => p.nodeId === nodeId) ?? false
-    })
+      if (r?.params.some(p => p.nodeId === nodeId)) {
+        recipeAuthorized = true
+        recipeBinding = b
+        authorizedRecipe = r
+        break
+      }
+    }
+    // 二级认证(与 recipe-gate 同口径):开认证但 Agent 不在授权清单 = 不可写
+    if (authorizedRecipe?.access?.requireAuth && !(authorizedRecipe.access.authorizedAgentIds ?? []).includes(agentId)) {
+      return {
+        text: `配方「${authorizedRecipe.name}」已开启二级认证,你不在其授权 Agent 清单内,节点 ${nodeId} 的下发被拒。请让用户把你的 Agent 加入配方授权清单。`,
+        isError: true,
+      }
+    }
   }
   if (!binding && !recipeAuthorized) {
     const mine = repo.byAgent(agentId).filter(b => b.kind === 'dcw')
@@ -149,17 +164,46 @@ async function dcwControlGovernedLegacy(agentId: string, args: { node_id?: strin
   // 停线守卫:产线未开跑时手动写允许(调试),但提示当前无配方窗口约束
   const tpl = findDcwTemplate(node.templateKey)
 
-  // 手动确认模式:与 param_control 同源审批面(manual-approval),批准附言回进回执
+  // 手动确认模式:与 param_control 同源审批面(manual-approval),批准附言回进回执。
+  // 配方授权路径同样受 HITL 约束(2026-10-18 修复):此前只认 dcw 直绑的 mode,
+  // 持 recipe 绑定(首绑恒 manual)经 optimization_explore 写节点可绕过人工批准。
+  const lineManual = (authorizedRecipe?.lineId ? getDcwLineRepo().controlModeOf(authorizedRecipe.lineId) === 'manual' : false)
+  const needsApproval = binding?.mode === 'manual'
+    || (!!recipeBinding && (recipeBinding.mode === 'manual' || lineManual))
   let manualFeedback = ''
-  if (binding?.mode === 'manual') {
+  if (needsApproval) {
     const bd = limitsBreakdownOf(node)
+    const via = recipeBinding && authorizedRecipe
+      ? `经配方授权「${authorizedRecipe.name}」${lineManual ? '(产线手动模式)' : ''}`
+      : ''
     const ap = await requestManualApproval({
       agentId,
       nodeId,
-      detail: `${node.name}(${tpl?.ch ?? node.templateKey})设定 ${value}${node.unit},有效写入区间 ${bd.effective.min}~${bd.effective.max}${node.unit}(${bd.layers.map(l => l.label).join(' ∩ ')})`,
+      detail: `${node.name}(${tpl?.ch ?? node.templateKey})设定 ${value}${node.unit},有效写入区间 ${bd.effective.min}~${bd.effective.max}${node.unit}(${bd.layers.map(l => l.label).join(' ∩ ')})${via ? ` ${via}` : ''}`,
+      // 批准后复核同一条授权路径:直绑看 dcw 绑定,配方授权看配方绑定与参数仍存在
+      verify: recipeBinding
+        ? () => {
+            const still = repo.find(agentId, recipeBinding!.nodeId, 'recipe')
+            const rec = getDcwController().listRecipes().find(x => x.id === recipeBinding!.nodeId)
+            return !!still && (rec?.params.some(p => p.nodeId === nodeId) ?? false)
+          }
+        : undefined,
     })
     if (!ap.ok) return { text: ap.text, isError: ap.isError }
     manualFeedback = ap.comment ?? ''
+  }
+
+  // 审批期间 owner 产线 grant 可能被撤销:批准后重新跑一次分发层同源复核(收权即失活)
+  if (channelId) {
+    try {
+      const { guardIndustrialToolGrant } = await import('./grant-guard')
+      const denied = await guardIndustrialToolGrant({ agentId, channelId }, 'optimization_explore', { node_id: nodeId })
+      if (denied) return { text: `审批通过后复核失败,本次未执行:${denied.text.replace(/^工具调用被拒(?:\([^)]*\))?[:：]?/, '').trim()}`, isError: true }
+    }
+    catch (err) {
+      // fail-closed:复核服务故障不放行(与 grant-guard 同纪律)
+      return { text: `审批通过后权限复核不可用,本次未执行:${err instanceof Error ? err.message : String(err)}。请稍后重试;若持续出现请联系管理员。`, isError: true }
+    }
   }
 
   try {
