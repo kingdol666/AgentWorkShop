@@ -49,3 +49,34 @@ node check-refs.cjs .main.txt
 Visual check: pages 1, 2, 3, 5, 7 and 9 rendered at 150–200 dpi; reference
 item boundaries at 600 dpi show visible gaps (no overprint); Fig. 3(b)
 reason/table collision re-check is clean.
+
+## 2026-10-18 addendum — architecture and experiment-protocol exposition
+
+Changes (text only; figures, references, and page count unchanged):
+
+- §III now names each plane's modules and the evidence each produces
+  (team: channels, tasks, memory, engine adapters, retrieval, analysis;
+  integration: DAQ/DCW nodes, runtimes, drivers, gateway, MES modes;
+  governance: binding authority, admission, approval queue, recipe dispatch,
+  grader/verifier, verdict, compensation, backstop, journal; operations:
+  line/product/recipe/run registries, versioned recipes, run ledger, ops log;
+  extensibility: plugin registry, SDK, REST/MCP/A2A/CLI/TUI), and states what
+  each subsection covers.
+- §V-B is restructured into evidence unit, Q1–Q4 procedure (the 20 archived
+  phases grouped by claim), Q5 procedure (S0–S7 plus campaign repetitions and
+  the seven-leg suite), controls, and reported quantities.
+- Q1–Q4 subsections gain procedure/result run-ins (Protocol closure, Drills,
+  Ablation; Missions, Live engine turns; Closed loop; Four missions) so each
+  question reads as setup → procedure → archived result.
+- Redundant sentences removed to hold the 10-page budget: duplicated p95
+  justification, repeated figure pointer, repeated live-load counts, and
+  duplicated leg/grade wording.
+
+Verification:
+
+- `main.pdf`: 10 pages, US Letter, 0 overfull, 0 undefined references.
+- `tools/audit.py`: F1–F8 pass (pages=10, cited=30).
+- `tools/audit-figures.py`: PASS (all figures 8.0 pt, Arial-only).
+- `check-refs.cjs`: 30/30 cited keys present.
+- Abstract: 214 words.
+- `FILE-MANIFEST.json` regenerated (2026-10-18).

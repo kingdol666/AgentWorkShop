@@ -7,6 +7,8 @@ means the artifact was re-read during this revision, not merely cited.
 | Paper claim | Value in paper | Artifact / command | Status |
 |---|---|---|---|
 | Q1 out-of-window probes rejected | 24/24 on five lines; 24+9=33 across two presets | `bench/results/20260921184204-10lc/report.md`; `run.json` checks | verified |
+| Q1–Q4 protocol phases | 20 named phases in the archived suite; grouped P0–P2, P3–P4, P4b–P4f, P4m/P5/P5b/P10, P6–P8b, P9/P11 | `bench/results/20260921184204-10lc/run.json` `phases[]` | verified |
+| Q5 pipeline stages | S0 pre-check … S7 report; three runs/day Oct 7–9 plus four replays | campaign reports; Table III | verified |
 | Q1 ablation | full 18/18; no-readback 18/18; no-interlock 12/18; ungated 12/18 | `report.md` Table II; companion run | verified |
 | Q1 write latency | median 19.3–47.8 ms; observed max 20.1–248.9 ms; n≈6/line | `report.md` per-protocol lines | verified; p95 removed |
 | Q1 DAQ samples | 55 | `report.md` KPI | verified |

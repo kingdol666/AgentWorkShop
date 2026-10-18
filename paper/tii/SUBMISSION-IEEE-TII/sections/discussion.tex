@@ -14,18 +14,17 @@ and quality out of scope.
 an otherwise trusted platform and plant; approval, admission re-checks, and
 journaling are the containment surfaces, and no injection campaign or
 operator study is reported. Stolen credentials and compromised endpoints fall
-under IEC~62443 \cite{iec62443-3-3}; record-keeping and human-oversight duties
-belong to Regulation (EU) 2024/1689 \cite{eu2024aiact}, which the attributed
-journal and approval gates serve at the evidence layer, certification out of
+under IEC~62443 \cite{iec62443-3-3}; record-keeping and oversight duties
+belong to Regulation (EU) 2024/1689 \cite{eu2024aiact}, which the journal
+and approval gates serve at the evidence layer, certification out of
 scope.
 Protection functions remain in the PLC; prompts and retrieved documents are
 untrusted text, not authority
 \cite{greshake2023injection,liu2024pinjection}. The proposer is confined to
 per-binding scope and journaled actions: a bounded blast radius, not a
-protection guarantee. Admission, acknowledgment grading, and the backstop run
-with or without human approval; enforcement never queues behind human
-attention (the deferred-mode exception hands actuation to the approval policy,
-Section~\ref{sec:agentloop}). Pacing bounds approval demand; batch release
+protection guarantee. Admission, grading, and the backstop run with or
+without human approval; enforcement never queues behind attention (deferred
+mode hands actuation to the approval policy, Section~\ref{sec:agentloop}). Pacing bounds approval demand; batch release
 (Section~\ref{sec:hardening}, leg~5) is the demonstrated fatigue mitigation,
 while approval fatigue and automation bias remain human-factors risks
 \cite{parasuramanmanzey2010complacency,parasuraman2000model,bainbridge1983ironies}.
@@ -38,9 +37,8 @@ adjudication or a platform-side re-check before \texttt{keep}).
 \subsection{Deployment Boundaries}
 \looseness=-1 Against the nearest systems of Section~\ref{sec:related},
 the differentiator is not the LLM---a replaceable strategy slot---but the
-production-scoped authority and evidence around its writes: no nearest
-system reports that combination on one path. The contribution is a
-framework claim---design, contracts, evidence semantics---assessed by
+production-scoped authority and evidence around its writes. The contribution
+is a framework claim---design, contracts, evidence semantics---assessed by
 construction, mechanism ablation, and two falsifiable contrasts (the
 window-edge probes and the publish-only receipt), not by outcome superiority;
 an outcome-level comparison against SCADA-mediated operation is out of scope.
@@ -83,7 +81,7 @@ and safety assurance stay unsupported claims.
 \vspace{2pt}\noindent\textit{Data availability and disclosure.}
 \looseness=-1 Artifacts are archived per run; the platform and simulators are
 publicly available (links withheld for double-blind review;
-Section~\ref{sec:arch}). The live engine-turn transcripts survive only as
-recorded outcomes; the write-evidence suite is rerunnable. AI assistants
+Section~\ref{sec:arch}), the live engine-turn transcripts survive only as
+recorded outcomes, and the write-evidence suite is rerunnable. AI assistants
 supported editing under author direction; the authors remain responsible for
 all claims.

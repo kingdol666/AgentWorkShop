@@ -11,12 +11,12 @@
     "figures": "matplotlib sources for the generated figures",
     "figures/retired": "assets no longer referenced by main.tex"
   },
-  "generated_at": "2026-10-17",
+  "generated_at": "2026-10-18",
   "files": {
     "main.tex": "9b5740ce6461a2626720b5c0a49878b0cf9132059c9436c9768f52f008046113",
-    "main.pdf": "41f121c149235f8e7fa8aac0a801abc743441e8d66105ccf40cd211440cc9f60",
+    "main.pdf": "f406b8de77b5b3c87abb16ac9b2fe24051406d2ed1a98ac967bdf6653e73fc4a",
     "main.blg": "e0665328db3cd48e4e5f822ddcfe78d31f6a00b25fbbfc819b22c652f601e97d",
-    "main.log": "9de69dd27452ac2201e524d7ab737819f79a90471b30080303e14dac5863df3c",
+    "main.log": "2a1dd25059fb4796803038386ec55c5bef9e0caf6b5e09fdc05ced5f570a5155",
     "resources/refs.bib": "a3f17b29c680609bf9fc7a6b5b7707ffa66be62563057d07d67d37e67247cb3a",
     "resources/results-macros.tex": "68655e64f8223f6e5dfaf0453b46ff43140e82a55f20e3340a65a8bb4065f750",
     "resources/fig2-architecture.pdf": "f0bafaf5ed552cb98a39e83527095eeb298c13c792e2b6901a1042e72dbbcfe9",
@@ -35,6 +35,6 @@
     "figures/retired/fig1-governed-binding-v2.pdf": "29c0ccf2db4fdf834a788cae7668da6c8ec8e540933ca8f795facfe64764ed60",
     "figures/retired/aw_working-fig4-tall-print.jpg": "55d89198d9ebaef45396f47b7d004bb1d870186a0943db68e60b7a367cf79a19"
   },
-  "quality_pass": "2026-10-17 final TII revision: regenerated the BOPET archive summary (attained=yes), added the success-flag baseline (22/22; publish-only receipt success-flag=true vs graded unverified), rebuilt all figures at 8 pt (Fig.1 full width; Fig.2 vector runtime; Fig.3(a)/(b) side-by-side; Fig.4 S4/S5; Fig.5 full-width four panels), anonymized the system name for double-blind, consolidated to 30 references, removed all version/commit/run identifiers, corrected boundary margins/p95/live-load claims and the grade-state mapping, and added the thesis/falsifiable-contrast/takeaway framing; 10 pages, 0 overfull, audit F1-F8 green, figure audit pass, check-refs 30/30, abstract 214 words.",
+  "quality_pass": "2026-10-18 TII revision: the architecture section now names each plane's modules and the evidence each produces; the evaluation protocol enumerates the 20-phase Q1--Q4 suite groups, the S0--S7 Q5 pipeline, the two controls, and the reported quantities; per-question run-ins separate procedure from result. Prior pass (2026-10-17): regenerated BOPET summary (attained=yes), success-flag baseline (22/22), all figures 8 pt, 30 references, identifiers removed, double-blind. Build: 10 pages, 0 overfull, audit F1-F8 green, figure audit pass, check-refs 30/30, abstract 214 words.",
   "figures_note": "5 figures, all 8 pt at placed width: fig2-architecture (Fig.1, \\textwidth), fig-runtime (Fig.2, \\columnwidth), fig-admission + fig-hitl-card (Fig.3(a)/(b), half-width panels), fig-process-campaign (Fig.4, \\columnwidth), fig-missions (Fig.5, \\textwidth); 3 tables (nearest systems, ablation, campaign); observed page map: {\"1\": 3, \"2\": 4, \"3\": 5, \"4\": 7, \"5\": 9}"
 }

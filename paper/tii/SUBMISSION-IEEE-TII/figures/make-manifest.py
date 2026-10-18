@@ -69,20 +69,18 @@ manifest = {
         "figures": "matplotlib sources for the generated figures",
         "figures/retired": "assets no longer referenced by main.tex"
     },
-    "generated_at": "2026-10-17",
+    "generated_at": "2026-10-18",
     "files": files,
     "quality_pass": (
-        "2026-10-17 final TII revision: regenerated the BOPET archive summary "
-        "(attained=yes), added the success-flag baseline (22/22; publish-only "
-        "receipt success-flag=true vs graded unverified), rebuilt all figures "
-        "at 8 pt (Fig.1 full width; Fig.2 vector runtime; Fig.3(a)/(b) "
-        "side-by-side; Fig.4 S4/S5; Fig.5 full-width four panels), anonymized "
-        "the system name for double-blind, consolidated to 30 references, "
-        "removed all version/commit/run identifiers, corrected boundary "
-        "margins/p95/live-load claims and the grade-state mapping, and added "
-        "the thesis/falsifiable-contrast/takeaway framing; 10 pages, "
-        "0 overfull, audit F1-F8 green, figure audit pass, check-refs 30/30, "
-        "abstract 214 words."),
+        "2026-10-18 TII revision: the architecture section now names each "
+        "plane's modules and the evidence each produces; the evaluation "
+        "protocol enumerates the 20-phase Q1--Q4 suite groups, the S0--S7 Q5 "
+        "pipeline, the two controls, and the reported quantities; per-question "
+        "run-ins separate procedure from result. Prior pass (2026-10-17): "
+        "regenerated BOPET summary (attained=yes), success-flag baseline "
+        "(22/22), all figures 8 pt, 30 references, identifiers removed, "
+        "double-blind. Build: 10 pages, 0 overfull, audit F1-F8 green, "
+        "figure audit pass, check-refs 30/30, abstract 214 words."),
     "figures_note": ("5 figures, all 8 pt at placed width: fig2-architecture "
                      "(Fig.1, \\textwidth), fig-runtime (Fig.2, "
                      "\\columnwidth), fig-admission + fig-hitl-card "

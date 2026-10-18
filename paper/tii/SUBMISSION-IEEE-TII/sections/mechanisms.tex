@@ -108,7 +108,7 @@ ISA-88 batch/lot notion---validated at save time. Hold heartbeats (periodic
 stored-setpoint re-dispatch) are the one non-governed re-dispatch:
 off by default, stopped by line stop or driver change, and re-applying the
 stored value without re-admission---plant-facing state maintenance, not an
-agent path. Line start installs active context before recipe parameters
+agent path. Line start installs the active context before recipe parameters
 dispatch individually; line stop clears it.
 
 \subsection{Write Acknowledgment as Graded Evidence}
@@ -147,15 +147,15 @@ Absence of evidence degrades the grade, never the report; the grade is
 fixed when the write closes.
 
 \looseness=-1 A transport-acknowledged write may still not have reached the
-device; promotion through the verifier is what turns acceptance into
-confirmation, and the three-way check of Section~\ref{sec:agentloop} reads
-the value back once more from the acquisition store. Recipe rollback
-restores a definition, not physical PLC values, and a compensating write is
-itself graded by the same rule---readback-verified where the endpoint
-supports readback, at best transport-acknowledged where only an acceptance
-receipt exists. The grade closes the command path only: readback-verified
-says the device holds the value, not that the process responded as
-intended---that distinction belongs to observation and verdict.
+device; promotion through the verifier turns acceptance into
+confirmation, and the three-way check of Section~\ref{sec:agentloop} re-reads
+the value from the acquisition store. Recipe rollback restores a definition,
+not physical PLC values, and a compensating write is graded by the same rule,
+readback-verified where the endpoint supports readback and at best
+transport-acknowledged where only an acceptance receipt exists. The grade
+closes the command path only: readback-verified says the device holds the
+value, not that the process responded as intended---that distinction belongs
+to observation and verdict.
 
 \subsection{Observation, Verdict, and Compensation}
 \label{sec:agentloop}
@@ -163,7 +163,7 @@ intended---that distinction belongs to observation and verdict.
 the verdict tool
 \texttt{dcw\_judge} records \texttt{keep}, \texttt{rollback}, or
 \texttt{uncertain} plus a reason; the verdict, stored with the record it closes
-and the window actually queried, performs no actuation and does not
+and the window queried, performs no actuation and does not
 independently validate the evidence, so a scripted keep can coexist with a
 missed objective. Verdict integrity therefore rests on attribution,
 journaling, and operator review---a kept-but-marked record stays visible
@@ -200,12 +200,11 @@ distinct from the admitting interval and from the mission's attainment
 window), the platform issues a
 system-attributed rollback verdict and restores the value preceding that
 write (one step; the admitted baseline is not restored), graded as above.
-The policy waits 120\,s, polls every 30\,s, and fires on three
-out-of-window samples---cumulatively, not necessarily consecutively;
-non-returning samples count no breach, so an acquisition outage leaves the
-record open and unalarmed. Recovery runs only while fewer than two retained
-rollback records stand on the node; past that, the backstop judges but
-defers actuation to the approval policy.
+The policy waits 120\,s, polls every 30\,s, and fires on three cumulative
+out-of-window samples; non-returning samples count no breach, so an
+acquisition outage leaves the record open and unalarmed. Recovery runs only
+while fewer than two retained rollback records stand on the node; past that,
+the backstop judges but defers actuation to the approval policy.
 
 \subsection{Human Approval Boundary and the Line Master Switch}
 \label{sec:hitl}
@@ -249,6 +248,6 @@ verdict recording, and some configuration changes do
 not use physical-write approval---workflow mediation, not segregation of
 duties; a recipe switch between approval and execution re-admits the value
 against the new window.
-The strategy engine is replaceable rather than trusted as a control
-primitive: scenario code declares and configures but never executes plant
-I/O, and the platform never infers a process objective.
+The engine is replaceable, not a control primitive---scenario code declares
+and configures but never executes plant I/O, and the platform never infers a
+process objective.

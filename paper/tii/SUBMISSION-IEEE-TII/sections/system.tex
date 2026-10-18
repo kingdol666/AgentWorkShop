@@ -4,28 +4,35 @@
 Section~\ref{sec:related}'s comparison leaves open: it links team
 coordination to plant interaction through industrial nodes
 and production context (Fig.~\ref{fig:arch}). Responsibilities group into
-five planes---logical groupings, not deployable units: a \emph{team} plane
-owns member identity, task state, and
-episodic memory, carrying the analysis that turns acquired data into
-proposals; an \emph{integration} plane owns protocol acceptance,
+five planes---logical groupings, not deployable units, each an assembly of
+modules whose outputs are evidence records:
+\textbf{team} (channel and member identity, task state, episodic memory,
+engine adapters, retrieval, analysis) turns acquired data into attributed
+proposals;
+\textbf{integration} (DAQ and DCW nodes, per-node runtimes, protocol
+drivers, gateway, MES mirror/direct modes) owns protocol acceptance,
 readback, freshness, and transport errors, presenting devices as semantic
-nodes feeding both the agent and a live plant-mirror view; a
-\emph{governance} plane owns the governed life cycle---admission through
-compensation and rollback; an \emph{operations} plane
-attaches line, product, recipe, and run context while PLC protection stays
-independent; and an \emph{extensibility} plane admits plugins, drivers,
-agent tools, and SDK clients through sanctioned registration services.
+nodes;
+\textbf{governance} (binding authority, admission resolver, approval queue,
+recipe dispatch, acknowledgment grader and verifier, verdict, compensation,
+backstop, journal) owns the governed life cycle;
+\textbf{operations} (line, product, recipe, and run registries, versioned
+recipes, run ledger, operations log) attaches production context while PLC
+protection stays independent; and
+\textbf{extensibility} (plugin registry, typed SDK, REST/MCP/A2A/CLI/TUI
+entry points) admits drivers, tools, and clients through sanctioned
+registration services.
 Scenario knowledge sits in blueprints, signal maps, predicates, and driver
 configuration---not in scheduler, approval, or persistence code; members
 are interchangeable across engine adapters, and team topology,
-bindings, and limits are data rather than code---in every plane, a scenario
-supplies data and strategy (Fig.~\ref{fig:arch}).
+bindings, and limits are data rather than code (Fig.~\ref{fig:arch}).
+The subsections below describe the node classes, the binding boundary, and
+the task life cycle; Section~\ref{sec:mech} specifies the mechanisms the
+governance plane implements.
 
-\looseness=-1 As a deployable project, \system{} is open source under the
-Apache-2.0 license (links withheld for double-blind review) and ships the
-planes above as one service---team runtime, multi-protocol acquisition,
-governed write control, versioned recipes and run ledgers, and plugin
-bridges---with 58 industrial agent tools, the typed SDK, and the one-command
+\looseness=-1 As an open-source project under the Apache-2.0 license (links
+withheld for double-blind review), \system{} ships these planes as one
+service with 58 industrial agent tools, the typed SDK, and the one-command
 benchmark pipeline of Section~\ref{sec:procedure}.
 
 \begin{figure*}[!t]
@@ -51,33 +58,29 @@ channel membership alone confers no write authority.
 \looseness=-1 DAQ nodes convert device readings to engineering quantities across four
 modalities---scalars, vector profiles, image frames carrying content
 fingerprints, and mirrored manufacturing-execution-system (MES)
-records---so plant data-shape heterogeneity does not reach the team loop. MES endpoints are reached in two
-modes---\emph{mirror}, pulling MES records through the same
-acquisition pipeline, and \emph{direct}, declaring read
-and write mappings against the MES interface. DCW
+records---so plant data-shape heterogeneity does not reach the team loop. MES endpoints are reached in
+\emph{mirror} mode, pulling records through the same acquisition pipeline, or
+in \emph{direct} mode, declaring read and write mappings against the MES
+interface. DCW
 nodes translate engineering setpoints into driver commands and, where
 supported, readback; per-node runtimes manage timing, and gateway services supply
 connection state, recipe context, and write bookkeeping. The acquisition
 surface declares six protocol families, five with drivers today---Modbus TCP,
 Modbus RTU-over-TCP, OPC UA, MQTT, HTTP/REST, and an S7
 stub that fails loudly until its driver lands; the write surface adds one
-driver per writable family plus MES REST (the evaluation's mock driver lies
-outside these counts), and the evaluation instantiates five families as
-lines (Section~\ref{sec:protocol}).
+driver per writable family plus MES REST (mock drivers excluded), and the
+evaluation instantiates five families as lines (Section~\ref{sec:protocol}).
 The deployment reaches author-implemented dynamic simulators through the same
 node and driver contracts a plant would use; they are deterministic per seed,
-not validated digital twins. The first reuse boundary is declarative---signals,
-units, scaling, precision, and driver configuration---and the team loop is
-unchanged.
+not validated digital twins. Reuse is declarative---signals, units, scaling,
+precision, driver configuration---and the team loop is unchanged.
 
 \looseness=-1 Driver contracts are deliberately narrow: a driver declares how a semantic
 quantity maps to its transport payload, whether the endpoint is writable, and
-whether a readback is available, while the controller resolves member authority
-and active limits. Errors attach to the
-request, register addresses and byte order appear only here, and a new
-fieldbus family leaves the loop untouched.
-Undeclared drivers fail loudly rather than being silently served by a
-mock.
+whether a readback is available; the controller resolves authority and active
+limits. Errors attach to the request, register addresses and byte order appear only here, and a new
+fieldbus family leaves the loop untouched; undeclared drivers fail loudly
+rather than being silently mocked.
 Acquisition is supervisory rather than hard real-time: each DAQ node runs its
 own cadence under a rotating sweep; the verdict stage queries the timestamped, quality-stamped
 history, not a blocking read.
@@ -93,10 +96,10 @@ a binding or switching the recipe takes effect on the next request; the same pat
 serves a console, a harness, and an agent engine---authority does not
 depend on the client, only the evidence record differs.
 
-\looseness=-1 Production objects are versioned rather than overwritten: a recipe is dispatched
-against a known-good version, reverted non-destructively, and compared with the
-values actually applied, and an intervention is read against the definition
-that was active when it was admitted. Plugins register hooks, routes, agent tools, drivers,
+\looseness=-1 Production objects are versioned rather than overwritten: recipes
+dispatch against a known-good version, revert non-destructively, and are
+compared with the values actually applied; an intervention is read against the
+definition active when it was admitted. Plugins register hooks, routes, agent tools, drivers,
 and panels only through sanctioned services, so an added driver inherits
 admission, readback, and evidence capture. Scenario reuse is bounded by an onboarding contract: the engineer declares a
 blueprint (devices, signals, units, roles, setpoints); a differential
