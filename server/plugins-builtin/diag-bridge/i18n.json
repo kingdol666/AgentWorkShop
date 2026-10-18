@@ -9,12 +9,6 @@
       "auto_enabled": "自动诊断",
       "auto_rules": "自动诊断规则"
     },
-    "group": {
-      "conn": "诊断服务连接",
-      "run": "诊断执行参数",
-      "auto": "自动诊断",
-      "rules": "自动诊断规则"
-    },
     "panel": {
       "title": "深度诊断(industrial-deep-diagnostic)",
       "runs": "诊断记录",
@@ -32,11 +26,32 @@
       "st_other": "其他",
       "yes": "是",
       "no": "否",
+      "remote": "诊断服务",
+      "engine": "诊断引擎",
+      "checkBtn": "检测连接",
+      "checking": "检测中…",
+      "checkFail": "检测请求失败(插件路由不可达)",
+      "tokenCfg": "API Token",
+      "tokenNone": "未配置(匿名)",
+      "tokenAccepted": "已配置并被服务接受",
+      "tokenRejected": "已配置但被拒绝(401/403)",
+      "tokenUnknown": "未知(网络不可达)",
+      "allOk": "连接正常:API 可达,token 有效",
+      "allBad": "连接异常:按上行明细排查",
+      "latency": "耗时",
+      "ok": "正常",
+      "bad": "不可达",
       "report": "报告",
       "view": "查看",
       "close": "关闭",
       "loading": "加载中…",
       "report_fail": "报告获取失败"
+    },
+    "group": {
+      "conn": "诊断服务连接",
+      "run": "诊断执行参数",
+      "auto": "自动诊断",
+      "rules": "自动诊断规则"
     }
   },
   "en": {
@@ -49,15 +64,9 @@
       "auto_enabled": "Auto diagnosis",
       "auto_rules": "Auto diagnosis rules"
     },
-    "group": {
-      "conn": "Diagnosis service connection",
-      "run": "Diagnosis run parameters",
-      "auto": "Auto diagnosis",
-      "rules": "Auto diagnosis rules"
-    },
     "panel": {
       "title": "Deep diagnosis (industrial-deep-diagnostic)",
-      "runs": "Diagnosis runs",
+      "runs": "Runs",
       "none": "No runs yet; agents start one via the diag_run tool",
       "run": "Run",
       "line": "Line",
@@ -72,11 +81,32 @@
       "st_other": "Other",
       "yes": "Yes",
       "no": "No",
+      "remote": "Diag service",
+      "engine": "Harness",
+      "checkBtn": "Test connection",
+      "checking": "Checking…",
+      "checkFail": "Check request failed (plugin route unreachable)",
+      "tokenCfg": "API Token",
+      "tokenNone": "Not set (anonymous)",
+      "tokenAccepted": "Configured and accepted",
+      "tokenRejected": "Configured but rejected (401/403)",
+      "tokenUnknown": "Unknown (unreachable)",
+      "allOk": "Connection OK: API reachable, token valid",
+      "allBad": "Connection problem: see details above",
+      "latency": "Latency",
+      "ok": "Up",
+      "bad": "Down",
       "report": "Report",
       "view": "View",
       "close": "Close",
       "loading": "Loading…",
-      "report_fail": "Failed to load report"
+      "report_fail": "Failed to fetch report"
+    },
+    "group": {
+      "conn": "Diagnosis service connection",
+      "run": "Diagnosis run parameters",
+      "auto": "Auto diagnosis",
+      "rules": "Auto diagnosis rules"
     }
   }
 }

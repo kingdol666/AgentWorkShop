@@ -5,10 +5,6 @@
       "web_url": "rag-knowledge Web 地址",
       "token": "rag-knowledge API Token"
     },
-    "group": {
-      "conn": "rag-knowledge 连接",
-      "auth": "rag-knowledge 鉴权"
-    },
     "panel": {
       "title": "工业知识库(rag-knowledge)",
       "backend": "后端",
@@ -25,7 +21,23 @@
       "ok": "正常",
       "bad": "不可达",
       "anonymous": "匿名",
-      "bearer": "鉴权"
+      "bearer": "鉴权",
+      "checkBtn": "检测连接",
+      "checking": "检测中…",
+      "checkFail": "检测请求失败(插件路由不可达)",
+      "tokenCfg": "API Token",
+      "tokenNone": "未配置(匿名)",
+      "tokenAccepted": "已配置并被服务接受",
+      "tokenRejected": "已配置但被拒绝(401/403)",
+      "tokenUnknown": "未知(网络不可达)",
+      "webDocs": "知识库数",
+      "allOk": "连接正常:API 可达,token 有效",
+      "allBad": "连接异常:按上行明细排查",
+      "latency": "耗时"
+    },
+    "group": {
+      "conn": "rag-knowledge 连接",
+      "auth": "rag-knowledge 鉴权"
     }
   },
   "en": {
@@ -33,10 +45,6 @@
       "base_url": "rag-knowledge backend URL",
       "web_url": "rag-knowledge Web URL",
       "token": "rag-knowledge API token"
-    },
-    "group": {
-      "conn": "rag-knowledge connection",
-      "auth": "rag-knowledge auth"
     },
     "panel": {
       "title": "Industrial knowledge base (rag-knowledge)",
@@ -54,7 +62,23 @@
       "ok": "Up",
       "bad": "Down",
       "anonymous": "Anonymous",
-      "bearer": "Auth"
+      "bearer": "Auth",
+      "checkBtn": "Test connection",
+      "checking": "Checking…",
+      "checkFail": "Check request failed (plugin route unreachable)",
+      "tokenCfg": "API Token",
+      "tokenNone": "Not set (anonymous)",
+      "tokenAccepted": "Configured and accepted",
+      "tokenRejected": "Configured but rejected (401/403)",
+      "tokenUnknown": "Unknown (unreachable)",
+      "webDocs": "KBs",
+      "allOk": "Connection OK: API reachable, token valid",
+      "allBad": "Connection problem: see details above",
+      "latency": "Latency"
+    },
+    "group": {
+      "conn": "rag-knowledge connection",
+      "auth": "rag-knowledge auth"
     }
   }
 }
