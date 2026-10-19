@@ -140,4 +140,4 @@ node scripts/onboarding/onboard.mjs docs/onboarding/2026-10-20-coating-line/onbo
   - `unit.log`（253/253）、`mes-agent.log`（25/25）、`e2e-line.log`（44/44）、`line-log.log`（24/24）
   - `skill-validate.log`（101/101）、`sim-twin.log`（2/2）、`onboard-final.log`（11/0）
   - `verify-v1-v6.log`（23/0，含 V3 readback/V4 映射/V5 隔离）、`recipe-window-guard.log`（越窗 49 被拒）、`connectivity.log`、`connectivity-empty-guard.log`（exit=1）、`typecheck.log`、`build.log`
-- 提交：`b4cf76b7`（分支 `tii-revision-20261017`，已推送 GitHub；本报告回填提交为后续 docs commit）
+- 提交：`b4cf76b7`（报告回填 `aa4b41b6`；分支 `tii-revision-20261017`，已推送 GitHub）
