@@ -1,0 +1,166 @@
+/**
+ * POST /api/workshop/daq/:id/ingest —— 外部 API 推送多源异构数采样本。
+ *
+ * 适用:第三方/边缘系统每次调用返回一张图片或一个数组(如膜厚模头点位数组),
+ * 由调用方主动推入本平台,走与网关采样完全相同的队列/入库/打标/告警链路。
+ *
+ * body:
+ *   { at?: ISO, value?: number, points?: number[], metrics?: {k:number},
+ *     state?: 'ok'|'warn'|'alarm'|'offline',
+ *     image?: { base64|data: string, mime?: string, width?: number, height?: number } | string }
+ *
+ * 鉴权:
+ *   - 配置了 AW_DAQ_INGEST_TOKEN 时,要求 x-aw-daq-token 头匹配(外部系统接入);
+ *   - 未配置时退回仪表盘用户会话(resolveUser)。
+ * 约束:
+ *   - 节点必须存在且启用;载荷形态必须与模板 signalKind 一致(scalar/vector/image);
+ *   - 向量 1..4096 个有限数;图像 ≤10MB 且 MIME image/*;
+ *   - at 缺省=当前时间,允许范围为 ±7 天。
+ */
+import { createHash } from 'node:crypto'
+import { getHeader, getRouterParam, readBody } from 'h3'
+import { resolveUser } from '@/server/api/workshop/caller'
+import { defineApiHandler } from '@/server/utils/response'
+import { getDaqController } from '@/server/services/workshop/daq/daq-controller'
+import { findDaqTemplate } from '@/server/services/workshop/daq/daq-templates'
+import { getDaqQueue } from '@/server/services/workshop/daq/bus'
+import { getObjectStore } from '@/server/services/workshop/daq/objectstore'
+import { daqObjectKey } from '@/server/services/workshop/daq/objectstore/objectstore-port'
+import type { DaqSampleEnvelope } from '@/server/services/workshop/daq/bus/queue-port'
+import { AppError } from '@/server/utils/errors'
+
+const IMAGE_MAX_BYTES = 10 * 1024 * 1024
+const VECTOR_MAX_POINTS = 4096
+const AT_RANGE_MS = 7 * 24 * 3600_000
+
+interface IngestBody {
+  at?: string
+  value?: number | string
+  points?: unknown
+  values?: unknown
+  metrics?: Record<string, unknown>
+  state?: string
+  image?: { base64?: string, data?: string, mime?: string, width?: number, height?: number } | string
+}
+
+function finiteList(raw: unknown): number[] | null {
+  if (!Array.isArray(raw)) return null
+  const out: number[] = []
+  for (const x of raw) {
+    const n = Number(x)
+    if (!Number.isFinite(n)) return null
+    out.push(n)
+  }
+  return out
+}
+
+function metricsOf(raw: unknown): Record<string, number> {
+  if (raw === null || raw === undefined || typeof raw !== 'object' || Array.isArray(raw)) return {}
+  const out: Record<string, number> = {}
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>).slice(0, 64)) {
+    const n = Number(v)
+    if (Number.isFinite(n) && k.trim()) out[k.trim().slice(0, 80)] = n
+  }
+  return out
+}
+
+export default defineApiHandler(async (event) => {
+  const id = getRouterParam(event, 'id') ?? ''
+  const expected = process.env.AW_DAQ_INGEST_TOKEN
+  if (expected) {
+    if (String(getHeader(event, 'x-aw-daq-token') ?? '') !== expected) {
+      throw new AppError(401, 'UNAUTHORIZED', '数采推送鉴权失败:请提供正确的 x-aw-daq-token(AW_DAQ_INGEST_TOKEN)。')
+    }
+  }
+  else {
+    resolveUser(event)
+  }
+
+  const node = getDaqController().byId(id)
+  if (!node) throw new AppError(404, 'NOT_FOUND', `数采节点不存在: ${id}`)
+  if (!node.enabled) throw new AppError(409, 'CONFLICT', `数采节点「${node.name}」已停用,不接受推送。`)
+  const tpl = findDaqTemplate(node.templateKey)
+  const kind = tpl?.signalKind ?? 'scalar'
+  const body = await readBody<IngestBody>(event) ?? {}
+
+  const now = Date.now()
+  const atRaw = String(body.at ?? '').trim()
+  const atMs = atRaw ? Date.parse(atRaw) : now
+  if (!Number.isFinite(atMs)) throw new AppError(400, 'VALIDATION_ERROR', `at 不是合法时间: ${atRaw}(示例 2026-10-19T12:00:00+08:00)`)
+  if (Math.abs(atMs - now) > AT_RANGE_MS) throw new AppError(400, 'VALIDATION_ERROR', 'at 超出允许范围(±7 天),请检查时区/时钟。')
+  const at = new Date(atMs).toISOString()
+  const state = ['ok', 'warn', 'alarm', 'offline'].includes(String(body.state ?? '')) ? String(body.state) : 'ok'
+  const metrics = metricsOf(body.metrics)
+  let env: DaqSampleEnvelope
+
+  if (kind === 'image') {
+    const img = body.image
+    const base64 = typeof img === 'string'
+      ? img
+      : String(img?.base64 ?? img?.data ?? '').trim()
+    if (!base64) throw new AppError(400, 'VALIDATION_ERROR', '图像节点的载荷必须提供 image.base64(或 image.data)。')
+    const mime = typeof img === 'object' && img?.mime ? String(img.mime) : 'image/png'
+    if (!/^image\//i.test(mime)) throw new AppError(400, 'VALIDATION_ERROR', `image.mime 必须是 image/*(收到 ${mime})`)
+    let buf: Buffer
+    try {
+      buf = Buffer.from(base64.replace(/^data:[^,]+,/, ''), 'base64')
+    }
+    catch {
+      throw new AppError(400, 'VALIDATION_ERROR', 'image.base64 解码失败。')
+    }
+    if (buf.length === 0) throw new AppError(400, 'VALIDATION_ERROR', '图像内容为空。')
+    if (buf.length > IMAGE_MAX_BYTES) throw new AppError(413, 'PAYLOAD_TOO_LARGE', `图像超过 ${IMAGE_MAX_BYTES / 1024 / 1024}MB 上限。`)
+    const objectKey = daqObjectKey(node.id, atMs, mime.includes('jpeg') ? '.jpg' : mime.includes('webp') ? '.webp' : '.png')
+    await getObjectStore().put(objectKey, buf, mime)
+    const sha256 = createHash('sha256').update(buf).digest('hex')
+    const width = Number(body.image && typeof body.image === 'object' ? body.image.width : NaN)
+    const height = Number(body.image && typeof body.image === 'object' ? body.image.height : NaN)
+    env = {
+      nodeId: node.id,
+      templateRef: node.templateRef,
+      value: Number((metrics.avg ?? 0).toFixed(node.decimals)),
+      state,
+      at,
+      frame: {
+        kind: 'image',
+        objectKey,
+        mime,
+        width: Number.isFinite(width) ? width : undefined,
+        height: Number.isFinite(height) ? height : undefined,
+        sha256,
+        size: buf.length,
+        metrics,
+      },
+    }
+  }
+  else if (kind === 'vector') {
+    const points = finiteList(body.points ?? body.values)
+    if (!points || points.length === 0) throw new AppError(400, 'VALIDATION_ERROR', '向量节点的载荷必须提供 points 数组。')
+    if (points.length > VECTOR_MAX_POINTS) throw new AppError(413, 'PAYLOAD_TOO_LARGE', `向量点数 ${points.length} 超过 ${VECTOR_MAX_POINTS} 上限。`)
+    const avg = points.reduce((a, b) => a + b, 0) / points.length
+    env = {
+      nodeId: node.id,
+      templateRef: node.templateRef,
+      value: Number((metrics.avg ?? avg).toFixed(node.decimals)),
+      state,
+      at,
+      frame: { kind: 'vector', points, metrics },
+    }
+  }
+  else {
+    const value = Number(body.value)
+    if (!Number.isFinite(value)) throw new AppError(400, 'VALIDATION_ERROR', '标量节点的载荷必须提供数值 value。')
+    env = { nodeId: node.id, templateRef: node.templateRef, value, state, at }
+  }
+
+  await getDaqQueue().then(q => q.publish(env))
+  return {
+    accepted: true,
+    nodeId: node.id,
+    kind,
+    at,
+    lineId: node.lineId ?? null,
+    ...(env.frame?.kind === 'image' ? { objectKey: env.frame.objectKey, bytes: env.frame.size } : {}),
+    ...(env.frame?.kind === 'vector' ? { points: env.frame.points?.length } : {}),
+  }
+})

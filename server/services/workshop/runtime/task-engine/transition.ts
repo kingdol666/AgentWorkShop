@@ -2,6 +2,7 @@
  * TaskEngineTransition —— 状态跃迁与事件应用
  * (拆分层,承 TaskEngineCreate;方法体与原文件逐行一致)
  */
+import { randomUUID } from 'node:crypto'
 import { TaskEngineCreate } from './create'
 import type { AgentEvent } from '../../agents/agent-interface'
 import type { TaskState, WorkspaceTask } from '../../types/task'
@@ -121,6 +122,19 @@ export abstract class TaskEngineTransition extends TaskEngineCreate {
         // 取消触发的 abort 让 omp 回合报 "Interrupted by user")直接忽略 ——
         // 否则会对已 CANCELED 任务撞状态机抛非法迁移(崩溃噪声 + 触发无谓重投)
         if (task.state !== 'WORKING') break
+        // 失败原因入 history:旧实现只迁移 FAILED,任务行 history 为空,
+        // 事后只能从进程日志里猜「为什么失败」(2026-10-19 CANCELED/CHILD_RETRIES_EXHAUSTED 复盘痛点)。
+        {
+          const history = [...task.history, {
+            messageId: randomUUID(),
+            contextId: task.channelId,
+            role: 'ROLE_AGENT' as const,
+            parts: [{ text: `执行失败(${event.error.code}): ${String(event.error.message || '').slice(0, 1000)}` }],
+            metadata: { 'x-aw-system': 'task-failure', 'x-aw-error-code': event.error.code },
+          }]
+          if (history.length > TASK_HISTORY_CAP) history.splice(0, history.length - TASK_HISTORY_CAP)
+          this.repos.tasks.update(taskId, { history })
+        }
         this.transition(taskId, 'FAILED', task.assigneeId)
         break
       }

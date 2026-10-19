@@ -72,6 +72,38 @@ export interface DcwReadResult {
   eng: number | null
   /** 原始值(寄存器解码;非寄存器驱动与 eng 同源) */
   raw: number | null
+  /** 数据字典(可选;MES 响应可携带字段级语义,供目录/取数/导出透传) */
+  dictionary?: DcwFieldDef[]
+}
+
+// ============================================================
+// 字段级数据字典(MES 多源异构数据的物理含义)
+// ============================================================
+
+/**
+ * 字段/点位语义。一个字段既可以是一个标量列,也可以是一个向量字段
+ * (points 描述向量每个下标/模头点位的含义)。
+ *
+ * 来源:优先由 MES API 随响应返回(dictionaryPath),其次由节点配置静态声明
+ * (driverConfig.dictionary);两者都缺省时 Agent 只能看到原始字段名。
+ */
+export interface DcwFieldDef {
+  /** 字段名(响应里的 key;向量点位用 field=profile 等) */
+  field: string
+  /** 人话标签(如 膜厚断面) */
+  label?: string
+  /** 物理单位(如 µm) */
+  unit?: string
+  /** 物理意义/判读说明 */
+  description?: string
+  min?: number
+  max?: number
+  /** 字段形态:scalar 标量列 / vector 向量列 / point 向量内点位 */
+  kind?: 'scalar' | 'vector' | 'point'
+  /** 向量点位下标(0-based;point 条目使用) */
+  index?: number
+  /** 向量字段的逐点语义(index 0..N-1) */
+  points?: DcwFieldDef[]
 }
 
 // ============================================================
@@ -94,7 +126,7 @@ export interface DcwHistoryRow {
   data?: string
   /** image:MIME(缺省 image/png) */
   mime?: string
-  /** table/event:原始记录(JSON 值) */
+  /** table/event:原始记录(JSON 值);vector:行级伴随字段(mean/lane_unit 等,不含向量本体) */
   record?: unknown
 }
 
@@ -117,6 +149,8 @@ export interface DcwFetchHistoryResult {
   rows: number
   /** true=nextCursor 自然耗尽取完;false=因 maxRows/maxPages 提前截断 */
   complete: boolean
+  /** 数据字典(可选;从响应首个非空页解析,随数据集 manifest/工具回包透传) */
+  dictionary?: DcwFieldDef[]
 }
 
 export const num = (v: unknown): number | undefined => {

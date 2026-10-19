@@ -2,6 +2,7 @@
  * 运维日志与配方变更史(ops_log / recipe_* / line_context)
  * (由 server/services/workshop/agents/industrial-tools.ts 按职责拆出;内容逐行原文搬运)
  */
+import type { RecipeView } from '../../../../../shared/dcw-protocol'
 import { agentBadgeLabel } from '../agent-badge'
 import { getActiveLineRun } from '../../dcw/line-run'
 import { getAgentNodeBindingRepo } from '../node-bindings.repo'
@@ -15,7 +16,7 @@ import { getDcwParamRepo } from '../../dcw/param-map.repo'
 import { getOps } from '../../ops/ops'
 import { settingOf } from '../../settings'
 import { fanoutQuery, windowOf } from './audit-query'
-import { assertRecipeOperation, recipeApprovalPayload } from './recipe-gate'
+import { assertRecipeCreate, assertRecipeOperation, recipeApprovalPayload } from './recipe-gate'
 
 // ================================================================
 // 运维日志 / Recipe 变更史查询(Agent 自查面:负责产线 scoped)
@@ -94,14 +95,71 @@ export function fmtAuditAt(iso: string): string {
   return iso.length >= 19 ? iso.slice(5, 19).replace('T', ' ') : iso
 }
 
-/** 工具:ops_log —— 负责产线的运维/审计日志查询(全部下发/判定/回退/配方/产线事件)。
- *  权限:仅自己绑定节点所覆盖的产线;node_id 须为绑定节点。来源(actor_kind)区分 Agent/用户/系统。 */
+/** 日志行归属标签所需的名称索引(一次构建,行内复用) */
+function scopeMaps() {
+  return {
+    lines: new Map(getDcwLineRepo().all().map(l => [l.id, l.name])),
+    products: new Map(getDcwProductRepo().all().map(p => [p.id, p.name])),
+    recipes: new Map(getDcwController().listRecipes().map(r => [r.id, r.name])),
+  }
+}
+
+type ScopeMaps = ReturnType<typeof scopeMaps>
+
+/** 产线标签:名称[完整 id](Agent 可直接把 id 回传给 line_id) */
+function lineLabelOf(id: string, maps: ScopeMaps): string {
+  if (!id) return ''
+  return `${maps.lines.get(id) ?? '(产线已删除)'}[${id}]`
+}
+
+function productLabelOf(id: string, maps: ScopeMaps): string {
+  if (!id) return ''
+  return `${maps.products.get(id) ?? '(产品已删除)'}[${id}]`
+}
+
+function recipeLabelOf(id: string, maps: ScopeMaps): string {
+  if (!id) return ''
+  return `${maps.recipes.get(id) ?? '(配方已删除)'}[${id}]`
+}
+
+/** 单行的域标识 + 归属串:scope + 产线 + 配方 + 产品(空维度显式写 -) */
+function rowScopeOf(row: Record<string, unknown>, maps: ScopeMaps): string {
+  const lid = String(row.lineId ?? '')
+  const rid = String(row.recipeId ?? '')
+  const pid = String(row.productId ?? '')
+  const scope = String(row.scope ?? (lid ? 'line' : 'system'))
+  return `scope=${scope} 产线=${lineLabelOf(lid, maps) || '-'} 配方=${recipeLabelOf(rid, maps) || '-'} 产品=${productLabelOf(pid, maps) || '-'}`
+}
+
+/** 节点归属产线(dcw 优先,daq 兜底);节点不存在/未挂线返回空串 */
+function nodeLineOf(nodeId: string): string {
+  try {
+    const dcw = getDcwController().byId(nodeId)
+    if (dcw) return dcw.lineId ?? ''
+    const daq = getDaqNodeRepo().byId(nodeId)
+    return daq?.lineId ?? ''
+  }
+  catch {
+    return ''
+  }
+}
+
+/** 工具:ops_log —— 产线日志查询(下发/判定/回退/配方/产线/数采/告警/人工记录)。
+ *
+ *  **只返回产线域记录**(line_id 非空);登录/用户管理/系统设置/备份等全局审计不进本工具。
+ *  权限:节点授权线 ∪ 配方绑定线 ∪ 频道绑定线;line_id/recipe_id 只能缩小范围,不能放大。
+ *  时间:from/to 绝对时间优先,否则 minutes 回看;结果行逐条带产线与配方归属。
+ */
 export async function toolOpsLog(agentId: string, args: {
   line_id?: string
+  recipe_id?: string
+  product_id?: string
   node_id?: string
   kind?: string
   actor_kind?: string
   minutes?: number | string
+  from?: string
+  to?: string
   limit?: number | string
   mine?: boolean | string
 }): Promise<{ text: string, isError?: boolean }> {
@@ -110,76 +168,207 @@ export async function toolOpsLog(agentId: string, args: {
   const scope = agentOpsScope(agentId)
   if (!scope) return { text: '你尚未绑定任何工业节点,所在频道也未绑定产线,无日志可查(日志权限跟随节点绑定或频道绑线)。', isError: true }
   const nodeId = String(args.node_id ?? '').trim()
-  const lineId = String(args.line_id ?? '').trim()
+  const wantedLine = String(args.line_id ?? '').trim()
+  const recipeId = String(args.recipe_id ?? '').trim()
+  const productId = String(args.product_id ?? '').trim()
   const readable = readableLineIds(scope)
-  if (nodeId && !scope.nodeIds.has(nodeId))
-    return { text: `无权查询节点 ${nodeId} 的日志(仅可查自己绑定的节点;用 my_industrial_nodes 查看绑定)。`, isError: true }
-  if (lineId && !readable.includes(lineId))
-    return { text: `无权查询产线 ${lineId} 的日志(你的可读产线:${readable.join(', ') || '(无)'})。`, isError: true }
+  if (wantedLine && !readable.includes(wantedLine))
+    return { text: `无权查询产线 ${wantedLine} 的日志(你的可读产线:${readable.join(', ') || '(无)'})。`, isError: true }
+
+  // 配方/产品过滤:存在性 + 归属产线校验;它们同时决定默认产线(避免跨线混合结果)
+  const recipe = recipeId ? getDcwController().listRecipes().find(r => r.id === recipeId) : undefined
+  if (recipeId && !recipe)
+    return { text: `配方 ${recipeId} 不存在(用 line_context 查看当前配方 id)。`, isError: true }
+  if (recipe?.lineId && !readable.includes(recipe.lineId))
+    return { text: `无权查询配方 ${recipeId} 的日志(该配方归属产线 ${recipe.lineId},不在你的可读产线:${readable.join(', ') || '(无)'})。`, isError: true }
+  if (wantedLine && recipe?.lineId && recipe.lineId !== wantedLine)
+    return { text: `配方「${recipe.name}」归属产线 ${recipe.lineId},与 line_id=${wantedLine} 不一致;请用正确产线或只传 recipe_id。`, isError: true }
+  const product = productId ? getDcwProductRepo().byId(productId) : undefined
+  if (productId && !product)
+    return { text: `产品 ${productId} 不存在(用 line_context 查看当前产品 id)。`, isError: true }
+  if (product?.lineId && !readable.includes(product.lineId))
+    return { text: `无权查询产品 ${productId} 的日志(该产品归属产线 ${product.lineId},不在你的可读产线:${readable.join(', ') || '(无)'})。`, isError: true }
+  if (wantedLine && product?.lineId && product.lineId !== wantedLine)
+    return { text: `产品「${product.name}」归属产线 ${product.lineId},与 line_id=${wantedLine} 不一致。`, isError: true }
+
+  // 节点过滤:只读面允许读可读产线上的任意节点(与 tool-verify 的频道绑线只读扩权同口径)
+  const nodeLine = nodeId ? nodeLineOf(nodeId) : ''
+  if (nodeId && !nodeLine)
+    return { text: `节点 ${nodeId} 不存在或未分配产线(用 my_industrial_nodes / line_context 查看在线节点)。`, isError: true }
+  if (nodeId && !readable.includes(nodeLine))
+    return { text: `无权查询节点 ${nodeId} 的日志(节点归属产线 ${nodeLine},不在你的可读产线:${readable.join(', ') || '(无)'})。`, isError: true }
+  if (wantedLine && nodeLine && nodeLine !== wantedLine)
+    return { text: `节点 ${nodeId} 归属产线 ${nodeLine},与 line_id=${wantedLine} 不一致。`, isError: true }
+
+  const win = windowOf(args)
+  if (win.error) return { text: win.error, isError: true }
+  const { minutes, limit, from, to } = win
   const kind = String(args.kind ?? '').trim() || undefined
   const actorKind = String(args.actor_kind ?? '').trim() || undefined
   const mine = args.mine === true || args.mine === 'true'
-  const { minutes, limit, from } = windowOf(args)
 
-  const lines = lineId ? [lineId] : readable
-  let rows = fanoutQuery(audit, lines, lid => ({ lineId: lid, kind, actorKind, actor: mine ? agentId : undefined, from, limit }))
-  if (nodeId) rows = rows.filter(r => r.targetId === nodeId)
+  // 默认产线优先级:显式 line_id > 配方 > 产品 > 节点 > 频道绑线 > 全部可读线
+  const channelLine = channelBoundLineId(agentId)
+  const lines = wantedLine
+    ? [wantedLine]
+    : recipe?.lineId
+      ? [recipe.lineId]
+      : product?.lineId
+        ? [product.lineId]
+        : nodeLine
+          ? [nodeLine]
+          : channelLine && readable.includes(channelLine)
+            ? [channelLine]
+            : readable
+
+  const maps = scopeMaps()
+  let rows = fanoutQuery(audit, lines, lid => ({
+    scope: 'line',
+    lineId: lid,
+    recipeId: recipeId || undefined,
+    productId: productId || undefined,
+    kind,
+    actorKind,
+    actor: mine ? agentId : undefined,
+    targetId: nodeId || undefined,
+    from,
+    ...(to ? { to } : {}),
+    limit,
+  }))
   rows.sort((a, b) => String(b.at).localeCompare(String(a.at)))
   rows = rows.slice(0, limit)
-  if (rows.length === 0) return { text: `窗口(近 ${minutes} 分钟)内无匹配日志。可调大 minutes,或放宽 kind/actor_kind/node_id 过滤。` }
+
+  const lineNote = lines.length === 1 ? `产线 ${lineLabelOf(lines[0]!, maps)}` : `可读产线 ${lines.length} 条`
+  const filterBits = [lineNote]
+  if (recipeId) filterBits.push(`配方 ${recipeLabelOf(recipeId, maps)}`)
+  if (productId) filterBits.push(`产品 ${productLabelOf(productId, maps)}`)
+  if (nodeId) filterBits.push(`节点 ${nodeId}`)
+  if (kind) filterBits.push(`分类 ${kind}`)
+  if (actorKind) filterBits.push(`来源 ${actorKind}`)
+  if (mine) filterBits.push('仅我自己')
+  const windowNote = to
+    ? `时间窗 ${String(from).slice(0, 19).replace('T', ' ')} ~ ${String(to).slice(0, 19).replace('T', ' ')}`
+    : `近 ${minutes} 分钟`
+  if (rows.length === 0) {
+    return {
+      text: `${windowNote}内无匹配的产线日志(${filterBits.join('; ')})。可调大 minutes / 放宽 kind、actor_kind、node_id,或确认 line_id/recipe_id 是否正确;先 line_context 核对产线与配方 id。`,
+    }
+  }
 
   const body = rows.map((r) => {
     const src = OPS_ACTOR_LABEL[String(r.actorKind)] ?? String(r.actorKind)
-    return `- [${fmtAuditAt(String(r.at))}] 来源=${src} 操作者=${String(r.actorName) || String(r.actor)} | ${String(r.action)} | ${String(r.summary)}`
+    return `- [${fmtAuditAt(String(r.at))}] ${rowScopeOf(r, maps)} | 来源=${src} 操作者=${String(r.actorName) || String(r.actor)} | ${String(r.action)} | ${String(r.summary)}`
   })
-  const scopeNote = lineId ? `产线 ${lineId}` : `可读产线 ${readable.length} 条`
   return {
-    text: `运维日志(${scopeNote},近 ${minutes} 分钟,${rows.length} 条,新→旧):\n${body.join('\n')}\n\n说明:来源=Agent 的操作者格式为「Channel名/成员名」;需要节点级参数值变更史用 dcw_journal,配方下发/回退专门视图用 recipe_log。`,
+    text: `产线日志(${filterBits.join('; ')}, ${windowNote}, ${rows.length} 条, 新→旧):\n${body.join('\n')}\n\n说明:只含产线域记录(登录/用户管理/系统设置/备份等全局审计不在本工具);来源=Agent 的操作者格式为「Channel名/成员名」;节点级参数值变更史用 dcw_journal,配方下发/回退专门视图用 recipe_log。`,
   }
 }
 
-/** 工具:recipe_log —— 负责产线的配方下发与回退历史(recipe.apply + 优化开窗/判定/回退)。
- *  Agent 据此知道 Recipe 层面发生过哪些下发变更、谁做的、是否已回退。 */
+/** 工具:recipe_log —— 产线的配方变更史(创建/更新/试验/正式下发/ACK 鉴定/回退)。
+ *
+ *  **只返回产线域记录**(line_id 非空);按 action 前缀 recipe. 跨 kind 取全族
+ *  (recipe.apply 的 ACK 行 kind=write 也会命中),再叠加 optimization.* 回退记录。
+ *  时间:from/to 绝对时间优先,否则 minutes 回看;结果行逐条带产线与配方归属。
+ */
 export async function toolRecipeLog(agentId: string, args: {
   line_id?: string
   recipe_id?: string
+  product_id?: string
   minutes?: number | string
+  from?: string
+  to?: string
   limit?: number | string
 }): Promise<{ text: string, isError?: boolean }> {
   const audit = getOps()?.audit
   if (!audit) return { text: '审计仓储未装配(服务未就绪),请稍后重试。', isError: true }
   const scope = agentOpsScope(agentId)
   if (!scope) return { text: '你尚未绑定任何工业节点,所在频道也未绑定产线,无 Recipe 历史可查(权限跟随节点绑定或频道绑线)。', isError: true }
-  const lineId = String(args.line_id ?? '').trim()
+  const wantedLine = String(args.line_id ?? '').trim()
+  const recipeId = String(args.recipe_id ?? '').trim()
+  const productId = String(args.product_id ?? '').trim()
   const readable = readableLineIds(scope)
-  if (lineId && !readable.includes(lineId))
-    return { text: `无权查询产线 ${lineId} 的 Recipe 历史(你的可读产线:${readable.join(', ') || '(无)'})。`, isError: true }
-  const recipeId = String(args.recipe_id ?? '').trim() || undefined
-  const { minutes, limit, from } = windowOf(args)
+  if (wantedLine && !readable.includes(wantedLine))
+    return { text: `无权查询产线 ${wantedLine} 的 Recipe 历史(你的可读产线:${readable.join(', ') || '(无)'})。`, isError: true }
 
-  const lines = lineId ? [lineId] : readable
+  const recipe = recipeId ? getDcwController().listRecipes().find(r => r.id === recipeId) : undefined
+  if (recipeId && !recipe)
+    return { text: `配方 ${recipeId} 不存在(用 line_context 查看当前配方 id)。`, isError: true }
+  if (recipe?.lineId && !readable.includes(recipe.lineId))
+    return { text: `无权查询配方 ${recipeId} 的 Recipe 历史(该配方归属产线 ${recipe.lineId},不在你的可读产线:${readable.join(', ') || '(无)'})。`, isError: true }
+  if (wantedLine && recipe?.lineId && recipe.lineId !== wantedLine)
+    return { text: `配方「${recipe.name}」归属产线 ${recipe.lineId},与 line_id=${wantedLine} 不一致;请用正确产线或只传 recipe_id。`, isError: true }
+  const product = productId ? getDcwProductRepo().byId(productId) : undefined
+  if (productId && !product)
+    return { text: `产品 ${productId} 不存在(用 line_context 查看当前产品 id)。`, isError: true }
+  if (product?.lineId && !readable.includes(product.lineId))
+    return { text: `无权查询产品 ${productId} 的 Recipe 历史(该产品归属产线 ${product.lineId},不在你的可读产线:${readable.join(', ') || '(无)'})。`, isError: true }
+
+  const win = windowOf(args)
+  if (win.error) return { text: win.error, isError: true }
+  const { minutes, limit, from, to } = win
+
+  const channelLine = channelBoundLineId(agentId)
+  const lines = wantedLine
+    ? [wantedLine]
+    : recipe?.lineId
+      ? [recipe.lineId]
+      : product?.lineId
+        ? [product.lineId]
+        : channelLine && readable.includes(channelLine)
+          ? [channelLine]
+          : readable
+
+  const maps = scopeMaps()
   const rows = fanoutQuery(audit, lines, lid => [
-    { lineId: lid, kind: 'recipe', recipeId, from, limit },
-    { lineId: lid, kind: 'rollback', recipeId, from, limit },
+    // recipe.* 全族:创建/更新/试验/正式下发/ACK 鉴定/回退定义(跨 kind=recipe/write)
+    { scope: 'line', lineId: lid, recipeId: recipeId || undefined, productId: productId || undefined, actionPrefix: 'recipe.', from, ...(to ? { to } : {}), limit },
+    // 开跑/停线也属于"配方下发作业"(lineStart 会整批下发该配方参数)
+    { scope: 'line', lineId: lid, recipeId: recipeId || undefined, productId: productId || undefined, action: 'line.start', from, ...(to ? { to } : {}), limit },
+    { scope: 'line', lineId: lid, recipeId: recipeId || undefined, productId: productId || undefined, action: 'line.stop', from, ...(to ? { to } : {}), limit },
+    // 优化记录的开窗/判定/回退(kind=rollback,action=optimization.*)
+    { scope: 'line', lineId: lid, recipeId: recipeId || undefined, productId: productId || undefined, kind: 'rollback', from, ...(to ? { to } : {}), limit },
   ]).sort((a, b) => String(b.at).localeCompare(String(a.at))).slice(0, limit)
-  if (rows.length === 0) return { text: `窗口(近 ${minutes} 分钟)内无配方下发/回退记录。可调大 minutes 或换 line_id。` }
+
+  const lineNote = lines.length === 1 ? `产线 ${lineLabelOf(lines[0]!, maps)}` : `可读产线 ${lines.length} 条`
+  const filterBits = [lineNote]
+  if (recipeId) filterBits.push(`配方 ${recipeLabelOf(recipeId, maps)}`)
+  if (productId) filterBits.push(`产品 ${productLabelOf(productId, maps)}`)
+  const windowNote = to
+    ? `时间窗 ${String(from).slice(0, 19).replace('T', ' ')} ~ ${String(to).slice(0, 19).replace('T', ' ')}`
+    : `近 ${minutes} 分钟`
+  if (rows.length === 0) {
+    return {
+      text: `${windowNote}内无配方变更记录(${filterBits.join('; ')})。可调大 minutes / 放宽时间窗,或确认 line_id/recipe_id 是否正确;先 line_context 核对产线与配方 id。`,
+    }
+  }
+
+  const tagOf = (action: string): string => ({
+    'recipe.apply': '配方下发',
+    'recipe.dispatch.ack': '下发回执',
+    'recipe.trial': '配方试验',
+    'recipe.update': '配方更新',
+    'recipe.update.agent': 'Agent 配方更新',
+    'recipe.revert': '配方回退',
+    'recipe.create': '配方创建',
+    'recipe.delete': '配方删除',
+    'recipe.propose': '方案审批',
+    'recipe.mark-good': '标记良好批次',
+    'recipe.rollback-good': '回退到良好批次',
+    'line.start': '开跑整批下发',
+    'line.stop': '停线',
+    'optimization.open': '优化开窗',
+    'optimization.judge': '优化判定',
+    'optimization.rollback': '回退执行',
+  } as Record<string, string>)[action] ?? action
 
   const body = rows.map((r) => {
     const src = OPS_ACTOR_LABEL[String(r.actorKind)] ?? String(r.actorKind)
     const action = String(r.action)
-    const tag = action === 'recipe.apply'
-      ? '配方下发'
-      : action === 'optimization.open'
-        ? '优化开窗'
-        : action === 'optimization.judge'
-          ? '优化判定'
-          : action === 'optimization.rollback'
-            ? '回退执行'
-            : action
-    return `- [${fmtAuditAt(String(r.at))}] ${tag} 来源=${src} 操作者=${String(r.actorName) || String(r.actor)} | ${String(r.summary)}${r.recipeId ? `(配方 ${String(r.recipeId).slice(0, 8)})` : ''}`
+    return `- [${fmtAuditAt(String(r.at))}] ${tagOf(action)} ${rowScopeOf(r, maps)} | 来源=${src} 操作者=${String(r.actorName) || String(r.actor)} | ${String(r.summary)}`
   })
-  const text = `Recipe 变更史(${lineId ? `产线 ${lineId}` : `可读产线 ${readable.length} 条`},近 ${minutes} 分钟,${rows.length} 条,新→旧):\n${body.join('\n')}\n\n说明:配方下发=整批参数写命令;优化开窗=单次设定变更(含 Agent 假设);回退执行=已恢复基线值。节点级参数值逐笔历史用 dcw_journal(node_id)。`
-  return { text }
+  return {
+    text: `Recipe 变更史(${filterBits.join('; ')}, ${windowNote}, ${rows.length} 条, 新→旧):\n${body.join('\n')}\n\n说明:只含产线域记录;配方下发=整批参数写命令;下发回执=逐参数 ACK 鉴定;配方试验=候选整批下发(不写版本);优化开窗/判定/回退=单次设定变更与恢复。节点级参数值逐笔历史用 dcw_journal(node_id)。`,
+  }
 }
 
 // ================================================================
@@ -273,6 +462,215 @@ export async function toolLineContext(agentId: string, args: { line_id?: string 
   }
 }
 
+/** 工具:recipe_catalog —— 可读产线上的配方目录(找 id / 当前执行配方 / 产品归属)。
+ *  解决 Agent 只能从 line_context 文本里猜 recipe_id 的问题:按产线/产品/关键字过滤,
+ *  每条给出 id、版本、产品、参数数量与当前 PLC 值、是否正在执行、良好批次。 */
+export async function toolRecipeCatalog(agentId: string, args: { line_id?: string, product_id?: string, q?: string, limit?: number | string } = {}): Promise<{ text: string, isError?: boolean }> {
+  const scope = agentOpsScope(agentId)
+  if (!scope) return { text: '你尚未绑定任何工业节点,所在频道也未绑定产线,无可见配方(权限跟随节点绑定或频道绑线)。', isError: true }
+  const readable = readableLineIds(scope)
+  const wantedLine = String(args.line_id ?? '').trim()
+  if (wantedLine && !readable.includes(wantedLine)) {
+    return { text: `无权查看产线 ${wantedLine} 的配方(你的可读产线:${readable.join(', ') || '(无)'})。`, isError: true }
+  }
+  const productId = String(args.product_id ?? '').trim()
+  const product = productId ? getDcwProductRepo().byId(productId) : undefined
+  if (productId && !product) return { text: `产品 ${productId} 不存在。`, isError: true }
+  if (product?.lineId && !readable.includes(product.lineId)) return { text: `无权查看产品 ${productId} 的配方(产品归属产线 ${product.lineId} 不在你的可读范围)。`, isError: true }
+  const q = String(args.q ?? '').trim().toLowerCase()
+  const limit = Math.min(Math.max(Math.round(Number(args.limit)) || 20, 1), 100)
+  const lines = wantedLine ? [wantedLine] : product?.lineId ? [product.lineId] : readable
+  const all = getDcwController().listRecipes().filter(r => lines.includes(r.lineId))
+  const filtered = all.filter((r) => {
+    if (productId && r.productId !== productId) return false
+    if (q && !`${r.name} ${r.description ?? ''}`.toLowerCase().includes(q)) return false
+    return true
+  })
+  const shown = filtered.slice(0, limit)
+  const maps = scopeMaps()
+  const body = shown.map((r) => {
+    const active = getActiveLineRun(r.lineId)
+    const running = active?.recipeId === r.id
+    const prod = getDcwProductRepo().byId(r.productId)
+    const pp = r.params.map((p) => {
+      const node = getDcwController().byId(p.nodeId)
+      const cur = node?.value != null ? `→PLC ${node.value}${node.unit ?? ''}` : ''
+      return `${node?.name ?? p.nodeId}=${p.value}${node?.unit ?? ''}${cur}`
+    }).join(', ')
+    return `- ${r.name}(id=${r.id}) v${r.version ?? 1} | 产线 ${lineLabelOf(r.lineId, maps)} | 产品 ${prod?.name ?? r.productId}(${r.productId}) | ${running ? '**当前执行中**' : '未执行'} | 参数 ${r.params.length} 项: ${pp}${r.lastGoodRunId ? ` | 良好批次 ${r.lastGoodRunId.slice(0, 8)}` : ''}`
+  })
+  return {
+    text: `配方目录(${filtered.length} 个${wantedLine ? `,产线 ${wantedLine}` : ''}${productId ? `,产品 ${productId}` : ''}${q ? `,关键字「${args.q}」` : ''};显示 ${shown.length} 条):\n${body.join('\n') || '(无匹配配方)'}${filtered.length > shown.length ? `\n(另有 ${filtered.length - shown.length} 个未显示,可收紧过滤或调大 limit)` : ''}\n\n说明:recipe_apply/recipe_trial/recipe_update 需要 recipe_id;若只知产线,可直接传 line_id 让工具解析当前执行配方。新建/另存配方用 recipe_create(manual 线需人工批准)。`,
+  }
+}
+
+/** 工具:recipe_create —— 把当前配方/批次冻结参数另存为新配方(不触产线)。
+ *  典型用法:优化验证后把"当前有效配方 + 实测参数"固化成新配方(如产品换型/新工艺基线)。
+ *  权限:需在该产线已有写向绑定(数控节点或配方);manual 线/绑定 → 人工批准。
+ *  新建后不会自动绑定给 Agent,需用户/lead 在界面绑定后才能继续 update/apply(返回文案会提示)。 */
+export async function toolRecipeCreate(agentId: string, args: {
+  name?: string
+  description?: string
+  product_id?: string
+  line_id?: string
+  source_recipe_id?: string
+  from_run_id?: string
+  use_active_run?: boolean | string
+  params?: Array<{ node_id?: string, value?: number | string, min?: number | string, max?: number | string, step_limit?: number | string }>
+  daq_windows?: Array<{ node_id?: string, min?: number | string, max?: number | string }>
+  access?: { require_auth?: boolean, authorized_agent_ids?: string[] }
+  reason?: string
+}): Promise<{ text: string, isError?: boolean }> {
+  const name = String(args.name ?? '').trim()
+  const reason = String(args.reason ?? '').trim()
+  if (!name) return { text: 'name 必填:新配方名称。', isError: true }
+  if (!reason) return { text: 'reason 必填:说明为什么另存为新配方(依据/用途),便于版本史与人工审批。', isError: true }
+  const records = getDcwController().listRecipes()
+  const sourceId = String(args.source_recipe_id ?? '').trim()
+  let source = sourceId ? records.find(r => r.id === sourceId) : undefined
+  if (sourceId && !source) return { text: `源配方 ${sourceId} 不存在。`, isError: true }
+  const runId = String(args.from_run_id ?? '').trim()
+  let run = runId ? getDcwRecipeRepo().runById(runId) : undefined
+  if (runId && !run) return { text: `批次 ${runId} 不存在。`, isError: true }
+  if (!source && run) {
+    const runRecipeId = run.recipeId
+    source = records.find(r => r.id === runRecipeId)
+  }
+  const scope = agentOpsScope(agentId)
+  const readable = scope ? readableLineIds(scope) : []
+  let lineId = String(args.line_id ?? '').trim() || source?.lineId || (run as { lineId?: string } | undefined)?.lineId || ''
+  if (!lineId) {
+    const active = getActiveLineRun(channelBoundLineId(agentId) ?? '')
+    lineId = active?.lineId ?? readable[0] ?? ''
+  }
+  // use_active_run:显式要求以当前活动批次为源(参数用批次冻结快照)
+  if (!run && (args.use_active_run === true || args.use_active_run === 'true') && lineId) {
+    const active = getActiveLineRun(lineId)
+    if (active) {
+      run = getDcwRecipeRepo().runById(active.runId)
+      if (!source) source = records.find(r => r.id === active.recipeId)
+    }
+  }
+  if (!lineId) return { text: '无法确定产线:请提供 line_id 或 source_recipe_id(from_run_id 也可推断)。', isError: true }
+  if (!readable.includes(lineId)) return { text: `无权在产线 ${lineId} 新建配方(你的可读产线:${readable.join(', ') || '(无)'})。`, isError: true }
+  const productId = String(args.product_id ?? '').trim() || source?.productId || (run?.productId ?? '')
+  const product = productId ? getDcwProductRepo().byId(productId) : undefined
+  if (!productId || !product) return { text: `产品 ${productId || '(未提供)'} 不存在;新配方必须归属产品(product_id 或源配方可推断)。`, isError: true }
+  if (product.lineId !== lineId) return { text: `产品「${product.name}」归属产线 ${product.lineId},与目标产线 ${lineId} 不一致。`, isError: true }
+  if (source && source.lineId !== lineId) return { text: `源配方「${source.name}」归属产线 ${source.lineId},与目标产线 ${lineId} 不一致。`, isError: true }
+
+  // 参数来源优先级:显式 params > 批次冻结快照 > 源配方定义
+  type NewParam = { nodeId: string, value: number, min?: number, max?: number, stepLimit?: number, templateRef?: string }
+  let params: NewParam[]
+  if (Array.isArray(args.params) && args.params.length > 0) {
+    params = []
+    for (const p of args.params) {
+      const nodeId = String(p?.node_id ?? '').trim()
+      const value = Number(p?.value)
+      if (!nodeId || !Number.isFinite(value)) return { text: 'params 每项必须提供 node_id 与数值 value。', isError: true }
+      const node = getDcwController().byId(nodeId)
+      if (!node) return { text: `节点 ${nodeId} 不存在。`, isError: true }
+      if (node.lineId !== lineId) return { text: `节点「${node.name}」不在目标产线 ${lineId},不能写入新配方。`, isError: true }
+      if (!node.enabled) return { text: `节点「${node.name}」已停用,不能写入新配方。`, isError: true }
+      const one: NewParam = { nodeId, value }
+      if (p?.min != null && Number.isFinite(Number(p.min))) one.min = Number(p.min)
+      if (p?.max != null && Number.isFinite(Number(p.max))) one.max = Number(p.max)
+      if (p?.step_limit != null && Number.isFinite(Number(p.step_limit))) one.stepLimit = Number(p.step_limit)
+      params.push(one)
+    }
+  }
+  else if (run?.paramsSnapshot?.length) {
+    params = run.paramsSnapshot.map(p => ({ nodeId: p.nodeId, value: p.value, min: p.min, max: p.max, stepLimit: p.stepLimit, templateRef: p.templateRef }))
+  }
+  else if (source) {
+    params = source.params.map(p => ({ nodeId: p.nodeId, value: p.value, min: p.min, max: p.max, stepLimit: p.stepLimit, templateRef: p.templateRef }))
+  }
+  else {
+    return { text: '没有可另存的参数:请提供 params,或给 source_recipe_id/from_run_id。', isError: true }
+  }
+  const windows = Array.isArray(args.daq_windows)
+    ? args.daq_windows
+        .map((w) => {
+          const nodeId = String(w?.node_id ?? '').trim()
+          const min = w?.min != null && Number.isFinite(Number(w.min)) ? Number(w.min) : undefined
+          const max = w?.max != null && Number.isFinite(Number(w.max)) ? Number(w.max) : undefined
+          return { nodeId, ...(min !== undefined ? { min } : {}), ...(max !== undefined ? { max } : {}) }
+        })
+        .filter(w => w.nodeId)
+    : (source?.daqWindows ?? [])
+  const access = args.access
+    ? {
+        requireAuth: args.access.require_auth === true,
+        authorizedAgentIds: (args.access.authorized_agent_ids ?? []).map(x => String(x ?? '').trim()).filter(Boolean),
+      }
+    : source?.access
+
+  const gate = assertRecipeCreate(agentId, lineId)
+  if (!gate.ok) return { text: gate.text, isError: true }
+  let hitlNote = ''
+  if (gate.hitlRequired) {
+    const gateDecision = await hitlDispatchGate(
+      agentId,
+      `new-${lineId}`,
+      `新建配方「${name}」:产线 ${lineId} / 产品「${product.name}」(${productId}) | 参数 ${params.length} 项: ${params.map((p) => {
+        const node = getDcwController().byId(p.nodeId)
+        return `${node?.name ?? p.nodeId}=${p.value}${node?.unit ?? ''}`
+      }).join(';')} | 来源 ${run ? `批次 ${run.id.slice(0, 8)} 冻结快照` : source ? `配方「${source.name}」v${source.version ?? 1}` : '显式参数'} | 理由:${reason} | 批准=创建配方定义(不下发产线)`,
+      '新建配方审批',
+      {
+        payload: {
+          schemaVersion: 1,
+          kind: 'recipe-gate',
+          op: 'create',
+          recipeId: '',
+          recipeName: name,
+          lineId,
+          productId,
+          reason,
+          params: params.map((p) => {
+            const node = getDcwController().byId(p.nodeId)
+            return { nodeId: p.nodeId, name: node?.name ?? p.nodeId, from: null, to: p.value, unit: node?.unit }
+          }),
+          ...(run ? { runId: run.id } : {}),
+        },
+      },
+    )
+    if (!gateDecision.approved) {
+      return { text: `人工未批准新建配方。人工指导:${gateDecision.comment || '(无附言)'}。请按指导调整参数/命名后重试。` }
+    }
+    if (gateDecision.comment) hitlNote = `\n人工附言:${gateDecision.comment}`
+    const again = assertRecipeCreate(agentId, lineId)
+    if (!again.ok) return { text: `人工已批准,但审批期间授权已失效,本次未创建:${again.text}`, isError: true }
+  }
+  try {
+    const created = getDcwController().createRecipe({
+      name,
+      productId,
+      description: String(args.description ?? '').trim() || `另存自${run ? `批次 ${run.id.slice(0, 8)}` : source ? `配方「${source.name}」v${source.version ?? 1}` : 'Agent 参数'}`,
+      params,
+      daqWindows: windows,
+      ...(access ? { access } : {}),
+    })
+    try {
+      const { recordOps } = await import('../../ops/ops')
+      recordOps({
+        actor: agentId, actorName: agentBadgeLabel(agentId), actorKind: 'agent',
+        action: 'recipe.create', kind: 'recipe', targetKind: 'recipe', targetId: created.id,
+        lineId: created.lineId, productId: created.productId, recipeId: created.id,
+        summary: `新建配方「${created.name}」v${created.version ?? 1}(另存自${run ? `批次 ${run.id.slice(0, 8)} 冻结参数` : source ? `配方「${source.name}」v${source.version ?? 1}` : '显式参数'}) | 理由:${reason}`,
+        detail: { sourceRecipeId: source?.id ?? null, sourceRunId: run?.id ?? null, params: params.length, reason },
+      })
+    }
+    catch { /* 审计失败不影响创建 */ }
+    return {
+      text: `已创建配方「${created.name}」(id=${created.id},v${created.version ?? 1},产品 ${product.name},参数 ${params.length} 项)。${hitlNote}\n注意:新配方尚未绑定给你 —— 请让用户/lead 在配方管理中把「${created.name}」绑定给你的 Agent(首绑 manual,需人工批准),之后才能 recipe_update/recipe_apply。当前产线未因此发生变化(仅创建定义,未下发)。`,
+    }
+  }
+  catch (err) {
+    return { text: `新建配方失败:${err instanceof Error ? err.message : String(err)}`, isError: true }
+  }
+}
+
 /** 工具:recipe_versions —— 配方参数版本史(谁/何时/为什么改了什么;旧→新)。
  *  每条含 by(user/agent/system)、操作者人话名、变更描述、参数 diff。 */
 export async function toolRecipeVersions(agentId: string, args: { recipe_id?: string, limit?: number | string }): Promise<{ text: string, isError?: boolean }> {
@@ -314,24 +712,44 @@ export async function toolRecipeVersions(agentId: string, args: { recipe_id?: st
   }
 }
 
+/** 配方目标解析:recipe_id 优先;只给 line_id 时解析该线当前活动批次的配方。
+ *  这样 Agent 可以直接对"当前在跑的配方"下发,不必先从文本里抠 id。 */
+function resolveRecipeTarget(recipeIdRaw: unknown, lineIdRaw: unknown): { ok: true, recipe: RecipeView } | { ok: false, text: string } {
+  const recipeId = String(recipeIdRaw ?? '').trim()
+  const lineId = String(lineIdRaw ?? '').trim()
+  if (recipeId) {
+    const recipe = getDcwController().listRecipes().find(r => r.id === recipeId)
+    if (!recipe) return { ok: false, text: `配方 ${recipeId} 不存在(用 recipe_catalog/line_context 查看配方 id)。` }
+    if (lineId && recipe.lineId !== lineId) return { ok: false, text: `配方「${recipe.name}」归属产线 ${recipe.lineId},与 line_id=${lineId} 不一致。` }
+    return { ok: true, recipe }
+  }
+  if (!lineId) return { ok: false, text: 'recipe_id 与 line_id 至少提供一个:只给 line_id 时按该产线当前活动批次解析配方。' }
+  const active = getActiveLineRun(lineId)
+  if (!active) return { ok: false, text: `产线 ${lineId} 当前没有活动批次,无法解析"当前配方";请先开跑配方,或直接提供 recipe_id。` }
+  const recipe = getDcwController().listRecipes().find(r => r.id === active.recipeId)
+  if (!recipe) return { ok: false, text: `活动批次引用的配方 ${active.recipeId} 不存在或已删除。` }
+  return { ok: true, recipe }
+}
+
 /** 工具:recipe_update —— 把验证过的最佳参数保存进配方(生成新版本,带归因与原因)。
  *  权限模型 v2:需绑定该 recipe(kind='recipe')且通过二级认证与运行门(配方须在执行);
  *  绑定 manual 时本次保存挂 HITL 等人工批准(理由随审批卡展示)。
  *  只改配方定义;要把参数推到运行中的产线用 recipe_apply(整批下发)。 */
 export async function toolRecipeUpdate(agentId: string, args: {
   recipe_id?: string
+  line_id?: string
   params?: Array<{ node_id?: string, value?: number | string, min?: number | string, max?: number | string }>
   reason?: string
   task_id?: string
 }): Promise<{ text: string, isError?: boolean }> {
-  const recipeId = String(args.recipe_id ?? '').trim()
   const reason = String(args.reason ?? '').trim()
-  if (!recipeId) return { text: 'recipe_id 必填(line_context 可看到当前配方的 id)。', isError: true }
   if (!reason) return { text: 'reason 必填:保存参数必须说明依据(如数采证据/判定结论),便于版本史追溯与人工审批判断。', isError: true }
   const list = (args.params ?? []).filter(p => p && String(p.node_id ?? '').trim() && Number.isFinite(Number(p.value)))
   if (list.length === 0) return { text: 'params 至少提供一条 {node_id, value}(value 必须为数字)。', isError: true }
-  const recipe = getDcwController().listRecipes().find(r => r.id === recipeId)
-  if (!recipe) return { text: `配方 ${recipeId} 不存在。`, isError: true }
+  const target = resolveRecipeTarget(args.recipe_id, args.line_id)
+  if (!target.ok) return { text: target.text, isError: true }
+  const recipe = target.recipe
+  const recipeId = recipe.id
   // 权限模型 v2:绑定 → 二级认证 → 运行门(未在执行的配方不可操作)
   const gate = assertRecipeOperation(agentId, recipe, 'update')
   if (!gate.ok) return { text: gate.text, isError: true }
@@ -617,20 +1035,21 @@ function recipeOpIntervalGate(recipe: { id: string, name: string, opIntervalMs?:
  *  受同线试验节拍卡控(默认 ≥5 分钟,防连发震荡);四层限界(量程∩参数∩产品)照常拦截。 */
 export async function toolRecipeTrial(agentId: string, args: {
   recipe_id?: string
+  line_id?: string
   params?: Array<{ node_id?: string, value?: number | string }>
   hypothesis?: string
   emergency?: boolean | string
 }): Promise<{ text: string, isError?: boolean }> {
-  const recipeId = String(args.recipe_id ?? '').trim()
   const hypothesis = String(args.hypothesis ?? '').trim()
   const emergency = args.emergency === true || args.emergency === 'true'
-  if (!recipeId) return { text: 'recipe_id 必填(line_context 可看到当前配方 id)。', isError: true }
   if (!hypothesis) return { text: 'hypothesis 必填:试验必须声明依据(知识库条目/数据分析结论),便于审计追溯与人工审批判断。', isError: true }
   const list = (args.params ?? []).filter(p => p && String(p.node_id ?? '').trim() && Number.isFinite(Number(p.value)))
     .map(p => ({ nodeId: String(p.node_id).trim(), value: Number(p.value) }))
   if (list.length === 0) return { text: 'params 至少提供一条 {node_id, value}(value 必须为数字);试验的意义就是多参数一次整批改动。', isError: true }
-  const recipe = getDcwController().listRecipes().find(r => r.id === recipeId)
-  if (!recipe) return { text: `配方 ${recipeId} 不存在。`, isError: true }
+  const target = resolveRecipeTarget(args.recipe_id, args.line_id)
+  if (!target.ok) return { text: target.text, isError: true }
+  const recipe = target.recipe
+  const recipeId = recipe.id
   // 权限模型 v2:绑定 → 二级认证 → 运行门(未在执行的配方不可试验)
   const gate = assertRecipeOperation(agentId, recipe, 'trial')
   if (!gate.ok) return { text: gate.text, isError: true }
@@ -689,7 +1108,7 @@ export async function toolRecipeTrial(agentId: string, args: {
       const { recordOps } = await import('../../ops/ops')
       recordOps({
         actor: agentId, actorName: agentBadgeLabel(agentId), actorKind: 'agent',
-        action: 'recipe.trial', kind: 'recipe', targetKind: 'recipe', targetId: recipeId, recipeId, lineId: recipe.lineId,
+        action: 'recipe.trial', kind: 'recipe', targetKind: 'recipe', targetId: recipeId, recipeId, lineId: recipe.lineId, productId: recipe.productId,
         level: acks.failed > 0 ? 'error' : acks.unverified > 0 ? 'warn' : 'info',
         summary: `${emergency ? '【应急】' : ''}配方试验整批下发(证实 ${acks.verified}/${acks.total},未证实 ${acks.unverified},失败 ${acks.failed},批次 ${run.id.slice(0, 8)}):${list.map(p => `${p.nodeId.slice(0, 8)}→${p.value}`).join(';')} | 假设:${hypothesis}`,
         detail: { runId: run.id, ackSummary: acks, ...(emergency ? { emergency: true } : {}) },
@@ -728,14 +1147,15 @@ export async function toolRecipeTrial(agentId: string, args: {
  *  权限模型 v2:需绑定该 recipe 且过二级认证+运行门;绑定 manual 时挂 HITL(理由随审批卡)。 */
 export async function toolRecipeApply(agentId: string, args: {
   recipe_id?: string
+  line_id?: string
   reason?: string
   emergency?: boolean | string
 }): Promise<{ text: string, isError?: boolean }> {
-  const recipeId = String(args.recipe_id ?? '').trim()
   const emergency = args.emergency === true || args.emergency === 'true'
-  if (!recipeId) return { text: 'recipe_id 必填(line_context 可看到当前配方 id)。', isError: true }
-  const recipe = getDcwController().listRecipes().find(r => r.id === recipeId)
-  if (!recipe) return { text: `配方 ${recipeId} 不存在。`, isError: true }
+  const target = resolveRecipeTarget(args.recipe_id, args.line_id)
+  if (!target.ok) return { text: target.text, isError: true }
+  const recipe = target.recipe
+  const recipeId = recipe.id
   // 理由强制:下发必须让人(产线专家)看懂为什么这样调 —— 无描述的下发不得进入审批/执行
   const reason = String(args.reason ?? '').trim()
   if (!reason) return { text: 'reason 必填:整批下发必须说明依据(如数采证据/试验结论/GOAL 差距分析),产线专家要在审批卡上看懂你为什么这样调。', isError: true }
@@ -800,7 +1220,7 @@ export async function toolRecipeApply(agentId: string, args: {
       const { recordOps } = await import('../../ops/ops')
       recordOps({
         actor: agentId, actorName: agentBadgeLabel(agentId), actorKind: 'agent',
-        action: 'recipe.apply', kind: 'recipe', targetKind: 'recipe', targetId: recipeId, recipeId, lineId: recipe.lineId,
+        action: 'recipe.apply', kind: 'recipe', targetKind: 'recipe', targetId: recipeId, recipeId, lineId: recipe.lineId, productId: recipe.productId,
         level: acks.failed > 0 ? 'error' : acks.unverified > 0 ? 'warn' : 'info',
         summary: `${emergency ? '【应急】' : ''}Agent 整批下发配方 v${recipe.version ?? 1}(证实 ${acks.verified}/${acks.total},未证实 ${acks.unverified},失败 ${acks.failed},批次 ${run.id.slice(0, 8)}) | 原因:${reason}`,
         detail: { runId: run.id, ackSummary: acks, ...(emergency ? { emergency: true } : {}) },

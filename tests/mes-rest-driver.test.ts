@@ -45,6 +45,47 @@ before(async () => {
       if (url.pathname === '/current' || /^\/params\/[^/]+\/current$/.test(url.pathname)) {
         return reply(200, { data: { value: 42.5, ts: Date.now() } })
       }
+      // 字段级数据字典(当前值响应携带)
+      if (url.pathname === '/current-dict') {
+        return reply(200, {
+          data: {
+            value: 36.2,
+            ts: Date.now(),
+            fields: [
+              { field: 'value', label: '膜厚', unit: 'um', min: 30, max: 40, description: '产品膜厚' },
+            ],
+          },
+        })
+      }
+      // 字段级数据字典 + 向量行伴随字段(mean/lane_unit)
+      if (url.pathname === '/dict-vector') {
+        const t = Date.now()
+        return reply(200, {
+          data: {
+            rows: [
+              { ts: t, profile: [35.1, 35.4, 35.2], mean: 35.23, lane_unit: 'um' },
+              { ts: t + 1000, profile: [35.2, 35.5, 35.3], mean: 35.33, lane_unit: 'um' },
+            ],
+            nextCursor: null,
+            fields: [
+              {
+                field: 'profile',
+                label: '膜厚断面',
+                unit: 'um',
+                kind: 'vector',
+                description: '沿模头横向的膜厚分布',
+                points: [
+                  { field: 'v0', label: '模头点1', unit: 'um', index: 0 },
+                  { field: 'v1', label: '模头点2', unit: 'um', index: 1 },
+                  { field: 'v2', label: '模头点3', unit: 'um', index: 2 },
+                ],
+              },
+              { field: 'mean', label: '平均膜厚', unit: 'um', kind: 'scalar' },
+              { field: 'lane_unit', label: 'MES 单位声明', kind: 'scalar' },
+            ],
+          },
+        })
+      }
       // 受保护当前值:要求 x-unit(默认头/映射头覆盖);token=required 时另验 x-api-token(凭据插值)
       if (url.pathname === '/secure-current') {
         const unit = req.headers['x-unit'] ?? ''
@@ -279,6 +320,41 @@ test('mes-rest historyMap format=vector: valuesPath 提取向量行', async () =
   assert.equal(r.complete, true)
   assert.deepEqual((got[0] as { values: number[] }).values, [50, 50.5, 51])
   assert.equal((got[2] as { values: number[] }).values[2], 53)
+})
+
+test('mes-rest 字段字典:dictionaryPath 解析字段/单位/逐点语义,向量行保留伴随字段', async () => {
+  const dcfg = cfg({ historyMap: JSON.stringify({
+    path: '/dict-vector',
+    dictionaryPath: 'data.fields',
+    response: { rowsPath: 'data.rows[*]', tsPath: 'ts', format: 'vector', valuesPath: 'profile' },
+  }) })
+  const got: Array<{ values?: number[], record?: Record<string, unknown> }> = []
+  const r = await mesRestDcwDriver.fetchHistory!({ driverConfig: dcfg, fromIso: new Date().toISOString(), toIso: new Date().toISOString(), maxRows: 10, onRows: (b) => {
+    got.push(...(b as typeof got))
+  } })
+  assert.equal(r.rows, 2)
+  assert.ok(r.dictionary && r.dictionary.length === 3)
+  assert.equal(r.dictionary[0]!.field, 'profile')
+  assert.equal(r.dictionary[0]!.unit, 'um')
+  assert.equal(r.dictionary[0]!.points?.length, 3)
+  assert.equal(r.dictionary[0]!.points?.[1]!.label, '模头点2')
+  assert.equal(r.dictionary[1]!.label, '平均膜厚')
+  // 向量行伴随字段不再丢弃(诊断/单位声明依赖它们)
+  assert.equal(got[0]!.record?.mean, 35.23)
+  assert.equal(got[0]!.record?.lane_unit, 'um')
+})
+
+test('mes-rest 字段字典:readMap 当前值响应携带字典', async () => {
+  const dcfg = cfg({ readMap: JSON.stringify({
+    path: '/current-dict',
+    dictionaryPath: 'data.fields',
+    response: { valuePath: 'data.value', tsPath: 'data.ts', tsFormat: 'epoch_ms' },
+  }) })
+  const r = await mesRestDcwDriver.read!({ domain: { min: 0, max: 100 }, driverConfig: dcfg })
+  assert.equal(r.ok, true)
+  assert.equal(r.eng, 36.2)
+  assert.equal(r.dictionary?.[0]?.unit, 'um')
+  assert.equal(r.dictionary?.[0]?.description, '产品膜厚')
 })
 
 test('mes-rest historyMap format=image: dataPath/mimePath 提取帧', async () => {

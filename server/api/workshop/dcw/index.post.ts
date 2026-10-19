@@ -8,7 +8,7 @@ import { requireRole } from '@/server/api/workshop/caller'
 import { defineApiHandler } from '@/server/utils/response'
 import { bindDcwBroadcast, getDcwController } from '@/server/services/workshop/dcw/dcw-controller'
 import { broadcastSceneEvent } from '@/server/services/workshop/scene-events'
-import { audit } from '@/server/services/workshop/ops/ops'
+import { recordOps } from '@/server/services/workshop/ops/ops'
 import { getDcwLineRepo } from '@/server/services/workshop/dcw/dcw-line.repo'
 import { AppError, ErrorCodes } from '@/server/utils/errors'
 
@@ -20,7 +20,13 @@ export default defineApiHandler(async (event) => {
     throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `产线不存在: ${body.lineId}`)
   }
   const node = getDcwController().create(body)
-  // R1:创建写控制节点(获得直写物理设备能力的入口)留痕
-  audit({ actor: user.id, actorName: user.name, actorKind: 'user', action: 'dcw.create', targetKind: 'dcw-node', targetId: node.id, detail: { name: node.name } })
+  // R1:创建写控制节点(获得直写物理设备能力的入口)留痕;归属产线随行,产线日志可检索
+  recordOps({
+    actor: user.id, actorName: user.name, actorKind: 'user',
+    action: 'dcw.create', kind: 'line', targetKind: 'dcw-node', targetId: node.id,
+    lineId: node.lineId ?? '',
+    summary: `创建数控节点「${node.name}」${node.lineId ? `(产线 ${node.lineId})` : '(未分配产线)'}`,
+    detail: { name: node.name, lineId: node.lineId ?? '' },
+  })
   return { node: node.toView() }
 })

@@ -8,7 +8,7 @@ import { defineApiHandler } from '@/server/utils/response'
 import { gateDangerous } from '@/server/utils/approval-gate'
 import { bindDcwBroadcast, getDcwController } from '@/server/services/workshop/dcw/dcw-controller'
 import { broadcastSceneEvent } from '@/server/services/workshop/scene-events'
-import { audit } from '@/server/services/workshop/ops/ops'
+import { recordOps } from '@/server/services/workshop/ops/ops'
 
 export default defineApiHandler(async (event) => {
   const user = requireRole(event)
@@ -26,8 +26,16 @@ export default defineApiHandler(async (event) => {
     setResponseStatus(event, 202)
     return { pending: true, requestId: gate.requestId }
   }
+  // 删除前取归属产线(remove 后节点不可读),产线日志才能归档到正确产线
+  const node0 = getDcwController().byId(id)
   getDcwController().remove(id)
   // R1:删除写控制节点留痕
-  audit({ actor: user.id, actorName: user.name, actorKind: 'user', action: 'dcw.delete', targetKind: 'dcw-node', targetId: id })
+  recordOps({
+    actor: user.id, actorName: user.name, actorKind: 'user',
+    action: 'dcw.delete', kind: 'line', targetKind: 'dcw-node', targetId: id,
+    lineId: node0?.lineId ?? '',
+    summary: `删除数控节点「${node0?.name ?? id}」${node0?.lineId ? `(产线 ${node0.lineId})` : ''}`,
+    detail: { name: node0?.name ?? '', lineId: node0?.lineId ?? '' },
+  })
   return { deleted: true }
 })

@@ -196,6 +196,16 @@ class DcwRecipeRepo {
       version: 1,
       paramsHistory: [],
       lastGoodRunId: null,
+      ...(input.access !== undefined
+        ? {
+            access: {
+              requireAuth: (input.access as { requireAuth?: unknown }).requireAuth === true,
+              authorizedAgentIds: Array.isArray((input.access as { authorizedAgentIds?: unknown }).authorizedAgentIds)
+                ? [...new Set(((input.access as { authorizedAgentIds?: unknown[] }).authorizedAgentIds ?? []).map(x => String(x ?? '').trim()).filter(Boolean))]
+                : [],
+            },
+          }
+        : {}),
       ...(normOpIntervalMs(input.opIntervalMs) !== undefined ? { opIntervalMs: normOpIntervalMs(input.opIntervalMs) } : {}),
       createdAt: now,
       updatedAt: now,

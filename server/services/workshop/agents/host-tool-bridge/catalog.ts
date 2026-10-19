@@ -52,7 +52,9 @@ export const AML_MODEL_BACKED_TOOL_NAMES = new Set([
  *  analysis_save/query 为数据分析留痕台账面 —— 台账写入非产线写,观察档位同样要留痕诊断结论) */
 export const OBSERVER_READ_TOOL_NAMES = new Set([
   'ops_log',
+  'line_log',
   'recipe_log',
+  'recipe_catalog',
   'recipe_versions',
   'line_context',
   'dcw_journal',

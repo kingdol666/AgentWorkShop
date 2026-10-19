@@ -45,6 +45,8 @@ export interface ExportNodeMeta {
   semantics?: string
   /** 信号形态(vector/image=帧节点:导出帧文件而非标量 CSV;缺省 scalar) */
   signalKind?: 'scalar' | 'vector' | 'image'
+  /** 向量布局/逐点语义(导出 manifest 与 README,离线分析可读) */
+  vector?: { points: number, min: number, max: number, axis?: string, pointUnit?: string, pointLabelPrefix?: string, pointIndexBase?: 0 | 1, labels?: string[] }
 }
 
 export interface ExportLineContext {
@@ -172,6 +174,7 @@ async function exportFrames(
       semantics: meta.semantics || '', unit: meta.unit,
       file: fileRel, frames: n, points: rows.length - 1,
       value_range_observed: null, state_summary: {},
+      ...(meta.vector ? { vector: meta.vector } : {}),
       metrics_summary: metricSummary,
       ...(truncated ? { truncated: true } : {}),
     }
@@ -329,6 +332,7 @@ export async function exportDaqDataset(opts: {
   }
 
   const exactRows = files.reduce((s, f) => s + f.rows, 0)
+  const mergedFile = opts.merge ? writeMergedCsv(dir, files, nodeOf) : undefined
   const manifest: Record<string, unknown> = {
     schema: 'aw.daq-export/1',
     export_id: exportId,
@@ -342,7 +346,44 @@ export async function exportDaqDataset(opts: {
     truncated_nodes: truncated,
     usage: 'nodes/ 下每标量节点一份全量原始时序 CSV(ts_iso,ts_ms,value,state;无降采样);帧节点(vector/image)在 frames/ 下:向量=单 CSV 长表(ts_iso,ts_ms,point_index,value),图像=逐帧原文件 frames/<node_id>/<ts>.<ext>。请结合本清单的节点语义/量程/产线-配方上下文做分析;深度根因诊断请用 diag-bridge 的 diag_run(export_id=本 export_id)。',
   }
+  manifest.readme = 'README.md'
   writeFileSync(join(dir, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf8')
+  // 人/Agent 可直读的语义说明:离线拿到目录后不必回读平台
+  try {
+    const md: string[] = [
+      `# ${title || 'DAQ 数据导出'}`,
+      '',
+      `- 导出时间: ${new Date(now()).toISOString()}`,
+      `- 时间窗: ${new Date(fromMs).toISOString()} ~ ${new Date(toMs).toISOString()}`,
+      `- 导出目录: ${dir}`,
+      `- 说明: ${note || '(无)'}`,
+      '',
+      '## 节点与字段',
+      '',
+    ]
+    for (const n of nodeMetas) {
+      md.push(`### ${String(n.name)} (${String(n.id)})`)
+      md.push(`- 单位: ${String(n.unit || '-')};量程: ${JSON.stringify(n.range)};预警带: ${JSON.stringify(n.warn)}`)
+      if (n.semantics) md.push(`- 物理意义: ${String(n.semantics)}`)
+      if (n.file) md.push(`- 全量时序: ${String(n.file)}(ts_iso,ts_ms,value,state;无降采样)`)
+      if (n.kind === 'vector') {
+        md.push(`- 向量文件: ${String(n.file)}(长表 ts_iso,ts_ms,point_index,value)`)
+        const v = n.vector as ExportNodeMeta['vector'] | undefined
+        if (v) {
+          const base = v.pointIndexBase === 0 ? 0 : 1
+          const labels = v.labels?.slice(0, 8).map((x, i) => `${i + base}=${x}`).join(', ')
+          const prefix = v.pointLabelPrefix ? `${v.pointLabelPrefix}${base}…${v.pointLabelPrefix}${v.points - 1 + base}` : ''
+          md.push(`- 点位布局: ${v.points} 点;轴 ${v.axis ?? '-'};${labels ? `前 8 点: ${labels}` : prefix ? `点标签: ${prefix}` : `点序号从 ${base} 开始`}`)
+        }
+      }
+      if (n.kind === 'image') md.push(`- 图像目录: ${String(n.dir)}(逐帧原文件;manifest 有统计)`)
+      md.push('')
+    }
+    if (mergedFile) md.push(`多参数对齐宽表: ${mergedFile}`, '')
+    md.push('## 用法', '', 'CSV 首行为列名,可直接用 Python/pandas、Excel 或任何分析工具读取。产线/产品/配方/批次归属与配方监控窗口见 manifest.json 的 lines[];节点语义与逐点含义见 nodes[]。')
+    writeFileSync(join(dir, 'README.md'), `${md.join('\n')}\n`, 'utf8')
+  }
+  catch { /* README 失败不影响数据 */ }
   // 保留策略:超出 RETAIN_EXPORTS 的最旧导出目录直接清理(mes-artifacts 同款思路)
   try {
     const siblings = readdirSync(rootDir, { withFileTypes: true })
@@ -354,7 +395,6 @@ export async function exportDaqDataset(opts: {
     }
   }
   catch { /* 清理失败不阻断导出 */ }
-  const mergedFile = opts.merge ? writeMergedCsv(dir, files, nodeOf) : undefined
   return { exportId, dir, manifest, files, totalRows: exactRows, truncated, mergedFile: mergedFile ?? undefined }
 }
 
@@ -448,6 +488,7 @@ export async function toolDaqExport(agentId: string, args: {
       decimals: n.decimals,
       semantics: n.semantics || tpl?.semantics || tpl?.ch || '',
       signalKind: tpl?.signalKind === 'vector' || tpl?.signalKind === 'image' ? tpl.signalKind : 'scalar',
+      ...(tpl?.vector ? { vector: tpl.vector } : {}),
     }
   }
   const lineIds = [...new Set(targets.map(id => getDaqNodeRepo().byId(id)?.lineId ?? '').filter(Boolean))]

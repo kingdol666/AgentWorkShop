@@ -25,6 +25,7 @@ export const HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES = new Set([
   'dcw_control',
   'param_control',
   'dcw_rollback',
+  'recipe_create',
   'recipe_update',
   'recipe_rollback',
   'recipe_trial',
@@ -37,6 +38,7 @@ export const HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES = new Set([
 export const MES_READ_TOOL_NAMES = new Set([
   'mes_catalog',
   'mes_fetch',
+  'mes_export',
   'mes_dataset_read',
   'mes_datasets',
 ])

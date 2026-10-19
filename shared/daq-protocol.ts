@@ -37,8 +37,22 @@ export interface DaqTemplateDef {
   // ===== 多形态信号(v2 帧管线;缺省 scalar = 既有单点链路,零行为变化)=====
   /** 信号形态:scalar 单点(缺省)/ vector 多点轮廓(测厚仪/扫描仪)/ image 图像帧(CCD) */
   signalKind?: DaqSignalKind
-  /** vector 声明(驱动生成/校验点列的依据) */
-  vector?: { points: number, min: number, max: number }
+  /** vector 声明(驱动生成/校验点列的依据);layout 字段说明点位的物理排布 */
+  vector?: {
+    points: number
+    min: number
+    max: number
+    /** 点位轴/排布说明(如 模头横向位置:操作侧→传动侧) */
+    axis?: string
+    /** 单点单位(缺省 = 模板 unit;常用于 index/点号) */
+    pointUnit?: string
+    /** 点标签前缀(与 labels 二选一;如 模头点) */
+    pointLabelPrefix?: string
+    /** 点序号起点(0 或 1;缺省 1) */
+    pointIndexBase?: 0 | 1
+    /** 显式逐点标签(长度通常 = points) */
+    labels?: string[]
+  }
   /** 实时下沉处理管线(采样后、入库前按序执行;处理器实现 server 注册表,插件可扩展) */
   sink?: { processors: DaqSinkStep[] }
   /** 派生指标阈值(帧 metrics 越限 → 既有告警链路,边沿触发) */
@@ -96,8 +110,17 @@ export interface DaqTemplateInput {
   icon?: DaqTemplateIcon
   /** 信号形态(缺省 scalar) */
   signalKind?: DaqSignalKind
-  /** vector 声明(signalKind=vector 时:points 必填 1~4096) */
-  vector?: { points: number, min: number, max: number }
+  /** vector 声明(signalKind=vector 时:points 必填 1~4096;axis/labels 描述点位物理含义) */
+  vector?: {
+    points: number
+    min: number
+    max: number
+    axis?: string
+    pointUnit?: string
+    pointLabelPrefix?: string
+    pointIndexBase?: 0 | 1
+    labels?: string[]
+  }
   /** 下沉处理管线(signalKind=image 时自动前置 thumbnail/quality-gate) */
   sink?: { processors: DaqSinkStep[] }
   /** 派生指标阈值规则 */
@@ -122,7 +145,15 @@ export const DAQ_TEMPLATES: DaqTemplateDef[] = [
     key: 'thickness-scan', name: '测厚扫描仪', code: 'THK · SCAN', ch: '厚度轮廓', unit: 'mm',
     base: 0.52, amp: 0.018, min: 0.4, max: 0.65, decimals: 3, icon: 'tension',
     signalKind: 'vector',
-    vector: { points: 64, min: 0.4, max: 0.65 },
+    vector: {
+      points: 64,
+      min: 0.4,
+      max: 0.65,
+      axis: '模头横向位置(操作侧→传动侧)',
+      pointUnit: '点',
+      pointLabelPrefix: '模头点',
+      pointIndexBase: 1,
+    },
     sink: { processors: [
       { name: 'resample', args: { n: 64 } },
       { name: 'derive-metric', args: { name: 'avg', op: 'avg' } },

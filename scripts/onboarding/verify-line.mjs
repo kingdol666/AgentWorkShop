@@ -43,7 +43,10 @@ for (const id of cfg.daq ?? []) {
 for (const n of cfg.dcw ?? []) {
   const span = Math.max(1, (n.max - n.min) / 10)
   const bad = await api('POST', `/api/workshop/dcw/${n.id}/write`, { value: n.max + span }, tok)
-  const rejected = bad.code !== 0 || bad.code === 'RANGE' || /RANGE|LIMIT|越界|超|400|VALIDATION/i.test(String(bad.message ?? '') + String(bad.code ?? ''))
+  const badMsg = String(bad.message ?? '') + String(bad.code ?? '')
+  // 必须命中量程/限界拒绝语义;超时/网络失败不是“量程联锁通过”
+  const rejected = bad.code === 'NODE_RANGE_EXCEEDED'
+    || (/RANGE|LIMIT|越界|量程|上限|下限|VALIDATION/i.test(badMsg) && !/超时|timeout|ECONN|网络/i.test(badMsg))
   ok(`V2 越界拒[${n.name}]`, rejected, `value=${n.max + span} → ${String(bad.message ?? bad.code).slice(0, 60)}`)
   // V3 探针必须在写前实时取值:开批次后引擎/配方会驱动 SP,配置期探针会过期。
   // 只写命令点(如 mqtt commandTopic)read 返 null → 回退用最近一次写锚点值当现值。
@@ -56,21 +59,51 @@ for (const n of cfg.dcw ?? []) {
       .sort((a, b) => Date.parse(b.at ?? 0) - Date.parse(a.at ?? 0))[0]
     if (lastAnchor && typeof lastAnchor.newValue === 'number') cur = lastAnchor.newValue
   }
-  if (typeof cur === 'number') probe = Math.min(n.max - n.stepLimit, Math.max(n.min + n.stepLimit, Math.round((cur + n.stepLimit) * 10) / 10))
-  // V3 可能撞 60s 写间隔限速(上一轮验收刚写过)——等待限速窗过后重试一次
+  // 探针必须同时落在「节点量程 ∩ 活动配方窗口」内,且尽量朝窗口内侧走:
+  // 当前值可能已被冒烟步推到窗口上沿,cur+step 会越配方窗口(实测 47+2>48 被拒)。
+  const rp = (cfg.recipeParams ?? []).find(p => p.nodeId === n.id)
+  const upper = Math.min(n.max, rp?.max ?? n.max)
+  const lower = Math.max(n.min, rp?.min ?? n.min)
+  const step = Math.max(0.1, Number(n.stepLimit) || 1)
+  if (typeof cur === 'number') {
+    const up = Math.round((cur + step) * 10) / 10
+    const down = Math.round((cur - step) * 10) / 10
+    probe = up < upper && up >= lower ? up : (down >= lower && down < upper ? down : Math.min(upper, Math.max(lower, cur)))
+  }
+  else if (probe < lower || probe > upper) {
+    probe = Math.min(upper, Math.max(lower, probe))
+  }
+  // V3 可能撞 60s 写间隔/保持窗(上一轮验收/冒烟刚写过)——最多等待 3 次,每次 65s
   let good = await api('POST', `/api/workshop/dcw/${n.id}/write`, { value: probe }, tok)
-  if (good.code !== 0 && /间隔|60s|WRITE_INTERVAL/i.test(String(good.message ?? ''))) {
+  for (let i = 0; i < 3 && good.code !== 0 && /间隔|60s|WRITE_INTERVAL|保持窗口|写入频繁/i.test(String(good.message ?? '')); i++) {
     await new Promise(r => setTimeout(r, 65000))
     good = await api('POST', `/api/workshop/dcw/${n.id}/write`, { value: probe }, tok)
   }
-  const goodOk = good.code === 0 || !!good.data?.outcome
-  ok(`V3 合法写回环[${n.name}]`, goodOk, `cur=${cur ?? '?'} probe=${probe} ${goodOk ? (good.data?.outcome?.readback ?? 'ok') : String(good.message ?? good.code).slice(0, 80)}`)
+  const rb = good.data?.outcome?.readback
+  const rbOk = typeof rb === 'number' && Number.isFinite(rb) && Math.abs(rb - probe) <= Math.max(0.5, Math.abs(probe) * 0.002)
+  const goodOk = (good.code === 0 || !!good.data?.outcome) && rbOk
+  ok(`V3 合法写回环[${n.name}]`, goodOk,
+    `cur=${cur ?? '?'} probe=${probe} readback=${rb ?? '缺失'} ${goodOk ? '一致' : String(good.message ?? good.code).slice(0, 80)}`)
 }
 
-// V4 配方在册
+// V4 配方在册 + 参数逐项映射(不能只看 id 存在)
 const agg = await api('GET', '/api/workshop/dcw', undefined, tok)
 const rec = (agg.data?.recipes ?? []).find(r => r.id === cfg.recipeId)
-ok('V4 配方在册', !!rec, rec ? `${rec.name} v${rec.version} params=${(rec.params ?? []).length}` : (cfg.recipeId ?? '未提供'))
+const expectedParams = cfg.recipeParams ?? []
+const recParams = rec?.params ?? []
+const paramMismatch = expectedParams.filter((e) => {
+  const p = recParams.find(x => x.nodeId === e.nodeId)
+  if (!p) return true
+  return p.value !== e.value
+    || (e.min !== undefined && p.min !== e.min)
+    || (e.max !== undefined && p.max !== e.max)
+    || (e.stepLimit !== undefined && p.stepLimit !== e.stepLimit)
+})
+ok('V4 配方在册', !!rec, rec ? `${rec.name} v${rec.version} params=${recParams.length}` : (cfg.recipeId ?? '未提供'))
+if (expectedParams.length > 0) {
+  ok('V4 配方参数映射正确', paramMismatch.length === 0,
+    paramMismatch.length === 0 ? `${expectedParams.length} 项逐项一致` : `不匹配:${paramMismatch.map(p => p.nodeId).join(',')}`)
+}
 
 // V5 频道绑定与插件
 const ch = await api('GET', `/api/workshop/channels/${cfg.channelId}`, undefined, tok)
@@ -82,6 +115,8 @@ if (cfg.plugins?.length) {
   const pj = await api('GET', `/api/workshop/channels/${cfg.channelId}/plugins`, undefined, tok)
   const enabled = new Set((pj.data?.plugins ?? []).filter(p => p.enabled).map(p => p.name))
   for (const name of cfg.plugins) ok(`V5 插件[${name}]`, enabled.has(name), enabled.has(name) ? 'enabled' : `实际=${[...enabled].join(',')}`)
+  const unexpected = [...enabled].filter(n => !cfg.plugins.includes(n))
+  ok('V5 插件隔离(未配置插件不得被默认启用)', unexpected.length === 0, unexpected.length ? `意外启用:${unexpected.join(',')}` : '仅配置项启用')
 }
 
 // V6 演示线零扰动:本验收的写锚点必须全部落在新线上,受保护线(ln-d7e0a2a2)零新增锚点

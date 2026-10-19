@@ -178,33 +178,54 @@ export interface AuditEntry {
   summary?: string
   /** 严重级(2026-10-08 写控 ACK 鉴定):info 缺省 / warn(未证实) / error(写入失败);日志页红黄标 */
   level?: 'info' | 'warn' | 'error'
+  /** 显式域标识:line(产线域)| system(全局审计);缺省按 lineId 推导,line 无 lineId 时 fail-closed 降级 system */
+  scope?: 'line' | 'system'
+}
+
+/**
+ * 域标识归一(写入侧单一事实源):显式 scope 优先;缺省按 lineId 推导;
+ * scope=line 但无 lineId → fail-closed 降级 system。recordOps 与仓储 append 共用。
+ */
+export function normalizeAuditScope(lineId: string | null | undefined, requested?: 'line' | 'system'): 'line' | 'system' {
+  const anchor = String(lineId ?? '').trim()
+  const scope = requested ?? (anchor ? 'line' : 'system')
+  return scope === 'line' && !anchor ? 'system' : scope
 }
 
 const AUDIT_COLS = `id, actor, actor_name AS actorName, actor_kind AS actorKind, action,
   target_kind AS targetKind, target_id AS targetId, detail_json AS detailJson, at,
-  line_id AS lineId, product_id AS productId, recipe_id AS recipeId, kind, summary, level`
+  line_id AS lineId, product_id AS productId, recipe_id AS recipeId, kind, summary, level, scope`
 
 export function createAuditRepo(db: DatabaseSync) {
   const insertStmt = db.prepare(
     `INSERT INTO audit_log (actor, actor_name, actor_kind, action, target_kind, target_id, detail_json, at,
-       line_id, product_id, recipe_id, kind, summary, level)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       line_id, product_id, recipe_id, kind, summary, level, scope)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   const stmtCache = new Map<string, ReturnType<DatabaseSync['prepare']>>()
 
   return {
     append(e: AuditEntry): void {
+      const lineId = String(e.lineId ?? '').trim()
+      // 不变量:line 域必须有产线锚点;缺锚点降级 system,避免无归属行混入产线日志
+      const scope = normalizeAuditScope(lineId, e.scope)
       insertStmt.run(
         e.actor, e.actorName ?? '', e.actorKind ?? 'user', e.action,
         e.targetKind ?? '', e.targetId ?? '', JSON.stringify(e.detail ?? {}),
         e.at ?? new Date().toISOString(),
-        e.lineId ?? '', e.productId ?? '', e.recipeId ?? '', e.kind ?? '', e.summary ?? '', e.level ?? 'info',
+        lineId, e.productId ?? '', e.recipeId ?? '', e.kind ?? '', e.summary ?? '', e.level ?? 'info', scope,
       )
     },
     query(opts: {
       actor?: string
       targetId?: string
       action?: string
+      /** 动作前缀(如 recipe. / dcw.write.):跨越 kind 归类取同一族事件 */
+      actionPrefix?: string
+      /** 显式域过滤:line=产线日志 / system=全局审计;省略=全部 */
+      scope?: 'line' | 'system'
+      /** @deprecated 兼容旧调用:等价于 scope='line' */
+      lineOnly?: boolean
       lineId?: string
       productId?: string
       recipeId?: string
@@ -218,6 +239,13 @@ export function createAuditRepo(db: DatabaseSync) {
     }): Array<Record<string, unknown>> {
       const where: string[] = []
       const args: SQLInputValue[] = []
+      if (opts.scope) {
+        where.push('scope = ?')
+        args.push(opts.scope)
+      }
+      else if (opts.lineOnly) {
+        where.push('scope = \'line\'')
+      }
       if (opts.actor) {
         where.push('actor = ?')
         args.push(opts.actor)
@@ -229,6 +257,10 @@ export function createAuditRepo(db: DatabaseSync) {
       if (opts.action) {
         where.push('action = ?')
         args.push(opts.action)
+      }
+      if (opts.actionPrefix) {
+        where.push('action LIKE ? ESCAPE \'\\\'')
+        args.push(`${opts.actionPrefix.replace(/[\\%_]/g, m => `\\${m}`)}%`)
       }
       if (opts.lineId) {
         where.push('line_id = ?')
@@ -260,22 +292,25 @@ export function createAuditRepo(db: DatabaseSync) {
         args.push(like, like, like, like)
       }
       if (opts.from) {
-        where.push('at >= ?')
+        // 用 julianday 比较绝对时刻:at 是带偏移的本地 ISO,跨时区历史行不能按字符串比大小
+        where.push('julianday(at) >= julianday(?)')
         args.push(opts.from)
       }
       if (opts.to) {
-        where.push('at <= ?')
+        where.push('julianday(at) <= julianday(?)')
         args.push(opts.to)
       }
       const key = `${where.join('|')}`
       let stmt = stmtCache.get(key)
       if (!stmt) {
         const sql = `SELECT ${AUDIT_COLS}
-          FROM audit_log ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY at DESC LIMIT ?`
+          FROM audit_log ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY julianday(at) DESC, id DESC LIMIT ?`
         stmt = db.prepare(sql)
         stmtCache.set(key, stmt)
       }
-      return stmt.all(...args, (opts.limit ?? 200) as SQLInputValue) as Array<Record<string, unknown>>
+      // limit 在仓储层再收一次口:调用方漏校验时也不产生负数/超大结果集
+      const limit = Math.max(1, Math.min(1000, Number(opts.limit) || 200))
+      return stmt.all(...args, limit as SQLInputValue) as Array<Record<string, unknown>>
     },
   }
 }

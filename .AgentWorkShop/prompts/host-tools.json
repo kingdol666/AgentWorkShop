@@ -722,13 +722,15 @@
   {
     "name": "daq_export",
     "label": "DAQ Export",
-    "description": "Export the FULL raw time-series (no downsampling) of your BOUND daq nodes or read-only nodes of the channel-bound line(仅限你绑定的数采节点或频道绑线产线的节点,越权 id 一律拒绝) to the platform data directory: one CSV per node (columns ts_iso,ts_ms,value,state) plus manifest.json containing the node mapping (name/unit/range/semantics), line-product-recipe-run context, recipe monitor windows and alarm statistics. Use when analysis needs complete waveforms rather than daq_query statistics: hand the export_id to diag_run (deep root-cause diagnosis) or hand the absolute directory to other workers for offline analysis.",
+    "description": "Export the FULL raw time-series (no downsampling) of your BOUND daq nodes (仅限你绑定的数采节点或频道绑线产线的节点,越权 id 一律拒绝;可见性=绑定∪频道绑线) or read-only nodes of the channel-bound line to the platform data directory: one CSV per node plus manifest.json + README.md containing node mapping (name/unit/range/semantics), vector layout/point labels, line-product-recipe-run context and alarm statistics. Use when analysis needs complete waveforms rather than daq_query statistics: hand the export_id to diag_run or the absolute directory to other workers for offline analysis.",
     "parameters": {
       "type": "object",
       "properties": {
         "node_ids": {
           "type": "array",
-          "items": { "type": "string" },
+          "items": {
+            "type": "string"
+          },
           "description": "Node id array to export (default = all visible daq nodes: bindings ∪ channel-bound line); out-of-scope ids are rejected"
         },
         "line_id": {
@@ -767,7 +769,7 @@
   {
     "name": "daq_frames",
     "label": "DAQ Frames",
-    "description": "Query multi-modal DAQ frames for your BOUND daq nodes: multi-point profiles (thickness scanners, profile scanners — returns point-count summary, a point preview and derived metrics) and camera image frames (CCD — returns resolution, object reference and derived metrics like brightness/contrast; pixels are NOT loaded into context, view them in the frontend gallery). Supports kind=vector|image filter and time windows. Use BEFORE judging surface quality or profile measurements.",
+    "description": "Query multi-modal DAQ frames for your BOUND daq nodes: multi-point profiles (thickness scanners, profile scanners) and camera image frames (CCD). Vector frames return point count, derived metrics and a preview; set include_points=true to get a larger slice of the array (point_limit up to 1024) for online analysis. Output also carries the node unit, semantics and vector layout (axis/point labels) so the Agent knows what each point means. Image pixels are NOT loaded into context (object reference + metrics only). Supports kind=vector|image filter and time windows.",
     "parameters": {
       "type": "object",
       "properties": {
@@ -802,6 +804,14 @@
         "limit": {
           "type": "number",
           "description": "Max frames per node (default 20, max 100)"
+        },
+        "include_points": {
+          "type": "boolean",
+          "description": "Return a larger slice of vector points (default false = 16-point preview). Use for profile/array analysis."
+        },
+        "point_limit": {
+          "type": "number",
+          "description": "Max points per frame when include_points=true (default 128, cap 1024)"
         }
       },
       "additionalProperties": false
@@ -809,30 +819,101 @@
   },
   {
     "name": "ops_log",
-    "label": "Ops Log",
-    "description": "查询你负责产线的运维日志(数控下发/优化判定/回退/配方下发/产线事件,新→旧)。来源区分 Agent/用户/系统:Agent 的操作者格式为「Channel名/成员名」。用于作业前后自查:你对节点做过哪些操作、他人或系统做过哪些干预。",
+    "label": "Line Log",
+    "description": "查询产线日志(数控下发/优化判定/回退/配方变更/产线事件/数采告警/人工记录,新→旧)。只返回显式 scope=line 的产线域记录,登录、用户管理、系统设置、备份等系统域事件不会出现。每条结果都带「scope=line 产线=名称[id] 配方=名称[id] 产品=名称[id]」归属;recipe_id/product_id 是可选过滤(没有配方/产品的产线事件在按线查询时仍会返回)。来源区分 Agent/用户/系统(Agent 操作者格式为「Channel名/成员名」)。按产线/配方/时间精确检索时:先用 line_context 取 line_id 与 recipe_id,再传 line_id 或 recipe_id(只传 recipe_id 会自动收窄到该配方产线);时间用 from/to(ISO 或 2026-10-19T08:00)或 minutes 回看。line_log 是本工具的显式别名。",
     "parameters": {
       "type": "object",
       "properties": {
         "line_id": {
           "type": "string",
-          "description": "限定产线 id(须为你绑定节点所属产线;缺省=全部负责产线)"
+          "description": "产线 id(须在可读范围内;缺省=频道绑定产线,未绑线时=全部可读产线)"
+        },
+        "recipe_id": {
+          "type": "string",
+          "description": "按配方 id 过滤(须属于可读产线;传了它就不必再传 line_id,会自动收窄到该配方产线)"
+        },
+        "product_id": {
+          "type": "string",
+          "description": "按产品 id 过滤(须属于可读产线)"
         },
         "node_id": {
           "type": "string",
-          "description": "限定数控/数采节点 id(须为你绑定的节点)"
+          "description": "按节点 id 过滤(须属于可读产线;只匹配 target=该节点的记录,主要是 dcw.write.*;节点级完整变更史用 dcw_journal)"
         },
         "kind": {
           "type": "string",
-          "description": "按分类过滤:write(下发)/recipe(配方)/rollback(回退)/daq(采集)/line(产线)"
+          "description": "按分类过滤:write(下发)/recipe(配方)/rollback(回退)/daq(采集)/alarm(告警)/line(产线)/analysis(分析)/manual(人工)"
         },
         "actor_kind": {
           "type": "string",
           "description": "按来源过滤:agent/user/system"
         },
+        "from": {
+          "type": "string",
+          "description": "时间窗起点(ISO 或 2026-10-19T08:00;与 to 搭配可查任意历史区间)"
+        },
+        "to": {
+          "type": "string",
+          "description": "时间窗终点(ISO 或 2026-10-19T18:00;必须晚于 from)"
+        },
         "minutes": {
           "type": "number",
-          "description": "回看窗口(分钟,缺省 1440=24 小时)"
+          "description": "未传 from 时的回看窗口(分钟,缺省 1440=24 小时)"
+        },
+        "limit": {
+          "type": "number",
+          "description": "返回条数上限(缺省 20,最大 100)"
+        },
+        "mine": {
+          "type": "boolean",
+          "description": "true=只看你自己发起的操作"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "line_log",
+    "label": "Line Log (alias)",
+    "description": "产线日志查询的显式别名(与 ops_log 完全同源):只返回 scope=line 的产线域记录,按产线/配方/产品/时间检索。recipe_id/product_id 均可选,没有配方/产品的产线事件在按线查询时仍会返回。每行带「scope=line 产线=名称[id] 配方=名称[id] 产品=名称[id]」;不传 line_id 时默认频道绑定产线。需要配方变更专门视图用 recipe_log,节点参数逐笔历史用 dcw_journal。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "line_id": {
+          "type": "string",
+          "description": "产线 id(须在可读范围内;缺省=频道绑定产线,未绑线时=全部可读产线)"
+        },
+        "recipe_id": {
+          "type": "string",
+          "description": "按配方 id 过滤(须属于可读产线;传了它就不必再传 line_id,会自动收窄到该配方产线)"
+        },
+        "product_id": {
+          "type": "string",
+          "description": "按产品 id 过滤(须属于可读产线)"
+        },
+        "node_id": {
+          "type": "string",
+          "description": "按节点 id 过滤(须属于可读产线;只匹配 target=该节点的记录,主要是 dcw.write.*;节点级完整变更史用 dcw_journal)"
+        },
+        "kind": {
+          "type": "string",
+          "description": "按分类过滤:write(下发)/recipe(配方)/rollback(回退)/daq(采集)/alarm(告警)/line(产线)/analysis(分析)/manual(人工)"
+        },
+        "actor_kind": {
+          "type": "string",
+          "description": "按来源过滤:agent/user/system"
+        },
+        "from": {
+          "type": "string",
+          "description": "时间窗起点(ISO 或 2026-10-19T08:00;与 to 搭配可查任意历史区间)"
+        },
+        "to": {
+          "type": "string",
+          "description": "时间窗终点(ISO 或 2026-10-19T18:00;必须晚于 from)"
+        },
+        "minutes": {
+          "type": "number",
+          "description": "未传 from 时的回看窗口(分钟,缺省 1440=24 小时)"
         },
         "limit": {
           "type": "number",
@@ -849,21 +930,33 @@
   {
     "name": "recipe_log",
     "label": "Recipe Change Log",
-    "description": "查询你负责产线的 Recipe 变更史:配方一键下发(recipe.apply)、优化开窗、判定、回退执行(新→旧)。你据此知道配方层面对当前节点做过哪些下发变更、由谁执行、是否已回退。节点级参数值逐笔历史用 dcw_journal。",
+    "description": "查询配方变更史(创建/更新/试验/正式下发/逐参数 ACK 回执/方案审批/优化开窗判定/回退执行/开跑整批下发,新→旧)。只返回 scope=line 的产线域记录;每条结果都带产线与配方归属。传 recipe_id 可跨 kind 取全族事件(含 kind=write 的下发回执);也包含 line.start/line.stop(开跑会整批下发配方参数)。不传 line_id 时默认频道绑定产线,传 recipe_id 时自动收窄到该配方产线;时间用 from/to 或 minutes。节点级参数值逐笔历史用 dcw_journal。",
     "parameters": {
       "type": "object",
       "properties": {
         "line_id": {
           "type": "string",
-          "description": "限定产线 id(须为你绑定节点所属产线;缺省=全部负责产线)"
+          "description": "产线 id(须在可读范围内;缺省=频道绑定产线,未绑线时=全部可读产线)"
         },
         "recipe_id": {
           "type": "string",
-          "description": "按配方 id 过滤"
+          "description": "按配方 id 过滤(传了它就不必再传 line_id,会自动收窄到该配方产线)"
+        },
+        "product_id": {
+          "type": "string",
+          "description": "按产品 id 过滤(须属于可读产线)"
+        },
+        "from": {
+          "type": "string",
+          "description": "时间窗起点(ISO 或 2026-10-19T08:00)"
+        },
+        "to": {
+          "type": "string",
+          "description": "时间窗终点(ISO 或 2026-10-19T18:00;必须晚于 from)"
         },
         "minutes": {
           "type": "number",
-          "description": "回看窗口(分钟,缺省 1440=24 小时)"
+          "description": "未传 from 时的回看窗口(分钟,缺省 1440=24 小时)"
         },
         "limit": {
           "type": "number",
@@ -910,13 +1003,13 @@
   {
     "name": "recipe_update",
     "label": "Recipe Update",
-    "description": "把验证过的最佳参数保存进指定配方(生成新版本,带归因与理由)。权限模型:须已绑定该 recipe(可绑定多个配方)且通过其二级认证;配方必须正在执行(运行门,未运行拒绝);绑定 manual 时本次保存挂 HITL 等人工批准——reason 必填且要给出判断依据(数采证据/分析结论),审批卡会向人类展示。只改配方定义,要把参数推到运行中的产线用 recipe_apply。",
+    "description": "把验证过的最佳参数保存进指定配方(生成新版本,带归因与理由)。可直接保存到当前在跑的配方:只传 line_id 时解析活动批次配方;也可显式 recipe_id。权限模型:须已绑定该 recipe(可绑定多个配方)且通过其二级认证;配方必须正在执行(运行门,未运行拒绝);绑定 manual 或产线 manual 时本次保存挂 HITL 等人工批准——reason 必填且要给出判断依据(数采证据/分析结论),审批卡会向人类展示。只改配方定义,要把参数推到运行中的产线用 recipe_apply。",
     "parameters": {
       "type": "object",
       "properties": {
         "recipe_id": {
           "type": "string",
-          "description": "配方 id(必填)"
+          "description": "配方 id(与 line_id 二选一;显式指定优先)"
         },
         "params": {
           "type": "array",
@@ -950,9 +1043,17 @@
         "task_id": {
           "type": "string",
           "description": "关联任务 id(可选)"
+        },
+        "line_id": {
+          "type": "string",
+          "description": "产线 id(与 recipe_id 二选一):按该产线当前活动批次解析配方"
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "required": [
+        "params",
+        "reason"
+      ]
     }
   },
   {
@@ -993,7 +1094,7 @@
   {
     "name": "mes_catalog",
     "label": "MES Catalog",
-    "description": "检索 MES REST 点位目录(driver=mes-rest 的数控点位)。每条含 id/名称/产线/单位/量程与能力位(读=当前值,写=设定值,史=可取历史;史·vector=每时间点一个检测向量如膜厚断面/双折射光谱,史·image=图像帧如 CCD 相机,史·table/史·event=表格/事件记录流,钩子=该点位已配置数据下沉处理)与点位描述。是 mes_fetch 取数的寻址入口;支持按关键字(q,匹配名称与描述)与产线(line_id)过滤。只读目录,不触达设备。可见性=你绑定的数控点位与你绑定配方内的参数点位(未绑定点位不可见,不触达设备)。",
+    "description": "检索 MES REST 点位目录(driver=mes-rest 的数控点位)。每条含 id/名称/产线/单位/量程、能力位(读/写/史/钩子)、点位描述,以及字段级数据字典(字段名/标签/单位/量程/向量点数;来自 MES 响应 dictionaryPath 或节点 driverConfig.dictionary,首次 mes_fetch 后缓存)。是 mes_fetch/mes_export 的寻址入口;支持按关键字(q)与产线(line_id)过滤。只读目录,不触达设备。可见性=你绑定的数控点位与你绑定配方内的参数点位。",
     "parameters": {
       "type": "object",
       "properties": {
@@ -1008,6 +1109,14 @@
         "limit": {
           "type": "number",
           "description": "返回条数上限(缺省 20,最大 100)"
+        },
+        "product_id": {
+          "type": "string",
+          "description": "按产品 id 收窄到该产品产线(与 line_id 冲突时拒绝)"
+        },
+        "recipe_id": {
+          "type": "string",
+          "description": "按配方 id 收窄到该配方产线(与 line_id 冲突时拒绝)"
         }
       },
       "additionalProperties": false
@@ -1016,7 +1125,7 @@
   {
     "name": "mes_fetch",
     "label": "MES Fetch",
-    "description": "从 MES REST 点位取数(代码级护栏:仅限你绑定的数控点位;时间窗 ≤7 天;单次 ≤5000 行;每 60 秒最多 6 次)。格式自适应:标量点位回统计摘要;向量点位(每时间点一个检测向量,如膜厚断面 48 道)回按行均值的统计+维度+首中末采样;图像点位(如 CCD 帧)自动把帧落盘为文件、回包只给文件名与大小,图像 base64 永不进入对话;表格/事件点位回记录采样。若点位配置了数据钩子(dataHook),取数后会自动执行用户预设的下沉处理(绘图存档/存 CSV/统计),回包附处理摘要、处理说明与产物文件清单——直接引用它们,不要要求再给原文。param 对象会透传给钩子(如 {\"lane\": 12} 只看某车道)。三种模式:不传 from/to = 当前值快照直读;from/to 且 max_rows≤2000 = 同步内联;max_rows>2000 = 异步落 CSV 数据集(仅标量/向量;图像/表格/事件只支持内联),返回 job_id/dataset_id —— 勿轮询,用 mes_datasets 查状态、mes_dataset_read 读内容。",
+    "description": "从 MES REST 点位取数(代码级护栏:仅限你绑定的数控点位;时间窗 ≤7 天;单次 ≤5000 行;每 60 秒最多 6 次)。格式自适应:标量/向量(膜厚断面等)/图像帧(CCD,自动落盘)/表格/事件记录。回包附字段级数据字典；include_data=true 时采样行直接带实际数组值(字段名、标签、单位、量程、物理意义;向量字段还会列出逐点位含义),Agent 可直接引用这些含义做分析,不再只有一堆裸数字。若响应/节点配置没有字典,会明确提示——不要臆测单位。三模式:不传 from/to=当前值快照;from/to 且 max_rows≤2000=同步内联;max_rows>2000=异步落 CSV 数据集,并生成同名 *.manifest.json(字段字典/单位/量程/批次归属),返回 job_id/dataset_id。全量原文离线分析请用 mes_export。",
     "parameters": {
       "type": "object",
       "properties": {
@@ -1042,6 +1151,10 @@
         "param": {
           "type": "object",
           "description": "透传给点位数据钩子的参数对象(Agent 只传业务参数,如 {\"lane\":12,\"agg\":\"mean\"};请求构造与数据处理逻辑由点位配置决定);无钩子点位可省略"
+        },
+        "include_data": {
+          "type": "boolean",
+          "description": "内联/快照回包附带采样行的实际数值/数组(向量最多显示 64 点并带点位标签;默认 false 只给统计与均值)"
         }
       },
       "required": [
@@ -1053,7 +1166,7 @@
   {
     "name": "mes_dataset_read",
     "label": "MES Dataset Read",
-    "description": "读取 MES 取数数据集(mode=head=列名+总行数概览;mode=stats=count/min/max/mean/stddev/首末时间;mode=rows=offset 起每页 20 行分页)。仅创建者、该点位绑定者或该产线可读者可读;回包只带 ≤3 行采样,统计判读请用 mode=stats。",
+    "description": "读取 MES 取数数据集(mode=head=列名+总行数概览;mode=stats=count/min/max/mean/stddev/首末时间;mode=rows=offset 起每页 20 行分页)。回包包含数据文件绝对路径、语义清单(manifest.json)路径与字段字典(字段含义/单位/量程/向量点位)。仅创建者、该点位绑定者或该产线可读者可读;回包只带 ≤3 行采样,统计判读请用 mode=stats。",
     "parameters": {
       "type": "object",
       "properties": {
@@ -2133,13 +2246,13 @@
   {
     "name": "recipe_trial",
     "label": "Recipe Trial",
-    "description": "多参数候选整批试验下发(不写配方版本)。权限模型:须已绑定该 recipe 且过二级认证与运行门;候选只能覆盖配方内参数节点;绑定 manual 时挂 HITL 等人工批准 —— hypothesis 必填,即本次试验的理由与判断依据,审批卡会向人类展示。整批一次落产线;复测判读后有进步用 recipe_update 固化,劣化用 recipe_rollback(dispatch=true) 统一回退。受同线试验节拍(默认 ≥5 分钟)与四层限界卡控。",
+    "description": "多参数候选整批试验下发(不写配方版本)。可直接对当前在跑的配方试验:只传 line_id 时解析活动批次配方;也可显式 recipe_id。权限模型:须已绑定该 recipe 且过二级认证与运行门;候选只能覆盖配方内参数节点;绑定 manual 或产线 manual 时挂 HITL 等人工批准——hypothesis 必填,即本次试验的理由与判断依据。整批一次落产线;复测判读后有进步用 recipe_update 固化,劣化用 recipe_rollback(dispatch=true) 统一回退。受同线试验节拍(默认 ≥5 分钟)与四层限界卡控。",
     "parameters": {
       "type": "object",
       "properties": {
         "recipe_id": {
           "type": "string",
-          "description": "配方 id(必填;line_context 可看到当前配方)"
+          "description": "配方 id(与 line_id 二选一;显式指定优先)"
         },
         "params": {
           "type": "array",
@@ -2169,10 +2282,13 @@
         "emergency": {
           "type": "boolean",
           "description": "应急豁免配方下发间隔频控(不豁免审批;审批卡将标注【应急】并仍需人工批准;滥用会留审计痕迹)"
+        },
+        "line_id": {
+          "type": "string",
+          "description": "产线 id(与 recipe_id 二选一):按该产线当前活动批次解析配方"
         }
       },
       "required": [
-        "recipe_id",
         "params",
         "hypothesis"
       ],
@@ -2182,13 +2298,13 @@
   {
     "name": "recipe_apply",
     "label": "Recipe Apply",
-    "description": "把配方当前已固化参数整批下发到运行中的产线(改配方 recipe_update 之后用)。权限模型:须已绑定该 recipe 且过二级认证与运行门(配方须在执行);绑定 manual 时挂 HITL 等人工批准——reason 必填,说明为什么要下发、依据是什么。批准后整批经治理联锁(量程/步长/限速)下发,逐参数回执;拒绝可附指导,按指导修订后重提。",
+    "description": "把配方当前已固化参数整批下发到运行中的产线(改配方 recipe_update 之后用)。可直接对当前在跑的配方下发:只传 line_id,工具会解析该产线活动批次的 recipe_id;也可显式传 recipe_id。权限模型:须已绑定该 recipe 且过二级认证与运行门(配方须在执行);绑定 manual 或产线 manual 时挂 HITL 等人工批准——reason 必填,说明为什么要下发、依据是什么。批准后整批经治理联锁(量程/步长/限速)下发,逐参数回执;拒绝可附指导,按指导修订后重提。",
     "parameters": {
       "type": "object",
       "properties": {
         "recipe_id": {
           "type": "string",
-          "description": "配方 id(必填)"
+          "description": "配方 id(与 line_id 二选一;显式指定优先)"
         },
         "reason": {
           "type": "string",
@@ -2197,10 +2313,13 @@
         "emergency": {
           "type": "boolean",
           "description": "应急豁免配方下发间隔频控(不豁免审批;审批卡将标注【应急】并仍需人工批准;滥用会留审计痕迹)"
+        },
+        "line_id": {
+          "type": "string",
+          "description": "产线 id(与 recipe_id 二选一):按该产线当前活动批次自动解析配方;适合\"直接对当前配方下发\""
         }
       },
       "required": [
-        "recipe_id",
         "reason"
       ],
       "additionalProperties": false
@@ -2483,6 +2602,184 @@
         }
       },
       "required": [],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "mes_export",
+    "label": "MES Export",
+    "description": "把 MES 历史原样导出到指定目录,供离线分析/交给其他 worker(与 mes_fetch 的在线统计摘要互补)。支持标量(data.csv)、向量(宽表 data.csv v0..vN)、图像(frames/ + records.jsonl)、table/event(records.jsonl);每个导出目录自动生成 manifest.json 与 README.md,包含节点单位/量程/物理意义、字段级数据字典(向量逐点语义)、产线/产品/配方/批次上下文、文件列名与行数——拿到目录的人/Agent 不需要回读平台就能读懂。目录必须位于 <数据根>/mes-exports 下(folder 为相对路径;管理员可用 AW_MES_EXPORT_ROOT 指定根);单次 ≤200000 行、≤7 天窗、图像 ≤500 帧。权限与 mes_fetch 同源(仅绑定数控点位)。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "目标点位 id 数组(mes_catalog 输出的 id;须为你绑定的数控点位)"
+        },
+        "from": {
+          "type": "string",
+          "description": "窗口起点 ISO(必填)"
+        },
+        "to": {
+          "type": "string",
+          "description": "窗口终点 ISO(必填;窗口 ≤7 天)"
+        },
+        "max_rows": {
+          "type": "number",
+          "description": "单点位行数上限(缺省 5000,硬上限 200000)"
+        },
+        "param": {
+          "type": "object",
+          "description": "透传给 requestHook/dataHook 的参数对象(可空)"
+        },
+        "folder": {
+          "type": "string",
+          "description": "导出子目录(相对 <数据根>/mes-exports;如 line-a/recipe-1/2026-10-19);缺省=自动 mesexp-* 目录"
+        },
+        "title": {
+          "type": "string",
+          "description": "导出标题(写入 manifest/README)"
+        },
+        "note": {
+          "type": "string",
+          "description": "导出说明(分析目的/注意事项,写入 manifest/README)"
+        },
+        "merge": {
+          "type": "boolean",
+          "description": "多个标量点位是否生成按时间对齐的 merged.csv(缺省 true)"
+        }
+      },
+      "required": [
+        "ids",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "recipe_catalog",
+    "label": "Recipe Catalog",
+    "description": "列出你可读产线上的配方定义(找 recipe_id / 当前执行配方 / 产品归属)。每条含配方 id、版本、产品、是否当前执行、参数数量与各节点目标值+PLC 当前值、良好批次。支持 line_id/product_id/关键字过滤。Agent 不确定 recipe_id 时先查本工具;也可以直接给 recipe_apply/recipe_trial/recipe_update 传 line_id 让工具解析当前活动配方。只读。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "line_id": {
+          "type": "string",
+          "description": "限定产线 id(须在可读范围内)"
+        },
+        "product_id": {
+          "type": "string",
+          "description": "限定产品 id"
+        },
+        "q": {
+          "type": "string",
+          "description": "关键字子串过滤(配方名称/描述)"
+        },
+        "limit": {
+          "type": "number",
+          "description": "返回条数上限(缺省 20,最大 100)"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  {
+    "name": "recipe_create",
+    "label": "Recipe Create",
+    "description": "把当前配方或批次冻结参数另存为新配方(仅创建定义,不触发产线)。典型:把优化后当前有效配方+实测参数固化为新产品/新工艺基线;参数来源优先级=显式 params > from_run_id 的批次冻结快照 > source_recipe_id 的配方定义。权限:需在该产线已有写向绑定(数控节点或配方);manual 线/绑定必须人工批准(reason 必填,审批卡展示参数与来源)。新建后不会自动绑定给 Agent——返回文案会提示让用户/lead 在配方管理中绑定后才能 update/apply。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "新配方名称(必填,同产品下建议唯一)"
+        },
+        "description": {
+          "type": "string",
+          "description": "新配方描述(用途/适用产品)"
+        },
+        "product_id": {
+          "type": "string",
+          "description": "归属产品 id(缺省从 source/run 推断)"
+        },
+        "line_id": {
+          "type": "string",
+          "description": "归属产线 id(缺省从 source/run/频道绑线推断)"
+        },
+        "source_recipe_id": {
+          "type": "string",
+          "description": "源配方 id(复制其参数/窗口/访问控制)"
+        },
+        "from_run_id": {
+          "type": "string",
+          "description": "源批次 id:使用该批次 paramsSnapshot(开跑时冻结参数)作为新配方参数"
+        },
+        "use_active_run": {
+          "type": "boolean",
+          "description": "为 true 且未给 source/from_run 时,使用当前活动批次配方作为源"
+        },
+        "params": {
+          "type": "array",
+          "description": "显式参数(覆盖 source):每项 node_id + value(+可选 min/max/step_limit)",
+          "items": {
+            "type": "object",
+            "properties": {
+              "node_id": {
+                "type": "string"
+              },
+              "value": {
+                "type": "number"
+              },
+              "min": {
+                "type": "number"
+              },
+              "max": {
+                "type": "number"
+              },
+              "step_limit": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "node_id",
+              "value"
+            ]
+          }
+        },
+        "daq_windows": {
+          "type": "array",
+          "description": "数采监控窗口(缺省复制源配方)",
+          "items": {
+            "type": "object",
+            "properties": {
+              "node_id": {
+                "type": "string"
+              },
+              "min": {
+                "type": "number"
+              },
+              "max": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "node_id"
+            ]
+          }
+        },
+        "reason": {
+          "type": "string",
+          "description": "另存原因/依据(必填)"
+        }
+      },
+      "required": [
+        "name",
+        "reason"
+      ],
       "additionalProperties": false
     }
   }

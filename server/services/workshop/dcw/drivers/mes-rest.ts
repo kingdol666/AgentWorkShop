@@ -14,7 +14,7 @@ import { lookup } from 'node:dns/promises'
 import { isIP } from 'node:net'
 import { AppError } from '../../../../utils/errors'
 import { mesWriteCheckHookCode, mesWriteHookCode, runMesWriteCheckHook, runMesWriteHook } from '../../mes/mes-hook'
-import type { DcwFetchHistoryInput, DcwFetchHistoryResult, DcwHistoryFormat, DcwHistoryRow, DcwReadInput, DcwReadResult, DcwWriteDriver, DcwWriteInput, DcwWriteResult } from './shared'
+import type { DcwFetchHistoryInput, DcwFetchHistoryResult, DcwFieldDef, DcwHistoryFormat, DcwHistoryRow, DcwReadInput, DcwReadResult, DcwWriteDriver, DcwWriteInput, DcwWriteResult } from './shared'
 import { num, readbackAck } from './shared'
 
 // ============================================================
@@ -26,7 +26,9 @@ interface MesReadMap {
   path: string
   query: Record<string, string>
   headers: Record<string, string>
-  response: { valuePath: string, tsPath?: string, tsFormat?: 'epoch_s' | 'epoch_ms' | 'iso' }
+  /** 响应内字段字典路径(可选;数组/对象/含 fields 数组的对象均可) */
+  dictionaryPath?: string
+  response: { valuePath: string, tsPath?: string, tsFormat?: 'epoch_s' | 'epoch_ms' | 'iso', dictionaryPath?: string }
 }
 
 interface MesWriteMap {
@@ -46,6 +48,8 @@ interface MesHistoryMap {
   path: string
   query: Record<string, string>
   headers: Record<string, string>
+  /** 响应内字段字典路径(可选;MES 随历史响应返回字段含义/单位) */
+  dictionaryPath?: string
   response: {
     rowsPath: string
     /** scalar 行数值路径(format=scalar 时必填;其余格式可省) */
@@ -59,6 +63,8 @@ interface MesHistoryMap {
     dataPath?: string
     mimePath?: string
     nextCursorPath?: string
+    /** 字段字典路径(与 historyMap.dictionaryPath 等价;response 内优先) */
+    dictionaryPath?: string
   }
   pageSize?: number
   maxPages: number
@@ -114,7 +120,13 @@ function parseReadMap(cfg: Record<string, unknown>): MesReadMap | null {
     path: reqString(rec, 'path', 'readMap'),
     query: stringRecord(rec.query, 'readMap.query'),
     headers: stringRecord(rec.headers, 'readMap.headers'),
-    response: { valuePath: reqString(resp, 'valuePath', 'readMap.response'), tsPath: optString(resp.tsPath), tsFormat: fmt },
+    dictionaryPath: optString(rec.dictionaryPath),
+    response: {
+      valuePath: reqString(resp, 'valuePath', 'readMap.response'),
+      tsPath: optString(resp.tsPath),
+      tsFormat: fmt,
+      dictionaryPath: optString(resp.dictionaryPath),
+    },
   }
 }
 
@@ -169,6 +181,7 @@ function parseHistoryMap(cfg: Record<string, unknown>): MesHistoryMap | null {
     path: reqString(rec, 'path', 'historyMap'),
     query: stringRecord(rec.query, 'historyMap.query'),
     headers: stringRecord(rec.headers, 'historyMap.headers'),
+    dictionaryPath: optString(rec.dictionaryPath),
     response: {
       rowsPath: reqString(resp, 'rowsPath', 'historyMap.response'),
       valuePath,
@@ -178,6 +191,7 @@ function parseHistoryMap(cfg: Record<string, unknown>): MesHistoryMap | null {
       dataPath,
       mimePath: optString(resp.mimePath),
       nextCursorPath: optString(resp.nextCursorPath),
+      dictionaryPath: optString(resp.dictionaryPath),
     },
     pageSize: pageSize !== undefined && Number.isFinite(pageSize) && pageSize > 0 ? pageSize : undefined,
     maxPages: Number.isFinite(maxPages) && maxPages > 0 ? maxPages : 40,
@@ -458,6 +472,124 @@ function extract(root: unknown, dotted: string): unknown {
   return expanded ? level : level[0]
 }
 
+// ============================================================
+// 字段字典归一(MES 响应 → Agent 可读的物理含义)
+// ============================================================
+
+const DICT_ENTRY_CAP = 256
+const DICT_POINT_CAP = 4096
+
+const strOf = (v: unknown, max = 300): string | undefined => {
+  if (v === null || v === undefined) return undefined
+  const s = String(v).trim()
+  return s === '' ? undefined : s.slice(0, max)
+}
+
+const numOf = (v: unknown): number | undefined => {
+  if (v === null || v === undefined || v === '') return undefined
+  const n = Number(v)
+  return Number.isFinite(n) ? n : undefined
+}
+
+function normalizeDictEntry(raw: unknown, fallbackField?: string, fallbackIndex?: number): DcwFieldDef | null {
+  if (raw === null || raw === undefined) return null
+  if (typeof raw === 'string') {
+    const field = fallbackField ?? strOf(raw, 80)
+    return field ? { field, label: strOf(raw) } : null
+  }
+  if (typeof raw !== 'object' || Array.isArray(raw)) return null
+  const rec = raw as Record<string, unknown>
+  const field = strOf(rec.field ?? rec.key ?? rec.name ?? rec.tag, 80) ?? fallbackField
+    ?? (fallbackIndex !== undefined ? `v${fallbackIndex}` : undefined)
+  if (!field) return null
+  const kindRaw = strOf(rec.kind ?? rec.type, 16)
+  const kind = kindRaw === 'scalar' || kindRaw === 'vector' || kindRaw === 'point' ? kindRaw : undefined
+  const out: DcwFieldDef = { field }
+  const label = strOf(rec.label ?? rec.title ?? rec.ch ?? rec.description ?? rec.desc ?? rec.meaning ?? rec.semantics)
+  if (label) out.label = label
+  const unit = strOf(rec.unit ?? rec.uom ?? rec.unit_of_measure, 40)
+  if (unit) out.unit = unit
+  const description = strOf(rec.description ?? rec.desc ?? rec.meaning ?? rec.semantics ?? rec.note)
+  if (description) out.description = description
+  const min = numOf(rec.min ?? rec.lsl ?? rec.lower)
+  const max = numOf(rec.max ?? rec.usl ?? rec.upper)
+  if (min !== undefined) out.min = min
+  if (max !== undefined) out.max = max
+  if (kind) out.kind = kind
+  const index = numOf(rec.index ?? rec.idx ?? rec.position ?? fallbackIndex)
+  if (index !== undefined && Number.isInteger(index) && index >= 0) out.index = index
+  const points = Array.isArray(rec.points) ? rec.points.slice(0, DICT_POINT_CAP) : null
+  if (points) {
+    out.points = points
+      .map((p, i) => normalizeDictEntry(p, undefined, i))
+      .filter((p): p is DcwFieldDef => p !== null)
+  }
+  return out
+}
+
+/**
+ * 把 MES 返回的数据字典归一成 DcwFieldDef[]。
+ * 支持三种常见形态:
+ *   1) [{field,label,unit,...}, ...]
+ *   2) { fields:[...], units:{field:unit}, labels:{field:label}, descriptions:{field:text} }
+ *   3) { fieldName:{label,unit,...}, other:{...} }
+ * 解析失败/空对象 → [] (不抛:字典是增强信息,不能击穿取数)。
+ */
+export function normalizeMesDictionary(raw: unknown): DcwFieldDef[] {
+  if (raw === null || raw === undefined) return []
+  let body: unknown = raw
+  if (typeof body === 'object' && body !== null && !Array.isArray(body)) {
+    const rec = body as Record<string, unknown>
+    // 常见包裹:data / dictionary / meta
+    for (const k of ['dictionary', 'fields', 'schema', 'meta', 'data']) {
+      const v = rec[k]
+      if (v !== undefined && v !== null && typeof v === 'object') {
+        body = v
+        break
+      }
+    }
+  }
+  if (Array.isArray(body)) {
+    return body.slice(0, DICT_ENTRY_CAP)
+      .map((x, i) => normalizeDictEntry(x, undefined, i))
+      .filter((x): x is DcwFieldDef => x !== null)
+  }
+  if (body === null || typeof body !== 'object') return []
+  const rec = body as Record<string, unknown>
+  if (Array.isArray(rec.fields)) {
+    const units = rec.units !== null && typeof rec.units === 'object' && !Array.isArray(rec.units)
+      ? rec.units as Record<string, unknown>
+      : {}
+    const labels = rec.labels !== null && typeof rec.labels === 'object' && !Array.isArray(rec.labels)
+      ? rec.labels as Record<string, unknown>
+      : {}
+    const descriptions = rec.descriptions !== null && typeof rec.descriptions === 'object' && !Array.isArray(rec.descriptions)
+      ? rec.descriptions as Record<string, unknown>
+      : {}
+    return rec.fields.slice(0, DICT_ENTRY_CAP)
+      .map((x, i) => {
+        const one = normalizeDictEntry(x, undefined, i)
+        if (!one) return null
+        if (one.unit === undefined && units[one.field] !== undefined) one.unit = strOf(units[one.field], 40)
+        if (one.label === undefined && labels[one.field] !== undefined) one.label = strOf(labels[one.field])
+        if (one.description === undefined && descriptions[one.field] !== undefined) one.description = strOf(descriptions[one.field])
+        return one
+      })
+      .filter((x): x is DcwFieldDef => x !== null)
+  }
+  // 对象映射:key = 字段名
+  return Object.entries(rec).slice(0, DICT_ENTRY_CAP)
+    .map(([k, v]) => normalizeDictEntry(v, k))
+    .filter((x): x is DcwFieldDef => x !== null)
+}
+
+/** 字典路径取值:优先 response 内路径,回落 historyMap/readMap 顶层路径;无路径 → [] */
+function dictionaryOf(json: unknown, map: { dictionaryPath?: string, response: { dictionaryPath?: string } }): DcwFieldDef[] {
+  const path = map.response.dictionaryPath ?? map.dictionaryPath
+  if (!path) return []
+  return normalizeMesDictionary(extract(json, path))
+}
+
 /** 数值归一(数值/数值字符串 → 有限数,其余 undefined) */
 function toFinite(v: unknown): number | undefined {
   if (v === null || v === undefined || v === '') return undefined
@@ -484,14 +616,14 @@ function tsToIso(raw: unknown, fmt?: 'epoch_s' | 'epoch_ms' | 'iso'): string | n
   return String(raw)
 }
 
-/** readMap 一次取数:valuePath 数值 + tsPath 归一 ISO(HTTP 非 2xx 抛分类错误) */
-async function readOnce(cfg: Record<string, unknown>, map: MesReadMap): Promise<{ value: number | null, tsIso: string | null }> {
+/** readMap 一次取数:valuePath 数值 + tsPath 归一 ISO + 可选字段字典(HTTP 非 2xx 抛分类错误) */
+async function readOnce(cfg: Record<string, unknown>, map: MesReadMap): Promise<{ value: number | null, tsIso: string | null, dictionary: DcwFieldDef[] }> {
   const { path, query } = applyPathTemplate(map.path, map.query)
   const { status, json } = await mesRequest(cfg, { method: map.method, path, query, headers: map.headers })
   if (status < 200 || status >= 300) throw new AppError(502, 'MES_HTTP_ERROR', classifyHttpFail(status))
   const value = toFinite(extract(json, map.response.valuePath))
   const tsIso = map.response.tsPath ? tsToIso(extract(json, map.response.tsPath), map.response.tsFormat) : null
-  return { value: value === undefined ? null : value, tsIso }
+  return { value: value === undefined ? null : value, tsIso, dictionary: dictionaryOf(json, map) }
 }
 
 // ============================================================
@@ -599,9 +731,11 @@ export const mesRestDcwDriver: DcwWriteDriver = {
       const cfg = input.driverConfig
       const map = parseReadMap(cfg)
       if (!map) return { ok: false, message: '未配置 readMap(当前值映射),无法读取', eng: null, raw: null }
-      const { value, tsIso } = await readOnce(cfg, map)
-      if (value === null) return { ok: false, message: `MES 响应中 valuePath(${map.response.valuePath})未提取到数值`, eng: null, raw: null }
-      return { ok: true, message: `MES 读数 ${Number(value.toFixed(4))},ts=${tsIso ?? '未提供'}`, eng: value, raw: value }
+      const { value, tsIso, dictionary } = await readOnce(cfg, map)
+      if (value === null) {
+        return { ok: false, message: `MES 响应中 valuePath(${map.response.valuePath})未提取到数值`, eng: null, raw: null, ...(dictionary.length > 0 ? { dictionary } : {}) }
+      }
+      return { ok: true, message: `MES 读数 ${Number(value.toFixed(4))},ts=${tsIso ?? '未提供'}`, eng: value, raw: value, ...(dictionary.length > 0 ? { dictionary } : {}) }
     }
     catch (err) {
       // 读是调度周期原语:一切失败(含配置错)收敛为 ok=false,不打断网关节拍
@@ -617,6 +751,7 @@ export const mesRestDcwDriver: DcwWriteDriver = {
     let rows = 0
     let pages = 0
     let complete = false
+    let dictionary: DcwFieldDef[] = []
     // 声明式分页:终止 = nextCursor 缺失/空(取完)或 rows>=maxRows 或 pages>maxPages
     while (rows < input.maxRows && pages < map.maxPages) {
       const query: Record<string, string> = { ...map.query, from: input.fromIso, to: input.toIso }
@@ -627,6 +762,7 @@ export const mesRestDcwDriver: DcwWriteDriver = {
       if (status < 200 || status >= 300) throw new AppError(502, 'MES_HTTP_ERROR', classifyHttpFail(status))
       const rawRows = extract(json, map.response.rowsPath)
       if (!Array.isArray(rawRows)) throw new AppError(502, 'MES_HTTP_ERROR', `historyMap.response.rowsPath(${map.response.rowsPath})未提取到数组`)
+      if (dictionary.length === 0) dictionary = dictionaryOf(json, map)
       const fmt = map.response.format
       const batch: DcwHistoryRow[] = []
       for (const row of rawRows) {
@@ -639,7 +775,18 @@ export const mesRestDcwDriver: DcwWriteDriver = {
           if (!Array.isArray(arr) || arr.length === 0) continue
           const values = arr.map(v => toFinite(v)).filter((x): x is number => x !== undefined)
           if (values.length === 0) continue
-          batch.push({ ts, values })
+          // 行级伴随字段(mean/lane_unit/peak_nm 等)单独保留:向量本体的语义/诊断信息
+          // 常在这些字段里,不能丢(不进 values 以免污染维度)
+          const meta: Record<string, unknown> = {}
+          if (row !== null && typeof row === 'object') {
+            const valuesKey = (map.response.valuesPath ?? '').split('.').pop() ?? ''
+            for (const [k, v] of Object.entries(row as Record<string, unknown>)) {
+              if (k === valuesKey) continue
+              if (typeof v === 'string' && v.length > 256) continue
+              meta[k] = v
+            }
+          }
+          batch.push({ ts, values, ...(Object.keys(meta).length > 0 ? { record: meta } : {}) })
         }
         else if (fmt === 'image') {
           // 图像帧:base64 提取(空串跳过);MIME 缺省 image/png。
@@ -680,7 +827,7 @@ export const mesRestDcwDriver: DcwWriteDriver = {
       }
       cursor = nextStr
     }
-    return { rows, complete }
+    return { rows, complete, ...(dictionary.length > 0 ? { dictionary } : {}) }
   },
 
   async test(driverConfig: Record<string, unknown>): Promise<{ ok: boolean, message: string }> {

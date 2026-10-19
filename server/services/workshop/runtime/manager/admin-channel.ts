@@ -199,6 +199,7 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
           recordOps({
             actor: 'system', actorName: 'system', actorKind: 'system',
             action: 'channel.line.rebind', kind: 'line', targetKind: 'channel', targetId: channelId,
+            lineId: next,
             summary: `频道换线「${channel.lineId || '(无)'}」→「${next}」:清理 ${cleared} 条跨线绑定并取消其挂起审批`,
             detail: { fromLine: channel.lineId || '', toLine: next, cleared },
           })

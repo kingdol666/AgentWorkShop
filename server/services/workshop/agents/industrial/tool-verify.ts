@@ -209,6 +209,8 @@ interface VerifySpec {
   deepNodeRefs?: string[]
   /** 链式引用(dataset_id/job_id/model_id/plan_id/scene_id) */
   chained?: Array<{ param: string, kind: ChainKind }>
+  /** 只读工具:节点只要归属可读产线即可引用(与频道绑线只读扩权同口径;写工具不得开启) */
+  readableLineNodes?: boolean
 }
 
 /** 覆盖:全部「接收引用型参数」的工业工具。未列入 = 无引用参数或已由 v2 禁用桩自答。 */
@@ -226,16 +228,20 @@ const VERIFY_SPECS: Record<string, VerifySpec> = {
     refs: [{ param: 'node_id', kind: 'node' }, { param: 'recipe_id', kind: 'recipe' }],
   },
   // 判定/日志/配方/前哨面
-  ops_log: { refs: [{ param: 'line_id', kind: 'line' }, { param: 'node_id', kind: 'node' }] },
-  recipe_log: { refs: [{ param: 'line_id', kind: 'line' }] },
+  ops_log: { refs: [{ param: 'line_id', kind: 'line' }, { param: 'recipe_id', kind: 'recipe' }, { param: 'node_id', kind: 'node' }], readableLineNodes: true },
+  // line_log = ops_log 显式别名,引用校验完全同口径
+  line_log: { refs: [{ param: 'line_id', kind: 'line' }, { param: 'recipe_id', kind: 'recipe' }, { param: 'node_id', kind: 'node' }], readableLineNodes: true },
+  recipe_log: { refs: [{ param: 'line_id', kind: 'line' }, { param: 'recipe_id', kind: 'recipe' }] },
+  recipe_catalog: { refs: [{ param: 'line_id', kind: 'line' }] },
+  recipe_create: { refs: [{ param: 'line_id', kind: 'line' }, { param: 'source_recipe_id', kind: 'recipe' }], deepNodeRefs: ['params[].node_id', 'daq_windows[].node_id'] },
   line_context: { refs: [{ param: 'line_id', kind: 'line' }] },
   line_status: { refs: [{ param: 'line_id', kind: 'line' }] },
   line_start: { refs: [{ param: 'recipe_id', kind: 'recipe' }] },
   recipe_versions: { refs: [{ param: 'recipe_id', kind: 'recipe' }] },
-  recipe_update: { refs: [{ param: 'recipe_id', kind: 'recipe' }], deepNodeRefs: ['params[].node_id'] },
+  recipe_update: { atLeastOne: [{ params: ['recipe_id', 'line_id'], hint: 'recipe_id 或 line_id 至少提供一个:只给 line_id 时按该线当前活动批次解析配方。' }], refs: [{ param: 'recipe_id', kind: 'recipe' }, { param: 'line_id', kind: 'line' }], deepNodeRefs: ['params[].node_id'] },
   recipe_rollback: { refs: [{ param: 'recipe_id', kind: 'recipe' }] },
-  recipe_trial: { refs: [{ param: 'recipe_id', kind: 'recipe' }], deepNodeRefs: ['params[].node_id'] },
-  recipe_apply: { refs: [{ param: 'recipe_id', kind: 'recipe' }] },
+  recipe_trial: { atLeastOne: [{ params: ['recipe_id', 'line_id'], hint: 'recipe_id 或 line_id 至少提供一个:只给 line_id 时按该线当前活动批次解析配方。' }], refs: [{ param: 'recipe_id', kind: 'recipe' }, { param: 'line_id', kind: 'line' }], deepNodeRefs: ['params[].node_id'] },
+  recipe_apply: { atLeastOne: [{ params: ['recipe_id', 'line_id'], hint: 'recipe_id 或 line_id 至少提供一个:只给 line_id 时按该线当前活动批次解析配方。' }], refs: [{ param: 'recipe_id', kind: 'recipe' }, { param: 'line_id', kind: 'line' }] },
   recipe_propose: { refs: [{ param: 'recipe_id', kind: 'recipe' }], deepNodeRefs: ['packages[].params[].node_id'] },
   // 分析与经验面
   analysis_save: { refs: [{ param: 'line_id', kind: 'line' }, { param: 'recipe_id', kind: 'recipe' }] },
@@ -261,6 +267,7 @@ const VERIFY_SPECS: Record<string, VerifySpec> = {
   aml_training_plan_train: { chained: [{ param: 'plan_id', kind: 'plan' }] },
   // MES 面(ids 为 MES 数控节点,归属判定与 mes-controller 可见面同源)
   mes_fetch: { nodeLists: ['ids'] },
+  mes_export: { nodeLists: ['ids'] },
 }
 
 /** 深路径取值:'params[].node_id' / 'packages[].params[].node_id' */
@@ -320,8 +327,9 @@ export function verifyIndustrialToolCall(agentId: string, toolName: string, args
       const id = String(args[ref.param] ?? '').trim()
       if (!id) continue
       if (ref.kind === 'node') {
-        const exists = nodeRow(id) !== null
-        if (!exists || !nodeAllowed(faces, id)) return denyNode(faces, toolName, args, ref.param, id, exists)
+        const row = nodeRow(id)
+        const readableNode = spec.readableLineNodes && !!row?.lineId && faces.readableLines.has(row.lineId)
+        if (!row || (!nodeAllowed(faces, id) && !readableNode)) return denyNode(faces, toolName, args, ref.param, id, Boolean(row))
       }
       else if (ref.kind === 'line') {
         if (!faces.readableLines.has(id)) return denyLine(faces, toolName, args, ref.param, id)

@@ -126,6 +126,7 @@ test('绑定面内节点放行(node/line 引用均通过)', () => {
   assert.equal(verifyIndustrialToolCall('ag-w', 'daq_query', { node_id: dnA.id }), null)
   assert.equal(verifyIndustrialToolCall('ag-w', 'daq_query', { line_id: lineA.id }), null)
   assert.equal(verifyIndustrialToolCall('ag-w', 'ops_log', { node_id: dwA.id }), null)
+  assert.equal(verifyIndustrialToolCall('ag-w', 'line_log', { node_id: dwA.id }), null)
   assert.equal(verifyIndustrialToolCall('ag-w', 'dcw_journal', { node_id: dwA.id }), null)
 })
 

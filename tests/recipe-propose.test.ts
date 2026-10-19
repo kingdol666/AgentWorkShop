@@ -203,6 +203,34 @@ test('aml_activity 工具:可见产线输出活动判定与理由行,越权产�
   assert.match(denied.text, /无权查询/)
 })
 
+test('recipe_propose 预检:候选值越过当前配方窗口 → 在挂审批前拒绝(不得借 recipe 路径绕过)', async () => {
+  const node = mkNode({ id: 'rp-n-propose', lineId: 'ln-propose-win' })
+  getDcwNodeRepo().insert(node)
+  const product = getDcwProductRepo().create({ name: '提案预检产品', lineId: 'ln-propose-win' })
+  const recipe = getDcwRecipeRepo().create({
+    name: '提案预检配方', productId: product.id,
+    params: [{ nodeId: node.id, value: 50, min: 40, max: 60 }],
+  })
+  getAgentNodeBindingRepo().bind('ag-propose', recipe.id, 'recipe', 'manual')
+  const run = getDcwRecipeRepo().createRun(recipe)
+  setActiveLineRun({
+    lineId: 'ln-propose-win', runId: run.id, recipeId: recipe.id, recipeName: recipe.name,
+    productId: product.id, productName: product.name, startedAt: new Date().toISOString(), taggedSamples: 0,
+  })
+  try {
+    const out = await toolRecipePropose('ag-propose', {
+      recipe_id: recipe.id,
+      packages: [{ name: '越窗方案', params: [{ node_id: node.id, to: 70, basis: '故意越窗验证', exp_ref: 'test:recipe-window' }] }],
+    })
+    assert.equal(out.isError, true)
+    assert.match(out.text, /已剔除|配方/)
+    assert.match(out.text, /未提交审批|预检失败/)
+  }
+  finally {
+    clearActiveLineRun('ln-propose-win')
+  }
+})
+
 // ---------- toolRecipePropose 入参校验层 ----------
 
 test('recipe_propose 校验:recipe_id/packages 缺失与超量指明原因', async () => {

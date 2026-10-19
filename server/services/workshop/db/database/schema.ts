@@ -263,7 +263,8 @@ CREATE TABLE IF NOT EXISTS audit_log (
   recipe_id   TEXT NOT NULL DEFAULT '',
   kind        TEXT NOT NULL DEFAULT '',     -- write|manual|alarm|line|recipe|rollback|daq|system
   summary     TEXT NOT NULL DEFAULT '',
-  level       TEXT NOT NULL DEFAULT 'info'  -- 严重级:info|warn|error(写控 ACK 鉴定;2026-10-08)
+  level       TEXT NOT NULL DEFAULT 'info', -- 严重级:info|warn|error(写控 ACK 鉴定;2026-10-08)
+  scope       TEXT NOT NULL DEFAULT 'system' -- 显式域标识:line(产线域,必须有 line_id)|system(全局审计)
 );
 CREATE INDEX IF NOT EXISTS idx_audit_log_at ON audit_log(at DESC);
 -- v14:高危管理操作双人复核(R3:maker-checker;config 开关默认关)

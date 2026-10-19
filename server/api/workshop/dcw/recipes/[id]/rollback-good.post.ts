@@ -8,7 +8,7 @@ import { defineApiHandler } from '@/server/utils/response'
 import { bindDcwBroadcast, getDcwController } from '@/server/services/workshop/dcw/dcw-controller'
 import { broadcastSceneEvent } from '@/server/services/workshop/scene-events'
 import { getRecipeRollBackManager } from '@/server/services/workshop/dcw/recipe-rollback-manager'
-import { audit } from '@/server/services/workshop/ops/ops'
+import { recordOps } from '@/server/services/workshop/ops/ops'
 
 export default defineApiHandler(async (event) => {
   const user = resolveUser(event)
@@ -18,6 +18,19 @@ export default defineApiHandler(async (event) => {
   const recipe = getDcwController().listRecipes().find(r => r.id === id)
   requireLineMode(user, recipe?.lineId, 'operate')
   const outcomes = await getRecipeRollBackManager().rollbackRecipeGood(id, user.id)
-  audit({ actor: user.id, actorName: user.name, actorKind: 'user', action: 'recipe.rollback-good', targetKind: 'recipe', targetId: id, detail: { outcomes } })
+  recordOps({
+    actor: user.id,
+    actorName: user.name,
+    actorKind: 'user',
+    action: 'recipe.rollback-good',
+    kind: 'recipe',
+    targetKind: 'recipe',
+    targetId: id,
+    lineId: recipe?.lineId ?? '',
+    productId: recipe?.productId ?? '',
+    recipeId: id,
+    summary: `按已知良好批次恢复配方「${recipe?.name ?? id}」(${outcomes.filter(o => o.ok).length}/${outcomes.length} 参数成功)`,
+    detail: { outcomes },
+  })
   return { outcomes }
 })

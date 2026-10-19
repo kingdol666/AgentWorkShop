@@ -113,6 +113,8 @@ export async function toolLineStart(agentId: string, args: LineStartInput, chann
         recordOps({
           actor: agentId, actorName: agentBadgeLabel(agentId), actorKind: 'agent',
           action: 'line.start', kind: 'line', targetKind: 'line', targetId: lineId, lineId,
+          recipeId: recipe.id,
+          productId: run.productId ?? '',
           level: 'error',
           summary: `Agent 开线结果失效:批次 ${run.id.slice(0, 8)} 在写参期间被替代/停止(当前批次 ${activeAfter.runId ?? '无'});未报成功`,
         })
@@ -143,6 +145,8 @@ export async function toolLineStart(agentId: string, args: LineStartInput, chann
         recordOps({
           actor: agentId, actorName: agentBadgeLabel(agentId), actorKind: 'agent',
           action: 'line.start', kind: 'line', targetKind: 'line', targetId: lineId, lineId,
+          recipeId: recipe.id,
+          productId: run.productId ?? '',
           level: 'error',
           summary: `Agent 开线失败:「${lineName}」配方「${recipe.name}」全部 ${results.length} 个参数未下发成功(批次 ${run.id.slice(0, 8)});${stopNote || (stopped ? '已自动停线' : '自动停线未成功')};理由:${reason}`,
         })
@@ -150,6 +154,7 @@ export async function toolLineStart(agentId: string, args: LineStartInput, chann
           recordOps({
             actor: agentId, actorName: agentBadgeLabel(agentId), actorKind: 'agent',
             action: 'line.stop', kind: 'line', targetKind: 'line', targetId: lineId, lineId,
+            recipeId: recipe.id,
             level: 'warn',
             summary: `Agent 自动停线:批次 ${run.id.slice(0, 8)} 收窗(开线后全部参数下发失败)`,
           })
@@ -165,6 +170,8 @@ export async function toolLineStart(agentId: string, args: LineStartInput, chann
       recordOps({
         actor: agentId, actorName: agentBadgeLabel(agentId), actorKind: 'agent',
         action: 'line.start', kind: 'line', targetKind: 'line', targetId: lineId, lineId,
+        recipeId: recipe.id,
+        productId: run.productId ?? '',
         summary: `Agent 开线:「${lineName}」以配方「${recipe.name}」开跑(批次 ${run.id.slice(0, 8)};失败 ${failed.length},未证实 ${unverified.length});理由:${reason}`,
         level: failed.length > 0 ? 'error' : unverified.length > 0 ? 'warn' : 'info',
       })
@@ -241,6 +248,8 @@ export async function toolLineStop(agentId: string, args: LineStopInput, channel
       recordOps({
         actor: agentId, actorName: agentBadgeLabel(agentId), actorKind: 'agent',
         action: 'line.stop', kind: 'line', targetKind: 'line', targetId: lineId, lineId,
+        recipeId: st.recipeId ?? '',
+        productId: st.productId ?? '',
         summary: `Agent 停线:「${lineName}」批次 ${run.id.slice(0, 8)} 收窗;理由:${reason}`,
       })
     }

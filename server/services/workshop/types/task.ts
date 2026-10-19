@@ -65,6 +65,23 @@ export const TERMINAL_TASK_STATES: Partial<Record<TaskState, true>> = {
 }
 
 /**
+ * FAILED 任务重派最小回退窗(2026-10-19 实测缺陷修复)。
+ *
+ * 旧调度器在任务进入 FAILED 的下一 tick 立即 reassign;worker 还没来得及消费新的
+ * assign 投递,任务又被下一次重试换发 lease —— 旧投递因「旧执行代次」被丢弃,
+ * 三次重试可在 0.4s 内烧完(实测 channel-task-chsmoke* 父任务 CANCELED /
+ * CHILD_RETRIES_EXHAUSTED)。留出短回退窗,让新 assign 有机会真正被执行,
+ * 失败也才会留下可诊断的回合历史。
+ */
+export const FAILED_RETRY_BACKOFF_MS = 2000
+
+/** FAILED 任务是否已过重派回退窗(updatedAt 不可解析时放行,避免历史数据永久卡死) */
+export function failedRetryReady(task: { updatedAt: string }, now = Date.now()): boolean {
+  const at = Date.parse(task.updatedAt)
+  return !Number.isFinite(at) || now - at >= FAILED_RETRY_BACKOFF_MS
+}
+
+/**
  * 单 Agent 任务队列视图(每个 AgentRuntime 自己的任务管理系统)。
  * DB tasks 表是唯一事实源;本视图为派生只读投影,不持有第二份状态:
  *  - queued:待执行队列(FIFO,createdAt ASC;含 SUBMITTED/ASSIGNED)

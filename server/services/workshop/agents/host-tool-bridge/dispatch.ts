@@ -143,7 +143,7 @@ async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCa
   }
 
   // 所有真实写入口在统一分发层再做一次服务端 fail-closed 守卫；工具目录隐藏不是安全边界。
-  if (['dcw_control', 'param_control', 'dcw_rollback', 'recipe_update', 'recipe_rollback', 'recipe_trial', 'recipe_apply'].includes(req.toolName)) {
+  if (['dcw_control', 'param_control', 'dcw_rollback', 'recipe_create', 'recipe_update', 'recipe_rollback', 'recipe_trial', 'recipe_apply'].includes(req.toolName)) {
     // Profile 级写面(2026-10-18):观察面零写、训练面无产线写、优化面只认 optimization_explore。
     // 此前这些 Channel 只是目录不注入,按名直调(REST/MCP)仍可落到写 handler。
     if (twinKind === 'exp-miner' || twinKind === 'line-doctor') {
@@ -264,6 +264,7 @@ async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCa
       case 'dcw_rollback':
       case 'dcw_journal':
       case 'ops_log':
+      case 'line_log':
       case 'recipe_log':
       case 'line_context':
       case 'recipe_versions':

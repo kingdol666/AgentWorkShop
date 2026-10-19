@@ -9,7 +9,7 @@
  */
 import type { MesDatasetRow, MesDatasetRead } from '../../mes/mes-datasets'
 import { getMesDatasets } from '../../mes/mes-datasets'
-import { createMesController } from '../../mes/mes-controller'
+import { createMesController, formatDictionary } from '../../mes/mes-controller'
 import { agentOpsScope } from './ops-tools'
 import { AppError } from '../../../../utils/errors'
 
@@ -36,12 +36,12 @@ function dsLine(ds: MesDatasetRow): string {
   if (ds.status === 'ready') state = `就绪(${ds.rows} 行,sha256 ${ds.sha256.slice(0, 8)})`
   else if (ds.status === 'running') state = '取数中'
   else state = `失败(${ds.error.slice(0, 80)})`
-  return `- ${ds.id} | ${ds.nodeName || ds.nodeId} | ${win} | ${state}`
+  return `- ${ds.id} | ${ds.nodeName || ds.nodeId} | ${win} | ${state} | 文件 ${ds.filePath}`
 }
 
 /** 工具:mes_catalog —— MES REST 点位目录(数据驱动;q 子串/产线过滤;按调用者可读产线严格过滤:
  *  跨产线与孤儿(未分配)点位不可见;未绑线的 agent 得到空目录 —— 与 mes_fetch 的授权口径一致)。 */
-export async function toolMesCatalog(agentId: string, args: { q?: string, line_id?: string, limit?: number | string } = {}): Promise<{ text: string, isError?: boolean }> {
+export async function toolMesCatalog(agentId: string, args: { q?: string, line_id?: string, product_id?: string, recipe_id?: string, limit?: number | string } = {}): Promise<{ text: string, isError?: boolean }> {
   try {
     const scope = agentOpsScope(agentId)
     const scopeLineIds = scope ? [...scope.lineIds] : []
@@ -49,7 +49,7 @@ export async function toolMesCatalog(agentId: string, args: { q?: string, line_i
     if (r.entries.length === 0 && scopeLineIds.length === 0) {
       return { text: '你还没有可读的产线绑定,无可见 MES 点位。先完成产线绑定与节点绑定后再用 mes_catalog。' }
     }
-    return { text: r.text }
+    return { text: r.text, ...('isError' in r && r.isError ? { isError: true } : {}) }
   }
   catch (err) {
     return { text: `MES 点位目录查询失败:${err instanceof Error ? err.message : String(err)}(服务未就绪时请稍后重试)。`, isError: true }
@@ -72,6 +72,29 @@ export async function toolMesFetch(agentId: string, args: { ids?: unknown, from?
   }
 }
 
+/** 工具:mes_export —— 把 MES 历史数据导出到指定目录(CSV/JSONL/图像 + manifest/README)。
+ *  与 mes_fetch 的分工:在线判读用 mes_fetch(统计摘要);需要全量原文做离线分析/交给
+ *  其他 worker 时用 mes_export,产物含字段级物理语义,不需要回读平台。 */
+export async function toolMesExport(agentId: string, args: {
+  ids?: unknown
+  from?: string
+  to?: string
+  max_rows?: number | string
+  param?: unknown
+  folder?: string
+  title?: string
+  note?: string
+  merge?: boolean | string
+} = {}): Promise<{ text: string, isError?: boolean }> {
+  try {
+    const r = await mesController().exportData(agentId, args)
+    return { text: r.text, isError: r.isError }
+  }
+  catch (err) {
+    return { text: `MES 数据导出失败:${err instanceof Error ? err.message : String(err)}`, isError: true }
+  }
+}
+
 /** 工具:mes_dataset_read —— 读 CSV 数据集(head=列名+总行数 / stats=统计 / rows=分页)。
  *  权限:创建者或有该节点/产线可见权;回包同样只带 ≤3 行采样(原文不进 prompt)。 */
 export async function toolMesDatasetRead(agentId: string, args: { dataset_id?: string, mode?: string, offset?: number | string } = {}): Promise<{ text: string, isError?: boolean }> {
@@ -88,6 +111,8 @@ export async function toolMesDatasetRead(agentId: string, args: { dataset_id?: s
     }
     const r: MesDatasetRead = store.readDataset(datasetId, mode, Number(args.offset) || 0)
     const stateTxt = meta.status === 'ready' ? '' : meta.status === 'running' ? '\n注意:数据集仍在取数中,当前为已写入部分。' : `\n注意:取数已失败:${meta.error.slice(0, 120)}(以下为失败前已写入部分)。`
+    const dictText = formatDictionary(r.dictionary)
+    const pathTxt = `\n  数据文件: ${meta.filePath}\n  语义清单: ${meta.manifestPath}`
     if (r.mode === 'stats') {
       const s = r.stats
       const f4 = (v: number | null | undefined): string => v == null || !Number.isFinite(v) ? '-' : String(Number(v.toFixed(4)))
@@ -95,7 +120,7 @@ export async function toolMesDatasetRead(agentId: string, args: { dataset_id?: s
         text: `数据集 ${datasetId} 统计(${meta.nodeName || meta.nodeId},产线 ${meta.lineId || '未分配'}):\n`
           + `  数值行数 ${s.count} | 首 ${s.firstTs ?? '-'} ~ 末 ${s.lastTs ?? '-'}\n`
           + `  min ${f4(s.min)} / max ${f4(s.max)} / mean ${f4(s.mean)} / stddev ${f4(s.stddev)}\n`
-          + `  文件 sha256 ${meta.sha256.slice(0, 16)}${stateTxt}`,
+          + `  文件 sha256 ${meta.sha256.slice(0, 16)}${pathTxt}${dictText ? `\n${dictText}` : ''}${stateTxt}`,
       }
     }
     // head / rows:列名+行数+分页游标,采样 ≤3 行(原文不进 prompt)
@@ -113,7 +138,7 @@ export async function toolMesDatasetRead(agentId: string, args: { dataset_id?: s
       sample = r.rowsView.rows.slice(0, 3).map(row => row.join(','))
     }
     return {
-      text: `${headTxt}采样(≤3 行,ts,value): ${sample.join(' | ') || '(空)'}${totalRows > 3 ? '(其余行不进对话;统计用 mode=stats,分页翻看用 offset)' : ''}${stateTxt}`,
+      text: `${headTxt}采样(≤3 行): ${sample.join(' | ') || '(空)'}${totalRows > 3 ? '(其余行不进对话;统计用 mode=stats,分页翻看用 offset)' : ''}${pathTxt}${dictText ? `\n${dictText}` : ''}${stateTxt}`,
     }
   }
   catch (err) {

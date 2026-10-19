@@ -93,20 +93,6 @@ if (cfg.allowSharedSignals !== true) {
 for (const n of cfg.nodes ?? []) {
   const pool = n.kind === 'daq' ? daqAll : dcwAll
   const found = pool.find(x => x.lineId === lineId && x.name === n.name)
-  if (found) {
-    ;(n.kind === 'daq' ? daqMap : dcwMap)[n.name] = found.id
-    ok(`节点复用[${n.name}]`, true, found.id)
-    // 量程漂移对齐(配置为权威):dcw 用 PATCH,daq 也走 PATCH
-    const drift = n.kind === 'daq'
-      ? (found.min !== n.min || found.max !== n.max)
-      : (found.min !== n.min || found.max !== n.max || (n.stepLimit && found.stepLimit !== n.stepLimit))
-    if (drift) {
-      const p = await api('PATCH', `/api/workshop/${n.kind === 'daq' ? 'daq' : 'dcw'}/${found.id}`,
-        Object.fromEntries(Object.entries({ min: n.min, max: n.max, stepLimit: n.stepLimit }).filter(([, v]) => v !== undefined)), tok)
-      ok(`量程对齐[${n.name}]`, p.code === 0 || !!p.data, p.message ?? '')
-    }
-    continue
-  }
   // mes-rest 映射面自动字符串化(2026-10-10 投用轮坑:readMap/writeMap/historyMap/headers
   // 必须是 JSON 字符串存 driverConfig —— 输入面允许写对象,这里统一转换,消灭编码坑)
   const driverConfig = { ...(n.driverConfig ?? {}) }
@@ -116,6 +102,33 @@ for (const n of cfg.nodes ?? []) {
         driverConfig[key] = JSON.stringify(driverConfig[key])
       }
     }
+  }
+  if (found) {
+    ;(n.kind === 'daq' ? daqMap : dcwMap)[n.name] = found.id
+    ok(`节点复用[${n.name}]`, true, found.id)
+    // 配置为权威:复用节点时对齐量程/步长/写入保持/采样节拍/单位/精度/driverConfig。
+    // 否则文档修正后重跑会静默保留旧寄存器或旧 hold 心跳,属于接入级逻辑漏洞。
+    const patch = {}
+    if (found.min !== n.min) patch.min = n.min
+    if (found.max !== n.max) patch.max = n.max
+    if (n.unit !== undefined && found.unit !== n.unit) patch.unit = n.unit
+    if (n.decimals !== undefined && found.decimals !== n.decimals) patch.decimals = n.decimals
+    if (n.warnLow !== undefined && found.warnLow !== n.warnLow) patch.warnLow = n.warnLow
+    if (n.warnHigh !== undefined && found.warnHigh !== n.warnHigh) patch.warnHigh = n.warnHigh
+    if (n.kind === 'dcw') {
+      if (n.stepLimit !== undefined && found.stepLimit !== n.stepLimit) patch.stepLimit = n.stepLimit
+      if (n.holdIntervalMs !== undefined && found.holdIntervalMs !== n.holdIntervalMs) patch.holdIntervalMs = n.holdIntervalMs
+    }
+    else if (n.intervalMs !== undefined && found.intervalMs !== n.intervalMs) {
+      patch.intervalMs = n.intervalMs
+    }
+    // driverConfig 以配置为权威;节点视图的 secretRef 可能是掩码,这里写回配置中的引用名(非 token)
+    if (n.driverConfig) patch.driverConfig = driverConfig
+    if (Object.keys(patch).length > 0) {
+      const p = await api('PATCH', `/api/workshop/${n.kind === 'daq' ? 'daq' : 'dcw'}/${found.id}`, patch, tok)
+      ok(`节点配置对齐[${n.name}]`, p.code === 0 || !!p.data, `${Object.keys(patch).join(',')} ${p.message ?? ''}`.slice(0, 120))
+    }
+    continue
   }
   const body = n.kind === 'daq'
     ? {
@@ -149,6 +162,14 @@ if (cfg.recipe) {
   if (found) {
     recipeId = found.id
     ok('配方复用', true, `${recipeId} v${found.version}`)
+    // 配置为权威:复用配方时对齐参数(节点/值/窗口/stepLimit);不因同名就静默保留旧基线
+    const brief = arr => JSON.stringify([...arr].map(p => ({
+      nodeId: p.nodeId, value: p.value, ...(p.min != null ? { min: p.min } : {}), ...(p.max != null ? { max: p.max } : {}), ...(p.stepLimit != null ? { stepLimit: p.stepLimit } : {}),
+    })).sort((a, b) => String(a.nodeId).localeCompare(String(b.nodeId))))
+    if (brief(found.params ?? []) !== brief(params)) {
+      const p = await api('PATCH', `/api/workshop/dcw/recipes/${recipeId}`, { params }, tok)
+      ok('配方参数对齐', p.code === 0 || !!p.data, p.message ?? '')
+    }
   }
   else {
     // 产品:配方必须归属产品;缺省自动建一个"线名+默认产品"
@@ -172,7 +193,9 @@ if (cfg.recipe) {
 // ---------- 4. 可选开跑(运行门语义;已在跑会 CONFLICT,视为通过) ----------
 if (cfg.startLine && recipeId) {
   const j = await api('POST', `/api/workshop/dcw/lines/${lineId}/start`, { recipeId }, tok)
-  ok('开跑批次', j.code === 0 || j.code === 'CONFLICT', j.data?.run?.id ?? j.message ?? '')
+  if (j.code === 0) ok('开跑批次', true, j.data?.run?.id ?? '')
+  else if (j.code === 'CONFLICT') ok('开跑批次(已运行复用)', true, `批次保持运行:${String(j.message ?? '').slice(0, 100)}`)
+  else ok('开跑批次', false, j.message ?? String(j.code ?? ''))
 }
 
 console.log('\n' + JSON.stringify({ lineId, dcw: dcwMap, daq: daqMap, recipeId, reused }))

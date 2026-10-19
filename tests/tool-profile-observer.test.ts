@@ -36,7 +36,7 @@ const WRITE_FAMILY = [...HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES, 'optimization_expl
 function syntheticBase() {
   const names = [
     // 观察读面(exp_collect 由经验采集底座注册,此处按名合入验证白名单)
-    'ops_log', 'recipe_log', 'recipe_versions', 'line_context', 'dcw_journal', 'daq_query', 'exp_collect',
+    'ops_log', 'line_log', 'recipe_log', 'recipe_versions', 'line_context', 'dcw_journal', 'daq_query', 'exp_collect',
     // 协作面
     'save_memory', 'search_memory', 'send_cross_channel_message', 'send_message_to_agent', 'poll_messages',
     // 直接写族(7 件)+ 治理链真实写入
@@ -62,7 +62,7 @@ function assertNoWriteFamily(surface: Set<string>, label: string): void {
 
 test('exp-miner 纯装配:含观察读面(exp_collect/ops_log/line_context 等)+ 协作面,零写族', () => {
   const surface = namesOf(scopedToolsForObserverProfile('exp-miner', syntheticBase()))
-  for (const tool of ['exp_collect', 'ops_log', 'recipe_log', 'recipe_versions', 'line_context', 'dcw_journal', 'daq_query']) {
+  for (const tool of ['exp_collect', 'ops_log', 'line_log', 'recipe_log', 'recipe_versions', 'line_context', 'dcw_journal', 'daq_query']) {
     assert.ok(surface.has(tool), `exp-miner 缺观察读面工具 ${tool}`)
   }
   for (const tool of ['save_memory', 'search_memory', 'send_cross_channel_message']) {
@@ -100,7 +100,7 @@ test('真实 HOST_TOOLS 按白名单收敛:读面/协作面保留,目录内写�
   assert.ok(HOST_TOOLS.length > 0, 'HOST_TOOLS 应已加载(host-tools.json)')
   for (const kind of ['exp-miner', 'line-doctor'] as const) {
     const surface = namesOf(scopedToolsForObserverProfile(kind, HOST_TOOLS))
-    assert.ok(surface.has('ops_log') && surface.has('line_context') && surface.has('daq_query'), `${kind} 真实目录装配缺观察读面`)
+    assert.ok(surface.has('ops_log') && surface.has('line_log') && surface.has('line_context') && surface.has('daq_query'), `${kind} 真实目录装配缺观察读面`)
     assert.ok(surface.has('save_memory') && surface.has('send_cross_channel_message'), `${kind} 真实目录装配缺协作面`)
     assertNoWriteFamily(surface, `${kind}(真实目录)`)
   }
@@ -129,7 +129,7 @@ for (const [channelId, profile] of [[chMiner, 'exp-miner'], [chDoctor, 'line-doc
 
 test('hostToolsForRole:exp-miner 频道注入清单含读面/协作面,零写族', () => {
   const surface = namesOf(hostToolsForRole('lead', chMiner))
-  assert.ok(surface.has('ops_log') && surface.has('line_context') && surface.has('daq_query'), 'exp-miner 注入清单缺观察读面')
+  assert.ok(surface.has('ops_log') && surface.has('line_log') && surface.has('line_context') && surface.has('daq_query'), 'exp-miner 注入清单缺观察读面')
   assert.ok(surface.has('save_memory') && surface.has('search_memory') && surface.has('send_cross_channel_message'), 'exp-miner 注入清单缺协作面')
   assertNoWriteFamily(surface, 'exp-miner(端到端)')
 })

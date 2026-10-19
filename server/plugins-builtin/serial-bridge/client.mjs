@@ -14,6 +14,7 @@ export function setup(ctx) {
       .aw-serial-dot-bad { background:#e05a5a; }
       .aw-serial-toolbar { display:flex; justify-content:flex-end; }
       .aw-serial-btn { padding:4px 12px; border:1px solid color-mix(in srgb, currentColor 28%, transparent); border-radius:7px; background:transparent; color:inherit; cursor:pointer; }
+      @media (pointer: coarse) { .aw-serial-btn { min-height:40px; } }
       .aw-serial-table { width:100%; border-collapse:collapse; }
       .aw-serial-table th, .aw-serial-table td { text-align:left; padding:5px 8px; border-bottom:1px solid color-mix(in srgb, currentColor 10%, transparent); }
       .aw-serial-table th { opacity:.65; font-weight:500; }

@@ -9,7 +9,7 @@
  * 该族**不依赖 workspace**,由 dispatch 在 workspace 门控之前分流(保持原分发顺序)。
  */
 import type { HostToolResult } from '../types'
-import { toolLineStart, toolLineStop, toolLineStatus, toolAmlDatasetBuild, toolAmlDatasetStats, toolAmlJobCancel, toolAmlJobLogs, toolAmlJobStatus, toolAmlJobSubmit, toolAmlLeaderboard, toolAmlModelFind, toolAmlModelPromote, toolAmlModelReference, toolAmlNodeCatalog, toolAmlTrainingPlanCreate, toolAmlTrainingPlanList, toolAmlTrainingPlanTrain, toolDaqExport, toolDaqFrames, toolDaqQuery, toolDcwControl, toolDcwJudge, toolDcwJournal, toolDcwRollback, toolLineContext, toolMesCatalog, toolMesDatasetRead, toolMesDatasets, toolMesFetch, toolMyIndustrialNodes, toolOpsLog, toolParamControl, toolRecipeApply, toolRecipeLog, toolRecipeRollback, toolRecipeTrial, toolRecipeUpdate, toolRecipeVersions, toolOptimizationExplore, toolTwinProviderCatalog, toolTwinSceneDiscover, toolTwinSceneCompile, toolTwinSceneFreeze, toolTwinSceneRead, toolTwinPhysicsSpecDraft, toolTwinPhysicsSpecValidate, toolTwinPhysicsSpecCompile, toolTwinSnapshotCreate, toolTwinTrialRun, toolMpcOptimize, toolTwinGateEvaluate, toolTwinBayesOptimize, toolTwinCalibrationRequest, toolAnalysisSave, toolAnalysisQuery } from '../../industrial'
+import { toolLineStart, toolLineStop, toolLineStatus, toolAmlDatasetBuild, toolAmlDatasetStats, toolAmlJobCancel, toolAmlJobLogs, toolAmlJobStatus, toolAmlJobSubmit, toolAmlLeaderboard, toolAmlModelFind, toolAmlModelPromote, toolAmlModelReference, toolAmlNodeCatalog, toolAmlTrainingPlanCreate, toolAmlTrainingPlanList, toolAmlTrainingPlanTrain, toolDaqExport, toolDaqFrames, toolDaqQuery, toolDcwControl, toolDcwJudge, toolDcwJournal, toolDcwRollback, toolLineContext, toolMesCatalog, toolMesDatasetRead, toolMesDatasets, toolMesExport, toolMesFetch, toolMyIndustrialNodes, toolOpsLog, toolParamControl, toolRecipeApply, toolRecipeCatalog, toolRecipeCreate, toolRecipeLog, toolRecipeRollback, toolRecipeTrial, toolRecipeUpdate, toolRecipeVersions, toolOptimizationExplore, toolTwinProviderCatalog, toolTwinSceneDiscover, toolTwinSceneCompile, toolTwinSceneFreeze, toolTwinSceneRead, toolTwinPhysicsSpecDraft, toolTwinPhysicsSpecValidate, toolTwinPhysicsSpecCompile, toolTwinSnapshotCreate, toolTwinTrialRun, toolMpcOptimize, toolTwinGateEvaluate, toolTwinBayesOptimize, toolTwinCalibrationRequest, toolAnalysisSave, toolAnalysisQuery } from '../../industrial'
 
 import { toolExpCollect } from '../../industrial/exp-tools'
 import { toolRecipePropose } from '../../industrial/recipe-propose-tools'
@@ -58,7 +58,11 @@ const INDUSTRIAL_HANDLERS = new Map<string, IndustrialToolHandler>([
   ['dcw_rollback', (agentId, args) => toolDcwRollback(agentId, args as { record_id?: string, node_id?: string, to?: string })],
   ['dcw_journal', (agentId, args) => toolDcwJournal(agentId, args as { node_id?: string, recipe_id?: string, limit?: number | string })],
   ['ops_log', (agentId, args) => toolOpsLog(agentId, args as Parameters<typeof toolOpsLog>[1])],
+  // 显式别名:line_log 与 ops_log 同一 handler,便于 Agent 直接把「产线日志」与产线对象关联
+  ['line_log', (agentId, args) => toolOpsLog(agentId, args as Parameters<typeof toolOpsLog>[1])],
   ['recipe_log', (agentId, args) => toolRecipeLog(agentId, args as Parameters<typeof toolRecipeLog>[1])],
+  ['recipe_catalog', (agentId, args) => toolRecipeCatalog(agentId, args as Parameters<typeof toolRecipeCatalog>[1])],
+  ['recipe_create', (agentId, args) => toolRecipeCreate(agentId, args as Parameters<typeof toolRecipeCreate>[1])],
   ['line_context', (agentId, args) => toolLineContext(agentId, args as { line_id?: string })],
   ['recipe_versions', (agentId, args) => toolRecipeVersions(agentId, args as { recipe_id?: string, limit?: number | string })],
   ['recipe_update', (agentId, args) => toolRecipeUpdate(agentId, args as Parameters<typeof toolRecipeUpdate>[1])],
@@ -67,6 +71,7 @@ const INDUSTRIAL_HANDLERS = new Map<string, IndustrialToolHandler>([
   ['recipe_apply', (agentId, args) => toolRecipeApply(agentId, args as Parameters<typeof toolRecipeApply>[1])],
   ['mes_catalog', (agentId, args) => toolMesCatalog(agentId, args as Parameters<typeof toolMesCatalog>[1])],
   ['mes_fetch', (agentId, args) => toolMesFetch(agentId, args as Parameters<typeof toolMesFetch>[1])],
+  ['mes_export', (agentId, args) => toolMesExport(agentId, args as Parameters<typeof toolMesExport>[1])],
   ['mes_dataset_read', (agentId, args) => toolMesDatasetRead(agentId, args as Parameters<typeof toolMesDatasetRead>[1])],
   ['mes_datasets', (agentId, args) => toolMesDatasets(agentId, args as Parameters<typeof toolMesDatasets>[1])],
   ['exp_collect', (agentId, args) => toolExpCollect(agentId, args as { line_id?: string, lineId?: string })],

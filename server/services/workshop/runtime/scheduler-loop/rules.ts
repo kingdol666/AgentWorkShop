@@ -5,7 +5,7 @@
 import { SchedulerLoopSnapshot } from './snapshot'
 import type { SchedulerDecision } from './types'
 import type { SupervisionDecision, SupervisionSnapshot } from '../../agents/agent-interface'
-import { TERMINAL_TASK_STATES } from '../../types/task'
+import { failedRetryReady, TERMINAL_TASK_STATES } from '../../types/task'
 
 export abstract class SchedulerLoopRules extends SchedulerLoopSnapshot {
   /** 内置规则引擎兜底(harness 无关) */
@@ -28,6 +28,9 @@ export abstract class SchedulerLoopRules extends SchedulerLoopSnapshot {
         if (!task.parentId) continue
         // ROOT_TIMEOUT 已是超时收口结果,不能被恢复规则重新派发。
         if (task.closeReason === 'ROOT_TIMEOUT') continue
+        // 回退窗:worker 尚未消费本次 FAILED 后重投的 assign 时不再抢先换 lease,
+        // 否则 3 次重试会在 0.4s 内全部变成「旧执行代次」丢弃(实测)。
+        if (!failedRetryReady(task, now)) continue
         if (task.retryCount < 3) {
           const other = this.pickWorker(pool, now, task.assigneeId)
           if (other) {

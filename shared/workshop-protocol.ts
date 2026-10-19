@@ -424,6 +424,9 @@ export interface AepOpsLog {
   lineId: string
   productId: string
   recipeId: string
+  /** 显式域标识:line(产线日志)/ system(全局审计) */
+  scope?: 'line' | 'system'
+  level?: 'info' | 'warn' | 'error'
 }
 
 /** AEP 下行信封 */

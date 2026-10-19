@@ -247,6 +247,8 @@ export async function toolDaqFrames(agentId: string, args: {
   from_ms?: number | string
   to_ms?: number | string
   limit?: number | string
+  include_points?: boolean | string
+  point_limit?: number | string
 }): Promise<{ text: string, isError?: boolean }> {
   const auth = daqTargetsOf(agentId, args.node_id, args.line_id)
   if ('error' in auth) return auth.error
@@ -276,6 +278,11 @@ export async function toolDaqFrames(agentId: string, args: {
     return { text: `limit 必须是正整数(收到 ${String(args.limit)})。`, isError: true }
   }
   const limit = Math.min(Math.max(Math.round(Number(args.limit)) || 20, 1), 100)
+  const includePoints = args.include_points === true || args.include_points === 'true'
+  const pointLimitRaw = Number(args.point_limit)
+  const pointLimit = includePoints
+    ? Math.min(Math.max(Math.round(Number.isFinite(pointLimitRaw) && pointLimitRaw > 0 ? pointLimitRaw : 128), 1), 1024)
+    : 16
   const { getTsdb, tsdbReady } = await import('../../daq/storage')
   await tsdbReady
   const tsdb = getTsdb()
@@ -304,13 +311,24 @@ export async function toolDaqFrames(agentId: string, args: {
         okNodes++
         continue
       }
-      const head = `■ ${node.name}(${tpl?.ch ?? node.templateKey})形态 ${signalKind},帧数 ${frames.length},时间窗 ${new Date(fromMs).toISOString().slice(0, 16)} ~ ${new Date(toMs).toISOString().slice(0, 16)}`
+      const vmeta = tpl?.vector
+      const base = vmeta?.pointIndexBase === 0 ? 0 : 1
+      const labelOf = (i: number): string => {
+        const labels = vmeta?.labels
+        if (Array.isArray(labels) && labels[i]) return labels[i]!
+        const prefix = vmeta?.pointLabelPrefix
+        return prefix ? `${prefix}${i + base}` : `#${i + base}`
+      }
+      const layout = vmeta
+        ? ` | 单位 ${node.unit};量程 ${vmeta.min}~${vmeta.max}${vmeta.axis ? `;轴 ${vmeta.axis}` : ''};点位 ${vmeta.points} 个(${labelOf(0)}…${labelOf(Math.max(0, vmeta.points - 1))})${vmeta.pointUnit ? `,点单位 ${vmeta.pointUnit}` : ''}`
+        : ` | 单位 ${node.unit};量程 ${node.min}~${node.max}`
+      const head = `■ ${node.name}(${tpl?.ch ?? node.templateKey})形态 ${signalKind},帧数 ${frames.length},时间窗 ${new Date(fromMs).toISOString().slice(0, 16)} ~ ${new Date(toMs).toISOString().slice(0, 16)}${layout}${tpl?.semantics ? `\n  物理意义: ${tpl.semantics}` : ''}`
       const lines = frames.slice(0, 10).map((f) => {
         const at = new Date(f.at).toISOString().slice(11, 19)
         if (f.kind === 'vector') {
           const pts = f.points ?? []
-          const preview = pts.slice(0, 16).map(p => Number(p.toFixed(3))).join(',')
-          return `  ${at} 轮廓 ${pts.length} 点[${preview}${pts.length > 16 ? ',…' : ''}] 指标 {${Object.entries(f.metrics).slice(0, 6).map(([k, v]) => `${k}=${v}`).join(', ')}}`
+          const shown = pts.slice(0, pointLimit).map((p, i) => `${labelOf(i)}=${Number(p.toFixed(3))}`).join(',')
+          return `  ${at} 轮廓 ${pts.length} 点[${shown}${pts.length > pointLimit ? `,…(另有 ${pts.length - pointLimit} 点,调大 point_limit≤1024 或 daq_export)` : ''}] 指标 {${Object.entries(f.metrics).slice(0, 6).map(([k, v]) => `${k}=${v}`).join(', ')}}`
         }
         const width = f.meta.width ?? '?'
         const height = f.meta.height ?? '?'

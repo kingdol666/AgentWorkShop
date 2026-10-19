@@ -74,8 +74,10 @@ export async function toolMyIndustrialNodes(agentId: string): Promise<{ text: st
    判 rollback 后用 recipe_rollback(dispatch=true, reason) 统一回退;dcw_journal 可查节点参数变更史。未判定前再下发,旧记录会被标记 superseded。
    若节点被他人的 open 记录阻塞(对方已消失),超时(30 分钟)后你可接管:dcw_judge 会带接管标记入册。
 6. 自查面:line_context 看你控制的产线/产品/配方全景(动手前必读,确认归属);
-   ops_log 查你负责产线的运维日志(谁/何时做了什么,来源区分 Agent/用户/系统;
-   参数 line_id/node_id/kind/actor_kind/minutes/limit/mine);recipe_log 查配方下发与回退事件;
+   ops_log(显式别名 line_log)查产线日志(只含 scope=line 的产线域记录,不含登录/系统设置等全局审计;
+   逐条带 scope 与产线/配方/产品归属;参数 line_id/recipe_id/product_id/node_id/kind/actor_kind/from/to/minutes/limit/mine;
+   缺省产线=频道绑定线,可用 line_context 拿 line_id 与 recipe_id 后精确过滤);
+   recipe_log 查配方变更史(创建/更新/试验/下发/ACK/回退,参数同上,可不传 line_id 只传 recipe_id);
    recipe_versions 查配方参数版本史(谁改的/为什么/参数 diff)。
 7. 配方操控闭环(在线优化框架):验证过参数更优 → recipe_update 保存进配方(记录你的名字与原因,
    生成新版本);发现优化有问题 → recipe_rollback 回退到稳定版本(version)或已知良好批次

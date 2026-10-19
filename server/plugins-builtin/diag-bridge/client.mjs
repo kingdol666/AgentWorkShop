@@ -25,6 +25,8 @@ export function setup(ctx) {
       .aw-diag-empty { opacity:.6; padding:8px 0; }
       .aw-diag-status { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
       .aw-diag-check { padding:8px 10px; border:1px dashed color-mix(in srgb, currentColor 20%, transparent); border-radius:8px; display:flex; flex-direction:column; gap:5px; }
+      /* 未检测前不渲染空虚线框 */
+      .aw-diag-check:has(> .aw-diag-check-rows:empty) { display:none; }
       .aw-diag-check-rows { display:flex; flex-direction:column; gap:3px; }
       .aw-diag-check-row { display:flex; gap:6px; align-items:baseline; flex-wrap:wrap; }
       .aw-diag-check-k { opacity:.65; min-width:86px; }
