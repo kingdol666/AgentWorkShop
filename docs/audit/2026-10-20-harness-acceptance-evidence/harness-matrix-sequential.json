@@ -1,0 +1,79 @@
+{
+  "at": "2026-10-20T03:10:42.588Z",
+  "base": "http://127.0.0.1:3001",
+  "timeoutMs": 300000,
+  "results": [
+    {
+      "harness": "omp",
+      "channelId": "5ebe8b83-8360-4b18-9dad-e89fdd6f4e6c",
+      "agentId": "8408a358-f144-48ee-9215-118e5f9e1f45",
+      "taskId": "e4d03b97-b3ce-4a2e-863f-ca805ad526c2",
+      "state": "COMPLETED",
+      "progress": 100,
+      "deliverable": "HARNESS-OK:omp",
+      "detail": "",
+      "pass": true,
+      "elapsedMs": 15289
+    },
+    {
+      "harness": "opencode",
+      "channelId": "4582f495-b92c-413c-b8de-d3b6b5dc2472",
+      "agentId": "21008341-d6b2-4d0b-8f77-4cc65869669a",
+      "taskId": "8019248c-71a2-4643-94dc-e3e6cc7facdb",
+      "state": "WORKING",
+      "progress": 0,
+      "deliverable": "",
+      "detail": "任务终态 WORKING",
+      "pass": false,
+      "elapsedMs": 301268
+    },
+    {
+      "harness": "codex",
+      "channelId": "2f97f12f-7074-4d41-a41a-1a6c09fa9ee2",
+      "agentId": "cb25c368-d9fa-460b-92bf-28eec182ace1",
+      "taskId": "68762fe3-2d46-4e8b-b55e-74a9b2ef673c",
+      "state": "WORKING",
+      "progress": 0,
+      "deliverable": "",
+      "detail": "任务终态 WORKING",
+      "pass": false,
+      "elapsedMs": 301161
+    },
+    {
+      "harness": "dsh",
+      "channelId": "284a3a26-4e7f-48cc-b4fd-a11eaa1869de",
+      "agentId": "6b08c022-a504-40a3-b348-23850f79ca5b",
+      "taskId": "2ad3de5a-873c-4665-9b85-c5ec606544be",
+      "state": "SUBMITTED",
+      "progress": 0,
+      "deliverable": "",
+      "detail": "任务终态 SUBMITTED",
+      "pass": false,
+      "elapsedMs": 301132
+    },
+    {
+      "harness": "claude",
+      "channelId": "4348573a-0b65-4ee1-b9e7-51d61cceb372",
+      "agentId": "74135188-c0a8-45b4-88c1-86bba2400078",
+      "taskId": "4fcea125-ac38-4a54-9182-dcb6fcdfbf61",
+      "state": "WORKING",
+      "progress": 0,
+      "deliverable": "",
+      "detail": "任务终态 WORKING",
+      "pass": false,
+      "elapsedMs": 301206
+    },
+    {
+      "harness": "copilot",
+      "channelId": "dd21d196-813c-49b4-a913-96a5f9379459",
+      "agentId": "22c4955f-cc22-4700-8fcd-53526142aa55",
+      "taskId": "081b585e-4799-4cba-ac13-437c39b16bca",
+      "state": "COMPLETED",
+      "progress": 100,
+      "deliverable": "HARNESS-OK:copilot",
+      "detail": "",
+      "pass": true,
+      "elapsedMs": 30188
+    }
+  ]
+}

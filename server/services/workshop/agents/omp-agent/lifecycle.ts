@@ -3,7 +3,7 @@
  * (拆分层,承 OmpRpcAgentImplContextGovernance;方法体与原文件逐行一致)
  */
 import { OmpRpcAgentImplContextGovernance } from './context-governance'
-import { hostToolsForRole } from '../host-tool-bridge'
+import { hostToolsForAgent } from '../host-tool-bridge'
 import { killHarnessProcess, markHarnessProcessExit } from '../harness-process'
 import { liveAgents } from './helpers'
 import { markTerminalSessionExit } from '../harness-terminal'
@@ -27,7 +27,7 @@ export abstract class OmpRpcAgentImplLifecycle extends OmpRpcAgentImplContextGov
   refreshPluginTools(): void {
     const client = this.client
     if (!client || !client.alive) return
-    void client.send({ type: 'set_host_tools', tools: hostToolsForRole(this.agentRole, this.channelId) }).catch(() => {})
+    void client.send({ type: 'set_host_tools', tools: hostToolsForAgent(this.selfAgentId, this.agentRole, this.channelId) }).catch(() => {})
   }
 
   /** harness 会话身份(§2.4;get_state 探测到才有;未探测到返回 null) */

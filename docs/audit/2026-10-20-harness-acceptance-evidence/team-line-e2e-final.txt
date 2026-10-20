@@ -1,0 +1,21 @@
+━━━ 团队/产线/HITL 真实 E2E @ http://127.0.0.1:3001 (tag=mvg6h868) ━━━
+PASS | 频道创建(mock lead) | 44215fee-d994-4502-b1e5-5e0ae7c2716f
+PASS | 频道绑定产线 | ln-dd6c9135
+PASS | 成员部署(mock/omp/copilot) | caa71552/97ea2154/c0cf46ea
+PASS | 分析师数采绑定 | 5/5
+PASS | 操作员配方绑定(manual) | manual
+PASS | mailbox 发送(lead→analyst) | 消息 e1a27312… 已发送给 caa71552-0e03-43a0-832c-2834ec261e96(priority=task)
+PASS | mailbox 投递(lead→analyst 消息落库) | e5a408ec→caa71552 state=consuming MAILBOX-PROBE-mvg6h868
+PASS | root 任务提交(派发给 lead) | a4185e93-1145-435b-b775-53fe7a08a25b
+PASS | lead 自动派发并完成 | state=COMPLETED
+PASS | omp 数采分析任务完成 | state=COMPLETED deliverable=line_context 确认:产线 ln-dd6c9135「多协议孪生产线-20261020」运行中,活动批次 rr-b5851(产品 pd-f74b5d83,配方「多协议孪生基线配方」rc-2be5c50c v2),已打标 139 样本。
+
+daq_query(line_id=ln-dd6c9135, node_i
+  · HITL 批准 ap-d7a91 配方参数写入审批
+  · HITL 批准 ap-bc6bf 配方下发审批
+PASS | copilot 配方写入/下发任务完成 | state=COMPLETED deliverable=已完成指定操作：配方 rc-2be5c50c 的线速SP从46更新为47 m/min并保存为v3，HITL人工附言确认批准；随后 recipe_apply 获批并提交，线速SP下发已确认。复核 line_context 显示配方v3与PLC线速设定均为47 m/min。注意整批ACK为4/5已证实、1项未证实、0失败：
+PASS | manual 配方操作触发 HITL 并获批 | approved=2
+PASS | PLC 回读=47(下发真实生效) | readback=47
+PASS | 配方版本递增 | version=3
+
+=== 团队/产线/HITL: 14 PASS / 0 FAIL ===

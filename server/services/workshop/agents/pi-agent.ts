@@ -21,7 +21,7 @@ import {
   type OneShotEngineSpec,
 } from './adapters/one-shot-cli-agent'
 import { resolveBridgePath } from './harness-env'
-import { hostToolsForRole } from './host-tool-bridge'
+import { hostToolsForAgent } from './host-tool-bridge'
 
 /** 安全路径段:agentId 白名单化(仅作为路径段使用) */
 function safeId(agentId: unknown): string {
@@ -72,7 +72,8 @@ const spec: OneShotEngineSpec = {
   prepare: (config) => {
     // 把本角色可见的 host tools 写成文件,扩展同步读取注册(agent 身份 env 已注入 pi 进程)
     const file = toolsFilePath(config)
-    const tools = hostToolsForRole(
+    const tools = hostToolsForAgent(
+      typeof config.agentId === 'string' ? config.agentId : '',
       config.role === 'lead' ? 'lead' : 'worker',
       typeof config.channelId === 'string' ? config.channelId : undefined,
     )

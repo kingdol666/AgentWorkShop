@@ -1,0 +1,80 @@
+{
+  "at": "2026-10-20T04:17:19.570Z",
+  "channelId": "4171740f-2954-4319-b3f1-64870400fe1e",
+  "lineId": "ln-dd6c9135",
+  "recipeId": "rc-2be5c50c",
+  "pass": 13,
+  "fail": 1,
+  "checks": [
+    {
+      "name": "频道创建(mock lead)",
+      "ok": true,
+      "detail": "4171740f-2954-4319-b3f1-64870400fe1e"
+    },
+    {
+      "name": "频道绑定产线",
+      "ok": true,
+      "detail": "ln-dd6c9135"
+    },
+    {
+      "name": "成员部署(mock/omp/copilot)",
+      "ok": true,
+      "detail": "367b4f6f/b5425bb9/3c9ff9f5"
+    },
+    {
+      "name": "分析师数采绑定",
+      "ok": true,
+      "detail": "5/5"
+    },
+    {
+      "name": "操作员配方绑定(manual)",
+      "ok": true,
+      "detail": "manual"
+    },
+    {
+      "name": "mailbox 发送(lead→analyst)",
+      "ok": true,
+      "detail": "消息 5f68c8ce… 已发送给 367b4f6f-f596-4ad2-a0c7-f547ac60ac51(priority=task)"
+    },
+    {
+      "name": "mailbox 投递(lead→analyst 消息落库)",
+      "ok": false,
+      "detail": "未找到投递消息"
+    },
+    {
+      "name": "root 任务提交(派发给 lead)",
+      "ok": true,
+      "detail": "0f914e29-0b37-48f5-8886-da182d8491a8"
+    },
+    {
+      "name": "lead 自动派发并完成",
+      "ok": true,
+      "detail": "state=COMPLETED"
+    },
+    {
+      "name": "omp 数采分析任务完成",
+      "ok": true,
+      "detail": "state=COMPLETED deliverable=line_context 确认产线「多协议孪生产线-20261020」(ln-dd6c9135) 运行中,活动批次 rr-b5851 / run=rr-b5851dd1,配方「多协议孪生基线配方」rc-2be5c50c v2。daq_query(line_id=ln-dd6c9135, node_id=dn-4de6b"
+    },
+    {
+      "name": "copilot 配方写入/下发任务完成",
+      "ok": true,
+      "detail": "state=COMPLETED deliverable=recipe_update 已获人工批准，保存 rc-2be5c50c v2（线速SP 46→46 m/min）；recipe_apply 获批准并整批下发，ACK 鉴定 4/5 证实、0 失败，流量SP经 MQTT 发布但设备侧未证实（QoS 0/观测型通道）。DAQ 复测 2026-10-20 12:07–12:1"
+    },
+    {
+      "name": "manual 配方操作触发 HITL 并获批",
+      "ok": true,
+      "detail": "approved=2"
+    },
+    {
+      "name": "PLC 回读=46(下发真实生效)",
+      "ok": true,
+      "detail": "readback=46"
+    },
+    {
+      "name": "配方版本递增",
+      "ok": true,
+      "detail": "version=2"
+    }
+  ]
+}

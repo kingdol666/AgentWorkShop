@@ -1,0 +1,80 @@
+{
+  "at": "2026-10-20T04:24:45.820Z",
+  "channelId": "44215fee-d994-4502-b1e5-5e0ae7c2716f",
+  "lineId": "ln-dd6c9135",
+  "recipeId": "rc-2be5c50c",
+  "pass": 14,
+  "fail": 0,
+  "checks": [
+    {
+      "name": "频道创建(mock lead)",
+      "ok": true,
+      "detail": "44215fee-d994-4502-b1e5-5e0ae7c2716f"
+    },
+    {
+      "name": "频道绑定产线",
+      "ok": true,
+      "detail": "ln-dd6c9135"
+    },
+    {
+      "name": "成员部署(mock/omp/copilot)",
+      "ok": true,
+      "detail": "caa71552/97ea2154/c0cf46ea"
+    },
+    {
+      "name": "分析师数采绑定",
+      "ok": true,
+      "detail": "5/5"
+    },
+    {
+      "name": "操作员配方绑定(manual)",
+      "ok": true,
+      "detail": "manual"
+    },
+    {
+      "name": "mailbox 发送(lead→analyst)",
+      "ok": true,
+      "detail": "消息 e1a27312… 已发送给 caa71552-0e03-43a0-832c-2834ec261e96(priority=task)"
+    },
+    {
+      "name": "mailbox 投递(lead→analyst 消息落库)",
+      "ok": true,
+      "detail": "e5a408ec→caa71552 state=consuming MAILBOX-PROBE-mvg6h868"
+    },
+    {
+      "name": "root 任务提交(派发给 lead)",
+      "ok": true,
+      "detail": "a4185e93-1145-435b-b775-53fe7a08a25b"
+    },
+    {
+      "name": "lead 自动派发并完成",
+      "ok": true,
+      "detail": "state=COMPLETED"
+    },
+    {
+      "name": "omp 数采分析任务完成",
+      "ok": true,
+      "detail": "state=COMPLETED deliverable=line_context 确认:产线 ln-dd6c9135「多协议孪生产线-20261020」运行中,活动批次 rr-b5851(产品 pd-f74b5d83,配方「多协议孪生基线配方」rc-2be5c50c v2),已打标 139 样本。\n\ndaq_query(line_id=ln-dd6c9135, node_i"
+    },
+    {
+      "name": "copilot 配方写入/下发任务完成",
+      "ok": true,
+      "detail": "state=COMPLETED deliverable=已完成指定操作：配方 rc-2be5c50c 的线速SP从46更新为47 m/min并保存为v3，HITL人工附言确认批准；随后 recipe_apply 获批并提交，线速SP下发已确认。复核 line_context 显示配方v3与PLC线速设定均为47 m/min。注意整批ACK为4/5已证实、1项未证实、0失败："
+    },
+    {
+      "name": "manual 配方操作触发 HITL 并获批",
+      "ok": true,
+      "detail": "approved=2"
+    },
+    {
+      "name": "PLC 回读=47(下发真实生效)",
+      "ok": true,
+      "detail": "readback=47"
+    },
+    {
+      "name": "配方版本递增",
+      "ok": true,
+      "detail": "version=3"
+    }
+  ]
+}
