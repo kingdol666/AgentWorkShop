@@ -1,0 +1,83 @@
+{
+  "story": "US-001",
+  "title": "专用 PLC 模拟器 + 隔离平台 + 注塑线",
+  "at": "2026-10-20T15:52:20.089Z",
+  "simulator": "http://127.0.0.1:4050",
+  "platform": "http://127.0.0.1:3470",
+  "home": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-scenario-suite-a1FFaM",
+  "devices": [
+    {
+      "id": "inj-machine-mbtcp",
+      "name": "注塑主机PLC(Modbus TCP)",
+      "protocol": "modbus-tcp",
+      "running": true,
+      "signals": 7
+    },
+    {
+      "id": "inj-mold-rtu",
+      "name": "模温机与锁模单元(Modbus RTU)",
+      "protocol": "modbus-rtu",
+      "running": true,
+      "signals": 4
+    },
+    {
+      "id": "inj-inject-opcua",
+      "name": "注射/保压单元(OPC UA)",
+      "protocol": "opcua",
+      "running": true,
+      "signals": 4
+    },
+    {
+      "id": "inj-cool-mqtt",
+      "name": "冷却水单元(MQTT)",
+      "protocol": "mqtt",
+      "running": true,
+      "signals": 3
+    },
+    {
+      "id": "inj-inspect-http",
+      "name": "制品质量检测站(HTTP)",
+      "protocol": "http",
+      "running": true,
+      "signals": 7
+    }
+  ],
+  "protocols": [
+    "modbus-tcp",
+    "modbus-rtu",
+    "opcua",
+    "mqtt",
+    "http"
+  ],
+  "lineId": "ln-90c5f9f9",
+  "lineName": "注塑成型质量窗口寻优 injection-s8c46",
+  "lineState": {
+    "lineId": "ln-90c5f9f9",
+    "active": true,
+    "runId": "rr-15a3e98e",
+    "recipeId": "rc-b598f102",
+    "recipeName": "scen-injection-recipe-s8c46",
+    "productId": "pd-eddf9228",
+    "productName": "scen-injection-product-s8c46",
+    "startedAt": "2026-10-20T23:28:21.809+08:00",
+    "taggedSamples": 11363
+  },
+  "recipe": {
+    "id": "rc-b598f102",
+    "version": 2,
+    "params": 11,
+    "daqWindows": 4
+  },
+  "dcwNodes": 11,
+  "daqNodes": 14,
+  "samples": "见 US-002/003",
+  "result": "PASS",
+  "processesStopped": {
+    "at": "2026-10-20T16:50:41.131Z",
+    "platform3470": true,
+    "sim4050": true,
+    "sim4051": true,
+    "verifiedNoListener": true,
+    "note": "初次停止后 3470 曾被 start.mjs supervisor 重启；已连同 supervisor 一并终止并复核端口无监听"
+  }
+}

@@ -1,0 +1,103 @@
+[2026-10-20T16:39:29.809Z] 
+[2026-10-20T16:39:29.809Z] ════════════════════════════════════════════════════════
+[2026-10-20T16:39:29.810Z]   Stage 0 · 隔离平台(3005) + 专用模拟器(4011)
+[2026-10-20T16:39:29.810Z] ════════════════════════════════════════════════════════
+[2026-10-20T16:39:29.840Z] ✔ 平台在线 http://127.0.0.1:3470
+[2026-10-20T16:39:30.060Z] ✔ 模拟器在线: {"started":false,"dir":"D:\\codes\\ABO\\AgentWorkShop\\plc-node-simulator","reason":"already-up"}
+[2026-10-20T16:39:32.851Z] ✔ cast-film 预设应用,设备 5 台: dev-extruder-mbtcp(modbus-tcp), dev-gels-rtu(modbus-rtu), dev-extruder-opcua(opcua), dev-gauge-mqtt(mqtt), dev-inspect-http(http)
+[2026-10-20T16:39:32.860Z] 
+[2026-10-20T16:39:32.861Z] ════════════════════════════════════════════════════════
+[2026-10-20T16:39:32.861Z]   Stage 1 · 用户注册 + 提权(repo 库既有用户体系,新注册=user;本链路需 admin 建 DCW/产线)
+[2026-10-20T16:39:32.861Z] ════════════════════════════════════════════════════════
+[2026-10-20T16:39:32.861Z] ✔ 复用调用方 admin token（隔离实例已初始化，不再注册新账号）
+[2026-10-20T16:39:32.861Z] 
+[2026-10-20T16:39:32.862Z] ════════════════════════════════════════════════════════
+[2026-10-20T16:39:32.862Z]   Stage 2 · 产线 provisioning(6 DCW 执行器 + 5 DAQ 传感器,驱动配置取自模拟器 /export)
+[2026-10-20T16:39:32.862Z] ════════════════════════════════════════════════════════
+[2026-10-20T16:39:32.862Z] ✔ 复用采样结果 line=ln-723e751c recipe=rc-91a0fe9b dataset=ds-mvgwmv59-axub01 (658 窗)
+[2026-10-20T16:39:32.862Z] 
+[2026-10-20T16:39:32.862Z] ════════════════════════════════════════════════════════
+[2026-10-20T16:39:32.862Z]   Stage 5 · Hybrid Twin Channel(模板实例化 + worker 节点绑定)
+[2026-10-20T16:39:32.862Z] ════════════════════════════════════════════════════════
+[2026-10-20T16:39:32.901Z] ✔ channelId=a388e7ef-5903-4c31-b7be-0e673837cadc worker=6f174529-1d30-4b9b-9ee6-2a5b65741131
+[2026-10-20T16:39:32.975Z] ✔ worker 绑定 recipe(6 参数) + 5 DAQ
+[2026-10-20T16:39:32.976Z] 
+[2026-10-20T16:39:32.976Z] ════════════════════════════════════════════════════════
+[2026-10-20T16:39:32.976Z]   Stage 6 · 场景发现→编译→冻结;骨架 PhysicsSpec(twin_physics_spec_draft)
+[2026-10-20T16:39:32.976Z] ════════════════════════════════════════════════════════
+[2026-10-20T16:39:32.995Z]   [invoke] twin_scene_discover → 200
+[2026-10-20T16:39:32.996Z]   {
+    "scene_kind": "unknown",
+    "nodeCount": 11,
+    "counts": {
+      "control": 6,
+      "state": 3,
+      "feature": 0,
+      "disturbance": 0,
+      "observation": 0,
+      "target": 1,
+      "guard": 1
+    },
+    "nodes": [
+      {
+[2026-10-20T16:39:32.996Z]   膜厚目标识别: ✔ target=1
+[2026-10-20T16:39:33.002Z]   [invoke] twin_scene_compile → 200
+[2026-10-20T16:39:33.002Z]   SceneContract Draft 已生成
+    scene_id: castfilm-hold-opt-1020T1639
+    scene_version: 1.0.0
+    contract_hash: 993928a7acf0e8334f51d59bbed10537ab101bbd8036d73355dfb845034a1886
+    status: draft
+    controls: 6
+    states: 3
+    targets: 1
+    guards: 1
+    artifact: C:\Users\87287\AppData\Local\Temp\aw-scenario-suite-a1FFaM\aml\twins\scenes\castfilm-hold-opt-1020T1639-1.0.0\scenes.json
+    注意：首次训练/上线前必须由用户确认并冻结 SceneContract；当前仅为 draft。
+[2026-10-20T16:39:33.025Z]   [invoke] twin_scene_freeze → 200
+[2026-10-20T16:39:33.026Z]   {
+    "sceneId": "castfilm-hold-opt-1020T1639",
+    "sceneVersion": "1.0.0",
+    "status": "frozen",
+    "contractHash": "993928a7acf0e8334f51d59bbed10537ab101bbd8036d73355dfb845034a1886",
+    "approvedBy": "live-admin",
+    "approvedAt": "2026-10-21T00:39:33.022+08:00",
+    "artifact": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-scenario-suite-a1FFaM\\aml\\twins\\scenes\\castfilm-hold-opt-1020T1639-1.0.0-frozen\\scenes.json",
+[2026-10-20T16:39:33.030Z] ✔ 冻结契约: controls=6 targets=1 约束=2
+[2026-10-20T16:39:33.042Z]   [invoke] twin_physics_spec_draft → 200
+[2026-10-20T16:39:33.043Z]   PhysicsSpec 骨架已生成(场景 castfilm-hold-opt-1020T1639@1.0.0):
+    model_id: draft-castfilm-hold-opt-1020T1639 | 状态变量 4 | 观测方程 1 | 参数 32(可校准 32)
+    结构: 每个 state = 一阶惯性弛豫(τ/增益为先验盒内可校准参数);观测 = persistence 恒等基线
+    artifact: C:\Users\87287\AppData\Local\Temp\aw-scenario-suite-a1FFaM\aml\twins\physics-spec-draft\draft-castfilm-hold-opt-1020T1639-mvgwry5s\physics-spec-draft.json
+  下一步: 按真实工况润色方程 → twin_physics_spec_validate 校验 → twin_physics_spec_compile 编译候选(须已冻结场景)→ aml_job_submit(job_kind=hybrid_residual)训练校准;骨架的 τ/增益在训练 stage A 自动按数据拟合。
+  注意: dt_sec 需与训练数据集 beat 一致(缺省 1s);变量 id 已按标识符规则净化,nodeId 保留真实节点映射。
+[2026-10-20T16:39:33.048Z] ✔ 骨架 PhysicsSpec: model=draft-castfilm-hold-opt-1020T1639 状态方程 4 观测 1 可校准参数 32/32
+[2026-10-20T16:39:33.054Z]   [invoke] twin_physics_spec_validate → 200
+[2026-10-20T16:39:33.054Z]   {
+    "apiVersion": "physics-spec.v1",
+    "valid": true,
+    "errors": [],
+    "warnings": [],
+[2026-10-20T16:39:33.055Z] ✔ 训练对齐: 控制改绑 6;数据集裁剪剔除 2 变量(node_b4c539101d601ed0(dn-6f971c79), node_56b78ba74c3ff1a4(dn-f9cb6d2e));保留 9
+[2026-10-20T16:39:33.068Z]   [invoke] twin_physics_spec_validate → 200
+[2026-10-20T16:39:33.069Z]   再校验:   "valid": true,
+[2026-10-20T16:39:33.069Z] 
+[2026-10-20T16:39:33.069Z] ════════════════════════════════════════════════════════
+[2026-10-20T16:39:33.069Z]   Stage 7 · 提交 hybrid_residual 训练(无 code → 平台参考训练器;物理校准+3 成员残差集成+UQ)
+[2026-10-20T16:39:33.069Z] ════════════════════════════════════════════════════════
+[2026-10-20T16:39:33.087Z] ✔ 作业 job-mvgwry72-c356do 入队(jobKind=hybrid_residual, scene=castfilm-hold-opt-1020T1639)
+[2026-10-20T16:39:33.087Z]   模型标识 name: 流延膜厚闭环模型 1020T1639
+[2026-10-20T16:39:33.088Z]   描述: 输入=全部 6 个 DCW 执行器;输出=膜厚 goal(50μm);场景 castfilm-hold-opt-1020T1639@1.0.0;产线 ln-723e751c/配方 rc-91a0fe9b
+[2026-10-20T16:39:43.112Z]   [0s] training train 99%
+[2026-10-20T16:39:53.117Z]   [10s] failed done 100%
+[2026-10-20T16:39:53.118Z]     2026-10-21T00:39:43.676+08:00 ##AML {"type": "stage", "stage": "evaluating"}
+[2026-10-20T16:39:53.118Z]     2026-10-21T00:39:44.117+08:00 ##AML {"type": "metrics", "metrics": {"platform": {"modelType": "hybrid_physics_plus_residual", "hybrid": {"physicsFirst": true, "compositio
+[2026-10-20T16:39:53.118Z]     2026-10-21T00:39:44.118+08:00 ##AML {"type": "done"}
+file:///D:/codes/ABO/AgentWorkShop/scripts/live-aml-optloop.mjs:417
+if (!jobDone || jobDone.status !== 'done') throw new Error(`训练未成功: ${JSON.stringify(jobDone).slice(0, 300)}`)
+                                                 ^
+
+Error: 训练未成功: {"id":"job-mvgwry72-c356do","datasetId":"ds-mvgwmv59-axub01","purpose":"mpc_surrogate","status":"failed","stage":"done","progress":100,"budgetJson":"{\"maxExperiments\":12,\"timeoutMs\":1800000,\"stallMs\":600000,\"seed\":42,\"params\":{\"epochs\":220,\"hidden\":96,\"lr\":0.002,\"residual_scale\":1.
+    at file:///D:/codes/ABO/AgentWorkShop/scripts/live-aml-optloop.mjs:417:50
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+
+Node.js v24.19.0

@@ -1,0 +1,45 @@
+{
+  "story": "US-006",
+  "substory": "platform-level live AML training on cast-film shadow line",
+  "at": "2026-10-21T00:40:00+08:00",
+  "platform": "http://127.0.0.1:3470",
+  "simulator": "http://127.0.0.1:4051 (cast-film-physics shadow)",
+  "lineId": "ln-723e751c",
+  "productId": "pd-83073d67",
+  "recipeId": "rc-91a0fe9b",
+  "datasetId": "ds-mvgwmv59-axub01",
+  "datasetRows": 658,
+  "jobId": "job-mvgwry72-c356do",
+  "jobKind": "hybrid_residual",
+  "sceneId": "castfilm-hold-opt-1020T1639",
+  "training": {
+    "status": "failed (gate)",
+    "stage": "done",
+    "artifactsProduced": [
+      "model.onnx",
+      "model-2.onnx",
+      "model-3.onnx",
+      "hybrid_manifest.json",
+      "physics_parameters.json"
+    ],
+    "metrics": {
+      "oneStepValNrmse": 0.60353,
+      "oneStepTestNrmse": 0.55889,
+      "rolloutTestNrmse": 0.80911,
+      "calibrationErrorBefore": 29.1086,
+      "calibrationErrorAfter": 0.447,
+      "coverage": 0.89604,
+      "coverageTarget": 0.9
+    },
+    "gateFailure": "平台门禁未通过（单步/滚动 NRMSE 远超阈值），作业状态 failed；未注册模型、未晋升 shadow。"
+  },
+  "rootCause": "本轮为缩短验收窗口将 3 批次采样从 500s 压缩到 240s（658 窗），cast-film 影子线膜厚在采样窗内基本恒定（日志多次 56.60μm），控制激励不足以辨识膜厚响应；模型无法学到可泛化映射。不是绕过门禁能解决的。",
+  "consequence": "US-006 的平台级“模型推荐→治理下发”未完成：模型未入平台注册表，故未执行模型驱动 VirtualTrial/MPC，也没有模型驱动写。",
+  "whatPassed": "同一故事的服务级真实训练/虚拟模型链（acceptance-aml-hybrid-e2e）全部通过，见 US-006-training.log；独立治理写链见 US-003。",
+  "evidence": [
+    "docs/audit/2026-10-20-scenario-suite-evidence/US-006-platform-live.log",
+    "docs/audit/2026-10-20-scenario-suite-evidence/US-006-platform-live-metrics.json",
+    "docs/audit/2026-10-20-scenario-suite-evidence/US-006-platform-live-hybrid-manifest.json"
+  ],
+  "verdict": "NEGATIVE / GATE-BLOCKED — 如实记录，不宣称模型已训练投用"
+}

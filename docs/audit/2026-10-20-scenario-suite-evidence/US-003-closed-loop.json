@@ -1,0 +1,60 @@
+{
+  "story": "US-003",
+  "title": "真实闭环优化作业",
+  "at": "2026-10-20T23:41:36+08:00",
+  "platform": "http://127.0.0.1:3470",
+  "lineId": "ln-90c5f9f9",
+  "recipeId": "rc-b598f102",
+  "channelId": "883bb1bb-b844-44e3-b577-bfbe77494262",
+  "optimizerAgentId": "2bf3c374-5167-47ec-b594-36231aa689e7",
+  "test": "npm run test:e2e-injection（真实 recipe_trial + HITL + 65s DAQ 复测）",
+  "baseline": {
+    "holdPressureBar": 45,
+    "holdTimeS": 6,
+    "weightG": 31.3,
+    "flashPct": 0.017,
+    "sinkPct": 2.085,
+    "meltTempC": 246.2
+  },
+  "rounds": [
+    { "pressureBar": 50, "weightG": 31.54, "flashPct": 0, "sinkPct": 1.891, "meltC": 246.4, "hitl": "approved", "batch": "rr-7ccaa" },
+    { "pressureBar": 55, "weightG": 31.69, "flashPct": 0, "sinkPct": 1.596, "meltC": 246.8, "hitl": "approved", "batch": "rr-cd8f9" },
+    { "pressureBar": 60, "weightG": 32.09, "flashPct": 0, "sinkPct": 1.366, "meltC": 246.6, "hitl": "approved", "batch": "rr-a9616" },
+    { "pressureBar": 65, "weightG": 32.31, "flashPct": 0, "sinkPct": 1.336, "meltC": 246.6, "hitl": "approved", "batch": "rr-4dd1e" }
+  ],
+  "final": {
+    "holdPressureBar": 65,
+    "holdTimeS": 6,
+    "weightG": 32.31,
+    "flashPct": 0,
+    "sinkPct": 1.336,
+    "meltTempC": 246.6,
+    "offline": false,
+    "inWindow": true
+  },
+  "hitl": {
+    "records": [
+      "ap-a1eb603b (baseline restore)",
+      "ap-ac726fe9 (50bar)",
+      "ap-be49ea02 (55bar)",
+      "ap-c39e7047 (60bar)",
+      "ap-185eccea (65bar)",
+      "ap-0ce565bd (recipe_update)"
+    ],
+    "allStatus": "approved",
+    "unapprovedWrite": "未观察到;每次 trial/update 先建卡后由测试批准"
+  },
+  "recipeAfter": {
+    "version": 2,
+    "holdPressureBar": 65,
+    "holdTimeS": 6,
+    "readback": "recipe params 独立回读 65/6"
+  },
+  "audit": {
+    "recipeLog": "近 60 分钟 15 条配方变更记录可查",
+    "dcwJournal": "窗口内无旧式优化记录（本链路走 recipe_trial）"
+  },
+  "result": "PASS 9/9",
+  "evidence": "bench/results/injection-pressure-loop-2026-10-20T15-41-36-066Z/summary.json",
+  "boundary": "为覆盖多轮快速闭环，测试实例显式设置 AW_TRIAL_INTERVAL_MS=0（生产默认 5 分钟；该环境变量只用于测试/基准，启动会打印告警）。"
+}
