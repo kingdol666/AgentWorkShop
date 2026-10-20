@@ -1,0 +1,14 @@
+━━━ HITL 群聊 UI 双 harness 演示 @ http://127.0.0.1:3001 (tag=mvgo70zp) ━━━
+PASS | 演示 workspace 创建 | 4017120a-041a-42b6-a131-ea701bb78d9e
+PASS | omp ask 待办出现 | options=["yes","no","Other (type your own)"] requestType=question
+PASS | omp 群聊页渲染 ask 选项 | ["yes","no","Other (type your own)"]
+PASS | omp 群聊页点击 yes 并提交 | picked=true submitted=true
+PASS | omp 提交后该待办清空 | id=15ada210d5c730bc
+PASS | omp agent 收到 yes | state=COMPLETED deliverable=yes
+PASS | dsh 权限待办出现 | options=["Allow once","Reject"] method=confirm
+PASS | dsh 群聊页渲染批准/拒绝 | ["批 准","拒 绝","取 消"]
+PASS | dsh 群聊页点击批准 | 
+PASS | dsh 批准后该待办清空 | id=dsh-03648e7c
+PASS | dsh 任务批准后继续(非 SUBMITTED) | state=WORKING
+
+=== HITL 群聊 UI 演示: 11 PASS / 0 FAIL ===

@@ -1,0 +1,31 @@
+{
+  "at": "2026-10-20T12:07:10.247Z",
+  "channelId": "ad9a6335-a47d-49ba-a9dc-6957b2d29363",
+  "taskId": "37933978-4e85-42d8-9897-db6533e1237e",
+  "pending": {
+    "kind": "dsh-permission",
+    "id": "dsh-97a7d16f",
+    "channelId": "ad9a6335-a47d-49ba-a9dc-6957b2d29363",
+    "agentId": "953dd0d8-35c6-4978-b5b7-6e0cd4d7e735",
+    "agentName": "dshqmvgn1cbk",
+    "pid": 94464,
+    "method": "confirm",
+    "title": "dsh 权限请求:操作",
+    "detail": "",
+    "options": [
+      "Allow once",
+      "Reject"
+    ],
+    "createdAt": "2026-10-20T20:07:09.102+08:00",
+    "expiresAt": null,
+    "requestType": "approval",
+    "nativeRequestId": "0",
+    "sessionId": "3ceab582-146b-48c5-924b-5b3c12ed8c45",
+    "harness": "dsh",
+    "status": "pending",
+    "policy": "owner_only",
+    "approvalPolicyVersion": 1,
+    "channelVersion": 1
+  },
+  "messages": []
+}
