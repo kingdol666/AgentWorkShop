@@ -89,7 +89,7 @@
 - `npm run build`：PASS（日志 `regression-build.log`）
 - 独立 reviewer 首轮：REJECTED（stepLimit 违规/证据不一致/US-006 模型驱动下发缺失）；本报告对应整改项见 §8。
 - 独立 reviewer 第二轮：**CONDITIONAL**。US-002/003/004/005 PASS；US-001 因 3470 曾被 supervisor 重启、停止声明与事实不符而 PARTIAL（已连同 supervisor 终止并复核端口无监听）；US-006 FAIL/PARTIAL（平台 cast-film 训练门禁失败，模型未注册、无模型驱动下发）；US-007 只差限定 pathspec 提交与 push。
-- 提交：见文末 commit（提交后回填）。
+- 提交：**44e95b5f** `test(scenario): 完成 PLC/分析/闭环/稳定性/IDD-RAG/孪生场景验收`，已推送 `tii-revision-20261017`；提交只含本场景的脚本/证据/报告（20 files, +3996/-118），未卷入并行会话改动。
 
 ## 8. 首轮 reviewer 整改对照
 
@@ -99,7 +99,7 @@
 | 2 | US-002 报告/指标/查询三者不一致 | 新报告 `ar-34ed3510` 含 window_from/to、来源、置信口径；证据只引用该报告与同窗指标；旧汇总已删除 |
 | 3 | US-005 终态/检索证据不足 | 补 diag_run 提交响应、completed、report.md、kb_agent 26 chunks 唯一命中；记录 run_manifest 差异 |
 | 4 | US-006 模型未进平台、无模型驱动下发 | 启动平台级 live AML（§6.2）；若未完成如实标 PARTIAL |
-| 5 | US-007 无回归日志/报告/提交 | 本报告 + 回归日志 + 限定 pathspec 提交（待回填） |
+| 5 | US-007 无回归日志/报告/提交 | 本报告 + 回归日志 + 限定 pathspec 提交 **44e95b5f**（已推送） |
 | 6 | setup 旧汇总 `pass:23` 不可信 | 删除旧汇总；US-001/002 使用逐项证据 |
 | 7 | 进程未停止 | 初次停止后 3470 被 start.mjs supervisor 重启；已连同 supervisor 终止，复核 3470/4050/4051 均无监听（`US-001-environment.json.processesStopped` 已按实际时间更正） |
 
