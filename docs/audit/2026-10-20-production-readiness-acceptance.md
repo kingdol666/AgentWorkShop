@@ -27,7 +27,7 @@
 | US-005 | 原生 ask HITL + 群聊 UI | **PASS** | `us005-ask-hitl.json` 6/0;`hitl-live-final.txt` U2c-f PASS |
 | US-006 | 工具注册/注入/按 Agent 描述 | **PASS** | `us006-mcp-tools.json` 64 tools;描述含 5 节点;omp 原生/copilot MCP |
 | US-007 | 构建/单测/打包/全局启动 | **PASS** | typecheck ✔;268/268;build 0.7.67;`us007-global-build.json` |
-| US-008 | 提交推送 | **PASS** | 见文末 commit/push |
+| US-008 | 提交推送 | **PASS** | `95358665` + `bab0618b`,已推送 origin/tii-revision-20261017(见第 5 节) |
 
 ## 2. 关键实测
 
@@ -101,3 +101,12 @@
 - [ ] 配方窗口/步长/保持窗/60s 写间隔按工艺安全规范复核
 - [ ] 现场操作员账号、Channel owner、HITL 审批策略配置
 - [ ] 断链/断电/重启演练(模拟器故障注入仅覆盖软件侧)
+
+## 5. 提交记录
+
+- 分支:`tii-revision-20261017`(origin: `https://github.com/kingdol666/AgentWorkShop.git`)
+- `95358665` test(readiness): 完成产线作业与 HITL 全链预验收
+- `bab0618b` test(readiness): 修复派发假阳性并补齐拒绝窗口/typecheck 证据
+- 本报告随上述提交推送;评审修复后的复验证据见 `us003-team-global.json`
+  (15/0,子任务 parent/assignee 核验)、`us004-hitl-reject.json`(9/0,pending 窗口)、
+  `us007-typecheck.txt`、`us007-global-build.json`(含 GLOBAL-067-OK)。
