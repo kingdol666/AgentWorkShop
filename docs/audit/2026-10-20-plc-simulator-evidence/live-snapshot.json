@@ -1,0 +1,534 @@
+{
+  "at": "2026-10-20T01:36:10.156Z",
+  "simulator": {
+    "base": "http://127.0.0.1:4047",
+    "devices": [
+      {
+        "id": "twin-modbus-tcp",
+        "protocol": "modbus-tcp",
+        "enabled": true,
+        "config": {
+          "port": 37570,
+          "registers": 2
+        },
+        "signals": [
+          {
+            "id": "speed-sp",
+            "kind": "manual",
+            "value": 47
+          },
+          {
+            "id": "speed-pv",
+            "kind": "hook",
+            "value": 47
+          }
+        ]
+      },
+      {
+        "id": "twin-modbus-rtu",
+        "protocol": "modbus-rtu",
+        "enabled": true,
+        "config": {
+          "port": 37571,
+          "registers": 2
+        },
+        "signals": [
+          {
+            "id": "temp-sp",
+            "kind": "manual",
+            "value": 80
+          },
+          {
+            "id": "temp-pv",
+            "kind": "hook",
+            "value": 80.2
+          }
+        ]
+      },
+      {
+        "id": "twin-opcua",
+        "protocol": "opcua",
+        "enabled": true,
+        "config": {
+          "port": 4855,
+          "opcVars": [
+            "ns=2;s=twin-opcua.pressure-sp",
+            "ns=2;s=twin-opcua.pressure-pv"
+          ]
+        },
+        "signals": [
+          {
+            "id": "pressure-sp",
+            "kind": "manual",
+            "value": 7
+          },
+          {
+            "id": "pressure-pv",
+            "kind": "hook",
+            "value": 7.01
+          }
+        ]
+      },
+      {
+        "id": "twin-mqtt",
+        "protocol": "mqtt",
+        "enabled": true,
+        "config": {
+          "brokerUrl": "mqtt://127.0.0.1:55830",
+          "topics": [
+            "aw/twin/twin-mqtt/flow-pv"
+          ]
+        },
+        "signals": [
+          {
+            "id": "flow-sp",
+            "kind": "manual",
+            "value": 45
+          },
+          {
+            "id": "flow-pv",
+            "kind": "hook",
+            "value": 45
+          }
+        ]
+      },
+      {
+        "id": "twin-http",
+        "protocol": "http",
+        "enabled": true,
+        "config": {
+          "paths": [
+            "/api/target-sp",
+            "/api/thickness-pv",
+            "/api/profile-pv",
+            "/api/image-pv"
+          ]
+        },
+        "signals": [
+          {
+            "id": "target-sp",
+            "kind": "manual",
+            "value": 36
+          },
+          {
+            "id": "thickness-pv",
+            "kind": "hook",
+            "value": 36.009
+          },
+          {
+            "id": "profile-pv",
+            "kind": "hook",
+            "value": 34.804
+          },
+          {
+            "id": "image-pv",
+            "kind": "hook",
+            "value": 0
+          }
+        ]
+      }
+    ]
+  },
+  "platform": {
+    "line": {
+      "id": "ln-dd6c9135",
+      "name": "多协议孪生产线-20261020",
+      "color": "#35e0a0",
+      "description": "AW-LINE:qt1h7q-7Ey 五协议自定义工况:Modbus TCP / Modbus RTU-over-TCP / OPC UA / MQTT / HTTP;数据形态含标量、8 点向量、PNG 图像。模拟器由 aw-plc-sim-twin 从 all-protocols-blueprint.json 生成(端口 4047,设备寄存器 37570/37571/4855/55830)。",
+      "controlMode": "manual",
+      "createdAt": "2026-10-20T09:29:14.051+08:00"
+    },
+    "lineState": {
+      "lineId": "ln-dd6c9135",
+      "active": true,
+      "runId": "rr-b5851dd1",
+      "recipeId": "rc-2be5c50c",
+      "recipeName": "多协议孪生基线配方",
+      "productId": "pd-f74b5d83",
+      "productName": "多协议孪生产线-20261020·默认产品",
+      "startedAt": "2026-10-20T09:29:14.312+08:00",
+      "taggedSamples": 1428
+    },
+    "dcwNodes": [
+      {
+        "id": "dw-d0b66f73",
+        "name": "线速SP",
+        "driver": "modbus-tcp",
+        "value": 47,
+        "readValue": 47
+      },
+      {
+        "id": "dw-176c4cc2",
+        "name": "温度SP",
+        "driver": "modbus-rtu",
+        "value": 80,
+        "readValue": 80
+      },
+      {
+        "id": "dw-0fe4833e",
+        "name": "压力SP",
+        "driver": "opcua",
+        "value": 7,
+        "readValue": 7
+      },
+      {
+        "id": "dw-38e28fda",
+        "name": "流量SP",
+        "driver": "mqtt",
+        "value": 45,
+        "readValue": null
+      },
+      {
+        "id": "dw-303456d0",
+        "name": "目标SP",
+        "driver": "http",
+        "value": 36,
+        "readValue": null
+      }
+    ],
+    "daqNodes": [
+      {
+        "id": "dn-6f96cbec",
+        "name": "线速PV",
+        "driver": "modbus-tcp",
+        "state": "ok",
+        "value": 47,
+        "lastError": null
+      },
+      {
+        "id": "dn-bcee0027",
+        "name": "温度PV",
+        "driver": "modbus-rtu",
+        "state": "ok",
+        "value": 80.1,
+        "lastError": null
+      },
+      {
+        "id": "dn-bafca691",
+        "name": "压力PV",
+        "driver": "opcua",
+        "state": "ok",
+        "value": 7,
+        "lastError": null
+      },
+      {
+        "id": "dn-4de6b1de",
+        "name": "流量PV",
+        "driver": "mqtt",
+        "state": "ok",
+        "value": 44.9,
+        "lastError": null
+      },
+      {
+        "id": "dn-02c099a8",
+        "name": "膜厚PV",
+        "driver": "http",
+        "state": "ok",
+        "value": 36.006,
+        "lastError": null
+      },
+      {
+        "id": "dn-c8279163",
+        "name": "膜厚断面",
+        "driver": "http",
+        "state": "ok",
+        "value": 0,
+        "lastError": null
+      },
+      {
+        "id": "dn-f0f089f7",
+        "name": "表检图像",
+        "driver": "http",
+        "state": "ok",
+        "value": 0,
+        "lastError": null
+      }
+    ],
+    "recipe": {
+      "id": "rc-2be5c50c",
+      "productId": "pd-f74b5d83",
+      "lineId": "ln-dd6c9135",
+      "name": "多协议孪生基线配方",
+      "description": "",
+      "params": [
+        {
+          "nodeId": "dw-d0b66f73",
+          "templateRef": "speed-sp",
+          "value": 43,
+          "min": 38,
+          "max": 48,
+          "stepLimit": 2
+        },
+        {
+          "nodeId": "dw-176c4cc2",
+          "templateRef": "temp-sp",
+          "value": 80,
+          "min": 70,
+          "max": 90,
+          "stepLimit": 5
+        },
+        {
+          "nodeId": "dw-0fe4833e",
+          "templateRef": "pressure-sp",
+          "value": 7,
+          "min": 5,
+          "max": 9,
+          "stepLimit": 1
+        },
+        {
+          "nodeId": "dw-38e28fda",
+          "templateRef": "speed-sp",
+          "value": 45,
+          "min": 35,
+          "max": 55,
+          "stepLimit": 5
+        },
+        {
+          "nodeId": "dw-303456d0",
+          "templateRef": "pressure-sp",
+          "value": 36,
+          "min": 34,
+          "max": 38,
+          "stepLimit": 1
+        }
+      ],
+      "daqWindows": [],
+      "version": 1,
+      "paramsHistory": [],
+      "lastGoodRunId": null,
+      "createdAt": "2026-10-20T09:29:14.296+08:00",
+      "updatedAt": "2026-10-20T09:29:14.296+08:00"
+    },
+    "run": {
+      "id": "rr-b5851dd1",
+      "recipeId": "rc-2be5c50c",
+      "recipeName": "多协议孪生基线配方",
+      "productId": "pd-f74b5d83",
+      "lineId": "ln-dd6c9135",
+      "startedAt": "2026-10-20T09:29:14.312+08:00",
+      "endedAt": null,
+      "results": [
+        {
+          "templateRef": "speed-sp",
+          "nodeId": "dw-d0b66f73",
+          "ok": true,
+          "message": "写入并回读一致:43 → raw 43,回读 43(标定后物理值 43)",
+          "value": 43,
+          "ack": "readback-verified",
+          "verify": {
+            "verdict": "verified",
+            "attempts": 0
+          }
+        },
+        {
+          "templateRef": "temp-sp",
+          "nodeId": "dw-176c4cc2",
+          "ok": true,
+          "message": "写入并回读一致:80 → raw 80,回读 80(标定后物理值 80)",
+          "value": 80,
+          "ack": "readback-verified",
+          "verify": {
+            "verdict": "verified",
+            "attempts": 0
+          }
+        },
+        {
+          "templateRef": "pressure-sp",
+          "nodeId": "dw-0fe4833e",
+          "ok": true,
+          "message": "写入并回读一致:7,回读 7(标定后物理值 7)",
+          "value": 7,
+          "ack": "readback-verified",
+          "verify": {
+            "verdict": "verified",
+            "attempts": 0
+          }
+        },
+        {
+          "templateRef": "speed-sp",
+          "nodeId": "dw-38e28fda",
+          "ok": true,
+          "message": "已发布 45 → aw/twin/twin-mqtt/set(QoS 0;broker 已受理,设备侧待验证)(标定后物理值 45) · 设备侧未证实:驱动 mqtt 不支持读取(仅观测型通道)",
+          "value": 45,
+          "ack": "transport-ack",
+          "verify": {
+            "verdict": "unverified",
+            "attempts": 3
+          }
+        },
+        {
+          "templateRef": "pressure-sp",
+          "nodeId": "dw-303456d0",
+          "ok": true,
+          "message": "POST 成功(HTTP 200),接口回读 36(标定后物理值 36)",
+          "value": 36,
+          "ack": "readback-verified",
+          "verify": {
+            "verdict": "verified",
+            "attempts": 0
+          }
+        }
+      ],
+      "paramsSnapshot": [
+        {
+          "nodeId": "dw-d0b66f73",
+          "templateRef": "speed-sp",
+          "value": 43,
+          "min": 38,
+          "max": 48,
+          "stepLimit": 2
+        },
+        {
+          "nodeId": "dw-176c4cc2",
+          "templateRef": "temp-sp",
+          "value": 80,
+          "min": 70,
+          "max": 90,
+          "stepLimit": 5
+        },
+        {
+          "nodeId": "dw-0fe4833e",
+          "templateRef": "pressure-sp",
+          "value": 7,
+          "min": 5,
+          "max": 9,
+          "stepLimit": 1
+        },
+        {
+          "nodeId": "dw-38e28fda",
+          "templateRef": "speed-sp",
+          "value": 45,
+          "min": 35,
+          "max": 55,
+          "stepLimit": 5
+        },
+        {
+          "nodeId": "dw-303456d0",
+          "templateRef": "pressure-sp",
+          "value": 36,
+          "min": 34,
+          "max": 38,
+          "stepLimit": 1
+        }
+      ],
+      "ackSummary": {
+        "verified": 4,
+        "unverified": 1,
+        "failed": 0,
+        "total": 5
+      }
+    }
+  },
+  "samples": {
+    "dn-6f96cbec": {
+      "points": 11,
+      "last": {
+        "at": 1792460160000,
+        "avg": 47.05,
+        "min": 47,
+        "max": 47.1,
+        "cnt": 4
+      }
+    },
+    "dn-bcee0027": {
+      "points": 11,
+      "last": {
+        "at": 1792460160000,
+        "avg": 80.02000000000001,
+        "min": 80,
+        "max": 80.1,
+        "cnt": 5
+      }
+    },
+    "dn-bafca691": {
+      "points": 11,
+      "last": {
+        "at": 1792460160000,
+        "avg": 7.01,
+        "min": 7,
+        "max": 7.02,
+        "cnt": 5
+      }
+    },
+    "dn-4de6b1de": {
+      "points": 11,
+      "last": {
+        "at": 1792460160000,
+        "avg": 45.019999999999996,
+        "min": 44.9,
+        "max": 45.2,
+        "cnt": 5
+      }
+    },
+    "dn-02c099a8": {
+      "points": 11,
+      "last": {
+        "at": 1792460160000,
+        "avg": 36,
+        "min": 35.997,
+        "max": 36.006,
+        "cnt": 5
+      }
+    }
+  },
+  "frames": {
+    "dn-c8279163": {
+      "count": 2,
+      "last": {
+        "at": 1792460169061,
+        "kind": "vector",
+        "points": [
+          35.071,
+          34.997,
+          34.923,
+          34.854,
+          34.793,
+          34.746,
+          34.714,
+          34.701
+        ],
+        "metrics": {},
+        "meta": {
+          "points": [
+            35.071,
+            34.997,
+            34.923,
+            34.854,
+            34.793,
+            34.746,
+            34.714,
+            34.701
+          ]
+        },
+        "deviceBindingId": null,
+        "lineId": "ln-dd6c9135",
+        "productId": "pd-f74b5d83",
+        "recipeId": "rc-2be5c50c",
+        "runId": "rr-b5851dd1"
+      }
+    },
+    "dn-f0f089f7": {
+      "count": 2,
+      "last": {
+        "at": 1792460169061,
+        "kind": "image",
+        "metrics": {},
+        "meta": {
+          "mime": "image/png",
+          "size": 68,
+          "width": 1,
+          "height": 1,
+          "sha256": "e25ee002218606bc42b55e38c01ece666dec1518c891550398483cb8aecc199e",
+          "objectKey": "daq/dn-f0f089f7/2026/10/20/1792460169061.png"
+        },
+        "deviceBindingId": null,
+        "lineId": "ln-dd6c9135",
+        "productId": "pd-f74b5d83",
+        "recipeId": "rc-2be5c50c",
+        "runId": "rr-b5851dd1",
+        "contentUrl": "/api/workshop/daq/dn-f0f089f7/frames/content?ts=1792460169061",
+        "thumbUrl": "/api/workshop/daq/dn-f0f089f7/frames/content?ts=1792460169061&thumb=1"
+      }
+    }
+  }
+}

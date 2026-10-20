@@ -1,0 +1,13 @@
+PASS | modbus-tcp | scalar | 线速SP | 127.0.0.1:37670 | {"ok":true,"message":"连接成功,写寄存器可访问(offset=0), 15ms"}
+PASS | modbus-tcp | scalar | 线速PV | 127.0.0.1:37670 | {"ok":true,"message":"连接成功,读取 40003 = 35.099998474121094","sampleValue":35.099998474121094,"latencyMs":9}
+PASS | modbus-rtu | scalar | 温度SP | 127.0.0.1:37671 | {"ok":true,"message":"网关连接成功,写寄存器可访问(2ms)"}
+PASS | modbus-rtu | scalar | 温度PV | 127.0.0.1:37671 | {"ok":true,"message":"网关连接成功,读取 40003 = 60.599998474121094","sampleValue":60.599998474121094,"latencyMs":1}
+PASS | opcua | scalar | 压力SP | opc.tcp://127.0.0.1:4955 | {"ok":true,"message":"会话建立成功,写节点可访问(ns=2;s=twin-opcua.pressure-sp)"}
+PASS | opcua | scalar | 压力PV | opc.tcp://127.0.0.1:4955 | {"ok":true,"message":"会话建立成功,读取 ns=2;s=twin-opcua.pressure-pv = 5.01","sampleValue":5.01,"latencyMs":1}
+PASS | mqtt | scalar | 流量SP | aw/twin/twin-mqtt/set | {"ok":true,"message":"Broker 连接成功(127.0.0.1:56830);未执行发布,避免误触发真实设备动作"}
+PASS | mqtt | scalar | 流量PV | aw/twin/twin-mqtt/flow-pv | {"ok":true,"message":"Broker 连接成功,收到 aw/twin/twin-mqtt/flow-pv = 40.4","sampleValue":40.4,"latencyMs":523}
+PASS | http | scalar | 目标SP | http://127.0.0.1:4048/sim-http/twin-http/api/target-sp | {"ok":true,"message":"端点可达(GET → HTTP 200;未执行写入测试,避免误触发真实命令)"}
+PASS | http | scalar | 膜厚PV | http://127.0.0.1:4048/sim-http/twin-http/api/thickness-pv | {"ok":true,"message":"接口可达,取值 = 34.985","sampleValue":34.985,"latencyMs":4}
+PASS | http | vector | 膜厚断面 | http://127.0.0.1:4048/sim-http/twin-http/api/profile-pv | {"ok":true,"message":"接口可达,vector 帧 8 点","latencyMs":4}
+PASS | http | image | 表检图像 | http://127.0.0.1:4048/sim-http/twin-http/api/image-pv | {"ok":true,"message":"接口可达,image 帧 68B(image/png)","latencyMs":7}
+SUMMARY 12 pass / 0 fail

@@ -1,0 +1,13 @@
+PASS | modbus-tcp | scalar | 线速SP | 连接成功,写寄存器可访问(offset=0), 4ms
+PASS | modbus-tcp | scalar | 线速PV | 连接成功,读取 40003 = 47.099998474121094
+PASS | modbus-rtu | scalar | 温度SP | 网关连接成功,写寄存器可访问(0ms)
+PASS | modbus-rtu | scalar | 温度PV | 网关连接成功,读取 40003 = 80
+PASS | opcua | scalar | 压力SP | 会话建立成功,写节点可访问(ns=2;s=twin-opcua.pressure-sp)
+PASS | opcua | scalar | 压力PV | 会话建立成功,读取 ns=2;s=twin-opcua.pressure-pv = 7.01
+PASS | mqtt | scalar | 流量SP | Broker 连接成功(127.0.0.1:55830);未执行发布,避免误触发真实设备动作
+PASS | mqtt | scalar | 流量PV | Broker 连接成功,收到 aw/twin/twin-mqtt/flow-pv = 45
+PASS | http | scalar | 目标SP | 端点可达(GET → HTTP 200;未执行写入测试,避免误触发真实命令)
+PASS | http | scalar | 膜厚PV | 接口可达,取值 = 35.998
+PASS | http | vector | 膜厚断面 | 接口可达,vector 帧 8 点
+PASS | http | image | 表检图像 | 接口可达,image 帧 68B(image/png)
+SUMMARY 12 pass / 0 fail

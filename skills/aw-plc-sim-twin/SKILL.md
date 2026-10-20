@@ -42,8 +42,12 @@ description: AgentWorkShop PLC 模拟器孪生生成 skill。当需要根据平�
   node scripts/onboarding/sim-twin.mjs --blueprint <blueprint.json> [--sim-port 4034]
   ```
   蓝图形状见 `sim-twin.mjs` 头注:`devices[].signals[]` 每点
-  `{id,name,unit,min,max,decimals,kind:'sp'|'pv',initial?,dynamics?{base,tau,noise,follows[{sp,gain}]}}`;
-  `kind:'sp'` 生成命令主题(MQTT 族)或保持寄存器(Modbus 族)= 模拟生产可下发生效。
+  `{id,name,unit,min,max,decimals,kind:'sp'|'pv',format?:'scalar'|'vector'|'image',initial?,code?,dynamics?{base,tau,noise,follows[{sp,gain}]}}`;
+  `kind:'sp'` 生成命令主题(MQTT)/保持寄存器(Modbus)/可写 OPC UA 变量/HTTP 写端点 = 模拟生产可下发生效。
+  蓝图 `protocol` 支持 **modbus-tcp / modbus-rtu / mqtt / opcua / http** 五族;opcua 自动生成
+  `ns=2;s=<设备>.<信号>` 与可写变量,http 自动生成 `/sim-http/<设备>/api/<信号>` 端点;
+  `format:'vector'|'image'` + `code` hook(返回 `{points}` / `{png,width,height}`)可模拟数组/图像多源异构数据。
+  `config` 可覆盖协议细节(端口/映射/path);真实值仍以 export 的 driverConfig 为准。
 - 文档提炼纪律与 aw-line-onboarding 阶段 1 相同:量程/单位/精度只来自文档或用户确认,
   缺失停下来问,禁止猜测;SP/PV 判定不明必问。
 
@@ -75,6 +79,7 @@ driverConfig 指向孪生端口(**治理配置限界/stepLimit/绑定零改动**
 ### 5. 验收清单
 
 - [ ] 孪生设备全部创建且 tick 活性自检通过(无冻结)
+- [ ] 协议矩阵按需覆盖:Modbus TCP/RTU、OPC UA、MQTT、HTTP;HTTP 的 vector/image 端点能落 `daq_frames`
 - [ ] SV 写入回读一致;跟随 PV 因果方向正确(有 dynamics 时按预期增益)
 - [ ] export driverConfig 已取回并喂给 provision/onboard(平台侧 V1-V6 全绿)
 - [ ] 影子树隔离确认(未触碰 4010 共享模拟器与他人影子树)

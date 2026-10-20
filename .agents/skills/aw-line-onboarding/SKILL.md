@@ -91,6 +91,8 @@ bindings 写法:`{"agentRole":"worker:2","kind":"recipe","nodeId":"$RECIPE","mod
 
 `node scripts/onboarding/verify-line.mjs <config.json>` 六组断言:V1 数采落库(每 daq 节点 2 分钟窗内有真实样本,等价抽查 `aw_daq_samples`)→V2 越界写必须被拒(量程联锁)→ V3 合法写回环(回读一致,单点可用 `aw_dcw_write`)→V4 配方在册且参数映射正确 → V5 频道绑线/成员/插件生效 → V6 受保护演示线零扰动(journal 锚点核对)。任一红即退出码 1,修复后重跑。
 
+命令通道本身无读能力的协议(MQTT commandTopic 等)在 V3 配置 `"ackMode":"transport-ack"` + `"observeDaqId":"<同物理量的 DAQ 节点>"`:验收器断言 broker 受理(ACK 口径不冒充设备证实),再用独立 DAQ 样本观测物理量跟随到目标值。未声明这两个字段时仍按回读一致判定,不会把 transport-ack 静默当通过。
+
 **MES 直取面(history-only)额外验收**:历史-only mes 节点不在 V1 daq 数采面,不能只看节点创建成功。`onboard.mjs --smoke` 的阶段 3b 会对 `channel.mesFetchGrants` 里每个节点用真实 `mes_fetch` 取 30 分钟窗口,断言非错误且有行数;字段字典/向量/表格/图像格式的语义由 mes_fetch 回包与数据集 manifest 证明。若手工分阶段执行,必须补跑这一步。
 
 ### 6. 治理红线与回滚

@@ -4,13 +4,17 @@
  *  V1 数采落库:每个 daq 节点 2 分钟窗内 samples 有点(五协议真实在采)
  *  V2 量程联锁:对每个 dcw 节点做越界写(max+步长量级)必须被 400 拒(NODE_RANGE/RANGE 类)
  *  V3 合法写回环:max- 步长量级的合法值写成功且回读一致(manual 来源,审计留痕)
+ *    命令通道本身无读能力的协议(MQTT commandTopic 等)按平台 ACK 口径显式声明
+ *    `ackMode:"transport-ack"` + `observeDaqId`:断言写被 broker 受理,并用独立 DAQ
+ *    节点观测物理量跟随到目标值(设备侧生效由观测面证实,而非虚报回读)。
  *  V4 配方在册:recipeId 在 /dcw 聚合可见且参数节点映射正确
  *  V5 频道绑定:频道 lineId 正确、成员≥2、插件开启生效
  *  V6 演示线零扰动:受保护线上没有任何本次新节点的写痕(以 dcw journal 新锚点核对)
  * 输入 JSON:
  * {
  *   "lineId":"ln-..","recipeId":"rc-..","channelId":"<uuid>",
- *   "dcw":[{"id":"dw-..","name":"..","min":120,"max":300,"stepLimit":5,"probeValue":180}],
+ *   "dcw":[{"id":"dw-..","name":"..","min":120,"max":300,"stepLimit":5,"probeValue":180,
+ *           "ackMode":"transport-ack","observeDaqId":"dn-.."}],
  *   "daq":["dn-..","dn-.."],
  *   "plugins":["idd-closedloop-bridge","rag-bridge"]
  * }
@@ -78,6 +82,30 @@ for (const n of cfg.dcw ?? []) {
   for (let i = 0; i < 3 && good.code !== 0 && /间隔|60s|WRITE_INTERVAL|保持窗口|写入频繁/i.test(String(good.message ?? '')); i++) {
     await new Promise(r => setTimeout(r, 65000))
     good = await api('POST', `/api/workshop/dcw/${n.id}/write`, { value: probe }, tok)
+  }
+  // transport-ack 协议(MQTT commandTopic 等无读通道):按平台 ACK 口径断言 broker 受理,
+  // 再用独立 DAQ 观测节点证实物理量真的跟随。不允许把“链路受理”当“设备证实”。
+  if (n.ackMode === 'transport-ack') {
+    const ack = good.data?.outcome?.ack
+    const writeOk = (good.code === 0 || !!good.data?.outcome) && ack === 'transport-ack'
+    let followed = null
+    if (writeOk && n.observeDaqId) {
+      const tol = Number(n.observeTolerance ?? Math.max(0.5, Math.abs(probe) * 0.02))
+      try {
+        followed = await pollUntil(async () => {
+          const now = Date.now()
+          const j = await api('GET', `/api/workshop/daq/${n.observeDaqId}/samples?from=${now - 90000}&to=${now}&bucketMs=5000`, undefined, tok)
+          const pts = j.data?.points ?? []
+          const last = pts[pts.length - 1]
+          return last && Number.isFinite(last.avg) && Math.abs(last.avg - probe) <= tol ? last.avg : null
+        }, { timeoutMs: Number(n.observeTimeoutMs ?? 45000), stepMs: 3000, label: `观测[${n.name}]` })
+      }
+      catch { followed = null }
+    }
+    const okd = writeOk && (n.observeDaqId ? followed != null : true)
+    ok(`V3 合法写生效(transport-ack)[${n.name}]`, okd,
+      `cur=${cur ?? '?'} probe=${probe} ack=${ack ?? '缺失'} DAQ观测=${followed ?? '未跟随'} ${okd ? '' : String(good.message ?? good.code).slice(0, 80)}`)
+    continue
   }
   const rb = good.data?.outcome?.readback
   const rbOk = typeof rb === 'number' && Number.isFinite(rb) && Math.abs(rb - probe) <= Math.max(0.5, Math.abs(probe) * 0.002)
