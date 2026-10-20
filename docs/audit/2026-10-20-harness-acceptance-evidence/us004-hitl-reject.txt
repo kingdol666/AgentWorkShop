@@ -1,0 +1,12 @@
+━━━ HITL 拒绝路径 @ http://127.0.0.1:3001 (tag=mvg7rtai) ━━━
+PASS | 基线读取(配方版本/PLC 当前值) | v4 value=45
+PASS | 频道创建(copilot lead) | 8f0837fd-cca6-45f8-8d45-d5e660b830d1
+PASS | 配方绑定 manual | manual
+PASS | 任务提交 | f0e71dfb-3202-4978-ae9e-c90de332bc33
+  · HITL 拒绝 ap-f4442 配方参数写入审批
+PASS | 出现 manual 审批卡并拒绝 | rejected=1
+PASS | Agent 收到拒绝结果并完成 | state=COMPLETED recipe_update for recipe rc-2be5c50c, node dw-d0b66f73 value 46, was rejected by human approval. Human comment: “REJECT-ACCEPTANCE mvg7rtai: keep the current value”. Per instructio
+PASS | 拒绝后配方版本不变 | before=v4 after=v4
+PASS | 拒绝后 PLC 值不变(fail-closed) | before=45 after=45
+
+=== HITL 拒绝路径: 8 PASS / 0 FAIL ===

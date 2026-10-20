@@ -1,0 +1,55 @@
+{
+  "at": "2026-10-20T05:00:38.234Z",
+  "channelId": "8f0837fd-cca6-45f8-8d45-d5e660b830d1",
+  "taskId": "f0e71dfb-3202-4978-ae9e-c90de332bc33",
+  "before": {
+    "version": 4,
+    "value": 45
+  },
+  "after": {
+    "version": 4,
+    "value": 45
+  },
+  "checks": [
+    {
+      "name": "基线读取(配方版本/PLC 当前值)",
+      "ok": true,
+      "detail": "v4 value=45"
+    },
+    {
+      "name": "频道创建(copilot lead)",
+      "ok": true,
+      "detail": "8f0837fd-cca6-45f8-8d45-d5e660b830d1"
+    },
+    {
+      "name": "配方绑定 manual",
+      "ok": true,
+      "detail": "manual"
+    },
+    {
+      "name": "任务提交",
+      "ok": true,
+      "detail": "f0e71dfb-3202-4978-ae9e-c90de332bc33"
+    },
+    {
+      "name": "出现 manual 审批卡并拒绝",
+      "ok": true,
+      "detail": "rejected=1"
+    },
+    {
+      "name": "Agent 收到拒绝结果并完成",
+      "ok": true,
+      "detail": "state=COMPLETED recipe_update for recipe rc-2be5c50c, node dw-d0b66f73 value 46, was rejected by human approval. Human comment: “REJECT-ACCEPTANCE mvg7rtai: keep the current value”. Per instructio"
+    },
+    {
+      "name": "拒绝后配方版本不变",
+      "ok": true,
+      "detail": "before=v4 after=v4"
+    },
+    {
+      "name": "拒绝后 PLC 值不变(fail-closed)",
+      "ok": true,
+      "detail": "before=45 after=45"
+    }
+  ]
+}

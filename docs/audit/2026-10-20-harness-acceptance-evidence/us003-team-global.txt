@@ -1,0 +1,21 @@
+━━━ 团队/产线/HITL 真实 E2E @ http://127.0.0.1:3001 (tag=mvg7nn0x) ━━━
+PASS | 频道创建(mock lead) | 05a64c7e-ed4e-467a-bfbc-e51b264b91b6
+PASS | 频道绑定产线 | ln-dd6c9135
+PASS | 成员部署(mock/omp/copilot) | 960f1150/8f7e9184/bedabada
+PASS | 分析师数采绑定 | 5/5
+PASS | 操作员配方绑定(manual) | manual
+PASS | mailbox 发送(lead→analyst) | 消息 b8ca193f… 已发送给 960f1150-c9aa-4466-97c5-ca06562d99d0(priority=task)
+PASS | mailbox 投递(lead→analyst 消息落库) | 6d40b935→960f1150 state=consuming MAILBOX-PROBE-mvg7nn0x
+PASS | root 任务提交(派发给 lead) | 8287f542-dbe3-42ac-a2d5-07dfa2909209
+PASS | lead 自动派发并完成 | state=COMPLETED
+PASS | omp 数采分析任务完成 | state=COMPLETED deliverable=line_context 确认:产线「多协议孪生产线-20261020」(ln-dd6c9135) 运行中,活动批次 rr-7ff99(run=rr-7ff99163),配方「多协议孪生基线配方」(rc-2be5c50c) v3。
+
+daq_query(line_id=ln-dd6c9135, node_id=dn-4
+  · HITL 批准 ap-f6e1e 配方参数写入审批
+  · HITL 批准 ap-e9aa5 配方下发审批
+PASS | copilot 配方写入/下发任务完成 | state=COMPLETED deliverable=Approved recipe_update saved v4 with line-speed SP 45 m/min and recipe_apply issued for the active batch. Apply ACK confirmed 4/5 parameters; flow SP was publis
+PASS | manual 配方操作触发 HITL 并获批 | approved=2
+PASS | PLC 回读=45(下发真实生效) | readback=45
+PASS | 配方版本递增 | version=4
+
+=== 团队/产线/HITL: 14 PASS / 0 FAIL ===

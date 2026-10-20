@@ -1,0 +1,27 @@
+{
+  "at": "2026-10-20T05:02:34.632Z",
+  "health": {
+    "status": "ok",
+    "app": "AgentWorkShop",
+    "version": "0.7.67",
+    "mode": "dev",
+    "uptimeMs": 812496,
+    "timestamp": "2026-10-20T13:02:25.545+08:00",
+    "workshop": "ready",
+    "wiredAgents": 1,
+    "activeChannels": 28,
+    "memory": {
+      "heapUsedMb": 103,
+      "heapLimitMb": 4288,
+      "rssMb": 330,
+      "externalMb": 13,
+      "heapRatio": 0.024
+    }
+  },
+  "version": "0.7.67",
+  "task": {
+    "id": "5c0ee236-3517-4e15-99f1-7075f4d3c995",
+    "state": "COMPLETED",
+    "deliverable": "PROD-READINESS-OK"
+  }
+}
