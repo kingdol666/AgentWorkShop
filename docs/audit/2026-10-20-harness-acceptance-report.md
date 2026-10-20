@@ -61,7 +61,9 @@
 - U2c:群聊页 `/workshop/w/<channelId>` 加载
 - U2d/U2e/U2f:群聊页铃标弹出 `Proceed?`,渲染 yes/no 按钮 + 提交答案按钮
 - W5–W8:`POST /hitl/respond` → `hitl.resolved(answered)` → 待办清空 → agent `ask` 收到 `yes`
-- Phase T(TUI):T1 通过后服务重启,未完成;不影响 W/U 原生 HITL 结论
+- Phase T(TUI):最终轮 **22 通过 / 6 失败**;失败集中在 TUI 的待办条渲染/作答卡/落定帧
+  (T2/T4/T5/T6/T8/T9),T1 接入与 T7 服务端写入通过。首轮为 24/4。TUI 不作为本轮
+  “ask HITL 已全绿”的依据;W/U(API + 浏览器群聊 UI)已全绿。
 
 > ask 与 manual 写是两条链路:ask 是 `requestType=question` 的提问型 HITL;
 > manual 配方下发是 `kind=dcw-approval` 的审批型 HITL。本次两条都实测通过。
@@ -110,6 +112,7 @@
   dsh 还缺 AW profile 注入(可作为下一步修复项)。
 - “所有 harness 不用 MCP”在当前上游版本不可行:codex/gemini/copilot/cursor/crush/goose/qwen/hermes
   只公开 MCP 作为外部工具面;omp/pi 已原生,opencode/dsh/claude 可后续写原生插件。
-- Phase T TUI 在服务重启时中断;W/U 的 ask HITL 与群聊 UI 已通过。
+- Phase T TUI 最终轮 6 项失败(T2/T4/T5/T6/T8/T9):待办条/作答卡/落定帧未渲染;
+  W/U 的 ask HITL 与群聊 UI 已通过。TUI 需要单独修复,不能宣称“TUI HITL 全绿”。
 - 发布包的全局实例启动验证使用 `node <global>/.output/server/index.mjs`;`aw start` 在仓库 cwd
   会优先使用仓库 `.output`,这是 CLI 的设计行为。
