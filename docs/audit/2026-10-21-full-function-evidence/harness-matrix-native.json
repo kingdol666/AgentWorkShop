@@ -1,0 +1,55 @@
+{
+  "at": "2026-10-20T17:10:49.781Z",
+  "base": "http://127.0.0.1:3470",
+  "timeoutMs": 180000,
+  "results": [
+    {
+      "harness": "mock",
+      "channelId": "a61280c1-d21f-4d47-9c65-4fc72ce368bc",
+      "agentId": "302dc8d6-b007-4245-addd-0cec0b5a0fa2",
+      "taskId": "40b99982-df90-4695-8136-3609e406068f",
+      "state": "WORKING",
+      "progress": 0,
+      "deliverable": "",
+      "detail": "任务终态 WORKING",
+      "pass": false,
+      "elapsedMs": 181513
+    },
+    {
+      "harness": "omp",
+      "channelId": "9750679e-09c4-4e52-b719-bdb05060c778",
+      "agentId": "2e1c3cb7-5f49-4802-99cf-f2475e783155",
+      "taskId": "9b96d6d3-cdea-41c5-8692-34b382bf6d0e",
+      "state": "COMPLETED",
+      "progress": 100,
+      "deliverable": "HARNESS-OK:omp",
+      "detail": "",
+      "pass": true,
+      "elapsedMs": 15130
+    },
+    {
+      "harness": "codex",
+      "channelId": "e68907e0-45bb-44b8-844e-508f181babaa",
+      "agentId": "3aeb3023-9e22-479f-a8ca-a42fcd22ec26",
+      "taskId": "469bc0ef-ee71-4725-868c-ce36dc298a61",
+      "state": "WORKING",
+      "progress": 0,
+      "deliverable": "",
+      "detail": "任务终态 WORKING",
+      "pass": false,
+      "elapsedMs": 181314
+    },
+    {
+      "harness": "copilot",
+      "channelId": "48fb49f1-527b-4acf-988e-ecea8c204d60",
+      "agentId": "3c980301-c685-43e2-b0f2-81c7a14cb453",
+      "taskId": "c3ecc608-996f-4fee-a511-902688b3ace9",
+      "state": "COMPLETED",
+      "progress": 100,
+      "deliverable": "HARNESS-OK:copilot",
+      "detail": "",
+      "pass": true,
+      "elapsedMs": 36349
+    }
+  ]
+}

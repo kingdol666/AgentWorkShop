@@ -1,0 +1,8 @@
+━━━ harness matrix @ http://127.0.0.1:3470 (4 engines, concurrency=2) ━━━
+PASS | omp       | COMPLETED | 15.1s | HARNESS-OK:omp
+PASS | copilot   | COMPLETED | 36.3s | HARNESS-OK:copilot
+FAIL | mock      | WORKING | 181.5s | 任务终态 WORKING
+FAIL | codex     | WORKING | 181.3s | 任务终态 WORKING
+
+=== harness matrix: 2 PASS / 2 FAIL ===
+evidence: docs/audit/2026-10-21-full-function-evidence/harness-matrix-native.json

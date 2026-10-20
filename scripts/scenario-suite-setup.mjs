@@ -83,6 +83,7 @@ function startPlatform() {
       AW_HOME: HOME,
       AW_AML_DIR: amlRoot,
       AW_MCP_ENABLED: 'true',
+      AW_TRIAL_INTERVAL_MS: '0',
       NUXT_SESSION_PASSWORD: sessionPw,
       NO_PROXY: '127.0.0.1,localhost',
       HTTP_PROXY: '',

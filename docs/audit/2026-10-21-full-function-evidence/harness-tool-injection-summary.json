@@ -1,0 +1,744 @@
+{
+  "at": "2026-10-20T16:56:24.573Z",
+  "pass": 73,
+  "fail": 0,
+  "results": [
+    {
+      "id": "H0",
+      "name": "建立工具注入测试 Channel",
+      "pass": true,
+      "detail": "HTTP 200 ok"
+    },
+    {
+      "id": "H-mock",
+      "name": "mock 专属 DAQ/配方绑定",
+      "pass": true,
+      "detail": "daq=dn-9c71f536 recipe=rc-d1d767fb"
+    },
+    {
+      "id": "H-mock",
+      "name": "mock 工具面含数采/配方工具",
+      "pass": true,
+      "detail": "count=64"
+    },
+    {
+      "id": "H-mock",
+      "name": "mock daq_query 描述含专属节点",
+      "pass": true,
+      "detail": "从时序数据库检索你可访问的数采节点的历史/实时数据。授权两途径:绑定数采节点,或所在频道绑定产线(绑线后可只读查询该线全部数采节点)。支持按产线/产品/配方/批次/时间窗/降采样多维过滤(产品/配方过滤基于逐样本打标,可精确取某批次数据);返回结果携带物理含义(参数语义/单位/量程/统计摘要/最近序列)。默认只取**当"
+    },
+    {
+      "id": "H-mock",
+      "name": "mock recipe_trial/update 描述含配方",
+      "pass": true,
+      "detail": "多参数候选整批试验下发(不写配方版本)。可直接对当前在跑的配方试验:只传 line_id 时解析活动批次配方;也可显式 recipe_id。权限模型:须已绑定该 recipe 且过二级认证与运行门;候选只能覆盖配方内参数节点;绑定 manual 或产线 manual 时挂 HITL 等人工批准——hypothesis "
+    },
+    {
+      "id": "M-mock",
+      "name": "mock MCP 桥可列工具并执行 daq_query",
+      "pass": true,
+      "detail": "tools=64 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:melt-temp-pv(熔体/箱体温度)单位 ℃,正常量程 20~320℃,当前状态 ok,时间窗 2026-10-2"
+    },
+    {
+      "id": "H-omp",
+      "name": "omp 专属 DAQ/配方绑定",
+      "pass": true,
+      "detail": "daq=dn-f7c3f5f7 recipe=rc-d1d767fb"
+    },
+    {
+      "id": "H-omp",
+      "name": "omp 工具面含数采/配方工具",
+      "pass": true,
+      "detail": "count=64"
+    },
+    {
+      "id": "H-omp",
+      "name": "omp daq_query 描述含专属节点",
+      "pass": true,
+      "detail": "从时序数据库检索你可访问的数采节点的历史/实时数据。授权两途径:绑定数采节点,或所在频道绑定产线(绑线后可只读查询该线全部数采节点)。支持按产线/产品/配方/批次/时间窗/降采样多维过滤(产品/配方过滤基于逐样本打标,可精确取某批次数据);返回结果携带物理含义(参数语义/单位/量程/统计摘要/最近序列)。默认只取**当"
+    },
+    {
+      "id": "H-omp",
+      "name": "omp recipe_trial/update 描述含配方",
+      "pass": true,
+      "detail": "多参数候选整批试验下发(不写配方版本)。可直接对当前在跑的配方试验:只传 line_id 时解析活动批次配方;也可显式 recipe_id。权限模型:须已绑定该 recipe 且过二级认证与运行门;候选只能覆盖配方内参数节点;绑定 manual 或产线 manual 时挂 HITL 等人工批准——hypothesis "
+    },
+    {
+      "id": "M-omp",
+      "name": "omp MCP 桥可列工具并执行 daq_query",
+      "pass": true,
+      "detail": "tools=64 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:melt-pressure-pv(熔体/箱体温度)单位 bar,正常量程 0~160bar,当前状态 ok,时间窗 20"
+    },
+    {
+      "id": "H-opencode",
+      "name": "opencode 专属 DAQ/配方绑定",
+      "pass": true,
+      "detail": "daq=dn-6bf61c1b recipe=rc-d1d767fb"
+    },
+    {
+      "id": "H-opencode",
+      "name": "opencode 工具面含数采/配方工具",
+      "pass": true,
+      "detail": "count=64"
+    },
+    {
+      "id": "H-opencode",
+      "name": "opencode daq_query 描述含专属节点",
+      "pass": true,
+      "detail": "从时序数据库检索你可访问的数采节点的历史/实时数据。授权两途径:绑定数采节点,或所在频道绑定产线(绑线后可只读查询该线全部数采节点)。支持按产线/产品/配方/批次/时间窗/降采样多维过滤(产品/配方过滤基于逐样本打标,可精确取某批次数据);返回结果携带物理含义(参数语义/单位/量程/统计摘要/最近序列)。默认只取**当"
+    },
+    {
+      "id": "H-opencode",
+      "name": "opencode recipe_trial/update 描述含配方",
+      "pass": true,
+      "detail": "多参数候选整批试验下发(不写配方版本)。可直接对当前在跑的配方试验:只传 line_id 时解析活动批次配方;也可显式 recipe_id。权限模型:须已绑定该 recipe 且过二级认证与运行门;候选只能覆盖配方内参数节点;绑定 manual 或产线 manual 时挂 HITL 等人工批准——hypothesis "
+    },
+    {
+      "id": "M-opencode",
+      "name": "opencode MCP 桥可列工具并执行 daq_query",
+      "pass": true,
+      "detail": "tools=64 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:mold-temp-pv(熔体/箱体温度)单位 ℃,正常量程 10~110℃,当前状态 ok,时间窗 2026-10-2"
+    },
+    {
+      "id": "H-codex",
+      "name": "codex 专属 DAQ/配方绑定",
+      "pass": true,
+      "detail": "daq=dn-e1e0f766 recipe=rc-d1d767fb"
+    },
+    {
+      "id": "H-codex",
+      "name": "codex 工具面含数采/配方工具",
+      "pass": true,
+      "detail": "count=64"
+    },
+    {
+      "id": "H-codex",
+      "name": "codex daq_query 描述含专属节点",
+      "pass": true,
+      "detail": "从时序数据库检索你可访问的数采节点的历史/实时数据。授权两途径:绑定数采节点,或所在频道绑定产线(绑线后可只读查询该线全部数采节点)。支持按产线/产品/配方/批次/时间窗/降采样多维过滤(产品/配方过滤基于逐样本打标,可精确取某批次数据);返回结果携带物理含义(参数语义/单位/量程/统计摘要/最近序列)。默认只取**当"
+    },
+    {
+      "id": "H-codex",
+      "name": "codex recipe_trial/update 描述含配方",
+      "pass": true,
+      "detail": "多参数候选整批试验下发(不写配方版本)。可直接对当前在跑的配方试验:只传 line_id 时解析活动批次配方;也可显式 recipe_id。权限模型:须已绑定该 recipe 且过二级认证与运行门;候选只能覆盖配方内参数节点;绑定 manual 或产线 manual 时挂 HITL 等人工批准——hypothesis "
+    },
+    {
+      "id": "M-codex",
+      "name": "codex MCP 桥可列工具并执行 daq_query",
+      "pass": true,
+      "detail": "tools=64 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:clamp-force-pv(熔体/箱体温度)单位 kN,正常量程 0~2600kN,当前状态 ok,时间窗 2026-"
+    },
+    {
+      "id": "H-dsh",
+      "name": "dsh 专属 DAQ/配方绑定",
+      "pass": true,
+      "detail": "daq=dn-6451a3c7 recipe=rc-d1d767fb"
+    },
+    {
+      "id": "H-dsh",
+      "name": "dsh 工具面含数采/配方工具",
+      "pass": true,
+      "detail": "count=64"
+    },
+    {
+      "id": "H-dsh",
+      "name": "dsh daq_query 描述含专属节点",
+      "pass": true,
+      "detail": "从时序数据库检索你可访问的数采节点的历史/实时数据。授权两途径:绑定数采节点,或所在频道绑定产线(绑线后可只读查询该线全部数采节点)。支持按产线/产品/配方/批次/时间窗/降采样多维过滤(产品/配方过滤基于逐样本打标,可精确取某批次数据);返回结果携带物理含义(参数语义/单位/量程/统计摘要/最近序列)。默认只取**当"
+    },
+    {
+      "id": "H-dsh",
+      "name": "dsh recipe_trial/update 描述含配方",
+      "pass": true,
+      "detail": "多参数候选整批试验下发(不写配方版本)。可直接对当前在跑的配方试验:只传 line_id 时解析活动批次配方;也可显式 recipe_id。权限模型:须已绑定该 recipe 且过二级认证与运行门;候选只能覆盖配方内参数节点;绑定 manual 或产线 manual 时挂 HITL 等人工批准——hypothesis "
+    },
+    {
+      "id": "M-dsh",
+      "name": "dsh MCP 桥可列工具并执行 daq_query",
+      "pass": true,
+      "detail": "tools=64 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:inj-pressure-pv(熔体/箱体温度)单位 bar,正常量程 0~180bar,当前状态 ok,时间窗 202"
+    },
+    {
+      "id": "H-claude",
+      "name": "claude 专属 DAQ/配方绑定",
+      "pass": true,
+      "detail": "daq=dn-55813f2a recipe=rc-d1d767fb"
+    },
+    {
+      "id": "H-claude",
+      "name": "claude 工具面含数采/配方工具",
+      "pass": true,
+      "detail": "count=64"
+    },
+    {
+      "id": "H-claude",
+      "name": "claude daq_query 描述含专属节点",
+      "pass": true,
+      "detail": "从时序数据库检索你可访问的数采节点的历史/实时数据。授权两途径:绑定数采节点,或所在频道绑定产线(绑线后可只读查询该线全部数采节点)。支持按产线/产品/配方/批次/时间窗/降采样多维过滤(产品/配方过滤基于逐样本打标,可精确取某批次数据);返回结果携带物理含义(参数语义/单位/量程/统计摘要/最近序列)。默认只取**当"
+    },
+    {
+      "id": "H-claude",
+      "name": "claude recipe_trial/update 描述含配方",
+      "pass": true,
+      "detail": "多参数候选整批试验下发(不写配方版本)。可直接对当前在跑的配方试验:只传 line_id 时解析活动批次配方;也可显式 recipe_id。权限模型:须已绑定该 recipe 且过二级认证与运行门;候选只能覆盖配方内参数节点;绑定 manual 或产线 manual 时挂 HITL 等人工批准——hypothesis "
+    },
+    {
+      "id": "M-claude",
+      "name": "claude MCP 桥可列工具并执行 daq_query",
+      "pass": true,
+      "detail": "tools=64 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:water-temp-pv(熔体/箱体温度)单位 ℃,正常量程 5~60℃,当前状态 ok,时间窗 2026-10-21"
+    },
+    {
+      "id": "H-gemini",
+      "name": "gemini 专属 DAQ/配方绑定",
+      "pass": true,
+      "detail": "daq=dn-6a149aec recipe=rc-d1d767fb"
+    },
+    {
+      "id": "H-gemini",
+      "name": "gemini 工具面含数采/配方工具",
+      "pass": true,
+      "detail": "count=64"
+    },
+    {
+      "id": "H-gemini",
+      "name": "gemini daq_query 描述含专属节点",
+      "pass": true,
+      "detail": "从时序数据库检索你可访问的数采节点的历史/实时数据。授权两途径:绑定数采节点,或所在频道绑定产线(绑线后可只读查询该线全部数采节点)。支持按产线/产品/配方/批次/时间窗/降采样多维过滤(产品/配方过滤基于逐样本打标,可精确取某批次数据);返回结果携带物理含义(参数语义/单位/量程/统计摘要/最近序列)。默认只取**当"
+    },
+    {
+      "id": "H-gemini",
+      "name": "gemini recipe_trial/update 描述含配方",
+      "pass": true,
+      "detail": "多参数候选整批试验下发(不写配方版本)。可直接对当前在跑的配方试验:只传 line_id 时解析活动批次配方;也可显式 recipe_id。权限模型:须已绑定该 recipe 且过二级认证与运行门;候选只能覆盖配方内参数节点;绑定 manual 或产线 manual 时挂 HITL 等人工批准——hypothesis "
+    },
+    {
+      "id": "M-gemini",
+      "name": "gemini MCP 桥可列工具并执行 daq_query",
+      "pass": true,
+      "detail": "tools=64 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:cool-flow-pv(熔体/箱体温度)单位 L/min,正常量程 0~80L/min,当前状态 ok,时间窗 202"
+    },
+    {
+      "id": "H-copilot",
+      "name": "copilot 专属 DAQ/配方绑定",
+      "pass": true,
+      "detail": "daq=dn-b455b299 recipe=rc-d1d767fb"
+    },
+    {
+      "id": "H-copilot",
+      "name": "copilot 工具面含数采/配方工具",
+      "pass": true,
+      "detail": "count=64"
+    },
+    {
+      "id": "H-copilot",
+      "name": "copilot daq_query 描述含专属节点",
+      "pass": true,
+      "detail": "从时序数据库检索你可访问的数采节点的历史/实时数据。授权两途径:绑定数采节点,或所在频道绑定产线(绑线后可只读查询该线全部数采节点)。支持按产线/产品/配方/批次/时间窗/降采样多维过滤(产品/配方过滤基于逐样本打标,可精确取某批次数据);返回结果携带物理含义(参数语义/单位/量程/统计摘要/最近序列)。默认只取**当"
+    },
+    {
+      "id": "H-copilot",
+      "name": "copilot recipe_trial/update 描述含配方",
+      "pass": true,
+      "detail": "多参数候选整批试验下发(不写配方版本)。可直接对当前在跑的配方试验:只传 line_id 时解析活动批次配方;也可显式 recipe_id。权限模型:须已绑定该 recipe 且过二级认证与运行门;候选只能覆盖配方内参数节点;绑定 manual 或产线 manual 时挂 HITL 等人工批准——hypothesis "
+    },
+    {
+      "id": "M-copilot",
+      "name": "copilot MCP 桥可列工具并执行 daq_query",
+      "pass": true,
+      "detail": "tools=64 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:part-weight(熔体/箱体温度)单位 g,正常量程 25~40g,当前状态 alarm,时间窗 2026-10-"
+    },
+    {
+      "id": "H-cursor",
+      "name": "cursor 专属 DAQ/配方绑定",
+      "pass": true,
+      "detail": "daq=dn-5944a72e recipe=rc-d1d767fb"
+    },
+    {
+      "id": "H-cursor",
+      "name": "cursor 工具面含数采/配方工具",
+      "pass": true,
+      "detail": "count=64"
+    },
+    {
+      "id": "H-cursor",
+      "name": "cursor daq_query 描述含专属节点",
+      "pass": true,
+      "detail": "从时序数据库检索你可访问的数采节点的历史/实时数据。授权两途径:绑定数采节点,或所在频道绑定产线(绑线后可只读查询该线全部数采节点)。支持按产线/产品/配方/批次/时间窗/降采样多维过滤(产品/配方过滤基于逐样本打标,可精确取某批次数据);返回结果携带物理含义(参数语义/单位/量程/统计摘要/最近序列)。默认只取**当"
+    },
+    {
+      "id": "H-cursor",
+      "name": "cursor recipe_trial/update 描述含配方",
+      "pass": true,
+      "detail": "多参数候选整批试验下发(不写配方版本)。可直接对当前在跑的配方试验:只传 line_id 时解析活动批次配方;也可显式 recipe_id。权限模型:须已绑定该 recipe 且过二级认证与运行门;候选只能覆盖配方内参数节点;绑定 manual 或产线 manual 时挂 HITL 等人工批准——hypothesis "
+    },
+    {
+      "id": "M-cursor",
+      "name": "cursor MCP 桥可列工具并执行 daq_query",
+      "pass": true,
+      "detail": "tools=64 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:flash-rate(熔体/箱体温度)单位 %,正常量程 0~5%,当前状态 warn,时间窗 2026-10-21T0"
+    },
+    {
+      "id": "H-crush",
+      "name": "crush 专属 DAQ/配方绑定",
+      "pass": true,
+      "detail": "daq=dn-38aed797 recipe=rc-d1d767fb"
+    },
+    {
+      "id": "H-crush",
+      "name": "crush 工具面含数采/配方工具",
+      "pass": true,
+      "detail": "count=64"
+    },
+    {
+      "id": "H-crush",
+      "name": "crush daq_query 描述含专属节点",
+      "pass": true,
+      "detail": "从时序数据库检索你可访问的数采节点的历史/实时数据。授权两途径:绑定数采节点,或所在频道绑定产线(绑线后可只读查询该线全部数采节点)。支持按产线/产品/配方/批次/时间窗/降采样多维过滤(产品/配方过滤基于逐样本打标,可精确取某批次数据);返回结果携带物理含义(参数语义/单位/量程/统计摘要/最近序列)。默认只取**当"
+    },
+    {
+      "id": "H-crush",
+      "name": "crush recipe_trial/update 描述含配方",
+      "pass": true,
+      "detail": "多参数候选整批试验下发(不写配方版本)。可直接对当前在跑的配方试验:只传 line_id 时解析活动批次配方;也可显式 recipe_id。权限模型:须已绑定该 recipe 且过二级认证与运行门;候选只能覆盖配方内参数节点;绑定 manual 或产线 manual 时挂 HITL 等人工批准——hypothesis "
+    },
+    {
+      "id": "M-crush",
+      "name": "crush MCP 桥可列工具并执行 daq_query",
+      "pass": true,
+      "detail": "tools=64 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:sink-mark(熔体/箱体温度)单位 %,正常量程 0~10%,当前状态 alarm,时间窗 2026-10-21T"
+    },
+    {
+      "id": "H-goose",
+      "name": "goose 专属 DAQ/配方绑定",
+      "pass": true,
+      "detail": "daq=dn-19324b20 recipe=rc-d1d767fb"
+    },
+    {
+      "id": "H-goose",
+      "name": "goose 工具面含数采/配方工具",
+      "pass": true,
+      "detail": "count=64"
+    },
+    {
+      "id": "H-goose",
+      "name": "goose daq_query 描述含专属节点",
+      "pass": true,
+      "detail": "从时序数据库检索你可访问的数采节点的历史/实时数据。授权两途径:绑定数采节点,或所在频道绑定产线(绑线后可只读查询该线全部数采节点)。支持按产线/产品/配方/批次/时间窗/降采样多维过滤(产品/配方过滤基于逐样本打标,可精确取某批次数据);返回结果携带物理含义(参数语义/单位/量程/统计摘要/最近序列)。默认只取**当"
+    },
+    {
+      "id": "H-goose",
+      "name": "goose recipe_trial/update 描述含配方",
+      "pass": true,
+      "detail": "多参数候选整批试验下发(不写配方版本)。可直接对当前在跑的配方试验:只传 line_id 时解析活动批次配方;也可显式 recipe_id。权限模型:须已绑定该 recipe 且过二级认证与运行门;候选只能覆盖配方内参数节点;绑定 manual 或产线 manual 时挂 HITL 等人工批准——hypothesis "
+    },
+    {
+      "id": "M-goose",
+      "name": "goose MCP 桥可列工具并执行 daq_query",
+      "pass": true,
+      "detail": "tools=64 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:dim-dev(熔体/箱体温度)单位 mm,正常量程 -0.5~0.5mm,当前状态 ok,时间窗 2026-10-21"
+    },
+    {
+      "id": "H-qwen",
+      "name": "qwen 专属 DAQ/配方绑定",
+      "pass": true,
+      "detail": "daq=dn-ee8259a0 recipe=rc-d1d767fb"
+    },
+    {
+      "id": "H-qwen",
+      "name": "qwen 工具面含数采/配方工具",
+      "pass": true,
+      "detail": "count=64"
+    },
+    {
+      "id": "H-qwen",
+      "name": "qwen daq_query 描述含专属节点",
+      "pass": true,
+      "detail": "从时序数据库检索你可访问的数采节点的历史/实时数据。授权两途径:绑定数采节点,或所在频道绑定产线(绑线后可只读查询该线全部数采节点)。支持按产线/产品/配方/批次/时间窗/降采样多维过滤(产品/配方过滤基于逐样本打标,可精确取某批次数据);返回结果携带物理含义(参数语义/单位/量程/统计摘要/最近序列)。默认只取**当"
+    },
+    {
+      "id": "H-qwen",
+      "name": "qwen recipe_trial/update 描述含配方",
+      "pass": true,
+      "detail": "多参数候选整批试验下发(不写配方版本)。可直接对当前在跑的配方试验:只传 line_id 时解析活动批次配方;也可显式 recipe_id。权限模型:须已绑定该 recipe 且过二级认证与运行门;候选只能覆盖配方内参数节点;绑定 manual 或产线 manual 时挂 HITL 等人工批准——hypothesis "
+    },
+    {
+      "id": "M-qwen",
+      "name": "qwen MCP 桥可列工具并执行 daq_query",
+      "pass": true,
+      "detail": "tools=64 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:cycle-time(熔体/箱体温度)单位 s,正常量程 5~60s,当前状态 ok,时间窗 2026-10-21T00"
+    },
+    {
+      "id": "H-pi",
+      "name": "pi 专属 DAQ/配方绑定",
+      "pass": true,
+      "detail": "daq=dn-fdce306e recipe=rc-d1d767fb"
+    },
+    {
+      "id": "H-pi",
+      "name": "pi 工具面含数采/配方工具",
+      "pass": true,
+      "detail": "count=64"
+    },
+    {
+      "id": "H-pi",
+      "name": "pi daq_query 描述含专属节点",
+      "pass": true,
+      "detail": "从时序数据库检索你可访问的数采节点的历史/实时数据。授权两途径:绑定数采节点,或所在频道绑定产线(绑线后可只读查询该线全部数采节点)。支持按产线/产品/配方/批次/时间窗/降采样多维过滤(产品/配方过滤基于逐样本打标,可精确取某批次数据);返回结果携带物理含义(参数语义/单位/量程/统计摘要/最近序列)。默认只取**当"
+    },
+    {
+      "id": "H-pi",
+      "name": "pi recipe_trial/update 描述含配方",
+      "pass": true,
+      "detail": "多参数候选整批试验下发(不写配方版本)。可直接对当前在跑的配方试验:只传 line_id 时解析活动批次配方;也可显式 recipe_id。权限模型:须已绑定该 recipe 且过二级认证与运行门;候选只能覆盖配方内参数节点;绑定 manual 或产线 manual 时挂 HITL 等人工批准——hypothesis "
+    },
+    {
+      "id": "M-pi",
+      "name": "pi MCP 桥可列工具并执行 daq_query",
+      "pass": true,
+      "detail": "tools=64 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:wall-profile(熔体/箱体温度)单位 mm,正常量程 1~5mm,当前状态 offline,时间窗 2026-"
+    },
+    {
+      "id": "H-hermes",
+      "name": "hermes 专属 DAQ/配方绑定",
+      "pass": true,
+      "detail": "daq=dn-9af5e753 recipe=rc-d1d767fb"
+    },
+    {
+      "id": "H-hermes",
+      "name": "hermes 工具面含数采/配方工具",
+      "pass": true,
+      "detail": "count=64"
+    },
+    {
+      "id": "H-hermes",
+      "name": "hermes daq_query 描述含专属节点",
+      "pass": true,
+      "detail": "从时序数据库检索你可访问的数采节点的历史/实时数据。授权两途径:绑定数采节点,或所在频道绑定产线(绑线后可只读查询该线全部数采节点)。支持按产线/产品/配方/批次/时间窗/降采样多维过滤(产品/配方过滤基于逐样本打标,可精确取某批次数据);返回结果携带物理含义(参数语义/单位/量程/统计摘要/最近序列)。默认只取**当"
+    },
+    {
+      "id": "H-hermes",
+      "name": "hermes recipe_trial/update 描述含配方",
+      "pass": true,
+      "detail": "多参数候选整批试验下发(不写配方版本)。可直接对当前在跑的配方试验:只传 line_id 时解析活动批次配方;也可显式 recipe_id。权限模型:须已绑定该 recipe 且过二级认证与运行门;候选只能覆盖配方内参数节点;绑定 manual 或产线 manual 时挂 HITL 等人工批准——hypothesis "
+    },
+    {
+      "id": "M-hermes",
+      "name": "hermes MCP 桥可列工具并执行 daq_query",
+      "pass": true,
+      "detail": "tools=64 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:surface-image(熔体/箱体温度)单位 灰度,正常量程 0~255灰度,当前状态 offline,时间窗 20"
+    },
+    {
+      "id": "H1",
+      "name": "至少 2 个 harness 成功创建并绑定",
+      "pass": true,
+      "detail": "added=14"
+    },
+    {
+      "id": "W1",
+      "name": "omp 经 MCP recipe_trial + HITL 真实下发/回读",
+      "pass": true,
+      "detail": "card=ap-5e9e8b6b 45→46.8 readback=46.8 试验已整批下发并全部设备证实(1/1,批次 rr-4d7d5):scen-injection:dcw:hold-pressure-sp→46.8bar [证实✓]。假设:全功能验收:omp 经 MCP"
+    }
+  ],
+  "report": {
+    "at": "2026-10-20T16:56:20.928Z",
+    "base": "http://127.0.0.1:3470",
+    "lineId": "ln-07385fad",
+    "recipeId": "rc-d1d767fb",
+    "harnesses": [
+      {
+        "harness": "mock",
+        "available": true,
+        "created": true,
+        "agentId": "67eac1c8-2f8c-4e44-8c17-2dbfcdde47e9",
+        "daqNode": "dn-9c71f536",
+        "recipeId": "rc-d1d767fb",
+        "bindOk": true,
+        "toolCount": 64,
+        "hasTools": true,
+        "daqBound": true,
+        "recipeBound": true
+      },
+      {
+        "harness": "omp",
+        "available": true,
+        "created": true,
+        "agentId": "f4b1c6e2-9f37-4323-9b43-d73c57ebb7d2",
+        "daqNode": "dn-f7c3f5f7",
+        "recipeId": "rc-d1d767fb",
+        "bindOk": true,
+        "toolCount": 64,
+        "hasTools": true,
+        "daqBound": true,
+        "recipeBound": true
+      },
+      {
+        "harness": "opencode",
+        "available": true,
+        "created": true,
+        "agentId": "b595b077-a0e5-414e-bdda-b879a301da5c",
+        "daqNode": "dn-6bf61c1b",
+        "recipeId": "rc-d1d767fb",
+        "bindOk": true,
+        "toolCount": 64,
+        "hasTools": true,
+        "daqBound": true,
+        "recipeBound": true
+      },
+      {
+        "harness": "codex",
+        "available": true,
+        "created": true,
+        "agentId": "1bc3dafd-b41d-4070-9c20-c5ca96d4b333",
+        "daqNode": "dn-e1e0f766",
+        "recipeId": "rc-d1d767fb",
+        "bindOk": true,
+        "toolCount": 64,
+        "hasTools": true,
+        "daqBound": true,
+        "recipeBound": true
+      },
+      {
+        "harness": "dsh",
+        "available": true,
+        "created": true,
+        "agentId": "d5cd28aa-5af2-4fa1-bd55-15f2e8bf42c9",
+        "daqNode": "dn-6451a3c7",
+        "recipeId": "rc-d1d767fb",
+        "bindOk": true,
+        "toolCount": 64,
+        "hasTools": true,
+        "daqBound": true,
+        "recipeBound": true
+      },
+      {
+        "harness": "claude",
+        "available": true,
+        "created": true,
+        "agentId": "bbf3943e-eb13-43c6-ae95-1339d146c5ca",
+        "daqNode": "dn-55813f2a",
+        "recipeId": "rc-d1d767fb",
+        "bindOk": true,
+        "toolCount": 64,
+        "hasTools": true,
+        "daqBound": true,
+        "recipeBound": true
+      },
+      {
+        "harness": "gemini",
+        "available": true,
+        "created": true,
+        "agentId": "4e71868a-9c4f-45f2-b08b-3f8a4b8b6d63",
+        "daqNode": "dn-6a149aec",
+        "recipeId": "rc-d1d767fb",
+        "bindOk": true,
+        "toolCount": 64,
+        "hasTools": true,
+        "daqBound": true,
+        "recipeBound": true
+      },
+      {
+        "harness": "copilot",
+        "available": true,
+        "created": true,
+        "agentId": "e2f637f3-58f2-4182-8398-9ca883110b61",
+        "daqNode": "dn-b455b299",
+        "recipeId": "rc-d1d767fb",
+        "bindOk": true,
+        "toolCount": 64,
+        "hasTools": true,
+        "daqBound": true,
+        "recipeBound": true
+      },
+      {
+        "harness": "cursor",
+        "available": true,
+        "created": true,
+        "agentId": "b529e4d1-58d0-429f-829e-12d833440c0c",
+        "daqNode": "dn-5944a72e",
+        "recipeId": "rc-d1d767fb",
+        "bindOk": true,
+        "toolCount": 64,
+        "hasTools": true,
+        "daqBound": true,
+        "recipeBound": true
+      },
+      {
+        "harness": "crush",
+        "available": true,
+        "created": true,
+        "agentId": "3277bc79-a625-49c7-819b-b2f7c694d09a",
+        "daqNode": "dn-38aed797",
+        "recipeId": "rc-d1d767fb",
+        "bindOk": true,
+        "toolCount": 64,
+        "hasTools": true,
+        "daqBound": true,
+        "recipeBound": true
+      },
+      {
+        "harness": "goose",
+        "available": true,
+        "created": true,
+        "agentId": "e6202f97-4a2f-400c-ab12-4eaedbbcd2ea",
+        "daqNode": "dn-19324b20",
+        "recipeId": "rc-d1d767fb",
+        "bindOk": true,
+        "toolCount": 64,
+        "hasTools": true,
+        "daqBound": true,
+        "recipeBound": true
+      },
+      {
+        "harness": "qwen",
+        "available": true,
+        "created": true,
+        "agentId": "41edb19b-94d3-4005-891b-ebee3970da2f",
+        "daqNode": "dn-ee8259a0",
+        "recipeId": "rc-d1d767fb",
+        "bindOk": true,
+        "toolCount": 64,
+        "hasTools": true,
+        "daqBound": true,
+        "recipeBound": true
+      },
+      {
+        "harness": "pi",
+        "available": true,
+        "created": true,
+        "agentId": "3884ecb4-0f85-4af1-a6d8-e42856683529",
+        "daqNode": "dn-fdce306e",
+        "recipeId": "rc-d1d767fb",
+        "bindOk": true,
+        "toolCount": 64,
+        "hasTools": true,
+        "daqBound": true,
+        "recipeBound": true
+      },
+      {
+        "harness": "hermes",
+        "available": true,
+        "created": true,
+        "agentId": "175ee2ec-e3a2-4f80-aa81-7a35cf3a452c",
+        "daqNode": "dn-9af5e753",
+        "recipeId": "rc-d1d767fb",
+        "bindOk": true,
+        "toolCount": 64,
+        "hasTools": true,
+        "daqBound": true,
+        "recipeBound": true
+      }
+    ],
+    "mcp": [
+      {
+        "harness": "mock",
+        "agentId": "67eac1c8-2f8c-4e44-8c17-2dbfcdde47e9",
+        "listCount": 64,
+        "readOk": true,
+        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:melt-temp-pv(熔体/箱体温度)单位 ℃,正常量程 20~320℃,当前状态 ok,时间窗 2026-10-21T00:55 ~ 2026-10-21T00:56(降采样 15000ms)\n  当前活动批次 run=rr-cde46f39 配方「scen-injection-recipe-scdn7」(rc-d1d767fb)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 246.63333333333333℃"
+      },
+      {
+        "harness": "omp",
+        "agentId": "f4b1c6e2-9f37-4323-9b43-d73c57ebb7d2",
+        "listCount": 64,
+        "readOk": true,
+        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:melt-pressure-pv(熔体/箱体温度)单位 bar,正常量程 0~160bar,当前状态 ok,时间窗 2026-10-21T00:55 ~ 2026-10-21T00:56(降采样 15000ms)\n  当前活动批次 run=rr-cde46f39 配方「scen-injection-recipe-scdn7」(rc-d1d767fb)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 51.916666666"
+      },
+      {
+        "harness": "opencode",
+        "agentId": "b595b077-a0e5-414e-bdda-b879a301da5c",
+        "listCount": 64,
+        "readOk": true,
+        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:mold-temp-pv(熔体/箱体温度)单位 ℃,正常量程 10~110℃,当前状态 ok,时间窗 2026-10-21T00:55 ~ 2026-10-21T00:56(降采样 15000ms)\n  当前活动批次 run=rr-cde46f39 配方「scen-injection-recipe-scdn7」(rc-d1d767fb)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 40.266666666666666℃"
+      },
+      {
+        "harness": "codex",
+        "agentId": "1bc3dafd-b41d-4070-9c20-c5ca96d4b333",
+        "listCount": 64,
+        "readOk": true,
+        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:clamp-force-pv(熔体/箱体温度)单位 kN,正常量程 0~2600kN,当前状态 ok,时间窗 2026-10-21T00:55 ~ 2026-10-21T00:56(降采样 15000ms)\n  当前活动批次 run=rr-cde46f39 配方「scen-injection-recipe-scdn7」(rc-d1d767fb)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 1599.5kN | 均值 1"
+      },
+      {
+        "harness": "dsh",
+        "agentId": "d5cd28aa-5af2-4fa1-bd55-15f2e8bf42c9",
+        "listCount": 64,
+        "readOk": true,
+        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:inj-pressure-pv(熔体/箱体温度)单位 bar,正常量程 0~180bar,当前状态 ok,时间窗 2026-10-21T00:55 ~ 2026-10-21T00:56(降采样 15000ms)\n  当前活动批次 run=rr-cde46f39 配方「scen-injection-recipe-scdn7」(rc-d1d767fb)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 52.1bar | 均值 "
+      },
+      {
+        "harness": "claude",
+        "agentId": "bbf3943e-eb13-43c6-ae95-1339d146c5ca",
+        "listCount": 64,
+        "readOk": true,
+        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:water-temp-pv(熔体/箱体温度)单位 ℃,正常量程 5~60℃,当前状态 ok,时间窗 2026-10-21T00:55 ~ 2026-10-21T00:56(降采样 15000ms)\n  当前活动批次 run=rr-cde46f39 配方「scen-injection-recipe-scdn7」(rc-d1d767fb)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 23.957142857142856℃ "
+      },
+      {
+        "harness": "gemini",
+        "agentId": "4e71868a-9c4f-45f2-b08b-3f8a4b8b6d63",
+        "listCount": 64,
+        "readOk": true,
+        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:cool-flow-pv(熔体/箱体温度)单位 L/min,正常量程 0~80L/min,当前状态 ok,时间窗 2026-10-21T00:55 ~ 2026-10-21T00:56(降采样 15000ms)\n  当前活动批次 run=rr-cde46f39 配方「scen-injection-recipe-scdn7」(rc-d1d767fb)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 44.8333333333"
+      },
+      {
+        "harness": "copilot",
+        "agentId": "e2f637f3-58f2-4182-8398-9ca883110b61",
+        "listCount": 64,
+        "readOk": true,
+        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:part-weight(熔体/箱体温度)单位 g,正常量程 25~40g,当前状态 alarm,时间窗 2026-10-21T00:55 ~ 2026-10-21T00:56(降采样 15000ms)\n  当前活动批次 run=rr-cde46f39 配方「scen-injection-recipe-scdn7」(rc-d1d767fb)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 31.25g | 均值 31.25 "
+      },
+      {
+        "harness": "cursor",
+        "agentId": "b529e4d1-58d0-429f-829e-12d833440c0c",
+        "listCount": 64,
+        "readOk": true,
+        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:flash-rate(熔体/箱体温度)单位 %,正常量程 0~5%,当前状态 warn,时间窗 2026-10-21T00:55 ~ 2026-10-21T00:56(降采样 15000ms)\n  当前活动批次 run=rr-cde46f39 配方「scen-injection-recipe-scdn7」(rc-d1d767fb)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 0.003428571428571429% "
+      },
+      {
+        "harness": "crush",
+        "agentId": "3277bc79-a625-49c7-819b-b2f7c694d09a",
+        "listCount": 64,
+        "readOk": true,
+        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:sink-mark(熔体/箱体温度)单位 %,正常量程 0~10%,当前状态 alarm,时间窗 2026-10-21T00:55 ~ 2026-10-21T00:56(降采样 15000ms)\n  当前活动批次 run=rr-cde46f39 配方「scen-injection-recipe-scdn7」(rc-d1d767fb)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 2.184% | 均值 2.133 | 最"
+      },
+      {
+        "harness": "goose",
+        "agentId": "e6202f97-4a2f-400c-ab12-4eaedbbcd2ea",
+        "listCount": 64,
+        "readOk": true,
+        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:dim-dev(熔体/箱体温度)单位 mm,正常量程 -0.5~0.5mm,当前状态 ok,时间窗 2026-10-21T00:55 ~ 2026-10-21T00:56(降采样 15000ms)\n  当前活动批次 run=rr-cde46f39 配方「scen-injection-recipe-scdn7」(rc-d1d767fb)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 0.008125mm | 均值 0.00"
+      },
+      {
+        "harness": "qwen",
+        "agentId": "41edb19b-94d3-4005-891b-ebee3970da2f",
+        "listCount": 64,
+        "readOk": true,
+        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:cycle-time(熔体/箱体温度)单位 s,正常量程 5~60s,当前状态 ok,时间窗 2026-10-21T00:55 ~ 2026-10-21T00:56(降采样 15000ms)\n  当前活动批次 run=rr-cde46f39 配方「scen-injection-recipe-scdn7」(rc-d1d767fb)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 15.299999999999999s | 均"
+      },
+      {
+        "harness": "pi",
+        "agentId": "3884ecb4-0f85-4af1-a6d8-e42856683529",
+        "listCount": 64,
+        "readOk": true,
+        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:wall-profile(熔体/箱体温度)单位 mm,正常量程 1~5mm,当前状态 offline,时间窗 2026-10-21T00:55 ~ 2026-10-21T00:56(降采样 15000ms)\n  当前活动批次 run=rr-cde46f39 配方「scen-injection-recipe-scdn7」(rc-d1d767fb)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  窗口内无数据(产线未运行或过滤条件不匹配;仅产线运行中"
+      },
+      {
+        "harness": "hermes",
+        "agentId": "175ee2ec-e3a2-4f80-aa81-7a35cf3a452c",
+        "listCount": 64,
+        "readOk": true,
+        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:surface-image(熔体/箱体温度)单位 灰度,正常量程 0~255灰度,当前状态 offline,时间窗 2026-10-21T00:55 ~ 2026-10-21T00:56(降采样 15000ms)\n  当前活动批次 run=rr-cde46f39 配方「scen-injection-recipe-scdn7」(rc-d1d767fb)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  窗口内无数据(产线未运行或过滤条件不匹配;仅产线"
+      }
+    ],
+    "write": {
+      "harness": "omp",
+      "from": 45,
+      "to": 46.8,
+      "card": "ap-5e9e8b6b",
+      "text": "试验已整批下发并全部设备证实(1/1,批次 rr-4d7d5):scen-injection:dcw:hold-pressure-sp→46.8bar [证实✓]。假设:全功能验收:omp 经 MCP 小步试验 45→46.8。\n人工附言:全功能验收批准注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC 整批恢复)。",
+      "readback": 46.8,
+      "ok": true
+    }
+  }
+}

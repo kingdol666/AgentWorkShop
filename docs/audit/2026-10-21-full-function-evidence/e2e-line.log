@@ -1,0 +1,53 @@
+npm warn Unknown project config "auto-install-peers". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown project config "strict-peer-dependencies". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> agentworkshop@0.7.70 test:e2e-line
+> node scripts/e2e-line-governance.mjs
+
+✔ [L1] 隔离实例启动 + workshop ready
+✔ [L1b] admin 注册/登录
+✔ [L2] 建线/节点/产品/配方/频道(lead)/绑线
+✔ [L3a] line_start 生成审批卡(line-start:*)
+✔ [L3b] 批准后开线成功且参数设备证实
+✔ [L3c] line_status 显示运行中
+✔ [L4a] line_stop 生成审批卡(line-stop:*)
+✔ [L4b] 批准后停线成功
+✔ [L4c] 停线后 line_status 未运行
+✔ [L5a] 换线前审批卡已挂起
+✔ [L5b] 换线后审批单取消且未开线
+✔ [L5c] A 线仍未运行
+✔ [L6a] 不可下发配方仍生成审批卡(预检在批准后执行)
+    L6 raw: {"status":200,"code":0,"message":"ok","data":{"result":{"text":"开线失败:配方「停用配方-lmfonp」全部 1 个参数均未下发成功。已自动停线收窗,产线未保持运行状态。\n失败明细:\n  - 停用数控-lmfonp: 已跳过:节点「停用数控-lmfonp」已停用,参数未下发","isError":true}}}
+✔ [L6b] 全部参数失败 → isError + 已自动停线
+✔ [L6c] 自动停线后 line_status 未运行
+✔ [L7a] 数采节点创建(不直接绑定,仅频道绑线可读)
+✔ [L7b] daq_query limit=-5 → 参数错误
+✔ [L7c] daq_query from>=to → 时间窗错误
+✔ [L7d] daq_query bucket_ms=-1 → 参数错误
+✔ [L7e] daq_frames kind=foo → 参数错误
+✔ [L7f] 频道绑线节点可只读导出(daq_export 授权同源)
+✔ [L8a] 预备批次已开跑
+✔ [L8b] 停线审批卡已挂起
+✔ [L8c] 人工停线后重开新批次
+✔ [L8d] 旧停线审批被批次复核拒绝
+✔ [L8e] 新批次仍在运行(未被旧单误停)
+✔ [L9a] 开线审批卡已挂起
+✔ [L9b] 审批期间配方改版成功
+✔ [L9c] 旧配方快照批准后拒绝开线
+✔ [L9d] 配方变更后产线未开跑
+✔ [L10a] 解绑线后可显式绑 B 线节点
+✔ [L10b] 换线到 A 后 B 线绑定被清理(查询被拒)
+✔ [L11a] 读取频道成员 agent token
+✔ [L11b] agent token 调用 daq_query 成功(频道绑线只读面)
+✔ [L11e] 错误 agent token 被拒(401/403)
+✔ [L11c] agent token 发起 line_start 并挂审批
+✔ [L11d] agent token 经治理链开线成功
+✔ [L12a] 产线开跑用于实采
+✔ [L12b] DAQ 实采样本可查
+✔ [L12c] DCW 写入受理 + ACK 等级如实
+✔ [L12d] DCW 回读一致
+✔ [L12e] 超单步限幅被拒(20)
+✔ [L12f] 60s 写间隔被拒
+✔ [L12g] 越节点量程被拒
+
+═══ 结论:PASS(44/44)═══

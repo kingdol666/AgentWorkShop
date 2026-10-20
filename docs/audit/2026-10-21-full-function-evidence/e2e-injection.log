@@ -1,0 +1,29 @@
+npm warn Unknown project config "auto-install-peers". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown project config "strict-peer-dependencies". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> agentworkshop@0.7.70 test:e2e-injection
+> node scripts/e2e-injection-recipe-closedloop.mjs
+
+✔ [P1] 场景/配方/worker 就绪
+  [restore baseline] hitl=ap-4a57ee06 isError=false 试验已整批下发并全部设备证实(2/2,批次 rr-17df0):scen-injection:dcw:hold-pressure-sp→45bar [证实✓];scen-injection:dcw:hold-time-sp→6s [证实✓]。假设:真实闭环 P2:恢复配方基线保压 45bar/保压时间 6s,确保本轮从确定工况开始。。
+人工附言:注塑真实闭环 E2E 批准注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固
+✔ [P2] 恢复基线并完成 65s 复测
+  [pressure +5 #1] hitl=ap-1c31202d isError=false 试验已整批下发并全部设备证实(1/1,批次 rr-f1fee):scen-injection:dcw:hold-pressure-sp→50bar [证实✓]。假设:真实闭环 P3-1:克重 31.22g、缩痕 2.139%,保压 45→50bar(单变量);65s 后 DAQ 复测。。
+人工附言:注塑真实闭环 E2E 批准注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 →
+✔ [P3-1] 保压 50bar 试验经 HITL 并设备证实
+  [pressure +5 #2] hitl=ap-2f15a4bc isError=false 试验已整批下发并全部设备证实(1/1,批次 rr-b6549):scen-injection:dcw:hold-pressure-sp→55bar [证实✓]。假设:真实闭环 P3-2:克重 31.55g、缩痕 1.893%,保压 50→55bar(单变量);65s 后 DAQ 复测。。
+人工附言:注塑真实闭环 E2E 批准注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 →
+✔ [P3-2] 保压 55bar 试验经 HITL 并设备证实
+  [pressure +5 #3] hitl=ap-eb8263a9 isError=false 试验已整批下发并全部设备证实(1/1,批次 rr-1f458):scen-injection:dcw:hold-pressure-sp→60bar [证实✓]。假设:真实闭环 P3-3:克重 31.78g、缩痕 1.762%,保压 55→60bar(单变量);65s 后 DAQ 复测。。
+人工附言:注塑真实闭环 E2E 批准注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 →
+✔ [P3-3] 保压 60bar 试验经 HITL 并设备证实
+  [pressure +5 #4] hitl=ap-c9207406 isError=false 试验已整批下发并全部设备证实(1/1,批次 rr-472fd):scen-injection:dcw:hold-pressure-sp→65bar [证实✓]。假设:真实闭环 P3-4:克重 32.03g、缩痕 1.473%,保压 60→65bar(单变量);65s 后 DAQ 复测。。
+人工附言:注塑真实闭环 E2E 批准注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 →
+✔ [P3-4] 保压 65bar 试验经 HITL 并设备证实
+✔ [P5] 最终质量入窗(克重/飞边/缩痕/熔温,DAQ 新鲜)
+  [recipe_update keep] hitl=ap-074e1943 isError=false 已保存为 v2:「scen-injection-recipe-scdn7」参数 scen-injection:dcw:hold-pressure-sp 45→65;scen-injection:dcw:hold-time-sp 6→6;原因:真实闭环复测达标(weight=32.28g flash=0.009% sink=1.41% melt=246.6℃),固化保压 65bar/保压时间 6s;依据多轮 HITL 批准的 recipe_trial 与 65s DAQ 复测。。
+人工附言:注塑真实闭环 E2E 批准
+✔ [P6] 达标配方固化(v2 且参数独立回读)
+✔ [P7] 写控/配方日志可追溯
+
+═══ 结论:PASS(9/9) out=bench\results\injection-pressure-loop-2026-10-20T17-06-50-980Z ═══
