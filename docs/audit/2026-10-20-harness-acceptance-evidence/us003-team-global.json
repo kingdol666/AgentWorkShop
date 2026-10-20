@@ -81,5 +81,19 @@
       "ok": true,
       "detail": "version=5"
     }
-  ]
+  ],
+  "dispatch": {
+    "channelId": "aa2652e6-833f-4128-9138-715d62756115",
+    "rootId": "89e78511-59d3-4169-a026-cc18c7cfaedd",
+    "rootState": "COMPLETED",
+    "rootArtifactName": "lead-acceptance-summary",
+    "children": [
+      {
+        "id": "ff6bf486-21bc-487f-8773-ca11ca1c66aa",
+        "parentId": "89e78511-59d3-4169-a026-cc18c7cfaedd",
+        "assigneeId": "3610c58d-76b9-4aee-a1b5-05805a9f738a",
+        "state": "COMPLETED"
+      }
+    ]
+  }
 }

@@ -80,5 +80,7 @@
   "copilotTask": {
     "state": "COMPLETED",
     "deliverable": "HARNESS-OK:copilot on 0.7.67"
-  }
+  },
+  "analystAgentId": "df6be5c3-618e-48f0-b047-988f4ce964af",
+  "capturedAt": "2026-10-20T05:28:20.779Z"
 }

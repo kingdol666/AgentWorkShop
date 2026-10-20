@@ -41,20 +41,17 @@ export function agentToolResources(agentId: string): AgentToolResourceView {
       else if (b.kind === 'recipe') {
         const r = dcw.listRecipes().find(x => x.id === b.nodeId)
         if (!r) continue
-        const params = (r.params ?? []).map((p) => {
+        const params: AgentToolResourceView['recipes'][number]['params'] = []
+        for (const p of r.params ?? []) {
           const n = dcw.byId(p.nodeId)
-          return { nodeId: p.nodeId, name: n?.name ?? p.nodeId, unit: n?.unit ?? '' }
-        })
-        out.recipes.push({ id: r.id, name: r.name, version: r.version ?? 1, params })
-        // MES 取数授权配方:仅 mes-rest 驱动的参数节点才是 MES 点位
-        // (forge-channel 3b 用配方参数面授权历史-only MES 节点;普通产线配方不冒充 MES)。
-        for (const p of (r.params ?? [])) {
-          const n = dcw.byId(p.nodeId)
-          if (n?.driver !== 'mes-rest') continue
-          if (!out.mesNodes.some(x => x.id === p.nodeId)) {
+          params.push({ nodeId: p.nodeId, name: n?.name ?? p.nodeId, unit: n?.unit ?? '' })
+          // MES 取数授权配方:仅 mes-rest 驱动的参数节点才是 MES 点位
+          // (forge-channel 3b 用配方参数面授权历史-only MES 节点;普通产线配方不冒充 MES)。
+          if (n?.driver === 'mes-rest' && !out.mesNodes.some(x => x.id === p.nodeId)) {
             out.mesNodes.push({ id: p.nodeId, name: n.name, unit: n.unit ?? '' })
           }
         }
+        out.recipes.push({ id: r.id, name: r.name, version: r.version ?? 1, params })
       }
     }
   }

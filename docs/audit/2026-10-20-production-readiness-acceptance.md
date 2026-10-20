@@ -12,9 +12,10 @@
 - 真实运行的 PLC 节点模拟器(`plc-node-simulator`,5 协议:Modbus TCP/RTU、OPC UA、MQTT、HTTP);
 - 真实平台进程(全局 npm 0.7.67)、真实数据库、真实 Agent 子进程(omp/copilot)、真实 HITL。
 - 不包含:物理 PLC、真实车间网络、安全 PLC 联锁、现场急停/安全回路。
-- 12 个 harness 因未登录/配额/上游配置无法真实跑;本轮产线作业由 **omp + copilot** 完成,
-  MCP 工具注册对**可运行的 Agent**(omp/copilot)已验证;其余引擎受未登录/配额/上游
-  配置阻塞,不能宣称“全部引擎已真实作业”。详见 `2026-10-20-harness-native-vs-mcp.md`。
+- 12 个 harness 未取得真实作业证据:11 个受未登录/配额/上游配置阻塞,mock 是确定性
+  测试替身(不调用 LLM);本轮产线作业由 **omp + copilot** 完成。MCP 工具注册对
+  **可运行的 Agent**(omp/copilot)已验证;不能宣称“全部引擎已真实作业”。
+  详见 `2026-10-20-harness-native-vs-mcp.md`。
 
 ## 1. PRD 验收结果
 
@@ -27,7 +28,7 @@
 | US-005 | 原生 ask HITL + 群聊 UI | **PASS** | `us005-ask-hitl.json` 6/0;`hitl-live-final.txt` U2c-f PASS |
 | US-006 | 工具注册/注入/按 Agent 描述 | **PASS** | `us006-mcp-tools.json` 64 tools;描述含 5 节点;omp 原生/copilot MCP |
 | US-007 | 构建/单测/打包/全局启动 | **PASS** | typecheck ✔;268/268;build 0.7.67;`us007-global-build.json` |
-| US-008 | 提交推送 | **PASS** | `95358665` + `bab0618b`,已推送 origin/tii-revision-20261017(见第 5 节) |
+| US-008 | 提交推送 | **PASS** | `95358665` + `bab0618b` + `e26956e6`,已推送 origin/tii-revision-20261017(见第 5 节) |
 
 ## 2. 关键实测
 
@@ -87,8 +88,9 @@
 
 1. **不是物理产线验收**:本轮 PLC 是协议级模拟器;真实 PLC 的 IP/端口/寄存器/字节序/
    安全许可/网络隔离需现场逐项核对。
-2. **不是 14 个 harness 全部作业通过**:omp/copilot 真实通过;其余 12 个因登录/配额/
-   上游配置不可用,只有 MCP 工具面验证。生产上线若要求多引擎冗余,需先补齐各引擎凭据。
+2. **不是 14 个 harness 全部作业通过**:omp/copilot 真实通过;其余 12 个未取得真实作业
+   证据(11 个因登录/配额/上游配置不可用,mock 为测试替身)。MCP 工具面只在可运行的
+   omp/copilot 上验证;生产上线若要求多引擎冗余,需先补齐各引擎凭据。
 3. **TUI HITL 仍有 6 项失败**;Web 群聊/API 的 ask HITL 已通过。
 4. **安全审计未完成**(Mimosa scanner_enobufs);不能宣称“已通过安全审计”。
 
@@ -107,6 +109,7 @@
 - 分支:`tii-revision-20261017`(origin: `https://github.com/kingdol666/AgentWorkShop.git`)
 - `95358665` test(readiness): 完成产线作业与 HITL 全链预验收
 - `bab0618b` test(readiness): 修复派发假阳性并补齐拒绝窗口/typecheck 证据
+- `e26956e6` docs(readiness): 补齐提交记录与复验证据引用
 - 本报告随上述提交推送;评审修复后的复验证据见 `us003-team-global.json`
   (15/0,子任务 parent/assignee 核验)、`us004-hitl-reject.json`(9/0,pending 窗口)、
   `us007-typecheck.txt`、`us007-global-build.json`(含 GLOBAL-067-OK)。
