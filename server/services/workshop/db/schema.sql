@@ -389,3 +389,41 @@ CREATE TABLE IF NOT EXISTS analysis_reports (
 );
 CREATE INDEX IF NOT EXISTS idx_analysis_reports_line ON analysis_reports(line_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_analysis_reports_recipe ON analysis_reports(recipe_id);
+
+-- v28: 工具目录 + Channel 级工具治理(2026-10-20)
+CREATE TABLE IF NOT EXISTS tool_registry (
+  name             TEXT PRIMARY KEY,
+  source           TEXT NOT NULL,
+  plugin_name      TEXT NOT NULL DEFAULT '',
+  plugin_scope     TEXT NOT NULL DEFAULT '',
+  label            TEXT NOT NULL DEFAULT '',
+  description      TEXT NOT NULL DEFAULT '',
+  parameters_json  TEXT NOT NULL DEFAULT '{}',
+  roles_json       TEXT NOT NULL DEFAULT '["lead","worker"]',
+  group_name       TEXT NOT NULL DEFAULT '',
+  metadata_json    TEXT NOT NULL DEFAULT '{}',
+  definition_hash  TEXT NOT NULL DEFAULT '',
+  available        INTEGER NOT NULL DEFAULT 1,
+  first_seen_at    TEXT NOT NULL,
+  last_seen_at     TEXT NOT NULL,
+  updated_at       TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_tool_registry_source ON tool_registry(source, available);
+CREATE INDEX IF NOT EXISTS idx_tool_registry_plugin ON tool_registry(plugin_name);
+
+CREATE TABLE IF NOT EXISTS channel_tool_policies (
+  channel_id   TEXT PRIMARY KEY,
+  mode         TEXT NOT NULL DEFAULT 'all',
+  updated_by   TEXT NOT NULL DEFAULT '',
+  updated_at   TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS channel_tool_settings (
+  channel_id   TEXT NOT NULL,
+  tool_name    TEXT NOT NULL,
+  enabled      INTEGER NOT NULL DEFAULT 1,
+  updated_by   TEXT NOT NULL DEFAULT '',
+  updated_at   TEXT NOT NULL,
+  PRIMARY KEY (channel_id, tool_name)
+);
+CREATE INDEX IF NOT EXISTS idx_channel_tool_settings_channel ON channel_tool_settings(channel_id, enabled);

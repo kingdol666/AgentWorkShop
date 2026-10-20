@@ -32,9 +32,15 @@ if (!AGENT_ID || !AGENT_TOKEN) {
 
 /** 工具面缓存(短 TTL:插件热注册 10s 内传导;失败时沿用旧表) */
 let toolCache = { at: 0, tools: [] }
+let clientReady = false
+let lastToolSignature = ''
 
-async function fetchTools() {
-  if (toolCache.tools.length > 0 && Date.now() - toolCache.at < LIST_TTL_MS) return toolCache.tools
+function toolSignature(tools) {
+  return JSON.stringify((Array.isArray(tools) ? tools : []).map(t => [t.name, t.description]))
+}
+
+async function fetchTools(force = false) {
+  if (!force && toolCache.tools.length > 0 && Date.now() - toolCache.at < LIST_TTL_MS) return toolCache.tools
   const res = await fetch(`${BASE_URL}/api/workshop/agent-tools/list?agentId=${encodeURIComponent(AGENT_ID)}`, {
     headers: { 'x-aw-agent-token': AGENT_TOKEN },
     signal: AbortSignal.timeout(15_000),
@@ -45,6 +51,22 @@ async function fetchTools() {
   if (Array.isArray(tools) && tools.length > 0) toolCache = { at: Date.now(), tools }
   return toolCache.tools
 }
+
+// MCP 工具面变更通知:每 10s 拉一次真实清单,名称/描述变化即通知客户端重新 list。
+// 引擎是否响应由客户端决定;执行面的 Channel 闸门不依赖该通知。
+const listChangedTimer = setInterval(async () => {
+  if (!clientReady) return
+  try {
+    const tools = await fetchTools(true)
+    const sig = toolSignature(tools)
+    if (lastToolSignature && sig !== lastToolSignature) {
+      process.stdout.write(`${JSON.stringify({ jsonrpc: '2.0', method: 'notifications/tools/list_changed' })}\n`)
+    }
+    lastToolSignature = sig
+  }
+  catch { /* 网络抖动:保留旧表,下一轮再试 */ }
+}, 10_000)
+listChangedTimer.unref?.()
 
 async function callTool(name, args) {
   const res = await fetch(`${BASE_URL}/api/workshop/agent-tools/invoke`, {
@@ -95,12 +117,19 @@ rl.on('line', (line) => {
       case 'initialize':
         respond(id, {
           protocolVersion: params?.protocolVersion ?? '2024-11-05',
-          capabilities: { tools: { listChanged: false } },
+          capabilities: { tools: { listChanged: true } },
           serverInfo: { name: 'aw-host-tools', title: 'AgentWorkShop host tools', version: '1.0.0' },
         })
+        clientReady = true
+        void fetchTools()
+          .then((tools) => {
+            lastToolSignature = toolSignature(tools)
+          })
+          .catch(() => { /* 初始化快照失败:下一轮轮询重试 */ })
         break
       case 'notifications/initialized':
       case 'initialized':
+        clientReady = true
         break // 通知,无响应
       case 'ping':
         if (isRequest) respond(id, {})

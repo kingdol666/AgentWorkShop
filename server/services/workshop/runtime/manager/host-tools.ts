@@ -11,6 +11,7 @@ import { getChannelPluginsRepo } from '../../db/channel-plugins.repo'
 import { HOST_TOOLS, createSessionState, dispatchHostTool, hostToolsForAgent } from '../../agents/host-tool-bridge'
 import { instanceToAgentInfo, rowToChannelMail } from './helpers'
 import { listPluginTools, pluginOfTool } from '../../agents/plugin-tools'
+import { channelToolGate } from '../../tools/policy'
 import { rowToMessage } from '../mailbox'
 
 export abstract class ManagerHostTools extends ManagerA2A {
@@ -98,6 +99,11 @@ export abstract class ManagerHostTools extends ManagerA2A {
     try {
       // 活性登记:调度器停滞看门狗以「最近工具调用」为健康信号(见 SchedulerLoopOptions.toolActivityOf)
       this.lastToolInvokeAt.set(input.agentId, Date.now())
+      // Channel 逐工具选择:插件分支会提前 return,必须在此先复核(不能只靠 dispatch)。
+      {
+        const gate = channelToolGate(row.channelId, input.tool)
+        if (gate.blocked) return { text: gate.message ?? `工具 ${input.tool} 不可用`, isError: true }
+      }
       // 插件工具:团队开关过滤 + handler 直调(ctx.omp 注册的自定义工具全 harness 同源)
       // 内置同名工具优先(与 dispatch 同口径):插件覆盖不得跳过工业门控
       const pluginTool = HOST_TOOLS.some(t => t.name === input.tool) ? undefined : listPluginTools().get(input.tool)

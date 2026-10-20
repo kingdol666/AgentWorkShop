@@ -30,6 +30,10 @@ interface PluginInfo {
   hasClient: boolean
   routes: PluginRoute[]
   error?: string | null
+  /** 当前注册的工具数/已知工具数(来自 tool_registry) */
+  toolCount?: number
+  knownToolCount?: number
+  tools?: Array<{ name: string, label: string }>
 }
 
 const plugins = ref<PluginInfo[]>([])
@@ -110,6 +114,7 @@ onMounted(load)
       <div class="pg-stats">
         <span class="stat">{{ $t('plugins.enabled') }} <b>{{ enabledCount }}</b></span>
         <span class="stat">{{ $t('plugins.hasClient') }} <b>{{ clientCount }}</b></span>
+        <span class="stat">{{ $t('toolsPage.total') }} <b>{{ plugins.reduce((s, p) => s + (p.toolCount ?? 0), 0) }}</b></span>
         <span class="stat">{{ $t('plugins.routes') }} <b>{{ plugins.reduce((s, p) => s + p.routes.length, 0) }}</b></span>
         <a-button
           size="small"
@@ -190,6 +195,10 @@ onMounted(load)
             v-if="p.hasClient"
             class="tag client"
           >{{ $t('plugins.hasClient') }}</span>
+          <span
+            v-if="p.toolCount"
+            class="tag client"
+          >{{ p.toolCount }} {{ $t('toolsPage.name') }}</span>
         </div>
         <div
           v-if="p.routes.length"
@@ -217,6 +226,8 @@ onMounted(load)
           </dd>
           <dt>enabled</dt><dd>{{ current.enabled }}</dd>
           <dt>client</dt><dd>{{ current.hasClient ? '✓' : '—' }}</dd>
+          <dt>{{ $t('toolsPage.name') }}</dt>
+          <dd>{{ current.toolCount ?? 0 }} / {{ current.knownToolCount ?? 0 }}</dd>
           <dt v-if="current.error">
             error
           </dt>
@@ -227,6 +238,22 @@ onMounted(load)
             {{ current.error }}
           </dd>
         </dl>
+        <h4>{{ $t('toolsPage.name') }}</h4>
+        <div
+          v-if="current.tools?.length"
+          class="pg-tool-list"
+        >
+          <code
+            v-for="tool in current.tools"
+            :key="tool.name"
+          >{{ tool.name }}</code>
+        </div>
+        <p
+          v-else
+          class="dim"
+        >
+          —
+        </p>
         <h4>{{ $t('plugins.routes') }}</h4>
         <code
           v-for="r in current.routes"
@@ -306,6 +333,8 @@ h4 { margin: 16px 0 6px; }
   .card-head { flex-wrap: wrap; }
   .card-routes code { overflow-wrap: anywhere; }
   .detail-route { overflow-wrap: anywhere; }
+.pg-tool-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.pg-tool-list code { font-size: 11px; padding: 1px 6px; border-radius: 6px; background: var(--paper-deep); }
 }
 
 @media (max-width: 640px) {

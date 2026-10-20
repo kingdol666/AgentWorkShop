@@ -83,12 +83,16 @@ export function registerPluginTool(plugin: string, tool: OmpPluginTool): void {
 /** 插件卸载/停用时移除其全部工具 */
 export function unregisterPluginTools(plugin: string): void {
   const st = state()
+  let changed = false
   for (const [k, tool] of [...st.byPlugin.entries()]) {
     if (k.startsWith(`${plugin}:`)) {
       st.byPlugin.delete(k)
       if (st.byName.get(tool.name) === tool) st.byName.delete(tool.name)
+      changed = true
     }
   }
+  // 卸载也必须广播:否则在跑 omp 会话仍保留旧 set_host_tools,工具目录也收不到 available=0。
+  if (changed) notifyToolChange()
 }
 
 /** 全部插件工具(工具名 → 定义;hostToolsForRole 合并与分发用) */

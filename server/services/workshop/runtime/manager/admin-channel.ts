@@ -8,6 +8,8 @@ import type { AgentInfo } from '../../agents/agent-interface'
 import type { AgentRow, ChannelRow, WorkspaceRow } from '../../db/database'
 import { AppError, ErrorCodes } from '../../../../utils/errors'
 import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
+import { getChannelPluginsRepo } from '../../db/channel-plugins.repo'
+import { getToolRegistryRepo } from '../../db/tool-registry.repo'
 import { assertHarnessUsable } from '../../agents/harness-availability'
 import { mkdirSync } from 'node:fs'
 import { parseJson } from '../../db/database'
@@ -288,6 +290,12 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
     }
     // 记忆级联清理:成员私有行 + team 公共行(防残留行污染他 channel 的 FTS/team 检索域)
     this.deps.repos.memories.deleteByChannel(channelId)
+    // 工具治理级联:插件开关 + Channel 工具策略/选择行(无外键,必须显式删除)
+    try {
+      getChannelPluginsRepo().removeForChannel(channelId)
+      getToolRegistryRepo().removeForChannel(channelId)
+    }
+    catch { /* 工具治理表不可用不阻断删除(悬挂行读取时忽略) */ }
     // 定时任务级联清理(FK CASCADE 兜底;显式删除保证旧库无 FK 时也收敛)
     this.deps.repos.schedules?.removeByChannel(channelId)
     // workspace 挂载级联:不清理会留下"幽灵频道"(左栏有条目、右栏永空)——

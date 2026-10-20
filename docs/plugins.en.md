@@ -9,7 +9,7 @@
 >
 > Applies to: plugin system v2 has been available since **v0.7.29** (frontend component
 > injection / plugin settings / plugin i18n / runtime services surface); this document
-> describes **v0.7.66**. `ctx.sdkVersion` is currently `0.3.0`.
+> describes **v0.7.70**. `ctx.sdkVersion` is currently `0.3.0`.
 
 ## 1. Folder layout & quick start
 
@@ -509,6 +509,26 @@ Beyond the global switch, every team (channel) keeps its own plugin switch set b
 - **Toggled at any time**: `GET|PUT /api/workshop/channels/:id/plugins` and `GET|PUT /api/workshop/teams/:id/plugins` (body `{ plugins: [{ name, enabled }] }`, full-replacement semantics, unknown or disabled plugin names are ignored);
 - **Semantics**: no explicit rows = unconfigured → every enabled plugin is visible to that team (backward compatible); once rows exist they filter — **a disabled plugin's tools are not injected into that team's agents and dispatch rejects them at the source**;
 - **UI**: the workshop teams page (creation checkboxes + team dialog).
+
+### Tool registry and per-channel tool selection (2026-10-20)
+
+Plugin tools no longer live only in a process-local registry: startup, registration and unload project them into `tool_registry` (SQLite) with source, plugin name, scope, label, description, parameter schema, roles, definition hash and availability. Execution code stays in the plugin process; the database is only the catalog and governance source of truth.
+
+- **Global visibility**: admins open `/tools` (or `GET /api/workshop/tools`) to see built-in and plugin tools, parameter schemas and which channels disabled them; `POST /api/workshop/tools/sync` re-syncs manually.
+- **Per-channel selection**: `GET|PUT /api/workshop/channels/:id/tools`, `POST .../tools/reset`;
+  - `mode='all'` (default): every eligible tool is enabled; only unchecked tools are stored (deny-list);
+  - `mode='selected'`: only checked tools are enabled (allow-list); new tools stay disabled until selected;
+  - hard rules (role / channel profile / write guard / plugin master switch) win; a channel cannot open a tool excluded by a hard rule, and explicitly selecting one in `selected` mode returns `409 TOOL_NOT_ELIGIBLE`.
+- **Same injection source**: omp `set_host_tools`, pi `AW_PI_TOOLS_FILE` and the MCP `tools/list` used by other harnesses all go through `hostToolsForRole`; the execution layer re-checks in `dispatchHostTool` / `invokeHostTool`, so a disabled tool cannot be called even if an engine cached an old list.
+- **UI**: the Channel settings dialog has a Tools section with search, source/state filters, select all/none/reset, and reason badges for hard-rule blocks.
+
+### Install a local plugin
+
+```bash
+aw plugin install <source-dir> [--global|-g] [--name <name>] [--force|-f] [--no-enable]
+```
+
+Installation only accepts a **local directory** containing `index.mjs`: symlinks and out-of-scope paths are rejected and the target must be a project/user scope; `--force` backs up the old directory first. Installation rewrites `plugins-state.json` to trigger hot reload, and the plugin's tools automatically enter the tool catalog and MCP tool surface. No remote URL or marketplace download.
 
 ## 11. Complete example
 

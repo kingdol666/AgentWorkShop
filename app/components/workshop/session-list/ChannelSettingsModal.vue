@@ -7,6 +7,7 @@
  */
 import { message } from 'ant-design-vue'
 import { useWorkshopApi, type ChannelDto } from '@/app/composables/workshop/useWorkshopApi'
+import ChannelToolSettings from './ChannelToolSettings.vue'
 
 const { t } = useI18n()
 
@@ -318,6 +319,10 @@ const openSaveTemplate = (): void => {
           class="ws-hint"
         >—</span>
       </a-form-item>
+      <channel-tool-settings
+        v-if="open"
+        :channel-id="props.channelId"
+      />
       <a-form-item>
         <a-button
           size="small"

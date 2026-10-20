@@ -20,6 +20,7 @@ import { INDUSTRIAL_TOOL_NAMES, dispatchIndustrialTool } from './tools/industria
 import { guardIndustrialToolGrant } from '../industrial/grant-guard'
 import { verifyIndustrialToolCall } from '../industrial/tool-verify'
 import { checkToolAgainstScope } from '../../runtime/permission-scope'
+import { channelToolGate } from '../../tools/policy'
 import type { WorkshopPermissionScope } from '../../../../../shared/workshop-protocol'
 import { handleCompleteTask, handleReportProgress } from './tools/progress'
 import { handleCancelTask, handleDispatchTask, handleGetMyTaskQueue, handleGetTaskDetails, handleListChannelTasks, handleReassignTask, handleRefuseTask, handleSubmitTask, handleUpdateTask } from './tools/tasks'
@@ -68,6 +69,12 @@ async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCa
     const scope = g.__workshopManager?.invocationScopeOf?.(identity.agentId) ?? null
     const verdict = checkToolAgainstScope(scope, req.toolName)
     if (!verdict.allowed) return { text: verdict.message, isError: true }
+  }
+  // Channel 逐工具选择:执行面复核(目录可能被引擎缓存;不能只靠注入面隐藏)。
+  // 未知工具不在此拦截,保持既有“未知工具”错误语义。
+  {
+    const gate = channelToolGate(identity.channelId, req.toolName)
+    if (gate.blocked) return { text: gate.message ?? `工具 ${req.toolName} 不可用`, isError: true }
   }
   // 插件工具分发(ctx.omp.registerTool 注册的自定义工具;不依赖 workspace,优先于内置面)。
   // 同名遮蔽内置工具不生效:否则插件 handler 会绕过 grant/verify/HITL 全部门控,

@@ -42,7 +42,13 @@ export default defineNitroPlugin((nitroApp) => {
   // 见 host.mjs 的 host.packageRoot / resolveRunMode({ cwd, packageRoot }))。按真实形参给局部变量
   // 加注解即可,调用本身逐字不变。
   const hostOptions: { cwd?: string, packageRoot?: string } = { cwd: process.cwd(), packageRoot }
-  void initPluginHost(hostOptions).then((host) => {
+  void initPluginHost(hostOptions).then(async (host) => {
+    // 插件装载完成后再同步一次工具目录:覆盖 workshop 启动时插件尚未注册的工具。
+    try {
+      const { syncToolRegistry } = await import('@/server/services/workshop/tools/registry')
+      syncToolRegistry('plugin-host-ready')
+    }
+    catch { /* 目录同步失败不影响插件运行;插件变更/手动 API 会重试 */ }
     // 实际监听端口回填(nitro listen 后 ctx.api 自环 origin 才准确)。
     // nitro 的运行时 hook 类型 NitroRuntimeHooks 未声明 'listen'(nitro 2.13 的 node 预设运行时只派发
     // request/beforeResponse/afterResponse/render:*/error/close),故对一个只读视图做局部拓宽;
