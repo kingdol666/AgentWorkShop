@@ -87,7 +87,14 @@
 - MQTT/OPC UA/Modbus/HTTP 五协议设备全部 running；`daq_query` 调用 14 节点全部成功，其中 12 个节点有真实样本，pi/hermes 的 2 个绑定节点当前 offline（调用成功≠有数据）。
 - `recipe_trial` 是配方整批操作，按配方窗口/审批治理；节点 `stepLimit` 是单点直写限制，二者语义不同。本轮 `emergency:true` + `AW_TRIAL_INTERVAL_MS=0` 绕过频控，频控未验证。
 
-## 7. 结论与边界
+## 7. 提交与独立复核
+
+- 提交：**16c1973a** `test(full): 复验产线控制、工具注入与 14 harness 专属工具调用`，已推送 `tii-revision-20261017`。
+- 独立 reviewer 首轮：**CONDITIONAL**。已修正报告中的“只返回自己的绑定节点”夸大（补 `agent-daq-isolation` 7/7 无绑线对照）、codex 根因（改为进程退出、根因未捕获）、频控（明确 emergency+interval 0 绕过、未验证）、P7（写控可追溯改由 dcw-writes/audit_log 证明）、setup 断言描述；pi/hermes 自身节点 offline 已披露。
+- 未闭合项保持：原生 codex/mock 矩阵子集、pi 与另外 9 个 harness 的原生 LLM 回合未测；14/14 只代表 MCP 工具面 + 工具注入，不代表 14 个原生回合。
+- 3470/4050 已停止（含 start.mjs supervisor 一并终止，复核端口无监听）。
+
+## 8. 结论与边界
 
 - **可判定通过**：系统主链、产线治理、数采/写控/配方/HITL、工具注册表、Channel 工具治理、14 harness 工具注入与 MCP 调用。
 - **不可宣称全部通过**：原生 codex/mock 矩阵子集未完成；pi 原生回合未测；平台级数字孪生模型训练上轮门禁失败。原因是环境/模型/测试脚本，不是工具注入代码缺失。
