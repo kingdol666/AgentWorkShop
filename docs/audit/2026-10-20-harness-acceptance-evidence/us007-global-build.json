@@ -23,5 +23,10 @@
     "id": "5c0ee236-3517-4e15-99f1-7075f4d3c995",
     "state": "COMPLETED",
     "deliverable": "PROD-READINESS-OK"
+  },
+  "globalMarkerTask": {
+    "id": "2efeae37-0069-4a8e-bce5-b00018c26e31",
+    "state": "COMPLETED",
+    "deliverable": "GLOBAL-067-OK"
   }
 }

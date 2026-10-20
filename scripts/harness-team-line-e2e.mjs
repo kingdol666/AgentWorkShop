@@ -15,6 +15,8 @@
  *   AW_E2E_TOKEN=<admin token> node scripts/harness-team-line-e2e.mjs \
  *     [--base http://127.0.0.1:3001] [--out evidence.json]
  */
+import { DatabaseSync } from 'node:sqlite'
+
 const args = process.argv.slice(2)
 const argOf = (k, d = '') => {
   const i = args.indexOf(k)
@@ -62,6 +64,17 @@ async function waitTask(id, timeoutMs = 300000) {
   return last
 }
 const artifactText = t => (t?.artifacts ?? []).flatMap(a => a.parts ?? []).map(p => String(p.text ?? '')).join('\n')
+
+/** 只读核验任务树(parent_id/assignee/state):SQL 参数绑定,不拼接外部输入 */
+function tasksOf(channelId) {
+  const db = new DatabaseSync('.AgentWorkShop/data/workshop.sqlite', { readOnly: true })
+  try {
+    return db.prepare('SELECT id, parent_id, assignee_id, state, title FROM tasks WHERE channel_id = ? ORDER BY created_at').all(channelId)
+  }
+  finally {
+    db.close()
+  }
+}
 
 /** 轮询并批准本 channel 的 dcw-approval 待办;返回批准次数 */
 async function approveLoop(channelId, timeoutMs, comment, maxApprovals = 2) {
@@ -139,14 +152,28 @@ async function main() {
     Boolean(delivered) && delivered?.fromAgentId === leadId && delivered?.toAgentId === analyst.id,
     delivered ? `${delivered.fromAgentId?.slice(0, 8)}→${delivered.toAgentId?.slice(0, 8)} state=${delivered.state} ${probe}` : '未找到投递消息')
 
-  // ── 任务派发:root → mock lead dispatch → mock worker ──
-  const root = await api('POST', `/api/workshop/channels/${channelId}/tasks`, {
-    title: `dispatch-${TAG}`,
-    description: 'Mock team dispatch probe: complete this task through the team.',
+  // ── 任务派发:独立频道(root → mock lead → mock worker),避免真实 worker 被误派 ──
+  const dch = await api('POST', '/api/workshop/channels', {
+    name: `dispatch-${TAG}`,
+    description: `dispatch-e2e ${TAG}`,
+    leadAgent: { name: 'dispatch-lead', harness: 'mock', config: { delayMs: 50 } },
   })
-  ok('root 任务提交(派发给 lead)', root.code === 0 && Boolean(root.data?.id), root.data?.id ?? root.message)
+  const dChannelId = dch.data?.channelId
+  const dWorker = await api('POST', `/api/workshop/channels/${dChannelId}/agents`, { name: 'dispatch-worker', harness: 'mock', role: 'worker' })
+  const root = await api('POST', `/api/workshop/channels/${dChannelId}/tasks`, {
+    title: `dispatch-${TAG}`,
+    // [mock:complex] 强制 mock lead 走“拆分子任务 + 交付汇总”路径(不再直接 complete)
+    description: '[mock:complex] 把本任务拆分为两个独立子任务,分别交给 worker 执行,完成后汇总验收。',
+  })
+  ok('root 任务提交(派发给 mock lead)', root.code === 0 && Boolean(root.data?.id), root.data?.id ?? root.message)
   const rootDone = await waitTask(root.data?.id, 120000)
-  ok('lead 自动派发并完成', rootDone?.state === 'COMPLETED', `state=${rootDone?.state}`)
+  const taskRows = tasksOf(dChannelId)
+  const children = taskRows.filter(t => t.parent_id === root.data?.id)
+  const childOk = children.length > 0
+    && children.every(t => t.assignee_id === dWorker.data?.id && t.state === 'COMPLETED')
+  const rootText = artifactText(rootDone)
+  ok('mock lead 自动派发子任务给 mock worker', childOk, `children=${children.map(c => `${c.id.slice(0, 8)}/${c.state}/${c.assignee_id?.slice(0, 8)}`).join(',') || 'none'}`)
+  ok('root 交付物为 lead-acceptance-summary', rootDone?.state === 'COMPLETED' && /验收|lead-acceptance/i.test(rootText), `state=${rootDone?.state} deliverable=${rootText.slice(0, 120)}`)
 
   // ── 数采分析:omp analyst ──
   const daqTask = await api('POST', `/api/workshop/channels/${channelId}/tasks`, {
@@ -163,7 +190,7 @@ async function main() {
   const writeTask = await api('POST', `/api/workshop/channels/${channelId}/tasks`, {
     assigneeId: operator.id,
     title: `recipe-${TAG}`,
-    description: `You are the line operator. Use recipe_update with recipe_id="${RECIPE_ID}" and params=[{node_id:"${SPEED_NODE}", value:47}] `
+    description: `You are the line operator. Use recipe_update with recipe_id="${RECIPE_ID}" and params=[{node_id:"${SPEED_NODE}", value:44}] `
       + `and reason="TEAM-WRITE-HITL ${TAG}: raised line speed within the 38-48 window based on stable DAQ". `
       + `The platform will ask a human to approve; wait for the tool result. Then call recipe_apply with recipe_id="${RECIPE_ID}" `
       + `and reason="TEAM-APPLY-HITL ${TAG}: apply the approved v+1 recipe". After both tools return success, call complete_task with summary "TEAM-WRITE-OK".`,
@@ -179,7 +206,7 @@ async function main() {
   // ── 回读核验 ──
   const read = await api('POST', `/api/workshop/dcw/${SPEED_NODE}/read`, {})
   const readback = read.data?.read?.value
-  ok('PLC 回读=47(下发真实生效)', Number(readback) === 47, `readback=${readback}`)
+  ok('PLC 回读=44(下发真实生效)', Number(readback) === 44, `readback=${readback}`)
   const agg = await api('GET', '/api/workshop/dcw')
   const recipe = (agg.data?.recipes ?? []).find(r => r.id === RECIPE_ID)
   ok('配方版本递增', Number(recipe?.version ?? 0) >= 2, `version=${recipe?.version}`)

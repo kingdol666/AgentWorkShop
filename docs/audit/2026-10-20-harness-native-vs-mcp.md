@@ -126,7 +126,7 @@ harness 模型产生 tool call
 - `.../harness-matrix-configured.log`
 - `.../team-line-e2e-fixed.log`
 - `.../hitl-live-omp.log` / `hitl-live-omp-fixed.log`
-- `.../test-driver-*.log`(协议连通性)
+- `.../us001-connectivity.json`(五协议 test-driver 12/12 与 DAQ 节点状态)
 
 > 诚实边界:14 个引擎的**代码适配**都在;本次真实跑通并产出交付物的是 omp、copilot。
 > 其余 12 个的失败均有明确环境原因(未登录/配额/模型/缺 provider),不能宣称“全部 harness

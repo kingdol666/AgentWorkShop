@@ -89,10 +89,13 @@ async function main() {
 
   // 轮询审批卡并拒绝(最多 2 次,防止模型重试)
   let rejected = 0
+  let pendingSnapshot = null
   const end = Date.now() + 240000
   while (Date.now() < end && rejected < 2) {
     const p = await api('GET', `/api/workshop/hitl/pending?channelId=${channelId}`)
     const items = (p.data?.items ?? []).filter(i => i.kind === 'dcw-approval')
+    // 待批准窗口内快照:证明“未批准前不落版本/不下发”(而不是只靠批准后的结果推断)
+    if (items.length > 0 && !pendingSnapshot) pendingSnapshot = await current()
     for (const it of items) {
       const r = await api('POST', '/api/workshop/hitl/respond', {
         kind: it.kind, id: it.id, confirmed: false, comment: `REJECT-ACCEPTANCE ${TAG}: keep the current value`,
@@ -104,6 +107,9 @@ async function main() {
     await sleep(2000)
   }
   ok('出现 manual 审批卡并拒绝', rejected >= 1, `rejected=${rejected}`)
+  ok('待批准期间配方/PLC 未变化(未批准不下发)',
+    Boolean(pendingSnapshot) && pendingSnapshot.version === before.version && Number(pendingSnapshot.value) === Number(before.value),
+    pendingSnapshot ? `pending=v${pendingSnapshot.version}/value=${pendingSnapshot.value}` : '未抓到 pending 窗口快照')
 
   const done = await waitTask(taskId, 180000)
   const text = textOf(done)
@@ -116,7 +122,7 @@ async function main() {
   const pass = checks.filter(c => c.ok).length
   console.log(`\n=== HITL 拒绝路径: ${pass} PASS / ${checks.length - pass} FAIL ===`)
   const { writeFileSync } = await import('node:fs')
-  writeFileSync('docs/audit/2026-10-20-harness-acceptance-evidence/us004-hitl-reject.json', JSON.stringify({ at: new Date().toISOString(), channelId, taskId, before, after, checks }, null, 2))
+  writeFileSync('docs/audit/2026-10-20-harness-acceptance-evidence/us004-hitl-reject.json', JSON.stringify({ at: new Date().toISOString(), channelId, taskId, before, pendingSnapshot, after, checks }, null, 2))
   process.exit(pass === checks.length ? 0 : 1)
 }
 main().catch((err) => {

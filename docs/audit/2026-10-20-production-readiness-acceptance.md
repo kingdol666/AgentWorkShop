@@ -13,16 +13,17 @@
 - 真实平台进程(全局 npm 0.7.67)、真实数据库、真实 Agent 子进程(omp/copilot)、真实 HITL。
 - 不包含:物理 PLC、真实车间网络、安全 PLC 联锁、现场急停/安全回路。
 - 12 个 harness 因未登录/配额/上游配置无法真实跑;本轮产线作业由 **omp + copilot** 完成,
-  其余引擎的 MCP 工具注册与鉴权已验证。详见 `2026-10-20-harness-native-vs-mcp.md`。
+  MCP 工具注册对**可运行的 Agent**(omp/copilot)已验证;其余引擎受未登录/配额/上游
+  配置阻塞,不能宣称“全部引擎已真实作业”。详见 `2026-10-20-harness-native-vs-mcp.md`。
 
 ## 1. PRD 验收结果
 
 | 故事 | 验收项 | 结果 | 证据 |
 |---|---|---|---|
-| US-001 | 五协议节点连通/读值 | **PASS** | `us001-connectivity.json`;test-driver 12/12,7/7 DAQ ok |
-| US-002 | 产线管理与配方生命周期 | **PASS** | `us002-line-lifecycle*.json`;5 DCW+7 DAQ,v4,stop→false/start→true(new run) |
-| US-003 | 团队派发/mailbox/数采/下发 | **PASS** | `us003-team-global.json`;14/0,v4,PLC 回读 45 |
-| US-004 | manual HITL 批准+拒绝 | **PASS** | 批准见 US-003(2 卡);拒绝 `us004-hitl-reject.json` 8/0 |
+| US-001 | 五协议节点连通/读值 | **PASS** | `us001-connectivity.json`;test-driver 12/12,7/7 DAQ state ok(5 标量有值) |
+| US-002 | 产线管理与配方生命周期 | **PASS** | `us002-line-lifecycle*.json`;5 DCW+7 DAQ,stop→false/start→true(new run) |
+| US-003 | 团队派发/mailbox/数采/下发 | **PASS** | `us003-team-global.json`;15/0,子任务 parent_id/assignee 核验,v5,PLC 回读 44 |
+| US-004 | manual HITL 批准+拒绝 | **PASS** | 批准见 US-003(2 卡);拒绝 `us004-hitl-reject.json` 9/0(含 pending 窗口快照) |
 | US-005 | 原生 ask HITL + 群聊 UI | **PASS** | `us005-ask-hitl.json` 6/0;`hitl-live-final.txt` U2c-f PASS |
 | US-006 | 工具注册/注入/按 Agent 描述 | **PASS** | `us006-mcp-tools.json` 64 tools;描述含 5 节点;omp 原生/copilot MCP |
 | US-007 | 构建/单测/打包/全局启动 | **PASS** | typecheck ✔;268/268;build 0.7.67;`us007-global-build.json` |
@@ -36,26 +37,29 @@
 - 平台 `test-driver`:**12/12** 通过(含 vector 8 点、image PNG 68B)。
 - 7 个 DAQ 节点状态 `ok`;5 个标量节点有实时值(35/60.1/5/40.1/34.952)。
 - 向量帧 8 点、图像帧 PNG 对象均在 `daq_frames` 中可查。
-- 注:vector/image 节点出现过一次 HTTP 读超时(`PLC 响应超时`),随后恢复并有帧落库;
-  现场需按此设置采集超时/重连与告警。
+- 注:vector/image 两个节点在本次快照中各带一条瞬时 `PLC 响应超时`(value=0),随后恢复
+  并有帧落库;现场需按此设置采集超时/重连与告警。
 
 ### 2.2 产线管理(US-002)
 
 - 产线 `ln-dd6c9135`:5 DCW + 7 DAQ,全部归属正确。
-- 配方 `rc-2be5c50c` v4,参数节点全部属于该产线。
+- 配方 `rc-2be5c50c` 在生命周期测试时为 v3,后续团队写入到 v5;参数节点全部属于该产线。
 - 生命周期:active `true(rr-7ff99163)` → stop → `false(null)` → start → `true(rr-f85d0de8)`。
 
 ### 2.3 团队作业与下发(US-003)
 
-- mock lead 自动派发 root 任务 → worker COMPLETED。
+- mock lead 在独立 dispatch 频道强制走 `[mock:complex]` 派发:数据库核验子任务
+  `parent_id=root`、`assignee_id=mock worker`、`state=COMPLETED`;root 交付物为
+  `lead-acceptance-summary`(文本“验收 1/1｜…”),不是 `lead-direct-answer`。
 - mailbox:lead→analyst 消息落库,`state=consuming`(真实 Agent 消费)。
 - omp 分析师:`line_context` + `daq_query` 取到真实样本并完成。
-- copilot 操作员:`recipe_update 45` + `recipe_apply` 两次 HITL 批准;配方 **v4**;PLC 回读 **45 m/min**。
+- copilot 操作员:`recipe_update 44` + `recipe_apply` 两次 HITL 批准;配方 **v5**;PLC 回读 **44 m/min**。
 
 ### 2.4 HITL 两条链路(US-004/005)
 
 - **manual 审批**:`dcw-approval` 两张卡(update/apply),批准后版本递增/下发;
-  拒绝时 agent 收到 `REJECT-ACCEPTANCE` 人工附言,配方 v4 不变、PLC 45 不变(fail-closed)。
+  拒绝路径 **9/0**:pending 窗口快照 v5/44 未变 → 拒绝 → agent 收到 `REJECT-ACCEPTANCE`
+  人工附言 → 配方 v5、PLC 44 均不变(fail-closed)。
 - **ask 提问**:`omp-dialog` question/select,yes/no/Other;直接任务链 6/0;
   群聊页 `/workshop/w/<channel>` 渲染 yes/no + 提交按钮(U2c–U2f PASS),
   应答后 `hitl.resolved(answered)`,agent `ask` 返回 `yes`。
@@ -65,16 +69,19 @@
 
 - MCP 桥对真实 agent token `tools/list`:**64 个工具**,含
   `send_message_to_agent`、`recipe_update`、`mes_fetch`。
-- 分析师 `daq_query` 描述追加 5 个绑定节点;操作员 `recipe_update` 描述追加配方参数。
+- 分析师 `daq_query` 描述追加 5 个绑定节点;操作员 `recipe_update` 描述追加
+  `rc-2be5c50c` v5 与 5 个参数(`us006-mcp-tools.json` 的 `recipeUpdateTail`)。
 - omp 原生 `set_host_tools`、pi 原生扩展 `registerTool` 为代码路径;
-  copilot 经 MCP 桥完成 `HARNESS-OK:copilot`(前一轮)与本次团队任务。
+  copilot 在 0.7.67 全局实例完成任务,交付物 `HARNESS-OK:copilot on 0.7.67`。
 
 ### 2.6 构建与全局发布(US-007)
 
-- `npm run typecheck` ✔;`npm run test:unit` **268/268**。
+- `npm run typecheck` ✔(`us007-typecheck.txt`);`npm run test:unit` **268/268**
+  (`us007-unit.txt`)。
 - 构建 `.output` 内嵌 **0.7.67**;`npm pack` 40.8 MB/3735 files;
   全局安装后 `/api/health` 返回 **0.7.67**。
-- 全局实例 omp 任务交付物 **PROD-READINESS-OK**。
+- 全局实例 omp 任务交付物 **PROD-READINESS-OK**,另一次任务交付物 **GLOBAL-067-OK**
+  (两者均在 `us007-global-build.json`)。
 
 ## 3. 不能宣称的(必须现场确认)
 
