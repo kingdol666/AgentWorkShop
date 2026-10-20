@@ -20,19 +20,41 @@ const RECIPE_TOOLS = new Set(['recipe_catalog', 'recipe_log', 'recipe_versions',
 const MES_TOOLS = new Set(['mes_catalog', 'mes_fetch', 'mes_export', 'mes_dataset_read', 'mes_datasets'])
 
 export interface AgentToolResourceView {
+  /** Agent 显式绑定的数采节点(kind=daq) */
   daqNodes: Array<{ id: string, name: string, unit: string }>
+  /** 频道绑线带来的只读数采节点(v28;执行面 daqTargetsOf 同样并入) */
+  daqLineNodes: Array<{ id: string, name: string, unit: string }>
   recipes: Array<{ id: string, name: string, version: number, params: Array<{ nodeId: string, name: string, unit: string }> }>
   mesNodes: Array<{ id: string, name: string, unit: string }>
 }
 
+/** 频道绑线(与 daqTargetsOf 同源;globalThis 单例避免 per-agent → manager 循环依赖) */
+function channelLineOf(agentId: string): string {
+  try {
+    const g = globalThis as typeof globalThis & {
+      __workshopManager?: { channelLineBindingOf?(id: string): string | null }
+    }
+    return g.__workshopManager?.channelLineBindingOf?.(agentId) ?? ''
+  }
+  catch {
+    return ''
+  }
+}
+
 /** 读取 Agent 的绑定面(只读;异常降级为空,绝不影响工具注入) */
 export function agentToolResources(agentId: string): AgentToolResourceView {
-  const out: AgentToolResourceView = { daqNodes: [], recipes: [], mesNodes: [] }
+  const out: AgentToolResourceView = { daqNodes: [], daqLineNodes: [], recipes: [], mesNodes: [] }
   if (!agentId) return out
   try {
     const bindings = getAgentNodeBindingRepo().byAgent(agentId)
     const daq = getDaqController()
     const dcw = getDcwController()
+    const lineId = channelLineOf(agentId)
+    if (lineId) {
+      for (const n of daq.listViews()) {
+        if (n.lineId === lineId) out.daqLineNodes.push({ id: n.id, name: n.name, unit: n.unit ?? '' })
+      }
+    }
     for (const b of bindings) {
       if (b.kind === 'daq') {
         const n = daq.byId(b.nodeId)
@@ -68,10 +90,13 @@ const listText = (items: Array<{ id: string, name: string, unit?: string }>): st
 export function hostToolsForAgent(agentId: string, role: 'lead' | 'worker', channelId?: string) {
   const tools = hostToolsForRole(role, channelId)
   const res = agentToolResources(agentId)
-  if (res.daqNodes.length === 0 && res.recipes.length === 0) return tools
-  const daqLine = res.daqNodes.length > 0
-    ? `\n\n本 Agent 已绑定的数采节点(仅这些可查):${listText(res.daqNodes)}`
-    : ''
+  const lineOnlyDaq = res.daqLineNodes.filter(n => !res.daqNodes.some(x => x.id === n.id))
+  if (res.daqNodes.length === 0 && lineOnlyDaq.length === 0 && res.recipes.length === 0) return tools
+  const daqParts = [
+    res.daqNodes.length > 0 ? `本 Agent 直接绑定的数采节点(仅这些可查):${listText(res.daqNodes)}` : '',
+    lineOnlyDaq.length > 0 ? `频道绑线只读数采节点(可查):${listText(lineOnlyDaq)}` : '',
+  ].filter(Boolean)
+  const daqLine = daqParts.length > 0 ? `\n\n${daqParts.join('\n')}` : ''
   const recipeLine = res.recipes.length > 0
     ? `\n\n本 Agent 已绑定的配方(仅这些可写/下发):${res.recipes.map(r => `${r.name}(${r.id},v${r.version};参数:${r.params.map(p => `${p.name}(${p.nodeId})`).join('、') || '无'})`).join(';')}`
     : ''

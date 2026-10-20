@@ -1,0 +1,13 @@
+{
+  "at": "2026-10-20T09:34:31.228Z",
+  "probe": {
+    "tag": "mvgh7t9k",
+    "lineId": "ln-a3036f9c",
+    "nodeId": "dw-521a9471",
+    "recipeId": "rc-62ba943d",
+    "channelId": "6461dd0f-25b1-4cdc-93ed-5771c9ec5460",
+    "leadId": "4155fc51-e8ff-4aee-9014-07477bcd77e0"
+  },
+  "descriptionTail": "值快照;from/to 且 max_rows≤2000=同步内联;max_rows>2000=异步落 CSV 数据集,并生成同名 *.manifest.json(字段字典/单位/量程/批次归属),返回 job_id/dataset_id。全量原文离线分析请用 mes_export。\n\n本 Agent 可经配方参数面取数的 MES 点位:MES熔体温度-mvgh7t9k(dw-521a9471,℃)",
+  "fetchText": "MES 历史取数(内联同步,1 个点位,窗口 10-20 09:04:31 ~ 10-20 09:34:31):\n■ MES熔体温度-mvgh7t9k(id=dw-521a9471)[格式 标量;节点单位 ℃;量程 150~300]\n  行数 20(截断:达到 maxRows 上限) | 首 10-20 17:04:32 ~ 末 10-20 17:04:51\n  统计:min 248.95 / max 252.204 / mean 250.708 / stddev 0.796 ℃\n  采样(≤3 行): 10-20 17:04:32,250.817 | 10-20 17:04:41,250.972 | 10-20 17:04:51,250.855\n字段字典(1 个字段,来自 MES 响应/节点配置):\n  - value [标签 melt_temp 测量值 | 单位 °C | 形态 scalar] — MES 历史接口返回的工程值\n\n说明:以上为统计摘要与 ≤3 行采样;MES 原文不进入对话。向量/图像/记录点位按各自格式呈现,已配置数据钩子(dataHook)的点位会附处理摘要与产物清单(文件落 <数据根>/mes-artifacts/<点位id>/)。需要标量/向量全量行请用更大 max_rows(> 2000)走异步数据集,再用 mes_dataset_read 读。"
+}
