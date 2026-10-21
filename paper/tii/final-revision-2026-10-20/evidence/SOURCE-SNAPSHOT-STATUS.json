@@ -1,0 +1,11 @@
+{
+  "archive_harness_hash": "9f2756dce4a4cbb3",
+  "archive_harness_files": 11,
+  "recorded_commit": "e692df1439127a6db6859b51d92d9376bf486de2",
+  "committed_harness_files": 9,
+  "committed_harness_hash": "70721b4525802873",
+  "current_inspection_harness_files": 11,
+  "current_inspection_harness_hash": "5dda9aa89e49673d",
+  "exact_runtime_source_verified": false,
+  "interpretation": "Committed source and current working source are different snapshots. File count and hash differences are explicit; recorded commit alone does not establish the exact dirty worktree used by a run."
+}

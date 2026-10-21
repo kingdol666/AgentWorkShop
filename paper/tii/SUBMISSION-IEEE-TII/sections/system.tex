@@ -1,131 +1,147 @@
 \section{System Architecture}
 \label{sec:arch}
-\looseness=-1 The platform occupies the replaceable strategy slot that
-Section~\ref{sec:related}'s comparison leaves open: it links team
-coordination to plant interaction through industrial nodes
-and production context (Fig.~\ref{fig:arch}). Responsibilities group into
-five planes---logical groupings, not deployable units, each an assembly of
-modules whose outputs are evidence records:
-\textbf{team} (channel and member identity, task state, episodic memory,
-engine adapters, retrieval, analysis) turns acquired data into attributed
-proposals;
-\textbf{integration} (DAQ and DCW nodes, per-node runtimes, protocol
-drivers, gateway, MES mirror/direct modes) owns protocol acceptance,
-readback, freshness, and transport errors, presenting devices as semantic
-nodes;
-\textbf{governance} (binding authority, admission resolver, approval queue,
-recipe dispatch, acknowledgment grader and verifier, verdict, compensation,
-backstop, journal) owns the governed life cycle;
-\textbf{operations} (line, product, recipe, and run registries, versioned
-recipes, run ledger, operations log) attaches production context while PLC
-protection stays independent; and
-\textbf{extensibility} (plugin registry, typed SDK, REST/MCP/A2A/CLI/TUI
-entry points) admits drivers, tools, and clients through sanctioned
-registration services.
-Scenario knowledge sits in blueprints, signal maps, predicates, and driver
-configuration---not in scheduler, approval, or persistence code; members
-are interchangeable across engine adapters, and team topology,
-bindings, and limits are data rather than code (Fig.~\ref{fig:arch});
-Fig.~\ref{fig:runtime} shows the resulting runtime.
-The subsections below cover the node classes, the binding boundary, and the
-task life cycle; Section~\ref{sec:mech} specifies the mechanisms.
+The platform connects task-level reasoning to production-scoped execution
+through three component groups (Fig.~\ref{fig:arch}). Team and strategy
+services maintain channels, members, tasks, messages, memory, and replaceable
+engine adapters. Governance services resolve capabilities, limits, approval,
+dispatch, confirmation, and intervention records. Industrial integration
+converts semantic DAQ/DCW operations into protocol I/O. These groups share
+line--product--recipe--run context and linked evidence stores. Registration
+services, a typed SDK, and REST, MCP, agent-to-agent, CLI, and console
+interfaces provide sanctioned extension points. Figure~\ref{fig:arch} groups these
+cooperating responsibilities rather than imposing one execution sequence
+on every operation.
 
-\looseness=-1 As an open-source project under the Apache-2.0 license (links
-withheld for double-blind review), \system{} ships these planes as one
-service with 58 industrial agent tools, the typed SDK, and the one-command
-benchmark pipeline of Section~\ref{sec:procedure}.
+The architecture separates three state objects with complementary roles.
+A task states the intended outcome and its responsible member. Production
+objects identify the configured definition and active execution context.
+Execution records state what was admitted, sent, confirmed, and observed.
+Shared identifiers join these objects for inspection. An agent engine can
+therefore be replaced without redefining a recipe or a driver's evidence
+contract. The project is distributed under Apache-2.0; repository links are
+withheld for anonymous review.
 
 \begin{figure*}[!t]
 \centering
-% 0.88\textwidth with source fonts sized so the printed text stays >=6pt;
-% narrower includes drop the card body below the legibility floor
-\includegraphics[width=\textwidth]{resources/fig-arch-2026.png}
-\caption{System architecture and execution boundaries: platform services
-around shared stores, with agent engines, data stores, protocol endpoints,
-and the plant kept separate. Shared identifiers
-provide attribution but do not make storage and actuation transactional.
-Solid arrows: request/control; dashed: observation/record; PLC
-safety and hard real-time control remain external.}
-\label{fig:arch}\end{figure*}
+\includegraphics[width=\textwidth]{resources/fig-architecture-2026.pdf}
+\caption{Component architecture of the governed supervisory framework.
+Team and strategy services propose actions; governance services resolve
+authority and execution checks; industrial integration separates control
+$u$ from acquisition $y$. Production context and linked evidence connect
+these responsibilities. Equipment protection and fast regulation operate
+outside the platform boundary.}
+\label{fig:arch}
+\end{figure*}
 
-\subsection{Supervisory Core and Nodes}
-\looseness=-1 The Node.js core hosts channel routing, industrial services, and protocol
-adapters. A channel contains a lead, workers, tasks, messages, and retrievable
-memory, deployed through WebSocket, MCP, agent-to-agent (A2A), REST, CLI, or
-TUI entry points;
-channel membership alone confers no write authority.
+\subsection{Semantic Nodes and Production Context}
+DAQ nodes expose engineering quantities with units, precision, timestamps,
+and quality metadata. Their contracts cover scalars, vector profiles, image
+frames, and mirrored manufacturing-execution-system (MES) records. MES
+integration supports mirrored acquisition and direct endpoint mappings.
+DCW nodes describe writable engineering quantities and their driver
+configuration. Drivers own serialization, transport handling, and available
+readback; platform services own authority and admission. Thus a proposal can
+name holding pressure in bar while the driver supplies the corresponding
+OPC UA, register, topic, or REST representation.
 
-\looseness=-1 DAQ nodes convert device readings to engineering quantities across four
-modalities---scalars, vector profiles, image frames carrying content
-fingerprints, and mirrored manufacturing-execution-system (MES)
-records---so plant data-shape heterogeneity does not reach the team loop. MES endpoints are reached in
-\emph{mirror} mode, pulling records through the same acquisition pipeline, or
-in \emph{direct} mode, declaring read and write mappings against the MES
-interface. DCW
-nodes translate engineering setpoints into driver commands and, where
-supported, readback; per-node runtimes manage timing, and gateway services supply
-connection state, recipe context, and write bookkeeping. The acquisition
-surface declares six protocol families, five with drivers today---Modbus TCP,
-Modbus RTU-over-TCP, OPC UA, MQTT, HTTP/REST, and an S7
-stub that fails loudly until its driver lands; the write surface adds one
-driver per writable family plus MES REST (mock drivers excluded), and the
-evaluation instantiates five families as lines (Section~\ref{sec:protocol}).
-The deployment reaches author-implemented dynamic simulators through the same
-node and driver contracts a plant would use; they are deterministic per seed,
-not validated digital twins. Reuse is declarative---signals, units, scaling,
-precision, driver configuration---and the team loop is unchanged.
+Implemented protocol families include Modbus TCP, Modbus RTU-over-TCP,
+OPC UA, MQTT, and HTTP/REST, with MES REST mappings. Q1 exercises simulator
+writes over Modbus TCP, OPC UA, MQTT, and HTTP; RTU-over-TCP is
+acquisition-only. The admission ablation uses a separate mock driver.
+DAQ acquisition uses per-node cadences and a rotating sweep. Timestamped
+history supplies decisions, exports, and response queries independently of
+the agent's reasoning duration.
 
-\looseness=-1 Driver contracts are deliberately narrow: a driver declares how a semantic
-quantity maps to its transport payload, whether the endpoint is writable, and
-whether a readback is available; the controller resolves authority and active
-limits. Errors attach to the request, register addresses and byte order appear only here, and a new
-fieldbus family leaves the loop untouched; undeclared drivers fail loudly
-rather than being silently mocked.
-Acquisition is supervisory rather than hard real-time: each DAQ node runs its
-own cadence under a rotating sweep; the verdict stage queries the timestamped, quality-stamped
-history, not a blocking read.
+Lines associate equipment with an active product, recipe, and run. Recipe
+definitions are versioned; a running batch retains its execution context,
+so saving a definition and applying it are separate operations. This
+distinction supports a practical progression: investigate a candidate,
+observe its result, save the accepted parameterization, and apply the
+selected version to a run. Acquisition samples and dispatch receipts can
+then be interpreted against the production context in which they arose.
 
-\subsection{Bindings, Context, and Reuse Boundaries}
+An onboarding blueprint declares devices, signal maps, units, roles, and
+initial setpoints. A differential ensure pass creates missing objects and
+reconciles declared configuration drift. Connecting another process changes
+this blueprint and its process-specific objective, guards, and proposal
+policy while reusing the execution services. This is the reuse boundary
+exercised across the process missions.
 \label{sec:reuse}
-A member--node binding grants access to a sanctioned tool on a specific node and
-selects automatic or approval-mediated execution. Line permissions (none,
-read-only, operate) authorize binding creation and mutation; runtime
-invocation is authorized by the persisted capability, not channel membership.
-Intervals are re-checked every request, so revoking
-a binding or switching the recipe takes effect on the next request; the same path
-serves a console, a harness, and an agent engine---authority does not
-depend on the client, only the evidence record differs.
 
-\looseness=-1 Production objects are versioned rather than overwritten: recipes
-dispatch against a known-good version, revert non-destructively, and are
-compared with the values actually applied; an intervention is read against the
-definition active when it was admitted. Plugins register hooks, routes, agent tools, drivers,
-and panels only through sanctioned services, so an added driver inherits
-admission, readback, and evidence capture. Scenario reuse is bounded by an onboarding contract: the engineer declares a
-blueprint (devices, signals, units, roles, setpoints); a differential
-``ensure'' pass creates missing devices, repairs drift, and projects the
-blueprint into semantic nodes and a recipe; a channel is
-built from the team template, and a mission supplies objective, guards,
-response windows, and policy. A
-BOPET worker proposes casting-speed, fast-roll, or rail-width changes through
-bound DCW nodes; the other three scenarios reuse the same pattern
-(Section~\ref{sec:scenarios}).
+\subsection{Capabilities and Channel Profiles}
+A channel organizes a job and its collaborating members; persisted
+capabilities authorize industrial operations. Node bindings define readable
+or controlled node scope and execution mode, while recipe capabilities
+define an authorized production scope. The server also restricts tools by
+channel profile. These two checks answer complementary questions: whether
+this class of job may invoke an operation, and whether this particular
+member may perform it on the selected production objects.
 
-\subsection{Governed Optimization Task Life Cycle}
+In the inspected implementation, observation channels perform
+acquisition, analysis, and knowledge work, while Auto Modeling Lab (AML)
+training channels prepare datasets and models. Both have read-only plant
+access. AML-optimization channels invoke \texttt{optimization\_explore}
+with control and target-scope validation. Operational channels use
+authorized recipe operations. Direct public \texttt{dcw\_control} and
+\texttt{dcw\_rollback} are closed; sanctioned platform workflows reach the
+internal governed node executor. Consequently, a written task instruction
+or retrieved document cannot expand the industrial tool surface.
+
+This decomposition supports collaboration through explicit artifacts. An
+observation member can deliver a diagnostic report, a training member can
+deliver an evaluated model reference, and an optimization member can use
+authorized evidence to propose a bounded intervention. Each receiving
+member operates under its own channel profile and capability checks. Team
+coordination transfers information while execution authority remains
+attached to the actor and production scope.
+
+\subsection{Analysis, Models, and Candidate Proposals}
+The information path begins with timestamped acquisition and production
+context. A merged DAQ export aligns selected signals for industrial data
+diagnostics (IDD); diagnostic reports describe the observed operating
+regime. Retrieval-augmented generation (RAG) supplies relevant process
+knowledge and prior reports for interpretation. These outputs inform the
+strategy's choice of controls, targets, and stopping criteria. Write
+authority is resolved independently when the candidate reaches execution.
+
+AML provides a separate data-to-model path. Its dataset builder selects
+line--product--recipe-scoped histories, cleans samples by state and range,
+aligns them to a sampling grid, and constructs windows within runs.
+Run-based partitions and training-partition normalization produce a
+dataset manifest, tensors, and a cleaning report. These artifacts identify
+the controls, targets, features, runs, and transformations presented to
+training. The asynchronous production training route invokes Python,
+exports an Open Neural Network Exchange (ONNX) artifact, evaluates it, and
+applies gates before candidate registration. Registry stages distinguish
+candidate, shadow, production, and retired models; promotion carries its
+own approval workflow.
+
+Model binding and eligibility checks govern model-assisted tools, including
+declared uncertainty, out-of-distribution, and physics information. Current
+lineage enforcement is primarily line-scoped. Each production training job
+retains its exported model, evaluation report, and gate decision as
+identifiable artifacts. Bounded exploration also operates without a model.
+A trained model, a candidate proposal, and an industrial command thus remain
+distinct outputs. The evaluation below focuses on execution contracts;
+model-assisted control--response is not evaluated.
+
+\subsection{Two Execution Lifecycles}
 \label{sec:tasklifecycle}
-A governed optimization task is a life cycle rather than a single tool call, and
-\system{} exposes each transition separately. The task enters a channel carrying
-goal, line, product, recipe, run, and task identifiers; a lead member claims it
-and hands it to a worker holding member--node bindings, whose fixed job repeats:
-read the controlled quantity, propose a setpoint inside the resolved interval,
-invoke the governed write, and record a verdict
-(Section~\ref{sec:procedure} instruments it).
+Figure~\ref{fig:runtime} separates the current runtime routes. Bounded
+optimization exploration validates the writable node and target ownership,
+then invokes the internal governed executor. It associates a single-factor
+control intervention with target observations. Operational recipe work
+uses \texttt{recipe\_trial} for a candidate override without saving a
+version, \texttt{recipe\_update} for a new definition,
+\texttt{recipe\_apply} for dispatch, and \texttt{recipe\_rollback} for
+version restoration. Restoring a definition and commanding the equipment
+are separately evidenced operations.
 
-\looseness=-1 Each iteration leaves an optimization record, the acknowledgment
-grade, an attributed journal entry, predicate attainment, and a workflow
-terminal state. Two write lifecycles coexist: direct node writes (agent
-\texttt{dcw\_control} or admin REST) open these records, while recipe-chain
-operations (batch dispatch) are gated by the run ledger and open none. This
-bounds what ``automatic optimization'' means: a controller, scripted policy,
-optimizer, or agent engine may occupy the strategy slot, while authority,
-evidence, and closure stay on the platform.
+Persistence follows the route. A successful changed-value node write opens
+a node-optimization record before the observation wait. Bounded exploration
+then waits, queries the target, and saves a separate exploration summary.
+Recipe dispatch instead creates a batch run with per-parameter receipts;
+its caller performs the subsequent wait, observation, and decision. Saving
+an accepted parameterization requires a separate recipe update. These
+distinct records preserve the correspondence between an operation and its
+evidence. Section~\ref{sec:eval} identifies each experiment's tested interface.

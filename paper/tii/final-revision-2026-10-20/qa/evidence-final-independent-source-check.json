@@ -1,0 +1,24 @@
+{
+  "status": "PASS",
+  "live_originals_hash_verified": 139,
+  "git_objects_hash_verified": 37,
+  "source_artifacts": 176,
+  "node_syntax_files": 81,
+  "node_syntax_failures": [],
+  "python_ast_files": 2,
+  "offline_extracted_bundle": "PASS: 186 hashed files, 13 claim rows, 9 suites/782 assertions, 4 R6 receipts, duplicate accounting, local artifact pointers, R6 measurement notes and bounded identity scan.",
+  "bounded_identity_scan": "PASS",
+  "private_provenance_excluded": true,
+  "cli_bin_alias": "platform",
+  "test_environment_alias": "PLATFORM_TEST",
+  "aliased_test_files": [
+    "R10\\tests\\manual-approval-optimization.test.ts",
+    "R10\\tests\\recipe-approval-snapshot.test.ts",
+    "R10\\tests\\recipe-op-interval.test.ts",
+    "R10\\tests\\tool-approvals-choice.test.ts",
+    "R9\\tests\\recipe-propose.test.ts",
+    "R9\\tests\\tool-profile-observer.test.ts"
+  ],
+  "numeric_boolean_null_fields_builder_verified": 15642,
+  "process_replays_executed": 0
+}

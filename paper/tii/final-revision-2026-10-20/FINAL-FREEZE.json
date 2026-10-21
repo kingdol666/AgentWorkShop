@@ -1,0 +1,19 @@
+{
+  "date": "2026-10-20",
+  "freeze": "final-delivery",
+  "baseline_review_pdf_sha256": "85ff90803ef9fb5884ba05077909a33628b976485964be35b649656bece11e10",
+  "artifacts": {
+    "main.pdf": {
+      "sha256": "c4a8018c9e7c5b50eae592c1efecf1eb22634851116e330294a389fb5b6a976b",
+      "bytes": 514321
+    },
+    "IEEE-TII-manuscript-source.zip": {
+      "sha256": "0cc759b05fddf5e62cf0326692aaba2c0cc580f32a36f90df283d9640bc25adf",
+      "bytes": 926397
+    },
+    "IEEE-TII-anonymous-evidence.zip": {
+      "sha256": "578a14539c6ca8e17226106f93fed302d43a83ff5eb81ea01c2a560e1f394ae3",
+      "bytes": 981848
+    }
+  }
+}

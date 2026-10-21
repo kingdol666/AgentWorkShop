@@ -1,0 +1,19 @@
+{
+  "main.tex": "b819327ad19c9dc11fa29f02d57dc24196107bb306222cf3c60a61b3e242c0a6",
+  "sections/discussion.tex": "cba8924d3b691e4b83956d675e878f93238c3ca03ce5e890c50296a45d7ddb81",
+  "sections/evaluation.tex": "4700202a44b57adcf042393e7e7a5096e4ac2071f3184c6d6f2cef0d95d460b2",
+  "sections/introduction.tex": "135eb331dcda5c50668b23913d7478857e33ecdeca81aadae2af1f02ab5d99f9",
+  "sections/mechanisms.tex": "efdcf306b64d9fdaae0f0686d2c3bd1b378084c5853acbd0c6d0728c757e655b",
+  "sections/related.tex": "9648866dd96161f3745e75ef567a122ef8b6f6fad10567328b9b1a21a417a44e",
+  "sections/system.tex": "f180d9923a96d17715cfd6950220a8b887dac9ef959687ecbd45bacc5e808bf5",
+  "main.pdf": "85ff90803ef9fb5884ba05077909a33628b976485964be35b649656bece11e10",
+  "resources/refs.bib": "78b5cea7192492302beb84daa7b67ec59ba93d9e908224a057a5aca017a2b810",
+  "resources/results-macros.tex": "ea537a79f5ad245e950daf2bb468ee2dcd92b76dfdbe19d5d334fb8f96c5b4b5",
+  "REPRODUCIBILITY.md": "beeb68c7eff02f7a48ce5074f307cd016e1320c33d0631ddbbe722be052fddd4",
+  "resources/fig-admission-hitl-2026.pdf": "3be2c9e2f400769f67b86c864c1299ab8338499bf51fc6788fa9b0bb7a65e63c",
+  "resources/fig-architecture-2026.pdf": "1ad40d2764cdad1cee610581c25f6adcf8796758aaf1da631d102e525794c8d5",
+  "resources/fig-runtime-2026.pdf": "7aca692d19cdd133c7e2471c6db1111ba3f5843d84b39cf61748473e7eac5db6",
+  "resources/fig-missions-controls.pdf": "71015341734842f0c0d44759d83a22aeaabab75f000e006ebee986c2430e5ff4",
+  "resources/fig-injection-controls.pdf": "b3f818a5b0a77cf7917a1c103d1e219a1bd5c81c31685cc4e8861b0d930b2913",
+  "resources/fig-governance-timeline.pdf": "1147f2d1deac1fd66852d44256dfb7ba2af4d964b2ddf603bbf66d3c2ab7a4cf"
+}

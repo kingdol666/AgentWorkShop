@@ -1,0 +1,116 @@
+\documentclass[journal]{IEEEtran}
+% IEEE Transactions on Industrial Informatics -- anonymous regular-paper draft
+% Compile: latexmk -pdf main.tex
+\usepackage{amsmath,amssymb,amsfonts}
+% Local XeTeX/Tectonic builds: route IEEEtran's ptm (Times) family requests to
+% the legacy Times Type1 faces so metrics match the pdfLaTeX reference build;
+% the latexmk -pdf (pdfLaTeX) path is unaffected.
+\usepackage{iftex}
+\ifxetex
+  \DeclareFontFamily{TU}{ptm}{}
+  \DeclareFontShape{TU}{ptm}{m}{n}{<->ptmr8t}{}
+  \DeclareFontShape{TU}{ptm}{b}{n}{<->ptmb8t}{}
+  \DeclareFontShape{TU}{ptm}{m}{it}{<->ptmri8t}{}
+  \DeclareFontShape{TU}{ptm}{b}{it}{<->ptmbi8t}{}
+  \DeclareFontShape{TU}{ptm}{m}{sl}{<->ptmro8t}{}
+  \DeclareFontShape{TU}{ptm}{m}{sc}{<->ptmr8t}{}
+\fi
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage[table]{xcolor}
+\usepackage{stfloats}
+\usepackage{placeins}
+\usepackage{url}
+\urlstyle{same}
+% Cross-references and citations. The cite package renders IEEE-style citation
+% groups ([14]--[16], [20], [21]) with hyperref support.
+\usepackage{cite}
+\usepackage[colorlinks=true,linkcolor=black,citecolor=black,urlcolor=black]{hyperref}
+\hypersetup{bookmarksnumbered=true,
+  pdftitle={A Governed Supervisory Execution Layer for LLM-Agent Plant Writes},
+  pdfauthor={Anonymous Authors},
+  pdfsubject={IEEE Transactions on Industrial Informatics},
+  pdfkeywords={agent teams, human-in-the-loop, industrial informatics, LLM agents, supervisory control, write governance}}
+
+% Float placement only; IEEEtran margins and body type remain unchanged.
+\setcounter{topnumber}{4}
+\setcounter{bottomnumber}{3}
+\setcounter{totalnumber}{7}
+\setcounter{dbltopnumber}{4}
+\renewcommand{\topfraction}{0.95}
+\renewcommand{\bottomfraction}{0.80}
+\renewcommand{\textfraction}{0.03}
+\renewcommand{\floatpagefraction}{0.72}
+\renewcommand{\dbltopfraction}{0.95}
+\renewcommand{\dblfloatpagefraction}{0.72}
+
+% Tight but conventional float separation; body type and margins are unchanged.
+\setlength{\textfloatsep}{8pt plus 2pt minus 3pt}
+\setlength{\dbltextfloatsep}{8pt plus 2pt minus 3pt}
+\setlength{\intextsep}{7pt plus 2pt minus 3pt}
+\setlength{\abovecaptionskip}{3pt plus 1pt minus 1pt}
+\setlength{\belowcaptionskip}{2pt plus 1pt minus 1pt}
+
+\input{resources/results-macros}
+
+\newcommand{\system}{the platform}
+
+\begin{document}
+\bstctlcite{IEEEbstctl}
+
+\title{A Governed Supervisory Execution Layer for LLM-Agent Plant Writes}
+
+\author{Anonymous Authors}
+\markboth{IEEE Transactions on Industrial Informatics, Submitted Manuscript}{Governed Execution for LLM-Agent Plant Writes}
+
+\maketitle
+
+\begin{abstract}
+Industrial large language model (LLM) agents require a traceable connection
+between task-level proposals, commanded controls, and process observations.
+This article presents a governed supervisory execution framework that
+connects these stages beneath a replaceable strategy layer. Semantic
+acquisition and control nodes connect agent identity to
+line--product--recipe--run context. Server-side channel profiles separate
+observation, model training, bounded exploration, and operational recipe
+work; capabilities and source-specific admission resolve execution
+authority. Required approvals govern actuation, and graded receipts
+distinguish transport acceptance from endpoint confirmation. Optimization
+records, batch receipts, and recipe versions retain the evidence appropriate
+to each lifecycle. Evaluation combines protocol and process missions,
+admission ablation, controlled confirmation challenges, nine regression
+executions totaling 782 checks, and a recipe-based injection-molding
+trajectory. Removing soft-window admission allowed six otherwise refused
+probes to execute, whereas removing readback left admission unchanged.
+A publish-only receipt retained its unverified grade despite successful
+transport acceptance. In one sequential recipe experiment, four approved
+pressure steps from 45 to 65 bar accompanied a weight change from
+31.28 to 32.30 g with a fixed 6-s hold time, followed by retention of the
+accepted recipe. All process experiments used repository simulators.
+The results establish an inspectable execution chain linking task intent,
+authorization, control history, observed quality, and retained production
+parameters.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Agent teams, human-in-the-loop, LLM agents, supervisory control, write
+governance.
+\end{IEEEkeywords}
+
+\IEEEpeerreviewmaketitle
+
+\input{sections/introduction}
+\input{sections/related}
+\input{sections/system}
+\input{sections/mechanisms}
+\FloatBarrier
+\input{sections/evaluation}
+\input{sections/discussion}
+
+\bibliographystyle{IEEEtran}
+% Keep IEEEtran's default bibliography size and leading.
+\bibliography{resources/refs}
+
+\end{document}

@@ -1,0 +1,115 @@
+{
+  "schema_version": "local-editorial-synthesis-provenance/1.0",
+  "date": "2026-10-20",
+  "owner_role": "editorial_synthesizer_agent",
+  "scope": "Read-only synthesis of five baseline cards; no new review, scores or manuscript edits.",
+  "source_sha256": {
+    "perspective-phase2.md": "3f82589151f5ddaa120f7114a2b5608c8316fb8e1ec545f4e07584c58f2e6016",
+    "PANEL-CONFIGURATION.md": "9fcbe457cc8e981433d335acb9bf1069490a567e9188dd29083434be0abd6ffe",
+    "eic-phase2.md": "64bed2d28a4858460cdb1085d2492e9eba01bd730158ad82f9d707179183af0f",
+    "perspective-provenance.json": "c416715aee4be87d7416e6d0c16707a93d14d3b0b6aded87ca71e6be53b95e02",
+    "domain-phase2.md": "213b825fcf4c355e5aa70a6cb5d9c9cdc1982f0fec81e3a8526ef1af5c2c4491",
+    "frozen-hashes.json": "27aaca11d01d129c3c7d0652a50f63ff377999075acfb49ab1afa94e9814a058",
+    "eic-provenance.json": "a58f847b14dd629cb736b9cf96027cd991787cb6f542c52f0e8bf9814b424061",
+    "methodology-phase2.md": "cd29a4823e54a111b875d74d3061618b4cce05dc8a46c1a5aacdf359f3297471",
+    "da-provenance.json": "c9de10b30a76e5d446f2d8456f842cff8c900d3d72a60704305b933c5ff9b23e",
+    "domain-provenance.json": "d16feed9e27522473a058ae2fe000d3c7cb0d7d59ef5309467aecf0de96f040d",
+    "eic-phase1.md": "e6ae3b8870875e6a3462d168549de065ab6b985bd357a9af5f72f3daa87c65ef",
+    "methodology-phase1.md": "693e796fda7b52a903c765c406b464e64b351c59107d1ed59633360927bde4cc",
+    "local-structure-results.json": "b49e3c6f22d53b6b3447ec93d12ed827794afb26ca97c5e2b508f216024e1330",
+    "da-phase1.md": "c23c3f84f2e3d607541b805e4c1b0cf98fc5af4a1c9309c738dedcda5085c913",
+    "domain-phase1.md": "3ecd722cb9f7a2056a9122ec8aa80fdcc32039217ca55e2e632906c20986f5bc",
+    "contract.json": "d3bb7ff98ee0c3034f0067eb39f04d491bd7d4b97cec125540a12dd3a3f987e2",
+    "perspective-phase1.md": "dcb673fe029329f9b41909724cae2bc79a75e10ec6600260ca29af0a3decd972",
+    "da-phase2.md": "4de16016d89394f6d553239a834aec0d990ed05b62082c37832e295f2452a4d6",
+    "methodology-provenance.json": "c31d379ad33b8bcb47b8710646cc9ade6e1d94a1723142931e4388b56394488e"
+  },
+  "baseline_pdf_sha256": "85ff90803ef9fb5884ba05077909a33628b976485964be35b649656bece11e10",
+  "later_author_pdf_sha256_not_rescored": "c4a8018c9e7c5b50eae592c1efecf1eb22634851116e330294a389fb5b6a976b",
+  "calibration_status": "NOT_CALIBRATED",
+  "criteria_binding": "criteria_binding_unavailable",
+  "canonical_checker": "unavailable; local checks only",
+  "review_panel_provenance": {
+    "schema_version": "review-panel-provenance-carrier/1.0",
+    "status": "invalid",
+    "review_mode": "reviewer_full",
+    "reason": "absent",
+    "fresh_context_scope": "within_panel_attempt_only",
+    "axes": {
+      "role_separated": "unknown",
+      "fresh_context": "unknown",
+      "blind_to_peer_outputs": "unknown",
+      "model_family_distinct": "unknown",
+      "provider_distinct": "unknown",
+      "human_distinct": "unknown"
+    }
+  },
+  "correlated_error_disclosure": "Model-family provenance is incomplete; cross-family separation is unknown, so correlated-error risk cannot be ruled out.",
+  "observed_local_records": "Five role cards and separate Phase 1 commitments; seat records report peer outputs withheld. These observations do not validate canonical carrier axes.",
+  "dimension_verdicts": {
+    "D1": "warn",
+    "D2": "warn",
+    "D3": "warn",
+    "D4": "warn",
+    "D5": "pass",
+    "D6": "warn"
+  },
+  "eligible_votes": {
+    "D1": {
+      "methodology": "warn"
+    },
+    "D2": {
+      "domain": "warn"
+    },
+    "D3": {
+      "methodology": "pass",
+      "da": "warn"
+    },
+    "D4": {
+      "perspective": "warn"
+    },
+    "D5": {
+      "eic": "pass"
+    },
+    "D6": {
+      "eic": "warn"
+    }
+  },
+  "failure_conditions": [
+    {
+      "condition_id": "F1",
+      "fired": false
+    },
+    {
+      "condition_id": "F2",
+      "fired": false
+    },
+    {
+      "condition_id": "F3",
+      "fired": true
+    },
+    {
+      "condition_id": "F4",
+      "fired": false
+    },
+    {
+      "condition_id": "F5",
+      "fired": true
+    },
+    {
+      "condition_id": "F0",
+      "fired": false
+    }
+  ],
+  "F3_dimension_votes": {
+    "D1": true,
+    "D2": true,
+    "D3": false,
+    "D6": true
+  },
+  "selected_condition": "F3",
+  "editorial_decision": "major_revision",
+  "da_critical_adjudications": [],
+  "roadmap_schema_status": "explicit local unbound; canonical block manifest unavailable",
+  "cross_model_checkpoint": "not_configured; not executed"
+}

@@ -1,55 +1,46 @@
-# Claim–evidence ledger (2026-10-17 revision)
+# Claim–evidence ledger — 2026-10-20 final revision
 
-Internal working document; not part of the manuscript. Every quantitative or
-falsifiable claim in the paper is traced to the artifact that owns it. "Verified"
-means the artifact was re-read during this revision, not merely cited.
+This ledger describes the current revision. Original numerical archives were
+not edited. It supersedes earlier manuscript QA claims; publication readiness
+is evaluated separately in final-revision-2026-10-20/FINAL-VERIFICATION.md.
 
-| Paper claim | Value in paper | Artifact / command | Status |
-|---|---|---|---|
-| Q1 out-of-window probes rejected | 24/24 on five lines; 24+9=33 across two presets | `bench/results/20260921184204-10lc/report.md`; `run.json` checks | verified |
-| Q1–Q4 protocol phases | 20 named phases in the archived suite; grouped P0–P2, P3–P4, P4b–P4f, P4m/P5/P5b/P10, P6–P8b, P9/P11 | `bench/results/20260921184204-10lc/run.json` `phases[]` | verified |
-| Q5 pipeline stages | S0 pre-check … S7 report; three passes of three runs each | `docs/benchmarks/benchmark-2026100*` reports; Table III | verified; four "control-pair replays" claim removed (no archived artifact) |
-| Q1 ablation | full 18/18; no-readback 18/18; no-interlock 12/18; ungated 12/18 | `report.md` Table II; companion run | verified |
-| Q1 write latency | median 19.3–47.8 ms; observed max 20.1–248.9 ms; n≈6/line | `report.md` per-protocol lines | verified; p95 removed |
-| Q1 DAQ samples | 55 | `report.md` KPI | verified |
-| Q2 single-node target | 200→204.704 °C; target 204.704±0.75; settled 204.70 | `report.md` mission block | verified |
-| Q2 BOPET | 28.10→25.66 µm; window 25.0±0.7; margin 0.04 µm; structured check true | regenerated `report.md` (line 269 now “target attained: **yes**”); `run.json` `env.biax.missionAttained=true` | verified; report generator fixed |
-| Q2 live engine turns | 156.3 s bounded write; 51.7 µm vs 52.0±0.8; 637.3 s recipe save | `report.md` agent-loop block | verified |
-| Q3 closed loop | J0≈67.2; J* 89.894; J/J* 0.965–0.972 (seeds 42–44) | `report.md` closed-loop table | verified |
-| Q4 four missions | structured checks true for all four; two boundary passes | `scenarios.json` results 0–3 | verified |
-| Q4 injection molding | 31.25→32.17 g; window 32.5±0.35; margin 0.02 g | `scenarios.json` `results[0]` | verified |
-| Q4 wastewater | DO 0.21→3.504 mg/L; window 3.4±0.6; pH 6.59→6.38 (limit 6.0) | `scenarios.json` `results[1]`; scenario `daqWindows` | verified |
-| Q4 annealing | 134.52→100.08 HV; window 95±6; 0.92 HV inside | `scenarios.json` `results[2]` | verified |
-| Q4 write economy | 2, 15, 5, 3 writes | `scenarios.json` mission writes | verified |
-| Q5 campaign | nine runs; 782 assertions; zero failed checks | `docs/benchmarks/*` reports; Table III | verified |
-| Q5 grades | 1 failed, 1 unverified, 2 promoted; six runs readback-verified | macros + hardening report | verified |
-| Q5 live load | 34 provisioned lines; 17 running; 111–113 channels; 67 DAQ nodes | `results-macros.tex`; run reports | verified; text now uses 17/111–113 |
-| Success-flag baseline | same publish-only receipt: success-flag = success; graded = unverified | `docs/audit/2026-10-17-ack-baseline.log` (22/22; D5 pass) | verified |
-| No version/commit/run ID/harness fingerprint in PDF | — | `pdftotext main.pdf` grep for `v0.7`, `e692df1`, date/run patterns | verified; identifiers moved to reviewer package |
-| Abstract length | 218 words; no result numerals | `main.tex` abstract extraction | verified (TII 150–250) |
-| Page/ref budget | 10 pages; 30 references (TII initial-submission consolidation) | `tools/audit.py`; `check-refs.cjs` | verified |
-| Double-blind | system name removed; title and Table I refer to “the platform” | `pdftotext main.pdf` grep for the former name | verified |
+| Claim | Owning evidence | Scope |
+|---|---|---|
+| Current profile/capability architecture | server/services/workshop/agents/host-tool-bridge/dispatch.ts; industrial/optimization-tools.ts; recipe-gate.ts; aml/twin/channel-profile.ts | Implementation inspection; exploration need not have a model; model aid has a separate gate |
+| Node journal and exploration summary timing | dcw/dcw-controller/write.ts; dcw/recipe-rollback-manager/lock.ts; industrial/optimization-tools.ts | Successful changed node write opens node journal; platform wait and target query precede the separate exploration-summary record |
+| Recipe batch and response timing | dcw/dcw-controller/recipes.ts; industrial/ops-tools.ts | Batch run is created before parameter writes/verification; caller receives graded result before arranging observation and separate recipe save |
+| Online versus recipe admission | dcw/param-limits.ts; dcw-controller/write.ts | Four-layer online intersection; dispatch skips the old recipe window |
+| ACK versus final verdict | shared/dcw-protocol/line.ts; dcw-controller/actuation.ts and write-verify.ts; drivers/mes-rest.ts | Acceptance ACK and verified/unverified/failed are separate; no-read-map MES is not device verification |
+| Rejection/control/snapshot repairs | tests/manual-approval-optimization.test.ts; tests/recipe-approval-snapshot.test.ts | 65 combined isolated regressions, not a process E2E experiment |
+| Q1 protocol closure and latency | bench/results/20260921184204-10lc/run.json, metrics.csv, report.md | Five acquired families, four written; approximately six writes per line; median and observed maximum |
+| Q1 four-arm ablation | bench/results/20260921181234-e1lite/e1-lite.csv; bench/e1-lite.mjs; companion report | Mock-driver API fixture, six attack classes × three deterministic repetitions; full/no-readback18/18, no-interlock/ungated12/18; boundary checks separate |
+| Q2 engine integration | R1 structured run/report plus original agent-loop-omp.log and agent-goal-loop-omp.log | Original capture confirmed by author; terminal51.7μm and logged52.02μm mean are distinct |
+| Q3 score normalization | bench/lib/closedloop.mjs; simulator plant-model.ts; R1 run.json | Three seeds, two governed writes each; weighted dimensionless score and finite grid, not optimizer superiority |
+| Q4 controls and outputs | R1 scenarios.json results[].mission | One trace per process; write requests not independent device waveforms; WWTP mixed quantities separated; annealing99.84 and terminal100.08 kept distinct |
+| Q5 782 checks | Nine original docs/benchmarks/benchmark-20261007*–20261009* benchmark.json checks[] | 237+273+272, nine sequential software suite executions, zero failed assertions |
+| Q5 timing and 65/65/65 | docs/benchmarks/benchmark-20261009033810/timeline.jsonl | 96.105s S4,69.014s cadence; converged=false;66.046s S5 wait-to-restoration span |
+| Q5 fault grades | docs/audit/2026-10-08-production-hardening-report.md; 2026-10-17-ack-baseline.md | Fault outcomes and flag-only contrast, not real-world fault-rate estimates |
+| Q6 primary trajectory | bench/results/injection-pressure-loop-2026-10-18T12-37-22-157Z/summary.json | n=1,4+5bar steps,hold6s,weight31.28→32.30g,sink1.977→1.277%,flash0.019%final |
+| Q6 partial guards and configuration | Same summary; scripts/e2e-injection-recipe-closedloop.mjs; real-harness-injection-20261018/report.md | Missing melt allowed, max timestamp freshness, scripted approval, emergency and trial interval0 disclosed |
+| Q6 later check | injection-pressure-loop-2026-10-18T17-32-16-585Z/summary.json | Separate65→70bar,32.29→32.55g,not concatenated or counted as matched replication |
+| Anonymous evidence availability | ../final-revision-2026-10-20/IEEE-TII-anonymous-evidence.zip and its manifest/claim map | Original/delivered hashes, copied redactions, actual available source snapshots and missing-field ledger; distinct from manuscript-source ZIP |
+| Final format | main.pdf; FILE-MANIFEST.json; ../final-revision-2026-10-20/qa/final-preflight.json | Actual compiled page/type/figure/reference checks; scholarly assessment is separate |
 
-## Explicit non-claims (do not strengthen in text)
+## Non-claims and remaining conditions
 
-- Simulation-tier only; no physical-plant, HIL, or operator study.
-- No optimization-benefit or safety-assurance claim.
-- No prompt-injection campaign; the approval card is an injection surface and
-  free text is display-only by construction, but not adversarially tested here.
-- The verdict is not independently validated; a caller’s `keep` can stand down
-  the record backstop. This remains a stated limitation.
-- MES write acknowledgment is covered by route tests but the campaign archives
-  MES in read mode only.
+All reported plants are software simulators. Actual protocol I/O and real
+engine tasks are not physical-plant evidence. No current complete
+optimization_explore process-response trajectory, comparative optimization
+benefit, human-oversight benefit, hard real-time guarantee or safety assurance
+is established. Archive copies and within-trajectory commands are not
+independent repetitions. The journal is attributable and deduplicated, not
+an exhaustive tamper-evident ledger. Repaired software tests do not alter
+historical records or retroactively validate historical behavior.
 
-## Figure sizes
+Historical reviews remain in earlier revision folders. The current five-seat
+role-separated review and final verification are in
+../final-revision-2026-10-20/. Canonical review-skill checker scripts were
+absent; local structural checks do not claim canonical conformance. See
+REPRODUCIBILITY.md for R1–R10 inputs,
+objective definitions, original-log provenance and procedural replay limits.
 
-- Fig. 1 is the supplied architecture artwork at full width
-  (`fig-arch-2026.png`, 2352x860, 328 dpi at 182 mm), above the 300 dpi
-  floor.
-- Fig. 2 is the column-width vector runtime sequence (`fig-runtime.pdf`,
-  8.0 pt); the supplied runtime artwork is not legible at single-column width.
-- Fig. 3(a)/(b) are vector, Arial-only, 8.0 pt, with matched placed heights
-  (116.6/120.1 pt native at the same aspect).
-- Fig. 4 is the vector process campaign at 8.0 pt.
-- Fig. 5 is the restored four-mission 2x2 panel at 3.50 x 3.60 in,
-  single-column, Arial-only, 8.0 pt.

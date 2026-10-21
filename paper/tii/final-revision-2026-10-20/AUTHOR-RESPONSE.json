@@ -1,0 +1,199 @@
+{
+  "schema": "local-author-response/1.0",
+  "canonical_status": "unbound local sidecar; not canonical author-adjudication validation",
+  "roadmap_sha256": "3931609ea0d81d2ff83c10bd591b50f70d3272311a6b153a90d774b438209ec3",
+  "final_pdf_sha256": "c4a8018c9e7c5b50eae592c1efecf1eb22634851116e330294a389fb5b6a976b",
+  "items": [
+    {
+      "roadmap_item": "REV-1",
+      "source_report": "eic-phase2.md",
+      "source_finding": "W1",
+      "source_subclaims": [
+        "SC-1"
+      ],
+      "author_triage": "will_address",
+      "authorization": "user-approved implementation plan; no new experiments/runtime edits",
+      "implementation_status": "partially_addressed",
+      "action": "Integration now names production-scoped authority, graded confirmation, and route-specific records; Related Work maps these to Q1/current tests, Q5, and Q4/Q6.",
+      "anchors": [
+        "sections/introduction.tex",
+        "sections/related.tex"
+      ],
+      "residual": "Novelty is positioned without asserting each mechanism new; broader significance remains editorial judgement.",
+      "reviewer_score_changed": false
+    },
+    {
+      "roadmap_item": "REV-2",
+      "source_report": "eic-phase2.md",
+      "source_finding": "W1",
+      "source_subclaims": [
+        "SC-2"
+      ],
+      "author_triage": "will_address",
+      "authorization": "user-approved implementation plan; no new experiments/runtime edits",
+      "implementation_status": "residual_evidence_risk",
+      "action": "The practical contribution is framed as inspectable authorization/evidence integration; no unmeasured superiority or incremental optimization benefit is claimed.",
+      "anchors": [
+        "sections/related.tex",
+        "sections/discussion.tex"
+      ],
+      "residual": "No comparative experiment was added. Scholarly significance relative to neighbors remains a risk.",
+      "reviewer_score_changed": false
+    },
+    {
+      "roadmap_item": "REV-3",
+      "source_report": "methodology-phase2.md",
+      "source_finding": "W1",
+      "source_subclaims": [
+        "SC-3"
+      ],
+      "author_triage": "will_address",
+      "authorization": "user-approved implementation plan; no new experiments/runtime edits",
+      "implementation_status": "bounded_disclosure_retained",
+      "action": "Recorded-commit, current-inspection and missing exact historical dirty runtime states remain distinguished.",
+      "anchors": [
+        "REPRODUCIBILITY.md",
+        "evidence/SOURCE-SNAPSHOT-STATUS.json",
+        "evidence/MISSING-EVIDENCE.json"
+      ],
+      "residual": "Exact historical executable worktree is unavailable; source snapshots are not represented as exact replay.",
+      "reviewer_score_changed": false
+    },
+    {
+      "roadmap_item": "REV-4",
+      "source_report": "methodology-phase2.md",
+      "source_finding": "W2",
+      "source_subclaims": [
+        "SC-4"
+      ],
+      "author_triage": "will_address",
+      "authorization": "user-approved implementation plan; no new experiments/runtime edits",
+      "implementation_status": "bounded_disclosure_retained",
+      "action": "Q6 covers the three observed quality quantities and explicitly allows absent melt temperature.",
+      "anchors": [
+        "sections/evaluation.tex",
+        "REPRODUCIBILITY.md"
+      ],
+      "residual": "Complete critical-variable acceptance requires new evidence and is not claimed.",
+      "reviewer_score_changed": false
+    },
+    {
+      "roadmap_item": "REV-5",
+      "source_report": "methodology-phase2.md",
+      "source_finding": "W2",
+      "source_subclaims": [
+        "SC-5"
+      ],
+      "author_triage": "will_address",
+      "authorization": "user-approved implementation plan; no new experiments/runtime edits",
+      "implementation_status": "bounded_disclosure_retained",
+      "action": "Q6 states freshness uses the newest available timestamp rather than checking every sensor independently.",
+      "anchors": [
+        "sections/evaluation.tex",
+        "REPRODUCIBILITY.md"
+      ],
+      "residual": "Individual-sensor freshness is not established.",
+      "reviewer_score_changed": false
+    },
+    {
+      "roadmap_item": "REV-6",
+      "source_report": "domain-phase2.md",
+      "source_finding": "W1",
+      "source_subclaims": [
+        "SC-6"
+      ],
+      "author_triage": "will_address",
+      "authorization": "user-approved implementation plan; no new experiments/runtime edits",
+      "implementation_status": "provenance_annotation_added",
+      "action": "Plot uses /final; later /update rationale numbers are preserved separately with missing raw-sample linkage stated.",
+      "anchors": [
+        "sections/evaluation.tex",
+        "REPRODUCIBILITY.md",
+        "evidence/R6-MEASUREMENT-NOTES.json"
+      ],
+      "residual": "No separate sample or timestamp is inferred; original raw fields remain unchanged.",
+      "reviewer_score_changed": false
+    },
+    {
+      "roadmap_item": "REV-7",
+      "source_report": "perspective-phase2.md",
+      "source_finding": "W1",
+      "source_subclaims": [
+        "SC-7"
+      ],
+      "author_triage": "will_address",
+      "authorization": "user-approved implementation plan; no new experiments/runtime edits",
+      "implementation_status": "minimum_scope_remedy_implemented",
+      "action": "Conclusion narrows accountability to traceable authorization and evidence attribution; operator comprehension and deployment responsibilities remain separate.",
+      "anchors": [
+        "sections/discussion.tex",
+        "sections/mechanisms.tex"
+      ],
+      "residual": "No deployment incident/recovery matrix or validated operational responsibility claim is invented.",
+      "reviewer_score_changed": false
+    },
+    {
+      "roadmap_item": "REV-8",
+      "source_report": "perspective-phase2.md",
+      "source_finding": "W2",
+      "source_subclaims": [
+        "SC-8"
+      ],
+      "author_triage": "will_address",
+      "authorization": "user-approved implementation plan; no new experiments/runtime edits",
+      "implementation_status": "first_page_qualification_added",
+      "action": "Abstract explicitly says approvals were scripted; Q6 text/caption and scope distinguish workflow authorization from human-performance evidence.",
+      "anchors": [
+        "main.tex",
+        "sections/evaluation.tex",
+        "sections/discussion.tex"
+      ],
+      "residual": "No human-subject performance result is claimed.",
+      "reviewer_score_changed": false
+    },
+    {
+      "roadmap_item": "REV-9",
+      "source_report": "perspective-phase2.md",
+      "source_finding": "W3",
+      "source_subclaims": [
+        "SC-9"
+      ],
+      "author_triage": "will_address",
+      "authorization": "user-approved implementation plan; no new experiments/runtime edits",
+      "implementation_status": "first_page_qualification_retained",
+      "action": "Abstract and first-page roadmap identify repository simulators/simulator-backed evidence.",
+      "anchors": [
+        "main.tex",
+        "sections/introduction.tex",
+        "sections/evaluation.tex"
+      ],
+      "residual": "Production objects in experiments are modeled; physical transfer is not established.",
+      "reviewer_score_changed": false
+    },
+    {
+      "roadmap_item": "REV-10",
+      "source_report": "da-phase2.md",
+      "source_finding": "M1",
+      "source_subclaims": [
+        "SC-10"
+      ],
+      "author_triage": "will_address",
+      "authorization": "user-approved implementation plan; no new experiments/runtime edits",
+      "implementation_status": "minimum_scope_remedy_implemented",
+      "action": "Abstract limits conclusion to exercised routes; discussion explicitly says no current-version E2E study jointly changes strategy, protocol and context.",
+      "anchors": [
+        "main.tex",
+        "sections/discussion.tex",
+        "sections/evaluation.tex"
+      ],
+      "residual": "Cross-route generalization would require new evidence; design integration is not pooled experimental proof.",
+      "reviewer_score_changed": false
+    }
+  ],
+  "coverage": {
+    "roadmap_items": 10,
+    "responses": 10,
+    "missing": []
+  },
+  "note": "A disclosure or scoped remedy does not recover missing data, upgrade original reviews, or establish journal acceptance."
+}

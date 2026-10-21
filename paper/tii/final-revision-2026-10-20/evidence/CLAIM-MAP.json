@@ -1,0 +1,589 @@
+{
+  "schema": "claim-evidence-map/1.0",
+  "missing_value_semantics": "null means not archived or not established; it is never an estimated value",
+  "claims": [
+    {
+      "question": "Q1",
+      "manuscript_anchor": "sec:protocol; protocol acquisition/writes and latency",
+      "evidence_unit": "R1",
+      "artifacts": [
+        {
+          "path": "R1/run.json",
+          "json_pointer": "/lines",
+          "line": null
+        },
+        {
+          "path": "R1/metrics.csv",
+          "json_pointer": null,
+          "line": 2
+        },
+        {
+          "path": "R1/report.md",
+          "json_pointer": null,
+          "line": 18
+        }
+      ],
+      "n": {
+        "acquired_families": 5,
+        "writable_families": 4,
+        "acquired_samples": 55
+      },
+      "units": [
+        "ms",
+        "samples",
+        "refused probes"
+      ],
+      "interface": "historical direct-node REST + real protocol simulators",
+      "source_version": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "configuration": {
+        "seed": 42,
+        "preset": "cast-film-physics",
+        "RTU-over-TCP": "acquisition only"
+      },
+      "missing_fields": {}
+    },
+    {
+      "question": "Q1",
+      "manuscript_anchor": "tab:ablation; admission versus confirmation",
+      "evidence_unit": "R2",
+      "artifacts": [
+        {
+          "path": "R2/e1-lite.csv",
+          "json_pointer": null,
+          "line": 2
+        },
+        {
+          "path": "R2/run.json",
+          "json_pointer": "/rows",
+          "line": null
+        }
+      ],
+      "n": {
+        "attack_classes_per_arm": 6,
+        "deterministic_repetitions": 3,
+        "attacks_per_arm": 18
+      },
+      "units": [
+        "refusal count",
+        "ms"
+      ],
+      "interface": "historical mock-driver direct-node API fixture",
+      "source_version": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "configuration": {
+        "seed": 42,
+        "arms": [
+          "full",
+          "no-interlock",
+          "no-readback",
+          "ungated"
+        ]
+      },
+      "missing_fields": {}
+    },
+    {
+      "question": "Q2",
+      "manuscript_anchor": "sec:agentteam; live engine proposal and goal workflow",
+      "evidence_unit": "R1",
+      "artifacts": [
+        {
+          "path": "R1/run.json",
+          "json_pointer": "/env",
+          "line": null
+        },
+        {
+          "path": "R1/agent-loop-omp.log",
+          "json_pointer": null,
+          "line": 1
+        },
+        {
+          "path": "R1/agent-goal-loop-omp.log",
+          "json_pointer": null,
+          "line": 1
+        }
+      ],
+      "n": {
+        "live_engine_tasks": 2
+      },
+      "units": [
+        "degrees C",
+        "micrometers"
+      ],
+      "interface": "historical omp agent / direct-node tools",
+      "source_version": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "configuration": {
+        "provider": "zhipu-coding-plan",
+        "model": "glm-5.3-flash"
+      },
+      "missing_fields": {
+        "independent_log_capture_origin": null
+      }
+    },
+    {
+      "question": "Q3",
+      "manuscript_anchor": "eq:objective; three-seed controller handling",
+      "evidence_unit": "R1",
+      "artifacts": [
+        {
+          "path": "R1/run.json",
+          "json_pointer": "/env/closedloop",
+          "line": null
+        },
+        {
+          "path": "R1/metrics.csv",
+          "json_pointer": null,
+          "line": 1
+        },
+        {
+          "path": "code/current/bench/lib/closedloop.mjs",
+          "json_pointer": null,
+          "line": 34
+        }
+      ],
+      "n": {
+        "seeds": 3,
+        "writes_per_seed": 2
+      },
+      "units": [
+        "dimensionless J",
+        "J/Jstar"
+      ],
+      "interface": "historical governed direct-node controller",
+      "source_version": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "configuration": {
+        "seeds": [
+          42,
+          43,
+          44
+        ],
+        "Jstar": 89.894,
+        "reference": "restricted admissible steady-state grid"
+      },
+      "missing_fields": {
+        "exact_runtime_harness_snapshot": null
+      }
+    },
+    {
+      "question": "Q4",
+      "manuscript_anchor": "sec:scenarios; fig:missions; controls and outputs",
+      "evidence_unit": "R1",
+      "artifacts": [
+        {
+          "path": "R1/scenarios.json",
+          "json_pointer": "/results",
+          "line": null
+        },
+        {
+          "path": "R1/run.json",
+          "json_pointer": "/env/biax",
+          "line": null
+        },
+        {
+          "path": "derived-figures/source-data-missions.json",
+          "json_pointer": "/controls",
+          "line": null
+        }
+      ],
+      "n": {
+        "trajectories_per_process": 1,
+        "processes": 4
+      },
+      "units": [
+        "bar",
+        "s",
+        "g",
+        "mg/L",
+        "HV",
+        "micrometers",
+        "m/min",
+        "mm"
+      ],
+      "interface": "historical scripted direct-node missions",
+      "source_version": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "configuration": {
+        "seed": 42
+      },
+      "missing_fields": {
+        "first_annealing_optimization_record_id": null,
+        "physical_device_waveform": null
+      }
+    },
+    {
+      "question": "Q5",
+      "manuscript_anchor": "sec:hardening; nine sequential regressions",
+      "evidence_unit": "R3",
+      "artifacts": [
+        {
+          "path": "R3/benchmark-20261007194240/benchmark.json",
+          "json_pointer": "/checks",
+          "line": null
+        },
+        {
+          "path": "R3/benchmark-20261007194413/benchmark.json",
+          "json_pointer": "/checks",
+          "line": null
+        },
+        {
+          "path": "R3/benchmark-20261007194925/benchmark.json",
+          "json_pointer": "/checks",
+          "line": null
+        },
+        {
+          "path": "R3/benchmark-20261008045434/benchmark.json",
+          "json_pointer": "/checks",
+          "line": null
+        },
+        {
+          "path": "R3/benchmark-20261008135743/benchmark.json",
+          "json_pointer": "/checks",
+          "line": null
+        },
+        {
+          "path": "R3/benchmark-20261008140955/benchmark.json",
+          "json_pointer": "/checks",
+          "line": null
+        },
+        {
+          "path": "R3/benchmark-20261009021149/benchmark.json",
+          "json_pointer": "/checks",
+          "line": null
+        },
+        {
+          "path": "R3/benchmark-20261009024141/benchmark.json",
+          "json_pointer": "/checks",
+          "line": null
+        },
+        {
+          "path": "R3/benchmark-20261009033810/benchmark.json",
+          "json_pointer": "/checks",
+          "line": null
+        }
+      ],
+      "n": {
+        "suite_executions": 9,
+        "assertions": 782
+      },
+      "units": [
+        "software assertions",
+        "ms"
+      ],
+      "interface": "deployment regression suite; recipe composition with simulator I/O",
+      "source_version": null,
+      "configuration": {
+        "days": [
+          "2026-10-07",
+          "2026-10-08",
+          "2026-10-09"
+        ]
+      },
+      "missing_fields": {
+        "per_run_exact_source_commit": null
+      }
+    },
+    {
+      "question": "Q5",
+      "manuscript_anchor": "fig:loop; S4/S5 timestamp spans and nonconvergence",
+      "evidence_unit": "R4",
+      "artifacts": [
+        {
+          "path": "R4/timeline.jsonl",
+          "json_pointer": null,
+          "line": 3
+        },
+        {
+          "path": "derived-figures/source-data-governance.json",
+          "json_pointer": "/events",
+          "line": null
+        }
+      ],
+      "n": {
+        "events": 21,
+        "sequential_execution": 1
+      },
+      "units": [
+        "s",
+        "bar",
+        "g"
+      ],
+      "interface": "same final R3 suite execution, not additional data",
+      "source_version": "0.7.57",
+      "configuration": {
+        "S4_span_s": 96.105,
+        "cadence_wait_s": 69.014,
+        "converged": false
+      },
+      "missing_fields": {}
+    },
+    {
+      "question": "Q5",
+      "manuscript_anchor": "sec:hardening; ACK grades and success-flag baseline",
+      "evidence_unit": "R5",
+      "artifacts": [
+        {
+          "path": "R5/2026-10-08-production-hardening-report.md",
+          "json_pointer": null,
+          "line": 20
+        },
+        {
+          "path": "R5/2026-10-17-ack-baseline.md",
+          "json_pointer": null,
+          "line": 1
+        },
+        {
+          "path": "R5/2026-10-17-ack-baseline.log",
+          "json_pointer": null,
+          "line": 1
+        }
+      ],
+      "n": {
+        "baseline_checks": 22
+      },
+      "units": [
+        "verified/unverified/failed counts"
+      ],
+      "interface": "fault injection with mock/MQTT receipts; same receipt for both reporting rules",
+      "source_version": null,
+      "configuration": {
+        "AW_ONLY_ACK": 1
+      },
+      "missing_fields": {
+        "original_October8_console_log": null
+      }
+    },
+    {
+      "question": "Q6",
+      "manuscript_anchor": "sec:recipeexperiment; fig:injection; primary trajectory",
+      "evidence_unit": "R6",
+      "artifacts": [
+        {
+          "path": "R6/summary.json",
+          "json_pointer": "/baseline",
+          "line": null
+        },
+        {
+          "path": "R6/summary.json",
+          "json_pointer": "/results",
+          "line": null
+        },
+        {
+          "path": "R6/summary.json",
+          "json_pointer": "/final",
+          "line": null
+        },
+        {
+          "path": "derived-figures/source-data-injection.json",
+          "json_pointer": "/snapshots",
+          "line": null
+        }
+      ],
+      "n": {
+        "sequential_trajectories": 1,
+        "quality_snapshots": 5,
+        "pressure_trials": 4
+      },
+      "units": [
+        "bar",
+        "s",
+        "g",
+        "%"
+      ],
+      "interface": "recipe_trial -> graded receipt -> DAQ; recipe_update separately",
+      "source_version": null,
+      "configuration": {
+        "hold_time_s": 6,
+        "pressure_bar": [
+          45,
+          50,
+          55,
+          60,
+          65
+        ],
+        "weight_g": [
+          31.28,
+          31.49,
+          31.74,
+          32.05,
+          32.3
+        ],
+        "wait_s": 65,
+        "AW_TRIAL_INTERVAL_MS": 0,
+        "emergency_trials": true,
+        "approval": "scripted"
+      },
+      "missing_fields": {
+        "seed": null,
+        "exact_commit": null,
+        "per_sensor_timestamps": null,
+        "melt_temperature": null,
+        "physical_PLC_waveform": null
+      }
+    },
+    {
+      "question": "Q6",
+      "manuscript_anchor": "sec:recipeexperiment; earlier cadence boundary",
+      "evidence_unit": "R7",
+      "artifacts": [
+        {
+          "path": "R7/summary.json",
+          "json_pointer": "/trial2",
+          "line": null
+        },
+        {
+          "path": "R7/summary.json",
+          "json_pointer": "/results",
+          "line": null
+        },
+        {
+          "path": "R7/failed-attempt-1/execution.jsonl",
+          "json_pointer": null,
+          "line": 1
+        },
+        {
+          "path": "R7/failed-attempt-2/execution.jsonl",
+          "json_pointer": null,
+          "line": 1
+        },
+        {
+          "path": "R7/failed-attempt-3/execution.jsonl",
+          "json_pointer": null,
+          "line": 1
+        }
+      ],
+      "n": {
+        "summarized_attempt": 1,
+        "other_earlier_failed_attempt_logs": 3
+      },
+      "units": [
+        "s",
+        "bar",
+        "g"
+      ],
+      "interface": "recipe trial and failed historical harness attempts",
+      "source_version": null,
+      "configuration": {
+        "default_trial_interval_s": 300
+      },
+      "missing_fields": {
+        "exact_commit": null
+      }
+    },
+    {
+      "question": "Q6",
+      "manuscript_anchor": "sec:recipeexperiment; separate later check",
+      "evidence_unit": "R8",
+      "artifacts": [
+        {
+          "path": "R8/summary.json",
+          "json_pointer": "/baseline",
+          "line": null
+        },
+        {
+          "path": "R8/summary.json",
+          "json_pointer": "/final",
+          "line": null
+        }
+      ],
+      "n": {
+        "separate_check": 1
+      },
+      "units": [
+        "bar",
+        "g",
+        "s"
+      ],
+      "interface": "same recipe interface; different initial state",
+      "source_version": null,
+      "configuration": {
+        "pressure_bar": [
+          65,
+          70
+        ],
+        "weight_g": [
+          32.29,
+          32.55
+        ],
+        "hold_time_s": 6
+      },
+      "missing_fields": {
+        "seed": null,
+        "exact_commit": null
+      }
+    },
+    {
+      "question": "CURRENT",
+      "manuscript_anchor": "sec:testbed; current profile/scope tests",
+      "evidence_unit": "R9",
+      "artifacts": [
+        {
+          "path": "R9/tests/high-risk-tool-scope.test.ts",
+          "json_pointer": null,
+          "line": 1
+        },
+        {
+          "path": "R9/tests/tool-profile-observer.test.ts",
+          "json_pointer": null,
+          "line": 1
+        },
+        {
+          "path": "R9/tests/recipe-propose.test.ts",
+          "json_pointer": null,
+          "line": 1
+        },
+        {
+          "path": "R10/logs/final-independent-tests.log",
+          "json_pointer": null,
+          "line": 1
+        }
+      ],
+      "n": {
+        "tests": 26,
+        "subset_of_R10": true
+      },
+      "units": [
+        "isolated software tests"
+      ],
+      "interface": "current profile/tool authorization in temporary/mock state",
+      "source_version": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "configuration": null,
+      "missing_fields": {
+        "standalone_26_test_console_log": null
+      }
+    },
+    {
+      "question": "CURRENT",
+      "manuscript_anchor": "sec:testbed; current composition checks",
+      "evidence_unit": "R10",
+      "artifacts": [
+        {
+          "path": "R10/tests/manual-approval-optimization.test.ts",
+          "json_pointer": null,
+          "line": 1
+        },
+        {
+          "path": "R10/tests/recipe-approval-snapshot.test.ts",
+          "json_pointer": null,
+          "line": 1
+        },
+        {
+          "path": "R10/logs/final-independent-tests.log",
+          "json_pointer": null,
+          "line": 1
+        }
+      ],
+      "n": {
+        "combined_tests": 65
+      },
+      "units": [
+        "isolated software tests"
+      ],
+      "interface": "current approval/profile/recipe composition; no process-response E2E",
+      "source_version": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "configuration": {
+        "temporary_storage": true,
+        "mock_IO": true
+      },
+      "missing_fields": {
+        "complete_current_optimization_explore_process_trial": null
+      }
+    }
+  ]
+}

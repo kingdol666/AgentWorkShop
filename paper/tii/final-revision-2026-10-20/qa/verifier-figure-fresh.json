@@ -1,0 +1,78 @@
+[
+  {
+    "figure": "resources/fig-missions-controls.pdf",
+    "sha256": "71015341734842f0c0d44759d83a22aeaabab75f000e006ebee986c2430e5ff4",
+    "check": "text",
+    "exit_code": 0
+  },
+  {
+    "figure": "resources/fig-missions-controls.pdf",
+    "sha256": "71015341734842f0c0d44759d83a22aeaabab75f000e006ebee986c2430e5ff4",
+    "check": "collision",
+    "exit_code": 0
+  },
+  {
+    "figure": "resources/fig-governance-timeline.pdf",
+    "sha256": "1147f2d1deac1fd66852d44256dfb7ba2af4d964b2ddf603bbf66d3c2ab7a4cf",
+    "check": "text",
+    "exit_code": 0
+  },
+  {
+    "figure": "resources/fig-governance-timeline.pdf",
+    "sha256": "1147f2d1deac1fd66852d44256dfb7ba2af4d964b2ddf603bbf66d3c2ab7a4cf",
+    "check": "collision",
+    "exit_code": 0
+  },
+  {
+    "figure": "resources/fig-injection-controls.pdf",
+    "sha256": "b3f818a5b0a77cf7917a1c103d1e219a1bd5c81c31685cc4e8861b0d930b2913",
+    "check": "text",
+    "exit_code": 0
+  },
+  {
+    "figure": "resources/fig-injection-controls.pdf",
+    "sha256": "b3f818a5b0a77cf7917a1c103d1e219a1bd5c81c31685cc4e8861b0d930b2913",
+    "check": "collision",
+    "exit_code": 0
+  },
+  {
+    "figure": "resources/fig-runtime-2026.pdf",
+    "sha256": "7aca692d19cdd133c7e2471c6db1111ba3f5843d84b39cf61748473e7eac5db6",
+    "check": "text",
+    "exit_code": 0
+  },
+  {
+    "figure": "resources/fig-runtime-2026.pdf",
+    "sha256": "7aca692d19cdd133c7e2471c6db1111ba3f5843d84b39cf61748473e7eac5db6",
+    "check": "collision",
+    "exit_code": 0
+  },
+  {
+    "figure": "resources/fig-admission-hitl-2026.pdf",
+    "sha256": "3be2c9e2f400769f67b86c864c1299ab8338499bf51fc6788fa9b0bb7a65e63c",
+    "check": "text",
+    "exit_code": 0
+  },
+  {
+    "figure": "resources/fig-admission-hitl-2026.pdf",
+    "sha256": "3be2c9e2f400769f67b86c864c1299ab8338499bf51fc6788fa9b0bb7a65e63c",
+    "check": "collision",
+    "exit_code": 0
+  },
+  {
+    "figure": "resources/fig-architecture-2026.pdf",
+    "sha256": "1ad40d2764cdad1cee610581c25f6adcf8796758aaf1da631d102e525794c8d5",
+    "check": "text",
+    "exit_code": 0
+  },
+  {
+    "figure": "resources/fig-architecture-2026.pdf",
+    "sha256": "1ad40d2764cdad1cee610581c25f6adcf8796758aaf1da631d102e525794c8d5",
+    "check": "collision",
+    "exit_code": 0
+  },
+  {
+    "check": "figure-source",
+    "exit_code": 0
+  }
+]

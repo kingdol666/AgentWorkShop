@@ -1,0 +1,71 @@
+{
+  "scope": "local structural subset only; not canonical conformance, target binding, calibration, or scholarly approval",
+  "reports": [
+    {
+      "role": "eic",
+      "status": "PASS",
+      "errors": [],
+      "votes": {
+        "D1": "not_assessed",
+        "D2": "not_assessed",
+        "D3": "not_assessed",
+        "D4": "not_assessed",
+        "D5": "pass",
+        "D6": "warn"
+      }
+    },
+    {
+      "role": "methodology",
+      "status": "PASS",
+      "errors": [],
+      "votes": {
+        "D1": "warn",
+        "D2": "not_assessed",
+        "D3": "pass",
+        "D4": "not_assessed",
+        "D5": "not_assessed",
+        "D6": "not_assessed"
+      }
+    },
+    {
+      "role": "domain",
+      "status": "PASS",
+      "errors": [],
+      "votes": {
+        "D1": "not_assessed",
+        "D2": "warn",
+        "D3": "not_assessed",
+        "D4": "not_assessed",
+        "D5": "not_assessed",
+        "D6": "not_assessed"
+      }
+    },
+    {
+      "role": "perspective",
+      "status": "PASS",
+      "errors": [],
+      "votes": {
+        "D1": "not_assessed",
+        "D2": "not_assessed",
+        "D3": "not_assessed",
+        "D4": "warn",
+        "D5": "not_assessed",
+        "D6": "not_assessed"
+      }
+    },
+    {
+      "role": "da",
+      "status": "PASS",
+      "errors": [],
+      "votes": {
+        "D1": "not_assessed",
+        "D2": "not_assessed",
+        "D3": "warn",
+        "D4": "not_assessed",
+        "D5": "not_assessed",
+        "D6": "not_assessed"
+      }
+    }
+  ],
+  "passed": true
+}

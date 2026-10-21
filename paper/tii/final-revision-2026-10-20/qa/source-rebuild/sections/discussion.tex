@@ -1,0 +1,70 @@
+\section{Engineering Interpretation}
+\label{sec:limits}
+The results support an integrated systems contribution: industrial agent
+execution can preserve authority, production context, command confirmation,
+and process observations as distinct, inspectable evidence. Admission
+ablation explains the contribution of the pre-write interval, the
+publish-only challenge tests interpretation of command receipts, and the
+paired trajectories connect interventions to observed targets. Their
+combination makes an agent's completed task interpretable in terms of the
+industrial operations it performed.
+
+This evidence structure also explains the division between strategy and
+platform. An LLM, scripted policy, or deterministic controller supplies a
+candidate through its authorized interface. The platform applies the
+execution contract and returns evidence with stable semantics. Likewise,
+process reuse changes the signal map, objective, and guard definitions
+while retaining production context and execution records. Q6 closes this
+chain at the operational level: the retained recipe version follows
+observed acceptance of an approved trial sequence.
+
+Human participation is represented through explicit authority and
+attributed decisions. This supports inspection of what an approver
+authorized and what evidence the proposer later used. Automation research
+distinguishes such workflow structure from operator comprehension,
+complacency, and allocation of responsibility
+\cite{parasuramanmanzey2010complacency,parasuraman2000model,bainbridge1983ironies}.
+The server-side boundary resolves execution authority independently of
+prompts and retrieved documents \cite{greshake2023injection,liu2024pinjection}.
+Deployment combines this boundary with credential management, endpoint
+security, and IT/OT separation \cite{iec62443-3-3}. The supervisory layer
+coexists with independently engineered PLC interlocks and safety
+instrumented systems; IEC~61511 governs the latter's process-safety
+lifecycle \cite{iec61511}.
+
+\noindent\textit{Experimental scope.}
+The process evidence uses accelerated simulators, scripted approvals, and
+sequential trajectories. Q1--Q4 cover the historical direct-node interface;
+current profile and composition tests cover software behavior; Q6 covers
+one recipe trajectory. A complete current AML-exploration control--response
+trial is not archived. Q6's observed guards, snapshots, and cadence settings
+are specified in Section~\ref{sec:recipeexperiment}. These evidence units
+establish the exercised
+mechanisms without estimating comparative optimization benefit, fault
+frequency, human performance, hard real-time behavior, or physical transfer.
+Matched initial states, repeated independent runs, and a fixed-policy or
+SCADA comparator would support those further estimates. Established process
+benchmarks such as Tennessee Eastman \cite{downs1993tep} provide an
+additional setting for that evaluation.
+
+\section{Conclusion}
+\label{sec:conclusion}
+The framework connects industrial agent teams to production-scoped,
+governed execution while keeping proposal strategy replaceable. Semantic
+nodes, capability/profile enforcement, source-specific admission, approval,
+graded confirmation, and distinct node/recipe records form an inspectable
+chain from a task to commanded controls, observed outputs, and retained
+production parameters. Protocol and admission experiments, controller and
+process missions, repeated regression execution, and the paired
+injection-molding trajectory exercise complementary parts of that chain.
+The contribution is a common execution and evidence contract through which
+industrial agent reasoning can be connected to accountable supervisory
+operation.
+
+\noindent\textit{Data availability and AI assistance.}
+Run archives, original Q2 engine logs, replay entries, configuration notes,
+and claim-to-source mappings accompany the separate anonymous experimental
+evidence bundle. The manuscript source package contains plotting sources
+and figure mappings. An OpenAI language model assisted
+with manuscript organization, language revision, and plotting-code
+preparation. The authors remain responsible for the final submission.

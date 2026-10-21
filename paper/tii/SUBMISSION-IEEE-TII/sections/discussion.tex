@@ -1,87 +1,66 @@
-\section{Discussion and Limitations}
+\section{Engineering Interpretation}
 \label{sec:limits}
-\subsection{Validity and Reproducibility}
-\looseness=-1 Seed, manifest, and raw artifacts are fixed; Q5 adds per-run ledgers and
-timelines. Five
-qualifications bound them: simulation-tier evidence (no physical-device
-campaign, operator study, or external comparison); internal-oracle optima and
-predicates under an author-implemented, author-adjudicated harness;
-single-host latencies and near-contemporary runs; unexercised capabilities and
-one live provider/model; and harness-adjudicated approval, with human latency
-and quality out of scope.
-\subsection{Safety Positioning and Human Oversight}
-\looseness=-1 The threat model is a misbehaving or manipulated agent inside
-an otherwise trusted platform and plant; approval, admission re-checks, and
-journaling are the containment surfaces, and no injection campaign or
-operator study is reported. Stolen credentials and compromised endpoints fall
-under IEC~62443 \cite{iec62443-3-3}; record-keeping and oversight duties
-belong to Regulation (EU) 2024/1689 \cite{eu2024aiact}, which the journal
-and approval gates serve at the evidence layer, certification out of
-scope.
-Protection functions remain in the PLC; prompts and retrieved documents are
-untrusted text, not authority
-\cite{greshake2023injection,liu2024pinjection}. The proposer is confined to
-per-binding scope and journaled actions: a bounded blast radius, not a
-protection guarantee. Admission, grading, and the backstop run with or
-without human approval; enforcement never queues behind attention (deferred
-mode hands actuation to the approval policy, Section~\ref{sec:agentloop}). Pacing bounds approval demand; batch release
-(Section~\ref{sec:hardening}, leg~5) is the demonstrated fatigue mitigation,
-while approval fatigue and automation bias remain human-factors risks
-\cite{parasuramanmanzey2010complacency,parasuraman2000model,bainbridge1983ironies}.
-A lead agent's delegation-mode choice (Section~\ref{sec:hitl}) is the one
-agent-reachable path around per-request approval; capping it at the granter's
-binding mode or requiring line-switch confirmation is the queued guard,
-alongside the verdict-side guard of Section~\ref{sec:agentloop} (independent
-adjudication or a platform-side re-check before \texttt{keep}).
+The design integrates execution contracts; the experiments demonstrate
+their mechanisms on the exercised routes. Admission ablation isolates the
+pre-write interval, the publish-only challenge tests receipt interpretation,
+and paired trajectories connect interventions to observed targets. Together,
+these records make a completed task inspectable as industrial operations.
 
-\subsection{Deployment Boundaries}
-\looseness=-1 Against the nearest systems of Section~\ref{sec:related},
-the differentiator is not the LLM---a replaceable strategy slot---but the
-production-scoped authority and evidence around its writes. The contribution
-is a framework claim---design, contracts, evidence semantics---assessed by
-construction, mechanism ablation, and two falsifiable contrasts (the
-window-edge probes and the publish-only receipt), not by outcome superiority;
-an outcome-level comparison against SCADA-mediated operation is out of scope.
-The layer installs beside the
-plant's protocol endpoints, onboards declaratively
-(Section~\ref{sec:reuse}), and leaves PLC protection and DCS interlocks
-untouched.
-\looseness=-1 Execution and recovery are non-atomic: bookkeeping may fail after
-actuation, pacing times writes rather than certifying stability, step limits
-are advisory, and multi-node compensation may partially succeed. Readback
-agreement and three-way consistency do not imply process recovery; hold
-heartbeats re-apply the setpoint without re-admission. Oscillation, storage
-failure, clock error, concurrency beyond four lines, and split-brain
-deployments remain unevaluated; the journal is append-only but not
-tamper-evident, so forensic integrity rests on host security and clock skew
-propagates into timelines. A supervisor outage halts dispatch; plant staff
-retain their DCS/SCADA stations, so the governed path mediates agent-originated
-and platform-client writes, not existing operator tooling---an integration
-boundary, not a takeover. The next evidence tier is a
-hardware-in-the-loop leg against a real PLC or OPC-UA endpoint and community
-benchmarks such as Tennessee Eastman \cite{downs1993tep}. \looseness=-1 In production, bindings govern
-sanctioned tools, not arbitrary privileged-engine I/O; least privilege,
-endpoint security, and IT/OT separation remain necessary
-\cite{iec62443-3-3}. The platform is neither a safety
-instrumented function nor a plant-protection substitute \cite{iec61511}, and
-line-scoped approver authorization is still missing, so production needs
-segregation of duties and alarm-path failure tests.
+An LLM, scripted policy, or deterministic controller supplies a candidate
+through its authorized interface; the platform applies the execution
+contract. Process reuse changes the signal map, objective, and guards while
+retaining production context and execution records. In Q6, observed
+acceptance of approved trials precedes retention of the recipe version.
+
+Human participation is represented through explicit authority and
+attributed decisions. This supports inspection of what an approver
+authorized and what evidence the proposer later used. Automation research
+distinguishes such workflow structure from operator comprehension,
+complacency, and allocation of responsibility
+\cite{parasuramanmanzey2010complacency,parasuraman2000model,bainbridge1983ironies}.
+The server-side boundary resolves execution authority independently of
+prompts and retrieved documents \cite{greshake2023injection,liu2024pinjection}.
+Deployment combines this boundary with credential management, endpoint
+security, and IT/OT separation \cite{iec62443-3-3}. The supervisory layer
+coexists with independently engineered PLC interlocks and safety
+instrumented systems; IEC~61511 governs the latter's process-safety
+lifecycle \cite{iec61511}.
+
+\noindent\textit{Experimental scope.}
+The process evidence uses accelerated simulators, scripted approvals, and
+sequential trajectories. Q1--Q4 cover the historical direct-node interface;
+current profile and composition tests cover software behavior; Q6 covers
+one recipe trajectory. No single current-version end-to-end study jointly
+varies strategy, protocol, and production context, and a complete current
+AML-exploration control--response trial is not archived. Q6's observed
+guards, snapshots, and cadence settings
+are specified in Section~\ref{sec:recipeexperiment}. These evidence units
+establish the exercised
+mechanisms without estimating comparative optimization benefit, fault
+frequency, human performance, hard real-time behavior, or physical transfer.
+Matched initial states, repeated independent runs, and a fixed-policy or
+SCADA comparator would support those further estimates. Established process
+benchmarks such as Tennessee Eastman \cite{downs1993tep} provide an
+additional setting for that evaluation.
 
 \section{Conclusion}
 \label{sec:conclusion}
-\looseness=-1 The platform contributes a governed supervisory execution layer, not a
-new optimizer: one path from agent-team identities to governed writes, graded
-acknowledgment, verdict, and compensation, with admission, approval, and
-recovery left as separately inspectable, actor-attributed evidence on every
-agent-originated write---the actionable unit, independently inspectable and
-revocable. Physical-plant deployment, operator studies, and
-external comparison remain open; optimization benefit, autonomous control,
-and safety assurance stay unsupported claims.
+The framework connects industrial agent teams to production-scoped,
+governed execution while keeping proposal strategy replaceable. Semantic
+nodes, capability/profile enforcement, source-specific admission, approval,
+graded confirmation, and distinct node/recipe records form an inspectable
+chain from a task to commanded controls, observed outputs, and retained
+production parameters. Protocol and admission experiments, controller and
+process missions, repeated regression execution, and the paired
+injection-molding trajectory exercise complementary parts of that chain.
+The contribution is a common execution and evidence contract connecting
+industrial agent reasoning to traceable authorization and evidence
+attribution in supervisory operation.
 
-\vspace{2pt}\noindent\textit{Data availability and disclosure.}
-\looseness=-1 Artifacts are archived per run; the platform and simulators are
-publicly available (links withheld for double-blind review;
-Section~\ref{sec:arch}), the live engine-turn transcripts survive only as
-recorded outcomes, and the write-evidence suite is rerunnable. AI assistants
-supported editing under author direction; the authors remain responsible for
-all claims.
+\noindent\textit{Data availability and AI assistance.}
+Run archives, original Q2 engine logs, replay entries, configuration notes,
+and claim-to-source mappings accompany the separate anonymous experimental
+evidence bundle. The manuscript source package contains plotting sources
+and figure mappings. An OpenAI language model assisted
+with manuscript organization, language revision, and plotting-code
+preparation. The authors remain responsible for the final submission.

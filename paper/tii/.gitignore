@@ -24,3 +24,10 @@ probe*.tex
 out*.txt
 _v.txt
 _review/
+
+# 陈旧整目录构建快照(已被 final-revision 取代,bulky)
+revision-2026-10-20/
+revision-2026-10-20-tenpage/
+
+# 投稿打包产物(可由 source 重建,从不入库)
+*.zip

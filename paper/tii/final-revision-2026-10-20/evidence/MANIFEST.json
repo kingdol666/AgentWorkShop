@@ -1,0 +1,2409 @@
+{
+  "schema": "anonymous-evidence-manifest/1.0",
+  "created_on": "2026-10-20",
+  "scope": "Bounded archived evidence, source inspection snapshots, and offline analysis. Not a complete runtime release.",
+  "source_files": [
+    {
+      "path": "R1/run.json",
+      "evidence_unit": "R1",
+      "role": "archived evidence",
+      "source_revision": "archive records e692df1; working-tree harness differs from commit",
+      "original_sha256": "b68064272ad77d617f807dc41c5b53e064318b686567d160cc224da73058af8d",
+      "delivered_sha256": "a7285aa368fdbad699243ef0e7280e6f721136acdf717cf559f106449a1c6cb3",
+      "original_bytes": 200843,
+      "delivered_bytes": 200842,
+      "transformations": {
+        "private_workspace_prefix": 2,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 1631
+    },
+    {
+      "path": "R1/scenarios.json",
+      "evidence_unit": "R1",
+      "role": "archived evidence",
+      "source_revision": "archive records e692df1; working-tree harness differs from commit",
+      "original_sha256": "83f3ef3140df02809749003bd5bad7778870ae966a598572631b895028aeb3b4",
+      "delivered_sha256": "2b4635e9f82ab8843f5ea33ed9e6398018ec7da0e515eccf1f9350f1f5678a21",
+      "original_bytes": 69687,
+      "delivered_bytes": 69688,
+      "transformations": {
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 530
+    },
+    {
+      "path": "R1/metrics.csv",
+      "evidence_unit": "R1",
+      "role": "archived evidence",
+      "source_revision": "archive records e692df1; working-tree harness differs from commit",
+      "original_sha256": "47f6328718501682653962e9f8da17a02381154c0f01b8791baa21fdfb720e55",
+      "delivered_sha256": "47f6328718501682653962e9f8da17a02381154c0f01b8791baa21fdfb720e55",
+      "original_bytes": 3869,
+      "delivered_bytes": 3869,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": 137
+    },
+    {
+      "path": "R1/report.md",
+      "evidence_unit": "R1",
+      "role": "archived evidence",
+      "source_revision": "archive records e692df1; working-tree harness differs from commit",
+      "original_sha256": "b15996a8eeaf53bdbb976db429ce1c23c25a71bb499213af0c00ddaf4d20262c",
+      "delivered_sha256": "d000fefc1316587fe149dd9644ea0f0f6ffa59427517d8de4c775417fd02a623",
+      "original_bytes": 55134,
+      "delivered_bytes": 55143,
+      "transformations": {
+        "private_workspace_prefix": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R1/summary.json",
+      "evidence_unit": "R1",
+      "role": "archived evidence",
+      "source_revision": "archive records e692df1; working-tree harness differs from commit",
+      "original_sha256": "238b8c7be64e1c82223329734c9f23292bbe8fd068b49a67de7def08c422e852",
+      "delivered_sha256": "7c52819a02a59c2f9c5eb1e95546fd3ef1f303067ecb0b28776d3bfbaa2a2fc8",
+      "original_bytes": 18015,
+      "delivered_bytes": 18008,
+      "transformations": {
+        "private_workspace_prefix": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 259
+    },
+    {
+      "path": "R1/line-profile.json",
+      "evidence_unit": "R1",
+      "role": "archived evidence",
+      "source_revision": "archive records e692df1; working-tree harness differs from commit",
+      "original_sha256": "ebfd354205729bbd836d5ba7f26956943bdc05f82f22e704434e98986b49b183",
+      "delivered_sha256": "f80966d74ef7671defc7331dd11bfd944c83ad31cbe27d59f86a6cbc4f0ef377",
+      "original_bytes": 120035,
+      "delivered_bytes": 120036,
+      "transformations": {
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 1065
+    },
+    {
+      "path": "R1/scenarios-benchmark.md",
+      "evidence_unit": "R1",
+      "role": "archived evidence",
+      "source_revision": "archive records e692df1; working-tree harness differs from commit",
+      "original_sha256": "b9940df98cc216b59f26f0fd27f59e1a8e1735b60e2f631554e6a9ea440cabd0",
+      "delivered_sha256": "b9940df98cc216b59f26f0fd27f59e1a8e1735b60e2f631554e6a9ea440cabd0",
+      "original_bytes": 10163,
+      "delivered_bytes": 10163,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R1/ARTIFACT-NOTES.md",
+      "evidence_unit": "R1",
+      "role": "archived evidence",
+      "source_revision": "archive records e692df1; working-tree harness differs from commit",
+      "original_sha256": "a4117f2ab6426b622395f61c8addcb1c404645fe61d99ec5178162c09098bdb4",
+      "delivered_sha256": "a4117f2ab6426b622395f61c8addcb1c404645fe61d99ec5178162c09098bdb4",
+      "original_bytes": 1243,
+      "delivered_bytes": 1243,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R1/agent-loop-omp.log",
+      "evidence_unit": "R1",
+      "role": "archived evidence",
+      "source_revision": "archive records e692df1; working-tree harness differs from commit",
+      "original_sha256": "c0b6d134de9ce63a6a528dce758b269e0f6644d92dd33a6c4815e3a53c03252b",
+      "delivered_sha256": "c0b6d134de9ce63a6a528dce758b269e0f6644d92dd33a6c4815e3a53c03252b",
+      "original_bytes": 10233,
+      "delivered_bytes": 10233,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R1/agent-goal-loop-omp.log",
+      "evidence_unit": "R1",
+      "role": "archived evidence",
+      "source_revision": "archive records e692df1; working-tree harness differs from commit",
+      "original_sha256": "8f0472aef1d33f16bec4d9382b5f1e15028b54ff8d476f653339bdd06fb2e934",
+      "delivered_sha256": "8f0472aef1d33f16bec4d9382b5f1e15028b54ff8d476f653339bdd06fb2e934",
+      "original_bytes": 19924,
+      "delivered_bytes": 19924,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R1/agentteam-biax.log",
+      "evidence_unit": "R1",
+      "role": "archived evidence",
+      "source_revision": "archive records e692df1; working-tree harness differs from commit",
+      "original_sha256": "b524495344ef4e436ed90a49c8950733a801fb38ca38f3821c000ebb6d76bc4e",
+      "delivered_sha256": "b524495344ef4e436ed90a49c8950733a801fb38ca38f3821c000ebb6d76bc4e",
+      "original_bytes": 1484,
+      "delivered_bytes": 1484,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R1/agentteam-mission.log",
+      "evidence_unit": "R1",
+      "role": "archived evidence",
+      "source_revision": "archive records e692df1; working-tree harness differs from commit",
+      "original_sha256": "f81484ef5e7ec2c07eb055eaff7ec5bce105d19548adcea7826ca52dade4aca9",
+      "delivered_sha256": "f81484ef5e7ec2c07eb055eaff7ec5bce105d19548adcea7826ca52dade4aca9",
+      "original_bytes": 1063,
+      "delivered_bytes": 1063,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R1/scenarios-mission-anneal.log",
+      "evidence_unit": "R1",
+      "role": "archived evidence",
+      "source_revision": "archive records e692df1; working-tree harness differs from commit",
+      "original_sha256": "bba450cfdcc53babb0527319f6f8e0c9c3a1b5d4a66e7582899e16dcfe4a9f74",
+      "delivered_sha256": "bba450cfdcc53babb0527319f6f8e0c9c3a1b5d4a66e7582899e16dcfe4a9f74",
+      "original_bytes": 1877,
+      "delivered_bytes": 1877,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R1/scenarios-mission-biax.log",
+      "evidence_unit": "R1",
+      "role": "archived evidence",
+      "source_revision": "archive records e692df1; working-tree harness differs from commit",
+      "original_sha256": "89ecb3e8401400204f864f348163c1118679a8cf0195629fb3950033b4b09021",
+      "delivered_sha256": "89ecb3e8401400204f864f348163c1118679a8cf0195629fb3950033b4b09021",
+      "original_bytes": 1787,
+      "delivered_bytes": 1787,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R1/scenarios-mission-injection.log",
+      "evidence_unit": "R1",
+      "role": "archived evidence",
+      "source_revision": "archive records e692df1; working-tree harness differs from commit",
+      "original_sha256": "66776be9d3e0bcca43d0ae027d9fff231c46542b4d2d6f272c0fb3472f73c6f5",
+      "delivered_sha256": "66776be9d3e0bcca43d0ae027d9fff231c46542b4d2d6f272c0fb3472f73c6f5",
+      "original_bytes": 1425,
+      "delivered_bytes": 1425,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R1/scenarios-mission-wwtp.log",
+      "evidence_unit": "R1",
+      "role": "archived evidence",
+      "source_revision": "archive records e692df1; working-tree harness differs from commit",
+      "original_sha256": "2ca8a2977d0b25efa27e024f6d652e229b3b53608ae32ada43c75a5300a95b3f",
+      "delivered_sha256": "2ca8a2977d0b25efa27e024f6d652e229b3b53608ae32ada43c75a5300a95b3f",
+      "original_bytes": 3108,
+      "delivered_bytes": 3108,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R2/run.json",
+      "evidence_unit": "R2",
+      "role": "archived evidence",
+      "source_revision": "archive records e692df1",
+      "original_sha256": "a524384950c1eb743d330947cb4337b1996af04b64be1d2fda5e0f473f873ce9",
+      "delivered_sha256": "0a6408598c73be41c80cf180a21a1860d03e0d38a19f65c33f67da5558876dfa",
+      "original_bytes": 52335,
+      "delivered_bytes": 52336,
+      "transformations": {
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 1670
+    },
+    {
+      "path": "R2/e1-lite.csv",
+      "evidence_unit": "R2",
+      "role": "archived evidence",
+      "source_revision": "archive records e692df1",
+      "original_sha256": "9569a3367cb36b04e407174c808c4b760f887ffe2e948b3e33d27a062216abae",
+      "delivered_sha256": "9569a3367cb36b04e407174c808c4b760f887ffe2e948b3e33d27a062216abae",
+      "original_bytes": 18226,
+      "delivered_bytes": 18226,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": 1536
+    },
+    {
+      "path": "R2/report.md",
+      "evidence_unit": "R2",
+      "role": "archived evidence",
+      "source_revision": "archive records e692df1",
+      "original_sha256": "c6361b883833aebceb2e242f0236b3b29f9e323bf2253b6b9962cc162976c2c3",
+      "delivered_sha256": "c6361b883833aebceb2e242f0236b3b29f9e323bf2253b6b9962cc162976c2c3",
+      "original_bytes": 1293,
+      "delivered_bytes": 1293,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R3/benchmark-20261007194240/benchmark.json",
+      "evidence_unit": "R3",
+      "role": "archived evidence",
+      "source_revision": null,
+      "original_sha256": "c2d4767a8b0f2b346fedbe55c1acdfb4cdd1927154d19b1cb00c8888aa96092f",
+      "delivered_sha256": "a7bc6d0d0e9698f868ca871cfe7eff7394372b3b0b02ad8f5731e2bd21fefa71",
+      "original_bytes": 17097,
+      "delivered_bytes": 16438,
+      "transformations": {
+        "private_workspace_prefix": 1,
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 144
+    },
+    {
+      "path": "R3/benchmark-20261007194240/report.md",
+      "evidence_unit": "R3",
+      "role": "archived evidence",
+      "source_revision": null,
+      "original_sha256": "84e508e656f399f0b49e6c3f9eff927bd42c00099b46e7e21997df653c7380a2",
+      "delivered_sha256": "7bca8bf5cdab229f413d788345469e42a9ebc1da9a95b611f4bb8f08c85f35f0",
+      "original_bytes": 8645,
+      "delivered_bytes": 8640,
+      "transformations": {
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R3/benchmark-20261007194240/timeline.jsonl",
+      "evidence_unit": "R3",
+      "role": "archived evidence",
+      "source_revision": null,
+      "original_sha256": "7fe221954cfffa5832b25511885172561d808ecad6cd998b6d8bd4c63d12b63c",
+      "delivered_sha256": "81703695f9b7fd88b5eb97e398f844485693c0cf28e4b39a0084093af1fd5a85",
+      "original_bytes": 3213,
+      "delivered_bytes": 3183,
+      "transformations": {
+        "private_workspace_prefix": 1,
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 50
+    },
+    {
+      "path": "R3/benchmark-20261007194413/benchmark.json",
+      "evidence_unit": "R3",
+      "role": "archived evidence",
+      "source_revision": null,
+      "original_sha256": "cbdabc8ad91471321eb55e81840c16050f9f8beb87dc621df3783ab91d408a06",
+      "delivered_sha256": "8fdc417aa53827edd1b979f85249abd0b5a55957ddcc55c70a2c60f79ea3f121",
+      "original_bytes": 17846,
+      "delivered_bytes": 17163,
+      "transformations": {
+        "private_workspace_prefix": 1,
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 149
+    },
+    {
+      "path": "R3/benchmark-20261007194413/report.md",
+      "evidence_unit": "R3",
+      "role": "archived evidence",
+      "source_revision": null,
+      "original_sha256": "7b71d79dd35f95d32840a5f556f532f97039b91428e2a226d54a81a5f5bee4bb",
+      "delivered_sha256": "e0bac0585f10d6695274062cc1f73737242f4201aabd3d56a79ee5f9d3a1a16c",
+      "original_bytes": 8982,
+      "delivered_bytes": 8977,
+      "transformations": {
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R3/benchmark-20261007194413/timeline.jsonl",
+      "evidence_unit": "R3",
+      "role": "archived evidence",
+      "source_revision": null,
+      "original_sha256": "1c13118c7a329e95735b15d457a9dd1e34309e3e3eb1653fdc648ea3e1da3c87",
+      "delivered_sha256": "69c77dbd3046e39830a8cba7a067a5d06a51b2aac23b5b916032f74fecd72108",
+      "original_bytes": 3771,
+      "delivered_bytes": 3737,
+      "transformations": {
+        "private_workspace_prefix": 1,
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 55
+    },
+    {
+      "path": "R3/benchmark-20261007194925/benchmark.json",
+      "evidence_unit": "R3",
+      "role": "archived evidence",
+      "source_revision": null,
+      "original_sha256": "32f1bec7f824c0f1ef62140f74f1a4c4be9c1caed318f948880664b68154a826",
+      "delivered_sha256": "a9b8665ab80bbd79c344b405c321ab62a674ec4af72e58ba2c4471a346245211",
+      "original_bytes": 17848,
+      "delivered_bytes": 17165,
+      "transformations": {
+        "private_workspace_prefix": 1,
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 149
+    },
+    {
+      "path": "R3/benchmark-20261007194925/report.md",
+      "evidence_unit": "R3",
+      "role": "archived evidence",
+      "source_revision": null,
+      "original_sha256": "7ba3269be195d5cd372d02f0e69b814382d4853217154f3e677441aa94cd276e",
+      "delivered_sha256": "97a83a274e498444f6c09143052e8e75cf378bf7953f5cddd22ff2f214bcb594",
+      "original_bytes": 8979,
+      "delivered_bytes": 8974,
+      "transformations": {
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R3/benchmark-20261007194925/timeline.jsonl",
+      "evidence_unit": "R3",
+      "role": "archived evidence",
+      "source_revision": null,
+      "original_sha256": "d239ae93fb00e61bb91146c8adaab587e50523671ae2a7de77abd5a8358f6a47",
+      "delivered_sha256": "2714c94ee63c066dbf4ea84f784e5736c6416932dc5fe4505ee9b180189ef988",
+      "original_bytes": 3775,
+      "delivered_bytes": 3741,
+      "transformations": {
+        "private_workspace_prefix": 1,
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 55
+    },
+    {
+      "path": "R3/benchmark-20261008045434/benchmark.json",
+      "evidence_unit": "R3",
+      "role": "archived evidence",
+      "source_revision": null,
+      "original_sha256": "1e7a54e1a276433c694092de90165ee7bc4328cd9a569e68b2c187f20cd995e4",
+      "delivered_sha256": "96949402611f2d082a01713f60a8c3f0fcf6e1f865156e92ad70384155a7d480",
+      "original_bytes": 20049,
+      "delivered_bytes": 19294,
+      "transformations": {
+        "private_workspace_prefix": 1,
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 170
+    },
+    {
+      "path": "R3/benchmark-20261008045434/report.md",
+      "evidence_unit": "R3",
+      "role": "archived evidence",
+      "source_revision": null,
+      "original_sha256": "271156c3e8f3202aaac613073397da9463f28f3e14c25da3367c53f3d071ea3f",
+      "delivered_sha256": "c2ce5acad0fd157f323aad3d00aeb64ee3ece2b4b119e8e4eef9562f8952c053",
+      "original_bytes": 10197,
+      "delivered_bytes": 10192,
+      "transformations": {
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R3/benchmark-20261008045434/timeline.jsonl",
+      "evidence_unit": "R3",
+      "role": "archived evidence",
+      "source_revision": null,
+      "original_sha256": "93a0e9be5cfec7dba949d2f7fb8804c36c208086ff2fbc3b7a39f47d79ed981b",
+      "delivered_sha256": "c5c4f10cd19d0ffa938fcd64c588d8e027a11480c45d27f70f1f642387117a27",
+      "original_bytes": 3807,
+      "delivered_bytes": 3773,
+      "transformations": {
+        "private_workspace_prefix": 1,
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 55
+    },
+    {
+      "path": "R3/benchmark-20261008135743/benchmark.json",
+      "evidence_unit": "R3",
+      "role": "archived evidence",
+      "source_revision": null,
+      "original_sha256": "2692145e16ec64f2918ccc6919c4a96e3c4abcd47295be7c07759c24287fe613",
+      "delivered_sha256": "761308b67d6dc00fbed7d61ea03f39160193b27d126bfe3b052a09214df7de75",
+      "original_bytes": 19405,
+      "delivered_bytes": 18668,
+      "transformations": {
+        "private_workspace_prefix": 1,
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 166
+    },
+    {
+      "path": "R3/benchmark-20261008135743/report.md",
+      "evidence_unit": "R3",
+      "role": "archived evidence",
+      "source_revision": null,
+      "original_sha256": "b52d7faa0176db9b2fc0861893e72628ec1d79d571b14ff8db1aa4c0db98dd8a",
+      "delivered_sha256": "08bc336b2397bea6ba7fb83b293a8c541d2ec2f12770bb93f26d4201c7d7f42d",
+      "original_bytes": 9882,
+      "delivered_bytes": 9877,
+      "transformations": {
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R3/benchmark-20261008135743/timeline.jsonl",
+      "evidence_unit": "R3",
+      "role": "archived evidence",
+      "source_revision": null,
+      "original_sha256": "9ff87bbc69389106c06cce7fc1ef6c1b96c20dcfd9e41d2f5ce576875b85762d",
+      "delivered_sha256": "087b165a7d3f764d856a509dabbe9f37835fb380e3d114c60d7bb209470510b8",
+      "original_bytes": 3204,
+      "delivered_bytes": 3174,
+      "transformations": {
+        "private_workspace_prefix": 1,
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 50
+    },
+    {
+      "path": "R3/benchmark-20261008140955/benchmark.json",
+      "evidence_unit": "R3",
+      "role": "archived evidence",
+      "source_revision": null,
+      "original_sha256": "d32e4044d1730c34cae699282e489b2d50f225faf3252e998e6a5566af155914",
+      "delivered_sha256": "025fb1fb84799c027a5f19666c08a58379768979098cdb988d26934ed6786bf9",
+      "original_bytes": 19594,
+      "delivered_bytes": 18857,
+      "transformations": {
+        "private_workspace_prefix": 1,
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 166
+    },
+    {
+      "path": "R3/benchmark-20261008140955/report.md",
+      "evidence_unit": "R3",
+      "role": "archived evidence",
+      "source_revision": null,
+      "original_sha256": "5dfece896fe52366f7c7004a6ec2bcce50fe5ba2bb95a9c6d66be811360a9aad",
+      "delivered_sha256": "53b7eb70f4e7fbc54ab0f7077c48ed69a91b8490180b43426d74a2f4224705e8",
+      "original_bytes": 10028,
+      "delivered_bytes": 10023,
+      "transformations": {
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R3/benchmark-20261008140955/timeline.jsonl",
+      "evidence_unit": "R3",
+      "role": "archived evidence",
+      "source_revision": null,
+      "original_sha256": "152d3151b13b30e14154d10933d07efe37479f6195ee21884118e2449d510923",
+      "delivered_sha256": "51436a8e0bcfed7c49eb9a9245838d3333bfcb346aa4059ef092cf04ef678644",
+      "original_bytes": 3565,
+      "delivered_bytes": 3533,
+      "transformations": {
+        "private_workspace_prefix": 1,
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 52
+    },
+    {
+      "path": "R3/benchmark-20261009021149/benchmark.json",
+      "evidence_unit": "R3",
+      "role": "archived evidence",
+      "source_revision": null,
+      "original_sha256": "4c320b7b0f26e2948a58343f415563b906816c3684f53ae20d6cd9db51862676",
+      "delivered_sha256": "3b7bdc24100128d14cc5e38717b216eb3cb85da43235a322b42614b2eec50dd0",
+      "original_bytes": 19620,
+      "delivered_bytes": 18873,
+      "transformations": {
+        "private_workspace_prefix": 1,
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 168
+    },
+    {
+      "path": "R3/benchmark-20261009021149/report.md",
+      "evidence_unit": "R3",
+      "role": "archived evidence",
+      "source_revision": null,
+      "original_sha256": "fddfbc674cf9ed6f9746ee64ce3609455c8d75e6b3ee81c9f30db5c9018a6aca",
+      "delivered_sha256": "af5d8eef2ea0a3bcde2a16436623e434f931fcafd22d8c785c8031753b3bc50f",
+      "original_bytes": 9914,
+      "delivered_bytes": 9909,
+      "transformations": {
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R3/benchmark-20261009021149/timeline.jsonl",
+      "evidence_unit": "R3",
+      "role": "archived evidence",
+      "source_revision": null,
+      "original_sha256": "0156e6b5ee5de447d37026adc69c821df9f2429077ed8ead59d10c2211322e17",
+      "delivered_sha256": "0efcd486cc490961fa0e9dd934cdb7362d12c0686862f31e67930fcbbcb2ea96",
+      "original_bytes": 4169,
+      "delivered_bytes": 4132,
+      "transformations": {
+        "private_workspace_prefix": 1,
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 58
+    },
+    {
+      "path": "R3/benchmark-20261009024141/benchmark.json",
+      "evidence_unit": "R3",
+      "role": "archived evidence",
+      "source_revision": null,
+      "original_sha256": "ee7f1a0e1fd277b3f0c11cfc4194b2eac8051ec91d6790e42c6a8e5f9bfb0319",
+      "delivered_sha256": "6cc5de6127235063e04b64396c7f7d93eadaa0a58c5801839c545395b02878c7",
+      "original_bytes": 19576,
+      "delivered_bytes": 18838,
+      "transformations": {
+        "private_workspace_prefix": 1,
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 167
+    },
+    {
+      "path": "R3/benchmark-20261009024141/report.md",
+      "evidence_unit": "R3",
+      "role": "archived evidence",
+      "source_revision": null,
+      "original_sha256": "53e350272b43048d7e9de90d8d748c5a0fbbe623899d46fff98bc29ae2054954",
+      "delivered_sha256": "2fb2b00bda8ef850931759770eaf97ee368fc1be38b359189173a620c4b73899",
+      "original_bytes": 9987,
+      "delivered_bytes": 9982,
+      "transformations": {
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R3/benchmark-20261009024141/timeline.jsonl",
+      "evidence_unit": "R3",
+      "role": "archived evidence",
+      "source_revision": null,
+      "original_sha256": "415de54ccb1eb802f9d5c25343cad9102900b6add343e018ead856d5e5e9d8ba",
+      "delivered_sha256": "f77cd1c72fb8061f3e8d8e54f7dd147a18b25bbd6e588db0836a8479ffb8f71d",
+      "original_bytes": 3621,
+      "delivered_bytes": 3588,
+      "transformations": {
+        "private_workspace_prefix": 1,
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 52
+    },
+    {
+      "path": "R3/benchmark-20261009033810/benchmark.json",
+      "evidence_unit": "R3",
+      "role": "archived evidence",
+      "source_revision": null,
+      "original_sha256": "fd138364db0a86cb6a5724172d4774e8d12e8cec0a19f7a9193e6e304e35a280",
+      "delivered_sha256": "f2c2c6a0f4d725fb507aa5a10a55627f57a447d4343ae548ba95cf480359a4c2",
+      "original_bytes": 19577,
+      "delivered_bytes": 18839,
+      "transformations": {
+        "private_workspace_prefix": 1,
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 167
+    },
+    {
+      "path": "R3/benchmark-20261009033810/report.md",
+      "evidence_unit": "R3",
+      "role": "archived evidence",
+      "source_revision": null,
+      "original_sha256": "4a506f478437fbc8c50111e2bc2db78f5f7eca96972a910da8d9533ebf03290a",
+      "delivered_sha256": "331db0e10e8ab44034d66d5c9b1d23309ab4ff749466170595f4815fd53fa121",
+      "original_bytes": 9988,
+      "delivered_bytes": 9983,
+      "transformations": {
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R3/benchmark-20261009033810/timeline.jsonl",
+      "evidence_unit": "R3",
+      "role": "archived evidence",
+      "source_revision": null,
+      "original_sha256": "27de81c2e80d0d56bc8779cba455f24ac8bcfabc6cc2362173a4b16c140b773e",
+      "delivered_sha256": "5d0f2873111c1fd87e24578028902574619a70e5def9d8df28afcacf86685739",
+      "original_bytes": 3621,
+      "delivered_bytes": 3588,
+      "transformations": {
+        "private_workspace_prefix": 1,
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 52
+    },
+    {
+      "path": "R4/timeline.jsonl",
+      "evidence_unit": "R4",
+      "role": "same event stream as R3 final execution, not another run",
+      "source_revision": null,
+      "original_sha256": "27de81c2e80d0d56bc8779cba455f24ac8bcfabc6cc2362173a4b16c140b773e",
+      "delivered_sha256": "5d0f2873111c1fd87e24578028902574619a70e5def9d8df28afcacf86685739",
+      "original_bytes": 3621,
+      "delivered_bytes": 3588,
+      "transformations": {
+        "private_workspace_prefix": 1,
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 52
+    },
+    {
+      "path": "R5/2026-10-08-production-hardening-report.md",
+      "evidence_unit": "R5",
+      "role": "archived evidence",
+      "source_revision": null,
+      "original_sha256": "bf01bf2b2324d4d7af2bce000f85d7e8776d6190bfc101e928333ffe8330ccd4",
+      "delivered_sha256": "bf01bf2b2324d4d7af2bce000f85d7e8776d6190bfc101e928333ffe8330ccd4",
+      "original_bytes": 7870,
+      "delivered_bytes": 7870,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R5/2026-10-17-ack-baseline.md",
+      "evidence_unit": "R5",
+      "role": "archived evidence",
+      "source_revision": null,
+      "original_sha256": "12f201e5eefd3fb1311c0f10ed9c98de7a9831fca52aacd4a88011ea6b6867a2",
+      "delivered_sha256": "12f201e5eefd3fb1311c0f10ed9c98de7a9831fca52aacd4a88011ea6b6867a2",
+      "original_bytes": 1741,
+      "delivered_bytes": 1741,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R5/2026-10-17-ack-baseline.log",
+      "evidence_unit": "R5",
+      "role": "archived evidence",
+      "source_revision": null,
+      "original_sha256": "b39a62f5d47d3ffd9f5b08fdb9daaf02ee84a4f68d710126bfc81d51f472d4c8",
+      "delivered_sha256": "b39a62f5d47d3ffd9f5b08fdb9daaf02ee84a4f68d710126bfc81d51f472d4c8",
+      "original_bytes": 3029,
+      "delivered_bytes": 3029,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R6/summary.json",
+      "evidence_unit": "R6",
+      "role": "archived evidence",
+      "source_revision": null,
+      "original_sha256": "f706f513b043d035dead3c82c5c900cd65e5ae730b8d06780e03f6891428a7d5",
+      "delivered_sha256": "350e8d49f1eaf3a4ff4595fdd387c4f440e6f88d9bc231cc882cb6f498bbd059",
+      "original_bytes": 6764,
+      "delivered_bytes": 6765,
+      "transformations": {
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 24
+    },
+    {
+      "path": "R7/summary.json",
+      "evidence_unit": "R7",
+      "role": "archived evidence",
+      "source_revision": null,
+      "original_sha256": "b110fe7d4e6870a5dc78b75b6029cdc6a45f4573840a2e69c5f8ec3998203a41",
+      "delivered_sha256": "1c75ef11cd8143bff91740658a39d6346bc71122e7bfd3250e451493deba1264",
+      "original_bytes": 5796,
+      "delivered_bytes": 5797,
+      "transformations": {
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 30
+    },
+    {
+      "path": "R8/summary.json",
+      "evidence_unit": "R8",
+      "role": "archived evidence",
+      "source_revision": null,
+      "original_sha256": "c2a693312cc61a46ebf598e1d0b05aeee751721b4cd5e45de7f35ebc5a9b1377",
+      "delivered_sha256": "2ea740b710420f037b2ec2c397d007ff9340090ed1621e59bb201bec7b045e47",
+      "original_bytes": 4188,
+      "delivered_bytes": 4189,
+      "transformations": {
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 21
+    },
+    {
+      "path": "R6/companion/closedloop-summary.json",
+      "evidence_unit": "R6",
+      "role": "companion capture; closedloop-summary duplicates primary R6 byte-for-byte",
+      "source_revision": null,
+      "original_sha256": "f706f513b043d035dead3c82c5c900cd65e5ae730b8d06780e03f6891428a7d5",
+      "delivered_sha256": "350e8d49f1eaf3a4ff4595fdd387c4f440e6f88d9bc231cc882cb6f498bbd059",
+      "original_bytes": 6764,
+      "delivered_bytes": 6765,
+      "transformations": {
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 24
+    },
+    {
+      "path": "R6/companion/goal1-evidence.json",
+      "evidence_unit": "R6",
+      "role": "companion capture; closedloop-summary duplicates primary R6 byte-for-byte",
+      "source_revision": null,
+      "original_sha256": "d986f275e5e409ec8094301a0bf2b6ecd4b16de6f62b2efd26e27cbeb55cf758",
+      "delivered_sha256": "d986f275e5e409ec8094301a0bf2b6ecd4b16de6f62b2efd26e27cbeb55cf758",
+      "original_bytes": 3135,
+      "delivered_bytes": 3135,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": 1
+    },
+    {
+      "path": "R6/companion/goal1-flash-evidence.json",
+      "evidence_unit": "R6",
+      "role": "companion capture; closedloop-summary duplicates primary R6 byte-for-byte",
+      "source_revision": null,
+      "original_sha256": "d986f275e5e409ec8094301a0bf2b6ecd4b16de6f62b2efd26e27cbeb55cf758",
+      "delivered_sha256": "d986f275e5e409ec8094301a0bf2b6ecd4b16de6f62b2efd26e27cbeb55cf758",
+      "original_bytes": 3135,
+      "delivered_bytes": 3135,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": 1
+    },
+    {
+      "path": "R6/companion/report.md",
+      "evidence_unit": "R6",
+      "role": "companion capture; closedloop-summary duplicates primary R6 byte-for-byte",
+      "source_revision": null,
+      "original_sha256": "4b20feec81e334edaf52be74b2742b6021458963acfa14b17231b2e446d668a5",
+      "delivered_sha256": "111510e2e2ccc283923a1aed8c9ab638fe685904091e42e92cf567679e56feec",
+      "original_bytes": 4637,
+      "delivered_bytes": 4632,
+      "transformations": {
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R7/failed-attempt-1/agent-tools.jsonl",
+      "evidence_unit": "R7",
+      "role": "earlier failed attempt; not a successful replicate",
+      "source_revision": null,
+      "original_sha256": "b09f60796e4e6c3bf8eb289041903d99d39e834997416de137efa537cf019a0b",
+      "delivered_sha256": "b09f60796e4e6c3bf8eb289041903d99d39e834997416de137efa537cf019a0b",
+      "original_bytes": 23050,
+      "delivered_bytes": 23050,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": 34
+    },
+    {
+      "path": "R7/failed-attempt-1/execution.jsonl",
+      "evidence_unit": "R7",
+      "role": "earlier failed attempt; not a successful replicate",
+      "source_revision": null,
+      "original_sha256": "7e6695007d6d015df6dda9bb1b7fff72fc0135d6416a65b0bf748bf01dd1887a",
+      "delivered_sha256": "48ee163a5341d88142e8b4cd5064f8304504482cd09fe9bd97ea247c39723c7a",
+      "original_bytes": 202653,
+      "delivered_bytes": 202612,
+      "transformations": {
+        "private_workspace_prefix": 4,
+        "credential_field": 7,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 1591
+    },
+    {
+      "path": "R7/failed-attempt-2/agent-tools.jsonl",
+      "evidence_unit": "R7",
+      "role": "earlier failed attempt; not a successful replicate",
+      "source_revision": null,
+      "original_sha256": "ac329f95bba3b691234d2e3833748819a464e8729c6c982cc6f5b2fbb910f735",
+      "delivered_sha256": "ac329f95bba3b691234d2e3833748819a464e8729c6c982cc6f5b2fbb910f735",
+      "original_bytes": 35005,
+      "delivered_bytes": 35005,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": 53
+    },
+    {
+      "path": "R7/failed-attempt-2/execution.jsonl",
+      "evidence_unit": "R7",
+      "role": "earlier failed attempt; not a successful replicate",
+      "source_revision": null,
+      "original_sha256": "8c52d04d9f4ee710a8a72ec23efa9ff530b5622cdeeb9bb94762b16488496ee7",
+      "delivered_sha256": "a9be6050bfaf6fe0386af891a2c91c7e13c3ab6caea1c15b47fc69bfff691bb6",
+      "original_bytes": 266105,
+      "delivered_bytes": 266078,
+      "transformations": {
+        "private_workspace_prefix": 3,
+        "credential_field": 8,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 2080
+    },
+    {
+      "path": "R7/failed-attempt-3/agent-tools.jsonl",
+      "evidence_unit": "R7",
+      "role": "earlier failed attempt; not a successful replicate",
+      "source_revision": null,
+      "original_sha256": "df9092ea20908d4f33b48a15ff54a78af22c4b0247bdbe1f85e594a3ca5cd8f5",
+      "delivered_sha256": "df9092ea20908d4f33b48a15ff54a78af22c4b0247bdbe1f85e594a3ca5cd8f5",
+      "original_bytes": 23656,
+      "delivered_bytes": 23656,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": 34
+    },
+    {
+      "path": "R7/failed-attempt-3/execution.jsonl",
+      "evidence_unit": "R7",
+      "role": "earlier failed attempt; not a successful replicate",
+      "source_revision": null,
+      "original_sha256": "a8cc64c319810c501625ad6bfa1165d4705e0b02fc0d17ca29289d2124b24da4",
+      "delivered_sha256": "52b251f2d9ba508d532d3d453190183df767d5bd93d73c5aae779e42841511c6",
+      "original_bytes": 221920,
+      "delivered_bytes": 221889,
+      "transformations": {
+        "private_workspace_prefix": 2,
+        "credential_field": 7,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 1845
+    },
+    {
+      "path": "R9/tests/high-risk-tool-scope.test.ts",
+      "evidence_unit": "R9",
+      "role": "current test-source inspection snapshot; runtime imports not bundled",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "ae2f10241f2965048f82d01994350ac307a6e90a98bf017c8df077abb7fd050f",
+      "delivered_sha256": "ae2f10241f2965048f82d01994350ac307a6e90a98bf017c8df077abb7fd050f",
+      "original_bytes": 1990,
+      "delivered_bytes": 1990,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R9/tests/tool-profile-observer.test.ts",
+      "evidence_unit": "R9",
+      "role": "current test-source inspection snapshot; runtime imports not bundled",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "90768335ca9c4469b5c0846ad164b2ac2f9b1e72ea9c2b99eaf12534465b21b5",
+      "delivered_sha256": "133739d3318d8d55b1d6393c19ff8e0e6a1b624c48e83c846e8849174f613c72",
+      "original_bytes": 10866,
+      "delivered_bytes": 10861,
+      "transformations": {
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R9/tests/recipe-propose.test.ts",
+      "evidence_unit": "R9",
+      "role": "current test-source inspection snapshot; runtime imports not bundled",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "3754a24b242e4670fbc68939e5833a7281f17cc667e4d18f79cffb9d2851f0b4",
+      "delivered_sha256": "c51d8229d35112ca6e7e0f1a64aec331db92bec819d01fa0795c347920e2da3f",
+      "original_bytes": 14417,
+      "delivered_bytes": 14412,
+      "transformations": {
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R10/tests/manual-approval-optimization.test.ts",
+      "evidence_unit": "R10",
+      "role": "current test-source inspection snapshot; runtime imports not bundled",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "6f2d6db202956d07f28a32fabb30de7d8d0c182b8a1e371b473aec243a25ba9e",
+      "delivered_sha256": "03e067ae3e573fbf1016ef343b05389e14aea4a031948262b97332bd6af96ad1",
+      "original_bytes": 8131,
+      "delivered_bytes": 8126,
+      "transformations": {
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R10/tests/recipe-approval-snapshot.test.ts",
+      "evidence_unit": "R10",
+      "role": "current test-source inspection snapshot; runtime imports not bundled",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "23cad64307f845c5d5d420a6db334b2525d155df2286dd18b86274101415aebe",
+      "delivered_sha256": "d64489fc365ac649e3432f55fa5434bce2ed63257eec352f38171140ff88337a",
+      "original_bytes": 10722,
+      "delivered_bytes": 10717,
+      "transformations": {
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R10/tests/manual-approval.test.ts",
+      "evidence_unit": "R10",
+      "role": "current test-source inspection snapshot; runtime imports not bundled",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "5de1f835020899b6374b68854ea980c68c351bc5eaec76163ea26d3f6aeff327",
+      "delivered_sha256": "5de1f835020899b6374b68854ea980c68c351bc5eaec76163ea26d3f6aeff327",
+      "original_bytes": 4754,
+      "delivered_bytes": 4754,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R10/tests/tool-approvals-choice.test.ts",
+      "evidence_unit": "R10",
+      "role": "current test-source inspection snapshot; runtime imports not bundled",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "73256185c56fdfac655c2f25463bc242a21ceb6dea59cf0c4c007b5ae39a983b",
+      "delivered_sha256": "ce9eec4c9b4c886abefa53c40741307a6f8d7c39ae33a22a998311398eb0babf",
+      "original_bytes": 11163,
+      "delivered_bytes": 11158,
+      "transformations": {
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R10/tests/recipe-op-interval.test.ts",
+      "evidence_unit": "R10",
+      "role": "current test-source inspection snapshot; runtime imports not bundled",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "f545dff6ee5d75b8b9a7516973e858e7c1228ea5e2668561361139d415c88848",
+      "delivered_sha256": "25bfa4a07bac13e23004bea098a574240b503c3654801258933730aafbde552a",
+      "original_bytes": 11497,
+      "delivered_bytes": 11492,
+      "transformations": {
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R10/logs/approval-status-tests-before.log",
+      "evidence_unit": "R10",
+      "role": "existing test output; before log includes pre-repair failure",
+      "source_revision": null,
+      "original_sha256": "71dac77f7aca6c213ff7273549723b2b56f7eb679861a2993f30f55fca5ca2f6",
+      "delivered_sha256": "bd51394f6ba46fe3299d1b3f5686620f02b6d3dd91d096826964043cea6e2558",
+      "original_bytes": 5310,
+      "delivered_bytes": 5280,
+      "transformations": {
+        "private_workspace_prefix": 6,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R10/logs/approval-status-tests.log",
+      "evidence_unit": "R10",
+      "role": "existing test output; before log includes pre-repair failure",
+      "source_revision": null,
+      "original_sha256": "4198e9819d77fc8eecbaae7031f15d8b002e16beeb8c82fd0282513f785e13ed",
+      "delivered_sha256": "2009ff7af1d4013e2e2884bc1da323fb9c1d6f1ea2ea413cda21e58ba2c34f8a",
+      "original_bytes": 5980,
+      "delivered_bytes": 5982,
+      "transformations": {
+        "private_home_prefix": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R10/logs/recipe-approval-snapshot-tests.log",
+      "evidence_unit": "R10",
+      "role": "existing test output; before log includes pre-repair failure",
+      "source_revision": null,
+      "original_sha256": "f60e28a9df573427715420d44b6346daf93ae6cba363e1b4009d4c220700a6c4",
+      "delivered_sha256": "109aaec894e50a6bf1a65fb0404abcc6626e9dfedd7fbf2b8da8fdcdd11d79f1",
+      "original_bytes": 13179,
+      "delivered_bytes": 13154,
+      "transformations": {
+        "private_workspace_prefix": 5,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "R10/logs/final-independent-tests.log",
+      "evidence_unit": "R10",
+      "role": "existing test output; before log includes pre-repair failure",
+      "source_revision": null,
+      "original_sha256": "b539a187cca14dcf693f93d39cce1079c9be57b39248976ecad381858f458be9",
+      "delivered_sha256": "ef04162909096a2197f1d064bf3babeb17d452b01cd504bf27c413bf3fd0bc8a",
+      "original_bytes": 6822,
+      "delivered_bytes": 6824,
+      "transformations": {
+        "private_home_prefix": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/_zh2en3.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "182e04b870eb74c051193ece9163646ce3ed99685482bee258d1b0e65ded5e60",
+      "delivered_sha256": "182e04b870eb74c051193ece9163646ce3ed99685482bee258d1b0e65ded5e60",
+      "original_bytes": 3518,
+      "delivered_bytes": 3518,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/compare.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "3a088339554284fb27afcfa0b164f13cd461c5ef9cb443844708eefa85ca1bf6",
+      "delivered_sha256": "3a088339554284fb27afcfa0b164f13cd461c5ef9cb443844708eefa85ca1bf6",
+      "original_bytes": 16074,
+      "delivered_bytes": 16074,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/e1-lite.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "4d74092ce0441894d75d7c81f4b2d817322762edff36ac2fbd54b9f4dd46262e",
+      "delivered_sha256": "3afaf2f626f43ca8958a07b4546b8356886d4f5e102624ca5eabf0442b8d3920",
+      "original_bytes": 13995,
+      "delivered_bytes": 14033,
+      "transformations": {
+        "credential_value": 1,
+        "account_pseudonym": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/lib/biax.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "a0b5d459e08f103266f27806bb9fe11625d8d8936ac6a6682e542b01cd912e21",
+      "delivered_sha256": "a0b5d459e08f103266f27806bb9fe11625d8d8936ac6a6682e542b01cd912e21",
+      "original_bytes": 26303,
+      "delivered_bytes": 26303,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/lib/checks/api-0-preflight.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "6062c268e81a4d9f35e8c2ccc7f18aa4e5ea82f3b35c4711745f0c9023c1647b",
+      "delivered_sha256": "88ba052c6c8a46f25858ad9596b4f19a037240f0c28224ed64f9c51a4e8663b1",
+      "original_bytes": 1105,
+      "delivered_bytes": 1143,
+      "transformations": {
+        "credential_value": 1,
+        "account_pseudonym": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/lib/checks/api-1-fixture.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "d36a6c537ebf877d472a0d76cf897d219fb78a73bc808ec8bfc0dcfcb316def3",
+      "delivered_sha256": "d36a6c537ebf877d472a0d76cf897d219fb78a73bc808ec8bfc0dcfcb316def3",
+      "original_bytes": 4169,
+      "delivered_bytes": 4169,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/lib/checks/api-2-semantic-card.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "26a05d995ebc4efa9582d236a4f1b8b458b72f7417f09a9d3e1474a0c61d3fbf",
+      "delivered_sha256": "26a05d995ebc4efa9582d236a4f1b8b458b72f7417f09a9d3e1474a0c61d3fbf",
+      "original_bytes": 1999,
+      "delivered_bytes": 1999,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/lib/checks/api-3-interlock-f5.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "58cb9971b50fd41486a75e5b4ed77e685c09d17fdae59294b52d1978eabb672b",
+      "delivered_sha256": "58cb9971b50fd41486a75e5b4ed77e685c09d17fdae59294b52d1978eabb672b",
+      "original_bytes": 5179,
+      "delivered_bytes": 5179,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/lib/checks/api-4-attribution-readback.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "78ba63946b6312f29fb9f9f7838bb5edbeb6736d549f9c13166a2896c3266b42",
+      "delivered_sha256": "78ba63946b6312f29fb9f9f7838bb5edbeb6736d549f9c13166a2896c3266b42",
+      "original_bytes": 3238,
+      "delivered_bytes": 3238,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/lib/checks/api-5-daq-freshness.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "e1d95507231095b2bf99de21caa92c52aa1b7ab64830f400e55af2c15f9d72cd",
+      "delivered_sha256": "e1d95507231095b2bf99de21caa92c52aa1b7ab64830f400e55af2c15f9d72cd",
+      "original_bytes": 2423,
+      "delivered_bytes": 2423,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/lib/checks/plc-scenario.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "9caeb49ea1ecb0fbe8d99ddad4bf5ca5eb4c37750ee8da9984fc0a06d2c061e9",
+      "delivered_sha256": "9caeb49ea1ecb0fbe8d99ddad4bf5ca5eb4c37750ee8da9984fc0a06d2c061e9",
+      "original_bytes": 16276,
+      "delivered_bytes": 16276,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/lib/checks/s1-inventory.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "5bf610f0fdaa00f83430ac150e065c0ebf1b2aca9c69b708e083fb077098e99a",
+      "delivered_sha256": "0a62dfa61a4a7d124f520f8c271c420a047ef892ed8c0fc2fa915393863eff75",
+      "original_bytes": 5508,
+      "delivered_bytes": 5498,
+      "transformations": {
+        "project_identity": 2,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/lib/checks/s2-paper-consistency.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "74b656fdcecb5f49b67128a5d2e99109b69252b2dddaecf207e5ebbb4359fddf",
+      "delivered_sha256": "74b656fdcecb5f49b67128a5d2e99109b69252b2dddaecf207e5ebbb4359fddf",
+      "original_bytes": 4195,
+      "delivered_bytes": 4195,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/lib/checks/s3-governance-pipeline.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "6e36ec1308c68649360e05fa77f83869d5226c541f0c9bbc24ecb55e0a648514",
+      "delivered_sha256": "6e36ec1308c68649360e05fa77f83869d5226c541f0c9bbc24ecb55e0a648514",
+      "original_bytes": 4849,
+      "delivered_bytes": 4849,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/lib/closedloop.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "c4dc9116955389b191bf7765f334295394ebb1c14d65b273ee7f6976081c06f5",
+      "delivered_sha256": "c4dc9116955389b191bf7765f334295394ebb1c14d65b273ee7f6976081c06f5",
+      "original_bytes": 14300,
+      "delivered_bytes": 14300,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/lib/dashboard.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "92467f902e5f0e01b5c0b1e3885afc9c76657e014055bc80d703749c6c6980e2",
+      "delivered_sha256": "cd6db6c830721e191d270fb9f58a8207c00e2a405988178d0e33964d49b059b0",
+      "original_bytes": 10722,
+      "delivered_bytes": 10712,
+      "transformations": {
+        "project_identity": 2,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/lib/governance.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "2f9366243e82296675df19857e23e3dab0525c970817754b61518f926c572c05",
+      "delivered_sha256": "2f9366243e82296675df19857e23e3dab0525c970817754b61518f926c572c05",
+      "original_bytes": 15431,
+      "delivered_bytes": 15431,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/lib/line-profile.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "748a67891c2a6777fc8a99e94bde393c5326c35aae841a1bd27f6545bf7e5094",
+      "delivered_sha256": "748a67891c2a6777fc8a99e94bde393c5326c35aae841a1bd27f6545bf7e5094",
+      "original_bytes": 13710,
+      "delivered_bytes": 13710,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/lib/metrics.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "b3d7b2c7077c7a373981dd476e93cf1555cf4e851bd5e09e0d94fb1f1914b287",
+      "delivered_sha256": "b3d7b2c7077c7a373981dd476e93cf1555cf4e851bd5e09e0d94fb1f1914b287",
+      "original_bytes": 1656,
+      "delivered_bytes": 1656,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/lib/optloop-recorder.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "e8652d477d3ac041dc726d3a02b8b69a32880b568e8eb3c5cf4aef66185cdb2f",
+      "delivered_sha256": "e8652d477d3ac041dc726d3a02b8b69a32880b568e8eb3c5cf4aef66185cdb2f",
+      "original_bytes": 4509,
+      "delivered_bytes": 4509,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/lib/platform.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "7673d5d9406dbe2b3920f83065a71f3b3fd6df5fb57ec8588104bd44afe1874c",
+      "delivered_sha256": "7673d5d9406dbe2b3920f83065a71f3b3fd6df5fb57ec8588104bd44afe1874c",
+      "original_bytes": 4299,
+      "delivered_bytes": 4299,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/lib/provision.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "43b4037d71f01d8cd326496c64c7cd72700869e8888cd6deed4765c4cda9633a",
+      "delivered_sha256": "43b4037d71f01d8cd326496c64c7cd72700869e8888cd6deed4765c4cda9633a",
+      "original_bytes": 9099,
+      "delivered_bytes": 9099,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/lib/report-pipeline.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "2189a48afadd597ab8858ab999cbf231ea8d4561c308130b3b9e7d96caabad99",
+      "delivered_sha256": "2189a48afadd597ab8858ab999cbf231ea8d4561c308130b3b9e7d96caabad99",
+      "original_bytes": 5743,
+      "delivered_bytes": 5743,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/lib/report-template.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "e328c8f7c8edba0f9f89fde405aae448a5918e308f3dc90598dec60779a75f63",
+      "delivered_sha256": "e328c8f7c8edba0f9f89fde405aae448a5918e308f3dc90598dec60779a75f63",
+      "original_bytes": 26914,
+      "delivered_bytes": 26914,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/lib/report.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "6026ef6678fd29f68306d00d297abd31d876d554672a17d4381569c9ba6923f9",
+      "delivered_sha256": "26700ae5411189d9e3450863413ba3b721dad86e30018cfd759aa3150d1f470f",
+      "original_bytes": 12732,
+      "delivered_bytes": 12727,
+      "transformations": {
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/lib/scenario-report.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "a48e1d8a8e3a7ed2368e17e67282aafb4479b01b672ac303826daccdc36a75d0",
+      "delivered_sha256": "a48e1d8a8e3a7ed2368e17e67282aafb4479b01b672ac303826daccdc36a75d0",
+      "original_bytes": 13277,
+      "delivered_bytes": 13277,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/lib/scenarios.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "d4ce617ef5a196abfb429969833e7805818d1d82f1fb35227a6e0f6df5a7e2cc",
+      "delivered_sha256": "d4ce617ef5a196abfb429969833e7805818d1d82f1fb35227a6e0f6df5a7e2cc",
+      "original_bytes": 55499,
+      "delivered_bytes": 55499,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/lib/shot.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "21ec299dc4f3ac878b96337b4c3ae926aa3b8368627e88e2165addaeda02582d",
+      "delivered_sha256": "21ec299dc4f3ac878b96337b4c3ae926aa3b8368627e88e2165addaeda02582d",
+      "original_bytes": 1388,
+      "delivered_bytes": 1388,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/lib/sim.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "e7ef2785f9f204d28a6d8b6de28c23818738f1cdcd15259f0f020c65c39838ab",
+      "delivered_sha256": "e7ef2785f9f204d28a6d8b6de28c23818738f1cdcd15259f0f020c65c39838ab",
+      "original_bytes": 14479,
+      "delivered_bytes": 14479,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/lib/util.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "fdeef87e99e37b679572906ef6e1aabe5e48e78a6339d4ebf040e2ab57b6d96f",
+      "delivered_sha256": "fdeef87e99e37b679572906ef6e1aabe5e48e78a6339d4ebf040e2ab57b6d96f",
+      "original_bytes": 4481,
+      "delivered_bytes": 4481,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/optloop.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "06a709afdebbafd27d077c0651bcf0b5e371ba6216ea0a9b8470903184341edb",
+      "delivered_sha256": "1e4077cf8e1db8c93d156117b9cb3d5cca7bd1d65426bd095a100c8f83605c94",
+      "original_bytes": 14840,
+      "delivered_bytes": 14878,
+      "transformations": {
+        "credential_value": 1,
+        "account_pseudonym": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/pipeline.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "ec2d1015aa6f87ba056b4f455d2d6e42a231281e783266b7927654c109f9ad41",
+      "delivered_sha256": "220eb87322d2d0059116d7b3b28827d051b383ddd65f316b4bcf73acefc2ec43",
+      "original_bytes": 169263,
+      "delivered_bytes": 169296,
+      "transformations": {
+        "credential_value": 1,
+        "account_pseudonym": 1,
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/run.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "6eaa9277c23e016e324768ba43fa431fab640c1defa3375e19f5f5002759047b",
+      "delivered_sha256": "6eaa9277c23e016e324768ba43fa431fab640c1defa3375e19f5f5002759047b",
+      "original_bytes": 9198,
+      "delivered_bytes": 9198,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/scenarios.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "88a8c6ba3211ed4747e0d01cdb97905369b94ff20cb322de5aa4bf84bdc6ac58",
+      "delivered_sha256": "c039df16437f6ec1e0bbc65c9118704a481de16c03d5209724cb1556ce52c9d4",
+      "original_bytes": 6068,
+      "delivered_bytes": 6106,
+      "transformations": {
+        "credential_value": 1,
+        "account_pseudonym": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/stress/phase-b-protocols.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "3fc0ed3e7f7540f10ccc8d9756116a11def6c628d77320ebe0357d4de4376d61",
+      "delivered_sha256": "3fc0ed3e7f7540f10ccc8d9756116a11def6c628d77320ebe0357d4de4376d61",
+      "original_bytes": 9155,
+      "delivered_bytes": 9155,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/stress/phase-cd-platform-stress.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "9c3962475391beb8eb6c511f835a67228e98ecdf8440eab62c14d30db163d6e2",
+      "delivered_sha256": "ee7224a1baf4c1db06def9b9811abbb6a3ec89e2cc50b75ce1a299828205b0c2",
+      "original_bytes": 8743,
+      "delivered_bytes": 8781,
+      "transformations": {
+        "credential_value": 1,
+        "account_pseudonym": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/tools/build-final-report.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "e3363b1ba6e1c81a36b96df75c4458d92c1015f7bfe4a57a1d781d2a84c6ac8d",
+      "delivered_sha256": "2cee3ca18ef19473ae273d54b5f0e18c273f984ae113917400111a25e2128964",
+      "original_bytes": 49215,
+      "delivered_bytes": 49211,
+      "transformations": {
+        "credential_session_setting": 2,
+        "project_identity": 2,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/tools/compare-pipeline.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "7721f69ce3636bbc160d99fbe544731373d354ba7d71a163ea3edede465001e0",
+      "delivered_sha256": "7721f69ce3636bbc160d99fbe544731373d354ba7d71a163ea3edede465001e0",
+      "original_bytes": 8055,
+      "delivered_bytes": 8055,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/tools/render-bench-report.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "186d56011d8b8dd85143523df92df375cd4fa3bf5f84013b82627accd3d72a62",
+      "delivered_sha256": "186d56011d8b8dd85143523df92df375cd4fa3bf5f84013b82627accd3d72a62",
+      "original_bytes": 5972,
+      "delivered_bytes": 5972,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/bench/tools/render-biax-report.mjs",
+      "evidence_unit": "CODE",
+      "role": "current working-tree inspection snapshot; exact historical harness not established",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "e70f430463b69d009ce0e4e0a7328651076aa9f2ddc8a1037bdbba80089be51d",
+      "delivered_sha256": "e70f430463b69d009ce0e4e0a7328651076aa9f2ddc8a1037bdbba80089be51d",
+      "original_bytes": 32402,
+      "delivered_bytes": 32402,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-commit/bench/_zh2en3.mjs",
+      "evidence_unit": "CODE",
+      "role": "recorded commit snapshot; pipeline file-count/hash differs from run fingerprint",
+      "source_revision": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "original_sha256": "182e04b870eb74c051193ece9163646ce3ed99685482bee258d1b0e65ded5e60",
+      "delivered_sha256": "182e04b870eb74c051193ece9163646ce3ed99685482bee258d1b0e65ded5e60",
+      "original_bytes": 3518,
+      "delivered_bytes": 3518,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-commit/bench/compare.mjs",
+      "evidence_unit": "CODE",
+      "role": "recorded commit snapshot; pipeline file-count/hash differs from run fingerprint",
+      "source_revision": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "original_sha256": "3a088339554284fb27afcfa0b164f13cd461c5ef9cb443844708eefa85ca1bf6",
+      "delivered_sha256": "3a088339554284fb27afcfa0b164f13cd461c5ef9cb443844708eefa85ca1bf6",
+      "original_bytes": 16074,
+      "delivered_bytes": 16074,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-commit/bench/e1-lite.mjs",
+      "evidence_unit": "CODE",
+      "role": "recorded commit snapshot; pipeline file-count/hash differs from run fingerprint",
+      "source_revision": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "original_sha256": "4d74092ce0441894d75d7c81f4b2d817322762edff36ac2fbd54b9f4dd46262e",
+      "delivered_sha256": "3afaf2f626f43ca8958a07b4546b8356886d4f5e102624ca5eabf0442b8d3920",
+      "original_bytes": 13995,
+      "delivered_bytes": 14033,
+      "transformations": {
+        "credential_value": 1,
+        "account_pseudonym": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-commit/bench/lib/biax.mjs",
+      "evidence_unit": "CODE",
+      "role": "recorded commit snapshot; pipeline file-count/hash differs from run fingerprint",
+      "source_revision": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "original_sha256": "b980eecd02821e13b7c4dc8b8ed147f5b4439022eb11ed84f41a6d562e9a0abd",
+      "delivered_sha256": "b980eecd02821e13b7c4dc8b8ed147f5b4439022eb11ed84f41a6d562e9a0abd",
+      "original_bytes": 25492,
+      "delivered_bytes": 25492,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-commit/bench/lib/checks/api-0-preflight.mjs",
+      "evidence_unit": "CODE",
+      "role": "recorded commit snapshot; pipeline file-count/hash differs from run fingerprint",
+      "source_revision": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "original_sha256": "6062c268e81a4d9f35e8c2ccc7f18aa4e5ea82f3b35c4711745f0c9023c1647b",
+      "delivered_sha256": "88ba052c6c8a46f25858ad9596b4f19a037240f0c28224ed64f9c51a4e8663b1",
+      "original_bytes": 1105,
+      "delivered_bytes": 1143,
+      "transformations": {
+        "credential_value": 1,
+        "account_pseudonym": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-commit/bench/lib/checks/api-1-fixture.mjs",
+      "evidence_unit": "CODE",
+      "role": "recorded commit snapshot; pipeline file-count/hash differs from run fingerprint",
+      "source_revision": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "original_sha256": "d36a6c537ebf877d472a0d76cf897d219fb78a73bc808ec8bfc0dcfcb316def3",
+      "delivered_sha256": "d36a6c537ebf877d472a0d76cf897d219fb78a73bc808ec8bfc0dcfcb316def3",
+      "original_bytes": 4169,
+      "delivered_bytes": 4169,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-commit/bench/lib/checks/api-2-semantic-card.mjs",
+      "evidence_unit": "CODE",
+      "role": "recorded commit snapshot; pipeline file-count/hash differs from run fingerprint",
+      "source_revision": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "original_sha256": "26a05d995ebc4efa9582d236a4f1b8b458b72f7417f09a9d3e1474a0c61d3fbf",
+      "delivered_sha256": "26a05d995ebc4efa9582d236a4f1b8b458b72f7417f09a9d3e1474a0c61d3fbf",
+      "original_bytes": 1999,
+      "delivered_bytes": 1999,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-commit/bench/lib/checks/api-3-interlock-f5.mjs",
+      "evidence_unit": "CODE",
+      "role": "recorded commit snapshot; pipeline file-count/hash differs from run fingerprint",
+      "source_revision": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "original_sha256": "58cb9971b50fd41486a75e5b4ed77e685c09d17fdae59294b52d1978eabb672b",
+      "delivered_sha256": "58cb9971b50fd41486a75e5b4ed77e685c09d17fdae59294b52d1978eabb672b",
+      "original_bytes": 5179,
+      "delivered_bytes": 5179,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-commit/bench/lib/checks/api-4-attribution-readback.mjs",
+      "evidence_unit": "CODE",
+      "role": "recorded commit snapshot; pipeline file-count/hash differs from run fingerprint",
+      "source_revision": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "original_sha256": "78ba63946b6312f29fb9f9f7838bb5edbeb6736d549f9c13166a2896c3266b42",
+      "delivered_sha256": "78ba63946b6312f29fb9f9f7838bb5edbeb6736d549f9c13166a2896c3266b42",
+      "original_bytes": 3238,
+      "delivered_bytes": 3238,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-commit/bench/lib/checks/api-5-daq-freshness.mjs",
+      "evidence_unit": "CODE",
+      "role": "recorded commit snapshot; pipeline file-count/hash differs from run fingerprint",
+      "source_revision": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "original_sha256": "e1d95507231095b2bf99de21caa92c52aa1b7ab64830f400e55af2c15f9d72cd",
+      "delivered_sha256": "e1d95507231095b2bf99de21caa92c52aa1b7ab64830f400e55af2c15f9d72cd",
+      "original_bytes": 2423,
+      "delivered_bytes": 2423,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-commit/bench/lib/checks/plc-scenario.mjs",
+      "evidence_unit": "CODE",
+      "role": "recorded commit snapshot; pipeline file-count/hash differs from run fingerprint",
+      "source_revision": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "original_sha256": "9caeb49ea1ecb0fbe8d99ddad4bf5ca5eb4c37750ee8da9984fc0a06d2c061e9",
+      "delivered_sha256": "9caeb49ea1ecb0fbe8d99ddad4bf5ca5eb4c37750ee8da9984fc0a06d2c061e9",
+      "original_bytes": 16276,
+      "delivered_bytes": 16276,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-commit/bench/lib/checks/s1-inventory.mjs",
+      "evidence_unit": "CODE",
+      "role": "recorded commit snapshot; pipeline file-count/hash differs from run fingerprint",
+      "source_revision": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "original_sha256": "9650c071f2583bf10a4e0b6d824b1d5b3c181e62868fef0e0b16c9d2db05110c",
+      "delivered_sha256": "1793b8178ca83417dc7676bd8ec700b54afb3c6741ad6c9a7406a744a2f741d6",
+      "original_bytes": 4598,
+      "delivered_bytes": 4588,
+      "transformations": {
+        "project_identity": 2,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-commit/bench/lib/checks/s2-paper-consistency.mjs",
+      "evidence_unit": "CODE",
+      "role": "recorded commit snapshot; pipeline file-count/hash differs from run fingerprint",
+      "source_revision": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "original_sha256": "23ba16efa6c9a5bdc59b7ae7e635dc161f181f157af2d29f155be63008bc5916",
+      "delivered_sha256": "23ba16efa6c9a5bdc59b7ae7e635dc161f181f157af2d29f155be63008bc5916",
+      "original_bytes": 3910,
+      "delivered_bytes": 3910,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-commit/bench/lib/checks/s3-governance-pipeline.mjs",
+      "evidence_unit": "CODE",
+      "role": "recorded commit snapshot; pipeline file-count/hash differs from run fingerprint",
+      "source_revision": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "original_sha256": "d79a8d1532e6a13b3e2343788cd82a759e9ac35a7628109b5aef61a0ef5efaf7",
+      "delivered_sha256": "d79a8d1532e6a13b3e2343788cd82a759e9ac35a7628109b5aef61a0ef5efaf7",
+      "original_bytes": 3217,
+      "delivered_bytes": 3217,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-commit/bench/lib/closedloop.mjs",
+      "evidence_unit": "CODE",
+      "role": "recorded commit snapshot; pipeline file-count/hash differs from run fingerprint",
+      "source_revision": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "original_sha256": "c4dc9116955389b191bf7765f334295394ebb1c14d65b273ee7f6976081c06f5",
+      "delivered_sha256": "c4dc9116955389b191bf7765f334295394ebb1c14d65b273ee7f6976081c06f5",
+      "original_bytes": 14300,
+      "delivered_bytes": 14300,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-commit/bench/lib/dashboard.mjs",
+      "evidence_unit": "CODE",
+      "role": "recorded commit snapshot; pipeline file-count/hash differs from run fingerprint",
+      "source_revision": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "original_sha256": "100c38f85c222e7b43661239db1377000661c5b8133254e357caf83c6d8bd1b3",
+      "delivered_sha256": "e68237ed6f3433174c08ddc42c19af649d61a9d7d53acd25637d659a037df21f",
+      "original_bytes": 10568,
+      "delivered_bytes": 10558,
+      "transformations": {
+        "project_identity": 2,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-commit/bench/lib/governance.mjs",
+      "evidence_unit": "CODE",
+      "role": "recorded commit snapshot; pipeline file-count/hash differs from run fingerprint",
+      "source_revision": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "original_sha256": "2f9366243e82296675df19857e23e3dab0525c970817754b61518f926c572c05",
+      "delivered_sha256": "2f9366243e82296675df19857e23e3dab0525c970817754b61518f926c572c05",
+      "original_bytes": 15431,
+      "delivered_bytes": 15431,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-commit/bench/lib/line-profile.mjs",
+      "evidence_unit": "CODE",
+      "role": "recorded commit snapshot; pipeline file-count/hash differs from run fingerprint",
+      "source_revision": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "original_sha256": "59872c031650308d95cedee298f231bd1aa74ae325ba46978a6ce1b75d3c9d65",
+      "delivered_sha256": "59872c031650308d95cedee298f231bd1aa74ae325ba46978a6ce1b75d3c9d65",
+      "original_bytes": 13174,
+      "delivered_bytes": 13174,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-commit/bench/lib/metrics.mjs",
+      "evidence_unit": "CODE",
+      "role": "recorded commit snapshot; pipeline file-count/hash differs from run fingerprint",
+      "source_revision": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "original_sha256": "b3d7b2c7077c7a373981dd476e93cf1555cf4e851bd5e09e0d94fb1f1914b287",
+      "delivered_sha256": "b3d7b2c7077c7a373981dd476e93cf1555cf4e851bd5e09e0d94fb1f1914b287",
+      "original_bytes": 1656,
+      "delivered_bytes": 1656,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-commit/bench/lib/platform.mjs",
+      "evidence_unit": "CODE",
+      "role": "recorded commit snapshot; pipeline file-count/hash differs from run fingerprint",
+      "source_revision": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "original_sha256": "4b747e1cdd22e673744ebb5c851fa6d83077010d538732064f6fa05767a83189",
+      "delivered_sha256": "4b747e1cdd22e673744ebb5c851fa6d83077010d538732064f6fa05767a83189",
+      "original_bytes": 4216,
+      "delivered_bytes": 4216,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-commit/bench/lib/provision.mjs",
+      "evidence_unit": "CODE",
+      "role": "recorded commit snapshot; pipeline file-count/hash differs from run fingerprint",
+      "source_revision": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "original_sha256": "43b4037d71f01d8cd326496c64c7cd72700869e8888cd6deed4765c4cda9633a",
+      "delivered_sha256": "43b4037d71f01d8cd326496c64c7cd72700869e8888cd6deed4765c4cda9633a",
+      "original_bytes": 9099,
+      "delivered_bytes": 9099,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-commit/bench/lib/report-pipeline.mjs",
+      "evidence_unit": "CODE",
+      "role": "recorded commit snapshot; pipeline file-count/hash differs from run fingerprint",
+      "source_revision": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "original_sha256": "2189a48afadd597ab8858ab999cbf231ea8d4561c308130b3b9e7d96caabad99",
+      "delivered_sha256": "2189a48afadd597ab8858ab999cbf231ea8d4561c308130b3b9e7d96caabad99",
+      "original_bytes": 5743,
+      "delivered_bytes": 5743,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-commit/bench/lib/report-template.mjs",
+      "evidence_unit": "CODE",
+      "role": "recorded commit snapshot; pipeline file-count/hash differs from run fingerprint",
+      "source_revision": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "original_sha256": "4552b02d7b1e23452024f242779e1f4c6e906ce817508b5f507c52a8829ab532",
+      "delivered_sha256": "4552b02d7b1e23452024f242779e1f4c6e906ce817508b5f507c52a8829ab532",
+      "original_bytes": 26843,
+      "delivered_bytes": 26843,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-commit/bench/lib/report.mjs",
+      "evidence_unit": "CODE",
+      "role": "recorded commit snapshot; pipeline file-count/hash differs from run fingerprint",
+      "source_revision": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "original_sha256": "6026ef6678fd29f68306d00d297abd31d876d554672a17d4381569c9ba6923f9",
+      "delivered_sha256": "26700ae5411189d9e3450863413ba3b721dad86e30018cfd759aa3150d1f470f",
+      "original_bytes": 12732,
+      "delivered_bytes": 12727,
+      "transformations": {
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-commit/bench/lib/shot.mjs",
+      "evidence_unit": "CODE",
+      "role": "recorded commit snapshot; pipeline file-count/hash differs from run fingerprint",
+      "source_revision": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "original_sha256": "21ec299dc4f3ac878b96337b4c3ae926aa3b8368627e88e2165addaeda02582d",
+      "delivered_sha256": "21ec299dc4f3ac878b96337b4c3ae926aa3b8368627e88e2165addaeda02582d",
+      "original_bytes": 1388,
+      "delivered_bytes": 1388,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-commit/bench/lib/sim.mjs",
+      "evidence_unit": "CODE",
+      "role": "recorded commit snapshot; pipeline file-count/hash differs from run fingerprint",
+      "source_revision": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "original_sha256": "45a8af28034c54d5abfa36779facfd8bbd523a88c72d82f0429bf8a6cc535dad",
+      "delivered_sha256": "45a8af28034c54d5abfa36779facfd8bbd523a88c72d82f0429bf8a6cc535dad",
+      "original_bytes": 10908,
+      "delivered_bytes": 10908,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-commit/bench/lib/util.mjs",
+      "evidence_unit": "CODE",
+      "role": "recorded commit snapshot; pipeline file-count/hash differs from run fingerprint",
+      "source_revision": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "original_sha256": "165f7893740f32b18d087d40fc7f7b580b4d45e088baebefbfb3a56e86e5c3b7",
+      "delivered_sha256": "165f7893740f32b18d087d40fc7f7b580b4d45e088baebefbfb3a56e86e5c3b7",
+      "original_bytes": 4388,
+      "delivered_bytes": 4388,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-commit/bench/pipeline.mjs",
+      "evidence_unit": "CODE",
+      "role": "recorded commit snapshot; pipeline file-count/hash differs from run fingerprint",
+      "source_revision": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "original_sha256": "3a999da6919bb2dae22807e80e2fc0b4be8e31b42ad0f2b5c5764ecb7c461100",
+      "delivered_sha256": "2fa3cc45aa50959199a3e6ca55ea82ca8e7b49ad77d3470759bd47c9f1f85177",
+      "original_bytes": 120807,
+      "delivered_bytes": 120845,
+      "transformations": {
+        "credential_value": 1,
+        "account_pseudonym": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-commit/bench/run.mjs",
+      "evidence_unit": "CODE",
+      "role": "recorded commit snapshot; pipeline file-count/hash differs from run fingerprint",
+      "source_revision": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "original_sha256": "6eaa9277c23e016e324768ba43fa431fab640c1defa3375e19f5f5002759047b",
+      "delivered_sha256": "6eaa9277c23e016e324768ba43fa431fab640c1defa3375e19f5f5002759047b",
+      "original_bytes": 9198,
+      "delivered_bytes": 9198,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-commit/bench/tools/build-final-report.mjs",
+      "evidence_unit": "CODE",
+      "role": "recorded commit snapshot; pipeline file-count/hash differs from run fingerprint",
+      "source_revision": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "original_sha256": "5e636827fdda690afa06e7cd4924daeba303a2ad2afd972481ad3a4fae207787",
+      "delivered_sha256": "7f98f46915f4033da976cc1b1b7b2159ff64d910aae2b52b2b79b4ceb093192f",
+      "original_bytes": 45069,
+      "delivered_bytes": 45065,
+      "transformations": {
+        "credential_session_setting": 2,
+        "project_identity": 2,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-commit/bench/tools/compare-pipeline.mjs",
+      "evidence_unit": "CODE",
+      "role": "recorded commit snapshot; pipeline file-count/hash differs from run fingerprint",
+      "source_revision": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "original_sha256": "210d4d1064e5c4d2bd2e49cb28f294f961c2082978f800cf961f14bb3ad188d3",
+      "delivered_sha256": "210d4d1064e5c4d2bd2e49cb28f294f961c2082978f800cf961f14bb3ad188d3",
+      "original_bytes": 7146,
+      "delivered_bytes": 7146,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-commit/bench/tools/render-bench-report.mjs",
+      "evidence_unit": "CODE",
+      "role": "recorded commit snapshot; pipeline file-count/hash differs from run fingerprint",
+      "source_revision": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "original_sha256": "f6874c708cd3afab83846002e2885b336f0edb51a21db35e5ecccffc63ba3a43",
+      "delivered_sha256": "f6874c708cd3afab83846002e2885b336f0edb51a21db35e5ecccffc63ba3a43",
+      "original_bytes": 5853,
+      "delivered_bytes": 5853,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-commit/bench/tools/render-biax-report.mjs",
+      "evidence_unit": "CODE",
+      "role": "recorded commit snapshot; pipeline file-count/hash differs from run fingerprint",
+      "source_revision": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "original_sha256": "e70f430463b69d009ce0e4e0a7328651076aa9f2ddc8a1037bdbba80089be51d",
+      "delivered_sha256": "e70f430463b69d009ce0e4e0a7328651076aa9f2ddc8a1037bdbba80089be51d",
+      "original_bytes": 32402,
+      "delivered_bytes": 32402,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/scripts/e2e-injection-recipe-closedloop.mjs",
+      "evidence_unit": "CODE",
+      "role": "current inspection snapshot; no assertion of exact run-time source match",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "96573f83cec2e1f50fe6094a60c5e71aea726782a66ac6b83ed8d50efba19bcf",
+      "delivered_sha256": "96573f83cec2e1f50fe6094a60c5e71aea726782a66ac6b83ed8d50efba19bcf",
+      "original_bytes": 12356,
+      "delivered_bytes": 12356,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/scripts/real-injection-closed-loop.mjs",
+      "evidence_unit": "CODE",
+      "role": "current inspection snapshot; no assertion of exact run-time source match",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "87dadd8035e43088226b1a7c9d384a7bf674a22a85c8086bf8ca6a800b8b6b39",
+      "delivered_sha256": "0eef488843058588f0fe1fdf75742b9edcc8d06ed1dcbceec58baec966f5832c",
+      "original_bytes": 34696,
+      "delivered_bytes": 34683,
+      "transformations": {
+        "credential_local_token": 1,
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/scripts/_run-real-injection-fifo-goals.mjs",
+      "evidence_unit": "CODE",
+      "role": "current inspection snapshot; no assertion of exact run-time source match",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "f79e48cbad4f427a5c28e858475b26d0a5b102f3fd1d993cdae64893aef59a35",
+      "delivered_sha256": "99b7a43007d5c4decaad2c620385ad0b947c807041e97aed97045a040d5b765f",
+      "original_bytes": 27356,
+      "delivered_bytes": 27348,
+      "transformations": {
+        "credential_local_token": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/scripts/_provision-injection-line.mjs",
+      "evidence_unit": "CODE",
+      "role": "current inspection snapshot; no assertion of exact run-time source match",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "c08b9a23e48b37886960bec2ec46ca2f7246088146aafd38c4486515fc1e402a",
+      "delivered_sha256": "c1a78c7df8cf82a76117dd40b1687c657e2cd5732f8c571367a178477b085cea",
+      "original_bytes": 1898,
+      "delivered_bytes": 1974,
+      "transformations": {
+        "credential_value": 1,
+        "account_pseudonym": 2,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/scripts/testing/run-benchmark.mjs",
+      "evidence_unit": "CODE",
+      "role": "current inspection snapshot; no assertion of exact run-time source match",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "e2d75a47b09f416fad956b166375ca03190d5ebd6cee0e548b49188cb50f2e7d",
+      "delivered_sha256": "af5e0d657ad62f39a9adecccbae38a70dc620e3677b9944167331fe421b2c696",
+      "original_bytes": 58815,
+      "delivered_bytes": 58795,
+      "transformations": {
+        "project_identity": 4,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/scripts/testing/api-full-loop.mjs",
+      "evidence_unit": "CODE",
+      "role": "current inspection snapshot; no assertion of exact run-time source match",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "7cf4ab92df5d3e5ddf87b16ba295c98ff4bdbafb879925588dd460109ffc2a3b",
+      "delivered_sha256": "e328766e166ef584b32a40756d59366a715046ff2752eea9a5b3cc91cad51262",
+      "original_bytes": 14746,
+      "delivered_bytes": 14876,
+      "transformations": {
+        "credential_value": 1,
+        "credential_literal": 6,
+        "account_pseudonym": 2,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/scripts/testing/aggregate-benchmarks.mjs",
+      "evidence_unit": "CODE",
+      "role": "current inspection snapshot; no assertion of exact run-time source match",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "438d6c2f2577368a7dc01cf3a95489c3515bfc1d1412303f40ca4a1cff156033",
+      "delivered_sha256": "438d6c2f2577368a7dc01cf3a95489c3515bfc1d1412303f40ca4a1cff156033",
+      "original_bytes": 4286,
+      "delivered_bytes": 4286,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/scripts/testing/benchmark.config.json",
+      "evidence_unit": "CODE",
+      "role": "current inspection snapshot; no assertion of exact run-time source match",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "7db264130c823992a68c5ead5f0ddae39829f5e07304b4ce475bcb96f857d144",
+      "delivered_sha256": "63cc0a13d45f331593c0a5cd4c4ad8bdc3c87d40855ccc1ddb7b8186cc9889ae",
+      "original_bytes": 1424,
+      "delivered_bytes": 1387,
+      "transformations": {
+        "account_pseudonym": 1,
+        "credential_field": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 11
+    },
+    {
+      "path": "code/current/tmp-e2e/hardening-ack-gate.mjs",
+      "evidence_unit": "CODE",
+      "role": "current inspection snapshot; no assertion of exact run-time source match",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "593ed1d6a3e7ca9da06a5421d30fd76c3617ceb819274ff026c37ba72f96688e",
+      "delivered_sha256": "24396be676eb591b3019594bdb511b601967c6796d19dde51941be2feb909107",
+      "original_bytes": 23906,
+      "delivered_bytes": 23969,
+      "transformations": {
+        "credential_literal": 3,
+        "account_pseudonym": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/plc-node-simulator/src/server/engine/plant-model.ts",
+      "evidence_unit": "CODE",
+      "role": "current inspection snapshot; no assertion of exact run-time source match",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "905a700814cb440cca332ef4028436d25a2c47a423e1a85c7a3e5819e591e3a7",
+      "delivered_sha256": "905a700814cb440cca332ef4028436d25a2c47a423e1a85c7a3e5819e591e3a7",
+      "original_bytes": 13904,
+      "delivered_bytes": 13904,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/plc-node-simulator/src/server/engine/biax-model.ts",
+      "evidence_unit": "CODE",
+      "role": "current inspection snapshot; no assertion of exact run-time source match",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "d855688d0ac26cb7d30c23d4fcdaa681f0a5ae095b4740d246062d7d1e46e052",
+      "delivered_sha256": "d855688d0ac26cb7d30c23d4fcdaa681f0a5ae095b4740d246062d7d1e46e052",
+      "original_bytes": 20841,
+      "delivered_bytes": 20841,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/plc-node-simulator/src/server/engine/signals.ts",
+      "evidence_unit": "CODE",
+      "role": "current inspection snapshot; no assertion of exact run-time source match",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "badf71f0c6bbec1bf28cd784fdf5f0806da40bbbdbc1a44a5bce6829dd94fd1b",
+      "delivered_sha256": "badf71f0c6bbec1bf28cd784fdf5f0806da40bbbdbc1a44a5bce6829dd94fd1b",
+      "original_bytes": 9578,
+      "delivered_bytes": 9578,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/plc-node-simulator/src/shared/types.ts",
+      "evidence_unit": "CODE",
+      "role": "current inspection snapshot; no assertion of exact run-time source match",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "f1e41f69e6a98cd1aa1cf553ec050916a4130ef7e42211249e595ff04ecf65a9",
+      "delivered_sha256": "9d083eb92438ac05ba79cf8e2e143b32505532fb1c420b43ac9c349cf03c204d",
+      "original_bytes": 19364,
+      "delivered_bytes": 19359,
+      "transformations": {
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/current/figures/make-evaluation-2026.py",
+      "evidence_unit": "CODE",
+      "role": "current inspection snapshot; no assertion of exact run-time source match",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "beb69dd350e3dcc6a4e7c4febbdbe001eee662bb292f5d6625ddd2ca7d6b0427",
+      "delivered_sha256": "beb69dd350e3dcc6a4e7c4febbdbe001eee662bb292f5d6625ddd2ca7d6b0427",
+      "original_bytes": 19172,
+      "delivered_bytes": 19172,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-simulator/src/server/engine/plant-model.ts",
+      "evidence_unit": "CODE",
+      "role": "simulator gitlink at recorded main commit; run-time dirty state unknown",
+      "source_revision": "5c65e9342f1ed21a6221afb35cefdb22c5283208",
+      "original_sha256": "6ec6d1e2aedba4dca18966172290aec45598f7999ce8f04a0e256ce584468c72",
+      "delivered_sha256": "6ec6d1e2aedba4dca18966172290aec45598f7999ce8f04a0e256ce584468c72",
+      "original_bytes": 13578,
+      "delivered_bytes": 13578,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-simulator/src/server/engine/biax-model.ts",
+      "evidence_unit": "CODE",
+      "role": "simulator gitlink at recorded main commit; run-time dirty state unknown",
+      "source_revision": "5c65e9342f1ed21a6221afb35cefdb22c5283208",
+      "original_sha256": "d855688d0ac26cb7d30c23d4fcdaa681f0a5ae095b4740d246062d7d1e46e052",
+      "delivered_sha256": "d855688d0ac26cb7d30c23d4fcdaa681f0a5ae095b4740d246062d7d1e46e052",
+      "original_bytes": 20841,
+      "delivered_bytes": 20841,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-simulator/src/server/engine/signals.ts",
+      "evidence_unit": "CODE",
+      "role": "simulator gitlink at recorded main commit; run-time dirty state unknown",
+      "source_revision": "5c65e9342f1ed21a6221afb35cefdb22c5283208",
+      "original_sha256": "1df0eafbf86efeaaf36d94d9c11749205cdc5a3bd6f24ef4fd92d7fc48afdd66",
+      "delivered_sha256": "1df0eafbf86efeaaf36d94d9c11749205cdc5a3bd6f24ef4fd92d7fc48afdd66",
+      "original_bytes": 9358,
+      "delivered_bytes": 9358,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/recorded-simulator/src/shared/types.ts",
+      "evidence_unit": "CODE",
+      "role": "simulator gitlink at recorded main commit; run-time dirty state unknown",
+      "source_revision": "5c65e9342f1ed21a6221afb35cefdb22c5283208",
+      "original_sha256": "de213eca0df2788ff310c7a2fdcf3046019200782961031461ab16b32ce14f02",
+      "delivered_sha256": "83f31dc8ba86607e3f1f57b32a8fe4652f7bc62fa37eb723a8eb862cde0ecb9e",
+      "original_bytes": 14000,
+      "delivered_bytes": 13995,
+      "transformations": {
+        "project_identity": 1,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": null
+    },
+    {
+      "path": "code/dependencies/package.json",
+      "evidence_unit": "CODE",
+      "role": "current dependency declaration; historical lockfile/environment not reconstructed",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "aa533f7d1f7fc13781a3c54479679bdfcbd8b8eb9b6114315a5d8a765cbcd165",
+      "delivered_sha256": "7cd31dcee77609342fd8b42ad929736baa85793ce68c01ca974620d9e250be4c",
+      "original_bytes": 6116,
+      "delivered_bytes": 5911,
+      "transformations": {
+        "project_identity": 4,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 0
+    },
+    {
+      "path": "code/dependencies/plc-node-simulator/package.json",
+      "evidence_unit": "CODE",
+      "role": "current dependency declaration; historical lockfile/environment not reconstructed",
+      "source_revision": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "original_sha256": "fea8c1172cf18d51f31acdbfdabbe67aa6c88e292961ecd19be0e7103be520fd",
+      "delivered_sha256": "8099aa2cfadf0532001507e1cd98e712dbadff7640c49773575e388d798fa152",
+      "original_bytes": 1589,
+      "delivered_bytes": 1549,
+      "transformations": {
+        "identity_name": 2,
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 1
+    },
+    {
+      "path": "derived-figures/source-data-governance.csv",
+      "evidence_unit": "FIGURES",
+      "role": "derived data; archived units are not increased",
+      "source_revision": null,
+      "original_sha256": "cd5045eb2198d1c0545b099e635091f7403e5fc44e9f70321b0eaa2e984daf99",
+      "delivered_sha256": "cd5045eb2198d1c0545b099e635091f7403e5fc44e9f70321b0eaa2e984daf99",
+      "original_bytes": 3421,
+      "delivered_bytes": 3421,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": 48
+    },
+    {
+      "path": "derived-figures/source-data-governance.json",
+      "evidence_unit": "FIGURES",
+      "role": "derived data; archived units are not increased",
+      "source_revision": null,
+      "original_sha256": "e4d1b8adf22f74f8cb915eef1457de7ae7882fd65d665899ce99cbf3885dc52c",
+      "delivered_sha256": "17ad5f3408b77a47f96e5121a119432f96e0efed9b9d8590cbd1b60fb3e8dc9e",
+      "original_bytes": 6370,
+      "delivered_bytes": 6198,
+      "transformations": {
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 76
+    },
+    {
+      "path": "derived-figures/source-data-injection.csv",
+      "evidence_unit": "FIGURES",
+      "role": "derived data; archived units are not increased",
+      "source_revision": null,
+      "original_sha256": "b7f646059fa3f2d71db7216a6d7e903951141673e83803b645b45cd49c5ed259",
+      "delivered_sha256": "b7f646059fa3f2d71db7216a6d7e903951141673e83803b645b45cd49c5ed259",
+      "original_bytes": 1085,
+      "delivered_bytes": 1085,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": 41
+    },
+    {
+      "path": "derived-figures/source-data-injection.json",
+      "evidence_unit": "FIGURES",
+      "role": "derived data; archived units are not increased",
+      "source_revision": null,
+      "original_sha256": "460ac5afe322d7db334a10992f4638ec0c83260b36a5b2d451deb4f2bf50f55e",
+      "delivered_sha256": "16ead5067549d9f821b2df7c800543d0d788e8f022e945b8eac793fcb9d50c92",
+      "original_bytes": 3149,
+      "delivered_bytes": 3052,
+      "transformations": {
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 49
+    },
+    {
+      "path": "derived-figures/source-data-manifest.json",
+      "evidence_unit": "FIGURES",
+      "role": "derived data; archived units are not increased",
+      "source_revision": null,
+      "original_sha256": "3b814b3bd8b0c48ef260bc7742424c3a9402b2d482954119934736cfe69b305b",
+      "delivered_sha256": "110a1cc4a062c782aef44e0ef45657c897af00037ac29a2a9f7b1a37773b631f",
+      "original_bytes": 8008,
+      "delivered_bytes": 7764,
+      "transformations": {
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 74
+    },
+    {
+      "path": "derived-figures/source-data-missions-controls.csv",
+      "evidence_unit": "FIGURES",
+      "role": "derived data; archived units are not increased",
+      "source_revision": null,
+      "original_sha256": "cb68c7d4405d6c351b36dc7e61bce6d9ac75bcc298869065409f8ba1080a6cd8",
+      "delivered_sha256": "cb68c7d4405d6c351b36dc7e61bce6d9ac75bcc298869065409f8ba1080a6cd8",
+      "original_bytes": 3759,
+      "delivered_bytes": 3759,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": 78
+    },
+    {
+      "path": "derived-figures/source-data-missions-outcomes.csv",
+      "evidence_unit": "FIGURES",
+      "role": "derived data; archived units are not increased",
+      "source_revision": null,
+      "original_sha256": "cada5f27e281e7b858dd6fa4f872335d214e44b594d5534e05409db9e73ee2c4",
+      "delivered_sha256": "cada5f27e281e7b858dd6fa4f872335d214e44b594d5534e05409db9e73ee2c4",
+      "original_bytes": 3513,
+      "delivered_bytes": 3513,
+      "transformations": {},
+      "numeric_boolean_null_fields_verified": 79
+    },
+    {
+      "path": "derived-figures/source-data-missions.json",
+      "evidence_unit": "FIGURES",
+      "role": "derived data; archived units are not increased",
+      "source_revision": null,
+      "original_sha256": "68cb99a8629174deae9ddcb11f101b91c29473359427bb3490b95d6e00ba832e",
+      "delivered_sha256": "4d22b75630f1b871b21bbaca3038a26f63ae9deb01c16279a5ee8a38a31bc621",
+      "original_bytes": 80578,
+      "delivered_bytes": 78163,
+      "transformations": {
+        "utf8_serialization_or_newline": 1
+      },
+      "numeric_boolean_null_fields_verified": 642
+    }
+  ],
+  "original_log_origin": {
+    "classification": "Original contemporaneous output, explicitly author-confirmed on 2026-10-20",
+    "independent_capture_origin_verified": false,
+    "applies_to": [
+      "R1/agent-loop-omp.log",
+      "R1/agent-goal-loop-omp.log"
+    ],
+    "supersedes": "R1/ARTIFACT-NOTES.md absence statement only"
+  }
+}

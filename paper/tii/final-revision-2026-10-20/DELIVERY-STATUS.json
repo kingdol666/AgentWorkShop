@@ -1,0 +1,10 @@
+{
+  "date": "2026-10-20",
+  "technical_verification": "PASS",
+  "delta_review": "PASS for authorized clarification scope; residual risks disclosed",
+  "baseline_scholarly_decision": "major_revision retained",
+  "required_reports_present": 13,
+  "frozen_artifact_hashes_unchanged": true,
+  "author_responses": 10,
+  "journal_acceptance_claim": false
+}

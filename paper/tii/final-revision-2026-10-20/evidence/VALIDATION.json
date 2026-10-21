@@ -1,0 +1,13 @@
+{
+  "status": "PASS",
+  "original_archives_unchanged": true,
+  "json_jsonl_numeric_boolean_null_shape_preserved": true,
+  "csv_numeric_cells_preserved": true,
+  "claim_artifact_paths_resolve": true,
+  "private_identity_path_credentials_scan": "PASS",
+  "software_assertions": 782,
+  "R6_key_values_and_missing_melt": "PASS",
+  "R2_attack_counts": "PASS",
+  "source_artifacts": 176,
+  "independent_process_replays_executed": 0
+}

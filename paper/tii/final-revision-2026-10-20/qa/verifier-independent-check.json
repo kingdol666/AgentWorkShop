@@ -1,0 +1,373 @@
+{
+  "scope": "Independent technical and delivery audit; no novelty or journal-acceptance judgement",
+  "pdf_sha256": "c4a8018c9e7c5b50eae592c1efecf1eb22634851116e330294a389fb5b6a976b",
+  "passed": true,
+  "checks": [
+    {
+      "name": "ten_nonblank_letter_pages",
+      "passed": true,
+      "details": 10
+    },
+    {
+      "name": "PDF_below_40MB",
+      "passed": true,
+      "details": 514321
+    },
+    {
+      "name": "IEEEtran_and_body_geometry",
+      "passed": true,
+      "details": "journal class; no body type/margin overrides"
+    },
+    {
+      "name": "abstract_150_250_single_paragraph",
+      "passed": true,
+      "details": 214
+    },
+    {
+      "name": "citation_resolution",
+      "passed": true,
+      "details": {
+        "cited": 30,
+        "printed": 30,
+        "missing": [],
+        "unused": []
+      }
+    },
+    {
+      "name": "build_log",
+      "passed": true,
+      "details": []
+    },
+    {
+      "name": "references_no_question_marks",
+      "passed": true,
+      "details": 0
+    },
+    {
+      "name": "anonymous_PDF",
+      "passed": true,
+      "details": "Anonymous Authors"
+    },
+    {
+      "name": "all_PDF_fonts_embedded",
+      "passed": true,
+      "details": {
+        "font_count": 30,
+        "missing": []
+      }
+    },
+    {
+      "name": "text_within_page",
+      "passed": true,
+      "details": []
+    },
+    {
+      "name": "placed_figure_font_floor",
+      "passed": true,
+      "details": {
+        "minimum_pdf_bp": 8.966609954833984
+      }
+    },
+    {
+      "name": "six_vector_figures",
+      "passed": true,
+      "details": [
+        {
+          "path": "resources/fig-missions-controls.pdf",
+          "sha256": "71015341734842f0c0d44759d83a22aeaabab75f000e006ebee986c2430e5ff4",
+          "width_in": 7.160000271267361,
+          "height_in": 3.5500000847710504,
+          "minimum_font": 9.0,
+          "raster_objects": 0,
+          "fonts_embedded": true,
+          "vector_drawings": 167
+        },
+        {
+          "path": "resources/fig-governance-timeline.pdf",
+          "sha256": "1147f2d1deac1fd66852d44256dfb7ba2af4d964b2ddf603bbf66d3c2ab7a4cf",
+          "width_in": 3.5,
+          "height_in": 2.75,
+          "minimum_font": 9.0,
+          "raster_objects": 0,
+          "fonts_embedded": true,
+          "vector_drawings": 37
+        },
+        {
+          "path": "resources/fig-injection-controls.pdf",
+          "sha256": "b3f818a5b0a77cf7917a1c103d1e219a1bd5c81c31685cc4e8861b0d930b2913",
+          "width_in": 7.160000271267361,
+          "height_in": 2.3499999576144748,
+          "minimum_font": 9.0,
+          "raster_objects": 0,
+          "fonts_embedded": true,
+          "vector_drawings": 77
+        },
+        {
+          "path": "resources/fig-runtime-2026.pdf",
+          "sha256": "7aca692d19cdd133c7e2471c6db1111ba3f5843d84b39cf61748473e7eac5db6",
+          "width_in": 3.5,
+          "height_in": 3.5500000847710504,
+          "minimum_font": 9.0,
+          "raster_objects": 0,
+          "fonts_embedded": true,
+          "vector_drawings": 32
+        },
+        {
+          "path": "resources/fig-admission-hitl-2026.pdf",
+          "sha256": "3be2c9e2f400769f67b86c864c1299ab8338499bf51fc6788fa9b0bb7a65e63c",
+          "width_in": 7.160000271267361,
+          "height_in": 2.4499999152289496,
+          "minimum_font": 9.0,
+          "raster_objects": 0,
+          "fonts_embedded": true,
+          "vector_drawings": 17
+        },
+        {
+          "path": "resources/fig-architecture-2026.pdf",
+          "sha256": "1ad40d2764cdad1cee610581c25f6adcf8796758aaf1da631d102e525794c8d5",
+          "width_in": 7.160000271267361,
+          "height_in": 3.1500000423855252,
+          "minimum_font": 9.0,
+          "raster_objects": 0,
+          "fonts_embedded": true,
+          "vector_drawings": 37
+        }
+      ]
+    },
+    {
+      "name": "Figs1_2_exact_geometry",
+      "passed": true,
+      "details": {
+        "fig-architecture-2026.pdf": [
+          7.16,
+          3.15
+        ],
+        "fig-runtime-2026.pdf": [
+          3.5,
+          3.55
+        ]
+      }
+    },
+    {
+      "name": "no_visible_placeholders",
+      "passed": true,
+      "details": "source scan"
+    },
+    {
+      "name": "protected_labels_equations_unchanged",
+      "passed": true,
+      "details": []
+    },
+    {
+      "name": "experiment_macros_unchanged",
+      "passed": true,
+      "details": "baseline source comparison"
+    },
+    {
+      "name": "bibliography_unchanged",
+      "passed": true,
+      "details": "byte comparison"
+    },
+    {
+      "name": "source_package_citations_and_urls_preserved",
+      "passed": true,
+      "details": "bibliography and rendered references byte-identical"
+    },
+    {
+      "name": "source_package_current_active_content",
+      "passed": true,
+      "details": "active content byte comparison"
+    },
+    {
+      "name": "evidence_exact_entry_set",
+      "passed": true,
+      "details": 187
+    },
+    {
+      "name": "package_CRC_hashes_and_manifests",
+      "passed": true,
+      "details": [
+        {
+          "package": "IEEE-TII-manuscript-source.zip",
+          "files": 45,
+          "sha256": "0cc759b05fddf5e62cf0326692aaba2c0cc580f32a36f90df283d9640bc25adf",
+          "crc_ok": true,
+          "manifest_hash_ok": true,
+          "mismatches": []
+        },
+        {
+          "package": "IEEE-TII-anonymous-evidence.zip",
+          "files": 187,
+          "sha256": "578a14539c6ca8e17226106f93fed302d43a83ff5eb81ea01c2a560e1f394ae3",
+          "crc_ok": true,
+          "manifest_hash_ok": true,
+          "mismatches": []
+        }
+      ]
+    },
+    {
+      "name": "bounded_public_package_privacy",
+      "passed": true,
+      "details": []
+    },
+    {
+      "name": "all_176_original_artifacts_unchanged",
+      "passed": true,
+      "details": {
+        "files": 176,
+        "errors": []
+      }
+    },
+    {
+      "name": "redaction_preserves_numeric_boolean_nulls",
+      "passed": true,
+      "details": {
+        "JSON_primitive_fields": 13723,
+        "CSV_numeric_cells": 1919,
+        "errors": []
+      }
+    }
+  ],
+  "pages": [
+    {
+      "page": 1,
+      "chars": 5515,
+      "images": 0,
+      "fonts": 4
+    },
+    {
+      "page": 2,
+      "chars": 5956,
+      "images": 0,
+      "fonts": 2
+    },
+    {
+      "page": 3,
+      "chars": 4889,
+      "images": 0,
+      "fonts": 6
+    },
+    {
+      "page": 4,
+      "chars": 5620,
+      "images": 0,
+      "fonts": 12
+    },
+    {
+      "page": 5,
+      "chars": 5158,
+      "images": 0,
+      "fonts": 5
+    },
+    {
+      "page": 6,
+      "chars": 6367,
+      "images": 0,
+      "fonts": 4
+    },
+    {
+      "page": 7,
+      "chars": 5844,
+      "images": 0,
+      "fonts": 9
+    },
+    {
+      "page": 8,
+      "chars": 4307,
+      "images": 0,
+      "fonts": 13
+    },
+    {
+      "page": 9,
+      "chars": 5447,
+      "images": 0,
+      "fonts": 10
+    },
+    {
+      "page": 10,
+      "chars": 7712,
+      "images": 0,
+      "fonts": 2
+    }
+  ],
+  "figures": [
+    {
+      "path": "resources/fig-missions-controls.pdf",
+      "sha256": "71015341734842f0c0d44759d83a22aeaabab75f000e006ebee986c2430e5ff4",
+      "width_in": 7.160000271267361,
+      "height_in": 3.5500000847710504,
+      "minimum_font": 9.0,
+      "raster_objects": 0,
+      "fonts_embedded": true,
+      "vector_drawings": 167
+    },
+    {
+      "path": "resources/fig-governance-timeline.pdf",
+      "sha256": "1147f2d1deac1fd66852d44256dfb7ba2af4d964b2ddf603bbf66d3c2ab7a4cf",
+      "width_in": 3.5,
+      "height_in": 2.75,
+      "minimum_font": 9.0,
+      "raster_objects": 0,
+      "fonts_embedded": true,
+      "vector_drawings": 37
+    },
+    {
+      "path": "resources/fig-injection-controls.pdf",
+      "sha256": "b3f818a5b0a77cf7917a1c103d1e219a1bd5c81c31685cc4e8861b0d930b2913",
+      "width_in": 7.160000271267361,
+      "height_in": 2.3499999576144748,
+      "minimum_font": 9.0,
+      "raster_objects": 0,
+      "fonts_embedded": true,
+      "vector_drawings": 77
+    },
+    {
+      "path": "resources/fig-runtime-2026.pdf",
+      "sha256": "7aca692d19cdd133c7e2471c6db1111ba3f5843d84b39cf61748473e7eac5db6",
+      "width_in": 3.5,
+      "height_in": 3.5500000847710504,
+      "minimum_font": 9.0,
+      "raster_objects": 0,
+      "fonts_embedded": true,
+      "vector_drawings": 32
+    },
+    {
+      "path": "resources/fig-admission-hitl-2026.pdf",
+      "sha256": "3be2c9e2f400769f67b86c864c1299ab8338499bf51fc6788fa9b0bb7a65e63c",
+      "width_in": 7.160000271267361,
+      "height_in": 2.4499999152289496,
+      "minimum_font": 9.0,
+      "raster_objects": 0,
+      "fonts_embedded": true,
+      "vector_drawings": 17
+    },
+    {
+      "path": "resources/fig-architecture-2026.pdf",
+      "sha256": "1ad40d2764cdad1cee610581c25f6adcf8796758aaf1da631d102e525794c8d5",
+      "width_in": 7.160000271267361,
+      "height_in": 3.1500000423855252,
+      "minimum_font": 9.0,
+      "raster_objects": 0,
+      "fonts_embedded": true,
+      "vector_drawings": 37
+    }
+  ],
+  "packages": [
+    {
+      "package": "IEEE-TII-manuscript-source.zip",
+      "files": 45,
+      "sha256": "0cc759b05fddf5e62cf0326692aaba2c0cc580f32a36f90df283d9640bc25adf",
+      "crc_ok": true,
+      "manifest_hash_ok": true,
+      "mismatches": []
+    },
+    {
+      "package": "IEEE-TII-anonymous-evidence.zip",
+      "files": 187,
+      "sha256": "578a14539c6ca8e17226106f93fed302d43a83ff5eb81ea01c2a560e1f394ae3",
+      "crc_ok": true,
+      "manifest_hash_ok": true,
+      "mismatches": []
+    }
+  ]
+}

@@ -1,0 +1,68 @@
+[
+  {
+    "figure": "architecture-2026",
+    "text_exit": 0,
+    "collision_exit": 0,
+    "collision": {
+      "fail": 0,
+      "warn": 0,
+      "contained_fill_overlays": 21,
+      "contained_image_overlays": 0
+    }
+  },
+  {
+    "figure": "runtime-2026",
+    "text_exit": 0,
+    "collision_exit": 0,
+    "collision": {
+      "fail": 0,
+      "warn": 0,
+      "contained_fill_overlays": 22,
+      "contained_image_overlays": 0
+    }
+  },
+  {
+    "figure": "admission-hitl-2026",
+    "text_exit": 0,
+    "collision_exit": 0,
+    "collision": {
+      "fail": 0,
+      "warn": 0,
+      "contained_fill_overlays": 2,
+      "contained_image_overlays": 0
+    }
+  },
+  {
+    "figure": "missions-controls",
+    "text_exit": 0,
+    "collision_exit": 0,
+    "collision": {
+      "fail": 0,
+      "warn": 0,
+      "contained_fill_overlays": 0,
+      "contained_image_overlays": 0
+    }
+  },
+  {
+    "figure": "governance-timeline",
+    "text_exit": 0,
+    "collision_exit": 0,
+    "collision": {
+      "fail": 0,
+      "warn": 0,
+      "contained_fill_overlays": 9,
+      "contained_image_overlays": 0
+    }
+  },
+  {
+    "figure": "injection-controls",
+    "text_exit": 0,
+    "collision_exit": 0,
+    "collision": {
+      "fail": 0,
+      "warn": 0,
+      "contained_fill_overlays": 9,
+      "contained_image_overlays": 0
+    }
+  }
+]
