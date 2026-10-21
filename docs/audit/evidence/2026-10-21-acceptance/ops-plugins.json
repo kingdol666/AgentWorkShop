@@ -1,5 +1,10 @@
 {
-  "at": "2026-10-21T10:54:34.056Z",
+  "at": "2026-10-21T13:51:18.244Z",
+  "context": {
+    "base": "http://127.0.0.1:3470",
+    "lineId": "ln-eb33c591",
+    "channelId": "54466ec5-84c0-45b5-a6b8-58a89d2c20e3"
+  },
   "results": [
     {
       "id": "US306.1",
@@ -14,10 +19,16 @@
       "detail": "200 ok"
     },
     {
+      "id": "US306.2b",
+      "name": "产线恢复运行态(active=true)",
+      "pass": true,
+      "detail": ""
+    },
+    {
       "id": "US306.3",
       "name": "ops-logs 含 line.start/line.stop 记录",
       "pass": true,
-      "detail": "line.start,line.stop,line.start,line.stop,line.start,line.create"
+      "detail": "line.start,line.stop,line.create"
     },
     {
       "id": "US305.1",
@@ -29,7 +40,7 @@
       "id": "US305.2",
       "name": "Agent 工具面含 rag-bridge 插件工具(kb_agent/sentinel_*)——diag_run 走 omp 引擎注入面(独立机制)",
       "pass": true,
-      "detail": "n=70 kb=true sentinel×5; diag_run 经 ctx.omp.registerTool 注入 omp 引擎 Agent(非 host 面)"
+      "detail": "n=70 kb=true sentinel×4"
     }
   ],
   "pluginEnabled": [

@@ -55,6 +55,9 @@ async function approvedTrial(params, hypothesis, label) {
   const r = await p
   return { card, ...r }
 }
+// 质量窗自标定:U4-2 基线出来后按 ±4σ(下限 0.2)重设;旧硬编码 32.15~32.85
+// 与模拟器预设基线(~31.2)错配,U4-2 时 in=0 即已"越窗",worse 由窗口错配误触发。
+const WIN = { lo: 32.15, hi: 32.85 }
 async function windowStats(nodeId, windowMs, endMs = Date.now()) {
   const to = endMs
   const from = to - windowMs
@@ -66,7 +69,7 @@ async function windowStats(nodeId, windowMs, endMs = Date.now()) {
   const std = Math.sqrt(vals.reduce((a, b) => a + (b - mean) ** 2, 0) / vals.length)
   return {
     n: vals.length, mean, std, min: Math.min(...vals), max: Math.max(...vals),
-    inWindow: vals.filter(v => v >= 32.15 && v <= 32.85).length, from, to,
+    inWindow: vals.filter(v => v >= WIN.lo && v <= WIN.hi).length, from, to,
   }
 }
 async function readPressure() {
@@ -83,6 +86,10 @@ async function main() {
   ok('U4-1', '保压节点/克重节点在位', Boolean(pressNode && weight), `press=${pressNode} weight=${weight} value=${press.value}`)
   const base = await windowStats(weight, 90_000)
   ok('U4-2', '基线窗口统计', base.n >= 8 && Number.isFinite(base.mean), `n=${base.n} mean=${base.mean.toFixed(3)} std=${base.std.toFixed(3)} range=${base.min}~${base.max} in=${base.inWindow}`)
+  const winHalf = Math.max(4 * base.std, 0.2)
+  WIN.lo = Number((base.mean - winHalf).toFixed(3))
+  WIN.hi = Number((base.mean + winHalf).toFixed(3))
+  console.log(`  [win] 自标定质量窗 ${WIN.lo}~${WIN.hi}(基线 ±${winHalf.toFixed(3)})`)
   const stepLimit = Math.max(0.1, Number(press.stepLimit) || 1.8)
   const step = Math.min(1.8, stepLimit)
   const rounds = []
@@ -103,7 +110,7 @@ async function main() {
     await sleep(65_000)
     const st = await windowStats(weight, 65_000)
     const anyOut = st.n > 0 && st.inWindow < st.n
-    const worse = !(st.n >= 5) || st.std > Math.max(base.std * 2, 0.08) || anyOut || st.mean < 32.15 || st.mean > 32.85
+    const worse = !(st.n >= 5) || st.std > Math.max(base.std * 2, 0.08) || anyOut || st.mean < WIN.lo || st.mean > WIN.hi
     rounds.push({ round: i, from: cur.value, target, applied, delta, stats: st, worse, hitl: tr.card?.id ?? null })
     ok(`U4-5.${i}`, `第 ${i} 轮复测`, st.n >= 5 && Number.isFinite(st.mean), `mean=${st.mean.toFixed(3)} std=${st.std.toFixed(3)} in=${st.inWindow}/${st.n} worse=${worse}`)
     if (worse) {
@@ -124,7 +131,7 @@ async function main() {
   const final = await windowStats(weight, 60_000, settleFrom + 60_000)
   const finalOk = final.n >= 8 && final.inWindow === final.n && final.std <= Math.max(base.std * 1.5, 0.08)
   ok('U4-7', '最终状态质量窗与稳定度(末次写入后窗口)', finalOk, `window=${new Date(settleFrom).toISOString()}~${new Date(settleFrom + 60_000).toISOString()} mean=${final.mean.toFixed(3)} std=${final.std.toFixed(3)} in=${final.inWindow}/${final.n} degraded=${degraded}`)
-  const ev = { story: 'US-004', lineId: c.lineId, recipeId: c.recipeId, pressNode, weightNode: weight, stepLimit, step, baseline: base, rounds, final, degraded, rollbackTriggered: degraded }
+  const ev = { story: 'US-004', lineId: c.lineId, recipeId: c.recipeId, pressNode, weightNode: weight, stepLimit, step, window: { ...WIN }, baseline: base, rounds, final, degraded, rollbackTriggered: degraded }
   writeFileSync(join(EVID, 'US-004-stability.json'), JSON.stringify(ev, null, 2))
   const pass = results.filter(r => r.pass).length
   console.log(`\n═══ stability: ${pass}/${results.length} PASS ═══`)

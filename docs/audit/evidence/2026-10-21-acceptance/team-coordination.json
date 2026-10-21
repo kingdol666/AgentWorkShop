@@ -1,49 +1,49 @@
 {
-  "at": "2026-10-21T10:54:03.422Z",
+  "at": "2026-10-21T13:51:15.331Z",
   "base": "http://127.0.0.1:3470",
-  "channelId": "e950735e-9b0b-4227-8998-62053e139805",
+  "channelId": "54466ec5-84c0-45b5-a6b8-58a89d2c20e3",
   "results": [
     {
       "id": "T0",
       "name": "lead/worker 就绪(含 token)",
       "pass": true,
-      "detail": "lead=85fa8458 worker=4d9e0b7c"
+      "detail": "lead=de846e68 worker=f2993381"
     },
     {
       "id": "T1",
       "name": "lead→worker 信箱投递",
       "pass": true,
-      "detail": "消息 f5cbb303… 已发送给 4d9e0b7c-35dc-4f65-9281-55ba344784ac(priority=task)"
+      "detail": "消息 8c5f3d47… 已发送给 f2993381-2b4d-4f48-a8bf-2cd6d2d2e35e(priority=task)"
     },
     {
       "id": "T2",
       "name": "worker 阻塞轮询收到任务(到信即醒)",
       "pass": true,
-      "detail": "未消费消息(1,已读即取):\n  [1/1] [from 85fa8458-23f9-4680-bebe-87f7c7171ec2] [Team 协调实测] 请分析你绑定节点的最近数据,完成后回报结论摘要。任务编号 TC-mvhzvflk"
+      "detail": "未消费消息(1,已读即取):\n  [1/1] [from de846e68-4849-49f5-b763-015cd1567e47] [Team 协调实测] 请分析你绑定节点的最近数据,完成后回报结论摘要。任务编号 TC-mvi67b8d"
     },
     {
       "id": "T3",
       "name": "worker 结果回报投递",
       "pass": true,
-      "detail": "消息 56c27424… 已发送给 85fa8458-23f9-4680-bebe-87f7c7171ec2(priority=task)"
+      "detail": "消息 8e136d4a… 已发送给 de846e68-4849-49f5-b763-015cd1567e47(priority=task)"
     },
     {
       "id": "T4",
       "name": "lead 收到 worker 回执(闭环)",
       "pass": true,
-      "detail": "未消费消息(1,已读即取):\n  [1/1] [from 4d9e0b7c-35dc-4f65-9281-55ba344784ac] [Team 协调实测·回执] 分析完成:绑定节点数据窗口内均值/极差已核对,结论=窗口内无越限,建议保持当前配方。"
+      "detail": "未消费消息(1,已读即取):\n  [1/1] [from f2993381-2b4d-4f48-a8bf-2cd6d2d2e35e] [Team 协调实测·回执] 分析完成:绑定节点数据窗口内均值/极差已核对,结论=窗口内无越限,建议保持当前配方。"
     },
     {
       "id": "T5",
       "name": "lead 派发结构化任务",
       "pass": true,
-      "detail": "子任务 fbb288bb-7535-4dcd-acb2-ab4c9ce7c943 已创建并指派 → 4d9e0b7c-35dc-4f65-9281-55ba344784ac(父任务 无,标题: [Team 实测] 数据核对任务)"
+      "detail": "子任务 320aaab3-c4b9-4646-bf7c-74db9cedac12 已创建并指派 → f2993381-2b4d-4f48-a8bf-2cd6d2d2e35e(父任务 无,标题: [Team 实测] 数据核对任务)"
     },
     {
       "id": "T6",
       "name": "worker 任务队列出现派发任务",
       "pass": true,
-      "detail": "我的任务队列(worker):\n执行中: (无)\n待执行(0,FIFO):\n已完成(3):\n  94c80f86-4c8a-4ae9-8dc1-cdc987d60c58 [COMPLETED] \"[Team 实测] 数据核对任务\" progress=100%\n  33196c8e-f40b-4be0-8a94-b168e095ad1d [COMPLETED] \"[Team 实测] 数据核对任务\" "
+      "detail": "我的任务队列(worker):\n执行中: (无)\n待执行(0,FIFO):\n已完成(1):\n  320aaab3-c4b9-4646-bf7c-74db9cedac12 [COMPLETED] \"[Team 实测] 数据核对任务\" progress=100%"
     }
   ]
 }

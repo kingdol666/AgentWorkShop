@@ -208,7 +208,8 @@ async function main() {
   // 开跑状态 + 样本
   const dcwSnap = (await req('GET', '/api/workshop/dcw', undefined, token))?.data
   const lineState = (dcwSnap?.lineStates ?? []).find(l => l.lineId === lineId)
-  ok('S5 产线处于运行态', Boolean(lineState?.running) || /run|active/i.test(String(lineState?.state ?? '')), JSON.stringify(lineState ?? null).slice(0, 220))
+  // lineState 契约字段是 active(+runId),无 running/state(历史断言读错形状)
+  ok('S5 产线处于运行态', Boolean(lineState?.active) && Boolean(lineState?.runId), JSON.stringify(lineState ?? null).slice(0, 220))
   const weightNode = rec?.daq?.['part-weight'] ?? Object.values(rec?.daq ?? {})[0]
   ctx.weightNode = weightNode
   let sampleCount = 0
@@ -273,7 +274,8 @@ async function main() {
 
   const now = Date.now()
   const from = now - 5 * 60_000
-  const q = await invoke(analystAgent, 'daq_query', { line_id: lineId, last_minutes: 5, bucket_ms: 1000, limit: 300 })
+  // 不传 node_id 时工具按全线聚合(温区大值拉高均值),与单节点复算口径不一致
+  const q = await invoke(analystAgent, 'daq_query', { line_id: lineId, node_id: weightNode, last_minutes: 5, bucket_ms: 1000, limit: 300 })
   const raw = await req('GET', `/api/workshop/daq/${weightNode}/samples?from=${from}&to=${now}&bucketMs=1000&limit=500`, undefined, token)
   const points = raw?.data?.points ?? []
   const vals = points.map(p => Number(p.value ?? p.avg)).filter(Number.isFinite)

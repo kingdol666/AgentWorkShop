@@ -185,13 +185,22 @@ async function main() {
 
   // ── PB2 golden(E2) ──
   const runsAll = await api('GET', `/api/workshop/eda/runs?line_id=${c.lineId}`)
-  // golden 需要样本 ≥100 桶:选样本最多的关账批(刚关的新批可能只有几十点)
+  // golden 需单节点 ≥n_bins 点:选样本最多的关账批 + 该批 cnt 最大的节点,n_bins=20(demo 同款自适应)
   const closedRun = (runsAll.data?.runs ?? [])
     .filter(r => r.endedAt && (r.sampleCount ?? 0) >= 100)
     .sort((a, b) => (b.sampleCount ?? 0) - (a.sampleCount ?? 0))[0]
-  const goldenNode = pick[0]
+  let goldenNodeId = null
+  if (closedRun) {
+    for (let i = 0; i < 20 && !goldenNodeId; i++) {
+      await sleep(1500)
+      const feats = (await api('GET', `/api/workshop/eda/features?run_id=${closedRun.id}&limit=500`)).data?.features ?? []
+      // 恒值节点(std=0)的 golden 全桶零方差,偏差分按设计跳过零方差桶→无重叠;只在变值节点里选
+      goldenNodeId = feats.filter(f => (f.std ?? 0) > 0).sort((a, b) => (b.cnt ?? 0) - (a.cnt ?? 0))[0]?.nodeId ?? null
+    }
+  }
+  const goldenNode = goldenNodeId ?? pick[0]
   if (closedRun && goldenNode) {
-    const gb = await api('POST', '/api/workshop/eda/golden', { run_id: closedRun.id, node_id: goldenNode })
+    const gb = await api('POST', '/api/workshop/eda/golden', { run_id: closedRun.id, node_id: goldenNode, n_bins: 20 })
     ok('PB2.1', '从关账批次生成 golden 画像', gb.status === 200 && (gb.data?.golden?.profile?.length ?? 0) > 0,
       `bins=${gb.data?.golden?.profile?.length} fp=${JSON.stringify(gb.data?.golden?.fingerprint ?? {}).slice(0, 120)}`)
     const gs = await api('GET', `/api/workshop/eda/golden/single?recipe_id=${closedRun.recipeId}&node_id=${goldenNode}`)
