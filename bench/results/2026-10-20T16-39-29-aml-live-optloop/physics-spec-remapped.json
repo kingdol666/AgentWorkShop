@@ -1,0 +1,642 @@
+{
+  "specVersion": "physics-spec.v1",
+  "modelId": "draft-castfilm-hold-opt-1020T1639",
+  "sceneId": "castfilm-hold-opt-1020T1639",
+  "version": "0.1.0-skeleton",
+  "variables": [
+    {
+      "id": "node_fcd062dadb5cff38",
+      "nodeId": "dn-cdcdfb48",
+      "role": "control",
+      "unit": "℃",
+      "physicalMeaning": "cast-film 执行器 加热区2SP（℃），真实 modbus-tcp 链路",
+      "min": 195,
+      "max": 225
+    },
+    {
+      "id": "node_c40b90d519098fb3",
+      "nodeId": "dn-a4475492",
+      "role": "control",
+      "unit": "℃",
+      "physicalMeaning": "cast-film 执行器 加热区1SP（℃），真实 modbus-tcp 链路",
+      "min": 195,
+      "max": 225
+    },
+    {
+      "id": "node_ec13da854fa478c0",
+      "nodeId": "dn-522b097a",
+      "role": "control",
+      "unit": "mm",
+      "physicalMeaning": "cast-film 执行器 dieGapSP（mm），真实 http 链路",
+      "min": 0.5,
+      "max": 2
+    },
+    {
+      "id": "node_2ca4aa62124b2ce2",
+      "nodeId": "dn-57bf00d4",
+      "role": "control",
+      "unit": "℃",
+      "physicalMeaning": "cast-film 执行器 加热区3SP（℃），真实 modbus-tcp 链路",
+      "min": 195,
+      "max": 225
+    },
+    {
+      "id": "node_b0ea0608d8f0fa3b",
+      "nodeId": "dn-fe32a800",
+      "role": "control",
+      "unit": "rpm",
+      "physicalMeaning": "cast-film 执行器 ScrewSpeedSP（rpm），真实 opcua 链路",
+      "min": 50,
+      "max": 200
+    },
+    {
+      "id": "node_de8bdcd7b9744532",
+      "nodeId": "dn-c3aee5d4",
+      "role": "control",
+      "unit": "m/min",
+      "physicalMeaning": "cast-film 执行器 lineSpeedSP（m/min），真实 mqtt 链路",
+      "min": 20,
+      "max": 120
+    },
+    {
+      "id": "node_e290fe8eb483f23a",
+      "nodeId": "dn-368d7968",
+      "role": "state",
+      "unit": "MPa",
+      "physicalMeaning": "cast-film process quantity MeltPressure（MPa），真实 opcua 链路",
+      "min": 0,
+      "max": 45
+    },
+    {
+      "id": "node_1418e6233c569eed",
+      "nodeId": "dn-9ee12d23",
+      "role": "state",
+      "unit": "℃",
+      "physicalMeaning": "cast-film process quantity 熔体温度（℃），真实 modbus-tcp 链路",
+      "min": 0,
+      "max": 400
+    },
+    {
+      "id": "node_125195f2d044f2d6",
+      "nodeId": "dn-b47c8161",
+      "role": "state",
+      "unit": "μm",
+      "physicalMeaning": "流延膜厚度测量(优化目标 goal,单位 μm;厚度质量输出)",
+      "min": 0,
+      "max": 400
+    }
+  ],
+  "parameters": [
+    {
+      "id": "tau_node_e290fe8eb483f23a",
+      "value": 5,
+      "min": 0.5,
+      "max": 600,
+      "unit": "s"
+    },
+    {
+      "id": "offset_node_e290fe8eb483f23a",
+      "value": 22.5,
+      "min": -45,
+      "max": 45,
+      "unit": "MPa"
+    },
+    {
+      "id": "gain_node_e290fe8eb483f23a_by_node_fcd062dadb5cff38",
+      "value": 0,
+      "min": -3,
+      "max": 3
+    },
+    {
+      "id": "gain_node_e290fe8eb483f23a_by_node_c40b90d519098fb3",
+      "value": 0,
+      "min": -3,
+      "max": 3
+    },
+    {
+      "id": "gain_node_e290fe8eb483f23a_by_node_ec13da854fa478c0",
+      "value": 0,
+      "min": -60,
+      "max": 60
+    },
+    {
+      "id": "gain_node_e290fe8eb483f23a_by_node_2ca4aa62124b2ce2",
+      "value": 0,
+      "min": -3,
+      "max": 3
+    },
+    {
+      "id": "gain_node_e290fe8eb483f23a_by_node_b0ea0608d8f0fa3b",
+      "value": 0,
+      "min": -0.6,
+      "max": 0.6
+    },
+    {
+      "id": "gain_node_e290fe8eb483f23a_by_node_de8bdcd7b9744532",
+      "value": 0,
+      "min": -0.9,
+      "max": 0.9
+    },
+    {
+      "id": "tau_node_b4c539101d601ed0",
+      "value": 5,
+      "min": 0.5,
+      "max": 600,
+      "unit": "s"
+    },
+    {
+      "id": "offset_node_b4c539101d601ed0",
+      "value": 250,
+      "min": -500,
+      "max": 500,
+      "unit": "个/m²"
+    },
+    {
+      "id": "gain_node_b4c539101d601ed0_by_node_fcd062dadb5cff38",
+      "value": 0,
+      "min": -33.333333333333336,
+      "max": 33.333333333333336
+    },
+    {
+      "id": "gain_node_b4c539101d601ed0_by_node_c40b90d519098fb3",
+      "value": 0,
+      "min": -33.333333333333336,
+      "max": 33.333333333333336
+    },
+    {
+      "id": "gain_node_b4c539101d601ed0_by_node_ec13da854fa478c0",
+      "value": 0,
+      "min": -666.6666666666666,
+      "max": 666.6666666666666
+    },
+    {
+      "id": "gain_node_b4c539101d601ed0_by_node_2ca4aa62124b2ce2",
+      "value": 0,
+      "min": -33.333333333333336,
+      "max": 33.333333333333336
+    },
+    {
+      "id": "gain_node_b4c539101d601ed0_by_node_b0ea0608d8f0fa3b",
+      "value": 0,
+      "min": -6.666666666666667,
+      "max": 6.666666666666667
+    },
+    {
+      "id": "gain_node_b4c539101d601ed0_by_node_de8bdcd7b9744532",
+      "value": 0,
+      "min": -10,
+      "max": 10
+    },
+    {
+      "id": "tau_node_1418e6233c569eed",
+      "value": 5,
+      "min": 0.5,
+      "max": 600,
+      "unit": "s"
+    },
+    {
+      "id": "offset_node_1418e6233c569eed",
+      "value": 200,
+      "min": -400,
+      "max": 400,
+      "unit": "℃"
+    },
+    {
+      "id": "gain_node_1418e6233c569eed_by_node_fcd062dadb5cff38",
+      "value": 0,
+      "min": -26.666666666666668,
+      "max": 26.666666666666668
+    },
+    {
+      "id": "gain_node_1418e6233c569eed_by_node_c40b90d519098fb3",
+      "value": 0,
+      "min": -26.666666666666668,
+      "max": 26.666666666666668
+    },
+    {
+      "id": "gain_node_1418e6233c569eed_by_node_ec13da854fa478c0",
+      "value": 0,
+      "min": -533.3333333333334,
+      "max": 533.3333333333334
+    },
+    {
+      "id": "gain_node_1418e6233c569eed_by_node_2ca4aa62124b2ce2",
+      "value": 0,
+      "min": -26.666666666666668,
+      "max": 26.666666666666668
+    },
+    {
+      "id": "gain_node_1418e6233c569eed_by_node_b0ea0608d8f0fa3b",
+      "value": 0,
+      "min": -5.333333333333333,
+      "max": 5.333333333333333
+    },
+    {
+      "id": "gain_node_1418e6233c569eed_by_node_de8bdcd7b9744532",
+      "value": 0,
+      "min": -8,
+      "max": 8
+    },
+    {
+      "id": "tau_node_125195f2d044f2d6",
+      "value": 5,
+      "min": 0.5,
+      "max": 600,
+      "unit": "s"
+    },
+    {
+      "id": "offset_node_125195f2d044f2d6",
+      "value": 200,
+      "min": -400,
+      "max": 400,
+      "unit": "μm"
+    },
+    {
+      "id": "gain_node_125195f2d044f2d6_by_node_fcd062dadb5cff38",
+      "value": 0,
+      "min": -26.666666666666668,
+      "max": 26.666666666666668
+    },
+    {
+      "id": "gain_node_125195f2d044f2d6_by_node_c40b90d519098fb3",
+      "value": 0,
+      "min": -26.666666666666668,
+      "max": 26.666666666666668
+    },
+    {
+      "id": "gain_node_125195f2d044f2d6_by_node_ec13da854fa478c0",
+      "value": 0,
+      "min": -533.3333333333334,
+      "max": 533.3333333333334
+    },
+    {
+      "id": "gain_node_125195f2d044f2d6_by_node_2ca4aa62124b2ce2",
+      "value": 0,
+      "min": -26.666666666666668,
+      "max": 26.666666666666668
+    },
+    {
+      "id": "gain_node_125195f2d044f2d6_by_node_b0ea0608d8f0fa3b",
+      "value": 0,
+      "min": -5.333333333333333,
+      "max": 5.333333333333333
+    },
+    {
+      "id": "gain_node_125195f2d044f2d6_by_node_de8bdcd7b9744532",
+      "value": 0,
+      "min": -8,
+      "max": 8
+    }
+  ],
+  "states": [
+    {
+      "lhs": "node_e290fe8eb483f23a_next",
+      "rhs": {
+        "op": "div",
+        "args": [
+          {
+            "op": "sub",
+            "args": [
+              {
+                "op": "clamp",
+                "args": [
+                  {
+                    "op": "add",
+                    "args": [
+                      {
+                        "param": "offset_node_e290fe8eb483f23a"
+                      },
+                      {
+                        "op": "mul",
+                        "args": [
+                          {
+                            "param": "gain_node_e290fe8eb483f23a_by_node_fcd062dadb5cff38"
+                          },
+                          {
+                            "ref": "node_fcd062dadb5cff38"
+                          }
+                        ]
+                      },
+                      {
+                        "op": "mul",
+                        "args": [
+                          {
+                            "param": "gain_node_e290fe8eb483f23a_by_node_c40b90d519098fb3"
+                          },
+                          {
+                            "ref": "node_c40b90d519098fb3"
+                          }
+                        ]
+                      },
+                      {
+                        "op": "mul",
+                        "args": [
+                          {
+                            "param": "gain_node_e290fe8eb483f23a_by_node_ec13da854fa478c0"
+                          },
+                          {
+                            "ref": "node_ec13da854fa478c0"
+                          }
+                        ]
+                      },
+                      {
+                        "op": "mul",
+                        "args": [
+                          {
+                            "param": "gain_node_e290fe8eb483f23a_by_node_2ca4aa62124b2ce2"
+                          },
+                          {
+                            "ref": "node_2ca4aa62124b2ce2"
+                          }
+                        ]
+                      },
+                      {
+                        "op": "mul",
+                        "args": [
+                          {
+                            "param": "gain_node_e290fe8eb483f23a_by_node_b0ea0608d8f0fa3b"
+                          },
+                          {
+                            "ref": "node_b0ea0608d8f0fa3b"
+                          }
+                        ]
+                      },
+                      {
+                        "op": "mul",
+                        "args": [
+                          {
+                            "param": "gain_node_e290fe8eb483f23a_by_node_de8bdcd7b9744532"
+                          },
+                          {
+                            "ref": "node_de8bdcd7b9744532"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "value": 0
+                  },
+                  {
+                    "value": 45
+                  }
+                ]
+              },
+              {
+                "ref": "node_e290fe8eb483f23a"
+              }
+            ]
+          },
+          {
+            "param": "tau_node_e290fe8eb483f23a"
+          }
+        ]
+      }
+    },
+    {
+      "lhs": "node_1418e6233c569eed_next",
+      "rhs": {
+        "op": "div",
+        "args": [
+          {
+            "op": "sub",
+            "args": [
+              {
+                "op": "clamp",
+                "args": [
+                  {
+                    "op": "add",
+                    "args": [
+                      {
+                        "param": "offset_node_1418e6233c569eed"
+                      },
+                      {
+                        "op": "mul",
+                        "args": [
+                          {
+                            "param": "gain_node_1418e6233c569eed_by_node_fcd062dadb5cff38"
+                          },
+                          {
+                            "ref": "node_fcd062dadb5cff38"
+                          }
+                        ]
+                      },
+                      {
+                        "op": "mul",
+                        "args": [
+                          {
+                            "param": "gain_node_1418e6233c569eed_by_node_c40b90d519098fb3"
+                          },
+                          {
+                            "ref": "node_c40b90d519098fb3"
+                          }
+                        ]
+                      },
+                      {
+                        "op": "mul",
+                        "args": [
+                          {
+                            "param": "gain_node_1418e6233c569eed_by_node_ec13da854fa478c0"
+                          },
+                          {
+                            "ref": "node_ec13da854fa478c0"
+                          }
+                        ]
+                      },
+                      {
+                        "op": "mul",
+                        "args": [
+                          {
+                            "param": "gain_node_1418e6233c569eed_by_node_2ca4aa62124b2ce2"
+                          },
+                          {
+                            "ref": "node_2ca4aa62124b2ce2"
+                          }
+                        ]
+                      },
+                      {
+                        "op": "mul",
+                        "args": [
+                          {
+                            "param": "gain_node_1418e6233c569eed_by_node_b0ea0608d8f0fa3b"
+                          },
+                          {
+                            "ref": "node_b0ea0608d8f0fa3b"
+                          }
+                        ]
+                      },
+                      {
+                        "op": "mul",
+                        "args": [
+                          {
+                            "param": "gain_node_1418e6233c569eed_by_node_de8bdcd7b9744532"
+                          },
+                          {
+                            "ref": "node_de8bdcd7b9744532"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "value": 0
+                  },
+                  {
+                    "value": 400
+                  }
+                ]
+              },
+              {
+                "ref": "node_1418e6233c569eed"
+              }
+            ]
+          },
+          {
+            "param": "tau_node_1418e6233c569eed"
+          }
+        ]
+      }
+    },
+    {
+      "lhs": "node_125195f2d044f2d6_next",
+      "rhs": {
+        "op": "div",
+        "args": [
+          {
+            "op": "sub",
+            "args": [
+              {
+                "op": "clamp",
+                "args": [
+                  {
+                    "op": "add",
+                    "args": [
+                      {
+                        "param": "offset_node_125195f2d044f2d6"
+                      },
+                      {
+                        "op": "mul",
+                        "args": [
+                          {
+                            "param": "gain_node_125195f2d044f2d6_by_node_fcd062dadb5cff38"
+                          },
+                          {
+                            "ref": "node_fcd062dadb5cff38"
+                          }
+                        ]
+                      },
+                      {
+                        "op": "mul",
+                        "args": [
+                          {
+                            "param": "gain_node_125195f2d044f2d6_by_node_c40b90d519098fb3"
+                          },
+                          {
+                            "ref": "node_c40b90d519098fb3"
+                          }
+                        ]
+                      },
+                      {
+                        "op": "mul",
+                        "args": [
+                          {
+                            "param": "gain_node_125195f2d044f2d6_by_node_ec13da854fa478c0"
+                          },
+                          {
+                            "ref": "node_ec13da854fa478c0"
+                          }
+                        ]
+                      },
+                      {
+                        "op": "mul",
+                        "args": [
+                          {
+                            "param": "gain_node_125195f2d044f2d6_by_node_2ca4aa62124b2ce2"
+                          },
+                          {
+                            "ref": "node_2ca4aa62124b2ce2"
+                          }
+                        ]
+                      },
+                      {
+                        "op": "mul",
+                        "args": [
+                          {
+                            "param": "gain_node_125195f2d044f2d6_by_node_b0ea0608d8f0fa3b"
+                          },
+                          {
+                            "ref": "node_b0ea0608d8f0fa3b"
+                          }
+                        ]
+                      },
+                      {
+                        "op": "mul",
+                        "args": [
+                          {
+                            "param": "gain_node_125195f2d044f2d6_by_node_de8bdcd7b9744532"
+                          },
+                          {
+                            "ref": "node_de8bdcd7b9744532"
+                          }
+                        ]
+                      }
+                    ]
+                  },
+                  {
+                    "value": 0
+                  },
+                  {
+                    "value": 400
+                  }
+                ]
+              },
+              {
+                "ref": "node_125195f2d044f2d6"
+              }
+            ]
+          },
+          {
+            "param": "tau_node_125195f2d044f2d6"
+          }
+        ]
+      }
+    }
+  ],
+  "observations": [
+    {
+      "lhs": "node_125195f2d044f2d6",
+      "rhs": {
+        "ref": "node_125195f2d044f2d6"
+      },
+      "unit": "μm"
+    }
+  ],
+  "guards": [],
+  "constraints": [
+    {
+      "id": "node_125195f2d044f2d6",
+      "kind": "hard_range",
+      "min": 0,
+      "max": 400
+    }
+  ],
+  "monotonicity": [],
+  "delays": [],
+  "sampling": {
+    "horizonSteps": 4
+  },
+  "solver": {
+    "method": "ode",
+    "dtSec": 1,
+    "stabilityPolicy": "reject_unstable"
+  },
+  "provenance": {
+    "createdBy": "6f174529-1d30-4b9b-9ee6-2a5b65741131",
+    "createdAt": "2026-10-21T00:39:33.039+08:00",
+    "evidence": [
+      "auto skeleton from frozen SceneContract castfilm-hold-opt-1020T1639@1.0.0 hash=8fac2e0a13be00a31cb39b6bf8f6dbe52bee7876784a80a33bc5be9f84835d81",
+      "per-state first-order lag with calibratable tau/gains; identity observations (persistence baseline)",
+      "refine equations via twin_physics_spec_validate before compile/train"
+    ]
+  }
+}
