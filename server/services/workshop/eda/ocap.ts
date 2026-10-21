@@ -27,6 +27,8 @@ export interface OcapRow {
   linkedExplorationId: string | null
   linkedRollbackAnchor: string | null
   linkedExplorationExists: boolean | null
+  /** E7④:anchor 对应的 rollback 审计检索(详情面只读;空数组/undefined=无关联或仓储未就绪) */
+  relatedRollback?: Array<{ action: string, summary: string, at: string }>
   ownerUserId: string | null
   createdAt: string
 }
@@ -101,6 +103,21 @@ function enrich(row: OcapRow): OcapRow {
     catch {
       row.linkedExplorationExists = null
     }
+  }
+  // E7④:anchor 对应 rollback 审计只读检索(kind/anchor 全部绑定参数,零拼接)
+  if (row.linkedRollbackAnchor) {
+    try {
+      const anchor = `%${row.linkedRollbackAnchor}%`
+      const rows = edaDb().prepare(`SELECT action, summary, at FROM audit_log
+        WHERE kind = 'rollback' AND (target_id LIKE ? OR summary LIKE ?)
+        ORDER BY at DESC LIMIT 10`).all(anchor, anchor) as Array<Record<string, unknown>>
+      row.relatedRollback = rows.map(e => ({
+        action: String(e.action ?? 'recipe.rollback'),
+        summary: String(e.summary ?? ''),
+        at: String(e.at ?? ''),
+      }))
+    }
+    catch { /* 审计仓储未就绪:relatedRollback 保持 undefined */ }
   }
   return row
 }

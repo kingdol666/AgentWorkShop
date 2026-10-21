@@ -14,6 +14,7 @@
 import { randomUUID } from 'node:crypto'
 import { edaDb } from './eda-db'
 import { edaRunById } from './eda-run.repo'
+import { getDaqNodeRepo } from '../daq/daq-node.repo'
 
 export interface RunFeatureRow {
   id: string
@@ -166,7 +167,6 @@ export async function computeRunFeatures(runId: string, opts: { graceMs?: number
   try {
     const { getTsdb, tsdbReady } = await import('../daq/storage')
     await tsdbReady
-    const { getDaqNodeRepo } = await import('../daq/daq-node.repo')
     const { getDcwController } = await import('../dcw/dcw-controller')
     const startMs = Date.parse(run.startedAt)
     const endMs = Date.parse(run.endedAt)
@@ -257,7 +257,7 @@ export async function computeRunFeatures(runId: string, opts: { graceMs?: number
   }
 }
 
-export function listFeatures(q: { runId?: string, nodeId?: string, violated?: boolean, limit?: number } = {}): RunFeatureRow[] {
+export function listFeatures(q: { runId?: string, nodeId?: string, violated?: boolean, chamber?: string, limit?: number } = {}): RunFeatureRow[] {
   const where: string[] = []
   const params: Array<string | number> = []
   if (q.runId) {
@@ -272,8 +272,13 @@ export function listFeatures(q: { runId?: string, nodeId?: string, violated?: bo
     where.push('violated = ?')
     params.push(q.violated ? 1 : 0)
   }
-  const rows = edaDb().prepare(`SELECT * FROM eda_run_features ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY created_at DESC LIMIT ?`)
+  let rows = edaDb().prepare(`SELECT * FROM eda_run_features ${where.length ? `WHERE ${where.join(' AND ')}` : ''} ORDER BY created_at DESC LIMIT ?`)
     .all(...params, Math.min(Math.max(Math.round(Number(q.limit)) || 100, 1), 500)) as Array<Record<string, unknown>>
+  // E8①:chamber 过滤(节点标签面,Post-filter——chamber 在 daq-node JSON,不在特征表)
+  if (q.chamber) {
+    const chamberNodes = new Set(getDaqNodeRepo().all().filter(n => n.chamber === q.chamber).map(n => n.id))
+    rows = rows.filter(r => chamberNodes.has(String(r.node_id)))
+  }
   return rows.map(rowOf)
 }
 

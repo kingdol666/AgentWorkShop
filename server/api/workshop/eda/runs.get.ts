@@ -22,6 +22,7 @@ export default defineApiHandler(async (event) => {
     outcome: q.outcome?.trim() || undefined,
     from: q.from?.trim() || undefined,
     to: q.to?.trim() || undefined,
+    label: q.label?.trim() || undefined,
     limit: Number(q.limit) || 50,
     offset: Number(q.offset) || 0,
   })

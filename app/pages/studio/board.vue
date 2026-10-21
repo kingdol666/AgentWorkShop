@@ -210,7 +210,7 @@
  * 布局编辑 = 移动箭头 + 宽度增减(评审 M2 建议的最小实现;自由指针拖拽后续增强)。
  * 内嵌图表按 B4 逐个判定,不可见卡显式标示(旁路防护可见化)。
  */
-import { computed, onMounted, ref, shallowRef } from 'vue'
+import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import type { EChartsOption } from 'echarts'
 import { apiFetch } from '@/app/composables/workshop/apiClient'
 import { apiErrorMessage } from '@/app/utils/api-error'
@@ -342,6 +342,14 @@ async function saveLayout(): Promise<void> {
 }
 
 onMounted(load)
+
+// M3 全局时间覆盖:变更即驱动全部 panel 重查(plan 验收"筛选器/时间范围驱动多 panel")
+watch(windowPreset, () => {
+  if (!detail.value) return
+  for (const item of detail.value.charts) {
+    if (item.chart) void queryCard(item.chart)
+  }
+})
 </script>
 
 <style scoped>

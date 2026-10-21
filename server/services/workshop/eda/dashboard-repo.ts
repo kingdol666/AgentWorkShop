@@ -147,6 +147,12 @@ export function updateDashboard(user: ResolvedUser, id: string, patch: {
   if (vis === 'line' && !lineId) throw new Error('visibility=line 必须携带 line_id。')
   edaDb().prepare(`UPDATE eda_dashboards SET title = ?, filters_json = ?, layout_json = ?, line_id = ?, visibility = ?, version = version + 1, updated_at = ? WHERE id = ?`)
     .run(patch.title ?? row.title, JSON.stringify(patch.filters ?? row.filters), JSON.stringify(sanitizeLayout(patch.layout ?? row.layout)), lineId ?? null, vis, new Date().toISOString(), id)
+  recordOps({
+    actor: user.id, actorName: user.name, actorKind: 'user',
+    action: 'dashboard.save', kind: 'system', targetKind: 'eda-dashboard', targetId: id,
+    summary: `更新看板「${patch.title ?? row.title}」(v${row.version + 1})`,
+    detail: { keys: Object.keys(patch) },
+  })
   return boardByIdRaw(id)!
 }
 

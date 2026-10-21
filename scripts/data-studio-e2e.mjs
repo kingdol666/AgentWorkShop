@@ -55,6 +55,22 @@ async function main() {
   const nodeNames = new Map((daq?.nodes ?? []).map(n => [n.id, n]))
   ok('PA0', '上下文就绪(daq 节点≥2)', daqIds.length >= 2, `daq=${daqIds.length}`)
 
+  // PA0.5 确保产线在跑 + 采样活性(上一轮关账后采样停摆会让查询窗无样本):无条件停/开线,等 ≥3 点
+  await api('POST', `/api/workshop/dcw/lines/${c.lineId}/stop`)
+  await sleep(1200)
+  const st = await api('POST', `/api/workshop/dcw/lines/${c.lineId}/start`, { recipeId: c.recipeId })
+  let freshSamples = 0
+  if (st.status === 200) {
+    const probe = daqIds[0]
+    for (let i = 0; i < 20; i++) {
+      await sleep(2000)
+      const s = await api('GET', `/api/workshop/daq/${probe}/samples?from=${Date.now() - 120_000}&to=${Date.now()}&bucketMs=1000&limit=100`)
+      freshSamples = (s.data?.points ?? []).length
+      if (freshSamples >= 3) break
+    }
+  }
+  ok('PA0.5', '产线开跑且采样活性(探针 ≥3 点)', st.status === 200 && freshSamples >= 3, `status=${st.status} samples=${freshSamples} msg=${st.message.slice(0, 80)}`)
+
   // ── PA1 批量查询 ──
   const pick = daqIds.slice(0, 2)
   const q = await api('GET', `/api/workshop/daq/query?node_ids=${pick.join(',')}&last_minutes=5&agg=avg`)

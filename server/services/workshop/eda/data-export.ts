@@ -28,7 +28,7 @@ export interface EdaExportJobView {
   id: string
   kind: string
   status: 'running' | 'ready' | 'failed'
-  spec: { nodeIds: string[], fromMs: number, toMs: number, title: string, note: string, merge: boolean }
+  spec: { nodeIds: string[], fromMs: number, toMs: number, title: string, note: string, merge: boolean, runId?: string }
   result: { exportId?: string, dir?: string, files?: Array<{ nodeId: string, rows: number }>, totalRows?: number, truncated?: string[], mergedFile?: string, missing?: boolean }
   error?: string
   createdBy: string
@@ -122,7 +122,13 @@ async function runExportJob(jobId: string): Promise<void> {
     const result = await exportDaqDataset({
       targets: job.spec.nodeIds,
       nodeOf,
-      readPoints: (nodeId, win) => getTsdb().query(nodeId, win),
+      // E1:runId 贯穿导出 —— 带 runId 时走打标查询(只取该批次样本),否则全量窗口
+      readPoints: job.spec.runId
+        ? async (nodeId, win) => {
+          const m = await getTsdb().queryTagged({ runId: job.spec.runId, nodeIds: [nodeId], fromMs: win.fromMs, toMs: win.toMs, limit: win.limit })
+          return (m.get(nodeId) ?? []).map(p => ({ at: p.at, value: p.value ?? p.avg, state: p.state }))
+        }
+        : (nodeId, win) => getTsdb().query(nodeId, win),
       fromMs: job.spec.fromMs,
       toMs: job.spec.toMs,
       title: job.spec.title,
@@ -167,6 +173,8 @@ export function startDaqExport(user: ResolvedUser, args: {
   title?: string
   note?: string
   merge?: boolean
+  /** E1:批次切片导出(带 runId 时 readPoints 走打标查询,只含该批次样本) */
+  runId?: string
 }): EdaExportJobView {
   sweepStaleOnce()
   const allowed = new Set(readableNodeIds(user))
@@ -204,7 +212,7 @@ export function startDaqExport(user: ResolvedUser, args: {
   }
   const id = `edajob-${randomUUID().slice(0, 8)}`
   const now = new Date().toISOString()
-  const spec = { nodeIds: targets, fromMs, toMs, title: String(args.title ?? '').slice(0, 200), note: String(args.note ?? '').slice(0, 500), merge: args.merge === true }
+  const spec = { nodeIds: targets, fromMs, toMs, title: String(args.title ?? '').slice(0, 200), note: String(args.note ?? '').slice(0, 500), merge: args.merge === true, ...(args.runId ? { runId: args.runId } : {}) }
   edaDb().prepare(`INSERT INTO eda_export_jobs (id, kind, spec_json, status, result_json, created_by, created_at, updated_at)
     VALUES (?, 'daq-export', ?, 'running', '{}', ?, ?, ?)`).run(id, JSON.stringify(spec), user.id, now, now)
   recordOps({

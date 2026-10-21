@@ -25,6 +25,9 @@ describe('SPC 数学(E4)', () => {
     const m = iMr(drift)!
     assert.ok(m.sigma > 0)
     assert.ok(m.ucl > m.cl && m.lcl < m.cl)
+    // E4① 精确断言:控制限恒为 CL±3σ(解析关系,不只不等式)
+    assert.ok(Math.abs((m.ucl - m.cl) - 3 * m.sigma) < 1e-9)
+    assert.ok(Math.abs((m.cl - m.lcl) - 3 * m.sigma) < 1e-9)
   })
 
   it('Nelson 规则 1:单点 3σ 外命中;规则 2:连续 9 点同侧命中', () => {

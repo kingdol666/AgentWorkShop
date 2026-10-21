@@ -3071,6 +3071,7 @@ export default {
     refEmpty: 'No reference lines',
     refValue: 'Ref value',
     refFromTemplate: 'Import from range max',
+    maxRef: 'Range max',
     golden: 'Golden reference (phase 0-100%)',
     goldenHint: 'Pick a closed good run to build the golden profile; overlay shows mean±σ band.',
     goldenMake: 'Build from this run',

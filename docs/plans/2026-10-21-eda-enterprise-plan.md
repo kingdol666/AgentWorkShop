@@ -1,9 +1,18 @@
 # 企业级 EDA 设计方案（Equipment Data Acquisition & Analysis，半导体厂级）
 
-状态：**pending approval（待用户批准后实施）**
+状态：**已实施（2026-10-21 四阶段交付，e2e 49 断言绿）**
 日期：2026-10-21
 前置：[2026-10-21-data-studio-plan.md](./2026-10-21-data-studio-plan.md)（数据管理台 + EDA 工坊 M1-M4，已定稿）
 方法：双专家并行讨论（领域专家：SEMI 标准+商用产品+算法规格，30 条全带来源；架构专家：实读本仓库代码逐模块判定，带文件锚点）→ 本文档收敛。
+
+> **实施回写（2026-10-21 双 Agent 验收审查后定稿的已知偏差）**：
+> 1. **B1 多节点配额**以服务层逐节点循环实现（评审备选②），适配器契约零改动——Mimosa 扫描器对 timescale 适配器 `$n` 占位符体系的全文件基线拦截使 ROW_NUMBER 方案不可写；多节点契约测试随 e2e PA1.1-1.5 覆盖。
+> 2. **E3 告警三件套替代 alarm_events 桥接**：run 级违例 = 特征行 UNIQUE 幂等 + recordOps 审计（fdc.violate）+ notifyLineOperators（eventId 幂等）；alarm_events/sweep-alarms 的 'fdc-zscore' rule 桥接列为后续（采样域实时告警与 run 域判定分层）。
+> 3. **E4 xbar_r 图建限实为 I-MR 公式**：特征序列无子组结构（per-run 单值），xbarR() 数学已实现并单测但不接线；单测锁 CL±3σ 解析关系。
+> 4. **E2⑤ DTW 未实现**：以逐桶 |z| 均值（deviationScore）替代相似度；相位归一已消除大部分时移，DTW 留作增强。
+> 5. **e2e 合并**：plan 指名的 eda-enterprise-e2e.mjs 内容并入 scripts/data-studio-e2e.mjs（PA/PB/PC/PD 共 49 断言），独立文件不再创建。
+> 6. **未自动化断言**（33 条 §4 断言中自动化约 10 条）：E3① 违例注入类（需 ≥3 good 基线批+违例批种子）、E5①-④、E6① 训练链、E7① 通知幂等——机制在、注入型 e2e 为后续；E3⑤ 冷却期以 eventId 幂等等价。
+> 7. **E6 OOD 已接线**（predict 出口 evaluateEnsemble + 参考带距离），但校准覆盖/集成分歧度阈值沿用保守缺省，未做 per-model 调参。
 
 ---
 

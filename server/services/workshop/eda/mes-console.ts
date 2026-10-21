@@ -15,6 +15,7 @@ import { getDcwNodeRepo } from '../dcw/dcw-node.repo'
 import { resolveDcwDriver } from '../dcw/drivers'
 import { historyFormatOf } from '../dcw/drivers/mes-rest'
 import { mesDictionaryOfNode } from '../mes/mes-controller'
+import { recordOps } from '../ops/ops'
 import { redactHeaders, redactQuery } from './redact'
 
 const WINDOW_MAX_MS = 7 * 24 * 3600_000
@@ -184,6 +185,17 @@ export async function mesPreview(user: ResolvedUser, args: {
     return `${String(r.ts).slice(11, 19)} ${typeof r.value === 'number' ? Number(r.value.toFixed(4)) : '?'}${node.unit ?? ''}`
   })
 
+  // plan1 §5.4 埋点:调试台取数留痕(who/which point/window;不含任何取回数据)
+  try {
+    recordOps({
+      actor: user.id, actorName: user.name, actorKind: 'user',
+      action: 'mes.preview', kind: 'daq', targetKind: 'daq', targetId: node.id,
+      lineId: node.lineId ?? '', scope: 'line',
+      summary: `MES 调试台取数预览:${node.name}(${rows.length} 行,${new Date(fromMs).toISOString().slice(0, 16)} 起)`,
+      detail: { nodeId: node.id, rows: rows.length },
+    })
+  }
+  catch { /* 埋点失败不影响取数 */ }
   return {
     ok: true,
     data: {

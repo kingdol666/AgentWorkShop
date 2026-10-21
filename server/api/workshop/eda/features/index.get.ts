@@ -16,6 +16,7 @@ export default defineApiHandler(async (event) => {
     runId: q.run_id ? String(q.run_id) : undefined,
     nodeId: q.node_id ? String(q.node_id) : undefined,
     violated: q.violated == null || q.violated === '' ? undefined : String(q.violated) === '1',
+    chamber: q.chamber ? String(q.chamber) : undefined,
     limit: Number(q.limit) || 100,
   })
   if (!q.run_id) {

@@ -134,6 +134,8 @@ export interface EdaRunQuery {
   outcome?: string
   from?: string
   to?: string
+  /** labels_json 键值过滤(E8③):形如 "lot_id:LOT-9",按 `"key":"value"` 子串匹配 */
+  label?: string
   limit?: number
   offset?: number
 }
@@ -161,6 +163,14 @@ export function listEdaRuns(q: EdaRunQuery = {}): { runs: EdaRunRow[], total: nu
   if (q.to) {
     where.push('started_at <= ?')
     params.push(q.to)
+  }
+  if (q.label) {
+    const idx = q.label.indexOf(':')
+    if (idx > 0) {
+      // 键值进入绑定参数(LIKE 模式是数据,非拼接),E8③ labels 检索面
+      where.push('labels_json LIKE ?')
+      params.push(`%"${q.label.slice(0, idx)}":"${q.label.slice(idx + 1)}"%`)
+    }
   }
   const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : ''
   const total = Number((edaDb().prepare(`SELECT COUNT(*) AS c FROM eda_runs ${whereSql}`).get(...params) as { c: number }).c)

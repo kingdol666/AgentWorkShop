@@ -3070,6 +3070,7 @@ export default {
     refEmpty: '无数值参考线',
     refValue: '参考值',
     refFromTemplate: '从量程上限导入',
+    maxRef: '量程上限',
     golden: 'Golden 参考轨迹(相位 0-100%)',
     goldenHint: '先选一个已关账的 good 批次,生成该节点的 golden 画像;叠加显示均值±σ 带。',
     goldenMake: '生成本批 golden',
