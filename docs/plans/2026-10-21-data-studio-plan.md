@@ -4,6 +4,13 @@
 日期：2026-10-21
 流程：多 Agent 发散→收敛（1×代码盘点 + 1×市面 EDA/BI 调研 → 2×独立评审：架构可行性 / 需求覆盖与 EDA 完整性，评审意见全部带仓库实证）
 
+> **落地可行性核验（2026-10-21 代码级复核）**：「底层已实现、只差封装/repo/组装」的判断**大体成立，但有两处引擎级修正与两处新建件**，逐项判定：
+> - **纯封装/组装**：`exportDaqDataset`（依赖注入设计，换授权壳即成 REST）、`MesControllerDeps` 结构化注入（`mes-controller.ts:88-98`，用户面实例可行）、`queryTagged` 打标查询、mes_datasets 台账、AwChart、WS 实时流、产线三态权限、ops 埋点、i18n/测试惯例。
+> - **引擎级修正（不是封装，须改实现+补契约测试）**：①B1 `queryTagged` 的 LIMIT 为全局共享（`sqlite.adapter.ts:189/200` 实证：`GROUP BY node_id ORDER BY b_at LIMIT ?` 跨节点截断），多节点查询语义错误，两适配器都要加每节点配额并补 tsdb-ordering 多节点用例；②B2 MES 频控按 agentId 记账（`fetchCallStamps`），用户面需按 userId 的独立记账。
+> - **新建件**：B3 `redactHeaders` 脱敏 util（仓库无现成工具）；四张 eda_* 表 + repo。
+> - **前端为主的新建**：/data 三 tab、/studio 三栏、字段井、最小栅格拖拽——这是 M2/M3 的主要工作量。
+> 结论：M1≈70% 封装/组装 + 30% 引擎修正与新建件，可行；M2/M3 是常规前端工程量，无技术未知项。企业级 EDA 扩展见姊妹篇 [2026-10-21-eda-enterprise-plan.md](./2026-10-21-eda-enterprise-plan.md)。
+
 ---
 
 ## 1. 现状结论（用户问：当前有没有这个功能？）
