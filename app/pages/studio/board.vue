@@ -343,6 +343,11 @@ async function saveLayout(): Promise<void> {
 
 onMounted(load)
 
+// 选中看板即加载(v-model 只改 id;不 watch 的话下拉选择后永不加载详情 —— 实机演示发现)
+watch(boardId, (id) => {
+  if (id) void openBoard(id)
+})
+
 // M3 全局时间覆盖:变更即驱动全部 panel 重查(plan 验收"筛选器/时间范围驱动多 panel")
 watch(windowPreset, () => {
   if (!detail.value) return
