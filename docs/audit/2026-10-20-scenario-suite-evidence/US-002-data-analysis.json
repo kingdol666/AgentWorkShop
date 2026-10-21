@@ -1,23 +1,23 @@
 {
   "story": "US-002",
-  "lineId": "ln-eb33c591",
-  "recipeId": "rc-bf879aab",
-  "channelId": "54466ec5-84c0-45b5-a6b8-58a89d2c20e3",
-  "weightNode": "dn-c347ca65",
+  "lineId": "ln-8bdf7f6a",
+  "recipeId": "rc-7a66c26f",
+  "channelId": "ae5a04fd-8f3c-4ad2-aadf-b1735d8a24b9",
+  "weightNode": "dn-2590fad5",
   "window": {
-    "from": 1792589977355,
-    "to": 1792590277355
+    "from": 1792594047665,
+    "to": 1792594347665
   },
   "samples": 20,
   "metrics": {
-    "mean": 31.232999999999997,
-    "std": 0.03479942528261036,
-    "min": 31.17,
-    "max": 31.3,
+    "mean": 31.2565,
+    "std": 0.03320767983464064,
+    "min": 31.19,
+    "max": 31.32,
     "inWindow": 0
   },
-  "reportId": "ar-78bcee80",
-  "daqQuery": "数采数据查询结果(1 个节点):\n\n■ scen-injection:daq:part-weight(熔体/箱体温度)单位 g,正常量程 25~40g,当前状态 alarm,时间窗 2026-10-21T21:39 ~ 2026-10-21T21:44(降采样 1000ms)\n  当前活动批次 run=rr-1ddd5d38 配方「scen-injection-recipe-sybmc」(rc-bf879aab)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 20 点 | 最新 31.2g | 均值 31.233 | 最小 31.17 | 最大 31.3\n  最近序列: 21:44:25=avg 31.26; 21:44:26=avg 31.19; 21:44:27=avg 31.21; 21:44:28=avg 31.21; 21:44:29=avg 31.25; 21:44:30=avg 31.21; 21:44:31=avg 31.21; 21:44:32=avg 31.29; 21:44:33=avg 31.17; 21:44:34=avg 31.24; 21:44:35=avg 31.23; 21:44:36=avg 31.2\n  工况判读: 活动配方「scen-injection-recipe-sybmc」监控窗口 [32.15, 32.85]:当前 31.2g **越限(该节点应已报警)** | 同产线数控设定: scen-injection:dcw:barrel-temp-1-sp=240℃;scen-injection:dcw:barrel-temp-2-sp=246℃;scen-injection:dcw:barrel-temp-3-sp=252℃;scen-injection:dcw:barrel-temp-4-sp=258℃;scen-injection:dcw:screw-speed-sp=120rpm;scen-injection:dcw:mold-temp-sp=40℃;scen-injection:dcw:clamp-force-sp=1600kN;scen-injection:dcw:inject-speed-sp=85mm/s;scen-injection:dcw:hold-pressure-sp=45bar;scen-injection:dcw:hold-time-sp=6s;scen-injection:dcw:cool-water-sp=24℃(判读时考虑设定↔实际量的耦合与滞后)\n(过滤条件:产线 ln-eb33c591 —— 默认作用域:仅当前活动批次 rc-bf879aab@rr-1ddd5d38(逐样本打标;跨配方对比请传 scop",
-  "save": "分析报告已留痕:ar-78bcee80。产线「注塑成型质量窗口寻优 injection-sybmc」,结论 4 条,配方 rc-bf879aab。台账 append-only,不可改删;随时可用 analysis_query(report_id=\"ar-78bcee80\") 查回全文。",
-  "query": "分析报告 ar-78bcee80:「注塑线 ln-eb33c591 克重窗口分析 2026-10-21T13:44:37」(分类 quality)\n产线: 注塑成型质量窗口寻优 injection-sybmc | 配方: rc-bf879aab v1\n分析时间: 10-21 21:44:37 | 数据窗: - ~ -\n来源: 注塑场景验收-5yu1s/数据分析-yu24 @频道「注塑场景验收-5yu1s」\n关键结论: 近 5 分钟克重 mean=31.233g、std=0.035g、range=31.17~31.30g、窗内 0/20\n结论明细:\n  1. 克重均值 31.233g,目标 32.15~32.85g\n  2. 标准差 0.035g;极差 0.130g\n  3. 窗内占比 0.0%\n  4. 本报告仅基于 DAQ 只读窗口,不含任何产线写入。\n\n— 完整分析正文 —\n# 注塑线克重窗口分析\n\n- 产线:ln-eb33c591\n- 节点:dn-c347ca65\n- 时间窗:2026-10-21T13:39:37.355Z ~ 2026-10-21T13:44:37.355Z\n- 样本:20\n- mean=31.2330g,std=0.0348g,min=31.1700g,max=31.3000g\n- 目标窗 32.15~32.85g,窗内 0/20\n\n## 置信口径\n基于 1s 桶原始样本独立复算;均值与 daq_query 工具统计交叉核对。\n\n\n— 支撑指标 —\n{\n \"mean\": 31.232999999999997,\n \"std\": 0.03479942528261036,\n \"min\": 31.17,\n \"max\": 31.3,\n \"samples\": 20,\n \"in_window\": 0\n}"
+  "reportId": "ar-e8db4ce0",
+  "daqQuery": "数采数据查询结果(1 个节点):\n\n■ scen-injection:daq:part-weight(熔体/箱体温度)单位 g,正常量程 25~40g,当前状态 alarm,时间窗 2026-10-21T22:47 ~ 2026-10-21T22:52(降采样 1000ms)\n  当前活动批次 run=rr-d727867c 配方「scen-injection-recipe-sdke0」(rc-7a66c26f)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 20 点 | 最新 31.24g | 均值 31.256 | 最小 31.19 | 最大 31.32\n  最近序列: 22:52:15=avg 31.25; 22:52:16=avg 31.26; 22:52:17=avg 31.2; 22:52:18=avg 31.19; 22:52:19=avg 31.28; 22:52:20=avg 31.31; 22:52:21=avg 31.32; 22:52:22=avg 31.29; 22:52:23=avg 31.29; 22:52:24=avg 31.24; 22:52:25=avg 31.25; 22:52:26=avg 31.24\n  工况判读: 活动配方「scen-injection-recipe-sdke0」监控窗口 [32.15, 32.85]:当前 31.24g **越限(该节点应已报警)** | 同产线数控设定: scen-injection:dcw:barrel-temp-1-sp=240℃;scen-injection:dcw:barrel-temp-2-sp=246℃;scen-injection:dcw:barrel-temp-3-sp=252℃;scen-injection:dcw:barrel-temp-4-sp=258℃;scen-injection:dcw:screw-speed-sp=120rpm;scen-injection:dcw:mold-temp-sp=40℃;scen-injection:dcw:clamp-force-sp=1600kN;scen-injection:dcw:inject-speed-sp=85mm/s;scen-injection:dcw:hold-pressure-sp=45bar;scen-injection:dcw:hold-time-sp=6s;scen-injection:dcw:cool-water-sp=24℃(判读时考虑设定↔实际量的耦合与滞后)\n(过滤条件:产线 ln-8bdf7f6a —— 默认作用域:仅当前活动批次 rc-7a66c26f@rr-d727867c(逐样本打标;跨配方对比请传 s",
+  "save": "分析报告已留痕:ar-e8db4ce0。产线「注塑成型质量窗口寻优 injection-sdke0」,结论 4 条,配方 rc-7a66c26f。台账 append-only,不可改删;随时可用 analysis_query(report_id=\"ar-e8db4ce0\") 查回全文。",
+  "query": "分析报告 ar-e8db4ce0:「注塑线 ln-8bdf7f6a 克重窗口分析 2026-10-21T14:52:27」(分类 quality)\n产线: 注塑成型质量窗口寻优 injection-sdke0 | 配方: rc-7a66c26f v1\n分析时间: 10-21 22:52:27 | 数据窗: - ~ -\n来源: 注塑场景验收-8e2mo/数据分析-e2n2 @频道「注塑场景验收-8e2mo」\n关键结论: 近 5 分钟克重 mean=31.256g、std=0.033g、range=31.19~31.32g、窗内 0/20\n结论明细:\n  1. 克重均值 31.256g,目标 32.15~32.85g\n  2. 标准差 0.033g;极差 0.130g\n  3. 窗内占比 0.0%\n  4. 本报告仅基于 DAQ 只读窗口,不含任何产线写入。\n\n— 完整分析正文 —\n# 注塑线克重窗口分析\n\n- 产线:ln-8bdf7f6a\n- 节点:dn-2590fad5\n- 时间窗:2026-10-21T14:47:27.665Z ~ 2026-10-21T14:52:27.665Z\n- 样本:20\n- mean=31.2565g,std=0.0332g,min=31.1900g,max=31.3200g\n- 目标窗 32.15~32.85g,窗内 0/20\n\n## 置信口径\n基于 1s 桶原始样本独立复算;均值与 daq_query 工具统计交叉核对。\n\n\n— 支撑指标 —\n{\n \"mean\": 31.2565,\n \"std\": 0.03320767983464064,\n \"min\": 31.19,\n \"max\": 31.32,\n \"samples\": 20,\n \"in_window\": 0\n}"
 }
