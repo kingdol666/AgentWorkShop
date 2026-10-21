@@ -91,6 +91,7 @@
         <button
           class="pill-btn"
           :disabled="!series.length"
+          data-test="data-export"
           @click="exportOpen = true"
         >
           {{ t('data.mirror.export') }}

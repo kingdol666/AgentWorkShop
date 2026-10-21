@@ -1,0 +1,90 @@
+{
+  "at": "2026-10-21T06:47:16.276Z",
+  "base": "http://127.0.0.1:3470",
+  "results": [
+    {
+      "id": "UI1.1",
+      "name": "侧栏导航含「数据管理」",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "UI1.2",
+      "name": "三个 tab 渲染",
+      "pass": true,
+      "detail": "tabs=3"
+    },
+    {
+      "id": "UI1.3",
+      "name": "产线下拉有可读产线",
+      "pass": true,
+      "detail": "options=1"
+    },
+    {
+      "id": "UI1.4",
+      "name": "勾选 2 个节点",
+      "pass": true,
+      "detail": "checked=2"
+    },
+    {
+      "id": "UI1.5",
+      "name": "echarts canvas 渲染",
+      "pass": true,
+      "detail": "canvas=1"
+    },
+    {
+      "id": "UI1.6",
+      "name": "预览表 ≥1 行",
+      "pass": true,
+      "detail": "rows=100"
+    },
+    {
+      "id": "UI1.7",
+      "name": "导出任务出现在台账",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "UI1.8",
+      "name": "批次台账视图渲染",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "UI2.1",
+      "name": "/studio 节点树非空",
+      "pass": true,
+      "detail": "nodes=14"
+    },
+    {
+      "id": "UI2.2",
+      "name": "字段井入 2 个 Y",
+      "pass": true,
+      "detail": "chips=2"
+    },
+    {
+      "id": "UI2.3",
+      "name": "/studio canvas 渲染",
+      "pass": true,
+      "detail": "canvas=1"
+    },
+    {
+      "id": "UI2.4",
+      "name": "保存后出现在我的图表",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "UI3.1",
+      "name": "/studio/board 可打开",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "UI0.1",
+      "name": "全脚本 0 pageerror",
+      "pass": true,
+      "detail": ""
+    }
+  ]
+}
