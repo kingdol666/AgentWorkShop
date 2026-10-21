@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
-import { BarChart, GaugeChart, LineChart, PieChart } from 'echarts/charts'
+import { BarChart, GaugeChart, LineChart, PieChart, ScatterChart } from 'echarts/charts'
 import {
   DataZoomComponent,
   GraphicComponent,
   GridComponent,
   LegendComponent,
+  MarkLineComponent,
   TitleComponent,
   TooltipComponent,
 } from 'echarts/components'
@@ -23,6 +24,7 @@ use([
   LineChart,
   PieChart,
   GaugeChart,
+  ScatterChart,
   GridComponent,
   TooltipComponent,
   LegendComponent,
@@ -30,6 +32,8 @@ use([
   DataZoomComponent,
   // 冷启动"等待首帧"文字挂在 graphic 上;不注册会静默丢图并打控制台错误
   GraphicComponent,
+  // 参考线/阈值线(data-studio 参考线井、SPC 控制限);不注册 markLine 静默丢失
+  MarkLineComponent,
 ])
 
 /** Warm Editorial 图表色序(替代 ECharts 默认荧光绿/蓝;与 main.css --chart-* 同源) */

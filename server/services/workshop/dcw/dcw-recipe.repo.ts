@@ -418,6 +418,15 @@ class DcwRecipeRepo {
     this.runs.push(run)
     if (this.runs.length > RUNS_CAP) this.runs.splice(0, this.runs.length - RUNS_CAP)
     this.flushRuns()
+    // E1 run 台账镜像(eda-enterprise plan):runs.json 只有 RUNS_CAP 环形容量,SQL 侧
+    // 持久镜像;台账不可用只降级不阻断开跑主链(动态 import 防止模块循环)
+    void (async () => {
+      try {
+        const { mirrorRunCreated } = await import('../eda/eda-run.repo')
+        mirrorRunCreated({ id: run.id, lineId: run.lineId, productId: run.productId, recipeId: run.recipeId, recipeName: run.recipeName, startedAt: run.startedAt, endedAt: run.endedAt })
+      }
+      catch { /* EDA 台账不可用 */ }
+    })()
     return run
   }
 
@@ -426,6 +435,14 @@ class DcwRecipeRepo {
     if (!run) throw new AppError(404, ErrorCodes.NOT_FOUND, `批次不存在: ${id}`)
     if (run.endedAt == null) run.endedAt = new Date().toISOString()
     this.flushRuns()
+    // E1 关账镜像(UPSERT 兜底开账镜像的动态 import 时序;样本计数异步回填)
+    void (async () => {
+      try {
+        const { mirrorRunClosed } = await import('../eda/eda-run.repo')
+        mirrorRunClosed({ id: run.id, lineId: run.lineId, productId: run.productId, recipeId: run.recipeId, recipeName: run.recipeName, startedAt: run.startedAt, endedAt: run.endedAt })
+      }
+      catch { /* EDA 台账不可用 */ }
+    })()
     return run
   }
 
