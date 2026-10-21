@@ -39,6 +39,9 @@ interface DaqNodeOptions {
   lineId?: string
   /** 节点级采集语义备注(覆盖模板 semantics;注入 Agent 上下文) */
   semantics?: string
+  /** E8 上下文扩展:设备/腔室名与层级路径(纯标签) */
+  chamber?: string
+  unitPath?: string
   /** 驱动连接参数(modbus-tcp/opcua 协议参数;mock 空) */
   driverConfig?: Record<string, string | number | boolean>
   createdAt?: string
@@ -72,6 +75,10 @@ export class DaqNode {
   lineId = ''
   /** 节点级采集语义备注(覆盖模板 semantics) */
   semantics?: string
+  /** E8 上下文扩展:设备/腔室名(EDA commonality 的 chamber 因子;纯标签,无行为) */
+  chamber?: string
+  /** E8 上下文扩展:层级路径(fab/area/tool 展示语义;纯标签) */
+  unitPath?: string
   value: number | null
   state: DaqNodeState = 'offline'
   lastAt: string | null = null
@@ -108,6 +115,8 @@ export class DaqNode {
     if (o.posZ !== undefined) this.posZ = o.posZ
     this.lineId = o.lineId ?? ''
     this.semantics = o.semantics
+    if (o.chamber !== undefined) this.chamber = o.chamber
+    if (o.unitPath !== undefined) this.unitPath = o.unitPath
     this.value = null
     this.createdAt = o.createdAt ?? new Date().toISOString()
   }
@@ -197,6 +206,8 @@ export class DaqNode {
       posZ: this.posZ,
       lineId: this.lineId,
       semantics: this.semantics,
+      chamber: this.chamber,
+      unitPath: this.unitPath,
       value: this.value,
       state: this.state,
       lastAt: this.lastAt,
@@ -227,6 +238,8 @@ export class DaqNode {
       posZ: row.posZ == null ? undefined : Number(row.posZ),
       lineId: row.lineId == null ? '' : String(row.lineId),
       semantics: row.semantics == null ? undefined : String(row.semantics),
+      chamber: row.chamber == null ? undefined : String(row.chamber),
+      unitPath: row.unitPath == null ? undefined : String(row.unitPath),
       createdAt: row.createdAt != null ? String(row.createdAt) : undefined,
     })
     if (row.value != null && !Number.isNaN(Number(row.value))) {
@@ -264,6 +277,8 @@ export class DaqNode {
       posZ: this.posZ,
       lineId: this.lineId,
       semantics: this.semantics,
+      chamber: this.chamber,
+      unitPath: this.unitPath,
       value: this.value,
       state: this.state,
       lastAt: this.lastAt,

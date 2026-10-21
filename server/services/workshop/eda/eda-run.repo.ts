@@ -82,6 +82,14 @@ export function mirrorRunClosed(run: RunMirrorInput): void {
     .run(run.id, run.lineId, run.productId, run.recipeId, run.recipeName, run.startedAt, ended, now)
   edaDb().prepare('UPDATE eda_runs SET ended_at = ? WHERE id = ? AND (ended_at IS NULL OR ended_at = \'\')').run(ended, run.id)
   void backfillSampleCount(run.id, run.lineId, run.startedAt, ended)
+  // E3 联动:关账即入特征提取队列(FDC 主链;失败不阻断关账)
+  void (async () => {
+    try {
+      const { enqueueRunFeatures } = await import('./features')
+      enqueueRunFeatures(run.id)
+    }
+    catch { /* 特征服务不可用 */ }
+  })()
 }
 
 /** 关账窗口样本计数:逐节点 queryTagged 求和(nodeIds 单节点时 limit 全局≡每节点,语义正确) */

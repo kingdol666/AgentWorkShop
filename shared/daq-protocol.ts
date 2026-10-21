@@ -444,6 +444,9 @@ export interface DaqNodeView {
   posZ?: number
   /** 所属产线('' = 未分配;采集门控/场景光晕按产线隔离) */
   lineId: string
+  /** E8 上下文扩展:设备/腔室名与层级路径(EDA commonality 的 chamber 因子;纯标签) */
+  chamber?: string
+  unitPath?: string
   value: number | null
   state: DaqNodeState
   lastAt: string | null

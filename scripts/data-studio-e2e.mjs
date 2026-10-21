@@ -188,6 +188,53 @@ async function main() {
   }
 
   const nodeSummary = pick.map(id => `${id}=${nodeNames.get(id)?.name ?? '?'}`).join(',')
+  // ── PC: Phase C(E3 特征/E4 SPC/E5 共性/E8 上下文) ──
+  const featRun = (runsAll.data?.runs ?? []).find(r => r.endedAt && (r.sampleCount ?? 0) > 0)
+  if (featRun) {
+    // 等 E3 关账钩子的特征队列跑完(并发=1;样本少时秒级)
+    let feats = []
+    for (let i = 0; i < 20; i++) {
+      await sleep(1500)
+      feats = (await api('GET', `/api/workshop/eda/features?run_id=${featRun.id}`)).data?.features ?? []
+      if (feats.length > 0) break
+    }
+    ok('PC1.1', 'E3 特征提取:关账批次有特征行', feats.length > 0, `rows=${feats.length} sample=${JSON.stringify(feats[0] ?? {}).slice(0, 160)}`)
+    ok('PC1.2', 'E3 判定语义:参考带不足 3 批时仅记录不判定(或判定字段有限)', feats.every(f => f.zScore == null || Number.isFinite(f.zScore)))
+    const jobs = (await api('GET', '/api/workshop/eda/features/jobs')).data?.jobs ?? []
+    ok('PC1.3', 'E3 特征任务账本有 done 行', jobs.some(j => j.status === 'done' && j.runId === featRun.id), JSON.stringify(jobs[0] ?? {}).slice(0, 120))
+
+    // E4 SPC:注册 + 重算(本环境 run<25,enabled=0 是正确冷启动语义)+ 点序列
+    const spcNode = pick[0]
+    const spcCreate = await api('POST', '/api/workshop/eda/spc', { line_id: c.lineId, node_id: spcNode, kind: 'i_mr' })
+    const spcId = spcCreate.data?.chart?.id
+    ok('PC2.1', 'E4 注册控制图', spcCreate.status === 200 && Boolean(spcId), JSON.stringify(spcCreate.data?.chart ?? spcCreate.message).slice(0, 120))
+    const recompute = await api('POST', `/api/workshop/eda/spc/${spcId}/recompute`)
+    ok('PC2.2', 'E4 重算控制限(run<25 → enabled=0 为正确冷启动语义)', recompute.status === 200 && recompute.data?.chart?.enabled === false && recompute.data?.chart?.nPoints > 0,
+      `n=${recompute.data?.chart?.nPoints} enabled=${recompute.data?.chart?.enabled}`)
+    const spcDetail = await api('GET', `/api/workshop/eda/spc/${spcId}`)
+    ok('PC2.3', 'E4 详情+点序列 200', spcDetail.status === 200 && Array.isArray(spcDetail.data?.points))
+    const spcBad = await api('POST', '/api/workshop/eda/spc', { line_id: c.lineId, node_id: spcNode, kind: 'ma_magic' })
+    ok('PC2.4', 'E4 非法 kind → 400', spcBad.status === 400)
+  }
+
+  // E5 commonality
+  const comNode = await api('GET', `/api/workshop/eda/commonality?line_id=${c.lineId}&factor=node`)
+  ok('PC3.1', 'E5 共性分析(node 因子)200 且行有限', comNode.status === 200 && Array.isArray(comNode.data?.rows), `rows=${comNode.data?.rows?.length} baseline=${comNode.data?.baselineBadRate}`)
+  const comHour = await api('GET', `/api/workshop/eda/commonality?line_id=${c.lineId}&factor=hour`)
+  ok('PC3.2', 'E5 hour 因子可用', comHour.status === 200)
+  const comBad = await api('GET', `/api/workshop/eda/commonality?line_id=${c.lineId}&factor=woo`)
+  ok('PC3.3', 'E5 非法因子 → 400', comBad.status === 400)
+
+  // E8 上下文:节点 PATCH chamber → commonality chamber 因子可见
+  const patchCh = await api('PATCH', `/api/workshop/daq/${pick[0]}`, { chamber: 'CH-A' })
+  if (patchCh.status === 200) {
+    const comCh = await api('GET', `/api/workshop/eda/commonality?line_id=${c.lineId}&factor=chamber`)
+    ok('PC4.1', 'E8 chamber 字段 + chamber 因子共性', comCh.status === 200 && (comCh.data?.rows ?? []).some(r => r.factorValue === 'CH-A'), JSON.stringify(comCh.data?.rows ?? []).slice(0, 160))
+  }
+  else {
+    ok('PC4.1', 'E8 节点 chamber PATCH(端点不支持该字段则如实记)', patchCh.status === 200, `status=${patchCh.status}`)
+  }
+
   writeFileSync(join(EVID, 'phase-a-e2e.json'), JSON.stringify({ at: new Date().toISOString(), base: c.base, lineId: c.lineId, nodes: nodeSummary, queryWindow: q.data?.window, runOpened: openRun?.id ?? null, exportJob: job, mesPoints: pts.data?.count ?? 0, results }, null, 2))
 
   const pass = results.filter(r => r.pass).length

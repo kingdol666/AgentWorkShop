@@ -51,6 +51,9 @@ export interface DaqPatchInput {
   lineId?: string
   /** 节点级采集语义备注(覆盖模板) */
   semantics?: string
+  /** E8 上下文扩展:设备/腔室名与层级路径(纯标签) */
+  chamber?: string
+  unitPath?: string
 }
 
 export type BroadcastFn = (type: string, payload: unknown) => void
