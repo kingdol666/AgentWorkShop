@@ -46,6 +46,7 @@ const menuGroups = computed<MenuGroup[]>(() => [
       { key: '/daq', icon: 'i-tabler-activity', label: t('menu.daq'), motion: 'im-pop' },
       { key: '/dcw', icon: 'i-tabler-settings-automation', label: t('menu.dcw'), motion: 'im-pop' },
       { key: '/data', icon: 'i-tabler-database-export', label: t('menu.dataManagement'), motion: 'im-pop' },
+      { key: '/studio', icon: 'i-tabler-chart-dots', label: t('menu.studio'), motion: 'im-pop' },
       { key: '/aml', icon: 'i-tabler-flask', label: t('menu.aml'), motion: 'im-pop' },
     ],
   },

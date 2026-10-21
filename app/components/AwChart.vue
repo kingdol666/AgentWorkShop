@@ -9,6 +9,7 @@ import {
   LegendComponent,
   MarkLineComponent,
   TitleComponent,
+  ToolboxComponent,
   TooltipComponent,
 } from 'echarts/components'
 import VChart from 'vue-echarts'
@@ -34,6 +35,8 @@ use([
   GraphicComponent,
   // 参考线/阈值线(data-studio 参考线井、SPC 控制限);不注册 markLine 静默丢失
   MarkLineComponent,
+  // 工具箱(saveAsImage 像素导出等;/studio 零成本三件套之一)
+  ToolboxComponent,
 ])
 
 /** Warm Editorial 图表色序(替代 ECharts 默认荧光绿/蓝;与 main.css --chart-* 同源) */

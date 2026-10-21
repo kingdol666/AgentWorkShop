@@ -26,6 +26,7 @@ const c = JSON.parse(readFileSync(CTX, 'utf8'))
 const EVID = join(REPO, 'docs', 'audit', 'evidence', '2026-10-21-phase-a')
 mkdirSync(EVID, { recursive: true })
 const sleep = ms => new Promise(r => setTimeout(r, ms))
+const randomHex = (n = 8) => Array.from({ length: n }, () => '0123456789abcdef'[Math.floor(Math.random() * 16)]).join('')
 const results = []
 function ok(id, name, cond, detail = '') {
   results.push({ id, name, pass: Boolean(cond), detail: String(detail).slice(0, 500) })
@@ -78,19 +79,14 @@ async function main() {
   let runsBefore = await api('GET', `/api/workshop/eda/runs?line_id=${c.lineId}`)
   let openRun = (runsBefore.data?.runs ?? []).find(r => r.outcome === 'open' && !r.endedAt)
   if (!openRun) {
-    // 平台重启前的旧 run 无镜像行(钩子随新构建生效)→ 关账触发 UPSERT 补建行验证
-    const legacy = await api('GET', '/api/workshop/dcw/runs')
-    const legacyOpen = (legacy.data?.runs ?? legacy.data ?? []).find?.(r => !r.endedAt && r.lineId === c.lineId)
-      ?? (Array.isArray(legacy.data) ? legacy.data.find(r => !r.endedAt && r.lineId === c.lineId) : null)
-    if (legacyOpen?.id) {
-      await api('POST', `/api/workshop/dcw/runs/${legacyOpen.id}/close`)
-      await sleep(2000)
-      runsBefore = await api('GET', `/api/workshop/eda/runs?line_id=${c.lineId}`)
-      openRun = (runsBefore.data?.runs ?? []).find(r => r.id === legacyOpen.id)
-      ok('PA2.0', '旧 run 关账 UPSERT 补建台账行', Boolean(openRun), `legacy=${legacyOpen.id}`)
-      // 重开一批(保持活动批次供后续阶段使用)
-      await api('POST', `/api/workshop/dcw/lines/${c.lineId}/start`)
-    }
+    // 台账无 open 行(旧 run 关账/镜像时序):停线→开线制造全新批次(走完整 createRun 钩子)
+    await api('POST', `/api/workshop/dcw/lines/${c.lineId}/stop`)
+    await sleep(1500)
+    const st = await api('POST', `/api/workshop/dcw/lines/${c.lineId}/start`, { recipeId: c.recipeId })
+    if (st.status !== 200) ok('PA2.0', '重开产线(带配方)', false, st.message.slice(0, 120))
+    await sleep(2500)
+    runsBefore = await api('GET', `/api/workshop/eda/runs?line_id=${c.lineId}`)
+    openRun = (runsBefore.data?.runs ?? []).find(r => r.outcome === 'open' && !r.endedAt)
   }
   ok('PA2.1', '开跑产线 → run 台账有行(open)', Boolean(openRun), JSON.stringify(runsBefore.data?.runs?.[0] ?? {}).slice(0, 160))
   if (openRun) {
@@ -140,6 +136,56 @@ async function main() {
   // ── PA5 权限负例 ──
   const nf = await api('GET', `/api/workshop/daq/query?node_ids=dn-never-exists&last_minutes=5`)
   ok('PA5.1', '不存在节点查询 → 403', nf.status === 403, nf.message.slice(0, 100))
+
+  // ── PB1 图表 CRUD + B4 可见性 ──
+  const mk = await api('POST', '/api/workshop/eda/charts', {
+    title: 'PhaseB 私图', viz_type: 'trend',
+    datasource: { lineId: c.lineId, nodeIds: pick, preset: '60', agg: 'avg' },
+    encoding: { y: pick.map(id => ({ nodeId: id, name: id, unit: '', axis: 'L' })) },
+    visibility: 'private',
+  })
+  const chartId = mk.data?.chart?.id
+  ok('PB1.1', '创建私图 200', mk.status === 200 && Boolean(chartId), JSON.stringify(mk.data?.chart ?? mk.message).slice(0, 120))
+  const noLine = await api('POST', '/api/workshop/eda/charts', { title: 'x', viz_type: 'trend', visibility: 'line' })
+  ok('PB1.2', 'visibility=line 无 line_id → 400', noLine.status === 400, noLine.message.slice(0, 100))
+  const patched = await api('PATCH', `/api/workshop/eda/charts/${chartId}`, { title: 'PhaseB 私图 v2' })
+  ok('PB1.3', 'PATCH 版本自增', patched.status === 200 && patched.data?.chart?.version === 2)
+  // B4 跨用户:临时开启自助注册 → 注册 viewer → 断言 → 关回
+  const viewerEmail = `viewer-${randomHex(6)}-${Date.now().toString(36)}@awshop.local`
+  const allowKey = 'security.allowRegistration'
+  await api('PATCH', '/api/system/settings', { override: { [allowKey]: true } })
+  const reg = await api('POST', '/api/users/register', { name: `viewer-${randomHex(6)}`, email: viewerEmail, password: `Vw-${randomHex(12)}` })
+  const viewerToken = reg.data?.token
+  await api('PATCH', '/api/system/settings', { override: { [allowKey]: false } })
+  if (viewerToken) {
+    const viewerRead = await api('GET', `/api/workshop/eda/charts/${chartId}`, undefined, viewerToken)
+    ok('PB1.4', '他人读私图 → 404(B4)', viewerRead.status === 404, `status=${viewerRead.status}`)
+    const viewerList = await api('GET', '/api/workshop/eda/charts', undefined, viewerToken)
+    ok('PB1.5', '他人列表不含该私图', !(viewerList.data?.charts ?? []).some(x => x.id === chartId))
+  }
+  else {
+    ok('PB1.4', 'viewer 注册失败,跳过跨用户断言', false, reg.message.slice(0, 100))
+  }
+
+  // ── PB2 golden(E2) ──
+  const runsAll = await api('GET', `/api/workshop/eda/runs?line_id=${c.lineId}`)
+  // golden 需要样本 ≥100 桶:选样本最多的关账批(刚关的新批可能只有几十点)
+  const closedRun = (runsAll.data?.runs ?? [])
+    .filter(r => r.endedAt && (r.sampleCount ?? 0) >= 100)
+    .sort((a, b) => (b.sampleCount ?? 0) - (a.sampleCount ?? 0))[0]
+  const goldenNode = pick[0]
+  if (closedRun && goldenNode) {
+    const gb = await api('POST', '/api/workshop/eda/golden', { run_id: closedRun.id, node_id: goldenNode })
+    ok('PB2.1', '从关账批次生成 golden 画像', gb.status === 200 && (gb.data?.golden?.profile?.length ?? 0) > 0,
+      `bins=${gb.data?.golden?.profile?.length} fp=${JSON.stringify(gb.data?.golden?.fingerprint ?? {}).slice(0, 120)}`)
+    const gs = await api('GET', `/api/workshop/eda/golden/single?recipe_id=${closedRun.recipeId}&node_id=${goldenNode}`)
+    ok('PB2.2', 'single 取回画像(叠加用)', gs.status === 200 && gs.data?.golden?.profile?.length > 0)
+    const dev = await api('GET', `/api/workshop/eda/golden/deviation?run_id=${closedRun.id}&node_id=${goldenNode}`)
+    ok('PB2.3', '偏差分可算(自身 vs golden,分数有限)', dev.status === 200 && Number.isFinite(dev.data?.score), `score=${dev.data?.score} bins=${dev.data?.bins}`)
+  }
+  else {
+    ok('PB2.1', '无已关账批次,golden 断言跳过', false, '需先关账一个有样本的 run(PA2)')
+  }
 
   const nodeSummary = pick.map(id => `${id}=${nodeNames.get(id)?.name ?? '?'}`).join(',')
   writeFileSync(join(EVID, 'phase-a-e2e.json'), JSON.stringify({ at: new Date().toISOString(), base: c.base, lineId: c.lineId, nodes: nodeSummary, queryWindow: q.data?.window, runOpened: openRun?.id ?? null, exportJob: job, mesPoints: pts.data?.count ?? 0, results }, null, 2))

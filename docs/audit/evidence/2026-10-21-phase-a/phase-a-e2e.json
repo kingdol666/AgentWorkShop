@@ -1,17 +1,17 @@
 {
-  "at": "2026-10-21T03:44:05.610Z",
+  "at": "2026-10-21T04:07:12.675Z",
   "base": "http://127.0.0.1:3470",
   "lineId": "ln-62ccbe18",
   "nodes": "dn-265b082c=scen-injection:daq:melt-temp-pv,dn-c4478110=scen-injection:daq:melt-pressure-pv",
   "queryWindow": {
-    "fromMs": 1792553939776,
-    "toMs": 1792554239776,
+    "fromMs": 1792555324439,
+    "toMs": 1792555624439,
     "bucketMs": 1000,
     "agg": "avg"
   },
-  "runOpened": "rr-42f2cd29",
+  "runOpened": "rr-e3a5fef5",
   "exportJob": {
-    "id": "edajob-fe33dcf1",
+    "id": "edajob-5065bc10",
     "kind": "daq-export",
     "status": "ready",
     "spec": {
@@ -19,32 +19,32 @@
         "dn-265b082c",
         "dn-c4478110"
       ],
-      "fromMs": 1792553943482,
-      "toMs": 1792554243482,
+      "fromMs": 1792555330304,
+      "toMs": 1792555630304,
       "title": "PhaseA 定向导出",
       "note": "",
       "merge": true
     },
     "result": {
-      "exportId": "daqexp-20261021114403-830ab6",
-      "dir": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-scenario-suite-g7ALWU\\data\\daq-exports\\daqexp-20261021114403-830ab6",
+      "exportId": "daqexp-20261021120710-0a14af",
+      "dir": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-scenario-suite-g7ALWU\\data\\daq-exports\\daqexp-20261021120710-0a14af",
       "files": [
         {
           "nodeId": "dn-265b082c",
-          "rows": 245
+          "rows": 196
         },
         {
           "nodeId": "dn-c4478110",
-          "rows": 244
+          "rows": 195
         }
       ],
-      "totalRows": 489,
+      "totalRows": 391,
       "truncated": [],
-      "mergedFile": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-scenario-suite-g7ALWU\\data\\daq-exports\\daqexp-20261021114403-830ab6\\merged.csv"
+      "mergedFile": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-scenario-suite-g7ALWU\\data\\daq-exports\\daqexp-20261021120710-0a14af\\merged.csv"
     },
     "createdBy": "cc8ac524-ef5f-404a-8b77-c4c28453cd39",
-    "createdAt": "2026-10-21T11:44:03.482+08:00",
-    "updatedAt": "2026-10-21T11:44:03.508+08:00"
+    "createdAt": "2026-10-21T12:07:10.304+08:00",
+    "updatedAt": "2026-10-21T12:07:10.326+08:00"
   },
   "mesPoints": 0,
   "results": [
@@ -58,7 +58,7 @@
       "id": "PA1.1",
       "name": "批量查询:两节点一次返回且每节点≤2000 点",
       "pass": true,
-      "detail": "series=2 pts=245,243 bucket=1000"
+      "detail": "series=2 pts=198,196 bucket=1000"
     },
     {
       "id": "PA1.2",
@@ -85,40 +85,34 @@
       "detail": ""
     },
     {
-      "id": "PA2.0",
-      "name": "旧 run 关账 UPSERT 补建台账行",
-      "pass": true,
-      "detail": "legacy=rr-42f2cd29"
-    },
-    {
       "id": "PA2.1",
       "name": "开跑产线 → run 台账有行(open)",
       "pass": true,
-      "detail": "{\"id\":\"rr-42f2cd29\",\"lineId\":\"ln-62ccbe18\",\"productId\":\"pd-22c7d5e1\",\"recipeId\":\"rc-e4320e0e\",\"recipeName\":\"scen-injection-recipe-s7c7w\",\"recipeVersion\":null,\"s"
+      "detail": "{\"id\":\"rr-e3a5fef5\",\"lineId\":\"ln-62ccbe18\",\"productId\":\"pd-22c7d5e1\",\"recipeId\":\"rc-e4320e0e\",\"recipeName\":\"scen-injection-recipe-s7c7w\",\"recipeVersion\":null,\"s"
     },
     {
       "id": "PA2.2",
       "name": "关账后 ended_at 回填且 sample_count>0(异步回填)",
       "pass": true,
-      "detail": "ended=2026-10-21T11:43:59.865+08:00 samples=5417"
+      "detail": "ended=2026-10-21T12:07:08.774+08:00 samples=36"
     },
     {
       "id": "PA3.1",
       "name": "导出任务受理(running)",
       "pass": true,
-      "detail": "{\"id\":\"edajob-fe33dcf1\",\"kind\":\"daq-export\",\"status\":\"running\",\"spec\":{\"nodeIds\":[\"dn-265b082c\",\"dn-c4478110\"],\"fromMs\":1792553943482,\"toMs\":1792554243482,\"titl"
+      "detail": "{\"id\":\"edajob-5065bc10\",\"kind\":\"daq-export\",\"status\":\"running\",\"spec\":{\"nodeIds\":[\"dn-265b082c\",\"dn-c4478110\"],\"fromMs\":1792555330304,\"toMs\":1792555630304,\"titl"
     },
     {
       "id": "PA3.2",
       "name": "导出完成(ready)且 totalRows>0",
       "pass": true,
-      "detail": "status=ready rows=489 files=2 merged=true"
+      "detail": "status=ready rows=391 files=2 merged=true"
     },
     {
       "id": "PA3.3",
       "name": "manifest.json 下载 200(application/json)",
       "pass": true,
-      "detail": "{\n  \"schema\": \"aw.daq-export/1\",\n  \"export_id\": \"daqexp-20261021114403-830ab6\",\n  \"created_at\": \"202"
+      "detail": "{\n  \"schema\": \"aw.daq-export/1\",\n  \"export_id\": \"daqexp-20261021120710-0a14af\",\n  \"created_at\": \"202"
     },
     {
       "id": "PA3.4",
@@ -130,7 +124,7 @@
       "id": "PA3.5",
       "name": "nodes/<id>.csv 下载 200",
       "pass": true,
-      "detail": "ts_iso,ts_ms,value,state\r\n2026-10-21T11:39:04.434+08:00,1792553944434,246.9,ok\r\n"
+      "detail": "ts_iso,ts_ms,value,state\r\n2026-10-21T12:02:11.067+08:00,1792555331067,247,ok\r\n20"
     },
     {
       "id": "PA3.6",
@@ -155,6 +149,54 @@
       "name": "不存在节点查询 → 403",
       "pass": true,
       "detail": "指定的节点不存在、已停用或不在你的可读范围内。"
+    },
+    {
+      "id": "PB1.1",
+      "name": "创建私图 200",
+      "pass": true,
+      "detail": "{\"id\":\"ec-0ddbf13a\",\"title\":\"PhaseB 私图\",\"vizType\":\"trend\",\"datasource\":{\"lineId\":\"ln-62ccbe18\",\"nodeIds\":[\"dn-265b082c\","
+    },
+    {
+      "id": "PB1.2",
+      "name": "visibility=line 无 line_id → 400",
+      "pass": true,
+      "detail": "visibility=line 必须携带 line_id(B4:产线可见图必须钉在产线上)"
+    },
+    {
+      "id": "PB1.3",
+      "name": "PATCH 版本自增",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "PB1.4",
+      "name": "他人读私图 → 404(B4)",
+      "pass": true,
+      "detail": "status=404"
+    },
+    {
+      "id": "PB1.5",
+      "name": "他人列表不含该私图",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "PB2.1",
+      "name": "从关账批次生成 golden 画像",
+      "pass": true,
+      "detail": "bins=100 fp={\"mean\":246.674115,\"std\":0.33573,\"min\":245.7,\"max\":247.9,\"cnt\":452}"
+    },
+    {
+      "id": "PB2.2",
+      "name": "single 取回画像(叠加用)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "PB2.3",
+      "name": "偏差分可算(自身 vs golden,分数有限)",
+      "pass": true,
+      "detail": "score=0 bins=93"
     }
   ]
 }
