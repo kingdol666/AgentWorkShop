@@ -1,0 +1,23 @@
+{
+  "at": "2026-10-21T01:55:46.927Z",
+  "lineId": "ln-593e76b2",
+  "recipeId": "rc-a68489be",
+  "targets": [
+    {
+      "node_id": "dw-7f4a6c3a",
+      "value": 245.6,
+      "from": 242.8
+    },
+    {
+      "node_id": "dw-b46de7e7",
+      "value": 240.4,
+      "from": 243.2
+    }
+  ],
+  "update": "已保存为 v3:「scen-injection-recipe-sdl8c」参数 scen-injection:dcw:barrel-temp-1-sp 242.8→245.6;scen-injection:dcw:barrel-temp-2-sp 243.2→240.4;原因:定向验收:一次批量保存两参数 dw-7f4a6c3a→245.6,dw-b46de7e7→240.4。\n人工附言:T7 批量保存两参数(一次审批)\n注意:配方定义已更新,运行中批次仍按开跑时冻结的参数生产;要把新参数推到运行中的产线(经治理联锁整批下发),用 recipe_apply。回退用 recipe_rollback。",
+  "trial": "试验已整批下发并全部设备证实(2/2,批次 rr-45f43):scen-injection:dcw:barrel-temp-1-sp→245.6℃ [证实✓];scen-injection:dcw:barrel-temp-2-sp→240.4℃ [证实✓]。假设:定向验收:两参数整批试验,观察批量下发与回读一致性。\n人工附言:T7 批量试验两参数(一次审批)注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC 整批恢复)。",
+  "readback": [
+    245.6,
+    240.4
+  ]
+}

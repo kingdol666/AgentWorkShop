@@ -1,0 +1,166 @@
+{
+  "at": "2026-10-21T01:55:46.928Z",
+  "base": "http://127.0.0.1:3470",
+  "lineId": "ln-593e76b2",
+  "recipeId": "rc-a68489be",
+  "contextHome": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-scenario-suite-IpibAx",
+  "daqNodeCount": 14,
+  "batchQuery": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:melt-temp-pv(熔体/箱体温度)单位 ℃,正常量程 20~320℃,当前状态 ok,时间窗 2026-10-21T09:50 ~ 2026-10-21T09:55(降采样 1000ms)\n  当前活动批次 run=rr-1bedd08f 配方「scen-injection-recipe-sdl8c」(rc-a68489be)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 200 点 | 最新 246.2℃ | 均值 246.711 | 最小 245.7 | 最大 248\n  最近序列: 09:53:56=avg 246.6; 09:53:57=avg 246.5; 09:53:58=avg 246.4; 09:53:59=avg 247; 09:54:00=avg 246.3; 09:54:01=avg 246.8; 09:54:02=avg 246.5; 09:54:03=avg 246.4; 09:54:04=avg 246.9; 09:54:06=avg 246.6; 09:54:07=avg 246.7; 09:54:08=avg 246.2\n  工况判读: 活动配方「scen-injection-recipe-sdl8c」监控窗口 [235, 262]:当前 246.2℃ 窗口内(正常) | 同产线数控设定: scen-injection:dcw:barrel-temp-1-sp=242.8℃;scen-injection:dcw:barrel-temp-2-sp=243.2℃;scen-injection:dcw:barrel-temp-3-sp=252℃;scen-injection:dcw:barrel-temp-4-sp=258℃;scen-injection:dcw:screw-speed-sp=120rpm;scen-injection:dcw:mold-temp-sp=40℃;sc",
+  "narrowQuery": "数采数据查询结果(1 个节点):\n\n■ scen-injection:daq:part-weight(熔体/箱体温度)单位 g,正常量程 25~40g,当前状态 alarm,时间窗 2026-10-21T09:50 ~ 2026-10-21T09:55(降采样 15000ms)\n  当前活动批次 run=rr-1bedd08f 配方「scen-injection-recipe-sdl8c」(rc-a68489be)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 21 点 | 最新 31.229999999999997",
+  "export": {
+    "dir": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-scenario-suite-IpibAx\\data\\daq-exports\\daqexp-20261021095540-74d962",
+    "nodes": 2,
+    "merged": true,
+    "text": "已导出 2 个标量节点 + 0 个帧节点的数据(标量无降采样):\n- export_id: daqexp-20261021095540-74d962\n- 目录: C:\\Users\\87287\\AppData\\Local\\Temp\\aw-scenario-suite-IpibAx\\data\\daq-exports\\daqexp-20261021095540-74d962\n- 文件: manifest.json(节点映射/单位量程/语义描述/产线-产品-配方-批次上下文/报警统计)+ nodes/<node_id>.csv(逐样本时序,列 ts_iso,ts_ms,value,state)\n- merged.csv(merge 模式): C:\\Users\\87287\\AppData\\Local\\Temp\\aw-scenario-suite-IpibAx\\data\\daq-exports\\daqexp-20261021095540-74d962\\merged.csv —— 多节点按秒对齐的多参数宽表,可直接作为 IDD sentinel_screen/watch 的 data_path(time_col=time)\n- 明细: dn-4a711071(288 行), dn-83ec87ce(287 行);共 575 行/帧;窗口 2026-10-21T09:50:40.495+08:00 ~ 2026-10-21T09:55:40.495+08:00\n\n下一步:\n1. 深度根因诊断:调用 diag_run(export_id=\"daqexp-20261021095540-74d962\", scene=<场景名>, question=<诊断问题>)——会把 manifest 与全部 CSV 上传诊断服务做多文件分析;mode=async 提交即返(缺省),mode=sync 同步等待结果。\n2. 哨兵筛查:把 merged.csv 或 nodes/<node_id>.csv 的绝对路径交给 sentinel_baseline/sentinel_screen/sentinel_w"
+  },
+  "descriptions": {
+    "analystDaq": "part-weight(dn-4a711071,g)、scen-injection:daq:flash-rate(dn-165bd799,%)、scen-injection:daq:sink-mark(dn-205edf66,%)、scen-injection:daq:dim-dev(dn-0102cee2,mm)、scen-injection:daq:cycle-time(dn-304adc7b,s)、scen-injection:daq:wall-profile(dn-2d384cb4,mm)、scen-injection:daq:surface-image(dn-1a241dd4,灰度)",
+    "optimizerDaq": "part-weight(dn-4a711071,g)、scen-injection:daq:flash-rate(dn-165bd799,%)、scen-injection:daq:sink-mark(dn-205edf66,%)、scen-injection:daq:dim-dev(dn-0102cee2,mm)、scen-injection:daq:cycle-time(dn-304adc7b,s)、scen-injection:daq:wall-profile(dn-2d384cb4,mm)、scen-injection:daq:surface-image(dn-1a241dd4,灰度)",
+    "optimizerRecipe": "eed-sp(dw-8725454c)、scen-injection:dcw:mold-temp-sp(dw-d6891f9c)、scen-injection:dcw:clamp-force-sp(dw-dbd31bbb)、scen-injection:dcw:inject-speed-sp(dw-f306a711)、scen-injection:dcw:hold-pressure-sp(dw-6d1846ed)、scen-injection:dcw:hold-time-sp(dw-22fad170)、scen-injection:dcw:cool-water-sp(dw-8d7c61f5))"
+  },
+  "identity": {
+    "spoofStatus": 401,
+    "bogusStatus": 401,
+    "listSpoofStatus": 401
+  },
+  "interception": {
+    "rollback": "无权回退配方「scen-injection-recipe-sdl8c」(rc-a68489be):你未绑定该配方。权限模型 v2 下 Agent 不直接操作数控节点 —— 通过绑定 recipe 获得参数写入与下发能力(可绑定多个配方);请让用户或 lead 为你绑定(recipe 绑定首绑默认 manual,每次动作需人工批准)。",
+    "journal": "无权查询节点 dn-4a711071 的账本(仅可查你绑定范围内的对象:rc-a68489be)。",
+    "line": "工具调用被拒(引用校验,line_status):line_id = 「ln-not-exist-probe」(产线不存在)不在你的可读范围内。\n你的可读产线:ln-593e76b2(其中「ln-593e76b2」来自频道绑线,只读)。如需访问该产线,请让用户授予对应产线权限(权限管理),或把当前频道绑定到该产线;也可以改用上述可读产线重试。",
+    "deniedAuditCount": 2
+  },
+  "results": [
+    {
+      "id": "T0",
+      "name": "上下文就绪(analyst/optimizer/≥2 daq)",
+      "pass": true,
+      "detail": "daq=14"
+    },
+    {
+      "id": "T1",
+      "name": "daq_query 批量:一次查询全部有权节点",
+      "pass": true,
+      "detail": "header=14 expect=14"
+    },
+    {
+      "id": "T2",
+      "name": "node_id 收窄到单节点",
+      "pass": true,
+      "detail": "header=1"
+    },
+    {
+      "id": "T3",
+      "name": "daq_export 批量(node_ids 多节点+merge 宽表)",
+      "pass": true,
+      "detail": "dir=C:\\Users\\87287\\AppData\\Local\\Temp\\aw-scenario-suite-IpibAx\\data\\daq-exports\\daqexp-20261021095540-74d962 nodes=2 merged=true"
+    },
+    {
+      "id": "T4.1",
+      "name": "分析师 daq 描述=直接绑定清单",
+      "pass": true,
+      "detail": "ev(dn-0102cee2,mm)、scen-injection:daq:cycle-time(dn-304adc7b,s)、scen-injection:daq:wall-profile(dn-2d384cb4,mm)、scen-injection:daq:surface-image(dn-1a241dd4,灰度)"
+    },
+    {
+      "id": "T4.2",
+      "name": "优化师 daq 描述=仅频道绑线只读(无直接绑定)",
+      "pass": true,
+      "detail": "ev(dn-0102cee2,mm)、scen-injection:daq:cycle-time(dn-304adc7b,s)、scen-injection:daq:wall-profile(dn-2d384cb4,mm)、scen-injection:daq:surface-image(dn-1a241dd4,灰度)"
+    },
+    {
+      "id": "T4.3",
+      "name": "优化师 recipe 描述含其绑定配方",
+      "pass": true,
+      "detail": "eed-sp(dw-f306a711)、scen-injection:dcw:hold-pressure-sp(dw-6d1846ed)、scen-injection:dcw:hold-time-sp(dw-22fad170)、scen-injection:dcw:cool-water-sp(dw-8d7c61f5))"
+    },
+    {
+      "id": "T4.4",
+      "name": "分析师 recipe 描述不含未绑定配方",
+      "pass": true,
+      "detail": "未运行拒绝);绑定 manual 或产线 manual 时本次保存挂 HITL 等人工批准——reason 必填且要给出判断依据(数采证据/分析结论),审批卡会向人类展示。只改配方定义,要把参数推到运行中的产线用 recipe_apply。"
+    },
+    {
+      "id": "T5.1",
+      "name": "冒用他人 token(A id + B token)→ 401",
+      "pass": true,
+      "detail": "status=401"
+    },
+    {
+      "id": "T5.2",
+      "name": "伪造 token → 401",
+      "pass": true,
+      "detail": "status=401"
+    },
+    {
+      "id": "T5.3",
+      "name": "list 冒用(A token 取 B 工具面)→ 401",
+      "pass": true,
+      "detail": "status=401"
+    },
+    {
+      "id": "T5.4",
+      "name": "本人 token 正常(阳性对照)",
+      "pass": true,
+      "detail": "#### ◆ scen-injection:dcw:barrel-temp-1-sp [id=dw-7f4a6c3a]\n- 物理量: 烘箱温度设定,单位 ℃,精度 1 位小数\n- 工艺语义: 注塑机主机:机筒四区加热 + 螺杆塑化传动。塑化"
+    },
+    {
+      "id": "T6.1",
+      "name": "未绑定配方 recipe_rollback 被拒(配方操作门)",
+      "pass": true,
+      "detail": "无权回退配方「scen-injection-recipe-sdl8c」(rc-a68489be):你未绑定该配方。权限模型 v2 下 Agent 不直接操作数控节点 —— 通过绑定 recipe 获得参数写入与下发能力(可绑定多个配方);请让用户或 lead 为你绑定(recipe 绑定首绑默认 manual,每次动作需人工批准)。"
+    },
+    {
+      "id": "T6.2",
+      "name": "数采节点不在优化师绑定面 → dcw_journal 被拒(node face)",
+      "pass": true,
+      "detail": "无权查询节点 dn-4a711071 的账本(仅可查你绑定范围内的对象:rc-a68489be)。"
+    },
+    {
+      "id": "T6.3",
+      "name": "不可读产线 line_status 被拒(line face)",
+      "pass": true,
+      "detail": "工具调用被拒(引用校验,line_status):line_id = 「ln-not-exist-probe」(产线不存在)不在你的可读范围内。\n你的可读产线:ln-593e76b2(其中「ln-593e76b2」来自频道绑线,只读)。如需访问该产线,请让用户授予对应产线权限(权限管理),或把当前频道绑定到该产线;也可以改用上述可读产线重试。"
+    },
+    {
+      "id": "T6.4",
+      "name": "授权性拒绝入册(tool.call.denied ≥1)",
+      "pass": true,
+      "detail": "count=2"
+    },
+    {
+      "id": "T7.0",
+      "name": "配方参数面就绪(≥2 参数)",
+      "pass": true,
+      "detail": "dw-7f4a6c3a=242.8℃;dw-b46de7e7=243.2℃"
+    },
+    {
+      "id": "T7.1",
+      "name": "批量候选步长合规(|Δ|≤stepLimit)",
+      "pass": true,
+      "detail": "dw-7f4a6c3a 242.8→245.6;dw-b46de7e7 243.2→240.4"
+    },
+    {
+      "id": "T8",
+      "name": "越量程候选整批拒绝(量程联锁在批量面生效)",
+      "pass": true,
+      "detail": "试验下发 ACK 鉴定未全绿(证实 0/1,未证实 0,失败 1,批次 rr-9dccd):scen-injection:dcw:barrel-temp-1-sp→400℃ 被拒(设定值 400℃ 超出上限 节点工艺安全量程 的 300℃ —— 约束层:节点安全量程(当前有效写入区间 160~300)。假设:批量负例:越安全量程。\n人工附言:T8 负例应被量程联锁拒绝(如出现审批卡则拒绝语义已在网关)\n「未证实」=命令已发到链路但设备侧"
+    },
+    {
+      "id": "T7.2",
+      "name": "recipe_update params[] 两参数一次保存(HITL)",
+      "pass": true,
+      "detail": "已保存为 v3:「scen-injection-recipe-sdl8c」参数 scen-injection:dcw:barrel-temp-1-sp 242.8→245.6;scen-injection:dcw:barrel-temp-2-sp 243.2→240.4;原因:定向验收:一次批量保存两参数 dw-7f4a6c3a→245.6,dw-b46de7e7→240.4。\n人工附言:T7 批"
+    },
+    {
+      "id": "T7.3",
+      "name": "recipe_trial 整批下发受理(HITL)",
+      "pass": true,
+      "detail": "试验已整批下发并全部设备证实(2/2,批次 rr-45f43):scen-injection:dcw:barrel-temp-1-sp→245.6℃ [证实✓];scen-injection:dcw:barrel-temp-2-sp→240.4℃ [证实✓]。假设:定向验收:两参数整批试验,观察批量下发与回读一致性。\n人工附言:T7 批量试验两参数(一次审批)注意:本次试验**未写入配方版本** "
+    },
+    {
+      "id": "T7.4",
+      "name": "批量回读一致(两节点=候选值)",
+      "pass": true,
+      "detail": "dw-7f4a6c3a want=245.6 got=245.6;dw-b46de7e7 want=240.4 got=240.4"
+    }
+  ]
+}
