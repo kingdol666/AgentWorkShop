@@ -203,10 +203,12 @@ useHead({ title: () => tt('titles.ctpl') })
           { value: 'builtin', label: $t('chips.builtin') },
         ]"
       />
-      <span
-        v-if="userStore.isAdmin"
-        class="admin-note"
-      ><span class="i-tabler-shield-check" /> {{ $t('ctpl.ka1gpdj014') }}</span>
+      <ClientOnly>
+        <span
+          v-if="userStore.isAdmin"
+          class="admin-note"
+        ><span class="i-tabler-shield-check" /> {{ $t('ctpl.ka1gpdj014') }}</span>
+      </ClientOnly>
     </div>
 
     <a-spin :spinning="loading">
@@ -465,10 +467,10 @@ h2 { margin: 0 0 4px; }
   display: -webkit-box;
   overflow: hidden;
   font-family: var(--font-mono);
-  font-size: 10.5px;
-  line-height: 1.5;
+  font-size: 11.5px;
+  line-height: 1.55;
   color: var(--ink-faint);
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
 }
 .card-foot {

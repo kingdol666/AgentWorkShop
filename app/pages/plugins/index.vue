@@ -297,7 +297,7 @@ onMounted(load)
 .card-head .a-switch { margin-left: auto; }
 .card-desc { margin: 8px 0; font-size: 12px; opacity: .75; min-height: 18px; }
 .card-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
-.tag { padding: 2px 8px; border-radius: 999px; font-size: 10px; border: 1px solid rgba(128, 152, 199, .3); }
+.tag { padding: 2px 8px; border-radius: var(--radius-chip); font-size: 11px; border: 1px solid var(--line-strong); }
 /* 标签文字色用 color-mix 向 --ink 收:品牌绿/青/红是**亮色画布上的浅色**,
    直接当文字色在亮色档只有 1.5–2.5:1(实测)。向墨色混合后暗色档几乎不变
    (墨色本身就是浅色),亮色档自动压深到 AA —— 一处改动同时服务两套主题。 */
@@ -307,8 +307,8 @@ onMounted(load)
 .tag.off { border-color: rgba(255, 107, 107, .4); color: color-mix(in srgb, #ff6b6b 55%, var(--ink)); }
 .tag.client { border-color: color-mix(in srgb, var(--ink) 24%, transparent); color: var(--ink-soft); }
 .card-routes { display: flex; flex-direction: column; gap: 2px; }
-.card-routes code { font-size: 10px; opacity: .65; }
-.detail dt { margin-top: 10px; font-size: 11px; opacity: .5; }
+.card-routes code { font-size: 11px; color: var(--ink-faint); }
+.detail dt { margin-top: 10px; font-size: 11px; color: var(--ink-faint); }
 .detail dd { margin: 2px 0 0; font-family: ui-monospace, monospace; font-size: 12px; }
 .detail .scope-hint { font-family: inherit; font-size: 11px; opacity: .6; margin-bottom: 6px; }
 .detail-route { display: block; font-size: 11px; opacity: .8; margin-bottom: 4px; }

@@ -24,85 +24,87 @@ const {
 </script>
 
 <template>
-  <div
-    v-if="!userStore.isLoggedIn"
-    class="identity-note"
-  >
-    {{ t('plugins.needLogin') }}
-  </div>
-  <a-spin
-    v-else
-    :spinning="pluginsLoading"
-  >
+  <ClientOnly>
     <div
-      v-for="p in plugins"
-      :key="p.name"
-      class="plugin-row"
-      :class="{ off: p.enabled === false }"
-    >
-      <div class="plugin-main">
-        <div class="rt-title">
-          <span class="aw-mono">{{ p.name }}</span>
-          <span
-            v-if="p.version"
-            class="rt-tag"
-          >v{{ p.version }}</span>
-          <span
-            v-if="p.builtin"
-            class="rt-tag src-runtime"
-          >{{ t('plugins.builtin') }}</span>
-          <span
-            v-if="p.error"
-            class="rt-tag restart"
-          >{{ p.error }}</span>
-        </div>
-        <div class="rt-sub">
-          {{ p.description || '—' }}
-        </div>
-      </div>
-      <div class="rt-ctrl">
-        <span
-          v-if="isCheckingHealth(p.name)"
-          class="plugin-health faint"
-        >
-          <span class="i-tabler-loader-2 spin" />
-          {{ t('plugins.healthChecking') }}
-        </span>
-        <span
-          v-else-if="healthOf(p.name)"
-          class="plugin-health"
-          :class="healthOf(p.name)!.ok ? 'ok' : 'bad'"
-        >
-          <span :class="healthOf(p.name)!.ok ? 'i-tabler-circle-check' : 'i-tabler-alert-circle'" />
-          {{ healthOf(p.name)!.ok ? t('plugins.healthOk') : `${t('plugins.healthBad')}: ${healthOf(p.name)!.reason ?? ''}` }}
-        </span>
-        <button
-          v-if="hasHealthRoute(p)"
-          class="aw-pill outline rt-reset"
-          @click="checkPluginHealth(p)"
-        >
-          <span class="i-tabler-heartbeat" />
-          {{ t('plugins.healthCheck') }}
-        </button>
-        <button
-          class="switch"
-          :class="{ on: p.enabled !== false }"
-          role="switch"
-          :aria-checked="p.enabled !== false"
-          :disabled="isToggling(p.name)"
-          @click="togglePlugin(p, p.enabled === false)"
-        >
-          <span class="knob" />
-        </button>
-      </div>
-    </div>
-    <div
-      v-if="plugins.length === 0 && !pluginsLoading"
+      v-if="!userStore.isLoggedIn"
       class="identity-note"
     >
-      {{ t('plugins.empty') }}
+      {{ t('plugins.needLogin') }}
     </div>
-  </a-spin>
+    <a-spin
+      v-else
+      :spinning="pluginsLoading"
+    >
+      <div
+        v-for="p in plugins"
+        :key="p.name"
+        class="plugin-row"
+        :class="{ off: p.enabled === false }"
+      >
+        <div class="plugin-main">
+          <div class="rt-title">
+            <span class="aw-mono">{{ p.name }}</span>
+            <span
+              v-if="p.version"
+              class="rt-tag"
+            >v{{ p.version }}</span>
+            <span
+              v-if="p.builtin"
+              class="rt-tag src-runtime"
+            >{{ t('plugins.builtin') }}</span>
+            <span
+              v-if="p.error"
+              class="rt-tag restart"
+            >{{ p.error }}</span>
+          </div>
+          <div class="rt-sub">
+            {{ p.description || '—' }}
+          </div>
+        </div>
+        <div class="rt-ctrl">
+          <span
+            v-if="isCheckingHealth(p.name)"
+            class="plugin-health faint"
+          >
+            <span class="i-tabler-loader-2 spin" />
+            {{ t('plugins.healthChecking') }}
+          </span>
+          <span
+            v-else-if="healthOf(p.name)"
+            class="plugin-health"
+            :class="healthOf(p.name)!.ok ? 'ok' : 'bad'"
+          >
+            <span :class="healthOf(p.name)!.ok ? 'i-tabler-circle-check' : 'i-tabler-alert-circle'" />
+            {{ healthOf(p.name)!.ok ? t('plugins.healthOk') : `${t('plugins.healthBad')}: ${healthOf(p.name)!.reason ?? ''}` }}
+          </span>
+          <button
+            v-if="hasHealthRoute(p)"
+            class="aw-pill outline rt-reset"
+            @click="checkPluginHealth(p)"
+          >
+            <span class="i-tabler-heartbeat" />
+            {{ t('plugins.healthCheck') }}
+          </button>
+          <button
+            class="switch"
+            :class="{ on: p.enabled !== false }"
+            role="switch"
+            :aria-checked="p.enabled !== false"
+            :disabled="isToggling(p.name)"
+            @click="togglePlugin(p, p.enabled === false)"
+          >
+            <span class="knob" />
+          </button>
+        </div>
+      </div>
+      <div
+        v-if="plugins.length === 0 && !pluginsLoading"
+        class="identity-note"
+      >
+        {{ t('plugins.empty') }}
+      </div>
+    </a-spin>
+  </ClientOnly>
 </template>
 
 <style scoped>

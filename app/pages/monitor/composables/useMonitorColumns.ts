@@ -22,11 +22,11 @@ export function useChannelColumns() {
   const ownerColumn = useOwnerColumn()
 
   return computed(() => [
-    { title: t('monitor.chChannel'), dataIndex: 'channelId', key: 'channelId' },
-    { title: t('monitor.members'), dataIndex: 'memberCount', key: 'memberCount', width: 100 },
-    { title: t('monitor.wired'), dataIndex: 'wiredAgentCount', key: 'wiredAgentCount', width: 90 },
-    { title: t('monitor.scheduler'), dataIndex: 'hasScheduler', key: 'hasScheduler', width: 110 },
-    { title: t('monitor.lead'), dataIndex: 'leadAgentId', key: 'leadAgentId' },
+    { title: t('monitor.chChannel'), dataIndex: 'channelId', key: 'channelId', width: '28%' },
+    { title: t('monitor.members'), dataIndex: 'memberCount', key: 'memberCount', width: '12%' },
+    { title: t('monitor.wired'), dataIndex: 'wiredAgentCount', key: 'wiredAgentCount', width: '10%' },
+    { title: t('monitor.scheduler'), dataIndex: 'hasScheduler', key: 'hasScheduler', width: '14%' },
+    { title: t('monitor.lead'), dataIndex: 'leadAgentId', key: 'leadAgentId', width: '26%' },
     ...ownerColumn.value,
   ])
 }

@@ -152,10 +152,10 @@ const toggleRight = (): void => {
 .ws-name {
   max-width: 260px;
   overflow: hidden;
-  font-family: var(--font-display);
-  font-weight: 400;
-  font-size: 17px;
-  letter-spacing: -0.01em;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 16px;
+  letter-spacing: -0.015em;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -239,6 +239,7 @@ const toggleRight = (): void => {
   }
 
   .topbar .left {
+    flex-wrap: wrap;
     row-gap: 8px;
   }
 
@@ -284,6 +285,20 @@ const toggleRight = (): void => {
 @media (max-width: 1023.98px) {
   .toggle-left-narrow {
     display: inline-flex;
+  }
+}
+
+/* 手机(≤640):频道胶囊让位给工作区名。频道仍可从左上抽屉切换,
+   不隐藏时 390px 下工作区名被压成「注塑…」而频道名反而完整。 */
+@media (max-width: 640px) {
+  .chan-chip {
+    display: none;
+  }
+
+  /* 视图切换条可横扫;右缘渐隐提示"还有更多视图"(不隐藏也点得到) */
+  .view-switch {
+    -webkit-mask-image: linear-gradient(90deg, #000 0 90%, transparent 100%);
+    mask-image: linear-gradient(90deg, #000 0 90%, transparent 100%);
   }
 }
 </style>

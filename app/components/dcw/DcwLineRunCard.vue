@@ -21,7 +21,7 @@ const lineRecipeId = defineModel<string>('recipeId', { required: true })
 </script>
 
 <template>
-  <section class="aw-tile line-card">
+  <section class="aw-tile line-run-card">
     <div class="line-status">
       <span
         class="line-dot"
@@ -128,7 +128,9 @@ const lineRecipeId = defineModel<string>('recipeId', { required: true })
 
 .inp { padding: 5px 9px; font-size: 12.5px; color: var(--ink); background: var(--paper-deep); border: 1px solid var(--line-strong); border-radius: var(--radius-chip); }
 
-.line-card { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; padding: 14px 18px; margin-bottom: 14px; }
+/* 注意:类名不能叫 .line-card —— dcw-page.css 的产线卡是**全局作用域**,
+ * 同名会把 flex-direction:column 叠进来,导致运行卡内容被居中(实测 /dcw/[id])。 */
+.line-run-card { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; padding: 14px 18px; margin-bottom: 14px; }
 .line-status { display: flex; gap: 12px; align-items: center; min-width: 260px; }
 .line-dot { width: 12px; height: 12px; border-radius: 50%; background: var(--tone-neutral-dot); box-shadow: 0 0 0 4px color-mix(in srgb, var(--tone-neutral-dot) 20%, transparent); }
 .line-dot.on { background: var(--tone-success-dot); box-shadow: 0 0 0 4px color-mix(in srgb, var(--tone-success-dot) 22%, transparent); animation: linePulse 1.6s infinite; }
@@ -143,7 +145,7 @@ const lineRecipeId = defineModel<string>('recipeId', { required: true })
 /* ══ 窄屏自适应层(≤900 手持/平板竖,≤640 单列)════════════════════════════
    375px 下本页的三类实测缺陷:网关总控条右侧三件套不换行(整块顶出画布)、
    运行控制行的两个 150px 选择器 + 按钮并排超宽、微标签 9~10.5px。 */
-  .line-card { gap: 12px; padding: 12px; }
+  .line-run-card { gap: 12px; padding: 12px; }
   .line-status { min-width: 0; }
   .line-ctl { width: 100%; }
   .ctl-sel { flex: 1 1 140px; min-width: 0; }

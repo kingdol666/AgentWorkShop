@@ -316,6 +316,9 @@ const bindDeviceId = defineModel<string>('bindDeviceId', { required: true })
 .field { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--ink-faint); flex: 1; }
 .field.row { flex-direction: row; align-items: center; gap: 8px; }
 .field.row small { color: var(--ink-faint); }
+/* 行内切换钮不参与压缩:窄列里被挤到 20px 会把中文压成竖排(实测 /daq/[id]) */
+.field.row .toggle { flex: 0 0 auto; white-space: nowrap; }
+.field.row .input { flex: 1 1 0; min-width: 0; }
 .field-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .input {
   width: 100%;
@@ -324,19 +327,21 @@ const bindDeviceId = defineModel<string>('bindDeviceId', { required: true })
   color: var(--ink);
   background: var(--paper-raised);
   border: 1px solid var(--line-strong);
-  border-radius: var(--radius-chip);
+  border-radius: var(--radius-control);
 }
 .input:disabled { opacity: 0.45; }
 .grow { flex: 1 1 auto; }
 .toggle {
   align-self: flex-start;
+  flex: 0 0 auto;
   padding: 6px 12px;
   font-size: 12px;
+  white-space: nowrap;
   cursor: pointer;
   color: var(--tone-neutral-dot);
   background: var(--tone-neutral-bg);
   border: 0;
-  border-radius: var(--radius-chip);
+  border-radius: var(--radius-control);
 }
 .toggle.on { color: var(--tone-success-dot); background: var(--tone-success-bg); }
 .toggle.slim { padding: 6px 10px; font-size: 11.5px; }

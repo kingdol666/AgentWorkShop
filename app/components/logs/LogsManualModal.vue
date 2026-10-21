@@ -97,7 +97,7 @@ function onSubmit(): void {
         </label>
         <div class="m-grid">
           <label class="m-f">
-            <span>{{ $t('logs.fLine') }}</span>
+            <span>{{ $t('logs.fLine') }} *</span>
             <select
               v-model="draft.lineId"
               class="inp-sel"
@@ -168,7 +168,7 @@ function onSubmit(): void {
           </button>
           <button
             class="pill-btn"
-            :disabled="posting || !draft.summary.trim()"
+            :disabled="posting || !draft.summary.trim() || !draft.lineId"
             @click="onSubmit"
           >
             {{ $t('logs.mSubmit') }}

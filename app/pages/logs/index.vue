@@ -14,6 +14,8 @@
       v-model:actor-kind="q.actorKind"
       v-model:kind="q.kind"
       v-model:level="q.level"
+      v-model:from="q.from"
+      v-model:to="q.to"
       v-model:text="q.text"
       :has-filter="hasFilter"
       :loading="opsLog.loading.list"

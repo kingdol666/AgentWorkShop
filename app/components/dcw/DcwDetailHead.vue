@@ -51,9 +51,9 @@ defineProps<{
   box-shadow: 0 0 10px currentColor;
 }
 
-h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.015em; }
+h1 { margin: 2px 0 4px; font-size: 28px; font-weight: 600; letter-spacing: -0.022em; }
 
-.sub { margin: 0; font-size: 12.5px; opacity: 0.6; }
+.sub { margin: 0; font-size: 13px; color: var(--ink-faint); }
 .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 
 .badges { display: flex; gap: 8px; }

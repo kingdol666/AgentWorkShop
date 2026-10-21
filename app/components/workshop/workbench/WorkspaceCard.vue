@@ -90,9 +90,10 @@ const emit = defineEmits<{
 }
 
 .card-head .name {
-  font-family: var(--font-display);
-  font-size: 17px;
-  letter-spacing: -0.01em;
+  font-family: var(--font-body);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
   color: var(--ink);
 }
 

@@ -6,7 +6,7 @@
  * 写控行带结构化变更(prevValue → eng),行内可展开完整详情 JSON。
  * 数据由页面传入(REST 快照 + WS 实时帧合并后的同一数组)。
  */
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { classifyOpsRow, CATEGORY_ICONS, diffOf, type OperationCategory } from '@/app/pages/operations/composables/useOperationsFeed'
 import type { OpsLogRow } from '@/app/composables/workshop/useOpsLog'
 import { formatLocalClock } from '@/app/composables/workshop/useLocalTime'
@@ -18,6 +18,14 @@ const props = defineProps<{
 }>()
 
 const expandedId = ref<number | null>(null)
+
+/* 操作流水一次合并 200 条(快照 + WS),整条直出是 1.2 万像素的单页。
+ * 25 条/页:保留"最近发生了什么"的密度,同时给出稳定的翻页参照。 */
+const PAGE_SIZE = 25
+const page = ref(1)
+const pagedRows = computed(() =>
+  props.rows.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE),
+)
 
 function toggle(row: OpsLogRow): void {
   expandedId.value = expandedId.value === row.id ? null : row.id
@@ -94,7 +102,7 @@ function statsPairs(): Array<{ key: OperationCategory, count: number }> {
       class="stream-list"
     >
       <li
-        v-for="row in rows"
+        v-for="row in pagedRows"
         :key="`${row.id}-${row.at}-${row.action}`"
         class="op-row"
         :class="[catOf(row), { open: expandedId === row.id }]"
@@ -110,7 +118,10 @@ function statsPairs(): Array<{ key: OperationCategory, count: number }> {
           <span class="op-body">
             <span class="op-top">
               <span class="op-cat">{{ $t(`operations.cat.${catOf(row)}`) }}</span>
-              <span class="op-summary">{{ row.summary || row.action }}</span>
+              <span
+                class="op-summary"
+                :title="row.summary"
+              >{{ row.summary || row.action }}</span>
             </span>
             <span class="op-sub">
               <span
@@ -139,26 +150,40 @@ function statsPairs(): Array<{ key: OperationCategory, count: number }> {
         >{{ detailOf(row) || $t('operations.noDetail') }}</pre>
       </li>
     </ol>
+
+    <div
+      v-if="rows.length > 0"
+      class="stream-foot"
+    >
+      <span class="stream-total">{{ $t('operations.totalCount', { n: rows.length }) }}</span>
+      <a-pagination
+        v-model:current="page"
+        :page-size="PAGE_SIZE"
+        :total="rows.length"
+        :show-size-changer="false"
+        :show-less-items="true"
+        size="small"
+      />
+    </div>
   </section>
 </template>
 
 <style scoped>
 .ops-stream {
   padding: 12px 14px;
-  background: var(--surface-glass);
-  border: 1px solid var(--glass-line);
-  border-radius: 10px;
-  backdrop-filter: var(--aurora-blur) saturate(1.15);
+  background: var(--surface-card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
 }
 .stream-stats { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
 .stream-stat {
   display: inline-flex; align-items: center; gap: 6px;
-  padding: 5px 9px; font-size: 11px; color: var(--ink-soft);
-  background: color-mix(in srgb, var(--paper-deep) 72%, transparent);
-  border: 1px solid var(--glass-line); border-radius: 999px;
+  padding: 5px 9px; font-size: 11.5px; color: var(--ink-soft);
+  background: var(--paper-deep);
+  border: 1px solid var(--line); border-radius: var(--radius-chip);
 }
 .stream-stat b { font-size: 12.5px; color: var(--ink); }
-.stream-stat small { font-size: 10px; color: var(--ink-faint); }
+.stream-stat small { font-size: 11px; color: var(--ink-faint); }
 .stream-stat.write span:first-child { color: #c98922; }
 .stream-stat.daq span:first-child { color: #159f9a; }
 .stream-stat.aml span:first-child { color: #7657ad; }
@@ -193,19 +218,31 @@ function statsPairs(): Array<{ key: OperationCategory, count: number }> {
 
 .op-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .op-top { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
-.op-cat { flex: none; padding: 1px 7px; font: 9.5px var(--font-mono); letter-spacing: .06em; color: var(--ink-soft); background: color-mix(in srgb, var(--ink) 7%, transparent); border-radius: 999px; }
+.op-cat { flex: none; padding: 1px 7px; font: 11px var(--font-mono); letter-spacing: .06em; color: var(--ink-soft); background: color-mix(in srgb, var(--ink) 7%, transparent); border-radius: var(--radius-chip); }
 .op-summary { overflow: hidden; font-size: 12.5px; color: var(--ink); text-overflow: ellipsis; white-space: nowrap; }
-.op-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 10.5px; color: var(--ink-faint); }
-.op-actor.agent { color: #4da3c9; }
+.op-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 11.5px; color: var(--ink-faint); }
+.op-actor.agent { color: var(--tone-info-dot); }
 .op-actor.user { color: var(--ink-soft); }
-.op-diff { display: inline-flex; align-items: center; gap: 4px; font-size: 10.5px; }
+.op-diff { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; }
 .op-diff del { color: var(--ink-faint); }
-.op-diff ins { color: #35e0a0; text-decoration: none; }
+.op-diff ins { color: var(--tone-success-dot); text-decoration: none; }
 .op-diff-bad { color: var(--tone-danger-dot); }
 .op-action { overflow: hidden; max-width: 260px; text-overflow: ellipsis; white-space: nowrap; }
-.op-time { flex: none; font-size: 10px; color: var(--ink-faint); }
+.op-time { flex: none; font-size: 11px; color: var(--ink-faint); }
 
-.op-detail { overflow: auto; max-height: 220px; margin: 0 10px 10px 44px; padding: 8px 10px; font-size: 10.5px; line-height: 1.5; color: var(--ink-soft); background: color-mix(in srgb, var(--paper-deep) 85%, transparent); border: 1px solid var(--glass-line); border-radius: 7px; }
+/* 流水页脚:总数 + 分页 */
+.stream-foot {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 10px;
+  margin-top: 6px;
+  border-top: 1px solid var(--divider-hair);
+}
+.stream-total { font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-faint); font-variant-numeric: tabular-nums; }
+
+.op-detail { overflow: auto; max-height: 220px; margin: 0 10px 10px 44px; padding: 8px 10px; font-size: 11.5px; line-height: 1.5; color: var(--ink-soft); background: var(--paper-deep); border: 1px solid var(--line); border-radius: var(--radius-control); }
 
 @media (max-width: 640px) {
   .op-main { grid-template-columns: 22px minmax(0, 1fr); }

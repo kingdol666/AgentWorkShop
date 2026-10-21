@@ -1165,6 +1165,9 @@ export async function toolRecipeApply(agentId: string, args: {
   // Recipe 级下发间隔卡控(提案早拒):距上次已批准下发不足 opIntervalMs 即拒,不建卡
   const cadence = recipeOpIntervalGate(recipe, emergency)
   if (cadence) return cadence
+  // 审批展示与执行共用值副本;仓库会原地更新 recipe,不能把其引用当作已批准快照。
+  const approvedDefinition = JSON.stringify(recipe)
+  const dispatch = { name: recipe.name, version: recipe.version ?? 1, params: recipe.params.map(p => ({ ...p })) }
   try {
     // HITL 门:manual 绑定(或全局开关)时,正式下发前先挂起等人工裁决(拒绝附指导 → 回给 Agent 修订)
     let hitlNote = ''
@@ -1173,19 +1176,19 @@ export async function toolRecipeApply(agentId: string, args: {
       const gateDecision = await hitlDispatchGate(
         agentId,
         recipe.id,
-        `${emergency ? '【应急豁免频控】' : ''}配方正式下发:「${recipe.name}」v${recipe.version ?? 1} 全参数整批(${recipe.params.length} 项):${recipe.params.map((p) => {
+        `${emergency ? '【应急豁免频控】' : ''}配方正式下发:「${dispatch.name}」v${dispatch.version} 全参数整批(${dispatch.params.length} 项):${dispatch.params.map((p) => {
           const node = getDcwController().byId(p.nodeId)
           return `${node?.name ?? p.nodeId}=${p.value}${node?.unit ?? ''}`
         }).join(';')} | 理由:${reason} | 批准=整批下发;拒绝可附指导`,
         `${emergency ? '【应急】' : ''}配方下发审批`,
         { payload: { ...recipeApprovalPayload('dispatch', recipe.id, recipe.name, {
           reason,
-          params: recipe.params.map((p) => {
+          params: dispatch.params.map((p) => {
             const node = getDcwController().byId(p.nodeId)
             return { nodeId: p.nodeId, name: node?.name ?? p.nodeId, from: null, to: p.value, unit: node?.unit }
           }),
           runId: gate.activeRunId,
-        }), ...(emergency ? { emergency: true } : {}) } },
+        }), recipeVersion: dispatch.version, ...(emergency ? { emergency: true } : {}) } },
       )
       gateApprovalId = gateDecision.id
       if (!gateDecision.approved) {
@@ -1198,7 +1201,13 @@ export async function toolRecipeApply(agentId: string, args: {
       const stale = await revalidateApprovedAction(agentId, recipe, 'dispatch', 'recipe_apply', { recipe_id: recipeId })
       if (stale) return stale
     }
-    const run = await getDcwController().applyRecipe(recipeId, { agentDispatch: true, agentApprovalId: gateApprovalId, emergency })
+    // 放在最后一次 await 之后,与 applyRecipe 的同步取值/建批之间不再让出执行权。
+    const currentRecipe = getDcwRecipeRepo().byId(recipeId)
+    if (!currentRecipe || JSON.stringify(currentRecipe) !== approvedDefinition) {
+      return { text: '配方在审批期间已变更,与本次审批展示的快照不一致,本次未执行。请核查最新配方后重新提交 recipe_apply。', isError: true }
+    }
+    // 完整覆盖集让控制器复制每个已批准值,逐参数异步写期间也不再共享可变配方参数。
+    const run = await getDcwController().applyRecipe(recipeId, { overrides: dispatch.params, agentDispatch: true, agentApprovalId: gateApprovalId, emergency })
     // ACK 鉴定三段口径(2026-10-08):ok 只是命令受理,未证实/失败必须如实回给 Agent
     const acks = run.ackSummary ?? { verified: run.results.filter(r => r.ok).length, unverified: 0, failed: run.results.filter(r => !r.ok).length, total: run.results.length }
     // 逐参数标注:被跳过/失败的参数(节点停用/已删除/限界拒绝)必须透出给 Agent,
@@ -1222,7 +1231,7 @@ export async function toolRecipeApply(agentId: string, args: {
         actor: agentId, actorName: agentBadgeLabel(agentId), actorKind: 'agent',
         action: 'recipe.apply', kind: 'recipe', targetKind: 'recipe', targetId: recipeId, recipeId, lineId: recipe.lineId, productId: recipe.productId,
         level: acks.failed > 0 ? 'error' : acks.unverified > 0 ? 'warn' : 'info',
-        summary: `${emergency ? '【应急】' : ''}Agent 整批下发配方 v${recipe.version ?? 1}(证实 ${acks.verified}/${acks.total},未证实 ${acks.unverified},失败 ${acks.failed},批次 ${run.id.slice(0, 8)}) | 原因:${reason}`,
+        summary: `${emergency ? '【应急】' : ''}Agent 整批下发配方 v${dispatch.version}(证实 ${acks.verified}/${acks.total},未证实 ${acks.unverified},失败 ${acks.failed},批次 ${run.id.slice(0, 8)}) | 原因:${reason}`,
         detail: { runId: run.id, ackSummary: acks, ...(emergency ? { emergency: true } : {}) },
       })
     }
@@ -1230,7 +1239,7 @@ export async function toolRecipeApply(agentId: string, args: {
     if (acks.failed > 0 || acks.unverified > 0) {
       return {
         text: [
-          `配方「${recipe.name}」v${recipe.version ?? 1} 整批下发 ACK 鉴定未全绿(证实 ${acks.verified}/${acks.total},未证实 ${acks.unverified},失败 ${acks.failed},批次 ${run.id.slice(0, 8)})。${hitlNote}`,
+          `配方「${dispatch.name}」v${dispatch.version} 整批下发 ACK 鉴定未全绿(证实 ${acks.verified}/${acks.total},未证实 ${acks.unverified},失败 ${acks.failed},批次 ${run.id.slice(0, 8)})。${hitlNote}`,
           `${skippedNote}${unverifiedNote}`,
           '请用 daq_query 复测未证实参数的真实状态;必要时 dcw_control 单独重发或 recipe_rollback(dispatch=true) 统一回退,并把清单写入汇报提醒人类。',
         ].filter(Boolean).join('\n'),
@@ -1238,7 +1247,7 @@ export async function toolRecipeApply(agentId: string, args: {
       }
     }
     return {
-      text: `配方「${recipe.name}」v${recipe.version ?? 1} 已整批下发并全部设备证实(${acks.verified}/${acks.total},批次 ${run.id.slice(0, 8)})。${skippedNote}${hitlNote}用 daq_query 复测确认工艺响应。`,
+      text: `配方「${dispatch.name}」v${dispatch.version} 已整批下发并全部设备证实(${acks.verified}/${acks.total},批次 ${run.id.slice(0, 8)})。${skippedNote}${hitlNote}用 daq_query 复测确认工艺响应。`,
     }
   }
   catch (err) {

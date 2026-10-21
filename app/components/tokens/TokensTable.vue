@@ -48,12 +48,20 @@ const rowDisplay = (t: TokenMeta): string => {
 const fmt = (s: string | null): string => (s ? s.replace('T', ' ').slice(0, 19) : '-')
 
 const columns = [
-  { title: tt('tokens.k41416002'), key: 'label', dataIndex: 'label' },
+  { title: tt('tokens.k41416002'), key: 'label', dataIndex: 'label', width: 260 },
   { title: 'Token', key: 'token', width: 360 },
   { title: tt('tokens.k1bg95gk023'), key: 'createdAt', dataIndex: 'createdAt', width: 170 },
   { title: tt('tokens.k1euotul024'), key: 'lastUsedAt', dataIndex: 'lastUsedAt', width: 200 },
   { title: tt('tokens.k40aa6025'), key: 'action', width: 170 },
 ]
+
+/* 101 条会话 Token 直出会把单页拉到 8000px(实测);20 条/页是
+ * 「当前会话 + 历史签发」混合列表的可扫描密度。 */
+const pagination = {
+  pageSize: 20,
+  showSizeChanger: false,
+  size: 'small' as const,
+}
 </script>
 
 <template>
@@ -65,21 +73,24 @@ const columns = [
       <a-table
         :columns="columns"
         :data-source="rows"
-        :pagination="false"
+        :pagination="pagination"
         row-key="id"
       >
         <template #bodyCell="{ column, record }">
           <template v-if="column.key === 'label'">
-            <a-space>
+            <div class="label-cell">
               <span class="i-tabler-key text-primary" />
-              <span class="font-medium">{{ record.label || $t('tokens.kj3mklm028') }}</span>
+              <span
+                class="tok-label"
+                :title="record.label || $t('tokens.kj3mklm028')"
+              >{{ record.label || $t('tokens.kj3mklm028') }}</span>
               <a-tag
                 v-if="record.id === currentTokenId"
                 color="green"
               >
                 {{ $t('tokens.k1defr98007') }}
               </a-tag>
-            </a-space>
+            </div>
           </template>
           <template v-else-if="column.key === 'token'">
             <div class="tok-cell">
@@ -114,10 +125,10 @@ const columns = [
             </div>
           </template>
           <template v-else-if="column.key === 'createdAt'">
-            {{ fmt(record.createdAt) }}
+            <span class="tok-date">{{ fmt(record.createdAt) }}</span>
           </template>
           <template v-else-if="column.key === 'lastUsedAt'">
-            {{ fmt(record.lastUsedAt) }}
+            <span class="tok-date">{{ fmt(record.lastUsedAt) }}</span>
           </template>
           <template v-else-if="column.key === 'action'">
             <a-space>
@@ -156,6 +167,24 @@ const columns = [
 <style scoped>
 .table-card { margin-bottom: 16px; }
 
+.label-cell {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.label-cell > .i-tabler-key,
+.label-cell :deep(.ant-tag) { flex: 0 0 auto; }
+
+.tok-label {
+  overflow: hidden;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 /* ===== 列表行 token 单元格 ===== */
 .tok-cell {
   display: flex;
@@ -183,6 +212,14 @@ const columns = [
 .tok-val.revealed {
   color: var(--accent);
   user-select: all;
+}
+
+.tok-date {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .tok-op {

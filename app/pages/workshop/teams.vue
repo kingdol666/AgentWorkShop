@@ -73,10 +73,12 @@ useHead({ title: () => t('titles.teams') })
           { value: 'builtin', label: $t('chips.builtin') },
         ]"
       />
-      <span
-        v-if="isAdmin"
-        class="admin-note"
-      ><span class="i-tabler-shield-check" /> {{ $t('teams.k1bpgi8h010') }}</span>
+      <ClientOnly>
+        <span
+          v-if="isAdmin"
+          class="admin-note"
+        ><span class="i-tabler-shield-check" /> {{ $t('teams.k1bpgi8h010') }}</span>
+      </ClientOnly>
     </div>
 
     <a-spin :spinning="loading">
@@ -155,7 +157,9 @@ h2 { margin: 0 0 4px; }
 }
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  /* auto-fit:已装配的组不足一行时铺满可用列,不在右侧留一整列空白
+     (实测 1600 视口 3 个编组 + auto-fill = 3 卡 + 1 列空)。 */
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 12px;
 }
 /* 卡片本体的规则现在归 TeamCard.vue;这里只为同一网格里的占位卡留一份逐字拷贝 ——

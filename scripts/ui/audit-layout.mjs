@@ -72,6 +72,24 @@ const AUDIT_FN = function () {
     }
     return null
   }
+  /** 插件 HUD 是**有意悬浮**的第三方表面(右下角状态徽标);它不参与内容遮挡判定。
+   *  平台自己的固定件(页头/页脚/抽屉)仍然受检。 */
+  const isPluginHud = el => Boolean(el.closest?.('[id^="aw-plugin-"]') || el.id === 'line-sentinel-badge')
+  /** 元素被某个 overflow 容器完全裁掉(如滚动列表的离屏行):几何矩形仍相交,
+   *  但用户看不见,不应算作遮挡。 */
+  const clippedAway = (el) => {
+    const r = rect(el)
+    let p = el.parentElement
+    while (p && p !== document.body) {
+      const cs = getComputedStyle(p)
+      if (cs.overflowX !== 'visible' || cs.overflowY !== 'visible') {
+        const pr = rect(p)
+        if (r.bottom <= pr.top || r.top >= pr.bottom || r.right <= pr.left || r.left >= pr.right) return true
+      }
+      p = p.parentElement
+    }
+    return false
+  }
 
   // 1. 文档级横向溢出
   const de = document.documentElement
@@ -174,6 +192,9 @@ const AUDIT_FN = function () {
     const t = (el.textContent || '').trim()
     if (t.length < 2 || !visible(el)) continue
     const cs = getComputedStyle(el)
+    // difference/plus-lighter 等混合模式下的有效前景色无法由 computed color 还原,
+    // 直接跳过对比度判定(实际可读性由截图中的人工走查负责)。
+    if (cs.mixBlendMode && cs.mixBlendMode !== 'normal') continue
     const fg = parseColor(cs.color)
     if (!fg) continue
     const bg = effBg(el)
@@ -213,6 +234,8 @@ const AUDIT_FN = function () {
     for (let j = i + 1; j < blocks.length; j++) {
       const a = blocks[i], b = blocks[j]
       if (a.contains(b) || b.contains(a)) continue
+      if (isPluginHud(a) || isPluginHud(b)) continue
+      if (clippedAway(a) || clippedAway(b)) continue
       const ra = rect(a), rb = rect(b)
       const ox = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left)
       const oy = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top)

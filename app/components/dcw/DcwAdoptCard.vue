@@ -57,19 +57,20 @@ const emit = defineEmits<{
    在此各持一份逐字相同的副本,以保证每个元素命中的声明集与拆分前一致,同时不引入任何全局选择器。 */
 
 .adopt-card { display: flex; gap: 12px; align-items: flex-start; flex-wrap: wrap; }
-.adopt-title { font-size: 12px; color: var(--aw-dim, #8fa0b5); flex: none; padding-top: 4px; }
-.adopt-list { display: flex; gap: 8px; flex-wrap: wrap; }
+.adopt-title { font-size: 12px; color: var(--ink-faint); flex: none; padding-top: 4px; }
+.adopt-list { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; max-width: 100%; }
 .adopt-chip {
   display: inline-flex;
   flex-wrap: wrap;
   gap: 6px;
   align-items: center;
+  max-width: 100%;
   padding: 4px 8px;
-  font-size: 11.5px;
-  color: #e8eef8;
-  background: rgba(13, 20, 32, 0.7);
-  border: 1px solid rgba(60, 80, 110, 0.5);
-  border-radius: 8px;
+  font-size: 12px;
+  color: var(--ink);
+  background: var(--paper-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
 }
 
 .mini-btn { margin-right: 4px; }

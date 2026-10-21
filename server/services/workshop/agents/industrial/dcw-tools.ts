@@ -191,7 +191,7 @@ async function dcwControlGovernedLegacy(agentId: string, args: { node_id?: strin
           }
         : undefined,
     })
-    if (!ap.ok) return { text: ap.text, isError: ap.isError }
+    if (!ap.ok) return { text: ap.text, isError: true }
     manualFeedback = ap.comment ?? ''
   }
 

@@ -182,10 +182,10 @@ const rendered = computed(() => mdLiteMentions(full.value.slice(0, visible.value
 .prose :deep(h4),
 .prose :deep(h5) {
   margin: 12px 0 5px;
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-weight: 600;
   font-size: 15px;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.015em;
   line-height: 1.35;
   color: var(--ink);
 }

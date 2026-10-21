@@ -285,8 +285,8 @@ const contextText = (r: AnalysisReportView): string => {
 .th-detail { width: 92px; }
 .title-cell { max-width: 320px; font-weight: 600; font-size: 13px; line-height: 1.55; text-wrap: pretty; }
 .cat-chip {
-  display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: 999px;
-  font-size: 10.5px; font-weight: 500; color: var(--ink-faint);
+  display: inline-block; margin-left: 6px; padding: 1px 7px; border-radius: var(--radius-chip);
+  font-size: 11px; font-weight: 500; color: var(--ink-faint);
   background: color-mix(in srgb, var(--glass-line) 40%, transparent);
   vertical-align: 1px;
 }
@@ -299,6 +299,7 @@ const contextText = (r: AnalysisReportView): string => {
 .src small { display: block; }
 .mono { font-family: var(--font-mono, monospace); font-size: 11.5px; }
 .dim { color: var(--ink-faint); }
+.src small { display: block; font-size: 11px; line-height: 1.4; }
 .empty { padding: 28px 12px !important; text-align: center; color: var(--ink-faint); }
 .scope-chip {
   display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 11px;

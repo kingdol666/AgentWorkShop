@@ -54,6 +54,16 @@ const { addOpen, addScenario, addTemplate, addDriver, addName, addHold, addRead,
 const mesArtifactsOpen = ref(false)
 const mesArtifactsNodeId = ref('')
 const mesArtifactsNodeName = ref('')
+// 配方下发历史(与 Agent recipe_log 同源的产线域审计)
+const dispatchHistoryOpen = ref(false)
+const dispatchHistoryRecipeId = ref('')
+const dispatchHistoryRecipeName = computed(() =>
+  lineRecipesAll.value.find(r => r.id === dispatchHistoryRecipeId.value)?.name ?? '',
+)
+function openDispatchHistory(id: string): void {
+  dispatchHistoryRecipeId.value = id
+  dispatchHistoryOpen.value = true
+}
 function openMesArtifacts(nodeId: string): void {
   mesArtifactsNodeId.value = nodeId
   mesArtifactsNodeName.value = lineNodes.value.find(n => n.id === nodeId)?.name ?? nodeId
@@ -269,11 +279,19 @@ const { items: rdItems, comments: rdComments, decidingId: rdDecidingId, decideEr
       @apply="doApplyRecipe"
       @edit="openRecipeEdit"
       @history="openRecipeHistory"
+      @dispatch-history="openDispatchHistory"
       @remove-recipe="dcw.removeRecipe"
       @remove-product="dcw.removeProduct"
       @view-run="doViewRun"
       @close-run="dcw.closeRun"
       @close-run-data="runDataView = null"
+    />
+
+    <!-- 配方下发历史(产线域审计;与 Agent recipe_log 同源) -->
+    <DcwRecipeDispatchHistoryModal
+      v-model:open="dispatchHistoryOpen"
+      :recipe-id="dispatchHistoryRecipeId"
+      :recipe-name="dispatchHistoryRecipeName"
     />
 
     <!-- 配方编辑弹窗 -->

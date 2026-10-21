@@ -21,7 +21,7 @@ export async function requestManualApproval(args: {
    * 配方授权路径传「绑定配方仍存在且仍包含该参数节点」——否则批准时绑定已解除仍会执行。
    */
   verify?: () => boolean
-}): Promise<{ ok: true, comment: string } | { ok: false, text: string, isError?: boolean }> {
+}): Promise<{ ok: true, comment: string } | { ok: false, text: string, isError: true }> {
   const action = args.action ?? '下发'
   const pendingText = action === '回退'
     ? '你对该节点已有一条待审批指令,请等待用户处理后再发新的回退请求(避免审批堆积)。'
@@ -36,6 +36,7 @@ export async function requestManualApproval(args: {
     return {
       ok: false,
       text: `${resultPrefix}:用户${ap.comment.includes('超时') ? '未在时限内批准(超时)' : `拒绝了本次${action}`}。用户备注:${ap.comment || '(无)'}`,
+      isError: true,
     }
   }
   // 审批期间节点可能被解绑/删除(权限在批准时失效):二次校验

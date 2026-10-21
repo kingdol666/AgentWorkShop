@@ -34,7 +34,7 @@
 }
 
 .auth-card { width: 460px; max-width: 92vw; }
-.auth-card h2 { margin: 0 0 8px; font-family: var(--font-display); }
+.auth-card h2 { margin: 0 0 8px; font-family: var(--font-body); font-weight: 600; }
 
 /* 描述行:.sub 在 TokensPageHead.vue(页头描述)另有一份同样的拷贝 ——
    有意重复(scoped 样式不能外移成公共 css),改一处同步两处。 */

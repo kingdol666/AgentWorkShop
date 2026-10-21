@@ -72,12 +72,15 @@ const emit = defineEmits<{
   flex: 1 1 auto;
   min-height: 0;
 }
-/* 群成员面板只占右栏下部一段:检查器(Agent/Task 详情)仍是主信息面 */
+/* 群成员面板只占右栏下部一段:检查器(Agent/Task 详情)仍是主信息面。
+   面板内允许纵向滚动:群聊设置(可见性/入群/审批/开关/保存)比 46% 更高,
+   不给滚动时"保存设置"会被裁掉且不可达。 */
 .right-chat {
   flex: 0 0 auto;
   max-height: 46%;
   min-height: 0;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   border-top: 1px solid var(--line);
 }
 .right-pane.empty { opacity: 0.35; }

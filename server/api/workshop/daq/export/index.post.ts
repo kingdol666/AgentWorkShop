@@ -30,6 +30,7 @@ export default defineApiHandler(async (event) => {
       title: body.title ? String(body.title) : undefined,
       note: body.note ? String(body.note) : undefined,
       merge: body.merge === true || body.merge === 'true',
+      runId: body.run_id ? String(body.run_id) : undefined,
     })
     return { job }
   }

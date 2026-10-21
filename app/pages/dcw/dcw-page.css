@@ -18,13 +18,17 @@
 .tpl-btn { color: var(--tone-info-dot); background: var(--tone-info-bg); border-color: color-mix(in srgb, var(--tone-info-dot) 34%, transparent); cursor: pointer; }
 .tpl-btn:hover { border-color: color-mix(in srgb, var(--tone-info-dot) 60%, transparent); }
 
-/* 清单筛选条:状态分段 + 搜索(与页内控件同一语言) */
+/* 清单筛选条:状态分段 + 搜索(收进一条工具带,不漂浮在画布网格上) */
 .fleet-filter {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
   align-items: center;
+  padding: 8px 12px;
   margin-bottom: 14px;
+  background: var(--surface-card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
 }
 .fleet-filter .aw-seg button {
   font-family: var(--font-mono);
@@ -33,23 +37,22 @@
 }
 .fleet-search {
   width: 220px;
+  height: 32px;
+  padding: 0 11px;
   margin-left: auto;
-  height: 30px;
-  padding: 0 10px;
-  font-size: 11.5px;
+  font-size: 12.5px;
   color: var(--ink);
-  background: var(--paper-deep);
+  background: var(--paper-raised);
   border: 1px solid var(--line-strong);
-  border-radius: var(--radius-panel-sm);
+  border-radius: var(--radius-control);
 }
-.fleet-search:focus { outline: none; border-color: var(--tone-success-dot); box-shadow: 0 0 0 3px var(--accent-soft); }
+.fleet-search:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
 .line-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 14px;
 }
-/* 产线卡 = Aurora Glass 仪表砖:半透 surface + 深模糊 + 内缘折射;
-   运行卡在玻璃顶缘叠一线产线色洗染做「图」,待机卡收敛为磨砂做「底」 */
+/* 产线卡:实心 surface + 1px 发丝边;运行卡在顶缘叠一线产线色洗染做「图」 */
 .line-card {
   position: relative;
   display: flex;
@@ -57,28 +60,26 @@
   gap: 9px;
   padding: 14px 16px;
   text-align: left;
-  background: var(--surface-glass);
-  backdrop-filter: var(--aurora-blur);
-  border: 1px solid var(--glass-line);
+  background: var(--surface-card);
+  border: 1px solid var(--line);
   border-radius: var(--radius-panel);
-  box-shadow: var(--glass-edge);
   transition: border-color var(--transition-base), transform var(--transition-base), box-shadow var(--transition-base);
 }
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   .line-card:hover {
-    border-color: color-mix(in srgb, var(--lc, #3aa0ff) 55%, var(--line-strong));
-    transform: translateY(-2px);
-    box-shadow: var(--glass-edge), var(--shadow-float);
+    border-color: color-mix(in srgb, var(--lc, #3aa0ff) 45%, var(--line-strong));
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lift-1);
   }
 }
 .line-card:not(.idle) {
   border-color: color-mix(in srgb, var(--lc, #3aa0ff) 38%, var(--line-strong));
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--lc, #3aa0ff) 9%, transparent), transparent 46%),
-    var(--surface-glass);
+    linear-gradient(180deg, color-mix(in srgb, var(--lc, #3aa0ff) 7%, transparent), transparent 46%),
+    var(--surface-card);
 }
 .line-card.idle {
-  background: var(--frost-bg);
+  background: var(--surface-card);
 }
 .line-card.idle .lc-dot {
   box-shadow: none;
@@ -115,10 +116,10 @@
 /* 线级控制模式总闸标签(2026-10-08):手动=缺省安全色,自动=警示橙(审批闸门已摘) */
 .lc-mode {
   flex: none;
-  font-size: 10.5px;
+  font-size: 11px;
   line-height: 1;
   padding: 3px 7px;
-  border-radius: 999px;
+  border-radius: var(--radius-chip);
   border: 1px solid var(--tone-success-dot, #35e0a0);
   color: var(--tone-success-dot, #35e0a0);
   background: color-mix(in srgb, var(--tone-success-dot, #35e0a0) 10%, transparent);

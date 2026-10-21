@@ -68,11 +68,19 @@ const emit = defineEmits<{
 
 .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 
-.ctrl-card { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; justify-content: space-between; padding: 14px 18px; margin-bottom: 14px; }
+/* 网关总控条:左启停 / 右指标 + 入口,固定两栏(不靠 justify-between 的偶然余量) */
+.ctrl-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  padding: 12px 16px;
+  margin-bottom: 14px;
+}
 .ctrl-left { display: flex; gap: 14px; align-items: center; }
 .aw-pill.running { background: var(--accent); }
-.ctrl-right { display: flex; gap: 12px; align-items: center; }
-.ctrl-metrics { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; font-size: 11.5px; color: var(--ink-soft); }
+.ctrl-right { display: flex; flex-wrap: wrap; gap: 10px 12px; align-items: center; justify-content: flex-end; }
+.ctrl-metrics { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; margin-right: 4px; font-size: 11.5px; color: var(--ink-soft); }
 .ctrl-metrics .sep { opacity: 0.4; }
 .ctrl-metrics .warn { color: var(--tone-warning-dot); }
 .add-btn { padding: 8px 16px; font-size: 13px; }
@@ -83,9 +91,9 @@ const emit = defineEmits<{
 /* ══ 窄屏自适应层(≤900 手持/平板竖,≤640 单列)════════════════════════════
    375px 下本页的三类实测缺陷:网关总控条右侧三件套不换行(整块顶出画布)、
    运行控制行的两个 150px 选择器 + 按钮并排超宽、微标签 9~10.5px。 */
-  .ctrl-card { gap: 12px; padding: 12px; }
-  .ctrl-right { flex-wrap: wrap; gap: 8px 10px; width: 100%; }
-  .ctrl-metrics { width: 100%; }
+  .ctrl-card { grid-template-columns: 1fr; gap: 12px; padding: 12px; }
+  .ctrl-right { flex-wrap: wrap; gap: 8px 10px; justify-content: flex-start; }
+  .ctrl-metrics { width: 100%; margin-right: 0; }
   /* 触摸目标:手持命中区 ≥40px(main.css 只在 pointer:coarse 下兜底) */
   .aw-pill {
     min-height: 40px;

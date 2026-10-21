@@ -41,6 +41,11 @@ export function useLogsManual(deps: LogsManualDeps) {
   }
 
   async function submitManual(draft: LogsManualDraft): Promise<void> {
+    // 产线日志只接收带产线归属的记录;少这一维会落成全局审计,用户在日志页看不到
+    if (!draft.lineId.trim()) {
+      message.error(tt('logs.mLineRequired'))
+      return
+    }
     try {
       const note = draft.detail.trim()
       await opsLog.postManual({

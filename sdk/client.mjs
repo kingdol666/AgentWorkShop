@@ -88,7 +88,14 @@ export function createClientContext({ name, eventBridge, baseUrl = '', ui, t, ge
       rootEl ??= (() => {
         const found = document.getElementById(`aw-plugin-${name}`)
         if (found) return found
-        const box = el('div', { id: `aw-plugin-${name}`, style: 'position:fixed;right:16px;bottom:16px;z-index:2147483000;font:12px/1.6 ui-monospace,monospace' })
+        // 右下角插件坞:抬到页脚之上(56px 顶栏/46px 页脚的系统里 bottom:16
+        // 会压住内容表头),纵向堆叠多个插件徽标,宽度受视口约束。
+        const box = el('div', {
+          id: `aw-plugin-${name}`,
+          style: 'position:fixed;right:20px;bottom:58px;z-index:2147483000;'
+            + 'display:flex;flex-direction:column;align-items:flex-end;gap:8px;'
+            + 'max-width:min(360px,calc(100vw - 40px));font:12px/1.6 ui-monospace,monospace',
+        })
         document.body.append(box)
         return box
       })()

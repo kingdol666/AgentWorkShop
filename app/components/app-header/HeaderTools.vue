@@ -182,6 +182,19 @@ function toggleFullscreen() {
   }
 }
 
+/* 超窄屏(≤480):语言选择让位给通知/HITL/身份——语言仍可在「系统设置」切换。
+   不隐藏时 header-right 只剩 200px,通知铃被压到 16px、徽标溢出。 */
+@media (max-width: 480px) {
+  .lang-select {
+    display: none;
+  }
+
+  /* 连接状态点让位:通知铃/主题/身份是必须常驻的三件 */
+  .ws-dot {
+    display: none;
+  }
+}
+
 .hidden {
   display: none;
 }

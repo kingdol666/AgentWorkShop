@@ -246,9 +246,10 @@ const onSaveTemplate = (name: string): void => {
   padding: 0 8px 8px;
 }
 .title {
-  font-family: var(--font-display);
-  font-size: 16px;
-  letter-spacing: -0.01em;
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
   color: var(--ink);
 }
 .head-actions { display: inline-flex; gap: 2px; }

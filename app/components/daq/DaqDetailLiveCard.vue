@@ -84,7 +84,15 @@ function publishLabel(v: number | null): string {
 .value-card { padding: 16px 18px; }
 .big-val { margin: 8px 0 10px; font-size: 40px; line-height: 1.1; color: var(--accent); }
 .big-val small { margin-left: 8px; font-size: 15px; color: var(--ink-faint); }
-.live-canvas { width: 100%; height: 64px; border: 1px solid var(--line); border-radius: var(--radius-chip); background: var(--paper-deep); }
+.live-canvas {
+  width: 100%; height: 64px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-chip);
+  background:
+    linear-gradient(var(--divider-hair) 1px, transparent 1px) 0 0 / 100% 16px,
+    linear-gradient(90deg, var(--divider-hair) 1px, transparent 1px) 0 0 / 32px 100%,
+    var(--paper-deep);
+}
 .facts { display: flex; flex-direction: column; gap: 4px; margin: 14px 0 0; }
 .facts div { display: flex; justify-content: space-between; font-size: 11.5px; }
 .facts dt { color: var(--ink-faint); }

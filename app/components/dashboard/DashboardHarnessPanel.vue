@@ -113,7 +113,7 @@ const harnessCmd = (h: HarnessMetaDto): string => {
 .h-item:hover { border-color: var(--line-strong); }
 .h-item.link { cursor: pointer; }
 .h-item.link:hover { border-color: var(--accent); color: var(--accent); }
-.h-go { flex: none; font-size: 10px; color: var(--ink-faint); }
+.h-go { flex: none; font-size: 11px; color: var(--ink-faint); }
 .h-item.link:hover .h-go { color: var(--accent); }
 .h-dot {
   flex: none;
@@ -128,7 +128,7 @@ const harnessCmd = (h: HarnessMetaDto): string => {
 .h-item.off .h-name { color: var(--ink-soft); }
 /* 引擎命令名是"铭牌"级信息:桌面 10px 尚可,手持档必须让位给可读性
    * (实测 / 在 390 下稳定报出 54 条 <11px,全部来自这里与 .aw-gauge-label) */
-.h-cmd { font-size: 10px; color: var(--ink-faint); }
+.h-cmd { font-size: 11px; color: var(--ink-faint); }
 
 /* 手持档字号地板:本页所有"铭牌级"微字(引擎命令名、产线状态、产线指标行、
    跳转箭头)统一抬到 11.5px。它们在桌面是仪器铭牌语言,在手机上就是读不了的小字。
