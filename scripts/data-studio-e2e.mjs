@@ -235,6 +235,66 @@ async function main() {
     ok('PC4.1', 'E8 节点 chamber PATCH(端点不支持该字段则如实记)', patchCh.status === 200, `status=${patchCh.status}`)
   }
 
+  // ── PD: Phase D(E7 OCAP/E6 VM 面/M3 看板+派生/E8 段定义) ──
+  // E7 OCAP:开单 → 追加步骤 → 关单(弱关联) → 清单可见
+  const alarmRef = `ops:${Date.now().toString(36)}`
+  const oc = await api('POST', '/api/workshop/eda/ocap', { alarm_id: alarmRef, run_id: openRun?.id, node_id: pick[0], title: 'PhaseD 处置单' })
+  const ocId = oc.data?.record?.id
+  ok('PD1.1', 'E7 开 OCAP 处置单', oc.status === 200 && Boolean(ocId), JSON.stringify(oc.data?.record ?? oc.message).slice(0, 140))
+  if (ocId) {
+    await api('PATCH', `/api/workshop/eda/ocap/${ocId}`, { step: '现场核查完成,无设备异常' })
+    const closed = await api('PATCH', `/api/workshop/eda/ocap/${ocId}`, { status: 'closed', linked_exploration_id: 'opt-not-exist' })
+    ok('PD1.2', 'E7 关单 + 弱关联(stale 不报错)', closed.status === 200 && closed.data?.record?.status === 'closed'
+    && closed.data?.record?.linkedExplorationExists === false, JSON.stringify(closed.data?.record ?? {}).slice(0, 160))
+    const ocList = await api('GET', `/api/workshop/eda/ocap?status=closed`)
+    ok('PD1.3', 'E7 清单可见(终态过滤)', (ocList.data?.records ?? []).some(x => x.id === ocId))
+  }
+
+  // E6 VM 面:模型不存在 → 404(入口语义;VM 全链训练依赖 AML 作业)
+  const vmNoModel = await api('POST', '/api/workshop/eda/vm/predict', { model_id: 'aml-none', run_id: openRun?.id })
+  ok('PD2.1', 'E6 VM 推理入口:模型不存在 → 404', vmNoModel.status === 404, vmNoModel.message.slice(0, 100))
+
+  // M3 看板:建板(内嵌 PB 私图)→ 详情含 chart → 布局 PATCH
+  const bd = await api('POST', '/api/workshop/eda/dashboards', { title: 'PhaseD 看板', layout: [{ chartId, x: 0, y: 0, w: 6, h: 3 }], visibility: 'private' })
+  const bdId = bd.data?.dashboard?.id
+  ok('PD3.1', 'M3 创建看板', bd.status === 200 && Boolean(bdId), JSON.stringify(bd.data?.dashboard ?? bd.message).slice(0, 120))
+  if (bdId) {
+    const bdDetail = await api('GET', `/api/workshop/eda/dashboards/${bdId}`)
+    ok('PD3.2', 'M3 看板详情内嵌 chart(B4 判定随行)', bdDetail.status === 200 && bdDetail.data?.charts?.length === 1 && bdDetail.data?.charts?.[0]?.inaccessible === false,
+      JSON.stringify(bdDetail.data?.charts ?? []).slice(0, 140))
+    const saved = await api('PATCH', `/api/workshop/eda/dashboards/${bdId}`, { layout: [{ chartId, x: 0, y: 0, w: 12, h: 3 }] })
+    ok('PD3.3', 'M3 布局保存(version 自增)', saved.status === 200 && saved.data?.dashboard?.version >= 2)
+    if (viewerToken) {
+      const vDetail = await api('GET', `/api/workshop/eda/dashboards/${bdId}`, undefined, viewerToken)
+      ok('PD3.4', 'M3 他人读看板:chart 不泄露(404 或 inaccessible=true)', vDetail.status === 404 || vDetail.data?.charts?.[0]?.inaccessible === true,
+        `status=${vDetail.status}`)
+    }
+  }
+
+  // M3 派生数据集:movavg+delta 管道 + data.csv 下载
+  const dv = await api('POST', '/api/workshop/eda/derived', {
+    title: 'PhaseD 派生', node_ids: pick, last_minutes: 5, ops: [{ kind: 'movavg', window: 5 }, { kind: 'delta' }],
+  })
+  const dvId = dv.data?.jobId
+  ok('PD4.1', 'M3 派生数据集生成', dv.status === 200 && Boolean(dvId) && (dv.data?.rows ?? 0) > 0, JSON.stringify(dv.data ?? dv.message).slice(0, 140))
+  if (dvId) {
+    const dvFile = await rawGet(`/api/workshop/daq/export-file?job=${dvId}&path=data.csv`)
+    ok('PD4.2', 'M3 派生 data.csv 可下载', dvFile.status === 200 && dvFile.contentType.includes('csv'), dvFile.text.slice(0, 80))
+  }
+  const dvBad = await api('POST', '/api/workshop/eda/derived', { node_ids: pick, last_minutes: 5, ops: [{ kind: 'rm-rf' }] })
+  ok('PD4.3', 'M3 非法算子 → 400(白名单)', dvBad.status === 400)
+
+  // E8 段定义:配方两段 → 手动重算特征按段拆分
+  await api('POST', '/api/workshop/eda/run-segments', { recipe_id: c.recipeId, seq: 1, name: 's1', phase_from: 0, phase_to: 0.5 })
+  const seg = await api('POST', '/api/workshop/eda/run-segments', { recipe_id: c.recipeId, seq: 2, name: 's2', phase_from: 0.5, phase_to: 1 })
+  ok('PD5.1', 'E8 相位段定义', seg.status === 200 && (seg.data?.segments?.length ?? 0) >= 2, JSON.stringify(seg.data?.segments ?? seg.message).slice(0, 140))
+  if (featRun) {
+    const rerun = await api('POST', '/api/workshop/eda/features/run', { run_id: featRun.id })
+    const segRows = rerun.status === 200 ? (await api('GET', `/api/workshop/eda/features?run_id=${featRun.id}`)).data?.features ?? [] : []
+    const segmented = segRows.filter(f => f.segment !== '')
+    ok('PD5.2', 'E8 重算特征按段拆分', rerun.status === 200 && segmented.length > 0, `segmented=${segmented.length}/${segRows.length}`)
+  }
+
   writeFileSync(join(EVID, 'phase-a-e2e.json'), JSON.stringify({ at: new Date().toISOString(), base: c.base, lineId: c.lineId, nodes: nodeSummary, queryWindow: q.data?.window, runOpened: openRun?.id ?? null, exportJob: job, mesPoints: pts.data?.count ?? 0, results }, null, 2))
 
   const pass = results.filter(r => r.pass).length

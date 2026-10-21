@@ -37,7 +37,8 @@ export const amlDatasetSpecSchema = z.object({
     testRatio: z.number().min(0).max(0.8),
     seed: z.number().int(),
   }).refine(s => s.valRatio + s.testRatio <= 0.9, { message: 'valRatio + testRatio 不得超过 0.9(须保留 train 切分)' }),
-  purpose: z.enum(['mpc_surrogate', 'quality_predict']),
+  // virtual_metrology(E6):以 per-run 特征向量为输入的软测量模型(特征对齐经 eda/vm 适配面)
+  purpose: z.enum(['mpc_surrogate', 'quality_predict', 'virtual_metrology']),
   note: z.string().max(2000).optional(),
 })
 

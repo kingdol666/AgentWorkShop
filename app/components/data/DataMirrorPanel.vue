@@ -83,11 +83,25 @@
         <button
           class="pill-btn"
           :disabled="!series.length"
+          data-test="data-derived"
+          @click="doDerive"
+        >
+          {{ deriving ? t('data.mirror.deriving') : t('data.mirror.derivedBtn') }}
+        </button>
+        <button
+          class="pill-btn"
+          :disabled="!series.length"
           @click="exportOpen = true"
         >
           {{ t('data.mirror.export') }}
         </button>
       </div>
+      <p
+        v-if="derivedMsg"
+        class="hint"
+      >
+        {{ derivedMsg }}
+      </p>
       <div
         class="row nodes"
         data-test="data-nodes"
@@ -300,6 +314,7 @@
  * 护栏在服务端(节点≤8/每节点≤2000 点/窗≤7 天/并发≤2),前端只做引导。
  */
 import { computed, onMounted, ref } from 'vue'
+import type { EChartsOption } from 'echarts'
 import { apiFetch } from '@/app/composables/workshop/apiClient'
 import { apiErrorMessage } from '@/app/utils/api-error'
 
@@ -330,6 +345,8 @@ const exportTitle = ref('')
 const exportNote = ref('')
 const exportMerge = ref(false)
 const exportJob = ref<ExportJob | null>(null)
+const deriving = ref(false)
+const derivedMsg = ref('')
 
 const nodeGroups = computed(() => {
   const visible = allNodes.value.filter(n => !lineId.value || n.lineId === lineId.value)
@@ -343,8 +360,8 @@ const nodeGroups = computed(() => {
 })
 
 const truncatedNote = computed(() => {
-  const t = series.value.filter(s => s.truncated)
-  return t.length ? t('data.mirror.truncated', { n: t.length }) : ''
+  const trunc = series.value.filter(s => s.truncated)
+  return trunc.length ? t('data.mirror.truncated', { n: trunc.length }) : ''
 })
 
 const totalPoints = computed(() => series.value.reduce((a, s) => a + s.points.length, 0))
@@ -422,7 +439,7 @@ const chartOption = computed(() => {
     yAxis: yAxes,
     dataZoom: [{ type: 'inside' }, { type: 'slider', height: 18, bottom: 8 }],
     series: chartSeries,
-  }
+  } as EChartsOption
 })
 
 function fileUrl(rel: string): string {
@@ -472,6 +489,34 @@ async function doQuery(): Promise<void> {
   }
 }
 
+async function doDerive(): Promise<void> {
+  deriving.value = true
+  try {
+    const { fromMs, toMs } = windowMs()
+    const r = await apiFetch<{ jobId: string, rows: number }>({
+      base: '/api/workshop/eda/derived',
+      init: {
+        method: 'POST',
+        body: JSON.stringify({
+          line_id: lineId.value || undefined,
+          node_ids: picked.value.length ? picked.value : undefined,
+          from: Math.round(fromMs),
+          to: Math.round(toMs),
+          title: `滑动均值派生 ${new Date().toISOString().slice(5, 16).replace('T', ' ')}`,
+          ops: [{ kind: 'movavg', window: 5 }],
+        }),
+      },
+    })
+    derivedMsg.value = t('data.mirror.derivedDone', { rows: r.rows, id: r.jobId })
+  }
+  catch (e) {
+    error.value = apiErrorMessage(e)
+  }
+  finally {
+    deriving.value = false
+  }
+}
+
 async function doExport(): Promise<void> {
   exporting.value = true
   exportJob.value = null
@@ -494,10 +539,11 @@ async function doExport(): Promise<void> {
     })
     exportJob.value = r.job
     // 轮询任务至终态(并发=1 队列,大导出可能排队;上限 5 分钟)
-    for (let i = 0; i < 150 && exportJob.value?.status === 'running'; i++) {
+    let cur = exportJob.value
+    for (let i = 0; i < 150 && cur?.status === 'running'; i++) {
       await new Promise(res => setTimeout(res, 2000))
-      const d = await apiFetch<{ job: ExportJob }>({ base: `/api/workshop/daq/export/${exportJob.value.id}` })
-      exportJob.value = d.job
+      cur = (await apiFetch<{ job: ExportJob }>({ base: `/api/workshop/daq/export/${cur.id}` })).job
+      exportJob.value = cur
     }
   }
   catch (e) {

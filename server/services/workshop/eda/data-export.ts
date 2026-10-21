@@ -253,12 +253,12 @@ function probeMissing(job: EdaExportJobView): EdaExportJobView['result'] {
   return job.result
 }
 
-/** 产物文件安全下载:仅允许 manifest.json / merged.csv / nodes/<safe>.csv / README.md(路径穿越防护) */
+/** 产物文件安全下载:manifest.json / README.md / merged.csv / nodes/<safe>.csv / data.csv(派生集;路径穿越防护) */
 export function resolveExportFile(user: ResolvedUser, jobId: string, rel: string): { abs: string, mime: string } | null {
   const job = getExportJobFor(user, jobId)
   if (!job || job.status !== 'ready' || !job.result.dir) return null
   const clean = String(rel ?? '').trim()
-  if (!/^(manifest\.json|README\.md|merged\.csv|nodes\/[A-Za-z0-9_-]{1,80}\.csv)$/.test(clean)) return null
+  if (!/^(manifest\.json|README\.md|merged\.csv|data\.csv|nodes\/[A-Za-z0-9_-]{1,80}\.csv)$/.test(clean)) return null
   const dir = job.result.dir
   const abs = join(dir, clean)
   if (!abs.startsWith(dir) || !existsSync(abs)) return null

@@ -108,7 +108,10 @@ export async function createSpcChart(user: ResolvedUser, input: {
     VALUES (?, ?, ?, ?, ?, ?, 0, 0, ?, ?, ?)
     ON CONFLICT(line_id, node_id, metric, kind) DO UPDATE SET params_json = excluded.params_json, updated_at = excluded.updated_at`)
     .run(id, input.lineId, input.nodeId, metric, input.kind, JSON.stringify(input.params ?? {}), user.id, now, now)
-  return spcChartById(user, id)!
+  // 冲突路径更新的旧行 ≠ 新 id:按唯一键回查(否则返 null)
+  const row = edaDb().prepare('SELECT * FROM eda_spc_charts WHERE line_id = ? AND node_id = ? AND metric = ? AND kind = ?')
+    .get(input.lineId, input.nodeId, metric, input.kind) as Record<string, unknown>
+  return rowOf(row)
 }
 
 export function deleteSpcChart(user: ResolvedUser, id: string): boolean {

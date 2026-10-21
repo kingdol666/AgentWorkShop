@@ -160,6 +160,21 @@
           >
             {{ querying ? $t('data.mirror.querying') : $t('data.mirror.query') }}
           </button>
+          <NuxtLink
+            to="/studio/board"
+            class="pill-btn boardLink"
+            data-test="studio-board-link"
+          >
+            {{ $t('studio.boardLink') }}
+          </NuxtLink>
+          <button
+            class="pill-btn"
+            data-test="studio-agent-prompt"
+            :disabled="!series.length"
+            @click="agentPromptOpen = true"
+          >
+            {{ $t('studio.agentPrompt') }}
+          </button>
         </div>
         <p
           v-if="error"
@@ -382,6 +397,46 @@
           {{ saveMsg }}
         </p>
       </div>
+
+      <!-- Agent 深度分析提示词(M3 差异化):当前查询组装成 daq_query 简报,可粘贴进 Channel -->
+      <div
+        v-if="agentPromptOpen"
+        class="modalMask"
+        @click.self="agentPromptOpen = false"
+      >
+        <div class="modal">
+          <h3 class="sec">
+            {{ $t('studio.promptTitle') }}
+          </h3>
+          <textarea
+            readonly
+            :value="agentPrompt"
+            class="promptBox"
+            data-test="studio-prompt-text"
+          />
+          <div class="row end">
+            <button
+              class="pill-btn"
+              data-test="studio-prompt-copy"
+              @click="copyPrompt"
+            >
+              {{ $t('studio.copy') }}
+            </button>
+            <button
+              class="pill-btn"
+              @click="agentPromptOpen = false"
+            >
+              {{ $t('data.mirror.cancel') }}
+            </button>
+          </div>
+          <p
+            v-if="copyMsg"
+            class="hint"
+          >
+            {{ copyMsg }}
+          </p>
+        </div>
+      </div>
     </aside>
   </div>
 </template>
@@ -393,7 +448,8 @@
  * kpi/table 单序列约束点亮);E2 = run 过滤 + golden 相位画像生成/叠加(0-100% 轴)/偏差分。
  * 取数永远走 /daq/query 按请求鉴权(图表只存查询参数快照,不代理数据 —— B4 铁律)。
  */
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import type { EChartsOption } from 'echarts'
 import { apiFetch } from '@/app/composables/workshop/apiClient'
 import { apiErrorMessage } from '@/app/utils/api-error'
 
@@ -410,6 +466,24 @@ interface RunRow { id: string, outcome: string, startedAt: string, endedAt: stri
 interface GoldenBin { phase: number, mean: number | null, std: number | null, min: number | null, max: number | null }
 
 const { t } = useI18n()
+const route = useRoute()
+const router = useRouter()
+const agentPromptOpen = ref(false)
+const copyMsg = ref('')
+const agentPrompt = computed(() => {
+  const nodes = yNodes.value.map(y => `${y.name}(${y.nodeId})`).join('、')
+  const run = runId.value ? `、批次 ${runId.value}` : ''
+  const last = series.value.at(-1)
+  const tail = last ? `。最新读数 ${last.points.at(-1)?.v ?? '-'}${last.unit}(时间窗 ${new Date((last.points[0]?.at ?? 0)).toISOString().slice(0, 16)} 起)` : ''
+  return `请用 daq_query 分析:产线 ${lineId.value || '(未选)'} 的 ${nodes}${run},窗口 ${preset.value} 分钟、聚合 ${agg.value}。请结合历史窗口给出趋势判读与建议${tail}`
+})
+function copyPrompt(): void {
+  navigator.clipboard?.writeText(agentPrompt.value).then(() => {
+    copyMsg.value = t('studio.copied')
+  }).catch(() => {
+    copyMsg.value = ''
+  })
+}
 const vizLabels = computed(() => ({
   trend: t('studio.viz.trend'),
   bar: t('studio.viz.bar'),
@@ -561,7 +635,7 @@ const chartOption = computed(() => {
     dataZoom: [{ type: 'inside' }, { type: 'slider', height: 16, bottom: 10 }],
     toolbox: { right: 8, top: 0, feature: { saveAsImage: { title: 'PNG' } } },
     series: seriesOut,
-  }
+  } as EChartsOption
 })
 
 async function doQuery(): Promise<void> {
@@ -707,21 +781,26 @@ async function loadCharts(): Promise<void> {
 
 onMounted(async () => {
   try {
+    // M4 URL 状态:产线写进 ?line=,刷新/分享不丢上下文
+    const qLine = typeof route.query.line === 'string' ? route.query.line : ''
     const [l, runsR] = await Promise.all([
       apiFetch<{ lines: LineLite[] }>({ base: '/api/workshop/dcw/lines', retries: 1 }),
       apiFetch<{ runs: RunRow[] }>({ base: '/api/workshop/eda/runs?limit=20', retries: 1 }),
     ])
     lines.value = l.lines ?? []
     runs.value = runsR.runs ?? []
-    if (lines.value.length) {
-      lineId.value = lines.value[0]!.id
-      await loadNodes()
-    }
+    if (qLine && lines.value.some(x => x.id === qLine)) lineId.value = qLine
+    else if (lines.value.length) lineId.value = lines.value[0]!.id
+    await loadNodes()
     await loadCharts()
   }
   catch (e) {
     error.value = apiErrorMessage(e)
   }
+})
+
+watch(lineId, (v) => {
+  router.replace({ query: { ...route.query, line: v || undefined } })
 })
 </script>
 
@@ -769,4 +848,8 @@ onMounted(async () => {
 @media (max-width: 1100px) {
   .studio { grid-template-columns: 1fr; height: auto; }
 }
+.boardLink { text-decoration: none; display: inline-flex; align-items: center; }
+.modalMask { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 60; }
+.modal { background: var(--panel, #fff); color: var(--ink, #222); border-radius: 12px; padding: 16px 18px; width: min(640px, 92vw); }
+.promptBox { width: 100%; height: 160px; font-size: 12px; font-family: monospace; border: 1px solid var(--border, rgba(127,127,127,.35)); border-radius: 6px; padding: 8px; background: transparent; color: var(--ink, #222); }
 </style>

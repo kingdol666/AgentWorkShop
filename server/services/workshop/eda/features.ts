@@ -187,7 +187,13 @@ export async function computeRunFeatures(runId: string, opts: { graceMs?: number
       if (!pts.length) continue
       const metric = n.templateRef ?? ''
       const win = winOf(n.id)
-      const feats = extractFeatures(pts, { ...win, graceMs: opts.graceMs })
+      // E8:配方定义了相位段(run_segments)时按段拆分特征(0-50%/50-100% 等)
+      const segRows = edaDb().prepare('SELECT name, phase_from, phase_to FROM run_segments WHERE recipe_id = ? ORDER BY seq ASC')
+        .all(run.recipeId) as Array<{ name: string, phase_from: number, phase_to: number }>
+      const segments = segRows.length
+        ? segRows.map(s => ({ name: s.name, phaseFrom: Number(s.phase_from), phaseTo: Number(s.phase_to) }))
+        : undefined
+      const feats = extractFeatures(pts, { ...win, graceMs: opts.graceMs, segments })
       for (const f of feats) {
         const band = referenceBand(run.lineId, n.id, metric, f.segment)
         const z = band && f.std != null ? (f.mean - band.refMean) / band.refStd : null
