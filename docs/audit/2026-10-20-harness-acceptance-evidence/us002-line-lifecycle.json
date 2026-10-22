@@ -1,0 +1,205 @@
+{
+  "at": "2026-10-20T04:56:05.251Z",
+  "line": {
+    "controlMode": "manual",
+    "id": "ln-dd6c9135",
+    "name": "多协议孪生产线-20261020",
+    "color": "#35e0a0",
+    "description": "AW-LINE:qt1h7q-7Ey 五协议自定义工况:Modbus TCP / Modbus RTU-over-TCP / OPC UA / MQTT / HTTP;数据形态含标量、8 点向量、PNG 图像。模拟器由 aw-plc-sim-twin 从 all-protocols-blueprint.json 生成(端口 4047,设备寄存器 37570/37571/4855/55830)。",
+    "createdAt": "2026-10-20T09:29:14.051+08:00"
+  },
+  "nodes": [
+    "dw-d0b66f73",
+    "dw-176c4cc2",
+    "dw-0fe4833e",
+    "dw-38e28fda",
+    "dw-303456d0"
+  ],
+  "daq": [
+    "dn-6f96cbec",
+    "dn-bcee0027",
+    "dn-bafca691",
+    "dn-4de6b1de",
+    "dn-02c099a8",
+    "dn-c8279163",
+    "dn-f0f089f7"
+  ],
+  "recipe": {
+    "id": "rc-2be5c50c",
+    "productId": "pd-f74b5d83",
+    "lineId": "ln-dd6c9135",
+    "name": "多协议孪生基线配方",
+    "description": "",
+    "params": [
+      {
+        "nodeId": "dw-d0b66f73",
+        "templateRef": "speed-sp",
+        "value": 47,
+        "min": 38,
+        "max": 48,
+        "stepLimit": 2
+      },
+      {
+        "nodeId": "dw-176c4cc2",
+        "templateRef": "temp-sp",
+        "value": 80,
+        "min": 70,
+        "max": 90,
+        "stepLimit": 5
+      },
+      {
+        "nodeId": "dw-0fe4833e",
+        "templateRef": "pressure-sp",
+        "value": 7,
+        "min": 5,
+        "max": 9,
+        "stepLimit": 1
+      },
+      {
+        "nodeId": "dw-38e28fda",
+        "templateRef": "speed-sp",
+        "value": 45,
+        "min": 35,
+        "max": 55,
+        "stepLimit": 5
+      },
+      {
+        "nodeId": "dw-303456d0",
+        "templateRef": "pressure-sp",
+        "value": 36,
+        "min": 34,
+        "max": 38,
+        "stepLimit": 1
+      }
+    ],
+    "daqWindows": [],
+    "version": 3,
+    "paramsHistory": [
+      {
+        "version": 1,
+        "params": [
+          {
+            "nodeId": "dw-d0b66f73",
+            "templateRef": "speed-sp",
+            "value": 43,
+            "min": 38,
+            "max": 48,
+            "stepLimit": 2
+          },
+          {
+            "nodeId": "dw-176c4cc2",
+            "templateRef": "temp-sp",
+            "value": 80,
+            "min": 70,
+            "max": 90,
+            "stepLimit": 5
+          },
+          {
+            "nodeId": "dw-0fe4833e",
+            "templateRef": "pressure-sp",
+            "value": 7,
+            "min": 5,
+            "max": 9,
+            "stepLimit": 1
+          },
+          {
+            "nodeId": "dw-38e28fda",
+            "templateRef": "speed-sp",
+            "value": 45,
+            "min": 35,
+            "max": 55,
+            "stepLimit": 5
+          },
+          {
+            "nodeId": "dw-303456d0",
+            "templateRef": "pressure-sp",
+            "value": 36,
+            "min": 34,
+            "max": 38,
+            "stepLimit": 1
+          }
+        ],
+        "at": "2026-10-20T12:04:25.606+08:00",
+        "by": "agent",
+        "actorName": "ht-mvg5rw2q/copilot-operator",
+        "actor": "677dbcdf-64df-4ac5-aabc-b6a45f454f9d",
+        "description": "TEAM-WRITE-HITL mvg5rw2q: raised line speed within the 38-48 window based on stable DAQ"
+      },
+      {
+        "version": 2,
+        "params": [
+          {
+            "nodeId": "dw-d0b66f73",
+            "templateRef": "speed-sp",
+            "value": 46,
+            "min": 38,
+            "max": 48,
+            "stepLimit": 2
+          },
+          {
+            "nodeId": "dw-176c4cc2",
+            "templateRef": "temp-sp",
+            "value": 80,
+            "min": 70,
+            "max": 90,
+            "stepLimit": 5
+          },
+          {
+            "nodeId": "dw-0fe4833e",
+            "templateRef": "pressure-sp",
+            "value": 7,
+            "min": 5,
+            "max": 9,
+            "stepLimit": 1
+          },
+          {
+            "nodeId": "dw-38e28fda",
+            "templateRef": "speed-sp",
+            "value": 45,
+            "min": 35,
+            "max": 55,
+            "stepLimit": 5
+          },
+          {
+            "nodeId": "dw-303456d0",
+            "templateRef": "pressure-sp",
+            "value": 36,
+            "min": 34,
+            "max": 38,
+            "stepLimit": 1
+          }
+        ],
+        "at": "2026-10-20T12:24:23.617+08:00",
+        "by": "agent",
+        "actorName": "ht-mvg6h868/copilot-operator",
+        "actor": "97ea2154-4f7e-4a1c-be9e-22775a79c488",
+        "description": "TEAM-WRITE-HITL mvg6h868: raised line speed within the 38-48 window based on stable DAQ. 线速PV在2026-10-20 12:14–12:24活动批次窗口内均值45.998 m/min，最小45.964、最大46.040 m/min，20个采样点稳定且状态ok；从46升至47 m/min，仍在配方窗口38–48 m/min内，单步+1 m/min，观察是否提高产能并复测膜厚与温度。"
+      }
+    ],
+    "lastGoodRunId": null,
+    "createdAt": "2026-10-20T09:29:14.296+08:00",
+    "updatedAt": "2026-10-20T12:24:23.617+08:00"
+  },
+  "paramsOk": true,
+  "stop": {
+    "code": 0,
+    "message": "ok"
+  },
+  "start": {
+    "code": 0,
+    "runId": "rr-7ff99163",
+    "message": "ok"
+  },
+  "stateAfterStart": {
+    "lineId": "ln-dd6c9135",
+    "active": true,
+    "runId": "rr-7ff99163",
+    "recipeId": "rc-2be5c50c",
+    "recipeName": "多协议孪生基线配方",
+    "productId": "pd-f74b5d83",
+    "productName": "多协议孪生产线-20261020·默认产品",
+    "startedAt": "2026-10-20T12:56:01.190+08:00",
+    "taggedSamples": 42
+  },
+  "statesKey": "states"
+}

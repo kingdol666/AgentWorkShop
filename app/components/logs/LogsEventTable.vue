@@ -9,7 +9,7 @@ import type { OpsLogRow } from '@/app/composables/workshop/useOpsLog'
 import { useLogsFormat } from '@/app/pages/logs/composables/useLogsFormat'
 import { useLogsScope } from '@/app/pages/logs/composables/useLogsScope'
 
-defineProps<{
+const props = defineProps<{
   /** 查询结果快照(REST;与 WS 实时轨互不干扰) */
   rows: OpsLogRow[]
   /** 当前展开详情的行 id(null = 全部收起) */
@@ -26,6 +26,18 @@ defineEmits<{
 
 const { hasDetail, pretty, fmtTime, srcLabel, kindLabel } = useLogsFormat()
 const { lineName, productName, recipeName } = useLogsScope()
+
+/* 审计账页分页:服务端一次给到 300 条快照,整表直出会形成 2 万像素的
+ * 单页文档(实测 scrollHeight=22009),滚动定位与详情展开都失去参照。
+ * 25 条/页是扫描密度与翻页成本的折中;换筛选/新查询时回到第 1 页。 */
+const PAGE_SIZE = 25
+const page = ref(1)
+const pagedRows = computed(() =>
+  props.rows.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE),
+)
+watch(() => props.rows, () => {
+  page.value = 1
+})
 </script>
 
 <template>
@@ -61,7 +73,7 @@ const { lineName, productName, recipeName } = useLogsScope()
       </thead>
       <tbody>
         <template
-          v-for="row in rows"
+          v-for="row in pagedRows"
           :key="row.id"
         >
           <tr>
@@ -88,26 +100,27 @@ const { lineName, productName, recipeName } = useLogsScope()
                 v-if="row.level === 'error' || row.level === 'warn'"
                 class="level-chip"
                 :class="row.level"
-              >{{ row.level === 'error' ? '⛔' : '⚠️' }} {{ row.level }}</span>
+              >{{ row.level.toUpperCase() }}</span>
               {{ row.summary }}
               <small class="mono dim action">{{ row.action }}</small>
             </td>
             <td class="scope">
+              <!-- 名称缺失(产线/配方已删除)时回落到短 id:归属维度不能因为目录缺失而消失 -->
               <span
-                v-if="lineName(row.lineId)"
+                v-if="row.lineId"
                 class="scope-chip"
-                :title="$t('logs.fLine')"
-              >{{ lineName(row.lineId) }}</span>
+                :title="`${$t('logs.fLine')} ${row.lineId}`"
+              >{{ lineName(row.lineId) || row.lineId.slice(0, 8) }}</span>
               <span
-                v-if="productName(row.productId)"
+                v-if="row.productId"
                 class="scope-chip"
-                :title="$t('logs.fProduct')"
-              >{{ productName(row.productId) }}</span>
+                :title="`${$t('logs.fProduct')} ${row.productId}`"
+              >{{ productName(row.productId) || row.productId.slice(0, 8) }}</span>
               <span
-                v-if="recipeName(row.recipeId)"
+                v-if="row.recipeId"
                 class="scope-chip"
-                :title="'Recipe'"
-              >{{ recipeName(row.recipeId) }}</span>
+                :title="`Recipe ${row.recipeId}`"
+              >{{ recipeName(row.recipeId) || row.recipeId.slice(0, 8) }}</span>
               <span
                 v-if="!row.lineId && !row.productId && !row.recipeId"
                 class="dim"
@@ -156,58 +169,96 @@ const { lineName, productName, recipeName } = useLogsScope()
         </tr>
       </tbody>
     </table>
+
+    <div
+      v-if="rows.length > 0"
+      class="table-foot"
+    >
+      <span class="log-total">{{ $t('logs.totalCount', { n: rows.length }) }}</span>
+      <a-pagination
+        v-model:current="page"
+        :page-size="PAGE_SIZE"
+        :total="rows.length"
+        :show-size-changer="false"
+        :show-less-items="true"
+        size="small"
+      />
+    </div>
   </section>
 </template>
 
 <style scoped>
 .table-card {
-  background: var(--surface-glass);
-  border: 1px solid var(--glass-line);
-  border-radius: 10px;
+  background: var(--surface-card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
   overflow: hidden;
-  backdrop-filter: var(--aurora-blur) saturate(1.15);
 }
 /* 错误条:人工记录弹窗内的同名规则是逐字复制(样式随标记走,不抽公共 css) */
 .err { margin: 0; padding: 8px 14px; font-size: 13px; color: var(--tone-danger-dot); }
 .log-table { width: 100%; font-size: 13px; border-collapse: collapse; }
 .log-table th {
   position: sticky; top: 0; z-index: 1;
-  padding: 8px 10px; text-align: left; font-weight: 600; color: var(--ink-soft);
-  background: var(--frost-bg);
-  border-bottom: 1px solid var(--glass-line);
+  padding: 9px 12px; text-align: left; font-size: 11px; font-weight: 600;
+  letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-faint);
+  background: var(--paper-deep);
+  border-bottom: 1px solid var(--line-strong);
 }
 .log-table td {
-  max-width: 380px; padding: 7px 10px; color: var(--ink-soft);
-  border-bottom: 1px solid color-mix(in srgb, var(--glass-line) 55%, transparent);
+  max-width: 380px; padding: 8px 12px; color: var(--ink-soft);
+  border-bottom: 1px solid var(--divider-hair);
   vertical-align: top;
 }
+.log-table tbody tr:hover td { background: var(--hover-tint); }
 .th-time, .th-src, .th-kind { white-space: nowrap; }
 .th-detail { width: 72px; }
 .actor { white-space: nowrap; }
-.summary .action { display: block; font-size: 11.5px; color: var(--ink-faint); }
+/* 动作码跟在摘要后(同一行),不再独占一行把每行撑到 90px */
+.summary .action {
+  display: inline-block;
+  margin-left: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-faint);
+}
 .scope { display: flex; flex-wrap: wrap; gap: 4px; max-width: 220px; }
 .scope-chip {
   padding: 1px 7px; font-size: 11.5px; color: var(--ink-soft);
-  background: var(--frost-bg); border-radius: 99px; white-space: nowrap;
+  background: var(--paper-deep); border-radius: var(--radius-chip); white-space: nowrap;
 }
 .detail-cell { white-space: nowrap; }
 .empty { padding: 22px 0 !important; color: var(--ink-faint); text-align: center; }
+/* 账页页脚:总数 + 分页(固定 50 条/页,长账页不再拉成两万像素) */
+.table-foot {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-top: 1px solid var(--divider-hair);
+}
+.log-total {
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
 /* 详情行内展开:紧贴事件行的整行 pre 面板 */
 .detail-td { padding: 0 !important; }
 .detail-box {
   max-height: 260px; margin: 0; padding: 10px 14px; overflow: auto;
   font-size: 12.5px; color: var(--ink-soft); white-space: pre-wrap; word-break: break-word;
-  background: var(--paper-deep); border-top: 1px solid var(--glass-line);
+  background: var(--paper-deep); border-top: 1px solid var(--line);
 }
 .src-badge {
   display: inline-block; padding: 1px 8px; font-size: 11.5px;
-  border: 1px solid var(--glass-line); border-radius: 99px; color: var(--ink-faint);
+  border: 1px solid var(--line); border-radius: var(--radius-chip); color: var(--ink-faint);
 }
 .src-badge.agent { color: var(--tone-info-dot); border-color: color-mix(in srgb, var(--tone-info-dot) 40%, transparent); }
 .src-badge.user { color: var(--tone-success-dot); border-color: color-mix(in srgb, var(--tone-success-dot) 40%, transparent); }
 .kind-chip {
   display: inline-block; padding: 1px 7px; font-size: 11.5px;
-  color: var(--ink-soft); background: var(--frost-bg); border-radius: 5px; white-space: nowrap;
+  color: var(--ink-soft); background: var(--paper-deep); border-radius: var(--radius-chip); white-space: nowrap;
 }
 .kind-chip.alarm { color: var(--tone-danger-dot); background: var(--tone-danger-bg); }
 .kind-chip.write { color: var(--tone-info-dot); }

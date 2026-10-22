@@ -16,6 +16,11 @@ export function resolveAnswers(
 ): Array<{ id: string, answer: string }> {
   const provided = decision.answers ?? []
   if (questions.length === 0) {
+    // 无结构化 questions 的提问型条目(如 omp-dialog 的 options 单选):
+    // UI 会合成 __plain 问题并以 answers[] 提交;此前这里只认 value/comment,
+    // 导致“界面选了 yes、服务端却记录空答案”的静默丢失(2026-10-20 实测)。
+    const structured = provided.find(a => String(a?.answer ?? '').trim() !== '')
+    if (structured) return [{ id: structured.id ?? '', answer: String(structured.answer) }]
     const text = decision.value ?? decision.comment ?? ''
     return text ? [{ id: '', answer: text }] : []
   }

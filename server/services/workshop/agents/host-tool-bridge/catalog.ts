@@ -10,6 +10,8 @@ import { listPluginTools, pluginOfTool } from '../plugin-tools'
 import { getChannelPluginsRepo } from '../../db/channel-plugins.repo'
 import { getChannelTwinProfile } from '../../aml/twin/channel-profile'
 import { amlTwinFeatureFlags } from '../../aml/twin/feature-flags'
+import { applyChannelToolPolicy } from '../../tools/policy'
+import type { ToolExclusion } from '../../tools/types'
 
 /** host tool 定义(外置 .AgentWorkShop/prompts/host-tools.json;加载器缓存) */
 export const HOST_TOOLS: RpcHostToolDefinition[] = loadHostToolDefs()
@@ -52,7 +54,9 @@ export const AML_MODEL_BACKED_TOOL_NAMES = new Set([
  *  analysis_save/query 为数据分析留痕台账面 —— 台账写入非产线写,观察档位同样要留痕诊断结论) */
 export const OBSERVER_READ_TOOL_NAMES = new Set([
   'ops_log',
+  'line_log',
   'recipe_log',
+  'recipe_catalog',
   'recipe_versions',
   'line_context',
   'dcw_journal',
@@ -135,6 +139,127 @@ function applyDescriptionPlaceholders(tools: RpcHostToolDefinition[]): RpcHostTo
   }))
 }
 
+export interface HostToolScope {
+  /** 已通过角色/profile/写守卫/插件开关的注入面(未应用 Channel 逐工具选择) */
+  tools: RpcHostToolDefinition[]
+  /** 被硬规则排除的工具 → 原因(透明化 UI/API 用;执行面仍以各自守卫为准) */
+  excluded: Map<string, ToolExclusion>
+}
+
+/**
+ * 按角色装配 host tools,同时记录硬规则排除原因。
+ * 这是全引擎唯一的“合格工具集合”来源;Channel 逐工具选择只在结果上做减法。
+ */
+export function scopeHostToolsForRole(role: 'lead' | 'worker', channelId?: string): HostToolScope {
+  const excluded = new Map<string, ToolExclusion>()
+  const base = role === 'lead'
+    ? HOST_TOOLS
+    : HOST_TOOLS.filter(t => !LEAD_ONLY_TOOL_NAMES.has(t.name))
+  if (role === 'worker') {
+    for (const tool of HOST_TOOLS) {
+      if (LEAD_ONLY_TOOL_NAMES.has(tool.name)) {
+        excluded.set(tool.name, { reason: 'ROLE_DENIED', message: '仅 lead 角色可用' })
+      }
+    }
+  }
+
+  /** 过滤并把被剔除项记入 excluded(后写覆盖先写;同一工具只保留最后一次硬规则原因) */
+  const narrow = (
+    input: RpcHostToolDefinition[],
+    keep: (tool: RpcHostToolDefinition) => boolean,
+    reason: ToolExclusion['reason'],
+    message: string,
+  ): RpcHostToolDefinition[] => {
+    const kept = input.filter(keep)
+    const keptNames = new Set(kept.map(t => t.name))
+    for (const tool of input) {
+      if (!keptNames.has(tool.name)) excluded.set(tool.name, { reason, message })
+    }
+    return kept
+  }
+
+  const profile = channelId ? getChannelTwinProfile(channelId) : null
+  const kind = profile?.profile ?? 'legacy'
+  const flags = amlTwinFeatureFlags()
+  let scoped: RpcHostToolDefinition[]
+  if (kind === 'aml_training') {
+    // 训练面:剔除优化族(gate 保留 —— 模型晋升前需门禁评估);训练族显式补齐(host-tools.json 全量已含)
+    scoped = narrow(
+      base,
+      t => !AML_OPTIMIZATION_TOOL_NAMES.has(t.name) || t.name === 'twin_gate_evaluate',
+      'PROFILE_DENIED',
+      `当前 Channel 档位(${kind})不开放该工具(训练面与优化执行面互斥)`,
+    )
+  }
+  else if (kind === 'aml_optimization') {
+    // 优化面:剔除训练族(gate 保留 —— 绑定校验需门禁);优化族显式补齐(含新工具)
+    scoped = narrow(
+      base,
+      t => !AML_TRAINING_TOOL_NAMES.has(t.name) || t.name === 'twin_gate_evaluate',
+      'PROFILE_DENIED',
+      `当前 Channel 档位(${kind})不开放该工具(优化面不承担建模/训练)`,
+    )
+  }
+  else if (kind === 'exp-miner' || kind === 'line-doctor') {
+    // 产线 Co-Pilot 观察面(经验工程师/诊断工程师):核心工具按白名单注入 —— 物理零写
+    scoped = scopedToolsForObserverProfile(kind, base)
+    const keptNames = new Set(scoped.map(t => t.name))
+    for (const tool of base) {
+      if (keptNames.has(tool.name)) continue
+      const writesFamily = HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES.has(tool.name) || tool.name === 'optimization_explore'
+      excluded.set(tool.name, writesFamily
+        ? { reason: 'WRITE_GUARD', message: `当前 Channel 档位(${kind})物理零写,不开放产线写工具` }
+        : { reason: 'PROFILE_DENIED', message: `当前 Channel 档位(${kind})只开放观察读面与协作面` })
+    }
+  }
+  else {
+    const hybrid = channelId ? kind === 'hybrid_twin' : false
+    // legacy:孪生/训练/优化三族全族摘除(dispatch 对 legacy 拒绝这些工具 —— 注入面与
+    // 分发守卫同口径,免得 worker 对着必拒工具烧 token 试错)。
+    scoped = hybrid
+      ? [...base]
+      : narrow(
+          base,
+          t => !HYBRID_TWIN_TOOL_NAMES.has(t.name)
+            && !AML_TRAINING_TOOL_NAMES.has(t.name)
+            && !AML_OPTIMIZATION_TOOL_NAMES.has(t.name),
+          'PROFILE_DENIED',
+          '当前 Channel 为 legacy 档位,不开放孪生/训练/优化族工具',
+        )
+  }
+
+  // 直写工具守卫:hybrid 沿用 bounded_auto 开关;工艺优化 Channel 一律不给 dcw 直写
+  // (真实写入统一走 optimization_explore 的治理链),训练 Channel 无写语义;
+  // 观察面档位(exp-miner/line-doctor)零写 —— 白名单已不含写族,此处再兜底一道。
+  const writesBlocked = Boolean(profile?.profile === 'hybrid_twin' && (!flags.governedWriteEnabled || !flags.boundedAutoEnabled || profile.controlPolicy !== 'bounded_auto'))
+    || kind === 'aml_optimization' || kind === 'aml_training'
+    || kind === 'exp-miner' || kind === 'line-doctor'
+  const out = writesBlocked
+    ? narrow(scoped, t => !HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES.has(t.name), 'WRITE_GUARD', '当前 Channel 档位不允许产线直接写工具')
+    : [...scoped]
+
+  // 团队级插件开关:显式配置过的 channel 按行过滤;未配置(无行)= 全启用,向后兼容
+  const channelOff = channelId
+    ? getChannelPluginsRepo().explicitFor(channelId)
+    : null
+  const outNames = new Set(out.map(t => t.name))
+  for (const [name, tool] of listPluginTools()) {
+    if (outNames.has(name)) continue
+    if (tool.roles && !tool.roles.includes(role)) {
+      excluded.set(name, { reason: 'ROLE_DENIED', message: `该插件工具仅对 ${tool.roles.join('/')} 角色开放` })
+      continue
+    }
+    const owner = pluginOfTool(name)
+    if (channelOff && owner && channelOff.get(owner) === false) {
+      excluded.set(name, { reason: 'CHANNEL_PLUGIN_DISABLED', message: `本 Channel 已关闭插件「${owner}」` })
+      continue
+    }
+    out.push({ name, label: tool.label ?? name, description: tool.description, parameters: tool.parameters ?? {} })
+    outNames.add(name)
+  }
+  return { tools: applyDescriptionPlaceholders(out), excluded }
+}
+
 /**
  * 按角色装配 host tools:lead = 全量;worker = 剔除 lead 专属(执行面 + 通信面 + 记忆面);
  * 尾部合并插件注册工具(roles 过滤,缺省双角色可用;channelId 给定且该团队有显式
@@ -142,56 +267,10 @@ function applyDescriptionPlaceholders(tools: RpcHostToolDefinition[]): RpcHostTo
  * AML 解耦:aml_training/aml_optimization Channel 按面注入(训练族与优化族互斥);
  * 产线 Co-Pilot 观察面(exp-miner/line-doctor)按白名单注入,物理零写;
  * hybrid_twin 保持全功能面;legacy 无 twin 工具。
+ * 最后应用 Channel 逐工具选择(无策略 = 全部合格工具,向后兼容)。
  * 全 harness 共用:omp 经 set_host_tools 下发;其余引擎经 MCP 桥 tools/list 拉取。
  */
 export function hostToolsForRole(role: 'lead' | 'worker', channelId?: string): RpcHostToolDefinition[] {
-  const base = role === 'lead'
-    ? HOST_TOOLS
-    : HOST_TOOLS.filter(t => !LEAD_ONLY_TOOL_NAMES.has(t.name))
-  const profile = channelId ? getChannelTwinProfile(channelId) : null
-  const kind = profile?.profile ?? 'legacy'
-  const flags = amlTwinFeatureFlags()
-  let scoped: RpcHostToolDefinition[]
-  if (kind === 'aml_training') {
-    // 训练面:剔除优化族(gate 保留 —— 模型晋升前需门禁评估);训练族显式补齐(host-tools.json 全量已含)
-    scoped = base.filter(t => !AML_OPTIMIZATION_TOOL_NAMES.has(t.name) || t.name === 'twin_gate_evaluate')
-  }
-  else if (kind === 'aml_optimization') {
-    // 优化面:剔除训练族(gate 保留 —— 绑定校验需门禁);优化族显式补齐(含新工具)
-    scoped = base.filter(t => !AML_TRAINING_TOOL_NAMES.has(t.name) || t.name === 'twin_gate_evaluate')
-  }
-  else if (kind === 'exp-miner' || kind === 'line-doctor') {
-    // 产线 Co-Pilot 观察面(经验工程师/诊断工程师):核心工具按白名单注入 —— 物理零写(白名单不含任何写族)
-    scoped = scopedToolsForObserverProfile(kind, base)
-  }
-  else {
-    const hybrid = channelId ? kind === 'hybrid_twin' : false
-    // legacy:孪生/训练/优化三族全族摘除(dispatch 对 legacy 拒绝这些工具 —— 注入面与
-    // 分发守卫同口径,免得 worker 对着必拒工具烧 token 试错;2026-10-04 工具面评审实测
-    // legacy worker 注入 73 工具其中 ~14 个 dispatch 必拒)。
-    scoped = hybrid
-      ? base
-      : base.filter(t => !HYBRID_TWIN_TOOL_NAMES.has(t.name)
-        && !AML_TRAINING_TOOL_NAMES.has(t.name)
-        && !AML_OPTIMIZATION_TOOL_NAMES.has(t.name))
-  }
-  // 直写工具守卫:hybrid 沿用 bounded_auto 开关;工艺优化 Channel 一律不给 dcw 直写
-  // (真实写入统一走 optimization_explore 的治理链),训练 Channel 无写语义;
-  // 观察面档位(exp-miner/line-doctor)零写 —— 白名单已不含写族,此处再兜底一道(两处同源 tool-classes 清单)。
-  const writesBlocked = Boolean(profile?.profile === 'hybrid_twin' && (!flags.governedWriteEnabled || !flags.boundedAutoEnabled || profile.controlPolicy !== 'bounded_auto'))
-    || kind === 'aml_optimization' || kind === 'aml_training'
-    || kind === 'exp-miner' || kind === 'line-doctor'
-  const out = writesBlocked ? scoped.filter(t => !HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES.has(t.name)) : [...scoped]
-  // 团队级插件开关:显式配置过的 channel 按行过滤;未配置(无行)= 全启用,向后兼容
-  const channelOff = channelId
-    ? getChannelPluginsRepo().explicitFor(channelId)
-    : null
-  for (const [name, tool] of listPluginTools()) {
-    if (out.some(t => t.name === name)) continue
-    if (tool.roles && !tool.roles.includes(role)) continue
-    const owner = pluginOfTool(name)
-    if (channelOff && owner && channelOff.get(owner) === false) continue
-    out.push({ name, label: tool.label ?? name, description: tool.description, parameters: tool.parameters ?? {} })
-  }
-  return applyDescriptionPlaceholders(out)
+  const scoped = scopeHostToolsForRole(role, channelId)
+  return applyChannelToolPolicy(scoped.tools, channelId)
 }

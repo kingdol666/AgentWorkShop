@@ -10,6 +10,7 @@
  *   tools/       按工具族拆分的处理器:industrial / progress / tasks / messaging / memory / team
  */
 export { HOST_TOOLS, LEAD_ONLY_TOOL_NAMES, hostToolsForRole } from './catalog'
+export { hostToolsForAgent, agentToolResources } from './per-agent'
 export type { HostToolBridgeContext, HostToolCall, HostToolResult, HostToolSessionState } from './types'
 export { createSessionState, partsToText } from './session'
 export { dispatchHostTool } from './dispatch'

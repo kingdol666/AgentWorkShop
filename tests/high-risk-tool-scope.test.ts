@@ -22,6 +22,7 @@ test('high-risk tool set keeps the full expected membership (conscious-change gu
       'optimization_explore',
       'param_control',
       'recipe_apply',
+      'recipe_create',
       'recipe_rollback',
       'recipe_trial',
       'recipe_update',

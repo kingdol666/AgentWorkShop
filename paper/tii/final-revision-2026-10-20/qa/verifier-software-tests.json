@@ -1,0 +1,27 @@
+{
+  "command": [
+    "node",
+    "node_modules/tsx/dist/cli.mjs",
+    "--tsconfig",
+    ".nuxt/tsconfig.server.json",
+    "--test",
+    "--test-force-exit",
+    "tests/high-risk-tool-scope.test.ts",
+    "tests/tool-profile-observer.test.ts",
+    "tests/recipe-propose.test.ts",
+    "tests/manual-approval-optimization.test.ts",
+    "tests/recipe-approval-snapshot.test.ts",
+    "tests/manual-approval.test.ts",
+    "tests/tool-approvals-choice.test.ts",
+    "tests/recipe-op-interval.test.ts"
+  ],
+  "exit_code": 0,
+  "scope": "isolated temporary/mock software tests; no process replay",
+  "summary": [
+    "\\u2139 tests 65",
+    "\\u2139 pass 65",
+    "\\u2139 fail 0",
+    "\\u2139 cancelled 0",
+    "\\u2139 skipped 0"
+  ]
+}

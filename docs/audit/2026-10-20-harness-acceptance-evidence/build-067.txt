@@ -1,0 +1,10 @@
+npm warn Unknown project config "auto-install-peers". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown project config "strict-peer-dependencies". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> agentworkshop@0.7.67 build
+> node bin/aw.mjs build
+
+› 构建生产产物 .output/ ...
+┌  [36mBuilding Nuxt for production...[39m
+│
+●  [32mNuxt [1m4.5.2[22m[39m[90m (with [39m[90mNitro [1m2.13.4[22m[39m[90m, Vite [1m8.2.1[22m[39m[90m and Vue [1m3.5.41[22m[39m[90m)[39m

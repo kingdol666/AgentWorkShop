@@ -14,14 +14,19 @@
  *
  * 蓝图 JSON 形状(模式 B;devices[] 同模式 A 的内部设备模型):
  * { "simPort": 4034, "shadowDir": "..", "mqttPort": 41830?,
- *   "devices": [ { "id":"wb-machine", "name":"键合主机", "protocol":"modbus-tcp"|"modbus-rtu"|"mqtt",
- *                  "port": 37532?, "unitId": 1?,
+ *   "devices": [ { "id":"wb-machine", "name":"键合主机",
+ *                  "protocol":"modbus-tcp"|"modbus-rtu"|"mqtt"|"opcua"|"http",
+ *                  "port": 37532?, "unitId": 1?, "config": { ...协议覆盖... }?,
  *                  "signals": [ { "id":"usPower-sp","name":"超声功率SP","unit":"%","min":20,"max":100,
  *                                 "decimals":0,"kind":"sp","initial":60 },
  *                               { "id":"pullForce-pv","name":"拉力强度","unit":"gf","min":0,"max":120,
- *                                 "decimals":2,"kind":"pv",
+ *                                 "decimals":2,"kind":"pv","format":"scalar"|"vector"|"image",
+ *                                 "code":"返回 number / {points} / {png} 的 hook 函数体"?,
  *                                 "dynamics":{ "base":18,"tau":8,"noise":1.1,
  *                                              "follows":[{"sp":"超声功率SP","gain":0.55}] } } ] } ] }
+ *
+ * OPC UA 自动生成可写 SP 变量与 ns=2;s=<device>.<signal>;HTTP 自动生成
+ * /sim-http/<device>/api/<signal>(标量/向量/图像),供平台 http DAQ/DCW 驱动直接接入。
  *
  * 输出(末行 JSON):{simBase, shadowDir, devices:[{id,protocol,port,signals}],
  *   driverSource:"sim-export", next:"对每设备 GET /api/nodes/:id/export 取 driverConfig 喂给 provision-line/onboard"}
@@ -117,6 +122,7 @@ async function ensureSim() {
   if (Number.isInteger(pid) && pid > 0) spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore' })
   await sleep(1500)
   process.env.SIM_BASE = SIM
+  process.env.SIM_PORT = String(SIM_PORT)
   process.env.SIM_SHADOW_DIR = SIM_DIR
   const { ensureSimulator } = await import('../../bench/lib/sim.mjs')
   await ensureSimulator({ log: () => {} })
@@ -199,10 +205,13 @@ function fromBlueprint(file) {
     port: d.port,
     unitId: d.unitId ?? 1,
     mqtt: d.mqtt,
+    config: d.config ?? {},
     signals: (d.signals ?? []).map(s => ({
       id: s.id, name: s.name, unit: s.unit ?? '', min: Number(s.min ?? 0), max: Number(s.max ?? 100),
       decimals: s.decimals ?? 2, kind: s.kind ?? (String(s.id).endsWith('-sp') ? 'sp' : 'pv'),
+      format: s.format ?? 'scalar',
       initial: s.initial, code: s.code, dynamics: s.dynamics ?? {},
+      ...(s.strategy ? { strategy: s.strategy } : {}),
     })),
   }))
   return { devices, mqttPort: bp.mqttPort }
@@ -215,7 +224,7 @@ async function materialize(devices, mqttPort) {
   for (const dev of devices) {
     const id = dev.id ?? `twin-${dev.family}-${created.length + 1}`
     const protocol = dev.family
-    const config = {}
+    const config = { ...(dev.config ?? {}) }
     if (protocol === 'modbus-tcp' || protocol === 'modbus-rtu') {
       config.host = '0.0.0.0'
       config.port = dev.port ?? (port += 2)
@@ -223,23 +232,51 @@ async function materialize(devices, mqttPort) {
       config.registerMaps = dev.signals.map((s, i) => ({ address: 40001 + i * 2, area: 'holding', signalId: s.id, dataType: 'float32', byteOrder: 'big' }))
     }
     else if (protocol === 'mqtt') {
-      config.brokerUrl = `mqtt://127.0.0.1:${mqttPort}`
-      config.topics = dev.signals.filter(s => s.kind === 'pv').map(s => ({ topic: `aw/twin/${id}/${s.id}`, signalId: s.id, payloadTemplate: `{"data":{"${s.id}":\${value}}}`, qos: 0 }))
+      config.brokerUrl ??= `mqtt://127.0.0.1:${mqttPort}`
+      config.topics ??= dev.signals.filter(s => s.kind === 'pv').map(s => ({ topic: `aw/twin/${id}/${s.id}`, signalId: s.id, payloadTemplate: `{"data":{"${s.id}":\${value}}}`, qos: 0 }))
       const sp = dev.signals.find(s => s.kind === 'sp')
-      if (sp) {
+      if (sp && !config.commandTopic) {
         config.commandTopic = `aw/twin/${id}/set`
         config.commandSignalId = sp.id
       }
     }
+    else if (protocol === 'opcua') {
+      config.host ??= '127.0.0.1'
+      config.port ??= dev.port ?? (port += 2)
+      config.namespaceUri ??= `urn:aw:twin:${id}`
+      config.opcVars ??= dev.signals.map(s => ({
+        nodeId: `ns=2;s=${id}.${s.id}`,
+        signalId: s.id,
+        dataType: 'Double',
+        writable: s.kind === 'sp',
+      }))
+    }
+    else if (protocol === 'http') {
+      config.paths ??= dev.signals.map(s => ({
+        path: `/api/${s.id}`,
+        signalId: s.id,
+        writable: s.kind === 'sp',
+        responseTemplate: s.format === 'vector'
+          ? '{"points":${points},"value":${value}}'
+          : s.format === 'image'
+            ? '${image}'
+            : '{"value":${value}}',
+      }))
+    }
+    else {
+      throw new Error(`不支持的蓝图协议:${protocol}(支持 modbus-tcp/modbus-rtu/mqtt/opcua/http)`)
+    }
     const nominals = Object.fromEntries(dev.signals.filter(s => s.kind === 'sp').map(s => [s.name, Number(s.initial ?? (s.min + s.max) / 2)]))
     const signals = dev.signals.map(s => ({
       id: s.id, name: s.name, description: `孪生:${s.name}`, unit: s.unit, min: s.min, max: s.max, decimals: s.decimals,
-      strategy: s.kind === 'sp'
-        ? { kind: 'manual', value: s.initial ?? (s.min + s.max) / 2 }
-        : { kind: 'hook', code: s.code
-          ?? (s.dynamics && (s.dynamics.follows?.length || s.dynamics.base != null)
-            ? causalHook(s.dynamics, (s.min + s.max) / 2, nominals)
-            : wanderHook((s.min + s.max) / 2, Math.max((s.max - s.min) / 200, 0.2))) },
+      format: s.format ?? 'scalar',
+      strategy: s.strategy
+        ?? (s.kind === 'sp'
+          ? { kind: 'manual', value: s.initial ?? (s.min + s.max) / 2 }
+          : { kind: 'hook', code: s.code
+            ?? (s.dynamics && (s.dynamics.follows?.length || s.dynamics.base != null)
+              ? causalHook(s.dynamics, (s.min + s.max) / 2, nominals)
+              : wanderHook((s.min + s.max) / 2, Math.max((s.max - s.min) / 200, 0.2))) }),
     }))
     const r = await simApi('POST', '/api/nodes', { id, name: `${id}(孪生)`, description: `aw-plc-sim-twin 生成:${dev.signals.length} 信号`, protocol, enabled: true, tickMs: 1000, signals, config })
     ok(`设备 ${id}(${protocol},${signals.length} 信号)`, r?.code === 0, r?.message ?? '')

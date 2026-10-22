@@ -12,6 +12,7 @@ import { requireDcwDriverKind, resolveDcwDriver } from '../drivers'
 import { recordDcwWriteOps } from './write-audit'
 import { setWriteLockUntil } from './gate-persist'
 import { recordOps } from '../../ops/ops'
+import { getActiveLineRun } from '../line-run'
 
 // ================================================================
 // 只读预检谓词(产线 Co-Pilot P2:recipe_propose 整包方案的预审批校验)
@@ -74,9 +75,12 @@ export abstract class DcwControllerWrite extends DcwControllerBindings {
     // 安全审计需要"谁在何时试图把参数写到哪、被哪条防线拦下";给调用方的反馈由错误消息承担。
     const reject = (err: AppError): never => {
       try {
+        const runNow = getActiveLineRun(node.lineId)
         recordOps({
           actor: meta?.actor ?? 'system', actorName: meta?.actorName ?? '', actorKind: meta?.source === 'agent' ? 'agent' : (meta?.source === 'manual' ? 'user' : 'system'),
           action: 'dcw.write.rejected', kind: 'write', targetKind: 'dcw', targetId: id, lineId: node.lineId,
+          productId: runNow?.productId ?? '',
+          recipeId: runNow?.recipeId ?? recipeRunId ?? '',
           summary: `设定 ${eng}${node.unit || ''} 被拒:${err.message}`,
         })
       }

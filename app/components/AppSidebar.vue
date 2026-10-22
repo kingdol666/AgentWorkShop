@@ -45,6 +45,8 @@ const menuGroups = computed<MenuGroup[]>(() => [
       { key: '/town', icon: 'i-tabler-map-2', label: t('menu.town'), motion: 'im-pop' },
       { key: '/daq', icon: 'i-tabler-activity', label: t('menu.daq'), motion: 'im-pop' },
       { key: '/dcw', icon: 'i-tabler-settings-automation', label: t('menu.dcw'), motion: 'im-pop' },
+      { key: '/data', icon: 'i-tabler-database-export', label: t('menu.dataManagement'), motion: 'im-pop' },
+      { key: '/studio', icon: 'i-tabler-chart-dots', label: t('menu.studio'), motion: 'im-pop' },
       { key: '/aml', icon: 'i-tabler-flask', label: t('menu.aml'), motion: 'im-pop' },
     ],
   },
@@ -66,6 +68,7 @@ const menuGroups = computed<MenuGroup[]>(() => [
       { key: '/users', icon: 'i-tabler-users-group', label: t('menu.users'), motion: 'im-pop' },
       { key: '/permissions', icon: 'i-tabler-shield-lock', label: t('menu.permissions'), motion: 'im-pop', adminOnly: true },
       { key: '/plugins', icon: 'i-tabler-puzzle', label: t('menu.plugins'), motion: 'im-pop' },
+      { key: '/tools', icon: 'i-tabler-tools', label: t('menu.tools'), motion: 'im-pop', adminOnly: true },
       { key: '/settings', icon: 'i-tabler-settings', label: t('menu.settings'), motion: 'im-rotate' },
     ],
   },
@@ -252,11 +255,10 @@ onBeforeUnmount(() => {
   top: 0;
   height: 100vh;
   overflow: hidden auto;
-  /* v4 壳层材质:最透的一档 + 强振动(能看见背后的极光在缓慢流动) */
+  /* 壳层 chrome:高不透明 surface,保证导航文字对比 */
   background: var(--mat-chrome-bg);
   backdrop-filter: var(--vibrancy-chrome);
-  border-right: 1px solid var(--glass-line);
-  box-shadow: var(--glass-specular);
+  border-right: 1px solid var(--line);
   z-index: 20;
 }
 
@@ -303,10 +305,8 @@ onBeforeUnmount(() => {
 
 .logo-sub {
   font-family: var(--font-mono);
-  /* 8.5px 在这块铭牌上连"看得见"都勉强(实测全站每页稳定被判为不可读);
-     9.5px 是这套 mono 铭牌的下限,字距同步收一点以保持行长。 */
-  font-size: 9.5px;
-  letter-spacing: 0.16em;
+  font-size: 11px;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--sider-ink-faint);
 }
@@ -338,9 +338,9 @@ onBeforeUnmount(() => {
 .menu-group-text {
   flex: none;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--sider-ink-faint);
 }
@@ -364,7 +364,7 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   width: 100%;
-  min-height: 34px;
+  min-height: 36px;
   padding: 0 10px;
   font-family: var(--font-body);
   font-size: 13px;
@@ -374,17 +374,15 @@ onBeforeUnmount(() => {
   cursor: pointer;
   background: transparent;
   border: 0;
-  border-radius: var(--radius-panel-sm);
+  border-radius: var(--radius-control);
   transition:
     background-color var(--transition-fast),
     color var(--transition-fast),
-    padding-left var(--transition-fast),
     transform var(--transition-fast);
 }
 
 @media (hover: hover) and (pointer: fine) {
   .menu-item:hover {
-    padding-left: 13px;
     color: var(--ink);
     background: var(--paper-deep);
   }
@@ -394,17 +392,16 @@ onBeforeUnmount(() => {
   transform: scale(0.985);
 }
 
-/* 当前页:控制室绿洗 + 左缘品牌绿标记(导航定位态,替代旧墨色药丸) */
+/* 当前页:信号绿洗 + 3px 左缘导轨(导航定位态) */
 .menu-item.active {
   font-weight: 600;
   color: var(--accent-strong);
   background: var(--accent-soft);
-  box-shadow: inset 2px 0 0 var(--accent);
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 
 .menu-item.active:hover {
-  padding-left: 10px;
-  background: var(--tone-success-bg);
+  background: var(--accent-soft);
 }
 
 .menu-icon {
@@ -459,7 +456,7 @@ onBeforeUnmount(() => {
   align-items: center;
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.06em;
   color: var(--sider-ink-faint);
 }

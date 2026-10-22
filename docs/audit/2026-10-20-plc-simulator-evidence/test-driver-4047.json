@@ -1,0 +1,102 @@
+{
+  "pass": 12,
+  "fail": 0,
+  "rows": [
+    {
+      "device": "twin-modbus-tcp",
+      "driver": "modbus-tcp",
+      "format": "scalar",
+      "signal": "线速SP",
+      "ok": true,
+      "detail": "连接成功,写寄存器可访问(offset=0), 4ms"
+    },
+    {
+      "device": "twin-modbus-tcp",
+      "driver": "modbus-tcp",
+      "format": "scalar",
+      "signal": "线速PV",
+      "ok": true,
+      "detail": "连接成功,读取 40003 = 47.099998474121094"
+    },
+    {
+      "device": "twin-modbus-rtu",
+      "driver": "modbus-rtu",
+      "format": "scalar",
+      "signal": "温度SP",
+      "ok": true,
+      "detail": "网关连接成功,写寄存器可访问(0ms)"
+    },
+    {
+      "device": "twin-modbus-rtu",
+      "driver": "modbus-rtu",
+      "format": "scalar",
+      "signal": "温度PV",
+      "ok": true,
+      "detail": "网关连接成功,读取 40003 = 80"
+    },
+    {
+      "device": "twin-opcua",
+      "driver": "opcua",
+      "format": "scalar",
+      "signal": "压力SP",
+      "ok": true,
+      "detail": "会话建立成功,写节点可访问(ns=2;s=twin-opcua.pressure-sp)"
+    },
+    {
+      "device": "twin-opcua",
+      "driver": "opcua",
+      "format": "scalar",
+      "signal": "压力PV",
+      "ok": true,
+      "detail": "会话建立成功,读取 ns=2;s=twin-opcua.pressure-pv = 7.01"
+    },
+    {
+      "device": "twin-mqtt",
+      "driver": "mqtt",
+      "format": "scalar",
+      "signal": "流量SP",
+      "ok": true,
+      "detail": "Broker 连接成功(127.0.0.1:55830);未执行发布,避免误触发真实设备动作"
+    },
+    {
+      "device": "twin-mqtt",
+      "driver": "mqtt",
+      "format": "scalar",
+      "signal": "流量PV",
+      "ok": true,
+      "detail": "Broker 连接成功,收到 aw/twin/twin-mqtt/flow-pv = 45"
+    },
+    {
+      "device": "twin-http",
+      "driver": "http",
+      "format": "scalar",
+      "signal": "目标SP",
+      "ok": true,
+      "detail": "端点可达(GET → HTTP 200;未执行写入测试,避免误触发真实命令)"
+    },
+    {
+      "device": "twin-http",
+      "driver": "http",
+      "format": "scalar",
+      "signal": "膜厚PV",
+      "ok": true,
+      "detail": "接口可达,取值 = 35.998"
+    },
+    {
+      "device": "twin-http",
+      "driver": "http",
+      "format": "vector",
+      "signal": "膜厚断面",
+      "ok": true,
+      "detail": "接口可达,vector 帧 8 点"
+    },
+    {
+      "device": "twin-http",
+      "driver": "http",
+      "format": "image",
+      "signal": "表检图像",
+      "ok": true,
+      "detail": "接口可达,image 帧 68B(image/png)"
+    }
+  ]
+}

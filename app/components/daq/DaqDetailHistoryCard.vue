@@ -93,7 +93,7 @@ const canvasEl = defineModel<HTMLCanvasElement | null>('canvasEl', { required: t
    凡在多组件出现的规则(.mono/.sec/.pad/.input/.hist-hd/.raw-table)在此各持一份逐字相同的副本,
    以保证每个元素命中的声明集与拆分前一致,同时不引入任何全局选择器。 */
 .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
-.sec { margin: 0 0 10px; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); }
+.sec { margin: 0 0 10px; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); white-space: nowrap; }
 .pad { padding: 16px 18px; }
 .input {
   width: 100%;
@@ -102,14 +102,14 @@ const canvasEl = defineModel<HTMLCanvasElement | null>('canvasEl', { required: t
   color: var(--ink);
   background: var(--paper-raised);
   border: 1px solid var(--line-strong);
-  border-radius: var(--radius-chip);
+  border-radius: var(--radius-control);
 }
 .input:disabled { opacity: 0.45; }
-.hist-hd { display: flex; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.hist-hd { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 10px; }
 
 /* 历史 */
 .col-hist { min-width: 0; }
-.hist-ctl { display: flex; gap: 6px; align-items: center; }
+.hist-ctl { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-left: auto; }
 /* 趋势图拉取间隔(ms;0/空 = 跟随服务端 daq.query.displayIntervalMs) */
 .refresh-ctl { display: inline-flex; gap: 3px; align-items: center; font-size: 11px; color: var(--ink-soft); }
 .refresh-ctl input {
@@ -122,7 +122,15 @@ const canvasEl = defineModel<HTMLCanvasElement | null>('canvasEl', { required: t
   border-radius: var(--radius-chip);
 }
 .refresh-ctl input:focus { outline: none; border-color: var(--accent); }
-.hist-canvas { width: 100%; height: 130px; border: 1px solid var(--line); border-radius: var(--radius-chip); background: var(--paper-deep); }
+.hist-canvas {
+  width: 100%; height: 130px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-chip);
+  background:
+    linear-gradient(var(--divider-hair) 1px, transparent 1px) 0 0 / 100% 22px,
+    linear-gradient(90deg, var(--divider-hair) 1px, transparent 1px) 0 0 / 44px 100%,
+    var(--paper-deep);
+}
 .raw-table { width: 100%; margin-top: 10px; font-size: 11px; border-collapse: collapse; }
 .raw-table th, .raw-table td { padding: 4px 6px; text-align: left; border-bottom: 1px solid var(--divider-hair); }
 .raw-table th { font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-faint); }

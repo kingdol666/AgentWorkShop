@@ -1,0 +1,44 @@
+{
+  "at": "2026-10-20T05:07:10.159Z",
+  "before": {
+    "lineId": "ln-dd6c9135",
+    "active": true,
+    "runId": "rr-7ff99163",
+    "recipeId": "rc-2be5c50c",
+    "recipeName": "多协议孪生基线配方",
+    "productId": "pd-f74b5d83",
+    "productName": "多协议孪生产线-20261020·默认产品",
+    "startedAt": "2026-10-20T12:56:01.190+08:00",
+    "taggedSamples": 2226
+  },
+  "stop": {
+    "code": 0,
+    "message": "ok"
+  },
+  "stopped": {
+    "lineId": "ln-dd6c9135",
+    "active": false,
+    "runId": null,
+    "recipeId": null,
+    "recipeName": null,
+    "productId": null,
+    "productName": null,
+    "startedAt": null,
+    "taggedSamples": 0
+  },
+  "start": {
+    "code": 0,
+    "runId": "rr-f85d0de8"
+  },
+  "started": {
+    "lineId": "ln-dd6c9135",
+    "active": true,
+    "runId": "rr-f85d0de8",
+    "recipeId": "rc-2be5c50c",
+    "recipeName": "多协议孪生基线配方",
+    "productId": "pd-f74b5d83",
+    "productName": "多协议孪生产线-20261020·默认产品",
+    "startedAt": "2026-10-20T13:07:06.116+08:00",
+    "taggedSamples": 14
+  }
+}

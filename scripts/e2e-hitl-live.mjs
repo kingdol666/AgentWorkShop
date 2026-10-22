@@ -119,11 +119,22 @@ const isTargetDialog = (item, a, b) => {
 async function main() {
   console.log(`\n━━━ HITL 真实端到端 @ ${BASE} ━━━`)
 
-  const reg = await api('POST', '/api/users/register', {
-    body: { email: `hitl-e2e-${TAG}@test.local`, password: 'Passw0rd!123', name: `hitl-e2e-${TAG}` },
-  })
-  const token = reg.data?.token
-  if (!token) throw new Error(`注册失败: ${JSON.stringify(reg).slice(0, 200)}`)
+  // 鉴权优先级:预置 token(生产实例自助注册关闭时)→ 账号密码 → 自助注册(开放环境)。
+  let token = process.env.AW_E2E_TOKEN ?? process.env.AW_TOKEN ?? ''
+  if (!token && process.env.AW_EMAIL && process.env.AW_PASS) {
+    const login = await api('POST', '/api/users/login', {
+      body: { email: process.env.AW_EMAIL, password: process.env.AW_PASS },
+    })
+    token = login.data?.token ?? ''
+    if (!token) throw new Error(`登录失败: ${JSON.stringify(login).slice(0, 200)}`)
+  }
+  if (!token) {
+    const reg = await api('POST', '/api/users/register', {
+      body: { email: `hitl-e2e-${TAG}@test.local`, password: 'Passw0rd!123', name: `hitl-e2e-${TAG}` },
+    })
+    token = reg.data?.token
+    if (!token) throw new Error(`注册失败: ${JSON.stringify(reg).slice(0, 200)}`)
+  }
   const me = await api('GET', '/api/users/me', { token })
   const channelName = `hitl-e2e-${TAG}`
   const ch = await api('POST', '/api/workshop/channels', {
@@ -227,6 +238,31 @@ async function main() {
     || Boolean(await page.$('.terminal-panel, [data-testid=omp-terminal-panel]'))
   check('U3 点击条目跳转 /monitor 并定位终端', url.includes('/monitor') && terminalOpened, `url=${url.slice(0, 110)} terminal=${terminalOpened}`)
   await shot('3-jump-monitor')
+
+  // ── Phase U2:群聊界面(用户要求:HITL 选项必须在群聊页原生渲染) ──
+  console.log('  ── Phase U2:群聊界面 HITL 选项 ──')
+  await page.goto(`${BASE}/workshop/w/${channelId}`, { waitUntil: 'networkidle2', timeout: 60_000 })
+  await sleep(2500)
+  // 频道页根节点 `.harness` 常驻;`.chat-timeline` 仅在已有消息/选中会话时渲染,
+  // 空频道页也属于“群聊界面已加载”(HITL 铃标与选项在全局头部,必须可用)。
+  const chatReady = Boolean(await page.$('.harness, .chat-timeline'))
+  check('U2c 群聊页面加载', chatReady, `url=${page.url().slice(0, 100)}`)
+  await page.waitForSelector('.hitl-bell', { timeout: 60_000 })
+  await page.click('.hitl-bell')
+  await page.waitForSelector('.hitl-menu .hitl-item', { timeout: 10_000 })
+  const chatHitl = await page.evaluate(() => {
+    const el = [...document.querySelectorAll('.hitl-menu .hitl-item')].find(n => n.textContent.includes('Proceed?'))
+    if (!el) return null
+    return {
+      text: el.textContent.replace(/\s+/g, ' ').trim().slice(0, 200),
+      options: [...el.querySelectorAll('.hitl-opt')].map(o => o.textContent.trim()),
+      hasSubmit: Boolean(el.querySelector('.hitl-btns')),
+    }
+  })
+  check('U2d 群聊页铃标弹出目标问题', Boolean(chatHitl), chatHitl?.text ?? '未找到 Proceed? 条目')
+  check('U2e 群聊页渲染 yes/no 选项按钮', Boolean(chatHitl?.options?.some(o => o.toLowerCase() === 'yes')) && Boolean(chatHitl?.options?.some(o => o.toLowerCase() === 'no')), `options=${JSON.stringify(chatHitl?.options ?? [])}`)
+  check('U2f 群聊页提供提交答案按钮', Boolean(chatHitl?.hasSubmit), String(chatHitl?.hasSubmit))
+  await shot('5-group-chat-hitl')
 
   // ── Phase W(续):统一应答 → 落定 → agent 收到答案 ──
   const respond = await api('POST', '/api/workshop/hitl/respond', {

@@ -1,0 +1,56 @@
+{
+  "story": "US-006",
+  "title": "数字孪生模型训练 + 虚拟模型模拟 + 下发测试",
+  "at": "2026-10-20T23:52:45+08:00",
+  "training": {
+    "command": "npx tsx --tsconfig .nuxt/tsconfig.server.json scripts/acceptance-aml-hybrid-e2e.ts",
+    "venv": ".AgentWorkShop/aml/.venv（真实 torch/onnx；通过 aml/.venv junction 复用）",
+    "execution": "真实 Python 子进程",
+    "stageA": "物理参数校准：errBefore=1.3649 → errAfter=0.1642；θ=(tau 1.7159, offset 31.1954, gain 1.7407)",
+    "stageB": "3 成员有界残差集成；trainRows=420",
+    "stageD": "conformal q90 coverage=0.9 (target 0.9)",
+    "artifacts": [
+      "model.onnx",
+      "model-2.onnx",
+      "model-3.onnx",
+      "hybrid_manifest.json",
+      "physics_parameters.json"
+    ],
+    "metrics": {
+      "oneStepValNrmse": 0.01267,
+      "oneStepTestNrmse": 0.01194,
+      "rolloutTestNrmse": 0.00608,
+      "gate": "G1-G5 PASS",
+      "modelId": "mdl-e2e-hybrid-1"
+    }
+  },
+  "virtualSimulation": {
+    "modelRegistered": true,
+    "candidateToShadow": true,
+    "provider": "ModelBackedHybridProvider",
+    "candidateTrials": 10,
+    "candidateExecuted": false,
+    "twinGate": "G0_ROWS/G0_RUNS/G1_SINGLE_STEP/G2_ROLLOUT/G3_GENERALIZATION/G4_CALIBRATION_ROWS/G4_COVERAGE/G5_PHYSICS_FAILURE/G6_CANDIDATE_COUNT/G6_TRIAL_COUNT/G6_HARD_VIOLATION/G7_UQ_OOD 全通过 → recommendationEligible",
+    "residualEffect": "|Δtemp_obs|=5.4528（模型 rollout 与纯物理 rollout 可测差异）",
+    "recipeIsolation": "跨配方复用被 TWIN_MODEL_SCENE_MISMATCH 拒绝"
+  },
+  "deploymentWrite": {
+    "note": "平台侧真实下发由 US-003 闭环完成，但不是由上述服务级模型直接驱动；模型驱动候选明确 candidateExecuted=false（虚拟不下发）。",
+    "closedLoop": "recipe_trial 45→50→55→60→65bar，5 次 HITL 批准，设备回读一致，克重 31.30→32.31g，recipe v2 固化；详见 US-003-closed-loop.json",
+    "verdict": "训练/虚拟模型与治理下发两条链均通过；未宣称“模型推荐直接写 PLC”这一未测路径。"
+  },
+  "result": "PARTIAL: 服务级训练/虚拟模型 PASS；平台级训练门禁失败，模型驱动下发未完成",
+  "evidence": "docs/audit/2026-10-20-scenario-suite-evidence/US-006-training.log",
+  "boundary": "训练验收使用平台参考训练器的标准合成工况（e2e-fol-scene），不是注塑产线数据；平台级注塑数据集训练未在本轮执行。该边界必须保留，不得表述为“注塑产线模型已训练投用”。 平台 cast-film 训练因采样窗压缩导致膜厚恒定、G1 门禁失败（NRMSE 0.6035/0.5589），未注册模型。",
+  "platformLive": {
+    "lineId": "ln-723e751c",
+    "datasetId": "ds-mvgwmv59-axub01",
+    "jobId": "job-mvgwry72-c356do",
+    "status": "failed (gate)",
+    "oneStepTestNrmse": 0.55889,
+    "rolloutNrmse": 0.80911,
+    "modelRegistered": false,
+    "verdict": "平台级模型驱动下发未完成；门禁失败，不宣称投用",
+    "evidence": "US-006-platform-live.json"
+  }
+}

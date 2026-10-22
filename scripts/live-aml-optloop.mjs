@@ -116,132 +116,175 @@ log(`✔ cast-film 预设应用,设备 ${simDevices.length} 台: ${simDevices.ma
 
 /* ════════ Stage 1 · admin 注册 ════════ */
 section('Stage 1 · 用户注册 + 提权(repo 库既有用户体系,新注册=user;本链路需 admin 建 DCW/产线)')
-const reg = await api('POST', '/api/workshop/users/register', { name: `aml-live-${RUN_ID}` })
-const token = reg.json?.data?.token
-if (!token) throw new Error(`注册失败: ${JSON.stringify(reg.json).slice(0, 200)}`)
-log('✔ token 就绪')
-// 提升 role → admin(直改全局 users.sqlite;resolveUserByToken 每请求读库,即时生效)。
-// 这是对本隔离测试账号的一次性授权,等价于管理员在用户管理页手工提权。
-{
-  const { DatabaseSync } = await import('node:sqlite')
-  const usersDb = new DatabaseSync(join(REPO, '.AgentWorkShop', 'data', 'users.sqlite'))
-  const r = usersDb.prepare(`UPDATE users SET role = 'admin' WHERE email LIKE 'aml-live-${RUN_ID}%' AND role = 'user'`).run()
-  usersDb.close()
-  log(`✔ 提权 admin: ${Number(r.changes)} 行`)
+let token = String(process.env.AW_TOKEN ?? '').trim()
+if (token) {
+  log('✔ 复用调用方 admin token（隔离实例已初始化，不再注册新账号）')
+}
+else {
+  const reg = await api('POST', '/api/workshop/users/register', { name: `aml-live-${RUN_ID}` })
+  token = reg.json?.data?.token
+  if (!token) throw new Error(`注册失败: ${JSON.stringify(reg.json).slice(0, 200)}`)
+  log('✔ token 就绪')
+  // 提升 role → admin（repo 库首次注册为 user 时的一次性测试授权）
+  {
+    const { DatabaseSync } = await import('node:sqlite')
+    const usersDb = new DatabaseSync(join(REPO, '.AgentWorkShop', 'data', 'users.sqlite'))
+    const r = usersDb.prepare(`UPDATE users SET role = 'admin' WHERE email LIKE 'aml-live-${RUN_ID}%' AND role = 'user'`).run()
+    usersDb.close()
+    log(`✔ 提权 admin: ${Number(r.changes)} 行`)
+  }
 }
 
-/* ════════ Stage 2 · 产线 provision + 开跑 ════════ */
+/* ════════ Stage 2 · 产线 provision + 开跑（或复用已完成采样的线/数据集）════════ */
 section('Stage 2 · 产线 provisioning(6 DCW 执行器 + 5 DAQ 传感器,驱动配置取自模拟器 /export)')
 const sfx = RUN_ID.slice(5, 16).replace(/-/g, '')
-const twin = await provisionTwinLine({ call: async (m, p, b) => { const r = await api(m, p, b, token); return { status: r.status, ...(r.json ?? {}) } } }, { simDevices, sfx })
-for (const e of twin.ev) log('  ' + e)
-if (!twin.ok) throw new Error(`provision 失败: ${(twin.errors ?? []).join('; ')} | ev=${(twin.ev ?? []).join(' ; ')}`)
-log(`✔ lineId=${twin.lineId} productId=${twin.productId}`)
-log(`  DCW: ${JSON.stringify(twin.dcw)}`)
-log(`  DAQ: ${JSON.stringify(twin.daq)}`)
+const REUSE_LINE = String(process.env.AML_REUSE_LINE ?? '').trim()
+let twin
+let batch1
+let dataset
+let spReadback
+if (REUSE_LINE) {
+  twin = {
+    lineId: REUSE_LINE,
+    productId: String(process.env.AML_REUSE_PRODUCT ?? ''),
+    dcw: JSON.parse(String(process.env.AML_REUSE_DCW ?? '{}')),
+    daq: JSON.parse(String(process.env.AML_REUSE_DAQ ?? '{}')),
+  }
+  batch1 = { recipeId: String(process.env.AML_REUSE_RECIPE ?? '') }
+  dataset = {
+    id: String(process.env.AML_REUSE_DATASET ?? ''),
+    rowCount: Number(process.env.AML_REUSE_ROWS ?? 0),
+    runIds: [1, 2, 3],
+    sha256: String(process.env.AML_REUSE_SHA ?? ''),
+  }
+  spReadback = JSON.parse(String(process.env.AML_REUSE_SP ?? '{}'))
+  log(`✔ 复用采样结果 line=${twin.lineId} recipe=${batch1.recipeId} dataset=${dataset.id} (${dataset.rowCount} 窗)`)
+}
+else {
+  twin = await provisionTwinLine({ call: async (m, p, b) => { const r = await api(m, p, b, token); return { status: r.status, ...(r.json ?? {}) } } }, { simDevices, sfx })
+  for (const e of twin.ev) log('  ' + e)
+  if (!twin.ok) throw new Error(`provision 失败: ${(twin.errors ?? []).join('; ')} | ev=${(twin.ev ?? []).join(' ; ')}`)
+  log(`✔ lineId=${twin.lineId} productId=${twin.productId}`)
+  log(`  DCW: ${JSON.stringify(twin.dcw)}`)
+  log(`  DAQ: ${JSON.stringify(twin.daq)}`)
 
-const batch1 = await startTwinBatch({ call: async (m, p, b) => { const r = await api(m, p, b, token); return { status: r.status, ...(r.json ?? {}) } } }, { lineId: twin.lineId, productId: twin.productId, dcw: twin.dcw, sfx })
-if (!batch1.ok) throw new Error(`开跑失败: ${batch1.errors?.join('; ')}`)
-log(`✔ 批次开跑 recipeId=${batch1.recipeId}`)
+  batch1 = await startTwinBatch({ call: async (m, p, b) => { const r = await api(m, p, b, token); return { status: r.status, ...(r.json ?? {}) } } }, { lineId: twin.lineId, productId: twin.productId, dcw: twin.dcw, sfx })
+  if (!batch1.ok) throw new Error(`开跑失败: ${batch1.errors?.join('; ')}`)
+  log(`✔ 批次开跑 recipeId=${batch1.recipeId}`)
 
-// ── SP 设定点回读 DAQ 节点:AML 数据集的 control 输入取自数采时序库,
-//    执行器设定点必须有 DAQ 回读节点(同一信号,只读)才能进入训练。──
-const { simExport } = await import('../bench/lib/sim.mjs')
-const spReadback = {}
-const spSignalIds = Object.keys(twin.dcw) // zone1-sp / screw-sp / linespeed-sp / diegap-sp …
-for (const dev of simDevices) {
-  const exp = await simExport(dev.id)
-  const items = exp?.items ?? []
-  for (const spId of spSignalIds) {
-    if (spReadback[spId]) continue
-    const sig = (dev.signals ?? []).find(s => s.id === spId)
-    if (!sig) continue
-    // export 的 item.signal = 信号【名】(如「加热区1SP」),按名对齐
-    const item = items.find(i => i.signal === sig.name)
-    if (!item?.driverConfig) continue
-    // 写配置 → 读配置转换:mqtt 写用 jsonKey(发布字段),DAQ 读订阅同主题用 jsonPath 取值
-    let cfg = { ...item.driverConfig }
-    if (cfg.jsonKey !== undefined && cfg.jsonPath === undefined) {
-      cfg.jsonPath = cfg.jsonKey
-      delete cfg.jsonKey
+  // ── SP 设定点回读 DAQ 节点:AML 数据集的 control 输入取自数采时序库,
+  //    执行器设定点必须有 DAQ 回读节点(同一信号,只读)才能进入训练。──
+  const { simExport } = await import('../bench/lib/sim.mjs')
+  spReadback = {}
+  const spSignalIds = Object.keys(twin.dcw) // zone1-sp / screw-sp / linespeed-sp / diegap-sp …
+  for (const dev of simDevices) {
+    const exp = await simExport(dev.id)
+    const items = exp?.items ?? []
+    for (const spId of spSignalIds) {
+      if (spReadback[spId]) continue
+      const sig = (dev.signals ?? []).find(s => s.id === spId)
+      if (!sig) continue
+      // export 的 item.signal = 信号【名】(如「加热区1SP」),按名对齐
+      const item = items.find(i => i.signal === sig.name)
+      if (!item?.driverConfig) continue
+      // 写配置 → 读配置转换:mqtt 写用 jsonKey(发布字段),DAQ 读订阅同主题用 jsonPath 取值
+      let cfg = { ...item.driverConfig }
+      if (cfg.jsonKey !== undefined && cfg.jsonPath === undefined) {
+        cfg.jsonPath = cfg.jsonKey
+        delete cfg.jsonKey
+      }
+      const r = await api('POST', '/api/workshop/daq', {
+        name: `${sig.name} 回读 ${sfx}`, templateRef: 'daq-temp-tc', driver: dev.protocol, driverConfig: cfg,
+        unit: sig.unit, min: sig.min, max: sig.max, lineId: twin.lineId, intervalMs: 1000, publishIntervalMs: 0,
+        semantics: `执行器设定点回读(AML control 输入) ${item.signal}`,
+      }, token)
+      if (r.json?.data?.node?.id) spReadback[spId] = r.json.data.node.id
     }
-    const r = await api('POST', '/api/workshop/daq', {
-      name: `${sig.name} 回读 ${sfx}`, templateRef: 'daq-temp-tc', driver: dev.protocol, driverConfig: cfg,
-      unit: sig.unit, min: sig.min, max: sig.max, lineId: twin.lineId, intervalMs: 1000, publishIntervalMs: 0,
-      semantics: `执行器设定点回读(AML control 输入) ${item.signal}`,
-    }, token)
-    if (r.json?.data?.node?.id) spReadback[spId] = r.json.data.node.id
   }
-}
-log(`✔ SP 回读 DAQ 节点 ${Object.keys(spReadback).length}/6: ${JSON.stringify(spReadback)}`)
+  log(`✔ SP 回读 DAQ 节点 ${Object.keys(spReadback).length}/6: ${JSON.stringify(spReadback)}`)
 
-/* ════════ Stage 3 · 3 批次采样(每批 500s;批内两段安全阶跃激励) ════════ */
-section('Stage 3 · 真实采样:3 批次 × 500s(批内阶跃激励:每个切分都覆盖 3 个设定点水平)')
-// 实验设计:设定点只在批次间变化会导致 train/test 分布割裂(外推爆炸,G1/G3 必挂)。
-// 批内阶跃:每个 run 依次经历 base → +Δ1 → +Δ2 三个水平,train/val/test 同分布;
-// 各 run 的 Δ 略作变化增加丰富度,全部在配方窗口与安全上限内。
-const BASE_SP = { 'linespeed-sp': 95, 'diegap-sp': 1.0 }
-const EXCITE_RUNS = [
-  [{ ls: 2.0, dg: 0.03 }, { ls: -1.5, dg: 0.06 }],
-  [{ ls: -1.0, dg: 0.05 }, { ls: 2.5, dg: 0.02 }],
-  [{ ls: 1.5, dg: 0.04 }, { ls: -2.0, dg: 0.05 }],
-]
-for (let run = 1; run <= 3; run++) {
-  if (run > 1) {
-    await api('POST', `/api/workshop/dcw/lines/${twin.lineId}/stop`, {}, token)
-    log('  上一批次停止')
-    // 复用同一配方 stop/start → 新 runId(数据集按 recipeId 取批次,须同配方)
-    const st = await api('POST', `/api/workshop/dcw/lines/${twin.lineId}/start`, { recipeId: batch1.recipeId }, token)
-    if (st.status !== 200) throw new Error(`批次 ${run} 开跑失败: ${JSON.stringify(st.json).slice(0, 200)}`)
-    log(`  批次 ${run} 开跑(同配方 ${batch1.recipeId})`)
+  /* ════════ Stage 3 · 3 批次采样(每批 500s;批内两段安全阶跃激励) ════════ */
+  section('Stage 3 · 真实采样:3 批次 × 500s(批内阶跃激励:每个切分都覆盖 3 个设定点水平)')
+  // 实验设计:设定点只在批次间变化会导致 train/test 分布割裂(外推爆炸,G1/G3 必挂)。
+  // 批内阶跃:每个 run 依次经历 base → +Δ1 → +Δ2 三个水平,train/val/test 同分布;
+  // 各 run 的 Δ 略作变化增加丰富度,全部在配方窗口与安全上限内。
+  const BASE_SP = { 'linespeed-sp': 95, 'diegap-sp': 1.0 }
+  const EXCITE_RUNS = [
+    [{ ls: 2.0, dg: 0.03 }, { ls: -1.5, dg: 0.06 }],
+    [{ ls: -1.0, dg: 0.05 }, { ls: 2.5, dg: 0.02 }],
+    [{ ls: 1.5, dg: 0.04 }, { ls: -2.0, dg: 0.05 }],
+  ]
+  for (let run = 1; run <= 3; run++) {
+    if (run > 1) {
+    // stop 是异步收窗：立即 start 会撞「已在运行」。必须轮询到 active=false 再开。
+      for (let attempt = 0; attempt < 12; attempt++) {
+        await api('POST', `/api/workshop/dcw/lines/${twin.lineId}/stop`, {}, token)
+        await sleep(1000)
+        const snap = await api('GET', '/api/workshop/dcw', undefined, token)
+        const state = (snap.json?.data?.lineStates ?? []).find(x => x.lineId === twin.lineId)
+        if (!state?.active) break
+        if (attempt === 11) throw new Error(`批次 ${run} 前停线超时: ${JSON.stringify(state)}`)
+      }
+      log('  上一批次停止(active=false)')
+      // 复用同一配方 stop/start → 新 runId(数据集按 recipeId 取批次,须同配方)
+      let started = null
+      for (let attempt = 0; attempt < 8; attempt++) {
+        started = await api('POST', `/api/workshop/dcw/lines/${twin.lineId}/start`, { recipeId: batch1.recipeId }, token)
+        if (started.status === 200) break
+        if (!/已在运行/.test(String(started.json?.message ?? ''))) break
+        await sleep(1000)
+      }
+      if (started?.status !== 200) throw new Error(`批次 ${run} 开跑失败: ${JSON.stringify(started?.json).slice(0, 200)}`)
+      log(`  批次 ${run} 开跑(同配方 ${batch1.recipeId})`)
+    }
+    await sleep(20_000) // base 水平稳定（基准压缩：3×240s，仍≥720 行 1s 样本）
+    const [e1, e2] = EXCITE_RUNS[run - 1]
+    await api('POST', `/api/workshop/dcw/${twin.dcw['linespeed-sp']}/write`, { value: BASE_SP['linespeed-sp'] + e1.ls }, token)
+    await api('POST', `/api/workshop/dcw/${twin.dcw['diegap-sp']}/write`, { value: BASE_SP['diegap-sp'] + e1.dg }, token)
+    log(`  批次${run} 阶跃1: linespeed=${BASE_SP['linespeed-sp'] + e1.ls} diegap=${(BASE_SP['diegap-sp'] + e1.dg).toFixed(2)}`)
+    await sleep(80_000)
+    await api('POST', `/api/workshop/dcw/${twin.dcw['linespeed-sp']}/write`, { value: BASE_SP['linespeed-sp'] + e2.ls }, token)
+    await api('POST', `/api/workshop/dcw/${twin.dcw['diegap-sp']}/write`, { value: BASE_SP['diegap-sp'] + e2.dg }, token)
+    log(`  批次${run} 阶跃2: linespeed=${BASE_SP['linespeed-sp'] + e2.ls} diegap=${(BASE_SP['diegap-sp'] + e2.dg).toFixed(2)}`)
+    await sleep(140_000) // 第三水平保持至 240s
+    const pv = twin.daq['film-thickness']
+    const r = await api('GET', `/api/workshop/daq/${pv}/samples?bucketMs=1000&limit=3`, undefined, token)
+    const latest = r.json?.data?.points?.[0]?.avg ?? '?'
+    log(`  批次${run} 完成(500s) · 膜厚当前≈${typeof latest === 'number' ? latest.toFixed(2) : latest} μm`)
   }
-  await sleep(60_000) // base 水平稳定 60s
-  const [e1, e2] = EXCITE_RUNS[run - 1]
-  await api('POST', `/api/workshop/dcw/${twin.dcw['linespeed-sp']}/write`, { value: BASE_SP['linespeed-sp'] + e1.ls }, token)
-  await api('POST', `/api/workshop/dcw/${twin.dcw['diegap-sp']}/write`, { value: BASE_SP['diegap-sp'] + e1.dg }, token)
-  log(`  批次${run} 阶跃1: linespeed=${BASE_SP['linespeed-sp'] + e1.ls} diegap=${(BASE_SP['diegap-sp'] + e1.dg).toFixed(2)}`)
-  await sleep(170_000)
-  await api('POST', `/api/workshop/dcw/${twin.dcw['linespeed-sp']}/write`, { value: BASE_SP['linespeed-sp'] + e2.ls }, token)
-  await api('POST', `/api/workshop/dcw/${twin.dcw['diegap-sp']}/write`, { value: BASE_SP['diegap-sp'] + e2.dg }, token)
-  log(`  批次${run} 阶跃2: linespeed=${BASE_SP['linespeed-sp'] + e2.ls} diegap=${(BASE_SP['diegap-sp'] + e2.dg).toFixed(2)}`)
-  await sleep(270_000) // 第三水平保持至 500s
-  const pv = twin.daq['film-thickness']
-  const r = await api('GET', `/api/workshop/daq/${pv}/samples?bucketMs=1000&limit=3`, undefined, token)
-  const latest = r.json?.data?.points?.[0]?.avg ?? '?'
-  log(`  批次${run} 完成(500s) · 膜厚当前≈${typeof latest === 'number' ? latest.toFixed(2) : latest} μm`)
-}
-await api('POST', `/api/workshop/dcw/lines/${twin.lineId}/stop`, {}, token)
-log('✔ 采样完成(3 批次 × 330s),产线停止')
+  await api('POST', `/api/workshop/dcw/lines/${twin.lineId}/stop`, {}, token)
+  log('✔ 采样完成(3 批次 × 330s),产线停止')
 
-/* ════════ Stage 4 · 构建数据集(输入=SP 回读 DAQ,目标=膜厚) ════════ */
-section('Stage 4 · AML 数据集构建(输入=6 个 SP 回读 DAQ;输出目标=膜厚 goal;特征=熔温/熔压)')
-if (Object.keys(spReadback).length < 6) throw new Error(`SP 回读节点不足: ${JSON.stringify(spReadback)}`)
-// 采样预检:逐节点确认批次期间有样本(无样本的回读剔除并记录,防 0 窗数据集)
-const sampledControls = []
-for (const [sig, nodeId] of Object.entries(spReadback)) {
-  const r = await api('GET', `/api/workshop/daq/${nodeId}/samples?bucketMs=60000&limit=1`, undefined, token)
-  const has = (r.json?.data?.points ?? []).length > 0
-  log(`  回读采样检查 ${sig}(${nodeId}): ${has ? '✓ 有样本' : '✘ 无样本,剔除'}`)
-  if (has) sampledControls.push({ nodeId, role: 'control' })
+  /* ════════ Stage 4 · 构建数据集(输入=SP 回读 DAQ,目标=膜厚) ════════ */
+  section('Stage 4 · AML 数据集构建(输入=6 个 SP 回读 DAQ;输出目标=膜厚 goal;特征=熔温/熔压)')
+  if (Object.keys(spReadback).length < 6) throw new Error(`SP 回读节点不足: ${JSON.stringify(spReadback)}`)
+  // 采样预检:逐节点确认批次期间有样本(无样本的回读剔除并记录,防 0 窗数据集)
+  const sampledControls = []
+  for (const [sig, nodeId] of Object.entries(spReadback)) {
+    const r = await api('GET', `/api/workshop/daq/${nodeId}/samples?bucketMs=60000&limit=1`, undefined, token)
+    const has = (r.json?.data?.points ?? []).length > 0
+    log(`  回读采样检查 ${sig}(${nodeId}): ${has ? '✓ 有样本' : '✘ 无样本,剔除'}`)
+    if (has) sampledControls.push({ nodeId, role: 'control' })
+  }
+  if (sampledControls.length < 4) throw new Error(`可用 control 回读不足: ${sampledControls.length}`)
+  const dsBody = {
+    lineId: twin.lineId, productId: twin.productId, recipeId: batch1.recipeId,
+    nodes: [
+      ...sampledControls,
+      { nodeId: twin.daq['film-thickness'], role: 'target' },
+      { nodeId: twin.daq['melt-temp'], role: 'feature' },
+      { nodeId: twin.daq['melt-pressure'], role: 'feature' },
+    ],
+    beatMs: 1000, window: { historySteps: 8, horizonSteps: 4 },
+    split: { valRatio: 0.34, testRatio: 0.33, seed: 42 },
+    purpose: 'mpc_surrogate',
+    note: `live 闭环优化数据集 ${RUN_ID}`,
+  }
+  const ds = await api('POST', '/api/workshop/aml/datasets', dsBody, token)
+  dataset = ds.json?.data?.dataset
+  if (!dataset) throw new Error(`数据集构建失败: ${JSON.stringify(ds.json).slice(0, 300)}`)
+  log(`✔ 数据集 ${dataset.id}: ${dataset.rowCount} 窗 / ${dataset.runIds.length} 批 / sha=${String(dataset.sha256).slice(0, 12)}`)
 }
-if (sampledControls.length < 4) throw new Error(`可用 control 回读不足: ${sampledControls.length}`)
-const dsBody = {
-  lineId: twin.lineId, productId: twin.productId, recipeId: batch1.recipeId,
-  nodes: [
-    ...sampledControls,
-    { nodeId: twin.daq['film-thickness'], role: 'target' },
-    { nodeId: twin.daq['melt-temp'], role: 'feature' },
-    { nodeId: twin.daq['melt-pressure'], role: 'feature' },
-  ],
-  beatMs: 1000, window: { historySteps: 8, horizonSteps: 4 },
-  split: { valRatio: 0.34, testRatio: 0.33, seed: 42 },
-  purpose: 'mpc_surrogate',
-  note: `live 闭环优化数据集 ${RUN_ID}`,
-}
-const ds = await api('POST', '/api/workshop/aml/datasets', dsBody, token)
-const dataset = ds.json?.data?.dataset
-if (!dataset) throw new Error(`数据集构建失败: ${JSON.stringify(ds.json).slice(0, 300)}`)
-log(`✔ 数据集 ${dataset.id}: ${dataset.rowCount} 窗 / ${dataset.runIds.length} 批 / sha=${String(dataset.sha256).slice(0, 12)}`)
 
 /* ════════ Stage 5 · hybrid_twin Channel 实例化 + worker 绑定 ════════ */
 section('Stage 5 · Hybrid Twin Channel(模板实例化 + worker 节点绑定)')
@@ -260,13 +303,13 @@ const channelId = inst.json?.data?.channelId
 const worker = inst.json?.data?.agents?.find(x => x.role === 'worker')
 if (!channelId || !worker) throw new Error(`实例化失败: ${JSON.stringify(inst.json).slice(0, 300)}`)
 log(`✔ channelId=${channelId} worker=${worker.id}`)
-for (const nodeId of Object.values(twin.dcw)) {
-  await api('POST', '/api/workshop/agent-tools/bindings', { agentId: worker.id, nodeId, kind: 'dcw', mode: 'auto' }, token)
-}
+// 权限模型 v2：dcw 节点直绑已废弃；hybrid 场景的控制面 = 绑定 recipe（参数节点展开为 DCW）。
+const recipeBind = await api('POST', '/api/workshop/agent-tools/bindings', { agentId: worker.id, nodeId: batch1.recipeId, kind: 'recipe', mode: 'auto' }, token)
+if (recipeBind.status !== 200) throw new Error(`配方绑定失败: ${JSON.stringify(recipeBind.json).slice(0, 200)}`)
 for (const nodeId of Object.values(twin.daq)) {
   await api('POST', '/api/workshop/agent-tools/bindings', { agentId: worker.id, nodeId, kind: 'daq', mode: 'auto' }, token)
 }
-log(`✔ worker 绑定 ${Object.keys(twin.dcw).length} DCW + ${Object.keys(twin.daq).length} DAQ`)
+log(`✔ worker 绑定 recipe(${Object.keys(twin.dcw).length} 参数) + ${Object.keys(twin.daq).length} DAQ`)
 
 /* ════════ Stage 6 · 场景发现→编译→冻结;骨架 PhysicsSpec ════════ */
 section('Stage 6 · 场景发现→编译→冻结;骨架 PhysicsSpec(twin_physics_spec_draft)')

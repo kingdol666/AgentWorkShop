@@ -1,0 +1,75 @@
+{
+  "story": "US-004",
+  "lineId": "ln-eb33c591",
+  "recipeId": "rc-bf879aab",
+  "pressNode": "dw-5f6dd0b4",
+  "weightNode": "dn-c347ca65",
+  "stepLimit": 1.8,
+  "step": 1.8,
+  "window": {
+    "lo": 31.058,
+    "hi": 31.458
+  },
+  "baseline": {
+    "n": 19,
+    "mean": 31.258184210526313,
+    "std": 0.015290356890877542,
+    "min": 31.236,
+    "max": 31.292,
+    "inWindow": 0,
+    "from": 1792590703073,
+    "to": 1792590793073
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "from": 45,
+      "target": 46.8,
+      "applied": 46.8,
+      "delta": 1.7999999999999972,
+      "stats": {
+        "n": 14,
+        "mean": 31.34957142857143,
+        "std": 0.025860102435202644,
+        "min": 31.326,
+        "max": 31.42,
+        "inWindow": 14,
+        "from": 1792590794165,
+        "to": 1792590859165
+      },
+      "worse": false,
+      "hitl": "ap-63660846"
+    },
+    {
+      "round": 2,
+      "from": 46.8,
+      "target": 45,
+      "applied": 45,
+      "delta": 1.7999999999999972,
+      "stats": {
+        "n": 13,
+        "mean": 31.253615384615383,
+        "std": 0.025112940156691393,
+        "min": 31.204,
+        "max": 31.303999999999995,
+        "inWindow": 13,
+        "from": 1792590860256,
+        "to": 1792590925256
+      },
+      "worse": false,
+      "hitl": "ap-c54541e2"
+    }
+  ],
+  "final": {
+    "n": 12,
+    "mean": 31.246875000000003,
+    "std": 0.019453068524014006,
+    "min": 31.216,
+    "max": 31.278,
+    "inWindow": 12,
+    "from": 1792590925245,
+    "to": 1792590985245
+  },
+  "degraded": false,
+  "rollbackTriggered": false
+}

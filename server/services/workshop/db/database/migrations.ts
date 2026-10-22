@@ -56,6 +56,32 @@ export function migrateApprovalPayloadColumns(db: DatabaseSync): void {
   migrateAddColumn(db, 'approval_history', 'choice', 'INTEGER')
 }
 
+/**
+ * 产线日志显式域标识(2026-10-19):scope=line|system。
+ * 老库**首次补列**时按 line_id 回填(有产线=line,无产线=system);之后每次启动只做
+ * 不变量收敛「scope=line 必须有 line_id」—— 缺锚点的行降级为 system,防止无归属行
+ * 混入产线日志。已补列的库不再改写 scope,保留写入方显式给出的 system/line 语义。
+ */
+export function migrateAuditScopeColumn(db: DatabaseSync): void {
+  const existed = (db.prepare('PRAGMA table_info(audit_log)').all() as Array<{ name: string }>).some(c => c.name === 'scope')
+  migrateAddColumn(db, 'audit_log', 'scope', 'TEXT NOT NULL DEFAULT \'system\'')
+  if (!existed) {
+    db.exec('UPDATE audit_log SET scope = \'line\' WHERE scope = \'system\' AND line_id <> \'\'')
+  }
+  db.exec('UPDATE audit_log SET scope = \'system\' WHERE scope = \'line\' AND line_id = \'\'')
+}
+
+/**
+ * 产线日志查询索引(2026-10-19):ops-logs 默认只查产线域,常用过滤是
+ * scope / line_id / recipe_id + 时间倒序。索引必须在该表补列迁移之后创建
+ * (老库先跑 migrateAddColumn,否则 CREATE INDEX 会因缺列中断初始化)。
+ */
+export function migrateAuditQueryIndexes(db: DatabaseSync): void {
+  db.exec('CREATE INDEX IF NOT EXISTS idx_audit_log_scope_at ON audit_log(scope, at DESC)')
+  db.exec('CREATE INDEX IF NOT EXISTS idx_audit_log_line_at ON audit_log(line_id, at DESC)')
+  db.exec('CREATE INDEX IF NOT EXISTS idx_audit_log_recipe_at ON audit_log(recipe_id, at DESC)')
+}
+
 /** AgentTeam guardrail task metadata; additive and safe for existing task rows. */
 export function migrateAgentTeamTaskGuardrailColumns(db: DatabaseSync): void {
   migrateAddColumn(db, 'tasks', 'source_chat_message_id', 'TEXT')

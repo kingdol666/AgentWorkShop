@@ -198,13 +198,13 @@ async function markAll(): Promise<void> {
   position: absolute;
   top: 2px;
   right: 2px;
-  min-width: 15px;
-  height: 15px;
+  min-width: 16px;
+  height: 16px;
   padding: 0 4px;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: 10.5px;
   font-weight: 700;
-  line-height: 15px;
+  line-height: 16px;
   color: var(--on-accent, #fff);
   text-align: center;
   background: var(--tone-info-dot, #3b82f6);

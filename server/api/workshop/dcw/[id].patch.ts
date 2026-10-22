@@ -14,6 +14,7 @@ import { defineApiHandler } from '@/server/utils/response'
 import { requireLineMode } from '@/server/services/workshop/permissions'
 import { bindDcwBroadcast, getDcwController } from '@/server/services/workshop/dcw/dcw-controller'
 import { broadcastSceneEvent } from '@/server/services/workshop/scene-events'
+import { recordOps } from '@/server/services/workshop/ops/ops'
 
 export default defineApiHandler(async (event) => {
   const user = resolveUser(event)
@@ -26,5 +27,14 @@ export default defineApiHandler(async (event) => {
   const targetLine = body.lineId !== undefined ? String(body.lineId || '') || null : node0.lineId
   requireLineMode(user, targetLine, 'operate')
   const node = getDcwController().patch(id, body)
+  // 节点参数/落点/量程/启停变更 = 产线可写面变更,必须进产线日志(含跨线迁移)
+  const changed = Object.keys(body)
+  recordOps({
+    actor: user.id, actorName: user.name, actorKind: 'user',
+    action: 'dcw.patch', kind: 'line', targetKind: 'dcw-node', targetId: id,
+    lineId: node.lineId ?? '',
+    summary: `修改数控节点「${node.name}」(${changed.join('/') || '无变更'})${node0.lineId !== node.lineId ? `:产线 ${node0.lineId || '(无)'} → ${node.lineId || '(无)'}` : ''}`,
+    detail: { keys: changed, fromLine: node0.lineId ?? '', toLine: node.lineId ?? '' },
+  })
   return { node: node.toView() }
 })

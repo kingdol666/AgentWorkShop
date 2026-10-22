@@ -82,6 +82,20 @@ aw mcp                 # 启动 stdio 服务(由 MCP 客户端作为子进程拉
 (`optimization_explore` / `mpc_optimize` / `twin_*` / `dcw_control` / `param_control` / `daq_query` 等),
 是探索/寻优闭环的执行通道。
 
+### host tools 目录与 Channel 工具治理
+
+- 内置工具与插件 `ctx.omp.registerTool` 注册的工具都会投影到 `tool_registry`(SQLite);
+  `GET /api/workshop/tools`(admin)可查看来源、插件、参数 Schema、可用性与被哪些 Channel 停用。
+- `aw-mcp-bridge.mjs` 的 `tools/list` 仍从 `/api/workshop/agent-tools/list` 实时拉取(10s 缓存),
+  并声明 `tools.listChanged=true`;每 10s 对比名称/描述,变化时向客户端发
+  `notifications/tools/list_changed`。引擎不响应通知时,下一次 `tools/list`/新会话仍会拿到新清单。
+- 每个 Channel 可在「设置 → 工具」按 `all`(默认全开)或 `selected`(仅勾选)选择工具;
+  `GET|PUT /api/workshop/channels/:id/tools` 是同一数据源。
+- **执行面复核**:`aw-mcp-bridge` 的 `tools/call` 回程到 `manager.invokeHostTool` 后,
+  会再检查该 Channel 是否停用该工具;即使引擎缓存了旧工具列表,直调被停用工具也返回 `isError`。
+- 硬规则(角色/profile/写守卫/插件总开关)不可被 Channel 选择绕过;插件被卸载后
+  其工具在目录中标记 `available=0`,MCP 列表与直调同时失效。
+
 ## 六、与 skills 的集成
 
 三个项目级 skill 以本服务为执行底座(`skills/` 目录):

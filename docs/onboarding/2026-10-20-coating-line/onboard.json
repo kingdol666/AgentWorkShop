@@ -1,0 +1,546 @@
+{
+  "line": {
+    "name": "流延膜精密产线-C01-20261020",
+    "description": "光学级流延膜;膜厚 35.0±0.8um、横向均匀性<=2.5um 前提下提升线速;来源=docs/onboarding/2026-10-20-coating-line/README.md"
+  },
+  "connectivity": {
+    "tests": [
+      {
+        "label": "线速SP(modbus-tcp)",
+        "driver": "modbus-tcp",
+        "driverConfig": {
+          "host": "127.0.0.1",
+          "port": 37550,
+          "unitId": 1,
+          "register": 40001,
+          "registerType": "holding",
+          "dataType": "float32",
+          "byteOrder": "big"
+        }
+      },
+      {
+        "label": "膜厚PV(modbus-tcp)",
+        "driver": "modbus-tcp",
+        "driverConfig": {
+          "host": "127.0.0.1",
+          "port": 37550,
+          "unitId": 1,
+          "register": 40017,
+          "registerType": "holding",
+          "dataType": "float32",
+          "byteOrder": "big"
+        }
+      },
+      {
+        "label": "MES熔体温度当前值(mes-rest)",
+        "driver": "mes-rest",
+        "domain": {
+          "min": 200,
+          "max": 300
+        },
+        "driverConfig": {
+          "baseUrl": "http://127.0.0.1:15062",
+          "allowPrivateHost": "true",
+          "authType": "header",
+          "authHeaderName": "x-api-token",
+          "secretRef": "DEMO",
+          "readMap": "{\"path\":\"/api/v1/params/melt_temp/current\",\"response\":{\"valuePath\":\"data.value\",\"tsPath\":\"data.ts\",\"dictionaryPath\":\"data.fields\"}}"
+        }
+      }
+    ]
+  },
+  "nodes": [
+    {
+      "kind": "dcw",
+      "name": "线速SP",
+      "driver": "modbus-tcp",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 37550,
+        "unitId": 1,
+        "register": 40001,
+        "registerType": "holding",
+        "dataType": "float32",
+        "byteOrder": "big"
+      },
+      "unit": "m/min",
+      "decimals": 1,
+      "min": 20,
+      "max": 60,
+      "stepLimit": 2,
+      "holdIntervalMs": 120000,
+      "templateRef": "speed-sp"
+    },
+    {
+      "kind": "dcw",
+      "name": "熔体温度SP",
+      "driver": "modbus-tcp",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 37550,
+        "unitId": 1,
+        "register": 40003,
+        "registerType": "holding",
+        "dataType": "float32",
+        "byteOrder": "big"
+      },
+      "unit": "℃",
+      "decimals": 1,
+      "min": 220,
+      "max": 280,
+      "stepLimit": 3,
+      "holdIntervalMs": 120000,
+      "templateRef": "temp-sp"
+    },
+    {
+      "kind": "dcw",
+      "name": "模头压力SP",
+      "driver": "modbus-tcp",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 37550,
+        "unitId": 1,
+        "register": 40005,
+        "registerType": "holding",
+        "dataType": "float32",
+        "byteOrder": "big"
+      },
+      "unit": "bar",
+      "decimals": 1,
+      "min": 40,
+      "max": 100,
+      "stepLimit": 3,
+      "holdIntervalMs": 120000,
+      "templateRef": "pressure-sp"
+    },
+    {
+      "kind": "dcw",
+      "name": "冷却辊温度SP",
+      "driver": "modbus-tcp",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 37550,
+        "unitId": 1,
+        "register": 40007,
+        "registerType": "holding",
+        "dataType": "float32",
+        "byteOrder": "big"
+      },
+      "unit": "℃",
+      "decimals": 1,
+      "min": 15,
+      "max": 45,
+      "stepLimit": 2,
+      "holdIntervalMs": 120000,
+      "templateRef": "temp-sp"
+    },
+    {
+      "kind": "daq",
+      "name": "线速PV",
+      "driver": "modbus-tcp",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 37550,
+        "unitId": 1,
+        "register": 40009,
+        "registerType": "holding",
+        "dataType": "float32",
+        "byteOrder": "big"
+      },
+      "unit": "m/min",
+      "decimals": 1,
+      "min": 20,
+      "max": 60,
+      "intervalMs": 2000,
+      "templateRef": "daq-line-encoder"
+    },
+    {
+      "kind": "daq",
+      "name": "熔体温度PV",
+      "driver": "modbus-tcp",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 37550,
+        "unitId": 1,
+        "register": 40011,
+        "registerType": "holding",
+        "dataType": "float32",
+        "byteOrder": "big"
+      },
+      "unit": "℃",
+      "decimals": 1,
+      "min": 220,
+      "max": 280,
+      "intervalMs": 2000,
+      "templateRef": "daq-temp-tc"
+    },
+    {
+      "kind": "daq",
+      "name": "模头压力PV",
+      "driver": "modbus-tcp",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 37550,
+        "unitId": 1,
+        "register": 40013,
+        "registerType": "holding",
+        "dataType": "float32",
+        "byteOrder": "big"
+      },
+      "unit": "bar",
+      "decimals": 1,
+      "min": 40,
+      "max": 100,
+      "intervalMs": 2000,
+      "templateRef": "daq-pressure-tx"
+    },
+    {
+      "kind": "daq",
+      "name": "冷却辊温度PV",
+      "driver": "modbus-tcp",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 37550,
+        "unitId": 1,
+        "register": 40015,
+        "registerType": "holding",
+        "dataType": "float32",
+        "byteOrder": "big"
+      },
+      "unit": "℃",
+      "decimals": 1,
+      "min": 15,
+      "max": 45,
+      "intervalMs": 2000,
+      "templateRef": "daq-temp-tc"
+    },
+    {
+      "kind": "daq",
+      "name": "膜厚PV",
+      "driver": "modbus-tcp",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 37550,
+        "unitId": 1,
+        "register": 40017,
+        "registerType": "holding",
+        "dataType": "float32",
+        "byteOrder": "big"
+      },
+      "unit": "um",
+      "decimals": 3,
+      "min": 30,
+      "max": 40,
+      "warnLow": 34.2,
+      "warnHigh": 35.8,
+      "intervalMs": 2000,
+      "templateRef": "daq-temp-tc"
+    },
+    {
+      "kind": "daq",
+      "name": "膜厚横向均匀性PV",
+      "driver": "modbus-tcp",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 37550,
+        "unitId": 1,
+        "register": 40019,
+        "registerType": "holding",
+        "dataType": "float32",
+        "byteOrder": "big"
+      },
+      "unit": "um",
+      "decimals": 3,
+      "min": 0.5,
+      "max": 5,
+      "warnHigh": 2.5,
+      "intervalMs": 2000,
+      "templateRef": "daq-temp-tc"
+    },
+    {
+      "kind": "daq",
+      "name": "膜张力PV",
+      "driver": "modbus-tcp",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 37550,
+        "unitId": 1,
+        "register": 40021,
+        "registerType": "holding",
+        "dataType": "float32",
+        "byteOrder": "big"
+      },
+      "unit": "N",
+      "decimals": 1,
+      "min": 100,
+      "max": 200,
+      "warnLow": 110,
+      "warnHigh": 190,
+      "intervalMs": 2000,
+      "templateRef": "daq-tension-cell"
+    },
+    {
+      "kind": "dcw",
+      "name": "MES熔体温度",
+      "driver": "mes-rest",
+      "templateRef": "temp-sp",
+      "unit": "℃",
+      "decimals": 2,
+      "min": 200,
+      "max": 300,
+      "holdIntervalMs": 0,
+      "driverConfig": {
+        "baseUrl": "http://127.0.0.1:15062",
+        "allowPrivateHost": "true",
+        "authType": "header",
+        "authHeaderName": "x-api-token",
+        "secretRef": "DEMO",
+        "desc": "MES 熔体温度历史(标量)",
+        "semantics": "MES 侧熔体温度,用于与 PLC PV 交叉核对",
+        "readMap": {
+          "path": "/api/v1/params/melt_temp/current",
+          "response": {
+            "valuePath": "data.value",
+            "tsPath": "data.ts",
+            "dictionaryPath": "data.fields"
+          }
+        },
+        "historyMap": {
+          "path": "/api/v1/params/melt_temp/history",
+          "query": {},
+          "response": {
+            "rowsPath": "data.rows[*]",
+            "valuePath": "value",
+            "tsPath": "ts",
+            "dictionaryPath": "data.fields",
+            "nextCursorPath": "data.nextCursor"
+          },
+          "pageSize": 100,
+          "maxPages": 50
+        }
+      }
+    },
+    {
+      "kind": "dcw",
+      "name": "MES膜厚断面",
+      "driver": "mes-rest",
+      "templateRef": "temp-sp",
+      "unit": "um",
+      "decimals": 3,
+      "min": 30,
+      "max": 40,
+      "holdIntervalMs": 0,
+      "driverConfig": {
+        "baseUrl": "http://127.0.0.1:15062",
+        "allowPrivateHost": "true",
+        "authType": "header",
+        "authHeaderName": "x-api-token",
+        "secretRef": "DEMO",
+        "desc": "MES 48 点膜厚断面(向量)",
+        "semantics": "沿模头横向的膜厚分布;逐点含义由 MES 响应 fields[].points 给出",
+        "historyMap": {
+          "path": "/api/v1/quality/thickness",
+          "query": {},
+          "response": {
+            "rowsPath": "data.rows[*]",
+            "tsPath": "ts",
+            "format": "vector",
+            "valuesPath": "profile",
+            "dictionaryPath": "data.fields",
+            "nextCursorPath": "data.nextCursor"
+          },
+          "pageSize": 100,
+          "maxPages": 50
+        }
+      }
+    },
+    {
+      "kind": "dcw",
+      "name": "MES批次汇总",
+      "driver": "mes-rest",
+      "templateRef": "temp-sp",
+      "unit": "mixed",
+      "decimals": 2,
+      "min": 0,
+      "max": 100,
+      "holdIntervalMs": 0,
+      "driverConfig": {
+        "baseUrl": "http://127.0.0.1:15062",
+        "allowPrivateHost": "true",
+        "authType": "header",
+        "authHeaderName": "x-api-token",
+        "secretRef": "DEMO",
+        "desc": "MES 批次质量汇总(多参数 map/table)",
+        "semantics": "每批次膜厚均值/标准差/CPK/缺陷数/判定;字段字典由 MES 响应 fields 返回",
+        "historyMap": {
+          "path": "/api/v1/batches",
+          "query": {},
+          "response": {
+            "rowsPath": "data.rows[*]",
+            "tsPath": "start",
+            "format": "table",
+            "dictionaryPath": "data.fields",
+            "nextCursorPath": "data.nextCursor"
+          },
+          "pageSize": 200,
+          "maxPages": 10
+        }
+      }
+    },
+    {
+      "kind": "dcw",
+      "name": "MES表面图像",
+      "driver": "mes-rest",
+      "templateRef": "temp-sp",
+      "unit": "gray",
+      "decimals": 0,
+      "min": 0,
+      "max": 255,
+      "holdIntervalMs": 0,
+      "driverConfig": {
+        "baseUrl": "http://127.0.0.1:15062",
+        "allowPrivateHost": "true",
+        "authType": "header",
+        "authHeaderName": "x-api-token",
+        "secretRef": "DEMO",
+        "desc": "MES CCD 表面图像帧",
+        "semantics": "表检图像帧;像素落盘,不进 prompt",
+        "historyMap": {
+          "path": "/api/v1/vision/ccd",
+          "query": {},
+          "response": {
+            "rowsPath": "data.frames[*]",
+            "tsPath": "ts",
+            "format": "image",
+            "dataPath": "data",
+            "mimePath": "mime",
+            "dictionaryPath": "data.fields",
+            "nextCursorPath": "data.nextCursor"
+          },
+          "pageSize": 50,
+          "maxPages": 10
+        }
+      }
+    }
+  ],
+  "recipe": {
+    "name": "流延膜C01-膜厚窗口基线配方",
+    "params": [
+      {
+        "node": "线速SP",
+        "value": 35,
+        "min": 28,
+        "max": 48,
+        "stepLimit": 2
+      },
+      {
+        "node": "熔体温度SP",
+        "value": 250,
+        "min": 235,
+        "max": 265,
+        "stepLimit": 3
+      },
+      {
+        "node": "模头压力SP",
+        "value": 65,
+        "min": 55,
+        "max": 80,
+        "stepLimit": 3
+      },
+      {
+        "node": "冷却辊温度SP",
+        "value": 28,
+        "min": 22,
+        "max": 34,
+        "stepLimit": 2
+      }
+    ]
+  },
+  "startLine": true,
+  "channel": {
+    "scenario": "optimize",
+    "name": "流延膜C01-膜厚窗口优化频道",
+    "plugins": {
+      "idd-closedloop-bridge": true,
+      "rag-bridge": true
+    },
+    "bindings": [
+      {
+        "agentRole": "worker:2",
+        "kind": "recipe",
+        "nodeId": "$RECIPE",
+        "mode": "manual"
+      },
+      {
+        "agentRole": "worker:0",
+        "kind": "daq",
+        "nodeId": "$DAQ:线速PV",
+        "mode": "auto"
+      },
+      {
+        "agentRole": "worker:0",
+        "kind": "daq",
+        "nodeId": "$DAQ:熔体温度PV",
+        "mode": "auto"
+      },
+      {
+        "agentRole": "worker:0",
+        "kind": "daq",
+        "nodeId": "$DAQ:模头压力PV",
+        "mode": "auto"
+      },
+      {
+        "agentRole": "worker:0",
+        "kind": "daq",
+        "nodeId": "$DAQ:冷却辊温度PV",
+        "mode": "auto"
+      },
+      {
+        "agentRole": "worker:0",
+        "kind": "daq",
+        "nodeId": "$DAQ:膜厚PV",
+        "mode": "auto"
+      },
+      {
+        "agentRole": "worker:0",
+        "kind": "daq",
+        "nodeId": "$DAQ:膜厚横向均匀性PV",
+        "mode": "auto"
+      },
+      {
+        "agentRole": "worker:0",
+        "kind": "daq",
+        "nodeId": "$DAQ:膜张力PV",
+        "mode": "auto"
+      }
+    ],
+    "mesFetchGrants": [
+      {
+        "agentRole": "worker:0",
+        "nodeIds": [
+          "MES熔体温度",
+          "MES膜厚断面",
+          "MES批次汇总",
+          "MES表面图像"
+        ],
+        "name": "流延膜C01-MES取数授权配方",
+        "expectedPoints": 48
+      }
+    ],
+    "seedTask": {
+      "title": "建立流延膜C01基线并完成一轮膜厚窗口内线速寻优",
+      "description": "目标:膜厚均值保持 35.0±0.8um、横向均匀性<=2.5um、张力 100~200N 的前提下提升线速。步骤:①先 line_context/daq_query/mes_fetch 建立基线;②观察至少 2 个窗口再提案;③每参数提案必须带 basis(数值+时间窗)与 exp_ref,recipe 提案走 HITL 人工审批;④硬约束:线速<=48m/min、熔体温度<=265℃、模头压力<=80bar、冷却辊<=34℃,每步 settle>=60s;⑤达标=膜厚连续 3 个复测窗在窗且均匀性不越限;劣化立即 recipe_rollback(dispatch=true) 统一回退;⑥每轮结论 kb 沉淀。",
+      "budget_minutes": 90
+    }
+  },
+  "smoke": {
+    "param": "线速SP",
+    "delta": 2
+  },
+  "verify": {
+    "plugins": [
+      "idd-closedloop-bridge",
+      "rag-bridge"
+    ]
+  }
+}

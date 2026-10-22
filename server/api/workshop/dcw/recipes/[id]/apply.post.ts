@@ -36,7 +36,8 @@ export default defineApiHandler(async (event) => {
     targetKind: 'recipe',
     targetId: id,
     summary: `一键下发配方批次 ${((run as { id?: string }).id ?? '')},逐参数写命令已执行`,
-    productId: (run as { productId?: string }).productId ?? '',
+    lineId: recipe?.lineId ?? '',
+    productId: (run as { productId?: string }).productId ?? recipe?.productId ?? '',
     recipeId: id,
     detail: { runId: (run as { id?: string }).id },
   })

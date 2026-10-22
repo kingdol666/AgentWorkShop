@@ -1,0 +1,37 @@
+{
+  "schema": "reviewer-phase-provenance/1.0",
+  "phase": 2,
+  "contract_role": "da",
+  "provider": "OpenAI",
+  "model_id": null,
+  "model_id_status": "exact inherited model id unavailable",
+  "accountable_human": null,
+  "accountable_human_status": "not identified in supplied run context",
+  "calibration_status": "NOT_CALIBRATED",
+  "canonical_checker_status": "unavailable; no canonical conformance checker was run",
+  "criteria_binding": "criteria_binding_unavailable",
+  "manuscript": {
+    "frozen_pdf_sha256": "85ff90803ef9fb5884ba05077909a33628b976485964be35b649656bece11e10",
+    "page_count": 10,
+    "source": "paper/tii/SUBMISSION-IEEE-TII/main.pdf",
+    "hash_verified": true
+  },
+  "inspected_material": [
+    "Unchanged review/da-phase1.md and review/contract.json",
+    "Frozen submission PDF and sections in paper/tii/SUBMISSION-IEEE-TII",
+    "paper/tii/SUBMISSION-IEEE-TII/REPRODUCIBILITY.md",
+    "Evidence README, CLAIM-MAP.json, MISSING-EVIDENCE.json, SOURCE-SNAPSHOT-STATUS.json, and artifacts needed to evaluate the integration claim"
+  ],
+  "peer_outputs_read": false,
+  "legacy_or_prior_review_reports_read": false,
+  "author_implementation_logs_or_QA_verdicts_read": false,
+  "manuscript_modified": false,
+  "findings": {
+    "critical_count": 0,
+    "major_count": 1,
+    "scored_dimensions": {
+      "D3": "warn"
+    },
+    "major_issue": "The evidence demonstrates complementary mechanisms and routes, but not one current-version end-to-end composition spanning strategy, protocol, and production-context changes."
+  }
+}

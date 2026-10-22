@@ -54,6 +54,7 @@ import { configureAmlRuntime } from '../services/workshop/aml/runtime'
 import { recoverInterruptedJobs, shutdownOrchestrator } from '../services/workshop/aml/job-orchestrator'
 import { envStatus, startCreateVenv } from '../services/workshop/aml/env-manager'
 import { attachOmpPluginBridge } from '../services/workshop/agents/plugin-tools'
+import { initToolRegistrySync } from '../services/workshop/tools/registry'
 import { startAmlRetentionTimer, stopAmlRetentionTimer } from '../services/workshop/aml/retention'
 import { configureMesDatasets, defaultDatasetsDir } from '../services/workshop/mes/mes-datasets'
 import { configureAnalysisRepo } from '../services/workshop/analysis/analysis.repo'
@@ -163,6 +164,9 @@ export default function workshopPlugin(nitroApp: {
   // 插件 omp 工具注册桥:启动即接管 pending 队列(此前首次 spawn omp agent 才挂桥,
   // 全新实例未 spawn 前 kb_agent/diag_run 等插件工具会一直"未知工具")
   attachOmpPluginBridge()
+
+  // 工具目录:把内置 + 插件工具投影到 tool_registry(启动一次,之后订阅插件注册变更)
+  initToolRegistrySync()
 
   // AML 训练环境启动预热(用户规约:启动时检测 uv,有则在运行时目录 <configRoot>/aml/.venv
   // 直接创建训练环境;异步执行不阻塞启动;失败只记日志,可在「运行环境」面板重试)

@@ -1,0 +1,91 @@
+{
+  "lineId": "ln-dd6c9135",
+  "recipeId": "rc-2be5c50c",
+  "channelId": "8bbdd9ae-1737-40ae-b571-82a7d093482e",
+  "dcw": [
+    {
+      "id": "dw-d0b66f73",
+      "name": "线速SP",
+      "min": 20,
+      "max": 60,
+      "stepLimit": 2
+    },
+    {
+      "id": "dw-176c4cc2",
+      "name": "温度SP",
+      "min": 20,
+      "max": 120,
+      "stepLimit": 5
+    },
+    {
+      "id": "dw-0fe4833e",
+      "name": "压力SP",
+      "min": 1,
+      "max": 10,
+      "stepLimit": 1
+    },
+    {
+      "id": "dw-38e28fda",
+      "name": "流量SP",
+      "min": 0,
+      "max": 100,
+      "stepLimit": 5,
+      "ackMode": "transport-ack",
+      "observeDaqId": "dn-4de6b1de",
+      "observeTimeoutMs": 60000
+    },
+    {
+      "id": "dw-303456d0",
+      "name": "目标SP",
+      "min": 30,
+      "max": 40,
+      "stepLimit": 1
+    }
+  ],
+  "daq": [
+    "dn-6f96cbec",
+    "dn-bcee0027",
+    "dn-bafca691",
+    "dn-4de6b1de",
+    "dn-02c099a8",
+    "dn-c8279163",
+    "dn-f0f089f7"
+  ],
+  "recipeParams": [
+    {
+      "nodeId": "dw-d0b66f73",
+      "value": 43,
+      "min": 38,
+      "max": 48,
+      "stepLimit": 2
+    },
+    {
+      "nodeId": "dw-176c4cc2",
+      "value": 80,
+      "min": 70,
+      "max": 90,
+      "stepLimit": 5
+    },
+    {
+      "nodeId": "dw-0fe4833e",
+      "value": 7,
+      "min": 5,
+      "max": 9,
+      "stepLimit": 1
+    },
+    {
+      "nodeId": "dw-38e28fda",
+      "value": 45,
+      "min": 35,
+      "max": 55,
+      "stepLimit": 5
+    },
+    {
+      "nodeId": "dw-303456d0",
+      "value": 36,
+      "min": 34,
+      "max": 38,
+      "stepLimit": 1
+    }
+  ]
+}

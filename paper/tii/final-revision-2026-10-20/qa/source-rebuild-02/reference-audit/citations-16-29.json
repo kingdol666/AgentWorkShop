@@ -1,0 +1,451 @@
+{
+  "schema": "citation-audit/1.0",
+  "audit_date": "2026-10-20",
+  "timezone": "Asia/Shanghai",
+  "scope": "References 16–29 in main.bbl at audit start; stable BibTeX keys are authoritative if later numbering changes.",
+  "input_files": [
+    "paper/tii/SUBMISSION-IEEE-TII/main.bbl",
+    "paper/tii/SUBMISSION-IEEE-TII/resources/refs.bib",
+    "paper/tii/SUBMISSION-IEEE-TII/sections/related.tex",
+    "paper/tii/SUBMISSION-IEEE-TII/sections/discussion.tex"
+  ],
+  "method": {
+    "local_first": true,
+    "tools": [
+      "web.run (called; returned blank in this agent)",
+      "web-access CDP proxy with newly created background tabs",
+      "curl of publisher/protocol-owner public PDFs parsed in memory"
+    ],
+    "third_party_metadata_apis_used": false,
+    "manuscript_uploaded": false,
+    "source_id_policy": "No web source IDs fabricated; exact primary URLs recorded.",
+    "limit": "Paid standards full text not read. Catalog scope verifies identity and broad context only. Existing manuscript correctness is assessed at cited-claim scope, not by title alone."
+  },
+  "summary": {
+    "entries": 14,
+    "identities_verified": 14,
+    "remaining_citation_scope_fix": "part11 related-work sentence needs narrowing unless root applies the supplied remedy",
+    "metadata_completions": [
+      "AAAI shielding pages 2669–2678",
+      "FDA guidance exact title/type/URL",
+      "IEC61511 full Part1 title"
+    ],
+    "historical_status_note": "IEEE1815-2012 is inactive-reserved. All older references are historical/foundational anchors, not presented as newly published evidence."
+  },
+  "entries": [
+    {
+      "number": 16,
+      "key": "debenedetti2025camel",
+      "authors": [
+        "Edoardo Debenedetti",
+        "Ilia Shumailov",
+        "Tianqi Fan",
+        "Jamie Hayes",
+        "Nicholas Carlini",
+        "Daniel Fabian",
+        "Christoph Kern",
+        "Chongyang Shi",
+        "Andreas Terzis",
+        "Florian Tramèr"
+      ],
+      "title": "Defeating Prompt Injections by Design",
+      "year": 2025,
+      "venue": "arXiv",
+      "identifier": "arXiv:2503.18813",
+      "doi": "10.48550/arXiv.2503.18813",
+      "pages": null,
+      "publication_status": "Cited as an arXiv preprint; v1 2025-03-24, v2 2025-06-24. The inspected arXiv page does not assign a journal/conference publication.",
+      "urls": [
+        "https://arxiv.org/abs/2503.18813"
+      ],
+      "read_scope": "Author-submitted arXiv metadata and abstract",
+      "metadata_status": "VERIFIED",
+      "cited_claim": "CaMeL uses capability-based information-flow control to govern data/tool behavior.",
+      "claim_support_status": "SUPPORTED",
+      "source_summary": "CaMeL separates trusted-query control/data flows and applies capabilities/security policies at tool invocation to constrain unauthorized data flows. This directly supports the narrow related-work description; it supplies no evidence of this manuscript's implementation or physical safety.",
+      "changes": [],
+      "accessed": "2026-10-20",
+      "freshness_note": "Current/recent relative to the 2026-10-20 audit."
+    },
+    {
+      "number": 17,
+      "key": "part11",
+      "authors": [
+        "U.S. Food and Drug Administration"
+      ],
+      "title": "Part 11, Electronic Records; Electronic Signatures — Scope and Application",
+      "year": 2003,
+      "venue": "Guidance for Industry",
+      "identifier": "FDA-2003-D-0143; guidance about 21 CFR Part 11",
+      "doi": null,
+      "pages": null,
+      "publication_status": "Final FDA guidance, September 2003; public page content-current date 2018-08-24. Guidance is nonbinding and is distinct from the regulation originally issued in 1997.",
+      "urls": [
+        "https://www.fda.gov/regulatory-information/search-fda-guidance-documents/part-11-electronic-records-electronic-signatures-scope-and-application",
+        "https://www.fda.gov/media/75414/download"
+      ],
+      "read_scope": "FDA guidance HTML, including scope, authority checks, electronic signatures, audit trails, and nonbinding-status sections",
+      "metadata_status": "EXISTS_BUT_ENTRY_CONFLATES_GUIDANCE_AND_REGULATION",
+      "cited_claim": "Original related-work sentence groups range checks, approvals, versioned recipes, and audit trails in DCS/SCADA and electronic batch-record practice under this one citation.",
+      "claim_support_status": "NEEDS_NARROWING",
+      "source_summary": "The guidance covers defined FDA-regulated electronic records/signatures, authority/operational/device checks, and risk-based audit/record controls. It does not establish generic DCS/SCADA range-check practice or recipe-version control. It expressly discusses narrow applicability and enforcement discretion.",
+      "changes": [
+        "Use exact guidance title without prefixing it as the regulation itself; set howpublished to Guidance for Industry and include official FDA URL.",
+        "Narrow the citation-bearing sentence to electronic-record/signature accountability, authority checks, and risk-based audit trails; support range/recipe practices with ISA-88 or implementation evidence separately.",
+        "Do not describe this system as Part 11 compliant or certified."
+      ],
+      "accessed": "2026-10-20",
+      "freshness_note": "Older than two years; used as a foundational/historical reference."
+    },
+    {
+      "number": 18,
+      "key": "iec62443-3-3",
+      "authors": [
+        "International Electrotechnical Commission"
+      ],
+      "title": "IEC 62443-3-3:2013: Industrial communication networks — Network and system security — Part 3-3: System security requirements and security levels",
+      "year": 2013,
+      "venue": "International Standard",
+      "identifier": "IEC 62443-3-3:2013, edition 1.0",
+      "doi": null,
+      "pages": "80 pages (catalog extent)",
+      "publication_status": "Published 2013-08-07; catalog stability date 2027; 2014 corrigendum included.",
+      "urls": [
+        "https://webstore.iec.ch/en/publication/7033"
+      ],
+      "read_scope": "Public IEC catalog metadata and scope only; paid standard full text not read",
+      "metadata_status": "VERIFIED",
+      "cited_claim": "Industrial control-system security environment / deployment credentials, endpoint security, and IT/OT separation.",
+      "claim_support_status": "SCOPE_SUPPORTED_CLAUSE_LEVEL_NOT_ASSESSED",
+      "source_summary": "The public scope identifies technical control-system security requirements and capability security levels, applied using zones and conduits. It supports broad IACS security context; individual clauses, implementation compliance, and certification were not assessed.",
+      "changes": [
+        "Retain as security-context reference; avoid asserting formal IEC 62443 compliance or implying catalog access proves every detailed deployment clause."
+      ],
+      "accessed": "2026-10-20",
+      "freshness_note": "Older than two years; used as a foundational/historical reference."
+    },
+    {
+      "number": 19,
+      "key": "ieee1815dnp3",
+      "authors": [
+        "IEEE"
+      ],
+      "title": "IEEE Standard for Electric Power Systems Communications—Distributed Network Protocol (DNP3)",
+      "year": 2012,
+      "venue": "IEEE Standard",
+      "identifier": "IEEE Std 1815-2012",
+      "doi": null,
+      "pages": null,
+      "publication_status": "IEEE SA catalog: published 2012-10-10; Inactive-Reserved since 2023-03-30. Historical reference, not an active-current-standard claim.",
+      "urls": [
+        "https://standards.ieee.org/ieee/1815/5414/",
+        "https://www.dnp.org/Portals/0/AboutUs/DNP3%20Primer%20Rev%20A.pdf"
+      ],
+      "read_scope": "IEEE SA public standard catalog; DNP Users Group original 8-page Primer, Revision A, 2005-03-20, p.7",
+      "metadata_status": "VERIFIED_HISTORICAL_INACTIVE_EDITION",
+      "cited_claim": "DNP3 select-before-operate is a telecontrol precedent for staged command handling.",
+      "claim_support_status": "SUPPORTED_AS_HISTORICAL_PRECEDENT",
+      "source_summary": "IEEE's catalog verifies the designation/title and protocol scope. The DNP Users Group primer explicitly describes control and analog-output requests using select-before-operate or direct-operate sequences on page 7. This does not equate command staging with observing physical process attainment.",
+      "changes": [
+        "Add historical wording if needed; do not label IEEE1815-2012 active/current.",
+        "No full paid IEEE standard was accessed; SBO claim was checked using the protocol owner's public primer."
+      ],
+      "accessed": "2026-10-20",
+      "freshness_note": "Older than two years; used as a foundational/historical reference."
+    },
+    {
+      "number": 20,
+      "key": "alshiekh2018shielding",
+      "authors": [
+        "Mohammed Alshiekh",
+        "Roderick Bloem",
+        "Rüdiger Ehlers",
+        "Bettina Könighofer",
+        "Scott Niekum",
+        "Ufuk Topcu"
+      ],
+      "title": "Safe Reinforcement Learning via Shielding",
+      "year": 2018,
+      "venue": "Proceedings of the AAAI Conference on Artificial Intelligence",
+      "volume": "32",
+      "issue": "1",
+      "pages": "2669–2678",
+      "doi": "10.1609/aaai.v32i1.11797",
+      "publication_status": "Published AAAI-18 conference paper; publisher landing page lists 2018-04-29.",
+      "urls": [
+        "https://ojs.aaai.org/index.php/AAAI/article/view/11797",
+        "https://ojs.aaai.org/index.php/AAAI/article/download/11797/11656"
+      ],
+      "read_scope": "AAAI publisher metadata/abstract plus original PDF first page and page-number footers",
+      "metadata_status": "VERIFIED_CURRENT_ENTRY_OMITS_PAGES",
+      "cited_claim": "Formal shielding is a distinct safety-enforcement approach that complements supervisory governance.",
+      "claim_support_status": "SUPPORTED",
+      "source_summary": "The work synthesizes a shield from temporal-logic specifications, monitors learner actions, and corrects actions that would violate the specification. Its formal-property setting supports distinguishing shielding from this manuscript's supervisory checks.",
+      "changes": [
+        "Add pages={2669--2678}; the original publisher PDF has 10 pages with these printed page numbers."
+      ],
+      "accessed": "2026-10-20",
+      "freshness_note": "Older than two years; used as a foundational/historical reference."
+    },
+    {
+      "number": 21,
+      "key": "ames2017cbf",
+      "authors": [
+        "Aaron D. Ames",
+        "Xiangru Xu",
+        "Jessy W. Grizzle",
+        "Paulo Tabuada"
+      ],
+      "title": "Control Barrier Function Based Quadratic Programs for Safety Critical Systems",
+      "year": 2017,
+      "venue": "IEEE Transactions on Automatic Control",
+      "volume": "62",
+      "issue": "8",
+      "pages": "3861–3876",
+      "doi": "10.1109/TAC.2016.2638961",
+      "publication_status": "Published in August 2017 issue; online date 2016-12-13 is not a conflicting publication year.",
+      "urls": [
+        "https://ieeexplore.ieee.org/document/7782377",
+        "https://arxiv.org/abs/1609.06408"
+      ],
+      "read_scope": "IEEE publisher metadata/abstract and introduction; author arXiv abstract/related DOI",
+      "metadata_status": "VERIFIED",
+      "cited_claim": "Control-barrier-function safety certification differs from ordinary range/admission checks.",
+      "claim_support_status": "SUPPORTED",
+      "source_summary": "The paper formalizes forward invariance via barrier functions and combines safety constraints with Lyapunov performance objectives in quadratic programs. It supports the manuscript's methodological distinction; no CBF proof is supplied for this system.",
+      "changes": [],
+      "accessed": "2026-10-20",
+      "freshness_note": "Older than two years; used as a foundational/historical reference."
+    },
+    {
+      "number": 22,
+      "key": "sha2001simplex",
+      "authors": [
+        "Lui Sha"
+      ],
+      "title": "Using simplicity to control complexity",
+      "year": 2001,
+      "venue": "IEEE Software",
+      "volume": "18",
+      "issue": "4",
+      "pages": "20–28",
+      "doi": "10.1109/MS.2001.936213",
+      "publication_status": "Published July–August 2001 issue; IEEE date of publication 2001-08-31.",
+      "urls": [
+        "https://ieeexplore.ieee.org/document/936213"
+      ],
+      "read_scope": "IEEE publisher metadata, article introduction, and The Simplex Architecture section",
+      "metadata_status": "VERIFIED",
+      "cited_claim": "Simplex assurance is a distinct mechanism with a reliable safety/core controller and switching logic.",
+      "claim_support_status": "SUPPORTED",
+      "source_summary": "The Simplex section separates high-assurance and high-performance subsystems and uses decision logic to retain the plant within an established stability envelope or hand control to the assurance controller. It supports differentiation from a software supervisory record/admission layer.",
+      "changes": [
+        "Capitalize Simplex when naming the architecture."
+      ],
+      "accessed": "2026-10-20",
+      "freshness_note": "Older than two years; used as a foundational/historical reference."
+    },
+    {
+      "number": 23,
+      "key": "parasuramanmanzey2010complacency",
+      "authors": [
+        "Raja Parasuraman",
+        "Dietrich H. Manzey"
+      ],
+      "title": "Complacency and Bias in Human Use of Automation: An Attentional Integration",
+      "year": 2010,
+      "venue": "Human Factors",
+      "volume": "52",
+      "issue": "3",
+      "pages": "381–410",
+      "doi": "10.1177/0018720810376055",
+      "publication_status": "Published research review; publisher first-online date 2010-10-20.",
+      "urls": [
+        "https://journals.sagepub.com/doi/10.1177/0018720810376055"
+      ],
+      "read_scope": "SAGE publisher metadata/abstract; page extent also checked in publisher's rights-link metadata (startPage=381,endPage=410)",
+      "metadata_status": "VERIFIED",
+      "cited_claim": "Approval workflow structure is distinguishable from measured operator comprehension, complacency, and automation bias.",
+      "claim_support_status": "SUPPORTED_AS_HUMAN_FACTORS_CONTEXT",
+      "source_summary": "The review integrates evidence on automation-related complacency and bias, highlighting attention, multitask load, and omission/commission errors. It motivates human evaluation, but it does not diagnose this system or show its operators experience those effects.",
+      "changes": [],
+      "accessed": "2026-10-20",
+      "freshness_note": "Older than two years; used as a foundational/historical reference."
+    },
+    {
+      "number": 24,
+      "key": "parasuraman2000model",
+      "authors": [
+        "Raja Parasuraman",
+        "Thomas B. Sheridan",
+        "Christopher D. Wickens"
+      ],
+      "title": "A model for types and levels of human interaction with automation",
+      "year": 2000,
+      "venue": "IEEE Transactions on Systems, Man, and Cybernetics—Part A: Systems and Humans",
+      "volume": "30",
+      "issue": "3",
+      "pages": "286–297",
+      "doi": "10.1109/3468.844354",
+      "publication_status": "Published May 2000; IEEE publication date 2000-05-31.",
+      "urls": [
+        "https://ieeexplore.ieee.org/document/844354"
+      ],
+      "read_scope": "IEEE publisher metadata/abstract",
+      "metadata_status": "VERIFIED",
+      "cited_claim": "Human responsibility and automation allocation require explicit design beyond adding a confirmation click.",
+      "claim_support_status": "SUPPORTED_AS_DESIGN_CONTEXT",
+      "source_summary": "The model distinguishes acquisition, analysis, decision/action selection, and action implementation and their levels of automation. Human performance consequences are primary design-evaluation criteria. It supports the workflow-versus-human-outcome distinction.",
+      "changes": [],
+      "accessed": "2026-10-20",
+      "freshness_note": "Older than two years; used as a foundational/historical reference."
+    },
+    {
+      "number": 25,
+      "key": "bainbridge1983ironies",
+      "authors": [
+        "Lisanne Bainbridge"
+      ],
+      "title": "Ironies of automation",
+      "year": 1983,
+      "venue": "Automatica",
+      "volume": "19",
+      "issue": "6",
+      "pages": "775–779",
+      "doi": "10.1016/0005-1098(83)90046-8",
+      "publication_status": "Published November 1983; 2021 author-site posting is a reproduction, not the paper's publication year.",
+      "urls": [
+        "https://www.sciencedirect.com/science/article/pii/0005109883900468?via%3Dihub",
+        "https://www.sciencedirect.com/journal/automatica/vol/19/issue/6",
+        "https://www.complexcognition.co.uk/2021/06/ironies-of-automation.html"
+      ],
+      "read_scope": "Elsevier publisher issue/article metadata and abstract; author's reproduced original paper, including monitoring/manual-takeover/human-computer collaboration sections",
+      "metadata_status": "VERIFIED",
+      "cited_claim": "Automation changes residual operator tasks and responsibility; human collaboration is a separate evaluation concern.",
+      "claim_support_status": "SUPPORTED_AS_FOUNDATIONAL_CONTEXT",
+      "source_summary": "The original discusses monitoring and manual takeover, maintenance of manual/cognitive skills, and human-computer collaboration in industrial process control. It supports discussing the human role without asserting a demonstrated defect in this system.",
+      "changes": [],
+      "accessed": "2026-10-20",
+      "freshness_note": "Older than two years; used as a foundational/historical reference."
+    },
+    {
+      "number": 26,
+      "key": "greshake2023injection",
+      "authors": [
+        "Kai Greshake",
+        "Sahar Abdelnabi",
+        "Shailesh Mishra",
+        "Christoph Endres",
+        "Thorsten Holz",
+        "Mario Fritz"
+      ],
+      "title": "Not What You've Signed Up For: Compromising Real-World LLM-Integrated Applications with Indirect Prompt Injection",
+      "year": 2023,
+      "venue": "Proceedings of the 16th ACM Workshop on Artificial Intelligence and Security (AISec '23)",
+      "pages": "79–90",
+      "doi": "10.1145/3605764.3623985",
+      "publication_status": "Published 2023-11-26; publisher notes corrected version of record on 2024-01-10 with minor nonsubstantive changes, same work/DOI.",
+      "urls": [
+        "https://dl.acm.org/doi/10.1145/3605764.3623985",
+        "https://arxiv.org/abs/2302.12173"
+      ],
+      "read_scope": "ACM publisher metadata, editorial note, and author-supplied abstract; arXiv author record/abstract. Publisher AI-generated summary was not used.",
+      "metadata_status": "VERIFIED",
+      "cited_claim": "Retrieved documents/prompts are treated as untrusted inputs at the execution boundary.",
+      "claim_support_status": "SUPPORTED_AS_THREAT_MODEL_CONTEXT",
+      "source_summary": "The paper demonstrates indirect injection through retrieved data that can redirect application behavior and API invocation. It supports separating retrieved content from authority; it is not evidence of an exploit or a completed attack evaluation in the submitted system.",
+      "changes": [],
+      "accessed": "2026-10-20",
+      "freshness_note": "Older than two years; used as a foundational/historical reference."
+    },
+    {
+      "number": 27,
+      "key": "liu2024pinjection",
+      "authors": [
+        "Yupei Liu",
+        "Yuqi Jia",
+        "Runpeng Geng",
+        "Jinyuan Jia",
+        "Neil Zhenqiang Gong"
+      ],
+      "title": "Formalizing and Benchmarking Prompt Injection Attacks and Defenses",
+      "year": 2024,
+      "venue": "33rd USENIX Security Symposium (USENIX Security 24)",
+      "pages": "1831–1847",
+      "identifier": "ISBN 978-1-939133-44-1",
+      "doi": null,
+      "publication_status": "Published USENIX Security 2024 proceedings paper; official open-access record.",
+      "urls": [
+        "https://www.usenix.org/conference/usenixsecurity24/presentation/liu-yupei",
+        "https://www.usenix.org/system/files/usenixsecurity24-liu-yupei.pdf"
+      ],
+      "read_scope": "USENIX publisher metadata and abstract",
+      "metadata_status": "VERIFIED",
+      "cited_claim": "Prompt injection warrants an explicit untrusted-input boundary and separately measured attack evaluation.",
+      "claim_support_status": "SUPPORTED_AS_THREAT_MODEL_CONTEXT",
+      "source_summary": "The authors formalize prompt injection and evaluate attacks/defenses across multiple models/tasks. The narrow contextual citation is appropriate. It does not establish this system's defense effectiveness or lack of vulnerabilities.",
+      "changes": [],
+      "accessed": "2026-10-20",
+      "freshness_note": "Current/recent relative to the 2026-10-20 audit."
+    },
+    {
+      "number": 28,
+      "key": "iec61511",
+      "authors": [
+        "International Electrotechnical Commission"
+      ],
+      "title": "IEC 61511-1:2016: Functional safety — Safety instrumented systems for the process industry sector — Part 1: Framework, definitions, system, hardware and application programming requirements",
+      "year": 2016,
+      "venue": "International Standard",
+      "identifier": "IEC 61511-1:2016, edition 2.0",
+      "pages": "175 pages (catalog extent)",
+      "doi": null,
+      "publication_status": "Published 2016-02-24; September 2016 corrigendum included; catalog links AMD1:2017 and consolidated edition, so do not call base edition the entire latest series.",
+      "urls": [
+        "https://webstore.iec.ch/en/publication/24241"
+      ],
+      "read_scope": "Public IEC catalog metadata/scope only; paid standard full text not read",
+      "metadata_status": "VERIFIED_ENTRY_TITLE_CAN_BE_COMPLETED",
+      "cited_claim": "Updated discussion states IEC 61511 concerns independently engineered safety instrumented systems and their process-safety lifecycle.",
+      "claim_support_status": "SUPPORTED_AFTER_SCOPE_CORRECTION",
+      "source_summary": "The public scope covers specification, design, installation, operation, and maintenance of safety instrumented systems intended to achieve/maintain a safe process state. This supports the corrected SIS-specific sentence, not equating every PLC/DCS with an SIS.",
+      "changes": [
+        "Use the full Part 1 title and identify as an International Standard.",
+        "Original broader PLC/DCS attribution was flagged to root; revised discussion inspected during this audit now separates PLC interlocks from SIS and assigns IEC61511 to the latter."
+      ],
+      "accessed": "2026-10-20",
+      "freshness_note": "Older than two years; used as a foundational/historical reference."
+    },
+    {
+      "number": 29,
+      "key": "downs1993tep",
+      "authors": [
+        "J. J. Downs",
+        "E. F. Vogel"
+      ],
+      "title": "A plant-wide industrial process control problem",
+      "year": 1993,
+      "venue": "Computers & Chemical Engineering",
+      "volume": "17",
+      "issue": "3",
+      "pages": "245–255",
+      "doi": "10.1016/0098-1354(93)80018-I",
+      "publication_status": "Published March 1993; later online digitization date 2001-07-27 is not the paper's year.",
+      "urls": [
+        "https://www.sciencedirect.com/science/article/pii/009813549380018I?via%3Dihub",
+        "https://www.sciencedirect.com/journal/computers-and-chemical-engineering/vol/17/issue/3",
+        "https://depts.washington.edu/control/LARRY/TE/download.html"
+      ],
+      "read_scope": "Elsevier publisher article/issue metadata and original abstract; N. L. Ricker's University of Washington TE archive as supplementary primary simulator-maintainer context",
+      "metadata_status": "VERIFIED",
+      "cited_claim": "Tennessee Eastman is an established additional process-control benchmark for further evaluation.",
+      "claim_support_status": "SUPPORTED",
+      "source_summary": "The original introduces an industrial chemical-process model for studying plant-wide/multivariable control and describes manipulated valves, measurements, objectives, and disturbances. Current wording names it as a potential additional setting, not an experiment already performed.",
+      "changes": [
+        "Do not infer that the repository experiments used the Tennessee Eastman benchmark."
+      ],
+      "accessed": "2026-10-20",
+      "freshness_note": "Older than two years; used as a foundational/historical reference."
+    }
+  ]
+}

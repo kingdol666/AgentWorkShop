@@ -36,7 +36,7 @@ const { t: tt } = useI18n()
       :loading="loading"
       row-key="id"
       size="small"
-      :pagination="false"
+      :pagination="{ pageSize: 20, showSizeChanger: false, size: 'small', position: ['bottomRight'] }"
     >
       <a-table-column
         :title="$t('agents.k3xhia001')"
@@ -127,32 +127,40 @@ const { t: tt } = useI18n()
         :width="130"
       >
         <template #default="{ record }">
-          <a-space size="small">
+          <a-space
+            v-if="canWrite(record)"
+            size="small"
+          >
             <a-button
               size="small"
               type="text"
-              :disabled="!canWrite(record)"
-              :title="record.isBuiltin ? $t('agents.builtinNoEdit') : !canWrite(record) ? $t('agents.ownerOnlyEdit') : $t('common.edit')"
+              :title="$t('common.edit')"
               @click="emit('edit', record)"
             >
               {{ $t('agents.k45eb0012') }}
             </a-button>
             <a-popconfirm
               :title="$t('agents.keetzvf007')"
-              :disabled="!canWrite(record)"
               @confirm="emit('remove', record)"
             >
               <a-button
                 size="small"
                 type="text"
                 danger
-                :disabled="!canWrite(record)"
-                :title="record.isBuiltin ? $t('agents.builtinNoDelete') : $t('common.delete')"
+                :title="$t('common.delete')"
               >
                 {{ $t('agents.k3xakp013') }}
               </a-button>
             </a-popconfirm>
           </a-space>
+          <span
+            v-else
+            class="row-readonly"
+            :title="record.isBuiltin ? $t('agents.builtinNoEdit') : $t('agents.ownerOnlyEdit')"
+          >
+            <span class="i-tabler-lock" />
+            {{ $t('agents.readOnly') }}
+          </span>
         </template>
       </a-table-column>
       <template #expandedRowRender="{ record }">
@@ -194,7 +202,7 @@ const { t: tt } = useI18n()
 }
 .h-cell.off .h-dot { background: var(--danger, #c25a4e); }
 .h-cell.off { opacity: 0.75; }
-.h-miss { color: var(--danger, #c25a4e); font-family: var(--font-sans); font-size: 11px; }
+.h-miss { color: var(--tone-danger-dot); font-family: var(--font-body); font-size: 11px; }
 .tpl-name {
   display: inline-flex;
   gap: 6px;
@@ -204,6 +212,14 @@ const { t: tt } = useI18n()
   margin-right: 8px;
 }
 .owner { font-size: 12px; color: var(--ink-soft); }
+/* 不可写行(内置/他人模板):一个可读的只读标记,替代两个几乎隐形的禁用按钮 */
+.row-readonly {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+  font-size: 11.5px;
+  color: var(--ink-faint);
+}
 .inst {
   display: flex;
   gap: 8px;

@@ -1,0 +1,39 @@
+{
+  "date": "2026-10-20",
+  "pdf_sha256": "c4a8018c9e7c5b50eae592c1efecf1eb22634851116e330294a389fb5b6a976b",
+  "reviewer_lane": "independent final technical verifier",
+  "viewed_each_page": [
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10
+  ],
+  "page_observations": {
+    "1": "Two-line title, anonymous byline, bold abstract, keywords, introduction and contributions fit both columns.",
+    "2": "Related-work comparison table fits double column; transitions to architecture with no clipping.",
+    "3": "Figure 1 component groups, shared context, DCW and DAQ paths, external equipment and evidence store remain legible.",
+    "4": "Figure 2 lane headings and event rows align; node journal precedes platform wait; separate caller save is clear.",
+    "5": "Admission/approval schematic fits; legend and caption distinguish policy from measured values.",
+    "6": "Experiment procedure, unit definitions and Q1 text occupy both columns cleanly.",
+    "7": "Two results tables fit; sequential evidence and assertion denominators are explicit.",
+    "8": "Eight-panel control/output figure, timing figure and recipe setup fit. Captions distinguish event index from physical time.",
+    "9": "Recipe response/control evidence figure includes u/y, fixed hold time and n=1; caption and interpretation are clear.",
+    "10": "Conclusion and 30 references complete. URLs wrap within columns; no missing text or clipped references."
+  },
+  "figures_1_2_color_and_grayscale": "Fresh renders inspected. White backgrounds, restrained color, readable fonts, clear bounding hierarchy and directional/line-style cues survive grayscale. No apparent text or arrow collision.",
+  "underfull_box_warnings": "Present in fresh TeX build, primarily justification of technical strings/tables. Reviewed actual pages; no overfull boxes, clipping or missing glyphs.",
+  "remaining_blocker": null,
+  "limitations": [
+    "Visual inspection and bounded scans cannot establish universal anonymity.",
+    "No process replay or industrial hardware validation was performed.",
+    "This is a technical-delivery check, not a novelty judgement or journal-acceptance guarantee.",
+    "Canonical reviewer checker status and editorial decision are outside this technical pass."
+  ],
+  "final_freeze_reinspection": "All ten regenerated final pages individually viewed after freeze. Source clarification changes did not introduce clipping, overlap, missing labels or reference wrapping failures. Figs1/2 hashes remain unchanged from independently inspected color/grayscale artifacts."
+}

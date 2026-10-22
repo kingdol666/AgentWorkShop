@@ -1,0 +1,10 @@
+━━━ harness matrix @ http://127.0.0.1:3001 (6 engines, concurrency=1) ━━━
+PASS | omp       | COMPLETED | 15.3s | HARNESS-OK:omp
+FAIL | codex     | WORKING | 301.2s | 任务终态 WORKING
+FAIL | opencode  | WORKING | 301.3s | 任务终态 WORKING
+FAIL | dsh       | SUBMITTED | 301.1s | 任务终态 SUBMITTED
+FAIL | claude    | WORKING | 301.2s | 任务终态 WORKING
+PASS | copilot   | COMPLETED | 30.2s | HARNESS-OK:copilot
+
+=== harness matrix: 2 PASS / 4 FAIL ===
+evidence: docs/audit/2026-10-20-harness-acceptance-evidence/harness-matrix-sequential.json

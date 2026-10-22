@@ -63,6 +63,14 @@ test('host-tools:recipe 写族描述必须讲清 v2 三门(绑定/HITL 理由/�
   }
 })
 
+test('host-tools:line_log 与 ops_log 参数 schema 完全一致(别名不漂移)', () => {
+  const defs = loadDefs()
+  const ops = defs.find(t => t.name === 'ops_log')
+  const line = defs.find(t => t.name === 'line_log')
+  assert.ok(ops && line, 'ops_log/line_log 必须同时存在')
+  assert.deepEqual(line!.parameters, ops!.parameters, 'line_log 是 ops_log 的显式别名,参数 schema 不得漂移')
+})
+
 test('host-tools:权限模型 v2 直写工具已摘除', () => {
   const names = new Set(loadDefs().map(t => t.name))
   for (const name of FORBIDDEN_TOOLS) {

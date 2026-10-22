@@ -3,8 +3,8 @@
  * 每个 AML 子组件都以 <style scoped src="..."> 引用同一份文件 —— 与原来的 data-v 作用域
  * 语义保持一致(样式只命中组件自己的元素),同时保留「单一事实来源」。 */
 .page { padding: 4px; }
-h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.015em; }
-.sub { margin: 0; font-size: 12.5px; opacity: 0.6; }
+h1 { margin: 2px 0 4px; font-size: 28px; font-weight: 600; letter-spacing: -0.022em; }
+.sub { margin: 0; font-size: 13px; color: var(--ink-faint); }
 .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 .dim { opacity: 0.55; }
 .err { margin: 6px 0; font-size: 12.5px; color: var(--tone-danger-dot); }
@@ -73,18 +73,19 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
   display: flex;
   flex-direction: column;
   gap: 6px;
-  padding: 10px 12px;
+  padding: 12px 14px;
   background: var(--surface-sunken, color-mix(in srgb, var(--ink) 3%, transparent));
-  border: 1px solid var(--divider-hair);
-  border-radius: var(--radius-chip);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
 }
 .env-card.ok { border-color: color-mix(in srgb, var(--tone-success-dot) 35%, transparent); }
 .env-card.bad { border-color: color-mix(in srgb, var(--tone-warning-dot) 40%, transparent); }
-.env-card .ec-head { display: flex; gap: 6px; align-items: center; font-size: 12.5px; }
+.env-card .ec-head { display: flex; gap: 6px; align-items: center; font-size: 13px; font-weight: 500; }
 .env-card .ec-head .ec-state { margin-left: auto; font-size: 11.5px; color: var(--ink-faint); }
 .env-card.ok .ec-head > span:first-child { color: var(--tone-success-dot); }
 .env-card.bad .ec-head > span:first-child { color: var(--tone-warning-dot); }
-.env-card .ec-detail { margin: 0; font-size: 11.5px; line-height: 1.55; color: var(--ink-soft); overflow-wrap: anywhere; }
+.env-card .ec-detail { margin: 0; font-size: 12px; line-height: 1.55; color: var(--ink-soft); overflow-wrap: break-word; }
+.env-card .ec-detail.mono { font-size: 11.5px; letter-spacing: -0.01em; }
 .env-card .ec-detail.dim { color: var(--ink-faint); }
 .env-card .ec-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: auto; padding-top: 4px; }
 .env-card .ec-issues { max-height: 96px; margin: 0; padding: 0; overflow-y: auto; list-style: none; font-size: 11.5px; }

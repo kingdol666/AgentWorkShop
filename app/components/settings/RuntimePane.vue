@@ -43,50 +43,54 @@ const { plugins } = providePluginAdmin(computed(() => props.activeTab))
         {{ allExpanded ? t('settings.groups.collapseAll') : t('settings.groups.expandAll') }}
       </button>
       <span class="rt-groups-count">{{ t('settings.groups.count', { p0: rcStore.groups.length }) }}</span>
-      <button
-        v-if="isAdmin"
-        class="aw-pill outline rt-groups-add"
-        @click="groupFormOpen = !groupFormOpen"
-      >
-        <span class="i-tabler-plus" />
-        {{ t('settings.groups.newGroup') }}
-      </button>
+      <ClientOnly>
+        <button
+          v-if="isAdmin"
+          class="aw-pill outline rt-groups-add"
+          @click="groupFormOpen = !groupFormOpen"
+        >
+          <span class="i-tabler-plus" />
+          {{ t('settings.groups.newGroup') }}
+        </button>
+      </ClientOnly>
     </div>
 
     <!-- 新建分组(内联表单;id 由服务端按 label 派生,创建后即可用 API 归属字段) -->
-    <div
-      v-if="isAdmin && groupFormOpen"
-      class="rt-group-form"
-    >
-      <a-input
-        v-model:value="groupForm.label"
-        :placeholder="t('settings.groups.namePlaceholder')"
-        style="width: 220px"
-        @press-enter="submitGroupForm"
-      />
-      <a-input
-        v-model:value="groupForm.description"
-        :placeholder="t('settings.groups.descPlaceholder')"
-        style="width: 320px"
-        @press-enter="submitGroupForm"
-      />
-      <a-checkbox v-model:checked="groupForm.collapsed">
-        {{ t('settings.groups.defaultCollapsed') }}
-      </a-checkbox>
-      <button
-        class="aw-pill primary"
-        :disabled="!groupForm.label.trim() || groupBusy === 'create'"
-        @click="submitGroupForm"
+    <ClientOnly>
+      <div
+        v-if="isAdmin && groupFormOpen"
+        class="rt-group-form"
       >
-        {{ groupBusy === 'create' ? '…' : t('settings.groups.create') }}
-      </button>
-      <button
-        class="aw-pill outline"
-        @click="groupFormOpen = false"
-      >
-        {{ t('settings.groups.cancel') }}
-      </button>
-    </div>
+        <a-input
+          v-model:value="groupForm.label"
+          :placeholder="t('settings.groups.namePlaceholder')"
+          style="width: 220px"
+          @press-enter="submitGroupForm"
+        />
+        <a-input
+          v-model:value="groupForm.description"
+          :placeholder="t('settings.groups.descPlaceholder')"
+          style="width: 320px"
+          @press-enter="submitGroupForm"
+        />
+        <a-checkbox v-model:checked="groupForm.collapsed">
+          {{ t('settings.groups.defaultCollapsed') }}
+        </a-checkbox>
+        <button
+          class="aw-pill primary"
+          :disabled="!groupForm.label.trim() || groupBusy === 'create'"
+          @click="submitGroupForm"
+        >
+          {{ groupBusy === 'create' ? '…' : t('settings.groups.create') }}
+        </button>
+        <button
+          class="aw-pill outline"
+          @click="groupFormOpen = false"
+        >
+          {{ t('settings.groups.cancel') }}
+        </button>
+      </div>
+    </ClientOnly>
 
     <!-- 分组分区:顺序/标题/折叠态全部来自后端 groups 接口 -->
     <RuntimeGroupSection
@@ -134,10 +138,10 @@ const { plugins } = providePluginAdmin(computed(() => props.activeTab))
 <style scoped>
 .section-title {
   margin: 0 0 4px;
-  font-family: var(--font-display);
-  font-size: 22px;
-  font-weight: 400;
-  letter-spacing: -0.01em;
+  font-family: var(--font-body);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
   color: var(--ink);
 }
 
@@ -197,10 +201,10 @@ const { plugins } = providePluginAdmin(computed(() => props.activeTab))
 
 .rt-group-title {
   margin: 0;
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: 14.5px;
   font-weight: 600;
-  letter-spacing: 0.01em;
+  letter-spacing: -0.01em;
   color: var(--ink-soft);
 }
 

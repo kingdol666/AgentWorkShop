@@ -77,7 +77,7 @@ footer:
         14 harnesses (<code>agents/registry.ts</code>) / 119 settings in 18 groups (<code>aw config list</code>) / 7 task states.
       </p>
       <div class="aw-statusbar">
-        <span>Version <i>v0.7.66</i></span>
+        <span>Version <i>v0.7.70</i></span>
         <span>License <i>Apache License 2.0</i></span>
         <span>Runtime <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>Docs <i>简体中文 / English</i></span>
@@ -322,6 +322,7 @@ footer:
       <div class="hw-f"><span class="tag">SCHED</span><h3>Scheduled tasks</h3><p>Attach any channel task to an interval or daily schedule — per-run history, busy-guard, consecutive-failure circuit breaker. Line patrol runs unattended.</p></div>
       <div class="hw-f"><span class="tag">QOS</span><h3>Root queue &amp; leases</h3><p>FIFO root queue with visible queue positions; queued roots never burn execution budget while waiting, and a deterministic lead-rescue sweep revives starved admissions; assignment generation + execution-lease fencing drops stale worker events; the supervision watchdog tells stuck from slow.</p></div>
       <div class="hw-f"><span class="tag">PROD</span><h3>Production hardening (v0.7.58)</h3><p>Hold-heartbeat lifecycle governance (failed writes never occupy the setpoint · change-point value clearing · line-active gate); silent mock fallback blocked; frame pixel sha256 fingerprints + day-directory object GC with DB cross-check; Timescale daily chunks + columnstore compression; heap watermark watch with child auto-respawn; governance windows persisted; grant re-checks include the channel-bound line.</p></div>
+      <div class="hw-f"><span class="tag">EDA</span><h3>Data workbench &amp; EDA studio (/data · /studio)</h3><p>Three data shapes (scalars, array profiles, CCD images) with compound queries, bulk export job ledger (manifest + merged.csv) and WS live mirroring; the studio adds charts &amp; grid dashboards, golden phase-referenced deviation scoring, FDC reference-band features, SPC control charts (Nelson/I-MR/EWMA/CUSUM), commonality analysis, OCAP dispositions, virtual metrology (OOD rejection) and derived datasets — all line-scoped and preflight-checked.</p></div>
     </div>
   </section>
 

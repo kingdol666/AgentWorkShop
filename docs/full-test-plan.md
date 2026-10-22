@@ -147,7 +147,7 @@
 
 ## Phase 7 浏览器目视验收（Puppeteer 截图逐页过目）
 
-覆盖页：登录/仪表盘/产线管理/数采列表+详情（趋势图在动）/数控/数字孪生（帧推进+无黑屏）/设置（分组渲染+折叠+来源徽标）/插件/运维日志 /logs/AML/AgentTeam。
+覆盖页：登录/仪表盘/产线管理/数采列表+详情（趋势图在动）/数控/数字孪生（帧推进+无黑屏）/设置（分组渲染+折叠+来源徽标）/插件/产线日志 /logs/AML/AgentTeam。
 工具：`scripts/ui-screenshot.mjs`、`scripts/ui/audit-layout.mjs`、`scripts/_sweep-button-contrast.mjs`（双主题全路由按钮对比度+空按钮扫描）。截图存 `.e2e-shots/` 逐张目视；破版/白屏/控制台报错即红项。
 
 ---

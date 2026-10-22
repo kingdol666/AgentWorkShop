@@ -1,0 +1,55 @@
+{
+  "name": "plc-node-simulator",
+  "version": "0.1.0",
+  "description": "Multi-protocol virtual industrial device (Modbus TCP/RTU · OPC UA · MQTT · HTTP) — a stand-in for a real PLC that emits physical-device signals over real protocol stacks",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "tsx tests/run-all.ts",
+    "dev": "tsx watch src/server/index.ts",
+    "start": "tsx src/server/index.ts",
+    "typecheck": "tsc --noEmit",
+    "test:modbus": "tsx tests/protocol-modbus.test.ts",
+    "test:opcua": "tsx tests/protocol-opcua.test.ts",
+    "test:mqtt": "tsx tests/protocol-mqtt.test.ts",
+    "test:http": "tsx tests/protocol-http.test.ts",
+    "test:engine": "tsx tests/engine-signals.test.ts",
+    "e2e:integration": "node scripts/e2e-integration.mjs",
+    "build": "vite build web",
+    "web:dev": "vite web"
+  },
+  "keywords": [
+    "plc",
+    "simulator",
+    "modbus",
+    "opcua",
+    "mqtt",
+    "industrial-automation",
+    "digital-twin"
+  ],
+  "author": "ANONYMOUS_AUTHOR (ANONYMOUS_AUTHOR)",
+  "license": "SEE LICENSE IN LICENSE",
+  "type": "module",
+  "private": true,
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "h3": "^1.15.0",
+    "modbus-serial": "^8.0.25",
+    "mqtt": "^5.15.2",
+    "node-opcua": "^2.178.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/ws": "^8.5.0",
+    "@vitejs/plugin-vue": "^6.0.8",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vite": "^8.2.2",
+    "vue": "^3.5.42"
+  }
+}

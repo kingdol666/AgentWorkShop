@@ -1,0 +1,207 @@
+{
+  "at": "2026-10-20T04:55:46.597Z",
+  "testDriver": {
+    "pass": 12,
+    "fail": 0,
+    "rows": [
+      {
+        "device": "twin-modbus-tcp",
+        "driver": "modbus-tcp",
+        "format": "scalar",
+        "signal": "线速SP",
+        "ok": true,
+        "detail": "连接成功,写寄存器可访问(offset=0), 3ms"
+      },
+      {
+        "device": "twin-modbus-tcp",
+        "driver": "modbus-tcp",
+        "format": "scalar",
+        "signal": "线速PV",
+        "ok": true,
+        "detail": "连接成功,读取 40003 = 35"
+      },
+      {
+        "device": "twin-modbus-rtu",
+        "driver": "modbus-rtu",
+        "format": "scalar",
+        "signal": "温度SP",
+        "ok": true,
+        "detail": "网关连接成功,写寄存器可访问(0ms)"
+      },
+      {
+        "device": "twin-modbus-rtu",
+        "driver": "modbus-rtu",
+        "format": "scalar",
+        "signal": "温度PV",
+        "ok": true,
+        "detail": "网关连接成功,读取 40003 = 60.099998474121094"
+      },
+      {
+        "device": "twin-opcua",
+        "driver": "opcua",
+        "format": "scalar",
+        "signal": "压力SP",
+        "ok": true,
+        "detail": "会话建立成功,写节点可访问(ns=2;s=twin-opcua.pressure-sp)"
+      },
+      {
+        "device": "twin-opcua",
+        "driver": "opcua",
+        "format": "scalar",
+        "signal": "压力PV",
+        "ok": true,
+        "detail": "会话建立成功,读取 ns=2;s=twin-opcua.pressure-pv = 5.01"
+      },
+      {
+        "device": "twin-mqtt",
+        "driver": "mqtt",
+        "format": "scalar",
+        "signal": "流量SP",
+        "ok": true,
+        "detail": "Broker 连接成功(127.0.0.1:55830);未执行发布,避免误触发真实设备动作"
+      },
+      {
+        "device": "twin-mqtt",
+        "driver": "mqtt",
+        "format": "scalar",
+        "signal": "流量PV",
+        "ok": true,
+        "detail": "Broker 连接成功,收到 aw/twin/twin-mqtt/flow-pv = 40"
+      },
+      {
+        "device": "twin-http",
+        "driver": "http",
+        "format": "scalar",
+        "signal": "目标SP",
+        "ok": true,
+        "detail": "端点可达(GET → HTTP 200;未执行写入测试,避免误触发真实命令)"
+      },
+      {
+        "device": "twin-http",
+        "driver": "http",
+        "format": "scalar",
+        "signal": "膜厚PV",
+        "ok": true,
+        "detail": "接口可达,取值 = 34.97"
+      },
+      {
+        "device": "twin-http",
+        "driver": "http",
+        "format": "vector",
+        "signal": "膜厚断面",
+        "ok": true,
+        "detail": "接口可达,vector 帧 8 点"
+      },
+      {
+        "device": "twin-http",
+        "driver": "http",
+        "format": "image",
+        "signal": "表检图像",
+        "ok": true,
+        "detail": "接口可达,image 帧 68B(image/png)"
+      }
+    ]
+  },
+  "daqNodes": [
+    {
+      "id": "dn-6f96cbec",
+      "name": "线速PV",
+      "driver": "modbus-tcp",
+      "state": "ok",
+      "value": 35,
+      "lastError": null
+    },
+    {
+      "id": "dn-bcee0027",
+      "name": "温度PV",
+      "driver": "modbus-rtu",
+      "state": "ok",
+      "value": 60.1,
+      "lastError": null
+    },
+    {
+      "id": "dn-bafca691",
+      "name": "压力PV",
+      "driver": "opcua",
+      "state": "ok",
+      "value": 5,
+      "lastError": null
+    },
+    {
+      "id": "dn-4de6b1de",
+      "name": "流量PV",
+      "driver": "mqtt",
+      "state": "ok",
+      "value": 40.1,
+      "lastError": null
+    },
+    {
+      "id": "dn-02c099a8",
+      "name": "膜厚PV",
+      "driver": "http",
+      "state": "ok",
+      "value": 34.952,
+      "lastError": null
+    },
+    {
+      "id": "dn-c8279163",
+      "name": "膜厚断面",
+      "driver": "http",
+      "state": "ok",
+      "value": 0,
+      "lastError": "PLC 响应超时——网络抖动或从站负载高,稍后自动重连(The operation was aborted due to timeout)"
+    },
+    {
+      "id": "dn-f0f089f7",
+      "name": "表检图像",
+      "driver": "http",
+      "state": "ok",
+      "value": 0,
+      "lastError": "PLC 响应超时——网络抖动或从站负载高,稍后自动重连(The operation was aborted due to timeout)"
+    }
+  ],
+  "liveScalar": [
+    {
+      "id": "dn-6f96cbec",
+      "name": "线速PV",
+      "driver": "modbus-tcp",
+      "value": 35
+    },
+    {
+      "id": "dn-bcee0027",
+      "name": "温度PV",
+      "driver": "modbus-rtu",
+      "value": 60.1
+    },
+    {
+      "id": "dn-bafca691",
+      "name": "压力PV",
+      "driver": "opcua",
+      "value": 5
+    },
+    {
+      "id": "dn-4de6b1de",
+      "name": "流量PV",
+      "driver": "mqtt",
+      "value": 40.1
+    },
+    {
+      "id": "dn-02c099a8",
+      "name": "膜厚PV",
+      "driver": "http",
+      "value": 34.952
+    },
+    {
+      "id": "dn-c8279163",
+      "name": "膜厚断面",
+      "driver": "http",
+      "value": 0
+    },
+    {
+      "id": "dn-f0f089f7",
+      "name": "表检图像",
+      "driver": "http",
+      "value": 0
+    }
+  ]
+}

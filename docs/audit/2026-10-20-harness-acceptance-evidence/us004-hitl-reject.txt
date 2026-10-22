@@ -1,0 +1,13 @@
+━━━ HITL 拒绝路径 @ http://127.0.0.1:3001 (tag=mvg8de1m) ━━━
+PASS | 基线读取(配方版本/PLC 当前值) | v5 value=44
+PASS | 频道创建(copilot lead) | 92fa527d-c0a8-44d3-9840-7b73be1b8d7b
+PASS | 配方绑定 manual | manual
+PASS | 任务提交 | 4303cb33-3843-4734-8993-22c5e711f857
+  · HITL 拒绝 ap-85505 配方参数写入审批
+PASS | 出现 manual 审批卡并拒绝 | rejected=1
+PASS | 待批准期间配方/PLC 未变化(未批准不下发) | pending=v5/value=44
+PASS | Agent 收到拒绝结果并完成 | state=COMPLETED Human approval rejected the recipe_update. Human comment: “REJECT-ACCEPTANCE mvg8de1m: keep the current value”. No retry was submitted and recipe_apply was not called.
+PASS | 拒绝后配方版本不变 | before=v5 after=v5
+PASS | 拒绝后 PLC 值不变(fail-closed) | before=44 after=44
+
+=== HITL 拒绝路径: 9 PASS / 0 FAIL ===

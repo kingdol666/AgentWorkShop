@@ -87,6 +87,8 @@ export function useOperationsFeed() {
 
   /** 实时帧入流水:过当前筛选;容量封顶防长跑膨胀 */
   function acceptFrame(r: OpsLogRow): void {
+    // 产线操作流:只接收 scope=line 的产线域事件(登录/设置/备份不得进入)
+    if (r.scope !== 'line' || !r.lineId) return
     const key = rowKey(r)
     if (seen.has(key)) return
     if (q.lineId && r.lineId !== q.lineId) return

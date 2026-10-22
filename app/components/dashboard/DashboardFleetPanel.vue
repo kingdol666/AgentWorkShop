@@ -129,7 +129,7 @@ const { t } = useI18n()
   margin-left: auto;
   padding: 1px 8px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.05em;
   color: var(--ink-faint);
   border: 1px solid var(--line-strong);
@@ -147,13 +147,13 @@ const { t } = useI18n()
   font-size: 11.5px;
   color: color-mix(in srgb, var(--lc) 70%, var(--ink));
 }
-.lc-run small { font-size: 10px; color: var(--ink-faint); }
+.lc-run small { font-size: 11px; color: var(--ink-faint); }
 .lc-meta {
   display: flex;
   gap: 14px;
   margin-top: 9px;
   padding-top: 8px;
-  font-size: 10.5px;
+  font-size: 11px;
   color: var(--ink-faint);
   border-top: 1px solid var(--divider-hair);
 }

@@ -1,0 +1,188 @@
+{
+  "at": "2026-10-22T05:29:36.048Z",
+  "base": "http://127.0.0.1:3470",
+  "lineId": "ln-9d31ad0c",
+  "recipeId": "rc-68ea88ca",
+  "nodes": {
+    "scalar": "dn-91bed9c7",
+    "vector": "dn-6d21d473",
+    "image": "dn-3b5c2071"
+  },
+  "externalPush": {
+    "vector": 200,
+    "image": 200
+  },
+  "framesGrowth": {
+    "vector": "2→3",
+    "image": "2→3"
+  },
+  "exportJob": {
+    "exportId": "daqexp-20261022132817-55a4df",
+    "dir": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-scenario-suite-OQ68g6\\data\\daq-exports\\daqexp-20261022132817-55a4df",
+    "files": [
+      {
+        "nodeId": "dn-91bed9c7",
+        "rows": 219
+      }
+    ],
+    "totalRows": 219,
+    "truncated": [],
+    "mergedFile": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-scenario-suite-OQ68g6\\data\\daq-exports\\daqexp-20261022132817-55a4df\\merged.csv"
+  },
+  "goldenRun": "rr-cf41b162",
+  "screenshots": [
+    "demo-1-data-query.png",
+    "demo-2-data-ledger.png",
+    "demo-3-daq-scalar-live.png",
+    "demo-4-daq-vector-frames.png",
+    "demo-5-daq-image-frames.png",
+    "demo-6-studio-analysis.png",
+    "demo-7-studio-board.png"
+  ],
+  "results": [
+    {
+      "id": "D0.1",
+      "name": "三形态节点在位(scalar/vector/image)",
+      "pass": true,
+      "detail": "scalar=dn-91bed9c7 vector=dn-6d21d473(EDA演示-膜厚断面-o55r) image=dn-3b5c2071(EDA演示-CCD图像-o55r)"
+    },
+    {
+      "id": "D1.1",
+      "name": "开线后标量镜像采集活性(≥3 点)",
+      "pass": true,
+      "detail": "points=50"
+    },
+    {
+      "id": "D1.2",
+      "name": "数组帧实时镜像活性(推送驱动的持续入库)",
+      "pass": true,
+      "detail": "2→3"
+    },
+    {
+      "id": "D1.3",
+      "name": "图像帧实时镜像活性(推送驱动的持续入库)",
+      "pass": true,
+      "detail": "2→3"
+    },
+    {
+      "id": "D1.4",
+      "name": "外部推送 48 点数组帧入库",
+      "pass": true,
+      "detail": "{\"accepted\":true,\"nodeId\":\"dn-6d21d473\",\"kind\":\"vector\",\"at\":\"2026-10-22T13:28:08.683+08:00\",\"lineId\":\"ln-9d31ad0c\",\"poi"
+    },
+    {
+      "id": "D1.5",
+      "name": "外部推送图像帧入库",
+      "pass": true,
+      "detail": "{\"accepted\":true,\"nodeId\":\"dn-3b5c2071\",\"kind\":\"image\",\"at\":\"2026-10-22T13:28:08.689+08:00\",\"lineId\":\"ln-9d31ad0c\",\"obje"
+    },
+    {
+      "id": "D1.6",
+      "name": "推送的 48 点数组可查回(与 64 点自发帧可区分)",
+      "pass": true,
+      "detail": "points=48 at=1792646892734 totalFrames=3"
+    },
+    {
+      "id": "D2.1",
+      "name": "复合①线+节点+窗+桶+agg",
+      "pass": true,
+      "detail": "series=2 pts=117,117"
+    },
+    {
+      "id": "D2.2",
+      "name": "复合②+run_id 打标过滤(rr-63b7044)",
+      "pass": true,
+      "detail": "pts=6"
+    },
+    {
+      "id": "D2.3",
+      "name": "复合③+recipe_id 过滤",
+      "pass": true,
+      "detail": "pts=117"
+    },
+    {
+      "id": "D2.4",
+      "name": "复合④min/max 包络(include_band)",
+      "pass": true,
+      "detail": "band=117"
+    },
+    {
+      "id": "D3.1",
+      "name": "REST merge 导出 ready 且 manifest/nodes 落盘",
+      "pass": true,
+      "detail": "rows=219 files=1 merged=true"
+    },
+    {
+      "id": "D3.2",
+      "name": "帧导出:向量长表 CSV + 图像原文件目录",
+      "pass": true,
+      "detail": "csv=true imgFiles=3"
+    },
+    {
+      "id": "D3.3",
+      "name": "导出产物真实存在(演示论据)",
+      "pass": true,
+      "detail": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-scenario-suite-OQ68g6\\data\\daq-exports\\daqexp-20261022132819-ff69d1"
+    },
+    {
+      "id": "D4.1",
+      "name": "关账→run 台账 sample_count 回填",
+      "pass": true,
+      "detail": "samples=204"
+    },
+    {
+      "id": "D4.2",
+      "name": "特征仓库:cnt/mean/std/min/max/slope 落行",
+      "pass": true,
+      "detail": "features=24"
+    },
+    {
+      "id": "D4.3",
+      "name": "特征行字段齐备",
+      "pass": true,
+      "detail": "{\"id\":\"feat-84e7173b-6fb\",\"runId\":\"rr-63b70448\",\"nodeId\":\"dn-42922733\",\"metric\":\"daq-temp-tc\",\"segment\":\"s2\",\"cnt\":9,\"mean\":15.3,\"std\":0,\"min\":15.3,\"max\":15.3,\""
+    },
+    {
+      "id": "D4.4",
+      "name": "SPC 图注册并可重算",
+      "pass": true,
+      "detail": "n=2 enabled=false"
+    },
+    {
+      "id": "D4.5",
+      "name": "golden 参考轨迹生成",
+      "pass": true,
+      "detail": "bins=20 fp={\"mean\":15.3,\"std\":0,\"min\":15.3,\"max\":15.3,\"cnt\":165}"
+    },
+    {
+      "id": "D5.2",
+      "name": "/daq 数组节点:非空轮廓 polyline 渲染(页面打开状态下推送→WS 上屏)",
+      "pass": true,
+      "detail": "polylines=1"
+    },
+    {
+      "id": "D5.3",
+      "name": "/daq 图像节点:contentUrl 图像渲染(实时 WS 或刷新基线)",
+      "pass": true,
+      "detail": "imgs=1 viaWs=true"
+    },
+    {
+      "id": "D5.4",
+      "name": "/studio golden 叠加:数据请求 200 且无错误横幅",
+      "pass": true,
+      "detail": "net=[200] err=false"
+    },
+    {
+      "id": "D5.5",
+      "name": "看板栅格卡渲染(内嵌图表)",
+      "pass": true,
+      "detail": "cells=1"
+    },
+    {
+      "id": "D5.1",
+      "name": "实机截图 ≥6 张",
+      "pass": true,
+      "detail": "demo-1-data-query.png, demo-2-data-ledger.png, demo-3-daq-scalar-live.png, demo-4-daq-vector-frames.png, demo-5-daq-image-frames.png, demo-6-studio-analysis.png, demo-7-studio-board.png"
+    }
+  ]
+}

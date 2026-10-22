@@ -24,7 +24,7 @@ const emit = defineEmits<{
       </p>
       <h1>Workshop {{ $t('wsHome.k3n4m5c025') }}</h1>
       <p class="sub">
-        {{ userName }} {{ $t('wsHome.ke16e53026') }}
+        <ClientOnly>{{ userName }}</ClientOnly> {{ $t('wsHome.ke16e53026') }}
       </p>
     </div>
     <div class="head-acts">
@@ -126,4 +126,15 @@ const emit = defineEmits<{
 }
 
 .lib-link:hover { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+
+/* 手持命中区:纯文字链在窄屏不足 40px 宽,补成可点方块 */
+@media (pointer: coarse) {
+  .lib-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    min-height: 40px;
+  }
+}
 </style>

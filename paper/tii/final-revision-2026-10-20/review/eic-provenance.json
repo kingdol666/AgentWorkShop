@@ -1,0 +1,30 @@
+{
+  "schema": "review-seat-provenance/1.0",
+  "reviewer_role": "eic",
+  "phase1_phase2_context": "same seat completed in two separate task invocations; Phase 1 contract commitment was read unchanged before Phase 2",
+  "phase2_date": "2026-10-20",
+  "frozen_pdf_sha256": "85ff90803ef9fb5884ba05077909a33628b976485964be35b649656bece11e10",
+  "frozen_pdf_hash_verified": true,
+  "peer_outputs_seen": false,
+  "old_reviews_seen": false,
+  "prose_changes_or_implementation_summaries_seen": false,
+  "author_qa_context_exposure": [
+    "qa/FIGURE-QA.md",
+    "qa/final-preflight.json",
+    "qa/manuscript.txt",
+    "SUBMISSION-IEEE-TII/README.md",
+    "SUBMISSION-IEEE-TII/CLAIM-EVIDENCE-LEDGER.md",
+    "SUBMISSION-IEEE-TII/REPRODUCIBILITY.md"
+  ],
+  "official_venue_requirements_read": true,
+  "criteria_binding": "unavailable",
+  "venue_fit_claim": "none; D6 assessment is limited to whether contribution and originality are established, not compliance with a bound target-criteria set",
+  "provider": "OpenAI",
+  "model_family": "inherited primary family; exact model not observable",
+  "accountable_human": "unknown",
+  "calibration_status": "NOT_CALIBRATED",
+  "canonical_checker_scripts_available": false,
+  "canonical_conformance_claimed": false,
+  "manuscript_modified": false,
+  "manuscript_source_path": "paper/tii/SUBMISSION-IEEE-TII (frozen source/pdf; folder name differed from dispatch text)"
+}

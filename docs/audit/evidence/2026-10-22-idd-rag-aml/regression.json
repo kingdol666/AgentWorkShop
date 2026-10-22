@@ -1,0 +1,96 @@
+{
+  "at": "2026-10-22T06:17:42.985Z",
+  "base": "http://127.0.0.1:3470",
+  "results": [
+    {
+      "id": "I1",
+      "name": "平台代理 /health 200 且诊断服务连通+token 被接受",
+      "pass": true,
+      "detail": "remote={\"status\":\"ok\",\"activeRuns\":0,\"auth\":\"ok\"} token={\"configured\":true,\"accepted\":true}"
+    },
+    {
+      "id": "I2",
+      "name": "快照导出产线窗口 CSV(与 diag_run 同链)",
+      "pass": true,
+      "detail": "rows=160 nodes=20 err= path=shots/snap-ln-9d31ad0c-1792649609390.csv"
+    },
+    {
+      "id": "I3",
+      "name": "IDD 任务受理(harness=mock,quick-screen)",
+      "pass": true,
+      "detail": "status=200 run=1a68750a ack=running"
+    },
+    {
+      "id": "I4",
+      "name": "mock 引擎分析完成(5min 窗内)",
+      "pass": true,
+      "detail": "final=completed"
+    },
+    {
+      "id": "I5",
+      "name": "IDD 任务结果含分析产出(报告/结论路径)",
+      "pass": true,
+      "detail": "{\"summary\":\"Conclusion\",\"verdict\":\"ENDORSED\",\"score\":96,\"report_md_path\":\"D:\\\\codes\\\\myskills\\\\idd-doe-impl\\\\workspace\\\\diagnostic-runs\\\\1792649609495_ln_9d31ad0c_reg\\\\report.md\",\"artifacts\":{\"contrac"
+    },
+    {
+      "id": "I6",
+      "name": "/report 代理回诊断报告(经 IDD workspace 解析)",
+      "pass": true,
+      "detail": "len=497 run_name=1792649609495_ln_9d31ad0c_reg err= head={\"name\":\"1792649609495_ln_9d31ad0c_reg\",\"content\":\"# 工业深度诊断报"
+    },
+    {
+      "id": "R1",
+      "name": "kb_agent 异步入库返回 task_id",
+      "pass": true,
+      "detail": "attempt=1 已提交知识库异步任务(后台执行中,无需等待):\ntask_id=kbt_mvj5an5u_b57292d6\n完成后平台会自动回执到你的信箱并唤醒你;空闲时也可调用 kb_agent_status(ta"
+    },
+    {
+      "id": "R2",
+      "name": "入库任务完成(12min 窗×2 次重试;知识库侧 540s 硬超时为已知容量边界)",
+      "pass": true,
+      "detail": "任务 kbt_mvj5an5u_b57292d6 已完成。知识库 Agent 结果:\n\n入库完成，全链路终检通过。\n\n## 执行摘要\n\n**A0 去重判定**：库内已有 13 个同模板「绑定矩阵回归锚点」实例（mvj025wi、mvj05neq、mvj0ea0e、mvj0q5m7、mvj16niz、"
+    },
+    {
+      "id": "R3",
+      "name": "检索命中并引用入库内容(0.09g 锚点)",
+      "pass": true,
+      "detail": "done; hit=true; 任务 kbt_mvj5c97h_8f563a41 已完成。知识库 Agent 结果:\n\n已完成全库检索与内容验证（QDCVR：4 条查询变体 → 20 个候选 → 35 个片段经 Laya 引擎判定 → 20 个存活）。以下为结果。\n\n## 最相关条目（回归锚点本体）\n\n- **标题**：`回归锚点`（文档：`aw-industrial/绑定矩阵回归锚点 注"
+    },
+    {
+      "id": "A1",
+      "name": "AML runtime 探测(python/venv)",
+      "pass": true,
+      "detail": "{runtime:{python:{ok:true,version:Python 3.12.7},venvReady:true,amlRoot:C:\\\\Users\\\\87287\\\\AppData\\\\Local\\\\Temp\\\\aw-scenario-suite-OQ68g6\\\\aml,q"
+    },
+    {
+      "id": "A2",
+      "name": "厚关账批 ≥4(样本量≥200;不足自动补 210s 开停线循环)",
+      "pass": true,
+      "detail": "closed=4 cycles=0"
+    },
+    {
+      "id": "A3",
+      "name": "数据集构建(真实时序对齐+切分)",
+      "pass": true,
+      "detail": "ds=ds-mvj5fr4k-twywbm rows={\"builtAt\":\"2026-10-22T14:17:32.952+08:00\",\"nodeSummaries\":[{\"nodeId\":\"dn-a2815b7b\",\"role\":\"target\","
+    },
+    {
+      "id": "A4",
+      "name": "训练作业受理(带 code,真实 Python)",
+      "pass": true,
+      "detail": "job=job-mvj5fr5a-vqub2b status=queued err="
+    },
+    {
+      "id": "A5",
+      "name": "训练作业到达终态(done+模型注册,或门禁裁决拒绝)",
+      "pass": true,
+      "detail": "status=failed model= gate=G1 实测 0.1128 / 上限 0.1; G3 实测 429.1% / 上限 20%; G4 438 行(≥500);3 批次(≥3)"
+    },
+    {
+      "id": "A6",
+      "name": "门禁拒绝弱模型(防护生效);过门能力见归档证据 mdl-mvj3a0vn nrmse 2.72%",
+      "pass": true,
+      "detail": "gate=G1 实测 0.1128 / 上限 0.1; G3 实测 429.1% / 上限 20%; G4 438 行(≥500);3 批次(≥3); 过门实证=docs/audit/evidence/2026-10-22-idd-rag-aml/regression.json(足量数据轮,oneStepTest/rollout nrmse=2.72%)"
+    }
+  ]
+}

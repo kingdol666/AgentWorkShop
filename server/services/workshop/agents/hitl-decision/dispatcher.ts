@@ -48,7 +48,9 @@ export async function defaultDispatch(ctx: HitlNativeDispatchContext): Promise<u
     try {
       respondTerminalUi(ctx.pid, {
         id: ctx.id,
-        value: typeof decision.value === 'string' ? decision.value : undefined,
+        // 提问型 UI 提交的是 answers[];omp terminal 只认 value。
+        // 与 harness 路径同源编码:单答案 → 纯文本,多答案 → 信封。
+        value: encodeHitlAnswers(resolveAnswers(ctx.questions, decision), decision.value ?? ''),
         confirmed: typeof decision.confirmed === 'boolean' ? decision.confirmed : undefined,
         cancelled: decision.cancelled === true,
       })

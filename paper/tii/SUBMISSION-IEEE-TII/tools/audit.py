@@ -2,7 +2,7 @@
 """Submission gate audit for the TII manuscript (recreated 2026-10-10).
 
 Gates:
-  F1  page count == 10
+  F1  page count <= 10
   F2  page size US Letter (612x792 pt)
   F3  citation integrity: every \\cite key resolves in refs.bib, no orphans
   F4  macro integrity: every \\res* macro used in sections/main is defined
@@ -21,12 +21,9 @@ fails = []
 
 doc = pymupdf.open("main.pdf")
 pages = doc.page_count
-# 2026-10-12 abstract-rewrite + compression round: the panel-required content
-# survives at 10 pages after the body-trim pass (duplicate scope statements,
-# recap sentences, and intra-section duplications removed); the reference
-# list is 8pt with 0.83 leading. Hard limit back to exactly 10 pages.
-if pages != 10:
-    fails.append(f"F1 pages={pages} (want 10)")
+# TII regular new submissions have a maximum, not a mandatory exact length.
+if not 1 <= pages <= 10:
+    fails.append(f"F1 pages={pages} (maximum 10)")
 else:
     print(f"F1 pass: {pages} pages")
 
@@ -68,7 +65,10 @@ print("F5 pass: all includegraphics targets exist" if not any(x.startswith("F5")
 
 bad = []
 for f in sorted(glob.glob("sections/*.tex")) + ["main.tex"]:
-    if re.search(r"\b(TODO|FIXME|XXX)\b", open(f, encoding="utf-8").read()):
+    source = open(f, encoding="utf-8").read()
+    # Consecutive X columns are valid tabularx syntax, not a placeholder.
+    source = re.sub(r"\\begin\{tabularx\}\{[^}]*\}\{[^\n]*\}", "", source)
+    if re.search(r"\b(TODO|FIXME|XXX)\b", source):
         bad.append(f)
 if bad:
     fails.append(f"F6 TODO markers in {bad}")

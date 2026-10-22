@@ -180,6 +180,8 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
     where.push('ts_ms <= ?')
     params.push(q.toMs ?? Date.now())
     const limit = Math.max(1, Math.min(q.limit ?? 2000, 1_000_000))
+    // limit 语义 = nodeIds 集合总量(端口契约,与 timescale.adapter 一致);多节点
+    // 查询需要"每节点配额"语义时,由服务层逐节点调用(nodeIds:[单个] 时两者等价)。
     if (q.bucketMs && q.bucketMs >= 100) {
       // 桶宽内插(整数,同 query():绑定参数会走 REAL 浮点除,塌不了桶)
       const bucket = Math.round(Number(q.bucketMs))
@@ -201,7 +203,7 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
     `).all(...params, limit)) as Array<{ node_id: string, ts_ms: number, value: number }>
     for (const r of rows) {
       const list = out.get(r.node_id) ?? []
-      list.push({ at: Number(r.ts_ms), value: r.value })
+      list.push({ at: Number(r.ts_ms), value: Number(r.value) })
       out.set(r.node_id, list)
     }
     return out

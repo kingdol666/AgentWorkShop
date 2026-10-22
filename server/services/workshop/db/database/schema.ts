@@ -263,7 +263,8 @@ CREATE TABLE IF NOT EXISTS audit_log (
   recipe_id   TEXT NOT NULL DEFAULT '',
   kind        TEXT NOT NULL DEFAULT '',     -- write|manual|alarm|line|recipe|rollback|daq|system
   summary     TEXT NOT NULL DEFAULT '',
-  level       TEXT NOT NULL DEFAULT 'info'  -- 严重级:info|warn|error(写控 ACK 鉴定;2026-10-08)
+  level       TEXT NOT NULL DEFAULT 'info', -- 严重级:info|warn|error(写控 ACK 鉴定;2026-10-08)
+  scope       TEXT NOT NULL DEFAULT 'system' -- 显式域标识:line(产线域,必须有 line_id)|system(全局审计)
 );
 CREATE INDEX IF NOT EXISTS idx_audit_log_at ON audit_log(at DESC);
 -- v14:高危管理操作双人复核(R3:maker-checker;config 开关默认关)
@@ -779,7 +780,46 @@ CREATE TABLE IF NOT EXISTS analysis_reports (
   updated_by_name TEXT NOT NULL DEFAULT ''
 );
 CREATE INDEX IF NOT EXISTS idx_analysis_reports_line ON analysis_reports(line_id, created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_analysis_reports_recipe ON analysis_reports(recipe_id);`
+CREATE INDEX IF NOT EXISTS idx_analysis_reports_recipe ON analysis_reports(recipe_id);
+
+-- v28: 工具目录 + Channel 级工具治理(2026-10-20)
+-- tool_registry 是内置/插件工具定义的元数据快照;执行代码仍在 host-tools.json / 插件进程里。
+CREATE TABLE IF NOT EXISTS tool_registry (
+  name             TEXT PRIMARY KEY,
+  source           TEXT NOT NULL,                 -- 'builtin' | 'plugin'
+  plugin_name      TEXT NOT NULL DEFAULT '',
+  plugin_scope     TEXT NOT NULL DEFAULT '',      -- 'builtin' | 'project' | 'user'
+  label            TEXT NOT NULL DEFAULT '',
+  description      TEXT NOT NULL DEFAULT '',
+  parameters_json  TEXT NOT NULL DEFAULT '{}',
+  roles_json       TEXT NOT NULL DEFAULT '["lead","worker"]',
+  group_name       TEXT NOT NULL DEFAULT '',
+  metadata_json    TEXT NOT NULL DEFAULT '{}',
+  definition_hash  TEXT NOT NULL DEFAULT '',
+  available        INTEGER NOT NULL DEFAULT 1,
+  first_seen_at    TEXT NOT NULL,
+  last_seen_at     TEXT NOT NULL,
+  updated_at       TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_tool_registry_source ON tool_registry(source, available);
+CREATE INDEX IF NOT EXISTS idx_tool_registry_plugin ON tool_registry(plugin_name);
+
+CREATE TABLE IF NOT EXISTS channel_tool_policies (
+  channel_id   TEXT PRIMARY KEY,
+  mode         TEXT NOT NULL DEFAULT 'all',       -- 'all' | 'selected'
+  updated_by   TEXT NOT NULL DEFAULT '',
+  updated_at   TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS channel_tool_settings (
+  channel_id   TEXT NOT NULL,
+  tool_name    TEXT NOT NULL,
+  enabled      INTEGER NOT NULL DEFAULT 1,
+  updated_by   TEXT NOT NULL DEFAULT '',
+  updated_at   TEXT NOT NULL,
+  PRIMARY KEY (channel_id, tool_name)
+);
+CREATE INDEX IF NOT EXISTS idx_channel_tool_settings_channel ON channel_tool_settings(channel_id, enabled);`
 
 // ===== 默认种子数据(首轮初始化注入;owner NULL = 公共资源,所有登录用户只读共享) =====
 

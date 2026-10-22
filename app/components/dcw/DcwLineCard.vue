@@ -105,6 +105,7 @@ const pick = defineModel<string | undefined>('pick')
         <button
           class="pill-btn"
           :disabled="quickBusy === card.line.id || !pick"
+          :title="!pick ? $t('dcw.k1dhaby4003') : undefined"
           @click="emit('start', card)"
         >
           {{ $t('dcw.k149b4vg014') }}

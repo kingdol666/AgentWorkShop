@@ -1,0 +1,18 @@
+━━━ harness matrix @ http://127.0.0.1:3001 (14 engines, concurrency=5) ━━━
+PASS | omp       | COMPLETED | 24.3s | HARNESS-OK:omp
+FAIL | mock      | WORKING | 181.2s | 任务终态 WORKING
+FAIL | opencode  | WORKING | 181.2s | 任务终态 WORKING
+FAIL | dsh       | WORKING | 181.2s | 任务终态 WORKING
+FAIL | codex     | WORKING | 181.2s | 任务终态 WORKING
+FAIL | claude    | WORKING | 181.6s | 任务终态 WORKING
+PASS | copilot   | COMPLETED | 27.2s | HARNESS-OK:copilot
+FAIL | gemini    | WORKING | 181.2s | 任务终态 WORKING
+FAIL | cursor    | WORKING | 181.5s | 任务终态 WORKING
+FAIL | crush     | WORKING | 181.7s | 任务终态 WORKING
+FAIL | goose     | WORKING | 180.1s | 任务终态 WORKING
+FAIL | qwen      | WORKING | 181.2s | 任务终态 WORKING
+FAIL | pi        | WORKING | 181.5s | 任务终态 WORKING
+FAIL | hermes    | WORKING | 181.7s | 任务终态 WORKING
+
+=== harness matrix: 2 PASS / 12 FAIL ===
+evidence: docs/audit/2026-10-20-harness-acceptance-evidence/harness-matrix.json

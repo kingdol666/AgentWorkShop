@@ -1,0 +1,65 @@
+{
+  "simPort": 4047,
+  "mqttPort": 55830,
+  "devices": [
+    {
+      "id": "twin-modbus-tcp",
+      "name": "自定义 Modbus TCP 设备",
+      "protocol": "modbus-tcp",
+      "port": 37570,
+      "unitId": 1,
+      "signals": [
+        { "id": "speed-sp", "name": "线速SP", "unit": "m/min", "min": 20, "max": 60, "decimals": 1, "kind": "sp", "initial": 35 },
+        { "id": "speed-pv", "name": "线速PV", "unit": "m/min", "min": 20, "max": 60, "decimals": 1, "kind": "pv",
+          "dynamics": { "base": 35, "tau": 4, "noise": 0.1, "follows": [{ "sp": "线速SP", "gain": 1, "at": 35 }] } }
+      ]
+    },
+    {
+      "id": "twin-modbus-rtu",
+      "name": "自定义 Modbus RTU-over-TCP 设备",
+      "protocol": "modbus-rtu",
+      "port": 37571,
+      "unitId": 1,
+      "signals": [
+        { "id": "temp-sp", "name": "温度SP", "unit": "℃", "min": 20, "max": 120, "decimals": 1, "kind": "sp", "initial": 60 },
+        { "id": "temp-pv", "name": "温度PV", "unit": "℃", "min": 20, "max": 120, "decimals": 1, "kind": "pv",
+          "dynamics": { "base": 60, "tau": 8, "noise": 0.2, "follows": [{ "sp": "温度SP", "gain": 1, "at": 60 }] } }
+      ]
+    },
+    {
+      "id": "twin-opcua",
+      "name": "自定义 OPC UA 设备",
+      "protocol": "opcua",
+      "port": 4855,
+      "signals": [
+        { "id": "pressure-sp", "name": "压力SP", "unit": "bar", "min": 1, "max": 10, "decimals": 2, "kind": "sp", "initial": 5 },
+        { "id": "pressure-pv", "name": "压力PV", "unit": "bar", "min": 1, "max": 10, "decimals": 2, "kind": "pv",
+          "dynamics": { "base": 5, "tau": 5, "noise": 0.02, "follows": [{ "sp": "压力SP", "gain": 1, "at": 5 }] } }
+      ]
+    },
+    {
+      "id": "twin-mqtt",
+      "name": "自定义 MQTT 设备",
+      "protocol": "mqtt",
+      "signals": [
+        { "id": "flow-sp", "name": "流量SP", "unit": "L/min", "min": 0, "max": 100, "decimals": 1, "kind": "sp", "initial": 40 },
+        { "id": "flow-pv", "name": "流量PV", "unit": "L/min", "min": 0, "max": 100, "decimals": 1, "kind": "pv",
+          "dynamics": { "base": 40, "tau": 6, "noise": 0.4, "follows": [{ "sp": "流量SP", "gain": 1, "at": 40 }] } }
+      ]
+    },
+    {
+      "id": "twin-http",
+      "name": "自定义 HTTP/API 设备(标量+向量+图像)",
+      "protocol": "http",
+      "signals": [
+        { "id": "target-sp", "name": "目标SP", "unit": "um", "min": 30, "max": 40, "decimals": 2, "kind": "sp", "initial": 35 },
+        { "id": "thickness-pv", "name": "膜厚PV", "unit": "um", "min": 30, "max": 40, "decimals": 3, "kind": "pv", "format": "scalar",
+          "dynamics": { "base": 35, "tau": 4, "noise": 0.03, "follows": [{ "sp": "目标SP", "gain": 1, "at": 35 }] } },
+        { "id": "profile-pv", "name": "膜厚断面", "unit": "um", "min": 30, "max": 40, "decimals": 3, "kind": "pv", "format": "vector",
+          "code": "state.i=(state.i||0)+1; return { points: Array.from({length: 8}, (_, j) => Number((35 + Math.sin((state.i + j) / 4) * 0.3).toFixed(3))) }" },
+        { "id": "image-pv", "name": "表检图像", "unit": "gray", "min": 0, "max": 255, "decimals": 0, "kind": "pv", "format": "image",
+          "code": "state.i=(state.i||0)+1; return { png: 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9Wl2nWQAAAAASUVORK5CYII=', width: 1, height: 1 }" }
+      ]
+    }
+  ]
+}

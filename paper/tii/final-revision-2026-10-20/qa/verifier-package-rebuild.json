@@ -1,0 +1,29 @@
+{
+  "command": [
+    "uv",
+    "run",
+    "python",
+    "-B",
+    "C:/Users/87287/.agents/skills/latex-paper-en/scripts/compile.py",
+    "C:\\Users\\87287\\AppData\\Local\\Temp\\tii-verifier-rebuild-d5a0nqz1\\main.tex",
+    "--recipe",
+    "pdflatex-bibtex"
+  ],
+  "source_zip_sha256": "0cc759b05fddf5e62cf0326692aaba2c0cc580f32a36f90df283d9640bc25adf",
+  "delivered_pdf_sha256": "c4a8018c9e7c5b50eae592c1efecf1eb22634851116e330294a389fb5b6a976b",
+  "build_root": "C:\\Users\\87287\\AppData\\Local\\Temp\\tii-verifier-rebuild-d5a0nqz1",
+  "exit_code": 0,
+  "packaged_pdf_removed_sha256": "c4a8018c9e7c5b50eae592c1efecf1eb22634851116e330294a389fb5b6a976b",
+  "output_absent_before_build": true,
+  "actual_emitted_PDF": "C:\\Users\\87287\\AppData\\Local\\Temp\\tii-verifier-rebuild-d5a0nqz1\\main.pdf",
+  "actual_emitted_exists": true,
+  "emitted_created_after_build_start": true,
+  "delivered_pages": 10,
+  "rebuilt_pages": 10,
+  "all_page_text_equal": true,
+  "all_page_geometry_equal": true,
+  "build_errors": [],
+  "shell_escape_disabled": true,
+  "build_log_sha256": "ec87de17965c360e1d3ac564f036be5cb22018ff84608869bc7383fdf879b400",
+  "passed": true
+}

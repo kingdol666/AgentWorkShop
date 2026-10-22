@@ -1,0 +1,52 @@
+npm warn Unknown project config "auto-install-peers". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown project config "strict-peer-dependencies". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> agentworkshop@0.7.70 test:mcp-live
+> node scripts/_audit/aw-mcp-live-e2e.mjs
+
+[S0] 启动隔离实例(port=3461, home=C:\Users\87287\AppData\Local\Temp\aw-mcp-live-vmOXxh)
+  ✔ 实例健康门通过
+[S1] 注册管理员
+  ✔ admin 注册成功
+[S2] 拉起 MCP stdio 子进程(无任何端口提示,靠锁文件自发现)
+[S3] 协议面
+  ✔ initialize 握手
+  ✔ tools/list ≥30 个工具
+  ✔ 关键工具存在: aw_status
+  ✔ 关键工具存在: aw_login
+  ✔ 关键工具存在: aw_line_create
+  ✔ 关键工具存在: aw_dcw_create
+  ✔ 关键工具存在: aw_param_write
+  ✔ 关键工具存在: aw_recipe_create
+  ✔ 关键工具存在: aw_line_start
+  ✔ 关键工具存在: aw_daq_controller
+  ✔ 关键工具存在: aw_channel_template_instantiate
+  ✔ 关键工具存在: aw_twin_profile_patch
+  ✔ 关键工具存在: aw_team_provision
+  ✔ 关键工具存在: aw_plugin_list
+  ✔ 关键工具存在: aw_request
+[S4] 自动端口发现 + 懒登录
+  ✔ aw_status 自动发现端口
+  ✔ 发现来源为锁文件
+  ✔ needsSetup=false(已有 admin)
+[S5] 全链业务:建线→建节点→参数映射→配方→开跑→回环
+  ✔ aw_line_create
+  ✔ aw_product_create
+  ✔ aw_dcw_create(DCW 节点)
+  ✔ aw_daq_create(DAQ 节点)
+  ✔ 参数映射随节点自动生成(ensureForNode)
+  ✔ aw_recipe_create(节点级参数绑定)
+  ✔ aw_line_start(逐参数下发回执)
+  ✔ aw_daq_controller start
+[S6] 优化频道:创建/模板实例化/孪生 profile
+  ✔ aw_channel_create
+  ✔ aw_channel_template_list 含内置 aml-optimization 模板
+  ✔ aw_channel_template_instantiate(aml_optimization)
+  ✔ aw_twin_profile_get(aml_optimization + exploration 初始态)
+[S7] 插件清单与逃生舱守卫
+  ✔ aw_plugin_list
+  ✔ aw_request 拒绝非 /api/ 路径
+[S8] 清场
+
+═══ aw-mcp live e2e:34 PASS / 0 FAIL ═══
+

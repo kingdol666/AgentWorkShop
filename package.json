@@ -1,6 +1,6 @@
 {
   "name": "agentworkshop",
-  "version": "0.7.66",
+  "version": "0.7.70",
   "type": "module",
   "description": "AgentWorkShop 软件开发系统 - 基于 Nuxt 4 的配置驱动运行范式",
   "license": "Apache-2.0",
@@ -85,6 +85,8 @@
     "prepare": "husky",
     "test:api-live": "node scripts/api-live-e2e.mjs",
     "test:e2e-line": "node scripts/e2e-line-governance.mjs",
+    "test:line-log": "node scripts/line-log-smoke.mjs",
+    "test:mes-agent": "node scripts/mes-agent-integration-e2e.mjs",
     "test:e2e-injection": "node scripts/e2e-injection-recipe-closedloop.mjs",
     "test:mcp": "tsx --tsconfig .nuxt/tsconfig.server.json --test --test-force-exit tests/aw-mcp-server.test.ts",
     "test:skills": "node scripts/test-aw-skills.mjs",

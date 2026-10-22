@@ -182,7 +182,9 @@ export async function toolRecipePropose(agentId: string, args: {
     return { text: err instanceof Error ? err.message : String(err), isError: true }
   }
 
-  // ---------- ⑤ 预检(镜像 recipe 真实执行限界:量程∩参数∩产品;步长/60s/保持窗本就不适用 recipe) ----------
+  // ---------- ⑤ 预检(量程∩参数∩产品∩**当前活动配方窗口**;步长/60s/保持窗不适用 recipe) ----------
+  // 配方窗口是当前批次的安全工艺窗:提案不能借 recipe 下发路径绕过它(否则 48 上限可被写到 49)。
+  // 若需要放宽窗口,先由人通过 recipe_update 修改配方 min/max,再提交新提案。
   const preflightNotes: string[] = []
   for (const pkg of packages) {
     pkg.params = pkg.params.filter((p) => {
@@ -204,8 +206,8 @@ export async function toolRecipePropose(agentId: string, args: {
         p.from = typeof node.value === 'number' ? node.value : (typeof node.readValue === 'number' ? node.readValue : null)
       }
       if (!p.unit) p.unit = node.unit ?? ''
-      // 只读限界谓词(skipRecipe:true = 配方下发路径真实语义)
-      const pf = evaluateRecipeParamLimits(node, p.to, { skipRecipe: true })
+      // 提案预检必须含当前活动配方窗口;执行仍走 recipe 批量路径,但不得把越窗值带入审批。
+      const pf = evaluateRecipeParamLimits(node, p.to, { skipRecipe: false })
       if (!pf.ok) return fail(pf.violations[0] ?? '写入限界校验失败')
       return true
     })
@@ -250,7 +252,7 @@ export async function toolRecipePropose(agentId: string, args: {
     try {
       recordOps({
         actor: agentId, actorName: agentBadgeLabel(agentId), actorKind: 'agent',
-        action: 'recipe.propose', kind: 'recipe', targetKind: 'recipe', targetId: recipeId, recipeId, lineId: recipe.lineId,
+        action: 'recipe.propose', kind: 'recipe', targetKind: 'recipe', targetId: recipeId, recipeId, lineId: recipe.lineId, productId: recipe.productId,
         summary: `提交整包方案审批(${alivePackages.length} 套/${alivePackages.reduce((n, p) => n + p.params.length, 0)} 参数,单 ${approvalId}):${alivePackages.map(p => p.name).join('、')}`,
       })
     }
@@ -315,7 +317,7 @@ export async function toolRecipePropose(agentId: string, args: {
   try {
     recordOps({
       actor: agentId, actorName: agentBadgeLabel(agentId), actorKind: 'agent',
-      action: 'recipe.apply', kind: 'recipe', targetKind: 'recipe', targetId: recipeId, recipeId, lineId: recipe.lineId,
+      action: 'recipe.apply', kind: 'recipe', targetKind: 'recipe', targetId: recipeId, recipeId, lineId: recipe.lineId, productId: recipe.productId,
       level: acks.failed > 0 ? 'error' : acks.unverified > 0 ? 'warn' : 'info',
       summary: `整包方案审批后下发(证实 ${acks.verified}/${acks.total},未证实 ${acks.unverified},失败 ${acks.failed},批次 ${run.id.slice(0, 8)},单 ${decision.id},选定方案「${chosen.name}」#${chosenIdx})`,
       detail: { approvalId: decision.id, choice: chosenIdx, runId: run.id, ackSummary: acks },

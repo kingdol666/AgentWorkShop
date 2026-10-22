@@ -1,0 +1,100 @@
+npm warn Unknown project config "auto-install-peers". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown project config "strict-peer-dependencies". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> agentworkshop@0.7.70 test:api-live
+> node scripts/api-live-e2e.mjs
+
+目标: http://127.0.0.1:3470 (生产构建 .output + scripts/start.mjs)
+
+  预清理完成(遗留 api-e2e/api-tpl 数据已移除)
+
+━━━ 1. 持久化恢复 — 重启前数据经 API 可见 ━━━
+  PASS  GET /channels 恢复 channel 列表 — count=6
+  PASS  恢复的 channel 带 lead 实例 — with-lead=6
+  PASS  GET /runtime 形状(懒加载状态) — wired=2 active=2
+  PASS  GET /channels/:id 详情(含成员) — agents=3
+  PASS  详情请求后 lead 运行时装配(懒加载) — wired=3 active=3
+  PASS  GET /channels/:id/tasks 恢复历史任务 — tasks=0
+
+━━━ 2. AGENT 模板 CRUD(全局定义) ━━━
+  PASS  POST /agents 创建模板 — id=31ac7126
+  PASS  POST /agents 第二个模板
+  PASS  GET /agents 列表含新模板 — count=34
+  PASS  GET /agents/:id 详情
+  PASS  PATCH /agents/:id 更新
+  PASS  POST /agents 校验(name 必填 → 400)
+
+━━━ 3. CHANNEL CRUD + lead/worker 装配 ━━━
+  PASS  POST /channels 创建(含 lead) — channel=236d8b65
+  PASS  POST /channels/:id/agents 克隆模板为 worker — id=cc9d2ca1
+  PASS  POST 第二个 worker
+  PASS  GET /channels/:id/agents 成员列表 — members=3
+  PASS  成员带实例 token(auth 基础)
+  PASS  第二个 lead → 409 LEAD_EXISTS — code=LEAD_EXISTS
+  PASS  GET /channels/:id 详情
+  PASS  PATCH /channels/:id 更新
+  PASS  POST /channels/:id/activate 显式激活
+
+━━━ 4. TASK 提交与执行 — goal 模式 ━━━
+  PASS  POST /channels/:id/tasks 提交(goal) — state=SUBMITTED
+  PASS  任务路由到 lead
+  PASS  goal 任务自动执行至终态 — state=COMPLETED progress=100
+  PASS  goal 任务含成果 artifacts — artifacts=1
+  PASS  GET /tasks/:id 详情(管理面,无 token)
+  PASS  详情含 history 数组 — history=0
+
+━━━ 5. TASK 作用域校验 + dispatch/report/complete 状态机 ━━━
+  PASS  带 token 拉取本 channel 任务 — tasks=2
+  PASS  无效 token → 401 — status=401
+  PASS  跨 channel 访问任务 → 403 SCOPE_VIOLATION — code=SCOPE_VIOLATION status=403
+  PASS  提交父任务(用于 dispatch)
+  PASS  lead 自动派发子任务 — autoChild=2(5962b463)
+  PASS  POST /tasks/:id/dispatch 手工派发第 2 个子任务 — child=41f0352a
+  PASS  POST /tasks/:id/report 上报进度 — progress=42
+  PASS  子任务执行至 COMPLETED — state=COMPLETED
+  PASS  上报 message 已写入任务 history — history=1
+  PASS  父任务自动汇总 COMPLETED — state=COMPLETED
+  PASS  终态重复 complete → 幂等成功或 400 — code=0 state=COMPLETED
+
+━━━ 6. TASK cancel(系统身份回收) ━━━
+  PASS  提交待取消任务
+  PASS  已终态任务的 cancel 被终态护栏拒绝(不改写 COMPLETED) — status=409 code=TASK_TERMINAL state=undefined
+  PASS  重复 cancel 仍被拒绝 — status=409 code=TASK_TERMINAL
+
+━━━ 7. TASK loop 模式(LoopController 限次重放) ━━━
+  PASS  POST 提交(loop, max=2) — id=3fc639f1
+  PASS  loop 重放 ≥2 次且全部终态 — iterations=2
+
+━━━ 8. TASK pipeline 模式(提交 + 模式元数据) ━━━
+  PASS  POST 提交(pipeline)
+  PASS  pipeline 模式元数据编码(mode/stages) — desc=[mode:pipeline][stages:stage-A->stage-B] 流水线验证
+  PASS  pipeline 执行至 COMPLETED — state=COMPLETED
+
+━━━ 9. A2A 点对点 + mailbox + channel 消息历史 ━━━
+  PASS  POST /a2a/send worker→lead — msg=107f8a10
+  PASS  GET /mailbox 端点形状(可拉取队列) — pending=0
+  PASS  a2a 消息持久化到 channel 历史(from/to 正确) — from=cc9d2ca1 to=e813f365
+  PASS  API messageId == 历史 id(可关联) — api=107f8a10 hist=107f8a10
+  PASS  a2a 目标不存在 → 404/校验失败 — status=404
+  PASS  POST /channels/:id/messages immediate 注入 — code=0
+  PASS  GET /channels/:id/messages 历史含新消息 — msgs=17
+  PASS  POST /agents/subscribe 订阅
+
+━━━ 10. WebSocket Hub — 前端观察入口 ━━━
+  PASS  WS 连接成功
+  PASS  WS 广播 task.status/task.progress — events=channel.snapshot,daq.reading,daq.reading,daq.reading,daq.reading,daq.reading,daq.reading,daq.reading,daq.reading,task.status,root.queue,agent.status,agent.status,task.status,root.queue,agent.status,a2a.artifact,agent.status,agent.status
+  PASS  WS 广播 a2a.artifact/a2a.message
+  INFO  agent.status diff 事件(mock 忙窗口 < 500ms 轮询时可能不出现): 出现
+  PASS  ws 任务执行完成 — state=COMPLETED
+
+━━━ 11. MCP 端点 — initialize 会话建立 ━━━
+  PASS  POST /api/mcp/workshop initialize — status=200 hasServerInfo=true
+  PASS  MCP 会话 id 下发(状态复用) — sid=2d684580
+  PASS  MCP tools/list 返回工具集 — tools≈25
+
+━━━ 12. 清理与级联删除 ━━━
+  PASS  DELETE /channels/:id 级联删除
+  PASS  DELETE /agents/:id
+  PASS  删除后 channel 列表回退(旧数据保留) — count=6
+
+★ ALL PASS  (64 passed)

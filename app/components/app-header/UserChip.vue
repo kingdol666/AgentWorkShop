@@ -100,17 +100,18 @@ const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
 </template>
 
 <style scoped>
-/* 操作者铭牌:头像 + 双行 */
+/* 操作者铭牌:头像 + 双行;不参与顶栏收缩,长名字省略 */
 .user-chip {
   display: flex;
+  flex: 0 0 auto;
   align-items: center;
   gap: 10px;
   height: 42px;
   margin-left: 4px;
-  padding: 0 12px 0 8px;
+  padding: 0 10px 0 8px;
   cursor: pointer;
   border: 1px solid transparent;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-control);
   transition: border-color 0.16s ease, background 0.16s ease;
 }
 
@@ -128,22 +129,25 @@ const onAvatarMenu: MenuProps['onClick'] = async ({ key }) => {
 .user-meta {
   display: flex;
   flex-direction: column;
-  line-height: 1.15;
+  min-width: 0;
+  max-width: 118px;
+  line-height: 1.2;
 }
 
 .user-name {
-  font-size: 12.5px;
+  overflow: hidden;
+  font-size: 12px;
   font-weight: 600;
   color: var(--app-text, var(--ink));
   letter-spacing: 0.01em;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .user-role {
   font-family: var(--font-mono);
-  /* 8.5px 是"看得见读不了"的下限之外(实测常驻被审计标红);
-     角色是身份信息,不是装饰刻度,抬到 9.5px 仍保持铭牌声部 */
-  font-size: 9.5px;
-  letter-spacing: 0.14em;
+  font-size: 11px;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--app-text-secondary, var(--ink-faint));
 }

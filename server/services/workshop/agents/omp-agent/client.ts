@@ -7,7 +7,7 @@ import type { AgentRunContext } from '../agent-interface'
 import { OmpRpcClient } from '../adapters/omp-rpc-client'
 import { attachTerminalTap, markTerminalSessionExit } from '../harness-terminal'
 import { bindHarnessProcess, markHarnessProcessExit, registerHarnessProcess } from '../harness-process'
-import { hostToolsForRole } from '../host-tool-bridge'
+import { hostToolsForAgent } from '../host-tool-bridge'
 
 export abstract class OmpRpcAgentImplClient extends OmpRpcAgentImplEventMapping {
   protected async ensureClient(ctx: AgentRunContext): Promise<void> {
@@ -88,7 +88,7 @@ export abstract class OmpRpcAgentImplClient extends OmpRpcAgentImplEventMapping 
 
       // 注册 host tools(按角色差异化:lead 全量,worker 剔除调度/团队管理专属工具)
       client.onHostToolCall(req => this.handleHostTool(req))
-      await client.send({ type: 'set_host_tools', tools: hostToolsForRole(this.agentRole, this.channelId) })
+      await client.send({ type: 'set_host_tools', tools: hostToolsForAgent(this.selfAgentId, this.agentRole, this.channelId) })
 
       // 上下文治理探测(feature-detect 一次;失败退化被动 usage 跟踪)+ 原生压缩兜底保持开启
       void this.probeContext(client).catch(() => {})

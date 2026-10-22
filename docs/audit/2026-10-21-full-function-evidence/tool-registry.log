@@ -1,0 +1,363 @@
+━━━ tool registry E2E @ http://127.0.0.1:3463 (home=C:\Users\87287\AppData\Local\Temp\aw-tool-registry-e2e-XqeTPi) ━━━
+[S0] aw plugin install
+  ✔ 插件安装命令退出码 0 — ✔ 插件已安装: aw-fixture-tools → C:\Users\87287\AppData\Local\Temp\aw-tool-registry-e2e-XqeTPi\plugins\aw-fixture-tools
+  › 作用域: user(用户级);已启用
+  › 热重载: 运行中的服务约 1s 内重新装载;随后工具会出现在「工具管理」与 MCP 工具面
+  ✔ 插件目录落盘
+[S1] 启动隔离实例
+  ✔ 实例健康门通过 — 日志 C:\Users\87287\AppData\Local\Temp\aw-tool-registry-e2e-XqeTPi\instance.log
+[S2] 注册 admin + 普通用户
+  ✔ admin 注册并拿到 token — HTTP 200 ok
+  ✔ admin 创建普通用户 — HTTP 200
+  ✔ 普通用户登录 — HTTP 200
+  ✔ 普通用户访问全局工具目录 → 403 — HTTP 403
+[S3] 全局工具目录
+  ✔ GET /tools 成功 — HTTP 200
+  ✔ 内置工具 86 条 — builtin=86
+  ✔ 插件工具已入库 — plugin=19
+  ✔ fixture_echo 来源=plugin — "plugin"
+  ✔ fixture_echo 可用
+[S4] 创建 workspace/channel
+  ✔ workspace 创建 — HTTP 200
+  ✔ channel 创建 — HTTP 200 ok
+  ✔ channel 挂载到 workspace — HTTP 200
+  ✔ lead agent 可取 token — 590496f9-bacc-48d0-85e3-9d4006c3026a
+  ✔ 非属主修改 Channel 工具 → 403 — HTTP 403
+[S5] Channel 工具视图
+  ✔ GET channel tools 成功 — HTTP 200
+  ✔ 默认模式 all/source default — all/default
+  ✔ fixture 在 Channel 目录
+  ✔ 视图含内置工具
+  ✔ 统计 lead 生效数 > 0 — 77
+[S6] agent-tools list + MCP bridge
+  ✔ agent-tools list 含内置
+  ✔ agent-tools list 含 fixture
+  ✔ MCP initialize — {"tools":{"listChanged":true}}
+  ✔ MCP tools/list 含内置 — count=77
+  ✔ MCP tools/list 含 fixture
+  ✔ MCP 调用 fixture 成功 — "fixture:hello"
+[S7] all 模式停用 fixture/daq_query
+  ✔ PUT all 停用成功 — HTTP 200 ok
+  ✔ 视图 fixture 已停用
+  ✔ agent-tools list 已剔除 fixture
+  ✔ agent-tools list 已剔除 daq_query
+  ✔ 直调停用工具被拒 — "本 Channel 已在「设置 → 工具」中停用「fixture_echo」。请让 Channel 属主在工具管理中启用后重试;硬规则排除的工具不能通过开关绕过。"
+  ✔ 拒绝文案含本 Channel 停用
+  ✔ MCP 直调停用工具被拒 — "本 Channel 已在「设置 → 工具」中停用「fixture_echo」。请让 Channel 属主在工具管理中启用后重试;硬规则排除的工具不能通过开关绕过。"
+[S8] MCP list_changed 通知
+  ✔ 收到 tools/list_changed — notifications=notifications/tools/list_changed
+  ✔ MCP tools/list 已剔除 fixture
+[S9] selected allow-list
+  ✔ PUT selected 成功 — HTTP 200 ok
+  ✔ selected 模式生效
+  ✔ fixture 被勾选生效
+  ✔ daq_query 未勾选停用
+  ✔ selected 列表只含勾选工具 — count=3
+[S10] 硬规则与输入校验
+  ✔ 硬规则排除工具 → 409 — HTTP 409 TOOL_NOT_ELIGIBLE 工具 twin_trial_run 被硬规则排除(PROFILE_DENIED);Channel 开关不能绕过角色/档位/写守卫。
+  ✔ 未知工具 → 400 — HTTP 400 UNKNOWN_TOOL
+[S11] 持久化 + 重启
+  ✔ 策略已落库 — [{"mode":"all"}]
+  ✔ 停用行已落库 — [{"tool_name":"daq_query"}]
+  ✔ 重启后健康 — 日志 C:\Users\87287\AppData\Local\Temp\aw-tool-registry-e2e-XqeTPi\instance.log
+  ✔ 重启后策略仍生效 — HTTP 200
+[S12] UI 渲染
+  ✔ /tools 页面渲染 fixture
+  ✔ /tools 页面显示内置统计
+  ✔ Channel 设置渲染工具区
+  ✔ Channel 设置含 fixture 工具
+  ✔ UI 保存后 fixture 已停用 — HTTP 200
+[S13] 删除 Channel 清理
+  ✔ 删除 Channel 成功 — HTTP 200
+  ✔ 策略行已清理
+  ✔ 选择行已清理
+{
+  "at": "2026-10-20T17:01:09.507Z",
+  "base": "http://127.0.0.1:3463",
+  "home": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-tool-registry-e2e-XqeTPi",
+  "pass": 56,
+  "fail": 0,
+  "fails": [],
+  "checks": [
+    {
+      "name": "插件安装命令退出码 0",
+      "ok": true,
+      "detail": "✔ 插件已安装: aw-fixture-tools → C:\\Users\\87287\\AppData\\Local\\Temp\\aw-tool-registry-e2e-XqeTPi\\plugins\\aw-fixture-tools\n  › 作用域: user(用户级);已启用\n  › 热重载: 运行中的服务约 1s 内重新装载;随后工具会出现在「工具管理」与 MCP 工具面"
+    },
+    {
+      "name": "插件目录落盘",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "实例健康门通过",
+      "ok": true,
+      "detail": "日志 C:\\Users\\87287\\AppData\\Local\\Temp\\aw-tool-registry-e2e-XqeTPi\\instance.log"
+    },
+    {
+      "name": "admin 注册并拿到 token",
+      "ok": true,
+      "detail": "HTTP 200 ok"
+    },
+    {
+      "name": "admin 创建普通用户",
+      "ok": true,
+      "detail": "HTTP 200"
+    },
+    {
+      "name": "普通用户登录",
+      "ok": true,
+      "detail": "HTTP 200"
+    },
+    {
+      "name": "普通用户访问全局工具目录 → 403",
+      "ok": true,
+      "detail": "HTTP 403"
+    },
+    {
+      "name": "GET /tools 成功",
+      "ok": true,
+      "detail": "HTTP 200"
+    },
+    {
+      "name": "内置工具 86 条",
+      "ok": true,
+      "detail": "builtin=86"
+    },
+    {
+      "name": "插件工具已入库",
+      "ok": true,
+      "detail": "plugin=19"
+    },
+    {
+      "name": "fixture_echo 来源=plugin",
+      "ok": true,
+      "detail": "\"plugin\""
+    },
+    {
+      "name": "fixture_echo 可用",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "workspace 创建",
+      "ok": true,
+      "detail": "HTTP 200"
+    },
+    {
+      "name": "channel 创建",
+      "ok": true,
+      "detail": "HTTP 200 ok"
+    },
+    {
+      "name": "channel 挂载到 workspace",
+      "ok": true,
+      "detail": "HTTP 200"
+    },
+    {
+      "name": "lead agent 可取 token",
+      "ok": true,
+      "detail": "590496f9-bacc-48d0-85e3-9d4006c3026a"
+    },
+    {
+      "name": "非属主修改 Channel 工具 → 403",
+      "ok": true,
+      "detail": "HTTP 403"
+    },
+    {
+      "name": "GET channel tools 成功",
+      "ok": true,
+      "detail": "HTTP 200"
+    },
+    {
+      "name": "默认模式 all/source default",
+      "ok": true,
+      "detail": "all/default"
+    },
+    {
+      "name": "fixture 在 Channel 目录",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "视图含内置工具",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "统计 lead 生效数 > 0",
+      "ok": true,
+      "detail": "77"
+    },
+    {
+      "name": "agent-tools list 含内置",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "agent-tools list 含 fixture",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "MCP initialize",
+      "ok": true,
+      "detail": "{\"tools\":{\"listChanged\":true}}"
+    },
+    {
+      "name": "MCP tools/list 含内置",
+      "ok": true,
+      "detail": "count=77"
+    },
+    {
+      "name": "MCP tools/list 含 fixture",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "MCP 调用 fixture 成功",
+      "ok": true,
+      "detail": "\"fixture:hello\""
+    },
+    {
+      "name": "PUT all 停用成功",
+      "ok": true,
+      "detail": "HTTP 200 ok"
+    },
+    {
+      "name": "视图 fixture 已停用",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "agent-tools list 已剔除 fixture",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "agent-tools list 已剔除 daq_query",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "直调停用工具被拒",
+      "ok": true,
+      "detail": "\"本 Channel 已在「设置 → 工具」中停用「fixture_echo」。请让 Channel 属主在工具管理中启用后重试;硬规则排除的工具不能通过开关绕过。\""
+    },
+    {
+      "name": "拒绝文案含本 Channel 停用",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "MCP 直调停用工具被拒",
+      "ok": true,
+      "detail": "\"本 Channel 已在「设置 → 工具」中停用「fixture_echo」。请让 Channel 属主在工具管理中启用后重试;硬规则排除的工具不能通过开关绕过。\""
+    },
+    {
+      "name": "收到 tools/list_changed",
+      "ok": true,
+      "detail": "notifications=notifications/tools/list_changed"
+    },
+    {
+      "name": "MCP tools/list 已剔除 fixture",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "PUT selected 成功",
+      "ok": true,
+      "detail": "HTTP 200 ok"
+    },
+    {
+      "name": "selected 模式生效",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "fixture 被勾选生效",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "daq_query 未勾选停用",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "selected 列表只含勾选工具",
+      "ok": true,
+      "detail": "count=3"
+    },
+    {
+      "name": "硬规则排除工具 → 409",
+      "ok": true,
+      "detail": "HTTP 409 TOOL_NOT_ELIGIBLE 工具 twin_trial_run 被硬规则排除(PROFILE_DENIED);Channel 开关不能绕过角色/档位/写守卫。"
+    },
+    {
+      "name": "未知工具 → 400",
+      "ok": true,
+      "detail": "HTTP 400 UNKNOWN_TOOL"
+    },
+    {
+      "name": "策略已落库",
+      "ok": true,
+      "detail": "[{\"mode\":\"all\"}]"
+    },
+    {
+      "name": "停用行已落库",
+      "ok": true,
+      "detail": "[{\"tool_name\":\"daq_query\"}]"
+    },
+    {
+      "name": "重启后健康",
+      "ok": true,
+      "detail": "日志 C:\\Users\\87287\\AppData\\Local\\Temp\\aw-tool-registry-e2e-XqeTPi\\instance.log"
+    },
+    {
+      "name": "重启后策略仍生效",
+      "ok": true,
+      "detail": "HTTP 200"
+    },
+    {
+      "name": "/tools 页面渲染 fixture",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "/tools 页面显示内置统计",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Channel 设置渲染工具区",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "Channel 设置含 fixture 工具",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "UI 保存后 fixture 已停用",
+      "ok": true,
+      "detail": "HTTP 200"
+    },
+    {
+      "name": "删除 Channel 成功",
+      "ok": true,
+      "detail": "HTTP 200"
+    },
+    {
+      "name": "策略行已清理",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "选择行已清理",
+      "ok": true,
+      "detail": ""
+    }
+  ]
+}

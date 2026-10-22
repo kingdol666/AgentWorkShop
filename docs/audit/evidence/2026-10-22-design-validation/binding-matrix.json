@@ -1,0 +1,163 @@
+{
+  "at": "2026-10-22T05:47:03.636Z",
+  "base": "http://127.0.0.1:3470",
+  "lineA": "ln-9d31ad0c",
+  "results": [
+    {
+      "id": "A1",
+      "name": "工具面全族装配(worker n≥50,含 daq/frames/recipe/analysis/line)",
+      "pass": true,
+      "detail": "n=58"
+    },
+    {
+      "id": "A2",
+      "name": "插件工具注入(rag-bridge: kb_agent+sentinel_*)",
+      "pass": true,
+      "detail": "kb=true sentinel×4"
+    },
+    {
+      "id": "A3",
+      "name": "optimizer 同族工具面(角色差异由授权面体现)",
+      "pass": true,
+      "detail": "n=58 hasDaq=true"
+    },
+    {
+      "id": "B0",
+      "name": "新 agent 入频道(含 token)",
+      "pass": true,
+      "detail": "id=84608d82-e"
+    },
+    {
+      "id": "B1",
+      "name": "绑定 1 个节点(part-weight)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "C0",
+      "name": "第二产线供给(line+2 mock 节点)",
+      "pass": true,
+      "detail": "lineB=ln-c2ba1734 nodeB=dn-f3094a8e nodeB2=dn-7dcaae36"
+    },
+    {
+      "id": "B2",
+      "name": "绑定节点 daq_query 取到镜像数据且与 REST 镜像同值",
+      "pass": true,
+      "detail": "tool=31.253 rest=31.249(n=200)"
+    },
+    {
+      "id": "B3",
+      "name": "跨线未绑节点拒绝且附授权集指引(v28:隔离边界=线)",
+      "pass": true,
+      "detail": "工具调用被拒(引用校验,daq_query):node_id = 「dn-7dcaae36」不在你的授权范围内(节点「bm-b-line-t2-9v2b」,归属产线 ln-c2ba1734)。\n该节点不在你的绑定范围内。你的绑定节点:dn-a2815b7b;频道绑线「ln-9d3"
+    },
+    {
+      "id": "B4",
+      "name": "频道绑线只读扩权:线 A 全部节点可读(v28 文档语义)",
+      "pass": true,
+      "detail": "sections=18/18"
+    },
+    {
+      "id": "C1",
+      "name": "第二频道(绑线 B)+成员 b2 就绪",
+      "pass": true,
+      "detail": "chB=72ba3062-14f1-4cd1-af05-3048a87bd521 b2=6c690e8b-7"
+    },
+    {
+      "id": "C2",
+      "name": "b2 绑定线 B 节点受理(同线一致)",
+      "pass": true,
+      "detail": "nb-e5d4ff29"
+    },
+    {
+      "id": "C3",
+      "name": "b2 查线 B 绑定节点放行(mock 无批,0 点不拒)",
+      "pass": true,
+      "detail": "数采数据查询结果(1 个节点):\n\n■ bm-b-line-t1-9v2b(熔体/箱体温度)单位 ℃,正常量程 0~100℃,当前状态 offline,时间窗 2026-10-22T13:34 ~ 2"
+    },
+    {
+      "id": "C4",
+      "name": "b2 查线 A 节点拒绝(跨频道跨线隔离)",
+      "pass": true,
+      "detail": "工具调用被拒(引用校验,daq_query):node_id = 「dn-a2815b7b」不在你的授权范围内(节点「scen-injection:daq:part-weight」,归属产线 ln-9d31ad0c)。\n"
+    },
+    {
+      "id": "C5",
+      "name": "b2 lineB 级查询=频道绑线只读扩权(2 节点)",
+      "pass": true,
+      "detail": "sections=2"
+    },
+    {
+      "id": "D0",
+      "name": "异构帧节点在位(vector+image)",
+      "pass": true,
+      "detail": "vec=dn-9fcbfffc img=dn-1faee05d"
+    },
+    {
+      "id": "D1",
+      "name": "自定义 API 推送数组帧(48 点)+图像帧入库",
+      "pass": true,
+      "detail": "vec=200 img=200"
+    },
+    {
+      "id": "D2",
+      "name": "异构节点绑定受理",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "D3",
+      "name": "daq_frames 取数组断面(48 点/派生指标)",
+      "pass": true,
+      "detail": "数采帧查询结果(1 个节点):\n\n■ 绑定矩阵-膜厚断面-9vof(厚度轮廓)形态 vector,帧数 1,时间窗 2026-10-22T13:15 ~ 2026-10-22T13:45 | 单位 mm;量程 0.4~0.65;轴 模头横向位置(操作侧→传动侧);点位 64 个(模头点1…模头点64),点单位 点\n  "
+    },
+    {
+      "id": "D4",
+      "name": "daq_frames 取图像帧(引用/内容 URL,像素不入 LLM)",
+      "pass": true,
+      "detail": "数采帧查询结果(1 个节点):\n\n■ 绑定矩阵-CCD图像-9vof(表面图像)形态 image,帧数 1,时间窗 2026-10-22T13:15 ~ 2026-10-22T13:45 | 单位 灰度;量程 0~255\n  物理意义: CCD 图像帧:像素数据入对象存储,Timescale 仅存元数据与派生指标。判读"
+    },
+    {
+      "id": "D5",
+      "name": "标量节点 daq_frames 按设计提示无帧(与频道绑线只读面一致)",
+      "pass": true,
+      "detail": "数采帧查询结果(1 个节点):\n\n■ scen-injection:daq:melt-temp-pv:单点标量节点(模板 temp-tc),无帧数据 —— 请用 daq_query"
+    },
+    {
+      "id": "E1",
+      "name": "http 协议节点镜像采集(API 轮询入库)",
+      "pass": true,
+      "detail": "node=scen-injection:daq:part-weight points=100"
+    },
+    {
+      "id": "E2",
+      "name": "mqtt 协议节点镜像采集(订阅入库)",
+      "pass": true,
+      "detail": "node=scen-injection:daq:water-temp-pv points=100"
+    },
+    {
+      "id": "F1",
+      "name": "recipe 绑定 agent 经 HITL 批准下发并设备证实",
+      "pass": true,
+      "detail": "试验已整批下发并全部设备证实(1/1,批次 rr-5d1e2):scen-injection:dcw:hold-pressure-sp→46.8bar [证实✓]。假设:绑定矩阵验证:单变量保压下发。\n人工附言:绑定矩阵 F 轮注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → re"
+    },
+    {
+      "id": "F2",
+      "name": "下发回读一致",
+      "pass": true,
+      "detail": "回读=46.8(下发前=45)"
+    },
+    {
+      "id": "F3",
+      "name": "optimizer(仅配方绑定)查 DAQ 数据——绑定面按需扩展",
+      "pass": true,
+      "detail": "数采数据查询结果(1 个节点):\n\n■ scen-injection:daq:part-weight(熔体/箱体温度)单位 g,正常量程 25~40g,当前状态 alarm,时间窗"
+    },
+    {
+      "id": "G1",
+      "name": "kb_agent 经 invoke 桥走通插件链(异步提交+状态可查)",
+      "pass": true,
+      "detail": "已提交知识库异步任务(后台执行中,无需等待):\ntask_id=kbt_mvj4a6ib_c5048923\n完成后平台会 | status: 任务 kbt_mvj4a6ib_c5048923 仍在后台执行中(running,已等待 110s)。稍后再次查询;完成后平台也会自动回执。"
+    }
+  ]
+}

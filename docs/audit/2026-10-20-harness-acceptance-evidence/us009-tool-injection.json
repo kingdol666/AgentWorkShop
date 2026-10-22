@@ -1,0 +1,136 @@
+{
+  "at": "2026-10-20T09:09:13.396Z",
+  "version": "0.7.68",
+  "pluginEnabled": {
+    "label": "plugin-enabled-068",
+    "agent": "生产主管",
+    "agentId": "e112b040-c2a3-4ace-a700-2c697f54fd98",
+    "count": 76,
+    "pluginTools": [
+      "optimizer_campaign",
+      "optimizer_round",
+      "optimizer_state",
+      "sensor_calibration_log",
+      "diag_run",
+      "diag_status",
+      "kb_agent",
+      "kb_agent_status",
+      "serial_ports"
+    ],
+    "daqQueryTail": "标,可精确取某批次数据);返回结果携带物理含义(参数语义/单位/量程/统计摘要/最近序列)。默认只取**当前活动批次(活动配方)**的数据:产线正在跑什么配方就只查那个配方,不会把上一轮配方的样本混进本轮判读;需要跨配方看整段历史时显式传 scope=all。\n\n频道绑线只读数采节点(可查):熔体温度PV(dn-7e7e7d41,℃)、熔体压力PV(dn-272e0703,bar)、模具温度PV(dn-c24c8256,℃)、注射压力PV(dn-7c63393d,bar)、冷却水温PV(dn-083b4007,℃)、制品重量(dn-0d8d535b,g)、成型周期(dn-e2b16251,s)",
+    "calls": [
+      {
+        "name": "daq_query",
+        "args": {
+          "node_id": "dn-4de6b1de",
+          "last_minutes": 5
+        },
+        "ok": false,
+        "text": "工具调用被拒(引用校验,daq_query):node_id = 「dn-4de6b1de」不在你的授权范围内(节点「流量PV」,归属产线 ln-dd6c9135)。\n该节点不在你的绑定范围内。你的绑定节点:(无);频道绑线「ln-dd4d6163」只读数采节点:dn-7e7e7d41, dn-272e0703, dn-c24c8256, dn-7c63393d, dn-083b4007, dn-0d8d535b, dn-e2b16251。如需访问,请让用户或 lead 在数"
+      },
+      {
+        "name": "daq_query",
+        "args": {
+          "node_id": "dn-ffffffff",
+          "last_minutes": 5
+        },
+        "ok": false,
+        "text": "工具调用被拒(引用校验,daq_query):node_id = 「dn-ffffffff」不在你的授权范围内(节点不存在或已删除)。\n请核对节点 id(先用 my_industrial_nodes / line_context 查看在线对象);节点被删除时原绑定会失效,需要重新绑定。"
+      },
+      {
+        "name": "diag_status",
+        "args": {},
+        "ok": true,
+        "text": "最近 5 条诊断:\n- 093c38c0 | offline-data | [DOE 试验分析] completed | agent | 2026-10-18T10:26:48.752+08:00 | DOE 试验分析(2 因子 2 水平 + 中心点,注塑线)。因子:A=保压压力SP(45/51 bar),B=机筒一区温度SP(240/250 ℃)。条件窗:C1: A(保压)=45bar B(机筒一区)=240℃ 窗 2026-10-18T01:54:21.268Z~2026"
+      }
+    ]
+  },
+  "analyst": {
+    "label": "team-analyst-068",
+    "agent": "omp-analyst",
+    "agentId": "df6be5c3-618e-48f0-b047-988f4ce964af",
+    "count": 64,
+    "pluginTools": [
+      "optimizer_campaign",
+      "optimizer_round",
+      "optimizer_state",
+      "sensor_calibration_log",
+      "diag_run",
+      "diag_status",
+      "kb_agent",
+      "kb_agent_status",
+      "serial_ports"
+    ],
+    "daqQueryTail": "语义/单位/量程/统计摘要/最近序列)。默认只取**当前活动批次(活动配方)**的数据:产线正在跑什么配方就只查那个配方,不会把上一轮配方的样本混进本轮判读;需要跨配方看整段历史时显式传 scope=all。\n\n本 Agent 直接绑定的数采节点(仅这些可查):线速PV(dn-6f96cbec,m/min)、温度PV(dn-bcee0027,℃)、压力PV(dn-bafca691,bar)、流量PV(dn-4de6b1de,L/min)、膜厚PV(dn-02c099a8,um)\n频道绑线只读数采节点(可查):膜厚断面(dn-c8279163,um)、表检图像(dn-f0f089f7,gray)",
+    "calls": [
+      {
+        "name": "daq_query",
+        "args": {
+          "node_id": "dn-4de6b1de",
+          "last_minutes": 5
+        },
+        "ok": true,
+        "text": "数采数据查询结果(1 个节点):\n\n■ 流量PV(产线速度)单位 L/min,正常量程 0~100L/min,当前状态 ok,时间窗 2026-10-20T17:04 ~ 2026-10-20T17:09(降采样 15000ms)\n  当前活动批次 run=rr-f85d0de8 配方「多协议孪生基线配方」(rc-2be5c50c)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 21 点 | 最新 "
+      },
+      {
+        "name": "daq_query",
+        "args": {
+          "node_id": "dn-ffffffff",
+          "last_minutes": 5
+        },
+        "ok": false,
+        "text": "工具调用被拒(引用校验,daq_query):node_id = 「dn-ffffffff」不在你的授权范围内(节点不存在或已删除)。\n请核对节点 id(先用 my_industrial_nodes / line_context 查看在线对象);节点被删除时原绑定会失效,需要重新绑定。"
+      },
+      {
+        "name": "diag_status",
+        "args": {},
+        "ok": true,
+        "text": "最近 5 条诊断:\n- 093c38c0 | offline-data | [DOE 试验分析] completed | agent | 2026-10-18T10:26:48.752+08:00 | DOE 试验分析(2 因子 2 水平 + 中心点,注塑线)。因子:A=保压压力SP(45/51 bar),B=机筒一区温度SP(240/250 ℃)。条件窗:C1: A(保压)=45bar B(机筒一区)=240℃ 窗 2026-10-18T01:54:21.268Z~2026"
+      }
+    ]
+  },
+  "operator": {
+    "label": "team-operator-068",
+    "agent": "copilot-operator",
+    "agentId": "a2745581-3a41-498e-89c7-ea026d07c07c",
+    "count": 64,
+    "pluginTools": [
+      "optimizer_campaign",
+      "optimizer_round",
+      "optimizer_state",
+      "sensor_calibration_log",
+      "diag_run",
+      "diag_status",
+      "kb_agent",
+      "kb_agent_status",
+      "serial_ports"
+    ],
+    "daqQueryTail": ",可精确取某批次数据);返回结果携带物理含义(参数语义/单位/量程/统计摘要/最近序列)。默认只取**当前活动批次(活动配方)**的数据:产线正在跑什么配方就只查那个配方,不会把上一轮配方的样本混进本轮判读;需要跨配方看整段历史时显式传 scope=all。\n\n频道绑线只读数采节点(可查):线速PV(dn-6f96cbec,m/min)、温度PV(dn-bcee0027,℃)、压力PV(dn-bafca691,bar)、流量PV(dn-4de6b1de,L/min)、膜厚PV(dn-02c099a8,um)、膜厚断面(dn-c8279163,um)、表检图像(dn-f0f089f7,gray)",
+    "calls": [
+      {
+        "name": "daq_query",
+        "args": {
+          "node_id": "dn-4de6b1de",
+          "last_minutes": 5
+        },
+        "ok": true,
+        "text": "数采数据查询结果(1 个节点):\n\n■ 流量PV(产线速度)单位 L/min,正常量程 0~100L/min,当前状态 ok,时间窗 2026-10-20T17:04 ~ 2026-10-20T17:09(降采样 15000ms)\n  当前活动批次 run=rr-f85d0de8 配方「多协议孪生基线配方」(rc-2be5c50c)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 21 点 | 最新 "
+      },
+      {
+        "name": "daq_query",
+        "args": {
+          "node_id": "dn-ffffffff",
+          "last_minutes": 5
+        },
+        "ok": false,
+        "text": "工具调用被拒(引用校验,daq_query):node_id = 「dn-ffffffff」不在你的授权范围内(节点不存在或已删除)。\n请核对节点 id(先用 my_industrial_nodes / line_context 查看在线对象);节点被删除时原绑定会失效,需要重新绑定。"
+      },
+      {
+        "name": "diag_status",
+        "args": {},
+        "ok": true,
+        "text": "最近 5 条诊断:\n- 093c38c0 | offline-data | [DOE 试验分析] completed | agent | 2026-10-18T10:26:48.752+08:00 | DOE 试验分析(2 因子 2 水平 + 中心点,注塑线)。因子:A=保压压力SP(45/51 bar),B=机筒一区温度SP(240/250 ℃)。条件窗:C1: A(保压)=45bar B(机筒一区)=240℃ 窗 2026-10-18T01:54:21.268Z~2026"
+      }
+    ]
+  }
+}

@@ -30,6 +30,8 @@ export interface OpsLogRow {
   recipeId: string
   kind: string
   summary: string
+  /** 显式域标识:line=产线日志 / system=全局审计(旧服务缺省时按 lineId 推导) */
+  scope: 'line' | 'system'
   /** 严重级(2026-10-08 ACK 鉴定):error 红 / warn 黄;历史行/实时帧缺省 info */
   level?: 'info' | 'warn' | 'error'
 }
@@ -66,6 +68,8 @@ function ingestFrame(p: AepOpsLog): OpsLogRow {
     recipeId: p.recipeId,
     kind: p.kind,
     summary: p.summary,
+    scope: p.scope ?? (p.lineId ? 'line' : 'system'),
+    level: p.level,
   }
 }
 
@@ -100,6 +104,8 @@ const createStore = () => {
   function handler(e: AepEnvelope) {
     if (e.type === 'ops.log') {
       const row = ingestFrame(e.payload as AepOpsLog)
+      // 产线日志实时轨:服务端只广播 scope=line;客户端再兜一层,防旧版本/旁路污染
+      if (row.scope !== 'line' || !row.lineId) return
       if (!recent.some(r => r.at === row.at && r.actor === row.actor && r.action === row.action)) {
         recent.unshift(row)
         if (recent.length > RECENT_CAP) recent.splice(RECENT_CAP)
@@ -107,11 +113,16 @@ const createStore = () => {
     }
   }
 
+  /** 旧服务/旧行缺 scope 时按 lineId 推导,保证前端行类型稳定 */
+  const withScope = (r: OpsLogRow): OpsLogRow => ({ ...r, scope: r.scope ?? (r.lineId ? 'line' : 'system') })
+
   /** 首屏预填:最近 15 条历史摘要(实时轨不必从零等事件) */
   async function seedRecent(): Promise<void> {
     try {
       const data = await api<{ logs: OpsLogRow[] }>('?limit=15')
-      for (const row of (data.logs ?? []).reverse()) {
+      for (const raw of (data.logs ?? []).reverse()) {
+        const row = withScope(raw)
+        if (row.scope !== 'line') continue
         if (!recent.some(r => r.at === row.at && r.actor === row.actor && r.action === row.action))
           recent.unshift(row)
       }
@@ -130,7 +141,7 @@ const createStore = () => {
         if (v != null && v !== '') qs.set(k, String(v))
       }
       const data = await api<{ logs: OpsLogRow[], count: number }>(`?${qs.toString()}`)
-      results.splice(0, results.length, ...(data.logs ?? []))
+      results.splice(0, results.length, ...(data.logs ?? []).map(withScope))
     }
     catch (err) {
       error.list = apiErrorMessage(err)

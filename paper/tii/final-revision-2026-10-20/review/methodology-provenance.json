@@ -1,0 +1,75 @@
+{
+  "schema": "methodology-review-provenance/1.0",
+  "review_stage": "phase2",
+  "contract_role": "methodology",
+  "contract_id": "reviewer/reviewer_full/v2",
+  "status": "complete_local_qualitative_review",
+  "calibration_status": "NOT_CALIBRATED",
+  "criteria_binding": "criteria_binding_unavailable",
+  "reviewer_identity": {
+    "human_reviewer_identity": null,
+    "reason": "Not present in the authorized materials.",
+    "model_provider_family": "OpenAI",
+    "model_id": null,
+    "reason_model_id": "Exact model identifier was not available in the observed provenance."
+  },
+  "phase1": {
+    "path": "paper/tii/final-revision-2026-10-20/review/methodology-phase1.md",
+    "commit": "d7755ef4",
+    "commit_scope": "Phase 1 commitment only"
+  },
+  "phase2_artifact": "paper/tii/final-revision-2026-10-20/review/methodology-phase2.md",
+  "frozen_manuscript": {
+    "pdf_path": "paper/tii/SUBMISSION-IEEE-TII/main.pdf",
+    "pdf_sha256": "85ff90803ef9fb5884ba05077909a33628b976485964be35b649656bece11e10",
+    "pages": 10,
+    "manifest": "paper/tii/final-revision-2026-10-20/review/frozen-hashes.json",
+    "manifest_verification": "All listed frozen manuscript source files, active figures, bibliography, macros, and PDF matched their listed SHA-256 hashes at review time. The separately delivered REPRODUCIBILITY.md was added after the PDF freeze; supplementary-freeze-addendum.json records its current SHA-256."
+  },
+  "evidence_scope": [
+    "review/contract.json and review/methodology-phase1.md",
+    "Frozen manuscript PDF and source at paper/tii/SUBMISSION-IEEE-TII/",
+    "qa/source-rebuild/REPRODUCIBILITY.md and qa/source-rebuild/CLAIM-EVIDENCE-LEDGER.md",
+    "evidence/CLAIM-MAP.json, MISSING-EVIDENCE.json, SOURCE-SNAPSHOT-STATUS.json, and R1/R2/R3/R4/R5/R6 archives",
+    "evidence/derived-figures/source-data-governance.json and source-data-injection.json"
+  ],
+  "cross_checks": {
+    "r3_suite_executions": 9,
+    "r3_assertions": 782,
+    "r3_failed_assertions": 0,
+    "q3_seed_ratios_recomputed_from_archived_Jend_over_Jstar": {
+      "seed_42": 0.9654926914,
+      "seed_43": 0.9695641533,
+      "seed_44": 0.9715998843
+    },
+    "r4_observation_to_verification_seconds": 96.105,
+    "r4_process_verdict": "converged=false",
+    "q6_evidence_unit": "one simulator-backed sequential recipe trajectory",
+    "q6_quality_snapshots_including_baseline": 5,
+    "q6_trial_steps": 4,
+    "q6_wait_seconds_per_trial": 65,
+    "q6_material_scope_limits": [
+      "melt-temperature value absent and permitted by the recorded quality predicate",
+      "freshness uses maximum timestamp across available sensors, not a per-sensor check",
+      "platform control-node state and textual verification are not an independent raw physical PLC waveform",
+      "approval supplied by the test harness"
+    ],
+    "arithmetic_recompute_scope": "No inferential t/z/F/chi-square p/df claims, GRIM/GRIMMER-eligible discrete-scale summaries, or df-derived sample-size claims were identified. Descriptive counts, ratios, and event timing were checked separately."
+  },
+  "decision_scope": {
+    "D1": "warn",
+    "D3": "pass",
+    "other_dimensions": "not_assessed by role"
+  },
+  "tooling_limitations": {
+    "canonical_checker": "Unavailable in this review environment; no canonical conformance claim is made.",
+    "execution": "Evidence archives and manuscript artifacts were inspected read-only. No experimental replay or control operation was run."
+  },
+  "unresolved_evidence": [
+    "Exact historical R1/R2 dirty harness worktree is not archived; the run records 11 harness files while the recorded commit fingerprints 9.",
+    "Exact R3/R5 runtime commits and complete historical lockfiles are absent.",
+    "R6/R8 exact commit, simulator seed, per-sensor timestamp series, and raw physical PLC waveform are absent.",
+    "A complete current optimization_explore request-to-control-to-response process trial is absent; current R10 evidence is isolated mock-I/O composition testing.",
+    "No physical-plant validation, independent human-performance study, or comparative optimizer trial is present; these are outside the paper's bounded claims and require new data only if asserted."
+  ]
+}

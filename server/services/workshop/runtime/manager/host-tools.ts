@@ -8,9 +8,10 @@ import type { AgentInfo } from '../../agents/agent-interface'
 import { AppError } from '../../../../utils/errors'
 import { checkToolAgainstScope } from '../permission-scope'
 import { getChannelPluginsRepo } from '../../db/channel-plugins.repo'
-import { HOST_TOOLS, hostToolsForRole } from '../../agents/host-tool-bridge'
+import { HOST_TOOLS, createSessionState, dispatchHostTool, hostToolsForAgent } from '../../agents/host-tool-bridge'
 import { instanceToAgentInfo, rowToChannelMail } from './helpers'
 import { listPluginTools, pluginOfTool } from '../../agents/plugin-tools'
+import { channelToolGate } from '../../tools/policy'
 import { rowToMessage } from '../mailbox'
 
 export abstract class ManagerHostTools extends ManagerA2A {
@@ -98,6 +99,11 @@ export abstract class ManagerHostTools extends ManagerA2A {
     try {
       // 活性登记:调度器停滞看门狗以「最近工具调用」为健康信号(见 SchedulerLoopOptions.toolActivityOf)
       this.lastToolInvokeAt.set(input.agentId, Date.now())
+      // Channel 逐工具选择:插件分支会提前 return,必须在此先复核(不能只靠 dispatch)。
+      {
+        const gate = channelToolGate(row.channelId, input.tool)
+        if (gate.blocked) return { text: gate.message ?? `工具 ${input.tool} 不可用`, isError: true }
+      }
       // 插件工具:团队开关过滤 + handler 直调(ctx.omp 注册的自定义工具全 harness 同源)
       // 内置同名工具优先(与 dispatch 同口径):插件覆盖不得跳过工业门控
       const pluginTool = HOST_TOOLS.some(t => t.name === input.tool) ? undefined : listPluginTools().get(input.tool)
@@ -129,7 +135,23 @@ export abstract class ManagerHostTools extends ManagerA2A {
         const viaImpl = await runtime.dispatchHostTool(input.tool, input.args ?? {})
         if (viaImpl) return viaImpl
       }
-      // 回退:impl 未实现工具面(如 mock)→ 协作工具族直调
+      // 回退:impl 未实现 dispatchHostTool(如 mock)→ 仍走**同一份** host-tool-bridge
+      // 分发,而不是只支持 3 个协作工具的旧开关。否则同一工具在 omp 上可用、在
+      // mock/无工具面引擎经 MCP 桥调用却报“不支持该协作工具”(2026-10-20 实测)。
+      const workspace = runtime?.workspace
+      if (workspace) {
+        return await dispatchHostTool({
+          identity: {
+            agentId: row.id,
+            channelId: row.channelId,
+            role: row.role === 'lead' ? 'lead' : 'worker',
+            name: row.name,
+          },
+          state: createSessionState(),
+          getWorkspace: () => workspace,
+        }, { toolName: input.tool, arguments: input.args ?? {} })
+      }
+      // 最后兜底:仅剩不依赖 Agent 运行时的跨 Channel/团队只读面
       return await this.invokeAgentWorkspaceTool(input.agentId, input.tool, input.args ?? {})
     }
     catch (err) {
@@ -150,7 +172,7 @@ export abstract class ManagerHostTools extends ManagerA2A {
   hostToolDefsFor(agentId: string): Array<{ name: string, label?: string, description: string, parameters: Record<string, unknown> }> {
     const row = this.deps.repos.channelAgents.findById(agentId)
     if (!row) throw new AppError(404, 'NOT_FOUND', `agent 不存在: ${agentId}`)
-    return hostToolsForRole(row.role === 'lead' ? 'lead' : 'worker', row.channelId)
+    return hostToolsForAgent(agentId, row.role === 'lead' ? 'lead' : 'worker', row.channelId)
   }
 
   /**

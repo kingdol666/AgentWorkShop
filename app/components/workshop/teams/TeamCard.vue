@@ -168,8 +168,8 @@ const seedLabel = (x: { id?: string, templateId?: string, name: string }): strin
 .member-harness {
   margin-left: auto;
   font-family: var(--font-mono);
-  font-size: 10.5px;
-  opacity: 0.5;
+  font-size: 11px;
+  color: var(--ink-faint);
 }
 .rm { cursor: pointer; opacity: 0.35; }
 .rm:hover { opacity: 1; }

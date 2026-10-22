@@ -72,7 +72,21 @@ function normalize(input: Partial<DaqTemplateInput>, prev?: DaqTemplateDef): Daq
     const vmin = Number(input.vector?.min ?? prev?.vector?.min ?? min)
     const vmax = Number(input.vector?.max ?? prev?.vector?.max ?? max)
     if (!Number.isFinite(vmin) || !Number.isFinite(vmax) || vmin >= vmax) throw bad('vector 量程非法')
-    vector = { points, min: vmin, max: vmax }
+    const labelsRaw = input.vector?.labels ?? prev?.vector?.labels
+    const labels = Array.isArray(labelsRaw)
+      ? labelsRaw.map(x => String(x ?? '').trim()).filter(Boolean).slice(0, points)
+      : undefined
+    const baseRaw = Number(input.vector?.pointIndexBase ?? prev?.vector?.pointIndexBase ?? 1)
+    vector = {
+      points,
+      min: vmin,
+      max: vmax,
+      ...(String(input.vector?.axis ?? prev?.vector?.axis ?? '').trim() ? { axis: String(input.vector?.axis ?? prev?.vector?.axis).trim().slice(0, 200) } : {}),
+      ...(String(input.vector?.pointUnit ?? prev?.vector?.pointUnit ?? '').trim() ? { pointUnit: String(input.vector?.pointUnit ?? prev?.vector?.pointUnit).trim().slice(0, 40) } : {}),
+      ...(String(input.vector?.pointLabelPrefix ?? prev?.vector?.pointLabelPrefix ?? '').trim() ? { pointLabelPrefix: String(input.vector?.pointLabelPrefix ?? prev?.vector?.pointLabelPrefix).trim().slice(0, 80) } : {}),
+      pointIndexBase: baseRaw === 0 ? 0 : 1,
+      ...(labels && labels.length > 0 ? { labels } : {}),
+    }
   }
   const sink = input.sink ?? prev?.sink
   if (sink && (!Array.isArray(sink.processors) || sink.processors.some(p => !p || typeof p.name !== 'string'))) {

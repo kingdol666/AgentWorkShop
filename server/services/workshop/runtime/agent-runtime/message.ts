@@ -44,6 +44,8 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
     this.deps.bus.notifyAgent({ agentId: this.agentId, state: 'busy', ...this.queueContext() })
     // 回合失败标记(须在 try 外声明,finally 依据它决定重投还是消费)
     let sawRunError = false
+    /** 失败原因(事件 error / 生成器抛错):写入任务 history,供事后诊断 */
+    let runErrorMessage = ''
     try {
       // 任务消息联动:assign → WORKING(自动接取;状态事件由 TaskEngine transition hooks 广播)
       // 仅 SUBMITTED/ASSIGNED 自动接取:WAITING(已有子任务)的任务由 SchedulerLoop/子任务汇总推进,
@@ -109,7 +111,10 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
             if (deltaText.length < 8000 && t) deltaText += t
             continue
           }
-          if (event.kind === 'error') sawRunError = true
+          if (event.kind === 'error') {
+            sawRunError = true
+            if (!runErrorMessage) runErrorMessage = `${event.error.code}: ${event.error.message}`
+          }
           // 无原生工具面的 harness(codex/dsh 等)以 shell/文本方式作业:回合 error 收束
           // 但已有实质输出时,不落入 FAILED(交由回合结束后的交付兜底按最终输出隐式收口)——
           // 否则「工作已做完、流断在收尾」的任务全部 FAILED→重试→CANCELED(实测 dsh)。
@@ -133,6 +138,7 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
       catch (err) {
         // run 生成器抛错(如 omp 子进程 spawn 失败):按回合失败走重投,不外抛断循环
         sawRunError = true
+        runErrorMessage = err instanceof Error ? err.message : String(err)
         // Harness 重建归因(§6.2):下回合若换了 client/进程,原因取自此处
         this.pendingHarnessFailure = 'RPC_BROKEN'
         log.error(`[AgentRuntime:${this.agentId}] 回合异常:`, err)
@@ -264,18 +270,27 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
           else {
             const current = this.deps.taskEngine.get(taskId)
             if (current && current.assigneeId === this.agentId && current.state === 'WORKING') {
+              const at = new Date().toISOString()
+              const reason = runErrorMessage ? `: ${runErrorMessage.slice(0, 1000)}` : ''
+              const failureMessage = {
+                messageId: randomUUID(),
+                contextId: this.channelId,
+                role: 'ROLE_AGENT' as const,
+                parts: [{ text: `任务 ${taskId} 执行结束但无交付(harness 回合结束未产出)${reason},标记 FAILED 待重试` }],
+                metadata: { 'x-aw-system': 'task-failure' },
+              }
+              // 失败原因先入 history(status 事件只追加历史、不迁移状态),再迁移 FAILED
+              this.deps.taskEngine.applyEvent(taskId, {
+                kind: 'status',
+                status: { state: 'FAILED', message: failureMessage, timestamp: at },
+              }, fence)
               this.deps.taskEngine.transition(taskId, 'FAILED', this.agentId)
               this.emitExternal({
                 kind: 'status',
                 status: {
                   state: 'FAILED',
-                  message: {
-                    messageId: randomUUID(),
-                    contextId: this.channelId,
-                    role: 'ROLE_AGENT',
-                    parts: [{ text: `任务 ${taskId} 执行结束但无交付(harness 回合结束未产出),标记 FAILED 待重试` }],
-                  },
-                  timestamp: new Date().toISOString(),
+                  message: failureMessage,
+                  timestamp: at,
                 },
               })
             }

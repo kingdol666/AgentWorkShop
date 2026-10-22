@@ -1,26 +1,21 @@
 /* ============================================================
- * AgentWorkShop 设计系统 — 「Warm Editorial」
+ * AgentWorkShop 设计系统 — 「Industrial Instrument」
  * ------------------------------------------------------------
- * 移植自 open-tag(Fancyboi999)的 warm-editorial 设计语言:
- * 暖纸白画布(off-white canvas)承载暖近黑油墨(ink);
- * 视觉能量来自柔和粉彩渐变光斑(mint / peach / lavender / sky)
- * —— 全页唯一刻意出现的"颜色时刻"。
+ * 工业 MES 控制台语言:冷钢灰画布承载高对比油墨,单一信号绿主色;
+ * 数据用等宽数字与细刻度线表达,层级来自 surface 阶梯 + 1px 发丝边界,
+ * 而不是大圆角、厚玻璃或彩色光斑。整体观感 = 一台校准过的仪表面板。
  *
  * 色彩锁(Color Consistency Lock):
- *   全局唯一主动作 = 墨色药丸(ink pill);无霓虹、无高饱和 CTA。
- *   灰阶单一族系 = 暖石色(stone),亮/暗两模式同族,禁混冷灰。
- *   粉彩光斑仅作氛围装饰(radial-gradient orbs),永不作按钮/文字色。
- *   聊天声部(Slack 规范):彩色只表语义状态(错误/需关注/终态),
- *   身份色 = 按 agentId 哈希的稳定色相(一处定义,头像/提及/泳道同源),
- *   过程性内容(工具/思考/状态)一律中性墨,不与产出内容争抢注意力。
+ *   全局唯一主动作 = 信号绿主操作;无霓虹、无高饱和装饰。
+ *   灰阶单一族系 = 冷钢灰(steel),亮/暗两模式同族,禁暖灰混入。
+ *   状态色(绿/青/琥珀/红/紫)只表真实语义,不做装饰;
+ *   身份色 = 按 agentId 哈希的稳定色相(头像/提及/泳道同源)。
  * 形状锁(Shape Consistency Lock):
- *   CTAs 药丸(pill) · 卡片 14-16(xl) · 消息气泡 12 · 控件 8(md) · 小件 6(sm)。
- * 排版(编辑杂志声部):
- *   EB Garamond(衬线 display,weight 400,-0.01em)+
- *   Inter(正文/导航/按钮,+0.01em 微松字距)+
- *   IBM Plex Mono(数据,tabular-nums)。
- *   衬线仅作展示/标题/空态/品牌时刻;正文/按钮/表格一律 Inter。
- * 动效:transform/opacity only,120-320ms ease-out-quint;
+ *   卡片 12 · 控件 8 · 小件 6 · 状态胶囊 pill;数据表与仪表读数为直角语言。
+ * 排版(仪表声部):
+ *   Geist(标题 600 / 正文 400-500)+ Geist Mono(数据,tabular-nums);
+ *   标题不追衬线;空态/品牌时刻可用 --font-display 保留一处衬线。
+ * 动效:transform/opacity only,120-220ms ease-out-quart;
  *   图标微交互走 --im-spring(charter 例外);prefers-reduced-motion 全局收敛。
  * ============================================================ */
 
@@ -31,26 +26,26 @@
   --accent-soft: rgb(41 37 36 / 8%);
   --on-accent: #ffffff;
 
-  /* 油墨与纸张(亮:暖纸 —— editorial light;画布与油墨同为暖族,禁冷灰) */
-  --ink: #0c0a09;
-  --ink-soft: #4b463f;
-  /* 文字最淡一档(实测 5.0:1 @暖纸 / 5.45:1 @raised,达 AA) */
-  --ink-faint: #5f5850;
+  /* 油墨与纸张(亮:冷钢灰 —— industrial light;与暗阶同一冷灰蓝族,禁暖灰混入) */
+  --ink: #0e1520;
+  --ink-soft: #475569;
+  /* 文字最淡一档(≥4.5:1 @画布与卡片,达 AA) */
+  --ink-faint: #5d6b80;
   /* ⚠️ --ink-fainter 是**纯装饰**令牌(分隔发丝线/刻度点/装饰底),
-   * **不得用作 color** —— 它的对比度(亮 2.53:1 / 暗 3.37:1)不达 WCAG AA 的 4.5:1。
+   * **不得用作 color** —— 对比度不达 WCAG AA 的 4.5:1。
    * 全站文字用法已收敛到 --ink-faint;此处保留令牌是因为"装饰线就该淡",
    * 把发丝线拉到 4.5:1 会让界面布满抢眼的线条(装饰变噪音)。 */
-  --ink-fainter: #a29a90;
-  --paper: #f6f4f1;
-  /* 键盘焦点环:画在元素外侧(outline-offset:2px),对比度取决于环绕背景 → 5.78:1 @暖纸 */
-  --focus-ring: #3f6094;
-  --paper-raised: #fffefc;
-  --paper-deep: #efebe5;
-  --paper-tint: #e6e1d9;
-  --line: #e8e3db;
-  --line-strong: #d7d0c5;
-  --divider-hair: rgb(12 10 9 / 7%);
-  --hover-tint: rgb(12 10 9 / 4.5%);
+  --ink-fainter: #93a0b1;
+  --paper: #eef1f5;
+  /* 键盘焦点环:工业蓝,画布/卡片上均 ≥ 3:1 */
+  --focus-ring: #2563eb;
+  --paper-raised: #ffffff;
+  --paper-deep: #f4f6f9;
+  --paper-tint: #e5eaf1;
+  --line: #dde3ea;
+  --line-strong: #c3ccda;
+  --divider-hair: rgb(14 21 32 / 8%);
+  --hover-tint: rgb(14 21 32 / 4%);
   /* 仪表台量规(刻度尺 / 注册角标 / 内缘折光 —— 控制室仪器语言) */
   --tick-c: color-mix(in srgb, var(--ink) 30%, transparent);
   --tick-c-fine: color-mix(in srgb, var(--ink) 13%, transparent);
@@ -78,8 +73,8 @@
   /* tone 语义状态系统(仅表真实状态,不做装饰;open-tag 状态声部) */
   /* #a8a29e 在浅灰底上只有 2.3:1 —— "停用/离线/未运行"这类**状态标签的文字**
      用的就是它,是不可读的实测来源。压深到与 --ink-faint 同族。 */
-  --tone-neutral-dot: #5c564f;
-  --tone-neutral-bg: #efeeec;
+  --tone-neutral-dot: #526173;
+  --tone-neutral-bg: #eef1f5;
   /* 亮色档记号色按**最深承载面**(--paper-deep #efebe5, L≈0.826)反推:
    * 要求 (0.876)/(L+0.05) ≥ 4.5 → L ≤ 0.145。原 #4c8f63 / #b9770e / #c25a4e
    * 在白底上尚可,一落到 paper-deep(表格斑马行、面板底)就掉到 3.7–4.3 —— 实测审计在
@@ -106,11 +101,12 @@
   --av-fallback: #57534e;
   --on-av: #ffffff;
 
-  /* 圆角体系(形状锁:pill CTAs > 16/14 卡片 > 12 消息气泡 > 8 控件 > 6 小件) */
-  --radius-shell: 16px;
-  --radius-panel: 14px;
+  /* 圆角体系(形状锁:卡片 12 > 消息气泡 12 > 控件 8 > 小件 6;pill 仅状态/计数) */
+  --radius-shell: 14px;
+  --radius-panel: 12px;
   --radius-bubble: 12px;
   --radius-panel-sm: 8px;
+  --radius-control: 8px;
   --radius-chip: 6px;
   --radius-pill: 9999px;
 
@@ -142,16 +138,18 @@
   --frost-bg: color-mix(in srgb, var(--paper-raised) 58%, transparent);
   --frost-blur: blur(18px) saturate(1.04);
 
-  /* ── Aurora Glass:应用壳层玻璃(数据卡/侧栏/顶栏)。
-   *    半透 surface + 深模糊 + 内缘折射;背后是 body 的极光氛围层。 */
-  --surface-glass: color-mix(in srgb, var(--paper-raised) 78%, transparent);
-  --surface-glass-strong: color-mix(in srgb, var(--paper-raised) 88%, transparent);
-  --glass-edge: inset 0 1px 0 color-mix(in srgb, white 45%, transparent);
-  --aurora-blur: blur(22px) saturate(1.1);
+  /* ── Aurora Glass:应用壳层材质(数据卡/侧栏/顶栏)。
+   *    工业台面不需要"满屏玻璃":卡片用实心 surface 保证数据对比,
+   *    半透 + 模糊只留给侧栏/顶栏这类常驻 chrome。 */
+  --surface-card: var(--paper-raised);
+  --surface-glass: color-mix(in srgb, var(--paper-raised) 94%, transparent);
+  --surface-glass-strong: color-mix(in srgb, var(--paper-raised) 98%, transparent);
+  --glass-edge: inset 0 1px 0 color-mix(in srgb, white 60%, transparent);
+  --aurora-blur: blur(12px) saturate(1.05);
   /* 极光辉光(品牌色低饱和;只作氛围源,永不作前景) */
-  --aurora-a: rgb(53 224 160 / 9%);
-  --aurora-b: rgb(65 200 244 / 8%);
-  --aurora-c: rgb(200 184 224 / 12%);
+  --aurora-a: rgb(53 224 160 / 3.5%);
+  --aurora-b: rgb(65 200 244 / 3%);
+  --aurora-c: rgb(148 163 184 / 4%);
   --aurora-veil: transparent;
 
   /* ── v4 · 材质阶梯(Instrument Glass —— 对齐 macOS NSVisualEffectView 的三档语义)。
@@ -160,19 +158,15 @@
    *    chrome = 侧栏/顶栏/页脚(常驻,占屏比小,值得付模糊成本)
    *    panel  = 内容面板(数量多 × 面积大 → **不付 backdrop 成本**,靠半透底 + 折射边获得同一观感)
    *    float  = 模态/抽屉/下拉/气泡(数量少,必须"浮起来") */
-  /* 不透明度经过**实测反推**(不是拍脑袋):玻璃是否"看得出来"取决于背后极光能透多少。
-   * 62% 时开/关玻璃的渲染差异只有 Δ亮度≈11(亮阶)/ ≈0.5(暗阶,几乎无感)→ 等于白做。
-   * 降到 44% 后极光清晰可见,同时文字对比度仍达标(极光本身是低饱和 9-14% alpha,
-   * 复合底色仍贴近纸面,--ink-faint 仍 ≈5:1)。 */
-  --mat-chrome-bg: color-mix(in srgb, var(--paper-raised) 44%, transparent);
-  --mat-panel-bg: color-mix(in srgb, var(--paper-raised) 78%, transparent);
-  --mat-float-bg: color-mix(in srgb, var(--paper-raised) 88%, transparent);
+  /* 壳层材质三档:chrome(侧栏/顶栏/页脚) 90% · panel(卡片) 100% · float(浮层) 98% */
+  --mat-chrome-bg: color-mix(in srgb, var(--paper-raised) 90%, transparent);
+  --mat-panel-bg: var(--paper-raised);
+  --mat-float-bg: color-mix(in srgb, var(--paper-raised) 98%, transparent);
 
-  /* 振动(vibrancy):macOS 的毛玻璃不是"模糊",是"模糊 + 提饱和 + 提亮"。
-   * 只 blur 不 saturate 会发灰发脏 —— 这是廉价毛玻璃与系统级毛玻璃的分水岭。 */
-  --vibrancy-chrome: blur(30px) saturate(1.9) brightness(1.06);
-  --vibrancy-float: blur(26px) saturate(1.7) brightness(1.04);
-  --aurora-blur-legacy: blur(22px) saturate(1.1);
+  /* 振动(vibrancy):轻微提饱和,避免只 blur 导致的灰脏 */
+  --vibrancy-chrome: blur(18px) saturate(1.25) brightness(1.02);
+  --vibrancy-float: blur(14px) saturate(1.15);
+  --aurora-blur-legacy: blur(12px) saturate(1.05);
 
   /* 玻璃物理三件套:顶部镜面高光 / 底部环境遮蔽 / 边缘折射发丝线。
    * 只有高光没有遮蔽 = 塑料片;两者都有 = 有厚度的玻璃。 */
@@ -199,9 +193,9 @@
   /* 全局噪点(抵消数字平面的冷感;固定 pointer-events-none 覆盖,不进滚动容器) */
   --noise-opacity: 0.028;
 
-  --sider-bg: #fbf9f6;
-  --sider-ink: #4b463f;
-  --sider-ink-faint: #6f6860;
+  --sider-bg: #f8fafc;
+  --sider-ink: #475569;
+  --sider-ink-faint: #5d6b80;
 }
 
 html.dark {
@@ -212,28 +206,28 @@ html.dark {
   --accent-soft: rgb(53, 224, 160 / 12%);
   --on-accent: #08130d;
 
-  --ink: #e8eef8;
-  --ink-soft: #b9c6d8;
-  --ink-faint: #8fa0b5;
-  /* 与亮阶同规约:--ink-fainter 仅作装饰,不得用作 color(原 3.37:1 不达 AA) */
-  --ink-fainter: #5f6e84;
-  /* 键盘焦点环:暗阶背景是深海军蓝,取高亮蓝保证可辨(8.68:1) */
+  --ink: #e9eff8;
+  --ink-soft: #b6c3d5;
+  --ink-faint: #93a3b8;
+  /* 与亮阶同规约:--ink-fainter 仅作装饰,不得用作 color */
+  --ink-fainter: #5c6c82;
+  /* 键盘焦点环:暗阶背景是深海军蓝,取高亮蓝保证可辨 */
   --focus-ring: #6fb3ff;
-  --paper: #070b13;
-  --paper-raised: #0d1420;
-  --paper-deep: #0a111d;
-  --paper-tint: #152034;
-  --line: #1d2a42;
-  --line-strong: #2c4568;
-  --divider-hair: rgb(232 238 248 / 7%);
-  --hover-tint: rgb(232 238 248 / 4%);
+  --paper: #070c14;
+  --paper-raised: #0d1521;
+  --paper-deep: #0a111b;
+  --paper-tint: #152133;
+  --line: #1d2a3d;
+  --line-strong: #2c405b;
+  --divider-hair: rgb(233 239 248 / 7%);
+  --hover-tint: rgb(233 239 248 / 4%);
   --mention: rgb(246 196 83 / 18%);
   --mention-ink: #f3e2b8;
   --scrim: rgb(2 5 10 / 62%);
 
   /* tone 语义状态:绿=运行/成功 · 青=数据/信息 · 琥珀=需关注 · 红=告警 */
-  --tone-neutral-dot: #64778f;
-  --tone-neutral-bg: rgb(100 119 143 / 16%);
+  --tone-neutral-dot: #8fa1b8;
+  --tone-neutral-bg: rgb(143 161 184 / 16%);
   --tone-success-bg: rgb(53 224 160 / 12%);
   --tone-success-dot: #45e2a8;
   --tone-info-bg: rgb(65 200 244 / 12%);
@@ -262,14 +256,15 @@ html.dark {
   --frost-bg: color-mix(in srgb, var(--paper-raised) 52%, transparent);
   --noise-opacity: 0.03;
 
-  /* Aurora Glass 暗阶:玻璃透出深海军蓝画布上的极光 glow */
-  --surface-glass: color-mix(in srgb, var(--paper-raised) 62%, transparent);
-  --surface-glass-strong: color-mix(in srgb, var(--paper-raised) 76%, transparent);
-  --glass-edge: inset 0 1px 0 rgb(255 255 255 / 10%);
-  --aurora-a: rgb(53 224 160 / 14%);
-  --aurora-b: rgb(65 200 244 / 12%);
-  --aurora-c: rgb(24 46 78 / 50%);
-  --aurora-veil: rgb(2 6 12 / 22%);
+  /* Aurora Glass 暗阶:卡片保持实心,只有壳层透出画布纵深 */
+  --surface-card: var(--paper-raised);
+  --surface-glass: color-mix(in srgb, var(--paper-raised) 90%, transparent);
+  --surface-glass-strong: color-mix(in srgb, var(--paper-raised) 96%, transparent);
+  --glass-edge: inset 0 1px 0 rgb(255 255 255 / 7%);
+  --aurora-a: rgb(53 224 160 / 7%);
+  --aurora-b: rgb(65 200 244 / 6%);
+  --aurora-c: rgb(24 46 78 / 42%);
+  --aurora-veil: rgb(2 6 12 / 20%);
 
   --av-fallback: #3d4f68;
   --on-av: #e8eef8;
@@ -286,15 +281,13 @@ html.dark {
   --bench-edge: inset 0 1px 0 rgb(255 255 255 / 7%);
   --bench-top-rule: linear-gradient(90deg, var(--accent) 0 34px, rgb(232 238 248 / 18%) 34px, transparent 100%);
 
-  /* ── v4 · 材质阶梯(暗阶):同样按实测反推 —— 46% 时玻璃几乎不可见(Δ亮度≈0.5),
-   *    降到 32% 让深海军蓝画布上的极光真正透出来;文字层仍用 --ink-faint(7.0:1)保底。 */
-  --mat-chrome-bg: color-mix(in srgb, var(--paper-raised) 32%, transparent);
-  --mat-panel-bg: color-mix(in srgb, var(--paper-raised) 66%, transparent);
-  --mat-float-bg: color-mix(in srgb, var(--paper-raised) 82%, transparent);
+  --mat-chrome-bg: color-mix(in srgb, var(--paper-raised) 88%, transparent);
+  --mat-panel-bg: var(--paper-raised);
+  --mat-float-bg: color-mix(in srgb, var(--paper-raised) 96%, transparent);
 
-  /* 暗阶振动:不明亮化(brightness>1 会把深海军蓝洗成灰),改提饱和 + 极轻提亮 */
-  --vibrancy-chrome: blur(30px) saturate(1.8) brightness(1.06);
-  --vibrancy-float: blur(26px) saturate(1.5) brightness(1.02);
+  /* 暗阶振动:不明亮化(brightness>1 会把深海军蓝洗成灰),改提饱和 */
+  --vibrancy-chrome: blur(18px) saturate(1.3);
+  --vibrancy-float: blur(14px) saturate(1.2);
 
   --glass-specular:
     inset 0 1px 0 rgb(255 255 255 / 13%),
@@ -353,9 +346,14 @@ body {
   background-attachment: fixed;
 }
 
-/* ── Aurora 氛围层(fixed,双主题):玻璃表面的折射源。
- *    暗色 = 深海军蓝画布上品牌绿/数据青 glow;亮色 = 暖纸上的柔和粉彩。
- *    装饰是负资产:低饱和、大半径、零动画(除极慢漂移),reduced-motion 全收敛。 */
+/* 最小字号地板:注脚/小字不得低于 11px(审计阈值;组件可显式覆盖并接受评审) */
+small {
+  font-size: 11px;
+}
+
+/* ── 工程网格背景(fixed,双主题):32px 细网格 + 顶部极淡品牌光。
+ *    网格是控制台"台面"的隐喻,只作背景刻度;卡片实心,数据区不受干扰。
+ *    零动画(静态刻度比漂移光斑更像仪表),reduced-motion 无需额外处理。 */
 body::before {
   position: fixed;
   z-index: -2;
@@ -363,37 +361,26 @@ body::before {
   pointer-events: none;
   content: "";
   background:
-    radial-gradient(1100px 640px at 12% -8%, var(--aurora-a), transparent 62%),
-    radial-gradient(1000px 720px at 108% 32%, var(--aurora-b), transparent 60%),
-    radial-gradient(900px 600px at 50% 118%, var(--aurora-c), transparent 66%),
+    radial-gradient(1200px 560px at 16% -14%, var(--aurora-a), transparent 64%),
+    radial-gradient(960px 520px at 102% -4%, var(--aurora-b), transparent 66%),
+    linear-gradient(to right, color-mix(in srgb, var(--ink) 4%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--ink) 4%, transparent) 1px, transparent 1px),
     var(--aurora-veil);
+  background-size: auto, auto, 32px 32px, 32px 32px, auto;
+  -webkit-mask-image: linear-gradient(180deg, #000 0 62%, transparent 100%);
+  mask-image: linear-gradient(180deg, #000 0 62%, transparent 100%);
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  body::before {
-    animation: aurora-drift 46s ease-in-out infinite alternate;
-  }
-}
-
-@keyframes aurora-drift {
-  from { transform: translate3d(0, 0, 0) scale(1); }
-  to { transform: translate3d(-2.2%, 1.6%, 0) scale(1.045); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  body::before { animation: none; }
-}
-
-/* ---------- 标题层级:serif display(衬线编辑部声部,weight 400) ---------- */
+/* ---------- 标题层级:工业仪表声部(sans 600,替代衬线展示) ---------- */
 h1,
 h2,
 h3,
 .ant-card .ant-card-head-title,
 .ant-modal-title,
 .ant-drawer .ant-drawer-title {
-  font-family: var(--font-display);
-  font-weight: 400;
-  letter-spacing: -0.01em;
+  font-family: var(--font-body);
+  font-weight: 600;
+  letter-spacing: -0.02em;
   text-wrap: balance;
 }
 
@@ -584,17 +571,17 @@ ul.task-list {
  * 通用工具类
  * ============================================================ */
 
-/* 等宽小标(数据/元信息;克制使用:每 3 个区块至多 1 处) */
+/* 等宽小标(数据/元信息;工业台面的命名牌声部) */
 .aw-kicker {
-  font-family: var(--font-body);
+  font-family: var(--font-mono);
   font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
+  font-weight: 500;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
   color: var(--ink-faint);
 }
 
-/* 展示字(serif 编辑部声部:标题/大数字/空态) */
+/* 展示字(衬线仅保留给空态/品牌时刻;工作区标题一律 sans) */
 .aw-display {
   font-family: var(--font-display);
   font-weight: 400;
@@ -640,10 +627,10 @@ ul.task-list {
 
 .aw-page-head h1 {
   margin: 2px 0 0;
-  font-size: 30px;
-  font-weight: 400;
-  line-height: 1.15;
-  letter-spacing: -0.015em;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.18;
+  letter-spacing: -0.022em;
 }
 
 /* 版本铭牌:hairline 小片。
@@ -672,22 +659,23 @@ ul.task-list {
   color: var(--ink-faint);
 }
 
-/* ── 药丸按钮(ink pill 主 CTA / outline 次级)── */
+/* ── 主操作按钮(accent 实心 / outline 次级;8px 工业控件圆角)── */
 .aw-pill {
   display: inline-flex;
+  outline: none !important;
   align-items: center;
   justify-content: center;
   gap: 7px;
-  padding: 8px 18px;
+  padding: 8px 16px;
   font-family: var(--font-body);
-  font-size: 14px;
-  font-weight: 500;
+  font-size: 13.5px;
+  font-weight: 600;
   line-height: 1;
   color: var(--on-accent);
   cursor: pointer;
   background: var(--accent);
   border: 1px solid var(--accent);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-control);
   transition: background var(--transition-fast), border-color var(--transition-fast), transform var(--transition-fast), opacity var(--transition-fast);
 }
 
@@ -716,11 +704,17 @@ ul.task-list {
   border-color: var(--line-strong);
 }
 
+.aw-pill:focus-visible {
+  outline: 2px solid var(--focus-ring) !important;
+  outline-offset: 2px;
+}
+
 /* ── 页面按钮词汇(全局唯一权威定义,原各页散落定义已收编)──
- * pill-btn 主操作(accent 药丸)/ outline 次级 / danger·stop 危险;
- * ghost-btn 取消/次要;mini-btn 轻量紧凑。形态语言与 aw-pill 同族。 */
+ * pill-btn 主操作(accent 实心)/ outline 次级 / danger·stop 危险;
+ * ghost-btn 取消/次要;mini-btn 轻量紧凑。8px 工业控件圆角。 */
 .pill-btn {
   display: inline-flex;
+  outline: none !important;
   align-items: center;
   justify-content: center;
   gap: 6px;
@@ -734,7 +728,7 @@ ul.task-list {
   user-select: none;
   background: var(--accent);
   border: 1px solid var(--accent);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-control);
   text-decoration: none;
   transition:
     background-color var(--transition-fast),
@@ -748,6 +742,11 @@ ul.task-list {
   background: var(--accent-strong);
   border-color: var(--accent-strong);
   box-shadow: 0 0 14px var(--accent-soft);
+}
+
+.pill-btn:focus-visible {
+  outline: 2px solid var(--focus-ring) !important;
+  outline-offset: 2px;
 }
 
 .pill-btn:active:not(:disabled) {
@@ -798,7 +797,7 @@ ul.task-list {
   cursor: pointer;
   background: transparent;
   border: 1px solid var(--line-strong);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-control);
   transition:
     background-color var(--transition-fast),
     border-color var(--transition-fast),
@@ -830,6 +829,7 @@ ul.task-list {
   font-size: 12px;
   font-weight: 500;
   line-height: 1.3;
+  white-space: nowrap;
   color: var(--ink-soft);
   cursor: pointer;
   background: var(--paper-deep);
@@ -850,6 +850,38 @@ ul.task-list {
 
 .mini-btn:active:not(:disabled) {
   transform: scale(0.97);
+}
+
+/* 顶栏幽灵图标钮(全局基类):NotificationCenter / HitlBell 等
+ * 子组件里的 <button class="icon-btn"> 不在 AppHeader 的 scoped 作用域内,
+ * 缺这条会让浏览器默认 buttonface 露出一块白色方块(实测移动端 56 徽标下)。 */
+.icon-btn {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  font-size: 16px;
+  color: var(--ink-soft);
+  cursor: pointer;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-control);
+  transition:
+    background-color var(--transition-fast),
+    color var(--transition-fast),
+    transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.icon-btn:hover {
+  color: var(--ink);
+  background: var(--paper-deep);
+}
+
+.icon-btn:active {
+  transform: scale(0.94);
 }
 
 .mini-btn.danger {
@@ -922,22 +954,20 @@ ul.task-list {
   }
 }
 
-/* ── 交互卡基座(Aurora Glass):半透 surface + backdrop 深模糊 + 内缘折射高光;
- *    悬停物理浮起 + hairline 提亮。极光在卡片后透出,玻璃质感成立。 ── */
+/* ── 交互卡基座:实心 surface + 1px 发丝边;悬停只提亮边界并轻微浮起 ── */
 .aw-tile {
   position: relative;
-  background: var(--surface-glass);
-  backdrop-filter: var(--aurora-blur);
-  border: 1px solid var(--glass-line);
-  border-radius: var(--radius-panel-sm);
-  box-shadow: var(--glass-edge);
+  background: var(--surface-card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  box-shadow: none;
   transition: border-color var(--transition-base), transform var(--transition-base), box-shadow var(--transition-base), background var(--transition-base);
 }
 @media (hover: hover) and (prefers-reduced-motion: no-preference) {
   .aw-tile:hover {
     border-color: color-mix(in srgb, var(--line-strong) 70%, var(--accent) 30%);
     transform: translateY(-1px);
-    box-shadow: var(--glass-edge), var(--shadow-float);
+    box-shadow: var(--shadow-lift-1);
   }
   .aw-tile:active {
     transform: translateY(0) scale(0.99);
@@ -1057,7 +1087,7 @@ ul.task-list {
   opacity: 0.4;
 }
 
-/* ── 编辑部式空状态(serif 标题 + 副行 + 可选 CTA)── */
+/* ── 空状态(图标 + 标题 + 副行 + 可选 CTA;仪表声部) ── */
 .pane-empty {
   display: flex;
   flex-direction: column;
@@ -1071,17 +1101,17 @@ ul.task-list {
 }
 
 .pane-empty .pe-icon {
-  font-size: 28px;
+  font-size: 26px;
   color: var(--ink-faint);
 }
 
 .pane-empty .pe-title {
   max-width: 34ch;
-  font-family: var(--font-display);
-  font-size: 24px;
-  font-weight: 400;
-  line-height: 1.25;
-  letter-spacing: -0.01em;
+  font-family: var(--font-body);
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.015em;
   color: var(--ink-soft);
 }
 
@@ -1236,20 +1266,19 @@ ul.task-list {
 }
 
 /* ============================================================
- * Ant Design Vue 全局覆盖:warm editorial + 墨色药丸
+ * Ant Design Vue 全局覆盖:Industrial Instrument
  * ============================================================ */
 
 .ant-layout {
   background: transparent;
 }
 
-/* 卡片:玻璃 surface + hairline + panel 圆角(与 aw-tile 同族) */
+/* 卡片:实心 surface + 1px 发丝边(数据卡片不付模糊成本,保证文字对比) */
 .ant-card {
-  background: var(--surface-glass);
-  backdrop-filter: var(--aurora-blur);
-  border-color: var(--glass-line) !important;
+  background: var(--surface-card);
+  border: 1px solid var(--line) !important;
   border-radius: var(--radius-panel) !important;
-  box-shadow: var(--glass-edge);
+  box-shadow: none;
   transition: border-color var(--transition-base);
 }
 
@@ -1257,9 +1286,33 @@ ul.task-list {
   border-color: var(--line-strong) !important;
 }
 
-/* 按钮:药丸形(ink pill 主 / outline 次);按压物理反馈(缩放,非位移) */
+.ant-card .ant-card-head {
+  min-height: 46px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--divider-hair);
+}
+
+.ant-card .ant-card-head-title {
+  padding: 12px 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ant-card .ant-card-extra {
+  font-size: 12px;
+}
+
+.ant-card .ant-card-body {
+  padding: 16px 18px;
+}
+
+.ant-card .ant-card-body > :first-child {
+  margin-top: 0;
+}
+
+/* 按钮:8px 工业控件圆角;按压物理反馈(缩放,非位移) */
 .ant-btn {
-  border-radius: var(--radius-pill) !important;
+  border-radius: var(--radius-control) !important;
   font-weight: 500;
   box-shadow: none;
   transition:
@@ -1280,14 +1333,51 @@ ul.task-list {
 }
 
 .ant-btn-sm {
-  border-radius: var(--radius-pill) !important;
+  border-radius: var(--radius-control) !important;
+}
+
+/* 行内文字按钮:可读的最低一档,危险操作保持语义红(原先 2.23:1 近乎隐形) */
+.ant-btn-text:not(:disabled),
+.ant-btn-link:not(:disabled) {
+  color: var(--ink-soft);
+}
+
+.ant-btn-text:not(:disabled):hover,
+.ant-btn-link:not(:disabled):hover {
+  color: var(--ink);
+  background: var(--hover-tint);
+}
+
+.ant-btn-text.ant-btn-dangerous:not(:disabled),
+.ant-btn-link.ant-btn-dangerous:not(:disabled) {
+  color: var(--tone-danger-dot);
+}
+
+.ant-btn-text.ant-btn-dangerous:not(:disabled):hover,
+.ant-btn-link.ant-btn-dangerous:not(:disabled):hover {
+  color: var(--tone-danger-dot);
+  background: var(--tone-danger-bg);
+}
+
+/* 禁用态仍须可辨认(内置模板的"编辑/删除"是禁用而非隐藏) */
+.ant-btn-text:disabled,
+.ant-btn-link:disabled,
+.ant-btn.ant-btn-default:disabled {
+  color: var(--ink-faint) !important;
+  opacity: 0.9;
+}
+
+/* 键盘焦点:全站统一 2px 外环,不被 overflow 裁切 */
+:where(button, a, [role="button"], input, textarea, select, summary):focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 .ant-radio-button-wrapper {
   border-radius: var(--radius-chip) !important;
 }
 
-/* 表单控件:8px 圆角 + 墨色聚焦 */
+/* 表单控件:8px 圆角 + 主色聚焦环 */
 .ant-input,
 .ant-input-affix-wrapper,
 .ant-input-number,
@@ -1295,24 +1385,34 @@ ul.task-list {
 .ant-picker,
 .ant-input-search .ant-input,
 .ant-input-group-addon {
-  border-radius: var(--radius-panel-sm) !important;
+  border-radius: var(--radius-control) !important;
+}
+
+.ant-input:focus,
+.ant-input-affix-wrapper-focused,
+.ant-input-number-focused,
+.ant-select-focused .ant-select-selector,
+.ant-picker-focused {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px var(--accent-soft) !important;
 }
 
 .ant-select-dropdown,
 .ant-picker-dropdown,
 .ant-dropdown-menu {
-  border-radius: var(--radius-panel-sm) !important;
+  border-radius: var(--radius-control) !important;
 }
 
 /* 标签:chip 小标签 */
 .ant-tag {
   font-family: var(--font-body);
   font-size: 11px;
+  line-height: 20px;
   letter-spacing: 0.02em;
   border-radius: var(--radius-chip);
 }
 
-/* 表格:表头 Inter 小标(caption-uppercase),行线 hairline;禁止竖向格线(操作台横向扫描语言) */
+/* 表格:等宽数字 + 冷钢表头 + 斑马行;禁止竖向格线(横向扫描语言) */
 .ant-table {
   background: transparent;
 }
@@ -1321,7 +1421,8 @@ ul.task-list {
   font-family: var(--font-body);
   font-size: 11px;
   font-weight: 600;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.08em;
+  color: var(--ink-faint);
   text-transform: uppercase;
   background: var(--paper-deep) !important;
   border-bottom: 1px solid var(--line-strong) !important;
@@ -1332,18 +1433,58 @@ ul.task-list {
   border-inline-end: none !important;
 }
 
+.ant-table .ant-table-thead > tr > th {
+  padding: 9px 12px !important;
+}
+
 .ant-table .ant-table-tbody > tr > td {
+  padding: 10px 12px !important;
+  font-size: 12.5px;
+  line-height: 1.45;
   border-bottom-color: var(--divider-hair);
   font-variant-numeric: tabular-nums;
+}
+
+.ant-table .ant-table-tbody > tr:nth-child(even) > td {
+  background: color-mix(in srgb, var(--paper-deep) 46%, transparent);
 }
 
 .ant-table .ant-table-tbody > tr:hover > td {
   background: var(--hover-tint) !important;
 }
 
-/* 空态:收敛默认内边距,与玻璃卡同族 */
+.ant-table .ant-table-tbody > tr > td:first-child {
+  color: var(--ink);
+  font-weight: 500;
+}
+
+/* 空态:收敛默认内边距,与卡片同族 */
 .ant-table .ant-table-placeholder {
   background: transparent;
+}
+
+/* 分页器:与控件同一 8px 圆角与密度 */
+.ant-pagination .ant-pagination-item,
+.ant-pagination .ant-pagination-prev,
+.ant-pagination .ant-pagination-next,
+.ant-pagination .ant-pagination-jump-prev,
+.ant-pagination .ant-pagination-jump-next {
+  border-radius: var(--radius-chip);
+}
+
+.ant-pagination .ant-pagination-item-ellipsis,
+.ant-pagination .ant-pagination-item-link-icon {
+  color: var(--ink-faint) !important;
+}
+
+.ant-pagination .ant-pagination-item a {
+  color: var(--ink-soft);
+}
+
+/* 禁用选择器仍要能读出当前值(角色/归属这类不可改字段) */
+.ant-select-disabled .ant-select-selector,
+.ant-select-disabled .ant-select-selection-item {
+  color: var(--ink-faint) !important;
 }
 
 /* 描述列表:标签 Inter 小标、值等宽 */
@@ -1370,13 +1511,14 @@ ul.task-list {
   height: 2px;
 }
 
-/* 弹层(弹窗/抽屉):轻量玻璃 + panel 圆角,serif 标题(见顶部 h 覆盖) */
+/* 弹层(弹窗/抽屉):浮层用最实的一档材质,压住背后内容 */
 .ant-modal-content,
 .ant-drawer-content {
   border-radius: var(--radius-panel) !important;
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-blur);
-  border: 1px solid var(--glass-line);
+  background: var(--mat-float-bg);
+  backdrop-filter: var(--vibrancy-float);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-float);
 }
 
 /* 可调宽抽屉:panel 定位上下文(drawer-resizer 锚定左缘;content 不滚动,手柄不随 body 滚动) */
@@ -1689,16 +1831,16 @@ ul.task-list {
  * ============================================================ */
 
 :root {
-  /* 排版尺度(编辑部声部 + 仪表读数码) */
-  --fs-micro: 10px;
-  --fs-label: 11px;
+  /* 排版尺度(工业仪表声部:标签抬到可读下限,读数保持大对比) */
+  --fs-micro: 11px;
+  --fs-label: 12px;
   --fs-title: 15px;
-  --fs-readout: 27px;
+  --fs-readout: 30px;
   --track-micro: 0.1em;
   --track-label: 0.08em;
 
   /* 节奏:面板/卡片共用同一组内距 */
-  --pad-panel: 16px 18px 14px;
+  --pad-panel: 18px 20px 16px;
   --gap-block: 14px;
 }
 
@@ -1768,15 +1910,14 @@ ul.task-list {
   color: var(--ink-faint);
 }
 
-/* ── 仪表面板(aw-bench):全站面板统一形态 ── */
+/* ── 仪表面板(aw-bench):全站面板统一形态(实心面板 + 1px 边界) ── */
 .aw-bench {
   position: relative;
   padding: var(--pad-panel);
-  background: var(--surface-glass);
-  backdrop-filter: var(--aurora-blur);
-  border: 1px solid var(--glass-line);
+  background: var(--surface-card);
+  border: 1px solid var(--line);
   border-radius: var(--radius-panel);
-  box-shadow: var(--bench-edge);
+  box-shadow: none;
 }
 
 /* 上缘品牌短线:34px 实色 + 余段渐隐 hairline(比整条渐变光带克制) */
@@ -1815,7 +1956,7 @@ ul.task-list {
   }
 }
 
-/* ── 面板头:仪器小标(mono) + 衬线题 + 右侧元信息 ── */
+/* ── 面板头:仪器小标(mono) + 题(sans 600) + 右侧元信息 ── */
 .aw-bench-hd {
   display: flex;
   gap: 10px;
@@ -1835,11 +1976,11 @@ ul.task-list {
 
 .aw-bench-title {
   margin: 0;
-  font-family: var(--font-display);
+  font-family: var(--font-body);
   font-size: var(--fs-title);
-  font-weight: 400;
+  font-weight: 600;
   line-height: 1.2;
-  letter-spacing: -0.005em;
+  letter-spacing: -0.015em;
   color: var(--ink);
 }
 
@@ -1891,11 +2032,9 @@ ul.task-list {
   display: grid;
   grid-template-columns: repeat(var(--cols, 6), minmax(0, 1fr));
   overflow: hidden;
-  background: var(--surface-glass);
-  backdrop-filter: var(--aurora-blur);
-  border: 1px solid var(--glass-line);
+  background: var(--surface-card);
+  border: 1px solid var(--line);
   border-radius: var(--radius-panel);
-  box-shadow: var(--bench-edge);
 }
 
 /* 底部量程刻度:统计带的签名(与 hero 同源) */
@@ -2321,10 +2460,10 @@ body {
   }
 }
 
-/* ── 画布留白:窄屏收边(桌面 12/16,手持 8/10)—— 手持设备每像素都贵 ── */
+/* ── 画布留白:窄屏收边(桌面 16/20,手持 10/12)—— 手持设备每像素都贵 ── */
 @media (max-width: 900px) {
   .app-content {
-    margin: 10px 10px 0;
+    margin: 12px 12px 0;
   }
 
   .app-footer {
@@ -2334,7 +2473,7 @@ body {
 
 @media (max-width: 640px) {
   .app-content {
-    margin: 8px 8px 0;
+    margin: 10px 10px 0;
   }
 }
 
@@ -2777,6 +2916,16 @@ body.nav-drawer .app-sider .app-menu {
   }
 }
 
+/* ── 触摸设备隐藏滚动条:移动浏览器的滚动是手势,常驻 10px 滚动槽只会
+ *    在页头右侧留下一条亮条(实测 390 截图),并挤压 HITL/身份徽标。
+ *    横向可滚动区域仍可拖动;键盘/桌面滚动条不受影响。 */
+@media (pointer: coarse) {
+  ::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+  }
 
-
-
+  * {
+    scrollbar-width: none;
+  }
+}

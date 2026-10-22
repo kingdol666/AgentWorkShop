@@ -243,7 +243,73 @@ export function useWorkshopApi() {
       http.get<{ data?: { plugins?: ChannelPluginStateDto[], source?: 'explicit' | 'default' } }>(`/workshop/teams/${id}/plugins`),
     putTeamPlugins: (id: string, body: { plugins: Array<{ name: string, enabled: boolean }> }) =>
       http.put<{ data?: { plugins?: ChannelPluginStateDto[], source?: 'explicit' | 'default' } }>(`/workshop/teams/${id}/plugins`, body),
+    // 工具目录与 Channel 级选择(2026-10-20)
+    listTools: () => http.get<{ data?: GlobalToolViewDto }>('/workshop/tools'),
+    getTool: (name: string) => http.get<{ data?: GlobalToolDto }>(`/workshop/tools/${name}`),
+    syncTools: () => http.post<{ data?: { builtin: number, plugin: number, total: number, unavailable: number, at: string } }>('/workshop/tools/sync', {}),
+    listChannelTools: (id: string) => http.get<{ data?: ChannelToolViewDto }>(`/workshop/channels/${id}/tools`),
+    putChannelTools: (id: string, body: { mode: 'all' | 'selected', tools: Array<{ name: string, enabled: boolean }> }) =>
+      http.put<{ data?: ChannelToolViewDto }>(`/workshop/channels/${id}/tools`, body),
+    resetChannelTools: (id: string) =>
+      http.post<{ data?: ChannelToolViewDto }>(`/workshop/channels/${id}/tools/reset`, {}),
   }
+}
+
+/** 单角色资格(OK / ROLE_DENIED / PROFILE_DENIED / WRITE_GUARD / …) */
+export interface ToolEligibilityDto {
+  eligible: boolean
+  reason: string
+  message: string
+}
+
+/** Channel 工具视图行(GET /workshop/channels/:id/tools) */
+export interface ChannelToolDto {
+  name: string
+  label: string
+  description: string
+  source: 'builtin' | 'plugin'
+  plugin: string | null
+  pluginScope: string | null
+  group: string
+  roles: Array<'lead' | 'worker'>
+  parameters: Record<string, unknown>
+  available: boolean
+  channelEnabled: boolean
+  eligibility: { lead: ToolEligibilityDto, worker: ToolEligibilityDto }
+  effective: { lead: boolean, worker: boolean }
+}
+
+export interface ChannelToolViewDto {
+  channelId: string
+  mode: 'all' | 'selected'
+  source: 'default' | 'explicit'
+  updatedBy: string
+  updatedAt: string | null
+  stats: {
+    total: number
+    available: number
+    eligibleLead: number
+    eligibleWorker: number
+    effectiveLead: number
+    effectiveWorker: number
+    blocked: number
+    channelDisabled: number
+  }
+  tools: ChannelToolDto[]
+}
+
+/** 全局工具目录行(GET /workshop/tools) */
+export interface GlobalToolDto extends Omit<ChannelToolDto, 'channelEnabled' | 'eligibility' | 'effective'> {
+  firstSeenAt: string
+  updatedAt: string
+  definitionHash: string
+  channels: Array<{ id: string, name: string, mode: 'all' | 'selected', enabled: boolean }>
+}
+
+export interface GlobalToolViewDto {
+  lastSyncedAt: string | null
+  stats: { total: number, builtin: number, plugin: number, available: number, disabledByChannels: number }
+  tools: GlobalToolDto[]
 }
 
 /** 平台插件清单条目(GET /workshop/plugins;顶层 plugins key,兼容 {code,data} 信封) */

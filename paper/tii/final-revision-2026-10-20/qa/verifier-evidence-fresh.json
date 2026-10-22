@@ -1,0 +1,27 @@
+{
+  "evidence_zip_sha256": "578a14539c6ca8e17226106f93fed302d43a83ff5eb81ea01c2a560e1f394ae3",
+  "bundle_verifier": {
+    "exit_code": 0,
+    "stdout": "PASS: 186 hashed files, 13 claim rows, 9 suites/782 assertions, 4 R6 receipts, duplicate accounting, local artifact pointers, R6 measurement notes and bounded identity scan.\n",
+    "stderr": ""
+  },
+  "MJS_syntax": {
+    "files": 81,
+    "passed": 81,
+    "failures": []
+  },
+  "python_AST": [
+    {
+      "path": "verify_bundle.py",
+      "pass": true
+    },
+    {
+      "path": "code\\current\\figures\\make-evaluation-2026.py",
+      "pass": true
+    }
+  ],
+  "R6_measurement_note_present": true,
+  "claim_rows": 13,
+  "process_replays_executed": 0,
+  "temp_root": "C:\\Users\\87287\\AppData\\Local\\Temp\\tii-verifier-final-evidence-nsntsmme"
+}

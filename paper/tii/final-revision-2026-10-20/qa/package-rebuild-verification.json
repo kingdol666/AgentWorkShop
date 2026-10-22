@@ -1,0 +1,30 @@
+{
+  "pages": [
+    10,
+    10
+  ],
+  "page_text_matches": [
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true
+  ],
+  "page_geometry_matches": [
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true,
+    true
+  ]
+}

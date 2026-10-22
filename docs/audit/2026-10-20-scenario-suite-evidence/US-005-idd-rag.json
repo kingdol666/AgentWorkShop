@@ -1,0 +1,84 @@
+{
+  "story": "US-005",
+  "title": "IDD × RAG 数据处理作业",
+  "at": "2026-10-20T23:47:00+08:00",
+  "platform": "http://127.0.0.1:3470",
+  "lineId": "ln-90c5f9f9",
+  "channelId": "883bb1bb-b844-44e3-b577-bfbe77494262",
+  "analystAgentId": "见 scenario-context.json（不落库）",
+  "external": {
+    "idd": "http://127.0.0.1:3210",
+    "ragBackend": "http://127.0.0.1:8771",
+    "ragWeb": "http://127.0.0.1:6789"
+  },
+  "pluginHealth": {
+    "diag": {
+      "auth": "bearer",
+      "tokenAccepted": true,
+      "remoteStatus": "ok",
+      "harness": "omp"
+    },
+    "rag": {
+      "outbound": true,
+      "tokenAccepted": true,
+      "kb": "aw-industrial",
+      "kbId": "3aea5973-1d8a-4db6-b415-6d4432f514bb",
+      "backendOk": true,
+      "webOk": true
+    }
+  },
+  "export": {
+    "exportId": "daqexp-20261020234422-67a9ec",
+    "mergedCsv": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-scenario-suite-a1FFaM\\data\\daq-exports\\daqexp-20261020234422-67a9ec\\merged.csv",
+    "nodes": 14,
+    "rows": 6814,
+    "window": "2026-10-20T23:34:22+08:00 ~ 2026-10-20T23:44:22+08:00",
+    "rowsClarification": "14 个节点 CSV 合计 6814 行;merged.csv 为按秒对齐宽表 569 行;无独立 manifest.csv(导出说明中的 manifest 是 manifest.json)。"
+  },
+  "diagRun": {
+    "runId": "1837d21f",
+    "intent": "quick-screen",
+    "status": "completed",
+    "reportPath": "D:\\codes\\myskills\\idd-doe-impl\\workspace\\diagnostic-runs\\202610201545045_offline-data_diag\\report.md",
+    "summary": "601 行/12 标量通道；克重 368/601 行低于 32.15g，最低 31.19g；缩痕 320/601 行超 1.5%，峰值 2.347%；cycle-time 全窗 569 个采样恒为 15.3s（冻结）；全通道 8s 采集中断；watch 101 条告警（high 71/warn 30）。报告同时披露 self 基线、C2 未执行、C4 降级等口径。",
+    "submission": "已发起「快速筛查」异步分析任务 task_id=1837d21f(数据集 aw-snapshots/exp-daqexp-20261020234422-67a9ec;14 节点全量时序 + manifest)",
+    "terminal": "diag_status run_id=1837d21f → status=completed;report_md_path 存在;完成提示要求调用 kb_agent 入库(未自动入库,已按提示执行)",
+    "manifestCaveat": "IDD run 目录的 run_manifest.json 仍显示 initialized/部分步骤 pending(与 tasks 面 completed 不一致),但 report.md 已生成且 kb_agent 已读取入库;这是 IDD 内部 manifest 收尾差异,不影响报告真实性。"
+  },
+  "ragIngest": {
+    "taskId": "kbt_mvguzepc_db74eac1",
+    "status": "completed",
+    "docPath": "aw-industrial/注塑产线10分钟窗口快速筛查报告_202610201545045_offline-data_diag.md",
+    "qualityGate": "通过（A0 去重 0.688 < 0.85；正文完整；标签 US-005/注塑/快速筛查/2026-10-20；写盘后再索引）",
+    "docId": "f6b14701-4c5a-40b6-804d-0d8b30286b93",
+    "chunks": 26
+  },
+  "retrieval": {
+    "keyword": {
+      "query": "202610201545045",
+      "hit": true,
+      "docPath": "aw-industrial/注塑产线10分钟窗口快速筛查报告_202610201545045_offline-data_diag.md",
+      "score": 0.45395660400390625
+    },
+    "kbAgent": {
+      "query": "标题或路径包含 202610201545045",
+      "hit": true,
+      "docPath": "aw-industrial注塑产线10分钟窗口快速筛查报告_202610201545045_offline-data_diag.md",
+      "chunks": 26,
+      "docId": "f6b14701-4c5a-40b6-804d-0d8b30286b93",
+      "note": "kb_agent 只读检索,唯一命中,未重复入库"
+    }
+  },
+  "assertions": [
+    "IDD 3210 健康且 diag-bridge token accepted=true",
+    "RAG 8771/6789 健康且 rag-bridge token accepted=true，KB=aw-industrial",
+    "daq_export 生成 14 节点/6814 行/merged.csv",
+    "diag_run 返回 task_id=1837d21f，轮询至 completed，报告 md 存在",
+    "kb_agent async 入库完成并写出 doc_path",
+    "rag-bridge /search 能按 run 标识命中入库文档",
+    "diag_run 提交响应含 task_id/export_id",
+    "IDD 终态 completed + report.md 14KB+",
+    "kb_agent 检索唯一命中,26 chunks"
+  ],
+  "boundary": "IDD 报告中的 self 基线为冷启动、C2 未执行、C4 降级为稳健 z；报告已如实披露，不能把该报告当作长期基线结论。"
+}

@@ -6,7 +6,7 @@ import type * as sqliteVec from 'sqlite-vec'
 import { DatabaseSync } from 'node:sqlite'
 import { SCHEMA_SQL } from './schema'
 import { createRequire } from 'node:module'
-import { migrateAddColumn, migrateAgentTeamExecutionLeaseColumns, migrateAgentTeamTaskGuardrailColumns, migrateAgentTeamTaskGuardrails, migrateAgentTeamTaskQueueColumns, migrateAmlChannelOptimizationColumns, migrateAmlModelIdentityColumns, migrateAnalysisEditColumns, migrateApprovalPayloadColumns, migrateDropOwnerFks, migrateGroupChatV17, migrateLegacySchema, migrateMissingForeignKeys, migrateAmlTwinProviderColumns } from './migrations'
+import { migrateAddColumn, migrateAgentTeamExecutionLeaseColumns, migrateAgentTeamTaskGuardrailColumns, migrateAgentTeamTaskGuardrails, migrateAgentTeamTaskQueueColumns, migrateAmlChannelOptimizationColumns, migrateAmlModelIdentityColumns, migrateAnalysisEditColumns, migrateApprovalPayloadColumns, migrateAuditQueryIndexes, migrateAuditScopeColumn, migrateDropOwnerFks, migrateGroupChatV17, migrateLegacySchema, migrateMissingForeignKeys, migrateAmlTwinProviderColumns } from './migrations'
 import { seedDefaultWorkshopData } from './seed'
 
 export const require = createRequire(import.meta.url)
@@ -56,6 +56,10 @@ export function initWorkshopDb(db: DatabaseSync): void {
   migrateAddColumn(db, 'audit_log', 'summary', 'TEXT NOT NULL DEFAULT \'\'')
   // 2026-10-08 写控 ACK 鉴定:严重级列(info/warn/error;既有库补列,历史行按 info 语义)
   migrateAddColumn(db, 'audit_log', 'level', 'TEXT NOT NULL DEFAULT \'info\'')
+  // 2026-10-19 产线日志显式域标识(scope=line|system;老库按 line_id 回填并强制不变量)
+  migrateAuditScopeColumn(db)
+  // 2026-10-19 产线日志查询索引(必须在补列之后:老库缺列时建索引会中断初始化)
+  migrateAuditQueryIndexes(db)
   migrateMissingForeignKeys(db)
   // Run after legacy task-table rebuilds so guardrail metadata and its index survive upgrades.
   migrateAgentTeamTaskQueueColumns(db)

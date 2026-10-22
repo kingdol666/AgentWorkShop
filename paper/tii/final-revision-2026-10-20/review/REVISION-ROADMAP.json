@@ -1,0 +1,559 @@
+{
+  "schema_version": "local-unbound-revision-roadmap/1.0",
+  "canonical_schema_status": "not_emitted_missing_bound_block_manifest",
+  "canonical_schema_requested": "revision-roadmap/1.0",
+  "canonical_schema_reason": "No pre-round bound block manifest/digest or exact Bxxxx target IDs. Not canonical write authorization.",
+  "revision_round": 1,
+  "base_draft_sha256": "85ff90803ef9fb5884ba05077909a33628b976485964be35b649656bece11e10",
+  "later_author_pdf_sha256_unreviewed": "c4a8018c9e7c5b50eae592c1efecf1eb22634851116e330294a389fb5b6a976b",
+  "calibration_status": "NOT_CALIBRATED",
+  "criteria_binding": "criteria_binding_unavailable",
+  "editorial_decision": "Major Revision",
+  "decision_scope": "Frozen baseline only; later author changes need separate delta review; scores unchanged.",
+  "source_order": [
+    "EIC",
+    "R1",
+    "R2",
+    "R3",
+    "DA"
+  ],
+  "items": [
+    {
+      "id": "REV-1",
+      "source_refs": [
+        {
+          "seat": "EIC",
+          "channel": "finding",
+          "ordinal": 1,
+          "subclaim_ordinal": 1
+        }
+      ],
+      "source_report": "eic-phase2.md",
+      "parent_finding": "W1",
+      "sub_claim_ids": [
+        "SC-1"
+      ],
+      "description": "Specific execution-and-evidence guarantees are not sufficiently distinguished from adjacent systems.",
+      "reviewer": "EIC",
+      "severity": "major",
+      "severity_source": "explicit parent finding; transported unchanged",
+      "confidence": 4,
+      "confidence_source": "explicit parent finding; transported unchanged",
+      "competence_basis": "Editorial contribution and adjacent-work assessment; venue criteria unbound.",
+      "evidence_anchor": {
+        "anchor_type": "text",
+        "locator": "Section II.A; Section I contribution paragraph",
+        "quote": "These mechanisms overlap with our admission and confirmation goals."
+      },
+      "obligation_class": "must_fix",
+      "cost_scope": {
+        "kind": "section",
+        "locator": "Introduction; Related Work; Table I"
+      },
+      "consequence_if_unaddressed": {
+        "code": "acceptance_criterion_unmet",
+        "target": {
+          "kind": "claim",
+          "locator": "Introduction; Related Work; Table I"
+        }
+      },
+      "target_section": "Introduction; Related Work; Table I",
+      "suggested_action": "Identify concrete obligations and map their combination against the closest systems; do not claim all mechanisms new.",
+      "verification_criteria": "The obligations and comparison are explicit and traceable in contribution and Table I.",
+      "consensus_level": "single-reviewer finding",
+      "non_da_position_counts": {
+        "agree": 1,
+        "disputed": 0,
+        "silent": 3
+      },
+      "proposed_target_anchors": [
+        "Section II.A; Section I contribution paragraph"
+      ],
+      "bound_block_targets_status": "unavailable; no pre-round bound block manifest; no write authority"
+    },
+    {
+      "id": "REV-2",
+      "source_refs": [
+        {
+          "seat": "EIC",
+          "channel": "finding",
+          "ordinal": 1,
+          "subclaim_ordinal": 2
+        }
+      ],
+      "source_report": "eic-phase2.md",
+      "parent_finding": "W1",
+      "sub_claim_ids": [
+        "SC-2"
+      ],
+      "description": "Integration significance and incremental scholarly value remain incompletely established.",
+      "reviewer": "EIC",
+      "severity": "major",
+      "severity_source": "explicit parent finding; transported unchanged",
+      "confidence": 4,
+      "confidence_source": "explicit parent finding; transported unchanged",
+      "competence_basis": "Editorial contribution and adjacent-work assessment; venue criteria unbound.",
+      "evidence_anchor": {
+        "anchor_type": "text",
+        "locator": "Section II.A; Section I contribution paragraph",
+        "quote": "The contribution is a common execution-and-evidence contract for industrial agent supervision."
+      },
+      "obligation_class": "must_fix",
+      "cost_scope": {
+        "kind": "section",
+        "locator": "Introduction; Related Work; Discussion"
+      },
+      "consequence_if_unaddressed": {
+        "code": "evidence_gap_remains",
+        "target": {
+          "kind": "claim",
+          "locator": "Introduction; Related Work; Discussion"
+        }
+      },
+      "target_section": "Introduction; Related Work; Discussion",
+      "suggested_action": "Explain supported significance; retain comparative-evidence limits. If no substantive distinction is supported, acknowledge prose cannot resolve it.",
+      "verification_criteria": "Claim strength matches the actual evidence and residual novelty/comparison gap remains visible.",
+      "consensus_level": "single-reviewer finding",
+      "non_da_position_counts": {
+        "agree": 1,
+        "disputed": 0,
+        "silent": 3
+      },
+      "proposed_target_anchors": [
+        "Section II.A; Section I contribution paragraph"
+      ],
+      "bound_block_targets_status": "unavailable; no pre-round bound block manifest; no write authority"
+    },
+    {
+      "id": "REV-3",
+      "source_refs": [
+        {
+          "seat": "R1",
+          "channel": "finding",
+          "ordinal": 1,
+          "subclaim_ordinal": 1
+        }
+      ],
+      "source_report": "methodology-phase2.md",
+      "parent_finding": "W1",
+      "sub_claim_ids": [
+        "SC-3"
+      ],
+      "description": "Exact historical dirty harness cannot be recreated from delivered snapshots.",
+      "reviewer": "R1",
+      "severity": "minor",
+      "severity_source": "explicit parent finding; transported unchanged",
+      "confidence": 4,
+      "confidence_source": "explicit parent finding; transported unchanged",
+      "competence_basis": "Hash manifest and source-status assessment; historical worktree unavailable.",
+      "evidence_anchor": {
+        "anchor_type": "text",
+        "locator": "REPRODUCIBILITY.md, Separate delivery packages",
+        "quote": "neither is silently substituted for the unarchived exact runtime worktree."
+      },
+      "obligation_class": "should_fix",
+      "cost_scope": {
+        "kind": "section",
+        "locator": "REPRODUCIBILITY.md; source-snapshot status"
+      },
+      "consequence_if_unaddressed": {
+        "code": "method_reproducibility_unresolved",
+        "target": {
+          "kind": "section",
+          "locator": "REPRODUCIBILITY.md; source-snapshot status"
+        }
+      },
+      "target_section": "REPRODUCIBILITY.md; source-snapshot status",
+      "suggested_action": "Preserve archived-output rather than exact-replay qualification; for future runs archive exact dirty tree, lock state, simulator state and command/configuration manifest.",
+      "verification_criteria": "Recorded commit/current inspection snapshots are distinguished from the missing exact historical executable environment.",
+      "consensus_level": "single-reviewer finding",
+      "non_da_position_counts": {
+        "agree": 1,
+        "disputed": 0,
+        "silent": 3
+      },
+      "proposed_target_anchors": [
+        "REPRODUCIBILITY.md, Separate delivery packages"
+      ],
+      "bound_block_targets_status": "unavailable; no pre-round bound block manifest; no write authority"
+    },
+    {
+      "id": "REV-4",
+      "source_refs": [
+        {
+          "seat": "R1",
+          "channel": "finding",
+          "ordinal": 2,
+          "subclaim_ordinal": 1
+        }
+      ],
+      "source_report": "methodology-phase2.md",
+      "parent_finding": "W2",
+      "sub_claim_ids": [
+        "SC-4"
+      ],
+      "description": "Q6 permits absent melt temperature and does not establish complete multivariate quality acceptance.",
+      "reviewer": "R1",
+      "severity": "minor",
+      "severity_source": "explicit parent finding; transported unchanged",
+      "confidence": 4,
+      "confidence_source": "explicit parent finding; transported unchanged",
+      "competence_basis": "Q6 replay predicate, archive summary and stated scope.",
+      "evidence_anchor": {
+        "anchor_type": "text",
+        "locator": "Section V-F",
+        "quote": "temperature and individual-sensor freshness remain outside that assertion."
+      },
+      "obligation_class": "should_fix",
+      "cost_scope": {
+        "kind": "sentence",
+        "locator": "Evaluation Q6; Discussion"
+      },
+      "consequence_if_unaddressed": {
+        "code": "claim_scope_unsupported",
+        "target": {
+          "kind": "section",
+          "locator": "Evaluation Q6; Discussion"
+        }
+      },
+      "target_section": "Evaluation Q6; Discussion",
+      "suggested_action": "Restrict the result to the three observed quality quantities; do not assert all critical measurements were required.",
+      "verification_criteria": "The three observed quantities and absent-temperature scope boundary are clear.",
+      "consensus_level": "single-reviewer finding",
+      "non_da_position_counts": {
+        "agree": 1,
+        "disputed": 0,
+        "silent": 3
+      },
+      "proposed_target_anchors": [
+        "Section V-F"
+      ],
+      "bound_block_targets_status": "unavailable; no pre-round bound block manifest; no write authority"
+    },
+    {
+      "id": "REV-5",
+      "source_refs": [
+        {
+          "seat": "R1",
+          "channel": "finding",
+          "ordinal": 2,
+          "subclaim_ordinal": 2
+        }
+      ],
+      "source_report": "methodology-phase2.md",
+      "parent_finding": "W2",
+      "sub_claim_ids": [
+        "SC-5"
+      ],
+      "description": "Q6 freshness uses the newest available timestamp, not independent ages for every required sensor.",
+      "reviewer": "R1",
+      "severity": "minor",
+      "severity_source": "explicit parent finding; transported unchanged",
+      "confidence": 4,
+      "confidence_source": "explicit parent finding; transported unchanged",
+      "competence_basis": "Q6 replay predicate, archive summary and stated scope.",
+      "evidence_anchor": {
+        "anchor_type": "text",
+        "locator": "Section V-F",
+        "quote": "temperature and individual-sensor freshness remain outside that assertion."
+      },
+      "obligation_class": "should_fix",
+      "cost_scope": {
+        "kind": "sentence",
+        "locator": "Evaluation Q6; Discussion"
+      },
+      "consequence_if_unaddressed": {
+        "code": "claim_scope_unsupported",
+        "target": {
+          "kind": "section",
+          "locator": "Evaluation Q6; Discussion"
+        }
+      },
+      "target_section": "Evaluation Q6; Discussion",
+      "suggested_action": "Preserve aggregate-freshness qualification; per-sensor guarantees require evidence not supplied here.",
+      "verification_criteria": "Aggregate freshness is not described as freshness of each required sensor.",
+      "consensus_level": "single-reviewer finding",
+      "non_da_position_counts": {
+        "agree": 1,
+        "disputed": 0,
+        "silent": 3
+      },
+      "proposed_target_anchors": [
+        "Section V-F"
+      ],
+      "bound_block_targets_status": "unavailable; no pre-round bound block manifest; no write authority"
+    },
+    {
+      "id": "REV-6",
+      "source_refs": [
+        {
+          "seat": "R2",
+          "channel": "finding",
+          "ordinal": 1,
+          "subclaim_ordinal": 1
+        }
+      ],
+      "source_report": "domain-phase2.md",
+      "parent_finding": "W1",
+      "sub_claim_ids": [
+        "SC-6"
+      ],
+      "description": "R6 final snapshot and update rationale contain different quality values without a linked rationale measurement.",
+      "reviewer": "R2",
+      "severity": "minor",
+      "severity_source": "explicit parent finding; transported unchanged",
+      "confidence": 4,
+      "confidence_source": "explicit parent finding; transported unchanged",
+      "competence_basis": "Direct archive-field and Q6 comparison.",
+      "evidence_anchor": {
+        "anchor_type": "dataset",
+        "locator": "evidence/R6/summary.json#/final and /update"
+      },
+      "obligation_class": "should_fix",
+      "cost_scope": {
+        "kind": "section",
+        "locator": "R6 measurement note; Q6 results; figure source data"
+      },
+      "consequence_if_unaddressed": {
+        "code": "reader_traceability_reduced",
+        "target": {
+          "kind": "section",
+          "locator": "R6 measurement note; Q6 results; figure source data"
+        }
+      },
+      "target_section": "R6 measurement note; Q6 results; figure source data",
+      "suggested_action": "Plot /final; preserve both raw fields. Identify an existing linked sample or explicitly mark the linkage missing. Do not infer a sample or timestamp.",
+      "verification_criteria": "Both records are unchanged, their unknown join is disclosed, and the plotted values use the documented final snapshot.",
+      "consensus_level": "single-reviewer finding",
+      "non_da_position_counts": {
+        "agree": 1,
+        "disputed": 0,
+        "silent": 3
+      },
+      "proposed_target_anchors": [
+        "evidence/R6/summary.json#/final and /update"
+      ],
+      "bound_block_targets_status": "unavailable; no pre-round bound block manifest; no write authority"
+    },
+    {
+      "id": "REV-7",
+      "source_refs": [
+        {
+          "seat": "R3",
+          "channel": "finding",
+          "ordinal": 1,
+          "subclaim_ordinal": 1
+        }
+      ],
+      "source_report": "perspective-phase2.md",
+      "parent_finding": "W1",
+      "sub_claim_ids": [
+        "SC-7"
+      ],
+      "description": "Deployment accountability lacks a concrete responsibility, escalation, recovery and closure model.",
+      "reviewer": "R3",
+      "severity": "major",
+      "severity_source": "explicit parent finding; transported unchanged",
+      "confidence": 4,
+      "confidence_source": "explicit parent finding; transported unchanged",
+      "competence_basis": "Cross-disciplinary deployment and human-factors assessment.",
+      "evidence_anchor": {
+        "anchor_type": "absence",
+        "locator": "Section IV-B and Section VI",
+        "absence_scope": "Expected deployment responsibility matrix and escalation/closure procedure.",
+        "check_performed": "Checked Human Approval and Recipe Control, Engineering Interpretation, and REPRODUCIBILITY.md."
+      },
+      "obligation_class": "must_fix",
+      "cost_scope": {
+        "kind": "section",
+        "locator": "Human Approval and Recipe Control; Engineering Interpretation"
+      },
+      "consequence_if_unaddressed": {
+        "code": "claim_scope_unsupported",
+        "target": {
+          "kind": "claim",
+          "locator": "Human Approval and Recipe Control; Engineering Interpretation"
+        }
+      },
+      "target_section": "Human Approval and Recipe Control; Engineering Interpretation",
+      "suggested_action": "Provide supported assignments or narrow accountability to traceable authorization and evidence attribution.",
+      "verification_criteria": "Attributed approvals/receipts are not equated with validated operational recovery, safety ownership or incident closure.",
+      "consensus_level": "single-reviewer finding",
+      "non_da_position_counts": {
+        "agree": 1,
+        "disputed": 0,
+        "silent": 3
+      },
+      "proposed_target_anchors": [
+        "Section IV-B and Section VI"
+      ],
+      "bound_block_targets_status": "unavailable; no pre-round bound block manifest; no write authority"
+    },
+    {
+      "id": "REV-8",
+      "source_refs": [
+        {
+          "seat": "R3",
+          "channel": "finding",
+          "ordinal": 2,
+          "subclaim_ordinal": 1
+        }
+      ],
+      "source_report": "perspective-phase2.md",
+      "parent_finding": "W2",
+      "sub_claim_ids": [
+        "SC-8"
+      ],
+      "description": "Scripted approval framing may be read as empirical human decision-quality evidence.",
+      "reviewer": "R3",
+      "severity": "minor",
+      "severity_source": "explicit parent finding; transported unchanged",
+      "confidence": 5,
+      "confidence_source": "explicit parent finding; transported unchanged",
+      "competence_basis": "Direct reading of stated experimental limit.",
+      "evidence_anchor": {
+        "anchor_type": "text",
+        "locator": "Section V-F, p. 8",
+        "quote": "The archived intervention sequence and approvals were scripted"
+      },
+      "obligation_class": "should_fix",
+      "cost_scope": {
+        "kind": "sentence",
+        "locator": "Abstract; Introduction; relevant figure captions"
+      },
+      "consequence_if_unaddressed": {
+        "code": "interpretive_ambiguity_remains",
+        "target": {
+          "kind": "section",
+          "locator": "Abstract; Introduction; relevant figure captions"
+        }
+      },
+      "target_section": "Abstract; Introduction; relevant figure captions",
+      "suggested_action": "Qualify first use in abstract/introduction/captions; distinguish authorization semantics from human-performance validation.",
+      "verification_criteria": "Script-supplied approvals and absent human-performance validation are clear at first interpretation.",
+      "consensus_level": "single-reviewer finding",
+      "non_da_position_counts": {
+        "agree": 1,
+        "disputed": 0,
+        "silent": 3
+      },
+      "proposed_target_anchors": [
+        "Section V-F, p. 8"
+      ],
+      "bound_block_targets_status": "unavailable; no pre-round bound block manifest; no write authority"
+    },
+    {
+      "id": "REV-9",
+      "source_refs": [
+        {
+          "seat": "R3",
+          "channel": "finding",
+          "ordinal": 3,
+          "subclaim_ordinal": 1
+        }
+      ],
+      "source_report": "perspective-phase2.md",
+      "parent_finding": "W3",
+      "sub_claim_ids": [
+        "SC-9"
+      ],
+      "description": "Plant-write and production terminology may imply physical deployment before simulator scope is clear.",
+      "reviewer": "R3",
+      "severity": "minor",
+      "severity_source": "explicit parent finding; transported unchanged",
+      "confidence": 4,
+      "confidence_source": "explicit parent finding; transported unchanged",
+      "competence_basis": "Cross-disciplinary terminology and scope interpretation.",
+      "evidence_anchor": {
+        "anchor_type": "text",
+        "locator": "Title, p. 1",
+        "quote": "A Governed Supervisory Execution Layer for LLM-Agent Plant Writes"
+      },
+      "obligation_class": "should_fix",
+      "cost_scope": {
+        "kind": "sentence",
+        "locator": "Abstract; Introduction; production-context definition"
+      },
+      "consequence_if_unaddressed": {
+        "code": "interpretive_ambiguity_remains",
+        "target": {
+          "kind": "section",
+          "locator": "Abstract; Introduction; production-context definition"
+        }
+      },
+      "target_section": "Abstract; Introduction; production-context definition",
+      "suggested_action": "State early that reported process experiments exercise modeled production objects and writes in repository simulators.",
+      "verification_criteria": "First-page framing distinguishes modeled production context from physical-plant validation.",
+      "consensus_level": "single-reviewer finding",
+      "non_da_position_counts": {
+        "agree": 1,
+        "disputed": 0,
+        "silent": 3
+      },
+      "proposed_target_anchors": [
+        "Title, p. 1"
+      ],
+      "bound_block_targets_status": "unavailable; no pre-round bound block manifest; no write authority"
+    },
+    {
+      "id": "REV-10",
+      "source_refs": [
+        {
+          "seat": "DA",
+          "channel": "finding",
+          "ordinal": 1,
+          "subclaim_ordinal": 1
+        }
+      ],
+      "source_report": "da-phase2.md",
+      "parent_finding": "M1",
+      "sub_claim_ids": [
+        "SC-10"
+      ],
+      "description": "No supplied current-version end-to-end experiment spans strategy, protocol and production-context changes across routes.",
+      "reviewer": "DA",
+      "severity": "major",
+      "severity_source": "explicit parent finding; transported unchanged",
+      "confidence": 4,
+      "confidence_source": "explicit parent finding; transported unchanged",
+      "competence_basis": "Paper, evidence map and source-status cross-check.",
+      "evidence_anchor": {
+        "anchor_type": "text",
+        "locator": "Evaluation evidence units/procedure; REPRODUCIBILITY.md, Separate delivery packages",
+        "quote": "these evidence sets are not pooled as one interface experiment."
+      },
+      "obligation_class": "must_fix",
+      "cost_scope": {
+        "kind": "section",
+        "locator": "Contribution; Evaluation evidence units; Discussion"
+      },
+      "consequence_if_unaddressed": {
+        "code": "claim_scope_unsupported",
+        "target": {
+          "kind": "claim",
+          "locator": "Contribution; Evaluation evidence units; Discussion"
+        }
+      },
+      "target_section": "Contribution; Evaluation evidence units; Discussion",
+      "suggested_action": "Provide an existing verifiable current cross-route trace, or frame integration as architecture and disclose absence of one end-to-end cross-route composition study. New experiments are outside this revision.",
+      "verification_criteria": "Historical direct-node, current isolated/mock and Q6 recipe evidence are not pooled into a current-version composition result.",
+      "consensus_level": "DA noncritical finding",
+      "non_da_position_counts": null,
+      "proposed_target_anchors": [
+        "Evaluation evidence units/procedure; REPRODUCIBILITY.md, Separate delivery packages"
+      ],
+      "bound_block_targets_status": "unavailable; no pre-round bound block manifest; no write authority"
+    }
+  ],
+  "total_items": 10,
+  "obligation_counts": {
+    "must_fix": 4,
+    "should_fix": 6,
+    "consider": 0
+  },
+  "consensus_summary": "No weakness reaches CONSENSUS-3 or CONSENSUS-4. Seven non-DA parent findings are single-reviewer findings; DA M1 remains separate. Silence is not opposition or agreement.",
+  "dissenting_opinions": [
+    "D3 methodology pass and DA warn concern bounded execution evidence versus wider cross-route composition. No substitute score or invented finding-level SPLIT is emitted."
+  ],
+  "author_triage_status": "not included; separate author sidecar required"
+}

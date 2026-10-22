@@ -15,8 +15,14 @@ import { api, login, ok, summary, readConfig } from './lib.mjs'
 
 const cfg = await readConfig()
 const tok = await login()
-
-for (const tt of cfg.tests ?? []) {
+// 兼容 onboard 统一配置:顶层 tests 或 connectivity.tests;空测试集必须显式失败,
+// 不得以 0 通过/0 失败“静默全绿”放行(2026-10-20 实测踩坑)
+const tests = Array.isArray(cfg.tests) ? cfg.tests : (Array.isArray(cfg.connectivity?.tests) ? cfg.connectivity.tests : [])
+if (tests.length === 0) {
+  ok('连接性预检配置', false, '未找到 tests 或 connectivity.tests;拒绝以空测试集放行')
+  summary('连接性预检')
+}
+for (const tt of tests) {
   const label = tt.label ?? tt.driver
   const isMes = tt.driver === 'mes-rest'
   const endpoint = isMes ? '/api/workshop/dcw/mes-test-read' : '/api/workshop/daq/test-driver'

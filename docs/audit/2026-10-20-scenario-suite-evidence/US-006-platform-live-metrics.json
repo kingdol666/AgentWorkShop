@@ -1,0 +1,156 @@
+{
+  "platform": {
+    "modelType": "hybrid_physics_plus_residual",
+    "hybrid": {
+      "physicsFirst": true,
+      "composition": "y_phys + bounded_residual"
+    },
+    "oneStepVal": {
+      "windows": 202,
+      "nrmse": 0.6035307642396631,
+      "perTarget": [
+        {
+          "rmse": 0.6035307642396631,
+          "mae": 0.49491746620160393,
+          "nrmse": 0.6035307642396631
+        }
+      ]
+    },
+    "oneStepTest": {
+      "windows": 228,
+      "nrmse": 0.5588926932804081,
+      "perTarget": [
+        {
+          "rmse": 0.5588926932804081,
+          "mae": 0.44425049108420417,
+          "nrmse": 0.5588926932804081
+        }
+      ]
+    },
+    "rolloutTest": {
+      "windows": 228,
+      "horizon": 4,
+      "nrmse": 0.8091126314432792
+    },
+    "ioSpec": {
+      "historySteps": 8,
+      "horizonSteps": 4,
+      "allNodes": [
+        "dn-a4475492",
+        "dn-cdcdfb48",
+        "dn-57bf00d4",
+        "dn-fe32a800",
+        "dn-c3aee5d4",
+        "dn-522b097a",
+        "dn-b47c8161",
+        "dn-9ee12d23",
+        "dn-368d7968"
+      ],
+      "controlNodes": [
+        "dn-a4475492",
+        "dn-cdcdfb48",
+        "dn-57bf00d4",
+        "dn-fe32a800",
+        "dn-c3aee5d4",
+        "dn-522b097a"
+      ],
+      "targetNodes": [
+        "dn-b47c8161"
+      ],
+      "norm": {
+        "x": {
+          "mean": [
+            200,
+            200,
+            200,
+            150,
+            95,
+            1,
+            54.41873152005045,
+            200.00893662268655,
+            18.09550469277198
+          ],
+          "std": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "u": {
+          "mean": [
+            200,
+            200,
+            200,
+            150,
+            95,
+            1
+          ],
+          "std": [
+            1,
+            1,
+            1,
+            1,
+            1,
+            1
+          ]
+        },
+        "y": {
+          "mean": [
+            54.443201520986726
+          ],
+          "std": [
+            1
+          ]
+        }
+      },
+      "assumptions": "rollout: control 取未来 U,feature 持最后观测(persistence),target 回填预测"
+    }
+  },
+  "agent": {
+    "hybrid": {
+      "kind": "hybrid_physics_residual",
+      "backend": "pytorch",
+      "residualBound": 1.2,
+      "epochs": 220,
+      "ensembleMembers": 3,
+      "trainRows": 228,
+      "trainHybridNrmse": 0.3209182918071747,
+      "valHybridNrmse": 1.0775580406188965,
+      "physicsFirst": true,
+      "physicsTargetFinite": true,
+      "physicsCalibrated": true,
+      "composition": "y_phys(calibrated θ) + bounded_residual"
+    },
+    "physics": {
+      "solverFailureRate": 0,
+      "hardConstraintViolationRate": 0,
+      "parameterPriorViolationRate": 0,
+      "calibratedParameters": {
+        "tau_node_125195f2d044f2d6": 5.888295114088303,
+        "offset_node_125195f2d044f2d6": 0.00035954592992919573,
+        "gain_node_125195f2d044f2d6_by_node_c40b90d519098fb3": 0.07190918598583923,
+        "gain_node_125195f2d044f2d6_by_node_fcd062dadb5cff38": 0.07190918598583922,
+        "gain_node_125195f2d044f2d6_by_node_2ca4aa62124b2ce2": 0.07190918598583922,
+        "gain_node_125195f2d044f2d6_by_node_b0ea0608d8f0fa3b": 0.05393188948937942,
+        "gain_node_125195f2d044f2d6_by_node_de8bdcd7b9744532": 0.034156863343273634,
+        "gain_node_125195f2d044f2d6_by_node_ec13da854fa478c0": 0.00035954592992919513
+      },
+      "calibrationErrorBefore": 29.108642578125,
+      "calibrationErrorAfter": 0.44699203968048096
+    },
+    "uncertainty": {
+      "method": "ensemble_conformal_q90",
+      "members": 3,
+      "calibrationRows": 202,
+      "coverage": 0.89604,
+      "coverageTarget": 0.9,
+      "valHybridNrmse": 1.0775580406188965
+    }
+  }
+}

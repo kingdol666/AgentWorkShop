@@ -10,10 +10,10 @@
  * 取既有 DcwWriteDriver 的可选 fetchHistory 原语(结构化本地声明,签名与驱动面约定一致)。
  */
 import { createHash, randomUUID } from 'node:crypto'
-import { closeSync, existsSync, mkdirSync, openSync, readFileSync, writeSync } from 'node:fs'
+import { closeSync, existsSync, mkdirSync, openSync, readFileSync, writeFileSync, writeSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import type { DatabaseSync } from 'node:sqlite'
-import type { DcwWriteDriver } from '../dcw/drivers/shared'
+import type { DcwFieldDef, DcwWriteDriver } from '../dcw/drivers/shared'
 import { resolveDcwDriver } from '../dcw/drivers'
 import { AppError, ErrorCodes } from '../../../utils/errors'
 
@@ -118,6 +118,8 @@ export interface MesDatasetRow {
   rows: number
   sha256: string
   filePath: string
+  /** 数据字典/物理含义清单(与 CSV 同目录,便于离线分析直接读) */
+  manifestPath: string
   /** running(取数中) | ready | failed */
   status: string
   error: string
@@ -153,6 +155,7 @@ function toDatasetRow(r: Record<string, unknown>, bootedAt: string): MesDatasetR
     rows: Number(r.rows ?? 0),
     sha256: String(r.sha256 ?? ''),
     filePath: String(r.filePath ?? ''),
+    manifestPath: String(r.filePath ?? '').replace(/\.csv$/i, '.manifest.json'),
     status: String(r.status ?? 'ready'),
     error: String(r.error ?? ''),
     createdBy: String(r.createdBy ?? ''),
@@ -204,9 +207,9 @@ export interface MesDatasetStatsView {
 export interface MesDatasetRowsView { offset: number, total: number, rows: string[][] }
 
 export type MesDatasetRead
-  = { meta: MesDatasetRow, mode: 'head', head: MesDatasetHeadView }
-    | { meta: MesDatasetRow, mode: 'stats', stats: MesDatasetStatsView }
-    | { meta: MesDatasetRow, mode: 'rows', rowsView: MesDatasetRowsView }
+  = { meta: MesDatasetRow, mode: 'head', head: MesDatasetHeadView, dictionary: DcwFieldDef[] }
+    | { meta: MesDatasetRow, mode: 'stats', stats: MesDatasetStatsView, dictionary: DcwFieldDef[] }
+    | { meta: MesDatasetRow, mode: 'rows', rowsView: MesDatasetRowsView, dictionary: DcwFieldDef[] }
 
 // ============================================================
 // 仓储工厂(全 prepared 占位符绑定,零字符串拼接)
@@ -222,6 +225,19 @@ export interface MesCreateFetchJobInput {
   nodeName?: string
   /** 节点驱动配置(取数时透传给驱动) */
   driverConfig?: Record<string, unknown>
+  /** 已知字段字典(响应缓存/节点静态配置;驱动回包里的字典优先) */
+  dictionary?: DcwFieldDef[]
+  /** 节点物理元数据(写入 manifest,离线分析可读) */
+  nodeMeta?: {
+    unit?: string
+    min?: number
+    max?: number
+    description?: string
+    semantics?: string
+    format?: string
+  }
+  /** 批次上下文(活动 LineRun;写入 manifest) */
+  context?: { lineId?: string, productId?: string, recipeId?: string, runId?: string }
 }
 
 export type MesDatasetStore = ReturnType<typeof createMesDatasetStore>
@@ -276,6 +292,22 @@ export function createMesDatasetStore(db: DatabaseSync, datasetsDir: string, opt
     return join(datasetsDir, `${safe || 'unknown'}.csv`)
   }
 
+  function manifestPathOf(csvPath: string): string {
+    return csvPath.replace(/\.csv$/i, '.manifest.json')
+  }
+
+  /** 读数据集 manifest(不存在/损坏 → null;不击穿取数) */
+  function readManifest(meta: MesDatasetRow): Record<string, unknown> | null {
+    try {
+      if (!meta.manifestPath || !existsSync(meta.manifestPath)) return null
+      const parsed = JSON.parse(readFileSync(meta.manifestPath, 'utf8')) as unknown
+      return parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed as Record<string, unknown> : null
+    }
+    catch {
+      return null
+    }
+  }
+
   /** 取数执行体(进程内异步;写 CSV → sha256 → dataset=ready → job=done;异常 → 双 failed+error) */
   async function runFetchJob(jobId: string, datasetId: string, input: MesCreateFetchJobInput): Promise<void> {
     const filePath = csvPathOf(datasetId)
@@ -290,6 +322,8 @@ export function createMesDatasetStore(db: DatabaseSync, datasetsDir: string, opt
     let dim = 0
     let dimDrift = 0
     let skipped = 0
+    let columns: string[] = []
+    let dictionary: DcwFieldDef[] = input.dictionary ?? []
     try {
       if (typeof driver.fetchHistory !== 'function') {
         throw new Error('mes-rest 驱动未提供 fetchHistory 原语(驱动实现缺失或未注册)')
@@ -297,6 +331,7 @@ export function createMesDatasetStore(db: DatabaseSync, datasetsDir: string, opt
       fd = openSync(filePath, 'w')
       const writeHeader = (line: string): void => {
         writeAll(fd!, hash, `${line}\r\n`)
+        columns = line.split(',')
         headerWritten = true
       }
       const result = await driver.fetchHistory({
@@ -346,6 +381,7 @@ export function createMesDatasetStore(db: DatabaseSync, datasetsDir: string, opt
         closeSync(fd)
         fd = null
       }
+      if (result?.dictionary && result.dictionary.length > 0) dictionary = result.dictionary
       // 驱动自报不完整 → ready 但 error 留截断备注(数据仍可用);完整 → error 清空
       const notes = [
         result && result.complete === false ? `truncated:驱动在 maxRows=${maxRows} 内未返回完整窗口` : '',
@@ -353,7 +389,45 @@ export function createMesDatasetStore(db: DatabaseSync, datasetsDir: string, opt
         skipped > 0 ? `skipped:${skipped} 行不落盘` : '',
       ].filter(Boolean)
       const note = notes.join('; ')
-      finalizeDatasetReady.run(rows, hash.digest('hex'), note, datasetId)
+      const digest = hash.digest('hex')
+      // 数据字典/物理含义清单与 CSV 同目录:离线分析不必回读平台就能知道每列含义
+      const manifest = {
+        schema: 'aw.mes-dataset/1',
+        dataset_id: datasetId,
+        created_at: new Date().toISOString(),
+        node: {
+          id: input.nodeId,
+          name: input.nodeName ?? input.nodeId,
+          line_id: input.lineId ?? '',
+          unit: input.nodeMeta?.unit ?? '',
+          range: { min: input.nodeMeta?.min ?? null, max: input.nodeMeta?.max ?? null },
+          description: input.nodeMeta?.description ?? '',
+          semantics: input.nodeMeta?.semantics ?? '',
+          format: input.nodeMeta?.format ?? (wide ? 'vector' : 'scalar'),
+        },
+        context: input.context ?? {},
+        window: { from: input.fromIso ?? null, to: input.toIso ?? null },
+        data: {
+          file: filePath,
+          format: 'csv',
+          columns,
+          rows,
+          sha256: digest,
+          encoding: 'UTF-8',
+          vector: wide ? { dim, dimension_drift_rows: dimDrift } : undefined,
+        },
+        fields: dictionary,
+        notes: note,
+        usage: 'CSV 首行为列名:ts=样本时间(ISO),value=标量工程值, v0..vN=向量第 N 个点位。字段含义/单位/量程见 fields(向量点位用 points 描述每个下标);context 给出产线/产品/配方/批次归属。',
+      }
+      try {
+        writeFileSync(manifestPathOf(filePath), `${JSON.stringify(manifest, null, 2)}\n`, 'utf8')
+      }
+      catch (mErr) {
+        // manifest 失败不否定数据可用性,但留下明确错误
+        console.error('[mes-datasets] manifest 写入失败:', mErr)
+      }
+      finalizeDatasetReady.run(rows, digest, note, datasetId)
       finalizeJobDone.run(rows, new Date().toISOString(), jobId)
     }
     catch (err) {
@@ -426,12 +500,15 @@ export function createMesDatasetStore(db: DatabaseSync, datasetsDir: string, opt
       const columns = lines.length > 0 ? parseCsvLine(lines[0]!) : ['ts', 'value']
       const rows = lines.slice(1).map(l => parseCsvLine(l))
       const valueCol = Math.max(0, columns.indexOf('value') >= 0 ? columns.indexOf('value') : 1)
+      const manifest = readManifest(meta)
+      const dictionary = Array.isArray(manifest?.fields) ? manifest!.fields as DcwFieldDef[] : []
 
       if (mode === 'head') {
         return {
           meta,
           mode,
           head: { columns, totalRows: rows.length, preview: rows.slice(0, 5) },
+          dictionary,
         }
       }
       if (mode === 'stats') {
@@ -455,7 +532,7 @@ export function createMesDatasetStore(db: DatabaseSync, datasetsDir: string, opt
         const stddev = n > 1
           ? Math.sqrt(vals.reduce((a, b) => a + (b - mean!) ** 2, 0) / (n - 1))
           : (n === 1 ? 0 : null)
-        return { meta, mode, stats: { count: n, min, max, mean, stddev, firstTs, lastTs } }
+        return { meta, mode, stats: { count: n, min, max, mean, stddev, firstTs, lastTs }, dictionary }
       }
       // rows:offset 起 20 行分页
       const off = Math.max(0, Math.round(offset) || 0)
@@ -463,6 +540,7 @@ export function createMesDatasetStore(db: DatabaseSync, datasetsDir: string, opt
         meta,
         mode,
         rowsView: { offset: off, total: rows.length, rows: rows.slice(off, off + 20) },
+        dictionary,
       }
     },
   }

@@ -1,0 +1,11 @@
+{
+  "at": "2026-10-21",
+  "suites": [
+    { "name": "npm run test:unit", "result": "283/283 PASS", "note": "含 tool-verify 归属面/链式谱系/审计入册/resolveRefFaces 一致性" },
+    { "name": "scripts/tool-face-batch-identity-e2e.mjs", "result": "22/22 PASS", "note": "T1 批量查询14节点 / T2 收窄 / T3 批量导出+merged.csv / T4 描述差异 / T5 身份401×3 / T6 三层拦截+tool.call.denied×2 / T7 两参数一次保存v3+整批下发2/2证实+回读一致 / T8 越量程400℃被拒(超出节点工艺安全量程300℃)" },
+    { "name": "scripts/agent-daq-isolation-e2e.mjs", "result": "7/7 PASS", "note": "无绑线频道 A/B 各绑一节点:描述互不含对方、查询各1节点、A查B节点被拒(引用校验:不在你的授权范围内+绑定面指引)" },
+    { "name": "scripts/mes-agent-integration-e2e.mjs", "result": "25/25 PASS", "note": "G7a-G7g mes_fetch 字段字典/数组采样/mes_export manifest/mes_catalog 字典复用;G6 外部API推送向量/图像→daq_frames" },
+    { "name": "scripts/scenario-suite-setup.mjs", "result": "21/23 PASS", "note": "2 失败为测试脚本已知断言缺陷(产线状态字段应读 active;均值解析误取首节点),非系统缺陷" }
+  ],
+  "environment": { "base": "http://127.0.0.1:3470", "sim": "http://127.0.0.1:4050", "lineId": "ln-593e76b2", "recipeId": "rc-a68489be", "daqNodes": 14, "dcwNodes": 11, "harness": "mock(REST 直调工具桥)" }
+}

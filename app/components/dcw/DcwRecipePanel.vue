@@ -27,6 +27,7 @@ const emit = defineEmits<{
   'apply': [id: string]
   'edit': [id: string]
   'history': [id: string]
+  'dispatch-history': [id: string]
   'remove-recipe': [id: string]
   'remove-product': [id: string]
   'view-run': [id: string]
@@ -171,6 +172,12 @@ const filterProductId = defineModel<string>('filterProductId', { required: true 
               v-if="r.version"
               class="mono"
             >·v{{ r.version }}</span>
+          </button>
+          <button
+            class="mini-btn"
+            @click="emit('dispatch-history', r.id)"
+          >
+            {{ $t('dcwDetail.dispatchHistBtn') }}
           </button>
           <button
             class="mini-btn danger"

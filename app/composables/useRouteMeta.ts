@@ -24,6 +24,8 @@ export function useRouteMeta() {
     '/workshop/teams': { key: 'meta.teams', icon: 'i-tabler-users-group' },
 
     '/workshop/channel-templates': { key: 'meta.ctpl', icon: 'i-tabler-layout-grid-add' },
+    '/workshop/schedules': { key: 'titles.schedules', icon: 'i-tabler-calendar-time' },
+    '/operations': { key: 'menu.operations', icon: 'i-tabler-broadcast' },
     '/town': { key: 'menu.town', icon: 'i-tabler-map-2' },
     '/tokens': { key: 'menu.tokens', icon: 'i-tabler-key' },
     '/daq': { key: 'menu.daq', icon: 'i-tabler-activity' },
@@ -49,7 +51,17 @@ export function useRouteMeta() {
     if (wsMatch) {
       const id = wsMatch[1]!
       const name = workspaces.workspaces.find(w => w.id === id)?.name
-      return { title: name ?? `${t('header.workspace')} ${id.slice(0, 6)}`, icon: 'i-tabler-console' }
+      return { title: name ?? t('header.workspace'), icon: 'i-tabler-console' }
+    }
+
+    // 动态详情页:标题用"短类型 + 短 id",不把裸 id 直接塞进顶栏页签
+    const daqMatch = path.match(/^\/daq\/([^/]+)$/)
+    if (daqMatch) {
+      return { title: `${t('header.nodeDetail')} ${daqMatch[1]!.slice(0, 8)}`, icon: 'i-tabler-activity' }
+    }
+    const dcwMatch = path.match(/^\/dcw\/([^/]+)$/)
+    if (dcwMatch) {
+      return { title: `${t('header.lineDetail')} ${dcwMatch[1]!.slice(0, 8)}`, icon: 'i-tabler-settings-automation' }
     }
 
     // 单段动态路径(daqs/dcws 等)取末段;纯 slug 至少首字母大写,不再裸显示

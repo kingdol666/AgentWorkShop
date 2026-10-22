@@ -137,10 +137,10 @@ const switchLocale = (value: unknown) => {
 <style scoped>
 .section-title {
   margin: 0 0 4px;
-  font-family: var(--font-display);
-  font-size: 22px;
-  font-weight: 400;
-  letter-spacing: -0.01em;
+  font-family: var(--font-body);
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
   color: var(--ink);
 }
 

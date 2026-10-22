@@ -9,8 +9,8 @@
 // 插件契约:入口 index.mjs 导出 { name, version?, description?,
 //   setup(ctx)?, client?: './client.mjs', routes?: [...] } —— 零导入依赖。
 // ============================================================
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
+import { cpSync, existsSync, lstatSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, rmSync, writeFileSync } from 'node:fs'
+import { basename, dirname, join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { color } from '../core/logger.mjs'
 import { CliError } from '../core/errors.mjs'
@@ -22,8 +22,8 @@ export const meta = {
   name: 'plugin',
   aliases: ['plugins', 'plug'],
   group: '扩展',
-  summary: '插件管理:查看/启停(热重载)/脚手架',
-  usage: 'aw plugin <list|create|enable|disable> [name] [--global|-g] [--project] [--force|-f]',
+  summary: '插件管理:查看/安装/启停(热重载)/脚手架',
+  usage: 'aw plugin <list|create|install|enable|disable> [name|dir] [--global|-g] [--project] [--force|-f] [--no-enable]',
   // 短选项必须在这里登记:cli/aw.mjs 只把 meta.short 声明过的短名映射成长名,
   // 未登记的 `-g` 会被 args.mjs 丢进 unknown 且**不报错** —— 插件会静默落到 project 级。
   short: { g: 'global', f: 'force' },
@@ -128,10 +128,13 @@ export async function run(argv, ctx) {
   if (sub === 'create' || sub === 'new' || sub === 'add')
     return create(ctx, positionals[1], flags)
 
+  if (sub === 'install')
+    return install(ctx, positionals[1], flags)
+
   if (sub === 'enable' || sub === 'disable')
     return setEnabled(ctx, sub === 'enable', positionals[1])
 
-  throw new CliError('USAGE', '用法: aw plugin <list|create|enable|disable> [name]')
+  throw new CliError('USAGE', '用法: aw plugin <list|create|install|enable|disable> [name|dir]')
 }
 
 // ---- 启停状态机(单一事实源:<home>/plugins-state.json;服务 fs.watch 热重载) ----
@@ -242,5 +245,78 @@ function create(ctx, name, flags) {
   console.log(`  › 作用域: ${global ? 'user(用户级,~/.AgentWorkShop/plugins)' : 'project(项目级,<repo>/.AgentWorkShop/plugins)'}`)
   console.log(`  › 装载: 运行中的服务在 plugins-state.json 变化后 ~1s 内热重载;改代码后触碰该文件即生效(无需重启进程)`)
   console.log(`  › 查看列表: ${color.cyan('aw plugin list')}    API 示例: ${color.cyan(`GET /api/plugins/${name}/stats`)}`)
+  return 0
+}
+
+/**
+ * 安装本地插件目录(不做远程下载/不执行安装脚本)。
+ *
+ * 安全边界:
+ *  - 源必须是含 index.mjs 的本地目录;
+ *  - 拒绝符号链接与解析后越出源目录的路径;
+ *  - 目标目录名白名单校验,且必须落在 project/user 作用域根内;
+ *  - --force 先备份旧目录再替换。
+ */
+function install(ctx, sourceArg, flags) {
+  if (!sourceArg) {
+    throw new CliError('USAGE', '用法: aw plugin install <source-dir> [--global|-g] [--name <name>] [--force|-f] [--no-enable]')
+  }
+  const global = Boolean(flags.global ?? flags.g)
+  const force = Boolean(flags.force ?? flags.f)
+  const noEnable = Boolean(flags['no-enable'])
+  const source = resolve(String(sourceArg))
+  if (!existsSync(join(source, 'index.mjs'))) {
+    throw new CliError('INVALID_PLUGIN', `源目录缺少 index.mjs: ${source}`)
+  }
+  const realSource = realpathSync(source)
+  const name = String(flags.name ?? basename(source))
+  if (!/^[a-z][a-z0-9-]{1,31}$/.test(name)) {
+    throw new CliError('USAGE', '插件名必须匹配 ^[a-z][a-z0-9-]{1,31}$(可用 --name 指定)')
+  }
+  if (!global && !ctx.root) {
+    throw new CliError('USAGE', 'project 级安装需要仓库根;全局安装请加 --global')
+  }
+  const targetRoot = global ? join(ctx.home, 'plugins') : join(ctx.root, '.AgentWorkShop', 'plugins')
+  const target = join(targetRoot, name)
+  if (!resolve(target).startsWith(resolve(targetRoot) + sep)) {
+    throw new CliError('UNSAFE_PATH', `目标路径越出插件作用域: ${target}`)
+  }
+  mkdirSync(targetRoot, { recursive: true })
+
+  if (existsSync(target)) {
+    if (!force) throw new CliError('CONFLICT', `插件已存在: ${target}(--force 覆盖)`)
+    const backup = `${target}.bak.${Date.now()}`
+    renameSync(target, backup)
+    console.log(`  › 已备份旧插件: ${backup}`)
+  }
+
+  cpSync(realSource, target, {
+    recursive: true,
+    dereference: false,
+    filter: (src) => {
+      try {
+        if (lstatSync(src).isSymbolicLink()) return false
+        const real = realpathSync(src)
+        return real === realSource || real.startsWith(realSource + sep)
+      }
+      catch {
+        return false
+      }
+    },
+  })
+  if (!existsSync(join(target, 'index.mjs'))) {
+    rmSync(target, { recursive: true, force: true })
+    throw new CliError('INSTALL_FAILED', `复制后缺少 index.mjs: ${target}`)
+  }
+
+  const disabled = readState(ctx)
+  if (noEnable) disabled.add(name)
+  else disabled.delete(name)
+  // 即使 disabled 集合未变也重写一次:宿主以 state 文件 mtime 为热重载触发源
+  writeState(ctx, disabled)
+
+  console.log(`${color.green('✔')} 插件已安装: ${color.bold(name)} → ${target}`)
+  console.log(`  › 作用域: ${global ? 'user(用户级)' : 'project(项目级)'};${noEnable ? '保持停用(--no-enable)' : '已启用'}`)
+  console.log(`  › 热重载: 运行中的服务约 1s 内重新装载;随后工具会出现在「工具管理」与 MCP 工具面`)
   return 0
 }

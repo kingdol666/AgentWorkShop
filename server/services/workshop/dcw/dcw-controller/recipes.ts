@@ -226,6 +226,7 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
         targetId: recipeId,
         recipeId,
         lineId: recipe.lineId ?? '',
+        productId: recipe.productId ?? '',
         level,
         summary: `批次 ${run.id.slice(0, 8)} ACK 鉴定:证实 ${acks.verified}/${acks.total},未证实 ${acks.unverified},失败 ${acks.failed}${level === 'error' ? '(存在写入失败)' : level === 'warn' ? '(部分参数仅链路受理,设备侧未证实)' : ''}`,
         detail: { runId: run.id, ackSummary: acks, trial: opts.trial === true, agentDispatch: opts.agentDispatch === true },

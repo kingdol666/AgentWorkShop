@@ -1,0 +1,19 @@
+{
+  "temp_root": "C:\\Users\\87287\\AppData\\Local\\Temp\\tii-verifier-rebuild-d7fjjq0b",
+  "command": [
+    "uv",
+    "run",
+    "python",
+    "-B",
+    "C:/Users/87287/.agents/skills/latex-paper-en/scripts/compile.py",
+    "C:\\Users\\87287\\AppData\\Local\\Temp\\tii-verifier-rebuild-d7fjjq0b\\main.tex",
+    "--recipe",
+    "pdflatex-bibtex",
+    "--outdir",
+    "build"
+  ],
+  "exit_code": 0,
+  "pdfs": [
+    "C:\\Users\\87287\\AppData\\Local\\Temp\\tii-verifier-rebuild-d7fjjq0b\\main.pdf"
+  ]
+}

@@ -60,11 +60,17 @@ else {
 }
 if (!channelId) process.exit(1)
 
-// ---------- 2. 团队级插件开关 ----------
-const plugins = Object.entries(cfg.plugins ?? {}).filter(([, en]) => en).map(([name]) => ({ name, enabled: true }))
+// ---------- 2. 团队级插件开关(全量替换:未在配置中启用的已注册插件必须显式关闭) ----------
+const wantedPlugins = new Set(Object.entries(cfg.plugins ?? {}).filter(([, en]) => en === true).map(([name]) => name))
+const currentPlugins = await api('GET', `/api/workshop/channels/${channelId}/plugins`, undefined, tok)
+const allPlugins = (currentPlugins?.data?.plugins ?? []).map(p => p.name)
+const plugins = allPlugins.length > 0
+  ? allPlugins.map(name => ({ name, enabled: wantedPlugins.has(name) }))
+  : [...wantedPlugins].map(name => ({ name, enabled: true }))
 if (plugins.length) {
   const j = await api('PUT', `/api/workshop/channels/${channelId}/plugins`, { plugins }, tok)
-  ok('插件开关', j.code === 0 || !!j.data, j.message ?? (plugins.map(p => p.name).join(',')))
+  ok('插件开关(未配置项显式关闭)', j.code === 0 || !!j.data,
+    j.message ?? `启用=${plugins.filter(p => p.enabled).map(p => p.name).join(',') || '无'};停用=${plugins.filter(p => !p.enabled).length}项`)
 }
 
 // ---------- 3. Agent 绑定(成员实例 id;权限模型 v2) ----------

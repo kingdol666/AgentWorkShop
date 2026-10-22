@@ -1,0 +1,80 @@
+{
+  "at": "2026-10-20T04:04:50.768Z",
+  "channelId": "8babb151-3d12-4595-aa79-6589b8ae0685",
+  "lineId": "ln-dd6c9135",
+  "recipeId": "rc-2be5c50c",
+  "pass": 9,
+  "fail": 5,
+  "checks": [
+    {
+      "name": "频道创建(mock lead)",
+      "ok": true,
+      "detail": "8babb151-3d12-4595-aa79-6589b8ae0685"
+    },
+    {
+      "name": "频道绑定产线",
+      "ok": true,
+      "detail": "ln-dd6c9135"
+    },
+    {
+      "name": "成员部署(mock/omp/copilot)",
+      "ok": true,
+      "detail": "8be1617f/677dbcdf/a567d2e6"
+    },
+    {
+      "name": "分析师数采绑定",
+      "ok": true,
+      "detail": "5/5"
+    },
+    {
+      "name": "操作员配方绑定(manual)",
+      "ok": true,
+      "detail": "manual"
+    },
+    {
+      "name": "mailbox 发送(lead→analyst)",
+      "ok": false,
+      "detail": "工具「send_message_to_agent」调用失败: 工具桥不支持该协作工具: send_message_to_agent"
+    },
+    {
+      "name": "mailbox 接收(analyst poll_messages)",
+      "ok": false,
+      "detail": "收件箱为空(无未消费消息)。等待回复请用 wait_seconds 参数阻塞等待,不要反复空轮询。"
+    },
+    {
+      "name": "root 任务提交(派发给 lead)",
+      "ok": true,
+      "detail": "e9511a3e-2556-4212-b9e4-829178a6702c"
+    },
+    {
+      "name": "lead 自动派发并完成",
+      "ok": true,
+      "detail": "state=COMPLETED"
+    },
+    {
+      "name": "omp 数采分析任务完成",
+      "ok": false,
+      "detail": "state=COMPLETED deliverable=line_context confirmed line ln-dd6c9135 「多协议孪生产线-20261020」 (运行中, batch rr-b5851dd1, recipe rc-2be5c50c).\n\ndaq_query(line_id=ln-dd6c9135, node_id=dn-4de6b1de, la"
+    },
+    {
+      "name": "copilot 配方写入/下发任务完成",
+      "ok": false,
+      "detail": "state=COMPLETED deliverable=recipe_update saved v2 and received human approval; recipe_apply was approved and ACKed for batch rr-81659 (4/5 confirmed, no failures). DAQ follow-up for activ"
+    },
+    {
+      "name": "manual 配方操作触发 HITL 并获批",
+      "ok": false,
+      "detail": "approved=[object Promise]"
+    },
+    {
+      "name": "PLC 回读=46(下发真实生效)",
+      "ok": true,
+      "detail": "readback=46"
+    },
+    {
+      "name": "配方版本递增",
+      "ok": true,
+      "detail": "version=2"
+    }
+  ]
+}

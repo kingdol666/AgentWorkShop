@@ -1,0 +1,28 @@
+npm warn Unknown project config "auto-install-peers". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown project config "strict-peer-dependencies". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> agentworkshop@0.7.70 test:mcp
+> tsx --tsconfig .nuxt/tsconfig.server.json --test --test-force-exit tests/aw-mcp-server.test.ts
+
+✔ readLock: 正常解析,损坏与越界端口忽略 (13.8333ms)
+✔ buildCandidates: 锁文件 > PORT env > config.yml > 默认,AW_HOME 抑制全局 home 锁 (25.8791ms)
+✔ discoverInstance: 锁文件命中随机端口 mock 实例 (25.3593ms)
+✔ discoverInstance: 锁指向死端口 → 无兜底时干净失败(null) (14.2535ms)
+✔ discoverInstance: 健康形状不对(非 aw 实例)不算命中 (16.4916ms)
+✔ tools/list: ≥30 个工具、名字唯一、schema 均为 object (1.3946ms)
+✔ initialize / ping / 通知 / 未知方法 (0.2839ms)
+✔ 工具全链:懒登录 → 带鉴权调用 → 数据返回 (19.042ms)
+✔ 未鉴权:错误文本给出可执行的补救指引 (1.8456ms)
+✔ 断线重发现:实例换端口后下一次调用自动接上 (44.5279ms)
+✔ aw_request 逃生舱:仅放行 /api/ 前缀 (4.6716ms)
+✔ 凭据错误:抛登录失败且不缓存 token(不触发端口重发现) (3.0819ms)
+✔ MCP 集成开关:停用时除 aw_status 外全部工具被拒(指引去系统设置) (40.7168ms)
+✔ MCP 集成开关:runtime-settings.json 文件路径生效(env AW_HOME=配置根) (60.2311ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 422.8362

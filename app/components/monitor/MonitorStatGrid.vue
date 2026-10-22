@@ -70,18 +70,13 @@ const { uptimeText } = useMonitorFormat()
 </template>
 
 <style scoped>
-/* 前三张是"一个数"的量规;第四张「服务进程」内容是 PID + 时长 + ISO 快照时间,
- * 等宽 4 列时它只有 ~200px,文案折成三行(实测 1440)。给它两列 ——
- * 列宽按**内容长度**分,不是按卡片数量平均分。 */
+/* 四张 KPI 读数卡等宽:监控页的第一眼是"总量",不是某张卡的文案长度。
+ * 服务进程卡的长字符串在 1fr 内换行,不再跨两列破坏节奏。 */
 .stat-grid {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 14px;
   margin-bottom: 16px;
-}
-
-.stat-grid > :last-child {
-  grid-column: span 2;
 }
 
 @media (max-width: 1100px) {

@@ -75,7 +75,8 @@ export async function toolOptimizationExplore(agentId: string, args: {
     const tuneMin = binding?.tuning?.min ?? node.min
     const tuneMax = binding?.tuning?.max ?? node.max
     const direction = args.direction === 'down' ? -1 : 1
-    const proposed = Number(node.value ?? 0) + direction * step
+    const controlBefore = Number(node.value ?? 0)
+    const proposed = controlBefore + direction * step
     const target = Math.min(tuneMax, Math.max(tuneMin, proposed))
     const clamped = Math.abs(target - proposed) > 1e-9
 
@@ -115,7 +116,7 @@ export async function toolOptimizationExplore(agentId: string, args: {
       agentId,
       goalJson: JSON.stringify(goal),
       controlNodeId,
-      controlBefore: Number(node.value ?? 0),
+      controlBefore,
       controlAfter: writeOk ? target : Number(node.value ?? 0),
       controlStep: step,
       targetNodeId,

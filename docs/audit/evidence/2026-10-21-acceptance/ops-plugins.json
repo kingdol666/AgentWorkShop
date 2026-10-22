@@ -1,0 +1,51 @@
+{
+  "at": "2026-10-22T05:33:11.995Z",
+  "context": {
+    "base": "http://127.0.0.1:3470",
+    "lineId": "ln-9d31ad0c",
+    "channelId": "3784cd56-c5c5-4c95-9f32-1ca744e8ecd8"
+  },
+  "results": [
+    {
+      "id": "US306.1",
+      "name": "产线 stop 受理",
+      "pass": true,
+      "detail": "200 ok"
+    },
+    {
+      "id": "US306.2",
+      "name": "产线 start 受理(带配方)",
+      "pass": true,
+      "detail": "200 ok"
+    },
+    {
+      "id": "US306.2b",
+      "name": "产线恢复运行态(active=true)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "US306.3",
+      "name": "ops-logs 含 line.start/line.stop 记录",
+      "pass": true,
+      "detail": "line.start,line.stop,line.create"
+    },
+    {
+      "id": "US305.1",
+      "name": "Channel 插件启用 IDD+RAG",
+      "pass": true,
+      "detail": "idd-closedloop-bridge,rag-bridge"
+    },
+    {
+      "id": "US305.2",
+      "name": "Agent 工具面含 rag-bridge 插件工具(kb_agent/sentinel_*)——diag_run 走 omp 引擎注入面(独立机制)",
+      "pass": true,
+      "detail": "n=70 kb=true sentinel×4"
+    }
+  ],
+  "pluginEnabled": [
+    "idd-closedloop-bridge",
+    "rag-bridge"
+  ],
+  "toolCount": 70
+}

@@ -1,0 +1,60 @@
+{
+  "at": "2026-10-20T05:06:04.862Z",
+  "channelId": "bbcfa45c-355b-404b-8d28-a4fa09bb5a64",
+  "taskId": "543b85db-5cfc-4184-9cc8-c30e1d4cb1f0",
+  "item": {
+    "kind": "omp-dialog",
+    "id": "15ad3a455c70c520",
+    "channelId": "bbcfa45c-355b-404b-8d28-a4fa09bb5a64",
+    "agentId": "9b233130-aa20-4fc1-8585-819259447a69",
+    "agentName": "ask-operator",
+    "pid": 93208,
+    "method": "select",
+    "title": "Proceed?",
+    "options": [
+      "yes",
+      "no",
+      "Other (type your own)"
+    ],
+    "createdAt": "2026-10-20T13:06:01.721+08:00",
+    "expiresAt": "2026-10-20T13:09:01.721+08:00",
+    "requestType": "question",
+    "harness": "omp",
+    "status": "pending",
+    "policy": "owner_only",
+    "approvalPolicyVersion": 1,
+    "channelVersion": 1
+  },
+  "checks": [
+    {
+      "name": "omp lead channel 创建",
+      "ok": true,
+      "detail": "bbcfa45c-355b-404b-8d28-a4fa09bb5a64"
+    },
+    {
+      "name": "ask 任务提交",
+      "ok": true,
+      "detail": "543b85db-5cfc-4184-9cc8-c30e1d4cb1f0"
+    },
+    {
+      "name": "hitl/pending 出现 ask 提问型待办",
+      "ok": true,
+      "detail": "kind=omp-dialog method=select options=[\"yes\",\"no\",\"Other (type your own)\"]"
+    },
+    {
+      "name": "待办语义为 question/select",
+      "ok": true,
+      "detail": "kind=omp-dialog requestType=question method=select"
+    },
+    {
+      "name": "应答 ask(选择 yes)",
+      "ok": true,
+      "detail": "ok"
+    },
+    {
+      "name": "应答后任务完成且交付物含 yes",
+      "ok": true,
+      "detail": "state=COMPLETED deliverable=yes"
+    }
+  ]
+}

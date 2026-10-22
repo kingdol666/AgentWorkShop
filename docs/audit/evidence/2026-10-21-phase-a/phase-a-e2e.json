@@ -1,0 +1,352 @@
+{
+  "at": "2026-10-22T05:27:27.952Z",
+  "base": "http://127.0.0.1:3470",
+  "lineId": "ln-9d31ad0c",
+  "nodes": "dn-91bed9c7=scen-injection:daq:melt-temp-pv,dn-58aaabd1=scen-injection:daq:melt-pressure-pv",
+  "queryWindow": {
+    "fromMs": 1792646540513,
+    "toMs": 1792646840513,
+    "bucketMs": 1000,
+    "agg": "avg"
+  },
+  "runOpened": "rr-9be60d44",
+  "exportJob": {
+    "id": "edajob-76065f35",
+    "kind": "daq-export",
+    "status": "ready",
+    "spec": {
+      "nodeIds": [
+        "dn-91bed9c7",
+        "dn-58aaabd1"
+      ],
+      "fromMs": 1792646542192,
+      "toMs": 1792646842192,
+      "title": "PhaseA 定向导出",
+      "note": "",
+      "merge": true
+    },
+    "result": {
+      "exportId": "daqexp-20261022132722-60515f",
+      "dir": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-scenario-suite-OQ68g6\\data\\daq-exports\\daqexp-20261022132722-60515f",
+      "files": [
+        {
+          "nodeId": "dn-91bed9c7",
+          "rows": 169
+        },
+        {
+          "nodeId": "dn-58aaabd1",
+          "rows": 169
+        }
+      ],
+      "totalRows": 338,
+      "truncated": [],
+      "mergedFile": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-scenario-suite-OQ68g6\\data\\daq-exports\\daqexp-20261022132722-60515f\\merged.csv"
+    },
+    "createdBy": "81e2dafd-3492-4304-aac8-3ba739c503a8",
+    "createdAt": "2026-10-22T13:27:22.192+08:00",
+    "updatedAt": "2026-10-22T13:27:22.214+08:00"
+  },
+  "mesPoints": 0,
+  "results": [
+    {
+      "id": "PA0",
+      "name": "上下文就绪(daq 节点≥2)",
+      "pass": true,
+      "detail": "daq=14"
+    },
+    {
+      "id": "PA0.5",
+      "name": "产线开跑且采样活性(探针 ≥3 点)",
+      "pass": true,
+      "detail": "status=200 samples=100 msg=ok"
+    },
+    {
+      "id": "PA1.1",
+      "name": "批量查询:两节点一次返回且每节点≤2000 点",
+      "pass": true,
+      "detail": "series=2 pts=167,167 bucket=1000"
+    },
+    {
+      "id": "PA1.2",
+      "name": "序列时间升序(ASC 契约)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "PA1.3",
+      "name": ">8 节点 → 400 护栏",
+      "pass": true,
+      "detail": "node_ids 一次最多 8 个(收到 9);请分组查询或按产线过滤。"
+    },
+    {
+      "id": "PA1.4",
+      "name": "产线>8 节点省略 node_ids → 400 要求显式指定",
+      "pass": true,
+      "detail": "产线 ln-9d31ad0c 有 14 个数采节点,一次最多查询 8 个:请传 node_ids 显式选择(≤8)。"
+    },
+    {
+      "id": "PA1.5",
+      "name": "同参数(显式窗口)二次命中缓存",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "PA2.1",
+      "name": "开跑产线 → run 台账有行(open)",
+      "pass": true,
+      "detail": "{\"id\":\"rr-9be60d44\",\"lineId\":\"ln-9d31ad0c\",\"productId\":\"pd-08d4e429\",\"recipeId\":\"rc-68ea88ca\",\"recipeName\":\"scen-injection-recipe-sjdee\",\"recipeVersion\":null,\"s"
+    },
+    {
+      "id": "PA2.2",
+      "name": "关账后 ended_at 回填且 sample_count>0(异步回填)",
+      "pass": true,
+      "detail": "ended=2026-10-22T13:27:20.631+08:00 samples=24"
+    },
+    {
+      "id": "PA3.1",
+      "name": "导出任务受理(running)",
+      "pass": true,
+      "detail": "{\"id\":\"edajob-76065f35\",\"kind\":\"daq-export\",\"status\":\"running\",\"spec\":{\"nodeIds\":[\"dn-91bed9c7\",\"dn-58aaabd1\"],\"fromMs\":1792646542192,\"toMs\":1792646842192,\"titl"
+    },
+    {
+      "id": "PA3.2",
+      "name": "导出完成(ready)且 totalRows>0",
+      "pass": true,
+      "detail": "status=ready rows=338 files=2 merged=true"
+    },
+    {
+      "id": "PA3.3",
+      "name": "manifest.json 下载 200(application/json)",
+      "pass": true,
+      "detail": "{\n  \"schema\": \"aw.daq-export/1\",\n  \"export_id\": \"daqexp-20261022132722-60515f\",\n  \"created_at\": \"202"
+    },
+    {
+      "id": "PA3.4",
+      "name": "merged.csv 下载 200",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "PA3.5",
+      "name": "nodes/<id>.csv 下载 200",
+      "pass": true,
+      "detail": "ts_iso,ts_ms,value,state\r\n2026-10-22T13:24:25.700+08:00,1792646665700,246.6,offl"
+    },
+    {
+      "id": "PA3.6",
+      "name": "路径穿越被拒(404)",
+      "pass": true,
+      "detail": "status=404"
+    },
+    {
+      "id": "PA4.1",
+      "name": "MES 点位目录 200(空目录合法)",
+      "pass": true,
+      "detail": "count=0"
+    },
+    {
+      "id": "PA4.2",
+      "name": "不存在/不可读点位 preview → 403",
+      "pass": true,
+      "detail": "点位不存在、未启用或不在你的可读产线上。"
+    },
+    {
+      "id": "PA5.1",
+      "name": "不存在节点查询 → 403",
+      "pass": true,
+      "detail": "指定的节点不存在、已停用或不在你的可读范围内。"
+    },
+    {
+      "id": "PB1.1",
+      "name": "创建私图 200",
+      "pass": true,
+      "detail": "{\"id\":\"ec-790d1918\",\"title\":\"PhaseB 私图\",\"vizType\":\"trend\",\"datasource\":{\"lineId\":\"ln-9d31ad0c\",\"nodeIds\":[\"dn-91bed9c7\","
+    },
+    {
+      "id": "PB1.2",
+      "name": "visibility=line 无 line_id → 400",
+      "pass": true,
+      "detail": "visibility=line 必须携带 line_id(B4:产线可见图必须钉在产线上)"
+    },
+    {
+      "id": "PB1.3",
+      "name": "PATCH 版本自增",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "PB1.4",
+      "name": "他人读私图 → 404(B4)",
+      "pass": true,
+      "detail": "status=404"
+    },
+    {
+      "id": "PB1.5",
+      "name": "他人列表不含该私图",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "PB2.1",
+      "name": "从关账批次生成 golden 画像",
+      "pass": true,
+      "detail": "bins=20 fp={\"mean\":0.009145,\"std\":0.0038,\"min\":0,\"max\":0.02,\"cnt\":165}"
+    },
+    {
+      "id": "PB2.2",
+      "name": "single 取回画像(叠加用)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "PB2.3",
+      "name": "偏差分可算(自身 vs golden,分数有限)",
+      "pass": true,
+      "detail": "score=0 bins=20"
+    },
+    {
+      "id": "PC1.1",
+      "name": "E3 特征提取:关账批次有特征行",
+      "pass": true,
+      "detail": "rows=12 sample={\"id\":\"feat-0c82db46-e84\",\"runId\":\"rr-9be60d44\",\"nodeId\":\"dn-42922733\",\"metric\":\"daq-temp-tc\",\"segment\":\"\",\"cnt\":2,\"mean\":15.3,\"std\":0,\"min\":15.3,\"max\":15.3,\"sl"
+    },
+    {
+      "id": "PC1.2",
+      "name": "E3 判定语义:参考带不足 3 批时仅记录不判定(或判定字段有限)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "PC1.3",
+      "name": "E3 特征任务账本有 done 行",
+      "pass": true,
+      "detail": "{\"id\":\"fjob-dd881e51\",\"runId\":\"rr-9be60d44\",\"status\":\"done\",\"features\":12,\"createdAt\":\"2026-10-22T13:27:20.635+08:00\"}"
+    },
+    {
+      "id": "PC2.1",
+      "name": "E4 注册控制图",
+      "pass": true,
+      "detail": "{\"id\":\"spc-e6e61afb\",\"lineId\":\"ln-9d31ad0c\",\"nodeId\":\"dn-91bed9c7\",\"metric\":\"daq-temp-tc\",\"kind\":\"i_mr\",\"params\":{},\"cl\""
+    },
+    {
+      "id": "PC2.2",
+      "name": "E4 重算控制限(run<25 → enabled=0 为正确冷启动语义)",
+      "pass": true,
+      "detail": "n=2 enabled=false"
+    },
+    {
+      "id": "PC2.3",
+      "name": "E4 详情+点序列 200",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "PC2.4",
+      "name": "E4 非法 kind → 400",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "PC3.1",
+      "name": "E5 共性分析(node 因子)200 且行有限",
+      "pass": true,
+      "detail": "rows=12 baseline=0"
+    },
+    {
+      "id": "PC3.2",
+      "name": "E5 hour 因子可用",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "PC3.3",
+      "name": "E5 非法因子 → 400",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "PC4.1",
+      "name": "E8 chamber 字段 + chamber 因子共性",
+      "pass": true,
+      "detail": "[{\"factor\":\"chamber\",\"factorValue\":\"CH-A\",\"runsTotal\":2,\"runsBad\":0,\"badRate\":0,\"lift\":0}]"
+    },
+    {
+      "id": "PD1.1",
+      "name": "E7 开 OCAP 处置单",
+      "pass": true,
+      "detail": "{\"id\":\"ocap-da20350c\",\"alarmId\":\"ops:mvj3nc8p\",\"runId\":\"rr-9be60d44\",\"nodeId\":\"dn-91bed9c7\",\"title\":\"PhaseD 处置单\",\"steps\":[],\"status\":\"open\","
+    },
+    {
+      "id": "PD1.2",
+      "name": "E7 关单 + 弱关联(stale 不报错)",
+      "pass": true,
+      "detail": "{\"id\":\"ocap-da20350c\",\"alarmId\":\"ops:mvj3nc8p\",\"runId\":\"rr-9be60d44\",\"nodeId\":\"dn-91bed9c7\",\"title\":\"PhaseD 处置单\",\"steps\":[{\"at\":\"2026-10-22T13:27:27.706+08:00\","
+    },
+    {
+      "id": "PD1.3",
+      "name": "E7 清单可见(终态过滤)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "PD2.1",
+      "name": "E6 VM 推理入口:模型不存在 → 404",
+      "pass": true,
+      "detail": "模型 aml-none 不存在"
+    },
+    {
+      "id": "PD3.1",
+      "name": "M3 创建看板",
+      "pass": true,
+      "detail": "{\"id\":\"edb-9b91ac0b\",\"title\":\"PhaseD 看板\",\"filters\":{},\"layout\":[{\"chartId\":\"ec-790d1918\",\"x\":0,\"y\":0,\"w\":6,\"h\":3}],\"owne"
+    },
+    {
+      "id": "PD3.2",
+      "name": "M3 看板详情内嵌 chart(B4 判定随行)",
+      "pass": true,
+      "detail": "[{\"chart\":{\"id\":\"ec-790d1918\",\"title\":\"PhaseB 私图 v2\",\"vizType\":\"trend\",\"datasource\":{\"lineId\":\"ln-9d31ad0c\",\"nodeIds\":[\"dn-91bed9c7\",\"dn-58a"
+    },
+    {
+      "id": "PD3.3",
+      "name": "M3 布局保存(version 自增)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "PD3.4",
+      "name": "M3 他人读看板:chart 不泄露(404 或 inaccessible=true)",
+      "pass": true,
+      "detail": "status=404"
+    },
+    {
+      "id": "PD4.1",
+      "name": "M3 派生数据集生成",
+      "pass": true,
+      "detail": "{\"jobId\":\"edajob-b17d28e8\",\"dir\":\"C:\\\\Users\\\\87287\\\\AppData\\\\Local\\\\Temp\\\\aw-scenario-suite-OQ68g6\\\\data\\\\eda-derived\\\\edajob-b17d28e8\",\"row"
+    },
+    {
+      "id": "PD4.2",
+      "name": "M3 派生 data.csv 可下载",
+      "pass": true,
+      "detail": "time,\"scen-injection:daq:melt-temp-pv(dn-91bed9c7) [℃]\",\"scen-injection:daq:melt"
+    },
+    {
+      "id": "PD4.3",
+      "name": "M3 非法算子 → 400(白名单)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "PD5.1",
+      "name": "E8 相位段定义",
+      "pass": true,
+      "detail": "[{\"id\":\"rseg-6970f767\",\"recipe_id\":\"rc-68ea88ca\",\"seq\":1,\"name\":\"s1\",\"phase_from\":0,\"phase_to\":0.5},{\"id\":\"rseg-0016b7fa\",\"recipe_id\":\"rc-68"
+    },
+    {
+      "id": "PD5.2",
+      "name": "E8 重算特征按段拆分",
+      "pass": true,
+      "detail": "segmented=24/36"
+    }
+  ]
+}

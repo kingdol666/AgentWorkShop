@@ -23,6 +23,7 @@ import type {
 } from './agent-interface'
 import type { A2AArtifact } from '../types/a2a'
 import type { WorkspaceTask } from '../types/task'
+import { failedRetryReady } from '../types/task'
 import { extractTaskMode, synthesizeGoalSummary } from '../runtime/execution-mode'
 
 /** 终态(§2.2):COMPLETED / FAILED / CANCELED */
@@ -168,8 +169,9 @@ export class MockAgentImpl implements AgentInterface {
     }
 
     // FAILED 且重试次数 < 3 → reassign 给空闲 worker(模式无关)
+    // 回退窗:与规则引擎同源 —— 避免 worker 尚未消费新 assign 就被下一次重试换 lease。
     for (const task of snapshot.tasks) {
-      if (task.state === 'FAILED' && task.retryCount < 3) {
+      if (task.state === 'FAILED' && task.retryCount < 3 && failedRetryReady(task, now)) {
         const worker = this.pickWorker(pool, now, task.assigneeId)
         if (worker) {
           decisions.push({ kind: 'reassign', taskId: task.id, toAgentId: worker.agentId })

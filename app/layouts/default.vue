@@ -141,8 +141,8 @@ const { t } = useI18n()
 
 .app-content {
   flex: 1;
-  margin: 12px 16px 0;
-  padding: 2px;
+  margin: 16px 20px 0;
+  padding: 4px;
 }
 
 /* 页脚:mono 铭牌行(固定高度,供 harness 页计算视口高度);壳层玻璃收边 */
@@ -150,8 +150,7 @@ const { t } = useI18n()
   position: relative;
   background: var(--mat-chrome-bg);
   backdrop-filter: var(--vibrancy-chrome);
-  border-top: 1px solid var(--glass-line);
-  box-shadow: var(--glass-specular);
+  border-top: 1px solid var(--line);
   display: flex;
   gap: 10px;
   align-items: center;
@@ -159,7 +158,7 @@ const { t } = useI18n()
   height: var(--app-footer-h);
   padding: 0 50px;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11px;
   letter-spacing: 0.08em;
   text-align: center;
 }
@@ -182,7 +181,7 @@ const { t } = useI18n()
   align-items: center;
   height: 100%;
   color: var(--ink-faint);
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.06em;
 }
 
@@ -197,5 +196,31 @@ const { t } = useI18n()
   color: inherit;
   opacity: 0.85;
   border-bottom-color: currentColor;
+}
+
+/* 手持命中区:页脚是 46px 高,链接补到 40px 命中高度 */
+@media (pointer: coarse) {
+  .footer-corner .footer-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+  }
+}
+
+/* 手机(≤640):页脚只留中央品牌铭牌。右侧版本/GitHub/Docs 与中央铭牌
+   在 390px 下会相互叠字(实测),这些入口在设置页与侧栏仍可达。 */
+@media (max-width: 640px) {
+  .footer-corner {
+    display: none;
+  }
+
+  .app-footer {
+    padding: 0 12px;
+    font-size: 11px;
+  }
+
+  .footer-title {
+    font-size: 12px;
+  }
 }
 </style>

@@ -1,0 +1,13 @@
+[sim-twin] 模拟器 :4048 影子树 D:\codes\ABO\plc-node-simulator-twin-4048
+(node:70004) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ✔ 设备 twin-modbus-tcp(modbus-tcp,2 信号)
+  ✔ 设备 twin-modbus-rtu(modbus-rtu,2 信号)
+  ✔ 设备 twin-opcua(opcua,2 信号)
+  ✔ 设备 twin-mqtt(mqtt,2 信号)
+  ✔ 设备 twin-http(http,4 信号)
+  ✔ 孪生 tick 活性(5/5 设备 PV 在动)
+
+════════════════════════════════════════
+  sim-twin:6 PASS / 0 FAIL
+{"simBase":"http://127.0.0.1:4048","shadowDir":"D:\\codes\\ABO\\plc-node-simulator-twin-4048","devices":[{"id":"twin-modbus-tcp","protocol":"modbus-tcp","port":37670,"signals":2,"sourceNodes":null},{"id":"twin-modbus-rtu","protocol":"modbus-rtu","port":37671,"signals":2,"sourceNodes":null},{"id":"twin-opcua","protocol":"opcua","port":4955,"signals":2,"sourceNodes":null},{"id":"twin-mqtt","protocol":"mqtt","port":null,"signals":2,"sourceNodes":null},{"id":"twin-http","protocol":"http","port":null,"signals":4,"sourceNodes":null}],"totalSignals":12,"driverSource":"sim-export","next":"对每设备 GET http://127.0.0.1:4048/api/nodes/<id>/export 取 items[].driverConfig,喂给 provision-line/onboard(driverConfig 替换为模拟器 export,量程/stepLimit 保留)"}

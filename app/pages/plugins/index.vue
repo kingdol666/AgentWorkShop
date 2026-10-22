@@ -30,6 +30,10 @@ interface PluginInfo {
   hasClient: boolean
   routes: PluginRoute[]
   error?: string | null
+  /** 当前注册的工具数/已知工具数(来自 tool_registry) */
+  toolCount?: number
+  knownToolCount?: number
+  tools?: Array<{ name: string, label: string }>
 }
 
 const plugins = ref<PluginInfo[]>([])
@@ -110,6 +114,7 @@ onMounted(load)
       <div class="pg-stats">
         <span class="stat">{{ $t('plugins.enabled') }} <b>{{ enabledCount }}</b></span>
         <span class="stat">{{ $t('plugins.hasClient') }} <b>{{ clientCount }}</b></span>
+        <span class="stat">{{ $t('toolsPage.total') }} <b>{{ plugins.reduce((s, p) => s + (p.toolCount ?? 0), 0) }}</b></span>
         <span class="stat">{{ $t('plugins.routes') }} <b>{{ plugins.reduce((s, p) => s + p.routes.length, 0) }}</b></span>
         <a-button
           size="small"
@@ -190,6 +195,10 @@ onMounted(load)
             v-if="p.hasClient"
             class="tag client"
           >{{ $t('plugins.hasClient') }}</span>
+          <span
+            v-if="p.toolCount"
+            class="tag client"
+          >{{ p.toolCount }} {{ $t('toolsPage.name') }}</span>
         </div>
         <div
           v-if="p.routes.length"
@@ -217,6 +226,8 @@ onMounted(load)
           </dd>
           <dt>enabled</dt><dd>{{ current.enabled }}</dd>
           <dt>client</dt><dd>{{ current.hasClient ? '✓' : '—' }}</dd>
+          <dt>{{ $t('toolsPage.name') }}</dt>
+          <dd>{{ current.toolCount ?? 0 }} / {{ current.knownToolCount ?? 0 }}</dd>
           <dt v-if="current.error">
             error
           </dt>
@@ -227,6 +238,22 @@ onMounted(load)
             {{ current.error }}
           </dd>
         </dl>
+        <h4>{{ $t('toolsPage.name') }}</h4>
+        <div
+          v-if="current.tools?.length"
+          class="pg-tool-list"
+        >
+          <code
+            v-for="tool in current.tools"
+            :key="tool.name"
+          >{{ tool.name }}</code>
+        </div>
+        <p
+          v-else
+          class="dim"
+        >
+          —
+        </p>
         <h4>{{ $t('plugins.routes') }}</h4>
         <code
           v-for="r in current.routes"
@@ -270,7 +297,7 @@ onMounted(load)
 .card-head .a-switch { margin-left: auto; }
 .card-desc { margin: 8px 0; font-size: 12px; opacity: .75; min-height: 18px; }
 .card-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
-.tag { padding: 2px 8px; border-radius: 999px; font-size: 10px; border: 1px solid rgba(128, 152, 199, .3); }
+.tag { padding: 2px 8px; border-radius: var(--radius-chip); font-size: 11px; border: 1px solid var(--line-strong); }
 /* 标签文字色用 color-mix 向 --ink 收:品牌绿/青/红是**亮色画布上的浅色**,
    直接当文字色在亮色档只有 1.5–2.5:1(实测)。向墨色混合后暗色档几乎不变
    (墨色本身就是浅色),亮色档自动压深到 AA —— 一处改动同时服务两套主题。 */
@@ -280,8 +307,8 @@ onMounted(load)
 .tag.off { border-color: rgba(255, 107, 107, .4); color: color-mix(in srgb, #ff6b6b 55%, var(--ink)); }
 .tag.client { border-color: color-mix(in srgb, var(--ink) 24%, transparent); color: var(--ink-soft); }
 .card-routes { display: flex; flex-direction: column; gap: 2px; }
-.card-routes code { font-size: 10px; opacity: .65; }
-.detail dt { margin-top: 10px; font-size: 11px; opacity: .5; }
+.card-routes code { font-size: 11px; color: var(--ink-faint); }
+.detail dt { margin-top: 10px; font-size: 11px; color: var(--ink-faint); }
 .detail dd { margin: 2px 0 0; font-family: ui-monospace, monospace; font-size: 12px; }
 .detail .scope-hint { font-family: inherit; font-size: 11px; opacity: .6; margin-bottom: 6px; }
 .detail-route { display: block; font-size: 11px; opacity: .8; margin-bottom: 4px; }
@@ -306,6 +333,8 @@ h4 { margin: 16px 0 6px; }
   .card-head { flex-wrap: wrap; }
   .card-routes code { overflow-wrap: anywhere; }
   .detail-route { overflow-wrap: anywhere; }
+.pg-tool-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.pg-tool-list code { font-size: 11px; padding: 1px 6px; border-radius: 6px; background: var(--paper-deep); }
 }
 
 @media (max-width: 640px) {

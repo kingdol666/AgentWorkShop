@@ -22,6 +22,7 @@ import { recordOps } from '../../ops/ops'
 /** 写族工具:涉及产线写向/下发意图,要求 operate(其余工业工具按只读复核) */
 const WRITE_TOOLS = new Set([
   'recipe_propose',
+  'recipe_create',
   'recipe_update',
   'recipe_apply',
   'recipe_trial',

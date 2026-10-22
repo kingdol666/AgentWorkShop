@@ -10,9 +10,14 @@
  *   from/to 且 maxRows ≤ 2000      → 同步 fetchHistory 内联返回(缓冲截断保护);
  *   其余(maxRows > 2000)         → createFetchJob 异步落 CSV,回 job_id/dataset_id。
  */
+import { randomUUID } from 'node:crypto'
+import { closeSync, mkdirSync, openSync, readFileSync, writeFileSync, writeSync } from 'node:fs'
+import { join, resolve, sep } from 'node:path'
+import { ensureDataDir } from '@/shared/config/home.mjs'
+import { getActiveLineRun } from '../dcw/line-run'
 import { resolveDcwDriver } from '../dcw/drivers'
-import type { DcwHistoryFormat as MesHistoryFormat } from '../dcw/drivers/shared'
-import { historyFormatOf } from '../dcw/drivers/mes-rest'
+import type { DcwFieldDef, DcwHistoryFormat as MesHistoryFormat } from '../dcw/drivers/shared'
+import { historyFormatOf, normalizeMesDictionary } from '../dcw/drivers/mes-rest'
 import type { MesHistoryDriver, MesDatasetStatsView, MesDatasetStore } from './mes-datasets'
 import { getMesDatasets } from './mes-datasets'
 import { mesDataHookCode, mesRequestHookCode, runMesDataHook, runMesRequestHook, saveMesImageArtifact } from './mes-hook'
@@ -36,6 +41,10 @@ export const MES_RATE_WINDOW_MS = 60_000
 export const MES_RATE_MAX_CALLS = 6
 /** max_rows 缺省值 */
 export const MES_DEFAULT_MAX_ROWS = 500
+/** 离线导出单次行数上限(CSV/JSONL 流式写盘;比在线取数宽,仍防磁盘失控) */
+export const MES_EXPORT_MAX_ROWS = 200_000
+/** 离线导出图像帧上限(单次) */
+export const MES_EXPORT_MAX_FRAMES = 500
 
 // ============================================================
 // 频次限流(进程内内存计数;Map<agentId, 时间戳[]>)
@@ -138,6 +147,77 @@ export type MesCatalogEntry = {
   /** 已配置数据下沉 hook(dataHook) */
   hooked: boolean
   enabled: boolean
+  /** 字段级数据字典(响应缓存 ∪ 节点静态配置;无则空数组) */
+  fields: DcwFieldDef[]
+}
+
+// ============================================================
+// 字段字典缓存(响应返回 → 后续 catalog/导出复用)
+// ============================================================
+
+const dictionaryCache = new Map<string, DcwFieldDef[]>()
+const DICTIONARY_CACHE_MAX = 200
+
+function cacheDictionary(nodeId: string, fields: DcwFieldDef[] | undefined): void {
+  if (!fields || fields.length === 0) return
+  dictionaryCache.delete(nodeId)
+  dictionaryCache.set(nodeId, fields)
+  while (dictionaryCache.size > DICTIONARY_CACHE_MAX) {
+    const oldest = dictionaryCache.keys().next().value
+    if (oldest === undefined) break
+    dictionaryCache.delete(oldest)
+  }
+}
+
+/** 节点静态字典(driverConfig.dictionary / fieldDictionary 的 JSON 文本) */
+function configuredDictionary(cfg: Record<string, unknown>): DcwFieldDef[] {
+  for (const key of ['dictionary', 'fieldDictionary', 'fields']) {
+    const raw = cfg[key]
+    if (raw === undefined || raw === null || String(raw).trim() === '') continue
+    try {
+      const parsed = typeof raw === 'string' ? JSON.parse(raw) as unknown : raw
+      const fields = normalizeMesDictionary(parsed)
+      if (fields.length > 0) return fields
+    }
+    catch { /* 坏配置不击穿目录;由驱动测试报错 */ }
+  }
+  return []
+}
+
+/** 节点有效字典:响应缓存优先(实时真相),否则静态配置 */
+export function mesDictionaryOfNode(nodeId: string, cfg: Record<string, unknown>): DcwFieldDef[] {
+  return dictionaryCache.get(nodeId) ?? configuredDictionary(cfg)
+}
+
+/** 字典一行摘要(字段名(标签,单位;量程;点数)) */
+export function fieldSummaryOf(fields: DcwFieldDef[]): string {
+  return fields.slice(0, 8).map((f) => {
+    const bits = [f.label, f.unit, f.min != null || f.max != null ? `${f.min ?? '-∞'}~${f.max ?? '+∞'}` : '', f.points?.length ? `${f.points.length} 点` : '']
+      .filter(Boolean)
+    return bits.length > 0 ? `${f.field}(${bits.join(',')})` : f.field
+  }).join('; ')
+}
+
+/** 字段字典 → 多行可读文本(Agent 直接引用;含单位/量程/物理意义/逐点语义) */
+export function formatDictionary(fields: DcwFieldDef[], indent = '  '): string {
+  if (fields.length === 0) return ''
+  const pointLine = (f: DcwFieldDef): string => {
+    const pts = f.points ?? []
+    if (pts.length === 0) return ''
+    const head = pts.slice(0, 6).map(p => `${p.index ?? '?'}=${p.label ?? p.field}${p.unit ? `(${p.unit})` : ''}`).join(', ')
+    return `; 点位 ${pts.length} 个: ${head}${pts.length > 6 ? ', …' : ''}`
+  }
+  const lines = fields.slice(0, 24).map((f) => {
+    const meta = [
+      f.label && f.label !== f.field ? `标签 ${f.label}` : '',
+      f.unit ? `单位 ${f.unit}` : '',
+      f.min != null || f.max != null ? `量程 ${f.min ?? '-∞'}~${f.max ?? '+∞'}` : '',
+      f.kind ? `形态 ${f.kind}` : '',
+    ].filter(Boolean).join(' | ')
+    const desc = f.description ? ` — ${f.description.slice(0, 160)}` : ''
+    return `${indent}- ${f.field}${meta ? ` [${meta}]` : ''}${desc}${pointLine(f)}`
+  })
+  return `字段字典(${fields.length} 个字段,来自 MES 响应/节点配置):\n${lines.join('\n')}${fields.length > 24 ? `\n${indent}(仅显示前 24 个字段)` : ''}`
 }
 
 /** 目录条目合成:desc/readMap/writeMap/historyMap 均来自 driverConfig(数据驱动,零硬编码) */
@@ -157,6 +237,7 @@ export function mesCatalogEntryOf(n: MesNodeLike): MesCatalogEntry {
     format: historyFormatOf(cfg as Record<string, unknown>),
     hooked: Boolean(cfg.dataHook),
     enabled: Boolean(n.enabled),
+    fields: mesDictionaryOfNode(n.id, cfg as Record<string, unknown>),
   }
 }
 
@@ -182,9 +263,36 @@ export interface MesFetchArgs {
   max_rows?: number | string
   /** 透传给 requestHook/dataHook 的参数对象(Agent 只传 param,其余交给配置) */
   param?: unknown
+  /** 内联/快照回包是否附带采样行的实际数组/数值内容(默认 false=只给统计与均值) */
+  include_data?: boolean | string
 }
 
-export interface MesCatalogArgs { q?: string, line_id?: string, limit?: number | string, /** 调用者可读产线集(绑线授权口径);提供时严格过滤(孤儿/越线点位不可见,空集=空目录 fail-closed) */ scope_line_ids?: string[] }
+export interface MesCatalogArgs {
+  q?: string
+  line_id?: string
+  /** 按产品 id 收窄到该产品产线(可选;与 line_id 冲突时拒绝) */
+  product_id?: string
+  /** 按配方 id 收窄到该配方产线(可选;与 line_id 冲突时拒绝) */
+  recipe_id?: string
+  limit?: number | string
+  /** 调用者可读产线集(绑线授权口径);提供时严格过滤(孤儿/越线点位不可见,空集=空目录 fail-closed) */
+  scope_line_ids?: string[]
+}
+
+export interface MesExportArgs {
+  ids?: unknown
+  from?: string
+  to?: string
+  max_rows?: number | string
+  /** 透传给 requestHook 的调用参数 */
+  param?: unknown
+  /** 导出子目录(相对 <数据根>/mes-exports;绝对路径须落在 AW_MES_EXPORT_ROOT 内) */
+  folder?: string
+  title?: string
+  note?: string
+  /** 标量节点是否生成按时间对齐的 merged.csv(缺省 true) */
+  merge?: boolean | string
+}
 
 export function createMesController(deps: Partial<MesControllerDeps> = {}) {
   const d: MesControllerDeps = { ...defaultDeps(), ...deps }
@@ -201,7 +309,23 @@ export function createMesController(deps: Partial<MesControllerDeps> = {}) {
       mes = mes.filter(e => e.lineId !== '' && scope.has(e.lineId))
     }
     const total = mes.length
-    const lineId = String(args.line_id ?? '').trim()
+    let lineId = String(args.line_id ?? '').trim()
+    const productId = String(args.product_id ?? '').trim()
+    if (productId) {
+      const { getDcwProductRepo } = await import('../dcw/dcw-product.repo')
+      const product = getDcwProductRepo().byId(productId)
+      if (!product) return { text: `产品 ${productId} 不存在。`, isError: true, entries: [], total: 0 }
+      if (lineId && product.lineId !== lineId) return { text: `产品 ${productId} 归属产线 ${product.lineId},与 line_id=${lineId} 不一致。`, isError: true, entries: [], total: 0 }
+      lineId = product.lineId
+    }
+    const recipeId = String(args.recipe_id ?? '').trim()
+    if (recipeId) {
+      const { getDcwController } = await import('../dcw/dcw-controller')
+      const recipe = getDcwController().listRecipes().find(r => r.id === recipeId)
+      if (!recipe) return { text: `配方 ${recipeId} 不存在。`, isError: true, entries: [], total: 0 }
+      if (lineId && recipe.lineId !== lineId) return { text: `配方 ${recipeId} 归属产线 ${recipe.lineId},与 line_id=${lineId} 不一致。`, isError: true, entries: [], total: 0 }
+      lineId = recipe.lineId
+    }
     if (lineId) mes = mes.filter(e => e.lineId === lineId)
     const q = String(args.q ?? '').trim().toLowerCase()
     if (q) mes = mes.filter(e => e.name.toLowerCase().includes(q) || e.desc.toLowerCase().includes(q))
@@ -213,10 +337,12 @@ export function createMesController(deps: Partial<MesControllerDeps> = {}) {
       const ab = [e.readable ? '读' : null, e.writable ? '写' : null, hist, e.hooked ? '钩子' : null].filter(Boolean)
       return ab.length > 0 ? ab.join('/') : '无能力位'
     }
-    const body = shown.map(e =>
-      `- ${e.name}(id=${e.id}) | 产线 ${e.lineId || '未分配'} | 单位 ${e.unit || '-'} | 量程 ${e.min}~${e.max} | 能力 ${cap(e)}${e.enabled ? '' : ' [停用]'}${e.desc ? ` | ${e.desc.slice(0, 80)}` : ''}`)
+    const body = shown.map((e) => {
+      const fields = e.fields.length > 0 ? ` | 字段: ${fieldSummaryOf(e.fields)}` : ''
+      return `- ${e.name}(id=${e.id}) | 产线 ${e.lineId || '未分配'} | 单位 ${e.unit || '-'} | 量程 ${e.min}~${e.max} | 能力 ${cap(e)}${e.enabled ? '' : ' [停用]'}${e.desc ? ` | ${e.desc.slice(0, 80)}` : ''}${fields}`
+    })
     const more = mes.length - shown.length
-    const text = `MES REST 点位目录(共 ${total} 个${lineId ? `,产线 ${lineId}` : ''}${q ? `,关键字「${args.q}」` : ''};显示 ${shown.length} 条):\n${body.join('\n') || '(无匹配点位)'}${more > 0 ? `\n(另有 ${more} 条未显示,可收紧 q/line_id 或调大 limit≤100)` : ''}\n\n说明:能力 读=可读当前值,写=可写设定值,史=可取历史(史·vector=每时间点检测向量,史·image=图像帧,史·table/event=记录流),钩子=已配 dataHook(取数后自动做下沉处理并回传摘要与产物)。历史取数用 mes_fetch(ids=[点位id], from, to, max_rows, param?),标量/向量全量行落 CSV 数据集,图像帧自动落盘为文件,prompt 只回统计摘要与采样。`
+    const text = `MES REST 点位目录(共 ${total} 个${lineId ? `,产线 ${lineId}` : ''}${q ? `,关键字「${args.q}」` : ''};显示 ${shown.length} 条):\n${body.join('\n') || '(无匹配点位)'}${more > 0 ? `\n(另有 ${more} 条未显示,可收紧 q/line_id 或调大 limit≤100)` : ''}\n\n说明:能力 读=可读当前值,写=可写设定值,史=可取历史(史·vector=每时间点检测向量,史·image=图像帧,史·table/event=记录流),钩子=已配 dataHook(取数后自动做下沉处理并回传摘要与产物)。字段级语义来自 MES 响应 dictionaryPath 或节点 driverConfig.dictionary;首次 mes_fetch 后缓存,后续目录可直接看到字段标签/单位/点位。历史取数用 mes_fetch(ids=[点位id], from, to, max_rows, param?);需要落盘到目录做离线分析用 mes_export。`
     return { text, entries: shown, total }
   }
 
@@ -360,7 +486,7 @@ export function createMesController(deps: Partial<MesControllerDeps> = {}) {
   }
 
   /** 同步取单节点历史(格式感知:统计+采样+图像落盘+dataHook 下沉处理;原文不回传) */
-  async function inlineFetchNode(node: MesNodeLike, from: string, to: string, maxRows: number, param: unknown): Promise<{
+  async function inlineFetchNode(node: MesNodeLike, from: string, to: string, maxRows: number, param: unknown, includeData = false): Promise<{
     text: string
     stats: MesDatasetStatsView
     truncated: boolean
@@ -381,6 +507,7 @@ export function createMesController(deps: Partial<MesControllerDeps> = {}) {
     let imgChars = 0
     let recChars = 0
     let memoryHit = ''
+    let dictionary: DcwFieldDef[]
     const result = await driver.fetchHistory({
       driverConfig: effCfg,
       fromIso: from,
@@ -433,6 +560,13 @@ export function createMesController(deps: Partial<MesControllerDeps> = {}) {
         }
       },
     })
+    if (result?.dictionary && result.dictionary.length > 0) {
+      dictionary = result.dictionary
+      cacheDictionary(node.id, dictionary)
+    }
+    else {
+      dictionary = mesDictionaryOfNode(node.id, cfg)
+    }
     if (result && result.complete === false) truncated = true
     if (!truncated && memoryHit) truncated = true
 
@@ -440,14 +574,24 @@ export function createMesController(deps: Partial<MesControllerDeps> = {}) {
     let stats: GenStats
     let autosaved: MesHookArtifact[] = []
     const sample: string[] = []
+    let tableFieldStats = ''
     if (format === 'vector') {
       stats = vectorStats(buf)
-      const idx = [...new Set([0, Math.floor((buf.length - 1) / 2), buf.length - 1])].slice(0, 3)
+      // 空窗口不得生成采样下标(否则 buf[0] undefined → 取数崩溃)
+      const idx = buf.length > 0 ? [...new Set([0, Math.floor((buf.length - 1) / 2), buf.length - 1])].slice(0, 3) : []
+      const vecField = dictionary.find(f => f.kind === 'vector' || (f.points?.length ?? 0) > 0)
+      const pointLabel = (i: number): string => {
+        const p = vecField?.points?.[i]
+        return p?.label ?? p?.field ?? `v${i}`
+      }
       for (const i of idx) {
         const r = buf[i]!
         const vs = r.values ?? []
         const m = vs.length > 0 ? vs.reduce((a, b) => a + b, 0) / vs.length : NaN
-        sample.push(`${shortTs(r.ts)},dim=${vs.length},mean=${fmtN(m)},min=${fmtN(vs.length ? Math.min(...vs) : NaN)},max=${fmtN(vs.length ? Math.max(...vs) : NaN)}`)
+        const valuesTxt = includeData && vs.length > 0
+          ? `,values=[${vs.slice(0, 64).map((v, j) => `${pointLabel(j)}=${Number(v.toFixed(4))}`).join(',')}${vs.length > 64 ? ',…' : ''}]`
+          : ''
+        sample.push(`${shortTs(r.ts)},dim=${vs.length},mean=${fmtN(m)},min=${fmtN(vs.length ? Math.min(...vs) : NaN)},max=${fmtN(vs.length ? Math.max(...vs) : NaN)}${valuesTxt}`)
       }
     }
     else if (format === 'image') {
@@ -460,7 +604,7 @@ export function createMesController(deps: Partial<MesControllerDeps> = {}) {
         const a = saveMesImageArtifact(node.id, `frame-${String(i).padStart(4, '0')}`, r.data, r.mime ?? 'image/png')
         if (a) saved.push(a)
       }
-      const idx = [...new Set([0, Math.floor((buf.length - 1) / 2), buf.length - 1])].slice(0, 3)
+      const idx = buf.length > 0 ? [...new Set([0, Math.floor((buf.length - 1) / 2), buf.length - 1])].slice(0, 3) : []
       for (const i of idx) {
         const r = buf[i]!
         const kb = r.data ? Math.round(r.data.length * 3 / 4 / 1024) : 0
@@ -471,7 +615,7 @@ export function createMesController(deps: Partial<MesControllerDeps> = {}) {
     }
     else if (format === 'table' || format === 'event') {
       stats = { count: buf.length, min: null, max: null, mean: null, stddev: null, firstTs: buf[0]?.ts ?? null, lastTs: buf[buf.length - 1]?.ts ?? null }
-      const idx = [...new Set([0, Math.floor((buf.length - 1) / 2), buf.length - 1])].slice(0, 3)
+      const idx = buf.length > 0 ? [...new Set([0, Math.floor((buf.length - 1) / 2), buf.length - 1])].slice(0, 3) : []
       for (const i of idx) {
         const r = buf[i]!
         let body: string
@@ -483,12 +627,35 @@ export function createMesController(deps: Partial<MesControllerDeps> = {}) {
         }
         sample.push(`${shortTs(r.ts)},${clip(body ?? '', 120)}`)
       }
+      // map/多参数行:逐数值字段统计(最多 12 个字段),让 Agent 不必只看 3 行采样
+      const cols = new Map<string, number[]>()
+      for (const r of buf) {
+        if (r.record === null || typeof r.record !== 'object' || Array.isArray(r.record)) continue
+        for (const [k, v] of Object.entries(r.record as Record<string, unknown>)) {
+          if (v === null || v === '' || typeof v === 'boolean') continue
+          const n = Number(v)
+          if (!Number.isFinite(n)) continue
+          const arr = cols.get(k) ?? []
+          arr.push(n)
+          cols.set(k, arr)
+        }
+      }
+      const fieldLines = [...cols.entries()].slice(0, 12).map(([k, vs]) => {
+        const mean = vs.reduce((a, b) => a + b, 0) / vs.length
+        const def = dictionary.find(f => f.field === k)
+        const label = def?.label ? `${def.label}(${k})` : k
+        const unit = def?.unit ? ` ${def.unit}` : ''
+        return `${label}: n=${vs.length} min=${fmtN(Math.min(...vs))} max=${fmtN(Math.max(...vs))} mean=${fmtN(mean)}${unit}`
+      })
+      if (fieldLines.length > 0) {
+        tableFieldStats = `  数值字段统计(${cols.size} 个字段${cols.size > 12 ? ',显示前12' : ''}): ${fieldLines.join(' | ')}`
+      }
     }
     else {
       const values = buf.map(r => r.value).filter((v): v is number => Number.isFinite(v))
       stats = statsOf(values, buf[0]?.ts ?? null, buf[buf.length - 1]?.ts ?? null)
-      const idx = [...new Set([0, Math.floor((buf.length - 1) / 2), buf.length - 1])].slice(0, 3)
-      for (const i of idx) sample.push(`${shortTs(buf[i]!.ts)},${fmtN(buf[i]!.value ?? NaN)}`)
+      const idx = buf.length > 0 ? [...new Set([0, Math.floor((buf.length - 1) / 2), buf.length - 1])].slice(0, 3) : []
+      for (const i of idx) sample.push(`${shortTs(buf[i]!.ts)},${fmtN(buf[i]!.value ?? NaN)}${includeData ? ` (value=${buf[i]!.value ?? '-'})` : ''}`)
     }
 
     const fmtLabel = format === 'scalar' ? `标量` : format === 'vector' ? `向量(dim=${stats.dim ?? '?'})` : format === 'image' ? `图像(${(buf[0]?.mime as string) ?? 'image/png'})` : format === 'table' ? `表格记录` : `事件记录`
@@ -497,11 +664,14 @@ export function createMesController(deps: Partial<MesControllerDeps> = {}) {
       : format === 'vector'
         ? `  统计(按行均值):min ${fmtN(stats.min)} / max ${fmtN(stats.max)} / mean ${fmtN(stats.mean)} / stddev ${fmtN(stats.stddev)} ${node.unit};全体元素均值 ${fmtN(stats.elementMean ?? NaN)}${stats.dimMismatch ? `;维度漂移 ${stats.dimMismatch} 行` : ''}`
         : `  统计:${stats.count} 条记录(非数值格式不做均值)`
+    const dictText = formatDictionary(dictionary)
     const text = [
-      `■ ${node.name}(id=${node.id})[格式 ${fmtLabel}]`,
+      `■ ${node.name}(id=${node.id})[格式 ${fmtLabel};节点单位 ${node.unit || '-'};量程 ${node.min}~${node.max}]`,
       `  行数 ${stats.count}${truncated ? `(截断:${memoryHit || '达到 maxRows 上限'})` : '(完整)'} | 首 ${shortTs(stats.firstTs)} ~ 末 ${shortTs(stats.lastTs)}`,
       statLine,
       sample.length > 0 ? `  采样(≤3 行): ${sample.join(' | ')}` : '  采样:无有效行',
+      ...(tableFieldStats ? [tableFieldStats] : []),
+      ...(dictText ? [dictText] : []),
     ].join('\n')
 
     // dataHook 下沉处理(用户配置的 (param, data, ctx) => {...})
@@ -582,8 +752,10 @@ export function createMesController(deps: Partial<MesControllerDeps> = {}) {
           }
           const r = await driver.read({ domain: { min: node.min, max: node.max }, driverConfig: node.driverConfig })
           const at = new Date(d.nowMs()).toISOString()
+          if (r.dictionary && r.dictionary.length > 0) cacheDictionary(node.id, r.dictionary)
+          const dict = r.dictionary && r.dictionary.length > 0 ? r.dictionary : mesDictionaryOfNode(node.id, node.driverConfig as Record<string, unknown>)
           lines.push(r.ok && r.eng != null
-            ? `- ${node.name}(${node.id}):${fmtN(r.eng)}${node.unit} @ ${shortTs(at)}`
+            ? `- ${node.name}(${node.id}):${fmtN(r.eng)}${node.unit} @ ${shortTs(at)}${dict.length > 0 ? `\n${formatDictionary(dict, '    ')}` : ''}`
             : `- ${node.name}(${node.id}):读取失败(${r.message.slice(0, 80)})`)
         }
         catch (err) {
@@ -602,7 +774,7 @@ export function createMesController(deps: Partial<MesControllerDeps> = {}) {
       const statsOut: NonNullable<MesFetchOutcome['data']>['stats'] = []
       for (const node of vis.nodes) {
         try {
-          const one = await inlineFetchNode(node, win.from, win.to, win.maxRows, args.param)
+          const one = await inlineFetchNode(node, win.from, win.to, win.maxRows, args.param, args.include_data === true || args.include_data === 'true')
           sections.push(one.hookText ? `${one.text}\n${one.hookText}` : one.text)
           statsOut.push({ nodeId: node.id, stats: one.stats, truncated: one.truncated })
         }
@@ -631,6 +803,7 @@ export function createMesController(deps: Partial<MesControllerDeps> = {}) {
         lines.push(`- ${node.name}(${node.id}):requestHook 失败,作业未创建(${err instanceof Error ? err.message : String(err)})`)
         continue
       }
+      const run = node.lineId ? getActiveLineRun(node.lineId) : null
       const { jobId, datasetId } = d.store.createFetchJob({
         nodeId: node.id,
         fromIso: win.from,
@@ -640,6 +813,18 @@ export function createMesController(deps: Partial<MesControllerDeps> = {}) {
         lineId: node.lineId,
         nodeName: node.name,
         driverConfig: effCfg,
+        dictionary: mesDictionaryOfNode(node.id, node.driverConfig as Record<string, unknown>),
+        nodeMeta: {
+          unit: node.unit,
+          min: node.min,
+          max: node.max,
+          description: String(node.driverConfig.desc ?? ''),
+          semantics: String(node.driverConfig.semantics ?? ''),
+          format: historyFormatOf(node.driverConfig as Record<string, unknown>),
+        },
+        context: run
+          ? { lineId: run.lineId, productId: run.productId, recipeId: run.recipeId, runId: run.runId }
+          : { lineId: node.lineId },
       })
       jobIds.push(jobId)
       datasetIds.push(datasetId)
@@ -652,7 +837,319 @@ export function createMesController(deps: Partial<MesControllerDeps> = {}) {
     }
   }
 
-  return { catalog, fetch }
+  // ---------- 离线导出(指定目录 + manifest/README 语义清单) ----------
+
+  /** 安全子路径:只允许落在 root 内(拒绝 ../、绝对路径逃逸、盘符切换) */
+  function resolveUnderRoot(root: string, folder: string, fallback: string): { ok: true, dir: string } | { ok: false, text: string } {
+    const base = resolve(root)
+    const raw = String(folder ?? '').trim()
+    if (!raw) return { ok: true, dir: join(base, fallback) }
+    const target = resolve(base, raw)
+    if (target !== base && !target.startsWith(`${base}${sep}`)) {
+      return {
+        ok: false,
+        text: `导出目录被拒:folder=${raw} 越出允许根目录 ${base}(只接受相对路径;如需自定义根目录,请由管理员设置环境变量 AW_MES_EXPORT_ROOT)。`,
+      }
+    }
+    return { ok: true, dir: target }
+  }
+
+  function safeSeg(value: string): string {
+    return value.replace(/[^A-Za-z0-9._-]/g, '_').slice(0, 80) || 'node'
+  }
+
+  function writeChunk(fd: number, text: string): void {
+    const buf = Buffer.from(text, 'utf8')
+    let off = 0
+    while (off < buf.length) off += writeSync(fd, buf, off, buf.length - off)
+  }
+
+  /**
+   * 把可见 MES 点位的历史原样导出到目录(流式写盘):
+   *   scalar → data.csv(ts,value)
+   *   vector → data.csv(宽表 ts,v0..vN)+ manifest 里的逐点语义
+   *   image  → frames.jsonl(元数据)+ frames/*.png
+   *   table/event → records.jsonl
+   * 每个导出目录都写 manifest.json + README.md(字段含义/单位/量程/产线批次上下文),
+   * Agent 与离线分析器都能直接读懂,不需要回读平台。
+   */
+  async function exportData(agentId: string, args: MesExportArgs): Promise<MesToolResult & { dir?: string, manifestPath?: string, rows?: number }> {
+    const vis = await resolveVisibleIds(agentId, args.ids)
+    if (!vis.ok) return { text: vis.text, isError: true }
+    const from = String(args.from ?? '').trim()
+    const to = String(args.to ?? '').trim()
+    if (!from || !to) return { text: 'mes_export 需要 from/to(ISO)历史窗口;当前值快照请用 mes_fetch。', isError: true }
+    const fromMs = Date.parse(from)
+    const toMs = Date.parse(to)
+    if (!Number.isFinite(fromMs) || !Number.isFinite(toMs)) return { text: 'from/to 必须是合法 ISO 时间戳。', isError: true }
+    if (fromMs >= toMs) return { text: `时间窗无效:from(${from}) 必须早于 to(${to})。`, isError: true }
+    if (toMs - fromMs > MES_WINDOW_MAX_MS) {
+      return { text: `时间窗被拒:超过 7 天上限。请拆成 ≤7 天的分段导出。`, isError: true }
+    }
+    const rawMax = args.max_rows == null || args.max_rows === '' ? MES_MAX_ROWS_CAP : Math.round(Number(args.max_rows))
+    if (!Number.isFinite(rawMax) || rawMax < 1) return { text: 'max_rows 必须为 ≥1 的整数。', isError: true }
+    const maxRows = Math.min(rawMax, MES_EXPORT_MAX_ROWS)
+    if (!mesFetchRateCheck(agentId, d.nowMs())) {
+      return { text: `导出过于频繁:每 60 秒最多 ${MES_RATE_MAX_CALLS} 次。请稍后再试。`, isError: true }
+    }
+
+    const root = process.env.AW_MES_EXPORT_ROOT
+      ? resolve(process.env.AW_MES_EXPORT_ROOT)
+      : join(ensureDataDir(), 'mes-exports')
+    const exportId = `mesexp-${new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14)}-${randomUUID().slice(0, 6)}`
+    const where = resolveUnderRoot(root, String(args.folder ?? ''), exportId)
+    if (!where.ok) return { text: where.text, isError: true }
+    const dir = where.dir
+    mkdirSync(dir, { recursive: true })
+
+    const title = String(args.title ?? '').trim() || `MES 数据导出 ${exportId}`
+    const note = String(args.note ?? '').trim()
+    const manifestNodes: Array<Record<string, unknown>> = []
+    const failures: string[] = []
+    const scalarFiles: Array<{ nodeName: string, nodeId: string, file: string }> = []
+    let totalRows = 0
+
+    for (const node of vis.nodes) {
+      const cfg = node.driverConfig as Record<string, unknown>
+      const format = historyFormatOf(cfg)
+      const nodeDir = join(dir, safeSeg(node.id))
+      try {
+        mkdirSync(nodeDir, { recursive: true })
+        const driver = d.resolveDriver(node.driver)
+        if (typeof driver.fetchHistory !== 'function') {
+          failures.push(`${node.name}(${node.id}):驱动 ${node.driver} 无历史原语`)
+          continue
+        }
+        const effCfg = await configWithRequestHook(node, args.param)
+        const run = node.lineId ? getActiveLineRun(node.lineId) : null
+        let dictionary = mesDictionaryOfNode(node.id, cfg)
+        let rows = 0
+        let truncated = false
+        let dim = 0
+        let dimDrift = 0
+        let skipped = 0
+        let frameSaved = 0
+        let frameSkipped = 0
+        let fd: number | null = null
+        let headerWritten = false
+        let columns: string[] = []
+        let fileRel = ''
+        const jsonl: string[] = []
+
+        if (format === 'image') {
+          mkdirSync(join(nodeDir, 'frames'), { recursive: true })
+        }
+        else {
+          fd = openSync(join(nodeDir, format === 'table' || format === 'event' ? 'records.jsonl' : 'data.csv'), 'w')
+        }
+
+        const result = await driver.fetchHistory({
+          driverConfig: effCfg,
+          fromIso: from,
+          toIso: to,
+          maxRows,
+          onRows: (batch) => {
+            if (!Array.isArray(batch)) return
+            for (const r of batch) {
+              if (rows >= maxRows) {
+                truncated = true
+                break
+              }
+              const ts = String(r?.ts ?? '')
+              if (format === 'vector') {
+                if (!Array.isArray(r?.values) || r.values.length === 0) {
+                  skipped++
+                  continue
+                }
+                if (!headerWritten) {
+                  dim = r.values.length
+                  columns = ['ts', ...Array.from({ length: dim }, (_, i) => `v${i}`)]
+                  writeChunk(fd!, `${columns.join(',')}\r\n`)
+                  headerWritten = true
+                }
+                if (r.values.length !== dim) dimDrift++
+                const cells = [ts]
+                for (let i = 0; i < dim; i++) {
+                  const v = r.values[i]
+                  cells.push(Number.isFinite(v) ? String(v) : '')
+                }
+                writeChunk(fd!, `${cells.join(',')}\r\n`)
+                rows++
+                continue
+              }
+              if (format === 'image') {
+                if (typeof r?.data !== 'string' || r.data.trim() === '') {
+                  skipped++
+                  continue
+                }
+                if (frameSaved >= MES_EXPORT_MAX_FRAMES) {
+                  frameSkipped++
+                  truncated = true
+                  continue
+                }
+                const mime = typeof r.mime === 'string' && r.mime.includes('/') ? r.mime : 'image/png'
+                const ext = mime.includes('jpeg') ? 'jpg' : mime.includes('webp') ? 'webp' : 'png'
+                const name = `frames/${String(frameSaved).padStart(5, '0')}-${ts.replace(/[:.]/g, '-')}.${ext}`
+                try {
+                  writeFileSync(join(nodeDir, name), Buffer.from(r.data, 'base64'))
+                  jsonl.push(JSON.stringify({ ts, mime, file: name, ...(r.record !== null && typeof r.record === 'object' ? { record: r.record } : {}) }))
+                  frameSaved++
+                  rows++
+                }
+                catch (imgErr) {
+                  skipped++
+                  jsonl.push(JSON.stringify({ ts, mime, error: imgErr instanceof Error ? imgErr.message : String(imgErr) }))
+                }
+                continue
+              }
+              if (format === 'table' || format === 'event') {
+                if (r?.record === null || r?.record === undefined) {
+                  skipped++
+                  continue
+                }
+                jsonl.push(JSON.stringify({ ts, record: r.record }))
+                rows++
+                continue
+              }
+              if (typeof r?.value !== 'number' || !Number.isFinite(r.value)) {
+                skipped++
+                continue
+              }
+              if (!headerWritten) {
+                columns = ['ts', 'value']
+                writeChunk(fd!, `${columns.join(',')}\r\n`)
+                headerWritten = true
+              }
+              writeChunk(fd!, `${ts},${r.value}\r\n`)
+              rows++
+            }
+          },
+        })
+        if (result?.dictionary && result.dictionary.length > 0) {
+          dictionary = result.dictionary
+          cacheDictionary(node.id, dictionary)
+        }
+        if (result && result.complete === false) truncated = true
+        if (format === 'image' || format === 'table' || format === 'event') {
+          writeFileSync(join(nodeDir, 'records.jsonl'), `${jsonl.join('\n')}${jsonl.length > 0 ? '\n' : ''}`, 'utf8')
+          fileRel = `${safeSeg(node.id)}/records.jsonl`
+        }
+        else {
+          if (!headerWritten) {
+            columns = format === 'vector' ? ['ts'] : ['ts', 'value']
+            writeChunk(fd!, `${columns.join(',')}\r\n`)
+            headerWritten = true
+          }
+          fileRel = `${safeSeg(node.id)}/data.csv`
+        }
+        if (fd != null) {
+          closeSync(fd)
+          fd = null
+        }
+        if (format === 'scalar') scalarFiles.push({ nodeName: node.name, nodeId: node.id, file: fileRel })
+        totalRows += rows
+        manifestNodes.push({
+          id: node.id,
+          name: node.name,
+          line_id: node.lineId,
+          format,
+          unit: node.unit,
+          range: { min: node.min, max: node.max },
+          description: String(cfg.desc ?? ''),
+          semantics: String(cfg.semantics ?? ''),
+          file: fileRel,
+          columns,
+          rows,
+          ...(format === 'vector' ? { vector: { dim, dimension_drift_rows: dimDrift } } : {}),
+          ...(format === 'image' ? { frames: { saved: frameSaved, skipped: frameSkipped } } : {}),
+          skipped_rows: skipped,
+          truncated,
+          fields: dictionary,
+          context: run ? { line_id: run.lineId, product_id: run.productId, recipe_id: run.recipeId, run_id: run.runId } : { line_id: node.lineId },
+        })
+      }
+      catch (err) {
+        failures.push(`${node.name}(${node.id}):${err instanceof Error ? err.message : String(err)}`)
+      }
+    }
+
+    // 多标量节点按时间对齐的宽表(默认生成;纯时间戳交集,不做插值)
+    let mergedFile: string | null = null
+    const mergeEnabled = !(args.merge === false || args.merge === 'false')
+    if (mergeEnabled && scalarFiles.length > 1) {
+      try {
+        const series = scalarFiles.map((s) => {
+          const map = new Map<string, number>()
+          const raw = readFileSync(join(dir, s.file), 'utf8')
+          for (const line of raw.split(/\r?\n/).slice(1)) {
+            const [ts, v] = line.split(',')
+            if (ts && v !== undefined && Number.isFinite(Number(v))) map.set(ts, Number(v))
+          }
+          return { ...s, map }
+        })
+        const times = [...new Set(series.flatMap(s => [...s.map.keys()]))].sort()
+        const header = ['time', ...series.map(s => `${s.nodeName}(${s.nodeId})`)]
+        const lines = [header.join(',')]
+        for (const ts of times) lines.push([ts, ...series.map(s => s.map.get(ts) ?? '')].join(','))
+        writeFileSync(join(dir, 'merged.csv'), `${lines.join('\n')}\n`, 'utf8')
+        mergedFile = join(dir, 'merged.csv')
+      }
+      catch { /* merge 失败不影响单节点导出 */ }
+    }
+
+    const manifest = {
+      schema: 'aw.mes-export/1',
+      export_id: exportId,
+      created_at: new Date().toISOString(),
+      title,
+      note,
+      window: { from, to, from_ms: fromMs, to_ms: toMs },
+      directory: dir,
+      nodes: manifestNodes,
+      merged_file: mergedFile,
+      totals: { nodes: manifestNodes.length, rows: totalRows, failed_nodes: failures.length },
+      usage: 'data.csv 首行为列名(ts=时间,v0..vN=向量点位);records.jsonl 每行一条记录;image 格式的像素在 frames/ 下,records.jsonl 是对应元数据。字段含义/单位/量程见 nodes[].fields(向量逐点语义在 fields[].points);批次归属见 nodes[].context。',
+    }
+    const manifestPath = join(dir, 'manifest.json')
+    writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8')
+
+    const readme: string[] = [
+      `# ${title}`,
+      '',
+      `- 导出时间: ${new Date().toISOString()}`,
+      `- 时间窗: ${from} ~ ${to}`,
+      `- 导出目录: ${dir}`,
+      `- 说明: ${note || '(无)'}`,
+      '',
+      '## 文件与字段',
+      '',
+    ]
+    for (const n of manifestNodes) {
+      readme.push(`### ${String(n.name)} (${String(n.id)})`)
+      readme.push(`- 格式: ${String(n.format)};文件: ${String(n.file)};行数: ${String(n.rows)}`)
+      readme.push(`- 单位: ${String(n.unit || '-')};量程: ${JSON.stringify(n.range)}`)
+      if (n.semantics) readme.push(`- 物理意义: ${String(n.semantics)}`)
+      const fields = Array.isArray(n.fields) ? n.fields as DcwFieldDef[] : []
+      const dict = formatDictionary(fields, '  ')
+      if (dict) readme.push(dict)
+      readme.push('')
+    }
+    if (mergedFile) readme.push(`多参数对齐宽表: ${mergedFile}(列名=节点名(节点id);仅对齐相同时间戳,不插值)`, '')
+    if (failures.length > 0) readme.push('## 失败节点', '', ...failures.map(f => `- ${f}`), '')
+    writeFileSync(join(dir, 'README.md'), `${readme.join('\n')}\n`, 'utf8')
+
+    const lines = manifestNodes.map(n => `- ${String(n.name)}(${String(n.id)}) [${String(n.format)}] ${String(n.rows)} 行 → ${String(n.file)}`)
+    const failText = failures.length > 0 ? `\n失败节点(${failures.length}):\n${failures.map(f => `  - ${f}`).join('\n')}` : ''
+    return {
+      isError: failures.length > 0,
+      dir,
+      manifestPath,
+      rows: totalRows,
+      text: `MES 数据已导出(${manifestNodes.length}/${vis.nodes.length} 个点位,共 ${totalRows} 行):\n${lines.join('\n')}${mergedFile ? `\n- 多参数宽表: ${mergedFile}` : ''}${failText}\n\n目录: ${dir}\n语义清单: ${manifestPath}\n说明: README.md\n\n离线分析请直接读取上述文件;在线继续取数用 mes_fetch/mes_dataset_read。`,
+    }
+  }
+
+  return { catalog, fetch, exportData }
 }
 
 export type MesController = ReturnType<typeof createMesController>

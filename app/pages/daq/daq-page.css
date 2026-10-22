@@ -4,8 +4,8 @@
  * 全局层则保持「整套样式在 /daq 页面模块加载时生效」这一原有语义不变
  * (含 .page small / .alarm-item .ack / .nodes-table td 等原先跨行组件的规则)。 */
 .page { padding: 4px; }
-h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.015em; }
-.sub { margin: 0; font-size: 12.5px; opacity: 0.6; }
+h1 { margin: 2px 0 4px; font-size: 28px; font-weight: 600; letter-spacing: -0.022em; }
+.sub { margin: 0; font-size: 13px; color: var(--ink-faint); }
 .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 .dim { opacity: 0.55; }
 
@@ -94,10 +94,11 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
   align-items: center;
   padding: 4px 12px;
   font-size: 11.5px;
+  white-space: nowrap;
   color: var(--ink-soft);
   background: var(--paper-deep);
   border: 1px solid var(--line-strong);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-chip);
   transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
 /* 空心点 = 待机;实心呼吸点 = 运行(状态语义承载体,非装饰) */
@@ -135,6 +136,12 @@ h1 { margin: 2px 0 4px; font-size: 30px; font-weight: 400; letter-spacing: -0.01
    (否则占位行会自带一条分割线和一个 9px 内距,滚动高度算不准) */
 .vs-pad td { padding: 0 !important; border: 0 !important; }
 .nodes-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+/* 12 列节点表在 1440 画布(约 1160px)里会被压到每列 90px:
+   状态胶囊竖排、节点名折三行、表头两行。给出最小可读宽度,由卡片自身横向滚动。 */
+@media (min-width: 900px) {
+  .nodes-table { min-width: 1280px; }
+}
+.nodes-table th { white-space: nowrap; }
 /* 离屏行跳过布局/绘制(102 行长表;contain-intrinsic-size 给出占位高度防滚动条跳动) */
 .nodes-table tbody tr { content-visibility: auto; contain-intrinsic-size: auto 42px; }
 /* 单元格规则须穿透行组件(:deep):行组件是渲染隔离单元,其内部 td 只带子作用域,

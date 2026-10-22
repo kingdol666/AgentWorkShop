@@ -86,6 +86,7 @@ const closeWaypoint = (path: string) => {
 .trail {
   flex: 0 1 auto;
   min-width: 0;
+  max-width: min(48vw, 640px);
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
@@ -113,24 +114,24 @@ const closeWaypoint = (path: string) => {
   background: var(--line-strong);
 }
 
-/* 航点:chip 圆角描边,悬停抬亮,当前页墨色填充(ink pill) */
+/* 航点:8px 工业控件,悬停提亮,当前页信号绿填充 */
 .trail-node {
   position: relative;
   display: inline-flex;
   flex: 0 0 auto;
   gap: 6px;
   align-items: center;
-  height: 32px;
-  padding: 0 12px;
+  height: 30px;
+  padding: 0 11px;
   font-family: var(--font-body);
-  font-size: 12px;
+  font-size: 11.5px;
   font-weight: 500;
   letter-spacing: 0.01em;
   color: var(--app-text, var(--ink-soft));
   cursor: pointer;
   background: var(--paper-deep);
   border: 1px solid var(--line);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-control);
   transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast);
 }
 

@@ -1,0 +1,64 @@
+{
+  "at": "2026-10-20T05:17:26.058Z",
+  "channelId": "92fa527d-c0a8-44d3-9840-7b73be1b8d7b",
+  "taskId": "4303cb33-3843-4734-8993-22c5e711f857",
+  "before": {
+    "version": 5,
+    "value": 44
+  },
+  "pendingSnapshot": {
+    "version": 5,
+    "value": 44
+  },
+  "after": {
+    "version": 5,
+    "value": 44
+  },
+  "checks": [
+    {
+      "name": "基线读取(配方版本/PLC 当前值)",
+      "ok": true,
+      "detail": "v5 value=44"
+    },
+    {
+      "name": "频道创建(copilot lead)",
+      "ok": true,
+      "detail": "92fa527d-c0a8-44d3-9840-7b73be1b8d7b"
+    },
+    {
+      "name": "配方绑定 manual",
+      "ok": true,
+      "detail": "manual"
+    },
+    {
+      "name": "任务提交",
+      "ok": true,
+      "detail": "4303cb33-3843-4734-8993-22c5e711f857"
+    },
+    {
+      "name": "出现 manual 审批卡并拒绝",
+      "ok": true,
+      "detail": "rejected=1"
+    },
+    {
+      "name": "待批准期间配方/PLC 未变化(未批准不下发)",
+      "ok": true,
+      "detail": "pending=v5/value=44"
+    },
+    {
+      "name": "Agent 收到拒绝结果并完成",
+      "ok": true,
+      "detail": "state=COMPLETED Human approval rejected the recipe_update. Human comment: “REJECT-ACCEPTANCE mvg8de1m: keep the current value”. No retry was submitted and recipe_apply was not called."
+    },
+    {
+      "name": "拒绝后配方版本不变",
+      "ok": true,
+      "detail": "before=v5 after=v5"
+    },
+    {
+      "name": "拒绝后 PLC 值不变(fail-closed)",
+      "ok": true,
+      "detail": "before=44 after=44"
+    }
+  ]
+}

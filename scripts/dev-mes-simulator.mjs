@@ -46,6 +46,12 @@ const gauss = r => (r() + r() + r() + r() - 2) * 1.732 // 近似正态(均值0,�
 const ROLL_MS = 15 * 60_000 // 卷次周期
 const UPSET_PERIOD_MS = 90 * 60_000 // 异常窗周期
 const UPSET_LEN_MS = 9 * 60_000 // 异常窗时长(边部增厚)
+// 膜厚基线/批次规格可环境覆盖(接入不同产线时保持文档工况一致;默认=既有 50µm 模拟)
+const THICKNESS_BASE = Number(process.env.MES_THICKNESS_BASE) || 50
+const THICKNESS_CENTER = Number(process.env.MES_THICKNESS_CENTER) || 49.75
+const THICKNESS_TOL = Number(process.env.MES_THICKNESS_TOL) || 2.25
+// 横向冠面/边部幅值缩放(接不同产线时保持其实际横向均匀性;默认 1=既有模拟)
+const THICKNESS_SHAPE_SCALE = Number(process.env.MES_THICKNESS_SHAPE_SCALE) || 1
 
 /** 异常窗强度 0~1(窗内先升后降) */
 function upsetLevel(t) {
@@ -69,10 +75,10 @@ function thicknessAt(t) {
   const profile = []
   for (let lane = 0; lane < 48; lane++) {
     const u = lane / 47
-    const crown = 2.2 * (1 - Math.pow(2 * u - 1, 2)) // 抛物冠面
-    const edge = (lane < 2 || lane > 45) ? 3.0 : (lane < 4 || lane > 43) ? 1.1 : 0 // 边部 bead
-    const bias = upset > 0.25 && lane >= 42 ? 2.6 * upset : 0 // 异常:操作侧边部增厚
-    profile.push(Number((50 + rs + slow + crown + edge + bias + gauss(r) * 0.35).toFixed(3)))
+    const crown = 2.2 * THICKNESS_SHAPE_SCALE * (1 - Math.pow(2 * u - 1, 2)) // 抛物冠面
+    const edge = THICKNESS_SHAPE_SCALE * ((lane < 2 || lane > 45) ? 3.0 : (lane < 4 || lane > 43) ? 1.1 : 0) // 边部 bead
+    const bias = upset > 0.25 && lane >= 42 ? 2.6 * THICKNESS_SHAPE_SCALE * upset : 0 // 异常:操作侧边部增厚
+    profile.push(Number((THICKNESS_BASE + rs + slow + crown + edge + bias + gauss(r) * 0.35).toFixed(3)))
   }
   return profile
 }
@@ -93,9 +99,9 @@ function birefAt(t) {
 
 /** 过程标量(1s 拍):异常窗内熔压升高、线速微降 —— 与膜厚异常同源,供关联诊断 */
 const SCALARS = {
-  melt_pressure: { unit: 'MPa', base: 8.4, amp: 0.25, upsetGain: 0.9 },
-  melt_temp: { unit: '°C', base: 212, amp: 1.6, upsetGain: 0.3 },
-  line_speed: { unit: 'm/min', base: 118, amp: 1.2, upsetGain: -2.2 },
+  melt_pressure: { unit: 'MPa', base: Number(process.env.MES_MELT_PRESSURE_BASE) || 8.4, amp: 0.25, upsetGain: 0.9 },
+  melt_temp: { unit: '°C', base: Number(process.env.MES_MELT_TEMP_BASE) || 212, amp: 1.6, upsetGain: 0.3 },
+  line_speed: { unit: 'm/min', base: Number(process.env.MES_LINE_SPEED_BASE) || 118, amp: 1.2, upsetGain: -2.2 },
 }
 function scalarAt(tag, t) {
   const meta = SCALARS[tag]
@@ -151,7 +157,9 @@ function batchesBetween(fromMs, toMs) {
     let m2 = 0
     for (let i = 0; i < 60; i++) for (const v of thicknessAt(start + i * (ROLL_MS / 60))) m2 += (v - mean) ** 2
     const sd = Math.sqrt(m2 / (n - 1))
-    const cpk = sd > 0 ? Math.min((52 - mean) / (3 * sd), (mean - 47.5) / (3 * sd)) : 0
+    const cpk = sd > 0
+      ? Math.min((THICKNESS_CENTER + THICKNESS_TOL - mean) / (3 * sd), (mean - (THICKNESS_CENTER - THICKNESS_TOL)) / (3 * sd))
+      : 0
     let defects = 0
     for (let i = 0; i < 90; i++) defects += ccdDefectCount(start + i * 10_000)
     const upset = upsetLevel(start + ROLL_MS / 2) > 0.25
@@ -313,7 +321,14 @@ const server = http.createServer((req, res) => {
       }
       const v = scalarAt(tag, Date.now())
       if (v === null) return json(res, 404, { error: `unknown tag: ${tag}` })
-      return json(res, 200, { data: { value: v, ts: Date.now() } })
+      const meta = SCALARS[tag]
+      return json(res, 200, {
+        data: {
+          value: v,
+          ts: Date.now(),
+          fields: [{ field: 'value', label: `${tag} 测量值`, unit: meta.unit, kind: 'scalar', description: 'MES 当前值接口返回的工程值' }],
+        },
+      })
     }
     // 标量:历史(cursor 分页)
     const mHis = path.match(/^\/api\/v1\/params\/([\w-]+)\/history$/)
@@ -323,7 +338,14 @@ const server = http.createServer((req, res) => {
       const pts = timePoints(fromMs, toMs, beats.scalar)
       const all = pts.map(t => ({ ts: new Date(t).toISOString(), value: scalarAt(tag, t) }))
       const { rows, nextCursor } = pageSlice(all, cursor, pageSize)
-      return json(res, 200, { data: { rows, nextCursor } })
+      const meta = SCALARS[tag]
+      return json(res, 200, {
+        data: {
+          rows,
+          nextCursor,
+          fields: [{ field: 'value', label: `${tag} 测量值`, unit: meta.unit, kind: 'scalar', description: 'MES 历史接口返回的工程值' }],
+        },
+      })
     }
     // 向量:膜厚断面
     if (path === '/api/v1/quality/thickness') {
@@ -333,7 +355,29 @@ const server = http.createServer((req, res) => {
         return { ts: new Date(t).toISOString(), profile, mean: Number((profile.reduce((a, b) => a + b, 0) / profile.length).toFixed(4)), lane_unit: 'um' }
       })
       const { rows, nextCursor } = pageSlice(all, cursor, pageSize)
-      return json(res, 200, { data: { rows, nextCursor, lanes: 48 } })
+      const lanes = 48
+      return json(res, 200, {
+        data: {
+          rows,
+          nextCursor,
+          lanes,
+          // 字段级数据字典:平台 mes-rest historyMap.dictionaryPath='data.fields' 时消费
+          fields: [
+            {
+              field: 'profile',
+              label: '膜厚横向断面',
+              unit: 'um',
+              kind: 'vector',
+              min: 30,
+              max: 40,
+              description: '沿模头横向(操作侧→传动侧)的膜厚分布,每行一个完整断面',
+              points: Array.from({ length: lanes }, (_, i) => ({ field: `v${i}`, label: `模头点${i + 1}`, unit: 'um', index: i })),
+            },
+            { field: 'mean', label: '断面平均膜厚', unit: 'um', kind: 'scalar', min: 30, max: 40, description: '该行 48 点均值' },
+            { field: 'lane_unit', label: '车道单位', kind: 'scalar', description: 'MES 声明的单位字符串' },
+          ],
+        },
+      })
     }
     // 向量:双折射光谱
     if (path === '/api/v1/quality/birefringence') {
@@ -342,17 +386,45 @@ const server = http.createServer((req, res) => {
         const spectrum = birefAt(t)
         return { ts: new Date(t).toISOString(), spectrum, peak_nm: Number(Math.max(...spectrum).toFixed(3)) }
       })
-      return json(res, 200, { data: { rows, bins: 32, nextCursor: null } })
+      return json(res, 200, {
+        data: {
+          rows,
+          bins: 32,
+          nextCursor: null,
+          fields: [
+            {
+              field: 'spectrum',
+              label: '双折射光谱',
+              unit: 'nm',
+              kind: 'vector',
+              description: '双折射光谱,32 个波长 bin',
+              points: Array.from({ length: 32 }, (_, i) => ({ field: `v${i}`, label: `波长bin${i + 1}`, unit: 'nm', index: i })),
+            },
+            { field: 'peak_nm', label: '峰值波长', unit: 'nm', kind: 'scalar' },
+          ],
+        },
+      })
     }
     // 图像:CCD 表检帧
     if (path === '/api/v1/vision/ccd') {
-      const limit = Math.max(1, Math.min(Number(url.searchParams.get('limit')) || 20, 120))
-      const pts = timePoints(fromMs, toMs, beats.ccd).slice(-limit)
-      const frames = pts.map((t) => {
+      const pts = timePoints(fromMs, toMs, beats.ccd)
+      const allFrames = pts.map((t) => {
         const f = ccdFrameAt(t)
         return { ts: new Date(t).toISOString(), mime: 'image/png', width: 160, height: 120, data: f.png, defects: f.defects }
       })
-      return json(res, 200, { data: { frames } })
+      const { rows: frames, nextCursor } = pageSlice(allFrames, cursor, pageSize)
+      return json(res, 200, {
+        data: {
+          frames,
+          nextCursor,
+          fields: [
+            { field: 'data', label: 'CCD 图像帧', kind: 'scalar', description: 'PNG base64 像素;平台落盘为文件,不进 prompt' },
+            { field: 'defects', label: '缺陷数', kind: 'scalar', description: 'MES 视觉算法检出的缺陷计数' },
+            { field: 'width', label: '图像宽度', unit: 'px', kind: 'scalar' },
+            { field: 'height', label: '图像高度', unit: 'px', kind: 'scalar' },
+          ],
+        },
+      })
     }
     // 多字段设定写入(POST JSON {tem?,vol?,rot?}):只受理提供的字段 —— 配合 mes-rest
     // writeHook 的「一个节点只写一个字段」语义;记录 applied 供二次校验与 E2E 断言
@@ -442,7 +514,24 @@ const server = http.createServer((req, res) => {
     }
     // 表格:批次汇总
     if (path === '/api/v1/batches') {
-      return json(res, 200, { data: { rows: batchesBetween(fromMs, toMs).slice(0, pageSize) } })
+      const { rows, nextCursor } = pageSlice(batchesBetween(fromMs, toMs), cursor, pageSize)
+      return json(res, 200, {
+        data: {
+          rows,
+          nextCursor,
+          fields: [
+            { field: 'batch_id', label: '批次号', kind: 'scalar' },
+            { field: 'start', label: '批次开始', kind: 'scalar' },
+            { field: 'end', label: '批次结束', kind: 'scalar' },
+            { field: 'mean_thickness', label: '平均膜厚', unit: 'um', kind: 'scalar', min: 30, max: 40 },
+            { field: 'thickness_sigma', label: '膜厚标准差', unit: 'um', kind: 'scalar' },
+            { field: 'cpk', label: '过程能力指数', kind: 'scalar' },
+            { field: 'defect_count', label: '缺陷数', unit: '个', kind: 'scalar' },
+            { field: 'verdict', label: '判定', kind: 'scalar' },
+            { field: 'note', label: '备注', kind: 'scalar' },
+          ],
+        },
+      })
     }
     return json(res, 404, { error: `no route: ${path}` })
   }

@@ -110,13 +110,17 @@ const { frames, loadFrames, vecPath } = useDaqDetailFrames(nodeId, isFrameNode)
 .page { padding: 4px; }
 .back { color: var(--ink-faint); text-decoration: none; }
 .back:hover { color: var(--accent); }
-.aw-page-head h1 { margin: 2px 0 4px; font-size: 26px; font-weight: 400; letter-spacing: -0.01em; }
+.aw-page-head h1 { margin: 2px 0 4px; font-size: 28px; font-weight: 600; letter-spacing: -0.022em; }
 .err { margin-top: 14px; font-size: 13px; color: var(--tone-danger-dot); }
 .grid {
   display: grid;
   gap: 14px;
   align-items: start;
-  grid-template-columns: minmax(260px, 340px) minmax(320px, 1fr) minmax(280px, 380px);
+  grid-template-columns: minmax(260px, 340px) minmax(320px, 1fr) minmax(300px, 400px);
+}
+
+.grid > * {
+  min-width: 0;
 }
 @media (max-width: 1100px) {
   .grid { grid-template-columns: 1fr; }
@@ -127,7 +131,7 @@ const { frames, loadFrames, vecPath } = useDaqDetailFrames(nodeId, isFrameNode)
   font-family: var(--font-mono);
   font-size: 11px;
   letter-spacing: 0.04em;
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-chip);
 }
 .st-pill.ok { color: var(--tone-success-dot); background: var(--tone-success-bg); }
 .st-pill.warn { color: var(--tone-warning-dot); background: var(--tone-warning-bg); }

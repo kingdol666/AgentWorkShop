@@ -1,93 +1,88 @@
 \section{Related Work}
 \label{sec:related}
-\subsection{LLM Agents in Industrial Control: From Generation to Governance}
-\looseness=-1 Agent-based manufacturing and supervision link
-organizational roles to plant
-capabilities \cite{biskupovic2025supervision}, and
-LLM-oriented industrial work now spans PLC generation and verification
-\cite{liu2026agents4plc} and direct plant-facing action---context-aware
+\subsection{Industrial Agents and Plant-Facing Action}
+Industrial agents supervise and reconfigure service-oriented cyber--physical systems
+\cite{biskupovic2025supervision}. Recent LLM work extends this direction to
+PLC generation and verification \cite{liu2026agents4plc}, instruction-guided
 control \cite{wu2025instructmpc}, digital-twin fault handling
-\cite{gill2025llmdt}, and natural-language machine
-control over OPC UA \cite{hofmann2025nlc}---without production-scoped
-admission, per-request re-checking, or graded write evidence.
-\looseness=-1 The closest systems (Table~\ref{tab:nearest}) target the control action itself---multi-modal
-control-update generation behind a safety layer \cite{huang2026made},
-module-scoped skill dispatch over a six-module plant
-\cite{koehle2026llmdriven}, and pretrained LLMs \emph{inside} the control
-loop as real-time scheduling controllers \cite{waseem2026pretrained}, a layer below
-\system{} so the roles are complementary---while agent-allocation work
-\cite{lim2025llmenabled,zhao2026shopfloor} distributes tasks, not governed
-writes. A recent review frames agentic AI's industrial value as
-safety-aware human-in-the-loop (HITL) decision support rather than autonomous
-control authority \cite{jiang2026agentic}---the mechanism set here makes
-that concrete.
+\cite{gill2025llmdt}, and natural-language machine control over OPC UA
+\cite{hofmann2025nlc}. These studies motivate a reusable boundary between an
+agent's proposal and its industrial execution.
+
+The closest plant-facing systems emphasize complementary functions
+(Table~\ref{tab:nearest}): operator-reviewed control-sequence generation with
+OPC UA execution \cite{huang2026made}, module-scoped skill dispatch
+\cite{koehle2026llmdriven}, and LLM scheduling in a simulated production
+line \cite{waseem2026pretrained}. Agent-allocation systems emphasize resource
+capability exploration and shop-floor coordination
+\cite{lim2025llmenabled,zhao2026shopfloor}. Our comparison follows the
+authority and execution evidence connecting these strategies to production
+objects. The framework's approval and capability boundary implements the
+safety-aware human-in-the-loop decision-support perspective discussed in
+\cite{jiang2026agentic}.
+
+K{\"o}hle et al.\ also restrict tool availability by component state and
+cross-verify states to expose silent faults in a simulated six-module plant
+\cite{koehle2026llmdriven}. These mechanisms overlap with our admission and
+confirmation goals. The present design organizes that relationship around
+production-scoped capabilities, source-specific limits, and separate
+receipt/verdict semantics. The integration links three contracts:
+production-scoped authorization (Q1 and current profile tests), graded
+command evidence (Q5), and separate command, observation, and recipe records
+(Q4/Q6). Table~\ref{tab:nearest} positions this combination without claiming
+that each individual mechanism is new or superior.
 
 \begin{table*}[!t]
 \centering
-\caption{Closest LLM-based industrial control systems versus \system{}
-(venue, LLM role, write path, production-scoped authority, write evidence;
-entries summarize what each cited publication reports, and a missing mechanism
-is not evidence of absence).}
+\caption{Closest plant-facing LLM systems and the proposed framework.
+Entries summarize the mechanisms and evaluation settings reported by each source.}
 \label{tab:nearest}
-\scriptsize
-\setlength{\tabcolsep}{3.4pt}
-\renewcommand{\arraystretch}{1.0}
-\begin{tabular}{@{}>{\raggedright\arraybackslash}p{2.55cm}>{\raggedright\arraybackslash}p{3.1cm}>{\raggedright\arraybackslash}p{3.3cm}>{\raggedright\arraybackslash}p{3.9cm}>{\raggedright\arraybackslash}p{3.9cm}@{}}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabularx}{\textwidth}{@{}p{2.7cm}XXX@{}}
 \toprule
-System (venue) & Role of the LLM & Plant write path & Authority \& production context & Write evidence \& verification \\
+System & Strategy and write interface & Authority/context emphasized &
+Reported evidence \\
 \midrule
-MADE, ICCAD~2026 \cite{huang2026made} & multi-modal control-update generation & generated commands + safety layer & safety layer over generated outputs; task-level checks & task success over scripted evaluations \\
-K{\"o}hle et al., ETFA~2026 \cite{koehle2026llmdriven} & per-module agents, MCP skill dispatch & skill invocation via OPC UA/MQTT & module-scoped skills & task-resolution rate (6-module plant) \\
-Lim \& Kovalenko, CASE~2025 \cite{lim2025llmenabled} & capability exploration across agents & architecture-level & resource-matching scope & architecture evaluation \\
-Zhao et al., AEI~2026 \cite{zhao2026shopfloor} & shop-floor task dispatch & workshop experiments & coordination layer & dispatch/execution performance \\
-Waseem et al., Mach.\ Learn.\ Eng.\ 2026 \cite{waseem2026pretrained} & real-time scheduling controller & robot assignment decisions (simulated line) & prompt-level constraints & throughput under LLM scheduling \\
+MADE \cite{huang2026made} & text strategy to structured OPC UA sequence &
+operator review and authorization before execution & 40 control tasks;
+virtual and physical demonstrations \\
+K{\"o}hle et al.\ \cite{koehle2026llmdriven} & module agents, MCP skills,
+OPC UA/MQTT & module/state-dependent tool availability & state cross-verification
+for silent faults; resolution rate in a simulated six-module plant \\
+Waseem et al.\ \cite{waseem2026pretrained} & LLM robot-assignment controller &
+prompt constraints in a simulated line & scheduling throughput \\
 \midrule
-\rowcolor{gray!12}
-\textbf{The platform} & \textbf{proposer (replaceable strategy slot)} & \textbf{governed write path: admission, HITL, dispatch, readback} & \textbf{member--node bindings; recipe-dispatch master switch; product/recipe-scoped limits} & \textbf{graded acknowledgment; evaluation-harness-checked three-way consistency; attributed journal; compensation; backstop} \\
+The platform & replaceable proposer above governed node/recipe execution &
+channel profiles, capabilities, product/recipe limits, run context &
+graded receipts, observations, attributed verdicts and batch records \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table*}
 
-\subsection{Frameworks, Standards, Run-Time Guarantees, and Automation Practice}
-\looseness=-1 The Model Context
-Protocol (MCP) standardizes multi-agent tool interfaces \cite{mcp2024};
-its tools carry advisory annotations but no production
-context---line, product, or recipe---and no record separating admission
-from execution. ISA-88 and ISA-95 model recipes and operations
-\cite{isa88isa95}, and \system{}'s versioned recipes instantiate
-a reduced subset of that stack; the governed
-life cycle transposes run-to-run (R2R) control disciplines \cite{moyne2000r2r}
-onto a supervisory write path.
-A separate line enforces run-time guarantees on LLM agents---schema-level
-behavioral constraints
-(AgentSpec \cite{wang2025agentspec}), and capability-based
-information-flow control (CaMeL \cite{debenedetti2025camel}), the closest
-software-agent analogue of the rule that prompt content is never authority;
-they gate software tool calls and data flow, not plant writes; their
-policies could compile onto this substrate.
+\subsection{Execution Contracts and Automation Practice}
+MCP standardizes tool discovery and calls with request-scoped authorization
+\cite{mcp2024}; ISA-88 and ISA-95 supply recipe and operations concepts
+\cite{isa88_2010,isa95_2025}. The platform instantiates
+a reduced production model and adapts run-to-run control discipline
+\cite{moyne2000r2r} to agent-originated interventions. Software-agent
+constraints such as AgentSpec \cite{wang2025agentspec} and CaMeL's
+capability-based information-flow control \cite{debenedetti2025camel}
+address tool behavior and data flow. Here those concerns meet semantic
+industrial quantities, active production context, and protocol-specific
+confirmation.
 
-\looseness=-1 Permissions, range checks, approvals, and audit trails long existed in
-distributed-control-system (DCS) and SCADA practice---versioned batch
-recipes, electronic batch journals under 21~CFR Part~11
-\cite{part11}, second-channel monitoring and run-to-run setpoint adaptation---while
-IEC~62443 codifies their security counterpart \cite{iec62443-3-3} and
-formal shielding, control-barrier functions, and simplex run-time assurance
-offer stronger properties
-\cite{alshiekh2018shielding,ames2017cbf,sha2001simplex}. Graded command
-confirmation itself has telecontrol ancestry: DNP3's select-before-operate
-exchange \cite{ieee1815dnp3} confirms a command at the protocol and
-application layer; \system{} grades above it, against production context and
-actor attribution. Against that
-practice the difference is the proposer: a machine-generated agent identity
-rather than a presupposed human operator, so admission binds to member
-authority, prompt content stays inert, and intervals are re-evaluated per
-request against live product and recipe state. No safeguard above is claimed
-as an invention---what is new is their composition into this one
-proposer-agnostic path, whose evidence
-states---graded acknowledgment, verdict, compensation---survive strategy
-replacement; the three-way check is a supervised special case of classical
-data reconciliation.
-The platform implements source-dependent checks and a rule-based backstop
-(Section~\ref{sec:agentloop}), no formal protection guarantee; human
-oversight likewise requires more than an approval dialog
-\cite{bainbridge1983ironies}.
+Electronic-record governance provides a complementary accountability
+perspective: FDA guidance discusses trustworthy records and audit trails
+\cite{part11}, while IEC~62443-3-3 specifies industrial system-security
+requirements \cite{iec62443-3-3}. Command confirmation also has historical
+telecontrol precedents, including DNP3 select-before-operate
+\cite{ieee1815dnp3}. The framework brings actor identity, production context,
+source-dependent admission, and retained confirmation evidence into one
+supervisory workflow. Control-oriented assurance addresses state evolution
+through shielding, control-barrier functions, and Simplex architectures
+\cite{alshiekh2018shielding,ames2017cbf,sha2001simplex}. Those approaches
+complement execution contracts that resolve which industrial operation is
+authorized and what evidence its execution produces. The systems question
+addressed here is how to preserve that contract across replaceable
+strategies, heterogeneous protocols, and versioned production context.

@@ -18,7 +18,7 @@ import { getDcwController } from '../../dcw/dcw-controller'
 import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
 import { getActiveLineRun } from '../../dcw/line-run'
 
-export type RecipeOp = 'update' | 'dispatch' | 'trial' | 'rollback'
+export type RecipeOp = 'update' | 'dispatch' | 'trial' | 'rollback' | 'create'
 
 export type RecipeGateResult
   = | { ok: true, binding: AgentNodeBinding, hitlRequired: boolean, activeRunId: string }
@@ -75,6 +75,41 @@ export function assertRecipeOperation(
   const globalGate = false // 由调用方按 settingOf('security.recipeDispatchApproval') 叠加(本模块不依赖设置服务)
   void globalGate
   return { ok: true, binding, hitlRequired: binding.mode === 'manual' || lineManual, activeRunId: run.id }
+}
+
+/** 新建配方的授权门(尚无 recipe 可绑定):要求 Agent 在该线至少有一个写向绑定
+ *  (dcw 节点或已有配方),并且 line 存在;manual 线/绑定 → 人工批准。
+ *  频道绑线是只读扩权,不能单独作为新建配方的依据(否则只读频道可凭空造配方)。 */
+export function assertRecipeCreate(agentId: string, lineId: string): { ok: true, hitlRequired: boolean } | { ok: false, text: string } {
+  if (!lineId) return { ok: false, text: '新建配方需要明确产线(line_id 或 source_recipe_id 可推断)。' }
+  const bindings = getAgentNodeBindingRepo().byAgent(agentId)
+  let lineBound = false
+  let manualBound = false
+  for (const b of bindings) {
+    if (b.kind === 'recipe') {
+      const r = getDcwController().listRecipes().find(x => x.id === b.nodeId)
+      if (r?.lineId === lineId) {
+        lineBound = true
+        if (b.mode === 'manual') manualBound = true
+      }
+      continue
+    }
+    if (b.kind === 'dcw') {
+      const n = getDcwController().byId(b.nodeId)
+      if (n?.lineId === lineId) {
+        lineBound = true
+        if (b.mode === 'manual') manualBound = true
+      }
+    }
+  }
+  if (!lineBound) {
+    return {
+      ok: false,
+      text: `无权在产线 ${lineId} 新建配方:你尚未绑定该产线的任何数控节点或配方。新建配方会创建可下发的参数基线,必须由用户/lead 先给你绑定该产线的节点或配方(绑定首绑默认 manual,人工批准)。`,
+    }
+  }
+  const lineManual = getDcwLineRepo().controlModeOf(lineId) === 'manual'
+  return { ok: true, hitlRequired: manualBound || lineManual }
 }
 
 /** 审批单载荷(结构化;前端审批卡渲染理由/参数/批次) */

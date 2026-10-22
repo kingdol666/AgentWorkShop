@@ -1,0 +1,167 @@
+{
+  "scope": "local technical preflight, not journal acceptance",
+  "pdf_sha256": "c4a8018c9e7c5b50eae592c1efecf1eb22634851116e330294a389fb5b6a976b",
+  "pages": 10,
+  "abstract_words": 214,
+  "references": 30,
+  "checks": [
+    {
+      "name": "ten_pages",
+      "passed": true,
+      "detail": 10
+    },
+    {
+      "name": "letter",
+      "passed": true,
+      "detail": "612 x 792 PDF bp"
+    },
+    {
+      "name": "IEEEtran",
+      "passed": true,
+      "detail": "journal class"
+    },
+    {
+      "name": "no_body_geometry_hacks",
+      "passed": true,
+      "detail": "body geometry/leading"
+    },
+    {
+      "name": "abstract",
+      "passed": true,
+      "detail": 214
+    },
+    {
+      "name": "citation_keys",
+      "passed": true,
+      "detail": {
+        "cited": 30,
+        "printed": 30,
+        "missing": []
+      }
+    },
+    {
+      "name": "build_log",
+      "passed": true,
+      "detail": []
+    },
+    {
+      "name": "no_missing_refs",
+      "passed": true,
+      "detail": 0
+    },
+    {
+      "name": "anonymous",
+      "passed": true,
+      "detail": "Anonymous Authors"
+    },
+    {
+      "name": "embedded_fonts",
+      "passed": true,
+      "detail": {
+        "count": 30,
+        "missing": []
+      }
+    },
+    {
+      "name": "page_bounds",
+      "passed": true,
+      "detail": []
+    },
+    {
+      "name": "placed_figure_type",
+      "passed": true,
+      "detail": {
+        "minimum_pdf_bp": 8.966609954833984,
+        "minimum_tex_pt": 9.000234742164611,
+        "native_target": "9 PDF bp; approximately 9 TeX pt after IEEE placement"
+      }
+    },
+    {
+      "name": "active_figures",
+      "passed": true,
+      "detail": [
+        {
+          "path": "resources/fig-missions-controls.pdf",
+          "options": "width=\\textwidth",
+          "exists": true,
+          "sha256": "71015341734842f0c0d44759d83a22aeaabab75f000e006ebee986c2430e5ff4",
+          "width_in": 7.160000271267361,
+          "height_in": 3.5500000847710504,
+          "minimum_pdf_bp": 9.0,
+          "raster_objects": 0
+        },
+        {
+          "path": "resources/fig-governance-timeline.pdf",
+          "options": "width=\\columnwidth",
+          "exists": true,
+          "sha256": "1147f2d1deac1fd66852d44256dfb7ba2af4d964b2ddf603bbf66d3c2ab7a4cf",
+          "width_in": 3.5,
+          "height_in": 2.75,
+          "minimum_pdf_bp": 9.0,
+          "raster_objects": 0
+        },
+        {
+          "path": "resources/fig-injection-controls.pdf",
+          "options": "width=\\textwidth",
+          "exists": true,
+          "sha256": "b3f818a5b0a77cf7917a1c103d1e219a1bd5c81c31685cc4e8861b0d930b2913",
+          "width_in": 7.160000271267361,
+          "height_in": 2.3499999576144748,
+          "minimum_pdf_bp": 9.0,
+          "raster_objects": 0
+        },
+        {
+          "path": "resources/fig-runtime-2026.pdf",
+          "options": "width=\\columnwidth",
+          "exists": true,
+          "sha256": "7aca692d19cdd133c7e2471c6db1111ba3f5843d84b39cf61748473e7eac5db6",
+          "width_in": 3.5,
+          "height_in": 3.5500000847710504,
+          "minimum_pdf_bp": 9.0,
+          "raster_objects": 0
+        },
+        {
+          "path": "resources/fig-admission-hitl-2026.pdf",
+          "options": "width=\\textwidth",
+          "exists": true,
+          "sha256": "3be2c9e2f400769f67b86c864c1299ab8338499bf51fc6788fa9b0bb7a65e63c",
+          "width_in": 7.160000271267361,
+          "height_in": 2.4499999152289496,
+          "minimum_pdf_bp": 9.0,
+          "raster_objects": 0
+        },
+        {
+          "path": "resources/fig-architecture-2026.pdf",
+          "options": "width=\\textwidth",
+          "exists": true,
+          "sha256": "1ad40d2764cdad1cee610581c25f6adcf8796758aaf1da631d102e525794c8d5",
+          "width_in": 7.160000271267361,
+          "height_in": 3.1500000423855252,
+          "minimum_pdf_bp": 9.0,
+          "raster_objects": 0
+        }
+      ]
+    },
+    {
+      "name": "redesigned_sizes",
+      "passed": true,
+      "detail": []
+    },
+    {
+      "name": "no_placeholders",
+      "passed": true,
+      "detail": "visible source"
+    },
+    {
+      "name": "protected_definitions",
+      "passed": true,
+      "detail": []
+    },
+    {
+      "name": "bibliography_unchanged",
+      "passed": true,
+      "detail": "same verified bibliography"
+    }
+  ],
+  "passed": true
+}

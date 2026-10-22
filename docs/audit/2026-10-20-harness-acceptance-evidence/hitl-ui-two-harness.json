@@ -1,0 +1,60 @@
+{
+  "at": "2026-10-20T12:42:08.553Z",
+  "checks": [
+    {
+      "name": "演示 workspace 创建",
+      "ok": true,
+      "detail": "4017120a-041a-42b6-a131-ea701bb78d9e"
+    },
+    {
+      "name": "omp ask 待办出现",
+      "ok": true,
+      "detail": "options=[\"yes\",\"no\",\"Other (type your own)\"] requestType=question"
+    },
+    {
+      "name": "omp 群聊页渲染 ask 选项",
+      "ok": true,
+      "detail": "[\"yes\",\"no\",\"Other (type your own)\"]"
+    },
+    {
+      "name": "omp 群聊页点击 yes 并提交",
+      "ok": true,
+      "detail": "picked=true submitted=true"
+    },
+    {
+      "name": "omp 提交后该待办清空",
+      "ok": true,
+      "detail": "id=15ada210d5c730bc"
+    },
+    {
+      "name": "omp agent 收到 yes",
+      "ok": true,
+      "detail": "state=COMPLETED deliverable=yes"
+    },
+    {
+      "name": "dsh 权限待办出现",
+      "ok": true,
+      "detail": "options=[\"Allow once\",\"Reject\"] method=confirm"
+    },
+    {
+      "name": "dsh 群聊页渲染批准/拒绝",
+      "ok": true,
+      "detail": "[\"批 准\",\"拒 绝\",\"取 消\"]"
+    },
+    {
+      "name": "dsh 群聊页点击批准",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "name": "dsh 批准后该待办清空",
+      "ok": true,
+      "detail": "id=dsh-03648e7c"
+    },
+    {
+      "name": "dsh 任务批准后继续(非 SUBMITTED)",
+      "ok": true,
+      "detail": "state=WORKING"
+    }
+  ]
+}

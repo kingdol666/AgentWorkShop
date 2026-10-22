@@ -62,7 +62,9 @@ const tabs = computed(() => [
 
 <style scoped>
 .settings-page {
+  max-width: 1180px;
   padding: 4px;
+  margin: 0 auto;
 }
 
 .settings-card {

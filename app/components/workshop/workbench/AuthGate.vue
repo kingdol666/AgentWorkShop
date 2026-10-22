@@ -173,8 +173,9 @@ const onTabChange = (key: string | number): void => {
 
 .auth-card :deep(h2) {
   margin: 0 0 6px;
-  font-family: var(--font-display);
-  font-size: 26px;
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 24px;
 }
 
 .sub { margin: 0 0 14px; font-size: 12.5px; color: var(--ink-faint); }

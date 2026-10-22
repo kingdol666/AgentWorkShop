@@ -8,7 +8,7 @@ import { requireLineMode } from '@/server/services/workshop/permissions'
 import { defineApiHandler } from '@/server/utils/response'
 import { AppError, ErrorCodes } from '@/server/utils/errors'
 import { getDcwRecipeRepo } from '@/server/services/workshop/dcw/dcw-recipe.repo'
-import { audit } from '@/server/services/workshop/ops/ops'
+import { recordOps } from '@/server/services/workshop/ops/ops'
 
 export default defineApiHandler(async (event) => {
   const user = resolveUser(event)
@@ -20,6 +20,19 @@ export default defineApiHandler(async (event) => {
   if (!body.runId)
     throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'runId 必填')
   const updated = getDcwRecipeRepo().markGood(id, String(body.runId))
-  audit({ actor: user.id, actorName: user.name, actorKind: 'user', action: 'recipe.mark-good', targetKind: 'recipe', targetId: id, detail: { runId: body.runId } })
+  recordOps({
+    actor: user.id,
+    actorName: user.name,
+    actorKind: 'user',
+    action: 'recipe.mark-good',
+    kind: 'recipe',
+    targetKind: 'recipe',
+    targetId: id,
+    lineId: updated.lineId ?? '',
+    productId: updated.productId ?? '',
+    recipeId: id,
+    summary: `标记配方「${updated.name}」已知良好批次 ${String(body.runId).slice(0, 8)}`,
+    detail: { runId: body.runId },
+  })
   return { recipe: updated }
 })

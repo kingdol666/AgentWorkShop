@@ -6,7 +6,7 @@
 > 本文是唯一权威参考;`docs/site/plugins/` 的分页文档与本文同源。
 >
 > 适用版本:插件系统 v2 自 **v0.7.29** 起可用(前端组件注入 / 插件设置 / 插件 i18n /
-> 运行时服务面);本文档对应当前版本 **v0.7.66**。`ctx.sdkVersion` 当前为 `0.3.0`。
+> 运行时服务面);本文档对应当前版本 **v0.7.70**。`ctx.sdkVersion` 当前为 `0.3.0`。
 
 ## 一、目录结构与快速开始
 
@@ -498,6 +498,26 @@ ctx.omp.registerTool({
 - **随时切换**:`GET|PUT /api/workshop/channels/:id/plugins`、`GET|PUT /api/workshop/teams/:id/plugins`(body 为 `{ plugins: [{ name, enabled }] }`,全量替换语义,未知/停用插件名忽略);
 - **语义**:无显式行 = 未配置 → 全部启用插件对该团队可见(向后兼容);写入显式行后按行过滤 —— **被关闭插件的工具不注入该团队的 Agent,dispatch 同源拒绝**;
 - **前端**:workshop teams 页(创建勾选 + 团队弹层)。
+
+### 工具目录与 Channel 级工具选择(2026-10-20)
+
+插件工具不再只存在于进程内注册表:启动/注册/卸载时同步投影到 `tool_registry`(SQLite),记录来源、插件名、作用域、label、description、参数 Schema、角色、定义哈希与可用状态。执行代码仍在插件进程里,数据库只做目录与治理事实源。
+
+- **全局透明化**:admin 打开 `/tools`(或 `GET /api/workshop/tools`)可看到内置 + 插件工具、参数 Schema、被哪些 Channel 停用;`POST /api/workshop/tools/sync` 可手动重同步。
+- **Channel 级选择**:`GET|PUT /api/workshop/channels/:id/tools`、`POST .../tools/reset`;
+  - `mode='all'`(默认):全部合格工具启用,只记录被取消勾选的工具(deny-list);
+  - `mode='selected'`:只启用勾选工具(allow-list),新工具默认不启用;
+  - 硬规则(角色 / Channel profile / 写守卫 / 插件总开关)优先,Channel 开关不能把被硬规则排除的工具打开;`selected` 模式显式启用这类工具返回 `409 TOOL_NOT_ELIGIBLE`。
+- **注入面同源**:omp 的 `set_host_tools`、pi 的 `AW_PI_TOOLS_FILE`、其余 harness 的 MCP `tools/list` 全部经 `hostToolsForRole`;执行面在 `dispatchHostTool` / `invokeHostTool` 再复核一次,引擎缓存旧列表也无法直调被停用工具。
+- **前端**:Channel 设置弹窗的「工具」区可搜索、按来源/状态过滤、全选/全不选/恢复默认;硬规则阻止的工具置灰并显示原因。
+
+### 安装本地插件
+
+```bash
+aw plugin install <source-dir> [--global|-g] [--name <name>] [--force|-f] [--no-enable]
+```
+
+安装只接受包含 `index.mjs` 的**本地目录**:拒绝符号链接与越界路径,目标必须是 project/user 作用域;`--force` 先备份旧目录。安装完成后重写 `plugins-state.json` 触发热重载,插件注册的工具会自动进入工具目录与 MCP 工具面。不做远程 URL/市场下载。
 
 ## 十一、完整示例
 

@@ -1,0 +1,6 @@
+✅ 模板实例化(optimize) — 8bbdd9ae-1737-40ae-b571-82a7d093482e
+✅ 插件开关(未配置项显式关闭) — ok
+
+{"channelId":"8bbdd9ae-1737-40ae-b571-82a7d093482e","scenario":"optimize"}
+
+=== 频道锻造: 2 通过 / 0 失败 ===

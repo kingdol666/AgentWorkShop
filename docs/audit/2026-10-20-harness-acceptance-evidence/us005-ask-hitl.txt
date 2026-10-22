@@ -1,0 +1,9 @@
+━━━ ask HITL 最短链路 @ http://127.0.0.1:3001 (tag=mvg7zwuj) ━━━
+PASS | omp lead channel 创建 | bbcfa45c-355b-404b-8d28-a4fa09bb5a64
+PASS | ask 任务提交 | 543b85db-5cfc-4184-9cc8-c30e1d4cb1f0
+PASS | hitl/pending 出现 ask 提问型待办 | kind=omp-dialog method=select options=["yes","no","Other (type your own)"]
+PASS | 待办语义为 question/select | kind=omp-dialog requestType=question method=select
+PASS | 应答 ask(选择 yes) | ok
+PASS | 应答后任务完成且交付物含 yes | state=COMPLETED deliverable=yes
+
+=== ask HITL: 6 PASS / 0 FAIL ===

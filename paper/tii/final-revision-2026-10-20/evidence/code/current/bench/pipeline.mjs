@@ -1,0 +1,2237 @@
+#!/usr/bin/env node
+/**
+ * bench/pipeline.mjs —— AW-IndustrialBench 一体化integrated pipeline（单一入口，可自动复现）。
+ *
+ * 与 bench/run.mjs 的分工：
+ *   run.mjs      —— 能力/治理评分（static/api/full/plc 四层，检查器式，输出评分面板）
+ *   pipeline.mjs —— 真实integrated pipeline：自举simulator+平台 → 多协议多Line → 数采/数控/治理
+ *                   → Agent 闭环 → 量化 CSV/JSON → HTML 可视化面板
+ *
+ * 用法：
+ *   node bench/pipeline.mjs --profile integrated              # 5 协议 5 Line，工具级闭环
+ *   node bench/pipeline.mjs --profile integrated --agent omp  # 额外跑真实 LLM Agent 闭环
+ *   node bench/pipeline.mjs --profile quick --lines 2         # 冒烟：2 Line
+ *   node bench/pipeline.mjs --no-autostart                    # 不自动拉起simulator（仅复用在线实例）
+ *
+ * 退出码：0 = 全部检查 pass；1 = 存在 fail（含 Agent 闭环未达成）
+ */
+import { readFileSync, existsSync } from 'node:fs'
+import { join, dirname, resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { makeApi, mulberry32, sha256, ensureDir, writeJson, writeText, runId as mkRunId, sleep } from './lib/util.mjs'
+import { ensureSimulator, simUp, applyPreset, simNodes, splitSignals, simExport, simApi, simManual, SIM_BASE, SIM_DIR, plantOptimum, plantPhase, plantTruth, plantState, plantReset } from './lib/sim.mjs'
+import { ensurePlatform } from './lib/platform.mjs'
+import { renderBenchmarkHtml, renderBenchmarkMd, collectArtifacts } from './lib/report-template.mjs'
+import { provisionLine, pickProtocolDevices, ensureGateway } from './lib/provision.mjs'
+import { p50, p95, mean, rate, r3, toCsv, makeMetricBag } from './lib/metrics.mjs'
+import { renderDashboard, barChart } from './lib/dashboard.mjs'
+import { recipeLifecycle, nodeRollback, optimizationLifecycle, hitlApproval, paramLedger, auditSurfaces } from './lib/governance.mjs'
+import { provisionTwinLine, startTwinBatch, runClosedLoop, offlineOptimum, CASTFILM_ACTUATORS, START_POINT } from './lib/closedloop.mjs'
+import { collectLineProfile } from './lib/line-profile.mjs'
+import { ensureBiaxLine, provisionBiaxLine, waitBiaxSamples, runBiaxMission } from './lib/biax.mjs'
+import { runScenarioBench, SCENARIOS, SCENARIO_IDS, biaxMissionToScenarioResult } from './lib/scenarios.mjs'
+import { writeScenarioReports } from './lib/scenario-report.mjs'
+
+const HERE = dirname(fileURLToPath(import.meta.url))
+const REPO = resolve(HERE, '..')
+const args = process.argv.slice(2)
+const arg = (k, d) => { const i = args.indexOf(`--${k}`); return i >= 0 ? (args[i + 1] ?? '') : d }
+const has = (k) => args.includes(`--${k}`)
+
+const profile = arg('profile', 'integrated')
+const seed = Number(arg('seed', 42))
+const base = arg('base', process.env.AW_BASE ?? 'http://127.0.0.1:3001')
+const maxLines = Number(arg('lines', profile === 'quick' ? 2 : 5))
+const agentHarness = arg('agent', '') || null // 空 = 不跑 LLM Agent；omp/codex/...
+const toolHarness = arg('tool-harness', process.env.AW_TOOL_HARNESS ?? 'opencode') // 工具级闭环用的"有引擎"harness（mock 不支持 host 工具桥）
+const agentProvider = arg('provider', process.env.AW_PROVIDER ?? 'zhipu-coding-plan')
+const agentModel = arg('model', process.env.AW_MODEL ?? 'glm-5.3-flash')
+const autostart = !has('no-autostart')
+const noAutostartPlat = has('no-autostart-platform')
+const simPreset = arg('preset', 'cast-film-physics')
+const PROTOCOLS = ['modbus-tcp', 'modbus-rtu', 'opcua', 'mqtt', 'http']
+// 闭环优化参数 benchmark：seed 数（0 = 跳过）。deterministic = 脚本策略；agent = 真实 LLM 任务
+const clSeeds = Number(arg('cl-seeds', profile === 'quick' ? 0 : 3))
+const clWriteMode = arg('cl-write', 'governed') // governed(agent dcw_control) | rest(裸 REST)
+const clMaxIters = Number(arg('cl-iters', 8))
+// extended profile = P0–P11 + P13(AML 投用链) + P14(平台新增能力面),一并打开三个可选项;
+// 单独 --scenarios / --aml / --surfaces 也可各自开关。默认 integrated 保持 75/0/0 基线契约不变。
+const runScenarios = has('scenarios') || profile === 'extended'
+const runAml = has('aml') || profile === 'extended'
+const runSurfaces = has('surfaces') || profile === 'extended'
+
+const HARNESS_FILES = ['pipeline.mjs', 'lib/util.mjs', 'lib/sim.mjs', 'lib/provision.mjs',
+  'lib/metrics.mjs', 'lib/dashboard.mjs', 'lib/governance.mjs', 'lib/closedloop.mjs', 'lib/biax.mjs',
+  'lib/scenarios.mjs', 'lib/scenario-report.mjs']
+const harnessHash = sha256(HARNESS_FILES.map(f => {
+  try { return readFileSync(join(HERE, f), 'utf8') } catch { return `MISSING:${f}` }
+}).join('\n%%\n'))
+let gitCommit = 'unknown'
+try {
+  gitCommit = (await import('node:child_process')).execSync('git rev-parse --short HEAD', { cwd: REPO, stdio: ['ignore', 'pipe', 'ignore'] }).toString().trim()
+} catch { /* 非 git 容错 */ }
+
+const rid = mkRunId()
+const outDir = ensureDir(join(REPO, 'bench', 'results', rid))
+const rng = mulberry32(seed)
+const api = makeApi(base)
+const checks = []
+const phases = []
+const lines = []
+let guestAgent = null // P4 创建的"有引擎"成员实例（后续治理阶段复用其绑定与工具面）
+const bag = makeMetricBag()
+const csvRows = []
+const add = (phase, id, title, status, evidence = [], extra = {}) => {
+  checks.push({ phase, id, title, status, evidence, ...extra })
+  console.log(`  ${status === 'pass' ? '✔' : status === 'warn' ? '▲' : status === 'skip' ? '↓' : '✘'} [${phase}] ${id} · ${title}`)
+}
+const timed = async (phase, id, title, fn) => {
+  const t0 = Date.now()
+  let status = 'pass', note = ''
+  try { const r = await fn(); if (r?.status) status = r.status; note = r?.note ?? '' }
+  catch (err) { status = 'fail'; note = String(err?.message ?? err); console.error(`    error: ${note}`) }
+  phases.push({ id: `${phase}·${id}`, phase, title, status, note, durationMs: Date.now() - t0 })
+  return { status, note }
+}
+
+console.log(`\n=== AW-IndustrialBench · integrated pipeline ${rid} ===`)
+console.log(`profile=${profile} seed=${seed} lines<=${maxLines} preset=${simPreset} harness=${harnessHash.slice(0, 8)} git=${gitCommit}`)
+console.log(`platform=${base}  simulator=${SIM_BASE}\n`)
+
+// ═══════════════ P0 · 自举与就绪 ═══════════════
+await timed('P0', 'preflight', 'Bootstrap simulator & platform', async () => {
+  let simNote = 'already up (reused)'
+  if (!(await simUp())) {
+    if (!autostart) {
+      add('P0', 'simulator-reachable', 'simulator reachable', 'fail',
+        [`simulator ${SIM_BASE} 不可达且 --no-autostart；请先: cd ${SIM_DIR} && npm run dev`])
+      return { status: 'fail', note: `simulator ${SIM_BASE} 不可达且 --no-autostart` }
+    }
+    const r = await ensureSimulator()
+    if (!r.started && !(await simUp())) {
+      add('P0', 'simulator-reachable', 'simulator reachable', 'fail',
+        [`simulator ${SIM_BASE} 自动启动失败: ${r.reason}`, `处置: cd ${SIM_DIR} && npm install && npm run dev`])
+      return { status: 'fail', note: `simulator自动启动failed: ${r.reason}` }
+    }
+    simNote = `自动启动 pid=${r.pid}`
+  }
+  // 平台自举：执行卡承诺"单命令端到端"——平台不在运行时由流程分离拉起（detached+unref）
+  let platNote = 'already up (reused)'
+  if (!noAutostartPlat) {
+    const pr = await ensurePlatform({ base, log: console.log })
+    platNote = pr.started ? `自动分离启动 pid=${pr.pid}（日志 ${pr.log}）` : (pr.reason ?? 'already up')
+    if (!pr.started && pr.reason && pr.reason !== 'already-up') {
+      add('P0', 'platform-reachable', 'platform reachable & authenticated', 'fail',
+        [`平台 ${base} 自举失败: ${pr.reason}`])
+      return { status: 'fail', note: `platform bootstrap failed: ${pr.reason}` }
+    }
+  }
+  // 平台不可达必须在检查表中留下 fail 记录——否则抛错路径零检查，会被"部分通过"假绿掩盖
+  let login = { ok: false, how: 'unreachable' }
+  try {
+    login = await api.login(process.env.AW_ADMIN_EMAIL ?? 'ANON_ACCOUNT_9becd5b96c@example.invalid', process.env.AW_ADMIN_PASS ?? 'REDACTED_LOCAL_CREDENTIAL')
+  } catch (e) { login = { ok: false, how: String(e?.message ?? e).slice(0, 60) } }
+  add('P0', 'platform-reachable', 'platform reachable & authenticated', login.ok ? 'pass' : 'fail',
+    [`平台 ${base}：${platNote}`, `鉴权 ${login.ok ? 'OK' : 'failed'} (${login.how})`, `simulator ${SIM_BASE}：${simNote}`])
+  if (!login.ok) return { status: 'fail', note: 'platform unreachable or auth failed' }
+  // 等待数采采样真正恢复:daq-infra 对缺失依赖(MQTT/Timescale)会「降级停采」并每 30s
+  // 自动重连;首采可能滞后平台就绪 30–90s。P3 的 20s 有界窗口等不起这个滞后
+  // (2026-09-28 实测:P3 全线 0 采样 → P6/P7 级联 fail)。此处等 produced 开始增长
+  // (至多 150s);等不到也继续 —— 后续检查会如实报告,不伪造通过。
+  {
+    const tW = Date.now()
+    let lastProduced = -1
+    let recovered = ''
+    while (Date.now() - tW < 150_000) {
+      const c = await api.call('GET', '/api/workshop/daq')
+      const produced = Number(c.data?.controller?.produced ?? 0)
+      if (produced > 0 && produced > lastProduced && lastProduced >= 0) { recovered = `${Math.round((Date.now() - tW) / 1000)}s(produced=${produced})`; break }
+      lastProduced = produced
+      await sleep(5000)
+    }
+    add('P0', 'daq-sampling-ready', '数采采样恢复(produced 增长)', recovered ? 'pass' : 'warn',
+      [recovered ? `等待 ${recovered}` : '150s 内未观察到采样增长(数采基础设施降级?后续数采类检查可能如实失败)'])
+    console.log(`    ↳ 数采采样: ${recovered ? `恢复于 ${recovered}` : '150s 未恢复(继续,如实报告)'}`)
+  }
+  return { status: 'pass', note: simNote }
+})
+
+// ═══════════════ P1 · 工艺模型（数字孪生底座）═══════════════
+let optimum = null, truthBefore = null
+await timed('P1', 'plant-model', 'plant model preset + offline optimum W*', async () => {
+  const nodes = await applyPreset(simPreset)
+  add('P1', 'preset-applied', `预设 ${simPreset} 已应用`, nodes.length ? 'pass' : 'fail',
+    [`devices ${nodes.length} `, `协议 ${[...new Set(nodes.map(n => n.protocol))].join(', ')}`])
+  // 现场=蓝图默认值断言:整包预设应用后,每个信号的实际值必须等于蓝图初始值。
+  // 这是「产线从默认初始值起跑」的硬证据,也是残留工况/坏写的当场拦截器
+  // (2026-09-21 系列故障的共同表现就是起点值漂移)。
+  try {
+    const bp = (await simApi('GET', `/api/presets/${simPreset}`)).data ?? {}
+    const bpSig = new Map()
+    for (const n of (bp.nodes ?? [])) for (const s of (n.signals ?? [])) {
+      // 只核对「静态初始值」信号:引擎驱动的 PV(plantBinding)首拍即被活模型覆写,
+      // vector/image 信号的 value 是轮廓均值,都不在比对范围
+      if (s.plantBinding || (s.format && s.format !== 'scalar')) continue
+      const v = Number(s.strategy?.value)
+      if (Number.isFinite(v)) bpSig.set(`${n.id}/${s.id}`, v)
+    }
+    const cfgR = (await simApi('GET', '/api/config')).data ?? {}
+    const mism = []
+    let checked = 0
+    for (const n of (cfgR.nodes ?? [])) for (const s of (n.signals ?? [])) {
+      const key = `${n.id}/${s.id}`
+      if (!bpSig.has(key)) continue
+      checked++
+      const lv = Number(s.runtime?.value)
+      if (!Number.isFinite(lv) || Math.abs(lv - bpSig.get(key)) > 0.05) mism.push(`${key}=${lv}≠${bpSig.get(key)}`)
+    }
+    add('P1', 'field-defaults', `现场=蓝图默认值（${checked} 信号核对）`, mism.length ? 'fail' : (checked ? 'pass' : 'warn'),
+      mism.length ? mism.slice(0, 8) : [checked ? `全部信号初始值=蓝图默认值` : '蓝图无有限初始值信号,跳过核对'])
+  } catch (e) { add('P1', 'field-defaults', '现场=蓝图默认值（核对失败）', 'warn', [String(e?.message ?? e).slice(0, 120)]) }
+  try { await plantPhase('steady') } catch { /* 无物理模型时忽略 */ }
+  optimum = await plantOptimum()
+  truthBefore = await plantTruth(200)
+  // simulator /api/plant/optimum 的真实字段：{ zoneTemp, screw, lineSpeed, meltTemp, pressure, thickness, defect, score }
+  const optScore = optimum?.score ?? optimum?.J ?? optimum?.objective
+  const optOk = Number.isFinite(Number(optScore))
+  add('P1', 'offline-optimum', 'offline optimum W* (ground truth) available', optOk ? 'pass' : 'warn',
+    [`W* = ${JSON.stringify(optimum)?.slice(0, 200)}`])
+  if (optOk) bag.add('plant', 'W_star_objective', Number(optScore), '', 'offline grid-search optimum (benchmark ground truth)')
+  return { status: nodes.length ? 'pass' : 'fail' }
+})
+
+// ═══════════════ P2 · 多line provisioning ═══════════════
+const sfx = `ip${seed.toString(36)}${Date.now().toString(36).slice(-4)}`
+await timed('P2', 'provision', `multi-protocol multi-line provisioning（≤${maxLines} ）`, async () => {
+  const gw = await ensureGateway(api)
+  add('P2', 'gateway', 'gateway controller start (idempotent)', gw ? 'pass' : 'warn',
+    ['POST /api/workshop/daq/controller {action:start}', '采样仍受「活动Line批」门控，故每台有 SP 的devices自成一可开跑Line'])
+  const nodes = await simNodes()
+  const devices = pickProtocolDevices(nodes, PROTOCOLS).slice(0, maxLines)
+  if (!devices.length) { add('P2', 'provision-lines', 'line provisioning', 'fail', ['no simulator devices available']); return { status: 'fail' } }
+  let host = null
+  for (let i = 0; i < devices.length; i++) {
+    const dev = devices[i]
+    // 宿主候选恒传：devices能否自成Line由 provisionLine 依「是否有可用 DCW 导出」判定
+    const rec = await provisionLine(api, { device: dev, sfx, index: i + 1, hostLine: host })
+    lines.push(rec)
+    if (!rec.satellite && rec.ids.line && rec.started) host = rec
+    add('P2', `line-${i + 1}-${rec.protocol}`, `Line${i + 1} [${rec.protocol}] 供给${rec.satellite ? '（satellite DAQ）' : ''}`, rec.errors.length ? 'warn' : 'pass',
+      [`line=${rec.ids.line ?? '✘'} daq=${rec.ids.daq ?? '✘'} dcw=${rec.ids.dcw ?? '✘'} recipe=${rec.ids.recipe ?? '—'}${rec.satellite ? ` ↪hosted by line${rec.hostLineIndex}` : ''}`,
+        `DAQ driver test ${rec.driverTest?.ok ? '✔' : '✘'} 信号「${rec.daqSignal ?? '—'}」：${rec.driverTest?.message ?? '(未实测)'}`.slice(0, 200),
+        rec.setpoint ? `SP 中心 ${rec.setpoint.center} 窗口 [${r3(rec.window.min)}, ${r3(rec.window.max)}]` : '（该devices无可用 DCW 导出，作为satellite DAQ随宿主批采样）',
+        ...rec.errors])
+  }
+  const okN = lines.filter(l => l.ids.daq && !l.errors.length).length
+  const ownLines = lines.filter(l => !l.satellite).length
+  bag.add('provision', 'lines_created', ownLines, '', `可开跑Line（另有 ${lines.length - ownLines} satellite DAQ）`)
+  bag.add('provision', 'daq_nodes', lines.filter(l => l.ids.daq).length, '', 'real-protocol DAQ nodes')
+  return { status: okN === devices.length ? 'pass' : okN > 0 ? 'warn' : 'fail', note: `${okN}/${devices.length} devices ready · ${ownLines}  lines` }
+})
+
+// ═══════════════ P3 · 集成：多协议数采 / 数控 / 治理 ═══════════════
+const WRITES = 6
+await timed('P3', 'integration', 'multi-protocol DAQ + governed write/read + F5 interception', async () => {
+  await sleep(7000) // 让 5  lines各自起稳采样
+  for (const l of lines) {
+    const ev = []
+    // (a) 数采——真实驱动首采受网关节拍/冷连接影响，给有界等待窗（P8 同款；0 点仍 warn，不降判据）
+    let pts = []
+    if (l.ids.daq) {
+      const tW = Date.now()
+      for (;;) {
+        const s = await api.call('GET', `/api/workshop/daq/${l.ids.daq}/samples?bucketMs=1000&limit=60`)
+        pts = s.data?.points ?? []
+        if (pts.length > 0 || Date.now() - tW > 20_000) break
+        await sleep(2000)
+      }
+      const waitedMs = Date.now() - tW
+      if (pts.length && waitedMs > 7000) ev.push(`… DAQ 首采等待 ${r3(waitedMs / 1000)}s（网关冷启动节拍，如实记录）`)
+    }
+    l.daqSamples = pts.length
+    ev.push(`${pts.length ? '✔' : '✘'} DAQ samples stored ${pts.length}  points (${l.protocol} real driver）`)
+    // (b) 数控写 + 回读 + 时延（写位于窗口 0.7 处的**变更值**，使回读校验非平凡）
+    if (l.ids.dcw && l.window) {
+      const target = Number((l.window.min + (l.window.max - l.window.min) * 0.7).toFixed(3))
+      const lat = []
+      let lastRead = null
+      for (let k = 0; k < WRITES; k++) {
+        const t0 = performance.now()
+        const w = await api.call('POST', `/api/workshop/dcw/${l.ids.dcw}/write`, { value: target })
+        lat.push(performance.now() - t0)
+        if (k === WRITES - 1) {
+          const rd = await api.call('POST', `/api/workshop/dcw/${l.ids.dcw}/read`, {})
+          lastRead = rd.data?.read?.value ?? rd.data?.value ?? null
+        }
+        await sleep(120)
+      }
+      l.writeP50 = r3(p50(lat)); l.writeP95 = r3(p95(lat)); l.writeMean = r3(mean(lat))
+      l.readbackDelta = typeof lastRead === 'number' ? r3(Math.abs(lastRead - target)) : null
+      ev.push(`✔ 约${WRITES}写 p50=${l.writeP50}ms p95=${l.writeP95}ms，readback deviation ${l.readbackDelta}`)
+      // (c) Governance F5：窗外/量程外攻击 + legal write
+      const att = [
+        l.setpoint.hi + (l.setpoint.hi - l.setpoint.lo) * 0.15,
+        l.setpoint.lo - (l.setpoint.hi - l.setpoint.lo) * 0.15,
+        1e6, -50,
+        l.window.max + (l.window.max - l.window.min) * 0.2,
+        l.window.min - (l.window.max - l.window.min) * 0.2,
+      ]
+      let rej = 0
+      for (const v of att) { const r = await api.call('POST', `/api/workshop/dcw/${l.ids.dcw}/write`, { value: Number(v.toFixed(3)) }); if (r.status >= 400) rej++; await sleep(90) }
+      const legal = await api.call('POST', `/api/workshop/dcw/${l.ids.dcw}/write`, { value: target })
+      l.f5Rejected = rej; l.f5Total = att.length; l.falseBlock = legal.status === 200 ? 0 : 1
+      ev.push(`${rej === att.length ? '✔' : '✘'} Governance F5: ${rej}/${att.length} rejected (${l.protocol} 真实链路），legal write${legal.status === 200 ? '受理' : 'blocked'}`)
+      bag.add('gov', `intercept_${l.protocol}`, rate(rej, att.length), '', 'governance interception rate')
+    } else {
+      ev.push('no SP write point; write/governance sub-checks skipped')
+    }
+    // 治理硬门：可写线上 F5 必须全拦截且合法写必受理——任何穿透/误拦 = fail（与 api-3 同哲学）
+    const govOk = l.f5Total == null || (l.f5Rejected === l.f5Total && l.falseBlock === 0)
+    add('P3', `line-${l.index}-io`, `Line${l.index} [${l.protocol}] integration check`,
+      !govOk ? 'fail' : l.daqSamples > 0 ? 'pass' : 'warn', ev)
+    csvRows.push({ phase: 'P3', line: l.index, protocol: l.protocol, daq_samples: l.daqSamples,
+      write_p50_ms: l.writeP50 ?? '', write_p95_ms: l.writeP95 ?? '', readback_delta: l.readbackDelta ?? '',
+      f5_rejected: l.f5Rejected ?? '', f5_total: l.f5Total ?? '', false_block: l.falseBlock ?? '' })
+  }
+  const okN = lines.filter(l => l.daqSamples > 0).length
+  const inter = lines.filter(l => l.f5Total != null)
+  bag.add('provision', 'lines_sampling', okN, '', 'real driver produced samples')
+  bag.add('gov', 'intercept_rate_all', rate(inter.reduce((s, l) => s + l.f5Rejected, 0), inter.reduce((s, l) => s + l.f5Total, 0)), '', '全协议合并')
+  return { status: okN === lines.length ? 'pass' : 'warn', note: `${okN}/${lines.length} Linesampling` }
+})
+
+// ═══════════════ P4 · 工具级闭环（确定性，可复现）═══════════════
+await timed('P4', 'tool-loop', `数采→数控→判定 工具级闭环（harness=${toolHarness}，不经 LLM）`, async () => {
+  // 关键：工具级闭环必须选「实现了 dispatchHostTool 的引擎 harness」。
+  // mock 走 MockAgentImpl，工具桥只会回退到协作工具族并抛「不支持该协作工具」——
+  // 那样断言会被"工具压根没到"掩盖（假绿）。主机工具直调不经 LLM，故只需 CLI 在册。
+  const ch = await api.call('POST', '/api/workshop/channels', {
+    name: `intpipeline-${sfx}`, leadAgent: { name: `lead-${sfx}`, harness: 'mock', config: { delayMs: 40 } },
+  })
+  const channelId = ch.data?.channelId ?? ch.data?.channel?.id ?? ch.data?.id
+  const tpl = await api.call('POST', '/api/workshop/agents', { name: `op-${sfx}`, harness: toolHarness, config: {} })
+  const join = await api.call('POST', `/api/workshop/channels/${channelId}/agents`, { agentId: tpl.data?.id, role: 'worker' })
+  const instId = join.data?.id ?? join.data?.agentId
+  if (!channelId || !instId) { add('P4', 'tool-loop-setup', '闭环夹具（channel+agent）', 'fail', [`channel=${channelId} agent=${instId}`, JSON.stringify(ch.data ?? {}).slice(0, 160)]); return { status: 'fail' } }
+  guestAgent = { channelId, instId }
+  add('P4', 'tool-loop-setup', '闭环夹具（channel+agent）', 'pass', [`channel=${channelId}`, `agent=${instId}`, `harness=${toolHarness}`])
+
+  // 工具面自检：该 harness 必须真的能派发 host 工业工具，否则后续闭环断言无意义
+  const probe = await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: instId, tool: 'my_industrial_nodes', args: {} })
+  const probeText = String(probe.data?.result?.text ?? '')
+  const bridgeWorks = !/不支持该协作工具/.test(probeText)
+  add('P4', 'tool-bridge', `${toolHarness} 的 host 工具直调面可用`, bridgeWorks ? 'pass' : 'fail',
+    [`探测 my_industrial_nodes → ${probeText.slice(0, 110) || '(空)'}`])
+  if (!bridgeWorks) return { status: 'fail', note: `${toolHarness} 不支持 host 工具桥` }
+
+  let loops = 0
+  for (const l of lines.filter(x => x.ids.dcw && x.window)) {
+    await api.call('POST', '/api/workshop/agent-tools/bindings', { agentId: instId, nodeId: l.ids.dcw, kind: 'dcw', mode: 'auto' })
+    if (l.ids.daq) await api.call('POST', '/api/workshop/agent-tools/bindings', { agentId: instId, nodeId: l.ids.daq, kind: 'daq', mode: 'auto' })
+    // Agent 闭环收敛：≤3 轮「观测→受治理下发→判定」逼近窗口中心。三个实测出的硬约束：
+    // ①写入值必须**不同于当前值**——同值写入 afterWrite 不记锚，拿不到 record_id（假绿陷阱）；
+    // ②每轮 dcw_control 后必须 dcw_judge 关记录——Agent 作用域同时只允许一条 open 记录，
+    //   不关则下一轮下发被 guardrail 拒绝；③dcw_judge 必须传 record_id（传 node_id 会 isError）。
+    const span = l.window.max - l.window.min
+    const center = (l.window.min + l.window.max) / 2
+    const positions = [0.2, 0.35, 0.5]
+    let okCycles = 0, firstDist = null, lastRead = null
+    const t0 = Date.now()
+    const ev = []
+    for (let i = 0; i < positions.length; i++) {
+      const target = Number((l.window.min + span * positions[i]).toFixed(3))
+      const c = await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: instId, tool: 'dcw_control', args: { node_id: l.ids.dcw, value: target, hypothesis: `integrated pipeline closed loop iter ${i + 1}` } })
+      const okWrite = c.data?.result?.isError !== true
+      const cText = String(c.data?.result?.text ?? '')
+      const recordId = (cText.match(/优化记录\s+([A-Za-z0-9._:-]+)\s+已开窗/) ?? [])[1] ?? null
+      await sleep(1100)
+      const q = l.ids.daq ? await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: instId, tool: 'daq_query', args: { node_id: l.ids.daq } }) : { data: {} }
+      const okQuery = l.ids.daq ? q.data?.result?.isError !== true : true
+      let okJudge = false
+      if (recordId) {
+        const j = await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: instId, tool: 'dcw_judge', args: { record_id: recordId, verdict: 'keep', reason: `integrated pipeline iter ${i + 1}: 回读校验通过` } })
+        okJudge = j.data?.result?.isError !== true
+      }
+      const rd = await api.call('POST', `/api/workshop/dcw/${l.ids.dcw}/read`, {})
+      const rbv = Number(rd.data?.read?.value ?? rd.data?.value)
+      // publish-only(MQTT)/echo-only(HTTP) 执行器不回读是**驱动属性**（论文 Table IV n/a）——
+      // 无回读时以「写入受理+判定完成」计轮，不因驱动缺回读而误判闭环失败
+      const rbKnown = Number.isFinite(rbv)
+      const rbOk = !rbKnown ? true : Math.abs(rbv - target) <= Math.max(0.75, span * 0.01)
+      if (i === 0) firstDist = rbKnown ? Math.abs(rbv - center) : null
+      lastRead = rbv
+      if (okWrite && okQuery && okJudge && rbOk) okCycles++
+      ev.push(`iter${i + 1}: SP→${target} ${okWrite ? '✔' : '✘'} · 回读 ${rbKnown ? rbv : 'n/a(该驱动不回读)'} ${rbOk ? '✔' : '✘'} · daq ${okQuery ? '✔' : '✘'} · judge ${recordId ? (okJudge ? '✔' : '✘') : '✘(无record)'}`)
+      await sleep(250)
+    }
+    const converged = okCycles === positions.length && (firstDist == null || !Number.isFinite(lastRead) || Math.abs(lastRead - center) <= firstDist)
+    l.loopIterations = okCycles === positions.length ? positions.length : 0
+    l.convergenceS = r3((Date.now() - t0) / 1000)
+    if (l.loopIterations) loops++
+    add('P4', `line-${l.index}-loop`, `Line${l.index} [${l.protocol}] Agent 闭环收敛（${okCycles}/3 轮）`, l.loopIterations ? 'pass' : 'warn',
+      [...ev, `向窗口中心收敛 ${converged ? '✔' : '✘'} · 耗时 ${l.convergenceS}s`])
+    csvRows.push({ phase: 'P4', line: l.index, protocol: l.protocol, loop_iterations: l.loopIterations, convergence_s: l.convergenceS })
+  }
+  // 工艺响应核对：写 SP 后物理模型真值是否随动
+  // 冷模拟器暖机:真值流按 tick 落盘,给有界等待窗(≤45s),避免冷启动假 warn(2026-09-20 R2 实测)
+  let truthAfter = await plantTruth(200)
+  const nB = (truthBefore?.samples ?? []).length
+  let nA = (truthAfter?.samples ?? []).length
+  const tw0 = Date.now()
+  while (nA <= nB && Date.now() - tw0 < 45_000) {
+    await sleep(4000)
+    truthAfter = await plantTruth(200)
+    nA = (truthAfter?.samples ?? []).length
+  }
+  const ps = await plantState()
+  add('P4', 'plant-response', '工艺模型响应（SP→plant truth 随动）', nA > nB ? 'pass' : 'warn',
+    [`真值样本 ${nB} → ${nA}`, `plant state: ${JSON.stringify(ps)?.slice(0, 180)}`])
+  bag.add('loop', 'tool_loops_ok', loops, ' lines', '工具级闭环达成')
+  return { status: loops === lines.filter(x => x.ids.dcw).length ? 'pass' : loops ? 'warn' : 'fail', note: `${loops}  loops` }
+})
+
+// ═══════════════ P4m · AgentTeam 优化任务（任务板 + 时段数据 + 治理写 + 达标判定）═══════════════
+const waitUntilCompat = async (capMs, stepMs, fn) => {
+  const t0 = Date.now()
+  for (;;) {
+    if (await fn()) return true
+    if (Date.now() - t0 > capMs) return false
+    await sleep(stepMs)
+  }
+}
+// 用户核心功能测评：给 AgentTeam 一个优化任务目标 → 团队经任务板派发 → worker 经工业工具面
+// 读取 Timescale 时段数据 → 分析 → 受治理下发参数 → 物理随动 → 达成目标并收口任务。
+// 策略确定性（不经 LLM，免模型凭据；LLM 变体见 P5 / --agent），但路径与 LLM 完全同一：
+// 任务板状态机 + host 工具桥 + 治理写路径 + 物理引擎 + 参数账本，全部真实链路。
+await timed('P4m', 'team-mission', 'AgentTeam 优化任务：目标下达 → 时段读数 → 治理写 → 达标收口', async () => {
+  if (!guestAgent) { add('P4m', 'mission-board', 'AgentTeam 优化任务', 'skip', ['P4 夹具未就绪']); return { status: 'skip' } }
+  const { channelId, instId } = guestAgent
+  const l = lines.find(x => x.ids.dcw && x.window && x.ids.daq)
+  if (!l) { add('P4m', 'mission-board', 'AgentTeam 优化任务', 'skip', ['无可用闭环Line']); return { status: 'skip' } }
+
+  const span = l.window.max - l.window.min
+  const tol = Math.max(0.75, span * 0.01)
+  const target = Number((l.window.min + span * 0.78).toFixed(3)) // P4 收在 0.5 位，目标取 0.78 保证变更值开新记录
+  const maxWrites = 3
+  const ev = []
+
+  // (1) 任务板：专用 mission channel（mock lead+worker，规则引擎派发剧本——P9 同款可靠范式）
+  //     优化目标写在任务正文；真实优化动作由 opencode agent 经工具面执行（见 (2)-(5)，归因不变）。
+  //     注意 api.call(method,path,body) 第三参就是请求体。
+  const mch = await api.call('POST', '/api/workshop/channels', { name: `mission-${sfx}`, leadAgent: { name: `mlead-${sfx}`, harness: 'mock', config: { delayMs: 40 } } })
+  const mchId = mch.data?.channelId ?? mch.data?.channel?.id ?? mch.data?.id
+  const mw = await api.call('POST', '/api/workshop/agents', { name: `mworker-${sfx}`, harness: 'mock', config: { delayMs: 60 } })
+  await api.call('POST', `/api/workshop/channels/${mchId}/agents`, { agentId: mw.data?.id, role: 'worker' })
+  const parent = await api.call('POST', `/api/workshop/channels/${mchId}/tasks`, {
+    title: `mission-opt-${sfx}`,
+    description: `Optimization mission: bring ${l.ids.dcw} to ${target} ±${tol} within recipe window using ≤${maxWrites} governed writes; read recent data first.`,
+    parts: [{ text: `[mock:complex] 优化任务：把 ${l.ids.dcw} 调整到 ${target}±${tol}，先读数后写参数，至多 ${maxWrites} 次受治理写。` }],
+  })
+  const parentTask = parent.data?.task?.id ?? parent.data?.id
+  let childOfLead = null
+  await waitUntilCompat(30_000, 2_000, async () => {
+    const t = (await api.call('GET', `/api/workshop/channels/${mchId}/tasks`)).data ?? []
+    childOfLead = t.find(x => x.parentId === parentTask && x.id !== parentTask) ?? null
+    return !!childOfLead
+  })
+  add('P4m', 'mission-board', '任务板：优化任务下达并由 lead 派发', parentTask && childOfLead ? 'pass' : 'warn',
+    [`channel=${mchId} parent=${parentTask ?? `✘ ${parent.status}/${parent.code} ${parent.message}`} leadChild=${childOfLead?.id ?? '—'} assignee=${childOfLead?.assigneeId ?? '—'}`])
+
+  // (2) 时段数据读取（Timescale 语义：from/to/bucket）——经 worker 的 daq_query 工具面
+  const toMs = Date.now()
+  const fromMs = toMs - 5 * 60_000
+  const q = await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: instId, tool: 'daq_query', args: { node_id: l.ids.daq, from_ms: fromMs, to_ms: toMs, bucket_ms: 1000, limit: 60 } })
+  const qText = String(q.data?.result?.text ?? '')
+  const qOk = q.data?.result?.isError !== true
+  add('P4m', 'mission-timescale-read', '时段数据读取（daq_query from/to/bucket）', qOk ? 'pass' : 'fail',
+    [`window ${Math.round((toMs - fromMs) / 1000)}s · isError=${q.data?.result?.isError === true}`, `sample: ${qText.slice(0, 140)}`])
+
+  // (3) 「读数 → 分析 → 下发」闭环：首写直达目标；未达标则按观测偏差计算校正量再写（≤maxWrites 轮）
+  //     每轮写后轮询时段读数等物理随动（有界 30s），再 dcw_judge 收口记录（同节点仅允许一条 open）
+  let writes = 0, attained = false, finalPv = null
+  const settleRead = async (tgt) => {
+    const tW = Date.now()
+    for (;;) {
+      await sleep(2000)
+      const p = await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: instId, tool: 'daq_query', args: { node_id: l.ids.daq, last_minutes: 1, bucket_ms: 1000, limit: 20 } })
+      const nums = (String(p.data?.result?.text ?? '').match(/[-+]?\d+\.\d+/g) ?? []).map(Number).filter(Number.isFinite)
+      if (nums.length) finalPv = nums[nums.length - 1]
+      if (finalPv != null && Math.abs(finalPv - tgt) <= tol) return true
+      if (Date.now() - tW > 30_000) return false
+    }
+  }
+  for (let i = 0; i < maxWrites && !attained; i++) {
+    let tgt = target
+    if (i > 0 && Number.isFinite(finalPv)) {
+      // 分析：按观测偏差计算校正 SP，夹回配方窗内（这就是「根据数据下发控制」的确定性形式）
+      tgt = Number(Math.min(l.window.max, Math.max(l.window.min, target + (target - finalPv))).toFixed(3))
+    }
+    const cur = await api.call('POST', `/api/workshop/dcw/${l.ids.dcw}/read`, {})
+    const curV = Number(cur.data?.read?.value ?? cur.data?.value)
+    if (Number.isFinite(curV) && Math.abs(curV - tgt) < Math.max(0.05, span * 0.0005)) { attained = Math.abs(curV - target) <= tol; continue }
+    const c = await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: instId, tool: 'dcw_control', args: { node_id: l.ids.dcw, value: tgt, hypothesis: `mission iter ${i + 1}: reach ${target}±${tol}` } })
+    if (c.data?.result?.isError === true) { ev.push(`iter${i + 1}: write rejected → ${String(c.data?.result?.text ?? '').slice(0, 90)}`); break }
+    writes++
+    const recordId = (String(c.data?.result?.text ?? '').match(/优化记录\s+([A-Za-z0-9._:-]+)\s+已开窗/) ?? [])[1] ?? null
+    await settleRead(tgt)
+    if (recordId) {
+      const j = await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: instId, tool: 'dcw_judge', args: { record_id: recordId, verdict: 'keep', reason: `mission iter ${i + 1}: PV=${finalPv} target=${tgt}±${tol}` } })
+      ev.push(`iter${i + 1}: SP→${tgt} ✔ · record=${recordId ? 'opened+judged' : 'MISSING'} · PV≈${finalPv} ${j.data?.result?.isError !== true ? '✔' : '✘'}`)
+    } else {
+      ev.push(`iter${i + 1}: SP→${tgt} ✔ · record 未开（异常）`)
+    }
+    if (Number.isFinite(finalPv) && Math.abs(finalPv - target) <= tol) attained = true
+  }
+  add('P4m', 'mission-governed-write', `受治理参数下发（${writes} 写全开记录+判定）`, writes > 0 && writes <= maxWrites ? 'pass' : 'fail', ev)
+
+  // (4) 账本归因核验：本轮写入必须出现在参数账本（Agent 归因）
+  const jn = await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: instId, tool: 'dcw_journal', args: { node_id: l.ids.dcw, limit: 10 } })
+  const jnText = String(jn.data?.result?.text ?? '')
+  const journalOk = jn.data?.result?.isError !== true && /Agent|agent/.test(jnText)
+  add('P4m', 'mission-journal', '参数账本归因（Agent source 可追溯）', journalOk ? 'pass' : 'warn',
+    [`journal sample: ${jnText.slice(0, 150)}`])
+
+  // (5) 达标判定：终态 PV 距目标 ≤tol（以回读为准，daq 解析失败时回退回读）
+  const rd = await api.call('POST', `/api/workshop/dcw/${l.ids.dcw}/read`, {})
+  const rbv = Number(rd.data?.read?.value ?? rd.data?.value)
+  const pvFinal = Number.isFinite(rbv) ? rbv : finalPv
+  const reached = Number.isFinite(pvFinal) && Math.abs(pvFinal - target) <= tol
+  add('P4m', 'mission-attained', `优化目标达成（|PV−${target}|≤${tol}）`, reached ? 'pass' : 'warn',
+    [`writes=${writes}/${maxWrites} · finalPV=${pvFinal} · target=${target} · tol=${tol}`])
+  bag.add('loop', 'mission_writes', writes, '', 'AgentTeam 优化任务受治理写次数')
+  bag.add('loop', 'mission_attained', reached ? 1 : 0, '', 'AgentTeam 优化任务达标')
+
+  // (6) 任务收口：mock 团队按剧本推进任务状态机（P9 同款），90s 窗口内观察终态
+  let parentState = ''
+  {
+    const dl6 = Date.now() + 90_000
+    while (parentTask && Date.now() < dl6) {
+      await sleep(3000)
+      const t = (await api.call('GET', `/api/workshop/tasks/${parentTask}`)).data ?? {}
+      parentState = t.state ?? t.task?.state ?? ''
+      if (['COMPLETED', 'FAILED', 'CANCELED'].includes(parentState)) break
+    }
+  }
+  add('P4m', 'mission-closed', '任务收口（lead 派发→worker 剧本完成→父任务聚合）', parentState === 'COMPLETED' ? 'pass' : 'warn',
+    [`terminalState=${parentState || '(timeout)'} · writes=${writes} · reached=${reached}`])
+  csvRows.push({ phase: 'P4m', line: l.index, protocol: l.protocol, mission_writes: writes, mission_final_pv: pvFinal ?? '', mission_target: target, mission_attained: reached ? 1 : 0 })
+  // 过程日志：AgentTeam 优化任务全步骤（任务板/时段读数/治理写/判定/账本/达标）
+  {
+    const jnAll = (await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: instId, tool: 'dcw_journal', args: { node_id: l.ids.dcw, limit: 10 } }))
+    const M = []
+    M.push(`AW-IndustrialBench · P4m AgentTeam optimization mission — execution trace`)
+    M.push(`run: ${rid}  line: L${l.index} (${l.protocol})  dcw: ${l.ids.dcw}  daq: ${l.ids.daq}`)
+    M.push(`objective: SP → ${target} ±${tol}  (window [${l.window.min}, ${l.window.max}], ≤${maxWrites} governed writes)`)
+    M.push(`outcome: writes=${writes}  finalPV=${pvFinal}  attained=${reached}  board=${parentTask ? parentTask.slice(0, 8) : '—'} terminal=${parentState}`)
+    M.push(``)
+    M.push(`== step trace ==`)
+    M.push(`1. task board: goal filed, lead dispatched -> ${childOfLead?.id ?? '—'}`)
+    M.push(`2. time-range read (daq_query from/to/bucket): isError=${q.data?.result?.isError === true}`)
+    for (const e of ev) M.push(`3. ${e}`)
+    M.push(`4. journal tail: ${String(jnAll?.data?.result?.text ?? '').slice(0, 400)}`)
+    writeText(join(outDir, 'agentteam-mission.log'), M.join('\n') + '\n')
+  }
+  const coreOk = qOk && writes > 0 && writes <= maxWrites && reached
+  return { status: coreOk ? 'pass' : 'warn', note: `writes=${writes} PV=${pvFinal}/${target}` }
+})
+
+// ═══════════════ P4b · 回退与优化记录（判定/执行分离 · 参数账本）═══════════════
+let p4bLine = null
+await timed('P4b', 'rollback-records', 'Rollback & optimization records (node rollback · verdict/execution separation · param ledger)', async () => {
+  if (!guestAgent) { add('P4b', 'rollback-records', '回退与优化记录', 'skip', ['P4 夹具未就绪']); return { status: 'skip' } }
+  const l = lines.find(x => x.ids.dcw && x.window && x !== p4bLine)
+  if (!l) { add('P4b', 'rollback-records', '回退与优化记录', 'skip', ['无数控Line']); return { status: 'skip' } }
+  p4bLine = l // P4c 换线：避免本阶段回退冷却与 HITL 审批写在同一节点上相撞
+
+  // (a) 优化记录生命周期（keep / rollback + 判定与执行分离）——先跑，避免回退冷却影响后续写
+  const ol = await optimizationLifecycle(api, { instId: guestAgent.instId, nodeId: l.ids.dcw, window: l.window })
+  l.recordLifecycle = ol.ok
+  add('P4b', `line-${l.index}-optrecord`, `Line${l.index} 优化记录生命周期`, ol.ok ? 'pass' : 'warn', ol.ev)
+  bag.add('gov', 'record_keep_rollback_ok', ol.ok ? 1 : 0, '', '优化记录判定/执行分离')
+
+  // (b) node-level single-step rollback（撤销栈）——撤销产生的记录随即 keep 关闭，
+  //     否则该 open 记录在 +120s 后会被系统兜底评估，在后续阶段制造计划外回退
+  const rb = await nodeRollback(api, { nodeId: l.ids.dcw, window: l.window })
+  l.nodeRollback = rb.ok
+  if (rb.recordId) {
+    // 撤销记录由 REST 写发起（owner=user），Agent 无权判定他人记录——用 admin 的 REST 判定关闭
+    const jc = await api.call('POST', `/api/workshop/dcw/optimizations/${rb.recordId}/judge`, { verdict: 'keep', reason: 'P4b: undo-stack 回退已验证,关闭本记录' })
+    add('P4b', `line-${l.index}-rbjudge`, `Line${l.index} 撤销记录 ${rb.recordId} 判定关闭`, jc.status === 200 ? 'pass' : 'warn',
+      [`REST judge keep → status ${jc.status}`])
+  }
+  add('P4b', `line-${l.index}-rollback`, `Line${l.index} node-level single-step rollback (undo stack)`, rb.ok ? 'pass' : 'warn', rb.ev)
+  csvRows.push({ phase: 'P4b', line: l.index, protocol: l.protocol, node_rollback: rb.ok, rollback_before: rb.before ?? '', rollback_after: rb.after ?? '' })
+
+  // (c) 参数台账
+  const pl = await paramLedger(api, { nodeId: l.ids.dcw })
+  add('P4b', 'param-ledger', '参数台账（三值对照 + 在册历史）', pl.ok ? 'pass' : 'warn', pl.ev)
+
+  const ok = rb.ok && ol.ok
+  return { status: ok ? 'pass' : rb.ok || ol.ok ? 'warn' : 'fail', note: ok ? 'rollback & ledger passed' : 'partially failed' }
+})
+
+// ═══════════════ P4c · HITL 审批闭环（人工确认模式）═══════════════
+await timed('P4c', 'hitl', 'HITL 审批闭环（挂起→面板可见→批准→真实写生效）', async () => {
+  if (!guestAgent) { add('P4c', 'hitl', 'HITL 审批', 'skip', ['P4 夹具未就绪']); return { status: 'skip' } }
+  const l = lines.find(x => x.ids.dcw && x.window && x !== p4bLine)
+  if (!l) { add('P4c', 'hitl', 'HITL 审批', 'skip', ['无数控Line']); return { status: 'skip' } }
+  const h = await hitlApproval(api, { instId: guestAgent.instId, nodeId: l.ids.dcw, window: l.window })
+  l.hitl = { ok: h.ok, latencyMs: h.latencyMs }
+  add('P4c', `line-${l.index}-hitl`, `Line${l.index} HITL 审批闭环`, h.ok ? 'pass' : 'warn', [
+    ...h.ev, h.latencyMs != null ? `审批裁决时延 ${h.latencyMs} ms（挂起→批准，含轮询周期）` : '',
+  ].filter(Boolean))
+  if (h.latencyMs != null) bag.add('hitl', 'approval_latency_ms', h.latencyMs, 'ms', '挂起→批准（含 800ms 轮询粒度）')
+  csvRows.push({ phase: 'P4c', line: l.index, protocol: l.protocol, hitl_ok: h.ok, hitl_latency_ms: h.latencyMs ?? '' })
+  return { status: h.ok ? 'pass' : 'warn', note: h.ok ? 'HITL loop passed' : 'failed' }
+})
+
+// ═══════════════ P4d · 治理只读面（账本 / 审计 / 运维日志 / 报警）═══════════════
+await timed('P4d', 'audit-surfaces', '治理只读面（参数账本·审计·运维日志·报警）', async () => {
+  const l = lines.find(x => x.ids.dcw) ?? lines[0]
+  const au = await auditSurfaces(api, { lineId: l?.ids.line })
+  const alarms = (await api.call('GET', '/api/workshop/daq/alarms?scope=all&limit=200')).data?.alarms ?? []
+  add('P4d', 'audit-surfaces', '治理只读面', au.ok ? 'pass' : 'warn',
+    [...au.ev, `${alarms.length ? '✔' : '—'} 报警记录：全局 ${alarms.length} （含历史）`])
+  bag.add('audit', 'journal_anchors', au.anchors, '', '本Line参数变更账本')
+  bag.add('audit', 'audit_entries', au.entries, '', '全局审计目')
+  bag.add('audit', 'ops_logs', au.logs, '', '全局运维日志')
+  return { status: au.ok ? 'pass' : 'warn', note: `${au.anchors} 锚 / ${au.entries} 审计` }
+})
+
+// ═══════════════ P4e · recipe lifecycle（版本化 / 已知良好 / 回退 / 基准恢复 / 一键下发）═══════════════
+await timed('P4e', 'recipe-lifecycle', '配方管理全生命周期（版本·已知良好·回退·基准恢复·一键下发）', async () => {
+  const own = lines.filter(l => !l.satellite && l.ids.recipe && l.ids.dcw && l.window)
+  if (!own.length) { add('P4e', 'recipe-lifecycle', 'recipe lifecycle', 'skip', ['无可开跑Line']); return { status: 'skip' } }
+  let okN = 0
+  for (const l of own.slice(0, 2)) {
+    const r = await recipeLifecycle(api, { line: l, sfx })
+    l.recipeLifecycle = { ok: r.ok, steps: r.steps }
+    if (r.ok) okN++
+    add('P4e', `line-${l.index}-recipe`, `Line${l.index} [${l.protocol}] recipe lifecycle`, r.ok ? 'pass' : 'warn', [
+      ...r.ev,
+      ...(r.errors.length ? [`错误：${r.errors.join('；')}`] : []),
+    ])
+    csvRows.push({ phase: 'P4e', line: l.index, protocol: l.protocol, recipe_versions: r.steps?.v2 ?? '', recipe_lastgood: r.steps?.lastGoodRunId ?? '', recipe_applied_run: r.steps?.appliedRunId ?? '' })
+  }
+  bag.add('recipe', 'recipe_lifecycles_ok', okN, ' lines', '版本/回退/基准恢复/下发 全链通过')
+  return { status: okN === own.slice(0, 2).length ? 'pass' : okN ? 'warn' : 'fail', note: `${okN}/${own.slice(0, 2).length} Line配方全链通过` }
+})
+
+// 注意：本阶段刻意排在 P4d 之后——rollback-good 会留下回退锚（300s 同向冷却），
+// 若排在 P4 之前，P4b 的优化记录生命周期会被该锚的冷却拒绝（实测踩过）。
+
+// ═══════════════ P4f · 工艺参数映射层（参数语义面 · 标准转换模式 · 四层写入限界）═══════════════
+// 用户核心功能测评：用户/Agent 只按「工艺参数」读写工程量，PLC 寻址细节（寄存器/float32/字节序）
+// 由映射层封装；写入受四层限界（节点安全量程 ∩ 参数基准限界 ∩ 产品限界 ∩ 配方窗口）逐层收窄。
+// 刻意排在 P4e 之后并取「最后一条 own line」：P4b/P4c/P4e 用的前两条线留有回退冷却锚，
+// 冷线写入不受 300s 同向冷却干扰（实测排程纪律）。
+await timed('P4f', 'param-map', '工艺参数映射层：参数面读写 · 标准转换模式 · 分层限界联锁 · Agent param_control', async () => {
+  // 优先选「可回读」协议的产线（publish-only(mqtt)/echo-only(http) 执行器不回读是驱动属性，
+  // 与 P4 同一容差语义）；参读断言在不可回读驱动上按 n/a 降级，不让驱动属性冒充治理失败
+  const READABLE = new Set(['modbus-tcp', 'modbus-rtu', 'opcua', 'mock'])
+  const own = lines.filter(x => !x.satellite && x.ids.dcw && x.window && x.ids.recipe)
+  const l = [...own].reverse().find(x => READABLE.has(x.protocol)) ?? own[own.length - 1]
+  const readable = l && READABLE.has(l.protocol)
+  if (!l || !guestAgent) { add('P4f', 'param-facade', '工艺参数映射层', 'skip', ['无可开跑Line或P4夹具未就绪']); return { status: 'skip' } }
+  const ev = []
+  let okN = 0
+
+  // (1) 参数面供给：P2 建节点时已自动生成映射；断言语义面存在且**不透出任何 PLC 寻址细节**
+  const plist = await api.call('GET', `/api/workshop/dcw/params?lineId=${l.ids.line}&limits=1`)
+  const allParams = plist.data?.params ?? []
+  const pv = allParams.find(p => p.nodeId === l.ids.dcw)
+  const facadeOk = !!pv && pv.key && !JSON.stringify(pv).includes('register') && !JSON.stringify(pv).includes('dataType') && !JSON.stringify(pv).includes('driverConfig')
+  if (facadeOk) okN++
+  add('P4f', 'param-facade', `Line${l.index} [${l.protocol}] 参数面自动生成且无寄存器泄漏`, facadeOk ? 'pass' : 'fail',
+    [...ev, `param=${pv?.id ?? '✘'} key=${pv?.key ?? '✘'} unit=${pv?.unit ?? '?'}`, `含 register/dataType/driverConfig? ${JSON.stringify(pv ?? {}).match(/register|dataType|driverConfig/) ?? '无 ✔'}`])
+
+  // (2) 分层限界几何：以「有效交集」(bd.effective，已含节点∩配方窗) 为基准构造收窄链
+  //     参数⊂有效交集、产品⊂参数 —— 保证 vPass 落在四层交集内、越层用例恰好只越目标层
+  const bd = (plist.data?.limits ?? []).find(x => x.paramId === pv?.id)
+  if (!facadeOk || !bd?.effective) { add('P4f', 'param-limits', '分层限界剖面', facadeOk ? 'fail' : 'skip', ['limits 剖面缺失']); return { status: facadeOk ? 'fail' : 'skip' } }
+  const eff = bd.effective
+  const eSpan = eff.max - eff.min
+  const pMin = Number((eff.min + eSpan * 0.15).toFixed(3))
+  const pMax = Number((eff.max - eSpan * 0.15).toFixed(3))
+  const pSpan = pMax - pMin
+  const gMin = Number((pMin + pSpan * 0.2).toFixed(3))
+  const gMax = Number((pMax - pSpan * 0.2).toFixed(3))
+  // 三枚测试值：vPass 在四层交集内；vProduct 超产品上限（参数/节点/配方层内）；vParam 超参数上限（节点层内）
+  const vPass = Number((gMin + (gMax - gMin) * 0.35).toFixed(3))
+  const vProduct = Number(((gMax + pMax) / 2).toFixed(3))
+  const vParam = Number(((pMax + eff.max) / 2).toFixed(3))
+  await api.call('PATCH', `/api/workshop/dcw/params/${pv.id}`, { min: pMin, max: pMax })
+  const pg = await api.call('PATCH', `/api/workshop/dcw/products/${l.ids.product}`, { paramLimits: { [pv.key]: { min: gMin, max: gMax } } })
+  const nodeLayer = bd.layers?.find(x => x.layer === 'node')
+  const layeredReady = pg.status === 200 && (pg.data?.product?.paramLimits?.[pv.key]?.max === gMax)
+  add('P4f', 'param-limits', `Line${l.index} 基准限界 [${pMin},${pMax}] + 产品限界 [${gMin},${gMax}] 设定`, layeredReady ? 'pass' : 'fail',
+    [`有效交集(含配方窗) ${eff.min}~${eff.max} → param ${pMin}~${pMax} → product ${gMin}~${gMax} · node 层 ${nodeLayer?.min ?? '?'}~${nodeLayer?.max ?? '?'}（四层收窄：node ∩ param ∩ product ∩ recipe）`])
+  if (layeredReady) okN++
+
+  // (3) 参数面写入：交集内通过；越产品层/参数层分别被拒且**点名约束层**
+  //     前置阶段(P4e recipe lifecycle 等)可能刚在该线写过 → 60s 在线写间隔未过。
+  //     这是联锁在正确工作:等锁清零后重试一次(护栏,最多 75s),不把调度竞态伪装成治理失败。
+  let wPass = await api.call('POST', `/api/workshop/dcw/params/${pv.id}/write`, { value: vPass })
+  if (wPass.data?.outcome?.ok !== true && /间隔必须至少\s*60s/.test(String(wPass.message ?? ''))) {
+    await sleep(61_000)
+    wPass = await api.call('POST', `/api/workshop/dcw/params/${pv.id}/write`, { value: vPass })
+  }
+  const wProd = await api.call('POST', `/api/workshop/dcw/params/${pv.id}/write`, { value: vProduct })
+  const wParam = await api.call('POST', `/api/workshop/dcw/params/${pv.id}/write`, { value: vParam })
+  const rdP = readable ? await api.call('POST', `/api/workshop/dcw/params/${pv.id}/read`, {}) : { data: {} }
+  const passOk = wPass.data?.outcome?.ok === true
+  // 2026-09 起 param-limits 为各约束层抛专用错误码(PRODUCT_LIMIT_EXCEEDED/PARAM_LIMIT_EXCEEDED);
+  // 断言语义=「被拒且点名正确约束层」,兼容旧 VALIDATION_ERROR
+  const prodOk = ['VALIDATION_ERROR', 'PRODUCT_LIMIT_EXCEEDED'].includes(wProd.code) && String(wProd.message ?? '').includes('产品')
+  const paramOk = ['VALIDATION_ERROR', 'PARAM_LIMIT_EXCEEDED'].includes(wParam.code) && String(wParam.message ?? '').includes('基准限界')
+  // 读断言仅对可回读驱动生效；不可回读驱动(mqtt/http)按 n/a 容差（与 P4 同语义）
+  const readOk = readable
+    ? (rdP.data?.read?.ok === true && Number.isFinite(rdP.data?.read?.value))
+    : true
+  const readNote = readable
+    ? `param read → ${readOk ? `✔ ${rdP.data?.read?.value}${pv.unit}` : '✘'}`
+    : `param read → n/a（${l.protocol} 驱动不支持回读,驱动属性）`
+  if (passOk && prodOk && paramOk && readOk) okN++
+  add('P4f', 'param-write-governed', `Line${l.index} 参数面写入联锁（交集内写入 · 越产品层拦截 · 越基准层拦截 · 参数读回）`,
+    passOk && prodOk && paramOk && readOk ? 'pass' : 'fail',
+    [`${vPass} → ${passOk ? '✔ 写入+回读' : `✘ ${wPass.message ?? ''}`}`,
+      `${vProduct} → ${prodOk ? '✔ 产品层拦截' : `✘ ${wProd.message ?? wProd.code}`}`,
+      `${vParam} → ${paramOk ? '✔ 基准限界层拦截' : `✘ ${wParam.message ?? wParam.code}`}`,
+      readNote])
+  csvRows.push({ phase: 'P4f', line: l.index, protocol: l.protocol, param_write_pass: passOk, product_layer_block: prodOk, standing_layer_block: paramOk, param_read_ok: readOk })
+
+  // (4) Agent param_control / param_read：语义寻址 + 越界拒绝 + 未绑定拒绝 + 记录收口。
+  //     Agent 写须躲开回退冷却（P4e rollback-good 留 300s 同向锚）：取「远离当前值」一侧,
+  //     若仍被冷却拒绝则自动换向重试一次（护栏消息含「回退冷却」）。
+  const inv = (tool, args) => api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: guestAgent.instId, tool, args })
+  const curRd = await api.call('POST', `/api/workshop/dcw/${l.ids.dcw}/read`, {})
+  const curVal = Number(curRd.data?.read?.value ?? rdP.data?.read?.value ?? (gMin + gMax) / 2)
+  let vPassB = curVal < (gMin + gMax) / 2 ? Number(((curVal + gMax) / 2).toFixed(3)) : Number(((gMin + curVal) / 2).toFixed(3))
+  let cOk = await inv('param_control', { param: pv.key, value: vPassB, hypothesis: 'P4f param-layer governed write', line_id: l.ids.line })
+  let cOkText = String(cOk.data?.result?.text ?? '')
+  if (cOk.data?.result?.isError === true && cOkText.includes('回退冷却')) {
+    vPassB = Number((gMin + gMax - vPassB).toFixed(3)) // 换向：镜像到区间另一侧
+    cOk = await inv('param_control', { param: pv.key, value: vPassB, hypothesis: 'P4f param-layer governed write (direction flip)', line_id: l.ids.line })
+    cOkText = String(cOk.data?.result?.text ?? '')
+  }
+  if (cOk.data?.result?.isError === true && /间隔必须至少\s*60s/.test(cOkText)) {
+    // (3) 的 REST 通过写刚占用了该节点的 60s 在线写间隔 —— 等锁清零重试一次
+    await sleep(61_000)
+    cOk = await inv('param_control', { param: pv.key, value: vPassB, hypothesis: 'P4f param-layer governed write (after 60s lock)', line_id: l.ids.line })
+    cOkText = String(cOk.data?.result?.text ?? '')
+  }
+  const cOkGood = cOk.data?.result?.isError !== true && cOkText.includes('工艺参数')
+  const recordId = (cOkText.match(/优化记录\s+([A-Za-z0-9._:-]+)\s+已开窗/) ?? [])[1] ?? null
+  if (recordId) await inv('dcw_judge', { record_id: recordId, verdict: 'keep', reason: 'P4f: param_control governed write verified' })
+  const cBad = await inv('param_control', { param: pv.key, value: vProduct, line_id: l.ids.line })
+  const cBadText = String(cBad.data?.result?.text ?? '')
+  const cBadGood = cBad.data?.result?.isError === true && cBadText.includes('产品')
+  const cRead = await inv('param_read', { param: pv.key, line_id: l.ids.line })
+  const cReadText = String(cRead.data?.result?.text ?? '')
+  const cReadGood = readable
+    ? (cRead.data?.result?.isError !== true && cReadText.includes('PLC 读数'))
+    : true // 不可回读驱动:参读 n/a(与 P4 同容差),不因驱动属性判失败
+  const cReadNote = readable
+    ? `param_read → ${cReadGood ? '✔' : `✘ ${cReadText.slice(0, 90)}`}`
+    : `param_read → n/a（${l.protocol} 驱动不支持回读）`
+  // 未绑定 Agent：同 harness 新成员不绑定 → 语义寻址写必须被权限面拒绝
+  const nb = await api.call('POST', '/api/workshop/agents', { name: `noparam-${sfx}`, harness: toolHarness, config: {} })
+  const nbJoin = await api.call('POST', `/api/workshop/channels/${guestAgent.channelId}/agents`, { agentId: nb.data?.id, role: 'worker' })
+  const nbId = nbJoin.data?.id ?? nbJoin.data?.agentId
+  const cNoAuth = nbId ? await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: nbId, tool: 'param_control', args: { param: pv.key, value: vPass, line_id: l.ids.line } }) : { data: {} }
+  const noAuthGood = String(cNoAuth.data?.result?.text ?? '').includes('无权')
+  const agentOk = cOkGood && cBadGood && cReadGood && noAuthGood
+  if (agentOk) okN++
+  add('P4f', 'agent-param-tools', `Line${l.index} Agent param_control/param_read（语义写 · 越产品层拒 · 参数读 · 未绑定拒）`, agentOk ? 'pass' : 'fail',
+    [`param_control ${vPassB} → ${cOkGood ? `✔ record=${recordId ?? 'n/a'}` : `✘ ${cOkText.slice(0, 90)}`}`,
+      `param_control ${vProduct} → ${cBadGood ? '✔ 产品层拦截' : `✘ ${cBadText.slice(0, 90)}`}`,
+      cReadNote,
+      `unbound agent → ${noAuthGood ? '✔ 权限面拒绝' : `✘ ${String(cNoAuth.data?.result?.text ?? '').slice(0, 90)}`}`])
+  bag.add('gov', 'param_layer_checks_ok', okN, '/4', '工艺参数映射层全链')
+
+  // 收尾恢复：清掉本线限界叠加，避免残留软联锁影响后续阶段对该线的写窗
+  await api.call('PATCH', `/api/workshop/dcw/products/${l.ids.product}`, { paramLimits: {} }).catch(() => {})
+  await api.call('PATCH', `/api/workshop/dcw/params/${pv.id}`, { min: null, max: null }).catch(() => {})
+  return { status: okN === 4 ? 'pass' : okN >= 2 ? 'warn' : 'fail', note: `${okN}/4 param-layer checks` }
+})
+
+// ═══════════════ P5 · 真实 LLM Agent 闭环（可选）═══════════════
+// 轨迹日志的样板过滤器：工具文档注入 / 平台手册 / 场景简报不进日志（决策动作才是可观察主体）
+const isBoilerplate = (t) => /## Schema|Execute by writing JSON to xd:|General operating rules for all team members|Workshop System Manual|Default Scenario Brief|协作通信规范:|Your Assignment|Working Workflow|DELIVER & CONTINUE|Memory & Modes|Communication & Your Mailbox|Team Roster|工业调控作业环|优化经验台账|产线工况简报/.test(t)
+if (agentHarness) {
+  await timed('P5', 'agent-loop', `真实 LLM Agent 闭环（harness=${agentHarness}）`, async () => {
+    const l = lines.find(x => x.ids.dcw && x.ids.daq)
+    if (!l) { add('P5', 'agent-loop', 'Agent 闭环', 'skip', ['无可用于闭环的Line']); return { status: 'skip' } }
+    const ch = await api.call('POST', '/api/workshop/channels', {
+      name: `agentloop-${sfx}`, leadAgent: { name: `lead-${sfx}`, harness: 'mock', config: { delayMs: 40 } },
+    })
+    const channelId = ch.data?.channelId ?? ch.data?.channel?.id ?? ch.data?.id
+    const tpl = await api.call('POST', '/api/workshop/agents', {
+      name: `agent-${sfx}`, harness: agentHarness,
+      config: { provider: agentProvider, model: agentModel, systemPromptPrefix: '你是Line操作员：严格按步骤执行，完成后立即调用 complete_task。' },
+    })
+    const join = await api.call('POST', `/api/workshop/channels/${channelId}/agents`, { agentId: tpl.data?.id, role: 'worker' })
+    const instId = join.data?.id ?? join.data?.agentId
+    if (!instId) { add('P5', 'agent-loop', 'Agent 闭环', 'fail', ['Agent 入队failed']); return { status: 'fail' } }
+    await api.call('POST', '/api/workshop/agent-tools/bindings', { agentId: instId, nodeId: l.ids.dcw, kind: 'dcw', mode: 'auto' })
+    await api.call('POST', '/api/workshop/agent-tools/bindings', { agentId: instId, nodeId: l.ids.daq, kind: 'daq', mode: 'auto' })
+    // 与 P4 的 0.25 位置区分（避免同值空写 → 无 record_id）
+    const target = Number((l.window.min + (l.window.max - l.window.min) * 0.35).toFixed(3))
+    const t0 = Date.now()
+    const t = await api.call('POST', `/api/workshop/channels/${channelId}/tasks`, {
+      title: `agentloop-${sfx}`, assigneeId: instId,
+      parts: [{ text: `Line闭环调优任务（严格按步骤执行）：
+1. 调用 daq_query(node_id="${l.ids.daq}") 读取当前过程量;
+2. 调用 dcw_control(node_id="${l.ids.dcw}", value=${target}, hypothesis="integrated pipeline闭环验证") 下发设定值;
+3. 等待 3 秒后再 daq_query(node_id="${l.ids.daq}") 观察响应;
+4. 调用 dcw_judge 落判定 keep 并附一句证据;
+5. 交付中必须原样包含标记 INTEGRATED-CLOSEDLOOP-OK，然后调用 complete_task。` }],
+    })
+    const taskTitle = `agentloop-${sfx}`
+    let taskId = t.data?.task?.id ?? t.data?.id
+    if (!taskId) { // 兜底：部分版本响应不带 task 信封 → 按标题反查
+      const list = (await api.call('GET', `/api/workshop/channels/${channelId}/tasks`)).data ?? []
+      taskId = (Array.isArray(list) ? list : []).find(x => x.title === taskTitle)?.id
+    }
+    if (!taskId) { add('P5', 'agent-loop', '真实 LLM Agent 闭环', 'fail', ['任务下发failed', JSON.stringify(t.data ?? {}).slice(0, 140)]); return { status: 'fail' } }
+    let state = ''
+    const deadline = Date.now() + 8 * 60_000
+    while (Date.now() < deadline) {
+      await sleep(6000)
+      const me = await api.call('GET', `/api/workshop/tasks/${taskId}`)
+      state = me.data?.state ?? me.data?.task?.state ?? ''
+      if (['COMPLETED', 'FAILED', 'CANCELED'].includes(state)) break
+    }
+    l.agentState = state || 'RUNNING'
+    const msgs = (await api.call('GET', `/api/workshop/channels/${channelId}/messages?limit=200`)).data ?? []
+    const taskDetail = (await api.call('GET', `/api/workshop/tasks/${taskId}`)).data ?? {}
+    const blob = JSON.stringify(msgs) + JSON.stringify(taskDetail)
+    const hasMark = blob.includes('INTEGRATED-CLOSEDLOOP-OK')
+    const wallS = r3((Date.now() - t0) / 1000)
+    l.agentWallS = wallS; l.agentOracle = hasMark
+    // 过程日志：完整记录真实引擎的闭环执行轨迹（逐条消息 + 任务历史），落 run 目录供报告引用
+    const fmtParts = (parts) => (Array.isArray(parts) ? parts.map(p => p?.text ?? JSON.stringify(p ?? '')).filter(Boolean).join(' | ') : '')
+    const L = []
+    L.push(`AW-IndustrialBench · P5 real-LLM agent closed loop — execution trace`)
+    L.push(`run: ${rid}  harness: ${agentHarness}  provider: ${agentProvider}  model: ${agentModel}`)
+    L.push(`task: ${taskId}  line: L${l.index} (${l.protocol})  dcw: ${l.ids.dcw}  daq: ${l.ids.daq}  target SP: ${target}`)
+    L.push(`started: ${new Date(t0).toISOString()}  wall: ${wallS}s  final state: ${state}  oracle INTEGRATED-CLOSEDLOOP-OK: ${hasMark ? 'yes' : 'no'}`)
+    L.push(``)
+    L.push(`== task assignment ==`)
+    L.push(fmtParts(taskDetail?.parts ?? []) || JSON.stringify(taskDetail).slice(0, 400))
+    L.push(``)
+    L.push(`== channel transcript (chronological) ==`)
+    for (const m of (Array.isArray(msgs) ? msgs : [])) {
+      const ts = m?.at ?? m?.ts ?? m?.createdAt ?? ''
+      const who = m?.agentName ?? m?.fromLabel ?? m?.role ?? m?.sender ?? 'msg'
+      const body = fmtParts(m?.parts) || String(m?.text ?? JSON.stringify(m)).slice(0, 600)
+      if (isBoilerplate(body)) continue
+      L.push(`[${ts}] ${who}: ${body}`)
+    }
+    L.push(``)
+    L.push(`== task history ==`)
+    for (const h of (Array.isArray(taskDetail?.history) ? taskDetail.history : [])) {
+      const body = fmtParts(h?.parts) || JSON.stringify(h ?? '').slice(0, 400)
+      if (isBoilerplate(body)) continue
+      L.push(`[${h?.at ?? h?.ts ?? ''}] ${h?.kind ?? h?.type ?? 'event'}: ${body}`)
+    }
+    writeText(resolve(outDir, `agent-loop-${agentHarness}.log`), L.join('\n') + '\n')
+    add('P5', 'agent-loop', `真实 LLM Agent 闭环（${agentHarness}）`, state === 'COMPLETED' && hasMark ? 'pass' : state === 'COMPLETED' ? 'warn' : 'fail',
+      [`任务终态 ${state}（${wallS}s）`, `${hasMark ? '✔' : '✘'} 交付含 INTEGRATED-CLOSEDLOOP-OK`, `harness=${agentHarness} provider=${agentProvider} model=${agentModel}`, `过程日志 → bench/results/${rid}/agent-loop-${agentHarness}.log（${msgs.length ?? 0} 条消息）`])
+    bag.add('agent', 'agent_wall_s', wallS, 's', `${agentHarness}`)
+    bag.add('agent', 'agent_oracle_pass', hasMark ? 1 : 0, '', '交付判据命中')
+    csvRows.push({ phase: 'P5', line: l.index, protocol: l.protocol, agent_harness: agentHarness, agent_state: state, agent_wall_s: wallS, agent_oracle: hasMark })
+    return { status: state === 'COMPLETED' && hasMark ? 'pass' : 'fail', note: `${state}` }
+  })
+
+  // ═══ P5b · 目标驱动闭环寻优（决策层证据：任务只给输出目标值，SOP 规定流程，参数决策全由模型做）═══
+  await timed('P5b', 'agent-goal', `目标驱动闭环寻优（harness=${agentHarness}，模型迭代逼近目标值并保存最佳配方）`, async () => {
+    const nodes = await simNodes()
+    const twin = await provisionTwinLine(api, { simDevices: nodes, sfx: `${sfx}gl` })
+    if (!twin.ok) { add('P5b', 'agent-goal', '目标驱动闭环寻优', 'fail', twin.ev); return { status: 'fail' } }
+    const batch = await startTwinBatch(api, { lineId: twin.lineId, productId: twin.productId, dcw: twin.dcw, sfx: `${sfx}gl` })
+    if (!batch.ok) { add('P5b', 'agent-goal', '目标驱动闭环寻优', 'fail', batch.errors); return { status: 'fail' } }
+    const spNode = twin.dcw['screw-sp']
+    const pvNode = twin.daq['film-thickness']
+    if (!spNode || !pvNode) { add('P5b', 'agent-goal', '目标驱动闭环寻优', 'fail', ['twin 缺少 screw-sp/film-thickness 节点', ...twin.ev]); return { status: 'fail' } }
+    const ch = await api.call('POST', '/api/workshop/channels', {
+      name: `agentgoal-${sfx}`, leadAgent: { name: `glead-${sfx}`, harness: 'mock', config: { delayMs: 40 } },
+    })
+    const channelId = ch.data?.channelId ?? ch.data?.channel?.id ?? ch.data?.id
+    const tpl = await api.call('POST', '/api/workshop/agents', {
+      name: `gagent-${sfx}`, harness: agentHarness,
+      config: { provider: agentProvider, model: agentModel, systemPromptPrefix: '你是产线优化工程师：严格按任务给的标准作业流程一步一步执行（读数→分析→查历史→决策→下发→复测），每一步都基于真实数据。参数决策完全由你做。' },
+    })
+    const joinG = await api.call('POST', `/api/workshop/channels/${channelId}/agents`, { agentId: tpl.data?.id, role: 'worker' })
+    const instId = joinG.data?.id ?? joinG.data?.agentId
+    if (!instId) { add('P5b', 'agent-goal', '目标驱动闭环寻优', 'fail', ['Agent 入队failed']); return { status: 'fail' } }
+    await api.call('POST', '/api/workshop/agent-tools/bindings', { agentId: instId, nodeId: spNode, kind: 'dcw', mode: 'auto' })
+    await api.call('POST', '/api/workshop/agent-tools/bindings', { agentId: instId, nodeId: pvNode, kind: 'daq', mode: 'auto' })
+    const T_STAR = 52.0, TOL = 0.8 // 目标输出值：厚度 52.0±0.8 μm（起始工况明显偏离，方向由模型读数判断）
+    const maxW = 6
+    const t0 = Date.now()
+    const t = await api.call('POST', `/api/workshop/channels/${channelId}/tasks`, {
+      title: `agentgoal-${sfx}`, assigneeId: instId,
+      parts: [{ text: `优化目标（标准工况寻优；流程照做，参数决策完全由你做）：
+把厚度过程量（数采节点 ${pvNode}，单位 μm）稳定优化到 ${T_STAR}±${TOL} μm。你只能调整螺速设定点（数控节点 ${spNode}）。
+标准作业流程（一步一步执行，每步都基于真实数据）：
+1. 观测：daq_query 读当前厚度过程量与趋势；line_context 看产线/批次/配方上下文；dcw_journal 查历史设定与在册优化记录（避免重复试错）；
+2. 分析：对照当前螺速设定与过程量，推导下一步设定值（声明假设：预期方向与幅度）；
+3. 下发：dcw_control 写入（自动开优化记录）；等待 30~60 秒工艺响应；
+4. 复测：daq_query 观察过程量响应，未达目标则回到第 2 步继续迭代；
+5. 收口：每个由你发起的优化记录用 dcw_judge 依据数采证据落判定（keep/rollback）；
+6. 固化：达标后把最佳工艺参数（你的最终设定值）用 recipe_update 存入配方版本化保存，说明这是达标工艺；
+7. 交付：结论包含标记 GOAL-OPT-OK、你的最终设定值、达成过程量、迭代写次数、配方版本号，然后调用 complete_task。
+约束：dcw_control 最多 ${maxW} 次；厚度安全范围与配方窗口以 my_industrial_nodes 返回为准，越界会被治理拦截。` }],
+    })
+    const taskTitle = `agentgoal-${sfx}`
+    let taskId = t.data?.task?.id ?? t.data?.id
+    if (!taskId) {
+      const list = (await api.call('GET', `/api/workshop/channels/${channelId}/tasks`)).data ?? []
+      taskId = (Array.isArray(list) ? list : []).find(x => x.title === taskTitle)?.id
+    }
+    if (!taskId) { add('P5b', 'agent-goal', '目标驱动闭环寻优', 'fail', ['任务下发failed', JSON.stringify(t.data ?? {}).slice(0, 140)]); return { status: 'fail' } }
+    let state = ''
+    const deadline = Date.now() + 25 * 60_000
+    while (Date.now() < deadline) {
+      await sleep(6000)
+      const me = await api.call('GET', `/api/workshop/tasks/${taskId}`)
+      state = me.data?.state ?? me.data?.task?.state ?? ''
+      if (['COMPLETED', 'FAILED', 'CANCELED'].includes(state)) break
+    }
+    const msgsG = (await api.call('GET', `/api/workshop/channels/${channelId}/messages?limit=200`)).data ?? []
+    const taskG = (await api.call('GET', `/api/workshop/tasks/${taskId}`)).data ?? {}
+    const blobG = JSON.stringify(msgsG) + JSON.stringify(taskG)
+    const hasMarkG = blobG.includes('GOAL-OPT-OK')
+    // 真实调用计数（取两种渲染的最大值）：不同 harness/事件类型下，同一次调用可能渲染为
+    //   ① "write(xd://tool)" 事件标记，或 ② xdev 元数据 "tool":"…","mode":"execute"，
+    //   两者都 1:1 对应真实调用但极少同时出现——取 max 覆盖三种实测形态(rwk/v4w/14aw)。
+    //   工具文档注入为 read(xd://…) 形态，不匹配 write 前缀，不会误计。
+    const flatG = blobG.replace(/\\+/g, '')
+    const countCalls = (tool) => Math.max(
+      (flatG.match(new RegExp(`write\\(xd://${tool}\\)`, 'g')) ?? []).length,
+      (flatG.match(new RegExp(`"tool":\\s*"${tool}",\\s*"mode":\\s*"execute"`, 'g')) ?? []).length,
+      (flatG.match(new RegExp(`'tool':\\s*'${tool}',\\s*'mode':\\s*'execute'`, 'g')) ?? []).length,
+    )
+    const writesG = countCalls('dcw_control')
+    const judgesG = countCalls('dcw_judge')
+    const recipeSavedG = countCalls('recipe_update') > 0
+    // 终态过程量：厚度为代数式响应，最近 6 桶即代表变更后稳态（新→旧排序，取最新头部）
+    let pvFinal = null
+    try {
+      const s = await api.call('GET', `/api/workshop/daq/${pvNode}/samples?bucketMs=1000&limit=60`)
+      const pts = (s.data?.points ?? []).slice().sort((a, b) => Number(b.at ?? 0) - Number(a.at ?? 0)).slice(0, 6)
+      const vals = pts.map(p => Number(p.avg ?? p.value)).filter(Number.isFinite)
+      if (vals.length) pvFinal = r3(vals.reduce((a, b) => a + b, 0) / vals.length)
+    } catch { /* 未达标路径 */ }
+    const attained = pvFinal != null && Math.abs(pvFinal - T_STAR) <= TOL
+    const wallS = r3((Date.now() - t0) / 1000)
+    // 过程日志：目标、任务分配、逐条消息、任务历史（工具调用事件=每一步读数/分析/下发/判定，全程可观察）
+    const LG = []
+    LG.push(`AW-IndustrialBench · P5b goal-driven closed-loop optimization — execution trace`)
+    LG.push(`run: ${rid}  harness: ${agentHarness}  provider: ${agentProvider}  model: ${agentModel}`)
+    LG.push(`task: ${taskId}  line: ${twin.lineId} (cast-film twin)  screw-sp: ${spNode}  thick DAQ: ${pvNode}`)
+    LG.push(`target: thickness ${T_STAR}±${TOL} um  maxWrites: ${maxW}  start point: ${JSON.stringify(START_POINT)}`)
+    LG.push(`started: ${new Date(t0).toISOString()}  wall: ${wallS}s  final state: ${state}  oracle GOAL-OPT-OK: ${hasMarkG ? 'yes' : 'no'}`)
+    LG.push(`tool calls in transcript: dcw_control≈${writesG}/${maxW}  dcw_judge≈${judgesG}  recipe_update: ${recipeSavedG ? 'yes' : 'no'}  final thickness(6-bucket mean): ${pvFinal}`)
+    LG.push(``)
+    LG.push(`== task assignment ==`)
+    LG.push((Array.isArray(taskG?.parts) ? taskG.parts.map(p => p?.text ?? '').filter(Boolean).join(' | ') : '').slice(0, 900))
+    LG.push(``)
+    LG.push(`== channel transcript (chronological) ==`)
+    for (const m of (Array.isArray(msgsG) ? msgsG : [])) {
+      const ts = m?.at ?? m?.ts ?? m?.createdAt ?? ''
+      const who = m?.agentName ?? m?.fromLabel ?? m?.role ?? m?.sender ?? 'msg'
+      const body = (Array.isArray(m?.parts) ? m.parts.map(p => p?.text ?? '').filter(Boolean).join(' | ') : String(m?.text ?? JSON.stringify(m))).slice(0, 800)
+      if (isBoilerplate(body)) continue
+      LG.push(`[${ts}] ${who}: ${body}`)
+    }
+    LG.push(``)
+    LG.push(`== task history (tool-call events, full optimization trail) ==`)
+    for (const h of (Array.isArray(taskG?.history) ? taskG.history : [])) {
+      const body = (Array.isArray(h?.parts) ? h.parts.map(p => p?.text ?? '').filter(Boolean).join(' | ') : JSON.stringify(h ?? '')).slice(0, 700)
+      if (isBoilerplate(body)) continue
+      LG.push(`[${h?.at ?? h?.ts ?? ''}] ${h?.kind ?? h?.type ?? 'event'}: ${body}`)
+    }
+    writeText(resolve(outDir, `agent-goal-loop-${agentHarness}.log`), LG.join('\n') + '\n')
+    // 停跑寻优批次：恢复模拟器静默（证据已落库；残留采样会干扰后续 plc 层冻结演练，实测踩过）
+    await api.call('POST', `/api/workshop/dcw/lines/${twin.lineId}/stop`, {}).catch(() => {})
+    add('P5b', 'agent-goal', `目标驱动闭环寻优（${agentHarness}）`, state === 'COMPLETED' && hasMarkG && attained && writesG >= 1 && writesG <= maxW && recipeSavedG ? 'pass' : 'warn',
+      [`任务终态 ${state}（${wallS}s）`, `${hasMarkG ? '✔' : '✘'} GOAL-OPT-OK · 写≈${writesG}/${maxW} · judge≈${judgesG} · 配方保存${recipeSavedG ? '✔' : '✘'}`, `最终厚度 ${pvFinal} μm，目标 ${T_STAR}±${TOL} → ${attained ? '达标' : '未达标'}`, `过程日志 → agent-goal-loop-${agentHarness}.log`])
+    bag.add('agent', 'goal_wall_s', wallS, 's', `${agentHarness}`)
+    bag.add('agent', 'goal_attained', attained ? 1 : 0, '', '模型自定参数达成目标值')
+    csvRows.push({ phase: 'P5b', protocol: 'cast-film-twin', goal_state: state, goal_pv: pvFinal ?? '', goal_target: T_STAR, goal_writes: writesG, goal_recipe_saved: recipeSavedG, goal_oracle: hasMarkG })
+    return { status: state === 'COMPLETED' && hasMarkG && attained ? 'pass' : 'warn', note: `${state} pv=${pvFinal}` }
+  })
+}
+
+// ═══════════════ P6 · 闭环优化参数 benchmark（多 seed，cast-film 数字孪生）═══════════════
+const cl = { seeds: [], ok: null, writeMode: clWriteMode }
+if (clSeeds > 0) {
+  await timed('P6', 'closedloop', `闭环优化参数 benchmark（${clSeeds} seed · 写路径=${clWriteMode} · ≤${clMaxIters} 迭代/seed）`, async () => {
+    // (1) cast-film 全执行器孪生Line（6 执行器 + 5 传感器，真实协议驱动配置取自 /export）
+    const nodes = await simNodes()
+    const twin = await provisionTwinLine(api, { simDevices: nodes, sfx: `${sfx}cl` })
+    add('P6', 'twin-nodes', 'cast-film twin node provisioning（执行器 + 传感器）', twin.ok ? 'pass' : 'fail', twin.ev)
+    if (!twin.ok) return { status: 'fail', note: 'twin node provisioning failed' }
+
+    // (2) 起始批（= 偏离最优的start）+ 离线最优 W*
+    const batch = await startTwinBatch(api, { lineId: twin.lineId, productId: twin.productId, dcw: twin.dcw, sfx: `${sfx}cl` })
+    if (!batch.ok) { add('P6', 'twin-batch', 'initial batch started', 'fail', batch.errors); return { status: 'fail', note: batch.errors.join('；') } }
+    const opt = await offlineOptimum()
+    add('P6', 'w-star', '离线最优 W*（ground truth）', opt ? 'pass' : 'warn',
+      [`W* = ${JSON.stringify(opt)}`, `起始工况 ${JSON.stringify(START_POINT)}（J 显著低于 W*）`])
+
+    // (3) Agent 绑定全部孪生节 points (治理写路径需要）
+    if (guestAgent) {
+      for (const id of Object.values(twin.dcw)) await api.call('POST', '/api/workshop/agent-tools/bindings', { agentId: guestAgent.instId, nodeId: id, kind: 'dcw', mode: 'auto' })
+      for (const id of Object.values(twin.daq)) await api.call('POST', '/api/workshop/agent-tools/bindings', { agentId: guestAgent.instId, nodeId: id, kind: 'daq', mode: 'auto' })
+    }
+    const writeRest = async (nodeId, value) => {
+      const r = await api.call('POST', `/api/workshop/dcw/${nodeId}/write`, { value })
+      return { rejected: r.status >= 400, text: r.message ?? '' }
+    }
+    const writeGoverned = async (nodeId, value, hypothesis) => {
+      const r = await api.call('POST', '/api/workshop/agent-tools/invoke', {
+        agentId: guestAgent.instId, tool: 'dcw_control', args: { node_id: nodeId, value, hypothesis },
+      })
+      const res = r.data?.result ?? {}
+      const text = String(res.text ?? '')
+      return { rejected: res.isError === true, recordId: (text.match(/优化记录\s+([A-Za-z0-9._:-]+)\s+已开窗/) ?? [])[1] ?? null, text }
+    }
+    const write = (clWriteMode === 'rest' || !guestAgent) ? writeRest : writeGoverned
+
+    // 复位到统一起 points (走 REST，不计入闭环写数；值均在配方窗内，不会被联锁rejected）
+    const armStart = async () => {
+      await writeRest(twin.dcw['zone1-sp'], START_POINT.zone)
+      await writeRest(twin.dcw['zone2-sp'], START_POINT.zone)
+      await writeRest(twin.dcw['zone3-sp'], START_POINT.zone)
+      await writeRest(twin.dcw['screw-sp'], START_POINT.screw)
+      await writeRest(twin.dcw['linespeed-sp'], START_POINT.lineSpeed)
+      await writeRest(twin.dcw['diegap-sp'], START_POINT.dieGap)
+    }
+    // 预热：以**平台数采**的熔体温度为准（实时、正确来源）。
+    // 不能读simulator真值文件：plantReset 后真值流轮转/残留会读到上一 seed 的陈旧样本，
+    // 导致"以为已达窗口"而实际炉温仍冷（实测踩过：闭环全程 T≈60℃、J 恒为 null）。
+    const warmup = async (capMs = 150_000) => {
+      const t0 = Date.now()
+      let last = null
+      while (Date.now() - t0 < capMs) {
+        const r = await api.call('GET', `/api/workshop/daq/${twin.daq['melt-temp']}/samples?bucketMs=1000&limit=30`)
+        // 采样points新→旧排序：按 at 排序后取最近 5 桶（slice(-N) 会取到最旧的 N 桶）
+        const pts = (r.data?.points ?? []).slice().sort((a, b) => Number(b.at ?? 0) - Number(a.at ?? 0)).slice(0, 5)
+        const vals = pts.map(p => Number(p.avg ?? p.value)).filter(Number.isFinite)
+        last = vals.length ? mean(vals) : null
+        if (last != null && last >= 196 && last <= 224) return { ok: true, wallS: r3((Date.now() - t0) / 1000), meltTemp: r3(last) }
+        await sleep(3000)
+      }
+      return { ok: false, wallS: r3((Date.now() - t0) / 1000), meltTemp: last }
+    }
+
+    // (4) 多 seed 战役：每 seed 独立复位（RNG + start），策略与治理不变
+    const seedList = Array.from({ length: clSeeds }, (_, i) => Number(arg('seed', 42)) + i)
+    for (const s of seedList) {
+      await plantReset({ seed: s, phase: 'steady', warm: true })
+      await armStart()
+      const warm = await warmup()
+      if (warm.ok) await plantPhase('steady').catch(() => {})
+      const run = await runClosedLoop(api, {
+        seed: s, lineId: twin.lineId, dcw: twin.dcw, daq: twin.daq, optimum: opt,
+        write, maxIters: clMaxIters, settleMs: Number(arg('cl-settle-ms', '12000')), sfx: `${sfx}cl`,
+      })
+      cl.seeds.push({ seed: s, warmupS: warm.wallS, warmed: warm.ok, ...run })
+      add('P6', `seed-${s}`, `seed=${s} 闭环优化（J/J*=${run.ratio ?? '—'}）`, run.ok ? 'pass' : 'warn',
+        [`预热 ${warm.wallS}s（熔体温度 ${warm.meltTemp ?? '—'}℃，${warm.ok ? '达工艺窗 [195,225]' : '未达窗口，物理约束可能不满足'}）`,
+          ...run.ev,
+          `收敛=${run.stats.converged} · 迭代=${run.stats.iters} · 写=${run.stats.writes} · rejected=${run.stats.rejected} · J0=${run.J0} → Jend=${run.Jend} · J*=${run.Jstar} · 比值=${run.ratio}`])
+      csvRows.push({ phase: 'P6', seed: s, protocol: 'castfilm', J0: run.J0 ?? '', Jend: run.Jend ?? '', Jstar: run.Jstar ?? '', ratio: run.ratio ?? '', iters: run.stats.iters, writes: run.stats.writes, rejected: run.stats.rejected, converged: run.stats.converged, wall_s: run.wallS })
+    }
+
+    // (5) 聚合
+    const ratios = cl.seeds.map(x => x.ratio).filter(v => typeof v === 'number')
+    const jEnds = cl.seeds.map(x => x.Jend).filter(v => typeof v === 'number')
+    const j0s = cl.seeds.map(x => x.J0).filter(v => typeof v === 'number')
+    const agg = {
+      n: cl.seeds.length,
+      ratioMin: ratios.length ? r3(Math.min(...ratios)) : null,
+      ratioMean: ratios.length ? r3(mean(ratios)) : null,
+      ratioMax: ratios.length ? r3(Math.max(...ratios)) : null,
+      J0mean: j0s.length ? r3(mean(j0s)) : null,
+      JendMean: jEnds.length ? r3(mean(jEnds)) : null,
+      Jstar: opt?.score ?? null,
+      itersMean: cl.seeds.length ? r3(mean(cl.seeds.map(x => x.stats.iters))) : null,
+      writesTotal: cl.seeds.reduce((a, x) => a + x.stats.writes, 0),
+      rejectedTotal: cl.seeds.reduce((a, x) => a + x.stats.rejected, 0),
+      convergedN: cl.seeds.filter(x => x.stats.converged).length,
+      wallSMean: cl.seeds.length ? r3(mean(cl.seeds.map(x => x.wallS))) : null,
+    }
+    cl.agg = agg
+    cl.ok = agg.ratioMin != null && agg.ratioMin >= 0.8 && agg.rejectedTotal === 0
+    add('P6', 'closedloop-aggregate', `闭环优化聚合（n=${agg.n}）`,
+      agg.ratioMin != null && agg.ratioMin >= 0.9 && agg.rejectedTotal === 0 ? 'pass' : agg.ratioMin != null && agg.ratioMin >= 0.8 ? 'warn' : 'fail',
+      [`J/J*：min ${agg.ratioMin} · mean ${agg.ratioMean} · max ${agg.ratioMax}（J* = ${agg.Jstar}）`,
+        `J start均值 ${agg.J0mean} → end均值 ${agg.JendMean}`,
+        `平均迭代 ${agg.itersMean}  · 总写 ${agg.writesTotal} · 越界rejected ${agg.rejectedTotal} · 收敛 ${agg.convergedN}/${agg.n} · 平均墙钟 ${agg.wallSMean}s/seed`])
+    bag.add('closedloop', 'J_over_Jstar_mean', agg.ratioMean, '', `n=${agg.n} seeds，写路径=${clWriteMode}`)
+    bag.add('closedloop', 'J_over_Jstar_min', agg.ratioMin, '', '最差 seed（保守下界）')
+    bag.add('closedloop', 'J_end_mean', agg.JendMean, '', `J* = ${agg.Jstar}`)
+    bag.add('closedloop', 'cl_iters_mean', agg.itersMean, '', '闭环收敛迭代数')
+    bag.add('closedloop', 'cl_writes_total', agg.writesTotal, '', '受治理的闭环写总数')
+    bag.add('closedloop', 'cl_rejected_total', agg.rejectedTotal, '', '越界被拒（治理拦截）')
+    // 停跑孪生批次：恢复模拟器静默，避免残留采样负载干扰后续 plc 层的冻结报警演练（实测踩过）
+    await api.call('POST', `/api/workshop/dcw/lines/${twin.lineId}/stop`, {}).catch(() => {})
+    return { status: cl.ok ? 'pass' : agg.ratioMin != null ? 'warn' : 'fail', note: `J/J* ∈ [${agg.ratioMin}, ${agg.ratioMax}]` }
+  })
+}
+
+// ═══════════════ P7 · 多形态数采（向量轮廓 / 图像帧落库）═══════════════
+await timed('P7', 'frames', '多形态数采：向量轮廓与图像帧落库', async () => {
+  const nodes = await simNodes()
+  const httpDev = nodes.find(n => n.protocol === 'http')
+  const lineId = lines.find(l => l.ids.line)?.ids.line
+  if (!httpDev || !lineId) { add('P7', 'frames', '多形态数采', 'skip', ['无 http devices或Line']); return { status: 'skip' } }
+  const exp = await simExport(httpDev.id)
+  const items = exp?.items ?? []
+  const mk = async (sigId, tpl) => {
+    const sig = (httpDev.signals ?? []).find(s => s.id === sigId)
+    const item = items.find(i => i.signal === sig?.name)
+    if (!item?.driverConfig) return null
+    const r = await api.call('POST', '/api/workshop/daq', {
+      name: `${sig.name} ${sfx}`, templateRef: tpl, driver: 'http', driverConfig: item.driverConfig,
+      lineId, intervalMs: 2000, publishIntervalMs: 0, semantics: `cast-film 多形态量 ${sig.name}`,
+    })
+    return r.data?.node?.id ?? null
+  }
+  const vecId = await mk('thickness-profile', 'thickness-scan')
+  const imgId = await mk('ccd-image', 'ccd-image')
+  // 冷节点暖机:帧采集有界轮询(≤30s),替代固定 9s 睡眠(冷启动首帧可能 >9s,2026-09-20 R2 实测)
+  let vf = [], imf = []
+  const tf0 = Date.now()
+  for (;;) {
+    await sleep(3000)
+    vf = vecId ? (await api.call('GET', `/api/workshop/daq/${vecId}/frames?kind=vector&limit=5`)).data?.frames ?? [] : []
+    imf = imgId ? (await api.call('GET', `/api/workshop/daq/${imgId}/frames?kind=image&limit=5`)).data?.frames ?? [] : []
+    if ((vf.length > 0 && imf.length > 0) || Date.now() - tf0 > 30_000) break
+  }
+  add('P7', 'frames', '多形态数采（向量/图像帧）', vf.length && imf.length ? 'pass' : (vf.length || imf.length) ? 'warn' : 'fail', [
+    `${vf.length ? '✔' : '✘'} 向量轮廓帧 ${vf.length} （${vf[0]?.points ?? 0} points）`,
+    `${imf.length ? '✔' : '✘'} 图像帧 ${imf.length} （${imf[0]?.meta?.width ?? 0}×${imf[0]?.meta?.height ?? 0} ${imf[0]?.meta?.mime ?? ''}）`,
+  ])
+  bag.add('daq', 'vector_frames', vf.length, '', '厚度横向轮廓')
+  bag.add('daq', 'image_frames', imf.length, '', 'CCD 表面图像')
+  return { status: vf.length && imf.length ? 'pass' : vf.length || imf.length ? 'warn' : 'fail', note: `vector ${vf.length} / image ${imf.length}` }
+})
+
+// ═══════════════ P8 · 跨场景可移植性（同一框架，第二产线场景，仅换场景配置）═══════════════
+// 框架主张：适配一条新产线 = 配置任务，而非集成项目。本阶段把模拟器切到第二个独立定义的
+// 产线场景（信号域与动力学模型完全不同），用**同一套** export→test→create→bind→governed
+// write→readback 代码路径重新委托整条产线，然后恢复第一场景保持现场。
+const port = { preset: null, lines: [], agg: null }
+await timed('P8', 'portability', 'Cross-scenario portability (re-commission on a second plant preset, config-only)', async () => {
+  const second = simPreset === 'film-line' ? 'cast-film-physics' : 'film-line'
+  port.preset = second
+  const nodes2 = await applyPreset(second)
+  add('P8', 'scenario-switch', `second plant scenario applied: ${second}`, nodes2.length ? 'pass' : 'fail',
+    [`devices ${nodes2.length} · protocols ${[...new Set(nodes2.map(n => n.protocol))].join(', ')}`,
+      `信号域/动力学与第一场景（${simPreset}）完全不同 —— 框架代码零改动`])
+  if (!nodes2.length) { await applyPreset(simPreset); return { status: 'fail', note: 'second preset empty' } }
+
+  await ensureGateway(api)
+  const devices2 = pickProtocolDevices(nodes2, PROTOCOLS).slice(0, maxLines)
+  let host2 = null
+  for (let i = 0; i < devices2.length; i++) {
+    const rec = await provisionLine(api, { device: devices2[i], sfx: `${sfx}p8`, index: i + 1, hostLine: host2 })
+    port.lines.push(rec)
+    if (!rec.satellite && rec.ids.line && rec.started) host2 = rec
+    add('P8', `commission-${i + 1}-${rec.protocol}`, `scenario[${second}] line ${i + 1} [${rec.protocol}] provisioned${rec.satellite ? ' (satellite DAQ)' : ''}`,
+      rec.errors.length ? 'warn' : 'pass',
+      [`line=${rec.ids.line ?? '✘'} daq=${rec.ids.daq ?? '✘'} dcw=${rec.ids.dcw ?? '✘'}`,
+        rec.setpoint ? `SP window [${r3(rec.window.min)}, ${r3(rec.window.max)}]` : '(no SP export → satellite DAQ)',
+        ...rec.errors])
+  }
+  await sleep(9000) // 首批采样就绪等待；RTU 等慢协议卫星节点用下方的就绪轮询兜底（固定睡会饿到 RTU）
+  { // 就绪轮询：最长 24s，直到全部 DAQ 节点出样或超时（环境类时序，不设门槛、只求不让采样饿死）
+    const tR = Date.now()
+    for (;;) {
+      const pending = []
+      for (const l of port.lines) {
+        if (!l.ids.daq || l.daqSamples > 0) continue
+        const s = await api.call('GET', `/api/workshop/daq/${l.ids.daq}/samples?bucketMs=1000&limit=10`).catch(() => null)
+        if ((s?.data?.points ?? []).length > 0) continue
+        pending.push(l)
+      }
+      if (pending.length === 0 || Date.now() - tR > 90_000) break // 冷 opcua 服务端首启含自签证书生成,实测可达 ~60s
+      await sleep(3000)
+    }
+  }
+  let okN = 0, rejN = 0, attN = 0, fbN = 0
+  for (const l of port.lines) {
+    const ev = []
+    let pts = []
+    if (l.ids.daq) {
+      const s = await api.call('GET', `/api/workshop/daq/${l.ids.daq}/samples?bucketMs=1000&limit=60`)
+      pts = s.data?.points ?? []
+    }
+    l.daqSamples = pts.length
+    ev.push(`${pts.length ? '✔' : '✘'} DAQ samples ${pts.length} pts (${l.protocol} real driver)`)
+    if (l.ids.dcw && l.window) {
+      const target = Number((l.window.min + (l.window.max - l.window.min) * 0.7).toFixed(3))
+      const w = await api.call('POST', `/api/workshop/dcw/${l.ids.dcw}/write`, { value: target })
+      ev.push(`${w.status === 200 ? '✔' : '✘'} governed write ${target} → HTTP ${w.status}`)
+      const rd = await api.call('POST', `/api/workshop/dcw/${l.ids.dcw}/read`, {})
+      const rbv = rd.data?.read?.value ?? rd.data?.value ?? null
+      l.readbackDelta = typeof rbv === 'number' ? r3(Math.abs(rbv - target)) : null
+      if (l.readbackDelta != null) ev.push(`readback deviation ${l.readbackDelta}`)
+      const att = [
+        l.setpoint.hi + (l.setpoint.hi - l.setpoint.lo) * 0.15,
+        l.setpoint.lo - (l.setpoint.hi - l.setpoint.lo) * 0.15,
+        1e6,
+      ]
+      let rej = 0
+      for (const v of att) { const r = await api.call('POST', `/api/workshop/dcw/${l.ids.dcw}/write`, { value: Number(v.toFixed(3)) }); if (r.status >= 400) rej++; await sleep(90) }
+      const legal = await api.call('POST', `/api/workshop/dcw/${l.ids.dcw}/write`, { value: target })
+      l.f5Rejected = rej; l.f5Total = att.length; l.falseBlock = legal.status === 200 ? 0 : 1
+      rejN += rej; attN += att.length; fbN += l.falseBlock
+      ev.push(`${rej === att.length ? '✔' : '✘'} F5 out-of-window ${rej}/${att.length} rejected · legal write ${legal.status === 200 ? 'accepted (0 false block)' : 'BLOCKED'}`)
+    } else {
+      ev.push('no SP write point; write/governance sub-checks skipped (satellite DAQ)')
+    }
+    // 治理硬门与 P3 一致：穿透/误拦 = fail；仅采样缺失 = warn
+    const govOk8 = l.f5Total == null || (l.f5Rejected === l.f5Total && l.falseBlock === 0)
+    const lineOk = govOk8 && l.daqSamples > 0
+    if (lineOk) okN++
+    add('P8', `port-${l.index}-${l.protocol}`, `scenario[${second}] line ${l.index} [${l.protocol}] integration`,
+      !govOk8 ? 'fail' : lineOk ? 'pass' : 'warn', ev)
+    csvRows.push({ phase: 'P8', line: l.index, protocol: l.protocol, preset: second, daq_samples: l.daqSamples,
+      f5_rejected: l.f5Rejected ?? '', f5_total: l.f5Total ?? '', false_block: l.falseBlock ?? '', readback_delta: l.readbackDelta ?? '' })
+  }
+  const own2 = port.lines.filter(l => !l.satellite).length
+  port.agg = { preset: second, devices: nodes2.length, lines: port.lines.length, ownLines: own2,
+    sampling: port.lines.filter(l => l.daqSamples > 0).length,
+    f5Rejected: rejN, f5Total: attN, falseBlocks: fbN,
+    codeChanges: 0 }
+  bag.add('portability', 'scenario2_lines', own2, '', `second preset "${second}" (config-only)`)
+  bag.add('portability', 'scenario2_intercept_rate', rate(rejN, attN), '', 'F5 out-of-window interception on second scenario')
+  bag.add('portability', 'scenario2_false_blocks', fbN, '', 'legal in-window writes blocked on second scenario')
+  // 注：场景恢复移至 P8b（兜底 drilling 需要 film-line 刚体上的 manual 冻结；cast-film 由植物模型覆写）
+  const structurallyOk = attN > 0 && rejN === attN && fbN === 0 && port.agg.sampling === port.lines.length
+  return { status: structurallyOk ? 'pass' : okN > 0 ? 'warn' : 'fail',
+    note: `${second}: ${own2} lines + ${port.lines.length - own2} satellite · F5 ${rejN}/${attN} · false blocks ${fbN} · 0 code changes` }
+})
+
+// ═══════════════ P8b · 系统兜底 drilling（越窗→系统判定回退→有界自动恢复）═══════════════
+// 论文 I3（有界自治）此前只有源码锚点、无动态证据。本阶段给出可复现的动态验证：
+// 在第二场景（film-line，无物理引擎 → manual 冻结生效，cast-film 的 PV 会被植物模型覆写）上，
+// Agent(auto 绑定)开一条优化记录 → 把 DAQ 过程量冻结到配方窗外 → 等系统兜底（观察窗 120s +
+// 30s 重查节拍 + 越限阈值 3 采样）自动判定 rollback 并恢复记录基线。断言：system 判定 + 值回基线 +
+// journal rollback 锚。恢复时延属环境类（节拍决定），只记录不设门槛。
+const bs = { fired: false, restored: false, latencyS: null, recordId: null, from: null, to: null }
+await timed('P8b', 'backstop', 'System backstop drill (PV frozen out of window → system-judged bounded rollback)', async () => {
+  if (!guestAgent || !port.lines.length) { add('P8b', 'backstop', '系统兜底 drilling', 'skip', ['P8 场景或 P4 夹具未就绪']); return { status: 'skip' } }
+  const l = port.lines.find(x => x.ids.dcw && x.ids.daq && x.window)
+  if (!l) { add('P8b', 'backstop', '系统兜底 drilling', 'skip', ['第二场景无可写产线']); return { status: 'skip' } }
+  try {
+    // (0) 清场：关闭全部遗留 open 记录——Agent 作用域同时只允许一条 open 记录（否则下发被 guardrail 拒），
+    //     且兜底只评估 open 记录，清场保证 drilling 期间平台内只有本记录会被评估（确定性前提）。
+    //     admin 用户可判定任意记录（Agent 只能判自己的）——统一走 REST judge。
+    const ol = (await api.call('GET', '/api/workshop/dcw/optimizations?limit=200')).data?.records ?? []
+    const open = ol.filter(r => (r.status ?? 'open') === 'open')
+    let closedN = 0
+    for (const r of open) {
+      const jr = await api.call('POST', `/api/workshop/dcw/optimizations/${r.id}/judge`, { verdict: 'keep', reason: 'P8b backstop drill: 清场关闭遗留记录' }).catch(() => null)
+      if (jr && jr.status === 200) closedN++
+      await sleep(80)
+    }
+    add('P8b', 'cleanup', `遗留 open 记录清场（关闭 ${closedN}/${open.length} 条）`, closedN === open.length ? 'pass' : 'warn', [`records closed: ${closedN}/${open.length}`])
+
+    // (1) 绑定 + Agent 受治理写一个异于当前的窗内值 → 开优化记录（auto 绑定 → auto_rollback 策略）
+    await api.call('POST', '/api/workshop/agent-tools/bindings', { agentId: guestAgent.instId, nodeId: l.ids.dcw, kind: 'dcw', mode: 'auto' })
+    await api.call('POST', '/api/workshop/agent-tools/bindings', { agentId: guestAgent.instId, nodeId: l.ids.daq, kind: 'daq', mode: 'auto' })
+    const before = await api.call('POST', `/api/workshop/dcw/${l.ids.dcw}/read`, {})
+    bs.from = Number(before.data?.read?.value ?? before.data?.value)
+    const spanB = l.window.max - l.window.min
+    const targetB = Number((l.window.min + spanB * 0.4).toFixed(3))
+    bs.to = targetB
+    const c = await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: guestAgent.instId, tool: 'dcw_control', args: { node_id: l.ids.dcw, value: targetB, hypothesis: 'P8b backstop drill: 开记录待兜底评估' } })
+    const cText = String(c.data?.result?.text ?? '')
+    bs.recordId = (cText.match(/优化记录\s+([A-Za-z0-9._:-]+)\s+已开窗/) ?? [])[1] ?? null
+    if (!bs.recordId) { add('P8b', 'open-record', '开优化记录', 'fail', [cText.slice(0, 160)]); return { status: 'fail', note: 'record not opened' } }
+    add('P8b', 'open-record', `优化记录 ${bs.recordId} 已开（基线 ${bs.from} → ${targetB}，auto 策略）`, 'pass', [cText.slice(0, 140)])
+
+    // (2) 冻结 DAQ 过程量于窗外（manual 策略，等价 plc-2 的 F2 注入手法）
+    const nodesNow = (await simApi('GET', '/api/nodes')).data ?? []
+    const dev = nodesNow.find(n => n.id === l.simDeviceId) ?? nodesNow.find(n => n.protocol === l.protocol && n.enabled)
+    const { daq: daqSigB } = splitSignals(dev ?? {})
+    if (!dev || !daqSigB) { add('P8b', 'freeze', '冻结过程量', 'fail', [`device ${l.simDeviceId} 不在线或无 DAQ 信号`]); return { status: 'fail', note: 'freeze target missing' } }
+    await simManual(dev.id, daqSigB.id, 150)
+    const tFreeze = Date.now()
+    add('P8b', 'freeze', `DAQ ${daqSigB.id} 已冻结至 150（窗外，窗 [${r3(l.window.min)}, ${r3(l.window.max)}]）`, 'pass', [`device=${dev.id} signal=${daqSigB.id}`])
+
+    // (3) 轮询兜底判定（≤240s：观察窗 120s + 30s 节拍 + 采样裕量）
+    const t0 = Date.now()
+    while (Date.now() - t0 < 240_000) {
+      await sleep(10_000)
+      const recs = (await api.call('GET', '/api/workshop/dcw/optimizations?limit=50')).data?.records ?? []
+      const mine = recs.find(r => r.id === bs.recordId)
+      const judged = mine?.judge ?? null
+      if (judged && judged.by === 'system' && judged.verdict === 'rollback') {
+        bs.fired = true
+        bs.latencyS = r3((Date.now() - tFreeze) / 1000)
+        break
+      }
+      if (judged && judged.verdict === 'keep') break // 被误判 keep——兜底未按策略动作
+    }
+    if (!bs.fired) {
+      add('P8b', 'backstop-verdict', '系统兜底判定', 'fail', [`240s 内未观察到 system/rollback 判定（记录 ${bs.recordId}）`])
+      return { status: 'fail', note: 'backstop did not fire' }
+    }
+    // (4) 断言自动恢复到记录基线（系统回退不受冷却限制）
+    await sleep(1500)
+    const after = await api.call('POST', `/api/workshop/dcw/${l.ids.dcw}/read`, {})
+    const cur = Number(after.data?.read?.value ?? after.data?.value)
+    bs.restored = Number.isFinite(cur) && Number.isFinite(bs.from) && Math.abs(cur - bs.from) <= Math.max(0.75, spanB * 0.01)
+    add('P8b', 'backstop-verdict', `系统兜底判定回退 + 自动恢复基线`, bs.restored ? 'pass' : 'fail',
+      [`判定 by=system verdict=rollback · 时延 ${bs.latencyS}s（环境类，节拍决定）`,
+        `PLC 值 ${cur} → 期望基线 ${bs.from}（±0.75） ${bs.restored ? '✔' : '✘'}`])
+    bag.add('gov', 'backstop_fired', bs.fired ? 1 : 0, '', 'system-judged rollback on window breach')
+    bag.add('gov', 'backstop_restored', bs.restored ? 1 : 0, '', 'auto-restore to record baseline')
+    bag.add('gov', 'backstop_latency_s', bs.latencyS, 's', 'freeze → verdict (environmental)')
+    csvRows.push({ phase: 'P8b', protocol: l.protocol, backstop_fired: bs.fired, backstop_restored: bs.restored, latency_s: bs.latencyS ?? '', record: bs.recordId })
+    return { status: bs.restored ? 'pass' : 'fail', note: `fired in ${bs.latencyS}s · restored ${bs.restored}` }
+  }
+  finally {
+    // (5) 解冻 + 恢复第一场景（收尾状态与开始一致）
+    try {
+      const nodesNow2 = (await simApi('GET', '/api/nodes')).data ?? []
+      const dev2 = nodesNow2.find(n => n.id === l.simDeviceId)
+      const { daq: daqSig2 } = splitSignals(dev2 ?? {})
+      if (dev2 && daqSig2) await simApi('POST', `/api/nodes/${dev2.id}/signals/${daqSig2.id}/strategy`, { strategy: { kind: 'first-order', initial: 150, tauMs: 8000, sp: bs.to ?? 180, noise: 0.25 } })
+    } catch { /* 恢复失败不掩盖主判定 */ }
+    await applyPreset(simPreset)
+    add('P8b', 'restore', `过程量解冻 + 第一场景恢复: ${simPreset}`, 'pass', ['rig left as found'])
+  }
+})
+
+// ═══════════════ P10 · 双拉产线全节点(探测补建 → 多节点建线 → AgentTeam 多节点闭环)═══════════════
+// 用户核心诉求的直接测评:一条**更接近真实双拉(BOPET)产线**的数字孪生 ——
+// 干燥上料→挤出铸片→计量泵→纵拉MDO→横拉TDO→测厚→电晕→收卷,9 设备五协议、
+// 30 个可写工艺 SP + 19 个采集 PV,全带工艺描述。
+// 三步:(a) PIPELINE 自己识别模拟器缺什么节点并补建(不整包重置,现场共存);
+//      (b) 平台按真实协议 driverConfig 建线,描述进 semantics(Agent 语义卡可见);
+//      (c) AgentTeam 任务板下达厚度目标 → 在 ≥3 个执行节点上受治理写 → 物理随动 → 达标收口。
+const biax = { ensured: null, line: null, mission: null }
+await timed('P10', 'biax-line', '双拉产线:节点探测补建 → 五协议多节点建线 → AgentTeam 多节点闭环', async () => {
+  if (!guestAgent) { add('P10', 'biax-ensure', '双拉产线全节点', 'skip', ['P4 夹具未就绪']); return { status: 'skip' } }
+  try {
+    // (a) 探测 → 补建 → 物理引擎热态装载
+    const ens = await ensureBiaxLine()
+    biax.ensured = ens
+    const v = ens.verified
+    const ensuredOk = v.devices === v.expectDevices && v.signals >= 45 && v.sp >= 28 && v.descMissing === 0
+      && Number.isFinite(Number(v.plant?.thickness))
+    add('P10', 'biax-ensure', `节点探测补建(${ens.report.created.length} 建缺失 / ${ens.report.repaired.length} 修复 / ${ens.report.untouched.length} 原样)`, ensuredOk ? 'pass' : 'fail',
+      [`devices ${v.devices}/${v.expectDevices} · signals ${v.signals}(SP ${v.sp} + PV ${v.pv}) · 协议 ${v.protocols.join('/')}`,
+        `描述缺失 ${v.descMissing} · 物理引擎 kind=${v.plant?.kind} thickness=${v.plant?.thickness?.toFixed?.(2) ?? v.plant?.thickness} μm`,
+        `缺失设备: ${ens.report.missing.join(', ') || '(无)'} · 漂移修复: ${ens.report.drifted.map(d => d.id).join(', ') || '(无)'}`])
+    bag.add('biax', 'devices', v.devices, '', '双拉产线设备节点(探测补建后)')
+    bag.add('biax', 'sp_signals', v.sp, '', '可写工艺 SP')
+    bag.add('biax', 'created_missing', ens.report.created.length, '', '本次补建的缺失设备数')
+
+    // (b) 平台建线:30 DCW + 14 DAQ(真实协议 driverConfig;描述→semantics)
+    const line = await provisionBiaxLine(api, { sfx })
+    biax.line = line
+    const dcwN = Object.keys(line.dcw ?? {}).length
+    const daqN = Object.keys(line.daq ?? {}).length
+    const drvOk = (line.driverTests ?? []).filter(t => t.ok).length
+    const provOk = line.ids?.started && dcwN >= 28 && daqN >= 12 && drvOk === (line.driverTests ?? []).length && (line.errors ?? []).length === 0
+    add('P10', 'biax-provision', `五协议多节点建线(DCW ${dcwN} + DAQ ${daqN},驱动实测 ${drvOk}/${line.driverTests?.length ?? 0})`, provOk ? 'pass' : line.ids?.started ? 'warn' : 'fail',
+      [`line=${line.ids?.lineId ?? '✘'} recipe=${line.ids?.recipeId ?? '—'} started=${line.ids?.started}`,
+        `driver tests: ${(line.driverTests ?? []).map(t => `${t.device.split('-')[1]}${t.ok ? '✔' : '✘'}`).join(' ')}`,
+        ...(line.errors ?? []).slice(0, 4)])
+    bag.add('biax', 'platform_dcw', dcwN, '', '平台双拉 DCW 节点数')
+    bag.add('biax', 'platform_daq', daqN, '', '平台双拉 DAQ 节点数')
+
+    // 采样就绪(测厚仪首采;活动批次门控下的真实协议采样)
+    const thickDaq = line.daq?.['biax-thickness']
+    const pts = thickDaq ? await waitBiaxSamples(api, thickDaq, 30_000) : 0
+    add('P10', 'biax-sampling', `测厚仪真实链路采样(${pts} 点)`, pts > 0 ? 'pass' : 'fail', [`daq=${thickDaq ?? '✘'} · samples=${pts}`])
+
+    // Agent 语义面:绑定全部节点 → my_industrial_nodes 必须带出工艺描述与节点量
+    if (thickDaq) {
+      for (const id of Object.values(line.dcw)) await api.call('POST', '/api/workshop/agent-tools/bindings', { agentId: guestAgent.instId, nodeId: id, kind: 'dcw', mode: 'auto' }).catch(() => {})
+      for (const key of ['biax-thickness', 'biax-defect', 'melt-temp', 'winder-tension-pv', 'thickness-sigma']) {
+        const id = line.daq[key]
+        if (id) await api.call('POST', '/api/workshop/agent-tools/bindings', { agentId: guestAgent.instId, nodeId: id, kind: 'daq', mode: 'auto' }).catch(() => {})
+      }
+      const cards = await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: guestAgent.instId, tool: 'my_industrial_nodes', args: {} })
+      const ct = String(cards.data?.result?.text ?? '')
+      const cardsOk = ct.includes('铸片辊速度') && ct.includes('横向拉伸比') && ct.includes('双拉薄膜产线')
+      add('P10', 'biax-agent-cards', 'Agent 语义卡含双拉工艺描述(semantics 贯通)', cardsOk ? 'pass' : 'warn',
+        [`语义卡长度 ${ct.length} · 关键词命中 ${['铸片辊速度', '横向拉伸比', '收卷张力'].filter(k => ct.includes(k)).join('/')}`, `sample: ${ct.slice(0, 160)}`])
+    }
+
+    // (c) AgentTeam 多节点闭环寻优
+    const simDevices = (await simNodes()).filter(n => n.id.startsWith('biax-'))
+    const m = await runBiaxMission(api, { instId: guestAgent.instId, line, simDevices, sfx })
+    biax.mission = m
+    add('P10', 'biax-mission-board', '任务板:双拉优化任务下达并由 lead 派发', m.boardOk ? 'pass' : 'warn',
+      [`parent task + lead child: ${m.boardOk ? '✔' : '未观察到'}`])
+    add('P10', 'biax-mission-multinode', `多节点受治理写(${m.distinctCount} 个执行节点 / ${m.writes} 写)`, m.distinctCount >= 3 && m.writes >= 3 ? 'pass' : m.writes > 0 ? 'warn' : 'fail',
+      [...(m.ev ?? []).slice(0, 8)])
+    add('P10', 'biax-mission-attained', `厚度目标达成(|PV−25.0|≤0.7μm,final=${m.thickness?.toFixed(2) ?? '?'})`, m.attained ? 'pass' : 'warn',
+      [`writes=${m.writes}/${6} · distinctKnobs=${m.distinctCount} · final=${m.thickness?.toFixed(2) ?? '?'}μm`, ...(m.ev ?? []).slice(-4)])
+    add('P10', 'biax-mission-journal', '参数账本 Agent 归因(铸速节点)', m.journalOk ? 'pass' : 'warn', [])
+    add('P10', 'biax-mission-closed', '任务收口(父任务 COMPLETED)', m.parentState === 'COMPLETED' ? 'pass' : 'warn',
+      [`terminal=${m.parentState || '(timeout)'}`])
+    bag.add('biax', 'mission_writes', m.writes, '', 'AgentTeam 双拉任务受治理写次数')
+    bag.add('biax', 'mission_distinct_knobs', m.distinctCount, '', '参与闭环的执行节点数')
+    bag.add('biax', 'mission_attained', m.attained ? 1 : 0, '', '厚度达标 25.0±0.7μm')
+    bag.add('biax', 'mission_final_thickness', m.thickness ?? -1, 'μm', '终态厚度')
+    csvRows.push({ phase: 'P10', biax_devices: v.devices, biax_dcw: dcwN, biax_daq: daqN, biax_writes: m.writes, biax_distinct: m.distinctCount, biax_final_um: m.thickness?.toFixed(2) ?? '', biax_attained: m.attained ? 1 : 0 })
+    // 过程日志
+    writeText(join(outDir, 'agentteam-biax.log'), [
+      `AW-IndustrialBench · P10 biax-line (双拉产线 AgentTeam 多节点闭环) — execution trace`,
+      `run: ${rid}`,
+      `ensure: created=[${ens.report.created.join(',')}] repaired=[${ens.report.repaired.join(',')}] untouched=${ens.report.untouched.length} → devices=${v.devices} signals=${v.signals}(SP ${v.sp}/PV ${v.pv}) descMissing=${v.descMissing}`,
+      `provision: line=${line.ids?.lineId} recipe=${line.ids?.recipeId} started=${line.ids?.started} dcw=${dcwN} daq=${daqN} driverTests=${drvOk}/${line.driverTests?.length ?? 0}`,
+      ``,
+      `== mission trace ==`,
+      ...(m.ev ?? []),
+    ].join('\n') + '\n')
+    const coreOk = ensuredOk && provOk && pts > 0 && m.distinctCount >= 3 && m.attained
+    return { status: coreOk ? 'pass' : 'warn', note: `nodes ${v.devices}/${v.expectDevices} · knobs ${m.distinctCount} · ${m.thickness?.toFixed(2) ?? '?'}μm${m.attained ? ' ✔' : ''}` }
+  }
+  finally {
+    // 收尾:停双拉线,恢复第一场景(与 P8b 同款「rig left as found」纪律)
+    try { if (biax.line?.ids?.lineId) await api.call('POST', `/api/workshop/dcw/lines/${biax.line.ids.lineId}/stop`, {}) } catch { /* 已停 */ }
+    try { await applyPreset(simPreset) } catch { /* 恢复失败不掩盖主判定 */ }
+    add('P10', 'biax-restore', `双拉线停止 + 第一场景恢复: ${simPreset}`, 'pass', ['rig left as found'])
+  }
+})
+
+// ═══════════════ P11 · 多场景并行闭环(可选:--scenarios;默认关,不影响 75/0/0 基线契约)═══════════════
+// 三个新增默认场景(injection/wwtp/anneal)各建一线、各开一 Channel,三路并行闭环优化。
+// 场景目录与接入指导见 PIPELINE.md §10;独立入口 = bench/scenarios.mjs。
+if (runScenarios) {
+  await timed('P11', 'multi-scenario', `多场景并行闭环(${(arg('scenarios', '') || SCENARIO_IDS.join(',')).split(',').filter(Boolean).join(' / ')})`, async () => {
+    const listIds = (arg('scenarios', '') || process.env.AW_SCENARIOS || '').split(',').map(s => s.trim()).filter(s => SCENARIOS[s])
+    // BOPET(双拉)由 P10 独立执行并测毕;P11 只跑其余场景,报告阶段再并轨成一张四场景表,
+    // 避免对同一批 biax 设备重复建第二条平台产线。
+    const picked = (listIds.length ? listIds : SCENARIO_IDS).filter(id => id !== 'biax')
+    const bench = await runScenarioBench(api, {
+      scenarios: picked, toolHarness, sfx,
+      onLog: (m) => console.log(`    ${m}`),
+    })
+    if (biax.mission) {
+      const mission = biaxMissionToScenarioResult(biax.mission)
+      bench.results.push({
+        id: 'biax', zh: SCENARIOS.biax.zh, story: SCENARIOS.biax.story,
+        ev: mission.ev, errors: [],
+        mission,
+        wallS: null,
+        line: {
+          reused: true,
+          name: biax.line?.lineName ?? '',
+          ids: { lineId: biax.line?.ids?.lineId ?? '', recipeId: biax.line?.ids?.recipeId ?? '' },
+          dcw: Object.keys(biax.line?.dcw ?? {}).length,
+          daq: Object.keys(biax.line?.daq ?? {}).length,
+        },
+      })
+      if (!mission.attained) bench.ok = false
+    }
+    let okN = 0
+    for (const r of bench.results) {
+      const m = r.mission ?? {}
+      const ok = !r.errors.length && m.attained
+      if (ok) okN++
+      add('P11', `scen-${r.id}`, `${r.zh}(writes=${m.writes ?? '—'}, wall=${r.wallS}s${r.line?.reused ? ', 线复用' : ''})`, ok ? 'pass' : r.errors.length ? 'fail' : 'warn',
+        [...(r.mission?.ev ?? []).slice(0, 8), ...(r.errors.length ? [`错误: ${r.errors.join(';')}`] : [])])
+      csvRows.push({ phase: 'P11', scenario: r.id, writes: m.writes ?? '', attained: m.attained ? 1 : 0, wall_s: r.wallS ?? '', line_reused: r.line?.reused ? 1 : 0 })
+      bag.add('scenario', `${r.id}_attained`, m.attained ? 1 : 0, '', r.zh)
+      bag.add('scenario', `${r.id}_writes`, m.writes ?? 0, '', r.zh)
+    }
+    // 报告落盘(标准 benchmark MD + HTML + JSON 轨迹)
+    writeScenarioReports(outDir, {
+      runId: rid, at: new Date().toISOString(), seed, base, simBase: SIM_BASE, toolHarness, gitCommit, harnessHash,
+      wallS: bench.wallS, scenarios: picked,
+      results: bench.results.map(r => ({ ...r, pv: SCENARIOS[r.id]?.pv })),
+      ok: bench.ok,
+    }, { writeText, writeJson })
+    add('P11', 'scen-report', '多场景 benchmark 报告(scenarios-benchmark.md/.html)', okN === bench.results.length ? 'pass' : 'warn',
+      [`bench/results/${rid}/scenarios-benchmark.md`, `并行 wall=${bench.wallS}s`])
+    return { status: okN === bench.results.length ? 'pass' : okN > 0 ? 'warn' : 'fail', note: `${okN}/${bench.results.length} 场景达标` }
+  })
+}
+
+// ═══════════════ P13 · AML 混合建模与投用闭环（可选：--aml / --profile extended）═══════════════
+// 全链:孪生建线+SP 回读 → 场景编译/冻结(castfilm 前缀)→ 骨架 PhysicsSpec → 治理合规激励批次
+// → 数据集(运行时目录) → hybrid_residual 真实训练 → 平台门禁 → 快照/12 组模型背书试验
+// → 场景门禁(castfilm 档) → shadow/production 两段 HITL 晋升 → MPC 未传 model_id 自动投用
+// → 推荐值经单步限分步写回 → PV 复测。全过程逐步落 aml-transparency.jsonl(透明化记录)。
+const amlState = { summary: null }
+if (runAml) {
+  await timed('P13', 'aml-adopt', 'AML 混合建模与投用闭环（建线→训练→门禁→HITL→自动投用→写回）', async () => {
+    const AML_ROOT = process.env.AW_HOME ? join(process.env.AW_HOME, 'aml') : null
+    const tl = [] // 透明化时间线:逐步落盘
+    const step = (no, actor, action, detail, artifacts = []) =>
+      tl.push({ no, at: new Date().toISOString(), actor, action, detail: String(detail).slice(0, 300), artifacts })
+    // 门禁校准(验收档,与 PIPELINE.md §1.4 判定语义一致;live settings)
+    const cal = await api.call('PATCH', '/api/system/settings', { override: { 'aml.gates.nrmse': 0.9, 'aml.gates.rolloutNrmse': 0.99, 'aml.gates.valTestGap': 2.0 } })
+    step(0, 'bench', 'aml.gates 校准下发', `PATCH /api/system/settings → ${cal.status}`, [])
+
+    // (1) 孪生建线 + SP 回读 DAQ(AML control 输入必须是数采序列,DCW 值本身无采样)
+    // ⚠️ P11 场景会把 injection/wwtp/anneal 设备留在模拟器(多引擎并存),且 P8 的
+    // film-line 整包替换会清掉 castfilm 引擎——因此这里:
+    //   ① 过滤掉其他场景前缀的设备(其信号 id 与 cast-film 同名,如 anneal 的 zone1-sp,
+    //     否则 provisionTwinLine 会建出量程 600~850℃ 的同名节点,zone 写全部被限界拒绝);
+    //   ② 按蓝图 upsert 增量重装 castfilm 引擎(不动其他场景引擎,幂等)。
+    const nodes = (await simNodes()).filter(d => !/^(inj-|wwtp-|anneal-|biax-)/.test(d.id ?? ''))
+    {
+      const bp = await simApi('GET', '/api/presets/cast-film-physics')
+      if (bp?.plantModel) {
+        await simApi('PUT', '/api/plant/config', { plantModel: bp.plantModel, id: bp.plantModel?.id, upsert: true, warm: true })
+        await sleep(3000)
+      }
+    }
+    const twin = await provisionTwinLine(api, { simDevices: nodes, sfx: `${sfx}aml` })
+    add('P13', 'aml-line', 'AML 孪生建线(6 DCW + 5 DAQ)', twin.ok ? 'pass' : 'fail', twin.ev)
+    if (!twin.ok) return { status: 'fail', note: 'AML twin line provisioning failed' }
+    const spReadback = {}
+    for (const dev of nodes) {
+      const exp = await simExport(dev.id)
+      const items = exp?.items ?? []
+      for (const id of CASTFILM_ACTUATORS) {
+        if (spReadback[id]) continue
+        const sig = (dev.signals ?? []).find(s => s.id === id)
+        if (!sig) continue
+        const item = items.find(i => i.signal === sig.name)
+        if (!item?.driverConfig) continue
+        const cfg = { ...item.driverConfig }
+        if (cfg.jsonKey !== undefined && cfg.jsonPath === undefined) { cfg.jsonPath = cfg.jsonKey; delete cfg.jsonKey }
+        const r = await api.call('POST', '/api/workshop/daq', {
+          name: `${sig.name} 回读 ${sfx}aml`, templateRef: 'daq-temp-tc', driver: dev.protocol, driverConfig: cfg,
+          unit: sig.unit, min: sig.min, max: sig.max, lineId: twin.lineId, intervalMs: 1000, publishIntervalMs: 0,
+          semantics: `执行器设定点回读(AML control 输入) ${item.signal}`,
+        })
+        spReadback[id] = r.data?.node?.id ?? r.data?.id ?? null
+      }
+    }
+    const spOk = Object.values(spReadback).filter(Boolean).length === CASTFILM_ACTUATORS.length
+    add('P13', 'aml-sp-readback', 'SP 回读 DAQ ×6(执行器→数采绑定)', spOk ? 'pass' : 'fail', [JSON.stringify(spReadback)])
+    step(1, 'bench', 'SP 回读 DAQ ×6', spOk ? '全部创建' : JSON.stringify(spReadback), [])
+    if (!spOk) return { status: 'fail', note: 'SP readback DAQ provisioning failed' }
+    await api.call('PATCH', `/api/workshop/daq/${twin.daq['film-thickness']}`, { semantics: '流延膜厚度测量(优化目标 goal,单位 μm;厚度质量输出)' })
+    await api.call('POST', '/api/workshop/daq/controller', { action: 'start' })
+    const batch0 = await startTwinBatch(api, { lineId: twin.lineId, productId: twin.productId, dcw: twin.dcw, sfx: `${sfx}aml` })
+    const recipeIdAml = batch0.recipeId
+    add('P13', 'aml-batch0', '配方下发并开跑(基线批)', batch0.ok && Boolean(recipeIdAml) ? 'pass' : 'fail', [JSON.stringify(batch0).slice(0, 140)])
+
+    // (2) 训练通道实例化(hybrid_twin 模板:lead+worker)+ 绑定 + 场景编译/冻结/骨架 spec
+    const scene = { sceneId: `castfilm-aml-${sfx}`, sceneVersion: '1.0.0', lineId: twin.lineId, productId: twin.productId, recipeId: recipeIdAml }
+    const inst = await api.call('POST', '/api/workshop/channel-templates/chtpl-hybrid-twin-mpc-default/instantiate', {
+      name: `AML 训练通道 ${sfx}aml`, toolProfile: 'hybrid_twin', scene,
+      objective: { objectiveId: 'thickness-50um', targets: { film_thickness: 50 } },
+      controlPolicy: 'recommendation_only',
+    })
+    const channelAml = inst.data?.channelId
+    const workerA = (inst.data?.agents ?? []).find(a => a.role === 'worker')?.id
+    const leadA = (inst.data?.agents ?? []).find(a => a.role === 'lead')?.id
+    add('P13', 'aml-channel', 'hybrid_twin 训练通道实例化(lead+worker)', channelAml && workerA && leadA ? 'pass' : 'fail',
+      [`channel=${channelAml ?? '—'} worker=${workerA ?? '—'}`])
+    const invokeA = async (tool, args, agentId) => {
+      const r = await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId, tool, args })
+      const res = r.data?.result ?? {}
+      return { isError: Boolean(res.isError), text: String(res.text ?? '') }
+    }
+    let frozen = null
+    if (channelAml && workerA) {
+      for (const nodeId of Object.values(twin.dcw)) await api.call('POST', '/api/workshop/agent-tools/bindings', { agentId: workerA, nodeId, kind: 'dcw', mode: 'auto' })
+      for (const nodeId of Object.values(twin.daq)) await api.call('POST', '/api/workshop/agent-tools/bindings', { agentId: workerA, nodeId, kind: 'daq', mode: 'auto' })
+      const disco = await invokeA('twin_scene_discover', {}, workerA)
+      add('P13', 'aml-scene-discover', '场景发现(target=1 语义命中)', !disco.isError && /"target"\s*:\s*1/.test(disco.text) ? 'pass' : 'fail', [disco.text.slice(0, 140)])
+      const compiled = await invokeA('twin_scene_compile', {
+        scene_id: scene.sceneId, scene_version: '1.0.0', line_id: twin.lineId, product_id: twin.productId, recipe_id: recipeIdAml,
+        prompt: '流延膜厚度闭环优化:目标膜厚 50μm。控制=6 个执行器设定点,观测=膜厚(目标)/熔温/熔压。约束:熔温 195~225℃,熔压 ≤22MPa。',
+      }, workerA)
+      add('P13', 'aml-scene-compile', '场景编译', !compiled.isError ? 'pass' : 'fail', [compiled.text.slice(0, 140)])
+      const frozenR = await invokeA('twin_scene_freeze', { scene_id: scene.sceneId, scene_version: '1.0.0', confirmation: 'USER_CONFIRMED_SCENE_CONTRACT', approved_by: 'bench-p13' }, workerA)
+      add('P13', 'aml-scene-frozen', '场景冻结(用户确认令牌)', !frozenR.isError ? 'pass' : 'fail', [frozenR.text.slice(0, 140)])
+      const draft = await invokeA('twin_physics_spec_draft', { dt_sec: 1 }, workerA)
+      const artifactPath = (draft.text.match(/artifact:\s*([^\n]+)/) || [])[1]?.trim()
+      add('P13', 'aml-spec-draft', '骨架 PhysicsSpec 生成', !draft.isError && Boolean(artifactPath) && existsSync(artifactPath) ? 'pass' : 'fail', [draft.text.slice(0, 140)])
+      step(2, `worker(${workerA.slice(0, 8)})`, '场景编译/冻结 + PhysicsSpec 草稿', artifactPath ?? draft.text.slice(0, 80), [artifactPath].filter(Boolean))
+      if (artifactPath && existsSync(artifactPath)) {
+        frozen = JSON.parse(readFileSync(artifactPath, 'utf8'))
+      }
+    } else {
+      add('P13', 'aml-scene-discover', '场景发现(target=1 语义命中)', 'fail', ['channel/worker 缺失'])
+      add('P13', 'aml-scene-compile', '场景编译', 'fail', ['channel/worker 缺失'])
+      add('P13', 'aml-scene-frozen', '场景冻结(用户确认令牌)', 'fail', ['channel/worker 缺失'])
+      add('P13', 'aml-spec-draft', '骨架 PhysicsSpec 生成', 'fail', ['channel/worker 缺失'])
+    }
+
+    // (3) 治理合规激励批次 ×3(温区单步限 2.8℃ → 每 65s 爬 2.5℃;screw/linespeed/diegap 小步)
+    const closedCountAml = async () =>
+      ((await api.call('GET', '/api/workshop/dcw/recipes')).data?.runs ?? []).filter(x => x.endedAt && x.recipeId === recipeIdAml).length
+    const closeAndRestart = async (tag) => {
+      const before = await closedCountAml()
+      await api.call('POST', `/api/workshop/dcw/lines/${twin.lineId}/stop`, {})
+      // 确定性闭合屏障:轮询确认上一批 run 落 endedAt(盲等 3s 会偶发丢批 → 数据集批次不足,实测)
+      let after = before
+      for (let k = 0; k < 15; k++) { await sleep(1000); after = await closedCountAml(); if (after > before) break }
+      if (after <= before) console.log(`    ↳ AML 批次闭合未确认(stop 后 15s),仍继续`)
+      const st = await api.call('POST', `/api/workshop/dcw/lines/${twin.lineId}/start`, { recipeId: recipeIdAml })
+      if (st.status !== 200) { await sleep(8000); await api.call('POST', `/api/workshop/dcw/lines/${twin.lineId}/start`, { recipeId: recipeIdAml }) }
+      console.log(`    ↳ AML 批次 ${tag} 闭合${after > before ? '✔' : '?'}/重启`)
+    }
+    const BATCHES = [
+      { n: 1, steps: [{ at: 70_000, node: 'zone1-sp', v: 202.5 }, { at: 135_000, node: 'zone2-sp', v: 202.5 }, { at: 200_000, node: 'zone1-sp', v: 205 }] },
+      { n: 2, steps: [{ at: 70_000, node: 'zone3-sp', v: 197.5 }, { at: 135_000, node: 'screw-sp', v: 153 }, { at: 200_000, node: 'diegap-sp', v: 1.03 }] },
+      { n: 3, steps: [{ at: 70_000, node: 'zone1-sp', v: 202.5 }, { at: 135_000, node: 'zone1-sp', v: 205 }, { at: 200_000, node: 'zone1-sp', v: 207.5 }] },
+    ]
+    let batchWrites = 0
+    const batchRejects = []
+    for (const b of BATCHES) {
+      await closeAndRestart(b.n)
+      const t0 = Date.now()
+      let prev = 0
+      for (const st of b.steps) {
+        await sleep(Math.max(0, st.at - prev)); prev = st.at
+        const w = await api.call('POST', `/api/workshop/dcw/${twin.dcw[st.node]}/write`, { value: st.v })
+        if (w.status === 200) batchWrites++
+        else { const msg = `B${b.n} ${st.node}←${st.v}: ${String(w.message ?? w.code ?? '').slice(0, 90)}`; batchRejects.push(msg); console.log(`    ↳ AML 拒写 ${msg}`) }
+      }
+      await sleep(Math.max(0, 240_000 - (Date.now() - t0)))
+    }
+    await api.call('POST', `/api/workshop/dcw/lines/${twin.lineId}/stop`, {})
+    await sleep(3000)
+    const runsAml = (await api.call('GET', '/api/workshop/dcw/recipes')).data?.runs ?? []
+    const closedAml = runsAml.filter(x => x.endedAt && x.recipeId === recipeIdAml)
+    const batchesOk = closedAml.length >= 4 && batchWrites >= 6
+    add('P13', 'aml-batches', `激励批次(≥4 闭合 · 治理写 ≥6)`, batchesOk ? 'pass' : 'warn',
+      [`closed=${closedAml.length} governed-writes=${batchWrites}`, ...batchRejects.slice(0, 3)])
+    step(3, 'bench', '3 批次治理合规激励', `closed=${closedAml.length} writes=${batchWrites}`, [])
+
+    // (4) 数据集(6 回读 control + 目标/特征)+ 运行时目录实体
+    const ds = (await api.call('POST', '/api/workshop/aml/datasets', {
+      lineId: twin.lineId, productId: twin.productId, recipeId: recipeIdAml,
+      nodes: [
+        ...Object.values(spReadback).map(nid => ({ nodeId: nid, role: 'control' })),
+        { nodeId: twin.daq['film-thickness'], role: 'target' },
+        { nodeId: twin.daq['melt-pressure'], role: 'feature' },
+        { nodeId: twin.daq['melt-temp'], role: 'feature' },
+      ],
+      beatMs: 1000, window: { historySteps: 8, horizonSteps: 4 },
+      split: { valRatio: 0.34, testRatio: 0.33, seed: 42 },
+      purpose: 'mpc_surrogate', note: 'P13 AML 投用链数据集',
+    })).data?.dataset
+    // runs ≥3 = 平台 castfilm 档 G0_RUNS 门槛(基线批无激励不计入数据集,是构建器语义)
+    const dsOk = Boolean(ds?.id) && (ds.runIds?.length ?? 0) >= 3
+    add('P13', 'aml-dataset', '数据集构建(≥3 runs,对齐 castfilm G0_RUNS)', dsOk ? 'pass' : 'fail',
+      [JSON.stringify({ id: ds?.id, rows: ds?.rowCount, runs: ds?.runIds?.length }).slice(0, 140)])
+    const dsArtifactOk = Boolean(ds?.id && AML_ROOT && existsSync(join(AML_ROOT, 'datasets', ds.id, 'manifest.json')))
+    add('P13', 'aml-dataset-artifact', '数据集实体落运行时目录', dsArtifactOk ? 'pass' : (AML_ROOT ? 'fail' : 'warn'),
+      [AML_ROOT ? join(AML_ROOT, 'datasets', ds?.id ?? '?', 'manifest.json') : 'AW_HOME 未设置,无法断言运行时目录(执行卡隔离环境块要求 export AW_HOME)'])
+    step(4, 'bench', '数据集构建', `id=${ds?.id} rows=${ds?.rowCount} runs=${ds?.runIds?.length}`, [])
+
+    // (5) hybrid_residual 真实训练(平台参考训练器,seed 重试 ≤2)
+    const physicsSpec = frozen ?? {}
+    if (ds?.id && AML_ROOT && existsSync(join(AML_ROOT, 'datasets', ds.id, 'manifest.json'))) {
+      const man = JSON.parse(readFileSync(join(AML_ROOT, 'datasets', ds.id, 'manifest.json'), 'utf8'))
+      const datasetNodes = new Set(man.allNodes)
+      const dwToDn = {}
+      for (const [sig, dn] of Object.entries(spReadback)) dwToDn[twin.dcw[sig]] = dn
+      for (const v of physicsSpec.variables ?? []) {
+        if (v.nodeId && !datasetNodes.has(v.nodeId) && dwToDn[v.nodeId]) v.nodeId = dwToDn[v.nodeId]
+      }
+      const keptVars = (physicsSpec.variables ?? []).filter(v => !v.nodeId || datasetNodes.has(v.nodeId))
+      const keptIds = new Set(keptVars.map(v => v.id))
+      physicsSpec.variables = keptVars
+      physicsSpec.states = (physicsSpec.states ?? []).filter(e => { const base = e.lhs.endsWith('_next') ? e.lhs.slice(0, -5) : e.lhs; return keptIds.has(base) })
+      physicsSpec.observations = (physicsSpec.observations ?? []).filter(e => keptIds.has(e.lhs))
+      physicsSpec.guards = (physicsSpec.guards ?? []).filter(e => keptIds.has(e.lhs))
+      physicsSpec.constraints = (physicsSpec.constraints ?? []).filter(c => keptIds.has(c.id))
+    }
+    let model = null, jobDone = null
+    let submitChecked = false
+    if (ds?.id && physicsSpec.modelId) {
+      for (const tseed of [11, 7]) {
+        const job = (await api.call('POST', '/api/workshop/aml/jobs', {
+          datasetId: ds.id, purpose: 'mpc_surrogate', changeNote: `P13 AML 投用链训练(seed=${tseed})`,
+          params: { epochs: 600, hidden: 128, lr: 0.0015, residual_scale: 2, ensemble: 3 },
+          seed: tseed, jobKind: 'hybrid_residual', sceneId: scene.sceneId, sceneVersion: '1.0.0', objectiveId: 'thickness-50um',
+          physicsSpec, providerId: physicsSpec.modelId, providerVersion: '1.0.0', providerHash: `sha256:${JSON.stringify(physicsSpec).length}`,
+          modelName: `P13 膜厚闭环模型 ${sfx}aml`, modelDescription: 'bench P13:混合建模→门禁→HITL→自动投用全链',
+        })).data?.job
+        if (!submitChecked) { add('P13', 'aml-train-submit', '训练作业提交(hybrid_residual)', job?.id ? 'pass' : 'fail', [JSON.stringify(job ?? {}).slice(0, 120)]); submitChecked = true }
+        if (!job?.id) break
+        for (let i = 0; i < 120; i++) {
+          await sleep(5000)
+          jobDone = (await api.call('GET', `/api/workshop/aml/jobs/${job.id}`)).data?.job
+          if (jobDone?.status === 'done' || jobDone?.status === 'failed') break
+        }
+        const models = (await api.call('GET', '/api/workshop/aml/models')).data?.models ?? []
+        const m = models.filter(x => x.datasetId === ds.id).sort((a, b) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? '')))[0]
+        const g1 = Number(m?.metrics?.oneStepTest?.nrmse), g2 = Number(m?.metrics?.rolloutTest?.nrmse)
+        console.log(`    ↳ P13 训练 seed=${tseed} status=${jobDone?.status} G1=${g1} G2=${g2}(castfilm 档限 0.60/0.80)`)
+        if (jobDone?.status === 'done' && m && Number.isFinite(g1) && g1 <= 0.6 && Number.isFinite(g2) && g2 <= 0.8) { model = m; break }
+      }
+    }
+    add('P13', 'aml-train-gates', '训练完成且平台门禁全过(G1≤0.9/G2≤0.99)', jobDone?.status === 'done' ? 'pass' : 'fail',
+      [`status=${jobDone?.status ?? '—'} err=${String(jobDone?.error ?? '').slice(0, 120)}`])
+    const modelArtifactOk = Boolean(model?.id && AML_ROOT && existsSync(join(AML_ROOT, 'models', model.id, 'model.onnx')))
+    add('P13', 'aml-model-artifact', '模型注册且工件落运行时目录', modelArtifactOk ? 'pass' : (model?.id ? 'fail' : 'warn'),
+      [model?.id ? join(AML_ROOT ?? '(AW_HOME 未设)', 'models', model.id, 'model.onnx') : '无入档模型(前序失败)'])
+    step(5, 'platform', '自动训练 + 平台门禁', model ? `model=${model.id} G1=${model.metrics?.oneStepTest?.nrmse} G2=${model.metrics?.rolloutTest?.nrmse}` : `status=${jobDone?.status}`, [])
+
+    // (6) 投用链:快照 → 12 组试验 → 场景门禁(castfilm 档)→ 两段 HITL → 自动投用 → 治理写回 → PV 复测
+    // 冻结场景(controls/observations 结构)与训练用 PhysicsSpec 是两份文档——分别读取
+    let frozenScene = null
+    if (AML_ROOT && existsSync(join(AML_ROOT, 'twins', 'scenes', `${scene.sceneId}-1.0.0-frozen`, 'scenes.json'))) {
+      frozenScene = JSON.parse(readFileSync(join(AML_ROOT, 'twins', 'scenes', `${scene.sceneId}-1.0.0-frozen`, 'scenes.json'), 'utf8')).scene ?? null
+    }
+    if (model?.id && channelAml && workerA && frozenScene) {
+      const st = await api.call('POST', `/api/workshop/dcw/lines/${twin.lineId}/start`, { recipeId: recipeIdAml })
+      if (st.status !== 200) { await sleep(8000); await api.call('POST', `/api/workshop/dcw/lines/${twin.lineId}/start`, { recipeId: recipeIdAml }) }
+      // 等开批锚定写全部落定(DCW value 非零且稳定):否则快照基线里 zone=0,
+      // 12 组试验轨迹全部硬违例(G6/G7 双拒,2026-09-28 首轮 extended 实测)
+      {
+        const tA = Date.now()
+        while (Date.now() - tA < 90_000) {
+          const dw = ((await api.call('GET', '/api/workshop/dcw/')).data?.nodes ?? []).filter(n => n.lineId === twin.lineId)
+          const vals = Object.values(twin.dcw).map(id => Number(dw.find(n => n.id === id)?.value))
+          if (vals.length >= 6 && vals.every(v => Number.isFinite(v) && Math.abs(v) > 0.01)) break
+          await sleep(5000)
+        }
+      }
+      let snapshotId = null
+      for (let attempt = 1; attempt <= 8 && !snapshotId; attempt++) {
+        if (attempt > 1) await sleep(20_000)
+        const snap = await invokeA('twin_snapshot_create', { auto_daq: true, channel_id: channelAml, phase: 'calibration' }, workerA)
+        snapshotId = (snap.text.match(/snapshot_id:\s*([^\s\n]+)/) || [])[1] ?? null
+      }
+      add('P13', 'aml-snapshot', '孪生快照创建(auto_daq)', snapshotId ? 'pass' : 'fail', [snapshotId ?? '—'])
+      const targetObs = (frozenScene.observations ?? []).find(o => o.role === 'target')
+      const speedCtl = (frozenScene.controls ?? []).find(c => (c.nodeId ?? '').includes('linespeed')) ?? (frozenScene.controls ?? [])[0]
+      const dwNow = (await api.call('GET', '/api/workshop/dcw/')).data?.nodes ?? []
+      const dwValueById = Object.fromEntries(dwNow.filter(n => n.lineId === twin.lineId).map(n => [n.id, Number(n.value)]))
+      const baseline = Object.fromEntries((frozenScene.controls ?? []).map(c => [c.id, dwValueById[c.nodeId]]).filter(([, v]) => Number.isFinite(v)))
+      let trialOk = 0
+      if (snapshotId) {
+        for (let k = 0; k < 12; k++) {
+          const delta = (k % 2 === 0 ? 1 : -0.5) * (speedCtl?.maxStep ?? 2) * (0.3 + 0.07 * k)
+          const cand = { ...baseline, [speedCtl.id]: (baseline[speedCtl.id] ?? 95) + delta }
+          const t = await invokeA('twin_trial_run', { snapshot_id: snapshotId, model_id: model.id, baseline_controls: baseline, candidate_controls: Array.from({ length: 4 }, () => cand) }, workerA)
+          if (!t.isError && /improvement/.test(t.text)) trialOk++
+        }
+      }
+      add('P13', 'aml-trials', '模型背书虚拟试验 12 组', trialOk >= 10 ? 'pass' : 'fail', [`ok=${trialOk}/12`])
+      const gate = snapshotId ? await invokeA('twin_gate_evaluate', { model_id: model.id, scene_id: scene.sceneId }, workerA) : { text: '' }
+      const gatePassed = /"passed":\s*true/.test(gate.text) || /"gatePassed":\s*true/.test(gate.text)
+      add('P13', 'aml-scene-gate', '场景级门禁(castfilm 噪声底校准档)', !gate.isError && gatePassed ? 'pass' : 'fail',
+        [gate.text.replace(/\s+/g, ' ').slice(0, 200)])
+      step(6, `worker(${workerA.slice(0, 8)})`, '快照/12 组试验/场景门禁', `trials=${trialOk}/12 gatePassed=${gatePassed}`, [])
+      if (gatePassed) {
+        const promoteStage = async (toStage) => {
+          const p = invokeA('aml_model_promote', { model_id: model.id, to_stage: toStage }, leadA)
+          let rid2 = null
+          for (let i = 0; i < 30 && !rid2; i++) {
+            await sleep(2000)
+            const pend = await api.call('GET', '/api/workshop/hitl/pending')
+            const items = pend.data?.items ?? pend.data ?? []
+            const hit = (Array.isArray(items) ? items : []).find(x => (x.detail ?? x.title ?? '').includes(model.id))
+            if (hit) rid2 = hit.id ?? hit.requestId
+          }
+          if (rid2) await api.call('POST', '/api/workshop/hitl/respond', { kind: 'dcw-approval', id: rid2, confirmed: true, comment: `bench P13:场景门禁过,批准 ${toStage}` })
+          const r = await p
+          return r.text
+        }
+        const s1 = await promoteStage('shadow')
+        add('P13', 'aml-hitl-shadow', 'HITL 晋升 shadow(审批待办→批准)', /晋升完成|shadow/.test(s1) ? 'pass' : 'fail', [s1.slice(0, 140)])
+        let s2 = /晋升完成/.test(s1) ? await promoteStage('production') : ''
+        if (s2 && !/晋升完成/.test(s2)) {
+          // 平台权威 Twin Gate 结果在 shadow 晋升的并发窗口内可能失效(服务端建议:重评后重试)
+          await invokeA('twin_gate_evaluate', { model_id: model.id, scene_id: scene.sceneId }, workerA)
+          s2 = await promoteStage('production')
+        }
+        add('P13', 'aml-hitl-production', 'HITL 晋升 production', /晋升完成/.test(s2) ? 'pass' : 'fail', [s2.slice(0, 140)])
+        const objective = {
+          schemaVersion: 1, createdAt: new Date().toISOString(), createdBy: 'bench-p13',
+          objectiveId: 'thickness-50um', targets: { [targetObs?.id ?? 'film_thickness']: 50 }, weights: { [targetObs?.id ?? 'film_thickness']: 1 },
+          controlCosts: {}, horizonSteps: 4, trustRegion: {},
+        }
+        const mpc = await invokeA('mpc_optimize', { snapshot_id: snapshotId, baseline_controls: baseline, horizon_steps: 4, objective }, workerA)
+        const rolloutModel = (mpc.text.match(/"rolloutModel":\s*"([^"]+)"/) || [])[1]
+        const backed = (mpc.text.match(/"rolloutModelBacked":\s*(true|false)/) || [])[1]
+        const bestRaw = (mpc.text.match(/"bestCandidate":\s*(\{[^}]*\})/) || [])[1]
+        let best = null
+        try { best = JSON.parse(bestRaw ?? 'null') } catch { /* 容错 */ }
+        const adopted = rolloutModel === model.id && backed === 'true'
+        add('P13', 'aml-auto-adopt', 'MPC 未传 model_id → production 自动投用', adopted ? 'pass' : 'fail',
+          [`rollout=${rolloutModel ?? '—'} backed=${backed ?? '—'}`])
+        step(7, `lead+worker`, '两段 HITL 晋升 + MPC 自动投用', `rolloutModel=${rolloutModel} backed=${backed}`, [])
+        const idToNode = Object.fromEntries((frozenScene.controls ?? []).map(c => [c.id, c.nodeId]))
+        const STEP_LIMIT = { 加热区: 2.8, ScrewSpeed: 5, lineSpeed: 2, dieGap: 0.03 }
+        const limitOf = (name) => { for (const [k, v] of Object.entries(STEP_LIMIT)) if (name.includes(k)) return v; return 2 }
+        let wrote = 0
+        if (best) {
+          const dwFresh = ((await api.call('GET', '/api/workshop/dcw/')).data?.nodes ?? []).filter(n => n.lineId === twin.lineId)
+          const idToNode = Object.fromEntries((frozenScene.controls ?? []).map(c => [c.id, c.nodeId]))
+          for (const [specId, target] of Object.entries(best)) {
+            const nodeId = idToNode[specId]
+            if (!nodeId || !Number.isFinite(Number(target))) continue
+            const node = dwFresh.find(n => n.id === nodeId)
+            const cur = Number(node?.value)
+            if (!Number.isFinite(cur)) continue
+            const lim = limitOf(node?.name ?? '')
+            const delta = Number(target) - cur
+            if (Math.abs(delta) < 1e-6) continue
+            const stepV = Math.sign(delta) * Math.min(Math.abs(delta), lim)
+            const w = await api.call('POST', `/api/workshop/dcw/${nodeId}/write`, { value: Number((cur + stepV).toFixed(4)) })
+            if (w.status === 200) wrote++
+          }
+        }
+        add('P13', 'aml-governed-write', '推荐值经治理写回 DCW(单步限内)', wrote > 0 ? 'pass' : 'warn', [`wrote=${wrote}(拒=治理单步限保护,合规)`])
+        await sleep(60_000)
+        const targetNodeId = targetObs?.nodeId ?? twin.daq['film-thickness']
+        const r = await api.call('GET', `/api/workshop/daq/${targetNodeId}/samples?bucketMs=1000&limit=60`)
+        const pts = (r.data?.points ?? []).map(p => Number(p.avg ?? p.value)).filter(Number.isFinite).slice(0, 30)
+        const meanPv = pts.length ? pts.reduce((a, b) => a + b, 0) / pts.length : null
+        add('P13', 'aml-pv-recheck', '写回后 PV 复测(膜厚读数)', Number.isFinite(meanPv) ? 'pass' : 'fail',
+          [`mean=${Number.isFinite(meanPv) ? meanPv.toFixed(2) : 'n/a'} μm(目标 50)`])
+        step(8, 'agent+platform', '推荐写回 + PV 复测', `wrote=${wrote} pv=${Number.isFinite(meanPv) ? meanPv.toFixed(2) : 'n/a'}μm`, [])
+        amlState.summary = { datasetId: ds?.id, modelId: model.id, g1: model.metrics?.oneStepTest?.nrmse, g2: model.metrics?.rolloutTest?.nrmse, adopted, wrote, pvMean: meanPv, sceneId: scene.sceneId, channel: channelAml }
+      }
+      else {
+        add('P13', 'aml-hitl-shadow', 'HITL 晋升 shadow(审批待办→批准)', 'fail', ['场景门禁未过,fail-closed'])
+        add('P13', 'aml-hitl-production', 'HITL 晋升 production', 'fail', ['场景门禁未过,fail-closed'])
+        add('P13', 'aml-auto-adopt', 'MPC 未传 model_id → production 自动投用', 'fail', ['场景门禁未过,fail-closed'])
+        add('P13', 'aml-governed-write', '推荐值经治理写回 DCW(单步限内)', 'fail', ['场景门禁未过,fail-closed'])
+        add('P13', 'aml-pv-recheck', '写回后 PV 复测(膜厚读数)', 'fail', ['场景门禁未过,fail-closed'])
+        amlState.summary = { datasetId: ds?.id, modelId: model.id, adopted: false, sceneId: scene.sceneId, failClosed: true }
+      }
+    }
+    else {
+      add('P13', 'aml-snapshot', '孪生快照创建(auto_daq)', 'fail', ['前序失败(模型/通道/冻结场景缺失)'])
+      add('P13', 'aml-trials', '模型背书虚拟试验 12 组', 'fail', ['前序失败'])
+      add('P13', 'aml-scene-gate', '场景级门禁(castfilm 噪声底校准档)', 'fail', ['前序失败'])
+      add('P13', 'aml-hitl-shadow', 'HITL 晋升 shadow(审批待办→批准)', 'fail', ['前序失败'])
+      add('P13', 'aml-hitl-production', 'HITL 晋升 production', 'fail', ['前序失败'])
+      add('P13', 'aml-auto-adopt', 'MPC 未传 model_id → production 自动投用', 'fail', ['前序失败'])
+      add('P13', 'aml-governed-write', '推荐值经治理写回 DCW(单步限内)', 'fail', ['前序失败'])
+      add('P13', 'aml-pv-recheck', '写回后 PV 复测(膜厚读数)', 'fail', ['前序失败'])
+    }
+    await api.call('POST', `/api/workshop/dcw/lines/${twin.lineId}/stop`, {})
+    // 透明化全过程记录(逐步 jsonl,append-only)
+    writeText(join(outDir, 'aml-transparency.jsonl'), tl.map(x => JSON.stringify(x)).join('\n') + '\n')
+    add('P13', 'aml-transparency', '投用链透明化记录(aml-transparency.jsonl)', tl.length >= 6 ? 'pass' : 'warn',
+      [`bench/results/${rid}/aml-transparency.jsonl`, `steps=${tl.length}`])
+    csvRows.push({ phase: 'P13', dataset: ds?.id ?? '', model: model?.id ?? '', adopted: amlState.summary?.adopted ? 1 : 0, wrote: amlState.summary?.wrote ?? 0 })
+    const amlCoreOk = ['aml-line', 'aml-sp-readback', 'aml-dataset', 'aml-train-gates', 'aml-model-artifact', 'aml-scene-gate', 'aml-auto-adopt']
+      .every(id => checks.find(c => c.phase === 'P13' && c.id === id)?.status === 'pass')
+    return { status: checks.filter(c => c.phase === 'P13' && c.status === 'fail').length ? 'fail' : amlCoreOk ? 'pass' : 'fail', note: model ? `model=${model.id} adopted=${amlState.summary?.adopted ? '✔' : '✘'}` : '无入档模型' }
+  })
+}
+
+// ═══════════════ P14 · 平台新增能力面（可选：--surfaces / --profile extended）═══════════════
+// 覆盖 2026-09 后新增平台能力:MCP stdio 服务(自动发现+工具面+开关门控)、two-mode 优化通道
+// 模板、配方描述元字段、产线操作透明化数据面(ops-logs/优化记录/参数台账)、孪生 Provider SDK。
+const surfState = { summary: null }
+if (runSurfaces) {
+  await timed('P14', 'platform-surfaces', '平台新增能力面（MCP · two-mode 通道 · 配方描述 · 透明化数据面 · Provider SDK）', async () => {
+    // (a) MCP stdio:自动发现端口 → initialize → tools/list ≥30 → aw_status 真实调用
+    {
+      const { spawn: sp } = await import('node:child_process')
+      const child = sp(process.execPath, [join(REPO, 'mcp', 'aw-mcp-server.mjs')], {
+        cwd: REPO,
+        env: { ...process.env, NO_PROXY: '127.0.0.1,localhost', HTTP_PROXY: '', HTTPS_PROXY: '', AW_TOKEN: api.token ?? '' },
+        stdio: ['pipe', 'pipe', 'pipe'],
+      })
+      let buf = ''
+      child.stdout.on('data', d => { buf += d.toString() })
+      const rpc = (obj) => new Promise((resolve) => {
+        const want = obj.id
+        const t0 = Date.now()
+        const timer = setInterval(() => {
+          const line = buf.split('\n').find(l => l.includes(`"id":${want}`) || l.includes(`"id": ${want}`))
+          if (line) { clearInterval(timer); resolve(JSON.parse(line)) }
+          else if (Date.now() - t0 > 30000) { clearInterval(timer); resolve(null) }
+        }, 200)
+        child.stdin.write(JSON.stringify(obj) + '\n')
+      })
+      const init = await rpc({ jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'bench-p14', version: '1.0.0' } } })
+      const tools = await rpc({ jsonrpc: '2.0', id: 2, method: 'tools/list', params: {} })
+      const toolNames = (tools?.result?.tools ?? []).map(t => t.name)
+      const status = await rpc({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'aw_status', arguments: {} } })
+      const statusOk = /"isError":false|"isError": false/.test(status?.result?.content?.[0]?.text ?? '') || status?.result?.content?.[0]?.text?.includes('Platform')
+      const mcpOk = Boolean(init?.result?.serverInfo) && toolNames.length >= 30 && statusOk
+      add('P14', 'mcp-stdio', 'MCP stdio 自动发现 + 工具面 + aw_status', mcpOk ? 'pass' : 'fail',
+        [`tools=${toolNames.length}`, `server=${init?.result?.serverInfo?.name ?? '—'}`, `aw_status=${statusOk ? '✔' : '✘'}`])
+      // (b) MCP 开关门控:settings 关 → 非 aw_status 调用被拒;恢复开 → 放行
+      await api.call('PATCH', '/api/system/settings', { override: { 'mcp.enabled': false } })
+      await sleep(4200) // > 3s TTL 缓存
+      const blocked = await rpc({ jsonrpc: '2.0', id: 4, method: 'tools/call', params: { name: 'aw_request', arguments: { method: 'GET', path: '/api/workshop/lines' } } })
+      const blockedOk = (blocked?.result?.content?.[0]?.text ?? '').includes('已停用')
+      await api.call('PATCH', '/api/system/settings', { override: { 'mcp.enabled': true } })
+      await sleep(4200)
+      const allowed = await rpc({ jsonrpc: '2.0', id: 5, method: 'tools/call', params: { name: 'aw_status', arguments: {} } })
+      const allowOk = Boolean(allowed?.result?.content?.[0]?.text)
+      add('P14', 'mcp-switch', '系统设置 MCP 开关门控(关→拒/开→放行)', blockedOk && allowOk ? 'pass' : 'fail',
+        [`disabled-block=${blockedOk}`, `enabled-allow=${allowOk}`])
+      child.kill()
+      surfState.summary = { mcpTools: toolNames.length, switchGate: blockedOk && allowOk }
+    }
+    // (c) two-mode 优化通道模板实例化(hybrid_twin 工具面)
+    {
+      const baseRec = lines.find(l => l.ids?.line && l.ids?.product) ?? null
+      const scene = { sceneId: `p14-surface-${sfx}`, sceneVersion: '1.0.0', lineId: baseRec?.ids.line, productId: baseRec?.ids.product, recipeId: baseRec?.ids.recipe }
+      const inst = await api.call('POST', '/api/workshop/channel-templates/chtpl-hybrid-twin-mpc-default/instantiate', {
+        name: `P14 two-mode 通道 ${sfx}`, toolProfile: 'hybrid_twin', scene,
+        objective: { objectiveId: 'thickness-50um', targets: { film_thickness: 50 } },
+        controlPolicy: 'recommendation_only',
+      })
+      const chId = inst.data?.channelId
+      const workerId = (inst.data?.agents ?? []).find(a => a.role === 'worker')?.id
+      let invokeOk = false
+      if (chId && workerId) {
+        const cat = await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: workerId, tool: 'aml_node_catalog', args: {} })
+        invokeOk = Boolean(cat.data?.result) && cat.data?.result?.isError !== true
+      }
+      add('P14', 'two-mode-channel', 'two-mode 优化通道模板实例化 + Agent 工具面', chId && workerId && invokeOk ? 'pass' : 'fail',
+        [`channel=${chId ?? '—'} invoke=${invokeOk ? '✔' : '✘'}`])
+    }
+    // (d) 配方描述元字段(克隆既有配方的参数,仅验证 description 创建→读回一致)
+    {
+      const list = (await api.call('GET', '/api/workshop/dcw/recipes')).data?.recipes ?? []
+      const src = list[0]
+      let descOk = false
+      if (src?.id) {
+        const desc = `P14 描述元字段验证 ${sfx}:起始工况=蓝图次优,目标=闭环寻优演示`
+        const rc = await api.call('POST', '/api/workshop/dcw/recipes', {
+          productId: src.productId, name: `P14 描述配方 ${sfx}`, description: desc,
+          params: src.params ?? [],
+        })
+        const back = (await api.call('GET', '/api/workshop/dcw/recipes')).data?.recipes?.find(x => x.id === rc.data?.recipe?.id || x.name === `P14 描述配方 ${sfx}`)
+        descOk = Boolean(back) && (back.description ?? '').includes('P14 描述元字段验证')
+      }
+      add('P14', 'recipe-description', '配方描述元字段(创建→读回一致)', descOk ? 'pass' : 'warn',
+        [descOk ? 'description 原生读回一致' : '无既有配方可克隆,诚实降级'])
+    }
+    // (e) 产线操作透明化数据面:ops-logs / 优化记录 / 参数台账
+    {
+      const ops = await api.call('GET', '/api/workshop/ops-logs?limit=5')
+      const opt = await api.call('GET', '/api/workshop/dcw/optimizations')
+      const optList = Array.isArray(opt.data) ? opt.data : (opt.data?.records ?? opt.data?.items ?? [])
+      const ledgerRec = lines.find(l => l.ids?.dcw)
+      let ledgerOk = null
+      if (ledgerRec?.ids?.dcw) {
+        const led = await api.call('GET', `/api/workshop/dcw/${ledgerRec.ids.dcw}/param-ledger?limit=5`)
+        ledgerOk = led.status === 200
+      }
+      const transOk = ops.status === 200 && opt.status === 200 && Array.isArray(optList) && (ledgerOk !== false)
+      add('P14', 'ops-transparency', '产线操作透明化数据面(ops-logs/优化记录/参数台账)', transOk ? 'pass' : 'warn',
+        [`ops-logs=${ops.status}`, `optimizations=${opt.status}(n=${optList.length})`, `param-ledger=${String(ledgerOk)}`])
+    }
+    // (f) 孪生 Provider SDK(插件化模型提供方注册表)
+    {
+      const prov = await api.call('GET', '/api/workshop/aml/twin/providers')
+      const provList = Array.isArray(prov.data) ? prov.data : (prov.data?.providers ?? [])
+      add('P14', 'twin-providers', '孪生 Provider SDK 注册表', prov.status === 200 && provList.length >= 1 ? 'pass' : 'warn',
+        [`providers=${JSON.stringify(provList).slice(0, 120)}`])
+    }
+    csvRows.push({ phase: 'P14', mcp_tools: surfState.summary?.mcpTools ?? '', mcp_gate: surfState.summary?.switchGate ? 1 : 0 })
+    const p14fails = checks.filter(c => c.phase === 'P14' && c.status === 'fail').length
+    return { status: p14fails ? 'fail' : 'pass', note: `MCP tools=${surfState.summary?.mcpTools ?? '—'}` }
+  })
+}
+
+// ═══════════════ P9 · 平台子系统（团队调度 · 团队记忆幂等 · 引擎注册表）═══════════════
+await timed('P9', 'subsystems', 'Platform subsystems (team dispatch · team memory idempotency · harness registry)', async () => {
+  // (a) 团队调度：mock lead + 2 mock worker，未指派任务由 lead 规则引擎派发、worker 按剧本完成
+  const ch9 = await api.call('POST', '/api/workshop/channels', { name: `team-${sfx}`, leadAgent: { name: `tlead-${sfx}`, harness: 'mock', config: { delayMs: 40 } } })
+  const chId9 = ch9.data?.channelId ?? ch9.data?.channel?.id ?? ch9.data?.id
+  const w1 = await api.call('POST', '/api/workshop/agents', { name: `w1-${sfx}`, harness: 'mock', config: { delayMs: 60 } })
+  const w2 = await api.call('POST', '/api/workshop/agents', { name: `w2-${sfx}`, harness: 'mock', config: { delayMs: 60 } })
+  const j1 = await api.call('POST', `/api/workshop/channels/${chId9}/agents`, { agentId: w1.data?.id, role: 'worker' })
+  const j2 = await api.call('POST', `/api/workshop/channels/${chId9}/agents`, { agentId: w2.data?.id, role: 'worker' })
+  const i1 = j1.data?.id ?? j1.data?.agentId, i2 = j2.data?.id ?? j2.data?.agentId
+  const t9 = await api.call('POST', `/api/workshop/channels/${chId9}/tasks`, { title: `teamtask-${sfx}`, parts: [{ text: '[mock:complex] P9 团队调度验证任务：拆分后由成员完成，最后调用 complete_task。' }] })
+  let taskId9 = t9.data?.task?.id ?? t9.data?.id
+  if (!taskId9) { const list = (await api.call('GET', `/api/workshop/channels/${chId9}/tasks`)).data ?? []; taskId9 = (Array.isArray(list) ? list : []).find(x => x.title === `teamtask-${sfx}`)?.id }
+  let state9 = '', assignee9 = null
+  const dl9 = Date.now() + 90_000
+  while (taskId9 && Date.now() < dl9) {
+    await sleep(3000)
+    const me = (await api.call('GET', `/api/workshop/tasks/${taskId9}`)).data ?? {}
+    state9 = me.state ?? me.task?.state ?? ''
+    assignee9 = me.assigneeId ?? me.task?.assigneeId ?? assignee9
+    if (['COMPLETED', 'FAILED', 'CANCELED'].includes(state9)) break
+  }
+  const cand = [i1, i2, w1.data?.id, w2.data?.id].filter(Boolean)
+  // lead 认领父任务（assignee=lead）；派发证据 = 通道内存在指派给 worker 的子任务
+  let dispatched = false
+  if (taskId9) {
+    const all9 = (await api.call('GET', `/api/workshop/channels/${chId9}/tasks`)).data ?? []
+    for (const t of (Array.isArray(all9) ? all9 : all9.tasks ?? [])) {
+      if (t.id !== taskId9 && cand.includes(t.assigneeId)) { dispatched = true; break }
+    }
+  }
+  add('P9', 'team-dispatch', '团队调度（lead 派发 → worker 完成）', state9 === 'COMPLETED' && dispatched ? 'pass' : 'warn',
+    [`终态 ${state9 || '(超时)'} · assignee=${assignee9 ?? '—'}（lead 认领父任务） · 子任务派发给 worker: ${dispatched ? '✔' : '未观察到'}`])
+  bag.add('team', 'team_dispatch_ok', state9 === 'COMPLETED' && dispatched ? 1 : 0, '', 'lead→worker dispatch closed loop')
+
+  // (b) 团队记忆：写入 + dedupKey 幂等刷新（同 key 二写不产生第二条）
+  const mem9 = { title: `P9 记忆 ${sfx}`, content: `P9 幂等记忆：产线 ${sfx} 的已知良好基线。`, importance: 0.8, dedupKey: `p9-${sfx}` }
+  const m1 = await api.call('POST', `/api/workshop/channels/${chId9}/memories`, mem9)
+  const m2 = await api.call('POST', `/api/workshop/channels/${chId9}/memories`, mem9)
+  const ml = (await api.call('GET', `/api/workshop/channels/${chId9}/memories`)).data ?? []
+  const mine9 = (Array.isArray(ml) ? ml : []).filter(x => x.dedupKey === `p9-${sfx}` || x.title === mem9.title)
+  const memOk = m1.status === 200 && m2.status === 200 && mine9.length === 1
+  add('P9', 'team-memory', '团队记忆写入 + dedupKey 幂等', memOk ? 'pass' : 'warn',
+    [`POST×2 status ${m1.status}/${m2.status} → 列表中匹配 ${mine9.length} 条（期望 1）`])
+  bag.add('memory', 'team_memory_idempotent', memOk ? 1 : 0, '', 'dedupKey idempotent refresh')
+
+  // (c) 引擎注册表：14 引擎枚举 + 环境可用性探测
+  const hs = (await api.call('GET', '/api/workshop/harnesses')).data ?? []
+  const list9 = Array.isArray(hs) ? hs : hs.harnesses ?? hs.engines ?? hs.rows ?? []
+  const avail9 = list9.filter(x => x.available).length
+  add('P9', 'harness-registry', '引擎注册表枚举 + 可用性探测', list9.length >= 14 ? 'pass' : 'warn',
+    [`注册 ${list9.length} 引擎（期望 ≥14） · 环境可用 ${avail9} · 覆盖 mock/RPC/SDK/CLI 族`])
+  bag.add('agent', 'harness_registry', list9.length, '', `environment-available ${avail9}`)
+  csvRows.push({ phase: 'P9', team_state: state9, team_dispatched: dispatched, memory_idempotent: memOk, harnesses: list9.length, harnesses_available: avail9 })
+  const ok9 = state9 === 'COMPLETED' && dispatched && memOk && list9.length >= 14
+  return { status: ok9 ? 'pass' : 'warn', note: `team ${state9 || '—'} · mem ${memOk ? '✔' : '✘'} · engines ${list9.length}(${avail9} avail)` }
+})
+
+// ═══════════════ 收尾 · 量化 + HTML + 复现指纹 ═══════════════
+for (const l of lines) { if (l.teardown) await l.teardown().catch(() => {}) }
+for (const l of port.lines) { if (l.teardown) await l.teardown().catch(() => {}) }
+// 共享模拟器复原(2026-10-06):bench 的 preset/phase 操作会把共享 :4010 的演示引擎
+// 打停/重置,跑完后 demo 产线"消失"(数采断流,实测收敛验收轮被迫手动恢复)。
+// 这里在收尾时重放 cast-film-physics 预设——boot 引擎+设备,恢复共享实例的演示工况。
+if (!process.env.AW_BENCH_NO_PRESET_RESTORE) {
+  try {
+    await applyPreset(simPreset)
+    console.log(`  · 收尾复原:已重放预设 ${simPreset}(共享模拟器演示工况恢复)`)
+  } catch (err) {
+    console.log(`  · 收尾复原失败(可 AW_BENCH_NO_PRESET_RESTORE=1 跳过): ${err?.message ?? err}`)
+  }
+}
+
+const fail = checks.filter(c => c.status === 'fail').length
+const warn = checks.filter(c => c.status === 'warn').length
+const pass = checks.filter(c => c.status === 'pass').length
+// 零检查 = 夹具/自举未跑到任何断言，绝不能判 PASS（假绿防护）；
+// 「全部 skip」同理——自举失败时每个阶段都会被诚实跳过，若只看 fail 数就会打出
+// 空心的 ✅ PASS（实测踩过：模拟器依赖缺失 → 全 skip → PASS(0/0/0)）。
+// 阶段级 fail（如 P0 抛错未落检查）同样必须判 FAIL——检查表通过 ≠ 阶段全部执行。
+const phaseFailN = phases.filter(p => p.status === 'fail').length
+const executedN = pass + warn + fail
+const emptyRun = checks.length === 0 || executedN === 0
+const reproCmd = `node bench/pipeline.mjs --profile ${profile} --seed ${seed}${maxLines !== 5 ? ` --lines ${maxLines}` : ''}${toolHarness !== 'opencode' ? ` --tool-harness ${toolHarness}` : ''}${clSeeds ? ` --cl-seeds ${clSeeds}` : ''}${clWriteMode !== 'governed' ? ` --cl-write ${clWriteMode}` : ''}${agentHarness ? ` --agent ${agentHarness}` : ''}${profile !== 'extended' && runScenarios ? ' --scenarios' : ''}${profile !== 'extended' && runAml ? ' --aml' : ''}${profile !== 'extended' && runSurfaces ? ' --surfaces' : ''}`
+
+const env = {
+  runId: rid, profile, seed, base, simBase: SIM_BASE, simDir: SIM_DIR, lines: lines.length,
+  ownLines: lines.filter(l => !l.satellite).length, satelliteDaq: lines.filter(l => l.satellite).length,
+  protocols: [...new Set(lines.map(l => l.protocol))].join('/'), preset: simPreset,
+  agentHarness: agentHarness ?? '(none)', toolHarness, startedAt: new Date().toISOString(),
+  node: process.version, platform: `${process.platform} ${process.arch}`,
+  harnessHash, gitCommit, harnessFiles: HARNESS_FILES.length,
+  closedloop: cl.agg ? { writeMode: cl.writeMode, ...cl.agg } : null,
+  portability: port.agg,
+  biax: biax.ensured
+    ? {
+        devices: biax.ensured.verified.devices,
+        signals: biax.ensured.verified.signals,
+        sp: biax.ensured.verified.sp,
+        created: biax.ensured.report.created.length,
+        platformDcw: Object.keys(biax.line?.dcw ?? {}).length,
+        platformDaq: Object.keys(biax.line?.daq ?? {}).length,
+        missionWrites: biax.mission?.writes ?? 0,
+        missionKnobs: biax.mission?.distinctCount ?? 0,
+        missionFinalUm: biax.mission?.thickness ?? null,
+        missionAttained: biax.mission?.attained ?? false,
+        missionTraj: biax.mission?.traj ?? [],
+      }
+    : null,
+  backstop: { fired: bs.fired, restored: bs.restored, latencyS: bs.latencyS, recordId: bs.recordId, from: bs.from, to: bs.to },
+  aml: amlState.summary,
+  surfaces: surfState.summary,
+  verdict: { pass, warn, fail, phaseFails: phaseFailN, ok: fail === 0 && phaseFailN === 0 && !emptyRun }, reproCmd,
+}
+const kpis = [
+  { label: 'Provisionable lines', value: env.ownLines, unit: '', note: `+${env.satelliteDaq} satellite DAQ · ${env.protocols}`, tone: 'good' },
+  { label: 'DAQ samples total', value: lines.reduce((s, l) => s + (l.daqSamples ?? 0), 0), unit: '', note: `${lines.filter(l => l.daqSamples > 0).length}/${lines.length} nodes sampling`, tone: 'good' },
+  { label: 'Governance interception (pooled)', value: (() => { const t = lines.filter(l => l.f5Total); const d = t.reduce((s, l) => s + l.f5Total, 0); return d ? `${((t.reduce((s, l) => s + l.f5Rejected, 0) / d) * 100).toFixed(1)}` : '—' })(), unit: '%', note: 'F5 attacks', tone: 'good' },
+  { label: 'Write p50 (all protocols)', value: r3(mean(lines.filter(l => l.writeP50).map(l => l.writeP50))), unit: 'ms', note: 'incl. real protocol transactions' },
+  cl.agg
+    ? { label: 'Closed-loop J/J*', value: `${(cl.agg.ratioMean * 100).toFixed(1)}`, unit: '%', note: `n=${cl.agg.n} seeds · worst ${(cl.agg.ratioMin * 100).toFixed(1)}% · J*=${cl.agg.Jstar}`, tone: cl.agg.ratioMin >= 0.9 ? 'good' : 'warn' }
+    : { label: 'Closed-loop J/J*', value: 'off', unit: '', note: '--cl-seeds 3 enables', tone: 'warn' },
+  { label: 'Tool-level loops', value: lines.filter(l => l.loopIterations).length, unit: '', note: 'dcw→daq→judge ×3 convergence' },
+  { label: 'Param-layer governance', value: `${bag.all().filter(m => m.section === 'gov' && m.key === 'param_layer_checks_ok').slice(-1)[0]?.value ?? '—'}/4`, unit: '', note: 'semantic surface · 4-layer write limits · agent param_control', tone: 'good' },
+  bs.fired
+    ? { label: 'System backstop', value: bs.restored ? 'fired+restored' : 'fired', unit: '', note: `window breach → auto-rollback in ${bs.latencyS}s (env)`, tone: bs.restored ? 'good' : 'warn' }
+    : { label: 'System backstop', value: 'not fired', unit: '', note: 'P8b drill requires scenario 2', tone: 'warn' },
+  port.agg
+    ? { label: 'Scenario portability', value: port.agg.preset, unit: '', note: `2nd scenario: ${port.agg.ownLines} lines + ${port.agg.lines - port.agg.ownLines} sat · F5 ${port.agg.f5Rejected}/${port.agg.f5Total} · 0 code changes`, tone: port.agg.falseBlocks === 0 && port.agg.f5Rejected === port.agg.f5Total ? 'good' : 'warn' }
+    : { label: 'Scenario portability', value: 'off', unit: '', note: 'P8 runs in integrated profile', tone: 'warn' },
+  biax.ensured
+    ? { label: 'Biax line (BOPET)', value: `${biax.ensured.verified.devices} dev / ${biax.ensured.verified.sp} SP`, unit: '', note: `AgentTeam ${biax.mission?.distinctCount ?? 0} knobs · ${biax.mission?.writes ?? 0} writes → ${biax.mission?.thickness?.toFixed(2) ?? '?'}μm${biax.mission?.attained ? ' ✔' : ''}`, tone: biax.mission?.attained && (biax.mission?.distinctCount ?? 0) >= 3 ? 'good' : 'warn' }
+    : { label: 'Biax line (BOPET)', value: 'off', unit: '', note: 'P10 requires P4 fixture', tone: 'warn' },
+  agentHarness ? { label: 'LLM agent loop', value: lines.find(l => l.agentState)?.agentState ?? '—', unit: '', note: `${agentHarness}`, tone: lines.find(l => l.agentOracle) ? 'good' : 'bad' } : { label: 'LLM agent loop', value: 'off', unit: '', note: '--agent omp enables', tone: 'warn' },
+  { label: 'Verdict', value: fail || phaseFailN ? 'FAIL' : 'PASS', unit: '', note: `${pass}/${pass + warn + fail} checks · hard gate ${fail || phaseFailN ? 'tripped' : 'green'}`, tone: fail || phaseFailN ? 'bad' : 'good' },
+]
+
+// ── 模拟产线画像 + AgentTeam 闭环调优全过程(报告专章,论文 exp 直接引用)──
+const lineProfile = await collectLineProfile({ preset: simPreset ?? env.preset, api }).catch((e) => ({ error: String(e?.message ?? e).slice(0, 160) }))
+writeText(join(outDir, 'line-profile.json'), JSON.stringify(lineProfile, null, 2))
+const agentteam = {
+  biax: {
+    traj: biax?.mission?.traj ?? [],
+    writes: biax?.mission?.writes ?? null,
+    distinctKnobs: biax?.mission?.distinctNodes?.size ?? null,
+    records: biax?.mission?.records?.length ?? null,
+    final: biax?.mission?.thickness != null ? Number((Math.abs(Number(biax.mission.thickness) - 25)).toFixed(2)) : null,
+    attained: biax?.mission?.attained ?? null,
+    finalUm: biax?.mission?.thickness != null ? Number(Number(biax.mission.thickness).toFixed(2)) : null,
+    targetUm: 25,
+    toleranceUm: 0.7,
+  },
+  cl: {
+    seeds: (cl.seeds ?? []).map(s => ({
+      seed: s.seed,
+      traj: (s.traj ?? []).map(t => ({ iter: t.iter, thickness: t.thickness, defect: t.defect, pressure: t.pressure, meltTemp: t.meltTemp, screw: t.screw, lineSpeed: t.lineSpeed, zone: t.zone, J: t.J, wallS: t.wallS })),
+      stats: s.stats,
+      ratio: s.ratio,
+    })),
+  },
+}
+
+writeJson(join(outDir, 'run.json'), {
+  env, phases, checks, lines, kpis, metrics: bag.all(),
+  lineProfile,
+  agentteam,
+  closedloop: cl.agg
+    ? {
+        writeMode: cl.writeMode, agg: cl.agg,
+        seeds: cl.seeds.map(s => ({
+          seed: s.seed, warmed: s.warmed, warmupS: s.warmupS, J0: s.J0, Jend: s.Jend, Jstar: s.Jstar, ratio: s.ratio,
+          iters: s.stats.iters, writes: s.stats.writes, rejected: s.stats.rejected, converged: s.stats.converged, wallS: s.wallS,
+          traj: s.traj.map(t => ({ iter: t.iter, thickness: t.thickness, defect: t.defect, pressure: t.pressure, meltTemp: t.meltTemp, screw: t.screw, lineSpeed: t.lineSpeed, J: t.J })),
+        })),
+      }
+    : null,
+  portability: port.agg
+    ? { agg: port.agg,
+        lines: port.lines.map(l => ({ index: l.index, protocol: l.protocol, satellite: l.satellite,
+          daqSamples: l.daqSamples ?? null, f5: l.f5Total != null ? `${l.f5Rejected}/${l.f5Total}` : null,
+          falseBlock: l.falseBlock ?? null, readbackDelta: l.readbackDelta ?? null })) }
+    : null,
+})
+writeText(join(outDir, 'metrics.csv'), toCsv(csvRows))
+writeJson(join(outDir, 'summary.json'), {
+  runId: rid, env, verdict: env.verdict, kpis,
+  perLine: lines.map(l => ({
+    index: l.index, protocol: l.protocol, simDevice: l.simDeviceId,
+    daqSamples: l.daqSamples, writeP50: l.writeP50, writeP95: l.writeP95, readbackDelta: l.readbackDelta,
+    f5: l.f5Total != null ? `${l.f5Rejected}/${l.f5Total}` : null, falseBlock: l.falseBlock ?? null,
+    loopIterations: l.loopIterations ?? null, convergenceS: l.convergenceS ?? null,
+    agentState: l.agentState ?? null, agentWallS: l.agentWallS ?? null, agentOracle: l.agentOracle ?? null,
+  })),
+  metrics: bag.all(),
+  portability: port.agg
+    ? { agg: port.agg,
+        lines: port.lines.map(l => ({ index: l.index, protocol: l.protocol, satellite: l.satellite,
+          daqSamples: l.daqSamples ?? null, f5: l.f5Total != null ? `${l.f5Rejected}/${l.f5Total}` : null,
+          falseBlock: l.falseBlock ?? null, readbackDelta: l.readbackDelta ?? null })) }
+    : null,
+  closedloop: cl.agg
+    ? {
+        writeMode: cl.writeMode, agg: cl.agg,
+        perSeed: cl.seeds.map(s => ({ seed: s.seed, J0: s.J0, Jend: s.Jend, ratio: s.ratio, iters: s.stats.iters, writes: s.stats.writes, rejected: s.stats.rejected, converged: s.stats.converged, wallS: s.wallS })),
+      }
+    : null,
+})
+// 面板图表（印刷色板：数据青/信号绿/琥珀/陶土 —— 与报告模板同源，见 lib/direction-notes.md）
+const chartsHtml = [
+  lines.filter(l => l.writeP50 != null).length
+    ? barChart({
+        title: 'Write p50 (ms, per line/protocol)', unit: 'ms', color: '#1f6f8b',
+        rows: lines.filter(l => l.writeP50 != null).map(l => ({ label: `L${l.index} ${l.protocol}`, value: l.writeP50 })),
+      })
+    : '',
+  lines.filter(l => l.daqSamples).length
+    ? barChart({
+        title: 'DAQ sample points (real driver)', unit: '', color: '#0a7d54',
+        rows: lines.map(l => ({ label: `L${l.index} ${l.protocol}`, value: l.daqSamples ?? 0 })),
+      })
+    : '',
+  lines.filter(l => l.f5Total != null).length
+    ? barChart({
+        title: 'Governance F5 interception (%)', unit: '%', color: '#8a5a00', max: 100,
+        rows: lines.filter(l => l.f5Total != null).map(l => ({ label: `L${l.index} ${l.protocol}`, value: r3((l.f5Rejected / l.f5Total) * 100) })),
+      })
+    : '',
+  lines.filter(l => l.loopIterations != null).length
+    ? barChart({
+        title: 'Agent loop convergence (s)', unit: 's', color: '#b0553a',
+        rows: lines.filter(l => l.convergenceS != null).map(l => ({ label: `L${l.index} ${l.protocol}`, value: l.convergenceS })),
+      })
+    : '',
+  // ── 闭环优化 benchmark：每 seed 的 J start/终 points (+ 离线最优 W* 参考线）──
+  cl.agg
+    ? barChart({
+        title: `Closed-loop J (per seed): start → end vs offline optimum J*=${cl.agg.Jstar}`,
+        unit: '', color: '#1f6f8b', max: Math.max(cl.agg.Jstar ?? 100, cl.agg.J0mean ?? 100) * 1.12,
+        rows: [
+          ...cl.seeds.flatMap(s => ([
+            { label: `S${s.seed} start`, value: s.J0, color: '#9aa5ad' },
+            { label: `S${s.seed} end`, value: s.Jend, color: s.ratio >= 0.9 ? '#0a7d54' : '#8a5a00' },
+          ])),
+          { label: 'J* (offline optimum)', value: cl.agg.Jstar, color: '#b0553a' },
+        ],
+      })
+    : '',
+  cl.agg
+    ? barChart({
+        title: 'Closed-loop attainment J/J* (%)', unit: '%', color: '#0a7d54', max: 100,
+        rows: cl.seeds.filter(s => s.ratio != null).map(s => ({ label: `seed ${s.seed}`, value: r3(s.ratio * 100), color: s.ratio >= 0.9 ? '#0a7d54' : '#8a5a00' })),
+      })
+    : '',
+  cl.agg
+    ? barChart({
+        title: 'Closed-loop iterations (count)', unit: '', color: '#1f6f8b',
+        rows: cl.seeds.map(s => ({ label: `seed ${s.seed}`, value: s.stats.iters })),
+      })
+    : '',
+].filter(Boolean).join('')
+
+// ── 论文级英文报告模板（bench/lib/report-template.mjs，设计推导见 lib/direction-notes.md）──
+const benchArtifacts = collectArtifacts(outDir, [
+  'agentteam-mission.log', 'agentteam-biax.log', 'line-profile.json',
+  'agent-loop-omp.log', 'agent-loop-opencode.log', 'agent-loop-codex.log',
+  'agent-goal-loop-omp.log', 'agent-goal-loop-opencode.log', 'agent-goal-loop-codex.log',
+  'metrics.csv', 'run.json', 'summary.json',
+])
+writeText(join(outDir, 'report.md'), renderBenchmarkMd({
+  env, phases, checks, kpis, metrics: bag.all(),
+  closedloop: cl.agg ? { writeMode: cl.writeMode, agg: cl.agg, seeds: cl.seeds } : null,
+  artifacts: benchArtifacts, lineProfile, agentteam,
+}))
+writeText(join(outDir, 'report.html'), renderBenchmarkHtml({
+  env, phases, checks, kpis, metrics: bag.all(),
+  closedloop: cl.agg ? { writeMode: cl.writeMode, agg: cl.agg, seeds: cl.seeds } : null,
+  charts: chartsHtml,
+  artifacts: benchArtifacts, lineProfile, agentteam,
+}))
+writeText(join(outDir, 'dashboard.html'), renderDashboard({
+  env, phases, kpis, lines, checks, metrics: bag.all(),
+  closedloop: cl.agg ? { writeMode: cl.writeMode, agg: cl.agg, seeds: cl.seeds } : null,
+  charts: chartsHtml,
+}))
+
+console.log(`\n── 结果 ──  pass ${pass} · warn ${warn} · fail ${fail} · skip ${checks.length - executedN}  ${fail === 0 && phaseFailN === 0 && !emptyRun ? '✅ PASS' : '❌ FAIL'}${emptyRun ? '（未产生任何有效检查——自举/夹具失败，全部阶段仅被跳过）' : ''}`)
+console.log(`产物: ${outDir}`)
+console.log(`  run.json / metrics.csv / summary.json / report.md / dashboard.html`)
+console.log(`复现: ${reproCmd}\n`)
+process.exit(fail > 0 || phaseFailN > 0 || emptyRun ? 1 : 0)

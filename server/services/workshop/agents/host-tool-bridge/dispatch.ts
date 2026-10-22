@@ -20,6 +20,7 @@ import { INDUSTRIAL_TOOL_NAMES, dispatchIndustrialTool } from './tools/industria
 import { guardIndustrialToolGrant } from '../industrial/grant-guard'
 import { verifyIndustrialToolCall } from '../industrial/tool-verify'
 import { checkToolAgainstScope } from '../../runtime/permission-scope'
+import { channelToolGate } from '../../tools/policy'
 import type { WorkshopPermissionScope } from '../../../../../shared/workshop-protocol'
 import { handleCompleteTask, handleReportProgress } from './tools/progress'
 import { handleCancelTask, handleDispatchTask, handleGetMyTaskQueue, handleGetTaskDetails, handleListChannelTasks, handleReassignTask, handleRefuseTask, handleSubmitTask, handleUpdateTask } from './tools/tasks'
@@ -68,6 +69,12 @@ async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCa
     const scope = g.__workshopManager?.invocationScopeOf?.(identity.agentId) ?? null
     const verdict = checkToolAgainstScope(scope, req.toolName)
     if (!verdict.allowed) return { text: verdict.message, isError: true }
+  }
+  // Channel 逐工具选择:执行面复核(目录可能被引擎缓存;不能只靠注入面隐藏)。
+  // 未知工具不在此拦截,保持既有“未知工具”错误语义。
+  {
+    const gate = channelToolGate(identity.channelId, req.toolName)
+    if (gate.blocked) return { text: gate.message ?? `工具 ${req.toolName} 不可用`, isError: true }
   }
   // 插件工具分发(ctx.omp.registerTool 注册的自定义工具;不依赖 workspace,优先于内置面)。
   // 同名遮蔽内置工具不生效:否则插件 handler 会绕过 grant/verify/HITL 全部门控,
@@ -143,7 +150,7 @@ async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCa
   }
 
   // 所有真实写入口在统一分发层再做一次服务端 fail-closed 守卫；工具目录隐藏不是安全边界。
-  if (['dcw_control', 'param_control', 'dcw_rollback', 'recipe_update', 'recipe_rollback', 'recipe_trial', 'recipe_apply'].includes(req.toolName)) {
+  if (['dcw_control', 'param_control', 'dcw_rollback', 'recipe_create', 'recipe_update', 'recipe_rollback', 'recipe_trial', 'recipe_apply'].includes(req.toolName)) {
     // Profile 级写面(2026-10-18):观察面零写、训练面无产线写、优化面只认 optimization_explore。
     // 此前这些 Channel 只是目录不注入,按名直调(REST/MCP)仍可落到写 handler。
     if (twinKind === 'exp-miner' || twinKind === 'line-doctor') {
@@ -264,6 +271,7 @@ async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCa
       case 'dcw_rollback':
       case 'dcw_journal':
       case 'ops_log':
+      case 'line_log':
       case 'recipe_log':
       case 'line_context':
       case 'recipe_versions':

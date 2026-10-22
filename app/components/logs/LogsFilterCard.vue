@@ -27,6 +27,8 @@ const recipeId = defineModel<string>('recipeId', { required: true })
 const actorKind = defineModel<string>('actorKind', { required: true })
 const kind = defineModel<string>('kind', { required: true })
 const level = defineModel<string>('level', { required: true })
+const from = defineModel<string>('from', { required: true })
+const to = defineModel<string>('to', { required: true })
 const text = defineModel<string>('text', { required: true })
 
 const { lines, productsOfLine, recipesOfScope } = useLogsScope()
@@ -161,6 +163,24 @@ function onProductChange(): void {
         </option>
       </select>
     </label>
+    <label class="flt">
+      <span>{{ $t('logs.fFrom') }}</span>
+      <input
+        v-model="from"
+        class="inp-sel inp-time"
+        type="datetime-local"
+        step="1"
+      >
+    </label>
+    <label class="flt">
+      <span>{{ $t('logs.fTo') }}</span>
+      <input
+        v-model="to"
+        class="inp-sel inp-time"
+        type="datetime-local"
+        step="1"
+      >
+    </label>
     <label class="flt flt-grow">
       <span>{{ $t('logs.fKeyword') }}</span>
       <input
@@ -224,6 +244,8 @@ function onProductChange(): void {
   border: 1px solid var(--glass-line); border-radius: 7px; outline: none;
 }
 .inp-sel:focus { border-color: color-mix(in srgb, var(--tone-info-dot) 55%, transparent); }
+/* 原生 datetime-local 的宽度由内容决定,显式给一个可读宽度,避免窄屏被压成图标 */
+.inp-time { width: 100%; min-width: 190px; }
 
 @media (max-width: 899px) {
   /* 手指命中区:表格内的 mini-btn 原始高度只有 ~24px。

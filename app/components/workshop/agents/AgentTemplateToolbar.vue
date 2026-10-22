@@ -21,10 +21,12 @@ defineProps<{
       size="small"
       :options="options"
     />
-    <span
-      v-if="isAdmin"
-      class="admin-note"
-    ><span class="i-tabler-shield-check" /> {{ $t('agents.ka1gpdj011') }}</span>
+    <ClientOnly>
+      <span
+        v-if="isAdmin"
+        class="admin-note"
+      ><span class="i-tabler-shield-check" /> {{ $t('agents.ka1gpdj011') }}</span>
+    </ClientOnly>
   </div>
 </template>
 

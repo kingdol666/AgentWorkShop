@@ -162,6 +162,75 @@ test('roundtrip:CSV 写入/转义/sha256/读回(head/stats/rows 分页)', async 
   }
 })
 
+test('向量数据集:宽表 + manifest 携带字段字典/批次归属,读回带字典', async () => {
+  const dir = tmpDir()
+  const db = openWorkshopDb(':memory:')
+  try {
+    const rows: DcwHistoryRow[] = [
+      { ts: '2026-09-29T00:00:00Z', values: [35.1, 35.4], record: { mean: 35.25 } },
+      { ts: '2026-09-29T00:01:00Z', values: [35.2, 35.5], record: { mean: 35.35 } },
+    ]
+    const driver: MesHistoryDriver = {
+      ...fakeDriver([]),
+      fetchHistory: async (input) => {
+        await input.onRows(rows)
+        return {
+          rows: rows.length,
+          complete: true,
+          dictionary: [{
+            field: 'profile',
+            label: '膜厚断面',
+            unit: 'um',
+            kind: 'vector',
+            description: '沿模头横向的膜厚分布',
+            points: [
+              { field: 'v0', label: '模头点1', unit: 'um', index: 0 },
+              { field: 'v1', label: '模头点2', unit: 'um', index: 1 },
+            ],
+          }],
+        }
+      },
+    }
+    const store = createMesDatasetStore(db, dir, { resolveDriver: () => driver })
+    const { jobId, datasetId } = store.createFetchJob({
+      nodeId: 'node-v', fromIso: '2026-09-29T00:00:00Z', toIso: '2026-09-29T01:00:00Z',
+      maxRows: 100, agentId: 'agent-a', lineId: 'line-1', nodeName: '测厚仪',
+      nodeMeta: { unit: 'um', min: 30, max: 40, semantics: '膜厚横向分布', format: 'vector' },
+      context: { lineId: 'line-1', productId: 'pd-1', recipeId: 'rc-1', runId: 'rr-1' },
+    })
+    const job = await until(() => {
+      const j = store.jobStatus(jobId)
+      return j && j.status !== 'running' ? j : null
+    })
+    assert.equal(job.status, 'done')
+    const meta = store.datasetMeta(datasetId)!
+    assert.equal(meta.status, 'ready')
+    assert.match(meta.manifestPath, /\.manifest\.json$/)
+    const manifest = JSON.parse(readFileSync(meta.manifestPath, 'utf8')) as {
+      schema: string
+      data: { columns: string[], vector: { dim: number } }
+      fields: Array<{ label: string, points: Array<{ label: string }> }>
+      context: { recipeId: string }
+    }
+    assert.equal(manifest.schema, 'aw.mes-dataset/1')
+    assert.deepEqual(manifest.data.columns, ['ts', 'v0', 'v1'])
+    assert.equal(manifest.data.vector.dim, 2)
+    assert.equal(manifest.fields[0]!.label, '膜厚断面')
+    assert.equal(manifest.fields[0]!.points[1]!.label, '模头点2')
+    assert.equal(manifest.context.recipeId, 'rc-1')
+    const read = store.readDataset(datasetId, 'stats')
+    assert.equal(read.dictionary[0].unit, 'um')
+    // 宽表原文首行
+    const csv = readFileSync(meta.filePath, 'utf8').split(/\r?\n/)
+    assert.equal(csv[0], 'ts,v0,v1')
+    assert.equal(csv[1], '2026-09-29T00:00:00Z,35.1,35.4')
+  }
+  finally {
+    db.close()
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
 test('截断保护:驱动超发也被 maxRows 封顶', async () => {
   const dir = tmpDir()
   const db = openWorkshopDb(':memory:')
@@ -357,6 +426,65 @@ test('取数模式:无 from/to=快照;≤2000 行=内联统计;>2000 行=异步�
   assert.equal(storeCalls[0]!.maxRows, 3000)
   assert.equal(storeCalls[0]!.nodeId, 'node-1')
   assert.equal(storeCalls[0]!.agentId, 'agent-a')
+})
+
+test('map/多参数表:内联按数值字段统计 + 字典标签', async () => {
+  mesFetchRateReset()
+  const rows: DcwHistoryRow[] = [
+    { ts: '2026-09-29T00:00:00Z', record: { batch_id: 'B1', mean: 35.1, sigma: 0.2, verdict: 'PASS' } },
+    { ts: '2026-09-29T00:01:00Z', record: { batch_id: 'B2', mean: 35.3, sigma: 0.25, verdict: 'PASS' } },
+    { ts: '2026-09-29T00:02:00Z', record: { batch_id: 'B3', mean: 35.2, sigma: 0.22, verdict: 'FAIL' } },
+  ]
+  const node: MesNodeLike = {
+    id: 'n-table', name: '批次汇总', driver: 'mes-rest', lineId: 'line-1', unit: 'um', min: 30, max: 40, enabled: true,
+    driverConfig: {
+      desc: '批次质量汇总',
+      dictionary: JSON.stringify([
+        { field: 'mean', label: '平均厚度', unit: 'um' },
+        { field: 'sigma', label: '厚度标准差', unit: 'um' },
+      ]),
+      historyMap: JSON.stringify({ path: '/x', response: { rowsPath: 'rows', tsPath: 'ts', format: 'table' } }),
+    },
+  }
+  const base = guardDeps({ storeCalls: [], now: { ms: T0 }, driver: fakeDriver(rows) })
+  const ctl = createMesController({
+    ...base,
+    nodes: () => [node],
+    boundNodeIds: () => new Set(['n-table']),
+  })
+  const r = await ctl.fetch('agent-a', { ids: ['n-table'], from: new Date(T0).toISOString(), to: new Date(T0 + 3_600_000).toISOString(), max_rows: 10 })
+  assert.equal(r.isError, undefined)
+  assert.match(r.text, /数值字段统计/)
+  assert.match(r.text, /平均厚度\(mean\)/)
+  assert.match(r.text, /厚度标准差\(sigma\)/)
+  assert.match(r.text, /mean=35\.2/)
+})
+
+test('空窗口:scalar/vector/table/image 四种格式都不得因采样下标崩溃', async () => {
+  mesFetchRateReset()
+  const mk = (id: string, format: string, extra: Record<string, unknown> = {}): MesNodeLike => ({
+    id, name: id, driver: 'mes-rest', lineId: 'line-1', unit: 'um', min: 0, max: 100, enabled: true,
+    driverConfig: {
+      historyMap: JSON.stringify({ path: '/x', response: { rowsPath: 'rows', tsPath: 'ts', format, ...extra } }),
+    },
+  })
+  const nodes = [
+    mk('n-empty-s', 'scalar', { valuePath: 'value' }),
+    mk('n-empty-v', 'vector', { valuesPath: 'values' }),
+    mk('n-empty-t', 'table'),
+    mk('n-empty-i', 'image', { dataPath: 'data' }),
+  ]
+  const base = guardDeps({ storeCalls: [], now: { ms: T0 }, driver: fakeDriver([]) })
+  const ctl = createMesController({
+    ...base,
+    nodes: () => nodes,
+    boundNodeIds: () => new Set(nodes.map(n => n.id)),
+  })
+  for (const node of nodes) {
+    const r = await ctl.fetch('agent-a', { ids: [node.id], from: new Date(T0).toISOString(), to: new Date(T0 + 3_600_000).toISOString(), max_rows: 10 })
+    assert.equal(r.isError, undefined, `${node.id}: ${r.text}`)
+    assert.match(r.text, /行数 0/, node.id)
+  }
 })
 
 test('目录:只列 mes-rest 节点,q/line_id 过滤 + 语义面完整', async () => {

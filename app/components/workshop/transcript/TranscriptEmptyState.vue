@@ -92,10 +92,10 @@ defineProps<{
 }
 .empty-title {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: 22px;
-  font-weight: 400;
-  letter-spacing: -0.01em;
+  font-family: var(--font-body);
+  font-size: 19px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
   color: var(--ink-soft);
 }
 .empty-hint {

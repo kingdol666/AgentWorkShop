@@ -90,6 +90,19 @@ useHead({ title: () => t('titles.workshop') })
             @remove="remove"
           />
 
+          <!-- 已有工作区时保留一个"新建"占位砖:网格不留整列空白,
+               新建入口也始终在视线内(页头按钮之外的第二落点)。 -->
+          <button
+            v-if="wsStore.workspaces.length > 0 && ready"
+            type="button"
+            class="ws-add"
+            @click="createOpen = true"
+          >
+            <span class="ws-add-plus i-tabler-plus" />
+            <span class="ws-add-title">{{ t('wsHome.newWs') }}</span>
+            <span class="ws-add-sub">{{ t('wsHome.newWsHint') }}</span>
+          </button>
+
           <WorkspaceEmpty
             v-if="wsStore.workspaces.length === 0 && ready"
             @create="createOpen = true"
@@ -117,5 +130,47 @@ useHead({ title: () => t('titles.workshop') })
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 16px;
+}
+
+/* 新建占位砖:与工作区卡同高同圆角,虚线边界表明"这里还能放一个" */
+.ws-add {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  min-height: 190px;
+  padding: 20px;
+  font-family: var(--font-body);
+  color: var(--ink-faint);
+  cursor: pointer;
+  background: transparent;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-panel);
+  transition:
+    color var(--transition-fast),
+    border-color var(--transition-fast),
+    background var(--transition-fast);
+}
+
+.ws-add:hover {
+  color: var(--ink-soft);
+  background: var(--hover-tint);
+  border-color: color-mix(in srgb, var(--line-strong) 55%, var(--accent) 45%);
+}
+
+.ws-add-plus {
+  font-size: 22px;
+  color: var(--accent);
+}
+
+.ws-add-title {
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.ws-add-sub {
+  font-size: 12px;
+  color: var(--ink-faint);
 }
 </style>

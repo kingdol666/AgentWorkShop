@@ -1,0 +1,38 @@
+npm warn Unknown project config "auto-install-peers". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown project config "strict-peer-dependencies". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> agentworkshop@0.7.70 test:mes-agent
+> node scripts/mes-agent-integration-e2e.mjs
+
+✔ [G1a] 隔离实例启动 + workshop ready
+✔ [G1b] MES 模拟器就绪
+✔ [G1c] admin 注册/登录
+✔ [G2] 建线/节点/产品/配方/频道/配方绑定/开跑
+✔ [G2b] MES 点位与数据配方绑定
+✔ [G3a] Agent recipe_catalog 解析当前配方
+  [recipe_apply(line_id)] hitl=ap-87ad00af isError=false 配方「主配方-maxherv」v1 已整批下发并全部设备证实(1/1,批次 rr-bd153)。
+人工附言:recipe_apply(line_id) E2E 人工批准用 daq_query 复测确认工艺响应。
+✔ [G3b] recipe_apply 仅 line_id + manual HITL 下发成功
+  [recipe_create(use_active_run)] hitl=ap-9b9d2bd4 isError=false 已创建配方「另存配方-maxherv」(id=rc-90547173,v1,产品 MES产品-maxherv,参数 1 项)。
+人工附言:recipe_create(use_active_run) E2E 人工批准
+注意:新配方尚未绑定给你 —— 请让用户/lead 在配方管理中把「另存配方-maxherv」绑定给你的 Agent(首绑 manual,需人工批准),之后才能 recipe_update/recipe_apply。当前产线未因此发生变化(仅创建定义,未下发)。
+✔ [G4a] recipe_create 从活动批次冻结参数另存新配方
+✔ [G4b] 新配方出现在 recipe_catalog(未自动绑定提示)
+✔ [G5a] recipe_log 按 recipe_id 返回下发/开跑记录
+✔ [G5b] recipe_log 按 product_id 仍能看到 Agent 下发记录(审计 product_id 已补)
+✔ [G5c] 产线日志 API(UI 下发历史同源)含下发与回执
+✔ [G6a] 外部 API 推送向量/图像被受理
+✔ [G6b] 数组样本落入 daq_frames 且点列完整
+✔ [G6c] Agent daq_frames 在线读取数组(带模头点语义)
+✔ [G6d] daq_export manifest/README 携带向量布局与逐点语义
+✔ [G6e] 图像帧元数据入库(像素对象存储引用)
+✔ [G7a] mes_fetch 返回字段字典(单位/物理意义/逐点)
+✔ [G7b] mes_fetch include_data 返回实际数组采样
+✔ [G7c] mes_export 落指定目录并生成 manifest/README
+✔ [G7d] MES manifest 字段字典含单位与逐点语义
+✔ [G7e] MES 向量宽表可离线读(v0..v47)
+✔ [G7f] MES 异步数据集镜像完成(可读回)
+✔ [G7g] mes_catalog 复用响应字典显示字段标签/单位/点数
+✔ [G8] 配方管理 UI 下发历史弹窗可见(与 API 同源)
+
+===== 25/25 PASS =====

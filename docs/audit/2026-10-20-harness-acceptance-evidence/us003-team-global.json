@@ -1,0 +1,99 @@
+{
+  "at": "2026-10-20T05:15:25.359Z",
+  "channelId": "adf01bfa-22dc-4dca-bc5b-f527e7d7847d",
+  "lineId": "ln-dd6c9135",
+  "recipeId": "rc-2be5c50c",
+  "pass": 15,
+  "fail": 0,
+  "checks": [
+    {
+      "name": "频道创建(mock lead)",
+      "ok": true,
+      "detail": "adf01bfa-22dc-4dca-bc5b-f527e7d7847d"
+    },
+    {
+      "name": "频道绑定产线",
+      "ok": true,
+      "detail": "ln-dd6c9135"
+    },
+    {
+      "name": "成员部署(mock/omp/copilot)",
+      "ok": true,
+      "detail": "df6be5c3/a2745581/b9555f74"
+    },
+    {
+      "name": "分析师数采绑定",
+      "ok": true,
+      "detail": "5/5"
+    },
+    {
+      "name": "操作员配方绑定(manual)",
+      "ok": true,
+      "detail": "manual"
+    },
+    {
+      "name": "mailbox 发送(lead→analyst)",
+      "ok": true,
+      "detail": "消息 5ea86366… 已发送给 df6be5c3-618e-48f0-b047-988f4ce964af(priority=task)"
+    },
+    {
+      "name": "mailbox 投递(lead→analyst 消息落库)",
+      "ok": true,
+      "detail": "b8129a97→df6be5c3 state=consuming MAILBOX-PROBE-mvg8a0jx"
+    },
+    {
+      "name": "root 任务提交(派发给 mock lead)",
+      "ok": true,
+      "detail": "89e78511-59d3-4169-a026-cc18c7cfaedd"
+    },
+    {
+      "name": "mock lead 自动派发子任务给 mock worker",
+      "ok": true,
+      "detail": "children=ff6bf486/COMPLETED/3610c58d"
+    },
+    {
+      "name": "root 交付物为 lead-acceptance-summary",
+      "ok": true,
+      "detail": "state=COMPLETED deliverable=验收 1/1｜dispatch-mvg8a0jx — worker 执行与交付：mock 成果(3610c58d-76b9-4aee-a1b5-05805a9f738a)；mock 成果(3610c58d-76b9-4aee-a1b5-05"
+    },
+    {
+      "name": "omp 数采分析任务完成",
+      "ok": true,
+      "detail": "state=COMPLETED deliverable=line_context 确认产线 ln-dd6c9135「多协议孪生产线-20261020」运行中,活动批次 rr-f85d0(run=rr-f85d0de8),配方 rc-2be5c50c v4。\n\ndaq_query(line_id=ln-dd6c9135, node_id=dn-4de6b1de「流量PV」, "
+    },
+    {
+      "name": "copilot 配方写入/下发任务完成",
+      "ok": true,
+      "detail": "state=COMPLETED deliverable=已检索相关记忆（无命中），查看绑定语义、活动线和10分钟DAQ。注意任务给定理由称“raised”，但当前SP为45且目标44实际是降速；因此将原因更正为从45降至44，并记录依据：2026-10-20 13:04–13:14线速PV均值44.992 m/min（44.90–45.04），温度均值80.018℃、压力均"
+    },
+    {
+      "name": "manual 配方操作触发 HITL 并获批",
+      "ok": true,
+      "detail": "approved=2"
+    },
+    {
+      "name": "PLC 回读=44(下发真实生效)",
+      "ok": true,
+      "detail": "readback=44"
+    },
+    {
+      "name": "配方版本递增",
+      "ok": true,
+      "detail": "version=5"
+    }
+  ],
+  "dispatch": {
+    "channelId": "aa2652e6-833f-4128-9138-715d62756115",
+    "rootId": "89e78511-59d3-4169-a026-cc18c7cfaedd",
+    "rootState": "COMPLETED",
+    "rootArtifactName": "lead-acceptance-summary",
+    "children": [
+      {
+        "id": "ff6bf486-21bc-487f-8773-ca11ca1c66aa",
+        "parentId": "89e78511-59d3-4169-a026-cc18c7cfaedd",
+        "assigneeId": "3610c58d-76b9-4aee-a1b5-05805a9f738a",
+        "state": "COMPLETED"
+      }
+    ]
+  }
+}

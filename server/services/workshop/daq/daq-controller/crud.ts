@@ -101,6 +101,8 @@ export abstract class DaqControllerCrud extends DaqControllerRuntimeControl {
       node.lineId = lid
     }
     if (patch.semantics !== undefined) node.semantics = String(patch.semantics)
+    if (patch.chamber !== undefined) node.chamber = String(patch.chamber)
+    if (patch.unitPath !== undefined) node.unitPath = String(patch.unitPath)
     if (node.value != null) node.state = node.deriveState(node.value)
     this.repo.flushNow()
     this.emitNodeChanged('updated', node)

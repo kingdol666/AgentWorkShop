@@ -1,0 +1,114 @@
+[config] 生产服务启动 -> http://0.0.0.0:3001  (模式: repo, port source: env)
+[start] 拉起服务子进程 #1(heap 4096MB)
+{"t":"2026-10-20T04:39:57.766Z","level":"info","scope":"daq.tsdb.sqlite","msg":"[daq-tsdb] 保留期清理 1029 行(>168h)"}
+[stability-guard] armed (socket 断连/sqlite 瞬态忙/外部设备不可达/引擎边界错误 → 记录继续;其余真实错误 → exit 1)
+[system-config] runtimeConfig 只读 → live 应用降级为服务内存视图 + SSE 广播(前端实时;服务端 SSR 完整生效需重启)
+[system-config] 运行时设置已加载 -> D:\codes\ABO\AgentWorkShop\.AgentWorkShop\runtime-settings.json(配置根 D:\codes\ABO\AgentWorkShop\.AgentWorkShop,模式 repo)
+{"t":"2026-10-20T12:39:57.882+08:00","level":"warn","scope":"workshop.agent-runtime","msg":"[AgentRuntime:58b63187-ce0f-4341-8bbf-61fb775e92fc] Harness 重建(SERVER_RESTART)lease=44aaa7da"}
+[workshop.schedule] 定时任务运行时已启动(tick=10000ms)
+[aw-plugins] 配置根: D:\codes\ABO\AgentWorkShop\.AgentWorkShop (repo 模式)
+[aw-plugins] 自环 origin: http://127.0.0.1:3001
+[workshop] DAQ 采集补挂完成(running=true,宿主端口已装配)
+{"t":"2026-10-20T12:39:57.925+08:00","level":"info","scope":"daq.queue","msg":"[daq-queue] 进程内 mock 队列就绪(启动插件将按 infra 状态装配 MQTT)"}
+[aw-plugins] 发现 14 个插件(停用 0),开始装载 ...
+[aw-plugins] [line-sentinel] 装载完成(scope=user, sdk=0.3.0)
+Listening on http://0.0.0.0:3001
+{"t":"2026-10-20T12:39:57.938+08:00","level":"info","scope":"aml.py","msg":"[aml-uv] 探测到 uv uv 0.11.29 (901092ee1 2026-07-15 x86_64-pc-windows-msvc) @ D:\\anaconda3\\Scripts\\uv.exe (来源=path)"}
+{"t":"2026-10-20T12:39:57.958+08:00","level":"info","scope":"daq.infra","msg":"[daq-infra] 真实链路就绪(mqtt=127.0.0.1:1883, timescale=127.0.0.1:5432, objectstore=127.0.0.1:9000, 来源=direct)"}
+{"t":"2026-10-20T12:40:17.717+08:00","level":"warn","scope":"daq.drivers","msg":"[daq-opcua] WARN:节点 endpoint=opc.tcp://127.0.0.1:31843 使用 securityMode=None(匿名/明文),仅限测试环境;生产请配置 Sign/SignAndEncrypt + 证书"}
+{"t":"2026-10-20T12:40:17.735+08:00","level":"info","scope":"aml.py","msg":"[aml-python] 探测成功:Python 3.12.7 @ D:\\anaconda3\\python.exe (uv: D:\\anaconda3\\Scripts\\uv.exe)"}
+[aw-plugins] [line-sentinel] 产线清单读取失败(服务启动中,跳过): The operation was aborted due to timeout
+[aw-plugins] ✔ 已装载 [user] line-sentinel@1.0.0 (+client)
+[aw-plugins] [ops-notifier] 已装载 —— 监听 dcw:write 与产线启停
+[aw-plugins] ✔ 已装载 [user] ops-notifier@1.0.0 (+client)
+[aw-plugins] [sample-insight] 示例插件已装载 —— daq:sample 计数中
+[aw-plugins] ✔ 已装载 [user] sample-insight@1.0.0
+{"t":"2026-10-20T12:40:18.980+08:00","level":"info","scope":"daq.templates","msg":"[daq] 插件模板注册:「矩阵验收标定模板(插件)」(plug-matrix-profile,插件=plugin)"}
+{"t":"2026-10-20T12:40:18.980+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「matrix_pipeline_probe」(aw-matrix-plugin)"}
+[aw-plugins] [aw-matrix-plugin] 已注册 omp 工具:「matrix_pipeline_probe」
+[aw-plugins] [aw-matrix-plugin] aw-matrix-plugin v1.0.0 就绪:驱动 matrix-thermo + 处理器 matrix-derate + 模板 plug-matrix-profile + 工具 matrix_pipeline_probe + 路由 /stats
+[aw-plugins] ✔ 已装载 [project] aw-matrix-plugin@1.0.0
+{"t":"2026-10-20T12:40:18.981+08:00","level":"info","scope":"daq.templates","msg":"[daq] 插件模板注册:「×2 标定轮廓(插件验证)」(plug-verify-x2-profile,插件=plugin)"}
+[aw-plugins] [daq-sink-verify] daq-sink-verify v2 就绪:驱动 verify-burst + 处理器 verify-x2 + 模板 plug-verify-x2-profile
+{"t":"2026-10-20T12:40:18.981+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「verify_pipeline_probe」(daq-sink-verify)"}
+[aw-plugins] [daq-sink-verify] 已注册 omp 工具:「verify_pipeline_probe」
+[aw-plugins] ✔ 已装载 [project] daq-sink-verify@2.0.0
+{"t":"2026-10-20T12:40:18.982+08:00","level":"info","scope":"daq.templates","msg":"[daq] 插件模板注册:「粗糙度轮廓仪(插件示例)」(plug-demo-roughness,插件=plugin)"}
+[aw-plugins] [daq-vector-demo] daq-vector-demo 就绪:处理器 demo-roughness + 模板 plug-demo-roughness 已注册
+[aw-plugins] ✔ 已装载 [project] daq-vector-demo@1.1.0
+{"t":"2026-10-20T12:40:18.984+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「sentinel_screen」(idd-closedloop-bridge)"}
+[aw-plugins] [idd-closedloop-bridge] 已注册 omp 工具:「sentinel_screen」
+{"t":"2026-10-20T12:40:18.985+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「sentinel_watch」(idd-closedloop-bridge)"}
+[aw-plugins] [idd-closedloop-bridge] 已注册 omp 工具:「sentinel_watch」
+{"t":"2026-10-20T12:40:18.985+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「sentinel_status」(idd-closedloop-bridge)"}
+[aw-plugins] [idd-closedloop-bridge] 已注册 omp 工具:「sentinel_status」
+{"t":"2026-10-20T12:40:18.985+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「sentinel_baseline」(idd-closedloop-bridge)"}
+[aw-plugins] [idd-closedloop-bridge] 已注册 omp 工具:「sentinel_baseline」
+{"t":"2026-10-20T12:40:18.985+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「experience_log」(idd-closedloop-bridge)"}
+[aw-plugins] [idd-closedloop-bridge] 已注册 omp 工具:「experience_log」
+{"t":"2026-10-20T12:40:18.985+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「experience_recommend」(idd-closedloop-bridge)"}
+[aw-plugins] [idd-closedloop-bridge] 已注册 omp 工具:「experience_recommend」
+{"t":"2026-10-20T12:40:18.985+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「experience_feedback」(idd-closedloop-bridge)"}
+[aw-plugins] [idd-closedloop-bridge] 已注册 omp 工具:「experience_feedback」
+{"t":"2026-10-20T12:40:18.985+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「optimizer_campaign」(idd-closedloop-bridge)"}
+[aw-plugins] [idd-closedloop-bridge] 已注册 omp 工具:「optimizer_campaign」
+{"t":"2026-10-20T12:40:18.985+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「optimizer_round」(idd-closedloop-bridge)"}
+[aw-plugins] [idd-closedloop-bridge] 已注册 omp 工具:「optimizer_round」
+{"t":"2026-10-20T12:40:18.985+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「optimizer_state」(idd-closedloop-bridge)"}
+[aw-plugins] [idd-closedloop-bridge] 已注册 omp 工具:「optimizer_state」
+[aw-plugins] ✔ 已装载 [project] idd-closedloop-bridge@0.1.0
+{"t":"2026-10-20T12:40:18.986+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「sensor_calibration_log」(omp-sensor-tools)"}
+[aw-plugins] [omp-sensor-tools] 已注册 omp 工具:「sensor_calibration_log」
+[aw-plugins] [omp-sensor-tools] omp-sensor-tools 就绪:工具 sensor_calibration_log 已对 lead/worker 全体 agent 生效
+[aw-plugins] ✔ 已装载 [project] omp-sensor-tools@1.0.0
+[aw-plugins] [twin-castfilm] twin-castfilm:castfilm FOPDT Twin Provider 与 ScenePack(scene-castfilm-line1)已注册
+[aw-plugins] ✔ 已装载 [project] twin-castfilm@1.0.0
+[aw-plugins] [twin-thermal-demo] 外部 thermal-demo Twin Provider 已注册
+[aw-plugins] ✔ 已装载 [project] twin-thermal-demo@1.0.0
+{"t":"2026-10-20T12:40:18.995+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「diag_run」(diag-bridge)"}
+[aw-plugins] [diag-bridge] 已注册 omp 工具:「diag_run」
+{"t":"2026-10-20T12:40:18.996+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「diag_status」(diag-bridge)"}
+[aw-plugins] [diag-bridge] 已注册 omp 工具:「diag_status」
+[aw-plugins] [diag-bridge] diag-bridge 就绪:工具 diag_run/diag_status + 路由 health/runs/snapshot/report,轮询 15s 已启动
+[aw-plugins] ✔ 已装载 [builtin] diag-bridge@2.2.0 (+client)
+{"t":"2026-10-20T12:40:19.015+08:00","level":"info","scope":"daq.objectstore","msg":"[daq-objectstore] 本地磁盘对象存储就绪(data/daq-objects/)"}
+[aw-plugins] [rag-bridge] catalog 不可达(HTTP 401),跳过查找直接尝试建库
+[api] GET /api/plugins/manifest - 4ms
+[api] GET /api/plugins/i18n - 4ms
+{"t":"2026-10-20T12:40:19.152+08:00","level":"info","scope":"daq.tsdb","msg":"[daq-tsdb] TimescaleDB 就绪:","args":["postgres://***@127.0.0.1:5432/awshop"]}
+[api] GET /api/health - 0ms
+[api] GET /api/health - 1ms
+[api] GET /api/workshop/notifications?limit=50&cursor=2026-10-20T12%3A29%3A17.639%2B08%3A00%7Cf1190495-e5b6-4875-bb63-722c04b9d3d0 - 4ms
+[aw-plugins] [rag-bridge] experience init 未成功(可忽略或稍后手动重试):fetch failed
+[aw-plugins] [rag-bridge] rag-bridge 就绪:kb=aw-industrial(3aea5973-1d8a-4db6-b415-6d4432f514bb),出站=启用
+{"t":"2026-10-20T12:40:22.565+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「kb_agent」(rag-bridge)"}
+[aw-plugins] [rag-bridge] 已注册 omp 工具:「kb_agent」
+{"t":"2026-10-20T12:40:22.567+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「kb_agent_status」(rag-bridge)"}
+[aw-plugins] [rag-bridge] 已注册 omp 工具:「kb_agent_status」
+[aw-plugins] ✔ 已装载 [builtin] rag-bridge@2.1.0 (+client)
+{"t":"2026-10-20T12:40:22.572+08:00","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「serial_ports」(serial-bridge)"}
+[aw-plugins] [serial-bridge] 已注册 omp 工具:「serial_ports」
+[aw-plugins] [serial-bridge] serial-bridge 就绪:驱动 serial(读 14 参数)+ 写控 serial + 路由 health/ports/probe + 工具 serial_ports;serialport 可用
+[aw-plugins] ✔ 已装载 [builtin] serial-bridge@1.0.0 (+client)
+[aw-plugins] [twin-injection-default] 默认注塑 Twin Provider 已注册:injection-greybox-v1@1.0.0
+[aw-plugins] ✔ 已装载 [builtin] twin-injection-default@1.0.0
+[aw-plugins] 装载完成: 14 个(含停用)/ 0 失败 / 活跃路由 16 条
+[api] GET /api/plugins/manifest - 7ms
+[api] GET /api/workshop/notifications?limit=50&cursor=2026-10-20T12%3A29%3A17.639%2B08%3A00%7Cf1190495-e5b6-4875-bb63-722c04b9d3d0 - 0ms
+[api] GET /api/workshop/notifications?limit=50&cursor=2026-10-20T12%3A29%3A17.639%2B08%3A00%7Cf1190495-e5b6-4875-bb63-722c04b9d3d0 - 5ms
+[api] GET /api/workshop/notifications?limit=50&cursor=2026-10-20T12%3A29%3A17.639%2B08%3A00%7Cf1190495-e5b6-4875-bb63-722c04b9d3d0 - 6ms
+[api] GET /api/workshop/notifications?limit=50&cursor=2026-10-20T12%3A29%3A17.639%2B08%3A00%7Cf1190495-e5b6-4875-bb63-722c04b9d3d0 - 2ms
+[api] GET /api/workshop/notifications?limit=50&cursor=2026-10-20T12%3A29%3A17.639%2B08%3A00%7Cf1190495-e5b6-4875-bb63-722c04b9d3d0 - 9ms
+[api] GET /api/workshop/notifications?limit=50&cursor=2026-10-20T12%3A29%3A17.639%2B08%3A00%7Cf1190495-e5b6-4875-bb63-722c04b9d3d0 - 1ms
+[api] GET /api/workshop/notifications?limit=50&cursor=2026-10-20T12%3A29%3A17.639%2B08%3A00%7Cf1190495-e5b6-4875-bb63-722c04b9d3d0 - 9ms
+[api] GET /api/workshop/notifications?limit=50&cursor=2026-10-20T12%3A29%3A17.639%2B08%3A00%7Cf1190495-e5b6-4875-bb63-722c04b9d3d0 - 0ms
+[api] GET /api/workshop/notifications?limit=50&cursor=2026-10-20T12%3A29%3A17.639%2B08%3A00%7Cf1190495-e5b6-4875-bb63-722c04b9d3d0 - 11ms
+[api] GET /api/workshop/notifications?limit=50&cursor=2026-10-20T12%3A29%3A17.639%2B08%3A00%7Cf1190495-e5b6-4875-bb63-722c04b9d3d0 - 15ms
+[api] GET /api/workshop/notifications?limit=50&cursor=2026-10-20T12%3A29%3A17.639%2B08%3A00%7Cf1190495-e5b6-4875-bb63-722c04b9d3d0 - 16ms
+[api] GET /api/plugins/manifest - 31ms
+[api] GET /api/plugins/i18n - 2ms
+[backup] workshop.sqlite 快照完成(serialize)
+[backup] users.sqlite 快照完成(serialize)
+[backup] daq-timeseries.sqlite 快照完成(serialize)
+[backup] 快照完成 → D:\codes\ABO\AgentWorkShop\.AgentWorkShop\data\backups
+[api] GET /api/plugins/manifest - 48ms

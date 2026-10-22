@@ -10,6 +10,7 @@ import { DaqNodeRuntime } from '../daq-runtime'
 import { SWEEP_MAX_CONCURRENCY, log } from './helpers'
 import { getDaqHostPorts } from '../host-ports'
 import { getOps, recordOps } from '../../ops/ops'
+import { getActiveLineRun } from '../../dcw/line-run'
 import { newAlarmId, notifyAlarm } from '../alarm-notify'
 
 export abstract class DaqControllerSweepAlarms extends DaqControllerIngest {
@@ -112,8 +113,10 @@ export abstract class DaqControllerSweepAlarms extends DaqControllerIngest {
     }
     this.broadcast?.('daq.alarm', payload)
     notifyAlarm(payload)
-    // 运维日志:越限告警入实时事件轨(恢复/详情在告警面板与日志管理)
+    // 运维日志:越限告警入实时事件轨(恢复/详情在告警面板与日志管理);
+    // 告警发生在活动批次内时带上该批次的 product/recipe,产线日志才能按配方检索
     const zh = rule === 'gt-max' ? '高于上限' : '低于下限'
+    const run = getActiveLineRun(node.lineId)
     recordOps({
       actor: 'system',
       actorName: 'system',
@@ -124,6 +127,8 @@ export abstract class DaqControllerSweepAlarms extends DaqControllerIngest {
       targetId: node.id,
       summary: `告警:「${node.name}」${metric} ${zh}阈值 ${threshold}(当前 ${value})`,
       lineId: node.lineId ?? '',
+      productId: run?.productId ?? '',
+      recipeId: run?.recipeId ?? '',
       detail: { alarmId: id, metric, value, rule, threshold },
     })
   }
@@ -140,6 +145,10 @@ export abstract class DaqControllerSweepAlarms extends DaqControllerIngest {
     const ok = repo.ack(id, byUserId, byName, new Date().toISOString())
     if (ok) {
       this.broadcast?.('daq.alarm.changed', { id, ackedBy: byName, ackedAt: new Date().toISOString() })
+      // 确认是人对产线告警的处置动作:回填报警所属节点/产线/活动批次,避免落成无归属条目
+      const nodeId = repo.nodeIdById(id) ?? ''
+      const node = nodeId ? this.repo.byId(nodeId) : undefined
+      const run = node ? getActiveLineRun(node.lineId) : null
       recordOps({
         actor: byUserId,
         actorName: byName,
@@ -148,7 +157,10 @@ export abstract class DaqControllerSweepAlarms extends DaqControllerIngest {
         kind: 'alarm',
         targetKind: 'alarm',
         targetId: id,
-        summary: `确认报警 ${id}(处理完毕,移出实时告警)`,
+        lineId: node?.lineId ?? '',
+        productId: run?.productId ?? '',
+        recipeId: run?.recipeId ?? '',
+        summary: `确认报警 ${id}${node ? `(节点「${node.name}」)` : ''}(处理完毕,移出实时告警)`,
       })
     }
     return ok

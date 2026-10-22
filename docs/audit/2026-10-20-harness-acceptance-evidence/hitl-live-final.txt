@@ -1,0 +1,31 @@
+
+━━━ HITL 真实端到端 @ http://127.0.0.1:3001 ━━━
+  PASS  W1 omp lead channel 创建 — channel=cb460529
+  PASS  W2 提交驻留任务(触发 omp spawn) — task=4f797efd
+  … 等待 omp spawn(冷启动可达 2-3 分钟)…
+  PASS  W2b 终端 WS 接入(agentId 寻址)
+  … 等待 agent 弹出 ask 对话框(目标:options 含 yes/no)…
+  PASS  W3 hitl.request 帧到达(AEP) — id=15ad31cd
+  PASS  W3 payload 语义(kind/channel/agent) — kind=omp-dialog agent=hitl-e2e-lead
+  PASS  W3 对话框形态(select + yes/no) — method=select options=["yes","no","Other (type your own)"]
+  PASS  W4 GET /hitl/pending 含目标待办 — count=1
+  ── Phase U:浏览器渲染 ──
+  PASS  U1 AppHeader 铃标出现且计数≥1 — badge=1
+  PASS  U2 下拉渲染目标条目(Proceed? · lead) — text=hitl-e2e-leadomp 对话框提问Proceed? 策略:仅 owner 可决策yesnoOther (typ
+  PASS  U3 点击条目跳转 /monitor 并定位终端 — url=http://127.0.0.1:3001/monitor terminal=true
+  ── Phase U2:群聊界面 HITL 选项 ──
+  PASS  U2c 群聊页面加载 — url=http://127.0.0.1:3001/workshop/w/cb460529-7c00-43af-b434-2a41594b9e04
+  PASS  U2d 群聊页铃标弹出目标问题 — hitl-e2e-leadomp 对话框提问Proceed? 策略:仅 owner 可决策yesnoOther (type your own)提交答案取消请求
+  PASS  U2e 群聊页渲染 yes/no 选项按钮 — options=["yes","no","Other (type your own)"]
+  PASS  U2f 群聊页提供提交答案按钮 — true
+  PASS  W5 POST /hitl/respond 成功 — ok
+  PASS  W6 hitl.resolved 帧(answered) — outcome=answered
+  PASS  W7 应答后目标待办清空 — count=0
+  PASS  U4 前端徽标计数下降/消隐 — before=1 after=0
+  … 等待 agent 消化答案(ask 工具返回)…
+  PASS  W8 闭环:答案经 ui_response 回传 agent(ask 结果含 yes)
+  ── Phase T:TUI(无头)──
+  PASS  T1 TUI 启动并接入频道
+  FAIL  T2 TUI 状态条出现 HITL 待办
+  PASS  T3 /hitl 列表渲染
+  FAIL  T4 目标待办行渲染(Proceed2?) — 序号=null

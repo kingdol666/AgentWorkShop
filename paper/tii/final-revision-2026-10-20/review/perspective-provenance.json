@@ -1,0 +1,12 @@
+{
+  "seat": "perspective",
+  "phase_tasks": 2,
+  "same_fresh_seat": true,
+  "peer_outputs_seen": false,
+  "primary_model_family": "unknown exact inherited family",
+  "provider": "OpenAI",
+  "human_reviewer": "unknown",
+  "manuscript_edits": false,
+  "report_transport": "verbatim seat final copied by root; seat could not write under its role",
+  "mechanical_anchor_correction": "W2 exact quote corrected by original seat before final delivery; score unchanged"
+}

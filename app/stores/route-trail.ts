@@ -1,7 +1,9 @@
 /**
  * 路线航迹(route trail)——header 导航留痕:
  *  - 每次路由变化把路径追加为航点(同路径去重后移到末尾,视作"重新盖章")
- *  - 上限 8 个航点,超出淘汰最旧;localStorage 持久化,刷新后航迹保留
+ *  - 上限 4 个航点(顶栏是一级导航的"最近路径",不是完整浏览历史;
+ *    5 个以上会挤占右侧功能簇,实测 1440 视口下与语言/主题/用户区重叠)
+ *  - localStorage 持久化,刷新后航迹保留
  *  - 只存 path + 时间戳:标题/图标在渲染层按当前 locale 与 workspace 名派生,
  *    避免语言切换或异步数据到达后标题过期
  */
@@ -10,7 +12,7 @@ export interface TrailWaypoint {
   at: number
 }
 
-const MAX_WAYPOINTS = 8
+const MAX_WAYPOINTS = 4
 
 export const useRouteTrailStore = defineStore('app.routeTrail', () => {
   const waypoints = ref<TrailWaypoint[]>([])

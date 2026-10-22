@@ -1,0 +1,45 @@
+npm warn Unknown project config "auto-install-peers". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown project config "strict-peer-dependencies". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> agentworkshop@0.7.70 test:line-log
+> node scripts/line-log-smoke.mjs
+
+✔ [G1a] 隔离实例启动 + workshop ready
+✔ [G1b] admin 注册/登录
+✔ [G2] 建线/节点/产品/配方/频道(lead)/绑线
+✔ [G3] 真实产线操作已生成(recipe.apply/line.start/stop/line.update/manual)
+✔ [G4] 全局事件已生成(user.create + auth.login)
+✔ [G5a] 产线日志默认只返回 scope=line 且 line_id 非空的记录
+✔ [G5b] 登录/用户创建/系统设置/备份不进入产线日志
+✔ [G5c] 按产线过滤:全部命中该线,含无 recipe 的产线事件与开线/配方/人工事件
+✔ [G5d] 按产线查询不含其他产线记录
+✔ [G5e] 按产线+配方过滤:全部命中该配方,含下发/回执/开停线/人工记录,排除无 recipe 事件
+✔ [G5f] 按时间区间过滤:结果全部落在 from~to 内且包含人工记录
+✔ [G5g] 非法时间区间返回 400 且可行动
+✔ [G5h] scope=all 保留全局安全审计(登录/用户创建可见)
+✔ [G5i] scope=system 只返回系统域记录(登录/用户创建可见,产线事件不可见)
+✔ [G6a] Agent ops_log(line+recipe) 回包带 scope/产线/配方归属与人工记录
+  ops_log sample:
+    产线日志(产线 日志线A-llgriz[ln-6f9adcf8]; 配方 日志配方-llgriz[rc-7df45e7d], 近 60 分钟, 6 条, 新→旧):
+    - [10-21 00:59:08] scope=line 产线=日志线A-llgriz[ln-6f9adcf8] 配方=日志配方-llgriz[rc-7df45e7d] 产品=- | 来源=用户 操作者=ll-admin-llgriz | ops.manual | 人工值班记录-llgriz
+    - [10-21 00:59:08] scope=line 产线=日志线A-llgriz[ln-6f9adcf8] 配方=日志配方-llgriz[rc-7df45e7d] 产品=日志产品-llgriz[pd-e0fb41ab] | 来源=用户 操作者=ll-admin-llgriz | line.stop | 产线停止采集:批次 rr-c2554b98 窗口关闭,样本不再打标
+    - [10-21 00:59:08] scope=line 产线=日志线A-llgriz[ln-6f9adcf8] 配方=日志配方-llgriz[rc-7df45e7d] 产品=日志产品-llgriz[pd-e0fb41ab] | 来源=用户 操作者=ll-admin-llgriz | line.start | 产线开跑:批次 rr-c2554b98 · 配方「日志配方-llgriz」已下发
+    - [10-21 00:59:08] scope=line 产线=日志线A-llgriz[ln-6f9adcf8] 配方=日志配方-llgriz[rc-7df45e7d] 产品=日志产品-llgriz[pd-e0fb41ab] | 来源=用户 操作者=ll-admin-llgriz | recipe.apply | 一键下发配方批次 rr-d0670faf,逐参数写命令已执行
+    - [10-21 00:59:08] scope=line 产线=日志线A-llgriz[ln-6f9adcf8] 配方=日志配方-llgriz[rc-7df45e7d] 产品=日志产品-llgriz[pd-e0fb41ab] | 来源=系统 操作者=产线系统 | recipe.dispatch.ack | 批次 rr-d0670 ACK 鉴定:证实 1/1,未证实 0,失败 0
+✔ [G6b] Agent ops_log(只传 recipe_id + from/to) 自动收窄产线并命中
+✔ [G6c] Agent recipe_log(recipe_id) 命中创建/下发/回执且带 scope=line
+  recipe_log sample:
+    Recipe 变更史(产线 日志线A-llgriz[ln-6f9adcf8]; 配方 日志配方-llgriz[rc-7df45e7d], 近 60 分钟, 5 条, 新→旧):
+    - [10-21 00:59:08] 停线 scope=line 产线=日志线A-llgriz[ln-6f9adcf8] 配方=日志配方-llgriz[rc-7df45e7d] 产品=日志产品-llgriz[pd-e0fb41ab] | 来源=用户 操作者=ll-admin-llgriz | 产线停止采集:批次 rr-c2554b98 窗口关闭,样本不再打标
+    - [10-21 00:59:08] 开跑整批下发 scope=line 产线=日志线A-llgriz[ln-6f9adcf8] 配方=日志配方-llgriz[rc-7df45e7d] 产品=日志产品-llgriz[pd-e0fb41ab] | 来源=用户 操作者=ll-admin-llgriz | 产线开跑:批次 rr-c2554b98 · 配方「日志配方-llgriz」已下发
+    - [10-21 00:59:08] 配方下发 scope=line 产线=日志线A-llgriz[ln-6f9adcf8] 配方=日志配方-llgriz[rc-7df45e7d] 产品=日志产品-llgriz[pd-e0fb41ab] | 来源=用户 操作者=ll-admin-llgriz | 一键下发配方批次 rr-d0670faf,逐参数写命令已执行
+    - [10-21 00:59:08] 下发回执 scope=line 产线=日志线A-llgriz[ln-6f9adcf8] 配方=日志配方-llgriz[rc-7df45e7d] 产品=日志产品-llgriz[pd-e0fb41ab] | 来源=系统 操作者=产线系统 | 批次 rr-d0670 ACK 鉴定:证实 1/1,未证实 0,失败 0
+✔ [G6d] Agent ops_log(node_id) 绑定面内可查
+✔ [G6e] 越权产线被拒且列出可读产线
+✔ [G6f] Agent 非法时间区间被拒
+✔ [G6g] Agent 不传 line_id 时默认频道绑定产线
+✔ [G6h] line_log 显式别名可用且回包与 ops_log 同口径
+✔ [G6i] Agent 按线查询包含无 recipe 的产线事件(dcw.create/line.update)
+✔ [G6j] Agent 按 recipe 查询排除无 recipe 事件
+
+═══ 结论:PASS(24/24)═══

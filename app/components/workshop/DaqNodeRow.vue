@@ -429,7 +429,7 @@ async function removeNodeDevice(deviceId: string): Promise<void> {
 .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
 .dim { opacity: 0.55; }
 
-.ch { display: block; margin-top: 2px; font-size: 10px; color: var(--ink-faint); }
+.ch { display: block; margin-top: 2px; font-size: 11px; color: var(--ink-faint); }
 
 .val { font-size: 13px; }
 .val small { margin-left: 3px; color: var(--ink-faint); }
@@ -465,9 +465,10 @@ async function removeNodeDevice(deviceId: string): Promise<void> {
   display: inline-block;
   padding: 2px 9px;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11px;
   letter-spacing: 0.04em;
-  border-radius: var(--radius-pill);
+  white-space: nowrap;
+  border-radius: var(--radius-chip);
 }
 .st-pill.ok { color: var(--tone-success-dot); background: var(--tone-success-bg); }
 .st-pill.warn { color: var(--tone-warning-dot); background: var(--tone-warning-bg); }
@@ -481,8 +482,9 @@ tr.row-recipe-alarm td:first-child { box-shadow: inset 3px 0 0 var(--tone-danger
 
 .drv-tag {
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11px;
   padding: 2px 7px;
+  white-space: nowrap;
   border: 1px solid var(--line);
   border-radius: var(--radius-chip);
   color: var(--ink-soft);
@@ -490,7 +492,7 @@ tr.row-recipe-alarm td:first-child { box-shadow: inset 3px 0 0 var(--tone-danger
 .drv-tag.planned { opacity: 0.55; border-style: dashed; }
 .sig-tag {
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: 11px;
   padding: 2px 7px;
   margin-left: 4px;
   border-radius: var(--radius-chip);
@@ -542,10 +544,11 @@ tr.row-recipe-alarm td:first-child { box-shadow: inset 3px 0 0 var(--tone-danger
   gap: 6px;
   align-items: center;
   padding: 2px 9px;
-  font-size: 10.5px;
+  font-size: 11px;
+  white-space: nowrap;
   color: var(--ink-faint);
   border: 1px solid var(--line);
-  border-radius: var(--radius-pill);
+  border-radius: var(--radius-chip);
 }
 .run-pill .rp-dot {
   width: 6px;

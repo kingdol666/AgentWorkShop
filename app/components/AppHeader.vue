@@ -139,7 +139,7 @@ onBeforeUnmount(() => {
   align-items: center;
   justify-content: space-between;
   height: var(--app-header-h, 56px);
-  padding: 0 20px 0 10px;
+  padding: 0 16px 0 12px;
   overflow: hidden;
   border-bottom: 1px solid var(--divider-hair);
   transition: background 0.3s ease, border-color 0.3s ease;
@@ -153,8 +153,7 @@ onBeforeUnmount(() => {
   z-index: 30;
   background: var(--mat-chrome-bg);
   backdrop-filter: var(--vibrancy-chrome);
-  border-bottom: 1px solid var(--glass-line);
-  box-shadow: var(--glass-specular);
+  border-bottom: 1px solid var(--line);
 }
 
 .header-left,
@@ -163,6 +162,17 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 10px;
   min-width: 0;
+}
+
+/* 左侧航迹可收缩(内部横向滚动),右侧功能簇永不被压缩 */
+.header-left {
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.header-right {
+  flex: 0 0 auto;
+  gap: 8px;
 }
 
 /* ── 航迹标绘轨 ── */
