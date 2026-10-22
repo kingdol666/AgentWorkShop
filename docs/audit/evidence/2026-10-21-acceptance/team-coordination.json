@@ -1,49 +1,49 @@
 {
-  "at": "2026-10-22T02:56:33.324Z",
+  "at": "2026-10-22T05:33:09.098Z",
   "base": "http://127.0.0.1:3470",
-  "channelId": "0d9e77c5-3355-4004-9c79-b779f92f3e87",
+  "channelId": "3784cd56-c5c5-4c95-9f32-1ca744e8ecd8",
   "results": [
     {
       "id": "T0",
       "name": "lead/worker 就绪(含 token)",
       "pass": true,
-      "detail": "lead=6ce87505 worker=3f275d00"
+      "detail": "lead=a4e58d7a worker=c1d53295"
     },
     {
       "id": "T1",
       "name": "lead→worker 信箱投递",
       "pass": true,
-      "detail": "消息 d907e651… 已发送给 3f275d00-f000-410c-b67e-ad72fa30000e(priority=task)"
+      "detail": "消息 f50534fe… 已发送给 c1d53295-dcdf-4068-8d2d-9aeba7109c74(priority=task)"
     },
     {
       "id": "T2",
       "name": "worker 阻塞轮询收到任务(到信即醒)",
       "pass": true,
-      "detail": "未消费消息(2,已读即取):\n  [1/2] [from ?] [异步回执] 知识库任务完成(tool=kb_agent, job=kbt_mvixuzv6_bd520789, 结果=完成)\n已按 QDCVR 流程完成检索（改写 → 全库向量广撒网 top_k=30 → 经验优先检索 → aw-industrial 定"
+      "detail": "未消费消息(1,已读即取):\n  [1/1] [from a4e58d7a-13f6-44e5-bb0b-14bbeb0b69c2] [Team 协调实测] 请分析你绑定节点的最近数据,完成后回报结论摘要。任务编号 TC-mvj3ulj0"
     },
     {
       "id": "T3",
       "name": "worker 结果回报投递",
       "pass": true,
-      "detail": "消息 ddba8574… 已发送给 6ce87505-763d-4361-a083-19d91ce27e13(priority=task)"
+      "detail": "消息 2fdfb83f… 已发送给 a4e58d7a-13f6-44e5-bb0b-14bbeb0b69c2(priority=task)"
     },
     {
       "id": "T4",
       "name": "lead 收到 worker 回执(闭环)",
       "pass": true,
-      "detail": "未消费消息(1,已读即取):\n  [1/1] [from 3f275d00-f000-410c-b67e-ad72fa30000e] [Team 协调实测·回执] 分析完成:绑定节点数据窗口内均值/极差已核对,结论=窗口内无越限,建议保持当前配方。"
+      "detail": "未消费消息(1,已读即取):\n  [1/1] [from c1d53295-dcdf-4068-8d2d-9aeba7109c74] [Team 协调实测·回执] 分析完成:绑定节点数据窗口内均值/极差已核对,结论=窗口内无越限,建议保持当前配方。"
     },
     {
       "id": "T5",
       "name": "lead 派发结构化任务",
       "pass": true,
-      "detail": "子任务 3c5c8280-ab1b-460f-8ac6-434b7facdb15 已创建并指派 → 3f275d00-f000-410c-b67e-ad72fa30000e(父任务 无,标题: [Team 实测] 数据核对任务)"
+      "detail": "子任务 96bbc210-cc11-4485-ac30-90e2c2804f00 已创建并指派 → c1d53295-dcdf-4068-8d2d-9aeba7109c74(父任务 无,标题: [Team 实测] 数据核对任务)"
     },
     {
       "id": "T6",
       "name": "worker 任务队列出现派发任务",
       "pass": true,
-      "detail": "我的任务队列(worker):\n执行中: (无)\n待执行(0,FIFO):\n已完成(1):\n  3c5c8280-ab1b-460f-8ac6-434b7facdb15 [COMPLETED] \"[Team 实测] 数据核对任务\" progress=100%"
+      "detail": "我的任务队列(worker):\n执行中: (无)\n待执行(0,FIFO):\n已完成(1):\n  96bbc210-cc11-4485-ac30-90e2c2804f00 [COMPLETED] \"[Team 实测] 数据核对任务\" progress=100%"
     }
   ]
 }

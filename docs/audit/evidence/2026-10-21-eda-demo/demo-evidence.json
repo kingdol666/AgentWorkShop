@@ -1,12 +1,12 @@
 {
-  "at": "2026-10-22T02:58:20.849Z",
+  "at": "2026-10-22T05:29:36.048Z",
   "base": "http://127.0.0.1:3470",
-  "lineId": "ln-f363d102",
-  "recipeId": "rc-bc6aa018",
+  "lineId": "ln-9d31ad0c",
+  "recipeId": "rc-68ea88ca",
   "nodes": {
-    "scalar": "dn-47ef1d2f",
-    "vector": "dn-d9b3fc47",
-    "image": "dn-d1a8c8d5"
+    "scalar": "dn-91bed9c7",
+    "vector": "dn-6d21d473",
+    "image": "dn-3b5c2071"
   },
   "externalPush": {
     "vector": 200,
@@ -17,19 +17,19 @@
     "image": "2→3"
   },
   "exportJob": {
-    "exportId": "daqexp-20261022105658-705156",
-    "dir": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-scenario-suite-cMSa7H\\data\\daq-exports\\daqexp-20261022105658-705156",
+    "exportId": "daqexp-20261022132817-55a4df",
+    "dir": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-scenario-suite-OQ68g6\\data\\daq-exports\\daqexp-20261022132817-55a4df",
     "files": [
       {
-        "nodeId": "dn-47ef1d2f",
-        "rows": 570
+        "nodeId": "dn-91bed9c7",
+        "rows": 219
       }
     ],
-    "totalRows": 570,
+    "totalRows": 219,
     "truncated": [],
-    "mergedFile": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-scenario-suite-cMSa7H\\data\\daq-exports\\daqexp-20261022105658-705156\\merged.csv"
+    "mergedFile": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-scenario-suite-OQ68g6\\data\\daq-exports\\daqexp-20261022132817-55a4df\\merged.csv"
   },
-  "goldenRun": "rr-d82b7390",
+  "goldenRun": "rr-cf41b162",
   "screenshots": [
     "demo-1-data-query.png",
     "demo-2-data-ledger.png",
@@ -44,7 +44,7 @@
       "id": "D0.1",
       "name": "三形态节点在位(scalar/vector/image)",
       "pass": true,
-      "detail": "scalar=dn-47ef1d2f vector=dn-d9b3fc47(EDA演示-膜厚断面-9ja5) image=dn-d1a8c8d5(EDA演示-CCD图像-9ja5)"
+      "detail": "scalar=dn-91bed9c7 vector=dn-6d21d473(EDA演示-膜厚断面-o55r) image=dn-3b5c2071(EDA演示-CCD图像-o55r)"
     },
     {
       "id": "D1.1",
@@ -68,29 +68,29 @@
       "id": "D1.4",
       "name": "外部推送 48 点数组帧入库",
       "pass": true,
-      "detail": "{\"accepted\":true,\"nodeId\":\"dn-d9b3fc47\",\"kind\":\"vector\",\"at\":\"2026-10-22T10:56:49.021+08:00\",\"lineId\":\"ln-f363d102\",\"poi"
+      "detail": "{\"accepted\":true,\"nodeId\":\"dn-6d21d473\",\"kind\":\"vector\",\"at\":\"2026-10-22T13:28:08.683+08:00\",\"lineId\":\"ln-9d31ad0c\",\"poi"
     },
     {
       "id": "D1.5",
       "name": "外部推送图像帧入库",
       "pass": true,
-      "detail": "{\"accepted\":true,\"nodeId\":\"dn-d1a8c8d5\",\"kind\":\"image\",\"at\":\"2026-10-22T10:56:49.027+08:00\",\"lineId\":\"ln-f363d102\",\"obje"
+      "detail": "{\"accepted\":true,\"nodeId\":\"dn-3b5c2071\",\"kind\":\"image\",\"at\":\"2026-10-22T13:28:08.689+08:00\",\"lineId\":\"ln-9d31ad0c\",\"obje"
     },
     {
       "id": "D1.6",
       "name": "推送的 48 点数组可查回(与 64 点自发帧可区分)",
       "pass": true,
-      "detail": "points=48 at=1792637813090 totalFrames=3"
+      "detail": "points=48 at=1792646892734 totalFrames=3"
     },
     {
       "id": "D2.1",
       "name": "复合①线+节点+窗+桶+agg",
       "pass": true,
-      "detail": "series=2 pts=150,150"
+      "detail": "series=2 pts=117,117"
     },
     {
       "id": "D2.2",
-      "name": "复合②+run_id 打标过滤(rr-ed17287)",
+      "name": "复合②+run_id 打标过滤(rr-63b7044)",
       "pass": true,
       "detail": "pts=6"
     },
@@ -98,19 +98,19 @@
       "id": "D2.3",
       "name": "复合③+recipe_id 过滤",
       "pass": true,
-      "detail": "pts=300"
+      "detail": "pts=117"
     },
     {
       "id": "D2.4",
       "name": "复合④min/max 包络(include_band)",
       "pass": true,
-      "detail": "band=150"
+      "detail": "band=117"
     },
     {
       "id": "D3.1",
       "name": "REST merge 导出 ready 且 manifest/nodes 落盘",
       "pass": true,
-      "detail": "rows=570 files=1 merged=true"
+      "detail": "rows=219 files=1 merged=true"
     },
     {
       "id": "D3.2",
@@ -122,7 +122,7 @@
       "id": "D3.3",
       "name": "导出产物真实存在(演示论据)",
       "pass": true,
-      "detail": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-scenario-suite-cMSa7H\\data\\daq-exports\\daqexp-20261022105700-6201d3"
+      "detail": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-scenario-suite-OQ68g6\\data\\daq-exports\\daqexp-20261022132819-ff69d1"
     },
     {
       "id": "D4.1",
@@ -140,7 +140,7 @@
       "id": "D4.3",
       "name": "特征行字段齐备",
       "pass": true,
-      "detail": "{\"id\":\"feat-dc137541-28e\",\"runId\":\"rr-ed17287b\",\"nodeId\":\"dn-1463c230\",\"metric\":\"daq-temp-tc\",\"segment\":\"s2\",\"cnt\":8,\"mean\":15.3,\"std\":0,\"min\":15.3,\"max\":15.3,\""
+      "detail": "{\"id\":\"feat-84e7173b-6fb\",\"runId\":\"rr-63b70448\",\"nodeId\":\"dn-42922733\",\"metric\":\"daq-temp-tc\",\"segment\":\"s2\",\"cnt\":9,\"mean\":15.3,\"std\":0,\"min\":15.3,\"max\":15.3,\""
     },
     {
       "id": "D4.4",
@@ -152,7 +152,7 @@
       "id": "D4.5",
       "name": "golden 参考轨迹生成",
       "pass": true,
-      "detail": "bins=20 fp={\"mean\":15.3,\"std\":0,\"min\":15.3,\"max\":15.3,\"cnt\":2021}"
+      "detail": "bins=20 fp={\"mean\":15.3,\"std\":0,\"min\":15.3,\"max\":15.3,\"cnt\":165}"
     },
     {
       "id": "D5.2",

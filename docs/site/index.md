@@ -316,6 +316,7 @@ footer:
       <div class="hw-f"><span class="tag">QOS</span><h3>根任务队列与租约</h3><p>FIFO 根队列带可见排队位次;排队等待不消耗执行预算,lead 救援扫自动复活失活入场;派发代 + 执行租约围栏丢弃迟到事件;监督看门狗区分卡死与慢。</p></div>
       <div class="hw-f"><span class="tag">PROD</span><h3>生产化硬化(v0.7.58)</h3><p>保写心跳生命周期治理(失败写不占位 · 变更点清值 · 产线活动门);mock 静默兜底封堵;帧像素 sha256 指纹 + 对象存储按天 GC(删前 DB 交叉校验);Timescale 按天 chunk + 列存压缩;堆水位监控 + 子进程自动重生;治理窗落盘;grant 复核并入频道绑线。</p></div>
       <div class="hw-f"><span class="tag">DATA</span><h3>数据分析台账(v0.7.62)</h3><p>analysis_save / analysis_query 原生工具落账分析结论(产线×配方×时间窗),Agent 只增、人类修订留痕;/analysis 页多维检索实时前插;diag_run 后台跑 IDD 六种分析意图(根因/产线报告/快筛/DOE/经验挖掘/优化战役)按 taskId 查进度;改删与可见性全受产线级权限门控。</p></div>
+      <div class="hw-f"><span class="tag">EDA</span><h3>数据管理台与 EDA 工坊(/data · /studio)</h3><p>三形态数据(标量/数组断面/CCD 图像)多字段复合查询、批量导出作业台账(manifest+merged.csv)与 WS 实时镜像;工坊提供图表与栅格看板、golden 相位参考轨迹偏差分、FDC 特征参考带判定、SPC 控制图(Nelson/I-MR/EWMA/CUSUM)、共性分析、OCAP 处置单、虚拟量测(OOD 拒判)与派生数据集,全受产线权限与引用预检约束。</p></div>
     </div>
   </section>
 

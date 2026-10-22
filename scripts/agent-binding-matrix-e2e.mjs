@@ -184,6 +184,16 @@ async function main() {
   else ok('E2', 'mqtt 协议节点在位', false, '线内无 mqtt 节点')
 
   // ── F 参数下发(HITL) ──
+  // 前置:前序套件/补批次循环可能留下停线;运行门要求「本配方有活动批次」,先确保开线
+  {
+    const stPre = await api('GET', '/api/workshop/dcw')
+    const act = Boolean(stPre.data?.lineStates?.find(l => l.lineId === c.lineId)?.active)
+    if (!act) {
+      await api('POST', `/api/workshop/dcw/lines/${c.lineId}/start`, { recipeId: c.recipeId })
+      await sleep(8000)
+      console.log('  [pre] 产线恢复运行(运行门需要活动批次)')
+    }
+  }
   const dcwSnap = (await api('GET', '/api/workshop/dcw')).data
   const pressNode = c.dcw?.['hold-pressure-sp'] ?? (dcwSnap?.nodes ?? []).find(n => /hold-pressure/i.test(n.name ?? ''))?.id
   const cur = (dcwSnap?.nodes ?? []).find(n => n.id === pressNode)?.value

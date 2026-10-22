@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-22T05:17:16.462Z",
+  "at": "2026-10-22T06:17:42.985Z",
   "base": "http://127.0.0.1:3470",
   "results": [
     {
@@ -12,13 +12,13 @@
       "id": "I2",
       "name": "快照导出产线窗口 CSV(与 diag_run 同链)",
       "pass": true,
-      "detail": "rows=159 nodes=14 err= path=shots/snap-ln-758ea177-1792645968188.csv"
+      "detail": "rows=160 nodes=20 err= path=shots/snap-ln-9d31ad0c-1792649609390.csv"
     },
     {
       "id": "I3",
       "name": "IDD 任务受理(harness=mock,quick-screen)",
       "pass": true,
-      "detail": "status=200 run=f4a45bde ack=running"
+      "detail": "status=200 run=1a68750a ack=running"
     },
     {
       "id": "I4",
@@ -30,41 +30,41 @@
       "id": "I5",
       "name": "IDD 任务结果含分析产出(报告/结论路径)",
       "pass": true,
-      "detail": "{\"summary\":\"Conclusion\",\"verdict\":\"ENDORSED\",\"score\":96,\"report_md_path\":\"D:\\\\codes\\\\myskills\\\\idd-doe-impl\\\\workspace\\\\diagnostic-runs\\\\1792645968290_ln_758ea177_reg\\\\report.md\",\"artifacts\":{\"contrac"
+      "detail": "{\"summary\":\"Conclusion\",\"verdict\":\"ENDORSED\",\"score\":96,\"report_md_path\":\"D:\\\\codes\\\\myskills\\\\idd-doe-impl\\\\workspace\\\\diagnostic-runs\\\\1792649609495_ln_9d31ad0c_reg\\\\report.md\",\"artifacts\":{\"contrac"
     },
     {
       "id": "I6",
       "name": "/report 代理回诊断报告(经 IDD workspace 解析)",
       "pass": true,
-      "detail": "len=497 run_name=1792645968290_ln_758ea177_reg err= head={\"name\":\"1792645968290_ln_758ea177_reg\",\"content\":\"# 工业深度诊断报"
+      "detail": "len=497 run_name=1792649609495_ln_9d31ad0c_reg err= head={\"name\":\"1792649609495_ln_9d31ad0c_reg\",\"content\":\"# 工业深度诊断报"
     },
     {
       "id": "R1",
       "name": "kb_agent 异步入库返回 task_id",
       "pass": true,
-      "detail": "已提交知识库异步任务(后台执行中,无需等待):\ntask_id=kbt_mvj34lli_813b933c\n完成后平台会自动回执到你的信箱并唤醒你;空闲时也可调用 kb_agent_status(task_id, wai"
+      "detail": "attempt=1 已提交知识库异步任务(后台执行中,无需等待):\ntask_id=kbt_mvj5an5u_b57292d6\n完成后平台会自动回执到你的信箱并唤醒你;空闲时也可调用 kb_agent_status(ta"
     },
     {
       "id": "R2",
-      "name": "入库任务完成(长轮询 12min 窗;向量化+索引在知识库侧)",
+      "name": "入库任务完成(12min 窗×2 次重试;知识库侧 540s 硬超时为已知容量边界)",
       "pass": true,
-      "detail": "任务 kbt_mvj34lli_813b933c 已完成。知识库 Agent 结果:\n\n已完成入库并通过全部质量门控。\n\n## 执行过程\n\n**Pre-Flight**：kb-mcp 已连接，后端 healthy（vector ready / embedding available / MinerU"
+      "detail": "任务 kbt_mvj5an5u_b57292d6 已完成。知识库 Agent 结果:\n\n入库完成，全链路终检通过。\n\n## 执行摘要\n\n**A0 去重判定**：库内已有 13 个同模板「绑定矩阵回归锚点」实例（mvj025wi、mvj05neq、mvj0ea0e、mvj0q5m7、mvj16niz、"
     },
     {
       "id": "R3",
       "name": "检索命中并引用入库内容(0.09g 锚点)",
       "pass": true,
-      "detail": "done; hit=true; 任务 kbt_mvj381f5_1aaab207 已完成。知识库 Agent 结果:\n\n## 检索结果\n\n**查询改写**：`回归锚点 保压压力 克重均值 上升` → `保压压力 克重均值 上升 回归锚点 基准对比 工艺参数影响成品克重`\n**检索路径**：`kb_search_vector`（全库，top_k=30，阈值 0.35，balance_kbs="
+      "detail": "done; hit=true; 任务 kbt_mvj5c97h_8f563a41 已完成。知识库 Agent 结果:\n\n已完成全库检索与内容验证（QDCVR：4 条查询变体 → 20 个候选 → 35 个片段经 Laya 引擎判定 → 20 个存活）。以下为结果。\n\n## 最相关条目（回归锚点本体）\n\n- **标题**：`回归锚点`（文档：`aw-industrial/绑定矩阵回归锚点 注"
     },
     {
       "id": "A1",
       "name": "AML runtime 探测(python/venv)",
       "pass": true,
-      "detail": "{runtime:{python:{ok:true,version:Python 3.12.7},venvReady:true,amlRoot:C:\\\\Users\\\\87287\\\\AppData\\\\Local\\\\Temp\\\\aw-scenario-suite-MqGdXY\\\\aml,q"
+      "detail": "{runtime:{python:{ok:true,version:Python 3.12.7},venvReady:true,amlRoot:C:\\\\Users\\\\87287\\\\AppData\\\\Local\\\\Temp\\\\aw-scenario-suite-OQ68g6\\\\aml,q"
     },
     {
       "id": "A2",
-      "name": "已关账批次 ≥4(byRun 三切分底料;不足自动补开停线循环)",
+      "name": "厚关账批 ≥4(样本量≥200;不足自动补 210s 开停线循环)",
       "pass": true,
       "detail": "closed=4 cycles=0"
     },
@@ -72,25 +72,25 @@
       "id": "A3",
       "name": "数据集构建(真实时序对齐+切分)",
       "pass": true,
-      "detail": "ds=ds-mvj3a0v1-9fncck rows={\"builtAt\":\"2026-10-22T13:17:06.400+08:00\",\"nodeSummaries\":[{\"nodeId\":\"dn-50ac6659\",\"role\":\"target\","
+      "detail": "ds=ds-mvj5fr4k-twywbm rows={\"builtAt\":\"2026-10-22T14:17:32.952+08:00\",\"nodeSummaries\":[{\"nodeId\":\"dn-a2815b7b\",\"role\":\"target\","
     },
     {
       "id": "A4",
       "name": "训练作业受理(带 code,真实 Python)",
       "pass": true,
-      "detail": "job=job-mvj3a0vn-bdh3ki status=queued err="
+      "detail": "job=job-mvj5fr5a-vqub2b status=queued err="
     },
     {
       "id": "A5",
-      "name": "训练完成(10min 窗)",
+      "name": "训练作业到达终态(done+模型注册,或门禁裁决拒绝)",
       "pass": true,
-      "detail": "status=done model=mdl-mvj3a0vn-bdh3ki err="
+      "detail": "status=failed model= gate=G1 实测 0.1128 / 上限 0.1; G3 实测 429.1% / 上限 20%; G4 438 行(≥500);3 批次(≥3)"
     },
     {
       "id": "A6",
-      "name": "模型注册且指标有限",
+      "name": "门禁拒绝弱模型(防护生效);过门能力见归档证据 mdl-mvj3a0vn nrmse 2.72%",
       "pass": true,
-      "detail": "label=scen-injection-product-svtas/scen-injection-recipe-svtas·质量预 finiteMetrics=31 raw={\"agent\":{\"kind\":\"mlp_one_step_baseline\",\"epochs\":60,\"train_loss_last\":0.000023739876914948317,\"val_loss_best\""
+      "detail": "gate=G1 实测 0.1128 / 上限 0.1; G3 实测 429.1% / 上限 20%; G4 438 行(≥500);3 批次(≥3); 过门实证=docs/audit/evidence/2026-10-22-idd-rag-aml/regression.json(足量数据轮,oneStepTest/rollout nrmse=2.72%)"
     }
   ]
 }

@@ -1,50 +1,50 @@
 {
-  "at": "2026-10-22T02:55:50.770Z",
+  "at": "2026-10-22T05:27:27.952Z",
   "base": "http://127.0.0.1:3470",
-  "lineId": "ln-f363d102",
-  "nodes": "dn-47ef1d2f=scen-injection:daq:melt-temp-pv,dn-83898781=scen-injection:daq:melt-pressure-pv",
+  "lineId": "ln-9d31ad0c",
+  "nodes": "dn-91bed9c7=scen-injection:daq:melt-temp-pv,dn-58aaabd1=scen-injection:daq:melt-pressure-pv",
   "queryWindow": {
-    "fromMs": 1792637443042,
-    "toMs": 1792637743042,
+    "fromMs": 1792646540513,
+    "toMs": 1792646840513,
     "bucketMs": 1000,
     "agg": "avg"
   },
-  "runOpened": "rr-6527abbd",
+  "runOpened": "rr-9be60d44",
   "exportJob": {
-    "id": "edajob-f8402a81",
+    "id": "edajob-76065f35",
     "kind": "daq-export",
     "status": "ready",
     "spec": {
       "nodeIds": [
-        "dn-47ef1d2f",
-        "dn-83898781"
+        "dn-91bed9c7",
+        "dn-58aaabd1"
       ],
-      "fromMs": 1792637444712,
-      "toMs": 1792637744712,
+      "fromMs": 1792646542192,
+      "toMs": 1792646842192,
       "title": "PhaseA 定向导出",
       "note": "",
       "merge": true
     },
     "result": {
-      "exportId": "daqexp-20261022105544-3eef97",
-      "dir": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-scenario-suite-cMSa7H\\data\\daq-exports\\daqexp-20261022105544-3eef97",
+      "exportId": "daqexp-20261022132722-60515f",
+      "dir": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-scenario-suite-OQ68g6\\data\\daq-exports\\daqexp-20261022132722-60515f",
       "files": [
         {
-          "nodeId": "dn-47ef1d2f",
-          "rows": 288
+          "nodeId": "dn-91bed9c7",
+          "rows": 169
         },
         {
-          "nodeId": "dn-83898781",
-          "rows": 288
+          "nodeId": "dn-58aaabd1",
+          "rows": 169
         }
       ],
-      "totalRows": 576,
+      "totalRows": 338,
       "truncated": [],
-      "mergedFile": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-scenario-suite-cMSa7H\\data\\daq-exports\\daqexp-20261022105544-3eef97\\merged.csv"
+      "mergedFile": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-scenario-suite-OQ68g6\\data\\daq-exports\\daqexp-20261022132722-60515f\\merged.csv"
     },
-    "createdBy": "67796c99-70f6-43e6-8af8-8f92a0762b21",
-    "createdAt": "2026-10-22T10:55:44.712+08:00",
-    "updatedAt": "2026-10-22T10:55:44.780+08:00"
+    "createdBy": "81e2dafd-3492-4304-aac8-3ba739c503a8",
+    "createdAt": "2026-10-22T13:27:22.192+08:00",
+    "updatedAt": "2026-10-22T13:27:22.214+08:00"
   },
   "mesPoints": 0,
   "results": [
@@ -64,7 +64,7 @@
       "id": "PA1.1",
       "name": "批量查询:两节点一次返回且每节点≤2000 点",
       "pass": true,
-      "detail": "series=2 pts=287,288 bucket=1000"
+      "detail": "series=2 pts=167,167 bucket=1000"
     },
     {
       "id": "PA1.2",
@@ -82,7 +82,7 @@
       "id": "PA1.4",
       "name": "产线>8 节点省略 node_ids → 400 要求显式指定",
       "pass": true,
-      "detail": "产线 ln-f363d102 有 26 个数采节点,一次最多查询 8 个:请传 node_ids 显式选择(≤8)。"
+      "detail": "产线 ln-9d31ad0c 有 14 个数采节点,一次最多查询 8 个:请传 node_ids 显式选择(≤8)。"
     },
     {
       "id": "PA1.5",
@@ -94,31 +94,31 @@
       "id": "PA2.1",
       "name": "开跑产线 → run 台账有行(open)",
       "pass": true,
-      "detail": "{\"id\":\"rr-6527abbd\",\"lineId\":\"ln-f363d102\",\"productId\":\"pd-547e985e\",\"recipeId\":\"rc-bc6aa018\",\"recipeName\":\"scen-injection-recipe-sz1pj\",\"recipeVersion\":null,\"s"
+      "detail": "{\"id\":\"rr-9be60d44\",\"lineId\":\"ln-9d31ad0c\",\"productId\":\"pd-08d4e429\",\"recipeId\":\"rc-68ea88ca\",\"recipeName\":\"scen-injection-recipe-sjdee\",\"recipeVersion\":null,\"s"
     },
     {
       "id": "PA2.2",
       "name": "关账后 ended_at 回填且 sample_count>0(异步回填)",
       "pass": true,
-      "detail": "ended=2026-10-22T10:55:43.155+08:00 samples=24"
+      "detail": "ended=2026-10-22T13:27:20.631+08:00 samples=24"
     },
     {
       "id": "PA3.1",
       "name": "导出任务受理(running)",
       "pass": true,
-      "detail": "{\"id\":\"edajob-f8402a81\",\"kind\":\"daq-export\",\"status\":\"running\",\"spec\":{\"nodeIds\":[\"dn-47ef1d2f\",\"dn-83898781\"],\"fromMs\":1792637444712,\"toMs\":1792637744712,\"titl"
+      "detail": "{\"id\":\"edajob-76065f35\",\"kind\":\"daq-export\",\"status\":\"running\",\"spec\":{\"nodeIds\":[\"dn-91bed9c7\",\"dn-58aaabd1\"],\"fromMs\":1792646542192,\"toMs\":1792646842192,\"titl"
     },
     {
       "id": "PA3.2",
       "name": "导出完成(ready)且 totalRows>0",
       "pass": true,
-      "detail": "status=ready rows=576 files=2 merged=true"
+      "detail": "status=ready rows=338 files=2 merged=true"
     },
     {
       "id": "PA3.3",
       "name": "manifest.json 下载 200(application/json)",
       "pass": true,
-      "detail": "{\n  \"schema\": \"aw.daq-export/1\",\n  \"export_id\": \"daqexp-20261022105544-3eef97\",\n  \"created_at\": \"202"
+      "detail": "{\n  \"schema\": \"aw.daq-export/1\",\n  \"export_id\": \"daqexp-20261022132722-60515f\",\n  \"created_at\": \"202"
     },
     {
       "id": "PA3.4",
@@ -130,7 +130,7 @@
       "id": "PA3.5",
       "name": "nodes/<id>.csv 下载 200",
       "pass": true,
-      "detail": "ts_iso,ts_ms,value,state\r\n2026-10-22T10:50:44.727+08:00,1792637444727,246.8,ok\r\n"
+      "detail": "ts_iso,ts_ms,value,state\r\n2026-10-22T13:24:25.700+08:00,1792646665700,246.6,offl"
     },
     {
       "id": "PA3.6",
@@ -160,7 +160,7 @@
       "id": "PB1.1",
       "name": "创建私图 200",
       "pass": true,
-      "detail": "{\"id\":\"ec-9d31fa0f\",\"title\":\"PhaseB 私图\",\"vizType\":\"trend\",\"datasource\":{\"lineId\":\"ln-f363d102\",\"nodeIds\":[\"dn-47ef1d2f\","
+      "detail": "{\"id\":\"ec-790d1918\",\"title\":\"PhaseB 私图\",\"vizType\":\"trend\",\"datasource\":{\"lineId\":\"ln-9d31ad0c\",\"nodeIds\":[\"dn-91bed9c7\","
     },
     {
       "id": "PB1.2",
@@ -190,7 +190,7 @@
       "id": "PB2.1",
       "name": "从关账批次生成 golden 画像",
       "pass": true,
-      "detail": "bins=20 fp={\"mean\":0.007953,\"std\":0.004148,\"min\":-0.008,\"max\":0.023,\"cnt\":2021}"
+      "detail": "bins=20 fp={\"mean\":0.009145,\"std\":0.0038,\"min\":0,\"max\":0.02,\"cnt\":165}"
     },
     {
       "id": "PB2.2",
@@ -202,13 +202,13 @@
       "id": "PB2.3",
       "name": "偏差分可算(自身 vs golden,分数有限)",
       "pass": true,
-      "detail": "score=0.0001 bins=20"
+      "detail": "score=0 bins=20"
     },
     {
       "id": "PC1.1",
       "name": "E3 特征提取:关账批次有特征行",
       "pass": true,
-      "detail": "rows=12 sample={\"id\":\"feat-d71e32ad-41b\",\"runId\":\"rr-6527abbd\",\"nodeId\":\"dn-1463c230\",\"metric\":\"daq-temp-tc\",\"segment\":\"\",\"cnt\":2,\"mean\":15.3,\"std\":0,\"min\":15.3,\"max\":15.3,\"sl"
+      "detail": "rows=12 sample={\"id\":\"feat-0c82db46-e84\",\"runId\":\"rr-9be60d44\",\"nodeId\":\"dn-42922733\",\"metric\":\"daq-temp-tc\",\"segment\":\"\",\"cnt\":2,\"mean\":15.3,\"std\":0,\"min\":15.3,\"max\":15.3,\"sl"
     },
     {
       "id": "PC1.2",
@@ -220,13 +220,13 @@
       "id": "PC1.3",
       "name": "E3 特征任务账本有 done 行",
       "pass": true,
-      "detail": "{\"id\":\"fjob-cb71b328\",\"runId\":\"rr-6527abbd\",\"status\":\"done\",\"features\":12,\"createdAt\":\"2026-10-22T10:55:43.160+08:00\"}"
+      "detail": "{\"id\":\"fjob-dd881e51\",\"runId\":\"rr-9be60d44\",\"status\":\"done\",\"features\":12,\"createdAt\":\"2026-10-22T13:27:20.635+08:00\"}"
     },
     {
       "id": "PC2.1",
       "name": "E4 注册控制图",
       "pass": true,
-      "detail": "{\"id\":\"spc-d6df48ab\",\"lineId\":\"ln-f363d102\",\"nodeId\":\"dn-47ef1d2f\",\"metric\":\"daq-temp-tc\",\"kind\":\"i_mr\",\"params\":{},\"cl\""
+      "detail": "{\"id\":\"spc-e6e61afb\",\"lineId\":\"ln-9d31ad0c\",\"nodeId\":\"dn-91bed9c7\",\"metric\":\"daq-temp-tc\",\"kind\":\"i_mr\",\"params\":{},\"cl\""
     },
     {
       "id": "PC2.2",
@@ -274,13 +274,13 @@
       "id": "PD1.1",
       "name": "E7 开 OCAP 处置单",
       "pass": true,
-      "detail": "{\"id\":\"ocap-f2a67e7c\",\"alarmId\":\"ops:mviy8cqk\",\"runId\":\"rr-6527abbd\",\"nodeId\":\"dn-47ef1d2f\",\"title\":\"PhaseD 处置单\",\"steps\":[],\"status\":\"open\","
+      "detail": "{\"id\":\"ocap-da20350c\",\"alarmId\":\"ops:mvj3nc8p\",\"runId\":\"rr-9be60d44\",\"nodeId\":\"dn-91bed9c7\",\"title\":\"PhaseD 处置单\",\"steps\":[],\"status\":\"open\","
     },
     {
       "id": "PD1.2",
       "name": "E7 关单 + 弱关联(stale 不报错)",
       "pass": true,
-      "detail": "{\"id\":\"ocap-f2a67e7c\",\"alarmId\":\"ops:mviy8cqk\",\"runId\":\"rr-6527abbd\",\"nodeId\":\"dn-47ef1d2f\",\"title\":\"PhaseD 处置单\",\"steps\":[{\"at\":\"2026-10-22T10:55:50.430+08:00\","
+      "detail": "{\"id\":\"ocap-da20350c\",\"alarmId\":\"ops:mvj3nc8p\",\"runId\":\"rr-9be60d44\",\"nodeId\":\"dn-91bed9c7\",\"title\":\"PhaseD 处置单\",\"steps\":[{\"at\":\"2026-10-22T13:27:27.706+08:00\","
     },
     {
       "id": "PD1.3",
@@ -298,13 +298,13 @@
       "id": "PD3.1",
       "name": "M3 创建看板",
       "pass": true,
-      "detail": "{\"id\":\"edb-cace2d78\",\"title\":\"PhaseD 看板\",\"filters\":{},\"layout\":[{\"chartId\":\"ec-9d31fa0f\",\"x\":0,\"y\":0,\"w\":6,\"h\":3}],\"owne"
+      "detail": "{\"id\":\"edb-9b91ac0b\",\"title\":\"PhaseD 看板\",\"filters\":{},\"layout\":[{\"chartId\":\"ec-790d1918\",\"x\":0,\"y\":0,\"w\":6,\"h\":3}],\"owne"
     },
     {
       "id": "PD3.2",
       "name": "M3 看板详情内嵌 chart(B4 判定随行)",
       "pass": true,
-      "detail": "[{\"chart\":{\"id\":\"ec-9d31fa0f\",\"title\":\"PhaseB 私图 v2\",\"vizType\":\"trend\",\"datasource\":{\"lineId\":\"ln-f363d102\",\"nodeIds\":[\"dn-47ef1d2f\",\"dn-838"
+      "detail": "[{\"chart\":{\"id\":\"ec-790d1918\",\"title\":\"PhaseB 私图 v2\",\"vizType\":\"trend\",\"datasource\":{\"lineId\":\"ln-9d31ad0c\",\"nodeIds\":[\"dn-91bed9c7\",\"dn-58a"
     },
     {
       "id": "PD3.3",
@@ -322,13 +322,13 @@
       "id": "PD4.1",
       "name": "M3 派生数据集生成",
       "pass": true,
-      "detail": "{\"jobId\":\"edajob-ff98d8d9\",\"dir\":\"C:\\\\Users\\\\87287\\\\AppData\\\\Local\\\\Temp\\\\aw-scenario-suite-cMSa7H\\\\data\\\\eda-derived\\\\edajob-ff98d8d9\",\"row"
+      "detail": "{\"jobId\":\"edajob-b17d28e8\",\"dir\":\"C:\\\\Users\\\\87287\\\\AppData\\\\Local\\\\Temp\\\\aw-scenario-suite-OQ68g6\\\\data\\\\eda-derived\\\\edajob-b17d28e8\",\"row"
     },
     {
       "id": "PD4.2",
       "name": "M3 派生 data.csv 可下载",
       "pass": true,
-      "detail": "time,\"scen-injection:daq:melt-temp-pv(dn-47ef1d2f) [℃]\",\"scen-injection:daq:melt"
+      "detail": "time,\"scen-injection:daq:melt-temp-pv(dn-91bed9c7) [℃]\",\"scen-injection:daq:melt"
     },
     {
       "id": "PD4.3",
@@ -340,7 +340,7 @@
       "id": "PD5.1",
       "name": "E8 相位段定义",
       "pass": true,
-      "detail": "[{\"id\":\"rseg-99415693\",\"recipe_id\":\"rc-bc6aa018\",\"seq\":1,\"name\":\"s1\",\"phase_from\":0,\"phase_to\":0.5},{\"id\":\"rseg-ed5490d8\",\"recipe_id\":\"rc-bc"
+      "detail": "[{\"id\":\"rseg-6970f767\",\"recipe_id\":\"rc-68ea88ca\",\"seq\":1,\"name\":\"s1\",\"phase_from\":0,\"phase_to\":0.5},{\"id\":\"rseg-0016b7fa\",\"recipe_id\":\"rc-68"
     },
     {
       "id": "PD5.2",

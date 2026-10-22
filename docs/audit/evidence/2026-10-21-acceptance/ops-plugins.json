@@ -1,9 +1,9 @@
 {
-  "at": "2026-10-22T02:56:36.257Z",
+  "at": "2026-10-22T05:33:11.995Z",
   "context": {
     "base": "http://127.0.0.1:3470",
-    "lineId": "ln-f363d102",
-    "channelId": "0d9e77c5-3355-4004-9c79-b779f92f3e87"
+    "lineId": "ln-9d31ad0c",
+    "channelId": "3784cd56-c5c5-4c95-9f32-1ca744e8ecd8"
   },
   "results": [
     {
@@ -28,7 +28,7 @@
       "id": "US306.3",
       "name": "ops-logs 含 line.start/line.stop 记录",
       "pass": true,
-      "detail": "line.start,line.stop"
+      "detail": "line.start,line.stop,line.create"
     },
     {
       "id": "US305.1",

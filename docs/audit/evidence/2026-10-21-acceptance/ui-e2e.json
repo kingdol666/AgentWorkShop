@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-22T02:56:28.774Z",
+  "at": "2026-10-22T05:28:05.003Z",
   "base": "http://127.0.0.1:3470",
   "results": [
     {
@@ -18,7 +18,7 @@
       "id": "UI1.3",
       "name": "产线下拉有可读产线",
       "pass": true,
-      "detail": "options=5"
+      "detail": "options=1"
     },
     {
       "id": "UI1.4",
@@ -54,7 +54,7 @@
       "id": "UI2.1",
       "name": "/studio 节点树非空",
       "pass": true,
-      "detail": "nodes=26"
+      "detail": "nodes=14"
     },
     {
       "id": "UI2.2",

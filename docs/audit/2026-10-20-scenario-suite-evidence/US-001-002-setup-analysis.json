@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-22T03:14:28.858Z",
+  "at": "2026-10-22T05:24:46.686Z",
   "pass": 23,
   "fail": 0,
   "results": [
@@ -25,13 +25,13 @@
       "id": "",
       "name": "S3 IDD 注册得 token",
       "pass": true,
-      "detail": "{\"success\":true,\"data\":{\"user\":{\"id\":22,\"username\":\"scenario_mviyuopr\",\"email\":null,\"role\":\"user\",\"created_at\":\"2026-10-"
+      "detail": "{\"success\":true,\"data\":{\"user\":{\"id\":31,\"username\":\"scenario_mvj3i8ui\",\"email\":null,\"role\":\"user\",\"created_at\":\"2026-10-"
     },
     {
       "id": "",
       "name": "S3 RAG 登录得 token",
       "pass": true,
-      "detail": "{\"success\":true,\"user\":{\"id\":\"usr-d19f1ee25de6b998\",\"username\":\"scenario_mviyuosq\",\"email\":\"\",\"role\":\"user\",\"status\":\"ac"
+      "detail": "{\"success\":true,\"user\":{\"id\":\"usr-da55fa81c9d3e79f\",\"username\":\"scenario_mvj3i8v9\",\"email\":\"\",\"role\":\"user\",\"status\":\"ac"
     },
     {
       "id": "",
@@ -43,7 +43,7 @@
       "id": "",
       "name": "S4 专用模拟器在线",
       "pass": true,
-      "detail": "{\"started\":true,\"pid\":96128,\"dir\":\"D:\\\\codes\\\\ABO\\\\plc-node-simulator-scenario-4050\",\"reason\":\"spawned\"}"
+      "detail": "{\"started\":true,\"pid\":97484,\"dir\":\"D:\\\\codes\\\\ABO\\\\plc-node-simulator-scenario-4050\",\"reason\":\"spawned\"}"
     },
     {
       "id": "",
@@ -61,13 +61,13 @@
       "id": "",
       "name": "S4 PV tick 活性(≥3 信号变化)",
       "pass": true,
-      "detail": "moved=12"
+      "detail": "moved=8"
     },
     {
       "id": "",
       "name": "S5 产线/节点/配方供给",
       "pass": true,
-      "detail": "line=ln-758ea177 recipe=rc-e42ddd2c dcw=11 daq=14"
+      "detail": "line=ln-9d31ad0c recipe=rc-68ea88ca dcw=11 daq=14"
     },
     {
       "id": "",
@@ -79,13 +79,13 @@
       "id": "",
       "name": "S5 产线处于运行态",
       "pass": true,
-      "detail": "{\"lineId\":\"ln-758ea177\",\"active\":true,\"runId\":\"rr-0fa58ff0\",\"recipeId\":\"rc-e42ddd2c\",\"recipeName\":\"scen-injection-recipe-svtas\",\"productId\":\"pd-cc1efa1f\",\"productName\":\"scen-injection-product-svtas\",\"startedAt\":\"2026-10-"
+      "detail": "{\"lineId\":\"ln-9d31ad0c\",\"active\":true,\"runId\":\"rr-cf41b162\",\"recipeId\":\"rc-68ea88ca\",\"recipeName\":\"scen-injection-recipe-sjdee\",\"productId\":\"pd-08d4e429\",\"productName\":\"scen-injection-product-sjdee\",\"startedAt\":\"2026-10-"
     },
     {
       "id": "",
       "name": "S5 DAQ 新鲜样本 ≥20",
       "pass": true,
-      "detail": "node=dn-50ac6659 points=20"
+      "detail": "node=dn-a2815b7b points=20"
     },
     {
       "id": "",
@@ -103,7 +103,7 @@
       "id": "",
       "name": "S6 分析师绑全部 DAQ / 优化师绑配方 manual",
       "pass": true,
-      "detail": "recipeBind=nb-7ef3ef5b"
+      "detail": "recipeBind=nb-dbb67c04"
     },
     {
       "id": "",
@@ -115,39 +115,39 @@
       "id": "",
       "name": "S7 daq_query 返回样本与统计",
       "pass": true,
-      "detail": "数采数据查询结果(1 个节点):\n\n■ scen-injection:daq:part-weight(熔体/箱体温度)单位 g,正常量程 25~40g,当前状态 alarm,时间窗 2026-10-22T11:09 ~ 2026-10-22T11:14(降采样 1000ms)\n  当前活动批次 run=rr-0fa58ff0 配方「scen-injection-recipe-svtas」(rc-e42ddd2c)(可直接把 run_id"
+      "detail": "数采数据查询结果(1 个节点):\n\n■ scen-injection:daq:part-weight(熔体/箱体温度)单位 g,正常量程 25~40g,当前状态 alarm,时间窗 2026-10-22T13:19 ~ 2026-10-22T13:24(降采样 1000ms)\n  当前活动批次 run=rr-cf41b162 配方「scen-injection-recipe-sjdee」(rc-68ea88ca)(可直接把 run_id"
     },
     {
       "id": "",
       "name": "S7 独立复算指标有限",
       "pass": true,
-      "detail": "n=20 mean=31.256 std=0.033 range=31.19~31.32"
+      "detail": "n=20 mean=31.254 std=0.036 range=31.19~31.32"
     },
     {
       "id": "",
       "name": "S7 复算均值与工具均值一致",
       "pass": true,
-      "detail": "tool=31.256 raw=31.256"
+      "detail": "tool=31.254 raw=31.254"
     },
     {
       "id": "",
       "name": "S7 analysis_save 落痕",
       "pass": true,
-      "detail": "分析报告已留痕:ar-61a053ed。产线「注塑成型质量窗口寻优 injection-svtas」,结论 4 条,配方 rc-e42ddd2c。台账 append-only,不可改删;随时可用 analysis_query(report_id=\"ar-61a053ed\") 查回全文。"
+      "detail": "分析报告已留痕:ar-6645c193。产线「注塑成型质量窗口寻优 injection-sjdee」,结论 4 条,配方 rc-68ea88ca。台账 append-only,不可改删;随时可用 analysis_query(report_id=\"ar-6645c193\") 查回全文。"
     },
     {
       "id": "",
       "name": "S7 analysis_query 可检索",
       "pass": true,
-      "detail": "分析报告 ar-61a053ed:「注塑线 ln-758ea177 克重窗口分析 2026-10-22T03:14:28」(分类 quality)\n产线: 注塑成型质量窗口寻优 injection-svtas | 配方: rc-e42ddd2c v1\n分析时间: 10-22 11:14:28 | 数据窗: - ~ -\n来源: 注塑场景验收-ywbfr/数据分析-wbgc @频道「注塑场景验收-ywbfr」\n关键结论: 近 5 分钟克重 "
+      "detail": "分析报告 ar-6645c193:「注塑线 ln-9d31ad0c 克重窗口分析 2026-10-22T05:24:46」(分类 quality)\n产线: 注塑成型质量窗口寻优 injection-sjdee | 配方: rc-68ea88ca v1\n分析时间: 10-22 13:24:46 | 数据窗: - ~ -\n来源: 注塑场景验收-3jvq4/数据分析-jvqp @频道「注塑场景验收-3jvq4」\n关键结论: 近 5 分钟克重 "
     }
   ],
   "context": {
-    "home": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-scenario-suite-MqGdXY",
+    "home": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-scenario-suite-OQ68g6",
     "base": "http://127.0.0.1:3470",
     "simBase": "http://127.0.0.1:4050",
-    "lineId": "ln-758ea177",
-    "recipeId": "rc-e42ddd2c",
-    "channelId": "7266467d-31dc-405f-af80-d9113eeb0042"
+    "lineId": "ln-9d31ad0c",
+    "recipeId": "rc-68ea88ca",
+    "channelId": "3784cd56-c5c5-4c95-9f32-1ca744e8ecd8"
   }
 }
