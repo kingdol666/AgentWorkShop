@@ -496,12 +496,12 @@ server/services/workshop/
 
 | # | 任务 | 文件 | 出口断言 |
 |---|---|---|---|
-| G3.1 | Worker 协议与进程池 | `optimization/python/worker.py`、`worker-client.ts` | 请求 ID/取消/硬超时；stdout 仅 JSONL；超时进程 5s 内确认退出 |
+| G3.1 | Worker 协议与进程池 | `optimization/python/worker.py`、`worker-client.ts`（规格见 **B.9.3**） | 请求 ID/取消/硬超时；stdout 仅 JSONL；超时进程 5s 内确认退出（exit 事件，不是「kill 已受理」） |
 | G3.2 | SciPy 静态求解 | `optimization/python/solvers.py` | 解析解 fixture 目标差 ≤1e-4 |
 | G3.3 | OSQP 线性 MPC | 同上 + `problem-builder.ts` | 凸 QP 与参考解目标差 ≤1e-5、约束残差 ≤1e-5；候选非恒值 |
 | G3.4 | ProblemIR 编译与检查 | `problem-builder.ts` | 维度/单位/凸性检查失败 → 明确错误；不 eval 用户公式 |
 | G3.5 | 同口径代价验证 | `manager.ts`、`trial-service.ts`（新路径） | Solver/Twin/baseline 在同一 ProblemIR 重算相对差 ≤1e-6 |
-| G3.6 | 租约与热更新 | `worker-client.ts`、`provider-registry.ts` | 版本热更新不替换在途任务；A 取消不影响 B |
+| G3.6 | 租约与热更新 | `worker-client.ts`、`provider-registry.ts`、`aml/python-runtime.ts`（**B.9.4**） | 版本热更新不替换在途任务；A 取消不影响 B；持租约时重建返回 `ENV_BUSY` |
 | G3.7 | 建议与有效期 | `recommendation.service.ts` | 工况/配方/权限变化 → 旧建议 `expired` |
 
 ### G4 Agent runtime（约 5–7 天）
@@ -510,8 +510,8 @@ server/services/workshop/
 |---|---|---|---|
 | G4.1 | 绑定仓储/服务 | `optimization/{binding.repo,binding.service}.ts` | 同 Channel 两 Agent 不同 profile 互不可见；跨 workspace 拒绝 |
 | G4.2 | 命名纪律（C3） | `binding.service.ts`、错误文案 | 传模板 id → `AGENT_TEMPLATE_ID_NOT_ALLOWED`（可读指引） |
-| G4.3 | 新工具注入 | `.AgentWorkShop/prompts/host-tools.json`（新增 5 条）、`optimizer-tools.ts`、`catalog.ts` | 无绑定时不注入 solve；有绑定时注入且 schema 含 `binding_id` |
-| G4.4 | 执行期逐次重校验 | `catalog.ts`、`tool-verify.ts`、`manager.ts` | 撤权/降级/revision 变化 → 立即 `BINDING_STALE`，旧调用不生效 |
+| G4.3 | 新工具注入 | `.AgentWorkShop/prompts/host-tools.json`、`industrial.ts`、`catalog.ts`、`dispatch.ts`、`per-agent.ts`（**完整 17 项注册面见 B.8.2**） | 无绑定时不注入 solve；有绑定时注入且 schema 含 `binding_id`；legacy/训练 Channel 直调被拒 |
+| G4.4 | 执行期逐次重校验 | `catalog.ts`、`tool-verify.ts`（新增 `binding` 类别）、`grant-guard.ts`、`manager.ts` | 撤权/降级/revision 变化 → 立即 `BINDING_STALE`；传他人 binding → `BINDING_NOT_OWNED` |
 | G4.5 | 刷新策略（C14） | `aw-mcp-bridge.mjs`、`registry.ts`、`channels/[id]/tools/index.put.ts` | 空表触发清空；schema-only 变更触发；omp≤5s、bridge≤15s、pi 次回合 |
 | G4.6 | 旧入口兼容 | `dispatch.ts`、`twin-tools.ts` | `mpc_optimize` 回执标注旧口径；无 Profile 时报绑定/资格引导，不返回现场调参方案 |
 
@@ -535,9 +535,9 @@ server/services/workshop/
 | G6.3 | 回归 | 既有 AML/EDA/DCW/绑定套件 | 全绿；不因新模块改动而回归 |
 | G6.4 | 独立复核 | 审查清单 | 阻塞项=0 |
 
-## B.4 验收标准（A1–A14 保持原样，补 A15–A20）
+## B.4 验收标准（A1–A14 保持原样，补 A15–A22）
 
-原文的 A1–A14 **全部保留**，阈值不放宽。以下为复核后新增的、与 C1–C18 对应的可判定断言：
+原文的 A1–A14 **全部保留**，阈值不放宽。以下为复核后新增的、与 C1–C18 对应的可判定断言（A21–A22 见 **B.10**）：
 
 | ID | 必须通过的机器断言 |
 |---|---|
@@ -580,3 +580,111 @@ G1 ──► G2 ──► G3 ──► G4 ──► G5 ──► G6
 
 - 2026-10-22：完成 5 路源码复核（基线 `eb613ed5`）；修正 12 处引用/事实；新增 C1–C18 冲突与决议；新增 A15–A20 验收；新增 G1–G6 文件级任务分解与门禁。**未改动第一部分的范围、阶段顺序与 A1–A14。**
 - 复核中确认的三个真实缺陷（`queryTagged` 丢 `state`、`eda_runs.recipe_version` 恒 NULL、MCP 空表被旧表掩盖）已列入 G2/G4 的修复任务，不做「已知问题」搁置。
+
+---
+
+# 第三部分：G3 求解器与 G4 工具注入的落地补全（v3.1，2026-10-22）
+
+> 第二部分只写到「改哪些文件」，但没有穷举**新增一个 host 工具必须触达的全部注册面**，也没有核实 **Python 长驻 Worker 的真实运行面**。本部分补这两块，并修正两处前提错误。范围与阶段不变。
+
+## B.8 G4 工具注入：完整注册面（17 项，缺一即失效）
+
+### B.8.1 两个必须先纠正的事实
+
+1. **`optimizer_*` 默认会绕过所有档位门控。** `dispatch.ts:120` 的 `isTwinTool` 只认 `twin_` 前缀与 `['mpc_optimize','optimization_explore']`；新前缀既不在写族列表（`:153`）、也不在训练集（`:148`）、也不在高危集。**只改 JSON + handler 的结果是：legacy 与训练 Channel 通过 REST/MCP 直调仍可执行**（注入面隐藏不是安全边界，这是仓库既有结论）。
+2. **`host-tools.json` 只有 4 个字段**：`name / label / description / parameters`。`roles` 由 `LEAD_ONLY_TOOL_NAMES` 派生、`group` 由名字前缀派生、`risk` 在 `permission-scope.ts` 的集合里。写 JSON 时不要期待 `roles/group/risk` 生效（会被静默忽略）。
+
+### B.8.2 注册面清单（逐项打勾，作为 G4 出口）
+
+| # | 注册点 | 必须动作 | 漏了会怎样 |
+|---|---|---|---|
+| 1 | `.AgentWorkShop/prompts/host-tools.json` | 新增 5 条：`optimizer_capabilities / optimizer_solve / optimizer_status / optimizer_cancel / optimizer_plan_get`；`parameters.type='object'`；描述 ≥40 字；`binding_id` 放在 properties 内 | 不被 omp/MCP/pi 注入；不进 `tool_registry`；`/tools` 与 Channel 开关看不到 |
+| 2 | `server/services/workshop/agents/host-tool-bridge/tools/industrial.ts:20-90` | import handler 并加入 `INDUSTRIAL_HANDLERS` | 名字在 JSON 但 dispatch 报「未知工具」；`INDUSTRIAL_TOOL_NAMES` 不含它 → 不走 grant/verify |
+| 3 | `.../host-tool-bridge/dispatch.ts:119-150` | **新增显式分支**：`optimizer_*` 要求 `twinKind ∈ {aml_optimization, hybrid_twin}` 且存在有效 binding；`legacy`/观察面拒绝 | 全部 profile 门控被绕过（最高优先级） |
+| 4 | `.../dispatch.ts:148-150` | `optimizer_*` 在 `aml_training` 显式拒绝（训练面不求解） | 训练 Channel 可直调求解器 |
+| 5 | `.../dispatch.ts:153-168` | 本期无写动作：**不加**进写族；若未来加 `optimizer_apply`，必须进写族 + 直写集合 + 高危集合（三处同步） | 若误加写语义而未登记，观察面/训练面写保护被绕过 |
+| 6 | `.../agents/tool-classes.ts` | 本期不加 `LEAD_ONLY` / `HYBRID_TWIN_DIRECT_WRITE`；并在注释写明「optimizer 工具零写，故不入直写族」 | 误加会让 `writesBlocked` 与 observer 断言互相矛盾 |
+| 7 | `.../runtime/permission-scope.ts` | 本期**不加入** `HIGH_RISK_TOOL_NAMES`（solve 不写设备）；若加，必须同步 `tests/high-risk-tool-scope.test.ts:10-31` 的精确数组 | 加了不同步 → 单测必红；不加 → 普通成员可发起计算（可接受，因零写） |
+| 8 | `.../host-tool-bridge/catalog.ts:23-44` | 新增 `OPTIMIZER_TOOL_NAMES` 集合 | legacy/training 注入面带上新工具，互斥失效 |
+| 9 | `.../catalog.ts:185-229` | `aml_training` 分支排除 `OPTIMIZER_TOOL_NAMES`；`legacy` 分支排除；`aml_optimization`/`hybrid_twin` 保留；observer 白名单不含 | 注入面与执行面口径不一致 |
+| 10 | `.../host-tool-bridge/per-agent.ts:90-114` | **新增按绑定过滤**：`hostToolsForAgent` 在无有效 binding 时移除 `optimizer_solve/status/cancel/plan_get`（保留 `capabilities`）；多个 binding 时在描述中列出 bindingId | 所有成员都看到 solve；Agent 不知道可选 binding |
+| 11 | `.../agents/industrial/tool-verify.ts:201-271` | 扩展 `VerifySpec` 新增 `binding` 类别（现有 node/line/recipe/dataset/job/model/plan/scene 都不覆盖 `binding_id`），校验 binding 属于该 agent_instance 且 revision 匹配 | `binding_id` 不被预检 → 可越权引用他人绑定 |
+| 12 | `.../industrial/grant-guard.ts` | `resolveTargetLines` 增加「从 binding 解析目标 line」；`optimizer_*` 按只读要求 `readonly` | 无 node/line 参数时回退「全部绑定线」可能过严或过松 |
+| 13 | `.../tools/registry.ts:77-120` | `GROUP_BY_PREFIX` 增加 `optimizer → optimization`（否则 group 显示为原始前缀） | `/tools` 分组显示为 `optimizer` 裸串 |
+| 14 | `tests/host-tools-quality.test.ts:43-51` | 把 `optimizer_solve` 等加入 `BINDING_TOOLS`（描述必须含「绑定/授权/可见」） | 缺描述约束，Agent 不知道需绑定 |
+| 15 | `scripts/tool-registry-e2e.mjs:232,449` | 硬编码 `86` 改为 `87` 或 `HOST_TOOLS.length` | e2e 假失败 |
+| 16 | `README.md:31` / `README-zh.md:31` + 6 份审计文档 | 86 → 87（或标注为历史快照） | 文档与产品不一致；`docs:check` 口径冲突 |
+| 17 | `app/composables/workshop/event-blocks/constants.ts:7`、`app/composables/workshop/operation-events.ts:29-34` | 加 `optimizer_*` 的 `{icon, kind:'industrial'}` 与分类正则 | 聊天块样式降级为 `native`；运营事件归 `other` |
+
+**自动生效、无需逐项改**：`tool_registry` 启动同步（`server/plugins/workshop.ts:169` → `registry.ts:249-258`）、omp `set_host_tools`、MCP bridge `tools/list`、pi 每回合工具文件、`/tools` 页面与 Channel 工具设置页（服务端数据驱动）。**但**：`host-tools.json` 没有文件监听，**改完需重启实例**；只部署 `.output` 时需重新构建（`nuxt.config.ts:185-190` 复制 prompts）。
+
+### B.8.3 外部 MCP 网关（`aw mcp`）的边界
+
+`mcp/aw-mcp-server.mjs:693` 的 `TOOL_DEFS` 是**独立**的 38 条工具表，不随 host-tools.json 增长。**本期决定：`optimizer_*` 不进入外部 `aw mcp` 网关**，仅在 Agent 注入面（omp/MCP bridge/pi）可用；理由：外部网关是给非 Agent 程序用的粗粒度运维面，求解器需要 binding 上下文与逐次校验，暴露到外部会制造第二套授权口径。若要开放，需单独立项并复用同一 `manager.solve` 服务端校验。
+
+### B.8.4 per-agent 裁剪的实现约束（计划原本假设有、实际没有）
+
+`hostToolsForAgent` 当前返回 `RpcHostToolDefinition[]`，只追加描述、**不支持过滤**；`catalog-view.ts` 的可见性按 role/channel 计算，不按 agent。**决议**：
+- 在 `per-agent.ts` 内过滤（返回新数组），三条注入路径自动继承；不改变返回类型。
+- `/tools` 页面仍展示 role/channel 级可见性，并在描述中注明「需绑定优化器后才可调用」——**不新增 per-agent 可见性 API**（避免为 UI 透明化引入第二套权限视图）。
+- A18 增加断言：无绑定时 `hostToolsForAgent` 不含 `optimizer_solve`，有绑定时含且 `parameters.properties.binding_id` 存在。
+
+## B.9 G3 求解器：运行面补全（含 2 处前提纠正）
+
+### B.9.1 纠正
+
+1. **AML 作业并发默认是 2，不是 1**（`schema.json:127`、`config.yml:166`、`settings.ts:282`，范围 1–8）。Solver 若要独立预算，**必须自带池上限**，不能假设复用 AML 队列；也不要复用 `aml.job.maxConcurrent`（它只统计 AML 作业）。
+2. **现有 Python 侧没有任何长驻/流式先例**：`aml/python/*.py` 全是一次性脚本，协议行是 `##AML {json}`（`amlkit.py:75-83`、`aml_eval.py:27-34`），由 `job-orchestrator/process.ts:70-101` 解析。`runPython` 在 `job-orchestrator/process.ts:18`（不在 `python-runtime.ts`），**只支持启动→读 stdout→等退出，无 stdin、无请求 ID、无 timeout 参数**。因此 Worker 客户端是新代码。
+
+### B.9.2 可复用的运行面（写进 G3.1 的实现约束）
+
+| 复用项 | 位置 | 约束 |
+|---|---|---|
+| 子进程拉起 | `agents/adapters/line-spawn.ts:86-121` | 必须走它（`shell:false`、拒绝元字符、`.cmd` 固定包装）；**不要**直接 `child_process.exec` |
+| 杀进程树（Windows） | `agents/harness-process.ts:125-158` | `taskkill /pid <pid> /T /F`；**返回 true 只代表命令已受理，不代表已退出** |
+| 杀进程树（POSIX） | 同上 | 现有 `kill(-pid)` 因未 `detached:true` **不可靠**；G3 需为 Worker 设 `detached:true` + 组杀，或递归枚举子进程 |
+| 帧解析/超时范式 | `agents/adapters/stdio-jsonrpc.ts:83-191`、`omp-rpc-client/stdout.ts:12-40` | 可借鉴 pending 表、逐行分帧、dispose 超时；**不要**复用 JSON-RPC 语义 |
+| venv 与 jobEnv | `aml/python-runtime.ts:498-598` | 复用 venv；`jobEnv` 需扩展（见 B.9.4） |
+| 依赖与 marker | `python-runtime.ts:478-492` | `requirementsHash = sha256(requirements + indexUrl)[0:12]`；marker `.aml-ok-<hash>`；追加 osqp 会触发一次重装 |
+
+### B.9.3 Worker 协议与生命周期（G3.1 的可执行规格）
+
+- **传输**：stdin/stdout，NDJSON；**stdout 只允许协议帧**，所有日志走 stderr；**不引入新端口**（与原文一致）。
+- **帧**：请求 `{reqId, op:'solve'|'cancel'|'ping', payload}`；响应 `{reqId, ok, result|error, diag}`；事件 `{type:'ready'|'heartbeat'|'log'}`。每帧带 `protocolVersion`。
+- **不要复用 `##AML`**：Worker 不纳入 AML 运行态，自带请求级 `deadlineMs`；否则 600s 无 `##AML` 行会被 AML 看门狗误杀（`tick.ts:17-31`）。
+- **取消**：`op:'cancel'` + `reqId`；Worker 内以协作式取消（OSQP 无中断 API，需在迭代分段间检查）实现「A 取消不影响 B」；对不响应协作取消的长计算，才允许杀该任务独占进程——本版**每进程同时只跑 1 个 solve**，所以杀进程是安全兜底。
+- **退出确认**：`cancel`/超时 → 等 `exit` 事件；超过 5s 未退 → `taskkill /T /F`（Windows）或组杀（POSIX）→ 再等 2s；仍不退则记 `WORKER_KILL_FAILED` 告警并隔离该进程（标记不可复用，下次新建）。**验收要求 5s 内确认退出**（A5 延伸）。
+- **崩溃恢复**：Worker 异常退出 → 该进程在途请求标 `interrupted`（不自动重放参数试验）；池内补位，最多连续 3 次退避重启（1s/2s/4s），超过则池降级为「不可用」并在 `optimizer_capabilities` 明示。
+- **池**：`optimizer.solver.poolSize`（默认 1，范围 1–4）；每进程 `inFlight` 上限 1；`worker-client` 维护租约表，与 G1.5 的 `SolverAdapter` 代际 drain 对齐（版本热更新不替换在途进程）。
+
+### B.9.4 环境：依赖、线程与租约（G1.6/G3.6 的落地）
+
+- **依赖**：`aml/python/requirements.txt` 增加 `osqp==<锁定版本>`；G1 产出完整锁（当前只有 `scipy==1.14.1` 锁定，其余 `>=`）。安装仍走 `ensureVenv` 的 `uv pip install -r`——**它不带 `--upgrade`**，新增包可装、既有包不升级；若需升级必须在持独占锁时显式 `--upgrade-package`，**禁止用 `force:true`**（它会 `rmSync` 整个 venv，`python-runtime.ts:499-507`，会杀死在途 Worker）。
+- **capability probe**：求解前 `import osqp, scipy` 探针；缺依赖返回 `ENV_MISSING_DEP`，不要等请求崩。
+- **线程预算**：`jobEnv` 白名单**不透传** `OMP_NUM_THREADS/OPENBLAS_NUM_THREADS/MKL_NUM_THREADS/NUMEXPR_NUM_THREADS`。G3 新增 `solverEnv()`（复用 `jobEnv` 再注入线程变量与 `PYTHONHASHSEED`），**仍不继承 `process.env`**，避免泄漏 secrets。
+- **租约**：新增环境租约（G1.6）：训练/评估/Solver 持**读租约**；`ensureVenv`/安装/重建持**独占锁**（跨进程文件锁，现有只有进程内 Promise）；Windows 上重建前必须先停 Worker 并等待 exit（否则 `rmSync` 失败）。
+- **打包**：修改 requirements 后必须重新构建，使 `.output/.AgentWorkShop/aml-python/requirements.txt` 同步；仅部署 `.output` 的环境不会读源码树。
+- **marker**：建议把 `lock hash + Python 版本 + 平台` 纳入 marker（现只含 requirements+indexUrl），否则「依赖相同、解释器不同」会被误判就绪。
+
+### B.9.5 配置项登记（原文未提，漏了会被系统拒绝）
+
+若新增 `optimizer.solver.{poolSize,requestTimeoutMs,threads}` 等设置，**必须同时改五处**：`shared/config/schema.json`（描述符：类型/范围/默认/group/labelKey）、`config.yml`（默认值）、`server/services/workshop/settings.ts`（读取）、`i18n/locales/{zh-CN,en}.ts`（标签）、README/docs 的 119 计数。否则：设置页 PATCH 与 `aw config set` 返回「未知设置项」（`system-config/mutate.ts:20-25`），`scripts/check-docs-sync.mjs:337-383` 让 `docs:check` 失败。
+
+### B.9.6 G3 出口补充断言（并入 A5/A7 与 A22）
+
+- 取消 A 不影响 B（同池两进程）；超时进程 **5s 内 exit 事件确认**（不是「kill 已受理」）。
+- Worker 崩溃 → 在途请求 `interrupted`、无自动重放、池可补位；连续失败降级可观测。
+- `osqp` 缺失时返回 `ENV_MISSING_DEP`；`requirements` 变更后 marker 变化并触发一次性重装；持有租约时重建被拒（`ENV_BUSY`）。
+- 线程变量生效（求解进程内 `os.environ['OMP_NUM_THREADS']` 断言）+ 池上限生效（并发 2 时第 3 个排队）。
+- 打包断言：`.output/.AgentWorkShop/aml-python/requirements.txt` 含 osqp（构建后检查）。
+
+## B.10 验收补充（A21–A22）
+
+| ID | 必须通过的机器断言 |
+|---|---|
+| **A21 工具注册面完整性** | ① `HOST_TOOLS` 含 5 个 `optimizer_*` 且 `INDUSTRIAL_HANDLERS` 全部命中（缺一即「未知工具」断言失败）；② `tool_registry` 同步后 `builtin` 计数 = `HOST_TOOLS.length`，`definition_hash` 随 `parameters` 变化；③ `dispatch` 负例：legacy 与 `aml_training` Channel 直调 `optimizer_solve` → 明确拒绝（不是「未知工具」、不是静默放行）；④ 无绑定时 `hostToolsForAgent` 不含 `optimizer_solve`，有绑定时含且 schema 有 `binding_id`；⑤ 传他人 binding → `BINDING_NOT_OWNED`（`VerifySpec` 新类别生效）；⑥ 空表刷新仍成立（A18）；⑦ `scripts/tool-registry-e2e.mjs` 的计数断言改为动态值并通过。 |
+| **A22 求解器环境与生命周期** | ① 净环境 `ensureVenv` 装上 osqp，`probe` 通过，AML 与 Solver 报告同一解释器路径/marker hash；② 缺 osqp 时 `ENV_MISSING_DEP`；③ 持读租约时重建 → `ENV_BUSY`；④ 取消 A 不影响 B；超时请求 5s 内 exit 确认；⑤ Worker 崩溃 → `interrupted`、无重放、池补位；⑥ `OMP_NUM_THREADS` 等线程变量在求解进程内可见且 secrets 不可见（断言 `process.env.API_KEY` 类为空）；⑦ 池上限生效；⑧ `.output` 打包后 requirements 含 osqp。 |
+
+## B.11 修订记录（v3.1）
+
+- 2026-10-22：新增第三部分。基于两路定向核验（工具注册面 / Python 运行面），补齐 G4 的 17 项注册面、`dispatch` 门控规范、`binding_id` 的 `VerifySpec` 扩展、per-agent 裁剪与外部 MCP 边界；补齐 G3 的 Worker 协议、退出确认、环境租约、线程预算与配置登记；纠正「AML 并发=1」与「Python 有长驻先例」两处错误前提；新增 A21–A22。**范围与 G1–G6 顺序不变，A1–A20 不回退。**
