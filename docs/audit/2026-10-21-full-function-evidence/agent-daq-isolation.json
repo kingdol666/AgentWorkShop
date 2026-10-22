@@ -1,14 +1,14 @@
 {
-  "at": "2026-10-21T13:51:11.215Z",
-  "channelId": "149d77a5-31fe-40a4-8003-28827302931e",
+  "at": "2026-10-22T02:56:29.134Z",
+  "channelId": "b6f26276-59b3-4f2d-8225-2a52db0359c5",
   "lineBound": false,
-  "aNode": "dn-55e94e1a",
-  "bNode": "dn-c49ee8e3",
-  "agentA": "01c51a03-bcf5-4c0c-a654-1cd056c16a27",
-  "agentB": "4b903983-f98c-4442-86f1-8d5d8c203166",
+  "aNode": "dn-47ef1d2f",
+  "bNode": "dn-83898781",
+  "agentA": "6beb746c-8115-402a-9b7d-aa079f93ed0d",
+  "agentB": "421a0bc4-6201-46d0-b271-193d58dc1fea",
   "countA": 1,
   "countB": 1,
-  "cross": "工具调用被拒(引用校验,daq_query):node_id = 「dn-c49ee8e3」不在你的授权范围内(节点「scen-injection:daq:melt-pressure-pv」,归属产线 ln-eb33c591)。\n该节点不在你的绑定范围内。你的绑定节点:dn-55e94e1a。如需访问,请让用户或 lead 在数字孪生界面为你绑定该节点(可用 my_industrial_nodes 查看现有绑定);或改用上述范围内的节点重试。",
+  "cross": "工具调用被拒(引用校验,daq_query):node_id = 「dn-83898781」不在你的授权范围内(节点「scen-injection:daq:melt-pressure-pv」,归属产线 ln-f363d102)。\n该节点不在你的绑定范围内。你的绑定节点:dn-47ef1d2f。如需访问,请让用户或 lead 在数字孪生界面为你绑定该节点(可用 my_industrial_nodes 查看现有绑定);或改用上述范围内的节点重试。",
   "results": [
     {
       "id": "D0",
@@ -20,37 +20,37 @@
       "id": "D1",
       "name": "两个成员创建且有 token",
       "pass": true,
-      "detail": "01c51a03/4b903983"
+      "detail": "6beb746c/421a0bc4"
     },
     {
       "id": "D2",
       "name": "A 描述只含自己的节点",
       "pass": true,
-      "detail": "own=dn-55e94e1a other=dn-c49ee8e3"
+      "detail": "own=dn-47ef1d2f other=dn-83898781"
     },
     {
       "id": "D3",
       "name": "B 描述只含自己的节点",
       "pass": true,
-      "detail": "own=dn-c49ee8e3 other=dn-55e94e1a"
+      "detail": "own=dn-83898781 other=dn-47ef1d2f"
     },
     {
       "id": "D4",
       "name": "A 查询只覆盖 1 个绑定节点",
       "pass": true,
-      "detail": "数采数据查询结果(1 个节点):\n\n■ scen-injection:daq:melt-temp-pv(熔体/箱体温度)单位 ℃,正常量程 20~320℃,当前状态 ok,时间窗 2026-10-21T21:50 ~ 2026-10-21T21:51(降采样 15000ms)\n  当前活动批次 run=rr-69d143dc 配方「scen-injection-recipe-sybmc」(rc-bf879aab)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_b"
+      "detail": "数采数据查询结果(1 个节点):\n\n■ scen-injection:daq:melt-temp-pv(熔体/箱体温度)单位 ℃,正常量程 20~320℃,当前状态 ok,时间窗 2026-10-22T10:55 ~ 2026-10-22T10:56(降采样 15000ms)\n  当前活动批次 run=rr-6527abbd 配方「scen-injection-recipe-sz1pj」(rc-bc6aa018)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_b"
     },
     {
       "id": "D5",
       "name": "B 查询只覆盖 1 个绑定节点",
       "pass": true,
-      "detail": "数采数据查询结果(1 个节点):\n\n■ scen-injection:daq:melt-pressure-pv(熔体/箱体温度)单位 bar,正常量程 0~160bar,当前状态 ok,时间窗 2026-10-21T21:50 ~ 2026-10-21T21:51(降采样 15000ms)\n  当前活动批次 run=rr-69d143dc 配方「scen-injection-recipe-sybmc」(rc-bf879aab)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_da"
+      "detail": "数采数据查询结果(1 个节点):\n\n■ scen-injection:daq:melt-pressure-pv(熔体/箱体温度)单位 bar,正常量程 0~160bar,当前状态 ok,时间窗 2026-10-22T10:55 ~ 2026-10-22T10:56(降采样 15000ms)\n  当前活动批次 run=rr-6527abbd 配方「scen-injection-recipe-sz1pj」(rc-bc6aa018)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_da"
     },
     {
       "id": "D6",
       "name": "A 调 B 的节点被拒",
       "pass": true,
-      "detail": "工具调用被拒(引用校验,daq_query):node_id = 「dn-c49ee8e3」不在你的授权范围内(节点「scen-injection:daq:melt-pressure-pv」,归属产线 ln-eb33c591)。\n该节点不在你的绑定范围内。你的绑定节点:dn-55e94e1a。如需访问,请让用户或 lead 在数字孪生界面为你绑定该节点(可用 my_industrial_nodes 查看现有绑定);或改用上述范围内的节点重试。"
+      "detail": "工具调用被拒(引用校验,daq_query):node_id = 「dn-83898781」不在你的授权范围内(节点「scen-injection:daq:melt-pressure-pv」,归属产线 ln-f363d102)。\n该节点不在你的绑定范围内。你的绑定节点:dn-47ef1d2f。如需访问,请让用户或 lead 在数字孪生界面为你绑定该节点(可用 my_industrial_nodes 查看现有绑定);或改用上述范围内的节点重试。"
     }
   ]
 }

@@ -1,49 +1,49 @@
 {
-  "at": "2026-10-21T13:51:15.331Z",
+  "at": "2026-10-22T02:56:33.324Z",
   "base": "http://127.0.0.1:3470",
-  "channelId": "54466ec5-84c0-45b5-a6b8-58a89d2c20e3",
+  "channelId": "0d9e77c5-3355-4004-9c79-b779f92f3e87",
   "results": [
     {
       "id": "T0",
       "name": "lead/worker 就绪(含 token)",
       "pass": true,
-      "detail": "lead=de846e68 worker=f2993381"
+      "detail": "lead=6ce87505 worker=3f275d00"
     },
     {
       "id": "T1",
       "name": "lead→worker 信箱投递",
       "pass": true,
-      "detail": "消息 8c5f3d47… 已发送给 f2993381-2b4d-4f48-a8bf-2cd6d2d2e35e(priority=task)"
+      "detail": "消息 d907e651… 已发送给 3f275d00-f000-410c-b67e-ad72fa30000e(priority=task)"
     },
     {
       "id": "T2",
       "name": "worker 阻塞轮询收到任务(到信即醒)",
       "pass": true,
-      "detail": "未消费消息(1,已读即取):\n  [1/1] [from de846e68-4849-49f5-b763-015cd1567e47] [Team 协调实测] 请分析你绑定节点的最近数据,完成后回报结论摘要。任务编号 TC-mvi67b8d"
+      "detail": "未消费消息(2,已读即取):\n  [1/2] [from ?] [异步回执] 知识库任务完成(tool=kb_agent, job=kbt_mvixuzv6_bd520789, 结果=完成)\n已按 QDCVR 流程完成检索（改写 → 全库向量广撒网 top_k=30 → 经验优先检索 → aw-industrial 定"
     },
     {
       "id": "T3",
       "name": "worker 结果回报投递",
       "pass": true,
-      "detail": "消息 8e136d4a… 已发送给 de846e68-4849-49f5-b763-015cd1567e47(priority=task)"
+      "detail": "消息 ddba8574… 已发送给 6ce87505-763d-4361-a083-19d91ce27e13(priority=task)"
     },
     {
       "id": "T4",
       "name": "lead 收到 worker 回执(闭环)",
       "pass": true,
-      "detail": "未消费消息(1,已读即取):\n  [1/1] [from f2993381-2b4d-4f48-a8bf-2cd6d2d2e35e] [Team 协调实测·回执] 分析完成:绑定节点数据窗口内均值/极差已核对,结论=窗口内无越限,建议保持当前配方。"
+      "detail": "未消费消息(1,已读即取):\n  [1/1] [from 3f275d00-f000-410c-b67e-ad72fa30000e] [Team 协调实测·回执] 分析完成:绑定节点数据窗口内均值/极差已核对,结论=窗口内无越限,建议保持当前配方。"
     },
     {
       "id": "T5",
       "name": "lead 派发结构化任务",
       "pass": true,
-      "detail": "子任务 320aaab3-c4b9-4646-bf7c-74db9cedac12 已创建并指派 → f2993381-2b4d-4f48-a8bf-2cd6d2d2e35e(父任务 无,标题: [Team 实测] 数据核对任务)"
+      "detail": "子任务 3c5c8280-ab1b-460f-8ac6-434b7facdb15 已创建并指派 → 3f275d00-f000-410c-b67e-ad72fa30000e(父任务 无,标题: [Team 实测] 数据核对任务)"
     },
     {
       "id": "T6",
       "name": "worker 任务队列出现派发任务",
       "pass": true,
-      "detail": "我的任务队列(worker):\n执行中: (无)\n待执行(0,FIFO):\n已完成(1):\n  320aaab3-c4b9-4646-bf7c-74db9cedac12 [COMPLETED] \"[Team 实测] 数据核对任务\" progress=100%"
+      "detail": "我的任务队列(worker):\n执行中: (无)\n待执行(0,FIFO):\n已完成(1):\n  3c5c8280-ab1b-460f-8ac6-434b7facdb15 [COMPLETED] \"[Team 实测] 数据核对任务\" progress=100%"
     }
   ]
 }
