@@ -724,6 +724,12 @@ Target shape: **single instance on an intranet host, TLS terminated by a reverse
 The server intentionally ships no TLS listener of its own — put caddy/nginx in front (they
 also give you HTTP→HTTPS redirect, access logs and a second rate-limit layer).
 
+> [!IMPORTANT]
+> **One instance per config root.** Multiple instances pointing at the same `.AgentWorkShop`
+> (repo or home) fight over plugin KV files and SQLite writes — on Windows this shows up as
+> `EPERM` rename warnings. Run parallel instances only with **separate `AW_HOME` config roots**
+> (the same isolation the E2E suites use).
+
 ```bash
 # 1) build + run (prod entry refuses to boot without .output)
 pnpm build

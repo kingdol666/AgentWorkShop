@@ -712,6 +712,11 @@ cd docs/site && npx vitepress build      # 生产构建 → .vitepress/dist
 目标形态：**内网单实例 + 反向代理终结 TLS**。服务本身刻意不做 TLS 监听 ——
 由 caddy/nginx 在前面终结（顺带获得 HTTP→HTTPS 跳转、访问日志与第二层限流）。
 
+> [!IMPORTANT]
+> **一个配置根只跑一个实例。** 多个实例指向同一 `.AgentWorkShop`（repo 或 home）会争抢
+> 插件 KV 文件与 SQLite 写入 —— Windows 上表现为 `EPERM` rename 告警刷屏。并行实例必须用
+> **独立 `AW_HOME` 配置根隔离**（与 E2E 套件的隔离方法论一致）。
+
 ```bash
 # 1) 构建并启动(缺 .output 产物时生产入口会拒启)
 pnpm build

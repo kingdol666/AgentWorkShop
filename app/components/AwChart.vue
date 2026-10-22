@@ -13,7 +13,7 @@ import {
   TooltipComponent,
 } from 'echarts/components'
 import VChart from 'vue-echarts'
-import { computed } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import type { PropType } from 'vue'
 import type { EChartsOption } from 'echarts'
 import type { SetOptionOpts } from 'echarts/core'
@@ -68,8 +68,27 @@ const merged = computed<EChartsOption>(() => ({
  *  - `replaceMerge: ['series']` → 单独对 series 做「替换式合并」,补上 notMerge:false 的短板:
  *    series 数量**减少**时(如筛选后趋势线变少),旧 series 必须被移除,否则会残留幽灵曲线;
  *  - `lazyUpdate: true` → 同一 tick 内多次 setOption 合并到下一帧渲染,避免重复绘制。
+ *
+ * lazyUpdate 的边界(2026-10-22 看板卡片不渲染 bug):lazy 更新靠 rAF 落笔 —— 标签页
+ * 隐藏/后台时 rAF 停摆,绘制永不发生(canvas 层甚至不创建)。「先挂空 option、数据到达
+ * 后经 watcher 更新」的消费者(看板卡)对此零兜底;而「数据就绪才 v-if 挂载」的页面
+ * (/data、/studio)靠 mount 时的同步 resize 掩盖了问题。所以 lazyUpdate 必须随可见性
+ * 收敛:可见才懒,不可见同步画(2026-10-22-eda-ui-fix-plan F1a)。
  */
-const updateOptions: SetOptionOpts = { notMerge: false, replaceMerge: ['series'], lazyUpdate: true }
+const isVisible = ref(typeof document === 'undefined' || document.visibilityState === 'visible')
+
+function onVisibilityChange(): void {
+  isVisible.value = document.visibilityState === 'visible'
+}
+
+onMounted(() => document.addEventListener('visibilitychange', onVisibilityChange))
+onBeforeUnmount(() => document.removeEventListener('visibilitychange', onVisibilityChange))
+
+const updateOptions = computed<SetOptionOpts>(() => ({
+  notMerge: false,
+  replaceMerge: ['series'],
+  lazyUpdate: isVisible.value,
+}))
 </script>
 
 <template>

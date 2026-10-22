@@ -214,9 +214,17 @@ import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import type { EChartsOption } from 'echarts'
 import { apiFetch } from '@/app/composables/workshop/apiClient'
 import { apiErrorMessage } from '@/app/utils/api-error'
+import { buildTrendOption, type TrendRefLine, type TrendSeries, type TrendYEntry } from '@/app/utils/chart-trend'
 
 interface GridPos { chartId: string, x: number, y: number, w: number, h: number }
-interface ChartRow { id: string, title: string, vizType: string, datasource: { lineId?: string, nodeIds?: string[], preset?: string, agg?: string }, version: number }
+interface ChartRow {
+  id: string
+  title: string
+  vizType: string
+  version: number
+  datasource: { lineId?: string, nodeIds?: string[], runId?: string | null, preset?: string, agg?: string }
+  encoding?: { y?: TrendYEntry[], refLines?: TrendRefLine[], golden?: string[] }
+}
 interface BoardDetail {
   dashboard: { id: string, title: string, layout: GridPos[], filters: Record<string, unknown>, version: number }
   charts: Array<{ chart: ChartRow | null, gridPos: GridPos | null, inaccessible: boolean }>
@@ -283,19 +291,16 @@ async function queryCard(ch: ChartRow): Promise<void> {
     p.set('from', String(from))
     p.set('to', String(to))
     p.set('agg', ds.agg ?? 'avg')
-    const r = await apiFetch<{ series: Array<{ nodeId: string, name: string, unit: string, points: Array<{ at: number, v: number }> }> }>({ base: `/api/workshop/daq/query?${p.toString()}`, retries: 0 })
-    const series = r.series ?? []
-    optionsStore.value.set(ch.id, {
-      chartId: ch.id,
-      option: {
-        tooltip: { trigger: 'axis' },
-        legend: { type: 'scroll' },
-        grid: { left: 48, right: 16, top: 16, bottom: 22 },
-        xAxis: { type: 'time' },
-        yAxis: { type: 'value', scale: true },
-        series: series.map(s => ({ name: s.name, type: 'line', showSymbol: false, data: s.points.map(pt => [pt.at, pt.v]) })),
-      } as EChartsOption,
+    // F2:保存图表携带的 run 维度必须随行 —— 按批次建的图在看板只含该批样本
+    if (ds.runId) p.set('run_id', ds.runId)
+    const r = await apiFetch<{ series: TrendSeries[] }>({ base: `/api/workshop/daq/query?${p.toString()}`, retries: 0 })
+    // F2/F3:与 /studio 共用同一 trend option 构建器(双轴按单位、紧凑防重叠)
+    const option = buildTrendOption({
+      series: r.series ?? [],
+      refLines: ch.encoding?.refLines ?? [],
+      compact: true,
     })
+    optionsStore.value.set(ch.id, { chartId: ch.id, option })
     optionsStore.value = new Map(optionsStore.value)
   }
   catch (e) {

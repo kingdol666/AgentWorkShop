@@ -395,17 +395,45 @@ export function createPluginContext(opts) {
     }
   })()
   let kvFlushTimer = null
-  const flushKvNow = () => {
+  // 多实例共享同一配置根时(不支持也不推荐的部署形态),kv.json 的 tmp+rename 会与另一
+  // 实例互斥(Windows EPERM/EBUSY)。对这两类瞬态冲突做有限退避重试;仍失败则**聚合限频**
+  // 告警 —— 逐条 warn 在共享根场景每分钟可刷上百条(2026-10-22-eda-ui-fix-plan F4b)。
+  const KV_RETRY_DELAYS_MS = [50, 200, 800]
+  let kvWarnCount = 0
+  let kvLastWarnAt = 0
+  const kvWarnRateLimited = (message) => {
+    kvWarnCount += 1
+    const now = Date.now()
+    if (now - kvLastWarnAt < 300_000) return
+    kvLastWarnAt = now
+    const aggregated = kvWarnCount
+    kvWarnCount = 0
+    console.warn(`[sdk] kv 落盘持续失败(聚合窗口内 ${aggregated} 次,含重试):`, message)
+  }
+  // 'done' = 成功或已终局告警;'retry' = 瞬态冲突,可退避重试
+  const flushKvAttempt = (attempt) => {
     try {
       mkdirSync(kvDir, { recursive: true })
-      const tmp = `${kvFile}.${process.pid}.tmp`
+      // tmp 名带时间戳:防抖重试与新一轮 flush 并发时不再互相覆盖同名 tmp
+      const tmp = `${kvFile}.${process.pid}.${Date.now()}.tmp`
       writeFileSync(tmp, `${JSON.stringify(kvState, null, 2)}\n`, 'utf8')
       renameSync(tmp, kvFile)
+      return 'done'
     }
     catch (err) {
-      // 磁盘异常不阻断插件,但不再静默:持久化失败至少要可见
-      console.warn('[sdk] kv 落盘失败:', err?.message ?? err)
+      const transient = err?.code === 'EPERM' || err?.code === 'EBUSY'
+      if (transient && attempt < KV_RETRY_DELAYS_MS.length - 1) return 'retry'
+      kvWarnRateLimited(err?.message ?? err)
+      return 'done'
     }
+  }
+  const scheduleKvRetry = (attempt) => {
+    setTimeout(() => {
+      if (flushKvAttempt(attempt) === 'retry') scheduleKvRetry(attempt + 1)
+    }, KV_RETRY_DELAYS_MS[attempt])
+  }
+  const flushKvNow = () => {
+    if (flushKvAttempt(0) === 'retry') scheduleKvRetry(1)
   }
   const kvFlush = () => {
     clearTimeout(kvFlushTimer)
