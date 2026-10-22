@@ -1,0 +1,59 @@
+{
+  "at": "2026-10-22T04:31:01.464Z",
+  "base": "http://127.0.0.1:3470",
+  "shots": [
+    "ui-1-plugins-diag-panel.png",
+    "ui-2-aml-training.png",
+    "ui-3-analysis-ledger.png"
+  ],
+  "results": [
+    {
+      "id": "U1",
+      "name": "/plugins 页可达",
+      "pass": true,
+      "detail": "len=1874"
+    },
+    {
+      "id": "U2",
+      "name": "诊断面板挂载(诊断记录表头)",
+      "pass": true,
+      "detail": "诊断"
+    },
+    {
+      "id": "U3",
+      "name": "面板含诊断服务状态渲染",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "U4",
+      "name": "/aml 页可达且五区块(数据集/作业/模型/Python 运行时)",
+      "pass": true,
+      "detail": "len=2400"
+    },
+    {
+      "id": "U5",
+      "name": "本轮真实数据集/模型在册渲染(轮询 20s)",
+      "pass": true,
+      "detail": "ds=true mdl=true"
+    },
+    {
+      "id": "U6",
+      "name": "Python 运行时状态展示",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "U7",
+      "name": "/analysis 台账渲染(含 ar- 记录)",
+      "pass": true,
+      "detail": "len=709"
+    },
+    {
+      "id": "U8",
+      "name": "无页面级 JS 崩溃",
+      "pass": true,
+      "detail": ""
+    }
+  ]
+}

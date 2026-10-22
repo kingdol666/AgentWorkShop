@@ -1,0 +1,96 @@
+{
+  "at": "2026-10-22T05:17:16.462Z",
+  "base": "http://127.0.0.1:3470",
+  "results": [
+    {
+      "id": "I1",
+      "name": "平台代理 /health 200 且诊断服务连通+token 被接受",
+      "pass": true,
+      "detail": "remote={\"status\":\"ok\",\"activeRuns\":0,\"auth\":\"ok\"} token={\"configured\":true,\"accepted\":true}"
+    },
+    {
+      "id": "I2",
+      "name": "快照导出产线窗口 CSV(与 diag_run 同链)",
+      "pass": true,
+      "detail": "rows=159 nodes=14 err= path=shots/snap-ln-758ea177-1792645968188.csv"
+    },
+    {
+      "id": "I3",
+      "name": "IDD 任务受理(harness=mock,quick-screen)",
+      "pass": true,
+      "detail": "status=200 run=f4a45bde ack=running"
+    },
+    {
+      "id": "I4",
+      "name": "mock 引擎分析完成(5min 窗内)",
+      "pass": true,
+      "detail": "final=completed"
+    },
+    {
+      "id": "I5",
+      "name": "IDD 任务结果含分析产出(报告/结论路径)",
+      "pass": true,
+      "detail": "{\"summary\":\"Conclusion\",\"verdict\":\"ENDORSED\",\"score\":96,\"report_md_path\":\"D:\\\\codes\\\\myskills\\\\idd-doe-impl\\\\workspace\\\\diagnostic-runs\\\\1792645968290_ln_758ea177_reg\\\\report.md\",\"artifacts\":{\"contrac"
+    },
+    {
+      "id": "I6",
+      "name": "/report 代理回诊断报告(经 IDD workspace 解析)",
+      "pass": true,
+      "detail": "len=497 run_name=1792645968290_ln_758ea177_reg err= head={\"name\":\"1792645968290_ln_758ea177_reg\",\"content\":\"# 工业深度诊断报"
+    },
+    {
+      "id": "R1",
+      "name": "kb_agent 异步入库返回 task_id",
+      "pass": true,
+      "detail": "已提交知识库异步任务(后台执行中,无需等待):\ntask_id=kbt_mvj34lli_813b933c\n完成后平台会自动回执到你的信箱并唤醒你;空闲时也可调用 kb_agent_status(task_id, wai"
+    },
+    {
+      "id": "R2",
+      "name": "入库任务完成(长轮询 12min 窗;向量化+索引在知识库侧)",
+      "pass": true,
+      "detail": "任务 kbt_mvj34lli_813b933c 已完成。知识库 Agent 结果:\n\n已完成入库并通过全部质量门控。\n\n## 执行过程\n\n**Pre-Flight**：kb-mcp 已连接，后端 healthy（vector ready / embedding available / MinerU"
+    },
+    {
+      "id": "R3",
+      "name": "检索命中并引用入库内容(0.09g 锚点)",
+      "pass": true,
+      "detail": "done; hit=true; 任务 kbt_mvj381f5_1aaab207 已完成。知识库 Agent 结果:\n\n## 检索结果\n\n**查询改写**：`回归锚点 保压压力 克重均值 上升` → `保压压力 克重均值 上升 回归锚点 基准对比 工艺参数影响成品克重`\n**检索路径**：`kb_search_vector`（全库，top_k=30，阈值 0.35，balance_kbs="
+    },
+    {
+      "id": "A1",
+      "name": "AML runtime 探测(python/venv)",
+      "pass": true,
+      "detail": "{runtime:{python:{ok:true,version:Python 3.12.7},venvReady:true,amlRoot:C:\\\\Users\\\\87287\\\\AppData\\\\Local\\\\Temp\\\\aw-scenario-suite-MqGdXY\\\\aml,q"
+    },
+    {
+      "id": "A2",
+      "name": "已关账批次 ≥4(byRun 三切分底料;不足自动补开停线循环)",
+      "pass": true,
+      "detail": "closed=4 cycles=0"
+    },
+    {
+      "id": "A3",
+      "name": "数据集构建(真实时序对齐+切分)",
+      "pass": true,
+      "detail": "ds=ds-mvj3a0v1-9fncck rows={\"builtAt\":\"2026-10-22T13:17:06.400+08:00\",\"nodeSummaries\":[{\"nodeId\":\"dn-50ac6659\",\"role\":\"target\","
+    },
+    {
+      "id": "A4",
+      "name": "训练作业受理(带 code,真实 Python)",
+      "pass": true,
+      "detail": "job=job-mvj3a0vn-bdh3ki status=queued err="
+    },
+    {
+      "id": "A5",
+      "name": "训练完成(10min 窗)",
+      "pass": true,
+      "detail": "status=done model=mdl-mvj3a0vn-bdh3ki err="
+    },
+    {
+      "id": "A6",
+      "name": "模型注册且指标有限",
+      "pass": true,
+      "detail": "label=scen-injection-product-svtas/scen-injection-recipe-svtas·质量预 finiteMetrics=31 raw={\"agent\":{\"kind\":\"mlp_one_step_baseline\",\"epochs\":60,\"train_loss_last\":0.000023739876914948317,\"val_loss_best\""
+    }
+  ]
+}
