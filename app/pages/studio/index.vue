@@ -452,18 +452,15 @@ import { computed, onMounted, ref, watch } from 'vue'
 import type { EChartsOption } from 'echarts'
 import { apiFetch } from '@/app/composables/workshop/apiClient'
 import { apiErrorMessage } from '@/app/utils/api-error'
+import { buildTrendOption, type TrendGoldenBin as GoldenBin, type TrendSeries as Series, type TrendYEntry as YEntry, type TrendRefLine as RefLine } from '@/app/utils/chart-trend'
 
 const VIZ_TYPES = ['trend', 'bar', 'scatter', 'kpi', 'table', 'histogram'] as const
 type VizType = typeof VIZ_TYPES[number]
 
 interface LineLite { id: string, name: string }
 interface DaqNodeLite { id: string, name: string, unit: string, lineId: string, min?: number, max?: number }
-interface YEntry { nodeId: string, name: string, unit: string, axis: 'L' | 'R' }
-interface RefLine { value: number, label: string }
-interface Series { nodeId: string, name: string, unit: string, points: Array<{ at: number, v: number }> }
 interface ChartRow { id: string, title: string, vizType: VizType, datasource: Record<string, unknown>, encoding: Record<string, unknown>, options: Record<string, unknown>, lineId: string | null, visibility: string, version: number }
 interface RunRow { id: string, outcome: string, startedAt: string, endedAt: string | null }
-interface GoldenBin { phase: number, mean: number | null, std: number | null, min: number | null, max: number | null }
 
 const { t } = useI18n()
 const route = useRoute()
@@ -564,6 +561,10 @@ const tableRows = computed(() => {
 
 const chartOption = computed(() => {
   if (!series.value.length) return null
+  // 趋势线走共享构建器(F2:与看板卡单一实现 —— 双轴/golden/参考线/防重叠语义只此一份)
+  if (vizType.value === 'trend') {
+    return buildTrendOption({ series: series.value, refLines: refLines.value, golden: { cache: goldenCache.value, on: goldenOn.value } })
+  }
   const units: string[] = []
   for (const s of series.value) if (s.unit && !units.includes(s.unit)) units.push(s.unit)
   const axisOf = (u: string) => Math.min(units.indexOf(u), 1)
@@ -598,39 +599,11 @@ const chartOption = computed(() => {
       })
     }
   }
-  else {
-    seriesOut.push(...series.value.map(s => ({
-      name: s.name, type: 'line', yAxisIndex: axisOf(s.unit), showSymbol: false,
-      data: s.points.map(p => [p.at, p.v]),
-    })))
-  }
-  // golden 相位叠加(0-100% 轴):均值实线 + ±std 隐形堆叠面积带
-  if (vizType.value === 'trend') {
-    for (const s of series.value) {
-      const bins = goldenCache.value.get(s.nodeId)
-      if (!bins || !goldenOn.value.has(s.nodeId)) continue
-      const mk = (pick: (b: GoldenBin) => number | null) => bins.map(b => [Number((b.phase * 100).toFixed(2)), pick(b)])
-      seriesOut.push({ name: `${s.name} G`, type: 'line', xAxisIndex: 1, yAxisIndex: axisOf(s.unit), showSymbol: false, lineStyle: { type: 'dashed', width: 2 }, data: mk(b => b.mean) })
-      seriesOut.push({ name: `${s.name} G+`, type: 'line', xAxisIndex: 1, yAxisIndex: axisOf(s.unit), showSymbol: false, stack: `g-${s.nodeId}`, lineStyle: { opacity: 0 }, data: mk(b => (b.mean != null && b.std != null ? b.mean + b.std : null)) })
-      seriesOut.push({ name: `${s.name} G-`, type: 'line', xAxisIndex: 1, yAxisIndex: axisOf(s.unit), showSymbol: false, stack: `g-${s.nodeId}`, lineStyle: { opacity: 0 }, areaStyle: { opacity: 0.12 }, data: mk(b => (b.mean != null && b.std != null ? b.mean - b.std : null)) })
-    }
-  }
-  const xAxes: Record<string, unknown>[] = [{ type: 'time' }]
-  const hasGolden = vizType.value === 'trend' && series.value.some(s => goldenOn.value.has(s.nodeId) && goldenCache.value.has(s.nodeId))
-  if (hasGolden) xAxes.push({ type: 'value', min: 0, max: 100, name: '%' })
-  // 参考线(挂在第一个可用 y 轴)
-  if (refLines.value.length && seriesOut.length) {
-    (seriesOut[0] as Record<string, unknown>).markLine = {
-      silent: true,
-      symbol: 'none',
-      data: refLines.value.map(r => ({ yAxis: r.value, label: { formatter: `${r.label} ${r.value}` }, lineStyle: { type: 'dashed', color: '#b3403a' } })),
-    }
-  }
   return {
     tooltip: { trigger: 'axis' },
     legend: { type: 'scroll' },
     grid: { left: 56, right: units.length > 1 ? 56 : 24, top: 32, bottom: 64 },
-    xAxis: xAxes,
+    xAxis: [{ type: 'time', axisLabel: { hideOverlap: true } }],
     yAxis: yAxes,
     dataZoom: [{ type: 'inside' }, { type: 'slider', height: 16, bottom: 10 }],
     toolbox: { right: 8, top: 0, feature: { saveAsImage: { title: 'PNG' } } },

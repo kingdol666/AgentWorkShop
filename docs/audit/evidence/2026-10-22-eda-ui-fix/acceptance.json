@@ -1,0 +1,60 @@
+{
+  "date": "2026-10-22T12:51:41.712Z",
+  "base": "http://127.0.0.1:3400",
+  "apiPts": [
+    942,
+    942
+  ],
+  "results": [
+    {
+      "id": "A0",
+      "name": "查询 API 采样就绪(两节点 ≥5 点)",
+      "pass": true,
+      "detail": "pts=942,942"
+    },
+    {
+      "id": "A1",
+      "name": "看板卡片 canvas 存在且画出数据线(像素>100)",
+      "pass": true,
+      "detail": "palette=9405 hidden=visible"
+    },
+    {
+      "id": "A1b",
+      "name": "看板卡 series 点数 = API 点数",
+      "pass": true,
+      "detail": "inst=[942,942] api=[942,942]"
+    },
+    {
+      "id": "A2",
+      "name": "看板双轴( yAxis 数 = 单位数 )",
+      "pass": true,
+      "detail": "yAxis=2 units=2"
+    },
+    {
+      "id": "A3",
+      "name": "run 维度:卡片渲染且点数 = run 查询点数",
+      "pass": true,
+      "detail": "card=[2,2] run=[2,2]"
+    },
+    {
+      "id": "A4",
+      "name": "/studio 趋势图回归(像素>100)",
+      "pass": true,
+      "detail": "palette=100011 debug={\"nodeRows\":6,\"pageErr\":[],\"daqNodes\":6} pageErrors=[]"
+    },
+    {
+      "id": "A6",
+      "name": "F3 轴名间距配置存在(util nameGap + hideOverlap)",
+      "pass": true,
+      "detail": "nameGap/hideOverlap in builder"
+    },
+    {
+      "id": "A5",
+      "name": "/data 查询图回归(像素>100)",
+      "pass": true,
+      "detail": "palette=32944"
+    }
+  ],
+  "pass": 8,
+  "total": 8
+}

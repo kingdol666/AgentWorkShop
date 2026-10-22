@@ -436,7 +436,7 @@ const chartOption = computed(() => {
     tooltip: { trigger: 'axis' },
     legend: { data: legend, type: 'scroll' },
     grid: { left: 56, right: units.length > 1 ? 56 : 24, top: 36, bottom: 48 },
-    xAxis: { type: 'time' },
+    xAxis: { type: 'time', axisLabel: { hideOverlap: true } },
     yAxis: yAxes,
     dataZoom: [{ type: 'inside' }, { type: 'slider', height: 18, bottom: 8 }],
     series: chartSeries,
