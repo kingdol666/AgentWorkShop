@@ -15,7 +15,7 @@ import { getOntologyRepo, parseDraftRow } from '../../ontology/repo'
 import type { Actor } from '../../ontology/ontology.service'
 import {
   compileDraft, createDraft, getDraft, requestRuleApproval, sceneSubgraph,
-  updateDraft, validateDraft, compareVersions, getVersion, listVersions,
+  updateDraft, validateDraft, compareVersions, getVersion, listVersions, autoFixDraft,
 } from '../../ontology/ontology.service'
 
 import type { OntologyDraftDoc } from '../../ontology/contracts'
@@ -135,6 +135,29 @@ export async function toolOntologyDraftValidate(agentId: string, args: Record<st
       ...warnings.slice(0, 10).map(i => `- [${i.code}] ${i.path}: ${i.message}`),
       bindingFailures.length ? `绑定失败 ${bindingFailures.length}:` : '',
       ...bindingFailures.slice(0, 10).map(f => `- [${f.code}] ${f.message}`),
+    ].filter(Boolean).join('\n'))
+  }
+  catch (err) {
+    return fail((err as Error).message)
+  }
+}
+
+/** 3b) 自动修复草稿(安全规范化;证据不伪造,平台绑定漂移仍如实报告) */
+export async function toolOntologyDraftAutofix(agentId: string, args: Record<string, unknown>): Promise<HostToolResult> {
+  const draftId = stringArg(args, 'draft_id')
+  if (!draftId) return fail('ontology_draft_autofix 需要 draft_id')
+  try {
+    const detail = autoFixDraft(draftId, agentActor(agentId))
+    const errors = detail.validation.issues.filter(i => i.severity === 'error')
+    return ok([
+      detail.fixes.length
+        ? `草稿 ${draftId} 自动修复 ${detail.fixes.length} 项(rev=${detail.draft.rev}):`
+        : `草稿 ${draftId} 无需修复(rev=${detail.draft.rev})。`,
+      ...detail.fixes.slice(0, 20).map(f => `- [${f.code}] ${f.path}: ${f.message}`),
+      `修复后校验:${detail.validation.ok ? '通过' : `未通过(${errors.length} 个错误)`}${detail.bindings.ok ? '' : `;绑定失败 ${detail.bindings.failures.length} 项(平台侧,需核对真实节点/配方)`}`,
+      errors.length ? '剩余错误:' : '',
+      ...errors.slice(0, 10).map(i => `- [${i.code}] ${i.path}: ${i.message}`),
+      detail.validation.ok ? '下一步:ontology_draft_validate 复核 → ontology_publish_propose 提请发布。' : '剩余错误需补充真实证据/实体后再修复,不能由自动修复伪造。',
     ].filter(Boolean).join('\n'))
   }
   catch (err) {

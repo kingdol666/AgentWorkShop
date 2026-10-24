@@ -13,6 +13,7 @@ export interface ProfileRow {
   id: string
   version: number
   name: string
+  description: string
   modelRef: string
   modelArtifactHash: string
   modelArtifactKind: string
@@ -34,7 +35,7 @@ export interface ProfileRow {
   updatedAt: string
 }
 
-const COLS = `id, version, name, model_ref AS modelRef, model_artifact_hash AS modelArtifactHash,
+const COLS = `id, version, name, description, model_ref AS modelRef, model_artifact_hash AS modelArtifactHash,
   model_artifact_kind AS modelArtifactKind, model_interface AS modelInterface,
   problem_template_ref AS problemTemplateRef, problem_config_json AS problemConfigJson,
   process_spec_ref AS processSpecRef,
@@ -62,11 +63,11 @@ export function createProfileRepo(db: DatabaseSync) {
         return existing
       }
       db.prepare(`INSERT INTO optimizer_profiles
-        (id, version, name, model_ref, model_artifact_hash, model_artifact_kind, model_interface,
+        (id, version, name, description, model_ref, model_artifact_hash, model_artifact_kind, model_interface,
          problem_template_ref, problem_config_json, process_spec_ref, solver_ref, solver_version, condition_ids_json,
          status, owner_user_id, problem_ir_hash, content_hash, ontology_refs_json, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-        .run(profile.id, profile.version, profile.name ?? '', profile.modelRef.modelId, profile.modelRef.artifactHash,
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+        .run(profile.id, profile.version, profile.name ?? '', profile.description ?? '', profile.modelRef.modelId, profile.modelRef.artifactHash,
           profile.modelRef.artifactKind, profile.modelRef.modelInterface, profile.problemTemplateRef,
           JSON.stringify(profile.problemConfig ?? {}), profile.processSpecRef ?? '', profile.solverRef, profile.solverVersion,
           JSON.stringify(profile.conditionIds ?? []), profile.status, ownerUserId, profile.problemIrHash ?? '', contentHash,
@@ -146,6 +147,7 @@ export function parseProfileRow(row: ProfileRow): OptimizationProfile {
     id: row.id,
     version: row.version,
     name: row.name,
+    description: row.description || undefined,
     modelRef: {
       modelId: row.modelRef,
       artifactHash: row.modelArtifactHash,

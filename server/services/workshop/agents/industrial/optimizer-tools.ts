@@ -233,6 +233,8 @@ export async function toolOptimizerProfilePropose(agentId: string, args: Record<
       templateRef: args.template_ref as Parameters<typeof proposeProfileAdoption>[0]['templateRef'],
       solverRef: args.solver_ref as Parameters<typeof proposeProfileAdoption>[0]['solverRef'],
       reason,
+      profileName: str(args.profile_name),
+      profileDescription: str(args.profile_description),
     })
 
     if (!result.decision.approved) {

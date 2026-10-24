@@ -460,6 +460,22 @@ export function createAmlRepo(db: DatabaseSync) {
       updateNote(id: string, note: string): void {
         db.prepare('UPDATE aml_models SET note = ? WHERE id = ?').run(note, id)
       },
+      /** 人读身份维护(Agent/REST 共用):只改 label/description,不改阶段与工件 */
+      updateIdentity(id: string, patch: { label?: string, description?: string }): void {
+        const sets: string[] = []
+        const args: unknown[] = []
+        if (patch.label !== undefined) {
+          sets.push('label = ?')
+          args.push(patch.label.slice(0, 200))
+        }
+        if (patch.description !== undefined) {
+          sets.push('description = ?')
+          args.push(patch.description.slice(0, 500))
+        }
+        if (!sets.length) return
+        args.push(id)
+        db.prepare(`UPDATE aml_models SET ${sets.join(', ')} WHERE id = ?`).run(...(args as never[]))
+      },
     },
   }
 }

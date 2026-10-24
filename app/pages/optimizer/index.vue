@@ -18,7 +18,7 @@ const notice = ref('')
 const busy = ref(false)
 
 interface SpecRow { id: string, version: number, status: string, lineId: string, recipeId: string, contentHash: string, spec?: Record<string, unknown> }
-interface ProfileRow { id: string, version: number, status: string, modelRef: string, solverRef: string, profile?: Record<string, unknown> }
+interface ProfileRow { id: string, version: number, name?: string, description?: string, status: string, modelRef: string, solverRef: string, profile?: Record<string, unknown> }
 interface BindingRow { id: string, channelId: string, channelAgentId: string, profileVersion: string, mode: string, revision: number }
 interface RunRow { id: string, status: string, profileId: string, problemIrHash: string, startedAt: string, recommendation?: { status: string, statusLabel: string, validUntil: string } | null }
 
@@ -39,7 +39,7 @@ const specForm = reactive({
   runIds: '', conditionId: 'default', purpose: 'mpc_surrogate' as 'mpc_surrogate' | 'quality_predict',
 })
 
-const profileForm = reactive({ id: 'optp-demo', version: 1, modelId: '', template: 'linear_mpc_quadratic@1', solver: 'osqp_mpc@1', processSpecRef: '', configJson: '{\n  "linear_mpc_quadratic": {\n    "cvWeights": {"cv1": 1},\n    "duWeights": {"mv1": 0.1},\n    "terminalWeight": 2,\n    "targets": {"cv1": 50}\n  }\n}' })
+const profileForm = reactive({ id: 'optp-demo', version: 1, name: '', description: '', modelId: '', template: 'linear_mpc_quadratic@1', solver: 'osqp_mpc@1', processSpecRef: '', configJson: '{\n  "linear_mpc_quadratic": {\n    "cvWeights": {"cv1": 1},\n    "duWeights": {"mv1": 0.1},\n    "terminalWeight": 2,\n    "targets": {"cv1": 50}\n  }\n}' })
 const bindingForm = reactive({ workspaceId: '', channelId: '', agentInstanceId: '', profileId: '', profileVersion: 1, mode: 'recommendation' as 'recommendation' | 'shadow' })
 const datasetId = ref('')
 const solveAgent = ref('')
@@ -151,6 +151,7 @@ async function saveProfile() {
   try {
     const profile = {
       schemaVersion: 1, id: profileForm.id, version: profileForm.version,
+      name: profileForm.name || undefined, description: profileForm.description || undefined,
       modelRef: { modelId: profileForm.modelId, artifactKind: 'linear_state_space@1', artifactHash: '', modelInterface: 'linear_state_space', stage: 'candidate' },
       problemTemplateRef: profileForm.template, problemConfig: JSON.parse(profileForm.configJson),
       solverRef: profileForm.solver, solverVersion: '1', processSpecRef: profileForm.processSpecRef || `${specForm.id}@${specForm.version}`,
@@ -493,6 +494,14 @@ onMounted(loadAll)
           type="number"
           min="1"
         ></label>
+        <label>{{ t('optimizer.fields.name') }}<input
+          v-model="profileForm.name"
+          placeholder="膜厚闭环-MPC 配置"
+        ></label>
+        <label class="block">{{ t('optimizer.fields.description') }}<input
+          v-model="profileForm.description"
+          placeholder="这个求解配置代表什么工况/目标/约束(用户与 Agent 都看这段)"
+        ></label>
         <label>{{ t('optimizer.fields.model') }}<input
           v-model="profileForm.modelId"
           placeholder="mdl-..."
@@ -521,13 +530,20 @@ onMounted(loadAll)
         </button>
       </div>
       <table class="tbl">
-        <thead><tr><th>profile</th><th>status</th><th>model</th><th>solver</th><th /></tr></thead>
+        <thead><tr><th>profile</th><th>{{ t('optimizer.fields.name') }}</th><th>{{ t('optimizer.fields.description') }}</th><th>status</th><th>model</th><th>solver</th><th /></tr></thead>
         <tbody>
           <tr
             v-for="p in profiles"
             :key="`${p.id}@${p.version}`"
           >
-            <td>{{ p.id }}@{{ p.version }}</td><td>{{ p.status }}</td><td>{{ p.modelRef }}</td><td>{{ p.solverRef }}</td>
+            <td>{{ p.id }}@{{ p.version }}</td>
+            <td>{{ p.profile?.name || p.name || '--' }}</td>
+            <td class="desc-cell">
+              {{ p.profile?.description || p.description || '--' }}
+            </td>
+            <td>{{ p.status }}</td>
+            <td>{{ p.modelRef }}</td>
+            <td>{{ p.solverRef }}</td>
             <td>
               <button
                 v-if="p.status !== 'published'"
@@ -662,6 +678,7 @@ pre.json { background: #0d1117; border: 1px solid rgba(255,255,255,0.08); border
 .tbl { width: 100%; border-collapse: collapse; font-size: 12.5px; }
 .tbl th, .tbl td { text-align: left; padding: 7px 8px; border-bottom: 1px solid rgba(255,255,255,0.06); }
 .tbl th { color: #8b98a5; font-weight: 500; }
+.desc-cell { color: #aab6c2; max-width: 360px; }
 .list { list-style: none; padding: 0; margin: 10px 0; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; }
 .list .gap { color: #ffb86b; }
 .hint { color: #8b98a5; font-size: 12.5px; }

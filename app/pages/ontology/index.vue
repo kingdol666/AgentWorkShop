@@ -44,6 +44,7 @@ const doc = computed(() => detail.value?.doc ?? null)
 const issues = computed<IssueDto[]>(() => detail.value?.validation.issues ?? [])
 const errors = computed(() => issues.value.filter(i => i.severity === 'error'))
 const bindingFailures = computed(() => detail.value?.bindings.failures ?? [])
+const lastFixes = ref<Array<{ code: string, path: string, message: string }>>([])
 const draftOptions = computed(() => overview.value.drafts.map(d => ({
   value: d.id,
   label: `${d.ontologyId} · rev ${d.rev}${d.baseVersion ? ` · 基线 v${d.baseVersion}` : ''}`,
@@ -189,6 +190,34 @@ async function runValidate(): Promise<void> {
   }
 }
 
+/** 自动修复:补描述/量纲跟随单位/作用域回填/悬空与重复确定性修复(证据不伪造) */
+async function runAutofix(): Promise<void> {
+  if (!draftId.value) return
+  busy.value = true
+  try {
+    const res = await ontologyApi<{ fixedCount: number, fixes: Array<{ code: string, path: string, message: string }>, validation: { ok: boolean }, bindings: { ok: boolean } }>(
+      `/drafts/${encodeURIComponent(draftId.value)}/autofix`, { method: 'POST', body: {} },
+    )
+    lastFixes.value = res.fixes ?? []
+    if (res.fixedCount > 0) {
+      message.success(t('ontology.autofixDone', { n: res.fixedCount }))
+    }
+    else {
+      message.info(t('ontology.autofixNothing'))
+    }
+    if (!res.validation.ok || !res.bindings.ok) {
+      message.warning(t('ontology.autofixPartial'))
+    }
+    await loadDraft()
+  }
+  catch (e) {
+    message.error(apiErrorMessage(e, t('ontology.autofixFail')))
+  }
+  finally {
+    busy.value = false
+  }
+}
+
 async function runCompile(): Promise<void> {
   if (!draftId.value) return
   busy.value = true
@@ -326,6 +355,13 @@ function diffLabel(part: { added: string[], removed: string[], changed: string[]
         <p class="sub">
           {{ t('ontology.subtitle') }}
         </p>
+        <p
+          v-if="doc?.description"
+          class="model-desc"
+        >
+          <span class="model-desc-tag">{{ doc.name }}</span>
+          {{ doc.description }}
+        </p>
       </div>
       <div class="head-actions">
         <a-button
@@ -359,6 +395,13 @@ function diffLabel(part: { added: string[], removed: string[], changed: string[]
         @click="runValidate"
       >
         {{ t('ontology.validate') }}
+      </a-button>
+      <a-button
+        :disabled="!draftId || (issues.length === 0 && bindingFailures.length === 0)"
+        :loading="busy"
+        @click="runAutofix"
+      >
+        {{ t('ontology.autofix') }}
       </a-button>
       <a-button
         :disabled="!draftId"
@@ -458,6 +501,23 @@ function diffLabel(part: { added: string[], removed: string[], changed: string[]
               {{ t('ontology.empty.issues') }}
             </li>
           </ul>
+          <div
+            v-if="lastFixes.length"
+            class="autofix-log"
+          >
+            <h3>{{ t('ontology.autofixLog', { n: lastFixes.length }) }}</h3>
+            <ul class="plain">
+              <li
+                v-for="(f, i) in lastFixes"
+                :key="`${f.code}-${i}`"
+              >
+                <a-tag color="green">
+                  {{ f.code }}
+                </a-tag>
+                <span>{{ f.message }}</span>
+              </li>
+            </ul>
+          </div>
         </div>
       </div>
     </section>
@@ -752,6 +812,10 @@ function diffLabel(part: { added: string[], removed: string[], changed: string[]
 .aw-page-head { display: flex; justify-content: space-between; gap: 16px; align-items: flex-start; }
 .aw-page-head h1 { margin: 2px 0 6px; font-size: 22px; }
 .sub { margin: 0; color: var(--ink-soft); max-width: 72ch; }
+.model-desc { margin: 8px 0 0; color: var(--ink-soft); max-width: 84ch; font-size: 13px; display: flex; gap: 8px; align-items: baseline; }
+.model-desc-tag { flex: none; border: 1px solid var(--line, #2a3542); border-radius: 999px; padding: 1px 8px; font-size: 11px; color: var(--ink-faint); }
+.autofix-log { margin-top: 14px; border-top: 1px dashed var(--line, #2a3542); padding-top: 10px; }
+.autofix-log h3 { margin: 0 0 6px; font-size: 13px; color: var(--ink-soft); }
 .head-actions { display: flex; gap: 8px; }
 .toolbar { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .hint { color: var(--ink-faint); font-size: 12px; }

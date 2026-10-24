@@ -64,6 +64,26 @@ curl -X POST $BASE/api/workshop/ontology/drafts/$DRAFT/publish \
 4. **哈希域分离**：`ontologyRefs` 进 Profile 内容哈希，**永不进** `ProblemIR` 哈希——本体漂移是 `409 ONTOLOGY_PACK_DRIFTED`，不会伪造 IR 变更；
 5. **fail-closed**：守卫评估时状态未知 → 阻断并给出原因码 `state_unknown`。
 
+## 描述字段与自动修复
+
+三类模型都有面向人的描述，Agent 可读写、人类在管理台可见：
+
+| 模型 | 描述字段 | Agent 入口 | 人类入口 |
+|---|---|---|---|
+| 本体 | 文档 `description` + 实体/规则描述 | `ontology_draft_update`（整份文档）/ autofix 补齐 | `/ontology` 头部与详情；PATCH 草稿 |
+| AML 模型 | `label` + `description` | `aml_model_annotate` | `/aml` 模型台账（描述副行）；PATCH 元数据 |
+| 求解器 Profile | `name` + `description` | `optimizer_profile_propose`（`profile_name/profile_description`） | `/optimizer` 表单与版本列表 |
+
+**自动修复**（`POST /ontology/drafts/:id/autofix`、工具 `ontology_draft_autofix`、页面「自动修复」按钮）
+只做安全、确定、幂等的规范化：
+
+- 补文档/实体/规则描述；量纲跟随单位（复合单位如 `mm/s` 不强行声明）；
+- 规则/绑定作用域回填产线；绑定单位回填、`scale` 非法归一；
+- 悬空关系/绑定移除；重复 id 去重或改 `-dupN`；
+- 证据不足却停在 `approved_for_control` 的硬规则回退 `validated`。
+
+**部分修复可以落库**（乐观锁 + 审计），残余错误随回执返回；`validated_control` 证据不会被伪造。
+
 ## 运行时真正生效的四处
 
 1. **下发守卫**：`dispatch.service` 建卡前调 `evaluateOntologyGuardsForNodes`，命中 → `409 ONTOLOGY_GUARD_BLOCKED`；
@@ -73,7 +93,7 @@ curl -X POST $BASE/api/workshop/ontology/drafts/$DRAFT/publish \
 
 除此之外的全部内容都是**可审阅元数据**——不参与执行，这是刻意设计。
 
-## Agent 工具（8 件）
+## Agent 工具（9 件）
 
 | 工具 | 作用 | 写类 |
 |---|---|---|
@@ -84,6 +104,7 @@ curl -X POST $BASE/api/workshop/ontology/drafts/$DRAFT/publish \
 | `ontology_draft_update` | 整份文档更新（乐观锁） | 写 |
 | `ontology_draft_validate` | 活体校验（schema/量纲/绑定） | 写 |
 | `ontology_compile_preview` | 编译预览 + Rule Trace（不发布） | 写 |
+| `ontology_draft_autofix` | **自动修复**可安全修复项并落库（证据不伪造） | 写 |
 | `ontology_publish_propose` | 提议发布（挂 HITL 卡，管理员批准后发布） | 写 |
 
 外部 MCP 服务镜像其中三件只读工具（`scene_inspect / rule_explain / version_compare`）。

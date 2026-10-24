@@ -59,6 +59,8 @@ export interface OptimizationProfile {
   id: string
   version: number
   name?: string
+  /** 人读描述:这个求解器配置代表什么工况/目标(Agent 可写,UI 展示) */
+  description?: string
   modelRef: ModelRef
   problemTemplateRef: ProblemTemplateRef
   problemConfig: ProblemConfig

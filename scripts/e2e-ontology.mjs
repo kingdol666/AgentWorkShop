@@ -23,7 +23,7 @@ process.env.AW_ONTOLOGY_SOLO_OPERATOR = '0'
 
 const { openWorkshopDb } = await import('../server/services/workshop/db/database/open.ts')
 const { configureAmlRuntime } = await import('../server/services/workshop/aml/runtime.ts')
-const { resetOntologyRepo } = await import('../server/services/workshop/ontology/repo.ts')
+const { resetOntologyRepo, getOntologyRepo } = await import('../server/services/workshop/ontology/repo.ts')
 const svc = await import('../server/services/workshop/ontology/ontology.service.ts')
 const { parseDraftDoc } = await import('../server/services/workshop/ontology/contracts.ts')
 
@@ -308,6 +308,42 @@ check('ON11.1', '未获控制级批准的硬约束拒绝发布(422)', notApprove
 const graph = svc.sceneSubgraph(LINE)
 check('ON12.1', '场景子图含实体/规则决策/守卫', !!graph && graph.entities.length >= 4 && graph.rules.length >= 3 && graph.guards.length >= 1)
 check('ON12.2', '无本体的产线返回 null(零注入)', svc.sceneSubgraph('ln-none') === null)
+
+// ── ON13 模型管理面:描述字段 + 校验自动修复 ──
+const d13 = svc.createDraft(OWNER, { ontologyId: `${ONT}-fix`, lineId: LINE })
+const messy = doc()
+messy.description = ''
+for (const entity of messy.entities) entity.description = ''
+messy.entities.push({ key: 'pv.inject_speed', kind: 'process_variable', name: '注射速度', description: '', unit: 'mm/s', dimension: 'speed', role: 'control', attrs: { dataType: 'number' } })
+for (const rule of messy.rules) {
+  rule.scope.lineId = ''
+  rule.description = ''
+}
+messy.bindings.push({
+  id: 'b-press', entityKey: 'pv.melt_pressure', platformKind: 'dcw_node', platformId: 'dw-missing',
+  targetSub: '', scope: '', direction: 'write', unitDeclared: '', unitTarget: '', scale: 0, offset: 0,
+})
+messy.bindings.push({
+  id: 'b-orphan', entityKey: 'cv.missing', platformKind: 'daq_node', platformId: 'dn-missing',
+  targetSub: '', scope: '', direction: 'read', unitDeclared: '', unitTarget: '', scale: 0, offset: 0,
+})
+// 模拟「历史遗留/导入」草稿:绕过严格校验直接落库(现实中旧数据/导入文档即如此),再由自动修复收敛
+getOntologyRepo().updateDraft(d13.id, JSON.stringify(messy), d13.rev)
+const fixed1 = svc.autoFixDraft(d13.id, OWNER)
+const fixCodes = new Set(fixed1.fixes.map(f => f.code))
+check('ON13.1', '自动修复:补描述(文档/实体/规则)', fixCodes.has('DOC_DESCRIPTION') && fixCodes.has('ENTITY_DESCRIPTION') && fixCodes.has('RULE_DESCRIPTION'), `fixes=${fixed1.fixes.length}`)
+check('ON13.2', '自动修复:复合单位量纲清空(mm/s 不主张相容性)', fixCodes.has('ENTITY_DIMENSION') && fixed1.doc.entities.find(e => e.key === 'pv.inject_speed')?.dimension === '')
+check('ON13.3', '自动修复:作用域回填 + 悬空绑定移除 + 单位回填/scale 归一', fixCodes.has('SCOPE_LINE') && fixCodes.has('ORPHAN_BINDING') && fixCodes.has('BINDING_SCALE') && fixCodes.has('BINDING_UNIT') && !fixed1.doc.bindings.some(b => b.id === 'b-orphan') && fixed1.doc.bindings.find(b => b.id === 'b-press')?.scale === 1)
+check('ON13.4', '自动修复后文档校验通过且描述已落库', fixed1.validation.ok === true && String(svc.getDraftDetail(d13.id, OWNER).doc.description).length > 0)
+const fixed2 = svc.autoFixDraft(d13.id, OWNER)
+check('ON13.5', '自动修复幂等:第二次零修复', fixed2.fixes.length === 0, `second=${fixed2.fixes.length}`)
+const d13b = svc.createDraft(OWNER, { ontologyId: `${ONT}-fix2`, lineId: LINE })
+const badEvidence = doc()
+badEvidence.rules[0] = { ...badEvidence.rules[0], kind: 'bound', status: 'approved_for_control', evidence: [evidence('candidate_influence', 'ev-cand')] }
+getOntologyRepo().updateDraft(d13b.id, JSON.stringify(badEvidence), d13b.rev)
+const fixedBad = svc.autoFixDraft(d13b.id, OWNER)
+const downgrade = fixedBad.fixes.find(f => f.code === 'RULE_STATUS_DOWNGRADE')
+check('ON13.6', '证据不足的控制级规则回退 validated,且证据不被伪造(仍报错)', Boolean(downgrade) && fixedBad.doc.rules[0].status === 'validated' && fixedBad.validation.ok === false, `${downgrade?.message ?? ''}`)
 
 // ── 报告 ──
 const reportDir = join('docs', 'audit')

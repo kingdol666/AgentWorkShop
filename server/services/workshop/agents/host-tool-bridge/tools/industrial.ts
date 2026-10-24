@@ -9,14 +9,14 @@
  * 该族**不依赖 workspace**,由 dispatch 在 workspace 门控之前分流(保持原分发顺序)。
  */
 import type { HostToolResult } from '../types'
-import { toolLineStart, toolLineStop, toolLineStatus, toolAmlDatasetBuild, toolAmlDatasetStats, toolAmlJobCancel, toolAmlJobLogs, toolAmlJobStatus, toolAmlJobSubmit, toolAmlLeaderboard, toolAmlModelFind, toolAmlModelPromote, toolAmlModelReference, toolAmlNodeCatalog, toolAmlTrainingPlanCreate, toolAmlTrainingPlanList, toolAmlTrainingPlanTrain, toolDaqExport, toolDaqFrames, toolDaqQuery, toolDcwControl, toolDcwJudge, toolDcwJournal, toolDcwRollback, toolLineContext, toolMesCatalog, toolMesDatasetRead, toolMesDatasets, toolMesExport, toolMesFetch, toolMyIndustrialNodes, toolOpsLog, toolParamControl, toolRecipeApply, toolRecipeCatalog, toolRecipeCreate, toolRecipeLog, toolRecipeRollback, toolRecipeTrial, toolRecipeUpdate, toolRecipeVersions, toolOptimizationExplore, toolTwinProviderCatalog, toolTwinSceneDiscover, toolTwinSceneCompile, toolTwinSceneFreeze, toolTwinSceneRead, toolTwinPhysicsSpecDraft, toolTwinPhysicsSpecValidate, toolTwinPhysicsSpecCompile, toolTwinSnapshotCreate, toolTwinTrialRun, toolMpcOptimize, toolTwinGateEvaluate, toolTwinBayesOptimize, toolTwinCalibrationRequest, toolAnalysisSave, toolAnalysisQuery } from '../../industrial'
+import { toolLineStart, toolLineStop, toolLineStatus, toolAmlDatasetBuild, toolAmlDatasetStats, toolAmlJobCancel, toolAmlJobLogs, toolAmlJobStatus, toolAmlJobSubmit, toolAmlLeaderboard, toolAmlModelFind, toolAmlModelPromote, toolAmlModelReference, toolAmlModelAnnotate, toolAmlNodeCatalog, toolAmlTrainingPlanCreate, toolAmlTrainingPlanList, toolAmlTrainingPlanTrain, toolDaqExport, toolDaqFrames, toolDaqQuery, toolDcwControl, toolDcwJudge, toolDcwJournal, toolDcwRollback, toolLineContext, toolMesCatalog, toolMesDatasetRead, toolMesDatasets, toolMesExport, toolMesFetch, toolMyIndustrialNodes, toolOpsLog, toolParamControl, toolRecipeApply, toolRecipeCatalog, toolRecipeCreate, toolRecipeLog, toolRecipeRollback, toolRecipeTrial, toolRecipeUpdate, toolRecipeVersions, toolOptimizationExplore, toolTwinProviderCatalog, toolTwinSceneDiscover, toolTwinSceneCompile, toolTwinSceneFreeze, toolTwinSceneRead, toolTwinPhysicsSpecDraft, toolTwinPhysicsSpecValidate, toolTwinPhysicsSpecCompile, toolTwinSnapshotCreate, toolTwinTrialRun, toolMpcOptimize, toolTwinGateEvaluate, toolTwinBayesOptimize, toolTwinCalibrationRequest, toolAnalysisSave, toolAnalysisQuery } from '../../industrial'
 
 import { toolExpCollect } from '../../industrial/exp-tools'
 import { toolRecipePropose } from '../../industrial/recipe-propose-tools'
 import { toolAmlActivity } from '../../industrial/aml-activity'
 import { toolOptimizerCancel, toolOptimizerCapabilities, toolOptimizerPlanGet, toolOptimizerProfilePropose, toolOptimizerSolve, toolOptimizerStatus } from '../../industrial/optimizer-tools'
 import { toolIndustrialResources } from '../../industrial/resources-tools'
-import { toolOntologyCompilePreview, toolOntologyDraftCreate, toolOntologyDraftUpdate, toolOntologyDraftValidate, toolOntologyPublishPropose, toolOntologyRuleExplain, toolOntologySceneInspect, toolOntologyVersionCompare } from '../../industrial/ontology-tools'
+import { toolOntologyCompilePreview, toolOntologyDraftAutofix, toolOntologyDraftCreate, toolOntologyDraftUpdate, toolOntologyDraftValidate, toolOntologyPublishPropose, toolOntologyRuleExplain, toolOntologySceneInspect, toolOntologyVersionCompare } from '../../industrial/ontology-tools'
 
 type IndustrialToolHandler = (agentId: string, args: Record<string, unknown>, channelId?: string) => Promise<HostToolResult>
 
@@ -36,6 +36,7 @@ const INDUSTRIAL_HANDLERS = new Map<string, IndustrialToolHandler>([
   ['aml_model_find', (agentId, args) => toolAmlModelFind(agentId, args as Parameters<typeof toolAmlModelFind>[1])],
   ['aml_model_promote', (agentId, args) => toolAmlModelPromote(agentId, args as Parameters<typeof toolAmlModelPromote>[1])],
   ['aml_model_reference', (agentId, args) => toolAmlModelReference(agentId, args as Parameters<typeof toolAmlModelReference>[1])],
+  ['aml_model_annotate', (agentId, args) => toolAmlModelAnnotate(agentId, args as Parameters<typeof toolAmlModelAnnotate>[1])],
   ['aml_training_plan_list', (agentId, args) => toolAmlTrainingPlanList(agentId, args)],
   ['aml_training_plan_create', (agentId, args) => toolAmlTrainingPlanCreate(agentId, args as Parameters<typeof toolAmlTrainingPlanCreate>[1])],
   ['aml_training_plan_train', (agentId, args) => toolAmlTrainingPlanTrain(agentId, args as Parameters<typeof toolAmlTrainingPlanTrain>[1])],
@@ -101,6 +102,7 @@ const INDUSTRIAL_HANDLERS = new Map<string, IndustrialToolHandler>([
   ['ontology_draft_create', (agentId, args) => toolOntologyDraftCreate(agentId, args)],
   ['ontology_draft_update', (agentId, args) => toolOntologyDraftUpdate(agentId, args)],
   ['ontology_draft_validate', (agentId, args) => toolOntologyDraftValidate(agentId, args)],
+  ['ontology_draft_autofix', (agentId, args) => toolOntologyDraftAutofix(agentId, args)],
   ['ontology_rule_explain', (agentId, args) => toolOntologyRuleExplain(agentId, args)],
   ['ontology_compile_preview', (agentId, args) => toolOntologyCompilePreview(agentId, args)],
   ['ontology_publish_propose', (agentId, args) => toolOntologyPublishPropose(agentId, args)],

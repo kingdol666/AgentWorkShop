@@ -28,7 +28,7 @@
 
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.8.0</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST 集成（镜像与直连双路径）· 数据分析台账（产线级权限隔离）· 工艺参数优化器（过程模型 → AML → OSQP 求解 → 治理下发）· **本体服务 + AI 先行模型闭环**（本体 · 孪生 · 求解器 · AML 采纳）· 101 个宿主工具 · 126 个运行时设置项 · 双语文档（简体中文 / English）</sub>
+<sub><b>v0.8.0</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST 集成（镜像与直连双路径）· 数据分析台账（产线级权限隔离）· 工艺参数优化器（过程模型 → AML → OSQP 求解 → 治理下发）· **本体服务 + AI 先行模型闭环**（本体 · 孪生 · 求解器 · AML 采纳）· 103 个宿主工具 · 126 个运行时设置项 · 双语文档（简体中文 / English）</sub>
 
 <br />
 
@@ -184,6 +184,7 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 | **Agent 亲手创建虚拟模型** | 训练面频道上，Agent 用工具走完整创建链：`twin_scene_discover`（从**自己真实绑定**推断场景）→ `twin_scene_compile`（SceneContract 草稿）→ `twin_scene_freeze`（须人 `approved_by` + 确认令牌）→ `twin_physics_spec_draft / validate / compile`（声明式 Provider **候选**，绝不自动注册）→ `twin_snapshot_create`（服务端 `auto_daq` 采数，Agent 自报样本拒收）→ `twin_trial_run`（recommendation-only，`candidateExecuted=false`）。同一份物理骨架交由 AML `hybrid_residual` 训练校准（stage A 拟合 τ/增益）。 |
 | **模型进化 = 受治理的采纳** | 训练新模型（数据集 → 资格报告 → AML 作业 → 模型注册）只是半程。`optimizer_profile_propose` 让 **Agent 提议**把新工件采纳进求解 Profile：校验兼容性（模型 × 求解器矩阵，不兼容 422）并挂 HITL 卡。批准是**单一咽喉**：发布 v(n+1) + **重绑旧版本上的全部绑定**（revision+1，在飞求解 `BINDING_STALE` fail-closed），下一次 `optimizer_solve` 即用新模型；拒绝/超时零写。每轮留 `adopt_propose(agent)` + `adopt(user)` 审计行，旧版本保留可回退。 |
 | **人做修正，不只是点批准** | 管理者直接编辑本体草稿（乐观锁 `rev` + 活体校验），亲自走规则生命周期；版本台账给四段 diff（`entities / relations / rules / bindings`）。Profile 版本、孪生场景谱系（冻结场景 + Provider）、守卫决策在 `/ontology`、`/optimizer`、`/aml` 均可视——与 Agent 同源数据，不经 Agent 转述。 |
+| **可读模型 + 草稿自修复** | 三类模型都有可被 Agent 写入的人读元数据：本体文档/实体/规则描述、AML 模型 `label` + `description`（`aml_model_annotate`）、求解器 Profile `name` + `description`（经采纳携带）。本体草稿支持一键**自动修复**（`ontology_draft_autofix`、`POST /drafts/:id/autofix`）：补描述、量纲跟随单位、作用域回填、悬空引用与重复 id 修复、证据不足的硬规则状态回退；部分修复在乐观锁 + 审计下落库，`validated_control` 证据**永不伪造**。 |
 | **IDD × RAG × 本体 组合** | 同一会话内，Agent 可调 `ontology_scene_inspect / ontology_rule_explain`、经插件桥跑 IDD 诊断（CI 用 mock 快速筛查，生产用真实 LLM 意图）、再写 `analysis_save` 台账条目**同时引用**本体规则与诊断 run id——组合全程可审计。RAG `kb_agent` 入库属写类工具，必须过 HITL 审批；平台另提供**读桥**（`/api/plugins/rag-bridge/search`）直连 RAG 两阶段检索。 |
 
 #### 治理、配置与扩展
@@ -201,7 +202,7 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 | **双模式优化闭环** | 专属频道模板把闭环**结构性拆开**：*aml-training* 频道拿建模面（数据集、作业、场景编译、物理 spec、建模任务——无产线写入、无 MPC），*aml-optimization* 频道拿执行面（快照、试验、门禁、MPC、贝叶斯寻优 `twin_bayes_optimize`、受治理微写 `optimization_explore`）——边训边优在结构上不可能。**探索**模式走治理链写入并做响应回读配对（每笔写入落 `optimization_explorations` 台账）；**生产**模式要求绑定过门禁的模型（`aml` 模式，实例化时给 `boundModelId`）。 |
 | **运行时可观测** | `GET /api/system/monitor` 把 Agent 团队内部暴露成数字：根队列深度、看门狗介入次数、Harness 会话复用、记忆 outbox 积压——每项都有对应的文档化回退开关，新机制可以不重新部署就关掉。 |
 | **产线操作单页（`/operations`）** | 一页看全对产线的每一次触碰：实时操作流水（REST 快照 + WS 推流）把写控、数采、建模、配方、回退、报警、产线、人工、系统动作归入**九类分类**，写控行渲染结构化 **前值 → 后值 diff 徽章**（失败标红），并直接从事件流推断**闭环阶段**（监视 → 探索·小步 → 推荐搜索 → 影子验证 → 生产）。同一数据面也供工作台控制台的「产线作业」面板使用。 |
-| **外部 MCP 网关** | `aw mcp` 启动零依赖的 **stdio MCP 服务**（41 个工具），自动发现运行中的实例（环境变量 → 锁文件 → 配置文件），把产线、配方（含 mark-good）、受治理 DCW 写入、工艺参数语义映射、数采查询、频道、团队供给、模型晋升、判卷/回退与插件管理暴露给任意 MCP 客户端——受 `mcp.enabled` 运行时设置门控，附 `--doctor` 与 `--print-config` 辅助指令。此外每个 Channel 成员实例都有**专属的全量工具 stdio 桥**（101 个宿主工具 + 插件工具，按该 Agent 的角色/绑定面编译视图；ETag/304 增量轮询 + `tools/list_changed`），codex / dsh / opencode 等引擎以 MCP 形态拿到与原生注入完全同链的治理（token 自证 → 五层复核）。 |
+| **外部 MCP 网关** | `aw mcp` 启动零依赖的 **stdio MCP 服务**（41 个工具），自动发现运行中的实例（环境变量 → 锁文件 → 配置文件），把产线、配方（含 mark-good）、受治理 DCW 写入、工艺参数语义映射、数采查询、频道、团队供给、模型晋升、判卷/回退与插件管理暴露给任意 MCP 客户端——受 `mcp.enabled` 运行时设置门控，附 `--doctor` 与 `--print-config` 辅助指令。此外每个 Channel 成员实例都有**专属的全量工具 stdio 桥**（103 个宿主工具 + 插件工具，按该 Agent 的角色/绑定面编译视图；ETag/304 增量轮询 + `tools/list_changed`），codex / dsh / opencode 等引擎以 MCP 形态拿到与原生注入完全同链的治理（token 自证 → 五层复核）。 |
 | **全量配置驱动运行时** | 全部运行旋钮（记忆预算、上下文压缩、回退护栏、保留策略、备份、日志级别、系统时区、MCP 开关…）在设置描述符注册表声明一次，优先级 **config.yml < runtime-settings < env**——**126 个设置项、19 组**（42 live / 84 restart），代码零硬编码默认。 |
 | **可配置系统时区** | 一个 `time.timeZone` 设置项（IANA 时区，live 热生效）统一驱动人读时间——日志、聊天、审计、Agent 记录与定时任务；机器时间轴（数采样本、`timestamptz`）仍保存绝对时间。 |
 | **可配置节拍** | 采样与查询的默认值/下限全部是 **live 设置**（`daq.sampling.*`、`daq.query.*`）：热重载、create/patch 时钳制，Agent 工具描述实时携带当前值。 |

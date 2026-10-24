@@ -1,5 +1,5 @@
 /**
- * 本体工具面登记(结构断言):host-tools.json 8 条 + 引用面声明 + 治理面接线。
+ * 本体工具面登记(结构断言):host-tools.json 9 条 + 引用面声明 + 治理面接线。
  * 不 import 分发门面(避免 nitro #imports);改读源文件做结构断言。
  */
 import { readFileSync } from 'node:fs'
@@ -10,10 +10,11 @@ const TOOLS = JSON.parse(readFileSync('.AgentWorkShop/prompts/host-tools.json', 
 
 const EXPECTED = [
   'ontology_scene_inspect', 'ontology_draft_create', 'ontology_draft_update', 'ontology_draft_validate',
-  'ontology_rule_explain', 'ontology_compile_preview', 'ontology_publish_propose', 'ontology_version_compare',
+  'ontology_draft_autofix', 'ontology_rule_explain', 'ontology_compile_preview', 'ontology_publish_propose',
+  'ontology_version_compare',
 ]
 
-test('host-tools.json 含 8 条本体工具(全名唯一)', () => {
+test('host-tools.json 含 9 条本体工具(全名唯一)', () => {
   const names = TOOLS.map(t => String(t.name))
   for (const name of EXPECTED) assert.ok(names.includes(name), `缺少工具 ${name}`)
   assert.equal(new Set(names).size, names.length, '工具名必须唯一')
@@ -32,7 +33,7 @@ test('每条本体工具:描述 ≥40 字、参数为 object、声明 references
 
 test('写工具清单:起草/写入/发布提议为 write;读工具为 read(写面不能误标)', () => {
   const byName = new Map(TOOLS.map(t => [String(t.name), t]))
-  for (const name of ['ontology_draft_create', 'ontology_draft_update', 'ontology_publish_propose']) {
+  for (const name of ['ontology_draft_create', 'ontology_draft_update', 'ontology_draft_autofix', 'ontology_publish_propose']) {
     assert.equal(byName.get(name)!.riskClass, 'write', `${name} 必须是 write`)
   }
   for (const name of ['ontology_scene_inspect', 'ontology_draft_validate', 'ontology_rule_explain', 'ontology_compile_preview', 'ontology_version_compare']) {
@@ -46,9 +47,9 @@ test('发布提议只能声明链式草稿引用(不能声明"无引用"绕过�
   assert.ok(refs.chained?.some(c => c.param === 'draft_id' && c.kind === 'ontology_draft'))
 })
 
-test('grant-guard 写族含本体三件,且能解析 draft_id → 产线(ONT-13 缺口修复)', () => {
+test('grant-guard 写族含本体四件,且能解析 draft_id → 产线(ONT-13 缺口修复)', () => {
   const src = readFileSync('server/services/workshop/agents/industrial/grant-guard.ts', 'utf8')
-  for (const name of ['ontology_draft_create', 'ontology_draft_update', 'ontology_publish_propose']) {
+  for (const name of ['ontology_draft_create', 'ontology_draft_update', 'ontology_draft_autofix', 'ontology_publish_propose']) {
     assert.ok(src.includes(`'${name}'`), `WRITE_TOOLS 缺 ${name}`)
   }
   assert.ok(src.includes('args.draft_id'), 'resolveTargetLines 必须识别 draft_id')
@@ -63,7 +64,7 @@ test('tool-verify 链式类别含 ontology_draft/ontology_version,并有解析�
   assert.ok(verify.includes('kind === \'ontology_version\''))
 })
 
-test('INDUSTRIAL_HANDLERS 登记 8 条(钩子存在性,避免"注入但不可执行")', () => {
+test('INDUSTRIAL_HANDLERS 登记 9 条(钩子存在性,避免"注入但不可执行")', () => {
   const src = readFileSync('server/services/workshop/agents/host-tool-bridge/tools/industrial.ts', 'utf8')
   for (const name of EXPECTED) assert.ok(src.includes(`['${name}',`), `INDUSTRIAL_HANDLERS 缺 ${name}`)
 })
@@ -73,7 +74,7 @@ test('外置 MCP 只暴露 3 个只读本体工具,写面四件绝不外泄', ()
   for (const name of ['ontology_scene_inspect', 'ontology_rule_explain', 'ontology_version_compare']) {
     assert.ok(src.includes(`name: '${name}'`), `外置 MCP 缺只读工具 ${name}`)
   }
-  for (const name of ['ontology_draft_create', 'ontology_draft_update', 'ontology_draft_validate', 'ontology_compile_preview', 'ontology_publish_propose']) {
+  for (const name of ['ontology_draft_create', 'ontology_draft_update', 'ontology_draft_validate', 'ontology_draft_autofix', 'ontology_compile_preview', 'ontology_publish_propose']) {
     assert.equal(src.includes(`name: '${name}'`), false, `外置 MCP 不得暴露写/状态工具 ${name}`)
   }
 })

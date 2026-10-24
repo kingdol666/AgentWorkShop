@@ -1,11 +1,11 @@
 {
   "script": "scripts/e2e-ontology.mjs",
-  "generatedAt": "2026-10-24T12:24:22.525Z",
-  "home": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-e2e-ontology-W3i4Jv",
+  "generatedAt": "2026-10-24T14:35:03.224Z",
+  "home": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-e2e-ontology-PAHQ43",
   "ontology": "ont-e2e-pva",
   "lineId": "ln-e2e-pva",
-  "total": 44,
-  "pass": 44,
+  "total": 50,
+  "pass": 50,
   "fail": 0,
   "assertions": [
     {
@@ -271,6 +271,42 @@
       "name": "无本体的产线返回 null(零注入)",
       "ok": true,
       "detail": ""
+    },
+    {
+      "id": "ON13.1",
+      "name": "自动修复:补描述(文档/实体/规则)",
+      "ok": true,
+      "detail": "fixes=18"
+    },
+    {
+      "id": "ON13.2",
+      "name": "自动修复:复合单位量纲清空(mm/s 不主张相容性)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ON13.3",
+      "name": "自动修复:作用域回填 + 悬空绑定移除 + 单位回填/scale 归一",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ON13.4",
+      "name": "自动修复后文档校验通过且描述已落库",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ON13.5",
+      "name": "自动修复幂等:第二次零修复",
+      "ok": true,
+      "detail": "second=0"
+    },
+    {
+      "id": "ON13.6",
+      "name": "证据不足的控制级规则回退 validated,且证据不被伪造(仍报错)",
+      "ok": true,
+      "detail": "规则「R-BOUND」证据级别 candidate_influence 不足控制级,状态回退为 validated(证据不可自动伪造)"
     }
   ]
 }

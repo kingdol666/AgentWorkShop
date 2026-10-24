@@ -2012,6 +2012,42 @@
     "riskClass": "read"
   },
   {
+    "name": "aml_model_annotate",
+    "label": "AML 模型描述维护",
+    "riskClass": "write",
+    "description": "维护模型的人读身份:label(一句话名称)与/或 description(这个模型代表什么工况、目标与适用边界)。只改元数据,不改阶段/工件/指标,不影响门禁。Agent 训练登记模型后应主动补齐描述,人类在 /aml 模型台账可见。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "model_id": {
+          "type": "string",
+          "description": "模型 id(必填;aml_leaderboard / aml_model_find 可查)"
+        },
+        "label": {
+          "type": "string",
+          "description": "一句话名称(≤200 字)"
+        },
+        "description": {
+          "type": "string",
+          "description": "人读描述:工况/目标/适用边界(≤500 字)"
+        }
+      },
+      "required": [
+        "model_id"
+      ],
+      "additionalProperties": false
+    },
+    "references": {
+      "chained": [
+        {
+          "param": "model_id",
+          "kind": "model",
+          "mode": "write"
+        }
+      ]
+    }
+  },
+  {
     "name": "twin_provider_catalog",
     "label": "Twin Provider Catalog",
     "description": "读取当前已注册的场景 Provider、ScenePack、SolverAdapter 及 generation/health 元数据；只读，不执行控制。",
@@ -3756,6 +3792,34 @@
     }
   },
   {
+    "name": "ontology_draft_autofix",
+    "label": "本体草稿自动修复",
+    "riskClass": "write",
+    "description": "对本体草稿执行安全自动修复并落库(乐观锁 rev):补写文档/实体/规则描述、量纲跟随单位、规则与绑定作用域回填产线、悬空引用与重复 id 确定性修复、scale 归一;证据不足的控制级硬规则回退为 validated(证据不会被伪造)。返回修复清单与修复后校验结论,平台侧绑定漂移仍如实报告。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "draft_id": {
+          "type": "string",
+          "description": "草稿 id(必填)"
+        }
+      },
+      "required": [
+        "draft_id"
+      ],
+      "additionalProperties": false
+    },
+    "references": {
+      "chained": [
+        {
+          "param": "draft_id",
+          "kind": "ontology_draft",
+          "mode": "write"
+        }
+      ]
+    }
+  },
+  {
     "name": "ontology_rule_explain",
     "label": "本体规则解释",
     "riskClass": "read",
@@ -3921,6 +3985,14 @@
         "reason": {
           "type": "string",
           "description": "采纳理由(必填):训练指标对比/互校结论/业务动因,审批卡展示"
+        },
+        "profile_name": {
+          "type": "string",
+          "description": "可选:新版本人读名称(缺省沿用基线)"
+        },
+        "profile_description": {
+          "type": "string",
+          "description": "可选:新版本人读描述(这个求解配置代表什么工况/目标);缺省沿用基线,人类在 /optimizer 台账可见"
         }
       },
       "required": [

@@ -357,6 +357,7 @@ let draftId
 const ontologyDoc = (overrides = {}) => ({
   schemaVersion: 1,
   name: `模型闭环验收-${TAG}`,
+  description: `膜厚闭环控制本体:压力/线速→膜厚,温区守门(${TAG})`,
   lineId: line.id,
   entities: [
     { key: 'pv.melt_pressure', kind: 'process_variable', name: '熔体压力', description: '', unit: 'bar', dimension: 'pressure', role: 'control', attrs: { dataType: 'number' } },
@@ -409,6 +410,8 @@ async function approveRule(draft, ruleId) {
   draftId = data(created)?.draft?.id ?? ''
   const saved = await api('PATCH', `/api/workshop/ontology/drafts/${encodeURIComponent(draftId)}`, { doc: ontologyDoc(), expectedRev: 1 }, token)
   check('M1.1', '本体起草(活体校验+绑定通过)', created.status === 200 && saved.status === 200 && data(saved)?.validation?.ok === true, `saved=${saved.status} issues=${JSON.stringify((data(saved)?.validation?.issues ?? []).filter(i => i.severity === 'error').slice(0, 2))}`)
+  const detail0 = data(await api('GET', `/api/workshop/ontology/drafts/${encodeURIComponent(draftId)}`, undefined, token))
+  check('M1.1b', '本体描述可读(用户理解模型代表什么)', String(detail0?.doc?.description ?? '').includes('膜厚闭环控制本体'), String(detail0?.doc?.description ?? '').slice(0, 60))
   await approveRule(draftId, 'R-BOUND')
   await approveRule(draftId, 'R-GUARD')
   const pub1 = await api('POST', `/api/workshop/ontology/drafts/${encodeURIComponent(draftId)}/publish`, {}, token)
@@ -427,6 +430,21 @@ async function approveRule(draft, ruleId) {
   await approveRule(draftId, 'R-GUARD')
   const pub2 = await api('POST', `/api/workshop/ontology/drafts/${encodeURIComponent(draftId)}/publish`, {}, token)
   check('M1.3', '管理者修正规则窗 → v2 发布', pub2.status === 200 && data(pub2)?.version?.version === 2, `saved=${saved2.status}/${errCode(saved2)} pub=${pub2.status}/${errCode(pub2)}`)
+  const messy = ontologyDoc()
+  messy.description = ''
+  for (const e of messy.entities) e.description = ''
+  for (const r of messy.rules) { r.description = ''; r.scope.lineId = '' }
+  for (const b of messy.bindings) b.scope = 'global'
+  const createFix = await invokeTool('ontology_draft_create', { ontology_id: `${ONT}-fix`, line_id: line.id, name: `修复验收-${TAG}` })
+  const createFixText = String(createFix?.data?.text ?? createFix?.data?.result?.text ?? createFix?.text ?? '')
+  const draft3 = (createFixText.match(/已创建草稿\s+(\S+?)\(/) ?? [])[1] ?? ''
+  const savedMessy = createFix ? await api('PATCH', `/api/workshop/ontology/drafts/${encodeURIComponent(draft3)}`, { doc: messy, expectedRev: 1 }, token) : { status: 0 }
+  const fixRes = await invokeTool('ontology_draft_autofix', { draft_id: draft3 })
+  const fixText = String(fixRes?.data?.text ?? fixRes?.data?.result?.text ?? fixRes?.text ?? JSON.stringify(fixRes ?? {}))
+  const fixErr = Boolean(fixRes?.isError ?? fixRes?.data?.isError)
+  check('M1.5', 'Agent 工具 ontology_draft_autofix:自动修复并落库', !fixErr && /自动修复 \d+ 项/.test(fixText), fixText.slice(0, 180))
+  const detail3 = data(await api('GET', `/api/workshop/ontology/drafts/${encodeURIComponent(draft3)}`, undefined, token))
+  check('M1.6', '修复后:描述/作用域已补齐且校验通过', Boolean(detail3?.doc?.description) && detail3?.validation?.ok === true && (detail3?.doc?.bindings ?? []).every(b => String(b.scope).startsWith('line:')), `desc=${String(detail3?.doc?.description ?? '').slice(0, 40)} savedMessy=${savedMessy.status}`)
   const cmp = await api('GET', `/api/workshop/ontology/versions/${encodeURIComponent(ONT)}/compare?from=1&to=2`, undefined, token)
   const changed = data(cmp)?.rules?.changed ?? []
   check('M1.4', '四段 diff 反映管理者意志(R-BOUND changed)', cmp.status === 200 && changed.some(c => String(typeof c === 'string' ? c : (c.id ?? c.ruleId ?? '')).includes('R-BOUND')), JSON.stringify(changed).slice(0, 200))
@@ -547,8 +565,8 @@ async function trainOnce(modelName) {
   const model = (data(models)?.models ?? []).find(m => m.id === (job?.modelId ?? ''))
   return { datasetId, rowCount: data(ds)?.rowCount ?? 0, jobId, job, modelId: job?.modelId ?? '', artifactHash: model?.artifactHash ?? '', eligOk }
 }
-async function adoptRound(modelId, reason) {
-  const adoptInvoke = invokeTool('optimizer_profile_propose', { model_id: modelId, reason }, 300_000)
+async function adoptRound(modelId, reason, description) {
+  const adoptInvoke = invokeTool('optimizer_profile_propose', { model_id: modelId, reason, profile_description: description }, 300_000)
   let card = null
   for (let i = 0; i < 60; i++) {
     await sleep(500)
@@ -580,6 +598,9 @@ let round1RowCount
   trainedAId = ra.modelId
   trainedAHash = ra.artifactHash
   round1RowCount = ra.rowCount
+  const annotate = await invokeTool('aml_model_annotate', { model_id: ra.modelId, label: `膜厚模型A-${TAG}`, description: '产线A 膜厚预测:线性状态空间,适配保压/线速工况' })
+  const annotateText = toolText(annotate)
+  check('M3.0', 'Agent 工具 aml_model_annotate:补模型名称/描述', !toolErr(annotate) && annotateText.includes('人读身份已更新'), annotateText.slice(0, 140))
   check('M3.1', '第 1 轮训练 done + 模型登记 + 优化资格(artifactHash)', ra.job?.status === 'done' && ra.eligOk && trainedAId && trainedAHash.length === 64, `status=${ra.job?.status} model=${trainedAId} rows=${ra.rowCount} err=${String(ra.job?.error ?? '').slice(0, 100)}`)
 
   const profileBody = {
@@ -608,7 +629,7 @@ let round1RowCount
   trainedBHash = rb.artifactHash
   check('M3.5', '第 2 轮训练 done + 资格(数据集不缩水,工件不同)', rb.job?.status === 'done' && rb.eligOk && trainedBId && rb.rowCount >= round1RowCount && trainedBHash !== trainedAHash, `status=${rb.job?.status} rows ${round1RowCount}→${rb.rowCount} hashDiff=${trainedAHash !== trainedBHash}`)
 
-  const adopt1 = await adoptRound(trainedBId, '模型进化第 1 轮采纳:换上新训练模型 B')
+  const adopt1 = await adoptRound(trainedBId, '模型进化第 1 轮采纳:换上新训练模型 B', '产线A 膜厚闭环:线性 MPC(采纳模型B,提升 rollout 精度)')
   check('M3.6', '采纳卡挂出(optimizer-profile:<id>@<v>)', Boolean(adopt1.card), `nodeId=${adopt1.card?.nodeId ?? 'none'}`)
   check('M3.7', 'HITL 批准 → 单一咽喉发布+重绑', adopt1.dec.status === 200 && (JSON.stringify(adopt1.dec).includes('published') || JSON.stringify(adopt1.dec).includes('已发布')), JSON.stringify(adopt1.dec).slice(0, 300))
   const adoptStr1 = String(adopt1.adoptText?.data?.text ?? adopt1.adoptText?.data?.result?.text ?? adopt1.adoptText?.text ?? JSON.stringify(adopt1.adoptText)).slice(0, 240)
@@ -620,6 +641,7 @@ let round1RowCount
   check('M3.9', '绑定自动重绑到采纳版本(revision+1)', Boolean(rebound1) && Number(rebound1?.revision) >= 1, `versions=[${binds1.map(b => b.profileVersionNumber).join(',')}] card=v${cardV1} rev=${rebound1?.revision}`)
   const profs1 = JSON.stringify(data(await api('GET', `/api/workshop/optimization/profiles?limit=50`, undefined, token)) ?? {})
   check('M3.10', '已发布 Profile v2 携带新模型工件 B', profs1.includes(trainedBId), `len=${profs1.length}`)
+  check('M3.10b', 'Profile 描述由 Agent 提议写入并落版本台账', profs1.includes('产线A 膜厚闭环:线性 MPC(采纳模型B'), '')
   writeFreshTail()
   const solve1 = await api('POST', '/api/workshop/optimization/solve', { agentInstanceId: leadAgentIdOuter, bindingId: rebound1?.id }, token)
   check('M3.11', '新模型 B solve optimal', solve1.status === 200 && data(solve1)?.result?.status === 'optimal', `status=${data(solve1)?.result?.status} http=${solve1.status} msg=${String(solve1.message ?? '').slice(0, 120)}`)
@@ -632,7 +654,7 @@ console.log('\n=== M4 模型进化第 2 轮(持续迭代) ===')
   trainedCHash = rc.artifactHash
   check('M4.1', '第 3 次训练 done + 资格(反馈持续积累)', rc.job?.status === 'done' && rc.eligOk && trainedCId && trainedCHash.length === 64, `status=${rc.job?.status} model=${trainedCId} rows=${rc.rowCount}`)
 
-  const adopt2 = await adoptRound(trainedCId, '模型进化第 2 轮采纳:持续迭代换新模型 C')
+  const adopt2 = await adoptRound(trainedCId, '模型进化第 2 轮采纳:持续迭代换新模型 C', '产线A 膜厚闭环:线性 MPC(采纳模型C,持续迭代)')
   check('M4.2', '第 2 轮采纳卡挂出+HITL 批准', Boolean(adopt2.card) && adopt2.dec.status === 200, `nodeId=${adopt2.card?.nodeId ?? 'none'} dec=${adopt2.dec.status}`)
   const adoptStr2 = String(adopt2.adoptText?.data?.text ?? adopt2.adoptText?.data?.result?.text ?? adopt2.adoptText?.text ?? JSON.stringify(adopt2.adoptText)).slice(0, 240)
   check('M4.3', '第 2 轮工具回执:采纳完成', adoptStr2.includes('模型采纳完成'), adoptStr2)
@@ -687,17 +709,49 @@ process.env.AW_BASE = BASE
     const targets = [['/optimizer', 'optimizer'], ['/aml', 'aml'], ['/ontology', 'ontology']]
     let allOk = true
     const detail = []
+    const bodies = {}
     for (const [path, name] of targets) {
       const errsBefore = pageErrors.length
       await gotoReady(page, path, { wait: 2500 })
       await sleep(800)
       const bodyLen = await page.evaluate(() => (document.body.textContent ?? '').length)
+      bodies[name] = await page.evaluate(() => document.body.textContent ?? '')
       const ok = pageErrors.length === errsBefore && bodyLen > 400
       detail.push(`${name}:len=${bodyLen},errs=${pageErrors.length - errsBefore}`)
       if (!ok) allOk = false
       await shot(`page-${name}`)
     }
     check('M6.1', '管理者三台(/optimizer /aml /ontology)渲染无错', allOk, detail.join(' '))
+    // 数据异步加载:轮询等待关键文案(最多 10s),并切到 Profile tab
+    const waitText = async (needle, timeoutMs = 10_000) => {
+      const t0 = Date.now()
+      while (Date.now() - t0 < timeoutMs) {
+        const hit = await page.evaluate(n => (document.body.textContent ?? '').includes(n), needle)
+        if (hit) return true
+        await sleep(500)
+      }
+      return false
+    }
+    await gotoReady(page, '/optimizer', { wait: 2500 })
+    await page.evaluate(() => {
+      const btn = Array.from(document.querySelectorAll('button')).find(b => (b.textContent || '').includes('Profile'))
+      if (btn) btn.click()
+    })
+    await sleep(600)
+    const profileDescVisible = await waitText('产线A 膜厚闭环')
+    check('M6.3', 'UI:Profile 描述在 /optimizer 台账可见', profileDescVisible)
+    await shot('page-optimizer-profile')
+
+    await gotoReady(page, '/aml', { wait: 2500 })
+    const amlDescVisible = await waitText('产线A 膜厚预测', 12_000)
+    check('M6.4', 'UI:模型描述在 /aml 台账可见', amlDescVisible)
+    await shot('page-aml-models')
+
+    await gotoReady(page, '/ontology', { wait: 2500 })
+    const ontoDescVisible = (await waitText('膜厚闭环控制本体', 6000)) || (await waitText('(产线 ln-', 4000))
+    const fixBtnVisible = await page.evaluate(() => (document.body.textContent ?? '').includes('自动修复'))
+    check('M6.5', 'UI:本体描述与「自动修复」入口在 /ontology 可见', ontoDescVisible && fixBtnVisible, `desc=${ontoDescVisible} fixBtn=${fixBtnVisible}`)
+    await shot('page-ontology-desc')
     check('M6.2', '全程无未捕获 pageerror', pageErrors.length === 0 || pageErrors.every(e => e.includes('dispose')), pageErrors.slice(0, 2).join(';'))
   }
   finally {

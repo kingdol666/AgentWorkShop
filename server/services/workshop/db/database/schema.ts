@@ -896,6 +896,7 @@ CREATE TABLE IF NOT EXISTS optimizer_profiles (
   id                    TEXT NOT NULL,
   version               INTEGER NOT NULL DEFAULT 1,
   name                  TEXT NOT NULL DEFAULT '',
+  description           TEXT NOT NULL DEFAULT '',
   model_ref             TEXT NOT NULL,
   model_artifact_hash   TEXT NOT NULL DEFAULT '',
   model_artifact_kind   TEXT NOT NULL DEFAULT '',

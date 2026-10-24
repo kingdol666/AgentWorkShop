@@ -46,6 +46,9 @@ export interface ProposeAdoptionInput {
   solverRef?: SolverRef
   /** 提议理由(必填;审批卡展示) */
   reason: string
+  /** 可选:新版本的人读名称/描述(缺省沿用基线描述) */
+  profileName?: string
+  profileDescription?: string
   /** 依赖注入(单测 stub 用) */
   deps?: {
     requestApproval?: (agentId: string, nodeId: string, kind: 'dcw', detail: string, opts?: { title?: string, timeoutMs?: number, payload?: unknown }) => Promise<{ approved: boolean, comment: string, choice: number | null }>
@@ -88,6 +91,8 @@ export async function proposeProfileAdoption(input: ProposeAdoptionInput): Promi
     },
     ...(input.templateRef ? { problemTemplateRef: input.templateRef } : {}),
     ...(input.solverRef ? { solverRef: input.solverRef } : {}),
+    ...(input.profileName != null ? { name: input.profileName } : {}),
+    ...(input.profileDescription != null ? { description: input.profileDescription } : {}),
   }
   // D21 分派矩阵:工件×模板×求解器不兼容在此显式拒绝(不产生草稿)
   assertProfileSolverCompatible(nextProfile)

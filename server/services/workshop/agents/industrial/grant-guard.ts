@@ -37,7 +37,10 @@ const WRITE_TOOLS = new Set([
   // 本体(ONT):知识起草与发布提议属产线域写向动作(不写设备,但会改变控制侧知识来源)
   'ontology_draft_create',
   'ontology_draft_update',
+  'ontology_draft_autofix',
   'ontology_publish_propose',
+  // AML 模型人读身份(名称/描述)维护:写元数据,不触达产线设备
+  'aml_model_annotate',
 ])
 
 /** 无需复核的纯协作/管理面工具(不触达产线数据) */
@@ -125,7 +128,18 @@ async function resolveTargetLines(agentId: string, toolName: string, args: Recor
       }
     }
   }
-  // 本体版本 → 版本产线(版本比较的归属面)  // 本体版本 → 版本产线(版本比较的归属面)
+  // AML 模型 → 数据集所属产线(model_id 元数据写/引用面)
+  const modelIdArg = one(args.model_id ?? args.modelId)
+  if (modelIdArg) {
+    const { getAmlRuntime } = await import('@/server/services/workshop/aml/runtime')
+    const db = getAmlRuntime().db
+    const m = db.prepare('SELECT dataset_id AS datasetId FROM aml_models WHERE id = ?').get(modelIdArg) as { datasetId?: string } | undefined
+    if (m?.datasetId) {
+      const d = db.prepare('SELECT line_id AS lineId FROM aml_datasets WHERE id = ?').get(m.datasetId) as { lineId?: string } | undefined
+      if (d?.lineId) lines.add(d.lineId)
+    }
+  }
+  // 本体版本 → 版本产线(版本比较的归属面)
   const ontologyId = one(args.ontology_id ?? args.ontologyId)
   if (ontologyId) {
     const { getAmlRuntime } = await import('@/server/services/workshop/aml/runtime')

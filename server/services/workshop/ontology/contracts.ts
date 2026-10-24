@@ -252,6 +252,8 @@ export type BindingDraft = z.infer<typeof bindingDraftSchema>
 export const ontologyDraftDocSchema = z.object({
   schemaVersion: z.literal(ONTOLOGY_SCHEMA_VERSION),
   name: z.string().min(1).max(200),
+  /** 人读描述:这个本体代表哪段工况、约束什么(Agent 可写,autofix 会补默认值) */
+  description: z.string().max(2000).default(''),
   /** 授权锚;空 = 全局本体(仅 admin 可发布) */
   lineId: z.string().max(120).default(''),
   entities: z.array(ontologyEntitySchema).default([]),
@@ -263,7 +265,7 @@ export const ontologyDraftDocSchema = z.object({
 export type OntologyDraftDoc = z.infer<typeof ontologyDraftDocSchema>
 
 export function emptyDraftDoc(ontologyId: string, lineId = ''): OntologyDraftDoc {
-  return { schemaVersion: ONTOLOGY_SCHEMA_VERSION, name: ontologyId, lineId, entities: [], relations: [], rules: [], bindings: [], note: '' }
+  return { schemaVersion: ONTOLOGY_SCHEMA_VERSION, name: ontologyId, description: '', lineId, entities: [], relations: [], rules: [], bindings: [], note: '' }
 }
 
 export function parseDraftDoc(value: unknown): OntologyDraftDoc {

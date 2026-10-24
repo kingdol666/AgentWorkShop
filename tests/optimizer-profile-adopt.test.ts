@@ -68,6 +68,8 @@ test('propose:复制已发布配置+换新模型 → 草稿 v2 + 卡;未批准�
   const result = await svc.proposeProfileAdoption({
     agentInstanceId: 'ca-a', initiatorId: 'ca-a', initiatorKind: 'agent',
     profileId: 'optp-adopt', modelId: 'mdl-v2', reason: 'oneStepTest nrmse 0.0009 优于现网',
+    profileName: '膜厚闭环-闭环二版',
+    profileDescription: '产线A 膜厚闭环:线性 MPC,采纳 v2 工件(提升 rollout 精度)',
     deps: { requestApproval: async (_a, nodeId, _k, _d, opts) => {
       captured = { nodeId, payload: opts?.payload }
       return { approved: false, comment: '测试路径:拒绝', choice: null }
@@ -82,6 +84,8 @@ test('propose:复制已发布配置+换新模型 → 草稿 v2 + 卡;未批准�
   const parsed = parseProfileRow(draft)
   assert.equal(parsed.modelRef.modelId, 'mdl-v2')
   assert.equal(parsed.problemTemplateRef, 'linear_mpc_quadratic@1')
+  assert.equal(parsed.name, '膜厚闭环-闭环二版', '新版本名称必须由提议写入')
+  assert.equal(parsed.description, '产线A 膜厚闭环:线性 MPC,采纳 v2 工件(提升 rollout 精度)', '新版本描述必须由提议写入(用户/Agent 理解模型)')
   assert.ok(captured && String(captured.nodeId).startsWith('optimizer-profile:'))
   assert.equal((captured!.payload as { schemaVersion: number }).schemaVersion, 1)
 })
@@ -98,6 +102,7 @@ test('decide(approve):发布 v2 + 自动重绑(revision+1) + 审计', async () =
   assert.deepEqual(result.published, { profileId: 'optp-adopt', version: 2, rebindCount: 1 })
   const v2 = profileRepo.get('optp-adopt', 2)!
   assert.equal(v2.status, 'published')
+  assert.equal(parseProfileRow(v2).description, '产线A 膜厚闭环:线性 MPC,采纳 v2 工件(提升 rollout 精度)', '发布后描述保留(用户可读)')
   const after = getBindingRepo().get('ob-a')!
   assert.equal(after.profileVersionNumber, 2)
   assert.equal(after.revision, before.revision + 1)

@@ -43,6 +43,7 @@ import {
 } from './repo'
 import { detectBindingDrift, validateDraftBindings } from './semantic-binding.service'
 import { getDcwController } from '../dcw/dcw-controller'
+import { autoFixDraftDoc, type OntologyAutoFix } from './autofix'
 import { validateDraftDoc, type DraftValidationReport } from './validator'
 
 export interface Actor {
@@ -185,6 +186,7 @@ function cloneVersionDoc(version: VersionRow): OntologyDraftDoc {
   return {
     schemaVersion: ONTOLOGY_SCHEMA_VERSION,
     name: version.name || version.id,
+    description: '',
     lineId: version.lineId,
     entities,
     relations,
@@ -270,6 +272,50 @@ export function deleteDraft(draftId: string, actor: Actor): void {
   requireDraftAccess(draft, actor, { write: true })
   getOntologyRepo().deleteDraft(draftId)
   log({ ontologyId: draft.ontologyId, action: 'draft.delete', actor, detail: { draftId } })
+}
+
+/**
+ * 自动修复草稿(Agent 工具与 UI「自动修复」共用):
+ * 与 updateDraft 同一写路径(乐观锁 rev + 审计),区别有两点:
+ *  - strictBindings=false:平台侧绑定漂移不阻塞文档内安全修复的落库;
+ *  - 允许「部分修复」落库:自动修复后仍有不可自动修复的错误(如证据缺失)时,
+ *    已做的安全规范化照样保存,剩余错误随 validation 原样返回 —— 否则修复器
+ *    在历史/导入的脏草稿上会因残余错误整体回滚,等于不可用。
+ * 证据永不伪造:残余错误只能由人/Agent 补真实证据后再次校验。
+ */
+export function autoFixDraft(draftId: string, actor: Actor): {
+  draft: DraftRow
+  doc: OntologyDraftDoc
+  validation: DraftValidationReport
+  bindings: ReturnType<typeof validateDraftBindings>
+  fixes: OntologyAutoFix[]
+} {
+  requireEditor(actor, '自动修复本体草稿')
+  const draft = getDraft(draftId)
+  requireDraftAccess(draft, actor, { write: true })
+  const { doc, fixes, validation } = autoFixDraftDoc(parseDraftRow(draft))
+  const bindings = validateDraftBindings(doc, { lineId: doc.lineId })
+  if (!fixes.length) {
+    return { draft, doc, validation, bindings, fixes }
+  }
+  let updated: DraftRow
+  if (validation.ok) {
+    // 修复后完全合法:走标准写路径(含活体绑定复核与审计)
+    const detail = updateDraft(draftId, actor, { doc, expectedRev: draft.rev, strictBindings: false })
+    updated = detail.draft
+  }
+  else {
+    // 部分修复:直接落库(乐观锁 + 审计),残余错误由回执暴露,不静默掩盖
+    updated = getOntologyRepo().updateDraft(draftId, JSON.stringify(doc), draft.rev)
+  }
+  log({
+    ontologyId: updated.ontologyId,
+    version: updated.baseVersion ?? 0,
+    action: 'draft.autofix',
+    actor,
+    detail: { draftId, rev: updated.rev, fixes: fixes.length, residualErrors: validation.issues.filter(i => i.severity === 'error').length },
+  })
+  return { draft: updated, doc, validation, bindings, fixes }
 }
 
 // ===== 校验 / 编译预览 =====

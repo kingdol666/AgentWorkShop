@@ -64,6 +64,27 @@ Invariants (violation fails compile/publish):
 4. **Hash-domain separation** — `ontologyRefs` are part of the profile content hash and **never** of the solver `ProblemIR` hash; ontology drift is `409 ONTOLOGY_PACK_DRIFTED`, not a fake IR change;
 5. **Fail-closed** — unknown state during guard evaluation blocks with reason code `state_unknown`.
 
+## Descriptions & auto-fix
+
+All three model kinds carry human-readable descriptions that agents can write and humans can see:
+
+| Model | Fields | Agent entry | Human entry |
+|---|---|---|---|
+| Ontology | document `description` + entity/rule descriptions | `ontology_draft_update` / autofix backfill | `/ontology` header & detail; PATCH draft |
+| AML model | `label` + `description` | `aml_model_annotate` | `/aml` registry (description line); PATCH metadata |
+| Solver profile | `name` + `description` | `optimizer_profile_propose` (`profile_name/profile_description`) | `/optimizer` form & version list |
+
+**Auto-fix** (`POST /ontology/drafts/:id/autofix`, tool `ontology_draft_autofix`, page button) performs only
+safe, deterministic, idempotent normalization:
+
+- fills document/entity/rule descriptions; dimension follows unit (compound units such as `mm/s` are left undeclared);
+- backfills rule/binding scope to the document line; fills binding units; normalizes an invalid `scale`;
+- removes dangling relations/bindings; de-duplicates ids or renames to `-dupN`;
+- downgrades hard rules stuck at `approved_for_control` when their evidence is insufficient.
+
+**Partial fixes persist** (optimistic lock + audit) while residual errors are returned honestly;
+`validated_control` evidence is never fabricated.
+
 ## The four places that actually execute
 
 1. **Dispatch guards** — `dispatch.service` calls `evaluateOntologyGuardsForNodes` before opening a card; a hit returns `409 ONTOLOGY_GUARD_BLOCKED`;
@@ -73,7 +94,7 @@ Invariants (violation fails compile/publish):
 
 Everything else is **reviewable metadata** — deliberately non-executing.
 
-## Agent tools (eight)
+## Agent tools (nine)
 
 | Tool | Purpose | Class |
 |---|---|---|
@@ -84,6 +105,7 @@ Everything else is **reviewable metadata** — deliberately non-executing.
 | `ontology_draft_update` | replace the document (optimistic lock) | write |
 | `ontology_draft_validate` | live validation (schema / dimensions / bindings) | write |
 | `ontology_compile_preview` | compile preview + Rule Trace (no publish) | write |
+| `ontology_draft_autofix` | **auto-fix** safely repairable issues and persist (never fabricates evidence) | write |
 | `ontology_publish_propose` | propose publishing (HITL card; an admin publishes) | write |
 
 The external MCP server mirrors three read-only tools (`scene_inspect / rule_explain / version_compare`).
