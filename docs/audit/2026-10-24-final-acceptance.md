@@ -68,8 +68,8 @@
 
 ## 7. 发布
 
-- 提交：**{{COMMIT}}**（分支 `tii-revision-20261017`，已推送 origin）
-- npm：**agentworkshop@0.8.0** —— {{PUBLISH}}
+- 提交：****7e064feb**（126 文件，已推 `origin/tii-revision-20261017`）**（分支 `tii-revision-20261017`，已推送 origin）
+- npm：**agentworkshop@0.8.0** —— **已发布**（`latest`；tarball 41.78 MB / 4187 files；已校验产物内含本体路由与 `ontology_scene_inspect` 工具）
 - 构建产物：`prepublishOnly` 触发生产构建（含本体路由与 101 件宿主工具）。
 
 ## 8. 遗留（下一轮，非本轮缺陷）
