@@ -46,6 +46,10 @@ export interface SubmitJobInput {
   modelName?: string
   /** 建模意图描述(注册时落模型 description;缺省派生自谱系) */
   modelDescription?: string
+  /** 内置训练器(G2.8):linear_arx@1 / static_response@1;配置驱动,无需 train.py */
+  trainerRef?: 'linear_arx@1' | 'static_response@1'
+  /** ProcessModelSpec(内置训练器的完整规格;随 budget 冻结) */
+  processModelSpec?: Record<string, unknown>
 }
 
 export function submitJob(input: SubmitJobInput): AmlJobRow {
@@ -120,6 +124,8 @@ export function submitJob(input: SubmitJobInput): AmlJobRow {
       providerGeneration: input.providerGeneration ?? null,
       modelName: input.modelName?.trim().slice(0, 80) || null,
       modelDescription: input.modelDescription?.trim().slice(0, 500) || null,
+      trainerRef: input.trainerRef ?? null,
+      processModelSpec: input.processModelSpec ?? null,
     },
     metricsJson: null,
     gatesJson: null,

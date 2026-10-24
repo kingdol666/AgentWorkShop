@@ -142,9 +142,18 @@ export interface RetentionSettings {
   audit_days: number
   approval_days: number
   analysis_days: number
+  /** Optimizer 运行/候选/建议/收益台账保留天数 */
+  optimizer_days: number
+  /** Process Model 资格/试验台账保留天数 */
+  process_model_days: number
 }
 export interface LogSettings {
   level: 'debug' | 'info' | 'warn' | 'error'
+}
+export interface OptimizerSolverSettings {
+  poolSize: number
+  requestTimeoutMs: number
+  threads: number
 }
 export interface DaqRuntimeSettings {
   mqtt: {
@@ -204,6 +213,30 @@ export const harnessContinuityEnabled = (): boolean => workshopFlag('harness_con
 export const channelMemoryDigestEnabled = (): boolean => workshopFlag('channel_memory_digest_enabled', true)
 export const backupSettings = (): BackupSettings => section<BackupSettings>('backup')
 export const retentionSettings = (): RetentionSettings => section<RetentionSettings>('retention')
+export const optimizerSolverSettings = (): OptimizerSolverSettings => {
+  const s = section<Record<string, unknown>>('optimizer')
+  const num = (key: string, dflt: number): number => {
+    const value = Number(s[`solver.${key}`] ?? dflt)
+    return Number.isFinite(value) ? value : dflt
+  }
+  return {
+    poolSize: Math.max(1, Math.min(num('poolSize', 1), 4)),
+    requestTimeoutMs: Math.max(1000, num('requestTimeoutMs', 30_000)),
+    threads: Math.max(1, Math.min(num('threads', 1), 16)),
+  }
+}
+/** 互校逐 CV 无量纲一致性容差(数值精度级;上限 1e-3 防止把门放宽到失效) */
+export const optimizerCrosscheckTol = (): number => {
+  const s = section<Record<string, unknown>>('optimizer')
+  const value = Number(s['crosscheck.tol'] ?? 1e-6)
+  return Number.isFinite(value) ? Math.max(1e-10, Math.min(value, 1e-3)) : 1e-6
+}
+/** 工件 UQ 校准保鲜天数;超期建议降级 unverified */
+export const amlUqFreshDays = (): number => {
+  const s = section<Record<string, unknown>>('aml')
+  const value = Number(s['uq.freshDays'] ?? 7)
+  return Number.isFinite(value) ? Math.max(1, Math.min(value, 365)) : 7
+}
 export const logSettings = (): LogSettings => section<LogSettings>('log')
 export function daqRuntimeSettings(): DaqRuntimeSettings {
   const e = effective()

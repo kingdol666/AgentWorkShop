@@ -56,7 +56,51 @@ export interface TwinScenePack extends ScenePack { scenePackId?: string, version
 export interface SolverAdapterManifest { adapterId: string, version: string, backend?: string, capabilities?: Record<string, unknown>, inputSchema?: Record<string, unknown>, outputSchema?: Record<string, unknown>, metadata?: Record<string, unknown> }
 export interface SolverAdapter { manifest: SolverAdapterManifest, solve(input: unknown, limits?: Record<string, unknown>): Promise<unknown> | unknown, cancel?(runId: string): Promise<void>, health?(): Promise<ProviderHealth> | ProviderHealth }
 export interface TwinSolverAdapter extends SolverAdapter { solverId?: string }
-export interface TwinPluginContribution { providers?: TwinPhysicsProvider[], scenePacks?: ScenePack[], objectiveProfiles?: ObjectiveProfile[], solverAdapters?: SolverAdapter[] }
+
+/**
+ * 训练适配器:配置驱动的模型家族实现(plan G1.4)。
+ * 注册后 `registry.resolveTrainingAdapter('linear_arx@1')` 返回实现;未注册返回 null
+ * —— 不再"恒 accepted",避免配置能提交但没有执行者。
+ */
+export interface TrainingAdapterManifest {
+  adapterRef: string
+  version: string
+  /** 该训练器产出的工件类型(linear_state_space@1 / static_response@1 …) */
+  artifactKind: string
+  displayName?: string
+  description?: string
+  capabilities?: Record<string, unknown>
+}
+export interface TrainingAdapter {
+  manifest: TrainingAdapterManifest
+  train(input: unknown): Promise<unknown> | unknown
+}
+
+/** 目标/问题模板注册:ProblemTemplate 的编译实现(发布时真实解析,非 accepted 占位)。 */
+export interface ObjectiveAdapterManifest {
+  ref: string
+  version: string
+  /** 适用求解器族 */
+  solverFamilies?: string[]
+  displayName?: string
+  description?: string
+}
+export interface ObjectiveAdapter {
+  manifest: ObjectiveAdapterManifest
+  compile(input: unknown): Promise<unknown> | unknown
+}
+
+export interface SolverAdapterLease {
+  refId: string
+  adapterId: string
+  version: string
+  adapter: SolverAdapter
+  generation?: number
+  released: boolean
+  release(): void
+}
+
+export interface TwinPluginContribution { providers?: TwinPhysicsProvider[], physicsProviders?: TwinPhysicsProvider[], scenePacks?: ScenePack[], objectiveProfiles?: ObjectiveAdapter[], solverAdapters?: SolverAdapter[], trainingAdapters?: TrainingAdapter[] }
 export type TwinRegistrationSource = string | { pluginName: string, pluginVersion?: string, source?: string, scope?: string, version?: string, plugin?: string, name?: string, [key: string]: unknown }
 export interface TwinProviderFilter { providerId?: string, version?: string, pluginName?: string, generation?: number, states?: ProviderLifecycleState[], includeDraining?: boolean, includeRetired?: boolean, includeFailed?: boolean, sceneKind?: string, [key: string]: unknown }
 export interface TwinProviderSummary { providerId: string, version: string, providerHash: string, pluginName: string, pluginVersion?: string, generation: number, state: ProviderLifecycleState, health: ProviderHealth, inFlight: number, registeredAt: string, drainingAt?: string, retiredAt?: string, manifest: PhysicsProviderManifest }

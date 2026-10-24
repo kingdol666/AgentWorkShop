@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @stylistic/max-statements-per-line, @typescript-eslint/no-unused-expressions */
 import { getTwinProviderRegistry, type TwinProviderRegistry } from './provider-registry'
-import type { TwinPluginContribution, TwinPluginExtBridge, TwinPluginBridgeOperation, TwinProviderFilter, TwinProviderSummary, TwinRegistrationSource, TwinPhysicsProvider, ScenePack, SolverAdapter } from './provider-contracts'
+import type { TwinPluginContribution, TwinPluginExtBridge, TwinPluginBridgeOperation, TwinProviderFilter, TwinProviderSummary, TwinRegistrationSource, TwinPhysicsProvider, ScenePack, SolverAdapter, TrainingAdapter, ObjectiveAdapter } from './provider-contracts'
 
 export interface TwinPluginBridgeGlobal { __twinPluginExt?: any }
 function sourceName(source: TwinRegistrationSource | string | undefined): { pluginName: string, pluginVersion?: string, source?: string } { if (typeof source === 'string') return { pluginName: source }; return { pluginName: String(source?.pluginName ?? source?.plugin ?? source?.name ?? 'external-twin-plugin'), pluginVersion: source?.pluginVersion ?? source?.version, source: source?.source ?? source?.scope } }
@@ -12,7 +12,8 @@ function registryApi(registry: TwinProviderRegistry) {
       if (kind === 'registerPhysicsProvider') return registry.registerPhysicsProvider(payload as TwinPhysicsProvider, s)
       if (kind === 'registerScenePack') return registry.registerScenePack(normalizePack(payload as Record<string, unknown>), s)
       if (kind === 'registerSolverAdapter') return registry.registerSolverAdapter(payload as SolverAdapter, s)
-      if (kind === 'registerObjectiveProfile' || kind === 'registerTrainingAdapter') return { ok: true, accepted: true, capability: kind }
+      if (kind === 'registerObjectiveProfile') return registry.registerTwinPluginContribution(s.pluginName, { objectiveProfiles: [payload as ObjectiveAdapter] }, undefined)
+      if (kind === 'registerTrainingAdapter') return registry.registerTwinPluginContribution(s.pluginName, { trainingAdapters: [payload as TrainingAdapter] }, undefined)
       throw new Error(`Unknown Twin registration kind: ${kind}`)
     },
     registerEntry(entry: { kind: string, payload: unknown, source?: TwinRegistrationSource }) { return this.register(entry.kind, entry.payload, entry.source) },
@@ -20,11 +21,17 @@ function registryApi(registry: TwinProviderRegistry) {
     unregisterTwinPluginContribution(pluginName: string, generation?: number) { return registry.unregisterTwinPluginContribution(pluginName, generation) },
     registerPhysicsProvider(payload: TwinPhysicsProvider, source?: TwinRegistrationSource) { const s = sourceName(source); return registry.registerTwinPluginContribution(s.pluginName, { providers: [payload] }, undefined) },
     registerScenePack(payload: any, source?: TwinRegistrationSource) { const s = sourceName(source); return registry.registerTwinPluginContribution(s.pluginName, { scenePacks: [normalizePack(payload)] }, undefined) },
-    registerObjectiveProfile(_payload: unknown, _source?: TwinRegistrationSource) { return { ok: true, accepted: true, capability: 'objective-profile' } },
-    registerTrainingAdapter(_payload: unknown, _source?: TwinRegistrationSource) { return { ok: true, accepted: true, capability: 'training-adapter' } },
+    registerObjectiveProfile(payload: unknown, source?: TwinRegistrationSource) { const s = sourceName(source); return registry.registerTwinPluginContribution(s.pluginName, { objectiveProfiles: [payload as ObjectiveAdapter] }, undefined) },
+    registerTrainingAdapter(payload: unknown, source?: TwinRegistrationSource) { const s = sourceName(source); return registry.registerTwinPluginContribution(s.pluginName, { trainingAdapters: [payload as TrainingAdapter] }, undefined) },
     registerSolverAdapter(payload: SolverAdapter, source?: TwinRegistrationSource) { const s = sourceName(source); return registry.registerTwinPluginContribution(s.pluginName, { solverAdapters: [payload] }, undefined) },
     listProviders(filter?: TwinProviderFilter): TwinProviderSummary[] { return registry.listProviders(filter) },
     listTwinProviders(filter?: TwinProviderFilter): TwinProviderSummary[] { return registry.listProviders(filter) },
+    resolveTrainingAdapter(ref: string, version?: string) { return registry.resolveTrainingAdapter(ref, version) },
+    listTrainingAdapters() { return registry.listTrainingAdapters() },
+    resolveObjectiveProfile(ref: string, version?: string) { return registry.resolveObjectiveAdapter(ref, version) },
+    listObjectiveProfiles() { return registry.listObjectiveAdapters() },
+    acquireSolverAdapter(adapterId: string, version?: string) { return registry.acquireSolverAdapter(adapterId, version) },
+    drainSolverAdapter(adapterId: string, version?: string) { return registry.drainSolverAdapter(adapterId, version) },
     getProviderHealth(providerId: string, version?: string) { return registry.getProviderHealth(providerId, version) },
     resolveProvider(providerId: string, version?: string) { return registry.resolveProvider(providerId, version) },
     validateProvider(providerId: string, version?: string) { return registry.validateProvider(providerId, version) },
@@ -52,6 +59,8 @@ export function createTwinPluginBridge(): TwinPluginExtBridge {
       if (kind === 'registerPhysicsProvider') return this.registerTwinPluginContribution(pluginName, { providers: [payload] })
       if (kind === 'registerScenePack') return this.registerTwinPluginContribution(pluginName, { scenePacks: [normalizePack(payload)] })
       if (kind === 'registerSolverAdapter') return this.registerTwinPluginContribution(pluginName, { solverAdapters: [payload] })
+      if (kind === 'registerTrainingAdapter') return this.registerTwinPluginContribution(pluginName, { trainingAdapters: [payload as TrainingAdapter] })
+      if (kind === 'registerObjectiveProfile') return this.registerTwinPluginContribution(pluginName, { objectiveProfiles: [payload as ObjectiveAdapter] })
       return { ok: true, accepted: true, capability: kind }
     },
     registerEntry(entry: any) { return this.register(entry.kind, entry.payload, entry.source) },

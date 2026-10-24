@@ -1,0 +1,56 @@
+{
+  "at": "2026-10-22T20:01:19.943Z",
+  "base": "http://127.0.0.1:3989",
+  "email": "opt-optbz9a@awshop.local",
+  "binding": {
+    "bindingId": "ob-mvjydhya-3k45j",
+    "agentId": "968e5334-a1e6-449f-9341-e1763e28f518",
+    "profileId": "optp-value-optbz9a",
+    "specRef": "pms-optbz9a@1"
+  },
+  "spec": "pms-optbz9a",
+  "results": [
+    {
+      "id": "P1",
+      "name": "同一 home 重启后 workshop ready",
+      "pass": true,
+      "detail": "port=3989"
+    },
+    {
+      "id": "P2",
+      "name": "重启后可登录(用户持久)",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "P3",
+      "name": "规格持久可读",
+      "pass": true,
+      "detail": "n=2"
+    },
+    {
+      "id": "P4",
+      "name": "Profile 持久(含发布态)",
+      "pass": true,
+      "detail": "n=6"
+    },
+    {
+      "id": "P5",
+      "name": "绑定持久且归属不变",
+      "pass": true,
+      "detail": "n=1"
+    },
+    {
+      "id": "P6",
+      "name": "重启后同一绑定可再次求解(optimal)",
+      "pass": true,
+      "detail": "status=optimal msg=ok"
+    },
+    {
+      "id": "P7",
+      "name": "重启后工具面仍按绑定注入",
+      "pass": true,
+      "detail": "optimizer_capabilities,optimizer_solve,optimizer_status,optimizer_cancel,optimizer_plan_get,optimizer_campaign,optimizer_round,optimizer_state"
+    }
+  ]
+}

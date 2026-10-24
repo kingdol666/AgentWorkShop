@@ -79,8 +79,8 @@ export interface AgentTemplateDetail {
   isBuiltin: boolean
   /** 归属用户(null = 内置公共) */
   ownerUserId: string | null
-  /** 该模板克隆出的全部实例(跨 channel) */
-  instances: Array<{ id: string, channelId: string, role: 'lead' | 'worker', token: string }>
+  /** 该模板克隆出的全部实例(跨 channel;WP3:只回 token 尾 4 位) */
+  instances: Array<{ id: string, channelId: string, role: 'lead' | 'worker', tokenTail: string }>
   createdAt: string
   updatedAt: string
 }

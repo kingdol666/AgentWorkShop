@@ -18,6 +18,8 @@ export interface DaqSampleRow {
   tsMs: number
   value: number
   state: string
+  /** 平台首次入库时间(epoch ms;首写胜出,同键更正帧本期不支持 → C6) */
+  ingestedAt?: number | null
   /** 产线批次打标(活动 LineRun 窗口内的样本逐条携带;null = 线体空闲段) */
   lineId?: string | null
   productId?: string | null
@@ -43,6 +45,8 @@ export interface TsdbPoint {
   max?: number
   cnt?: number
   state?: string
+  /** 首次入库时间(仅逐节点分页/raw 返回;旧数据为 undefined = unknown) */
+  ingestedAt?: number
 }
 
 /** 跨通道打标查询(产线数据隔离:产品/配方/批次/通道/时间/桶) */
@@ -59,6 +63,33 @@ export interface TsdbTagQuery {
   limit?: number
 }
 
+/**
+ * 逐节点 raw 分页(C7):单节点、稳定 ASC、游标严格 ts_ms > afterTs。
+ * 与 queryTagged 的"nodeIds 集合总量 limit"语义**并存而不改**旧语义。
+ */
+export interface TsdbPageQuery {
+  afterTs?: number
+  fromMs?: number
+  toMs?: number
+  /** 每页上限(默认 5000,最大 50 万) */
+  limit?: number
+  /** 置 false 可省 state 列(默认 true) */
+  withState?: boolean
+}
+
+export interface TsdbPage {
+  nodeId: string
+  points: TsdbPoint[]
+  /** 下一页游标(= 本页最后 at);done=true 时为 null */
+  nextCursor: number | null
+  done: boolean
+}
+
+export interface TsdbStats {
+  /** 同 (node,ts) 二次写入不同值时被丢弃的帧数(可观测,不静默) */
+  correctionDropped: number
+}
+
 export interface TsdbPort {
   /** 后端标识(sqlite-emulated | timescale)——REST meta 直报前端 */
   readonly backend: string
@@ -67,8 +98,13 @@ export interface TsdbPort {
   query(nodeId: string, opts: DaqQueryOpts): Promise<TsdbPoint[]>
   /** 按产线打标跨通道查询(产品/配方隔离) */
   queryTagged(q: TsdbTagQuery): Promise<Map<string, TsdbPoint[]>>
+  /** 逐节点分页 raw(新增;旧 queryTagged 零改动)。
+   *  可选实现:后端不支持时调用方退化为逐节点 query()(见 dataset-builder)。 */
+  queryTaggedPage?(nodeId: string, q?: TsdbPageQuery): Promise<TsdbPage>
   /** 各节点最近一个样本(列表页值列兜底) */
   latest(): Promise<Map<string, DaqSampleRow>>
+  /** 运行观测(更正丢弃计数等;可选) */
+  stats?(): TsdbStats
   // ===== 多形态帧(v2:向量/图像;像素 blob 在对象存储,这里只存元数据+派生指标)=====
   writeFrames(rows: DaqFrameRow[]): Promise<void>
   queryFrames(nodeId: string, opts: DaqFrameQueryOpts): Promise<DaqFrameRecord[]>

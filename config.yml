@@ -12,7 +12,7 @@
 app:
   name: AgentWorkShop
   title: AgentWorkShop
-  version: 0.7.70
+  version: 0.7.71
   description: 基于 Nuxt 4 的配置驱动运行范式
 
 # 运行模式（dev/prod 实际由启动命令决定，此处仅作运行时展示）
@@ -143,6 +143,15 @@ backup:
   interval_hours: 24    # 备份间隔(BACKUP_INTERVAL_HOURS)
   keep: 7               # 保留份数(BACKUP_KEEP)
 
+# Optimizer Solver(本地 Python Worker;复用 AML .venv)
+optimizer:
+  solver:
+    poolSize: 1             # 进程池(1-4;每进程同时 1 个 solve)
+    requestTimeoutMs: 30000 # 单次求解硬超时
+    threads: 1              # OMP/OPENBLAS/MKL/NUMEXPR 线程预算
+  crosscheck:
+    tol: 0.000001           # 候选互校逐 CV 无量纲一致性容差(AW_OPTIMIZER_CROSSCHECK_TOL)
+
 # 数据保留清理(env RETENTION_DISABLED / AW_EVENTS_RETENTION_D 等)
 retention:
   disabled: false     # RETENTION_DISABLED=1 / AW_RETENTION_DISABLED=1 关闭
@@ -150,6 +159,8 @@ retention:
   messages_days: 30   # Channel 消息(AW_MESSAGES_RETENTION_D)
   audit_days: 90      # 审计日志(AW_AUDIT_RETENTION_D)
   approval_days: 180  # 审批历史(AW_APPROVAL_RETENTION_D)
+  optimizer_days: 365       # Optimizer 运行/建议/收益台账
+  process_model_days: 365   # 过程模型资格/试验台账
 
 # 服务端日志(env AWSHOP_LOG_LEVEL)
 log:
@@ -178,3 +189,5 @@ aml:
     valTestGap: 0.20
     minRows: 500
     minRuns: 3
+  uq:
+    freshDays: 7    # 工件 UQ 校准保鲜天数(AW_AML_UQ_FRESH_DAYS),超期建议降级 unverified

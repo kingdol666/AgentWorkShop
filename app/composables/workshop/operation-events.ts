@@ -30,7 +30,7 @@ function textOf(e: AepEnvelope): string {
 const INDUSTRIAL_TOOL_KIND: Array<[RegExp, OperationKind]> = [
   [/dcw_control|dcw_read|dcw_judge|dcw_rollback|dcw_journal|param_control|param_read|line_context|recipe_update|recipe_versions|recipe_rollback|recipe_log/, 'dcw'],
   [/my_industrial_nodes|ops_log|daq_frames|daq_query/, 'daq'],
-  [/optimization_explore|aml_|twin_calibration/, 'aml'],
+  [/optimization_explore|aml_|twin_calibration|optimizer_/, 'aml'],
   [/twin_|mpc_optimize/, 'twin'],
 ]
 

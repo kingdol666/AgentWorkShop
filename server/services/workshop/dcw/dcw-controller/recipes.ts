@@ -210,6 +210,33 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
       : recipe.params
     const run = repo.createRun(recipe, effective)
     await this.writeRecipeParams({ ...recipe, params: effective }, run)
+    // 运行中应用新配方版本 → 谱系拆段(A13):旧段在 now 闭合,新段记录新版本/内容 hash。
+    try {
+      const { getActiveLineRun, setActiveLineRun } = await import('../line-run')
+      const active = getActiveLineRun(recipe.lineId)
+      if (active) {
+        const switchedAt = Date.now()
+        const { closeContextSegment, openContextSegment } = await import('../../process-model/context')
+        closeContextSegment(active.runId, switchedAt)
+        // 活动窗口的配方身份同步切换:DAQ 入库打标、配方数采窗口都从活动窗口取值,
+        // 只拆段不换身份会让切换后的样本仍带旧 recipeId(段与数据标签互相矛盾)。
+        const { getDcwProductRepo } = await import('../dcw-product.repo')
+        const product = getDcwProductRepo().byId(recipe.productId)
+        setActiveLineRun({
+          ...active,
+          recipeId: recipe.id,
+          recipeVersion: recipe.version ?? 0,
+          recipeName: recipe.name,
+          productId: product?.id ?? active.productId,
+          productName: product?.name ?? active.productName,
+        })
+        openContextSegment({
+          id: active.runId, lineId: recipe.lineId, recipeId: recipe.id,
+          startedAt: new Date(switchedAt).toISOString(), recipeVersion: recipe.version ?? 0, paramsSnapshot: effective,
+        })
+      }
+    }
+    catch { /* 谱系不可用只降级,不阻断下发 */ }
     // ACK 鉴定判定落账(单一咽喉点:REST 手动/Agent 工具/回退/系统路径全覆盖):
     // failed≥1 → error;仅 unverified(链路受理未证实)→ warn;全部设备证实 → info。
     // error/warn 同时向该线 operate 授权用户定向告警(生产化:假成功必须有人看到)。

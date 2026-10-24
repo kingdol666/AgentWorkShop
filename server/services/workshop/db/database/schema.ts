@@ -302,7 +302,12 @@ CREATE TABLE IF NOT EXISTS aml_datasets (
   created_by    TEXT NOT NULL DEFAULT '',
   created_by_kind TEXT NOT NULL DEFAULT 'user',
   note          TEXT NOT NULL DEFAULT '',
-  created_at    TEXT NOT NULL
+  created_at    TEXT NOT NULL,
+  -- ProcessModelSpec 构建谱系(空 = 旧 AML 数据集,无工艺规格来源;绑定模型资格门据此溯源)
+  spec_ref      TEXT NOT NULL DEFAULT '',
+  spec_version  INTEGER,
+  -- 数据谱系核验(D18):0=未核验(旧/无 confirmed segment;禁优化资格);1=每 run 均有已确认 segment 且版本匹配
+  lineage_verified INTEGER NOT NULL DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS idx_aml_datasets_recipe ON aml_datasets(recipe_id, created_at DESC);
 CREATE TABLE IF NOT EXISTS aml_jobs (
@@ -819,7 +824,202 @@ CREATE TABLE IF NOT EXISTS channel_tool_settings (
   updated_at   TEXT NOT NULL,
   PRIMARY KEY (channel_id, tool_name)
 );
-CREATE INDEX IF NOT EXISTS idx_channel_tool_settings_channel ON channel_tool_settings(channel_id, enabled);`
+CREATE INDEX IF NOT EXISTS idx_channel_tool_settings_channel ON channel_tool_settings(channel_id, enabled);
+
+-- v29: Optimizer Manager + Process Model Service(2026-10-22 计划 G1)
+-- 设计要点:新表全部进主库(不复制 EDA 的独立连接模式),由 backup/retention 统一覆盖。
+-- published 的 spec/profile 由服务层拒绝 UPDATE;版本变更 = 新行,不原地改。
+CREATE TABLE IF NOT EXISTS process_model_specs (
+  id              TEXT NOT NULL,
+  version         INTEGER NOT NULL DEFAULT 1,
+  line_id         TEXT NOT NULL,
+  product_id      TEXT NOT NULL,
+  recipe_id       TEXT NOT NULL,
+  recipe_version  INTEGER NOT NULL DEFAULT 0,
+  content_hash    TEXT NOT NULL,
+  spec_json       TEXT NOT NULL,
+  status          TEXT NOT NULL DEFAULT 'draft',   -- draft|published|retired
+  owner_user_id   TEXT NOT NULL DEFAULT '',
+  created_at      TEXT NOT NULL,
+  updated_at      TEXT NOT NULL,
+  PRIMARY KEY (id, version)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_process_model_specs_content
+  ON process_model_specs(line_id, product_id, recipe_id, recipe_version, content_hash);
+CREATE INDEX IF NOT EXISTS idx_process_model_specs_line ON process_model_specs(line_id, created_at DESC);
+
+-- 配方版本/工况谱系:半开区间 [from_ts, to_ts);运行中切换拆段,训练窗口不得跨版本。
+CREATE TABLE IF NOT EXISTS process_context_segments (
+  id                   TEXT PRIMARY KEY,
+  line_id              TEXT NOT NULL,
+  run_id               TEXT NOT NULL DEFAULT '',
+  from_ts              INTEGER NOT NULL,
+  to_ts                INTEGER,
+  recipe_id            TEXT NOT NULL,
+  recipe_version       INTEGER NOT NULL DEFAULT 0,
+  recipe_content_hash  TEXT NOT NULL,
+  condition_id         TEXT NOT NULL DEFAULT '',
+  source               TEXT NOT NULL DEFAULT 'line_run',  -- line_run|recipe_edit|manual
+  confirmed            INTEGER NOT NULL DEFAULT 0,
+  created_at           TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_process_context_segments_run_from ON process_context_segments(run_id, from_ts);
+CREATE INDEX IF NOT EXISTS idx_process_context_segments_line ON process_context_segments(line_id, from_ts);
+
+CREATE TABLE IF NOT EXISTS process_model_eligibility (
+  id                     TEXT PRIMARY KEY,
+  spec_id                TEXT NOT NULL,
+  spec_version           INTEGER NOT NULL DEFAULT 1,
+  scope                  TEXT NOT NULL DEFAULT 'simulation',  -- simulation|real
+  condition_id           TEXT NOT NULL DEFAULT '',
+  prediction_eligible    INTEGER NOT NULL DEFAULT 0,
+  optimization_eligible  INTEGER NOT NULL DEFAULT 0,
+  report_json            TEXT NOT NULL DEFAULT '{}',
+  evidence_version       TEXT NOT NULL DEFAULT '',
+  created_at             TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_process_model_eligibility_spec ON process_model_eligibility(spec_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS process_model_experiments (
+  id          TEXT PRIMARY KEY,
+  line_id     TEXT NOT NULL,
+  plan_json   TEXT NOT NULL,
+  status      TEXT NOT NULL DEFAULT 'planned',  -- planned|running|done|cancelled|failed
+  budget_json TEXT NOT NULL DEFAULT '{}',
+  created_by  TEXT NOT NULL DEFAULT '',
+  created_at  TEXT NOT NULL,
+  updated_at  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_process_model_experiments_line ON process_model_experiments(line_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS optimizer_profiles (
+  id                    TEXT NOT NULL,
+  version               INTEGER NOT NULL DEFAULT 1,
+  name                  TEXT NOT NULL DEFAULT '',
+  model_ref             TEXT NOT NULL,
+  model_artifact_hash   TEXT NOT NULL DEFAULT '',
+  model_artifact_kind   TEXT NOT NULL DEFAULT '',
+  model_interface       TEXT NOT NULL DEFAULT '',
+  problem_template_ref  TEXT NOT NULL,
+  problem_config_json   TEXT NOT NULL DEFAULT '{}',
+  process_spec_ref      TEXT NOT NULL DEFAULT '',
+  solver_ref            TEXT NOT NULL,
+  solver_version        TEXT NOT NULL DEFAULT '',
+  condition_ids_json    TEXT NOT NULL DEFAULT '[]',
+  status                TEXT NOT NULL DEFAULT 'draft',  -- draft|validated|published|retired
+  owner_user_id         TEXT NOT NULL DEFAULT '',
+  problem_ir_hash       TEXT NOT NULL DEFAULT '',
+  content_hash          TEXT NOT NULL DEFAULT '',
+  created_at            TEXT NOT NULL,
+  updated_at            TEXT NOT NULL,
+  PRIMARY KEY (id, version)
+);
+CREATE INDEX IF NOT EXISTS idx_optimizer_profiles_model ON optimizer_profiles(model_ref, status);
+
+-- 作用域 = (workspace, channel, channel_agent, profile);channel_agent_id 是 channel_agents.id
+-- (实例身份),绝不用 agents.id 模板 id。多绑定 = 同一实例绑多个 Profile。
+CREATE TABLE IF NOT EXISTS optimizer_bindings (
+  id                TEXT PRIMARY KEY,
+  workspace_id      TEXT NOT NULL,
+  channel_id        TEXT NOT NULL REFERENCES channels(id) ON DELETE CASCADE,
+  channel_agent_id  TEXT NOT NULL REFERENCES channel_agents(id) ON DELETE CASCADE,
+  profile_id        TEXT NOT NULL,
+  profile_version   INTEGER NOT NULL,
+  capabilities_json TEXT NOT NULL DEFAULT '[]',
+  mode              TEXT NOT NULL DEFAULT 'recommendation',  -- shadow|recommendation
+  valid_from        TEXT NOT NULL,
+  valid_to          TEXT,
+  revision          INTEGER NOT NULL DEFAULT 1,
+  created_by        TEXT NOT NULL DEFAULT '',
+  created_at        TEXT NOT NULL,
+  updated_at        TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_optimizer_bindings_agent_profile
+  ON optimizer_bindings(channel_agent_id, profile_id, profile_version);
+CREATE INDEX IF NOT EXISTS idx_optimizer_bindings_channel ON optimizer_bindings(channel_id, channel_agent_id);
+
+CREATE TABLE IF NOT EXISTS optimizer_runs (
+  id                      TEXT PRIMARY KEY,
+  binding_id              TEXT NOT NULL,
+  binding_revision        INTEGER NOT NULL DEFAULT 1,
+  profile_id              TEXT NOT NULL,
+  profile_version         INTEGER NOT NULL,
+  problem_ir_hash         TEXT NOT NULL,
+  context_snapshot_json   TEXT NOT NULL DEFAULT '{}',
+  problem_ir_json         TEXT NOT NULL DEFAULT '{}',
+  status                  TEXT NOT NULL DEFAULT 'running',
+  diagnostics_json        TEXT NOT NULL DEFAULT '{}',
+  independent_cost        REAL,
+  started_at              TEXT NOT NULL,
+  finished_at             TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_optimizer_runs_binding ON optimizer_runs(binding_id, started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_optimizer_runs_status ON optimizer_runs(status, started_at DESC);
+
+CREATE TABLE IF NOT EXISTS optimizer_candidates (
+  id                 TEXT PRIMARY KEY,
+  run_id             TEXT NOT NULL REFERENCES optimizer_runs(id) ON DELETE CASCADE,
+  seq                INTEGER NOT NULL,
+  controls_json      TEXT NOT NULL DEFAULT '[]',
+  predicted_json     TEXT NOT NULL DEFAULT '[]',
+  cost               REAL,
+  constraints_json   TEXT NOT NULL DEFAULT '[]',
+  verified           INTEGER NOT NULL DEFAULT 0,
+  verify_report_json TEXT NOT NULL DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS idx_optimizer_candidates_run ON optimizer_candidates(run_id, seq);
+
+CREATE TABLE IF NOT EXISTS optimizer_recommendations (
+  id                 TEXT PRIMARY KEY,
+  run_id             TEXT NOT NULL REFERENCES optimizer_runs(id) ON DELETE CASCADE,
+  candidate_id       TEXT NOT NULL REFERENCES optimizer_candidates(id) ON DELETE CASCADE,
+  problem_ir_hash    TEXT NOT NULL,
+  model_artifact_hash TEXT NOT NULL DEFAULT '',
+  evidence_source    TEXT NOT NULL DEFAULT 'unassessed',
+  uq_evidence_json   TEXT,
+  status             TEXT NOT NULL DEFAULT 'unverified',  -- verified|unverified|expired
+  status_label       TEXT NOT NULL DEFAULT '',
+  legacy             TEXT NOT NULL DEFAULT '',
+  valid_until        TEXT NOT NULL,
+  created_at         TEXT NOT NULL
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_optimizer_recommendations_candidate ON optimizer_recommendations(candidate_id);
+CREATE INDEX IF NOT EXISTS idx_optimizer_recommendations_run ON optimizer_recommendations(run_id);
+
+CREATE TABLE IF NOT EXISTS optimizer_outcomes (
+  id                TEXT PRIMARY KEY,
+  recommendation_id TEXT NOT NULL REFERENCES optimizer_recommendations(id) ON DELETE CASCADE,
+  applied_at        TEXT,
+  observed_json     TEXT NOT NULL DEFAULT '{}',
+  delta_json        TEXT NOT NULL DEFAULT '{}',
+  verdict           TEXT NOT NULL DEFAULT 'pending',  -- pending|improved|regressed|inconclusive
+  created_at        TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_optimizer_outcomes_recommendation ON optimizer_outcomes(recommendation_id);
+
+-- 双驱动候选互校(SW4/D6/D25):同一工件双实现逐 CV 无量纲一致性;不可变追加行
+CREATE TABLE IF NOT EXISTS optimizer_candidate_crosschecks (
+  id                            TEXT PRIMARY KEY,
+  recommendation_id             TEXT NOT NULL REFERENCES optimizer_recommendations(id) ON DELETE CASCADE,
+  run_id                        TEXT NOT NULL,
+  model_id                      TEXT NOT NULL DEFAULT '',
+  model_artifact_hash           TEXT NOT NULL DEFAULT '',
+  context_hash                  TEXT NOT NULL DEFAULT '',
+  input_distance_snapshot_json  TEXT NOT NULL DEFAULT '{}',
+  predicted_json                TEXT NOT NULL DEFAULT '[]',
+  replayed_json                 TEXT NOT NULL DEFAULT '[]',
+  dev_per_cv_json               TEXT NOT NULL DEFAULT '[]',
+  tol                           REAL NOT NULL DEFAULT 0.000001,
+  max_dev_dimensionless         REAL,
+  qhat_per_cv_json              TEXT NOT NULL DEFAULT '[]',
+  verdict                       TEXT NOT NULL DEFAULT 'fail',  -- pass|fail|not_applicable
+  condition_changed             INTEGER NOT NULL DEFAULT 0,
+  stale                         INTEGER NOT NULL DEFAULT 0,
+  reason                        TEXT NOT NULL DEFAULT '',
+  row_hash                      TEXT NOT NULL DEFAULT '',
+  created_at                    TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_optimizer_crosschecks_rec ON optimizer_candidate_crosschecks(recommendation_id, created_at DESC, id DESC);`
 
 // ===== 默认种子数据(首轮初始化注入;owner NULL = 公共资源,所有登录用户只读共享) =====
 

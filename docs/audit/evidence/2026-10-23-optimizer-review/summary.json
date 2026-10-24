@@ -1,0 +1,128 @@
+{
+  "date": "2026-10-23",
+  "scope": "optimizer local fixes; full integration remains pending",
+  "unit": {
+    "command": "node node_modules/tsx/dist/cli.mjs --tsconfig .nuxt/tsconfig.server.json --test --test-force-exit <all tests/*.test.ts>",
+    "exitCode": 0,
+    "passed": 372,
+    "failed": 0,
+    "skipped": 0,
+    "log": "optimizer-review-full-unit-final.log"
+  },
+  "python": {
+    "command": "existing AML .venv/Scripts/python.exe tests/optimizer_python_regressions.py",
+    "exitCode": 0,
+    "passed": 6,
+    "log": "optimizer-review-python.log"
+  },
+  "lint": {
+    "command": "node node_modules/eslint/bin/eslint.js .",
+    "exitCode": 0,
+    "log": "optimizer-review-lint.log"
+  },
+  "typecheck": {
+    "command": "node scripts/typecheck.mjs",
+    "exitCode": 0,
+    "log": "optimizer-review-typecheck-final.log"
+  },
+  "i18n": {
+    "command": "node scripts/_i18n-verify-keys.mjs",
+    "exitCode": 0,
+    "zh": 2983,
+    "en": 2983,
+    "unresolved": 0,
+    "log": "optimizer-review-i18n.log"
+  },
+  "docs": {
+    "command": "node scripts/check-docs-sync.mjs",
+    "exitCode": 0,
+    "passed": 91,
+    "log": "optimizer-review-docs.log"
+  },
+  "independentReview": "APPROVED for local fixes only",
+  "fullLiveBrowserRerun": false,
+  "realDeviceAccess": false,
+  "followupPlan": "docs/plans/2026-10-23-optimizer-integration-followup.md",
+  "sourceHashes": [
+    {
+      "path": "server/services/workshop/process-model/trainers/linear-arx.ts",
+      "sha256": "9542fa62f72b164f2db019bb27a1b352f199851c64405496714a4ea5d4dfb226"
+    },
+    {
+      "path": "server/services/workshop/process-model/trainers/static-response.ts",
+      "sha256": "5c724add596fa493304338f01be9f0c84da3ef2dcb1f6a7a567eacd2595fd31e"
+    },
+    {
+      "path": "server/services/workshop/process-model/trainers/index.ts",
+      "sha256": "0cb7436ccb05e3eca2eecb9cc70670154afcb5fa508d0096d314d7a125258d04"
+    },
+    {
+      "path": "server/services/workshop/process-model/artifact-validation.ts",
+      "sha256": "7c85199bddf39fcd5a1d5a8b95d588353e2e00540ffaa5ae324584175c16ce52"
+    },
+    {
+      "path": "server/services/workshop/process-model/spec.ts",
+      "sha256": "ecb514a8fa2b92a788d723825ddeb43450f68f5d8a2e573ed040882abff88b75"
+    },
+    {
+      "path": "server/services/workshop/aml/gates.ts",
+      "sha256": "93b811a8a4b262ca95e2db31f809236949cccfb980a9c60b6647edca96c18f28"
+    },
+    {
+      "path": "server/services/workshop/aml/env-lease.ts",
+      "sha256": "8deb9ce60b722e94c5a7879e814913f5a43ecf6ba013953b8709cab8b4a7c307"
+    },
+    {
+      "path": "server/services/workshop/aml/predictor.ts",
+      "sha256": "9d01e4ca92c63fef84b5d393bfbe81250bd8dcd17f341fb5f70aefc39fac1eaf"
+    },
+    {
+      "path": "server/services/workshop/optimization/manager.ts",
+      "sha256": "feab44499f2755f361b8bddd74d578acff5a2a1a7af1e2d6e3049e0fd6ca681a"
+    },
+    {
+      "path": "server/services/workshop/optimization/recommendation.service.ts",
+      "sha256": "a70afef52014e0cbf3263c5a6823fc67c990a087b99e5b4833288e59de90ee55"
+    },
+    {
+      "path": "server/services/workshop/optimization/worker-client.ts",
+      "sha256": "7ee67f6003c93c867463dfd3df441a4e62af3fdc3586d054f231d04bcaeac24d"
+    },
+    {
+      "path": "server/services/workshop/optimization/problem-builder.ts",
+      "sha256": "e647b650302df171292a1c3b8dfa66373fafb762eb31da0fdb04cfecd1d57653"
+    },
+    {
+      "path": "server/services/workshop/optimization/python/problems.py",
+      "sha256": "4141440e840aa6699965f7f4e48ed9520361b6b79f1e5cafaacfaeccc5fe844b"
+    },
+    {
+      "path": "server/services/workshop/optimization/rest-auth.ts",
+      "sha256": "77fa33596bb190a21635da9ec2f80b44555a9333a5d445de94e9572a55ca5db1"
+    },
+    {
+      "path": "server/services/workshop/agents/industrial/optimizer-tools.ts",
+      "sha256": "dcdea5815fe4cdd423c87dd0336afea3b774cdb3048ea6b48ac2ab6d6df9a564"
+    },
+    {
+      "path": "server/api/workshop/optimization/bindings/[id].delete.ts",
+      "sha256": "8134082acfd6f7d157e51e793405ab16791d755b511ceb9a9c97f7b6df7b3587"
+    },
+    {
+      "path": "tests/optimizer-authz-regression.test.ts",
+      "sha256": "857e46c248b2167a2dce53adf234f2bd6869da9d1eaf69d6e8a921602cdf1be9"
+    },
+    {
+      "path": "tests/optimizer-request-contract.test.ts",
+      "sha256": "382de0331f4e2df1f1ad8832a5df303442832ed829517e2dc4cd170f4b208402"
+    },
+    {
+      "path": "tests/optimizer-numeric-regressions.test.ts",
+      "sha256": "1a5733ad64aec5448f891d3e96ee24806f8d32e64066afe4029e915ae9139759"
+    },
+    {
+      "path": "tests/optimizer_python_regressions.py",
+      "sha256": "18d7c10ea353bfa7f88d86e7b13f82b3204df9b9c72b7b4bde925b14c0f02c33"
+    }
+  ]
+}

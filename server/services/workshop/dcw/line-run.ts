@@ -19,6 +19,8 @@ export interface ActiveLineRun {
   lineId: string
   runId: string
   recipeId: string
+  /** 开跑时冻结的配方版本(历史样本的版本证据;0 = 未知/旧数据) */
+  recipeVersion?: number
   recipeName: string
   productId: string
   productName: string

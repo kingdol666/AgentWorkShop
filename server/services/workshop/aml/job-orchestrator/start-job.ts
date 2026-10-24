@@ -15,6 +15,7 @@ import { join } from 'node:path'
 import { runPython } from './process'
 import { state } from './shared'
 import { wsStage } from './broadcast'
+import { isTrainerRef, type ProcessModelSpec } from '../../process-model/contracts'
 
 const log = createLogger('aml.job')
 
@@ -37,6 +38,49 @@ export async function startJob(row: AmlJobRow): Promise<void> {
   const artifacts = join(jobDir, 'artifacts')
   mkdirSync(workspace, { recursive: true })
   mkdirSync(artifacts, { recursive: true })
+  const earlyBudget = safeParse(row.budget) as Record<string, unknown>
+
+  // ===== 内置训练器分支(G2.8):配置驱动、无用户 Python 代码 =====
+  // 训练在 TS 侧完成(线性辨识/响应面),不要求 model.onnx,也不走 aml_eval.py;
+  // 评估/gate/注册仍走平台权威链(concludeJob → evaluateGates → registerModelFromJob)。
+  if (isTrainerRef(earlyBudget.trainerRef)) {
+    const run: RunningJob = {
+      row, jobDir, child: null, startedAt: Date.now(), lastProtocolAt: Date.now(), lastWsAt: 0,
+      logLines: [], protocolBadLines: 0, killed: false,
+    }
+    st.running.set(row.id, run)
+    try {
+      if (process.env.AML_STUB === '1') {
+        await runStub(run, artifacts)
+        return
+      }
+      rt.repo.job.setState(row.id, 'training', 'train', 10)
+      wsStage(row, 'train')
+      const spec = earlyBudget.processModelSpec as ProcessModelSpec | undefined
+      if (!spec || typeof spec !== 'object') {
+        rt.repo.job.fail(row.id, 'failed', '内置训练器作业缺少 processModelSpec(提交契约缺失,永久错误)', new Date().toISOString())
+        finishRun(run)
+        return
+      }
+      const { runBuiltinTraining } = await import('../../process-model/trainers')
+      const result = runBuiltinTraining(earlyBudget.trainerRef, { datasetDir: dataset.path, spec, jobDir })
+      if (run.killed) return
+      rt.repo.job.setState(row.id, 'evaluating', 'evaluate', 80)
+      wsStage(row, 'evaluate')
+      log.info(`[aml-job] ${row.id} 内置训练器 ${earlyBudget.trainerRef} 完成(${result.artifactKind}),进入平台评估`)
+      concludeJob(run, artifacts)
+    }
+    catch (err) {
+      if (!run.killed) {
+        const msg = err instanceof Error ? err.message : String(err)
+        rt.repo.job.fail(row.id, 'failed', `内置训练失败:${msg}(永久错误不重试)`, new Date().toISOString())
+        experimentFail(run, msg)
+        finishRun(run)
+      }
+    }
+    return
+  }
+
   let trainFile = existsSync(join(workspace, 'train.py')) ? 'train.py' : null
   if (!trainFile) {
     // REST 内联代码路径:预算袋携带 inlineCode 时落盘(≤500KB,提交入口已限)

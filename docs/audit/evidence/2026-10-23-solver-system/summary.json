@@ -1,0 +1,295 @@
+{
+  "at": "2026-10-23",
+  "round": "solver full-function + full-system verification (v2 after independent review)",
+  "baseline": "branch tii-revision-20261017 (uncommitted v4.1 delivery)",
+  "environment": {
+    "os": "win32 10.0.26200 x64",
+    "python": "3.12.7",
+    "osqp": "1.1.3",
+    "scipy": "1.14.1",
+    "numpy": "2.2.6",
+    "browser": "Chromium (Playwright 1.51 headless)"
+  },
+  "suites": [
+    {
+      "id": "solver-protocol",
+      "name": "Worker 协议与故障面(真实 Python 进程;ready 帧字段校验)",
+      "command": "npm run test:unit (tests/optimizer-solver-protocol.test.ts)",
+      "total": 6,
+      "pass": 6,
+      "fail": 0,
+      "evidence": "solver-unit.log"
+    },
+    {
+      "id": "solver-numeric-matrix",
+      "name": "MPC/稳态数值功能矩阵(真实 OSQP/SciPy)",
+      "command": "~/.AgentWorkShop/aml/.venv/Scripts/python.exe tests/optimizer_solver_matrix.py",
+      "total": 34,
+      "pass": 34,
+      "fail": 0,
+      "breakdown": {
+        "mpc": 18,
+        "steady_response": 15,
+        "finite_guard": 1
+      },
+      "evidence": "solver-matrix.log"
+    },
+    {
+      "id": "solver-contracts",
+      "name": "IR hash(template)/代价/轨迹/约束/分派矩阵(422 status)",
+      "command": "npm run test:unit (tests/optimizer-solver-contracts.test.ts)",
+      "total": 6,
+      "pass": 6,
+      "fail": 0,
+      "evidence": "solver-unit.log"
+    },
+    {
+      "id": "solver-worker-pool",
+      "name": "Worker 池并发/超时/崩溃/降级(真实进程)",
+      "command": "npm run test:unit (tests/optimizer-worker-pool.test.ts)",
+      "total": 4,
+      "pass": 4,
+      "fail": 0,
+      "evidence": "solver-unit.log"
+    },
+    {
+      "id": "unit-total",
+      "name": "单元/集成测试总计",
+      "command": "npm run test:unit",
+      "total": 412,
+      "pass": 412,
+      "fail": 0,
+      "baselineTotal": 396,
+      "evidence": "solver-unit.log"
+    },
+    {
+      "id": "acceptance",
+      "name": "Optimizer/Process-Model 进程内 acceptance",
+      "command": "npx tsx --tsconfig .nuxt/tsconfig.server.json scripts/acceptance-optimizer-process-model.ts",
+      "total": 67,
+      "pass": 67,
+      "fail": 0,
+      "limitations": [
+        "Timescale queryTagged(raw) 仍未返回 state/ingested_at,且未实现 queryTaggedPage",
+        "A9 的浏览器点击未在本脚本执行",
+        "A7 p95 为本地单机 fixture(horizon=20,1 MV/1 CV)",
+        "A8 使用延迟 FOPDT 与静态响应面 fixture,未耦合 plc-node-simulator 真实模型",
+        "旧 mpc_optimize 仍走 TS 启发式,未路由到 Manager/资格门",
+        "单长 run 的时间块隔离切分未实现",
+        "static_response 训练→评估→注册→预测全链未在 acceptance 端到端执行",
+        "A18 仅验证签名算法与 gate,未测实际时序"
+      ],
+      "evidence": "solver-acceptance.log + acceptance.json"
+    },
+    {
+      "id": "optimizer-live",
+      "name": "Optimizer live E2E(隔离实例+真实 HTTP+Chrome)",
+      "command": "npx tsx --tsconfig .nuxt/tsconfig.server.json scripts/e2e-optimizer-live.mjs",
+      "total": 90,
+      "pass": 90,
+      "fail": 0,
+      "highlights": {
+        "R1.19": "rec=verified(已验证推荐)",
+        "U1.12": "真实浏览器 UI 点击求解 → 运行行 optimal + 建议徽章",
+        "V2": "中位质量误差 6.42 → 0.02,改善 99.7%",
+        "V3": "闭环 MV ∈ [42.1, 50.0] ⊂ [0,100]"
+      },
+      "evidence": "solver-live.log + optimizer-live-report.json"
+    },
+    {
+      "id": "line-governance",
+      "name": "产线治理 E2E(真实协议/开停线/HITL/写穿)",
+      "command": "node scripts/e2e-line-governance.mjs",
+      "total": 44,
+      "pass": 44,
+      "fail": 0,
+      "evidence": "solver-line.log"
+    },
+    {
+      "id": "tool-registry",
+      "name": "工具注册表/插件安装/MCP/工具治理",
+      "command": "node scripts/tool-registry-e2e.mjs",
+      "total": 56,
+      "pass": 56,
+      "fail": 0,
+      "evidence": "solver-tools.log"
+    },
+    {
+      "id": "api-live",
+      "name": "生产构建实例 API Live(3056,隔离 AW_HOME,预置持久化 channel)",
+      "command": "npm run build && PORT=3056 ... node .output/server/index.mjs && AW_BASE=http://127.0.0.1:3056 AW_E2E_TOKEN=<persisted> node scripts/api-live-e2e.mjs",
+      "total": 64,
+      "pass": 64,
+      "fail": 0,
+      "skipped": 0,
+      "evidence": "solver-api-live.log"
+    },
+    {
+      "id": "system-ui-e2e",
+      "name": "全系统实机 UI(Playwright,隔离 dev 实例)",
+      "command": "python scripts/ui/system-e2e-playwright.py",
+      "total": 205,
+      "pass": 205,
+      "fail": 0,
+      "routes": 27,
+      "interactionGroups": 9,
+      "screenshots": 27,
+      "postLogin": {
+        "pageErrors": 0,
+        "http5xx": 0,
+        "realFailedApi": 0,
+        "visibleNetworkErrors": 0,
+        "jsConsoleErrors": 0
+      },
+      "evidence": "system-e2e-report.json + docs/audit/evidence/2026-10-23-system-e2e/shots/"
+    },
+    {
+      "id": "optimizer-ui-readface",
+      "name": "优化器 UI 运行台账/建议徽章( live 保留实例 )",
+      "command": "AW_KEEP_ALIVE=1 npx tsx ... scripts/e2e-optimizer-live.mjs && python scripts/ui/optimizer-ui-playwright.py",
+      "total": 11,
+      "pass": 11,
+      "fail": 0,
+      "evidence": "optimizer-ui-report.json + optimizer-ui-solve.png"
+    },
+    {
+      "id": "quality-gates",
+      "name": "lint/typecheck/unit/i18n/docs",
+      "command": "node scripts/run-quality-gates.mjs",
+      "total": 5,
+      "pass": 5,
+      "fail": 0,
+      "allPass": true,
+      "evidence": "solver-gates.log + gates.json"
+    },
+    {
+      "id": "production-build",
+      "name": "生产构建(最终代码)",
+      "command": "npm run build",
+      "exitCode": 0,
+      "evidence": "solver-build.log"
+    },
+    {
+      "id": "production-default-password-reject",
+      "name": "生产模式默认 sessionPassword 拒绝启动",
+      "command": "PORT=3057 ... node .output/server/index.mjs (无 NUXT_SESSION_PASSWORD)",
+      "exitCode": 1,
+      "expected": "拒绝启动",
+      "evidence": "solver-default-password-reject.log"
+    },
+    {
+      "id": "docs-sync",
+      "name": "文档计数一致性",
+      "command": "npm run docs:check",
+      "total": 91,
+      "pass": 91,
+      "fail": 0,
+      "baseline": "126/19/42/84"
+    },
+    {
+      "id": "i18n",
+      "name": "i18n 键一致性",
+      "command": "npm run i18n:check",
+      "usedKeys": 2598,
+      "zhKeys": 2985,
+      "enKeys": 2985,
+      "unresolved": 0,
+      "parity": "OK"
+    }
+  ],
+  "defectsFoundAndFixed": [
+    {
+      "id": "SOLVER-NONFINITE-MISCLASSIFIED",
+      "file": "server/services/workshop/optimization/python/problems.py",
+      "description": "NaN/Inf 输入被 SLSQP 误判为 infeasible",
+      "fix": "_assert_finite_ir 在求解入口拒绝 NaN/Inf → ValueError → Worker SOLVER_ERROR(422)",
+      "lockedBy": "tests/optimizer_solver_matrix.py::test_nonfinite_* + FiniteGuard"
+    },
+    {
+      "id": "SOLVER-BOUNDS-INDEX",
+      "file": "server/services/workshop/optimization/python/problems.py",
+      "description": "mvBounds/cvBounds 短于变量数时抛 IndexError",
+      "fix": "MPC/静态两路径显式维度校验并给出可定位消息",
+      "lockedBy": "tests/optimizer_solver_matrix.py::test_bounds_dimension_mismatch_rejected / short_mv_bounds"
+    },
+    {
+      "id": "SOLVER-EMPTY-CV-BOUNDS",
+      "file": "server/services/workshop/optimization/python/problems.py",
+      "description": "cvBounds=[] 被 or 回退静默当成无边界",
+      "fix": "仅 None 补默认;空数组进入维度校验并拒绝",
+      "lockedBy": "tests/optimizer_solver_matrix.py::test_empty_cv_bounds_rejected_not_silently_unbounded"
+    },
+    {
+      "id": "WORKER-READY-FRAME-UNVALIDATED",
+      "file": "server/services/workshop/optimization/worker-client.ts",
+      "description": "ready 帧只校验 type,不校验协议版本/pid",
+      "fix": "readyFrame 保留 + protocolVersion===1 + diag.pid>0;非法帧终止进程",
+      "lockedBy": "tests/optimizer-solver-protocol.test.ts"
+    }
+  ],
+  "reviewerRound1Remediation": {
+    "C1-visible-network-error": "新增 R*.6 可见网络失败断言;ERR_ABORTED 导航取消单列",
+    "C2-optimizer-business": "live U1.12/U1.13 真实 UI 求解 + optimizer-ui-readface 11/11",
+    "C3-api-skips": "预置持久化 channel 后 64/64,0 SKIP",
+    "C4-workspace-loading": "动态页等待真实 h1/title 就绪;I11.2/I12.1 标题断言",
+    "M1-ready-frame": "readyFrame 字段校验 + 非法帧拒绝",
+    "M2-ts-wrapper": "受 Mimosa 拦截未落地,已披露并给出替代覆盖",
+    "M3-tolerances": "矩阵补 cost/predicted/解析对照,报告改按量级容差",
+    "M4-matrix-log": "solver-matrix.log 归档",
+    "M5-weak-ui-assertions": "工具搜索/产线 h1/工作区 h1/数据面板/日志结果表断言加强",
+    "M6-bounds-edges": "空/短/Inf 全部拒绝,新增 Worker 422 用例",
+    "M7-report-honesty": "未运行项与 SKIP/limitations 全列"
+  },
+  "notRun": [
+    {
+      "id": "ts-python-wrapper",
+      "item": "tests/optimizer-solver-python.test.ts",
+      "reason": "Mimosa 对测试内变量化 spawn 一律拦截(含复用 spawnLineProcess);字面量路径会把本机用户名写入仓库。矩阵以 solver-matrix.log 直跑归档,单测面由 contracts 的 Worker 数值一致性覆盖"
+    },
+    {
+      "id": "scenario-suite-downstream",
+      "items": [
+        "data-studio-e2e.mjs",
+        "agent-binding-matrix-e2e.mjs",
+        "idd-rag-aml-regression.mjs"
+      ],
+      "reason": "需要多阶段 scenario-context + PLC 模拟器;上一轮全绿。本轮以 /data、/tools、/dcw 实机 UI 覆盖对应读面"
+    },
+    {
+      "id": "sw6-remaining",
+      "items": [
+        "跨进程 env-leases.sqlite",
+        "worker 协议 v2 solverRef 分派",
+        "发布冻结 IR",
+        "MD 成组"
+      ],
+      "reason": "上一轮标注 partial 的独立大项,本轮不扩大范围"
+    },
+    {
+      "id": "ui-dev-mode",
+      "item": "实机 UI 浏览器矩阵",
+      "reason": "运行于 dev;生产产物由 build + api-live 64/64 覆盖,未对生产产物重跑浏览器矩阵"
+    }
+  ],
+  "artifacts": {
+    "report": "docs/audit/2026-10-23-solver-system-acceptance.md",
+    "evidenceDir": "docs/audit/evidence/2026-10-23-solver-system",
+    "uiEvidenceDir": "docs/audit/evidence/2026-10-23-system-e2e"
+  },
+  "review": {
+    "round1": "REJECTED (C1-C4, M1-M7)",
+    "round2": "APPROVED",
+    "critical": [],
+    "major": [],
+    "minorCount": 9,
+    "note": "Minor: 启动 stdout 覆盖范围、非法 ready 注入用例、部分静态 cost 断言、I11.1 可短路、4xx 文案覆盖、池崩溃/overlap 证据、旧证据路径、截图对比度、重复 I0 id"
+  },
+  "deslop": {
+    "scope": "本轮新增/修改求解器测试与验收脚本",
+    "changes": [
+      "移除未使用的 PlaywrightTimeout 导入",
+      "移除未使用的 RawWorker.cancel 声明"
+    ],
+    "regression": "gates ALL PASS post-deslop"
+  }
+}

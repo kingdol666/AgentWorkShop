@@ -7,3 +7,6 @@ onnxscript>=0.1
 onnxruntime>=1.18
 
 scipy==1.14.1
+# Optimizer Solver(linear MPC):与 scipy 同一共享 .venv,不建第二套环境。
+# 版本锁定与已安装解释器一致(osqp 1.x 的 OSQP()/setup/solve API)。
+osqp==1.1.3

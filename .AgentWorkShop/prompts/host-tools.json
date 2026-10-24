@@ -19,7 +19,9 @@
         "progress"
       ],
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "complete_task",
@@ -45,7 +47,9 @@
         "summary"
       ],
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "submit_task",
@@ -72,7 +76,9 @@
         "description"
       ],
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "dispatch_task",
@@ -123,7 +129,9 @@
         "parent_task_id"
       ],
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "send_message_to_agent",
@@ -162,7 +170,9 @@
         "message"
       ],
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "poll_messages",
@@ -181,7 +191,9 @@
         }
       },
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "read_channel_mail",
@@ -200,7 +212,9 @@
         }
       },
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "broadcast_message",
@@ -226,7 +240,9 @@
         "message"
       ],
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "list_channel_tasks",
@@ -236,7 +252,9 @@
       "type": "object",
       "properties": {},
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "list_team_agents",
@@ -246,7 +264,9 @@
       "type": "object",
       "properties": {},
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "get_task_details",
@@ -264,7 +284,9 @@
         "task_id"
       ],
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "get_my_task_queue",
@@ -274,7 +296,9 @@
       "type": "object",
       "properties": {},
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "get_queue_overview",
@@ -284,7 +308,9 @@
       "type": "object",
       "properties": {},
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "reassign_task",
@@ -307,7 +333,9 @@
         "to_agent_id"
       ],
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "update_task",
@@ -333,7 +361,9 @@
         "task_id"
       ],
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "cancel_task",
@@ -351,7 +381,9 @@
         "task_id"
       ],
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "search_memory",
@@ -382,7 +414,9 @@
         "query"
       ],
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "save_memory",
@@ -422,7 +456,9 @@
         "scope"
       ],
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "create_team_agent",
@@ -457,7 +493,9 @@
         "name"
       ],
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "update_team_agent",
@@ -491,7 +529,9 @@
         "agent_id"
       ],
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "remove_team_agent",
@@ -513,7 +553,9 @@
         "agent_id"
       ],
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "refuse_task",
@@ -536,7 +578,9 @@
         "reason"
       ],
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "my_industrial_nodes",
@@ -546,7 +590,47 @@
       "type": "object",
       "properties": {},
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
+  },
+  {
+    "name": "industrial_resources",
+    "label": "绑定面资源",
+    "description": "按本 Agent 的绑定面分页枚举可用资源(数采节点/频道绑线只读节点/已绑定配方及其参数节点/MES 点位/优化器绑定)。用于在工具描述被折叠时按需查看完整清单;只会返回你自己绑定面内的对象。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "daq",
+            "line-daq",
+            "recipe",
+            "mes",
+            "optimizer",
+            "all"
+          ],
+          "description": "资源类别(缺省 all)"
+        },
+        "query": {
+          "type": "string",
+          "description": "按 id/名称/详情模糊筛选(可选)"
+        },
+        "offset": {
+          "type": "number",
+          "description": "分页偏移(缺省 0)"
+        },
+        "limit": {
+          "type": "number",
+          "description": "每页条数(1-200,缺省 50)"
+        }
+      },
+      "required": [],
+      "additionalProperties": false
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "daq_query",
@@ -601,7 +685,22 @@
         }
       },
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "refs": [
+        {
+          "param": "node_id",
+          "kind": "node",
+          "mode": "read"
+        },
+        {
+          "param": "line_id",
+          "kind": "line",
+          "mode": "read"
+        }
+      ]
+    },
+    "riskClass": "read"
   },
   {
     "name": "dcw_judge",
@@ -634,7 +733,18 @@
         "reason"
       ],
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "atLeastOne": [
+        {
+          "params": [
+            "record_id"
+          ],
+          "hint": "record_id 必填(优化记录 id,opt-*);配方面链路判定不用 dcw_judge,达标用 recipe_update 固化、劣化用 recipe_rollback。"
+        }
+      ]
+    },
+    "riskClass": "read"
   },
   {
     "name": "dcw_journal",
@@ -657,7 +767,31 @@
         }
       },
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "atLeastOne": [
+        {
+          "params": [
+            "node_id",
+            "recipe_id"
+          ],
+          "hint": "node_id 或 recipe_id 至少提供一个:查某节点的参数变更史传 node_id;查配方面优化记录传 recipe_id(全节点不落权限面,不提供)。"
+        }
+      ],
+      "refs": [
+        {
+          "param": "node_id",
+          "kind": "node",
+          "mode": "read"
+        },
+        {
+          "param": "recipe_id",
+          "kind": "recipe",
+          "mode": "read"
+        }
+      ]
+    },
+    "riskClass": "read"
   },
   {
     "name": "send_cross_channel_message",
@@ -684,7 +818,9 @@
         "message"
       ],
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "list_other_teams",
@@ -695,7 +831,9 @@
       "properties": {},
       "required": [],
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "search_other_teams_memory",
@@ -717,7 +855,9 @@
         "query"
       ],
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "daq_export",
@@ -764,7 +904,20 @@
       },
       "required": [],
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "refs": [
+        {
+          "param": "line_id",
+          "kind": "line",
+          "mode": "read"
+        }
+      ],
+      "nodeLists": [
+        "node_ids"
+      ]
+    },
+    "riskClass": "read"
   },
   {
     "name": "daq_frames",
@@ -815,7 +968,22 @@
         }
       },
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "refs": [
+        {
+          "param": "node_id",
+          "kind": "node",
+          "mode": "read"
+        },
+        {
+          "param": "line_id",
+          "kind": "line",
+          "mode": "read"
+        }
+      ]
+    },
+    "riskClass": "read"
   },
   {
     "name": "ops_log",
@@ -870,7 +1038,28 @@
         }
       },
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "refs": [
+        {
+          "param": "line_id",
+          "kind": "line",
+          "mode": "read"
+        },
+        {
+          "param": "recipe_id",
+          "kind": "recipe",
+          "mode": "read"
+        },
+        {
+          "param": "node_id",
+          "kind": "node",
+          "mode": "read"
+        }
+      ],
+      "readableLineNodes": true
+    },
+    "riskClass": "read"
   },
   {
     "name": "line_log",
@@ -925,7 +1114,28 @@
         }
       },
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "refs": [
+        {
+          "param": "line_id",
+          "kind": "line",
+          "mode": "read"
+        },
+        {
+          "param": "recipe_id",
+          "kind": "recipe",
+          "mode": "read"
+        },
+        {
+          "param": "node_id",
+          "kind": "node",
+          "mode": "read"
+        }
+      ],
+      "readableLineNodes": true
+    },
+    "riskClass": "read"
   },
   {
     "name": "recipe_log",
@@ -964,7 +1174,22 @@
         }
       },
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "refs": [
+        {
+          "param": "line_id",
+          "kind": "line",
+          "mode": "read"
+        },
+        {
+          "param": "recipe_id",
+          "kind": "recipe",
+          "mode": "read"
+        }
+      ]
+    },
+    "riskClass": "read"
   },
   {
     "name": "line_context",
@@ -979,7 +1204,17 @@
         }
       },
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "refs": [
+        {
+          "param": "line_id",
+          "kind": "line",
+          "mode": "read"
+        }
+      ]
+    },
+    "riskClass": "read"
   },
   {
     "name": "recipe_versions",
@@ -998,7 +1233,17 @@
         }
       },
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "refs": [
+        {
+          "param": "recipe_id",
+          "kind": "recipe",
+          "mode": "read"
+        }
+      ]
+    },
+    "riskClass": "read"
   },
   {
     "name": "recipe_update",
@@ -1054,7 +1299,34 @@
         "params",
         "reason"
       ]
-    }
+    },
+    "references": {
+      "atLeastOne": [
+        {
+          "params": [
+            "recipe_id",
+            "line_id"
+          ],
+          "hint": "recipe_id 或 line_id 至少提供一个:只给 line_id 时按该线当前活动批次解析配方。"
+        }
+      ],
+      "refs": [
+        {
+          "param": "recipe_id",
+          "kind": "recipe",
+          "mode": "write"
+        },
+        {
+          "param": "line_id",
+          "kind": "line",
+          "mode": "read"
+        }
+      ],
+      "deepNodeRefs": [
+        "params[].node_id"
+      ]
+    },
+    "riskClass": "write"
   },
   {
     "name": "recipe_rollback",
@@ -1089,7 +1361,17 @@
         }
       },
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "refs": [
+        {
+          "param": "recipe_id",
+          "kind": "recipe",
+          "mode": "write"
+        }
+      ]
+    },
+    "riskClass": "write"
   },
   {
     "name": "mes_catalog",
@@ -1120,7 +1402,9 @@
         }
       },
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "mes_fetch",
@@ -1161,7 +1445,13 @@
         "ids"
       ],
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "nodeLists": [
+        "ids"
+      ]
+    },
+    "riskClass": "read"
   },
   {
     "name": "mes_dataset_read",
@@ -1187,7 +1477,9 @@
         "dataset_id"
       ],
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "mes_datasets",
@@ -1202,7 +1494,9 @@
         }
       },
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "aml_node_catalog",
@@ -1212,7 +1506,9 @@
       "type": "object",
       "properties": {},
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "aml_dataset_build",
@@ -1325,7 +1621,25 @@
         "horizon_steps"
       ],
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "refs": [
+        {
+          "param": "line_id",
+          "kind": "line",
+          "mode": "read"
+        },
+        {
+          "param": "recipe_id",
+          "kind": "recipe",
+          "mode": "read"
+        }
+      ],
+      "deepNodeRefs": [
+        "nodes[].node_id"
+      ]
+    },
+    "riskClass": "write"
   },
   {
     "name": "aml_dataset_stats",
@@ -1343,7 +1657,17 @@
         "dataset_id"
       ],
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "chained": [
+        {
+          "param": "dataset_id",
+          "kind": "dataset",
+          "mode": "read"
+        }
+      ]
+    },
+    "riskClass": "read"
   },
   {
     "name": "aml_job_submit",
@@ -1437,7 +1761,17 @@
         "change_note"
       ],
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "chained": [
+        {
+          "param": "dataset_id",
+          "kind": "dataset",
+          "mode": "write"
+        }
+      ]
+    },
+    "riskClass": "write"
   },
   {
     "name": "aml_job_status",
@@ -1452,7 +1786,17 @@
         }
       },
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "chained": [
+        {
+          "param": "job_id",
+          "kind": "job",
+          "mode": "read"
+        }
+      ]
+    },
+    "riskClass": "read"
   },
   {
     "name": "aml_job_logs",
@@ -1474,7 +1818,17 @@
         "job_id"
       ],
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "chained": [
+        {
+          "param": "job_id",
+          "kind": "job",
+          "mode": "read"
+        }
+      ]
+    },
+    "riskClass": "read"
   },
   {
     "name": "aml_job_cancel",
@@ -1492,7 +1846,17 @@
         "job_id"
       ],
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "chained": [
+        {
+          "param": "job_id",
+          "kind": "job",
+          "mode": "write"
+        }
+      ]
+    },
+    "riskClass": "write"
   },
   {
     "name": "aml_leaderboard",
@@ -1510,7 +1874,17 @@
         "dataset_id"
       ],
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "chained": [
+        {
+          "param": "dataset_id",
+          "kind": "dataset",
+          "mode": "read"
+        }
+      ]
+    },
+    "riskClass": "read"
   },
   {
     "name": "aml_model_find",
@@ -1555,7 +1929,9 @@
         }
       },
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "aml_model_promote",
@@ -1582,7 +1958,17 @@
         "to_stage"
       ],
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "chained": [
+        {
+          "param": "model_id",
+          "kind": "model",
+          "mode": "write"
+        }
+      ]
+    },
+    "riskClass": "write"
   },
   {
     "name": "aml_model_reference",
@@ -1621,7 +2007,9 @@
         }
       },
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "twin_provider_catalog",
@@ -1636,7 +2024,9 @@
         }
       },
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "twin_scene_discover",
@@ -1651,7 +2041,9 @@
         }
       },
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "twin_scene_compile",
@@ -1699,7 +2091,25 @@
         "line_id"
       ],
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "refs": [
+        {
+          "param": "line_id",
+          "kind": "line",
+          "mode": "read"
+        },
+        {
+          "param": "recipe_id",
+          "kind": "recipe",
+          "mode": "read"
+        }
+      ],
+      "nodeLists": [
+        "node_ids"
+      ]
+    },
+    "riskClass": "write"
   },
   {
     "name": "twin_scene_freeze",
@@ -1731,7 +2141,17 @@
         "confirmation"
       ],
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "chained": [
+        {
+          "param": "scene_id",
+          "kind": "scene",
+          "mode": "write"
+        }
+      ]
+    },
+    "riskClass": "write"
   },
   {
     "name": "twin_physics_spec_draft",
@@ -1750,7 +2170,9 @@
         }
       },
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "twin_physics_spec_validate",
@@ -1770,7 +2192,9 @@
         "physics_spec"
       ],
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "twin_physics_spec_compile",
@@ -1794,7 +2218,9 @@
         "scene_json"
       ],
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "twin_scene_read",
@@ -1809,7 +2235,9 @@
         }
       },
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "twin_snapshot_create",
@@ -1850,7 +2278,9 @@
         "controls"
       ],
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "twin_trial_run",
@@ -1891,7 +2321,9 @@
         "candidate_controls"
       ],
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "write"
   },
   {
     "name": "mpc_optimize",
@@ -1921,7 +2353,9 @@
         "baseline_controls"
       ],
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "write"
   },
   {
     "name": "twin_gate_evaluate",
@@ -1964,7 +2398,17 @@
         "candidate_trials"
       ],
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "chained": [
+        {
+          "param": "model_id",
+          "kind": "model",
+          "mode": "read"
+        }
+      ]
+    },
+    "riskClass": "read"
   },
   {
     "name": "twin_calibration_request",
@@ -2004,7 +2448,22 @@
         "new_rows"
       ],
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "refs": [
+        {
+          "param": "line_id",
+          "kind": "line",
+          "mode": "read"
+        },
+        {
+          "param": "recipe_id",
+          "kind": "recipe",
+          "mode": "read"
+        }
+      ]
+    },
+    "riskClass": "write"
   },
   {
     "name": "optimization_explore",
@@ -2043,7 +2502,22 @@
         }
       },
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "refs": [
+        {
+          "param": "control_node_id",
+          "kind": "node",
+          "mode": "read"
+        },
+        {
+          "param": "target_node_id",
+          "kind": "node",
+          "mode": "read"
+        }
+      ]
+    },
+    "riskClass": "write"
   },
   {
     "name": "twin_bayes_optimize",
@@ -2088,7 +2562,9 @@
         "baseline_controls"
       ],
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "write"
   },
   {
     "name": "aml_training_plan_list",
@@ -2098,7 +2574,9 @@
       "type": "object",
       "properties": {},
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "aml_training_plan_create",
@@ -2163,7 +2641,22 @@
         "dataset_spec"
       ],
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "refs": [
+        {
+          "param": "line_id",
+          "kind": "line",
+          "mode": "read"
+        },
+        {
+          "param": "recipe_id",
+          "kind": "recipe",
+          "mode": "read"
+        }
+      ]
+    },
+    "riskClass": "write"
   },
   {
     "name": "aml_training_plan_train",
@@ -2181,7 +2674,17 @@
         "plan_id"
       ],
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "chained": [
+        {
+          "param": "plan_id",
+          "kind": "plan",
+          "mode": "write"
+        }
+      ]
+    },
+    "riskClass": "write"
   },
   {
     "name": "team_grant_nodes",
@@ -2215,7 +2718,9 @@
         "node_ids"
       ],
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "team_revoke_nodes",
@@ -2241,7 +2746,9 @@
         "node_ids"
       ],
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   },
   {
     "name": "recipe_trial",
@@ -2293,7 +2800,34 @@
         "hypothesis"
       ],
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "atLeastOne": [
+        {
+          "params": [
+            "recipe_id",
+            "line_id"
+          ],
+          "hint": "recipe_id 或 line_id 至少提供一个:只给 line_id 时按该线当前活动批次解析配方。"
+        }
+      ],
+      "refs": [
+        {
+          "param": "recipe_id",
+          "kind": "recipe",
+          "mode": "write"
+        },
+        {
+          "param": "line_id",
+          "kind": "line",
+          "mode": "read"
+        }
+      ],
+      "deepNodeRefs": [
+        "params[].node_id"
+      ]
+    },
+    "riskClass": "write"
   },
   {
     "name": "recipe_apply",
@@ -2323,7 +2857,31 @@
         "reason"
       ],
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "atLeastOne": [
+        {
+          "params": [
+            "recipe_id",
+            "line_id"
+          ],
+          "hint": "recipe_id 或 line_id 至少提供一个:只给 line_id 时按该线当前活动批次解析配方。"
+        }
+      ],
+      "refs": [
+        {
+          "param": "recipe_id",
+          "kind": "recipe",
+          "mode": "write"
+        },
+        {
+          "param": "line_id",
+          "kind": "line",
+          "mode": "read"
+        }
+      ]
+    },
+    "riskClass": "write"
   },
   {
     "name": "exp_collect",
@@ -2338,7 +2896,22 @@
         }
       },
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "refs": [
+        {
+          "param": "line_id",
+          "kind": "line",
+          "mode": "read"
+        },
+        {
+          "param": "lineId",
+          "kind": "line",
+          "mode": "read"
+        }
+      ]
+    },
+    "riskClass": "read"
   },
   {
     "name": "aml_activity",
@@ -2353,7 +2926,17 @@
         }
       },
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "refs": [
+        {
+          "param": "line_id",
+          "kind": "line",
+          "mode": "read"
+        }
+      ]
+    },
+    "riskClass": "read"
   },
   {
     "name": "recipe_propose",
@@ -2436,7 +3019,20 @@
         "packages"
       ],
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "refs": [
+        {
+          "param": "recipe_id",
+          "kind": "recipe",
+          "mode": "read"
+        }
+      ],
+      "deepNodeRefs": [
+        "packages[].params[].node_id"
+      ]
+    },
+    "riskClass": "write"
   },
   {
     "name": "line_start",
@@ -2459,7 +3055,17 @@
         "reason"
       ],
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "refs": [
+        {
+          "param": "recipe_id",
+          "kind": "recipe",
+          "mode": "write"
+        }
+      ]
+    },
+    "riskClass": "write"
   },
   {
     "name": "line_stop",
@@ -2477,7 +3083,9 @@
         "reason"
       ],
       "additionalProperties": false
-    }
+    },
+    "noRefs": true,
+    "riskClass": "write"
   },
   {
     "name": "line_status",
@@ -2493,7 +3101,17 @@
       },
       "required": [],
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "refs": [
+        {
+          "param": "line_id",
+          "kind": "line",
+          "mode": "read"
+        }
+      ]
+    },
+    "riskClass": "read"
   },
   {
     "name": "analysis_save",
@@ -2559,7 +3177,22 @@
         "summary"
       ],
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "refs": [
+        {
+          "param": "line_id",
+          "kind": "line",
+          "mode": "read"
+        },
+        {
+          "param": "recipe_id",
+          "kind": "recipe",
+          "mode": "read"
+        }
+      ]
+    },
+    "riskClass": "write"
   },
   {
     "name": "analysis_query",
@@ -2603,7 +3236,17 @@
       },
       "required": [],
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "refs": [
+        {
+          "param": "line_id",
+          "kind": "line",
+          "mode": "read"
+        }
+      ]
+    },
+    "riskClass": "read"
   },
   {
     "name": "mes_export",
@@ -2658,7 +3301,13 @@
         "to"
       ],
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "nodeLists": [
+        "ids"
+      ]
+    },
+    "riskClass": "read"
   },
   {
     "name": "recipe_catalog",
@@ -2685,7 +3334,17 @@
         }
       },
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "refs": [
+        {
+          "param": "line_id",
+          "kind": "line",
+          "mode": "read"
+        }
+      ]
+    },
+    "riskClass": "read"
   },
   {
     "name": "recipe_create",
@@ -2781,6 +3440,172 @@
         "reason"
       ],
       "additionalProperties": false
-    }
+    },
+    "references": {
+      "refs": [
+        {
+          "param": "line_id",
+          "kind": "line",
+          "mode": "write"
+        },
+        {
+          "param": "source_recipe_id",
+          "kind": "recipe",
+          "mode": "read"
+        }
+      ],
+      "deepNodeRefs": [
+        "params[].node_id",
+        "daq_windows[].node_id"
+      ]
+    },
+    "riskClass": "write"
+  },
+  {
+    "name": "optimizer_capabilities",
+    "label": "Optimizer Capabilities",
+    "description": "读取当前 Agent 绑定的优化器 Profile、可视化能力、求解器池状态与资格缺口(只读)。需先在 Channel 中绑定优化器 Profile;未绑定返回空清单。该工具不写设备。",
+    "parameters": {
+      "type": "object",
+      "properties": {},
+      "additionalProperties": false
+    },
+    "noRefs": true,
+    "riskClass": "read"
+  },
+  {
+    "name": "optimizer_solve",
+    "label": "Optimizer Solve",
+    "description": "按绑定授权求解一次优化问题(数值后端:Scipy/OSQP),返回候选 MV 轨迹与首步建议。必须已被 Channel 绑定优化器 Profile;多绑定时须显式传 binding_id。缺优化资格返回可定位缺口,不会伪造调参方案。建议不授予设备写权限。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "binding_id": {
+          "type": "string",
+          "description": "绑定 id(多绑定时必填;唯一绑定可省略)"
+        },
+        "timeout_ms": {
+          "type": "number",
+          "description": "请求级超时(毫秒)"
+        }
+      },
+      "additionalProperties": false
+    },
+    "references": {
+      "chained": [
+        {
+          "param": "binding_id",
+          "kind": "binding",
+          "mode": "write"
+        }
+      ]
+    },
+    "riskClass": "write"
+  },
+  {
+    "name": "optimizer_status",
+    "label": "Optimizer Status",
+    "description": "查询一次优化运行的终态、候选与建议状态(只读)。运行必须属于当前 Agent 的绑定,跨 Agent 查询返回 BINDING_NOT_OWNED。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "run_id": {
+          "type": "string",
+          "description": "优化运行 id(optimizer_solve 返回)"
+        }
+      },
+      "required": [
+        "run_id"
+      ],
+      "additionalProperties": false
+    },
+    "references": {
+      "atLeastOne": [
+        {
+          "params": [
+            "run_id"
+          ],
+          "hint": "run_id 必填(optimizer_solve 返回)"
+        }
+      ],
+      "chained": [
+        {
+          "param": "run_id",
+          "kind": "run",
+          "mode": "read"
+        }
+      ]
+    },
+    "riskClass": "read"
+  },
+  {
+    "name": "optimizer_cancel",
+    "label": "Optimizer Cancel",
+    "description": "取消一次在途优化运行(只取消计算,不触碰设备)。仅运行所属 Agent(按绑定授权校验)可取消;终态后取消返回 cancelled=false。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "run_id": {
+          "type": "string",
+          "description": "优化运行 id"
+        }
+      },
+      "required": [
+        "run_id"
+      ],
+      "additionalProperties": false
+    },
+    "references": {
+      "atLeastOne": [
+        {
+          "params": [
+            "run_id"
+          ],
+          "hint": "run_id 必填"
+        }
+      ],
+      "chained": [
+        {
+          "param": "run_id",
+          "kind": "run",
+          "mode": "write"
+        }
+      ]
+    },
+    "riskClass": "read"
+  },
+  {
+    "name": "optimizer_plan_get",
+    "label": "Optimizer Plan Get",
+    "description": "读取不可变建议方案(完整 MV 轨迹、预测、约束残差、验证状态与有效期)。按 run_id 或 recommendation_id 查询,绑定归属校验与 solve 一致;未验证建议会明确标注 unverified。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "run_id": {
+          "type": "string",
+          "description": "优化运行 id"
+        },
+        "recommendation_id": {
+          "type": "string",
+          "description": "建议 id(与 run_id 二选一)"
+        }
+      },
+      "additionalProperties": false
+    },
+    "references": {
+      "chained": [
+        {
+          "param": "run_id",
+          "kind": "run",
+          "mode": "read"
+        },
+        {
+          "param": "recommendation_id",
+          "kind": "recommendation",
+          "mode": "read"
+        }
+      ]
+    },
+    "riskClass": "read"
   }
 ]

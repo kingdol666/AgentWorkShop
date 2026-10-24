@@ -6,6 +6,8 @@
  *   audit_log         默认 90d   (retention.audit_days;合规观察期,从严保留)
  *   approval_history  默认 180d  (retention.approval_days;历史裁决主张不可变,放宽)
  *   analysis_reports  默认 365d  (retention.analysis_days;数据分析留痕台账,最宽松)
+ *   optimizer_runs    默认 365d  (retention.optimizer_days;运行/建议/收益台账)
+ *   process_model_eligibility / process_model_experiments 默认 365d (retention.process_model_days)
  * retention.disabled 整体逃生门(env AW_RETENTION_DISABLED / RETENTION_DISABLED 兼容别名)。
  * 覆盖链:config.yml < runtime-settings < env(AW_<键> 或历史别名)。时间列均为 TEXT ISO。
  * channel_events 与 daq_samples 已有各自保留机制,此处不重复覆盖。
@@ -29,6 +31,10 @@ const TARGETS = [
   { table: 'audit_log', column: 'at', days: 90, cfgKey: 'audit_days' },
   { table: 'approval_history', column: 'created_at', days: 180, cfgKey: 'approval_days' },
   { table: 'analysis_reports', column: 'created_at', days: 365, cfgKey: 'analysis_days' },
+  // Optimizer 台账(候选/建议/收益经 FK CASCADE 随 run 清理)
+  { table: 'optimizer_runs', column: 'started_at', days: 365, cfgKey: 'optimizer_days' },
+  { table: 'process_model_eligibility', column: 'created_at', days: 365, cfgKey: 'process_model_days' },
+  { table: 'process_model_experiments', column: 'created_at', days: 365, cfgKey: 'process_model_days' },
 ] as const
 
 export interface RetentionResult { table: string, removed: number, days: number }
@@ -40,6 +46,9 @@ export function runRetentionSweep(db: DatabaseSyncLike): RetentionResult[] {
   const out: RetentionResult[] = []
   for (const t of TARGETS) {
     const days = retention[t.cfgKey]
+    // 新表可能尚未建(半初始化库/旧部署):跳过而不是让整轮清理失败。
+    const exists = db.prepare('SELECT name FROM sqlite_master WHERE type = \'table\' AND name = ?').get(t.table)
+    if (!exists) continue
     const before = new Date(Date.now() - days * DAY_MS).toISOString()
     let removed = 0
     for (;;) {

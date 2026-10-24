@@ -41,6 +41,12 @@ export interface RpcHostToolDefinition {
   description: string
   parameters: Record<string, unknown>
   hidden?: boolean
+  /** WP5:引用面声明(与 host-tools.json 同源;执行期由 tool-verify 实时校验) */
+  references?: import('../../tool-reference-spec').ToolVerifySpec
+  /** WP5:显式无引用声明(登记制) */
+  noRefs?: boolean
+  /** WP5:风险类别(read/write/admin) */
+  riskClass?: import('../../tool-reference-spec').ToolRiskClass
 }
 
 /** RPC 响应(命令执行结果) */

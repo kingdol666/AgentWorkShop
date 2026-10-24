@@ -28,7 +28,7 @@
 
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.7.70</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST 集成（镜像与直连双路径）· 数据分析台账（产线级权限隔离）· 工具调用参数/绑定预检 · 86 个宿主工具 · 119 个运行时设置项 · 双语文档（简体中文 / English）</sub>
+<sub><b>v0.7.71</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST 集成（镜像与直连双路径）· 数据分析台账（产线级权限隔离）· 工艺参数优化器（过程模型 → AML → OSQP 求解 → 治理下发）· 工具调用参数/绑定预检 · 92 个宿主工具 · 126 个运行时设置项 · 双语文档（简体中文 / English）</sub>
 
 <br />
 
@@ -181,7 +181,8 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 | 能力 | 为何重要 |
 |---|---|
 | **产线级权限** | 工业数据按**产线**三态门控（无权/仅查看/可操控），强制点在数据面——普通用户未授权前看不到任何产线数据。 |
-| **工具调用统一预检（v0.7.66）** | 每次工业工具调用在进入处理器前统一校验参数形状与引用归属：`node_id` / `line_id` / `recipe_id` / `dataset_id` 等必须落在调用者的绑定面（绑定节点 ∪ 频道绑线只读 ∪ 绑定配方所在产线；数据集/作业/模型/计划/场景按谱系回溯）。越界调用直接拒绝，回执写明「你的绑定面 + 下一步」（找谁绑定、改传什么），并把授权性拒绝写入审计日志。 |
+| **工具调用统一预检（v0.7.66 / v0.7.71 声明化）** | 每次工业工具调用在进入处理器前统一校验参数形状与引用归属：`node_id` / `line_id` / `recipe_id` / `dataset_id` 等必须落在调用者的绑定面（绑定节点 ∪ 频道绑线只读 ∪ 绑定配方所在产线；数据集/作业/模型/计划/场景按谱系回溯）。越界调用直接拒绝，回执写明「你的绑定面 + 下一步」（找谁绑定、改传什么），并把授权性拒绝写入审计日志。v0.7.71 起校验规则上收为**工具定义自带的 `references` 声明**——注册期登记制（写族未声明拒绝登记、读族告警），执行期仍逐调用实时重算；插件工具声明后才纳入同一校验，调用结果统一入审计。 |
+| **工艺优化器与求解器（v0.7.71）** | 端到端参数优化链：**过程模型**（数据集谱系 verified → 资格门：MV 激励/常量/行为证据四类拦截）→ **AML 训练**（linear_arx/状态空间，G1–G3 门禁含 rollout 提升 ≥20%）→ **Profile 冻结与绑定**（授权面=绑定面）→ **ProblemIR 编译**（哈希域锁定，模板/求解器版本不匹配 422）→ **OSQP/SLSQP 求解 worker**（进程池、超时降级、协议版本校验、NaN/Inf fail-closed，34 例数值矩阵对拍解析解）→ **交叉核验**（TS 独立重算代价/轨迹/约束与 worker ≤1e-6 对拍）→ **治理下发**（HITL 单咽喉、批准时八重复核、设备回读 ackSummary verified/failed/unverified、防证据伪造）。Agent 工具、REST 与 MCP 三入口同链；`optimizer_capabilities/solve/status/cancel/plan_get` 五件套仅在有效绑定时注入。 |
 | **全操作审计日志** | 用户 / Agent / 系统 的每个动作都落进同一份可检索日志；操作者归属「Channel名/成员名」，与用户和系统天然区分。经 WS 实时推送。 |
 | **团队级插件开关** | 每个团队（Channel）持有**独立插件开关组**（`channel_plugins`）：被关闭插件的工具不注入该团队 Agent。插件本体经 `aw plugin` 与 `/plugins` 页热管理。 |
 | **插件扩展 API** | `plugins/<name>/` 下的一个自包含目录**同时增强两半**：`index.mjs`（服务端：钩子、路由、Agent 工具、**数采读驱动 / DCW 写驱动**/帧处理器/节点模板、配置分组、KV、定时器）与 `client.mjs`（浏览器：注入具名插槽的面板、i18n、设置 UI）。三种作用域——`builtin`（随包发布）> `project`（检出）> `user`（`~/.AgentWorkShop`）——启停**与代码修改**均有约 1 秒热重载；停用插件的驱动随热重载立即摘除。内置示例 **serial-bridge**（串口通信：读/写驱动 + 串口探针 API + 前端面板）。完整契约见 [`docs/plugins.md`](./docs/plugins.md)。 |
@@ -190,8 +191,8 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 | **双模式优化闭环** | 专属频道模板把闭环**结构性拆开**：*aml-training* 频道拿建模面（数据集、作业、场景编译、物理 spec、建模任务——无产线写入、无 MPC），*aml-optimization* 频道拿执行面（快照、试验、门禁、MPC、贝叶斯寻优 `twin_bayes_optimize`、受治理微写 `optimization_explore`）——边训边优在结构上不可能。**探索**模式走治理链写入并做响应回读配对（每笔写入落 `optimization_explorations` 台账）；**生产**模式要求绑定过门禁的模型（`aml` 模式，实例化时给 `boundModelId`）。 |
 | **运行时可观测** | `GET /api/system/monitor` 把 Agent 团队内部暴露成数字：根队列深度、看门狗介入次数、Harness 会话复用、记忆 outbox 积压——每项都有对应的文档化回退开关，新机制可以不重新部署就关掉。 |
 | **产线操作单页（`/operations`）** | 一页看全对产线的每一次触碰：实时操作流水（REST 快照 + WS 推流）把写控、数采、建模、配方、回退、报警、产线、人工、系统动作归入**九类分类**，写控行渲染结构化 **前值 → 后值 diff 徽章**（失败标红），并直接从事件流推断**闭环阶段**（监视 → 探索·小步 → 推荐搜索 → 影子验证 → 生产）。同一数据面也供工作台控制台的「产线作业」面板使用。 |
-| **外部 MCP 网关** | `aw mcp` 启动零依赖的 **stdio MCP 服务**（38 个工具），自动发现运行中的实例（环境变量 → 锁文件 → 配置文件），把产线、配方（含 mark-good）、受治理 DCW 写入、工艺参数语义映射、数采查询、频道、团队供给、模型晋升、判卷/回退与插件管理暴露给任意 MCP 客户端——受 `mcp.enabled` 运行时设置门控，附 `--doctor` 与 `--print-config` 辅助指令。 |
-| **全量配置驱动运行时** | 全部运行旋钮（记忆预算、上下文压缩、回退护栏、保留策略、备份、日志级别、系统时区、MCP 开关…）在设置描述符注册表声明一次，优先级 **config.yml < runtime-settings < env**——**119 个设置项、18 组**（40 live / 79 restart），代码零硬编码默认。 |
+| **外部 MCP 网关** | `aw mcp` 启动零依赖的 **stdio MCP 服务**（38 个工具），自动发现运行中的实例（环境变量 → 锁文件 → 配置文件），把产线、配方（含 mark-good）、受治理 DCW 写入、工艺参数语义映射、数采查询、频道、团队供给、模型晋升、判卷/回退与插件管理暴露给任意 MCP 客户端——受 `mcp.enabled` 运行时设置门控，附 `--doctor` 与 `--print-config` 辅助指令。此外每个 Channel 成员实例都有**专属的全量工具 stdio 桥**（92 个宿主工具 + 插件工具，按该 Agent 的角色/绑定面编译视图；ETag/304 增量轮询 + `tools/list_changed`），codex / dsh / opencode 等引擎以 MCP 形态拿到与原生注入完全同链的治理（token 自证 → 五层复核）。 |
+| **全量配置驱动运行时** | 全部运行旋钮（记忆预算、上下文压缩、回退护栏、保留策略、备份、日志级别、系统时区、MCP 开关…）在设置描述符注册表声明一次，优先级 **config.yml < runtime-settings < env**——**126 个设置项、19 组**（42 live / 84 restart），代码零硬编码默认。 |
 | **可配置系统时区** | 一个 `time.timeZone` 设置项（IANA 时区，live 热生效）统一驱动人读时间——日志、聊天、审计、Agent 记录与定时任务；机器时间轴（数采样本、`timestamptz`）仍保存绝对时间。 |
 | **可配置节拍** | 采样与查询的默认值/下限全部是 **live 设置**（`daq.sampling.*`、`daq.query.*`）：热重载、create/patch 时钳制，Agent 工具描述实时携带当前值。 |
 
@@ -269,7 +270,7 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 <td width="50%"><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-monitor.png" alt="运行时监控" width="100%" /><br/><sub><b>运行时监控。</b>每条已接线频道、成员数、依赖环与归属用户。</sub></td>
 </tr>
 <tr>
-<td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-settings.png" alt="系统设置" width="100%" /><br/><sub><b>系统设置。</b>18 组 119 个设置项，由描述符驱动——CLI 读的是同一份注册表。</sub></td>
+<td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-settings.png" alt="系统设置" width="100%" /><br/><sub><b>系统设置。</b>19 组 126 个设置项，由描述符驱动——CLI 读的是同一份注册表。</sub></td>
 <td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-plugins.png" alt="插件管理" width="100%" /><br/><sub><b>插件管理。</b>三种作用域、改代码即热重载、按团队开关。</sub></td>
 </tr>
 </table>
@@ -393,7 +394,7 @@ aw update --check                      # 只报告，不安装
 npm install -g agentworkshop@latest    # 手动等效
 ```
 
-版本遵循 semver。每次 `aw start` 都会校验配置根，并把 `home` 之前的旧版 `data/` 布局迁移进来（以最新文件为准），因此数据可以跨版本存活。SQLite schema 迁移在服务端启动时执行。当前版本：**v0.7.70**——见[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)。
+版本遵循 semver。每次 `aw start` 都会校验配置根，并把 `home` 之前的旧版 `data/` 布局迁移进来（以最新文件为准），因此数据可以跨版本存活。SQLite schema 迁移在服务端启动时执行。当前版本：**v0.7.71**——见[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)。
 
 ### 第一次「Agent × 产线」会话（约 2 分钟）
 
@@ -656,7 +657,7 @@ AgentWorkShop/
 ├── sdk/                        # agentworkshop/sdk——插件上下文、钩子总线、REST 客户端、浏览器 SDK
 ├── tui/                        # 终端工作台（aw tui）
 ├── shared/
-│   └── config/                 # schema.json（119 个设置描述符）+ 引擎（合并/校验/持久化）+ 路径解析器
+│   └── config/                 # schema.json（126 个设置描述符）+ 引擎（合并/校验/持久化）+ 路径解析器
 ├── config.yml                  # 工厂默认值（构建/启动时读取；版本号来自 package.json）
 ├── .AgentWorkShop/             # 检出内的配置根——prompts（版本化）+ 运行时覆盖 · 数据 · 日志 · 指令（git 忽略）
 ├── data/                       # 迁移前的旧版位置（自动迁移进配置根）

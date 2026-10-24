@@ -21,6 +21,7 @@ const BINDING_TOOLS = [
   'recipe_update', 'recipe_apply', 'recipe_trial', 'recipe_rollback',
   'mes_catalog', 'mes_fetch', 'daq_query', 'daq_export',
   'my_industrial_nodes', 'line_context', 'team_grant_nodes',
+  'optimizer_solve', 'optimizer_status', 'optimizer_cancel', 'optimizer_plan_get',
 ]
 
 // 权限模型 v2:直写工具必须从工具面摘除(防 Agent 再尝试节点级写控)

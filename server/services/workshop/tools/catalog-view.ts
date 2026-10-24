@@ -36,7 +36,9 @@ export interface ToolCatalogRow {
 export interface ChannelToolView {
   channelId: string
   mode: 'all' | 'selected'
-  source: 'default' | 'explicit'
+  /** WP7:degraded/cached = 数据库读取失败后的降级来源(前端可提示「策略为最近快照」) */
+  source: 'default' | 'explicit' | 'cached' | 'degraded'
+  stale?: boolean
   updatedBy: string
   updatedAt: string | null
   stats: {
@@ -169,6 +171,7 @@ export function buildChannelToolView(channelId: string): ChannelToolView {
     channelId,
     mode: policy.mode,
     source: policy.source,
+    ...(policy.stale ? { stale: true } : {}),
     updatedBy: policy.updatedBy,
     updatedAt: policy.updatedAt,
     stats: {

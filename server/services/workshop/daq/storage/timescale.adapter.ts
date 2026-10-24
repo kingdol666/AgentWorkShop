@@ -22,6 +22,8 @@ export class TimescaleAdapter implements TsdbPort {
   private readonly retentionH = daqRuntimeSettings().tsRetentionH
   /** 帧保留期(daq.frameRetentionH;env DAQ_FRAME_RETENTION_H 兼容) */
   private readonly frameRetentionH = daqRuntimeSettings().frameRetentionH
+  /** 同键不同值被丢弃的帧数(C6 可观测计数,不静默) */
+  private correctionDropped = 0
 
   constructor(private readonly url: string) {}
 
@@ -48,10 +50,13 @@ export class TimescaleAdapter implements TsdbPort {
       'ALTER TABLE daq_samples ADD COLUMN IF NOT EXISTS product_id text',
       'ALTER TABLE daq_samples ADD COLUMN IF NOT EXISTS recipe_id text',
       'ALTER TABLE daq_samples ADD COLUMN IF NOT EXISTS run_id text',
+      // 到达时间(首次入库;旧行为 NULL = unknown)
+      'ALTER TABLE daq_samples ADD COLUMN IF NOT EXISTS ingested_at bigint',
     ]) {
       await this.pool.query(ddl).catch(() => {})
     }
     await this.pool.query(`CREATE INDEX IF NOT EXISTS idx_daq_samples_tag ON daq_samples (product_id, recipe_id, ts DESC)`).catch(() => {})
+    await this.pool.query(`CREATE INDEX IF NOT EXISTS idx_daq_samples_page ON daq_samples (node_id, ts ASC)`).catch(() => {})
     // 帧表(v2:向量/图像元数据;像素 blob 在对象存储,JSONB 承载点列与派生指标;
     // DDL 为静态字面量,零外部输入)
     await this.pool.query('CREATE TABLE IF NOT EXISTS daq_frames (node_id text NOT NULL, ts timestamptz NOT NULL, kind text NOT NULL, template_key text, device_binding_id text, line_id text, product_id text, recipe_id text, run_id text, points integer NOT NULL DEFAULT 0, meta jsonb NOT NULL DEFAULT \'{}\'::jsonb, metrics jsonb NOT NULL DEFAULT \'{}\'::jsonb, PRIMARY KEY (node_id, ts))').catch(() => {})
@@ -122,17 +127,35 @@ export class TimescaleAdapter implements TsdbPort {
 
   async writeSamples(rows: DaqSampleRow[]): Promise<void> {
     if (!this.pool || rows.length === 0) return
-    const values: unknown[] = []
-    const tuples = rows.map((r, i) => {
-      values.push(r.nodeId, new Date(r.tsMs).toISOString(), r.value, r.state, r.lineId ?? null, r.productId ?? null, r.recipeId ?? null, r.runId ?? null)
-      const b = i * 8
-      return `($${b + 1}, $${b + 2}, $${b + 3}, $${b + 4}, $${b + 5}, $${b + 6}, $${b + 7}, $${b + 8})`
-    })
-    await this.pool.query(
-      `INSERT INTO daq_samples (node_id, ts, value, state, line_id, product_id, recipe_id, run_id) VALUES ${tuples.join(',')}
-       ON CONFLICT (node_id, ts) DO NOTHING`,
-      values,
-    )
+    const now = Date.now()
+    // 数组化参数(unnest):纯占位符,不拼接任何值,也不拼接占位符串。
+    const col = {
+      node: rows.map(r => r.nodeId),
+      ts: rows.map(r => new Date(r.tsMs).toISOString()),
+      value: rows.map(r => r.value),
+      state: rows.map(r => r.state),
+      line: rows.map(r => r.lineId ?? null),
+      product: rows.map(r => r.productId ?? null),
+      recipe: rows.map(r => r.recipeId ?? null),
+      run: rows.map(r => r.runId ?? null),
+      ingested: rows.map(r => r.ingestedAt ?? now),
+    }
+    const inserted = await this.pool.query(
+      `INSERT INTO daq_samples (node_id, ts, value, state, line_id, product_id, recipe_id, run_id, ingested_at)
+       SELECT * FROM unnest($1::text[], $2::timestamptz[], $3::float8[], $4::text[], $5::text[], $6::text[], $7::text[], $8::text[], $9::bigint[])
+       ON CONFLICT (node_id, ts) DO NOTHING
+       RETURNING node_id, ts`,
+      [col.node, col.ts, col.value, col.state, col.line, col.product, col.recipe, col.run, col.ingested],
+    ) as { rows: Array<{ node_id: string, ts: string }> }
+    // 首写胜出:被忽略的键里,值/状态不同则计数(可观测,不静默更正)
+    const insertedKeys = new Set(inserted.rows.map(r => `${r.node_id}\u0000${r.ts}`))
+    for (const r of rows) {
+      const key = `${r.nodeId}\u0000${new Date(r.tsMs).toISOString()}`
+      if (insertedKeys.has(key)) continue
+      const prev = await this.pool.query('SELECT value, state FROM daq_samples WHERE node_id = $1 AND ts = $2', [r.nodeId, new Date(r.tsMs).toISOString()]) as { rows: Array<{ value: number, state: string }> }
+      const row = prev.rows[0]
+      if (row && (Math.abs(Number(row.value) - Number(r.value)) > 1e-9 || String(row.state) !== String(r.state))) this.correctionDropped++
+    }
   }
 
   async query(nodeId: string, opts: DaqQueryOpts): Promise<TsdbPoint[]> {

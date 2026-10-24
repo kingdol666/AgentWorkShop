@@ -193,6 +193,20 @@ export default defineNuxtConfig({
         catch (err) {
           console.error('[build] prompts copy failed:', err)
         }
+        // Optimizer Python Worker 随产物分发(worker.py/problems.py/probe.py);
+        // 仅部署 .output 的环境不会读源码树(B.9.4 打包断言)
+        try {
+          const pySrc = join(process.cwd(), 'server', 'services', 'workshop', 'optimization', 'python')
+          const pyOut = join(process.cwd(), '.output', '.AgentWorkShop', 'optimizer-python')
+          cpSync(pySrc, pyOut, {
+            recursive: true,
+            filter: (src: string) => !src.includes('__pycache__') && !src.includes('.mimosa'),
+          })
+          console.log('[build] optimizer python copied →', pyOut)
+        }
+        catch (err) {
+          console.error('[build] optimizer python copy failed:', err)
+        }
         // 配置描述符同样必须随产物分发:shared/config/schema.json 定义了全部 98 个
         // 设置项,engine.loadDescriptors() 在**没有 AW_PACKAGE_ROOT** 的启动方式下
         // (直接 node .output/server/index.mjs,或任何未注入载荷根的场景)找不到它就会

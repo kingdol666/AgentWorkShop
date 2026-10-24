@@ -9,6 +9,7 @@ import { join } from 'node:path'
 import { createLogger } from '../logger'
 import { amlSettings } from '../settings'
 import { getAmlRuntime } from './runtime'
+import { modelReferences } from './model-references'
 
 const log = createLogger('aml.retention')
 const DAY_MS = 24 * 3600_000
@@ -42,6 +43,11 @@ export function sweepAmlRetention(now = Date.now()): { datasets: number, models:
     if (m.artifactsPruned) continue
     const age = now - Date.parse(m.promotedAt ?? m.createdAt)
     if (age < s.model.retiredKeepDays * DAY_MS) continue
+    // C13/A19:仍被 Channel profile / 训练计划 / Optimizer Profile / 在途租约引用 → 跳过
+    try {
+      if (modelReferences(rt.db, m.id).length > 0) continue
+    }
+    catch { continue }
     try {
       if (existsSync(m.path)) rmSync(m.path, { recursive: true, force: true })
       rt.repo.model.markPruned(m.id)

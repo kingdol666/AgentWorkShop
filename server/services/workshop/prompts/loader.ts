@@ -20,6 +20,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { awHome, findLocalConfigRoot } from '@/shared/config/home.mjs'
 import { AppError } from '../../../utils/errors'
+import type { ToolRiskClass, ToolVerifySpec } from '../agents/tool-reference-spec'
 
 /** 模板变量值(字符串化注入) */
 export type PromptVars = Record<string, string | number | boolean | undefined | null>
@@ -176,6 +177,12 @@ export interface HostToolDef {
   description: string
   parameters: Record<string, unknown>
   hidden?: boolean
+  /** 引用面声明(WP5 单一声明源;执行期由 tool-verify 实时校验) */
+  references?: ToolVerifySpec
+  /** 显式无引用声明(登记制:工业写族必须 references 或 noRefs) */
+  noRefs?: boolean
+  /** 风险类别(read/write/admin;治理与 MCP annotations 的公共输入) */
+  riskClass?: ToolRiskClass
 }
 
 let hostToolsCache: { mtimeMs: number, tools: HostToolDef[] } | null = null

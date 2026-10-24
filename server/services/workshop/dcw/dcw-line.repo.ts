@@ -54,6 +54,9 @@ export class DcwLineRepo {
       color: String(input.color ?? '').trim() || dcwLineColorFor(this.list.length),
       description: String(input.description ?? '').trim(),
       controlMode: mode,
+      // 模拟产线标记(C9):仅显式 true 生效;真实线缺省 false
+      simulated: input.simulated === true,
+      ...(input.simSceneId ? { simSceneId: String(input.simSceneId).trim() } : {}),
       createdAt: new Date().toISOString(),
     }
     this.list.push(line)

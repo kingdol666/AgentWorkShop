@@ -8,7 +8,6 @@
  *   - line_status:只读,lead/worker 均可(复用工业工具的 grant 复核,channel 线 ≥readonly)。
  * 理由强制:reason 必填(启停理由入审计与审批卡,人要看懂为什么启停)。
  */
-import { getWorkshopManager } from '@/server/plugins/workshop'
 import { getToolApprovals } from '../tool-approvals'
 import { agentBadgeLabel } from '../agent-badge'
 import { getDcwController } from '../../dcw/dcw-controller'
@@ -20,10 +19,16 @@ export interface LineStartInput { recipe_id?: string, reason?: string }
 export interface LineStopInput { reason?: string }
 export interface LineStatusInput { line_id?: string }
 
+/** 懒加载 manager:静态 import plugins/workshop 会拖入 Nitro #imports,使本模块无法被单测/脚本直接加载 */
+async function workshopManager() {
+  const { getWorkshopManager } = await import('@/server/plugins/workshop')
+  return getWorkshopManager()
+}
+
 /** 解析「频道 lead + 绑线」上下文;line_start/line_stop 共用 */
 async function requireBoundLineLead(agentId: string, channelId: string | undefined): Promise<{ lineId: string, lineName: string } | { error: string }> {
   if (!channelId) return { error: 'line_start/line_stop 仅限频道内使用(缺频道上下文)。' }
-  const manager = getWorkshopManager()
+  const manager = await workshopManager()
   const ch = manager.deps.repos.channels.findById(channelId)
   if (!ch) return { error: `频道不存在: ${channelId}` }
   if (ch.leadAgentId !== agentId) return { error: '产线启停仅限频道 lead 操作(你是 worker;如需启停请向 lead 提出)。' }
@@ -264,7 +269,7 @@ export async function toolLineStop(agentId: string, args: LineStopInput, channel
 /** 工具:line_status —— 本频道绑定产线的运行状态(只读)。 */
 export async function toolLineStatus(agentId: string, args: LineStatusInput, channelId?: string): Promise<{ text: string, isError?: boolean }> {
   const ctrl = getDcwController()
-  const manager = getWorkshopManager()
+  const manager = await workshopManager()
   const ch = channelId ? manager.deps.repos.channels.findById(channelId) : undefined
   const faces = resolveRefFaces(agentId)
   const readable = [...faces.readableLines]

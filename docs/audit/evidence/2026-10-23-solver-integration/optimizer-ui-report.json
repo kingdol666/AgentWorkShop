@@ -1,0 +1,76 @@
+{
+  "at": "2026-10-23T21:21:53",
+  "base": "http://127.0.0.1:3997",
+  "leadAgentId": "34ccc8a3-e8ca-49b5-893a-7b0d381f8583",
+  "total": 11,
+  "pass": 11,
+  "fail": 0,
+  "results": [
+    {
+      "id": "O0",
+      "name": "live 实例上下文完整",
+      "pass": true,
+      "detail": "http://127.0.0.1:3997 agent=34ccc8a3-e8ca-49b5-893a-7b0d381f8583"
+    },
+    {
+      "id": "O0.5",
+      "name": "求解前存在活跃 optimizer 绑定",
+      "pass": true,
+      "detail": "existing=ob-mvkzz0om-b3gzw"
+    },
+    {
+      "id": "O1",
+      "name": "优化器五 tab 渲染",
+      "pass": true,
+      "detail": "tabs=5"
+    },
+    {
+      "id": "O2",
+      "name": "进入「运行 / 建议」面板",
+      "pass": true,
+      "detail": "优化运行与建议 Agent 实例 id bindingId (可选) 求解一次 run\tstatus\tprofile\tIR hash\t建议\tvalidUntil orun-mvl00o0x-6awnb\toptimal\toptp-optx90"
+    },
+    {
+      "id": "O3",
+      "name": "求解表单可交互(agent 实例 + 求解按钮)",
+      "pass": true,
+      "detail": "rows=22 agent=34ccc8a3-e8ca-49b5-893a-7b0d381f8583"
+    },
+    {
+      "id": "O4",
+      "name": "运行台账已有真实求解结果",
+      "pass": true,
+      "detail": "rows=22"
+    },
+    {
+      "id": "O5",
+      "name": "首行为 optimal 运行",
+      "pass": true,
+      "detail": "orun-mvl00o0x-6awnb\toptimal\toptp-optx90j\t2447ed8d91\t已验证推荐\t2026-10-23T21:36:24.395+08:00"
+    },
+    {
+      "id": "O6",
+      "name": "运行行含建议状态徽章",
+      "pass": true,
+      "detail": "orun-mvl00o0x-6awnb\toptimal\toptp-optx90j\t2447ed8d91\t已验证推荐\t2026-10-23T21:36:24.395+08:00"
+    },
+    {
+      "id": "O7",
+      "name": "建议状态单元格可见非空",
+      "pass": true,
+      "detail": "已验证推荐"
+    },
+    {
+      "id": "O8",
+      "name": "优化器业务交互无未捕获 pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "O9",
+      "name": "优化器业务交互无 5xx",
+      "pass": true,
+      "detail": ""
+    }
+  ]
+}

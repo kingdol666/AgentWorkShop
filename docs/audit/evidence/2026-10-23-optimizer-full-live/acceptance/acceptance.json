@@ -1,0 +1,432 @@
+{
+  "at": "2026-10-23T13:18:38.249Z",
+  "durationMs": 360285,
+  "base": "in-process(no HTTP server)",
+  "env": {
+    "node": "v24.19.0",
+    "platform": "win32-x64",
+    "cwd": "D:\\codes\\ABO\\AgentWorkShop"
+  },
+  "versions": {
+    "acceptance": "2026-10-22-optimizer-process-model/v1",
+    "schema": 2,
+    "plan": "docs/plans/2026-10-22-optimizer-process-model-plan.md"
+  },
+  "commands": [
+    "node scripts/run-quality-gates.mjs",
+    "npx tsx --tsconfig .nuxt/tsconfig.server.json scripts/acceptance-optimizer-process-model.ts",
+    "npm run build"
+  ],
+  "gateRuns": [],
+  "hash": "e79123183799388ccd4334dff6590a9420279a89834e99397a893a0324a6cbde",
+  "limitations": [
+    "Timescale queryTagged(raw) 仍未返回 state/ingested_at,且未实现 queryTaggedPage(C5/C6/C7 的 SQLite 分支完整;Timescale 的 query()/latest() 已返回 state)",
+    "A9 的浏览器点击未在本脚本执行;判定覆盖接口载荷/持久状态/零写计数 + UI 路由与 i18n 契约",
+    "A7 p95 为本地单机 fixture(horizon=20,1 MV/1 CV),不含冷启动与训练",
+    "A8 使用延迟 FOPDT 与静态响应面 fixture(闭环只应用首步);未耦合 plc-node-simulator 的真实 CastFilmModel/AnnealModel",
+    "旧 mpc_optimize 仍走 TS 启发式,未路由到 Manager/资格门(计划 G4.6 未完成)",
+    "单长 run 的时间块隔离切分未实现(数据集按 run 切分;gates 以 train/val/test 非空判定)",
+    "static_response 的 训练→权威评估→注册→预测 全链未在验收中端到端执行(训练器与求解器已单测)",
+    "A18 仅验证签名算法与 gate(未测 omp≤5s / bridge≤15s / pi 次回合的实际时序)"
+  ],
+  "pass": 65,
+  "total": 67,
+  "results": [
+    {
+      "id": "A1",
+      "name": "逐节点分页:续读无漏无重 + ASC",
+      "pass": true,
+      "detail": "246 点 / 246 唯一"
+    },
+    {
+      "id": "A15",
+      "name": "queryTagged raw 返回真实 state(非空)",
+      "pass": true,
+      "detail": "100 点"
+    },
+    {
+      "id": "A16",
+      "name": "首写胜出 + 同键更正被计数丢弃",
+      "pass": true,
+      "detail": "dropped 0→1"
+    },
+    {
+      "id": "A1",
+      "name": "manifest v2 sidecar 篡改使 hash 失败",
+      "pass": true,
+      "detail": "542053e9cd ≠ 336b642a12"
+    },
+    {
+      "id": "A1",
+      "name": "Timescale 同 fixture(写入/raw 读取/state)",
+      "pass": true,
+      "detail": "rows=2 state=ok,alarm latest=alarm"
+    },
+    {
+      "id": "A2",
+      "name": "U 恒定 + Y 波动 → 不可优化",
+      "pass": true,
+      "detail": "MV_CONSTANT,MV_INSUFFICIENT_EXCITATION,OPTIMIZATION_BLOCKED_BY_EXCITATION"
+    },
+    {
+      "id": "A2",
+      "name": "仅 ACK 动作 → 不可优化",
+      "pass": true,
+      "detail": "ACTION_ACK_ONLY"
+    },
+    {
+      "id": "A2",
+      "name": "激励充分的模拟数据 → 具备优化资格",
+      "pass": true,
+      "detail": "gaps=none"
+    },
+    {
+      "id": "A3",
+      "name": "ARX 辨识系数接近真值(0.82/0.18)",
+      "pass": true,
+      "detail": "a=0.3001 b=0.6998 (index 2)"
+    },
+    {
+      "id": "A3",
+      "name": "多步 RMSE 比持值基线降低 ≥20%",
+      "pass": true,
+      "detail": "99.7%"
+    },
+    {
+      "id": "A3",
+      "name": "阶跃响应起点误差 ≤1 采样步(延迟不提前/不双计)",
+      "pass": true,
+      "detail": "firstMove=2 d=2 y=61.429,61.429,68.427,70.527"
+    },
+    {
+      "id": "A3",
+      "name": "训练作业 done 且模型已登记(两阶段成功语义)",
+      "pass": true,
+      "detail": "job=done model=mdl-mvkzphgp-rpk7rp err="
+    },
+    {
+      "id": "A7",
+      "name": "AML venv 内 osqp/scipy 可用(同一解释器)",
+      "pass": true,
+      "detail": "C:\\Users\\87287\\.AgentWorkShop\\aml\\.venv\\Scripts\\python.exe"
+    },
+    {
+      "id": "A4",
+      "name": "SciPy 解析解误差 ≤1e-4",
+      "pass": true,
+      "detail": "u=3"
+    },
+    {
+      "id": "A4",
+      "name": "OSQP 收敛 + 约束残差 ≤1e-5",
+      "pass": true,
+      "detail": "status=optimal residual=1.42e-14"
+    },
+    {
+      "id": "A4",
+      "name": "Solver 代价与平台独立重算相对差 ≤1e-6",
+      "pass": true,
+      "detail": "solver=12.028703 independent=12.028703 diff=2.95e-16"
+    },
+    {
+      "id": "A4",
+      "name": "MPC 候选非恒值",
+      "pass": true,
+      "detail": "41.16,42.88,46.47,48.93"
+    },
+    {
+      "id": "A5",
+      "name": "不可行问题返回 infeasible(不崩溃)",
+      "pass": true,
+      "detail": "infeasible"
+    },
+    {
+      "id": "A5",
+      "name": "超时明确返回 SOLVE_TIMEOUT 且池可恢复",
+      "pass": true,
+      "detail": "timedOut=true"
+    },
+    {
+      "id": "A22",
+      "name": "Worker 崩溃后池自动补位(在途无重放)",
+      "pass": true,
+      "detail": "{\"size\":1,\"ready\":1,\"busy\":0,\"degraded\":false,\"pythonPath\":\"C:\\\\Users\\\\87287\\\\.AgentWorkShop\\\\aml\\\\.venv\\\\Scripts\\\\python.exe\"}"
+    },
+    {
+      "id": "A5",
+      "name": "取消 A 不影响 B(B 仍 optimal)",
+      "pass": true,
+      "detail": "A=result"
+    },
+    {
+      "id": "A17",
+      "name": "模板 id 明确拒绝(AGENT_TEMPLATE_ID_NOT_ALLOWED)",
+      "pass": true,
+      "detail": "tpl-acc"
+    },
+    {
+      "id": "A6",
+      "name": "唯一绑定可默认解析",
+      "pass": true,
+      "detail": "ob-mvkzqa1w-ecozv"
+    },
+    {
+      "id": "A6",
+      "name": "他人 binding → NOT_OWNED",
+      "pass": true,
+      "detail": "ca-acc2"
+    },
+    {
+      "id": "A6",
+      "name": "撤权后立即拒绝",
+      "pass": true,
+      "detail": "removed"
+    },
+    {
+      "id": "A8",
+      "name": "延迟 FOPDT fixture:MPC 相对保持中位误差改善 ≥15% 且 95% 下界>0",
+      "pass": true,
+      "detail": "improve=94.8% hold=11.513 mpc=0.594 lower=10.8136"
+    },
+    {
+      "id": "A8",
+      "name": "退火响应面 fixture:SciPy 质量约束下经济代价改善 ≥15%",
+      "pass": true,
+      "detail": "baseline=-40 optimized=-56.86 improve=42.2%"
+    },
+    {
+      "id": "A9",
+      "name": "模拟线可创建参数试验计划",
+      "pass": true,
+      "detail": "pexp-mvkzus0l-scby"
+    },
+    {
+      "id": "A9",
+      "name": "真实线发起模拟试验 → SIM_ONLY_VIOLATION",
+      "pass": true,
+      "detail": "ln-43210843"
+    },
+    {
+      "id": "A9",
+      "name": "solve 链路零 DCW 写入 + 持久运行/建议",
+      "pass": true,
+      "detail": "run=orun-mvkzus0z-4159p status=optimal rec=unverified diag="
+    },
+    {
+      "id": "A6",
+      "name": "缺 UQ 证据 → unverified(不得显示已验证)",
+      "pass": true,
+      "detail": "未验证(缺 UQ/OOD 证据)"
+    },
+    {
+      "id": "A13",
+      "name": "同 recipeId 升版 → 内容 hash 不同",
+      "pass": true,
+      "detail": "3fa3b8958d vs 8271938ef3"
+    },
+    {
+      "id": "A13",
+      "name": "批次谱系段记录版本与内容 hash",
+      "pass": true,
+      "detail": "pcs-mvkzut8q-mfqid"
+    },
+    {
+      "id": "A13",
+      "name": "stage 工况显式拒绝(首版无结构化阶段来源)",
+      "pass": true,
+      "detail": "CONDITION_FIELD_UNSUPPORTED"
+    },
+    {
+      "id": "A13",
+      "name": "运行中切换到不同配方 → 旧计划失效",
+      "pass": true,
+      "detail": "recipeId=rc-other@1792761411189"
+    },
+    {
+      "id": "A13",
+      "name": "运行中 applyRecipe → 活动窗口/入库样本/谱系段同步切换到新配方",
+      "pass": true,
+      "detail": "active=rc-13d2c6e6 sampleTag=rc-13d2c6e6@1792761410624 seg=rc-13d2c6e6@1"
+    },
+    {
+      "id": "A14",
+      "name": "发布版不可原地修改",
+      "pass": true,
+      "detail": "pms-acc@1"
+    },
+    {
+      "id": "A14",
+      "name": "被 Profile 引用的模型拒删",
+      "pass": true,
+      "detail": "mdl-mvkzphgp-rpk7rp"
+    },
+    {
+      "id": "A14",
+      "name": "资格按绑定模型自身规格溯源(同线其他规格的合格报告不放行)",
+      "pass": true,
+      "detail": "qualified=true unqualified=false"
+    },
+    {
+      "id": "A14",
+      "name": "dispatch 复核:绑定模型无真实优化资格 → OPTIMIZATION_NOT_ELIGIBLE(不返回候选)",
+      "pass": true,
+      "detail": "OPTIMIZATION_NOT_ELIGIBLE: 当前绑定的 AML 模型没有通过的优化资格报告(辨识不足/OOD/动作证据缺失)。请先完成 AML 数据集资格评估与模型晋级,或绑定优化器 Pro"
+    },
+    {
+      "id": "A14",
+      "name": "旧 mpc_optimize:无绑定/无模型或无资格 → 引导;有资格模型 → 保留旧路径",
+      "pass": true,
+      "detail": "BINDING_NOT_FOUND/OPTIMIZATION_NOT_ELIGIBLE"
+    },
+    {
+      "id": "A11",
+      "name": "第三留出场景(新 id/变量名/单位/两个互斥工况)通过校验",
+      "pass": true,
+      "detail": "pms-acc-alt@1"
+    },
+    {
+      "id": "A11",
+      "name": "变量名/单位变化不改核心代码(同训练器可训练)",
+      "pass": true,
+      "detail": "99.7%"
+    },
+    {
+      "id": "A12",
+      "name": "新工件走对应 loader/io_spec",
+      "pass": true,
+      "detail": "linear_state_space@1/linear_state_space"
+    },
+    {
+      "id": "A12",
+      "name": "v1 数据集 hash 兼容(无新增文件参与)",
+      "pass": true,
+      "detail": "5153335177"
+    },
+    {
+      "id": "A21",
+      "name": "HOST_TOOLS 含 5 个 optimizer_* 且处理器命中",
+      "pass": true,
+      "detail": "optimizer_capabilities,optimizer_solve,optimizer_status,optimizer_cancel,optimizer_plan_get"
+    },
+    {
+      "id": "A21",
+      "name": "optimizer_solve schema 含 binding_id 且 type=object",
+      "pass": true
+    },
+    {
+      "id": "A21",
+      "name": "tool_registry builtin 计数 = HOST_TOOLS.length",
+      "pass": true,
+      "detail": "91/91"
+    },
+    {
+      "id": "A21",
+      "name": "optimizer 工具仅注入优化档位",
+      "pass": true,
+      "detail": "opt=5 legacy=0"
+    },
+    {
+      "id": "A21",
+      "name": "legacy 直调 optimizer_solve 明确拒绝(非未知工具)",
+      "pass": true,
+      "detail": "OPTIMIZER_CHANNEL_DISABLED"
+    },
+    {
+      "id": "A21",
+      "name": "训练档位直调 optimizer_solve 明确拒绝(非未知工具)",
+      "pass": true,
+      "detail": "OPTIMIZER_PROFILE_DENIED"
+    },
+    {
+      "id": "A21",
+      "name": "无绑定 solve → BINDING_NOT_FOUND(capabilities 仍可调)",
+      "pass": true,
+      "detail": "BINDING_NOT_FOUND"
+    },
+    {
+      "id": "A18",
+      "name": "schema-only 变更触发签名变化",
+      "pass": true
+    },
+    {
+      "id": "A18",
+      "name": "空工具表签名 ≠ 非空(解绑后清空)",
+      "pass": true
+    },
+    {
+      "id": "A19",
+      "name": "新表纳入主库(备份/保留同一连接)",
+      "pass": true,
+      "detail": "process_model_specs,process_model_eligibility,optimizer_runs,optimizer_candidates,optimizer_recommendations"
+    },
+    {
+      "id": "A19",
+      "name": "retention.optimizer_days / process_model_days 可读",
+      "pass": true,
+      "detail": "optimizer=365 process=365"
+    },
+    {
+      "id": "A7",
+      "name": "horizon=20 求解 p95 ≤1s(含 IPC,100 次)",
+      "pass": false,
+      "detail": "p95=1166ms p50=1033ms"
+    },
+    {
+      "id": "A20",
+      "name": "i18n 双语 key 齐备(PARITY)",
+      "pass": true,
+      "detail": "zh=2985 en=2985"
+    },
+    {
+      "id": "A20",
+      "name": "四项门禁真实 exitCode=0(lint/typecheck/unit/i18n)",
+      "pass": false,
+      "detail": "gates.json 缺失(先运行 scripts/run-quality-gates.mjs)"
+    },
+    {
+      "id": "A22",
+      "name": "requirements 锁定 osqp",
+      "pass": true,
+      "detail": "b71cbec98e15"
+    },
+    {
+      "id": "A22",
+      "name": ".output 打包 requirements 含 osqp(构建后检查)",
+      "pass": true,
+      "detail": "present"
+    },
+    {
+      "id": "A22",
+      "name": ".output 打包 Solver Worker(worker.py/problems.py/probe.py)",
+      "pass": true,
+      "detail": "D:\\codes\\ABO\\AgentWorkShop\\.output\\.AgentWorkShop\\optimizer-python\\worker.py"
+    },
+    {
+      "id": "A22",
+      "name": "AML 与 Solver 同一解释器/锁",
+      "pass": true,
+      "detail": "b71cbec98e15"
+    },
+    {
+      "id": "A22",
+      "name": "线程预算显式注入(源码断言)",
+      "pass": true
+    },
+    {
+      "id": "A22",
+      "name": "桥签名覆盖 parameters(源码断言)",
+      "pass": true
+    },
+    {
+      "id": "A10",
+      "name": "新增单测文件齐备",
+      "pass": true,
+      "detail": "10 套"
+    },
+    {
+      "id": "A10",
+      "name": "既有 AML/Twin/DCW 套件保留",
+      "pass": true
+    }
+  ]
+}

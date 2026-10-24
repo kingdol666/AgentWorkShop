@@ -23,7 +23,30 @@ import { getWorkshopManager } from '../../plugins/workshop'
 
 /** 会话注册表:sessionId → transport(stateful 会话状态保留);上限防匿名刷爆内存 */
 const MAX_MCP_SESSIONS = 64
-const sessions = new Map<string, WebStandardStreamableHTTPServerTransport>()
+/** WP9:空闲会话 TTL(缺省 30min;env AW_MCP_SESSION_TTL_MIN=0 关闭回收 = 原行为) */
+function sessionTtlMs(): number {
+  const min = Number(process.env.AW_MCP_SESSION_TTL_MIN ?? 30)
+  if (!Number.isFinite(min) || min <= 0) return 0
+  return Math.min(min, 24 * 60) * 60_000
+}
+interface McpSession {
+  transport: WebStandardStreamableHTTPServerTransport
+  lastSeen: number
+}
+const sessions = new Map<string, McpSession>()
+
+/** 惰性清扫:任一请求进来时回收过期会话(避免定时器在无流量时仍持有 transport) */
+function sweepIdleSessions(): void {
+  const ttl = sessionTtlMs()
+  if (ttl <= 0) return
+  const now = Date.now()
+  for (const [sid, s] of sessions) {
+    if (now - s.lastSeen > ttl) {
+      sessions.delete(sid)
+      void s.transport.close?.().catch(() => {})
+    }
+  }
+}
 
 /** h3 event → web Request(跨 h3 1.x/2.x 兼容:不用版本互异的转换助手) */
 async function toFetchRequest(event: H3Event): Promise<Request> {
@@ -43,15 +66,17 @@ function sessionIdOf(event: H3Event): string | null {
 }
 
 export default defineEventHandler(async (event) => {
+  // WP9:先回收空闲会话(TTL 内无请求即释放;token 轮换后旧会话下一请求由工具级鉴权兜底)
+  sweepIdleSessions()
   const request = await toFetchRequest(event)
   const sessionId = sessionIdOf(event)
 
   // DELETE:关闭会话
   if (event.method === 'DELETE' && sessionId) {
-    const transport = sessions.get(sessionId)
-    if (transport) {
+    const session = sessions.get(sessionId)
+    if (session) {
       try {
-        await transport.handleRequest(request)
+        await session.transport.handleRequest(request)
       }
       finally {
         sessions.delete(sessionId)
@@ -61,11 +86,12 @@ export default defineEventHandler(async (event) => {
     return new Response(null, { status: 404 })
   }
 
-  // 复用已有会话
-  let transport = sessionId ? sessions.get(sessionId) : undefined
+  // 复用已有会话(刷新活跃时间)
+  let session = sessionId ? sessions.get(sessionId) : undefined
+  if (session) session.lastSeen = Date.now()
 
   // 新会话:预生成 sessionId,transport 在 initialize 时把它写入响应头
-  if (!transport) {
+  if (!session) {
     if (sessions.size >= MAX_MCP_SESSIONS) {
       return new Response(JSON.stringify({ error: 'TOO_MANY_SESSIONS', message: `MCP 会话数已达上限 ${MAX_MCP_SESSIONS}` }), {
         status: 429,
@@ -73,13 +99,14 @@ export default defineEventHandler(async (event) => {
       })
     }
     const newSessionId = randomUUID()
-    transport = new WebStandardStreamableHTTPServerTransport({
+    const transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: () => newSessionId,
     })
     const server = createWorkshopMcpServer(getWorkshopManager())
     await server.connect(transport)
-    sessions.set(newSessionId, transport)
+    session = { transport, lastSeen: Date.now() }
+    sessions.set(newSessionId, session)
   }
 
-  return transport.handleRequest(request)
+  return session.transport.handleRequest(request)
 })

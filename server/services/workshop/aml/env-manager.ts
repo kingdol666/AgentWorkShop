@@ -17,6 +17,7 @@ import { AppError } from '../../../utils/errors'
 import { createLogger } from '../logger'
 import { amlSettings } from '../settings'
 import { amlRootSourceLabel, getAmlRuntime } from './runtime'
+import { withEnvExclusiveLock } from './env-lease'
 import {
   ensureVenv,
   installUv,
@@ -220,11 +221,15 @@ export function startCreateVenv(opts: { force?: boolean } = {}): AmlEnvTask {
   void (async () => {
     try {
       emit(`${opts.force ? '重建' : '创建'}训练环境:${venvDir(rt)}`)
+      // Windows 下 venv 内 python.exe 被占用时 rmSync 会失败:先停 Solver Worker 池
+      const stopWorkers = (globalThis as { __optimizerShutdownWorkers?: () => void }).__optimizerShutdownWorkers
+      if (opts.force) stopWorkers?.()
       const uv = await probeUv(rt)
       emit(uv.ok
         ? `使用 uv ${uv.version}(来源:${uv.source})`
         : '未检测到 uv —— 请先点「一键安装 uv」(uv 优先,更快更稳;无 uv 将回退 python -m venv)')
-      const vpy = await ensureVenv(rt, { force: opts.force, onLog: emit })
+      const vpy = await withEnvExclusiveLock('env-manager', rt.root, () =>
+        ensureVenv(rt, { force: opts.force, onLog: emit, leaseHolder: 'env-manager' }))
       emit(`解释器:${vpy}`)
       finishTask(task)
     }

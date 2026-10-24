@@ -103,10 +103,17 @@ export abstract class DcwControllerLines extends DcwControllerRecipes {
       catch { /* 单行清理失败不阻断开跑 */ }
     }
     const run = repo.createRun(recipe)
+    // 配方版本/工况谱系:开跑即开段(C8);落段失败不阻断开跑主链
+    try {
+      const { openContextSegment } = await import('../../process-model/context')
+      openContextSegment(run)
+    }
+    catch { /* 谱系不可用只降级 */ }
     setActiveLineRun({
       lineId,
       runId: run.id,
       recipeId: recipe.id,
+      recipeVersion: run.recipeVersion ?? recipe.version ?? 0,
       recipeName: recipe.name,
       productId: product.id,
       productName: product.name,
@@ -125,6 +132,10 @@ export abstract class DcwControllerLines extends DcwControllerRecipes {
     const prev = clearActiveLineRun(lineId)
     if (!prev) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `产线「${line.name}」未在运行`)
     const run = getDcwRecipeRepo().closeRun(prev.runId)
+    // 谱系关段(时间窗闭合;失败不阻断停线)
+    void import('../../process-model/context').then(({ closeContextSegment }) => {
+      closeContextSegment(run.id, run.endedAt ? Date.parse(run.endedAt) : Date.now())
+    }).catch(() => {})
     // 运行门防僵尸:结清本产线**全部**未结束批次(多次 apply/崩溃/重启会泄漏
     // endedAt=null 的历史行;只结清注册表批次会让运行门被僵尸批次永久放行)
     for (const stale of getDcwRecipeRepo().listRuns().filter(r => r.lineId === lineId && !r.endedAt && r.id !== run.id)) {

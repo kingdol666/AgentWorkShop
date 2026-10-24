@@ -23,6 +23,8 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
   /** 启动清理水位(daq.tsRetentionH;env DAQ_TS_RETENTION_H 兼容) */
   private readonly retentionH = daqRuntimeSettings().tsRetentionH
   private retentionTimer: NodeJS.Timeout | null = null
+  /** 同键不同值被丢弃的帧数(C6 可观测计数,不静默) */
+  private correctionDropped = 0
 
   async init(): Promise<void> {
     this.db = new DatabaseSync(DB_PATH)
@@ -42,18 +44,23 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
         product_id TEXT,
         recipe_id  TEXT,
         run_id     TEXT,
+        ingested_at INTEGER,
         PRIMARY KEY (node_id, ts_ms)
       );
       CREATE INDEX IF NOT EXISTS idx_daq_node_ts ON daq_samples (node_id, ts_ms DESC);
     `)
     // 存量库迁移:先补打标列(幂等),再建依赖列的索引
     const cols = new Set((this.db.prepare('PRAGMA table_info(daq_samples)').all() as Array<{ name: string }>).map(c => c.name))
-    for (const [col, ddl] of [['line_id', 'ALTER TABLE daq_samples ADD COLUMN line_id TEXT'], ['product_id', 'ALTER TABLE daq_samples ADD COLUMN product_id TEXT'], ['recipe_id', 'ALTER TABLE daq_samples ADD COLUMN recipe_id TEXT'], ['run_id', 'ALTER TABLE daq_samples ADD COLUMN run_id TEXT']] as const) {
-      if (!cols.has(col)) this.db.exec(ddl)
-    }
+    if (!cols.has('line_id')) this.db.exec('ALTER TABLE daq_samples ADD COLUMN line_id TEXT')
+    if (!cols.has('product_id')) this.db.exec('ALTER TABLE daq_samples ADD COLUMN product_id TEXT')
+    if (!cols.has('recipe_id')) this.db.exec('ALTER TABLE daq_samples ADD COLUMN recipe_id TEXT')
+    if (!cols.has('run_id')) this.db.exec('ALTER TABLE daq_samples ADD COLUMN run_id TEXT')
+    // 到达时间(首次入库);旧行为 NULL = unknown,不得用于严格在线回放
+    if (!cols.has('ingested_at')) this.db.exec('ALTER TABLE daq_samples ADD COLUMN ingested_at INTEGER')
     this.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_daq_tag ON daq_samples (product_id, recipe_id, ts_ms DESC);
       CREATE INDEX IF NOT EXISTS idx_daq_run ON daq_samples (run_id, ts_ms DESC);
+      CREATE INDEX IF NOT EXISTS idx_daq_page ON daq_samples (node_id, ts_ms ASC);
     `)
     // 帧表(v2:向量/图像;meta/metrics JSON 序列化 TEXT,与 Timescale 契约对齐)
     this.db.exec(`
@@ -83,7 +90,8 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
     }
   }
 
-  /** 保留期清理:分批 DELETE(单批 5000 行,避免长事务锁库) */
+  /** 保留期清理:分批 DELETE(单批 5000 行,避免长事务锁库)
+   *  C6:迟到但新鲜的点不能被事件时间误删 —— 需要 ts_ms 与 ingested_at 都过期才删。 */
   private sweepRetention(): void {
     if (!this.db) return
     const cutoff = Date.now() - this.retentionH * 3600_000
@@ -91,8 +99,12 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
       let removed = 0
       for (;;) {
         const r = this.db.prepare(
-          'DELETE FROM daq_samples WHERE rowid IN (SELECT rowid FROM daq_samples WHERE ts_ms < ? LIMIT 5000)',
-        ).run(cutoff)
+          `DELETE FROM daq_samples WHERE rowid IN (
+             SELECT rowid FROM daq_samples
+             WHERE ts_ms < ? AND (ingested_at IS NULL OR ingested_at < ?)
+             LIMIT 5000
+           )`,
+        ).run(cutoff, cutoff)
         removed += Number(r.changes)
         if (Number(r.changes) < 5000) break
       }
@@ -107,11 +119,22 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
     if (!this.db || rows.length === 0) return
     // 批内单事务:一次 fsync 落整批(逐行 run 会每行一次 WAL fsync,写放大)
     const ins = this.db.prepare(
-      'INSERT OR IGNORE INTO daq_samples (node_id, ts_ms, value, state, line_id, product_id, recipe_id, run_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT OR IGNORE INTO daq_samples (node_id, ts_ms, value, state, line_id, product_id, recipe_id, run_id, ingested_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
     )
+    const existing = this.db.prepare('SELECT value, state FROM daq_samples WHERE node_id = ? AND ts_ms = ?')
+    const now = Date.now()
     this.db.exec('BEGIN')
     try {
-      for (const r of rows) ins.run(r.nodeId, r.tsMs, r.value, r.state, r.lineId ?? null, r.productId ?? null, r.recipeId ?? null, r.runId ?? null)
+      for (const r of rows) {
+        const res = ins.run(r.nodeId, r.tsMs, r.value, r.state, r.lineId ?? null, r.productId ?? null, r.recipeId ?? null, r.runId ?? null, r.ingestedAt ?? now)
+        // 首写胜出:同键二次写入被忽略。若值/状态不同,计数使丢弃可观测(不静默更正)。
+        if (Number(res.changes) === 0) {
+          const prev = existing.get(r.nodeId, r.tsMs) as { value: number, state: string } | undefined
+          if (prev && (Math.abs(Number(prev.value) - Number(r.value)) > 1e-9 || String(prev.state) !== String(r.state))) {
+            this.correctionDropped++
+          }
+        }
+      }
       this.db.exec('COMMIT')
     }
     catch (err) {
@@ -121,6 +144,10 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
       catch { /* 事务已终结 */ }
       throw err
     }
+  }
+
+  stats(): import('./tsdb-port').TsdbStats {
+    return { correctionDropped: this.correctionDropped }
   }
 
   async query(nodeId: string, opts: DaqQueryOpts): Promise<TsdbPoint[]> {
@@ -198,15 +225,44 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
       return out
     }
     const rows = (this.db.prepare(`
-      SELECT node_id, ts_ms, value FROM daq_samples WHERE ${where.join(' AND ')}
+      SELECT node_id, ts_ms, value, state, ingested_at FROM daq_samples WHERE ${where.join(' AND ')}
       ORDER BY ts_ms ASC LIMIT ?
-    `).all(...params, limit)) as Array<{ node_id: string, ts_ms: number, value: number }>
+    `).all(...params, limit)) as Array<{ node_id: string, ts_ms: number, value: number, state: string, ingested_at: number | null }>
     for (const r of rows) {
       const list = out.get(r.node_id) ?? []
-      list.push({ at: Number(r.ts_ms), value: Number(r.value) })
+      // state 必须真实返回:C5 修复前恒 undefined,cleanPoints 的坏点过滤是空操作。
+      list.push({ at: Number(r.ts_ms), value: Number(r.value), state: String(r.state ?? 'ok'), ...(r.ingested_at == null ? {} : { ingestedAt: Number(r.ingested_at) }) })
       out.set(r.node_id, list)
     }
     return out
+  }
+
+  /** 逐节点 raw 分页(新增;C7):稳定 ASC、游标严格大于、每页限额、无漏无重。 */
+  async queryTaggedPage(nodeId: string, q: import('./tsdb-port').TsdbPageQuery = {}): Promise<import('./tsdb-port').TsdbPage> {
+    if (!this.db) return { nodeId, points: [], nextCursor: null, done: true }
+    const limit = Math.max(1, Math.min(q.limit ?? 5000, 500_000))
+    const from = Math.max(q.fromMs ?? 0, (q.afterTs ?? -1) + 1)
+    const to = q.toMs ?? Date.now()
+    const withState = q.withState !== false
+    const rows = (withState
+      ? this.db.prepare(`
+          SELECT ts_ms, value, state, ingested_at FROM daq_samples
+          WHERE node_id = ? AND ts_ms >= ? AND ts_ms <= ?
+          ORDER BY ts_ms ASC LIMIT ?
+        `).all(nodeId, from, to, limit)
+      : this.db.prepare(`
+          SELECT ts_ms, value FROM daq_samples
+          WHERE node_id = ? AND ts_ms >= ? AND ts_ms <= ?
+          ORDER BY ts_ms ASC LIMIT ?
+        `).all(nodeId, from, to, limit)) as Array<{ ts_ms: number, value: number, state?: string, ingested_at?: number | null }>
+    const points = rows.map(r => ({
+      at: Number(r.ts_ms),
+      value: Number(r.value),
+      ...(withState ? { state: String(r.state ?? 'ok') } : {}),
+      ...(r.ingested_at == null ? {} : { ingestedAt: Number(r.ingested_at) }),
+    }))
+    const done = points.length < limit
+    return { nodeId, points, nextCursor: done ? null : points[points.length - 1]?.at ?? null, done }
   }
 
   async latest(): Promise<Map<string, DaqSampleRow>> {
@@ -214,10 +270,13 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
     if (!this.db) return out
     // SQLite 裸列保证:GROUP BY + MAX() 时裸列取自 max 所在行(命中 idx_daq_node_ts,免相关子查询)
     const rows = this.db.prepare(`
-      SELECT node_id, MAX(ts_ms) AS ts_ms, value, state FROM daq_samples GROUP BY node_id
-    `).all() as Array<{ node_id: string, ts_ms: number, value: number, state: string }>
+      SELECT node_id, MAX(ts_ms) AS ts_ms, value, state, ingested_at FROM daq_samples GROUP BY node_id
+    `).all() as Array<{ node_id: string, ts_ms: number, value: number, state: string, ingested_at: number | null }>
     for (const r of rows) {
-      out.set(r.node_id, { nodeId: r.node_id, tsMs: Number(r.ts_ms), value: Number(r.value), state: String(r.state) })
+      out.set(r.node_id, {
+        nodeId: r.node_id, tsMs: Number(r.ts_ms), value: Number(r.value), state: String(r.state),
+        ...(r.ingested_at == null ? {} : { ingestedAt: Number(r.ingested_at) }),
+      })
     }
     return out
   }

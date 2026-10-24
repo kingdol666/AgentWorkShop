@@ -18,6 +18,7 @@
  * 子进程拉起,不得假设仓库 node_modules 的解析路径。
  */
 import { createInterface } from 'node:readline'
+import { toolSignature as bridgeSignature } from './aw-mcp-signature.mjs'
 
 const BASE_URL = (process.env.AW_BASE_URL ?? 'http://127.0.0.1:3000').replace(/\/$/, '')
 const AGENT_ID = process.env.AW_AGENT_ID ?? ''
@@ -34,21 +35,39 @@ if (!AGENT_ID || !AGENT_TOKEN) {
 let toolCache = { at: 0, tools: [] }
 let clientReady = false
 let lastToolSignature = ''
+/** WP6:最近一次成功响应的 ETag(带 If-None-Match 轮询,无变更时服务端回 304 空体) */
+let lastEtag = ''
+/** 合法空表也必须落地(C14):首轮成功拉取后置 true,空表不再被旧表掩盖 */
+let baselineReady = false
 
+/** 签名覆盖完整定义(name/label/description/parameters + per-agent 描述),schema-only 变更也触发刷新 */
 function toolSignature(tools) {
-  return JSON.stringify((Array.isArray(tools) ? tools : []).map(t => [t.name, t.description]))
+  return bridgeSignature(tools)
 }
 
 async function fetchTools(force = false) {
-  if (!force && toolCache.tools.length > 0 && Date.now() - toolCache.at < LIST_TTL_MS) return toolCache.tools
+  if (!force && baselineReady && Date.now() - toolCache.at < LIST_TTL_MS) return toolCache.tools
+  const headers = { 'x-aw-agent-token': AGENT_TOKEN }
+  if (lastEtag) headers['if-none-match'] = lastEtag
   const res = await fetch(`${BASE_URL}/api/workshop/agent-tools/list?agentId=${encodeURIComponent(AGENT_ID)}`, {
-    headers: { 'x-aw-agent-token': AGENT_TOKEN },
+    headers,
     signal: AbortSignal.timeout(15_000),
   })
+  // 304:工具面未变化,沿用缓存(仍需刷新 at,避免每轮都打网络)
+  if (res.status === 304) {
+    toolCache = { at: Date.now(), tools: toolCache.tools }
+    return toolCache.tools
+  }
   if (!res.ok) throw new Error(`tools/list HTTP ${res.status}`)
+  const etag = res.headers.get('etag') ?? ''
+  if (etag) lastEtag = etag
   const body = await res.json()
   const tools = body?.data?.tools ?? []
-  if (Array.isArray(tools) && tools.length > 0) toolCache = { at: Date.now(), tools }
+  // 区分 HTTP 失败与合法空数组:合法空数组必须覆盖缓存(否则解绑后旧工具永远残留)
+  if (Array.isArray(tools)) {
+    toolCache = { at: Date.now(), tools }
+    baselineReady = true
+  }
   return toolCache.tools
 }
 
@@ -59,6 +78,7 @@ const listChangedTimer = setInterval(async () => {
   try {
     const tools = await fetchTools(true)
     const sig = toolSignature(tools)
+    // baselineReady 之后任何变化(含变空)都通知;首轮只建立基线
     if (lastToolSignature && sig !== lastToolSignature) {
       process.stdout.write(`${JSON.stringify({ jsonrpc: '2.0', method: 'notifications/tools/list_changed' })}\n`)
     }

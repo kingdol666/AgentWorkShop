@@ -77,6 +77,24 @@ async function resolveTargetLines(agentId: string, toolName: string, args: Recor
     const l = await nodeIdLine(id)
     if (l) lines.add(l)
   }
+  // Optimizer 绑定 → 目标产线(Profile → ProcessModelSpec.lineId);只读工具同样受线授权约束
+  const bindingId = one(args.binding_id ?? args.bindingId)
+  if (bindingId) {
+    const { getAmlRuntime } = await import('@/server/services/workshop/aml/runtime')
+    const db = getAmlRuntime().db
+    const binding = db.prepare('SELECT profile_id AS profileId, profile_version AS profileVersion FROM optimizer_bindings WHERE id = ? AND channel_agent_id = ?')
+      .get(bindingId, agentId) as { profileId: string, profileVersion: number } | undefined
+    if (binding) {
+      const profile = db.prepare('SELECT process_spec_ref AS specRef FROM optimizer_profiles WHERE id = ? AND version = ?')
+        .get(binding.profileId, binding.profileVersion) as { specRef: string } | undefined
+      const [specId, specVersion] = (profile?.specRef ?? '').split('@')
+      if (specId) {
+        const spec = db.prepare('SELECT line_id AS lineId FROM process_model_specs WHERE id = ? AND version = ?')
+          .get(specId, Number(specVersion || '1')) as { lineId: string } | undefined
+        if (spec?.lineId) lines.add(spec.lineId)
+      }
+    }
+  }
   if (lines.size > 0) return [...lines]
 
   // 无显式目标(如全节点 daq_query)→ 回退 agent 绑定面涉及的全部产线

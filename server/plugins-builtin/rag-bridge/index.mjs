@@ -279,18 +279,19 @@ export default {
     ctx.omp.registerTool({
       name: 'kb_agent',
       label: '知识库Agent',
-      description: '与 rag-knowledge 知识库的原生 Agent 对话(知识库操作唯一入口,功能解耦)。把任务原话交给它:检索问答(知识库侧自动走 QDCVR 全流程,返回带引用的可信答案)、文档入库(给出标题与完整 markdown 正文)、经验沉淀、图谱关联等,全部由知识库内部 Agent 自主处理并返回最终结果。harness/permission 一般留空(默认 claude + 最高权限)。',
+      description: '与 rag-knowledge 知识库的原生 Agent 对话(知识库操作唯一入口,功能解耦)。把任务原话交给它:检索问答(知识库侧自动走 QDCVR 全流程,返回带引用的可信答案)、文档入库(给出标题与完整 markdown 正文,action=ingest)、经验沉淀(action=ingest)、图谱关联等,全部由知识库内部 Agent 自主处理并返回最终结果。入库类动作会进入平台审批(HITL),批准后才提交。',
       parameters: {
         type: 'object',
         properties: {
           prompt: { type: 'string', description: '给知识库 Agent 的完整任务原话。检索:要查的问题;入库:目标知识库名(缺省 aw-industrial)+文档标题+完整 markdown 正文;经验:标题/类别/问题/解决方案' },
           mode: { type: 'string', enum: ['sync', 'async'], description: '执行方式(按场景自选):sync 同步等待知识库执行完并返回结果(检索问答用,需要立刻拿到答案);async 异步——立即返回 task_id,知识库在后台完成任务,完成后可用 kb_agent_status 查询该 task 的结果(入库/经验沉淀类用,无需等待)' },
-          harness: { type: 'string', description: '可选:知识库侧执行引擎(缺省 claude,一般无需填写)' },
-          permission: { type: 'string', description: '可选:权限模式(缺省 bypassPermissions 最高权限,一般无需填写)' },
+          action: { type: 'string', enum: ['query', 'ingest'], description: '动作类别:query=只读检索问答(缺省);ingest=写知识库(文档入库/经验沉淀),平台会挂 HITL 审批单,批准前不提交后端。入库务必显式声明 action=ingest。' },
         },
         required: ['prompt'],
       },
       roles: ['lead', 'worker'],
+      riskClass: 'write',
+      noRefs: true,
       handler: async (args, agent) => {
         if (!state.outbound) {
           return { text: '知识库 Agent 不可用:' + outboundOff().error + '。修复后重启服务。', isError: true }
@@ -298,11 +299,9 @@ export default {
         const prompt = String(args.prompt ?? '').trim()
         if (!prompt) return { text: 'prompt 必填(把要做的任务完整描述给知识库 Agent)。', isError: true }
         const mode = String(args.mode ?? '').trim().toLowerCase() === 'async' ? 'async' : 'sync'
-        const body = { prompt, timeout_ms: 540000, mode }
-        const harness = String(args.harness ?? '').trim()
-        if (harness) body.harness = harness
-        const permission = String(args.permission ?? '').trim()
-        if (permission) body.permission = permission
+        // 权限档由服务端固定(不再接受调用方透传):历史参数 permission/harness 一律忽略。
+        // 缺省 'default' 标准审批档;此前缺省传递 bypassPermissions 允许 Agent 自行提权。
+        const body = { prompt, timeout_ms: 540000, mode, permission: 'default' }
 
         if (mode === 'async') {
           // 异步:立即返回 task_id,知识库后台完成;结果稍后用 kb_agent_status 查询

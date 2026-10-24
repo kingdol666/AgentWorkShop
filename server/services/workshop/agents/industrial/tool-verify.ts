@@ -34,6 +34,8 @@ import { getAmlRuntime } from '../../aml/runtime'
 import { getTrainingPlan } from '../../aml/twin/training-plans'
 import { createTwinRepo } from '../../aml/twin/repo'
 import { recordOps } from '../../ops/ops'
+import { declaredReferenceSpec, type ToolVerifySpec } from '../tool-reference-spec'
+import { LEGACY_VERIFY_SPECS } from './tool-verify-legacy-specs'
 
 /** 一次调用解析一次的引用面(校验与拒绝文案共用,避免重复查询) */
 export interface ToolRefFaces {
@@ -166,7 +168,25 @@ function chainDeny(faces: ToolRefFaces, toolName: string, args: Record<string, u
   ], faces, hint, { param, value: id, lineId })
 }
 
-type ChainKind = 'dataset' | 'job' | 'model' | 'plan' | 'scene'
+type ChainKind = 'dataset' | 'job' | 'model' | 'plan' | 'scene' | 'binding' | 'run' | 'recommendation'
+
+/** 优化运行/建议 → 所属 Agent(经 binding 反查);不存在返回 null(交工具兜底)。 */
+function optimizerOwnership(id: string, kind: 'run' | 'recommendation'): { agentId: string } | null {
+  const db = getAmlRuntime().db
+  if (kind === 'run') {
+    const row = db.prepare('SELECT b.channel_agent_id AS agentId FROM optimizer_runs r JOIN optimizer_bindings b ON b.id = r.binding_id WHERE r.id = ?').get(id) as { agentId: string } | undefined
+    return row ?? null
+  }
+  const row = db.prepare('SELECT b.channel_agent_id AS agentId FROM optimizer_recommendations rc JOIN optimizer_runs r ON r.id = rc.run_id JOIN optimizer_bindings b ON b.id = r.binding_id WHERE rc.id = ?').get(id) as { agentId: string } | undefined
+  return row ?? null
+}
+
+function denyBinding(toolName: string, args: Record<string, unknown>, param: string, id: string, reason: string) {
+  return {
+    text: `工具调用被拒(引用校验,${toolName}):${param} = ${id} ${reason}(BINDING_NOT_OWNED)。请用 optimizer_capabilities 查看本 Agent 的绑定 id。`,
+    isError: true,
+  }
+}
 
 /** 链式解析:返回 null 表示「无法判定/对象不存在」——放行给工具自身兜底(存在性文案更准确) */
 function chainLineOf(kind: ChainKind, id: string, args: Record<string, unknown>): { lineId: string, createdBy: string } | null {
@@ -196,78 +216,38 @@ function chainLineOf(kind: ChainKind, id: string, args: Record<string, unknown>)
   return rec ? { lineId: rec.lineId, createdBy: rec.createdBy } : null
 }
 
-// ===== 工具声明表 =====
+// ===== 工具声明表(声明→单源;旧代码表仅回滚/等价回退) =====
 
-interface VerifySpec {
-  /** 必填引用:至少提供一个(hint 给 Agent 该传什么) */
-  atLeastOne?: Array<{ params: string[], hint: string }>
-  /** 浅层字符串引用参数 → 判定类别 */
-  refs?: Array<{ param: string, kind: 'node' | 'line' | 'recipe' }>
-  /** 浅层节点 id 数组参数 */
-  nodeLists?: string[]
-  /** 深路径节点引用(如 'params[].node_id' / 'packages[].params[].node_id') */
-  deepNodeRefs?: string[]
-  /** 链式引用(dataset_id/job_id/model_id/plan_id/scene_id) */
-  chained?: Array<{ param: string, kind: ChainKind }>
-  /** 只读工具:节点只要归属可读产线即可引用(与频道绑线只读扩权同口径;写工具不得开启) */
-  readableLineNodes?: boolean
+/** 声明来源:host-tools.json 的 `references` / `noRefs`(WP5 起为默认路径);
+ *  env AW_TOOL_VERIFY_LEGACY_SPECS=1 时整表回退旧代码表(一个版本周期的回滚开关)。 */
+function legacyMode(): boolean {
+  return process.env.AW_TOOL_VERIFY_LEGACY_SPECS === '1'
 }
 
-/** 覆盖:全部「接收引用型参数」的工业工具。未列入 = 无引用参数或已由 v2 禁用桩自答。 */
-const VERIFY_SPECS: Record<string, VerifySpec> = {
-  // 数控/数采面(v2 禁用桩 handler 自答替代路径,无需预检)
-  dcw_control: {},
-  param_control: {},
-  dcw_rollback: {},
-  daq_query: { refs: [{ param: 'node_id', kind: 'node' }, { param: 'line_id', kind: 'line' }] },
-  daq_frames: { refs: [{ param: 'node_id', kind: 'node' }, { param: 'line_id', kind: 'line' }] },
-  daq_export: { refs: [{ param: 'line_id', kind: 'line' }], nodeLists: ['node_ids'] },
-  dcw_judge: { atLeastOne: [{ params: ['record_id'], hint: 'record_id 必填(优化记录 id,opt-*);配方面链路判定不用 dcw_judge,达标用 recipe_update 固化、劣化用 recipe_rollback。' }] },
-  dcw_journal: {
-    atLeastOne: [{ params: ['node_id', 'recipe_id'], hint: 'node_id 或 recipe_id 至少提供一个:查某节点的参数变更史传 node_id;查配方面优化记录传 recipe_id(全节点不落权限面,不提供)。' }],
-    refs: [{ param: 'node_id', kind: 'node' }, { param: 'recipe_id', kind: 'recipe' }],
-  },
-  // 判定/日志/配方/前哨面
-  ops_log: { refs: [{ param: 'line_id', kind: 'line' }, { param: 'recipe_id', kind: 'recipe' }, { param: 'node_id', kind: 'node' }], readableLineNodes: true },
-  // line_log = ops_log 显式别名,引用校验完全同口径
-  line_log: { refs: [{ param: 'line_id', kind: 'line' }, { param: 'recipe_id', kind: 'recipe' }, { param: 'node_id', kind: 'node' }], readableLineNodes: true },
-  recipe_log: { refs: [{ param: 'line_id', kind: 'line' }, { param: 'recipe_id', kind: 'recipe' }] },
-  recipe_catalog: { refs: [{ param: 'line_id', kind: 'line' }] },
-  recipe_create: { refs: [{ param: 'line_id', kind: 'line' }, { param: 'source_recipe_id', kind: 'recipe' }], deepNodeRefs: ['params[].node_id', 'daq_windows[].node_id'] },
-  line_context: { refs: [{ param: 'line_id', kind: 'line' }] },
-  line_status: { refs: [{ param: 'line_id', kind: 'line' }] },
-  line_start: { refs: [{ param: 'recipe_id', kind: 'recipe' }] },
-  recipe_versions: { refs: [{ param: 'recipe_id', kind: 'recipe' }] },
-  recipe_update: { atLeastOne: [{ params: ['recipe_id', 'line_id'], hint: 'recipe_id 或 line_id 至少提供一个:只给 line_id 时按该线当前活动批次解析配方。' }], refs: [{ param: 'recipe_id', kind: 'recipe' }, { param: 'line_id', kind: 'line' }], deepNodeRefs: ['params[].node_id'] },
-  recipe_rollback: { refs: [{ param: 'recipe_id', kind: 'recipe' }] },
-  recipe_trial: { atLeastOne: [{ params: ['recipe_id', 'line_id'], hint: 'recipe_id 或 line_id 至少提供一个:只给 line_id 时按该线当前活动批次解析配方。' }], refs: [{ param: 'recipe_id', kind: 'recipe' }, { param: 'line_id', kind: 'line' }], deepNodeRefs: ['params[].node_id'] },
-  recipe_apply: { atLeastOne: [{ params: ['recipe_id', 'line_id'], hint: 'recipe_id 或 line_id 至少提供一个:只给 line_id 时按该线当前活动批次解析配方。' }], refs: [{ param: 'recipe_id', kind: 'recipe' }, { param: 'line_id', kind: 'line' }] },
-  recipe_propose: { refs: [{ param: 'recipe_id', kind: 'recipe' }], deepNodeRefs: ['packages[].params[].node_id'] },
-  // 分析与经验面
-  analysis_save: { refs: [{ param: 'line_id', kind: 'line' }, { param: 'recipe_id', kind: 'recipe' }] },
-  analysis_query: { refs: [{ param: 'line_id', kind: 'line' }] },
-  aml_activity: { refs: [{ param: 'line_id', kind: 'line' }] },
-  exp_collect: { refs: [{ param: 'line_id', kind: 'line' }, { param: 'lineId', kind: 'line' }] },
-  // 寻优/孪生面
-  optimization_explore: { refs: [{ param: 'control_node_id', kind: 'node' }, { param: 'target_node_id', kind: 'node' }] },
-  twin_scene_compile: { refs: [{ param: 'line_id', kind: 'line' }, { param: 'recipe_id', kind: 'recipe' }], nodeLists: ['node_ids'] },
-  twin_scene_freeze: { chained: [{ param: 'scene_id', kind: 'scene' }] },
-  twin_calibration_request: { refs: [{ param: 'line_id', kind: 'line' }, { param: 'recipe_id', kind: 'recipe' }] },
-  twin_gate_evaluate: { chained: [{ param: 'model_id', kind: 'model' }] },
-  // AML 面
-  aml_dataset_build: { refs: [{ param: 'line_id', kind: 'line' }, { param: 'recipe_id', kind: 'recipe' }], deepNodeRefs: ['nodes[].node_id'] },
-  aml_dataset_stats: { chained: [{ param: 'dataset_id', kind: 'dataset' }] },
-  aml_leaderboard: { chained: [{ param: 'dataset_id', kind: 'dataset' }] },
-  aml_job_submit: { chained: [{ param: 'dataset_id', kind: 'dataset' }] },
-  aml_job_status: { chained: [{ param: 'job_id', kind: 'job' }] },
-  aml_job_logs: { chained: [{ param: 'job_id', kind: 'job' }] },
-  aml_job_cancel: { chained: [{ param: 'job_id', kind: 'job' }] },
-  aml_model_promote: { chained: [{ param: 'model_id', kind: 'model' }] },
-  aml_training_plan_create: { refs: [{ param: 'line_id', kind: 'line' }, { param: 'recipe_id', kind: 'recipe' }] },
-  aml_training_plan_train: { chained: [{ param: 'plan_id', kind: 'plan' }] },
-  // MES 面(ids 为 MES 数控节点,归属判定与 mes-controller 可见面同源)
-  mes_fetch: { nodeLists: ['ids'] },
-  mes_export: { nodeLists: ['ids'] },
+let warnedUndelcaredAt = 0
+
+function resolveSpec(toolName: string): ToolVerifySpec | null {
+  if (legacyMode()) return LEGACY_VERIFY_SPECS[toolName] ?? null
+  const { declared, spec } = declaredReferenceSpec(toolName)
+  if (declared) return spec
+  // 未声明:回退旧表(单测/目录未装配的等价回退);两表都没有则由注册期登记制拦截,
+  // 执行期保持既有「未登记=无引用参数」契约(未知工具错误语义不变)。
+  const fallback = LEGACY_VERIFY_SPECS[toolName]
+  if (!fallback && Date.now() - warnedUndelcaredAt > 60_000) {
+    warnedUndelcaredAt = Date.now()
+    recordOps({
+      actor: 'system',
+      actorName: 'tool-verify',
+      actorKind: 'system',
+      action: 'tool.call.undeclared',
+      kind: 'system',
+      level: 'warn',
+      targetKind: 'tool',
+      targetId: toolName,
+      summary: `工具「${toolName}」未声明引用面(references/noRefs),已按无引用放行`,
+    })
+  }
+  return fallback ?? null
 }
 
 /** 深路径取值:'params[].node_id' / 'packages[].params[].node_id' */
@@ -294,11 +274,21 @@ function collectDeep(args: unknown, dotted: string): string[] {
 }
 
 /**
- * 工业工具调用统一预检。返回 null = 通过;返回结果 = 拒绝(可直接回给 Agent 的 isError 文本)。
+ * 工业工具调用统一预检(声明解析 → 实时校验)。返回 null = 通过;返回结果 = 拒绝。
  * 调用点:dispatch.ts 工业工具族分流处(grant 复核之后、handler 之前)。
+ *
+ * 声明来源优先级:env 回滚开关 > host-tools.json `references`/`noRefs` > 旧代码表(等价回退)。
+ * 无论声明从哪来,**归属面都在本次调用实时重算**(不缓存:绑定可在调用间隙被改写)。
  */
 export function verifyIndustrialToolCall(agentId: string, toolName: string, args: Record<string, unknown>): HostToolResult | null {
-  const spec = VERIFY_SPECS[toolName]
+  return verifyToolReferences(agentId, toolName, args, resolveSpec(toolName))
+}
+
+/**
+ * 按显式声明校验一次调用(插件工具与 host 工具共用同一实现 —— 声明在哪、校验就一套)。
+ * spec=null(显式 noRefs/无规则)→ 直接放行。
+ */
+export function verifyToolReferences(agentId: string, toolName: string, args: Record<string, unknown>, spec: ToolVerifySpec | null): HostToolResult | null {
   if (!spec) return null
   try {
     // 1) 必填引用(atLeastOne):形状类拒绝,不入册
@@ -362,6 +352,21 @@ export function verifyIndustrialToolCall(agentId: string, toolName: string, args
     for (const chain of spec.chained ?? []) {
       const id = String(args[chain.param] ?? '').trim()
       if (!id) continue
+      if (chain.kind === 'binding') {
+        // G4.5:binding_id 必须属于当前 Agent 实例(模板 id/他人绑定一律拒绝)
+        const binding = getAmlRuntime().db.prepare('SELECT channel_agent_id AS agentId FROM optimizer_bindings WHERE id = ?').get(id) as { agentId: string } | undefined
+        if (!binding) return denyBinding(toolName, args, chain.param, id, '不存在')
+        if (binding.agentId !== agentId) return denyBinding(toolName, args, chain.param, id, '不属于当前 Agent')
+        continue
+      }
+      if (chain.kind === 'run' || chain.kind === 'recommendation') {
+        const ownership = optimizerOwnership(id, chain.kind)
+        if (!ownership) continue
+        if (ownership.agentId !== agentId) {
+          return { text: `工具调用被拒(引用校验,${toolName}):${chain.param} = ${id} 不属于当前 Agent(BINDING_NOT_OWNED)`, isError: true }
+        }
+        continue
+      }
       const row = chainLineOf(chain.kind, id, args)
       if (!row) continue
       const mine = row.createdBy === agentId

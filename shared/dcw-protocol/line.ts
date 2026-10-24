@@ -31,12 +31,21 @@ export interface LineView {
    * 存量数据无此字段时按 'manual' 生效(读侧归一,见 DcwLineRepo.controlModeOf)。
    */
   controlMode?: 'auto' | 'manual'
+  /**
+   * 是否为模拟器产线(C9/A9):只有 simulated=true 的线允许发起"模拟参数试验";
+   * 真实线缺失该字段 = false(默认拒绝)。建线时由 seed/bench 脚本显式置位。
+   */
+  simulated?: boolean
+  /** 模拟器场景 id(plant-runtime 引擎 key;仅诊断展示用) */
+  simSceneId?: string
 }
 
 export interface LineInput {
   name: string
   color?: string
   description?: string
+  simulated?: boolean
+  simSceneId?: string
   /** 线级控制模式总闸;缺省 'manual';manual→auto 须 confirm:true(服务端强制) */
   controlMode?: 'auto' | 'manual'
   /** manual→auto 的显式风险确认(严格 === true;仅 patch 入参用,不落盘) */

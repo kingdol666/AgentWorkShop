@@ -47,6 +47,17 @@ export function migrateAddColumn(db: DatabaseSync, table: string, column: string
 }
 
 /**
+ * v31(2026-10-24 WP3):agent token 轮换宽限列。
+ * 轮换时把旧 token 与其失效时刻写入 prev_token/prev_token_until,宽限窗内双接受
+ * (桥进程 60s 内自动重连);过期后旧 token 彻底 401。
+ * 加列式迁移:既有库安全,历史行 prev_token 为空 = 无宽限。
+ */
+export function migrateAgentTokenGraceColumns(db: DatabaseSync): void {
+  migrateAddColumn(db, 'channel_agents', 'prev_token', 'TEXT NOT NULL DEFAULT \'\'')
+  migrateAddColumn(db, 'channel_agents', 'prev_token_until', 'TEXT NOT NULL DEFAULT \'\'')
+}
+
+/**
  * 产线 Co-Pilot P2:审批历史结构化载荷列(加列式迁移,既有行安全 —— 历史行
  * payload_json 为 NULL、choice 为 NULL,读取层按「空则文本降级」处理,不回填改史)。
  * payload_json = 整包方案审批单的方案集+预检结果;choice = 批准时选定的包下标。
@@ -453,4 +464,68 @@ export function migrateAnalysisEditColumns(db: DatabaseSync): void {
   migrateAddColumn(db, 'analysis_reports', 'updated_at', 'TEXT')
   migrateAddColumn(db, 'analysis_reports', 'updated_by', 'TEXT NOT NULL DEFAULT \'\'')
   migrateAddColumn(db, 'analysis_reports', 'updated_by_name', 'TEXT NOT NULL DEFAULT \'\'')
+}
+
+/**
+ * v29:Optimizer Manager + Process Model Service 的地基列(2026-10-22 计划 G1.3)。
+ *
+ * 新表由 SCHEMA_SQL 幂等建表覆盖;这里只补**既有表**的新列(加列式迁移,既有行安全):
+ *  - aml_datasets/aml_jobs/aml_models:工件类型判别与谱系引用(历史行空串 = legacy,
+ *    由 model-registry 的 resolveArtifactKindOfModel 从 metrics 推断,不伪造新语义);
+ *  - twin_recommendations:legacy 标记,旧证书不追溯重算;
+ *  - optimizer_bindings:channel_agents 删除时级联由 DDL 保证(FK),无需补。
+ */
+export function migrateOptimizerFoundationColumns(db: DatabaseSync): void {
+  migrateAddColumn(db, 'aml_datasets', 'spec_ref', 'TEXT NOT NULL DEFAULT \'\'')
+  migrateAddColumn(db, 'aml_datasets', 'spec_version', 'INTEGER')
+  migrateAddColumn(db, 'aml_datasets', 'recipe_version', 'INTEGER')
+  migrateAddColumn(db, 'aml_datasets', 'manifest_version', 'INTEGER NOT NULL DEFAULT 1')
+  migrateAddColumn(db, 'aml_datasets', 'content_hash', 'TEXT NOT NULL DEFAULT \'\'')
+  migrateAddColumn(db, 'aml_datasets', 'trainer_ref', 'TEXT NOT NULL DEFAULT \'\'')
+  migrateAddColumn(db, 'aml_datasets', 'evidence_source', 'TEXT NOT NULL DEFAULT \'real\'')
+
+  migrateAddColumn(db, 'aml_jobs', 'model_id', 'TEXT')
+  migrateAddColumn(db, 'aml_jobs', 'trainer_ref', 'TEXT NOT NULL DEFAULT \'\'')
+  migrateAddColumn(db, 'aml_jobs', 'artifact_kind', 'TEXT NOT NULL DEFAULT \'\'')
+
+  migrateAddColumn(db, 'aml_models', 'artifact_kind', 'TEXT NOT NULL DEFAULT \'\'')
+  migrateAddColumn(db, 'aml_models', 'schema_version', 'INTEGER NOT NULL DEFAULT 1')
+  migrateAddColumn(db, 'aml_models', 'model_interface', 'TEXT NOT NULL DEFAULT \'\'')
+  migrateAddColumn(db, 'aml_models', 'artifact_hash', 'TEXT NOT NULL DEFAULT \'\'')
+  migrateAddColumn(db, 'aml_models', 'legacy', 'TEXT NOT NULL DEFAULT \'\'')
+  db.exec('CREATE INDEX IF NOT EXISTS idx_aml_models_artifact ON aml_models(artifact_kind, stage)')
+
+  migrateAddColumn(db, 'twin_recommendations', 'legacy', 'TEXT NOT NULL DEFAULT \'\'')
+  // 旧证书一次性打标:历史行签发口径是末拍代价(旧 twin_v1),不重算不发新证书。
+  db.exec('UPDATE twin_recommendations SET legacy = \'twin_v1\' WHERE legacy = \'\'')
+  // Optimizer Profile 内容 hash(发布不可变校验);新表可能由旧版本创建,补列幂等。
+  migrateAddColumn(db, 'optimizer_profiles', 'content_hash', 'TEXT NOT NULL DEFAULT \'\'')
+  // 新表引用保护需要的反向索引(删除模型前按 model_ref 扫描)
+  db.exec('CREATE INDEX IF NOT EXISTS idx_optimizer_profiles_model_ref ON optimizer_profiles(model_ref, status)')
+  db.exec('CREATE INDEX IF NOT EXISTS idx_optimizer_bindings_agent ON optimizer_bindings(channel_agent_id, profile_id)')
+}
+
+/**
+ * v30:双驱动收敛列(总计划 SW2–SW5;expand/contract —— 只加可空/带默认列,只前滚)。
+ * - aml_datasets.lineage_verified:D18 数据谱系(0=未核验禁优化资格;新 builder 每 run 有 confirmed segment 才置 1)
+ * - optimizer_recommendations 下发状态机(D14):dispatch_state idle→dispatched→committed→executed|failed|cancelled|denied|expired;
+ *   旧行回填 idle(历史建议从未建卡,dispatched_at 派生仅供对账)
+ * - optimizer_profiles.problem_ir_hashes_json:D21 多工况按 condition 冻结 hash(空 = 单 hash 旧形态)
+ * - process_model_eligibility.dataset_id/dataset_hash:D20 精确资格谱系
+ */
+export function migrateDualDriveColumns(db: DatabaseSync): void {
+  migrateAddColumn(db, 'aml_datasets', 'lineage_verified', 'INTEGER NOT NULL DEFAULT 0')
+
+  migrateAddColumn(db, 'optimizer_recommendations', 'dispatched_at', 'TEXT')
+  migrateAddColumn(db, 'optimizer_recommendations', 'approval_id', 'TEXT')
+  migrateAddColumn(db, 'optimizer_recommendations', 'initiator_user_id', 'TEXT NOT NULL DEFAULT \'\'')
+  migrateAddColumn(db, 'optimizer_recommendations', 'dispatch_state', 'TEXT NOT NULL DEFAULT \'idle\'')
+  // 旧库可能曾被写入过 dispatched 状态(防重):按幂等锚派生,未建卡的一律 idle
+  db.exec('UPDATE optimizer_recommendations SET dispatch_state = \'idle\' WHERE dispatch_state = \'dispatched\' AND dispatched_at IS NULL')
+  // 候选行携带求解模型(SW4 互校锚;旧行为空 → 互校回退 run.profile 解析)
+  migrateAddColumn(db, 'optimizer_candidates', 'model_id', 'TEXT NOT NULL DEFAULT \'\'')
+
+  migrateAddColumn(db, 'optimizer_profiles', 'problem_ir_hashes_json', 'TEXT NOT NULL DEFAULT \'\'')
+  migrateAddColumn(db, 'process_model_eligibility', 'dataset_id', 'TEXT NOT NULL DEFAULT \'\'')
+  migrateAddColumn(db, 'process_model_eligibility', 'dataset_hash', 'TEXT NOT NULL DEFAULT \'\'')
 }

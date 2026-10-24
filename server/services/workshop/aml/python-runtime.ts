@@ -19,6 +19,7 @@ import { resolveOnPath, spawnLineProcess } from '../agents/adapters/line-spawn'
 import { killHarnessProcess } from '../agents/harness-process'
 import { createLogger } from '../logger'
 import { amlSettings } from '../settings'
+import { assertEnvIdleForMaintenance } from './env-lease'
 import type { AmlRuntime } from './runtime'
 
 const log = createLogger('aml.py')
@@ -482,6 +483,11 @@ export function requirementsHash(): string {
   return createHash('sha256').update(content).update(idx).digest('hex').slice(0, 12)
 }
 
+/** 完整依赖锁摘要(与 marker 同源,单独暴露给 A7/A22 的"同一 lock hash"断言)。 */
+export function requirementsLockHash(): string {
+  return requirementsHash()
+}
+
 /** venv 就绪标记路径(内容摘要变更即视为需重建) */
 export function venvMarkerPath(rt: AmlRuntime): string {
   return join(venvDir(rt), `.aml-ok-${requirementsHash()}`)
@@ -492,11 +498,35 @@ export function isVenvReady(rt: AmlRuntime): boolean {
 }
 
 /**
+ * 环境身份(AML 训练与 Optimizer Solver 必须是同一解释器/同一 lock):
+ * 供 `/api/.../env` 与 `optimizer_capabilities` 报告,不参与就绪判定。
+ */
+export function venvIdentity(rt: AmlRuntime): {
+  pythonPath: string
+  marker: string
+  requirementsHash: string
+  platform: string
+  pythonVersion: string | null
+  ready: boolean
+} {
+  return {
+    pythonPath: venvPythonPath(rt),
+    marker: venvMarkerPath(rt),
+    requirementsHash: requirementsHash(),
+    platform: `${process.platform}-${process.arch}`,
+    pythonVersion: null,
+    ready: isVenvReady(rt),
+  }
+}
+
+/**
  * 共享 venv 供给(幂等):marker 文件校验 requirements+indexUrl 摘要;并发调用共享同一 Promise。
  * 返回 venv 内 python 绝对路径。force=true 时删掉旧 venv 重建(UI「重建环境」)。
  */
-export async function ensureVenv(rt: AmlRuntime, opts: { force?: boolean, onLog?: ProgressFn } = {}): Promise<string> {
+export async function ensureVenv(rt: AmlRuntime, opts: { force?: boolean, onLog?: ProgressFn, leaseHolder?: string } = {}): Promise<string> {
   if (opts.force) {
+    // 重建必须独占:有训练/求解读者时拒绝(不 rmSync 他们正在用的目录)
+    assertEnvIdleForMaintenance(opts.leaseHolder ?? 'ensure-venv-force')
     try {
       rmSync(venvDir(rt), { recursive: true, force: true })
       emitLog(opts.onLog, `已清理旧环境:${venvDir(rt)}`)
@@ -507,6 +537,8 @@ export async function ensureVenv(rt: AmlRuntime, opts: { force?: boolean, onLog?
     g.__amlVenvPromise = undefined
   }
   if (g.__amlVenvPromise && !opts.force) return g.__amlVenvPromise
+  // 未就绪 = 本次调用会安装依赖(改环境),同样要求在途读者为 0。
+  if (!opts.force && !isVenvReady(rt)) assertEnvIdleForMaintenance(opts.leaseHolder ?? 'ensure-venv-install')
   const task = (async () => {
     const vdir = venvDir(rt)
     const vpy = venvPythonPath(rt)
@@ -531,9 +563,12 @@ export async function ensureVenv(rt: AmlRuntime, opts: { force?: boolean, onLog?
     emitLog(opts.onLog, `开始供给 Python 环境(首次可能需数分钟下载依赖)…`)
 
     if (probe.uvPath) {
-      emitLog(opts.onLog, `uv venv ${vdir} --python ${basePython}`)
-      const mk = await runCapture(probe.uvPath, ['venv', vdir, '--python', basePython], VENV_CREATE_TIMEOUT_MS, opts.onLog)
-      if (mk.code !== 0) throw new AppError(500, 'AML_VENV_FAILED', `uv venv 失败:${mk.err.slice(-400)}`)
+      // 目录已存在时不要重复 `uv venv`(uv 会以 "already exists" 失败):只补依赖。
+      if (!existsSync(vpy)) {
+        emitLog(opts.onLog, `uv venv ${vdir} --python ${basePython}`)
+        const mk = await runCapture(probe.uvPath, ['venv', vdir, '--python', basePython], VENV_CREATE_TIMEOUT_MS, opts.onLog)
+        if (mk.code !== 0) throw new AppError(500, 'AML_VENV_FAILED', `uv venv 失败:${mk.err.slice(-400)}`)
+      }
       emitLog(opts.onLog, `uv pip install -r requirements.txt`)
       const inst = await runCapture(probe.uvPath, ['pip', 'install', '--python', vpy, '-r', reqPath, ...idxArgs], PIP_INSTALL_TIMEOUT_MS, opts.onLog)
       if (inst.code !== 0) throw new AppError(500, 'AML_VENV_FAILED', `依赖安装失败:${(inst.err || inst.out).slice(-400)}`)

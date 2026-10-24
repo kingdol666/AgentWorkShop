@@ -6,24 +6,26 @@
  * 效率纪律:SQL 层不做降采样(需要 state 感知清洗,raw 点量 = 采样间隔×批长,可控);
  * 归一化统计只取 train 切分(防泄漏);快照 sha256 覆盖 spec+数据字节(防篡改)。
  */
+/* eslint-disable @stylistic/member-delimiter-style */
 import { createHash } from 'node:crypto'
 import { mkdirSync, readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
 import { AppError } from '../../../utils/errors'
 import { broadcastSceneEvent } from '../scene-events'
 import { getTsdb } from '../daq/storage'
+import type { TsdbPoint, TsdbPort } from '../daq/storage/tsdb-port'
 import { getDaqNodeRepo } from '../daq/daq-node.repo'
 import { findDaqTemplate } from '../daq/daq-templates'
 import { getDcwRecipeRepo } from '../dcw/dcw-recipe.repo'
 import { amlSettings } from '../settings'
 import type { AmlDatasetSpec } from './spec'
-import { cleanPoints, alignToGrid, type RawPoint } from './clean'
+import { cleanPoints, alignToGrid } from './clean'
 import { summarize, lagCrossCorr, type SeriesSummary, type LagEstimate, type RunProfile } from './stats'
 import { getAmlRuntime } from './runtime'
 import type { AmlDatasetRow } from './aml.repo'
 
 export interface AmlManifest {
-  version: 1
+  version: 1 | 2
   spec: AmlDatasetSpec
   /** 节点顺序(= spec.nodes 顺序;x 历史/归一化按此序) */
   allNodes: string[]
@@ -40,6 +42,17 @@ export interface AmlManifest {
     y: { mean: number[], std: number[] }
   }
   beatMs: number
+  // ===== manifest v2(新链路;v1 作业读不到这些字段) =====
+  dataKind?: 'dynamic' | 'static'
+  specHash?: string
+  specVersion?: number
+  recipeVersion?: number
+  variables?: ProcessDatasetExtras['variables']
+  artifacts?: { x: string, u: string, y: string, timestamps: string, mask: string, sidecar: string }
+  provenance?: {
+    lineId: string, productId: string, recipeId: string, recipeVersion: number, runIds: string[]
+    recipeContentHash: string, evidenceSource: string, availabilityWatermark: number | null, capturedAt: string
+  }
 }
 
 export interface AmlDatasetReport {
@@ -119,9 +132,66 @@ function meanStd(cols: number[][]): { mean: number[], std: number[] } {
   return { mean, std }
 }
 
+interface PageQuery {
+  lineId?: string
+  productId?: string
+  recipeId?: string
+  runId?: string
+  fromMs: number
+  toMs: number
+}
+
+/**
+ * 单节点取数(C7):优先逐节点分页接口(游标续读、无总量截断);
+ * 后端未实现时退化为单节点 queryTagged(旧语义在 nodeIds 单元素时等价)。
+ */
+export async function fetchNodeSeries(
+  tsdb: Pick<TsdbPort, 'queryTagged' | 'queryTaggedPage'>,
+  nodeId: string,
+  q: PageQuery,
+  pageLimit = 20_000,
+): Promise<TsdbPoint[]> {
+  if (typeof tsdb.queryTaggedPage === 'function') {
+    const out: TsdbPoint[] = []
+    let afterTs: number | undefined
+    for (;;) {
+      const page = await tsdb.queryTaggedPage(nodeId, {
+        afterTs, fromMs: q.fromMs, toMs: q.toMs, limit: pageLimit, withState: true,
+      })
+      out.push(...page.points)
+      if (page.done || page.nextCursor == null) break
+      afterTs = page.nextCursor
+    }
+    return out
+  }
+  const tagged = await tsdb.queryTagged({
+    lineId: q.lineId, productId: q.productId, recipeId: q.recipeId, runId: q.runId,
+    nodeIds: [nodeId], fromMs: q.fromMs, toMs: q.toMs, limit: 500_000,
+  })
+  return tagged.get(nodeId) ?? []
+}
+
 // ---------- 主流程 ----------
 
-export async function buildDataset(spec: AmlDatasetSpec, by: { id: string, kind: 'user' | 'agent' }): Promise<BuildDatasetResult> {
+export interface ProcessDatasetExtras {
+  specRef: string
+  specVersion: number
+  trainerRef: string
+  conditionId: string
+  recipeVersion: number
+  recipeContentHash: string
+  evidenceSource: 'simulation' | 'real' | 'unassessed'
+  variables: Array<{ id: string, nodeId: string, role: string, unit: string, modelUnit?: string, scale: number, offset: number, delayMs?: number }>
+  availabilityWatermark: number | null
+  /**
+   * 数据谱系核验结果(D18;由 dataset.ts 按 confirmed context segment 逐 run 判定):
+   * verified = 每 run 均有已确认且版本/内容 hash 匹配的段;unknown = 无段(不可证伪,保持 0)。
+   * 有任一 unknown 或全量非 verified → lineage_verified=0(模型禁优化资格)。
+   */
+  runLineage?: { verified: string[], unknown: string[], excluded: Array<{ runId: string, reason: string }> }
+}
+
+export async function buildDataset(spec: AmlDatasetSpec, by: { id: string, kind: 'user' | 'agent' }, extras?: ProcessDatasetExtras): Promise<BuildDatasetResult> {
   const rt = getAmlRuntime()
   const settings = amlSettings()
 
@@ -172,28 +242,29 @@ export async function buildDataset(spec: AmlDatasetSpec, by: { id: string, kind:
   const runMatrices = new Map<string, { at: number[], rows: Map<string, number[]> }>()
 
   for (const run of runs) {
-    const fromMs = Date.parse(run.startedAt)
-    const toMs = Date.parse(run.endedAt as string)
+    // C7/A1:spec 的 fromMs/toMs 真正生效(旧实现只取 run 窗口,规格里的时间窗被忽略)
+    const fromMs = Math.max(Date.parse(run.startedAt), spec.fromMs ?? Number.NEGATIVE_INFINITY)
+    const toMs = Math.min(Date.parse(run.endedAt as string), spec.toMs ?? Number.POSITIVE_INFINITY)
     let series: Map<string, { at: number, value: number }[]>
     try {
-      const tagged = await tsdb.queryTagged({
-        lineId: spec.lineId, productId: spec.productId, recipeId: spec.recipeId, runId: run.id,
-        nodeIds: order.map(n => n.nodeId), fromMs, toMs,
-        // 长跑批次数采可达数万行/节点:显式放大取数上限(适配器硬顶 100 万),
-        // 否则默认 2000 行把长批次截成稀疏点,滑窗为 0 → 数据集只剩短批次(实测缺陷 2026-10-05)
-        limit: 500_000,
-      })
       series = new Map()
-      for (const [nodeId, points] of tagged) {
-        const role = order.find(n => n.nodeId === nodeId)?.role ?? 'feature'
-        const cleaned = cleanPoints(points as RawPoint[], { range: ranges.get(nodeId), hampelK: spec.cleaning?.hampelK ?? 5 })
+      // 逐节点分页:queryTagged 的 limit 是 nodeIds 集合总量,多节点会被单点长序列截断;
+      // 这里对每个节点独立翻页(新增接口),后端不支持时退化为单节点 queryTagged。
+      for (const n of order) {
+        const points = await fetchNodeSeries(tsdb, n.nodeId, {
+          lineId: spec.lineId, productId: spec.productId, recipeId: spec.recipeId, runId: run.id,
+          fromMs, toMs,
+        })
+        const cleaned = cleanPoints(
+          points.map(p => ({ at: p.at, value: Number(p.value ?? Number.NaN), state: p.state })),
+          { range: ranges.get(n.nodeId), hampelK: spec.cleaning?.hampelK ?? 5 },
+        )
         const aligned = alignToGrid(cleaned.values, { beatMs: beat, maxInterpMs: maxInterp })
-        series.set(nodeId, aligned.grid)
-        cleaningReport[nodeId] = {
+        series.set(n.nodeId, aligned.grid)
+        cleaningReport[n.nodeId] = {
           ...cleaned.counts,
           missingRatio: 0,
         }
-        void role
       }
     }
     catch (err) {
@@ -271,7 +342,25 @@ export async function buildDataset(spec: AmlDatasetSpec, by: { id: string, kind:
   const nCtrl = Math.max(1, ctrlIds.length)
   const nTgt = tgtIds.length
 
-  interface Win { x: Float32Array, u: Float32Array, y: Float32Array }
+  interface Win { x: Float32Array, u: Float32Array, y: Float32Array, at: number[], mask: Float32Array }
+  // v2 链路:按变量声明把源单位换算到模型单位(训练/求解/有效域统一在模型单位上)。
+  // 无 extras(v1 旧链)时恒等变换,字节级行为不变。
+  // D23:v2 换算禁止兜底 —— extras 声明了变量但 scale/offset 缺失/非法 → fail-closed(防 train/serve skew)。
+  const transformOf = new Map<string, { scale: number, offset: number }>()
+  for (const variable of extras?.variables ?? []) {
+    const scale = Number(variable.scale)
+    const offset = Number(variable.offset)
+    if (!Number.isFinite(scale) || scale === 0 || !Number.isFinite(offset)) {
+      throw new AppError(422, 'UNIT_CONTRACT_INVALID',
+        `变量 ${variable.nodeId} 的单位换算非法(scale=${String(variable.scale)},offset=${String(variable.offset)});禁止按 1/0 兜底`)
+    }
+    transformOf.set(variable.nodeId, { scale, offset })
+  }
+  const toModel = (nodeId: string | undefined, value: number): number => {
+    if (!nodeId) return value
+    const t = transformOf.get(nodeId)
+    return t ? value * t.scale + t.offset : value
+  }
   const winsByRun = new Map<string, Win[]>()
   let winTotal = 0
   for (const [runId, m] of runMatrices) {
@@ -290,7 +379,7 @@ export async function buildDataset(spec: AmlDatasetSpec, by: { id: string, kind:
             bad = true
             break
           }
-          x[i * nAll + j] = v
+          x[i * nAll + j] = toModel(id, v)
         }
       }
       for (let i = 0; i < F && !bad; i++) {
@@ -307,7 +396,7 @@ export async function buildDataset(spec: AmlDatasetSpec, by: { id: string, kind:
             bad = true
             break
           }
-          u[i * nCtrl + j] = v
+          u[i * nCtrl + j] = toModel(cid, v)
         }
         for (let j = 0; j < nTgt; j++) {
           const tid = tgtIds[j]
@@ -316,10 +405,16 @@ export async function buildDataset(spec: AmlDatasetSpec, by: { id: string, kind:
             bad = true
             break
           }
-          y[i * nTgt + j] = v
+          y[i * nTgt + j] = toModel(tid, v)
         }
       }
-      if (!bad) out.push({ x, u, y })
+      if (!bad) {
+        // 窗口级时间戳/质量掩码(manifest v2):历史 H + 未来 F 拍;接受窗口的点均为
+        // 在 run 网格上有限的观测点(坏点已在 cleanPoints 阶段由 state/量程剔除)。
+        const mask = new Float32Array(H + F)
+        mask.fill(1)
+        out.push({ x, u, y, at: m.at.slice(t - H, t + F), mask })
+      }
     }
     if (out.length > 0) winsByRun.set(runId, out)
     winTotal += out.length
@@ -358,6 +453,17 @@ export async function buildDataset(spec: AmlDatasetSpec, by: { id: string, kind:
   split.train = bucketsPart.train.length
   split.val = bucketsPart.val.length
   split.test = bucketsPart.test.length
+  // 切分块契约(SW2.3/IO 冻结):当前口径 = 每 run 1 块(块界 = run 界,无内部 purge);
+  // 单长 run 时间块切分在该契约上扩展,消费方(dataset-reader/trainer/互校)只认 blocks 元数据
+  const blocksOf = (rids: string[], part: 'train' | 'val' | 'test') => rids.map(rid => ({
+    blockId: `${rid}#0`, runId: rid, split: part, purgeBeforeSteps: 0, purgeAfterSteps: 0,
+    uniqueSteps: winsByRun.get(rid)?.length ?? 0,
+  }))
+  ;(split as Record<string, unknown>).blocks = [
+    ...blocksOf(split.trainRunIds, 'train'),
+    ...blocksOf(split.valRunIds, 'val'),
+    ...blocksOf(split.testRunIds, 'test'),
+  ]
 
   // 5. 归一化统计(train only)→ 应用
   const statCols = (wins: Win[], pick: (w: Win, i: number, j: number) => number, dim: number): { mean: number[], std: number[] } => {
@@ -412,6 +518,55 @@ export async function buildDataset(spec: AmlDatasetSpec, by: { id: string, kind:
     beatMs: beat,
   }
   writeFileSync(join(dir, 'manifest.json'), JSON.stringify(manifest, null, 2))
+
+  // manifest v2(G2.9):仅新链路写;v1 保持原文件与 hash 算法不变。
+  if (extras) {
+    const all = [...bucketsPart.train, ...bucketsPart.val, ...bucketsPart.test]
+    const perWindow = H + F
+    const tsBuf = new Float64Array(all.length * perWindow)
+    const maskBuf = new Float32Array(all.length * perWindow)
+    all.forEach((w, idx) => {
+      const base = idx * perWindow
+      for (let i = 0; i < perWindow; i++) tsBuf[base + i] = w.at[i] ?? 0
+      maskBuf.set(w.mask, base)
+    })
+    writeFileSync(join(dir, 'arrays', 'timestamps.f64'), Buffer.from(tsBuf.buffer))
+    writeFileSync(join(dir, 'arrays', 'mask.f32'), f32Bytes(maskBuf))
+    const sidecar = {
+      delays: Object.fromEntries(extras.variables.map(v => [v.id, v.delayMs ?? 0])),
+      units: extras.variables.map(v => ({ id: v.id, unit: v.unit, modelUnit: v.modelUnit ?? v.unit, scale: v.scale, offset: v.offset })),
+      variableOrder: extras.variables.map(v => v.id),
+      trainerRef: extras.trainerRef,
+      conditionId: extras.conditionId,
+      recipeContentHash: extras.recipeContentHash,
+      evidenceSource: extras.evidenceSource,
+      availabilityWatermark: extras.availabilityWatermark,
+      splitRunIds: { train: split.trainRunIds, val: split.valRunIds, test: split.testRunIds },
+    }
+    writeFileSync(join(dir, 'arrays', 'sidecar.json'), JSON.stringify(sidecar, null, 2))
+    const v2 = {
+      ...manifest,
+      version: 2,
+      dataKind: extras.trainerRef === 'static_response@1' ? 'static' : 'dynamic',
+      specHash: extras.specRef,
+      specVersion: extras.specVersion,
+      recipeVersion: extras.recipeVersion,
+      variables: extras.variables,
+      artifacts: {
+        x: 'arrays/x.f32', u: 'arrays/u.f32', y: 'arrays/y.f32',
+        timestamps: 'arrays/timestamps.f64', mask: 'arrays/mask.f32', sidecar: 'arrays/sidecar.json',
+      },
+      provenance: {
+        lineId: spec.lineId, productId: spec.productId, recipeId: spec.recipeId,
+        recipeVersion: extras.recipeVersion, runIds: [...runMatrices.keys()],
+        recipeContentHash: extras.recipeContentHash, evidenceSource: extras.evidenceSource,
+        availabilityWatermark: extras.availabilityWatermark, capturedAt: new Date().toISOString(),
+        lineageVerified: extras.runLineage && extras.runLineage.unknown.length === 0 && extras.runLineage.excluded.length === 0 && extras.runLineage.verified.length > 0 ? 1 : 0,
+        runLineage: extras.runLineage,
+      },
+    }
+    writeFileSync(join(dir, 'manifest.json'), JSON.stringify(v2, null, 2))
+  }
   // spec.json:取数规格随实体落盘。元数据行里本来就有 spec_json,但那是**索引**;
   // 把规格同时写进实体目录,./aml 才是自描述、可整体拷贝的资产 ——
   // 拷到另一台机器(或 sqlite 丢了)时,仅凭 datasets/<id>/ 仍能还原"这份数据是怎么取的"。
@@ -476,6 +631,11 @@ export async function buildDataset(spec: AmlDatasetSpec, by: { id: string, kind:
     createdByKind: by.kind,
     note: spec.note ?? '',
     createdAt: now,
+    specRef: extras?.specRef ?? '',
+    specVersion: extras?.specVersion ?? null,
+    lineageVerified: extras?.runLineage
+      ? (extras.runLineage.unknown.length === 0 && extras.runLineage.excluded.length === 0 && extras.runLineage.verified.length > 0 ? 1 : 0)
+      : 0,
   }
   rt.repo.dataset.insert(row)
   // WS:数据集构建实时帧(带 lineId 享逐 peer 过滤)
@@ -491,11 +651,21 @@ export function loadManifest(dataset: AmlDatasetRow): AmlManifest {
   return JSON.parse(readFileSync(join(dataset.path, 'manifest.json'), 'utf8')) as AmlManifest
 }
 
-/** 数据集快照内容摘要:specJson + manifest + 三个数组逐字节流式哈希 */
+/** 数据集快照内容摘要:specJson + manifest + 三个数组逐字节流式哈希
+ *  v2:额外覆盖 timestamps/mask/sidecar(A12:篡改 sidecar 必须使 hash 失败);
+ *  v1 的文件清单与算法保持不变(旧 hash 兼容)。 */
 export function hashDatasetDir(dir: string, specJson: string): string {
   const hash = createHash('sha256')
   hash.update(specJson)
-  for (const f of ['manifest.json', 'arrays/x.f32', 'arrays/u.f32', 'arrays/y.f32']) {
+  const files = ['manifest.json', 'arrays/x.f32', 'arrays/u.f32', 'arrays/y.f32']
+  try {
+    const manifest = JSON.parse(readFileSync(join(dir, 'manifest.json'), 'utf8')) as { version?: number, artifacts?: Record<string, string> }
+    if (manifest.version === 2 && manifest.artifacts) {
+      for (const f of Object.values(manifest.artifacts)) if (!files.includes(f)) files.push(f)
+    }
+  }
+  catch { /* manifest 缺失/不合法:由后续 readFileSync 抛错 */ }
+  for (const f of files) {
     hash.update(f)
     const buf = readFileSync(join(dir, f))
     hash.update(buf)

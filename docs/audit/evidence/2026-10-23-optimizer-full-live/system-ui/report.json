@@ -1,0 +1,1155 @@
+{
+  "at": "2026-10-23T21:05:50",
+  "base": "http://127.0.0.1:3997",
+  "total": 191,
+  "pass": 188,
+  "fail": 3,
+  "results": [
+    {
+      "id": "E0",
+      "name": "隔离实例健康检查",
+      "pass": true,
+      "detail": "http://127.0.0.1:3997"
+    },
+    {
+      "id": "I0",
+      "name": "已初始化实例登录(HTTP 种子)",
+      "pass": true,
+      "detail": "200"
+    },
+    {
+      "id": "I0",
+      "name": "夹具:创建模拟产线",
+      "pass": true,
+      "detail": "200 ln-635bc89c"
+    },
+    {
+      "id": "I0",
+      "name": "夹具:创建工作区",
+      "pass": true,
+      "detail": "200 a67d796d-8e11-4754-9340-48537ec050a8"
+    },
+    {
+      "id": "I0",
+      "name": "夹具:创建数采节点",
+      "pass": true,
+      "detail": "200 dn-acd4174d"
+    },
+    {
+      "id": "R0",
+      "name": "页面路由发现",
+      "pass": true,
+      "detail": "27 routes: /,/aml,/analysis,/daq,/data,/dcw,/logs,/monitor,/operations,/optimizer,/permissions,/plugins,/settings,/studio,/tokens,/tools,/town,/users,/workshop,/daq/dn-acd4174d,/dcw/ln-635bc89c,/studio/board,/workshop/agents,/workshop/channel-templates,/workshop/schedules,/workshop/teams,/workshop/w/a67d796d-8e11-4754-9340-48537ec050a8"
+    },
+    {
+      "id": "I0.5",
+      "name": "登录门前端已水合(按钮可用)",
+      "pass": true,
+      "detail": "True"
+    },
+    {
+      "id": "I1.0",
+      "name": "登录表单提交 API 成功",
+      "pass": true,
+      "detail": "status=200 url=http://127.0.0.1:3997/api/users/login"
+    },
+    {
+      "id": "I1.1",
+      "name": "登录态写入 token cookie",
+      "pass": true,
+      "detail": "True"
+    },
+    {
+      "id": "I1",
+      "name": "UI 表单登录成功(用户铭牌为管理员)",
+      "pass": false,
+      "detail": "优化验收-opt4xqi"
+    },
+    {
+      "id": "I2",
+      "name": "登录态落到浏览器上下文(cookie/localStorage)",
+      "pass": true,
+      "detail": "True"
+    },
+    {
+      "id": "R1.1",
+      "name": "/ HTTP 正常",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "R1.2",
+      "name": "/ 标题与主内容渲染",
+      "pass": true,
+      "detail": "title=仪表盘 · AgentWorkShop main=377"
+    },
+    {
+      "id": "R1.3",
+      "name": "/ 无未捕获 pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R1.4",
+      "name": "/ 无 5xx / 失败 API",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R1.5",
+      "name": "/ 无控制台错误",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R1.6",
+      "name": "/ 无可见网络失败提示",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R2.1",
+      "name": "/aml HTTP 正常",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "R2.2",
+      "name": "/aml 标题与主内容渲染",
+      "pass": true,
+      "detail": "title=AML 自动建模 · AgentWorkShop main=355"
+    },
+    {
+      "id": "R2.3",
+      "name": "/aml 无未捕获 pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R2.4",
+      "name": "/aml 无 5xx / 失败 API",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R2.5",
+      "name": "/aml 无控制台错误",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R2.6",
+      "name": "/aml 无可见网络失败提示",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R3.1",
+      "name": "/analysis HTTP 正常",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "R3.2",
+      "name": "/analysis 标题与主内容渲染",
+      "pass": true,
+      "detail": "title=AgentWorkShop main=314"
+    },
+    {
+      "id": "R3.3",
+      "name": "/analysis 无未捕获 pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R3.4",
+      "name": "/analysis 无 5xx / 失败 API",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R3.5",
+      "name": "/analysis 无控制台错误",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R3.6",
+      "name": "/analysis 无可见网络失败提示",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R4.1",
+      "name": "/daq HTTP 正常",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "R4.2",
+      "name": "/daq 标题与主内容渲染",
+      "pass": true,
+      "detail": "title=数采中心 · AgentWorkShop main=3462"
+    },
+    {
+      "id": "R4.3",
+      "name": "/daq 无未捕获 pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R4.4",
+      "name": "/daq 无 5xx / 失败 API",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R4.5",
+      "name": "/daq 无控制台错误",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R4.6",
+      "name": "/daq 无可见网络失败提示",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R5.1",
+      "name": "/data HTTP 正常",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "R5.2",
+      "name": "/data 标题与主内容渲染",
+      "pass": true,
+      "detail": "title=AgentWorkShop main=449"
+    },
+    {
+      "id": "R5.3",
+      "name": "/data 无未捕获 pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R5.4",
+      "name": "/data 无 5xx / 失败 API",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R5.5",
+      "name": "/data 无控制台错误",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R5.6",
+      "name": "/data 无可见网络失败提示",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R6.1",
+      "name": "/dcw HTTP 正常",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "R6.2",
+      "name": "/dcw 标题与主内容渲染",
+      "pass": true,
+      "detail": "title=AgentWorkShop main=497"
+    },
+    {
+      "id": "R6.3",
+      "name": "/dcw 无未捕获 pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R6.4",
+      "name": "/dcw 无 5xx / 失败 API",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R6.5",
+      "name": "/dcw 无控制台错误",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R6.6",
+      "name": "/dcw 无可见网络失败提示",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R7.1",
+      "name": "/logs HTTP 正常",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "R7.2",
+      "name": "/logs 标题与主内容渲染",
+      "pass": true,
+      "detail": "title=AgentWorkShop main=4296"
+    },
+    {
+      "id": "R7.3",
+      "name": "/logs 无未捕获 pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R7.4",
+      "name": "/logs 无 5xx / 失败 API",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R7.5",
+      "name": "/logs 无控制台错误",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R7.6",
+      "name": "/logs 无可见网络失败提示",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R8.1",
+      "name": "/monitor HTTP 正常",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "R8.2",
+      "name": "/monitor 标题与主内容渲染",
+      "pass": true,
+      "detail": "title=AgentWorkShop main=430"
+    },
+    {
+      "id": "R8.3",
+      "name": "/monitor 无未捕获 pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R8.4",
+      "name": "/monitor 无 5xx / 失败 API",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R8.5",
+      "name": "/monitor 无控制台错误",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R8.6",
+      "name": "/monitor 无可见网络失败提示",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R9.1",
+      "name": "/operations HTTP 正常",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "R9.2",
+      "name": "/operations 标题与主内容渲染",
+      "pass": true,
+      "detail": "title=AgentWorkShop main=3249"
+    },
+    {
+      "id": "R9.3",
+      "name": "/operations 无未捕获 pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R9.4",
+      "name": "/operations 无 5xx / 失败 API",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R9.5",
+      "name": "/operations 无控制台错误",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R9.6",
+      "name": "/operations 无可见网络失败提示",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R10.1",
+      "name": "/optimizer HTTP 正常",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "R10.2",
+      "name": "/optimizer 标题与主内容渲染",
+      "pass": true,
+      "detail": "title=优化器 main=779"
+    },
+    {
+      "id": "R10.3",
+      "name": "/optimizer 无未捕获 pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R10.4",
+      "name": "/optimizer 无 5xx / 失败 API",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R10.5",
+      "name": "/optimizer 无控制台错误",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R10.6",
+      "name": "/optimizer 无可见网络失败提示",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R11.1",
+      "name": "/permissions HTTP 正常",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "R11.2",
+      "name": "/permissions 标题与主内容渲染",
+      "pass": true,
+      "detail": "title=AgentWorkShop main=236"
+    },
+    {
+      "id": "R11.3",
+      "name": "/permissions 无未捕获 pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R11.4",
+      "name": "/permissions 无 5xx / 失败 API",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R11.5",
+      "name": "/permissions 无控制台错误",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R11.6",
+      "name": "/permissions 无可见网络失败提示",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R12.1",
+      "name": "/plugins HTTP 正常",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "R12.2",
+      "name": "/plugins 标题与主内容渲染",
+      "pass": true,
+      "detail": "title=AgentWorkShop main=1627"
+    },
+    {
+      "id": "R12.3",
+      "name": "/plugins 无未捕获 pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R12.4",
+      "name": "/plugins 无 5xx / 失败 API",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R12.5",
+      "name": "/plugins 无控制台错误",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R12.6",
+      "name": "/plugins 无可见网络失败提示",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R13.1",
+      "name": "/settings HTTP 正常",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "R13.2",
+      "name": "/settings 标题与主内容渲染",
+      "pass": true,
+      "detail": "title=AgentWorkShop main=241"
+    },
+    {
+      "id": "R13.3",
+      "name": "/settings 无未捕获 pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R13.4",
+      "name": "/settings 无 5xx / 失败 API",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R13.5",
+      "name": "/settings 无控制台错误",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R13.6",
+      "name": "/settings 无可见网络失败提示",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R14.1",
+      "name": "/studio HTTP 正常",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "R14.2",
+      "name": "/studio 标题与主内容渲染",
+      "pass": true,
+      "detail": "title=AgentWorkShop main=693"
+    },
+    {
+      "id": "R14.3",
+      "name": "/studio 无未捕获 pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R14.4",
+      "name": "/studio 无 5xx / 失败 API",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R14.5",
+      "name": "/studio 无控制台错误",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R14.6",
+      "name": "/studio 无可见网络失败提示",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R15.1",
+      "name": "/tokens HTTP 正常",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "R15.2",
+      "name": "/tokens 标题与主内容渲染",
+      "pass": true,
+      "detail": "title=API Token · AgentWorkShop main=504"
+    },
+    {
+      "id": "R15.3",
+      "name": "/tokens 无未捕获 pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R15.4",
+      "name": "/tokens 无 5xx / 失败 API",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R15.5",
+      "name": "/tokens 无控制台错误",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R15.6",
+      "name": "/tokens 无可见网络失败提示",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R16.1",
+      "name": "/tools HTTP 正常",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "R16.2",
+      "name": "/tools 标题与主内容渲染",
+      "pass": true,
+      "detail": "title=AgentWorkShop main=1773"
+    },
+    {
+      "id": "R16.3",
+      "name": "/tools 无未捕获 pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R16.4",
+      "name": "/tools 无 5xx / 失败 API",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R16.5",
+      "name": "/tools 无控制台错误",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R16.6",
+      "name": "/tools 无可见网络失败提示",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R17.1",
+      "name": "/town HTTP 正常",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "R17.2",
+      "name": "/town 标题与主内容渲染",
+      "pass": true,
+      "detail": "title=AgentWorkShop main=1721"
+    },
+    {
+      "id": "R17.3",
+      "name": "/town 无未捕获 pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R17.4",
+      "name": "/town 无 5xx / 失败 API",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R17.5",
+      "name": "/town 无控制台错误",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R17.6",
+      "name": "/town 无可见网络失败提示",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R18.1",
+      "name": "/users HTTP 正常",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "R18.2",
+      "name": "/users 标题与主内容渲染",
+      "pass": true,
+      "detail": "title=用户管理 · AgentWorkShop main=263"
+    },
+    {
+      "id": "R18.3",
+      "name": "/users 无未捕获 pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R18.4",
+      "name": "/users 无 5xx / 失败 API",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R18.5",
+      "name": "/users 无控制台错误",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R18.6",
+      "name": "/users 无可见网络失败提示",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R19.1",
+      "name": "/workshop HTTP 正常",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "R19.2",
+      "name": "/workshop 标题与主内容渲染",
+      "pass": true,
+      "detail": "title=Workshop · Agent Harness main=674"
+    },
+    {
+      "id": "R19.3",
+      "name": "/workshop 无未捕获 pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R19.4",
+      "name": "/workshop 无 5xx / 失败 API",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R19.5",
+      "name": "/workshop 无控制台错误",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R19.6",
+      "name": "/workshop 无可见网络失败提示",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R20.1",
+      "name": "/daq/dn-acd4174d HTTP 正常",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "R20.2",
+      "name": "/daq/dn-acd4174d 标题与主内容渲染",
+      "pass": true,
+      "detail": "title=AgentWorkShop main=561"
+    },
+    {
+      "id": "R20.3",
+      "name": "/daq/dn-acd4174d 无未捕获 pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R20.4",
+      "name": "/daq/dn-acd4174d 无 5xx / 失败 API",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R20.5",
+      "name": "/daq/dn-acd4174d 无控制台错误",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R20.6",
+      "name": "/daq/dn-acd4174d 无可见网络失败提示",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R21.1",
+      "name": "/dcw/ln-635bc89c HTTP 正常",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "R21.2",
+      "name": "/dcw/ln-635bc89c 标题与主内容渲染",
+      "pass": true,
+      "detail": "title=AgentWorkShop main=657"
+    },
+    {
+      "id": "R21.3",
+      "name": "/dcw/ln-635bc89c 无未捕获 pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R21.4",
+      "name": "/dcw/ln-635bc89c 无 5xx / 失败 API",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R21.5",
+      "name": "/dcw/ln-635bc89c 无控制台错误",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R21.6",
+      "name": "/dcw/ln-635bc89c 无可见网络失败提示",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R22.1",
+      "name": "/studio/board HTTP 正常",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "R22.2",
+      "name": "/studio/board 标题与主内容渲染",
+      "pass": true,
+      "detail": "title=AgentWorkShop main=115"
+    },
+    {
+      "id": "R22.3",
+      "name": "/studio/board 无未捕获 pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R22.4",
+      "name": "/studio/board 无 5xx / 失败 API",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R22.5",
+      "name": "/studio/board 无控制台错误",
+      "pass": false,
+      "detail": "[route /studio/board] Failed to load resource: net::ERR_CONNECTION_RESET | [route /studio/board] Failed to load resource: net::ERR_CONNECTION_REFUSED"
+    },
+    {
+      "id": "R22.6",
+      "name": "/studio/board 无可见网络失败提示",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R23.1",
+      "name": "/workshop/agents HTTP 正常",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "R23.2",
+      "name": "/workshop/agents 标题与主内容渲染",
+      "pass": true,
+      "detail": "title=Agent 模板库 · Workshop main=873"
+    },
+    {
+      "id": "R23.3",
+      "name": "/workshop/agents 无未捕获 pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R23.4",
+      "name": "/workshop/agents 无 5xx / 失败 API",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R23.5",
+      "name": "/workshop/agents 无控制台错误",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R23.6",
+      "name": "/workshop/agents 无可见网络失败提示",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R24.1",
+      "name": "/workshop/channel-templates HTTP 正常",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "R24.2",
+      "name": "/workshop/channel-templates 标题与主内容渲染",
+      "pass": true,
+      "detail": "title=Channel 模板中心 · Workshop main=2351"
+    },
+    {
+      "id": "R24.3",
+      "name": "/workshop/channel-templates 无未捕获 pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R24.4",
+      "name": "/workshop/channel-templates 无 5xx / 失败 API",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R24.5",
+      "name": "/workshop/channel-templates 无控制台错误",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R24.6",
+      "name": "/workshop/channel-templates 无可见网络失败提示",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R25.1",
+      "name": "/workshop/schedules HTTP 正常",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "R25.2",
+      "name": "/workshop/schedules 标题与主内容渲染",
+      "pass": true,
+      "detail": "title=定时任务 main=135"
+    },
+    {
+      "id": "R25.3",
+      "name": "/workshop/schedules 无未捕获 pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R25.4",
+      "name": "/workshop/schedules 无 5xx / 失败 API",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R25.5",
+      "name": "/workshop/schedules 无控制台错误",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R25.6",
+      "name": "/workshop/schedules 无可见网络失败提示",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R26.1",
+      "name": "/workshop/teams HTTP 正常",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "R26.2",
+      "name": "/workshop/teams 标题与主内容渲染",
+      "pass": true,
+      "detail": "title=AgentTeam 编组库 · Workshop main=370"
+    },
+    {
+      "id": "R26.3",
+      "name": "/workshop/teams 无未捕获 pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R26.4",
+      "name": "/workshop/teams 无 5xx / 失败 API",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R26.5",
+      "name": "/workshop/teams 无控制台错误",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R26.6",
+      "name": "/workshop/teams 无可见网络失败提示",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R27.1",
+      "name": "/workshop/w/a67d796d-8e11-4754-9340-48537ec050a8 HTTP 正常",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "R27.2",
+      "name": "/workshop/w/a67d796d-8e11-4754-9340-48537ec050a8 标题与主内容渲染",
+      "pass": true,
+      "detail": "title=系统验收工作区 · AgentWorkShop main=163"
+    },
+    {
+      "id": "R27.3",
+      "name": "/workshop/w/a67d796d-8e11-4754-9340-48537ec050a8 无未捕获 pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R27.4",
+      "name": "/workshop/w/a67d796d-8e11-4754-9340-48537ec050a8 无 5xx / 失败 API",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R27.5",
+      "name": "/workshop/w/a67d796d-8e11-4754-9340-48537ec050a8 无控制台错误",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R27.6",
+      "name": "/workshop/w/a67d796d-8e11-4754-9340-48537ec050a8 无可见网络失败提示",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "I3.1",
+      "name": "侧栏存在「优化器」入口",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "I3.2",
+      "name": "侧栏点击后路由到 /optimizer",
+      "pass": true,
+      "detail": "http://127.0.0.1:3997/optimizer"
+    },
+    {
+      "id": "I4.1",
+      "name": "优化器五 tab 渲染",
+      "pass": true,
+      "detail": "tabs=5"
+    },
+    {
+      "id": "I4.2",
+      "name": "优化器 tab#1 可切换且面板可见",
+      "pass": true,
+      "detail": "class=pill-btn active panel=1"
+    },
+    {
+      "id": "I4.3",
+      "name": "优化器 tab#2 可切换且面板可见",
+      "pass": true,
+      "detail": "class=pill-btn active panel=1"
+    },
+    {
+      "id": "I4.4",
+      "name": "优化器 tab#3 可切换且面板可见",
+      "pass": true,
+      "detail": "class=pill-btn active panel=1"
+    },
+    {
+      "id": "I4.5",
+      "name": "优化器 tab#4 可切换且面板可见",
+      "pass": true,
+      "detail": "class=pill-btn active panel=1"
+    },
+    {
+      "id": "I4.6",
+      "name": "优化器 tab#5 可切换且面板可见",
+      "pass": true,
+      "detail": "class=pill-btn active panel=1"
+    },
+    {
+      "id": "I5.1",
+      "name": "页头主题按钮存在",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "I5.2",
+      "name": "主题切换改变主题令牌(--accent)",
+      "pass": true,
+      "detail": "#1d7956 -> #55e5af"
+    },
+    {
+      "id": "I5.3",
+      "name": "主题偏好持久化(localStorage)",
+      "pass": true,
+      "detail": "None -> {\"isDark\":true,\"sidebarCollapsed\":false,\"accent\":null,\"themeTouched\":true}"
+    },
+    {
+      "id": "I6.1",
+      "name": "数据中台三 tab 渲染",
+      "pass": true,
+      "detail": "tabs=3"
+    },
+    {
+      "id": "I6.2",
+      "name": "数据中台 tab#1 切换且面板可见",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "I6.3",
+      "name": "数据中台 tab#2 切换且面板可见",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "I6.4",
+      "name": "数据中台 tab#3 切换且面板可见",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "I7.1",
+      "name": "数据中台查询按钮存在",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "I7.2",
+      "name": "空数据集查询给出节点区或明确错误态(不崩溃)",
+      "pass": true,
+      "detail": "nodes=1 err=0"
+    },
+    {
+      "id": "X1",
+      "name": "脚本异常",
+      "pass": false,
+      "detail": "TimeoutError: Page.goto: Timeout 90000ms exceeded.\nCall log:\n  - navigating to \"http://127.0.0.1:3997/logs\", waiting until \"domcontentloaded\"\n"
+    }
+  ]
+}

@@ -14,12 +14,16 @@ import { toolLineStart, toolLineStop, toolLineStatus, toolAmlDatasetBuild, toolA
 import { toolExpCollect } from '../../industrial/exp-tools'
 import { toolRecipePropose } from '../../industrial/recipe-propose-tools'
 import { toolAmlActivity } from '../../industrial/aml-activity'
+import { toolOptimizerCancel, toolOptimizerCapabilities, toolOptimizerPlanGet, toolOptimizerSolve, toolOptimizerStatus } from '../../industrial/optimizer-tools'
+import { toolIndustrialResources } from '../../industrial/resources-tools'
 
 type IndustrialToolHandler = (agentId: string, args: Record<string, unknown>, channelId?: string) => Promise<HostToolResult>
 
 /** 工具名 → 转发处理器(顺序与原 dispatch 首个 switch 的分支顺序一致) */
 const INDUSTRIAL_HANDLERS = new Map<string, IndustrialToolHandler>([
   ['my_industrial_nodes', agentId => toolMyIndustrialNodes(agentId)],
+  // WP6:绑定面按需分页查询(工具描述折叠后的配套读面;只读、无引用参数)
+  ['industrial_resources', (agentId, args) => toolIndustrialResources(agentId, args)],
   ['aml_node_catalog', agentId => toolAmlNodeCatalog(agentId)],
   ['aml_dataset_build', (agentId, args) => toolAmlDatasetBuild(agentId, args as Parameters<typeof toolAmlDatasetBuild>[1])],
   ['aml_dataset_stats', (agentId, args) => toolAmlDatasetStats(agentId, args as Parameters<typeof toolAmlDatasetStats>[1])],
@@ -84,6 +88,12 @@ const INDUSTRIAL_HANDLERS = new Map<string, IndustrialToolHandler>([
   // 数据分析系统:分析结果留痕台账(save 可写台账(非产线写);query 查历史留痕)
   ['analysis_save', (agentId, args, channelId) => toolAnalysisSave(agentId, args as Parameters<typeof toolAnalysisSave>[1], channelId)],
   ['analysis_query', (agentId, args) => toolAnalysisQuery(agentId, args as Parameters<typeof toolAnalysisQuery>[1])],
+  // Optimizer(零写设备;绑定/资格/工况逐次重校验在 dispatch + verify + manager)
+  ['optimizer_capabilities', agentId => toolOptimizerCapabilities(agentId)],
+  ['optimizer_solve', (agentId, args) => toolOptimizerSolve(agentId, args)],
+  ['optimizer_status', (agentId, args) => toolOptimizerStatus(agentId, args)],
+  ['optimizer_cancel', (agentId, args) => toolOptimizerCancel(agentId, args)],
+  ['optimizer_plan_get', (agentId, args) => toolOptimizerPlanGet(agentId, args)],
 ])
 
 /** 工业工具名集合(与 INDUSTRIAL_HANDLERS 同源;dispatch 据此在 workspace 门控前分流) */

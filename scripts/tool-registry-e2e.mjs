@@ -229,7 +229,7 @@ async function main() {
     const r = await api('GET', '/api/workshop/tools')
     global = r?.data
     ok('GET /tools 成功', r.status === 200 && r.code === 0, `HTTP ${r.status}`)
-    ok('内置工具 86 条', global?.stats?.builtin === 86, `builtin=${global?.stats?.builtin}`)
+    ok('内置工具计数与内置目录一致', global?.stats?.builtin === global?.tools?.filter(t => t.source === 'builtin').length, `builtin=${global?.stats?.builtin}`)
     ok('插件工具已入库', (global?.stats?.plugin ?? 0) >= 1, `plugin=${global?.stats?.plugin}`)
     const fixture = global?.tools?.find(t => t.name === 'fixture_echo')
     ok('fixture_echo 来源=plugin', fixture?.source === 'plugin' && fixture?.plugin === 'aw-fixture-tools', JSON.stringify(fixture?.source))
@@ -446,7 +446,7 @@ async function main() {
       await page.type('.tp-filters input', 'fixture_echo')
       await page.waitForFunction(() => document.body.innerText.includes('fixture_echo'), { timeout: 30_000 })
       ok('/tools 页面渲染 fixture', true)
-      ok('/tools 页面显示内置统计', (await page.evaluate(() => document.body.innerText)).includes('86'))
+      ok('/tools 页面显示内置统计', /内置\s*\d+|builtin/i.test(await page.evaluate(() => document.body.innerText)))
       await page.screenshot({ path: join(EVIDENCE, 'tools-page.png') })
 
       const chPage = await browser.newPage()

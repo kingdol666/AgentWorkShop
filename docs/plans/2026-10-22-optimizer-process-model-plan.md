@@ -1,7 +1,7 @@
 # Optimizer Manager 与 Process Model Service 系统开发计划
 
-日期：2026-10-22。版本：**v2（源码反证复核修订）**。状态：**方案待确认，未启动实施**。
-范围：源码核查、架构决策、开发阶段与验收；本轮不改业务代码、不安装依赖、不操作设备。
+日期：2026-10-22。版本：**v2，含后文v3/v3.1实施补遗**。当前状态（2026-10-23复核）：**已部分实施并完成本轮局部修复，仍有集成出口待补齐**；见[实现复核报告](../audit/2026-10-23-optimizer-implementation-review.md)及[后续计划](2026-10-23-optimizer-integration-followup.md)。
+本文件前半部分保留原设计阶段的范围和决议；实施事实以末尾记录及2026-10-23复核为准。原设计轮仅核查/规划，本轮已按用户新指示修复局部业务代码，未安装依赖或操作真实设备。
 用户已确认：**先在模拟器做参数试验；真实产线首阶段仅提供建议**。
 工作流：按用户要求只交付 plan；不启动 ultragoal 执行循环。下列 G1–G6 可在后续执行时转为持久任务。
 
@@ -688,3 +688,14 @@ G1 ──► G2 ──► G3 ──► G4 ──► G5 ──► G6
 ## B.11 修订记录（v3.1）
 
 - 2026-10-22：新增第三部分。基于两路定向核验（工具注册面 / Python 运行面），补齐 G4 的 17 项注册面、`dispatch` 门控规范、`binding_id` 的 `VerifySpec` 扩展、per-agent 裁剪与外部 MCP 边界；补齐 G3 的 Worker 协议、退出确认、环境租约、线程预算与配置登记；纠正「AML 并发=1」与「Python 有长驻先例」两处错误前提；新增 A21–A22。**范围与 G1–G6 顺序不变，A1–A20 不回退。**
+
+## B.12 实施回写（2026-10-22，G1–G6 全量）
+
+- 分支 `tii-revision-20261017`（基线 `7c8f4e7a`）；本轮未创建提交，工作区变更与证据可复核。
+- 系统验收：`scripts/acceptance-optimizer-process-model.ts` → **67/67 PASS**；证据 `docs/audit/evidence/2026-10-22-optimizer-process-model/acceptance.json`（含 `gateRuns` 真实 exitCode、versions、hash、limitations）。
+- 测试：`tests/*.test.ts` **344/344**；新增 10 套（契约/表/时序质量/Adapter 租约/训练器/绑定/作业成功/真实 Python 求解/环境租约/工具面授权）。
+- 门禁：`node scripts/run-quality-gates.mjs`（lint/typecheck/unit/i18n/docs 逐条 exitCode 落 `gates.json`）全 0；`npm run build` 通过；设置项计数 124/19 组（40 live/84 restart）；`.output` 含 `aml-python` 与 `optimizer-python`（排除 `__pycache__`）。
+- 独立评审：四轮往返，**终审 APPROVED**。首轮 CHANGES REQUIRED（12 项）→ 修复；二轮 3 项阻塞（A20 自证门禁/A14 旧别名/A13 谱系拆段）→ 修复；三轮 2 项（A14 资格按产线放行、A13 只拆段不切活动窗口）→ 修复：`aml_datasets.spec_ref/spec_version` 落库并由 `boundModelHasEligibility` 按模型→数据集→同规格资格溯源（含 simulation/real 作用域）；`applyRecipe` 同点关段+切换活动 LineRun 配方身份+开新段；验收补真实 `lineStart→applyRecipe→TSDB 落库` 与 dispatch 复核（详见报告 §4）。
+- 报告：`docs/audit/2026-10-22-optimizer-process-model-acceptance.md`（A1–A22 摘要、两轮缺陷、8 项遗留边界）。
+- 集成 Live 轮（2026-10-23）：`scripts/e2e-optimizer-live.mjs` 90/90 + 重启持久性 7/7——REST/Agent/UI + Channel 档位矩阵（legacy/training/exp-miner/hybrid/optimization）+ 静态响应面 + 双 MV/双 CV 单位换算 + AML Twin Gate/旧 ONNX 边界 + 12 拍闭环（误差改善 99.7%）；报告 `docs/audit/2026-10-23-optimizer-live-e2e.md`。本轮修复 5 个真实缺陷（资格作用域、useHead 顺序、UI problemConfig 形状、模板 id 错误码、静态场景被延迟门槛误杀）。自定义求解器边界：内置 2 求解器可配置；第三方求解器/问题模板需代码扩展（Twin `registerSolverAdapter` 尚未被 optimizer worker 消费）。
+- 遗留：Timescale `queryTagged`/分页 state 未落地；A9 未做浏览器点击；A8 为 fixture 未耦合模拟器引擎；旧 `mpc_optimize` 未迁移；单长 run 时间块切分未实现；static 端到端未跑；A18 时序未实测。详见报告 §6。

@@ -10,10 +10,12 @@
  */
 import { createHash } from 'node:crypto'
 import { HOST_TOOLS } from '../agents/host-tool-bridge/catalog'
-import { LEAD_ONLY_TOOL_NAMES } from '../agents/tool-classes'
+import { HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES, LEAD_ONLY_TOOL_NAMES } from '../agents/tool-classes'
 import { listPluginTools, onPluginToolsChange, pluginOfTool } from '../agents/plugin-tools'
 import { pluginManifest } from '../plugins/host.mjs'
 import { createLogger } from '../logger'
+import { recordOps } from '../ops/ops'
+import { declarationVerdict } from '../agents/tool-reference-spec'
 import {
   getToolRegistryRepo,
   type ToolRegistryUpsert,
@@ -21,6 +23,20 @@ import {
 } from '../db/tool-registry.repo'
 
 const log = createLogger('workshop.tool-registry')
+
+/**
+ * WP5 登记制:工业工具必须声明引用面(references 或 noRefs)。
+ * 写族未声明 → 拒绝登记(不进目录 = 注入面与执行面双关);读族未声明 → 放行+告警入册。
+ * 声明字段来自 host-tools.json(迁移脚本 scripts/tool-references-migrate.ts)。
+ */
+const EXTRA_WRITE_TOOL_NAMES = new Set(['line_start', 'line_stop'])
+function isWriteFamily(name: string, riskClass?: string): boolean {
+  return riskClass === 'write' || HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES.has(name) || EXTRA_WRITE_TOOL_NAMES.has(name)
+}
+const warnedUndeclared = new Set<string>()
+function declarationVerdictOf(tool: { name: string, references?: unknown, noRefs?: boolean, riskClass?: string }): 'ok' | 'undeclared-write' | 'undeclared-read' {
+  return declarationVerdict(tool, isWriteFamily(tool.name, tool.riskClass))
+}
 
 export interface ToolRegistrySyncResult {
   builtin: number
@@ -104,6 +120,7 @@ const GROUP_BY_PREFIX: Record<string, string> = {
   twin: 'twin',
   mpc: 'twin',
   optimization: 'twin',
+  optimizer: 'optimization',
   team: 'team',
   exp: 'experience',
   analysis: 'analysis',
@@ -136,6 +153,28 @@ function hashOf(row: Omit<ToolRegistryUpsert, 'definitionHash'>): string {
 export function buildToolRegistrySnapshot(): ToolRegistryUpsert[] {
   const out = new Map<string, ToolRegistryUpsert>()
   for (const tool of HOST_TOOLS) {
+    // WP5 登记制:写族未声明引用面 → 不登记(unavailable → 注入/执行双关)
+    const verdict = declarationVerdictOf(tool)
+    if (verdict === 'undeclared-write') {
+      log.error(`工具「${tool.name}」属写族但未声明 references/noRefs,拒绝登记(注入面与执行面均不可用)`)
+      recordOps({
+        actor: 'system', actorName: 'tool-registry', actorKind: 'system',
+        action: 'tool.registry.rejected', kind: 'system', level: 'warn',
+        targetKind: 'tool', targetId: tool.name,
+        summary: `写族工具未声明引用面,拒绝登记:${tool.name}`,
+      })
+      continue
+    }
+    if (verdict === 'undeclared-read' && !warnedUndeclared.has(tool.name)) {
+      warnedUndeclared.add(tool.name)
+      log.warn(`工具「${tool.name}」未声明 references/noRefs,按无引用工具登记(限期补齐)`)
+      recordOps({
+        actor: 'system', actorName: 'tool-registry', actorKind: 'system',
+        action: 'tool.registry.undeclared', kind: 'system', level: 'warn',
+        targetKind: 'tool', targetId: tool.name,
+        summary: `工具未声明引用面(references/noRefs):${tool.name}`,
+      })
+    }
     const safe = safeParameters(tool.parameters)
     const base: Omit<ToolRegistryUpsert, 'definitionHash'> = {
       name: tool.name,
@@ -150,6 +189,8 @@ export function buildToolRegistrySnapshot(): ToolRegistryUpsert[] {
       metadata: {
         builtin: true,
         hidden: Boolean(tool.hidden),
+        riskClass: tool.riskClass ?? '',
+        referencesDeclared: Boolean(tool.references || tool.noRefs),
         ...(safe.error ? { schemaError: safe.error } : {}),
       },
     }
