@@ -90,6 +90,13 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
     }
   }
 
+  /** 惰性自愈:占位适配器的浮空 init(未 await)若失败/未完成,读路径在此补初始化。
+   *  没有它,查询会静默返回空(数据面 fail-open)—— 2026-10-24 真机验收抓到。 */
+  private async ensureDb(): Promise<DatabaseSync> {
+    if (!this.db) await this.init()
+    return this.db!
+  }
+
   /** 保留期清理:分批 DELETE(单批 5000 行,避免长事务锁库)
    *  C6:迟到但新鲜的点不能被事件时间误删 —— 需要 ts_ms 与 ingested_at 都过期才删。 */
   private sweepRetention(): void {
@@ -151,7 +158,8 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
   }
 
   async query(nodeId: string, opts: DaqQueryOpts): Promise<TsdbPoint[]> {
-    if (!this.db) return []
+    if (!this.db) await this.init()
+    const db = this.db as DatabaseSync
     const limit = Math.max(1, Math.min(opts.limit ?? 500, 5000))
     const from = opts.fromMs ?? 0
     const to = opts.toMs ?? Date.now()
@@ -160,7 +168,7 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
       // node:sqlite 把整数值参数绑为 REAL 时 ts_ms/:b 走浮点除,同桶样本得到互不
       // 相同的浮点桶键,GROUP BY 塌不了(输出≈原始点)。整数字面量保证整数除法。
       const bucket = Math.round(Number(opts.bucketMs))
-      const rows = this.db.prepare(`
+      const rows = db.prepare(`
         SELECT (ts_ms / ${bucket}) * ${bucket} AS b_at,
                AVG(value) AS avg, MIN(value) AS min, MAX(value) AS max, COUNT(*) AS cnt
         FROM daq_samples
@@ -169,7 +177,7 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
       `).all({ ':id': nodeId, ':from': from, ':to': to, ':lim': limit }) as Array<{ b_at: number, avg: number, min: number, max: number, cnt: number }>
       return rows.map(r => ({ at: Number(r.b_at), avg: r.avg, min: r.min, max: r.max, cnt: Number(r.cnt) }))
     }
-    const rows = this.db.prepare(`
+    const rows = db.prepare(`
       SELECT ts_ms, value, state FROM daq_samples
       WHERE node_id = :id AND ts_ms >= :from AND ts_ms <= :to
       ORDER BY ts_ms ASC LIMIT :lim
@@ -178,8 +186,9 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
   }
 
   async queryTagged(q: import('./tsdb-port').TsdbTagQuery): Promise<Map<string, import('./tsdb-port').TsdbPoint[]>> {
+    if (!this.db) await this.init()
+    const db = this.db as DatabaseSync
     const out = new Map<string, import('./tsdb-port').TsdbPoint[]>()
-    if (!this.db) return out
     const where: string[] = []
     const params: Array<string | number> = []
     if (q.lineId) {
@@ -212,7 +221,7 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
     if (q.bucketMs && q.bucketMs >= 100) {
       // 桶宽内插(整数,同 query():绑定参数会走 REAL 浮点除,塌不了桶)
       const bucket = Math.round(Number(q.bucketMs))
-      const rows2 = (this.db.prepare(`
+      const rows2 = (db.prepare(`
         SELECT node_id, (ts_ms / ${bucket}) * ${bucket} AS b_at, AVG(value) AS avg, MIN(value) AS min, MAX(value) AS max, COUNT(*) AS cnt
         FROM daq_samples WHERE ${where.join(' AND ')}
         GROUP BY node_id, b_at ORDER BY b_at ASC LIMIT ?
@@ -224,7 +233,7 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
       }
       return out
     }
-    const rows = (this.db.prepare(`
+    const rows = (db.prepare(`
       SELECT node_id, ts_ms, value, state, ingested_at FROM daq_samples WHERE ${where.join(' AND ')}
       ORDER BY ts_ms ASC LIMIT ?
     `).all(...params, limit)) as Array<{ node_id: string, ts_ms: number, value: number, state: string, ingested_at: number | null }>
@@ -239,18 +248,19 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
 
   /** 逐节点 raw 分页(新增;C7):稳定 ASC、游标严格大于、每页限额、无漏无重。 */
   async queryTaggedPage(nodeId: string, q: import('./tsdb-port').TsdbPageQuery = {}): Promise<import('./tsdb-port').TsdbPage> {
-    if (!this.db) return { nodeId, points: [], nextCursor: null, done: true }
+    if (!this.db) await this.init()
+    const db = this.db as DatabaseSync
     const limit = Math.max(1, Math.min(q.limit ?? 5000, 500_000))
     const from = Math.max(q.fromMs ?? 0, (q.afterTs ?? -1) + 1)
     const to = q.toMs ?? Date.now()
     const withState = q.withState !== false
     const rows = (withState
-      ? this.db.prepare(`
+      ? db.prepare(`
           SELECT ts_ms, value, state, ingested_at FROM daq_samples
           WHERE node_id = ? AND ts_ms >= ? AND ts_ms <= ?
           ORDER BY ts_ms ASC LIMIT ?
         `).all(nodeId, from, to, limit)
-      : this.db.prepare(`
+      : db.prepare(`
           SELECT ts_ms, value FROM daq_samples
           WHERE node_id = ? AND ts_ms >= ? AND ts_ms <= ?
           ORDER BY ts_ms ASC LIMIT ?
@@ -266,10 +276,11 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
   }
 
   async latest(): Promise<Map<string, DaqSampleRow>> {
+    if (!this.db) await this.init()
+    const db = this.db as DatabaseSync
     const out = new Map<string, DaqSampleRow>()
-    if (!this.db) return out
     // SQLite 裸列保证:GROUP BY + MAX() 时裸列取自 max 所在行(命中 idx_daq_node_ts,免相关子查询)
-    const rows = this.db.prepare(`
+    const rows = db.prepare(`
       SELECT node_id, MAX(ts_ms) AS ts_ms, value, state, ingested_at FROM daq_samples GROUP BY node_id
     `).all() as Array<{ node_id: string, ts_ms: number, value: number, state: string, ingested_at: number | null }>
     for (const r of rows) {
@@ -305,9 +316,10 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
   }
 
   async queryFrames(nodeId: string, opts: import('./tsdb-port').DaqFrameQueryOpts): Promise<import('./tsdb-port').DaqFrameRecord[]> {
-    if (!this.db) return []
+    if (!this.db) await this.init()
+    const db = this.db as DatabaseSync
     const limit = Math.max(1, Math.min(opts.limit ?? 100, 1000))
-    const rows = this.db.prepare(`
+    const rows = db.prepare(`
       SELECT ts_ms, kind, meta, metrics, device_binding_id, line_id, product_id, recipe_id, run_id
       FROM daq_frames
       WHERE node_id = :id AND (:kind IS NULL OR kind = :kind) AND ts_ms >= :from AND ts_ms <= :to

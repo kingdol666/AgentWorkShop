@@ -37,6 +37,7 @@ import { getDcwLineRepo } from '../dcw/dcw-line.repo'
 import { assertRecipeOpInterval } from '../dcw/recipe-op-anchor'
 import { getToolApprovals } from '../agents/tool-approvals'
 import { amlActivityForLine } from '../agents/industrial/aml-activity'
+import { assertOntologyUnchanged, evaluateOntologyGuardsForNodes } from '../ontology/ontology.service'
 import type { RecipeProposePayload } from '../agents/industrial/recipe-propose-tools'
 
 export function isOptimizerDispatchCard(nodeId: string): boolean {
@@ -342,6 +343,21 @@ export async function createDispatchCard(initiator: ResolvedUser, recommendation
     }
   })
   const { recipe } = loadRec(recommendationId)
+  // 本体运行时守卫(ONT):已发布本体的 block 级守卫对本次下发意图求值。
+  // 只增拒不放行;无本体/无守卫时零开销。批准时刻 D13 仍全量重验。
+  const ontologyGuard = evaluateOntologyGuardsForNodes(spec.lineId, paramRows.map(p => ({ nodeId: p.nodeId, from: p.from, to: p.to })))
+  if (ontologyGuard.blocked) {
+    const violation = ontologyGuard.violations[0]!
+    throw new AppError(409, 'ONTOLOGY_GUARD_BLOCKED',
+      `本体运行时守卫阻断下发:${violation.message}(规则 ${violation.ruleId};本体包 ${ontologyGuard.packHash.slice(0, 12)})`)
+  }
+  // Profile 冻结的本体引用漂移:独立校验(不进 IR hash,不变更 D13 八项语义)
+  const dispatchRun = db().prepare('SELECT profile_id AS profileId, profile_version AS profileVersion FROM optimizer_runs WHERE id = ?')
+    .get(rec.runId) as { profileId?: string, profileVersion?: number } | undefined
+  if (dispatchRun?.profileId) {
+    const dispatchProfileRow = getProfileRepo().get(dispatchRun.profileId, Number(dispatchRun.profileVersion ?? 1))
+    if (dispatchProfileRow) assertOntologyUnchanged(parseProfileRow(dispatchProfileRow).ontologyRefs)
+  }
   // 闸序预检(建卡时刻;批准时刻 D13 全量重验)
   const gate = await assertDispatchApprovable(recommendationId, { modelFirstMove, packages: [{ params: paramRows }] })
   if (!gate.ok) throw new AppError(gate.code.startsWith('DISPATCH_GATE') || gate.code === 'DISPATCH_STEP_EXCEEDED' ? 403 : 409, gate.code, gate.comment)

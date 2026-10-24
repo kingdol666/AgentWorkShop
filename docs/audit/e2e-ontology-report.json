@@ -1,0 +1,276 @@
+{
+  "script": "scripts/e2e-ontology.mjs",
+  "generatedAt": "2026-10-24T12:24:22.525Z",
+  "home": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-e2e-ontology-W3i4Jv",
+  "ontology": "ont-e2e-pva",
+  "lineId": "ln-e2e-pva",
+  "total": 44,
+  "pass": 44,
+  "fail": 0,
+  "assertions": [
+    {
+      "id": "ON1.1",
+      "name": "创建草稿(rev=1, 单活跃)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ON1.2",
+      "name": "同本体同属主二次起草被拒(409)",
+      "ok": true,
+      "detail": "DRAFT_ALREADY_ACTIVE"
+    },
+    {
+      "id": "ON1.3",
+      "name": "整份文档写入并通过结构校验",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ON1.4",
+      "name": "过期 rev 写入被拒(乐观锁 409)",
+      "ok": true,
+      "detail": "DRAFT_CONCURRENT_MODIFY"
+    },
+    {
+      "id": "ON1.5",
+      "name": "非属主编辑被拒(403)",
+      "ok": true,
+      "detail": "DRAFT_SCOPE_VIOLATION"
+    },
+    {
+      "id": "ON2.1",
+      "name": "编译预览:状态 warning(含 PLC 解释项)且四类产物齐备",
+      "ok": true,
+      "detail": "status=warning"
+    },
+    {
+      "id": "ON2.2",
+      "name": "每条规则都有 trace(fail-closed 不静默丢弃)",
+      "ok": true,
+      "detail": "traces=3/rules=3"
+    },
+    {
+      "id": "ON2.3",
+      "name": "膜厚窗落入 cvBounds(只收紧前的预览)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ON2.4",
+      "name": "联锁规则归 PLC 解释层(不产数值约束)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ON2.5",
+      "name": "关系派生训练先验:特征候选≥2、时滞含 τ=D/v",
+      "ok": true,
+      "detail": "features=2"
+    },
+    {
+      "id": "ON2.6",
+      "name": "语义绑定活体校验:目标不存在 → 拒绝落库",
+      "ok": true,
+      "detail": "ONTOLOGY_BINDING_INVALID"
+    },
+    {
+      "id": "ON3.1",
+      "name": "证据登记写回草稿(1→2)并留账本",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ON4.1",
+      "name": "跳级迁移被拒(409)",
+      "ok": true,
+      "detail": "RULE_LIFECYCLE_CONFLICT"
+    },
+    {
+      "id": "ON4.2",
+      "name": "起草人自审被拒(403)",
+      "ok": true,
+      "detail": "SELF_REVIEW_FORBIDDEN"
+    },
+    {
+      "id": "ON4.3",
+      "name": "第二人完成 reviewed → validated",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ON4.4",
+      "name": "无批准单不能进入控制级(403)",
+      "ok": true,
+      "detail": "APPROVAL_REQUIRED"
+    },
+    {
+      "id": "ON4.5",
+      "name": "申请人不能自我裁决(403)",
+      "ok": true,
+      "detail": "SELF_REVIEW_FORBIDDEN"
+    },
+    {
+      "id": "ON4.6",
+      "name": "第二人批准后可进入 approved_for_control",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ON5.1",
+      "name": "editor 不能发布(403)",
+      "ok": true,
+      "detail": "ADMIN_REQUIRED"
+    },
+    {
+      "id": "ON5.2",
+      "name": "admin 发布 v1(published + contentHash/packHash)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ON5.3",
+      "name": "发布快照冻结:cvBounds 与 control_guard 进 compiled_json",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ON5.4",
+      "name": "Rule Trace 落库(每规则一行)",
+      "ok": true,
+      "detail": "n=3"
+    },
+    {
+      "id": "ON5.5",
+      "name": "同 (本体,版本) 不可二次写入(不可变)",
+      "ok": true,
+      "detail": "ERR_SQLITE_ERROR"
+    },
+    {
+      "id": "ON6.1",
+      "name": "按产线解析到生效版本 v1",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ON6.2",
+      "name": "温度 150℃(<180)+ 提速 → 阻断(block_recommendation)",
+      "ok": true,
+      "detail": "温区未达 180℃,禁止提速"
+    },
+    {
+      "id": "ON6.3",
+      "name": "温度 200℃(≥180)+ 提速 → 放行",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ON6.4",
+      "name": "低温下降速 → 放行(只禁正向增量)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ON6.5",
+      "name": "状态未知 + 提速 → fail-closed 阻断",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ON6.6",
+      "name": "跨配方不触发该守卫(作用域隔离)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ON6.7",
+      "name": "下发意图面:绑定映射成功 + 状态未知提速 → fail-closed 阻断",
+      "ok": true,
+      "detail": "unmapped=, blocked=true"
+    },
+    {
+      "id": "ON6.8",
+      "name": "下发意图面:降速意图不阻断(只禁正向)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ON7.1",
+      "name": "发布 v2(parent=1)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ON7.2",
+      "name": "版本 diff 精确到规则 id",
+      "ok": true,
+      "detail": "{\"added\":[],\"removed\":[],\"changed\":[\"R-BOUND\"]}"
+    },
+    {
+      "id": "ON7.3",
+      "name": "运行时解析自动切到 v2 且界已收紧",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ON8.1",
+      "name": "Profile 引用的本体内容一致 → 放行",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ON8.2",
+      "name": "内容被篡改 → 409 ONTOLOGY_PACK_DRIFTED",
+      "ok": true,
+      "detail": "ONTOLOGY_PACK_DRIFTED"
+    },
+    {
+      "id": "ON9.1",
+      "name": "退役版本被引用 → 漂移拒绝",
+      "ok": true,
+      "detail": "ONTOLOGY_PACK_DRIFTED"
+    },
+    {
+      "id": "ON9.2",
+      "name": "退役 v2 后运行时回退到 v1(仍 published)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ON9.3",
+      "name": "重复退役被拒(409)",
+      "ok": true,
+      "detail": "VERSION_NOT_PUBLISHED"
+    },
+    {
+      "id": "ON10.1",
+      "name": "全链审计动作齐备",
+      "ok": true,
+      "detail": "retire,publish,draft.update,rule.approve,rule.approve_request,rule.transition,evidence.append,draft.create"
+    },
+    {
+      "id": "ON10.2",
+      "name": "publish_log 预留 actor_kind(可区分 agent/user/system)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ON11.1",
+      "name": "未获控制级批准的硬约束拒绝发布(422)",
+      "ok": true,
+      "detail": "ONTOLOGY_NOT_APPROVED"
+    },
+    {
+      "id": "ON12.1",
+      "name": "场景子图含实体/规则决策/守卫",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ON12.2",
+      "name": "无本体的产线返回 null(零注入)",
+      "ok": true,
+      "detail": ""
+    }
+  ]
+}

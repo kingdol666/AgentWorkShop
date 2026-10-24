@@ -111,6 +111,13 @@ export function createBindingRepo(db: DatabaseSync) {
       return row?.revision ?? 0
     },
 
+    /** 模型采纳重绑:绑定升到新 Profile 版本并 bump revision(在飞求解 BINDING_STALE 收敛)。 */
+    rebindVersion(id: string, toVersion: number): number {
+      const r = db.prepare('UPDATE optimizer_bindings SET profile_version = ?, revision = revision + 1, valid_from = ?, updated_at = ? WHERE id = ?')
+        .run(toVersion, new Date().toISOString(), new Date().toISOString(), id)
+      return Number(r.changes)
+    },
+
     removeByAgent(channelAgentId: string): number {
       const r = db.prepare('DELETE FROM optimizer_bindings WHERE channel_agent_id = ?').run(channelAgentId)
       return Number(r.changes)

@@ -1019,7 +1019,161 @@ CREATE TABLE IF NOT EXISTS optimizer_candidate_crosschecks (
   row_hash                      TEXT NOT NULL DEFAULT '',
   created_at                    TEXT NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_optimizer_crosschecks_rec ON optimizer_candidate_crosschecks(recommendation_id, created_at DESC, id DESC);`
+CREATE INDEX IF NOT EXISTS idx_optimizer_crosschecks_rec ON optimizer_candidate_crosschecks(recommendation_id, created_at DESC, id DESC);
+
+-- ===== ontology (ONT) =====
+-- 工业本体与语义中枢(docs/plans/2026-10-24-ontology-service-plan.md)。
+-- 铁律:本体不是第二控制权威(编译产物只收紧);不复制系统对象(绑定锚 daq/dcw/recipe id);
+-- 知识≠执行授权(approved_for_control 必须经审批)。daq/dcw 节点不在本库(JSON 落盘),
+-- 绑定目标一律无 FK,存在性/归属/单位由 semantic-binding 服务实时校验。
+CREATE TABLE IF NOT EXISTS ontology_versions (
+  id              TEXT NOT NULL,                   -- ontology 身份(如 'ont-pva-line01')
+  version         INTEGER NOT NULL,
+  name            TEXT NOT NULL DEFAULT '',
+  line_id         TEXT NOT NULL DEFAULT '',        -- 授权锚;空=全局本体(仅 admin 可发布)
+  parent_version  INTEGER,
+  content_hash    TEXT NOT NULL DEFAULT '',
+  compiled_json   TEXT NOT NULL DEFAULT '{}',
+  changelog_json  TEXT NOT NULL DEFAULT '{}',
+  status          TEXT NOT NULL DEFAULT 'draft',   -- draft|published|retired(published 服务层拒改)
+  owner_user_id   TEXT NOT NULL DEFAULT '',
+  published_by    TEXT NOT NULL DEFAULT '',
+  created_at      TEXT NOT NULL,
+  updated_at      TEXT NOT NULL,
+  PRIMARY KEY (id, version)
+);
+CREATE INDEX IF NOT EXISTS idx_ontology_versions_line ON ontology_versions(line_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS ontology_entities (
+  version_id      TEXT NOT NULL,
+  version         INTEGER NOT NULL,
+  entity_key      TEXT NOT NULL,                   -- 版本内稳定键(如 'pv.melt_pressure')
+  kind            TEXT NOT NULL,
+  name            TEXT NOT NULL,
+  description     TEXT NOT NULL DEFAULT '',
+  unit            TEXT NOT NULL DEFAULT '',
+  dimension       TEXT NOT NULL DEFAULT '',        -- 量纲注记(shared/dimensions 判定)
+  role            TEXT NOT NULL DEFAULT '',        -- control|target|disturbance|feature|state|guard|observation
+  attributes_json TEXT NOT NULL DEFAULT '{}',
+  created_at      TEXT NOT NULL,
+  PRIMARY KEY (version_id, version, entity_key)
+);
+CREATE INDEX IF NOT EXISTS idx_ontology_entities_kind ON ontology_entities(version_id, version, kind);
+
+CREATE TABLE IF NOT EXISTS ontology_relations (
+  id              TEXT NOT NULL,
+  version_id      TEXT NOT NULL,
+  version         INTEGER NOT NULL,
+  src_key         TEXT NOT NULL,
+  dst_key         TEXT NOT NULL,
+  predicate       TEXT NOT NULL,                   -- influences|measures|actuates|hasPart|precedes|observedBy|constrainedBy|basedOn
+  properties_json TEXT NOT NULL DEFAULT '{}',      -- {sign,gainPerUnit,lagMs,evidenceTier,controlApplicability}
+  status          TEXT NOT NULL DEFAULT 'proposed',
+  created_at      TEXT NOT NULL,
+  PRIMARY KEY (version_id, version, id),
+  UNIQUE(version_id, version, src_key, dst_key, predicate)
+);
+CREATE INDEX IF NOT EXISTS idx_ontology_relations_dst ON ontology_relations(version_id, version, dst_key);
+
+CREATE TABLE IF NOT EXISTS ontology_rules (
+  id               TEXT NOT NULL,
+  version_id       TEXT NOT NULL,
+  version          INTEGER NOT NULL,
+  rule_key         TEXT NOT NULL,
+  kind             TEXT NOT NULL,                  -- bound|rate|linear_coupling|nonlinear|state_condition|interlock|informal
+  dsl_json         TEXT NOT NULL DEFAULT '{}',
+  constraint_level TEXT NOT NULL DEFAULT 'soft',   -- hard|soft(证据不足只能是 soft)
+  severity         TEXT NOT NULL DEFAULT 'error',
+  status           TEXT NOT NULL DEFAULT 'proposed',
+  description      TEXT NOT NULL DEFAULT '',
+  created_at       TEXT NOT NULL,
+  PRIMARY KEY (version_id, version, id),
+  UNIQUE(version_id, version, rule_key)
+);
+
+CREATE TABLE IF NOT EXISTS ontology_evidence (
+  id              TEXT PRIMARY KEY,
+  ontology_id     TEXT NOT NULL,
+  target_kind     TEXT NOT NULL,                   -- entity|relation|rule|binding
+  target_key      TEXT NOT NULL,
+  level           TEXT NOT NULL,                   -- candidate_influence|observed_correlation|validated_control
+  source_type     TEXT NOT NULL,
+  source_ref      TEXT NOT NULL DEFAULT '',
+  source_ref_hash TEXT NOT NULL DEFAULT '',
+  detail_json     TEXT NOT NULL DEFAULT '{}',
+  created_by      TEXT NOT NULL DEFAULT '',
+  created_at      TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_ontology_evidence_target ON ontology_evidence(ontology_id, target_kind, target_key, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS ontology_drafts (
+  id            TEXT PRIMARY KEY,
+  ontology_id   TEXT NOT NULL,
+  base_version  INTEGER,
+  rev           INTEGER NOT NULL DEFAULT 1,
+  draft_json    TEXT NOT NULL,
+  owner_user_id TEXT NOT NULL DEFAULT '',
+  created_at    TEXT NOT NULL,
+  updated_at    TEXT NOT NULL,
+  UNIQUE(ontology_id, owner_user_id)
+);
+
+CREATE TABLE IF NOT EXISTS ontology_semantic_bindings (
+  id               TEXT NOT NULL,
+  version_id       TEXT NOT NULL,
+  version          INTEGER NOT NULL,
+  entity_key       TEXT NOT NULL,
+  platform_kind    TEXT NOT NULL,                  -- daq_node|dcw_node|recipe_param|device|spec_variable|scene_variable|condition
+  platform_id      TEXT NOT NULL,
+  target_sub       TEXT NOT NULL DEFAULT '',       -- recipe_param 的参数键
+  scope            TEXT NOT NULL DEFAULT 'global', -- global|line:<id>|recipe:<id>@v<n>|scene:<id>@<ver>
+  direction        TEXT NOT NULL DEFAULT 'read',   -- read|write|read_write
+  unit_declared    TEXT NOT NULL DEFAULT '',
+  unit_target      TEXT NOT NULL DEFAULT '',
+  scale            REAL NOT NULL DEFAULT 1,
+  offset           REAL NOT NULL DEFAULT 0,
+  status           TEXT NOT NULL DEFAULT 'active', -- active|drifted|retired
+  last_verified_at TEXT,
+  created_at       TEXT NOT NULL,
+  PRIMARY KEY (version_id, version, id),
+  UNIQUE(version_id, version, entity_key, platform_kind, platform_id)
+);
+CREATE INDEX IF NOT EXISTS idx_ontology_bindings_target ON ontology_semantic_bindings(platform_kind, platform_id);
+
+CREATE TABLE IF NOT EXISTS ontology_publish_log (
+  id            TEXT PRIMARY KEY,
+  ontology_id   TEXT NOT NULL,
+  version       INTEGER NOT NULL DEFAULT 0,
+  action        TEXT NOT NULL,                     -- draft.create|draft.update|compile|transition|publish|retire|drift_detected|reconcile
+  actor         TEXT NOT NULL DEFAULT '',
+  actor_kind    TEXT NOT NULL DEFAULT 'user',      -- user|agent|system
+  solo_operator INTEGER NOT NULL DEFAULT 0,        -- 单管理员实例自审豁免标记
+  approval_id   TEXT,
+  detail_json   TEXT NOT NULL DEFAULT '{}',
+  created_at    TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_ontology_publish_log ON ontology_publish_log(ontology_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS ontology_rule_traces (
+  id               TEXT PRIMARY KEY,
+  ontology_id      TEXT NOT NULL,
+  version          INTEGER NOT NULL,
+  rule_pack_hash   TEXT NOT NULL DEFAULT '',
+  rule_id          TEXT NOT NULL,
+  rule_revision    TEXT NOT NULL DEFAULT '',
+  rule_kind        TEXT NOT NULL,
+  evidence_level   TEXT NOT NULL DEFAULT '',
+  constraint_level TEXT NOT NULL DEFAULT 'soft',
+  decision         TEXT NOT NULL,                  -- compiled|guard|explained|rejected
+  decision_code    TEXT NOT NULL DEFAULT '',
+  message          TEXT NOT NULL DEFAULT '',
+  bindings_json    TEXT NOT NULL DEFAULT '[]',
+  artifacts_json   TEXT NOT NULL DEFAULT '[]',
+  scope_json       TEXT NOT NULL DEFAULT '{}',
+  row_hash         TEXT NOT NULL DEFAULT '',
+  created_at       TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_ontology_traces_version ON ontology_rule_traces(ontology_id, version, created_at DESC);`
 
 // ===== 默认种子数据(首轮初始化注入;owner NULL = 公共资源,所有登录用户只读共享) =====
 

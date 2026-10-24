@@ -30,3 +30,9 @@ export { toolAmlActivity } from './aml-activity'
 export { toolRecipePropose } from './recipe-propose-tools'
 export { toolLineStart, toolLineStop, toolLineStatus } from './line-tools'
 export { toolAnalysisSave, toolAnalysisQuery } from './analysis-tools'
+export { toolOptimizerProfilePropose } from './optimizer-tools'
+export {
+  toolOntologySceneInspect, toolOntologyDraftCreate, toolOntologyDraftValidate,
+  toolOntologyDraftUpdate, toolOntologyRuleExplain, toolOntologyCompilePreview,
+  toolOntologyPublishPropose, toolOntologyVersionCompare,
+} from './ontology-tools'

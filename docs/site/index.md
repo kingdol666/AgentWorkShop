@@ -74,7 +74,7 @@ footer:
         14 个 harness(<code>agents/registry.ts</code>) / 126 个设置项分 19 组(<code>aw config list</code>) / 7 态任务机。
       </p>
       <div class="aw-statusbar">
-        <span>版本 <i>v0.7.71</i></span>
+        <span>版本 <i>v0.8.0</i></span>
         <span>许可 <i>Apache License 2.0</i></span>
         <span>运行时 <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>文档 <i>简体中文 / English</i></span>
@@ -318,7 +318,9 @@ footer:
       <div class="hw-f"><span class="tag">DATA</span><h3>数据分析台账(v0.7.62)</h3><p>analysis_save / analysis_query 原生工具落账分析结论(产线×配方×时间窗),Agent 只增、人类修订留痕;/analysis 页多维检索实时前插;diag_run 后台跑 IDD 六种分析意图(根因/产线报告/快筛/DOE/经验挖掘/优化战役)按 taskId 查进度;改删与可见性全受产线级权限门控。</p></div>
       <div class="hw-f"><span class="tag">EDA</span><h3>数据管理台与 EDA 工坊(/data · /studio)</h3><p>三形态数据(标量/数组断面/CCD 图像)多字段复合查询、批量导出作业台账(manifest+merged.csv)与 WS 实时镜像;工坊提供图表与栅格看板、golden 相位参考轨迹偏差分、FDC 特征参考带判定、SPC 控制图(Nelson/I-MR/EWMA/CUSUM)、共性分析、OCAP 处置单、虚拟量测(OOD 拒判)与派生数据集,全受产线权限与引用预检约束。</p></div>
       <div class="hw-f"><span class="tag">OPT</span><h3>工艺优化器与求解器(v0.7.71)</h3><p>端到端参数优化链:过程模型(谱系 verified 数据集+资格门)→ AML 训练(G1–G3 门禁)→ Profile 冻结绑定 → ProblemIR 编译(哈希锁定)→ OSQP/SLSQP 求解 worker(进程池/超时降级/NaN fail-closed)→ TS 独立重算交叉核验(≤1e-6)→ 治理下发(HITL 单咽喉+八重复核+设备回读 ackSummary)。Agent 工具、REST、MCP 三入口同链,优化器五件套仅有效绑定注入。</p></div>
-      <div class="hw-f"><span class="tag">GOV</span><h3>工具面声明式治理(v0.7.71)</h3><p>引用校验规则上收为工具定义的 references 声明(92 个宿主工具全显式声明,注册期登记制:写族未声明拒登记);插件工具声明后才走同一校验并全量审计;每 Agent 专属全量工具 stdio 桥(ETag/304 增量轮询);token 支持轮换+宽限窗,列表只回尾 4 位;数采推送兜底强制产线 operate 权限+回填窗默认 ±1h。</p></div>
+      <div class="hw-f"><span class="tag">GOV</span><h3>工具面声明式治理(v0.7.71)</h3><p>引用校验规则上收为工具定义的 references 声明(101 个宿主工具全显式声明,注册期登记制:写族未声明拒登记);插件工具声明后才走同一校验并全量审计;每 Agent 专属全量工具 stdio 桥(ETag/304 增量轮询);token 支持轮换+宽限窗,列表只回尾 4 位;数采推送兜底强制产线 operate 权限+回填窗默认 ±1h。</p></div>
+      <div class="hw-f"><span class="tag">ONTO</span><h3>本体服务(v0.8.0)</h3><p>面向控制的本体:10 类实体 × 8 种封闭关系 × 三级证据 × 五态生命周期;编译四类工件(过程模型 / ProblemIR 增量 / 场景契约 / 控制守卫),只收紧不变量 + 逐规则 Rule Trace;运行守卫对状态未知 fail-closed,本体哈希与求解 IR 分域。/ontology 六 tab 管理台 + 8 件 Agent 工具。</p></div>
+      <div class="hw-f"><span class="tag">LOOP</span><h3>AI 先行模型闭环(v0.8.0)</h3><p>Agent 亲手创建虚拟模型:场景发现 → 人批准冻结 → 物理规格骨架 → 真采快照 → 虚弱试验;训练出新模型后用 optimizer_profile_propose 提议采纳,HITL 批准即发布+自动重绑,下一次求解即用新模型——连续两轮 v1→v2→v3 真机验证,全程零设备写入。</p></div>
     </div>
   </section>
 

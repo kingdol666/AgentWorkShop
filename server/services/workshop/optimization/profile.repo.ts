@@ -28,6 +28,8 @@ export interface ProfileRow {
   problemIrHash: string
   /** 发布不可变校验:内容 hash(不含 status/createdAt/problemIrHash) */
   contentHash: string
+  /** 本体引用冻结(JSON 数组;缺省 '[]' = 无本体约束域) */
+  ontologyRefsJson: string
   createdAt: string
   updatedAt: string
 }
@@ -38,6 +40,7 @@ const COLS = `id, version, name, model_ref AS modelRef, model_artifact_hash AS m
   process_spec_ref AS processSpecRef,
   solver_ref AS solverRef, solver_version AS solverVersion, condition_ids_json AS conditionIdsJson,
   status, owner_user_id AS ownerUserId, problem_ir_hash AS problemIrHash, content_hash AS contentHash,
+  ontology_refs_json AS ontologyRefsJson,
   created_at AS createdAt, updated_at AS updatedAt`
 
 export function profileContentHash(profile: OptimizationProfile): string {
@@ -61,12 +64,13 @@ export function createProfileRepo(db: DatabaseSync) {
       db.prepare(`INSERT INTO optimizer_profiles
         (id, version, name, model_ref, model_artifact_hash, model_artifact_kind, model_interface,
          problem_template_ref, problem_config_json, process_spec_ref, solver_ref, solver_version, condition_ids_json,
-         status, owner_user_id, problem_ir_hash, content_hash, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+         status, owner_user_id, problem_ir_hash, content_hash, ontology_refs_json, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
         .run(profile.id, profile.version, profile.name ?? '', profile.modelRef.modelId, profile.modelRef.artifactHash,
           profile.modelRef.artifactKind, profile.modelRef.modelInterface, profile.problemTemplateRef,
           JSON.stringify(profile.problemConfig ?? {}), profile.processSpecRef ?? '', profile.solverRef, profile.solverVersion,
-          JSON.stringify(profile.conditionIds ?? []), profile.status, ownerUserId, profile.problemIrHash ?? '', contentHash, now, now)
+          JSON.stringify(profile.conditionIds ?? []), profile.status, ownerUserId, profile.problemIrHash ?? '', contentHash,
+          JSON.stringify(profile.ontologyRefs ?? []), now, now)
       return this.get(profile.id, profile.version)!
     },
 
@@ -90,6 +94,11 @@ export function createProfileRepo(db: DatabaseSync) {
     nextVersion(id: string): number {
       const r = db.prepare('SELECT MAX(version) AS v FROM optimizer_profiles WHERE id = ?').get(id) as { v: number | null }
       return (r.v ?? 0) + 1
+    },
+
+    /** 最近已发布版本(采纳服务以它为基线;无则 undefined) */
+    latestPublished(id: string): ProfileRow | undefined {
+      return db.prepare(`SELECT ${COLS} FROM optimizer_profiles WHERE id = ? AND status = 'published' ORDER BY version DESC LIMIT 1`).get(id) as unknown as ProfileRow | undefined
     },
 
     /** 发布:冻结 problemIrHash;published 行禁止原地修改(服务层拒绝 UPDATE)。 */
@@ -153,6 +162,13 @@ export function parseProfileRow(row: ProfileRow): OptimizationProfile {
     status: row.status,
     ownerUserId: row.ownerUserId,
     problemIrHash: row.problemIrHash || undefined,
+    ontologyRefs: (() => {
+      try {
+        const parsed = JSON.parse(row.ontologyRefsJson || '[]') as OptimizationProfile['ontologyRefs']
+        return parsed && parsed.length > 0 ? parsed : undefined
+      }
+      catch { return undefined }
+    })(),
     createdAt: row.createdAt,
   }
 }

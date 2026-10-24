@@ -3607,5 +3607,337 @@
       ]
     },
     "riskClass": "read"
+  },
+  {
+    "name": "ontology_scene_inspect",
+    "label": "本体场景语义",
+    "riskClass": "read",
+    "description": "只读查询某产线的已发布工业本体:实体(设备/变量/质量指标)、它们与数采节点/数控节点/配方参数的语义绑定、已验证影响关系、约束规则的编译决策与运行时守卫。用于在优化/诊断前确认「这个变量是什么、单位是什么、受哪条规则限制、来源是哪一版本体」。分页返回(offset/limit),不写任何状态。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "line_id": {
+          "type": "string",
+          "description": "产线 id(必填;line_context 可看到当前产线)"
+        },
+        "query": {
+          "type": "string",
+          "description": "按实体 key/名称/类型模糊筛选(可选)"
+        },
+        "offset": {
+          "type": "number",
+          "description": "分页偏移(缺省 0)"
+        },
+        "limit": {
+          "type": "number",
+          "description": "每页实体数(1-200,缺省 50)"
+        }
+      },
+      "required": [
+        "line_id"
+      ],
+      "additionalProperties": false
+    },
+    "references": {
+      "refs": [
+        {
+          "param": "line_id",
+          "kind": "line",
+          "mode": "read"
+        }
+      ],
+      "readableLineNodes": true
+    }
+  },
+  {
+    "name": "ontology_draft_create",
+    "label": "本体草稿创建",
+    "riskClass": "write",
+    "description": "创建一个本体草稿(工业语义资产的工作副本)。可空白起草,或从该本体最新的已发布版本克隆后演进。同一本体同一属主只允许一个活跃草稿(重复创建返回 409)。创建后可用 ontology_draft_update 写入实体/关系/规则/绑定,用 ontology_draft_validate 校验,用 ontology_compile_preview 预览编译产物。草稿不会影响任何运行中的求解或下发。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "ontology_id": {
+          "type": "string",
+          "description": "本体 id(必填;形如 ont-pva-line01)"
+        },
+        "line_id": {
+          "type": "string",
+          "description": "授权锚定产线 id(建议填写;留空=全局本体)"
+        },
+        "name": {
+          "type": "string",
+          "description": "本体名称(可选)"
+        },
+        "clone_from_version": {
+          "type": "boolean",
+          "description": "true=从该本体最新已发布版本克隆(必填 false 或省略=空白起草)"
+        }
+      },
+      "required": [
+        "ontology_id"
+      ],
+      "additionalProperties": false
+    },
+    "references": {
+      "refs": [
+        {
+          "param": "line_id",
+          "kind": "line",
+          "mode": "read"
+        }
+      ]
+    }
+  },
+  {
+    "name": "ontology_draft_update",
+    "label": "本体草稿写入",
+    "riskClass": "write",
+    "description": "以整份文档覆盖写入本体草稿(乐观锁:必须带 expected_rev,取最近一次 validate/update 返回的 rev)。服务端会先做结构校验(实体 key 唯一、引用不悬空、证据级别自洽、单位量纲相容)与语义绑定活体校验(目标节点存在/归属/单位/读写能力),不通过则拒绝落库并返回具体原因。并发修改返回 409。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "draft_id": {
+          "type": "string",
+          "description": "草稿 id(必填)"
+        },
+        "expected_rev": {
+          "type": "number",
+          "description": "当前草稿修订号(必填;乐观锁)"
+        },
+        "doc": {
+          "type": "object",
+          "description": "整份本体文档 {schemaVersion:1,name,lineId,entities,relations,rules,bindings}"
+        }
+      },
+      "required": [
+        "draft_id",
+        "expected_rev",
+        "doc"
+      ],
+      "additionalProperties": false
+    },
+    "references": {
+      "chained": [
+        {
+          "param": "draft_id",
+          "kind": "ontology_draft",
+          "mode": "write"
+        }
+      ]
+    }
+  },
+  {
+    "name": "ontology_draft_validate",
+    "label": "本体草稿校验",
+    "riskClass": "read",
+    "description": "校验本体草稿并返回结构化报告:实体/关系/规则/绑定计数、生命周期分布、错误与告警(带代码与可行动建议)、以及语义绑定的活体校验失败项(目标不存在/跨线/单位不相容/只读通道声明写/写语义重复)。只读,不修改草稿。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "draft_id": {
+          "type": "string",
+          "description": "草稿 id(必填)"
+        }
+      },
+      "required": [
+        "draft_id"
+      ],
+      "additionalProperties": false
+    },
+    "references": {
+      "chained": [
+        {
+          "param": "draft_id",
+          "kind": "ontology_draft",
+          "mode": "read"
+        }
+      ]
+    }
+  },
+  {
+    "name": "ontology_rule_explain",
+    "label": "本体规则解释",
+    "riskClass": "read",
+    "description": "解释一条本体规则的完整语义:声明式 DSL、证据级别与来源、生命周期状态、编译决策(compiled/guard/explained/rejected)与决策码、以及会落到哪类产物(求解界/步限/运行时守卫/仅解释)和适用配方与工况。用于回答「为什么这个建议受限制」。可按草稿来源或已发布版本来源查询。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "rule_id": {
+          "type": "string",
+          "description": "规则 id 或 key(必填)"
+        },
+        "draft_id": {
+          "type": "string",
+          "description": "草稿 id(与 ontology_id 二选一)"
+        },
+        "ontology_id": {
+          "type": "string",
+          "description": "本体 id(查已发布版本来源)"
+        },
+        "version": {
+          "type": "number",
+          "description": "本体版本号(缺省=最近版本)"
+        }
+      },
+      "required": [
+        "rule_id"
+      ],
+      "additionalProperties": false
+    },
+    "references": {
+      "chained": [
+        {
+          "param": "draft_id",
+          "kind": "ontology_draft",
+          "mode": "read"
+        }
+      ]
+    }
+  },
+  {
+    "name": "ontology_compile_preview",
+    "label": "本体编译预览",
+    "riskClass": "read",
+    "description": "把本体草稿编译成四类控制侧产物草案并返回摘要:问题中间表示的可调界与目标界(只收紧)、运行时守卫(条件满足时禁止某类增量)、训练特征候选与时滞先验、场景契约补丁,以及每条规则的溯源决策。不落库、不改变任何运行中的 Profile;approved_only=true 可模拟发布路径(未获批硬约束会被拒)。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "draft_id": {
+          "type": "string",
+          "description": "草稿 id(必填)"
+        },
+        "approved_only": {
+          "type": "boolean",
+          "description": "true=仅接受 approved_for_control 规则产出控制侧产物(模拟发布)"
+        }
+      },
+      "required": [
+        "draft_id"
+      ],
+      "additionalProperties": false
+    },
+    "references": {
+      "chained": [
+        {
+          "param": "draft_id",
+          "kind": "ontology_draft",
+          "mode": "read"
+        }
+      ]
+    }
+  },
+  {
+    "name": "ontology_publish_propose",
+    "label": "本体发布提议",
+    "riskClass": "write",
+    "description": "为草稿中处于 validated 的规则提请第二人批准(生成审批单 approvalId),并记录一次发布提议。注意:本工具不能发布版本——批准由人类在 /ontology 审批面裁决,冻结发布仅管理员在 REST 面执行;本工具不写设备、不绕过 HITL 与 D13。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "draft_id": {
+          "type": "string",
+          "description": "草稿 id(必填)"
+        }
+      },
+      "required": [
+        "draft_id"
+      ],
+      "additionalProperties": false
+    },
+    "references": {
+      "chained": [
+        {
+          "param": "draft_id",
+          "kind": "ontology_draft",
+          "mode": "write"
+        }
+      ]
+    }
+  },
+  {
+    "name": "ontology_version_compare",
+    "label": "本体版本比较",
+    "riskClass": "read",
+    "description": "比较本体两个已发布版本的差异(实体/关系/规则/绑定四段:新增/删除/变更)。不给版本号时返回版本清单。用于回答「这版本体改了什么、为什么控制行为变了」。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "ontology_id": {
+          "type": "string",
+          "description": "本体 id(必填)"
+        },
+        "from": {
+          "type": "number",
+          "description": "起始版本号(可选;缺省列出版本)"
+        },
+        "to": {
+          "type": "number",
+          "description": "目标版本号(可选)"
+        },
+        "version": {
+          "type": "number",
+          "description": "用于归属校验的版本号(可选;缺省取最新)"
+        }
+      },
+      "required": [
+        "ontology_id"
+      ],
+      "additionalProperties": false
+    },
+    "references": {
+      "chained": [
+        {
+          "param": "ontology_id",
+          "kind": "ontology_version",
+          "mode": "read"
+        }
+      ]
+    }
+  },
+  {
+    "name": "optimizer_profile_propose",
+    "label": "模型采纳提议",
+    "description": "AI-first 模型迭代闭环的采纳环节:把 AML 新训练登记的模型采纳为指定优化器 Profile 的新版本——复制当前已发布配置、换上新模型工件、生成草稿并挂人工审批卡;批准后自动冻结发布并把绑定在旧版本的 Agent 全部重绑(在飞求解 BINDING_STALE 收敛),下一次 optimizer_solve 即用新模型。拒绝/超时零写,理由逐字回流。必须给出采纳理由(训练指标对比/互校结论)。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "model_id": {
+          "type": "string",
+          "description": "新模型 id(必填;aml_job_submit 训练完成登记,aml_leaderboard/aml_model_find 可查)"
+        },
+        "profile_id": {
+          "type": "string",
+          "description": "目标 Profile id(本 Agent 只绑一个时可省略;多绑定必填)"
+        },
+        "template_ref": {
+          "type": "string",
+          "description": "可选切换问题模板(linear_mpc_quadratic@1/steady_response@1;须与模型工件兼容)"
+        },
+        "solver_ref": {
+          "type": "string",
+          "description": "可选切换求解器(osqp_mpc@1/scipy_slsqp@1;须与模板兼容)"
+        },
+        "reason": {
+          "type": "string",
+          "description": "采纳理由(必填):训练指标对比/互校结论/业务动因,审批卡展示"
+        }
+      },
+      "required": [
+        "model_id",
+        "reason"
+      ],
+      "additionalProperties": false
+    },
+    "references": {
+      "chained": [
+        {
+          "param": "model_id",
+          "kind": "model",
+          "mode": "read"
+        }
+      ]
+    },
+    "riskClass": "write"
   }
 ]

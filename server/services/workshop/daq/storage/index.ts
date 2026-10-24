@@ -14,7 +14,8 @@ const g = globalThis as typeof globalThis & { __daqTsdbState?: DaqTsdbState }
 
 function makeFallback(reason: string): TsdbPort {
   const dev = new SqliteTimeSeriesAdapter()
-  dev.init()
+  // init 失败不再静默:读路径有 ensureDb 惰性自愈兜底,但这里必须留下证据
+  dev.init().catch(err => log.error(`[daq-tsdb] SQLite 降级实例初始化失败(读路径将自愈重试):`, err instanceof Error ? err.message : err))
   log.warn(`[daq-tsdb] ${reason} → 已降级 SQLite 时序仿真`)
   return dev
 }
@@ -27,7 +28,7 @@ export const tsdbReady: Promise<void> = (() => {
     if (!url) {
       // 无配置(启动插件尚未装配):先占位仿真库;插件随后按 infra 状态 rebuild
       const dev = new SqliteTimeSeriesAdapter()
-      dev.init()
+      dev.init().catch(err => log.error('[daq-tsdb] SQLite 占位实例初始化失败(读路径将自愈重试):', err instanceof Error ? err.message : err))
       st.current = dev
     }
     else {

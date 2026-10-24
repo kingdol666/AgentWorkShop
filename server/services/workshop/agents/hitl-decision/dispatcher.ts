@@ -10,6 +10,7 @@ import { getToolApprovals, normalizeRecipeProposeDecision } from '../tool-approv
 import { decideOptimizerDispatch, isOptimizerDispatchCard } from '../../optimization/dispatch.service'
 import { resolveAnswers } from './answers'
 import { respondTerminalUi } from '../harness-terminal'
+import { isProfileAdoptCard, decideProfileAdoption } from '../../optimization/profile-adopt.service'
 
 // ============================================================================
 // 原生应答传导(可插拔:测试/嵌入场景替换;缺省走真实 adapter 面)
@@ -77,6 +78,20 @@ export async function defaultDispatch(ctx: HitlNativeDispatchContext): Promise<u
     }
     // SW5/D13 单一咽喉:optimizer-recipe:* 卡一律走 dispatch 链(八项重验→抢占→写→回读→审计);
     // 业务拒绝在咽喉内 decide() 落定,hitl 行终态与实际裁决一致
+    // OW-adopt 单一咽喉:optimizer-profile:* 卡 → 采纳裁决(批准=发布+重绑)
+    if (pending && isProfileAdoptCard(pending.nodeId)) {
+      const result = await decideProfileAdoption({
+        cardId: ctx.id,
+        nodeId: pending.nodeId,
+        approved: normalized.approved,
+        comment: String(decision.comment ?? ''),
+        actingUser: { id: ctx.user.id, name: ctx.user.name ?? ctx.user.id },
+        via: 'hitl/respond',
+      })
+      if (result.handled) {
+        return { via: 'profile-adopt', result: { approved: result.approved, comment: result.comment, code: result.code, published: result.published } }
+      }
+    }
     if (pending && isOptimizerDispatchCard(pending.nodeId)) {
       const result = await decideOptimizerDispatch({
         cardId: ctx.id,

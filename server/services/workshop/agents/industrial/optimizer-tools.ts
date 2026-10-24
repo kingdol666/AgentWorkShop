@@ -17,6 +17,7 @@ import { getEligibilityRepo } from '../../process-model/eligibility'
 import { getProcessModelSpecRepo } from '../../process-model/spec.repo'
 import { cancel, getRunStatus, solve } from '../../optimization/manager'
 import { assertRecommendationUsable } from '../../optimization/recommendation.service'
+import { proposeProfileAdoption } from '../../optimization/profile-adopt.service'
 import { deriveDualState } from '../../optimization/crosscheck.service'
 
 function ok(payload: unknown): HostToolResult {
@@ -189,5 +190,83 @@ export function hasOptimizerBinding(agentId: string): boolean {
   }
   catch {
     return false
+  }
+}
+
+/**
+ * 模型采纳提议(OW-adopt):把 AML 新训练登记的模型采纳为指定 Profile 的新版本。
+ *
+ * AI-first 闭环的"采纳"环节:复制当前已发布 Profile 的全部求解配置 → 换新模型工件 →
+ * 草稿新版本 → 挂 HITL 卡等待人类裁决。批准(单一咽喉)= 冻结发布 + 自动重绑所有
+ * 绑定在旧版本的 Agent(revision+1,在飞求解 BINDING_STALE 收敛);拒绝/超时 = 零写。
+ *
+ * 治理:工具属写族(grant-guard operate);Agent 必须已绑定该 Profile(防越权提议);
+ * 兼容性(D21 矩阵)在服务层提议时校验;发布仅发生在人类批准后。
+ */
+export async function toolOptimizerProfilePropose(agentId: string, args: Record<string, unknown>): Promise<HostToolResult> {
+  try {
+    const bindings = listBindingsForAgent(agentId)
+    if (bindings.length === 0) {
+      return { text: '本 Agent 没有优化器绑定;模型采纳必须由已绑定该 Profile 的 Agent 发起(先在 Channel 设置里绑定)。', isError: true }
+    }
+    const modelId = String(args.model_id ?? '').trim()
+    if (!modelId) return { text: 'model_id 必填(aml_job_submit 训练完成登记的模型 id;aml_leaderboard/aml_model_find 可查)。', isError: true }
+    const profileId = String(args.profile_id ?? '').trim() || (() => {
+      const bound = bindings.map(b => b.profileId)
+      return new Set(bound).size === 1 ? bound[0]! : ''
+    })()
+    if (!profileId) {
+      return { text: `本 Agent 绑定了多个 Profile(${bindings.map(b => b.profileId).join(', ')});必须显式传 profile_id。`, isError: true }
+    }
+    if (!bindings.some(b => b.profileId === profileId)) {
+      return { text: `Profile ${profileId} 不在本 Agent 的绑定面内,不能代为提议采纳(越权拒绝)。`, isError: true }
+    }
+    const reason = String(args.reason ?? '').trim()
+    if (!reason) return { text: 'reason 必填:为什么采纳新模型(证据:训练指标对比/互校结论/业务动因)。', isError: true }
+
+    const result = await proposeProfileAdoption({
+      agentInstanceId: agentId,
+      initiatorId: agentId,
+      initiatorKind: 'agent',
+      profileId,
+      modelId,
+      templateRef: args.template_ref as Parameters<typeof proposeProfileAdoption>[0]['templateRef'],
+      solverRef: args.solver_ref as Parameters<typeof proposeProfileAdoption>[0]['solverRef'],
+      reason,
+    })
+
+    if (!result.decision.approved) {
+      return {
+        text: [
+          `采纳提议未被批准(卡 ${result.cardId}):`,
+          `${result.profileId} v${result.priorVersion} → v${result.version}(模型 ${result.modelId})`,
+          `裁决:${result.decision.comment || '拒绝/超时'}`,
+          '草稿已保留(零写);可修订理由后重新提议,或由管理员经 REST 发布。',
+        ].join('\n'),
+        isError: true,
+      }
+    }
+    if (!result.published) {
+      return {
+        text: [
+          `⚠️ 采纳提议获批准,但发布未由裁决咽喉完成(卡 ${result.cardId}):`,
+          `${result.profileId} v${result.priorVersion} → v${result.version} 仍为草稿;请管理员经 REST/管理面发布,或重新发起采纳。`,
+        ].join('\n'),
+        isError: true,
+      }
+    }
+    return {
+      text: [
+        '✅ 模型采纳完成(HITL 批准):',
+        `${result.profileId} v${result.priorVersion} → v${result.version}(published)`,
+        `模型:${result.modelId};重绑绑定 ${result.rebindCount} 个(revision+1,在飞求解 BINDING_STALE 收敛)`,
+        `裁决意见:${result.decision.comment || '(无)'}`,
+        '下一次 optimizer_solve 即使用新模型;旧版本保留可回退(retire/rebind 走管理面)。',
+      ].join('\n'),
+    }
+  }
+  catch (err) {
+    const message = err instanceof AppError ? `${err.code}: ${err.message}` : String(err)
+    return { text: `模型采纳提议失败:${message}`, isError: true }
   }
 }

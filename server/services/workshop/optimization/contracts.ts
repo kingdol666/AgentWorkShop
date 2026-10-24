@@ -72,7 +72,21 @@ export interface OptimizationProfile {
   ownerUserId?: string
   /** 发布时冻结的问题结构 hash */
   problemIrHash?: string
+  /**
+   * 本体引用摘要(发布时冻结):**进 profileContentHash,绝不进 problemIrHash**。
+   * 漂移比对走独立校验(ONTOLOGY_PACK_DRIFTED),避免本体演化把旧 Profile
+   * 全部打成 PROBLEM_IR_CHANGED(与 D1/D12 同因)。
+   */
+  ontologyRefs?: OntologyRefSummary[]
   createdAt?: string
+}
+
+export interface OntologyRefSummary {
+  ontologyId: string
+  ontologyVersion: number
+  contentHash?: string
+  rulePackHash?: string
+  guardCount?: number
 }
 
 export function assertProfileSolverCompatible(profile: Pick<OptimizationProfile, 'solverRef' | 'modelRef' | 'problemTemplateRef'>): void {

@@ -1,0 +1,181 @@
+{
+  "generatedAt": "2026-10-24T13:02:34.404Z",
+  "base": "http://127.0.0.1:3470",
+  "lineId": "ln-62a67884",
+  "ontology": "ont-idd-mecrdt",
+  "marker": "ONTIDD-mecrdt",
+  "evidenceDir": "D:/codes/ABO/AgentWorkShop/docs/audit/evidence/2026-10-24-idd-rag-ontology",
+  "boundaries": [
+    {
+      "id": "RAG_EXTERNAL",
+      "detail": "任务 kbt_mvmecwwn_d4b70242 状态:failed\nagent turn timed out after 540000ms before a final result frame"
+    }
+  ],
+  "total": 27,
+  "pass": 27,
+  "fail": 0,
+  "results": [
+    {
+      "id": "O0",
+      "name": "真实节点面发现(daq 克重 + dcw 压力)",
+      "pass": true,
+      "detail": "daq=14 dcw=11 weight=dn-df05dbcd/g pressure=dw-bb63e90c/bar"
+    },
+    {
+      "id": "O1",
+      "name": "本体起草(活体校验+真实节点绑定)",
+      "pass": true,
+      "detail": "draft=ontd-mvmecrg1-1xaj6i saved=200/0 msg=ok bindOk=true issues=[]"
+    },
+    {
+      "id": "O2",
+      "name": "本体 v1 发布(contentHash+packHash)",
+      "pass": true,
+      "detail": "status=200 code=0 msg=ok"
+    },
+    {
+      "id": "O3",
+      "name": "版本台账 + 场景子图(实体/规则/守卫/绑定)",
+      "pass": true,
+      "detail": "versions=1 entities=4 rules=3 guards=1 guardCapable=true"
+    },
+    {
+      "id": "O4",
+      "name": "Agent 工具 ontology_scene_inspect:同一产线可解释",
+      "pass": true,
+      "detail": "本体 ont-idd-mecrdt@1(产线 ln-62a67884)\n实体 4 / 关系 1 / 规则 3 / 守卫 1\n本页实体 4(offset=0,limit=50):\n- cv.weight [quality_variable/target] scen-injection:daq:part-weight (g) ← daq_node:dn-df05dbcd(read)\n- pv.hold"
+    },
+    {
+      "id": "O5",
+      "name": "Agent 工具 ontology_rule_explain:规则窗+证据可解释",
+      "pass": true,
+      "detail": "规则 R-BOUND(本体 ont-idd-mecrdt@1)\nDSL:{\n  \"type\": \"bound\",\n  \"variableKey\": \"cv.weight\",\n  \"min\": 32.15,\n  \"max\": 32.85,\n  \"unit\": \"g\"\n}\n证据级别:validated_control 约束级别:hard\n编译决策:compiled — 规则 R-BOUND 收紧 cv.weight 的目标界\n产物:prob"
+    },
+    {
+      "id": "I1",
+      "name": "插件代理 /health 连通+token 被接受",
+      "pass": true,
+      "detail": "remote={\"status\":\"ok\",\"activeRuns\":0,\"auth\":\"ok\"}"
+    },
+    {
+      "id": "I2",
+      "name": "产线窗口快照 CSV(与 diag_run 同链)",
+      "pass": true,
+      "detail": "rows=360 nodes=14 err="
+    },
+    {
+      "id": "I3",
+      "name": "IDD 注册得 token",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "I4",
+      "name": "IDD 任务受理(harness=mock,quick-screen)",
+      "pass": true,
+      "detail": "run=13b1ec47 ack=running"
+    },
+    {
+      "id": "I5",
+      "name": "mock 引擎分析完成",
+      "pass": true,
+      "detail": "final=completed"
+    },
+    {
+      "id": "I6",
+      "name": "/report 代理回诊断报告",
+      "pass": true,
+      "detail": "len=497 err="
+    },
+    {
+      "id": "I7",
+      "name": "Agent 分析台账留痕(引用本体规则+IDD run)",
+      "pass": true,
+      "detail": "分析报告已留痕:ar-27ee7903。产线「注塑成型质量窗口寻优 injection-smtmt」,结论 2 条,配方 rc-df1b0983。台账 append-only,不可改删;随时可用 analysis_query(report_id=\"ar-27ee7903\") 查回全文。"
+    },
+    {
+      "id": "I8",
+      "name": "分析台账读回(联动锚点可检索)",
+      "pass": true,
+      "detail": "共 1 条分析报告(新→旧):\n[ar-27ee7903] 10-24 20:50:33 | 注塑成型质量窗口寻优 injection-smtmt | 配方 rc-df1b0983 v1 | 本体×IDD 联动分析-ONTIDD-mecrdt(quality)\n    本体 ont-idd-mecrdt R-BOUND 克重窗 32.15~32.85;IDD run 13b1ec47 快速筛查完成"
+    },
+    {
+      "id": "R1",
+      "name": "kb_agent 异步入库(经 HITL 批准)返回 task_id",
+      "pass": true,
+      "detail": "approvals=1 已提交知识库异步任务(后台执行中,无需等待):\ntask_id=kbt_mvmecwwn_d4b70242\n完成后平台会自动回执到你的信箱并唤醒你;空闲时也可调用 kb_agent_status(task_id, wait_seconds=120) 等待并获取结果。"
+    },
+    {
+      "id": "R2",
+      "name": "入库任务到达终态且失败可归因外部(RAG 侧权限/超时;平台治理链正常)",
+      "pass": true,
+      "detail": "done=false external=true 任务 kbt_mvmecwwn_d4b70242 状态:failed\nagent turn timed out after 540000ms before a final result frame"
+    },
+    {
+      "id": "R2b",
+      "name": "RAG 服务写读直连:经验写入+检索命中本体锚点",
+      "pass": true,
+      "detail": "kb=3aea5973-1d8 write={\"success\":true,\"experience\":{\"id\":\"exp-212356a6475c\",\"title\":\"本体规则 R-BOUND 联动锚点 ONTIDD-mecrdt\",\"pat search={\"success\":true,\"count\":9,\"query\":\"R-BOUND 克重窗 ONTIDD-mecrdt\",\"experiences\":[{\"id\":\"exp-212356a6475c\",\"title\":\"本体规则 R-BOUND 联动锚点 ONTIDD-mecr"
+    },
+    {
+      "id": "R2c",
+      "name": "平台 rag-bridge /search 直连 RAG two-stage 检索",
+      "pass": true,
+      "detail": "total=36 err="
+    },
+    {
+      "id": "R3",
+      "name": "检索任务受理(平台→知识库 Agent 通道)",
+      "pass": true,
+      "detail": "已提交知识库异步任务(后台执行中,无需等待):\ntask_id=kbt_mvmeonvt_9a6d4a30\n完成后平台会自动回执到你的信箱并唤醒你;空闲时也可调用 kb_agent_status(task_id, wait_seconds=120) 等待并获取结果。"
+    },
+    {
+      "id": "R4",
+      "name": "kb_agent_status 状态查询往返(异步任务可跟踪)",
+      "pass": true,
+      "detail": "任务 kbt_mvmeonvt_9a6d4a30 仍在后台执行中(running,已等待 120s)。稍后再次查询;完成后平台也会自动回执。"
+    },
+    {
+      "id": "U1",
+      "name": "/ontology 六 tab 渲染",
+      "pass": true,
+      "detail": "总览|实体与关系|约束规则|语义绑定|版本与发布|编译预览"
+    },
+    {
+      "id": "U2",
+      "name": "/ontology 版本 tab 含本轮 v1 台账",
+      "pass": true,
+      "detail": "bodyLen=547"
+    },
+    {
+      "id": "U3",
+      "name": "/ontology 图/关系 tab 有实体渲染",
+      "pass": true,
+      "detail": "rows=5"
+    },
+    {
+      "id": "U4",
+      "name": "/plugins 诊断面板挂载",
+      "pass": true,
+      "detail": "len=1894"
+    },
+    {
+      "id": "U5",
+      "name": "/analysis 台账渲染含本轮联动分析",
+      "pass": true,
+      "detail": "len=1666 marker=true"
+    },
+    {
+      "id": "U6",
+      "name": "产线/数采/优化/建模四页实机渲染正常",
+      "pass": true,
+      "detail": "dcw:len=4203,errs=0 daq:len=8790,errs=0 optimizer:len=4299,errs=0 aml:len=4231,errs=0"
+    },
+    {
+      "id": "U7",
+      "name": "全程无未捕获 pageerror",
+      "pass": true,
+      "detail": ""
+    }
+  ]
+}

@@ -17,7 +17,7 @@ import type { ToolRefKind as _RefKind } from './tool-reference-kinds'
 export type { ToolRefKind } from './tool-reference-kinds'
 
 /** 链式引用类别(经谱系回溯判定归属) */
-export type ToolChainKind = 'dataset' | 'job' | 'model' | 'plan' | 'scene' | 'binding' | 'run' | 'recommendation'
+export type ToolChainKind = 'dataset' | 'job' | 'model' | 'plan' | 'scene' | 'binding' | 'run' | 'recommendation' | 'ontology_draft' | 'ontology_version'
 
 export interface ToolRefRule {
   param: string

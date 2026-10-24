@@ -19,6 +19,7 @@ import { getToolApprovals, normalizeRecipeProposeDecision } from '@/server/servi
 import { assertCanDecideHitlChannel, snapshotOfRow } from '@/server/services/workshop/agents/hitl-decision'
 import { audit } from '@/server/services/workshop/ops/ops'
 import { decideOptimizerDispatch, isOptimizerDispatchCard } from '@/server/services/workshop/optimization/dispatch.service'
+import { isProfileAdoptCard, decideProfileAdoption } from '@/server/services/workshop/optimization/profile-adopt.service'
 
 export default defineApiHandler(async (event) => {
   const user = resolveUser(event)
@@ -63,6 +64,21 @@ export default defineApiHandler(async (event) => {
 
   // SW5/D13 单一咽喉:optimizer-recipe:* 卡一律走 dispatch 链(八项重验→抢占→写→回读→审计)。
   // 业务拒绝 {approved:false,code,comment} 在咽喉内已 decide() 落定;此处不再走通用 decide。
+  // OW-adopt 单一咽喉:optimizer-profile:* 卡 → 采纳裁决(批准=发布+重绑)
+  if (pending && isProfileAdoptCard(pending.nodeId)) {
+    const result = await decideProfileAdoption({
+      cardId: id,
+      nodeId: pending.nodeId,
+      approved: normalized.approved,
+      comment,
+      actingUser: user ? { id: user.id, name: user.name ?? user.id } : { id: 'system' },
+      via: 'decide-endpoint',
+    })
+    if (result.handled) {
+      return { via: 'profile-adopt', result: { approved: result.approved, comment: result.comment, code: result.code, published: result.published } }
+    }
+  }
+
   if (pending && isOptimizerDispatchCard(pending.nodeId)) {
     const result = await decideOptimizerDispatch({
       cardId: id,

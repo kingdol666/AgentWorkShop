@@ -80,6 +80,8 @@ export function initWorkshopDb(db: DatabaseSync): void {
   migrateDualDriveColumns(db)
   // v31(WP3):agent token 轮换宽限列(prev_token/prev_token_until;既有库补列)
   migrateAgentTokenGraceColumns(db)
+  // v32(ONT):Profile 冻结本体引用摘要(缺省 [] = 无本体约束域;只前滚,不回填)
+  migrateAddColumn(db, 'optimizer_profiles', 'ontology_refs_json', 'TEXT NOT NULL DEFAULT \'[]\'')
   seedDefaultWorkshopData(db)
 }
 

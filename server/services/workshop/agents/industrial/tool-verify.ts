@@ -168,7 +168,16 @@ function chainDeny(faces: ToolRefFaces, toolName: string, args: Record<string, u
   ], faces, hint, { param, value: id, lineId })
 }
 
-type ChainKind = 'dataset' | 'job' | 'model' | 'plan' | 'scene' | 'binding' | 'run' | 'recommendation'
+function draftLineId(draftJson: string): string {
+  try {
+    return (JSON.parse(draftJson || '{}') as { lineId?: string }).lineId ?? ''
+  }
+  catch {
+    return ''
+  }
+}
+
+type ChainKind = 'dataset' | 'job' | 'model' | 'plan' | 'scene' | 'binding' | 'run' | 'recommendation' | 'ontology_draft' | 'ontology_version'
 
 /** 优化运行/建议 → 所属 Agent(经 binding 反查);不存在返回 null(交工具兜底)。 */
 function optimizerOwnership(id: string, kind: 'run' | 'recommendation'): { agentId: string } | null {
@@ -208,6 +217,27 @@ function chainLineOf(kind: ChainKind, id: string, args: Record<string, unknown>)
   if (kind === 'plan') {
     const p = getTrainingPlan(id)
     return p ? { lineId: p.lineId, createdBy: '' } : null
+  }
+  // 本体草稿:归属 = 草稿属主(agent 起草时 owner=agentId);取不到 → 交工具自身
+  if (kind === 'ontology_draft') {
+    const row = rt.db.prepare('SELECT owner_user_id AS ownerUserId, draft_json AS draftJson FROM ontology_drafts WHERE id = ?').get(id) as { ownerUserId?: string, draftJson?: string } | undefined
+    if (!row) return null
+    let lineId = draftLineId(row.draftJson ?? '')
+    if (!lineId) {
+      const v = rt.db.prepare('SELECT line_id AS lineId FROM ontology_versions WHERE id = (SELECT ontology_id FROM ontology_drafts WHERE id = ?) ORDER BY version DESC LIMIT 1').get(id) as { lineId?: string } | undefined
+      lineId = v?.lineId ?? ''
+    }
+    return { lineId, createdBy: row.ownerUserId ?? '' }
+  }
+  // 本体版本:id@version 或 (ontology_id, version);归属 = 版本产线
+  if (kind === 'ontology_version') {
+    const ontologyId = id
+    const wantsVersion = args.version !== undefined ? Number(args.version) : Number.NaN
+    const row = Number.isInteger(wantsVersion)
+      ? rt.db.prepare('SELECT line_id AS lineId FROM ontology_versions WHERE id = ? AND version = ?').get(ontologyId, wantsVersion) as { lineId?: string } | undefined
+      : rt.db.prepare(`SELECT line_id AS lineId FROM ontology_versions WHERE id = ? AND status = 'published' ORDER BY version DESC LIMIT 1`).get(ontologyId) as { lineId?: string } | undefined
+    if (!row) return null
+    return { lineId: row.lineId ?? '', createdBy: '' }
   }
   // scene:需带版本(scene_id 多版本并存);取不到记录 → 交工具自身
   const version = String(args.scene_version ?? '').trim()
@@ -372,7 +402,7 @@ export function verifyToolReferences(agentId: string, toolName: string, args: Re
       const mine = row.createdBy === agentId
       const readable = !!row.lineId && faces.readableLines.has(row.lineId)
       if (!mine && !readable) {
-        const label = { dataset: '数据集', job: '训练作业', model: '模型', plan: '建模任务', scene: '场景' }[chain.kind]
+        const label = { dataset: '数据集', job: '训练作业', model: '模型', plan: '建模任务', scene: '场景', ontology_draft: '本体草稿', ontology_version: '本体版本' }[chain.kind]
         return chainDeny(faces, toolName, args, chain.param, id, label, row.lineId)
       }
     }
