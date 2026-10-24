@@ -1,0 +1,68 @@
+\section{Engineering Interpretation}
+\label{sec:limits}
+The evidence addresses the three distinctions motivating the design.
+Profile tests exercise production-scoped authority; admission ablation
+isolates the pre-write interval from readback. The publish-only challenge
+separates transport acceptance from endpoint confirmation, and paired
+trajectories link interventions to observations and retained recipes.
+These results support an inspectable execution contract on the exercised
+routes.
+
+An LLM, scripted policy, or deterministic controller supplies a candidate
+through its authorized interface; the platform applies the execution
+contract. Process reuse changes the signal map, objective, and guards while
+retaining production context and execution records. In Q6, observed
+acceptance of approved trials precedes retention of the recipe version.
+
+Human participation is represented through explicit authority and
+attributed decisions. This supports inspection of what an approver
+authorized and what evidence the proposer later used. Automation research
+distinguishes such workflow structure from operator comprehension,
+complacency, and allocation of responsibility
+\cite{parasuramanmanzey2010complacency,parasuraman2000model,bainbridge1983ironies}.
+The server-side boundary resolves execution authority independently of
+prompts and retrieved documents \cite{greshake2023injection,liu2024pinjection}.
+Deployment combines this boundary with credential management, endpoint
+security, and IT/OT separation \cite{iec62443-3-3}. The supervisory layer
+coexists with independently engineered PLC interlocks and safety
+instrumented systems; IEC~61511 governs the latter's process-safety
+lifecycle \cite{iec61511}.
+
+\noindent\textit{Experimental scope.}
+The process evidence uses accelerated simulators, scripted approvals, and
+sequential trajectories. Q1--Q4 cover the historical direct-node interface;
+current profile and composition tests cover software behavior; Q6 covers
+one recipe trajectory. No single current-version end-to-end study jointly
+varies strategy, protocol, and production context, and a complete current
+AML-exploration control--response trial is not archived. Q6's observed
+guards, snapshots, and cadence settings
+are specified in Section~\ref{sec:recipeexperiment}. These evidence units
+establish the exercised
+mechanisms without estimating comparative optimization benefit, fault
+frequency, human performance, hard real-time behavior, or physical transfer.
+Matched initial states, repeated independent runs, and a fixed-policy or
+SCADA comparator would support those further estimates. Established process
+benchmarks such as Tennessee Eastman \cite{downs1993tep} provide an
+additional setting for that evaluation.
+
+\section{Conclusion}
+\label{sec:conclusion}
+The proposed framework connects replaceable industrial agent strategies
+to production-scoped authority, graded command evidence, and distinct
+node/recipe records. Admission and confirmation experiments demonstrate the
+separation of pre-write permission from post-write evidence. Controller and
+process missions exercise strategy and configuration reuse, while the
+injection-molding trajectory links approved trials to an accepted recipe.
+Together, these simulator-backed results support a common execution and
+evidence contract for inspectable industrial agent supervision.
+
+\noindent\textit{Data availability and AI assistance.}
+Run archives, original Q2 engine logs, replay entries, configuration notes,
+and claim-to-source mappings accompany the separate anonymous experimental
+evidence bundle. The manuscript source package contains plotting sources
+and figure mappings. An OpenAI language model assisted
+with manuscript organization, language revision, and plotting-code
+preparation. OpenAI image generation drafted the compositions of
+Figs.~\ref{fig:arch} and~\ref{fig:runtime}; the final artwork was redrawn
+as editable Python-generated vectors and checked against the implementation.
+The authors remain responsible for the final submission.

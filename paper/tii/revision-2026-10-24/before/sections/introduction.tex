@@ -1,0 +1,60 @@
+\section{Introduction}
+\IEEEPARstart{L}{arge} language model (LLM) agents increasingly participate in
+industrial operation: they generate operator-reviewed OPC UA control sequences
+\cite{huang2026made}, invoke factory skills over tool protocols
+\cite{koehle2026llmdriven}, coordinate shop-floor tasks
+\cite{lim2025llmenabled,zhao2026shopfloor}, and schedule a simulated
+robot-operated line \cite{waseem2026pretrained}. Their usefulness depends on
+connecting task reasoning to the equipment and production context in which
+a proposal will be executed. That connection must express who may change a
+parameter, which product and recipe are active, what was actually commanded,
+and how the process responded.
+
+Consider an injection-molding task that asks an agent to bring part weight
+into specification. The agent may consult recent measurements, diagnose
+insufficient packing, and propose higher holding pressure. Executing this
+proposal also requires a writable signal mapping, applicable parameter
+limits, an authorized production scope, and the required approval. The
+subsequent record must distinguish a pressure request, its endpoint
+confirmation, and the measured weight. These are different events with
+different evidence, even when one task spans the complete operation.
+
+This information spans agent identity, industrial I/O, production
+management, and process history. Reconstructing it separately inside every
+agent application couples execution policy to the selected reasoning
+engine and obscures how an intervention relates to a running batch. We
+therefore address the following systems question: how can an industrial
+agent platform retain a common execution and evidence contract when the
+proposal strategy, equipment protocol, and production context change?
+
+We present a governed supervisory execution framework connecting agent
+teams to semantic data-acquisition (DAQ) and write-control (DCW) nodes.
+A deterministic execution boundary sits beneath the replaceable strategy
+layer. The strategy acquires evidence, proposes a change, and interprets
+observations. The platform resolves authority, applies source-specific
+limits and required approval, dispatches commands, and grades confirmation.
+Line--product--recipe--run objects supply production context.
+Separate task, intervention, and batch records then connect the original
+intent to commanded controls and observed outputs.
+
+The contribution is an integration of production-scoped authority, graded
+command confirmation, and route-specific observation records into a common
+execution-and-evidence contract for industrial agent supervision. Its
+design and evaluation comprise:
+\begin{enumerate}
+\item a capability-based architecture joining channel identity, semantic
+industrial nodes, protocol drivers, and line--product--recipe--run context;
+\item source-specific execution mechanisms combining admission, approval,
+graded command confirmation, attributed records, and separately governed
+compensation;
+\item a current implementation that separates observation, model training,
+bounded optimization exploration, and operational recipe execution through
+server-side channel profiles; and
+\item an evaluation linking commanded controls to observed outputs through
+admission ablation, protocol and confirmation drills, process missions,
+repeated regression runs, and an injection-molding recipe trajectory.
+\end{enumerate}
+
+Sections~\ref{sec:arch}--\ref{sec:mech} explain the architecture and execution
+mechanisms; Sections~\ref{sec:eval}--\ref{sec:limits} evaluate and interpret
+their simulator-backed evidence.

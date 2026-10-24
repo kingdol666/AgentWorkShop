@@ -1,0 +1,664 @@
+{
+  "revision": "2026-10-24",
+  "pages": 10,
+  "base_evidence_package": {
+    "name": "IEEE-TII-anonymous-evidence.zip",
+    "sha256": "578a14539c6ca8e17226106f93fed302d43a83ff5eb81ea01c2a560e1f394ae3",
+    "bytes": 981848
+  },
+  "source": {
+    "name": "IEEE-TII-manuscript-source-2026-10-24.zip",
+    "sha256": "b99752bb6a848e52f805322e832d581fffaa05a0feadd2f5829a5f26c2ae08f8",
+    "bytes": 3366009,
+    "entries": 46,
+    "files": {
+      "CLAIM-EVIDENCE-LEDGER.md": "be891f045fb44fa33bf234398f7fe07dfb107b9d73cad4e86945293689ebe761",
+      "EVIDENCE-PACKAGE.txt": "d1ed2f5846be3d608f64204a632971499742d3c19670cfb7dc60ee742d9be0f4",
+      "FILE-MANIFEST.json": "422a3c7a52e606ad60993b0b599400f33763dcc6f3c6b42e357a993310bf35f1",
+      "README.md": "d7adca77fc8bb701cb739baaa96ffabdbe4f65ec37c2ce0a1fb040c136e5a510",
+      "REPRODUCIBILITY.md": "4919ae97b3ca16b8e0f60c8e62e6b3d0689630668961356652a4751c93adfb01",
+      "figure-design/README.md": "1c1953eeb9f121fa14816fcfc0a53d32741142c502ecb7b09444ee20e57dcb2b",
+      "figure-design/fig1-generated-concept.png": "14824282a0234e332f132534fc3d2d6343bf034775724da17a830410ee426812",
+      "figure-design/fig1-prompt.txt": "9abf3b177428a2cefb5b70fbfb5ac1c13057ecccbef830ef624f9143b40d30ca",
+      "figure-design/fig2-generated-concept.png": "4c84aa0ff5282af2050960bdebac9ccf8eeadb5b587caa1d5bdaa80a2b4bc3e4",
+      "figure-design/fig2-prompt.txt": "459712ea587883a68418b1e03256107cec84e9c97622b55617544a1d8da1946a",
+      "figure-source-data/source-data-governance.csv": "cd5045eb2198d1c0545b099e635091f7403e5fc44e9f70321b0eaa2e984daf99",
+      "figure-source-data/source-data-governance.json": "17ad5f3408b77a47f96e5121a119432f96e0efed9b9d8590cbd1b60fb3e8dc9e",
+      "figure-source-data/source-data-injection.csv": "b7f646059fa3f2d71db7216a6d7e903951141673e83803b645b45cd49c5ed259",
+      "figure-source-data/source-data-injection.json": "16ead5067549d9f821b2df7c800543d0d788e8f022e945b8eac793fcb9d50c92",
+      "figure-source-data/source-data-manifest.json": "cadae220750fd12121c6dad14318f73d4479f6c89ed2ca1026e9a89e6400d9c5",
+      "figure-source-data/source-data-missions-controls.csv": "cb68c7d4405d6c351b36dc7e61bce6d9ac75bcc298869065409f8ba1080a6cd8",
+      "figure-source-data/source-data-missions-outcomes.csv": "cada5f27e281e7b858dd6fa4f872335d214e44b594d5534e05409db9e73ee2c4",
+      "figure-source-data/source-data-missions.json": "4d22b75630f1b871b21bbaca3038a26f63ae9deb01c16279a5ee8a38a31bc621",
+      "figures/make-evaluation-2026.py": "beb69dd350e3dcc6a4e7c4febbdbe001eee662bb292f5d6625ddd2ca7d6b0427",
+      "figures/make-system-2026.py": "f8df0eaba0abf4eafa85a331554d6f02e1fee03cff3fef645be778021b2f54a7",
+      "main.bbl": "738e0385201bb21e565a063c859130998d8740c63574fbe251d97ee2d3dcadb5",
+      "main.pdf": "51118c0e71c486665117cd2ceb2e6622c57995a443b3c8a59cab5d60dc659028",
+      "main.tex": "d33cf45691fc1f76c49add60884384c356a26256d094f67c5f0ddc5bb3b9c104",
+      "requirements/IEEE-TII-REQUIREMENTS.md": "d613bf380da6bd8085e6484cc78dfc11ee1652eab451eedd8181197f07652ced",
+      "resources/fig-admission-hitl-2026.pdf": "3be2c9e2f400769f67b86c864c1299ab8338499bf51fc6788fa9b0bb7a65e63c",
+      "resources/fig-admission-hitl-2026.svg": "0627dc4b82d8c20e1c69d75726ff3a9bdbafa11c8ce6cc5f5b937e31cccf5ea3",
+      "resources/fig-architecture-2026.eps": "8798a48c2d356746cb2ad5ea79ffda6d0bf43d0fb43e68aadbac0b925f737e14",
+      "resources/fig-architecture-2026.pdf": "d2f7f3a9b4283559ac1899194c07e4769de82e620d633b2ad434361860876de4",
+      "resources/fig-architecture-2026.svg": "1340e9e233ceb992c48c938aecc412f5bb0cd9886da85664d23c7f4cf7edf1d4",
+      "resources/fig-governance-timeline.pdf": "1147f2d1deac1fd66852d44256dfb7ba2af4d964b2ddf603bbf66d3c2ab7a4cf",
+      "resources/fig-governance-timeline.svg": "b8158e3f270305d83fed36e1ff6bb331f1925489fce09a77557ecc37443ad8f9",
+      "resources/fig-injection-controls.pdf": "b3f818a5b0a77cf7917a1c103d1e219a1bd5c81c31685cc4e8861b0d930b2913",
+      "resources/fig-injection-controls.svg": "892654370bdeba1a1e1651a63c8f0528b7ecc7bae289a961aedd79470fee2bbd",
+      "resources/fig-missions-controls.pdf": "71015341734842f0c0d44759d83a22aeaabab75f000e006ebee986c2430e5ff4",
+      "resources/fig-missions-controls.svg": "eeef504620f1b5779f23982276788ba6713e31a560a74a0e98a031fcf57358e5",
+      "resources/fig-runtime-2026.eps": "babbc412fa12736bcc275c629ad9ae4ab8886e106fdac445da48b18ae960d541",
+      "resources/fig-runtime-2026.pdf": "0f28fd9b29224adc542b4cd1797b42293df4b436ba3a546ae47ac546646d670d",
+      "resources/fig-runtime-2026.svg": "4e4cce1ce32fda9e957cea25c8e2b2532569fbb23d60f982e255439174b9ddad",
+      "resources/refs.bib": "78b5cea7192492302beb84daa7b67ec59ba93d9e908224a057a5aca017a2b810",
+      "resources/results-macros.tex": "ea537a79f5ad245e950daf2bb468ee2dcd92b76dfdbe19d5d334fb8f96c5b4b5",
+      "sections/discussion.tex": "06c9c2d44bae5a2727e3fb8f366bf3c3a6e9a8db494e921205e18cec731344ea",
+      "sections/evaluation.tex": "48a38d65dbf6d84cf63ec087ef11db1f25e488fbc225d879e1de9b749f0afe98",
+      "sections/introduction.tex": "5ea0005a61f828761042dbc67ab5432176953959df026c0501b023fdd63edc30",
+      "sections/mechanisms.tex": "66c6579a5e05b0af927bc04354ed7c5519f4e20030b6b0e7f5267477d342ddac",
+      "sections/related.tex": "00b6714afd0fd92ab86aa34b4ef5068a491985341d6ab4e058a456a5d4a43ba7",
+      "sections/system.tex": "a3b91ed949743c7a13d8420d785c9dbb7483e2a3f1c7449291d90202334345f5"
+    },
+    "original_and_delivered": {
+      "main.tex": {
+        "original_sha256": "d33cf45691fc1f76c49add60884384c356a26256d094f67c5f0ddc5bb3b9c104",
+        "delivered_sha256": "d33cf45691fc1f76c49add60884384c356a26256d094f67c5f0ddc5bb3b9c104",
+        "bytes_original": 4918,
+        "bytes_delivered": 4918,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "sections/discussion.tex": {
+        "original_sha256": "06c9c2d44bae5a2727e3fb8f366bf3c3a6e9a8db494e921205e18cec731344ea",
+        "delivered_sha256": "06c9c2d44bae5a2727e3fb8f366bf3c3a6e9a8db494e921205e18cec731344ea",
+        "bytes_original": 4097,
+        "bytes_delivered": 4097,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "sections/evaluation.tex": {
+        "original_sha256": "48a38d65dbf6d84cf63ec087ef11db1f25e488fbc225d879e1de9b749f0afe98",
+        "delivered_sha256": "48a38d65dbf6d84cf63ec087ef11db1f25e488fbc225d879e1de9b749f0afe98",
+        "bytes_original": 19182,
+        "bytes_delivered": 19182,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "sections/introduction.tex": {
+        "original_sha256": "5ea0005a61f828761042dbc67ab5432176953959df026c0501b023fdd63edc30",
+        "delivered_sha256": "5ea0005a61f828761042dbc67ab5432176953959df026c0501b023fdd63edc30",
+        "bytes_original": 3260,
+        "bytes_delivered": 3260,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "sections/mechanisms.tex": {
+        "original_sha256": "66c6579a5e05b0af927bc04354ed7c5519f4e20030b6b0e7f5267477d342ddac",
+        "delivered_sha256": "66c6579a5e05b0af927bc04354ed7c5519f4e20030b6b0e7f5267477d342ddac",
+        "bytes_original": 9216,
+        "bytes_delivered": 9216,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "sections/related.tex": {
+        "original_sha256": "00b6714afd0fd92ab86aa34b4ef5068a491985341d6ab4e058a456a5d4a43ba7",
+        "delivered_sha256": "00b6714afd0fd92ab86aa34b4ef5068a491985341d6ab4e058a456a5d4a43ba7",
+        "bytes_original": 4838,
+        "bytes_delivered": 4838,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "sections/system.tex": {
+        "original_sha256": "a3b91ed949743c7a13d8420d785c9dbb7483e2a3f1c7449291d90202334345f5",
+        "delivered_sha256": "a3b91ed949743c7a13d8420d785c9dbb7483e2a3f1c7449291d90202334345f5",
+        "bytes_original": 8395,
+        "bytes_delivered": 8395,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "main.pdf": {
+        "original_sha256": "51118c0e71c486665117cd2ceb2e6622c57995a443b3c8a59cab5d60dc659028",
+        "delivered_sha256": "51118c0e71c486665117cd2ceb2e6622c57995a443b3c8a59cab5d60dc659028",
+        "bytes_original": 498484,
+        "bytes_delivered": 498484,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "main.bbl": {
+        "original_sha256": "738e0385201bb21e565a063c859130998d8740c63574fbe251d97ee2d3dcadb5",
+        "delivered_sha256": "738e0385201bb21e565a063c859130998d8740c63574fbe251d97ee2d3dcadb5",
+        "bytes_original": 9950,
+        "bytes_delivered": 9950,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "resources/fig-missions-controls.pdf": {
+        "original_sha256": "71015341734842f0c0d44759d83a22aeaabab75f000e006ebee986c2430e5ff4",
+        "delivered_sha256": "71015341734842f0c0d44759d83a22aeaabab75f000e006ebee986c2430e5ff4",
+        "bytes_original": 53341,
+        "bytes_delivered": 53341,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "resources/fig-governance-timeline.pdf": {
+        "original_sha256": "1147f2d1deac1fd66852d44256dfb7ba2af4d964b2ddf603bbf66d3c2ab7a4cf",
+        "delivered_sha256": "1147f2d1deac1fd66852d44256dfb7ba2af4d964b2ddf603bbf66d3c2ab7a4cf",
+        "bytes_original": 41337,
+        "bytes_delivered": 41337,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "resources/fig-injection-controls.pdf": {
+        "original_sha256": "b3f818a5b0a77cf7917a1c103d1e219a1bd5c81c31685cc4e8861b0d930b2913",
+        "delivered_sha256": "b3f818a5b0a77cf7917a1c103d1e219a1bd5c81c31685cc4e8861b0d930b2913",
+        "bytes_original": 44441,
+        "bytes_delivered": 44441,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "resources/fig-runtime-2026.pdf": {
+        "original_sha256": "0f28fd9b29224adc542b4cd1797b42293df4b436ba3a546ae47ac546646d670d",
+        "delivered_sha256": "0f28fd9b29224adc542b4cd1797b42293df4b436ba3a546ae47ac546646d670d",
+        "bytes_original": 44907,
+        "bytes_delivered": 44907,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "resources/fig-admission-hitl-2026.pdf": {
+        "original_sha256": "3be2c9e2f400769f67b86c864c1299ab8338499bf51fc6788fa9b0bb7a65e63c",
+        "delivered_sha256": "3be2c9e2f400769f67b86c864c1299ab8338499bf51fc6788fa9b0bb7a65e63c",
+        "bytes_original": 51130,
+        "bytes_delivered": 51130,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "resources/fig-architecture-2026.pdf": {
+        "original_sha256": "d2f7f3a9b4283559ac1899194c07e4769de82e620d633b2ad434361860876de4",
+        "delivered_sha256": "d2f7f3a9b4283559ac1899194c07e4769de82e620d633b2ad434361860876de4",
+        "bytes_original": 42039,
+        "bytes_delivered": 42039,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "resources/fig-missions-controls.svg": {
+        "original_sha256": "eeef504620f1b5779f23982276788ba6713e31a560a74a0e98a031fcf57358e5",
+        "delivered_sha256": "eeef504620f1b5779f23982276788ba6713e31a560a74a0e98a031fcf57358e5",
+        "bytes_original": 62570,
+        "bytes_delivered": 62570,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "resources/fig-governance-timeline.svg": {
+        "original_sha256": "b8158e3f270305d83fed36e1ff6bb331f1925489fce09a77557ecc37443ad8f9",
+        "delivered_sha256": "b8158e3f270305d83fed36e1ff6bb331f1925489fce09a77557ecc37443ad8f9",
+        "bytes_original": 13778,
+        "bytes_delivered": 13778,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "resources/fig-injection-controls.svg": {
+        "original_sha256": "892654370bdeba1a1e1651a63c8f0528b7ecc7bae289a961aedd79470fee2bbd",
+        "delivered_sha256": "892654370bdeba1a1e1651a63c8f0528b7ecc7bae289a961aedd79470fee2bbd",
+        "bytes_original": 27781,
+        "bytes_delivered": 27781,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "resources/fig-runtime-2026.svg": {
+        "original_sha256": "4e4cce1ce32fda9e957cea25c8e2b2532569fbb23d60f982e255439174b9ddad",
+        "delivered_sha256": "4e4cce1ce32fda9e957cea25c8e2b2532569fbb23d60f982e255439174b9ddad",
+        "bytes_original": 13169,
+        "bytes_delivered": 13169,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "resources/fig-admission-hitl-2026.svg": {
+        "original_sha256": "0627dc4b82d8c20e1c69d75726ff3a9bdbafa11c8ce6cc5f5b937e31cccf5ea3",
+        "delivered_sha256": "0627dc4b82d8c20e1c69d75726ff3a9bdbafa11c8ce6cc5f5b937e31cccf5ea3",
+        "bytes_original": 13244,
+        "bytes_delivered": 13244,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "resources/fig-architecture-2026.svg": {
+        "original_sha256": "1340e9e233ceb992c48c938aecc412f5bb0cd9886da85664d23c7f4cf7edf1d4",
+        "delivered_sha256": "1340e9e233ceb992c48c938aecc412f5bb0cd9886da85664d23c7f4cf7edf1d4",
+        "bytes_original": 12838,
+        "bytes_delivered": 12838,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "resources/fig-architecture-2026.eps": {
+        "original_sha256": "8798a48c2d356746cb2ad5ea79ffda6d0bf43d0fb43e68aadbac0b925f737e14",
+        "delivered_sha256": "8798a48c2d356746cb2ad5ea79ffda6d0bf43d0fb43e68aadbac0b925f737e14",
+        "bytes_original": 145585,
+        "bytes_delivered": 145585,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "resources/fig-runtime-2026.eps": {
+        "original_sha256": "babbc412fa12736bcc275c629ad9ae4ab8886e106fdac445da48b18ae960d541",
+        "delivered_sha256": "babbc412fa12736bcc275c629ad9ae4ab8886e106fdac445da48b18ae960d541",
+        "bytes_original": 161665,
+        "bytes_delivered": 161665,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "resources/refs.bib": {
+        "original_sha256": "78b5cea7192492302beb84daa7b67ec59ba93d9e908224a057a5aca017a2b810",
+        "delivered_sha256": "78b5cea7192492302beb84daa7b67ec59ba93d9e908224a057a5aca017a2b810",
+        "bytes_original": 12516,
+        "bytes_delivered": 12516,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "resources/results-macros.tex": {
+        "original_sha256": "ea537a79f5ad245e950daf2bb468ee2dcd92b76dfdbe19d5d334fb8f96c5b4b5",
+        "delivered_sha256": "ea537a79f5ad245e950daf2bb468ee2dcd92b76dfdbe19d5d334fb8f96c5b4b5",
+        "bytes_original": 7131,
+        "bytes_delivered": 7131,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "figures/make-system-2026.py": {
+        "original_sha256": "f8df0eaba0abf4eafa85a331554d6f02e1fee03cff3fef645be778021b2f54a7",
+        "delivered_sha256": "f8df0eaba0abf4eafa85a331554d6f02e1fee03cff3fef645be778021b2f54a7",
+        "bytes_original": 17468,
+        "bytes_delivered": 17468,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "figures/make-evaluation-2026.py": {
+        "original_sha256": "beb69dd350e3dcc6a4e7c4febbdbe001eee662bb292f5d6625ddd2ca7d6b0427",
+        "delivered_sha256": "beb69dd350e3dcc6a4e7c4febbdbe001eee662bb292f5d6625ddd2ca7d6b0427",
+        "bytes_original": 19172,
+        "bytes_delivered": 19172,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "README.md": {
+        "original_sha256": "d7adca77fc8bb701cb739baaa96ffabdbe4f65ec37c2ce0a1fb040c136e5a510",
+        "delivered_sha256": "d7adca77fc8bb701cb739baaa96ffabdbe4f65ec37c2ce0a1fb040c136e5a510",
+        "bytes_original": 4507,
+        "bytes_delivered": 4507,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "REPRODUCIBILITY.md": {
+        "original_sha256": "4919ae97b3ca16b8e0f60c8e62e6b3d0689630668961356652a4751c93adfb01",
+        "delivered_sha256": "4919ae97b3ca16b8e0f60c8e62e6b3d0689630668961356652a4751c93adfb01",
+        "bytes_original": 16823,
+        "bytes_delivered": 16823,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "CLAIM-EVIDENCE-LEDGER.md": {
+        "original_sha256": "be891f045fb44fa33bf234398f7fe07dfb107b9d73cad4e86945293689ebe761",
+        "delivered_sha256": "be891f045fb44fa33bf234398f7fe07dfb107b9d73cad4e86945293689ebe761",
+        "bytes_original": 6454,
+        "bytes_delivered": 6454,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "figure-source-data/source-data-governance.json": {
+        "original_sha256": "e4d1b8adf22f74f8cb915eef1457de7ae7882fd65d665899ce99cbf3885dc52c",
+        "delivered_sha256": "17ad5f3408b77a47f96e5121a119432f96e0efed9b9d8590cbd1b60fb3e8dc9e",
+        "bytes_original": 6370,
+        "bytes_delivered": 6198,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "figure-source-data/source-data-injection.json": {
+        "original_sha256": "460ac5afe322d7db334a10992f4638ec0c83260b36a5b2d451deb4f2bf50f55e",
+        "delivered_sha256": "16ead5067549d9f821b2df7c800543d0d788e8f022e945b8eac793fcb9d50c92",
+        "bytes_original": 3149,
+        "bytes_delivered": 3052,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "figure-source-data/source-data-manifest.json": {
+        "original_sha256": "3b814b3bd8b0c48ef260bc7742424c3a9402b2d482954119934736cfe69b305b",
+        "delivered_sha256": "cadae220750fd12121c6dad14318f73d4479f6c89ed2ca1026e9a89e6400d9c5",
+        "bytes_original": 8008,
+        "bytes_delivered": 7753,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "figure-source-data/source-data-missions.json": {
+        "original_sha256": "68cb99a8629174deae9ddcb11f101b91c29473359427bb3490b95d6e00ba832e",
+        "delivered_sha256": "4d22b75630f1b871b21bbaca3038a26f63ae9deb01c16279a5ee8a38a31bc621",
+        "bytes_original": 80578,
+        "bytes_delivered": 78163,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "figure-source-data/source-data-governance.csv": {
+        "original_sha256": "cd5045eb2198d1c0545b099e635091f7403e5fc44e9f70321b0eaa2e984daf99",
+        "delivered_sha256": "cd5045eb2198d1c0545b099e635091f7403e5fc44e9f70321b0eaa2e984daf99",
+        "bytes_original": 3421,
+        "bytes_delivered": 3421,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "figure-source-data/source-data-injection.csv": {
+        "original_sha256": "b7f646059fa3f2d71db7216a6d7e903951141673e83803b645b45cd49c5ed259",
+        "delivered_sha256": "b7f646059fa3f2d71db7216a6d7e903951141673e83803b645b45cd49c5ed259",
+        "bytes_original": 1085,
+        "bytes_delivered": 1085,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "figure-source-data/source-data-missions-controls.csv": {
+        "original_sha256": "cb68c7d4405d6c351b36dc7e61bce6d9ac75bcc298869065409f8ba1080a6cd8",
+        "delivered_sha256": "cb68c7d4405d6c351b36dc7e61bce6d9ac75bcc298869065409f8ba1080a6cd8",
+        "bytes_original": 3759,
+        "bytes_delivered": 3759,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "figure-source-data/source-data-missions-outcomes.csv": {
+        "original_sha256": "cada5f27e281e7b858dd6fa4f872335d214e44b594d5534e05409db9e73ee2c4",
+        "delivered_sha256": "cada5f27e281e7b858dd6fa4f872335d214e44b594d5534e05409db9e73ee2c4",
+        "bytes_original": 3513,
+        "bytes_delivered": 3513,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "requirements/IEEE-TII-REQUIREMENTS.md": {
+        "original_sha256": "d613bf380da6bd8085e6484cc78dfc11ee1652eab451eedd8181197f07652ced",
+        "delivered_sha256": "d613bf380da6bd8085e6484cc78dfc11ee1652eab451eedd8181197f07652ced",
+        "bytes_original": 15137,
+        "bytes_delivered": 15137,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "figure-design/fig1-prompt.txt": {
+        "original_sha256": "9abf3b177428a2cefb5b70fbfb5ac1c13057ecccbef830ef624f9143b40d30ca",
+        "delivered_sha256": "9abf3b177428a2cefb5b70fbfb5ac1c13057ecccbef830ef624f9143b40d30ca",
+        "bytes_original": 3011,
+        "bytes_delivered": 3011,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "figure-design/fig2-prompt.txt": {
+        "original_sha256": "459712ea587883a68418b1e03256107cec84e9c97622b55617544a1d8da1946a",
+        "delivered_sha256": "459712ea587883a68418b1e03256107cec84e9c97622b55617544a1d8da1946a",
+        "bytes_original": 2572,
+        "bytes_delivered": 2572,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "figure-design/fig1-generated-concept.png": {
+        "original_sha256": "14824282a0234e332f132534fc3d2d6343bf034775724da17a830410ee426812",
+        "delivered_sha256": "14824282a0234e332f132534fc3d2d6343bf034775724da17a830410ee426812",
+        "bytes_original": 1251247,
+        "bytes_delivered": 1251247,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "figure-design/fig2-generated-concept.png": {
+        "original_sha256": "4c84aa0ff5282af2050960bdebac9ccf8eeadb5b587caa1d5bdaa80a2b4bc3e4",
+        "delivered_sha256": "4c84aa0ff5282af2050960bdebac9ccf8eeadb5b587caa1d5bdaa80a2b4bc3e4",
+        "bytes_original": 1521449,
+        "bytes_delivered": 1521449,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      }
+    },
+    "privacy_scan": {
+      "passed": true,
+      "entries": 46,
+      "scope": "explicit identities, local drive/user paths, identifying repository URLs; PDF text/metadata and PNG metadata"
+    }
+  },
+  "evidence": {
+    "name": "IEEE-TII-anonymous-evidence-2026-10-24.zip",
+    "sha256": "0689da60439882328baaa7e196983e485aff1f602a3c19577d2d924d7c3cebd3",
+    "bytes": 1075198,
+    "entries": 213,
+    "extension_original_and_delivered": {
+      "revision-2026-10-24/R11/scenarios.json": {
+        "original_sha256": "d0af4931cf36a78455af81f993170326394a8636493c2ac5e282a5dd01584048",
+        "delivered_sha256": "88835e77d8e8e1a0b6e44cb3a5a954dd42800cdf0b6bb3da9c4f2f52be48bb45",
+        "bytes_original": 25859,
+        "bytes_delivered": 25860,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-24/R11/scenarios-benchmark.md": {
+        "original_sha256": "c94b7a7045fe1ec8a9da814e12c0034299f9579f85a9f29f6038fb0e80824123",
+        "delivered_sha256": "c94b7a7045fe1ec8a9da814e12c0034299f9579f85a9f29f6038fb0e80824123",
+        "bytes_original": 5150,
+        "bytes_delivered": 5150,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-24/R11/scenarios-mission-injection.log": {
+        "original_sha256": "bb6e5baefa3bf7eb60c7ea82b773bbbe02ac5ec805937082beb3dddffa3b08a3",
+        "delivered_sha256": "bb6e5baefa3bf7eb60c7ea82b773bbbe02ac5ec805937082beb3dddffa3b08a3",
+        "bytes_original": 3249,
+        "bytes_delivered": 3249,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-24/R12/summary.json": {
+        "original_sha256": "fb64db8359e5651794146ff2c716e91b5e95e3797e3afc9bde934cdc81b59bc8",
+        "delivered_sha256": "7b6f4836e7f97d35f0832b0d8cbd93d186e9a3d83b7bcb075c728652f45de202",
+        "bytes_original": 5068,
+        "bytes_delivered": 5069,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-24/software/current-software-tests.log": {
+        "original_sha256": "cbe07aefbe5da56fda5d7d235c00f0254b916587f578cb3f7e3e686fe22c21df",
+        "delivered_sha256": "18e2e8330d7f944f1fb7b8888185210a11614963507f85163e464f4e4104aba6",
+        "bytes_original": 6832,
+        "bytes_delivered": 6775,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-24/REPRODUCIBILITY.md": {
+        "original_sha256": "4919ae97b3ca16b8e0f60c8e62e6b3d0689630668961356652a4751c93adfb01",
+        "delivered_sha256": "4919ae97b3ca16b8e0f60c8e62e6b3d0689630668961356652a4751c93adfb01",
+        "bytes_original": 16823,
+        "bytes_delivered": 16823,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-24/CLAIM-EVIDENCE-LEDGER.md": {
+        "original_sha256": "be891f045fb44fa33bf234398f7fe07dfb107b9d73cad4e86945293689ebe761",
+        "delivered_sha256": "be891f045fb44fa33bf234398f7fe07dfb107b9d73cad4e86945293689ebe761",
+        "bytes_original": 6454,
+        "bytes_delivered": 6454,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-24/source-snapshot/tests/high-risk-tool-scope.test.ts": {
+        "original_sha256": "ae2f10241f2965048f82d01994350ac307a6e90a98bf017c8df077abb7fd050f",
+        "delivered_sha256": "ae2f10241f2965048f82d01994350ac307a6e90a98bf017c8df077abb7fd050f",
+        "bytes_original": 1990,
+        "bytes_delivered": 1990,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-24/source-snapshot/tests/tool-profile-observer.test.ts": {
+        "original_sha256": "90768335ca9c4469b5c0846ad164b2ac2f9b1e72ea9c2b99eaf12534465b21b5",
+        "delivered_sha256": "90768335ca9c4469b5c0846ad164b2ac2f9b1e72ea9c2b99eaf12534465b21b5",
+        "bytes_original": 10866,
+        "bytes_delivered": 10866,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-24/source-snapshot/tests/recipe-propose.test.ts": {
+        "original_sha256": "5f594fac95cc33c76f925cba8424c986ef4d719aa3ceb8ceef9673346c1be73b",
+        "delivered_sha256": "5f594fac95cc33c76f925cba8424c986ef4d719aa3ceb8ceef9673346c1be73b",
+        "bytes_original": 14618,
+        "bytes_delivered": 14618,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-24/source-snapshot/tests/manual-approval-optimization.test.ts": {
+        "original_sha256": "6f2d6db202956d07f28a32fabb30de7d8d0c182b8a1e371b473aec243a25ba9e",
+        "delivered_sha256": "6f2d6db202956d07f28a32fabb30de7d8d0c182b8a1e371b473aec243a25ba9e",
+        "bytes_original": 8131,
+        "bytes_delivered": 8131,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-24/source-snapshot/tests/recipe-approval-snapshot.test.ts": {
+        "original_sha256": "23cad64307f845c5d5d420a6db334b2525d155df2286dd18b86274101415aebe",
+        "delivered_sha256": "23cad64307f845c5d5d420a6db334b2525d155df2286dd18b86274101415aebe",
+        "bytes_original": 10722,
+        "bytes_delivered": 10722,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-24/source-snapshot/tests/manual-approval.test.ts": {
+        "original_sha256": "5de1f835020899b6374b68854ea980c68c351bc5eaec76163ea26d3f6aeff327",
+        "delivered_sha256": "5de1f835020899b6374b68854ea980c68c351bc5eaec76163ea26d3f6aeff327",
+        "bytes_original": 4754,
+        "bytes_delivered": 4754,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-24/source-snapshot/tests/tool-approvals-choice.test.ts": {
+        "original_sha256": "73256185c56fdfac655c2f25463bc242a21ceb6dea59cf0c4c007b5ae39a983b",
+        "delivered_sha256": "73256185c56fdfac655c2f25463bc242a21ceb6dea59cf0c4c007b5ae39a983b",
+        "bytes_original": 11163,
+        "bytes_delivered": 11163,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-24/source-snapshot/tests/recipe-op-interval.test.ts": {
+        "original_sha256": "f545dff6ee5d75b8b9a7516973e858e7c1228ea5e2668561361139d415c88848",
+        "delivered_sha256": "f545dff6ee5d75b8b9a7516973e858e7c1228ea5e2668561361139d415c88848",
+        "bytes_original": 11497,
+        "bytes_delivered": 11497,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-24/source-snapshot/server/services/workshop/agents/industrial/optimization-tools.ts": {
+        "original_sha256": "9fc200b8831b1f6811bf45ef99b897be51b74f91d1d83285f8ae425f3ab8a69c",
+        "delivered_sha256": "9fc200b8831b1f6811bf45ef99b897be51b74f91d1d83285f8ae425f3ab8a69c",
+        "bytes_original": 10106,
+        "bytes_delivered": 10106,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-24/source-snapshot/server/services/workshop/agents/industrial/optimizer-tools.ts": {
+        "original_sha256": "073eedf0cb8e83f6f7b3973fd66f669bf5f06f4d63478f2486afdcc23c85d8f0",
+        "delivered_sha256": "073eedf0cb8e83f6f7b3973fd66f669bf5f06f4d63478f2486afdcc23c85d8f0",
+        "bytes_original": 8013,
+        "bytes_delivered": 8013,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-24/source-snapshot/server/services/workshop/agents/host-tool-bridge/optimizer-gate.ts": {
+        "original_sha256": "302c106439357c5a80a548390bc1ef7a37a65072bed1205b6cdab52aadc45f61",
+        "delivered_sha256": "302c106439357c5a80a548390bc1ef7a37a65072bed1205b6cdab52aadc45f61",
+        "bytes_original": 3309,
+        "bytes_delivered": 3309,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-24/source-snapshot/server/services/workshop/aml/twin/channel-profile.ts": {
+        "original_sha256": "9d9fb60c564f01fc8a2201c54ffdb72a8534f3718e5ca143cb4b4c0ba0c35046",
+        "delivered_sha256": "9d9fb60c564f01fc8a2201c54ffdb72a8534f3718e5ca143cb4b4c0ba0c35046",
+        "bytes_original": 9010,
+        "bytes_delivered": 9010,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-24/source-snapshot/server/services/workshop/dcw/dcw-controller/write.ts": {
+        "original_sha256": "d3dc38617401ad3f79122382dfbd2a5d49b1813e6717f0251d967fb7a0c7025f",
+        "delivered_sha256": "d3dc38617401ad3f79122382dfbd2a5d49b1813e6717f0251d967fb7a0c7025f",
+        "bytes_original": 12336,
+        "bytes_delivered": 12336,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-24/source-snapshot/server/services/workshop/dcw/dcw-controller/recipes.ts": {
+        "original_sha256": "88e26a538defa0debf7c7f7109c9e73b8320ff5637625499b90662ec8f81ae90",
+        "delivered_sha256": "88e26a538defa0debf7c7f7109c9e73b8320ff5637625499b90662ec8f81ae90",
+        "bytes_original": 16963,
+        "bytes_delivered": 16963,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-24/source-snapshot/server/services/workshop/dcw/dcw-controller/actuation.ts": {
+        "original_sha256": "186a8ecf5f64deaf7c2cb74e929aed9d84609843d1346d421743ae777b33a173",
+        "delivered_sha256": "186a8ecf5f64deaf7c2cb74e929aed9d84609843d1346d421743ae777b33a173",
+        "bytes_original": 6933,
+        "bytes_delivered": 6933,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-24/source-snapshot/server/services/workshop/dcw/dcw-controller/write-verify.ts": {
+        "original_sha256": "96fb55acb70e519d20517de4c19d70d6fcccc445d19563510f5b1465db638c75",
+        "delivered_sha256": "96fb55acb70e519d20517de4c19d70d6fcccc445d19563510f5b1465db638c75",
+        "bytes_original": 4946,
+        "bytes_delivered": 4946,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-24/source-snapshot/server/services/workshop/dcw/param-limits.ts": {
+        "original_sha256": "59110a3b3e644874378dfc2722f0d5d8e6cb742bd6a497c6eb40684240aac1d6",
+        "delivered_sha256": "59110a3b3e644874378dfc2722f0d5d8e6cb742bd6a497c6eb40684240aac1d6",
+        "bytes_original": 9382,
+        "bytes_delivered": 9382,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      }
+    },
+    "preservation_checks": {
+      "base_entries": 187,
+      "byte_identical_base_entries": 184,
+      "historical_metadata_privacy_changes": {
+        "derived-figures/source-data-manifest.json": {
+          "original_sha256": "110a1cc4a062c782aef44e0ef45657c897af00037ac29a2a9f7b1a37773b631f",
+          "delivered_sha256": "d8323a9b5e339f11b7428eb3d9d8e31909a59f8bea4bf490ac4dee43de61aca9",
+          "reason": "Generic local runtime path replaced by [local-runtime] in execution metadata; dependent delivered hashes/byte counts updated"
+        },
+        "MANIFEST.json": {
+          "original_sha256": "3d4816eb6ef3bef6703003d8d0375b507854e483140eb65b82c829d5f6a5a4ea",
+          "delivered_sha256": "6c3a3d3d318e942ff6ea01c08021167fe9a3ba85543851a6d3ae5ec1b5eea445",
+          "reason": "Dependent delivered hash/byte-count chain updated for the documented metadata privacy repair"
+        },
+        "FILES.json": {
+          "original_sha256": "76bb85cf5eab3065b15584b6502245706e49aef778319daf73de2c7d514debd6",
+          "delivered_sha256": "216b51630eecc2f1999ed86cfbba94a52508b72b6ea4f252b6330e94975f0f74",
+          "reason": "Dependent delivered hash/byte-count chain updated for the documented metadata privacy repair"
+        }
+      },
+      "historical_experimental_entries_byte_identical": true,
+      "selected_test_sources": 8,
+      "selected_core_sources": 9,
+      "historical_R3_assertions": 782,
+      "boundary_checks": {
+        "R11": {
+          "attempts": 8,
+          "writes": 0,
+          "attained": false,
+          "final_weight_g": 31.25
+        },
+        "R12": {
+          "verified_pressure_trials": 1,
+          "finalOk": false,
+          "update": null,
+          "restoration_assertion_passed": false,
+          "passing_assertions": 4,
+          "total_assertions": 8,
+          "final_weight_g": 31.46,
+          "final_sink_percent": 1.837
+        }
+      }
+    },
+    "privacy_scan": {
+      "passed": true,
+      "entries": 213,
+      "scope": "explicit identities, local drive/user paths, identifying repository URLs; PDF text/metadata and PNG metadata"
+    }
+  },
+  "zip_integrity": "PASS: testzip and exact entry/hash comparison for both archives",
+  "scope": "Technical packaging and bounded anonymity checks; not scientific approval or journal acceptance"
+}

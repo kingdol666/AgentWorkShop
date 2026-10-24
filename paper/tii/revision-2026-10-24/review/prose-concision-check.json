@@ -1,0 +1,52 @@
+[
+  {
+    "section": "introduction",
+    "old_words": 440,
+    "new_words": 373,
+    "deleted_words": 67,
+    "anchors_preserved": true,
+    "math_preserved": true,
+    "figure_blocks_preserved": true,
+    "numbers_preserved": true
+  },
+  {
+    "section": "related",
+    "old_words": 535,
+    "new_words": 501,
+    "deleted_words": 34,
+    "anchors_preserved": true,
+    "math_preserved": true,
+    "figure_blocks_preserved": true,
+    "numbers_preserved": true
+  },
+  {
+    "section": "system",
+    "old_words": 1130,
+    "new_words": 1003,
+    "deleted_words": 127,
+    "anchors_preserved": true,
+    "math_preserved": true,
+    "figure_blocks_preserved": true,
+    "numbers_preserved": true
+  },
+  {
+    "section": "mechanisms",
+    "old_words": 1152,
+    "new_words": 1127,
+    "deleted_words": 25,
+    "anchors_preserved": true,
+    "math_preserved": true,
+    "figure_blocks_preserved": true,
+    "numbers_preserved": true
+  },
+  {
+    "section": "discussion",
+    "old_words": 485,
+    "new_words": 457,
+    "deleted_words": 28,
+    "anchors_preserved": true,
+    "math_preserved": true,
+    "figure_blocks_preserved": true,
+    "numbers_preserved": true
+  }
+]

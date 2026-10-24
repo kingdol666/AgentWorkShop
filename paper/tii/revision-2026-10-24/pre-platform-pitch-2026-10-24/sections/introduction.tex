@@ -1,0 +1,55 @@
+\section{Introduction}
+\IEEEPARstart{L}{arge} language model (LLM) agents increasingly participate in
+industrial operation: they generate operator-reviewed OPC UA control sequences
+\cite{huang2026made}, invoke factory skills over tool protocols
+\cite{koehle2026llmdriven}, coordinate shop-floor tasks
+\cite{lim2025llmenabled,zhao2026shopfloor}, and schedule a simulated
+robot-operated line \cite{waseem2026pretrained}. These applications require
+a connection between reasoning and production context: who may change a
+parameter, under which product and recipe, what was commanded, and how the
+process responded.
+
+To bring injection-molded part weight into specification, an agent may use
+recent measurements to diagnose insufficient packing and propose higher
+holding pressure. Execution also requires a writable signal mapping,
+parameter limits, authorized production scope, and approval. Its record
+must distinguish the pressure request, endpoint confirmation, and measured
+weight.
+
+Three distinctions must survive this handoff: permission to invoke a tool
+versus authority over a production
+object, transport acceptance versus endpoint confirmation, and a trial
+command versus a retained recipe. Reconstructing these distinctions inside
+every agent application couples execution policy to the selected reasoning
+engine and obscures how an intervention relates to a running batch. We
+address the following systems question: how can an industrial
+agent platform retain a common execution and evidence contract when the
+proposal strategy, equipment protocol, and production context change?
+
+We present a governed supervisory execution framework connecting agent
+teams to semantic data-acquisition (DAQ) and write-control (DCW) nodes.
+A deterministic execution boundary sits beneath the replaceable strategy
+layer. The strategy acquires evidence, proposes a change, and interprets
+observations. The platform resolves authority, applies source-specific
+limits and required approval, dispatches commands, and grades confirmation.
+Line--product--recipe--run objects supply production context.
+Separate task, intervention, and batch records then connect the original
+intent to commanded controls and observed outputs.
+
+The contribution is a common execution-and-evidence contract integrating
+production-scoped authority, graded confirmation, and route-specific records:
+\begin{enumerate}
+\item a capability-based architecture that binds channel identity and
+semantic industrial nodes to line--product--recipe--run context, separating
+information exchange from execution authority;
+\item route-specific execution mechanisms that join admission, approval,
+graded confirmation, observation, and compensation while preserving
+distinct node-intervention and recipe-batch records; and
+\item an implementation and evaluation of this contract across replaceable
+strategies and protocol mappings, using admission ablation, confirmation
+drills, process missions, repeated regression runs, and a recipe trajectory.
+\end{enumerate}
+
+Sections~\ref{sec:arch}--\ref{sec:mech} explain the architecture and execution
+mechanisms; Sections~\ref{sec:eval}--\ref{sec:limits} evaluate and interpret
+their simulator-backed evidence.

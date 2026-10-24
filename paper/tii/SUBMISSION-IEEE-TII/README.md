@@ -1,9 +1,10 @@
 # IEEE TII manuscript package
 
-Current revision: 2026-10-20, component-architecture and evidence-lifecycle
-revision. The anonymous manuscript targets **10 pages**, including six vector
-figures and **30 references**. The final preflight records the actual abstract
-word count. IEEEtran journal body/bibliography type and margins are unchanged.
+Current revision: 2026-10-24, narrative, evidence-boundary and figure revision.
+The compiled anonymous manuscript has **10 pages**, including six vector
+figures and **30 references**, within the at-most-ten-page requirement.
+The delivery manifest records the actual page count. IEEEtran journal body/bibliography
+type and margins are unchanged.
 
 The story follows task intent and production context through acquisition,
 diagnostics, knowledge retrieval, model training, bounded proposals, governed
@@ -22,16 +23,19 @@ and the self-contained figure captions.
   active bibliography, and result macros.
 - `figures/make-system-2026.py`: three implementation schematics.
 - `figures/make-evaluation-2026.py`: three data-driven experimental figures.
-- `REPRODUCIBILITY.md`: R1-R10 evidence units, objective definitions, protocol
+- `REPRODUCIBILITY.md`: R1-R12 evidence units, objective definitions, protocol
   and interpretation of the archived process measurements.
 - `FILE-MANIFEST.json`: hashes of the active manuscript and resources.
 
-The manuscript-source ZIP and `IEEE-TII-anonymous-evidence.zip` are separate
+The manuscript-source ZIP and `IEEE-TII-anonymous-evidence-2026-10-24.zip` are separate
 deliverables. The latter contains available raw/derived archives, original
 engine logs, replay source snapshots, redaction/hash manifests, and a
 claim-to-artifact map. Available scripts are labelled by interface era; the
 supplement does not claim a standalone runtime or an exact historical source
-snapshot when only an archived commit marker is available.
+snapshot when only an archived commit marker is available. The October 24
+evidence package extends the historical anonymous bundle with the October 23
+failed boundary checks and new original/delivered hashes; those checks are
+not represented as successful process replications.
 
 ## Compile
 
@@ -41,22 +45,18 @@ From this folder, with TeX Live and IEEEtran installed:
 latexmk -pdf -interaction=nonstopmode -halt-on-error main.tex
 ```
 
-The agent's checks additionally use the latex-paper-en `compile.py` wrapper
-with shell escape disabled. The current repository preflight is:
-
-```text
-python ../final-revision-2026-10-20/verify_final.py --render
-```
-
-Use a Python environment with PyMuPDF. Current figure QA, page renders,
-five-seat review, evidence packaging and final verification are in
-`../final-revision-2026-10-20/`. Unchanged primary-source citation audits
+The agent's checks use the latex-paper-en `compile.py` wrapper with shell
+escape disabled. Use a Python environment with PyMuPDF for PDF preflight.
+Current official requirements, evidence/prose audits, figure QA, page renders,
+evidence packaging and final verification are in `../revision-2026-10-24/`.
+The October 20 checks and five-seat review remain historical records.
+Unchanged primary-source citation audits
 remain in `../revision-2026-10-20-tenpage/`; original experimental figure
 source-data mappings remain in `../revision-2026-10-20/`.
 
-The current `IEEE-REQUIREMENTS.md` distinguishes official rules from project
-choices. TII sets a ten-page ceiling; exactly ten pages is this author's current
-delivery requirement. Thirty references results from separating two standards,
+The current `../revision-2026-10-24/requirements/IEEE-TII-REQUIREMENTS.md`
+distinguishes official rules from project choices. TII sets a ten-page
+ceiling; exactly ten pages is unnecessary. Thirty references results from separating two standards,
 not a journal reference ceiling. Earlier review/build records are historical
 artifacts and do not describe the current PDF.
 
@@ -73,4 +73,8 @@ Formatting and citation verification are distinct from journal peer review.
 The paper reports the mechanisms and process observations its archives support,
 and states the simulator/sample scope. The prior five-seat review is preserved
 as a historical editorial input; this pass has its own read-only verification.
-AI assistance is disclosed. No external journal submission is performed.
+AI assistance is disclosed, including image-generation composition drafts
+for Figures 1 and 2 and their final editable vector reconstruction. The
+official requirements record the AI-disclosure placement issue for anonymous
+review; the final portal instructions still govern submission placement.
+No external journal submission is performed.
