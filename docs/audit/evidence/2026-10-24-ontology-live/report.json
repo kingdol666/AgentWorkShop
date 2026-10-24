@@ -1,10 +1,10 @@
 {
   "script": "scripts/e2e-ontology-live.mjs",
-  "generatedAt": "2026-10-24T14:47:23.277Z",
+  "generatedAt": "2026-10-24T16:42:39.930Z",
   "base": "http://127.0.0.1:3992",
-  "home": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-ontology-live-1792853121686\\home",
-  "ontology": "ont-ontgiaf",
-  "lineId": "ln-7ab02ce4",
+  "home": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-ontology-live-1792860036932\\home",
+  "ontology": "ont-ontkq4l",
+  "lineId": "ln-686b885d",
   "total": 72,
   "pass": 72,
   "fail": 0,
@@ -55,7 +55,7 @@
       "id": "L2.1",
       "name": "POST /ontology 创建草稿",
       "pass": true,
-      "detail": "status=200 id=ontd-mvmiheuf-annidm"
+      "detail": "status=200 id=ontd-mvmmljs7-kprks9"
     },
     {
       "id": "L2.2",
@@ -109,7 +109,7 @@
       "id": "L2.10",
       "name": "申请批准单",
       "pass": true,
-      "detail": "id=oap-mvmiheyp-9t3w21"
+      "detail": "id=oap-mvmmljvm-6nkbo9"
     },
     {
       "id": "L2.11",
@@ -175,7 +175,7 @@
       "id": "L3.1",
       "name": "resolveActiveOntology 解析最新发布版本",
       "pass": true,
-      "detail": "v=2 pack=51faf8870f"
+      "detail": "v=2 pack=2da26e3d66"
     },
     {
       "id": "L3.2",
@@ -253,7 +253,7 @@
       "id": "L4.7",
       "name": "训练 done + 模型登记",
       "pass": true,
-      "detail": "status=done model=mdl-mvmihffk-dfhve7 err="
+      "detail": "status=done model=mdl-mvmmlkcy-is3uyx err="
     },
     {
       "id": "L4.8",
@@ -277,7 +277,7 @@
       "id": "L5.1",
       "name": "优化档位频道(模板实例化)+workspace 就绪",
       "pass": true,
-      "detail": "inst=200 ch=22efbc63-8ecb-4e69-960f-605931583d98"
+      "detail": "inst=200 ch=b47f6fdc-e8ff-4e10-a967-c3f685c31b34"
     },
     {
       "id": "L5.2",
@@ -295,7 +295,7 @@
       "id": "L5.4",
       "name": "Agent↔Profile 绑定(revision=1)",
       "pass": true,
-      "detail": "id=ob-mvmihgcc-al5w4"
+      "detail": "id=ob-mvmmllbe-um8y3"
     },
     {
       "id": "L5.5",
@@ -331,19 +331,19 @@
       "id": "L5.10",
       "name": "采纳卡挂出(nodeId=optimizer-profile:<id>@<v>)",
       "pass": true,
-      "detail": "nodeId=optimizer-profile:optp-ontgiaf@3"
+      "detail": "nodeId=optimizer-profile:optp-ontkq4l@3"
     },
     {
       "id": "L5.11",
       "name": "HITL 批准 → 单一咽喉完成发布+重绑",
       "pass": true,
-      "detail": "status=200 body={\"status\":200,\"code\":0,\"message\":\"ok\",\"data\":{\"via\":\"profile-adopt\",\"result\":{\"approved\":true,\"comment\":\"采纳闭环验收批准\",\"published\":{\"profileId\":\"optp-ontgiaf\",\"version\":3,\"rebindCount\":1}}}}"
+      "detail": "status=200 body={\"status\":200,\"code\":0,\"message\":\"ok\",\"data\":{\"via\":\"profile-adopt\",\"result\":{\"approved\":true,\"comment\":\"采纳闭环验收批准\",\"published\":{\"profileId\":\"optp-ontkq4l\",\"version\":3,\"rebindCount\":1}}}}"
     },
     {
       "id": "L5.12",
       "name": "工具回执:模型采纳完成",
       "pass": true,
-      "detail": "status=200 body=✅ 模型采纳完成(HITL 批准):\noptp-ontgiaf v2 → v3(published)\n模型:mdl-mvmihffk-dfhve7;重绑绑定 1 个(revision+1,在飞求解 BINDING_STALE 收敛)\n裁决意见:采纳闭环验收批准\n下一次 optimizer_solve 即使用新模型;旧版本保留可回退(retire/rebind 走管理面)。"
+      "detail": "status=200 body=✅ 模型采纳完成(HITL 批准):\noptp-ontkq4l v2 → v3(published)\n模型:mdl-mvmmlkcy-is3uyx;重绑绑定 1 个(revision+1,在飞求解 BINDING_STALE 收敛)\n裁决意见:采纳闭环验收批准\n下一次 optimizer_solve 即使用新模型;旧版本保留可回退(retire/rebind 走管理面)。"
     },
     {
       "id": "L5.13",
@@ -355,7 +355,7 @@
       "id": "L5.14",
       "name": "重绑后 solve optimal(新模型工件生效)",
       "pass": true,
-      "detail": "status=optimal binding=ob-mvmihj09-ys4dq"
+      "detail": "status=optimal binding=ob-mvmmlqbn-flzw0"
     },
     {
       "id": "L6.0",
@@ -373,7 +373,7 @@
       "id": "L6.2",
       "name": "GET /analysis 台账读回",
       "pass": true,
-      "detail": "status=200 body={\"status\":200,\"code\":0,\"message\":\"ok\",\"data\":{\"reports\":[{\"id\":\"ar-5c34a10e\",\"lineId\":\"ln-7ab02ce4\",\"lineName\":\"本体验收线-ontgiaf\",\"title\":\"本体验收分析-ontgiaf\",\"category\":\"quality\",\"summary\":\"压力-膜厚负相关确认;本体规则 R-BOUND 界与数据一致\",\"conclusionsJson\":\"[\\\"R-BOUND 膜厚窗 [4.5,5.5] "
+      "detail": "status=200 body={\"status\":200,\"code\":0,\"message\":\"ok\",\"data\":{\"reports\":[{\"id\":\"ar-bf701bb9\",\"lineId\":\"ln-686b885d\",\"lineName\":\"本体验收线-ontkq4l\",\"title\":\"本体验收分析-ontkq4l\",\"category\":\"quality\",\"summary\":\"压力-膜厚负相关确认;本体规则 R-BOUND 界与数据一致\",\"conclusionsJson\":\"[\\\"R-BOUND 膜厚窗 [4.5,5.5] "
     },
     {
       "id": "L7.1",
@@ -415,7 +415,7 @@
       "id": "L7.6",
       "name": "/daq 可打开无 pageerror",
       "pass": true,
-      "detail": "len=6390 newErrors="
+      "detail": "len=6413 newErrors="
     },
     {
       "id": "L7.7",

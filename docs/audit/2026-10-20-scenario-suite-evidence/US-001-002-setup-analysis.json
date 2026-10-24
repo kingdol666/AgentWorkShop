@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-24T02:59:08.212Z",
+  "at": "2026-10-24T12:02:45.172Z",
   "pass": 23,
   "fail": 0,
   "results": [
@@ -25,13 +25,13 @@
       "id": "",
       "name": "S3 IDD 注册得 token",
       "pass": true,
-      "detail": "{\"success\":true,\"data\":{\"user\":{\"id\":50,\"username\":\"scenario_mvlt6l5u\",\"email\":null,\"role\":\"user\",\"created_at\":\"2026-10-"
+      "detail": "{\"success\":true,\"data\":{\"user\":{\"id\":53,\"username\":\"scenario_mvmcmk96\",\"email\":null,\"role\":\"user\",\"created_at\":\"2026-10-"
     },
     {
       "id": "",
       "name": "S3 RAG 登录得 token",
       "pass": true,
-      "detail": "{\"success\":true,\"user\":{\"id\":\"usr-10df7382c06d8b98\",\"username\":\"scenario_mvlt6l8f\",\"email\":\"\",\"role\":\"user\",\"status\":\"ac"
+      "detail": "{\"success\":true,\"user\":{\"id\":\"usr-f53cc3edc4ecb2fc\",\"username\":\"scenario_mvmcmka6\",\"email\":\"\",\"role\":\"user\",\"status\":\"ac"
     },
     {
       "id": "",
@@ -43,7 +43,7 @@
       "id": "",
       "name": "S4 专用模拟器在线",
       "pass": true,
-      "detail": "{\"started\":true,\"pid\":89516,\"dir\":\"D:\\\\codes\\\\ABO\\\\plc-node-simulator-scenario-4050\",\"reason\":\"spawned\"}"
+      "detail": "{\"started\":false,\"dir\":\"D:\\\\codes\\\\ABO\\\\AgentWorkShop\\\\plc-node-simulator\",\"reason\":\"already-up\"}"
     },
     {
       "id": "",
@@ -67,25 +67,25 @@
       "id": "",
       "name": "S5 产线/节点/配方供给",
       "pass": true,
-      "detail": "line=ln-318b8749 recipe=rc-475bb95c dcw=11 daq=14"
+      "detail": "line=ln-62a67884 recipe=rc-df1b0983 dcw=11 daq=14"
     },
     {
       "id": "",
       "name": "S5 驱动实测无失败",
       "pass": true,
-      "detail": "[{\"device\":\"inj-machine-mbtcp\",\"signal\":\"机筒温度区1SP\",\"ok\":true,\"message\":\"连接成功,读取 40021 = 240\"},{\"device\":\"inj-mold-rtu\",\"signal\":\"模具温度SP\",\"ok\":true,\"message\":\"网关连接成功,读取 40021 = 40\"},{\"device\":\"inj-inject-opcua\",\"signal\":\"InjectSpeedSP\",\"ok\":true,\"message\":\"会话建立成功,读取 ns=2;s=Inj.Inj.Speed.Sp = 85\"},{\"device\":\"inj-cool-mqtt\",\"signal\":\"WaterTempPV\",\"ok\":true,\"message\":\"Broker 连接成功,收到 aw/inj/wtemp = 23.9\"},{\"device\":\"inj-inspect-http\",\"signal\":\"PartWeight\",\"ok\":true,\"message\":\"接口可达,取值 = 31.22\"}]"
+      "detail": "[{\"device\":\"inj-machine-mbtcp\",\"signal\":\"机筒温度区1SP\",\"ok\":true,\"message\":\"连接成功,读取 40021 = 240\"},{\"device\":\"inj-mold-rtu\",\"signal\":\"模具温度SP\",\"ok\":true,\"message\":\"网关连接成功,读取 40021 = 40\"},{\"device\":\"inj-inject-opcua\",\"signal\":\"InjectSpeedSP\",\"ok\":true,\"message\":\"会话建立成功,读取 ns=2;s=Inj.Inj.Speed.Sp = 85\"},{\"device\":\"inj-cool-mqtt\",\"signal\":\"WaterTempPV\",\"ok\":true,\"message\":\"Broker 连接成功,收到 aw/inj/wtemp = 24.3\"},{\"device\":\"inj-inspect-http\",\"signal\":\"PartWeight\",\"ok\":true,\"message\":\"接口可达,取值 = 31.3\"}]"
     },
     {
       "id": "",
       "name": "S5 产线处于运行态",
       "pass": true,
-      "detail": "{\"lineId\":\"ln-318b8749\",\"active\":true,\"runId\":\"rr-2bf211d5\",\"recipeId\":\"rc-475bb95c\",\"recipeName\":\"scen-injection-recipe-s7s5d\",\"productId\":\"pd-54aa7dad\",\"productName\":\"scen-injection-product-s7s5d\",\"startedAt\":\"2026-10-"
+      "detail": "{\"lineId\":\"ln-62a67884\",\"active\":true,\"runId\":\"rr-50decd12\",\"recipeId\":\"rc-df1b0983\",\"recipeName\":\"scen-injection-recipe-smtmt\",\"productId\":\"pd-a3b5abec\",\"productName\":\"scen-injection-product-smtmt\",\"startedAt\":\"2026-10-"
     },
     {
       "id": "",
       "name": "S5 DAQ 新鲜样本 ≥20",
       "pass": true,
-      "detail": "node=dn-60eb20b2 points=20"
+      "detail": "node=dn-df05dbcd points=20"
     },
     {
       "id": "",
@@ -103,7 +103,7 @@
       "id": "",
       "name": "S6 分析师绑全部 DAQ / 优化师绑配方 manual",
       "pass": true,
-      "detail": "recipeBind=nb-b8843d4f"
+      "detail": "recipeBind=nb-ca3dea84"
     },
     {
       "id": "",
@@ -115,39 +115,39 @@
       "id": "",
       "name": "S7 daq_query 返回样本与统计",
       "pass": true,
-      "detail": "数采数据查询结果(1 个节点):\n\n■ scen-injection:daq:part-weight(熔体/箱体温度)单位 g,正常量程 25~40g,当前状态 alarm,时间窗 2026-10-24T10:54 ~ 2026-10-24T10:59(降采样 1000ms)\n  当前活动批次 run=rr-2bf211d5 配方「scen-injection-recipe-s7s5d」(rc-475bb95c)(可直接把 run_id"
+      "detail": "数采数据查询结果(1 个节点):\n\n■ scen-injection:daq:part-weight(熔体/箱体温度)单位 g,正常量程 25~40g,当前状态 alarm,时间窗 2026-10-24T19:57 ~ 2026-10-24T20:02(降采样 1000ms)\n  当前活动批次 run=rr-50decd12 配方「scen-injection-recipe-smtmt」(rc-df1b0983)(可直接把 run_id"
     },
     {
       "id": "",
       "name": "S7 独立复算指标有限",
       "pass": true,
-      "detail": "n=20 mean=31.256 std=0.033 range=31.19~31.32"
+      "detail": "n=21 mean=31.235 std=0.031 range=31.17~31.3"
     },
     {
       "id": "",
       "name": "S7 复算均值与工具均值一致",
       "pass": true,
-      "detail": "tool=31.256 raw=31.256"
+      "detail": "tool=31.235 raw=31.235"
     },
     {
       "id": "",
       "name": "S7 analysis_save 落痕",
       "pass": true,
-      "detail": "分析报告已留痕:ar-d5d82153。产线「注塑成型质量窗口寻优 injection-s7s5d」,结论 4 条,配方 rc-475bb95c。台账 append-only,不可改删;随时可用 analysis_query(report_id=\"ar-d5d82153\") 查回全文。"
+      "detail": "分析报告已留痕:ar-dd70a04a。产线「注塑成型质量窗口寻优 injection-smtmt」,结论 4 条,配方 rc-df1b0983。台账 append-only,不可改删;随时可用 analysis_query(report_id=\"ar-dd70a04a\") 查回全文。"
     },
     {
       "id": "",
       "name": "S7 analysis_query 可检索",
       "pass": true,
-      "detail": "分析报告 ar-d5d82153:「注塑线 ln-318b8749 克重窗口分析 2026-10-24T02:59:08」(分类 quality)\n产线: 注塑成型质量窗口寻优 injection-s7s5d | 配方: rc-475bb95c v1\n分析时间: 10-24 10:59:08 | 数据窗: - ~ -\n来源: 注塑场景验收-t8adf/数据分析-8adz @频道「注塑场景验收-t8adf」\n关键结论: 近 5 分钟克重 "
+      "detail": "分析报告 ar-dd70a04a:「注塑线 ln-62a67884 克重窗口分析 2026-10-24T12:02:45」(分类 quality)\n产线: 注塑成型质量窗口寻优 injection-smtmt | 配方: rc-df1b0983 v1\n分析时间: 10-24 20:02:45 | 数据窗: - ~ -\n来源: 注塑场景验收-cndrp/数据分析-nds9 @频道「注塑场景验收-cndrp」\n关键结论: 近 5 分钟克重 "
     }
   ],
   "context": {
-    "home": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-scenario-suite-ITxRNB",
+    "home": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-scenario-suite-hlaiZ2",
     "base": "http://127.0.0.1:3470",
     "simBase": "http://127.0.0.1:4050",
-    "lineId": "ln-318b8749",
-    "recipeId": "rc-475bb95c",
-    "channelId": "cff69988-45fd-4134-a5ed-e57e27b0758e"
+    "lineId": "ln-62a67884",
+    "recipeId": "rc-df1b0983",
+    "channelId": "f599b56b-274d-46c9-8f5f-09beb0a966d4"
   }
 }
