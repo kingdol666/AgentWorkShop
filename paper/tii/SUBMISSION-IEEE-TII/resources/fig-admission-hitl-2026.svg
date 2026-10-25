@@ -6,7 +6,7 @@
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
     <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
-    <dc:date>2026-10-20T10:49:53.198776</dc:date>
+    <dc:date>2026-10-25T06:01:11.097798</dc:date>
     <dc:format>image/svg+xml</dc:format>
     <dc:creator>
      <cc:Agent>
@@ -35,7 +35,7 @@ L 241.88 47.32
 L 241.88 41.32 
 L 77.88 41.32 
 z
-" clip-path="url(#p1a3f6c7b34)" style="fill: #edf3f7; stroke: #275f85; stroke-width: 0.6; stroke-linejoin: miter"/>
+" clip-path="url(#p6583fcca34)" style="fill: #edf3f7; stroke: #294f6b; stroke-width: 0.6; stroke-linejoin: miter"/>
    </g>
    <g id="patch_3">
     <path d="M 183.080533 47.32 
@@ -43,7 +43,7 @@ L 191.346133 47.32
 L 191.346133 41.32 
 L 183.080533 41.32 
 z
-" clip-path="url(#p1a3f6c7b34)" style="fill: #176e74; stroke: #176e74; stroke-width: 0.5; stroke-linejoin: miter"/>
+" clip-path="url(#p6583fcca34)" style="fill: #26756f; stroke: #26756f; stroke-width: 0.5; stroke-linejoin: miter"/>
    </g>
    <g id="patch_4">
     <path d="M 128.884 147.32 
@@ -51,7 +51,7 @@ L 190.876 147.32
 L 190.876 79.32 
 L 128.884 79.32 
 z
-" clip-path="url(#p1a3f6c7b34)" style="fill: #eef5f3"/>
+" clip-path="url(#p6583fcca34)" style="fill: #eef5f3"/>
    </g>
    <g id="patch_5">
     <path d="M 108.22 91.32 
@@ -59,7 +59,7 @@ L 211.54 91.32
 L 211.54 85.32 
 L 108.22 85.32 
 z
-" clip-path="url(#p1a3f6c7b34)" style="fill: #275f85; stroke: #275f85; stroke-width: 0.5; stroke-linejoin: miter"/>
+" clip-path="url(#p6583fcca34)" style="fill: #294f6b; stroke: #294f6b; stroke-width: 0.5; stroke-linejoin: miter"/>
    </g>
    <g id="patch_6">
     <path d="M 128.884 114.32 
@@ -67,7 +67,7 @@ L 190.876 114.32
 L 190.876 108.32 
 L 128.884 108.32 
 z
-" clip-path="url(#p1a3f6c7b34)" style="fill: #176e74; stroke: #176e74; stroke-width: 0.5; stroke-linejoin: miter"/>
+" clip-path="url(#p6583fcca34)" style="fill: #26756f; stroke: #26756f; stroke-width: 0.5; stroke-linejoin: miter"/>
    </g>
    <g id="patch_7">
     <path d="M 86.08 137.32 
@@ -75,88 +75,85 @@ L 233.68 137.32
 L 233.68 131.32 
 L 86.08 131.32 
 z
-" clip-path="url(#p1a3f6c7b34)" style="fill: #9a650f; stroke: #9a650f; stroke-width: 0.5; stroke-linejoin: miter"/>
+" clip-path="url(#p6583fcca34)" style="fill: #9a650f; stroke: #9a650f; stroke-width: 0.5; stroke-linejoin: miter"/>
    </g>
    <g id="line2d_1">
     <path d="M 128.884 147.32 
 L 128.884 79.32 
-" clip-path="url(#p1a3f6c7b34)" style="fill: none; stroke-dasharray: 1.8,1.2; stroke-dashoffset: 0; stroke: #176e74; stroke-width: 0.6"/>
+" clip-path="url(#p6583fcca34)" style="fill: none; stroke-dasharray: 1.8,1.2; stroke-dashoffset: 0; stroke: #26756f; stroke-width: 0.6"/>
    </g>
    <g id="line2d_2">
     <path d="M 190.876 147.32 
 L 190.876 79.32 
-" clip-path="url(#p1a3f6c7b34)" style="fill: none; stroke-dasharray: 1.8,1.2; stroke-dashoffset: 0; stroke: #176e74; stroke-width: 0.6"/>
+" clip-path="url(#p6583fcca34)" style="fill: none; stroke-dasharray: 1.8,1.2; stroke-dashoffset: 0; stroke: #26756f; stroke-width: 0.6"/>
    </g>
    <g id="line2d_3">
     <path d="M 77.88 150.32 
 L 241.88 150.32 
-" clip-path="url(#p1a3f6c7b34)" style="fill: none; stroke: #5f6872; stroke-width: 0.6; stroke-linecap: square"/>
+" clip-path="url(#p6583fcca34)" style="fill: none; stroke: #5f6872; stroke-width: 0.6; stroke-linecap: square"/>
    </g>
    <g id="line2d_4">
     <path d="M 77.88 150.32 
 L 77.88 153.32 
-" clip-path="url(#p1a3f6c7b34)" style="fill: none; stroke: #5f6872; stroke-width: 0.6; stroke-linecap: square"/>
+" clip-path="url(#p6583fcca34)" style="fill: none; stroke: #5f6872; stroke-width: 0.6; stroke-linecap: square"/>
    </g>
    <g id="line2d_5">
     <path d="M 159.88 150.32 
 L 159.88 153.32 
-" clip-path="url(#p1a3f6c7b34)" style="fill: none; stroke: #5f6872; stroke-width: 0.6; stroke-linecap: square"/>
+" clip-path="url(#p6583fcca34)" style="fill: none; stroke: #5f6872; stroke-width: 0.6; stroke-linecap: square"/>
    </g>
    <g id="line2d_6">
     <path d="M 241.88 150.32 
 L 241.88 153.32 
-" clip-path="url(#p1a3f6c7b34)" style="fill: none; stroke: #5f6872; stroke-width: 0.6; stroke-linecap: square"/>
+" clip-path="url(#p6583fcca34)" style="fill: none; stroke: #5f6872; stroke-width: 0.6; stroke-linecap: square"/>
    </g>
    <g id="text_1">
-    <text style="font-weight: 700; font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #202a34" x="4.88" y="10.652969" transform="rotate(-0 4.88 10.652969)">a</text>
+    <text style="font-weight: 700; font-size: 9px; font-family: 'Arial', 'DejaVu Sans'; text-anchor: start; fill: #202a34" x="4.88" y="10.652969" transform="rotate(-0 4.88 10.652969)">a</text>
    </g>
    <g id="text_2">
-    <text style="font-weight: 700; font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #202a34" x="19.88" y="10.652969" transform="rotate(-0 19.88 10.652969)">Source-aware admission</text>
+    <text style="font-weight: 700; font-size: 9px; font-family: 'Arial', 'DejaVu Sans'; text-anchor: start; fill: #202a34" x="19.88" y="10.652969" transform="rotate(-0 19.88 10.652969)">Source-aware admission</text>
    </g>
    <g id="text_3">
-    <text style="font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #176e74" x="4.88" y="24.704297" transform="rotate(-0 4.88 24.704297)">I = H ∩ B ∩ P ∩ R = [146.22,153.78] rpm</text>
+    <text style="font-size: 9px; font-family: 'Arial', 'DejaVu Sans'; text-anchor: start; fill: #26756f" x="4.88" y="24.704297" transform="rotate(-0 4.88 24.704297)">I = H ∩ B ∩ P ∩ R = [146.22,153.78] rpm</text>
    </g>
    <g id="text_4">
-    <text style="font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #202a34" x="4.88" y="46.646641" transform="rotate(-0 4.88 46.646641)">H hard</text>
+    <text style="font-size: 9px; font-family: 'Arial', 'DejaVu Sans'; text-anchor: start; fill: #202a34" x="4.88" y="46.646641" transform="rotate(-0 4.88 46.646641)">H hard</text>
    </g>
    <g id="text_5">
-    <text style="font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #202a34" x="77.88" y="59.646641" transform="rotate(-0 77.88 59.646641)">50</text>
+    <text style="font-size: 9px; font-family: 'Arial', 'DejaVu Sans'; text-anchor: middle; fill: #202a34" x="77.88" y="59.646641" transform="rotate(-0 77.88 59.646641)">50</text>
    </g>
    <g id="text_6">
-    <text style="font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: end; fill: #202a34" x="241.88" y="59.66" transform="rotate(-0 241.88 59.66)">200 rpm</text>
+    <text style="font-size: 9px; font-family: 'Arial', 'DejaVu Sans'; text-anchor: end; fill: #202a34" x="241.88" y="59.66" transform="rotate(-0 241.88 59.66)">200 rpm</text>
    </g>
    <g id="text_7">
-    <text style="font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5f6872" x="77.88" y="72.66" transform="rotate(-0 77.88 72.66)">Detail scale: 140–160 rpm</text>
+    <text style="font-size: 9px; font-family: 'Arial', 'DejaVu Sans'; text-anchor: start; fill: #5f6872" x="77.88" y="72.66" transform="rotate(-0 77.88 72.66)">Detail scale: 140–160 rpm</text>
    </g>
    <g id="text_8">
-    <text style="font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #202a34" x="4.88" y="87.646641" transform="rotate(-0 4.88 87.646641)">B baseline</text>
+    <text style="font-size: 9px; font-family: 'Arial', 'DejaVu Sans'; text-anchor: start; fill: #202a34" x="4.88" y="87.646641" transform="rotate(-0 4.88 87.646641)">B baseline</text>
    </g>
    <g id="text_9">
-    <text style="font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5f6872" x="4.88" y="98.646641" transform="rotate(-0 4.88 98.646641)">143.7–156.3</text>
+    <text style="font-size: 9px; font-family: 'Arial', 'DejaVu Sans'; text-anchor: start; fill: #5f6872" x="4.88" y="98.646641" transform="rotate(-0 4.88 98.646641)">143.7–156.3</text>
    </g>
    <g id="text_10">
-    <text style="font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #202a34" x="4.88" y="110.646641" transform="rotate(-0 4.88 110.646641)">P product</text>
+    <text style="font-size: 9px; font-family: 'Arial', 'DejaVu Sans'; text-anchor: start; fill: #202a34" x="4.88" y="110.646641" transform="rotate(-0 4.88 110.646641)">P product</text>
    </g>
    <g id="text_11">
-    <text style="font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5f6872" x="4.88" y="121.646641" transform="rotate(-0 4.88 121.646641)">146.22–153.78</text>
+    <text style="font-size: 9px; font-family: 'Arial', 'DejaVu Sans'; text-anchor: start; fill: #5f6872" x="4.88" y="121.646641" transform="rotate(-0 4.88 121.646641)">146.22–153.78</text>
    </g>
    <g id="text_12">
-    <text style="font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #202a34" x="4.88" y="133.646641" transform="rotate(-0 4.88 133.646641)">R recipe</text>
+    <text style="font-size: 9px; font-family: 'Arial', 'DejaVu Sans'; text-anchor: start; fill: #202a34" x="4.88" y="133.646641" transform="rotate(-0 4.88 133.646641)">R recipe</text>
    </g>
    <g id="text_13">
-    <text style="font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5f6872" x="4.88" y="144.646641" transform="rotate(-0 4.88 144.646641)">141–159</text>
+    <text style="font-size: 9px; font-family: 'Arial', 'DejaVu Sans'; text-anchor: start; fill: #5f6872" x="4.88" y="144.646641" transform="rotate(-0 4.88 144.646641)">141–159</text>
    </g>
    <g id="text_14">
-    <text style="font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #202a34" x="77.88" y="161.646641" transform="rotate(-0 77.88 161.646641)">140</text>
+    <text style="font-size: 9px; font-family: 'Arial', 'DejaVu Sans'; text-anchor: middle; fill: #202a34" x="77.88" y="161.646641" transform="rotate(-0 77.88 161.646641)">140</text>
    </g>
    <g id="text_15">
-    <text style="font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #202a34" x="159.88" y="161.646641" transform="rotate(-0 159.88 161.646641)">150</text>
+    <text style="font-size: 9px; font-family: 'Arial', 'DejaVu Sans'; text-anchor: middle; fill: #202a34" x="159.88" y="161.646641" transform="rotate(-0 159.88 161.646641)">150</text>
    </g>
    <g id="text_16">
-    <text style="font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #202a34" x="241.88" y="161.646641" transform="rotate(-0 241.88 161.646641)">160</text>
-   </g>
-   <g id="text_17">
-    <text style="font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #9a650f" x="4.88" y="174.646641" transform="rotate(-0 4.88 174.646641)">Recipe dispatch omits the old R</text>
+    <text style="font-size: 9px; font-family: 'Arial', 'DejaVu Sans'; text-anchor: middle; fill: #202a34" x="241.88" y="161.646641" transform="rotate(-0 241.88 161.646641)">160</text>
    </g>
   </g>
   <g id="axes_2">
@@ -166,7 +163,7 @@ L 505.96 131.32
 L 505.96 33.32 
 L 266.96 33.32 
 z
-" clip-path="url(#p6eb7dce803)" style="fill: #ffffff; stroke: #b3bdc6; stroke-width: 0.6; stroke-linejoin: miter"/>
+" clip-path="url(#p5470e50511)" style="fill: #ffffff; stroke: #b3bdc6; stroke-width: 0.6; stroke-linejoin: miter"/>
    </g>
    <g id="patch_9">
     <path d="M 274.96 125.32 
@@ -174,7 +171,7 @@ L 374.96 125.32
 L 374.96 108.32 
 L 274.96 108.32 
 z
-" clip-path="url(#p6eb7dce803)" style="fill: #eef5f3; stroke: #176e74; stroke-width: 0.6; stroke-linejoin: miter"/>
+" clip-path="url(#p5470e50511)" style="fill: #eef5f3; stroke: #26756f; stroke-width: 0.6; stroke-linejoin: miter"/>
    </g>
    <g id="patch_10">
     <path d="M 387.96 125.32 
@@ -182,68 +179,68 @@ L 487.96 125.32
 L 487.96 108.32 
 L 387.96 108.32 
 z
-" clip-path="url(#p6eb7dce803)" style="fill: #f9f3e8; stroke: #9a650f; stroke-width: 0.6; stroke-linejoin: miter"/>
+" clip-path="url(#p5470e50511)" style="fill: #f9f3e8; stroke: #9a650f; stroke-width: 0.6; stroke-linejoin: miter"/>
    </g>
    <g id="line2d_7">
     <path d="M 274.96 54.32 
 L 497.96 54.32 
-" clip-path="url(#p6eb7dce803)" style="fill: none; stroke: #b3bdc6; stroke-width: 0.5; stroke-linecap: square"/>
+" clip-path="url(#p5470e50511)" style="fill: none; stroke: #b3bdc6; stroke-width: 0.5; stroke-linecap: square"/>
+   </g>
+   <g id="text_17">
+    <text style="font-weight: 700; font-size: 9px; font-family: 'Arial', 'DejaVu Sans'; text-anchor: start; fill: #202a34" x="266.96" y="10.652969" transform="rotate(-0 266.96 10.652969)">b</text>
    </g>
    <g id="text_18">
-    <text style="font-weight: 700; font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #202a34" x="266.96" y="10.652969" transform="rotate(-0 266.96 10.652969)">b</text>
+    <text style="font-weight: 700; font-size: 9px; font-family: 'Arial', 'DejaVu Sans'; text-anchor: start; fill: #202a34" x="281.96" y="10.652969" transform="rotate(-0 281.96 10.652969)">Approval and recheck</text>
    </g>
    <g id="text_19">
-    <text style="font-weight: 700; font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #202a34" x="281.96" y="10.652969" transform="rotate(-0 281.96 10.652969)">Approval and recheck</text>
+    <text style="font-size: 9px; font-family: 'Arial', 'DejaVu Sans'; text-anchor: start; fill: #5f6872" x="266.96" y="24.64875" transform="rotate(-0 266.96 24.64875)">Symbolic schematic; no measured values</text>
    </g>
    <g id="text_20">
-    <text style="font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #5f6872" x="266.96" y="24.64875" transform="rotate(-0 266.96 24.64875)">Symbolic schematic; no measured values</text>
+    <text style="font-weight: 700; font-size: 9px; font-family: 'Arial', 'DejaVu Sans'; text-anchor: start; fill: #202a34" x="274.96" y="45.64875" transform="rotate(-0 274.96 45.64875)">Line / recipe binding + active run</text>
    </g>
    <g id="text_21">
-    <text style="font-weight: 700; font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #202a34" x="274.96" y="45.64875" transform="rotate(-0 274.96 45.64875)">Line / recipe binding + active run</text>
+    <text style="font-size: 9px; font-family: 'Arial', 'DejaVu Sans'; text-anchor: start; fill: #202a34" x="274.96" y="66.646641" transform="rotate(-0 274.96 66.646641)">Parameter</text>
    </g>
    <g id="text_22">
-    <text style="font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #202a34" x="274.96" y="66.646641" transform="rotate(-0 274.96 66.646641)">Parameter</text>
+    <text style="font-size: 9px; font-family: 'Arial', 'DejaVu Sans'; text-anchor: start; fill: #202a34" x="387.96" y="66.646641" transform="rotate(-0 387.96 66.646641)">Current</text>
    </g>
    <g id="text_23">
-    <text style="font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #202a34" x="387.96" y="66.646641" transform="rotate(-0 387.96 66.646641)">Current</text>
+    <text style="font-size: 9px; font-family: 'Arial', 'DejaVu Sans'; text-anchor: start; fill: #202a34" x="447.96" y="66.646641" transform="rotate(-0 447.96 66.646641)">Proposed</text>
    </g>
    <g id="text_24">
-    <text style="font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #202a34" x="447.96" y="66.646641" transform="rotate(-0 447.96 66.646641)">Proposed</text>
+    <text style="font-weight: 700; font-size: 9px; font-family: 'Arial', 'DejaVu Sans'; text-anchor: start; fill: #202a34" x="274.96" y="82.652969" transform="rotate(-0 274.96 82.652969)">Control u</text>
    </g>
    <g id="text_25">
-    <text style="font-weight: 700; font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #202a34" x="274.96" y="82.652969" transform="rotate(-0 274.96 82.652969)">Control u</text>
+    <text style="font-size: 9px; font-family: 'Arial', 'DejaVu Sans'; text-anchor: start; fill: #202a34" x="387.96" y="82.64875" transform="rotate(-0 387.96 82.64875)">u(now)</text>
    </g>
    <g id="text_26">
-    <text style="font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #202a34" x="387.96" y="82.64875" transform="rotate(-0 387.96 82.64875)">u(now)</text>
+    <text style="font-weight: 700; font-size: 9px; font-family: 'Arial', 'DejaVu Sans'; text-anchor: start; fill: #202a34" x="447.96" y="82.64875" transform="rotate(-0 447.96 82.64875)">u(next)</text>
    </g>
    <g id="text_27">
-    <text style="font-weight: 700; font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #202a34" x="447.96" y="82.64875" transform="rotate(-0 447.96 82.64875)">u(next)</text>
+    <text style="font-size: 9px; font-family: 'Arial', 'DejaVu Sans'; text-anchor: start; fill: #202a34" x="274.96" y="100.64875" transform="rotate(-0 274.96 100.64875)">Reason / hypothesis + execution context</text>
    </g>
    <g id="text_28">
-    <text style="font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #202a34" x="274.96" y="100.64875" transform="rotate(-0 274.96 100.64875)">Reason / hypothesis + execution context</text>
+    <text style="font-weight: 700; font-size: 9px; font-family: 'Arial', 'DejaVu Sans'; text-anchor: middle; fill: #26756f" x="324.96" y="119.152969" transform="rotate(-0 324.96 119.152969)">Approve</text>
    </g>
    <g id="text_29">
-    <text style="font-weight: 700; font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #176e74" x="324.96" y="119.152969" transform="rotate(-0 324.96 119.152969)">Approve</text>
+    <text style="font-weight: 700; font-size: 9px; font-family: 'Arial', 'DejaVu Sans'; text-anchor: middle; fill: #9a650f" x="437.96" y="119.152969" transform="rotate(-0 437.96 119.152969)">Decline</text>
    </g>
    <g id="text_30">
-    <text style="font-weight: 700; font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: middle; fill: #9a650f" x="437.96" y="119.152969" transform="rotate(-0 437.96 119.152969)">Decline</text>
+    <text style="font-size: 9px; font-family: 'Arial', 'DejaVu Sans'; text-anchor: start; fill: #26756f" x="266.96" y="140.593906" transform="rotate(-0 266.96 140.593906)">Approve → recheck grants, binding and context</text>
    </g>
    <g id="text_31">
-    <text style="font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #176e74" x="266.96" y="147.593906" transform="rotate(-0 266.96 147.593906)">Approve → recheck grants, binding and context</text>
+    <text style="font-size: 9px; font-family: 'Arial', 'DejaVu Sans'; text-anchor: start; fill: #202a34" x="266.96" y="153.701484" transform="rotate(-0 266.96 153.701484)">Then admission → dispatch; failure → no dispatch</text>
    </g>
    <g id="text_32">
-    <text style="font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #202a34" x="266.96" y="160.701484" transform="rotate(-0 266.96 160.701484)">Then admission → dispatch; failure → no dispatch</text>
-   </g>
-   <g id="text_33">
-    <text style="font-size: 9px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #9a650f" x="266.96" y="173.646641" transform="rotate(-0 266.96 173.646641)">Decline → no dispatch; decision is recorded</text>
+    <text style="font-size: 9px; font-family: 'Arial', 'DejaVu Sans'; text-anchor: start; fill: #9a650f" x="266.96" y="166.646641" transform="rotate(-0 266.96 166.646641)">Decline → no dispatch; decision is recorded</text>
    </g>
   </g>
  </g>
  <defs>
-  <clipPath id="p1a3f6c7b34">
+  <clipPath id="p6583fcca34">
    <rect x="2.88" y="1.08" width="247.68" height="174.24"/>
   </clipPath>
-  <clipPath id="p6eb7dce803">
+  <clipPath id="p5470e50511">
    <rect x="264.96" y="1.08" width="247.68" height="174.24"/>
   </clipPath>
  </defs>

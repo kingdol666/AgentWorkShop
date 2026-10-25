@@ -1,11 +1,48 @@
 # Anonymous reproducibility notes
 
-This document accompanies the 2026-10-24 revision, targeting at most ten pages.
-Paths below are relative
-to the repository root. Reported plant experiments use software simulators;
-real protocol stacks and a live language-model engine do not constitute
-physical-plant validation. No new plant experiments were performed during
-this manuscript revision.
+This document accompanies the 2026-10-26 revision, targeting at most ten pages.
+Repository paths are repository-root relative; paths inside Supplementary File
+S1 are archive-relative, and `qa/...` paths are relative to this manuscript
+package. The manuscript evaluates a
+model-mediated registered-task route, its fixed-call fixture replay, a
+fixture-backed command-line adapter, and direct REST calls in separately
+reported local v0.8.0 application/simulator evidence units (R20--R23). All four
+route-study logs report unavailable MQTT and Timescale endpoints; their
+run-tagged samples used the local SQLite fallback with online DAQ collection
+disabled. They do not validate the normal online DAQ path. R20 is the
+registered-harness task run: six model-selected task
+executions, three sequential per scene, each with synthetic approval and a
+verified receipt. After readback, the runner waited 20 s and queried one
+active-run-tagged sample through an isolated SQLite fallback. Task state was
+checked after the sample query, so task-completion-to-sample latency is not
+recorded; all six samples remained outside their target bands. R21 is a
+deterministic fixture replay of the same registered OMP route, with one task
+per scene, no external model decision, and 31/31 runner assertions passed.
+R22 separately exercises the direct REST operation endpoint once per scene,
+without a task, harness transport, or LLM decision. Both calls returned a
+verified receipt/readback and one run-tagged snapshot, also outside target;
+19/19 checks passed. R23 exercises a registered command-line task adapter
+once per scene using a deterministic loopback model fixture: both tasks completed with
+approval, verified receipts, active-run-tagged samples, and task-to-sample
+links; 37 application and 28 isolation checks passed. Both samples were below
+  target. This tests the reported adapter configuration, not model quality or
+general harness interchangeability. These software-simulator runs do not establish
+physical-plant behavior or process attainment. An earlier infrastructure-
+blocked harness attempt is excluded from outcome claims.
+
+R24 is a separate v0.8.3 replay of the documented C01 coating-line blueprint
+in a fresh isolated application home. It configured one Modbus/TCP twin with
+four setpoints and seven DAQ nodes, four MES REST data forms, and a channel.
+Connectivity (3/3), provisioning (20/20), channel construction (13/13), and
+V1--V6 onboarding checks (23/23) passed. Dedicated local MQTT and Timescale
+services were online; object storage was unavailable, so image artifacts used
+the local-disk fallback. A test-only automatic-approval smoke changed line
+speed from 37 to 39 m/min and the PLC twin confirmed the write. R24 establishes
+one documented blueprint-to-simulator onboarding instance only; it does not
+establish arbitrary scenario portability, configuration reuse, repeatability,
+physical transfer, human-review performance, or process quality. Its inputs,
+logs, isolated service status, and hashes are in
+`qa/onboarding-repro-2026-10-26-v083-online/`.
 
 ## Separate delivery packages
 
@@ -16,15 +53,34 @@ execution logs, replay/analysis source snapshots, and a claim-to-artifact map.
 Its manifest identifies original and delivered SHA-256 hashes and redaction
 rules. The private originals remain unchanged. The claim map records unknown
 fields as null and identifies duplicated archives without counting replicates.
-The delivered bundle is retained at
-`paper/tii/revision-2026-10-24/IEEE-TII-anonymous-evidence-2026-10-24.zip`.
-It extends the October 20 anonymous bundle with anonymous R11/R12 copies and
-a new original/delivered-hash manifest. The underlying historical bundle's
+The October 25 bundle is retained at
+`paper/tii/revision-2026-10-25/IEEE-TII-anonymous-evidence-2026-10-25.zip` as
+historical delivery. The October 26 package adds R24 and is generated from the
+final manuscript and evidence after the layout audit.
+It extends the October 20 anonymous bundle with anonymous R11/R12 copies, the
+current v0.8.0 software rerun, the blocked harness-attempt record, the two
+current-version simulator runs (Q7/R13 and its exploratory pilot/R14), the
+R16 fixture diagnostic, the model-driven registered-harness run (Q8/R20), the
+current deterministic fixture replay (R21), direct REST run (R22), Pi
+registered-harness run (R23), and updated original/delivered-hash manifest.
+The delivered root index and claim map cover manuscript evidence units
+R20--R23; historical numerical entries are preserved. The
+underlying historical bundle's
 root `README.md`, `CLAIM-MAP.json`, `MANIFEST.json`, `FILES.json`,
 `DUPLICATES.json` and `MISSING-EVIDENCE.json` explain the archive layout,
-locate all Q1--Q6 claims, and distinguish absent fields from zero values.
+locate Q1--Q7 claims, and distinguish absent fields from zero values.
 `python verify_bundle.py` checks the extracted copy using only Python's
 standard library; it does not contact a service or issue controls.
+
+For implementation inspection, the evidence extension also includes the
+shared dispatcher (`dispatch.ts`), industrial operation handlers
+(`ops-tools.ts`), and recipe gate (`recipe-gate.ts`) under
+`revision-2026-10-25/source-snapshot/`. These files match R20's recorded
+application base commit `e6bcb16fb5ac1a38f3e3ddb3cc05e200b58453c7`; the R20
+working-tree patch does not modify them. Their delivered hashes are listed in
+the source-package manifest. This selected-source snapshot supports code
+inspection; it does not turn the conditional R20 reconstruction kit into a
+standalone runtime or deterministic replay.
 
 Historical and current source snapshots are labelled separately. A source
 commit recorded in a run does not prove that every uncommitted harness file
@@ -45,16 +101,128 @@ neither is silently substituted for the unarchived exact runtime worktree.
 |---|---|---|---|
 | R1 | Q1–Q4 integrated snapshot | `bench/results/20260921184204-10lc/{run.json,report.md,scenarios.json,metrics.csv}` | Historical direct-node interface; seed 42 scenario trajectories, three seeds only for Q3 |
 | R2 | Q1 admission ablation | `bench/results/20260921181234-e1lite/{e1-lite.csv,report.md,run.json}` and companion integrated report | Six probe classes × three deterministic repetitions per arm; not independent production batches |
-| R3 | Q5 regression | `docs/benchmarks/benchmark-20261007*`, `benchmark-20261008*`, `benchmark-20261009*` | Nine sequential suite executions; 237 + 273 + 272 = 782 assertions, not 782 plant samples |
+| R3 | Q5 historical regression | `docs/benchmarks/benchmark-20261007*`, `benchmark-20261008*`, `benchmark-20261009*` | Nine sequential v0.7.57 suite executions; 237 + 273 + 272 = 782 assertions, not 782 plant samples or v0.8.0 results |
 | R4 | Q5 timestamp figure | `docs/benchmarks/benchmark-20261009033810/timeline.jsonl` | 21 archived events; S4 observation-to-verification 96.105 s; no converged terminal quality claim |
 | R5 | Q5 write grading | `docs/audit/2026-10-08-production-hardening-report.md`, `docs/audit/2026-10-17-ack-baseline.md` and associated log | Injected fault outcomes; not estimates of fault frequency |
 | R6 | Q6 primary recipe trajectory | `bench/results/injection-pressure-loop-2026-10-18T12-37-22-157Z/summary.json` | One sequential trajectory, four +5 bar requests, five quality snapshots; fixed hold time 6 s |
 | R7 | Q6 failed earlier attempt | `bench/results/injection-recipe-closedloop-2026-10-18T11-23-30-084Z/summary.json` | Cadence refusal and missed quality target, retained as a boundary |
 | R8 | Q6 separate October 18 check | `bench/results/injection-pressure-loop-2026-10-18T17-32-16-585Z/summary.json` | Separate 65→70 bar check from a different initial state; not appended to R6 |
 | R9 | Interface isolation | `tests/high-risk-tool-scope.test.ts`, `tests/tool-profile-observer.test.ts`, `tests/recipe-propose.test.ts` | 26 tests within the combined R10 set, in temporary/mock state; not an end-to-end process experiment |
-| R10 | Composition regressions | `tests/manual-approval-optimization.test.ts`, `tests/recipe-approval-snapshot.test.ts`, and related approval/profile/recipe suites | Same 65 checks passed October 20 and October 24; not 130 distinct checks; rejection status, starting control and approved recipe snapshot; no process E2E |
+| R10 | Composition regressions | `tests/manual-approval-optimization.test.ts`, `tests/recipe-approval-snapshot.test.ts`, and related approval/profile/recipe suites | Same 65 checks passed October 20, 24, and 25; the October 25 run used the local v0.8.0 working tree; repeated checks are not additional assertions and do not constitute process E2E |
 | R11 | October 23 direct-node replay boundary | `bench/results/20261023151709-1pjk/{scenarios.json,scenarios-benchmark.md}` | Current public interface refused eight attempts; zero writes, final weight 31.25 g, target not attained |
 | R12 | October 23 recipe cadence boundary | `bench/results/injection-pressure-loop-2026-10-23T15-25-20-318Z/summary.json` | One verified pressure trial; later cadence refusals, target and restoration assertions failed, no saved update |
+
+The separate infrastructure-blocked harness attempt is included as
+`revision-2026-10-25/software/current-simulator-harness-blocked.json`. It
+loaded the cast-film simulator model but failed to reach the isolated
+loopback application before creating a line or collecting samples. It is not
+the October 25 Q7 run and is not counted as a process outcome.
+
+## Q7 current-version simulator integration
+
+Q7 ran against the local v0.8.0 working tree with an isolated application,
+temporary TimescaleDB, data home and two repository simulator presets. The
+cast-film configuration connected `ScrewSpeedSP` (OPC UA) to `thick` (MQTT);
+the annealing configuration connected the zone-3 furnace setpoint to
+`StripTemp` through Modbus TCP. Across the two presets, all five configured
+driver families passed read probes. Each initial DCW write and all six
+bounded setpoint steps per scene were verified by readback. Six sequential
+120-s windows were collected per scene at a 1-s cadence. The DAQ reported 697
+cast-film points and 696 annealing points; the lineage-verified model datasets
+contained 658 and 655 rows, respectively. This is one dataset per scene, not
+six independent process replicates. Starting values were 125 rpm and
+735$^{\circ}$C. Each 1-s-sampled window stepped to the scene's initial value
+$\pm15$ at 60 s, alternating sign across the six windows; every adjacent
+change was at most 30 units. The versioned specifications used trainer
+`linear_arx@1` (which emits `linear_state_space@1` artifacts), first-order
+input/output, ridge $10^{-4}$, eight history steps, a four-step horizon and
+seed 42. Requested validation and test split ratios were each 40\%, with
+rows grouped by run ID; each split contained two of the six runs per scene.
+The resulting train/validation/test row counts were 219/219/220 for cast film
+and 218/219/218 for annealing.
+
+The available candidate eligibility evaluator, which is not source-pinned to
+R13, builds one aligned MV/CV value per dataset row: $m_i$ is the final sample
+of row $i$'s history window and $c_i$ is the first sample of its target
+horizon. It first-differences both rowwise series, then computes
+\[
+r_{\Delta}(\ell)=\operatorname{corr}(\Delta m_i,\Delta c_{i+\ell})
+\]
+for positive lags 1 through $\max(1,\lceil\mathrm{delayMs}/\mathrm{beatMs}\rceil+3)$,
+using rows for which both shifted values are defined.
+For R13, delayMs was 0 and beatMs was 1000, so the search covered lags 1--3
+rows; the candidate evaluator reports the coefficient at the lag with greatest
+absolute magnitude and blocks if $|r_{\Delta}|<0.2$. The archived report gives 0.094874 at lag 2
+for cast film and 0.052593 at lag 3 for annealing.
+
+The retained arrays are ordered in the six run blocks listed in each dataset
+manifest. A retrospective calculation that keeps those blocks separate and
+does not difference across run boundaries yields maximum absolute
+correlations of 0.023668 at lag 1 for cast film and 0.046485 at lag 1 for
+annealing. These coefficients differ from the archived full-array values.
+Since the R13 runtime source was not pinned, the archive cannot establish
+whether the discrepancy arose in the executed eligibility implementation;
+the manuscript reports both the archived outputs and this run-aware audit
+result.
+
+The dataset builder also emits a separate descriptive lag estimate from raw
+control and target levels in the first training run, scanning lags from -20
+through 20 rows. This report gave $r=0.986$ at lag 8 for cast film and
+$r=0.852$ at lag 13 for annealing. These estimates differ in transform,
+population, and lag search from the eligibility statistic; they are not used
+by the gate and are not interpreted as causal-response evidence.
+
+The held-out test split used two of six run IDs per scene: 220 sliding rows
+for cast film and 218 for annealing. These one-second windows overlap within
+each run and are serially dependent, not independent replications. The
+reported test NRMSE is one-step. Four-step rollout NRMSE was 0.279019
+(cast film) and 0.366115 (annealing), against persistence NRMSE 0.324848 and
+0.384704, respectively. Relative rollout reduction is
+$1-\mathrm{NRMSE}_{\mathrm{rollout}}/\mathrm{NRMSE}_{\mathrm{persistence}}$,
+giving 14.1078\% and 4.8321\%; the configured minimum is 20\%. The one-step
+test NRMSE values were 0.258734 and 0.363223, against a configured maximum of
+0.10. Both candidates were fitted but blocked by eligibility or validation
+gates; no accepted model, optimization profile, recommendation or dispatch was
+produced. The run recorded 50 passed checks,
+zero failed checks and two gate-blocked outcomes.
+
+The checked-in candidate evaluator computes normalized RMSE as
+$\mathrm{RMSE}/s_{\mathrm{train}}$, where $s_{\mathrm{train}}$ is the target
+standard deviation from the training split. The R13 report does not identify
+the exact application revision or evaluator hash, so this formula cannot be
+conclusively attributed to the archived run's NRMSE values. The paper reports
+the retained metrics without claiming that this retrospective candidate
+implementation is the verified runtime definition.
+
+The reported signal pairs were selected after an exploratory pilot using
+screw-speed-to-melt-pressure and zone-1-to-furnace-temperature pairs. The
+pilot produced 582 DAQ points per scene and 539/538 fit rows; delayed-response
+correlations were 0.132956 and 0.086654, while test NRMSE values were 0.1119 and
+0.5896. The annealing pilot's rollout improvement was $-15.0\%$. Both
+pilot models failed gates. The pilot is included separately as R14, along
+with its report, datasets and fit diagnostics. Q7/R13 is therefore an
+integration and gate-behavior demonstration after exploratory pair selection,
+not a pre-registered or unbiased model-performance evaluation. Neither run
+used physical equipment, an external language-model service, or the simulator
+truth/optimum endpoint. Raw reports, dataset arrays, model diagnostics and the
+available candidate test script are provided under `revision-2026-10-25/R13/`
+and `R14/` in the anonymous evidence ZIP. The R13 report does not record the
+exact application revision, test-script hash, lockfile hashes, or installed
+dependency trees. `revision-2026-10-25/R13-PROVENANCE.json` documents
+retrospective source observations and their limits; it does not establish a
+fully source-pinned replay.
+
+| ID | Manuscript | Owning artifacts | Evidence unit and limit |
+|---|---|---|---|
+| R13 | Q7 final two-scene simulator integration | `revision-2026-10-25/R13/{report.json,execution.log,dataset-film/,dataset-anneal/,job-film-artifacts/,job-anneal-artifacts/}` and `revision-2026-10-25/R13-PROVENANCE.json` | One local v0.8.0 application-level run; 50 checks passed, 2 model-gate outcomes blocked, no accepted model/profile/recommendation/dispatch; exact run-time source and dependencies were not pinned |
+| R14 | Q7 exploratory signal-pair pilot | `revision-2026-10-25/R14/{report.json,execution.log,dataset-film/,dataset-anneal/,job-film-artifacts/,job-anneal-artifacts/}` | Alternative pairs; both model gates failed; selection history only, not pooled with R13; exact run-time source was not recorded |
+| R15 | Earlier infrastructure-blocked harness attempt | `revision-2026-10-25/software/current-simulator-harness-blocked.json` | No application line or process samples; excluded from process outcome claims |
+| R16 | Deterministic registered-harness fixture diagnostic | `revision-2026-10-25/R16/{evidence.json,agentworkshop.log,simulator.log,fixture-cast-film.json,fixture-annealing.json}` plus runner and fixture source | One deterministic OMP-RPC `recipe_trial` per scene; synthetic approval; 1/1 verified ACK/readback; one 20-s run-tagged sample per scene; no LLM; kept separate from R20 |
+| R20 | Current registered-harness simulator execution (Q8) | `revision-2026-10-25/R20/{evidence.json,R20-TRACE-MATRIX.csv,agentworkshop.log,simulator.log,R20-SUMMARY.md}` and runner source | Six model-selected sequential tasks, three per scene; 6/6 task-to-approval-to-verified-receipt-to-run-tagged-sample links pass; 76 checks passed, 0 failed; verified route ACK/result precedes the 20-s delay and sample probe/ingest/query; task state checked after the query, but task-completion-to-sample latency is not recorded; all samples outside target; not independent replications |
+| R21 | Deterministic fixture replay of current registered-harness path | `revision-2026-10-25/R21/{evidence.json,agentworkshop.log,simulator.log,fixture-cast-film.json,fixture-annealing.json}` plus runner source | Fresh isolated current-version app/simulator environment; one deterministic task per scene; no LLM decision; both scenes pass dispatch, synthetic approval, verified receipt/readback, and run-tagged probe checks; 31/31 runner assertions pass including cleanup; scripted path verification only, not process replication or attainment |
+| R22 | Direct operation endpoint across two simulator mappings | `revision-2026-10-25/R22/{evidence.json,README.md,agentworkshop.log,simulator.log,e2e-direct-rest-simulator-paper.mjs}` | Fresh isolated current-version app/simulator; one direct REST call per scene, no task/harness/LLM; synthetic approval; 1/1 verified receipt/readback and one active-run-tagged snapshot per call; 19/19 checks pass; both samples outside target; not another registered harness or process-response evidence |
+| R23 | Second registered task adapter (Pi) across two simulator mappings | `revision-2026-10-25/R23/{evidence.json,README.md,agentworkshop.log,simulator.log,pi-model-api-trace.json,e2e-pi-simulator-paper.mjs}` | One task per scene from a registered Pi CLI adapter using a deterministic loopback model fixture; both tasks completed with synthetic approval, verified ACK/readback, task-to-approval/trial/active-run/sample links, and one run-tagged probe; 37 application and 28 isolation checks passed; both samples below target; no LLM evaluation, process replication, or general adapter-interchangeability claim |
+| R24 | Blueprint-driven coating-line onboarding | `qa/onboarding-repro-2026-10-26-v083-online/{R24-reproduction.json,blueprint.json,onboard.json,onboarding.log,verify-line.log,health-version.json,daq-infrastructure.json}` | Separate v0.8.3 isolated replay; one Modbus/TCP device (4 setpoints, 7 DAQ nodes), four MES REST forms; 3/3 connectivity, 20/20 provisioning, 13/13 channel construction, 23/23 V1--V6 checks, and one twin-confirmed 37-to-39 m/min smoke; online MQTT/Timescale, local-disk image fallback; one documented simulated mapping, not general portability or process-quality evidence |
 
 `bench/results/real-harness-injection-20261018/closedloop-summary.json`
 duplicates R6 byte for byte. It does not add a replicate. Its `report.md`
@@ -64,7 +232,7 @@ than successful repetitions.
 
 R11 and R12 are newer than the October 20 anonymous evidence ZIP. They are
 separate evidence units, not additional successful repetitions of R6. The
-October 24 supplement extends that historical bundle; the older ZIP alone
+October 25 supplement extends that historical bundle; the older ZIP alone
 does not cover these new manuscript statements.
 
 ## Q1 latency statistic
@@ -192,31 +360,61 @@ estimate of comparative control performance.
 
 ## Figure construction
 
-The active figures are six vector PDFs under `resources/`:
-`fig-architecture-2026`, `fig-runtime-2026`, `fig-admission-hitl-2026`,
-`fig-missions-controls`, `fig-governance-timeline`, and
-`fig-injection-controls`. Editable SVG and 600-dpi PNG companions remain
-available. The PDF versions are used in the manuscript.
+The manuscript uses four externally drawn vector PDFs under `resources/`:
+`fig-architecture-2026-9pt`, `fig-runtime-2026-9pt`,
+`fig-admission-hitl-2026`, and `fig-missions-controls`. Figure 3 is
+typeset pseudocode. Editable SVG and 600-dpi PNG previews remain available
+for these external figures; the active Figure 5 preview is
+`fig-missions-controls-preview.png`. The current-route sample plot and the older
+`fig-parameter-objective` remain as research artifacts but are not included in
+the manuscript's figures. The earlier `fig-injection-controls` and
+`fig-governance-timeline` are revision assets outside the active-figure set.
+S4/S5 timing from the deployment study is summarized in Evaluation.
 
-`figures/make-system-2026.py` builds the implementation schematics.
-OpenAI image generation drafted the compositions of Figures 1 and 2;
-their final labels and geometry are redrawn as editable Python vectors and
-checked against the implementation. The AI-generated raster drafts are
-design inputs, not process observations or quantitative evidence.
+`figures/make-system-2026.py` builds the implementation schematics. For the
+2026-10-25 revision, Figure 1 maps the six implementation bands and their
+separate evidence records; Figure 2 traces task entry through the shared
+dispatch gate to the read/analysis or write/recipe route and back to the task
+result and route-specific evidence.
+Earlier image-generation concepts were exploratory and are not used in the
+current figures; where such raster drafts are retained, they are design
+inputs, not process observations or quantitative evidence.
 `figures/make-evaluation-2026.py` parses archived JSON/JSONL for the
-experimental figures. Derived CSV/JSON source data, source hashes,
-transformation rules and geometry audits are retained in
+multi-process and recipe-path experimental figures; it also retains the
+governance-timeline generator for audit traceability. Figure 5's derived
+action/outcome data, archived-source hash, panel-alignment report, and PDF
+collision report are retained under `resources/figure-source-data/`. Earlier
+figure snapshots and historical audits remain under
 `paper/tii/revision-2026-10-20/`.
 
-All R6 snapshots are used. Index 0 is baseline state, not a command issued
-by that trial. No continuous physical response or confidence interval is
-interpolated from snapshots. Historical control curves carry unchanged
-requested values forward only to display command intent. Their ordinate
-is percentage change from each knob's engineering-unit baseline; raw
-values and terminal units are also supplied. WWTP pH/TP observations are
-not plotted as dissolved oxygen. The annealing write-after observation
-99.84 HV and the later terminal 100.08 HV are separate data points; its
-first temperature intervention has no archived optimization-record ID.
+Figure 5 is rebuilt by running `python figures/plot-historical-missions.py`
+from this submission folder. The wrapper reads the archived four-scenario
+record, preserves its source hash in derived provenance data, and writes the
+vector figure and action/outcome CSV files. The upper panels show process-variable responses in
+native units against scenario-specific target windows. The lower panels show
+requested control changes relative to each control's baseline, with native-
+unit starting and ending requests listed below. This pairing exposes the
+recorded action--response sequence without implying that requested values are
+device readbacks. The wastewater panel keeps the terminal dissolved-oxygen
+reading separate from the trajectory recorded during the blower stage; its
+later pH and total-phosphorus controls remain visible below. The wastewater
+target window is read from the structured PV target and tolerance fields
+(3.4 +/- 0.6 mg/L); the associated free-text scenario narrative says
+3.2 +/- 0.6 mg/L, so the structured fields are the plotted source. The annealing
+panel retains the response without a linked optimization record and the
+reverted candidate noted in event text. Event indices indicate order, not
+elapsed time. The archive contains one seed-42 simulator trajectory per
+scenario from the historical direct-node scripted interface. These are not
+current v0.8.0 route results and do not establish repeatability or a common
+optimizer score. Current route samples remain reported separately in the
+evaluation text and route table. Regenerating Figure 5 reads the archive; it
+does not rerun an experiment.
+
+The earlier `figures/plot-parameter-objective.py` and its source-data files
+remain available as historical research artifacts. That plot contains an
+explicit $J/J^*$ trace for one cast-film controller scenario with three seeded
+initializations; it is not evidence for a common objective across the four
+scenarios in Figure 5 or for the current-version routes.
 
 ## Build and local checks
 
@@ -231,7 +429,7 @@ manuscript. The command requires the skill's compile wrapper and a compatible
 TeX installation; the wrapper is not redistributed in the source package.
 
 Current revision checks and rendered pages are recorded under
-`paper/tii/revision-2026-10-24/qa/`. Verify the actual compiled page count
+`paper/tii/revision-2026-10-25/qa/`. Verify the actual compiled page count
 (at most ten, including references), template use, unresolved citations,
 active figure files and placed type size, placeholders, page clipping,
 anonymity, and layout warnings. These are formatting checks, not scientific
@@ -239,18 +437,22 @@ approval or journal acceptance. The October 20 verifier and its outputs are
 historical records with an exact-ten-page condition that is not this
 revision's delivery requirement.
 
-The October 24 isolated software rerun used the following command from the
+The October 25 isolated software rerun used the following command from the
 repository root:
 
 ```text
 node node_modules/tsx/dist/cli.mjs --tsconfig .nuxt/tsconfig.server.json --test --test-force-exit --test-concurrency=1 tests/high-risk-tool-scope.test.ts tests/tool-profile-observer.test.ts tests/recipe-propose.test.ts tests/manual-approval-optimization.test.ts tests/recipe-approval-snapshot.test.ts tests/manual-approval.test.ts tests/tool-approvals-choice.test.ts tests/recipe-op-interval.test.ts
 ```
 
-It recorded 65 tests, 65 passes and zero failures in
-`paper/tii/revision-2026-10-24/qa/current-software-tests.log`. The suites use
-temporary/mock state and do not measure plant-response performance. This is
-a rerun of the same 65-check set, not 65 additional independent process
-observations. An earlier invocation omitted the required tsconfig and
+This historical focused run recorded 65 tests, 65 passes and zero failures in
+`paper/tii/SUBMISSION-IEEE-TII/revision-2026-10-25/qa/current-software-tests-v0.8.0.log`.
+The anonymized copy is included at
+`revision-2026-10-25/software/current-software-tests.log` in the evidence ZIP.
+The package declares version 0.8.0; the run used the local working tree. The
+suites use temporary/mock state and do not measure plant-response performance.
+This is the same 65-check set recorded on October 20 and 24, not 65 additional
+independent process observations or the latest full-suite result (566/566).
+An earlier invocation omitted the required tsconfig and
 failed on alias imports; its diagnostic log is retained separately rather
 than classified as a tested execution-contract failure.
 
@@ -264,3 +466,181 @@ process-response experiments are separate evidence units; R1–R8 remain
 unchanged. A future comparative study must add matched
 initial states, independent seeds/batches and complete timestamped
 request, approval, driver readback and sensor-window records.
+
+## Current registered-harness experiment (R20)
+
+R20 is the reportable current registered-harness run. Its source evidence is
+`revision-2026-10-25/R20/evidence.json`, with the application and simulator
+logs and exact runner source alongside it. The `R20/source-snapshot/` kit
+contains app and simulator diffs from the recorded base commits, the app's
+untracked source file, dependency lockfiles, all 17 runtime prompt assets, and
+verified source-tree and prompt-tree hashes. Package manifests are recovered
+from the recorded base commits. This allows conditional reconstruction of the
+local code state; the
+external model service remains nondeterministic, so identical model-selected
+settings are not promised. R20 ran the local v0.8.0 working tree with the
+registered `omp` adapter and `glm-5.3-flash` model. Six task
+executions were run in sequence: three cast-film runs and three annealing
+runs. Each run created a separate line, product, recipe, run, channel, agent,
+and task context, but each set of three used one persistent simulator
+instance; they are not independent replications.
+
+Cast film used an OPC UA screw-speed control and an MQTT thickness probe;
+annealing used Modbus TCP for the zone-3 setpoint and strip-temperature probe.
+The model selected one setting from a three-value prevalidated set in each
+run. A synthetic administrator approved each proposal. Each route log records
+one recipe trial and one 1/1 verified readback receipt, and all six tasks
+reached `COMPLETED`. The test runner recorded 76 passing checks and no
+failures. Task history includes mirrored event projections from two journal
+listeners; operation counts are therefore taken from the route-specific
+recipe and acknowledgement records.
+
+Each run then waited 20 s, performed one explicit driver probe, ingested that
+single sample, and queried it by line, node, active run, and timestamp. The
+R20 application's MQTT/Timescale services were unavailable, so this query
+used the local SQLite time-series fallback. The six post-trial samples
+were 45.69, 46.69, and 45.69 μm against a 48--52 μm cast-film band,
+and 679.60, 677.70, and 678.10 °C against a 700--760 °C
+annealing band. None reached its target. A single sample at 20 s is not a
+trajectory or settled-state measurement. This run validates a bounded
+application/harness/route/evidence path, not the normal online DAQ backend,
+profile/binding adaptation in a controlled comparison, optimization quality,
+process convergence, or plant performance. The earlier R16 deterministic
+fixture remains a separate diagnostic and is not pooled with R20.
+
+## Deterministic fixture replay (R21)
+
+R21 was run on October 25, 2026, against the local v0.8.0 application and
+repository simulators in a new isolated environment. The default fixture mode
+of `e2e-registered-harness-simulator-paper.mjs` supplied a fixed OMP-RPC tool
+call; it did not invoke an external model or make an autonomous harness
+decision. One task in each scene exercised dispatch, synthetic approval,
+recipe-trial handling, verified device readback, and one sample queried under
+the active-run ID. The evidence records two tasks and two active runs; the
+trial-run IDs are separate from active-run IDs, and the sample query matches
+the active run in each scene. All 31 runner assertions passed, including
+process-stop and port-release checks. The samples are single probes, and R21
+is not an independent process replication or attainment test.
+
+To repeat the deterministic software-path check in a provisioned repository
+with the required dependencies installed and the runner's loopback ports free,
+run `node scripts/e2e-registered-harness-simulator-paper.mjs` from the
+repository root with `PAPER_E2E_HARNESS_MODE` unset (the default `fixture`
+mode). The script creates a fresh isolated `AW_HOME`, starts the application
+and simulator locally, stores evidence under `.omc/`, and verifies process
+and port cleanup before reporting success. This command reproduces the fixture
+path; it does not replay R20's external model decisions.
+
+## Direct operation route (R22)
+
+R22 ran one bounded `recipe_trial` per scene through
+`POST /api/workshop/agent-tools/invoke` in a fresh isolated local v0.8.0
+application/simulator environment. A worker identity supplied operation
+scope; the run created no task, harness turn, or external model call. A
+synthetic administrator approved each call. Both returned HTTP 200, a 1/1
+verified receipt and matching control readback. After 20 s, the runner probed,
+ingested, and queried one sample by active-run ID: 46.37 um for cast-film
+(target 48--52 um) and 675.20 C for annealing (target 700--760 C). All 19
+runner checks, isolation checks, and cleanup checks passed. The values remain
+outside target, and one sample per scene does not measure process response.
+The run establishes direct-route coverage across these two mappings only; it
+does not test another registered harness or task-to-sample linkage.
+
+The exact evidence and runner are retained under
+`revision-2026-10-25/R22/`. With repository dependencies installed, run
+`node scripts/e2e-direct-rest-simulator-paper.mjs` from the repository root.
+The script uses loopback services and a fresh isolated `AW_HOME`; it does not
+call an external model or physical equipment. An earlier lead-role attempt
+that started a failing scheduler subprocess is invalid and excluded from R22.
+
+## Second registered task adapter (R23)
+
+R23 used the registered Pi CLI adapter in a fresh isolated local environment.
+A deterministic OpenAI-compatible loopback fixture scripted one
+`recipe_trial` call followed by `complete_task` per scene; no external model
+provider was called. Synthetic approval produced a
+readback-verified receipt in each scene, both tasks completed, and the runner
+queried one active-run-tagged sample 20 s after each trial. Cast-film changed
+from 120 to 125 rpm and sampled 46.38 um against a 48--52 um band; annealing
+changed from 730 to 735 C and sampled 674.40 C against a 700--760 C band.
+Both samples were below target. The archived evidence retains task, approval,
+recipe/trial, active-run, DAQ-node, and sample links. It records 37/37
+application checks, 28/28 isolation checks, and successful process/port
+cleanup. The fixture is deterministic and local, so R23 evaluates the
+registered Pi integration route, not agent reasoning, model quality, process
+response, or general adapter interchangeability.
+
+The evidence and runner are retained under
+`revision-2026-10-25/R23/`. With repository dependencies installed, run
+`node scripts/e2e-pi-simulator-paper.mjs` from the repository root. The runner
+uses a local fixture and loopback services with a fresh isolated `AW_HOME`; it
+does not call an external provider or physical equipment.
+
+## Blueprint-driven scenario onboarding (R24)
+
+R24 ran the documented C01 blueprint and onboarding configuration against the
+local v0.8.3 working-tree build on October 26, 2026. The application used a
+fresh isolated home; the PLC twin, MES REST simulator, MQTT broker, and
+Timescale service were bound to dedicated loopback ports. The retained
+`health-version.json` and `daq-infrastructure.json` record the application
+version and online status. Object storage was not available; only image
+artifacts used the local-disk fallback. No physical device was contacted.
+
+The blueprint instantiated device `coating-c01` over Modbus/TCP with eleven
+signals (four setpoints and seven DAQ nodes). Onboarding preflight passed three
+connectivity checks, provisioning passed 20 checks, and channel construction
+passed 13 checks. Four MES REST forms returned scalar, 48-point vector, table,
+and image records with expected format/dictionary metadata. The complete V1--V6
+verifier output records 23 passes and no failures, covering all seven DAQ
+nodes, range rejection, legal write/readback, recipe mapping, channel/plugin
+membership, and isolation from a protected demonstration line.
+
+The smoke path used a test-only automatic-approval policy: line speed changed
+from 37 to 39 m/min inside the configured 28--48 m/min recipe range, and the
+PLC twin confirmed the write. This is synthetic approval and simulator I/O,
+not evidence about human review, film quality, or optimization performance.
+The run demonstrates one documented configuration completing onboarding on
+the tested build. It does not demonstrate reuse across lines, support for an
+arbitrary unseen scenario, repeatability, physical transfer, or general
+protocol coverage. The raw runner output, full V1--V6 log, input JSON, health
+and DAQ status, and SHA-256 values are retained in
+`qa/onboarding-repro-2026-10-26-v083-online/`.
+
+## Software and approval-context checks
+
+During this revision, `pnpm test:unit` passed 566/566 tests across seven
+suites on the current working tree. Its output is retained as
+`revision-2026-10-25/software/current-full-software-tests.log`.
+
+The `tests/recipe-approval-snapshot.test.ts` suite passed 20/20 cases. It
+includes 12 pending-approval context mutations: line, product, recipe, and
+active run for each of `recipe_apply`, `recipe_trial`, and
+`recipe_rollback(dispatch=true)`. Every mutation is refused before any
+mock-driver write and creates no new execution record.
+The targeted test output is retained as
+`revision-2026-10-25/software/approval-context-regression.log`; the selected
+source snapshot includes the test and context-revalidation implementation.
+This verifies a mock-state software contract only; it is not process-level or
+overall architecture evidence, an R20/R21/R23 process observation, or an
+independent simulator replication. The 566/566 unit-suite count is separate
+from all four end-to-end evidence units. To rerun it from the repository root, use:
+
+```text
+pnpm exec tsx --tsconfig .nuxt/tsconfig.server.json --test --test-force-exit tests/recipe-approval-snapshot.test.ts
+```
+
+The separate `tests/recipe-approval-context-ablation.test.ts` generates a
+temporary handler variant that removes only the post-approval tuple
+comparison, retains the other rechecks, and deletes the variant after the
+test. Across the same three routes, it accepted six product/run context
+mutations, each producing two mock-driver writes and one execution record;
+the six line/recipe mutations remained blocked. The test passed 12/12 cases,
+and its output is retained as
+`revision-2026-10-25/software/approval-context-ablation.log`. This is a
+targeted component ablation with mock state, not a comparison against another
+platform or evidence of physical safety. To rerun it from the repository
+root, use:
+
+```text
+pnpm exec tsx --tsconfig .nuxt/tsconfig.server.json --test --test-force-exit tests/recipe-approval-context-ablation.test.ts
+```

@@ -1,80 +1,35 @@
-# IEEE TII manuscript package
+# IEEE TII Manuscript Package
 
-Current revision: 2026-10-24, narrative, evidence-boundary and figure revision.
-The compiled anonymous manuscript has **10 pages**, including six vector
-figures and **30 references**, within the at-most-ten-page requirement.
-The delivery manifest records the actual page count. IEEEtran journal body/bibliography
-type and margins are unchanged.
+Current manuscript: **AgentWorkShop: A Modular Task-to-Device Integration Framework for Industrial Agents**. The anonymous IEEEtran journal-format manuscript was rebuilt for the 2026-10-26 revision. Figure 5 shows four archived scenario trajectories; it is not the current route-linked sample figure. Figures 1 and 2 remain on separate pages. The source omits author-identifying material for review, including acknowledgments. The AI disclosure text is retained separately from the anonymous package pending confirmation of the appropriate journal channel.
 
-The story follows task intent and production context through acquisition,
-diagnostics, knowledge retrieval, model training, bounded proposals, governed
-execution, response observation and retained recipes. The current system is
-described through its operating contracts; repaired development defects are
-not part of the main narrative. The injection case shows pressure requests,
-platform snapshots and quality outputs together. The process evidence uses
-repository simulators, with its actual scope stated in Engineering Interpretation
-and the self-contained figure captions.
+The paper presents AgentWorkShop as a modular framework connecting task adapters, production context, named operations, semantic I/O, configured protocol drivers, and service-owned records. Its central design distinction is between discovery and dispatch authority, and between a command receipt and a later process observation. The article reports a bounded route-continuity study across two preconfigured simulator mappings (R20–R23), plus one separate configuration-driven coating-line onboarding replay on v0.8.3 (R24). All R20–R23 route-study logs report unavailable MQTT and Timescale endpoints; their samples used SQLite fallback, so they do not validate online DAQ operation. R24 used isolated online MQTT/Timescale services and completed one documented blueprint-to-simulator onboarding instance. It does not establish arbitrary scenario portability, reuse, or process quality. Figure 5 pairs requested setpoint changes with process-variable responses and scenario-specific target windows for one archived seed-42 scripted mission in each of four simulator scenarios. These historical direct-node missions are separate from both the v0.8.0 route study and v0.8.3 onboarding replay. Route-study samples remain below target and do not establish process convergence.
+
+## Evaluation scope
+
+The route-continuity study used one registered harness across cast-film and annealing simulator scenes with different signal and protocol mappings. Six sequential tasks received synthetic approval and a verified device receipt. After each receipt, the runner waited 20 s, then probed, ingested, and queried one sample under the active production run ID. All four route-study evidence units (R20–R23) used the local SQLite fallback because MQTT and Timescale were unavailable. All six model-mediated records passed the reported task, approval, receipt, and sample-link checks, but no task-completion-to-sample latency is available. Three executions per scene share one simulator instance. All twelve route-study samples remained outside their target bands. These results demonstrate the tested software paths, not normal online DAQ operation, process attainment, convergence, or cross-harness portability.
+
+Separately, R24 reproduced one documented coating-line blueprint on the v0.8.3 build with dedicated MQTT and Timescale services online. Connectivity, provisioning, channel generation, MES data forms, and V1–V6 checks passed; one test-only auto-approved smoke write was confirmed by the PLC twin. Object storage was unavailable, so image artifacts used local-disk fallback. This single simulated onboarding case supports feasibility for that documented configuration; it is not evidence of arbitrary scenario adaptation, physical transfer, human-review performance, or process quality. Inputs, run logs, service status, and hashes are retained in `qa/onboarding-repro-2026-10-26-v083-online/`.
+
+The deterministic current-version harness replay exercised one task in each scene with synthetic approval, verified receipt, readback, and a run-tagged sample without an LLM decision. All 31 runner assertions passed, including cleanup checks. It verifies a scripted software path and is not an independent real-agent or process-performance replication.
+
+The direct REST operation check exercised the endpoint once in each scene, without a task, harness transport, or external model decision. Both calls were approved, returned a verified receipt/readback, and produced one run-tagged snapshot; neither snapshot reached its target band. The 19 runner checks passed. This broadens entry-route coverage but is not cross-harness evidence and does not demonstrate process response.
+
+The registered Pi-adapter check exercised one task per scene with a deterministic loopback model fixture; no external model provider was used. Both tasks completed with synthetic approval, readback-verified receipts, and task-to-sample links. The 37 application and 28 isolation checks passed. The single cast-film and annealing samples remained below target. This tests a second registered task adapter under one fixture configuration, not Pi model quality, process response, or general adapter interchangeability.
+
+The current local unit suite passed 566/566 tests across seven suites. It covers scope/grant checks, approval denial and expiry, route-state revalidation, node limits, and role-specific tool exposure with temporary or mock state; it is separate from the model-mediated, deterministic-replay, direct-REST, and Pi-adapter runner checks. These results are software-test evidence, not process-level or overall architecture evidence. A secondary exploratory protocol and data-lineage run recorded five protocol-family probes and bounded writes with readback across two simulator scenes, but the exact runtime source was not pinned. Its gate metrics and run-boundary audit are documented in the reproducibility supplement, not used for the primary result.
+
+The recipe-approval snapshot suite passed 20/20 cases. It includes 12 pending-approval context mutations: line, product, recipe, and active run for each of `recipe_apply`, `recipe_trial`, and `recipe_rollback(dispatch=true)`. Every mutation is refused before a mock-driver write and creates no new execution record. A separate queued-context regression changes the active context after asynchronous grant validation but before dispatch resumes; the final synchronous comparison refuses it. A test-only ablation that removes only the tuple comparison lets six product/run mutations proceed to mock actuation (two writes and one execution record per case); other checks still block the six line/recipe mutations. The check is a software-state guard at dispatch entry, not an atomic guarantee during device I/O. These are component-level mock-state results, not a platform baseline or process-level safety evidence. Scope and channel-policy refusals are not uniformly retained as durable audit events. Test source and run logs are included in Supplementary File S1.
 
 ## Files
 
-- `main.tex` / `main.pdf`: source and compiled anonymous manuscript.
-- `sections/`: six chapter sources.
-- `resources/`: active vector figures, editable SVG/PNG companions, verified
-  active bibliography, and result macros.
-- `figures/make-system-2026.py`: three implementation schematics.
-- `figures/make-evaluation-2026.py`: three data-driven experimental figures.
-- `REPRODUCIBILITY.md`: R1-R12 evidence units, objective definitions, protocol
-  and interpretation of the archived process measurements.
-- `FILE-MANIFEST.json`: hashes of the active manuscript and resources.
+- `main.tex` / `main.pdf`: anonymous manuscript source and compiled PDF.
+- `sections/`: introduction, related work, system design, module functions, experimental evaluation, and discussion/conclusion.
+- `resources/`: active figures and bibliography.
+- `figures/`: figure source and generation assets.
+- `REPRODUCIBILITY.md`: evidence units, run provenance, and measurement interpretation.
+- `CLAIM-EVIDENCE-LEDGER.md`: claims mapped to their evidence and limits.
+- `FILE-MANIFEST.json`: hashes for the active manuscript and resources.
+- `Supplementary-File-S1.zip`: updated anonymous evidence package, including R24.
+- `../revision-2026-10-26/`: dated PDF, source ZIP, evidence ZIP, delivery manifest, and final audit.
 
-The manuscript-source ZIP and `IEEE-TII-anonymous-evidence-2026-10-24.zip` are separate
-deliverables. The latter contains available raw/derived archives, original
-engine logs, replay source snapshots, redaction/hash manifests, and a
-claim-to-artifact map. Available scripts are labelled by interface era; the
-supplement does not claim a standalone runtime or an exact historical source
-snapshot when only an archived commit marker is available. The October 24
-evidence package extends the historical anonymous bundle with the October 23
-failed boundary checks and new original/delivered hashes; those checks are
-not represented as successful process replications.
-
-## Compile
-
-From this folder, with TeX Live and IEEEtran installed:
-
-```text
-latexmk -pdf -interaction=nonstopmode -halt-on-error main.tex
-```
-
-The agent's checks use the latex-paper-en `compile.py` wrapper with shell
-escape disabled. Use a Python environment with PyMuPDF for PDF preflight.
-Current official requirements, evidence/prose audits, figure QA, page renders,
-evidence packaging and final verification are in `../revision-2026-10-24/`.
-The October 20 checks and five-seat review remain historical records.
-Unchanged primary-source citation audits
-remain in `../revision-2026-10-20-tenpage/`; original experimental figure
-source-data mappings remain in `../revision-2026-10-20/`.
-
-The current `../revision-2026-10-24/requirements/IEEE-TII-REQUIREMENTS.md`
-distinguishes official rules from project choices. TII sets a ten-page
-ceiling; exactly ten pages is unnecessary. Thirty references results from separating two standards,
-not a journal reference ceiling. Earlier review/build records are historical
-artifacts and do not describe the current PDF.
-
-## Editorial and citation scope
-
-The current bibliography contains the actually cited works; the previous
-background library and nine-page draft are preserved separately. AgentSpec
-uses its ICSE 2026 publication; the R2R book lists editors; MCP is versioned;
-ISA-88 and ISA-95 have distinct references. DOI links are printed where available.
-The primary-source reports distinguish full-text, author-abstract, catalog and
-same-day prior-metadata checks rather than claiming every source was read fully.
-
-Formatting and citation verification are distinct from journal peer review.
-The paper reports the mechanisms and process observations its archives support,
-and states the simulator/sample scope. The prior five-seat review is preserved
-as a historical editorial input; this pass has its own read-only verification.
-AI assistance is disclosed, including image-generation composition drafts
-for Figures 1 and 2 and their final editable vector reconstruction. The
-official requirements record the AI-disclosure placement issue for anonymous
-review; the final portal instructions still govern submission placement.
-No external journal submission is performed.
+The manuscript-source ZIP and anonymous-evidence ZIP are separate deliverables. The anonymous evidence archive is intended as Supplementary File S1; its trace matrix records the six model-mediated task executions and their linked task, active-run, approval, trial, receipt, and sample IDs. The updated package adds R24's blueprint, onboarding configuration, isolated service status, and verifier logs. Evidence units are not pooled or presented as matched strategy comparisons. Local checks and blind reviews support revision quality but do not guarantee IEEE TII acceptance.

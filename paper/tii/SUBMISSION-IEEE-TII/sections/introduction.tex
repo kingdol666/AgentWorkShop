@@ -1,54 +1,93 @@
 \section{Introduction}
-\IEEEPARstart{L}{arge} language model (LLM) agents are being applied to
-industrial control, factory skills, shop-floor coordination, and production
-scheduling \cite{huang2026made,koehle2026llmdriven,lim2025llmenabled,zhao2026shopfloor,waseem2026pretrained}.
-These studies show that agent reasoning can be connected to plant-facing
-tasks, but deploying another process or line also changes signal maps,
-protocols, operating objectives, and production context. A reusable
-industrial-agent system must make those changes configurable while keeping
-collaboration, plant integration, and operational workflows coherent.
+\IEEEPARstart{I}{ndustrial-agent} deployments must connect each task to its
+production context, process signals, and equipment interfaces. Existing work
+addresses end-to-end automation control, operator-reviewed control-sequence
+generation, modular factory skills, and production scheduling
+\cite{xia2025control,huang2026made,koehle2026llmdriven,waseem2026pretrained}.
+Other studies target PLC code generation, context-aware control, resource
+capability discovery, shop-floor coordination, digital-twin fault handling,
+natural-language machine access, and robotic-line control
+\cite{liu2026agents4plc,wu2025instructmpc,lim2025llmenabled,zhao2026shopfloor,gill2025llmdt,hofmann2025nlc}.
+Across production lines, agent roles, signal maps, protocols, objectives, and
+product/run context vary. An integration architecture must accommodate these
+differences around shared task and operation services while keeping each
+action tied to its active production context. Recent industrial-agent
+architectures add AAS-grounded OPC UA actions with signed approval,
+P\&ID-grounded proposal checks, and governed sensor--MES--ERP evidence
+streams \cite{graul2026aas,schall2026safe,lin2026agentic}. These works address
+asset-specific execution, process validation, or closed-loop analytics. At
+their software-integration boundary, this paper examines a specific
+implementation requirement: task routes and direct tool callers should invoke
+one shared named operation handler while retaining evidence
+appropriate to each route. Task routes can link task, approval, command
+receipt, and process observation; a direct call has operation records but no
+task edge. The contribution concerns the implementation and evaluation of
+this contract; equivalent behavior may also exist in prior platforms.
 
-Injection molding illustrates this systems problem. A team member may use
-recent measurements and prior process knowledge to diagnose insufficient
-packing and propose higher holding pressure. The framework must locate the
-active product, recipe, and run; map the semantic quantity to a device
-interface; apply the operation's configured checks; and return both
-endpoint evidence and subsequent quality observations. The same team and
-operational services should remain usable when another process changes the
-signal map, protocol, or target criteria. A proposal, a confirmed setting,
-and an observed process result therefore need distinct representations,
-linked to the same production context.
+Consider two production scenes with different process signals and interfaces:
+cast-film thickness control and annealing-zone temperature control. An agent
+task in either scene needs production context, typed signal access, and a
+route from a named operation to the configured device protocol. The framework
+must also distinguish a command receipt from a subsequent process
+observation. The shared task and operation services can therefore be
+configured with scene-specific signal maps, protocols, and limits while
+retaining a common execution path. The evaluation examines this path in two
+simulator scenes and replays a documented coating-line onboarding workflow.
 
-The research question is how an extensible industrial-agent framework can
-connect replaceable collaboration and strategy components to production
-context and heterogeneous industrial I/O, while retaining route-appropriate
-evidence from candidate action through process observation. AgentWorkShop
-addresses this question through four cooperating design areas: channels,
-teams, tasks, and shared memory host replaceable strategy adapters;
-analysis, retrieval, dataset, and model services inform proposals; a
-line--product--recipe--run model scopes work; and semantic acquisition and
-write-control nodes bridge process quantities to protocol drivers.
-Operational profiles and capabilities determine which workflow a channel
-can invoke. Bounded node exploration and recipe operation then preserve
-their distinct dispatch, observation, and retention lifecycles. Typed SDK,
-REST, MCP, agent-to-agent, CLI, and console interfaces expose extension and
-integration points.
+This paper presents AgentWorkShop as a modular framework for task-to-device
+integration in industrial agents. It connects collaborative tasks through a
+registered harness interface to production context, manufacturing execution
+system (MES) data, analysis and modeling services, data-acquisition (DAQ) and
+write-control (DCW) nodes, and protocol-specific drivers. Its interfaces include
+command-line, web, software development kit (SDK), Representational State
+Transfer (REST), Model Context Protocol (MCP), and Agent-to-Agent
+(A2A) surfaces. Task and chat routes enter the
+collaboration runtime, whereas a direct REST tool-invocation route can call
+the shared operation dispatcher without creating a task.
+Scene blueprints define signal maps, objectives, and guards; channel profiles,
+tool policies, and agent bindings scope operations. Agents and callers invoke
+named operations through shared runtime checks; the framework does not choose
+routes autonomously and retains proposals, command confirmation, and process
+observations as distinct records. Fig.~\ref{fig:arch} presents the system
+architecture, and Fig.~\ref{fig:runtime} shows the cross-module task flow.
+Section~IV follows task context through shared dispatch, device admission,
+approval, and route-specific evidence.
 
-This paper makes three contributions:
+The evaluation asks whether the registered-harness task route, a
+fixture-backed command-line task route, and direct REST calls reach the same
+named operation across two configured simulator mappings while preserving
+the records applicable to each route. A fixed-call replay separates task-path
+behavior from an external model decision, and a mock-state experiment examines
+the approval-bound context check before software dispatch. A separate
+v0.8.3 replay onboards a documented coating-line blueprint with Modbus TCP
+and MES REST interfaces in a fresh isolated instance. These experiments cover
+selected route contracts and one configuration-driven onboarding workflow;
+they do not establish arbitrary adapter interchangeability or process
+improvement. Section~V reports the protocols, results, and evidence limits.
+
+The paper makes two contributions:
 \begin{enumerate}
-\item It presents a modular framework architecture that joins agent
-collaboration and replaceable decision services with production objects,
-semantic industrial I/O, and external extension interfaces.
-\item It describes a configuration-based integration model in which
-process-specific signal maps, protocol bindings, objectives, and guards
-reuse shared orchestration and operational services, while node exploration
-and recipe workflows retain route-specific evidence.
-\item It evaluates protocol mappings, strategy substitutions, four
-simulator-based process configurations, deployment-suite behavior, and a
-recipe-path case. These experiments provide implementation evidence for the
-exercised configurations; they do not estimate physical transfer or
-comparative control benefit.
+\item It implements a modular execution path that brings production
+  context, semantic I/O, operation checks, configured protocol drivers, and
+  service-owned records to one named-operation boundary. Task routes retain
+  linked task, approval, receipt, and observation records where available;
+  direct calls retain operation records without creating a task. For approved
+  recipe actions, the system binds approval to the active
+  line--product--recipe--run tuple and checks it again after asynchronous
+  authorization, just before software dispatch. This software check is not
+  an atomic lock across device I/O, a new protocol, a safety-verification
+  method, or a process-control algorithm.
+\item It reports route-specific record continuity for registered-harness and
+  command-line task routes and direct REST calls across cast-film and
+  annealing simulator mappings, a documented coating-line onboarding replay,
+  and a mock-state test and ablation of the context check. The onboarding
+  replay checks protocol access, heterogeneous MES data, channel configuration,
+  acquisition, and an approved simulator write; process readings are reported
+  separately from these integration outcomes.
 \end{enumerate}
-The remainder presents related industrial-agent and integration work,
-details the AgentWorkShop architecture and operational workflows, evaluates
-the implemented routes, and discusses evidence scope and limitations.
+
+Section~II reviews related industrial-agent and integration work.
+Section~III presents the design rationale, architecture, and cross-module
+execution flow; Section~IV explains module responsibilities and their
+integrated operation. Section~V describes the experiments and results, and
+Sections~VI and~VII discuss the evidence limits and conclude the paper.

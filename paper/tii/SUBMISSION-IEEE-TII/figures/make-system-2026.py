@@ -14,13 +14,14 @@ import matplotlib
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
-from matplotlib.patches import FancyArrowPatch, Polygon, Rectangle
+from matplotlib.patches import (FancyArrowPatch, FancyBboxPatch, Polygon,
+                                Rectangle, Circle, Ellipse)
 import pymupdf as fitz
 from PIL import Image
 
 HERE = Path(__file__).resolve().parent
 OUT = HERE.parent / "resources"
-REVISION = HERE.parent.parent / "revision-2026-10-24"
+REVISION = HERE.parent.parent / "revision-2026-10-25"
 QA = REVISION / "qa"
 SKILL = Path.home() / ".codex" / "skills" / "nature-figure"
 sys.path.insert(0, str(SKILL / "scripts"))
@@ -80,6 +81,24 @@ def arrow(ax, start, end, *, color=GRAY, dashed=False, points=None):
                                 color=color, shrinkA=0, shrinkB=0))
 
 
+def gap_arrow(ax, start, end, *, color=GRAY, dashed=False):
+    """Draw a compact arrow that stays inside the whitespace between boxes."""
+    dx, dy = end[0] - start[0], end[1] - start[1]
+    length = (dx * dx + dy * dy) ** 0.5
+    ux, uy = dx / length, dy / length
+    px, py = -uy, ux
+    line_start = (start[0] + 1.5 * ux, start[1] + 1.5 * uy)
+    base = (end[0] - 5.0 * ux, end[1] - 5.0 * uy)
+    tip = (end[0] - 1.2 * ux, end[1] - 1.2 * uy)
+    ax.plot([line_start[0], base[0]], [line_start[1], base[1]],
+            color=color, lw=0.7, solid_capstyle="butt",
+            linestyle=(0, (2, 1.4)) if dashed else "-")
+    ax.add_patch(Polygon(
+        [tip, (base[0] + 2.0 * px, base[1] + 2.0 * py),
+         (base[0] - 2.0 * px, base[1] - 2.0 * py)],
+        closed=True, facecolor=color, edgecolor=color, linewidth=0.3))
+
+
 def save(fig, name, *, panels=None):
     stem = QA / f"system-{name}"
     options = {}
@@ -98,7 +117,13 @@ def save(fig, name, *, panels=None):
         "Author": "", "Subject": "Supervisory system mechanism",
         "Creator": "Matplotlib", "Keywords": "",
     })
-    fig.savefig(OUT / f"fig-{name}.svg")
+    svg_path = OUT / f"fig-{name}.svg"
+    fig.savefig(svg_path)
+    # Matplotlib emits SVG path data with insignificant trailing spaces;
+    # strip them so generated source assets pass repository whitespace checks.
+    svg_lines = svg_path.read_text(encoding="utf-8").splitlines()
+    svg_path.write_text("\n".join(line.rstrip() for line in svg_lines) + "\n",
+                        encoding="utf-8")
     fig.savefig(OUT / f"fig-{name}.eps")
     fig.savefig(OUT / f"fig-{name}.png", dpi=600)
     # Keep the QA preview at publication-grade raster density; the manuscript
@@ -110,121 +135,157 @@ def save(fig, name, *, panels=None):
 
 
 def architecture():
-    fig, ax = canvas(7.16, 3.15)
-    # AI assisted composition; all geometry and text are rebuilt as native
-    # vectors. This component view does not prescribe a universal check order.
-    ax.add_patch(Rectangle((1.5, 47), 512.5, 177, facecolor="none",
-                           edgecolor=RULE, linewidth=0.6,
-                           linestyle=(0, (3, 2))))
-    box(ax, 8, 205, 499, 17, fill=PALE_BLUE, edge=BLUE)
-    text(ax, 257.5, 213.5,
-         "Production context: line / product / recipe / run",
-         ha="center", bold=True, color=BLUE)
+    """Compact architecture with distinct entry paths and owned records."""
+    fig, ax = canvas(7.16, 3.58)
+    BLUE_E, GOLD_E, TEAL_E = "#2B5673", "#9A650F", "#226E68"
+    F_BLUE, F_GOLD, F_TEAL = "#EFF5F9", "#FBF5E8", "#EEF6F4"
 
-    groups = [(8, 151, "Team and strategy", BLUE, PALE_BLUE),
-              (181, 145, "Governed execution", TEAL, PALE_TEAL),
-              (360, 147, "Industrial I/O", BLUE, PALE_BLUE)]
-    for x, width, title, color, fill in groups:
-        box(ax, x, 95, width, 95, fill=fill, edge=color)
-        text(ax, x + width / 2, 177, title, ha="center", bold=True,
-             color=color, size=10)
-        ax.plot([x + 7, x + width - 7], [166, 166], color=RULE, lw=0.6)
-        center = x + width / 2
-        ax.plot([center, center], [205, 190], color=RULE, lw=0.6)
+    def txt(x, y, s, *, color=INK, bold=False, ha="center", va="center",
+            size=9):
+        ax.text(x, y, s, fontsize=size, color=color, ha=ha, va=va,
+                fontweight="bold" if bold else "normal",
+                linespacing=1.15, fontfamily=["Arial", "DejaVu Sans"], zorder=6)
 
-    for y, label in [(153, "Task and member"),
-                     (133, "DAQ / diagnostics / models"),
-                     (112, "Candidate proposal")]:
-        text(ax, 83.5, y, label, ha="center")
-    for y, label in [(153, "Scope and active limits"),
-                     (133, "Approval and recheck"),
-                     (112, "Dispatch and confirmation")]:
-        text(ax, 253.5, y, label, ha="center")
-    arrow(ax, (159, 112), (181, 112), color=BLUE)
+    def card(x0, x1, y0, y1, *, edge, fill="white"):
+        ax.add_patch(Rectangle((x0, y0), x1 - x0, y1 - y0,
+                               facecolor=fill, edgecolor=edge,
+                               linewidth=0.65, zorder=3))
 
-    box(ax, 371, 140, 125, 23, fill="white", edge=TEAL)
-    text(ax, 433.5, 151.5, "DCW: control u", ha="center", color=TEAL)
-    box(ax, 371, 103, 125, 23, fill="white", edge=BLUE)
-    text(ax, 433.5, 114.5, "DAQ: output y", ha="center", color=BLUE)
-    arrow(ax, (326, 154), (371, 154), color=TEAL)
-    arrow(ax, (371, 142), (326, 142), color=TEAL, dashed=True)
-    text(ax, 343, 132, "Receipt", ha="center", color=GRAY)
+    def node(x0, x1, y0, y1, heading, detail, *, edge, fill="white",
+             detail2=None):
+        card(x0, x1, y0, y1, edge=edge, fill=fill)
+        cx = (x0 + x1) / 2
+        if detail2 is None:
+            txt(cx, y0 + (y1 - y0) * 0.68, heading,
+                bold=True, color=edge)
+            txt(cx, y0 + (y1 - y0) * 0.32, detail)
+        else:
+            txt(cx, y1 - 9, heading, bold=True, color=edge)
+            txt(cx, y0 + 18, detail)
+            txt(cx, y0 + 8, detail2, color=GRAY)
 
-    # Shared evidence has explicit connections from both task/governance
-    # components and the DAQ acquisition component.
-    box(ax, 8, 59, 330, 27, fill=PALE_BLUE, edge=BLUE)
-    text(ax, 173, 78, "Linked evidence", ha="center", bold=True, color=BLUE)
-    text(ax, 173, 66, "Tasks / node journal / batch receipts / DAQ history",
-         ha="center", color=BLUE)
-    for x in (83.5, 253.5):
-        ax.plot([x, x], [95, 86], color=RULE, lw=0.6)
-    arrow(ax, (371, 114.5), (338, 72.5), color=BLUE, dashed=True,
-          points=[(349, 114.5), (349, 72.5)])
+    # Context and scene configuration ground the task path; live route state
+    # is resolved again by the operation handler.
+    ax.add_patch(Rectangle((17, 216), 365, 35, facecolor=F_TEAL,
+                           edgecolor="none", zorder=1))
+    node(21, 381, 219, 248, "Production context + scene blueprint",
+         "line / product / recipe / run · signals · objectives · guards",
+         edge=TEAL_E, fill="white")
 
-    # DAQ feedback originates at DAQ, then travels through free whitespace.
-    # It does not imply an equipment-to-strategy path bypassing acquisition.
-    arrow(ax, (496, 114.5), (8, 133), color=BLUE, dashed=True,
-          points=[(512, 114.5), (512, 51), (4, 51), (4, 133)])
-    box(ax, 360, 5, 147, 34, fill="white", edge=GRAY)
-    text(ax, 433.5, 28, "Equipment / simulator", ha="center", bold=True)
-    text(ax, 433.5, 15, "Local control and protection", ha="center", color=GRAY)
-    arrow(ax, (496, 151.5), (501, 39), color=TEAL,
-          points=[(501, 151.5)])
-    arrow(ax, (385, 39), (385, 103), color=BLUE)
-    text(ax, 489, 90, "u", color=TEAL)
-    text(ax, 395, 90, "y", color=BLUE)
-    save(fig, "architecture-2026")
+    # Task/chat uses the collaboration and harness path. Direct operation
+    # invocation bypasses that path and enters the shared dispatcher.
+    node(21, 194, 179, 207, "Task / chat route",
+         "CLI · web · SDK · A2A · MCP tasks",
+         edge=BLUE_E, fill=F_BLUE)
+    node(205, 381, 179, 207, "Direct operation route",
+         "REST · selected stdio MCP operations",
+         edge=GOLD_E, fill=F_GOLD)
+
+    node(21, 381, 132, 166, "Shared per-call dispatcher",
+         "S/P always · G/B only when declared",
+         edge=GOLD_E, fill=F_GOLD)
+
+    node(21, 194, 91, 121, "Read / analysis services",
+         "DAQ · MES · retrieval · models",
+         edge=TEAL_E, fill=F_TEAL)
+    node(205, 381, 91, 121, "Write / recipe services",
+         "live context · approval · DCW",
+         edge=TEAL_E, fill=F_TEAL)
+
+    node(21, 174, 47, 76, "Semantic DAQ / DCW nodes",
+         "typed sensing · bounded writes",
+         edge=BLUE_E, fill=F_BLUE)
+    node(195, 381, 42, 81, "Configured protocol drivers",
+         "e.g., OPC UA · MQTT · Modbus",
+         edge=BLUE_E, fill=F_BLUE, detail2="plant / simulator")
+
+    # Solid arrows show execution; dashed arrows show context supplied to the
+    # task path, not a task-pinned authorization token.
+    gap_arrow(ax, (106, 219), (106, 207), color=TEAL, dashed=True)
+    gap_arrow(ax, (106, 179), (106, 166), color=BLUE)
+    gap_arrow(ax, (294, 179), (294, 166), color=GOLD)
+    gap_arrow(ax, (106, 132), (106, 121), color=TEAL)
+    gap_arrow(ax, (294, 132), (294, 121), color=TEAL)
+    gap_arrow(ax, (106, 91), (84, 76), color=TEAL)
+    gap_arrow(ax, (294, 91), (151, 76), color=TEAL)
+    gap_arrow(ax, (174, 61.5), (195, 61.5), color=BLUE)
+    txt(199, 26, "Independent PLC / safety-instrumented system (SIS) protection is external",
+        size=9, color=GRAY)
+
+    # Evidence stays with the service that owns each lifecycle. The panel is a
+    # sidecar, not a generic record envelope.
+    card(395, 512, 6, 248, edge=RULE, fill="#F8FAFB")
+    txt(453.5, 235, "Service-owned evidence", bold=True, color=BLUE)
+    txt(453.5, 222, "separate record types", color=GRAY)
+    records = [
+        (196, "Task: task / approval"),
+        (173, "DCW: ACK / readback"),
+        (150, "DAQ: observations"),
+        (127, "Analysis: summaries"),
+        (104, "Recipe: versions"),
+    ]
+    for y, label in records:
+        ax.add_patch(Circle((408, y), 1.7, facecolor=BLUE,
+                            edgecolor="none", zorder=5))
+        txt(416, y, label, ha="left", size=9)
+    ax.plot([405, 502], [85, 85], color="#E3E8EC", lw=0.6, zorder=2)
+    txt(453.5, 68, "Joined by actor / context IDs", color=GRAY)
+    txt(453.5, 55, "when available", color=GRAY)
+    txt(453.5, 35, "Command and process", color=GRAY)
+    txt(453.5, 22, "remain separate", color=GRAY)
+    save(fig, "architecture-2026-9pt")
 
 
 def runtime():
-    fig, ax = canvas(3.50, 3.55)
-    box(ax, 6, 235, 240, 18, fill=PALE_BLUE, edge=RULE)
-    text(ax, 126, 244, "Production context + channel profile", ha="center",
-         bold=True, color=BLUE)
-    panels = []
-    for x, letter, title, entries, lane_color, lane_fill in [
-        (6, "a", "Bounded exploration", [
-            ("Capture baseline", "Starting u / DAQ output"),
-            ("Governed node write", "Approval + checks",
-             "Success + value change:", "open node journal"),
-            ("Platform observes", "Wait, then query DAQ"),
-            ("Exploration summary", "Save controls / outputs"),
-        ], BLUE, PALE_BLUE),
-        (130, "b", "Recipe trial / apply", [
-            ("Candidate / version", "Trial or saved recipe"),
-            ("Governed dispatch", "Approval + checks",
-             "Create batch, then write", "Verify each parameter"),
-            ("Graded batch receipt", "Per-parameter evidence"),
-            ("Caller observes", "Wait, query, and decide"),
-        ], TEAL, PALE_TEAL),
-    ]:
-        branch = fig.add_axes([x / 252, 38 / 255.6, 116 / 252, 193 / 255.6])
-        branch.set(xlim=(0, 116), ylim=(0, 193))
-        branch.set_axis_off()
-        branch.patch.set_alpha(0)
-        panels.append(branch)
-        text(branch, 1, 189, letter, bold=True, color=lane_color)
-        text(branch, 14, 189, title, bold=True, color=lane_color)
-        bounds = [(149, 30), (85, 53), (44, 30), (3, 30)]
-        for index, (lines, (bottom, height)) in enumerate(zip(entries, bounds)):
-            box(branch, 1, bottom, 114, height, fill=lane_fill, edge=RULE)
-            line_positions = (bottom + 20, bottom + 8) if len(lines) == 2 else (
-                bottom + 42, bottom + 30, bottom + 19, bottom + 8)
-            for line_number, (label, y) in enumerate(zip(lines, line_positions)):
-                text(branch, 58, y, label, ha="center", bold=line_number == 0,
-                     color=lane_color if line_number == 0 else INK)
-            if index < len(entries) - 1:
-                next_bottom, next_height = bounds[index + 1]
-                arrow(branch, (58, bottom), (58, next_bottom + next_height),
-                      color=lane_color)
+    """Task flow from prompt context and registered tools through dispatch."""
+    fig, ax = canvas(7.16, 3.55)
+    F_BLUE, F_GOLD, F_TEAL = PALE_BLUE, PALE_GOLD, PALE_TEAL
 
-    text(ax, 64, 23, "Journal and summary", ha="center", color=GRAY)
-    text(ax, 64, 11, "are separate records", ha="center", color=GRAY)
-    box(ax, 131, 3, 114, 27, fill="white", edge=TEAL)
-    text(ax, 188, 21, "Separate caller update", ha="center", bold=True, color=TEAL)
-    text(ax, 188, 9, "Save accepted recipe", ha="center", color=TEAL)
-    arrow(ax, (188, 41), (188, 30), color=TEAL, dashed=True)
-    save(fig, "runtime-2026", panels=panels)
+    def node(x, y, w, h, heading, detail, *, fill="white", edge=BLUE):
+        box(ax, x, y, w, h, fill=fill, edge=edge)
+        text(ax, x + w / 2, y + h * 0.67, heading, color=edge,
+             bold=True, ha="center", size=9)
+        text(ax, x + w / 2, y + h * 0.31, detail, color=INK,
+             ha="center", size=9)
+
+    # The scoped catalog is provisioned with the adapter and refreshed through
+    # supported registry updates; each returned call is rechecked at dispatch.
+    node(17, 202, 132, 39, "Task / chat entry",
+         "channel task · chat message", fill=F_BLUE)
+    node(164, 202, 150, 39, "Turn context / tool catalog",
+         "context/turn · catalog setup/refresh", fill=F_BLUE)
+    node(329, 202, 145, 39, "Harness + agent turn",
+         "registered adapter · named request", fill=F_BLUE)
+    gap_arrow(ax, (149, 221.5), (164, 221.5), color=BLUE)
+    gap_arrow(ax, (314, 221.5), (329, 221.5), color=BLUE)
+
+    # The handler-specific route may perform reads before refusing a write.
+    node(161, 158, 193, 30, "Per-call dispatch gate",
+         "S/P always · G/B only when declared", fill=F_GOLD, edge=GOLD)
+    gap_arrow(ax, (401.5, 202), (324, 188), color=GOLD)
+    ax.add_patch(Polygon([(257.5, 150), (293, 136), (257.5, 122), (222, 136)],
+                         closed=True, facecolor=F_GOLD, edgecolor=GOLD,
+                         linewidth=0.6))
+    text(ax, 257.5, 136, "Route?", color=GOLD, bold=True, ha="center", size=9)
+    gap_arrow(ax, (257.5, 158), (257.5, 150), color=GOLD)
+
+    # Route-specific handlers share the return and evidence path.
+    node(19, 80, 213, 37, "Read / analysis route",
+         "DAQ · MES · retrieval · model services", fill=F_TEAL, edge=TEAL)
+    node(276, 80, 213, 37, "Write / recipe route",
+         "approval context recheck · DCW driver", fill=F_TEAL, edge=TEAL)
+    gap_arrow(ax, (222, 136), (125.5, 117), color=TEAL)
+    gap_arrow(ax, (293, 136), (382.5, 117), color=TEAL)
+
+    node(105, 26, 305, 33, "Tool result → harness continuation",
+         "host text · optional error flag", fill=F_BLUE)
+    gap_arrow(ax, (125.5, 80), (205, 59), color=TEAL)
+    gap_arrow(ax, (382.5, 80), (310, 59), color=TEAL)
+    # The result returns to the active adapter turn; the runner can then
+    # continue the task or close it, as in R20.
+    arrow(ax, (410, 42.5), (474, 221.5), color=BLUE,
+          points=[(500, 42.5), (500, 221.5)])
+    save(fig, "runtime-2026-9pt")
 
 
 def admission_hitl():
@@ -273,8 +334,6 @@ def admission_hitl():
         x = zoom(value)
         a.plot([x, x], [25, 22], color=GRAY, lw=0.6)
         text(a, x, 16, str(value), ha="center")
-    text(a, 2, 3, "Recipe dispatch omits the old R", color=GOLD)
-
     # Symbolic fields avoid fabricating current UI state or measurements.
     text(b, 2, 153, "Symbolic schematic; no measured values", color=GRAY)
     box(b, 2, 44, 239, 98, edge=RULE)
@@ -291,9 +350,9 @@ def admission_hitl():
                                    (123, "Decline", GOLD, PALE_GOLD)]:
         box(b, x, 50, 100, 17, fill=fill, edge=color)
         text(b, x + 50, 58.5, label, ha="center", color=color, bold=True)
-    text(b, 2, 30, "Approve → recheck grants, binding and context", color=TEAL)
-    text(b, 2, 17, "Then admission → dispatch; failure → no dispatch")
-    text(b, 2, 4, "Decline → no dispatch; decision is recorded", color=GOLD)
+    text(b, 2, 37, "Approve → recheck grants, binding and context", color=TEAL)
+    text(b, 2, 24, "Then admission → dispatch; failure → no dispatch")
+    text(b, 2, 11, "Decline → no dispatch; decision is recorded", color=GOLD)
     save(fig, "admission-hitl-2026", panels=axes)
 
 
@@ -362,8 +421,8 @@ if __name__ == "__main__":
     QA = args.qa_dir.resolve()
     OUT.mkdir(exist_ok=True)
     QA.mkdir(parents=True, exist_ok=True)
-    selected = {"architecture": (architecture, "architecture-2026"),
-                "runtime": (runtime, "runtime-2026"),
+    selected = {"architecture": (architecture, "architecture-2026-9pt"),
+                "runtime": (runtime, "runtime-2026-9pt"),
                 "admission": (admission_hitl, "admission-hitl-2026")}
     for key in dict.fromkeys(args.only):
         selected[key][0]()

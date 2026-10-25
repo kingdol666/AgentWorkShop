@@ -2,6 +2,7 @@
 % IEEE Transactions on Industrial Informatics -- anonymous regular-paper draft
 % Compile: latexmk -pdf main.tex
 \usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algpseudocode}
 % Local XeTeX/Tectonic builds: route IEEEtran's ptm (Times) family requests to
 % the legacy Times Type1 faces so metrics match the pdfLaTeX reference build;
 % the latexmk -pdf (pdfLaTeX) path is unaffected.
@@ -29,16 +30,16 @@
 \usepackage{cite}
 \usepackage[colorlinks=true,linkcolor=black,citecolor=black,urlcolor=black]{hyperref}
 \hypersetup{bookmarksnumbered=true,
-  pdftitle={AgentWorkShop: An Extensible Framework for Configurable Multi-Scenario Industrial Agent Integration},
-  pdfauthor={Anonymous Authors},
+  pdftitle={AgentWorkShop: A Modular Task-to-Device Integration Framework for Industrial Agents},
+  pdfauthor={},
   pdfsubject={IEEE Transactions on Industrial Informatics},
-  pdfkeywords={industrial agents, industrial informatics, multi-agent systems, production system integration, process control, semantic data integration}}
+  pdfkeywords={industrial informatics, industrial agents, multi-agent systems, production system integration, semantic data integration}}
 
 % Float placement only; IEEEtran margins and body type remain unchanged.
 \setcounter{topnumber}{4}
 \setcounter{bottomnumber}{3}
 \setcounter{totalnumber}{7}
-\setcounter{dbltopnumber}{4}
+\setcounter{dbltopnumber}{2}
 \renewcommand{\topfraction}{0.95}
 \renewcommand{\bottomfraction}{0.80}
 \renewcommand{\textfraction}{0.03}
@@ -56,61 +57,84 @@
 \input{resources/results-macros}
 
 \newcommand{\system}{the platform}
+\newif\ifblindreview
+\blindreviewtrue
 
 \begin{document}
 \bstctlcite{IEEEbstctl}
 
-\title{AgentWorkShop: An Extensible Framework for Configurable Multi-Scenario Industrial Agent Integration}
+\title{AgentWorkShop: A Modular Task-to-Device Integration Framework for Industrial Agents}
 
-\author{Anonymous Authors}
-\markboth{IEEE Transactions on Industrial Informatics, Submitted Manuscript}{AgentWorkShop Industrial Agent Integration}
+\author{}
+\markboth{IEEE Transactions on Industrial Informatics, Submitted Manuscript}{AgentWorkShop: Task-to-Device Integration}
 
 \maketitle
 
 \begin{abstract}
-Industrial agent applications must connect collaborative reasoning,
-production context, and heterogeneous plant interfaces while preserving a
-traceable path from a task proposal to its process outcome. This paper
-presents AgentWorkShop, an extensible framework for configuring these
-capabilities across industrial scenarios. Its architecture combines team
-and task orchestration with replaceable strategy adapters; analysis,
-retrieval, dataset, and model services; line--product--recipe--run context;
-semantic acquisition and write-control nodes; and typed interfaces for
-onboarding and extension. Scenario-specific signal maps, protocol bindings,
-objectives, and guards configure process integrations while shared
-collaboration and operational services remain reusable. Candidate actions
-enter either bounded node exploration or an operational recipe workflow,
-where dispatch evidence, process observations, and retained versions follow
-route-specific lifecycles. Evaluation exercised acquisition over five protocol families, controlled
-writes over four routes, strategy and controller substitutions, and four
-simulator process configurations. Each process had one seed-42 trajectory;
-all reached their declared terminal targets, two near a boundary. Nine
-sequential deployment-suite executions recorded 782 deterministic
-assertions.
-A single accelerated injection-molding trajectory linked four pressure trials
-from 45 to 65 bar, each approved by the scripted test harness, to a measured weight
-change from 31.28 to 32.30 g and subsequent recipe retention.
-The evidence supports
-configuration-based reuse across the exercised scenes and interfaces; all
-process results are simulator-based, and later checks exposed
-current-interface cadence limits. It does not establish physical transfer,
-broad plant coverage, or comparative optimization benefit.
+Deploying industrial agents across production scenes requires scene-specific
+signal and protocol mappings while keeping task context, device dispatch, and
+resulting evidence aligned. This paper presents AgentWorkShop, a modular
+task-to-device integration framework that composes task adapters, production
+context, named operations, semantic input/output, runtime checks, protocol drivers,
+and service-owned records. Registered task routes pass through the
+collaboration runtime; direct operation calls enter the shared dispatcher
+without creating a task record. The design keeps approval, command
+readback, and subsequent process observations distinct while linking them to
+the active production context. We evaluated registered task paths and direct
+operation calls in cast-film and annealing simulators with different
+signal and protocol mappings. Six sequential model-mediated task executions and two
+fixture-backed command-line tasks preserved their route-specific record
+links; direct calls retained operation, readback, and run-tagged sample
+records. Every current-route sample remained below its target band. A
+mock-state approval-context test refused 12 stale changes before writes,
+whereas an ablation allowed six product/run changes through. A separate
+v0.8.3 replay of one documented coating-line blueprint passed 23 functional
+verification checks and confirmed one simulator write. Together, these results demonstrate
+integration behavior for selected preconfigured paths, one simulated onboarding
+configuration, and a software dispatch guard. They do not establish process
+improvement, configuration reuse, general portability, or comparative platform
+benefit.
 \end{abstract}
 
 \begin{IEEEkeywords}
-Industrial agents, industrial informatics, multi-agent systems, production
-system integration, process control, semantic data integration.
+Industrial agents, industrial communication, industrial informatics,
+production systems, semantic data integration.
 \end{IEEEkeywords}
 
 \IEEEpeerreviewmaketitle
 
 \input{sections/introduction}
 \input{sections/related}
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=\textwidth]{resources/fig-architecture-2026-9pt.pdf}
+\caption{Architecture and record ownership. Task/chat routes enter the
+collaboration runtime; direct REST and stdio-MCP calls enter shared dispatch
+checks without creating a task. Dashed arrows denote configuration. Write
+routes add approval and four-layer admission; the shared dispatcher always
+checks scope and channel policy, with grant and resource-binding checks applied
+when required by the operation. Owning services retain distinct records. Only
+REST was evaluated; stdio-MCP is shown but untested. Independent PLC and
+safety-instrumented protection is external.}
+\label{fig:arch}
+\end{figure*}
 \input{sections/system}
-\input{sections/mechanisms}
-\FloatBarrier
+\input{sections/modules}
 \input{sections/evaluation}
 \input{sections/discussion}
+
+% The review copy is anonymous. Retain this disclosure for the accepted/final
+% manuscript version, subject to the journal's applicable disclosure workflow.
+\ifblindreview
+\else
+\section*{Acknowledgment}
+OpenAI ChatGPT assisted with restructuring, drafting, and language revision
+throughout Sections~I--VII and with Python code used to draw Figs.~1, 2, 4,
+and~5. OpenAI image generation supplied initial concepts for Figs.~1 and~2;
+the final vector figures were redrawn and checked against the software
+implementation. No AI system generated experimental data. The authors verified
+the manuscript, figures, code, and claims.
+\fi
 
 \bibliographystyle{IEEEtran}
 % Keep IEEEtran's default bibliography size and leading.

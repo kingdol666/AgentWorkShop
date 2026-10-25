@@ -1,0 +1,55 @@
+\section{Module Functions and Integration}
+\label{sec:modules}
+The design in Section~\ref{sec:design} is realized through three cooperating functions:
+task and context assembly, shared operation dispatch, and controlled device
+access with route-specific evidence. We follow one agent action through them.
+
+\subsection{Task, Harness, and Context}
+Task and chat entry points create or join a workspace channel. The task
+runtime manages membership, task state, and shared execution context; a
+harness registry adapts each supported agent engine to a common execution
+interface. At each agent turn, the prompt builder assembles the task, active
+scene description, production context, channel profile, agent binding, and
+retrieved memory. This keeps engine-specific interaction behind the harness
+interface while preserving the current line and operation context for the
+agent.
+
+Direct REST and selected stdio-MCP operation calls reach the same dispatcher
+without a task or harness turn. REST authentication and identity resolution
+follow Section~\ref{sec:executionflow}; each handler reads live route state
+at invocation. For either entry path, prompt context and tool-catalog visibility
+describe available information and capabilities; neither grants write
+authority.
+
+\subsection{Shared Dispatch and Device Admission}
+\label{sec:governed}
+The dispatcher is the shared operation boundary. It checks invocation scope
+and current channel policy, then verifies the agent binding, runtime grant,
+and ownership of referenced resources before selecting a handler. Handlers
+revalidate route-specific state at execution time; a previously displayed
+tool catalog does not preserve authority after a policy or grant changes.
+Scene blueprints define device and signal maps, objectives, and process
+guards. Capability profiles and tool policies narrow available operations,
+while bindings constrain accessible nodes, controls, and recipes. Optional
+DAQ, MES, analysis, retrieval, optimization, and digital-twin services are
+invoked through registered handlers; the framework does not prescribe a
+single optimization strategy.
+
+Actuator writes converge on the shared write-control (DCW) admission point.
+For an online node write, the admissible value interval is
+\begin{equation}
+\mathcal{I}^{\mathrm{online}}_n(t)=
+\mathcal{H}_n\cap\mathcal{B}_n\cap\mathcal{P}_n(t)\cap\mathcal{R}_n(t),
+\label{eq:admission}
+\end{equation}
+where $\mathcal{H}_n$ is the hard engineering range and
+$\mathcal{B}_n$, $\mathcal{P}_n$, and $\mathcal{R}_n$ are the baseline,
+active-product, and active-recipe limits. Missing optional limits impose no
+restriction; an empty intersection rejects the request and identifies the
+excluding layer. Recipe dispatch validates the replacement recipe against
+the hard, baseline, and product limits rather than the previous recipe
+window. Step, interval, and hold-window checks also constrain each route.
+These software checks bound commands but do not replace independent
+programmable-logic-controller or safety-instrumented protection.
+
+\input{sections/mechanisms}

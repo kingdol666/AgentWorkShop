@@ -1,63 +1,110 @@
-\section{Engineering Interpretation}
+\section{Discussion}
 \label{sec:limits}
-The evaluated contribution is configuration-based reuse across industrial
-agent settings. Q4 exercises four process configurations, each with one
-seed-42 simulator trajectory; all met their declared terminal checks, two
-near a boundary. Q1 covers acquisition across five protocol families and
-writes on four (RTU-over-TCP was acquisition-only). Q2 contains two live
-engine tasks; Q3 uses three seeds and a restricted setpoint grid; Q5 records
-782 deterministic assertions across nine software-suite executions; Q6 is
-one accelerated recipe trajectory. Together, these archives exercise
-strategy, I/O, scene configuration, and workflow integration, but do not
-compare optimization performance.
+\subsection{Interpretation}
+AgentWorkShop composes collaborative-task services, production context, named
+operations, semantic signal access, configured device drivers, and
+service-owned records into a shared task-to-device path. The current
+experiments trace this design through task or direct-operation entry,
+approval-bound dispatch, readback receipt, and a later run-tagged process
+sample. Registered task routes preserve the task, approval, receipt, and
+sample associations; direct REST preserves operation, readback, and sample
+records without a task edge. The two simulator scenes use different signal
+and protocol mappings, so the observed joins support the tested composition
+and route-specific record contract. Separately, the v0.8.3 replay configured
+the documented C01 coating-line blueprint through the existing onboarding
+workflow, verified its MES forms and DAQ nodes, and confirmed one simulated
+write. This shows that one documented configuration can pass through that
+workflow; it is not a repeatability or general-portability result.
 
-Authorization, admission, approval, and graded confirmation are
-cross-cutting operational services within the framework. Their records
-connect an actor and production scope to a command receipt and process
-observation. They do not measure operator comprehension, complacency, or
-responsibility allocation \cite{parasuramanmanzey2010complacency,parasuraman2000model,bainbridge1983ironies}.
-The execution boundary is independent of prompts and retrieved documents
-\cite{greshake2023injection,liu2024pinjection}; deployment still requires
-credential management, endpoint security, and IT/OT separation
-\cite{iec62443-3-3}. It complements rather than replaces independently
-engineered PLC interlocks and safety-instrumented systems; IEC~61511 governs
-the latter's process-safety lifecycle \cite{iec61511}.
+The process results bound the interpretation of that evidence. Cast-film
+samples range from 45.69 to 46.69\,$\mu$m, or 1.31--2.31\,$\mu$m below the
+48\,$\mu$m lower bound. Annealing samples range from 674.40 to
+679.60\,$^{\circ}$C, or 20.40--25.60\,$^{\circ}$C below the 700\,$^{\circ}$C
+lower bound. These measurements are single snapshots taken 20\,s after an
+operation, so they cannot establish a response curve, convergence, or the
+cause of the observed shortfall.
 
-\noindent\textit{Experimental scope.}
-Process evidence is simulator-based and approvals were scripted. Q1--Q4 use
-a historical direct-node interface; Q5 comprises software assertions, not
-process samples; Q6 is one October 18 recipe trajectory with cadence
-overrides. The archives do not form a joint current-version end-to-end
-study, and a complete current exploration-to-process-response test is not
-archived. On October 23, the current public interface refused all eight
-historical direct-node attempts. A separate current recipe check verified
-only the 45-to-50-bar trial, refused later requests at 66 and 132 s under the
-default cadence, reached no target, saved no recipe, and failed its
-restoration assertion. These checks expose interface boundaries; they do
-not repeat the accelerated case. The evidence does not estimate physical
-transfer, general plant coverage, hard real-time behavior, fault frequency,
-human performance, or comparative benefit. Repeated matched runs, a
-current-route end-to-end study, and physical evaluation are needed; process
-benchmarks such as Tennessee Eastman \cite{downs1993tep} offer one further
-setting.
+Fig.~\ref{fig:missions} pairs requested setpoint changes with the resulting
+process observations in four separate archived seed-42 simulator missions.
+The trajectories show scenario-specific responses, including the wastewater
+mission's later pH and total-phosphorus actions and the annealing candidate
+that was reverted. Their terminal observations lie within their own target
+windows, but each panel contains one historical scripted direct-node
+trajectory. The figure therefore explains the structure of those archived
+action--response records; it does not establish target attainment by current
+v0.8.0 routes or repeatability across runs.
+
+This gap between command evidence and process evidence is central to the
+framework's execution model. A verified readback confirms that the requested
+setpoint reached the configured device; it does not show that the process
+variable entered its target band. A task can therefore complete its approved
+operation path while its associated process sample remains out of band.
+Keeping the receipt and run-tagged sample as separate, linked records lets the
+system report both facts without treating command completion as product
+attainment. The current results validate this distinction in the tested
+software paths, not an improvement in control quality.
+
+The route evidence also depends on each entry contract. Registered
+model-mediated and fixture-backed CLI tasks retain task, approval, receipt,
+and sample links. The fixed-call replay exercises the registered harness with
+deterministic input but does not assert task completion. Direct REST reaches
+the same operation boundary and retains a verified receipt and run-tagged
+sample without a task edge. The fixture replay, direct REST, and CLI checks
+ran in separate isolated environments; the model-mediated triplets shared a
+persistent simulator per scene. These path-specific contexts and unequal
+sample counts mean their numerical similarity is not evidence of route
+equivalence. All route-study runs used the SQLite fallback because MQTT and
+Timescale were unavailable; the separate C01 onboarding
+replay exercised online MQTT/Timescale on isolated services. The results
+support the specified record contracts under two configured signal and
+protocol mappings and feasibility of one blueprint-driven simulated
+onboarding workflow. They do not establish interchangeable adapters,
+configuration reuse, or general portability to an unseen scene.
+
+The context-guard test identifies the software check's contribution under
+mock state: comparing the approved line--product--recipe--run tuple blocked
+product/run mutations that the retained checks alone did not reject. This
+supports a bounded claim about software dispatch. It does not show atomicity
+across network or device I/O, safe physical operation, or operator
+effectiveness. Synthetic approval also does not measure human review
+performance \cite{parasuramanmanzey2010complacency,parasuraman2000model,bainbridge1983ironies}.
+
+\subsection{Scope and Limitations}
+Only the reported adapter and scene configurations were exercised. The single
+C01 replay does not test repeatable onboarding, profile or binding reuse across
+lines, arbitrary unseen-scene configuration, or physical transfer. The
+evaluation also does not establish general adapter interchangeability,
+normal online DAQ operation in the route trials, or a platform
+baseline. The
+feature-level related-work comparison positions the implementation question;
+it does not show that AgentWorkShop is more efficient or more capable than
+another platform. A comparative study would need a shared task set, explicit
+integration-effort or record-completeness measures, and matched deployments.
+
+The route study used one simulator instance per scene, three sequential
+model-mediated trials per scene, and one post-trial process sample per trial.
+These samples are not independent replicates and cannot establish a process
+response curve. Follow-up evaluation should vary configuration profiles
+under a controlled onboarding protocol, use repeated process trials, and
+compare against a defined alternative integration path. Operation
+restrictions do not establish security
+\cite{greshake2023injection,liu2024pinjection,iec62443-3-3} or replace
+independent PLC/SIS safeguards \cite{iec61511}.
+
+Scope and channel-policy refusals are not uniformly persisted; auditability
+is limited to the records and denial classes described in Section~IV.
 
 \section{Conclusion}
 \label{sec:conclusion}
-AgentWorkShop combines collaborative tasks and replaceable strategy
-services with production context, semantic industrial I/O, and distinct
-node and recipe workflows. Across the tested simulator scenes and protocol
-routes, the implementation exercised configuration-based reuse and
-route-specific evidence. These results clarify what the framework connects
-and where its current evidence stops; they do not establish general
-industrial coverage, physical transfer, or comparative control benefit.
-
-\noindent\textit{Data availability and AI assistance.}
-Run archives, original Q2 engine logs, replay entries, configuration notes,
-and claim-to-source mappings accompany the separate anonymous experimental
-evidence bundle. The manuscript source package contains plotting sources
-and figure mappings. An OpenAI language model assisted
-with manuscript organization, language revision, and plotting-code
-preparation. OpenAI image generation drafted the compositions of
-Figs.~\ref{fig:arch} and~\ref{fig:runtime}; the final artwork was redrawn
-as editable Python-generated vectors and checked against the implementation.
-The authors remain responsible for the final submission.
+AgentWorkShop brings task adapters, production context, named operations,
+semantic I/O, configured protocol drivers, and service-owned records into a
+modular task-to-device framework. Tested task routes and direct calls used a
+shared operation boundary across cast-film and annealing simulator mappings
+while preserving route-specific records. A separate v0.8.3 replay completed
+one documented coating-line onboarding configuration with online DAQ checks
+and a simulator-confirmed smoke write. Route-study samples remained below
+target, and a mock-state ablation isolated the effect of an approval-bound
+context check. The study establishes selected integration, one simulated
+onboarding instance, and software-contract behavior; it does not establish
+process improvement, configuration reuse, physical transfer, general
+portability, or comparative platform benefit.
