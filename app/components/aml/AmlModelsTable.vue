@@ -79,6 +79,11 @@ const { fmtTime, fmtNum, shortId } = useAmlFormat()
               :title="m.description || m.label"
             >
               <span class="label-text">{{ m.label || '--' }}</span>
+              <span
+                v-if="m.description"
+                class="desc-text"
+                :title="m.description"
+              >{{ m.description }}</span>
             </td>
             <td class="mono dim">
               {{ shortId(m.productId) }}

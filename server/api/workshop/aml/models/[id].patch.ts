@@ -1,6 +1,6 @@
 /**
  * PATCH /api/workshop/aml/models/:id —— 更新模型元数据(备注)。
- * body: { note: string }
+ * body: { note?: string, label?: string, description?: string }
  * 阶段变更不走这里(必须走 /promote,那里有 ONNX 深检与同组唯一性保护)。
  */
 import { getRouterParam, readBody } from 'h3'
@@ -14,16 +14,22 @@ import { recordOps } from '@/server/services/workshop/ops/ops'
 export default defineApiHandler(async (event) => {
   const user = requireRole(event, ['admin', 'editor'])
   const id = getRouterParam(event, 'id') ?? ''
-  const body = await readBody<{ note?: string }>(event) ?? {}
+  const body = await readBody<{ note?: string, label?: string, description?: string }>(event) ?? {}
   const rt = getAmlRuntime()
   const model = rt.repo.model.get(id)
   if (!model) throw new AppError(404, 'AML_MODEL_MISSING', `模型 ${id} 不存在`)
   requireLineMode(user, rt.repo.dataset.get(model.datasetId)?.lineId, 'operate')
   if (typeof body.note === 'string') rt.repo.model.updateNote(id, body.note.slice(0, 2000))
+  if (typeof body.label === 'string' || typeof body.description === 'string') {
+    rt.repo.model.updateIdentity(id, {
+      ...(typeof body.label === 'string' ? { label: body.label } : {}),
+      ...(typeof body.description === 'string' ? { description: body.description } : {}),
+    })
+  }
   recordOps({
     actor: user.id, actorName: user.name, actorKind: 'user',
     action: 'aml.model.update', kind: 'system',
-    summary: `更新模型 ${id} 元数据(备注)`,
+    summary: `更新模型 ${id} 元数据(备注/名称/描述)`,
     targetKind: 'aml_model', targetId: id,
   })
   return { model: rt.repo.model.get(id) }

@@ -365,7 +365,8 @@ export interface AgentTemplateDto {
   ownerUserId: string | null
   /** 归属用户名(列表接口附注;'system' = 内置) */
   ownerName?: string | null
-  instances: Array<{ id: string, channelId: string, role: 'lead' | 'worker', token: string }>
+  /** WP3:列表只回 token 尾 4 位;全量仅在 rotate-token 响应一次性返回 */
+  instances: Array<{ id: string, channelId: string, role: 'lead' | 'worker', tokenTail: string }>
   createdAt: string
   updatedAt: string
 }

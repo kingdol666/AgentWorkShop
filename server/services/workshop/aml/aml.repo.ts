@@ -23,11 +23,33 @@ export interface AmlDatasetRow {
   createdByKind: string // 'user' | 'agent'
   note: string
   createdAt: string
+  /** 由 ProcessModelSpec 构建时的规格引用(旧 AML 数据集为空 = 无工艺规格谱系) */
+  specRef?: string
+  specVersion?: number | null
+  /** 数据谱系核验(D18):0=未核验(旧/无 confirmed segment;模型禁优化资格);1=每 run 均有已确认 segment 且版本匹配 */
+  lineageVerified?: number
 }
 
 export type AmlJobStatus
   = | 'queued' | 'provisioning' | 'training' | 'evaluating'
     | 'done' | 'failed' | 'cancelled' | 'timeout' | 'interrupted'
+
+/** AML 作业状态机(C12):终态不可迁出;done 只能从 evaluating 进入。 */
+export const AML_JOB_TRANSITIONS: Record<AmlJobStatus, AmlJobStatus[]> = {
+  queued: ['provisioning', 'training', 'cancelled', 'failed', 'interrupted'],
+  provisioning: ['training', 'evaluating', 'failed', 'cancelled', 'timeout', 'interrupted'],
+  training: ['evaluating', 'failed', 'cancelled', 'timeout', 'interrupted'],
+  evaluating: ['done', 'failed', 'cancelled', 'timeout', 'interrupted'],
+  done: [],
+  failed: [],
+  cancelled: [],
+  timeout: [],
+  interrupted: [],
+}
+
+export function canTransitionJob(from: AmlJobStatus, to: AmlJobStatus): boolean {
+  return AML_JOB_TRANSITIONS[from]?.includes(to) ?? false
+}
 
 export interface AmlJobRow {
   id: string
@@ -40,6 +62,8 @@ export interface AmlJobRow {
   metricsJson: string | null
   gatesJson: string | null
   artifactsPath: string | null
+  /** 成功终态登记的模型 id(同一 UPDATE 写入;C11) */
+  modelId?: string | null
   error: string | null
   retryCount: number
   agentId: string
@@ -90,17 +114,26 @@ export interface AmlModelRow {
   lineId: string
   /** 优化目标区分(ObjectiveProfile id;legacy 作业为空串,用 purpose 表达) */
   objectiveId: string
+  /** 工件类型判别(G1.2):'' = 历史行,由 metrics 推断 */
+  artifactKind: string
+  schemaVersion: number
+  /** 模型接口(one_step / linear_state_space / static_response) */
+  modelInterface: string
+  artifactHash: string
+  /** 历史口径标记(如 twin_v1);新链为空串 */
+  legacy: string
   createdAt: string
 }
 
 const DS_COLS = `id, line_id AS lineId, product_id AS productId, recipe_id AS recipeId,
   run_ids_json AS runIdsJson, spec_json AS specJson, sha256, row_count AS rowCount,
   from_ms AS fromMs, to_ms AS toMs, path, created_by AS createdBy,
-  created_by_kind AS createdByKind, note, created_at AS createdAt`
+  created_by_kind AS createdByKind, note, created_at AS createdAt,
+  spec_ref AS specRef, spec_version AS specVersion, lineage_verified AS lineageVerified`
 
 const JOB_COLS = `id, dataset_id AS datasetId, purpose, status, stage, progress,
   budget_json AS budgetJson, metrics_json AS metricsJson, gates_json AS gatesJson,
-  artifacts_path AS artifactsPath, error, retry_count AS retryCount,
+  artifacts_path AS artifactsPath, model_id AS modelId, error, retry_count AS retryCount,
   agent_id AS agentId, channel_id AS channelId, task_id AS taskId,
   created_at AS createdAt, started_at AS startedAt, ended_at AS endedAt`
 
@@ -114,7 +147,9 @@ const MODEL_COLS = `id, experiment_id AS experimentId, dataset_id AS datasetId,
   io_spec_json AS ioSpecJson, metrics_json AS metricsJson, path,
   artifacts_pruned AS artifactsPruned, created_by AS createdBy,
   promoted_by AS promotedBy, promoted_at AS promotedAt, note,
-  label, description, line_id AS lineId, objective_id AS objectiveId, created_at AS createdAt`
+  label, description, line_id AS lineId, objective_id AS objectiveId,
+  artifact_kind AS artifactKind, schema_version AS schemaVersion, model_interface AS modelInterface,
+  artifact_hash AS artifactHash, legacy, created_at AS createdAt`
 
 function rowToDataset(r: Record<string, unknown>): AmlDatasetRow {
   return { ...(r as unknown as Omit<AmlDatasetRow, 'runIds'>), runIds: JSON.parse(String(r.runIdsJson || '[]')) }
@@ -135,8 +170,9 @@ function rowToModel(r: Record<string, unknown>): AmlModelRow {
 export function createAmlRepo(db: DatabaseSync) {
   const dsInsert = db.prepare(
     `INSERT INTO aml_datasets (id, line_id, product_id, recipe_id, run_ids_json, spec_json, sha256,
-       row_count, from_ms, to_ms, path, created_by, created_by_kind, note, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       row_count, from_ms, to_ms, path, created_by, created_by_kind, note, created_at,
+       spec_ref, spec_version, lineage_verified)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   const jobInsert = db.prepare(
     `INSERT INTO aml_jobs (id, dataset_id, purpose, status, stage, progress, budget_json,
@@ -144,14 +180,14 @@ export function createAmlRepo(db: DatabaseSync) {
      VALUES (?, ?, ?, 'queued', '', 0, ?, ?, ?, ?, ?)`,
   )
   const jobState = db.prepare(
-    `UPDATE aml_jobs SET status = ?, stage = ?, progress = ? WHERE id = ?`,
+    `UPDATE aml_jobs SET status = ?, stage = ?, progress = ? WHERE id = ? AND status = ?`,
   )
   const jobFinish = db.prepare(
     `UPDATE aml_jobs SET status = ?, stage = 'done', progress = 100, metrics_json = ?, gates_json = ?,
-       artifacts_path = ?, error = ?, ended_at = ? WHERE id = ?`,
+       artifacts_path = ?, error = ?, ended_at = ?, model_id = ? WHERE id = ? AND status IN ('training','evaluating','provisioning')`,
   )
   const jobFail = db.prepare(
-    `UPDATE aml_jobs SET status = ?, error = ?, ended_at = ? WHERE id = ?`,
+    `UPDATE aml_jobs SET status = ?, error = ?, ended_at = ? WHERE id = ? AND status NOT IN ('done','failed','cancelled','timeout','interrupted')`,
   )
   const jobRetryBump = db.prepare(
     `UPDATE aml_jobs SET retry_count = retry_count + 1, status = 'queued', stage = '', progress = 0,
@@ -167,8 +203,9 @@ export function createAmlRepo(db: DatabaseSync) {
   )
   const modelInsert = db.prepare(
     `INSERT INTO aml_models (id, experiment_id, dataset_id, product_id, recipe_id, purpose, stage,
-       io_spec_json, metrics_json, path, created_by, note, label, description, line_id, objective_id, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, 'candidate', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       io_spec_json, metrics_json, path, created_by, note, label, description, line_id, objective_id,
+       artifact_kind, schema_version, model_interface, artifact_hash, legacy, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, 'candidate', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   /** 晋升/退役:SQL 层条件更新兜底并发竞态( WHERE stage 校验) */
   const modelStage = db.prepare(
@@ -183,6 +220,7 @@ export function createAmlRepo(db: DatabaseSync) {
         dsInsert.run(
           d.id, d.lineId, d.productId, d.recipeId, JSON.stringify(d.runIds), d.specJson, d.sha256,
           d.rowCount, d.fromMs, d.toMs, d.path, d.createdBy, d.createdByKind, d.note, d.createdAt,
+          d.specRef ?? '', d.specVersion ?? null, d.lineageVerified ?? 0,
         )
       },
       get(id: string): AmlDatasetRow | undefined {
@@ -265,18 +303,28 @@ export function createAmlRepo(db: DatabaseSync) {
         ).run(now)
         return Number(r.changes)
       },
-      setState(id: string, status: AmlJobStatus, stage: string, progress: number): void {
-        jobState.run(status, stage, progress, id)
+      /** 状态迁移(CAS):仅当当前状态允许迁移时生效;返回 false = 竞争失败/非法迁移 */
+      setState(id: string, status: AmlJobStatus, stage: string, progress: number): boolean {
+        const current = this.get(id)
+        if (!current) return false
+        if (!canTransitionJob(current.status, status)) return false
+        const r = jobState.run(status, stage, progress, id, current.status)
+        return Number(r.changes) > 0
       },
       markStarted(id: string, status: AmlJobStatus, stage: string, now: string): void {
-        db.prepare(`UPDATE aml_jobs SET status = ?, stage = ?, started_at = COALESCE(started_at, ?) WHERE id = ?`)
+        db.prepare(`UPDATE aml_jobs SET status = ?, stage = ?, started_at = COALESCE(started_at, ?)
+          WHERE id = ? AND status NOT IN ('done','failed','cancelled','timeout','interrupted')`)
           .run(status, stage, now, id)
       },
-      finish(id: string, status: AmlJobStatus, metricsJson: string, gatesJson: string, artifactsPath: string, now: string): void {
-        jobFinish.run(status, metricsJson, gatesJson, artifactsPath, null, now, id)
+      /** 成功终态:只有 evaluating/provisioning(无训练步骤的内置链)可进入 done;
+       *  modelId 与本行同一事务写入,杜绝"训练成功、模型不存在"的假成功(C11)。 */
+      finish(id: string, status: AmlJobStatus, metricsJson: string, gatesJson: string, artifactsPath: string, now: string, modelId?: string | null): boolean {
+        const r = jobFinish.run(status, metricsJson, gatesJson, artifactsPath, null, now, modelId ?? null, id)
+        return Number(r.changes) > 0
       },
-      fail(id: string, status: AmlJobStatus, error: string, now: string): void {
-        jobFail.run(status, error, now, id)
+      fail(id: string, status: AmlJobStatus, error: string, now: string): boolean {
+        const r = jobFail.run(status, error, now, id)
+        return Number(r.changes) > 0
       },
       requeue(id: string): void {
         jobRetryBump.run(id)
@@ -341,11 +389,18 @@ export function createAmlRepo(db: DatabaseSync) {
         description?: string
         lineId?: string
         objectiveId?: string
+        artifactKind?: string
+        schemaVersion?: number
+        modelInterface?: string
+        artifactHash?: string
+        legacy?: string
         createdAt: string
       }): void {
         modelInsert.run(m.id, m.experimentId, m.datasetId, m.productId, m.recipeId, m.purpose,
           m.ioSpecJson, m.metricsJson, m.path, m.createdBy, m.note,
-          m.label ?? '', m.description ?? '', m.lineId ?? '', m.objectiveId ?? '', m.createdAt)
+          m.label ?? '', m.description ?? '', m.lineId ?? '', m.objectiveId ?? '',
+          m.artifactKind ?? '', m.schemaVersion ?? 1, m.modelInterface ?? '', m.artifactHash ?? '', m.legacy ?? '',
+          m.createdAt)
       },
       get(id: string): AmlModelRow | undefined {
         const r = db.prepare(`SELECT ${MODEL_COLS} FROM aml_models WHERE id = ?`).get(id)
@@ -404,6 +459,22 @@ export function createAmlRepo(db: DatabaseSync) {
       },
       updateNote(id: string, note: string): void {
         db.prepare('UPDATE aml_models SET note = ? WHERE id = ?').run(note, id)
+      },
+      /** 人读身份维护(Agent/REST 共用):只改 label/description,不改阶段与工件 */
+      updateIdentity(id: string, patch: { label?: string, description?: string }): void {
+        const sets: string[] = []
+        const args: unknown[] = []
+        if (patch.label !== undefined) {
+          sets.push('label = ?')
+          args.push(patch.label.slice(0, 200))
+        }
+        if (patch.description !== undefined) {
+          sets.push('description = ?')
+          args.push(patch.description.slice(0, 500))
+        }
+        if (!sets.length) return
+        args.push(id)
+        db.prepare(`UPDATE aml_models SET ${sets.join(', ')} WHERE id = ?`).run(...(args as never[]))
       },
     },
   }

@@ -1,0 +1,225 @@
+{
+  "script": "scripts/e2e-idd-results.mjs",
+  "generatedAt": "2026-10-25T17:01:43.794Z",
+  "base": "http://127.0.0.1:3300",
+  "pass": 36,
+  "total": 36,
+  "results": [
+    {
+      "id": "A0.1",
+      "name": "演示频道在线",
+      "pass": true,
+      "detail": "注塑产线作业-demo"
+    },
+    {
+      "id": "A0.2",
+      "name": "频道 Agent 可用",
+      "pass": true,
+      "detail": "[[\"9fc3eb10-07a7-457c-bbae-52060faf4edf\",\"lead\"],[\"394ab15a-236f-434e-9db8-c56e9f18d0f2\",\"worker\"]]"
+    },
+    {
+      "id": "A2.1",
+      "name": "关闭态 diag_results → 未启用回执",
+      "pass": true,
+      "detail": "分析结果库未启用:请在 系统设置→运行配置→插件→diag-bridge 打开「结果库总开关」。"
+    },
+    {
+      "id": "A2.2",
+      "name": "关闭态 diag_result_get → 未启用回执",
+      "pass": true,
+      "detail": "分析结果库未启用:请在 系统设置→运行配置→插件→diag-bridge 打开「结果库总开关」。"
+    },
+    {
+      "id": "A2.3",
+      "name": "关闭态 annotate → 未启用回执",
+      "pass": true,
+      "detail": "分析结果库未启用:请在 系统设置→运行配置→插件→diag-bridge 打开「结果库总开关」。"
+    },
+    {
+      "id": "A3.1",
+      "name": "diag_results 返回 total/limit/offset",
+      "pass": true,
+      "detail": "分析结果 total=111 limit=20 offset=0 本页 20 条(brief=true):\n- 3a84abd4 | quick-screen | 96分 ENDORSED | 2026-10-25 16:38:40 | aws-owner-probe_3a84abd4 [ui-walkthrough,"
+    },
+    {
+      "id": "A3.2",
+      "name": "brief 默认 true(文本含 brief=true)",
+      "pass": true,
+      "detail": "分析结果 total=111 limit=3 offset=0 本页 3 条(brief=true):\n- 3a84abd4 | quick-screen | 96分 ENDORSED | 2026-10-25 16:38:40 | aws"
+    },
+    {
+      "id": "A3.3",
+      "name": "brief=false 卡片带 key_numbers",
+      "pass": true,
+      "detail": "分析结果 total=111 limit=5 offset=0 本页 5 条(brief=false):\n- 3a84abd4 | quick-screen | 96分 ENDORSED | 2026-10-25 16:38:40 | aws-owner-probe_3a84abd4 [ui-walkthrough,results]\n  UI 走查 2026-10-25T16:38\n  key_numbers={\"score\":96,\"verdict\":\"ENDORSED\"}\n- dc507a8f | quick-"
+    },
+    {
+      "id": "A3.4",
+      "name": "可从索引文本解析首个 result_id",
+      "pass": true,
+      "detail": "分析结果 total=111 limit=20 offset=0 本页 20 条(brief=true):\n- 3a84abd4 | quick-screen | 96分 ENDORSED | 2026-10-25 16:38:40 | aws-owner-probe_3a84abd4 [ui-walkthrough,results]\n  UI 走查 2026-10-25T16:38\n- dc50"
+    },
+    {
+      "id": "A4.1",
+      "name": "q 过滤正常返回",
+      "pass": true,
+      "detail": "无匹配结果(total=0)。放宽过滤或用 q 换个关键词。"
+    },
+    {
+      "id": "A4.2",
+      "name": "intent 过滤:仅含 stability-report 行",
+      "pass": true,
+      "detail": "分析结果 total=14 limit=5 offset=0 本页 5 条(brief=true):\n- ae7d5fff | stability-report | 96分 ENDORSED | 2026-10-22 10:22:17 | e2e_task_scene_ae7d5fff\n  Conclusion\n- f7f46ab9 | stability-report | 96分 ENDORSE"
+    },
+    {
+      "id": "A4.3",
+      "name": "min_score 过滤正常",
+      "pass": true,
+      "detail": "分析结果 total=79 limit=5 offset=0 本页 5 条(brief=true):\n- 3a84abd4 | quick-screen | 96分 ENDORSED | 2026-10-25 16:38:40 | aws-"
+    },
+    {
+      "id": "A4.4",
+      "name": "score_desc 排序正常",
+      "pass": true,
+      "detail": "分析结果 total=111 limit=3 offset=0 本页 3 条(brief=true):\n- 3a84abd4 | quick-screen | 96分 ENDORSED | 2026-10-25 16:38:40 | aws"
+    },
+    {
+      "id": "A4.5",
+      "name": "非法 sort → RESULTS_QUERY_INVALID 中文指引",
+      "pass": true,
+      "detail": "diag_results 失败: 查询参数非法(支持 intent=deep-diagnosis/stability-report/quick-screen/doe-analysis/experience-mining/optimizer-campaign;sort=created_desc/created_asc/s"
+    },
+    {
+      "id": "A5.1",
+      "name": "详情默认不带 md 正文、报告 URL 已绝对化",
+      "pass": true,
+      "detail": "result_id=3a84abd4\n标题=aws-owner-probe_3a84abd4 意图=quick-screen 评分=96 结论=ENDORSED\n摘要=Conclusion\n关键数字={\"score\":96,\"verdict\":\"ENDORSED\"}\n数字溯源=summary_json.sources(每个数字钉到 工件路径#字段)\n工件 1 项:report.md\n报告=http://127.0.0.1:3210/ap"
+    },
+    {
+      "id": "A5.2",
+      "name": "include_md=true 携带 md 且遵守截断上限",
+      "pass": true,
+      "detail": "result_id=3a84abd4\n标题=aws-owner-probe_3a84abd4 意图=quick-screen 评分=96 结论=ENDORSED\n摘要=Conclusion\n关键数字={\"score\":96,\"verdict\":\"ENDORSED\"}\n数字溯源=summary_json.sources("
+    },
+    {
+      "id": "A9.0",
+      "name": "库内存在 md 字符数>600 的长报告样本",
+      "pass": true,
+      "detail": "46894aff"
+    },
+    {
+      "id": "A9.1",
+      "name": "md_max_chars=500 触发真实截断(标记+总长)",
+      "pass": true,
+      "detail": "result_id=46894aff\n标题=cement_ball_mill_46894aff 意图=quick-screen 评分=- 结论=alert · 742 alerts\n摘要=快筛状态 alert，742 条告警，SPC 判异 660，多变量离群 612，告警最多参数 mill_feed_tph。 数据 4"
+    },
+    {
+      "id": "A6.0",
+      "name": "找到本 token 属主的结果(results-lib-demo)",
+      "pass": true,
+      "detail": "分析结果 total=1 limit=20 offset=0 本页 1 条(brief=false):\n- b687fbc6 | quick-screen | 96分 ENDORSED | 2026-10-25 02:50:21 | x [aws-e2e,results]\n  AW 集成验收 2026-10-25T16:38 (面板)\n  key_numbers={\"score\":96,\"verd"
+    },
+    {
+      "id": "A6.1",
+      "name": "annotate 成功并回读 description/tags",
+      "pass": true,
+      "detail": "已更新 result_id=b687fbc6:title=x\ndescription=AW 集成验收 2026-10-25T17:01\ntags=[aws-e2e,results]\n(display_text 现为:…)。"
+    },
+    {
+      "id": "A6.2",
+      "name": "详情回读含新描述(display_text 优先)",
+      "pass": true,
+      "detail": "result_id=b687fbc6\n标题=x 意图=quick-screen 评分=96 结论=ENDORSED\n摘要=Conclusion\n关键数字={\"score\":96,\"verdict\":\"ENDORSED\"}\n数字溯源=summary_json.sources(每个数字钉到 工件路径#字段)\n工件 1 项:report.md\n报告=http://127.0.0.1:3210/api/files/workspace/report/1792896621724_resu"
+    },
+    {
+      "id": "A7.1",
+      "name": "不存在 id → RESULT_NOT_FOUND 指引",
+      "pass": true,
+      "detail": "diag_result_get 失败: result_id 不存在、已软删除或对应分析未完成;用 diag_results 重新确认 id。"
+    },
+    {
+      "id": "A7.2a",
+      "name": "只给 summary → 本地拒绝(至少给可编辑字段之一)",
+      "pass": true,
+      "detail": "至少给 description / tags / title 之一。"
+    },
+    {
+      "id": "A7.2b",
+      "name": "混合给 summary → 仅 description 生效(summary 被过滤)",
+      "pass": true,
+      "detail": "已更新 result_id=b687fbc6:title=x\ndescription=AW 集成验收 2026-10-25T17:01 (summary过滤)\ntags=[aws-e2e,results]\n(display_text 现为:…)。"
+    },
+    {
+      "id": "A7.3a",
+      "name": "新结果已归属当前 Token(results_demo)",
+      "pass": true,
+      "detail": "{\"success\":true,\"data\":{\"task_id\":\"TASK-MVO2ROAA-M7UQ\",\"run_id\":\"d2b9cf7d\",\"intent\":\"quick-screen\",\"harness\":\"mock\",\"analysis_mode\":\"mock\",\"scene\":\"aws-owner-probe\",\"objective\":\"属主校验探针\",\"status\":\"comp"
+    },
+    {
+      "id": "A7.3b",
+      "name": "属主编辑新结果成功",
+      "pass": true,
+      "detail": "已更新 result_id=d2b9cf7d:title=aws-owner-probe_d2b9cf7d\ndescription=AW 集成验收 2026-10-25T17:01 (属主自证)\ntags=[]\n(display_text 现为:…)。"
+    },
+    {
+      "id": "A7.3",
+      "name": "非属主(第二 token)编辑 → 403 如实回执",
+      "pass": true,
+      "detail": "diag_result_annotate 失败: 该结果不属于当前 Token 的属主;编辑需换成创建它的账号 Token,或由 IDD 管理员操作。"
+    },
+    {
+      "id": "A8.1",
+      "name": "allow_annotate=false → 本地拒绝(不发起 PATCH)",
+      "pass": true,
+      "detail": "元数据编辑未开放:请管理员在插件设置打开「允许元数据编辑」(results_allow_annotate)。"
+    },
+    {
+      "id": "A10.1",
+      "name": "不可达 base_url → 「诊断服务不可达({base})」可行动回执",
+      "pass": true,
+      "detail": "诊断服务不可达(http://127.0.0.1:3999): fetch failed;检查 base_url、IDD 服务状态与网络。"
+    },
+    {
+      "id": "A12.1",
+      "name": "GET /results(面板) 返回索引",
+      "pass": true,
+      "detail": "{\"success\":true,\"data\":{\"total\":112,\"limit\":5,\"offset\":0,\"brief\":false,\"results\":[{\"result_id\":\"d2b9cf7d\",\"title\":\"aws-owner-probe_d2b9cf7d\",\"description\":\"AW 集"
+    },
+    {
+      "id": "A12.2",
+      "name": "GET /results/detail 返回详情",
+      "pass": true,
+      "detail": "{\"success\":true,\"data\":{\"result_id\":\"b687fbc6\",\"title\":\"x\",\"description\":\"AW 集成验收 2026-10-25T17:01 (summary过滤)\",\"summary"
+    },
+    {
+      "id": "A12.3",
+      "name": "PATCH /results/edit(面板) 编辑成功",
+      "pass": true,
+      "detail": "{\"success\":true,\"data\":{\"result_id\":\"b687fbc6\",\"title\":\"x\",\"description\":\"AW 集成验收 2026-10-25T17:01 (面板)\",\"summary\":\"Conclusion\",\"summary_json\":{\"conclusion\":\"Co"
+    },
+    {
+      "id": "A12.4",
+      "name": "GET /results/categories 可用",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "A13.1",
+      "name": "diag_status 仍正常(最近记录/空态)",
+      "pass": true,
+      "detail": "最近 5 条诊断:\n- 093c38c0 | offline-data | [DOE 试验分析] completed | agent | 2026-10-18T10:26:48.752+08:00 | DOE 试验分析(2 因子 2 水平 "
+    },
+    {
+      "id": "A13.2",
+      "name": "/health 路由仍正常(token accepted)",
+      "pass": true,
+      "detail": "{\"plugin\":\"diag-bridge\",\"base\":\"http://127.0.0.1:3210\",\"harness\":\"mock\",\"auth\":\"bearer\",\"token\":{\"configured\":true,\"accepted\":true},\"remote\""
+    },
+    {
+      "id": "A13.3",
+      "name": "/runs 路由仍正常",
+      "pass": true,
+      "detail": "status=200"
+    }
+  ]
+}

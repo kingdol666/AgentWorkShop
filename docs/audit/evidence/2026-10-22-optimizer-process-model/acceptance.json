@@ -1,0 +1,473 @@
+{
+  "at": "2026-10-24T02:49:08.775Z",
+  "durationMs": 214682,
+  "base": "in-process(no HTTP server)",
+  "env": {
+    "node": "v24.19.0",
+    "platform": "win32-x64",
+    "cwd": "D:\\codes\\ABO\\AgentWorkShop"
+  },
+  "versions": {
+    "acceptance": "2026-10-22-optimizer-process-model/v1",
+    "schema": 2,
+    "plan": "docs/plans/2026-10-22-optimizer-process-model-plan.md"
+  },
+  "commands": [
+    "node scripts/run-quality-gates.mjs",
+    "npx tsx --tsconfig .nuxt/tsconfig.server.json scripts/acceptance-optimizer-process-model.ts",
+    "npm run build"
+  ],
+  "gateRuns": [
+    {
+      "id": "lint",
+      "exitCode": 0,
+      "startedAt": "2026-10-23T08:42:26.414Z",
+      "endedAt": "2026-10-23T08:43:07.692Z",
+      "command": "C:\\nvm4w\\nodejs\\node.exe node_modules\\eslint\\bin\\eslint.js .",
+      "tail": ""
+    },
+    {
+      "id": "typecheck",
+      "exitCode": 0,
+      "startedAt": "2026-10-23T08:43:07.692Z",
+      "endedAt": "2026-10-23T08:43:34.591Z",
+      "command": "C:\\nvm4w\\nodejs\\node.exe scripts\\typecheck.mjs",
+      "tail": "[typecheck] ① nuxi prepare(重新生成 .nuxt 类型)\n│\n◆  Types generated in \u001b[36m.nuxt\u001b[39m.\n[typecheck] ② 剔除生成配置里已不存在的 volar 插件条目:vue-router/volar/sfc-route-blocks\n           · tsconfig.app.json: plugins 1 → 0\n           · tsconfig.json: plugins 1 → 0\n[typecheck] ③ vue-tsc -b --noEmit\n[typecheck] ✔ 类型检查通过\n"
+    },
+    {
+      "id": "unit",
+      "exitCode": 0,
+      "startedAt": "2026-10-23T08:43:34.591Z",
+      "endedAt": "2026-10-23T08:44:04.210Z",
+      "command": "C:\\nvm4w\\nodejs\\node.exe node_modules\\tsx\\dist\\cli.mjs --tsconfig .nuxt\\tsconfig.server.json --test --test-force-exit tests\\aml-binding-snapshot.test.ts tests\\aml-env-lease.test.ts tests\\aml-job-success.test.ts tests\\aml-physics-spec.test.ts tests\\aml-scene-builder.test.ts tests\\aml-twin-provider-registry.test.ts tests\\analysis-tools.test.ts tests\\audit-query.test.ts tests\\aw-mcp-server.test.ts tests\\binding-mode-guard.test.ts tests\\daq-export-frames.test.ts tests\\daq-export.test.ts tests\\data-studio-b.test.ts tests\\data-studio.test.ts tests\\dcw-drivers-opcua.test.ts tests\\dcw-drivers-readback.test.ts tests\\dcw-step-limit.test.ts tests\\dcw-write-audit.test.ts tests\\diag-bridge-exports.test.ts tests\\diag-bridge-lifecycle.test.ts tests\\eda-phase-c.test.ts tests\\exp-collector.test.ts tests\\exp-state.test.ts tests\\high-risk-tool-scope.test.ts tests\\hitl-answers.test.ts tests\\host-tools-quality.test.ts tests\\idd-bridge-sweep.test.ts tests\\local-time.test.ts tests\\manual-approval-optimization.test.ts tests\\manual-approval.test.ts tests\\memory-save-fts-title.test.ts tests\\mes-datasets.test.ts tests\\mes-export.test.ts tests\\mes-hook.test.ts tests\\mes-rest-driver.test.ts tests\\node-delegation.test.ts tests\\ops-log-query.test.ts tests\\optimizer-access.test.ts tests\\optimizer-adapter-registry.test.ts tests\\optimizer-authz-regression.test.ts tests\\optimizer-binding.test.ts tests\\optimizer-contracts.test.ts tests\\optimizer-data-lineage.test.ts tests\\optimizer-dispatch.test.ts tests\\optimizer-numeric-regressions.test.ts tests\\optimizer-request-contract.test.ts tests\\optimizer-schema.test.ts tests\\optimizer-solver-contracts.test.ts tests\\optimizer-solver-protocol.test.ts tests\\optimizer-solver.test.ts tests\\optimizer-uq-crosscheck.test.ts tests\\optimizer-uq.test.ts tests\\optimizer-worker-pool.test.ts tests\\platform-notice.test.ts tests\\plugin-driver-registry.test.ts tests\\process-model-trainers.test.ts tests\\rag-bridge-lifecycle.test.ts tests\\recipe-approval-snapshot.test.ts tests\\recipe-op-interval.test.ts tests\\recipe-propose.test.ts tests\\task-retry-backoff.test.ts tests\\tool-approvals-choice.test.ts tests\\tool-face-authz.test.ts tests\\tool-profile-observer.test.ts tests\\tool-registry-policy.test.ts tests\\tool-verify.test.ts tests\\tsdb-ordering.test.ts tests\\tsdb-quality.test.ts",
+      "tail": ":\"info\",\"scope\":\"workshop.plugin-tools\",\"msg\":\"[omp-tools] 插件工具注册:「trp_plugin_echo」(trp-test-plugin)\"}\n{\"t\":\"2026-10-23T08:43:41.411Z\",\"level\":\"info\",\"scope\":\"workshop.tool-registry\",\"msg\":\"synced builtin=91 plugin=1 unavailable=0 total=92 (test-cleanup)\"}\n✔ registry sync:幂等且 hash 未变不推进 updated_at (49.1405ms)\n✔ registry sync:插件卸载后 available=0,重新注册恢复 (75.647ms)\n✔ all 模式:停用 daq_query 后注入面/执行闸门同时生效,重置恢复 (83.1343ms)\n✔ selected 模式:仅勾选工具注入,缺省即停用 (61.6024ms)\n✔ 硬规则:observer 档位不能通过 Channel 选择打开写工具 (43.7205ms)\n✔ 硬规则:worker 的 lead-only 工具记录 ROLE_DENIED,lead 正常 (1.9192ms)\n✔ 透明化视图:全局目录含内置与插件工具,统计一致 (3.8985ms)\n✔ 快照构建:插件同名内置时内置优先 (29.6348ms)\n✔ 策略仓储:removeForChannel 清理策略与行 (22.4568ms)\n✔ user scenario: worker 绑 1 号节点、传 2 号节点(他线)→ 拒绝且文案列出绑定面 (2.6541ms)\n✔ user scenario: 同线但未绑定的 2 号节点、且频道未绑线 → 同样拒绝(未绑定不等于可见) (0.5206ms)\n✔ 绑定面内节点放行(node/line 引用均通过) (0.3486ms)\n✔ 不存在的节点:拒绝文案与「未授权」区分(提示核对 id) (0.4419ms)\n✔ 频道绑线只读扩权:绑线数采节点(未绑定)可读;他线节点仍拒 (0.4964ms)\n✔ nodes[] 深路径与 arrays:aml_dataset_build 逐节点校验 (0.4999ms)\n✔ 配方面:绑定配方可操作;他线配方(未绑定/不可读)拒 (0.6969ms)\n✔ dcw_journal:无参(此前返回全量记录)与越界 node_id 均拒,越界文案列可查对象 (0.5063ms)\n✔ 形状:引用参数非字符串 → 拒绝并说明应为字符串 ID (0.1876ms)\n✔ 授权性拒绝写入 audit_log(tool.call.denied),形状类拒绝不入册 (0.359ms)\n✔ 链式:跨线数据集拒(谱系回溯到产线),本人数据集放行 (1.3686ms)\n✔ 无引用参数的工具不受预检影响(my_industrial_nodes 原样进入 handler) (3.2634ms)\n✔ resolveRefFaces:绑定面/可读线/配方面/频道绑线面一致 (0.2693ms)\n✔ 契约:query() raw 路径时间正序(ASC),窗口超 limit 截取最旧段 (18.312ms)\n✔ 契约:query() bucket 路径时间正序(ASC) (8.385ms)\n✔ 导出:>5000 样本窗口游标续页取全(CSV 行数 == 样本数,不静默截断) (28.3075ms)\n✔ 契约:limit<=0 不得变成 SQL 无上限(适配器夹到 1) (10.1531ms)\n{\"t\":\"2026-10-23T08:43:41.220Z\",\"level\":\"info\",\"scope\":\"daq.tsdb.sqlite\",\"msg\":\"[daq-tsdb] 保留期清理 1 行(>168h)\"}\n✔ A15:queryTagged raw 返回真实 state;cleanPoints 实际剔除坏点 (2.7211ms)\n✔ A16:同键不同值 → 首值保留且 correctionDropped+1(不静默) (0.7511ms)\n✔ A1:逐节点分页稳定 ASC、游标续读、无漏无重 (1.2613ms)\n✔ A16 ④:旧数据 ingestedAt 缺失 → 分页点不伪造到达时间 (0.3737ms)\n✔ A16 ③:迟到但新鲜的样本不被事件时间误删 (42.896ms)\nℹ tests 412\nℹ suites 7\nℹ pass 412\nℹ fail 0\nℹ cancelled 0\nℹ skipped 0\nℹ todo 0\nℹ duration_ms 29300.8947\n"
+    },
+    {
+      "id": "i18n",
+      "exitCode": 0,
+      "startedAt": "2026-10-23T08:44:04.210Z",
+      "endedAt": "2026-10-23T08:44:04.344Z",
+      "command": "C:\\nvm4w\\nodejs\\node.exe scripts\\_i18n-verify-keys.mjs",
+      "tail": "zh keys: 2985 / en keys: 2985\nused keys: 2598 / unresolved: 0\nPARITY OK\n"
+    },
+    {
+      "id": "docs",
+      "exitCode": 0,
+      "startedAt": "2026-10-23T08:44:04.345Z",
+      "endedAt": "2026-10-23T08:44:04.483Z",
+      "command": "C:\\nvm4w\\nodejs\\node.exe scripts\\check-docs-sync.mjs",
+      "tail": "] 文档里宣称的版本号必须等于 package.json\n  ✔ docs/cli.md 版本声明 = 0.7.70 = package.json\n  ✔ docs/cli.en.md 版本声明 = 0.7.70 = package.json\n  ✔ docs/sdk.md 版本声明 = 0.7.70 = package.json\n  ✔ docs/sdk.en.md 版本声明 = 0.7.70 = package.json\n  ✔ docs/plugins.md 版本声明 = 0.7.70 = package.json\n  ✔ docs/plugins.en.md 版本声明 = 0.7.70 = package.json\n  ✔ docs/cli.md 的 npx 锁定示例指向当前版本\n  ✔ docs/cli.en.md 的 npx 锁定示例指向当前版本\n  ✔ docs/sdk.md 无 npx 版本锁定示例\n  ✔ docs/sdk.en.md 无 npx 版本锁定示例\n  ✔ docs/plugins.md 无 npx 版本锁定示例\n  ✔ docs/plugins.en.md 无 npx 版本锁定示例\n\n[4b/6] 版本呈现面全链一致(config.yml / README / 站点 hero / 界面显示面)\n  ✔ config.yml app.version = 0.7.70 = package.json\n  ✔ README.md 版本声明 = 0.7.70 = package.json\n  ✔ README-zh.md 版本声明 = 0.7.70 = package.json\n  ✔ docs/site/index.md 版本声明 = 0.7.70 = package.json\n  ✔ docs/site/en/index.md 版本声明 = 0.7.70 = package.json\n  ✔ 界面版本显示面在位:app/layouts/default.vue\n  ✔ 界面版本显示面在位:app/layouts/town.vue\n  ✔ 界面版本显示面在位:app/components/AppSidebar.vue\n  ✔ 界面版本显示面在位:app/pages/settings.vue\n  ✔ 界面版本显示面在位:app/components/settings/SystemPane.vue\n\n[5/6] VitePress 模板安全:正文裸尖括号不得被当成未闭合标签\n  ✔ 正文裸尖括号检查通过(占位符都在行内代码里)\n\n[6b/6] 文档里宣称的设置项数量必须等于 schema.json\n  ✔ docs/cli.md 设置项总数 = 126(1 处断言)\n  ✔ docs/cli.en.md 设置项总数 = 126(3 处断言)\n  ✔ docs/plugins.md 未硬编码设置项总数\n  ✔ docs/plugins.en.md 未硬编码设置项总数\n  ✔ docs/sdk.md 未硬编码设置项总数\n  ✔ docs/sdk.en.md 未硬编码设置项总数\n  ✔ README.md 设置项总数 = 126(2 处断言)\n  ✔ README-zh.md 设置项总数 = 126(3 处断言)\n  ✔ docs/site/index.md 设置项总数 = 126(3 处断言)\n  ✔ docs/site/en/index.md 设置项总数 = 126(1 处断言)\n  ✔ docs/site/guide/configuration.md 设置项总数 = 126(1 处断言)\n  ✔ docs/site/en/guide/configuration.md 设置项总数 = 126(1 处断言)\n  ✔ README.md live/restart = 42/84\n  ✔ README-zh.md live/restart = 42/84\n  ✔ docs/site/index.md live/restart = 42/84\n  ✔ docs/site/en/index.md live/restart = 42/84\n  ✔ docs/site/guide/configuration.md live/restart = 42/84\n  ✔ docs/site/en/guide/configuration.md live/restart = 42/84\n  ✔ schema.json 基准:126 项 / 19 组 / live 42 · restart 84\n\n[6/6] 表格单元格内联代码不得含未转义竖线\n  ✔ 表格内联代码中的竖线均已转义(或不存在)\n\n✅ 文档一致性:91 通过 / 0 失败\n"
+    }
+  ],
+  "hash": "0a9a2d974aff4e035722f2d9b59a3f7876f01cece910702647b52a8e8036532f",
+  "limitations": [
+    "Timescale queryTagged(raw) 仍未返回 state/ingested_at,且未实现 queryTaggedPage(C5/C6/C7 的 SQLite 分支完整;Timescale 的 query()/latest() 已返回 state)",
+    "A9 的浏览器点击未在本脚本执行;判定覆盖接口载荷/持久状态/零写计数 + UI 路由与 i18n 契约",
+    "A7 p95 为本地单机 fixture(horizon=20,1 MV/1 CV),不含冷启动与训练",
+    "A8 使用延迟 FOPDT 与静态响应面 fixture(闭环只应用首步);未耦合 plc-node-simulator 的真实 CastFilmModel/AnnealModel",
+    "旧 mpc_optimize 仍走 TS 启发式,未路由到 Manager/资格门(计划 G4.6 未完成)",
+    "单长 run 的时间块隔离切分未实现(数据集按 run 切分;gates 以 train/val/test 非空判定)",
+    "static_response 的 训练→权威评估→注册→预测 全链未在验收中端到端执行(训练器与求解器已单测)",
+    "A18 仅验证签名算法与 gate(未测 omp≤5s / bridge≤15s / pi 次回合的实际时序)"
+  ],
+  "pass": 67,
+  "total": 67,
+  "results": [
+    {
+      "id": "A1",
+      "name": "逐节点分页:续读无漏无重 + ASC",
+      "pass": true,
+      "detail": "246 点 / 246 唯一"
+    },
+    {
+      "id": "A15",
+      "name": "queryTagged raw 返回真实 state(非空)",
+      "pass": true,
+      "detail": "100 点"
+    },
+    {
+      "id": "A16",
+      "name": "首写胜出 + 同键更正被计数丢弃",
+      "pass": true,
+      "detail": "dropped 0→1"
+    },
+    {
+      "id": "A1",
+      "name": "manifest v2 sidecar 篡改使 hash 失败",
+      "pass": true,
+      "detail": "125a1695d0 ≠ e73e7842cf"
+    },
+    {
+      "id": "A1",
+      "name": "Timescale 同 fixture(写入/raw 读取/state)",
+      "pass": true,
+      "detail": "rows=2 state=ok,alarm latest=alarm"
+    },
+    {
+      "id": "A2",
+      "name": "U 恒定 + Y 波动 → 不可优化",
+      "pass": true,
+      "detail": "MV_CONSTANT,MV_INSUFFICIENT_EXCITATION,OPTIMIZATION_BLOCKED_BY_EXCITATION"
+    },
+    {
+      "id": "A2",
+      "name": "仅 ACK 动作 → 不可优化",
+      "pass": true,
+      "detail": "ACTION_ACK_ONLY"
+    },
+    {
+      "id": "A2",
+      "name": "激励充分的模拟数据 → 具备优化资格",
+      "pass": true,
+      "detail": "gaps=none"
+    },
+    {
+      "id": "A3",
+      "name": "ARX 辨识系数接近真值(0.82/0.18)",
+      "pass": true,
+      "detail": "a=0.3001 b=0.6998 (index 2)"
+    },
+    {
+      "id": "A3",
+      "name": "多步 RMSE 比持值基线降低 ≥20%",
+      "pass": true,
+      "detail": "99.7%"
+    },
+    {
+      "id": "A3",
+      "name": "阶跃响应起点误差 ≤1 采样步(延迟不提前/不双计)",
+      "pass": true,
+      "detail": "firstMove=2 d=2 y=61.429,61.429,68.427,70.527"
+    },
+    {
+      "id": "A3",
+      "name": "训练作业 done 且模型已登记(两阶段成功语义)",
+      "pass": true,
+      "detail": "job=done model=mdl-mvlsqwac-2dtwwn err="
+    },
+    {
+      "id": "A7",
+      "name": "AML venv 内 osqp/scipy 可用(同一解释器)",
+      "pass": true,
+      "detail": "C:\\Users\\87287\\.AgentWorkShop\\aml\\.venv\\Scripts\\python.exe"
+    },
+    {
+      "id": "A4",
+      "name": "SciPy 解析解误差 ≤1e-4",
+      "pass": true,
+      "detail": "u=3"
+    },
+    {
+      "id": "A4",
+      "name": "OSQP 收敛 + 约束残差 ≤1e-5",
+      "pass": true,
+      "detail": "status=optimal residual=1.42e-14"
+    },
+    {
+      "id": "A4",
+      "name": "Solver 代价与平台独立重算相对差 ≤1e-6",
+      "pass": true,
+      "detail": "solver=12.028703 independent=12.028703 diff=2.95e-16"
+    },
+    {
+      "id": "A4",
+      "name": "MPC 候选非恒值",
+      "pass": true,
+      "detail": "41.16,42.88,46.47,48.93"
+    },
+    {
+      "id": "A5",
+      "name": "不可行问题返回 infeasible(不崩溃)",
+      "pass": true,
+      "detail": "infeasible"
+    },
+    {
+      "id": "A5",
+      "name": "超时明确返回 SOLVE_TIMEOUT 且池可恢复",
+      "pass": true,
+      "detail": "timedOut=true"
+    },
+    {
+      "id": "A22",
+      "name": "Worker 崩溃后池自动补位(在途无重放)",
+      "pass": true,
+      "detail": "{\"size\":1,\"ready\":1,\"busy\":0,\"degraded\":false,\"pythonPath\":\"C:\\\\Users\\\\87287\\\\.AgentWorkShop\\\\aml\\\\.venv\\\\Scripts\\\\python.exe\"}"
+    },
+    {
+      "id": "A5",
+      "name": "取消 A 不影响 B(B 仍 optimal)",
+      "pass": true,
+      "detail": "A=result"
+    },
+    {
+      "id": "A17",
+      "name": "模板 id 明确拒绝(AGENT_TEMPLATE_ID_NOT_ALLOWED)",
+      "pass": true,
+      "detail": "tpl-acc"
+    },
+    {
+      "id": "A6",
+      "name": "唯一绑定可默认解析",
+      "pass": true,
+      "detail": "ob-mvlsrlhw-a8hua"
+    },
+    {
+      "id": "A6",
+      "name": "他人 binding → NOT_OWNED",
+      "pass": true,
+      "detail": "ca-acc2"
+    },
+    {
+      "id": "A6",
+      "name": "撤权后立即拒绝",
+      "pass": true,
+      "detail": "removed"
+    },
+    {
+      "id": "A8",
+      "name": "延迟 FOPDT fixture:MPC 相对保持中位误差改善 ≥15% 且 95% 下界>0",
+      "pass": true,
+      "detail": "improve=94.8% hold=11.513 mpc=0.594 lower=10.8136"
+    },
+    {
+      "id": "A8",
+      "name": "退火响应面 fixture:SciPy 质量约束下经济代价改善 ≥15%",
+      "pass": true,
+      "detail": "baseline=-40 optimized=-56.86 improve=42.2%"
+    },
+    {
+      "id": "A9",
+      "name": "模拟线可创建参数试验计划",
+      "pass": true,
+      "detail": "pexp-mvlstydu-voa7"
+    },
+    {
+      "id": "A9",
+      "name": "真实线发起模拟试验 → SIM_ONLY_VIOLATION",
+      "pass": true,
+      "detail": "ln-7bfcf8bd"
+    },
+    {
+      "id": "A9",
+      "name": "solve 链路零 DCW 写入 + 持久运行/建议",
+      "pass": true,
+      "detail": "run=orun-mvlstye4-5smko status=optimal rec=unverified diag="
+    },
+    {
+      "id": "A6",
+      "name": "缺 UQ 证据 → unverified(不得显示已验证)",
+      "pass": true,
+      "detail": "未验证(缺 UQ/OOD 证据)"
+    },
+    {
+      "id": "A13",
+      "name": "同 recipeId 升版 → 内容 hash 不同",
+      "pass": true,
+      "detail": "b2b2651f72 vs 8c732c08b6"
+    },
+    {
+      "id": "A13",
+      "name": "批次谱系段记录版本与内容 hash",
+      "pass": true,
+      "detail": "pcs-mvlstz00-an570"
+    },
+    {
+      "id": "A13",
+      "name": "stage 工况显式拒绝(首版无结构化阶段来源)",
+      "pass": true,
+      "detail": "CONDITION_FIELD_UNSUPPORTED"
+    },
+    {
+      "id": "A13",
+      "name": "运行中切换到不同配方 → 旧计划失效",
+      "pass": true,
+      "detail": "recipeId=rc-other@1792810080857"
+    },
+    {
+      "id": "A13",
+      "name": "运行中 applyRecipe → 活动窗口/入库样本/谱系段同步切换到新配方",
+      "pass": true,
+      "detail": "active=rc-b33856c1 sampleTag=rc-b33856c1@1792810080082 seg=rc-b33856c1@1"
+    },
+    {
+      "id": "A14",
+      "name": "发布版不可原地修改",
+      "pass": true,
+      "detail": "pms-acc@1"
+    },
+    {
+      "id": "A14",
+      "name": "被 Profile 引用的模型拒删",
+      "pass": true,
+      "detail": "mdl-mvlsqwac-2dtwwn"
+    },
+    {
+      "id": "A14",
+      "name": "资格按绑定模型自身规格溯源(同线其他规格的合格报告不放行)",
+      "pass": true,
+      "detail": "qualified=true unqualified=false"
+    },
+    {
+      "id": "A14",
+      "name": "dispatch 复核:绑定模型无真实优化资格 → OPTIMIZATION_NOT_ELIGIBLE(不返回候选)",
+      "pass": true,
+      "detail": "OPTIMIZATION_NOT_ELIGIBLE: 当前绑定的 AML 模型没有通过的优化资格报告(辨识不足/OOD/动作证据缺失)。请先完成 AML 数据集资格评估与模型晋级,或绑定优化器 Pro"
+    },
+    {
+      "id": "A14",
+      "name": "旧 mpc_optimize:无绑定/无模型或无资格 → 引导;有资格模型 → 保留旧路径",
+      "pass": true,
+      "detail": "BINDING_NOT_FOUND/OPTIMIZATION_NOT_ELIGIBLE"
+    },
+    {
+      "id": "A11",
+      "name": "第三留出场景(新 id/变量名/单位/两个互斥工况)通过校验",
+      "pass": true,
+      "detail": "pms-acc-alt@1"
+    },
+    {
+      "id": "A11",
+      "name": "变量名/单位变化不改核心代码(同训练器可训练)",
+      "pass": true,
+      "detail": "99.7%"
+    },
+    {
+      "id": "A12",
+      "name": "新工件走对应 loader/io_spec",
+      "pass": true,
+      "detail": "linear_state_space@1/linear_state_space"
+    },
+    {
+      "id": "A12",
+      "name": "v1 数据集 hash 兼容(无新增文件参与)",
+      "pass": true,
+      "detail": "5153335177"
+    },
+    {
+      "id": "A21",
+      "name": "HOST_TOOLS 含 5 个 optimizer_* 且处理器命中",
+      "pass": true,
+      "detail": "optimizer_capabilities,optimizer_solve,optimizer_status,optimizer_cancel,optimizer_plan_get"
+    },
+    {
+      "id": "A21",
+      "name": "optimizer_solve schema 含 binding_id 且 type=object",
+      "pass": true
+    },
+    {
+      "id": "A21",
+      "name": "tool_registry builtin 计数 = HOST_TOOLS.length",
+      "pass": true,
+      "detail": "92/92"
+    },
+    {
+      "id": "A21",
+      "name": "optimizer 工具仅注入优化档位",
+      "pass": true,
+      "detail": "opt=5 legacy=0"
+    },
+    {
+      "id": "A21",
+      "name": "legacy 直调 optimizer_solve 明确拒绝(非未知工具)",
+      "pass": true,
+      "detail": "OPTIMIZER_CHANNEL_DISABLED"
+    },
+    {
+      "id": "A21",
+      "name": "训练档位直调 optimizer_solve 明确拒绝(非未知工具)",
+      "pass": true,
+      "detail": "OPTIMIZER_PROFILE_DENIED"
+    },
+    {
+      "id": "A21",
+      "name": "无绑定 solve → BINDING_NOT_FOUND(capabilities 仍可调)",
+      "pass": true,
+      "detail": "BINDING_NOT_FOUND"
+    },
+    {
+      "id": "A18",
+      "name": "schema-only 变更触发签名变化",
+      "pass": true
+    },
+    {
+      "id": "A18",
+      "name": "空工具表签名 ≠ 非空(解绑后清空)",
+      "pass": true
+    },
+    {
+      "id": "A19",
+      "name": "新表纳入主库(备份/保留同一连接)",
+      "pass": true,
+      "detail": "process_model_specs,process_model_eligibility,optimizer_runs,optimizer_candidates,optimizer_recommendations"
+    },
+    {
+      "id": "A19",
+      "name": "retention.optimizer_days / process_model_days 可读",
+      "pass": true,
+      "detail": "optimizer=365 process=365"
+    },
+    {
+      "id": "A7",
+      "name": "horizon=20 求解 p95 ≤1s(含 IPC,100 次)",
+      "pass": true,
+      "detail": "p95=970ms p50=637ms"
+    },
+    {
+      "id": "A20",
+      "name": "i18n 双语 key 齐备(PARITY)",
+      "pass": true,
+      "detail": "zh=2985 en=2985"
+    },
+    {
+      "id": "A20",
+      "name": "四项门禁真实 exitCode=0(lint/typecheck/unit/i18n)",
+      "pass": true,
+      "detail": "lint:0 typecheck:0 unit:0 i18n:0 docs:0"
+    },
+    {
+      "id": "A22",
+      "name": "requirements 锁定 osqp",
+      "pass": true,
+      "detail": "b71cbec98e15"
+    },
+    {
+      "id": "A22",
+      "name": ".output 打包 requirements 含 osqp(构建后检查)",
+      "pass": true,
+      "detail": "present"
+    },
+    {
+      "id": "A22",
+      "name": ".output 打包 Solver Worker(worker.py/problems.py/probe.py)",
+      "pass": true,
+      "detail": "D:\\codes\\ABO\\AgentWorkShop\\.output\\.AgentWorkShop\\optimizer-python\\worker.py"
+    },
+    {
+      "id": "A22",
+      "name": "AML 与 Solver 同一解释器/锁",
+      "pass": true,
+      "detail": "b71cbec98e15"
+    },
+    {
+      "id": "A22",
+      "name": "线程预算显式注入(源码断言)",
+      "pass": true
+    },
+    {
+      "id": "A22",
+      "name": "桥签名覆盖 parameters(源码断言)",
+      "pass": true
+    },
+    {
+      "id": "A10",
+      "name": "新增单测文件齐备",
+      "pass": true,
+      "detail": "10 套"
+    },
+    {
+      "id": "A10",
+      "name": "既有 AML/Twin/DCW 套件保留",
+      "pass": true
+    }
+  ]
+}

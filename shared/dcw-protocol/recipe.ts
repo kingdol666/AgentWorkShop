@@ -265,6 +265,8 @@ export interface RecipeRunView {
   productId: string
   /** 所属产线(自配方继承) */
   lineId: string
+  /** 建批时冻结的配方版本(0/缺省 = 历史未知;C8 版本谱系证据) */
+  recipeVersion?: number
   startedAt: string
   endedAt: string | null
   /** apply 时逐参数写结果快照(节点级寻址);ack/verify 为 2026-10-08 ACK 鉴定增量 */

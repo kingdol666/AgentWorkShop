@@ -1,0 +1,74 @@
+{
+  "date": "2026-10-23",
+  "plan": "docs/plans/2026-10-23-optimizer-master-plan.md (v4.1)",
+  "stories": [
+    {
+      "id": "US-SW0",
+      "scope": "设置项+文档同步",
+      "status": "done",
+      "evidence": "schema.json 126/19/42/84; docs:check 91/91; i18n parity 2985/2985; config.yml +2 keys; settings.ts optimizerCrosscheckTol/amlUqFreshDays"
+    },
+    {
+      "id": "US-SW1",
+      "scope": "M1a 统一授权",
+      "status": "done",
+      "evidence": "optimization/access.ts(assertOptimizationAccess 六资源域+deny 审计 AUTHZ_DENIED+canSeeProfile+recordConfigAction); 7 处路由修复(profiles 列表过滤/发布归属/spec 发布归属/eligibility+dataset 双资源校验/train 角色收紧/experiments lineId 过滤/binding manage 权限); tests/optimizer-access.test.ts 3 tests"
+    },
+    {
+      "id": "US-SW2",
+      "scope": "M1b 数据真实性",
+      "status": "done",
+      "evidence": "shared/units.ts(toModel/toEngineering fail-closed); context.ts+dataset-builder 兜底删除; migrateDualDriveColumns(lineage_verified/dispatch_state 等 8 列+旧行回填); aml.repo lineageVerified 透传; dataset.ts 逐 run confirmed segment 谱系判定+排除; manager LEGACY_MODEL_REQUIRES_RETRAIN(publish+solve 双门); DatasetView.blocks; tests/optimizer-data-lineage.test.ts 4 tests; live/acceptance fixture 补 confirmed segment+lineageVerified"
+    },
+    {
+      "id": "US-SW3",
+      "scope": "M2 UQ 证据与精确资格",
+      "status": "done",
+      "evidence": "uq-evidence.ts(computeBlockUq split_conformal/empirical_max; coverageThreshold max(0.8,0.9−3√(0.09/n)); inputDistance MV+CV; isUqFresh); linear-arx+static-response 补 val rollout 残差并写 artifact.uq(注册前); manager buildUqEvidence 替代 uqEvidenceOf(删除); classifyRecommendation D3 门+OOD>3+null 距离 fail-closed; eligibility save 带 datasetId/hash+latestForDataset+revokeForDataset; spec static horizonSteps===1; tests/optimizer-uq.test.ts 6 tests"
+    },
+    {
+      "id": "US-SW4",
+      "scope": "M3 候选互校",
+      "status": "done",
+      "evidence": "optimizer_candidate_crosschecks 表(schema.ts)+row_hash+FK CASCADE; crosscheck.service.ts(D7 快照锚定+nodeId 重排; D8 artifact_hash 强等 409; D1 norm.y.std 分母 not_applicable; D6 最新一行派生+读时 stale; D25 比较对钉死); REST recommendations/[id]/crosscheck.post.ts; getRunStatus/optimizer_plan_get 派生 crosscheck; tests/optimizer-uq-crosscheck.test.ts 4 tests(spike<1e-9/扰动 fail/import 边界/row_hash)"
+    },
+    {
+      "id": "US-SW5",
+      "scope": "M4 治理下发",
+      "status": "done",
+      "evidence": "spec controlNodeId(parse optional/publish+dispatch required+∈配方参数面); dispatch.service.ts(D11 body 防伪 422; D13 八项重验含⓪发起人 grant/⑥当前 MV 模型单位步限; D14 idle→dispatched→committed→executed/failed/cancelled/denied 原子状态机+三前缀在飞去重+启动对账; D23 双值输出; D24 步限); decideOptimizerDispatch 单一咽喉接 hitl/respond+approvals/decide 双入口; REST recommendations/[id]/dispatch.post.ts; tool-approvals lineIdOf/cancelPendingForBinding/锚 扩 optimizer-recipe:; server/plugins/workshop.ts 启动对账; tests/optimizer-dispatch.test.ts 7 tests"
+    },
+    {
+      "id": "US-SW6",
+      "scope": "M5 扩展",
+      "status": "partial",
+      "evidence": "done: scipy_slsqp×linear_mpc_quadratic publish 422 SOLVER_TEMPLATE_UNSUPPORTED(分派矩阵); SolverRequest/Response/EventFrame protocolVersion 1|2; UNSUPPORTED_MODEL_INPUT 保持。not-run(独立大项,阻塞于打包/插件环境,无返工依赖): 跨进程 env-leases.sqlite、worker 协议 v2 按 solverRef 分派+内置 adapter 注册、compileProblemIRStructure 发布冻结、MD 成组(mdB/mdD)"
+    },
+    {
+      "id": "US-SW7",
+      "scope": "M6 收尾",
+      "status": "done",
+      "evidence": "horizon 清理(.AgentWorkShop host-tools.json optimizer_solve 移除 horizon 参数; SolveOptions.horizon 删除; guard 测试改为语义锁定); live fixture N_RUNS=6+0.4/0.4+confirmed segments+四断言改二态; acceptance ds-acc lineageVerified=1; 67/67 acceptance 通过; 单测 396/396; lint 0; typecheck 0; docs:check 91/91; i18n parity"
+    }
+  ],
+  "gates": {
+    "test:unit": "396/396",
+    "acceptance": "67/67",
+    "lint": "exit 0",
+    "typecheck": "exit 0",
+    "docs:check": "91/91",
+    "i18n:check": "PARITY OK",
+    "live_e2e": "90/90 (rec=verified,R1.19: UQ 证据链接通)",
+    "quality_gates": "ALL PASS (lint/typecheck/unit/i18n/docs)"
+  },
+  "knownPartials": [
+    "SW6 跨进程环境租约(<amlRoot>/runtime/env-leases.sqlite)未实施 —— 现有进程内租约+ENV_BUSY 语义保留(既有测试绿)",
+    "SW6 worker 协议 v2 solverRef 分派/内置 SolverAdapter 注册/compileProblemIRStructure 发布冻结 IR/MD 成组支持未实施 —— scipy×linear 已发布期 422 兜底,MD 输入保持显式 UNSUPPORTED_MODEL_INPUT",
+    "live e2e(浏览器)结果见 live-run 段;acceptance 67/67+单测 396/396 已覆盖同一链路的服务端语义"
+  ],
+  "liveHighlights": [
+    "R1.19: solve → rec=verified(已验证推荐) —— UQ 证据链端到端打通(6-run fixture,val/test 分段 conformal)",
+    "S4: 静态场景 SLSQP 求解命中目标(scenario-C confirmed segments 修复后)",
+    "V3: 闭环 MV 全程在工艺窗口内"
+  ]
+}

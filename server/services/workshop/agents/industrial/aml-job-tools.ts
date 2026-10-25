@@ -567,3 +567,36 @@ export async function toolAmlTrainingPlanCreate(agentId: string, args: {
     return amlErr(`创建失败:${err instanceof Error ? err.message : String(err)}`)
   }
 }
+
+/** 工具:aml_model_annotate —— Agent 维护模型人读身份(名称/描述) */
+export async function toolAmlModelAnnotate(agentId: string, args: {
+  model_id?: string
+  label?: string
+  description?: string
+}): Promise<{ text: string, isError?: boolean }> {
+  const modelId = String(args.model_id ?? '').trim()
+  if (!modelId) return amlErr('model_id 必填(aml_leaderboard / aml_model_find 可查)。')
+  const label = typeof args.label === 'string' && args.label.trim() ? args.label.trim().slice(0, 200) : undefined
+  const description = typeof args.description === 'string' && args.description.trim() ? args.description.trim().slice(0, 500) : undefined
+  if (!label && !description) return amlErr('label / description 至少提供一个:它们是用户理解这个模型代表什么的主要入口。')
+  const rt = getAmlRuntime()
+  const model = rt.repo.model.get(modelId)
+  if (!model) return amlErr(`模型 ${modelId} 不存在(训练完成后才登记;aml_leaderboard 可查)。`)
+  rt.repo.model.updateIdentity(modelId, { label, description })
+  recordOps({
+    actor: agentId, actorName: agentId, actorKind: 'agent',
+    action: 'aml.model.annotate', kind: 'system',
+    summary: `模型 ${modelId} 人读身份更新(${[label ? 'label' : '', description ? 'description' : ''].filter(Boolean).join('+')})`,
+    targetKind: 'aml_model', targetId: modelId,
+    detail: { label, description },
+  })
+  const after = rt.repo.model.get(modelId)
+  return {
+    text: [
+      `模型 ${modelId} 人读身份已更新:`,
+      `  label: ${after?.label || '-'}`,
+      `  description: ${after?.description || '-'}`,
+      '用户与 Agent 都会在 /aml 模型台账看到这两项;阶段/工件/指标不受影响(不能借此绕过门禁)。',
+    ].join('\n'),
+  }
+}

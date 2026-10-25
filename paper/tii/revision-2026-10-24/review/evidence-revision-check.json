@@ -1,0 +1,43 @@
+{
+  "main.tex": {
+    "labels_preserved": true,
+    "citations_preserved": true,
+    "equations_preserved": true,
+    "graphics_preserved": true,
+    "braces_balanced": true,
+    "word_delta_vs_before": -1
+  },
+  "sections/evaluation.tex": {
+    "labels_preserved": true,
+    "citations_preserved": true,
+    "equations_preserved": true,
+    "graphics_preserved": true,
+    "braces_balanced": true,
+    "word_delta_vs_before": 22
+  },
+  "sections/discussion.tex": {
+    "labels_preserved": true,
+    "citations_preserved": true,
+    "equations_preserved": true,
+    "graphics_preserved": true,
+    "braces_balanced": true,
+    "word_delta_vs_before": 37
+  },
+  "sections/system.tex": {
+    "labels_preserved": true,
+    "citations_preserved": true,
+    "equations_preserved": true,
+    "graphics_preserved": true,
+    "braces_balanced": true,
+    "word_delta_vs_before": 43
+  },
+  "abstract": {
+    "words": 213,
+    "one_paragraph": true,
+    "unnecessary_acronyms": []
+  },
+  "current_tests_log_present": true,
+  "R11_scenarios_present": true,
+  "R12_summary_present": true,
+  "compiled_in_this_subtask": false
+}

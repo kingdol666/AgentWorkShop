@@ -62,7 +62,7 @@ pnpm tui             # the terminal workbench
 ### 3. Quick use via npx (no global install)
 
 ```bash
-npx agentworkshop start            # fetch and start (pin a version with: npx agentworkshop@0.7.70 start)
+npx agentworkshop start            # fetch and start (pin a version with: npx agentworkshop@0.8.3 start)
 npx agentworkshop doctor           # subcommands work as usual
 npx -p agentworkshop aw doctor     # use -p when you want the name aw
 ```
@@ -79,7 +79,7 @@ npx -p agentworkshop aw doctor     # use -p when you want the name aw
 | Package manager | `pnpm@11.9.0` (`packageManager`, needed only for source development) |
 | Module format | ESM (`type: module`) |
 | License | `Apache-2.0` |
-| Current version | `0.7.70` (`package.json`) |
+| Current version | `0.8.3` (`package.json`) |
 
 ## 2. First start (the Claude Code experience)
 
@@ -167,7 +167,7 @@ are never overwritten:
 - Precedence (the CLI, the web settings page and the dev/prod launch scripts all share one engine,
   `shared/config/engine.mjs`):
   `config.yml defaults < runtime-settings.json runtime overrides < environment variables / explicit CLI flags`.
-- There are **119 setting descriptors across 18 groups** (`aw config list` prints exactly 119 rows):
+- There are **126 setting descriptors across 19 groups** (`aw config list` prints exactly 126 rows):
 
 | Group | Count | Group | Count | Group | Count | Group | Count |
 |---|---|---|---|---|---|---|---|
@@ -258,7 +258,7 @@ the CLI's `--json`.
 aw config set server.prod.port 8080     # change the production port (effective after restart)
 aw config set theme.primaryColor '#41c8f4'
 aw config get server.dev.port           # value + source
-aw config list                          # 119 settings (18 groups) + source + when they apply
+aw config list                          # 126 settings (19 groups) + source + when they apply
 aw config validate                      # validate config.yml and the runtime overrides
 aw start --port 3002                    # CLI flags win; the output marks 端口来源: CLI
 aw doctor                               # health check: Node/pnpm/AW Home/Docker/MQTT/ports/secrets/build

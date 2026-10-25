@@ -12,9 +12,13 @@ import { getChannelTwinProfile } from '../../aml/twin/channel-profile'
 import { amlTwinFeatureFlags } from '../../aml/twin/feature-flags'
 import { applyChannelToolPolicy } from '../../tools/policy'
 import type { ToolExclusion } from '../../tools/types'
+import { registerToolReferenceDeclarations } from '../tool-reference-spec'
 
 /** host tool 定义(外置 .AgentWorkShop/prompts/host-tools.json;加载器缓存) */
 export const HOST_TOOLS: RpcHostToolDefinition[] = loadHostToolDefs()
+
+// WP5:定义自带的引用面声明装配进单一声明表(tool-verify 执行期查表;声明在注册时生效)
+registerToolReferenceDeclarations(HOST_TOOLS)
 
 // 工具分类常量已上收零依赖叶子模块 agents/tool-classes(权限面/测试在 nitro 之外可用);此处 re-export 保持导入路径兼容
 export { LEAD_ONLY_TOOL_NAMES, HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES } from '../tool-classes'
@@ -36,6 +40,14 @@ export const AML_TRAINING_TOOL_NAMES = new Set([
 
 export const AML_OPTIMIZATION_TOOL_NAMES = new Set([
   'twin_snapshot_create', 'twin_trial_run', 'mpc_optimize', 'twin_gate_evaluate', 'optimization_explore', 'twin_bayes_optimize',
+])
+
+/**
+ * 优化器工具族(G4):零写设备;仅 aml_optimization / hybrid_twin 注入,
+ * 且 solve/status/cancel/plan_get 还要求该 Agent 有有效绑定(per-agent 再裁一次)。
+ */
+export const OPTIMIZER_TOOL_NAMES = new Set([
+  'optimizer_capabilities', 'optimizer_solve', 'optimizer_status', 'optimizer_cancel', 'optimizer_plan_get',
 ])
 
 /** 仅 aml 模式(已绑定模型)可执行的工具;探索模式下 dispatch 层 fail-closed 拒绝。 */
@@ -183,16 +195,16 @@ export function scopeHostToolsForRole(role: 'lead' | 'worker', channelId?: strin
   const flags = amlTwinFeatureFlags()
   let scoped: RpcHostToolDefinition[]
   if (kind === 'aml_training') {
-    // 训练面:剔除优化族(gate 保留 —— 模型晋升前需门禁评估);训练族显式补齐(host-tools.json 全量已含)
+    // 训练面:剔除优化族与优化器族(gate 保留 —— 模型晋升前需门禁评估)
     scoped = narrow(
       base,
-      t => !AML_OPTIMIZATION_TOOL_NAMES.has(t.name) || t.name === 'twin_gate_evaluate',
+      t => (!AML_OPTIMIZATION_TOOL_NAMES.has(t.name) || t.name === 'twin_gate_evaluate') && !OPTIMIZER_TOOL_NAMES.has(t.name),
       'PROFILE_DENIED',
-      `当前 Channel 档位(${kind})不开放该工具(训练面与优化执行面互斥)`,
+      `当前 Channel 档位(${kind})不开放该工具(训练面不求解)`,
     )
   }
   else if (kind === 'aml_optimization') {
-    // 优化面:剔除训练族(gate 保留 —— 绑定校验需门禁);优化族显式补齐(含新工具)
+    // 优化面:剔除训练族(gate 保留);优化器族保留(per-agent 再按绑定裁剪)
     scoped = narrow(
       base,
       t => !AML_TRAINING_TOOL_NAMES.has(t.name) || t.name === 'twin_gate_evaluate',
@@ -222,9 +234,10 @@ export function scopeHostToolsForRole(role: 'lead' | 'worker', channelId?: strin
           base,
           t => !HYBRID_TWIN_TOOL_NAMES.has(t.name)
             && !AML_TRAINING_TOOL_NAMES.has(t.name)
-            && !AML_OPTIMIZATION_TOOL_NAMES.has(t.name),
+            && !AML_OPTIMIZATION_TOOL_NAMES.has(t.name)
+            && !OPTIMIZER_TOOL_NAMES.has(t.name),
           'PROFILE_DENIED',
-          '当前 Channel 为 legacy 档位,不开放孪生/训练/优化族工具',
+          '当前 Channel 为 legacy 档位,不开放孪生/训练/优化/优化器族工具',
         )
   }
 

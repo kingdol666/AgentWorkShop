@@ -4,6 +4,7 @@ import { TWIN_PROVIDER_API_VERSION } from './provider-contracts'
 import type {
   ArtifactContract,
   LegacyPhysicsProvider,
+  ObjectiveAdapter,
   ParameterPriorMap,
   PhysicsProviderManifest,
   ProviderHealth,
@@ -11,7 +12,9 @@ import type {
   ProviderValidationResult,
   ScenePack,
   SolverAdapter,
+  SolverAdapterLease,
   SolverAdapterManifest,
+  TrainingAdapter,
   TwinPhysicsProvider,
   TwinPluginContribution,
   TwinProviderDrainResult,
@@ -81,6 +84,8 @@ interface GenerationRecord {
   providers: Map<string, ProviderRecord>
   scenePacks: Map<string, ScenePack>
   solverAdapters: Map<string, SolverAdapter>
+  trainingAdapters: Map<string, TrainingAdapter>
+  objectiveAdapters: Map<string, ObjectiveAdapter>
 }
 
 interface NormalizedSource { pluginName: string, pluginVersion?: string, source?: string }
@@ -89,6 +94,8 @@ interface StagedContribution {
   providers: StagedProvider[]
   scenePacks: Array<{ pack: ScenePack, key: string }>
   solverAdapters: Array<{ adapter: SolverAdapter, manifest: SolverAdapterManifest, key: string }>
+  trainingAdapters: Array<{ adapter: TrainingAdapter, key: string }>
+  objectiveAdapters: Array<{ adapter: ObjectiveAdapter, key: string }>
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -304,13 +311,46 @@ function stageContribution(contribution: TwinPluginContribution): StagedContribu
       solverAdapters.push({ adapter, manifest, key: solverKey })
     }
   }
-  return { providers: stagedProviders, scenePacks, solverAdapters }
+  const trainingAdapters: StagedContribution['trainingAdapters'] = []
+  const trainingKeys = new Set<string>()
+  for (const adapter of contribution.trainingAdapters ?? []) {
+    const raw = readAccessor((adapter as unknown as { manifest?: unknown }).manifest)
+    if (!isRecord(raw)) throw new TwinProviderRegistryError('TRAINING_ADAPTER_INVALID', 'Training adapter manifest must be an object')
+    const adapterRef = text(raw.adapterRef ?? raw.adapterId ?? raw.ref)
+    const version = text(raw.version, '1')
+    const artifactKind = text(raw.artifactKind)
+    if (!adapterRef || !artifactKind) throw new TwinProviderRegistryError('TRAINING_ADAPTER_INVALID', 'Training adapter requires adapterRef and artifactKind')
+    if (typeof adapter.train !== 'function') throw new TwinProviderRegistryError('TRAINING_ADAPTER_INVALID', `Training adapter ${adapterRef} must expose train()`)
+    const trainingKey = key(adapterRef, version)
+    if (!trainingKeys.has(trainingKey)) {
+      trainingKeys.add(trainingKey)
+      trainingAdapters.push({ adapter: { ...adapter, manifest: { ...raw, adapterRef, version, artifactKind } as TrainingAdapter['manifest'] }, key: trainingKey })
+    }
+  }
+  const objectiveAdapters: StagedContribution['objectiveAdapters'] = []
+  const objectiveKeys = new Set<string>()
+  for (const adapter of contribution.objectiveProfiles ?? []) {
+    const raw = readAccessor((adapter as unknown as { manifest?: unknown }).manifest)
+    if (!isRecord(raw)) throw new TwinProviderRegistryError('OBJECTIVE_ADAPTER_INVALID', 'Objective adapter manifest must be an object')
+    const ref = text(raw.ref ?? raw.adapterRef ?? raw.id)
+    const version = text(raw.version, '1')
+    if (!ref) throw new TwinProviderRegistryError('OBJECTIVE_ADAPTER_INVALID', 'Objective adapter requires ref')
+    if (typeof adapter.compile !== 'function') throw new TwinProviderRegistryError('OBJECTIVE_ADAPTER_INVALID', `Objective adapter ${ref} must expose compile()`)
+    const objectiveKey = key(ref, version)
+    if (!objectiveKeys.has(objectiveKey)) {
+      objectiveKeys.add(objectiveKey)
+      objectiveAdapters.push({ adapter: { ...adapter, manifest: { ...raw, ref, version } as ObjectiveAdapter['manifest'] }, key: objectiveKey })
+    }
+  }
+  return { providers: stagedProviders, scenePacks, solverAdapters, trainingAdapters, objectiveAdapters }
 }
 
 export class TwinProviderRegistry {
   private readonly generations = new Map<string, GenerationRecord>()
   private readonly nextGenerationByPlugin = new Map<string, number>()
+  private readonly solverLeaseState = new Map<string, { inFlight: number, draining: boolean }>()
   private leaseSequence = 0
+  private solverLeaseSeq = 0
 
   registerTwinPluginContribution(pluginName: string, contribution: TwinPluginContribution, generation?: number): TwinProviderRegistrationResult {
     const source = sourceOf(pluginName)
@@ -327,6 +367,7 @@ export class TwinProviderRegistry {
     const target = existing ?? {
       pluginName: source.pluginName, pluginVersion: source.pluginVersion, generation: requested, state: 'VALIDATED' as ProviderLifecycleState,
       registeredAt: new Date().toISOString(), providers: new Map<string, ProviderRecord>(), scenePacks: new Map<string, ScenePack>(), solverAdapters: new Map<string, SolverAdapter>(),
+      trainingAdapters: new Map<string, TrainingAdapter>(), objectiveAdapters: new Map<string, ObjectiveAdapter>(),
     } satisfies GenerationRecord
     let added = 0
     for (const item of staged.providers) {
@@ -344,8 +385,10 @@ export class TwinProviderRegistry {
     }
     for (const item of staged.scenePacks) target.scenePacks.set(item.key, item.pack)
     for (const item of staged.solverAdapters) target.solverAdapters.set(item.key, item.adapter)
+    for (const item of staged.trainingAdapters) target.trainingAdapters.set(item.key, item.adapter)
+    for (const item of staged.objectiveAdapters) target.objectiveAdapters.set(item.key, item.adapter)
     target.pluginVersion = source.pluginVersion ?? target.pluginVersion
-    target.state = target.providers.size || target.scenePacks.size || target.solverAdapters.size ? 'READY' : 'REGISTERED'
+    target.state = target.providers.size || target.scenePacks.size || target.solverAdapters.size || target.trainingAdapters.size || target.objectiveAdapters.size ? 'READY' : 'REGISTERED'
     this.generations.set(targetKey, target)
     for (const record of this.generations.values()) {
       if (record.pluginName === source.pluginName && record.generation !== requested && record.state !== 'RETIRED' && record.state !== 'FAILED') this.markGenerationDraining(record)
@@ -448,6 +491,106 @@ export class TwinProviderRegistry {
 
   listSolverAdapters(pluginName?: string): SolverAdapter[] {
     return [...this.generations.values()].filter(record => (!pluginName || record.pluginName === pluginName) && record.state !== 'RETIRED').flatMap(record => [...record.solverAdapters.values()])
+  }
+
+  /** 训练适配器解析:未注册返回 null(配置校验据此拒绝,不再"恒 accepted")。 */
+  resolveTrainingAdapter(adapterRef: string, _version?: string): { adapter: TrainingAdapter, manifest: TrainingAdapter['manifest'], pluginName: string, generation: number } | null {
+    for (const record of this.sortedGenerations()) {
+      if (record.state === 'RETIRED') continue
+      for (const adapter of record.trainingAdapters.values()) {
+        if (adapter.manifest.adapterRef !== adapterRef) continue
+        return { adapter, manifest: adapter.manifest, pluginName: record.pluginName, generation: record.generation }
+      }
+    }
+    return null
+  }
+
+  listTrainingAdapters(): Array<{ adapterRef: string, version: string, artifactKind: string, pluginName: string, generation: number }> {
+    return [...this.generations.values()].filter(record => record.state !== 'RETIRED').flatMap(record =>
+      [...record.trainingAdapters.values()].map(adapter => ({
+        adapterRef: adapter.manifest.adapterRef, version: adapter.manifest.version, artifactKind: adapter.manifest.artifactKind,
+        pluginName: record.pluginName, generation: record.generation,
+      })),
+    )
+  }
+
+  /** 目标/问题模板解析:未注册返回 null。 */
+  resolveObjectiveAdapter(ref: string, _version?: string): { adapter: ObjectiveAdapter, manifest: ObjectiveAdapter['manifest'], pluginName: string, generation: number } | null {
+    for (const record of this.sortedGenerations()) {
+      if (record.state === 'RETIRED') continue
+      for (const adapter of record.objectiveAdapters.values()) {
+        if (adapter.manifest.ref !== ref) continue
+        return { adapter, manifest: adapter.manifest, pluginName: record.pluginName, generation: record.generation }
+      }
+    }
+    return null
+  }
+
+  listObjectiveAdapters(): Array<{ ref: string, version: string, pluginName: string, generation: number }> {
+    return [...this.generations.values()].filter(record => record.state !== 'RETIRED').flatMap(record =>
+      [...record.objectiveAdapters.values()].map(adapter => ({ ref: adapter.manifest.ref, version: adapter.manifest.version, pluginName: record.pluginName, generation: record.generation })),
+    )
+  }
+
+  /**
+   * Solver 租约(G1.5):acquire → inFlight+1 → release 归零;
+   * drain 后新 acquire 被拒(SOLVER_DRAINING),在途任务不被版本热更新替换。
+   */
+  acquireSolverAdapter(adapterId: string, version?: string): SolverAdapterLease {
+    const found = this.findSolverAdapter(adapterId, version)
+    if (!found) throw new TwinProviderRegistryError('SOLVER_NOT_FOUND', `Solver ${adapterId}${version ? `@${version}` : ''} 未注册`)
+    const state = this.solverLeaseStateOf(found.key)
+    if (state.draining) throw new TwinProviderRegistryError('SOLVER_DRAINING', `Solver ${found.adapterId}@${found.version} 正在 drain,拒绝新租约`)
+    state.inFlight++
+    const refId = `solver-lease-${++this.solverLeaseSeq}`
+    let released = false
+    return {
+      refId, adapterId: found.adapterId, version: found.version, adapter: found.adapter, generation: found.generation,
+      get released() { return released },
+      release: () => {
+        if (released) return
+        released = true
+        state.inFlight = Math.max(0, state.inFlight - 1)
+      },
+    }
+  }
+
+  solverLeaseCount(adapterId: string, version?: string): number {
+    const found = this.findSolverAdapter(adapterId, version)
+    return found ? (this.solverLeaseState.get(found.key)?.inFlight ?? 0) : 0
+  }
+
+  drainSolverAdapter(adapterId: string, version?: string): { ok: boolean, adapterId: string, version: string, inFlight: number, draining: boolean } {
+    const found = this.findSolverAdapter(adapterId, version)
+    if (!found) throw new TwinProviderRegistryError('SOLVER_NOT_FOUND', `Solver ${adapterId}${version ? `@${version}` : ''} 未注册`)
+    const state = this.solverLeaseStateOf(found.key)
+    state.draining = true
+    return { ok: true, adapterId: found.adapterId, version: found.version, inFlight: state.inFlight, draining: true }
+  }
+
+  private solverLeaseStateOf(key: string): { inFlight: number, draining: boolean } {
+    let state = this.solverLeaseState.get(key)
+    if (!state) {
+      state = { inFlight: 0, draining: false }
+      this.solverLeaseState.set(key, state)
+    }
+    return state
+  }
+
+  private findSolverAdapter(adapterId: string, version?: string): { adapter: SolverAdapter, adapterId: string, version: string, generation: number, key: string } | undefined {
+    for (const record of this.sortedGenerations()) {
+      if (record.state === 'RETIRED') continue
+      for (const [adapterKey, adapter] of record.solverAdapters) {
+        const [id, ver] = adapterKey.split('@')
+        if (id !== adapterId || (version && ver !== version)) continue
+        return { adapter, adapterId: id ?? adapterId, version: ver ?? '0.0.0', generation: record.generation, key: generationKey(record.pluginName, record.generation) + '\u0000' + adapterKey }
+      }
+    }
+    return undefined
+  }
+
+  private sortedGenerations(): GenerationRecord[] {
+    return [...this.generations.values()].sort((a, b) => b.generation - a.generation)
   }
 
   getProviderHealth(providerId: string, version?: string, generation?: number): ProviderHealth | undefined {

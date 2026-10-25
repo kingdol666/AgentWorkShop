@@ -169,6 +169,7 @@ h1 { margin: 2px 0 4px; font-size: 28px; font-weight: 600; letter-spacing: -0.02
 .note-cell { max-width: 260px; }
 .label-cell { max-width: 220px; }
 .label-cell .label-text { display: inline-block; overflow: hidden; width: 100%; text-overflow: ellipsis; white-space: nowrap; }
+.label-cell .desc-text { display: block; margin-top: 2px; color: var(--ink-faint, #8b98a5); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 320px; }
 .note { display: inline-block; overflow: hidden; width: 100%; text-overflow: ellipsis; white-space: nowrap; }
 .kind {
   margin-left: 6px;

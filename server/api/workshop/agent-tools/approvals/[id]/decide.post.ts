@@ -18,6 +18,8 @@ import { getWorkshopManager } from '@/server/plugins/workshop'
 import { getToolApprovals, normalizeRecipeProposeDecision } from '@/server/services/workshop/agents/tool-approvals'
 import { assertCanDecideHitlChannel, snapshotOfRow } from '@/server/services/workshop/agents/hitl-decision'
 import { audit } from '@/server/services/workshop/ops/ops'
+import { decideOptimizerDispatch, isOptimizerDispatchCard } from '@/server/services/workshop/optimization/dispatch.service'
+import { isProfileAdoptCard, decideProfileAdoption } from '@/server/services/workshop/optimization/profile-adopt.service'
 
 export default defineApiHandler(async (event) => {
   const user = resolveUser(event)
@@ -59,6 +61,54 @@ export default defineApiHandler(async (event) => {
   // 归一 —— 无有效 choice 的「批准」一律按拒绝收敛;legacy 审批单(无 payload)完全不干预。
   // (pending 即上方归属判定用的同一条 listPending 查询)
   const normalized = normalizeRecipeProposeDecision(pending, { approved, choice })
+
+  // SW5/D13 单一咽喉:optimizer-recipe:* 卡一律走 dispatch 链(八项重验→抢占→写→回读→审计)。
+  // 业务拒绝 {approved:false,code,comment} 在咽喉内已 decide() 落定;此处不再走通用 decide。
+  // OW-adopt 单一咽喉:optimizer-profile:* 卡 → 采纳裁决(批准=发布+重绑)
+  if (pending && isProfileAdoptCard(pending.nodeId)) {
+    const result = await decideProfileAdoption({
+      cardId: id,
+      nodeId: pending.nodeId,
+      approved: normalized.approved,
+      comment,
+      actingUser: user ? { id: user.id, name: user.name ?? user.id } : { id: 'system' },
+      via: 'decide-endpoint',
+    })
+    if (result.handled) {
+      return { via: 'profile-adopt', result: { approved: result.approved, comment: result.comment, code: result.code, published: result.published } }
+    }
+  }
+
+  if (pending && isOptimizerDispatchCard(pending.nodeId)) {
+    const result = await decideOptimizerDispatch({
+      cardId: id,
+      approved: normalized.approved,
+      comment,
+      choice: normalized.choice,
+      actingUser: { id: user.id, name: user.name },
+      via: 'agent-tools/decide',
+    })
+    if (result.handled) {
+      audit({
+        actor: user.id,
+        actorName: user.name,
+        actorKind: 'user',
+        action: result.approved ? 'approval.approve' : 'approval.reject',
+        targetKind: 'tool-approval',
+        targetId: id,
+        detail: {
+          comment,
+          choice: normalized.choice,
+          dispatchCode: result.code,
+          execution: result.execution,
+          via: 'agent-tools/decide:optimizer-dispatch',
+          agentId,
+          channelId: manager.findChannelAgentById(agentId)?.channelId ?? '',
+        },
+      })
+      return { dispatch: { approved: result.approved, comment: result.comment, code: result.code, execution: result.execution } }
+    }
+  }
 
   let approval
   try {

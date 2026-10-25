@@ -1,61 +1,55 @@
 \section{Engineering Interpretation}
 \label{sec:limits}
-The design integrates execution contracts; the experiments demonstrate
-their mechanisms on the exercised routes. Admission ablation isolates the
-pre-write interval, the publish-only challenge tests receipt interpretation,
-and paired trajectories connect interventions to observed targets. Together,
-these records make a completed task inspectable as industrial operations.
+The evaluated contribution is configuration-based reuse across industrial
+agent settings. Q4 exercises four process configurations, each with one
+seed-42 simulator trajectory; all met their declared terminal checks, two
+near a boundary. Q1 covers acquisition across five protocol families and
+writes on four (RTU-over-TCP was acquisition-only). Q2 contains two live
+engine tasks; Q3 uses three seeds and a restricted setpoint grid; Q5 records
+782 deterministic assertions across nine software-suite executions; Q6 is
+one accelerated recipe trajectory. Together, these archives exercise
+strategy, I/O, scene configuration, and workflow integration, but do not
+compare optimization performance.
 
-An LLM, scripted policy, or deterministic controller supplies a candidate
-through its authorized interface; the platform applies the execution
-contract. Process reuse changes the signal map, objective, and guards while
-retaining production context and execution records. In Q6, observed
-acceptance of approved trials precedes retention of the recipe version.
-
-Human participation is represented through explicit authority and
-attributed decisions. This supports inspection of what an approver
-authorized and what evidence the proposer later used. Automation research
-distinguishes such workflow structure from operator comprehension,
-complacency, and allocation of responsibility
-\cite{parasuramanmanzey2010complacency,parasuraman2000model,bainbridge1983ironies}.
-The server-side boundary resolves execution authority independently of
-prompts and retrieved documents \cite{greshake2023injection,liu2024pinjection}.
-Deployment combines this boundary with credential management, endpoint
-security, and IT/OT separation \cite{iec62443-3-3}. The supervisory layer
-coexists with independently engineered PLC interlocks and safety
-instrumented systems; IEC~61511 governs the latter's process-safety
-lifecycle \cite{iec61511}.
+Authorization, admission, approval, and graded confirmation are
+cross-cutting operational services within the framework. Their records
+connect an actor and production scope to a command receipt and process
+observation. They do not measure operator comprehension, complacency, or
+responsibility allocation \cite{parasuramanmanzey2010complacency,parasuraman2000model,bainbridge1983ironies}.
+The execution boundary is independent of prompts and retrieved documents
+\cite{greshake2023injection,liu2024pinjection}; deployment still requires
+credential management, endpoint security, and IT/OT separation
+\cite{iec62443-3-3}. It complements rather than replaces independently
+engineered PLC interlocks and safety-instrumented systems; IEC~61511 governs
+the latter's process-safety lifecycle \cite{iec61511}.
 
 \noindent\textit{Experimental scope.}
-The process evidence uses accelerated simulators, scripted approvals, and
-sequential trajectories. Q1--Q4 cover the historical direct-node interface;
-current profile and composition tests cover software behavior; Q6 covers
-one recipe trajectory. No single current-version end-to-end study jointly
-varies strategy, protocol, and production context, and a complete current
-AML-exploration control--response trial is not archived. Q6's observed
-guards, snapshots, and cadence settings
-are specified in Section~\ref{sec:recipeexperiment}. These evidence units
-establish the exercised
-mechanisms without estimating comparative optimization benefit, fault
-frequency, human performance, hard real-time behavior, or physical transfer.
-Matched initial states, repeated independent runs, and a fixed-policy or
-SCADA comparator would support those further estimates. Established process
-benchmarks such as Tennessee Eastman \cite{downs1993tep} provide an
-additional setting for that evaluation.
+Process evidence is simulator-based and approvals were scripted. Q1--Q4 use
+a historical direct-node interface; Q5 comprises software assertions, not
+process samples; Q6 is one October 18 recipe trajectory with cadence
+overrides. The archives do not form a joint current-version end-to-end
+study, and a complete current exploration-to-process-response test is not
+archived. On October 23, the current public interface refused all eight
+historical direct-node attempts. A separate current recipe check verified
+only the 45-to-50-bar trial, refused later requests at 66 and 132 s under the
+default cadence, reached no target, saved no recipe, and failed its
+restoration assertion. These checks expose interface boundaries; they do
+not repeat the accelerated case. The evidence does not estimate physical
+transfer, general plant coverage, hard real-time behavior, fault frequency,
+human performance, or comparative benefit. Repeated matched runs, a
+current-route end-to-end study, and physical evaluation are needed; process
+benchmarks such as Tennessee Eastman \cite{downs1993tep} offer one further
+setting.
 
 \section{Conclusion}
 \label{sec:conclusion}
-The framework connects industrial agent teams to production-scoped,
-governed execution while keeping proposal strategy replaceable. Semantic
-nodes, capability/profile enforcement, source-specific admission, approval,
-graded confirmation, and distinct node/recipe records form an inspectable
-chain from a task to commanded controls, observed outputs, and retained
-production parameters. Protocol and admission experiments, controller and
-process missions, repeated regression execution, and the paired
-injection-molding trajectory exercise complementary parts of that chain.
-The contribution is a common execution and evidence contract connecting
-industrial agent reasoning to traceable authorization and evidence
-attribution in supervisory operation.
+AgentWorkShop combines collaborative tasks and replaceable strategy
+services with production context, semantic industrial I/O, and distinct
+node and recipe workflows. Across the tested simulator scenes and protocol
+routes, the implementation exercised configuration-based reuse and
+route-specific evidence. These results clarify what the framework connects
+and where its current evidence stops; they do not establish general
+industrial coverage, physical transfer, or comparative control benefit.
 
 \noindent\textit{Data availability and AI assistance.}
 Run archives, original Q2 engine logs, replay entries, configuration notes,
@@ -63,4 +57,7 @@ and claim-to-source mappings accompany the separate anonymous experimental
 evidence bundle. The manuscript source package contains plotting sources
 and figure mappings. An OpenAI language model assisted
 with manuscript organization, language revision, and plotting-code
-preparation. The authors remain responsible for the final submission.
+preparation. OpenAI image generation drafted the compositions of
+Figs.~\ref{fig:arch} and~\ref{fig:runtime}; the final artwork was redrawn
+as editable Python-generated vectors and checked against the implementation.
+The authors remain responsible for the final submission.

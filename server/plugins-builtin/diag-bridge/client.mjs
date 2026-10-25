@@ -5,6 +5,8 @@
  * 已完成诊断可点「报告」在线查看 report md 全文(经 /report 路由代理诊断服务)。
  */
 export function setup(ctx) {
+  // 同入口挂第二面板:分析结果库(插件页 order 21;宿主只认 setup(ctx))
+  setupResults(ctx)
   const styleId = 'aw-diag-styles'
   if (!document.getElementById(styleId)) {
     document.head.append(ctx.el('style', { id: styleId }, [`
@@ -25,7 +27,6 @@ export function setup(ctx) {
       .aw-diag-empty { opacity:.6; padding:8px 0; }
       .aw-diag-status { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
       .aw-diag-check { padding:8px 10px; border:1px dashed color-mix(in srgb, currentColor 20%, transparent); border-radius:8px; display:flex; flex-direction:column; gap:5px; }
-      /* 未检测前不渲染空虚线框 */
       .aw-diag-check:has(> .aw-diag-check-rows:empty) { display:none; }
       .aw-diag-check-rows { display:flex; flex-direction:column; gap:3px; }
       .aw-diag-check-row { display:flex; gap:6px; align-items:baseline; flex-wrap:wrap; }
@@ -234,6 +235,176 @@ export function setup(ctx) {
         clearInterval(timer)
         offLocale()
       }
+    },
+  })
+}
+
+// ══ 第二面板:分析结果库(§16;经插件路由代理,同源同开关) ══════════════════════
+export function setupResults(ctx) {
+  ctx.ui.registerPanel({
+    slot: 'plugins.page',
+    name: 'diag-results',
+    titleKey: 'panel_results.title',
+    order: 21,
+    mount(el) {
+      const t = k => ctx.t(`panel_results.${k}`)
+      const box = ctx.el('div', { class: 'aw-diag' })
+      const state = { list: null, total: 0, detail: null, editing: false, error: '', canAnnotate: false }
+
+      const searchInput = ctx.el('input', { type: 'search', placeholder: t('search'), style: 'min-width:220px;padding:4px 8px;border-radius:7px;border:1px solid color-mix(in srgb,currentColor 25%,transparent);background:transparent;color:inherit' })
+      const intentSel = ctx.el('select', { style: 'padding:4px;border-radius:7px;border:1px solid color-mix(in srgb,currentColor 25%,transparent);background:transparent;color:inherit' }, [
+        ctx.el('option', { value: '' }, [t('allIntents')]),
+        ...['deep-diagnosis', 'stability-report', 'quick-screen', 'doe-analysis', 'experience-mining', 'optimizer-campaign'].map(v => ctx.el('option', { value: v }, [v])),
+      ])
+      const searchBtn = ctx.el('button', { class: 'aw-diag-btn' }, [t('searchBtn')])
+      const minScoreInput = ctx.el('input', {
+        type: 'number', min: '0', max: '100', placeholder: t('minScore'),
+        style: 'width:110px;padding:4px 8px;border-radius:7px;border:1px solid color-mix(in srgb,currentColor 25%,transparent);background:transparent;color:inherit',
+      })
+      const refreshBtn = ctx.el('button', { class: 'aw-diag-btn' }, [t('searchBtn')])
+      refreshBtn.textContent = '↻'
+      refreshBtn.title = t('searchBtn')
+      refreshBtn.addEventListener('click', () => void load())
+      const statusLine = ctx.el('div', { class: 'aw-diag-empty' })
+      const listWrap = ctx.el('div', { class: 'aw-diag-table-wrap' })
+      box.append(
+        ctx.el('div', { class: 'aw-diag-toolbar', style: 'justify-content:flex-start;gap:8px;flex-wrap:wrap' }, [searchInput, intentSel, minScoreInput, searchBtn, refreshBtn]),
+        statusLine,
+        listWrap,
+      )
+
+      function setError(msg) {
+        statusLine.textContent = ''
+        listWrap.replaceChildren(ctx.el('div', { class: 'aw-diag-empty' }, [msg]))
+      }
+
+      async function load() {
+        const qs = new URLSearchParams({ brief: 'false', limit: '20' })
+        const q = String(searchInput.value ?? '').trim()
+        if (q) qs.set('q', q)
+        const intent = String(intentSel.value ?? '')
+        if (intent) qs.set('intent', intent)
+        const minScore = String(minScoreInput.value ?? '').trim()
+        if (minScore) qs.set('min_score', minScore)
+        const r = await ctx.fetch(`/api/plugins/diag-bridge/results?${qs.toString()}`).catch(err => ({ __err: String(err?.message ?? err) }))
+        if (r?.__err) {
+          setError(`${t('loadFail')}: ${r.__err}`)
+          return
+        }
+        if (r?.success === false) {
+          setError(String(r?.error ?? t('loadFail')))
+          return
+        }
+        // 注意:ctx.fetch 已自动解包信封的 `data` 字段(见 sdk/client.mjs)
+        const d = r && typeof r === 'object' && !r.__err && r.success !== false ? r : {}
+        state.list = d.results ?? []
+        state.total = d.total ?? 0
+        statusLine.textContent = t('total').replace('{n}', String(state.total))
+        renderList()
+      }
+
+      function renderList() {
+        if (!state.list?.length) {
+          listWrap.replaceChildren(ctx.el('div', { class: 'aw-diag-empty' }, [t('empty')]))
+          return
+        }
+        const table = ctx.el('table', { class: 'aw-diag-table' })
+        table.append(ctx.el('tr', {}, [t('colId'), t('colTitle'), t('colIntent'), t('colScore'), t('colVerdict'), t('colCreated'), t('colTags')].map(h => ctx.el('th', {}, [h]))))
+        for (const c of state.list) {
+          const tr = ctx.el('tr', { style: 'cursor:pointer' })
+          for (const text of [c.result_id, c.title, c.intent, String(c.score ?? '-'), String(c.verdict ?? '-'), String(c.completed_at ?? c.created_at ?? '-'), (c.tags ?? []).join(',')]) {
+            tr.append(ctx.el('td', {}, [String(text)]))
+          }
+          tr.addEventListener('click', () => void openDetail(String(c.result_id)))
+          table.append(tr)
+        }
+        listWrap.replaceChildren(table)
+      }
+
+      async function openDetail(id) {
+        // 缺省不带 md 正文(大报告不进浏览器);全文用「报告」链接在 IDD 侧打开
+        const r = await ctx.fetch(`/api/plugins/diag-bridge/results/detail?id=${encodeURIComponent(id)}&include_md=false`).catch(() => null)
+        if (!r || r?.success === false) {
+          setError(String(r?.error ?? t('loadFail')))
+          return
+        }
+        state.detail = r
+        state.canAnnotate = r.canAnnotate === true
+        renderDetail()
+      }
+
+      function renderDetail() {
+        const d = state.detail
+        if (!d) return
+        const closeBtn = ctx.el('button', { class: 'aw-diag-btn' }, [t('close')])
+        closeBtn.addEventListener('click', () => {
+          state.detail = null
+          state.editing = false
+          renderList()
+          void load()
+        })
+        const boxD = ctx.el('div', { class: 'aw-diag', style: 'gap:10px' })
+        const head = ctx.el('div', { class: 'aw-diag-modal-head' }, [`${d.result_id} · ${d.title ?? ''} · ${d.intent ?? ''} · ${d.score ?? '-'}分 ${d.verdict ?? ''}`, closeBtn])
+        const summary = ctx.el('div', { style: 'white-space:pre-wrap;max-height:120px;overflow:auto' }, [String(d.summary ?? '')])
+        const kn = d.summary_json?.key_numbers ? ctx.el('div', { class: 'aw-diag-check-row' }, [ctx.el('span', { class: 'aw-diag-check-k' }, [t('keyNumbers')]), JSON.stringify(d.summary_json.key_numbers)]) : null
+        const htmlLinks = ctx.el('div', { class: 'aw-diag-check-row' }, [ctx.el('span', { class: 'aw-diag-check-k' }, [t('htmlReports')]),
+          ...(d.files?.html ?? []).slice(0, 6).map(h => ctx.el('a', { href: h.url, target: '_blank', style: 'margin-right:10px' }, [String(h.path ?? 'html')]))])
+        const md = d.report_md_url
+          ? ctx.el('div', { class: 'aw-diag-check-row' }, [ctx.el('span', { class: 'aw-diag-check-k' }, [t('reportMd')]), ctx.el('a', { href: d.report_md_url, target: '_blank' }, [t('openUrl')])])
+          : null
+        boxD.append(head, summary)
+        if (kn) boxD.append(kn)
+        boxD.append(htmlLinks)
+        if (md) boxD.append(md)
+        // 编辑区(仅当尝试 annotate 成功可见;失败显示只读)
+        const descInput = ctx.el('textarea', { rows: 3, style: 'width:100%;border-radius:7px;border:1px solid color-mix(in srgb,currentColor 25%,transparent);background:transparent;color:inherit' })
+        descInput.value = String(d.description ?? '')
+        const tagsInput = ctx.el('input', { type: 'text', style: 'width:100%;padding:4px 8px;border-radius:7px;border:1px solid color-mix(in srgb,currentColor 25%,transparent);background:transparent;color:inherit' })
+        tagsInput.value = (d.tags ?? []).join(',')
+        const saveBtn = ctx.el('button', { class: 'aw-diag-btn' }, [t('save')])
+        const saveMsg = ctx.el('span', { class: 'aw-diag-empty' })
+        saveBtn.addEventListener('click', async () => {
+          saveBtn.disabled = true
+          saveMsg.textContent = t('loading')
+          const tags = String(tagsInput.value).split(',').map(s => s.trim()).filter(Boolean)
+          const r = await ctx.fetch(`/api/plugins/diag-bridge/results/edit?id=${encodeURIComponent(d.result_id)}`, {
+            method: 'PATCH',
+            body: { description: descInput.value, tags },
+          }).catch(err => ({ success: false, error: String(err?.message ?? err) }))
+          saveBtn.disabled = false
+          // ctx.fetch 已解包 data:PATCH 成功时返回的就是详情对象(含 result_id)
+          if (r && !r.__err && (r.result_id || r.success === true)) {
+            // 不重建详情:重建会替换 DOM,刚写入的「已保存」提示不可见
+            state.detail = r.result_id ? r : (r.data ?? r)
+            state.canAnnotate = r.canAnnotate === true
+            saveMsg.textContent = t('saved')
+          }
+          else {
+            saveMsg.textContent = `${t('saveFail')}: ${String(r?.error ?? '')}`
+            if (String(r?.error ?? '').includes('未开放')) state.canAnnotate = false
+          }
+        })
+        const editBox = ctx.el('div', { class: 'aw-diag-check' }, [
+          ctx.el('div', {}, [t('edit')]),
+          ctx.el('label', { style: 'display:block;margin:4px 0' }, [t('editDesc')]),
+          descInput,
+          ctx.el('label', { style: 'display:block;margin:6px 0 4px' }, [t('editTags')]),
+          tagsInput,
+          ctx.el('div', { style: 'margin-top:8px;display:flex;gap:8px;align-items:center' }, [saveBtn, saveMsg]),
+        ])
+        // 编辑区只在服务端确认开放时显示(避免用户看到必然失败的保存按钮)
+        if (state.canAnnotate) boxD.append(editBox)
+        else boxD.append(ctx.el('div', { class: 'aw-diag-empty' }, [t('readonly')]))
+        listWrap.replaceChildren(boxD)
+      }
+
+      searchBtn.addEventListener('click', () => void load())
+      searchInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') void load()
+      })
+      el.append(box)
+      void load()
+      return () => {}
     },
   })
 }

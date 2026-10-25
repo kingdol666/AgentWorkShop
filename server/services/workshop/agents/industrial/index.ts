@@ -22,7 +22,7 @@ export { toolDcwJudge, toolDcwRollback, toolDcwJournal } from './dcw-judge-tools
 export { toolOpsLog, toolRecipeLog, toolRecipeCatalog, toolRecipeCreate, toolLineContext, toolRecipeVersions, toolRecipeUpdate, toolRecipeRollback, toolRecipeTrial, toolRecipeApply } from './ops-tools'
 export { toolMesCatalog, toolMesFetch, toolMesExport, toolMesDatasetRead, toolMesDatasets } from './mes-tools'
 export { toolAmlNodeCatalog, toolAmlDatasetBuild, toolAmlDatasetStats } from './aml-dataset-tools'
-export { toolAmlJobSubmit, toolAmlJobStatus, toolAmlJobLogs, toolAmlJobCancel, toolAmlLeaderboard, toolAmlModelFind, toolAmlModelPromote, toolAmlModelReference, toolAmlTrainingPlanList, toolAmlTrainingPlanTrain, toolAmlTrainingPlanCreate } from './aml-job-tools'
+export { toolAmlJobSubmit, toolAmlJobStatus, toolAmlJobLogs, toolAmlJobCancel, toolAmlLeaderboard, toolAmlModelFind, toolAmlModelPromote, toolAmlModelReference, toolAmlModelAnnotate, toolAmlTrainingPlanList, toolAmlTrainingPlanTrain, toolAmlTrainingPlanCreate } from './aml-job-tools'
 
 export { toolOptimizationExplore } from './optimization-tools'
 export { toolTwinProviderCatalog, toolTwinSceneDiscover, toolTwinSceneCompile, toolTwinSceneFreeze, toolTwinSceneRead, toolTwinPhysicsSpecDraft, toolTwinPhysicsSpecValidate, toolTwinPhysicsSpecCompile, toolTwinSnapshotCreate, toolTwinTrialRun, toolMpcOptimize, toolTwinGateEvaluate, toolTwinCalibrationRequest, toolTwinBayesOptimize } from './twin-tools'
@@ -30,3 +30,9 @@ export { toolAmlActivity } from './aml-activity'
 export { toolRecipePropose } from './recipe-propose-tools'
 export { toolLineStart, toolLineStop, toolLineStatus } from './line-tools'
 export { toolAnalysisSave, toolAnalysisQuery } from './analysis-tools'
+export { toolOptimizerProfilePropose } from './optimizer-tools'
+export {
+  toolOntologySceneInspect, toolOntologyNodeNeighbors, toolOntologyDraftCreate, toolOntologyDraftValidate, toolOntologyDraftAutofix,
+  toolOntologyDraftUpdate, toolOntologyRuleExplain, toolOntologyCompilePreview,
+  toolOntologyPublishPropose, toolOntologyVersionCompare,
+} from './ontology-tools'

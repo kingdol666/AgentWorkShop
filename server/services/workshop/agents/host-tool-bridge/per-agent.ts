@@ -9,10 +9,12 @@
  * 只读装配:不改变工具集合(角色/插件/档位过滤仍由 hostToolsForRole 决定),
  * 仅在描述尾部追加可见资源清单。无绑定 → 原样返回,零行为变化。
  */
-import { hostToolsForRole } from './catalog'
+import { hostToolsForRole, OPTIMIZER_TOOL_NAMES } from './catalog'
 import { getAgentNodeBindingRepo } from '../node-bindings.repo'
 import { getDaqController } from '../../daq/daq-controller'
 import { getDcwController } from '../../dcw/dcw-controller'
+import { listBindingsForAgent } from '../../optimization/binding.service'
+import { foldList as foldListImpl, sortedById } from './description-budget'
 
 /** 需要追加“可见资源”描述的工具族 */
 const DAQ_TOOLS = new Set(['daq_query', 'daq_frames', 'daq_export'])
@@ -83,32 +85,65 @@ export function agentToolResources(agentId: string): AgentToolResourceView {
   return out
 }
 
-const listText = (items: Array<{ id: string, name: string, unit?: string }>): string =>
-  items.map(x => `${x.name}(${x.id}${x.unit ? `,${x.unit}` : ''})`).join('、')
+/**
+ * WP6 描述预算:大绑定面不再全量拼进 description(撑上下文 + 放大 10s 轮询载荷 + 触发
+ * 无意义 list_changed)。折叠确定性由 description-budget 叶子模块保证。
+ * env AW_DESC_BUDGET=0 关闭折叠(回退原行为)。
+ */
+const foldList = (prefix: string, items: string[]): string => foldListImpl(prefix, items)
 
-/** 在角色过滤后的工具面上追加 Agent 绑定资源描述 */
+/** 在角色过滤后的工具面上追加 Agent 绑定资源描述 + 优化器绑定裁剪 */
 export function hostToolsForAgent(agentId: string, role: 'lead' | 'worker', channelId?: string) {
   const tools = hostToolsForRole(role, channelId)
+  // G4.3 #10:无有效绑定时移除 solve/status/cancel/plan_get(保留 capabilities 作解释入口);
+  // 多绑定时在描述中列出 bindingId(solve 需显式选择)。过滤不改变返回类型。
+  const bindings = listOptimizerBindings(agentId)
+  const filtered = bindings.length
+    ? tools
+    : tools.filter(t => !OPTIMIZER_REQUIRES_BINDING.has(t.name))
+  const optimizerLine = bindings.length
+    ? `\n\n本 Agent 的优化器绑定:${bindings.map(b => `${b.id}(profile ${b.profileVersion},${b.mode};能力:${b.capabilities.join('/')})`).join('; ')}${bindings.length > 1 ? '\n多绑定:调用 optimizer_solve 必须显式传 binding_id。' : ''}`
+    : ''
   const res = agentToolResources(agentId)
-  const lineOnlyDaq = res.daqLineNodes.filter(n => !res.daqNodes.some(x => x.id === n.id))
-  if (res.daqNodes.length === 0 && lineOnlyDaq.length === 0 && res.recipes.length === 0) return tools
+  // WP6:排序保证同一绑定面确定性输出(折叠/不折叠都稳定)
+  const sortedDaq = sortedById(res.daqNodes)
+  const sortedRecipes = sortedById(res.recipes)
+  const sortedMes = sortedById(res.mesNodes)
+  const lineOnlyDaq = sortedById(res.daqLineNodes.filter(n => !sortedDaq.some(x => x.id === n.id)))
+  if (sortedDaq.length === 0 && lineOnlyDaq.length === 0 && sortedRecipes.length === 0 && !bindings.length) return filtered
   const daqParts = [
-    res.daqNodes.length > 0 ? `本 Agent 直接绑定的数采节点(仅这些可查):${listText(res.daqNodes)}` : '',
-    lineOnlyDaq.length > 0 ? `频道绑线只读数采节点(可查):${listText(lineOnlyDaq)}` : '',
+    sortedDaq.length > 0 ? foldList(`本 Agent 直接绑定的数采节点(仅这些可查):`, sortedDaq.map(x => `${x.name}(${x.id}${x.unit ? `,${x.unit}` : ''})`)) : '',
+    lineOnlyDaq.length > 0 ? foldList(`频道绑线只读数采节点(可查):`, lineOnlyDaq.map(x => `${x.name}(${x.id}${x.unit ? `,${x.unit}` : ''})`)) : '',
   ].filter(Boolean)
   const daqLine = daqParts.length > 0 ? `\n\n${daqParts.join('\n')}` : ''
-  const recipeLine = res.recipes.length > 0
-    ? `\n\n本 Agent 已绑定的配方(仅这些可写/下发):${res.recipes.map(r => `${r.name}(${r.id},v${r.version};参数:${r.params.map(p => `${p.name}(${p.nodeId})`).join('、') || '无'})`).join(';')}`
+  const recipeLine = sortedRecipes.length > 0
+    ? foldList(
+        `\n\n本 Agent 已绑定的配方(仅这些可写/下发):`,
+        sortedRecipes.map(r => `${r.name}(${r.id},v${r.version};参数:${r.params.map(p => `${p.name}(${p.nodeId})`).join('、') || '无'})`),
+      )
     : ''
-  const mesLine = res.mesNodes.length > 0
-    ? `\n\n本 Agent 可经配方参数面取数的 MES 点位:${listText(res.mesNodes)}`
+  const mesLine = sortedMes.length > 0
+    ? foldList(`\n\n本 Agent 可经配方参数面取数的 MES 点位:`, sortedMes.map(x => `${x.name}(${x.id}${x.unit ? `,${x.unit}` : ''})`))
     : ''
-  return tools.map((t) => {
+  return filtered.map((t) => {
     let suffix = ''
     if (DAQ_TOOLS.has(t.name)) suffix = daqLine
     else if (RECIPE_TOOLS.has(t.name)) suffix = recipeLine
     else if (MES_TOOLS.has(t.name)) suffix = mesLine
+    else if (OPTIMIZER_TOOL_NAMES.has(t.name)) suffix = optimizerLine
     if (!suffix) return t
     return { ...t, description: `${t.description ?? ''}${suffix}` }
   })
+}
+
+/** 优化器中必须绑定才能注入/调用的四个工具(capabilities 始终保留)。 */
+const OPTIMIZER_REQUIRES_BINDING = new Set(['optimizer_solve', 'optimizer_status', 'optimizer_cancel', 'optimizer_plan_get'])
+
+function listOptimizerBindings(agentId: string): Array<{ id: string, profileVersion: string, mode: string, capabilities: string[] }> {
+  try {
+    return listBindingsForAgent(agentId).map(b => ({ id: b.id, profileVersion: b.profileVersion, mode: b.mode, capabilities: b.capabilities as string[] }))
+  }
+  catch {
+    return []
+  }
 }

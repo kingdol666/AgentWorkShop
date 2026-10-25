@@ -11,11 +11,11 @@
  *
  * 鉴权:
  *   - 配置了 AW_DAQ_INGEST_TOKEN 时,要求 x-aw-daq-token 头匹配(外部系统接入);
- *   - 未配置时退回仪表盘用户会话(resolveUser)。
+ *   - 未配置时退回仪表盘用户会话(resolveUser),且**必须对该节点所属产线有 operate 权限**(WP2)。
  * 约束:
  *   - 节点必须存在且启用;载荷形态必须与模板 signalKind 一致(scalar/vector/image);
  *   - 向量 1..4096 个有限数;图像 ≤10MB 且 MIME image/*;
- *   - at 缺省=当前时间,允许范围为 ±7 天。
+ *   - at 缺省=当前时间,回填窗默认 ±1h(env AW_DAQ_INGEST_BACKFILL_MS 可调,上限 7 天)。
  */
 import { createHash } from 'node:crypto'
 import { getHeader, getRouterParam, readBody } from 'h3'
@@ -27,11 +27,14 @@ import { getDaqQueue } from '@/server/services/workshop/daq/bus'
 import { getObjectStore } from '@/server/services/workshop/daq/objectstore'
 import { daqObjectKey } from '@/server/services/workshop/daq/objectstore/objectstore-port'
 import type { DaqSampleEnvelope } from '@/server/services/workshop/daq/bus/queue-port'
+import { ingestAuthMode, ingestBackfillWindowMs, isWideBackfillWindow, withinBackfillWindow } from '@/server/services/workshop/daq/ingest-policy'
+import { recordOps } from '@/server/services/workshop/ops/ops'
 import { AppError } from '@/server/utils/errors'
 
 const IMAGE_MAX_BYTES = 10 * 1024 * 1024
 const VECTOR_MAX_POINTS = 4096
-const AT_RANGE_MS = 7 * 24 * 3600_000
+/** 超宽回填窗告警只发一次(模块级;启动/首请求可见) */
+let wideWindowWarned = false
 
 interface IngestBody {
   at?: string
@@ -66,18 +69,38 @@ function metricsOf(raw: unknown): Record<string, number> {
 
 export default defineApiHandler(async (event) => {
   const id = getRouterParam(event, 'id') ?? ''
-  const expected = process.env.AW_DAQ_INGEST_TOKEN
-  if (expected) {
-    if (String(getHeader(event, 'x-aw-daq-token') ?? '') !== expected) {
-      throw new AppError(401, 'UNAUTHORIZED', '数采推送鉴权失败:请提供正确的 x-aw-daq-token(AW_DAQ_INGEST_TOKEN)。')
-    }
-  }
-  else {
-    resolveUser(event)
-  }
-
   const node = getDaqController().byId(id)
   if (!node) throw new AppError(404, 'NOT_FOUND', `数采节点不存在: ${id}`)
+
+  // ── 鉴权(WP2)────────────────────────────────────────────────────────────
+  // token 路径:边缘系统全局凭据(AW_DAQ_INGEST_TOKEN),语义不变;
+  // 兜底会话路径:必须对该节点所属产线有 operate 权限 —— 此前仅 resolveUser,
+  // 任意注册用户可向任意节点注入(含回填)伪造样本污染训练链。
+  {
+    const mode = ingestAuthMode({
+      configuredToken: process.env.AW_DAQ_INGEST_TOKEN,
+      providedToken: String(getHeader(event, 'x-aw-daq-token') ?? ''),
+    })
+    if (mode === 'token-mismatch') {
+      throw new AppError(401, 'UNAUTHORIZED', '数采推送鉴权失败:请提供正确的 x-aw-daq-token(AW_DAQ_INGEST_TOKEN)。')
+    }
+    if (mode === 'session') {
+      const user = resolveUser(event)
+      const { requireLineMode } = await import('@/server/services/workshop/permissions')
+      requireLineMode(user, node.lineId, 'operate')
+    }
+    if (isWideBackfillWindow() && !wideWindowWarned) {
+      wideWindowWarned = true
+      console.warn(`[daq.ingest] AW_DAQ_INGEST_BACKFILL_MS=${ingestBackfillWindowMs()} 超过默认 1h 安全窗(回填投毒面扩大)`)
+      recordOps({
+        actor: 'system', actorName: 'daq.ingest', actorKind: 'system',
+        action: 'policy.degrade.warn', kind: 'system', level: 'warn',
+        targetKind: 'system', targetId: 'daq.ingest.backfill',
+        summary: `数采推送回填窗被配置为 ${Math.round(ingestBackfillWindowMs() / 3600_000)}h(默认 1h,上限 7d)`,
+      })
+    }
+  }
+
   if (!node.enabled) throw new AppError(409, 'CONFLICT', `数采节点「${node.name}」已停用,不接受推送。`)
   const tpl = findDaqTemplate(node.templateKey)
   const kind = tpl?.signalKind ?? 'scalar'
@@ -87,7 +110,10 @@ export default defineApiHandler(async (event) => {
   const atRaw = String(body.at ?? '').trim()
   const atMs = atRaw ? Date.parse(atRaw) : now
   if (!Number.isFinite(atMs)) throw new AppError(400, 'VALIDATION_ERROR', `at 不是合法时间: ${atRaw}(示例 2026-10-19T12:00:00+08:00)`)
-  if (Math.abs(atMs - now) > AT_RANGE_MS) throw new AppError(400, 'VALIDATION_ERROR', 'at 超出允许范围(±7 天),请检查时区/时钟。')
+  const windowMs = ingestBackfillWindowMs()
+  if (!withinBackfillWindow(atMs, now, windowMs)) {
+    throw new AppError(400, 'VALIDATION_ERROR', `at 超出允许范围(±${Math.round(windowMs / 60_000)} 分钟),请检查时区/时钟。`)
+  }
   const at = new Date(atMs).toISOString()
   const state = ['ok', 'warn', 'alarm', 'offline'].includes(String(body.state ?? '')) ? String(body.state) : 'ok'
   const metrics = metricsOf(body.metrics)

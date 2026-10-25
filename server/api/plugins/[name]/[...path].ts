@@ -22,7 +22,11 @@ export default defineEventHandler(async (event) => {
     try {
       if (authMode === 'admin') await requireAdmin(event)
       else if (authMode === 'agent-or-user') await resolveAgentOrUser(event)
-      else await resolveUser(event)
+      else {
+        const user = await resolveUser(event)
+        // 身份下传到插件 handler(只给 id/角色,不含凭据):写路由需要做 admin/角色闸门
+        ;(event as unknown as Record<string, unknown>).awUser = { id: user.id, role: user.role, name: user.name }
+      }
     }
     catch {
       throw createError({ statusCode: 401, statusMessage: '需要有效的用户 token(Authorization: Bearer <用户token>)' })

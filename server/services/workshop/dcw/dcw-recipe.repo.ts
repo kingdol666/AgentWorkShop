@@ -408,6 +408,8 @@ class DcwRecipeRepo {
       recipeName: recipe.name,
       productId: recipe.productId,
       lineId: recipe.lineId,
+      // 配方版本谱系(C8):开跑即冻结版本,历史样本才有版本证据;旧数据缺省 0 = unknown
+      recipeVersion: recipe.version ?? 0,
       startedAt: new Date().toISOString(),
       endedAt: null,
       results: [],
@@ -423,7 +425,7 @@ class DcwRecipeRepo {
     void (async () => {
       try {
         const { mirrorRunCreated } = await import('../eda/eda-run.repo')
-        mirrorRunCreated({ id: run.id, lineId: run.lineId, productId: run.productId, recipeId: run.recipeId, recipeName: run.recipeName, startedAt: run.startedAt, endedAt: run.endedAt })
+        mirrorRunCreated({ id: run.id, lineId: run.lineId, productId: run.productId, recipeId: run.recipeId, recipeName: run.recipeName, recipeVersion: run.recipeVersion ?? 0, startedAt: run.startedAt, endedAt: run.endedAt })
       }
       catch { /* EDA 台账不可用 */ }
     })()
@@ -439,7 +441,7 @@ class DcwRecipeRepo {
     void (async () => {
       try {
         const { mirrorRunClosed } = await import('../eda/eda-run.repo')
-        mirrorRunClosed({ id: run.id, lineId: run.lineId, productId: run.productId, recipeId: run.recipeId, recipeName: run.recipeName, startedAt: run.startedAt, endedAt: run.endedAt })
+        mirrorRunClosed({ id: run.id, lineId: run.lineId, productId: run.productId, recipeId: run.recipeId, recipeName: run.recipeName, recipeVersion: run.recipeVersion ?? 0, startedAt: run.startedAt, endedAt: run.endedAt })
       }
       catch { /* EDA 台账不可用 */ }
     })()

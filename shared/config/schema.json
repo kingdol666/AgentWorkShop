@@ -18,6 +18,7 @@
     { "key": "theme.mode", "type": "select", "group": "theme", "label": "显示模式", "labelKey": "settings.runtime.theme.mode", "description": "全局默认深浅色；用户本地切换偏好优先", "applies": "live", "default": "light", "options": ["light", "dark"] },
 
     { "key": "i18n.defaultLocale", "type": "select", "group": "i18n", "label": "默认语言", "labelKey": "settings.runtime.i18n.defaultLocale", "description": "未做本地选择时的界面语言", "applies": "live", "default": "zh-CN", "options": ["zh-CN", "en"] },
+
     { "key": "time.timeZone", "type": "timezone", "group": "time", "label": "系统时区", "labelKey": "settings.runtime.time.timeZone", "description": "日志、聊天、审计、Agent 记录与定时任务使用的 IANA 时区；DAQ 原始时间轴仍保存绝对时间", "applies": "live", "default": "Asia/Shanghai" },
 
     { "key": "security.approvalGate", "type": "boolean", "group": "security", "label": "高危操作双人复核", "labelKey": "settings.runtime.security.approvalGate", "description": "R3：开启后写控/删除等高风险操作需另一位管理员批核", "applies": "live", "default": false },
@@ -38,7 +39,6 @@
     { "key": "daq.objectstore.accessKey", "type": "string", "group": "daq", "label": "对象存储 AccessKey", "labelKey": "settings.runtime.daq.osAccess", "description": "MinIO 访问账号", "applies": "restart", "default": "awshop" },
     { "key": "daq.objectstore.secretKey", "type": "string", "group": "daq", "label": "对象存储 SecretKey", "labelKey": "settings.runtime.daq.osSecret", "description": "MinIO 访问密钥", "applies": "restart", "default": "awshop-secret" },
     { "key": "daq.objectstore.bucket", "type": "string", "group": "daq", "label": "对象存储桶", "labelKey": "settings.runtime.daq.osBucket", "description": "图像帧存储桶(不存在时自动创建)", "applies": "restart", "default": "daq" },
-
     { "key": "daq.mqtt.qos", "type": "number", "group": "daq", "label": "MQTT QoS", "labelKey": "settings.runtime.daq.mqttQos", "description": "数采事件总线发布 QoS(0/1/2)", "applies": "restart", "default": 0, "min": 0, "max": 2, "aliases": ["DAQ_MQTT_QOS"] },
     { "key": "daq.mqtt.username", "type": "string", "group": "daq", "label": "MQTT 用户名", "labelKey": "settings.runtime.daq.mqttUsername", "description": "数采事件总线 MQTT 鉴权用户名(空=匿名)", "applies": "restart", "default": "", "aliases": ["DAQ_MQTT_USERNAME"] },
     { "key": "daq.mqtt.password", "type": "string", "group": "daq", "label": "MQTT 密码", "labelKey": "settings.runtime.daq.mqttPassword", "description": "数采事件总线 MQTT 鉴权密码", "applies": "restart", "default": "", "aliases": ["DAQ_MQTT_PASSWORD"] },
@@ -76,15 +76,15 @@
     { "key": "harness.opencode_command", "type": "string", "group": "harness", "label": "opencode 命令", "labelKey": "settings.runtime.harness.opencodeCommand", "description": "OpenCode 引擎可执行文件(PATH 解析)", "applies": "restart", "default": "opencode" },
     { "key": "harness.codex_command", "type": "string", "group": "harness", "label": "codex 命令", "labelKey": "settings.runtime.harness.codexCommand", "description": "OpenAI Codex CLI 可执行文件(app-server 模式)", "applies": "restart", "default": "codex" },
     { "key": "harness.dsh_command", "type": "string", "group": "harness", "label": "dsh 命令", "labelKey": "settings.runtime.harness.dshCommand", "description": "DeepSeek Harness 可执行文件(ACP 模式)", "applies": "restart", "default": "dsh" },
-{ "key": "harness.gemini_command", "type": "string", "group": "harness", "label": "gemini 命令", "labelKey": "settings.runtime.harness.geminiCommand", "description": "Google Gemini CLI 可执行文件(stream-json 无头)", "applies": "restart", "default": "gemini" },
+    { "key": "harness.gemini_command", "type": "string", "group": "harness", "label": "gemini 命令", "labelKey": "settings.runtime.harness.geminiCommand", "description": "Google Gemini CLI 可执行文件(stream-json 无头)", "applies": "restart", "default": "gemini" },
     { "key": "harness.qwen_command", "type": "string", "group": "harness", "label": "qwen 命令", "labelKey": "settings.runtime.harness.qwenCommand", "description": "Qwen Code 可执行文件(experimental-acp 模式)", "applies": "restart", "default": "qwen" },
     { "key": "harness.copilot_command", "type": "string", "group": "harness", "label": "copilot 命令", "labelKey": "settings.runtime.harness.copilotCommand", "description": "GitHub Copilot CLI 可执行文件(JSONL 无头)", "applies": "restart", "default": "copilot" },
     { "key": "harness.cursor_command", "type": "string", "group": "harness", "label": "cursor 命令", "labelKey": "settings.runtime.harness.cursorCommand", "description": "Cursor CLI 可执行文件(stream-json 无头)", "applies": "restart", "default": "cursor-agent" },
     { "key": "harness.crush_command", "type": "string", "group": "harness", "label": "crush 命令", "labelKey": "settings.runtime.harness.crushCommand", "description": "Charm Crush 可执行文件(run 非交互模式)", "applies": "restart", "default": "crush" },
-{ "key": "harness.goose_command", "type": "string", "group": "harness", "label": "goose 命令", "labelKey": "settings.runtime.harness.gooseCommand", "description": "Block Goose 可执行文件(run stream-json 无头)", "applies": "restart", "default": "goose" },
+    { "key": "harness.goose_command", "type": "string", "group": "harness", "label": "goose 命令", "labelKey": "settings.runtime.harness.gooseCommand", "description": "Block Goose 可执行文件(run stream-json 无头)", "applies": "restart", "default": "goose" },
     { "key": "harness.pi_command", "type": "string", "group": "harness", "label": "pi 命令", "labelKey": "settings.runtime.harness.piCommand", "description": "pi coding agent 可执行文件(-p --mode json 无头)", "applies": "restart", "default": "pi" },
     { "key": "harness.hermes_command", "type": "string", "group": "harness", "label": "hermes 命令", "labelKey": "settings.runtime.harness.hermesCommand", "description": "Hermes Agent 可执行文件(acp 模式)", "applies": "restart", "default": "hermes" },
-            { "key": "harness.hitl_timeout_ms", "type": "number", "group": "harness", "label": "引擎审批超时(ms)", "labelKey": "settings.runtime.harness.hitlTimeoutMs", "description": "codex/opencode/dsh 权限审批无人应答的自动拒绝时限(0=无限等待)", "applies": "restart", "default": 300000, "min": 0, "max": 3600000 },
+    { "key": "harness.hitl_timeout_ms", "type": "number", "group": "harness", "label": "引擎审批超时(ms)", "labelKey": "settings.runtime.harness.hitlTimeoutMs", "description": "codex/opencode/dsh 权限审批无人应答的自动拒绝时限(0=无限等待)", "applies": "restart", "default": 300000, "min": 0, "max": 3600000 },
 
     { "key": "dcw.rollback_cooldown_ms", "type": "number", "group": "dcw", "label": "回退冷却(ms)", "labelKey": "settings.runtime.dcw.rollbackCooldownMs", "description": "回退执行后的同向冷却窗", "applies": "restart", "default": 300000, "min": 0, "max": 3600000 },
     { "key": "dcw.rollback_min_window_ms", "type": "number", "group": "dcw", "label": "回退最小观察窗(ms)", "labelKey": "settings.runtime.dcw.rollbackMinWindowMs", "description": "开记录后允许判定的最小观察窗", "applies": "restart", "default": 120000, "min": 0, "max": 3600000 },
@@ -117,6 +117,8 @@
     { "key": "retention.audit_days", "type": "number", "group": "retention", "label": "审计日志保留(天)", "labelKey": "settings.runtime.retention.auditDays", "description": "审计日志保留天数(合规观察期,从严保留)", "applies": "restart", "default": 90, "min": 1, "max": 3650 },
     { "key": "retention.approval_days", "type": "number", "group": "retention", "label": "审批历史保留(天)", "labelKey": "settings.runtime.retention.approvalDays", "description": "审批历史保留天数(历史裁决主张不可变,放宽)", "applies": "restart", "default": 180, "min": 1, "max": 3650 },
     { "key": "retention.analysis_days", "type": "number", "group": "retention", "label": "分析报告保留(天)", "labelKey": "settings.runtime.retention.analysisDays", "description": "数据分析报告台账保留天数(数据留痕,宽松保留)", "applies": "restart", "default": 365, "min": 1, "max": 3650 },
+    { "key": "retention.optimizer_days", "type": "number", "group": "retention", "label": "优化运行保留(天)", "labelKey": "settings.runtime.retention.optimizerDays", "description": "Optimizer 运行/候选/建议/收益台账保留天数", "applies": "restart", "default": 365, "min": 1, "max": 3650 },
+    { "key": "retention.process_model_days", "type": "number", "group": "retention", "label": "过程模型台账保留(天)", "labelKey": "settings.runtime.retention.processModelDays", "description": "过程模型资格报告与模拟试验台账保留天数", "applies": "restart", "default": 365, "min": 1, "max": 3650 },
 
     { "key": "log.level", "type": "string", "group": "log", "label": "日志级别", "labelKey": "settings.runtime.log.level", "description": "服务端日志级别(debug/info/warn/error)", "applies": "restart", "default": "info", "aliases": ["AWSHOP_LOG_LEVEL"] },
 
@@ -136,6 +138,13 @@
     { "key": "aml.gates.valTestGap", "type": "number", "group": "aml", "label": "门禁:泛化差", "labelKey": "settings.runtime.aml.gateValTestGap", "description": "门禁 G3:|test-val|/val 相对差上限(防过拟合验证集)", "applies": "live", "default": 0.2, "min": 0.01, "max": 2 },
     { "key": "aml.gates.minRows", "type": "number", "group": "aml", "label": "门禁:最少样本行", "labelKey": "settings.runtime.aml.gateMinRows", "description": "门禁 G4a:数据集滑窗样本行数下限", "applies": "live", "default": 500, "min": 50, "max": 1000000 },
     { "key": "aml.gates.minRuns", "type": "number", "group": "aml", "label": "门禁:最少批次数", "labelKey": "settings.runtime.aml.gateMinRuns", "description": "门禁 G4b:数据集覆盖的批次(run)数下限", "applies": "live", "default": 3, "min": 1, "max": 1000 },
-    { "key": "mcp.enabled", "type": "boolean", "group": "mcp", "label": "启动 MCP 集成", "labelKey": "settings.runtime.mcp.enabled", "description": "允许 aw 工业 MCP(mcp/aw-mcp-server.mjs)连接并操作本实例;停用后 MCP 工具调用将被拒绝(平台 REST 与频道内 agent 不受影响)。也可用环境变量 AW_MCP_ENABLED 覆盖。", "applies": "live", "default": false, "aliases": ["AW_MCP_ENABLED"] }
+    { "key": "aml.uq.freshDays", "type": "number", "group": "aml", "label": "UQ 证据保鲜天数", "labelKey": "settings.runtime.aml.uqFreshDays", "description": "工件 UQ 校准时间(calibratedAt)超过该天数后建议降级 unverified(需重训刷新证据)", "applies": "live", "default": 7, "min": 1, "max": 365 },
+
+    { "key": "mcp.enabled", "type": "boolean", "group": "mcp", "label": "启动 MCP 集成", "labelKey": "settings.runtime.mcp.enabled", "description": "允许 aw 工业 MCP(mcp/aw-mcp-server.mjs)连接并操作本实例;停用后 MCP 工具调用将被拒绝(平台 REST 与频道内 agent 不受影响)。也可用环境变量 AW_MCP_ENABLED 覆盖。", "applies": "live", "default": false, "aliases": ["AW_MCP_ENABLED"] },
+
+    { "key": "optimizer.solver.poolSize", "type": "number", "group": "optimizer", "label": "Solver 进程池上限", "labelKey": "settings.runtime.optimizer.poolSize", "description": "本地 Python Solver 进程池大小(每进程同时 1 个 solve)", "applies": "restart", "default": 1, "min": 1, "max": 4 },
+    { "key": "optimizer.solver.requestTimeoutMs", "type": "number", "group": "optimizer", "label": "Solver 请求超时(ms)", "labelKey": "settings.runtime.optimizer.requestTimeoutMs", "description": "单次求解硬超时;超时终止独占 Worker 进程", "applies": "restart", "default": 30000, "min": 1000, "max": 600000 },
+    { "key": "optimizer.solver.threads", "type": "number", "group": "optimizer", "label": "Solver 线程预算", "labelKey": "settings.runtime.optimizer.threads", "description": "求解进程 OMP/OPENBLAS/MKL/NUMEXPR 线程数(避免与训练抢占)", "applies": "restart", "default": 1, "min": 1, "max": 16 },
+    { "key": "optimizer.crosscheck.tol", "type": "number", "group": "optimizer", "label": "互校一致性容差", "labelKey": "settings.runtime.optimizer.crosscheckTol", "description": "候选互校逐 CV 无量纲数值一致性门限(默认数值精度级;调大仅用于诊断,放宽不改变证据要求)", "applies": "live", "default": 0.000001, "min": 0.0000000001, "max": 0.001 }
   ]
 }

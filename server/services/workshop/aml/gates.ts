@@ -13,6 +13,12 @@ export interface PlatformMetrics {
   oneStepVal?: { windows: number, nrmse: number } | null
   oneStepTest?: { windows: number, nrmse: number } | null
   rolloutTest?: { windows: number, nrmse: number, horizon: number } | null
+  /** 新工件类型分派(G1.2):linear_state_space@1 / static_response@1 / onnx_one_step@1 / hybrid_manifest@1 */
+  artifactKind?: string
+  modelKind?: string
+  /** 多步相对持值基线改善(A3:新模型 ≥20%) */
+  rolloutImprovement?: number
+  persistenceNrmse?: number
 }
 
 export interface GateCheck {
@@ -38,34 +44,53 @@ export function evaluateGates(
 ): GateReport {
   const g = amlSettings().gates
   const checks: GateCheck[] = []
+  const artifactKind = metrics?.artifactKind ?? (existsSync(join(artifactsDir, 'model.json')) ? 'linear_state_space@1' : 'onnx_one_step@1')
+  const isStatic = artifactKind === 'static_response@1'
+  const isLinear = artifactKind === 'linear_state_space@1'
 
   const testNrmse = metrics?.oneStepTest?.nrmse
+  const hasTest = manifest.split.test > 0 && (metrics?.oneStepTest?.windows ?? 0) > 0 && numOrNull(testNrmse) != null && testNrmse! >= 0
   checks.push({
     id: 'G1',
     name: '单步精度(测试集 NRMSE)',
     value: numOrNull(testNrmse),
     threshold: g.nrmse,
-    pass: testNrmse !== undefined && testNrmse !== null && testNrmse <= g.nrmse,
-    detail: testNrmse == null ? 'metrics 缺少 platform.oneStepTest(评估器未产出)' : `实测 ${testNrmse.toFixed(4)} / 上限 ${g.nrmse}`,
+    pass: hasTest && testNrmse! <= g.nrmse,
+    detail: !hasTest ? '缺少非空独立测试集或有效 platform.oneStepTest 指标' : `实测 ${testNrmse!.toFixed(4)} / 上限 ${g.nrmse}(${artifactKind})`,
   })
 
-  if (purpose === 'mpc_surrogate') {
+  if (isLinear) {
+    // 新模型:多步相对持值基线改善(A3 ≥20%),而不是旧 NN 的绝对 0.25 阈值。
+    const improvement = metrics?.rolloutImprovement
+    const roll = metrics?.rolloutTest?.nrmse
+    checks.push({
+      id: 'G2',
+      name: `多步相对持值基线改善(horizon=${metrics?.rolloutTest?.horizon ?? '?'})`,
+      value: numOrNull(improvement),
+      threshold: 0.2,
+      pass: hasTest && (metrics?.rolloutTest?.windows ?? 0) > 0 && numOrNull(roll) != null && roll! >= 0 && numOrNull(improvement) != null && improvement! >= 0.2,
+      detail: improvement == null
+        ? 'metrics 缺少 rolloutImprovement'
+        : `改善 ${(improvement * 100).toFixed(1)}% / 下限 20%(rollout=${roll?.toFixed(4) ?? '?'}, 持值=${metrics?.persistenceNrmse?.toFixed(4) ?? '?'})`,
+    })
+  }
+  else if (purpose === 'mpc_surrogate' && !isStatic) {
     const roll = metrics?.rolloutTest?.nrmse
     checks.push({
       id: 'G2',
       name: `多步滚动精度(horizon=${metrics?.rolloutTest?.horizon ?? '?'} NRMSE)`,
       value: numOrNull(roll),
       threshold: g.rolloutNrmse,
-      pass: roll !== undefined && roll !== null && roll <= g.rolloutNrmse,
+      pass: hasTest && (metrics?.rolloutTest?.windows ?? 0) > 0 && numOrNull(roll) != null && roll! >= 0 && roll! <= g.rolloutNrmse,
       detail: roll == null ? 'metrics 缺少 platform.rolloutTest' : `实测 ${roll.toFixed(4)} / 上限 ${g.rolloutNrmse}`,
     })
   }
 
   const val = metrics?.oneStepVal?.nrmse
-  // mpc_surrogate 下 G3 恒入列:val 缺失/切分为空一律不通过(防 valRatio:0 静默绕过泛化门)
-  if (purpose === 'mpc_surrogate' || (val != null && testNrmse != null)) {
-    const gap = val != null && testNrmse != null && val > 1e-9
-      ? Math.abs(testNrmse - val) / Math.abs(val)
+  // 静态模型按"独立稳定段/批次"评估留出误差,不做 val/test 泛化差(计划 §3.5)
+  if (!isStatic && (purpose === 'mpc_surrogate' || (val != null && testNrmse != null))) {
+    const gap = hasTest && manifest.split.val > 0 && (metrics?.oneStepVal?.windows ?? 0) > 0 && val != null && numOrNull(val) != null && val >= 0 && testNrmse != null
+      ? Math.abs(testNrmse - val) / Math.max(1e-9, Math.abs(val))
       : null
     checks.push({
       id: 'G3',
@@ -79,23 +104,40 @@ export function evaluateGates(
     })
   }
 
-  const runsOk = dataset.runIds.length >= g.minRuns
+  // G4:数据覆盖。单长 run 用合法隔离时间切分时,以 train/val/test 三段非空替代批次门
+  // (计划 §3.5:不能把重叠窗口当独立试验,也不能用旧 minRuns 误杀合法切分)。
+  const isolatedSplit = (isLinear || isStatic) && manifest.split.train > 0 && manifest.split.val > 0 && manifest.split.test > 0
+  const runsOk = dataset.runIds.length >= g.minRuns || isolatedSplit
   checks.push({
     id: 'G4',
     name: '数据覆盖(行数/批次数)',
     value: dataset.runIds.length,
     threshold: g.minRuns,
     pass: dataset.rowCount >= g.minRows && runsOk,
-    detail: `${dataset.rowCount} 行(≥${g.minRows});${dataset.runIds.length} 批次(≥${g.minRuns})`,
+    detail: `${dataset.rowCount} 行(≥${g.minRows});${dataset.runIds.length} 批次(≥${g.minRuns}${isolatedSplit ? ',单长 run 隔离切分已生效' : ''})`,
   })
 
-  // G5:契约工件存在(模型文件或 STUB 标记);加载验证由注册时 predictor 深检兜底
+  // G5:契约工件存在(按 artifactKind 分派;加载验证由注册时深检兜底)
   const onnxPath = join(artifactsDir, 'model.onnx')
+  const jsonPath = join(artifactsDir, 'model.json')
   const stubPath = join(artifactsDir, 'STUB')
-  const hasOnnx = existsSync(onnxPath)
   let g5pass = false
   let g5detail: string
-  if (hasOnnx) {
+  if (isLinear || isStatic) {
+    if (existsSync(jsonPath)) {
+      let size = 0
+      try {
+        size = statSync(jsonPath).size
+      }
+      catch { /* 探测失败按缺失 */ }
+      g5pass = size > 0
+      g5detail = `model.json(${(size / 1024).toFixed(1)}KB,${artifactKind})`
+    }
+    else {
+      g5detail = `artifacts/model.json 缺失(${artifactKind})`
+    }
+  }
+  else if (existsSync(onnxPath)) {
     let size = 0
     try {
       size = statSync(onnxPath).size
@@ -111,7 +153,7 @@ export function evaluateGates(
   else {
     g5detail = 'artifacts/model.onnx 缺失'
   }
-  checks.push({ id: 'G5', name: '工件完整(契约 ONNX)', value: null, threshold: null, pass: g5pass, detail: g5detail })
+  checks.push({ id: 'G5', name: '工件完整(按工件类型)', value: null, threshold: null, pass: g5pass, detail: g5detail })
 
   return { passed: checks.every(c => c.pass), checks }
 }

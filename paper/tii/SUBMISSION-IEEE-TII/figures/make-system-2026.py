@@ -20,7 +20,7 @@ from PIL import Image
 
 HERE = Path(__file__).resolve().parent
 OUT = HERE.parent / "resources"
-REVISION = HERE.parent.parent / "final-revision-2026-10-20"
+REVISION = HERE.parent.parent / "revision-2026-10-24"
 QA = REVISION / "qa"
 SKILL = Path.home() / ".codex" / "skills" / "nature-figure"
 sys.path.insert(0, str(SKILL / "scripts"))
@@ -42,6 +42,7 @@ plt.rcParams.update({
     "font.size": 9,
     "svg.fonttype": "none",
     "pdf.fonttype": 42,
+    "ps.fonttype": 42,
     "axes.linewidth": 0.6,
     "lines.linewidth": 0.8,
     "savefig.facecolor": "white",
@@ -98,6 +99,7 @@ def save(fig, name, *, panels=None):
         "Creator": "Matplotlib", "Keywords": "",
     })
     fig.savefig(OUT / f"fig-{name}.svg")
+    fig.savefig(OUT / f"fig-{name}.eps")
     fig.savefig(OUT / f"fig-{name}.png", dpi=600)
     # Keep the QA preview at publication-grade raster density; the manuscript
     # consumes the vector PDF, while this preview is used for physical-size QA.
@@ -109,124 +111,119 @@ def save(fig, name, *, panels=None):
 
 def architecture():
     fig, ax = canvas(7.16, 3.15)
-    # A component view: the context spans all three service responsibilities.
-    # Connections describe distinct information contracts, not a single order
-    # of governance checks shared by every operation.
-    box(ax, 8, 207, 499, 16, fill=PALE_BLUE, edge=BLUE)
-    text(ax, 257.5, 215, "Console · REST · MCP · A2A · CLI   |   Typed SDK + registration",
-         ha="center", color=BLUE)
-    ax.add_patch(Polygon([(4, 3), (344, 3), (344, 54), (511, 54),
-                         (511, 225), (4, 225)], closed=True, facecolor="none",
-                        edgecolor=RULE, linewidth=0.6, linestyle=(0, (3, 2))))
-    box(ax, 8, 182, 499, 19, fill=PALE_BLUE, edge=BLUE)
-    text(ax, 257.5, 191.5,
-         "Production context: line · product · recipe / version · active run",
+    # AI assisted composition; all geometry and text are rebuilt as native
+    # vectors. This component view does not prescribe a universal check order.
+    ax.add_patch(Rectangle((1.5, 47), 512.5, 177, facecolor="none",
+                           edgecolor=RULE, linewidth=0.6,
+                           linestyle=(0, (3, 2))))
+    box(ax, 8, 205, 499, 17, fill=PALE_BLUE, edge=BLUE)
+    text(ax, 257.5, 213.5,
+         "Production context: line / product / recipe / run",
          ha="center", bold=True, color=BLUE)
-    for x, width, title in [(8, 157, "Team and strategy"),
-                            (179, 161, "Governed execution"),
-                            (354, 153, "Industrial integration")]:
-        text(ax, x + width / 2, 172, title, ha="center", bold=True,
-             color=BLUE, size=10)
-        ax.plot([x, x + width], [163, 163], color=RULE, lw=0.6)
 
-    text(ax, 15, 151, "Channel · member · engine")
-    text(ax, 15, 137, "Tasks, memory and tool profile")
-    box(ax, 9, 97, 155, 29, fill=PALE_BLUE, edge=BLUE)
-    text(ax, 16, 117, "Read-only DAQ / IDD / RAG", color=BLUE)
-    text(ax, 16, 104, "AML data → qualified model", color=BLUE)
-    box(ax, 9, 62, 155, 29, fill=PALE_TEAL, edge=TEAL)
-    text(ax, 16, 82, "Authorized proposals", bold=True, color=TEAL)
-    text(ax, 16, 69, "Exploration / recipe actions", color=TEAL)
+    groups = [(8, 151, "Team and strategy", BLUE, PALE_BLUE),
+              (181, 145, "Governed execution", TEAL, PALE_TEAL),
+              (360, 147, "Industrial I/O", BLUE, PALE_BLUE)]
+    for x, width, title, color, fill in groups:
+        box(ax, x, 95, width, 95, fill=fill, edge=color)
+        text(ax, x + width / 2, 177, title, ha="center", bold=True,
+             color=color, size=10)
+        ax.plot([x + 7, x + width - 7], [166, 166], color=RULE, lw=0.6)
+        center = x + width / 2
+        ax.plot([center, center], [205, 190], color=RULE, lw=0.6)
 
-    # The gate bundle is intentionally not drawn as a universal sequence.
-    box(ax, 179, 62, 161, 96, fill="white", edge=TEAL)
-    text(ax, 187, 148, "Operation-specific gates", bold=True, color=TEAL)
-    text(ax, 187, 133, "Capabilities + production scope")
-    text(ax, 187, 119, "Required HITL and rechecking")
-    text(ax, 187, 105, "Active limits + intervention pace")
-    ax.plot([187, 332], [96, 96], color=RULE, lw=0.5)
-    text(ax, 187, 85, "Node / batch execution", bold=True, color=TEAL)
-    text(ax, 187, 71, "Dispatch + graded confirmation")
-    arrow(ax, (164, 77), (179, 77), color=TEAL)
-    arrow(ax, (340, 142), (354, 142), color=TEAL)
-    arrow(ax, (354, 154), (340, 154), color=GRAY, dashed=True)
+    for y, label in [(153, "Task and member"),
+                     (133, "DAQ / diagnostics / models"),
+                     (112, "Candidate proposal")]:
+        text(ax, 83.5, y, label, ha="center")
+    for y, label in [(153, "Scope and active limits"),
+                     (133, "Approval and recheck"),
+                     (112, "Dispatch and confirmation")]:
+        text(ax, 253.5, y, label, ha="center")
+    arrow(ax, (159, 112), (181, 112), color=BLUE)
 
-    box(ax, 354, 117, 132, 41, fill=PALE_TEAL, edge=TEAL)
-    text(ax, 361, 148, "DCW · control drivers", bold=True, color=TEAL)
-    text(ax, 361, 135, "u → device / simulator")
-    text(ax, 361, 125, "ACK / readback if available")
-    box(ax, 354, 69, 132, 35, fill=PALE_BLUE, edge=BLUE)
-    text(ax, 361, 94, "DAQ · observation", bold=True, color=BLUE)
-    text(ax, 361, 81, "Timestamped output y")
-    # Command and command-confirmation routes use distinct gutters; process
-    # output has an independent upward acquisition connection.
-    arrow(ax, (486, 140), (497, 42), color=TEAL, points=[(497, 140)])
-    arrow(ax, (505, 42), (486, 151), color=GRAY, dashed=True,
-          points=[(505, 151)])
-    arrow(ax, (374, 42), (374, 69), color=BLUE)
+    box(ax, 371, 140, 125, 23, fill="white", edge=TEAL)
+    text(ax, 433.5, 151.5, "DCW: control u", ha="center", color=TEAL)
+    box(ax, 371, 103, 125, 23, fill="white", edge=BLUE)
+    text(ax, 433.5, 114.5, "DAQ: output y", ha="center", color=BLUE)
+    arrow(ax, (326, 154), (371, 154), color=TEAL)
+    arrow(ax, (371, 142), (326, 142), color=TEAL, dashed=True)
+    text(ax, 343, 132, "Receipt", ha="center", color=GRAY)
 
-    box(ax, 354, 7, 153, 35, fill="white", edge=GRAY)
-    text(ax, 361, 31, "Equipment / simulator", bold=True, color=GRAY)
-    text(ax, 361, 18, "Local control and protection", color=GRAY)
+    # Shared evidence has explicit connections from both task/governance
+    # components and the DAQ acquisition component.
+    box(ax, 8, 59, 330, 27, fill=PALE_BLUE, edge=BLUE)
+    text(ax, 173, 78, "Linked evidence", ha="center", bold=True, color=BLUE)
+    text(ax, 173, 66, "Tasks / node journal / batch receipts / DAQ history",
+         ha="center", color=BLUE)
+    for x in (83.5, 253.5):
+        ax.plot([x, x], [95, 86], color=RULE, lw=0.6)
+    arrow(ax, (371, 114.5), (338, 72.5), color=BLUE, dashed=True,
+          points=[(349, 114.5), (349, 72.5)])
 
-    # Records remain route specific while shared context makes them joinable.
-    box(ax, 8, 7, 332, 35, fill=PALE_BLUE, edge=BLUE)
-    text(ax, 16, 31, "Linked evidence for review and learning", bold=True, color=BLUE)
-    text(ax, 16, 18, "Task artifacts · node journal · batch receipts · DAQ history")
-    arrow(ax, (259, 62), (259, 42), color=TEAL)
-    arrow(ax, (354, 86), (340, 25), color=BLUE, dashed=True,
-          points=[(347, 86), (347, 25)])
-    arrow(ax, (8, 25), (9, 111), color=BLUE, dashed=True,
-          points=[(3, 25), (3, 111)])
+    # DAQ feedback originates at DAQ, then travels through free whitespace.
+    # It does not imply an equipment-to-strategy path bypassing acquisition.
+    arrow(ax, (496, 114.5), (8, 133), color=BLUE, dashed=True,
+          points=[(512, 114.5), (512, 51), (4, 51), (4, 133)])
+    box(ax, 360, 5, 147, 34, fill="white", edge=GRAY)
+    text(ax, 433.5, 28, "Equipment / simulator", ha="center", bold=True)
+    text(ax, 433.5, 15, "Local control and protection", ha="center", color=GRAY)
+    arrow(ax, (496, 151.5), (501, 39), color=TEAL,
+          points=[(501, 151.5)])
+    arrow(ax, (385, 39), (385, 103), color=BLUE)
+    text(ax, 489, 90, "u", color=TEAL)
+    text(ax, 395, 90, "y", color=BLUE)
     save(fig, "architecture-2026")
 
 
 def runtime():
     fig, ax = canvas(3.50, 3.55)
-    text(ax, 126, 248, "Production context + channel profile", ha="center",
+    box(ax, 6, 235, 240, 18, fill=PALE_BLUE, edge=RULE)
+    text(ax, 126, 244, "Production context + channel profile", ha="center",
          bold=True, color=BLUE)
     panels = []
     for x, letter, title, entries, lane_color, lane_fill in [
         (6, "a", "Bounded exploration", [
-            ("Baseline u₀, y₀", "Snapshot / DAQ mean"),
-            ("Internal execution", "Required HITL + checks"),
-            ("Apply control u₁", "Journal on value change"),
-            ("Platform waits", "Query DAQ mean y₁"),
-            ("Exploration summary", "Save u₀, u₁, y₀, y₁"),
+            ("Capture baseline", "Starting u / DAQ output"),
+            ("Governed node write", "Approval + checks",
+             "Success + value change:", "open node journal"),
+            ("Platform observes", "Wait, then query DAQ"),
+            ("Exploration summary", "Save controls / outputs"),
         ], BLUE, PALE_BLUE),
         (130, "b", "Recipe trial / apply", [
-            ("Candidate or version", "Trial override / apply"),
-            ("Recipe gates", "Required HITL + recheck"),
-            ("Create batch run", "Write + verify each u₁"),
-            ("Return graded receipt", "Per-parameter evidence"),
-            ("Caller waits / queries", "Evaluate DAQ output y₁"),
+            ("Candidate / version", "Trial or saved recipe"),
+            ("Governed dispatch", "Approval + checks",
+             "Create batch, then write", "Verify each parameter"),
+            ("Graded batch receipt", "Per-parameter evidence"),
+            ("Caller observes", "Wait, query, and decide"),
         ], TEAL, PALE_TEAL),
     ]:
-        branch = fig.add_axes([x / 252, 45 / 255.6, 116 / 252, 195 / 255.6])
-        branch.set(xlim=(0, 116), ylim=(0, 195))
+        branch = fig.add_axes([x / 252, 38 / 255.6, 116 / 252, 193 / 255.6])
+        branch.set(xlim=(0, 116), ylim=(0, 193))
         branch.set_axis_off()
         branch.patch.set_alpha(0)
-        branch.add_patch(Rectangle((0, 193.5), 116, 1.5,
-                                   facecolor=lane_color, edgecolor="none",
-                                   zorder=1))
         panels.append(branch)
-        text(branch, 1, 185, letter, bold=True, color=lane_color, size=9.5)
-        text(branch, 14, 185, title, bold=True, color=lane_color, size=9.5)
-        centers = (159, 124, 89, 54, 19)
-        for index, ((heading, detail), center) in enumerate(zip(entries, centers)):
-            box(branch, 1, center - 13.5, 114, 27, fill=lane_fill, edge=RULE)
-            text(branch, 58, center + 6, heading, ha="center", bold=True, color=lane_color)
-            text(branch, 58, center - 6.5, detail, ha="center")
+        text(branch, 1, 189, letter, bold=True, color=lane_color)
+        text(branch, 14, 189, title, bold=True, color=lane_color)
+        bounds = [(149, 30), (85, 53), (44, 30), (3, 30)]
+        for index, (lines, (bottom, height)) in enumerate(zip(entries, bounds)):
+            box(branch, 1, bottom, 114, height, fill=lane_fill, edge=RULE)
+            line_positions = (bottom + 20, bottom + 8) if len(lines) == 2 else (
+                bottom + 42, bottom + 30, bottom + 19, bottom + 8)
+            for line_number, (label, y) in enumerate(zip(lines, line_positions)):
+                text(branch, 58, y, label, ha="center", bold=line_number == 0,
+                     color=lane_color if line_number == 0 else INK)
             if index < len(entries) - 1:
-                arrow(branch, (58, center - 13.5), (58, centers[index + 1] + 13.5),
+                next_bottom, next_height = bounds[index + 1]
+                arrow(branch, (58, bottom), (58, next_bottom + next_height),
                       color=lane_color)
 
-    text(ax, 8, 26, "Node journal and summary", color=GRAY)
-    text(ax, 8, 13, "are separate records.", color=GRAY)
-    box(ax, 131, 3, 114, 31, fill="white", edge=TEAL)
-    text(ax, 188, 25, "Separate caller action", ha="center", color=TEAL)
-    text(ax, 188, 12, "recipe_update → save", ha="center", bold=True, color=TEAL)
-    arrow(ax, (188, 50.5), (188, 34), color=TEAL, dashed=True)
+    text(ax, 64, 23, "Journal and summary", ha="center", color=GRAY)
+    text(ax, 64, 11, "are separate records", ha="center", color=GRAY)
+    box(ax, 131, 3, 114, 27, fill="white", edge=TEAL)
+    text(ax, 188, 21, "Separate caller update", ha="center", bold=True, color=TEAL)
+    text(ax, 188, 9, "Save accepted recipe", ha="center", color=TEAL)
+    arrow(ax, (188, 41), (188, 30), color=TEAL, dashed=True)
     save(fig, "runtime-2026", panels=panels)
 
 

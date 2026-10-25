@@ -19,7 +19,7 @@ export interface ToolApproval {
   id: string
   agentId: string
   nodeId: string
-  kind: 'dcw' | 'daq'
+  kind: 'dcw' | 'daq' | 'kb'
   /** 人读摘要(节点名/物理量/目标值/窗口) */
   detail: string
   /** 结构化审批载荷(可选;整包方案审批 recipe-propose 存方案集+预检结果,前端渲染结构化审批卡) */
@@ -68,7 +68,7 @@ class ToolApprovalService {
    *  opts.timeoutMs 覆盖本单超时窗(expiresAt 与 timer 两处同源取值;缺省 = 全局 hitl_timeout_ms);
    *  opts.payload 携带结构化审批载荷(随 pending/history 落库,前端渲染结构化审批卡)。
    *  不传 opts 的既有调用(param_control/manual-approval/recipe 门)行为不变。 */
-  request(agentId: string, nodeId: string, kind: 'dcw' | 'daq', detail: string, opts?: { title?: string, timeoutMs?: number, payload?: unknown }): Promise<ToolApprovalDecision> {
+  request(agentId: string, nodeId: string, kind: 'dcw' | 'daq' | 'kb', detail: string, opts?: { title?: string, timeoutMs?: number, payload?: unknown }): Promise<ToolApprovalDecision> {
     // hold 模式(手动生产语义):审批不自动拒、周期催办;显式传 timeoutMs 的调用方
     // (整包方案 30min)同样被 hold 覆盖 —— 真人在环时"等人"优先于"限时"。
     const hold = securityHitlTimeoutMode() === 'hold'
@@ -200,11 +200,11 @@ class ToolApprovalService {
     })
   }
 
-  /** 审批锚点 → 产线 id(节点 id 直查;recipe:/recipe-propose: 前缀查配方产线) */
+  /** 审批锚点 → 产线 id(节点 id 直查;recipe:/recipe-propose:/optimizer-recipe: 前缀查配方产线) */
   private lineIdOf(nodeId: string): string {
     if (nodeId.startsWith('line-start:')) return nodeId.slice('line-start:'.length)
     if (nodeId.startsWith('line-stop:')) return nodeId.slice('line-stop:'.length)
-    const m = nodeId.match(/^(?:recipe|recipe-propose):(.+)$/)
+    const m = nodeId.match(/^(?:recipe|recipe-propose|optimizer-recipe):(.+)$/)
     try {
       if (m) {
         const recipe = getDcwController().listRecipes().find(r => r.id === m[1])
@@ -236,7 +236,7 @@ class ToolApprovalService {
     // recipe_update 只写定义不触产线,排除;失败仅告警不反噬裁决主流程。
     if (approved) {
       try {
-        const m = entry.approval.nodeId.match(/^(?:recipe|recipe-propose):(.+)$/)
+        const m = entry.approval.nodeId.match(/^(?:recipe|recipe-propose|optimizer-recipe):(.+)$/)
         const payload = (entry.approval.payload ?? {}) as { op?: string, kind?: string }
         if (m && payload.op !== 'update') {
           const rawOp = String(payload.op)
@@ -304,6 +304,8 @@ class ToolApprovalService {
     if (binding.kind === 'recipe') {
       n += this.cancelPendingFor(agentId, `recipe:${binding.nodeId}`)
       n += this.cancelPendingFor(agentId, `recipe-propose:${binding.nodeId}`)
+      // SW5/D14:optimizer 下发卡同配方收敛(撤权后在飞卡零写)
+      n += this.cancelPendingFor(agentId, `optimizer-recipe:${binding.nodeId}`)
       try {
         const recipe = getDcwController().listRecipes().find(r => r.id === binding.nodeId)
         for (const p of recipe?.params ?? []) n += this.cancelPendingFor(agentId, p.nodeId)

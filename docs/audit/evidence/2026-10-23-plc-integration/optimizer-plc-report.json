@@ -1,0 +1,95 @@
+{
+  "at": "2026-10-23T16:54:25.582Z",
+  "base": "http://127.0.0.1:3111",
+  "home": "D:\\codes\\ABO\\AgentWorkShop\\.e2e-tmp\\plc-bench-home",
+  "line": "ln-4acdb2c8",
+  "total": 14,
+  "pass": 7,
+  "fail": 7,
+  "results": [
+    {
+      "id": "P0.1",
+      "name": "平台登录",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "P0.2",
+      "name": "发现注塑真实产线",
+      "pass": true,
+      "detail": "line=ln-4acdb2c8 name=注塑成型质量窗口寻优 injection-ms165k33"
+    },
+    {
+      "id": "P0.3",
+      "name": "定位 MV/CV 真实数采节点",
+      "pass": true,
+      "detail": "mv=dn-1372c1e1(scen-injection:daq:mold-temp-pv) cv=dn-1372c1e1(scen-injection:daq:mold-temp-pv)"
+    },
+    {
+      "id": "P0.4",
+      "name": "定位保压执行节点(下发的 controlNodeId)",
+      "pass": true,
+      "detail": "dcw=dw-bdb8a0ba readValue=54"
+    },
+    {
+      "id": "P1.1",
+      "name": "真实批次 runs ≥1(闭环作业产物)",
+      "pass": true,
+      "detail": "runs=8 latest=rr-9989dbaa open=0"
+    },
+    {
+      "id": "P1.2",
+      "name": "定位产线配方(与 run 一致)",
+      "pass": true,
+      "detail": "recipe=rc-252ed08e v1 params=11"
+    },
+    {
+      "id": "P1.3",
+      "name": "confirmed context segments 落谱系(真实 run×当前配方)",
+      "pass": true,
+      "detail": "inserted=6/6"
+    },
+    {
+      "id": "P2.1",
+      "name": "登记真实场景规格",
+      "pass": false,
+      "detail": "422/节点 dn-1372c1e1 被重复映射;每个节点只能承担一个语义角色"
+    },
+    {
+      "id": "P2.2",
+      "name": "发布规格(不可变)",
+      "pass": false,
+      "detail": "404/ProcessModelSpec pms-plc-7ew23 不存在"
+    },
+    {
+      "id": "P2.3",
+      "name": "构建数据集(真实采样)",
+      "pass": false,
+      "detail": "rows=undefined runs=0 excluded=0 节点 dn-1372c1e1 被重复映射;每个节点只能承担一个语义角色"
+    },
+    {
+      "id": "P2.4",
+      "name": "谱系核验 lineage_verified=1",
+      "pass": false,
+      "detail": "lineage=undefined"
+    },
+    {
+      "id": "P2.5",
+      "name": "资格评估(真实数据具备优化资格)",
+      "pass": false,
+      "detail": "status=400 eligible=undefined gaps= specId 与 datasetId 必填"
+    },
+    {
+      "id": "P3.1",
+      "name": "提交训练作业",
+      "pass": false,
+      "detail": "422/节点 dn-1372c1e1 被重复映射;每个节点只能承担一个语义角色"
+    },
+    {
+      "id": "P3.2",
+      "name": "训练作业完成(真实数据过平台门禁)",
+      "pass": false,
+      "detail": "status=undefined model=undefined err= metrics={}"
+    }
+  ]
+}

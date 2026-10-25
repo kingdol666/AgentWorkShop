@@ -28,7 +28,7 @@
 
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.7.70</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST 集成（镜像与直连双路径）· 数据分析台账（产线级权限隔离）· 工具调用参数/绑定预检 · 86 个宿主工具 · 119 个运行时设置项 · 双语文档（简体中文 / English）</sub>
+<sub><b>v0.8.3</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST 集成（镜像与直连双路径）· 数据分析台账（产线级权限隔离）· 工艺参数优化器（过程模型 → AML → OSQP 求解 → 治理下发）· **本体服务 + AI 先行模型闭环**（本体 · 孪生 · 求解器 · AML 采纳）· 104 个宿主工具 · 126 个运行时设置项 · 双语文档（简体中文 / English）</sub>
 
 <br />
 
@@ -168,6 +168,7 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 | **配方链路优化闭环** | Agent 像人类工艺员一样通过配方管理做优化：`recipe_trial` 把多参数候选**整批试验（不写版本）**→ 复测 → 有进步用 `recipe_update` 固化（同一配方 id，版本+1）→ 劣化触发**统一回退**（`recipe_rollback` 带 `dispatch:true` = 定义回退 + PLC 整批恢复）。单参数直调移出闭环；试验受四层限界与同线节拍卡控。 |
 | **频道绑定产线（只读授权）** | 频道可绑定一条产线：全员无需节点绑定即可读取该线的产线日志（仅产线域记录，可按产线/配方/时间检索）、配方历史与实时状态（工具回执标注「频道绑定，只读」），写操作仍需节点授权。产线简报自动注入成员提示词；换绑即时回收成员运行时。 |
 | **数据分析台账（v0.7.62）** | Agent 的分析结果作为一等记录留痕：原生 `analysis_save` / `analysis_query` 宿主工具写入独立的 `analysis_reports` 表，按产线 + 配方 + 时间窗组织，含关键结论、指标、数据来源与操作者归因。台账对 Agent 只增不改；人类经 REST 修订并刷新编辑者归因。专属 `/analysis` 页面经 WS 实时前插新报告，支持产线 / 配方 / 时间 / 关键词多维检索，改删受产线权限门控（`operate` 可改、删除仅 admin）。外部分析插件经同一台账集成——`diag_run` 以后台任务运行 IDD **六种分析意图**（深度根因诊断 / 产线稳定报告 / 快速筛查 / DOE 试验分析 / 调参经验挖掘 / 优化战役，按情景注入分析提示词），提交即返 `task_id`，`diag_status` 按 taskId 查进度，完成后报告经 `analysis_save` 落账。 |
+| **IDD 结果库（v0.8.1，默认关闭）** | diag-bridge 插件进一步接入 IDD 侧的**全量分析结果历史**（不限本平台发起的运行）：`diag_results` 按关键词/意图/分类/标签/场景/harness/评分检索索引（brief 模式省 token），`diag_result_get` 取详情卡（关键数字溯源 + 工件绝对 URL），`diag_result_annotate` 编辑元数据（描述/标签/标题）。五项治理开关控制可见面——总开关默认**关闭**，结果可见面等于诊断 API Token 属主（平台级、不按产线隔离），读工具默认仅 lead、编辑始终仅 lead。`/plugins` 页同源「分析结果库」面板镜像三条路由（`GET /results` · `/results/detail` · `PATCH /results/edit`）。 |
 | **数据管理台与 EDA 工坊（/data · /studio）** | 数据面一站式：多字段复合查询（产线/节点/时间窗/批次/降采样护栏）、批量导出（manifest + merged.csv 作业台账）、标量/数组/图像**三形态**镜像（测厚断面与 CCD 帧经 ingest 推送或协议采集，WS 实时上屏）。EDA 工坊提供图表与栅格看板、**golden 相位参考轨迹**（偏差分叠加）、**FDC 特征**（参考带 z 判定）、**SPC 控制图**（Nelson 1-8 / I-MR / EWMA / CUSUM）、共性分析（四因子 lift）、OCAP 处置单、虚拟量测（集成外推 + OOD 拒判）与派生数据集（白名单算子），全部受产线级权限与引用归属预检约束。 |
 | **工艺参数语义面与调控闭环** | 全部可下发写收敛到**配方面**（`recipe_update` / `recipe_apply` / `recipe_trial`，各受「绑定 → HITL 理由 → 运行门」三门约束）。写入仍被**四层限界**逐层收窄——节点安全量程 ∩ 工艺参数基准限界 ∩ 活动产品限界 ∩ 活动配方工艺窗口——且每次下发自动开一条调控记录，由 `dcw_judge` 落判定（keep / rollback / uncertain），`dcw_rollback` 执行回退。（v0.7.63 摘除了 `param_control` / `param_read` / `dcw_read` 直连节点的遗留死工具面，Agent 工具清单保持干净。） |
 | **产线运营** | 产线 → 产品 → 配方 → 批次。配方窗口门控采集并联锁写入；每条样本打标 `product/recipe/run`，实现按批次隔离。 |
@@ -176,12 +177,24 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 | **生产化硬化（v0.7.58）** | 保写心跳生命周期根治——失败写不占位（心跳不再直发幻影指令值）、驱动/连接/产线变更即清值、停线自动挂起保写；mock 静默兜底封堵（未知协议显式报错，插件卸载不再假成功）；帧像素 sha256 完整性指纹 + 对象存储按天 GC（删前 DB 交叉校验防误删）；Timescale 按天 chunk + 列存压缩（TSL）；堆水位监控 + 崩溃/失联/水位三重自动重生；写保持窗与试验节拍落盘（重启不绕频控）；grant 运行时复核并入频道绑线（撤权即失活无死角）。 |
 | **Agent 自查工具** | `line_context`、`ops_log`、`recipe_log`、`recipe_versions`、`dcw_journal`——Agent 清楚自己操控的产线/产品/配方，谁做过什么，每个值怎么变。 |
 
+#### 模型闭环 —— AI 先行（本体 · 孪生 · 求解器 · AML，v0.8.0）
+
+| 能力 | 为何重要 |
+|---|---|
+| **面向控制的本体服务** | 10 类实体、**8 种封闭关系**（`influences / measures / actuates / hasPart / precedes / observedBy / constrainedBy / basedOn`），标注**三级证据**（`candidate_influence → observed_correlation → validated_control`）与**五态生命周期**（`proposed → reviewed → validated → approved_for_control`，第二人批准台账 + 单管理员审计豁免）。**编译器**产出四类工件——过程模型、ProblemIR 增量、场景契约补丁、控制守卫集——带**只收紧**不变量与逐规则 Rule Trace。运行守卫对状态未知 fail-closed；本体引用与求解器 ProblemIR 哈希**分域**，本体改动不会伪装成求解相关变更（漂移显式 409）。 |
+| **Agent 亲手创建虚拟模型** | 训练面频道上，Agent 用工具走完整创建链：`twin_scene_discover`（从**自己真实绑定**推断场景）→ `twin_scene_compile`（SceneContract 草稿）→ `twin_scene_freeze`（须人 `approved_by` + 确认令牌）→ `twin_physics_spec_draft / validate / compile`（声明式 Provider **候选**，绝不自动注册）→ `twin_snapshot_create`（服务端 `auto_daq` 采数，Agent 自报样本拒收）→ `twin_trial_run`（recommendation-only，`candidateExecuted=false`）。同一份物理骨架交由 AML `hybrid_residual` 训练校准（stage A 拟合 τ/增益）。 |
+| **模型进化 = 受治理的采纳** | 训练新模型（数据集 → 资格报告 → AML 作业 → 模型注册）只是半程。`optimizer_profile_propose` 让 **Agent 提议**把新工件采纳进求解 Profile：校验兼容性（模型 × 求解器矩阵，不兼容 422）并挂 HITL 卡。批准是**单一咽喉**：发布 v(n+1) + **重绑旧版本上的全部绑定**（revision+1，在飞求解 `BINDING_STALE` fail-closed），下一次 `optimizer_solve` 即用新模型；拒绝/超时零写。每轮留 `adopt_propose(agent)` + `adopt(user)` 审计行，旧版本保留可回退。 |
+| **人做修正，不只是点批准** | 管理者直接编辑本体草稿（乐观锁 `rev` + 活体校验），亲自走规则生命周期；版本台账给四段 diff（`entities / relations / rules / bindings`）。Profile 版本、孪生场景谱系（冻结场景 + Provider）、守卫决策在 `/ontology`、`/optimizer`、`/aml` 均可视——与 Agent 同源数据，不经 Agent 转述。 |
+| **可读模型 + 草稿自修复** | 三类模型都有可被 Agent 写入的人读元数据：本体文档/实体/规则描述、AML 模型 `label` + `description`（`aml_model_annotate`）、求解器 Profile `name` + `description`（经采纳携带）。本体草稿支持一键**自动修复**（`ontology_draft_autofix`、`POST /drafts/:id/autofix`）：补描述、量纲跟随单位、作用域回填、悬空引用与重复 id 修复、证据不足的硬规则状态回退；部分修复在乐观锁 + 审计下落库，`validated_control` 证据**永不伪造**。 |
+| **IDD × RAG × 本体 组合** | 同一会话内，Agent 可调 `ontology_scene_inspect / ontology_rule_explain`、经插件桥跑 IDD 诊断（CI 用 mock 快速筛查，生产用真实 LLM 意图）、再写 `analysis_save` 台账条目**同时引用**本体规则与诊断 run id——组合全程可审计。RAG `kb_agent` 入库属写类工具，必须过 HITL 审批；平台另提供**读桥**（`/api/plugins/rag-bridge/search`）直连 RAG 两阶段检索。 |
+
 #### 治理、配置与扩展
 
 | 能力 | 为何重要 |
 |---|---|
 | **产线级权限** | 工业数据按**产线**三态门控（无权/仅查看/可操控），强制点在数据面——普通用户未授权前看不到任何产线数据。 |
-| **工具调用统一预检（v0.7.66）** | 每次工业工具调用在进入处理器前统一校验参数形状与引用归属：`node_id` / `line_id` / `recipe_id` / `dataset_id` 等必须落在调用者的绑定面（绑定节点 ∪ 频道绑线只读 ∪ 绑定配方所在产线；数据集/作业/模型/计划/场景按谱系回溯）。越界调用直接拒绝，回执写明「你的绑定面 + 下一步」（找谁绑定、改传什么），并把授权性拒绝写入审计日志。 |
+| **工具调用统一预检（v0.7.66 / v0.7.71 声明化）** | 每次工业工具调用在进入处理器前统一校验参数形状与引用归属：`node_id` / `line_id` / `recipe_id` / `dataset_id` 等必须落在调用者的绑定面（绑定节点 ∪ 频道绑线只读 ∪ 绑定配方所在产线；数据集/作业/模型/计划/场景按谱系回溯）。越界调用直接拒绝，回执写明「你的绑定面 + 下一步」（找谁绑定、改传什么），并把授权性拒绝写入审计日志。v0.7.71 起校验规则上收为**工具定义自带的 `references` 声明**——注册期登记制（写族未声明拒绝登记、读族告警），执行期仍逐调用实时重算；插件工具声明后才纳入同一校验，调用结果统一入审计。 |
+| **工艺优化器与求解器（v0.7.71）** | 端到端参数优化链：**过程模型**（数据集谱系 verified → 资格门：MV 激励/常量/行为证据四类拦截）→ **AML 训练**（linear_arx/状态空间，G1–G3 门禁含 rollout 提升 ≥20%）→ **Profile 冻结与绑定**（授权面=绑定面）→ **ProblemIR 编译**（哈希域锁定，模板/求解器版本不匹配 422）→ **OSQP/SLSQP 求解 worker**（进程池、超时降级、协议版本校验、NaN/Inf fail-closed，34 例数值矩阵对拍解析解）→ **交叉核验**（TS 独立重算代价/轨迹/约束与 worker ≤1e-6 对拍）→ **治理下发**（HITL 单咽喉、批准时八重复核、设备回读 ackSummary verified/failed/unverified、防证据伪造）。Agent 工具、REST 与 MCP 三入口同链；`optimizer_capabilities/solve/status/cancel/plan_get` 五件套仅在有效绑定时注入。 |
 | **全操作审计日志** | 用户 / Agent / 系统 的每个动作都落进同一份可检索日志；操作者归属「Channel名/成员名」，与用户和系统天然区分。经 WS 实时推送。 |
 | **团队级插件开关** | 每个团队（Channel）持有**独立插件开关组**（`channel_plugins`）：被关闭插件的工具不注入该团队 Agent。插件本体经 `aw plugin` 与 `/plugins` 页热管理。 |
 | **插件扩展 API** | `plugins/<name>/` 下的一个自包含目录**同时增强两半**：`index.mjs`（服务端：钩子、路由、Agent 工具、**数采读驱动 / DCW 写驱动**/帧处理器/节点模板、配置分组、KV、定时器）与 `client.mjs`（浏览器：注入具名插槽的面板、i18n、设置 UI）。三种作用域——`builtin`（随包发布）> `project`（检出）> `user`（`~/.AgentWorkShop`）——启停**与代码修改**均有约 1 秒热重载；停用插件的驱动随热重载立即摘除。内置示例 **serial-bridge**（串口通信：读/写驱动 + 串口探针 API + 前端面板）。完整契约见 [`docs/plugins.md`](./docs/plugins.md)。 |
@@ -190,8 +203,8 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 | **双模式优化闭环** | 专属频道模板把闭环**结构性拆开**：*aml-training* 频道拿建模面（数据集、作业、场景编译、物理 spec、建模任务——无产线写入、无 MPC），*aml-optimization* 频道拿执行面（快照、试验、门禁、MPC、贝叶斯寻优 `twin_bayes_optimize`、受治理微写 `optimization_explore`）——边训边优在结构上不可能。**探索**模式走治理链写入并做响应回读配对（每笔写入落 `optimization_explorations` 台账）；**生产**模式要求绑定过门禁的模型（`aml` 模式，实例化时给 `boundModelId`）。 |
 | **运行时可观测** | `GET /api/system/monitor` 把 Agent 团队内部暴露成数字：根队列深度、看门狗介入次数、Harness 会话复用、记忆 outbox 积压——每项都有对应的文档化回退开关，新机制可以不重新部署就关掉。 |
 | **产线操作单页（`/operations`）** | 一页看全对产线的每一次触碰：实时操作流水（REST 快照 + WS 推流）把写控、数采、建模、配方、回退、报警、产线、人工、系统动作归入**九类分类**，写控行渲染结构化 **前值 → 后值 diff 徽章**（失败标红），并直接从事件流推断**闭环阶段**（监视 → 探索·小步 → 推荐搜索 → 影子验证 → 生产）。同一数据面也供工作台控制台的「产线作业」面板使用。 |
-| **外部 MCP 网关** | `aw mcp` 启动零依赖的 **stdio MCP 服务**（38 个工具），自动发现运行中的实例（环境变量 → 锁文件 → 配置文件），把产线、配方（含 mark-good）、受治理 DCW 写入、工艺参数语义映射、数采查询、频道、团队供给、模型晋升、判卷/回退与插件管理暴露给任意 MCP 客户端——受 `mcp.enabled` 运行时设置门控，附 `--doctor` 与 `--print-config` 辅助指令。 |
-| **全量配置驱动运行时** | 全部运行旋钮（记忆预算、上下文压缩、回退护栏、保留策略、备份、日志级别、系统时区、MCP 开关…）在设置描述符注册表声明一次，优先级 **config.yml < runtime-settings < env**——**119 个设置项、18 组**（40 live / 79 restart），代码零硬编码默认。 |
+| **外部 MCP 网关** | `aw mcp` 启动零依赖的 **stdio MCP 服务**（41 个工具），自动发现运行中的实例（环境变量 → 锁文件 → 配置文件），把产线、配方（含 mark-good）、受治理 DCW 写入、工艺参数语义映射、数采查询、频道、团队供给、模型晋升、判卷/回退与插件管理暴露给任意 MCP 客户端——受 `mcp.enabled` 运行时设置门控，附 `--doctor` 与 `--print-config` 辅助指令。此外每个 Channel 成员实例都有**专属的全量工具 stdio 桥**（104 个宿主工具 + 插件工具，按该 Agent 的角色/绑定面编译视图；ETag/304 增量轮询 + `tools/list_changed`），codex / dsh / opencode 等引擎以 MCP 形态拿到与原生注入完全同链的治理（token 自证 → 五层复核）。 |
+| **全量配置驱动运行时** | 全部运行旋钮（记忆预算、上下文压缩、回退护栏、保留策略、备份、日志级别、系统时区、MCP 开关…）在设置描述符注册表声明一次，优先级 **config.yml < runtime-settings < env**——**126 个设置项、19 组**（42 live / 84 restart），代码零硬编码默认。 |
 | **可配置系统时区** | 一个 `time.timeZone` 设置项（IANA 时区，live 热生效）统一驱动人读时间——日志、聊天、审计、Agent 记录与定时任务；机器时间轴（数采样本、`timestamptz`）仍保存绝对时间。 |
 | **可配置节拍** | 采样与查询的默认值/下限全部是 **live 设置**（`daq.sampling.*`、`daq.query.*`）：热重载、create/patch 时钳制，Agent 工具描述实时携带当前值。 |
 
@@ -269,7 +282,7 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 <td width="50%"><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-monitor.png" alt="运行时监控" width="100%" /><br/><sub><b>运行时监控。</b>每条已接线频道、成员数、依赖环与归属用户。</sub></td>
 </tr>
 <tr>
-<td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-settings.png" alt="系统设置" width="100%" /><br/><sub><b>系统设置。</b>18 组 119 个设置项，由描述符驱动——CLI 读的是同一份注册表。</sub></td>
+<td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-settings.png" alt="系统设置" width="100%" /><br/><sub><b>系统设置。</b>19 组 126 个设置项，由描述符驱动——CLI 读的是同一份注册表。</sub></td>
 <td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-plugins.png" alt="插件管理" width="100%" /><br/><sub><b>插件管理。</b>三种作用域、改代码即热重载、按团队开关。</sub></td>
 </tr>
 </table>
@@ -393,7 +406,7 @@ aw update --check                      # 只报告，不安装
 npm install -g agentworkshop@latest    # 手动等效
 ```
 
-版本遵循 semver。每次 `aw start` 都会校验配置根，并把 `home` 之前的旧版 `data/` 布局迁移进来（以最新文件为准），因此数据可以跨版本存活。SQLite schema 迁移在服务端启动时执行。当前版本：**v0.7.70**——见[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)。
+版本遵循 semver。每次 `aw start` 都会校验配置根，并把 `home` 之前的旧版 `data/` 布局迁移进来（以最新文件为准），因此数据可以跨版本存活。SQLite schema 迁移在服务端启动时执行。当前版本：**v0.8.3**——见[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)。
 
 ### 第一次「Agent × 产线」会话（约 2 分钟）
 
@@ -442,7 +455,7 @@ aw config set daq.query.minBucketMs 500             # 查询下限（samples/产
 | `aw stop` | 依单实例锁终止运行中的 aw 服务实例 |
 | `aw config list · get · set · unset · reset` | 读写运行时设置（schema 校验 + 原子写盘） |
 | `aw plugin list · create · enable · disable` | 跨三种作用域管理插件：查看、脚手架（默认 project 作用域；`--global` 为 user 作用域）、启停（写状态文件，运行中的服务约 1 秒热重载） |
-| `aw mcp` | 工业 MCP stdio 服务（38 个工具，覆盖平台 REST：产线、配方、DCW 写入、参数映射、数采、频道、团队、模型晋升、插件）——自动发现运行实例；`--doctor` 一次讲清发现/健康/鉴权，`--print-config` 直出可粘贴的 MCP 客户端配置 |
+| `aw mcp` | 工业 MCP stdio 服务（41 个工具，覆盖平台 REST：产线、配方、DCW 写入、参数映射、数采、频道、团队、模型晋升、插件）——自动发现运行实例；`--doctor` 一次讲清发现/健康/鉴权，`--print-config` 直出可粘贴的 MCP 客户端配置 |
 | `aw home` | 查看/初始化配置根 `.AgentWorkShop` |
 | `aw init <dir>` | 脚手架一个可运行的新项目（含完整配置系统与 CLI） |
 | `aw register <路径\|URL\|npm:包名>` | 注册一条新指令——项目级或 `--global` 用户级 |
@@ -511,6 +524,17 @@ export async function run(argv, ctx) {
 - **模型驱动孪生与持续校准**：`twin_trial_run` / `mpc_optimize` 可传 `model_id`——rollout 由训练出的 hybrid 模型驱动（校准后物理主干 + 残差集成 ONNX，`ModelBackedHybridProvider`），UQ 覆盖率与成员分歧来自训练工件；模型数据集与场景的产线/产品/配方不一致直接拒绝（`TWIN_MODEL_SCENE_MISMATCH`）。持续校准请求由 60s 定时 worker 消费，自动提交 `hybrid_residual` 重训**候选**；晋升仍走 HITL + Twin Gate（`AML_TWIN_WORKER_DISABLED=1` 可整体关闭）。
 - **双模式优化闭环**：随包附带两个频道模板——`chtpl-aml-training-default`（建模面：22 个工具，无产线写入、无 MPC）与 `chtpl-aml-optimization-default`（执行面：快照/试验/门禁/MPC/贝叶斯寻优，外加 `optimization_explore`——受治理微写，每笔设定值与响应回读配对落 `optimization_explorations` 台账）。两面按频道互斥注入；优化频道实例化时可选**探索**模式（治理小步，无需模型）或 **aml** 模式（必须给 `boundModelId`——过门禁的模型先绑定，执行面才解锁）。
 - **孪生 Provider 插件 SDK（热加载）**：工业场景的物理主干 / 场景包 / 目标 / 求解器经 `ctx.twin` 注册进 **Twin Provider Registry**（`registerPhysicsProvider` / `registerScenePack` / `registerObjectiveProfile` / `registerTrainingAdapter` / `registerSolverAdapter`，另有 `listProviders` / `getProviderHealth` / `resolveProvider` / `validateProvider` / `retireProvider` / `isRegistryAvailable`）。孪生工具按 `SceneContract.physicsProfileId` 解析 Provider（解析不到回退内置 `twin-injection-default`），**换场景不改工具与频道**；热重载按 **generation** 装载新代、排空旧代，试验与 MPC 持租约 ⇒ 在飞工作不被作废，`retireProvider` 等引用归零才下线。系统自带注塑 Provider 走的正是这套外部契约（`server/plugins-builtin/twin-injection-default/`），装法与其它插件同址、停用或热重载无需重启。清单字段与可运行示例见 [`docs/plugins.md`](./docs/plugins.md)「混合孪生 Provider 插件」，SDK 面见 [`docs/sdk.md`](./docs/sdk.md) §4.10。
+
+### 本体与 AI 先行模型闭环（v0.8.0）
+
+第三层建模资产——让整个闭环**自描述**。
+
+- **创作面**：`POST /api/workshop/ontology` 开草稿（乐观锁 `rev`），整份文档（实体/关系/规则/语义绑定）双重校验——schema/量纲 + **对真实 DAQ/DCW/配方对象的活体绑定校验**。规则走五态生命周期（`proposed → reviewed → validated → approved_for_control → deprecated`），控制级批准需要批准单（第二人；单管理员部署有审计留痕的 solo 豁免），`publish` 拒绝未到控制级批准的硬约束。版本不可变——发布即新版本，`GET /versions/{id}/compare` 给四段 diff；`/ontology` 六 tab 渲染图、编译产物、Rule Trace、绑定与版本台账。十件 Agent 工具覆盖同一面（`ontology_scene_inspect / node_neighbors / draft_create / draft_validate / draft_update / rule_explain / compile_preview / publish_propose / version_compare / draft_autofix`），外部 MCP 服务镜像其中四件只读工具。`/ontology` 的图 tab 渲染可交互节点-边视图（自绘 SVG，MV/CV/结构分道），点击节点抽屉可加载直接与 2 跳邻接（草稿维度子图 API）。
+- **编译不变量**：每版本四类产物——过程模型增量（特征候选、τ = D/v 时滞先验、单调性）、ProblemIR 增量、场景契约补丁、控制守卫集；**只收紧不放宽**、PLC 层隔离（联锁编译为 `PLC_LAYER_REQUIRED` 决策而非软件守卫）、不支持形式编译期拒绝（非线性 QP/线性耦合）、**哈希域分离**：`ontologyRefs` 进 Profile 内容哈希但**永不进**求解器 `ProblemIR` 哈希，本体改动表现为 `409 ONTOLOGY_PACK_DRIFTED` 而不是伪造的 IR 变更。
+- **运行时真正生效的只有四处**：下发时的**节点意图守卫**（`evaluateOntologyGuardsForNodes` → `409 ONTOLOGY_GUARD_BLOCKED`，状态未知 fail-closed）、供数据集/训练规划消费的**训练先验派生**、孪生消费的**场景/守卫补丁**、以及 Profile `ontologyRefs` 钉住的**已发布版本谱系校验**（下发时复核）。其余都是可审阅的元数据。
+- **采纳环——模型进化而不只是参数调优**：`optimizer_profile_propose` 打通「训练 → 求解」最后一公里：Agent 复制最新**已发布** Profile、换上新模型工件、生成 v(n+1) 草稿并挂 HITL 卡（`optimizer-profile:<id>@<版本>`）。批准与裁决两入口同路由——批准 ⇒ 发布草稿（冻结哈希）+ **自动重绑基线版本上的全部绑定**（revision+1，在飞求解按 `BINDING_STALE` fail-closed）+ 审计 `optimizer.profile.adopt`；拒绝/超时 ⇒ 零写。兼容性（工件种类 × 求解器族，D21）在提议时校验，Agent 只能在自身绑定面内提议。真机连续两轮进化（v1 → v2 → v3）验证，每轮后 `optimizer_solve` 均在新工件上 optimal。
+- **实测**：531 单测 · 44 服务层本体断言 · **72/72** 本体真机 e2e · **46/46** 模型闭环真机 e2e（孪生创建链 + 两轮采纳 + 零设备写入）· 14 条 MCP 断言。报告：[`docs/audit/2026-10-24-ontology-acceptance.md`](./docs/audit/2026-10-24-ontology-acceptance.md)、[`docs/audit/2026-10-24-ontology-live-report.md`](./docs/audit/2026-10-24-ontology-live-report.md)、[`docs/audit/2026-10-24-model-loop-acceptance.md`](./docs/audit/2026-10-24-model-loop-acceptance.md)。规范：[`docs/plans/2026-10-24-ontology-service-plan.md`](./docs/plans/2026-10-24-ontology-service-plan.md)、[`docs/plans/2026-10-24-closed-loop-acceptance.md`](./docs/plans/2026-10-24-closed-loop-acceptance.md)。
+- **边界（显式）**：ProblemIr 增量已编译但尚未作为求解约束消费；执行结果回写推荐台账的 outcome 回路、逐回合本体 prompt 注入属下一轮；RDF/OWL/SHACL 导出未交付。
 
 ---
 
@@ -652,11 +676,11 @@ AgentWorkShop/
 │   ├── mcp/                    # MCP 服务（25 个工具，进程内 workshop 面）
 │   ├── plugins-builtin/        # 随包发布的插件（serial-bridge · rag-bridge · diag-bridge · twin-injection-default）
 │   └── plugins/                # 运行时装配（单例）
-├── mcp/                        # aw mcp —— 零依赖 stdio MCP 网关（38 个工具，实例自动发现）
+├── mcp/                        # aw mcp —— 零依赖 stdio MCP 网关（41 个工具，实例自动发现）
 ├── sdk/                        # agentworkshop/sdk——插件上下文、钩子总线、REST 客户端、浏览器 SDK
 ├── tui/                        # 终端工作台（aw tui）
 ├── shared/
-│   └── config/                 # schema.json（119 个设置描述符）+ 引擎（合并/校验/持久化）+ 路径解析器
+│   └── config/                 # schema.json（126 个设置描述符）+ 引擎（合并/校验/持久化）+ 路径解析器
 ├── config.yml                  # 工厂默认值（构建/启动时读取；版本号来自 package.json）
 ├── .AgentWorkShop/             # 检出内的配置根——prompts（版本化）+ 运行时覆盖 · 数据 · 日志 · 指令（git 忽略）
 ├── data/                       # 迁移前的旧版位置（自动迁移进配置根）
@@ -869,7 +893,7 @@ Informatics 匿名评审稿,IEEEtran 双栏 10 页)。源文件、编译稿与�
 | 任意场景混合孪生建模闭环：场景发现 → 编译 → 冻结 → 物理 spec 起草/校验/编译 → 参考训练器作业（物理校准 + 残差集成 + conformal UQ）、模型驱动试验、持续校准 worker | 已交付 |
 | 双模式优化闭环：`aml-training` / `aml-optimization` 专属频道模板、互斥工具面、探索 ↔ 生产双模式、带回读配对的治理微写 | 已交付 |
 | 产线操作流水：`/operations` 单页 + 工作台控制台面板，九类操作时间线、结构化写控 diff、闭环阶段推断 | 已交付 |
-| 外部 MCP 网关：`aw mcp` stdio 服务（38 个工具）、实例自动发现、`mcp.enabled` 运行时门控 | 已交付 |
+| 外部 MCP 网关：`aw mcp` stdio 服务（41 个工具）、实例自动发现、`mcp.enabled` 运行时门控 | 已交付 |
 | 可配置系统时区（`time.timeZone`，live 热生效）+ 配方参数级单步限幅 `stepLimit` + 配方 `description` 元字段 | 已交付 |
 | 生产硬化：TLS、MQTT 鉴权、OPC UA 签名+加密缺省、结构化审计日志 | 规划中 |
 | 边缘部署形态：独立 edge-agent + 中心 broker | 规划中 |

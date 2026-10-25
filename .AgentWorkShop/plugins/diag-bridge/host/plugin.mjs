@@ -3,7 +3,7 @@
  * (由 server/plugins-builtin/diag-bridge/index.mjs 按职责拆出;内容逐行原文搬运)
  */
 import { AUTO_COOLDOWN_MS, DEFAULT_BASE, MIN } from './constants.mjs'
-import { authHeadersOf, authHint, autoEnabledOf, autoRulesOf, baseOf, diagTokenOf, harnessOf, jget, kvRuns, parseAutoRules, runKey } from './helpers.mjs'
+import { absoluteUrl, authHeadersOf, authHint, autoEnabledOf, autoRulesOf, baseOf, diagTokenOf, harnessOf, jget, jpatch, kvRuns, mapResultsError, parseAutoRules, probeResults, resultsAllowAnnotateOf, resultsAllowWorkerOf, resultsDefaultLimitOf, resultsEnabledOf, resultsMdMaxOf, runKey } from './helpers.mjs'
 import { snapshotCore } from './snapshot.mjs'
 import { startDiagnosis } from './diagnosis.mjs'
 import { uploadExportDataset } from './exports.mjs'
@@ -21,6 +21,7 @@ export default {
     { id: 'default', labelKey: 'plugin.diag-bridge.group.conn', label: '诊断服务连接', description: '后端地址与鉴权 Token', order: 420 },
     { id: 'run', labelKey: 'plugin.diag-bridge.group.run', label: '诊断执行参数', description: 'diag_run 的引擎与预算', order: 430 },
     { id: 'auto', labelKey: 'plugin.diag-bridge.group.auto', label: '自动诊断', description: '越限自动发起诊断(DAQ 采样事件驱动)', order: 440, collapsed: true },
+    { id: 'results', labelKey: 'plugin.diag-bridge.group.results', label: '分析结果库', description: '对 IDD 结果库的检索/详情/元数据编辑(默认关闭;结果可见面 = Token 属主可见面)', order: 450, collapsed: true },
   ],
   // 插件设置声明(key 编址 plugins.diag-bridge.<key>;labelKey 解析 i18n.json)
   settings: [
@@ -30,6 +31,11 @@ export default {
     { key: 'max_turns', type: 'number', default: 0, min: 0, max: 2000, group: 'run', labelKey: 'plugin.diag-bridge.settings.max_turns', label: '诊断最大轮数', description: 'diagnosis/start 的 maxTurns(0=取 kv/内置默认 220)' },
     { key: 'max_minutes', type: 'number', default: 0, min: 0, max: 720, group: 'run', labelKey: 'plugin.diag-bridge.settings.max_minutes', label: '诊断超时(分钟)', description: 'diagnosis/start 的 timeoutMinutes(0=取 kv/内置默认 40)' },
     { key: 'auto_enabled', type: 'boolean', default: false, group: 'auto', labelKey: 'plugin.diag-bridge.settings.auto_enabled', label: '自动诊断', description: 'daq:sample 越限命中规则时自动发起深度诊断(每产线冷却 30 分钟)' },
+    { key: 'results_enabled', type: 'boolean', default: false, group: 'results', labelKey: 'plugin.diag-bridge.settings.results_enabled', label: '结果库总开关', description: '开启后提供 diag_results / diag_result_get / diag_result_annotate 三工具与结果面板;结果可见面 = 诊断 API Token 属主的可见面(平台级,不按产线隔离)' },
+    { key: 'results_allow_annotate', type: 'boolean', default: false, group: 'results', labelKey: 'plugin.diag-bridge.settings.results_allow_annotate', label: '允许元数据编辑', description: '允许 lead 角色编辑结果的 description/tags/title(PATCH;最终属主校验在 IDD 侧);只改元数据,不触产线' },
+    { key: 'results_allow_worker', type: 'boolean', default: false, group: 'results', labelKey: 'plugin.diag-bridge.settings.results_allow_worker', label: 'worker 可读', description: '允许 worker 角色使用读工具(默认仅 lead);编辑工具始终仅 lead' },
+    { key: 'results_default_limit', type: 'number', default: 20, min: 1, max: 200, group: 'results', labelKey: 'plugin.diag-bridge.settings.results_default_limit', label: '索引页大小', description: 'diag_results 缺省返回条数(1-200)' },
+    { key: 'results_md_max_chars', type: 'number', default: 4000, min: 500, max: 50000, group: 'results', labelKey: 'plugin.diag-bridge.settings.results_md_max_chars', label: '报告截断上限', description: 'diag_result_get include_md=true 时 report.md 最大字符数(超出截断并给完整 URL)' },
   ],
   setup(ctx) {
     // 运行时追加分区与字段(ctx.config.defineGroup / defineField):
@@ -337,6 +343,198 @@ export default {
       },
     })
 
+    // ── 工具 ×3:分析结果库(§16;默认关闭,results_enabled 开启) ────────────
+    // 可见性注意:结果库按 IDD Token 属主聚合,平台内不按产线隔离 —— 所以
+    // 读面默认只给 lead(worker 可在 handler 内按设置热放开)、写面双闸门(设置 + lead + IDD 属主校验)。
+    // roles 必须在注册期就包含 worker:注册后 roles 固化,设置热改不会重注册工具;
+    // 因此 worker 的开关判断放在 handler 内(每次调用实时读设置)。
+    const denyWorkerIfDisabled = agent => agent?.role === 'worker' && !resultsAllowWorkerOf(ctx)
+
+    ctx.omp.registerTool({
+      name: 'diag_results',
+      label: '检索分析结果',
+      description: '检索 IDD 分析结果库的摘要索引(全量历史分析,不限本平台发起):按关键词/意图/标签/场景/分数过滤,返回 result_id、标题、意图、评分与结论、时间与标签。先用本工具拿到 result_id,再用 diag_result_get 看完整详情。brief 模式(缺省)单卡很省 token。',
+      parameters: {
+        type: 'object',
+        properties: {
+          q: { type: 'string', description: '关键词(匹配 title/description/summary/scene/tags,大小写不敏感)' },
+          intent: { type: 'string', enum: ['deep-diagnosis', 'stability-report', 'quick-screen', 'doe-analysis', 'experience-mining', 'optimizer-campaign'], description: '按分析模式过滤' },
+          category_id: { type: 'string', description: '按结果分类 id 过滤(见 /results/categories)' },
+          tag: { type: 'string', description: '按标签精确匹配' },
+          scene: { type: 'string', description: '按场景名精确匹配' },
+          harness: { type: 'string', description: '按执行引擎过滤(如 omp/claude/mock)' },
+          min_score: { type: 'number', description: 'score >= min_score(稳定性报告 0-100;深度诊断为 Judge 分)' },
+          sort: { type: 'string', enum: ['created_desc', 'created_asc', 'score_desc'], description: '排序(缺省 created_desc)' },
+          limit: { type: 'number', description: '每页条数(1-200,缺省取插件设置)' },
+          offset: { type: 'number', description: '分页偏移(缺省 0)' },
+          brief: { type: 'boolean', description: '省 token 模式(缺省 true:无 key_numbers,display_text 截 160 字符)' },
+        },
+      },
+      roles: ['lead', 'worker'],
+      handler: async (args, agent) => {
+        try {
+          if (denyWorkerIfDisabled(agent)) {
+            return { text: 'diag_results 当前仅对 lead 角色开放(管理员可在插件设置打开「worker 可读」)。', isError: true }
+          }
+          if (!resultsEnabledOf(ctx)) {
+            return { text: '分析结果库未启用:请在 系统设置→运行配置→插件→diag-bridge 打开「结果库总开关」。', isError: true }
+          }
+          const probe = await probeResults(ctx)
+          if (!probe.ok) return { text: probe.reason, isError: true }
+          const base = baseOf(ctx)
+          const params = new URLSearchParams()
+          for (const [key, value] of Object.entries({
+            q: args.q, intent: args.intent, category_id: args.category_id, tag: args.tag,
+            scene: args.scene, harness: args.harness,
+            min_score: args.min_score, sort: args.sort,
+            limit: args.limit ?? resultsDefaultLimitOf(ctx), offset: args.offset,
+            brief: args.brief === undefined ? true : args.brief,
+          })) {
+            if (value !== undefined && value !== null && String(value) !== '') params.set(key, String(value))
+          }
+          const body = await jget(ctx, `${base}/api/external/v1/results?${params.toString()}`)
+          const d = body.data ?? {}
+          const cards = d.results ?? []
+          if (!cards.length) return { text: `无匹配结果(total=${d.total ?? 0})。放宽过滤或用 q 换个关键词。` }
+          const showKn = briefOf(args) === false
+          const lines = cards.map(c =>
+            `- ${c.result_id} | ${c.intent} | ${c.score ?? '-'}分 ${c.verdict ?? ''} | ${c.created_at ?? '?'} | ${c.title}${(c.tags ?? []).length ? ` [${c.tags.join(',')}]` : ''}`
+            + `\n  ${String(c.display_text ?? '').slice(0, showKn ? 400 : 160)}`
+            + (showKn && c.key_numbers ? `\n  key_numbers=${JSON.stringify(c.key_numbers)}` : ''))
+          return { text: [`分析结果 total=${d.total} limit=${d.limit} offset=${d.offset} 本页 ${cards.length} 条(brief=${briefOf(args)}):`, ...lines, '', '按 id 取完整详情 → diag_result_get(result_id)。'].join('\n') }
+        }
+        catch (err) {
+          return { text: `diag_results 失败: ${mapResultsError(err, baseOf(ctx))}`, isError: true }
+        }
+      },
+    })
+
+    ctx.omp.registerTool({
+      name: 'diag_result_get',
+      label: '分析结果详情',
+      description: '按 result_id 取一条分析结果的完整详情:结论摘要、关键数字(可溯源到工件字段)、产物清单(报告/HTML 的 API URL)、运行状态。缺省不带 report.md 全文(只给 URL);include_md=true 时携带全文但按插件设置截断保护上下文。',
+      parameters: {
+        type: 'object',
+        properties: {
+          result_id: { type: 'string', description: '结果 id(diag_results 返回的 result_id = run_id)' },
+          include_md: { type: 'boolean', description: '携带 report.md 全文(缺省 false 只给 URL)' },
+          md_max_chars: { type: 'number', description: '本次调用的 md 截断上限(覆盖插件设置;500-50000)' },
+        },
+      },
+      required: ['result_id'],
+      roles: ['lead', 'worker'],
+      handler: async (args, agent) => {
+        try {
+          if (denyWorkerIfDisabled(agent)) {
+            return { text: 'diag_result_get 当前仅对 lead 角色开放(管理员可在插件设置打开「worker 可读」)。', isError: true }
+          }
+          if (!resultsEnabledOf(ctx)) {
+            return { text: '分析结果库未启用:请在 系统设置→运行配置→插件→diag-bridge 打开「结果库总开关」。', isError: true }
+          }
+          const probe = await probeResults(ctx)
+          if (!probe.ok) return { text: probe.reason, isError: true }
+          const id = String(args.result_id ?? '').trim()
+          if (!id) return { text: 'result_id 必填(先用 diag_results 检索)。', isError: true }
+          const base = baseOf(ctx)
+          const wantMd = args.include_md === true
+          const cap = Math.min(50000, Math.max(500, Math.round(Number(args.md_max_chars) || resultsMdMaxOf(ctx))))
+          const body = await jget(ctx, `${base}/api/external/v1/results/${encodeURIComponent(id)}?include_md=${wantMd ? 'true' : 'false'}`)
+          const d = body.data ?? {}
+          const sj = d.summary_json ?? {}
+          const meta = d.metadata ?? {}
+          const parts = [
+            `result_id=${d.result_id ?? id}`,
+            `标题=${d.title ?? '-'} 意图=${d.intent ?? '-'} 评分=${d.score ?? '-'} 结论=${d.verdict ?? '-'}`,
+            `摘要=${String(d.summary ?? '').slice(0, 800)}`,
+          ]
+          const kn = sj.key_numbers
+          if (kn && Object.keys(kn).length) parts.push(`关键数字=${JSON.stringify(kn)}`)
+          if (sj.sources) parts.push(`数字溯源=summary_json.sources(每个数字钉到 工件路径#字段)`)
+          const artifacts = meta.artifacts ?? []
+          if (artifacts.length) parts.push(`工件 ${artifacts.length} 项:${artifacts.slice(0, 12).map(a => a.path ?? a).join(', ')}${artifacts.length > 12 ? ' …' : ''}`)
+          const htmls = d.files?.html ?? []
+          if (htmls.length) parts.push(`HTML 报告 ${htmls.length} 份(在线查看需带 ?token=<诊断API Token>):${htmls.slice(0, 4).map(h => absoluteUrl(base, h.url)).join(', ')}`)
+          parts.push(`报告=${absoluteUrl(base, d.report_md_url)}`)
+          if (d.run) parts.push(`run=${d.run.run_id} ${d.run.status}${d.run.session_resumable ? '(可续聊)' : ''}`)
+          if (d.derived) parts.push('(本条为按需派生记录:行缺失时详情接口即时生成并标注 derived=true)')
+          if (wantMd && typeof d.report_md === 'string' && d.report_md.length) {
+            const md = d.report_md
+            if (md.length > cap) parts.push(`\nreport.md(截断 ${cap}/${md.length} 字符,全文用上面的报告 URL):\n${md.slice(0, cap)}\n…[已截断]`)
+            else parts.push(`\nreport.md:\n${md}`)
+          }
+          const edited = d.description
+          if (edited) parts.push(`\n用户描述=${String(edited).slice(0, 400)}`)
+          if ((d.tags ?? []).length) parts.push(`标签=[${d.tags.join(',')}]`)
+          parts.push('\n补充描述/标签 → diag_result_annotate(result_id, description, tags)。')
+          return { text: parts.filter(Boolean).join('\n') }
+        }
+        catch (err) {
+          return { text: `diag_result_get 失败: ${mapResultsError(err, baseOf(ctx))}`, isError: true }
+        }
+      },
+    })
+
+    ctx.omp.registerTool({
+      name: 'diag_result_annotate',
+      label: '编辑结果元数据',
+      description: '编辑一条分析结果的元数据(description ≤2000 / tags ≤16×≤40 / title ≤200),用于沉淀"这条结果代表什么、何时复用"。只改元数据、不触产线;需插件设置「允许元数据编辑」且调用者是 lead;属主校验最终在 IDD 侧(非属主 403 如实回执)。',
+      parameters: {
+        type: 'object',
+        properties: {
+          result_id: { type: 'string', description: '结果 id(diag_results 返回)' },
+          description: { type: ['string', 'null'], description: '结果描述(≤2000 字符;null=清除回落自动摘要)' },
+          tags: { type: 'array', items: { type: 'string' }, description: '标签数组(≤16 项,单项 ≤40 字符)' },
+          title: { type: 'string', description: '标题(≤200 字符)' },
+        },
+      },
+      required: ['result_id'],
+      roles: ['lead'],
+      handler: async (args) => {
+        try {
+          if (!resultsEnabledOf(ctx)) {
+            return { text: '分析结果库未启用:请在 系统设置→运行配置→插件→diag-bridge 打开「结果库总开关」。', isError: true }
+          }
+          if (!resultsAllowAnnotateOf(ctx)) {
+            return { text: '元数据编辑未开放:请管理员在插件设置打开「允许元数据编辑」(results_allow_annotate)。', isError: true }
+          }
+          const probe = await probeResults(ctx)
+          if (!probe.ok) return { text: probe.reason, isError: true }
+          const id = String(args.result_id ?? '').trim()
+          if (!id) return { text: 'result_id 必填。', isError: true }
+          const patch = {}
+          let touched = 0
+          if (args.description !== undefined) {
+            patch.description = args.description
+            touched += 1
+          }
+          if (args.tags !== undefined) {
+            patch.tags = args.tags
+            touched += 1
+          }
+          if (args.title !== undefined) {
+            patch.title = args.title
+            touched += 1
+          }
+          if (!touched) return { text: '至少给 description / tags / title 之一。', isError: true }
+          const base = baseOf(ctx)
+          await jpatch(ctx, `${base}/api/external/v1/results/${encodeURIComponent(id)}`, patch)
+          // 回读校验:PATCH 响应不含 display_text,重新 GET 详情确认落库;
+          // IDD 详情接口不返回 display_text,按索引口径本地拼(description || summary)
+          const detail = (await jget(ctx, `${base}/api/external/v1/results/${encodeURIComponent(id)}?include_md=false`)).data ?? {}
+          ctx.kv.set('diag.results.lastWrite', JSON.stringify({ at: Date.now(), resultId: id, fields: Object.keys(patch) }))
+          const displayText = String(detail.description || detail.summary || '').slice(0, 160)
+          return { text: `已更新 result_id=${id}:title=${detail.title ?? '-'}\ndescription=${String(detail.description ?? '(未改/为空)').slice(0, 200)}\ntags=[${(detail.tags ?? []).join(',')}]\n(display_text 现为:${displayText || '(空)'}…)。` }
+        }
+        catch (err) {
+          return { text: `diag_result_annotate 失败: ${mapResultsError(err, baseOf(ctx))}`, isError: true }
+        }
+      },
+    })
+
+    function briefOf(args) {
+      return args.brief === undefined ? true : Boolean(args.brief)
+    }
+
     // 路由 ×3(挂 /api/plugins/diag-bridge/*)
     ctx.route('GET', '/health', async () => {
       const runs = kvRuns(ctx)
@@ -452,6 +650,104 @@ export default {
       }
     })
 
-    ctx.logger.info('diag-bridge 就绪:工具 diag_run/diag_status + 路由 health/runs/snapshot/report,轮询 15s 已启动')
+    // ── 路由 ×4:分析结果库(§16;UI 面板同源,读写开关与工具一致) ────────────
+    ctx.route('GET', '/results', async (event) => {
+      try {
+        if (!resultsEnabledOf(ctx)) return { success: false, error: '结果库未启用(results_enabled)' }
+        const probe = await probeResults(ctx)
+        if (!probe.ok) return { success: false, error: probe.reason }
+        const base = baseOf(ctx)
+        const u = new URL(String(event?.path ?? event?.node?.req?.url ?? ''), 'http://local')
+        const params = new URLSearchParams()
+        for (const key of ['q', 'intent', 'category_id', 'tag', 'scene', 'harness', 'min_score', 'sort', 'limit', 'offset', 'brief']) {
+          const v = u.searchParams.get(key)
+          if (v !== null && v !== '') params.set(key, v)
+        }
+        if (!params.has('limit')) params.set('limit', String(resultsDefaultLimitOf(ctx)))
+        if (!params.has('brief')) params.set('brief', 'true')
+        const body = await jget(ctx, `${base}/api/external/v1/results?${params.toString()}`)
+        return { success: true, data: body.data }
+      }
+      catch (err) {
+        return { success: false, error: mapResultsError(err, baseOf(ctx)) }
+      }
+    })
+
+    ctx.route('GET', '/results/detail', async (event) => {
+      try {
+        if (!resultsEnabledOf(ctx)) return { success: false, error: '结果库未启用(results_enabled)' }
+        const probe = await probeResults(ctx)
+        if (!probe.ok) return { success: false, error: probe.reason }
+        const u = new URL(String(event?.path ?? event?.node?.req?.url ?? ''), 'http://local')
+        const id = String(u.searchParams.get('id') ?? '').trim()
+        if (!id) return { success: false, error: 'id 必填(result_id = run_id)' }
+        const includeMd = u.searchParams.get('include_md') === 'true' ? 'true' : 'false'
+        const base = baseOf(ctx)
+        const body = await jget(ctx, `${base}/api/external/v1/results/${encodeURIComponent(id)}?include_md=${includeMd}`)
+        const d = body.data ?? {}
+        // D5 跨机语义:不向浏览器透出 IDD 主机绝对路径;报告/HTML 一律给可打开的 URL
+        const safe = {
+          ...d,
+          metadata: d.metadata ? { ...d.metadata, workspace_path: undefined } : d.metadata,
+          files: {
+            ...(d.files ?? {}),
+            html: (d.files?.html ?? []).map(h => ({ path: h.path, url: absoluteUrl(base, h.url) })),
+            report_md_path: undefined,
+          },
+          report_md_url: absoluteUrl(base, d.report_md_url),
+        }
+        return { success: true, data: { ...safe, baseUrl: base, canAnnotate: resultsAllowAnnotateOf(ctx) && String(event?.awUser?.role ?? '') === 'admin' } }
+      }
+      catch (err) {
+        return { success: false, error: mapResultsError(err, baseOf(ctx)) }
+      }
+    })
+
+    ctx.route('PATCH', '/results/edit', async (event) => {
+      try {
+        if (!resultsEnabledOf(ctx)) return { success: false, error: '结果库未启用(results_enabled)' }
+        if (!resultsAllowAnnotateOf(ctx)) return { success: false, error: '元数据编辑未开放(results_allow_annotate)' }
+        // 写面角色闸门(文档 D3):UI 路由是用户面,要求 AW 管理员;
+        // Agent 面走 diag_result_annotate 工具(lead-only + IDD 属主校验)。
+        if (String(event?.awUser?.role ?? '') !== 'admin') {
+          return { success: false, error: '元数据编辑需要管理员身份(当前账号角色不足)' }
+        }
+        const probe = await probeResults(ctx)
+        if (!probe.ok) return { success: false, error: probe.reason }
+        const u = new URL(String(event?.path ?? event?.node?.req?.url ?? ''), 'http://local')
+        const id = String(u.searchParams.get('id') ?? '').trim()
+        if (!id) return { success: false, error: 'id 必填(result_id = run_id)' }
+        const b = event?.awBody ?? {}
+        const patch = {}
+        for (const key of ['description', 'tags', 'title']) {
+          if (b[key] !== undefined) patch[key] = b[key]
+        }
+        if (!Object.keys(patch).length) return { success: false, error: '至少给 description/tags/title 之一' }
+        const base = baseOf(ctx)
+        await jpatch(ctx, `${base}/api/external/v1/results/${encodeURIComponent(id)}`, patch)
+        const detail = (await jget(ctx, `${base}/api/external/v1/results/${encodeURIComponent(id)}?include_md=false`)).data ?? {}
+        ctx.kv.set('diag.results.lastWrite', JSON.stringify({ at: Date.now(), resultId: id, fields: Object.keys(patch) }))
+        return { success: true, data: { ...detail, baseUrl: base, canAnnotate: true } }
+      }
+      catch (err) {
+        return { success: false, error: mapResultsError(err, baseOf(ctx)) }
+      }
+    })
+
+    ctx.route('GET', '/results/categories', async () => {
+      try {
+        if (!resultsEnabledOf(ctx)) return { success: false, error: '结果库未启用(results_enabled)' }
+        const probe = await probeResults(ctx)
+        if (!probe.ok) return { success: false, error: probe.reason }
+        const base = baseOf(ctx)
+        const body = await jget(ctx, `${base}/api/external/v1/results/categories`)
+        return { success: true, data: body.data }
+      }
+      catch (err) {
+        return { success: false, error: mapResultsError(err, baseOf(ctx)) }
+      }
+    })
+
+    ctx.logger.info('diag-bridge 就绪:工具 diag_run/diag_status/diag_results/diag_result_get/diag_result_annotate + 路由 health/runs/snapshot/report/results,轮询 15s 已启动')
   },
 }

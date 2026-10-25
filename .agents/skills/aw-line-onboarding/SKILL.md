@@ -95,6 +95,22 @@ bindings 写法:`{"agentRole":"worker:2","kind":"recipe","nodeId":"$RECIPE","mod
 
 **MES 直取面(history-only)额外验收**:历史-only mes 节点不在 V1 daq 数采面,不能只看节点创建成功。`onboard.mjs --smoke` 的阶段 3b 会对 `channel.mesFetchGrants` 里每个节点用真实 `mes_fetch` 取 30 分钟窗口,断言非错误且有行数;字段字典/向量/表格/图像格式的语义由 mes_fetch 回包与数据集 manifest 证明。若手工分阶段执行,必须补跑这一步。
 
+**新功能面补充验收(2026-10-24 增补)**——V1-V6 之外,频道投用前按场景补三面:
+
+- **工具注册面**:GET /api/workshop/tools 确认频道将调用的工具(diag_* 诊断族等)available=true;
+  false 会被 channelToolGate 拒(「当前未注册」)——多为陈旧 dev 进程反向同步污染注册表,
+  杀进程树重启即恢复,不是插件缺陷。
+- **IDD 结果库面**(diagnose/optimize 场景):插件设置 results_enabled 开启后,
+  `aw_agent_tool_invoke` 实调 diag_results(支持 q/intent/category/tag/scene/harness/
+  min_score/sort/limit/offset/brief 十一参过滤)与 diag_result_get(id 取详情,brief 缺省
+  截断 md);diag_result_annotate 是 lead-only + IDD 属主校验,worker 调用被拒是正确行为;
+  UI 面板「分析结果」的元数据编辑仅 admin(角色闸门)。结果库默认关(results_enabled),
+  开启属数据边界决策,由管理员裁定。
+- **本体邻接面**:目标线发布本体后 `aw_agent_tool_invoke` 调 ontology_node_neighbors
+  (entityKey/hops 1-3/direction both|out|in)取结构化邻接子图——回包 nodes/edges 带 hop 与
+  orientation,即 Agent 可读的「该节点直接与间接关联的边」;前端同源走
+  /ontology 邻接视图(drafts/:id/subgraph)。
+
 ### 6. 治理红线与回滚
 
 - driverConfig 只来自文档/设备 export/用户确认;缺失字段问用户,不猜。
@@ -177,3 +193,5 @@ MES 双模式接入(2026-10-07 实测定稿;同一 MES API 按用户意愿二选
 - [ ] 交付说明含:复用/新建清单、插件开关、绑定矩阵、HITL 策略、回退路径
 - [ ] (真实接入)割接六步全过:真实预检全绿 → 只读浸泡 ≥30min → 首验三方对照 → driverConfig 替换 → verify-line 重跑全绿 → 割接清单交付
 - [ ] (虚拟预演)模拟孪生经 aw-plc-sim-twin 生成且 tick 活性自检通过
+- [ ] (2026-10-24 增补)频道工具注册面全 available;诊断场景结果库工具实调通过(或如实标注未启用)
+- [ ] (2026-10-24 增补)目标线有本体时邻接子图工具回包结构化(nodes/edges/hop/orientation)

@@ -12,14 +12,18 @@
  */
 import { getChannelPluginsRepo } from '../../db/channel-plugins.repo'
 import { getChannelTwinProfile, modelBackedToolPolicyFor, type AmlChannelProfileKind } from '../../aml/twin/channel-profile'
+import { getAmlRuntime } from '../../aml/runtime'
+import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
 import { AML_TRAINING_TOOL_NAMES, AML_MODEL_BACKED_TOOL_NAMES, HOST_TOOLS } from './catalog'
 import { twinWriteGuard } from '../../aml/twin/feature-flags'
 import { listPluginTools, pluginOfTool } from '../plugin-tools'
+import { auditPluginToolCall, governPluginToolCall } from '../plugin-governance'
 import type { HostToolBridgeContext, HostToolCall, HostToolResult } from './types'
 import { INDUSTRIAL_TOOL_NAMES, dispatchIndustrialTool } from './tools/industrial'
 import { guardIndustrialToolGrant } from '../industrial/grant-guard'
 import { verifyIndustrialToolCall } from '../industrial/tool-verify'
 import { checkToolAgainstScope } from '../../runtime/permission-scope'
+import { optimizerDispatchGate, legacyMpcAliasGate } from './optimizer-gate'
 import { channelToolGate } from '../../tools/policy'
 import type { WorkshopPermissionScope } from '../../../../../shared/workshop-protocol'
 import { handleCompleteTask, handleReportProgress } from './tools/progress'
@@ -40,6 +44,56 @@ export async function dispatchHostTool(ctx: HostToolBridgeContext, req: HostTool
 
 /** 内置工具名(插件同名注册不参与分发:注入面已显示内置定义,执行面必须同源) */
 const BUILTIN_TOOL_NAMES = new Set(HOST_TOOLS.map(t => t.name))
+
+/** 优化器绑定 id 列表(不存在/表未建 → 空,fail-closed 由调用方处理)。 */
+function listBindingIds(agentId: string): string[] {
+  try {
+    return (getAmlRuntime().db.prepare('SELECT id FROM optimizer_bindings WHERE channel_agent_id = ?').all(agentId) as Array<{ id: string }>).map(r => r.id)
+  }
+  catch {
+    return []
+  }
+}
+
+/**
+ * 已绑定 AML 模型是否存在通过的优化资格报告(旧 mpc_optimize 迁移门控)。
+ * 资格必须**按模型自身谱系**溯源,不能按产线放行:
+ *   model → dataset.spec_ref/spec_version → process_model_eligibility(同 spec/version)。
+ * 作用域由产线性质决定(simulated → simulation,否则 real),模拟资格不得授权真实线。
+ */
+export function boundModelHasEligibility(modelId: string): boolean {
+  try {
+    const db = getAmlRuntime().db
+    const model = db.prepare(
+      `SELECT m.line_id AS lineId, m.product_id AS productId, m.recipe_id AS recipeId,
+              d.spec_ref AS specRef, d.spec_version AS specVersion
+       FROM aml_models m JOIN aml_datasets d ON d.id = m.dataset_id
+       WHERE m.id = ?`,
+    ).get(modelId) as { lineId: string, productId: string, recipeId: string, specRef: string, specVersion: number | null } | undefined
+    if (!model?.specRef) return false
+    const line = getDcwLineRepo().byId(model.lineId)
+    const scope = line?.simulated === true ? 'simulation' : 'real'
+    const rows = db.prepare(
+      `SELECT e.report_json AS report FROM process_model_eligibility e
+       JOIN process_model_specs s ON s.id = e.spec_id AND s.version = e.spec_version
+       WHERE e.spec_id = ? AND e.spec_version = ? AND e.scope = ?
+         AND s.line_id = ? AND s.product_id = ? AND s.recipe_id = ?
+         AND e.optimization_eligible = 1
+       ORDER BY e.created_at DESC LIMIT 50`,
+    ).all(model.specRef, model.specVersion ?? 1, scope, model.lineId, model.productId, model.recipeId) as Array<{ report: string }>
+    return rows.some((r) => {
+      try {
+        return JSON.parse(r.report || '{}').optimizationEligible === true
+      }
+      catch {
+        return false
+      }
+    })
+  }
+  catch {
+    return false
+  }
+}
 
 /** 工具结果统一出口上限:超长文本截断+尾注(2026-10-05 评审;export/diag 类可经 optOut 放行) */
 const TOOL_RESULT_MAX_CHARS = 16_000
@@ -97,10 +151,16 @@ async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCa
         isError: true,
       }
     }
+    // 平台侧插件治理(WP4b/WP8):kb 入库 HITL + 声明式引用校验;原生/REST/MCP 同源
+    const governed = await governPluginToolCall(identity, req.toolName, req.arguments ?? {}, pluginTool)
+    if (governed) return governed
     try {
-      return await pluginTool.handler(req.arguments ?? {}, identity)
+      const result = await pluginTool.handler(req.arguments ?? {}, identity)
+      auditPluginToolCall(identity, req.toolName, result)
+      return result
     }
     catch (err) {
+      auditPluginToolCall(identity, req.toolName, { text: err instanceof Error ? err.message : String(err), isError: true })
       return {
         text: `工具执行异常(${req.toolName}): ${err instanceof Error ? err.message : String(err)}`,
         isError: true,
@@ -117,6 +177,17 @@ async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCa
   //  - 场景/spec/校准请求族:hybrid_twin + 训练 Channel;
   //  - 训练族(aml_job/dataset 等):工艺优化 Channel 拒绝(边训边优被结构禁止)。
   const twinKind: AmlChannelProfileKind = getChannelTwinProfile(identity.channelId).profile
+  // G4.6:旧 mpc_optimize 在既无 Profile 绑定也无 AML 模型绑定时不再返回调参方案
+  {
+    const profile = getChannelTwinProfile(identity.channelId)
+    const legacy = legacyMpcAliasGate({
+      toolName: req.toolName,
+      hasOptimizerBinding: listBindingIds(identity.agentId).length > 0,
+      hasBoundModel: Boolean(profile.boundModelId),
+      hasEligibleModel: profile.boundModelId ? boundModelHasEligibility(profile.boundModelId) : false,
+    })
+    if (!legacy.allowed) return { text: `${legacy.code}: ${legacy.message}`, isError: true }
+  }
   const isTwinTool = req.toolName.startsWith('twin_') || ['mpc_optimize', 'optimization_explore'].includes(req.toolName)
   if (isTwinTool) {
     const isSceneFamily = /^twin_(scene|physics|provider|calibration)/.test(req.toolName)
@@ -147,6 +218,17 @@ async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCa
   }
   if (AML_TRAINING_TOOL_NAMES.has(req.toolName) && twinKind === 'aml_optimization') {
     return { text: `工艺优化 Channel 不承担建模与训练(职责解耦):${req.toolName} 仅限 AML 训练 Channel 使用。请在此专注 goal 探索与模型驱动寻优。`, isError: true }
+  }
+
+  // Optimizer 工具显式门控(G4.3 / B.8.2 #3-#4):
+  // 注入面隐藏不是安全边界 —— REST/MCP 直调必须在这里被同样拒绝。
+  {
+    const gate = optimizerDispatchGate({
+      toolName: req.toolName,
+      twinKind,
+      bindingCount: req.toolName.startsWith('optimizer_') ? listBindingIds(identity.agentId).length : 0,
+    })
+    if (!gate.allowed) return { text: `${gate.code}: ${gate.message}`, isError: true }
   }
 
   // 所有真实写入口在统一分发层再做一次服务端 fail-closed 守卫；工具目录隐藏不是安全边界。

@@ -1,0 +1,58 @@
+{
+  "at": "2026-10-23",
+  "round": "solver integration & usage-flow verification",
+  "question": "求解器能否被集成使用?使用逻辑与流程是什么?",
+  "answer": {
+    "integratable": true,
+    "entryPoints": ["REST /api/workshop/optimization/solve(用户 token)", "Agent 工具 optimizer_solve(绑定面授权,经 agent-tools/invoke)", "MCP stdio 桥 tools/call optimizer_solve(AW_AGENT_TOKEN)", "UI /optimizer「运行/建议」tab 求解按钮"],
+    "usageFlow": "建线/配方/数采(批次+confirmed segments) → 规格(含 controlNodeId)→发布 → 数据集(lineage_verified)→资格→训练→模型 → Profile→发布→绑定 → solve(ProblemIR→OSQP→独立复算→建议 verified/unverified) → crosscheck(互校 pass→dual) → dispatch 建卡(D11 防伪/幂等锚) → HITL 批准(D13 八项重验) → DCW 整批写入+回读核验(acks) → executed+审计",
+    "writePolicy": "求解零写入;唯一写设备路径=HITL 批准,批准即 D13 重验,失败按拒收敛",
+    "doc": "docs/audit/2026-10-23-solver-usage-flow.md"
+  },
+  "suites": [
+    {
+      "id": "integration-live",
+      "name": "全旅程集成 E2E(隔离实例,真实 HTTP/Chrome/Python Worker/MCP 桥)",
+      "command": "AW_KEEP_ALIVE=1 npx tsx --tsconfig .nuxt/tsconfig.server.json scripts/e2e-optimizer-live.mjs",
+      "total": 104,
+      "pass": 104,
+      "fail": 0,
+      "sections": {
+        "R1_REST全链": "spec→dataset→eligibility→train→profile→binding→solve→runs",
+        "R2_负例契约": "版本不可变/工况字段/作用域/模板id/撤权/RBAC",
+        "R3_Agent工具面": "optimizer_capabilities/solve/plan_get/status/cancel",
+        "U1_浏览器UI": "五 tab 全流程真实点击含求解按钮与建议徽章",
+        "V_闭环价值": "首步驱动真实轨迹,中位误差改善 99.7%,MV 恒在窗口",
+        "W_治理下发": "W0 新建议→W1 互校 pass(maxDev=0)→W2 dual→W3 证据字段422→W4 建卡→W5 在飞409→W6 审批面精确卡(首步工程值相等)→W7 HITL 批准 D13 通过 acks {verified:1}→W8 设备回读=首步(量化容差)→W9 request+execute 审计",
+        "M_MCP桥": "initialize(aw-host-tools)→tools/list 含 optimizer_*→tools/call optimizer_solve optimal"
+      },
+      "evidence": "integration-live.log + integration-report.json"
+    },
+    {
+      "id": "optimizer-ui-readface",
+      "name": "UI 运行台账/建议徽章读面(live 保留实例)",
+      "command": "python scripts/ui/optimizer-ui-playwright.py",
+      "total": 11,
+      "pass": 11,
+      "fail": 0,
+      "evidence": "optimizer-ui-report.json"
+    }
+  ],
+  "keyEvidence": {
+    "W1": "crosscheck verdict=pass, maxDev=0(≤tol 1e-6)",
+    "W7": "批准响应 execution.acks={verified:1,unverified:0,failed:0,total:1}",
+    "W8": "设备 readValue=37 = 首步 36.9566 按节点小数位量化",
+    "W9": "ops 日志含 optimizer.dispatch.request + optimizer.dispatch.execute",
+    "M4": "MCP optimizer_solve → status=optimal",
+    "U1.12": "UI 按钮触发求解,运行行 optimal + 已验证推荐徽章"
+  },
+  "notes": [
+    "W8 容差按节点分辨率(toFixed(decimals))校准:36.9566 写入后回读 37,产品量化行为,非缺陷",
+    "MCP 桥还暴露 optimizer_campaign/round/state(上一轮 campaign 面),本轮断言锁定 5 个核心工具",
+    "全链同时覆盖: lineage 门、UQ verified、互校、防伪、幂等锚、D13 重验、审计——即主计划 SW2-SW5 的运行时集成面"
+  ],
+  "artifacts": {
+    "usageFlowDoc": "docs/audit/2026-10-23-solver-usage-flow.md",
+    "evidenceDir": "docs/audit/evidence/2026-10-23-solver-integration"
+  }
+}

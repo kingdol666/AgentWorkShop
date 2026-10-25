@@ -9,7 +9,7 @@
 >
 > Applies to: plugin system v2 has been available since **v0.7.29** (frontend component
 > injection / plugin settings / plugin i18n / runtime services surface); this document
-> describes **v0.7.70**. `ctx.sdkVersion` is currently `0.3.0`.
+> describes **v0.8.3**. `ctx.sdkVersion` is currently `0.3.0`.
 
 ## 1. Folder layout & quick start
 

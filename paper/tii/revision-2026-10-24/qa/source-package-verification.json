@@ -1,0 +1,70 @@
+{
+  "pages_original": 10,
+  "pages_clean_rebuild": 10,
+  "compile_exit": 0,
+  "original_sha256": "51118c0e71c486665117cd2ceb2e6622c57995a443b3c8a59cab5d60dc659028",
+  "clean_rebuild_sha256": "c637aa318d950f038b8b180b71d49e48bf4cc2cf0f036d478661a707042744d0",
+  "pages": [
+    {
+      "page": 1,
+      "text_equal": true,
+      "size_equal": true,
+      "raster_equal": true
+    },
+    {
+      "page": 2,
+      "text_equal": true,
+      "size_equal": true,
+      "raster_equal": true
+    },
+    {
+      "page": 3,
+      "text_equal": true,
+      "size_equal": true,
+      "raster_equal": true
+    },
+    {
+      "page": 4,
+      "text_equal": true,
+      "size_equal": true,
+      "raster_equal": true
+    },
+    {
+      "page": 5,
+      "text_equal": true,
+      "size_equal": true,
+      "raster_equal": true
+    },
+    {
+      "page": 6,
+      "text_equal": true,
+      "size_equal": true,
+      "raster_equal": true
+    },
+    {
+      "page": 7,
+      "text_equal": true,
+      "size_equal": true,
+      "raster_equal": true
+    },
+    {
+      "page": 8,
+      "text_equal": true,
+      "size_equal": true,
+      "raster_equal": true
+    },
+    {
+      "page": 9,
+      "text_equal": true,
+      "size_equal": true,
+      "raster_equal": true
+    },
+    {
+      "page": 10,
+      "text_equal": true,
+      "size_equal": true,
+      "raster_equal": true
+    }
+  ],
+  "passed": true
+}

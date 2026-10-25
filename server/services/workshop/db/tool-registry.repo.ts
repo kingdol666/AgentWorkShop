@@ -107,11 +107,15 @@ export interface ToolRegistryUpsert {
 export interface ChannelToolPolicySnapshot {
   channelId: string
   mode: ToolPolicyMode
-  source: 'default' | 'explicit'
+  source: 'default' | 'explicit' | 'cached' | 'degraded'
   updatedBy: string
   updatedAt: string | null
   /** 显式行:all 模式只有 enabled=0 的行有意义;selected 模式 enabled=1 为选中 */
   settings: Map<string, boolean>
+  /** WP7:降级标记(true = 读取失败后使用了最近已知快照或降级全拒) */
+  stale?: boolean
+  /** 快照年龄(ms;仅 cached 时有意义) */
+  ageMs?: number
 }
 
 export interface ChannelToolPolicyEntry {

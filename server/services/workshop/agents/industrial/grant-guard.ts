@@ -32,6 +32,15 @@ const WRITE_TOOLS = new Set([
   // 产线管理面(启停直接改物理状态与批次窗口)
   'line_start',
   'line_stop',
+  // 模型采纳(OW-adopt):改变求解器运行的模型工件(控制面写向,HITL 卡裁决)
+  'optimizer_profile_propose',
+  // 本体(ONT):知识起草与发布提议属产线域写向动作(不写设备,但会改变控制侧知识来源)
+  'ontology_draft_create',
+  'ontology_draft_update',
+  'ontology_draft_autofix',
+  'ontology_publish_propose',
+  // AML 模型人读身份(名称/描述)维护:写元数据,不触达产线设备
+  'aml_model_annotate',
 ])
 
 /** 无需复核的纯协作/管理面工具(不触达产线数据) */
@@ -41,6 +50,15 @@ const GRANT_EXEMPT = new Set([
   'aml_activity',
   'exp_collect',
 ])
+
+function draftLineId(draftJson: string): string {
+  try {
+    return (JSON.parse(draftJson || '{}') as { lineId?: string }).lineId ?? ''
+  }
+  catch {
+    return ''
+  }
+}
 
 interface GuardIdentity {
   agentId: string
@@ -76,6 +94,79 @@ async function resolveTargetLines(agentId: string, toolName: string, args: Recor
   for (const id of ids) {
     const l = await nodeIdLine(id)
     if (l) lines.add(l)
+  }
+  // 本体草稿 → 授权锚产线(草稿 doc.lineId;空则取该本体最近版本的 lineId)。
+  // 缺口修复(计划 ONT-13):draft_id 不在原解析面时 lineSet 为空会直接放行 operate 判定。
+  const draftId = one(args.draft_id ?? args.draftId)
+  if (draftId) {
+    const { getAmlRuntime } = await import('@/server/services/workshop/aml/runtime')
+    const db = getAmlRuntime().db
+    const row = db.prepare('SELECT ontology_id AS ontologyId, draft_json AS draftJson FROM ontology_drafts WHERE id = ?').get(draftId) as
+      { ontologyId?: string, draftJson?: string } | undefined
+    if (row) {
+      let lineId = draftLineId(row.draftJson ?? '')
+      if (!lineId && row.ontologyId) {
+        const v = db.prepare('SELECT line_id AS lineId FROM ontology_versions WHERE id = ? ORDER BY version DESC LIMIT 1').get(row.ontologyId) as { lineId?: string } | undefined
+        lineId = v?.lineId ?? ''
+      }
+      if (lineId) lines.add(lineId)
+    }
+  }
+  // 模型采纳:profile_id → 该 Agent 对该 Profile 绑定所在产线(经 profile→spec)
+  const adoptProfileId = one(args.profile_id)
+  if (adoptProfileId) {
+    const { getAmlRuntime } = await import('@/server/services/workshop/aml/runtime')
+    const db = getAmlRuntime().db
+    const b = db.prepare('SELECT id FROM optimizer_bindings WHERE channel_agent_id = ? AND profile_id = ? LIMIT 1').get(agentId, adoptProfileId) as { id?: string } | undefined
+    const bindingId2 = b?.id ?? ''
+    if (bindingId2) {
+      const prof = db.prepare('SELECT process_spec_ref AS specRef FROM optimizer_profiles WHERE id = ? ORDER BY version DESC LIMIT 1').get(adoptProfileId) as { specRef?: string } | undefined
+      const [specId] = (prof?.specRef ?? '').split('@')
+      if (specId) {
+        const spec = db.prepare('SELECT line_id AS lineId FROM process_model_specs WHERE id = ?').get(specId) as { lineId?: string } | undefined
+        if (spec?.lineId) lines.add(spec.lineId)
+      }
+    }
+  }
+  // AML 模型 → 数据集所属产线(model_id 元数据写/引用面)
+  const modelIdArg = one(args.model_id ?? args.modelId)
+  if (modelIdArg) {
+    const { getAmlRuntime } = await import('@/server/services/workshop/aml/runtime')
+    const db = getAmlRuntime().db
+    const m = db.prepare('SELECT dataset_id AS datasetId FROM aml_models WHERE id = ?').get(modelIdArg) as { datasetId?: string } | undefined
+    if (m?.datasetId) {
+      const d = db.prepare('SELECT line_id AS lineId FROM aml_datasets WHERE id = ?').get(m.datasetId) as { lineId?: string } | undefined
+      if (d?.lineId) lines.add(d.lineId)
+    }
+  }
+  // 本体版本 → 版本产线(版本比较的归属面)
+  const ontologyId = one(args.ontology_id ?? args.ontologyId)
+  if (ontologyId) {
+    const { getAmlRuntime } = await import('@/server/services/workshop/aml/runtime')
+    const db = getAmlRuntime().db
+    const wantsVersion = args.version !== undefined ? Number(args.version) : Number.NaN
+    const v = Number.isInteger(wantsVersion)
+      ? db.prepare('SELECT line_id AS lineId FROM ontology_versions WHERE id = ? AND version = ?').get(ontologyId, wantsVersion) as { lineId?: string } | undefined
+      : db.prepare(`SELECT line_id AS lineId FROM ontology_versions WHERE id = ? AND status = 'published' ORDER BY version DESC LIMIT 1`).get(ontologyId) as { lineId?: string } | undefined
+    if (v?.lineId) lines.add(v.lineId)
+  }
+  // Optimizer 绑定 → 目标产线(Profile → ProcessModelSpec.lineId);只读工具同样受线授权约束
+  const bindingId = one(args.binding_id ?? args.bindingId)
+  if (bindingId) {
+    const { getAmlRuntime } = await import('@/server/services/workshop/aml/runtime')
+    const db = getAmlRuntime().db
+    const binding = db.prepare('SELECT profile_id AS profileId, profile_version AS profileVersion FROM optimizer_bindings WHERE id = ? AND channel_agent_id = ?')
+      .get(bindingId, agentId) as { profileId: string, profileVersion: number } | undefined
+    if (binding) {
+      const profile = db.prepare('SELECT process_spec_ref AS specRef FROM optimizer_profiles WHERE id = ? AND version = ?')
+        .get(binding.profileId, binding.profileVersion) as { specRef: string } | undefined
+      const [specId, specVersion] = (profile?.specRef ?? '').split('@')
+      if (specId) {
+        const spec = db.prepare('SELECT line_id AS lineId FROM process_model_specs WHERE id = ? AND version = ?')
+          .get(specId, Number(specVersion || '1')) as { lineId: string } | undefined
+        if (spec?.lineId) lines.add(spec.lineId)
+      }
+    }
   }
   if (lines.size > 0) return [...lines]
 

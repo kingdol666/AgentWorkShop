@@ -68,30 +68,51 @@ export function concludeJob(run: RunningJob, artifactsDir: string): void {
   const gates = evaluateGates(run.row.purpose, dataset, manifest, metrics, artifactsDir)
   const gatesJson = JSON.stringify(gates)
   const metricsJson = JSON.stringify(metrics ?? {})
-  rt.repo.job.finish(run.row.id, gates.passed ? 'done' : 'failed', metricsJson, gatesJson, artifactsDir, new Date().toISOString())
-  if (!gates.passed) {
-    rt.repo.job.fail(run.row.id, 'failed', `评测门未通过:${gates.checks.filter(c => !c.pass).map(c => `${c.id} ${c.detail}`).join('; ')}`, new Date().toISOString())
-    // 门禁未过=实验记录 gates_failed(非作业错误语义,但作业 fail 承载原因)
-  }
-  // 实验与模型登记(实验 id = job id 首跑对应;重试复用)
+  // 实验行先落(谱系在,作业状态随后定)
   let registeredModelId: string | undefined
-  try {
-    registeredModelId = registerModelFromJob(run.row.id, gates, metricsJson).modelId
+  let registrationError: string | null = null
+  if (!gates.passed) {
+    // 直接用 fail():它同时写 status + error(先 finish(failed) 会让 error 写不进去)
+    rt.repo.job.fail(run.row.id, 'failed', `评测门未通过:${gates.checks.filter(c => !c.pass).map(c => `${c.id} ${c.detail}`).join('; ')}`, new Date().toISOString())
   }
-  catch (err) {
-    log.warn(`[aml-job] ${run.row.id} 模型登记失败:${err instanceof Error ? err.message : String(err)}`)
+  else {
+    // C11 两阶段收口:工件校验/rename(文件)→ 单事务 INSERT model + UPDATE job done/model_id。
+    // 注册失败 = 明确失败(可幂等重试),绝不出现"训练成功、模型不存在"。
+    try {
+      rt.db.exec('BEGIN')
+      try {
+        registeredModelId = registerModelFromJob(run.row.id, gates, metricsJson).modelId
+        if (!registeredModelId) throw new Error('注册未返回 modelId')
+        const ok = rt.repo.job.finish(run.row.id, 'done', metricsJson, gatesJson, artifactsDir, new Date().toISOString(), registeredModelId)
+        if (!ok) throw new Error('作业终态写入失败(状态竞争或已终态)')
+        rt.db.exec('COMMIT')
+      }
+      catch (err) {
+        try {
+          rt.db.exec('ROLLBACK')
+        }
+        catch { /* 事务已终结 */ }
+        throw err
+      }
+    }
+    catch (err) {
+      registrationError = err instanceof Error ? err.message : String(err)
+      log.error(`[aml-job] ${run.row.id} 工件注册失败:${registrationError}`)
+      rt.repo.job.fail(run.row.id, 'failed', `工件注册失败(可重试):${registrationError}`, new Date().toISOString())
+    }
   }
+  const succeeded = Boolean(registeredModelId) && !registrationError
   // 建模任务收口:该作业若由 aml_training_plans 派生,回写 plan 终态与模型 id。
   void import('../twin/training-plans')
-    .then(m => m.settleTrainingPlanByJob(run.row.id, gates.passed ? 'done' : 'failed', registeredModelId, gates.checks.filter(c => !c.pass).map(c => `${c.id} ${c.detail}`).join('; ')))
+    .then(m => m.settleTrainingPlanByJob(run.row.id, succeeded ? 'done' : 'failed', registeredModelId, gates.checks.filter(c => !c.pass).map(c => `${c.id} ${c.detail}`).join('; ') || registrationError || ''))
     .catch(() => { /* plan 模块不可用不阻断作业收口 */ })
   // 持续校准 worker 收口:该作业若由 twin_update_runs 派生,更新其终态(成功/失败)。
   // 动态 import 规避 stages ↔ calibration-worker ↔ job-orchestrator 的循环装载。
   void import('../twin/calibration-worker')
     .then(m => m.markTwinUpdateRunFinished(
       run.row.id,
-      gates.passed,
-      gates.checks.filter(c => !c.pass).map(c => `${c.id} ${c.detail}`).join('; '),
+      succeeded,
+      gates.checks.filter(c => !c.pass).map(c => `${c.id} ${c.detail}`).join('; ') || registrationError || '',
     ))
     .catch(() => { /* worker 不可用不阻断作业收口 */ })
   const datasetFresh = rt.repo.dataset.get(run.row.datasetId)
@@ -100,7 +121,7 @@ export function concludeJob(run: RunningJob, artifactsDir: string): void {
   recordOps({
     actor: run.row.agentId || 'aml', actorName: run.row.agentId || 'AML', actorKind,
     action: 'aml.job.finish', kind: 'system',
-    summary: `作业 ${run.row.id} 结束:门禁${gates.passed ? '全部通过' : '未通过'}`,
+    summary: `作业 ${run.row.id} 结束:${succeeded ? '门禁通过且模型已登记' : gates.passed ? `工件注册失败(${registrationError ?? 'unknown'})` : '门禁未通过'}`,
     targetKind: 'aml_job', targetId: run.row.id,
     lineId: datasetFresh?.lineId, productId: datasetFresh?.productId, recipeId: datasetFresh?.recipeId,
   })
@@ -119,10 +140,10 @@ export function concludeJob(run: RunningJob, artifactsDir: string): void {
       agentId: run.row.agentId,
       ...(run.row.channelId ? { channelId: run.row.channelId } : {}),
       ...(run.row.taskId ? { taskId: run.row.taskId } : {}),
-      ok: gates.passed,
+      ok: succeeded,
       title: `训练作业 ${run.row.id}`,
       summary: [
-        `门禁${gates.passed ? '全部通过,模型已登记可用' : '未通过'}。`,
+        gates.passed ? (succeeded ? '门禁全部通过,模型已登记可用。' : `门禁通过但工件注册失败:${registrationError ?? '未知原因'}(可重试)。`) : '门禁未通过。',
         metricsLine,
         registeredModelId ? `model_id=${registeredModelId}` : '',
         gates.passed ? '' : (failedChecks ? `未过项:${failedChecks}` : run.row.error ? `错误:${run.row.error.slice(0, 200)}` : ''),

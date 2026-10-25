@@ -76,6 +76,11 @@ export const TOOL_META: Record<string, { icon: string, kind: 'native' | 'host' |
   twin_gate_evaluate: { icon: 'i-tabler-shield-check', kind: 'industrial' },
   twin_calibration_request: { icon: 'i-tabler-scale', kind: 'industrial' },
   twin_bayes_optimize: { icon: 'i-tabler-chart-dots', kind: 'industrial' },
+  optimizer_capabilities: { icon: 'i-tabler-list-search', kind: 'industrial' },
+  optimizer_solve: { icon: 'i-tabler-math-function', kind: 'industrial' },
+  optimizer_status: { icon: 'i-tabler-progress', kind: 'industrial' },
+  optimizer_cancel: { icon: 'i-tabler-player-stop', kind: 'industrial' },
+  optimizer_plan_get: { icon: 'i-tabler-file-analytics', kind: 'industrial' },
 }
 
 /** 类别展示元数据(壳层统一渲染头部) */

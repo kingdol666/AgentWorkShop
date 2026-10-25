@@ -198,7 +198,7 @@ function omit(obj, ...keys) {
 }
 
 /**
- * 工具面(35 个)—— 按三个 skill 的标准流程分组:
+ * 工具面(41 个)—— 按三个 skill 的标准流程分组:
  *   连接:aw_status / aw_login
  *   节点绑定:aw_line_* / aw_product_create / aw_recipe_create / aw_dcw_* / aw_param_* / aw_daq_*
  *   优化 channel:aw_channel_* / aw_team_provision / aw_agent_tool_* / aw_twin_profile_* / aw_task_* / aw_model_* / aw_optimization_judge
@@ -663,6 +663,58 @@ export function buildToolDefs() {
         if (!r.ok) return fail(`${action} 失败 → HTTP ${r.status}: ${r.message}`)
         return ok(r.data)
       },
+    },
+
+    // ── 工业本体(ONT;只读四件)──
+    // 写面(起草/编译预览/发布提议)刻意不暴露在本面:本面是用户身份的 REST 投影,
+    // 没有 channel 上下文,治理(引用面/收权即失活/HITL)不生效。写路径请用频道 Agent
+    // 工具桥(host 面 10 工具)或 aw_agent_tool_invoke。
+    {
+      name: 'ontology_scene_inspect',
+      description: '只读查询某产线的已发布工业本体:实体/语义绑定/已验证影响关系/约束规则编译决策/运行时守卫。用于确认变量语义、单位、受哪条规则限制及其来源版本。',
+      inputSchema: obj({
+        lineId: s('产线 id(必填)'),
+        limit: s('每页实体数(1-200,缺省 50)', 'number'),
+      }, ['lineId']),
+      run: rest('GET', args => `/api/workshop/ontology/scene${queryOf({ lineId: args.lineId, limit: args.limit })}`),
+    },
+    {
+      name: 'ontology_node_neighbors',
+      description: '只读查询某产线已发布本体中以实体为中心的邻接/多跳子图:中心实体与平台绑定、各跳邻居(key/hop/类型/角色)、关联边(类型/方向/证据档/hop)与截断标记。用于回答「这个变量直接/间接关联什么」。',
+      inputSchema: obj({
+        lineId: s('产线 id(必填)'),
+        entityKey: s('中心实体 key(必填,可先用 ontology_scene_inspect 查)'),
+        hops: s('跳数 1-3(缺省 1)', 'number'),
+        direction: s('both | out | in(缺省 both)'),
+        kinds: s('关系类型过滤,逗号分隔(缺省=全部)'),
+      }, ['lineId', 'entityKey']),
+      run: rest('GET', args => `/api/workshop/ontology/scene${queryOf({
+        lineId: args.lineId,
+        entity: args.entityKey,
+        hops: args.hops,
+        direction: args.direction,
+        kinds: args.kinds,
+      })}`),
+    },
+    {
+      name: 'ontology_rule_explain',
+      description: '只读解释一条本体规则的来源与编译决策(DSL/证据级别/生命周期/decision 与 decisionCode/落到哪类产物/适用配方与工况)。用于回答「为什么这条建议受限制」。',
+      inputSchema: obj({
+        ontologyId: s('本体 id(必填)'),
+        ruleId: s('规则 id 或 key(必填)'),
+        version: s('本体版本号(缺省=最近版本)', 'number'),
+      }, ['ontologyId', 'ruleId']),
+      run: rest('GET', args => `/api/workshop/ontology/traces/${encodeURIComponent(args.ontologyId)}${queryOf({ ruleId: args.ruleId, version: args.version })}`),
+    },
+    {
+      name: 'ontology_version_compare',
+      description: '只读比较本体两个已发布版本的差异(实体/关系/规则/绑定四段:新增/删除/变更)。用于回答「这份本体改了什么、为什么控制行为变了」。',
+      inputSchema: obj({
+        ontologyId: s('本体 id(必填)'),
+        from: s('起始版本号', 'number'),
+        to: s('目标版本号', 'number'),
+      }, ['ontologyId', 'from', 'to']),
+      run: rest('GET', args => `/api/workshop/ontology/versions/${encodeURIComponent(args.ontologyId)}/compare${queryOf({ from: args.from, to: args.to })}`),
     },
 
     // ── 逃生舱 ──

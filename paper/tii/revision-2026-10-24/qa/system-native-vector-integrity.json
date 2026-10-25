@@ -1,0 +1,28 @@
+{
+  "architecture-2026": {
+    "pdf_text_selectable": true,
+    "raster_images": 0,
+    "native_vector_paths": 35,
+    "eps_font_type_42": true,
+    "eps_contains_raster_operator": false,
+    "semantic_assertions": {
+      "production_context_present": true,
+      "evidence_band_present": true,
+      "DAQ_and_DCW_separate": true,
+      "equipment_local_protection_outside_platform": true
+    }
+  },
+  "runtime-2026": {
+    "pdf_text_selectable": true,
+    "raster_images": 0,
+    "native_vector_paths": 25,
+    "eps_font_type_42": true,
+    "eps_contains_raster_operator": false,
+    "semantic_assertions": {
+      "changed_success_journal_is_in_write_card": true,
+      "summary_separate": true,
+      "save_is_separate_caller_action": true,
+      "batch_before_parameter_write": true
+    }
+  }
+}

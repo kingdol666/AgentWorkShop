@@ -60,7 +60,7 @@ footer:
         <div class="hw-stat"><span class="v">6</span><span class="k">现场协议</span></div>
         <div class="hw-stat"><span class="v">4</span><span class="k">接入入口</span></div>
         <div class="hw-stat"><span class="v">14</span><span class="k">执行引擎</span></div>
-        <div class="hw-stat"><span class="v">119</span><span class="k">运行时设置项</span></div>
+        <div class="hw-stat"><span class="v">126</span><span class="k">运行时设置项</span></div>
         <div class="hw-stat"><span class="v">1100+<i>*</i></span><span class="k">验收断言</span></div>
         <div class="hw-stat"><span class="v">7</span><span class="k">任务机状态</span></div>
       </div>
@@ -71,10 +71,10 @@ footer:
         <code>docs/audit/e2e-2026-09-24-full-coverage.md</code> 与
         <code>docs/audit/e2e-2026-09-24-all-features.md</code>。
         其余是可数出来的静态事实:6 类驱动(5 内置 + serial-bridge 串口插件) / 4 个入口(WS · MCP · A2A · REST) /
-        14 个 harness(<code>agents/registry.ts</code>) / 119 个设置项分 18 组(<code>aw config list</code>) / 7 态任务机。
+        14 个 harness(<code>agents/registry.ts</code>) / 126 个设置项分 19 组(<code>aw config list</code>) / 7 态任务机。
       </p>
       <div class="aw-statusbar">
-        <span>版本 <i>v0.7.70</i></span>
+        <span>版本 <i>v0.8.3</i></span>
         <span>许可 <i>Apache License 2.0</i></span>
         <span>运行时 <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>文档 <i>简体中文 / English</i></span>
@@ -277,7 +277,7 @@ footer:
       <div class="hw-p">
         <span class="no">04</span>
         <h3>配置驱动</h3>
-        <p><code>config.yml &lt; runtime-settings &lt; env</code>,同一份描述符同时驱动 CLI 与设置页——119 个设置项(40 live / 79 restart),代码零硬编码默认。</p>
+        <p><code>config.yml &lt; runtime-settings &lt; env</code>,同一份描述符同时驱动 CLI 与设置页——126 个设置项(42 live / 84 restart),代码零硬编码默认。</p>
       </div>
       <div class="hw-p">
         <span class="no">05</span>
@@ -317,6 +317,10 @@ footer:
       <div class="hw-f"><span class="tag">PROD</span><h3>生产化硬化(v0.7.58)</h3><p>保写心跳生命周期治理(失败写不占位 · 变更点清值 · 产线活动门);mock 静默兜底封堵;帧像素 sha256 指纹 + 对象存储按天 GC(删前 DB 交叉校验);Timescale 按天 chunk + 列存压缩;堆水位监控 + 子进程自动重生;治理窗落盘;grant 复核并入频道绑线。</p></div>
       <div class="hw-f"><span class="tag">DATA</span><h3>数据分析台账(v0.7.62)</h3><p>analysis_save / analysis_query 原生工具落账分析结论(产线×配方×时间窗),Agent 只增、人类修订留痕;/analysis 页多维检索实时前插;diag_run 后台跑 IDD 六种分析意图(根因/产线报告/快筛/DOE/经验挖掘/优化战役)按 taskId 查进度;改删与可见性全受产线级权限门控。</p></div>
       <div class="hw-f"><span class="tag">EDA</span><h3>数据管理台与 EDA 工坊(/data · /studio)</h3><p>三形态数据(标量/数组断面/CCD 图像)多字段复合查询、批量导出作业台账(manifest+merged.csv)与 WS 实时镜像;工坊提供图表与栅格看板、golden 相位参考轨迹偏差分、FDC 特征参考带判定、SPC 控制图(Nelson/I-MR/EWMA/CUSUM)、共性分析、OCAP 处置单、虚拟量测(OOD 拒判)与派生数据集,全受产线权限与引用预检约束。</p></div>
+      <div class="hw-f"><span class="tag">OPT</span><h3>工艺优化器与求解器(v0.7.71)</h3><p>端到端参数优化链:过程模型(谱系 verified 数据集+资格门)→ AML 训练(G1–G3 门禁)→ Profile 冻结绑定 → ProblemIR 编译(哈希锁定)→ OSQP/SLSQP 求解 worker(进程池/超时降级/NaN fail-closed)→ TS 独立重算交叉核验(≤1e-6)→ 治理下发(HITL 单咽喉+八重复核+设备回读 ackSummary)。Agent 工具、REST、MCP 三入口同链,优化器五件套仅有效绑定注入。</p></div>
+      <div class="hw-f"><span class="tag">GOV</span><h3>工具面声明式治理(v0.7.71)</h3><p>引用校验规则上收为工具定义的 references 声明(104 个宿主工具全显式声明,注册期登记制:写族未声明拒登记);插件工具声明后才走同一校验并全量审计;每 Agent 专属全量工具 stdio 桥(ETag/304 增量轮询);token 支持轮换+宽限窗,列表只回尾 4 位;数采推送兜底强制产线 operate 权限+回填窗默认 ±1h。</p></div>
+      <div class="hw-f"><span class="tag">ONTO</span><h3>本体服务(v0.8.0)</h3><p>面向控制的本体:10 类实体 × 8 种封闭关系 × 三级证据 × 五态生命周期;编译四类工件(过程模型 / ProblemIR 增量 / 场景契约 / 控制守卫),只收紧不变量 + 逐规则 Rule Trace;运行守卫对状态未知 fail-closed,本体哈希与求解 IR 分域。/ontology 六 tab 管理台（图 tab 为可交互节点-边视图，节点抽屉支持 1/2 跳邻接）+ 10 件 Agent 工具。</p></div>
+      <div class="hw-f"><span class="tag">LOOP</span><h3>AI 先行模型闭环(v0.8.0)</h3><p>Agent 亲手创建虚拟模型:场景发现 → 人批准冻结 → 物理规格骨架 → 真采快照 → 虚弱试验;训练出新模型后用 optimizer_profile_propose 提议采纳,HITL 批准即发布+自动重绑,下一次求解即用新模型——连续两轮 v1→v2→v3 真机验证,全程零设备写入。</p></div>
     </div>
   </section>
 
@@ -408,7 +412,7 @@ aw start            # → http://localhost:3001 · 配置根 ~/.AgentWorkShop
   <section class="hw-final">
     <h2>把 Agent 接到真实产线上</h2>
     <p>
-      14 个执行引擎、6 种现场协议、119 个运行时设置项和 1100+ 条基础波验收断言(另有补充波报告)都已经在仓库里。
+      14 个执行引擎、6 种现场协议、126 个运行时设置项和 1100+ 条基础波验收断言(另有补充波报告)都已经在仓库里。
       监督层,秒级软实时;协议真实,断言可复跑。
     </p>
     <div class="hw-cta">

@@ -1,0 +1,81 @@
+{
+  "at": "2026-10-24T16:58:09.729Z",
+  "base": "http://127.0.0.1:3300",
+  "line": "ln-4d4613f5",
+  "recipe": "rc-589a232b",
+  "optimizer": "394ab15a-236f-434e-9db8-c56e9f18d0f2",
+  "baseline": {
+    "p": 45,
+    "t": 6,
+    "q": {
+      "weight": 31.28,
+      "flash": 0.003,
+      "sink": 2.031,
+      "melt": 247.2,
+      "lastAt": 1792860825399,
+      "offline": false
+    }
+  },
+  "final": {
+    "weight": 31.55,
+    "flash": 0,
+    "sink": 2.038,
+    "melt": 246.8,
+    "lastAt": 1792861023185,
+    "offline": false
+  },
+  "finalOk": false,
+  "update": null,
+  "journal": "窗口内无优化记录(该节点/配方尚无 Agent 调控历史)。",
+  "recipeLog": "Recipe 变更史(产线 注塑成型质量窗口寻优 injection-demo[ln-4d4613f5]; 配方 scen-injection-recipe-demo[rc-589a232b], 近 60 分钟, 4 条, 新→旧):\n- [10-25 00:53:46] 配方试验 scope=line 产线=注塑成型质量窗口寻优 injection-demo[ln-4d4613f5] 配方=scen-injection-recipe-demo[rc-589a232b] 产品=scen-injection-product-demo[pd-d8b81b20] | 来源=Agent 操作者=注塑产线作业-demo/注塑工艺优化 worker demo | 【应急】配方试验整批下发(证实 1/1,未证实 0,失败 0,批次 rr-f663b):dw-3d678→50 | 假设:真实闭环 P3-1:克重 31.28g、缩痕 2.031%,保压 45→50bar(单变量);65s 后 DAQ 复测。\n- [10-25 00:53:46] 下发回执 scope=line 产线=注塑成型质量窗口寻优 injection-demo[ln-4d4613f5] 配方=scen-injection-recipe-demo[rc-589a232b] 产品=scen-injection-product-demo[pd-d8b81b20] | 来源=系统 操作者=Agent 整批下发 | 批次 rr-f663b ACK 鉴定:证实 1/1,未证实 0,失败 0\n- [10-25 00:51:59] 开跑整批下发 scope=line 产线=注塑成型质量窗口寻优 injection-demo[ln-4d4613f5] 配方=scen-injection-recipe-demo[rc-589a232b] 产品=scen-injection-product-demo[pd-d8b81b20] | 来源=用户 操作者=演示管理员 | 产线开跑:批次 rr-19d5869e · 配方「scen-injection-recipe-demo」已下发\n- [10-25 00:51:59] 配方创建 scope=line 产线=注塑成型质量窗口寻优 injection-demo[ln-4d4613f5] 配方=scen-injection-recipe-demo[rc-589a232b] 产品=scen-injection-product-demo[pd-d8b81b20] | 来源=用户 操作者=演示管理员 | 创建配方「scen-injection-recipe-demo」(产线 ln-4d4613f5)\n\n说明:只含产线域记录;配方下发=整批参数写命令;下发回执=逐参数 ACK 鉴定;配方试验=候选整批下发(不写版本);优化开窗/判定/回退=单次设定变更与恢复。节点级参数值逐笔历史用 dcw_journal(node_id)。",
+  "results": [
+    {
+      "id": "P1",
+      "name": "场景/配方/worker 就绪",
+      "pass": true,
+      "detail": "line=ln-4d4613f5 recipe=rc-589a232b optimizer=394ab15a-236f-434e-9db8-c56e9f18d0f2 weight=31.28g flash=0.003% sink=2.031% melt=247.2℃"
+    },
+    {
+      "id": "P2",
+      "name": "当前已在配方基线",
+      "pass": true,
+      "detail": "weight=31.28g flash=0.003% sink=2.031% melt=247.2℃ p=45 t=6"
+    },
+    {
+      "id": "P3-1",
+      "name": "保压 50bar 试验经 HITL 并设备证实",
+      "pass": true,
+      "detail": "weight=31.47g flash=0.028% sink=1.927% melt=245.7℃ p=50 lastAt=2026-10-24T16:54:51.070Z 试验已整批下发并全部设备证实(1/1,批次 rr-f663b):scen-injection:dcw:hold-pressure-sp→50bar [证实✓]。假设:真实闭环 P3-1:克重 31.28g、缩痕 2.031%,保压 45→50bar(单变量);65s 后 DAQ 复测。。\n人工附言:注塑真实闭环 E2E"
+    },
+    {
+      "id": "P3-2",
+      "name": "保压 55bar 试验经 HITL 并设备证实",
+      "pass": false,
+      "detail": "weight=31.53g flash=0.006% sink=1.692% melt=246.6℃ p=50 lastAt=2026-10-24T16:55:57.279Z 试验下发失败:本产线上一次配方试验距今仅 66s,试验节拍为 ≥300s(防连发震荡),请等待 234s 后再试"
+    },
+    {
+      "id": "P4",
+      "name": "保压时间补偿试验经 HITL 并复测",
+      "pass": false,
+      "detail": "weight=31.55g flash=0% sink=2.038% melt=246.8℃ t=6 lastAt=2026-10-24T16:57:03.185Z 试验下发失败:本产线上一次配方试验距今仅 132s,试验节拍为 ≥300s(防连发震荡),请等待 168s 后再试"
+    },
+    {
+      "id": "P5",
+      "name": "最终质量入窗(克重/飞边/缩痕/熔温,DAQ 新鲜)",
+      "pass": false,
+      "detail": "weight=31.55g flash=0% sink=2.038% melt=246.8℃ lastAt=2026-10-24T16:57:03.185Z offline=false"
+    },
+    {
+      "id": "P6",
+      "name": "未达标时恢复基线并复测",
+      "pass": false,
+      "detail": "weight=31.56g flash=0% sink=1.894% melt=247℃ p=50 t=6"
+    },
+    {
+      "id": "P7",
+      "name": "写控/配方日志可追溯",
+      "pass": true,
+      "detail": "窗口内无优化记录(该节点/配方尚无 Agent 调控历史)。 | Recipe 变更史(产线 注塑成型质量窗口寻优 injection-demo[ln-4d4613f5]; 配方 scen-injection-recipe-demo[rc-589a232b], 近 60 分钟, 4 条, 新→旧):\n- [10-25 00:53:46] 配方试验 scope=line 产线=注塑成型"
+    }
+  ]
+}

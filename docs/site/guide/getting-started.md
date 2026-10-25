@@ -80,4 +80,4 @@ npm install -g agentworkshop@latest    # 手动等效
 - [SDK 指南](/sdk/) —— 用代码消费平台服务
 - [插件开发](/plugins/) —— 对前后端做插入增强
 
-> 部署后值得先看两处:侧导航「**产线操作**」(`/operations`)——所有对产线的触碰按九类分类的实时流水,写控行带前后值 diff 徽章;终端里 `aw mcp --doctor`——把平台暴露成 38 个工具的 MCP 服务,自动发现运行实例(受 `mcp.enabled` 设置门控)。
+> 部署后值得先看两处:侧导航「**产线操作**」(`/operations`)——所有对产线的触碰按九类分类的实时流水,写控行带前后值 diff 徽章;终端里 `aw mcp --doctor`——把平台暴露成 41 个工具的 MCP 服务,自动发现运行实例(受 `mcp.enabled` 设置门控)。

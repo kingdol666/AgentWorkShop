@@ -232,6 +232,19 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
     return lineId || null
   }
 
+  /**
+   * WP3:轮换 Agent 实例 token(旧 token 进入宽限窗,桥进程自动重连过渡)。
+   * 返回 { token, prevTokenUntil, channelId, agentId };实例不属于该 channel → 404。
+   * 审计由调用方(API 路由)写 agent.token.rotate。
+   */
+  rotateChannelAgentToken(channelId: string, agentId: string): { agentId: string, channelId: string, token: string, prevTokenUntil: string } {
+    const row = this.deps.repos.channelAgents.findByChannelAgent(channelId, agentId)
+    if (!row) throw new AppError(404, 'NOT_FOUND', `Agent 实例不存在于本 channel: ${agentId}`)
+    const rotated = this.deps.repos.channelAgents.rotateToken(agentId)
+    if (!rotated) throw new AppError(404, 'NOT_FOUND', `Agent 实例不存在: ${agentId}`)
+    return { agentId: row.id, channelId: row.channelId, token: rotated.token, prevTokenUntil: rotated.prevTokenUntil }
+  }
+
   /** AML 解耦:twin-profile 变更(模式/绑定模型)后回收成员,重新装配注入新工况提示词 */
   async recycleChannelForTwinProfile(channelId: string): Promise<void> {
     const channel = this.deps.repos.channels.findById(channelId)
@@ -373,7 +386,7 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
       visibility: row.ownerUserId === null ? 'public' : row.visibility,
       isBuiltin: row.ownerUserId === null,
       ownerUserId: row.ownerUserId ?? null,
-      instances: instances.map(i => ({ id: i.id, channelId: i.channelId, role: i.role as 'lead' | 'worker', token: i.token })),
+      instances: instances.map(i => ({ id: i.id, channelId: i.channelId, role: i.role as 'lead' | 'worker', tokenTail: i.token.slice(-4) })),
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
     }

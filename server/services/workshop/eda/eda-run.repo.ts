@@ -33,6 +33,8 @@ interface RunMirrorInput {
   productId: string
   recipeId: string
   recipeName: string
+  /** 建批时冻结的配方版本(0/缺省 = 历史未知;不再恒写 NULL) */
+  recipeVersion?: number
   startedAt: string
   endedAt: string | null
 }
@@ -66,9 +68,9 @@ function safeJson<T>(text: unknown, fallback: T): T {
 /** 开账镜像(run 创建即落;幂等,重复触发不覆盖) */
 export function mirrorRunCreated(run: RunMirrorInput): void {
   edaDb().prepare(`INSERT INTO eda_runs (id, line_id, product_id, recipe_id, recipe_name, recipe_version, started_at, ended_at, outcome, created_at)
-    VALUES (?, ?, ?, ?, ?, NULL, ?, ?, 'open', ?)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'open', ?)
     ON CONFLICT(id) DO NOTHING`).run(
-    run.id, run.lineId, run.productId, run.recipeId, run.recipeName, run.startedAt, run.endedAt, new Date().toISOString(),
+    run.id, run.lineId, run.productId, run.recipeId, run.recipeName, run.recipeVersion ?? null, run.startedAt, run.endedAt, new Date().toISOString(),
   )
 }
 
@@ -77,9 +79,10 @@ export function mirrorRunClosed(run: RunMirrorInput): void {
   const now = new Date().toISOString()
   const ended = run.endedAt ?? now
   edaDb().prepare(`INSERT INTO eda_runs (id, line_id, product_id, recipe_id, recipe_name, recipe_version, started_at, ended_at, outcome, created_at)
-    VALUES (?, ?, ?, ?, ?, NULL, ?, ?, 'open', ?)
-    ON CONFLICT(id) DO UPDATE SET ended_at = COALESCE(eda_runs.ended_at, excluded.ended_at), recipe_name = excluded.recipe_name`)
-    .run(run.id, run.lineId, run.productId, run.recipeId, run.recipeName, run.startedAt, ended, now)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'open', ?)
+    ON CONFLICT(id) DO UPDATE SET ended_at = COALESCE(eda_runs.ended_at, excluded.ended_at), recipe_name = excluded.recipe_name,
+      recipe_version = COALESCE(eda_runs.recipe_version, excluded.recipe_version)`)
+    .run(run.id, run.lineId, run.productId, run.recipeId, run.recipeName, run.recipeVersion ?? null, run.startedAt, ended, now)
   edaDb().prepare('UPDATE eda_runs SET ended_at = ? WHERE id = ? AND (ended_at IS NULL OR ended_at = \'\')').run(ended, run.id)
   void backfillSampleCount(run.id, run.lineId, run.startedAt, ended)
   // E3 联动:关账即入特征提取队列(FDC 主链;失败不阻断关账)

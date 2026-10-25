@@ -37,6 +37,13 @@ export interface HarnessCapabilities {
   contextStats: boolean
   /** 平台可主动触发压缩(onTurnSettled 门控) */
   compact: boolean
+  /**
+   * 工具面刷新能力(C14):
+   *  - native      —— 支持服务端直接热更(omp set_host_tools);
+   *  - list_changed —— MCP bridge 轮询 + 客户端重列举(支持者 ≤15s);
+   *  - per_turn    —— 下一回合装配(pi 工具文件)。
+   */
+  toolRefresh?: 'native' | 'list_changed' | 'per_turn'
 }
 
 /**
@@ -270,7 +277,20 @@ export function isKnownHarness(harness: string): boolean {
 
 /** registry 元信息(前端下拉/能力徽标;不含实现) */
 export function harnessMetas(): Array<{ id: string, label: string, description: string, capabilities: HarnessCapabilities, continuityMode: HarnessContinuityMode, homepage: string }> {
-  return Object.values(HARNESS_REGISTRY).map(({ id, label, description, capabilities, continuityMode, homepage }) => ({ id, label, description, capabilities, continuityMode, homepage }))
+  return Object.values(HARNESS_REGISTRY).map(({ id, label, description, capabilities, continuityMode, homepage }) => ({
+    id, label, description, continuityMode, homepage,
+    capabilities: { ...capabilities, toolRefresh: toolRefreshOf(id) },
+  }))
+}
+
+/**
+ * 工具面刷新策略(C14):omp/mock 支持服务端热更;pi 每回合装配;
+ * 其余持久会话走 MCP bridge 的 list_changed(客户端支持时重列举)。
+ */
+export function toolRefreshOf(harness: string): 'native' | 'list_changed' | 'per_turn' {
+  if (harness === 'omp' || harness === 'mock') return 'native'
+  if (harness === 'pi') return 'per_turn'
+  return 'list_changed'
 }
 
 /** 某 harness 的连续性能力(§6.3;未知 harness 按 per_turn 最保守处理,不虚假承诺复用) */

@@ -1,3 +1,4 @@
+/* eslint-disable @stylistic/member-delimiter-style */
 /**
  * AML 模型注册表:实验/模型登记 + 阶段流转(candidate → shadow → production → retired)。
  *
@@ -7,8 +8,9 @@
  *  - 每 (product, recipe, purpose) 至多一个 production:晋升事务里同组旧 production 顺次 retired;
  *  - 候选/退役工件 GC 由 retention 扫描处理(注册表行永留,artifacts_pruned 标记缺文件)。
  */
-import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { createHash } from 'node:crypto'
 import { AppError } from '../../../utils/errors'
 import { recordOps } from '../ops/ops'
 import { broadcastSceneEvent } from '../scene-events'
@@ -18,6 +20,7 @@ import { getDcwRecipeRepo } from '../dcw/dcw-recipe.repo'
 import { getAmlRuntime } from './runtime'
 import type { AmlModelRow, AmlModelStage } from './aml.repo'
 import type { GateReport } from './gates'
+import { assertArtifactKind, type ArtifactKind } from '../process-model/contracts'
 
 export type { AmlModelRow, AmlModelStage }
 
@@ -119,23 +122,49 @@ export function registerModelFromJob(jobId: string, gates: GateReport, metricsJs
   )
   if (!gates.passed) return { experimentId: expId }
 
-  // 工件快照:artifacts → models/<modelId>/(不可变;注册表行指向这里)
+  // ===== 工件校验与登记(C11 两阶段;A12 类型分派)=====
+  const artifactsDir = join(rt.jobsDir, jobId, 'artifacts')
+  const descriptor = readArtifactDescriptor(artifactsDir, metricsJson)
+  assertArtifactFiles(artifactsDir, descriptor)
+
   const modelId = `mdl-${jobId.slice(4)}`
+  // 幂等:重试命中已登记模型 → 返回同一 id,不产生第二份
+  const existingModel = rt.repo.model.get(modelId)
+  if (existingModel) return { experimentId: expId, modelId }
+
   const modelDir = join(rt.modelsDir, modelId)
-  if (!existsSync(modelDir)) {
-    mkdirSync(modelDir, { recursive: true })
-    cpSync(join(job.artifactsPath ?? join(rt.jobsDir, jobId, 'artifacts')), modelDir, { recursive: true })
-    // io_spec 快照(预测服务的输入契约;norm 来自数据集 manifest,评估器已嵌入 metrics)
-    writeFileSync(join(modelDir, 'REGISTERED'), now)
+  // 阶段一(文件):先写 staging,校验通过后同盘 rename 到 models/<modelId>/
+  const staging = join(rt.modelsDir, `.staging-${modelId}`)
+  rmSync(staging, { recursive: true, force: true })
+  mkdirSync(staging, { recursive: true })
+  try {
+    cpSync(artifactsDir, staging, { recursive: true })
+    const required = descriptor.requiredFiles
+    for (const file of required) {
+      const p = join(staging, file)
+      if (!existsSync(p) || statSync(p).size === 0) throw new AppError(500, 'AML_ARTIFACT_INCOMPLETE', `登记前工件校验失败:${file} 缺失或为空`)
+    }
+    writeFileSync(join(staging, 'REGISTERED'), now)
+    writeFileSync(join(staging, 'artifact_manifest.json'), JSON.stringify({
+      kind: descriptor.kind, schemaVersion: descriptor.schemaVersion, entryFile: descriptor.entryFile,
+      requiredFiles: required, artifactHash: descriptor.artifactHash,
+    }, null, 2))
+    rmSync(modelDir, { recursive: true, force: true })
+    renameSync(staging, modelDir)
   }
-  const ioSpec = buildIoSpec(dataset.path, job.purpose)
-  // io_spec.json 同步落到模型实体目录:元数据行的 io_spec_json 是索引,实体自带契约
-  // 才能让 ./aml 单独拷贝后仍可被预测服务装配(与 dataset 的 spec.json 同一范式)
+  catch (err) {
+    // 失败清理 staging;已 rename 的目录保留为孤儿,由 entity 对账回收(不静默删)
+    rmSync(staging, { recursive: true, force: true })
+    throw err
+  }
+
+  const ioSpec = buildIoSpecForKind(dataset.path, job.purpose, descriptor.kind, metricsJson, modelDir)
   try {
     writeFileSync(join(modelDir, 'io_spec.json'), JSON.stringify(ioSpec, null, 2))
   }
   catch { /* 契约文件落盘失败不阻断注册(元数据行仍持有同一份) */ }
   const identity = deriveModelIdentity(job, dataset, modelId)
+  // 阶段二(DB):单条 INSERT;调用方在同一收口里把 done + model_id 写回作业行
   rt.repo.model.insert({
     id: modelId,
     experimentId: expId,
@@ -152,15 +181,99 @@ export function registerModelFromJob(jobId: string, gates: GateReport, metricsJs
     description: identity.description,
     lineId: identity.lineId,
     objectiveId: identity.objectiveId,
+    artifactKind: descriptor.kind,
+    schemaVersion: descriptor.schemaVersion,
+    modelInterface: ioSpec.modelInterface,
+    artifactHash: descriptor.artifactHash,
     createdAt: now,
   })
   recordOps({
     actor: job.agentId || 'aml', actorName: job.agentId || 'AML', actorKind: job.agentId ? 'agent' : 'system',
-    action: 'aml.model.register', kind: 'system', summary: `候选模型 ${modelId} 登记(门禁通过)「${identity.label}」`,
+    action: 'aml.model.register', kind: 'system', summary: `候选模型 ${modelId} 登记(门禁通过,工件 ${descriptor.kind})「${identity.label}」`,
     targetKind: 'aml_model', targetId: modelId,
     lineId: dataset.lineId, productId: dataset.productId, recipeId: dataset.recipeId,
   })
   return { experimentId: expId, modelId }
+}
+
+interface ArtifactDescriptor {
+  kind: ArtifactKind
+  schemaVersion: number
+  entryFile: string
+  requiredFiles: string[]
+  artifactHash: string
+}
+
+function sha256File(path: string): string {
+  return createHash('sha256').update(readFileSync(path)).digest('hex')
+}
+
+/** 工件完整性摘要:覆盖**全部** requiredFiles(含 metrics/sidecar),按清单顺序拼接。 */
+function sha256Files(dir: string, files: string[]): string {
+  const hash = createHash('sha256')
+  for (const file of [...files].sort()) {
+    hash.update(file)
+    hash.update(readFileSync(join(dir, file)))
+  }
+  return hash.digest('hex')
+}
+
+/** 工件类型判别:未知类型一律拒绝(不静默回落到 ONNX)。 */
+export function readArtifactDescriptor(artifactsDir: string, metricsJson: string): ArtifactDescriptor {
+  const manifestPath = join(artifactsDir, 'artifact_manifest.json')
+  if (existsSync(manifestPath)) {
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8')) as { kind?: string, schemaVersion?: number, entryFile?: string, requiredFiles?: string[], artifactHash?: string }
+    const kind = assertArtifactKind(manifest.kind)
+    const entryFile = manifest.entryFile ?? 'model.json'
+    const requiredFiles = manifest.requiredFiles ?? [entryFile, 'metrics.json']
+    const hashable = requiredFiles.filter(f => existsSync(join(artifactsDir, f)))
+    return {
+      kind,
+      schemaVersion: manifest.schemaVersion ?? 1,
+      entryFile,
+      requiredFiles,
+      // 多文件摘要优先:只哈希入口文件无法发现 metrics/sidecar 被替换
+      artifactHash: hashable.length ? sha256Files(artifactsDir, hashable) : (manifest.artifactHash ?? ''),
+    }
+  }
+  // 旧链兼容:hybrid_manifest.json → hybrid_manifest@1;否则 ONNX 一步预测
+  const metrics = safeParseMetrics(metricsJson)
+  if (typeof metrics.artifactKind === 'string' && metrics.artifactKind) {
+    const kind = assertArtifactKind(metrics.artifactKind)
+    const entryFile = 'model.json'
+    return {
+      kind, schemaVersion: 1, entryFile, requiredFiles: [entryFile, 'metrics.json'],
+      artifactHash: existsSync(join(artifactsDir, entryFile)) ? sha256File(join(artifactsDir, entryFile)) : '',
+    }
+  }
+  if (existsSync(join(artifactsDir, 'hybrid_manifest.json'))) {
+    return {
+      kind: 'hybrid_manifest@1', schemaVersion: 1, entryFile: 'model.onnx', requiredFiles: ['model.onnx'],
+      artifactHash: typeof metrics.artifactHash === 'string' ? metrics.artifactHash : (existsSync(join(artifactsDir, 'model.onnx')) ? sha256File(join(artifactsDir, 'model.onnx')) : ''),
+    }
+  }
+  const stub = existsSync(join(artifactsDir, 'STUB'))
+  if (stub) return { kind: 'onnx_one_step@1', schemaVersion: 1, entryFile: 'STUB', requiredFiles: ['STUB'], artifactHash: '' }
+  return {
+    kind: 'onnx_one_step@1', schemaVersion: 1, entryFile: 'model.onnx', requiredFiles: ['model.onnx'],
+    artifactHash: existsSync(join(artifactsDir, 'model.onnx')) ? sha256File(join(artifactsDir, 'model.onnx')) : '',
+  }
+}
+
+function assertArtifactFiles(artifactsDir: string, descriptor: ArtifactDescriptor): void {
+  for (const file of descriptor.requiredFiles) {
+    const p = join(artifactsDir, file)
+    if (!existsSync(p)) throw new AppError(500, 'AML_ARTIFACT_MISSING', `工件校验失败:${descriptor.kind} 必需文件 ${file} 不存在`)
+  }
+}
+
+function safeParseMetrics(metricsJson: string): Record<string, unknown> {
+  try {
+    return JSON.parse(metricsJson || '{}') as Record<string, unknown>
+  }
+  catch {
+    return {}
+  }
 }
 
 function gatesSummary(gates: GateReport): string {
@@ -189,6 +302,65 @@ function buildIoSpec(datasetPath: string, purpose: string): Record<string, unkno
     norm: manifest.norm,
     beatMs: manifest.beatMs,
     assumptions: 'rollout: control 取未来 U,feature 持最后观测(persistence),target 回填预测',
+  }
+}
+
+/** 按工件类型生成 io_spec(G2.8 全链分派;旧 one_step 语义不动)。 */
+function buildIoSpecForKind(datasetPath: string, purpose: string, kind: ArtifactKind, metricsJson: string, modelDir: string): Record<string, unknown> & { modelInterface: string } {
+  if (kind === 'onnx_one_step@1' || kind === 'hybrid_manifest@1') {
+    return buildIoSpec(datasetPath, purpose) as Record<string, unknown> & { modelInterface: string }
+  }
+  const manifest = JSON.parse(readFileSync(join(datasetPath, 'manifest.json'), 'utf8')) as {
+    allNodes: string[]; controlNodes: string[]; targetNodes: string[]
+    shapes: { x: [number, number, number], u: [number, number, number], y: [number, number, number] }
+    norm: Record<string, { mean: number[], std: number[] }>; beatMs: number
+    variables?: Array<{ id: string, nodeId: string, role: string, unit: string, modelUnit?: string, scale: number, offset: number, delayMs?: number }>
+  }
+  const metrics = safeParseMetrics(metricsJson)
+  if (kind === 'linear_state_space@1') {
+    const artifact = JSON.parse(readFileSync(join(modelDir, 'model.json'), 'utf8')) as { mvOrder: string[], cvOrder: string[], arOrder: number, inputOrder: number, delaysSteps: Record<string, number>, K: number }
+    return {
+      version: 2,
+      purpose,
+      modelInterface: 'linear_state_space',
+      artifactKind: kind,
+      historySteps: manifest.shapes.x[1],
+      horizonSteps: manifest.shapes.u[1],
+      allNodes: manifest.allNodes,
+      controlNodes: manifest.controlNodes,
+      targetNodes: manifest.targetNodes,
+      mvOrder: artifact.mvOrder,
+      cvOrder: artifact.cvOrder,
+      arOrder: artifact.arOrder,
+      inputOrder: artifact.inputOrder,
+      delaysSteps: artifact.delaysSteps,
+      K: artifact.K,
+      variables: manifest.variables ?? [],
+      norm: manifest.norm,
+      beatMs: manifest.beatMs,
+      assumptions: '状态空间 rollout:sy=y 历史寄存器,su=输入延迟线;y(k)=Cx(k);Δu 基准 uPrev',
+      metricsSummary: metrics.artifactKind ? { artifactKind: metrics.artifactKind } : undefined,
+    }
+  }
+  const artifact = JSON.parse(readFileSync(join(modelDir, 'model.json'), 'utf8')) as { mvOrder: string[], cvOrder: string[], featureOrder: string[], order: number }
+  return {
+    version: 2,
+    purpose,
+    modelInterface: 'static_response',
+    artifactKind: kind,
+    historySteps: manifest.shapes.x[1],
+    horizonSteps: manifest.shapes.u[1],
+    allNodes: manifest.allNodes,
+    controlNodes: manifest.controlNodes,
+    targetNodes: manifest.targetNodes,
+    mvOrder: artifact.mvOrder,
+    cvOrder: artifact.cvOrder,
+    featureOrder: artifact.featureOrder,
+    order: artifact.order,
+    variables: manifest.variables ?? [],
+    norm: manifest.norm,
+    beatMs: manifest.beatMs,
+    assumptions: '稳态响应面:cv = f(MV);优化器按有界参数搜索',
   }
 }
 

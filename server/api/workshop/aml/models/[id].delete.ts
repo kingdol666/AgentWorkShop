@@ -10,6 +10,7 @@ import { requireLineMode } from '@/server/services/workshop/permissions'
 import { AppError } from '@/server/utils/errors'
 import { getAmlRuntime } from '@/server/services/workshop/aml/runtime'
 import { removeEntityDir } from '@/server/services/workshop/aml/entity'
+import { assertModelNotReferenced } from '@/server/services/workshop/aml/model-references'
 import { recordOps } from '@/server/services/workshop/ops/ops'
 
 export default defineApiHandler(async (event) => {
@@ -23,6 +24,8 @@ export default defineApiHandler(async (event) => {
     throw new AppError(409, 'AML_MODEL_IN_PRODUCTION',
       `模型 ${id} 处于 production 阶段,在线预测依赖它,拒绝删除。请先晋升同组新模型或将其退役(retired)后再删。`)
   }
+  // C13/A19:被 Channel profile / 训练计划 / Optimizer Profile / 在途租约引用时拒绝删除
+  assertModelNotReferenced(rt.db, id)
   const ent = removeEntityDir(rt, 'model', id)
   rt.repo.model.remove(id)
   recordOps({

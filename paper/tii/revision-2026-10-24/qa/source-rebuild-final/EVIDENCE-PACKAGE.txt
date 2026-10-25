@@ -1,0 +1,1 @@
+Experimental evidence is separately delivered in IEEE-TII-anonymous-evidence-2026-10-24.zip. It preserves the October 20 anonymous bundle and adds October 23 failed boundary checks plus the October 24 isolated software rerun under revision-2026-10-24/. No new plant experiment was performed during this manuscript revision.

@@ -1,0 +1,57 @@
+{
+ "script": "live-demo agent binding matrix (US-002)",
+ "generatedAt": "2026-10-25T17:37:37.217Z",
+ "base": "http://127.0.0.1:3300",
+ "agents": {
+  "lead": "9fc3eb10-07a7-457c-bbae-52060faf4edf",
+  "worker": "394ab15a-236f-434e-9db8-c56e9f18d0f2"
+ },
+ "nodes": {
+  "worker": "dn-622d2654",
+  "lead": "dn-eae56da8"
+ },
+ "pass": 8,
+ "total": 8,
+ "results": [
+  {
+   "id": "BIND-worker→part-weight",
+   "ok": true,
+   "detail": "绑定 worker→part-weight: dn-622d2654 → status=200"
+  },
+  {
+   "id": "BIND-lead→dim-dev",
+   "ok": true,
+   "detail": "绑定 lead→dim-dev: dn-eae56da8 → status=200"
+  },
+  {
+   "id": "LIST",
+   "ok": true,
+   "detail": "bindings=3; worker→part-weight=true lead→dim-dev=true; 明细=394ab15a→rc-589a232b(recipe/manual) 394ab15a→dn-622d2654(daq/auto) 9fc3eb10→dn-eae56da8(daq/auto)"
+  },
+  {
+   "id": "M1 worker→own",
+   "ok": true,
+   "detail": "worker 读自己节点: isError=false 数采数据查询结果(1 个节点):\n\n■ scen-injection:daq:part-weight(熔体/箱体温度)单位 g,正常量程 25~40g,当前状态 ok,时间窗 2026-10-26T01:27 ~ 2026-10-26T01:37(降采样 15000ms)\n  当前活动批次 run="
+  },
+  {
+   "id": "M2 worker→lead",
+   "ok": true,
+   "detail": "worker 读 lead 节点: isError=true 无权查询节点 dn-eae56da8。你有权访问的数采节点:dn-622d2654"
+  },
+  {
+   "id": "M3 lead→own",
+   "ok": true,
+   "detail": "lead 读自己节点: isError=false 数采数据查询结果(1 个节点):\n\n■ scen-injection:daq:dim-dev(熔体/箱体温度)单位 mm,正常量程 -0.5~0.5mm,当前状态 ok,时间窗 2026-10-26T01:27 ~ 2026-10-26T01:37(降采样 15000ms)\n  当前活动批次 run"
+  },
+  {
+   "id": "M4 lead→worker",
+   "ok": true,
+   "detail": "lead 读 worker 节点: isError=true 工具调用被拒(引用校验,daq_query):node_id = 「dn-622d2654」不在你的授权范围内(节点「scen-injection:daq:part-weight」,归属产线 ln-4d4613f5)。\n该节点不在你的绑定范围内。你的绑定节点:dn-eae56da8。如需访问,请让用"
+  },
+  {
+   "id": "SURFACE",
+   "ok": true,
+   "detail": "工具面装载: worker=79 个,lead=92 个;样例=report_progress,complete_task,send_message_to_agent,poll_messages"
+  }
+ ]
+}

@@ -48,3 +48,5 @@ if (missing.length) {
   }).join('\n'))
 }
 console.log(missEn.length + missZh.length + missing.length === 0 ? 'PARITY OK' : 'PARITY FAIL')
+// 门禁必须真实失败:A20 要求 `pnpm i18n:check` 的退出码可判定(只打印 PARITY OK 不算)。
+if (missEn.length + missZh.length + missing.length > 0) process.exitCode = 1

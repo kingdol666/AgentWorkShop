@@ -1,12 +1,14 @@
 \section{Experimental Evaluation}
 \label{sec:eval}
-The evaluation follows the execution chain from interface reuse to process
-evidence. Q1 tests protocol closure and the distinct roles of admission and
-confirmation. Q2--Q3 replace the proposal strategy with agent and controller
-workflows. Q4 pairs controls and outputs across four processes. Q5 tests
-repeated deployment execution, timing, and confirmation semantics. Q6
-follows a complete operational recipe trajectory from baseline observation
-to a saved version. All process experiments use repository simulators.
+The evaluation asks whether shared collaboration, production-context, and
+industrial-I/O services can be configured across different strategies and
+process scenes. It leads with Q4, which pairs controls and observations for
+four configured processes, and Q1, which exercises acquisition and
+controlled-write routes over multiple protocol mappings. Q2--Q3 then examine
+strategy and controller substitutions; Q5 and Q6 cover deployment-suite
+behavior and a recipe-path lifecycle. The archives are complementary
+implementation evidence, not one joint current-version trial. All process
+experiments use repository simulators.
 
 \subsection{Evidence Units and Experimental Procedure}
 \label{sec:testbed}
@@ -20,9 +22,10 @@ Scripted policies occupy the proposal slot except for two live engine
 tasks in Q2. Q3 additionally uses seeds 43--44. Q5 uses nine
 deployment-suite executions from October 2026; Q6 uses the October 18 recipe
 archive. The archives identify each tested interface and its own evidence
-unit. Separately, 65 current channel/profile and composition tests pass in
-temporary storage with mock I/O, covering approval outcomes, starting-control
-capture, and approved-recipe snapshot consistency. Q6 exercises the recipe
+unit. Separately, 65 channel/profile and composition checks passed in the
+October 20 archive and an October 24 rerun with temporary storage and mock I/O,
+covering approval outcomes, starting-control capture, and approved-recipe
+snapshot consistency. Q6 exercises the recipe
 route; these evidence sets are not pooled as one interface experiment.
 
 The process missions follow six stages. First, provision the semantic nodes,
@@ -54,97 +57,10 @@ S4 closed-loop execution, S5 fine-tuning, S6 diagnostics, and S7 report
 generation. Checks are author-defined regression assertions. Reported
 quantities are rejected probes, per-parameter confirmation grades,
 recipe/readback/mirror deviations, process-target margins, and timestamp
-spans. At approximately six writes per protocol line, latency is reported
-as a median and observed maximum rather than a tail percentile.
+spans. With six writes per protocol line, latency is reported as the archived
+upper median and observed maximum rather than a tail percentile.
 
-\subsection{Q1: Protocol Closure and Admission Ablation}
-\label{sec:protocol}
-The suite acquired \resDaqSamples{} samples over five protocol families and
-issued governed writes over four; the RTU-over-TCP line was acquisition-only.
-Median write latencies ranged from \resPfiftyRange{}, with observed maxima
-\resPninetyfiveRange{}. The four writable lines accepted legal writes and
-rejected 24/24 out-of-window probes. A configuration-only second preset
-added 9/9 rejected probes on three further writable lines. These results
-exercise the same resolver against different signal maps.
-
-Table~\ref{tab:ablation} isolates admission from confirmation in a
-mock-driver API fixture. Each arm replayed six attack classes in three
-deterministic repetitions (18 attacks per arm); separate boundary, legal,
-and timed probes are excluded from that denominator. Removing the
-soft-window interlock allowed six soft-window probes to execute, while
-the hard-range probes remained refused. Archived outcomes and journal
-records link the refusals and executed commands to their configured arms.
-Removing readback did not alter admission. Confirmation can therefore
-check an execution outcome, but cannot replace a pre-write gate. A frozen-measurement drill further
-separated command and process evidence: the setpoint and readback agreed,
-yet the monitoring quantity remained outside its window and triggered
-backstop rollback after \resBackstop{}. A manual-binding drill suspended
-execution until harness-issued approval (\resHitlLatency{} mediation span).
-
-\begin{table}[!t]
-\centering
-\caption{Mock-driver API ablation: six attack classes, three deterministic
-property-test repetitions per arm (18 attacks, excluding separate boundary probes).
-Four hard-range classes are refused in every arm; two soft-window classes
-change outcome.}
-\label{tab:ablation}
-\footnotesize
-\setlength{\tabcolsep}{3pt}
-\begin{tabular}{@{}lcccc@{}}
-\toprule
-Arm & Soft window & Readback & Refused & Executed \\
-\midrule
-full & \checkmark & \checkmark & 18/18 & 0 \\
-no-readback & \checkmark & --- & 18/18 & 0 \\
-no-interlock & --- & \checkmark & 12/18 & 6 \\
-ungated & --- & --- & 12/18 & 6 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\subsection{Q2--Q3: Strategy Replacement and Controller Handling}
-\label{sec:agentteam}
-The archived team workflow linked a parent task, a bound worker, a command,
-a verdict, and its journal. On the single-node cast-film mission, the policy
-changed the heater from \resMissionFrom{} to
-\resMissionTo\,$^{\circ}$C; the observation settled at
-\resMissionPv\,$^{\circ}$C within the declared target. The task reached
-\texttt{COMPLETED}. The BOPET mission expanded this workflow to nine devices
-and 49 signals, with three manipulated nodes
-(Section~\ref{sec:scenarios}).
-
-Two live engine tasks (omp adapter, glm-5.3-flash) occupied the same proposal
-slot on a scratch line. The archive records a bounded write, a goal-driven
-descent to \resGoalFinal\,$\mu$m for a $52.0\pm0.8$\,$\mu$m target, and a
-recipe save. The original contemporaneous omp logs and checked run outcomes
-trace proposal, governed action, observations, and retained recipe.
-The reported \resGoalFinal\,$\mu$m is the run-summary terminal value;
-the log's 52.02\,$\mu$m window mean is a different aggregation.
-
-\label{sec:controller}
-A deterministic controller used the dimensionless cast-film objective
-\begin{equation}
-\begin{aligned}
-J={}&55J_{\mathrm{thick}}+25J_{\mathrm{quality}}\\
-&+8J_{\mathrm{energy}}+7J_{\mathrm{throughput}},
-\end{aligned}
-\label{eq:objective}
-\end{equation}
-whose components score thickness conformance, product quality, and
-control-based energy and throughput proxies. The latter two terms use
-screw speed and line speed, rather than independently metered energy and
-production output. The functions in~\eqref{eq:objective}, constraints, grid,
-and replay settings are specified in the accompanying \path{REPRODUCIBILITY.md}.
-It made two governed writes
-per seed (42--44), without rejection. It raised $J$ from approximately
-\resJzero{} to $J/J^*=\resControllerMin$--\resControllerMax{}, with
-$J^*=\resJstar$ from an admissible setpoint grid. This finite restricted grid
-supplies a reference normalization, not a global continuous optimum.
-The result links the controller's native objective to admissible commands
-and endpoint evidence, exercising a conventional strategy through the
-same execution services.
-
-\subsection{Q4: Paired Controls and Outputs Across Processes}
+\subsection{Configuration-Based Reuse Across Four Processes (Q4)}
 \label{sec:scenarios}
 The concurrent campaign provides one seed-42 trajectory per process.
 Figure~\ref{fig:missions} pairs archived manipulated controls $u$ with the
@@ -195,7 +111,94 @@ pH/TP events; annealing's first step lacks an optimization record.}
 \label{fig:missions}
 \end{figure*}
 
-\subsection{Q5: Regression, Timing, and Confirmation Semantics}
+\subsection{Heterogeneous Protocol Integration and Route Checks (Q1)}
+\label{sec:protocol}
+The suite acquired \resDaqSamples{} samples over five protocol families and
+issued governed writes over four; the RTU-over-TCP line was acquisition-only.
+Archived upper-median write latencies ranged from \resPfiftyRange{}, with observed maxima
+\resPninetyfiveRange{}. The four writable lines accepted legal writes and
+rejected 24/24 out-of-window probes. A configuration-only second preset
+added 9/9 rejected probes on three further writable lines. These results
+exercise the same resolver against different signal maps.
+
+Table~\ref{tab:ablation} isolates admission from confirmation in a
+mock-driver API fixture. Each arm replayed six attack classes in three
+deterministic repetitions (18 attacks per arm); separate boundary, legal,
+and timed probes are excluded from that denominator. Removing the
+soft-window interlock allowed six soft-window probes to execute, while
+the hard-range probes remained refused. Archived outcomes and journal
+records link the refusals and executed commands to their configured arms.
+Removing readback did not alter admission. Confirmation can therefore
+check an execution outcome, but cannot replace a pre-write gate. A frozen-measurement drill further
+separated command and process evidence: the setpoint and readback agreed,
+yet the monitoring quantity remained outside its window and triggered
+backstop rollback after \resBackstop{}. A manual-binding drill suspended
+execution until harness-issued approval (\resHitlLatency{} mediation span).
+
+\begin{table}[!t]
+\centering
+\caption{Mock-driver API ablation: six attack classes, three deterministic
+property-test repetitions per arm (18 attacks, excluding separate boundary probes).
+Four hard-range classes are refused in every arm; two soft-window classes
+change outcome.}
+\label{tab:ablation}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Arm & Soft window & Readback & Refused & Executed \\
+\midrule
+full & \checkmark & \checkmark & 18/18 & 0 \\
+no-readback & \checkmark & --- & 18/18 & 0 \\
+no-interlock & --- & \checkmark & 12/18 & 6 \\
+ungated & --- & --- & 12/18 & 6 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Strategy and Controller Substitution (Q2--Q3)}
+\label{sec:agentteam}
+The archived team workflow linked a parent task, a bound worker, a command,
+a verdict, and its journal. On the single-node cast-film mission, the policy
+changed the heater from \resMissionFrom{} to
+\resMissionTo\,$^{\circ}$C; the observation settled at
+\resMissionPv\,$^{\circ}$C within the declared target. The task reached
+\texttt{COMPLETED}. The BOPET mission expanded this workflow to nine devices
+and 49 signals, with three manipulated nodes
+(Section~\ref{sec:scenarios}).
+
+Two live engine tasks (omp adapter, glm-5.3-flash) occupied the same proposal
+slot on a scratch line. The archive records a bounded write, a goal-driven
+descent to \resGoalFinal\,$\mu$m for a $52.0\pm0.8$\,$\mu$m target, and a
+recipe save. The original contemporaneous omp logs and checked run outcomes
+trace proposal, governed action, observations, and retained recipe.
+The reported \resGoalFinal\,$\mu$m is the run-summary terminal value;
+the log's 52.02\,$\mu$m window mean is a different aggregation.
+
+\label{sec:controller}
+A deterministic controller used the dimensionless cast-film objective
+\begin{equation}
+\begin{aligned}
+J={}&55J_{\mathrm{thick}}+25J_{\mathrm{quality}}\\
+&+8J_{\mathrm{energy}}+7J_{\mathrm{throughput}},
+\end{aligned}
+\label{eq:objective}
+\end{equation}
+whose components score thickness conformance, product quality, and
+control-based energy and throughput proxies. The latter two terms use
+screw speed and line speed, rather than independently metered energy and
+production output. The functions in~\eqref{eq:objective}, constraints, grid,
+and replay settings are specified in the accompanying \path{REPRODUCIBILITY.md}.
+It made two governed writes
+per seed (42--44), without rejection. It raised $J$ from approximately
+\resJzero{} to $J/J^*=\resControllerMin$--\resControllerMax{}, with
+$J^*=\resJstar$ from an admissible setpoint grid. This finite restricted grid
+supplies a reference normalization, not a global continuous optimum.
+The result links the controller's native objective to admissible commands
+and endpoint evidence, exercising a conventional strategy through the
+same execution services.
+
+\subsection{Deployment Composition and Confirmation Semantics (Q5)}
 \label{sec:hardening}
 The deployment instance contained \resLinesLive{} provisioned lines,
 \resChannelsLive{} channels, \resDaqOnline{} online DAQ nodes,
@@ -262,7 +265,7 @@ semantics are covered by route tests, whereas the campaign used MES only in
 read mode. The suite therefore checks that receipt grades follow the available
 endpoint evidence under each deliberately injected condition.
 
-\subsection{Q6: Recent Recipe-Based Injection Trajectory}
+\subsection{Operational Recipe Workflow Case Study (Q6)}
 \label{sec:recipeexperiment}
 The October 18 recipe archive (R6 in the accompanying reproducibility notes)
 pairs recipe-path controls, receipts, and process observations. The replay
@@ -301,17 +304,12 @@ supplies the archived verification grade. After the final check,
 contains four trials and the update, while the optimization journal is empty,
 as expected for this lifecycle.
 
-The paired plot explains why the script continued and where it stopped.
-At 60\,bar, the 32.05-g observation remained below the 32.15-g lower
-acceptance limit, so the next 5-bar candidate was required by the declared
-rule. At 65\,bar, the 32.30-g observation entered the weight band, and the
-1.277\% sink-mark and 0.019\% flash observations satisfied their respective
-limits. Holding time remained 6\,s throughout, making pressure the sole
-changed control in this trace. The final recipe update records the accepted
-65\,bar/6\,s parameterization; it is distinct from both the four trial
-receipts and the observed quality values. The later update rationale contains
-different quality figures without a linked raw sample; the plot uses the
-archived final snapshot, not those rationale figures.
+The paired plot records the stopping rule: at 60\,bar, the 32.05-g
+observation remained below the 32.15-g acceptance limit; at 65\,bar, all
+three quality criteria passed. Pressure was the sole changed control.
+The separate recipe update retains the accepted setting. Its rationale
+contains different quality figures without a linked raw sample; the plot
+uses the archived final snapshot.
 
 \begin{figure*}[!t]
 \centering
@@ -336,3 +334,11 @@ A separate later check started at 65\,bar,
 0.976\%. It is a new initial state and is not appended to the plotted trace.
 Q6 connects baseline evidence, approved control changes, observed quality,
 and the retained recipe through one inspectable operational loop.
+
+October 23 boundary checks distinguish historical replay from current
+operation. The public interface refused all eight direct-node attempts
+(zero writes). A separate recipe check verified the first 45-to-50-bar trial
+but refused requests at 66 and 132\,s under the default 300-s cadence.
+Weight remained 31.46\,g and no recipe update was saved. These failed
+checks are not repetitions of the accelerated October 18 trajectory;
+their full outcomes are retained in the reproducibility notes.

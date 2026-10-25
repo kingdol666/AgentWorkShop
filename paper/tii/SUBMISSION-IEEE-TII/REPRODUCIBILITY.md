@@ -1,6 +1,7 @@
 # Anonymous reproducibility notes
 
-This document accompanies the 2026-10-20 ten-page manuscript. Paths below are relative
+This document accompanies the 2026-10-24 revision, targeting at most ten pages.
+Paths below are relative
 to the repository root. Reported plant experiments use software simulators;
 real protocol stacks and a live language-model engine do not constitute
 physical-plant validation. No new plant experiments were performed during
@@ -16,7 +17,9 @@ Its manifest identifies original and delivered SHA-256 hashes and redaction
 rules. The private originals remain unchanged. The claim map records unknown
 fields as null and identifies duplicated archives without counting replicates.
 The delivered bundle is retained at
-`paper/tii/final-revision-2026-10-20/IEEE-TII-anonymous-evidence.zip`. Its
+`paper/tii/revision-2026-10-24/IEEE-TII-anonymous-evidence-2026-10-24.zip`.
+It extends the October 20 anonymous bundle with anonymous R11/R12 copies and
+a new original/delivered-hash manifest. The underlying historical bundle's
 root `README.md`, `CLAIM-MAP.json`, `MANIFEST.json`, `FILES.json`,
 `DUPLICATES.json` and `MISSING-EVIDENCE.json` explain the archive layout,
 locate all Q1--Q6 claims, and distinguish absent fields from zero values.
@@ -47,15 +50,32 @@ neither is silently substituted for the unarchived exact runtime worktree.
 | R5 | Q5 write grading | `docs/audit/2026-10-08-production-hardening-report.md`, `docs/audit/2026-10-17-ack-baseline.md` and associated log | Injected fault outcomes; not estimates of fault frequency |
 | R6 | Q6 primary recipe trajectory | `bench/results/injection-pressure-loop-2026-10-18T12-37-22-157Z/summary.json` | One sequential trajectory, four +5 bar requests, five quality snapshots; fixed hold time 6 s |
 | R7 | Q6 failed earlier attempt | `bench/results/injection-recipe-closedloop-2026-10-18T11-23-30-084Z/summary.json` | Cadence refusal and missed quality target, retained as a boundary |
-| R8 | Q6 separate latest check | `bench/results/injection-pressure-loop-2026-10-18T17-32-16-585Z/summary.json` | Separate 65→70 bar check from a different initial state; not appended to R6 |
-| R9 | Current interface isolation | `tests/high-risk-tool-scope.test.ts`, `tests/tool-profile-observer.test.ts`, `tests/recipe-propose.test.ts` | 26 tests in temporary/mock state, not an end-to-end exploration process experiment |
-| R10 | Current composition regressions | `tests/manual-approval-optimization.test.ts`, `tests/recipe-approval-snapshot.test.ts`, and related approval/profile/recipe suites | 65 combined tests passed in a separate fresh verification; repairs preserve rejection status, starting control and approved recipe snapshot; no process E2E |
+| R8 | Q6 separate October 18 check | `bench/results/injection-pressure-loop-2026-10-18T17-32-16-585Z/summary.json` | Separate 65→70 bar check from a different initial state; not appended to R6 |
+| R9 | Interface isolation | `tests/high-risk-tool-scope.test.ts`, `tests/tool-profile-observer.test.ts`, `tests/recipe-propose.test.ts` | 26 tests within the combined R10 set, in temporary/mock state; not an end-to-end process experiment |
+| R10 | Composition regressions | `tests/manual-approval-optimization.test.ts`, `tests/recipe-approval-snapshot.test.ts`, and related approval/profile/recipe suites | Same 65 checks passed October 20 and October 24; not 130 distinct checks; rejection status, starting control and approved recipe snapshot; no process E2E |
+| R11 | October 23 direct-node replay boundary | `bench/results/20261023151709-1pjk/{scenarios.json,scenarios-benchmark.md}` | Current public interface refused eight attempts; zero writes, final weight 31.25 g, target not attained |
+| R12 | October 23 recipe cadence boundary | `bench/results/injection-pressure-loop-2026-10-23T15-25-20-318Z/summary.json` | One verified pressure trial; later cadence refusals, target and restoration assertions failed, no saved update |
 
 `bench/results/real-harness-injection-20261018/closedloop-summary.json`
 duplicates R6 byte for byte. It does not add a replicate. Its `report.md`
 documents the simulator endpoint and live read-only agent task. Three
 `real-injection-closed-loop` execution logs record failed attempts rather
 than successful repetitions.
+
+R11 and R12 are newer than the October 20 anonymous evidence ZIP. They are
+separate evidence units, not additional successful repetitions of R6. The
+October 24 supplement extends that historical bundle; the older ZIP alone
+does not cover these new manuscript statements.
+
+## Q1 latency statistic
+
+The archive's `p50` implementation in `bench/lib/metrics.mjs` returns the
+ascending-order element at zero-based index `floor(n/2)`, hence the fourth
+of six write latencies. The manuscript calls this the **upper median**.
+It is not the arithmetic mean of the third and fourth observations. The
+reported `p95` is the sixth observation for this sample size, so it is
+described as the observed maximum, not a population tail estimate. No
+unarchived individual latencies are reconstructed or substituted.
 
 ## Q3 objective and admissible reference grid
 
@@ -144,6 +164,32 @@ disables the per-line recipe-trial cadence, whereas `emergency=true` bypasses
 the separate recipe-operation interval. Neither setting removes required
 approval, parameter admission, or command verification.
 
+## October 23 boundary checks
+
+R11 replayed the historical direct-node mission harness against the current
+public interface. All eight candidates were refused because direct public
+node control was disabled. The task status was `COMPLETED`, but the process
+result was `attained=false`: zero writes and a final weight of 31.25 g.
+Task closure is therefore not reported as successful process attainment.
+This replay does not reproduce the historical direct-node route on its
+original software version.
+
+R12 used the recipe route with the default 300-s per-line trial cadence.
+The baseline was 45 bar/6 s, 31.21 g, and 2.138% sink mark. The first
+45-to-50-bar trial had a 1/1 verified receipt. Subsequent pressure and
+hold-time proposals, at 66 and 132 s after the preceding trial, were refused
+by the cadence. Final weight was 31.46 g, sink mark 1.837%, and flash 0%;
+`finalOk=false` and `update=null`. The restoration assertion also failed:
+the platform pressure remained 50 bar rather than the requested 45-bar
+baseline. Four of eight harness assertions passed. These raw outcomes are
+retained, including the failed restoration; no successful recovery is
+inferred from task status or the first verified receipt.
+
+R12 differs from the accelerated R6 configuration and initial observations.
+It tests a pacing boundary and does not provide an independent successful
+replicate, a current complete optimization-exploration trajectory, or an
+estimate of comparative control performance.
+
 ## Figure construction
 
 The active figures are six vector PDFs under `resources/`:
@@ -153,6 +199,10 @@ The active figures are six vector PDFs under `resources/`:
 available. The PDF versions are used in the manuscript.
 
 `figures/make-system-2026.py` builds the implementation schematics.
+OpenAI image generation drafted the compositions of Figures 1 and 2;
+their final labels and geometry are redrawn as editable Python vectors and
+checked against the implementation. The AI-generated raster drafts are
+design inputs, not process observations or quantitative evidence.
 `figures/make-evaluation-2026.py` parses archived JSON/JSONL for the
 experimental figures. Derived CSV/JSON source data, source hashes,
 transformation rules and geometry audits are retained in
@@ -180,12 +230,29 @@ The wrapper disables shell escape. No shell-escape override is used for this
 manuscript. The command requires the skill's compile wrapper and a compatible
 TeX installation; the wrapper is not redistributed in the source package.
 
-The project-local revised PDF check is
-`paper/tii/final-revision-2026-10-20/verify_final.py`. It checks actual
-compiled page count (exactly 10 for this delivery), template use, unresolved citations,
-active figure files and source type size, placeholders, page clipping,
-anonymity, and layout warnings. Its output is a formatting preflight,
-not scientific approval or journal acceptance.
+Current revision checks and rendered pages are recorded under
+`paper/tii/revision-2026-10-24/qa/`. Verify the actual compiled page count
+(at most ten, including references), template use, unresolved citations,
+active figure files and placed type size, placeholders, page clipping,
+anonymity, and layout warnings. These are formatting checks, not scientific
+approval or journal acceptance. The October 20 verifier and its outputs are
+historical records with an exact-ten-page condition that is not this
+revision's delivery requirement.
+
+The October 24 isolated software rerun used the following command from the
+repository root:
+
+```text
+node node_modules/tsx/dist/cli.mjs --tsconfig .nuxt/tsconfig.server.json --test --test-force-exit --test-concurrency=1 tests/high-risk-tool-scope.test.ts tests/tool-profile-observer.test.ts tests/recipe-propose.test.ts tests/manual-approval-optimization.test.ts tests/recipe-approval-snapshot.test.ts tests/manual-approval.test.ts tests/tool-approvals-choice.test.ts tests/recipe-op-interval.test.ts
+```
+
+It recorded 65 tests, 65 passes and zero failures in
+`paper/tii/revision-2026-10-24/qa/current-software-tests.log`. The suites use
+temporary/mock state and do not measure plant-response performance. This is
+a rerun of the same 65-check set, not 65 additional independent process
+observations. An earlier invocation omitted the required tsconfig and
+failed on alias imports; its diagnostic log is retained separately rather
+than classified as a tested execution-contract failure.
 
 The current optimization profile snapshots its starting control and records
 refused approvals as rejected interventions; recipe apply checks the approved

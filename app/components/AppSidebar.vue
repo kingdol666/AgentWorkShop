@@ -48,6 +48,8 @@ const menuGroups = computed<MenuGroup[]>(() => [
       { key: '/data', icon: 'i-tabler-database-export', label: t('menu.dataManagement'), motion: 'im-pop' },
       { key: '/studio', icon: 'i-tabler-chart-dots', label: t('menu.studio'), motion: 'im-pop' },
       { key: '/aml', icon: 'i-tabler-flask', label: t('menu.aml'), motion: 'im-pop' },
+      { key: '/optimizer', icon: 'i-tabler-math-function', label: t('menu.optimizer'), motion: 'im-pop' },
+      { key: '/ontology', icon: 'i-tabler-sitemap', label: t('menu.ontology'), motion: 'im-pop' },
     ],
   },
   {

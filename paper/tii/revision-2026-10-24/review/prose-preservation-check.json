@@ -1,0 +1,56 @@
+[
+  {
+    "file": "main.tex",
+    "old_words": 444,
+    "new_words": 444,
+    "added_lines": 0,
+    "removed_lines": 0,
+    "anchors_preserved": true,
+    "math_preserved": true
+  },
+  {
+    "file": "sections/introduction.tex",
+    "old_words": 424,
+    "new_words": 440,
+    "added_lines": 16,
+    "removed_lines": 16,
+    "anchors_preserved": true,
+    "math_preserved": true
+  },
+  {
+    "file": "sections/related.tex",
+    "old_words": 529,
+    "new_words": 535,
+    "added_lines": 7,
+    "removed_lines": 6,
+    "anchors_preserved": true,
+    "math_preserved": true
+  },
+  {
+    "file": "sections/system.tex",
+    "old_words": 1080,
+    "new_words": 1101,
+    "added_lines": 17,
+    "removed_lines": 15,
+    "anchors_preserved": false,
+    "math_preserved": true
+  },
+  {
+    "file": "sections/mechanisms.tex",
+    "old_words": 1143,
+    "new_words": 1151,
+    "added_lines": 6,
+    "removed_lines": 6,
+    "anchors_preserved": true,
+    "math_preserved": true
+  },
+  {
+    "file": "sections/discussion.tex",
+    "old_words": 448,
+    "new_words": 462,
+    "added_lines": 18,
+    "removed_lines": 16,
+    "anchors_preserved": true,
+    "math_preserved": true
+  }
+]

@@ -1,3 +1,5 @@
+import { dimensionsCompatible, dimensionOf } from '@/shared/dimensions'
+
 export const PHYSICS_SPEC_VERSION = 'physics-spec.v1' as const
 export const PHYSICS_OPERATORS = ['add', 'sub', 'mul', 'div', 'pow', 'exp', 'log', 'min', 'max', 'clamp'] as const
 export type PhysicsOperator = typeof PHYSICS_OPERATORS[number]
@@ -67,15 +69,6 @@ export interface PhysicsSpecValidationResult {
 const OPS = new Set<string>(PHYSICS_OPERATORS)
 const IDENTIFIER = /^[A-Za-z_][A-Za-z0-9_.:-]*$/
 const RESERVED = new Set(['__proto__', 'prototype', 'constructor'])
-const DIMENSIONLESS = new Set(['', '1', 'ratio', 'fraction', 'percent', '%'])
-const UNIT_DIMENSIONS: Record<string, string> = {
-  s: 'time', sec: 'time', ms: 'time', min: 'time', h: 'time',
-  degc: 'temperature', c: 'temperature', k: 'temperature', degf: 'temperature',
-  pa: 'pressure', kpa: 'pressure', mpa: 'pressure', bar: 'pressure', psi: 'pressure',
-  g: 'mass', kg: 'mass', mg: 'mass',
-  m: 'length', cm: 'length', mm: 'length', km: 'length',
-  a: 'current', v: 'voltage', w: 'power', j: 'energy', n: 'force',
-}
 
 function record(value: unknown): value is Record<string, unknown> {
   return !!value && typeof value === 'object' && !Array.isArray(value)
@@ -89,19 +82,10 @@ function idOk(value: unknown): value is string {
 function addIssue(issues: PhysicsSpecIssue[], path: string, code: string, message: string, severity: 'error' | 'warning' = 'error') {
   issues.push({ path, code, message, severity })
 }
-function unitKey(unit: string | undefined): string {
-  return (unit ?? '').trim().toLowerCase().replace('°', 'deg')
-}
-function dimension(unit: string | undefined): string {
-  const key = unitKey(unit)
-  if (DIMENSIONLESS.has(key)) return 'dimensionless'
-  if (UNIT_DIMENSIONS[key]) return UNIT_DIMENSIONS[key]
-  if (key.includes('/') || key.includes('*') || key.includes('^')) return `compound:${key}`
-  return key ? `unit:${key}` : 'scalar'
-}
-function compatible(a: string, b: string): boolean {
-  return a === '*' || b === '*' || a === b || (a === 'dimensionless' && b === 'scalar') || (b === 'dimensionless' && a === 'scalar')
-}
+/** 量纲归一与相容判定复用 shared/dimensions(本体与 PhysicsSpec 共用一张表;℃ 缺口在此已修) */
+const dimension = dimensionOf
+const compatible = dimensionsCompatible
+
 function normalizeExpr(value: unknown): PhysicsExpression | undefined {
   if (finite(value)) return value
   if (!record(value)) return undefined

@@ -9,17 +9,22 @@
  * 该族**不依赖 workspace**,由 dispatch 在 workspace 门控之前分流(保持原分发顺序)。
  */
 import type { HostToolResult } from '../types'
-import { toolLineStart, toolLineStop, toolLineStatus, toolAmlDatasetBuild, toolAmlDatasetStats, toolAmlJobCancel, toolAmlJobLogs, toolAmlJobStatus, toolAmlJobSubmit, toolAmlLeaderboard, toolAmlModelFind, toolAmlModelPromote, toolAmlModelReference, toolAmlNodeCatalog, toolAmlTrainingPlanCreate, toolAmlTrainingPlanList, toolAmlTrainingPlanTrain, toolDaqExport, toolDaqFrames, toolDaqQuery, toolDcwControl, toolDcwJudge, toolDcwJournal, toolDcwRollback, toolLineContext, toolMesCatalog, toolMesDatasetRead, toolMesDatasets, toolMesExport, toolMesFetch, toolMyIndustrialNodes, toolOpsLog, toolParamControl, toolRecipeApply, toolRecipeCatalog, toolRecipeCreate, toolRecipeLog, toolRecipeRollback, toolRecipeTrial, toolRecipeUpdate, toolRecipeVersions, toolOptimizationExplore, toolTwinProviderCatalog, toolTwinSceneDiscover, toolTwinSceneCompile, toolTwinSceneFreeze, toolTwinSceneRead, toolTwinPhysicsSpecDraft, toolTwinPhysicsSpecValidate, toolTwinPhysicsSpecCompile, toolTwinSnapshotCreate, toolTwinTrialRun, toolMpcOptimize, toolTwinGateEvaluate, toolTwinBayesOptimize, toolTwinCalibrationRequest, toolAnalysisSave, toolAnalysisQuery } from '../../industrial'
+import { toolLineStart, toolLineStop, toolLineStatus, toolAmlDatasetBuild, toolAmlDatasetStats, toolAmlJobCancel, toolAmlJobLogs, toolAmlJobStatus, toolAmlJobSubmit, toolAmlLeaderboard, toolAmlModelFind, toolAmlModelPromote, toolAmlModelReference, toolAmlModelAnnotate, toolAmlNodeCatalog, toolAmlTrainingPlanCreate, toolAmlTrainingPlanList, toolAmlTrainingPlanTrain, toolDaqExport, toolDaqFrames, toolDaqQuery, toolDcwControl, toolDcwJudge, toolDcwJournal, toolDcwRollback, toolLineContext, toolMesCatalog, toolMesDatasetRead, toolMesDatasets, toolMesExport, toolMesFetch, toolMyIndustrialNodes, toolOpsLog, toolParamControl, toolRecipeApply, toolRecipeCatalog, toolRecipeCreate, toolRecipeLog, toolRecipeRollback, toolRecipeTrial, toolRecipeUpdate, toolRecipeVersions, toolOptimizationExplore, toolTwinProviderCatalog, toolTwinSceneDiscover, toolTwinSceneCompile, toolTwinSceneFreeze, toolTwinSceneRead, toolTwinPhysicsSpecDraft, toolTwinPhysicsSpecValidate, toolTwinPhysicsSpecCompile, toolTwinSnapshotCreate, toolTwinTrialRun, toolMpcOptimize, toolTwinGateEvaluate, toolTwinBayesOptimize, toolTwinCalibrationRequest, toolAnalysisSave, toolAnalysisQuery } from '../../industrial'
 
 import { toolExpCollect } from '../../industrial/exp-tools'
 import { toolRecipePropose } from '../../industrial/recipe-propose-tools'
 import { toolAmlActivity } from '../../industrial/aml-activity'
+import { toolOptimizerCancel, toolOptimizerCapabilities, toolOptimizerPlanGet, toolOptimizerProfilePropose, toolOptimizerSolve, toolOptimizerStatus } from '../../industrial/optimizer-tools'
+import { toolIndustrialResources } from '../../industrial/resources-tools'
+import { toolOntologyCompilePreview, toolOntologyDraftAutofix, toolOntologyDraftCreate, toolOntologyDraftUpdate, toolOntologyDraftValidate, toolOntologyNodeNeighbors, toolOntologyPublishPropose, toolOntologyRuleExplain, toolOntologySceneInspect, toolOntologyVersionCompare } from '../../industrial/ontology-tools'
 
 type IndustrialToolHandler = (agentId: string, args: Record<string, unknown>, channelId?: string) => Promise<HostToolResult>
 
 /** 工具名 → 转发处理器(顺序与原 dispatch 首个 switch 的分支顺序一致) */
 const INDUSTRIAL_HANDLERS = new Map<string, IndustrialToolHandler>([
   ['my_industrial_nodes', agentId => toolMyIndustrialNodes(agentId)],
+  // WP6:绑定面按需分页查询(工具描述折叠后的配套读面;只读、无引用参数)
+  ['industrial_resources', (agentId, args) => toolIndustrialResources(agentId, args)],
   ['aml_node_catalog', agentId => toolAmlNodeCatalog(agentId)],
   ['aml_dataset_build', (agentId, args) => toolAmlDatasetBuild(agentId, args as Parameters<typeof toolAmlDatasetBuild>[1])],
   ['aml_dataset_stats', (agentId, args) => toolAmlDatasetStats(agentId, args as Parameters<typeof toolAmlDatasetStats>[1])],
@@ -31,6 +36,7 @@ const INDUSTRIAL_HANDLERS = new Map<string, IndustrialToolHandler>([
   ['aml_model_find', (agentId, args) => toolAmlModelFind(agentId, args as Parameters<typeof toolAmlModelFind>[1])],
   ['aml_model_promote', (agentId, args) => toolAmlModelPromote(agentId, args as Parameters<typeof toolAmlModelPromote>[1])],
   ['aml_model_reference', (agentId, args) => toolAmlModelReference(agentId, args as Parameters<typeof toolAmlModelReference>[1])],
+  ['aml_model_annotate', (agentId, args) => toolAmlModelAnnotate(agentId, args as Parameters<typeof toolAmlModelAnnotate>[1])],
   ['aml_training_plan_list', (agentId, args) => toolAmlTrainingPlanList(agentId, args)],
   ['aml_training_plan_create', (agentId, args) => toolAmlTrainingPlanCreate(agentId, args as Parameters<typeof toolAmlTrainingPlanCreate>[1])],
   ['aml_training_plan_train', (agentId, args) => toolAmlTrainingPlanTrain(agentId, args as Parameters<typeof toolAmlTrainingPlanTrain>[1])],
@@ -84,6 +90,25 @@ const INDUSTRIAL_HANDLERS = new Map<string, IndustrialToolHandler>([
   // 数据分析系统:分析结果留痕台账(save 可写台账(非产线写);query 查历史留痕)
   ['analysis_save', (agentId, args, channelId) => toolAnalysisSave(agentId, args as Parameters<typeof toolAnalysisSave>[1], channelId)],
   ['analysis_query', (agentId, args) => toolAnalysisQuery(agentId, args as Parameters<typeof toolAnalysisQuery>[1])],
+  // Optimizer(零写设备;绑定/资格/工况逐次重校验在 dispatch + verify + manager)
+  ['optimizer_capabilities', agentId => toolOptimizerCapabilities(agentId)],
+  ['optimizer_solve', (agentId, args) => toolOptimizerSolve(agentId, args)],
+  ['optimizer_status', (agentId, args) => toolOptimizerStatus(agentId, args)],
+  ['optimizer_cancel', (agentId, args) => toolOptimizerCancel(agentId, args)],
+  // 模型采纳(OW-adopt):Agent 发起 Profile 新版本采纳提议,HITL 批准后发布+重绑
+  ['optimizer_profile_propose', (agentId, args) => toolOptimizerProfilePropose(agentId, args)],
+  // 本体工具族(ONT):只读子图/邻接/起草/校验/解释/编译预览/提议发布/版本比较/草稿内容写
+  ['ontology_scene_inspect', (agentId, args) => toolOntologySceneInspect(agentId, args)],
+  ['ontology_node_neighbors', (agentId, args) => toolOntologyNodeNeighbors(agentId, args)],
+  ['ontology_draft_create', (agentId, args) => toolOntologyDraftCreate(agentId, args)],
+  ['ontology_draft_update', (agentId, args) => toolOntologyDraftUpdate(agentId, args)],
+  ['ontology_draft_validate', (agentId, args) => toolOntologyDraftValidate(agentId, args)],
+  ['ontology_draft_autofix', (agentId, args) => toolOntologyDraftAutofix(agentId, args)],
+  ['ontology_rule_explain', (agentId, args) => toolOntologyRuleExplain(agentId, args)],
+  ['ontology_compile_preview', (agentId, args) => toolOntologyCompilePreview(agentId, args)],
+  ['ontology_publish_propose', (agentId, args) => toolOntologyPublishPropose(agentId, args)],
+  ['ontology_version_compare', (agentId, args) => toolOntologyVersionCompare(agentId, args)],
+  ['optimizer_plan_get', (agentId, args) => toolOptimizerPlanGet(agentId, args)],
 ])
 
 /** 工业工具名集合(与 INDUSTRIAL_HANDLERS 同源;dispatch 据此在 workspace 门控前分流) */

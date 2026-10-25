@@ -1,0 +1,16 @@
+{
+  "source": {
+    "sha_matches": true,
+    "entries": 46,
+    "listed_files": 46,
+    "file_hash_mismatches": [],
+    "unsafe_paths": []
+  },
+  "evidence": {
+    "sha_matches": true,
+    "entries": 213,
+    "listed_files": 0,
+    "file_hash_mismatches": [],
+    "unsafe_paths": []
+  }
+}

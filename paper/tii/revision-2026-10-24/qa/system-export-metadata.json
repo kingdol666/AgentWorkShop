@@ -1,0 +1,66 @@
+{
+  "architecture-2026": {
+    "width_in": 7.16,
+    "height_in": 3.15,
+    "minimum_font_pt": 9.0,
+    "fonts": [
+      "Arial-BoldMT",
+      "ArialMT"
+    ],
+    "embedded_font_extensions": [
+      "ttf"
+    ],
+    "minimum_stroke_pt": 0.6000000238418579,
+    "embedded_raster_images": 0,
+    "svg_editable_text_count": 19,
+    "anonymous_pdf_metadata": true,
+    "text_audit_exit": 0,
+    "collision_audit_exit": 0,
+    "collision_summary": {
+      "fail": 0,
+      "warn": 0,
+      "contained_fill_overlays": 18,
+      "contained_image_overlays": 0
+    },
+    "png_pixels": [
+      4296,
+      1890
+    ],
+    "png_dpi": [
+      599.9988,
+      599.9988
+    ]
+  },
+  "runtime-2026": {
+    "width_in": 3.5,
+    "height_in": 3.55,
+    "minimum_font_pt": 9.0,
+    "fonts": [
+      "Arial-BoldMT",
+      "ArialMT"
+    ],
+    "embedded_font_extensions": [
+      "ttf"
+    ],
+    "minimum_stroke_pt": 0.6000000238418579,
+    "embedded_raster_images": 0,
+    "svg_editable_text_count": 29,
+    "anonymous_pdf_metadata": true,
+    "text_audit_exit": 0,
+    "collision_audit_exit": 0,
+    "collision_summary": {
+      "fail": 0,
+      "warn": 0,
+      "contained_fill_overlays": 23,
+      "contained_image_overlays": 0
+    },
+    "png_pixels": [
+      2100,
+      2130
+    ],
+    "png_dpi": [
+      599.9988,
+      599.9988
+    ]
+  }
+}

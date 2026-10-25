@@ -11,6 +11,7 @@
  *    (agentId/channelId/role/name)回调插件 handler。
  */
 import { createLogger } from '../logger'
+import type { ToolRiskClass, ToolVerifySpec } from './tool-reference-spec'
 
 const log = createLogger('workshop.plugin-tools')
 
@@ -32,6 +33,16 @@ export interface OmpPluginTool {
   parameters: Record<string, unknown>
   /** 可用角色(缺省 lead+worker 均可) */
   roles?: OmpPluginToolRole[]
+  /**
+   * 引用面声明(WP8①;可选,存量插件零变化)。
+   * 声明后才走执行期引用校验(verifyToolReferences),未声明保持既有行为。
+   * 形状与 host-tools.json 的 `references` 完全一致。
+   */
+  references?: ToolVerifySpec
+  /** 显式无引用声明(与未声明区分;riskClass=write 且未声明会被注册期告警) */
+  noRefs?: boolean
+  /** 风险类别(read/write/admin;插件写操作接同源 HITL 与审计) */
+  riskClass?: ToolRiskClass
   /** 执行体:返回文本结果(isError=true → omp 端按工具错误呈现) */
   handler: (args: Record<string, unknown>, agent: OmpPluginAgentContext) => Promise<{ text: string, isError?: boolean }> | { text: string, isError?: boolean }
 }

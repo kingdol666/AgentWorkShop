@@ -529,6 +529,12 @@ export function createPluginContext(opts) {
         body: JSON.stringify(body ?? {}),
         ...safeUrl(url, opts2.timeoutMs),
       }),
+      patch: (url, body, opts2 = {}) => fetch(url, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json', ...(opts2.headers ?? {}) },
+        body: JSON.stringify(body ?? {}),
+        ...safeUrl(url, opts2.timeoutMs),
+      }),
     },
     events: {
       on: (type, fn) => hooks.on(type === '*' ? '*' : `event:${type}`, fn),

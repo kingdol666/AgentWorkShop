@@ -59,6 +59,7 @@ import { startAmlRetentionTimer, stopAmlRetentionTimer } from '../services/works
 import { configureMesDatasets, defaultDatasetsDir } from '../services/workshop/mes/mes-datasets'
 import { configureAnalysisRepo } from '../services/workshop/analysis/analysis.repo'
 import { configureMesHooks } from '../services/workshop/mes/mes-hook'
+import { reconcileDispatchCards } from '../services/workshop/optimization/dispatch.service'
 
 declare global {
 
@@ -152,6 +153,16 @@ export default function workshopPlugin(nitroApp: {
   configureAmlRuntime(db, dataDir)
   recoverInterruptedJobs()
   startAmlRetentionTimer()
+  // 内置训练器/问题模板真实注册(G1.4):配置驱动训练与求解都在启动即可解析
+  void import('@/server/services/workshop/process-model/trainers')
+    .then(({ registerBuiltinOptimizerAdapters }) => registerBuiltinOptimizerAdapters())
+    .catch((err) => { console.warn('[workshop] 内置优化器 Adapter 注册失败:', err instanceof Error ? err.message : err) })
+  // 环境重建前停止 Solver Worker 池(Windows venv 目录占用)
+  void import('@/server/services/workshop/optimization/worker-client')
+    .then(({ shutdownSolverWorkers }) => {
+      ;(globalThis as { __optimizerShutdownWorkers?: () => void }).__optimizerShutdownWorkers = shutdownSolverWorkers
+    })
+    .catch(() => { /* 模块不可用不阻断启动 */ })
 
   // MES 数据集服务(新表由 SCHEMA_SQL 启动建出;CSV 落 <configRoot>/datasets/<id>.csv)
   configureMesDatasets(db, defaultDatasetsDir(dataDir))
@@ -243,6 +254,15 @@ export default function workshopPlugin(nitroApp: {
 
   // v16 定时任务运行时:唯一周期 timer,到期触发 → submitChannelTask 下发
   manager.startScheduleRuntime()
+
+  // SW5/D14 启动对账:committed 且无 execute 审计的下发卡 → 判定 unknown/failed(禁自动重放)
+  try {
+    const reconciled = reconcileDispatchCards()
+    if (reconciled.unknown > 0) console.warn('[workshop] optimizer dispatch 对账:unknown/failed =', reconciled.unknown)
+  }
+  catch (err) {
+    console.warn('[workshop] optimizer dispatch 对账失败(不影响启动):', err instanceof Error ? err.message : err)
+  }
 
   // 全时事件录制:为全部存量 channel 建立常驻流(事件 server 驱动落库,与 client 无关)
   void ensureAllEventRecorders(manager).catch(err => console.error('[workshop] 事件录制器初始化失败:', err))

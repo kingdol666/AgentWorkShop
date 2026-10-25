@@ -1,0 +1,654 @@
+{
+  "at": "2026-10-23T13:21:24.397Z",
+  "base": "http://127.0.0.1:3997",
+  "seed": {
+    "lineId": "ln-b748811b",
+    "productId": "pd-0f8927b9",
+    "recipeId": "rc-67e1f505",
+    "runs": [
+      "rr-3d6944e1",
+      "rr-3cc7e01e",
+      "rr-ea7fbcc3",
+      "rr-1082c36e",
+      "rr-cdfbb32b",
+      "rr-6da78e7a"
+    ],
+    "mv": "dn-optx90j-mv",
+    "cv": "dn-optx90j-cv"
+  },
+  "env": {
+    "node": "v24.19.0",
+    "platform": "win32-x64",
+    "venvLinked": true,
+    "home": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-optimizer-live-e2e-1792761523936\\home"
+  },
+  "pass": 104,
+  "total": 104,
+  "results": [
+    {
+      "id": "BOOT",
+      "name": "隔离实例启动 + workshop ready",
+      "pass": true,
+      "detail": "port=3997"
+    },
+    {
+      "id": "BOOT",
+      "name": "管理员注册/登录",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "BOOT",
+      "name": "首注册用户为 admin",
+      "pass": true,
+      "detail": "{\"id\":\"6044871c-0bea-4d7f-817b-1ea49ff02ded\",\"name\":\"优化验收-optx90j\",\"email\":\"opt-optx90j@awshop.local\",\"role\":\"admin\",\"cr"
+    },
+    {
+      "id": "R1.1",
+      "name": "GET /process-model/specs 初始可用",
+      "pass": true,
+      "detail": "status=200 n=0"
+    },
+    {
+      "id": "R1.2",
+      "name": "POST /specs 登记 draft",
+      "pass": true,
+      "detail": "{\"id\":\"pms-optx90j\",\"version\":1,\"lineId\":\"ln-b748811b\",\"productId\":\"pd-0f8927b9\",\"recipeId\":\"rc-67e1f505\",\"recipeVersion\":1,\"contentHash\":\"6c477ed326ba13a45b445"
+    },
+    {
+      "id": "R1.3",
+      "name": "GET /specs?lineId 回读与可见性",
+      "pass": true,
+      "detail": "n=1"
+    },
+    {
+      "id": "R2.1",
+      "name": "同版本改内容 → 409 SPEC_VERSION_IMMUTABLE",
+      "pass": true,
+      "detail": "409/SPEC_VERSION_IMMUTABLE"
+    },
+    {
+      "id": "R2.2",
+      "name": "stage 工况 → 422 CONDITION_FIELD_UNSUPPORTED",
+      "pass": true,
+      "detail": "422/CONDITION_FIELD_UNSUPPORTED"
+    },
+    {
+      "id": "R1.4",
+      "name": "POST /specs/:id/publish 发布不可变",
+      "pass": true,
+      "detail": "200/published"
+    },
+    {
+      "id": "R1.5",
+      "name": "POST /datasets 构建 manifest v2",
+      "pass": true,
+      "detail": "id=ds-mvkzxw1y-50s5yo rows=786 runs=6 msg=ok"
+    },
+    {
+      "id": "R1.6",
+      "name": "GET /aml/datasets/:id manifest v2 可读",
+      "pass": true,
+      "detail": "v=2 hash=93c2b5ee31"
+    },
+    {
+      "id": "R1.7",
+      "name": "POST /eligibility 模拟数据具备优化资格",
+      "pass": true,
+      "detail": "gaps=none evidence=ds:ds-mvkzxw1y-50s5yo:93c2b5ee31f6"
+    },
+    {
+      "id": "R1.8",
+      "name": "GET /eligibility 最新+历史",
+      "pass": true,
+      "detail": "history=1"
+    },
+    {
+      "id": "R2.3",
+      "name": "模拟线申请 real 作用域 → 422 ELIGIBILITY_SCOPE_MISMATCH",
+      "pass": true,
+      "detail": "422/ELIGIBILITY_SCOPE_MISMATCH msg=模拟产线的数据只能生成 simulation 作用域资格;real 作用域需要真实产线"
+    },
+    {
+      "id": "R1.9",
+      "name": "POST /train 提交内置训练作业",
+      "pass": true,
+      "detail": "job=job-mvkzxw52-6sz3cw"
+    },
+    {
+      "id": "R1.10",
+      "name": "训练作业 done + 两阶段登记 model_id",
+      "pass": true,
+      "detail": "status=done model=mdl-mvkzxw52-6sz3cw err="
+    },
+    {
+      "id": "R1.11",
+      "name": "模型注册表:linear_state_space@1 + 接口/哈希",
+      "pass": true,
+      "detail": "linear_state_space@1/linear_state_space/eea7097892"
+    },
+    {
+      "id": "R1.12",
+      "name": "创建 workspace/channel(lead 实例)",
+      "pass": true,
+      "detail": "ws=e3d8ae91-c9af-4367-99f4-0511b192a688 ch=2dc31b07-bd75-45aa-8038-e26d7199402c lead=34ccc8a3-e8ca-49b5-893a-7b0d381f8583"
+    },
+    {
+      "id": "R1.13",
+      "name": "挂载 channel 到 workspace",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "R2.4",
+      "name": "solver/模板不兼容 → 422 PROFILE_INCOMPATIBLE",
+      "pass": true,
+      "detail": "422/PROFILE_INCOMPATIBLE"
+    },
+    {
+      "id": "R1.14",
+      "name": "POST /profiles draft(工件字段由服务端回填)",
+      "pass": true,
+      "detail": "200/draft/linear_state_space@1/eea7097892 msg=ok"
+    },
+    {
+      "id": "R1.15",
+      "name": "POST /profiles/:id/publish 发布",
+      "pass": true,
+      "detail": "200/published"
+    },
+    {
+      "id": "R1.16",
+      "name": "POST /bindings 创建(revision=1)",
+      "pass": true,
+      "detail": "id=ob-mvkzxx1n-e680f rev=1"
+    },
+    {
+      "id": "R1.17",
+      "name": "GET /bindings?agentInstanceId 隔离回读",
+      "pass": true,
+      "detail": "n=1"
+    },
+    {
+      "id": "R1.18",
+      "name": "GET /capabilities 环境/求解器/绑定总览",
+      "pass": true,
+      "detail": "bindings=1 solverSize=1 py=e\\aml\\.venv\\Scripts\\python.exe"
+    },
+    {
+      "id": "R1.19",
+      "name": "POST /solve optimal + 建议带证据状态(verified|unverified 由 UQ 证据决定)",
+      "pass": true,
+      "detail": "status=optimal run=orun-mvkzxx4z-74xfu rec=verified reason=已验证推荐 http=200"
+    },
+    {
+      "id": "R1.20",
+      "name": "求解零 DCW 写入(写入账本不变)",
+      "pass": true,
+      "detail": "0→0"
+    },
+    {
+      "id": "R1.21",
+      "name": "GET /runs 台账:IR hash + 建议 + 载荷",
+      "pass": true,
+      "detail": "hash=2447ed8d91 rec=verified cvOrder=cv1"
+    },
+    {
+      "id": "R3.1",
+      "name": "实例化 aml_optimization 频道",
+      "pass": true,
+      "detail": "ch=884c418b-239e-46a3-aa72-c4a2e21d3974 lead=19ddada3-0486-4b7b-a1d5-5fe61eb8dc23"
+    },
+    {
+      "id": "R2.5",
+      "name": "模板 id 绑定 → 422 AGENT_TEMPLATE_ID_NOT_ALLOWED",
+      "pass": true,
+      "detail": "422/AGENT_TEMPLATE_ID_NOT_ALLOWED tpl=tpl-aml-lead"
+    },
+    {
+      "id": "R3.2",
+      "name": "优化频道 lead 绑定 Profile",
+      "pass": true,
+      "detail": "200/0"
+    },
+    {
+      "id": "R3.3",
+      "name": "工具注入面含 5 个 optimizer_*",
+      "pass": true,
+      "detail": "optimizer_capabilities,optimizer_solve,optimizer_status,optimizer_cancel,optimizer_plan_get,optimizer_campaign,optimizer_round,optimizer_state"
+    },
+    {
+      "id": "R3.4",
+      "name": "optimizer_capabilities 返回求解器/环境 JSON",
+      "pass": true,
+      "detail": "{\n  \"agentId\": \"19ddada3-0486-4b7b-a1d5-5fe61eb8dc23\",\n  \"bindings\": [\n    {\n      \"bindingId\": \"ob-mvkzxz2b-sjj8f\",\n      \"profile\": \"optp-optx90j@1\",\n      \"m"
+    },
+    {
+      "id": "R3.5",
+      "name": "optimizer_solve 真实求解(optimal)",
+      "pass": true,
+      "detail": "run=orun-mvkzxz4k-q66p6 status=optimal text={\n  \"runId\": \"orun-mvkzxz4k-q66p6\",\n  \"bindingId\": \"ob-mvkzxz2b-sjj8f\",\n  \"profileVersion\": \"optp-optx90j@1\",\n  \"status\""
+    },
+    {
+      "id": "R3.6",
+      "name": "optimizer_plan_get 返回带证据状态的建议(verified|unverified)",
+      "pass": true,
+      "detail": "{\n  \"runId\": \"orun-mvkzxz4k-q66p6\",\n  \"recommendation\": {\n    \"id\": \"orec-mvkzxzxa-4ssd8\",\n    \"runId\": \"orun-mvkzxz4k-q66p6\",\n    \"candidateId\": \"oc-n-mvkzxz4k"
+    },
+    {
+      "id": "R3.7",
+      "name": "optimizer_status 返回终态",
+      "pass": true,
+      "detail": "{\n  \"run\": {\n    \"id\": \"orun-mvkzxz4k-q66p6\",\n    \"bindingId\": \"ob-mvkzxz2b-sjj8f\",\n    \"bindingRevision\": 1,\n    \"profileId\": \"optp-optx90j"
+    },
+    {
+      "id": "R3.8",
+      "name": "optimizer_cancel 对终态返回 cancelled=false(非 500)",
+      "pass": true,
+      "detail": "{\n  \"cancelled\": false\n}"
+    },
+    {
+      "id": "R2.6",
+      "name": "管理员创建第二用户并登录(非 admin)",
+      "pass": true,
+      "detail": "create=200 login=200"
+    },
+    {
+      "id": "R2.7",
+      "name": "非 editor 读 Profile → 403",
+      "pass": true,
+      "detail": "403/FORBIDDEN_ROLE"
+    },
+    {
+      "id": "R2.8",
+      "name": "非 admin 读全局绑定 → 403",
+      "pass": true,
+      "detail": "403/FORBIDDEN_ROLE"
+    },
+    {
+      "id": "R2.9",
+      "name": "非 admin 读全局运行 → 403",
+      "pass": true,
+      "detail": "403/FORBIDDEN_ROLE"
+    },
+    {
+      "id": "R2.10",
+      "name": "无产线授权用户看不到规格(过滤为空)",
+      "pass": true,
+      "detail": "n=0"
+    },
+    {
+      "id": "R2.11",
+      "name": "无产线授权用户登记规格 → 403",
+      "pass": true,
+      "detail": "403/LINE_FORBIDDEN"
+    },
+    {
+      "id": "R2.12",
+      "name": "DELETE /bindings/:id 撤权",
+      "pass": true,
+      "detail": "200"
+    },
+    {
+      "id": "R2.13",
+      "name": "撤权后绑定列表为空",
+      "pass": true,
+      "detail": "n=0"
+    },
+    {
+      "id": "R2.14",
+      "name": "撤权后 solve → 409 BINDING_NOT_FOUND",
+      "pass": true,
+      "detail": "409/BINDING_NOT_FOUND"
+    },
+    {
+      "id": "U1.1",
+      "name": "/optimizer 可打开(标题+五 tab)",
+      "pass": true,
+      "detail": "title=优化器 tabs=模型规格|资格报告|Profile / Solver|Agent 绑定|运行 / 建议"
+    },
+    {
+      "id": "U1.2",
+      "name": "首屏无 pageerror(平台级 unhead dispose 已单列)",
+      "pass": true,
+      "detail": " | control="
+    },
+    {
+      "id": "U1.3",
+      "name": "UI 添加 MV/CV 两行变量",
+      "pass": true,
+      "detail": "rows=2"
+    },
+    {
+      "id": "U1.4",
+      "name": "UI 登记规格 → 后端 draft 回读",
+      "pass": true,
+      "detail": "规格已登记:pms-demo@1"
+    },
+    {
+      "id": "U1.5",
+      "name": "UI 构建数据集(v2)成功",
+      "pass": true,
+      "detail": "数据集已构建:ds-mvkzywh2-3kg32a(786 窗)"
+    },
+    {
+      "id": "U1.6",
+      "name": "UI 资格报告渲染(具备资格 + simulation + 证据)",
+      "pass": true,
+      "detail": "优化资格(A2)评估资格具备优化资格 · scope=simulation · ds:ds-mvkzywh2-3kg32a:462b80205a9d{ \"sampleCount\": 786, \"mvVariation.mv1\": 0.515081, \"mvChanges.mv1\": 488, \"maxMvColline"
+    },
+    {
+      "id": "U1.7",
+      "name": "UI 提交训练作业",
+      "pass": true,
+      "detail": "训练作业已提交:job-mvkzyy3z-cosfg4"
+    },
+    {
+      "id": "U1.8",
+      "name": "UI 训练作业完成并产出模型",
+      "pass": true,
+      "detail": "status=done model=mdl-mvkzyy3z-cosfg4"
+    },
+    {
+      "id": "U1.9",
+      "name": "UI 登记 Profile 并出现发布按钮",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "U1.10",
+      "name": "UI Profile 表格显示 published",
+      "pass": true,
+      "detail": "optp-ui-optx90j@1publishedmdl-mvkzyy3z-cosfg4osqp_mpc@1optp-optx90j@1publishedmdl-mvkzxw52-6sz3cwosqp_mpc@1"
+    },
+    {
+      "id": "U1.11",
+      "name": "UI 创建绑定并回读行",
+      "pass": true,
+      "detail": "ob-mvkzz0om-b3gzw2dc31b07-bd75-45aa-8038-e26d7199402c34ccc8a3-e8ca-49b5-893a-7b0d381f8583optp-ui-optx90j@1recommendation1撤销ob-mvkzxz2b-sjj8f"
+    },
+    {
+      "id": "U1.12",
+      "name": "UI 求解成功并渲染运行/建议行(状态徽章二态)",
+      "pass": true,
+      "detail": "orun-mvkzz1l4-3w61aoptimaloptp-ui-optx90jed035b27a8未验证(缺 UQ/OOD 证据)2026-10-23T21:35:09.003+08:00orun-mvkzxz4k-q66p6optimaloptp-optx90j2447ed8d91已验证推荐2026-10-23T21:34:18.814+08:00orun-mvkzxx4z-74xfuopt"
+    },
+    {
+      "id": "U1.13",
+      "name": "建议状态徽章醒目标识(.unverified)",
+      "pass": true,
+      "detail": "未验证(缺 UQ/OOD 证据)"
+    },
+    {
+      "id": "U1.15",
+      "name": "非法 JSON → 前端错误提示(不崩溃)",
+      "pass": true,
+      "detail": "Expected property name or '}' in JSON at position 1 (line 1 column 2)"
+    },
+    {
+      "id": "U1.16",
+      "name": "UI 全流程(含错误路径)无 pageerror",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "C1",
+      "name": "legacy Channel 不注入新 optimizer_*(5 工具)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "C2",
+      "name": "legacy Channel 直调 optimizer_solve → OPTIMIZER_CHANNEL_DISABLED",
+      "pass": true,
+      "detail": "OPTIMIZER_CHANNEL_DISABLED: Channel 未启用 Twin profile,优化器工具拒绝执行。请先把 Channel 档位切到 aml_optimization(工艺优化)或 hybrid_twin。"
+    },
+    {
+      "id": "C3",
+      "name": "aml_training:不注入新 optimizer_*,保留训练工具",
+      "pass": true,
+      "detail": "n=94"
+    },
+    {
+      "id": "C4",
+      "name": "aml_training 直调 optimizer_solve → OPTIMIZER_PROFILE_DENIED",
+      "pass": true,
+      "detail": "OPTIMIZER_PROFILE_DENIED: optimizer_solve 仅在工艺优化(aml_optimization)或 hybrid_twin Channel 可用(当前 profile=aml_training)。"
+    },
+    {
+      "id": "C5",
+      "name": "exp-miner 观察面:无新 optimizer_* 且直调拒绝",
+      "pass": true,
+      "detail": "|OPTIMIZER_PROFILE_DENIED: optimizer_solve 仅在工艺优化(aml_optimiz"
+    },
+    {
+      "id": "C6",
+      "name": "hybrid_twin + 绑定:注入 optimizer_* 且 solve 带 binding_id",
+      "pass": true,
+      "detail": "bind=200"
+    },
+    {
+      "id": "C7",
+      "name": "hybrid_twin 真实求解 optimal",
+      "pass": true,
+      "detail": "run=orun-mvkzz5bm-q6bgi status=optimal"
+    },
+    {
+      "id": "C8",
+      "name": "同 Channel 未绑定 Agent:有 capabilities、无 solve",
+      "pass": true,
+      "detail": "names=optimizer_capabilities,optimizer_campaign,optimizer_round,optimizer_state"
+    },
+    {
+      "id": "C9",
+      "name": "同 Channel 两 Agent 各自绑定:worker 获得 solve",
+      "pass": true,
+      "detail": "bind=200"
+    },
+    {
+      "id": "C10",
+      "name": "worker 用自己的绑定求解 optimal",
+      "pass": true,
+      "detail": "run=orun-mvkzz6an-4z7y7 status=optimal"
+    },
+    {
+      "id": "C11",
+      "name": "worker 读他人 run → BINDING_NOT_OWNED/不属于",
+      "pass": true,
+      "detail": "工具调用被拒(引用校验,optimizer_status):run_id = orun-mvkzz5bm-q6bgi 不属于当前 Agent(BINDING_NOT_OWNED)"
+    },
+    {
+      "id": "C12",
+      "name": "撤权后工具面立即收回 solve",
+      "pass": true,
+      "detail": "n=optimizer_capabilities,optimizer_campaign,optimizer_round,optimizer_state"
+    },
+    {
+      "id": "S1",
+      "name": "静态场景:规格/数据集/资格链",
+      "pass": true,
+      "detail": "rows=816 gaps=none msg=ok"
+    },
+    {
+      "id": "S2",
+      "name": "静态训练器完成 + static_response@1 工件",
+      "pass": true,
+      "detail": "status=done kind=static_response@1 err="
+    },
+    {
+      "id": "S3",
+      "name": "静态工件 + OSQP → 422 UNSUPPORTED_MODEL_SOLVER",
+      "pass": true,
+      "detail": "422/UNSUPPORTED_MODEL_SOLVER"
+    },
+    {
+      "id": "S4",
+      "name": "静态场景 Agent 求解(SLSQP) optimal 且命中目标",
+      "pass": true,
+      "detail": "profile=200 bind=200 status=optimal mv=63.38744651502797 msg={\n  \"runId\": \"orun-mvkzz82w-tbmhj\",\n  \"bindingId\": \"ob-mvkzz81z-1b6fb\",\n  \"profi"
+    },
+    {
+      "id": "B1",
+      "name": "双变量场景:无代码训练完成 + 2MV/2CV 工件",
+      "pass": true,
+      "detail": "rows=786 status=done model=mdl-mvkzz9ad-hz2mxj"
+    },
+    {
+      "id": "B2",
+      "name": "双变量场景 Agent 求解 optimal(模型单位 m3/h)",
+      "pass": true,
+      "detail": "bind=200 status=optimal first={\"flow_a\":4.247466982176206,\"flow_b\":2.878013041072884} msg={\n  \"runId\": \"orun-mvkzza78-hde97\",\n  \"bindingId\": \"ob-mvkzza6p-9ro9w\",\n  \"profileVersion\": \"optp-b-optx90j@1\",\n  \"status\": \"optimal\",\n  \"fi"
+    },
+    {
+      "id": "B3",
+      "name": "单位换算随规格持久化(scale=0.06/模型单位 m3/h)",
+      "pass": true,
+      "detail": "[[\"flow_a\",\"L/min\",\"m3/h\",0.06],[\"flow_b\",\"L/min\",\"m3/h\",0.06],[\"thick\",\"μm\",null,1],[\"width\",\"mm\",null,1]]"
+    },
+    {
+      "id": "T1",
+      "name": "Channel 绑定 Twin Gate 通过的 AML 模型(aml 模式)",
+      "pass": true,
+      "detail": "200/model_backed/0"
+    },
+    {
+      "id": "T2",
+      "name": "模型受控 Channel 注入 mpc/twin 工具",
+      "pass": true,
+      "detail": "twin_trial_run,mpc_optimize"
+    },
+    {
+      "id": "T3",
+      "name": "candidate/Twin Gate 未过 → 409 拒绝",
+      "pass": true,
+      "detail": "409/AML_MODEL_STAGE"
+    },
+    {
+      "id": "T4",
+      "name": "旧 ONNX 孪生工件 → 新求解器 422 UNSUPPORTED_MODEL_SOLVER",
+      "pass": true,
+      "detail": "422/UNSUPPORTED_MODEL_SOLVER"
+    },
+    {
+      "id": "T5",
+      "name": "旧 ONNX 工件仍可绑定 Channel(旧工具面兼容)",
+      "pass": true,
+      "detail": "200/0"
+    },
+    {
+      "id": "T6",
+      "name": "Channel 绑定模型不自动授权 optimizer_*",
+      "pass": true,
+      "detail": "BINDING_NOT_FOUND: 该 Agent 未绑定优化器 Profile;先在 Channel 设置中绑定后再调用 optimizer_solve。"
+    },
+    {
+      "id": "T7",
+      "name": "补 optimizer binding 后同一 Channel 可求解(双闸门分离)",
+      "pass": true,
+      "detail": "status=optimal"
+    },
+    {
+      "id": "V1",
+      "name": "Live 闭环:求解器首步驱动真实轨迹(仅首步,逐拍刷新上下文)",
+      "pass": true,
+      "detail": "steps=12 samples=8 bind=200"
+    },
+    {
+      "id": "V2",
+      "name": "相对保持方案中位质量误差改善 ≥15%",
+      "pass": true,
+      "detail": "base=6.42 mpc=0.02 improve=99.7%"
+    },
+    {
+      "id": "V3",
+      "name": "闭环 MV 始终在工艺窗口[0,100]",
+      "pass": true,
+      "detail": "min=42.1 max=50.0"
+    },
+    {
+      "id": "W0",
+      "name": "下发使用新求解建议(避免旧建议超时/撤权)",
+      "pass": true,
+      "detail": "bind=200 solve=200 status=optimal"
+    },
+    {
+      "id": "W1",
+      "name": "POST crosscheck:worker vs typed predictor 一致(pass)",
+      "pass": true,
+      "detail": "200/verdict=pass maxDev=0"
+    },
+    {
+      "id": "W2",
+      "name": "互校后 dual=true(verified+pass+fresh)",
+      "pass": true,
+      "detail": "{\"id\":\"oxc-mvl00mgc-53ngb\",\"verdict\":\"pass\",\"stale\":false,\"conditionChanged\":false,\"maxDev\":0,\"tol\":0.000001,\"rowHash\":\"5dca002d3e3e6e5961152d578fdf70affd81b17e"
+    },
+    {
+      "id": "W3",
+      "name": "dispatch body 携带证据字段 → 422(D11 防伪)",
+      "pass": true,
+      "detail": "422/DISPATCH_BODY_EVIDENCE_FORBIDDEN"
+    },
+    {
+      "id": "W4",
+      "name": "dispatch 建卡成功(optimizer-recipe: 前缀)",
+      "pass": true,
+      "detail": "200/optimizer-recipe:rc-67e1f505"
+    },
+    {
+      "id": "W5",
+      "name": "同配方在飞卡阻止重复建卡 → 409 DISPATCH_RECIPE_IN_FLIGHT",
+      "pass": true,
+      "detail": "409/DISPATCH_RECIPE_IN_FLIGHT"
+    },
+    {
+      "id": "W6",
+      "name": "审批面精确返回当前下发卡及首步工程值",
+      "pass": true,
+      "detail": "id=ap-fb7978a4 nodeId=optimizer-recipe:rc-67e1f505 expected=36.9566498695652 card=36.9566498695652"
+    },
+    {
+      "id": "W7",
+      "name": "HITL 批准 → 单一咽喉 D13 重验 → 整批下发",
+      "pass": true,
+      "detail": "200/{\"dispatch\":{\"approved\":true,\"comment\":\"集成验收批准\",\"execution\":{\"runId\":\"rr-074fc450\",\"acks\":{\"verified\":1,\"unverified\":0,\"failed\":0,\"total\":1}}}}"
+    },
+    {
+      "id": "W8",
+      "name": "执行节点回读等于建议首步工程值(写入落设备,按节点分辨率量化)",
+      "pass": true,
+      "detail": "node=dcw-optx90j-mv expected=36.9566498695652 readValue=37 tolerance=0.5"
+    },
+    {
+      "id": "W9",
+      "name": "当前建议 request 与 execute 审计齐备",
+      "pass": true,
+      "detail": "status=200 actions=optimizer.dispatch.execute,optimizer.dispatch.request"
+    },
+    {
+      "id": "M1",
+      "name": "已绑定优化频道 lead 实例 token 存在",
+      "pass": true,
+      "detail": "bind=200 tokenPresent=true"
+    },
+    {
+      "id": "M2",
+      "name": "MCP initialize 会话建立",
+      "pass": true,
+      "detail": "{\"protocolVersion\":\"2024-11-05\",\"capabilities\":{\"tools\":{\"listChanged\":true}},\"serverInfo\":{\"name\":\"aw-host-tools\",\"titl"
+    },
+    {
+      "id": "M3",
+      "name": "MCP tools/list 含 5 个 optimizer_* 工具",
+      "pass": true,
+      "detail": "optimizer_capabilities,optimizer_solve,optimizer_status,optimizer_cancel,optimizer_plan_get,optimizer_campaign,optimizer_round,optimizer_state"
+    },
+    {
+      "id": "M4",
+      "name": "MCP optimizer_solve 真实求解 optimal",
+      "pass": true,
+      "detail": "status=optimal text={\n  \"runId\": \"orun-mvl00o0x-6awnb\",\n  \"bindingId\": \"ob-mvl00nwh-ip6gn\",\n  \"profileVersion\": \"optp-optx90j@1\",\n  \"status\": \"optimal\",\n  \"firs stderr="
+    }
+  ],
+  "pageErrors": []
+}

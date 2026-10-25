@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-20T16:56:24.573Z",
+  "at": "2026-10-24T03:08:42.253Z",
   "pass": 73,
   "fail": 0,
   "results": [
@@ -13,13 +13,13 @@
       "id": "H-mock",
       "name": "mock 专属 DAQ/配方绑定",
       "pass": true,
-      "detail": "daq=dn-9c71f536 recipe=rc-d1d767fb"
+      "detail": "daq=dn-722b43b2 recipe=rc-475bb95c"
     },
     {
       "id": "H-mock",
       "name": "mock 工具面含数采/配方工具",
       "pass": true,
-      "detail": "count=64"
+      "detail": "count=65"
     },
     {
       "id": "H-mock",
@@ -37,19 +37,19 @@
       "id": "M-mock",
       "name": "mock MCP 桥可列工具并执行 daq_query",
       "pass": true,
-      "detail": "tools=64 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:melt-temp-pv(熔体/箱体温度)单位 ℃,正常量程 20~320℃,当前状态 ok,时间窗 2026-10-2"
+      "detail": "tools=65 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:melt-temp-pv(熔体/箱体温度)单位 ℃,正常量程 20~320℃,当前状态 ok,时间窗 2026-10-2"
     },
     {
       "id": "H-omp",
       "name": "omp 专属 DAQ/配方绑定",
       "pass": true,
-      "detail": "daq=dn-f7c3f5f7 recipe=rc-d1d767fb"
+      "detail": "daq=dn-466cb842 recipe=rc-475bb95c"
     },
     {
       "id": "H-omp",
       "name": "omp 工具面含数采/配方工具",
       "pass": true,
-      "detail": "count=64"
+      "detail": "count=65"
     },
     {
       "id": "H-omp",
@@ -67,19 +67,19 @@
       "id": "M-omp",
       "name": "omp MCP 桥可列工具并执行 daq_query",
       "pass": true,
-      "detail": "tools=64 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:melt-pressure-pv(熔体/箱体温度)单位 bar,正常量程 0~160bar,当前状态 ok,时间窗 20"
+      "detail": "tools=65 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:melt-pressure-pv(熔体/箱体温度)单位 bar,正常量程 0~160bar,当前状态 ok,时间窗 20"
     },
     {
       "id": "H-opencode",
       "name": "opencode 专属 DAQ/配方绑定",
       "pass": true,
-      "detail": "daq=dn-6bf61c1b recipe=rc-d1d767fb"
+      "detail": "daq=dn-7db70a04 recipe=rc-475bb95c"
     },
     {
       "id": "H-opencode",
       "name": "opencode 工具面含数采/配方工具",
       "pass": true,
-      "detail": "count=64"
+      "detail": "count=65"
     },
     {
       "id": "H-opencode",
@@ -97,19 +97,19 @@
       "id": "M-opencode",
       "name": "opencode MCP 桥可列工具并执行 daq_query",
       "pass": true,
-      "detail": "tools=64 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:mold-temp-pv(熔体/箱体温度)单位 ℃,正常量程 10~110℃,当前状态 ok,时间窗 2026-10-2"
+      "detail": "tools=65 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:mold-temp-pv(熔体/箱体温度)单位 ℃,正常量程 10~110℃,当前状态 ok,时间窗 2026-10-2"
     },
     {
       "id": "H-codex",
       "name": "codex 专属 DAQ/配方绑定",
       "pass": true,
-      "detail": "daq=dn-e1e0f766 recipe=rc-d1d767fb"
+      "detail": "daq=dn-e66df9f2 recipe=rc-475bb95c"
     },
     {
       "id": "H-codex",
       "name": "codex 工具面含数采/配方工具",
       "pass": true,
-      "detail": "count=64"
+      "detail": "count=65"
     },
     {
       "id": "H-codex",
@@ -127,19 +127,19 @@
       "id": "M-codex",
       "name": "codex MCP 桥可列工具并执行 daq_query",
       "pass": true,
-      "detail": "tools=64 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:clamp-force-pv(熔体/箱体温度)单位 kN,正常量程 0~2600kN,当前状态 ok,时间窗 2026-"
+      "detail": "tools=65 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:clamp-force-pv(熔体/箱体温度)单位 kN,正常量程 0~2600kN,当前状态 ok,时间窗 2026-"
     },
     {
       "id": "H-dsh",
       "name": "dsh 专属 DAQ/配方绑定",
       "pass": true,
-      "detail": "daq=dn-6451a3c7 recipe=rc-d1d767fb"
+      "detail": "daq=dn-7989a71c recipe=rc-475bb95c"
     },
     {
       "id": "H-dsh",
       "name": "dsh 工具面含数采/配方工具",
       "pass": true,
-      "detail": "count=64"
+      "detail": "count=65"
     },
     {
       "id": "H-dsh",
@@ -157,19 +157,19 @@
       "id": "M-dsh",
       "name": "dsh MCP 桥可列工具并执行 daq_query",
       "pass": true,
-      "detail": "tools=64 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:inj-pressure-pv(熔体/箱体温度)单位 bar,正常量程 0~180bar,当前状态 ok,时间窗 202"
+      "detail": "tools=65 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:inj-pressure-pv(熔体/箱体温度)单位 bar,正常量程 0~180bar,当前状态 ok,时间窗 202"
     },
     {
       "id": "H-claude",
       "name": "claude 专属 DAQ/配方绑定",
       "pass": true,
-      "detail": "daq=dn-55813f2a recipe=rc-d1d767fb"
+      "detail": "daq=dn-05d7ff7b recipe=rc-475bb95c"
     },
     {
       "id": "H-claude",
       "name": "claude 工具面含数采/配方工具",
       "pass": true,
-      "detail": "count=64"
+      "detail": "count=65"
     },
     {
       "id": "H-claude",
@@ -187,19 +187,19 @@
       "id": "M-claude",
       "name": "claude MCP 桥可列工具并执行 daq_query",
       "pass": true,
-      "detail": "tools=64 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:water-temp-pv(熔体/箱体温度)单位 ℃,正常量程 5~60℃,当前状态 ok,时间窗 2026-10-21"
+      "detail": "tools=65 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:water-temp-pv(熔体/箱体温度)单位 ℃,正常量程 5~60℃,当前状态 ok,时间窗 2026-10-24"
     },
     {
       "id": "H-gemini",
       "name": "gemini 专属 DAQ/配方绑定",
       "pass": true,
-      "detail": "daq=dn-6a149aec recipe=rc-d1d767fb"
+      "detail": "daq=dn-c2f7ce51 recipe=rc-475bb95c"
     },
     {
       "id": "H-gemini",
       "name": "gemini 工具面含数采/配方工具",
       "pass": true,
-      "detail": "count=64"
+      "detail": "count=65"
     },
     {
       "id": "H-gemini",
@@ -217,19 +217,19 @@
       "id": "M-gemini",
       "name": "gemini MCP 桥可列工具并执行 daq_query",
       "pass": true,
-      "detail": "tools=64 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:cool-flow-pv(熔体/箱体温度)单位 L/min,正常量程 0~80L/min,当前状态 ok,时间窗 202"
+      "detail": "tools=65 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:cool-flow-pv(熔体/箱体温度)单位 L/min,正常量程 0~80L/min,当前状态 ok,时间窗 202"
     },
     {
       "id": "H-copilot",
       "name": "copilot 专属 DAQ/配方绑定",
       "pass": true,
-      "detail": "daq=dn-b455b299 recipe=rc-d1d767fb"
+      "detail": "daq=dn-60eb20b2 recipe=rc-475bb95c"
     },
     {
       "id": "H-copilot",
       "name": "copilot 工具面含数采/配方工具",
       "pass": true,
-      "detail": "count=64"
+      "detail": "count=65"
     },
     {
       "id": "H-copilot",
@@ -247,19 +247,19 @@
       "id": "M-copilot",
       "name": "copilot MCP 桥可列工具并执行 daq_query",
       "pass": true,
-      "detail": "tools=64 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:part-weight(熔体/箱体温度)单位 g,正常量程 25~40g,当前状态 alarm,时间窗 2026-10-"
+      "detail": "tools=65 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:part-weight(熔体/箱体温度)单位 g,正常量程 25~40g,当前状态 alarm,时间窗 2026-10-"
     },
     {
       "id": "H-cursor",
       "name": "cursor 专属 DAQ/配方绑定",
       "pass": true,
-      "detail": "daq=dn-5944a72e recipe=rc-d1d767fb"
+      "detail": "daq=dn-017f465b recipe=rc-475bb95c"
     },
     {
       "id": "H-cursor",
       "name": "cursor 工具面含数采/配方工具",
       "pass": true,
-      "detail": "count=64"
+      "detail": "count=65"
     },
     {
       "id": "H-cursor",
@@ -277,19 +277,19 @@
       "id": "M-cursor",
       "name": "cursor MCP 桥可列工具并执行 daq_query",
       "pass": true,
-      "detail": "tools=64 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:flash-rate(熔体/箱体温度)单位 %,正常量程 0~5%,当前状态 warn,时间窗 2026-10-21T0"
+      "detail": "tools=65 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:flash-rate(熔体/箱体温度)单位 %,正常量程 0~5%,当前状态 warn,时间窗 2026-10-24T1"
     },
     {
       "id": "H-crush",
       "name": "crush 专属 DAQ/配方绑定",
       "pass": true,
-      "detail": "daq=dn-38aed797 recipe=rc-d1d767fb"
+      "detail": "daq=dn-a4c8152f recipe=rc-475bb95c"
     },
     {
       "id": "H-crush",
       "name": "crush 工具面含数采/配方工具",
       "pass": true,
-      "detail": "count=64"
+      "detail": "count=65"
     },
     {
       "id": "H-crush",
@@ -307,19 +307,19 @@
       "id": "M-crush",
       "name": "crush MCP 桥可列工具并执行 daq_query",
       "pass": true,
-      "detail": "tools=64 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:sink-mark(熔体/箱体温度)单位 %,正常量程 0~10%,当前状态 alarm,时间窗 2026-10-21T"
+      "detail": "tools=65 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:sink-mark(熔体/箱体温度)单位 %,正常量程 0~10%,当前状态 alarm,时间窗 2026-10-24T"
     },
     {
       "id": "H-goose",
       "name": "goose 专属 DAQ/配方绑定",
       "pass": true,
-      "detail": "daq=dn-19324b20 recipe=rc-d1d767fb"
+      "detail": "daq=dn-ef2a001d recipe=rc-475bb95c"
     },
     {
       "id": "H-goose",
       "name": "goose 工具面含数采/配方工具",
       "pass": true,
-      "detail": "count=64"
+      "detail": "count=65"
     },
     {
       "id": "H-goose",
@@ -337,19 +337,19 @@
       "id": "M-goose",
       "name": "goose MCP 桥可列工具并执行 daq_query",
       "pass": true,
-      "detail": "tools=64 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:dim-dev(熔体/箱体温度)单位 mm,正常量程 -0.5~0.5mm,当前状态 ok,时间窗 2026-10-21"
+      "detail": "tools=65 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:dim-dev(熔体/箱体温度)单位 mm,正常量程 -0.5~0.5mm,当前状态 ok,时间窗 2026-10-24"
     },
     {
       "id": "H-qwen",
       "name": "qwen 专属 DAQ/配方绑定",
       "pass": true,
-      "detail": "daq=dn-ee8259a0 recipe=rc-d1d767fb"
+      "detail": "daq=dn-7090bad4 recipe=rc-475bb95c"
     },
     {
       "id": "H-qwen",
       "name": "qwen 工具面含数采/配方工具",
       "pass": true,
-      "detail": "count=64"
+      "detail": "count=65"
     },
     {
       "id": "H-qwen",
@@ -367,19 +367,19 @@
       "id": "M-qwen",
       "name": "qwen MCP 桥可列工具并执行 daq_query",
       "pass": true,
-      "detail": "tools=64 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:cycle-time(熔体/箱体温度)单位 s,正常量程 5~60s,当前状态 ok,时间窗 2026-10-21T00"
+      "detail": "tools=65 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:cycle-time(熔体/箱体温度)单位 s,正常量程 5~60s,当前状态 ok,时间窗 2026-10-24T11"
     },
     {
       "id": "H-pi",
       "name": "pi 专属 DAQ/配方绑定",
       "pass": true,
-      "detail": "daq=dn-fdce306e recipe=rc-d1d767fb"
+      "detail": "daq=dn-da2c7d1b recipe=rc-475bb95c"
     },
     {
       "id": "H-pi",
       "name": "pi 工具面含数采/配方工具",
       "pass": true,
-      "detail": "count=64"
+      "detail": "count=65"
     },
     {
       "id": "H-pi",
@@ -397,19 +397,19 @@
       "id": "M-pi",
       "name": "pi MCP 桥可列工具并执行 daq_query",
       "pass": true,
-      "detail": "tools=64 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:wall-profile(熔体/箱体温度)单位 mm,正常量程 1~5mm,当前状态 offline,时间窗 2026-"
+      "detail": "tools=65 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:wall-profile(熔体/箱体温度)单位 mm,正常量程 1~5mm,当前状态 offline,时间窗 2026-"
     },
     {
       "id": "H-hermes",
       "name": "hermes 专属 DAQ/配方绑定",
       "pass": true,
-      "detail": "daq=dn-9af5e753 recipe=rc-d1d767fb"
+      "detail": "daq=dn-3b8f44dd recipe=rc-475bb95c"
     },
     {
       "id": "H-hermes",
       "name": "hermes 工具面含数采/配方工具",
       "pass": true,
-      "detail": "count=64"
+      "detail": "count=65"
     },
     {
       "id": "H-hermes",
@@ -427,7 +427,7 @@
       "id": "M-hermes",
       "name": "hermes MCP 桥可列工具并执行 daq_query",
       "pass": true,
-      "detail": "tools=64 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:surface-image(熔体/箱体温度)单位 灰度,正常量程 0~255灰度,当前状态 offline,时间窗 20"
+      "detail": "tools=65 数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:surface-image(熔体/箱体温度)单位 灰度,正常量程 0~255灰度,当前状态 offline,时间窗 20"
     },
     {
       "id": "H1",
@@ -439,24 +439,24 @@
       "id": "W1",
       "name": "omp 经 MCP recipe_trial + HITL 真实下发/回读",
       "pass": true,
-      "detail": "card=ap-5e9e8b6b 45→46.8 readback=46.8 试验已整批下发并全部设备证实(1/1,批次 rr-4d7d5):scen-injection:dcw:hold-pressure-sp→46.8bar [证实✓]。假设:全功能验收:omp 经 MCP"
+      "detail": "card=ap-7b3a8e27 46.8→48.6 readback=48.6 试验已整批下发并全部设备证实(1/1,批次 rr-60125):scen-injection:dcw:hold-pressure-sp→48.6bar [证实✓]。假设:全功能验收:omp 经 MCP"
     }
   ],
   "report": {
-    "at": "2026-10-20T16:56:20.928Z",
+    "at": "2026-10-24T03:08:38.422Z",
     "base": "http://127.0.0.1:3470",
-    "lineId": "ln-07385fad",
-    "recipeId": "rc-d1d767fb",
+    "lineId": "ln-318b8749",
+    "recipeId": "rc-475bb95c",
     "harnesses": [
       {
         "harness": "mock",
         "available": true,
         "created": true,
-        "agentId": "67eac1c8-2f8c-4e44-8c17-2dbfcdde47e9",
-        "daqNode": "dn-9c71f536",
-        "recipeId": "rc-d1d767fb",
+        "agentId": "4340ec80-a78e-4d4f-93cf-1506c530c981",
+        "daqNode": "dn-722b43b2",
+        "recipeId": "rc-475bb95c",
         "bindOk": true,
-        "toolCount": 64,
+        "toolCount": 65,
         "hasTools": true,
         "daqBound": true,
         "recipeBound": true
@@ -465,11 +465,11 @@
         "harness": "omp",
         "available": true,
         "created": true,
-        "agentId": "f4b1c6e2-9f37-4323-9b43-d73c57ebb7d2",
-        "daqNode": "dn-f7c3f5f7",
-        "recipeId": "rc-d1d767fb",
+        "agentId": "c10a859c-190e-4a4b-b8b1-21d675c732ae",
+        "daqNode": "dn-466cb842",
+        "recipeId": "rc-475bb95c",
         "bindOk": true,
-        "toolCount": 64,
+        "toolCount": 65,
         "hasTools": true,
         "daqBound": true,
         "recipeBound": true
@@ -478,11 +478,11 @@
         "harness": "opencode",
         "available": true,
         "created": true,
-        "agentId": "b595b077-a0e5-414e-bdda-b879a301da5c",
-        "daqNode": "dn-6bf61c1b",
-        "recipeId": "rc-d1d767fb",
+        "agentId": "31f4004f-ed70-4ee7-8e18-45a5889b4878",
+        "daqNode": "dn-7db70a04",
+        "recipeId": "rc-475bb95c",
         "bindOk": true,
-        "toolCount": 64,
+        "toolCount": 65,
         "hasTools": true,
         "daqBound": true,
         "recipeBound": true
@@ -491,11 +491,11 @@
         "harness": "codex",
         "available": true,
         "created": true,
-        "agentId": "1bc3dafd-b41d-4070-9c20-c5ca96d4b333",
-        "daqNode": "dn-e1e0f766",
-        "recipeId": "rc-d1d767fb",
+        "agentId": "16239462-bd88-4fa7-9955-0544d9a09cc0",
+        "daqNode": "dn-e66df9f2",
+        "recipeId": "rc-475bb95c",
         "bindOk": true,
-        "toolCount": 64,
+        "toolCount": 65,
         "hasTools": true,
         "daqBound": true,
         "recipeBound": true
@@ -504,11 +504,11 @@
         "harness": "dsh",
         "available": true,
         "created": true,
-        "agentId": "d5cd28aa-5af2-4fa1-bd55-15f2e8bf42c9",
-        "daqNode": "dn-6451a3c7",
-        "recipeId": "rc-d1d767fb",
+        "agentId": "660c7789-1e5b-4cd7-b71d-b6d87b324f9a",
+        "daqNode": "dn-7989a71c",
+        "recipeId": "rc-475bb95c",
         "bindOk": true,
-        "toolCount": 64,
+        "toolCount": 65,
         "hasTools": true,
         "daqBound": true,
         "recipeBound": true
@@ -517,11 +517,11 @@
         "harness": "claude",
         "available": true,
         "created": true,
-        "agentId": "bbf3943e-eb13-43c6-ae95-1339d146c5ca",
-        "daqNode": "dn-55813f2a",
-        "recipeId": "rc-d1d767fb",
+        "agentId": "12b8dd7b-76e3-487f-b0ab-d4c8f3500439",
+        "daqNode": "dn-05d7ff7b",
+        "recipeId": "rc-475bb95c",
         "bindOk": true,
-        "toolCount": 64,
+        "toolCount": 65,
         "hasTools": true,
         "daqBound": true,
         "recipeBound": true
@@ -530,11 +530,11 @@
         "harness": "gemini",
         "available": true,
         "created": true,
-        "agentId": "4e71868a-9c4f-45f2-b08b-3f8a4b8b6d63",
-        "daqNode": "dn-6a149aec",
-        "recipeId": "rc-d1d767fb",
+        "agentId": "ca9ea4b9-f0b9-4798-984c-441269e4beb5",
+        "daqNode": "dn-c2f7ce51",
+        "recipeId": "rc-475bb95c",
         "bindOk": true,
-        "toolCount": 64,
+        "toolCount": 65,
         "hasTools": true,
         "daqBound": true,
         "recipeBound": true
@@ -543,11 +543,11 @@
         "harness": "copilot",
         "available": true,
         "created": true,
-        "agentId": "e2f637f3-58f2-4182-8398-9ca883110b61",
-        "daqNode": "dn-b455b299",
-        "recipeId": "rc-d1d767fb",
+        "agentId": "eedd27a5-9305-48c2-b204-a34073655c14",
+        "daqNode": "dn-60eb20b2",
+        "recipeId": "rc-475bb95c",
         "bindOk": true,
-        "toolCount": 64,
+        "toolCount": 65,
         "hasTools": true,
         "daqBound": true,
         "recipeBound": true
@@ -556,11 +556,11 @@
         "harness": "cursor",
         "available": true,
         "created": true,
-        "agentId": "b529e4d1-58d0-429f-829e-12d833440c0c",
-        "daqNode": "dn-5944a72e",
-        "recipeId": "rc-d1d767fb",
+        "agentId": "d76efa9a-6521-4f03-bf47-d8946768f651",
+        "daqNode": "dn-017f465b",
+        "recipeId": "rc-475bb95c",
         "bindOk": true,
-        "toolCount": 64,
+        "toolCount": 65,
         "hasTools": true,
         "daqBound": true,
         "recipeBound": true
@@ -569,11 +569,11 @@
         "harness": "crush",
         "available": true,
         "created": true,
-        "agentId": "3277bc79-a625-49c7-819b-b2f7c694d09a",
-        "daqNode": "dn-38aed797",
-        "recipeId": "rc-d1d767fb",
+        "agentId": "7da5b624-5492-4668-a874-6edd6f0b5948",
+        "daqNode": "dn-a4c8152f",
+        "recipeId": "rc-475bb95c",
         "bindOk": true,
-        "toolCount": 64,
+        "toolCount": 65,
         "hasTools": true,
         "daqBound": true,
         "recipeBound": true
@@ -582,11 +582,11 @@
         "harness": "goose",
         "available": true,
         "created": true,
-        "agentId": "e6202f97-4a2f-400c-ab12-4eaedbbcd2ea",
-        "daqNode": "dn-19324b20",
-        "recipeId": "rc-d1d767fb",
+        "agentId": "930ecec1-3bbe-4f24-8819-ac638c8b7c3d",
+        "daqNode": "dn-ef2a001d",
+        "recipeId": "rc-475bb95c",
         "bindOk": true,
-        "toolCount": 64,
+        "toolCount": 65,
         "hasTools": true,
         "daqBound": true,
         "recipeBound": true
@@ -595,11 +595,11 @@
         "harness": "qwen",
         "available": true,
         "created": true,
-        "agentId": "41edb19b-94d3-4005-891b-ebee3970da2f",
-        "daqNode": "dn-ee8259a0",
-        "recipeId": "rc-d1d767fb",
+        "agentId": "ed73f1eb-6b14-4e35-b2b5-60961d2758c1",
+        "daqNode": "dn-7090bad4",
+        "recipeId": "rc-475bb95c",
         "bindOk": true,
-        "toolCount": 64,
+        "toolCount": 65,
         "hasTools": true,
         "daqBound": true,
         "recipeBound": true
@@ -608,11 +608,11 @@
         "harness": "pi",
         "available": true,
         "created": true,
-        "agentId": "3884ecb4-0f85-4af1-a6d8-e42856683529",
-        "daqNode": "dn-fdce306e",
-        "recipeId": "rc-d1d767fb",
+        "agentId": "4507818c-c92c-424e-869d-842544d089ce",
+        "daqNode": "dn-da2c7d1b",
+        "recipeId": "rc-475bb95c",
         "bindOk": true,
-        "toolCount": 64,
+        "toolCount": 65,
         "hasTools": true,
         "daqBound": true,
         "recipeBound": true
@@ -621,11 +621,11 @@
         "harness": "hermes",
         "available": true,
         "created": true,
-        "agentId": "175ee2ec-e3a2-4f80-aa81-7a35cf3a452c",
-        "daqNode": "dn-9af5e753",
-        "recipeId": "rc-d1d767fb",
+        "agentId": "343744e2-0d92-46e8-9df3-2286e55305c3",
+        "daqNode": "dn-3b8f44dd",
+        "recipeId": "rc-475bb95c",
         "bindOk": true,
-        "toolCount": 64,
+        "toolCount": 65,
         "hasTools": true,
         "daqBound": true,
         "recipeBound": true
@@ -634,110 +634,110 @@
     "mcp": [
       {
         "harness": "mock",
-        "agentId": "67eac1c8-2f8c-4e44-8c17-2dbfcdde47e9",
-        "listCount": 64,
+        "agentId": "4340ec80-a78e-4d4f-93cf-1506c530c981",
+        "listCount": 65,
         "readOk": true,
-        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:melt-temp-pv(熔体/箱体温度)单位 ℃,正常量程 20~320℃,当前状态 ok,时间窗 2026-10-21T00:55 ~ 2026-10-21T00:56(降采样 15000ms)\n  当前活动批次 run=rr-cde46f39 配方「scen-injection-recipe-scdn7」(rc-d1d767fb)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 246.63333333333333℃"
+        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:melt-temp-pv(熔体/箱体温度)单位 ℃,正常量程 20~320℃,当前状态 ok,时间窗 2026-10-24T11:07 ~ 2026-10-24T11:08(降采样 15000ms)\n  当前活动批次 run=rr-2bf211d5 配方「scen-injection-recipe-s7s5d」(rc-475bb95c)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 246.81428571428572℃"
       },
       {
         "harness": "omp",
-        "agentId": "f4b1c6e2-9f37-4323-9b43-d73c57ebb7d2",
-        "listCount": 64,
+        "agentId": "c10a859c-190e-4a4b-b8b1-21d675c732ae",
+        "listCount": 65,
         "readOk": true,
-        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:melt-pressure-pv(熔体/箱体温度)单位 bar,正常量程 0~160bar,当前状态 ok,时间窗 2026-10-21T00:55 ~ 2026-10-21T00:56(降采样 15000ms)\n  当前活动批次 run=rr-cde46f39 配方「scen-injection-recipe-scdn7」(rc-d1d767fb)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 51.916666666"
+        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:melt-pressure-pv(熔体/箱体温度)单位 bar,正常量程 0~160bar,当前状态 ok,时间窗 2026-10-24T11:07 ~ 2026-10-24T11:08(降采样 15000ms)\n  当前活动批次 run=rr-2bf211d5 配方「scen-injection-recipe-s7s5d」(rc-475bb95c)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 51.777777777"
       },
       {
         "harness": "opencode",
-        "agentId": "b595b077-a0e5-414e-bdda-b879a301da5c",
-        "listCount": 64,
+        "agentId": "31f4004f-ed70-4ee7-8e18-45a5889b4878",
+        "listCount": 65,
         "readOk": true,
-        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:mold-temp-pv(熔体/箱体温度)单位 ℃,正常量程 10~110℃,当前状态 ok,时间窗 2026-10-21T00:55 ~ 2026-10-21T00:56(降采样 15000ms)\n  当前活动批次 run=rr-cde46f39 配方「scen-injection-recipe-scdn7」(rc-d1d767fb)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 40.266666666666666℃"
+        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:mold-temp-pv(熔体/箱体温度)单位 ℃,正常量程 10~110℃,当前状态 ok,时间窗 2026-10-24T11:07 ~ 2026-10-24T11:08(降采样 15000ms)\n  当前活动批次 run=rr-2bf211d5 配方「scen-injection-recipe-s7s5d」(rc-475bb95c)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 39.862500000000004℃"
       },
       {
         "harness": "codex",
-        "agentId": "1bc3dafd-b41d-4070-9c20-c5ca96d4b333",
-        "listCount": 64,
+        "agentId": "16239462-bd88-4fa7-9955-0544d9a09cc0",
+        "listCount": 65,
         "readOk": true,
-        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:clamp-force-pv(熔体/箱体温度)单位 kN,正常量程 0~2600kN,当前状态 ok,时间窗 2026-10-21T00:55 ~ 2026-10-21T00:56(降采样 15000ms)\n  当前活动批次 run=rr-cde46f39 配方「scen-injection-recipe-scdn7」(rc-d1d767fb)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 1599.5kN | 均值 1"
+        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:clamp-force-pv(熔体/箱体温度)单位 kN,正常量程 0~2600kN,当前状态 ok,时间窗 2026-10-24T11:07 ~ 2026-10-24T11:08(降采样 15000ms)\n  当前活动批次 run=rr-2bf211d5 配方「scen-injection-recipe-s7s5d」(rc-475bb95c)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 1600.5kN | 均值 1"
       },
       {
         "harness": "dsh",
-        "agentId": "d5cd28aa-5af2-4fa1-bd55-15f2e8bf42c9",
-        "listCount": 64,
+        "agentId": "660c7789-1e5b-4cd7-b71d-b6d87b324f9a",
+        "listCount": 65,
         "readOk": true,
-        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:inj-pressure-pv(熔体/箱体温度)单位 bar,正常量程 0~180bar,当前状态 ok,时间窗 2026-10-21T00:55 ~ 2026-10-21T00:56(降采样 15000ms)\n  当前活动批次 run=rr-cde46f39 配方「scen-injection-recipe-scdn7」(rc-d1d767fb)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 52.1bar | 均值 "
+        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:inj-pressure-pv(熔体/箱体温度)单位 bar,正常量程 0~180bar,当前状态 ok,时间窗 2026-10-24T11:07 ~ 2026-10-24T11:08(降采样 15000ms)\n  当前活动批次 run=rr-2bf211d5 配方「scen-injection-recipe-s7s5d」(rc-475bb95c)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 51.8888888888"
       },
       {
         "harness": "claude",
-        "agentId": "bbf3943e-eb13-43c6-ae95-1339d146c5ca",
-        "listCount": 64,
+        "agentId": "12b8dd7b-76e3-487f-b0ab-d4c8f3500439",
+        "listCount": 65,
         "readOk": true,
-        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:water-temp-pv(熔体/箱体温度)单位 ℃,正常量程 5~60℃,当前状态 ok,时间窗 2026-10-21T00:55 ~ 2026-10-21T00:56(降采样 15000ms)\n  当前活动批次 run=rr-cde46f39 配方「scen-injection-recipe-scdn7」(rc-d1d767fb)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 23.957142857142856℃ "
+        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:water-temp-pv(熔体/箱体温度)单位 ℃,正常量程 5~60℃,当前状态 ok,时间窗 2026-10-24T11:07 ~ 2026-10-24T11:08(降采样 15000ms)\n  当前活动批次 run=rr-2bf211d5 配方「scen-injection-recipe-s7s5d」(rc-475bb95c)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 24.055555555555557℃ "
       },
       {
         "harness": "gemini",
-        "agentId": "4e71868a-9c4f-45f2-b08b-3f8a4b8b6d63",
-        "listCount": 64,
+        "agentId": "ca9ea4b9-f0b9-4798-984c-441269e4beb5",
+        "listCount": 65,
         "readOk": true,
-        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:cool-flow-pv(熔体/箱体温度)单位 L/min,正常量程 0~80L/min,当前状态 ok,时间窗 2026-10-21T00:55 ~ 2026-10-21T00:56(降采样 15000ms)\n  当前活动批次 run=rr-cde46f39 配方「scen-injection-recipe-scdn7」(rc-d1d767fb)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 44.8333333333"
+        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:cool-flow-pv(熔体/箱体温度)单位 L/min,正常量程 0~80L/min,当前状态 ok,时间窗 2026-10-24T11:07 ~ 2026-10-24T11:08(降采样 15000ms)\n  当前活动批次 run=rr-2bf211d5 配方「scen-injection-recipe-s7s5d」(rc-475bb95c)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 44.6499999999"
       },
       {
         "harness": "copilot",
-        "agentId": "e2f637f3-58f2-4182-8398-9ca883110b61",
-        "listCount": 64,
+        "agentId": "eedd27a5-9305-48c2-b204-a34073655c14",
+        "listCount": 65,
         "readOk": true,
-        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:part-weight(熔体/箱体温度)单位 g,正常量程 25~40g,当前状态 alarm,时间窗 2026-10-21T00:55 ~ 2026-10-21T00:56(降采样 15000ms)\n  当前活动批次 run=rr-cde46f39 配方「scen-injection-recipe-scdn7」(rc-d1d767fb)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 31.25g | 均值 31.25 "
+        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:part-weight(熔体/箱体温度)单位 g,正常量程 25~40g,当前状态 alarm,时间窗 2026-10-24T11:07 ~ 2026-10-24T11:08(降采样 15000ms)\n  当前活动批次 run=rr-2bf211d5 配方「scen-injection-recipe-s7s5d」(rc-475bb95c)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 31.35888888888889g"
       },
       {
         "harness": "cursor",
-        "agentId": "b529e4d1-58d0-429f-829e-12d833440c0c",
-        "listCount": 64,
+        "agentId": "d76efa9a-6521-4f03-bf47-d8946768f651",
+        "listCount": 65,
         "readOk": true,
-        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:flash-rate(熔体/箱体温度)单位 %,正常量程 0~5%,当前状态 warn,时间窗 2026-10-21T00:55 ~ 2026-10-21T00:56(降采样 15000ms)\n  当前活动批次 run=rr-cde46f39 配方「scen-injection-recipe-scdn7」(rc-d1d767fb)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 0.003428571428571429% "
+        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:flash-rate(熔体/箱体温度)单位 %,正常量程 0~5%,当前状态 warn,时间窗 2026-10-24T11:07 ~ 2026-10-24T11:08(降采样 15000ms)\n  当前活动批次 run=rr-2bf211d5 配方「scen-injection-recipe-s7s5d」(rc-475bb95c)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 0.013222222222222224% "
       },
       {
         "harness": "crush",
-        "agentId": "3277bc79-a625-49c7-819b-b2f7c694d09a",
-        "listCount": 64,
+        "agentId": "7da5b624-5492-4668-a874-6edd6f0b5948",
+        "listCount": 65,
         "readOk": true,
-        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:sink-mark(熔体/箱体温度)单位 %,正常量程 0~10%,当前状态 alarm,时间窗 2026-10-21T00:55 ~ 2026-10-21T00:56(降采样 15000ms)\n  当前活动批次 run=rr-cde46f39 配方「scen-injection-recipe-scdn7」(rc-d1d767fb)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 2.184% | 均值 2.133 | 最"
+        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:sink-mark(熔体/箱体温度)单位 %,正常量程 0~10%,当前状态 alarm,时间窗 2026-10-24T11:07 ~ 2026-10-24T11:08(降采样 15000ms)\n  当前活动批次 run=rr-2bf211d5 配方「scen-injection-recipe-s7s5d」(rc-475bb95c)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 2.0994444444444444% |"
       },
       {
         "harness": "goose",
-        "agentId": "e6202f97-4a2f-400c-ab12-4eaedbbcd2ea",
-        "listCount": 64,
+        "agentId": "930ecec1-3bbe-4f24-8819-ac638c8b7c3d",
+        "listCount": 65,
         "readOk": true,
-        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:dim-dev(熔体/箱体温度)单位 mm,正常量程 -0.5~0.5mm,当前状态 ok,时间窗 2026-10-21T00:55 ~ 2026-10-21T00:56(降采样 15000ms)\n  当前活动批次 run=rr-cde46f39 配方「scen-injection-recipe-scdn7」(rc-d1d767fb)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 0.008125mm | 均值 0.00"
+        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:dim-dev(熔体/箱体温度)单位 mm,正常量程 -0.5~0.5mm,当前状态 ok,时间窗 2026-10-24T11:07 ~ 2026-10-24T11:08(降采样 15000ms)\n  当前活动批次 run=rr-2bf211d5 配方「scen-injection-recipe-s7s5d」(rc-475bb95c)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 0.007222222222222223"
       },
       {
         "harness": "qwen",
-        "agentId": "41edb19b-94d3-4005-891b-ebee3970da2f",
-        "listCount": 64,
+        "agentId": "ed73f1eb-6b14-4e35-b2b5-60961d2758c1",
+        "listCount": 65,
         "readOk": true,
-        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:cycle-time(熔体/箱体温度)单位 s,正常量程 5~60s,当前状态 ok,时间窗 2026-10-21T00:55 ~ 2026-10-21T00:56(降采样 15000ms)\n  当前活动批次 run=rr-cde46f39 配方「scen-injection-recipe-scdn7」(rc-d1d767fb)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 15.299999999999999s | 均"
+        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:cycle-time(熔体/箱体温度)单位 s,正常量程 5~60s,当前状态 ok,时间窗 2026-10-24T11:07 ~ 2026-10-24T11:08(降采样 15000ms)\n  当前活动批次 run=rr-2bf211d5 配方「scen-injection-recipe-s7s5d」(rc-475bb95c)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 5 点 | 最新 15.299999999999999s | 均"
       },
       {
         "harness": "pi",
-        "agentId": "3884ecb4-0f85-4af1-a6d8-e42856683529",
-        "listCount": 64,
+        "agentId": "4507818c-c92c-424e-869d-842544d089ce",
+        "listCount": 65,
         "readOk": true,
-        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:wall-profile(熔体/箱体温度)单位 mm,正常量程 1~5mm,当前状态 offline,时间窗 2026-10-21T00:55 ~ 2026-10-21T00:56(降采样 15000ms)\n  当前活动批次 run=rr-cde46f39 配方「scen-injection-recipe-scdn7」(rc-d1d767fb)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  窗口内无数据(产线未运行或过滤条件不匹配;仅产线运行中"
+        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:wall-profile(熔体/箱体温度)单位 mm,正常量程 1~5mm,当前状态 offline,时间窗 2026-10-24T11:07 ~ 2026-10-24T11:08(降采样 15000ms)\n  当前活动批次 run=rr-2bf211d5 配方「scen-injection-recipe-s7s5d」(rc-475bb95c)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  窗口内无数据(产线未运行或过滤条件不匹配;仅产线运行中"
       },
       {
         "harness": "hermes",
-        "agentId": "175ee2ec-e3a2-4f80-aa81-7a35cf3a452c",
-        "listCount": 64,
+        "agentId": "343744e2-0d92-46e8-9df3-2286e55305c3",
+        "listCount": 65,
         "readOk": true,
-        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:surface-image(熔体/箱体温度)单位 灰度,正常量程 0~255灰度,当前状态 offline,时间窗 2026-10-21T00:55 ~ 2026-10-21T00:56(降采样 15000ms)\n  当前活动批次 run=rr-cde46f39 配方「scen-injection-recipe-scdn7」(rc-d1d767fb)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  窗口内无数据(产线未运行或过滤条件不匹配;仅产线"
+        "text": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:surface-image(熔体/箱体温度)单位 灰度,正常量程 0~255灰度,当前状态 offline,时间窗 2026-10-24T11:07 ~ 2026-10-24T11:08(降采样 15000ms)\n  当前活动批次 run=rr-2bf211d5 配方「scen-injection-recipe-s7s5d」(rc-475bb95c)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  窗口内无数据(产线未运行或过滤条件不匹配;仅产线"
       }
     ],
     "write": {
       "harness": "omp",
-      "from": 45,
-      "to": 46.8,
-      "card": "ap-5e9e8b6b",
-      "text": "试验已整批下发并全部设备证实(1/1,批次 rr-4d7d5):scen-injection:dcw:hold-pressure-sp→46.8bar [证实✓]。假设:全功能验收:omp 经 MCP 小步试验 45→46.8。\n人工附言:全功能验收批准注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC 整批恢复)。",
-      "readback": 46.8,
+      "from": 46.8,
+      "to": 48.6,
+      "card": "ap-7b3a8e27",
+      "text": "试验已整批下发并全部设备证实(1/1,批次 rr-60125):scen-injection:dcw:hold-pressure-sp→48.6bar [证实✓]。假设:全功能验收:omp 经 MCP 小步试验 46.8→48.6。\n人工附言:全功能验收批准注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC 整批恢复)。",
+      "readback": 48.6,
       "ok": true
     }
   }

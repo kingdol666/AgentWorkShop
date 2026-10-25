@@ -150,7 +150,10 @@ test('amlActivityForLine 信号①:投用(production)模型且策略非仅建议
   })
   rt.repo.job.insert({ id: 'job-1', datasetId: 'ds-1', purpose: 'quality', budget: {}, agentId: '', channelId: '', taskId: '', createdAt: now })
   // 谱系夹具作业置 done:信号① 测试只验证 profile 投用信号,不被在跑作业信号干扰(信号② 单测)
-  rt.repo.job.setState('job-1', 'done', 'done', 100)
+  // (C12 状态机:done 只能从 evaluating 进入,夹具走合法迁移)
+  rt.repo.job.setState('job-1', 'training', 'train', 10)
+  rt.repo.job.setState('job-1', 'evaluating', 'evaluate', 80)
+  rt.repo.job.finish('job-1', 'done', '{}', '{}', '', now)
   rt.repo.experiment.insert({ id: 'exp-1', jobId: 'job-1', datasetId: 'ds-1', changeNote: '基线', configJson: '{}', createdAt: now })
   rt.repo.model.insert({
     id: 'mdl-1', experimentId: 'exp-1', datasetId: 'ds-1', productId: 'pd', recipeId: 'rc', purpose: 'quality',

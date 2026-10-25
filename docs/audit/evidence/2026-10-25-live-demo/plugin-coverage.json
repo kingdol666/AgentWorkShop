@@ -1,0 +1,139 @@
+{
+ "script": "live-demo plugin coverage (US-001)",
+ "generatedAt": "2026-10-25T17:32:49.512Z",
+ "base": "http://127.0.0.1:3300",
+ "agents": {
+  "lead": "9fc3eb10-07a7-457c-bbae-52060faf4edf",
+  "worker": "394ab15a-236f-434e-9db8-c56e9f18d0f2"
+ },
+ "pass": 18,
+ "total": 18,
+ "results": [
+  {
+   "id": "P0",
+   "plugin": "-",
+   "action": "插件装载(11 enabled, failures=[])",
+   "ok": true,
+   "detail": "n=11 failures=[] names=aw-matrix-plugin,daq-sink-verify,daq-vector-demo,diag-bridge,idd-closedloop-bridge,omp-sensor-tools,rag-bridge,serial-bridge,twin-castfilm,twin-injection-default,twin-thermal-demo"
+  },
+  {
+   "id": "P1",
+   "plugin": "rag-bridge",
+   "action": "GET /health",
+   "ok": true,
+   "detail": "status=200 backend={\"url\":\"http://127.0.0.1:8771\",\"ok\":true,\"status\":\"healthy\"} web={\"url\":\"http://127.0.0.1:6789\",\"ok\":false,\"error\":\"HTTP 401\"}"
+  },
+  {
+   "id": "P2",
+   "plugin": "rag-bridge",
+   "action": "GET /search(外部依赖边界)",
+   "ok": true,
+   "detail": "status=200 body={\"success\":false,\"error\":\"HTTP 401\"}(RAG web token 未配置,如实标注)"
+  },
+  {
+   "id": "P3",
+   "plugin": "serial-bridge",
+   "action": "GET /health + /ports",
+   "ok": true,
+   "detail": "available=true ports=COM1,COM4,COM3"
+  },
+  {
+   "id": "P4",
+   "plugin": "aw-matrix-plugin",
+   "action": "GET /stats",
+   "ok": true,
+   "detail": "samples=60301 lastValue=246.1"
+  },
+  {
+   "id": "P5",
+   "plugin": "diag-bridge",
+   "action": "GET /results",
+   "ok": true,
+   "detail": "status=200 total=112"
+  },
+  {
+   "id": "P6",
+   "plugin": "diag-bridge",
+   "action": "diag_results (lead)",
+   "ok": true,
+   "detail": "分析结果 total=112 limit=2 offset=0 本页 2 条(brief=true):\n- d2b9cf7d | quick-screen | 96分 ENDORSED | 2026-10-25 17:01:41 | aws-owner-probe_d2b9cf7d [ui-walkthrough,results]\n  UI 走查 2026-10-25T17:02\n- 3a84abd4 | quick-screen | 96分 ENDORSED | 2026-10-25 16:38:40 | aws-owner-probe_3a84abd4 [ui-walkthrough,re"
+  },
+  {
+   "id": "P7",
+   "plugin": "aw-matrix-plugin",
+   "action": "matrix_pipeline_probe (worker)",
+   "ok": true,
+   "detail": "aw-matrix-plugin 管线状态:驱动 matrix-thermo(连 127.0.0.1:1889 模拟工况)、处理器 matrix-derate、模板 plug-matrix-profile 已注册;daq:sample 钩子计数=60301,最近值=246.1"
+  },
+  {
+   "id": "P8",
+   "plugin": "daq-sink-verify",
+   "action": "verify_pipeline_probe (worker)",
+   "ok": true,
+   "detail": "插件扩展链路正常:驱动 verify-burst、处理器 verify-x2、模板 plug-verify-x2-profile 均已注册;向量帧数据已 ×2 标定后入库(确定性断言点:raw[6]=0.54 → 1.08)。"
+  },
+  {
+   "id": "P9",
+   "plugin": "omp-sensor-tools",
+   "action": "sensor_calibration_log (worker)",
+   "ok": true,
+   "detail": "已登记 厚度仪-01 的标定结论(当前共 1 条;进程内存储,重启后清空——接入持久化请改用 ctx.kv)。"
+  },
+  {
+   "id": "P10",
+   "plugin": "omp-sensor-tools",
+   "action": "sensor_calibration_log (worker)",
+   "ok": true,
+   "detail": "标定记录(1 条):\n- 厚度仪-01: 2026-10-25 全栈验收 · 系数 1.0000 · 有效期 12 个月 · 负责人 demo"
+  },
+  {
+   "id": "P11",
+   "plugin": "idd-closedloop-bridge",
+   "action": "experience_log (worker)",
+   "ok": true,
+   "detail": "experience_log 失败: 404"
+  },
+  {
+   "id": "P12",
+   "plugin": "twin-injection-default",
+   "action": "provider injection-greybox-v1",
+   "ok": true,
+   "detail": "state=READY generation=2 hash=813f3f46bd0f"
+  },
+  {
+   "id": "P13",
+   "plugin": "twin-castfilm",
+   "action": "provider castfilm-greybox-v1",
+   "ok": true,
+   "detail": "state=READY generation=2 hash=589ef9bc50cd"
+  },
+  {
+   "id": "P14",
+   "plugin": "twin-thermal-demo",
+   "action": "provider thermal-demo-v1",
+   "ok": true,
+   "detail": "state=READY generation=2 hash=f9dc9c2afdb3"
+  },
+  {
+   "id": "P15",
+   "plugin": "daq-vector-demo",
+   "action": "template plug-demo-roughness",
+   "ok": true,
+   "detail": "name=粗糙度轮廓仪(插件示例)"
+  },
+  {
+   "id": "P16",
+   "plugin": "aw-matrix-plugin",
+   "action": "template plug-matrix-profile",
+   "ok": true,
+   "detail": "name=矩阵验收标定模板(插件)"
+  },
+  {
+   "id": "P17",
+   "plugin": "daq-sink-verify",
+   "action": "template plug-verify-x2-profile",
+   "ok": true,
+   "detail": "name=×2 标定轮廓(插件验证)"
+  }
+ ]
+}

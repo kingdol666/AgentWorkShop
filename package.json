@@ -1,6 +1,6 @@
 {
   "name": "agentworkshop",
-  "version": "0.7.70",
+  "version": "0.8.3",
   "type": "module",
   "description": "AgentWorkShop 软件开发系统 - 基于 Nuxt 4 的配置驱动运行范式",
   "license": "Apache-2.0",
@@ -75,6 +75,7 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "typecheck": "node scripts/typecheck.mjs",
+    "i18n:check": "node scripts/_i18n-verify-keys.mjs",
     "docs:check": "node scripts/check-docs-sync.mjs",
     "docs:dev": "cd docs/site && npx vitepress dev",
     "docs:build": "cd docs/site && npx vitepress build",
@@ -85,6 +86,7 @@
     "prepare": "husky",
     "test:api-live": "node scripts/api-live-e2e.mjs",
     "test:e2e-line": "node scripts/e2e-line-governance.mjs",
+    "test:e2e-optimizer": "tsx --tsconfig .nuxt/tsconfig.server.json scripts/e2e-optimizer-live.mjs",
     "test:line-log": "node scripts/line-log-smoke.mjs",
     "test:mes-agent": "node scripts/mes-agent-integration-e2e.mjs",
     "test:e2e-injection": "node scripts/e2e-injection-recipe-closedloop.mjs",

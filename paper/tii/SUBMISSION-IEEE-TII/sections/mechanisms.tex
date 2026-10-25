@@ -1,16 +1,19 @@
-\section{Governed Execution Mechanisms}
+\section{Operational Workflows and Execution Contracts}
 \label{sec:mech}
-The execution boundary converts a strategy's proposal into inspectable
-platform actions. It resolves the actor and production context and applies
-the authorization, admission, pacing, and approval checks required by that
-route. Driver dispatch produces command evidence; subsequent observation
-and interpretation complete the supervisory loop. Equipment execution and
-compensation retain separate outcomes.
+AgentWorkShop connects a strategy proposal to plant-facing work through
+two route-specific lifecycles: bounded node exploration and operational
+recipe control. Both use the channel's profile and persisted capabilities,
+apply route-specific limits and approval, and return execution evidence to
+the task. Their records remain distinct: node exploration couples one
+changed-value intervention to a later target summary, whereas recipe work
+records a trial or dispatch before its caller observes the process and
+decides whether to retain a new version. The shared execution contract is
+described below.
 
 \begin{figure}[!t]
 \centering
 \includegraphics[width=\columnwidth]{resources/fig-runtime-2026.pdf}
-\caption{Execution and evidence lifecycles. Bounded exploration opens a
+\caption{Route-specific operational lifecycles. Bounded exploration opens a
 node record after a successful changed-value write, then waits and saves
 an exploration summary. Recipe dispatch returns batch and per-parameter
 receipts; its caller observes and decides. Retaining a recipe requires a

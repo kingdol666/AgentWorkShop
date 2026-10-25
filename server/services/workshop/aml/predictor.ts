@@ -8,9 +8,11 @@ import { createRequire } from 'node:module'
 import { AppError } from '../../../utils/errors'
 import { createLogger } from '../logger'
 import { getAmlRuntime } from './runtime'
+import type { AmlModelRow } from './aml.repo'
 import { parseIoSpec } from './model-registry'
 import { compileDeclarativeProvider } from './twin/declarative-provider'
 import { parsePhysicsSpec, type PhysicsSpec } from './twin/physics-spec'
+import { assertArxArtifactCurrent } from '../process-model/artifact-validation'
 
 const log = createLogger('aml.predict')
 
@@ -145,9 +147,9 @@ function hybridPhysicsNext(manifest: HybridArtifactManifest, io: IoSpec, history
 }
 
 export interface PredictRequest {
-  /** 历史(原始物理量):[historySteps][nAllNodes],顺序 = io_spec.allNodes */
+  /** 历史:[historySteps][nAllNodes],顺序 = io_spec.allNodes;ONNX 为原始物理量,typed 工件为模型单位(调用方负责 scale/offset)。 */
   history: number[][]
-  /** 未来控制轨迹(原始物理量):[≤horizonSteps][nControlNodes];缺省 = 持最后观测 */
+  /** 未来控制轨迹:[≤horizonSteps][nControlNodes];单位同 history,typed 列顺序 = mvOrder;缺省 = 持最后观测。 */
   controls?: number[][]
   /** 滚动步数(≤horizonSteps;缺省 = horizonSteps) */
   steps?: number
@@ -157,7 +159,7 @@ export interface PredictResult {
   modelId: string
   stage: string
   targetNodes: string[]
-  /** 原始物理量预测:[steps][nTargetNodes] */
+  /** 预测:[steps][nTargetNodes];ONNX 为原始物理量,typed 工件为模型单位。 */
   forecast: number[][]
   beatMs: number
   assumptions: string
@@ -171,10 +173,18 @@ export async function predictWithModel(
   const rt = getAmlRuntime()
   const row = rt.repo.model.get(modelId)
   if (!row) throw new AppError(404, 'AML_MODEL_MISSING', `模型 ${modelId} 不存在`)
+  const artifactKind = resolveArtifactKind(row)
   if (existsSync(join(row.path, 'STUB'))) {
     throw new AppError(409, 'AML_STUB_MODEL', '该模型为存根作业产物(AML_STUB),不含真实权重,不可用于预测')
   }
-  if (row.artifactsPruned || !existsSync(join(row.path, 'model.onnx'))) {
+  if (row.artifactsPruned) {
+    throw new AppError(410, 'AML_ARTIFACT_MISSING', `模型 ${modelId} 工件已被 GC 清理(artifacts_pruned),请用同配方数据重训`)
+  }
+  // 新工件类型分派(linear_state_space/static_response):不要求 model.onnx
+  if (artifactKind === 'linear_state_space@1' || artifactKind === 'static_response@1') {
+    return predictWithTypedArtifact(row, artifactKind, req)
+  }
+  if (!existsSync(join(row.path, 'model.onnx'))) {
     throw new AppError(410, 'AML_ARTIFACT_MISSING', `模型 ${modelId} 工件已被 GC 清理(artifacts_pruned),请用同配方数据重训`)
   }
   const io = parseIoSpec(row) as unknown as IoSpec
@@ -282,11 +292,31 @@ export async function predictProduction(
   return predictWithModel(m.id, req)
 }
 
-/** 注册时深检:ONNX 可加载 + 试推理形状正确(异步,REST 注册/晋升前调用) */
+/** 注册时深检:按工件类型分派(新工件校验 model.json 维度;ONNX 走试推理) */
 export async function verifyModelArtifact(modelId: string): Promise<{ ok: boolean, detail: string }> {
   const rt = getAmlRuntime()
   const row = rt.repo.model.get(modelId)
   if (!row) return { ok: false, detail: '模型不存在' }
+  const kind = resolveArtifactKind(row)
+  if (kind === 'linear_state_space@1' || kind === 'static_response@1') {
+    try {
+      const artifact = JSON.parse(readFileSync(join(row.path, 'model.json'), 'utf8')) as Record<string, unknown>
+      if (artifact.kind !== kind) return { ok: false, detail: `工件 kind=${String(artifact.kind)} 与注册类型 ${kind} 不一致` }
+      assertArxArtifactCurrent(artifact, modelId)
+      if (kind === 'linear_state_space@1') {
+        const stateDim = Number(artifact.stateDim)
+        const A = artifact.A as number[][]
+        if (!Array.isArray(A) || A.length !== stateDim || A.some(r => r.length !== stateDim)) return { ok: false, detail: '状态矩阵维度不一致' }
+      }
+      else if (!artifact.coefficients || typeof artifact.coefficients !== 'object') {
+        return { ok: false, detail: '响应面系数缺失' }
+      }
+      return { ok: true, detail: `${kind} 工件结构校验通过` }
+    }
+    catch (err) {
+      return { ok: false, detail: `工件加载失败:${err instanceof Error ? err.message : String(err)}` }
+    }
+  }
   if (!predictorAvailable()) return { ok: false, detail: 'onnxruntime-node 不可用' }
   try {
     const io = parseIoSpec(row) as unknown as IoSpec
@@ -310,6 +340,118 @@ export async function verifyModelArtifact(modelId: string): Promise<{ ok: boolea
   catch (err) {
     return { ok: false, detail: `加载/推理失败:${err instanceof Error ? err.message : String(err)}` }
   }
+}
+
+/** 历史行 artifactKind 为空:由 hybrid_manifest 存在性/默认 ONNX 推断(不伪造新语义)。 */
+export function resolveArtifactKind(row: AmlModelRow): string {
+  if (row.artifactKind) return row.artifactKind
+  return existsSync(join(row.path, 'hybrid_manifest.json')) ? 'hybrid_manifest@1' : 'onnx_one_step@1'
+}
+
+/**
+ * 新工件预测(linear_state_space / static_response):
+ * history[H][nAll]、controls 与 forecast 使用工件模型单位,此处不施加 scale/offset。
+ * allNodes/返回 targetNodes 为实际节点 ID;矩阵与系数顺序保留 mvOrder/cvOrder 的逻辑变量 ID。
+ */
+async function predictWithTypedArtifact(row: AmlModelRow, kind: string, req: PredictRequest): Promise<PredictResult> {
+  const io = parseIoSpec(row) as unknown as IoSpec & { mvOrder?: string[], cvOrder?: string[], featureOrder?: string[], variables?: Array<{ id: string, nodeId: string }> }
+  const H = io.historySteps
+  const nAll = io.allNodes.length
+  if (!Array.isArray(req.history) || req.history.length !== H || req.history.some(r => !Array.isArray(r) || r.length !== nAll)) {
+    throw new AppError(422, 'AML_INPUT_SHAPE', `history 形状须为 [${H}][${nAll}](节点顺序 = allNodes):${io.allNodes.join(',')}`)
+  }
+  const artifact = JSON.parse(readFileSync(join(row.path, 'model.json'), 'utf8')) as Record<string, unknown>
+  assertArxArtifactCurrent(artifact, row.id)
+  const mvOrder = (io.mvOrder ?? io.controlNodes) as string[]
+  const cvOrder = (io.cvOrder ?? io.targetNodes) as string[]
+  const resolveNodes = (order: string[]): string[] => order.map((id) => {
+    const mappings = (io.variables ?? []).filter(variable => variable.id === id)
+    if (mappings.length > 1) throw new AppError(500, 'AML_IO_UNSUPPORTED', `io_spec 的变量 ${id} 存在重复节点映射`)
+    // 旧 typed 工件直接以节点 ID 记录顺序;新工件通过 variables 映射,不改写冻结的逻辑顺序。
+    const nodeId = mappings.length ? mappings[0]?.nodeId : id
+    if (!nodeId || io.allNodes.filter(node => node === nodeId).length !== 1) {
+      throw new AppError(500, 'AML_IO_UNSUPPORTED', `io_spec 的变量 ${id} 缺少唯一的 allNodes 节点映射`)
+    }
+    return nodeId
+  })
+  const mvNodes = resolveNodes(mvOrder)
+  const cvNodes = resolveNodes(cvOrder)
+  if (new Set([...mvNodes, ...cvNodes]).size !== mvNodes.length + cvNodes.length) {
+    throw new AppError(500, 'AML_IO_UNSUPPORTED', 'io_spec 的多个 MV/CV 变量映射到同一节点')
+  }
+  const mvIdx = mvNodes.map(id => io.allNodes.indexOf(id))
+  const cvIdx = cvNodes.map(id => io.allNodes.indexOf(id))
+  const steps = Math.max(1, Math.min(req.steps ?? io.horizonSteps, io.horizonSteps))
+  const last = req.history[req.history.length - 1] ?? []
+
+  if (kind === 'static_response@1') {
+    const coefficients = artifact.coefficients as Record<string, number[]>
+    const featureOrder = (artifact.featureOrder ?? io.featureOrder ?? []) as string[]
+    const u = mvIdx.map((idx, m) => req.controls?.[0]?.[m] ?? last[idx] ?? 0)
+    const y = cvOrder.map(cv => evaluateStaticFeature(coefficients[cv] ?? [], featureOrder, mvOrder, u))
+    return {
+      modelId: row.id, stage: row.stage, targetNodes: cvNodes, forecast: Array.from({ length: steps }, () => [...y]),
+      beatMs: io.beatMs, assumptions: `${kind}: cv=f(MV) 稳态响应面;多步输出为同一稳态解`,
+    }
+  }
+
+  const A = artifact.A as number[][]
+  const B = artifact.B as number[][]
+  const C = artifact.C as number[][]
+  const D = artifact.D as number[][]
+  const bias = (artifact.bias ?? []) as number[]
+  const ar = Number(artifact.arOrder)
+  const K = Number(artifact.K)
+  const stateDim = Number(artifact.stateDim)
+  const layout = artifact.layout as { yOffset: number, uOffset: number }
+  const x = new Array<number>(stateDim).fill(0)
+  for (let j = 0; j < cvOrder.length; j++) {
+    for (let i = 0; i < ar; i++) x[layout.yOffset + j * ar + i] = req.history[H - 1 - i]?.[cvIdx[j]!] ?? 0
+  }
+  for (let m = 0; m < mvOrder.length; m++) {
+    for (let q = 0; q < K; q++) x[layout.uOffset + m * K + q] = req.history[H - 1 - q]?.[mvIdx[m]!] ?? 0
+  }
+  const forecast: number[][] = []
+  for (let k = 0; k < steps; k++) {
+    const u = mvIdx.map((idx, m) => req.controls?.[k]?.[m] ?? last[idx] ?? 0)
+    const next = new Array<number>(stateDim).fill(0)
+    for (let r = 0; r < stateDim; r++) {
+      let v = bias[r] ?? 0
+      for (let c = 0; c < stateDim; c++) v += (A[r]?.[c] ?? 0) * (x[c] ?? 0)
+      for (let m = 0; m < mvOrder.length; m++) v += (B[r]?.[m] ?? 0) * (u[m] ?? 0)
+      next[r] = v
+    }
+    for (let c = 0; c < stateDim; c++) x[c] = next[c]!
+    forecast.push(cvOrder.map((_id, j) => {
+      let y = 0
+      for (let c = 0; c < stateDim; c++) y += (C[j]?.[c] ?? 0) * (x[c] ?? 0)
+      for (let m = 0; m < mvOrder.length; m++) y += (D[j]?.[m] ?? 0) * (u[m] ?? 0)
+      return y
+    }))
+  }
+  return {
+    modelId: row.id, stage: row.stage, targetNodes: cvNodes, forecast,
+    beatMs: io.beatMs, assumptions: `${kind}: y(k)=Cx(k),x(k+1)=Ax(k)+Bu(k)+bias`,
+  }
+}
+
+function evaluateStaticFeature(coefficients: number[], featureOrder: string[], mvOrder: string[], u: number[]): number {
+  const byName = new Map<string, number>()
+  mvOrder.forEach((id, i) => byName.set(id, u[i] ?? 0))
+  let sum = 0
+  for (let k = 0; k < featureOrder.length; k++) {
+    const name = featureOrder[k]!
+    let value: number
+    if (name === 'bias') value = 1
+    else if (name.endsWith('^2')) value = (byName.get(name.slice(0, -2)) ?? 0) ** 2
+    else if (name.includes('*')) {
+      const [a, b] = name.split('*')
+      value = (byName.get(a!) ?? 0) * (byName.get(b!) ?? 0)
+    }
+    else value = byName.get(name) ?? 0
+    sum += (coefficients[k] ?? 0) * value
+  }
+  return sum
 }
 
 /** 供工具层:最近窗口组装(history 取自传入原始行,不做 DAQ 查询 —— 查询在工具层完成) */

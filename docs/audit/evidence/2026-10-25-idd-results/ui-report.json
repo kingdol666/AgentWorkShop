@@ -1,0 +1,62 @@
+{
+  "script": "scripts/e2e-idd-results-ui.mjs",
+  "generatedAt": "2026-10-25T17:02:52.799Z",
+  "pass": 9,
+  "total": 9,
+  "results": [
+    {
+      "id": "A11.1",
+      "name": "插件页可打开",
+      "pass": true,
+      "detail": "AgentWorkShop"
+    },
+    {
+      "id": "A11.2",
+      "name": "结果库面板渲染(标题可见)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "A11.3",
+      "name": "列表渲染数据行",
+      "pass": true,
+      "detail": "{\"rows\":20,\"first\":\"d2b9cf7daws-owner-probe_d2b9cf7dquick-screen96ENDORSED2026-10-25 17:01:41\",\"total\":\"112\"}"
+    },
+    {
+      "id": "A11.4",
+      "name": "点击结果行进入详情",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "A11.5",
+      "name": "详情区渲染(关键数字/HTML)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "A11.6",
+      "name": "编辑区按服务端能力显示(admin+已开启→可编辑)",
+      "pass": true,
+      "detail": "{\"hasEdit\":true,\"hasReadonly\":false,\"hasSave\":true}"
+    },
+    {
+      "id": "A11.7",
+      "name": "点击保存提交编辑",
+      "pass": true,
+      "detail": "{\"ok\":true}"
+    },
+    {
+      "id": "A11.8",
+      "name": "保存成功回显(已保存)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "A11.9",
+      "name": "UI 走查无未捕获 pageerror",
+      "pass": true,
+      "detail": ""
+    }
+  ]
+}

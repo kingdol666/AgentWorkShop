@@ -26,9 +26,11 @@ const zhGuide = [
   { text: 'Recipe 版本管理', link: '/guide/recipe-versions' },
   { text: '多 Harness Agent 团队', link: '/guide/multi-harness' },
   { text: 'AML 自动建模', link: '/guide/aml' },
+  { text: '本体与 AI 先行模型闭环', link: '/guide/ontology' },
   { text: '数据分析台账', link: '/guide/analysis-reports' },
   { text: '产线级权限', link: '/guide/line-permissions' },
   { text: '第一次 Agent × 产线会话', link: '/guide/first-session' },
+  { text: '版本历史', link: '/guide/changelog' },
   { text: '许可协议', link: '/guide/license' },
 ]
 const enGuide = [
@@ -40,9 +42,11 @@ const enGuide = [
   { text: 'Recipe versioning', link: '/en/guide/recipe-versions' },
   { text: 'Multi-harness agent teams', link: '/en/guide/multi-harness' },
   { text: 'AML auto-modeling', link: '/en/guide/aml' },
+  { text: 'Ontology & AI-first model loop', link: '/en/guide/ontology' },
   { text: 'Data-analysis ledger', link: '/en/guide/analysis-reports' },
   { text: 'Line-level permissions', link: '/en/guide/line-permissions' },
   { text: 'Your first agent × line session', link: '/en/guide/first-session' },
+  { text: 'Version history', link: '/en/guide/changelog' },
   { text: 'License', link: '/en/guide/license' },
 ]
 const zhSdk = [

@@ -11,8 +11,23 @@ import { getChannelPluginsRepo } from '../../db/channel-plugins.repo'
 import { HOST_TOOLS, createSessionState, dispatchHostTool, hostToolsForAgent } from '../../agents/host-tool-bridge'
 import { instanceToAgentInfo, rowToChannelMail } from './helpers'
 import { listPluginTools, pluginOfTool } from '../../agents/plugin-tools'
+import { auditPluginToolCall, governPluginToolCall } from '../../agents/plugin-governance'
 import { channelToolGate } from '../../tools/policy'
+import { recordOps } from '../../ops/ops'
 import { rowToMessage } from '../mailbox'
+
+/** WP4:token 路径需要留痕的协作面工具(可作数据二次外传的通道) */
+const COLLAB_AUDIT_TOOLS = new Set([
+  'send_cross_channel_message',
+  'send_message_to_agent',
+  'broadcast_message',
+  'save_memory',
+  'search_memory',
+  'poll_messages',
+  'read_channel_mail',
+  'list_other_teams',
+  'search_other_teams_memory',
+])
 
 export abstract class ManagerHostTools extends ManagerA2A {
   /**
@@ -82,7 +97,8 @@ export abstract class ManagerHostTools extends ManagerA2A {
     const row = this.deps.repos.channelAgents.findById(input.agentId)
     if (!row || row.enabled !== 1) throw new AppError(404, 'NOT_FOUND', `agent 不存在或已停用: ${input.agentId}`)
     // token 鉴权(MCP 桥路径必带;缺省视为服务端内部调用,走 REST 已有用户鉴权)
-    if (input.token !== undefined && input.token !== row.token) {
+    // WP3:走 repo 单点校验(常量时间 + 轮换宽限窗),四路调用点同源
+    if (input.token !== undefined && !this.deps.repos.channelAgents.isTokenValid(row, input.token)) {
       throw new AppError(401, 'UNAUTHORIZED', 'agent token 校验失败')
     }
     // ── 人类权限作用域判定(§13.3)────────────────────────────────────────────
@@ -96,13 +112,18 @@ export abstract class ManagerHostTools extends ManagerA2A {
     }
     // 工具执行错误(业务约束/目标不存在等)一律降级为 isError 文本——
     // 绝不让 AppError 以 unhandledRejection 逃逸拖垮 worker(stability-guard 会因此退出整进程)
+    // WP4:所有返回路径统一过协作审计(插件/原生/dispatch/兜底)
+    const finish = <T extends { text: string, isError?: boolean }>(inp: typeof input, r: T): T => {
+      this.auditCollabInvocation(inp, r)
+      return r
+    }
     try {
       // 活性登记:调度器停滞看门狗以「最近工具调用」为健康信号(见 SchedulerLoopOptions.toolActivityOf)
       this.lastToolInvokeAt.set(input.agentId, Date.now())
       // Channel 逐工具选择:插件分支会提前 return,必须在此先复核(不能只靠 dispatch)。
       {
         const gate = channelToolGate(row.channelId, input.tool)
-        if (gate.blocked) return { text: gate.message ?? `工具 ${input.tool} 不可用`, isError: true }
+        if (gate.blocked) return finish(input, { text: gate.message ?? `工具 ${input.tool} 不可用`, isError: true })
       }
       // 插件工具:团队开关过滤 + handler 直调(ctx.omp 注册的自定义工具全 harness 同源)
       // 内置同名工具优先(与 dispatch 同口径):插件覆盖不得跳过工业门控
@@ -128,19 +149,30 @@ export abstract class ManagerHostTools extends ManagerA2A {
             isError: true,
           }
         }
-        return await pluginTool.handler(input.args ?? {}, identity)
+        // 平台侧插件治理(WP4b/WP8):kb 入库 HITL + 声明式引用校验(与 dispatch 同源)
+        const governed = await governPluginToolCall(identity, input.tool, input.args ?? {}, pluginTool)
+        if (governed) return finish(input, governed)
+        try {
+          const result = await pluginTool.handler(input.args ?? {}, identity)
+          auditPluginToolCall(identity, input.tool, result)
+          return finish(input, result)
+        }
+        catch (err) {
+          auditPluginToolCall(identity, input.tool, { text: err instanceof Error ? err.message : String(err), isError: true })
+          throw err
+        }
       }
       const runtime = this.ensureAgentRuntime(row.channelId, input.agentId)
       if (runtime) {
         const viaImpl = await runtime.dispatchHostTool(input.tool, input.args ?? {})
-        if (viaImpl) return viaImpl
+        if (viaImpl) return finish(input, viaImpl)
       }
       // 回退:impl 未实现 dispatchHostTool(如 mock)→ 仍走**同一份** host-tool-bridge
       // 分发,而不是只支持 3 个协作工具的旧开关。否则同一工具在 omp 上可用、在
       // mock/无工具面引擎经 MCP 桥调用却报“不支持该协作工具”(2026-10-20 实测)。
       const workspace = runtime?.workspace
       if (workspace) {
-        return await dispatchHostTool({
+        return finish(input, await dispatchHostTool({
           identity: {
             agentId: row.id,
             channelId: row.channelId,
@@ -149,15 +181,40 @@ export abstract class ManagerHostTools extends ManagerA2A {
           },
           state: createSessionState(),
           getWorkspace: () => workspace,
-        }, { toolName: input.tool, arguments: input.args ?? {} })
+        }, { toolName: input.tool, arguments: input.args ?? {} }))
       }
       // 最后兜底:仅剩不依赖 Agent 运行时的跨 Channel/团队只读面
-      return await this.invokeAgentWorkspaceTool(input.agentId, input.tool, input.args ?? {})
+      return finish(input, await this.invokeAgentWorkspaceTool(input.agentId, input.tool, input.args ?? {}))
     }
     catch (err) {
       const reason = err instanceof Error ? err.message : String(err)
-      return { text: `工具「${input.tool}」调用失败: ${reason}`, isError: true }
+      return finish(input, { text: `工具「${input.tool}」调用失败: ${reason}`, isError: true })
     }
+  }
+
+  /**
+   * WP4:token 来源的协作面调用留痕(不改变可达性 —— 桥主循环依赖 poll_messages)。
+   * 目的:token 泄露时可经跨频道消息/记忆二次外传,审计面必须能回溯「谁在何时调了什么」。
+   */
+  private auditCollabInvocation(input: { agentId: string, token?: string, tool: string }, result: { text?: string, isError?: boolean }): void {
+    if (input.token === undefined) return
+    if (process.env.AW_COLLAB_AUDIT === '0') return
+    if (!COLLAB_AUDIT_TOOLS.has(input.tool)) return
+    try {
+      recordOps({
+        actor: input.agentId,
+        actorName: input.agentId,
+        actorKind: 'agent',
+        action: 'tool.call.collaboration',
+        kind: 'system',
+        level: result.isError ? 'warn' : 'info',
+        targetKind: 'tool',
+        targetId: input.tool,
+        summary: `Agent token 路径调用协作面工具:${input.tool}(${result.isError ? '失败' : '成功'})`,
+        detail: { tool: input.tool, isError: Boolean(result.isError), text: String(result.text ?? '').slice(0, 300) },
+      })
+    }
+    catch { /* 审计失败不阻断工具结果 */ }
   }
 
   /** 按 token 解析 agent(桥侧只需 token 的自证路径;未命中返回 null) */

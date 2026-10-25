@@ -1,7 +1,7 @@
 {
-  "at": "2026-10-20T17:01:09.507Z",
+  "at": "2026-10-24T02:45:06.311Z",
   "base": "http://127.0.0.1:3463",
-  "home": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-tool-registry-e2e-XqeTPi",
+  "home": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-tool-registry-e2e-teJyVg",
   "pass": 56,
   "fail": 0,
   "fails": [],
@@ -9,7 +9,7 @@
     {
       "name": "插件安装命令退出码 0",
       "ok": true,
-      "detail": "✔ 插件已安装: aw-fixture-tools → C:\\Users\\87287\\AppData\\Local\\Temp\\aw-tool-registry-e2e-XqeTPi\\plugins\\aw-fixture-tools\n  › 作用域: user(用户级);已启用\n  › 热重载: 运行中的服务约 1s 内重新装载;随后工具会出现在「工具管理」与 MCP 工具面"
+      "detail": "✔ 插件已安装: aw-fixture-tools → C:\\Users\\87287\\AppData\\Local\\Temp\\aw-tool-registry-e2e-teJyVg\\plugins\\aw-fixture-tools\n  › 作用域: user(用户级);已启用\n  › 热重载: 运行中的服务约 1s 内重新装载;随后工具会出现在「工具管理」与 MCP 工具面"
     },
     {
       "name": "插件目录落盘",
@@ -19,7 +19,7 @@
     {
       "name": "实例健康门通过",
       "ok": true,
-      "detail": "日志 C:\\Users\\87287\\AppData\\Local\\Temp\\aw-tool-registry-e2e-XqeTPi\\instance.log"
+      "detail": "日志 C:\\Users\\87287\\AppData\\Local\\Temp\\aw-tool-registry-e2e-teJyVg\\instance.log"
     },
     {
       "name": "admin 注册并拿到 token",
@@ -47,9 +47,9 @@
       "detail": "HTTP 200"
     },
     {
-      "name": "内置工具 86 条",
+      "name": "内置工具计数与内置目录一致",
       "ok": true,
-      "detail": "builtin=86"
+      "detail": "builtin=92"
     },
     {
       "name": "插件工具已入库",
@@ -84,7 +84,7 @@
     {
       "name": "lead agent 可取 token",
       "ok": true,
-      "detail": "590496f9-bacc-48d0-85e3-9d4006c3026a"
+      "detail": "04fd0149-2792-406a-ba4a-3fba5f28c563"
     },
     {
       "name": "非属主修改 Channel 工具 → 403",
@@ -114,7 +114,7 @@
     {
       "name": "统计 lead 生效数 > 0",
       "ok": true,
-      "detail": "77"
+      "detail": "78"
     },
     {
       "name": "agent-tools list 含内置",
@@ -134,7 +134,7 @@
     {
       "name": "MCP tools/list 含内置",
       "ok": true,
-      "detail": "count=77"
+      "detail": "count=78"
     },
     {
       "name": "MCP tools/list 含 fixture",
@@ -239,7 +239,7 @@
     {
       "name": "重启后健康",
       "ok": true,
-      "detail": "日志 C:\\Users\\87287\\AppData\\Local\\Temp\\aw-tool-registry-e2e-XqeTPi\\instance.log"
+      "detail": "日志 C:\\Users\\87287\\AppData\\Local\\Temp\\aw-tool-registry-e2e-teJyVg\\instance.log"
     },
     {
       "name": "重启后策略仍生效",
