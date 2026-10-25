@@ -183,8 +183,8 @@ export async function probeResults(ctx) {
   let verdict
   try {
     const res = await ctx.http.get(`${base}/api/external/v1/results?limit=1&brief=true`, { timeoutMs: 6000, headers: authHeadersOf(ctx) })
-    if (res.status === 404) {
-      verdict = { ok: false, reason: '当前 IDD 版本不含分析结果库(§16);请升级 IDD 后再启用 results_enabled。' }
+    if (res.status === 404 || res.status === 400) {
+      verdict = { ok: false, reason: '当前 IDD 版本不含分析结果库(§16)或接口不兼容;请升级 IDD 后再启用 results_enabled。' }
     }
     else if (res.status === 401) {
       verdict = { ok: false, reason: 'IDD Token 无效或过期;请到 系统设置→运行配置→插件 更新「诊断 API Token」(idd_ 前缀的持久 API Token)。' }

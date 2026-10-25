@@ -518,10 +518,12 @@ export default {
           if (!touched) return { text: '至少给 description / tags / title 之一。', isError: true }
           const base = baseOf(ctx)
           await jpatch(ctx, `${base}/api/external/v1/results/${encodeURIComponent(id)}`, patch)
-          // 回读校验:PATCH 响应不含 display_text,重新 GET 详情确认落库(display_text = description || summary)
+          // 回读校验:PATCH 响应不含 display_text,重新 GET 详情确认落库;
+          // IDD 详情接口不返回 display_text,按索引口径本地拼(description || summary)
           const detail = (await jget(ctx, `${base}/api/external/v1/results/${encodeURIComponent(id)}?include_md=false`)).data ?? {}
           ctx.kv.set('diag.results.lastWrite', JSON.stringify({ at: Date.now(), resultId: id, fields: Object.keys(patch) }))
-          return { text: `已更新 result_id=${id}:title=${detail.title ?? '-'}\ndescription=${String(detail.description ?? '(未改/为空)').slice(0, 200)}\ntags=[${(detail.tags ?? []).join(',')}]\n(display_text 现为:${String(detail.display_text ?? '').slice(0, 160)}…)。` }
+          const displayText = String(detail.description || detail.summary || '').slice(0, 160)
+          return { text: `已更新 result_id=${id}:title=${detail.title ?? '-'}\ndescription=${String(detail.description ?? '(未改/为空)').slice(0, 200)}\ntags=[${(detail.tags ?? []).join(',')}]\n(display_text 现为:${displayText || '(空)'}…)。` }
         }
         catch (err) {
           return { text: `diag_result_annotate 失败: ${mapResultsError(err, baseOf(ctx))}`, isError: true }
@@ -694,7 +696,7 @@ export default {
           },
           report_md_url: absoluteUrl(base, d.report_md_url),
         }
-        return { success: true, data: { ...safe, baseUrl: base, canAnnotate: resultsAllowAnnotateOf(ctx) } }
+        return { success: true, data: { ...safe, baseUrl: base, canAnnotate: resultsAllowAnnotateOf(ctx) && String(event?.awUser?.role ?? '') === 'admin' } }
       }
       catch (err) {
         return { success: false, error: mapResultsError(err, baseOf(ctx)) }
