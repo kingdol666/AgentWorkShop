@@ -51,3 +51,17 @@ RAG mirrors this: `kb_agent` supports async tasks — `mode:"async"` returns a `
 ## Retention
 
 `retention.analysis_days` (default 365) controls ledger retention and participates in the unified retention sweep.
+
+### Results library
+
+The diag-bridge plugin now integrates IDD's results library (index / detail / metadata editing). It is **off by default** — the visible result set equals the diagnosis API token owner's visibility, and results are not line-scoped, so an admin must enable it explicitly.
+
+| Agent tool | Purpose |
+|---|---|
+| `diag_results` | search the result index (q/intent/tag/scene/min_score/sort; `brief=true` by default to save tokens) |
+| `diag_result_get` | fetch detail by `result_id` (summary + traceable key numbers + artifact/HTML URLs; optional `include_md`, truncated by limit) |
+| `diag_result_annotate` | edit metadata (description/tags/title; lead-only + plugin switch; ownership enforced by IDD) |
+
+Settings (`Plugins → diag-bridge → Results library`): `results_enabled` (master switch, default off), `results_allow_annotate` (editing, default off), `results_allow_worker` (worker read access, default off = lead only), `results_default_limit` (default 20), `results_md_max_chars` (report truncation limit, default 4000). The `/plugins` page ships a Results library panel: search/filter → detail → edit description & tags (same-source routes `GET /api/plugins/diag-bridge/results`, `/results/detail?id=`, `PATCH /results/edit?id=`).
+
+Typical agent flow: `diag_results(q="film thickness")` → pick `result_id` → `diag_result_get` for conclusions and key numbers → `diag_result_annotate` to record what the result means and when to reuse it.

@@ -41,6 +41,8 @@ export interface PluginKv {
 export interface PluginHttp {
   get(url: string, opts?: { timeoutMs?: number, headers?: Record<string, string> }): Promise<Response>
   post(url: string, body?: unknown, opts?: { timeoutMs?: number, headers?: Record<string, string> }): Promise<Response>
+  /** JSON PATCH(与 post 同构:同协议白名单/超时/头部合并) */
+  patch(url: string, body?: unknown, opts?: { timeoutMs?: number, headers?: Record<string, string> }): Promise<Response>
 }
 
 /** 资源面公共形状 —— 对应 sdk/api.mjs 的 `resource(root)`,每个资源都有完整五项。

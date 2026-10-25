@@ -7,7 +7,12 @@
       "max_turns": "诊断最大轮数",
       "max_minutes": "诊断超时(分钟)",
       "auto_enabled": "自动诊断",
-      "auto_rules": "自动诊断规则"
+      "auto_rules": "自动诊断规则",
+      "results_enabled": "结果库总开关",
+      "results_allow_annotate": "允许元数据编辑",
+      "results_allow_worker": "worker 可读",
+      "results_default_limit": "索引页大小",
+      "results_md_max_chars": "报告截断上限(字符)"
     },
     "panel": {
       "title": "深度诊断(industrial-deep-diagnostic)",
@@ -51,7 +56,42 @@
       "conn": "诊断服务连接",
       "run": "诊断执行参数",
       "auto": "自动诊断",
-      "rules": "自动诊断规则"
+      "rules": "自动诊断规则",
+      "results": "分析结果库"
+    },
+    "panel_results": {
+      "title": "分析结果库(全部历史分析)",
+      "search": "搜索关键词",
+      "intent": "意图",
+      "allIntents": "全部意图",
+      "minScore": "最低分",
+      "searchBtn": "检索",
+      "total": "共 {n} 条",
+      "truncated": "已按上限截断,完整报告用 URL 查看",
+      "colId": "ID",
+      "colTitle": "标题",
+      "colIntent": "意图",
+      "colScore": "评分",
+      "colVerdict": "结论",
+      "colCreated": "完成时间",
+      "colTags": "标签",
+      "detail": "详情",
+      "close": "关闭",
+      "loading": "加载中…",
+      "keyNumbers": "关键数字",
+      "reportMd": "报告全文",
+      "htmlReports": "HTML 报告",
+      "edit": "编辑元数据",
+      "editDesc": "描述(≤2000 字符)",
+      "editTags": "标签(逗号分隔,≤16 项)",
+      "save": "保存",
+      "saved": "已保存",
+      "saveFail": "保存失败",
+      "disabled": "结果库未启用:系统设置→运行配置→插件→diag-bridge 打开「结果库总开关」",
+      "readonly": "元数据编辑未开放(仅查看)",
+      "empty": "无匹配结果",
+      "loadFail": "结果库加载失败",
+      "openUrl": "在新窗口打开"
     }
   },
   "en": {
@@ -62,7 +102,12 @@
       "max_turns": "Max turns",
       "max_minutes": "Timeout (minutes)",
       "auto_enabled": "Auto diagnosis",
-      "auto_rules": "Auto diagnosis rules"
+      "auto_rules": "Auto diagnosis rules",
+      "results_enabled": "Results library enabled",
+      "results_allow_annotate": "Allow metadata editing",
+      "results_allow_worker": "Worker can read",
+      "results_default_limit": "Index page size",
+      "results_md_max_chars": "Report truncation limit (chars)"
     },
     "panel": {
       "title": "Deep diagnosis (industrial-deep-diagnostic)",
@@ -106,7 +151,42 @@
       "conn": "Diagnosis service connection",
       "run": "Diagnosis run parameters",
       "auto": "Auto diagnosis",
-      "rules": "Auto diagnosis rules"
+      "rules": "Auto diagnosis rules",
+      "results": "Results library"
+    },
+    "panel_results": {
+      "title": "Results library (all historical analyses)",
+      "search": "Search keyword",
+      "intent": "Intent",
+      "allIntents": "All intents",
+      "minScore": "Min score",
+      "searchBtn": "Search",
+      "total": "{n} results",
+      "truncated": "Truncated at the limit; open the URL for the full report",
+      "colId": "ID",
+      "colTitle": "Title",
+      "colIntent": "Intent",
+      "colScore": "Score",
+      "colVerdict": "Verdict",
+      "colCreated": "Completed",
+      "colTags": "Tags",
+      "detail": "Detail",
+      "close": "Close",
+      "loading": "Loading…",
+      "keyNumbers": "Key numbers",
+      "reportMd": "Full report",
+      "htmlReports": "HTML reports",
+      "edit": "Edit metadata",
+      "editDesc": "Description (≤2000 chars)",
+      "editTags": "Tags (comma separated, ≤16)",
+      "save": "Save",
+      "saved": "Saved",
+      "saveFail": "Save failed",
+      "disabled": "Results library disabled: enable it under System settings → Runtime → Plugins → diag-bridge",
+      "readonly": "Metadata editing disabled (view only)",
+      "empty": "No matching results",
+      "loadFail": "Failed to load results",
+      "openUrl": "Open in new window"
     }
   }
 }
