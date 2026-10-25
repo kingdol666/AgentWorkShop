@@ -1,6 +1,6 @@
 # IDD 分析结果管理集成计划(diag-bridge · Results Library)
 
-状态:**已执行**(2026-10-25,验收 32/32+10/10 全绿)
+状态:**已执行并复验**(2026-10-25;独立 reviewer REVISE 后修复,真机 36/36 + UI 9/9 + 结构 14/14)
 日期:2026-10-25 · 依据:IDD `docs/api-external.md` §16(v1 结果库 + §16.3a 分类)、IDD 自带 `results-aws-integration` 验收脚本(87/87)、AW diag-bridge 现状核查
 
 ## 1. 需求与现状
@@ -155,3 +155,22 @@
 **同步纪律**:builtin 插件装载源是 `server/plugins-builtin/diag-bridge/`,改动必须同时落 `.AgentWorkShop/plugins/diag-bridge/`(工作副本)与 builtin 源,否则重启不生效。
 
 **验收结果**:A1 结构 10/10;A2-A13 真机 e2e 32/32(含关闭态短路、索引/过滤、详情/截断、编辑回读、404/403/400 负例、写闸门、坏 base 降级、面板路由、既有 diag 回归);全量单测 595/595;typecheck 通过;i18n PARITY;docs 91/91。
+
+## 10. Reviewer 复验修复记录(2026-10-25 第二轮)
+
+独立 reviewer 首轮判 **REVISE**(4 High / 5 Medium),逐条修复并复验:
+
+| 问题 | 修复 | 复验证据 |
+|---|---|---|
+| H1 PATCH 路由缺 admin/lead 闸门 | 转发层注入 `event.awUser`;PATCH 路由要求 admin(Agent 面走 lead-only 工具) | A1.12 结构断言 + 面板编辑以 admin 通过 |
+| H2 brief=false 缺 key_numbers | 卡片输出 `key_numbers` | A3.3 真机断言 |
+| H3 探测缓存掩盖版本/连通性;网络错误无映射 | 缓存 key 加 base+token 指纹;`mapResultsError(err, base)` 增网络分支 | A1.13 + A10.1(回执含 base) |
+| H4 A7/A11 证据不成立 | A7 拆 2a/2b/3a/3b/3(真 403:新建属主明确结果+第二 token);A11 新增 UI 走查脚本 | 主 e2e 36/36;UI 9/9 |
+| M5 worker 开关不热生效 | roles 注册 lead+worker,handler 内实时判 `resultsAllowWorkerOf` | A1.3 |
+| M6 少透传 category_id/harness | 补齐 11 项 | A1.11 + 真机 |
+| M7 报告 URL 相对路径 404 | `absoluteUrl(base, path)` 绝对化(工具+路由) | A5.1 |
+| M8 编辑区无条件显示/大 md 进浏览器 | 路由返回 `canAnnotate`,编辑区按能力显示;详情默认 `include_md=false` | A11.6 |
+| M9 详情泄露 IDD 主机路径 | 路由裁剪 `workspace_path`/`report_md_path`/`abs_path` | A1.12 |
+| Low CSS 回归/回读空值/注释/null 支持/双副本漂移 | 恢复 `:has` 规则;PATCH 后 GET 回读;注释修正;`description` 支持 null;A1.14 双副本一致断言 | 结构 14/14 |
+
+**实施环境坑(记录)**:插件路由表 exact-match 不支持 path 参数;builtin 装载源是 `server/plugins-builtin`(工作副本 `.AgentWorkShop/plugins` 需同步);ESM 模块缓存导致插件改动必须**真正重启进程**;dev 实例的 SSE 断开会拖垮进程,UI 验收改用生产 `.output` 实例;`.output` 生产模式需 `NUXT_SESSION_PASSWORD`;残留 dev 实例会把共享 `tool_registry` 写成 unavailable(必须清理进程树)。

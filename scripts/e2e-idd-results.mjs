@@ -64,9 +64,12 @@ const idxText = text(idx)
 check('A3.1', 'diag_results 返回 total/limit/offset', !isErr(idx) && /total=\d+ limit=\d+ offset=\d+/.test(idxText), idxText.slice(0, 160))
 const idxBrief = await invoke(lead.id, 'diag_results', { limit: 3 })
 check('A3.2', 'brief 默认 true(文本含 brief=true)', !isErr(idxBrief) && text(idxBrief).includes('brief=true'), text(idxBrief).slice(0, 120))
-// brief=false 时卡片应带 key_numbers 提示(通过 detail 断言 brief 差异)
+// brief=false 时卡片必须带 key_numbers(IDD 在非 brief 模式返回该字段)
+const idxFull = await invoke(lead.id, 'diag_results', { limit: 5, brief: false })
+const fullText = text(idxFull)
+check('A3.3', 'brief=false 卡片带 key_numbers', !isErr(idxFull) && fullText.includes('key_numbers='), fullText.slice(0, 260))
 const firstId = (idxText.match(/^- (\w+) \|/m) ?? [])[1]
-check('A3.3', '可从索引文本解析首个 result_id', Boolean(firstId), idxText.slice(0, 200))
+check('A3.4', '可从索引文本解析首个 result_id', Boolean(firstId), idxText.slice(0, 200))
 
 // ── A4 过滤 ──
 const qR = await invoke(lead.id, 'diag_results', { q: '注入' })
@@ -83,8 +86,8 @@ check('A4.5', '非法 sort → RESULTS_QUERY_INVALID 中文指引', isErr(badSor
 // ── A5 详情 ──
 const det = await invoke(lead.id, 'diag_result_get', { result_id: firstId })
 const detText = text(det)
-check('A5.1', '详情默认不带 md 正文、带报告 URL(相对路径)',
-  !isErr(det) && /报告=\/api\/|报告=http/.test(detText) && !detText.includes('report.md:\n'), detText.slice(0, 200))
+check('A5.1', '详情默认不带 md 正文、报告 URL 已绝对化',
+  !isErr(det) && /报告=http:\/\/127\.0\.0\.1:3210\//.test(detText) && !detText.includes('report.md:\n'), detText.slice(0, 220))
 const detMd = await invoke(lead.id, 'diag_result_get', { result_id: firstId, include_md: true })
 const mdText = text(detMd)
 check('A5.2', 'include_md=true 携带 md 且遵守截断上限', !isErr(detMd) && mdText.includes('report.md'), mdText.slice(0, 160))
@@ -120,20 +123,48 @@ check('A6.1', 'annotate 成功并回读 description/tags', !isErr(ann) && text(a
 const verify = await invoke(lead.id, 'diag_result_get', { result_id: mineId })
 check('A6.2', '详情回读含新描述(display_text 优先)', text(verify).includes(stamp.slice(0, 12)), text(verify).slice(0, 240))
 
-// ── A7 负例 ──
+// ── A7 负例(逐条严格断言) ──
 const nf = await invoke(lead.id, 'diag_result_get', { result_id: 'deadbeef99' })
 check('A7.1', '不存在 id → RESULT_NOT_FOUND 指引', isErr(nf) && text(nf).includes('不存在'), text(nf).slice(0, 160))
-const sr = await invoke(lead.id, 'diag_result_annotate', { result_id: mineId, description: 'ok', title: 'x', tags: [], summary: 'hack' })
-check('A7.2', 'PATCH 未知字段被 IDD 拒(RESULT_PATCH_INVALID 语义)', isErr(sr) || text(sr).includes('已更新'), text(sr).slice(0, 200))
-// 非属主:旧 e2e 用户的结果(results_demo 不可编辑)
-const otherIdx = await invoke(lead.id, 'diag_results', { q: 'accept_api', brief: false, limit: 3 })
-const otherId = (text(otherIdx).match(/^- (\w+) \|/m) ?? [])[1]
-if (otherId) {
-  const forbid = await invoke(lead.id, 'diag_result_annotate', { result_id: otherId, description: '越权测试' })
-  check('A7.3', '非属主编辑 → 403 语义如实回执', isErr(forbid) && (text(forbid).includes('不属于') || text(forbid).includes('RESULT_FORBIDDEN')), text(forbid).slice(0, 160))
+// 仅给 summary:工具层必须拒绝(不把只读字段送进 PATCH)
+const onlySummary = await invoke(lead.id, 'diag_result_annotate', { result_id: mineId, summary: 'hack' })
+check('A7.2a', '只给 summary → 本地拒绝(至少给可编辑字段之一)', isErr(onlySummary) && text(onlySummary).includes('至少给'), text(onlySummary).slice(0, 160))
+// description+summary:summary 必须被丢弃,只有 description 生效
+const withSummary = await invoke(lead.id, 'diag_result_annotate', { result_id: mineId, description: `${stamp} (summary过滤)`, summary: 'hack' })
+check('A7.2b', '混合给 summary → 仅 description 生效(summary 被过滤)', !isErr(withSummary) && text(withSummary).includes('已更新'), text(withSummary).slice(0, 200))
+// 非属主 403 需要一个「属主明确」的结果:新建一条(results_demo 的 token 创建 → user_id 已归属),
+// 不能用修复前创建的存量行(其 user_id 为 NULL,任何 token 都可编辑,属已知历史边界)。
+const freshRun = await fetch('http://127.0.0.1:3210/api/external/v1/analyze', {
+  method: 'POST', headers: { 'content-type': 'application/json', 'authorization': `Bearer ${IDD_TOKEN}` },
+  body: JSON.stringify({ folderPath: 'aw-snapshots', analysisIntent: 'quick-screen', harness: 'mock', sceneName: 'aws-owner-probe', question: '属主校验探针', wait: true, wait_timeout_minutes: 3 }),
+}).then(r => r.json()).catch(() => ({}))
+const ownedId = freshRun?.data?.run_id
+check('A7.3a', '新结果已归属当前 Token(results_demo)', Boolean(ownedId) && freshRun?.data?.status === 'completed', JSON.stringify(freshRun).slice(0, 200))
+// 属主自己可编辑
+const ownerEdit = ownedId ? await invoke(lead.id, 'diag_result_annotate', { result_id: ownedId, description: `${stamp} (属主自证)` }) : null
+check('A7.3b', '属主编辑新结果成功', Boolean(ownerEdit) && !isErr(ownerEdit), ownerEdit ? text(ownerEdit).slice(0, 160) : 'no-run')
+// 第二账号 token → 同一结果应 403
+const secondLogin = await fetch('http://127.0.0.1:3210/api/auth/login', {
+  method: 'POST', headers: { 'content-type': 'application/json' },
+  body: JSON.stringify({ username: 'results_demo2', password: 'Demo1234!x' }),
+}).then(r => r.json()).catch(() => ({}))
+const secondJwt = secondLogin?.data?.session_token ?? secondLogin?.data?.token
+let secondToken = ''
+if (secondJwt) {
+  const minted = await fetch('http://127.0.0.1:3210/api/auth/tokens', {
+    method: 'POST', headers: { 'content-type': 'application/json', 'authorization': `Bearer ${secondJwt}` },
+    body: JSON.stringify({ name: `aws-e2e-second-${Date.now().toString(36)}`, expires_in_days: 1 }),
+  }).then(r => r.json()).catch(() => ({}))
+  secondToken = minted?.data?.token ?? ''
+}
+if (secondToken && ownedId) {
+  await patchSettings({ 'plugins.diag-bridge.token': secondToken })
+  const forbid = await invoke(lead.id, 'diag_result_annotate', { result_id: ownedId, description: '越权测试' })
+  await patchSettings({ 'plugins.diag-bridge.token': IDD_TOKEN })
+  check('A7.3', '非属主(第二 token)编辑 → 403 如实回执', isErr(forbid) && text(forbid).includes('不属于'), text(forbid).slice(0, 180))
 }
 else {
-  check('A7.3', '非属主编辑(无旧样本可测,跳过)', true, 'N/A')
+  check('A7.3', '非属主编辑(第二账号/新结果不可用)', false, `secondToken=${Boolean(secondToken)} ownedId=${ownedId ?? '-'}`)
 }
 
 // ── A8 写闸门:关掉 annotate 后再编辑被拒 ──
@@ -142,10 +173,11 @@ const gate = await invoke(lead.id, 'diag_result_annotate', { result_id: mineId, 
 check('A8.1', 'allow_annotate=false → 本地拒绝(不发起 PATCH)', isErr(gate) && text(gate).includes('未开放'), text(gate).slice(0, 160))
 await patchSettings({ 'plugins.diag-bridge.results_allow_annotate': true })
 
-// ── A10 版本探测:坏 base_url → 可行动回执 ──
+// ── A10 版本探测/连通性:坏 base_url → 可行动回执(计划 §5 文案) ──
 await patchSettings({ 'plugins.diag-bridge.base_url': 'http://127.0.0.1:3999' })
 const badBase = await invoke(lead.id, 'diag_results', {})
-check('A10.1', '不可达 base_url → 明确降级回执', isErr(badBase) && (text(badBase).includes('不可达') || text(badBase).includes('失败')), text(badBase).slice(0, 160))
+check('A10.1', '不可达 base_url → 「诊断服务不可达({base})」可行动回执',
+  isErr(badBase) && text(badBase).includes('诊断服务不可达') && text(badBase).includes('127.0.0.1:3999'), text(badBase).slice(0, 200))
 await patchSettings({ 'plugins.diag-bridge.base_url': 'http://127.0.0.1:3210' })
 
 // ── A12 REST 路由面(面板同源) ──

@@ -3,7 +3,7 @@
  * (由 server/plugins-builtin/diag-bridge/index.mjs 按职责拆出;内容逐行原文搬运)
  */
 import { AUTO_COOLDOWN_MS, DEFAULT_BASE, MIN } from './constants.mjs'
-import { authHeadersOf, authHint, autoEnabledOf, autoRulesOf, baseOf, diagTokenOf, harnessOf, jget, jpatch, kvRuns, mapResultsError, parseAutoRules, probeResults, resultsAllowAnnotateOf, resultsAllowWorkerOf, resultsDefaultLimitOf, resultsEnabledOf, resultsMdMaxOf, runKey } from './helpers.mjs'
+import { absoluteUrl, authHeadersOf, authHint, autoEnabledOf, autoRulesOf, baseOf, diagTokenOf, harnessOf, jget, jpatch, kvRuns, mapResultsError, parseAutoRules, probeResults, resultsAllowAnnotateOf, resultsAllowWorkerOf, resultsDefaultLimitOf, resultsEnabledOf, resultsMdMaxOf, runKey } from './helpers.mjs'
 import { snapshotCore } from './snapshot.mjs'
 import { startDiagnosis } from './diagnosis.mjs'
 import { uploadExportDataset } from './exports.mjs'
@@ -345,8 +345,10 @@ export default {
 
     // ── 工具 ×3:分析结果库(§16;默认关闭,results_enabled 开启) ────────────
     // 可见性注意:结果库按 IDD Token 属主聚合,平台内不按产线隔离 —— 所以
-    // 读面默认只给 lead、写面双闸门(设置 + lead + IDD 属主校验)。
-    const resultsReadRoles = () => (resultsAllowWorkerOf(ctx) ? ['lead', 'worker'] : ['lead'])
+    // 读面默认只给 lead(worker 可在 handler 内按设置热放开)、写面双闸门(设置 + lead + IDD 属主校验)。
+    // roles 必须在注册期就包含 worker:注册后 roles 固化,设置热改不会重注册工具;
+    // 因此 worker 的开关判断放在 handler 内(每次调用实时读设置)。
+    const denyWorkerIfDisabled = agent => agent?.role === 'worker' && !resultsAllowWorkerOf(ctx)
 
     ctx.omp.registerTool({
       name: 'diag_results',
@@ -357,8 +359,10 @@ export default {
         properties: {
           q: { type: 'string', description: '关键词(匹配 title/description/summary/scene/tags,大小写不敏感)' },
           intent: { type: 'string', enum: ['deep-diagnosis', 'stability-report', 'quick-screen', 'doe-analysis', 'experience-mining', 'optimizer-campaign'], description: '按分析模式过滤' },
+          category_id: { type: 'string', description: '按结果分类 id 过滤(见 /results/categories)' },
           tag: { type: 'string', description: '按标签精确匹配' },
           scene: { type: 'string', description: '按场景名精确匹配' },
+          harness: { type: 'string', description: '按执行引擎过滤(如 omp/claude/mock)' },
           min_score: { type: 'number', description: 'score >= min_score(稳定性报告 0-100;深度诊断为 Judge 分)' },
           sort: { type: 'string', enum: ['created_desc', 'created_asc', 'score_desc'], description: '排序(缺省 created_desc)' },
           limit: { type: 'number', description: '每页条数(1-200,缺省取插件设置)' },
@@ -366,9 +370,12 @@ export default {
           brief: { type: 'boolean', description: '省 token 模式(缺省 true:无 key_numbers,display_text 截 160 字符)' },
         },
       },
-      roles: resultsReadRoles(),
-      handler: async (args) => {
+      roles: ['lead', 'worker'],
+      handler: async (args, agent) => {
         try {
+          if (denyWorkerIfDisabled(agent)) {
+            return { text: 'diag_results 当前仅对 lead 角色开放(管理员可在插件设置打开「worker 可读」)。', isError: true }
+          }
           if (!resultsEnabledOf(ctx)) {
             return { text: '分析结果库未启用:请在 系统设置→运行配置→插件→diag-bridge 打开「结果库总开关」。', isError: true }
           }
@@ -377,7 +384,8 @@ export default {
           const base = baseOf(ctx)
           const params = new URLSearchParams()
           for (const [key, value] of Object.entries({
-            q: args.q, intent: args.intent, tag: args.tag, scene: args.scene,
+            q: args.q, intent: args.intent, category_id: args.category_id, tag: args.tag,
+            scene: args.scene, harness: args.harness,
             min_score: args.min_score, sort: args.sort,
             limit: args.limit ?? resultsDefaultLimitOf(ctx), offset: args.offset,
             brief: args.brief === undefined ? true : args.brief,
@@ -388,12 +396,15 @@ export default {
           const d = body.data ?? {}
           const cards = d.results ?? []
           if (!cards.length) return { text: `无匹配结果(total=${d.total ?? 0})。放宽过滤或用 q 换个关键词。` }
+          const showKn = briefOf(args) === false
           const lines = cards.map(c =>
-            `- ${c.result_id} | ${c.intent} | ${c.score ?? '-'}分 ${c.verdict ?? ''} | ${c.created_at ?? '?'} | ${c.title}${(c.tags ?? []).length ? ` [${c.tags.join(',')}]` : ''}\n  ${String(c.display_text ?? '').slice(0, briefOf(args) ? 160 : 400)}`)
+            `- ${c.result_id} | ${c.intent} | ${c.score ?? '-'}分 ${c.verdict ?? ''} | ${c.created_at ?? '?'} | ${c.title}${(c.tags ?? []).length ? ` [${c.tags.join(',')}]` : ''}`
+            + `\n  ${String(c.display_text ?? '').slice(0, showKn ? 400 : 160)}`
+            + (showKn && c.key_numbers ? `\n  key_numbers=${JSON.stringify(c.key_numbers)}` : ''))
           return { text: [`分析结果 total=${d.total} limit=${d.limit} offset=${d.offset} 本页 ${cards.length} 条(brief=${briefOf(args)}):`, ...lines, '', '按 id 取完整详情 → diag_result_get(result_id)。'].join('\n') }
         }
         catch (err) {
-          return { text: `diag_results 失败: ${mapResultsError(err)}`, isError: true }
+          return { text: `diag_results 失败: ${mapResultsError(err, baseOf(ctx))}`, isError: true }
         }
       },
     })
@@ -411,9 +422,12 @@ export default {
         },
       },
       required: ['result_id'],
-      roles: resultsReadRoles(),
-      handler: async (args) => {
+      roles: ['lead', 'worker'],
+      handler: async (args, agent) => {
         try {
+          if (denyWorkerIfDisabled(agent)) {
+            return { text: 'diag_result_get 当前仅对 lead 角色开放(管理员可在插件设置打开「worker 可读」)。', isError: true }
+          }
           if (!resultsEnabledOf(ctx)) {
             return { text: '分析结果库未启用:请在 系统设置→运行配置→插件→diag-bridge 打开「结果库总开关」。', isError: true }
           }
@@ -439,8 +453,8 @@ export default {
           const artifacts = meta.artifacts ?? []
           if (artifacts.length) parts.push(`工件 ${artifacts.length} 项:${artifacts.slice(0, 12).map(a => a.path ?? a).join(', ')}${artifacts.length > 12 ? ' …' : ''}`)
           const htmls = d.files?.html ?? []
-          if (htmls.length) parts.push(`HTML 报告 ${htmls.length} 份(在线查看需带 ?token=<诊断API Token>):${htmls.slice(0, 4).map(h => h.url).join(', ')}`)
-          parts.push(`报告=${d.report_md_url ?? '(无)'}`)
+          if (htmls.length) parts.push(`HTML 报告 ${htmls.length} 份(在线查看需带 ?token=<诊断API Token>):${htmls.slice(0, 4).map(h => absoluteUrl(base, h.url)).join(', ')}`)
+          parts.push(`报告=${absoluteUrl(base, d.report_md_url)}`)
           if (d.run) parts.push(`run=${d.run.run_id} ${d.run.status}${d.run.session_resumable ? '(可续聊)' : ''}`)
           if (d.derived) parts.push('(本条为按需派生记录:行缺失时详情接口即时生成并标注 derived=true)')
           if (wantMd && typeof d.report_md === 'string' && d.report_md.length) {
@@ -455,7 +469,7 @@ export default {
           return { text: parts.filter(Boolean).join('\n') }
         }
         catch (err) {
-          return { text: `diag_result_get 失败: ${mapResultsError(err)}`, isError: true }
+          return { text: `diag_result_get 失败: ${mapResultsError(err, baseOf(ctx))}`, isError: true }
         }
       },
     })
@@ -468,7 +482,7 @@ export default {
         type: 'object',
         properties: {
           result_id: { type: 'string', description: '结果 id(diag_results 返回)' },
-          description: { type: 'string', description: '结果描述(≤2000 字符;null=清除回落自动摘要)' },
+          description: { type: ['string', 'null'], description: '结果描述(≤2000 字符;null=清除回落自动摘要)' },
           tags: { type: 'array', items: { type: 'string' }, description: '标签数组(≤16 项,单项 ≤40 字符)' },
           title: { type: 'string', description: '标题(≤200 字符)' },
         },
@@ -503,14 +517,14 @@ export default {
           }
           if (!touched) return { text: '至少给 description / tags / title 之一。', isError: true }
           const base = baseOf(ctx)
-          const body = await jpatch(ctx, `${base}/api/external/v1/results/${encodeURIComponent(id)}`, patch)
-          const d = body.data ?? {}
-          // 回读校验:编辑是否真的落库(display_text = description || summary)
+          await jpatch(ctx, `${base}/api/external/v1/results/${encodeURIComponent(id)}`, patch)
+          // 回读校验:PATCH 响应不含 display_text,重新 GET 详情确认落库(display_text = description || summary)
+          const detail = (await jget(ctx, `${base}/api/external/v1/results/${encodeURIComponent(id)}?include_md=false`)).data ?? {}
           ctx.kv.set('diag.results.lastWrite', JSON.stringify({ at: Date.now(), resultId: id, fields: Object.keys(patch) }))
-          return { text: `已更新 result_id=${id}:title=${d.title ?? '-'}\ndescription=${String(d.description ?? '(未改/为空)').slice(0, 200)}\ntags=[${(d.tags ?? []).join(',')}]\n(display_text 现为:${String(d.display_text ?? '').slice(0, 160)}…)。` }
+          return { text: `已更新 result_id=${id}:title=${detail.title ?? '-'}\ndescription=${String(detail.description ?? '(未改/为空)').slice(0, 200)}\ntags=[${(detail.tags ?? []).join(',')}]\n(display_text 现为:${String(detail.display_text ?? '').slice(0, 160)}…)。` }
         }
         catch (err) {
-          return { text: `diag_result_annotate 失败: ${mapResultsError(err)}`, isError: true }
+          return { text: `diag_result_annotate 失败: ${mapResultsError(err, baseOf(ctx))}`, isError: true }
         }
       },
     })
@@ -653,7 +667,7 @@ export default {
         return { success: true, data: body.data }
       }
       catch (err) {
-        return { success: false, error: mapResultsError(err) }
+        return { success: false, error: mapResultsError(err, baseOf(ctx)) }
       }
     })
 
@@ -668,10 +682,22 @@ export default {
         const includeMd = u.searchParams.get('include_md') === 'true' ? 'true' : 'false'
         const base = baseOf(ctx)
         const body = await jget(ctx, `${base}/api/external/v1/results/${encodeURIComponent(id)}?include_md=${includeMd}`)
-        return { success: true, data: body.data }
+        const d = body.data ?? {}
+        // D5 跨机语义:不向浏览器透出 IDD 主机绝对路径;报告/HTML 一律给可打开的 URL
+        const safe = {
+          ...d,
+          metadata: d.metadata ? { ...d.metadata, workspace_path: undefined } : d.metadata,
+          files: {
+            ...(d.files ?? {}),
+            html: (d.files?.html ?? []).map(h => ({ path: h.path, url: absoluteUrl(base, h.url) })),
+            report_md_path: undefined,
+          },
+          report_md_url: absoluteUrl(base, d.report_md_url),
+        }
+        return { success: true, data: { ...safe, baseUrl: base, canAnnotate: resultsAllowAnnotateOf(ctx) } }
       }
       catch (err) {
-        return { success: false, error: mapResultsError(err) }
+        return { success: false, error: mapResultsError(err, baseOf(ctx)) }
       }
     })
 
@@ -679,6 +705,11 @@ export default {
       try {
         if (!resultsEnabledOf(ctx)) return { success: false, error: '结果库未启用(results_enabled)' }
         if (!resultsAllowAnnotateOf(ctx)) return { success: false, error: '元数据编辑未开放(results_allow_annotate)' }
+        // 写面角色闸门(文档 D3):UI 路由是用户面,要求 AW 管理员;
+        // Agent 面走 diag_result_annotate 工具(lead-only + IDD 属主校验)。
+        if (String(event?.awUser?.role ?? '') !== 'admin') {
+          return { success: false, error: '元数据编辑需要管理员身份(当前账号角色不足)' }
+        }
         const probe = await probeResults(ctx)
         if (!probe.ok) return { success: false, error: probe.reason }
         const u = new URL(String(event?.path ?? event?.node?.req?.url ?? ''), 'http://local')
@@ -691,12 +722,13 @@ export default {
         }
         if (!Object.keys(patch).length) return { success: false, error: '至少给 description/tags/title 之一' }
         const base = baseOf(ctx)
-        const body = await jpatch(ctx, `${base}/api/external/v1/results/${encodeURIComponent(id)}`, patch)
+        await jpatch(ctx, `${base}/api/external/v1/results/${encodeURIComponent(id)}`, patch)
+        const detail = (await jget(ctx, `${base}/api/external/v1/results/${encodeURIComponent(id)}?include_md=false`)).data ?? {}
         ctx.kv.set('diag.results.lastWrite', JSON.stringify({ at: Date.now(), resultId: id, fields: Object.keys(patch) }))
-        return { success: true, data: body.data }
+        return { success: true, data: { ...detail, baseUrl: base, canAnnotate: true } }
       }
       catch (err) {
-        return { success: false, error: mapResultsError(err) }
+        return { success: false, error: mapResultsError(err, baseOf(ctx)) }
       }
     })
 
@@ -710,7 +742,7 @@ export default {
         return { success: true, data: body.data }
       }
       catch (err) {
-        return { success: false, error: mapResultsError(err) }
+        return { success: false, error: mapResultsError(err, baseOf(ctx)) }
       }
     })
 

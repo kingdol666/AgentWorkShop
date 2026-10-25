@@ -58,9 +58,9 @@ IDD 侧的分析结果库(索引/详情/元数据编辑)已由 diag-bridge 插�
 
 | Agent 工具 | 用途 |
 |---|---|
-| `diag_results` | 检索结果索引(q/intent/tag/scene/min_score/sort;缺省 `brief=true` 省 token) |
-| `diag_result_get` | 按 `result_id` 取详情(摘要 + 关键数字溯源 + 工件/HTML URL;`include_md` 可选,按上限截断) |
-| `diag_result_annotate` | 编辑元数据(description/tags/title;仅 lead + 插件开关;IDD 侧属主校验) |
+| `diag_results` | 检索结果索引(q/intent/category_id/tag/scene/harness/min_score/sort/limit/offset;缺省 `brief=true` 省 token,`brief=false` 带 key_numbers) |
+| `diag_result_get` | 按 `result_id` 取详情(摘要 + 关键数字溯源 + 工件/HTML 的**绝对 URL**;`include_md` 可选,按上限截断) |
+| `diag_result_annotate` | 编辑元数据(description/tags/title,`description=null` 可清除;仅 lead + 插件开关;IDD 侧属主校验) |
 
 设置(`插件 → diag-bridge → 分析结果库`):`results_enabled`(总开关,默认关)、`results_allow_annotate`(编辑开关,默认关)、`results_allow_worker`(worker 可读,默认关=仅 lead)、`results_default_limit`(缺省 20)、`results_md_max_chars`(报告截断上限,缺省 4000)。`/plugins` 页内置「分析结果库」面板:搜索/过滤 → 详情 → 描述与标签编辑(同源路由 `GET /api/plugins/diag-bridge/results`、`/results/detail?id=`、`PATCH /results/edit?id=`)。
 

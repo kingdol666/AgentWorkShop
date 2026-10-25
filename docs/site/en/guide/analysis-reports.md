@@ -58,9 +58,9 @@ The diag-bridge plugin now integrates IDD's results library (index / detail / me
 
 | Agent tool | Purpose |
 |---|---|
-| `diag_results` | search the result index (q/intent/tag/scene/min_score/sort; `brief=true` by default to save tokens) |
-| `diag_result_get` | fetch detail by `result_id` (summary + traceable key numbers + artifact/HTML URLs; optional `include_md`, truncated by limit) |
-| `diag_result_annotate` | edit metadata (description/tags/title; lead-only + plugin switch; ownership enforced by IDD) |
+| `diag_results` | search the result index (q/intent/category_id/tag/scene/harness/min_score/sort/limit/offset; `brief=true` by default to save tokens, `brief=false` includes key_numbers) |
+| `diag_result_get` | fetch detail by `result_id` (summary + traceable key numbers + **absolute** artifact/HTML URLs; optional `include_md`, truncated by limit) |
+| `diag_result_annotate` | edit metadata (description/tags/title; `description=null` clears it; lead-only + plugin switch; ownership enforced by IDD) |
 
 Settings (`Plugins → diag-bridge → Results library`): `results_enabled` (master switch, default off), `results_allow_annotate` (editing, default off), `results_allow_worker` (worker read access, default off = lead only), `results_default_limit` (default 20), `results_md_max_chars` (report truncation limit, default 4000). The `/plugins` page ships a Results library panel: search/filter → detail → edit description & tags (same-source routes `GET /api/plugins/diag-bridge/results`, `/results/detail?id=`, `PATCH /results/edit?id=`).
 

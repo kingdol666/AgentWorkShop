@@ -152,15 +152,25 @@ export function resultsDefaultLimitOf(ctx) {
   const n = Number(ctx.config?.get?.('plugins.diag-bridge.results_default_limit')) || Number(ctx.kv.get('diag.results_default_limit')) || 20
   return Math.min(200, Math.max(1, Math.round(n)))
 }
-/** report.md 截断上限(500-50000;0 档=完全不带 md) */
+/** report.md 截断上限(500-50000;调用方传 0 视为不带 md,由工具层处理) */
 export function resultsMdMaxOf(ctx) {
   const n = Number(ctx.config?.get?.('plugins.diag-bridge.results_md_max_chars')) || Number(ctx.kv.get('diag.results_md_max_chars')) || 4000
   return Math.min(50000, Math.max(500, Math.round(n)))
 }
 
-/** 结果库能力探测(5 分钟缓存):旧版 IDD 无 §16 时给可行动降级,不冒充空结果 */
+/** 探测缓存指纹:base_url + token 变化必须使缓存失效(否则 5 分钟内会掩盖版本/连通性变化) */
+function resultsProbeKeyOf(ctx) {
+  const base = baseOf(ctx) ?? ''
+  const token = diagTokenOf(ctx)
+  let h = 0
+  for (let i = 0; i < token.length; i += 1) h = (h * 31 + token.charCodeAt(i)) | 0
+  return `diag.results_probe:${base}:${h}`
+}
+
+/** 结果库能力探测(5 分钟缓存,按 base+token 指纹隔离):旧版 IDD 无 §16 时给可行动降级,不冒充空结果 */
 export async function probeResults(ctx) {
-  const cached = ctx.kv.get('diag.results_probe')
+  const cacheKey = resultsProbeKeyOf(ctx)
+  const cached = ctx.kv.get(cacheKey)
   if (cached) {
     try {
       const parsed = JSON.parse(cached)
@@ -187,17 +197,22 @@ export async function probeResults(ctx) {
     }
   }
   catch (err) {
-    verdict = { ok: false, reason: `诊断服务不可达(${err?.message ?? err});检查 base_url 与服务状态。` }
+    verdict = { ok: false, reason: `诊断服务不可达(${base}): ${err?.message ?? err};检查 base_url、IDD 服务状态与网络。` }
   }
   try {
-    ctx.kv.set('diag.results_probe', JSON.stringify({ ...verdict, at: Date.now() }))
+    ctx.kv.set(cacheKey, JSON.stringify({ ...verdict, at: Date.now() }))
   }
   catch { /* kv 不可写不影响主流程 */ }
   return verdict
 }
 
-/** IDD 错误 → 中文可行动回执(§16.4 全表) */
-export function mapResultsError(err) {
+/** 是否网络层失败(探测成功后连接断开/超时;mapResultsError 需要给 base 指引) */
+function isNetworkError(msg) {
+  return /fetch failed|ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENOTFOUND|socket hang up|aborted|TimeoutError|headers timeout|body timeout/i.test(msg)
+}
+
+/** IDD 错误 → 中文可行动回执(§16.4 全表;network 失败按 base 指引) */
+export function mapResultsError(err, base = '') {
   const msg = String(err?.message ?? err)
   if (msg.includes('AUTH_REQUIRED')) return 'IDD Token 无效/过期;请到 系统设置→运行配置→插件 更新「诊断 API Token」。'
   if (msg.includes('RESULTS_QUERY_INVALID')) return '查询参数非法(支持 intent=deep-diagnosis/stability-report/quick-screen/doe-analysis/experience-mining/optimizer-campaign;sort=created_desc/created_asc/score_desc;min_score 为数字)。'
@@ -205,5 +220,20 @@ export function mapResultsError(err) {
   if (msg.includes('SUMMARY_READONLY')) return 'summary 是系统生成的只读字段;请改 description(用户可读可写的描述)。'
   if (msg.includes('RESULT_FORBIDDEN')) return '该结果不属于当前 Token 的属主;编辑需换成创建它的账号 Token,或由 IDD 管理员操作。'
   if (msg.includes('RESULT_NOT_FOUND')) return 'result_id 不存在、已软删除或对应分析未完成;用 diag_results 重新确认 id。'
+  if (isNetworkError(msg)) {
+    return `诊断服务不可达${base ? `(${base})` : ''};检查 plugins.diag-bridge.base_url、IDD 服务状态与网络。`
+  }
   return msg
+}
+
+/** IDD 返回的报告/HTML 是相对路径 → 拼成可在浏览器打开的绝对 URL(不读盘) */
+export function absoluteUrl(base, path) {
+  if (!path) return ''
+  try {
+    if (/^https?:\/\//i.test(path)) return path
+    return `${String(base).replace(/\/+$/, '')}${path.startsWith('/') ? '' : '/'}${path}`
+  }
+  catch {
+    return String(path)
+  }
 }
