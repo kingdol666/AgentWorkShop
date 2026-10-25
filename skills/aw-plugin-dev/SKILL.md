@@ -89,11 +89,31 @@ DISCOVERED→VALIDATED→REGISTERED→READY→DRAINING→RETIRED(按 generation 
 - 生命周期:`node scripts/test-plugin-lifecycle.mjs`
 - 孪生 SDK:`npm run test:twin-provider`(tests/aml-twin-provider-registry.test.ts)
 - 自写验证脚本参考 `scripts/test-twin-plugin-sdk.mjs`
+- 带工具/路由的插件参考 `tests/diag-bridge-results-surface.test.ts`:设置缺省值/工具
+  roles/路由表/双副本字节一致等 14 项结构断言,可整套照抄改名字。
 
 ### 8. 发布前清单
 
 按 docs/plugins.md §十三逐条过:契约完整/settings 类型正确/路由鉴权/KV 只走 ctx.kv/
 事件订阅有对应清理/README 与 i18n 齐备。
+
+### 9. 工具注册面与路由契约(2026-10-24 增补)
+
+- **工具注册表联动**:`ctx.omp.registerTool` 注册的工具会同步 tool_registry
+  (GET /api/workshop/tools 可查);插件停载后 available=false,Channel 侧调用会被
+  channelToolGate 拒(「当前未注册」)。陈旧 dev 进程会反向污染共享注册表——排查先杀树重启。
+- **roles 在注册时冻结**:需要热切换的闸门(如 worker 只读开关)必须写在 handler 里
+  每次调用现读设置(denyWorkerIfDisabled 模式),不能靠重注册换 roles。
+- **路由表是精确匹配字符串键**:不支持路径参数,详情类路由用查询串
+  (`/results/detail?id=`);新增路由后 forwarding 层 auth 模式(user/admin/agent-or-user/none)
+  按路由逐条声明。
+- **ctx.fetch 自动解信封**:`json && 'data' in json ? json.data : json`——客户端读回包
+  直接取业务体;需要透传的信封字段(canAnnotate/baseUrl 之类)必须嵌进 data 里。
+- **内置插件双副本纪律**:builtin 插件 packageRoot 在 server/plugins-builtin/&lt;插件名&gt;/
+  (如 `server/plugins-builtin/diag-bridge/`),`.AgentWorkShop/plugins/` 下同名目录是工作副本,
+  两处必须字节一致(改完同步复制);内置副本
+  变更受 ESM 模块缓存影响,必须真杀进程重启才生效,热重载只对 project/user 级可靠。
+- 出站 HTTP 用 ctx.http.get/post(**patch 需自验 SDK 支持**,老宿主无 patch 时用 post 语义或升级);URL 拼接显式带 base,相对路径裸返会误导调用方。
 
 ## 治理红线
 
@@ -109,4 +129,6 @@ DISCOVERED→VALIDATED→REGISTERED→READY→DRAINING→RETIRED(按 generation 
 - [ ] 热重载后行为更新(改一行文案验证)
 - [ ] 启停回路 enable/disable 通过
 - [ ] 路由/钩子/KV 行为与声明一致
+- [ ] (增补)工具注册进 tool_registry 且 available;worker/角色闸门按设置热生效
+- [ ] (增补)内置插件双副本字节一致(server/plugins-builtin 与 .AgentWorkShop 工作副本)
 - [ ] 发布前清单(docs/plugins.md §十三)全过

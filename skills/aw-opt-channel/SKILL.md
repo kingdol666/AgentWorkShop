@@ -94,6 +94,10 @@ exploration 模式且未绑模型时,孪生寻优工具必须 fail-closed:
 - 复测 PV 在目标带内(`daq_query` / `aw_daq_samples`,点序新→旧)。
 - 每轮决策有留痕(optimization_explorations / dcw journal)。
 - 任务 `aw_task_list` 到 COMPLETED 且 goalCriteria 满足。
+- (2026-10-24 增补)**本体先验与求解器联动**:线已发布本体时,Profile 携带 ontologyRefs
+  耦合先验(ontology 先验派生进训练面);solve 后 crosscheck 留痕可查——全链证据以
+  `node scripts/e2e-model-loop-live.mjs`(54 断言)与
+  `node scripts/e2e-ontology-live.mjs` 的 L4/L5 段为准,验收轮照跑不重写。
 
 ## 治理红线
 
@@ -110,3 +114,4 @@ exploration 模式且未绑模型时,孪生寻优工具必须 fail-closed:
 - [ ] 探索轮次有优化留痕与判定
 - [ ] (若 AML)门禁通过后才绑定,profile 显示 mode=aml
 - [ ] (若 production)ONNX 深检通过,复测在带内
+- [ ] (增补)工具注册面全 available;有本体时先验派生+solve crosscheck 留痕在册
