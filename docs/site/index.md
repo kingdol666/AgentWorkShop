@@ -74,7 +74,7 @@ footer:
         14 个 harness(<code>agents/registry.ts</code>) / 126 个设置项分 19 组(<code>aw config list</code>) / 7 态任务机。
       </p>
       <div class="aw-statusbar">
-        <span>版本 <i>v0.8.1</i></span>
+        <span>版本 <i>v0.8.2</i></span>
         <span>许可 <i>Apache License 2.0</i></span>
         <span>运行时 <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
         <span>文档 <i>简体中文 / English</i></span>

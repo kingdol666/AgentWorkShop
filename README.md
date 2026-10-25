@@ -28,7 +28,7 @@
 
 **[简体中文](./README-zh.md)** · **[Documentation](https://kingdol666.github.io/AgentWorkShop)** · **[Releases](https://github.com/kingdol666/AgentWorkShop/releases)** · **[Changelog](./changelog.md)** · **[Plugin API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.8.1</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST integration (mirror & live) · data-analysis ledger with line-scoped permissions · process optimizer (process model → AML → OSQP solver → governed dispatch) · **ontology service + AI-first model loop** (ontology · twin · solver · AML adoption) · 104 host tools · 126 runtime settings · bilingual docs (简体中文 / English)</sub>
+<sub><b>v0.8.2</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST integration (mirror & live) · data-analysis ledger with line-scoped permissions · process optimizer (process model → AML → OSQP solver → governed dispatch) · **ontology service + AI-first model loop** (ontology · twin · solver · AML adoption) · 104 host tools · 126 runtime settings · bilingual docs (简体中文 / English)</sub>
 
 <br />
 
@@ -177,7 +177,7 @@ Recorded against a running instance: real DAQ history, real write control, real 
 | **Production hardening (v0.7.58)** | Hold-heartbeat lifecycle fixed — failed writes never occupy the setpoint (no phantom re-dispatch), driver/connection/line changes clear the value, line stop suspends hold automatically; silent mock fallback blocked (unknown protocols fail loudly, plugin unload can't fake success); frame pixel sha256 fingerprints + day-directory object GC (DB cross-check before delete); Timescale daily chunks + columnstore compression (TSL); heap-watermark watch with crash/liveness/watermark auto-respawn; write-hold windows & trial cadence persisted across restarts; runtime grant re-checks include the channel-bound line (revocation takes effect everywhere). |
 | **Agent self-audit tools** | `line_context`, `ops_log`, `recipe_log`, `recipe_versions`, `dcw_journal` — agents see exactly which line/product/recipe they control, who did what, and how every value changed. |
 
-#### Model loop — AI-first (ontology · twin · solver · AML, v0.8.1)
+#### Model loop — AI-first (ontology · twin · solver · AML, v0.8.2)
 
 | Capability | Why it matters |
 |---|---|
@@ -396,7 +396,7 @@ aw update --check                      # only report; nothing is installed
 npm install -g agentworkshop@latest    # manual equivalent
 ```
 
-Releases follow semver. `aw start` verifies the config root on every launch and migrates the legacy pre-`home` `data/` layout into it (newest file wins), so data survives upgrades. SQLite schema migrations run server-side at boot. Current version: **v0.8.1** — see [Releases](https://github.com/kingdol666/AgentWorkShop/releases).
+Releases follow semver. `aw start` verifies the config root on every launch and migrates the legacy pre-`home` `data/` layout into it (newest file wins), so data survives upgrades. SQLite schema migrations run server-side at boot. Current version: **v0.8.2** — see [Releases](https://github.com/kingdol666/AgentWorkShop/releases).
 
 ### Your first agent × line session (~2 minutes)
 
