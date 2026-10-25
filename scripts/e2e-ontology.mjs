@@ -25,6 +25,7 @@ const { openWorkshopDb } = await import('../server/services/workshop/db/database
 const { configureAmlRuntime } = await import('../server/services/workshop/aml/runtime.ts')
 const { resetOntologyRepo, getOntologyRepo } = await import('../server/services/workshop/ontology/repo.ts')
 const svc = await import('../server/services/workshop/ontology/ontology.service.ts')
+const subgraph = await import('../server/services/workshop/ontology/subgraph.service.ts')
 const { parseDraftDoc } = await import('../server/services/workshop/ontology/contracts.ts')
 
 const db = openWorkshopDb(join(process.env.AW_HOME, 'workshop.sqlite'))
@@ -57,10 +58,10 @@ function check(id, name, cond, detail = '') {
 function expectError(fn, code) {
   try {
     fn()
-    return { ok: false, code: '(no throw)' }
+    return { ok: false, code: '(no throw)', status: undefined }
   }
   catch (err) {
-    return { ok: err?.code === code, code: err?.code ?? String(err) }
+    return { ok: err?.code === code, code: err?.code ?? String(err), status: err?.status }
   }
 }
 
@@ -308,6 +309,34 @@ check('ON11.1', '未获控制级批准的硬约束拒绝发布(422)', notApprove
 const graph = svc.sceneSubgraph(LINE)
 check('ON12.1', '场景子图含实体/规则决策/守卫', !!graph && graph.entities.length >= 4 && graph.rules.length >= 3 && graph.guards.length >= 1)
 check('ON12.2', '无本体的产线返回 null(零注入)', svc.sceneSubgraph('ln-none') === null)
+
+// ── ON14 节点邻接/多跳子图(只读已发布面;供 Agent 工具与 MCP) ──
+const sub1 = subgraph.subgraphAroundForLine(LINE, 'pv.melt_pressure', { hops: 1, direction: 'both' })
+check('ON14.1', 'hops=1:中心+直接邻居与直接边',
+  !!sub1
+  && sub1.nodes.map(n => `${n.key}@${n.hop}`).join(',') === 'pv.melt_pressure@0,cv.thickness@1'
+  && sub1.edges.length === 1
+  && sub1.edges[0].id === 'rel-1'
+  && sub1.edges[0].direction === 'out'
+  && sub1.center.hop === 0
+  && sub1.truncated === false,
+  JSON.stringify(sub1 && { nodes: sub1.nodes.map(n => [n.key, n.hop]), edges: sub1.edges.map(e => [e.id, e.hop, e.direction]) }))
+const sub2 = subgraph.subgraphAroundForLine(LINE, 'pv.melt_pressure', { hops: 2, direction: 'both' })
+const speedNode = sub2?.nodes.find(n => n.key === 'st.line_speed')
+const rel2Edge = sub2?.edges.find(e => e.id === 'rel-2')
+check('ON14.2', 'hops=2:出现间接邻居 st.line_speed@2 且 rel-2 标注 hop2/in',
+  speedNode?.hop === 2 && rel2Edge?.hop === 2 && rel2Edge?.direction === 'in',
+  JSON.stringify({ speedNode, rel2Edge }))
+const subOut = subgraph.subgraphAroundForLine(LINE, 'pv.melt_pressure', { hops: 2, direction: 'out' })
+check('ON14.3', 'direction=out 只保留正向跨跳边(rel-2 不出现)',
+  !!subOut && subOut.edges.length === 1 && subOut.edges[0].id === 'rel-1', JSON.stringify(subOut?.edges))
+const subMissing = expectError(() => subgraph.subgraphAroundForLine(LINE, 'ghost.key', { hops: 1 }), 'ONTOLOGY_SUBGRAPH_ENTITY_NOT_FOUND')
+check('ON14.4', '未知实体 → 404 ONTOLOGY_SUBGRAPH_ENTITY_NOT_FOUND', subMissing.ok && subMissing.status === 404, JSON.stringify(subMissing))
+const badHops = expectError(() => subgraph.subgraphAroundForLine(LINE, 'pv.melt_pressure', { hops: 4 }), 'ONTOLOGY_SUBGRAPH_HOPS_INVALID')
+check('ON14.5', 'hops 越界 → 422 ONTOLOGY_SUBGRAPH_HOPS_INVALID', badHops.ok && badHops.status === 422, JSON.stringify(badHops))
+check('ON14.6', '无已发布本体的产线 → null(与 scene active:false 同语义)', subgraph.subgraphAroundForLine('ln-none', 'pv.melt_pressure') === null)
+const scoped = subgraph.subgraphAroundForLine(LINE, 'pv.melt_pressure', { hops: 1, kinds: ['precedes'] })
+check('ON14.7', 'kinds 过滤同时作用于遍历与输出(无该类型 → 仅中心)', !!scoped && scoped.nodes.length === 1 && scoped.edges.length === 0, JSON.stringify(scoped?.nodes))
 
 // ── ON13 模型管理面:描述字段 + 校验自动修复 ──
 const d13 = svc.createDraft(OWNER, { ontologyId: `${ONT}-fix`, lineId: LINE })

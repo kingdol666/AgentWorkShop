@@ -1,9 +1,9 @@
 /**
- * 本体工具族(7 件)—— Agent 侧的「读 / 起草 / 校验 / 解释 / 编译预览 / 提议发布 / 版本比较」。
+ * 本体工具族(10 件)—— Agent 侧的「读 / 邻接 / 起草 / 校验 / 解释 / 编译预览 / 提议发布 / 版本比较」。
  *
- * 治理:本族由 grant-guard(WVO: publish_propose 属写族)与 tool-verify(引用面)复核;
- * **没有**任何工具能直接发布版本或写设备 —— 发布仅 admin 在 REST 面执行,
- * Agent 只能 draft_create 起草、publish_propose 提请第二人批准。
+ * 治理:本族由 grant-guard(WVO: draft_create/draft_update/draft_autofix/publish_propose 属写族)
+ * 与 tool-verify(引用面)复核;**没有**任何工具能直接发布版本或写设备 ——
+ * 发布仅 admin 在 REST 面执行,Agent 只能 draft_create 起草、publish_propose 提请第二人批准。
  *
  * 归属:Agent 起草的草稿 owner = agentId(审计可见 actorKind='agent');
  * 读取面按 agentOpsScope 的产线/节点范围收窄。
@@ -17,6 +17,8 @@ import {
   compileDraft, createDraft, getDraft, requestRuleApproval, sceneSubgraph,
   updateDraft, validateDraft, compareVersions, getVersion, listVersions, autoFixDraft,
 } from '../../ontology/ontology.service'
+import { parseSubgraphOptions } from '../../ontology/subgraph.core'
+import { subgraphAroundForLine } from '../../ontology/subgraph.service'
 
 import type { OntologyDraftDoc } from '../../ontology/contracts'
 
@@ -91,7 +93,42 @@ export async function toolOntologySceneInspect(agentId: string, args: Record<str
   }
 }
 
-/** 2) 创建草稿(可空白起点或克隆已发布版本) */
+/** 2) 节点邻接/多跳子图(只读):回答「这个节点关联哪些边、间接关联什么」 */
+export async function toolOntologyNodeNeighbors(agentId: string, args: Record<string, unknown>): Promise<HostToolResult> {
+  const lineId = stringArg(args, 'line_id')
+  const entityKey = stringArg(args, 'entity_key')
+  if (!lineId) return fail('ontology_node_neighbors 需要 line_id(line_context 可看到当前产线 id)')
+  if (!entityKey) return fail('ontology_node_neighbors 需要 entity_key(可先用 ontology_scene_inspect 查实体 key)')
+  try {
+    assertLineInScope(agentId, lineId)
+    const opts = parseSubgraphOptions({
+      hops: args.hops,
+      direction: args.direction,
+      kinds: args.kinds,
+    })
+    const sub = subgraphAroundForLine(lineId, entityKey, opts)
+    if (!sub) return ok(`产线 ${lineId} 尚未发布任何本体(0 实体/0 规则);可先用 ontology_draft_create 起草。`)
+    const neighbors = sub.nodes.filter(n => n.hop > 0)
+    return ok([
+      `邻接子图: center=${entityKey} 本体=${sub.ontologyId}@${sub.version} hops=${opts.hops} direction=${opts.direction}`
+      + ` nodes=${sub.nodes.length} edges=${sub.edges.length}${sub.truncated ? ' truncated=true(受 limit 截断)' : ''}`,
+      `中心: ${sub.center.key} [${sub.center.kind}/${sub.center.role ?? '未定角色'}] ${sub.center.name}`
+      + `${sub.center.unit ? `(${sub.center.unit})` : ''}${sub.center.description ? ` — ${sub.center.description}` : ''}`
+      + `${sub.center.bindings.length ? ` ← ${sub.center.bindings.map(b => `${b.platformKind}:${b.platformId}${b.targetSub ? `#${b.targetSub}` : ''}(${b.direction},${b.status})`).join(', ')}` : '(未绑定)'}`,
+      neighbors.length ? '邻居节点:' : '邻居节点: (无)',
+      ...neighbors.map(n => `- ${n.key} hop=${n.hop} [${n.kind}/${n.role ?? '未定角色'}] ${n.name}`
+        + `${n.unit ? `(${n.unit})` : ''}`),
+      sub.edges.length ? '关联边:' : '关联边: (无)',
+      ...sub.edges.map(e => `- ${e.id} kind=${e.kind} ${e.srcKey} -> ${e.dstKey} hop=${e.hop} dir=${e.direction} tier=${e.evidenceTier}`),
+      '提示:需要规则/守卫/绑定全貌用 ontology_scene_inspect;解释单条规则用 ontology_rule_explain;版本差异用 ontology_version_compare。',
+    ].join('\n'))
+  }
+  catch (err) {
+    return fail((err as Error).message)
+  }
+}
+
+/** 3) 创建草稿(可空白起点或克隆已发布版本) */
 export async function toolOntologyDraftCreate(agentId: string, args: Record<string, unknown>): Promise<HostToolResult> {
   const ontologyId = stringArg(args, 'ontology_id')
   const lineId = stringArg(args, 'line_id')

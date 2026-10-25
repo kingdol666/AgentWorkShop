@@ -15,10 +15,11 @@ import { computed, onMounted, ref } from 'vue'
 import { message } from 'ant-design-vue'
 import { apiErrorMessage } from '@/app/utils/api-error'
 import { useUserStore } from '@/app/stores/workshop/user'
+import OntologyGraph from '@/app/components/ontology/OntologyGraph.vue'
 import { ontologyApi } from './api'
 import type {
   CompileDto, DraftDetailDto, DraftSummary, IssueDto, OverviewDto,
-  VersionDiffDto, VersionDto,
+  SubgraphAroundDto, VersionDiffDto, VersionDto,
 } from './types'
 
 const { t } = useI18n()
@@ -45,6 +46,27 @@ const issues = computed<IssueDto[]>(() => detail.value?.validation.issues ?? [])
 const errors = computed(() => issues.value.filter(i => i.severity === 'error'))
 const bindingFailures = computed(() => detail.value?.bindings.failures ?? [])
 const lastFixes = ref<Array<{ code: string, path: string, message: string }>>([])
+
+// 图/表视图与节点邻接抽屉(图与抽屉都读当前草稿,避免「图画草稿、抽屉查已发布」错位)
+type GraphView = 'graph' | 'table'
+const graphView = ref<GraphView>('graph')
+const selectedKey = ref('')
+const hops = ref<1 | 2>(1)
+const neighbors = ref<SubgraphAroundDto | null>(null)
+const neighborsLoading = ref(false)
+const neighborsError = ref('')
+let neighborReq = 0
+
+const graphViewOptions = computed(() => [
+  { value: 'graph', label: t('ontology.graph.viewGraph') },
+  { value: 'table', label: t('ontology.graph.viewTable') },
+])
+const selectedEntity = computed(() => (doc.value?.entities ?? []).find(e => e.key === selectedKey.value) ?? null)
+const selectedBindings = computed(() => (doc.value?.bindings ?? []).filter(b => b.entityKey === selectedKey.value))
+const drawerOpen = computed(() => Boolean(selectedEntity.value))
+const neighborNodes = computed(() => (neighbors.value?.nodes ?? []).filter(n => n.hop > 0))
+const entityOptions = computed(() => (doc.value?.entities ?? []).map(e => ({ value: e.key, label: `${e.key} · ${e.name}` })))
+const largeGraph = computed(() => (doc.value?.entities.length ?? 0) > 60)
 const draftOptions = computed(() => overview.value.drafts.map(d => ({
   value: d.id,
   label: `${d.ontologyId} · rev ${d.rev}${d.baseVersion ? ` · 基线 v${d.baseVersion}` : ''}`,
@@ -134,6 +156,54 @@ async function loadDraft(): Promise<void> {
   catch (e) {
     message.error(apiErrorMessage(e, t('ontology.loadDraftFail')))
   }
+}
+
+async function loadNeighbors(): Promise<void> {
+  if (!selectedKey.value || !draftId.value) return
+  const req = ++neighborReq
+  neighborsLoading.value = true
+  neighborsError.value = ''
+  try {
+    const qs = new URLSearchParams({ entity: selectedKey.value, hops: String(hops.value), limit: '100' })
+    const res = await ontologyApi<{ subgraph: SubgraphAroundDto }>(
+      `/drafts/${encodeURIComponent(draftId.value)}/subgraph?${qs.toString()}`,
+    )
+    if (req === neighborReq) neighbors.value = res.subgraph
+  }
+  catch (e) {
+    if (req === neighborReq) {
+      neighbors.value = null
+      neighborsError.value = apiErrorMessage(e, t('ontology.graph.loadNeighborsFail'))
+    }
+  }
+  finally {
+    if (req === neighborReq) neighborsLoading.value = false
+  }
+}
+
+function openNode(key: string): void {
+  selectedKey.value = key
+  hops.value = 1
+  neighbors.value = null
+  void loadNeighbors()
+}
+
+function setHops(next: 1 | 2): void {
+  hops.value = next
+  void loadNeighbors()
+}
+
+function closeDrawer(): void {
+  neighborReq += 1
+  selectedKey.value = ''
+  neighbors.value = null
+  neighborsError.value = ''
+  neighborsLoading.value = false
+}
+
+function switchTab(key: TabKey): void {
+  tab.value = key
+  if (key !== 'graph') closeDrawer()
 }
 
 async function loadVersions(ontologyId: string): Promise<void> {
@@ -331,6 +401,7 @@ onMounted(async () => {
 })
 
 function onDraftChange(): void {
+  closeDrawer()
   void loadDraft()
   void loadVersions(currentOntologyId())
 }
@@ -428,7 +499,7 @@ function diffLabel(part: { added: string[], removed: string[], changed: string[]
         :key="key"
         class="pill-btn"
         :class="{ active: tab === key }"
-        @click="tab = key"
+        @click="switchTab(key)"
       >
         {{ t(`ontology.tab.${key}`) }}
       </button>
@@ -527,37 +598,178 @@ function diffLabel(part: { added: string[], removed: string[], changed: string[]
       v-else-if="tab === 'graph'"
       class="panel"
     >
-      <h2>{{ t('ontology.section.entities') }}</h2>
-      <a-table
-        :columns="entityColumns"
-        :data-source="doc?.entities ?? []"
-        row-key="key"
-        size="small"
-        :pagination="{ pageSize: 12 }"
-      />
-      <h2>{{ t('ontology.section.relations') }}</h2>
-      <a-table
-        :columns="relationColumns"
-        :data-source="doc?.relations ?? []"
-        row-key="id"
-        size="small"
-        :pagination="{ pageSize: 12 }"
+      <div class="graph-toolbar">
+        <a-segmented
+          v-model:value="graphView"
+          size="small"
+          :options="graphViewOptions"
+        />
+        <span class="hint">{{ t('ontology.graph.hint') }}</span>
+        <a-select
+          :value="selectedKey || undefined"
+          :options="entityOptions"
+          show-search
+          allow-clear
+          :placeholder="t('ontology.graph.searchEntity')"
+          class="node-search"
+          @change="(v: unknown) => { const key = String(v ?? ''); if (key) openNode(key); else closeDrawer() }"
+        />
+      </div>
+
+      <template v-if="graphView === 'graph'">
+        <p
+          v-if="largeGraph"
+          class="muted"
+        >
+          {{ t('ontology.graph.largeGraph', { n: doc?.entities.length ?? 0 }) }}
+        </p>
+        <OntologyGraph
+          v-else
+          :entities="doc?.entities ?? []"
+          :relations="doc?.relations ?? []"
+          :selected-key="selectedKey"
+          @select="openNode"
+        />
+      </template>
+
+      <template v-else>
+        <h2>{{ t('ontology.section.entities') }}</h2>
+        <a-table
+          data-testid="entity-table"
+          :columns="entityColumns"
+          :data-source="doc?.entities ?? []"
+          row-key="key"
+          size="small"
+          :pagination="{ pageSize: 12 }"
+        />
+        <h2>{{ t('ontology.section.relations') }}</h2>
+        <a-table
+          data-testid="relation-table"
+          :columns="relationColumns"
+          :data-source="doc?.relations ?? []"
+          row-key="id"
+          size="small"
+          :pagination="{ pageSize: 12 }"
+        >
+          <template #bodyCell="{ column, record }">
+            <template v-if="column.key === 'edge'">
+              <code>{{ record.srcKey }}</code> → <code>{{ record.dstKey }}</code>
+            </template>
+            <template v-else-if="column.key === 'tier'">
+              <a-tag :color="tierColor(record.properties?.evidenceTier)">
+                {{ record.properties?.evidenceTier }}
+              </a-tag>
+              <span
+                v-if="record.properties?.lagMs !== undefined"
+                class="muted"
+              >lag {{ record.properties.lagMs }}ms</span>
+            </template>
+          </template>
+        </a-table>
+      </template>
+
+      <a-drawer
+        :open="drawerOpen"
+        width="560"
+        :title="selectedEntity ? `${selectedEntity.name} · ${selectedEntity.key}` : ''"
+        @close="closeDrawer"
       >
-        <template #bodyCell="{ column, record }">
-          <template v-if="column.key === 'edge'">
-            <code>{{ record.srcKey }}</code> → <code>{{ record.dstKey }}</code>
-          </template>
-          <template v-else-if="column.key === 'tier'">
-            <a-tag :color="tierColor(record.properties?.evidenceTier)">
-              {{ record.properties?.evidenceTier }}
-            </a-tag>
-            <span
-              v-if="record.properties?.lagMs !== undefined"
+        <template v-if="selectedEntity">
+          <div data-testid="node-drawer">
+            <dl class="node-detail">
+              <dt>kind</dt><dd>{{ selectedEntity.kind }}</dd>
+              <dt>role</dt><dd>{{ selectedEntity.role || '—' }}</dd>
+              <dt>unit</dt><dd>{{ selectedEntity.unit || '—' }}</dd>
+              <dt>description</dt><dd>{{ selectedEntity.description || '—' }}</dd>
+            </dl>
+
+            <h4>{{ t('ontology.drawer.bindings') }}</h4>
+            <p
+              v-if="selectedBindings.length === 0"
               class="muted"
-            >lag {{ record.properties.lagMs }}ms</span>
-          </template>
+            >
+              {{ t('ontology.drawer.noBindings') }}
+            </p>
+            <ul
+              v-else
+              class="plain"
+            >
+              <li
+                v-for="b in selectedBindings"
+                :key="b.id"
+              >
+                <code>{{ b.platformKind }}:{{ b.platformId }}{{ b.targetSub ? `#${b.targetSub}` : '' }}</code>
+                <span>{{ b.direction }} · {{ b.unitDeclared || '—' }} → {{ b.unitTarget || '—' }}</span>
+              </li>
+            </ul>
+
+            <h4>{{ t('ontology.graph.neighbors') }}</h4>
+            <a-segmented
+              :value="hops"
+              size="small"
+              :options="[
+                { value: 1, label: t('ontology.graph.direct') },
+                { value: 2, label: t('ontology.graph.indirect') },
+              ]"
+              @change="(v: unknown) => setHops(Number(v) === 2 ? 2 : 1)"
+            />
+
+            <p
+              v-if="neighborsLoading"
+              class="muted"
+            >
+              {{ t('ontology.graph.loading') }}
+            </p>
+            <p
+              v-else-if="neighborsError"
+              class="muted"
+            >
+              {{ neighborsError }}
+            </p>
+            <template v-else-if="neighbors">
+              <p
+                v-if="neighbors.truncated"
+                class="muted"
+              >
+                {{ t('ontology.graph.truncated') }}
+              </p>
+              <p
+                v-if="neighborNodes.length === 0"
+                class="muted"
+              >
+                {{ t('ontology.graph.noNeighbors') }}
+              </p>
+              <ul
+                v-else
+                class="plain"
+              >
+                <li
+                  v-for="n in neighborNodes"
+                  :key="n.key"
+                  :data-neighbor-key="n.key"
+                  :data-hop="n.hop"
+                >
+                  <strong>{{ n.key }}</strong>
+                  <span>{{ n.kind }} · {{ n.role || '—' }} · hop {{ n.hop }}</span>
+                </li>
+              </ul>
+              <ul
+                v-if="neighbors.edges.length"
+                class="plain edges"
+              >
+                <li
+                  v-for="e in neighbors.edges"
+                  :key="e.id"
+                  :data-edge-id="e.id"
+                >
+                  <code>{{ e.srcKey }} -{{ e.kind }}-> {{ e.dstKey }}</code>
+                  <span>hop {{ e.hop }} · {{ e.direction }} · {{ e.evidenceTier }}</span>
+                </li>
+              </ul>
+            </template>
+          </div>
         </template>
-      </a-table>
+      </a-drawer>
     </section>
 
     <!-- 约束规则 -->
@@ -823,21 +1035,28 @@ function diffLabel(part: { added: string[], removed: string[], changed: string[]
 .panel { display: flex; flex-direction: column; gap: 14px; }
 .panel h2 { font-size: 14px; margin: 8px 0 0; color: var(--ink-soft); text-transform: uppercase; letter-spacing: .04em; }
 .stats { display: flex; gap: 10px; flex-wrap: wrap; }
-.stat { border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; min-width: 120px; display: flex; flex-direction: column; gap: 4px; }
+.stat { border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; min-width: 120px; display: flex; flex-direction: column; gap: 4px; }
 .stat span { font-size: 12px; color: var(--ink-faint); }
 .stat strong { font-size: 20px; }
 .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
 .plain { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
-.plain li { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; }
+.plain li { display: flex; flex-direction: column; gap: 3px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; }
 .plain li span { color: var(--ink-soft); font-size: 12px; }
 .plain li em { color: var(--ink-faint); font-size: 12px; font-style: normal; }
 .muted { color: var(--ink-faint); }
-.failures { border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+.failures { border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
 .artifacts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .artifacts h3 { margin: 0 0 6px; font-size: 12px; color: var(--ink-faint); }
-.artifacts pre { margin: 0; background: var(--surface-2, rgba(255,255,255,.03)); border: 1px solid var(--border); border-radius: 8px; padding: 10px; font-size: 11px; max-height: 260px; overflow: auto; }
+.artifacts pre { margin: 0; background: var(--surface-2, rgba(255,255,255,.03)); border: 1px solid var(--line); border-radius: 8px; padding: 10px; font-size: 11px; max-height: 260px; overflow: auto; }
 .compare { display: flex; gap: 8px; align-items: center; }
-.diff { border: 1px solid var(--border); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 4px; }
+.diff { border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 4px; }
 .chip { margin-right: 6px; }
 .retire { margin-left: 8px; }
+.graph-toolbar { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.node-search { min-width: 300px; }
+.node-detail { display: grid; grid-template-columns: 96px 1fr; gap: 6px 12px; margin: 0 0 14px; }
+.node-detail dt { color: var(--ink-faint); font-size: 12px; }
+.node-detail dd { margin: 0; font-size: 13px; }
+.panel h4 { margin: 16px 0 8px; font-size: 13px; color: var(--ink-soft); }
+.plain.edges li { border-color: var(--line); background: transparent; }
 </style>

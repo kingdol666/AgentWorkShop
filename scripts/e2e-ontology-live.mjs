@@ -676,6 +676,79 @@ console.log('\n=== L6 数据分析 ===')
   check('L6.2', 'GET /analysis 台账读回', list.status === 200 && JSON.stringify(data(list) ?? list).includes(`本体验收分析-${TAG}`), `status=${list.status} body=${JSON.stringify(list).slice(0, 260)}`)
 }
 
+// ════ ON16 邻接查询 REST(已发布面 + 草稿面) ════
+console.log('\n=== ON16 邻接查询 REST ===')
+{
+  const base = `/api/workshop/ontology/scene?lineId=${encodeURIComponent(line.id)}`
+  const one = await api('GET', `${base}&entity=pv.melt_pressure&hops=1`, undefined, token)
+  const oneSub = data(one)?.subgraph
+  check('ON16.1', 'GET /scene?entity= 返回子图(center+nodes+edges)', one.status === 200
+  && oneSub?.center?.key === 'pv.melt_pressure'
+  && oneSub?.nodes?.length === 2
+  && oneSub?.edges?.length === 1
+  && oneSub?.edges?.[0]?.direction === 'out', JSON.stringify(oneSub && { nodes: oneSub.nodes, edges: oneSub.edges }))
+  const two = await api('GET', `${base}&entity=pv.melt_pressure&hops=2`, undefined, token)
+  const twoSub = data(two)?.subgraph
+  const speed = twoSub?.nodes?.find(n => n.key === 'st.line_speed')
+  const rel2 = twoSub?.edges?.find(e => e.id === 'rel-2')
+  check('ON16.2', 'hops=2 出现间接节点 st.line_speed@2 与 rel-2(hop2/in)', speed?.hop === 2 && rel2?.hop === 2 && rel2?.direction === 'in',
+    JSON.stringify({ speed, rel2 }))
+  const noEntity = await api('GET', `${base}&hops=2&direction=out&kinds=influences`, undefined, token)
+  const plain = await api('GET', base, undefined, token)
+  check('ON16.3', '无 entity 时新参数被忽略:与历史全图响应完全一致',
+    noEntity.status === plain.status && JSON.stringify(data(noEntity)) === JSON.stringify(data(plain)),
+    `status=${noEntity.status}/${plain.status}`)
+  const keys = Object.keys(data(plain)?.graph ?? {}).join(',')
+  check('ON16.4', '无 entity 的 graph 顶层结构不变', keys === 'ontologyId,version,lineId,entities,relations,rules,guards', keys)
+  const badHops = await api('GET', `${base}&entity=pv.melt_pressure&hops=4`, undefined, token)
+  check('ON16.5', 'hops 越界 → 422 ONTOLOGY_SUBGRAPH_HOPS_INVALID',
+    badHops.status === 422 && String(data(badHops)?.code ?? badHops.code ?? '').includes('HOPS_INVALID'), JSON.stringify(badHops).slice(0, 160))
+  const ghost = await api('GET', `${base}&entity=ghost.key`, undefined, token)
+  check('ON16.6', '未知实体 → 404 ONTOLOGY_SUBGRAPH_ENTITY_NOT_FOUND', ghost.status === 404, `status=${ghost.status}`)
+  const draftQuery = `/api/workshop/ontology/drafts/${encodeURIComponent(draftId)}/subgraph?entity=pv.melt_pressure&hops=1`
+  const draftSub = await api('GET', draftQuery, undefined, token)
+  const draftBody = data(draftSub)?.subgraph
+  check('ON16.7', '草稿子图端点可用(UI 图与抽屉同源)', draftSub.status === 200
+  && draftBody?.center?.key === 'pv.melt_pressure'
+  && draftBody?.nodes?.length === 2, JSON.stringify(draftBody).slice(0, 200))
+  const draftBad = await api('GET', `/api/workshop/ontology/drafts/${encodeURIComponent(draftId)}/subgraph`, undefined, token)
+  check('ON16.8', '草稿子图缺 entity → 422 ONTOLOGY_ENTITY_REQUIRED', draftBad.status === 422, `status=${draftBad.status}`)
+}
+
+// ════ ON17 Agent 只读工具:ontology_node_neighbors ════
+console.log('\n=== ON17 Agent 邻接工具 ===')
+{
+  const invokeNeighbors = await api('POST', '/api/workshop/agent-tools/invoke', {
+    agentId: leadAgentIdOuter,
+    tool: 'ontology_node_neighbors',
+    args: { line_id: line.id, entity_key: 'pv.melt_pressure', hops: 1 },
+  }, token)
+  const text1 = String(data(invokeNeighbors)?.result?.text ?? '')
+  check('ON17.1', '工具 hops=1 返回节点/边明细', invokeNeighbors.status === 200
+  && data(invokeNeighbors)?.result?.isError !== true
+  && text1.includes('nodes=2 edges=1')
+  && text1.includes('pv.melt_pressure')
+  && text1.includes('cv.thickness')
+  && text1.includes('rel-1'), text1.slice(0, 240))
+  const invokeTwo = await api('POST', '/api/workshop/agent-tools/invoke', {
+    agentId: leadAgentIdOuter,
+    tool: 'ontology_node_neighbors',
+    args: { line_id: line.id, entity_key: 'pv.melt_pressure', hops: 2 },
+  }, token)
+  const text2 = String(data(invokeTwo)?.result?.text ?? '')
+  check('ON17.2', '工具 hops=2 显示间接节点与 hop 标注',
+    text2.includes('st.line_speed hop=2') && text2.includes('rel-2') && text2.includes('hop=2'),
+    text2.slice(0, 260))
+  const outside = await api('POST', '/api/workshop/agent-tools/invoke', {
+    agentId: leadAgentIdOuter,
+    tool: 'ontology_node_neighbors',
+    args: { line_id: 'ln-not-in-scope', entity_key: 'pv.melt_pressure' },
+  }, token)
+  const outsideText = String(data(outside)?.result?.text ?? '')
+  check('ON17.3', '跨线读取被拦截(引用校验/作用域如实回执)',
+    data(outside)?.result?.isError === true && outsideText.includes('不在你的可读范围'), outsideText.slice(0, 160))
+}
+
 // ════ L7 前端渲染走查 ════
 console.log('\n=== L7 前端渲染 ===')
 process.env.AW_BASE = BASE
@@ -695,8 +768,70 @@ process.env.AW_BASE = BASE
     check('L7.2', '/ontology 六 tab 渲染', tabs.length === 6, tabs.join('|'))
     await shot('ontology-overview')
 
-    const tabKeys = ['graph', 'rules', 'bindings', 'versions']
-    const tabIndex = { graph: 1, rules: 2, bindings: 3, versions: 4 }
+    // graph tab 默认 SVG:节点/边数必须与当前草稿一致(图与表格同源)
+    await page.evaluate(() => {
+      const btn = Array.from(document.querySelectorAll('.tabs .pill-btn'))[1]
+      if (btn) btn.click()
+    })
+    await sleep(1600)
+    const graphInfo = await page.evaluate(() => {
+      const root = document.querySelector('[data-testid="ontology-graph"]')
+      return {
+        nodes: root ? root.querySelectorAll('[data-node-key]').length : -1,
+        edges: root ? root.querySelectorAll('[data-edge-id]').length : -1,
+      }
+    })
+    const draftDetail = await api('GET', `/api/workshop/ontology/drafts/${encodeURIComponent(draftId)}`, undefined, token)
+    const draftDoc = data(draftDetail)?.doc ?? {}
+    const expectedNodes = (draftDoc.entities ?? []).length
+    const expectedEdges = (draftDoc.relations ?? []).length
+    check('L7.3a', 'graph tab 渲染 SVG 节点/边且与草稿一致',
+      graphInfo.nodes === expectedNodes && graphInfo.edges === expectedEdges && graphInfo.nodes > 0,
+      `nodes=${graphInfo.nodes}/${expectedNodes} edges=${graphInfo.edges}/${expectedEdges}`)
+    await shot('ontology-graph')
+
+    // 点击节点 → 抽屉:1 跳邻接,再切 2 跳看间接关联
+    await page.click('[data-node-key="pv.melt_pressure"]')
+    await sleep(1600)
+    const drawer1 = await page.evaluate(() => ({
+      open: Boolean(document.querySelector('[data-testid="node-drawer"]')),
+      neighbors: Array.from(document.querySelectorAll('[data-neighbor-key]')).map(el => el.getAttribute('data-neighbor-key')),
+      edges: Array.from(document.querySelectorAll('[data-testid="node-drawer"] [data-edge-id]')).map(el => el.getAttribute('data-edge-id')),
+    }))
+    check('L7.3b', '点击节点弹出抽屉并列出直接邻接',
+      drawer1.open && drawer1.neighbors.includes('cv.thickness') && drawer1.edges.includes('rel-1'),
+      JSON.stringify(drawer1))
+    await shot('ontology-drawer')
+    await page.evaluate(() => {
+      const seg = Array.from(document.querySelectorAll('.ant-segmented-item')).find(el => (el.textContent || '').includes('间接关联'))
+      if (seg) seg.click()
+    })
+    await sleep(1600)
+    const drawer2 = await page.evaluate(() => ({
+      neighbors: Array.from(document.querySelectorAll('[data-neighbor-key]')).map(el => el.getAttribute('data-neighbor-key')),
+      edges: Array.from(document.querySelectorAll('[data-testid="node-drawer"] [data-edge-id]')).map(el => el.getAttribute('data-edge-id')),
+    }))
+    check('L7.3b2', '抽屉切 2 跳后出现间接节点 st.line_speed 与 rel-2',
+      drawer2.neighbors.includes('st.line_speed') && drawer2.edges.includes('rel-2'), JSON.stringify(drawer2))
+    await shot('ontology-drawer-hops2')
+    await page.keyboard.press('Escape').catch(() => {})
+    await sleep(600)
+
+    // 切到表视图:实体表与关系表都要有行
+    await page.evaluate(() => {
+      const seg = Array.from(document.querySelectorAll('.ant-segmented-item')).find(el => (el.textContent || '').trim() === '表')
+      if (seg) seg.click()
+    })
+    await sleep(1400)
+    const tableInfo = await page.evaluate(() => ({
+      entityRows: document.querySelectorAll('[data-testid="entity-table"] .ant-table-tbody tr.ant-table-row').length,
+      relationRows: document.querySelectorAll('[data-testid="relation-table"] .ant-table-tbody tr.ant-table-row').length,
+    }))
+    check('L7.3c', '切到表视图:实体表与关系表均有行', tableInfo.entityRows > 0 && tableInfo.relationRows > 0, JSON.stringify(tableInfo))
+    await shot('ontology-graph-table')
+
+    const tabKeys = ['rules', 'bindings', 'versions']
+    const tabIndex = { rules: 2, bindings: 3, versions: 4 }
     let renderedOk = true
     const renderDetail = []
     for (const key of tabKeys) {
@@ -713,7 +848,7 @@ process.env.AW_BASE = BASE
       if (info.rows === 0 && info.empty === 0) renderedOk = false
       await shot(`ontology-${key}`)
     }
-    check('L7.3', '四个内容 tab 表格渲染非空', renderedOk, renderDetail.join(' '))
+    check('L7.3d', '规则/绑定/版本三 tab 表格渲染非空', renderedOk, renderDetail.join(' '))
 
     // 编译预览:真实点击工具栏按钮 → 产物面板 + Rule Trace 表
     await page.evaluate(() => {

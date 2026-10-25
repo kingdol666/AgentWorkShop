@@ -63,6 +63,7 @@ export interface OntologyDocDto {
   schemaVersion: number
   name: string
   lineId: string
+  description?: string
   entities: OntologyEntityDto[]
   relations: OntologyRelationDto[]
   rules: OntologyRuleDto[]
@@ -119,4 +120,45 @@ export interface VersionDiffDto {
 export interface OverviewDto {
   ontologies: OntologySummary[]
   drafts: DraftSummary[]
+}
+
+/** 服务端 subgraph.core 的视图镜像(只取前端用到的字段) */
+export interface SubgraphBindingDto {
+  platformKind: string
+  platformId: string
+  targetSub: string
+  direction: string
+  status: string
+  unitDeclared: string
+  unitTarget: string
+}
+
+export interface SubgraphNodeDto {
+  key: string
+  kind: string
+  name: string
+  description: string
+  unit: string
+  role?: string
+  hop: number
+}
+
+export interface SubgraphEdgeDto {
+  id: string
+  kind: string
+  srcKey: string
+  dstKey: string
+  evidenceTier: string
+  hop: number
+  direction: 'out' | 'in' | 'lateral' | 'loop'
+}
+
+export interface SubgraphAroundDto {
+  ontologyId: string
+  version: number
+  lineId: string
+  center: SubgraphNodeDto & { hop: 0, bindings: SubgraphBindingDto[] }
+  nodes: SubgraphNodeDto[]
+  edges: SubgraphEdgeDto[]
+  truncated: boolean
 }

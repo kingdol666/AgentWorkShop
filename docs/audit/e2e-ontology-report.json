@@ -1,11 +1,11 @@
 {
   "script": "scripts/e2e-ontology.mjs",
-  "generatedAt": "2026-10-24T14:35:03.224Z",
-  "home": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-e2e-ontology-PAHQ43",
+  "generatedAt": "2026-10-25T06:12:02.015Z",
+  "home": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-e2e-ontology-55eIKH",
   "ontology": "ont-e2e-pva",
   "lineId": "ln-e2e-pva",
-  "total": 50,
-  "pass": 50,
+  "total": 57,
+  "pass": 57,
   "fail": 0,
   "assertions": [
     {
@@ -271,6 +271,48 @@
       "name": "无本体的产线返回 null(零注入)",
       "ok": true,
       "detail": ""
+    },
+    {
+      "id": "ON14.1",
+      "name": "hops=1:中心+直接邻居与直接边",
+      "ok": true,
+      "detail": "{\"nodes\":[[\"pv.melt_pressure\",0],[\"cv.thickness\",1]],\"edges\":[[\"rel-1\",1,\"out\"]]}"
+    },
+    {
+      "id": "ON14.2",
+      "name": "hops=2:出现间接邻居 st.line_speed@2 且 rel-2 标注 hop2/in",
+      "ok": true,
+      "detail": "{\"speedNode\":{\"key\":\"st.line_speed\",\"kind\":\"process_variable\",\"name\":\"线速度\",\"description\":\"\",\"unit\":\"m\",\"role\":\"control\",\"hop\":2},\"rel2Edge\":{\"id\":\"rel-2\",\"kind\":\"influences\",\"srcKey\":\"st.line_speed\",\"dstKey\":\"cv.thickness\",\"evidenceTier\":\"candidate_influence\",\"hop\":2,\"direction\":\"in\"}}"
+    },
+    {
+      "id": "ON14.3",
+      "name": "direction=out 只保留正向跨跳边(rel-2 不出现)",
+      "ok": true,
+      "detail": "[{\"id\":\"rel-1\",\"kind\":\"influences\",\"srcKey\":\"pv.melt_pressure\",\"dstKey\":\"cv.thickness\",\"evidenceTier\":\"validated_control\",\"hop\":1,\"direction\":\"out\"}]"
+    },
+    {
+      "id": "ON14.4",
+      "name": "未知实体 → 404 ONTOLOGY_SUBGRAPH_ENTITY_NOT_FOUND",
+      "ok": true,
+      "detail": "{\"ok\":true,\"code\":\"ONTOLOGY_SUBGRAPH_ENTITY_NOT_FOUND\",\"status\":404}"
+    },
+    {
+      "id": "ON14.5",
+      "name": "hops 越界 → 422 ONTOLOGY_SUBGRAPH_HOPS_INVALID",
+      "ok": true,
+      "detail": "{\"ok\":true,\"code\":\"ONTOLOGY_SUBGRAPH_HOPS_INVALID\",\"status\":422}"
+    },
+    {
+      "id": "ON14.6",
+      "name": "无已发布本体的产线 → null(与 scene active:false 同语义)",
+      "ok": true,
+      "detail": ""
+    },
+    {
+      "id": "ON14.7",
+      "name": "kinds 过滤同时作用于遍历与输出(无该类型 → 仅中心)",
+      "ok": true,
+      "detail": "[{\"key\":\"pv.melt_pressure\",\"kind\":\"process_variable\",\"name\":\"熔体压力\",\"description\":\"\",\"unit\":\"bar\",\"role\":\"control\",\"hop\":0}]"
     },
     {
       "id": "ON13.1",

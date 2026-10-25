@@ -93,11 +93,12 @@ curl -X POST $BASE/api/workshop/ontology/drafts/$DRAFT/publish \
 
 除此之外的全部内容都是**可审阅元数据**——不参与执行，这是刻意设计。
 
-## Agent 工具（9 件）
+## Agent 工具（10 件）
 
 | 工具 | 作用 | 写类 |
 |---|---|---|
 | `ontology_scene_inspect` | 读当前活跃本体场景子图（实体/规则/守卫/绑定） | 读 |
+| `ontology_node_neighbors` | 读某实体为中心的邻接/多跳子图（邻居、关联边、hop、证据档） | 读 |
 | `ontology_rule_explain` | 解释单条规则（DSL、证据、决策） | 读 |
 | `ontology_version_compare` | 版本四段 diff | 读 |
 | `ontology_draft_create` | 起草（归属 Agent 绑定面内的产线） | 写 |
@@ -107,7 +108,7 @@ curl -X POST $BASE/api/workshop/ontology/drafts/$DRAFT/publish \
 | `ontology_draft_autofix` | **自动修复**可安全修复项并落库（证据不伪造） | 写 |
 | `ontology_publish_propose` | 提议发布（挂 HITL 卡，管理员批准后发布） | 写 |
 
-外部 MCP 服务镜像其中三件只读工具（`scene_inspect / rule_explain / version_compare`）。
+外部 MCP 服务镜像其中四件只读工具（`scene_inspect / node_neighbors / rule_explain / version_compare`）。
 
 ## 模型采纳环——进化的是模型，不只是参数
 

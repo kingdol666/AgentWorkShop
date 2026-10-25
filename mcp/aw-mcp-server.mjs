@@ -665,10 +665,10 @@ export function buildToolDefs() {
       },
     },
 
-    // ── 工业本体(ONT;只读三件)──
+    // ── 工业本体(ONT;只读四件)──
     // 写面(起草/编译预览/发布提议)刻意不暴露在本面:本面是用户身份的 REST 投影,
     // 没有 channel 上下文,治理(引用面/收权即失活/HITL)不生效。写路径请用频道 Agent
-    // 工具桥(host 面 8 工具)或 aw_agent_tool_invoke。
+    // 工具桥(host 面 10 工具)或 aw_agent_tool_invoke。
     {
       name: 'ontology_scene_inspect',
       description: '只读查询某产线的已发布工业本体:实体/语义绑定/已验证影响关系/约束规则编译决策/运行时守卫。用于确认变量语义、单位、受哪条规则限制及其来源版本。',
@@ -677,6 +677,24 @@ export function buildToolDefs() {
         limit: s('每页实体数(1-200,缺省 50)', 'number'),
       }, ['lineId']),
       run: rest('GET', args => `/api/workshop/ontology/scene${queryOf({ lineId: args.lineId, limit: args.limit })}`),
+    },
+    {
+      name: 'ontology_node_neighbors',
+      description: '只读查询某产线已发布本体中以实体为中心的邻接/多跳子图:中心实体与平台绑定、各跳邻居(key/hop/类型/角色)、关联边(类型/方向/证据档/hop)与截断标记。用于回答「这个变量直接/间接关联什么」。',
+      inputSchema: obj({
+        lineId: s('产线 id(必填)'),
+        entityKey: s('中心实体 key(必填,可先用 ontology_scene_inspect 查)'),
+        hops: s('跳数 1-3(缺省 1)', 'number'),
+        direction: s('both | out | in(缺省 both)'),
+        kinds: s('关系类型过滤,逗号分隔(缺省=全部)'),
+      }, ['lineId', 'entityKey']),
+      run: rest('GET', args => `/api/workshop/ontology/scene${queryOf({
+        lineId: args.lineId,
+        entity: args.entityKey,
+        hops: args.hops,
+        direction: args.direction,
+        kinds: args.kinds,
+      })}`),
     },
     {
       name: 'ontology_rule_explain',

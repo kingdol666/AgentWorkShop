@@ -94,11 +94,12 @@ safe, deterministic, idempotent normalization:
 
 Everything else is **reviewable metadata** — deliberately non-executing.
 
-## Agent tools (nine)
+## Agent tools (ten)
 
 | Tool | Purpose | Class |
 |---|---|---|
 | `ontology_scene_inspect` | read the active scene subgraph (entities / rules / guards / bindings) | read |
+| `ontology_node_neighbors` | read an entity-centred neighbourhood / multi-hop subgraph (neighbours, edges, hop, evidence tier) | read |
 | `ontology_rule_explain` | explain one rule (DSL, evidence, decision) | read |
 | `ontology_version_compare` | four-part version diff | read |
 | `ontology_draft_create` | open a draft (on lines inside the agent's bound face) | write |
@@ -108,7 +109,7 @@ Everything else is **reviewable metadata** — deliberately non-executing.
 | `ontology_draft_autofix` | **auto-fix** safely repairable issues and persist (never fabricates evidence) | write |
 | `ontology_publish_propose` | propose publishing (HITL card; an admin publishes) | write |
 
-The external MCP server mirrors three read-only tools (`scene_inspect / rule_explain / version_compare`).
+The external MCP server mirrors four read-only tools (`scene_inspect / node_neighbors / rule_explain / version_compare`).
 
 ## The adoption loop — what evolves is the model, not just parameters
 

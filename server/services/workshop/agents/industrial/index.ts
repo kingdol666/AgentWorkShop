@@ -32,7 +32,7 @@ export { toolLineStart, toolLineStop, toolLineStatus } from './line-tools'
 export { toolAnalysisSave, toolAnalysisQuery } from './analysis-tools'
 export { toolOptimizerProfilePropose } from './optimizer-tools'
 export {
-  toolOntologySceneInspect, toolOntologyDraftCreate, toolOntologyDraftValidate, toolOntologyDraftAutofix,
+  toolOntologySceneInspect, toolOntologyNodeNeighbors, toolOntologyDraftCreate, toolOntologyDraftValidate, toolOntologyDraftAutofix,
   toolOntologyDraftUpdate, toolOntologyRuleExplain, toolOntologyCompilePreview,
   toolOntologyPublishPropose, toolOntologyVersionCompare,
 } from './ontology-tools'

@@ -3686,6 +3686,57 @@
     }
   },
   {
+    "name": "ontology_node_neighbors",
+    "label": "本体节点邻接",
+    "riskClass": "read",
+    "description": "只读查询某产线已发布本体中以某个实体为中心的邻接/多跳子图:中心实体(含单位/角色/描述与平台绑定)、各跳邻居节点(key/hop/类型/角色)、关联边(id/关系类型/方向/证据档/hop)与截断标记。用于回答「这个变量与哪些量直接相关、间接影响链有多长、这条边是什么证据档」。entity_key 可先用 ontology_scene_inspect 查到;不写任何状态。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "line_id": {
+          "type": "string",
+          "description": "产线 id(必填;line_context 可看到当前产线)"
+        },
+        "entity_key": {
+          "type": "string",
+          "description": "中心实体 key(必填,如 mv.hold_pressure;可先用 ontology_scene_inspect 查)"
+        },
+        "hops": {
+          "type": "number",
+          "description": "跳数(1-3,缺省 1;2 起可看到间接关联)"
+        },
+        "direction": {
+          "type": "string",
+          "enum": [
+            "both",
+            "out",
+            "in"
+          ],
+          "description": "遍历方向:both=双向(缺省)/out=只沿 src→dst/in=只沿 dst→src"
+        },
+        "kinds": {
+          "type": "string",
+          "description": "关系类型过滤(逗号分隔,如 influences,constrainsBy;缺省=全部)"
+        }
+      },
+      "required": [
+        "line_id",
+        "entity_key"
+      ],
+      "additionalProperties": false
+    },
+    "references": {
+      "refs": [
+        {
+          "param": "line_id",
+          "kind": "line",
+          "mode": "read"
+        }
+      ],
+      "readableLineNodes": true
+    }
+  },
+  {
     "name": "ontology_draft_create",
     "label": "本体草稿创建",
     "riskClass": "write",

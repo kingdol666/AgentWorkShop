@@ -16,7 +16,7 @@ import { toolRecipePropose } from '../../industrial/recipe-propose-tools'
 import { toolAmlActivity } from '../../industrial/aml-activity'
 import { toolOptimizerCancel, toolOptimizerCapabilities, toolOptimizerPlanGet, toolOptimizerProfilePropose, toolOptimizerSolve, toolOptimizerStatus } from '../../industrial/optimizer-tools'
 import { toolIndustrialResources } from '../../industrial/resources-tools'
-import { toolOntologyCompilePreview, toolOntologyDraftAutofix, toolOntologyDraftCreate, toolOntologyDraftUpdate, toolOntologyDraftValidate, toolOntologyPublishPropose, toolOntologyRuleExplain, toolOntologySceneInspect, toolOntologyVersionCompare } from '../../industrial/ontology-tools'
+import { toolOntologyCompilePreview, toolOntologyDraftAutofix, toolOntologyDraftCreate, toolOntologyDraftUpdate, toolOntologyDraftValidate, toolOntologyNodeNeighbors, toolOntologyPublishPropose, toolOntologyRuleExplain, toolOntologySceneInspect, toolOntologyVersionCompare } from '../../industrial/ontology-tools'
 
 type IndustrialToolHandler = (agentId: string, args: Record<string, unknown>, channelId?: string) => Promise<HostToolResult>
 
@@ -97,8 +97,9 @@ const INDUSTRIAL_HANDLERS = new Map<string, IndustrialToolHandler>([
   ['optimizer_cancel', (agentId, args) => toolOptimizerCancel(agentId, args)],
   // 模型采纳(OW-adopt):Agent 发起 Profile 新版本采纳提议,HITL 批准后发布+重绑
   ['optimizer_profile_propose', (agentId, args) => toolOptimizerProfilePropose(agentId, args)],
-  // 本体工具族(ONT):只读子图/起草/校验/解释/编译预览/提议发布/版本比较/草稿内容写
+  // 本体工具族(ONT):只读子图/邻接/起草/校验/解释/编译预览/提议发布/版本比较/草稿内容写
   ['ontology_scene_inspect', (agentId, args) => toolOntologySceneInspect(agentId, args)],
+  ['ontology_node_neighbors', (agentId, args) => toolOntologyNodeNeighbors(agentId, args)],
   ['ontology_draft_create', (agentId, args) => toolOntologyDraftCreate(agentId, args)],
   ['ontology_draft_update', (agentId, args) => toolOntologyDraftUpdate(agentId, args)],
   ['ontology_draft_validate', (agentId, args) => toolOntologyDraftValidate(agentId, args)],
