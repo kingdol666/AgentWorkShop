@@ -1,6 +1,6 @@
 {
   "script": "scripts/e2e-idd-results-ui.mjs",
-  "generatedAt": "2026-10-25T15:20:02.270Z",
+  "generatedAt": "2026-10-25T16:05:59.974Z",
   "pass": 9,
   "total": 9,
   "results": [
@@ -20,7 +20,7 @@
       "id": "A11.3",
       "name": "列表渲染数据行",
       "pass": true,
-      "detail": "{\"rows\":20,\"first\":\"33240ceaaws-owner-probe_33240ceaquick-screen96ENDORSED2026-10-25 15:17:06\",\"total\":\"106\"}"
+      "detail": "{\"rows\":20,\"first\":\"afd51366aws-owner-probe_afd51366quick-screen96ENDORSED2026-10-25 16:05:41\",\"total\":\"109\"}"
     },
     {
       "id": "A11.4",

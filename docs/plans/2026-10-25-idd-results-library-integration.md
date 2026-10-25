@@ -1,6 +1,6 @@
 # IDD 分析结果管理集成计划(diag-bridge · Results Library)
 
-状态:**已执行并复验**(2026-10-25;独立 reviewer REVISE 后修复,真机 36/36 + UI 9/9 + 结构 14/14)
+状态:**已执行,双轮复验通过**(2026-10-25;功能 36/36 + UI 9/9 + 结构 14/14;0.8.3 从干净 HEAD 树发布)
 日期:2026-10-25 · 依据:IDD `docs/api-external.md` §16(v1 结果库 + §16.3a 分类)、IDD 自带 `results-aws-integration` 验收脚本(87/87)、AW diag-bridge 现状核查
 
 ## 1. 需求与现状
@@ -174,3 +174,17 @@
 | Low CSS 回归/回读空值/注释/null 支持/双副本漂移 | 恢复 `:has` 规则;PATCH 后 GET 回读;注释修正;`description` 支持 null;A1.14 双副本一致断言 | 结构 14/14 |
 
 **实施环境坑(记录)**:插件路由表 exact-match 不支持 path 参数;builtin 装载源是 `server/plugins-builtin`(工作副本 `.AgentWorkShop/plugins` 需同步);ESM 模块缓存导致插件改动必须**真正重启进程**;dev 实例的 SSE 断开会拖垮进程,UI 验收改用生产 `.output` 实例;`.output` 生产模式需 `NUXT_SESSION_PASSWORD`;残留 dev 实例会把共享 `tool_registry` 写成 unavailable(必须清理进程树)。
+
+## 11. 第二轮 reviewer 复验记录(2026-10-25)
+
+功能面 9 条问题全部确认修复;新增 4 条 Low 已处理 3 条:
+
+| 项 | 处理 |
+|---|---|
+| L1 `canAnnotate` 未结合调用者角色 | 改为 `resultsAllowAnnotateOf(ctx) && awUser.role==='admin'`;普通用户不再看到必然失败的编辑区 |
+| L2 annotate 回执 display_text 恒空 | IDD 详情接口不返回该字段 → 按索引口径本地拼 `description || summary` |
+| L3 PATCH 鉴权失败返回 HTTP 200 | 保留:插件路由无法设 HTTP 状态(转发层契约);前端按 `success:false` 处理,记为已知偏差 |
+| L4 探测 400 未映射版本提示 | 404/400 均给「版本不含 §16 或接口不兼容」 |
+| H-A(发布) 0.8.2 tarball 从脏工作区打包 | 0.8.3 改为 **git archive HEAD → 临时净树 + node_modules junction → build+publish**,发布前用 `tar -tzf`/内容 diff 核对无未提交并行代码 |
+
+**发布纪律(新增)**:共享工作树里的 `npm publish` 会把并行会话未提交改动打进包 —— 发版必须在 HEAD 净树中构建发布。
