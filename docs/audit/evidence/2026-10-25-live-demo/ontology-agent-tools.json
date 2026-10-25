@@ -1,0 +1,14 @@
+{
+ "script": "live-demo ontology agent tools (US-003)",
+ "generatedAt": "2026-10-25T17:38:00.258Z",
+ "agent": "394ab15a-236f-434e-9db8-c56e9f18d0f2",
+ "line": "ln-4d4613f5",
+ "sceneInspect": {
+  "isError": false,
+  "text": "本体 onto-demo-inj@2(产线 ln-4d4613f5)\n实体 5 / 关系 5 / 规则 0 / 守卫 0\n本页实体 5(offset=0,limit=50):\n- mv.hold_pressure [actuator/control] 保压压力 (bar) ← dcw_node:dw-3d678184(write)\n- mv.hold_time [actuator/control] 保压时间 (s) ← dcw_node:dw-88afcf5d(write)\n- pv.melt_temp [process_variable/state] 熔体温度 (degC) ← daq_node:dn-43e61d4c(read)\n- qv.flash_rate [quality_variable/target] 飞边率 (%) ← daq_node:dn-a8ca34fd(read)\n- qv.part_weight [quality_variable/target] 制品克重 (g) ← daq_node:dn-622d2654(read)\n关系:\n- mv.hold_pressure -influences-> qv.flash_rate [candidate_influence]\n- mv.hold_pressure -precedes-> pv.melt_temp [candidate_influence]\n- mv.hold_pressure -influences-> qv.part_weight [candidate_influence]\n- mv.hold_time -influences-> qv.part_weight [candidate_influence]\n- pv.melt_temp -influences-> qv.part_weight [candidate_influence]"
+ },
+ "neighbors": {
+  "isError": false,
+  "text": "邻接子图: center=qv.part_weight 本体=onto-demo-inj@2 hops=2 direction=both nodes=5 edges=5\n中心: qv.part_weight [quality_variable/target] 制品克重(g) — 单件重量 ← daq_node:dn-622d2654(read,active)\n邻居节点:\n- mv.hold_pressure hop=1 [actuator/control] 保压压力(bar)\n- mv.hold_time hop=1 [actuator/control] 保压时间(s)\n- pv.melt_temp hop=1 [process_variable/state] 熔体温度(degC)\n- qv.flash_rate hop=2 [quality_variable/target] 飞边率(%)\n关联边:\n- r-hp-mt kind=precedes mv.hold_pressure -> pv.melt_temp hop=1 dir=lateral tier=candidate_influence\n- r-hp-w kind=influences mv.hold_pressure -> qv.part_weight hop=1 dir=in tier=candidate_influence\n- r-ht-w kind=influences mv.hold_time -> qv.part_weight hop=1 dir=in tier=candidate_influence\n- r-mt-w kind=influences pv.melt_temp -> qv.part_weight hop=1 dir=in tier=candidate_influence\n- r-hp-f kind=influences mv.hold_pressure -> qv.flash_rate hop=2 dir=out tier=candidate_influence\n提示:需要规则/守卫/绑定全貌用 ontology_scene_inspect;解释单条规则用 ontology_rule_explain;版本差异用 ontology_version_compare。"
+ }
+}
