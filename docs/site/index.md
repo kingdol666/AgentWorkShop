@@ -37,6 +37,7 @@ footer:
     </div>
     <div class="hw-cta">
       <a class="hw-btn primary" href="/AgentWorkShop/guide/getting-started">快速开始 <span class="arr">→</span></a>
+      <a class="hw-btn" href="/AgentWorkShop/demo">产品演示 <span class="arr">→</span></a>
       <a class="hw-btn" href="https://github.com/kingdol666/AgentWorkShop">GitHub <span class="arr">↗</span></a>
       <span class="hw-cta-sep"></span>
       <a class="hw-btn quiet" href="/AgentWorkShop/guide/first-session">第一次 Agent × 产线会话 <span class="arr">→</span></a>
@@ -102,16 +103,18 @@ footer:
   <figure class="aw-console">
     <figcaption class="aw-console-bar">
       <span class="aw-console-tag">FIG.00-B</span>
-      <span class="aw-console-title">LIVE DEMO · 实机演示 4'11" · 英文配音 · 英文字幕</span>
-      <span class="aw-console-meta">RECORDED · NO CUTS</span>
+      <span class="aw-console-title">CORE DEMO · 3'00" · 英文界面 · EN/ZH 字幕</span>
+      <span class="aw-console-meta">真实界面录制 · 隔离 Mock 产线</span>
     </figcaption>
     <div class="aw-console-body">
-<video controls preload="metadata" :poster="'/AgentWorkShop/demo/poster.jpg'" :src="'/AgentWorkShop/demo/agentworkshop-demo.mp4'" style="display:block;width:100%;background:#000"></video>
+<video controls preload="metadata" :poster="'/AgentWorkShop/demo/agentworkshop-core-demo-poster.png'" :src="'/AgentWorkShop/demo/agentworkshop-core-demo.mp4'" style="display:block;width:100%;background:#000">
+  <track kind="captions" label="English" srclang="en" src="/AgentWorkShop/demo/agentworkshop-core-demo.en.vtt" default>
+  <track kind="captions" label="简体中文" srclang="zh-Hans" src="/AgentWorkShop/demo/agentworkshop-core-demo.zh-Hans.vtt">
+</video>
 </div>
     <p class="aw-console-cap">
-      <b>一段视频看完整个系统。</b>
-      仪表盘 → 数采中心(六协议实时) → 写控下发与回读(真实 Modbus PLC) → 串口协议插件(真实 COM 口探针) →
-      Agent 团队执行 → 闭环趋势(PV 跟随设定) → 3D 数字孪生环绕运镜。英文解说字幕,无剪辑无造假。
+      <b>从控制室到 EDA 工坊。</b>
+      仪表盘 → 实时数采 → EDA 分析管道 → 受治理工具目录 → 已发布本体 → 四个 Agent 工作区 → 插件 → 分析台账 → EDA 工坊。使用隔离的 Mock 产线与 Mock DAQ 驱动，未连接真实 PLC，也未向真实设备发送控制命令；分析报告与本体为演示种子数据。
     </p>
   </figure>
 

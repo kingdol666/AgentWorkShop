@@ -1,77 +1,25 @@
 {
-  "generatedAt": "2026-10-26T07:39:20.848Z",
-  "source": "live screencast of demo instance http://127.0.0.1:3400",
+  "generatedAt": "2026-10-26T09:59:41.039Z",
+  "source": "live screencast of an isolated demo instance at http://127.0.0.1:3400",
+  "uiLocale": "en",
   "theme": "light",
-  "viewport": [
-    1920,
-    1080
-  ],
+  "viewport": [1920, 1080],
+  "fps": 30,
+  "durationSec": 180.49,
+  "video": "agentworkshop-core-demo.mp4",
+  "narration": "Edge en-US-AndrewNeural, rate -4%, loudnorm I=-16",
+  "captions": ["en", "zh-Hans"],
   "scenes": [
-    {
-      "id": "s1-title",
-      "kind": "card",
-      "url": null,
-      "targetSec": 12.46
-    },
-    {
-      "id": "s2-dashboard",
-      "kind": "live",
-      "url": "/",
-      "targetSec": 10.7
-    },
-    {
-      "id": "s2b-daq",
-      "kind": "live",
-      "url": "/daq",
-      "targetSec": 9.76
-    },
-    {
-      "id": "s3-pipeline",
-      "kind": "live",
-      "url": "/studio/pipeline",
-      "targetSec": 32.6
-    },
-    {
-      "id": "s4-governance",
-      "kind": "live",
-      "url": "/operations",
-      "targetSec": 22.52
-    },
-    {
-      "id": "s5-ontology",
-      "kind": "live",
-      "url": "/ontology",
-      "targetSec": 23.92
-    },
-    {
-      "id": "s6-agents",
-      "kind": "live",
-      "url": "/workshop",
-      "targetSec": 18.37
-    },
-    {
-      "id": "s6b-plugins",
-      "kind": "live",
-      "url": "/plugins",
-      "targetSec": 10.38
-    },
-    {
-      "id": "s7-loop",
-      "kind": "live",
-      "url": "/analysis",
-      "targetSec": 17.01
-    },
-    {
-      "id": "s7b-board",
-      "kind": "live",
-      "url": "/studio",
-      "targetSec": 9.33
-    },
-    {
-      "id": "s8-outro",
-      "kind": "card",
-      "url": null,
-      "targetSec": 10.92
-    }
+    { "id": "s1-title", "kind": "card", "url": null, "targetSec": 12.46 },
+    { "id": "s2-dashboard", "kind": "live", "url": "/", "targetSec": 10.7 },
+    { "id": "s2b-daq", "kind": "live", "url": "/daq", "targetSec": 9.76 },
+    { "id": "s3-pipeline", "kind": "live", "url": "/studio/pipeline", "targetSec": 35.6 },
+    { "id": "s4-governance", "kind": "live", "url": "/tools", "targetSec": 22.62 },
+    { "id": "s5-ontology", "kind": "live", "url": "/ontology", "targetSec": 33.79 },
+    { "id": "s6-agents", "kind": "live", "url": "/workshop", "targetSec": 14.27 },
+    { "id": "s6b-plugins", "kind": "live", "url": "/plugins", "targetSec": 10.67 },
+    { "id": "s7-loop", "kind": "live", "url": "/analysis", "targetSec": 15.37 },
+    { "id": "s7b-board", "kind": "live", "url": "/studio", "targetSec": 9.33 },
+    { "id": "s8-outro", "kind": "card", "url": null, "targetSec": 10.92 }
   ]
 }

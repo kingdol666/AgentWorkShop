@@ -13,7 +13,7 @@
     "width": 1920,
     "height": 1080,
     "fps": 30,
-    "duration": 172.97,
+    "duration": 180.49,
     "transitions": "xfade fade 0.5s"
   },
   "assets": [
@@ -42,42 +42,42 @@
       "id": "s3-pipeline",
       "kind": "live",
       "url": "/studio/pipeline",
-      "duration": 32.6,
+      "duration": 35.6,
       "raw": "raw/s3-pipeline.mp4"
     },
     {
       "id": "s4-governance",
       "kind": "live",
-      "url": "/operations",
-      "duration": 22.52,
+      "url": "/tools",
+      "duration": 22.62,
       "raw": "raw/s4-governance.mp4"
     },
     {
       "id": "s5-ontology",
       "kind": "live",
       "url": "/ontology",
-      "duration": 23.92,
+      "duration": 33.79,
       "raw": "raw/s5-ontology.mp4"
     },
     {
       "id": "s6-agents",
       "kind": "live",
       "url": "/workshop",
-      "duration": 18.37,
+      "duration": 14.27,
       "raw": "raw/s6-agents.mp4"
     },
     {
       "id": "s6b-plugins",
       "kind": "live",
       "url": "/plugins",
-      "duration": 10.38,
+      "duration": 10.67,
       "raw": "raw/s6b-plugins.mp4"
     },
     {
       "id": "s7-loop",
       "kind": "live",
       "url": "/analysis",
-      "duration": 17.01,
+      "duration": 15.37,
       "raw": "raw/s7-loop.mp4"
     },
     {
@@ -123,57 +123,57 @@
         {
           "source": "raw/s3-pipeline.mp4",
           "start": 0,
-          "end": 32.6,
+          "end": 35.6,
           "timeline_start": 31.42,
           "reason": "beat s3-pipeline"
         },
         {
           "source": "raw/s4-governance.mp4",
           "start": 0,
-          "end": 22.52,
-          "timeline_start": 63.52,
+          "end": 22.62,
+          "timeline_start": 66.52,
           "reason": "beat s4-governance"
         },
         {
           "source": "raw/s5-ontology.mp4",
           "start": 0,
-          "end": 23.92,
-          "timeline_start": 85.54,
+          "end": 33.79,
+          "timeline_start": 88.64,
           "reason": "beat s5-ontology"
         },
         {
           "source": "raw/s6-agents.mp4",
           "start": 0,
-          "end": 18.37,
-          "timeline_start": 108.96,
+          "end": 14.27,
+          "timeline_start": 121.93,
           "reason": "beat s6-agents"
         },
         {
           "source": "raw/s6b-plugins.mp4",
           "start": 0,
-          "end": 10.38,
-          "timeline_start": 126.83,
+          "end": 10.67,
+          "timeline_start": 135.7,
           "reason": "beat s6b-plugins"
         },
         {
           "source": "raw/s7-loop.mp4",
           "start": 0,
-          "end": 17.01,
-          "timeline_start": 136.71,
+          "end": 15.37,
+          "timeline_start": 145.87,
           "reason": "beat s7-loop"
         },
         {
           "source": "raw/s7b-board.mp4",
           "start": 0,
           "end": 9.33,
-          "timeline_start": 153.22,
+          "timeline_start": 160.74,
           "reason": "beat s7b-board"
         },
         {
           "source": "raw/s8-outro.mp4",
           "start": 0,
           "end": 10.92,
-          "timeline_start": 162.05,
+          "timeline_start": 169.57,
           "reason": "beat s8-outro"
         }
       ]
@@ -219,79 +219,85 @@
         },
         {
           "source": "tts/s4-governance_0.wav",
-          "timeline_start": 64.52,
-          "duration": 7.152,
-          "text": "Every setpoint is a governed decision: four interlock layers, human approval, and a signed audit trail."
+          "timeline_start": 67.52,
+          "duration": 6.432,
+          "text": "Every tool is catalogued with its source, the roles allowed to call it, and the channels that scoped it down."
         },
         {
           "source": "tts/s4-governance_1.wav",
-          "timeline_start": 72.222,
-          "duration": 4.152,
-          "text": "Agents propose. The platform verifies. You decide."
+          "timeline_start": 74.502,
+          "duration": 6.576,
+          "text": "Agents propose. The platform verifies against bound nodes and live grants. You decide."
         },
         {
           "source": "tts/s4-governance_2.wav",
-          "timeline_start": 76.924,
-          "duration": 7.32,
-          "text": "First bindings are approval-gated, every write is rate-limited and journaled — by design, not by policy."
+          "timeline_start": 81.628,
+          "duration": 5.712,
+          "text": "Every call is rate-limited, checked and journaled — by design, not by policy."
         },
         {
           "source": "tts/s5-ontology_0.wav",
-          "timeline_start": 86.54,
+          "timeline_start": 89.64,
           "duration": 7.632,
           "text": "Ontology makes the plant machine-readable — entities, relations and rules, each bound to a real node."
         },
         {
           "source": "tts/s5-ontology_1.wav",
-          "timeline_start": 94.722,
+          "timeline_start": 97.822,
           "duration": 7.32,
           "text": "Models learn from the line, then serve optimization through a guarded solver. Nothing is trusted until it passes."
         },
         {
           "source": "tts/s5-ontology_2.wav",
-          "timeline_start": 102.592,
+          "timeline_start": 105.692,
           "duration": 5.064,
           "text": "And a solver cross-checks every recommendation against the physics it learned from."
         },
         {
+          "source": "tts/s5-ontology_3.wav",
+          "timeline_start": 111.306,
+          "duration": 7.32,
+          "text": "Published as a versioned release, every entity, relation and rule carries its evidence and a content hash."
+        },
+        {
           "source": "tts/s6-agents_0.wav",
-          "timeline_start": 109.96,
+          "timeline_start": 122.93,
           "duration": 5.136,
           "text": "Different agents, different tools, different permissions — scoped down to the node."
         },
         {
           "source": "tts/s6-agents_1.wav",
-          "timeline_start": 115.646,
-          "duration": 9.888,
-          "text": "A diagnostics bridge streams real analyses from I D D: deep diagnosis, stability reports, quick screens — searchable and reusable."
+          "timeline_start": 128.616,
+          "duration": 5.784,
+          "text": "Four teams share one line, each with its own scenario, tools and evidence trail."
         },
         {
           "source": "tts/s6b-plugins_0.wav",
-          "timeline_start": 127.83,
-          "duration": 7.584,
-          "text": "Protocols, analyses, twins — all plugins. Load one, and its tools appear for the right agents only."
+          "timeline_start": 136.7,
+          "duration": 7.872,
+          "text": "Protocols, analyses, twins — all plugins. The diagnostics bridge and knowledge base plug in the same way."
         },
         {
           "source": "tts/s7-loop_0.wav",
-          "timeline_start": 137.71,
-          "duration": 10.2,
-          "text": "In one live run, a governed loop moved hold pressure from sixty-five to seventy bar, verified on the device, then sealed as recipe version three."
+          "timeline_start": 146.87,
+          "duration": 7.56,
+          "text": "In one live batch, every setpoint was acknowledged and read back; a step-limited request was correctly rejected."
         },
         {
           "source": "tts/s7-loop_1.wav",
-          "timeline_start": 148.46,
+          "timeline_start": 154.98,
           "duration": 3.456,
           "text": "Data, decision, action — with proof."
         },
         {
           "source": "tts/s7b-board_0.wav",
-          "timeline_start": 154.22,
+          "timeline_start": 161.74,
           "duration": 6.528,
           "text": "Every chart is a saved, reusable view — owned, versioned, and shareable with the team."
         },
         {
           "source": "tts/s8-outro_0.wav",
-          "timeline_start": 163.05,
+          "timeline_start": 170.57,
           "duration": 4.92,
           "text": "AgentWorkShop. Open source, plugin-ready, built for the shop floor."
         }
@@ -337,80 +343,86 @@
           "zh": "选择图型、调整字段，把整套配置保存为模板。换一份数据，一键复绘。"
         },
         {
-          "start": 64.52,
-          "end": 71.672,
-          "en": "Every setpoint is a governed decision: four interlock layers, human approval, and a signed audit trail.",
-          "zh": "每个设定值都是一次受治理的决策：四层联锁限界、人工审批、带签名的审计痕迹。"
+          "start": 67.52,
+          "end": 73.952,
+          "en": "Every tool is catalogued with its source, the roles allowed to call it, and the channels that scoped it down.",
+          "zh": "每个工具都登记在册：来源、可调用角色，以及把它收窄到具体频道的策略。"
         },
         {
-          "start": 72.222,
-          "end": 76.374,
-          "en": "Agents propose. The platform verifies. You decide.",
-          "zh": "Agent 提议，平台核验，由你决定。"
+          "start": 74.502,
+          "end": 81.078,
+          "en": "Agents propose. The platform verifies against bound nodes and live grants. You decide.",
+          "zh": "Agent 提议；平台按绑定节点与实时授权核验；由你决定。"
         },
         {
-          "start": 76.924,
-          "end": 84.244,
-          "en": "First bindings are approval-gated, every write is rate-limited and journaled — by design, not by policy.",
-          "zh": "首次绑定强制审批，每次写入限频并留痕——这是代码设计，不是纸面制度。"
+          "start": 81.628,
+          "end": 87.34,
+          "en": "Every call is rate-limited, checked and journaled — by design, not by policy.",
+          "zh": "每次调用都限频、校验并留痕——这是代码设计，不是纸面制度。"
         },
         {
-          "start": 86.54,
-          "end": 94.172,
+          "start": 89.64,
+          "end": 97.272,
           "en": "Ontology makes the plant machine-readable — entities, relations and rules, each bound to a real node.",
           "zh": "本体让工厂可被机器理解——实体、关系与规则，每一条都绑定真实节点。"
         },
         {
-          "start": 94.722,
-          "end": 102.042,
+          "start": 97.822,
+          "end": 105.142,
           "en": "Models learn from the line, then serve optimization through a guarded solver. Nothing is trusted until it passes.",
           "zh": "模型从产线学习，经守卫求解器服务优化。没过门禁的模型，一步也不放行。"
         },
         {
-          "start": 102.592,
-          "end": 107.656,
+          "start": 105.692,
+          "end": 110.756,
           "en": "And a solver cross-checks every recommendation against the physics it learned from.",
           "zh": "求解器再用学到的物理关系，对每个推荐做交叉核验。"
         },
         {
-          "start": 109.96,
-          "end": 115.096,
+          "start": 111.306,
+          "end": 118.626,
+          "en": "Published as a versioned release, every entity, relation and rule carries its evidence and a content hash.",
+          "zh": "发布为版本化版本：每个实体、关系与规则都携带证据与内容哈希。"
+        },
+        {
+          "start": 122.93,
+          "end": 128.066,
           "en": "Different agents, different tools, different permissions — scoped down to the node.",
           "zh": "不同 Agent、不同工具、不同权限——作用域收窄到节点级。"
         },
         {
-          "start": 115.646,
-          "end": 125.534,
-          "en": "A diagnostics bridge streams real analyses from I D D: deep diagnosis, stability reports, quick screens — searchable and reusable.",
-          "zh": "诊断桥接通 IDD：深度诊断、稳定报告、快速筛查——可检索、可复用。"
+          "start": 128.616,
+          "end": 134.4,
+          "en": "Four teams share one line, each with its own scenario, tools and evidence trail.",
+          "zh": "四个团队共用一条产线，各自拥有独立场景、工具与证据链。"
         },
         {
-          "start": 127.83,
-          "end": 135.414,
-          "en": "Protocols, analyses, twins — all plugins. Load one, and its tools appear for the right agents only.",
-          "zh": "协议、分析、孪生都是插件：装载即出现，且只对授权的 Agent 可见。"
+          "start": 136.7,
+          "end": 144.572,
+          "en": "Protocols, analyses, twins — all plugins. The diagnostics bridge and knowledge base plug in the same way.",
+          "zh": "协议、分析、孪生都是插件；诊断桥与知识库也以同样方式接入。"
         },
         {
-          "start": 137.71,
-          "end": 147.91,
-          "en": "In one live run, a governed loop moved hold pressure from sixty-five to seventy bar, verified on the device, then sealed as recipe version three.",
-          "zh": "一次实机闭环把保压从 65 bar 调到 70 bar，设备证实后固化为配方第三版。"
+          "start": 146.87,
+          "end": 154.43,
+          "en": "In one live batch, every setpoint was acknowledged and read back; a step-limited request was correctly rejected.",
+          "zh": "在一个实机批次中，每个设定值都获得设备回执并回读；一次超步限请求被正确拒绝。"
         },
         {
-          "start": 148.46,
-          "end": 151.916,
+          "start": 154.98,
+          "end": 158.436,
           "en": "Data, decision, action — with proof.",
           "zh": "数据、决策、行动——全程留证。"
         },
         {
-          "start": 154.22,
-          "end": 160.748,
+          "start": 161.74,
+          "end": 168.268,
           "en": "Every chart is a saved, reusable view — owned, versioned, and shareable with the team.",
           "zh": "每张图表都是可复用的保存视图——有归属、有版本,可共享给团队。"
         },
         {
-          "start": 163.05,
-          "end": 167.97,
+          "start": 170.57,
+          "end": 175.49,
           "en": "AgentWorkShop. Open source, plugin-ready, built for the shop floor.",
           "zh": "AgentWorkShop。开源、可插件化、为车间而生。"
         }

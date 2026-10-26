@@ -25,53 +25,57 @@ Shape it with your own code: filters, aggregates, derived columns — executed r
 Choose a chart, tune the fields, save the whole recipe as a template. New data, one click, re-plotted.
 
 7
-00:01:04.520 --> 00:01:11.952
-Every setpoint is a governed decision: four interlock layers, human approval, and a signed audit trail.
+00:01:07.520 --> 00:01:14.232
+Every tool is catalogued with its source, the roles allowed to call it, and the channels that scoped it down.
 
 8
-00:01:12.222 --> 00:01:16.654
-Agents propose. The platform verifies. You decide.
+00:01:14.502 --> 00:01:21.358
+Agents propose. The platform verifies against bound nodes and live grants. You decide.
 
 9
-00:01:16.924 --> 00:01:24.524
-First bindings are approval-gated, every write is rate-limited and journaled — by design, not by policy.
+00:01:21.628 --> 00:01:27.620
+Every call is rate-limited, checked and journaled — by design, not by policy.
 
 10
-00:01:26.540 --> 00:01:34.452
+00:01:29.640 --> 00:01:37.552
 Ontology makes the plant machine-readable — entities, relations and rules, each bound to a real node.
 
 11
-00:01:34.722 --> 00:01:42.322
+00:01:37.822 --> 00:01:45.422
 Models learn from the line, then serve optimization through a guarded solver. Nothing is trusted until it passes.
 
 12
-00:01:42.592 --> 00:01:47.936
+00:01:45.692 --> 00:01:51.036
 And a solver cross-checks every recommendation against the physics it learned from.
 
 13
-00:01:49.960 --> 00:01:55.376
-Different agents, different tools, different permissions — scoped down to the node.
+00:01:51.306 --> 00:01:58.906
+Published as a versioned release, every entity, relation and rule carries its evidence and a content hash.
 
 14
-00:01:55.646 --> 00:02:05.814
-A diagnostics bridge streams real analyses from I D D: deep diagnosis, stability reports, quick screens — searchable and reusable.
+00:02:02.930 --> 00:02:08.346
+Different agents, different tools, different permissions — scoped down to the node.
 
 15
-00:02:07.830 --> 00:02:15.694
-Protocols, analyses, twins — all plugins. Load one, and its tools appear for the right agents only.
+00:02:08.616 --> 00:02:14.680
+Four teams share one line, each with its own scenario, tools and evidence trail.
 
 16
-00:02:17.710 --> 00:02:28.190
-In one live run, a governed loop moved hold pressure from sixty-five to seventy bar, verified on the device, then sealed as recipe version three.
+00:02:16.700 --> 00:02:24.852
+Protocols, analyses, twins — all plugins. The diagnostics bridge and knowledge base plug in the same way.
 
 17
-00:02:28.460 --> 00:02:32.196
-Data, decision, action — with proof.
+00:02:26.870 --> 00:02:34.710
+In one live batch, every setpoint was acknowledged and read back; a step-limited request was correctly rejected.
 
 18
-00:02:34.220 --> 00:02:41.028
-Every chart is a saved, reusable view — owned, versioned, and shareable with the team.
+00:02:34.980 --> 00:02:38.716
+Data, decision, action — with proof.
 
 19
-00:02:43.050 --> 00:02:48.250
+00:02:41.740 --> 00:02:48.548
+Every chart is a saved, reusable view — owned, versioned, and shareable with the team.
+
+20
+00:02:50.570 --> 00:02:55.770
 AgentWorkShop. Open source, plugin-ready, built for the shop floor.

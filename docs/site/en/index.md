@@ -39,6 +39,7 @@ footer:
     </div>
     <div class="hw-cta">
       <a class="hw-btn primary" href="/AgentWorkShop/en/guide/getting-started">Get started <span class="arr">→</span></a>
+      <a class="hw-btn" href="/AgentWorkShop/en/demo">Product demo <span class="arr">→</span></a>
       <a class="hw-btn" href="https://github.com/kingdol666/AgentWorkShop">GitHub <span class="arr">↗</span></a>
       <span class="hw-cta-sep"></span>
       <a class="hw-btn quiet" href="/AgentWorkShop/en/guide/first-session">Your first agent × line session <span class="arr">→</span></a>
@@ -106,16 +107,18 @@ footer:
   <figure class="aw-console">
     <figcaption class="aw-console-bar">
       <span class="aw-console-tag">FIG.00-B</span>
-      <span class="aw-console-title">LIVE DEMO · 4'11" · VOICE-OVER · CAPTIONS</span>
-      <span class="aw-console-meta">RECORDED · NO CUTS</span>
+      <span class="aw-console-title">CORE DEMO · 3'00" · ENGLISH UI · EN/ZH CAPTIONS</span>
+      <span class="aw-console-meta">REAL UI RECORDING · ISOLATED MOCK LINE</span>
     </figcaption>
     <div class="aw-console-body">
-<video controls preload="metadata" :poster="'/AgentWorkShop/demo/poster.jpg'" :src="'/AgentWorkShop/demo/agentworkshop-demo.mp4'" style="display:block;width:100%;background:#000"></video>
+<video controls preload="metadata" :poster="'/AgentWorkShop/demo/agentworkshop-core-demo-poster.png'" :src="'/AgentWorkShop/demo/agentworkshop-core-demo.mp4'" style="display:block;width:100%;background:#000">
+  <track kind="captions" label="English" srclang="en" src="/AgentWorkShop/demo/agentworkshop-core-demo.en.vtt" default>
+  <track kind="captions" label="简体中文" srclang="zh-Hans" src="/AgentWorkShop/demo/agentworkshop-core-demo.zh-Hans.vtt">
+</video>
 </div>
     <p class="aw-console-cap">
-      <b>Watch one video, see the whole system.</b>
-      Dashboard → live DAQ (six protocols) → governed write &amp; read-back (real Modbus PLC) → serial protocol plugin (real COM-port probe) →
-      agent team execution → closed-loop trend (PV tracks the setpoint) → 3D digital-twin orbit. English captions, no cuts, nothing faked.
+      <b>From the control room to the EDA studio.</b>
+      Dashboard → live DAQ → EDA analysis pipeline → governed tool catalog → published ontology → four agent workspaces → plugins → analysis ledger → EDA studio. It runs on an isolated mock line with mock DAQ drivers; no physical PLC is connected and no control command is sent to real equipment. The analysis records and ontology are seeded demo data.
     </p>
   </figure>
 
