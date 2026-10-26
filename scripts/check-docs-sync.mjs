@@ -292,7 +292,7 @@ section('[5/6] VitePress 模板安全:正文裸尖括号不得被当成未闭合
 // 占位符,Vue 会把它当成自定义元素并因缺少 </home> 直接**构建失败**
 // (实际发生过:plugins/guide.md 曾导致 `vitepress build` 报 Element is missing end tag)。
 // 行内代码/围栏代码里的尖括号会被 markdown-it 转义,是安全的 —— 先剥掉再扫。
-const SAFE_TAGS = new Set(['div', 'img', 'br', 'b', 'i', 'strong', 'em', 'a', 'span', 'code', 'pre', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'sub', 'sup', 'p', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'kbd', 'details', 'summary', 'picture', 'source', 'video', 'hr', 'small', 'figure', 'figcaption', 'section', 'input'])
+const SAFE_TAGS = new Set(['div', 'img', 'br', 'b', 'i', 'strong', 'em', 'a', 'span', 'code', 'pre', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'sub', 'sup', 'p', 'ul', 'ol', 'li', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'kbd', 'details', 'summary', 'picture', 'source', 'video', 'audio', 'track', 'hr', 'small', 'figure', 'figcaption', 'section', 'input', 'blockquote', 'del', 'ins', 'mark'])
 const stripCode = md => md
   .replace(/^```[\s\S]*?^```/gm, '')
   .replace(/<!--[\s\S]*?-->/g, '')

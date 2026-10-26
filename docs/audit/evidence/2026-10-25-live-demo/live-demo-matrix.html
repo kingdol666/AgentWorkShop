@@ -1,0 +1,100 @@
+<div id="aw-live-demo">
+  <h2>实机演示 · 多 Agent × 节点 × 工具（2026-10-25）</h2>
+  <p class="text-muted">演示实例 3300（注塑产线 ln-4d4613f5）· worker 394ab15a · lead 9fc3eb10 · 全部数字为本轮真实回包</p>
+
+  <div class="viz-grid">
+    <div class="card viz-stat">
+      <div class="text-muted">插件真实调用</div>
+      <div class="viz-stat-value">18 + 2 边界</div>
+      <div>10/11 成功 · idd-closedloop 404 已知边界</div>
+    </div>
+    <div class="card viz-stat">
+      <div class="text-muted">绑定隔离矩阵</div>
+      <div class="viz-stat-value">8/8</div>
+      <div>2 Agent × 2 节点四向交叉</div>
+    </div>
+    <div class="card viz-stat">
+      <div class="text-muted">T2 本轮断言</div>
+      <div class="viz-stat-value">397</div>
+      <div>模型 54 · 优化器 104 · 产线 44 · 本体 144 · IDD 45 · 注塑 6</div>
+    </div>
+    <div class="card viz-stat">
+      <div class="text-muted">工具面差异</div>
+      <div class="viz-stat-value">79 / 92</div>
+      <div>同一 host-tools.json，按绑定动态裁剪</div>
+    </div>
+  </div>
+
+  <h3>Agent × 节点 访问矩阵（daq_query 真实回包）</h3>
+  <div class="matrix">
+    <div></div>
+    <div class="mhead">dn-622d2654 · part-weight（worker 绑定）</div>
+    <div class="mhead">dn-eae56da8 · dim-dev（lead 绑定）</div>
+    <div class="mhead mrow">worker</div>
+    <div class="cell allow">放行<span>10 分钟真实样本 · 克重量程 25~40g</span></div>
+    <div class="cell deny">拒绝<span>isError=true「无权查询节点…你有权访问的数采节点:dn-622d2654」</span></div>
+    <div class="mhead mrow">lead</div>
+    <div class="cell deny">拒绝<span>isError=true「不在你的授权范围内…你的绑定节点:dn-eae56da8」</span></div>
+    <div class="cell allow">放行<span>dim-dev 活数据 · 时间窗实时</span></div>
+  </div>
+
+  <h3>11 插件逐一真实调用</h3>
+  <div class="pgrid">
+    <div class="pitem"><b>diag-bridge</b><span>GET /results + diag_results（lead）· total=112</span></div>
+    <div class="pitem"><b>rag-bridge</b><span>GET /health（backend 8771 healthy）· search 401 外部边界</span></div>
+    <div class="pitem"><b>serial-bridge</b><span>GET /health + /ports · COM1/3/4 枚举</span></div>
+    <div class="pitem"><b>aw-matrix-plugin</b><span>GET /stats + matrix_pipeline_probe · ok(样本数随采样增长)</span></div>
+    <div class="pitem"><b>daq-sink-verify</b><span>verify_pipeline_probe · ×2 标定链路</span></div>
+    <div class="pitem"><b>daq-vector-demo</b><span>模板 plug-demo-roughness 在册</span></div>
+    <div class="pitem"><b>idd-closedloop-bridge</b><span>404 已知边界:IDD 退役旧路由;能力由 diag-bridge 六意图承接</span></div>
+    <div class="pitem"><b>omp-sensor-tools</b><span>sensor_calibration_log put+list 读回</span></div>
+    <div class="pitem"><b>twin-injection-default</b><span>provider READY · gen=2</span></div>
+    <div class="pitem"><b>twin-castfilm</b><span>provider READY · gen=2</span></div>
+    <div class="pitem"><b>twin-thermal-demo</b><span>provider READY · gen=2</span></div>
+  </div>
+
+  <h3>不同 Agent 的工具执行轨迹</h3>
+  <div class="trace">
+    <div class="step"><span class="who" style="--lane:var(--viz-series-2)">worker</span><div><code>daq_query</code> → 自己节点放行 / lead 节点拒绝（isError=true）</div></div>
+    <div class="step"><span class="who" style="--lane:var(--viz-series-2)">worker</span><div><code>matrix_pipeline_probe</code> · <code>verify_pipeline_probe</code> · <code>sensor_calibration_log</code> · <code>experience_log</code>（404 已知边界：IDD 退役旧路由）</div></div>
+    <div class="step"><span class="who" style="--lane:var(--viz-series-2)">worker</span><div><code>ontology_scene_inspect</code> → 5 实体/5 关系；<code>ontology_node_neighbors</code> hops=2 → 5 节点/5 边（hop/dir/tier）</div></div>
+    <div class="step"><span class="who" style="--lane:var(--viz-series-3)">lead</span><div><code>diag_results</code>（结果库检索）· <code>daq_query</code> 自己节点放行</div></div>
+    <div class="step"><span class="who" style="--lane:var(--viz-series-4)">隔离实例</span><div>模型闭环 54/54（训练 A→B→C，Profile v1→v3 自动重绑，solve optimal）</div></div>
+    <div class="step"><span class="who" style="--lane:var(--viz-series-4)">隔离实例</span><div>优化器 104/104（REST 全链 + 负例 + Agent 工具面 + 浏览器五 tab）</div></div>
+    <div class="step"><span class="who" style="--lane:var(--viz-series-4)">隔离实例</span><div>产线治理 44/44 · 工具面 37/37（跨线拒绝/配方闸门/token 轮换）</div></div>
+  </div>
+
+  <h3>注塑真实闭环（同一 worker 的写入治理链路）</h3>
+  <div class="loop">
+    <div class="node">基线<br><b>65 bar</b></div>
+    <div class="arrow">recipe_trial</div>
+    <div class="node">HITL 批准<br><b>→ 70 bar</b></div>
+    <div class="arrow">设备证实 1/1</div>
+    <div class="node">65s 工艺响应<br><b>DAQ 复测</b></div>
+    <div class="arrow">入窗</div>
+    <div class="node ok">32.49 g · 0.017%<br><b>固化 v3</b></div>
+  </div>
+  <p class="text-small text-muted">写路径全程受治理：recipe 绑定（manual）→ recipe_trial 提议 → HITL 人工批准 → 设备回读证实 → 复测判定 → recipe_update 版本化。演示配方已按预期改为保压 70bar（v3）。</p>
+</div>
+<style>
+  #aw-live-demo .matrix { display:grid;grid-template-columns:78px 1fr 1fr;gap:8px;margin:8px 0 18px }
+  #aw-live-demo .mhead { font-size:12px;color:var(--muted-foreground);align-self:end;padding:0 2px 2px }
+  #aw-live-demo .mrow { align-self:center;color:var(--foreground);font-size:12px }
+  #aw-live-demo .cell { border-radius:8px;padding:10px 12px;font-size:12px;line-height:1.5;display:flex;flex-direction:column;gap:2px }
+  #aw-live-demo .cell span { color:var(--muted-foreground);font-size:11px }
+  #aw-live-demo .allow { background:color-mix(in srgb, var(--green) 14%, var(--background));border:1px solid color-mix(in srgb, var(--green) 40%, transparent);color:var(--foreground) }
+  #aw-live-demo .deny { background:color-mix(in srgb, var(--red) 12%, var(--background));border:1px solid color-mix(in srgb, var(--red) 38%, transparent);color:var(--foreground) }
+  #aw-live-demo .pgrid { display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:8px;margin:8px 0 18px }
+  #aw-live-demo .pitem { border-left:2px solid var(--viz-series-1);padding:4px 10px;display:flex;flex-direction:column;gap:2px }
+  #aw-live-demo .pitem b { font-weight:500;font-size:12px;color:var(--foreground) }
+  #aw-live-demo .pitem span { font-size:11px;color:var(--muted-foreground) }
+  #aw-live-demo .trace { display:flex;flex-direction:column;gap:6px;margin:8px 0 18px }
+  #aw-live-demo .step { display:flex;gap:10px;align-items:flex-start }
+  #aw-live-demo .step > div { flex:1;border-left:2px solid var(--border);padding-left:10px;font-size:12px;color:var(--foreground) }
+  #aw-live-demo .who { flex:0 0 76px;text-align:center;font-size:12px;border-radius:999px;padding:2px 0;background:color-mix(in srgb, var(--lane) 18%, var(--background));border:1px solid color-mix(in srgb, var(--lane) 45%, transparent);color:var(--foreground) }
+  #aw-live-demo .loop { display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:8px 0 4px }
+  #aw-live-demo .node { border-radius:8px;padding:8px 12px;font-size:12px;text-align:center;background:var(--muted);color:var(--foreground) }
+  #aw-live-demo .node.ok { background:color-mix(in srgb, var(--green) 16%, var(--background));border:1px solid color-mix(in srgb, var(--green) 40%, transparent) }
+  #aw-live-demo .arrow { font-size:11px;color:var(--muted-foreground);position:relative;padding-left:12px }
+  #aw-live-demo .arrow::before { content:"→";position:absolute;left:0;color:var(--foreground) }
+</style>

@@ -47,6 +47,19 @@ const props = defineProps({
     type: Object as PropType<EChartsOption>,
     required: true,
   },
+  /** 图表高度(px 数字或 CSS 长度);此前经 $attrs 落到 DOM 属性上不生效,导致容器高 0 */
+  height: {
+    type: [Number, String],
+    default: null,
+  },
+})
+
+const chartStyle = computed(() => {
+  if (props.height == null) return undefined
+  return {
+    width: '100%',
+    height: typeof props.height === 'number' ? `${props.height}px` : props.height,
+  }
 })
 
 // 未显式给 color 的图表统一走编辑色板;给了的尊重页面意图
@@ -94,6 +107,7 @@ const updateOptions = computed<SetOptionOpts>(() => ({
 <template>
   <VChart
     v-bind="$attrs"
+    :style="chartStyle"
     :option="merged"
     :update-options="updateOptions"
     autoresize

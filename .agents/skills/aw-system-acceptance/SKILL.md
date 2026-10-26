@@ -46,7 +46,7 @@ npm run test:skills      # skills/ 目录规范校验(含本 skill)
 | 本体真机 | `npx tsx --tsconfig .nuxt/tsconfig.server.json scripts/e2e-ontology-live.mjs` | L1-L7:本体全生命周期+运行守卫+AML 先验/求解器集成+邻接子图(ON16/ON17)+前端六 tab | 87/87 |
 | 模型闭环 | `npx tsx --tsconfig .nuxt/tsconfig.server.json scripts/e2e-model-loop-live.mjs` | M0-M6:本体→孪生冻结→训练进化 v1→v3→求解器→管理面→前端走查 | 54/54 |
 | 优化器 | `npx tsx --tsconfig .nuxt/tsconfig.server.json scripts/e2e-optimizer-live.mjs` | R1-R3+U1:REST 全链/负例契约(版本不可变·作用域·RBAC)/Agent 工具面/浏览器五 tab | 104/104 |
-| 注塑闭环 | `npm run test:e2e-injection` | recipe_trial 多轮寻优→HITL→工艺响应→复测→达标固化(真实 PLC 模拟) | 9/9 |
+| 注塑闭环 | `npm run test:e2e-injection` | recipe_trial 多轮寻优→HITL→工艺响应→复测→达标固化(真实 PLC 模拟;AW_BASE/AW_TOKEN 指向已供给的注塑实例) | 6/6(当前脚本;旧版 9) |
 | IDD 结果库 | `node scripts/e2e-idd-results.mjs` | A2-A13:11 查询参数/详情截断/属主 403/探针版本检测/网络错映射(需 IDD 后端) | 36/36 |
 | 结果库 UI | `node scripts/e2e-idd-results-ui.mjs` | 面板列表/详情抽屉/编辑闸门(admin)真浏览器走查 | 9/9 |
 

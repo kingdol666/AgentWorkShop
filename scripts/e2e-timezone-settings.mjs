@@ -10,6 +10,8 @@ import { join } from 'node:path'
 const BASE = process.argv[2] ?? 'http://127.0.0.1:3005'
 const ROOT = process.cwd()
 process.env.NO_PROXY = '127.0.0.1,localhost'
+// 数据根可移植:打隔离 home 实例时用 AW_TZ_DATA 指向该 home 的 data 目录(缺省仓库配置根)
+const DATA_DIR = process.env.AW_TZ_DATA ?? join(ROOT, '.AgentWorkShop', 'data')
 
 async function api(method, path, body, token) {
   const r = await fetch(BASE + path, {
@@ -24,11 +26,11 @@ async function api(method, path, body, token) {
 const reg = await api('POST', '/api/workshop/users/register', { name: `tz-e2e-${Date.now()}` })
 const token = reg.json?.data?.token
 assert.ok(token, 'register token missing')
-const users = new DatabaseSync(join(ROOT, '.AgentWorkShop', 'data', 'users.sqlite'))
+const users = new DatabaseSync(join(DATA_DIR, 'users.sqlite'))
 users.prepare('UPDATE users SET role=\'admin\' WHERE email LIKE \'tz-e2e-%\' AND role=\'user\'').run()
 users.close()
 
-const db = new DatabaseSync(join(ROOT, '.AgentWorkShop', 'data', 'workshop.sqlite'))
+const db = new DatabaseSync(join(DATA_DIR, 'workshop.sqlite'))
 const before = db.prepare('SELECT id, created_at AS createdAt FROM chat_messages ORDER BY rowid DESC LIMIT 1').get()
 const written = []
 try {

@@ -1,0 +1,79 @@
+1
+00:00:01,000 --> 00:00:07,736
+AgentWorkShop — an industrial multi-agent platform, recorded live on a running production line.
+
+2
+00:00:12,960 --> 00:00:21,136
+Every line, every signal, one control room. Hardware in, decisions out — and nothing leaves the governed path.
+
+3
+00:00:23,160 --> 00:00:30,400
+Live telemetry, six field protocols — every sample stamped with its batch, recipe and line.
+
+4
+00:00:32,420 --> 00:00:37,836
+The new E D A pipeline. Pull live data — or bring your own table.
+
+5
+00:00:38,106 --> 00:00:45,466
+Shape it with your own code: filters, aggregates, derived columns — executed right in your browser.
+
+6
+00:00:45,736 --> 00:00:53,504
+Choose a chart, tune the fields, save the whole recipe as a template. New data, one click, re-plotted.
+
+7
+00:01:07,520 --> 00:01:14,232
+Every tool is catalogued with its source, the roles allowed to call it, and the channels that scoped it down.
+
+8
+00:01:14,502 --> 00:01:21,358
+Agents propose. The platform verifies against bound nodes and live grants. You decide.
+
+9
+00:01:21,628 --> 00:01:27,620
+Every call is rate-limited, checked and journaled — by design, not by policy.
+
+10
+00:01:29,640 --> 00:01:37,552
+Ontology makes the plant machine-readable — entities, relations and rules, each bound to a real node.
+
+11
+00:01:37,822 --> 00:01:45,422
+Models learn from the line, then serve optimization through a guarded solver. Nothing is trusted until it passes.
+
+12
+00:01:45,692 --> 00:01:51,036
+And a solver cross-checks every recommendation against the physics it learned from.
+
+13
+00:01:51,306 --> 00:01:58,906
+Published as a versioned release, every entity, relation and rule carries its evidence and a content hash.
+
+14
+00:02:02,930 --> 00:02:08,346
+Different agents, different tools, different permissions — scoped down to the node.
+
+15
+00:02:08,616 --> 00:02:14,680
+Four teams share one line, each with its own scenario, tools and evidence trail.
+
+16
+00:02:16,700 --> 00:02:24,852
+Protocols, analyses, twins — all plugins. The diagnostics bridge and knowledge base plug in the same way.
+
+17
+00:02:26,870 --> 00:02:34,710
+In one live batch, every setpoint was acknowledged and read back; a step-limited request was correctly rejected.
+
+18
+00:02:34,980 --> 00:02:38,716
+Data, decision, action — with proof.
+
+19
+00:02:41,740 --> 00:02:48,548
+Every chart is a saved, reusable view — owned, versioned, and shareable with the team.
+
+20
+00:02:50,570 --> 00:02:55,770
+AgentWorkShop. Open source, plugin-ready, built for the shop floor.

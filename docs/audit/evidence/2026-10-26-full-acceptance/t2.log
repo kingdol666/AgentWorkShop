@@ -1,0 +1,24 @@
+=== model-loop ===
+[DOMException [TimeoutError]: The operation was aborted due to timeout]
+
+Node.js v24.19.0
+=== optimizer ===
+npm notice To update run: npm install -g npm@12.2.1
+npm notice
+=== ontology-live ===
+    at <anonymous> (D:\codes\ABO\AgentWorkShop\scripts\e2e-ontology-live.mjs:764:11)
+
+Node.js v24.19.0
+=== ontology-offline ===
+
+ONTOLOGY E2E: 57/57 passed, 0 failed
+=== line-governance ===
+═══ 结论:PASS(44/44)═══
+=== injection ===
+═══ 结论:PASS(6/6) out=bench\results\injection-pressure-loop-2026-10-26T03-21-52-631Z ═══
+=== idd-results ===
+IDD-RESULTS E2E: 36/36 passed, 0 failed
+evidence: D:\codes\ABO\AgentWorkShop\docs\audit\evidence\2026-10-25-idd-results
+=== idd-results-ui ===
+
+IDD-RESULTS UI E2E: 9/9 passed

@@ -74,6 +74,19 @@ const SCHEMA: readonly string[] = [
   'CREATE INDEX IF NOT EXISTS idx_eda_charts_owner ON eda_charts(owner_user_id, updated_at DESC)',
   'CREATE INDEX IF NOT EXISTS idx_eda_charts_line ON eda_charts(line_id, visibility)',
 
+  // EDA 管道:图表配置模板(用户把「图型+编码字段+后处理代码」存成命名模板,换数据快速复绘)
+  `CREATE TABLE IF NOT EXISTS eda_chart_templates (
+    id            TEXT PRIMARY KEY,
+    name          TEXT NOT NULL,
+    description   TEXT NOT NULL DEFAULT '',
+    chart_type    TEXT NOT NULL,
+    config_json   TEXT NOT NULL DEFAULT '{}',
+    owner_user_id TEXT NOT NULL,
+    created_at    TEXT NOT NULL,
+    updated_at    TEXT NOT NULL
+  )`,
+  'CREATE INDEX IF NOT EXISTS idx_eda_chart_templates_owner ON eda_chart_templates(owner_user_id, updated_at DESC)',
+
   // plan1-M3 看板 + 关联(Metabase report_dashboardcard 式)
   `CREATE TABLE IF NOT EXISTS eda_dashboards (
     id           TEXT PRIMARY KEY,

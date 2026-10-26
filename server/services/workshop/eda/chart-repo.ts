@@ -17,7 +17,7 @@ import { lineMode } from '../permissions'
 import { recordOps } from '../ops/ops'
 import { edaDb } from './eda-db'
 
-export const CHART_VIZ_TYPES = ['trend', 'bar', 'scatter', 'table', 'kpi', 'histogram'] as const
+export const CHART_VIZ_TYPES = ['trend', 'bar', 'scatter', 'table', 'kpi', 'histogram', 'pipeline'] as const
 export type ChartVizType = typeof CHART_VIZ_TYPES[number]
 const VISIBILITIES = ['private', 'line'] as const
 

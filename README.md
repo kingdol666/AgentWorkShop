@@ -129,11 +129,13 @@ Recorded against a running instance: real DAQ history, real write control, real 
 
 <div align="center">
 
-### 🎬 Live demo (4 min 11 s, English voice-over & captions)
+### 🎬 3-minute product demo (English UI · English voice-over · bilingual captions)
 
-<a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/site/public/demo/agentworkshop-demo.mp4"><img src="docs/site/public/demo/poster.jpg" alt="AgentWorkShop live demo: DAQ console, governed write + read-back, serial protocol plugin, agent team execution, closed-loop trend and the 3D digital twin" width="86%" /></a>
+<a href="https://kingdol666.github.io/AgentWorkShop/demo/player.html"><img src="docs/site/public/demo/agentworkshop-core-demo-poster.png" alt="AgentWorkShop 3-minute demo: dashboard, live DAQ, EDA pipeline, governed tool catalog, published ontology, agent workspaces, plugins and analysis ledger" width="86%" /></a>
 
-<sub><b>Click the cover to watch the full demo.</b> Real PLC simulator, real serial-port enumeration, real agent-team execution — no cuts, no fakes.<br/>Scenes: dashboard → live DAQ → governed write & read-back → serial protocol plugin → agent team execution → closed-loop trend → 3D digital twin.</sub>
+<sub><b>Click the cover to play the standalone player.</b> One continuous screencast of a running instance with a mock PLC line — 1920×1080, English interface, English narration, EN / 简体中文 captions.<br/>Scenes: dashboard → live DAQ → EDA pipeline → governed tool catalog → published ontology → agent workspaces → plugins → analysis ledger → EDA studio.</sub>
+
+[Direct MP4](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/site/public/demo/agentworkshop-core-demo.mp4) · [Standalone player](https://kingdol666.github.io/AgentWorkShop/demo/player.html) · [VitePress demo page](https://kingdol666.github.io/AgentWorkShop/en/demo)
 
 </div>
 

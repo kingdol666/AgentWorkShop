@@ -1,0 +1,37 @@
+{
+  "file": "D:\\tmp\\aw-video\\out\\final.mp4",
+  "duration": 180.49,
+  "sizeBytes": 13017600,
+  "bitrate": 576989,
+  "video": {
+    "codec": "h264",
+    "width": 1920,
+    "height": 1080,
+    "fps": "30/1",
+    "pix": "yuv420p"
+  },
+  "audio": {
+    "codec": "aac",
+    "sampleRate": "48000",
+    "channels": 2
+  },
+  "checks": {
+    "durationOk": true,
+    "resolutionOk": true,
+    "hasAudio": true,
+    "audioCoversVideo": true
+  },
+  "subtitles": {
+    "cues": 20,
+    "en": "subs/en.srt+en.vtt",
+    "zh": "subs/zh-Hans.srt+zh-Hans.vtt",
+    "burned": true
+  },
+  "transitions": {
+    "type": "xfade:fade",
+    "duration": 0.5,
+    "count": 10
+  },
+  "generatedAt": "2026-10-26T09:59:41.039Z",
+  "pass": true
+}
