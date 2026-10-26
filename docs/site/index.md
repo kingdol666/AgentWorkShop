@@ -1,428 +1,137 @@
 ---
 layout: home
-
+description: AgentWorkShop 是面向工业场景的 Agent 团队运行时，连接产线数据、受治理的控制流程与数字孪生。
 footer:
   message: 依据 Apache License 2.0 发布 · 允许商用与生产部署
   copyright: Copyright © 2026 kingdol (kingdol666)
 ---
 
-<!--
-  ⚠️ 本文件的 HTML 缩进受 markdown-it 的 HTML block 规则约束:
-  空行之后出现的行若带 ≥4 空格缩进,会被当作**缩进代码块**并原样转义输出
-  (构建期报 "Element is missing end tag")。所以:块级元素最多缩进到 2 空格,
-  更深的缩进只能出现在同一块内(即其前方没有空行)。
--->
-
 <div class="hw-hero">
-  <div class="hw-wrap">
-    <p class="hw-kicker">AGENTWORKSHOP · 工业 AGENT 运行时</p>
-    <h1 class="hw-title">Agent 团队<span class="x">×</span>产线<span class="x">×</span>数字孪生</h1>
-    <p class="hw-sub">
-      一个配置驱动的工业 Agent 运行时:Agent 团队读取真实遥测、经人工审批写入设定值,
-      每个事件实时流进 3D 孪生。协议是真的,断言是可复跑的。
-    </p>
-    <div class="hw-trio">
-      <div>
-        <span class="k">是什么<i>WHAT</i></span>
-        <span class="v">与 SCADA 同位的监督层运行时 · 秒级软实时</span>
-      </div>
-      <div>
-        <span class="k">给谁用<i>FOR WHOM</i></span>
-        <span class="v">产线工程师 · 工艺与运维 · 工业 AI 教研 · 平台二开</span>
-      </div>
-      <div>
-        <span class="k">凭什么值<i>WHY</i></span>
-        <span class="v">6 协议真机读写(含串口插件) · 联锁→审批→回读留痕 · 14 引擎一个契约</span>
-      </div>
-    </div>
-    <div class="hw-cta">
-      <a class="hw-btn primary" href="/AgentWorkShop/guide/getting-started">快速开始 <span class="arr">→</span></a>
-      <a class="hw-btn" href="/AgentWorkShop/demo">产品演示 <span class="arr">→</span></a>
-      <a class="hw-btn" href="https://github.com/kingdol666/AgentWorkShop">GitHub <span class="arr">↗</span></a>
-      <span class="hw-cta-sep"></span>
-      <a class="hw-btn quiet" href="/AgentWorkShop/guide/first-session">第一次 Agent × 产线会话 <span class="arr">→</span></a>
-    </div>
-    <div class="hw-rail-sec">
-      <div class="hw-rail-cap">
-        <span>FIG.00 · 数据管线 —— 产品就是这条链路(走向示意)</span>
-        <span>SAMPLING → STORAGE → STREAM → AGENT</span>
-      </div>
-      <div class="hw-rail">
-        <div class="hw-pulse"></div>
-        <div class="hw-flow"></div>
-        <div class="hw-node" style="--i:0"><span class="n">现场设备</span><span class="d">PLC / 传感器</span></div>
-        <div class="hw-node" style="--i:1"><span class="n">驱动 ×6</span><span class="d">MODBUS TCP/RTU · OPC UA · MQTT · HTTP · SERIAL(串口插件)</span></div>
-        <div class="hw-node" style="--i:2"><span class="n">队列</span><span class="d">INPROC / MQTT · 离线缓冲</span></div>
-        <div class="hw-node" style="--i:3"><span class="n">时序库</span><span class="d">SQLITE / TIMESCALE</span></div>
-        <div class="hw-node" style="--i:4"><span class="n">WS HUB</span><span class="d">AEP v1 · SEQ 续传</span></div>
-        <div class="hw-node hot" style="--i:5"><span class="n">Agent / 孪生</span><span class="d">同一事件流</span></div>
-      </div>
-      <div class="hw-stats">
-        <div class="hw-stat"><span class="v">6</span><span class="k">现场协议</span></div>
-        <div class="hw-stat"><span class="v">4</span><span class="k">接入入口</span></div>
-        <div class="hw-stat"><span class="v">14</span><span class="k">执行引擎</span></div>
-        <div class="hw-stat"><span class="v">126</span><span class="k">运行时设置项</span></div>
-        <div class="hw-stat"><span class="v">1100+<i>*</i></span><span class="k">验收断言</span></div>
-        <div class="hw-stat"><span class="v">7</span><span class="k">任务机状态</span></div>
-      </div>
-      <p class="hw-stat-note">
-        * 两轮验收波次(2026-09-24,生产构建 + 真实 PLC 模拟产线/协议/浏览器/崩溃重启,隔离
-        <code>AW_HOME</code>):基础矩阵约 1100+ 条断言最终轮全过;补充功能波按报告逐项记录
-        (其中环境/凭据受限项已归因,并非全部通过)。报告见
-        <code>docs/audit/e2e-2026-09-24-full-coverage.md</code> 与
-        <code>docs/audit/e2e-2026-09-24-all-features.md</code>。
-        其余是可数出来的静态事实:6 类驱动(5 内置 + serial-bridge 串口插件) / 4 个入口(WS · MCP · A2A · REST) /
-        14 个 harness(<code>agents/registry.ts</code>) / 126 个设置项分 19 组(<code>aw config list</code>) / 7 态任务机。
-      </p>
-      <div class="aw-statusbar">
-        <span>版本 <i>v0.8.3</i></span>
-        <span>许可 <i>Apache License 2.0</i></span>
-        <span>运行时 <i>Node ≥ 23.4.0 · Nuxt 4 · Vue 3.5 · TypeScript 5.7</i></span>
-        <span>文档 <i>简体中文 / English</i></span>
-      </div>
-    </div>
-  </div>
+<div class="hw-wrap">
+<p class="hw-kicker">AGENTWORKSHOP · 工业 AGENT 运行时</p>
+<h1 class="hw-title">Agent 团队<span class="x">×</span>产线<span class="x">×</span>数字孪生</h1>
+<p class="hw-sub">一个配置驱动的工业 Agent 运行时：团队读取现场遥测，在权限与工艺边界内提出控制动作；节点绑定启用 manual 模式时，由人工审批后执行。统一事件流驱动趋势、审计与 3D 孪生。</p>
+<div class="hw-trio">
+<div><span class="k">是什么<i>WHAT</i></span><span class="v">面向秒级软实时的监督层，不替代 PLC 与安全系统。</span></div>
+<div><span class="k">适合谁<i>FOR WHOM</i></span><span class="v">产线与工艺工程师 · 工业 AI 团队 · 平台开发与研究。</span></div>
+<div><span class="k">如何协同<i>HOW</i></span><span class="v">读数 → 分析 → 边界校验 →（manual 模式下人工审批）→ 写入 → 回读与审计。</span></div>
+</div>
+<div class="hw-cta">
+<a class="hw-btn primary" href="/AgentWorkShop/guide/getting-started">快速开始 <span class="arr">→</span></a>
+<a class="hw-btn" href="/AgentWorkShop/demo">观看演示 <span class="arr">→</span></a>
+<a class="hw-btn quiet" href="https://github.com/kingdol666/AgentWorkShop">GitHub 源码 <span class="arr">↗</span></a>
+</div>
+<div class="hw-rail-sec">
+<div class="hw-rail-cap"><span>FIG.00 · 现场数据如何抵达 Agent 与孪生</span><span>采集 → 存储 → 事件流 → 应用</span></div>
+<div class="hw-rail">
+<div class="hw-pulse"></div><div class="hw-flow"></div>
+<div class="hw-node" style="--i:0"><span class="n">现场设备</span><span class="d">PLC / 传感器</span></div>
+<div class="hw-node" style="--i:1"><span class="n">协议驱动 ×6</span><span class="d">MODBUS · OPC UA · MQTT · HTTP · SERIAL</span></div>
+<div class="hw-node" style="--i:2"><span class="n">缓冲队列</span><span class="d">INPROC / MQTT</span></div>
+<div class="hw-node" style="--i:3"><span class="n">时序数据</span><span class="d">SQLITE / TIMESCALE</span></div>
+<div class="hw-node" style="--i:4"><span class="n">事件总线</span><span class="d">WEBSOCKET · SEQ RESUME</span></div>
+<div class="hw-node hot" style="--i:5"><span class="n">Agent / 孪生</span><span class="d">同一事实源</span></div>
+</div>
+<div class="hw-stats">
+<div class="hw-stat"><span class="v">6</span><span class="k">现场协议</span></div>
+<div class="hw-stat"><span class="v">4</span><span class="k">接入入口</span></div>
+<div class="hw-stat"><span class="v">14</span><span class="k">Agent 引擎</span></div>
+<div class="hw-stat"><span class="v">126</span><span class="k">运行时设置项</span></div>
+<div class="hw-stat"><span class="v">7</span><span class="k">任务状态</span></div>
+<div class="hw-stat"><span class="v">1</span><span class="k">共享事件流</span></div>
+</div>
+<p class="hw-stat-note">协议数量包含 5 个内置驱动与串口插件。设置数依据当前运行时描述符；验收记录见仓库 <code>docs/audit/</code>。</p>
+</div>
+</div>
 </div>
 
 <div class="hw-wrap">
+<div class="aw-ruler"></div>
 
-  <div class="aw-ruler"></div>
+<section class="hw-sec">
+<div class="hw-sec-head"><span class="hw-sec-no">01</span><h2 class="hw-sec-title">先看演示，再看真实界面</h2><span class="hw-sec-en">DEMO · INTERFACE</span></div>
+<div class="hw-sec-rule"></div>
+<p class="hw-lead">67 秒概览展示工作台、Agent 团队与产线管理。下方截图来自运行中的界面，分别呈现数字孪生、数据采集和产线运营。</p>
+<figure class="aw-console">
+<figcaption class="aw-console-bar"><span class="aw-console-tag">DEMO · 01:07</span><span class="aw-console-title">AGENTWORKSHOP CORE WALKTHROUGH</span><span class="aw-console-meta">英文配音 · EN / ZH 字幕</span></figcaption>
+<div class="aw-console-body"><video controls playsinline preload="metadata" poster="/demo/agentworkshop-core-demo-poster.png" aria-label="AgentWorkShop 核心功能演示" style="display:block;width:100%;aspect-ratio:16/9;background:#000"><source src="/demo/agentworkshop-core-demo.mp4" type="video/mp4"><track kind="captions" label="English" srclang="en" src="/AgentWorkShop/demo/agentworkshop-core-demo.en.vtt" default><track kind="captions" label="简体中文" srclang="zh-Hans" src="/AgentWorkShop/demo/agentworkshop-core-demo.zh-Hans.vtt"></video></div>
+<p class="aw-console-cap"><b>隔离的模拟场景。</b>演示产线保持停止，使用 Mock PLC；未连接真实设备，也未发送控制写入。<a href="/AgentWorkShop/demo">打开独立演示页并选择字幕 →</a></p>
+</figure>
+<div class="hw-figs">
+<figure class="aw-console"><figcaption class="aw-console-bar"><span class="aw-console-tag">FIG.01</span><span class="aw-console-title">DIGITAL TWIN · 产线孪生</span></figcaption><div class="aw-console-body">
 
-  <section class="hw-sec">
-    <div class="hw-sec-head">
-      <span class="hw-sec-no">01</span>
-      <h2 class="hw-sec-title">真实界面</h2>
-      <span class="hw-sec-en">INTERFACE</span>
-    </div>
-    <div class="hw-sec-rule"></div>
-      <p class="hw-lead">
-        下面每一屏都录自正在运行的实例,不是渲染稿。三屏共用同一条事件总线——
-        数采通道写进去的样本,同时是孪生画面的输入、趋势曲线上的点,以及 Agent 读到的那一行。
-      </p>
+![数字孪生中的产线设备、实时趋势与设备健康状态](/town.png)
 
-  <figure class="aw-console">
-    <figcaption class="aw-console-bar">
-      <span class="aw-console-tag">FIG.00-B</span>
-      <span class="aw-console-title">CORE DEMO · 1'07" · 英文配音 · EN/ZH 字幕</span>
-      <span class="aw-console-meta">真实界面录制 · 隔离 Mock 场景</span>
-    </figcaption>
-    <div class="aw-console-body">
-<video controls preload="metadata" :poster="'/AgentWorkShop/demo/agentworkshop-core-demo-poster.png'" :src="'/AgentWorkShop/demo/agentworkshop-core-demo.mp4'" style="display:block;width:100%;background:#000">
-  <track kind="captions" label="English" srclang="en" src="/AgentWorkShop/demo/agentworkshop-core-demo.en.vtt" default>
-  <track kind="captions" label="简体中文" srclang="zh-Hans" src="/AgentWorkShop/demo/agentworkshop-core-demo.zh-Hans.vtt">
-</video>
+</div><p class="aw-console-cap"><b>事件流的空间视图。</b>设备、通道、趋势和告警共享同一运行时数据。</p></figure>
+<figure class="aw-console"><figcaption class="aw-console-bar"><span class="aw-console-tag">FIG.02</span><span class="aw-console-title">DAQ · 实时采集</span></figcaption><div class="aw-console-body">
+
+![DAQ 数据采集控制台与节点台账](/daq.png)
+
+</div><p class="aw-console-cap"><b>现场数据有迹可循。</b>查看节点状态、采样值与数据流转。</p></figure>
+<figure class="aw-console"><figcaption class="aw-console-bar"><span class="aw-console-tag">FIG.03</span><span class="aw-console-title">LINE OPS · 产线运营</span></figcaption><div class="aw-console-body">
+
+![产线管理页面中的产线、产品与配方](/line-ops.png)
+
+</div><p class="aw-console-cap"><b>配方与批次绑定。</b>产线、产品、配方和运行状态在同一处管理。</p></figure>
 </div>
-    <p class="aw-console-cap">
-      <b>从统一工作空间到隔离的模拟产线。</b>
-      频道模板 → 三角色团队控制台 → 产线清单与待机状态。演示线包含一个控制节点、一个产品和一个配方；使用隔离的 Mock PLC，产线保持停止，未连接真实设备，也未发送控制命令。
-    </p>
-  </figure>
+</section>
 
-
-  <figure class="aw-console">
-    <figcaption class="aw-console-bar">
-      <span class="aw-console-tag">FIG.01</span>
-      <span class="aw-console-title">DIGITAL TWIN · 产线孪生总览</span>
-      <span class="aw-console-meta">THREE.JS · 实时事件流</span>
-    </figcaption>
-    <div class="aw-console-body">
-
-![数字孪生控制室 —— 产线设备、数采通道、趋势分析与设备监控实时同屏](/town.png)
-
-</div>
-    <p class="aw-console-cap">
-      <b>孪生就是同一条事件总线的渲染结果。</b>
-      设备台账、数采通道、实时趋势、报警横条与设备健康同屏;右上角是实时渲染读数(129 FPS),
-      画质阶梯(DPR / 阴影 / 泛光)按墙钟帧预算自适应,中端机器上也保持诚实。
-    </p>
-  </figure>
-
-  <div class="aw-figs">
-
-  <figure class="aw-console">
-    <figcaption class="aw-console-bar">
-      <span class="aw-console-tag">FIG.02</span>
-      <span class="aw-console-title">DAQ CONSOLE · 数采中心</span>
-      <span class="aw-console-meta">51 节点 · WS 直推</span>
-    </figcaption>
-    <div class="aw-console-body">
-
-![数采中心 —— 量规统计带、逐节点台账、采样周期与 WS 直推状态](/daq.png)
-
-</div>
-    <p class="aw-console-cap">
-      <b>端到端的采集链路。</b>
-      量规统计带(节点 / 发布 / 消费 / 丢失 / 入库)之下是逐节点台账:实时值、采样周期、
-      WS 直推状态与驱动类型;控制节点还会沿写链路同一套标定读回 SET / ACT。
-    </p>
-  </figure>
-
-  <figure class="aw-console">
-    <figcaption class="aw-console-bar">
-      <span class="aw-console-tag">FIG.03</span>
-      <span class="aw-console-title">LINE OPERATIONS · 产线运营</span>
-      <span class="aw-console-meta">产线 · 产品 · 配方 · 批次</span>
-    </figcaption>
-    <div class="aw-console-body">
-
-![产线运营 —— 产线卡片、配方绑定、控制节点计数与开跑入口](/line-ops.png)
-
-</div>
-    <p class="aw-console-cap">
-      <b>开跑一条产线 = 用配方窗口为采集设门。</b>
-      此后每个样本都自动打上「产品 / 配方 / 批次」标识;控制节点只定义分类参数与工艺量程,
-      真正下发仍要过联锁与审批。
-    </p>
-  </figure>
-
-  </div>
-
-  </section>
-
-  <section class="hw-sec">
-    <div class="hw-sec-head">
-      <span class="hw-sec-no">02</span>
-      <h2 class="hw-sec-title">架构</h2>
-      <span class="hw-sec-en">ARCHITECTURE</span>
-    </div>
-    <div class="hw-sec-rule"></div>
-    <p class="hw-lead">
-      一个 manager 坐在每扇门后:四个入口汇入同一运行时;工业栈与 Agent
-      运行时共享同一事件总线。每一格都是仓库里可点开的真实模块。
-    </p>
-    <div class="hw-arch">
-      <div class="hw-layer">
-        <div class="hw-layer-tag"><span class="l1">入口</span><span class="l2">ENTRY</span></div>
-        <div class="hw-cells">
-          <div class="hw-cell"><span class="c1">WS</span><span class="c2">AEP v1 事件流 · seq 续传</span></div>
-          <div class="hw-cell"><span class="c1">MCP</span><span class="c2">25 个进程内工具(+ 38 工具 stdio 网关)</span></div>
-          <div class="hw-cell"><span class="c1">A2A</span><span class="c2">JSON-RPC 2.0 + AgentCard</span></div>
-          <div class="hw-cell"><span class="c1">REST</span><span class="c2">/api/workshop/**</span></div>
-        </div>
-      </div>
-      <div class="hw-layer">
-        <div class="hw-layer-tag"><span class="l1">运行时</span><span class="l2">RUNTIME</span></div>
-        <div class="hw-cells">
-          <div class="hw-cell"><span class="c1">AgentChannelManager</span><span class="c2">频道与实例编排</span></div>
-          <div class="hw-cell"><span class="c1">SchedulerLoop</span><span class="c2">lead 监督 · 规则引擎兜底</span></div>
-          <div class="hw-cell"><span class="c1">TaskEngine</span><span class="c2">7 态任务机</span></div>
-          <div class="hw-cell"><span class="c1">AgentMemory</span><span class="c2">FTS5 + 可选向量</span></div>
-        </div>
-      </div>
-      <div class="hw-layer">
-        <div class="hw-layer-tag"><span class="l1">工业栈</span><span class="l2">INDUSTRIAL</span></div>
-        <div class="hw-cells">
-          <div class="hw-cell"><span class="c1">DAQ 网关</span><span class="c2">逐节点边缘运行时</span></div>
-          <div class="hw-cell"><span class="c1">DCW 写控</span><span class="c2">联锁 → HITL → 回读</span></div>
-          <div class="hw-cell"><span class="c1">队列</span><span class="c2">inproc / MQTT · 离线缓冲</span></div>
-          <div class="hw-cell"><span class="c1">TSDB</span><span class="c2">SQLite / Timescale</span></div>
-        </div>
-      </div>
-      <div class="hw-layer">
-        <div class="hw-layer-tag"><span class="l1">执行引擎</span><span class="l2">HARNESS ×14</span></div>
-        <div class="hw-cells c2col">
-          <div class="hw-cell"><span class="c1">mock</span><span class="c2">进程内 · 剧本</span></div>
-          <div class="hw-cell"><span class="c1">claude</span><span class="c2">进程内 · Agent SDK</span></div>
-        </div>
-      </div>
-      <div class="hw-layer hw-sub">
-        <div class="hw-layer-tag"><span class="l1">常驻会话</span><span class="l2">PERSISTENT · 6</span></div>
-        <div class="hw-cells c6col">
-          <div class="hw-cell"><span class="c1">omp</span><span class="c2">stdio RPC</span></div>
-          <div class="hw-cell"><span class="c1">codex</span><span class="c2">app-server JSON-RPC</span></div>
-          <div class="hw-cell"><span class="c1">dsh</span><span class="c2">ACP v1</span></div>
-          <div class="hw-cell"><span class="c1">qwen</span><span class="c2">ACP(旧版 Zed)</span></div>
-          <div class="hw-cell"><span class="c1">hermes</span><span class="c2">ACP v1</span></div>
-          <div class="hw-cell"><span class="c1">opencode</span><span class="c2">serve + HTTP/SSE</span></div>
-        </div>
-      </div>
-      <div class="hw-layer hw-sub">
-        <div class="hw-layer-tag"><span class="l1">无头 CLI</span><span class="l2">HEADLESS · 6</span></div>
-        <div class="hw-cells c6col">
-          <div class="hw-cell"><span class="c1">gemini</span><span class="c2">stream-json</span></div>
-          <div class="hw-cell"><span class="c1">copilot</span><span class="c2">JSONL</span></div>
-          <div class="hw-cell"><span class="c1">cursor</span><span class="c2">stream-json</span></div>
-          <div class="hw-cell"><span class="c1">crush</span><span class="c2">run -q</span></div>
-          <div class="hw-cell"><span class="c1">goose</span><span class="c2">stream-json</span></div>
-          <div class="hw-cell"><span class="c1">pi</span><span class="c2">-p --mode json</span></div>
-        </div>
-      </div>
-    </div>
-    <p class="hw-flow-note">
-      采样:<i>驱动 → 队列 → 消费泵</i> 三路分发(WS 直推 · TSDB 落库 · 孪生回写)&nbsp;&nbsp;|&nbsp;&nbsp;
-      下发:<i>联锁 → 审批 → PLC 写入 → 回读校验</i>&nbsp;&nbsp;|&nbsp;&nbsp;存储:<i>SQLite(channels · agents · tasks · messages · events)</i>
-    </p>
-  </section>
-
-  <section class="hw-sec">
-    <div class="hw-sec-head">
-      <span class="hw-sec-no">03</span>
-      <h2 class="hw-sec-title">设计思路</h2>
-      <span class="hw-sec-en">DESIGN PRINCIPLES</span>
-    </div>
-    <div class="hw-sec-rule"></div>
-    <div class="hw-prin">
-      <div class="hw-p">
-        <span class="no">01</span>
-        <h3>服务端权威</h3>
-        <p>界面是事实的渲染,不是事实的来源。节点、任务、授权以服务端为唯一事实源——有多少 Node,界面就有多少数采点。</p>
-      </div>
-      <div class="hw-p">
-        <span class="no">02</span>
-        <h3>数据面强制</h3>
-        <p>产线权限三态(无权/仅查看/可操控)在数据面执行:无权产线的信息不离开服务端,而不是靠前端隐藏。</p>
-      </div>
-      <div class="hw-p">
-        <span class="no">03</span>
-        <h3>诚实可观测</h3>
-        <p>丢弃计数、丢失指标、管线水位全部真实暴露;审计日志三源归属到「Channel/成员」。<code>window.__townStats</code> 连渲染指标也不说谎。</p>
-      </div>
-      <div class="hw-p">
-        <span class="no">04</span>
-        <h3>配置驱动</h3>
-        <p><code>config.yml &lt; runtime-settings &lt; env</code>,同一份描述符同时驱动 CLI 与设置页——126 个设置项(42 live / 84 restart),代码零硬编码默认。</p>
-      </div>
-      <div class="hw-p">
-        <span class="no">05</span>
-        <h3>协议真实验证</h3>
-        <p>E2E 跑在真实 Modbus/OPC UA/MQTT/HTTP 栈上:真写 PLC、真回读、真审批——不是 mock 自证。2026-09-24 生产构建全覆盖验收约 1100+ 条真实断言全过(闭环 98/0 · 协议矩阵 46/0;v0.7.20 历史基线 156 项)。</p>
-      </div>
-      <div class="hw-p">
-        <span class="no">06</span>
-        <h3>人在环路</h3>
-        <p>Agent 提议,人批准,系统执行,全程留痕。manual 绑定的下发挂起待审,批准即真实写入,裁决人入审计日志。</p>
-      </div>
-    </div>
-  </section>
-
-  <section class="hw-sec">
-    <div class="hw-sec-head">
-      <span class="hw-sec-no">04</span>
-      <h2 class="hw-sec-title">能力全景</h2>
-      <span class="hw-sec-en">CAPABILITIES</span>
-    </div>
-    <div class="hw-sec-rule"></div>
-    <div class="hw-feats">
-      <div class="hw-f"><span class="tag">PROTOCOL</span><h3>六协议数采与数控</h3><p>Modbus TCP/RTU · OPC UA · MQTT · HTTP 双向驱动 + 内置串口插件(RS-232/485 直连)——连接池、故障分类诊断、逐驱动连接测试;协议即插件,新协议注入后前端表单零改动。</p></div>
-      <div class="hw-f"><span class="tag">R/W</span><h3>数控读写一体</h3><p>每个控制节点沿写链路同一套标定读回 PLC 当前值——SET 与 ACT 并排呈现,读为被动观测,不经过写联锁。</p></div>
-      <div class="hw-f"><span class="tag">HITL</span><h3>人机协同写控</h3><p>安全量程 ∩ 配方窗口联锁 → 人工审批 → PLC 写入 → 回读校验 → 签名写历史;裁决人留痕审计。</p></div>
-      <div class="hw-f"><span class="tag">RCT</span><h3>Recipe 版本化治理</h3><p>参数按版本入史(来源+操作者+原因),一键回退任意版本或最近一次良好批次——非破坏,历史完整。</p></div>
-      <div class="hw-f"><span class="tag">BATCH</span><h3>取数默认按当前批次</h3><p><code>daq_query</code> 自动解析活动批次,按 <code>run_id</code> + <code>recipe_id</code> 过滤——换配方后 Agent 取到的永远是当前运行配方的样本,表头回显口径;跨配方复盘传 <code>scope:'all'</code>。</p></div>
-      <div class="hw-f"><span class="tag">TWIN</span><h3>混合孪生 × MPC</h3><p>灰箱物理主干 + 有界 PyTorch 残差;TwinSnapshot / VirtualTrial / RecommendationCertificate 配 UQ/OOD 与全轨迹门禁,<code>hybrid_twin</code> profile 注入 12 个 twin/mpc 工具,默认只推荐不落写。</p></div>
-      <div class="hw-f"><span class="tag">HRN</span><h3>多引擎 Agent 团队</h3><p>十四个引擎一个契约(进程内 / 常驻会话 / 无头 CLI 三类),每频道可选 harness → provider → model;可用性探测 + 执行前强校验。</p></div>
-      <div class="hw-f"><span class="tag">TEAM</span><h3>团队级插件开关</h3><p>每 Channel 独立插件开关组——被关闭插件的工具不注入该团队;插件本体热管理。</p></div>
-      <div class="hw-f"><span class="tag">PERM</span><h3>产线级权限</h3><p>三态授权在数据面强制,无权产线信息不离开服务端;Agent 绑定校验产线授权。</p></div>
-      <div class="hw-f"><span class="tag">OPS</span><h3>全操作审计日志</h3><p>用户/Agent/系统三源归属「Channel/成员」,按产线/Recipe/来源检索,WS 实时推送。</p></div>
-      <div class="hw-f"><span class="tag">MEM</span><h3>持久记忆</h3><p>私有 + 共享双域,FTS5 CJK 切分,可选向量混合检索;团队编年史与空闲反思持续沉淀。</p></div>
-      <div class="hw-f"><span class="tag">CHAT</span><h3>Channel 群聊作业</h3><p>成员请求升级为可追踪作业而非一条会丢的消息;原生 HITL(omp ask → 审批 → 回执),成员权限与通知一等公民。</p></div>
-      <div class="hw-f"><span class="tag">SCHED</span><h3>定时任务</h3><p>interval / daily 双模式挂任意 Channel 任务——逐次运行历史、忙等守卫、连续失败熔断,巡线无人值守。</p></div>
-      <div class="hw-f"><span class="tag">QOS</span><h3>根任务队列与租约</h3><p>FIFO 根队列带可见排队位次;排队等待不消耗执行预算,lead 救援扫自动复活失活入场;派发代 + 执行租约围栏丢弃迟到事件;监督看门狗区分卡死与慢。</p></div>
-      <div class="hw-f"><span class="tag">PROD</span><h3>生产化硬化(v0.7.58)</h3><p>保写心跳生命周期治理(失败写不占位 · 变更点清值 · 产线活动门);mock 静默兜底封堵;帧像素 sha256 指纹 + 对象存储按天 GC(删前 DB 交叉校验);Timescale 按天 chunk + 列存压缩;堆水位监控 + 子进程自动重生;治理窗落盘;grant 复核并入频道绑线。</p></div>
-      <div class="hw-f"><span class="tag">DATA</span><h3>数据分析台账(v0.7.62)</h3><p>analysis_save / analysis_query 原生工具落账分析结论(产线×配方×时间窗),Agent 只增、人类修订留痕;/analysis 页多维检索实时前插;diag_run 后台跑 IDD 六种分析意图(根因/产线报告/快筛/DOE/经验挖掘/优化战役)按 taskId 查进度;改删与可见性全受产线级权限门控。</p></div>
-      <div class="hw-f"><span class="tag">EDA</span><h3>数据管理台与 EDA 工坊(/data · /studio)</h3><p>三形态数据(标量/数组断面/CCD 图像)多字段复合查询、批量导出作业台账(manifest+merged.csv)与 WS 实时镜像;工坊提供图表与栅格看板、golden 相位参考轨迹偏差分、FDC 特征参考带判定、SPC 控制图(Nelson/I-MR/EWMA/CUSUM)、共性分析、OCAP 处置单、虚拟量测(OOD 拒判)与派生数据集,全受产线权限与引用预检约束。</p></div>
-      <div class="hw-f"><span class="tag">OPT</span><h3>工艺优化器与求解器(v0.7.71)</h3><p>端到端参数优化链:过程模型(谱系 verified 数据集+资格门)→ AML 训练(G1–G3 门禁)→ Profile 冻结绑定 → ProblemIR 编译(哈希锁定)→ OSQP/SLSQP 求解 worker(进程池/超时降级/NaN fail-closed)→ TS 独立重算交叉核验(≤1e-6)→ 治理下发(HITL 单咽喉+八重复核+设备回读 ackSummary)。Agent 工具、REST、MCP 三入口同链,优化器五件套仅有效绑定注入。</p></div>
-      <div class="hw-f"><span class="tag">GOV</span><h3>工具面声明式治理(v0.7.71)</h3><p>引用校验规则上收为工具定义的 references 声明(104 个宿主工具全显式声明,注册期登记制:写族未声明拒登记);插件工具声明后才走同一校验并全量审计;每 Agent 专属全量工具 stdio 桥(ETag/304 增量轮询);token 支持轮换+宽限窗,列表只回尾 4 位;数采推送兜底强制产线 operate 权限+回填窗默认 ±1h。</p></div>
-      <div class="hw-f"><span class="tag">ONTO</span><h3>本体服务(v0.8.0)</h3><p>面向控制的本体:10 类实体 × 8 种封闭关系 × 三级证据 × 五态生命周期;编译四类工件(过程模型 / ProblemIR 增量 / 场景契约 / 控制守卫),只收紧不变量 + 逐规则 Rule Trace;运行守卫对状态未知 fail-closed,本体哈希与求解 IR 分域。/ontology 六 tab 管理台（图 tab 为可交互节点-边视图，节点抽屉支持 1/2 跳邻接）+ 10 件 Agent 工具。</p></div>
-      <div class="hw-f"><span class="tag">LOOP</span><h3>AI 先行模型闭环(v0.8.0)</h3><p>Agent 亲手创建虚拟模型:场景发现 → 人批准冻结 → 物理规格骨架 → 真采快照 → 虚弱试验;训练出新模型后用 optimizer_profile_propose 提议采纳,HITL 批准即发布+自动重绑,下一次求解即用新模型——连续两轮 v1→v2→v3 真机验证,全程零设备写入。</p></div>
-    </div>
-  </section>
-
-  <section class="hw-sec">
-    <div class="hw-sec-head">
-      <span class="hw-sec-no">05</span>
-      <h2 class="hw-sec-title">应用前景</h2>
-      <span class="hw-sec-en">APPLICATIONS</span>
-    </div>
-    <div class="hw-sec-rule"></div>
-    <div class="hw-scenes">
-      <div class="hw-sc">
-        <span class="ico">S.1</span>
-        <div class="bd">
-          <h3>产线监督与孪生运维</h3>
-          <p>多产线设备、数采通道、告警与趋势在一张 3D 总览上;秒级软实时,浏览器随处可达。</p>
-        </div>
-      </div>
-      <div class="hw-sc">
-        <span class="ico">S.2</span>
-        <div class="bd">
-          <h3>Agent 辅助工艺优化</h3>
-          <p>「分析趋势 → 提议设定值 → 人工批准 → 写入回读 → 数值判定」的受控闭环,每一步可审计、可回退。</p>
-        </div>
-      </div>
-      <div class="hw-sc">
-        <span class="ico">S.3</span>
-        <div class="bd">
-          <h3>工业 AI 教学与科研</h3>
-          <p>六协议数采/写控(串口即插件)、多引擎编排、真实模拟器栈开箱即用——论文与课程的实验床,协议真实验证。</p>
-        </div>
-      </div>
-      <div class="hw-sc">
-        <span class="ico">S.4</span>
-        <div class="bd">
-          <h3>平台化二次开发</h3>
-          <p>SDK 类型化 REST 客户端 + 插件注册驱动/处理器/工具;四入口把能力开放给外部系统与 Agent。</p>
-        </div>
-      </div>
-    </div>
-    <div class="hw-note">
-      <span class="t">定位</span>
-      <p>AgentWorkShop 是监督层(SCADA 同位),运行在秒级软实时。它不是硬实时控制器:任何 &lt;10 ms 的关键回路(联锁/安全/伺服)必须留在 PLC 内——此处写入的设定值是建议值,产线侧逻辑可以否决。</p>
-    </div>
-  </section>
-
-  <section class="hw-cta-sec">
-    <div class="hw-sec-head">
-      <span class="hw-sec-no">06</span>
-      <h2 class="hw-sec-title">一分钟上手</h2>
-      <span class="hw-sec-en">QUICK START</span>
-    </div>
-    <div class="hw-sec-rule"></div>
+<section class="hw-cta-sec">
+<div class="hw-sec-head"><span class="hw-sec-no">02</span><h2 class="hw-sec-title">一分钟开始</h2><span class="hw-sec-en">QUICK START</span></div>
+<div class="hw-sec-rule"></div>
+<p class="hw-lead">需要 Node.js 23.4.0 或更高版本。全局安装会自动准备配置目录，启动后即可打开本机界面。</p>
 
 ```bash
-# 全局安装,任意目录启动(发布包自带预构建产物,无需再构建)
-npm i -g agentworkshop
-aw start            # → http://localhost:3001 · 配置根 ~/.AgentWorkShop
+npm install -g agentworkshop
+aw start
+# http://localhost:3001
 ```
 
-  <p class="hw-lead" style="margin-top:22px">
-    深入一步:<a href="/AgentWorkShop/guide/first-session">第一次 Agent × 产线会话</a>(约 2 分钟跑通全链) ·
-    <a href="/AgentWorkShop/sdk/">SDK 开发指南</a> ·
-    <a href="/AgentWorkShop/plugins/">插件开发指南</a> ·
-    <a href="/AgentWorkShop/cli/">aw CLI 手册</a>
-  </p>
+<p class="hw-lead">初次使用请先接入模拟器或非生产环境。真实产线连接前，请阅读<a href="/AgentWorkShop/guide/dcw-read-write">写控制指南</a>并检查权限、联锁与人工审批配置。</p>
+<p class="hw-lead">继续阅读：<a href="/AgentWorkShop/guide/getting-started">完整上手指南</a> · <a href="/AgentWorkShop/guide/first-session">首次 Agent × 产线会话</a> · <a href="https://github.com/kingdol666/AgentWorkShop/blob/main/README-zh.md">源码仓库 README</a></p>
+</section>
 
-  </section>
+<section class="hw-sec">
+<div class="hw-sec-head"><span class="hw-sec-no">03</span><h2 class="hw-sec-title">一套运行时，几条清晰边界</h2><span class="hw-sec-en">ARCHITECTURE</span></div>
+<div class="hw-sec-rule"></div>
+<p class="hw-lead">Web、CLI 与外部 Agent 进入同一运行时。采集数据进入共享事件流；控制请求通过授权与边界校验，节点绑定启用 manual 模式时再经人工审批。</p>
+<div class="hw-arch">
+<div class="hw-layer"><div class="hw-layer-tag"><span class="l1">入口</span><span class="l2">ENTRY</span></div><div class="hw-cells"><div class="hw-cell"><span class="c1">WebSocket</span><span class="c2">实时事件流</span></div><div class="hw-cell"><span class="c1">REST</span><span class="c2">平台 API</span></div><div class="hw-cell"><span class="c1">MCP</span><span class="c2">工具接入</span></div><div class="hw-cell"><span class="c1">A2A</span><span class="c2">Agent 互通</span></div></div></div>
+<div class="hw-layer"><div class="hw-layer-tag"><span class="l1">Agent 运行时</span><span class="l2">RUNTIME</span></div><div class="hw-cells"><div class="hw-cell"><span class="c1">Channels</span><span class="c2">团队与任务</span></div><div class="hw-cell"><span class="c1">Scheduler</span><span class="c2">派发与监督</span></div><div class="hw-cell"><span class="c1">Memory</span><span class="c2">持久记忆</span></div><div class="hw-cell"><span class="c1">Engines ×14</span><span class="c2">统一适配契约</span></div></div></div>
+<div class="hw-layer"><div class="hw-layer-tag"><span class="l1">工业边界</span><span class="l2">GOVERNANCE</span></div><div class="hw-cells"><div class="hw-cell"><span class="c1">DAQ</span><span class="c2">采集与历史数据</span></div><div class="hw-cell"><span class="c1">Permissions</span><span class="c2">产线级授权</span></div><div class="hw-cell"><span class="c1">Interlock + HITL</span><span class="c2">工艺边界校验；manual 模式下审批</span></div><div class="hw-cell"><span class="c1">Readback</span><span class="c2">设备回读与审计</span></div></div></div>
+<div class="hw-layer"><div class="hw-layer-tag"><span class="l1">持久化与呈现</span><span class="l2">DATA · UI</span></div><div class="hw-cells"><div class="hw-cell"><span class="c1">SQLite</span><span class="c2">运行时状态</span></div><div class="hw-cell"><span class="c1">TimescaleDB</span><span class="c2">可选时序存储</span></div><div class="hw-cell"><span class="c1">3D Twin</span><span class="c2">事件流空间呈现</span></div><div class="hw-cell"><span class="c1">Audit</span><span class="c2">操作记录</span></div></div></div>
+</div>
+<p class="hw-flow-note">采集：<i>设备 → 驱动 → 事件流 → 趋势 / 孪生 / Agent</i>　｜　控制：<i>授权 → 工艺边界 →（manual 模式下审批）→ 写入 → 回读</i></p>
+</section>
 
-  <section class="hw-sec">
-    <div class="hw-sec-head">
-      <span class="hw-sec-no">07</span>
-      <h2 class="hw-sec-title">研究论文</h2>
-      <span class="hw-sec-en">RESEARCH PAPER</span>
-    </div>
-    <div class="hw-sec-rule"></div>
-    <p class="hw-lead">
-      平台机制已写成投稿级论文:<strong>《Grading Machine-Originated Plant Writes: Separately
-      Inspectable Evidence for Industrial Agent Teams》</strong>(IEEE Transactions on Industrial
-      Informatics 匿名评审稿,IEEEtran 双栏 10 页),源文件与编译稿在仓库
-      <code>paper/tii/SUBMISSION-IEEE-TII/</code>。论文的机制主张由仓库内归档证据支撑:
-      <code>docs/benchmarks/</code>(2026-10 部署级回归战役:14 次流水线执行、1134 项检查零失败,
-      含分级写确认与 HITL 证据腿)、<code>docs/experiments/</code>(铸膜闭环报告)与
-      <code>docs/audit/</code>(验收报告)。<code>AW_BENCH_MODE=1</code> 可按
-      <code>bench/PIPELINE.md</code> 本地复跑同一条论文流水线。
-    </p>
-  </section>
+<section class="hw-sec">
+<div class="hw-sec-head"><span class="hw-sec-no">04</span><h2 class="hw-sec-title">核心能力</h2><span class="hw-sec-en">CAPABILITIES</span></div>
+<div class="hw-sec-rule"></div>
+<div class="hw-feats">
+<div class="hw-f"><span class="tag">AGENTS</span><h3>多引擎团队协作</h3><p>14 种引擎共用统一契约，支持主从团队、任务编排、定时执行与持久记忆。<br><a href="/AgentWorkShop/guide/multi-harness">了解 Agent 团队 →</a></p></div>
+<div class="hw-f"><span class="tag">INDUSTRIAL I/O</span><h3>现场采集与控制</h3><p>六种协议连接设备与数据源；实时遥测、配方和批次历史进入同一数据链路。<br><a href="/AgentWorkShop/guide/daq-protocols">查看协议指南 →</a></p></div>
+<div class="hw-f"><span class="tag">GOVERNANCE</span><h3>带边界的写控制</h3><p>产线授权、量程与配方联锁、可选 HITL 审批、PLC 回读和审计共同构成写入闭环。<br><a href="/AgentWorkShop/guide/dcw-read-write">查看写控制指南 →</a></p></div>
+<div class="hw-f"><span class="tag">TWIN · AML</span><h3>孪生与模型闭环</h3><p>通过数字孪生、自动建模实验室和本体服务理解现场，并在资格门控下开展优化。<br><a href="/AgentWorkShop/guide/aml">了解 AML →</a></p></div>
+<div class="hw-f"><span class="tag">OPERATIONS</span><h3>配方、批次与权限</h3><p>按产线范围组织数据与操作，管理配方版本、批次历史、权限和审计。<br><a href="/AgentWorkShop/guide/line-permissions">了解产线权限 →</a></p></div>
+<div class="hw-f"><span class="tag">EXTENSIONS</span><h3>API、SDK 与插件</h3><p>使用 REST、WebSocket、MCP、A2A、TypeScript SDK、CLI 和插件连接现有系统。<br><a href="/AgentWorkShop/plugins/">查看扩展文档 →</a></p></div>
+</div>
+</section>
 
-  <section class="hw-final">
-    <h2>把 Agent 接到真实产线上</h2>
-    <p>
-      14 个执行引擎、6 种现场协议、126 个运行时设置项和 1100+ 条基础波验收断言(另有补充波报告)都已经在仓库里。
-      监督层,秒级软实时;协议真实,断言可复跑。
-    </p>
-    <div class="hw-cta">
-      <a class="hw-btn primary" href="/AgentWorkShop/guide/getting-started">快速开始 <span class="arr">→</span></a>
-      <a class="hw-btn" href="https://github.com/kingdol666/AgentWorkShop">在 GitHub 上查看 <span class="arr">↗</span></a>
-      <a class="hw-btn quiet" href="/AgentWorkShop/guide/license">许可协议 <span class="arr">→</span></a>
-    </div>
-  </section>
+<section class="hw-sec">
+<div class="hw-sec-head"><span class="hw-sec-no">05</span><h2 class="hw-sec-title">适用场景与安全边界</h2><span class="hw-sec-en">USE CASES · SCOPE</span></div>
+<div class="hw-sec-rule"></div>
+<div class="hw-scenes">
+<div class="hw-sc"><span class="ico">01</span><div class="bd"><h3>产线监督与运营</h3><p>在统一界面查看设备、采集通道、配方、批次、趋势和告警。</p></div></div>
+<div class="hw-sc"><span class="ico">02</span><div class="bd"><h3>Agent 辅助分析</h3><p>让团队基于有范围的数据分析工艺趋势、形成建议并保留依据。</p></div></div>
+<div class="hw-sc"><span class="ico">03</span><div class="bd"><h3>工业 AI 研究与教学</h3><p>用协议适配器、模拟环境和统一 Agent 契约构建可复现工作流。</p></div></div>
+<div class="hw-sc"><span class="ico">04</span><div class="bd"><h3>系统集成与扩展</h3><p>通过 SDK、API 与插件将平台能力接入现有软件和工程流程。</p></div></div>
+</div>
+<div class="hw-note"><span class="t">边界</span><p>AgentWorkShop 是秒级软实时监督层，不是 PLC、SIS 或硬实时控制器。任何安全联锁、伺服与毫秒级闭环必须留在现场控制系统；此处的建议值仍受现场逻辑约束。</p></div>
+</section>
 
+<section class="hw-final">
+<h2>从指南开始，按你的现场逐步扩展</h2>
+<p>先熟悉本机运行与模拟工作流，再配置现场协议、权限和受审批的控制链路。完整说明、API 契约与研究证据均可从文档站进入。</p>
+<div class="hw-cta"><a class="hw-btn primary" href="/AgentWorkShop/guide/getting-started">打开快速上手 <span class="arr">→</span></a><a class="hw-btn" href="/AgentWorkShop/sdk/">SDK <span class="arr">→</span></a><a class="hw-btn" href="/AgentWorkShop/plugins/">插件开发 <span class="arr">→</span></a><a class="hw-btn quiet" href="https://github.com/kingdol666/AgentWorkShop/tree/main/docs/audit">验收记录 <span class="arr">↗</span></a></div>
+</section>
 </div>

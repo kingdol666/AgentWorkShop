@@ -530,6 +530,32 @@
   width: 100%;
 }
 
+.aw-console-body video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  background: var(--aw-code-bg);
+}
+
+@media (min-width: 1280px) {
+  .VPDoc.has-aside:has(.aw-demo-page) .container {
+    max-width: 1280px;
+  }
+
+  .VPDoc.has-aside:has(.aw-demo-page) .aside {
+    display: none;
+  }
+
+  .VPDoc.has-aside:has(.aw-demo-page) .content {
+    width: 100%;
+    max-width: none;
+  }
+
+  .VPDoc.has-aside:has(.aw-demo-page) .content-container {
+    max-width: 960px;
+  }
+}
+
 /* 图体内的 <p> 来自 markdown 图像段落,会被 .vp-doc p 的 76ch 阅读宽钳住
    (窄栏图 566px 不触发,整宽图只渲染 ~765px,右侧留白)。这里显式放开并贴边。 */
 .aw-console-body p {

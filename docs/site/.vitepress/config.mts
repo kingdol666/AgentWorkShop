@@ -4,52 +4,76 @@ import { defineConfig } from 'vitepress'
 const zhNav = [
   { text: '指南', link: '/guide/getting-started' },
   { text: '产品演示', link: '/demo' },
-  { text: 'SDK', link: '/sdk/' },
-  { text: '插件', link: '/plugins/' },
-  { text: 'CLI', link: '/cli/' },
+  { text: '开发者', items: [
+    { text: 'SDK', link: '/sdk/' },
+    { text: '插件开发', link: '/plugins/' },
+    { text: 'CLI', link: '/cli/' },
+  ] },
   { text: '许可协议', link: '/guide/license' },
   { text: 'GitHub', link: 'https://github.com/kingdol666/AgentWorkShop' },
 ]
 const enNav = [
   { text: 'Guide', link: '/en/guide/getting-started' },
   { text: 'Product demo', link: '/en/demo' },
-  { text: 'SDK', link: '/en/sdk/' },
-  { text: 'Plugins', link: '/en/plugins/' },
-  { text: 'CLI', link: '/en/cli/' },
+  { text: 'Developers', items: [
+    { text: 'SDK', link: '/en/sdk/' },
+    { text: 'Plugin development', link: '/en/plugins/' },
+    { text: 'CLI', link: '/en/cli/' },
+  ] },
   { text: 'License', link: '/en/guide/license' },
   { text: 'GitHub', link: 'https://github.com/kingdol666/AgentWorkShop' },
 ]
 const zhGuide = [
-  { text: '快速开始', link: '/guide/getting-started' },
-  { text: '配置系统', link: '/guide/configuration' },
-  { text: '六协议数采与数控', link: '/guide/daq-protocols' },
-  { text: '数控读写集成', link: '/guide/dcw-read-write' },
-  { text: 'HITL 人机协同审批', link: '/guide/hitl' },
-  { text: 'Recipe 版本管理', link: '/guide/recipe-versions' },
-  { text: '多 Harness Agent 团队', link: '/guide/multi-harness' },
-  { text: 'AML 自动建模', link: '/guide/aml' },
-  { text: '本体与 AI 先行模型闭环', link: '/guide/ontology' },
-  { text: '数据分析台账', link: '/guide/analysis-reports' },
-  { text: '产线级权限', link: '/guide/line-permissions' },
-  { text: '第一次 Agent × 产线会话', link: '/guide/first-session' },
-  { text: '版本历史', link: '/guide/changelog' },
-  { text: '许可协议', link: '/guide/license' },
+  { text: '入门', items: [
+    { text: '快速开始', link: '/guide/getting-started' },
+    { text: '第一次 Agent × 产线会话', link: '/guide/first-session' },
+    { text: '配置系统', link: '/guide/configuration' },
+  ] },
+  { text: '现场数据与控制', items: [
+    { text: '六协议数采', link: '/guide/daq-protocols' },
+    { text: '数控读写集成', link: '/guide/dcw-read-write' },
+    { text: 'HITL 人机协同审批', link: '/guide/hitl' },
+    { text: 'Recipe 版本管理', link: '/guide/recipe-versions' },
+    { text: '产线级权限', link: '/guide/line-permissions' },
+  ] },
+  { text: 'Agent 团队', items: [
+    { text: '多 Harness Agent 团队', link: '/guide/multi-harness' },
+  ] },
+  { text: '建模与分析', items: [
+    { text: 'AML 自动建模', link: '/guide/aml' },
+    { text: '本体与 AI 先行模型闭环', link: '/guide/ontology' },
+    { text: '数据分析台账', link: '/guide/analysis-reports' },
+  ] },
+  { text: '参考', items: [
+    { text: '版本历史', link: '/guide/changelog' },
+    { text: '许可协议', link: '/guide/license' },
+  ] },
 ]
 const enGuide = [
-  { text: 'Getting started', link: '/en/guide/getting-started' },
-  { text: 'Configuration', link: '/en/guide/configuration' },
-  { text: 'Six-protocol DAQ & control', link: '/en/guide/daq-protocols' },
-  { text: 'Read-write DCW', link: '/en/guide/dcw-read-write' },
-  { text: 'HITL approvals', link: '/en/guide/hitl' },
-  { text: 'Recipe versioning', link: '/en/guide/recipe-versions' },
-  { text: 'Multi-harness agent teams', link: '/en/guide/multi-harness' },
-  { text: 'AML auto-modeling', link: '/en/guide/aml' },
-  { text: 'Ontology & AI-first model loop', link: '/en/guide/ontology' },
-  { text: 'Data-analysis ledger', link: '/en/guide/analysis-reports' },
-  { text: 'Line-level permissions', link: '/en/guide/line-permissions' },
-  { text: 'Your first agent × line session', link: '/en/guide/first-session' },
-  { text: 'Version history', link: '/en/guide/changelog' },
-  { text: 'License', link: '/en/guide/license' },
+  { text: 'Start here', items: [
+    { text: 'Getting started', link: '/en/guide/getting-started' },
+    { text: 'Your first agent × line session', link: '/en/guide/first-session' },
+    { text: 'Configuration', link: '/en/guide/configuration' },
+  ] },
+  { text: 'Field data and control', items: [
+    { text: 'Six-protocol DAQ', link: '/en/guide/daq-protocols' },
+    { text: 'Read-write DCW', link: '/en/guide/dcw-read-write' },
+    { text: 'HITL approvals', link: '/en/guide/hitl' },
+    { text: 'Recipe versioning', link: '/en/guide/recipe-versions' },
+    { text: 'Line-level permissions', link: '/en/guide/line-permissions' },
+  ] },
+  { text: 'Agent teams', items: [
+    { text: 'Multi-harness agent teams', link: '/en/guide/multi-harness' },
+  ] },
+  { text: 'Modeling and analysis', items: [
+    { text: 'AML auto-modeling', link: '/en/guide/aml' },
+    { text: 'Ontology and AI-first model loop', link: '/en/guide/ontology' },
+    { text: 'Data-analysis ledger', link: '/en/guide/analysis-reports' },
+  ] },
+  { text: 'Reference', items: [
+    { text: 'Version history', link: '/en/guide/changelog' },
+    { text: 'License', link: '/en/guide/license' },
+  ] },
 ]
 const zhSdk = [
   { text: '总览与获取', link: '/sdk/' },

@@ -1,978 +1,137 @@
 <div align="center">
 
-<img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/hero.png" alt="AgentWorkShop —— 让 Agent 团队运行真实产线" width="100%" />
-
-<br />
+<img src="./docs/readme-assets/hero.png" alt="AgentWorkShop 工业 Agent 运行时与产线孪生" width="100%" />
 
 # AgentWorkShop
 
-**AI Agent 团队与产线在此交汇。**
+**让 Agent 团队、工业数据与受治理的控制流程运行在同一平台。**
 
-[![npm version](https://img.shields.io/npm/v/agentworkshop?logo=npm&logoColor=white&label=npm&color=CB3837)](https://github.com/kingdol666/AgentWorkShop)
-[![npm downloads](https://img.shields.io/npm/dm/agentworkshop?logo=npm&logoColor=white&label=downloads&color=CB3837)](https://github.com/kingdol666/AgentWorkShop)
-[![GitHub release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/releases)
-[![Stars](https://img.shields.io/github/stars/kingdol666/AgentWorkShop?logo=github&label=stars&color=35e0a0)](https://github.com/kingdol666/AgentWorkShop/stargazers)
-[![Last commit](https://img.shields.io/github/last-commit/kingdol666/AgentWorkShop?logo=git&logoColor=white&label=last%20commit)](https://github.com/kingdol666/AgentWorkShop/commits)
-[![Issues](https://img.shields.io/github/issues/kingdol666/AgentWorkShop?logo=github&label=issues)](https://github.com/kingdol666/AgentWorkShop/issues)
-[![License](https://img.shields.io/badge/license-Apache%202.0-8A2BE2?logo=apache&logoColor=white)](./LICENSE)
+[![npm](https://img.shields.io/npm/v/agentworkshop?logo=npm&label=npm&color=CB3837)](https://www.npmjs.com/package/agentworkshop)
+[![release](https://img.shields.io/github/v/release/kingdol666/AgentWorkShop?logo=github&label=release)](https://github.com/kingdol666/AgentWorkShop/releases)
+[![license](https://img.shields.io/badge/license-Apache%202.0-35e0a0?logo=apache&logoColor=white)](./LICENSE)
+[![Node.js](https://img.shields.io/badge/Node.js-%E2%89%A5%2023.4-3C873A?logo=nodedotjs&logoColor=white)](https://nodejs.org)
+[![文档](https://img.shields.io/badge/docs-中英双语-41c8f4?logo=vitepress&logoColor=white)](https://kingdol666.github.io/AgentWorkShop)
 
-[![Nuxt 4](https://img.shields.io/badge/Nuxt-4-00DC82?logo=nuxt&logoColor=white)](https://nuxt.com)
-[![Vue 3.5](https://img.shields.io/badge/Vue-3.5-42B883?logo=vuedotjs&logoColor=white)](https://vuejs.org)
-[![TypeScript 5.7](https://img.shields.io/badge/TypeScript-5.7-3178C6?logo=typescript&logoColor=white)](https://www.typescriptlang.org)
-[![Node ≥ 23.4](https://img.shields.io/badge/Node.js-%E2%89%A5%2023.4-3C873A?logo=nodedotjs&logoColor=white)](https://nodejs.org)
-[![SQLite node:sqlite](https://img.shields.io/badge/SQLite-node%3Asqlite-003B57?logo=sqlite&logoColor=white)](https://nodejs.org/api/sqlite.html)
-[![Modbus · OPC UA · MQTT · HTTP](https://img.shields.io/badge/%E7%8E%B0%E5%9C%BA%E6%80%BB%E7%BA%BF-Modbus%20%C2%B7%20OPC%20UA%20%C2%B7%20MQTT%20%C2%B7%20HTTP-41c8f4?logo=siemens&logoColor=white)](./docs/site/guide/daq-protocols.md)
-[![Plugins](https://img.shields.io/badge/%E6%8F%92%E4%BB%B6-%E7%83%AD%E9%87%8D%E8%BD%BD-8b5cf6?logo=puzzle&logoColor=white)](./docs/plugins.md)
-[![Docs](https://img.shields.io/badge/%E6%96%87%E6%A1%A3-VitePress%20%C2%B7%20%E4%B8%AD%2FEN-ffd75e?logo=vitepress&logoColor=black)](https://kingdol666.github.io/AgentWorkShop)
-[![PRs welcome](https://img.shields.io/badge/PRs-welcome-ff69b4?logo=git&logoColor=white)](https://github.com/kingdol666/AgentWorkShop/pulls)
-
-**[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
-
-<sub><b>v0.8.3</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST 集成（镜像与直连双路径）· 数据分析台账（产线级权限隔离）· 工艺参数优化器（过程模型 → AML → OSQP 求解 → 治理下发）· **本体服务 + AI 先行模型闭环**（本体 · 孪生 · 求解器 · AML 采纳）· 104 个宿主工具 · 126 个运行时设置项 · 双语文档（简体中文 / English）</sub>
-
-<br />
-
-*一个配置驱动的平台：**AI Agent 团队**与**工业数字孪生**共享同一运行时——Agent 查询真实遥测、经人工审批的写控回路下发监督设定值，每个事件实时推送到 3D 孪生。*
+[English](./README.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop) · [版本发布](https://github.com/kingdol666/AgentWorkShop/releases) · [参与贡献](#参与贡献)
 
 </div>
 
 > [!IMPORTANT]
-> **定位声明：监督层。** AgentWorkShop 是面向产线管理、数字孪生、数采与 Agent 编排的**监督层**（SCADA 同位）平台，运行在**秒级软实时**档位。
-> 它**不是**硬实时控制器：任何时序关键回路（**< 10 ms**、联锁、安全、伺服）**必须在 PLC 内实现**。本平台下发的设定值均为建议性——产线侧逻辑可否决。
+> **这是监督层，不是安全控制器。** AgentWorkShop 面向秒级软实时的产线监控与协同。联锁、安全功能、伺服环路和所有硬实时控制逻辑必须留在 PLC 或专用安全系统中。Agent 提议的设定值会按配置边界校验；仅当节点绑定启用 `manual` 模式时，才会等待人工审批。现场侧逻辑始终拥有最终否决权。
 
----
+## AgentWorkShop 是什么？
 
-<table>
-<tr>
-<td width="33%" valign="top">
+AgentWorkShop 是一个开源工业 Agent 运行时。它把多 Agent 团队接入产线数据与作业流程，并在同一套可配置平台中管理遥测、权限、控制和审计记录。
 
-**图例索引**
+适用于：
 
-`图 01` 闭环全流程<br/>
-`图 02` 数采中心<br/>
-`图 03` 产线运营<br/>
-`图 04` 数字孪生<br/>
-`图 05` 仪表盘<br/>
-`图 06` 自适应布局
+- **产线与工艺工程师：**集中查看设备、配方、批次、报警和趋势。
+- **工业 AI 团队：**让 Agent 分析真实遥测，并在人工复核下提出有边界的操作建议。
+- **平台开发者与研究人员：**获得可扩展的运行时、模拟器友好的工作流和清晰的集成接口。
 
-</td>
-<td width="33%" valign="top">
+## FIG.06 — 产品演示
 
-**快速跳转**
+https://github.com/user-attachments/assets/241ad4e4-2645-4bef-8eb1-499739dc9ce1
 
-[这是什么？](#这是什么) · [特性总览](#特性总览)<br/>
-[界面一览](#界面一览) · [设计架构](#设计架构)<br/>
-[快速开始](#快速开始) · [配置与 CLI](#配置与-cli--真正的配置驱动)<br/>
-[工业栈详解](#工业栈详解) · [使用说明](#使用说明)<br/>
-[端到端验证](#端到端验证) · [项目结构](#项目结构)<br/>
-[技术栈](#技术栈) · [开发指南](#开发指南)<br/>
-[路线图](#路线图) · [许可证](#许可证)
+<p align="center">
+  <a href="https://github.com/kingdol666/AgentWorkShop/blob/c73a509c6e515d02d1290e54cab901ea9aff430b/docs/site/public/demo/agentworkshop-core-demo.mp4">在 GitHub 打开 MP4</a>
+  · <a href="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/c73a509c6e515d02d1290e54cab901ea9aff430b/docs/site/public/demo/agentworkshop-core-demo.en.vtt">English subtitles</a>
+  · <a href="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/c73a509c6e515d02d1290e54cab901ea9aff430b/docs/site/public/demo/agentworkshop-core-demo.zh-Hans.vtt">简体中文字幕</a>
+</p>
 
-</td>
-<td width="33%" valign="top">
+<sub>67 秒实机界面演示，英文配音。视频使用隔离的 Mock PLC 场景；演示产线保持停止，未连接真实 PLC，也未发送控制写入。</sub>
 
-**一眼看懂**
+## 核心能力
 
-监督层，秒级软实时<br/>
-14 个执行引擎 · 4 个接入入口<br/>
-6 种现场协议（5 内置 + 串口插件，读 + 写）<br/>
-7 状态任务机 · 根任务队列 + 执行租约<br/>
-群聊作业 · 定时任务 · HITL 审批<br/>
-FTS5 + 向量记忆 · 插件热重载<br/>
-SDK · CLI · TUI · 外部 MCP · 约 1100+ 条验收断言
-
-</td>
-</tr>
-</table>
-
----
-
-## 文档
-
-文档为双语——[VitePress 站点](https://kingdol666.github.io/AgentWorkShop) 在全站范围内提供语言切换（简体中文 / English）。深度页面同样随仓库发布，CLI 会把它们复制进发布的 tarball：
-
-| 主题 | 在线 | 仓库内 | 内容 |
-|---|---|---|---|
-| **上手指南** | [指南](https://kingdol666.github.io/AgentWorkShop/guide/getting-started) | `docs/site/guide/` | 安装 → 首次运行 → 第一次「Agent × 产线」会话、配置系统、数采协议、数控读写、HITL、配方版本、多 Harness 团队、产线权限、AML |
-| **插件开发** | [插件指南](https://kingdol666.github.io/AgentWorkShop/plugins/) | [`docs/plugins.md`](./docs/plugins.md) | 完整扩展契约：三种作用域、`index.mjs` 清单、`ctx` 服务端/浏览器能力面、`settings`/`groups` 声明、生命周期事件、i18n、面板、团队级开关、一个真实案例 |
-| **SDK** | [SDK 指南](https://kingdol666.github.io/AgentWorkShop/sdk/) | [`docs/sdk.md`](./docs/sdk.md) | `agentworkshop/sdk` 作为编程客户端（带信封处理的平台 REST 客户端）与插件扩展基座；TypeScript 类型；浏览器端 SDK |
-| **CLI** | [CLI 手册](https://kingdol666.github.io/AgentWorkShop/cli/) | [`docs/cli.md`](./docs/cli.md) | 全部 15 个 `aw` 指令、全局选项、退出码、双模式路径模型、指令注册系统、维护者发布指引 |
-| **AML** | [AML 指南](https://kingdol666.github.io/AgentWorkShop/guide/aml) | [`docs/aml.md`](./docs/aml.md) | 自动建模实验室：数据集构建、作业编排、模型注册表、晋级门禁、Agent 工具 |
-| **TUI** | — | [`docs/tui.md`](./docs/tui.md) · [`tui/README.md`](./tui/README.md) | 终端工作台：频道、Agent、任务、实时监控、HITL 应答 |
-| **多 Harness 架构** | — | [`docs/multi-harness-architecture.md`](./docs/multi-harness-architecture.md) | 引擎分类、归一化会话契约、供应商/模型目录、失败模式 |
-
----
-
-## 这是什么？
-
-AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码 Agent 团队，配备 lead 调度器、7 状态任务机、持久记忆，以及四个互操作入口（WebSocket / MCP / A2A / REST）。
-
-随后它长出了**工业半边**：完整的数采与写控栈（Modbus TCP / OPC UA）、带配方与批次运行的产线、3D 数字孪生小镇、一个**自动建模实验室**（数据集 → 训练作业 → 排行榜 → 门禁晋级）——以及让它独一无二的桥：**Agent 可被授予对真实工业节点的访问权——绑定到具体节点、按权限作用域收窄**，带着物理语义查询其实时遥测，并经「联锁 → 人工审批 → 回读校验」管线驱动写操作。
-
-它同时**天生可扩展**：一个自包含插件可以同时增强服务端（钩子、路由、Agent 工具、数采驱动、配置分组）与浏览器（面板、i18n），而同样的能力面也通过 SDK 开放给普通程序——见 [`docs/plugins.md`](./docs/plugins.md) 与 [`docs/sdk.md`](./docs/sdk.md)。
-
-最终效果：提交一个目标，比如「分析熔体温度趋势并优化设定值」——Agent 团队读取真实传感器历史、计算统计量、提议新设定值、在 HITL 面板等您批准、写入 PLC、校验回读、带着数值汇报。**端到端，自动化 E2E 已验证。**
-
-<div align="center">
-
-### 图 01 — 闭环全流程
-
-<img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/fig-01-closedloop.gif" alt="Agent 团队读取实时遥测、提议设定值、等待审批、写入 PLC 并校验回读" width="88%" />
-
-<sub><b>目标 → 读取 → 计算 → 审批 → 写控 → 回读 → 汇报。</b><br/>
-录制自运行中的实例：真实数采历史、真实写控、真实 HITL 审批。</sub>
-
-</div>
-
-> [!NOTE]
-> 本 README 中的每一张图都是**运行中实例**的录屏或截图，没有一张是效果图。屏幕上的数字来自流经产品同一套代码路径的工业数据。
-
-<div align="center">
-
-### 🎬 实机演示（4 分 11 秒，英文配音 + 字幕）
-
-<a href="https://github.com/kingdol666/AgentWorkShop/blob/main/docs/site/public/demo/agentworkshop-demo.mp4"><img src="docs/site/public/demo/poster.jpg" alt="AgentWorkShop 实机演示：数采中心、写控下发回读、串口插件、Agent 团队执行、闭环趋势与 3D 数字孪生" width="86%" /></a>
-
-<sub><b>点击封面观看完整演示。</b>真实 PLC 模拟器 + 真实串口枚举 + 真实 Agent 团队执行，全程无剪辑造假。<br/>场景：仪表盘 → 数采中心（实时） → 写控下发与回读 → 串口协议插件 → Agent 团队执行 → 闭环趋势 → 3D 数字孪生。</sub>
-
-</div>
-
----
-## 特性总览
-
-#### Agent 团队运行时
-
-| 能力 | 为何重要 |
+| 领域 | 能力说明 |
 |---|---|
-| **Lead 编排** | 每个 Channel 一名 lead：分解目标、派发空闲 worker、失败重派、判定目标满足度。LLM 决策 + 确定性规则引擎兜底——系统永不停滞。 |
-| **三种执行模式** | `goal`（满意度判定）· `loop`（定间隔重放）· `pipeline`（顺序阶段）。7 状态任务机带进度、产物与完整历史。 |
-| **Harness 无关** | 一个 `AgentInterface`，**14 个引擎**分三类传输形态：**进程内**——`mock`（无 LLM）、`claude`（Claude Agent SDK，常驻会话，同轮 steer）；**经协议常驻会话**——`omp`（RPC 子进程）、`codex`（app-server JSON-RPC）、`dsh` / `qwen` / `hermes`（ACP）、`opencode`（serve + HTTP/SSE）；**带结构化事件流的无头 CLI**——`gemini`（stream-json）、`copilot`（JSONL）、`cursor`（stream-json）、`crush`（非交互运行）、`goose`（stream-json）、`pi`（`-p --mode json`）。平台永远不知道跑的是哪个。 |
-| **Channel 级 LLM 选择** | 每个 Channel 从 Harness 实时目录中选 **harness → provider → model（+effort）**（如 omp 的 `zhipu-coding-plan/glm-5.3-flash`）。成员未显式覆盖即继承——一个团队混用多种 harness 是一等公民设定，不是绕行。 |
-| **Harness 可用性检查** | `GET /api/workshop/harnesses` 逐引擎探测 PATH 上的 CLI。前端禁用未安装项，且每个入口在执行前都做强校验。 |
-| **停滞安全的监督与任务治理** | 提交的目标进入 **FIFO 根任务队列**，排队位次可见。排队根**等待期间不消耗执行预算**——预算从入场起算，并有确定性的 **lead 救援扫**兜底（lead 运行时失活/任务卡排队时自动卸载重组并重新派发，不等人工察觉）。**监督看门狗**区分「卡死」与「慢」——Agent 工具调用被当作活性信号，健康的长工业作业不会被误回收，真停滞仍会呈报 lead。每次派发携带**派发代 + 执行租约**，被取代 worker 的迟到事件在准入层直接丢弃，而不是寄希望于事后对账。 |
-| **Harness 连续性** | 每个引擎声明连续性形态（`persistent` / `per_turn`）；常驻会话在连续性租约下跨轮复用（pid / 会话 / 复用计数 / 最近重启原因），服务重启能恢复的恢复，而不是悄悄重新拉起。 |
-| **Channel 群聊与原生 HITL** | 频道时间线是真正的群聊：成员请求升级为**可追踪作业**（不是一条会丢的消息）；带原生 ask 能力的引擎（如 `omp`）把 HITL 提问路由进平台——您批准一次，引擎带着回执继续跑。成员权限与用户通知是一等公民。 |
-| **定时任务** | 任意 Channel 任务可挂上**调度**——固定 `interval`（60s 下限）或 `daily` 每日定点——在 `/workshop/schedules` 页或 REST API 管理，带逐次运行历史、忙等守卫（频道仍有在飞任务时触发顺延）与 Channel 级可见性。 |
-| **持久记忆与频道过程记忆** | 私有 + Channel 共享双域；FTS5 CJK 切分，可选向量混合检索，token 预算注入。其上是**过程记忆**：确定性的 root/child/lead 事件名契约、canonical root 摘要、持久 outbox（死信 + 补偿 worker），让一个目标的来龙去脉跨重启存活。 |
-| **四个入口** | 一个 manager 坐在每扇门后：**WS**（AEP v1 事件流，seq 续传）、**MCP**（25 个进程内工具）、**A2A**（JSON-RPC 2.0 + AgentCard）、**REST**。 |
+| **Agent 团队** | 14 种引擎适配器共用一套运行契约；支持主从团队、目标/循环/流水线任务、定时作业和持久记忆。 |
+| **工业数据** | 支持 Modbus TCP/RTU、OPC UA、MQTT、HTTP 与串口插件；采集实时遥测，并按产线、配方和批次查询历史数据。 |
+| **受治理的控制** | 产线级权限、安全量程与配方窗口校验、`manual` 模式下的 HITL 审批、PLC 回读以及可追溯审计。 |
+| **孪生与建模** | 事件驱动的 3D 产线视图、自动建模实验室（AML）、本体建模和受治理的工艺优化流程。 |
+| **集成与扩展** | 提供 REST、WebSocket、MCP、A2A 接入；包含 TypeScript SDK、CLI/TUI 和支持热重载的插件系统。 |
 
-#### 工业栈
-
-| 能力 | 为何重要 |
-|---|---|
-| **六协议现场总线** | Modbus TCP、Modbus RTU-over-TCP（串口网关）、OPC UA、MQTT、HTTP/REST，外加**内置串口插件**（RS-232/485 直连：Modbus RTU + ASCII 行）——数采**与**写控双驱动带连接池、分类错误文案与逐驱动连接测试；`mock` 覆盖演示/CI；协议即插件：`ctx.daq.registerDriver` / `ctx.dcw.registerWriteDriver` 注入后，前端协议下拉与参数表单即插即现（带 ⌁ 徽标）。 |
-| **Agent 团队 × 工业作用域** | 把 Agent 绑定到数采/数控节点。Agent 看到的是语义卡（物理含义、单位、安全量程、配方窗口）——而不是裸寄存器。 |
-| **人工审批的写控** | 数控下发经过「**安全量程 ∩ 活动配方窗口**」联锁 → 可选 **HITL 审批** → PLC 写入 → **回读校验** → 带签名的写历史。 |
-| **数控读写通道** | 每个控制节点都能沿**写入时所用的同一条标定链路**读回 PLC 当前值：周期读 + 按需读 + Agent 读取，SET 与 ACT 并排呈现——读是被动观测，永不被写联锁阻断。 |
-| **Recipe 版本化治理** | 参数修改按版本入史（归因 用户/Agent/系统 + 操作者 + 原因）。可非破坏地回退到任意修订版或最近一次良好批次。失效节点参数跳过并明确标识。 |
-| **配方链路优化闭环** | Agent 像人类工艺员一样通过配方管理做优化：`recipe_trial` 把多参数候选**整批试验（不写版本）**→ 复测 → 有进步用 `recipe_update` 固化（同一配方 id，版本+1）→ 劣化触发**统一回退**（`recipe_rollback` 带 `dispatch:true` = 定义回退 + PLC 整批恢复）。单参数直调移出闭环；试验受四层限界与同线节拍卡控。 |
-| **频道绑定产线（只读授权）** | 频道可绑定一条产线：全员无需节点绑定即可读取该线的产线日志（仅产线域记录，可按产线/配方/时间检索）、配方历史与实时状态（工具回执标注「频道绑定，只读」），写操作仍需节点授权。产线简报自动注入成员提示词；换绑即时回收成员运行时。 |
-| **数据分析台账（v0.7.62）** | Agent 的分析结果作为一等记录留痕：原生 `analysis_save` / `analysis_query` 宿主工具写入独立的 `analysis_reports` 表，按产线 + 配方 + 时间窗组织，含关键结论、指标、数据来源与操作者归因。台账对 Agent 只增不改；人类经 REST 修订并刷新编辑者归因。专属 `/analysis` 页面经 WS 实时前插新报告，支持产线 / 配方 / 时间 / 关键词多维检索，改删受产线权限门控（`operate` 可改、删除仅 admin）。外部分析插件经同一台账集成——`diag_run` 以后台任务运行 IDD **六种分析意图**（深度根因诊断 / 产线稳定报告 / 快速筛查 / DOE 试验分析 / 调参经验挖掘 / 优化战役，按情景注入分析提示词），提交即返 `task_id`，`diag_status` 按 taskId 查进度，完成后报告经 `analysis_save` 落账。 |
-| **IDD 结果库（v0.8.1，默认关闭）** | diag-bridge 插件进一步接入 IDD 侧的**全量分析结果历史**（不限本平台发起的运行）：`diag_results` 按关键词/意图/分类/标签/场景/harness/评分检索索引（brief 模式省 token），`diag_result_get` 取详情卡（关键数字溯源 + 工件绝对 URL），`diag_result_annotate` 编辑元数据（描述/标签/标题）。五项治理开关控制可见面——总开关默认**关闭**，结果可见面等于诊断 API Token 属主（平台级、不按产线隔离），读工具默认仅 lead、编辑始终仅 lead。`/plugins` 页同源「分析结果库」面板镜像三条路由（`GET /results` · `/results/detail` · `PATCH /results/edit`）。 |
-| **数据管理台与 EDA 工坊（/data · /studio）** | 数据面一站式：多字段复合查询（产线/节点/时间窗/批次/降采样护栏）、批量导出（manifest + merged.csv 作业台账）、标量/数组/图像**三形态**镜像（测厚断面与 CCD 帧经 ingest 推送或协议采集，WS 实时上屏）。EDA 工坊提供图表与栅格看板、**golden 相位参考轨迹**（偏差分叠加）、**FDC 特征**（参考带 z 判定）、**SPC 控制图**（Nelson 1-8 / I-MR / EWMA / CUSUM）、共性分析（四因子 lift）、OCAP 处置单、虚拟量测（集成外推 + OOD 拒判）与派生数据集（白名单算子），全部受产线级权限与引用归属预检约束。 |
-| **工艺参数语义面与调控闭环** | 全部可下发写收敛到**配方面**（`recipe_update` / `recipe_apply` / `recipe_trial`，各受「绑定 → HITL 理由 → 运行门」三门约束）。写入仍被**四层限界**逐层收窄——节点安全量程 ∩ 工艺参数基准限界 ∩ 活动产品限界 ∩ 活动配方工艺窗口——且每次下发自动开一条调控记录，由 `dcw_judge` 落判定（keep / rollback / uncertain），`dcw_rollback` 执行回退。（v0.7.63 摘除了 `param_control` / `param_read` / `dcw_read` 直连节点的遗留死工具面，Agent 工具清单保持干净。） |
-| **产线运营** | 产线 → 产品 → 配方 → 批次。配方窗口门控采集并联锁写入；每条样本打标 `product/recipe/run`，实现按批次隔离。 |
-| **MES REST 集成（双数据路径）** | 生产管理数据进入同一受治理工作空间：`mes-rest` 节点用**声明式请求映射**对接 MES API 的目录/当前值/历史端点（`secretRef`→env token 凭证零明文；钩子可对取数做下沉后处理）。Agent 两种读法——**直连**：`mes_fetch` 按映射发请求实时拿 API 响应（大窗异步分页落 `mesds-*` CSV 数据集，经 `mes_datasets` / `mes_dataset_read` 读取，原始行不进对话）；**镜像**：`http` 数采节点轮询同一 API 入本地 TSDB，`daq_query` 与原生节点同面取数——API 宕机也不断供。`mes_catalog` 按产线严格过滤（fail-closed）。 |
-| **多形态数采帧管线** | 多点轮廓（测厚仪/扫描仪）与 CCD 图像帧流经模板 sink 管线：向量与元数据入 Timescale（`daq_frames`），像素入对象存储（MinIO，不可达时自动降级到本地磁盘）；派生指标阈值越限走既有告警链路。 |
-| **生产化硬化（v0.7.58）** | 保写心跳生命周期根治——失败写不占位（心跳不再直发幻影指令值）、驱动/连接/产线变更即清值、停线自动挂起保写；mock 静默兜底封堵（未知协议显式报错，插件卸载不再假成功）；帧像素 sha256 完整性指纹 + 对象存储按天 GC（删前 DB 交叉校验防误删）；Timescale 按天 chunk + 列存压缩（TSL）；堆水位监控 + 崩溃/失联/水位三重自动重生；写保持窗与试验节拍落盘（重启不绕频控）；grant 运行时复核并入频道绑线（撤权即失活无死角）。 |
-| **Agent 自查工具** | `line_context`、`ops_log`、`recipe_log`、`recipe_versions`、`dcw_journal`——Agent 清楚自己操控的产线/产品/配方，谁做过什么，每个值怎么变。 |
-
-#### 模型闭环 —— AI 先行（本体 · 孪生 · 求解器 · AML，v0.8.0）
-
-| 能力 | 为何重要 |
-|---|---|
-| **面向控制的本体服务** | 10 类实体、**8 种封闭关系**（`influences / measures / actuates / hasPart / precedes / observedBy / constrainedBy / basedOn`），标注**三级证据**（`candidate_influence → observed_correlation → validated_control`）与**五态生命周期**（`proposed → reviewed → validated → approved_for_control`，第二人批准台账 + 单管理员审计豁免）。**编译器**产出四类工件——过程模型、ProblemIR 增量、场景契约补丁、控制守卫集——带**只收紧**不变量与逐规则 Rule Trace。运行守卫对状态未知 fail-closed；本体引用与求解器 ProblemIR 哈希**分域**，本体改动不会伪装成求解相关变更（漂移显式 409）。 |
-| **Agent 亲手创建虚拟模型** | 训练面频道上，Agent 用工具走完整创建链：`twin_scene_discover`（从**自己真实绑定**推断场景）→ `twin_scene_compile`（SceneContract 草稿）→ `twin_scene_freeze`（须人 `approved_by` + 确认令牌）→ `twin_physics_spec_draft / validate / compile`（声明式 Provider **候选**，绝不自动注册）→ `twin_snapshot_create`（服务端 `auto_daq` 采数，Agent 自报样本拒收）→ `twin_trial_run`（recommendation-only，`candidateExecuted=false`）。同一份物理骨架交由 AML `hybrid_residual` 训练校准（stage A 拟合 τ/增益）。 |
-| **模型进化 = 受治理的采纳** | 训练新模型（数据集 → 资格报告 → AML 作业 → 模型注册）只是半程。`optimizer_profile_propose` 让 **Agent 提议**把新工件采纳进求解 Profile：校验兼容性（模型 × 求解器矩阵，不兼容 422）并挂 HITL 卡。批准是**单一咽喉**：发布 v(n+1) + **重绑旧版本上的全部绑定**（revision+1，在飞求解 `BINDING_STALE` fail-closed），下一次 `optimizer_solve` 即用新模型；拒绝/超时零写。每轮留 `adopt_propose(agent)` + `adopt(user)` 审计行，旧版本保留可回退。 |
-| **人做修正，不只是点批准** | 管理者直接编辑本体草稿（乐观锁 `rev` + 活体校验），亲自走规则生命周期；版本台账给四段 diff（`entities / relations / rules / bindings`）。Profile 版本、孪生场景谱系（冻结场景 + Provider）、守卫决策在 `/ontology`、`/optimizer`、`/aml` 均可视——与 Agent 同源数据，不经 Agent 转述。 |
-| **可读模型 + 草稿自修复** | 三类模型都有可被 Agent 写入的人读元数据：本体文档/实体/规则描述、AML 模型 `label` + `description`（`aml_model_annotate`）、求解器 Profile `name` + `description`（经采纳携带）。本体草稿支持一键**自动修复**（`ontology_draft_autofix`、`POST /drafts/:id/autofix`）：补描述、量纲跟随单位、作用域回填、悬空引用与重复 id 修复、证据不足的硬规则状态回退；部分修复在乐观锁 + 审计下落库，`validated_control` 证据**永不伪造**。 |
-| **IDD × RAG × 本体 组合** | 同一会话内，Agent 可调 `ontology_scene_inspect / ontology_rule_explain`、经插件桥跑 IDD 诊断（CI 用 mock 快速筛查，生产用真实 LLM 意图）、再写 `analysis_save` 台账条目**同时引用**本体规则与诊断 run id——组合全程可审计。RAG `kb_agent` 入库属写类工具，必须过 HITL 审批；平台另提供**读桥**（`/api/plugins/rag-bridge/search`）直连 RAG 两阶段检索。 |
-
-#### 治理、配置与扩展
-
-| 能力 | 为何重要 |
-|---|---|
-| **产线级权限** | 工业数据按**产线**三态门控（无权/仅查看/可操控），强制点在数据面——普通用户未授权前看不到任何产线数据。 |
-| **工具调用统一预检（v0.7.66 / v0.7.71 声明化）** | 每次工业工具调用在进入处理器前统一校验参数形状与引用归属：`node_id` / `line_id` / `recipe_id` / `dataset_id` 等必须落在调用者的绑定面（绑定节点 ∪ 频道绑线只读 ∪ 绑定配方所在产线；数据集/作业/模型/计划/场景按谱系回溯）。越界调用直接拒绝，回执写明「你的绑定面 + 下一步」（找谁绑定、改传什么），并把授权性拒绝写入审计日志。v0.7.71 起校验规则上收为**工具定义自带的 `references` 声明**——注册期登记制（写族未声明拒绝登记、读族告警），执行期仍逐调用实时重算；插件工具声明后才纳入同一校验，调用结果统一入审计。 |
-| **工艺优化器与求解器（v0.7.71）** | 端到端参数优化链：**过程模型**（数据集谱系 verified → 资格门：MV 激励/常量/行为证据四类拦截）→ **AML 训练**（linear_arx/状态空间，G1–G3 门禁含 rollout 提升 ≥20%）→ **Profile 冻结与绑定**（授权面=绑定面）→ **ProblemIR 编译**（哈希域锁定，模板/求解器版本不匹配 422）→ **OSQP/SLSQP 求解 worker**（进程池、超时降级、协议版本校验、NaN/Inf fail-closed，34 例数值矩阵对拍解析解）→ **交叉核验**（TS 独立重算代价/轨迹/约束与 worker ≤1e-6 对拍）→ **治理下发**（HITL 单咽喉、批准时八重复核、设备回读 ackSummary verified/failed/unverified、防证据伪造）。Agent 工具、REST 与 MCP 三入口同链；`optimizer_capabilities/solve/status/cancel/plan_get` 五件套仅在有效绑定时注入。 |
-| **全操作审计日志** | 用户 / Agent / 系统 的每个动作都落进同一份可检索日志；操作者归属「Channel名/成员名」，与用户和系统天然区分。经 WS 实时推送。 |
-| **团队级插件开关** | 每个团队（Channel）持有**独立插件开关组**（`channel_plugins`）：被关闭插件的工具不注入该团队 Agent。插件本体经 `aw plugin` 与 `/plugins` 页热管理。 |
-| **插件扩展 API** | `plugins/<name>/` 下的一个自包含目录**同时增强两半**：`index.mjs`（服务端：钩子、路由、Agent 工具、**数采读驱动 / DCW 写驱动**/帧处理器/节点模板、配置分组、KV、定时器）与 `client.mjs`（浏览器：注入具名插槽的面板、i18n、设置 UI）。三种作用域——`builtin`（随包发布）> `project`（检出）> `user`（`~/.AgentWorkShop`）——启停**与代码修改**均有约 1 秒热重载；停用插件的驱动随热重载立即摘除。内置示例 **serial-bridge**（串口通信：读/写驱动 + 串口探针 API + 前端面板）。完整契约见 [`docs/plugins.md`](./docs/plugins.md)。 |
-| **AML —— 自动建模实验室** | 数据集构建 → 训练作业 → 排行榜 → 晋级门禁 → 模型引用，全部可在 `/aml` 页驱动，也可由 Agent 通过 **14 个 `aml_*` 工具**驱动。Python 运行时由 `uv` 引导至配置根内的 `aml/` 资产根；产物与元数据都留在配置根下。模型带人读身份——label（产线 · 配方 · 目标）、description 与产线/目标 id——可用 `aml_model_find` 按场景选型。 |
-| **AML 混合孪生 × MPC** | 灰箱物理主干 + 有界 PyTorch 残差；`TwinSnapshot` / `VirtualTrial` / `RecommendationCertificate` 配 UQ/OOD 筛查与全轨迹门禁；`hybrid_twin` profile 会额外注入 **12 个 profile 工具**（场景发现/编译/冻结、物理 spec 起草/校验/编译、快照、试验、MPC、门禁、Provider 目录）与通用工具 `twin_calibration_request`。试验按设计保持虚拟（`candidateExecuted=false`），证书签发前只做推荐、不落真实写入。 |
-| **双模式优化闭环** | 专属频道模板把闭环**结构性拆开**：*aml-training* 频道拿建模面（数据集、作业、场景编译、物理 spec、建模任务——无产线写入、无 MPC），*aml-optimization* 频道拿执行面（快照、试验、门禁、MPC、贝叶斯寻优 `twin_bayes_optimize`、受治理微写 `optimization_explore`）——边训边优在结构上不可能。**探索**模式走治理链写入并做响应回读配对（每笔写入落 `optimization_explorations` 台账）；**生产**模式要求绑定过门禁的模型（`aml` 模式，实例化时给 `boundModelId`）。 |
-| **运行时可观测** | `GET /api/system/monitor` 把 Agent 团队内部暴露成数字：根队列深度、看门狗介入次数、Harness 会话复用、记忆 outbox 积压——每项都有对应的文档化回退开关，新机制可以不重新部署就关掉。 |
-| **产线操作单页（`/operations`）** | 一页看全对产线的每一次触碰：实时操作流水（REST 快照 + WS 推流）把写控、数采、建模、配方、回退、报警、产线、人工、系统动作归入**九类分类**，写控行渲染结构化 **前值 → 后值 diff 徽章**（失败标红），并直接从事件流推断**闭环阶段**（监视 → 探索·小步 → 推荐搜索 → 影子验证 → 生产）。同一数据面也供工作台控制台的「产线作业」面板使用。 |
-| **外部 MCP 网关** | `aw mcp` 启动零依赖的 **stdio MCP 服务**（41 个工具），自动发现运行中的实例（环境变量 → 锁文件 → 配置文件），把产线、配方（含 mark-good）、受治理 DCW 写入、工艺参数语义映射、数采查询、频道、团队供给、模型晋升、判卷/回退与插件管理暴露给任意 MCP 客户端——受 `mcp.enabled` 运行时设置门控，附 `--doctor` 与 `--print-config` 辅助指令。此外每个 Channel 成员实例都有**专属的全量工具 stdio 桥**（104 个宿主工具 + 插件工具，按该 Agent 的角色/绑定面编译视图；ETag/304 增量轮询 + `tools/list_changed`），codex / dsh / opencode 等引擎以 MCP 形态拿到与原生注入完全同链的治理（token 自证 → 五层复核）。 |
-| **全量配置驱动运行时** | 全部运行旋钮（记忆预算、上下文压缩、回退护栏、保留策略、备份、日志级别、系统时区、MCP 开关…）在设置描述符注册表声明一次，优先级 **config.yml < runtime-settings < env**——**126 个设置项、19 组**（42 live / 84 restart），代码零硬编码默认。 |
-| **可配置系统时区** | 一个 `time.timeZone` 设置项（IANA 时区，live 热生效）统一驱动人读时间——日志、聊天、审计、Agent 记录与定时任务；机器时间轴（数采样本、`timestamptz`）仍保存绝对时间。 |
-| **可配置节拍** | 采样与查询的默认值/下限全部是 **live 设置**（`daq.sampling.*`、`daq.query.*`）：热重载、create/patch 时钳制，Agent 工具描述实时携带当前值。 |
-
-#### 数字孪生
-
-| 能力 | 为何重要 |
-|---|---|
-| **3D 数字孪生** | Three.js 小镇：放置产线设备与 Channel 领地，实时查看设备健康、告警与数值——由同一事件总线驱动。自适应画质阶梯（DPR / 阴影 / Bloom 分档 + 墙钟 FPS 预算）自动匹配机器，`window.__townStats` 暴露真实渲染指标供性能探针使用。 |
-
----
-
-## 界面一览
-
-下面每一屏都是真实界面，1440×900，录制自正在运行的实例。
-
-<div align="center">
-
-### 图 01 — 闭环全流程
-
-<img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/fig-01-closedloop.gif" alt="Agent 团队读取实时遥测、提议设定值、等待审批、写入 PLC 并校验回读" width="88%" />
-
-<sub><b>目标 → 读取 → 计算 → 审批 → 写控 → 回读 → 汇报。</b><br/>
-录制自运行中的实例：真实数采历史、真实写控、真实 HITL 审批。</sub>
-
-<br />
-
-### 图 02 — 数采中心
-
-<img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/fig-02-daq.gif" alt="数采中心：节点台账、实时趋势、报警横条与事件流" width="92%" />
-
-<sub><b>端到端的采集链路。</b>量规统计带之下的节点台账与健康度、随样本落库而生长的趋势曲线、
-只保留真正未确认项的报警横条，以及滚动的事件流。</sub>
-
-<br />
-
-### 图 03 — 产线运营
-
-<img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/fig-03-dcw.gif" alt="产线运营：产线、产品、配方与写控制" width="92%" />
-
-<sub><b>产线 / 产品 / 配方 / 批次。</b>开跑产线即用配方窗口为采集设门，并给每个样本打上
-<code>产品/配方/批次</code> 标识；控制节点通过它写入时用的同一条标定路径呈现 <b>SET vs ACT</b>。</sub>
-
-<br />
-
-### 图 04 — 数字孪生
-
-<img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/fig-04-town.gif" alt="由实时遥测驱动的 3D 数字孪生小镇" width="92%" />
-
-<sub><b>孪生就是同一条事件总线的渲染结果。</b>设备、频道领地、报警与实时数值——自适应画质阶梯
-（DPR / 阴影 / 泛光，墙钟 FPS 预算）让它在中端机器上也保持诚实。</sub>
-
-<br />
-
-### 图 05 — 仪表盘
-
-<img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/fig-05-dashboard.gif" alt="带 KPI 量规与趋势的运行仪表盘" width="92%" />
-
-<sub><b>一屏看全工作坊。</b>频道、Agent、任务、数采吞吐与报警——读的是 API 服务的同一份状态，
-不是另建一套指标存储。</sub>
-
-<br />
-
-### 图 06 — 自适应布局
-
-<img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/fig-06-responsive.gif" alt="同一套界面从桌面到平板再到手机的形态变化" width="92%" />
-
-<sub><b>桌面 → 平板 → 手机。</b>刻度轨先收成图标轨、再变成抽屉；页头纵向堆叠，
-高密度表格变成可横向滚动的「账页条」，并把身份列钉在左缘。</sub>
-
-</div>
-
-<table>
-<tr>
-<td width="50%"><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-workshop.png" alt="Agent 工作台" width="100%" /><br/><sub><b>Agent 工作台。</b>频道时间线、lane、任务、记忆与 HITL 收在同一张工作台。</sub></td>
-<td width="50%"><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-monitor.png" alt="运行时监控" width="100%" /><br/><sub><b>运行时监控。</b>每条已接线频道、成员数、依赖环与归属用户。</sub></td>
-</tr>
-<tr>
-<td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-settings.png" alt="系统设置" width="100%" /><br/><sub><b>系统设置。</b>19 组 126 个设置项，由描述符驱动——CLI 读的是同一份注册表。</sub></td>
-<td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-plugins.png" alt="插件管理" width="100%" /><br/><sub><b>插件管理。</b>三种作用域、改代码即热重载、按团队开关。</sub></td>
-</tr>
-</table>
-
----
-
-## 设计架构
+## 系统如何协同
 
 ```mermaid
-flowchart TB
-    subgraph FE["前端 — Nuxt 4 / Vue 3"]
-        UI["工作台 UI · 3D 孪生 · 大屏"]
-        WS["AEP 客户端 — seq 续传"]
-    end
-    subgraph SRV["服务端 — Nitro / h3"]
-        REST["REST /api/workshop/**"]
-        HUB["WS Hub — AEP v1"]
-        A2A["A2A JSON-RPC"]
-        MCP["MCP Server"]
-        subgraph RT["运行时"]
-            MGR["AgentChannelManager"]
-            SCH["SchedulerLoop — lead 监督"]
-            TE["TaskEngine — 7 态任务机"]
-            AR["AgentRuntime × N"]
-            MEM["AgentMemory — FTS5 + 向量"]
-            BUS["事件总线 (ManagerBus) — per-channel seq + 环形缓冲"]
-        end
-        subgraph IND["工业"]
-            DAQ["数采网关 — 逐节点边缘运行时"]
-            DCW["数控网关 — 写控"]
-            BR["队列 — inproc / MQTT"]
-            TSDB["时序库 — SQLite / Timescale"]
-        end
-        subgraph HB["Harness 适配器 — 14 个引擎"]
-            MOCK["mock · claude — 进程内"]
-            OMP["omp — RPC 子进程"]
-            CDX["codex — app-server"]
-            DSH["dsh · qwen · hermes — ACP"]
-            OC["opencode — serve"]
-            FAM["gemini · copilot · cursor · crush · goose · pi — 无头 CLI"]
-        end
-        DB[("SQLite — channels · agents · tasks
-messages · memories (FTS5) · events")]
-    end
-    UI <--> WS
-    WS --> BUS
-    REST & A2A & MCP --> MGR
-    MGR --> SCH & TE & AR
-    AR --> MEM
-    AR --> MOCK & OMP & CDX & DSH & OC & FAM
-    MGR & TE & MEM & BUS --> DB
-    DAQ <--> BR --> TSDB
-    DCW --> BR
-    DAQ & DCW --> BUS
+flowchart LR
+    UI["Web UI · CLI · SDK"] --> API["REST · WebSocket · MCP · A2A"]
+    API --> RT["Agent 团队运行时"]
+    RT --> GOV["权限 · 联锁 · 可选 HITL"]
+    GOV --> DCW["受治理的控制"]
+    FIELD["PLC · 传感器"] --> DAQ["协议驱动 · DAQ"]
+    DAQ --> BUS["共享事件流"]
+    DCW --> FIELD
+    BUS --> STORE["SQLite · 可选 TimescaleDB"]
+    BUS --> TWIN["3D 孪生 · 趋势 · 审计"]
+    RT --> ENGINES["14 种 Agent 引擎"]
 ```
 
-**Agent × 机器之桥**（值得读源码的部分）：
-
-```
-agent ──绑定──▶ 节点 (daq: auto / dcw: manual)
-  │                    │
-  │  my_industrial_nodes  ◀── 语义卡：物理含义 · 单位 · 安全量程 · 配方窗口
-  │  daq_query             ◀── 时序库历史，统计 + 物理语义
-  │  dcw_control           ──▶ 联锁（安全量程 ∩ 配方窗口）
-  │                           ──▶ HITL 审批（manual 模式，180s 超时）
-  │                           ──▶ PLC 写入 → 回读校验 → ACK + 写历史
-  ◀── Agent 可引用数值的结果文本
-```
-
----
+系统将观察与动作分开：DAQ 读取并发布遥测；控制请求先通过产线权限和工艺边界校验，节点绑定启用 `manual` 模式时还需人工审批；PLC 回读与审计记录用于闭合操作链路。
 
 ## 快速开始
 
-### 前置条件
+### 安装已发布版本
+
+**要求：**Node.js 23.4.0 或更高版本。
 
 ```bash
-node -v   # ≥ 23.4.0（需要内置 node:sqlite）
+npm install -g agentworkshop
+aw start
+# 浏览器打开 http://localhost:3001
 ```
 
-> 真实 Agent harness 需要对应 CLI 在 PATH 中——`omp`、`codex`、`dsh`、`opencode`、`gemini`、`qwen`、`copilot`、`cursor`、`crush`、`goose`、`pi` 或 `hermes`（任选子集；同一 Channel 可混用）。`mock` 与 `claude`（SDK）**进程内运行**，无需 PATH 上的 CLI。仪表盘「执行引擎」面板以绿/灰状态点展示每个引擎的就绪度，未安装引擎可点击跳转官网安装页。可选数采基础设施（MQTT broker + TimescaleDB）在 Docker 可达时自动拉起（`docker compose up -d`）。
+全局安装会把配置与运行数据保存在 `~/.AgentWorkShop`。Agent 引擎按需从 `PATH` 探测；只需安装计划使用的引擎。
 
-### 方式 A —— 从 npm 安装（推荐）
-
-```bash
-npm install -g agentworkshop     # → `aw` / `agentworkshop` 进入 PATH
-aw start                         # → http://localhost:3001
-```
-
-发布出的包内含**预构建的生产产物**（`.output/`），所以 npm 安装后可直接启动——无需构建步骤，也无需构建工具。首次启动时一切初始化进配置根 **`~/.AgentWorkShop`**：默认 `config.yml`、自动生成含随机会话密钥的 `.env`、`runtime-settings.json`、docker-compose 种子、`prompts/`、`commands/`、`plugins/`（由 SDK 示例播种，**默认关闭**）与空的 `data/` 目录。全部运行数据（SQLite、JSON 仓库、备份、日志）也都落在配置根——配置与数据跟着安装走，与当前工作目录无关。
-
-不想全局安装、只想跑一次？
+### 从源码运行
 
 ```bash
-npx agentworkshop start          # 无需全局 npm 安装
-```
-
-> `npx` 同样会创建 `~/.AgentWorkShop`——不装全局并不等于在磁盘上不留任何痕迹。
-
-### 方式 B —— 源码运行
-
-```bash
-git clone https://github.com/kingdol666/AgentWorkShop.git && cd AgentWorkShop
+git clone https://github.com/kingdol666/AgentWorkShop.git
+cd AgentWorkShop
 pnpm install
-pnpm dev          # → http://localhost:3000（端口取自 config.yml）
+pnpm dev
 ```
 
-源码生产部署：
+源码开发模式会在配置指定的本地端口启动界面。配置说明和首次 Agent 工作流见[快速上手指南](https://kingdol666.github.io/AgentWorkShop/guide/getting-started)。
 
-```bash
-pnpm build        # nuxt build → .output/
-pnpm start        # 端口取自 config.yml → server.prod.port
-```
+> 初次使用请先连接模拟器或非生产环境。接入真实产线前，先检查节点绑定、产线权限、安全量程、配方窗口和 HITL 模式设置。
 
-> 在源码检出内，配置根是项目里的 **`.AgentWorkShop/`** 文件夹（运行时覆盖、数据、项目级指令），而 `config.yml` / `.env` 留在检出根，作为版本化的工厂默认值。
+## 文档导航
 
-### 版本更新
-
-```bash
-aw update                              # 检查 + 就地更新全局安装
-aw update --check                      # 只报告，不安装
-npm install -g agentworkshop@latest    # 手动等效
-```
-
-版本遵循 semver。每次 `aw start` 都会校验配置根，并把 `home` 之前的旧版 `data/` 布局迁移进来（以最新文件为准），因此数据可以跨版本存活。SQLite schema 迁移在服务端启动时执行。当前版本：**v0.8.3**——见[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)。
-
-### 第一次「Agent × 产线」会话（约 2 分钟）
-
-1. **登录** —— 侧边栏注册（或 `POST /api/users/register`）。
-2. **搭产线** —— 「产线运营」→ 建产线，加数采节点（如 `daq-temp-tc`）与数控节点（如 `dcw-temp-sp`），建产品 + 配方，点**开跑**。实时值开始流动。
-3. **建团队** —— 「Agent 工作台」→ 选 lead + workers 后**部署（deploy）**进 Channel。
-4. **绑定节点** —— 打开 Agent 详情面板 → 绑定数采节点（*auto*）与数控节点（*manual* = 需您的批准）。
-5. **提交目标** —— 「分析最近 5 分钟熔体温度；若与 182 °C 偏差超过 1 °C，修正设定值（等我的批准）。」
-6. **审批** —— Agent 读取真实历史、计算均值、发起写请求 → 在 HITL 面板批准 → 看设定值变化，**目标**收口并给出数值报告。
-
----
-
-## 配置与 CLI —— 真正的配置驱动
-
-一个运行时，一个事实来源。**`config.yml`** 声明默认值；配置根内的 **`runtime-settings.json`** 承载运行时覆盖；环境变量与 CLI 参数在最上层。每个可编辑键在 `shared/config/schema.json` 中声明一次（类型、范围、枚举、实时/重启生效），**前端设置页与 CLI 消费同一份描述符**。
-
-```
-config.yml（默认值）  <  .AgentWorkShop/runtime-settings.json（运行时）  <  环境变量 / CLI 参数
-```
-
-配置根：全局安装（`npm i -g`）时为 **`~/.AgentWorkShop`**——无论在哪个目录运行 `aw`；源码检出时为项目内的 **`<repo>/.AgentWorkShop`**（`config.yml` / `.env` 留在检出根，作为版本化的工厂默认值）。`AW_HOME` 可重定向；`AW_MODE=home` 强制全局形态。
-
-### 设置持久化与热重载
-
-- **系统设置 → 运行配置**标签页按描述符渲染每个可编辑键——改服务端口、主题、API 超时、语言环境或审批闸门，点保存即可。
-- `live` 键立即生效（主题、标题、超时、审批闸门、数采采样节拍、时序查询桶宽……），经服务端事件流推送，**无需刷新、无需重启**。
-- `restart` 键（端口、主机）落盘持久化，在下一次以对应模式启动时生效（`aw dev` / `aw start`）。
-- 所有写入方共用一条通道：**设置页、CLI、服务端文件监听**最终都收敛到同一个设置文件——任何一端改，处处生效。
-
-示例——在线调节数采与查询节拍：
-
-```bash
-aw config set daq.sampling.defaultIntervalMs 2000   # 新节点每 2s 采样
-aw config set daq.sampling.minIntervalMs 500        # 节点级下限（create/patch 钳制）
-aw config set daq.query.defaultBucketMs 3000        # 时序查询缺省 3s 桶
-aw config set daq.query.minBucketMs 500             # 查询下限（samples/产线查询/Agent 工具共用）
-```
-
-注入 Agent 的工具描述会在每次装配时以当前配置值重新渲染——LLM 永远看到对自己 `daq_query` 调用真正生效的下限与缺省值。
-
-### `aw` CLI
-
-| 指令 | 作用 |
+| 从这里开始 | 了解更多 |
 |---|---|
-| `aw start · aw dev · aw build` | 生产服务 / 开发服务器 / 构建——端口取自有效配置；首次 `start` 构建一次 |
-| `aw stop` | 依单实例锁终止运行中的 aw 服务实例 |
-| `aw config list · get · set · unset · reset` | 读写运行时设置（schema 校验 + 原子写盘） |
-| `aw plugin list · create · enable · disable` | 跨三种作用域管理插件：查看、脚手架（默认 project 作用域；`--global` 为 user 作用域）、启停（写状态文件，运行中的服务约 1 秒热重载） |
-| `aw mcp` | 工业 MCP stdio 服务（41 个工具，覆盖平台 REST：产线、配方、DCW 写入、参数映射、数采、频道、团队、模型晋升、插件）——自动发现运行实例；`--doctor` 一次讲清发现/健康/鉴权，`--print-config` 直出可粘贴的 MCP 客户端配置 |
-| `aw home` | 查看/初始化配置根 `.AgentWorkShop` |
-| `aw init <dir>` | 脚手架一个可运行的新项目（含完整配置系统与 CLI） |
-| `aw register <路径\|URL\|npm:包名>` | 注册一条新指令——项目级或 `--global` 用户级 |
-| `aw update` | 对比 npm 远程最新版本，有新版就就地更新全局安装 |
-| `aw doctor` | 环境 + 项目健康检查（node、配置、端口、密钥） |
-| `aw status` | 运行态总览：模式、配置来源、运行中服务、指令表 |
-| `aw tui` | 终端工作台：频道/Agent 管理、任务下发、实时监控面板、HITL 作答（见 [`docs/tui.md`](./docs/tui.md) · [`tui/README.md`](./tui/README.md)） |
-| `aw version` | 打印 CLI/包版本（别名 `v`） |
+| [快速上手](https://kingdol666.github.io/AgentWorkShop/guide/getting-started) | 安装、配置与第一次运行 |
+| [DAQ 协议](https://kingdol666.github.io/AgentWorkShop/guide/daq-protocols) | 协议驱动、遥测和节点配置 |
+| [写控制与 HITL](https://kingdol666.github.io/AgentWorkShop/guide/dcw-read-write) · [HITL 审批](https://kingdol666.github.io/AgentWorkShop/guide/hitl) | 权限校验、可选审批、写入和回读 |
+| [插件开发](https://kingdol666.github.io/AgentWorkShop/plugins/) · [SDK](https://kingdol666.github.io/AgentWorkShop/sdk/) · [CLI](https://kingdol666.github.io/AgentWorkShop/cli/) | 扩展或自动化平台 |
+| [多引擎架构](./docs/multi-harness-architecture.md) · [TUI](./docs/tui.md) | 运行契约与终端工作流 |
+| [审计与基准记录](./docs/audit/) | 验收证据与可复现报告 |
 
-全局参数：`--help/-h` · `--version/-v` · `--json`（机器可读） · `--root <dir>` · `--debug`。
-
-退出码：**0** 成功 · **1** 运行时错误 · **2** 用法错误。带 `--json` 时，失败会以信封返回 `{ ok: false, error: 'unknown-command' \| 'no-project' \| 'usage' \| 'internal' \| … }`，自动化无需解析 stderr 即可分支。
-
-### 指令注册
-
-指令就是导出 `{ meta, run }` 的普通模块。把它放进扫描目录，下次调用即生效——无需任何登记清单，约定优于配置：
-
-| 作用域（高层级优先） | 目录 |
-|---|---|
-| 项目级 | `<检出>/.AgentWorkShop/commands/` |
-| 用户级 | `~/.AgentWorkShop/commands/` |
-| 内建 | 随 CLI 发布（`cli/commands/`） |
-
-`aw register <file|url|npm:pkg>` 把指令复制进对应作用域（`--global` 进用户级）；`aw help` 列出全部已注册指令。
-
-```js
-// ~/.AgentWorkShop/commands/hello.mjs
-export const meta = { name: 'hello', group: '自定义', summary: '问好', usage: 'aw hello [--name <n>]' }
-export async function run(argv, ctx) {
-  console.log(`你好 ${argv.flags.name ?? 'AW'} —— 模式: ${ctx.mode}`)
-}
-```
-
----
-
-## 工业栈详解
-
-### 数据采集（DAQ）
-
-- **六协议驱动**：Modbus TCP、Modbus RTU-over-TCP（串口网关）、OPC UA、MQTT、HTTP/REST，加 **serial-bridge 内置插件**（RS-232/485 直连：Modbus RTU 帧机 + ASCII 行协议，写侧带同址回读校验，附串口枚举/探针 API 与前端面板）——连接池、分类错误文案、逐驱动连接测试；驱动注册表接受插件注册任意新协议（协议自带自描述 meta 时，前端表单零改动）。
-- **逐节点边缘运行时**：独立采样节拍、下发节拍、节点级在飞互斥——一个慢驱动绝不拖累邻居。采样与查询的默认值/下限由 `daq.sampling.*`、`daq.query.*` live 设置驱动。
-- **管线**：驱动 → 队列（进程内 / MQTT，断连离线缓冲）→ 消费端乱序防御 → 三路分发：WS 实时直推（节拍门控）、TSDB 批量落库、设备孪生回写。
-- **鲁棒性**：TSDB 单 in-flight 写 + 有界重试，缓冲背压带丢弃计数，真实丢失指标随 `daq.controller` 帧暴露。
-- **告警**：配方级监控窗口，**2% 滞回 + 3 拍去抖**；alarm/offline 切换即时生效（安全优先）。
-- **查询默认按批次作用域**：`daq_query` 自动解析节点所属产线的**活动批次**，按该批次的 `run_id` + `recipe_id` 过滤——Agent 取证据时看到的永远是**当前正在跑的配方**，不会把上一轮配方的样本混进本轮判读。生效口径（`run=<id> 配方「名」(recipe_id)`）打印在结果表头，并在文末逐节点重申；这两个 id 可直接回传给 `daq_query` 或 `aml_dataset_build`。需要跨配方对比/历史复盘时传 `scope: 'all'`（或显式给 `recipe_id` / `run_id` / `product_id`）；产线未开跑则不做过滤，历史数据照常可查。
-
-### 写控制（DCW）
-
-- 工程量写入：`linear` 标定（scale/offset）PLC↔物理，**回读校验**（死区容差），ACK 状态 + 写历史。
-- **联锁**：产线运行时，活动配方的参数窗口对该节点**替代**全局安全量程。
-- **HITL**：`manual` 绑定挂起写入等用户批准（同 Agent+节点去重；批准时二次校验——权限在您点击批准那一刻重查）。
-
-### 配方与批次
-
-`产线 → 产品 → 配方 → 批次`。开跑逐节点应用配方参数（每次写都校验），逐线门控采集，每条样本打标 `line/product/recipe/run`——产品级数据隔离 + 五维查询（产线 × 产品 × 配方 × 时间 × 节点）。
-
-### AML —— 自动建模实验室
-
-这是闭环里的建模半边：`/aml` 用已打标的遥测构建**数据集**，把**训练作业**提交到 `uv` 托管的 Python 运行时，在**排行榜**上给各次运行排名，并且只有跨过配置的**门禁**（NRMSE、rollout NRMSE、验证/测试差距、最小行数与运行次数）才允许晋级。晋级后的模型按 id 引用，因此 MPC 或影子孪生控制器消费的是有版本号的产物，而不是含糊的「最新」。
-
-- Agent 通过 14 个工具做同样的事（`aml_dataset_build`、`aml_job_submit`、`aml_job_status`、`aml_leaderboard`、`aml_model_promote`、`aml_model_find`、`aml_training_plan_*`……）——提交一个目标，让团队去训练并汇报。
-- Python 运行时由 `uv` 自行引导进配置根内的 `./aml` 资产根；数据集/产物/元数据路径、磁盘配额、作业超时、并发与保留策略全部是**设置项**（`aml` 组共 16 项），而不是常量。
-- 治理默认保守：跨配方数据集除非显式允许否则拒绝，每个作业都有归属。
-- **混合孪生 × MPC 内核**：AML 同时承载**混合孪生**平面——`SceneContract` / `PhysicsModelManifest` / `TwinSnapshot` / `ObjectiveProfile` / `VirtualTrial` / `RecommendationCertificate`，底座是带**有界 PyTorch 残差**的灰箱物理主干，外加 UQ/OOD 筛查与全轨迹硬约束门禁。频道通过 `hybrid_twin` profile 显式启用，启用后会注入 12 个 profile 专属工具（`twin_provider_catalog`、`twin_scene_discover/compile/freeze`、`twin_physics_spec_draft/validate/compile`、`twin_scene_read`、`twin_snapshot_create`、`twin_trial_run`、`mpc_optimize`、`twin_gate_evaluate`）与通用工具 `twin_calibration_request`；试验按设计就是**虚拟**的（`candidateExecuted=false`），只有门禁与收益同时通过才签发推荐证书。服务端策略两档：`safe_small_step`(数据不足) 与 `precise_search`(模型过门禁)。计划与验收记录见 [`docs/aml-hybrid-twin-mpc-integration-plan.md`](./docs/aml-hybrid-twin-mpc-integration-plan.md)、[`docs/aml-hybrid-twin-implementation-acceptance.md`](./docs/aml-hybrid-twin-implementation-acceptance.md)。
-- **任意场景建模闭环**：闭环不绑定内置场景。绑定节点 → `twin_scene_discover` 带证据推断 control/state/disturbance/target/guard 语义 → `twin_scene_compile` 生成 `SceneContract` 草稿 → 您确认 → `twin_scene_freeze` 冻结（版本不可覆盖）→ `twin_physics_spec_draft` 起草骨架 PhysicsSpec（每个状态一条一阶弛豫方程，τ/增益为带先验盒的可校准参数）供您润色 → 校验/编译（白名单 AST，禁任意代码）→ `aml_job_submit { job_kind: 'hybrid_residual' }` **可不带代码**：内置参考训练器先做物理参数校准（stage A）、再拟合 3 成员有界残差集成（stage B）、最后报告 conformal q90 覆盖率（stage D）——校准后的 spec 回写，评估/预测/试验三侧同源。
-- **模型驱动孪生与持续校准**：`twin_trial_run` / `mpc_optimize` 可传 `model_id`——rollout 由训练出的 hybrid 模型驱动（校准后物理主干 + 残差集成 ONNX，`ModelBackedHybridProvider`），UQ 覆盖率与成员分歧来自训练工件；模型数据集与场景的产线/产品/配方不一致直接拒绝（`TWIN_MODEL_SCENE_MISMATCH`）。持续校准请求由 60s 定时 worker 消费，自动提交 `hybrid_residual` 重训**候选**；晋升仍走 HITL + Twin Gate（`AML_TWIN_WORKER_DISABLED=1` 可整体关闭）。
-- **双模式优化闭环**：随包附带两个频道模板——`chtpl-aml-training-default`（建模面：22 个工具，无产线写入、无 MPC）与 `chtpl-aml-optimization-default`（执行面：快照/试验/门禁/MPC/贝叶斯寻优，外加 `optimization_explore`——受治理微写，每笔设定值与响应回读配对落 `optimization_explorations` 台账）。两面按频道互斥注入；优化频道实例化时可选**探索**模式（治理小步，无需模型）或 **aml** 模式（必须给 `boundModelId`——过门禁的模型先绑定，执行面才解锁）。
-- **孪生 Provider 插件 SDK（热加载）**：工业场景的物理主干 / 场景包 / 目标 / 求解器经 `ctx.twin` 注册进 **Twin Provider Registry**（`registerPhysicsProvider` / `registerScenePack` / `registerObjectiveProfile` / `registerTrainingAdapter` / `registerSolverAdapter`，另有 `listProviders` / `getProviderHealth` / `resolveProvider` / `validateProvider` / `retireProvider` / `isRegistryAvailable`）。孪生工具按 `SceneContract.physicsProfileId` 解析 Provider（解析不到回退内置 `twin-injection-default`），**换场景不改工具与频道**；热重载按 **generation** 装载新代、排空旧代，试验与 MPC 持租约 ⇒ 在飞工作不被作废，`retireProvider` 等引用归零才下线。系统自带注塑 Provider 走的正是这套外部契约（`server/plugins-builtin/twin-injection-default/`），装法与其它插件同址、停用或热重载无需重启。清单字段与可运行示例见 [`docs/plugins.md`](./docs/plugins.md)「混合孪生 Provider 插件」，SDK 面见 [`docs/sdk.md`](./docs/sdk.md) §4.10。
-
-### 本体与 AI 先行模型闭环（v0.8.0）
-
-第三层建模资产——让整个闭环**自描述**。
-
-- **创作面**：`POST /api/workshop/ontology` 开草稿（乐观锁 `rev`），整份文档（实体/关系/规则/语义绑定）双重校验——schema/量纲 + **对真实 DAQ/DCW/配方对象的活体绑定校验**。规则走五态生命周期（`proposed → reviewed → validated → approved_for_control → deprecated`），控制级批准需要批准单（第二人；单管理员部署有审计留痕的 solo 豁免），`publish` 拒绝未到控制级批准的硬约束。版本不可变——发布即新版本，`GET /versions/{id}/compare` 给四段 diff；`/ontology` 六 tab 渲染图、编译产物、Rule Trace、绑定与版本台账。十件 Agent 工具覆盖同一面（`ontology_scene_inspect / node_neighbors / draft_create / draft_validate / draft_update / rule_explain / compile_preview / publish_propose / version_compare / draft_autofix`），外部 MCP 服务镜像其中四件只读工具。`/ontology` 的图 tab 渲染可交互节点-边视图（自绘 SVG，MV/CV/结构分道），点击节点抽屉可加载直接与 2 跳邻接（草稿维度子图 API）。
-- **编译不变量**：每版本四类产物——过程模型增量（特征候选、τ = D/v 时滞先验、单调性）、ProblemIR 增量、场景契约补丁、控制守卫集；**只收紧不放宽**、PLC 层隔离（联锁编译为 `PLC_LAYER_REQUIRED` 决策而非软件守卫）、不支持形式编译期拒绝（非线性 QP/线性耦合）、**哈希域分离**：`ontologyRefs` 进 Profile 内容哈希但**永不进**求解器 `ProblemIR` 哈希，本体改动表现为 `409 ONTOLOGY_PACK_DRIFTED` 而不是伪造的 IR 变更。
-- **运行时真正生效的只有四处**：下发时的**节点意图守卫**（`evaluateOntologyGuardsForNodes` → `409 ONTOLOGY_GUARD_BLOCKED`，状态未知 fail-closed）、供数据集/训练规划消费的**训练先验派生**、孪生消费的**场景/守卫补丁**、以及 Profile `ontologyRefs` 钉住的**已发布版本谱系校验**（下发时复核）。其余都是可审阅的元数据。
-- **采纳环——模型进化而不只是参数调优**：`optimizer_profile_propose` 打通「训练 → 求解」最后一公里：Agent 复制最新**已发布** Profile、换上新模型工件、生成 v(n+1) 草稿并挂 HITL 卡（`optimizer-profile:<id>@<版本>`）。批准与裁决两入口同路由——批准 ⇒ 发布草稿（冻结哈希）+ **自动重绑基线版本上的全部绑定**（revision+1，在飞求解按 `BINDING_STALE` fail-closed）+ 审计 `optimizer.profile.adopt`；拒绝/超时 ⇒ 零写。兼容性（工件种类 × 求解器族，D21）在提议时校验，Agent 只能在自身绑定面内提议。真机连续两轮进化（v1 → v2 → v3）验证，每轮后 `optimizer_solve` 均在新工件上 optimal。
-- **实测**：531 单测 · 44 服务层本体断言 · **72/72** 本体真机 e2e · **46/46** 模型闭环真机 e2e（孪生创建链 + 两轮采纳 + 零设备写入）· 14 条 MCP 断言。报告：[`docs/audit/2026-10-24-ontology-acceptance.md`](./docs/audit/2026-10-24-ontology-acceptance.md)、[`docs/audit/2026-10-24-ontology-live-report.md`](./docs/audit/2026-10-24-ontology-live-report.md)、[`docs/audit/2026-10-24-model-loop-acceptance.md`](./docs/audit/2026-10-24-model-loop-acceptance.md)。规范：[`docs/plans/2026-10-24-ontology-service-plan.md`](./docs/plans/2026-10-24-ontology-service-plan.md)、[`docs/plans/2026-10-24-closed-loop-acceptance.md`](./docs/plans/2026-10-24-closed-loop-acceptance.md)。
-- **边界（显式）**：ProblemIr 增量已编译但尚未作为求解约束消费；执行结果回写推荐台账的 outcome 回路、逐回合本体 prompt 注入属下一轮；RDF/OWL/SHACL 导出未交付。
-
----
-
-## 使用说明
-
-### 认证
-
-邮箱 + 密码登录签发 **bearer token**（每用户多 token，可单独吊销）。
+## 开发
 
 ```bash
-# 注册
-curl -X POST http://localhost:3000/api/users/register \
-  -H 'content-type: application/json' \
-  -d '{"email":"you@example.com","password":"secret","name":"you"}'
-
-# 所有 workshop 调用
-curl http://localhost:3000/api/workshop/channels \
-  -H 'authorization: Bearer <token>'
-```
-
-### 产线级权限
-
-工业数据按**产线**三态管控，由管理员在内置「权限管理」页（`/permissions`，仅 admin 侧栏可见）维护：
-
-| 状态 | 数采节点 | 数控（写控）节点 | 可见性 |
-|---|---|---|---|
-| **无权**（普通用户默认） | 隐藏 | 隐藏 | 后端不返回该产线数据——产线运营/数采中心/数字孪生均不可见 |
-| **仅查看** | 只读 | ✕ | 产线可见、实时值可看，但不可写/不可下发/不可绑定设备 |
-| **可操控** | 读取 | 读取+写入 | 全量能力：设定值写入、任务下发、设备绑定 |
-
-- `admin` / `editor` 为运营角色，不受授权约束（全量全权）。
-- 普通用户**默认无权**——未授权前看不到任何产线数据。
-- 强制点在数据面：列表接口按授权过滤，写控/下发接口返回人类可读的 403，Agent↔节点绑定校验产线授权（数采需仅查看+，写控需可操控）。
-- 插件经 `ctx.permissions`（`lineMode` / `visibleLineIds` / `listGrants` / `setGrants`）获得同一能力面，并有 `permissions:changed` 生命周期钩子；SDK REST 客户端提供 `client.permissions.overview()` / `client.permissions.set(...)`。
-
-### 执行模式
-
-在任务描述中使用模式前缀（或在 composer UI 中选择）：
-
-| 模式 | 语义 | 配置 |
-|---|---|---|
-| `goal` | lead 分解 → worker 交付 → **lead 判定满意度**；不满足继续补发；满足收口父任务。 | `goalCriteria` |
-| `loop` | 固定间隔循环重放同一任务。 | `intervalMs`（默认 60000）、`maxIterations`（默认 ∞） |
-| `pipeline` | 有序阶段；阶段 N+1 消费阶段 N 产出。 | `stages: [{name, description, assigneeId?}]` |
-
-### 定时任务
-
-任意任务都可挂上**调度**，让频道在无人值守时也持续工作：
-
-| 维度 | 行为 |
-|---|---|
-| 模式 | `interval` —— 固定节拍（`intervalMs`，60s 下限）· `daily` —— 每日本地时间 `HH:MM` 定点一次 |
-| 管理 | `/workshop/schedules` 页面，或 `POST/PATCH /api/workshop/schedules` |
-| 护栏 | 忙等守卫（频道仍有在飞任务时本次触发顺延）、逐次运行历史带状态、**连续失败熔断**（`maxConsecutiveFailures`，异常调度自动停用） |
-| 典型用法 | 每日巡线（`daq_query` + 漂移摘要写入频道记忆）、周期性偏差检查 + 自动判定、每日 KPI 摘要 |
-
-```bash
-# 创建调度：每 30 分钟巡线一次
-curl -X POST http://localhost:3000/api/workshop/schedules \
-  -H 'authorization: Bearer <token>' -H 'content-type: application/json' \
-  -d '{"channelId":"<id>","name":"line-patrol","title":"巡线","description":"读取 1 号线全部数采节点,把漂移摘要写入频道记忆。","mode":"interval","intervalMs":1800000}'
-```
-
-### 四个入口
-
-| 入口 | 端点 | 面向 |
-|---|---|---|
-| **WS** | `/api/workshop/ws?channelId=…` | 仪表盘 / UI——AEP v1 信封，per-channel 单调 `seq`，5000 事件环形缓冲，`lastSeq` 续传，快照兜底。 |
-| **MCP** | 进程内服务，25 个工具 | Agent（omp host tools）——管理面 + 作业面工具，Channel 作用域。 |
-| **A2A** | `POST /api/workshop/a2a/:agentId/rpc` | 外部 Agent——JSON-RPC 2.0，`AgentCard` 在 `/card`，`tasks/sendSubscribe` SSE。 |
-| **REST** | `/api/workshop/**` | 人 / 脚本——完整管理面。 |
-
-### 任务状态机
-
-```
-SUBMITTED ─▶ ASSIGNED ─▶ WORKING ─▶ WAITING ─▶ COMPLETED
-    │            │           │           │
-    └────────────┴───────────┴──▶ CANCELED / FAILED ─▶（重试 ≤ 3 或取消）
-```
-
----
-
-## 端到端验证
-
-上面每一条论断，背后都有一个可复跑的套件。验收套件在**生产实例上、跑真实模拟产线协议**（Modbus TCP/RTU、OPC UA、MQTT、HTTP + MQTT/Timescale 管线），配真实引擎 CLI，断言落在数据库、事件流与 HTTP API 上——而不是 mock。2026-09-24 的两轮波次已归档：基础矩阵（约 **1100+ 条真实断言**，v0.7.45 生产构建、隔离 `AW_HOME`、真实浏览器）见 [`docs/audit/e2e-2026-09-24-full-coverage.md`](./docs/audit/e2e-2026-09-24-full-coverage.md)；补充功能波次（真实 **PLC 节点模拟器** + 注塑 AgentTeam 闭环、FIFO 多任务、定时任务、协作；报告逐项记录结果，含环境/凭据受限的失败与 SKIP）见 [`docs/audit/e2e-2026-09-24-all-features.md`](./docs/audit/e2e-2026-09-24-all-features.md)。
-
-| 套件 | 最新结果 | 覆盖 | 复现 |
-|---|---|---|---|
-| `real-injection-closed-loop.mjs` | **双 goal 全部 COMPLETED / 0 失败**（2026-09-24，真实 PLC 模拟器 + 真实 `omp` 团队） | 从模拟器供给注塑产线（11 个数控 + 14 个数采节点）→ 真实 AgentTeam(lead/分析/优化) → 受治理写入且**间隔 65.8s ≥ 60s 策略** → 数采复测 → `qualityOk`、判定 `keep` | `AW_BASE=<base> SIM_BASE=http://127.0.0.1:4010 AW_TOKEN=<token> node scripts/real-injection-closed-loop.mjs` |
-| `_run-real-injection-fifo-goals.mjs` | exit 0（2026-09-24） | **FIFO 根队列多任务串行**：GOAL-2 仅在 GOAL-1 收口后派发；角色门控切换；两次受治理写入间隔 65.04s；两条记录均判定；账本 4 条锚 | `AW_BASE=<base> SIM_BASE=… AW_TOKEN=<token> node scripts/_run-real-injection-fifo-goals.mjs` |
-| `e2e-plc-plugin-closedloop.mjs` | 核心 Stage A–D 全绿（2026-09-24） | PLC 模拟器 Modbus 16040 真实供给 → 数采交叉核对（AW 采样 197 vs 模拟器寄存器 197.37）→ HITL 闭环写 3 区（寄存器 40021/40023/40025 = 210，真实写穿）→ `dcw_judge` keep；插件段 E–H 需外部诊断服务，按约定显式 SKIP | `AW_BASE=<base> KB_BASE=http://127.0.0.1:8771 AW_E2E_USERS_DB=<home>/data/users.sqlite node scripts/e2e-plc-plugin-closedloop.mjs` |
-| `_dbg-schedule-e2e.mjs` | **35 / 0**（2026-09-24） | 定时任务：计划 CRUD + 参数校验、`next_run_at`、`scheduledCount`、忙等守卫 **409 CHANNEL_BUSY**、在途重复 **409 SCHEDULE_RUNNING**、取消对账（run FAILED + 失败计数）、**timer 到点自动触发**（`trigger_kind=timer`）、停用/启用状态机、删除后 404 | `SCHED_E2E_BASE=<base> node scripts/_dbg-schedule-e2e.mjs` |
-| `e2e-crash-cycle.mjs` | **5 / 5 阶段**（2026-09-24） | 常规执行 → 硬杀 → 持久化断言 → 重启 → 重投 → 自动恢复 → 消费缺口重投；每阶段独立进程 | `node scripts/e2e-crash-cycle.mjs --port 3300 --home .e2e-home-full` |
-| `e2e-full-closedloop.mjs` | **98 / 0**（2026-09-24，v0.7.45 生产构建） | 11 阶段：注册 → 产线/产品/配方建模 → 数采采样 → 帧管线 → 数控写入 + 回读 → 回退账本 → Agent 节点鉴权 → 桥越权边界 → 插件 → 数据根隔离 | `node scripts/e2e-full-closedloop.mjs <base>` |
-| 全协议矩阵（真实协议） | **46 / 0**（2026-09-24） | MQTT · Modbus TCP · Modbus RTU · OPC UA · HTTP——逐协议数采、受控下发 + 回读、配方窗联锁与真实 Agent 闭环 | `node scripts/_dbg-protocol-matrix.mjs` |
-| 生产 API 全链路 | 60 / 0（2026-09-24） | 跨重启持久化、模板 CRUD、任务 assign/complete/cancel/loop/pipeline、A2A + mailbox、WS 广播、MCP 端点、级联删除 | `AW_E2E_TOKEN=<token> node scripts/api-live-e2e.mjs` |
-| AgentTeam 群聊 + 原生 HITL | 112 通过 / 0 失败 / 1 阻塞（2026-09-24，真实 `omp`） | 群聊请求 → 可追踪作业；`omp` 原生 ask → HITL 审批 → 引擎带回执继续 | `node scripts/e2e-agentteam-chat.mjs --phase=all` |
-| 终端镜像 + 提示词组合 | **26 / 0** 与 **16 / 0**（2026-09-24，真实 `omp`） | 终端镜像帧、`input`/`abort`/`ui_response` 注入、原生 `ask` 往返；五段式 prompt 组合（场景 → 专长 → 记忆 → 手册 → 任务）在线上可观测 | `node scripts/test-terminal-e2e.mjs` · `node scripts/test-prompt-system.mjs` |
-| 真引擎协作 | 任务流真跑 **PASS**、`e2e-omp-workspace` **13 / 13**、群聊全真 **PASS**、多用户 HIL **PASS**（2026-09-24） | 真实 `omp` lead + worker：分解/派发/进度/成果/workspace 文件读取与卸载；多用户 HITL 可见性；多引擎团队 14/18（omp 与 dsh 全绿） | `npx tsx scripts/e2e-agentteam-task-flow-real.ts` · `npx tsx scripts/e2e-omp-workspace.ts` |
-| 前端验收 | 响应式门禁 **16 / 16** 页、抽屉交互 **10 / 10**（2026-09-24，真实 Chromium） | 受门禁的 16 个路由（应用共 22 个页面组件，含 3D 小镇）在阈值下渲染通过；抽屉开合、滚动锁、路由跳转、零 pageerror | `node scripts/ui/verify-responsive.mjs --routes all` · `node scripts/ui/verify-nav.mjs` |
-| `_aw0746-stage12.mjs` | **10 / 0**（2026-09-25,全局安装的 **v0.7.49 打包系统**） | 健康门(version=0.7.49)→ 管理员登录/角色面 → 创建 Channel(真实 `omp` lead)→ 开群聊 → **真实 omp 群聊回复** → 系统监控可见 omp 子进程 | `AW_BASE=<base> node scripts/_aw0746-stage12.mjs` |
-| `_aw0746-stage34.mjs` | **13 / 0**（2026-09-25,v0.7.49 打包系统 + PLC 模拟器） | 模拟器建线（11 数控 + 14 数采）→ 产品/配方三元组 → 开跑后**样本逐条带 recipe_id/run_id** → `daq_query` **默认只取当前活动批次**（`scope=all` 可放开，实测 1 vs 4）→ 实例化 Hybrid Twin 模板（lead + 3 worker;该轮注入孪生 6 件套 / 总 57 工具,当前 profile 已注入 12 件） | `AW_BASE=<base> node scripts/_aw0746-stage34.mjs` |
-| `_aw0746-stage6b-train-sweep.mjs` | 门禁**全绿**（2026-09-25,v0.7.46 打包系统,真实 torch 训练） | 1 s 拍格数据集（**1724 行 / 10 批次**）→ 内联 code 作业真实训练 → G1 单步 **0.0992**（≤0.10）/ G2 滚动 0.1092（≤0.25）/ G3 泛化 14.6%（≤20%）/ G4 行数与批次 → 模型注册并**晋升 production** | `AW_BASE=<base> AW_DATASET_ID=<ds> node scripts/_aw0746-stage6b-train-sweep.mjs` |
-| `_aw0746-stage7-twin.mjs` | **17 / 0**（2026-09-25,v0.7.49 打包系统,真实 DAQ + 真实模型） | 真实样本 → TwinSnapshot `fresh=true` → 65 组真实 VirtualTrial（12 条安全候选,`candidateExecuted=false`）→ 12 项推荐门禁 **write_eligible** → 门禁结论回写模型 `twinEligibility` → `mpc_optimize` 升档 **precise_search** → 全程 **0 DCW 写入** | `AW_BASE=<base> AW_REQUIRE_MODEL=1 node scripts/_aw0746-stage7-twin.mjs` |
-| `_aw0746-stage6c-jobsmoke.mjs` | **5 / 0**（2026-09-25,v0.7.49 打包系统） | AML 作业链路：内联 `code` 被接受（不再要求 `workspace/train.py`）→ 作业到终态 → 训练日志/ONNX 痕迹 → 实验与逐项门禁落库 | `AW_BASE=<base> node scripts/_aw0746-stage6c-jobsmoke.mjs` |
-| `_aw0748-failclosed-probe.mjs` | **7 / 0**（2026-09-25,v0.7.49 打包系统） | 硬约束**失败关闭**回归:auto_daq 按真实绑定取样建快照 → 可映射约束 `weight` 正常评估 → 不可映射的 `part_weight` 判不通过并给出明细（v0.7.47 会假通过）→ 空轨迹同样判不通过 | `AW_BASE=<base> node scripts/_aw0748-failclosed-probe.mjs` |
-| `_aw0748-mock-closedloop.mjs` | **13 / 0**（2026-09-25,v0.7.49 打包系统,进程内 `mock`,零额度） | 调度闭环回归:创建 mock Channel → 根任务被真实派发并收口 → `[mock:complex]` 强制委派出子任务 → 父任务汇总收口 → mock worker 就位后 [mock:complex] 委派子任务并汇总 → **第二个/第三个根任务同样被派发**（修复前:lead 空闲卸载后 `scheduler` 置空,后续根任务只落库、一直 SUBMITTED 直到 `ROOT_TIMEOUT`）→ mock 无 host tool 通道时工具桥显式拒绝 | `AW_BASE=<base> node scripts/_aw0748-mock-closedloop.mjs` |
-| 工业基准——integrated | **77 / 77 检查（当前基线契约**，见 `bench/PIPELINE.md`；2026-09-21 的早期运行记录为 83/83） | 五协议五产线基准：连通性、采样入 Timescale、受控下发、治理、Agent 闭环、工艺参数语义层 | `node bench/pipeline.mjs --profile integrated` |
-| 多场景闭环 | 4 场景 · 闭环达标（2026-09-21） | 注塑克重窗口寻优 · A²/O 污水排放达标 + 能耗最小化 · 连续退火质量窗与产能权衡 · BOPET 产线任务 | `node bench/scenarios.mjs --scenarios injection,wwtp,anneal` |
-| 产线权限 / 审计负向 | 21 / 21 + 9 / 9（2026-09-12） | 三态产线授权 + 人类可读 403、绑定主体校验、授权撤销收敛、无 token WS 零遥测 | `node scripts/_dbg-perms-e2e.mjs <base> <adminPass>` · `node scripts/_dbg-audit-neg-e2e.mjs <base> <adminPass>` |
-| 渲染回归 | 30 / 30（2026-09-12） | 数采表完整性（行数与 API 动态对齐）、WS 驱动行更新、筛选、详情页、3D 小镇 + 模型库、7 页 smoke、零 pageerror | `node scripts/_dbg-render-regression.mjs <base> <email> <pass>` |
-| AML 自动建模 | 25 / 0（2026-09-24，确定性训练器） | 数据集构建 → 跨配方拒绝 → 作业提交 → 门禁 → 晋级守卫 → 预测守卫 → 审计；`--real` 附加 uv/torch 真实运行时 | `node node_modules/tsx/dist/cli.mjs --tsconfig .nuxt/tsconfig.server.json scripts/e2e-aml.ts` |
-| 离线单元/属性套件 | 全绿 | AEP 事件索引（`test-events-index`）、LRU、数据根拆分（`test-data-root`）、日志洪泛、回退索引、插件加固、任务租约围栏（`test-task-lease-fencing`）、CLI 退出码（`test-cli-exit`）、SDK 能力面（`test-sdk-surface`） | `node scripts/test-<name>.mjs`（TS 套件经 tsx 运行） |
-
-历史上的 **v0.7.20** 验收基线——*156 断言、0 失败*——归档于 [`docs/audit/e2e-2026-09-07.md`](./docs/audit/e2e-2026-09-07.md)。性能探针：`scripts/_dbg-render-perf.mjs`。
-
----
-
-## 项目结构
-
-```
-AgentWorkShop/
-├── bin/ · cli/                 # aw CLI——指令注册表 · 内置指令 · 配置引擎接线
-├── app/                        # Nuxt 4 前端（srcDir）
-│   ├── pages/                  # / · /workshop · /workshop/agents · /workshop/teams
-│   │                           # /workshop/channel-templates · /workshop/schedules · /workshop/w/:id
-│   │                           # /town · /daq · /daq/:id · /dcw · /dcw/:id
-│   │                           # /aml · /operations · /monitor · /logs · /permissions
-│   │                           # /plugins · /users · /tokens · /settings
-│   ├── components/workshop/    # 时间线 · 泳道 · 任务板 · 记忆面板 · 3D 小镇
-│   └── stores/composables/     # Pinia + AEP 客户端
-├── server/
-│   ├── api/                    # REST + WS + A2A + MCP 路由
-│   ├── services/workshop/
-│   │   ├── runtime/            # manager · scheduler-loop · task-engine · memory · mailbox
-│   │   ├── agents/             # AgentInterface：14 个引擎（+ 工业工具）
-│   │   ├── daq/ dcw/ aml/      # 边缘运行时 · 驱动 · 队列 · 存储 · 建模实验室
-│   │   └── db/                 # node:sqlite 仓储层
-│   ├── mcp/                    # MCP 服务（25 个工具，进程内 workshop 面）
-│   ├── plugins-builtin/        # 随包发布的插件（serial-bridge · rag-bridge · diag-bridge · twin-injection-default）
-│   └── plugins/                # 运行时装配（单例）
-├── mcp/                        # aw mcp —— 零依赖 stdio MCP 网关（41 个工具，实例自动发现）
-├── sdk/                        # agentworkshop/sdk——插件上下文、钩子总线、REST 客户端、浏览器 SDK
-├── tui/                        # 终端工作台（aw tui）
-├── shared/
-│   └── config/                 # schema.json（126 个设置描述符）+ 引擎（合并/校验/持久化）+ 路径解析器
-├── config.yml                  # 工厂默认值（构建/启动时读取；版本号来自 package.json）
-├── .AgentWorkShop/             # 检出内的配置根——prompts（版本化）+ 运行时覆盖 · 数据 · 日志 · 指令（git 忽略）
-├── data/                       # 迁移前的旧版位置（自动迁移进配置根）
-└── scripts/                    # 启动器 · home 引导 · E2E · 验证套件
-```
-
-## 技术栈
-
-| 层 | 技术 |
-|---|---|
-| 框架 | [Nuxt 4](https://nuxt.com) + Nitro（WebSocket） |
-| UI | Vue 3.5 · Pinia · Ant Design Vue · UnoCSS · Three.js · ECharts |
-| 语言 | TypeScript 5.7 全栈；`shared/` 前后端共用 |
-| CLI | Node ESM CLI，可插拔指令注册表（`bin/aw.mjs`） |
-| 持久化 | `node:sqlite`（零原生依赖）+ FTS5 + 可选 `sqlite-vec`；时序用 TimescaleDB |
-| 校验 | `zod` —— 每个消息边界 |
-| 互操作 | `@modelcontextprotocol/sdk` · A2A（JSON-RPC 2.0）· AEP v1（自研 WS 协议） |
-| 现场总线 | `modbus-serial` · `node-opcua` · `mqtt` |
-
-## 开发指南
-
-```bash
-pnpm dev          # 开发服务（端口取自有效配置）
-pnpm cli …        # 仓库内使用 CLI：pnpm cli config list
-pnpm tui          # 终端工作台（连运行中的实例）
-pnpm build && pnpm start
-pnpm typecheck                            # 包装脚本：prepare → 剔除失效 volar 条目 → vue-tsc -b
+pnpm dev
 pnpm lint
-pnpm test:api-live                        # 针对运行中服务的 API 套件
-node scripts/e2e-full-closedloop.mjs      # 全链路闭环（需服务端运行中）
-node scripts/e2e-crash-cycle.mjs          # 硬杀 → 重启 → 重投（自带隔离实例管理）
-node scripts/test-sdk-surface.mjs         # SDK 导出面守卫
+pnpm typecheck
+pnpm docs:build
+pnpm test:unit
 ```
 
-> 排障前先知道两条测试运行约定：（1）`pnpm typecheck` 走 [`scripts/typecheck.mjs`](./scripts/typecheck.mjs)，
-> 而不是裸 `nuxt typecheck`——Nuxt 4.5 仍会把 `vue-router/volar/sfc-route-blocks` 编译插件写进生成的
-> tsconfig，而 vue-router 4.6 已不再导出该子路径，裸 vue-tsc 在加载配置阶段就崩，类型检查其实一次都没跑；
-> （2）导入**真实路由 handler** 的 TS 套件（如 `scripts/e2e-memory-system.ts`）要走纯 node 路径
-> `node --experimental-transform-types --import ./scripts/_audit/ts-register-hook.mjs <suite>.ts`，
-> 该钩子把 Nuxt 的 `#imports` 虚拟模块映射到共享配置桩。
-
-文档站位于 `docs/site/`（VitePress），由 [`.github/workflows/deploy-docs.yml`](./.github/workflows/deploy-docs.yml) 部署到 GitHub Pages：
-
-```bash
-cd docs/site && npx vitepress dev        # 本地预览
-cd docs/site && npx vitepress build      # 生产构建 → .vitepress/dist
-```
-
-该工作流在构建前把 `docs/{cli,plugins,sdk}.md`（及其 `.en.md` 双语对照）同步进文档站，因此这些文件是单页指南的唯一事实来源。
-
-## 部署（生产）
-
-目标形态：**内网单实例 + 反向代理终结 TLS**。服务本身刻意不做 TLS 监听 ——
-由 caddy/nginx 在前面终结（顺带获得 HTTP→HTTPS 跳转、访问日志与第二层限流）。
-
-> [!IMPORTANT]
-> **一个配置根只跑一个实例。** 多个实例指向同一 `.AgentWorkShop`（repo 或 home）会争抢
-> 插件 KV 文件与 SQLite 写入 —— Windows 上表现为 `EPERM` rename 告警刷屏。并行实例必须用
-> **独立 `AW_HOME` 配置根隔离**（与 E2E 套件的隔离方法论一致）。
-
-```bash
-# 1) 构建并启动(缺 .output 产物时生产入口会拒启)
-pnpm build
-NUXT_SESSION_PASSWORD=$(node -e "console.log(require('crypto').randomBytes(24).toString('hex'))") \
-PORT=3000 node scripts/start.mjs
-```
-
-**TLS 反向代理。** caddy(自动证书,WebSocket 天然透传):
-
-```caddy
-aw.example.com {
-    reverse_proxy 127.0.0.1:3000
-}
-```
-
-nginx(注意 WebSocket `Upgrade` 头 —— 工作台、HITL 面板、实时日志全部走 WS):
-
-```nginx
-server {
-    listen 443 ssl;
-    server_name aw.example.com;
-    # ssl_certificate / ssl_certificate_key ...
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_set_header Host $host;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_read_timeout 300s;
-    }
-}
-```
-
-全站 HTTPS 后打开运行时设置 `security.hstsEnabled`,响应带 `Strict-Transport-Security`。
-
-**进程守护。** `scripts/start.mjs` 已自带子进程监管(崩溃退避重启、30s 健康探针、
-堆水位主动重启)—— 把**它**交给服务管理器,让守护进程本身也能扛住重启:
-
-```ini
-# /etc/systemd/system/agentworkshop.service
-[Service]
-WorkingDirectory=/opt/agentworkshop
-Environment=NUXT_SESSION_PASSWORD=<生成的密钥>
-Environment=PORT=3000
-ExecStart=/usr/bin/node scripts/start.mjs
-Restart=always
-User=aw
-[Install]
-WantedBy=multi-user.target
-```
-
-Windows 用 `nssm install AgentWorkShop "C:\Program Files\nodejs\node.exe" scripts\start.mjs`。
-**不要**对同一配置根起第二个实例 —— 单实例锁(`.runtime/aw.lock` 带心跳)会让新进程
-顶替、旧进程退出。
-
-**生产认证加固。** `security.allowRegistration` 缺省 **false**:首管理员就位后两个
-注册端点一律 403,账号由管理员创建;管理员建号/重置密码的账号带 `mustChangePassword`
-标记 —— 工作台在首次登录时强制改密(管理员重置会再次置位并吊销全部旧会话)。
-首启引导不受影响:零用户时首个注册账号仍自动成为管理员。
-
-**备份与恢复。** `server/plugins/backup.ts` 每 24h 快照(保留 7 份)到
-`<配置根>/.AgentWorkShop/data/backups/`:
-
-- 三个 SQLite 库(`workshop/users/daq-timeseries.sqlite`,WAL checkpoint + 原子改名)
-- 全部 JSON 仓储 + `config.yml` / `runtime-settings.json`(`files-<stamp>/`)
-- 本地对象存储与导出 `daq-objects/`、`daq-exports/`(`objects-<stamp>/`)——
-  超过 `AW_BACKUP_OBJECTS_MAX_MB`(缺省 200MB)时显式跳过并落日志
-- 每次附带 `manifest-<stamp>.json`;TimescaleDB/MinIO **docker 卷不在文件备份范围** ——
-  用 `pg_dump` / `mc mirror` 或卷快照另行备份
-
-恢复演练(上线前务必做一次):停服 → 移走 `backups/` → 用最新 `*.bak` + `files-*` +
-`objects-*` 重组数据目录 → 启动 → 核验 `/api/health`、管理员登录、产线/配方在册。
-`BACKUP_DISABLED=1`、`BACKUP_INTERVAL_HOURS`、`BACKUP_KEEP` 可调。
-
-**生产检查清单。** `NUXT_SESSION_PASSWORD` 随机生成(已知开发密钥会拒启) ·
-`security.allowRegistration=false`(缺省) · 反代 TLS + HSTS · 服务管理器就位 ·
-恢复演练已过 · `/api/health` + `/api/metrics` 接入监控 · `AW_HEAP_LIMIT_MB` 按主机
-配好 · `AW_RATE_LIMIT_OFF` **不设**(内置限流必须在线) ·
-`AW_BENCH_MODE` **不设**(写控联锁与限频必须全量在岗)。
-
-**基准开关 `AW_BENCH_MODE=1` 是实验专用,生产禁用。** 该开关服务于 `bench/` 论文
-基准管线(E1a 四臂消融),置 1 时:API 限流总闸停用;在线探索限频(单步步长上限/
-60s 最小写入间隔/写入保持窗)整体豁免;写接口接受 `x-aw-bench-arm` 头选择旁路
-软联锁层(no-interlock/no-readback/ungated;硬量程与结构层校验结构性不可旁路)。
-生产部署的唯一正确值是**不设置**:代码按 `=== '1'` 精确判断,缺省即恒 full 臂;
-开关在模块加载时读取,必须在进程启动前确认未设置(误配时启动日志会告警)。
-`AW_RATE_LIMIT_OFF=1` 只关 API 限流、不影响写控联锁,生产同样必须不设。
-
-## 研究论文
-
-平台的治理机制已写成投稿级论文——**《Grading Machine-Originated Plant Writes: Separately
-Inspectable Evidence for Industrial Agent Teams》**(IEEE Transactions on Industrial
-Informatics 匿名评审稿,IEEEtran 双栏 10 页)。源文件、编译稿与五席评审记录在
-[`paper/tii/SUBMISSION-IEEE-TII/`](./paper/tii/SUBMISSION-IEEE-TII/)。论文中的每一条机制
-主张都由仓库内归档证据支撑:
-
-- [`docs/benchmarks/`](./docs/benchmarks)——2026-10 部署级回归战役:14 次流水线执行、
-  1134 项检查零失败(每次运行归档 `report.md` / `benchmark.json` / `timeline.jsonl`),
-  另含准入消融伴随运行;
-- [`docs/experiments/`](./docs/experiments)——铸膜闭环实验计划与结果(论文 Q3 确定性闭环);
-- [`docs/audit/`](./docs/audit)——评估节引用的验收波次(基础波 1100+ 条;补充波逐项记录,含受限项)。
-
-本地复跑论文流水线:设置 `AW_BENCH_MODE=1` 并按
-[`bench/PIPELINE.md`](./bench/PIPELINE.md) 执行。
-
-## 路线图
-
-| 能力 | 状态 |
-|---|---|
-| Channel 运行时、lead 编排、7 态任务引擎 | 已交付 |
-| 四入口：WS（AEP v1）· MCP · A2A · REST | 已交付 |
-| 持久记忆（FTS5 + 可选向量混合） | 已交付 |
-| 工业栈：数采 · 数控写控 · 产线/配方/批次 | 已交付 |
-| Agent ↔ 节点绑定 + HITL 审批 + 联锁 | 已交付 |
-| 3D 数字孪生小镇 · 产线运营 UI · 仪表盘 | 已交付 |
-| 全功能 live E2E（Agent 读写真实产线，23 项检查） | 已交付 |
-| 运行时配置系统：设置持久化 · 热重载 · 设置页 UI | 已交付 |
-| `aw` CLI：config · start/dev · init · register · doctor | 已交付 |
-| 多 Harness 注册表：omp · codex · dsh · opencode 子进程引擎 | 已交付 |
-| 六种现场协议：Modbus TCP · Modbus RTU-over-TCP · OPC UA · MQTT · HTTP + 内置 serial-bridge 串口插件（数采 + 数控双向） | 已交付 |
-| Harness 可用性探测 + 执行前引擎强校验（UI 禁选 + 409） | 已交付 |
-| Recipe 归因版本化 + 非破坏回退（界面 + Agent 工具） | 已交付 |
-| 配方链路优化闭环：recipe_trial 整批试验（不写版本）→ 进步才固化 → 统一回退（PLC 整批恢复） | 已交付 |
-| 频道绑定产线：全员只读日志/配方/状态 + 产线简报注入提示词 | 已交付 |
-| Agent 自查工具：line_context / ops_log / recipe_log / recipe_versions / dcw_journal | 已交付 |
-| 多 Harness 并行真实产线 live E2E（四引擎、一条产线） | 已交付 |
-| HITL 审批流经真实 OPC UA 写入验证 | 已交付 |
-| 双语文档（简体中文 / English，VitePress 语言切换） | 已交付 |
-| Channel 级 LLM provider/model 选择（取自实时 Harness 目录） | 已交付 |
-| 可配置数采/时序节拍（采样与查询的默认值 + 下限，live 热重载） | 已交付 |
-| 团队级插件开关（建队勾选 + 团队弹层，按 Channel 过滤工具注入） | 已交付 |
-| 插件热管理：`/plugins` 管理页 + `aw plugin list/enable/disable` | 已交付 |
-| 渲染性能专项（v0.7.27）：数采主线程阻塞 −90%、孪生 −69%，自适应画质回升最高档；`window.__townStats` 仪表化 | 已交付 |
-| 插件系统 v2：浏览器面板注入、插件级 settings/groups、插件 i18n、宿主运行时服务（`ctx.services`/`ctx.daq`/`ctx.omp`） | 已交付 |
-| Instrument Glass 材质层（v0.7.36）：三级半透明材质、通透感、高光边缘、弹簧动效、逐页路由转场 | 已交付 |
-| 实时管线优化：数采帧索引 O(n²)→O(n)、逐 Agent 增量事件索引、图表原地更新、按大小感知的 JSON 持久化 | 已交付 |
-| AML 自动建模实验室：数据集构建 · 作业编排（uv 托管 Python）· 排行榜 · 晋级门禁 · 14 个 Agent 工具 | 已交付 |
-| Claude Agent SDK 适配器——常驻会话、同轮 steer 与 `canUseTool` HITL | 已交付 |
-| 工艺参数语义映射：`param_control`/`param_read` 按工艺参数寻址、四层写入限界、调控闭环（`dcw_judge`/`dcw_rollback`） | 已交付 |
-| Channel 群聊：请求升级为可追踪作业；原生 HITL（`omp` ask → 审批 → 回执） | 已交付 |
-| 定时任务：`interval` / `daily` 双模式、逐次运行历史、忙等守卫 + 连续失败熔断 | 已交付 |
-| 根任务队列（FIFO、排队位次可见）+ 派发代与执行租约围栏 | 已交付 |
-| 监督看门狗 + Harness 连续性（`persistent`/`per_turn`、会话复用租约带重启原因） | 已交付 |
-| Channel 过程记忆：确定性事件契约、canonical root 摘要、持久 outbox + 补偿 worker | 已交付 |
-| 运行时可观测：`GET /api/system/monitor` 团队指标，每项带文档化回滚开关 | 已交付 |
-| 工业基准：integrated 档（83 项检查、硬门禁）+ 多场景闭环（注塑 / 污水 / 退火 / BOPET）+ 质量目标 optloop 寻优 | 已交付 |
-| 生产构建全覆盖验收波次矩阵（约 1100+ 条真实断言，2026-09-24） | 已交付 |
-| 孪生 Provider 插件 SDK：物理/场景/目标/训练/求解器 Provider 经 `ctx.twin` 热加载注册，按 generation 装载 + 租约排空，内置 Provider 走同一外部契约 | 已交付 |
-| 任意场景混合孪生建模闭环：场景发现 → 编译 → 冻结 → 物理 spec 起草/校验/编译 → 参考训练器作业（物理校准 + 残差集成 + conformal UQ）、模型驱动试验、持续校准 worker | 已交付 |
-| 双模式优化闭环：`aml-training` / `aml-optimization` 专属频道模板、互斥工具面、探索 ↔ 生产双模式、带回读配对的治理微写 | 已交付 |
-| 产线操作流水：`/operations` 单页 + 工作台控制台面板，九类操作时间线、结构化写控 diff、闭环阶段推断 | 已交付 |
-| 外部 MCP 网关：`aw mcp` stdio 服务（41 个工具）、实例自动发现、`mcp.enabled` 运行时门控 | 已交付 |
-| 可配置系统时区（`time.timeZone`，live 热生效）+ 配方参数级单步限幅 `stepLimit` + 配方 `description` 元字段 | 已交付 |
-| 生产硬化：TLS、MQTT 鉴权、OPC UA 签名+加密缺省、结构化审计日志 | 规划中 |
-| 边缘部署形态：独立 edge-agent + 中心 broker | 规划中 |
-| 报警外送（邮件/webhook）+ 确认工作流 | 规划中 |
-| CI 流水线（typecheck + lint + e2e）——文档部署已跑在 GitHub Actions 上 | 规划中 |
-| License：Apache 2.0（宽松许可 · 允许商用与生产部署） | 已交付 |
-
-## 许可证
-
-AgentWorkShop 是独立项目，**不是 Anthropic 或任何 LLM 厂商的官方产品**。它通过公开接口与 Agent harness（如 `omp`）集成。
-
-**AgentWorkShop 为开源软件，依据 [Apache License 2.0](./LICENSE) 发布。**
-
-- **允许** —— 个人、学术与**商业使用**，包括生产部署、修改与再分发，均按 Apache License 2.0 条款授权。
-- **条件** —— 保留版权与许可声明、标注重大修改，再分发时附带 `NOTICE` 文件。
-- **无商标与担保** —— 许可不授予商标权；软件按 **“原样”** 提供，不附带任何明示或默示担保。
-
-完整条款见 [LICENSE](./LICENSE)。问题反馈：[GitHub @kingdol666](https://github.com/kingdol666)。
-
-<div align="center">
-
-<a href="https://star-history.com/#kingdol666/AgentWorkShop&Date">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" width="80%" />
-  </picture>
-</a>
-
-</div>
-
----
+修改功能时，请同步更新对应文档。文档构建会检查链接与站点页面。
 
 ## 参与贡献
 
-欢迎提交 Issue 与 Pull Request。提 PR 之前请先：
+欢迎提交 Issue 和 Pull Request。建议在贡献中：
 
-1. **先读你要改的那份契约**——扩展面见 [`docs/plugins.md`](./docs/plugins.md)，编程客户端见 [`docs/sdk.md`](./docs/sdk.md)，指令注册见 [`docs/cli.md`](./docs/cli.md)。
-2. **本地跑一遍门禁**：
-
-```bash
-pnpm typecheck                            # vue-tsc 覆盖 app + server + shared
-pnpm lint                                 # eslint 9，期望 0 warning
-node scripts/e2e-full-closedloop.mjs      # 全闭环 E2E，需要服务在跑
-node scripts/test-sdk-surface.mjs         # SDK 导出面不允许漂移
-node scripts/check-docs-sync.mjs          # docs/site 与 docs/*.md 保持同步
-```
-
-3. **提交信息走约定式**——`commit-msg` 钩子跑 `commitlint`（`feat:` / `fix:` / `docs:` / `refactor:` / `perf:` / `test:` / `chore:`），`lint-staged` 会在提交时自动修复暂存的 JS/TS/Vue。
-4. **改了行为就补测试。** 本仓库以 `scripts/` 下的**真实 E2E 脚本**为主，而不是 mock——一条新的工业链路应该能被证明可跑通。
-
-> [!TIP]
-> 报 bug 之前先跑 `aw doctor`：它会端到端体检环境（Node 版本、配置根、端口占用、SQLite、可选的 Docker 服务），大多数「起不来」在这一步就有答案。
+1. 说明用户问题和期望行为。
+2. 指明相关指南或运行契约。
+3. 为行为变更提供聚焦测试或可复现示例。
+4. 运行相关检查，并记录所需环境条件。
 
 ## 安全
 
-发现漏洞请**不要**开公开 Issue，而应通过 [GitHub Security Advisories](https://github.com/kingdol666/AgentWorkShop/security/advisories/new) 私下报告，并附上复现步骤与受影响版本。
+漏洞请通过 [GitHub Security Advisories](https://github.com/kingdol666/AgentWorkShop/security/advisories/new) 私下报告，不要发布公开 Issue。连接真实设备前先用模拟器验证，并将安全关键逻辑留在 PLC。
 
-当你把 AgentWorkShop 指向真实设备时，它就在驱动真实设备：接入现场 PLC 之前，请先复核 `config.yml` 里的联锁、安全量程与 HITL 设置。默认姿态是建议性的——写操作要过联锁、要经审批、要回读校验——但产线侧逻辑始终拥有最终否决权。
+## 许可证
 
----
-
-<div align="center">
-
-**如果这个项目对你有用，点一个 ⭐ 能让更多人找到它。**
-
-<a href="https://star-history.com/#kingdol666/AgentWorkShop&Date">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date&theme=dark" />
-    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" />
-    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=kingdol666/AgentWorkShop&type=Date" width="80%" />
-  </picture>
-</a>
-
-<br />
-
-**[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[上手指南](https://kingdol666.github.io/AgentWorkShop/guide/getting-started)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)** · **[CLI](./docs/cli.md)** · **[English](./README.md)**
-
-<sub>基于 Nuxt 4 · Vue 3 · TypeScript · <code>node:sqlite</code> 构建 —— 监督层，秒级软实时。<br />
-时序关键回路请留在 PLC 内。</sub>
-
-</div>
+AgentWorkShop 使用 [Apache License 2.0](./LICENSE) 开源。它是独立项目，并非任何大语言模型或模型厂商的官方产品。
