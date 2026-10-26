@@ -1,0 +1,65 @@
+=== multi-scenario bench start 01:36:50 ===
+
+=== AW-IndustrialBench · multi-scenario parallel closed-loop 20261026173650-1a4w ===
+scenarios=injection,wwtp,anneal,biax  seed=42  toolHarness=opencode
+platform=http://127.0.0.1:3600  simulator=http://127.0.0.1:4010
+
+✘ 模拟器自举失败: 依赖未安装: D:\tmp\aw-main\plc-node-simulator/node_modules 不存在 → cd D:\tmp\aw-main\plc-node-simulator && npm install
+=== exit=1 01:38:39 ===
+US3 DONE Tue Oct 27 01:38:39     2026
+=== multi-scenario bench start 01:41:03 ===
+
+=== AW-IndustrialBench · multi-scenario parallel closed-loop 20261026174103-1x6w ===
+scenarios=injection,wwtp,anneal,biax  seed=42  toolHarness=opencode
+platform=http://127.0.0.1:3600  simulator=http://127.0.0.1:4010
+
+  · 模拟器未在线 → 自动启动 (cwd=D:\tmp\aw-main\plc-node-simulator, port=4010, 无 watch 常驻)
+(node:89672) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  · 冷启默认设备已清场(24 台) → 产线由预设从零重建
+  · 平台未在线 → 分离启动 (pid=70492, cwd=D:\tmp\aw-main, 隔离配置根 D:/tmp/aw-msc-home, 日志 D:\tmp\aw-bench-platform.log)
+  · 平台启动疑似崩溃（日志含 fatal 且进程已死）→ 5s 后重试一次
+  · 平台未在线 → 分离启动 (pid=83064, cwd=D:\tmp\aw-main, 隔离配置根 D:/tmp/aw-msc-home, 日志 D:\tmp\aw-bench-platform.log)
+✘ 平台自举失败: 两次启动后仍未就绪（查看 D:\tmp\aw-bench-platform.log）
+=== exit=1 01:47:27 ===
+US3 DONE Tue Oct 27 01:47:27     2026
+=== multi-scenario bench start 01:50:25 ===
+
+=== AW-IndustrialBench · multi-scenario parallel closed-loop 20261026175025-1ijw ===
+scenarios=injection,wwtp,anneal,biax  seed=42  toolHarness=opencode
+platform=http://127.0.0.1:3600  simulator=http://127.0.0.1:4010
+
+  · 平台未在线 → 分离启动 (pid=65388, cwd=D:\tmp\aw-main, 隔离配置根 D:/tmp/aw-msc-home, 日志 D:\tmp\aw-bench-platform.log)
+✔ 平台就绪并鉴权(register-first-admin)
+
+· 预检场景 injection(注塑成型质量窗口寻优)
+· 预检场景 wwtp(A2O 污水生化处理达标降耗)
+· 预检场景 anneal(连续退火质量窗内产能最大化)
+· 预检场景 biax(双拉(BOPET)薄膜产线多节点闭环)
+  并行启动 4 个场景闭环:injection, wwtp, anneal, biax(fresh 起点复位)
+  [anneal] ensure ✔ devices=5/5 sp=7 pv=12 created=5 repaired=0 untouched=0
+  [wwtp] ensure ✔ devices=5/5 sp=7 pv=13 created=5 repaired=0 untouched=0
+  [injection] ensure ✔ devices=5/5 sp=11 pv=14 created=5 repaired=0 untouched=0
+  [biax] ensure ✔ devices=9/9 sp=30 pv=19 created=9 repaired=0 untouched=0
+  [wwtp] 平台建线(新建) ✔ line=ln-88201e21 dcw=7 daq=13
+  [anneal] 平台建线(新建) ✔ line=ln-16be7f4d dcw=7 daq=12
+  [injection] 平台建线(新建) ✔ line=ln-84fb36a6 dcw=11 daq=14
+  [anneal] channel=2780a392-6beb-45b2-8f8f-620a8d95e408 toolAgent=9674dbf1-00c1-41fa-aac1-82cebae904a5 task=7da83db8-8acf-431f-bd50-6afc499ef8ba
+  [wwtp] channel=770a500f-61b3-4571-8811-415a90b3b166 toolAgent=31a1f6ae-0a84-4411-aa80-c74646b30868 task=878afcf6-4a99-4d0d-998c-b5c2f2f91f63
+  [injection] channel=fa92137c-df77-45e0-9c6f-8490a4b5972e toolAgent=ee2937db-109e-48ea-abc5-9240cd511736 task=b319ce27-cdd5-46ee-850b-a3ab6eb96410
+  [biax] 平台建线(新建) ✔ line=ln-86da7428 dcw=30 daq=19
+  [biax] channel=d224bdd6-fe79-46fd-9d3b-82f2c093d960 toolAgent=fc740fdd-114b-4aa1-9f0d-82f13c3eecf9 task=91f23e86-459f-4f76-a27b-34de81019932
+  [anneal] mission ✔ writes=2 attained=false wall=22.71s
+  [injection] mission ✔ writes=5 attained=false wall=35.55s
+  [wwtp] mission ✔ writes=10 attained=false wall=56.78s
+  [biax] mission ✔ writes=6 attained=false wall=93.75s
+
+=== 结果 ===
+  ✘ injection  注塑成型质量窗口寻优     writes=5   rounds=8   wall=35.55s
+  ✘ wwtp       A2O 污水生化处理达标降耗 writes=10  rounds=10  wall=56.78s
+  ✘ anneal     连续退火质量窗内产能最大化  writes=2   rounds=5   wall=22.71s
+  ✘ biax       双拉(BOPET)薄膜产线多节点闭环 writes=6   rounds=6   wall=93.75s
+  并行 wall = 96.8s(串行累计 208.79s)
+  报告 → bench/results/20261026175025-1ijw/scenarios-benchmark.md + .html
+=== exit=1 01:52:04 ===
+US3 DONE Tue Oct 27 01:52:05     2026
