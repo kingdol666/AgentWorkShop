@@ -3,6 +3,7 @@ import { defineConfig } from 'vitepress'
 // 中文根站点 + /en/ 英文镜像(右上角语言切换);主题/搜索/页脚按 locale 各自声明
 const zhNav = [
   { text: '指南', link: '/guide/getting-started' },
+  { text: '产品演示', link: '/demo' },
   { text: 'SDK', link: '/sdk/' },
   { text: '插件', link: '/plugins/' },
   { text: 'CLI', link: '/cli/' },
@@ -11,6 +12,7 @@ const zhNav = [
 ]
 const enNav = [
   { text: 'Guide', link: '/en/guide/getting-started' },
+  { text: 'Product demo', link: '/en/demo' },
   { text: 'SDK', link: '/en/sdk/' },
   { text: 'Plugins', link: '/en/plugins/' },
   { text: 'CLI', link: '/en/cli/' },

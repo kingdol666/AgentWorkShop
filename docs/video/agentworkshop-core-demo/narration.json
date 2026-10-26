@@ -1,0 +1,110 @@
+{
+  "title": "AgentWorkShop Core Product Walkthrough",
+  "voice": "af_bella",
+  "speed": 0.96,
+  "pauseSeconds": 0.24,
+  "transitionSeconds": 0.38,
+  "scenes": [
+    {
+      "id": "01-workspace",
+      "route": "dashboard",
+      "en": [
+        "Agent Work Shop brings agent teams, production lines, and digital twins into one operational workspace.",
+        "This walkthrough follows the application as it is actually configured."
+      ],
+      "zh": [
+        "AgentWorkShop 将智能体团队、产线与数字孪生整合到同一个工业工作空间。",
+        "本片直接演示当前运行中的产品界面。"
+      ],
+      "enCaption": [
+        "AgentWorkShop brings agent teams, production lines,\nand digital twins into one operational workspace.",
+        "This walkthrough follows the application\nas it is actually configured."
+      ]
+    },
+    {
+      "id": "02-templates",
+      "route": "templates",
+      "en": [
+        "Start with a channel template.",
+        "A reusable scenario assembles the roles around a job and gives a new workspace a clear structure."
+      ],
+      "zh": [
+        "从频道模板开始。",
+        "可复用场景会按任务装配团队角色，为新工作区提供清晰结构。"
+      ],
+      "enCaption": [
+        "Start with a channel template.",
+        "A reusable scenario assembles the roles\naround a job and gives a new workspace structure."
+      ]
+    },
+    {
+      "id": "03-agent-channel",
+      "route": "workspace",
+      "en": [
+        "Here, a lead, process engineer, and analyst share one channel.",
+        "Team status, tasks, and line operations stay visible beside the event timeline."
+      ],
+      "zh": [
+        "这里，负责人、工艺工程师和数据分析师共享同一个频道。",
+        "团队状态、任务与产线操作都与事件时间线并列呈现。"
+      ],
+      "enCaption": [
+        "Here, a lead, process engineer,\nand analyst share one channel.",
+        "Team status, tasks, and line operations stay\nvisible beside the event timeline."
+      ]
+    },
+    {
+      "id": "04-line-context",
+      "route": "lines",
+      "en": [
+        "Each production line keeps its own nodes, products, recipes, and acquisition context.",
+        "Before a run begins, operators can inspect the configuration in one place."
+      ],
+      "zh": [
+        "每条产线分别管理节点、产品、配方和采集上下文。",
+        "启动运行前，操作人员可以在同一页面检查完整配置。"
+      ],
+      "enCaption": [
+        "Each production line keeps its own nodes,\nproducts, recipes, and acquisition context.",
+        "Before a run begins, operators can inspect\nthe configuration in one place."
+      ]
+    },
+    {
+      "id": "05-line-standby",
+      "route": "line-context",
+      "sourceStill": "04-line-context.png",
+      "en": [
+        "This line has one control node, one product, and one recipe.",
+        "Its status is standby, and the line remains stopped."
+      ],
+      "zh": [
+        "这条演示产线配置了一个控制节点、一个产品和一个配方。",
+        "当前状态为待机，整条产线保持停止。"
+      ],
+      "enCaption": [
+        "One control node, one product, one recipe.",
+        "Status: standby. The line remains stopped."
+      ]
+    },
+    {
+      "id": "06-mock-boundary",
+      "route": "line-context",
+      "sourceStill": "04-line-context.png",
+      "en": [
+        "This card identifies the setup as an isolated mock demonstration.",
+        "No PLC hardware is connected. We leave Start untouched and send no command.",
+        "This walkthrough shows configuration only, with no live factory run."
+      ],
+      "zh": [
+        "这张卡片标明当前配置是隔离的模拟演示。",
+        "没有连接真实 PLC；我们没有触碰启动控件，也没有发送任何指令。",
+        "本片展示的是配置界面，没有现场生产运行。"
+      ],
+      "enCaption": [
+        "An isolated mock demonstration.",
+        "No PLC hardware is connected. Start stays untouched;\nno control command is sent.",
+        "Configuration walkthrough; no live factory run."
+      ]
+    }
+  ]
+}
