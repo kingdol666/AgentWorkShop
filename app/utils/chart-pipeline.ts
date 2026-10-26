@@ -194,10 +194,18 @@ export function buildPipelineOption(type: string, cfg: PipelineConfig, rows: Pip
     }
   }
   const { categories, series } = aggregateRows(rows, cfg)
+  // 大样本(数百/数千个时间桶)按固定目标数抽稀刻度,只让约 16 个标签落笔;
+  // hideOverlap 在旋转标签下不足以压住全量刻度,必须给数值 interval。
+  const labelInterval = categories.length > 60 ? Math.max(1, Math.ceil(categories.length / 16)) : 'auto' as const
   const xAxis = {
     type: 'category' as const,
     data: categories,
-    axisLabel: { fontSize: 10, rotate: categories.length > 24 ? 40 : 0 },
+    axisLabel: {
+      fontSize: 10,
+      rotate: categories.length > 24 ? 40 : 0,
+      hideOverlap: true,
+      interval: labelInterval,
+    },
   }
   const yAxis = {
     type: 'value' as const,

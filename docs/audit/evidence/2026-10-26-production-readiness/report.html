@@ -49,25 +49,26 @@
 <h2>1. 验收矩阵</h2>
 <table>
 <tr><th>层</th><th>套件</th><th>结果</th></tr>
-<tr><td>T0</td><td>lint / typecheck / docs / i18n / README</td><td><b>全通过</b> · docs 91/91 · i18n 3148/3148</td></tr>
+<tr><td>T0</td><td>lint / typecheck / docs / i18n / README</td><td><b>全通过</b> · docs 91/91 · i18n 3149/3149</td></tr>
 <tr><td>T1</td><td>单元 / MCP / 插件 / SDK / Twin / Skills</td><td><b>582/582</b> · 14/14 · 22/22 · PASS · 5/5 · 124</td></tr>
 <tr><td>T2</td><td>本体 L1–L7（真机）</td><td><b>87/87</b>（Chrome 六 tab + graph/table + 邻接）</td></tr>
 <tr><td>T2</td><td>模型闭环 / 优化器 / 产线治理</td><td><b>54/54</b> · <b>104/104</b> · <b>44/44</b></td></tr>
 <tr><td>T3</td><td>REST API live</td><td><b>64/64</b></td></tr>
-<tr><td>EDA</td><td>pipeline E2E / live UI / Studio+Board</td><td><b>22/22</b> · <b>10/10</b> · <b>2/2</b></td></tr>
+<tr><td>EDA</td><td>pipeline E2E / live UI / Studio+Board</td><td><b>24/24</b> · <b>10/10</b> · <b>4/4</b></td></tr>
 </table>
 
-<h2>2. EDA 实机演示</h2>
-<p class="muted">在线拉数（真实 DAQ REST）→ 数据表 → 浏览器本地代码后处理 → 图表 → 在线查看器 → 模板持久化 → 保存图表/分析结果 → Studio/Board 快照回放。</p>
+<h2>2. EDA 本地实机演示（模拟产线）</h2>
+<p class="muted">在线拉数（真实 DAQ REST，模拟产线数据）→ 数据表 → 浏览器本地代码后处理 → 图表 → 在线查看器 → 模板持久化 → 保存图表/分析结果 → Studio/Board 快照回放。截图来自本地实例，不代表真实工厂运行。</p>
 <div class="grid">
   <div class="card"><img class="shot" src="../2026-10-26-eda-production-review/02-live-table.png" alt="live table"><div class="cap"><b>在线拉数</b>：选择产线与两个 DAQ 节点，宽表直接回落。</div></div>
-  <div class="card"><img class="shot" src="../2026-10-26-eda-production-review/04-drawn-chart.png" alt="drawn chart"><div class="cap"><b>代码后处理 + 绘图</b>：927 行结果，line / x=at / y=Part Weight。</div></div>
-  <div class="card"><img class="shot" src="../2026-10-26-eda-production-review/05-online-viewer.png" alt="viewer"><div class="cap"><b>在线查看器</b>：真实 ECharts canvas，支持缩放/PNG。</div></div>
-  <div class="card"><img class="shot" src="../2026-10-26-eda-production-review/06-save-outputs.png" alt="save outputs"><div class="cap"><b>保存回执</b>：图表与分析结果均落库。</div></div>
-  <div class="card"><img class="shot" src="../2026-10-26-eda-production-review/10-studio-pipeline-snapshot.png" alt="studio snapshot"><div class="cap"><b>Studio 快照</b>：pipeline 图表可直接打开渲染。</div></div>
+  <div class="card"><img class="shot" src="../2026-10-26-eda-production-review/04-drawn-chart.png" alt="drawn chart"><div class="cap"><b>代码后处理 + 绘图</b>：1735 行结果，line / x=at / y=Part Weight。</div></div>
+  <div class="card"><img class="shot" src="../2026-10-26-eda-production-review/05-online-viewer.png" alt="viewer"><div class="cap"><b>在线查看器</b>：真实 ECharts canvas，滚轮/滑块缩放 + PNG。</div></div>
+  <div class="card"><img class="shot" src="../2026-10-26-eda-production-review/06a-chart-saved.png" alt="chart saved"><div class="cap"><b>图表保存回执</b>：pipeline 图表落库。</div></div>
+  <div class="card"><img class="shot" src="../2026-10-26-eda-production-review/06b-result-saved.png" alt="result saved"><div class="cap"><b>分析结果保存回执</b>：结果进入台账。</div></div>
+  <div class="card"><img class="shot" src="../2026-10-26-eda-production-review/10-studio-pipeline-snapshot.png" alt="studio snapshot"><div class="cap"><b>Studio 快照</b>：同一 pipeline 图表可打开渲染（只读）。</div></div>
   <div class="card"><img class="shot" src="../2026-10-26-eda-production-review/11-board-pipeline-snapshot.png" alt="board snapshot"><div class="cap"><b>Board 快照</b>：同一图表进看板仍可渲染。</div></div>
 </div>
-<div class="note"><b>本轮修掉的 EDA 真实缺陷：</b>在线查询点形状 `{at,v}` 与页面 `{x,y}` 不匹配；保存图表发送 `pipeline-line` 被服务端 400；Studio/Board 不识别 pipeline 快照；E2E 多选 Y 字段测试自身未触发 change。修复后 22/22 + 10/10 + 2/2。</div>
+<div class="note"><b>本轮修掉的 EDA 真实缺陷：</b>在线查询点形状 `{at,v}` 与页面 `{x,y}` 不匹配；保存图表发送 `pipeline-line` 被服务端 400；Studio/Board 不识别 pipeline 快照；E2E 多选 Y 字段测试自身未触发 change；快照图表在 grid 容器里以 0 宽初始化；1735 桶刻度重叠。修复后 24/24 + 10/10 + 4/4（含无快照 rows 与 line_id 不一致必须 400 的负例）。<br><b>B4 边界：</b>管道快照仅 private、最多 2000 行、必须带 line_id 且 datasource.line_id 一致；rows 为保存者客户端提供、不是服务端代理数据，读取仍走 chart owner 可见性。普通图表只存查询参数。</div>
 
 <h2>3. 系统设计强项</h2>
 <div class="verdict">

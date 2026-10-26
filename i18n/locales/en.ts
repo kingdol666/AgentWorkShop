@@ -3275,6 +3275,7 @@ export default {
     update: 'Update version',
     savedV: 'Saved v{v}',
     viz: { trend: 'Trend', bar: 'Bars', scatter: 'Scatter', kpi: 'KPI', table: 'Table', histogram: 'Histogram' },
+    pipelineSnapshot: 'Pipeline snapshot · read-only',
     boardLink: 'Board',
     agentPrompt: 'Agent prompt',
     promptTitle: 'Agent deep-analysis prompt (paste into a Channel)',

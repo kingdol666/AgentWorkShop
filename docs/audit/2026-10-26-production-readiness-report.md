@@ -7,7 +7,7 @@
 
 | 层 | 套件 | 结果 |
 | --- | --- | --- |
-| T0 | lint / typecheck / docs:check / i18n / readme lint | 全通过（docs 91/91，i18n 3148/3148） |
+| T0 | lint / typecheck / docs:check / i18n / readme lint | 全通过（docs 91/91，i18n 3149/3149） |
 | T1 | 单元测试 | **582/582，0 fail** |
 | T1 | MCP / 插件生命周期 / SDK / Twin / Skills | 14/14 · 22/22 · PASS · 5/5 · 124 PASS |
 | T2 | 本体真机 L1–L7 | **87/87**（Chrome 六 tab、图/表、1/2 跳邻接） |
@@ -15,16 +15,16 @@
 | T2 | 优化器 | 104/104 |
 | T2 | 产线治理 | 44/44 |
 | T3 | REST API live | 64/64 |
-| EDA | `scripts/e2e-eda-pipeline.mjs` | **22/22** |
-| EDA | 实机管道演示（在线拉数→代码→图表→查看器→模板/保存） | **10/10** |
-| EDA | Studio/Board 管道快照回放 | **2/2** |
+| EDA | `scripts/e2e-eda-pipeline.mjs` | **24/24** |
+| EDA | 本地实机管道演示（模拟产线；在线拉数→代码→图表→查看器→模板/保存） | **10/10** |
+| EDA | Studio/Board 管道快照回放（含几何/只读断言） | **4/4** |
 | 文档 | VitePress build | 通过 |
 
 未纳入本轮通过口径：IDD 结果库/RAG（外部后端未启）、注塑闭环（需要专用注入产线与 fixture）、Mimosa（见第 4 节）。
 
-## 2. EDA 系统实机演示
+## 2. EDA 系统本地实机演示（模拟产线）
 
-演示实例：当前 main 构建（`0.8.4`）+ 隔离 home（`D:/tmp/aw-video/home-en`），真实 REST 在线取数（非仅 CSV）。
+演示实例：当前 main 构建（`0.8.4`；本地实例 footer 标记 `dev`）+ 隔离 home（`D:/tmp/aw-video/home-en`）+ Mock/PLC 模拟产线；在线取数走真实 REST（不是仅 CSV）。截图来自本地实例与模拟数据，不代表真实工厂运行。
 
 ### 2.1 在线拉数 → 代码后处理 → 图表
 
@@ -34,7 +34,7 @@
 
 ![代码后处理](evidence/2026-10-26-eda-production-review/03-transform.png)
 
-`transform(rows)` 过滤后得到 927 行，图表配置选择 line / x=at / y=Part Weight，绘图成功：
+`transform(rows)` 过滤后得到 1735 行，图表配置选择 line / x=at / y=Part Weight，绘图成功：
 
 ![绘图结果](evidence/2026-10-26-eda-production-review/04-drawn-chart.png)
 
@@ -46,7 +46,8 @@
 
 模板保存后刷新页面仍在；保存为图表、保存为分析结果均有成功回执：
 
-![保存回执](evidence/2026-10-26-eda-production-review/06-save-outputs.png)
+![图表保存回执](evidence/2026-10-26-eda-production-review/06a-chart-saved.png)
+![分析结果保存回执](evidence/2026-10-26-eda-production-review/06b-result-saved.png)
 ![模板持久化](evidence/2026-10-26-eda-production-review/07-template-persisted.png)
 
 ### 2.3 Studio 图库、管道快照、看板与台账
@@ -63,11 +64,14 @@
 ### 2.4 EDA 本轮修掉的真实缺陷
 
 1. **在线拉数解析不匹配**：`daq/query` 返回 `{at,v}`，管道页按 `{x,y}` 解析，导致在线拉数无表/报错；已抽到 `chart-pipeline.seriesToRows` 兼容两种形状并加单测。
-2. **保存图表必然 400**：页面发送 `viz_type: pipeline-line`，服务端只接受 `pipeline`；已统一为 `pipeline`，并保存 `chartType/cfg/rows` 快照。
-3. **管道图表无法在 Studio/Board 回放**：已加入 Studio/Board 的 pipeline 快照渲染分支，保存后两处都能画出来。
-4. **E2E 测试自身 bug**：多选 Y 字段用 `select.value=` 未触发真实多选；已改为逐 option `selected` 并派发 change，套件从 19/19 恢复到 **22/22**。
+2. **保存图表必然 400**：页面发送 `viz_type: pipeline-line`，而服务端白名单只接受 `pipeline`（不是接受所有 `pipeline-*` 变体）；已统一为 `pipeline`，并保存 `chartType/cfg/rows` 快照。
+3. **管道图表无法在 Studio/Board 回放**：已加入 Studio/Board 的 pipeline 快照渲染分支，保存后两处都能画出来；快照以只读徽章标识，Studio 不允许直接覆盖。
+4. **E2E 测试自身 bug**：多选 Y 字段用 `select.value=` 未触发真实多选；已改为逐 option `selected` 并派发 change，并新增两个 B4 负例（无快照 rows、datasource.line_id 与 line_id 不一致均必须 400）；套件恢复到 **24/24**。
+5. **快照图表挤在左上角**：`AwChart` 在 grid/flex 容器里可能以 0 宽完成首次初始化；已加入 mount/option/resize-observer 显式 resize，Studio/Board 均恢复为全宽绘图。
+6. **大样本刻度重叠**：1735 个时间桶时全量 x 轴标签重叠；已按目标约 16 个标签抽稀，并保留 `hideOverlap`。
+7. **B4 边界**：管道快照是 B4 的显式例外——仅 `private`、最多 2000 行、必须带 `line_id` 且 `datasource.line_id` 一致；`rows` 由保存者客户端提供，是保存视图而非服务端代理数据，读取只按 chart owner 可见性。普通图表仍只存查询参数，取数按 `/daq/query` 鉴权。
 
-§ 评价：EDA 的“拉数/导入 → 表格 → 浏览器代码 → 图表 → 模板 → 查看器 → 保存/台账 → 图库/看板”主链已经闭合，是当前系统完成度最高的产品面之一。边界：用户代码在浏览器执行（不服务端 eval）；快照最多保存 2000 行；大规模数据/并发未做负载测试；模板是配置模板，不是定时任务编排。
+§ 评价：EDA 的“拉数/导入 → 表格 → 浏览器代码 → 图表 → 模板 → 查看器 → 保存/台账 → 图库/看板”主链已经闭合，完成度高。边界：用户代码在浏览器执行（不服务端 eval）；快照有 2000 行上限；大规模数据/并发未做负载测试；模板是配置模板，不是定时任务编排。
 
 ## 3. 系统设计与生产就绪判断
 
@@ -108,8 +112,9 @@
 
 ## 5. 证据与入口
 
-- EDA 实机证据：`docs/audit/evidence/2026-10-26-eda-production-review/`（11 张截图 + report.json + snapshot-checks.json）
-- EDA E2E：`docs/audit/evidence/2026-10-26-eda-pipeline/`（22/22）
+- EDA 本地演示证据：`docs/audit/evidence/2026-10-26-eda-production-review/`（12 张截图 + report.json + snapshot-checks.json）
+- EDA E2E：`docs/audit/evidence/2026-10-26-eda-pipeline/`（24/24，`e2e-24.txt`）
+- 最终 T0/T1 门禁：`docs/audit/evidence/2026-10-26-postfix-gates/gates.txt`（lint/typecheck/unit 582/docs/i18n/readme/docs:build/MCP/plugin/SDK/twin/skills）
 - 本体 L7：`docs/audit/evidence/2026-10-24-ontology-live/`（87/87）
 - 优化器：`docs/audit/evidence/2026-10-23-optimizer-live/`（104/104）
 - 模型闭环：`docs/audit/evidence/2026-10-24-model-loop-live/`（54/54）

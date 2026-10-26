@@ -161,13 +161,17 @@
             ＋
           </button>
         </div>
-        <ClientOnly>
-          <AwChart
-            v-if="item.chart && !item.inaccessible"
-            :option="cardOption(item)"
-            style="height: 100%; width: 100%"
-          />
-        </ClientOnly>
+        <div class="cellChart">
+          <ClientOnly>
+            <AwChart
+              v-if="item.chart && !item.inaccessible"
+              :key="cardKey(item)"
+              :option="cardOption(item)"
+              :height="Math.max(240, (item.gridPos?.h ?? 3) * 60)"
+              style="width: 100%"
+            />
+          </ClientOnly>
+        </div>
         <p
           v-if="item.inaccessible"
           class="empty"
@@ -249,6 +253,11 @@ const cardOption = (item: BoardDetail['charts'][number]): EChartsOption => {
   const ch = item.chart
   if (!ch) return EMPTY_OPTION
   return cardOptions.value.get(ch.id) ?? EMPTY_OPTION
+}
+
+const cardKey = (item: BoardDetail['charts'][number]): string => {
+  const id = item.chart?.id ?? 'none'
+  return `${id}-${item.chart?.version ?? 0}-${cardOptions.value.has(id) ? 'ready' : 'pending'}-${item.chart?.options?.pipeline ? 'p' : 'q'}`
 }
 
 const cardOptions = computed(() => {
@@ -388,8 +397,9 @@ watch(windowPreset, () => {
 .input.w { min-width: 240px; }
 .sel { max-width: 160px; }
 .chk { display: inline-flex; gap: 4px; align-items: center; font-size: 12px; border: 1px solid var(--border, rgba(127,127,127,.3)); border-radius: 999px; padding: 2px 10px; cursor: pointer; }
-.grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 8px; }
-.cell { background: var(--panel, #fff); border: 1px solid var(--border, rgba(127,127,127,.25)); border-radius: 10px; padding: 8px; min-height: 150px; display: flex; flex-direction: column; }
+.grid { display: grid; grid-template-columns: repeat(12, 1fr); grid-auto-rows: minmax(220px, auto); gap: 8px; }
+.cell { background: var(--panel, #fff); border: 1px solid var(--border, rgba(127,127,127,.25)); border-radius: 10px; padding: 8px; min-height: 200px; display: flex; flex-direction: column; }
+.cellChart { flex: 1; min-height: 120px; }
 .cellHead { display: flex; gap: 4px; align-items: center; margin-bottom: 4px; }
 .cTitle { font-size: 12px; font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mini { border: 1px solid var(--border, rgba(127,127,127,.35)); background: transparent; border-radius: 4px; font-size: 10px; padding: 0 5px; cursor: pointer; }

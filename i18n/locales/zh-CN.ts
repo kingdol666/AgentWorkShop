@@ -3274,6 +3274,7 @@ export default {
     update: '更新版本',
     savedV: '已保存 v{v}',
     viz: { trend: '趋势线', bar: '柱状', scatter: '散点', kpi: 'KPI 大数字', table: '数据表', histogram: '直方图' },
+    pipelineSnapshot: '管道快照 · 只读',
     boardLink: '看板',
     agentPrompt: 'Agent 分析提示词',
     promptTitle: 'Agent 深度分析提示词(复制到 Channel 即可发起)',

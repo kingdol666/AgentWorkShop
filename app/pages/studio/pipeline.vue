@@ -413,7 +413,7 @@
         <button
           class="pill-btn outline"
           data-test="pipeline-save-chart"
-          :disabled="!hasDrawn"
+          :disabled="!hasDrawn || !lineId"
           @click="saveChart"
         >
           {{ $t('studio.pipeline.saveChart') }}
@@ -536,7 +536,12 @@ const saveMsg = ref('')
 const saveErr = ref('')
 
 const option = ref<Record<string, unknown>>({})
-const viewerOption = computed(() => ({ ...option.value, toolbox: { feature: { saveAsImage: { pixelRatio: 2 } } } }))
+const viewerOption = computed(() => ({
+  ...option.value,
+  toolbox: { feature: { saveAsImage: { pixelRatio: 2 } } },
+  // 在线查看器承诺滚轮缩放:图型 option 本身不带 dataZoom,这里补上两层缩放。
+  dataZoom: [{ type: 'inside' }, { type: 'slider', height: 16, bottom: 10 }],
+}))
 
 const tableCols = computed(() => deriveFields(viewRows.value).map(f => f.name))
 const viewFields = computed(() => deriveFields(viewRows.value))
