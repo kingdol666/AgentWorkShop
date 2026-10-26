@@ -301,6 +301,7 @@ ok('E4.1', delR.status === 200, '模板删除')
 const gone = await api('GET', `/api/workshop/eda/templates/${tplId}`)
 ok('E4.2', d(gone.json)?.template === null, '删后详情为 null')
 
+if (uiFails.length) console.log('UI-PAGE-ERRORS:', uiFails.join(' | '))
 console.log(`\nEDA-PIPELINE E2E: ${pass}/${pass + fails.length} passed${fails.length ? `, failed: ${fails.join(',')}` : ''}`)
 spawnSync('taskkill', ['/PID', String(inst.pid), '/T', '/F'], { shell: true })
 process.exit(fails.length || uiFails.length ? 1 : 0)

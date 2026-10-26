@@ -1,0 +1,129 @@
+{
+  "base": "http://127.0.0.1:3400",
+  "at": "2026-10-26T16:12:52.830Z",
+  "pass": 24,
+  "total": 24,
+  "pageErrors": [],
+  "checks": [
+    {
+      "id": "home.h1",
+      "ok": true,
+      "detail": "dashboard text"
+    },
+    {
+      "id": "town.canvas",
+      "ok": true,
+      "detail": "canvas=17"
+    },
+    {
+      "id": "town.text",
+      "ok": true,
+      "detail": "DIGITAL TWIN AGENTWORKSHOP · 数字孪生平台 运行 编辑 保存布局 ◉ 0 49 FPS DE Demo Admin 设备资源 13 "
+    },
+    {
+      "id": "daq.page",
+      "ok": true,
+      "detail": "AGENTWORKSHOP DIGITAL TWIN 控制台 仪表盘 Agent 工作台 数字孪生 数采中心 产线运营 数据管理 EDA 工坊 建模 优化器 本"
+    },
+    {
+      "id": "daq.rows",
+      "ok": true,
+      "detail": "rows=29"
+    },
+    {
+      "id": "workshop.page",
+      "ok": true,
+      "detail": "workshop text"
+    },
+    {
+      "id": "dcw.page",
+      "ok": true,
+      "detail": "h1=产线运营 rows=7"
+    },
+    {
+      "id": "data.page",
+      "ok": true,
+      "detail": "AGENTWORKSHOP DIGITAL TWIN 控制台 仪表盘 Agent 工作台 数字孪生 数采中心 产线运营 数据管理 EDA 工坊 建模 优化器 本"
+    },
+    {
+      "id": "data.tabs",
+      "ok": true,
+      "detail": "tabs visible"
+    },
+    {
+      "id": "studio.page",
+      "ok": true,
+      "detail": "studio text"
+    },
+    {
+      "id": "studio.chart",
+      "ok": true,
+      "detail": "picked=true canvas=1"
+    },
+    {
+      "id": "studio.viewer",
+      "ok": true,
+      "detail": "clicked=true canvas=1"
+    },
+    {
+      "id": "pipeline.page",
+      "ok": true,
+      "detail": "AGENTWORKSHOP DIGITAL TWIN 控制台 仪表盘 Agent 工作台 数字孪生 数采中心 产线运营 数据管理 EDA 工坊 建模 优化器 本"
+    },
+    {
+      "id": "board.page",
+      "ok": true,
+      "detail": "board text"
+    },
+    {
+      "id": "board.chart",
+      "ok": true,
+      "detail": "opened=EDA验收看板-ec-c6604f26 canvas=1"
+    },
+    {
+      "id": "tools.page",
+      "ok": true,
+      "detail": "AGENTWORKSHOP DIGITAL TWIN 控制台 仪表盘 Agent 工作台 数字孪生 数采中心 产线运营 数据管理 EDA 工坊 建模 优化器 本"
+    },
+    {
+      "id": "tools.count",
+      "ok": true,
+      "detail": "api tools=125"
+    },
+    {
+      "id": "ontology.page",
+      "ok": true,
+      "detail": "AGENTWORKSHOP DIGITAL TWIN 控制台 仪表盘 Agent 工作台 数字孪生 数采中心 产线运营 数据管理 EDA 工坊 建模 优化器 本体模型 运维 产线操作 数据分析 运行时"
+    },
+    {
+      "id": "ontology.tabs",
+      "ok": true,
+      "detail": "tabs"
+    },
+    {
+      "id": "optimizer.page",
+      "ok": true,
+      "detail": "optimizer text"
+    },
+    {
+      "id": "analysis.page",
+      "ok": true,
+      "detail": "AGENTWORKSHOP DIGITAL TWIN 控制台 仪表盘 Agent 工作台 数字孪生 数采中心 产线运营 数据管理 EDA 工坊 建模 优化器 本"
+    },
+    {
+      "id": "analysis.rows",
+      "ok": true,
+      "detail": "rows=19"
+    },
+    {
+      "id": "logs.page",
+      "ok": true,
+      "detail": "logs text"
+    },
+    {
+      "id": "plugins.page",
+      "ok": true,
+      "detail": "plugins text"
+    }
+  ]
+}

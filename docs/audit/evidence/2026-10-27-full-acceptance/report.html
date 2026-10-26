@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgentWorkShop 全功能验收 · 2026-10-27 · 实机演示图册</title>
+<style>
+  :root { --ink:#16211c; --mut:#5b6b63; --line:#dfe7e2; --green:#1d7a53; --bg:#f6f8f7; }
+  * { box-sizing:border-box }
+  body { margin:0; font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif; color:var(--ink); background:var(--bg) }
+  .wrap { max-width:1180px; margin:0 auto; padding:36px 28px 64px }
+  h1 { font-size:26px; margin:0 0 6px }
+  .sub { color:var(--mut); margin:0 0 22px; font-size:14px }
+  .badges { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 28px }
+  .badge { background:#fff; border:1px solid var(--line); border-radius:999px; padding:6px 14px; font-size:13px }
+  .badge b { color:var(--green) }
+  h2 { font-size:18px; margin:34px 0 12px; border-top:1px solid var(--line); padding-top:22px }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:18px }
+  .card { background:#fff; border:1px solid var(--line); border-radius:10px; overflow:hidden }
+  .card img { width:100%; display:block; border-bottom:1px solid var(--line) }
+  .cap { padding:10px 12px; font-size:13px; color:var(--mut) }
+  .cap b { color:var(--ink) }
+  table { border-collapse:collapse; width:100%; background:#fff; border:1px solid var(--line); font-size:13.5px }
+  th,td { text-align:left; padding:8px 10px; border-bottom:1px solid var(--line) }
+  th { background:#eef3f0 }
+  td.num { font-variant-numeric:tabular-nums; white-space:nowrap }
+  .ok { color:var(--green); font-weight:600 }
+  .note { background:#fff; border:1px solid var(--line); border-left:3px solid var(--green); border-radius:8px; padding:12px 16px; font-size:13.5px; color:var(--mut) }
+  a { color:var(--green) }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>AgentWorkShop 全功能验收 · 实机演示图册</h1>
+  <p class="sub">2026-10-27 · main@f541cdec(v0.8.4)· 生产构建 + 种子实例 · 走查脚本与断言明细见同目录 <code>demo-checks.json</code>,完整报告见 <a href="../../2026-10-27-full-acceptance-report.md">2026-10-27-full-acceptance-report.md</a></p>
+
+  <div class="badges">
+    <span class="badge">T0 静态门禁 <b>全绿</b>(unit 582/582)</span>
+    <span class="badge">T1 组件面 <b>全绿</b>(MCP 14 · 插件 22 · Twin 5 · Skills 124)</span>
+    <span class="badge">T2 实时 E2E <b>10 套全绿 519 项</b> + 注塑 4/6 + IDD 2 套环境受限</span>
+    <span class="badge">T3 实机走查 <b>24/24 · 0 页面错误</b></span>
+  </div>
+
+  <h2>实机截图(16 页,全部为运行中实例的真实渲染)</h2>
+  <div class="grid">
+    <div class="card"><img src="screens/01-dashboard.png" alt="dashboard"><div class="cap"><b>01 仪表盘</b> — 运行产线/控制节点/数采通道/写命令成功率</div></div>
+    <div class="card"><img src="screens/02-town-twin.png" alt="town"><div class="cap"><b>02 数字孪生</b> — 3D 平台 49 FPS · 设备资源 13 · 数采通道 6</div></div>
+    <div class="card"><img src="screens/03-daq.png" alt="daq"><div class="cap"><b>03 数采中心</b> — 节点台账与采样状态</div></div>
+    <div class="card"><img src="screens/04-line-ops.png" alt="line ops"><div class="cap"><b>04 产线运营</b> — 产线/产品/配方/批次</div></div>
+    <div class="card"><img src="screens/05-dcw.png" alt="dcw"><div class="cap"><b>05 数控写控</b> — 回路设定与回读</div></div>
+    <div class="card"><img src="screens/06-data-mirror.png" alt="data"><div class="cap"><b>06 数据管理</b> — 镜像数据 / MES 接口 / 台账三页签</div></div>
+    <div class="card"><img src="screens/07-studio-chart.png" alt="studio"><div class="cap"><b>07 EDA 工坊</b> — 选线→+Y→查询,真实绘出 Part Weight 1h 趋势(32.2–32.8g)</div></div>
+    <div class="card"><img src="screens/08-studio-viewer.png" alt="viewer"><div class="cap"><b>08 在线查看器</b> — 图表卡双击打开</div></div>
+    <div class="card"><img src="screens/09-studio-pipeline.png" alt="pipeline"><div class="cap"><b>09 管道图表</b> — 在线拉数/CSV 导入→代码后处理→图表</div></div>
+    <div class="card"><img src="screens/10-studio-board.png" alt="board"><div class="cap"><b>10 EDA 看板</b> — 真实看板与快照卡渲染(刻度格式列为化妆修)</div></div>
+    <div class="card"><img src="screens/11-tools.png" alt="tools"><div class="cap"><b>11 工具管理</b> — 总数 125 = 内置 104 + 插件 21,与 API 双向核对</div></div>
+    <div class="card"><img src="screens/12-ontology.png" alt="ontology"><div class="cap"><b>12 本体模型</b> — 六 tab · 实体 5/规则 2/绑定 5 · 已发布 v1</div></div>
+    <div class="card"><img src="screens/13-optimizer.png" alt="optimizer"><div class="cap"><b>13 优化器</b> — 过程模型/求解/下发</div></div>
+    <div class="card"><img src="screens/14-analysis.png" alt="analysis"><div class="cap"><b>14 数据分析</b> — 台账行 19</div></div>
+    <div class="card"><img src="screens/15-logs.png" alt="logs"><div class="cap"><b>15 产线日志</b> — 审计检索</div></div>
+    <div class="card"><img src="screens/16-plugins.png" alt="plugins"><div class="cap"><b>16 插件管理</b> — 装载面</div></div>
+  </div>
+
+  <h2>验收矩阵摘要</h2>
+  <table>
+    <tr><th>层</th><th>套件</th><th>结果</th></tr>
+    <tr><td>T0</td><td>lint / typecheck / unit / docs / i18n / readme / docs:build</td><td class="num ok">全绿(unit 582/582 · docs 91/91 · i18n 3149)</td></tr>
+    <tr><td>T1</td><td>MCP · 插件生命周期 · SDK · Twin · Skills</td><td class="num ok">14 · 22 · PASS · 5 · 124</td></tr>
+    <tr><td>T2</td><td>EDA 管道 / 产线治理 / 优化器 / 本体 live+离线 / 模型闭环 / MES×Agent / api-live / 数据台×2</td><td class="num ok">24 · 44 · 104 · 87+57 · 54 · 25 · 60 · 50+14</td></tr>
+    <tr><td>T2</td><td>注塑治理闭环(写入/治理链)</td><td class="num">4/6 — P1/P2/P4/P7 过;P5 红在 PV 标定,P6 另被 ≥300s 试验节拍门拒</td></tr>
+    <tr><td>边界</td><td>IDD 结果库 ×2 · bench attainment · Mimosa</td><td class="num">环境受限 / 仿真标定红 / 扫描未完成(不构成安全认定)</td></tr>
+  </table>
+
+  <p class="note" style="margin-top:22px">
+    结论:<b>功能面验收通过,系统设计优秀</b>(治理链 fail-closed、单咽喉+交集限界、数据面强制、诚实可观测);
+    <b>真实产业上线 = 有条件就绪</b>:真机 FAT/SAT、功能安全评估、安全整改+复扫、HA/容量、仿真标定五道闸门关闭前,不宣告可投产。
+    详见完整报告 §8–§10。
+  </p>
+</div>
+</body>
+</html>

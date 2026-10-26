@@ -1,0 +1,587 @@
+=== eda-pipeline === 00:14:16
+· 实例就绪 http://127.0.0.1:3040(home=C:\Users\87287\AppData\Local\Temp\aw-eda-pipeline-t5uKNF)
+✔ [E0.1] 建线 ln-67665445
+✔ [E0.2] 建数采节点(daq/query 实时路径由演示实例与产线套件覆盖;本 e2e 数据面用 CSV 导入,见 UI 段)
+✔ [E1.1] 非法图型 400(400)
+✔ [E1.2] 空名 400(400)
+✔ [E1.3] 保存模板 et-ff4289fd
+✔ [E1.4] 列表含新模板
+✔ [E1.5] 详情 config 回读
+✔ [E1.6] PATCH 描述落库
+✔ [E2.1] analysis POST ar-1bc29513
+✔ [E2.2] 台账列表含新结果
+✔ [E2.3] 台账详情回读
+✔ [E3.0] pipeline 快照缺少 rows 被拒(B4 线域边界)
+✔ [E3.0b] pipeline 快照 datasource.line_id 与 line_id 不一致被拒
+✔ [E3.1] 保存图表 ec-219fd33d
+✔ [E3.2] 图表回读含模板链接
+✔ [U1] /studio/pipeline 打开
+✔ [U2] CSV 导入 40 行(共 40 行,预览前 8 行:)
+✔ [U3] 代码后处理生效(越界行被过滤)
+✔ [U4] 绘图渲染出 canvas
+✔ [U5] 模板重载后仍在(持久化)
+✔ [U6] 在线查看器外壳打开
+✔ [U7] 台账含 REST 结果;UI 结果已提示保存
+✔ [E4.1] 模板删除
+✔ [E4.2] 删后详情为 null
+
+EDA-PIPELINE E2E: 24/24 passed
+--- eda-pipeline exit=1 00:15:35
+=== line-governance === 00:15:35
+
+> agentworkshop@0.8.4 test:e2e-line
+> node scripts/e2e-line-governance.mjs
+
+✔ [L1] 隔离实例启动 + workshop ready
+✔ [L1b] admin 注册/登录
+✔ [L2] 建线/节点/产品/配方/频道(lead)/绑线
+✔ [L3a] line_start 生成审批卡(line-start:*)
+✔ [L3b] 批准后开线成功且参数设备证实
+✔ [L3c] line_status 显示运行中
+✔ [L4a] line_stop 生成审批卡(line-stop:*)
+✔ [L4b] 批准后停线成功
+✔ [L4c] 停线后 line_status 未运行
+✔ [L5a] 换线前审批卡已挂起
+✔ [L5b] 换线后审批单取消且未开线
+✔ [L5c] A 线仍未运行
+✔ [L6a] 不可下发配方仍生成审批卡(预检在批准后执行)
+    L6 raw: {"status":200,"code":0,"message":"ok","data":{"result":{"text":"开线失败:配方「停用配方-lmkesw」全部 1 个参数均未下发成功。已自动停线收窗,产线未保持运行状态。\n失败明细:\n  - 停用数控-lmkesw: 已跳过:节点「停用数控-lmkesw」已停用,参数未下发","isError":true}}}
+✔ [L6b] 全部参数失败 → isError + 已自动停线
+✔ [L6c] 自动停线后 line_status 未运行
+✔ [L7a] 数采节点创建(不直接绑定,仅频道绑线可读)
+✔ [L7b] daq_query limit=-5 → 参数错误
+✔ [L7c] daq_query from>=to → 时间窗错误
+✔ [L7d] daq_query bucket_ms=-1 → 参数错误
+✔ [L7e] daq_frames kind=foo → 参数错误
+✔ [L7f] 频道绑线节点可只读导出(daq_export 授权同源)
+✔ [L8a] 预备批次已开跑
+✔ [L8b] 停线审批卡已挂起
+✔ [L8c] 人工停线后重开新批次
+✔ [L8d] 旧停线审批被批次复核拒绝
+✔ [L8e] 新批次仍在运行(未被旧单误停)
+✔ [L9a] 开线审批卡已挂起
+✔ [L9b] 审批期间配方改版成功
+✔ [L9c] 旧配方快照批准后拒绝开线
+✔ [L9d] 配方变更后产线未开跑
+✔ [L10a] 解绑线后可显式绑 B 线节点
+✔ [L10b] 换线到 A 后 B 线绑定被清理(查询被拒)
+✔ [L11a] 读取频道成员 agent token
+✔ [L11b] agent token 调用 daq_query 成功(频道绑线只读面)
+✔ [L11e] 错误 agent token 被拒(401/403)
+✔ [L11c] agent token 发起 line_start 并挂审批
+✔ [L11d] agent token 经治理链开线成功
+✔ [L12a] 产线开跑用于实采
+✔ [L12b] DAQ 实采样本可查
+✔ [L12c] DCW 写入受理 + ACK 等级如实
+✔ [L12d] DCW 回读一致
+✔ [L12e] 超单步限幅被拒(20)
+✔ [L12f] 60s 写间隔被拒
+✔ [L12g] 越节点量程被拒
+
+═══ 结论:PASS(44/44)═══
+--- line-governance exit=0 00:16:22
+=== optimizer === 00:16:22
+
+> agentworkshop@0.8.4 test:e2e-optimizer
+> tsx --tsconfig .nuxt/tsconfig.server.json scripts/e2e-optimizer-live.mjs
+
+
+=== 0. seed ===
+seed: line=ln-065e6842 product=pd-ff810acb recipe=rc-4d7fef8b runs=6 samples=7680
+seed B: line=ln-c79d312b product=pd-3e659ce7 recipe=rc-c4f10dad runs=6
+venv: junction → C:\Users\87287\.AgentWorkShop\aml\.venv
+
+=== 1. boot http://127.0.0.1:3997 ===
+✔ [BOOT] 隔离实例启动 + workshop ready — port=3997
+✔ [BOOT] 管理员注册/登录 — status=200
+✔ [BOOT] 首注册用户为 admin — {"id":"79f72543-170a-4212-ae1d-a7d304fddb80","name":"优化验收-optl9zz","email":"opt-optl9zz@awshop.local","role":"admin","cr
+
+=== 2. process-model REST ===
+✔ [R1.1] GET /process-model/specs 初始可用 — status=200 n=0
+✔ [R1.2] POST /specs 登记 draft — {"id":"pms-optl9zz","version":1,"lineId":"ln-065e6842","productId":"pd-ff810acb","recipeId":"rc-4d7fef8b","recipeVersion":1,"contentHash":"79efc38ac1e15de2defb1
+✔ [R1.3] GET /specs?lineId 回读与可见性 — n=1
+✔ [R2.1] 同版本改内容 → 409 SPEC_VERSION_IMMUTABLE — 409/SPEC_VERSION_IMMUTABLE
+✔ [R2.2] stage 工况 → 422 CONDITION_FIELD_UNSUPPORTED — 422/CONDITION_FIELD_UNSUPPORTED
+✔ [R1.4] POST /specs/:id/publish 发布不可变 — 200/published
+✔ [R1.5] POST /datasets 构建 manifest v2 — id=ds-mvpglv6e-4d7zkm rows=786 runs=6 msg=ok
+✔ [R1.6] GET /aml/datasets/:id manifest v2 可读 — v=2 hash=3c9c1c3ff2
+✔ [R1.7] POST /eligibility 模拟数据具备优化资格 — gaps=none evidence=ds:ds-mvpglv6e-4d7zkm:3c9c1c3ff254
+✔ [R1.8] GET /eligibility 最新+历史 — history=1
+✔ [R2.3] 模拟线申请 real 作用域 → 422 ELIGIBILITY_SCOPE_MISMATCH — 422/ELIGIBILITY_SCOPE_MISMATCH msg=模拟产线的数据只能生成 simulation 作用域资格;real 作用域需要真实产线
+✔ [R1.9] POST /train 提交内置训练作业 — job=job-mvpglv9w-3u6zwg
+✔ [R1.10] 训练作业 done + 两阶段登记 model_id — status=done model=mdl-mvpglv9w-3u6zwg err=
+✔ [R1.11] 模型注册表:linear_state_space@1 + 接口/哈希 — linear_state_space@1/linear_state_space/b2add42ff3
+
+=== 3. optimization REST ===
+✔ [R1.12] 创建 workspace/channel(lead 实例) — ws=fbfa8fc7-b59e-4108-83d0-f4ff2e943aa8 ch=18c1f0c8-c96c-4e67-99d1-3e9ff6fc9020 lead=1f925cae-9b53-4be8-89ba-b28844e29d39
+✔ [R1.13] 挂载 channel 到 workspace — status=200
+✔ [R2.4] solver/模板不兼容 → 422 PROFILE_INCOMPATIBLE — 422/PROFILE_INCOMPATIBLE
+✔ [R1.14] POST /profiles draft(工件字段由服务端回填) — 200/draft/linear_state_space@1/b2add42ff3 msg=ok
+✔ [R1.15] POST /profiles/:id/publish 发布 — 200/published
+✔ [R1.16] POST /bindings 创建(revision=1) — id=ob-mvpglw6j-zxnr3 rev=1
+✔ [R1.17] GET /bindings?agentInstanceId 隔离回读 — n=1
+✔ [R1.18] GET /capabilities 环境/求解器/绑定总览 — bindings=1 solverSize=1 py=e\aml\.venv\Scripts\python.exe
+✔ [R1.19] POST /solve optimal + 建议带证据状态(verified|unverified 由 UQ 证据决定) — status=optimal run=orun-mvpglwax-ftp4u rec=verified reason=已验证推荐 http=200
+✔ [R1.20] 求解零 DCW 写入(写入账本不变) — 0→0
+✔ [R1.21] GET /runs 台账:IR hash + 建议 + 载荷 — hash=7a8d3d8ab0 rec=verified cvOrder=cv1
+
+=== 4. agent tools ===
+✔ [R3.1] 实例化 aml_optimization 频道 — ch=15420b7a-a603-42eb-8897-b6be96571bd1 lead=41ee93b3-a68f-42e5-a5e9-45eb5ede4d64
+✔ [R2.5] 模板 id 绑定 → 422 AGENT_TEMPLATE_ID_NOT_ALLOWED — 422/AGENT_TEMPLATE_ID_NOT_ALLOWED tpl=tpl-aml-lead
+✔ [R3.2] 优化频道 lead 绑定 Profile — 200/0
+✔ [R3.3] 工具注入面含 5 个 optimizer_* — optimizer_capabilities,optimizer_solve,optimizer_status,optimizer_cancel,optimizer_plan_get,optimizer_profile_propose,optimizer_campaign,optimizer_round,optimizer_state
+✔ [R3.4] optimizer_capabilities 返回求解器/环境 JSON — {
+  "agentId": "41ee93b3-a68f-42e5-a5e9-45eb5ede4d64",
+  "bindings": [
+    {
+      "bindingId": "ob-mvpglzj7-35p75",
+      "profile": "optp-optl9zz@1",
+      "m
+✔ [R3.5] optimizer_solve 真实求解(optimal) — run=orun-mvpglzkz-21ozo status=optimal text={
+  "runId": "orun-mvpglzkz-21ozo",
+  "bindingId": "ob-mvpglzj7-35p75",
+  "profileVersion": "optp-optl9zz@1",
+  "status"
+✔ [R3.6] optimizer_plan_get 返回带证据状态的建议(verified|unverified) — {
+  "runId": "orun-mvpglzkz-21ozo",
+  "recommendation": {
+    "id": "orec-mvpgm038-2zgo3",
+    "runId": "orun-mvpglzkz-21ozo",
+    "candidateId": "oc-n-mvpglzkz
+✔ [R3.7] optimizer_status 返回终态 — {
+  "run": {
+    "id": "orun-mvpglzkz-21ozo",
+    "bindingId": "ob-mvpglzj7-35p75",
+    "bindingRevision": 1,
+    "profileId": "optp-optl9zz
+✔ [R3.8] optimizer_cancel 对终态返回 cancelled=false(非 500) — {
+  "cancelled": false
+}
+
+=== 5. rbac ===
+✔ [R2.6] 管理员创建第二用户并登录(非 admin) — create=200 login=200
+✔ [R2.7] 非 editor 读 Profile → 403 — 403/FORBIDDEN_ROLE
+✔ [R2.8] 非 admin 读全局绑定 → 403 — 403/FORBIDDEN_ROLE
+✔ [R2.9] 非 admin 读全局运行 → 403 — 403/FORBIDDEN_ROLE
+✔ [R2.10] 无产线授权用户看不到规格(过滤为空) — n=0
+✔ [R2.11] 无产线授权用户登记规格 → 403 — 403/LINE_FORBIDDEN
+✔ [R2.12] DELETE /bindings/:id 撤权 — 200
+✔ [R2.13] 撤权后绑定列表为空 — n=0
+✔ [R2.14] 撤权后 solve → 409 BINDING_NOT_FOUND — 409/BINDING_NOT_FOUND
+
+=== 6. UI /optimizer ===
+✔ [U1.1] /optimizer 可打开(标题+五 tab) — title=优化器 tabs=模型规格|资格报告|Profile / Solver|Agent 绑定|运行 / 建议
+✔ [U1.2] 首屏无 pageerror(平台级 unhead dispose 已单列) —  | control=
+✔ [U1.3] UI 添加 MV/CV 两行变量 — rows=2
+✔ [U1.4] UI 登记规格 → 后端 draft 回读 — 规格已登记:pms-demo@1
+✔ [U1.5] UI 构建数据集(v2)成功 — 数据集已构建:ds-mvpgmo5l-9kpx7e(786 窗)
+✔ [U1.6] UI 资格报告渲染(具备资格 + simulation + 证据) — 优化资格(A2)评估资格具备优化资格 · scope=simulation · ds:ds-mvpgmo5l-9kpx7e:93898a2befad{ "sampleCount": 786, "mvVariation.mv1": 0.515081, "mvChanges.mv1": 488, "maxMvColline
+✔ [U1.7] UI 提交训练作业 — 训练作业已提交:job-mvpgmpiv-fzrg9r
+✔ [U1.8] UI 训练作业完成并产出模型 — status=done model=mdl-mvpgmpiv-fzrg9r
+✔ [U1.9] UI 登记 Profile 并出现发布按钮
+✔ [U1.10] UI Profile 表格显示 published — optp-ui-optl9zz@1----publishedmdl-mvpgmpiv-fzrg9rosqp_mpc@1optp-optl9zz@1----publishedmdl-mvpglv9w-3u6zwgosqp_mpc@1
+✔ [U1.11] UI 创建绑定并回读行 — ob-mvpgmrvt-2e0sc18c1f0c8-c96c-4e67-99d1-3e9ff6fc90201f925cae-9b53-4be8-89ba-b28844e29d39optp-ui-optl9zz@1recommendation1撤销ob-mvpglzj7-35p75
+✔ [U1.12] UI 求解成功并渲染运行/建议行(状态徽章二态) — orun-mvpgmsp0-fak2doptimaloptp-ui-optl9zz505a880ece未验证(缺 UQ/OOD 证据)2026-10-27T00:32:35.203+08:00orun-mvpglzkz-21ozooptimaloptp-optl9zz7a8d3d8ab0已验证推荐2026-10-27T00:31:57.332+08:00orun-mvpglwax-ftp4uopt
+✔ [U1.13] 建议状态徽章醒目标识(.unverified) — 未验证(缺 UQ/OOD 证据)
+✔ [U1.15] 非法 JSON → 前端错误提示(不崩溃) — Expected property name or '}' in JSON at position 1 (line 1 column 2)
+✔ [U1.16] UI 全流程(含错误路径)无 pageerror
+
+=== 7. channel matrix ===
+✔ [C1] legacy Channel 不注入新 optimizer_*(5 工具)
+✔ [C2] legacy Channel 直调 optimizer_solve → OPTIMIZER_CHANNEL_DISABLED — OPTIMIZER_CHANNEL_DISABLED: Channel 未启用 Twin profile,优化器工具拒绝执行。请先把 Channel 档位切到 aml_optimization(工艺优化)或 hybrid_twin。
+✔ [C3] aml_training:不注入新 optimizer_*,保留训练工具 — n=110
+✔ [C4] aml_training 直调 optimizer_solve → OPTIMIZER_PROFILE_DENIED — OPTIMIZER_PROFILE_DENIED: optimizer_solve 仅在工艺优化(aml_optimization)或 hybrid_twin Channel 可用(当前 profile=aml_training)。
+✔ [C5] exp-miner 观察面:无新 optimizer_* 且直调拒绝 — |OPTIMIZER_PROFILE_DENIED: optimizer_solve 仅在工艺优化(aml_optimiz
+✔ [C6] hybrid_twin + 绑定:注入 optimizer_* 且 solve 带 binding_id — bind=200
+✔ [C7] hybrid_twin 真实求解 optimal — run=orun-mvpgmvjv-f7agw status=optimal
+✔ [C8] 同 Channel 未绑定 Agent:有 capabilities、无 solve — names=optimizer_capabilities,optimizer_profile_propose,optimizer_campaign,optimizer_round,optimizer_state
+✔ [C9] 同 Channel 两 Agent 各自绑定:worker 获得 solve — bind=200
+✔ [C10] worker 用自己的绑定求解 optimal — run=orun-mvpgmw5u-8rmuj status=optimal
+✔ [C11] worker 读他人 run → BINDING_NOT_OWNED/不属于 — 工具调用被拒(引用校验,optimizer_status):run_id = orun-mvpgmvjv-f7agw 不属于当前 Agent(BINDING_NOT_OWNED)
+✔ [C12] 撤权后工具面立即收回 solve — n=optimizer_capabilities,optimizer_profile_propose,optimizer_campaign,optimizer_round,optimizer_state
+
+=== 8. static response scenario ===
+✔ [S1] 静态场景:规格/数据集/资格链 — rows=816 gaps=none msg=ok
+✔ [S2] 静态训练器完成 + static_response@1 工件 — status=done kind=static_response@1 err=
+✔ [S3] 静态工件 + OSQP → 422 UNSUPPORTED_MODEL_SOLVER — 422/UNSUPPORTED_MODEL_SOLVER
+✔ [S4] 静态场景 Agent 求解(SLSQP) optimal 且命中目标 — profile=200 bind=200 status=optimal mv=63.38744651502797 msg={
+  "runId": "orun-mvpgmxf7-5bcni",
+  "bindingId": "ob-mvpgmxea-vre9r",
+  "profi
+
+=== 9. scenario B (2 MV / 2 CV + unit conversion) ===
+✔ [B1] 双变量场景:无代码训练完成 + 2MV/2CV 工件 — rows=786 status=done model=mdl-mvpgmyau-1spt0v
+✔ [B2] 双变量场景 Agent 求解 optimal(模型单位 m3/h) — bind=200 status=optimal first={"flow_a":4.247466982176206,"flow_b":2.878013041072884} msg={
+  "runId": "orun-mvpgmz7p-2wiu7",
+  "bindingId": "ob-mvpgmz7c-7mwn5",
+  "profileVersion": "optp-b-optl9zz@1",
+  "status": "optim
+✔ [B3] 单位换算随规格持久化(scale=0.06/模型单位 m3/h) — [["flow_a","L/min","m3/h",0.06],["flow_b","L/min","m3/h",0.06],["thick","μm",null,1],["width","mm",null,1]]
+
+=== 10. AML twin adaptation ===
+✔ [T1] Channel 绑定 Twin Gate 通过的 AML 模型(aml 模式) — 200/model_backed/0
+✔ [T2] 模型受控 Channel 注入 mpc/twin 工具 — twin_trial_run,mpc_optimize
+✔ [T3] candidate/Twin Gate 未过 → 409 拒绝 — 409/AML_MODEL_STAGE
+✔ [T4] 旧 ONNX 孪生工件 → 新求解器 422 UNSUPPORTED_MODEL_SOLVER — 422/UNSUPPORTED_MODEL_SOLVER
+✔ [T5] 旧 ONNX 工件仍可绑定 Channel(旧工具面兼容) — 200/0
+✔ [T6] Channel 绑定模型不自动授权 optimizer_* — BINDING_NOT_FOUND: 该 Agent 未绑定优化器 Profile;先在 Channel 设置中绑定后再调用 optimizer_solve。
+✔ [T7] 补 optimizer binding 后同一 Channel 可求解(双闸门分离) — status=optimal
+
+=== 11. live closed-loop value ===
+✔ [V1] Live 闭环:求解器首步驱动真实轨迹(仅首步,逐拍刷新上下文) — steps=12 samples=8 bind=200
+✔ [V2] 相对保持方案中位质量误差改善 ≥15% — base=6.42 mpc=0.02 improve=99.7%
+✔ [V3] 闭环 MV 始终在工艺窗口[0,100] — min=42.1 max=50.0
+
+=== 11.5 governed dispatch (W) ===
+✔ [W0] 下发使用新求解建议(避免旧建议超时/撤权) — bind=200 solve=200 status=optimal
+✔ [W1] POST crosscheck:worker vs typed predictor 一致(pass) — 200/verdict=pass maxDev=0
+✔ [W2] 互校后 dual=true(verified+pass+fresh) — {"id":"oxc-mvpgo858-yfevw","verdict":"pass","stale":false,"conditionChanged":false,"maxDev":0,"tol":0.000001,"rowHash":"e7cd2d63327b33497800e38787ba6f14c15987da
+✔ [W3] dispatch body 携带证据字段 → 422(D11 防伪) — 422/DISPATCH_BODY_EVIDENCE_FORBIDDEN
+✔ [W4] dispatch 建卡成功(optimizer-recipe: 前缀) — 200/optimizer-recipe:rc-4d7fef8b
+✔ [W5] 同配方在飞卡阻止重复建卡 → 409 DISPATCH_RECIPE_IN_FLIGHT — 409/DISPATCH_RECIPE_IN_FLIGHT
+✔ [W6] 审批面精确返回当前下发卡及首步工程值 — id=ap-f3bac7ce nodeId=optimizer-recipe:rc-4d7fef8b expected=36.956649869462126 card=36.956649869462126
+✔ [W7] HITL 批准 → 单一咽喉 D13 重验 → 整批下发 — 200/{"dispatch":{"approved":true,"comment":"集成验收批准","execution":{"runId":"rr-42be323d","acks":{"verified":1,"unverified":0,"failed":0,"total":1}}}}
+✔ [W8] 执行节点回读等于建议首步工程值(写入落设备,按节点分辨率量化) — node=dcw-optl9zz-mv expected=36.956649869462126 readValue=37 tolerance=0.5
+✔ [W9] 当前建议 request 与 execute 审计齐备 — status=200 actions=optimizer.dispatch.execute,optimizer.dispatch.request
+
+=== 11.6 MCP bridge (M) ===
+✔ [M1] 已绑定优化频道 lead 实例 token 存在 — bind=200 tokenPresent=true
+✔ [M2] MCP initialize 会话建立 — {"protocolVersion":"2024-11-05","capabilities":{"tools":{"listChanged":true}},"serverInfo":{"name":"aw-host-tools","titl
+✔ [M3] MCP tools/list 含 5 个 optimizer_* 工具 — optimizer_capabilities,optimizer_solve,optimizer_status,optimizer_cancel,optimizer_plan_get,optimizer_profile_propose,optimizer_campaign,optimizer_round,optimizer_state
+✔ [M4] MCP optimizer_solve 真实求解 optimal — status=optimal text={
+  "runId": "orun-mvpgo9n0-8c83t",
+  "bindingId": "ob-mvpgo9jh-ahgod",
+  "profileVersion": "optp-optl9zz@1",
+  "status": "optimal",
+  "firs stderr=
+
+104/104 通过;证据:D:\tmp\aw-main\docs\audit\evidence\2026-10-23-optimizer-live\report.json
+--- optimizer exit=0 00:18:44
+=== ontology-live === 00:18:44
+
+=== 0. seed PLC 场景 ===
+node:internal/modules/esm/resolve:271
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'D:\tmp\aw-main\server\services\workshop\dcw\dcw-line.repo' imported from D:\tmp\aw-main\scripts\e2e-ontology-live.mjs
+    at finalizeResolution (node:internal/modules/esm/resolve:271:11)
+    at moduleResolve (node:internal/modules/esm/resolve:865:10)
+    at defaultResolve (node:internal/modules/esm/resolve:992:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:701:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:721:38)
+    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:759:56)
+    at #resolve (node:internal/modules/esm/loader:683:17)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:603:35)
+    at node:internal/modules/esm/loader:632:32
+    at TracingChannel.tracePromise (node:diagnostics_channel:362:14) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///D:/tmp/aw-main/server/services/workshop/dcw/dcw-line.repo'
+}
+
+Node.js v24.19.0
+--- ontology-live exit=1 00:18:44
+=== model-loop === 00:18:44
+node:internal/modules/esm/resolve:271
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'D:\tmp\aw-main\server\services\workshop\dcw\dcw-line.repo' imported from D:\tmp\aw-main\scripts\e2e-model-loop-live.mjs
+    at finalizeResolution (node:internal/modules/esm/resolve:271:11)
+    at moduleResolve (node:internal/modules/esm/resolve:865:10)
+    at defaultResolve (node:internal/modules/esm/resolve:992:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:701:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:721:38)
+    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:759:56)
+    at #resolve (node:internal/modules/esm/loader:683:17)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:603:35)
+    at node:internal/modules/esm/loader:632:32
+    at TracingChannel.tracePromise (node:diagnostics_channel:362:14) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///D:/tmp/aw-main/server/services/workshop/dcw/dcw-line.repo'
+}
+
+Node.js v24.19.0
+--- model-loop exit=1 00:18:44
+=== mes-agent === 00:18:44
+
+> agentworkshop@0.8.4 test:mes-agent
+> node scripts/mes-agent-integration-e2e.mjs
+
+✔ [G1a] 隔离实例启动 + workshop ready
+✔ [G1b] MES 模拟器就绪
+✔ [G1c] admin 注册/登录
+✔ [G2] 建线/节点/产品/配方/频道/配方绑定/开跑
+✔ [G2b] MES 点位与数据配方绑定
+✔ [G3a] Agent recipe_catalog 解析当前配方
+  [recipe_apply(line_id)] hitl=ap-4531bdcd isError=false 配方「主配方-magokm9」v1 已整批下发并全部设备证实(1/1,批次 rr-bcc1e)。
+人工附言:recipe_apply(line_id) E2E 人工批准用 daq_query 复测确认工艺响应。
+✔ [G3b] recipe_apply 仅 line_id + manual HITL 下发成功
+  [recipe_create(use_active_run)] hitl=ap-0dbcb4aa isError=false 已创建配方「另存配方-magokm9」(id=rc-668f061b,v1,产品 MES产品-magokm9,参数 1 项)。
+人工附言:recipe_create(use_active_run) E2E 人工批准
+注意:新配方尚未绑定给你 —— 请让用户/lead 在配方管理中把「另存配方-magokm9」绑定给你的 Agent(首绑 manual,需人工批准),之后才能 recipe_update/recipe_apply。当前产线未因此发生变化(仅创建定义,未下发)。
+✔ [G4a] recipe_create 从活动批次冻结参数另存新配方
+✔ [G4b] 新配方出现在 recipe_catalog(未自动绑定提示)
+✔ [G5a] recipe_log 按 recipe_id 返回下发/开跑记录
+✔ [G5b] recipe_log 按 product_id 仍能看到 Agent 下发记录(审计 product_id 已补)
+✔ [G5c] 产线日志 API(UI 下发历史同源)含下发与回执
+✔ [G6a] 外部 API 推送向量/图像被受理
+✔ [G6b] 数组样本落入 daq_frames 且点列完整
+✔ [G6c] Agent daq_frames 在线读取数组(带模头点语义)
+✔ [G6d] daq_export manifest/README 携带向量布局与逐点语义
+✔ [G6e] 图像帧元数据入库(像素对象存储引用)
+✔ [G7a] mes_fetch 返回字段字典(单位/物理意义/逐点)
+✔ [G7b] mes_fetch include_data 返回实际数组采样
+✔ [G7c] mes_export 落指定目录并生成 manifest/README
+✔ [G7d] MES manifest 字段字典含单位与逐点语义
+✔ [G7e] MES 向量宽表可离线读(v0..v47)
+✔ [G7f] MES 异步数据集镜像完成(可读回)
+✔ [G7g] mes_catalog 复用响应字典显示字段标签/单位/点数
+✔ [G8] 配方管理 UI 下发历史弹窗可见(与 API 同源)
+
+===== 25/25 PASS =====
+--- mes-agent exit=0 00:19:48
+=== mcp === 00:19:48
+
+> agentworkshop@0.8.4 test:mcp
+> tsx --tsconfig .nuxt/tsconfig.server.json --test --test-force-exit tests/aw-mcp-server.test.ts
+
+✔ readLock: 正常解析,损坏与越界端口忽略 (17.6944ms)
+✔ buildCandidates: 锁文件 > PORT env > config.yml > 默认,AW_HOME 抑制全局 home 锁 (32.3925ms)
+✔ discoverInstance: 锁文件命中随机端口 mock 实例 (23.7332ms)
+✔ discoverInstance: 锁指向死端口 → 无兜底时干净失败(null) (12.3526ms)
+✔ discoverInstance: 健康形状不对(非 aw 实例)不算命中 (13.2328ms)
+✔ tools/list: ≥30 个工具、名字唯一、schema 均为 object (1.1447ms)
+✔ initialize / ping / 通知 / 未知方法 (0.2394ms)
+✔ 工具全链:懒登录 → 带鉴权调用 → 数据返回 (12.1658ms)
+✔ 未鉴权:错误文本给出可执行的补救指引 (2.0083ms)
+✔ 断线重发现:实例换端口后下一次调用自动接上 (45.2411ms)
+✔ aw_request 逃生舱:仅放行 /api/ 前缀 (3.844ms)
+✔ 凭据错误:抛登录失败且不缓存 token(不触发端口重发现) (2.7991ms)
+✔ MCP 集成开关:停用时除 aw_status 外全部工具被拒(指引去系统设置) (5.4732ms)
+✔ MCP 集成开关:runtime-settings.json 文件路径生效(env AW_HOME=配置根) (34.1643ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 390.8088
+--- mcp exit=0 00:19:49
+=== plugin === 00:19:49
+
+> agentworkshop@0.8.4 test:plugin-lifecycle
+> node scripts/test-plugin-lifecycle.mjs
+
+
+━━━ 1. onDispose 必须转发到宿主回收队列 ━━━
+  PASS  ctx.onDispose(fn) 进入宿主队列
+  PASS  宿主逐个调用后清理真的执行
+
+━━━ 2. ctx.timer 的定时器必须可被关停回收 ━━━
+  PASS  setInterval 自动登记回收
+  PASS  clearInterval 已执行(定时器不再保持事件循环)
+
+━━━ 3. ctx.subscriptions.add 与 onDispose 同队列 ━━━
+  PASS  { dispose() } 形式被执行
+
+━━━ 4. kv 关停兜底必须登记(否则退出前 200ms 写入丢失)━━━
+  PASS  内存态即时可见
+  PASS  防抖期内尚未落盘(证明下面的 flush 来自回收钩子)
+  PASS  执行回收钩子后 kv 已同步落盘
+
+━━━ 5. 无宿主注入口时的本地兜底(单测/独立装配)━━━
+  PASS  无 onDispose 注入时注册不抛错
+
+━━━ 6. ctx.route 返回布尔(与 sdk/index.d.mts 契约一致)━━━
+  PASS  注册成功 → true
+  PASS  首次注册 → true
+  PASS  同键再注册 → true(覆盖语义)
+  PASS  resolve 取到最新 handler
+  PASS  大小写/缺前导斜杠归一化后同键
+  PASS  非法 handler → false
+
+━━━ 7. scope 取值面完整(builtin / project / user)━━━
+  PASS  scope=builtin 原样透出
+  PASS  scope=project 原样透出
+  PASS  scope=user 原样透出
+
+━━━ 8. 生命周期事件清单覆盖真实发射面 ━━━
+  PASS  LIFECYCLE_EVENTS 无缺项
+  PASS  服务端通配是裸 '*'(不是 event:*)
+  PASS  CLIENT_EVENTS 无缺项
+  PASS  客户端通配是 'event:*'(与服务端相反)
+
+✅ 插件生命周期:22 通过 / 0 失败
+--- plugin exit=0 00:19:50
+=== sdk === 00:19:50
+
+> agentworkshop@0.8.4 test:sdk-surface
+> node scripts/test-sdk-surface.mjs
+
+
+[1/3] 生命周期事件清单(类型声明 vs 运行时)
+  ✔ LIFECYCLE_EVENTS: 类型声明与运行时一致(11 项)
+  ✔ CLIENT_EVENTS: 类型声明与运行时一致(5 项)
+  ✔ sdk/index.mjs 转出的 LIFECYCLE_EVENTS 与 lifecycle.mjs 同源
+
+[2/3] sdk/client.d.mts 存在性
+  ✔ sdk/client.d.mts 存在
+  ✔ sdk/client.d.mts 声明了 createClientContext
+  ✔ sdk/client.d.mts 声明了 CLIENT_SDK_VERSION
+  ✔ sdk/client.d.mts 声明了 export interface ClientContext
+
+[3/3] package.json exports 目标文件存在性
+  ✔ exports["."].types → ./sdk/index.d.mts
+  ✔ exports["."].default → ./sdk/index.mjs
+  ✔ exports["./sdk"].types → ./sdk/index.d.mts
+  ✔ exports["./sdk"].default → ./sdk/index.mjs
+  ✔ exports["./sdk/client"].types → ./sdk/client.d.mts
+  ✔ exports["./sdk/client"].default → ./sdk/client.mjs
+  ✔ exports["./package.json"] → ./package.json
+
+✅ SDK 出口面校验通过(agentworkshop@0.8.4)
+--- sdk exit=0 00:19:51
+=== twin === 00:19:51
+
+> agentworkshop@0.8.4 test:twin-provider
+> tsx --test tests/aml-twin-provider-registry.test.ts
+
+✔ registers providers, computes stable hashes, and is idempotent (7.809ms)
+✔ resolves a lease and drains old generation without invalidating in-flight work (1.3786ms)
+✔ retire waits for references and health marks failed providers unavailable (0.6286ms)
+✔ legacy injection provider can be registered without changing physics-runtime (0.2919ms)
+✔ global twin bridge replays pending operations and forwards live operations (0.657ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 239.2469
+--- twin exit=0 00:19:53
+=== skills === 00:19:53
+
+> agentworkshop@0.8.4 test:skills
+> node scripts/test-aw-skills.mjs
+
+
+═══ skill 规范校验:124 PASS / 0 FAIL(skills: aw-line-onboarding, aw-node-bind, aw-opt-channel, aw-plc-sim-twin, aw-plugin-dev, aw-system-acceptance) ═══
+
+--- skills exit=0 00:19:54
+=== api-live === 00:19:55
+目标: http://127.0.0.1:3500 (生产构建 .output + scripts/start.mjs)
+
+  预清理完成(遗留 api-e2e/api-tpl 数据已移除)
+
+━━━ 1. 持久化恢复 — 重启前数据经 API 可见 ━━━
+  PASS  GET /channels 恢复 channel 列表 — count=0
+  SKIP  恢复的 channel 带 lead 实例 — 本用户无历史 channel-with-lead(新注册用户看不到他人 Channel);跨重启持久化由独立重启演练覆盖
+  PASS  GET /runtime 形状(懒加载状态) — wired=0 active=0
+  SKIP  详情/懒加载装配/历史任务 — 无持久化 channel 可探
+
+━━━ 2. AGENT 模板 CRUD(全局定义) ━━━
+  PASS  POST /agents 创建模板 — id=f16c4c8d
+  PASS  POST /agents 第二个模板
+  PASS  GET /agents 列表含新模板 — count=12
+  PASS  GET /agents/:id 详情
+  PASS  PATCH /agents/:id 更新
+  PASS  POST /agents 校验(name 必填 → 400)
+
+━━━ 3. CHANNEL CRUD + lead/worker 装配 ━━━
+  PASS  POST /channels 创建(含 lead) — channel=5040717b
+  PASS  POST /channels/:id/agents 克隆模板为 worker — id=a2be7d9b
+  PASS  POST 第二个 worker
+  PASS  GET /channels/:id/agents 成员列表 — members=3
+  PASS  成员带实例 token(auth 基础)
+  PASS  第二个 lead → 409 LEAD_EXISTS — code=LEAD_EXISTS
+  PASS  GET /channels/:id 详情
+  PASS  PATCH /channels/:id 更新
+  PASS  POST /channels/:id/activate 显式激活
+
+━━━ 4. TASK 提交与执行 — goal 模式 ━━━
+  PASS  POST /channels/:id/tasks 提交(goal) — state=SUBMITTED
+  PASS  任务路由到 lead
+  PASS  goal 任务自动执行至终态 — state=COMPLETED progress=100
+  PASS  goal 任务含成果 artifacts — artifacts=1
+  PASS  GET /tasks/:id 详情(管理面,无 token)
+  PASS  详情含 history 数组 — history=0
+
+━━━ 5. TASK 作用域校验 + dispatch/report/complete 状态机 ━━━
+  PASS  带 token 拉取本 channel 任务 — tasks=2
+  PASS  无效 token → 401 — status=401
+  PASS  跨 channel 访问任务 → 403 SCOPE_VIOLATION — code=0 status=200
+  PASS  提交父任务(用于 dispatch)
+  PASS  lead 自动派发子任务 — autoChild=2(38e5f782)
+  PASS  POST /tasks/:id/dispatch 手工派发第 2 个子任务 — child=4b7529eb
+  PASS  POST /tasks/:id/report 上报进度 — progress=42
+  PASS  子任务执行至 COMPLETED — state=COMPLETED
+  PASS  上报 message 已写入任务 history — history=1
+  PASS  父任务自动汇总 COMPLETED — state=COMPLETED
+  PASS  终态重复 complete → 幂等成功或 400 — code=0 state=COMPLETED
+
+━━━ 6. TASK cancel(系统身份回收) ━━━
+  PASS  提交待取消任务
+  PASS  已终态任务的 cancel 被终态护栏拒绝(不改写 COMPLETED) — status=409 code=TASK_TERMINAL state=undefined
+  PASS  重复 cancel 仍被拒绝 — status=409 code=TASK_TERMINAL
+
+━━━ 7. TASK loop 模式(LoopController 限次重放) ━━━
+  PASS  POST 提交(loop, max=2) — id=b4b41aa0
+  PASS  loop 重放 ≥2 次且全部终态 — iterations=2
+
+━━━ 8. TASK pipeline 模式(提交 + 模式元数据) ━━━
+  PASS  POST 提交(pipeline)
+  PASS  pipeline 模式元数据编码(mode/stages) — desc=[mode:pipeline][stages:stage-A->stage-B] 流水线验证
+  PASS  pipeline 执行至 COMPLETED — state=COMPLETED
+
+━━━ 9. A2A 点对点 + mailbox + channel 消息历史 ━━━
+  PASS  POST /a2a/send worker→lead — msg=5e095a33
+  PASS  GET /mailbox 端点形状(可拉取队列) — pending=0
+  PASS  a2a 消息持久化到 channel 历史(from/to 正确) — from=a2be7d9b to=121acf6d
+  PASS  API messageId == 历史 id(可关联) — api=5e095a33 hist=5e095a33
+  PASS  a2a 目标不存在 → 404/校验失败 — status=404
+  PASS  POST /channels/:id/messages immediate 注入 — code=0
+  PASS  GET /channels/:id/messages 历史含新消息 — msgs=17
+  PASS  POST /agents/subscribe 订阅
+
+━━━ 10. WebSocket Hub — 前端观察入口 ━━━
+  PASS  WS 连接成功
+  PASS  WS 广播 task.status/task.progress — events=channel.snapshot,task.status,root.queue,agent.status,agent.status,task.status,root.queue,agent.status,a2a.artifact,agent.status,agent.status
+  PASS  WS 广播 a2a.artifact/a2a.message
+  INFO  agent.status diff 事件(mock 忙窗口 < 500ms 轮询时可能不出现): 出现
+  PASS  ws 任务执行完成 — state=COMPLETED
+
+━━━ 11. MCP 端点 — initialize 会话建立 ━━━
+  PASS  POST /api/mcp/workshop initialize — status=200 hasServerInfo=true
+  PASS  MCP 会话 id 下发(状态复用) — sid=b43cd685
+  PASS  MCP tools/list 返回工具集 — tools≈25
+
+━━━ 12. 清理与级联删除 ━━━
+  PASS  DELETE /channels/:id 级联删除
+  PASS  DELETE /agents/:id
+  PASS  删除后 channel 列表回退(旧数据保留) — count=0
+
+★ ALL PASS  (60 passed)
+--- api-live exit=0 00:20:02
+=== data-studio === 00:20:03
+用法: node scripts/data-studio-e2e.mjs <scenario-context.json>
+--- data-studio exit=1 00:20:03
+=== data-studio-ui === 00:20:03
+用法: node scripts/data-studio-ui-e2e.mjs <scenario-context.json>
+--- data-studio-ui exit=1 00:20:03
+=== injection === 00:20:03
+file:///D:/tmp/aw-main/scripts/e2e-injection-recipe-closedloop.mjs:15
+if (!TOKEN) throw new Error('AW_TOKEN required')
+                  ^
+
+Error: AW_TOKEN required
+    at file:///D:/tmp/aw-main/scripts/e2e-injection-recipe-closedloop.mjs:15:19
+    at ModuleJob.run (node:internal/modules/esm/module_job:439:25)
+    at async node:internal/modules/esm/loader:643:26
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:5)
+
+Node.js v24.19.0
+--- injection exit=1 00:20:03
+ALL SUITES DONE Tue Oct 27 00:20:03     2026

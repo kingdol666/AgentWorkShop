@@ -1,0 +1,465 @@
+demo instance restarted with AW_TRIAL_INTERVAL_MS=0
+=== eda-pipeline-rerun === 00:30:32
+· 实例就绪 http://127.0.0.1:3040(home=C:\Users\87287\AppData\Local\Temp\aw-eda-pipeline-P0OT6J)
+✔ [E0.1] 建线 ln-5ab5d9a6
+✔ [E0.2] 建数采节点(daq/query 实时路径由演示实例与产线套件覆盖;本 e2e 数据面用 CSV 导入,见 UI 段)
+✔ [E1.1] 非法图型 400(400)
+✔ [E1.2] 空名 400(400)
+✔ [E1.3] 保存模板 et-7ca4865c
+✔ [E1.4] 列表含新模板
+✔ [E1.5] 详情 config 回读
+✔ [E1.6] PATCH 描述落库
+✔ [E2.1] analysis POST ar-a7d84ca4
+✔ [E2.2] 台账列表含新结果
+✔ [E2.3] 台账详情回读
+✔ [E3.0] pipeline 快照缺少 rows 被拒(B4 线域边界)
+✔ [E3.0b] pipeline 快照 datasource.line_id 与 line_id 不一致被拒
+✔ [E3.1] 保存图表 ec-c6567cf0
+✔ [E3.2] 图表回读含模板链接
+✔ [U1] /studio/pipeline 打开
+✔ [U2] CSV 导入 40 行(共 40 行,预览前 8 行:)
+✔ [U3] 代码后处理生效(越界行被过滤)
+UI EX: Waiting failed: 20000ms exceeded
+✖ [UI] UI 走查异常: Waiting failed: 20000ms exceeded
+✔ [E4.1] 模板删除
+✔ [E4.2] 删后详情为 null
+UI-PAGE-ERRORS: pageerror: Cannot read properties of null (reading 'parentNode') | pageerror: Failed to fetch dynamically imported module: http://127.0.0.1:3040/_nuxt/components/AwChart.vue
+
+EDA-PIPELINE E2E: 20/21 passed, failed: UI
+--- eda-pipeline-rerun exit=1 00:31:53
+=== ontology-offline === 00:31:53
+node:internal/modules/esm/resolve:271
+    throw new ERR_MODULE_NOT_FOUND(
+          ^
+
+Error [ERR_MODULE_NOT_FOUND]: Cannot find module 'D:\tmp\aw-main\server\services\workshop\db\database\schema' imported from D:\tmp\aw-main\server\services\workshop\db\database\open.ts
+    at finalizeResolution (node:internal/modules/esm/resolve:271:11)
+    at moduleResolve (node:internal/modules/esm/resolve:865:10)
+    at defaultResolve (node:internal/modules/esm/resolve:992:11)
+    at #cachedDefaultResolve (node:internal/modules/esm/loader:701:20)
+    at #resolveAndMaybeBlockOnLoaderThread (node:internal/modules/esm/loader:721:38)
+    at ModuleLoader.resolveSync (node:internal/modules/esm/loader:759:56)
+    at #resolve (node:internal/modules/esm/loader:683:17)
+    at ModuleLoader.getOrCreateModuleJob (node:internal/modules/esm/loader:603:35)
+    at ModuleJob.syncLink (node:internal/modules/esm/module_job:163:33)
+    at ModuleJob.link (node:internal/modules/esm/module_job:253:17) {
+  code: 'ERR_MODULE_NOT_FOUND',
+  url: 'file:///D:/tmp/aw-main/server/services/workshop/db/database/schema'
+}
+
+Node.js v24.19.0
+--- ontology-offline exit=1 00:31:53
+=== ontology-live === 00:31:53
+
+=== 0. seed PLC 场景 ===
+seed: line=ln-e9f6874e recipe=rc-bfb74f18 runs=6 samples=2880
+venv: junction ok
+
+=== 1. boot http://127.0.0.1:3992 ===
+✔ [BOOT] 隔离实例启动 + workshop ready — port=3992
+✔ [BOOT] 管理员注册(首注册=admin) — status=200
+
+=== L1 产线管理/节点绑定 ===
+✔ [L1.1] GET /dcw/lines 含验收线(simulated) — status=200
+✔ [L1.2] GET /daq 数采节点齐备(MV/CV/温区) — status=200
+✔ [L1.3] 数控节点清单含压力/线速 — status=200
+✔ [L1.4] 配方可读(REST 或清单) — status=200
+✔ [L1.5] PLC 场景数据就绪(4 批次历史 + 新鲜尾巴) — samples=2880
+
+=== L2 本体全链 REST ===
+✔ [L2.1] POST /ontology 创建草稿 — status=200 id=ontd-mvph685c-oir92p
+✔ [L2.2] PATCH 草稿(整份文档,绑定真实节点)通过活体校验 — status=200 code=0 msg=ok rev=2 issues=[] bindFail=[]
+✔ [L2.3] 过期 rev → 409 DRAFT_CONCURRENT_MODIFY — 409/DRAFT_CONCURRENT_MODIFY
+✔ [L2.4] POST validate 全量校验 200 — issues=0
+✔ [L2.5] POST compile 四类产物 + 溯源 — status=warning counts={"compiled":1,"guard":1,"explained":1,"rejected":0}
+✔ [L2.6] POST evidence 写回草稿 — status=200
+✔ [L2.7] solo 部署自审豁免:proposed→reviewed — 200/0
+✔ [L2.8] reviewed→validated(有 validated_control 证据) — 200/0
+✔ [L2.9] 无批准单 → 403 APPROVAL_REQUIRED — 403/APPROVAL_REQUIRED
+✔ [L2.10] 申请批准单 — id=oap-mvph6896-huac68
+✔ [L2.11] 裁决批准(同一管理员,审计留痕) — 200/0
+✔ [L2.12] → approved_for_control — 200
+✔ [L2.13] 未获控制级批准 → 422 ONTOLOGY_NOT_APPROVED — 422/ONTOLOGY_NOT_APPROVED
+✔ [L2.14] admin 发布 v1(contentHash+packHash+counts) — counts={"compiled":1,"guard":1,"explained":1,"rejected":0}
+✔ [L2.15] GET versions 列出 v1(published) — n=1
+✔ [L2.16] GET traces 溯源(每规则一行+决策) — n=3
+✔ [L2.17] GET scene 运行时子图(实体+绑定+守卫) — entities=4 guards=1
+✔ [L2.18] GET export JSON bundle — status=200
+✔ [L2.19] 重复发布 → 新版本 v2(不可变语义) — v=2
+✔ [L2.20] GET compare 四段 diff(无内容变更=空) — rules={"added":[],"removed":[],"changed":[]}
+
+=== L3 运行时守卫 ===
+✔ [L3.1] resolveActiveOntology 解析最新发布版本 — v=2 pack=cd9e5c93e8
+✔ [L3.2] 低温 150℃ + 提速 → 阻断 — 温区未达 180℃,禁止提速
+✔ [L3.3] 高温 200℃ + 提速 → 放行
+✔ [L3.4] 状态未知 + 提速 → fail-closed 阻断
+✔ [L3.5] 节点级意图:实体→dcw 节点映射 + 状态未知提速 → 阻断 — unmapped=
+✔ [L3.6] 节点级意图:降速 → 放行
+✔ [L3.7] 绑定漂移巡检:真实节点在册 → 无漂移 — []
+
+=== L4 AML 集成 ===
+✔ [L4.1] POST /process-model/specs 登记 — 200/0
+✔ [L4.2] spec 发布 — 200
+✔ [L4.3] 数据集构建(lineage_verified) — status=200 code=0 msg=ok rows=786
+✔ [L4.4] 数据集 manifest 可读 — v=2
+✔ [L4.5] 资格报告 optimizationEligible — gaps=none
+✔ [L4.6] 训练作业提交 — status=200 code=0 msg=ok
+✔ [L4.7] 训练 done + 模型登记 — status=done model=mdl-mvph68zg-6rg69x err=
+✔ [L4.8] 模型 linear_state_space@1 + artifactHash — linear_state_space@1 metrics={"platform":{"modelType":"linear_state_space@1","modelKind":"linear_state_space","oneStepVal":{"windows":262,"nrmse":0.000965},"oneStepTest":{"windows":262,"nrmse":0.00096
+✔ [L4.9] 本体训练先验:特征候选≥2(压力/线速→膜厚) — ["pv.melt_pressure","st.line_speed"]
+✔ [L4.10] 本体训练先验:时滞含 τ=D/v(10m/0.5mps=20s) — [{"entityKey":"pv.melt_pressure","delayMs":20000,"basis":"relation_lag","variabilityChecked":true},{"entityKey":"st.line_speed","delayMs":20000,"basis":"tau_eq_D_over_v","variabilityChecked":false}]
+
+=== L5 求解器集成 ===
+✔ [L5.1] 优化档位频道(模板实例化)+workspace 就绪 — inst=200 ch=c6e7b9d6-b6b6-4e9b-98e9-42faf3e666d5
+✔ [L5.2] Profile v1 创建(服务端回填工件) — status=200 code=0 msg=ok
+✔ [L5.3] Profile v1 发布 — 200
+✔ [L5.4] Agent↔Profile 绑定(revision=1) — id=ob-mvph69wk-z6xic
+✔ [L5.5] solve optimal(本体已发布不干扰求解) — status=optimal http=200 msg=ok
+✔ [L5.6] 求解零 DCW 写入(治理红线) — http=200 code=0 msg=ok writes=0→0
+✔ [L5.7] crosscheck 双实现互校 — verdict=pass maxDev=4.844157307474935e-16 tol=0.000001 reason=双实现一致(maxDev=4.844e-16 ≤ tol=0.000001) model=
+✔ [L5.8] Profile v2 带 ontologyRefs 创建+发布 — c=200/0 p=200
+✔ [L5.9] ontologyRefs Profile 求解正常(引用不进 IR hash) — http=200 status=optimal code=0 msg=ok
+✔ [L5.10] 采纳卡挂出(nodeId=optimizer-profile:<id>@<v>) — nodeId=optimizer-profile:optp-ont5ff0@3
+✔ [L5.11] HITL 批准 → 单一咽喉完成发布+重绑 — status=200 body={"status":200,"code":0,"message":"ok","data":{"via":"profile-adopt","result":{"approved":true,"comment":"采纳闭环验收批准","published":{"profileId":"optp-ont5ff0","version":3,"rebindCount":1}}
+[adopt] profiles after decide: {"profiles":[{"id":"optp-ont5ff0","version":3,"name":"","description":"","modelRef":"mdl-mvph68zg-6rg69x","modelArtifactHash":"d55cb0081f1888eed8039ed1ff6b5578e21effe23d0530b7c2e8b47cfc6236bd","modelArtifactKind":"linear_state_space@1","modelInterface":"linear_state_space","problemTemplateRef":"linear_mpc_quadratic@1","problemConfigJson":"{\"linear_mpc_quadratic\":{\"cvWeights\":{\"cv1\":1},\"duWe
+✔ [L5.12] 工具回执:模型采纳完成 — status=200 body=✅ 模型采纳完成(HITL 批准):
+optp-ont5ff0 v2 → v3(published)
+模型:mdl-mvph68zg-6rg69x;重绑绑定 1 个(revision+1,在飞求解 BINDING_STALE 收敛)
+裁决意见:采纳闭环验收批准
+下一次 optimizer_solve 即使用新模型;旧版本保留可回退(retire/rebind 走管理
+✔ [L5.13] 存在绑定已自动重绑到采纳版本(revision+1) — versions=[1,3] card=v3 reboundRev=2
+✔ [L5.14] 重绑后 solve optimal(新模型工件生效) — status=optimal binding=ob-mvph6fbn-72iez
+
+=== L6 数据分析 ===
+✔ [L6.0] 频道绑定产线(产线配频道) — status=200 code=0
+✔ [L6.1] analysis_save 经 agent-tools/invoke 落台账 — status=200 text=ok
+✔ [L6.2] GET /analysis 台账读回 — status=200 body={"status":200,"code":0,"message":"ok","data":{"reports":[{"id":"ar-de8aadb3","lineId":"ln-e9f6874e","lineName":"本体验收线-ont5ff0","title":"本体验收分析-ont5ff0","category":"quality","summary":"
+
+=== ON16 邻接查询 REST ===
+✔ [ON16.1] GET /scene?entity= 返回子图(center+nodes+edges) — {"nodes":[{"key":"pv.melt_pressure","kind":"process_variable","name":"熔体压力","description":"","unit":"bar","role":"control","hop":0},{"key":"cv.thickness","kind":"quality_variable","name":"平均膜厚","descr
+✔ [ON16.2] hops=2 出现间接节点 st.line_speed@2 与 rel-2(hop2/in) — {"speed":{"key":"st.line_speed","kind":"process_variable","name":"线速度","description":"","unit":"m/min","role":"control","hop":2},"rel2":{"id":"rel-2","kind":"influences","srcKey":"st.line_speed","dstK
+✔ [ON16.3] 无 entity 时新参数被忽略:与历史全图响应完全一致 — status=200/200
+✔ [ON16.4] 无 entity 的 graph 顶层结构不变 — ontologyId,version,lineId,entities,relations,rules,guards
+✔ [ON16.5] hops 越界 → 422 ONTOLOGY_SUBGRAPH_HOPS_INVALID — {"status":422,"code":"ONTOLOGY_SUBGRAPH_HOPS_INVALID","message":"hops 必须是 1-3 的整数","data":null}
+✔ [ON16.6] 未知实体 → 404 ONTOLOGY_SUBGRAPH_ENTITY_NOT_FOUND — status=404
+✔ [ON16.7] 草稿子图端点可用(UI 图与抽屉同源) — {"ontologyId":"本体验收-ont5ff0","version":0,"lineId":"ln-e9f6874e","center":{"key":"pv.melt_pressure","kind":"process_variable","name":"熔体压力","description":"","unit":"bar","role":"control","hop":0,"bindi
+✔ [ON16.8] 草稿子图缺 entity → 422 ONTOLOGY_ENTITY_REQUIRED — status=422
+
+=== ON17 Agent 邻接工具 ===
+✔ [ON17.1] 工具 hops=1 返回节点/边明细 — 邻接子图: center=pv.melt_pressure 本体=ont-ont5ff0@2 hops=1 direction=both nodes=2 edges=1
+中心: pv.melt_pressure [process_variable/control] 熔体压力(bar) ← dcw_node:dcw-ont5ff0-press(write,active), recipe_param:
+✔ [ON17.2] 工具 hops=2 显示间接节点与 hop 标注 — 邻接子图: center=pv.melt_pressure 本体=ont-ont5ff0@2 hops=2 direction=both nodes=3 edges=2
+中心: pv.melt_pressure [process_variable/control] 熔体压力(bar) ← dcw_node:dcw-ont5ff0-press(write,active), recipe_param:
+✔ [ON17.3] 跨线读取被拦截(引用校验/作用域如实回执) — 工具调用被拒(引用校验,ontology_node_neighbors):line_id = 「ln-not-in-scope」(产线不存在)不在你的可读范围内。
+你的可读产线:ln-e9f6874e(其中「ln-e9f6874e」来自频道绑线,只读)。如需访问该产线,请让用户授予对应产线权限(权限管理),或把当前频道
+
+=== L7 前端渲染 ===
+✔ [L7.1] 侧边栏含「本体模型」入口
+✔ [L7.2] /ontology 六 tab 渲染 — 总览|实体与关系|约束规则|语义绑定|版本与发布|编译预览
+✔ [L7.3a] graph tab 渲染 SVG 节点/边且与草稿一致 — nodes=4/4 edges=2/2
+✔ [L7.3b] 点击节点弹出抽屉并列出直接邻接 — {"open":true,"neighbors":["cv.thickness"],"edges":["rel-1"]}
+✔ [L7.3b2] 抽屉切 2 跳后出现间接节点 st.line_speed 与 rel-2 — {"neighbors":["cv.thickness","st.line_speed"],"edges":["rel-1","rel-2"]}
+✔ [L7.3c] 切到表视图:实体表与关系表均有行 — {"entityRows":4,"relationRows":2}
+✔ [L7.3d] 规则/绑定/版本三 tab 表格渲染非空 — rules:rows=3,empty=0 bindings:rows=5,empty=0 versions:rows=2,empty=0
+✔ [L7.3b] UI 编译预览:四类产物 + 溯源表渲染 — {"artifacts":4,"traceRows":3}
+✔ [L7.4] 页面头/副标题渲染(价值叙事可见) — 工业语义资产本体模型构建与治理面向控制的本体：实体、关系、约束规则与语义绑定；经编译器生成可追溯的问题界、步限与运行时守
+✔ [L7.5] /dcw 可打开无 pageerror — len=5077 newErrors=
+✔ [L7.6] /daq 可打开无 pageerror — len=6416 newErrors=
+✔ [L7.7] /aml 可打开无 pageerror — len=5289 newErrors=
+✔ [L7.8] /optimizer 可打开无 pageerror — len=5291 newErrors=
+✔ [L7.9] /analysis 可打开无 pageerror — len=7091 newErrors=
+✔ [L7.10] 全程无未捕获 pageerror
+
+ONTOLOGY LIVE E2E: 87/87 passed, 0 failed
+evidence: D:\tmp\aw-main\docs\audit\evidence\2026-10-24-ontology-live
+--- ontology-live exit=0 00:33:58
+=== model-loop === 00:33:58
+seed: line=ln-d0f9462d recipe=rc-0d8b15e5 runs=6 samples=2880
+venv: junction ok
+
+=== boot http://127.0.0.1:3997 ===
+✔ [BOOT] 隔离实例启动 + workshop ready — port=3997
+✔ [BOOT] 管理员注册(首注册=admin) — status=200
+
+=== M0 频道与三面绑定 ===
+✔ [M0.1] hybrid_twin 频道实例化(全功能档位)+workspace — inst=200 ch=a997e46e-a0f3-44e9-b251-96af750582d8 lead=299a59c2-150c-4d1f-8c03-6f0671055a36
+✔ [M0.2] hybrid 档位工具面:训练+孪生+优化器+本体四族同面注入 — missing= total=99
+✔ [M0.3] Agent 节点绑定:daq×3 + recipe(参数面) — daq=200,200,200 recipe=200/0
+✔ [M0.4] 过程 spec 登记+发布(求解器谱系前置) — create=200/0 pub=200
+
+=== M1 本体层(管理者修正路径) ===
+✔ [M1.1] 本体起草(活体校验+绑定通过) — saved=200 issues=[]
+✔ [M1.1b] 本体描述可读(用户理解模型代表什么) — 膜厚闭环控制本体:压力/线速→膜厚,温区守门(mlp7wt3)
+✔ [M1.2] 本体 v1 发布(contentHash+packHash) — 200/0
+✔ [M1.3] 管理者修正规则窗 → v2 发布 — saved=200/0 pub=200/0
+✔ [M1.5] Agent 工具 ontology_draft_autofix:自动修复并落库 — 草稿 ontd-mvph8cty-nrah01 自动修复 13 项(rev=3):
+- [DOC_DESCRIPTION] description: 补写文档描述(供 Agent 与用户理解模型含义)
+- [ENTITY_DESCRIPTION] entities[0]: 实体「pv.melt_pressure」补描述为名称
+- [ENTITY_DESCRI
+✔ [M1.6] 修复后:描述/作用域已补齐且校验通过 — desc=模型闭环验收-mlp7wt3(产线 ln-d0f9462d) —— 实体 4 / savedMessy=200
+✔ [M1.4] 四段 diff 反映管理者意志(R-BOUND changed) — ["R-BOUND","R-GUARD"]
+
+=== M2 孪生层(Agent 工具创建虚拟模型) ===
+✔ [M2.1] 工具 twin_scene_discover:从真实绑定发现场景 — {
+  "scene_kind": "unknown",
+  "nodeCount": 5,
+  "counts": {
+    "control": 2,
+    "state": 2,
+    "feature": 0,
+    "disturbance": 0,
+    "observation": 0,
+   
+✔ [M2.2] 工具 twin_scene_compile:SceneContract 草稿(controls+artifact) — SceneContract Draft 已生成
+  scene_id: scn-mlp7wt3
+  scene_version: 1.0.0
+  contract_hash: f9472f98fa323230a01d314ff24190449b69af84d3125d66ee68ba09d2ad07d0
+  status: draft
+  controls: 2
+  states: 2
+  tar
+✔ [M2.3] 场景草稿持久化(控制面+目标面齐备,谱系可复用) — controls=2 states=2 obs=1(targets=1)
+✔ [M2.4] 工具 twin_scene_freeze:人批准冻结(approvedBy=管理者) — {
+  "sceneId": "scn-mlp7wt3",
+  "sceneVersion": "1.0.0",
+  "status": "frozen",
+  "contractHash": "f9472f98fa323230a01d314ff24190449b69af84d3125d66ee68ba09d2ad07d0",
+  "approvedBy": "mlp-mlp7wt3@awshop
+✔ [M2.5] 冻结治理红线:缺确认令牌 → 拒绝 — 冻结被拒绝：必须先完成用户确认，并传入 confirmation=USER_CONFIRMED_SCENE_CONTRACT。
+✔ [M2.6] 工具 twin_physics_spec_draft:虚拟模型骨架(状态+参数可校准) — PhysicsSpec 骨架已生成(场景 scn-mlp7wt3@1.0.0):
+  model_id: draft-scn-mlp7wt3 | 状态变量 3 | 观测方程 1 | 参数 12(可校准 12)
+  结构: 每个 state = 一阶惯性弛豫(τ/增益为先验盒内可校准参数);观测 = persistence 恒等基线
+  artifact: C:\Users\87287\AppDat
+✔ [M2.7] 工具 twin_physics_spec_validate:valid=true — {
+  "apiVersion": "physics-spec.v1",
+  "valid": true,
+  "errors": [],
+  "warnings": [],
+  "issues": [],
+  "spec": {
+    "specVersion": "physics-spec.v1",
+    "m
+✔ [M2.8] 工具 twin_physics_spec_compile:候选 Provider(candidate_not_registered) — {
+  "apiVersion": "physics-spec.v1",
+  "kind": "declarative-provider-candidate",
+  "sceneId": "scn-mlp7wt3",
+  "sceneVersion": "1.0.0",
+  "providerId": "draft-s
+✔ [M2.9] 频道场景谱系重链(REST 可读) — sceneId=scn-mlp7wt3
+✔ [M2.10] 工具 twin_snapshot_create:服务端真采快照(auto_daq,fresh) — TwinSnapshot 已创建
+  source: bound DAQ
+  snapshot_id: snap-mvph8d2y-0h077n
+  hash: f071e6303075bf5900dbfa894faafb013cd819cbce1aed159dbe1c2a73bf7f98
+  fresh: true
+  completeness: 1
+  stale_nodes: (none)
+
+✔ [M2.11] 工具 twin_trial_run:虚拟试验完成(模型驱动 rollout) — VirtualTrial 已完成(candidateExecuted=false)
+  trial_id: trial-mvph8d3j-5bez40
+  rollout_model: injection-greybox-v1(物理 provider 驱动;传 model_id 可用训练模型 rollout)
+  uq: coverage=1.000 members=1 ood=accepted
+
+✔ [M2.12] 虚拟试验治理语义:candidateExecuted=false + 约束 fail-closed(候选 provider 未注册不投产) — VirtualTrial 已完成(candidateExecuted=false) |   trial_id: trial-mvph8d3j-5bez40 |   rollout_model: injection-greybox-v1(物理 provider 驱动;传 model_id 可用训练模型 rollout) |   uq: coverage=1.000 members=1 ood=acc
+
+=== M3 模型进化第 1 轮 ===
+✔ [M3.0] Agent 工具 aml_model_annotate:补模型名称/描述 — 模型 mdl-mvph8d5y-5kjb8d 人读身份已更新:
+  label: 膜厚模型A-mlp7wt3
+  description: 产线A 膜厚预测:线性状态空间,适配保压/线速工况
+用户与 Agent 都会在 /aml 模型台账看到这两项;阶段/工件/指标不受影响(不能
+✔ [M3.1] 第 1 轮训练 done + 模型登记 + 优化资格(artifactHash) — status=done model=mdl-mvph8d5y-5kjb8d rows=786 err=
+✔ [M3.2] Profile v1 创建(模型A 工件回填)+发布 — create=200/0 pub=200/0
+✔ [M3.3] Agent↔Profile 绑定(revision=1,推荐模式) — id=ob-mvph8e3m-kh3gi code=0
+✔ [M3.4] 基线模型 A solve optimal — status=optimal http=200 msg=ok
+✔ [M3.5] 第 2 轮训练 done + 资格(数据集不缩水,工件不同) — status=done rows 786→786 hashDiff=true
+✔ [M3.6] 采纳卡挂出(optimizer-profile:<id>@<v>) — nodeId=optimizer-profile:optp-mlp7wt3@2
+✔ [M3.7] HITL 批准 → 单一咽喉发布+重绑 — {"status":200,"code":0,"message":"ok","data":{"via":"profile-adopt","result":{"approved":true,"comment":"模型进化闭环验收批准","published":{"profileId":"optp-mlp7wt3","version":2,"rebindCount":1}}}}
+✔ [M3.8] 工具回执:模型采纳完成(诚实汇报) — ✅ 模型采纳完成(HITL 批准):
+optp-mlp7wt3 v1 → v2(published)
+模型:mdl-mvph8fhh-cv3rmu;重绑绑定 1 个(revision+1,在飞求解 BINDING_STALE 收敛)
+裁决意见:模型进化闭环验收批准
+下一次 optimizer_solve 即使用新模型;旧版本保留可回退(retire/rebind 走管理面)。
+✔ [M3.9] 绑定自动重绑到采纳版本(revision+1) — versions=[2] card=v2 rev=2
+✔ [M3.10] 已发布 Profile v2 携带新模型工件 B — len=3165
+✔ [M3.10b] Profile 描述由 Agent 提议写入并落版本台账
+✔ [M3.11] 新模型 B solve optimal — status=optimal http=200 msg=ok
+
+=== M4 模型进化第 2 轮(持续迭代) ===
+✔ [M4.1] 第 3 次训练 done + 资格(反馈持续积累) — status=done model=mdl-mvph8gkr-ula9lf rows=786
+✔ [M4.2] 第 2 轮采纳卡挂出+HITL 批准 — nodeId=optimizer-profile:optp-mlp7wt3@3 dec=200
+✔ [M4.3] 第 2 轮工具回执:采纳完成 — ✅ 模型采纳完成(HITL 批准):
+optp-mlp7wt3 v2 → v3(published)
+模型:mdl-mvph8gkr-ula9lf;重绑绑定 1 个(revision+1,在飞求解 BINDING_STALE 收敛)
+裁决意见:模型进化闭环验收批准
+下一次 optimizer_solve 即使用新模型;旧版本保留可回退(retire/rebind 走管理面)。
+✔ [M4.4] 持续进化:绑定再次重绑(revision 递增) — versions=[3] card=v3 rev=3
+✔ [M4.5] 第 2 轮新模型 C solve optimal — status=optimal http=200
+✔ [M4.6] 全闭环零 DCW 写入(三轮训练+两轮采纳+求解) — dcw-writes.json 不存在
+
+=== M5 管理者面 ===
+✔ [M5.1] 本体版本台账(v1+v2,管理者可查) — n=2
+✔ [M5.2] Profile 版本台账含三轮模型工件(A/B/C 全可查) — len=4767
+✔ [M5.3] 孪生谱系台账(场景/冻结态可查) — sceneId=scn-mlp7wt3
+✔ [M5.4] 审计三态留痕:AI 提议 + 人批准(adopt_propose+adopt) — n=4 actions=optimizer.profile.adopt,optimizer.profile.adopt_propose,optimizer.profile.adopt,optimizer.profile.adopt_propose kinds=user,agent
+✔ [M5.5] 本体审计留痕(起草/发布/修正) — n=10 sample=ontology.draft.update
+
+=== M6 前端渲染 ===
+✔ [M6.1] 管理者三台(/optimizer /aml /ontology)渲染无错 — optimizer:len=4041,errs=0 aml:len=5604,errs=0 ontology:len=5159,errs=0
+✔ [M6.3] UI:Profile 描述在 /optimizer 台账可见
+✔ [M6.4] UI:模型描述在 /aml 台账可见
+✔ [M6.5] UI:本体描述与「自动修复」入口在 /ontology 可见 — desc=true fixBtn=true
+✔ [M6.2] 全程无未捕获 pageerror
+
+MODEL-LOOP LIVE E2E: 54/54 passed, 0 failed
+evidence: D:\tmp\aw-main\docs\audit\evidence\2026-10-24-model-loop-live
+--- model-loop exit=0 00:35:22
+=== idd-results === 00:35:22
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+[TypeError: fetch failed] {
+  [cause]: Error: connect ECONNREFUSED 127.0.0.1:3300
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1864:16) {
+    errno: -4078,
+    code: 'ECONNREFUSED',
+    syscall: 'connect',
+    address: '127.0.0.1',
+    port: 3300
+  }
+}
+
+Node.js v24.19.0
+--- idd-results exit=1 00:35:22
+=== idd-results-ui === 00:35:22
+file:///D:/codes/ABO/AgentWorkShop/node_modules/.pnpm/puppeteer-core@25.5.0_yauzl@3.4.0/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:185
+                        ? new Error(`${response.errorText} at ${url}`)
+                          ^
+
+Error: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3300/
+    at navigate (file:///D:/codes/ABO/AgentWorkShop/node_modules/.pnpm/puppeteer-core@25.5.0_yauzl@3.4.0/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:185:27)
+    at async Deferred.race (file:///D:/codes/ABO/AgentWorkShop/node_modules/.pnpm/puppeteer-core@25.5.0_yauzl@3.4.0/node_modules/puppeteer-core/lib/puppeteer/util/Deferred.js:33:20)
+    at async CdpFrame.goto (file:///D:/codes/ABO/AgentWorkShop/node_modules/.pnpm/puppeteer-core@25.5.0_yauzl@3.4.0/node_modules/puppeteer-core/lib/puppeteer/cdp/Frame.js:151:25)
+    at async CdpPage.goto (file:///D:/codes/ABO/AgentWorkShop/node_modules/.pnpm/puppeteer-core@25.5.0_yauzl@3.4.0/node_modules/puppeteer-core/lib/puppeteer/api/Page.js:576:20)
+    at async file:///D:/tmp/aw-main/scripts/e2e-idd-results-ui.mjs:69:1
+
+Node.js v24.19.0
+--- idd-results-ui exit=1 00:35:24
+=== inj-provision === 00:35:25
+✔ 平台鉴权 OK http://127.0.0.1:3400
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+[TypeError: fetch failed] {
+  [cause]: Error: connect ECONNREFUSED 127.0.0.1:4010
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1864:16) {
+    errno: -4078,
+    code: 'ECONNREFUSED',
+    syscall: 'connect',
+    address: '127.0.0.1',
+    port: 4010
+  }
+}
+
+Node.js v24.19.0
+--- inj-provision exit=1 00:36:01
+=== inj-fixture === 00:36:01
+channel 51ce928c-bc4e-4b61-a042-9c92108184e1 worker 6d39ff5b-27c9-4ec0-86b4-b65c61cbe3f1 member 40effc67-cbce-4c53-9cdd-b008e796fa50
+context written: {"lineId":"ln-20586288","recipeId":"rc-76150e1a","daqNodes":6,"recipes":1}
+--- inj-fixture exit=0 00:36:01
+=== injection === 00:36:02
+file:///D:/tmp/aw-main/scripts/e2e-injection-recipe-closedloop.mjs:83
+const recipe = recipes.recipes.find(r => r.lineId === line.id && r.params.some(p => p.nodeId === holdTime.id))
+                                                                                                          ^
+
+TypeError: Cannot read properties of undefined (reading 'id')
+    at file:///D:/tmp/aw-main/scripts/e2e-injection-recipe-closedloop.mjs:83:107
+    at Array.some (<anonymous>)
+    at file:///D:/tmp/aw-main/scripts/e2e-injection-recipe-closedloop.mjs:83:75
+    at Array.find (<anonymous>)
+    at file:///D:/tmp/aw-main/scripts/e2e-injection-recipe-closedloop.mjs:83:32
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+
+Node.js v24.19.0
+Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), file src\win\async.c, line 94
+--- injection exit=127 00:36:02
+=== data-studio === 00:36:02
+━━━ data-studio Phase A E2E @ http://127.0.0.1:3400 line=ln-20586288 ━━━
+✔ [PA0] 上下文就绪(daq 节点≥2) — daq=6
+✔ [PA0.5] 产线开跑且采样活性(探针 ≥3 点) — status=200 samples=100 msg=ok
+✔ [PA1.1] 批量查询:两节点一次返回且每节点≤2000 点 — series=2 pts=299,299 bucket=1000
+✔ [PA1.2] 序列时间升序(ASC 契约)
+✖ [PA1.3] >8 节点 → 400 护栏 — ok
+✖ [PA1.4] 产线>8 节点省略 node_ids → 400 要求显式指定 — ok
+✔ [PA1.5] 同参数(显式窗口)二次命中缓存
+✔ [PA2.1] 开跑产线 → run 台账有行(open) — {"id":"rr-ce452a33","lineId":"ln-20586288","productId":"pd-468a3221","recipeId":"rc-76150e1a","recipeName":"Standard window v3","recipeVersion":1,"startedAt":"2
+✔ [PA2.2] 关账后 ended_at 回填且 sample_count>0(异步回填) — ended=2026-10-27T00:36:07.142+08:00 samples=12
+✔ [PA3.1] 导出任务受理(running) — {"id":"edajob-8212824f","kind":"daq-export","status":"running","spec":{"nodeIds":["dn-e88f9379","dn-367893ed"],"fromMs":1793032268717,"toMs":1793032568717,"titl
+✔ [PA3.2] 导出完成(ready)且 totalRows>0 — status=ready rows=1151 files=2 merged=true
+✔ [PA3.3] manifest.json 下载 200(application/json) — {
+  "schema": "aw.daq-export/1",
+  "export_id": "daqexp-20261027003608-358b49",
+  "created_at": "202
+✔ [PA3.4] merged.csv 下载 200
+✔ [PA3.5] nodes/<id>.csv 下载 200 — ts_iso,ts_ms,value,state
+2026-10-27T00:31:09.253+08:00,1793032269253,32.52,ok
+
+✔ [PA3.6] 路径穿越被拒(404) — status=404
+✔ [PA4.1] MES 点位目录 200(空目录合法) — count=0
+✔ [PA4.2] 不存在/不可读点位 preview → 403 — 点位不存在、未启用或不在你的可读产线上。
+✔ [PA5.1] 不存在节点查询 → 403 — 指定的节点不存在、已停用或不在你的可读范围内。
+✔ [PB1.1] 创建私图 200 — {"id":"ec-675e73ef","title":"PhaseB 私图","vizType":"trend","datasource":{"lineId":"ln-20586288","nodeIds":["dn-e88f9379",
+✔ [PB1.2] visibility=line 无 line_id → 400 — visibility=line 必须携带 line_id(B4:产线可见图必须钉在产线上)
+✔ [PB1.3] PATCH 版本自增
+✔ [PB1.4] 他人读私图 → 404(B4) — status=404
+✔ [PB1.5] 他人列表不含该私图
+✔ [PB2.1] 从关账批次生成 golden 画像 — bins=20 fp={"mean":2.400171,"std":0.012718,"min":2.35,"max":2.45,"cnt":16869}
+✔ [PB2.2] single 取回画像(叠加用)
+✔ [PB2.3] 偏差分可算(自身 vs golden,分数有限) — score=0 bins=16
+✔ [PC1.1] E3 特征提取:关账批次有特征行 — rows=6 sample={"id":"feat-6fe55d4a-46d","runId":"rr-ce452a33","nodeId":"dn-79ca3784","metric":"ct-1fedadcd","segment":"","cnt":2,"mean":2.405,"std":0.005,"min":2.4,"max":2.41
+✔ [PC1.2] E3 判定语义:参考带不足 3 批时仅记录不判定(或判定字段有限)
+✔ [PC1.3] E3 特征任务账本有 done 行 — {"id":"fjob-28b93d77","runId":"rr-ce452a33","status":"done","features":6,"createdAt":"2026-10-27T00:36:07.145+08:00"}
+✔ [PC2.1] E4 注册控制图 — {"id":"spc-681e6bee","lineId":"ln-20586288","nodeId":"dn-e88f9379","metric":"ct-8973d369","kind":"i_mr","params":{},"cl"
+✔ [PC2.2] E4 重算控制限(run<25 → enabled=0 为正确冷启动语义) — n=2 enabled=false
+✔ [PC2.3] E4 详情+点序列 200
+✔ [PC2.4] E4 非法 kind → 400
+✔ [PC3.1] E5 共性分析(node 因子)200 且行有限 — rows=6 baseline=0
+✔ [PC3.2] E5 hour 因子可用
+✔ [PC3.3] E5 非法因子 → 400
+✔ [PC4.1] E8 chamber 字段 + chamber 因子共性 — [{"factor":"chamber","factorValue":"CH-A","runsTotal":2,"runsBad":0,"badRate":0,"lift":0}]
+✔ [PD1.1] E7 开 OCAP 处置单 — {"id":"ocap-90f97728","alarmId":"ops:mvphaszi","runId":"rr-ce452a33","nodeId":"dn-e88f9379","title":"PhaseD 处置单","steps":[],"status":"open",
+✔ [PD1.2] E7 关单 + 弱关联(stale 不报错) — {"id":"ocap-90f97728","alarmId":"ops:mvphaszi","runId":"rr-ce452a33","nodeId":"dn-e88f9379","title":"PhaseD 处置单","steps":[{"at":"2026-10-27T00:36:14.604+08:00",
+✔ [PD1.3] E7 清单可见(终态过滤)
+✔ [PD2.1] E6 VM 推理入口:模型不存在 → 404 — 模型 aml-none 不存在
+✔ [PD3.1] M3 创建看板 — {"id":"edb-2a155d95","title":"PhaseD 看板","filters":{},"layout":[{"chartId":"ec-675e73ef","x":0,"y":0,"w":6,"h":3}],"owne
+✔ [PD3.2] M3 看板详情内嵌 chart(B4 判定随行) — [{"chart":{"id":"ec-675e73ef","title":"PhaseB 私图 v2","vizType":"trend","datasource":{"lineId":"ln-20586288","nodeIds":["dn-e88f9379","dn-367
+✔ [PD3.3] M3 布局保存(version 自增)
+✔ [PD3.4] M3 他人读看板:chart 不泄露(404 或 inaccessible=true) — status=404
+✔ [PD4.1] M3 派生数据集生成 — {"jobId":"edajob-26eb193b","dir":"D:\\tmp\\aw-video\\home-en\\data\\eda-derived\\edajob-26eb193b","rows":1239}
+✔ [PD4.2] M3 派生 data.csv 可下载 — time,"Part Weight(dn-e88f9379) [g]","Flash Rate(dn-367893ed) [%]"
+2026-10-26T23
+✔ [PD4.3] M3 非法算子 → 400(白名单)
+✔ [PD5.1] E8 相位段定义 — [{"id":"rseg-4535a765","recipe_id":"rc-76150e1a","seq":1,"name":"s1","phase_from":0,"phase_to":0.5},{"id":"rseg-aa013fad","recipe_id":"rc-76
+✔ [PD5.2] E8 重算特征按段拆分 — segmented=12/18
+
+═══ data-studio Phase A: 48/50 PASS ═══
+--- data-studio exit=1 00:36:15
+=== data-studio-ui === 00:36:15
+✔ [UI1.1] 侧栏导航含「数据管理」
+✔ [UI1.2] 三个 tab 渲染 — tabs=3
+✔ [UI1.3] 产线下拉有可读产线 — options=1
+✔ [UI1.4] 勾选 2 个节点 — checked=2
+✔ [UI1.5] echarts canvas 渲染 — canvas=1
+✔ [UI1.6] 预览表 ≥1 行 — rows=100
+✔ [UI1.7] 导出任务出现在台账
+✔ [UI1.8] 批次台账视图渲染
+✔ [UI2.1] /studio 节点树非空 — nodes=6
+✔ [UI2.2] 字段井入 2 个 Y — chips=2
+✔ [UI2.3] /studio canvas 渲染 — canvas=1
+✔ [UI2.4] 保存后出现在我的图表
+✔ [UI3.1] /studio/board 可打开
+✔ [UI0.1] 全脚本 0 pageerror
+
+═══ data-studio UI: 14/14 PASS ═══
+--- data-studio-ui exit=0 00:36:51
+FOLLOWUP DONE Tue Oct 27 00:36:51     2026
