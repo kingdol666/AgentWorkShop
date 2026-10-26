@@ -321,7 +321,7 @@
             </option>
           </select>
         </label>
-        <label class="lbl">{{ $t('studio.pipeline.title') }}
+        <label class="lbl">{{ $t('studio.pipeline.chartTitle') }}
           <input
             v-model="cfg.title"
             class="field"
@@ -461,7 +461,7 @@
       >
         <div class="viewerBody">
           <div class="viewerBar">
-            <b>{{ cfg.title || $t('studio.pipeline.title') }}</b>
+            <b>{{ cfg.title || $t('studio.pipeline.chartTitle') }}</b>
             <span class="unit">{{ $t('studio.pipeline.viewerHint') }}</span>
             <button
               class="pill-btn outline"
@@ -670,7 +670,7 @@ async function saveChart(): Promise<void> {
   saveErr.value = ''
   try {
     await apiFetch({ base: '/api/workshop/eda/charts', init: { method: 'POST', body: JSON.stringify({
-      title: cfg.value.title || t('studio.pipeline.title'),
+      title: cfg.value.title || t('studio.pipeline.chartTitle'),
       viz_type: `pipeline-${chartType.value}`,
       datasource: { line_id: lineId.value, node_ids: pickNodes.value, window_min: windowMin.value, source_agg: agg.value },
       encoding: { ...cfg.value, refLine: cfg.value.refLine ?? null },

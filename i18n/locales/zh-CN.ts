@@ -3304,7 +3304,7 @@ export default {
       groupBy: '分组',
       agg: '聚合',
       refLine: '参考线',
-      title: '标题',
+      chartTitle: '图表标题',
       s4: '配置模板(持久化,换数据一键复绘)',
       templateName: '模板名…',
       templateSave: '保存为模板',

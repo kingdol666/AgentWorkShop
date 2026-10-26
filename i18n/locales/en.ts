@@ -3305,7 +3305,7 @@ export default {
       groupBy: 'Group by',
       agg: 'Agg',
       refLine: 'Ref line',
-      title: 'Title',
+      chartTitle: 'Chart title',
       s4: 'Config templates (persisted; one-click re-plot on new data)',
       templateName: 'Template name…',
       templateSave: 'Save as template',
