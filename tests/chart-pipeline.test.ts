@@ -4,7 +4,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 
-const { runTransform, deriveFields, aggregateRows, histogramBins, buildPipelineOption } = await import('../app/utils/chart-pipeline')
+const { runTransform, deriveFields, aggregateRows, histogramBins, buildPipelineOption, seriesToRows } = await import('../app/utils/chart-pipeline')
 
 const ROWS = [
   { at: '2026-10-26T01:00:00Z', line: 'A', 克重: 32.5, 飞边率: 0.02 },
@@ -49,6 +49,24 @@ test('aggregateRows:分组 avg 系列拆分与命名', async () => {
 test('histogramBins:计数守恒', async () => {
   const { counts } = histogramBins(ROWS, '克重', 4)
   assert.equal(counts.reduce((a, b) => a + b, 0), 4)
+})
+
+test('seriesToRows:接受 daq/query 的 {at,v} 与兼容 {x,y}', async () => {
+  const t0 = Date.UTC(2026, 9, 26, 1, 0, 0)
+  const rows = seriesToRows(
+    [
+      { nodeId: 'n1', name: 'Part Weight', points: [{ at: t0, v: 32.5 }, { at: t0 + 1000, v: 32.7 }] },
+      { nodeId: 'n2', points: [{ x: new Date(t0).toISOString(), y: 0.03 }] },
+      { nodeId: 'n3', name: 'bad', points: [{ at: 'not-a-date', v: 1 }, { at: t0, v: Number.NaN }] },
+    ],
+    s => s.name ?? s.nodeId,
+  )
+  assert.equal(rows.length, 2)
+  assert.equal(rows[0].at, new Date(t0).toISOString())
+  assert.equal(rows[0]['Part Weight'], 32.5)
+  assert.equal(rows[0].n2, 0.03)
+  assert.equal(rows[1]['Part Weight'], 32.7)
+  assert.equal(rows[0].bad, undefined)
 })
 
 test('buildPipelineOption:line/bar/pie/histogram 形状', async () => {

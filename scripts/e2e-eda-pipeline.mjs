@@ -203,7 +203,7 @@ async function ui() {
     setSel('pipeline-xfield', '批次')
     const y = document.querySelector('[data-test="pipeline-yfields"]')
     if (y) {
-      y.value = '克重'
+      for (const o of y.options) o.selected = o.value === '克重'
       y.dispatchEvent(new Event('change', { bubbles: true }))
     }
     const t = document.querySelector('[data-test="pipeline-title"]')

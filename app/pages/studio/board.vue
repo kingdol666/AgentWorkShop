@@ -215,6 +215,7 @@ import type { EChartsOption } from 'echarts'
 import { apiFetch } from '@/app/composables/workshop/apiClient'
 import { apiErrorMessage } from '@/app/utils/api-error'
 import { buildTrendOption, type TrendRefLine, type TrendSeries, type TrendYEntry } from '@/app/utils/chart-trend'
+import { buildPipelineOption, type PipelineConfig, type PipelineRow } from '@/app/utils/chart-pipeline'
 
 interface GridPos { chartId: string, x: number, y: number, w: number, h: number }
 interface ChartRow {
@@ -224,6 +225,7 @@ interface ChartRow {
   version: number
   datasource: { lineId?: string, nodeIds?: string[], runId?: string | null, preset?: string, agg?: string }
   encoding?: { y?: TrendYEntry[], refLines?: TrendRefLine[], golden?: string[] }
+  options?: { pipeline?: { chartType?: string, cfg?: PipelineConfig, rows?: PipelineRow[] } }
 }
 interface BoardDetail {
   dashboard: { id: string, title: string, layout: GridPos[], filters: Record<string, unknown>, version: number }
@@ -280,6 +282,15 @@ async function openBoard(id: string): Promise<void> {
 }
 
 async function queryCard(ch: ChartRow): Promise<void> {
+  const snap = ch.options?.pipeline
+  if (ch.vizType === 'pipeline' && snap?.rows?.length) {
+    optionsStore.value.set(ch.id, {
+      chartId: ch.id,
+      option: buildPipelineOption((snap.chartType ?? 'line') as never, (snap.cfg ?? {}) as PipelineConfig, snap.rows),
+    })
+    optionsStore.value = new Map(optionsStore.value)
+    return
+  }
   const ds = ch.datasource ?? {}
   const to = Date.now()
   const minutes = windowPreset.value ? Number(windowPreset.value) : (Number(ds.preset) || 60)

@@ -187,7 +187,12 @@
       <div class="card grow canvasCard">
         <ClientOnly>
           <AwChart
-            v-if="chartOption && vizType !== 'table' && vizType !== 'kpi'"
+            v-if="pipelineOption"
+            :option="pipelineOption"
+            style="height: 100%; width: 100%"
+          />
+          <AwChart
+            v-else-if="chartOption && vizType !== 'table' && vizType !== 'kpi'"
             :option="chartOption"
             style="height: 100%; width: 100%"
           />
@@ -240,7 +245,7 @@
           </table>
         </div>
         <p
-          v-if="!series.length && !querying"
+          v-if="!series.length && !querying && !pipelineOption"
           class="empty big"
         >
           {{ $t('studio.canvasEmpty') }}
@@ -448,18 +453,19 @@
  * kpi/table 单序列约束点亮);E2 = run 过滤 + golden 相位画像生成/叠加(0-100% 轴)/偏差分。
  * 取数永远走 /daq/query 按请求鉴权(图表只存查询参数快照,不代理数据 —— B4 铁律)。
  */
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import type { EChartsOption } from 'echarts'
 import { apiFetch } from '@/app/composables/workshop/apiClient'
 import { apiErrorMessage } from '@/app/utils/api-error'
 import { buildTrendOption, type TrendGoldenBin as GoldenBin, type TrendSeries as Series, type TrendYEntry as YEntry, type TrendRefLine as RefLine } from '@/app/utils/chart-trend'
+import { buildPipelineOption, type PipelineConfig, type PipelineRow } from '@/app/utils/chart-pipeline'
 
 const VIZ_TYPES = ['trend', 'bar', 'scatter', 'kpi', 'table', 'histogram'] as const
 type VizType = typeof VIZ_TYPES[number]
 
 interface LineLite { id: string, name: string }
 interface DaqNodeLite { id: string, name: string, unit: string, lineId: string, min?: number, max?: number }
-interface ChartRow { id: string, title: string, vizType: VizType, datasource: Record<string, unknown>, encoding: Record<string, unknown>, options: Record<string, unknown>, lineId: string | null, visibility: string, version: number }
+interface ChartRow { id: string, title: string, vizType: VizType | 'pipeline', datasource: Record<string, unknown>, encoding: Record<string, unknown>, options: Record<string, unknown>, lineId: string | null, visibility: string, version: number }
 interface RunRow { id: string, outcome: string, startedAt: string, endedAt: string | null }
 
 const { t } = useI18n()
@@ -504,6 +510,7 @@ const agg = ref<'avg' | 'min' | 'max'>('avg')
 const querying = ref(false)
 const error = ref('')
 const series = ref<Series[]>([])
+const pipelineOption = shallowRef<EChartsOption | null>(null)
 const goldenOn = ref(new Set<string>())
 const goldenCache = ref(new Map<string, GoldenBin[]>())
 const deviation = ref<{ score: number } | null>(null)
@@ -612,6 +619,7 @@ const chartOption = computed(() => {
 })
 
 async function doQuery(): Promise<void> {
+  pipelineOption.value = null
   querying.value = true
   error.value = ''
   try {
@@ -717,7 +725,15 @@ async function saveChart(): Promise<void> {
 function loadChart(ch: ChartRow): void {
   editingId.value = ch.id
   title.value = ch.title
-  vizType.value = ch.vizType
+  const snap = (ch.options as { pipeline?: { chartType?: string, cfg?: PipelineConfig, rows?: PipelineRow[] } } | undefined)?.pipeline
+  if (ch.vizType === 'pipeline' && snap?.rows?.length) {
+    pipelineOption.value = buildPipelineOption((snap.chartType ?? 'line') as never, (snap.cfg ?? {}) as PipelineConfig, snap.rows)
+    yNodes.value = []
+    series.value = []
+    return
+  }
+  pipelineOption.value = null
+  vizType.value = ch.vizType as VizType
   const ds = ch.datasource as { lineId?: string, nodeIds?: string[], runId?: string | null, preset?: string, agg?: 'avg' | 'min' | 'max' }
   lineId.value = ds.lineId ?? ''
   runId.value = ds.runId ?? ''
