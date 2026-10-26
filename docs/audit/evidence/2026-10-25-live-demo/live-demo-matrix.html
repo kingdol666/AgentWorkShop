@@ -5,8 +5,8 @@
   <div class="viz-grid">
     <div class="card viz-stat">
       <div class="text-muted">插件真实调用</div>
-      <div class="viz-stat-value">18/18</div>
-      <div>11 插件逐一实调 · failures=[]</div>
+      <div class="viz-stat-value">18 + 2 边界</div>
+      <div>10/11 成功 · idd-closedloop 404 已知边界</div>
     </div>
     <div class="card viz-stat">
       <div class="text-muted">绑定隔离矩阵</div>
@@ -56,7 +56,7 @@
   <h3>不同 Agent 的工具执行轨迹</h3>
   <div class="trace">
     <div class="step"><span class="who" style="--lane:var(--viz-series-2)">worker</span><div><code>daq_query</code> → 自己节点放行 / lead 节点拒绝（isError=true）</div></div>
-    <div class="step"><span class="who" style="--lane:var(--viz-series-2)">worker</span><div><code>matrix_pipeline_probe</code> · <code>verify_pipeline_probe</code> · <code>sensor_calibration_log</code> · <code>experience_log</code></div></div>
+    <div class="step"><span class="who" style="--lane:var(--viz-series-2)">worker</span><div><code>matrix_pipeline_probe</code> · <code>verify_pipeline_probe</code> · <code>sensor_calibration_log</code> · <code>experience_log</code>（404 已知边界：IDD 退役旧路由）</div></div>
     <div class="step"><span class="who" style="--lane:var(--viz-series-2)">worker</span><div><code>ontology_scene_inspect</code> → 5 实体/5 关系；<code>ontology_node_neighbors</code> hops=2 → 5 节点/5 边（hop/dir/tier）</div></div>
     <div class="step"><span class="who" style="--lane:var(--viz-series-3)">lead</span><div><code>diag_results</code>（结果库检索）· <code>daq_query</code> 自己节点放行</div></div>
     <div class="step"><span class="who" style="--lane:var(--viz-series-4)">隔离实例</span><div>模型闭环 54/54（训练 A→B→C，Profile v1→v3 自动重绑，solve optimal）</div></div>
