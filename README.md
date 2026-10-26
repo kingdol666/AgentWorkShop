@@ -133,7 +133,7 @@ Recorded against a running instance: real DAQ history, real write control, real 
 
 <a href="https://kingdol666.github.io/AgentWorkShop/demo/player.html"><img src="docs/site/public/demo/agentworkshop-core-demo-poster.png" alt="AgentWorkShop 3-minute demo: dashboard, live DAQ, EDA pipeline, governed tool catalog, published ontology, agent workspaces, plugins and analysis ledger" width="86%" /></a>
 
-<sub><b>Click the cover to play the standalone player.</b> One continuous screencast of a running instance with a mock PLC line — 1920×1080, English interface, English narration, EN / 简体中文 captions.<br/>Scenes: dashboard → live DAQ → EDA pipeline → governed tool catalog → published ontology → agent workspaces → plugins → analysis ledger → EDA studio.</sub>
+<sub><b>Click the cover to play the standalone player.</b> Recorded from a running instance with a mock PLC line — 11 live scenes joined by 0.5 s fades, 1920×1080, English interface, English narration, EN / 简体中文 captions.<br/>Scenes: dashboard → live DAQ → EDA pipeline → governed tool catalog → published ontology → agent workspaces → plugins → analysis ledger → EDA studio.</sub>
 
 [Direct MP4](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/site/public/demo/agentworkshop-core-demo.mp4) · [Standalone player](https://kingdol666.github.io/AgentWorkShop/demo/player.html) · [VitePress demo page](https://kingdol666.github.io/AgentWorkShop/en/demo)
 

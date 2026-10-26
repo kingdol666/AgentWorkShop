@@ -133,7 +133,7 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 
 <a href="https://kingdol666.github.io/AgentWorkShop/demo/player.html"><img src="docs/site/public/demo/agentworkshop-core-demo-poster.png" alt="AgentWorkShop 3 分钟演示：仪表盘、实时数采、EDA 管道、工具治理目录、已发布本体、Agent 工作区、插件与分析台账" width="86%" /></a>
 
-<sub><b>点击封面打开独立播放页。</b>一段连续实机录屏：运行中的实例 + Mock PLC 产线，1920×1080，英文界面、英文旁白、英/简中字幕。<br/>场景：仪表盘 → 实时数采 → EDA 分析管道 → 受治理的工具目录 → 已发布本体 → Agent 工作区 → 插件 → 分析台账 → EDA 工坊。</sub>
+<sub><b>点击封面打开独立播放页。</b>录制自运行中的实例与 Mock PLC 产线：11 个实机场景以 0.5 秒淡入淡出衔接，1920×1080，英文界面、英文旁白、英/简中字幕。<br/>场景：仪表盘 → 实时数采 → EDA 分析管道 → 受治理的工具目录 → 已发布本体 → Agent 工作区 → 插件 → 分析台账 → EDA 工坊。</sub>
 
 [直接 MP4](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/site/public/demo/agentworkshop-core-demo.mp4) · [独立播放页](https://kingdol666.github.io/AgentWorkShop/demo/player.html) · [VitePress 演示页](https://kingdol666.github.io/AgentWorkShop/demo)
 
