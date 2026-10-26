@@ -5,6 +5,7 @@
 
 ## v0.8.x — Knowledge & closed loop (late Oct 2026)
 
+- **v0.8.4 (2026-10-26)** — 3-minute English-UI demo video (README / VitePress / standalone player) + EDA pipeline title, online-viewer height and ontology baseline i18n fixes.
 - **v0.8.3 (2026-10-26)** — Results-library re-acceptance closeout (L1/L2/L4) + clean-tree release prep; global zero-state test fixes.
 - **v0.8.2 (2026-10-25)** — Results-library reviewer fixes: PATCH role gate, hot toggle, absolute URLs, evidence chain.
 - **v0.8.1 (2026-10-25)** — **diag-bridge results library**: three tools (`diag_results` / `diag_result_get` / `diag_result_annotate`) + the `/plugins` results panel + five governance switches, off by default, visibility = diagnostic-token owner. **Readable model metadata** and one-click ontology-draft **auto-fix**; the ontology graph tab became an interactive **node-edge view** (1/2-hop neighbourhood drawer). Same round completed the full acceptance: 821 checks green.
