@@ -53,7 +53,7 @@
 `FIG.03` line operations ·<br/>
 `FIG.04` digital twin ·<br/>
 `FIG.05` dashboard ·<br/>
-`FIG.06` responsive
+`FIG.06` product demo
 
 </td>
 <td width="33%" valign="top">
@@ -259,12 +259,17 @@ state the API serves, not a separate metrics store.</sub>
 
 <br />
 
-### FIG.06 — Responsive
+### FIG.06 — Product Demo
 
-<img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/fig-06-responsive.gif" alt="The same interface adapting from desktop to tablet to phone" width="92%" />
+https://github.com/user-attachments/assets/241ad4e4-2645-4bef-8eb1-499739dc9ce1
 
-<sub><b>Desktop → tablet → phone.</b> The instrument rail collapses to an icon rail, then to an off-canvas drawer;
-page headers stack, dense tables become scrollable ledgers with a pinned identity column.</sub>
+<p align="center">
+  <a href="https://github.com/kingdol666/AgentWorkShop/blob/c73a509c6e515d02d1290e54cab901ea9aff430b/docs/site/public/demo/agentworkshop-core-demo.mp4">Open the MP4 directly in GitHub</a>
+  · <a href="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/c73a509c6e515d02d1290e54cab901ea9aff430b/docs/site/public/demo/agentworkshop-core-demo.en.vtt">English captions</a>
+  · <a href="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/c73a509c6e515d02d1290e54cab901ea9aff430b/docs/site/public/demo/agentworkshop-core-demo.zh-Hans.vtt">中文简体字幕</a>
+</p>
+
+<sub><b>AgentWorkShop in 67 seconds.</b> A guided tour of the workspace, agent templates, team console, and line operations. Recorded with an isolated mock line; no physical PLC was connected and no control command was issued.</sub>
 
 </div>
 
