@@ -1744,6 +1744,7 @@ export default {
     graph: {
       viewGraph: 'Graph',
       viewTable: 'Table',
+      baseline: 'baseline',
       hint: 'Click a node for details and neighbours; dashed = candidate influence, solid = observed / validated',
       searchEntity: 'Search entity key or name',
       largeGraph: '{n} entities — focus mode: search one entity to inspect its neighbourhood',

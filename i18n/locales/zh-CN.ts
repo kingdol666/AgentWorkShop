@@ -1744,6 +1744,7 @@ export default {
     graph: {
       viewGraph: '图',
       viewTable: '表',
+      baseline: '基线',
       hint: '点击节点查看详情与邻接；虚线=候选影响，实线=已观测/已验证',
       searchEntity: '搜索实体 key 或名称',
       largeGraph: '实体较多（{n} 个），已切换为聚焦模式：先搜索一个实体再看邻接',

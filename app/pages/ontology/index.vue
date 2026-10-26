@@ -69,7 +69,7 @@ const entityOptions = computed(() => (doc.value?.entities ?? []).map(e => ({ val
 const largeGraph = computed(() => (doc.value?.entities.length ?? 0) > 60)
 const draftOptions = computed(() => overview.value.drafts.map(d => ({
   value: d.id,
-  label: `${d.ontologyId} · rev ${d.rev}${d.baseVersion ? ` · 基线 v${d.baseVersion}` : ''}`,
+  label: `${d.ontologyId} · rev ${d.rev}${d.baseVersion ? ` · ${t('ontology.graph.baseline')} v${d.baseVersion}` : ''}`,
 })))
 const versionOptions = computed(() => versions.value.map(v => ({ value: v.version, label: `v${v.version}(${v.status})` })))
 
