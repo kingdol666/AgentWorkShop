@@ -1,6 +1,6 @@
 {
   "script": "scripts/e2e-idd-results.mjs",
-  "generatedAt": "2026-10-25T17:01:43.794Z",
+  "generatedAt": "2026-10-26T03:21:56.351Z",
   "base": "http://127.0.0.1:3300",
   "pass": 36,
   "total": 36,
@@ -39,25 +39,25 @@
       "id": "A3.1",
       "name": "diag_results 返回 total/limit/offset",
       "pass": true,
-      "detail": "分析结果 total=111 limit=20 offset=0 本页 20 条(brief=true):\n- 3a84abd4 | quick-screen | 96分 ENDORSED | 2026-10-25 16:38:40 | aws-owner-probe_3a84abd4 [ui-walkthrough,"
+      "detail": "分析结果 total=112 limit=20 offset=0 本页 20 条(brief=true):\n- d2b9cf7d | quick-screen | 96分 ENDORSED | 2026-10-25 17:01:41 | aws-owner-probe_d2b9cf7d [ui-walkthrough,"
     },
     {
       "id": "A3.2",
       "name": "brief 默认 true(文本含 brief=true)",
       "pass": true,
-      "detail": "分析结果 total=111 limit=3 offset=0 本页 3 条(brief=true):\n- 3a84abd4 | quick-screen | 96分 ENDORSED | 2026-10-25 16:38:40 | aws"
+      "detail": "分析结果 total=112 limit=3 offset=0 本页 3 条(brief=true):\n- d2b9cf7d | quick-screen | 96分 ENDORSED | 2026-10-25 17:01:41 | aws"
     },
     {
       "id": "A3.3",
       "name": "brief=false 卡片带 key_numbers",
       "pass": true,
-      "detail": "分析结果 total=111 limit=5 offset=0 本页 5 条(brief=false):\n- 3a84abd4 | quick-screen | 96分 ENDORSED | 2026-10-25 16:38:40 | aws-owner-probe_3a84abd4 [ui-walkthrough,results]\n  UI 走查 2026-10-25T16:38\n  key_numbers={\"score\":96,\"verdict\":\"ENDORSED\"}\n- dc507a8f | quick-"
+      "detail": "分析结果 total=112 limit=5 offset=0 本页 5 条(brief=false):\n- d2b9cf7d | quick-screen | 96分 ENDORSED | 2026-10-25 17:01:41 | aws-owner-probe_d2b9cf7d [ui-walkthrough,results]\n  UI 走查 2026-10-25T17:02\n  key_numbers={\"score\":96,\"verdict\":\"ENDORSED\"}\n- 3a84abd4 | quick-"
     },
     {
       "id": "A3.4",
       "name": "可从索引文本解析首个 result_id",
       "pass": true,
-      "detail": "分析结果 total=111 limit=20 offset=0 本页 20 条(brief=true):\n- 3a84abd4 | quick-screen | 96分 ENDORSED | 2026-10-25 16:38:40 | aws-owner-probe_3a84abd4 [ui-walkthrough,results]\n  UI 走查 2026-10-25T16:38\n- dc50"
+      "detail": "分析结果 total=112 limit=20 offset=0 本页 20 条(brief=true):\n- d2b9cf7d | quick-screen | 96分 ENDORSED | 2026-10-25 17:01:41 | aws-owner-probe_d2b9cf7d [ui-walkthrough,results]\n  UI 走查 2026-10-25T17:02\n- 3a84"
     },
     {
       "id": "A4.1",
@@ -75,13 +75,13 @@
       "id": "A4.3",
       "name": "min_score 过滤正常",
       "pass": true,
-      "detail": "分析结果 total=79 limit=5 offset=0 本页 5 条(brief=true):\n- 3a84abd4 | quick-screen | 96分 ENDORSED | 2026-10-25 16:38:40 | aws-"
+      "detail": "分析结果 total=80 limit=5 offset=0 本页 5 条(brief=true):\n- d2b9cf7d | quick-screen | 96分 ENDORSED | 2026-10-25 17:01:41 | aws-"
     },
     {
       "id": "A4.4",
       "name": "score_desc 排序正常",
       "pass": true,
-      "detail": "分析结果 total=111 limit=3 offset=0 本页 3 条(brief=true):\n- 3a84abd4 | quick-screen | 96分 ENDORSED | 2026-10-25 16:38:40 | aws"
+      "detail": "分析结果 total=112 limit=3 offset=0 本页 3 条(brief=true):\n- d2b9cf7d | quick-screen | 96分 ENDORSED | 2026-10-25 17:01:41 | aws"
     },
     {
       "id": "A4.5",
@@ -93,13 +93,13 @@
       "id": "A5.1",
       "name": "详情默认不带 md 正文、报告 URL 已绝对化",
       "pass": true,
-      "detail": "result_id=3a84abd4\n标题=aws-owner-probe_3a84abd4 意图=quick-screen 评分=96 结论=ENDORSED\n摘要=Conclusion\n关键数字={\"score\":96,\"verdict\":\"ENDORSED\"}\n数字溯源=summary_json.sources(每个数字钉到 工件路径#字段)\n工件 1 项:report.md\n报告=http://127.0.0.1:3210/ap"
+      "detail": "result_id=d2b9cf7d\n标题=aws-owner-probe_d2b9cf7d 意图=quick-screen 评分=96 结论=ENDORSED\n摘要=Conclusion\n关键数字={\"score\":96,\"verdict\":\"ENDORSED\"}\n数字溯源=summary_json.sources(每个数字钉到 工件路径#字段)\n工件 1 项:report.md\n报告=http://127.0.0.1:3210/ap"
     },
     {
       "id": "A5.2",
       "name": "include_md=true 携带 md 且遵守截断上限",
       "pass": true,
-      "detail": "result_id=3a84abd4\n标题=aws-owner-probe_3a84abd4 意图=quick-screen 评分=96 结论=ENDORSED\n摘要=Conclusion\n关键数字={\"score\":96,\"verdict\":\"ENDORSED\"}\n数字溯源=summary_json.sources("
+      "detail": "result_id=d2b9cf7d\n标题=aws-owner-probe_d2b9cf7d 意图=quick-screen 评分=96 结论=ENDORSED\n摘要=Conclusion\n关键数字={\"score\":96,\"verdict\":\"ENDORSED\"}\n数字溯源=summary_json.sources("
     },
     {
       "id": "A9.0",
@@ -117,13 +117,13 @@
       "id": "A6.0",
       "name": "找到本 token 属主的结果(results-lib-demo)",
       "pass": true,
-      "detail": "分析结果 total=1 limit=20 offset=0 本页 1 条(brief=false):\n- b687fbc6 | quick-screen | 96分 ENDORSED | 2026-10-25 02:50:21 | x [aws-e2e,results]\n  AW 集成验收 2026-10-25T16:38 (面板)\n  key_numbers={\"score\":96,\"verd"
+      "detail": "分析结果 total=1 limit=20 offset=0 本页 1 条(brief=false):\n- b687fbc6 | quick-screen | 96分 ENDORSED | 2026-10-25 02:50:21 | x [aws-e2e,results]\n  AW 集成验收 2026-10-25T17:01 (面板)\n  key_numbers={\"score\":96,\"verd"
     },
     {
       "id": "A6.1",
       "name": "annotate 成功并回读 description/tags",
       "pass": true,
-      "detail": "已更新 result_id=b687fbc6:title=x\ndescription=AW 集成验收 2026-10-25T17:01\ntags=[aws-e2e,results]\n(display_text 现为:…)。"
+      "detail": "已更新 result_id=b687fbc6:title=x\ndescription=AW 集成验收 2026-10-26T03:21\ntags=[aws-e2e,results]\n(display_text 现为:…)。"
     },
     {
       "id": "A6.2",
@@ -147,19 +147,19 @@
       "id": "A7.2b",
       "name": "混合给 summary → 仅 description 生效(summary 被过滤)",
       "pass": true,
-      "detail": "已更新 result_id=b687fbc6:title=x\ndescription=AW 集成验收 2026-10-25T17:01 (summary过滤)\ntags=[aws-e2e,results]\n(display_text 现为:…)。"
+      "detail": "已更新 result_id=b687fbc6:title=x\ndescription=AW 集成验收 2026-10-26T03:21 (summary过滤)\ntags=[aws-e2e,results]\n(display_text 现为:…)。"
     },
     {
       "id": "A7.3a",
       "name": "新结果已归属当前 Token(results_demo)",
       "pass": true,
-      "detail": "{\"success\":true,\"data\":{\"task_id\":\"TASK-MVO2ROAA-M7UQ\",\"run_id\":\"d2b9cf7d\",\"intent\":\"quick-screen\",\"harness\":\"mock\",\"analysis_mode\":\"mock\",\"scene\":\"aws-owner-probe\",\"objective\":\"属主校验探针\",\"status\":\"comp"
+      "detail": "{\"success\":true,\"data\":{\"task_id\":\"TASK-MVOOX9K6-MN21\",\"run_id\":\"21f12386\",\"intent\":\"quick-screen\",\"harness\":\"mock\",\"analysis_mode\":\"mock\",\"scene\":\"aws-owner-probe\",\"objective\":\"属主校验探针\",\"status\":\"comp"
     },
     {
       "id": "A7.3b",
       "name": "属主编辑新结果成功",
       "pass": true,
-      "detail": "已更新 result_id=d2b9cf7d:title=aws-owner-probe_d2b9cf7d\ndescription=AW 集成验收 2026-10-25T17:01 (属主自证)\ntags=[]\n(display_text 现为:…)。"
+      "detail": "已更新 result_id=21f12386:title=aws-owner-probe_21f12386\ndescription=AW 集成验收 2026-10-26T03:21 (属主自证)\ntags=[]\n(display_text 现为:…)。"
     },
     {
       "id": "A7.3",
@@ -183,19 +183,19 @@
       "id": "A12.1",
       "name": "GET /results(面板) 返回索引",
       "pass": true,
-      "detail": "{\"success\":true,\"data\":{\"total\":112,\"limit\":5,\"offset\":0,\"brief\":false,\"results\":[{\"result_id\":\"d2b9cf7d\",\"title\":\"aws-owner-probe_d2b9cf7d\",\"description\":\"AW 集"
+      "detail": "{\"success\":true,\"data\":{\"total\":113,\"limit\":5,\"offset\":0,\"brief\":false,\"results\":[{\"result_id\":\"21f12386\",\"title\":\"aws-owner-probe_21f12386\",\"description\":\"AW 集"
     },
     {
       "id": "A12.2",
       "name": "GET /results/detail 返回详情",
       "pass": true,
-      "detail": "{\"success\":true,\"data\":{\"result_id\":\"b687fbc6\",\"title\":\"x\",\"description\":\"AW 集成验收 2026-10-25T17:01 (summary过滤)\",\"summary"
+      "detail": "{\"success\":true,\"data\":{\"result_id\":\"b687fbc6\",\"title\":\"x\",\"description\":\"AW 集成验收 2026-10-26T03:21 (summary过滤)\",\"summary"
     },
     {
       "id": "A12.3",
       "name": "PATCH /results/edit(面板) 编辑成功",
       "pass": true,
-      "detail": "{\"success\":true,\"data\":{\"result_id\":\"b687fbc6\",\"title\":\"x\",\"description\":\"AW 集成验收 2026-10-25T17:01 (面板)\",\"summary\":\"Conclusion\",\"summary_json\":{\"conclusion\":\"Co"
+      "detail": "{\"success\":true,\"data\":{\"result_id\":\"b687fbc6\",\"title\":\"x\",\"description\":\"AW 集成验收 2026-10-26T03:21 (面板)\",\"summary\":\"Conclusion\",\"summary_json\":{\"conclusion\":\"Co"
     },
     {
       "id": "A12.4",

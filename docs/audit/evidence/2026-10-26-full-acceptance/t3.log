@@ -1,0 +1,19 @@
+=== api-live(3005) ===
+  PASS  删除后 channel 列表回退(旧数据保留) — count=0
+
+★ ALL PASS  (60 passed)
+=== agent-team(3005) ===
+用户注册失败
+Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), file src\win\async.c, line 94
+=== rest-robustness(3005) ===
+用户注册失败(服务器未启动或缺少用户端点)
+Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), file src\win\async.c, line 94
+=== timezone(3005) ===
+
+Node.js v24.19.0
+Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), file src\win\async.c, line 94
+=== crash-cycle ===
+  FAIL crash exit=3221226505
+  FAIL verify exit=3221226505
+  FAIL gap exit=3221226505
+  FAIL verify-gap exit=3221226505

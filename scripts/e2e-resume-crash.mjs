@@ -17,6 +17,7 @@
  *   node scripts/e2e-resume-crash.mjs verify-gap   # 场景 C(重启后验证重投恢复)
  */
 import { DatabaseSync } from 'node:sqlite'
+import { readFileSync } from 'node:fs'
 
 const BASE = (process.env.AW_RESUME_BASE ?? 'http://127.0.0.1:3000') + '/api/workshop'
 const DB_PATH = process.env.AW_RESUME_DB ?? 'data/workshop.sqlite'
@@ -39,10 +40,23 @@ if (process.env.AW_RESUME_TOKEN) {
   __user = { data: { token: process.env.AW_RESUME_TOKEN } }
 }
 else {
-  __user = await fetch(BASE + '/users/register', {
-    method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ name: 'e2e-' + Math.random().toString(36).slice(2, 10) }),
-  }).then(r => r.json()).catch(() => null)
+  // 跨阶段接续:watch/crash/gap 已把 token 写进 .resume-test.json;注册是一次性的
+  // (首用户注册后 allowRegistration 关闭),后续阶段必须沿用同一 token,不得重注册。
+  try {
+    const mark = JSON.parse(readFileSync('.resume-test.json', 'utf8'))
+    if (mark?.token) __user = { data: { token: mark.token } }
+  }
+  catch { /* 首阶段尚无标记 → 走注册 */ }
+  if (!__user) {
+    __user = await fetch(BASE + '/users/register', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ name: 'e2e-' + Math.random().toString(36).slice(2, 10) }),
+    }).then(r => r.json()).catch(() => null)
+    if (__user?.data?.token) {
+      const { writeFileSync } = await import('node:fs')
+      writeFileSync('.resume-test.json', JSON.stringify({ token: __user.data.token }))
+    }
+  }
 }
 let __userToken = __user?.data?.token
 if (!__userToken) {
@@ -172,7 +186,7 @@ async function crash() {
 
 async function verify() {
   console.log('━━━ 场景 B:重启 → 断线重连自动恢复执行 ━━━')
-  const { readFileSync, unlinkSync } = await import('node:fs')
+  const { readFileSync } = await import('node:fs')
   const mark = JSON.parse(readFileSync('.resume-test.json', 'utf8'))
   __userToken = resumeTokenFrom(mark)
   console.log(`  恢复目标: task=${mark.taskId.slice(0, 8)}… (workerTask=${mark.workerTaskId.slice(0, 8)}…);沿用 crash 阶段用户 token`)
@@ -199,7 +213,7 @@ async function verify() {
   check('恢复执行后全员 idle', (queue.json.data ?? []).every(a => a.state === 'idle'), JSON.stringify(states))
 
   await req('DELETE', `/channels/${mark.channelId}`)
-  unlinkSync('.resume-test.json')
+  // 标记保留:gap/verify-gap 阶段还要沿用同一 token 与 workerTaskId;最终由 verify-gap 清理
   console.log(`\n结果: PASS=${pass} FAIL=${fail}`)
   process.exit(fail === 0 ? 0 : 1)
 }

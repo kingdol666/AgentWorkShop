@@ -1,0 +1,64 @@
+
+═══ 崩溃恢复全循环 @ http://127.0.0.1:3021(db=D:\codes\ABO\AgentWorkShop\.e2e-home-crash26\data\workshop.sqlite)═══
+
+  · 实例已在运行(http://127.0.0.1:3021)
+
+━━ 场景 A:常规执行监控 ━━
+━━━ 场景 A:提交任务 → 监控 WORKING → COMPLETED → idle ━━━
+  PASS  提交任务 — task=5f164f2e…
+  PASS  执行中出现 WORKING(真实执行) — sawWorking=false anyWorking=true
+  PASS  任务执行至 COMPLETED — state=COMPLETED
+  PASS  执行完成后全员 idle — ["watch-lead:idle","watch-worker:idle"]
+
+结果: PASS=4 FAIL=0
+  PASS  watch  21s
+
+━━ 场景 B:执行中硬杀 → 持久化断言 ━━
+━━━ 场景 B:WORKING 中硬杀服务器 → 验证 DB 持久化 ━━━
+  PASS  杀前存在 WORKING 任务 — task=d18c5e17…
+  服务器已硬杀(pid=10108)
+  PASS  崩溃后 DB 中任务仍 WORKING(持久化) — db.state=WORKING
+  标记写入 .resume-test.json (channel=bac59eb8… task=9c3fce5c…)
+
+结果: PASS=2 FAIL=0
+  PASS  crash  3s
+━━ 重启实例 ━━
+  · 拉起隔离实例 http://127.0.0.1:3021(home=D:\codes\ABO\AgentWorkShop\.e2e-home-crash26)
+✔ 已分离启动(dev) pid=48320 → http://127.0.0.1:3021
+  AW_HOME=D:\codes\ABO\AgentWorkShop\.e2e-home-crash26
+  日志 D:\codes\ABO\AgentWorkShop\.e2e-dev-3021.log
+✔ 健康门通过 version=0.8.3(12s)
+  日志大小 98.9 KB
+━━━ 场景 B:重启 → 断线重连自动恢复执行 ━━━
+  恢复目标: task=9c3fce5c… (workerTask=d18c5e17…);沿用 crash 阶段用户 token
+  PASS  重启后 assign 重投轨迹存在(pending/consuming/consumed) — trail=1
+  PASS  断线重连:任务自动恢复至 COMPLETED — state=COMPLETED
+  PASS  子任务 COMPLETED(lead 完成一项标记一项) — state=COMPLETED
+  PASS  恢复执行后全员 idle — ["crash-lead:idle","crash-worker:idle"]
+
+结果: PASS=4 FAIL=0
+  PASS  verify  17s
+
+━━ 场景 C:制造消费缺口 → 硬杀 ━━
+━━━ 场景 C:assign 已 consumed + 任务 WORKING → 重启必须重投 ━━━
+  PASS  制造 WORKING 任务
+  PASS  缺口已制造(无任何待消费消息) — remaining=0
+
+结果: PASS=2 FAIL=0
+  PASS  gap  3s
+━━ 重启实例 ━━
+  · 拉起隔离实例 http://127.0.0.1:3021(home=D:\codes\ABO\AgentWorkShop\.e2e-home-crash26)
+✔ 已分离启动(dev) pid=92064 → http://127.0.0.1:3021
+  AW_HOME=D:\codes\ABO\AgentWorkShop\.e2e-home-crash26
+  日志 D:\codes\ABO\AgentWorkShop\.e2e-dev-3021.log
+✔ 健康门通过 version=0.8.3(9s)
+  日志大小 116.0 KB
+━━━ 场景 C:重启 → restore 重投缺口 assign → 自动恢复 ━━━
+  PASS  restore 重投缺口 assign(轨迹存在) — assign-trail=2
+  PASS  缺口任务自动恢复至 COMPLETED — state=COMPLETED
+  PASS  恢复后全员 idle
+
+结果: PASS=3 FAIL=0
+  PASS  verify-gap  18s
+
+═══ 崩溃恢复全循环:通过 5 / 5 阶段 ═══
