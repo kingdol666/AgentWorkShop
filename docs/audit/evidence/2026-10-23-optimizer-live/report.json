@@ -1,26 +1,26 @@
 {
-  "at": "2026-10-26T03:43:09.584Z",
+  "at": "2026-10-26T11:42:43.822Z",
   "base": "http://127.0.0.1:3997",
   "seed": {
-    "lineId": "ln-fb0de012",
-    "productId": "pd-31c8007a",
-    "recipeId": "rc-79c34016",
+    "lineId": "ln-8aa1b1fa",
+    "productId": "pd-fbfdf5dc",
+    "recipeId": "rc-d1b79d94",
     "runs": [
-      "rr-fce83406",
-      "rr-6c38cac3",
-      "rr-a6ae4e62",
-      "rr-0941fe59",
-      "rr-842f4e49",
-      "rr-97088a74"
+      "rr-11f19e49",
+      "rr-cef4a135",
+      "rr-3be549cd",
+      "rr-f605b492",
+      "rr-7d652d7c",
+      "rr-9934e847"
     ],
-    "mv": "dn-optlcni-mv",
-    "cv": "dn-optlcni-cv"
+    "mv": "dn-optqaqy-mv",
+    "cv": "dn-optqaqy-cv"
   },
   "env": {
     "node": "v24.19.0",
     "platform": "win32-x64",
     "venvLinked": true,
-    "home": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-optimizer-live-e2e-1792986037324\\home"
+    "home": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-optimizer-live-e2e-1793014821609\\home"
   },
   "pass": 104,
   "total": 104,
@@ -41,7 +41,7 @@
       "id": "BOOT",
       "name": "首注册用户为 admin",
       "pass": true,
-      "detail": "{\"id\":\"c92d7e36-47ee-4c99-8521-8cf59999daf8\",\"name\":\"优化验收-optlcni\",\"email\":\"opt-optlcni@awshop.local\",\"role\":\"admin\",\"cr"
+      "detail": "{\"id\":\"0de6aaff-29a3-497d-b27a-f921ae2b5e79\",\"name\":\"优化验收-optqaqy\",\"email\":\"opt-optqaqy@awshop.local\",\"role\":\"admin\",\"cr"
     },
     {
       "id": "R1.1",
@@ -53,7 +53,7 @@
       "id": "R1.2",
       "name": "POST /specs 登记 draft",
       "pass": true,
-      "detail": "{\"id\":\"pms-optlcni\",\"version\":1,\"lineId\":\"ln-fb0de012\",\"productId\":\"pd-31c8007a\",\"recipeId\":\"rc-79c34016\",\"recipeVersion\":1,\"contentHash\":\"77f1213a972270dab450d"
+      "detail": "{\"id\":\"pms-optqaqy\",\"version\":1,\"lineId\":\"ln-8aa1b1fa\",\"productId\":\"pd-fbfdf5dc\",\"recipeId\":\"rc-d1b79d94\",\"recipeVersion\":1,\"contentHash\":\"21c0eb8baa40ffbf4659f"
     },
     {
       "id": "R1.3",
@@ -83,19 +83,19 @@
       "id": "R1.5",
       "name": "POST /datasets 构建 manifest v2",
       "pass": true,
-      "detail": "id=ds-mvopm0yh-k71pmo rows=786 runs=6 msg=ok"
+      "detail": "id=ds-mvp6qu01-q92pz5 rows=786 runs=6 msg=ok"
     },
     {
       "id": "R1.6",
       "name": "GET /aml/datasets/:id manifest v2 可读",
       "pass": true,
-      "detail": "v=2 hash=da17a6907c"
+      "detail": "v=2 hash=b3baeacd25"
     },
     {
       "id": "R1.7",
       "name": "POST /eligibility 模拟数据具备优化资格",
       "pass": true,
-      "detail": "gaps=none evidence=ds:ds-mvopm0yh-k71pmo:da17a6907c50"
+      "detail": "gaps=none evidence=ds:ds-mvp6qu01-q92pz5:b3baeacd25e0"
     },
     {
       "id": "R1.8",
@@ -113,25 +113,25 @@
       "id": "R1.9",
       "name": "POST /train 提交内置训练作业",
       "pass": true,
-      "detail": "job=job-mvopm112-wqlwxj"
+      "detail": "job=job-mvp6qu36-1rwa5i"
     },
     {
       "id": "R1.10",
       "name": "训练作业 done + 两阶段登记 model_id",
       "pass": true,
-      "detail": "status=done model=mdl-mvopm112-wqlwxj err="
+      "detail": "status=done model=mdl-mvp6qu36-1rwa5i err="
     },
     {
       "id": "R1.11",
       "name": "模型注册表:linear_state_space@1 + 接口/哈希",
       "pass": true,
-      "detail": "linear_state_space@1/linear_state_space/b6dbe36a64"
+      "detail": "linear_state_space@1/linear_state_space/9aff3ed92d"
     },
     {
       "id": "R1.12",
       "name": "创建 workspace/channel(lead 实例)",
       "pass": true,
-      "detail": "ws=1adf3e1c-34f0-401e-9c91-95bdc5ba8fe6 ch=155085a9-88be-4b79-9399-e668c038637f lead=22175a18-1f72-4fa3-be99-f6cecf809084"
+      "detail": "ws=9cdb1d76-847e-4636-82b4-0b948b3831e6 ch=53a9dea1-9516-43c3-a9a2-2d47c77b74fb lead=3e2af638-44ec-4599-b8f1-5f692d5e6326"
     },
     {
       "id": "R1.13",
@@ -149,7 +149,7 @@
       "id": "R1.14",
       "name": "POST /profiles draft(工件字段由服务端回填)",
       "pass": true,
-      "detail": "200/draft/linear_state_space@1/b6dbe36a64 msg=ok"
+      "detail": "200/draft/linear_state_space@1/9aff3ed92d msg=ok"
     },
     {
       "id": "R1.15",
@@ -161,7 +161,7 @@
       "id": "R1.16",
       "name": "POST /bindings 创建(revision=1)",
       "pass": true,
-      "detail": "id=ob-mvopm1x4-xw1t5 rev=1"
+      "detail": "id=ob-mvp6qv0e-97zjq rev=1"
     },
     {
       "id": "R1.17",
@@ -179,7 +179,7 @@
       "id": "R1.19",
       "name": "POST /solve optimal + 建议带证据状态(verified|unverified 由 UQ 证据决定)",
       "pass": true,
-      "detail": "status=optimal run=orun-mvopm1yr-d894l rec=verified reason=已验证推荐 http=200"
+      "detail": "status=optimal run=orun-mvp6qv1u-dx2gn rec=verified reason=已验证推荐 http=200"
     },
     {
       "id": "R1.20",
@@ -191,13 +191,13 @@
       "id": "R1.21",
       "name": "GET /runs 台账:IR hash + 建议 + 载荷",
       "pass": true,
-      "detail": "hash=54cec237ad rec=verified cvOrder=cv1"
+      "detail": "hash=db94e81ef8 rec=verified cvOrder=cv1"
     },
     {
       "id": "R3.1",
       "name": "实例化 aml_optimization 频道",
       "pass": true,
-      "detail": "ch=8ab21cc0-9ce7-4c3c-994f-6966d4847bcf lead=4a166994-18cb-45d4-827a-7d62dade091c"
+      "detail": "ch=181792f6-549c-4f06-b683-b0162e9ba067 lead=62b6aa31-0792-435e-9392-2d4603e6b520"
     },
     {
       "id": "R2.5",
@@ -221,25 +221,25 @@
       "id": "R3.4",
       "name": "optimizer_capabilities 返回求解器/环境 JSON",
       "pass": true,
-      "detail": "{\n  \"agentId\": \"4a166994-18cb-45d4-827a-7d62dade091c\",\n  \"bindings\": [\n    {\n      \"bindingId\": \"ob-mvopm3ru-hhmhk\",\n      \"profile\": \"optp-optlcni@1\",\n      \"m"
+      "detail": "{\n  \"agentId\": \"62b6aa31-0792-435e-9392-2d4603e6b520\",\n  \"bindings\": [\n    {\n      \"bindingId\": \"ob-mvp6qwi9-ly7m1\",\n      \"profile\": \"optp-optqaqy@1\",\n      \"m"
     },
     {
       "id": "R3.5",
       "name": "optimizer_solve 真实求解(optimal)",
       "pass": true,
-      "detail": "run=orun-mvopm3tn-n3ubp status=optimal text={\n  \"runId\": \"orun-mvopm3tn-n3ubp\",\n  \"bindingId\": \"ob-mvopm3ru-hhmhk\",\n  \"profileVersion\": \"optp-optlcni@1\",\n  \"status\""
+      "detail": "run=orun-mvp6qwk0-szvyy status=optimal text={\n  \"runId\": \"orun-mvp6qwk0-szvyy\",\n  \"bindingId\": \"ob-mvp6qwi9-ly7m1\",\n  \"profileVersion\": \"optp-optqaqy@1\",\n  \"status\""
     },
     {
       "id": "R3.6",
       "name": "optimizer_plan_get 返回带证据状态的建议(verified|unverified)",
       "pass": true,
-      "detail": "{\n  \"runId\": \"orun-mvopm3tn-n3ubp\",\n  \"recommendation\": {\n    \"id\": \"orec-mvopm4fx-0s942\",\n    \"runId\": \"orun-mvopm3tn-n3ubp\",\n    \"candidateId\": \"oc-n-mvopm3tn"
+      "detail": "{\n  \"runId\": \"orun-mvp6qwk0-szvyy\",\n  \"recommendation\": {\n    \"id\": \"orec-mvp6qx6m-7cjzl\",\n    \"runId\": \"orun-mvp6qwk0-szvyy\",\n    \"candidateId\": \"oc-n-mvp6qwk0"
     },
     {
       "id": "R3.7",
       "name": "optimizer_status 返回终态",
       "pass": true,
-      "detail": "{\n  \"run\": {\n    \"id\": \"orun-mvopm3tn-n3ubp\",\n    \"bindingId\": \"ob-mvopm3ru-hhmhk\",\n    \"bindingRevision\": 1,\n    \"profileId\": \"optp-optlcni"
+      "detail": "{\n  \"run\": {\n    \"id\": \"orun-mvp6qwk0-szvyy\",\n    \"bindingId\": \"ob-mvp6qwi9-ly7m1\",\n    \"bindingRevision\": 1,\n    \"profileId\": \"optp-optqaqy"
     },
     {
       "id": "R3.8",
@@ -329,25 +329,25 @@
       "id": "U1.5",
       "name": "UI 构建数据集(v2)成功",
       "pass": true,
-      "detail": "数据集已构建:ds-mvopmwug-fguo03(786 窗)"
+      "detail": "数据集已构建:ds-mvp6rm11-pq6qq4(786 窗)"
     },
     {
       "id": "U1.6",
       "name": "UI 资格报告渲染(具备资格 + simulation + 证据)",
       "pass": true,
-      "detail": "优化资格(A2)评估资格具备优化资格 · scope=simulation · ds:ds-mvopmwug-fguo03:93265a3751b2{ \"sampleCount\": 786, \"mvVariation.mv1\": 0.515081, \"mvChanges.mv1\": 488, \"maxMvColline"
+      "detail": "优化资格(A2)评估资格具备优化资格 · scope=simulation · ds:ds-mvp6rm11-pq6qq4:262cc90bbd93{ \"sampleCount\": 786, \"mvVariation.mv1\": 0.515081, \"mvChanges.mv1\": 488, \"maxMvColline"
     },
     {
       "id": "U1.7",
       "name": "UI 提交训练作业",
       "pass": true,
-      "detail": "训练作业已提交:job-mvopmy88-mj7q3m"
+      "detail": "训练作业已提交:job-mvp6rnek-f2lkse"
     },
     {
       "id": "U1.8",
       "name": "UI 训练作业完成并产出模型",
       "pass": true,
-      "detail": "status=done model=mdl-mvopmy88-mj7q3m"
+      "detail": "status=done model=mdl-mvp6rnek-f2lkse"
     },
     {
       "id": "U1.9",
@@ -359,19 +359,19 @@
       "id": "U1.10",
       "name": "UI Profile 表格显示 published",
       "pass": true,
-      "detail": "optp-ui-optlcni@1----publishedmdl-mvopmy88-mj7q3mosqp_mpc@1optp-optlcni@1----publishedmdl-mvopm112-wqlwxjosqp_mpc@1"
+      "detail": "optp-ui-optqaqy@1----publishedmdl-mvp6rnek-f2lkseosqp_mpc@1optp-optqaqy@1----publishedmdl-mvp6qu36-1rwa5iosqp_mpc@1"
     },
     {
       "id": "U1.11",
       "name": "UI 创建绑定并回读行",
       "pass": true,
-      "detail": "ob-mvopn0tu-es9ly155085a9-88be-4b79-9399-e668c038637f22175a18-1f72-4fa3-be99-f6cecf809084optp-ui-optlcni@1recommendation1撤销ob-mvopm3ru-hhmhk"
+      "detail": "ob-mvp6rq7a-t9uua53a9dea1-9516-43c3-a9a2-2d47c77b74fb3e2af638-44ec-4599-b8f1-5f692d5e6326optp-ui-optqaqy@1recommendation1撤销ob-mvp6qwi9-ly7m1"
     },
     {
       "id": "U1.12",
       "name": "UI 求解成功并渲染运行/建议行(状态徽章二态)",
       "pass": true,
-      "detail": "orun-mvopn1ke-7y7ncoptimaloptp-ui-optlcni407cf10e4a未验证(缺 UQ/OOD 证据)2026-10-26T11:56:57.758+08:00orun-mvopm3tn-n3ubpoptimaloptp-optlcni54cec237ad已验证推荐2026-10-26T11:56:13.341+08:00orun-mvopm1yr-d894lopt"
+      "detail": "orun-mvp6rr1q-h4gi8optimaloptp-ui-optqaqy77f02e6484未验证(缺 UQ/OOD 证据)2026-10-26T19:56:30.315+08:00orun-mvp6qwk0-szvyyoptimaloptp-optqaqydb94e81ef8已验证推荐2026-10-26T19:55:50.686+08:00orun-mvp6qv1u-dx2gnopt"
     },
     {
       "id": "U1.13",
@@ -431,7 +431,7 @@
       "id": "C7",
       "name": "hybrid_twin 真实求解 optimal",
       "pass": true,
-      "detail": "run=orun-mvopn4wb-703sd status=optimal"
+      "detail": "run=orun-mvp6ru4g-9apzs status=optimal"
     },
     {
       "id": "C8",
@@ -449,13 +449,13 @@
       "id": "C10",
       "name": "worker 用自己的绑定求解 optimal",
       "pass": true,
-      "detail": "run=orun-mvopn5nr-ma76p status=optimal"
+      "detail": "run=orun-mvp6ruur-srb9a status=optimal"
     },
     {
       "id": "C11",
       "name": "worker 读他人 run → BINDING_NOT_OWNED/不属于",
       "pass": true,
-      "detail": "工具调用被拒(引用校验,optimizer_status):run_id = orun-mvopn4wb-703sd 不属于当前 Agent(BINDING_NOT_OWNED)"
+      "detail": "工具调用被拒(引用校验,optimizer_status):run_id = orun-mvp6ru4g-9apzs 不属于当前 Agent(BINDING_NOT_OWNED)"
     },
     {
       "id": "C12",
@@ -485,19 +485,19 @@
       "id": "S4",
       "name": "静态场景 Agent 求解(SLSQP) optimal 且命中目标",
       "pass": true,
-      "detail": "profile=200 bind=200 status=optimal mv=63.38744651502797 msg={\n  \"runId\": \"orun-mvopn7j6-1udvv\",\n  \"bindingId\": \"ob-mvopn7im-pdehu\",\n  \"profi"
+      "detail": "profile=200 bind=200 status=optimal mv=63.38744651502797 msg={\n  \"runId\": \"orun-mvp6rwlh-wsi1c\",\n  \"bindingId\": \"ob-mvp6rwki-ucaeq\",\n  \"profi"
     },
     {
       "id": "B1",
       "name": "双变量场景:无代码训练完成 + 2MV/2CV 工件",
       "pass": true,
-      "detail": "rows=786 status=done model=mdl-mvopn8ls-p0boah"
+      "detail": "rows=786 status=done model=mdl-mvp6rxe9-o4cy6e"
     },
     {
       "id": "B2",
       "name": "双变量场景 Agent 求解 optimal(模型单位 m3/h)",
       "pass": true,
-      "detail": "bind=200 status=optimal first={\"flow_a\":4.247466982176206,\"flow_b\":2.878013041072884} msg={\n  \"runId\": \"orun-mvopn940-f5j74\",\n  \"bindingId\": \"ob-mvopn93h-af437\",\n  \"profileVersion\": \"optp-b-optlcni@1\",\n  \"status\": \"optimal\",\n  \"fi"
+      "detail": "bind=200 status=optimal first={\"flow_a\":4.247466982176206,\"flow_b\":2.878013041072884} msg={\n  \"runId\": \"orun-mvp6rybk-jnqn7\",\n  \"bindingId\": \"ob-mvp6ryb4-hk443\",\n  \"profileVersion\": \"optp-b-optqaqy@1\",\n  \"status\": \"optimal\",\n  \"fi"
     },
     {
       "id": "B3",
@@ -563,7 +563,7 @@
       "id": "V3",
       "name": "闭环 MV 始终在工艺窗口[0,100]",
       "pass": true,
-      "detail": "min=42.1 max=50.0"
+      "detail": "min=42.6 max=50.0"
     },
     {
       "id": "W0",
@@ -581,7 +581,7 @@
       "id": "W2",
       "name": "互校后 dual=true(verified+pass+fresh)",
       "pass": true,
-      "detail": "{\"id\":\"oxc-mvopojzw-jqvvp\",\"verdict\":\"pass\",\"stale\":false,\"conditionChanged\":false,\"maxDev\":0,\"tol\":0.000001,\"rowHash\":\"5608d9ebffef07b513e3f56dbf6a3c92f3571707"
+      "detail": "{\"id\":\"oxc-mvp6tae8-44656\",\"verdict\":\"pass\",\"stale\":false,\"conditionChanged\":false,\"maxDev\":0,\"tol\":0.000001,\"rowHash\":\"54efe3ae3ad5734cc9656088f7437c94f54be80f"
     },
     {
       "id": "W3",
@@ -593,7 +593,7 @@
       "id": "W4",
       "name": "dispatch 建卡成功(optimizer-recipe: 前缀)",
       "pass": true,
-      "detail": "200/optimizer-recipe:rc-79c34016"
+      "detail": "200/optimizer-recipe:rc-d1b79d94"
     },
     {
       "id": "W5",
@@ -605,19 +605,19 @@
       "id": "W6",
       "name": "审批面精确返回当前下发卡及首步工程值",
       "pass": true,
-      "detail": "id=ap-477f5615 nodeId=optimizer-recipe:rc-79c34016 expected=36.956649869462126 card=36.956649869462126"
+      "detail": "id=ap-76b90fcb nodeId=optimizer-recipe:rc-d1b79d94 expected=36.956649887523376 card=36.956649887523376"
     },
     {
       "id": "W7",
       "name": "HITL 批准 → 单一咽喉 D13 重验 → 整批下发",
       "pass": true,
-      "detail": "200/{\"dispatch\":{\"approved\":true,\"comment\":\"集成验收批准\",\"execution\":{\"runId\":\"rr-320054dc\",\"acks\":{\"verified\":1,\"unverified\":0,\"failed\":0,\"total\":1}}}}"
+      "detail": "200/{\"dispatch\":{\"approved\":true,\"comment\":\"集成验收批准\",\"execution\":{\"runId\":\"rr-52d2f44b\",\"acks\":{\"verified\":1,\"unverified\":0,\"failed\":0,\"total\":1}}}}"
     },
     {
       "id": "W8",
       "name": "执行节点回读等于建议首步工程值(写入落设备,按节点分辨率量化)",
       "pass": true,
-      "detail": "node=dcw-optlcni-mv expected=36.956649869462126 readValue=37 tolerance=0.5"
+      "detail": "node=dcw-optqaqy-mv expected=36.956649887523376 readValue=37 tolerance=0.5"
     },
     {
       "id": "W9",
@@ -647,7 +647,7 @@
       "id": "M4",
       "name": "MCP optimizer_solve 真实求解 optimal",
       "pass": true,
-      "detail": "status=optimal text={\n  \"runId\": \"orun-mvopoli9-ybzn1\",\n  \"bindingId\": \"ob-mvopole9-ocrci\",\n  \"profileVersion\": \"optp-optlcni@1\",\n  \"status\": \"optimal\",\n  \"firs stderr="
+      "detail": "status=optimal text={\n  \"runId\": \"orun-mvp6tbwe-6gf5p\",\n  \"bindingId\": \"ob-mvp6tbrk-o63lm\",\n  \"profileVersion\": \"optp-optqaqy@1\",\n  \"status\": \"optimal\",\n  \"firs stderr="
     }
   ],
   "pageErrors": []
