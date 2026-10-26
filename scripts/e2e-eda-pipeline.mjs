@@ -112,7 +112,27 @@ const arGet = await api('GET', `/api/workshop/analysis/${arId}`)
 ok('E2.3', d(arGet.json)?.report?.title === '管道验收-REST', '台账详情回读')
 
 // ── REST:charts 挂模板 ──
-const chR = await api('POST', '/api/workshop/eda/charts', { title: '管道验收图', viz_type: 'pipeline', datasource: { line_id: lineId, node_ids: [] }, encoding: { xField: 'at', yFields: ['克重'] }, options: { template: tplId }, line_id: lineId })
+const badCh = await api('POST', '/api/workshop/eda/charts', {
+  title: '无快照管道图', viz_type: 'pipeline', datasource: { line_id: lineId }, options: { template: tplId }, line_id: lineId,
+})
+ok('E3.0', badCh.status === 400, 'pipeline 快照缺少 rows 被拒(B4 线域边界)')
+const badLine = await api('POST', '/api/workshop/eda/charts', {
+  title: '线不一致管道图', viz_type: 'pipeline',
+  datasource: { line_id: 'ln-other' },
+  options: { template: tplId, pipeline: { chartType: 'line', cfg: { xField: 'at', yFields: ['克重'] }, rows: [{ at: '2026-10-26T00:00:00Z', 克重: 32.5 }] } },
+  line_id: lineId,
+})
+ok('E3.0b', badLine.status === 400, 'pipeline 快照 datasource.line_id 与 line_id 不一致被拒')
+const chR = await api('POST', '/api/workshop/eda/charts', {
+  title: '管道验收图', viz_type: 'pipeline',
+  datasource: { line_id: lineId, node_ids: [] },
+  encoding: { xField: 'at', yFields: ['克重'] },
+  options: {
+    template: tplId,
+    pipeline: { chartType: 'line', cfg: { xField: 'at', yFields: ['克重'], groupField: '', agg: 'avg', title: '管道验收图', yMin: null, yMax: null, refLine: null }, rows: [{ at: '2026-10-26T00:00:00Z', 克重: 32.5 }, { at: '2026-10-26T00:01:00Z', 克重: 32.7 }] },
+  },
+  line_id: lineId,
+})
 const chartId = d(chR.json)?.chart?.id
 ok('E3.1', chR.status === 200 && Boolean(chartId), `保存图表 ${chartId}`)
 const chGet = await api('GET', `/api/workshop/eda/charts/${chartId}`)
@@ -203,7 +223,7 @@ async function ui() {
     setSel('pipeline-xfield', '批次')
     const y = document.querySelector('[data-test="pipeline-yfields"]')
     if (y) {
-      y.value = '克重'
+      for (const o of y.options) o.selected = o.value === '克重'
       y.dispatchEvent(new Event('change', { bubbles: true }))
     }
     const t = document.querySelector('[data-test="pipeline-title"]')

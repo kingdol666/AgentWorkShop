@@ -10,6 +10,47 @@ export interface PipelineRow {
   [key: string]: unknown
 }
 
+export interface QuerySeriesPoint {
+  /** 新版 daq/query 点形状 */
+  at?: number | string
+  v?: number
+  /** 兼容旧形状(部分调用方/历史数据) */
+  x?: number | string
+  y?: number
+}
+
+export interface QuerySeries {
+  nodeId: string
+  name?: string
+  points?: QuerySeriesPoint[]
+}
+
+/**
+ * daq/query 的 series 点阵 → 宽表行(at + 每测点一列,列名=测点名)。
+ * 服务端当前返回 {at, v};历史/兼容调用可能返回 {x, y},两种都接受。
+ */
+export function seriesToRows(
+  series: QuerySeries[],
+  resolveName: (s: QuerySeries) => string = s => s.name ?? s.nodeId,
+): PipelineRow[] {
+  const byAt = new Map<string, PipelineRow>()
+  for (const s of series) {
+    const key = resolveName(s)
+    for (const p of s.points ?? []) {
+      const rawX = p.x ?? p.at
+      const y = p.y ?? p.v
+      if (rawX == null || y == null || !Number.isFinite(Number(y))) continue
+      const date = new Date(rawX)
+      if (Number.isNaN(date.getTime())) continue
+      const at = date.toISOString()
+      const row = byAt.get(at) ?? { at }
+      row[key] = Number(y)
+      byAt.set(at, row)
+    }
+  }
+  return [...byAt.values()].sort((a, b) => String(a.at).localeCompare(String(b.at)))
+}
+
 /** 行内数值判定(null/undefined/空串不算数) */
 export function isNum(v: unknown): v is number {
   return typeof v === 'number' && Number.isFinite(v)
@@ -153,10 +194,18 @@ export function buildPipelineOption(type: string, cfg: PipelineConfig, rows: Pip
     }
   }
   const { categories, series } = aggregateRows(rows, cfg)
+  // 大样本(数百/数千个时间桶)按固定目标数抽稀刻度,只让约 16 个标签落笔;
+  // hideOverlap 在旋转标签下不足以压住全量刻度,必须给数值 interval。
+  const labelInterval = categories.length > 60 ? Math.max(1, Math.ceil(categories.length / 16)) : 'auto' as const
   const xAxis = {
     type: 'category' as const,
     data: categories,
-    axisLabel: { fontSize: 10, rotate: categories.length > 24 ? 40 : 0 },
+    axisLabel: {
+      fontSize: 10,
+      rotate: categories.length > 24 ? 40 : 0,
+      hideOverlap: true,
+      interval: labelInterval,
+    },
   }
   const yAxis = {
     type: 'value' as const,

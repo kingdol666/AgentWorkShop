@@ -13,7 +13,7 @@ import {
   TooltipComponent,
 } from 'echarts/components'
 import VChart from 'vue-echarts'
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { PropType } from 'vue'
 import type { EChartsOption } from 'echarts'
 import type { SetOptionOpts } from 'echarts/core'
@@ -94,8 +94,36 @@ function onVisibilityChange(): void {
   isVisible.value = document.visibilityState === 'visible'
 }
 
-onMounted(() => document.addEventListener('visibilitychange', onVisibilityChange))
-onBeforeUnmount(() => document.removeEventListener('visibilitychange', onVisibilityChange))
+// 图表容器在 flex/grid 布局里可能在 0 宽时完成首次初始化;仅靠 autoresize 的
+// ResizeObserver 在某些 Teleport/grid 场景下不会二次排版,表现为整图挤在左上角。
+// 显式在挂载后与 option 更新后各 resize 一次,保证坐标轴/网格按真实容器宽度落笔。
+const chartRef = ref<{ resize?: () => void, $el?: HTMLElement } | null>(null)
+function resizeChart(): void {
+  try {
+    chartRef.value?.resize?.()
+  }
+  catch {
+    // 实例尚未挂载完成
+  }
+}
+
+let resizeObserver: ResizeObserver | null = null
+onMounted(() => {
+  document.addEventListener('visibilitychange', onVisibilityChange)
+  void nextTick(resizeChart)
+  setTimeout(resizeChart, 350)
+  const el = chartRef.value?.$el
+  if (el && typeof ResizeObserver !== 'undefined') {
+    resizeObserver = new ResizeObserver(() => resizeChart())
+    resizeObserver.observe(el)
+  }
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('visibilitychange', onVisibilityChange)
+  resizeObserver?.disconnect()
+  resizeObserver = null
+})
+watch(merged, () => nextTick(resizeChart))
 
 const updateOptions = computed<SetOptionOpts>(() => ({
   notMerge: false,
@@ -106,6 +134,7 @@ const updateOptions = computed<SetOptionOpts>(() => ({
 
 <template>
   <VChart
+    ref="chartRef"
     v-bind="$attrs"
     :style="chartStyle"
     :option="merged"

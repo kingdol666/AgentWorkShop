@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AgentWorkShop 全功能验收与生产就绪评估 · 2026-10-26</title>
+<style>
+  :root{--ink:#16222e;--muted:#5b6b79;--line:#dfe7ee;--panel:#fff;--bg:#eef3f7;--green:#1f8f78;--amber:#b06d1f;--red:#b23b3b}
+  *{box-sizing:border-box} body{margin:0;background:radial-gradient(1100px 600px at 12% 0%,#f8fbfd,#eaf1f6 55%,#e6edf3);color:var(--ink);font:14px/1.65 "Segoe UI",system-ui,-apple-system,sans-serif}
+  main{max-width:1180px;margin:0 auto;padding:36px 28px 80px}
+  header{padding:28px 30px;border:1px solid var(--line);border-radius:18px;background:linear-gradient(135deg,#ffffff,#f4f9fb);box-shadow:0 14px 40px rgba(22,34,46,.08)}
+  .kicker{font-size:12px;letter-spacing:3px;color:var(--green);font-weight:700;text-transform:uppercase}
+  h1{font-size:32px;line-height:1.2;margin:10px 0 8px;letter-spacing:-.4px}
+  .sub{color:var(--muted);max-width:900px}
+  .verdicts{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+  .badge{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:999px;font-weight:650;font-size:13px;border:1px solid}
+  .pass{color:#0d6b57;background:#eaf7f2;border-color:#b9e3d6}.cond{color:#8a5516;background:#fdf5e8;border-color:#eed9b4}.fail{color:#8f2c2c;background:#fdeeee;border-color:#f0c9c9}
+  h2{font-size:22px;margin:38px 0 12px;letter-spacing:-.2px}
+  h3{font-size:16px;margin:24px 0 8px}
+  .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:0 8px 24px rgba(22,34,46,.05)}
+  .card h3{margin:0 0 6px;font-size:15px}.muted{color:var(--muted)}
+  .shot{display:block;width:100%;border-radius:10px;border:1px solid var(--line);background:#fff}
+  .cap{font-size:12.5px;color:var(--muted);margin-top:8px}
+  table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden}
+  th,td{padding:9px 11px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}th{background:#f4f8fa;font-size:12px;color:var(--muted);letter-spacing:.4px}
+  tr:last-child td{border-bottom:0}
+  ul{margin:8px 0 0 20px;padding:0}li{margin:5px 0}
+  .note{border-left:4px solid var(--amber);background:#fffaf0;padding:12px 16px;border-radius:0 10px 10px 0;margin:14px 0}
+  .verdict{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  .big{font-size:20px;font-weight:700;margin:0 0 6px}
+  footer{margin-top:42px;color:var(--muted);font-size:12.5px;border-top:1px solid var(--line);padding-top:16px}
+  @media(max-width:800px){.grid,.verdict{grid-template-columns:1fr}h1{font-size:26px}}
+</style>
+</head>
+<body><main>
+<header>
+  <div class="kicker">AgentWorkShop · Acceptance &amp; Production Readiness</div>
+  <h1>全功能验收与真实工业场景就绪评估</h1>
+  <p class="sub">2026-10-26 · current main · isolated mock/PLC-simulator environment · screenshots from live UI, not mockups</p>
+  <div class="verdicts">
+    <span class="badge pass">功能验收 PASS</span>
+    <span class="badge cond">真实产线：有条件就绪</span>
+    <span class="badge fail">安全认证：未通过 / inconclusive</span>
+    <span class="badge fail">Bench attainment：RED</span>
+  </div>
+</header>
+
+<h2>1. 验收矩阵</h2>
+<table>
+<tr><th>层</th><th>套件</th><th>结果</th></tr>
+<tr><td>T0</td><td>lint / typecheck / docs / i18n / README</td><td><b>全通过</b> · docs 91/91 · i18n 3149/3149</td></tr>
+<tr><td>T1</td><td>单元 / MCP / 插件 / SDK / Twin / Skills</td><td><b>582/582</b> · 14/14 · 22/22 · PASS · 5/5 · 124</td></tr>
+<tr><td>T2</td><td>本体 L1–L7（真机）</td><td><b>87/87</b>（Chrome 六 tab + graph/table + 邻接）</td></tr>
+<tr><td>T2</td><td>模型闭环 / 优化器 / 产线治理</td><td><b>54/54</b> · <b>104/104</b> · <b>44/44</b></td></tr>
+<tr><td>T3</td><td>REST API live</td><td><b>64/64</b></td></tr>
+<tr><td>EDA</td><td>pipeline E2E / live UI / Studio+Board</td><td><b>24/24</b> · <b>10/10</b> · <b>4/4</b></td></tr>
+</table>
+
+<h2>2. EDA 本地实机演示（模拟产线）</h2>
+<p class="muted">在线拉数（真实 DAQ REST，模拟产线数据）→ 数据表 → 浏览器本地代码后处理 → 图表 → 在线查看器 → 模板持久化 → 保存图表/分析结果 → Studio/Board 快照回放。截图来自本地实例，不代表真实工厂运行。</p>
+<div class="grid">
+  <div class="card"><img class="shot" src="../2026-10-26-eda-production-review/02-live-table.png" alt="live table"><div class="cap"><b>在线拉数</b>：选择产线与两个 DAQ 节点，宽表直接回落。</div></div>
+  <div class="card"><img class="shot" src="../2026-10-26-eda-production-review/04-drawn-chart.png" alt="drawn chart"><div class="cap"><b>代码后处理 + 绘图</b>：1735 行结果，line / x=at / y=Part Weight。</div></div>
+  <div class="card"><img class="shot" src="../2026-10-26-eda-production-review/05-online-viewer.png" alt="viewer"><div class="cap"><b>在线查看器</b>：真实 ECharts canvas，滚轮/滑块缩放 + PNG。</div></div>
+  <div class="card"><img class="shot" src="../2026-10-26-eda-production-review/06a-chart-saved.png" alt="chart saved"><div class="cap"><b>图表保存回执</b>：pipeline 图表落库。</div></div>
+  <div class="card"><img class="shot" src="../2026-10-26-eda-production-review/06b-result-saved.png" alt="result saved"><div class="cap"><b>分析结果保存回执</b>：结果进入台账。</div></div>
+  <div class="card"><img class="shot" src="../2026-10-26-eda-production-review/10-studio-pipeline-snapshot.png" alt="studio snapshot"><div class="cap"><b>Studio 快照</b>：同一 pipeline 图表可打开渲染（只读）。</div></div>
+  <div class="card"><img class="shot" src="../2026-10-26-eda-production-review/11-board-pipeline-snapshot.png" alt="board snapshot"><div class="cap"><b>Board 快照</b>：同一图表进看板仍可渲染。</div></div>
+</div>
+<div class="note"><b>本轮修掉的 EDA 真实缺陷：</b>在线查询点形状 `{at,v}` 与页面 `{x,y}` 不匹配；保存图表发送 `pipeline-line` 被服务端 400；Studio/Board 不识别 pipeline 快照；E2E 多选 Y 字段测试自身未触发 change；快照图表在 grid 容器里以 0 宽初始化；1735 桶刻度重叠。修复后 24/24 + 10/10 + 4/4（含无快照 rows 与 line_id 不一致必须 400 的负例）。<br><b>B4 边界：</b>管道快照仅 private、最多 2000 行、必须带 line_id 且 datasource.line_id 一致；rows 为保存者客户端提供、不是服务端代理数据，读取仍走 chart owner 可见性。普通图表只存查询参数。</div>
+
+<h2>3. 系统设计强项</h2>
+<div class="verdict">
+  <div class="card"><p class="big">单咽喉 + 交集限界</p><p class="muted">参数基准 / 产品窗 / 配方窗 / 节点量程在统一写控入口取交集；拒绝会点名约束层。</p></div>
+  <div class="card"><p class="big">fail-closed 治理链</p><p class="muted">绑定 → 二级认证 → 运行门 → HITL → 写控 → 回执/回读 → 审计；异常路径关闭而非放行。</p></div>
+  <div class="card"><p class="big">作用域收敛</p><p class="muted">Agent 节点/配方绑定、Channel 绑线、工具注册表与角色面；跨线读取和未授权工具均被拒。</p></div>
+  <div class="card"><p class="big">可追溯与闭环</p><p class="muted">ops/audit/recipe/analysis 台账、本体证据链、优化器/模型采纳与哈希锁定。</p></div>
+</div>
+<div class="grid" style="margin-top:16px">
+  <div class="card"><img class="shot" src="../2026-10-24-ontology-live/ontology-graph.png" alt="ontology graph"><div class="cap">本体图：实体/关系/证据与草稿同源（L7 87/87）。</div></div>
+  <div class="card"><img class="shot" src="../2026-10-24-ontology-live/ontology-compile.png" alt="ontology compile"><div class="cap">编译预览：四类产物 + Rule Trace。</div></div>
+  <div class="card"><img class="shot" src="../2026-10-23-optimizer-live/ui-04-binding.png" alt="optimizer binding"><div class="cap">优化器绑定面：profile / binding / solve / crosscheck。</div></div>
+  <div class="card"><img class="shot" src="../2026-10-24-model-loop-live/page-aml-models.png" alt="aml models"><div class="cap">模型闭环：训练 → 门禁 → 采纳 → 重绑（54/54）。</div></div>
+</div>
+
+<h2>4. 真实工业加工场景：上线前一票否决项</h2>
+<table>
+<tr><th>项目</th><th>现状</th><th>判定</th></tr>
+<tr><td>真实 PLC / 机床 / 传感器</td><td>本轮全部 Mock/PLC 模拟器；协议驱动已实现</td><td><b>需现场 FAT/SAT</b>，不能用本轮替代</td></tr>
+<tr><td>功能安全</td><td>平台是监督层，不是安全 PLC</td><td><b>不能承担 SIL/ISO 13849 安全功能</b></td></tr>
+<tr><td>信息安全</td><td>Mimosa deep scan inconclusive；46 条静态提示（38 high）</td><td><b>未通过安全认证</b>；上线前整改+复扫</td></tr>
+<tr><td>HA / 容量 / SLO</td><td>单实例 SQLite/TSDB；有备份/保留；无集群/故障切换/压测</td><td><b>需部署架构与容量验证</b></td></tr>
+<tr><td>Bench 保真度</td><td>v2 写路径已迁移；四场景 attainment 红</td><td><b>不能作为生产性能/收益承诺</b></td></tr>
+<tr><td>外部集成（IDD/RAG/MES）</td><td>适配层存在；本轮外部后端未纳入</td><td>按现场接口逐项联调</td></tr>
+</table>
+
+<h2>5. 建议落地路径</h2>
+<ul>
+  <li><b>只读影子期</b>：真实产线只接 DAQ，验证采样/时区/批次归属/断链恢复，不写入。</li>
+  <li><b>单线人工写入试点</b>：一条线、一个配方，<code>controlMode=manual</code> + HITL，逐笔核对回执/回读/回退。</li>
+  <li><b>安全与部署收口</b>：SSRF/路径穿越整改、Mimosa 复扫、反代/备份恢复演练、容量与故障注入。</li>
+  <li><b>FAT/SAT</b>：按厂商协议做真机矩阵，记录时延/重连/量程/异常码，形成投产 SOP。</li>
+  <li><b>再评估优化收益</b>：模拟器模型校准后再将 bench/ROI 纳入生产 KPI。</li>
+</ul>
+
+<h2>6. 一句话结论</h2>
+<div class="card"><p class="big" style="color:#8a5516">功能通过、可试点；真实工业投产仍为“有条件就绪、未认证”。</p><p class="muted">补真机 FAT/SAT、安全整改/复扫、HA/容量验证，再进入生产。</p></div>
+
+<footer>
+  证据：<code>docs/audit/2026-10-26-production-readiness-report.md</code> ·
+  EDA <code>docs/audit/evidence/2026-10-26-eda-production-review/</code> ·
+  本体 <code>docs/audit/evidence/2026-10-24-ontology-live/</code> ·
+  Mimosa <code>docs/audit/2026-10-26-mimosa-triage.md</code> ·
+  Bench <code>bench/V2-MIGRATION.md</code><br>
+  本报告只裁决功能面，不构成安全认定或生产投产批准。
+</footer>
+</main></body></html>

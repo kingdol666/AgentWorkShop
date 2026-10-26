@@ -413,7 +413,7 @@
         <button
           class="pill-btn outline"
           data-test="pipeline-save-chart"
-          :disabled="!hasDrawn"
+          :disabled="!hasDrawn || !lineId"
           @click="saveChart"
         >
           {{ $t('studio.pipeline.saveChart') }}
@@ -497,7 +497,7 @@ import { computed, defineAsyncComponent, ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { apiFetch } from '@/app/composables/workshop/apiClient'
 import { apiErrorMessage } from '@/app/utils/api-error'
-import { deriveFields, runTransform, buildPipelineOption, type PipelineConfig, type PipelineRow } from '@/app/utils/chart-pipeline'
+import { deriveFields, runTransform, buildPipelineOption, seriesToRows, type PipelineConfig, type PipelineRow, type QuerySeries } from '@/app/utils/chart-pipeline'
 // echarts 导入链在 dev SSR 摸 document → 必须 client-only 异步组件(静态 import 会在服务端求值)
 const AwChart = defineAsyncComponent(() => import('@/app/components/AwChart.vue'))
 
@@ -536,7 +536,12 @@ const saveMsg = ref('')
 const saveErr = ref('')
 
 const option = ref<Record<string, unknown>>({})
-const viewerOption = computed(() => ({ ...option.value, toolbox: { feature: { saveAsImage: { pixelRatio: 2 } } } }))
+const viewerOption = computed(() => ({
+  ...option.value,
+  toolbox: { feature: { saveAsImage: { pixelRatio: 2 } } },
+  // 在线查看器承诺滚轮缩放:图型 option 本身不带 dataZoom,这里补上两层缩放。
+  dataZoom: [{ type: 'inside' }, { type: 'slider', height: 16, bottom: 10 }],
+}))
 
 const tableCols = computed(() => deriveFields(viewRows.value).map(f => f.name))
 const viewFields = computed(() => deriveFields(viewRows.value))
@@ -583,22 +588,6 @@ async function loadNodes(): Promise<void> {
   nodes.value = (r.nodes ?? []).filter(n => !lineId.value || n.lineId === lineId.value)
 }
 
-/** daq/query 的 series 点阵 → 宽表行(at + 每测点一列,列名=测点名) */
-function seriesToRows(series: Array<{ nodeId: string, name?: string, points: Array<{ x: number | string, y: number }> }>): PipelineRow[] {
-  const keyOf = (s: { nodeId: string, name?: string }) => nodes.value.find(n => n.id === s.nodeId)?.name ?? s.name ?? s.nodeId
-  const byAt = new Map<string, PipelineRow>()
-  for (const s of series) {
-    const key = keyOf(s)
-    for (const p of s.points ?? []) {
-      const at = new Date(p.x).toISOString()
-      const row = byAt.get(at) ?? { at }
-      row[key] = p.y
-      byAt.set(at, row)
-    }
-  }
-  return [...byAt.values()].sort((a, b) => String(a.at).localeCompare(String(b.at)))
-}
-
 async function doFetch(): Promise<void> {
   querying.value = true
   transformError.value = ''
@@ -615,8 +604,8 @@ async function doFetch(): Promise<void> {
     p.set('from', String(from))
     p.set('to', String(to))
     p.set('agg', agg.value)
-    const r = await apiFetch<{ series: Array<{ nodeId: string, name?: string, points: Array<{ x: number | string, y: number }> }> }>({ base: `/api/workshop/daq/query?${p.toString()}`, retries: 0 })
-    rawRows.value = seriesToRows(r.series ?? [])
+    const r = await apiFetch<{ series: QuerySeries[] }>({ base: `/api/workshop/daq/query?${p.toString()}`, retries: 0 })
+    rawRows.value = seriesToRows(r.series ?? [], s => nodes.value.find(n => n.id === s.nodeId)?.name ?? s.name ?? s.nodeId)
     viewRows.value = rawRows.value
     if (!cfg.value.yFields.length && viewFields.value.length) {
       const numeric = viewFields.value.filter(f => f.numeric && f.name !== 'at')
@@ -671,11 +660,14 @@ async function saveChart(): Promise<void> {
   try {
     await apiFetch({ base: '/api/workshop/eda/charts', init: { method: 'POST', body: JSON.stringify({
       title: cfg.value.title || t('studio.pipeline.chartTitle'),
-      viz_type: `pipeline-${chartType.value}`,
+      viz_type: 'pipeline',
       datasource: { line_id: lineId.value, node_ids: pickNodes.value, window_min: windowMin.value, source_agg: agg.value },
-      encoding: { ...cfg.value, refLine: cfg.value.refLine ?? null },
+      encoding: { ...cfg.value, chartType: chartType.value, columns: viewFields.value, refLine: cfg.value.refLine ?? null },
       transform: { code: transformCode.value },
-      options: { template: currentTemplateId.value || null },
+      options: {
+        template: currentTemplateId.value || null,
+        pipeline: { chartType: chartType.value, cfg: cfg.value, columns: viewFields.value, rows: viewRows.value.slice(0, 2000) },
+      },
       line_id: lineId.value,
     }) } })
     saveMsg.value = t('studio.pipeline.savedChart')

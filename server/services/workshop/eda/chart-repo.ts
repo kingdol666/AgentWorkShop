@@ -9,7 +9,9 @@
  *    的条目整条丢弃,owner 自己的私有无产线图表会从自己的列表里消失);
  *  - 看板包含 chart 时的读判定也必须走 canReadChart(防看板旁路,见 dashboard 侧)。
  * 写路径:owner / admin;visibility='line' 强制 line_id 非空。
- * 数据访问永不代理:图表只存查询参数快照,取数永远在客户端调 /daq/query 时按请求鉴权。
+ * 数据访问永不代理:普通图表只存查询参数快照,取数永远在客户端调 /daq/query 时按请求鉴权。
+ * 唯一例外:pipeline 快照图表保存有界(≤2000 行)的转换后视图,供 Studio/Board 离线回放;
+ * 快照必须钉在 line_id 上,读取仍走 canReadChart(owner/line 可见性),不接受无产线快照。
  */
 import { randomUUID } from 'node:crypto'
 import type { ResolvedUser } from '@/server/api/workshop/caller'
@@ -122,6 +124,21 @@ function validateInput(input: ChartInput): void {
   }
   if (vis === 'line' && !input.lineId) {
     throw new Error('visibility=line 必须携带 line_id(B4:产线可见图必须钉在产线上)')
+  }
+  if (input.vizType === 'pipeline') {
+    if (!input.lineId) throw new Error('pipeline 快照必须携带 line_id(B4 线域边界)')
+    if (vis !== 'private') throw new Error('pipeline 快照仅支持 private(含客户端 rows,不做跨用户数据代理)')
+    const dsLine = String((input.datasource as { line_id?: unknown } | undefined)?.line_id ?? '')
+    if (!dsLine || dsLine !== input.lineId) throw new Error('pipeline 快照 datasource.line_id 必须与 line_id 一致')
+    const rows = (input.options as { pipeline?: { rows?: unknown } } | undefined)?.pipeline?.rows
+    if (!Array.isArray(rows) || rows.length === 0) throw new Error('pipeline 快照缺少 rows')
+    if (rows.length > 2000) throw new Error('pipeline 快照 rows 超过 2000 行上限')
+  }
+  else {
+    // B4:普通图表只允许 template 这类配置引用,不得借 options 携带数据快照。
+    const keys = Object.keys(input.options ?? {})
+    const extra = keys.filter(key => key !== 'template')
+    if (extra.length > 0) throw new Error(`非 pipeline 图表 options 不允许携带数据/扩展: ${extra.join(',')}`)
   }
 }
 
