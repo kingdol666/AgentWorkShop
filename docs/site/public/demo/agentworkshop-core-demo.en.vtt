@@ -1,0 +1,77 @@
+WEBVTT
+
+1
+00:00:01.000 --> 00:00:07.736
+AgentWorkShop — an industrial multi-agent platform, recorded live on a running production line.
+
+2
+00:00:12.960 --> 00:00:21.136
+Every line, every signal, one control room. Hardware in, decisions out — and nothing leaves the governed path.
+
+3
+00:00:23.160 --> 00:00:30.400
+Live telemetry, six field protocols — every sample stamped with its batch, recipe and line.
+
+4
+00:00:32.420 --> 00:00:37.836
+The new E D A pipeline. Pull live data — or bring your own table.
+
+5
+00:00:38.106 --> 00:00:45.466
+Shape it with your own code: filters, aggregates, derived columns — executed right in your browser.
+
+6
+00:00:45.736 --> 00:00:53.504
+Choose a chart, tune the fields, save the whole recipe as a template. New data, one click, re-plotted.
+
+7
+00:01:04.520 --> 00:01:11.952
+Every setpoint is a governed decision: four interlock layers, human approval, and a signed audit trail.
+
+8
+00:01:12.222 --> 00:01:16.654
+Agents propose. The platform verifies. You decide.
+
+9
+00:01:16.924 --> 00:01:24.524
+First bindings are approval-gated, every write is rate-limited and journaled — by design, not by policy.
+
+10
+00:01:26.540 --> 00:01:34.452
+Ontology makes the plant machine-readable — entities, relations and rules, each bound to a real node.
+
+11
+00:01:34.722 --> 00:01:42.322
+Models learn from the line, then serve optimization through a guarded solver. Nothing is trusted until it passes.
+
+12
+00:01:42.592 --> 00:01:47.936
+And a solver cross-checks every recommendation against the physics it learned from.
+
+13
+00:01:49.960 --> 00:01:55.376
+Different agents, different tools, different permissions — scoped down to the node.
+
+14
+00:01:55.646 --> 00:02:05.814
+A diagnostics bridge streams real analyses from I D D: deep diagnosis, stability reports, quick screens — searchable and reusable.
+
+15
+00:02:07.830 --> 00:02:15.694
+Protocols, analyses, twins — all plugins. Load one, and its tools appear for the right agents only.
+
+16
+00:02:17.710 --> 00:02:28.190
+In one live run, a governed loop moved hold pressure from sixty-five to seventy bar, verified on the device, then sealed as recipe version three.
+
+17
+00:02:28.460 --> 00:02:32.196
+Data, decision, action — with proof.
+
+18
+00:02:34.220 --> 00:02:41.028
+Every chart is a saved, reusable view — owned, versioned, and shareable with the team.
+
+19
+00:02:43.050 --> 00:02:48.250
+AgentWorkShop. Open source, plugin-ready, built for the shop floor.
