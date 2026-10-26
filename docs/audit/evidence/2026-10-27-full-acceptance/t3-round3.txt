@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="zh-CN" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="
+=== inj-provision === 00:46:06
+✔ 平台鉴权 OK http://127.0.0.1:3400
+✔ 模拟器场景已装载(injection)
+✔ 建线完成 name=注塑成型质量窗口寻优 injection-acc2 reused=false
+  dcw={"barrel-temp-1-sp":"dw-ed744b49","barrel-temp-2-sp":"dw-b8e1847c","barrel-temp-3-sp":"dw-06c5e41b","barrel-temp-4-sp":"dw-06631451","screw-speed-sp":"dw-5d7c3f3f","mold-temp-sp":"dw-b0c7de81","clamp-force-sp":"dw-3b962c78","inject-speed-sp":"dw-fd38c1b4","hold-pressure-sp":"dw-449cfb4e","hold-time-sp":"dw-0074d87c","cool-water-sp":"dw-1d93e621"}
+  daq={"melt-temp-pv":"dn-03c481b9","melt-pressure-pv":"dn-475b1dc7","mold-temp-pv":"dn-b5ba21ed","clamp-force-pv":"dn-d9141d44","inj-pressure-pv":"dn-27f1c8d8","water-temp-pv":"dn-fe753065","cool-flow-pv":"dn-765d7ef7","part-weight":"dn-edf084a3","flash-rate":"dn-d2d07f00","sink-mark":"dn-639e7677","dim-dev":"dn-f35f22a4","cycle-time":"dn-98b1d572","wall-profile":"dn-1cbace68","surface-image":"dn-d36791e4"}
+  errors=[]
+--- inj-provision exit=0 00:46:09
+=== inj-fixture === 00:46:09
+channel 5f05fe2a-d64c-49e0-b761-84d424e44769 worker 5e4cecc7-50c2-4938-85e1-2165ba45e2dd member ac559492-2c5c-46ef-9626-55e286e98b5e
+context written: {"lineId":"ln-8d4db203","recipeId":"rc-05bbe2c2","daqNodes":14,"recipes":1}
+--- inj-fixture exit=0 00:46:10
+token-len=35
+=== injection === 00:46:10
+file:///D:/tmp/aw-main/scripts/e2e-injection-recipe-closedloop.mjs:83
+const recipe = recipes.recipes.find(r => r.lineId === line.id && r.params.some(p => p.nodeId === holdTime.id))
+                                                                                                          ^
+
+TypeError: Cannot read properties of undefined (reading 'id')
+    at file:///D:/tmp/aw-main/scripts/e2e-injection-recipe-closedloop.mjs:83:107
+    at Array.some (<anonymous>)
+    at file:///D:/tmp/aw-main/scripts/e2e-injection-recipe-closedloop.mjs:83:75
+    at Array.find (<anonymous>)
+    at file:///D:/tmp/aw-main/scripts/e2e-injection-recipe-closedloop.mjs:83:32
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+
+Node.js v24.19.0
+Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), file src\win\async.c, line 94
+--- injection exit=127 00:46:10
+=== data-studio === 00:46:11
+━━━ data-studio Phase A E2E @ http://127.0.0.1:3400 line=ln-8d4db203 ━━━
+✔ [PA0] 上下文就绪(daq 节点≥2) — daq=14
+✔ [PA0.5] 产线开跑且采样活性(探针 ≥3 点) — status=200 samples=4 msg=ok
+✔ [PA1.1] 批量查询:两节点一次返回且每节点≤2000 点 — series=2 pts=4,4 bucket=1000
+✔ [PA1.2] 序列时间升序(ASC 契约)
+✔ [PA1.3] >8 节点 → 400 护栏 — node_ids 一次最多 8 个(收到 9);请分组查询或按产线过滤。
+✔ [PA1.4] 产线>8 节点省略 node_ids → 400 要求显式指定 — 产线 ln-8d4db203 有 14 个数采节点,一次最多查询 8 个:请传 node_ids 显式选择(≤8)。
+✔ [PA1.5] 同参数(显式窗口)二次命中缓存
+✔ [PA2.1] 开跑产线 → run 台账有行(open) — {"id":"rr-4b509f11","lineId":"ln-8d4db203","productId":"pd-67f1805c","recipeId":"rc-05bbe2c2","recipeName":"scen-injection-recipe-acc2","recipeVersion":1,"start
+✔ [PA2.2] 关账后 ended_at 回填且 sample_count>0(异步回填) — ended=2026-10-27T00:46:14.699+08:00 samples=24
+✔ [PA3.1] 导出任务受理(running) — {"id":"edajob-a8e147d1","kind":"daq-export","status":"running","spec":{"nodeIds":["dn-03c481b9","dn-475b1dc7"],"fromMs":1793032876257,"toMs":1793033176257,"titl
+✔ [PA3.2] 导出完成(ready)且 totalRows>0 — status=ready rows=10 files=2 merged=true
+✔ [PA3.3] manifest.json 下载 200(application/json) — {
+  "schema": "aw.daq-export/1",
+  "export_id": "daqexp-20261027004616-7a4495",
+  "created_at": "202
+✔ [PA3.4] merged.csv 下载 200
+✔ [PA3.5] nodes/<id>.csv 下载 200 — ts_iso,ts_ms,value,state
+2026-10-27T00:46:09.743+08:00,1793033169743,246.7,offl
+✔ [PA3.6] 路径穿越被拒(404) — status=404
+✔ [PA4.1] MES 点位目录 200(空目录合法) — count=0
+✔ [PA4.2] 不存在/不可读点位 preview → 403 — 点位不存在、未启用或不在你的可读产线上。
+✔ [PA5.1] 不存在节点查询 → 403 — 指定的节点不存在、已停用或不在你的可读范围内。
+✔ [PB1.1] 创建私图 200 — {"id":"ec-cc524160","title":"PhaseB 私图","vizType":"trend","datasource":{"lineId":"ln-8d4db203","nodeIds":["dn-03c481b9",
+✔ [PB1.2] visibility=line 无 line_id → 400 — visibility=line 必须携带 line_id(B4:产线可见图必须钉在产线上)
+✔ [PB1.3] PATCH 版本自增
+✔ [PB1.4] 他人读私图 → 404(B4) — status=404
+✔ [PB1.5] 他人列表不含该私图
+✖ [PB2.1] 无已关账批次,golden 断言跳过 — 需先关账一个有样本的 run(PA2)
+✔ [PC1.1] E3 特征提取:关账批次有特征行 — rows=12 sample={"id":"feat-00c23926-17d","runId":"rr-4b509f11","nodeId":"dn-98b1d572","metric":"daq-temp-tc","segment":"","cnt":2,"mean":15.3,"std":0,"min":15.3,"max":15.3,"sl
+✔ [PC1.2] E3 判定语义:参考带不足 3 批时仅记录不判定(或判定字段有限)
+✔ [PC1.3] E3 特征任务账本有 done 行 — {"id":"fjob-c5088d0e","runId":"rr-4b509f11","status":"done","features":12,"createdAt":"2026-10-27T00:46:14.712+08:00"}
+✔ [PC2.1] E4 注册控制图 — {"id":"spc-3bdb9fc5","lineId":"ln-8d4db203","nodeId":"dn-03c481b9","metric":"daq-temp-tc","kind":"i_mr","params":{},"cl"
+✔ [PC2.2] E4 重算控制限(run<25 → enabled=0 为正确冷启动语义) — n=2 enabled=false
+✔ [PC2.3] E4 详情+点序列 200
+✔ [PC2.4] E4 非法 kind → 400
+✔ [PC3.1] E5 共性分析(node 因子)200 且行有限 — rows=12 baseline=0
+✔ [PC3.2] E5 hour 因子可用
+✔ [PC3.3] E5 非法因子 → 400
+✔ [PC4.1] E8 chamber 字段 + chamber 因子共性 — [{"factor":"chamber","factorValue":"CH-A","runsTotal":2,"runsBad":0,"badRate":0,"lift":0}]
+✔ [PD1.1] E7 开 OCAP 处置单 — {"id":"ocap-bb178117","alarmId":"ops:mvphnsbs","runId":"rr-4b509f11","nodeId":"dn-03c481b9","title":"PhaseD 处置单","steps":[],"status":"open",
+✔ [PD1.2] E7 关单 + 弱关联(stale 不报错) — {"id":"ocap-bb178117","alarmId":"ops:mvphnsbs","runId":"rr-4b509f11","nodeId":"dn-03c481b9","title":"PhaseD 处置单","steps":[{"at":"2026-10-27T00:46:20.231+08:00",
+✔ [PD1.3] E7 清单可见(终态过滤)
+✔ [PD2.1] E6 VM 推理入口:模型不存在 → 404 — 模型 aml-none 不存在
+✔ [PD3.1] M3 创建看板 — {"id":"edb-430195c5","title":"PhaseD 看板","filters":{},"layout":[{"chartId":"ec-cc524160","x":0,"y":0,"w":6,"h":3}],"owne
+✔ [PD3.2] M3 看板详情内嵌 chart(B4 判定随行) — [{"chart":{"id":"ec-cc524160","title":"PhaseB 私图 v2","vizType":"trend","datasource":{"lineId":"ln-8d4db203","nodeIds":["dn-03c481b9","dn-475
+✔ [PD3.3] M3 布局保存(version 自增)
+✔ [PD3.4] M3 他人读看板:chart 不泄露(404 或 inaccessible=true) — status=404
+✔ [PD4.1] M3 派生数据集生成 — {"jobId":"edajob-defe8d35","dir":"D:\\tmp\\aw-video\\home-en\\data\\eda-derived\\edajob-defe8d35","rows":6}
+✔ [PD4.2] M3 派生 data.csv 可下载 — time,"scen-injection:daq:melt-temp-pv(dn-03c481b9) [℃]","scen-injection:daq:melt
+✔ [PD4.3] M3 非法算子 → 400(白名单)
+✔ [PD5.1] E8 相位段定义 — [{"id":"rseg-b4ea9c5b","recipe_id":"rc-05bbe2c2","seq":1,"name":"s1","phase_from":0,"phase_to":0.5},{"id":"rseg-e60e22c0","recipe_id":"rc-05
+✔ [PD5.2] E8 重算特征按段拆分 — segmented=24/36
+
+═══ data-studio Phase A: 47/48 PASS ═══
+--- data-studio exit=1 00:46:20
+=== data-studio-ui === 00:46:20
+✔ [UI1.1] 侧栏导航含「数据管理」
+✔ [UI1.2] 三个 tab 渲染 — tabs=3
+✔ [UI1.3] 产线下拉有可读产线 — options=2
+✔ [UI1.4] 勾选 2 个节点 — checked=2
+✔ [UI1.5] echarts canvas 渲染 — canvas=1
+✔ [UI1.6] 预览表 ≥1 行 — rows=100
+✔ [UI1.7] 导出任务出现在台账
+✔ [UI1.8] 批次台账视图渲染
+✔ [UI2.1] /studio 节点树非空 — nodes=6
+✔ [UI2.2] 字段井入 2 个 Y — chips=2
+✔ [UI2.3] /studio canvas 渲染 — canvas=1
+✔ [UI2.4] 保存后出现在我的图表
+✔ [UI3.1] /studio/board 可打开
+✔ [UI0.1] 全脚本 0 pageerror
+
+═══ data-studio UI: 14/14 PASS ═══
+--- data-studio-ui exit=0 00:46:58
+=== idd-results === 00:46:58
+✖ [A0.1] 演示频道在线 — 
+file:///D:/tmp/aw-main/scripts/e2e-idd-results.mjs:40
+const membersData = (await api('GET', `/api/workshop/channels/${ch.id}/agents`)).j?.data
+                                                                   ^
+
+TypeError: Cannot read properties of undefined (reading 'id')
+    at file:///D:/tmp/aw-main/scripts/e2e-idd-results.mjs:40:68
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+
+Node.js v24.19.0
+Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), file src\win\async.c, line 94
+--- idd-results exit=127 00:46:59
+=== idd-results-ui === 00:46:59
+login: clicked
+✔ [A11.1] 插件页可打开
+✖ [A11.2] 结果库面板渲染(标题可见) — 
+✖ [A11.3] 列表渲染数据行 — {"rows":0,"first":"","total":"-"}
+✔ [A11.9] UI 走查无未捕获 pageerror
+--- diag-bridge 请求轨迹 ---
+(无请求)
+
+IDD-RESULTS UI E2E: 2/4 passed
+--- idd-results-ui exit=1 00:47:52
+=== eda-pipeline-idle === 00:47:53
+· 实例就绪 http://127.0.0.1:3040(home=C:\Users\87287\AppData\Local\Temp\aw-eda-pipeline-6BY04v)
+✔ [E0.1] 建线 ln-672a82e2
+✔ [E0.2] 建数采节点(daq/query 实时路径由演示实例与产线套件覆盖;本 e2e 数据面用 CSV 导入,见 UI 段)
+✔ [E1.1] 非法图型 400(400)
+✔ [E1.2] 空名 400(400)
+✔ [E1.3] 保存模板 et-cbd2694c
+✔ [E1.4] 列表含新模板
+✔ [E1.5] 详情 config 回读
+✔ [E1.6] PATCH 描述落库
+✔ [E2.1] analysis POST ar-123ddbf5
+✔ [E2.2] 台账列表含新结果
+✔ [E2.3] 台账详情回读
+✔ [E3.0] pipeline 快照缺少 rows 被拒(B4 线域边界)
+✔ [E3.0b] pipeline 快照 datasource.line_id 与 line_id 不一致被拒
+✔ [E3.1] 保存图表 ec-5f7a9d72
+✔ [E3.2] 图表回读含模板链接
+✔ [U1] /studio/pipeline 打开
+✔ [U2] CSV 导入 40 行(共 40 行,预览前 8 行:)
+✔ [U3] 代码后处理生效(越界行被过滤)
+✔ [U4] 绘图渲染出 canvas
+✔ [U5] 模板重载后仍在(持久化)
+✔ [U6] 在线查看器外壳打开
+✔ [U7] 台账含 REST 结果;UI 结果已提示保存
+✔ [E4.1] 模板删除
+✔ [E4.2] 删后详情为 null
+UI-PAGE-ERRORS: pageerror: Cannot read properties of null (reading 'parentNode')
+
+EDA-PIPELINE E2E: 24/24 passed
+--- eda-pipeline-idle exit=1 00:48:54
+=== ontology-offline === 00:48:54
+✔ ON1.1 创建草稿(rev=1, 单活跃)
+✔ ON1.2 同本体同属主二次起草被拒(409) — DRAFT_ALREADY_ACTIVE
+✔ ON1.3 整份文档写入并通过结构校验
+✔ ON1.4 过期 rev 写入被拒(乐观锁 409) — DRAFT_CONCURRENT_MODIFY
+✔ ON1.5 非属主编辑被拒(403) — DRAFT_SCOPE_VIOLATION
+✔ ON2.1 编译预览:状态 warning(含 PLC 解释项)且四类产物齐备 — status=warning
+✔ ON2.2 每条规则都有 trace(fail-closed 不静默丢弃) — traces=3/rules=3
+✔ ON2.3 膜厚窗落入 cvBounds(只收紧前的预览)
+✔ ON2.4 联锁规则归 PLC 解释层(不产数值约束)
+✔ ON2.5 关系派生训练先验:特征候选≥2、时滞含 τ=D/v — features=2
+✔ ON2.6 语义绑定活体校验:目标不存在 → 拒绝落库 — ONTOLOGY_BINDING_INVALID
+✔ ON3.1 证据登记写回草稿(1→2)并留账本
+✔ ON4.1 跳级迁移被拒(409) — RULE_LIFECYCLE_CONFLICT
+✔ ON4.2 起草人自审被拒(403) — SELF_REVIEW_FORBIDDEN
+✔ ON4.3 第二人完成 reviewed → validated
+✔ ON4.4 无批准单不能进入控制级(403) — APPROVAL_REQUIRED
+✔ ON4.5 申请人不能自我裁决(403) — SELF_REVIEW_FORBIDDEN
+✔ ON4.6 第二人批准后可进入 approved_for_control
+✔ ON5.1 editor 不能发布(403) — ADMIN_REQUIRED
+✔ ON5.2 admin 发布 v1(published + contentHash/packHash)
+✔ ON5.3 发布快照冻结:cvBounds 与 control_guard 进 compiled_json
+✔ ON5.4 Rule Trace 落库(每规则一行) — n=3
+✔ ON5.5 同 (本体,版本) 不可二次写入(不可变) — ERR_SQLITE_ERROR
+✔ ON6.1 按产线解析到生效版本 v1
+✔ ON6.2 温度 150℃(<180)+ 提速 → 阻断(block_recommendation) — 温区未达 180℃,禁止提速
+✔ ON6.3 温度 200℃(≥180)+ 提速 → 放行
+✔ ON6.4 低温下降速 → 放行(只禁正向增量)
+✔ ON6.5 状态未知 + 提速 → fail-closed 阻断
+✔ ON6.6 跨配方不触发该守卫(作用域隔离)
+✔ ON6.7 下发意图面:绑定映射成功 + 状态未知提速 → fail-closed 阻断 — unmapped=, blocked=true
+✔ ON6.8 下发意图面:降速意图不阻断(只禁正向)
+✔ ON7.1 发布 v2(parent=1)
+✔ ON7.2 版本 diff 精确到规则 id — {"added":[],"removed":[],"changed":["R-BOUND"]}
+✔ ON7.3 运行时解析自动切到 v2 且界已收紧
+✔ ON8.1 Profile 引用的本体内容一致 → 放行
+✔ ON8.2 内容被篡改 → 409 ONTOLOGY_PACK_DRIFTED — ONTOLOGY_PACK_DRIFTED
+✔ ON9.1 退役版本被引用 → 漂移拒绝 — ONTOLOGY_PACK_DRIFTED
+✔ ON9.2 退役 v2 后运行时回退到 v1(仍 published)
+✔ ON9.3 重复退役被拒(409) — VERSION_NOT_PUBLISHED
+✔ ON10.1 全链审计动作齐备 — retire,draft.update,publish,rule.approve,rule.transition,rule.approve_request,evidence.append,draft.create
+✔ ON10.2 publish_log 预留 actor_kind(可区分 agent/user/system)
+✔ ON11.1 未获控制级批准的硬约束拒绝发布(422) — ONTOLOGY_NOT_APPROVED
+✔ ON12.1 场景子图含实体/规则决策/守卫
+✔ ON12.2 无本体的产线返回 null(零注入)
+✔ ON14.1 hops=1:中心+直接邻居与直接边 — {"nodes":[["pv.melt_pressure",0],["cv.thickness",1]],"edges":[["rel-1",1,"out"]]}
+✔ ON14.2 hops=2:出现间接邻居 st.line_speed@2 且 rel-2 标注 hop2/in — {"speedNode":{"key":"st.line_speed","kind":"process_variable","name":"线速度","description":"","unit":"m","role":"control","hop":2},"rel2Edge":{"id":"rel-2","kind":"influences","srcKey":"st.line_speed","dstKey":"cv.thickness","evidenceTier":"candidate_influence","hop":2,"direction":"in"}}
+✔ ON14.3 direction=out 只保留正向跨跳边(rel-2 不出现) — [{"id":"rel-1","kind":"influences","srcKey":"pv.melt_pressure","dstKey":"cv.thickness","evidenceTier":"validated_control","hop":1,"direction":"out"}]
+✔ ON14.4 未知实体 → 404 ONTOLOGY_SUBGRAPH_ENTITY_NOT_FOUND — {"ok":true,"code":"ONTOLOGY_SUBGRAPH_ENTITY_NOT_FOUND","status":404}
+✔ ON14.5 hops 越界 → 422 ONTOLOGY_SUBGRAPH_HOPS_INVALID — {"ok":true,"code":"ONTOLOGY_SUBGRAPH_HOPS_INVALID","status":422}
+✔ ON14.6 无已发布本体的产线 → null(与 scene active:false 同语义)
+✔ ON14.7 kinds 过滤同时作用于遍历与输出(无该类型 → 仅中心) — [{"key":"pv.melt_pressure","kind":"process_variable","name":"熔体压力","description":"","unit":"bar","role":"control","hop":0}]
+✔ ON13.1 自动修复:补描述(文档/实体/规则) — fixes=18
+✔ ON13.2 自动修复:复合单位量纲清空(mm/s 不主张相容性)
+✔ ON13.3 自动修复:作用域回填 + 悬空绑定移除 + 单位回填/scale 归一
+✔ ON13.4 自动修复后文档校验通过且描述已落库
+✔ ON13.5 自动修复幂等:第二次零修复 — second=0
+✔ ON13.6 证据不足的控制级规则回退 validated,且证据不被伪造(仍报错) — 规则「R-BOUND」证据级别 candidate_influence 不足控制级,状态回退为 validated(证据不可自动伪造)
+
+ONTOLOGY E2E: 57/57 passed, 0 failed
+--- ontology-offline exit=0 00:48:56
+ROUND3 DONE Tue Oct 27 00:48:56     2026

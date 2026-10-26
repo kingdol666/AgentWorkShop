@@ -1,0 +1,60 @@
+=== lint ===
+
+> agentworkshop@0.8.4 lint
+> eslint .
+
+=== typecheck ===
+
+> agentworkshop@0.8.4 typecheck
+> node scripts/typecheck.mjs
+
+[typecheck] ① nuxi prepare(重新生成 .nuxt 类型)
+│
+◆  Types generated in [36m.nuxt[39m.
+[typecheck] ② 剔除生成配置里已不存在的 volar 插件条目:vue-router/volar/sfc-route-blocks
+           · tsconfig.app.json: plugins 1 → 0
+           · tsconfig.json: plugins 1 → 0
+[typecheck] ③ vue-tsc -b --noEmit
+[typecheck] ✔ 类型检查通过
+=== unit ===
+✔ 配方面:绑定配方可操作;他线配方(未绑定/不可读)拒 (0.4445ms)
+✔ dcw_journal:无参(此前返回全量记录)与越界 node_id 均拒,越界文案列可查对象 (0.3543ms)
+✔ 形状:引用参数非字符串 → 拒绝并说明应为字符串 ID (0.1502ms)
+✔ 授权性拒绝写入 audit_log(tool.call.denied),形状类拒绝不入册 (0.3332ms)
+✔ 链式:跨线数据集拒(谱系回溯到产线),本人数据集放行 (1.0121ms)
+✔ 无引用参数的工具不受预检影响(my_industrial_nodes 原样进入 handler) (2.7772ms)
+✔ resolveRefFaces:绑定面/可读线/配方面/频道绑线面一致 (0.198ms)
+✔ 契约:query() raw 路径时间正序(ASC),窗口超 limit 截取最旧段 (17.4015ms)
+✔ 契约:query() bucket 路径时间正序(ASC) (10.3789ms)
+✔ 导出:>5000 样本窗口游标续页取全(CSV 行数 == 样本数,不静默截断) (33.6131ms)
+✔ 契约:limit<=0 不得变成 SQL 无上限(适配器夹到 1) (8.4056ms)
+{"t":"2026-10-26T15:53:46.743Z","level":"info","scope":"daq.tsdb.sqlite","msg":"[daq-tsdb] 保留期清理 1 行(>168h)"}
+✔ A15:queryTagged raw 返回真实 state;cleanPoints 实际剔除坏点 (2.107ms)
+✔ A16:同键不同值 → 首值保留且 correctionDropped+1(不静默) (0.8816ms)
+✔ A1:逐节点分页稳定 ASC、游标续读、无漏无重 (1.3117ms)
+✔ A16 ④:旧数据 ingestedAt 缺失 → 分页点不伪造到达时间 (0.3382ms)
+✔ A16 ③:迟到但新鲜的样本不被事件时间误删 (29.3889ms)
+ℹ tests 582
+ℹ suites 7
+ℹ pass 582
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 28399.3981
+=== docs:check ===
+  ✔ 表格内联代码中的竖线均已转义(或不存在)
+
+✅ 文档一致性:91 通过 / 0 失败
+=== i18n ===
+zh keys: 3149 / en keys: 3149
+used keys: 2756 / unresolved: 0
+PARITY OK
+=== readme ===
+· README-zh.md
+
+全部通过
+=== docs:build ===
+- rendering pages...
+[32m✓[0m rendering pages...
+build complete in 5.32s.
