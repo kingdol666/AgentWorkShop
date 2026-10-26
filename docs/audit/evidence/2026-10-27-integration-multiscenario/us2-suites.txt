@@ -1,0 +1,441 @@
+=== ontology-live === 01:33:34
+
+=== 0. seed PLC 场景 ===
+seed: line=ln-c0e0740c recipe=rc-5fbf8490 runs=6 samples=2880
+venv: junction ok
+
+=== 1. boot http://127.0.0.1:3992 ===
+✔ [BOOT] 隔离实例启动 + workshop ready — port=3992
+✔ [BOOT] 管理员注册(首注册=admin) — status=200
+
+=== L1 产线管理/节点绑定 ===
+✔ [L1.1] GET /dcw/lines 含验收线(simulated) — status=200
+✔ [L1.2] GET /daq 数采节点齐备(MV/CV/温区) — status=200
+✔ [L1.3] 数控节点清单含压力/线速 — status=200
+✔ [L1.4] 配方可读(REST 或清单) — status=200
+✔ [L1.5] PLC 场景数据就绪(4 批次历史 + 新鲜尾巴) — samples=2880
+
+=== L2 本体全链 REST ===
+✔ [L2.1] POST /ontology 创建草稿 — status=200 id=ontd-mvpjdo1y-uxs4x3
+✔ [L2.2] PATCH 草稿(整份文档,绑定真实节点)通过活体校验 — status=200 code=0 msg=ok rev=2 issues=[] bindFail=[]
+✔ [L2.3] 过期 rev → 409 DRAFT_CONCURRENT_MODIFY — 409/DRAFT_CONCURRENT_MODIFY
+✔ [L2.4] POST validate 全量校验 200 — issues=0
+✔ [L2.5] POST compile 四类产物 + 溯源 — status=warning counts={"compiled":1,"guard":1,"explained":1,"rejected":0}
+✔ [L2.6] POST evidence 写回草稿 — status=200
+✔ [L2.7] solo 部署自审豁免:proposed→reviewed — 200/0
+✔ [L2.8] reviewed→validated(有 validated_control 证据) — 200/0
+✔ [L2.9] 无批准单 → 403 APPROVAL_REQUIRED — 403/APPROVAL_REQUIRED
+✔ [L2.10] 申请批准单 — id=oap-mvpjdo5c-57e2qu
+✔ [L2.11] 裁决批准(同一管理员,审计留痕) — 200/0
+✔ [L2.12] → approved_for_control — 200
+✔ [L2.13] 未获控制级批准 → 422 ONTOLOGY_NOT_APPROVED — 422/ONTOLOGY_NOT_APPROVED
+✔ [L2.14] admin 发布 v1(contentHash+packHash+counts) — counts={"compiled":1,"guard":1,"explained":1,"rejected":0}
+✔ [L2.15] GET versions 列出 v1(published) — n=1
+✔ [L2.16] GET traces 溯源(每规则一行+决策) — n=3
+✔ [L2.17] GET scene 运行时子图(实体+绑定+守卫) — entities=4 guards=1
+✔ [L2.18] GET export JSON bundle — status=200
+✔ [L2.19] 重复发布 → 新版本 v2(不可变语义) — v=2
+✔ [L2.20] GET compare 四段 diff(无内容变更=空) — rules={"added":[],"removed":[],"changed":[]}
+
+=== L3 运行时守卫 ===
+✔ [L3.1] resolveActiveOntology 解析最新发布版本 — v=2 pack=e32232f17b
+✔ [L3.2] 低温 150℃ + 提速 → 阻断 — 温区未达 180℃,禁止提速
+✔ [L3.3] 高温 200℃ + 提速 → 放行
+✔ [L3.4] 状态未知 + 提速 → fail-closed 阻断
+✔ [L3.5] 节点级意图:实体→dcw 节点映射 + 状态未知提速 → 阻断 — unmapped=
+✔ [L3.6] 节点级意图:降速 → 放行
+✔ [L3.7] 绑定漂移巡检:真实节点在册 → 无漂移 — []
+
+=== L4 AML 集成 ===
+✔ [L4.1] POST /process-model/specs 登记 — 200/0
+✔ [L4.2] spec 发布 — 200
+✔ [L4.3] 数据集构建(lineage_verified) — status=200 code=0 msg=ok rows=786
+✔ [L4.4] 数据集 manifest 可读 — v=2
+✔ [L4.5] 资格报告 optimizationEligible — gaps=none
+✔ [L4.6] 训练作业提交 — status=200 code=0 msg=ok
+✔ [L4.7] 训练 done + 模型登记 — status=done model=mdl-mvpjdoi9-l5cwou err=
+✔ [L4.8] 模型 linear_state_space@1 + artifactHash — linear_state_space@1 metrics={"platform":{"modelType":"linear_state_space@1","modelKind":"linear_state_space","oneStepVal":{"windows":262,"nrmse":0.000965},"oneStepTest":{"windows":262,"nrmse":0.00096
+✔ [L4.9] 本体训练先验:特征候选≥2(压力/线速→膜厚) — ["pv.melt_pressure","st.line_speed"]
+✔ [L4.10] 本体训练先验:时滞含 τ=D/v(10m/0.5mps=20s) — [{"entityKey":"pv.melt_pressure","delayMs":20000,"basis":"relation_lag","variabilityChecked":true},{"entityKey":"st.line_speed","delayMs":20000,"basis":"tau_eq_D_over_v","variabilityChecked":false}]
+
+=== L5 求解器集成 ===
+✔ [L5.1] 优化档位频道(模板实例化)+workspace 就绪 — inst=200 ch=614a3b45-c855-4927-a19b-55b379787aaf
+✔ [L5.2] Profile v1 创建(服务端回填工件) — status=200 code=0 msg=ok
+✔ [L5.3] Profile v1 发布 — 200
+✔ [L5.4] Agent↔Profile 绑定(revision=1) — id=ob-mvpjdpg7-pihrr
+✔ [L5.5] solve optimal(本体已发布不干扰求解) — status=optimal http=200 msg=ok
+✔ [L5.6] 求解零 DCW 写入(治理红线) — http=200 code=0 msg=ok writes=0→0
+✔ [L5.7] crosscheck 双实现互校 — verdict=pass maxDev=4.844157307474935e-16 tol=0.000001 reason=双实现一致(maxDev=4.844e-16 ≤ tol=0.000001) model=
+✔ [L5.8] Profile v2 带 ontologyRefs 创建+发布 — c=200/0 p=200
+✔ [L5.9] ontologyRefs Profile 求解正常(引用不进 IR hash) — http=200 status=optimal code=0 msg=ok
+✔ [L5.10] 采纳卡挂出(nodeId=optimizer-profile:<id>@<v>) — nodeId=optimizer-profile:optp-ontco7u@3
+✔ [L5.11] HITL 批准 → 单一咽喉完成发布+重绑 — status=200 body={"status":200,"code":0,"message":"ok","data":{"via":"profile-adopt","result":{"approved":true,"comment":"采纳闭环验收批准","published":{"profileId":"optp-ontco7u","version":3,"rebindCount":1}}
+[adopt] profiles after decide: {"profiles":[{"id":"optp-ontco7u","version":3,"name":"","description":"","modelRef":"mdl-mvpjdoi9-l5cwou","modelArtifactHash":"fe1f6cfc9b40cdcbe984010262fa292b6754f837f4edde9bc869011342519c52","modelArtifactKind":"linear_state_space@1","modelInterface":"linear_state_space","problemTemplateRef":"linear_mpc_quadratic@1","problemConfigJson":"{\"linear_mpc_quadratic\":{\"cvWeights\":{\"cv1\":1},\"duWe
+✔ [L5.12] 工具回执:模型采纳完成 — status=200 body=✅ 模型采纳完成(HITL 批准):
+optp-ontco7u v2 → v3(published)
+模型:mdl-mvpjdoi9-l5cwou;重绑绑定 1 个(revision+1,在飞求解 BINDING_STALE 收敛)
+裁决意见:采纳闭环验收批准
+下一次 optimizer_solve 即使用新模型;旧版本保留可回退(retire/rebind 走管理
+✔ [L5.13] 存在绑定已自动重绑到采纳版本(revision+1) — versions=[1,3] card=v3 reboundRev=2
+✔ [L5.14] 重绑后 solve optimal(新模型工件生效) — status=optimal binding=ob-mvpjduox-3iug3
+
+=== L6 数据分析 ===
+✔ [L6.0] 频道绑定产线(产线配频道) — status=200 code=0
+✔ [L6.1] analysis_save 经 agent-tools/invoke 落台账 — status=200 text=ok
+✔ [L6.2] GET /analysis 台账读回 — status=200 body={"status":200,"code":0,"message":"ok","data":{"reports":[{"id":"ar-dd66a7e1","lineId":"ln-c0e0740c","lineName":"本体验收线-ontco7u","title":"本体验收分析-ontco7u","category":"quality","summary":"
+
+=== ON16 邻接查询 REST ===
+✔ [ON16.1] GET /scene?entity= 返回子图(center+nodes+edges) — {"nodes":[{"key":"pv.melt_pressure","kind":"process_variable","name":"熔体压力","description":"","unit":"bar","role":"control","hop":0},{"key":"cv.thickness","kind":"quality_variable","name":"平均膜厚","descr
+✔ [ON16.2] hops=2 出现间接节点 st.line_speed@2 与 rel-2(hop2/in) — {"speed":{"key":"st.line_speed","kind":"process_variable","name":"线速度","description":"","unit":"m/min","role":"control","hop":2},"rel2":{"id":"rel-2","kind":"influences","srcKey":"st.line_speed","dstK
+✔ [ON16.3] 无 entity 时新参数被忽略:与历史全图响应完全一致 — status=200/200
+✔ [ON16.4] 无 entity 的 graph 顶层结构不变 — ontologyId,version,lineId,entities,relations,rules,guards
+✔ [ON16.5] hops 越界 → 422 ONTOLOGY_SUBGRAPH_HOPS_INVALID — {"status":422,"code":"ONTOLOGY_SUBGRAPH_HOPS_INVALID","message":"hops 必须是 1-3 的整数","data":null}
+✔ [ON16.6] 未知实体 → 404 ONTOLOGY_SUBGRAPH_ENTITY_NOT_FOUND — status=404
+✔ [ON16.7] 草稿子图端点可用(UI 图与抽屉同源) — {"ontologyId":"本体验收-ontco7u","version":0,"lineId":"ln-c0e0740c","center":{"key":"pv.melt_pressure","kind":"process_variable","name":"熔体压力","description":"","unit":"bar","role":"control","hop":0,"bindi
+✔ [ON16.8] 草稿子图缺 entity → 422 ONTOLOGY_ENTITY_REQUIRED — status=422
+
+=== ON17 Agent 邻接工具 ===
+✔ [ON17.1] 工具 hops=1 返回节点/边明细 — 邻接子图: center=pv.melt_pressure 本体=ont-ontco7u@2 hops=1 direction=both nodes=2 edges=1
+中心: pv.melt_pressure [process_variable/control] 熔体压力(bar) ← dcw_node:dcw-ontco7u-press(write,active), recipe_param:
+✔ [ON17.2] 工具 hops=2 显示间接节点与 hop 标注 — 邻接子图: center=pv.melt_pressure 本体=ont-ontco7u@2 hops=2 direction=both nodes=3 edges=2
+中心: pv.melt_pressure [process_variable/control] 熔体压力(bar) ← dcw_node:dcw-ontco7u-press(write,active), recipe_param:
+✔ [ON17.3] 跨线读取被拦截(引用校验/作用域如实回执) — 工具调用被拒(引用校验,ontology_node_neighbors):line_id = 「ln-not-in-scope」(产线不存在)不在你的可读范围内。
+你的可读产线:ln-c0e0740c(其中「ln-c0e0740c」来自频道绑线,只读)。如需访问该产线,请让用户授予对应产线权限(权限管理),或把当前频道
+
+=== L7 前端渲染 ===
+✔ [L7.1] 侧边栏含「本体模型」入口
+✔ [L7.2] /ontology 六 tab 渲染 — 总览|实体与关系|约束规则|语义绑定|版本与发布|编译预览
+✔ [L7.3a] graph tab 渲染 SVG 节点/边且与草稿一致 — nodes=4/4 edges=2/2
+✔ [L7.3b] 点击节点弹出抽屉并列出直接邻接 — {"open":true,"neighbors":["cv.thickness"],"edges":["rel-1"]}
+✔ [L7.3b2] 抽屉切 2 跳后出现间接节点 st.line_speed 与 rel-2 — {"neighbors":["cv.thickness","st.line_speed"],"edges":["rel-1","rel-2"]}
+✔ [L7.3c] 切到表视图:实体表与关系表均有行 — {"entityRows":4,"relationRows":2}
+✔ [L7.3d] 规则/绑定/版本三 tab 表格渲染非空 — rules:rows=3,empty=0 bindings:rows=5,empty=0 versions:rows=2,empty=0
+✔ [L7.3b] UI 编译预览:四类产物 + 溯源表渲染 — {"artifacts":4,"traceRows":3}
+✔ [L7.4] 页面头/副标题渲染(价值叙事可见) — 工业语义资产本体模型构建与治理面向控制的本体：实体、关系、约束规则与语义绑定；经编译器生成可追溯的问题界、步限与运行时守
+✔ [L7.5] /dcw 可打开无 pageerror — len=5077 newErrors=
+✔ [L7.6] /daq 可打开无 pageerror — len=6416 newErrors=
+✔ [L7.7] /aml 可打开无 pageerror — len=5160 newErrors=
+✔ [L7.8] /optimizer 可打开无 pageerror — len=5291 newErrors=
+✔ [L7.9] /analysis 可打开无 pageerror — len=7091 newErrors=
+✔ [L7.10] 全程无未捕获 pageerror
+
+ONTOLOGY LIVE E2E: 87/87 passed, 0 failed
+evidence: D:\tmp\aw-main\docs\audit\evidence\2026-10-24-ontology-live
+--- ontology-live exit=0 01:36:54
+=== optimizer-live === 01:36:54
+
+> agentworkshop@0.8.4 test:e2e-optimizer
+> tsx --tsconfig .nuxt/tsconfig.server.json scripts/e2e-optimizer-live.mjs
+
+
+=== 0. seed ===
+seed: line=ln-b077551a product=pd-bb743fe4 recipe=rc-4fa2a0ab runs=6 samples=7680
+seed B: line=ln-5e794a28 product=pd-e63661a8 recipe=rc-f6817cc4 runs=6
+venv: junction → C:\Users\87287\.AgentWorkShop\aml\.venv
+
+=== 1. boot http://127.0.0.1:3997 ===
+✔ [BOOT] 隔离实例启动 + workshop ready — port=3997
+✔ [BOOT] 管理员注册/登录 — status=200
+✔ [BOOT] 首注册用户为 admin — {"id":"b236acbf-0570-46d7-90c3-11c12e1a89ad","name":"优化验收-optguym","email":"opt-optguym@awshop.local","role":"admin","cr
+
+=== 2. process-model REST ===
+✔ [R1.1] GET /process-model/specs 初始可用 — status=200 n=0
+✔ [R1.2] POST /specs 登记 draft — {"id":"pms-optguym","version":1,"lineId":"ln-b077551a","productId":"pd-bb743fe4","recipeId":"rc-4fa2a0ab","recipeVersion":1,"contentHash":"12682f27d2010f74fa877
+✔ [R1.3] GET /specs?lineId 回读与可见性 — n=1
+✔ [R2.1] 同版本改内容 → 409 SPEC_VERSION_IMMUTABLE — 409/SPEC_VERSION_IMMUTABLE
+✔ [R2.2] stage 工况 → 422 CONDITION_FIELD_UNSUPPORTED — 422/CONDITION_FIELD_UNSUPPORTED
+✔ [R1.4] POST /specs/:id/publish 发布不可变 — 200/published
+✔ [R1.5] POST /datasets 构建 manifest v2 — id=ds-mvpjhecq-g92kkp rows=786 runs=6 msg=ok
+✔ [R1.6] GET /aml/datasets/:id manifest v2 可读 — v=2 hash=3f3640bc68
+✔ [R1.7] POST /eligibility 模拟数据具备优化资格 — gaps=none evidence=ds:ds-mvpjhecq-g92kkp:3f3640bc68ef
+✔ [R1.8] GET /eligibility 最新+历史 — history=1
+✔ [R2.3] 模拟线申请 real 作用域 → 422 ELIGIBILITY_SCOPE_MISMATCH — 422/ELIGIBILITY_SCOPE_MISMATCH msg=模拟产线的数据只能生成 simulation 作用域资格;real 作用域需要真实产线
+✔ [R1.9] POST /train 提交内置训练作业 — job=job-mvpjhefb-ijtn95
+✔ [R1.10] 训练作业 done + 两阶段登记 model_id — status=done model=mdl-mvpjhefb-ijtn95 err=
+✔ [R1.11] 模型注册表:linear_state_space@1 + 接口/哈希 — linear_state_space@1/linear_state_space/0d5db50f16
+
+=== 3. optimization REST ===
+✔ [R1.12] 创建 workspace/channel(lead 实例) — ws=61098878-da7f-469c-a223-0b057633669d ch=fb7bb87b-009f-436e-b760-42feef626dc2 lead=757d0d4b-ba96-4cdb-b5bc-80f89bba688d
+✔ [R1.13] 挂载 channel 到 workspace — status=200
+✔ [R2.4] solver/模板不兼容 → 422 PROFILE_INCOMPATIBLE — 422/PROFILE_INCOMPATIBLE
+✔ [R1.14] POST /profiles draft(工件字段由服务端回填) — 200/draft/linear_state_space@1/0d5db50f16 msg=ok
+✔ [R1.15] POST /profiles/:id/publish 发布 — 200/published
+✔ [R1.16] POST /bindings 创建(revision=1) — id=ob-mvpjhfcc-0324a rev=1
+✔ [R1.17] GET /bindings?agentInstanceId 隔离回读 — n=1
+✔ [R1.18] GET /capabilities 环境/求解器/绑定总览 — bindings=1 solverSize=1 py=e\aml\.venv\Scripts\python.exe
+✔ [R1.19] POST /solve optimal + 建议带证据状态(verified|unverified 由 UQ 证据决定) — status=optimal run=orun-mvpjhfe6-r1wvn rec=verified reason=已验证推荐 http=200
+✔ [R1.20] 求解零 DCW 写入(写入账本不变) — 0→0
+✔ [R1.21] GET /runs 台账:IR hash + 建议 + 载荷 — hash=b1c8b08775 rec=verified cvOrder=cv1
+
+=== 4. agent tools ===
+✔ [R3.1] 实例化 aml_optimization 频道 — ch=91f0f89e-4e8a-445b-a6a8-7a71d0286128 lead=84895214-4597-44f9-9725-3060e5de5536
+✔ [R2.5] 模板 id 绑定 → 422 AGENT_TEMPLATE_ID_NOT_ALLOWED — 422/AGENT_TEMPLATE_ID_NOT_ALLOWED tpl=tpl-aml-lead
+✔ [R3.2] 优化频道 lead 绑定 Profile — 200/0
+✔ [R3.3] 工具注入面含 5 个 optimizer_* — optimizer_capabilities,optimizer_solve,optimizer_status,optimizer_cancel,optimizer_plan_get,optimizer_profile_propose,optimizer_campaign,optimizer_round,optimizer_state
+✔ [R3.4] optimizer_capabilities 返回求解器/环境 JSON — {
+  "agentId": "84895214-4597-44f9-9725-3060e5de5536",
+  "bindings": [
+    {
+      "bindingId": "ob-mvpjhgux-zu0u1",
+      "profile": "optp-optguym@1",
+      "m
+✔ [R3.5] optimizer_solve 真实求解(optimal) — run=orun-mvpjhgya-ubc68 status=optimal text={
+  "runId": "orun-mvpjhgya-ubc68",
+  "bindingId": "ob-mvpjhgux-zu0u1",
+  "profileVersion": "optp-optguym@1",
+  "status"
+✔ [R3.6] optimizer_plan_get 返回带证据状态的建议(verified|unverified) — {
+  "runId": "orun-mvpjhgya-ubc68",
+  "recommendation": {
+    "id": "orec-mvpjhhfm-swvk9",
+    "runId": "orun-mvpjhgya-ubc68",
+    "candidateId": "oc-n-mvpjhgya
+✔ [R3.7] optimizer_status 返回终态 — {
+  "run": {
+    "id": "orun-mvpjhgya-ubc68",
+    "bindingId": "ob-mvpjhgux-zu0u1",
+    "bindingRevision": 1,
+    "profileId": "optp-optguym
+✔ [R3.8] optimizer_cancel 对终态返回 cancelled=false(非 500) — {
+  "cancelled": false
+}
+
+=== 5. rbac ===
+✔ [R2.6] 管理员创建第二用户并登录(非 admin) — create=200 login=200
+✔ [R2.7] 非 editor 读 Profile → 403 — 403/FORBIDDEN_ROLE
+✔ [R2.8] 非 admin 读全局绑定 → 403 — 403/FORBIDDEN_ROLE
+✔ [R2.9] 非 admin 读全局运行 → 403 — 403/FORBIDDEN_ROLE
+✔ [R2.10] 无产线授权用户看不到规格(过滤为空) — n=0
+✔ [R2.11] 无产线授权用户登记规格 → 403 — 403/LINE_FORBIDDEN
+✔ [R2.12] DELETE /bindings/:id 撤权 — 200
+✔ [R2.13] 撤权后绑定列表为空 — n=0
+✔ [R2.14] 撤权后 solve → 409 BINDING_NOT_FOUND — 409/BINDING_NOT_FOUND
+
+=== 6. UI /optimizer ===
+✔ [U1.1] /optimizer 可打开(标题+五 tab) — title=优化器 tabs=模型规格|资格报告|Profile / Solver|Agent 绑定|运行 / 建议
+✔ [U1.2] 首屏无 pageerror(平台级 unhead dispose 已单列) —  | control=
+✔ [U1.3] UI 添加 MV/CV 两行变量 — rows=2
+✔ [U1.4] UI 登记规格 → 后端 draft 回读 — 规格已登记:pms-demo@1
+✔ [U1.5] UI 构建数据集(v2)成功 — 数据集已构建:ds-mvpji5nw-7corbo(786 窗)
+✔ [U1.6] UI 资格报告渲染(具备资格 + simulation + 证据) — 优化资格(A2)评估资格具备优化资格 · scope=simulation · ds:ds-mvpji5nw-7corbo:f3ae818f5f4d{ "sampleCount": 786, "mvVariation.mv1": 0.515081, "mvChanges.mv1": 488, "maxMvColline
+✔ [U1.7] UI 提交训练作业 — 训练作业已提交:job-mvpji70y-9r25oj
+✔ [U1.8] UI 训练作业完成并产出模型 — status=done model=mdl-mvpji70y-9r25oj
+✔ [U1.9] UI 登记 Profile 并出现发布按钮
+✔ [U1.10] UI Profile 表格显示 published — optp-ui-optguym@1----publishedmdl-mvpji70y-9r25ojosqp_mpc@1optp-optguym@1----publishedmdl-mvpjhefb-ijtn95osqp_mpc@1
+✔ [U1.11] UI 创建绑定并回读行 — ob-mvpji9f3-pjjscfb7bb87b-009f-436e-b760-42feef626dc2757d0d4b-ba96-4cdb-b5bc-80f89bba688doptp-ui-optguym@1recommendation1撤销ob-mvpjhgux-zu0u1
+✔ [U1.12] UI 求解成功并渲染运行/建议行(状态徽章二态) — orun-mvpjia8o-h8zqfoptimaloptp-ui-optguym20134267dc未验证(缺 UQ/OOD 证据)2026-10-27T01:53:03.425+08:00orun-mvpjhgya-ubc68optimaloptp-optguymb1c8b08775已验证推荐2026-10-27T01:52:25.378+08:00orun-mvpjhfe6-r1wvnopt
+✔ [U1.13] 建议状态徽章醒目标识(.unverified) — 未验证(缺 UQ/OOD 证据)
+✔ [U1.15] 非法 JSON → 前端错误提示(不崩溃) — Expected property name or '}' in JSON at position 1 (line 1 column 2)
+✔ [U1.16] UI 全流程(含错误路径)无 pageerror
+
+=== 7. channel matrix ===
+✔ [C1] legacy Channel 不注入新 optimizer_*(5 工具)
+✔ [C2] legacy Channel 直调 optimizer_solve → OPTIMIZER_CHANNEL_DISABLED — OPTIMIZER_CHANNEL_DISABLED: Channel 未启用 Twin profile,优化器工具拒绝执行。请先把 Channel 档位切到 aml_optimization(工艺优化)或 hybrid_twin。
+✔ [C3] aml_training:不注入新 optimizer_*,保留训练工具 — n=110
+✔ [C4] aml_training 直调 optimizer_solve → OPTIMIZER_PROFILE_DENIED — OPTIMIZER_PROFILE_DENIED: optimizer_solve 仅在工艺优化(aml_optimization)或 hybrid_twin Channel 可用(当前 profile=aml_training)。
+✔ [C5] exp-miner 观察面:无新 optimizer_* 且直调拒绝 — |OPTIMIZER_PROFILE_DENIED: optimizer_solve 仅在工艺优化(aml_optimiz
+✔ [C6] hybrid_twin + 绑定:注入 optimizer_* 且 solve 带 binding_id — bind=200
+✔ [C7] hybrid_twin 真实求解 optimal — run=orun-mvpjid3s-2bqee status=optimal
+✔ [C8] 同 Channel 未绑定 Agent:有 capabilities、无 solve — names=optimizer_capabilities,optimizer_profile_propose,optimizer_campaign,optimizer_round,optimizer_state
+✔ [C9] 同 Channel 两 Agent 各自绑定:worker 获得 solve — bind=200
+✔ [C10] worker 用自己的绑定求解 optimal — run=orun-mvpjidmp-zlls0 status=optimal
+✔ [C11] worker 读他人 run → BINDING_NOT_OWNED/不属于 — 工具调用被拒(引用校验,optimizer_status):run_id = orun-mvpjid3s-2bqee 不属于当前 Agent(BINDING_NOT_OWNED)
+✔ [C12] 撤权后工具面立即收回 solve — n=optimizer_capabilities,optimizer_profile_propose,optimizer_campaign,optimizer_round,optimizer_state
+
+=== 8. static response scenario ===
+✔ [S1] 静态场景:规格/数据集/资格链 — rows=816 gaps=none msg=ok
+✔ [S2] 静态训练器完成 + static_response@1 工件 — status=done kind=static_response@1 err=
+✔ [S3] 静态工件 + OSQP → 422 UNSUPPORTED_MODEL_SOLVER — 422/UNSUPPORTED_MODEL_SOLVER
+✔ [S4] 静态场景 Agent 求解(SLSQP) optimal 且命中目标 — profile=200 bind=200 status=optimal mv=63.38744651502797 msg={
+  "runId": "orun-mvpjif7v-82bbv",
+  "bindingId": "ob-mvpjif6u-kv23e",
+  "profi
+
+=== 9. scenario B (2 MV / 2 CV + unit conversion) ===
+✔ [B1] 双变量场景:无代码训练完成 + 2MV/2CV 工件 — rows=786 status=done model=mdl-mvpjifvw-8le30p
+✔ [B2] 双变量场景 Agent 求解 optimal(模型单位 m3/h) — bind=200 status=optimal first={"flow_a":4.247466982176206,"flow_b":2.878013041072884} msg={
+  "runId": "orun-mvpjigsr-vlmwp",
+  "bindingId": "ob-mvpjigse-v3wal",
+  "profileVersion": "optp-b-optguym@1",
+  "status": "optim
+✔ [B3] 单位换算随规格持久化(scale=0.06/模型单位 m3/h) — [["flow_a","L/min","m3/h",0.06],["flow_b","L/min","m3/h",0.06],["thick","μm",null,1],["width","mm",null,1]]
+
+=== 10. AML twin adaptation ===
+✔ [T1] Channel 绑定 Twin Gate 通过的 AML 模型(aml 模式) — 200/model_backed/0
+✔ [T2] 模型受控 Channel 注入 mpc/twin 工具 — twin_trial_run,mpc_optimize
+✔ [T3] candidate/Twin Gate 未过 → 409 拒绝 — 409/AML_MODEL_STAGE
+✔ [T4] 旧 ONNX 孪生工件 → 新求解器 422 UNSUPPORTED_MODEL_SOLVER — 422/UNSUPPORTED_MODEL_SOLVER
+✔ [T5] 旧 ONNX 工件仍可绑定 Channel(旧工具面兼容) — 200/0
+✔ [T6] Channel 绑定模型不自动授权 optimizer_* — BINDING_NOT_FOUND: 该 Agent 未绑定优化器 Profile;先在 Channel 设置中绑定后再调用 optimizer_solve。
+✔ [T7] 补 optimizer binding 后同一 Channel 可求解(双闸门分离) — status=optimal
+
+=== 11. live closed-loop value ===
+✔ [V1] Live 闭环:求解器首步驱动真实轨迹(仅首步,逐拍刷新上下文) — steps=12 samples=8 bind=200
+✔ [V2] 相对保持方案中位质量误差改善 ≥15% — base=6.42 mpc=0.02 improve=99.7%
+✔ [V3] 闭环 MV 始终在工艺窗口[0,100] — min=42.1 max=50.0
+
+=== 11.5 governed dispatch (W) ===
+✔ [W0] 下发使用新求解建议(避免旧建议超时/撤权) — bind=200 solve=200 status=optimal
+✔ [W1] POST crosscheck:worker vs typed predictor 一致(pass) — 200/verdict=pass maxDev=0
+✔ [W2] 互校后 dual=true(verified+pass+fresh) — {"id":"oxc-mvpjjqzx-2ij6h","verdict":"pass","stale":false,"conditionChanged":false,"maxDev":0,"tol":0.000001,"rowHash":"5be95e66fe6f08be7eb44cb2ac32694640585420
+✔ [W3] dispatch body 携带证据字段 → 422(D11 防伪) — 422/DISPATCH_BODY_EVIDENCE_FORBIDDEN
+✔ [W4] dispatch 建卡成功(optimizer-recipe: 前缀) — 200/optimizer-recipe:rc-4fa2a0ab
+✔ [W5] 同配方在飞卡阻止重复建卡 → 409 DISPATCH_RECIPE_IN_FLIGHT — 409/DISPATCH_RECIPE_IN_FLIGHT
+✔ [W6] 审批面精确返回当前下发卡及首步工程值 — id=ap-07ab0106 nodeId=optimizer-recipe:rc-4fa2a0ab expected=36.956649869462126 card=36.956649869462126
+✔ [W7] HITL 批准 → 单一咽喉 D13 重验 → 整批下发 — 200/{"dispatch":{"approved":true,"comment":"集成验收批准","execution":{"runId":"rr-8a52de3f","acks":{"verified":1,"unverified":0,"failed":0,"total":1}}}}
+✔ [W8] 执行节点回读等于建议首步工程值(写入落设备,按节点分辨率量化) — node=dcw-optguym-mv expected=36.956649869462126 readValue=37 tolerance=0.5
+✔ [W9] 当前建议 request 与 execute 审计齐备 — status=200 actions=optimizer.dispatch.execute,optimizer.dispatch.request
+
+=== 11.6 MCP bridge (M) ===
+✔ [M1] 已绑定优化频道 lead 实例 token 存在 — bind=200 tokenPresent=true
+✔ [M2] MCP initialize 会话建立 — {"protocolVersion":"2024-11-05","capabilities":{"tools":{"listChanged":true}},"serverInfo":{"name":"aw-host-tools","titl
+✔ [M3] MCP tools/list 含 5 个 optimizer_* 工具 — optimizer_capabilities,optimizer_solve,optimizer_status,optimizer_cancel,optimizer_plan_get,optimizer_profile_propose,optimizer_campaign,optimizer_round,optimizer_state
+✔ [M4] MCP optimizer_solve 真实求解 optimal — status=optimal text={
+  "runId": "orun-mvpjjsgt-xoi39",
+  "bindingId": "ob-mvpjjsd7-d8jza",
+  "profileVersion": "optp-optguym@1",
+  "status": "optimal",
+  "firs stderr=
+
+104/104 通过;证据:D:\tmp\aw-main\docs\audit\evidence\2026-10-23-optimizer-live\report.json
+--- optimizer-live exit=0 01:39:14
+=== model-loop-live === 01:39:14
+seed: line=ln-3ac1bb5b recipe=rc-556ed400 runs=6 samples=2880
+venv: junction ok
+
+=== boot http://127.0.0.1:3997 ===
+✔ [BOOT] 隔离实例启动 + workshop ready — port=3997
+✔ [BOOT] 管理员注册(首注册=admin) — status=200
+
+=== M0 频道与三面绑定 ===
+✔ [M0.1] hybrid_twin 频道实例化(全功能档位)+workspace — inst=200 ch=cdb1f939-6e9e-4ea1-8c6a-ea9f263fe71d lead=8d91a034-3339-49af-855f-07174ba97bcd
+✔ [M0.2] hybrid 档位工具面:训练+孪生+优化器+本体四族同面注入 — missing= total=99
+✔ [M0.3] Agent 节点绑定:daq×3 + recipe(参数面) — daq=200,200,200 recipe=200/0
+✔ [M0.4] 过程 spec 登记+发布(求解器谱系前置) — create=200/0 pub=200
+
+=== M1 本体层(管理者修正路径) ===
+✔ [M1.1] 本体起草(活体校验+绑定通过) — saved=200 issues=[]
+✔ [M1.1b] 本体描述可读(用户理解模型代表什么) — 膜厚闭环控制本体:压力/线速→膜厚,温区守门(mlpjwpv)
+✔ [M1.2] 本体 v1 发布(contentHash+packHash) — 200/0
+✔ [M1.3] 管理者修正规则窗 → v2 发布 — saved=200/0 pub=200/0
+✔ [M1.5] Agent 工具 ontology_draft_autofix:自动修复并落库 — 草稿 ontd-mvpjkefm-463umd 自动修复 13 项(rev=3):
+- [DOC_DESCRIPTION] description: 补写文档描述(供 Agent 与用户理解模型含义)
+- [ENTITY_DESCRIPTION] entities[0]: 实体「pv.melt_pressure」补描述为名称
+- [ENTITY_DESCRI
+✔ [M1.6] 修复后:描述/作用域已补齐且校验通过 — desc=模型闭环验收-mlpjwpv(产线 ln-3ac1bb5b) —— 实体 4 / savedMessy=200
+✔ [M1.4] 四段 diff 反映管理者意志(R-BOUND changed) — ["R-BOUND","R-GUARD"]
+
+=== M2 孪生层(Agent 工具创建虚拟模型) ===
+✔ [M2.1] 工具 twin_scene_discover:从真实绑定发现场景 — {
+  "scene_kind": "unknown",
+  "nodeCount": 5,
+  "counts": {
+    "control": 2,
+    "state": 2,
+    "feature": 0,
+    "disturbance": 0,
+    "observation": 0,
+   
+✔ [M2.2] 工具 twin_scene_compile:SceneContract 草稿(controls+artifact) — SceneContract Draft 已生成
+  scene_id: scn-mlpjwpv
+  scene_version: 1.0.0
+  contract_hash: ecb39b3ca5145f02fe3a5c93fcd06b440def79ea7d74fa617fa442da5c6b5ff1
+  status: draft
+  controls: 2
+  states: 2
+  tar
+✔ [M2.3] 场景草稿持久化(控制面+目标面齐备,谱系可复用) — controls=2 states=2 obs=1(targets=1)
+✔ [M2.4] 工具 twin_scene_freeze:人批准冻结(approvedBy=管理者) — {
+  "sceneId": "scn-mlpjwpv",
+  "sceneVersion": "1.0.0",
+  "status": "frozen",
+  "contractHash": "ecb39b3ca5145f02fe3a5c93fcd06b440def79ea7d74fa617fa442da5c6b5ff1",
+  "approvedBy": "mlp-mlpjwpv@awshop
+✔ [M2.5] 冻结治理红线:缺确认令牌 → 拒绝 — 冻结被拒绝：必须先完成用户确认，并传入 confirmation=USER_CONFIRMED_SCENE_CONTRACT。
+✔ [M2.6] 工具 twin_physics_spec_draft:虚拟模型骨架(状态+参数可校准) — PhysicsSpec 骨架已生成(场景 scn-mlpjwpv@1.0.0):
+  model_id: draft-scn-mlpjwpv | 状态变量 3 | 观测方程 1 | 参数 12(可校准 12)
+  结构: 每个 state = 一阶惯性弛豫(τ/增益为先验盒内可校准参数);观测 = persistence 恒等基线
+  artifact: C:\Users\87287\AppDat
+✔ [M2.7] 工具 twin_physics_spec_validate:valid=true — {
+  "apiVersion": "physics-spec.v1",
+  "valid": true,
+  "errors": [],
+  "warnings": [],
+  "issues": [],
+  "spec": {
+    "specVersion": "physics-spec.v1",
+    "m
+✔ [M2.8] 工具 twin_physics_spec_compile:候选 Provider(candidate_not_registered) — {
+  "apiVersion": "physics-spec.v1",
+  "kind": "declarative-provider-candidate",
+  "sceneId": "scn-mlpjwpv",
+  "sceneVersion": "1.0.0",
+  "providerId": "draft-s
+✔ [M2.9] 频道场景谱系重链(REST 可读) — sceneId=scn-mlpjwpv
+✔ [M2.10] 工具 twin_snapshot_create:服务端真采快照(auto_daq,fresh) — TwinSnapshot 已创建
+  source: bound DAQ
+  snapshot_id: snap-mvpjkem2-szgcd2
+  hash: 4c2d8e5c074bc132435aa85268c6f44592df654d855ad7b0bdec551663c8ee17
+  fresh: true
+  completeness: 1
+  stale_nodes: (none)
+
+✔ [M2.11] 工具 twin_trial_run:虚拟试验完成(模型驱动 rollout) — VirtualTrial 已完成(candidateExecuted=false)
+  trial_id: trial-mvpjkemv-f4sbj5
+  rollout_model: injection-greybox-v1(物理 provider 驱动;传 model_id 可用训练模型 rollout)
+  uq: coverage=1.000 members=1 ood=accepted
+
+✔ [M2.12] 虚拟试验治理语义:candidateExecuted=false + 约束 fail-closed(候选 provider 未注册不投产) — VirtualTrial 已完成(candidateExecuted=false) |   trial_id: trial-mvpjkemv-f4sbj5 |   rollout_model: injection-greybox-v1(物理 provider 驱动;传 model_id 可用训练模型 rollout) |   uq: coverage=1.000 members=1 ood=acc
+
+=== M3 模型进化第 1 轮 ===
+✔ [M3.0] Agent 工具 aml_model_annotate:补模型名称/描述 — 模型 mdl-mvpjkeoz-3patfv 人读身份已更新:
+  label: 膜厚模型A-mlpjwpv
+  description: 产线A 膜厚预测:线性状态空间,适配保压/线速工况
+用户与 Agent 都会在 /aml 模型台账看到这两项;阶段/工件/指标不受影响(不能
+✔ [M3.1] 第 1 轮训练 done + 模型登记 + 优化资格(artifactHash) — status=done model=mdl-mvpjkeoz-3patfv rows=786 err=
+✔ [M3.2] Profile v1 创建(模型A 工件回填)+发布 — create=200/0 pub=200/0
+✔ [M3.3] Agent↔Profile 绑定(revision=1,推荐模式) — id=ob-mvpjkfky-h1x4z code=0
+✔ [M3.4] 基线模型 A solve optimal — status=optimal http=200 msg=ok
+✔ [M3.5] 第 2 轮训练 done + 资格(数据集不缩水,工件不同) — status=done rows 786→786 hashDiff=true
+✔ [M3.6] 采纳卡挂出(optimizer-profile:<id>@<v>) — nodeId=optimizer-profile:optp-mlpjwpv@2
+✔ [M3.7] HITL 批准 → 单一咽喉发布+重绑 — {"status":200,"code":0,"message":"ok","data":{"via":"profile-adopt","result":{"approved":true,"comment":"模型进化闭环验收批准","published":{"profileId":"optp-mlpjwpv","version":2,"rebindCount":1}}}}
+✔ [M3.8] 工具回执:模型采纳完成(诚实汇报) — ✅ 模型采纳完成(HITL 批准):
+optp-mlpjwpv v1 → v2(published)
+模型:mdl-mvpjkgz1-ygintn;重绑绑定 1 个(revision+1,在飞求解 BINDING_STALE 收敛)
+裁决意见:模型进化闭环验收批准
+下一次 optimizer_solve 即使用新模型;旧版本保留可回退(retire/rebind 走管理面)。
+✔ [M3.9] 绑定自动重绑到采纳版本(revision+1) — versions=[2] card=v2 rev=2
+✔ [M3.10] 已发布 Profile v2 携带新模型工件 B — len=3165
+✔ [M3.10b] Profile 描述由 Agent 提议写入并落版本台账
+✔ [M3.11] 新模型 B solve optimal — status=optimal http=200 msg=ok
+
+=== M4 模型进化第 2 轮(持续迭代) ===
+✔ [M4.1] 第 3 次训练 done + 资格(反馈持续积累) — status=done model=mdl-mvpjkii5-axf4im rows=786
+✔ [M4.2] 第 2 轮采纳卡挂出+HITL 批准 — nodeId=optimizer-profile:optp-mlpjwpv@3 dec=200
+✔ [M4.3] 第 2 轮工具回执:采纳完成 — ✅ 模型采纳完成(HITL 批准):
+optp-mlpjwpv v2 → v3(published)
+模型:mdl-mvpjkii5-axf4im;重绑绑定 1 个(revision+1,在飞求解 BINDING_STALE 收敛)
+裁决意见:模型进化闭环验收批准
+下一次 optimizer_solve 即使用新模型;旧版本保留可回退(retire/rebind 走管理面)。
+✔ [M4.4] 持续进化:绑定再次重绑(revision 递增) — versions=[3] card=v3 rev=3
+✔ [M4.5] 第 2 轮新模型 C solve optimal — status=optimal http=200
+✔ [M4.6] 全闭环零 DCW 写入(三轮训练+两轮采纳+求解) — dcw-writes.json 不存在
+
+=== M5 管理者面 ===
+✔ [M5.1] 本体版本台账(v1+v2,管理者可查) — n=2
+✔ [M5.2] Profile 版本台账含三轮模型工件(A/B/C 全可查) — len=4767
+✔ [M5.3] 孪生谱系台账(场景/冻结态可查) — sceneId=scn-mlpjwpv
+✔ [M5.4] 审计三态留痕:AI 提议 + 人批准(adopt_propose+adopt) — n=4 actions=optimizer.profile.adopt,optimizer.profile.adopt_propose,optimizer.profile.adopt,optimizer.profile.adopt_propose kinds=user,agent
+✔ [M5.5] 本体审计留痕(起草/发布/修正) — n=10 sample=ontology.draft.update
+
+=== M6 前端渲染 ===
+✔ [M6.1] 管理者三台(/optimizer /aml /ontology)渲染无错 — optimizer:len=4041,errs=0 aml:len=5605,errs=0 ontology:len=5159,errs=0
+✔ [M6.3] UI:Profile 描述在 /optimizer 台账可见
+✔ [M6.4] UI:模型描述在 /aml 台账可见
+✔ [M6.5] UI:本体描述与「自动修复」入口在 /ontology 可见 — desc=true fixBtn=true
+✔ [M6.2] 全程无未捕获 pageerror
+
+MODEL-LOOP LIVE E2E: 54/54 passed, 0 failed
+evidence: D:\tmp\aw-main\docs\audit\evidence\2026-10-24-model-loop-live
+--- model-loop-live exit=0 01:40:45
+US2 DONE Tue Oct 27 01:40:45     2026
