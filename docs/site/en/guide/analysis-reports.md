@@ -65,3 +65,5 @@ The diag-bridge plugin now integrates IDD's results library (index / detail / me
 Settings (`Plugins → diag-bridge → Results library`): `results_enabled` (master switch, default off), `results_allow_annotate` (editing, default off), `results_allow_worker` (worker read access, default off = lead only), `results_default_limit` (default 20), `results_md_max_chars` (report truncation limit, default 4000). The `/plugins` page ships a Results library panel: search/filter → detail → edit description & tags (same-source routes `GET /api/plugins/diag-bridge/results`, `/results/detail?id=`, `PATCH /results/edit?id=`).
 
 Typical agent flow: `diag_results(q="film thickness")` → pick `result_id` → `diag_result_get` for conclusions and key numbers → `diag_result_annotate` to record what the result means and when to reuse it.
+
+> The ledger records conclusions; the EDA studio explores data — for interactive analysis (charts / pipeline / SPC / golden) see [Data workbench & EDA studio](./eda.md).

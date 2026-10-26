@@ -14,7 +14,7 @@
 ## v0.7.6x–7x — Governance & optimization (Oct 2026)
 
 - **v0.7.71 (2026-10-24)** — **Process optimizer & solver**: process model → AML training (G1–G3 gates) → profile freeze → hash-pinned ProblemIR → OSQP/SLSQP solve → independent TS crosscheck → governed dispatch; **declarative tool-face governance** (all 104 host tools carry explicit `references` declarations).
-- **v0.7.70 (2026-10-21)** — **Data workbench + EDA studio** (`/data` · `/studio`): compound queries, bulk export, golden trajectories, FDC/SPC (Nelson 1-8 / EWMA / CUSUM), OCAP, virtual metrology, derived datasets.
+- **v0.7.70 (2026-10-21)** — **Data workbench + EDA studio** (`/data` · `/studio`): compound queries, bulk export, golden trajectories, FDC/SPC (Nelson 1-8 / EWMA / CUSUM), OCAP, virtual metrology, derived datasets. See [Data workbench & EDA studio](./eda.md).
 - **v0.7.66 (2026-10-17)** — **Unified tool-call preflight** (tool-verify: argument shape + reference ownership + chained lineage backtracking).
 - **v0.7.63–65 (2026-10-15/16)** — Data-analysis ledger finalized (`analysis_reports` + `/analysis` page + IDD six-intent catalog), dead tool surfaces removed. See [Data-analysis ledger](./analysis-reports.md).
 - **v0.7.62 (2026-10-13)** — **Data-analysis system**: `analysis_save` / `analysis_query` first-class records with line-scoped permissions.
