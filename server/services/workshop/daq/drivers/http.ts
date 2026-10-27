@@ -1,13 +1,43 @@
 /**
  * HTTP/REST 轮询真实驱动
  * (由 server/services/workshop/daq/drivers.ts 按职责拆出;内容逐行原文搬运)
+ *
+ * 增强(2026-10-27 加固计划 F4):
+ *  - method(GET/POST)/ bodyTemplate(静态 JSON,支持 {{SECRET:REF}})/ timeoutMs(1s–60s)
+ *  - authType/authHeaderName/secretRef(凭据只存引用名;头值 {{SECRET:REF}} 未解析整头省略)
+ *  - SSRF 与 mes-rest 同口径(仅 http/https;内网/环回需 allowPrivateHost='true')
+ *  - 旧配置(url/jsonPath/headersJSON)行为不变:缺省 GET + 5s 超时 + 原样请求头
  */
 import type { DaqDriver } from './shared'
 import { extractNumeric, parseHeaders } from './mqtt'
+import { assertSafeHttpUrl } from '../../net/ssrf'
+import { authHeadersOf, clampTimeoutMs, interpolateSecretBody, interpolateSecretHeader } from '../../net/secret-auth'
 
 // ============================================================
-// HTTP/REST 轮询真实驱动(无状态 GET;JSON 路径或纯文本取值)
+// HTTP/REST 轮询真实驱动(JSON 路径或纯文本取值)
 // ============================================================
+
+async function requestHeaders(cfg: Record<string, unknown>): Promise<Record<string, string>> {
+  const raw = parseHeaders(cfg.headersJSON)
+  const headers: Record<string, string> = {}
+  for (const [k, v] of Object.entries(raw)) {
+    const interpolated = await interpolateSecretHeader(v)
+    // 未解析的 {{SECRET:REF}} → 整条头省略(绝不把占位符发出去)
+    if (interpolated !== null) headers[k] = interpolated
+  }
+  Object.assign(headers, await authHeadersOf(cfg))
+  return headers
+}
+
+async function request(cfg: Record<string, unknown>): Promise<Response> {
+  if (!cfg.url) throw new Error('缺少接口地址 url')
+  const url = await assertSafeHttpUrl(String(cfg.url), { allowPrivateHost: cfg.allowPrivateHost, legacyAllowPrivateWhenUnset: true, label: '数采数据源' })
+  const headers = await requestHeaders(cfg)
+  const method = String(cfg.method ?? 'GET').toUpperCase() === 'POST' ? 'POST' : 'GET'
+  const body = method === 'POST' ? await interpolateSecretBody(String(cfg.bodyTemplate ?? '{}')) : undefined
+  const timeoutMs = clampTimeoutMs(cfg.timeoutMs, 5000)
+  return fetch(url, { method, headers, ...(body !== undefined ? { body } : {}), signal: AbortSignal.timeout(timeoutMs) })
+}
 
 export const httpDaqDriver: DaqDriver = {
   kind: 'http',
@@ -15,9 +45,7 @@ export const httpDaqDriver: DaqDriver = {
     return true
   },
   async sample({ driverConfig, signalKind }) {
-    if (!driverConfig.url) throw new Error('缺少接口地址 url')
-    const headers = parseHeaders(driverConfig.headersJSON)
-    const res = await fetch(String(driverConfig.url), { headers, signal: AbortSignal.timeout(5000) })
+    const res = await request(driverConfig)
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
     // v2 多形态分支(vector/image 由模板信号形态门控;标量端点零感知)
     if (signalKind === 'vector') {
@@ -59,8 +87,7 @@ export const httpDaqDriver: DaqDriver = {
     const t0 = Date.now()
     try {
       if (!driverConfig.url) return { ok: false, message: '缺少接口地址 url' }
-      const headers = parseHeaders(driverConfig.headersJSON)
-      const res = await fetch(String(driverConfig.url), { headers, signal: AbortSignal.timeout(5000) })
+      const res = await request(driverConfig)
       if (!res.ok) return { ok: false, message: `接口返回 HTTP ${res.status}` }
       const ct = res.headers.get('content-type') ?? ''
       // 帧形态感知测试:同一端点形态可能是 vector(JSON 点列)/ image(PNG 或 base64)/ 标量

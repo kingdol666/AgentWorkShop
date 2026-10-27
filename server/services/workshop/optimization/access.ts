@@ -101,6 +101,25 @@ function resolveRunAgent(runId: string | undefined, agentInstanceId: string | un
 }
 
 /**
+ * 产线授权复核(lineMode 返回三态、**不抛异常** —— 旧实现用 try/catch 包 lineMode,
+ * 导致 spec/dataset/eligibility/experiment/train 的授权检查从未生效,评审 P1-1)。
+ * 读类要求 ≥readonly;写/发布要求 operate。
+ */
+function requireLineAccess(
+  user: ResolvedUser,
+  lineId: string,
+  operation: OptimizationOperation,
+  resource: OptimizationResource,
+): void {
+  const mode = lineMode(user, lineId)
+  const isWrite = operation === 'write' || operation === 'publish'
+  const ok = isWrite ? mode === 'operate' : mode !== 'none'
+  if (!ok) {
+    deny(user, resource, operation, `无产线「${lineId}」${isWrite ? '可操控' : '查看'}授权`)
+  }
+}
+
+/**
  * 统一入口:返回解析后的资源上下文(行 lineId / agentInstanceId / channelId),
  * 供内层闸序(dispatch D10)消费,不得用另一套规则重算归属。
  */
@@ -118,52 +137,27 @@ export function assertOptimizationAccess(
     }
     case 'spec': {
       const { lineId } = resolveSpecLineId(resource.id, resource.version)
-      try {
-        lineMode(user, lineId)
-      }
-      catch (err) {
-        deny(user, resource, operation, err instanceof AppError ? err.message : `无产线 ${lineId} 权限`)
-      }
+      requireLineAccess(user, lineId, operation, resource)
       return { lineId }
     }
     case 'dataset': {
       const { lineId } = resolveDatasetLineId(resource.id)
-      try {
-        lineMode(user, lineId)
-      }
-      catch (err) {
-        deny(user, resource, operation, err instanceof AppError ? err.message : `无产线 ${lineId} 权限`)
-      }
+      requireLineAccess(user, lineId, operation, resource)
       return { lineId }
     }
     case 'eligibility': {
       const { lineId } = resolveSpecLineId(resource.specId)
-      try {
-        lineMode(user, lineId)
-      }
-      catch (err) {
-        deny(user, resource, operation, err instanceof AppError ? err.message : `无产线 ${lineId} 权限`)
-      }
+      requireLineAccess(user, lineId, operation, resource)
       return { lineId }
     }
     case 'experiment': {
       const lineId = resource.lineId
       if (!lineId) throw new AppError(422, 'LINE_REQUIRED', 'lineId 必填(试验按产线归属授权)')
-      try {
-        lineMode(user, lineId)
-      }
-      catch (err) {
-        deny(user, resource, operation, err instanceof AppError ? err.message : `无产线 ${lineId} 权限`)
-      }
+      requireLineAccess(user, lineId, operation, resource)
       return { lineId }
     }
     case 'train': {
-      try {
-        lineMode(user, resource.lineId)
-      }
-      catch (err) {
-        deny(user, resource, operation, err instanceof AppError ? err.message : `无产线 ${resource.lineId} 权限`)
-      }
+      requireLineAccess(user, resource.lineId, operation, resource)
       return { lineId: resource.lineId }
     }
     case 'binding':

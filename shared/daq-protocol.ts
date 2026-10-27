@@ -367,9 +367,26 @@ export const DAQ_DRIVERS: DaqDriverMeta[] = [
     label: 'HTTP/REST(轮询)',
     status: 'real',
     configFields: [
-      { key: 'url', label: '接口地址(URL)', type: 'string', required: true, placeholder: 'http://192.168.1.30/api/sensor', hint: '返回数值或 JSON 的 HTTP 接口' },
+      { key: 'url', label: '接口地址(URL)', type: 'string', required: true, placeholder: 'http://192.168.1.30/api/sensor', hint: '返回数值或 JSON 的 HTTP 接口;仅 http/https,内网地址需同时开启 allowPrivateHost' },
+      { key: 'method', label: '请求方法', type: 'select', default: 'GET', options: [
+        { value: 'GET', label: 'GET(缺省)' },
+        { value: 'POST', label: 'POST(需 bodyTemplate)' },
+      ], hint: '部分数据源要求 POST 查询;缺省 GET 保持旧配置行为' },
+      { key: 'bodyTemplate', label: '请求体模板(POST)', type: 'text', placeholder: '{"query":"temperature","site":"line1"}', hint: '静态 JSON 模板;值支持 {{SECRET:REF}} 引用凭据(不落明文);GET 忽略' },
       { key: 'jsonPath', label: '取值路径(可选)', type: 'string', placeholder: 'data.value', hint: '响应为 JSON 时按路径取数值,如 data.value;纯文本留空' },
-      { key: 'headersJSON', label: '请求头(可选)', type: 'string', placeholder: '{"Authorization":"Bearer xxx"}', hint: 'JSON 对象形式的 HTTP 头' },
+      { key: 'headersJSON', label: '请求头(可选)', type: 'string', placeholder: '{"X-API-Token":"{{SECRET:SENSOR_KEY}}"}', hint: 'JSON 对象形式的 HTTP 头;值支持 {{SECRET:REF}}(未解析整头省略)' },
+      { key: 'timeoutMs', label: '超时(ms)', type: 'number', default: 5000, hint: '单次请求超时,钳 1000–60000ms,缺省 5000' },
+      { key: 'authType', label: '认证方式', type: 'select', default: 'none', options: [
+        { value: 'none', label: '无认证(缺省)' },
+        { value: 'bearer', label: 'Bearer(Authorization 头)' },
+        { value: 'header', label: '自定义头(authHeaderName)' },
+      ], hint: '与 secretRef 配合;缺省 none 保持旧配置行为' },
+      { key: 'authHeaderName', label: '自定义认证头名(可选)', type: 'string', placeholder: 'X-Api-Token', hint: 'authType=header 时的头名' },
+      { key: 'secretRef', label: '凭据引用(secretRef)', type: 'string', placeholder: 'sensor-line1', hint: '凭据引用名;token 从 env AW_SECRET_<REF大写> 或管理端运行时凭据仓读取,不落明文' },
+      { key: 'allowPrivateHost', label: '内网地址白名单', type: 'select', default: 'false', options: [
+        { value: 'false', label: '拒绝(默认,SSRF 防护)' },
+        { value: 'true', label: '允许(内网数据源显式开启)' },
+      ], hint: '内网/环回地址显式白名单开关(生产数据源通常在内网)' },
     ],
   },
   {

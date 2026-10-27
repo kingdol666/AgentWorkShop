@@ -74,7 +74,7 @@ function seedHomePrompts(homePrompts: string): void {
   for (const f of readdirSync(src)) {
     const dst = join(homePrompts, f)
     if (existsSync(dst)) {
-      if (f === 'host-tools.json') {
+      if (f === 'host-tools.json' || f === 'host-tools.en.json') {
         try {
           if (readFileSync(dst, 'utf-8') !== readFileSync(join(src, f), 'utf-8')) {
             copyFileSync(join(src, f), dst)
@@ -185,11 +185,27 @@ export interface HostToolDef {
   riskClass?: ToolRiskClass
 }
 
-let hostToolsCache: { mtimeMs: number, tools: HostToolDef[] } | null = null
+const hostToolsCache: Map<string, { mtimeMs: number, enMtimeMs: number, tools: HostToolDef[] }> = new Map()
 
-/** 加载 host 工具定义(name/label/description/parameters;缺文件 fail-fast) */
-export function loadHostToolDefs(): HostToolDef[] {
+/** 深合并(en overlay 覆盖 zh 同名键;数组整体替换) */
+function mergeToolPatch<T>(base: T, patch: unknown): T {
+  if (patch === null || patch === undefined) return base
+  if (Array.isArray(patch) || typeof patch !== 'object') return patch as T
+  if (base === null || typeof base !== 'object' || Array.isArray(base)) return patch as T
+  const out: Record<string, unknown> = { ...(base as Record<string, unknown>) }
+  for (const [k, v] of Object.entries(patch as Record<string, unknown>)) {
+    out[k] = mergeToolPatch(out[k], v)
+  }
+  return out as T
+}
+
+/**
+ * 加载 host 工具定义(name/label/description/parameters;缺文件 fail-fast)。
+ * locale='en' 时叠加 host-tools.en.json(按 name 覆盖;缺失键回退中文定义)。
+ */
+export function loadHostToolDefs(locale: 'zh' | 'en' = 'zh'): HostToolDef[] {
   const file = join(promptsDir(), 'host-tools.json')
+  const enFile = join(promptsDir(), 'host-tools.en.json')
   let mtimeMs: number
   try {
     mtimeMs = statSync(file).mtimeMs
@@ -197,7 +213,15 @@ export function loadHostToolDefs(): HostToolDef[] {
   catch {
     throw new AppError(500, 'HOST_TOOLS_MISSING', `host 工具定义缺失: ${file}`)
   }
-  if (hostToolsCache && hostToolsCache.mtimeMs === mtimeMs) return hostToolsCache.tools
+  let enMtimeMs = 0
+  if (locale === 'en') {
+    try {
+      enMtimeMs = statSync(enFile).mtimeMs
+    }
+    catch { enMtimeMs = 0 }
+  }
+  const cached = hostToolsCache.get(locale)
+  if (cached && cached.mtimeMs === mtimeMs && cached.enMtimeMs === enMtimeMs) return cached.tools
   const parsed = JSON.parse(readFileSync(file, 'utf-8')) as HostToolDef[]
   if (!Array.isArray(parsed) || parsed.length === 0) {
     throw new AppError(500, 'HOST_TOOLS_INVALID', 'host-tools.json 必须为非空数组')
@@ -207,15 +231,28 @@ export function loadHostToolDefs(): HostToolDef[] {
       throw new AppError(500, 'HOST_TOOLS_INVALID', `host 工具定义不完整: ${JSON.stringify(t).slice(0, 80)}`)
     }
   }
+  let merged = parsed
+  if (locale === 'en' && enMtimeMs > 0) {
+    try {
+      const overlay = JSON.parse(readFileSync(enFile, 'utf-8')) as Record<string, unknown>
+      if (overlay && typeof overlay === 'object' && !Array.isArray(overlay)) {
+        merged = parsed.map((t) => {
+          const patch = overlay[t.name]
+          return patch ? mergeToolPatch(t, patch) : t
+        })
+      }
+    }
+    catch { /* overlay 损坏 → 回退中文定义(fail-visible 但不阻断启动) */ }
+  }
   // 宽松开关(2026-10-05 schema 严格化逃生门):AW_TOOLS_SCHEMA_STRICT=0 时剥离
   // additionalProperties:false —— 老引擎对多传参数严格报错时,不重排工具面即可回退宽松模式
   const tools = process.env.AW_TOOLS_SCHEMA_STRICT === '0'
-    ? parsed.map((t) => {
+    ? merged.map((t) => {
         const parameters = JSON.parse(JSON.stringify(t.parameters ?? {}))
         delete parameters.additionalProperties
         return { ...t, parameters }
       })
-    : parsed
-  hostToolsCache = { mtimeMs, tools }
+    : merged
+  hostToolsCache.set(locale, { mtimeMs, enMtimeMs, tools })
   return tools
 }

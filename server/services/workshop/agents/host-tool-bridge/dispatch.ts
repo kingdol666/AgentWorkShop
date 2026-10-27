@@ -266,6 +266,15 @@ async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCa
   if (!ws) {
     return { text: 'workspace 未就绪', isError: true }
   }
+  // 团队节点委派虽走 workspace 面,但改动的是产线节点授权 —— 与工业工具同口径做运行时 grant 复核。
+  // dispatch_task 仅在携带 grant_node_ids 时才触达授权面(普通派发不改变授权,不额外拦)。
+  const hasGrantArg = (v: unknown): boolean => v !== undefined && v !== null && String(v).trim() !== ''
+  const dispatchGrants = req.toolName === 'dispatch_task'
+    && (hasGrantArg(args.grant_node_ids) || hasGrantArg(args.grantNodeIds))
+  if (req.toolName === 'team_grant_nodes' || req.toolName === 'team_revoke_nodes' || dispatchGrants) {
+    const denied = await guardIndustrialToolGrant(identity, req.toolName, args, dispatchGrants ? 'operate' : undefined)
+    if (denied) return denied
+  }
 
   try {
     switch (req.toolName) {

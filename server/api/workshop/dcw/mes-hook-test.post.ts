@@ -6,7 +6,7 @@
  * 另回 requestHook 的请求构造覆盖(已配时),不触达网络。
  */
 import { readBody } from 'h3'
-import { resolveUser } from '@/server/api/workshop/caller'
+import { requireRole } from '@/server/api/workshop/caller'
 import { defineApiHandler } from '@/server/utils/response'
 import { AppError } from '@/server/utils/errors'
 import { historyFormatOf } from '@/server/services/workshop/dcw/drivers/mes-rest'
@@ -17,7 +17,8 @@ import { mesDataHookCode, mesRequestHookCode, runMesDataHook, runMesRequestHook 
 const TEST_MAX_ROWS = 50
 
 export default defineApiHandler(async (event) => {
-  resolveUser(event)
+  // 钩子是用户 JS 在服务端子进程执行(可读写数据目录/继承环境)→ 仅管理员可试运行
+  requireRole(event, ['admin'])
   const body = await readBody<{
     driverConfig?: Record<string, unknown>
     param?: unknown
@@ -28,7 +29,8 @@ export default defineApiHandler(async (event) => {
   }>(event) ?? {}
   const windowMs = Math.max(1, Math.min(Number(body.window_minutes) || 30, 1440)) * 60_000
   const cfg = body.driverConfig ?? {}
-  const nodeId = String(body.node_id ?? 'test-node').slice(0, 64)
+  // 产物目录名只允许字母数字/下划线/短横(去掉点号,杜绝 ".." 路径穿越)
+  const nodeId = String(body.node_id ?? 'test-node').replace(/[^\w-]+/g, '_').slice(0, 64) || 'test-node'
 
   // ① 格式解析(坏 historyMap 在此报配置错)
   const format = historyFormatOf(cfg)

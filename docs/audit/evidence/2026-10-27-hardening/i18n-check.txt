@@ -1,0 +1,9 @@
+npm warn Unknown project config "auto-install-peers". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown project config "strict-peer-dependencies". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> agentworkshop@0.8.3 i18n:check
+> node scripts/_i18n-verify-keys.mjs
+
+zh keys: 3150 / en keys: 3150
+used keys: 2755 / unresolved: 0
+PARITY OK

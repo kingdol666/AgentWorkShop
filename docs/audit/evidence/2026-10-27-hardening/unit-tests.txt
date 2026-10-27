@@ -1,0 +1,12 @@
+✔ A16:同键不同值 → 首值保留且 correctionDropped+1(不静默) (0.9029ms)
+✔ A1:逐节点分页稳定 ASC、游标续读、无漏无重 (1.2432ms)
+✔ A16 ④:旧数据 ingestedAt 缺失 → 分页点不伪造到达时间 (0.3032ms)
+✔ A16 ③:迟到但新鲜的样本不被事件时间误删 (34.3385ms)
+ℹ tests 658
+ℹ suites 17
+ℹ pass 658
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 48748.8041

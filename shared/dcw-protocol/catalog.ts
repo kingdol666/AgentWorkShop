@@ -195,9 +195,21 @@ export const DCW_DRIVERS: DcwDriverMeta[] = [
     label: 'HTTP/REST(POST 设定值)',
     status: 'real',
     configFields: [
-      { key: 'url', label: '写接口地址(URL)', type: 'string', required: true, placeholder: 'http://192.168.1.30/api/setpoint', hint: '接收设定值的 HTTP 接口(POST JSON)' },
+      { key: 'url', label: '写接口地址(URL)', type: 'string', required: true, placeholder: 'http://192.168.1.30/api/setpoint', hint: '接收设定值的 HTTP 接口(POST JSON);仅 http/https,内网地址需同时开启 allowPrivateHost' },
       { key: 'bodyKey', label: 'JSON 键(可选)', type: 'string', placeholder: 'setpoint', hint: '留空 = {"value": 设定值};填写 = {"键": 设定值}' },
-      { key: 'headersJSON', label: '请求头(可选)', type: 'string', placeholder: '{"Authorization":"Bearer xxx"}', hint: 'JSON 对象形式的 HTTP 头' },
+      { key: 'headersJSON', label: '请求头(可选)', type: 'string', placeholder: '{"X-API-Token":"{{SECRET:PLC_KEY}}"}', hint: 'JSON 对象形式的 HTTP 头;值支持 {{SECRET:REF}}(未解析整头省略)' },
+      { key: 'timeoutMs', label: '超时(ms)', type: 'number', default: 6000, hint: '单次写入超时,钳 1000–60000ms,缺省 6000' },
+      { key: 'authType', label: '认证方式', type: 'select', default: 'none', options: [
+        { value: 'none', label: '无认证(缺省)' },
+        { value: 'bearer', label: 'Bearer(Authorization 头)' },
+        { value: 'header', label: '自定义头(authHeaderName)' },
+      ], hint: '与 secretRef 配合;缺省 none 保持旧配置行为' },
+      { key: 'authHeaderName', label: '自定义认证头名(可选)', type: 'string', placeholder: 'X-Api-Token', hint: 'authType=header 时的头名' },
+      { key: 'secretRef', label: '凭据引用(secretRef)', type: 'string', placeholder: 'plc-line1', hint: '凭据引用名;token 从 env AW_SECRET_<REF大写> 或管理端运行时凭据仓读取,不落明文' },
+      { key: 'allowPrivateHost', label: '内网地址白名单', type: 'select', default: 'false', options: [
+        { value: 'false', label: '拒绝(默认,SSRF 防护)' },
+        { value: 'true', label: '允许(内网 PLC/网关显式开启)' },
+      ], hint: '内网/环回地址显式白名单开关(生产写接口通常在内网)' },
     ],
   },
   {
@@ -211,7 +223,7 @@ export const DCW_DRIVERS: DcwDriverMeta[] = [
         { value: 'header', label: '自定义头(authHeaderName)' },
         { value: 'none', label: '无认证' },
       ], hint: '凭据注入方式' },
-      { key: 'secretRef', label: '凭据引用(secretRef)', type: 'string', placeholder: 'line1-mes', hint: '凭据引用名;token 从 env AW_MES_<REF大写>_TOKEN 或运行时设置 mes.secret.<ref> 读取,不落明文' },
+      { key: 'secretRef', label: '凭据引用(secretRef)', type: 'string', placeholder: 'line1-mes', hint: '凭据引用名;token 从 env AW_MES_<REF大写>_TOKEN、管理端运行时凭据仓(/api/workshop/mes/secrets)或运行时设置 mes.secret.<ref> 读取,不落明文' },
       { key: 'authHeaderName', label: '自定义认证头名(可选)', type: 'string', placeholder: 'X-Api-Token', hint: 'authType=header 时的自定义头名' },
       { key: 'requestTimeoutMs', label: '请求超时(ms)', type: 'number', default: 10000, hint: '单次 MES 请求超时,缺省 10s' },
       { key: 'allowPrivateHost', label: '内网地址白名单', type: 'select', default: 'false', options: [

@@ -80,6 +80,11 @@ export const appConfigSchema = z.object({
     // 保留策略(legacy DAQ_TS_RETENTION_H / DAQ_FRAME_RETENTION_H)
     tsRetentionH: z.number().int().min(1).max(8760).default(168),
     frameRetentionH: z.number().int().min(1).max(8760).default(720),
+    // 导出护栏(设置化;硬上限在 server/services/workshop/daq/export-limits.ts 再钳一次)
+    export: z.object({
+      pagesPerNode: z.number().int().min(1).max(2000).default(400),
+      windowMaxH: z.number().int().min(1).max(8760).default(168),
+    }).default({}),
     // 告警升级(legacy ALARM_WEBHOOK_URL / ALARM_ESCALATE_MINUTES)
     alarmWebhookUrl: z.string().default(''),
     alarmEscalateMinutes: z.number().int().min(1).max(1440).default(15),

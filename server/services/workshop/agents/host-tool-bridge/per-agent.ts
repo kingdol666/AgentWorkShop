@@ -15,6 +15,7 @@ import { getDaqController } from '../../daq/daq-controller'
 import { getDcwController } from '../../dcw/dcw-controller'
 import { listBindingsForAgent } from '../../optimization/binding.service'
 import { foldList as foldListImpl, sortedById } from './description-budget'
+import { promptLocaleOf, tr, type PromptLocale } from '../prompt-i18n'
 
 /** 需要追加“可见资源”描述的工具族 */
 const DAQ_TOOLS = new Set(['daq_query', 'daq_frames', 'daq_export'])
@@ -93,8 +94,9 @@ export function agentToolResources(agentId: string): AgentToolResourceView {
 const foldList = (prefix: string, items: string[]): string => foldListImpl(prefix, items)
 
 /** 在角色过滤后的工具面上追加 Agent 绑定资源描述 + 优化器绑定裁剪 */
-export function hostToolsForAgent(agentId: string, role: 'lead' | 'worker', channelId?: string) {
-  const tools = hostToolsForRole(role, channelId)
+export function hostToolsForAgent(agentId: string, role: 'lead' | 'worker', channelId?: string, localeInput?: PromptLocale) {
+  const locale = localeInput ?? promptLocaleOf(agentId, channelId)
+  const tools = hostToolsForRole(role, channelId, locale)
   // G4.3 #10:无有效绑定时移除 solve/status/cancel/plan_get(保留 capabilities 作解释入口);
   // 多绑定时在描述中列出 bindingId(solve 需显式选择)。过滤不改变返回类型。
   const bindings = listOptimizerBindings(agentId)
@@ -102,7 +104,7 @@ export function hostToolsForAgent(agentId: string, role: 'lead' | 'worker', chan
     ? tools
     : tools.filter(t => !OPTIMIZER_REQUIRES_BINDING.has(t.name))
   const optimizerLine = bindings.length
-    ? `\n\n本 Agent 的优化器绑定:${bindings.map(b => `${b.id}(profile ${b.profileVersion},${b.mode};能力:${b.capabilities.join('/')})`).join('; ')}${bindings.length > 1 ? '\n多绑定:调用 optimizer_solve 必须显式传 binding_id。' : ''}`
+    ? `${tr(locale, '\n\n本 Agent 的优化器绑定:', '\n\nOptimizer bindings of this agent:')}${bindings.map(b => `${b.id}(profile ${b.profileVersion},${b.mode};${tr(locale, '能力:', 'capabilities:')}${b.capabilities.join('/')})`).join('; ')}${bindings.length > 1 ? tr(locale, '\n多绑定:调用 optimizer_solve 必须显式传 binding_id。', '\nMultiple bindings: optimizer_solve requires an explicit binding_id.') : ''}`
     : ''
   const res = agentToolResources(agentId)
   // WP6:排序保证同一绑定面确定性输出(折叠/不折叠都稳定)
@@ -112,18 +114,18 @@ export function hostToolsForAgent(agentId: string, role: 'lead' | 'worker', chan
   const lineOnlyDaq = sortedById(res.daqLineNodes.filter(n => !sortedDaq.some(x => x.id === n.id)))
   if (sortedDaq.length === 0 && lineOnlyDaq.length === 0 && sortedRecipes.length === 0 && !bindings.length) return filtered
   const daqParts = [
-    sortedDaq.length > 0 ? foldList(`本 Agent 直接绑定的数采节点(仅这些可查):`, sortedDaq.map(x => `${x.name}(${x.id}${x.unit ? `,${x.unit}` : ''})`)) : '',
-    lineOnlyDaq.length > 0 ? foldList(`频道绑线只读数采节点(可查):`, lineOnlyDaq.map(x => `${x.name}(${x.id}${x.unit ? `,${x.unit}` : ''})`)) : '',
+    sortedDaq.length > 0 ? foldList(tr(locale, `本 Agent 直接绑定的数采节点(仅这些可查):`, `DAQ nodes bound directly to this agent (queryable):`), sortedDaq.map(x => `${x.name}(${x.id}${x.unit ? `,${x.unit}` : ''})`)) : '',
+    lineOnlyDaq.length > 0 ? foldList(tr(locale, `频道绑线只读数采节点(可查):`, `Read-only DAQ nodes from the channel line binding:`), lineOnlyDaq.map(x => `${x.name}(${x.id}${x.unit ? `,${x.unit}` : ''})`)) : '',
   ].filter(Boolean)
   const daqLine = daqParts.length > 0 ? `\n\n${daqParts.join('\n')}` : ''
   const recipeLine = sortedRecipes.length > 0
     ? foldList(
-        `\n\n本 Agent 已绑定的配方(仅这些可写/下发):`,
-        sortedRecipes.map(r => `${r.name}(${r.id},v${r.version};参数:${r.params.map(p => `${p.name}(${p.nodeId})`).join('、') || '无'})`),
+        tr(locale, `\n\n本 Agent 已绑定的配方(仅这些可写/下发):`, `\n\nRecipes bound to this agent (writable/dispatchable):`),
+        sortedRecipes.map(r => `${r.name}(${r.id},v${r.version};${tr(locale, '参数:', 'params:')}${r.params.map(p => `${p.name}(${p.nodeId})`).join(tr(locale, '、', ', ')) || tr(locale, '无', 'none')})`),
       )
     : ''
   const mesLine = sortedMes.length > 0
-    ? foldList(`\n\n本 Agent 可经配方参数面取数的 MES 点位:`, sortedMes.map(x => `${x.name}(${x.id}${x.unit ? `,${x.unit}` : ''})`))
+    ? foldList(tr(locale, `\n\n本 Agent 可经配方参数面取数的 MES 点位:`, `\n\nMES points this agent can read through its recipe parameters:`), sortedMes.map(x => `${x.name}(${x.id}${x.unit ? `,${x.unit}` : ''})`))
     : ''
   return filtered.map((t) => {
     let suffix = ''

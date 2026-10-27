@@ -11,6 +11,7 @@ import { emitDaqFrame, emitDaqSample } from '@/server/services/workshop/plugins/
 import { findDaqTemplate } from '../daq-templates'
 import { getDaqHostPorts } from '../host-ports'
 import { getDaqQueue } from '../bus'
+import { tsdbRowOf } from './tsdb-row'
 
 export abstract class DaqControllerIngest extends DaqControllerState {
   /** 生产面:样本帧入队 */
@@ -62,16 +63,14 @@ export abstract class DaqControllerIngest extends DaqControllerState {
     const tsMs = Date.parse(env.at)
     const lineRun = getDaqHostPorts()?.lineRun.activeRun(node.lineId) ?? null
     if (lineRun) getDaqHostPorts()?.lineRun.bumpTaggedSamples(node.lineId)
-    this.tsdbBuffer.push({
+    this.tsdbBuffer.push(tsdbRowOf({
       nodeId: node.id,
       tsMs,
       value: env.value,
       state: node.state,
-      lineId: lineRun?.lineId ?? null,
-      productId: lineRun?.productId ?? null,
-      recipeId: lineRun?.recipeId ?? null,
-      runId: lineRun?.runId ?? null,
-    })
+      nodeLineId: node.lineId,
+      run: lineRun,
+    }))
     if (this.tsdbBuffer.length > TSDB_BUFFER_CAP) {
       this.tsdbBuffer.splice(0, this.tsdbBuffer.length - TSDB_BUFFER_CAP)
       this.tsdbDropped += 1
@@ -111,7 +110,7 @@ export abstract class DaqControllerIngest extends DaqControllerState {
       kind: f.kind,
       templateKey: node.templateKey,
       deviceBindingId: node.deviceBindingId,
-      lineId: lineRun?.lineId ?? null,
+      lineId: node.lineId || null,
       productId: lineRun?.productId ?? null,
       recipeId: lineRun?.recipeId ?? null,
       runId: lineRun?.runId ?? null,

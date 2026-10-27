@@ -1,0 +1,8 @@
+[build] prompts copied → D:\codes\ABO\AgentWorkShop\.output\.AgentWorkShop\prompts
+[build] optimizer python copied → D:\codes\ABO\AgentWorkShop\.output\.AgentWorkShop\optimizer-python
+[build] schema.json copied → D:\codes\ABO\AgentWorkShop\.output\.AgentWorkShop\schema.json
+[build] aml python assets copied → D:\codes\ABO\AgentWorkShop\.output\.AgentWorkShop\aml-python
+[90m[[90mnitro[90m][39m [32m✔[39m You can preview this build using [36mnode .output/server/index.mjs[39m
+│
+└  ✨ Build complete!
+› 外置资产随产物分发:prompts, schema.json, aml-python

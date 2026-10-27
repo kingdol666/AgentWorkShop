@@ -162,13 +162,14 @@ export interface HostToolScope {
  * 按角色装配 host tools,同时记录硬规则排除原因。
  * 这是全引擎唯一的“合格工具集合”来源;Channel 逐工具选择只在结果上做减法。
  */
-export function scopeHostToolsForRole(role: 'lead' | 'worker', channelId?: string): HostToolScope {
+export function scopeHostToolsForRole(role: 'lead' | 'worker', channelId?: string, locale: 'zh' | 'en' = 'zh'): HostToolScope {
   const excluded = new Map<string, ToolExclusion>()
+  const allTools = locale === 'zh' ? HOST_TOOLS : loadHostToolDefs(locale)
   const base = role === 'lead'
-    ? HOST_TOOLS
-    : HOST_TOOLS.filter(t => !LEAD_ONLY_TOOL_NAMES.has(t.name))
+    ? allTools
+    : allTools.filter(t => !LEAD_ONLY_TOOL_NAMES.has(t.name))
   if (role === 'worker') {
-    for (const tool of HOST_TOOLS) {
+    for (const tool of allTools) {
       if (LEAD_ONLY_TOOL_NAMES.has(tool.name)) {
         excluded.set(tool.name, { reason: 'ROLE_DENIED', message: '仅 lead 角色可用' })
       }
@@ -283,7 +284,7 @@ export function scopeHostToolsForRole(role: 'lead' | 'worker', channelId?: strin
  * 最后应用 Channel 逐工具选择(无策略 = 全部合格工具,向后兼容)。
  * 全 harness 共用:omp 经 set_host_tools 下发;其余引擎经 MCP 桥 tools/list 拉取。
  */
-export function hostToolsForRole(role: 'lead' | 'worker', channelId?: string): RpcHostToolDefinition[] {
-  const scoped = scopeHostToolsForRole(role, channelId)
+export function hostToolsForRole(role: 'lead' | 'worker', channelId?: string, locale: 'zh' | 'en' = 'zh'): RpcHostToolDefinition[] {
+  const scoped = scopeHostToolsForRole(role, channelId, locale)
   return applyChannelToolPolicy(scoped.tools, channelId)
 }

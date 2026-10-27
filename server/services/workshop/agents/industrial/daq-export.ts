@@ -23,10 +23,8 @@ import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
 import { getDcwController } from '../../dcw/dcw-controller'
 import { channelBoundLineId } from './ops-tools'
 import { settingOf } from '../../settings'
+import { PAGE_LIMIT, exportPagesPerNode, exportWindowMaxH, exportWindowMaxMs } from '../../daq/export-limits'
 
-const PAGE_LIMIT = 5000 // 与 tsdb 适配器单查硬上限一致(满页即续拉)
-const MAX_PAGES_PER_NODE = 400 // 单节点上限 200 万点(超限截断并在 manifest 标注)
-const MAX_WINDOW_MS = 7 * 24 * 60 * 60 * 1000 // 与 MES 取数同款 7 天窗护栏
 const MAX_TOTAL_ROWS = 4_000_000 // 单次导出总行数护栏(磁盘与上传体量)
 const MAX_FRAMES_PER_NODE = 200 // 帧节点单次导出帧数上限(图像原文件体量大)
 const RETAIN_EXPORTS = 50 // 数据目录保留策略:只留最近 50 个导出(全量时序体量大,防无限增长)
@@ -237,7 +235,7 @@ export async function exportDaqDataset(opts: {
   caps?: { pagesPerNode?: number, totalRows?: number, framesPerNode?: number }
 }): Promise<DaqExportResult> {
   const { targets, nodeOf, readPoints, fromMs, toMs, title, note, lines, rootDir } = opts
-  const maxPages = opts.caps?.pagesPerNode ?? MAX_PAGES_PER_NODE
+  const maxPages = opts.caps?.pagesPerNode ?? exportPagesPerNode()
   const maxTotal = opts.caps?.totalRows ?? MAX_TOTAL_ROWS
   const maxFrames = opts.caps?.framesPerNode ?? MAX_FRAMES_PER_NODE
   const now = opts.now ?? Date.now
@@ -274,6 +272,7 @@ export async function exportDaqDataset(opts: {
     }
     // 分页拉全:单查上限 PAGE_LIMIT,满页则以本页最大 ts+1 续拉(适配器无游标)
     const byAt = new Map<number, { at: number, value?: number, state?: string }>()
+    const nodeBaseRows = totalRows
     let cursor = fromMs
     let pages = 0
     let hitCap = false
@@ -290,7 +289,9 @@ export async function exportDaqDataset(opts: {
         if (typeof p.value === 'number' || p.state) byAt.set(p.at, { at: p.at, value: p.value, state: p.state })
         if (p.at > lastAt) lastAt = p.at
       }
-      totalRows += byAt.size // 近似累计(护栏用;精确总量在下方重算)
+      // 以「本节点累计 + 既有总量」赋值,而非逐页累加(逐页累加会把已计入的前页重复计数,
+      // 导致 4M 总行护栏实际在 ~20 万行就触发 —— 评审 P1-8)
+      totalRows = nodeBaseRows + byAt.size
       if (page.length < PAGE_LIMIT || lastAt >= toMs) break
       if (lastAt < cursor) break // 适配器未按 fromMs 过滤的防御:避免死循环
       cursor = lastAt + 1
@@ -466,8 +467,8 @@ export async function toolDaqExport(agentId: string, args: {
     ? Number(args.from_ms)
     : toMs - (provided(args.last_minutes) ? Number(args.last_minutes) : 60) * 60_000
   if (fromMs >= toMs) return { text: 'from_ms 必须小于 to_ms。', isError: true }
-  if (toMs - fromMs > MAX_WINDOW_MS) {
-    return { text: `时间窗超限(最大 7 天):请缩小窗口(当前 ${(Math.round((toMs - fromMs) / 3600_000) / 10).toFixed(1)} 小时)。`, isError: true }
+  if (toMs - fromMs > exportWindowMaxMs()) {
+    return { text: `时间窗超限(最大 ${exportWindowMaxH()} 小时):请缩小窗口(当前 ${(Math.round((toMs - fromMs) / 3600_000) / 10).toFixed(1)} 小时)。`, isError: true }
   }
 
   // 节点元数据(语义 = 节点级备注 > 模板语义)与产线上下文(产线/产品/配方/批次/监控窗)
@@ -544,7 +545,7 @@ export async function toolDaqExport(agentId: string, args: {
     ? `\n- 帧节点: ${frameNodes.map(n => `${n.id}[${n.kind}] ${n.frames} 帧${n.kind === 'image' ? `(已存 ${n.saved} 个原文件 → frames/${String(n.id).replace(/[^A-Za-z0-9_-]+/g, '_')}/)` : `(→ ${n.file})`}`).join(', ')}`
     : ''
   const truncNote = result.truncated.length > 0
-    ? `\n⚠ 以下节点超出单节点 200 万点上限已截断:${result.truncated.join(', ')}(如需完整数据请拆小时间窗分批导出)`
+    ? `\n⚠ 以下节点触碰导出护栏(单节点分页/单次总行数)已截断:${result.truncated.join(', ')}(如需完整数据请拆小时间窗分批导出,或由管理员调升 daq.export.pagesPerNode)`
     : ''
   const mergeNote = result.mergedFile
     ? `\n- merged.csv(merge 模式): ${result.mergedFile} —— 多节点按秒对齐的多参数宽表,可直接作为 IDD sentinel_screen/watch 的 data_path(time_col=time)`

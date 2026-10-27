@@ -296,6 +296,10 @@ export default {
         publishMinIntervalMs: 'WS push floor (ms)',
         queryDisplayIntervalMs: 'Trend refresh interval (ms)',
         queryMinDisplayIntervalMs: 'Trend refresh floor (ms)',
+        export: {
+          pagesPerNode: 'Export max pages per node',
+          windowMaxH: 'Export max window (h)',
+        },
       },
       aml: {
         pythonBin: 'Python interpreter',

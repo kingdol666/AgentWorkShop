@@ -18,8 +18,8 @@ import { getDaqNodeRepo } from '../daq/daq-node.repo'
 import { ensureDataDir } from '@/shared/config/home.mjs'
 import { recordOps } from '../ops/ops'
 import { edaDb } from './eda-db'
+import { exportWindowMaxH, exportWindowMaxMs } from '../daq/export-limits'
 
-const WINDOW_MAX_MS = 7 * 24 * 3600_000
 const NODES_MAX = 50
 /** 进程启动时刻(跨进程判死基线) */
 const bootedAt = new Date().toISOString()
@@ -207,8 +207,8 @@ export function startDaqExport(user: ResolvedUser, args: {
   if (!Number.isFinite(fromMs) || !Number.isFinite(toMs) || fromMs >= toMs) {
     throw Object.assign(new Error('时间窗非法:from 必须小于 to。'), { status: 400, code: 'VALIDATION_ERROR' })
   }
-  if (toMs - fromMs > WINDOW_MAX_MS) {
-    throw Object.assign(new Error('时间窗超限(最大 7 天),请缩小窗口。'), { status: 400, code: 'VALIDATION_ERROR' })
+  if (toMs - fromMs > exportWindowMaxMs()) {
+    throw Object.assign(new Error(`时间窗超限(最大 ${exportWindowMaxH()} 小时),请缩小窗口。`), { status: 400, code: 'VALIDATION_ERROR' })
   }
   const id = `edajob-${randomUUID().slice(0, 8)}`
   const now = new Date().toISOString()

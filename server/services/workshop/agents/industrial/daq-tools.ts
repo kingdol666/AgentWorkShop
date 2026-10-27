@@ -226,7 +226,7 @@ export async function toolDaqQuery(agentId: string, args: {
     provLines.push(`—— 默认作用域:仅当前活动批次 ${ids.join(', ')}(逐样本打标;跨配方对比请传 scope=all)`)
   }
   if (unscoped.length > 0) {
-    provLines.push(`—— 未过滤节点(所在产线未开跑,无活动批次可限定):${unscoped.map(a => a.nodeId).join(', ')}`)
+    provLines.push(`—— 未过滤节点(所在产线未开跑,无活动批次可限定):${unscoped.map(a => a.nodeId).join(', ')};含未开线时段样本(按节点所属产线打标,product/recipe/run 为空)`)
   }
   const prov = provLines.length > 0 ? `\n(过滤条件:${provLines.join(' ')})` : ''
   const head = failedNodes > 0

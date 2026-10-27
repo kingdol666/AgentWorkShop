@@ -10,9 +10,8 @@
  *     显式 allowPrivateHost='true' 一律拒绝(生产 MES 在内网属预期,白名单须显式)。
  *   - 限速:同驱动实例令牌桶(默认 5 req/s),防把 MES 打挂。
  */
-import { lookup } from 'node:dns/promises'
-import { isIP } from 'node:net'
 import { AppError } from '../../../../utils/errors'
+import { assertSafeHttpUrl } from '../../net/ssrf'
 import { mesWriteCheckHookCode, mesWriteHookCode, runMesWriteCheckHook, runMesWriteHook } from '../../mes/mes-hook'
 import type { DcwFetchHistoryInput, DcwFetchHistoryResult, DcwFieldDef, DcwHistoryFormat, DcwHistoryRow, DcwReadInput, DcwReadResult, DcwWriteDriver, DcwWriteInput, DcwWriteResult } from './shared'
 import { num, readbackAck } from './shared'
@@ -199,34 +198,8 @@ function parseHistoryMap(cfg: Record<string, unknown>): MesHistoryMap | null {
 }
 
 // ============================================================
-// SSRF 防护:协议白名单 + DNS 解析后私网/环回段判定
+// SSRF 防护:与 DAQ/DCW http 驱动共用 net/ssrf(协议白名单 + DNS 解析后私网判定)
 // ============================================================
-
-/** 私有/环回段:IPv4 127/8 · 10/8 · 172.16/12 · 192.168/16 · 169.254/16;IPv6 ::1 · :: · fc00::/7 · fe80::/10 */
-function isPrivateIp(ip: string): boolean {
-  const v4 = ip.toLowerCase().startsWith('::ffff:') ? ip.slice(7) : ip // IPv4-mapped IPv6 按 IPv4 判
-  if (isIP(v4) === 4) {
-    const seg = v4.split('.').map(Number)
-    const a = seg[0]!
-    const b = seg[1]!
-    return a === 127 || a === 10 || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 169 && b === 254)
-  }
-  const h16 = Number.parseInt(v4.split(':')[0] ?? '', 16)
-  if (!Number.isFinite(h16)) return true // 解析不了按保守拒绝
-  return h16 === 0x0001 || h16 === 0 || (h16 & 0xfe00) === 0xfc00 || (h16 & 0xffc0) === 0xfe80
-}
-
-/** 主机名 → IP 列表(字面 IP 直判不经 DNS;域名全量解析,任一内网地址即整批拒绝) */
-async function resolveTargetIps(hostname: string): Promise<string[]> {
-  if (isIP(hostname)) return [hostname]
-  try {
-    const recs = await lookup(hostname, { all: true, verbatim: true })
-    return recs.map(r => r.address)
-  }
-  catch (err) {
-    throw new AppError(400, 'BAD_REQUEST', `MES 主机 DNS 解析失败:${hostname}(${err instanceof Error ? err.message : String(err)})`)
-  }
-}
 
 /** 校验 baseUrl 并返回归一 origin;未显式开白名单时解析目标并拒绝内网/环回地址 */
 async function assertPublicOrigin(cfg: Record<string, unknown>): Promise<string> {
@@ -234,23 +207,7 @@ async function assertPublicOrigin(cfg: Record<string, unknown>): Promise<string>
   if (raw === null || raw === undefined || String(raw).trim() === '') {
     throw new AppError(400, 'BAD_REQUEST', '缺少 MES 服务地址 baseUrl')
   }
-  let u: URL
-  try {
-    u = new URL(String(raw))
-  }
-  catch {
-    throw new AppError(400, 'BAD_REQUEST', `baseUrl 不是合法 URL:${String(raw)}`)
-  }
-  if (u.protocol !== 'http:' && u.protocol !== 'https:') {
-    throw new AppError(400, 'BAD_REQUEST', `baseUrl 仅支持 http/https 协议(当前 ${u.protocol});请改填 http:// 或 https:// 的 MES 地址`)
-  }
-  if (String(cfg.allowPrivateHost ?? 'false') !== 'true') {
-    const ips = await resolveTargetIps(u.hostname)
-    const privateHits = [...new Set(ips.filter(a => isPrivateIp(a)))]
-    if (privateHits.length > 0) {
-      throw new AppError(400, 'BAD_REQUEST', `目标 ${u.hostname} 解析到内网/环回地址(${privateHits.join(', ')}),已按 SSRF 防护拒绝;生产 MES 通常在内网——确认安全后把驱动配置 allowPrivateHost 显式设为 'true' 开启白名单`)
-    }
-  }
+  const u = await assertSafeHttpUrl(String(raw), { allowPrivateHost: cfg.allowPrivateHost, label: 'MES 服务' })
   return u.origin
 }
 
@@ -263,20 +220,26 @@ function secretEnvKey(ref: string): string {
   return `AW_MES_${ref.toUpperCase().replace(/[^A-Z0-9]/g, '_')}_TOKEN`
 }
 
-async function resolveMesSecret(ref: unknown): Promise<string | null> {
+/** 解析顺序:env(运维应急覆盖)> 运行时凭据仓 > runtime settings(遗留兼容) */
+export async function resolveMesSecret(ref: unknown): Promise<string | null> {
   const name = String(ref ?? '').trim()
   if (name === '') return null
   const fromEnv = process.env[secretEnvKey(name)]
   if (fromEnv) return fromEnv
-  // TODO(运行时设置):mes.secret.<ref> 为自由键,尚未注册进 shared/config/schema.json
-  // 描述符,loadEffective 只回传已注册键 → settingOf 通常 undefined;此处仍按链路试探,
-  // 待自由键/专用凭据仓落地即成完整实现。设置服务不可用(单测/极早期)静默回落 env。
+  // 运行时凭据仓:admin 经 /api/workshop/mes/secrets 写入,换 token 无需重启进程
+  try {
+    const { getMesSecretsRepo } = await import('../../mes/mes-secrets.repo')
+    const v = getMesSecretsRepo().getSecret(name)
+    if (v) return v
+  }
+  catch { /* 数据目录不可用(极早期/单测)→ 继续回落 */ }
+  // 遗留:runtime settings 的 mes.secret.<ref>(自由键,通常无描述符;保留链路不破坏存量)
   try {
     const { settingOf } = await import('../../settings')
     const v = settingOf(`mes.secret.${name}`)
     if (typeof v === 'string' && v !== '') return v
   }
-  catch { /* 设置服务不可用 → env-only */ }
+  catch { /* 设置服务不可用 → 无凭据 */ }
   return null
 }
 

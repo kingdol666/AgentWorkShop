@@ -296,6 +296,10 @@ export default {
         publishMinIntervalMs: 'WS 下发下限(ms)',
         queryDisplayIntervalMs: '趋势图刷新间隔(ms)',
         queryMinDisplayIntervalMs: '趋势图刷新下限(ms)',
+        export: {
+          pagesPerNode: '导出单节点分页上限',
+          windowMaxH: '导出时间窗上限(h)',
+        },
       },
       aml: {
         pythonBin: 'Python 解释器',

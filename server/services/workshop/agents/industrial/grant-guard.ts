@@ -32,6 +32,8 @@ const WRITE_TOOLS = new Set([
   // 产线管理面(启停直接改物理状态与批次窗口)
   'line_start',
   'line_stop',
+  // 团队节点授权:建立的是含写面的授权表(须持 operate;撤权是收敛动作,只按 readonly 复核)
+  'team_grant_nodes',
   // 模型采纳(OW-adopt):改变求解器运行的模型工件(控制面写向,HITL 卡裁决)
   'optimizer_profile_propose',
   // 本体(ONT):知识起草与发布提议属产线域写向动作(不写设备,但会改变控制侧知识来源)
@@ -45,11 +47,48 @@ const WRITE_TOOLS = new Set([
 
 /** 无需复核的纯协作/管理面工具(不触达产线数据) */
 const GRANT_EXEMPT = new Set([
-  'team_grant_nodes',
-  'team_revoke_nodes',
   'aml_activity',
   'exp_collect',
 ])
+
+/**
+ * 团队节点委派/随任务授权:不在 INDUSTRIAL_TOOL_NAMES(走 workspace 分发面),
+ * 但建立/回收的是产线节点授权 —— 必须并入 grant 复核。
+ * dispatch_task 仅在携带 grant_node_ids 时由 dispatch 调用(普通派发不改变授权面)。
+ */
+export const TEAM_DELEGATION_TOOL_NAMES = new Set(['team_grant_nodes', 'team_revoke_nodes', 'dispatch_task'])
+
+/** 工具所需产线权限:写族要求 operate,其余只读复核(单测可独立断言) */
+export function grantNeedOf(toolName: string): 'operate' | 'readonly' {
+  return WRITE_TOOLS.has(toolName) ? 'operate' : 'readonly'
+}
+
+/** 权限结论:operate 覆盖一切;readonly 仅满足只读动作 */
+export function grantAllowed(mode: LineMode, need: 'operate' | 'readonly'): boolean {
+  return mode === 'operate' || (need === 'readonly' && mode === 'readonly')
+}
+
+/** 遗留无主 channel(owner NULL)豁免:存量数据兼容;新建 channel 均有属主 */
+export function grantOwnerExempt(ownerUserId: string | null | undefined): boolean {
+  return !ownerUserId
+}
+
+/** 团队委派类参数解析:node_ids/nodeIds(数组或逗号串)与随任务授权 grant_node_ids。
+ *  **并集**而非优先级链 —— 同一请求里同时带 node_ids 与 grant_node_ids 时,两组目标线都要复核
+ *  (否则可用 node_ids 遮蔽 grant_node_ids,让授权落到未授权产线)。 */
+export function delegatedNodeIdsOf(args: Record<string, unknown>): string[] {
+  const one = (v: unknown) => (typeof v === 'string' || typeof v === 'number') && String(v).trim() ? String(v).trim() : ''
+  const out: string[] = []
+  for (const raw of [args.node_ids, args.nodeIds, args.grant_node_ids, args.grantNodeIds]) {
+    if (Array.isArray(raw)) out.push(...raw.map(one).filter(Boolean))
+    else if (typeof raw === 'string') out.push(...raw.split(',').map(one).filter(Boolean))
+    else {
+      const v = one(raw)
+      if (v) out.push(v)
+    }
+  }
+  return [...new Set(out)]
+}
 
 function draftLineId(draftJson: string): string {
   try {
@@ -91,7 +130,9 @@ async function resolveTargetLines(agentId: string, toolName: string, args: Recor
   const lineArg = one(args.line_id ?? args.lineId)
   if (lineArg) lines.add(lineArg)
   const ids = Array.isArray(args.ids) ? args.ids.map(one).filter(Boolean) : []
-  for (const id of ids) {
+  // 团队委派工具用 node_ids/nodeIds/grant_node_ids;逐节点映射产线,避免撤权者绕过
+  const delegatedIds = delegatedNodeIdsOf(args)
+  for (const id of [...ids, ...delegatedIds]) {
     const l = await nodeIdLine(id)
     if (l) lines.add(l)
   }
@@ -210,8 +251,9 @@ function deny(identity: GuardIdentity, toolName: string, args: Record<string, un
  * 工业工具分发前的 grant 复核。通过 → 静默返回;
  * 不通过 → 返回面向 agent 的工具错误文本(fail-closed,不做部分放行)。
  */
-export async function guardIndustrialToolGrant(identity: GuardIdentity, toolName: string, args: Record<string, unknown>): Promise<{ text: string, isError: true } | null> {
-  if (!INDUSTRIAL_TOOL_NAMES.has(toolName) || GRANT_EXEMPT.has(toolName)) return null
+export async function guardIndustrialToolGrant(identity: GuardIdentity, toolName: string, args: Record<string, unknown>, needOverride?: 'operate' | 'readonly'): Promise<{ text: string, isError: true } | null> {
+  if (GRANT_EXEMPT.has(toolName)) return null
+  if (!INDUSTRIAL_TOOL_NAMES.has(toolName) && !TEAM_DELEGATION_TOOL_NAMES.has(toolName)) return null
   if (!identity.channelId) return null
   try {
     const { getWorkshopManager } = await import('@/server/plugins/workshop')
@@ -221,14 +263,15 @@ export async function guardIndustrialToolGrant(identity: GuardIdentity, toolName
       return deny(identity, toolName, args, `工具调用被拒:所属频道不存在或已删除(channel=${identity.channelId.slice(0, 8)})。`, 'channel_missing')
     }
     // 遗留无主 channel 豁免(存量兼容;新 channel 均有属主)
-    if (!channel.ownerUserId) return null
-    const owner = userRepository.findById(channel.ownerUserId)
+    const ownerUserId = channel.ownerUserId ?? ''
+    if (grantOwnerExempt(ownerUserId)) return null
+    const owner = userRepository.findById(ownerUserId)
     if (!owner) {
       return deny(identity, toolName, args, '工具调用被拒:频道属主账号不存在(fail-closed)。请联系管理员。', 'owner_missing')
     }
     if (owner.role === 'admin') return null
 
-    const need: LineMode = WRITE_TOOLS.has(toolName) ? 'operate' : 'readonly'
+    const need = needOverride ?? grantNeedOf(toolName)
     const resolved = await resolveTargetLines(identity.agentId, toolName, args ?? {})
     // P1-6:频道绑线并入复核集 —— line_start/line_stop 等产线管理工具的目标产线
     // 来自频道绑线(ch.lineId)而非调用参数,agent 无节点绑定时 resolveTargetLines
@@ -239,7 +282,7 @@ export async function guardIndustrialToolGrant(identity: GuardIdentity, toolName
     if (lineSet.size === 0) return null
     for (const lineId of lineSet) {
       const mode = lineMode({ id: owner.id, role: owner.role }, lineId)
-      const ok = mode === 'operate' || (need === 'readonly' && mode === 'readonly')
+      const ok = grantAllowed(mode, need)
       if (!ok) {
         const what = need === 'operate' ? '写控/下发' : '读取'
         return deny(
