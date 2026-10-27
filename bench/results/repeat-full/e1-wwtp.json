@@ -1,0 +1,92 @@
+[
+  {
+    "scenario": "wwtp",
+    "signal": "blower-hz-sp",
+    "node": "dw-f66f57fb",
+    "protocol": "modbus-tcp",
+    "written": 37.2,
+    "batchId": "rr-66bd4",
+    "accepted": true,
+    "platformReadback": 37.20000076293945,
+    "simSignal": 37.2,
+    "landed": true,
+    "latencyMs": 6061
+  },
+  {
+    "scenario": "wwtp",
+    "signal": "naoh-dose-sp",
+    "node": "dw-7f05fa7a",
+    "protocol": "opcua",
+    "written": 39,
+    "batchId": "rr-be725",
+    "accepted": true,
+    "platformReadback": 39,
+    "simSignal": 39,
+    "landed": true,
+    "latencyMs": 6045
+  },
+  {
+    "scenario": "wwtp",
+    "signal": "pac-dose-sp",
+    "node": "dw-17170d83",
+    "protocol": "opcua",
+    "written": 81,
+    "batchId": "rr-3f337",
+    "accepted": true,
+    "platformReadback": 81,
+    "simSignal": 81,
+    "landed": true,
+    "latencyMs": 6046
+  },
+  {
+    "scenario": "wwtp",
+    "signal": "recycle-int-sp",
+    "node": "dw-d8913128",
+    "protocol": "modbus-rtu",
+    "written": 106,
+    "batchId": "rr-939c1",
+    "accepted": true,
+    "platformReadback": 106,
+    "simSignal": 106,
+    "landed": true,
+    "latencyMs": 6058
+  },
+  {
+    "scenario": "wwtp",
+    "signal": "recycle-sludge-sp",
+    "node": "dw-de9e8eb0",
+    "protocol": "modbus-rtu",
+    "written": 79,
+    "batchId": "rr-3deb7",
+    "accepted": true,
+    "platformReadback": 79,
+    "simSignal": 79,
+    "landed": true,
+    "latencyMs": 6043
+  },
+  {
+    "scenario": "wwtp",
+    "signal": "waste-sludge-sp",
+    "node": "dw-17aecd30",
+    "protocol": "modbus-rtu",
+    "written": 185,
+    "batchId": "rr-c8715",
+    "accepted": true,
+    "platformReadback": 185,
+    "simSignal": 185,
+    "landed": true,
+    "latencyMs": 6099
+  },
+  {
+    "scenario": "wwtp",
+    "signal": "influent-flow-sp",
+    "node": "dw-8367e0be",
+    "protocol": "mqtt",
+    "written": 1120,
+    "accepted": false,
+    "platformReadback": null,
+    "simSignal": 1120,
+    "landed": true,
+    "latencyMs": 6040
+  }
+]
