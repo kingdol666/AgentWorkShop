@@ -162,8 +162,15 @@ export abstract class DaqControllerState extends DaqControllerContracts {
       vector: tpl?.vector,
     })
     if (res == null || typeof res !== 'object' || !('frame' in res) || res.frame == null) return res
-    // 下沉管线(生产侧;单步失败保留原帧,永不抛出 —— 见 frames.ts runSinkPipeline)
-    const raw = res.frame
+    return this.processFrameSample(node, res.frame, now)
+  }
+
+  /**
+   * 帧后处理(轮询采样与推送订阅共用):模板 sink 下沉管线 → 图像落对象存储。
+   * 返回队列信封帧(vector 点列 / image 引用 + 完整性指纹);非法帧返回 null。
+   */
+  protected async processFrameSample(node: DaqNode, raw: DaqFrameSample['frame'], now: number): Promise<{ frame: NonNullable<DaqSampleEnvelope['frame']> } | null> {
+    const tpl = findDaqTemplate(node.templateKey)
     // 契约守卫:帧联合只有 vector/image;驱动返回未知 kind(如误包 scalar)直接丢帧,
     // 绝不蒙成 image 走 blob 管线(会在 sink 派生处炸出 undefined.length)
     if (raw.kind !== 'vector' && raw.kind !== 'image') return null
@@ -176,7 +183,8 @@ export abstract class DaqControllerState extends DaqControllerContracts {
     }
     // 图像:主图 + 缩略图落对象存储(失败抛出 → tick 按驱动故障节流,采集不中断)
     const os = getObjectStore()
-    const objectKey = daqObjectKey(node.id, now, '.png')
+    const ext = wf.mime === 'image/jpeg' ? '.jpg' : wf.mime === 'image/webp' ? '.webp' : wf.mime === 'image/gif' ? '.gif' : wf.mime === 'image/bmp' ? '.bmp' : wf.mime === 'image/tiff' ? '.tiff' : '.png'
+    const objectKey = daqObjectKey(node.id, now, ext)
     await os.put(objectKey, wf.blob!, wf.mime ?? 'image/png')
     // P0-2 像素完整性:sha256+size 随帧入 daq_frames.meta(blob 就手计算,1Hz 下开销可忽略;
     // 存量文件不回填 —— 保留期内自然出清)

@@ -21,7 +21,7 @@
  *   AW_E2E_KEEP=1      保留临时 home/进程(排障用)
  */
 import { spawn, spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, realpathSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -42,6 +42,32 @@ const PASSWORD = `MqttE2E!${randomBytes(8).toString('hex')}`
 
 const NO_PROXY = { NO_PROXY: '127.0.0.1,localhost', no_proxy: '127.0.0.1,localhost' }
 const sleep = ms => new Promise(r => setTimeout(r, ms))
+
+/** E2E 用户插件:注册自定义解码器(证明 ctx.daq.registerDecoder 统一接口可由用户扩展) */
+const USER_PLUGIN_SRC = `export default {
+  name: 'mqtt-e2e-sink',
+  version: '1.0.0',
+  setup(ctx) {
+    ctx.daq.registerDecoder('e2e-sum-xy', (input) => {
+      const j = JSON.parse(input.raw)
+      const x = Number(j.x), y = Number(j.y)
+      if (!Number.isFinite(x) || !Number.isFinite(y)) throw new Error('x/y 必须是数字')
+      return { kind: 'scalar', value: x + y }
+    })
+    ctx.daq.registerDecoder('e2e-vec-add', (input) => {
+      const j = JSON.parse(input.raw)
+      const a = Array.isArray(j.a) ? j.a : []
+      const b = Array.isArray(j.b) ? j.b : []
+      if (a.length === 0 || a.length !== b.length) throw new Error('a/b 必须是等长非空数组')
+      return { kind: 'vector', points: a.map((v, i) => Number(v) + Number(b[i])) }
+    })
+    ctx.daq.registerProcessor('vector', 'e2e-tag', (frame) => ({
+      ...frame,
+      metrics: { ...(frame.metrics ?? {}), e2e_tag: 1 },
+    }))
+  },
+}
+`
 
 let pass = 0
 let fail = 0
@@ -115,6 +141,10 @@ async function startupPlatform() {
   const entry = join(REPO, '.output', 'server', 'index.mjs')
   if (!existsSync(entry)) throw new Error(`平台产物不存在: ${entry} —— 先执行 npm run build,或用 AW_E2E_BASE 指向已运行实例`)
   const home = mkdtempSync(join(tmpdir(), `aw-mqtt-e2e-${TAG}-`))
+  // 用户插件(自定义解码器)必须在 spawn 前落盘 → 插件宿主启动时装载
+  const pluginDir = join(home, 'plugins', 'mqtt-e2e-sink')
+  mkdirSync(pluginDir, { recursive: true })
+  writeFileSync(join(pluginDir, 'index.mjs'), USER_PLUGIN_SRC, 'utf8')
   const child = spawn(process.execPath, [entry], {
     cwd: REPO,
     env: { ...process.env, ...NO_PROXY, AW_MODE: 'home', AW_HOME: home, PORT: String(PLATFORM_PORT), NUXT_SESSION_PASSWORD: randomBytes(24).toString('hex') },
@@ -612,6 +642,253 @@ async function main() {
     const ing = await api('POST', `/api/workshop/daq/${daqId}/ingest`, { token, body: { value: 1 } })
     await api('POST', '/api/workshop/daq/controller', { token, body: { action: 'start' } })
     ok('K2', '网关停止时外部入库如实 503(不静默丢帧)', ing.status === 503, `status=${ing.status} msg=${String(ing.json?.message ?? '').slice(0, 80)}`)
+  }
+
+  // ── L:结构化 JSON → scalar/vector/image(节点创建时配置解析 + 用户 sink)──
+  {
+    // L0 节点创建表单暴露结构化解析字段(驱动目录 = 前端动态表单数据源)
+    const meta = await api('GET', '/api/workshop/daq')
+    const mqttMeta = (meta.data?.drivers ?? []).find(d => d.kind === 'mqtt')
+    const mKeys = (mqttMeta?.configFields ?? []).map(f => f.key)
+    ok('L0', '节点创建表单暴露结构化解析字段', ['pointsPath', 'metricsPath', 'imageFormat', 'imagePath', 'decoder'].every(k => mKeys.includes(k)), mKeys.join(','))
+    // 帧管线对账基线(控制器 produced/consumed 是全局计数;只看本组增量,避免历史 retained 重放 late 计入)
+    const lStatsBefore = (await api('GET', '/api/workshop/daq')).data?.controller ?? {}
+
+    // L1 自定义 vector 模板:5 点 + 内置 sink(avg/zones)+ 插件处理器 e2e-tag
+    const vecTplR = await api('POST', '/api/workshop/daq/templates', {
+      token,
+      body: {
+        name: `结构化轮廓 ${TAG}`, ch: '结构化轮廓', unit: 'μm', min: 0, max: 100, decimals: 2,
+        signalKind: 'vector', vector: { points: 5, min: 0, max: 100, pointUnit: 'μm' },
+        sink: { processors: [{ name: 'derive-metric', args: { name: 'avg', op: 'avg' } }, { name: 'zones', args: { n: 2 } }, { name: 'e2e-tag' }] },
+        metrics: [{ key: 'avg', label: '平均厚度', unit: 'μm' }],
+      },
+    })
+    const vecTplKey = vecTplR.data?.template?.key
+    const vecTopic = `aw/e2e/${TAG}/vec`
+    const vecNodeR = await api('POST', '/api/workshop/daq', {
+      token,
+      body: {
+        name: `MQTT-VEC-${TAG}`, templateRef: vecTplKey, driver: 'mqtt',
+        driverConfig: { host: '127.0.0.1', port: BROKER_PORT, topic: vecTopic, pointsPath: 'data.points', metricsPath: 'data.metrics', staleMs: 4000 },
+        unit: 'μm', min: 0, max: 100, decimals: 2, lineId, intervalMs: 1000, publishIntervalMs: 0,
+      },
+    })
+    const vecNode = vecNodeR.data?.node?.id
+    ok('L1', '自定义 vector 模板 + 节点创建(数组路径配置)', Boolean(vecTplKey && vecNode), `${vecTplKey} / ${vecNode}`)
+    const vecPub = await connectClient(mqtt, brokerUrl)
+    const vecTimer = setInterval(() => vecPub.publish(vecTopic, JSON.stringify({ data: { points: [10, 20, 30, 40, 50], metrics: { avg: 30 } } }), { qos: 0 }), 1000)
+    const vt0 = Date.now()
+    await sleep(6000)
+    clearInterval(vecTimer)
+    const vecFramesR = await api('GET', `/api/workshop/daq/${vecNode}/frames?kind=vector&from=${vt0 - 1500}&to=${Date.now()}&limit=20`)
+    const vecFrames = vecFramesR.data?.frames ?? []
+    await vecPub.endAsync(true).catch(() => {})
+    ok('L2', '结构化 JSON 数组 → vector 帧入库(5 点)', vecFrames.length >= 2 && vecFrames.every(f => f.points?.length === 5), `${vecFrames.length} 帧 / 点数 ${vecFrames[0]?.points?.length}`)
+    // L0b 节点测试按模板形态解码(保存后的节点 test 传 signalKind)
+    {
+      const vt = await api('POST', `/api/workshop/daq/${vecNode}/test`, { token, body: {} })
+      const msg = String(vt.data?.test?.message ?? JSON.stringify(vt.data ?? {}).slice(0, 120))
+      ok('L0b', '节点测试按模板形态解码(vector 点数)', vt.status === 200 && /vector\s+\d+\s*点/.test(msg), msg.slice(0, 110))
+    }
+    ok('L3', '模板 sink 生效(avg/zones)且帧带批次元信息', vecFrames.length > 0 && Math.abs(vecFrames[0].metrics?.avg - 30) < 1e-6 && vecFrames[0].metrics?.zone1_avg === 15 && vecFrames[0].metrics?.zone2_avg === 40 && vecFrames[0].lineId === lineId && Boolean(vecFrames[0].runId), JSON.stringify({ m: vecFrames[0]?.metrics, line: vecFrames[0]?.lineId, run: vecFrames[0]?.runId }).slice(0, 180))
+    // L2b 帧管线生产=消费(全局 late 计数可能含控制器重启时 retained 种子重放的乱序丢弃,非帧丢失)
+    {
+      await sleep(1500)
+      const cs = (await api('GET', '/api/workshop/daq')).data?.controller ?? {}
+      const d = (k) => Number(cs[k] ?? 0) - Number(lStatsBefore[k] ?? 0)
+      ok('L2b', '帧管线生产=消费(本组)', d('produced') > 0 && d('consumed') === d('produced'), JSON.stringify({ dProduced: d('produced'), dConsumed: d('consumed'), dLate: d('dropped'), totalDropped: cs.dropped }))
+    }
+    if (!plat.reused) {
+      ok('L4', '用户注册的 sink 处理器生效(e2e-tag)', vecFrames.some(f => f.metrics?.e2e_tag === 1), `e2e_tag=${vecFrames[0]?.metrics?.e2e_tag}`)
+    }
+    else {
+      skipped('L4', '用户 sink 处理器需全新实例装载测试插件', 'AW_E2E_BASE 复用了已运行实例')
+    }
+
+    // L5 自定义 image 模板:JSON base64 → image 帧 + 对象存储 + 派生指标 + content 端点
+    const png4 = 'iVBORw0KGgoAAAANSUhEUgAAAAQAAAAECAAAAACMmsGiAAAAHElEQVR4nGNQ0LFwYQiIyShhaOiZsYRhw54TVwA4pAehXZEW8wAAAABJRU5ErkJggg=='
+    const imgTplR = await api('POST', '/api/workshop/daq/templates', {
+      token,
+      body: {
+        name: `结构化图像 ${TAG}`, ch: '结构化图像', unit: 'px', min: 0, max: 255, decimals: 0,
+        signalKind: 'image', sink: { processors: [{ name: 'quality-gate' }] },
+        metrics: [{ key: 'brightness', label: '亮度', warnLow: 5, alarmLow: 1 }],
+      },
+    })
+    const imgTplKey = imgTplR.data?.template?.key
+    const imgTopic = `aw/e2e/${TAG}/img`
+    const imgNodeR = await api('POST', '/api/workshop/daq', {
+      token,
+      body: {
+        name: `MQTT-IMG-${TAG}`, templateRef: imgTplKey, driver: 'mqtt',
+        driverConfig: { host: '127.0.0.1', port: BROKER_PORT, topic: imgTopic, imageFormat: 'json', imagePath: 'data.png', imageWidthPath: 'data.w', imageHeightPath: 'data.h', staleMs: 5000 },
+        unit: 'px', min: 0, max: 255, decimals: 0, lineId, intervalMs: 1000, publishIntervalMs: 0,
+      },
+    })
+    const imgNode = imgNodeR.data?.node?.id
+    ok('L5', '自定义 image 模板 + 节点创建(base64 图像字段)', Boolean(imgTplKey && imgNode), `${imgTplKey} / ${imgNode}`)
+    const imgPub = await connectClient(mqtt, brokerUrl)
+    const imgTimer = setInterval(() => imgPub.publish(imgTopic, JSON.stringify({ data: { png: png4, w: 4, h: 4 } }), { qos: 0 }), 2000)
+    const it0 = Date.now()
+    await sleep(6500)
+    clearInterval(imgTimer)
+    const imgFramesR = await api('GET', `/api/workshop/daq/${imgNode}/frames?kind=image&from=${it0 - 1500}&to=${Date.now()}&limit=10`)
+    const imgFrames = imgFramesR.data?.frames ?? []
+    const imgFrame = imgFrames[0]
+    await imgPub.endAsync(true).catch(() => {})
+    ok('L6', '结构化 JSON base64 → image 帧入库(尺寸/指纹/MIME)', imgFrames.length >= 1 && imgFrame?.meta?.width === 4 && imgFrame?.meta?.height === 4 && imgFrame?.meta?.mime === 'image/png' && String(imgFrame?.meta?.sha256 ?? '').length === 64 && Number(imgFrame?.meta?.size) > 0, JSON.stringify(imgFrame?.meta ?? {}).slice(0, 180))
+    ok('L7', '图像 sink 派生指标(quality-gate brightness)', Number.isFinite(Number(imgFrame?.metrics?.brightness)), `brightness=${imgFrame?.metrics?.brightness}`)
+    {
+      const cres = await fetch(PLATFORM_BASE + String(imgFrame?.contentUrl ?? ''), { headers: { authorization: `Bearer ${token}` } })
+      const cbuf = Buffer.from(await cres.arrayBuffer())
+      ok('L8', '图像内容端点可回取(对象存储 → PNG)', cres.status === 200 && String(cres.headers.get('content-type') ?? '').includes('image/png') && cbuf.length === Number(imgFrame?.meta?.size), `status=${cres.status} bytes=${cbuf.length} size=${imgFrame?.meta?.size}`)
+    }
+
+    // L8b 帧内容未授权访问必须被拒
+    {
+      const noauth = await fetch(PLATFORM_BASE + String(imgFrame?.contentUrl ?? ''))
+      ok('L8b', '帧内容未授权访问被拒', noauth.status === 401 || noauth.status === 403, `status=${noauth.status}`)
+    }
+
+    // L6b IHDR 自动尺寸(节点不配 width/height 路径)
+    {
+      const ihdrNodeR = await api('POST', '/api/workshop/daq', {
+        token,
+        body: {
+          name: `MQTT-IMG-IHDR-${TAG}`, templateRef: imgTplKey, driver: 'mqtt',
+          driverConfig: { host: '127.0.0.1', port: BROKER_PORT, topic: `aw/e2e/${TAG}/img-ihdr`, imageFormat: 'json', imagePath: 'data.png', staleMs: 5000 },
+          unit: 'px', min: 0, max: 255, decimals: 0, lineId, intervalMs: 1000, publishIntervalMs: 0,
+        },
+      })
+      const ihdrNode = ihdrNodeR.data?.node?.id
+      const ihdrPub = await connectClient(mqtt, brokerUrl)
+      const ihdrTimer = setInterval(() => ihdrPub.publish(`aw/e2e/${TAG}/img-ihdr`, JSON.stringify({ data: { png: png4 } }), { qos: 0 }), 2000)
+      const ht0 = Date.now()
+      await sleep(6000)
+      clearInterval(ihdrTimer)
+      const ihdrFrames = (await api('GET', `/api/workshop/daq/${ihdrNode}/frames?kind=image&from=${ht0 - 1500}&to=${Date.now()}&limit=5`)).data?.frames ?? []
+      await ihdrPub.endAsync(true).catch(() => {})
+      ok('L6b', 'PNG IHDR 自动尺寸(未配置宽高路径)', ihdrFrames.length >= 1 && ihdrFrames[0]?.meta?.width === 4 && ihdrFrames[0]?.meta?.height === 4, `${ihdrFrames.length} 帧 / ${ihdrFrames[0]?.meta?.width}x${ihdrFrames[0]?.meta?.height}`)
+    }
+
+    // L6c 二进制图像(报文字节)
+    {
+      const binNodeR = await api('POST', '/api/workshop/daq', {
+        token,
+        body: {
+          name: `MQTT-IMG-BIN-${TAG}`, templateRef: imgTplKey, driver: 'mqtt',
+          driverConfig: { host: '127.0.0.1', port: BROKER_PORT, topic: `aw/e2e/${TAG}/img-bin`, imageFormat: 'binary', imageMime: 'image/png', staleMs: 5000 },
+          unit: 'px', min: 0, max: 255, decimals: 0, lineId, intervalMs: 1000, publishIntervalMs: 0,
+        },
+      })
+      const binNode = binNodeR.data?.node?.id
+      const binPub = await connectClient(mqtt, brokerUrl)
+      const pngBuf = Buffer.from(png4, 'base64')
+      const binTimer = setInterval(() => binPub.publish(`aw/e2e/${TAG}/img-bin`, pngBuf, { qos: 0 }), 2000)
+      const bt0 = Date.now()
+      await sleep(6000)
+      clearInterval(binTimer)
+      const binFrames = (await api('GET', `/api/workshop/daq/${binNode}/frames?kind=image&from=${bt0 - 1500}&to=${Date.now()}&limit=5`)).data?.frames ?? []
+      await binPub.endAsync(true).catch(() => {})
+      ok('L6c', '二进制图像报文 → image 帧(4×4/PNG)', binFrames.length >= 1 && binFrames[0]?.meta?.width === 4 && binFrames[0]?.meta?.height === 4 && binFrames[0]?.meta?.mime === 'image/png', `${binFrames.length} 帧 / ${binFrames[0]?.meta?.mime}`)
+    }
+
+    // L9 解析失败可见(节点 lastError)+ 恢复
+    {
+      const badPub = await connectClient(mqtt, brokerUrl)
+      const badStart = Date.now()
+      badPub.publish(vecTopic, JSON.stringify({ data: {} }), { qos: 0 })
+      await sleep(1800)
+      const badFrames = (await api('GET', `/api/workshop/daq/${vecNode}/frames?kind=vector&from=${badStart}&to=${Date.now()}&limit=10`)).data?.frames ?? []
+      const badNode = await nodeOf(vecNode)
+      const badOk = badFrames.length === 0 && /点列|pointsPath/.test(String(badNode?.lastError ?? ''))
+      const goodStart = Date.now()
+      badPub.publish(vecTopic, JSON.stringify({ data: { points: [10, 20, 30, 40, 50] } }), { qos: 0 })
+      await sleep(3500)
+      const goodFrames = (await api('GET', `/api/workshop/daq/${vecNode}/frames?kind=vector&from=${goodStart}&to=${Date.now()}&limit=10`)).data?.frames ?? []
+      const goodNode = await nodeOf(vecNode)
+      await badPub.endAsync(true).catch(() => {})
+      ok('L9', '坏结构 → 0 帧 + 可读 lastError;恢复发布自愈', badOk && goodFrames.length >= 1 && !goodNode?.lastError, `badFrames=${badFrames.length} err=${String(badNode?.lastError ?? '').slice(0, 60)} / recovered=${goodFrames.length}`)
+    }
+
+    // L10/L11 用户自定义解码器(插件注册;scalar sum / vector add)
+    if (!plat.reused) {
+      const sumTopic = `aw/e2e/${TAG}/sum`
+      const sumNodeR = await api('POST', '/api/workshop/daq', {
+        token,
+        body: {
+          name: `MQTT-SUM-${TAG}`, templateRef: 'daq-temp-tc', driver: 'mqtt',
+          driverConfig: { host: '127.0.0.1', port: BROKER_PORT, topic: sumTopic, decoder: 'e2e-sum-xy', staleMs: 4000 },
+          unit: '℃', min: 0, max: 100, decimals: 1, lineId, intervalMs: 1000, publishIntervalMs: 0,
+        },
+      })
+      const sumNode = sumNodeR.data?.node?.id
+      const sumPub = await connectClient(mqtt, brokerUrl)
+      const sumTimer = setInterval(() => sumPub.publish(sumTopic, JSON.stringify({ x: 40, y: 2.5 }), { qos: 0 }), 1000)
+      const st0 = Date.now()
+      await sleep(4500)
+      clearInterval(sumTimer)
+      const sumPts = await samples(sumNode, st0 - 1000, Date.now())
+      ok('L10', '用户自定义解码器 → scalar 入库(40+2.5=42.5)', sumPts.length >= 1 && Math.abs(sumPts[sumPts.length - 1].avg - 42.5) < 0.06, `${sumPts.length} 行 / ${sumPts[sumPts.length - 1]?.avg}`)
+      // L10b 自定义解码器抛错 → 0 行 + 可读错误;恢复
+      {
+        const tBad = Date.now()
+        sumPub.publish(sumTopic, JSON.stringify({ x: 'a', y: 2 }), { qos: 0 })
+        await sleep(2200)
+        const badPts = await samples(sumNode, tBad, Date.now())
+        const badNode = await nodeOf(sumNode)
+        sumPub.publish(sumTopic, JSON.stringify({ x: 40, y: 2.5 }), { qos: 0 })
+        await sleep(3200)
+        const goodPts = await samples(sumNode, tBad + 2200, Date.now())
+        const goodNode = await nodeOf(sumNode)
+        ok('L10b', '自定义解码器异常 → 0 行 + 可读 lastError;恢复自愈', badPts.length === 0 && /x\/y/.test(String(badNode?.lastError ?? '')) && goodPts.length >= 1 && !goodNode?.lastError, `bad=${badPts.length} err=${String(badNode?.lastError ?? '').slice(0, 50)} / recovered=${goodPts.length}`)
+      }
+      await sumPub.endAsync(true).catch(() => {})
+
+      const addNodeR = await api('POST', '/api/workshop/daq', {
+        token,
+        body: {
+          name: `MQTT-VADD-${TAG}`, templateRef: vecTplKey, driver: 'mqtt',
+          driverConfig: { host: '127.0.0.1', port: BROKER_PORT, topic: `aw/e2e/${TAG}/vadd`, decoder: 'e2e-vec-add', staleMs: 4000 },
+          unit: 'μm', min: 0, max: 100, decimals: 2, lineId, intervalMs: 1000, publishIntervalMs: 0,
+        },
+      })
+      const addNode = addNodeR.data?.node?.id
+      const addPub = await connectClient(mqtt, brokerUrl)
+      const addTimer = setInterval(() => addPub.publish(`aw/e2e/${TAG}/vadd`, JSON.stringify({ a: [1, 2, 3, 4, 5], b: [10, 20, 30, 40, 50] }), { qos: 0 }), 1000)
+      const at0 = Date.now()
+      await sleep(4500)
+      clearInterval(addTimer)
+      const addFrames = (await api('GET', `/api/workshop/daq/${addNode}/frames?kind=vector&from=${at0 - 1000}&to=${Date.now()}&limit=10`)).data?.frames ?? []
+      await addPub.endAsync(true).catch(() => {})
+      ok('L11', '用户自定义解码器 → vector 入库(逐点相加)', addFrames.length >= 1 && JSON.stringify(addFrames[0]?.points) === JSON.stringify([11, 22, 33, 44, 55]), `points=${JSON.stringify(addFrames[0]?.points)}`)
+    }
+    else {
+      skipped('L10', '用户自定义解码器(scalar)', 'AW_E2E_BASE 复用了已运行实例')
+      skipped('L11', '用户自定义解码器(vector)', 'AW_E2E_BASE 复用了已运行实例')
+      skipped('L10b', '自定义解码器异常', 'AW_E2E_BASE 复用了已运行实例')
+    }
+
+    // L12 解码配置变更(PATCH pointsPath)→ 订阅重建,旧解析配置不得继续生效
+    {
+      const cfgPub = await connectClient(mqtt, brokerUrl)
+      await api('PATCH', `/api/workshop/daq/${vecNode}`, { token, body: { driverConfig: { pointsPath: 'data.nope' } } })
+      await sleep(1500)
+      const t0 = Date.now()
+      cfgPub.publish(vecTopic, JSON.stringify({ data: { points: [10, 20, 30, 40, 50] } }), { qos: 0 })
+      await sleep(2500)
+      const badFrames = (await api('GET', `/api/workshop/daq/${vecNode}/frames?kind=vector&from=${t0}&to=${Date.now()}&limit=10`)).data?.frames ?? []
+      const badNode = await nodeOf(vecNode)
+      await api('PATCH', `/api/workshop/daq/${vecNode}`, { token, body: { driverConfig: { pointsPath: 'data.points' } } })
+      await sleep(1500)
+      const t1 = Date.now()
+      cfgPub.publish(vecTopic, JSON.stringify({ data: { points: [10, 20, 30, 40, 50] } }), { qos: 0 })
+      await sleep(3000)
+      const goodFrames = (await api('GET', `/api/workshop/daq/${vecNode}/frames?kind=vector&from=${t1}&to=${Date.now()}&limit=10`)).data?.frames ?? []
+      await cfgPub.endAsync(true).catch(() => {})
+      ok('L12', '解码配置变更 → 订阅重建生效(PATCH pointsPath)', badFrames.length === 0 && /pointsPath/.test(String(badNode?.lastError ?? '')) && goodFrames.length >= 1, `bad=${badFrames.length} err=${String(badNode?.lastError ?? '').slice(0, 50)} / restored=${goodFrames.length}`)
+    }
   }
 
   // ── 清理 ──

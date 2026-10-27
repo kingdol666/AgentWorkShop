@@ -41,6 +41,50 @@ curl -X POST $API/api/workshop/daq/$NODE_ID/test -H "Authorization: Bearer $TOKE
   停线即 offline。未分配节点不采集。
 - **批次打标**:运行中的每个样本自动携带 `product/recipe/runId`,数据按批次隔离查询。
 
+## MQTT 结构化解析与用户 sink
+
+MQTT 节点可以把 broker 传来的**结构化 JSON**(或纯数字/二进制图像)解析为单个类型化样本:
+`scalar`(单个数字)、`vector`(数值数组)或 `image`(图像)。解析在**节点创建时**经
+`driverConfig` 声明,结果自动拼接节点模板/产线/批次元信息入库:
+标量 → `daq_samples`;数组/图像 → `daq_frames`(数组存点列+指标,图像存对象键+尺寸+sha256+指标)。
+
+| 模板形态 | driverConfig(节点创建时填写) | 入库 |
+|---|---|---|
+| scalar | `jsonPath`(如 `data.temperature`;纯数字报文留空) | `daq_samples` |
+| vector | `pointsPath`(缺省 `points`)、`metricsPath`(可选) | `daq_frames`(points/metrics) |
+| image | `imageFormat=json|binary`、`imagePath`(缺省 `png`)、`imageMime`、`imageWidthPath`/`imageHeightPath` | `daq_frames`(objectKey/mime/宽高/sha256/metrics) |
+
+示例:载荷 `{"data":{"points":[10,20,30,40,50],"metrics":{"avg":30}}}` + 数组模板 +
+`pointsPath=data.points` → 5 点帧;模板 `sink.processors`(如 `derive-metric`、`zones`、
+`thumbnail`、`quality-gate`)在生产侧执行后再入库,也可由插件注册自定义处理器。
+
+**自定义解析(统一接口,交给用户)**:插件在 `setup(ctx)` 中注册解码器:
+
+```js
+export default {
+  name: 'my-mqtt-sink',
+  setup(ctx) {
+    ctx.daq.registerDecoder('my-json', (input) => {
+      const j = JSON.parse(input.raw)                 // input: raw/bytes/json/config/signalKind/nodeId
+      return { kind: 'scalar', value: j.a + j.b }     // 或 {kind:'vector',points:[...]} / {kind:'image',blob,mime,width,height}
+    })
+  },
+}
+```
+
+节点 `driverConfig.decoder = 'my-json'` 即启用(优先于声明式路径);解码结果必须与节点模板
+的 `signalKind` 一致,否则节点 `lastError` 报错且不入库。自定义解码器是**同步纯函数**
+(返回 Promise 会被拒绝),按插件归属注册、插件重载/停用自动撤销;`input.json` 已解析。
+更重的帧加工请用 `ctx.daq.registerProcessor(kind, name, fn)` + 模板 `sink.processors`。
+解析配置(路径/decoder 等)纳入订阅指纹:PATCH 节点解析配置会重建订阅立即生效。
+
+> 边界:不解析 XML/HTML;图像仅接受 PNG/JPEG/WebP/BMP/GIF/TIFF(拒绝 SVG 等可执行内容),
+> base64 上限 10MB(`imageMaxBytes`)、单边 ≤16384、像素 ≤16M,解压有界;非 PNG 需显式
+> 宽高(`width/height` 或宽高路径;二进制 JPEG 用固定 `width/height`)与 MIME(`mimePath`
+> 优先于静态 `imageMime`,data URL MIME 优先);null/boolean/空串不会被静默转成 0,
+> 显式给出的宽高必须为正;保存后的节点测试按模板形态解码(添加向导按载荷自动识别);
+> 图像 sink 的亮度/缩略图只理解本仓 8-bit 灰度 PNG(RGB/JPEG 可能不产生指标)。
+
 ## 写控安全链
 
 所有下发(手动 REST / 配方批次 / Agent 工具)共用单一入口,顺序经过:

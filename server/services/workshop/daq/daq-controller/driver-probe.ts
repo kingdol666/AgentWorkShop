@@ -4,25 +4,28 @@
  */
 import { DaqControllerCrud } from './crud'
 import type { DaqDriverKind, DriverTestResult } from '../../../../../shared/daq-protocol'
+import { normalizeSignalKind } from '../../../../../shared/daq-protocol'
 import { DaqNode } from '../daq-node'
 import { driverCatalog, probeDriverAvailability, requireDriverKind, resolveDaqDriver } from '../drivers'
 import { getDaqHostPorts } from '../host-ports'
+import { findDaqTemplate } from '../daq-templates'
 
 export abstract class DaqControllerDriverProbe extends DaqControllerCrud {
   /** 连接测试:按协议参数建连 + 读一次(前端"测试连接"按钮直达;未知协议显式报错 —— P0-5) */
-  async testDriver(kind: DaqDriverKind, driverConfig: Record<string, unknown>): Promise<DriverTestResult> {
+  async testDriver(kind: DaqDriverKind, driverConfig: Record<string, unknown>, signalKind?: 'scalar' | 'vector' | 'image'): Promise<DriverTestResult> {
     const drv = resolveDaqDriver(requireDriverKind(kind))
     if (!(await drv.available())) {
       return { ok: false, message: `协议栈不可用(包未安装或加载失败): ${kind}` }
     }
-    return drv.test(driverConfig)
+    return drv.test(driverConfig, signalKind)
   }
 
-  /** 存量节点连接测试(用节点已保存参数) */
+  /** 存量节点连接测试(用节点已保存参数;按模板信号形态解码,向量/图像节点也能给出真实测试结果) */
   async testNode(id: string): Promise<DriverTestResult> {
     const node = this.repo.byId(id)
     if (!node) throw Object.assign(new Error(`数采节点不存在: ${id}`), { status: 404 })
-    return this.testDriver(node.driver, node.driverConfig)
+    const tpl = findDaqTemplate(node.templateKey)
+    return this.testDriver(node.driver, node.driverConfig, normalizeSignalKind(tpl?.signalKind))
   }
 
   /** 驱动可用性(meta;包缺失 → planned 提示而非硬失败;含插件驱动) */

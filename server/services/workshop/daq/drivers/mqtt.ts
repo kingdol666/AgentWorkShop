@@ -13,19 +13,23 @@
  */
 import { existsSync, readFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
-import type { DaqDriver, DaqPushInput } from './shared'
+import type { DaqDriver, DaqPushInput, DaqPushSample } from './shared'
 import { reqNative } from './shared'
 import { daqRuntimeSettings } from '../../settings'
 import { createLogger } from '../../logger'
+import { decodeMqttPayload, describeMqttPayload } from './mqtt-decode'
+import type { DaqDecoded } from '../decoders'
 
 const log = createLogger('daq.drivers.mqtt')
 
 /** 单 topic 的订阅者(每个节点一个;同一 broker 多节点共享连接) */
-export type MqttTopicConsumer = (raw: string, at: number) => void
+export type MqttTopicConsumer = (raw: string, at: number, bytes: Buffer) => void
 
 export interface MqttTopicEntry {
   /** 最新原始报文(解析按节点 jsonPath 在消费时进行) */
   raw: string
+  /** 最新原始字节(binary 图像/自定义解码器用;与 raw 同一报文) */
+  bytes: Buffer
   /** 最新报文到达时刻(epoch ms;0 = 尚未收到) */
   at: number
   /** 最新报文是否为 broker 保留消息(retain) */
@@ -174,6 +178,7 @@ export async function getMqttConn(cfg: Record<string, unknown>): Promise<MqttCon
       // 断线期间清空缓存:恢复后不能把断线前的旧报文当作新样本(陈值保护的第一道闸)
       for (const t of conn.topics.values()) {
         t.raw = ''
+        t.bytes = Buffer.alloc(0)
         t.at = 0
         t.retained = false
       }
@@ -190,6 +195,7 @@ export async function getMqttConn(cfg: Record<string, unknown>): Promise<MqttCon
       const at = Date.now()
       const retained = Boolean(packet?.retain)
       entry.raw = payload.toString()
+      entry.bytes = Buffer.from(payload)
       entry.at = at
       entry.retained = retained
       // retained 语义:
@@ -204,7 +210,7 @@ export async function getMqttConn(cfg: Record<string, unknown>): Promise<MqttCon
       }
       for (const fn of [...entry.consumers]) {
         try {
-          fn(entry.raw, at)
+          fn(entry.raw, at, entry.bytes)
         }
         catch (err) {
           conn.lastError = err instanceof Error ? err.message : String(err)
@@ -287,7 +293,7 @@ export const sleep = (ms: number): Promise<void> => new Promise(r => setTimeout(
 function topicEntry(conn: MqttConn, topic: string, qos: number): MqttTopicEntry {
   const existing = conn.topics.get(topic)
   if (existing) return existing
-  const entry: MqttTopicEntry = { raw: '', at: 0, retained: false, seeded: false, consumers: new Set(), ready: Promise.resolve() }
+  const entry: MqttTopicEntry = { raw: '', bytes: Buffer.alloc(0), at: 0, retained: false, seeded: false, consumers: new Set(), ready: Promise.resolve() }
   conn.topics.set(topic, entry)
   entry.ready = subscribeTopic(conn, topic, qos).catch((err) => {
     // 订阅失败且无人等待消费:移除 entry,允许下次重试(有消费者时保留,由调用方清理)
@@ -347,8 +353,20 @@ export function invalidateMqttTopic(cfg: Record<string, unknown>, topic: string)
   const entry = conn?.topics.get(topic)
   if (!entry) return
   entry.raw = ''
+  entry.bytes = Buffer.alloc(0)
   entry.at = 0
   entry.retained = false
+}
+
+function toPushSample(decoded: DaqDecoded, atMs: number): DaqPushSample {
+  if (decoded.kind === 'scalar') return { value: decoded.value, atMs }
+  if (decoded.kind === 'vector') {
+    return { frame: { kind: 'vector', points: decoded.points, metrics: decoded.metrics }, atMs }
+  }
+  return {
+    frame: { kind: 'image', blob: decoded.blob, mime: decoded.mime, width: decoded.width ?? 0, height: decoded.height ?? 0, metrics: decoded.metrics },
+    atMs,
+  }
 }
 
 export const mqttDaqDriver: DaqDriver = {
@@ -364,8 +382,9 @@ export const mqttDaqDriver: DaqDriver = {
   },
 
   /**
-   * 被动订阅(控制器主路径):连上 broker → 订阅 topic → 每条报文回调 onSample。
-   * 报文值按节点 jsonPath 解析;解析失败走 onError(节点 lastError 可见),不影响后续报文。
+   * 被动订阅(控制器主路径):连上 broker → 订阅 topic → 每条报文解码后回调 onSample。
+   * 解码由节点模板 signalKind + driverConfig 决定(标量/数组/图片;或插件自定义 decoder);
+   * 解析失败走 onError(节点 lastError 可见),不影响后续报文。
    */
   async subscribe(input: DaqPushInput) {
     const cfg = input.driverConfig
@@ -374,15 +393,15 @@ export const mqttDaqDriver: DaqDriver = {
     const conn = await getMqttConn(cfg)
     if (!conn.connected) throw new Error(`MQTT 未连接(重连中): ${conn.lastError ?? brokerUrl(cfg)}`)
     const qos = Math.min(2, Math.max(0, Number(cfg.qos ?? 1)))
-    const jsonPath = cfg.jsonPath ? String(cfg.jsonPath) : undefined
+    const signalKind = input.signalKind ?? 'scalar'
     // delivered:本消费者是否已通过 message 事件收到过报文。用于在 subscribe 完成后
     // 补发缓存里的 retained(只读订阅/快速重启重用 entry 时,broker 不会重发 retained)。
     let delivered = false
-    const consumer: MqttTopicConsumer = (raw, at) => {
+    const consumer: MqttTopicConsumer = (raw, at, bytes) => {
       delivered = true
       try {
-        const value = extractNumeric(raw, jsonPath)
-        input.onSample({ value, atMs: at })
+        const decoded = decodeMqttPayload({ raw, bytes, json: null, config: cfg, signalKind, nodeId: input.ctx.nodeId })
+        input.onSample(toPushSample(decoded, at))
       }
       catch (err) {
         input.onError?.(err instanceof Error ? err : new Error(String(err)))
@@ -406,7 +425,7 @@ export const mqttDaqDriver: DaqDriver = {
     // 断线重连不会走到这里(消费者已在 entry 上,subscribe() 不会被再次调用)。
     if (entry.retained && entry.raw && !delivered) {
       entry.seeded = true
-      consumer(entry.raw, entry.at || Date.now())
+      consumer(entry.raw, entry.at || Date.now(), entry.bytes)
     }
     let stopped = false
     return () => {
@@ -430,13 +449,15 @@ export const mqttDaqDriver: DaqDriver = {
     }
   },
 
-  /** 订阅参数指纹:凭据/TLS/主题/QoS 任一变化都重建订阅(绝不因 CA 配置错误抛错) */
+  /** 订阅参数指纹:凭据/TLS/主题/QoS + 全部解码配置(改解析路径/decoder 必须重建订阅,绝不因 CA 配置错误抛错) */
   fingerprint(driverConfig) {
     const c = driverConfig
-    return `${safeMqttKey(c)}|topic=${String(c.topic ?? '')}|jsonPath=${String(c.jsonPath ?? '')}|qos=${Number(c.qos ?? 1)}`
+    const decodeKeys = ['jsonPath', 'valuePath', 'pointsPath', 'metricsPath', 'imageFormat', 'payloadFormat', 'imagePath', 'imageMime', 'mimePath', 'imageWidthPath', 'imageHeightPath', 'width', 'height', 'decoder', 'imageMaxBytes']
+    const decode = decodeKeys.map(k => `${k}=${String(c[k] ?? '')}`).join('|')
+    return `${safeMqttKey(c)}|topic=${String(c.topic ?? '')}|qos=${Number(c.qos ?? 1)}|${decode}`
   },
 
-  async sample({ driverConfig }) {
+  async sample({ driverConfig, signalKind, ctx }) {
     const topic = String(driverConfig.topic ?? '')
     if (!topic) throw new Error('缺少主题 topic')
     const conn = await getMqttConn(driverConfig)
@@ -454,10 +475,20 @@ export const mqttDaqDriver: DaqDriver = {
     if (staleMs > 0 && entry.at > 0 && Date.now() - entry.at > staleMs) {
       throw new Error(`MQTT 数据停发超过 ${Math.round((Date.now() - entry.at) / 1000)}s(陈值保护,拒用冻值;最近报文 ${new Date(entry.at).toISOString()})`)
     }
-    return extractNumeric(entry.raw, driverConfig.jsonPath ? String(driverConfig.jsonPath) : undefined)
+    const decoded = decodeMqttPayload({
+      raw: entry.raw,
+      bytes: entry.bytes,
+      json: null,
+      config: driverConfig,
+      signalKind: signalKind ?? 'scalar',
+      nodeId: ctx.nodeId,
+    })
+    if (decoded.kind === 'scalar') return decoded.value
+    if (decoded.kind === 'vector') return { frame: { kind: 'vector', points: decoded.points, metrics: decoded.metrics } }
+    return { frame: { kind: 'image', blob: decoded.blob, mime: decoded.mime, width: decoded.width ?? 0, height: decoded.height ?? 0, metrics: decoded.metrics } }
   },
 
-  async test(driverConfig) {
+  async test(driverConfig, signalKind) {
     const t0 = Date.now()
     try {
       if (!driverConfig.host) return { ok: false, message: '缺少 Broker 地址 host' }
@@ -470,8 +501,31 @@ export const mqttDaqDriver: DaqDriver = {
       const t1 = Date.now()
       while (!entry.raw && Date.now() - t1 < 4000) await sleep(100)
       if (entry.raw) {
-        const v = extractNumeric(entry.raw, driverConfig.jsonPath ? String(driverConfig.jsonPath) : undefined)
-        return { ok: true, message: `Broker 连接成功,收到 ${topic} = ${v}(被动订阅:收到报文即入库)`, sampleValue: v, latencyMs: Date.now() - t0 }
+        if (signalKind) {
+          try {
+            const decoded = decodeMqttPayload({ raw: entry.raw, bytes: entry.bytes, json: null, config: driverConfig, signalKind, nodeId: 'test' })
+            if (decoded.kind === 'scalar') {
+              return { ok: true, message: `Broker 连接成功,${topic} → scalar ${decoded.value}(被动订阅:收到报文即入库)`, sampleValue: decoded.value, latencyMs: Date.now() - t0 }
+            }
+            if (decoded.kind === 'vector') {
+              return { ok: true, message: `Broker 连接成功,${topic} → vector ${decoded.points.length} 点(被动订阅:收到报文即入库)`, latencyMs: Date.now() - t0 }
+            }
+            return { ok: true, message: `Broker 连接成功,${topic} → image ${decoded.mime} ${decoded.blob.length}B(被动订阅:收到报文即入库)`, latencyMs: Date.now() - t0 }
+          }
+          catch (err) {
+            // 链路已通、是解析失败:不要把原因误报成"连接失败"
+            return { ok: false, message: `Broker 连接成功但载荷解码失败: ${err instanceof Error ? err.message : String(err)}`, latencyMs: Date.now() - t0 }
+          }
+        }
+        const auto = describeMqttPayload(entry.raw, entry.bytes, driverConfig)
+        const scalarText = auto.summary.startsWith('scalar ') ? auto.summary.slice(7).split('(')[0] : ''
+        const sampleValue = Number(scalarText)
+        return {
+          ok: true,
+          message: `Broker 连接成功,${topic} → ${auto.summary}(被动订阅:收到报文即入库)`,
+          ...(auto.kind === 'scalar' && Number.isFinite(sampleValue) ? { sampleValue } : {}),
+          latencyMs: Date.now() - t0,
+        }
       }
       return {
         ok: true,

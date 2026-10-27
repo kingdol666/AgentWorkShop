@@ -54,11 +54,10 @@ export type DaqFrameSample = {
     }
 }
 
-/** 推送式驱动的报文回调(值 + 到达时刻 epoch ms) */
-export interface DaqPushSample {
-  value: number
-  atMs: number
-}
+/** 推送式驱动的报文回调样本:标量值或已解码帧(向量/图像)+ 到达时刻 */
+export type DaqPushSample =
+  | { value: number, atMs: number, frame?: undefined }
+  | { frame: DaqFrameSample['frame'], atMs: number, value?: undefined }
 
 /**
  * 推送式协议(MQTT 等)常驻订阅契约。
@@ -77,7 +76,8 @@ export interface DaqDriver {
   /** 协议栈是否可用(包缺失时 false,节点测试连接给出可行动提示) */
   available(): Promise<boolean>
   sample(input: DaqDriverInput): Promise<number | DaqFrameSample | null> | number | DaqFrameSample | null
-  test(driverConfig: Record<string, unknown>): Promise<DriverTestResult>
+  /** 连接测试;signalKind 可选(节点测试传模板形态,按参数测试则自动识别载荷) */
+  test(driverConfig: Record<string, unknown>, signalKind?: 'scalar' | 'vector' | 'image'): Promise<DriverTestResult>
   /**
    * 可选:建立常驻订阅(推送式协议)。存在此方法的驱动由控制器按「事件驱动」采集,
    * 不再进入 intervalMs 轮询 —— MQTT 的语义是连上 broker 后被动收报文,
