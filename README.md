@@ -28,7 +28,7 @@
 
 **[简体中文](./README-zh.md)** · **[Documentation](https://kingdol666.github.io/AgentWorkShop)** · **[Releases](https://github.com/kingdol666/AgentWorkShop/releases)** · **[Changelog](./changelog.md)** · **[Plugin API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.8.3</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST integration (mirror & live) · data-analysis ledger with line-scoped permissions · process optimizer (process model → AML → OSQP solver → governed dispatch) · **ontology service + AI-first model loop** (ontology · twin · solver · AML adoption) · 104 host tools · 128 runtime settings · bilingual docs (简体中文 / English)</sub>
+<sub><b>v0.8.5</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST integration (mirror & live) · data-analysis ledger with line-scoped permissions · process optimizer (process model → AML → OSQP solver → governed dispatch) · **ontology service + AI-first model loop** (ontology · twin · solver · AML adoption) · 104 host tools · 128 runtime settings · bilingual docs (简体中文 / English)</sub>
 
 <br />
 
@@ -133,9 +133,9 @@ Recorded against a running instance: real DAQ history, real write control, real 
 
 <a href="https://kingdol666.github.io/AgentWorkShop/demo/player.html"><img src="docs/site/public/demo/agentworkshop-core-demo-poster.png" alt="AgentWorkShop 3-minute demo: dashboard, live DAQ, EDA pipeline, governed tool catalog, published ontology, agent workspaces, plugins and analysis ledger" width="86%" /></a>
 
-<sub><b>Click the cover to play the standalone player.</b> One continuous screencast of a running instance with a mock PLC line — 1920×1080, English interface, English narration, EN / 简体中文 captions.<br/>Scenes: dashboard → live DAQ → EDA pipeline → governed tool catalog → published ontology → agent workspaces → plugins → analysis ledger → EDA studio.</sub>
+<sub><b>Click the cover to play the standalone player.</b> Recorded from a running instance with a mock PLC line — 11 live scenes joined by 0.5 s fades, 1920×1080, English interface, English narration, EN / 简体中文 captions.<br/>Scenes: dashboard → live DAQ → EDA pipeline → governed tool catalog → published ontology → agent workspaces → plugins → analysis ledger → EDA studio.</sub>
 
-[Direct MP4](https://github.com/kingdol666/AgentWorkShop/blob/main/docs/site/public/demo/agentworkshop-core-demo.mp4) · [Standalone player](https://kingdol666.github.io/AgentWorkShop/demo/player.html) · [VitePress demo page](https://kingdol666.github.io/AgentWorkShop/en/demo)
+[Direct MP4](https://kingdol666.github.io/AgentWorkShop/demo/agentworkshop-core-demo.mp4) · [Standalone player](https://kingdol666.github.io/AgentWorkShop/demo/player.html) · [VitePress demo page](https://kingdol666.github.io/AgentWorkShop/en/demo)
 
 </div>
 
@@ -399,7 +399,7 @@ aw update --check                      # only report; nothing is installed
 npm install -g agentworkshop@latest    # manual equivalent
 ```
 
-Releases follow semver. `aw start` verifies the config root on every launch and migrates the legacy pre-`home` `data/` layout into it (newest file wins), so data survives upgrades. SQLite schema migrations run server-side at boot. Current version: **v0.8.3** — see [Releases](https://github.com/kingdol666/AgentWorkShop/releases).
+Releases follow semver. `aw start` verifies the config root on every launch and migrates the legacy pre-`home` `data/` layout into it (newest file wins), so data survives upgrades. SQLite schema migrations run server-side at boot. Current version: **v0.8.4** — see [Releases](https://github.com/kingdol666/AgentWorkShop/releases).
 
 ### Your first agent × line session (~2 minutes)
 

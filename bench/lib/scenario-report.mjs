@@ -47,10 +47,10 @@ export function renderScenariosReportMd(run) {
     M.push(``)
     M.push(`### ${r.id} · ${r.zh}`)
     M.push(``)
-    M.push(`| 轮 | 阶段 | 旋钮 | 写前→写后 | PV(被控量) | 记录 | 判定 |`)
-    M.push(`|---|---|---|---|---|---|---|`)
+    M.push(`| 轮 | 阶段 | 旋钮 | 写前→写后 | PV(被控量) | 试验批次 |`)
+    M.push(`|---|---|---|---|---|---|`)
     for (const t of (r.mission?.traj ?? [])) {
-      M.push(`| ${t.iter} | ${t.phase ?? ''} | ${t.knob ?? '—'} | ${t.from != null ? `${t.from} → ${t.to}` : '—'} | ${t.pv != null ? fmt(t.pv) + (r.pv?.unit ? ` ${r.pv.unit}` : '') : '—'} | ${t.record ? 'yes' : '—'} | ${t.judge === undefined ? '' : (t.judge ? 'keep ✔' : '✘')} |`)
+      M.push(`| ${t.iter} | ${t.phase ?? ''} | ${t.knob ?? '—'} | ${t.from != null ? `${t.from} → ${t.to}` : '—'} | ${t.pv != null ? fmt(t.pv) + (r.pv?.unit ? ` ${r.pv.unit}` : '') : '—'} | ${t.record ? 'yes' : '—'} |`)
     }
     M.push(``)
     for (const e of (r.mission?.ev ?? [])) M.push(`- ${e}`)
@@ -67,7 +67,7 @@ export function renderScenariosReportMd(run) {
   }
   M.push(``)
   M.push(`## 3. 诚实边界`)
-  M.push(`- 全部写路径经平台治理(dcw_control 自动开优化记录 + dcw_judge 判定收口);策略为确定性脚本(不经 LLM),与真实 LLM 变体共用同一工具面与治理链路。`)
+  M.push(`- 全部写路径经平台治理(绑定配方上的 recipe_trial 整批试验下发,复测判读,不写配方版本);策略为确定性脚本(不经 LLM),与真实 LLM 变体共用同一工具面与治理链路。`)
   M.push(`- 物理数据由模拟器多引擎(cast-film/biax/injection/wwtp/anneal)产出,同 seed 确定性;J/W* 与真实产线存在仿真层级边界。`)
   M.push(`- 平台侧产线为「复用优先」:本报告如显示 reused,说明前次接入仍在,本次零重复建线(设计语义)。`)
   M.push(``)
@@ -116,10 +116,9 @@ function trajTableHtml(r) {
     <td>${esc(t.iter)}</td><td>${esc(t.phase ?? '')}</td><td>${esc(t.knob ?? '—')}</td>
     <td>${t.from != null ? esc(t.from) + ' → ' + esc(t.to) : '<span class="dim">—</span>'}</td>
     <td>${t.pv != null ? esc(fmt(t.pv)) + ' ' + esc(r.pv?.unit ?? '') : '<span class="dim">—</span>'}</td>
-    <td>${t.record ? '<span class="ok">已开窗</span>' : '<span class="dim">—</span>'}</td>
-    <td>${t.judge === undefined ? '' : (t.judge ? '<span class="ok">keep ✔</span>' : '<span class="bad">✘</span>')}</td>
+    <td>${t.record ? '<span class="ok">已下发</span>' : '<span class="dim">—</span>'}</td>
   </tr>`).join('')
-  return `<table><thead><tr><th>轮</th><th>阶段</th><th>旋钮</th><th>写前→写后</th><th>PV(${esc(r.pv?.label ?? '')})</th><th>优化记录</th><th>判定</th></tr></thead><tbody>${rows}</tbody></table>`
+  return `<table><thead><tr><th>轮</th><th>阶段</th><th>旋钮</th><th>写前→写后</th><th>PV(${esc(r.pv?.label ?? '')})</th><th>试验批次</th></tr></thead><tbody>${rows}</tbody></table>`
 }
 
 export function renderScenariosReportHtml(run) {
@@ -162,7 +161,7 @@ platform=<code>${esc(run.base)}</code> · simulator=<code>${esc(run.simBase)}</c
 <div class="cards">${cards}</div>
 ${sections}
 <h2>诚实边界</h2>
-<div class="kv dim">· 全部写经平台治理(dcw_control 开优化记录 + dcw_judge 判定);策略为确定性脚本,与 LLM 变体共用同一工具面/治理链路。</div>
+<div class="kv dim">· 全部写经平台治理(绑定配方 recipe_trial 整批试验,复测判读);策略为确定性脚本,与 LLM 变体共用同一工具面/治理链路。</div>
 <div class="kv dim">· 物理数据由模拟器多引擎产出,同 seed 确定性;与真实产线存在仿真层级边界。</div>
 <div class="kv dim">· 平台产线复用优先:reused = 前次接入仍在,本次零重复建线(设计语义)。</div>
 <h2>复现</h2>

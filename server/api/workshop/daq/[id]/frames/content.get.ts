@@ -22,6 +22,9 @@ export default defineEventHandler(async (event) => {
   }
   const { data, mime } = await getDaqController().frameContent(id, ts, q.thumb === '1')
   setResponseHeader(event, 'content-type', mime)
+  // 帧载荷可来自外部设备(broker/HTTP):禁止内容嗅探、按附件下载,避免把上传内容当同源页面执行
+  setResponseHeader(event, 'x-content-type-options', 'nosniff')
+  setResponseHeader(event, 'content-disposition', 'attachment')
   setResponseHeader(event, 'cache-control', 'private, max-age=86400')
   return data
 })

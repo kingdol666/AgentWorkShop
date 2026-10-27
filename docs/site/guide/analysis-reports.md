@@ -65,3 +65,5 @@ IDD 侧的分析结果库(索引/详情/元数据编辑)已由 diag-bridge 插�
 设置(`插件 → diag-bridge → 分析结果库`):`results_enabled`(总开关,默认关)、`results_allow_annotate`(编辑开关,默认关)、`results_allow_worker`(worker 可读,默认关=仅 lead)、`results_default_limit`(缺省 20)、`results_md_max_chars`(报告截断上限,缺省 4000)。`/plugins` 页内置「分析结果库」面板:搜索/过滤 → 详情 → 描述与标签编辑(同源路由 `GET /api/plugins/diag-bridge/results`、`/results/detail?id=`、`PATCH /results/edit?id=`)。
 
 Agent 典型用法:先 `diag_results(q="薄膜厚度")` 找到 `result_id`,再 `diag_result_get` 读结论与关键数字,必要时 `diag_result_annotate` 补一句「这条结果代表什么、何时复用」。
+
+> 分析台账记「结论」,EDA 工坊看「数据」——交互式探索(图表 / 管道 / SPC / golden)见[数据管理台与 EDA 工坊](./eda.md)。

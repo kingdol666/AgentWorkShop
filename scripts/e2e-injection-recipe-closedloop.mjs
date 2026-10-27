@@ -70,7 +70,7 @@ const qText = q => `weight=${q.weight}g flash=${q.flash}% sink=${q.sink}% melt=$
 
 const dcw = unwrap(await api('GET', '/api/workshop/dcw'))
 const daq = unwrap(await api('GET', '/api/workshop/daq'))
-const line = dcw.lines.find(l => /注塑|injection/i.test(l.name))
+const line = dcw.lines.find(l => /注塑/.test(l.name)) ?? dcw.lines.find(l => /injection/i.test(l.name))
 const dcwOf = re => dcw.nodes.find(n => n.lineId === line.id && re.test(`${n.name} ${n.id}`))
 const daqOf = re => daq.nodes.find(n => n.lineId === line.id && re.test(`${n.name} ${n.id}`))
 const holdPressure = dcwOf(/hold-pressure|保压压力/i)

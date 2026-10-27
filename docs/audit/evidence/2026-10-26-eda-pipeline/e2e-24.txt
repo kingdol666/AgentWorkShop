@@ -1,0 +1,27 @@
+· 实例就绪 http://127.0.0.1:3040(home=C:\Users\87287\AppData\Local\Temp\aw-eda-pipeline-QO7Ece)
+✔ [E0.1] 建线 ln-7231e76d
+✔ [E0.2] 建数采节点(daq/query 实时路径由演示实例与产线套件覆盖;本 e2e 数据面用 CSV 导入,见 UI 段)
+✔ [E1.1] 非法图型 400(400)
+✔ [E1.2] 空名 400(400)
+✔ [E1.3] 保存模板 et-bba12798
+✔ [E1.4] 列表含新模板
+✔ [E1.5] 详情 config 回读
+✔ [E1.6] PATCH 描述落库
+✔ [E2.1] analysis POST ar-28ae0a2c
+✔ [E2.2] 台账列表含新结果
+✔ [E2.3] 台账详情回读
+✔ [E3.0] pipeline 快照缺少 rows 被拒(B4 线域边界)
+✔ [E3.0b] pipeline 快照 datasource.line_id 与 line_id 不一致被拒
+✔ [E3.1] 保存图表 ec-4502b7b4
+✔ [E3.2] 图表回读含模板链接
+✔ [U1] /studio/pipeline 打开
+✔ [U2] CSV 导入 40 行(共 40 行,预览前 8 行:)
+✔ [U3] 代码后处理生效(越界行被过滤)
+✔ [U4] 绘图渲染出 canvas
+✔ [U5] 模板重载后仍在(持久化)
+✔ [U6] 在线查看器外壳打开
+✔ [U7] 台账含 REST 结果;UI 结果已提示保存
+✔ [E4.1] 模板删除
+✔ [E4.2] 删后详情为 null
+
+EDA-PIPELINE E2E: 24/24 passed

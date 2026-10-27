@@ -161,13 +161,17 @@
             ＋
           </button>
         </div>
-        <ClientOnly>
-          <AwChart
-            v-if="item.chart && !item.inaccessible"
-            :option="cardOption(item)"
-            style="height: 100%; width: 100%"
-          />
-        </ClientOnly>
+        <div class="cellChart">
+          <ClientOnly>
+            <AwChart
+              v-if="item.chart && !item.inaccessible"
+              :key="cardKey(item)"
+              :option="cardOption(item)"
+              :height="Math.max(240, (item.gridPos?.h ?? 3) * 60)"
+              style="width: 100%"
+            />
+          </ClientOnly>
+        </div>
         <p
           v-if="item.inaccessible"
           class="empty"
@@ -215,6 +219,7 @@ import type { EChartsOption } from 'echarts'
 import { apiFetch } from '@/app/composables/workshop/apiClient'
 import { apiErrorMessage } from '@/app/utils/api-error'
 import { buildTrendOption, type TrendRefLine, type TrendSeries, type TrendYEntry } from '@/app/utils/chart-trend'
+import { buildPipelineOption, type PipelineConfig, type PipelineRow } from '@/app/utils/chart-pipeline'
 
 interface GridPos { chartId: string, x: number, y: number, w: number, h: number }
 interface ChartRow {
@@ -224,6 +229,7 @@ interface ChartRow {
   version: number
   datasource: { lineId?: string, nodeIds?: string[], runId?: string | null, preset?: string, agg?: string }
   encoding?: { y?: TrendYEntry[], refLines?: TrendRefLine[], golden?: string[] }
+  options?: { pipeline?: { chartType?: string, cfg?: PipelineConfig, rows?: PipelineRow[] } }
 }
 interface BoardDetail {
   dashboard: { id: string, title: string, layout: GridPos[], filters: Record<string, unknown>, version: number }
@@ -247,6 +253,11 @@ const cardOption = (item: BoardDetail['charts'][number]): EChartsOption => {
   const ch = item.chart
   if (!ch) return EMPTY_OPTION
   return cardOptions.value.get(ch.id) ?? EMPTY_OPTION
+}
+
+const cardKey = (item: BoardDetail['charts'][number]): string => {
+  const id = item.chart?.id ?? 'none'
+  return `${id}-${item.chart?.version ?? 0}-${cardOptions.value.has(id) ? 'ready' : 'pending'}-${item.chart?.options?.pipeline ? 'p' : 'q'}`
 }
 
 const cardOptions = computed(() => {
@@ -280,6 +291,15 @@ async function openBoard(id: string): Promise<void> {
 }
 
 async function queryCard(ch: ChartRow): Promise<void> {
+  const snap = ch.options?.pipeline
+  if (ch.vizType === 'pipeline' && snap?.rows?.length) {
+    optionsStore.value.set(ch.id, {
+      chartId: ch.id,
+      option: buildPipelineOption((snap.chartType ?? 'line') as never, (snap.cfg ?? {}) as PipelineConfig, snap.rows),
+    })
+    optionsStore.value = new Map(optionsStore.value)
+    return
+  }
   const ds = ch.datasource ?? {}
   const to = Date.now()
   const minutes = windowPreset.value ? Number(windowPreset.value) : (Number(ds.preset) || 60)
@@ -377,8 +397,9 @@ watch(windowPreset, () => {
 .input.w { min-width: 240px; }
 .sel { max-width: 160px; }
 .chk { display: inline-flex; gap: 4px; align-items: center; font-size: 12px; border: 1px solid var(--border, rgba(127,127,127,.3)); border-radius: 999px; padding: 2px 10px; cursor: pointer; }
-.grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 8px; }
-.cell { background: var(--panel, #fff); border: 1px solid var(--border, rgba(127,127,127,.25)); border-radius: 10px; padding: 8px; min-height: 150px; display: flex; flex-direction: column; }
+.grid { display: grid; grid-template-columns: repeat(12, 1fr); grid-auto-rows: minmax(220px, auto); gap: 8px; }
+.cell { background: var(--panel, #fff); border: 1px solid var(--border, rgba(127,127,127,.25)); border-radius: 10px; padding: 8px; min-height: 200px; display: flex; flex-direction: column; }
+.cellChart { flex: 1; min-height: 120px; }
 .cellHead { display: flex; gap: 4px; align-items: center; margin-bottom: 4px; }
 .cTitle { font-size: 12px; font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .mini { border: 1px solid var(--border, rgba(127,127,127,.35)); background: transparent; border-radius: 4px; font-size: 10px; padding: 0 5px; cursor: pointer; }

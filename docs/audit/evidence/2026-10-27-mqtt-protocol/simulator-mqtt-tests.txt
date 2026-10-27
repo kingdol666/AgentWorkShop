@@ -1,0 +1,11 @@
+
+> plc-node-simulator@0.1.0 test:mqtt
+> tsx tests/protocol-mqtt.test.ts
+
+PASS broker 连接(内置 18830)
+PASS 收到设备发布 aw/sim/temp — {"data":{"temp":50.98}}
+PASS 命令回灌 setpoint → tempSP — write=62 → value=62
+PASS 命令生效 → 状态主题立即回显 — {"setpoint":62,"value":62,"signalId":"mqtt-sp","at":1793096365145}
+PASS 状态主题 retained(晚订阅即时可取) — {"setpoint":62,"value":62,"signalId":"mqtt-sp","at":1793096365145}
+
+mqtt 自测: 5 passed / 0 failed

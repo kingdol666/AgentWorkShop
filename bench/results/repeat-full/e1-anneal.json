@@ -1,0 +1,92 @@
+[
+  {
+    "scenario": "anneal",
+    "signal": "zone1-sp",
+    "node": "dw-92050305",
+    "protocol": "modbus-tcp",
+    "written": 715,
+    "batchId": "rr-947ac",
+    "accepted": true,
+    "platformReadback": 715,
+    "simSignal": 715,
+    "landed": true,
+    "latencyMs": 6072
+  },
+  {
+    "scenario": "anneal",
+    "signal": "zone2-sp",
+    "node": "dw-b0457bd2",
+    "protocol": "modbus-tcp",
+    "written": 825,
+    "batchId": "rr-1e5f3",
+    "accepted": true,
+    "platformReadback": 825,
+    "simSignal": 825,
+    "landed": true,
+    "latencyMs": 6057
+  },
+  {
+    "scenario": "anneal",
+    "signal": "zone3-sp",
+    "node": "dw-72245dc9",
+    "protocol": "modbus-tcp",
+    "written": 825,
+    "batchId": "rr-44e17",
+    "accepted": true,
+    "platformReadback": 825,
+    "simSignal": 825,
+    "landed": true,
+    "latencyMs": 6074
+  },
+  {
+    "scenario": "anneal",
+    "signal": "line-speed-sp",
+    "node": "dw-b6fad4dd",
+    "protocol": "opcua",
+    "written": 204,
+    "batchId": "rr-16673",
+    "accepted": true,
+    "platformReadback": 204,
+    "simSignal": 204,
+    "landed": true,
+    "latencyMs": 6048
+  },
+  {
+    "scenario": "anneal",
+    "signal": "oa-temp-sp",
+    "node": "dw-a3d76010",
+    "protocol": "modbus-rtu",
+    "written": 416,
+    "batchId": "rr-56baf",
+    "accepted": true,
+    "platformReadback": 416,
+    "simSignal": 416,
+    "landed": true,
+    "latencyMs": 6034
+  },
+  {
+    "scenario": "anneal",
+    "signal": "cool-rate-sp",
+    "node": "dw-f17bcfae",
+    "protocol": "modbus-rtu",
+    "written": 58,
+    "batchId": "rr-ab281",
+    "accepted": true,
+    "platformReadback": 58,
+    "simSignal": 58,
+    "landed": true,
+    "latencyMs": 6051
+  },
+  {
+    "scenario": "anneal",
+    "signal": "h2-ratio-sp",
+    "node": "dw-e0617b06",
+    "protocol": "mqtt",
+    "written": 11.2,
+    "accepted": false,
+    "platformReadback": null,
+    "simSignal": 11.2,
+    "landed": true,
+    "latencyMs": 6059
+  }
+]

@@ -54,10 +54,39 @@ export type DaqFrameSample = {
     }
 }
 
+/** 推送式驱动的报文回调样本:标量值或已解码帧(向量/图像)+ 到达时刻 */
+export type DaqPushSample
+  = | { value: number, atMs: number, frame?: undefined }
+    | { frame: DaqFrameSample['frame'], atMs: number, value?: undefined }
+
+/**
+ * 推送式协议(MQTT 等)常驻订阅契约。
+ * 控制器在节点启用且归属产线存在时建立一次订阅,每条设备报文回调一次(PASSIVE,非轮询);
+ * 返回 stop —— 节点停用/删除/网关停止时调用(必须幂等)。
+ */
+export interface DaqPushInput extends DaqDriverInput {
+  /** 报文到达(解析成功)回调;控制器负责产线门控/状态派生/入库 */
+  onSample: (sample: DaqPushSample) => void
+  /** 订阅期错误(解析失败/连接断开等);控制器落节点 lastError 并节流广播 */
+  onError?: (err: Error) => void
+}
+
 export interface DaqDriver {
   readonly kind: DaqDriverKind
   /** 协议栈是否可用(包缺失时 false,节点测试连接给出可行动提示) */
   available(): Promise<boolean>
   sample(input: DaqDriverInput): Promise<number | DaqFrameSample | null> | number | DaqFrameSample | null
-  test(driverConfig: Record<string, unknown>): Promise<DriverTestResult>
+  /** 连接测试;signalKind 可选(节点测试传模板形态,按参数测试则自动识别载荷) */
+  test(driverConfig: Record<string, unknown>, signalKind?: 'scalar' | 'vector' | 'image'): Promise<DriverTestResult>
+  /**
+   * 可选:建立常驻订阅(推送式协议)。存在此方法的驱动由控制器按「事件驱动」采集,
+   * 不再进入 intervalMs 轮询 —— MQTT 的语义是连上 broker 后被动收报文,
+   * 轮询订阅缓存会把同一条报文按采样 tick 重复入库、并在停发后伪造冻值。
+   */
+  subscribe?(input: DaqPushInput): Promise<() => void | Promise<void>>
+  /**
+   * 可选:订阅参数指纹(凭据/TLS/主题/QoS 等)。控制器发现指纹变化会重建订阅,
+   * 避免改密码/换主题后仍挂在旧连接上。缺省由控制器按常见字段拼一个保守指纹。
+   */
+  fingerprint?(driverConfig: Record<string, unknown>): string
 }

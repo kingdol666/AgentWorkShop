@@ -12,18 +12,24 @@ import { getDaqHostPorts } from '../host-ports'
 import { getOps, recordOps } from '../../ops/ops'
 import { getActiveLineRun } from '../../dcw/line-run'
 import { newAlarmId, notifyAlarm } from '../alarm-notify'
+import { resolveDaqDriver } from '../drivers'
 
 export abstract class DaqControllerSweepAlarms extends DaqControllerIngest {
   /** 网关统一调度:250ms 扫描,到期判定与互斥由各运行时私有节拍自治(单节点慢/停不波及邻居)。
-   *  产线门控:未选定配方(无活动 LineRun)不执行采集 —— 采样与实时下发均由配方驱动。 */
+   *  产线门控:未选定配方(无活动 LineRun)不执行采集 —— 采样与实时下发均由配方驱动。
+   *  推送式协议(MQTT)不走本循环采样:订阅在 syncPushBindings 建立,报文到达即入库;
+   *  该循环只负责订阅对账与陈值看门狗。 */
   protected sweep(): void {
     if (!this.pipelineReady || !this.running) return
+    // 订阅对账与看门狗不依赖"是否有活动批次"(未开跑也保持 broker 在线,开跑即恢复入库)
+    this.syncPushBindings()
+    const now = Date.now()
+    this.checkPushLiveness(now)
     const host = getDaqHostPorts()
     if (!host || !host.lineRun.hasAnyActiveRun()) return
     // 在飞闸门:上一拍未消化的并发额度不叠加(避免积压 tick 雪崩)
     const budget = SWEEP_MAX_CONCURRENCY - this.samplingInFlight
     if (budget <= 0) return
-    const now = Date.now()
     const defs = this.runtimeDefaults()
     const rts = [...this.runtimes.values()]
     const total = rts.length
@@ -36,6 +42,8 @@ export abstract class DaqControllerSweepAlarms extends DaqControllerIngest {
     for (let i = 0; i < total && started < budget; i++) {
       const rt = rts[(this.sweepCursor + i) % total]!
       examined = i + 1
+      // 推送式驱动(存在 subscribe)不轮询:否则同一条报文会被采样 tick 重复入库
+      if (typeof resolveDaqDriver(rt.node.driver).subscribe === 'function') continue
       // 逐产线门控:节点只在其所属产线的活动批次窗口内采集(lineId 空 = 未分配,不采集)
       if (!host.lineRun.activeRun(rt.node.lineId)) continue
       if (!rt.isDue(now, defs)) continue

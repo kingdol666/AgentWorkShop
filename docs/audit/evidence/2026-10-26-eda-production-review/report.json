@@ -1,0 +1,124 @@
+{
+  "at": "2026-10-26T14:40:53.833Z",
+  "base": "http://127.0.0.1:3400",
+  "line": {
+    "id": "ln-20586288",
+    "name": "Injection Molding · Line A"
+  },
+  "nodes": [
+    {
+      "id": "dn-e88f9379",
+      "name": "Part Weight",
+      "value": 32.44
+    },
+    {
+      "id": "dn-367893ed",
+      "name": "Flash Rate",
+      "value": 0.033
+    }
+  ],
+  "checks": [
+    {
+      "id": "U1",
+      "ok": true,
+      "detail": "/studio/pipeline 打开"
+    },
+    {
+      "id": "U2a",
+      "ok": true,
+      "detail": "nodes=Part Weightg|Flash Rate%|Melt Pressurebar|Cycle Times|Mold Temp PV°C|Wall Thicknessmm"
+    },
+    {
+      "id": "U2b",
+      "ok": true,
+      "detail": "tableRows=8 table=atPart WeightFlash Rate2026-10-26T13:40:39.000Z32.440.0322026-10-26T13:40:40.800Z32.4250.0312026-10-26T13:40:42.600Z32.40.0282026-10-26T13:40:44.400Z32.4450.02752026-10-26T13:40:46"
+    },
+    {
+      "id": "U3",
+      "ok": true,
+      "detail": "后处理完成:1735 行。"
+    },
+    {
+      "id": "U4",
+      "ok": true,
+      "detail": "绘图 canvas 渲染"
+    },
+    {
+      "id": "U5",
+      "ok": true,
+      "detail": "在线查看器外壳 + 图表 canvas"
+    },
+    {
+      "id": "U6",
+      "ok": true,
+      "detail": "templates=在线克重趋势 · 生产验收模板 · line×|在线克重趋势 · 生产验收模板 · line×|在线克重趋势 · 生产验收模板 · line×|在线克重趋势 · 生产验收模板 · line×|在线克重趋势 · 生产验收模板 · line×|在线克重趋势 · 生产验收模板 · line×|Weight trend · in-spec · line×|Flash bars · by batch · bar×"
+    },
+    {
+      "id": "U7",
+      "ok": true,
+      "detail": "图表已保存(工坊/看板可见)。"
+    },
+    {
+      "id": "U8",
+      "ok": true,
+      "detail": "分析结果已保存(台账可见)。"
+    },
+    {
+      "id": "U9",
+      "ok": true,
+      "detail": "模板刷新后持久化"
+    }
+  ],
+  "errors": [],
+  "screenshots": [
+    "01-fetch-config.png",
+    "02-live-table.png",
+    "03-transform.png",
+    "04-drawn-chart.png",
+    "05-online-viewer.png",
+    "06a-chart-saved.png",
+    "06b-result-saved.png",
+    "07-template-persisted.png",
+    "08-studio-gallery.png",
+    "09-analysis-ledger.png",
+    "10-studio-pipeline-snapshot.png",
+    "11-board-pipeline-snapshot.png"
+  ],
+  "table": "atPart WeightFlash Rate2026-10-26T13:40:39.000Z32.440.0322026-10-26T13:40:40.800Z32.4250.0312026-10-26T13:40:42.600Z32.40.0282026-10-26T13:40:44.400Z32.4450.02752026-10-26T13:40:46",
+  "transform": "后处理完成:1735 行。",
+  "template": [
+    "在线克重趋势 · 生产验收模板 · line×",
+    "在线克重趋势 · 生产验收模板 · line×",
+    "在线克重趋势 · 生产验收模板 · line×",
+    "在线克重趋势 · 生产验收模板 · line×",
+    "在线克重趋势 · 生产验收模板 · line×",
+    "在线克重趋势 · 生产验收模板 · line×",
+    "Weight trend · in-spec · line×",
+    "Flash bars · by batch · bar×"
+  ],
+  "chartMsg": "图表已保存(工坊/看板可见)。",
+  "resultMsg": "分析结果已保存(台账可见)。",
+  "snapshot": [
+    {
+      "id": "U10",
+      "ok": true,
+      "detail": "studio pipeline snapshot canvas=684x520"
+    },
+    {
+      "id": "U13",
+      "ok": true,
+      "detail": "pipeline snapshot save disabled=true"
+    },
+    {
+      "id": "U11",
+      "ok": true,
+      "detail": "board pipeline snapshot canvas=620x240"
+    },
+    {
+      "id": "U12",
+      "ok": true,
+      "detail": "pageErrors=0"
+    }
+  ],
+  "notes": "live 10/10; snapshot 4/4 with canvas geometry, read-only and pageerror checks"
+}

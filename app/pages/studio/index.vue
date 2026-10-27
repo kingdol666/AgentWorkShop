@@ -97,7 +97,8 @@
               :key="vt"
               class="vizBtn"
               :class="{ on: vizType === vt, dim: !typeAvailable(vt) }"
-              :title="vizLabels[vt]"
+              :disabled="Boolean(pipelineOption)"
+              :title="pipelineOption ? $t('studio.pipelineSnapshot') : vizLabels[vt]"
               @click="vizType = vt"
             >
               {{ vizLabels[vt] }}
@@ -187,11 +188,24 @@
       <div class="card grow canvasCard">
         <ClientOnly>
           <AwChart
-            v-if="chartOption && vizType !== 'table' && vizType !== 'kpi'"
+            v-if="pipelineOption"
+            :key="'pipeline-' + pipelineKey"
+            :option="pipelineOption"
+            :height="520"
+            style="width: 100%"
+          />
+          <AwChart
+            v-else-if="chartOption && vizType !== 'table' && vizType !== 'kpi'"
             :option="chartOption"
             style="height: 100%; width: 100%"
           />
         </ClientOnly>
+        <div
+          v-if="pipelineOption"
+          class="snapBadge"
+        >
+          {{ $t('studio.pipelineSnapshot') }}
+        </div>
         <div
           v-if="vizType === 'kpi' && series.length"
           class="kpiRow"
@@ -240,7 +254,7 @@
           </table>
         </div>
         <p
-          v-if="!series.length && !querying"
+          v-if="!series.length && !querying && !pipelineOption"
           class="empty big"
         >
           {{ $t('studio.canvasEmpty') }}
@@ -384,7 +398,7 @@
           <button
             class="pill-btn primary"
             data-test="studio-save"
-            :disabled="!title.trim() || !series.length"
+            :disabled="!title.trim() || !series.length || Boolean(pipelineOption)"
             @click="saveChart"
           >
             {{ editingId ? $t('studio.update') : $t('studio.save') }}
@@ -448,18 +462,19 @@
  * kpi/table 单序列约束点亮);E2 = run 过滤 + golden 相位画像生成/叠加(0-100% 轴)/偏差分。
  * 取数永远走 /daq/query 按请求鉴权(图表只存查询参数快照,不代理数据 —— B4 铁律)。
  */
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import type { EChartsOption } from 'echarts'
 import { apiFetch } from '@/app/composables/workshop/apiClient'
 import { apiErrorMessage } from '@/app/utils/api-error'
 import { buildTrendOption, type TrendGoldenBin as GoldenBin, type TrendSeries as Series, type TrendYEntry as YEntry, type TrendRefLine as RefLine } from '@/app/utils/chart-trend'
+import { buildPipelineOption, type PipelineConfig, type PipelineRow } from '@/app/utils/chart-pipeline'
 
 const VIZ_TYPES = ['trend', 'bar', 'scatter', 'kpi', 'table', 'histogram'] as const
 type VizType = typeof VIZ_TYPES[number]
 
 interface LineLite { id: string, name: string }
 interface DaqNodeLite { id: string, name: string, unit: string, lineId: string, min?: number, max?: number }
-interface ChartRow { id: string, title: string, vizType: VizType, datasource: Record<string, unknown>, encoding: Record<string, unknown>, options: Record<string, unknown>, lineId: string | null, visibility: string, version: number }
+interface ChartRow { id: string, title: string, vizType: VizType | 'pipeline', datasource: Record<string, unknown>, encoding: Record<string, unknown>, options: Record<string, unknown>, lineId: string | null, visibility: string, version: number }
 interface RunRow { id: string, outcome: string, startedAt: string, endedAt: string | null }
 
 const { t } = useI18n()
@@ -504,6 +519,8 @@ const agg = ref<'avg' | 'min' | 'max'>('avg')
 const querying = ref(false)
 const error = ref('')
 const series = ref<Series[]>([])
+const pipelineOption = shallowRef<EChartsOption | null>(null)
+const pipelineKey = ref(0)
 const goldenOn = ref(new Set<string>())
 const goldenCache = ref(new Map<string, GoldenBin[]>())
 const deviation = ref<{ score: number } | null>(null)
@@ -612,6 +629,7 @@ const chartOption = computed(() => {
 })
 
 async function doQuery(): Promise<void> {
+  pipelineOption.value = null
   querying.value = true
   error.value = ''
   try {
@@ -715,10 +733,23 @@ async function saveChart(): Promise<void> {
 }
 
 function loadChart(ch: ChartRow): void {
-  editingId.value = ch.id
   title.value = ch.title
-  vizType.value = ch.vizType
   const ds = ch.datasource as { lineId?: string, nodeIds?: string[], runId?: string | null, preset?: string, agg?: 'avg' | 'min' | 'max' }
+  const snap = (ch.options as { pipeline?: { chartType?: string, cfg?: PipelineConfig, rows?: PipelineRow[] } } | undefined)?.pipeline
+  if (ch.vizType === 'pipeline' && snap?.rows?.length) {
+    // 管道快照只读:不进入 Studio 的可编辑图表状态,避免误 PATCH 覆盖快照。
+    editingId.value = ''
+    lineId.value = String((ch.datasource as { line_id?: string }).line_id ?? ds.lineId ?? '')
+    visibility.value = (ch.visibility as 'private' | 'line') ?? 'private'
+    pipelineOption.value = buildPipelineOption((snap.chartType ?? 'line') as never, (snap.cfg ?? {}) as PipelineConfig, snap.rows)
+    pipelineKey.value += 1
+    yNodes.value = []
+    series.value = []
+    return
+  }
+  editingId.value = ch.id
+  pipelineOption.value = null
+  vizType.value = ch.vizType as VizType
   lineId.value = ds.lineId ?? ''
   runId.value = ds.runId ?? ''
   preset.value = ds.preset ?? '60'
@@ -801,6 +832,7 @@ watch(lineId, (v) => {
 .vizBtn.dim { opacity: 0.45; }
 .canvasCard { position: relative; }
 .canvasCard > div:first-child { flex: 1; min-height: 220px; }
+.snapBadge { position: absolute; top: 10px; right: 14px; z-index: 2; font-size: 11px; color: var(--ink-soft, #666); border: 1px solid var(--border, rgba(127,127,127,.3)); border-radius: 999px; padding: 2px 9px; background: rgba(255,255,255,.86); }
 .well { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; min-height: 26px; }
 .chip { display: inline-flex; gap: 4px; align-items: center; border: 1px solid var(--border, rgba(127,127,127,.35)); border-radius: 999px; padding: 2px 8px; font-size: 12px; }
 .axis { color: #4a6b57; font-weight: 700; }

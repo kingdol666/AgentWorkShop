@@ -16,13 +16,15 @@
  *      节点齐备且配方可寻 → 直接复用,不重复建线建节点。
  *   ③ 任务板 + Channel:每场景一个 mission Channel(mock lead+worker 剧本)+ 一个工具执行器
  *      (toolHarness,host 工具直调),绑定本线全部节点。
- *   ④ runXxxMission:确定性闭环策略(不经 LLM):daq_query 读数 → dcw_control 受治理下发
- *      (自动开优化记录)→ 物理随动等待 → dcw_judge 收口 → 达标/守卫判定。
- *      三场景 Promise.all 并行,全轨迹落盘(每轮:读数/写值/记录/判定/守卫)。
+ *   ④ runXxxMission:确定性闭环策略(不经 LLM):daq_query 读数 → 绑定配方上的
+ *      recipe_trial 整批试验下发 → 物理随动等待 → 复测判读 → 达标/守卫判定。
+ *      (权限模型 v2:Agent 不再直接写数控节点,试验经 recipe 门禁/运行门/联锁。)
+ *      四场景 Promise.all 并行,全轨迹落盘(每轮:读数/写值/批次/复测/守卫)。
  */
 import { sleep } from './util.mjs'
 import { simApi, simNodes, simExport, plantReset } from './sim.mjs'
 import { runBiaxMission } from './biax.mjs'
+import { ensureGateway } from './provision.mjs'
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v))
 const isSp = s => /-sp$/.test(s.id)
@@ -84,7 +86,7 @@ export const SCENARIOS = {
       TpOut: [0, 0.5],
       PhOut: [6.0, 9.0],
     },
-    settleMs: 12000,
+    settleMs: 30000,
   },
   anneal: {
     id: 'anneal',
@@ -106,7 +108,7 @@ export const SCENARIOS = {
       Tensile: [275, 325],
       SurfaceDef: [0, 0.5],
     },
-    settleMs: 10000,
+    settleMs: 25000,
   },
   biax: {
     id: 'biax',
@@ -121,8 +123,9 @@ export const SCENARIOS = {
       'biax-thickness': [24.3, 25.7],
       'melt-temp': [268, 300],
     },
-    settleMs: 10000,
-    plantWhole: true, // 物理引擎整包装载(与 lib/biax.mjs 同款语义;不按场景 id 拆分)
+    settleMs: 20000,
+    // 多引擎并行必须按 id 隔离装载;plantWhole 会覆盖别的场景引擎(4 场景并行时实测)。
+    plantWhole: false,
   },
 }
 
@@ -367,6 +370,7 @@ export async function provisionScenarioLine(api, scen, { sfx }) {
     productId, name: `scen-${scen.id}-recipe-${sfx}`,
     description: `${scen.zh} 标准工况(${recipeParams.length} 参数全窗纳管)`,
     params: recipeParams, daqWindows,
+    opIntervalMs: 0, // 基准是确定性离线实验:显式关闭配方级下发间隔,仍受四层限界与运行门约束
   })
   const recipeId = recipe.data?.recipe?.id
   if (!recipeId) errors.push('建配方失败: ' + JSON.stringify(recipe).slice(0, 200))
@@ -383,8 +387,15 @@ export async function provisionScenarioLine(api, scen, { sfx }) {
 /** 经平台 REST 读 DAQ 均值(权威读数;桶化 = avg,非桶化 = value) */
 export async function readPvMean(api, nodeId, limit = 5) {
   if (!nodeId) return null
-  const s = await api.call('GET', `/api/workshop/daq/${nodeId}/samples?bucketMs=1000&limit=${limit}`)
-  const vs = (s.data?.points ?? []).map(p => Number(p.avg ?? p.value)).filter(Number.isFinite)
+  // 必须带 from/to 窗口,且窗口必须**短**:/samples 是 `ORDER BY b_at ASC LIMIT n`
+  // —— 取窗口内**最旧**的 n 桶。窗口 60s 时读到的永远是 ~55s 前的值:v2 迁移后
+  // mission 迭代仅 8-17s/轮,55s 陈旧度 = 永远落后 4-5 轮,控制器对着旧基线反复加码
+  // (2026-10-26/27 四工况"PV 冻结"的 SQL 级根因)。窗口=limit×1s+3s 余量,只读最新几桶。
+  const to = Date.now()
+  const from = to - (limit * 1000 + 3_000)
+  const s = await api.call('GET', `/api/workshop/daq/${nodeId}/samples?bucketMs=1000&from=${from}&to=${to}&limit=${limit}`)
+  const pts = [...(s.data?.points ?? [])].sort((a, b) => Number(a.at) - Number(b.at)).slice(-limit)
+  const vs = pts.map(p => Number(p.avg ?? p.value)).filter(Number.isFinite)
   return vs.length ? vs.reduce((a, b) => a + b, 0) / vs.length : null
 }
 
@@ -394,17 +405,19 @@ async function readSp(api, dcwId) {
   return Number.isFinite(v) ? v : null
 }
 
-/** 受治理写(dcw_control 开优化记录)+ 判定收口(dcw_judge)。返回 {ok, recordId, from} */
-async function governedWrite(api, instId, { nodeId, value, hypothesis }) {
-  const c = await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: instId, tool: 'dcw_control', args: { node_id: nodeId, value, hypothesis } })
-  if (c.data?.result?.isError === true) return { ok: false, reason: String(c.data?.result?.text ?? '').slice(0, 120) }
-  const recordId = (String(c.data?.result?.text ?? '').match(/优化记录\s+([A-Za-z0-9._:-]+)\s+已开窗/) ?? [])[1] ?? null
-  let judgeOk = false
-  if (recordId) {
-    const j = await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: instId, tool: 'dcw_judge', args: { record_id: recordId, verdict: 'keep', reason: hypothesis } })
-    judgeOk = j.data?.result?.isError !== true
-  }
-  return { ok: true, recordId, judgeOk }
+/** 受治理写:绑定配方上的 recipe_trial 整批试验(权限模型 v2;不直接写数控节点)。 */
+async function governedWrite(api, instId, line, { nodeId, value, hypothesis }) {
+  const recipeId = line.ids?.recipeId ?? line.ids?.recipe
+  if (!recipeId) return { ok: false, reason: '产线没有可绑定的配方 id' }
+  const c = await api.call('POST', '/api/workshop/agent-tools/invoke', {
+    agentId: instId,
+    tool: 'recipe_trial',
+    args: { recipe_id: recipeId, params: [{ node_id: nodeId, value }], hypothesis },
+  })
+  const text = String(c.data?.result?.text ?? '')
+  if (c.data?.result?.isError === true) return { ok: false, reason: text.slice(0, 180) }
+  const batchId = (text.match(/批次\s+([A-Za-z0-9-]+)/) ?? [])[1] ?? null
+  return { ok: true, batchId }
 }
 
 /** 物理随动等待:等 PV 稳定(连续两次读数差 < eps)或超时 */
@@ -430,10 +443,18 @@ export async function setupMissionChannel(api, scen, { sfx, toolHarness, line })
   const tp = await api.call('POST', '/api/workshop/agents', { name: `scen-${scen.id}-tool-${sfx}`, harness: toolHarness, config: {} })
   const join = await api.call('POST', `/api/workshop/channels/${chId}/agents`, { agentId: tp.data?.id, role: 'worker' })
   const instId = join.data?.id ?? join.data?.agentId
-  for (const nid of [...Object.values(line.dcw), ...Object.values(line.daq)]) {
-    if (!nid) continue
-    const isDcw = Object.values(line.dcw).includes(nid)
-    await api.call('POST', '/api/workshop/agent-tools/bindings', { agentId: instId, nodeId: nid, kind: isDcw ? 'dcw' : 'daq', mode: 'auto' })
+  // 权限模型 v2:写权限绑到配方(不是数控节点);读权限绑 DAQ 节点。
+  const recipeId = line.ids?.recipeId ?? line.ids?.recipe
+  if (recipeId) {
+    const rb = await api.call('POST', '/api/workshop/agent-tools/bindings', { agentId: instId, nodeId: recipeId, kind: 'recipe' })
+    const bindingId = rb.data?.binding?.id
+    if (!bindingId) throw new Error(`配方绑定失败: ${JSON.stringify(rb).slice(0, 200)}`)
+    const sw = await api.call('PATCH', `/api/workshop/agent-tools/bindings/${bindingId}`, { mode: 'auto', confirm: true })
+    if (sw.status >= 400) throw new Error(`配方绑定切 auto 失败: ${sw.message}`)
+  }
+  else throw new Error('产线缺少 recipeId,无法建立 v2 写授权')
+  for (const nid of Object.values(line.daq)) {
+    if (nid) await api.call('POST', '/api/workshop/agent-tools/bindings', { agentId: instId, nodeId: nid, kind: 'daq', mode: 'auto' })
   }
   const goal = scen.id === 'injection'
     ? `把制品克重收敛到 ${scen.pv.target}±${scen.pv.tol}${scen.pv.unit},全程飞边 ≤0.4%、缩痕 ≤1.5%。`
@@ -442,8 +463,8 @@ export async function setupMissionChannel(api, scen, { sfx, toolHarness, line })
       : `硬度调回 ${scen.pv.target}±${scen.pv.tol}${scen.pv.unit} 且抗拉 300±25,然后在质量窗内逐级推高线速提升产能。`
   const parent = await api.call('POST', `/api/workshop/channels/${chId}/tasks`, {
     title: `scen-${scen.id}-opt-${sfx}`,
-    description: `${scen.zh} 闭环优化:${goal} 读数先行,受治理下发,每轮判定收口。`,
-    parts: [{ text: `${scen.zh} 优化任务:${goal} 先 daq_query 读数,再对 ${scen.knobs.map(k => line.dcw[k.sig]).filter(Boolean).join(', ')} 等执行节点受治理下发,写后等工艺响应并 dcw_judge。` }],
+    description: `${scen.zh} 闭环优化:${goal} 读数先行,绑定配方 recipe_trial 整批试验,每轮复测判读。`,
+    parts: [{ text: `${scen.zh} 优化任务:${goal} 先 daq_query 读数,再对 ${scen.knobs.map(k => line.dcw[k.sig]).filter(Boolean).join(', ')} 等参数走绑定配方的 recipe_trial 整批试验下发,写后等工艺响应并复测判读。` }],
   })
   const parentTask = parent.data?.task?.id ?? parent.data?.id
   return { chId, instId, parentTask }
@@ -471,7 +492,7 @@ export async function runInjectionMission(api, scen, { instId, line }) {
       const nid = line.dcw['hold-pressure-sp']
       const cur = await readSp(api, nid)
       const next = r2(clamp(cur - 6, 20, 110))
-      const r = await governedWrite(api, instId, { nodeId: nid, value: next, hypothesis: `inj iter${i}: 飞边 ${guards['飞边率']?.toFixed(2)}% 超限,退保压 ${cur}→${next}` })
+      const r = await governedWrite(api, instId, line, { nodeId: nid, value: next, hypothesis: `inj iter${i}: 飞边 ${guards['飞边率']?.toFixed(2)}% 超限,退保压 ${cur}→${next}` })
       out.ev.push(`iter${i}: 飞边守卫触发,保压 ${cur}→${next} ${r.ok ? '✔' : `✘ ${r.reason ?? ''}`}`)
       if (r.ok) { out.writes++; out.traj.push({ iter: i, phase: 'guard-flash', knob: 'hold-pressure-sp', from: cur, to: next, pv: await settlePv(api, scen, pvId, eps) }); w = out.traj.at(-1).pv }
       continue
@@ -487,14 +508,14 @@ export async function runInjectionMission(api, scen, { instId, line }) {
     const raw = cur + dW / knob.gain * knob.share
     const next = r2(clamp(raw, knob.lo ?? 20, knob.hi ?? 110))
     if (Math.abs(next - cur) < 0.6) { out.ev.push(`iter${i}: ${knob.sig} 校正量过小(${cur}→${next}),换旋钮`); continue }
-    const r = await governedWrite(api, instId, { nodeId: nid, value: next, hypothesis: `inj iter${i}: 克重 ${w.toFixed(2)}g 偏${dW > 0 ? '轻' : '重'},经 ${knob.sig} 校正 ${cur}→${next}` })
+    const r = await governedWrite(api, instId, line, { nodeId: nid, value: next, hypothesis: `inj iter${i}: 克重 ${w.toFixed(2)}g 偏${dW > 0 ? '轻' : '重'},经 ${knob.sig} 校正 ${cur}→${next}` })
     if (!r.ok) { out.ev.push(`iter${i}: ${knob.sig} 写被拒 → ${r.reason}`); continue }
     out.writes++
     const pvAfter = await settlePv(api, scen, pvId, eps)
     w = pvAfter ?? w
     out.final = w
-    out.traj.push({ iter: i, phase: 'converge', knob: knob.sig, from: cur, to: next, record: r.recordId, judge: r.judgeOk, pv: w })
-    out.ev.push(`iter${i}: ${knob.sig} ${cur}→${next} ✔ record=${r.recordId ? 'yes' : 'no'} · 克重→${w?.toFixed(2)}g`)
+    out.traj.push({ iter: i, phase: 'converge', knob: knob.sig, from: cur, to: next, record: r.batchId, pv: w })
+    out.ev.push(`iter${i}: ${knob.sig} ${cur}→${next} ✔ batch=${r.batchId ? 'yes' : 'no'} · 克重→${w?.toFixed(2)}g`)
   }
   const guardsFinal = {}
   for (const g of scen.guards) guardsFinal[g.label] = await readPvMean(api, line.daq[g.sig])
@@ -528,7 +549,7 @@ export async function runWwtpMission(api, scen, { instId, line }) {
     const nid = line.dcw[sig]
     const cur = await readSp(api, nid)
     if (cur == null || Math.abs(next - cur) < 0.5) return { skip: `${sig} 校正量过小或读失败(${cur})` }
-    const r = await governedWrite(api, instId, { nodeId: nid, value: r2(next), hypothesis: `wwtp iter${i}(${phase}): ${why} ${cur}→${r2(next)}` })
+    const r = await governedWrite(api, instId, line, { nodeId: nid, value: r2(next), hypothesis: `wwtp iter${i}(${phase}): ${why} ${cur}→${r2(next)}` })
     if (r.ok) out.writes++
     return r
   }
@@ -554,7 +575,7 @@ export async function runWwtpMission(api, scen, { instId, line }) {
     const r = await writeKnob(i, 'blower', 'blower-hz-sp', next, `DO ${g['DO']?.toFixed(2)} 校正,风机`)
     out.ev.push(`iter${i}(曝气): 风机 ${cur}→${r2(next)} ${r.ok ? '✔' : `✘ ${r.reason ?? r.skip ?? ''}`}`)
     if (!r.ok) break
-    out.traj.push({ iter: i, phase: 'blower', knob: 'blower-hz-sp', from: cur, to: r2(next), record: r.recordId, judge: r.judgeOk, pv: await settlePv(api, scen, line.daq['do-pv'], eps) })
+    out.traj.push({ iter: i, phase: 'blower', knob: 'blower-hz-sp', from: cur, to: r2(next), record: r.batchId, pv: await settlePv(api, scen, line.daq['do-pv'], eps) })
     g = await readAll()
   }
   // 阶段 B:pH 中和(≤3 轮)
@@ -569,7 +590,7 @@ export async function runWwtpMission(api, scen, { instId, line }) {
     const r = await writeKnob(i, 'ph', 'naoh-dose-sp', next, `pH ${g['出水pH']?.toFixed(2)} 校正,NaOH`)
     out.ev.push(`iter${i}(中和): NaOH ${cur}→${r2(next)} ${r.ok ? '✔' : `✘ ${r.reason ?? r.skip ?? ''}`}`)
     if (!r.ok) break
-    out.traj.push({ iter: i, phase: 'ph', knob: 'naoh-dose-sp', from: cur, to: r2(next), record: r.recordId, judge: r.judgeOk, pv: await settlePv(api, scen, line.daq['eff-ph'], 0.03) })
+    out.traj.push({ iter: i, phase: 'ph', knob: 'naoh-dose-sp', from: cur, to: r2(next), record: r.batchId, pv: await settlePv(api, scen, line.daq['eff-ph'], 0.03) })
     g = await readAll()
   }
   // 阶段 C:除磷达标(≤3 轮)。退出阈值 0.45(而非限值 0.5):TP 在 0.45 上下时
@@ -584,7 +605,7 @@ export async function runWwtpMission(api, scen, { instId, line }) {
     const r = await writeKnob(i, 'tp', 'pac-dose-sp', next, `TP ${g['出水总磷']?.toFixed(2)} 超标,PAC+15`)
     out.ev.push(`iter${i}(除磷): PAC ${cur}→${r2(next)} ${r.ok ? '✔' : `✘ ${r.reason ?? r.skip ?? ''}`}`)
     if (!r.ok) break
-    out.traj.push({ iter: i, phase: 'tp', knob: 'pac-dose-sp', from: cur, to: r2(next), record: r.recordId, judge: r.judgeOk, pv: await settlePv(api, scen, line.daq['eff-tp'], 0.02) })
+    out.traj.push({ iter: i, phase: 'tp', knob: 'pac-dose-sp', from: cur, to: r2(next), record: r.batchId, pv: await settlePv(api, scen, line.daq['eff-tp'], 0.02) })
     g = await readAll()
   }
 
@@ -702,14 +723,14 @@ export async function runAnnealMission(api, scen, { instId, line }) {
     if (cur == null) { out.ev.push(`iter${i}: ${knob.sig} 读失败`); continue }
     const next = Math.round(clamp(err > 0 ? cur * (1 + err * 1.6 * knob.share) : cur * (1 + err * 1.6 * knob.share), 600, 850))
     if (Math.abs(next - cur) < 3) { out.ev.push(`iter${i}: ${knob.sig} 校正量过小(${cur})`); continue }
-    const r = await governedWrite(api, instId, { nodeId: nid, value: next, hypothesis: `anneal iter${i}: 硬度 ${g.hardness.toFixed(1)}HV 偏${err > 0 ? '硬(欠退火)' : '软(过退火)'},${knob.sig} ${cur}→${next}` })
+    const r = await governedWrite(api, instId, line, { nodeId: nid, value: next, hypothesis: `anneal iter${i}: 硬度 ${g.hardness.toFixed(1)}HV 偏${err > 0 ? '硬(欠退火)' : '软(过退火)'},${knob.sig} ${cur}→${next}` })
     out.ev.push(`iter${i}: ${knob.sig} ${cur}→${next} ${r.ok ? '✔' : `✘ ${r.reason ?? ''}`}`)
     if (!r.ok) continue
     out.writes++
     const pvAfter = await settlePv(api, scen, line.daq['hardness'], eps)
     g = await readAll()
     out.final = g.hardness
-    out.traj.push({ iter: i, phase: 'converge', knob: knob.sig, from: cur, to: next, record: r.recordId, judge: r.judgeOk, pv: g.hardness })
+    out.traj.push({ iter: i, phase: 'converge', knob: knob.sig, from: cur, to: next, record: r.batchId, pv: g.hardness })
   }
 
   // 阶段 A2:裕度修剪 —— 产能推进前把硬度压到带内下部(≤ target+tol−3),
@@ -726,12 +747,12 @@ export async function runAnnealMission(api, scen, { instId, line }) {
       if (cur == null) { out.ev.push(`trim${t}: ${knob.sig} 读失败`); break }
       const next = Math.round(clamp(cur + 12, 600, 850))
       if (Math.abs(next - cur) < 3) { out.ev.push(`trim${t}: ${knob.sig} 已无上探余量(${cur})`); break }
-      const r = await governedWrite(api, instId, { nodeId: nid, value: next, hypothesis: `anneal 裕度修剪${t}: 硬度 ${g.hardness.toFixed(1)}HV 贴上限,${knob.sig} ${cur}→${next} 下压留产能裕度` })
+      const r = await governedWrite(api, instId, line, { nodeId: nid, value: next, hypothesis: `anneal 裕度修剪${t}: 硬度 ${g.hardness.toFixed(1)}HV 贴上限,${knob.sig} ${cur}→${next} 下压留产能裕度` })
       if (!r.ok) { out.ev.push(`trim${t}: 写被拒 → ${r.reason ?? ''}`); break }
       out.writes++
       await settlePv(api, scen, line.daq['hardness'], eps)
       g = await readAll()
-      out.traj.push({ iter: `trim${t}`, phase: 'margin', knob: knob.sig, from: cur, to: next, record: r.recordId, judge: r.judgeOk, pv: g.hardness })
+      out.traj.push({ iter: `trim${t}`, phase: 'margin', knob: knob.sig, from: cur, to: next, record: r.batchId, pv: g.hardness })
       out.ev.push(`trim${t}: ${knob.sig} ${cur}→${next} 硬度→${g.hardness?.toFixed(1)}HV(修剪线 ≤${trimCeil.toFixed(0)})`)
     }
   }
@@ -749,7 +770,7 @@ export async function runAnnealMission(api, scen, { instId, line }) {
       out.rounds++
       const cur = await readSp(api, line.dcw['line-speed-sp'])
       const next = Math.round(clamp(cur + 12, 60, 220))
-      const r = await governedWrite(api, instId, { nodeId: line.dcw['line-speed-sp'], value: next, hypothesis: `anneal iter${i}(产能): 窗内提线速 ${cur}→${next}` })
+      const r = await governedWrite(api, instId, line, { nodeId: line.dcw['line-speed-sp'], value: next, hypothesis: `anneal iter${i}(产能): 窗内提线速 ${cur}→${next}` })
       if (!r.ok) { out.ev.push(`iter${i}(产能): 写被拒 → ${r.reason}`); break }
       out.writes++
       await settlePv(api, scen, line.daq['hardness'], eps)
@@ -758,9 +779,9 @@ export async function runAnnealMission(api, scen, { instId, line }) {
         pushed++
         out.ev.push(`iter${i}(产能): 线速 ${cur}→${next} ✔ 硬度 ${g2.hardness.toFixed(1)}HV 留裕度窗内`)
         g = g2
-        out.traj.push({ iter: i, phase: 'throughput', knob: 'line-speed-sp', from: cur, to: next, record: r.recordId, judge: r.judgeOk, pv: g2.hardness })
+        out.traj.push({ iter: i, phase: 'throughput', knob: 'line-speed-sp', from: cur, to: next, record: r.batchId, pv: g2.hardness })
       } else {
-        const back = await governedWrite(api, instId, { nodeId: line.dcw['line-speed-sp'], value: cur, hypothesis: `anneal iter${i}(产能回退): 硬度 ${g2.hardness?.toFixed(1)}HV 触边/无裕度,恢复 ${next}→${cur}` })
+        const back = await governedWrite(api, instId, line, { nodeId: line.dcw['line-speed-sp'], value: cur, hypothesis: `anneal iter${i}(产能回退): 硬度 ${g2.hardness?.toFixed(1)}HV 触边/无裕度,恢复 ${next}→${cur}` })
         out.ev.push(`iter${i}(产能): 线速 ${cur}→${next} 硬度 ${g2.hardness?.toFixed(1)}HV 出窗/无裕度 → 回退 ${back.ok ? '✔' : '✘'}`)
         await settlePv(api, scen, line.daq['hardness'], eps)
         break
@@ -777,7 +798,7 @@ export async function runAnnealMission(api, scen, { instId, line }) {
       const cur = await readSp(api, line.dcw['line-speed-sp'])
       if (cur == null || cur <= baseSpeed) break
       const back = Math.round(Math.max(baseSpeed, cur - 12))
-      const r = await governedWrite(api, instId, { nodeId: line.dcw['line-speed-sp'], value: back, hypothesis: `anneal 终态回退${b + 1}: 稳态硬度 ${g.hardness?.toFixed(1)}HV 超窗,线速 ${cur}→${back}` })
+      const r = await governedWrite(api, instId, line, { nodeId: line.dcw['line-speed-sp'], value: back, hypothesis: `anneal 终态回退${b + 1}: 稳态硬度 ${g.hardness?.toFixed(1)}HV 超窗,线速 ${cur}→${back}` })
       out.ev.push(`终态回退${b + 1}: 线速 ${cur}→${back}（稳态硬度 ${g.hardness?.toFixed(1)}HV 超窗）${r.ok ? '✔' : '✘'}`)
       if (!r.ok) break
       out.writes++
@@ -807,7 +828,6 @@ export function biaxMissionToScenarioResult(m) {
       phase: x.note ? 'rebase' : (x.knob == null ? 'baseline' : (String(x.knob).includes('speed') ? 'throughput' : 'converge')),
       knob: x.knob, from: x.from, to: x.to,
       pv: x.thickness, record: x.record ?? null,
-      judge: x.record ? true : undefined,
     })),
     ev: m.ev,
     final: m.thickness,
@@ -823,7 +843,7 @@ export async function runBiaxScenarioMission(api, scen, { instId, line, sfx }) {
   return biaxMissionToScenarioResult(m)
 }
 
-const MISSIONS = {
+export const MISSIONS = {
   injection: runInjectionMission,
   wwtp: runWwtpMission,
   anneal: runAnnealMission,
@@ -833,6 +853,16 @@ const MISSIONS = {
 // ─────────────────────────────────────────────────────────────
 // 单场景全流程(ensure → 建线 → channel → mission)+ 三场景并行编排
 // ─────────────────────────────────────────────────────────────
+
+/** 哨兵辅助:读某 DAQ 节点在模拟器侧对应信号的现值(经 /api/nodes;节点 id 形如 scen-<id>:daq:<sig>) */
+async function readDaqNodeSimValue(scen, sigId) {
+  const map = { injection: 'inj-', wwtp: 'wwtp-', anneal: 'anneal-', biax: 'biax-' }
+  const prefix = map[scen.id] ?? ''
+  const nodes = await simNodes()
+  const dev = nodes.find(n => n.id.startsWith(prefix) && (n.signals ?? []).some(x => x.id === sigId))
+  const sig = dev?.signals?.find(x => x.id === sigId)
+  return sig ? (sig.runtime?.value ?? sig.value ?? null) : null
+}
 
 export async function runScenario(api, scen, ctx) {
   const { sfx, toolHarness, onLog, fresh = true } = ctx
@@ -850,6 +880,40 @@ export async function runScenario(api, scen, ctx) {
     res.line = { ids: line.ids, reused: line.reused, name: line.lineName, dcw: Object.keys(line.dcw).length, daq: Object.keys(line.daq).length, driverTests: line.driverTests, errors: line.errors }
     onLog?.(`[${scen.id}] 平台建线${line.reused ? '(复用既有产线)' : '(新建)'} ✔ line=${line.ids?.lineId} dcw=${Object.keys(line.dcw).length} daq=${Object.keys(line.daq).length}`)
     if (line.errors?.length) res.errors.push(...line.errors)
+    // 自动基准线:Agent 经 recipe 门禁写入;线级总闸切 auto 才能免逐笔 HITL(隔离基准实例)。
+    if (line.ids?.lineId) {
+      const cm = await api.call('PATCH', `/api/workshop/dcw/lines/${line.ids.lineId}`, { controlMode: 'auto', confirm: true })
+      if (cm.status >= 400) res.errors.push(`线控制模式切 auto 失败: ${cm.message}`)
+      else res.ev.push('线控制模式:auto(隔离基准;写路径仍经 recipe 门禁/运行门/四层限界)')
+    }
+
+    // 采样活性哨兵:PV 反馈全部走 /samples(TSDB)。采样总控没起/产线无活动批时
+    // 这里读不到新样本 —— 与其让 mission 拿着旧基线假装闭环(2026-10-26 四工况
+    // "PV 冻结"的教训),不如当场记 error 拒跑。
+    {
+      const pvId = Object.values(line.daq)[0]
+      // 值跟动校验:样本不仅要存在,还必须等于设备当前值(模拟器侧 runtime value)。
+      // 只验「有样本」不够 —— 2026-10-27 实测:样本存在但值冻结在陈旧快照,mission 照样拿旧基线假装闭环。
+      let pts = []
+      let tracked = false
+      for (let w = 0; w < 12; w++) {
+        const to = Date.now()
+        const probe = await api.call('GET', `/api/workshop/daq/${pvId}/samples?bucketMs=1000&from=${to - 30_000}&to=${to}&limit=5`)
+        pts = probe.data?.points ?? []
+        if (pts.length) {
+          // 从模拟器侧取本场景 PV 信号现值(蓝图 PV 信号 id = line.daq 的键名)
+          const sigId = Object.keys(line.daq)[0]
+          const nodeId = line.daq[sigId]
+          const cur = await readDaqNodeSimValue(scen, sigId)
+          const lastAvg = Number(pts[pts.length - 1]?.avg)
+          if (cur == null || !Number.isFinite(lastAvg) || Math.abs(cur - lastAvg) <= Math.max(0.05, Math.abs(cur) * 0.02)) { tracked = true; break }
+        }
+        await sleep(5000)
+      }
+      if (!pts.length) res.errors.push(`DAQ 样本断流:60s 内 ${pvId} 始终无新样本 —— 检查采样总控与产线活动批(反馈通道饿死会让 mission 拿旧基线假装闭环)`)
+      else if (!tracked) res.errors.push(`DAQ 样本值不跟动:${pvId} 样本存在但与设备现值持续偏离 —— 反馈通道陈旧,mission 拿旧基线假装闭环(2026-10-27 四工况冻结的精确形态)`)
+      else res.ev.push(`采样活性 ✔ ${pvId} 近 30s ${pts.length} 桶新样本且值跟动`)
+    }
 
     // fresh(默认开):把 SP 复位到蓝图次优起点(只动本场景的信号值,不重连/不重建任何东西),
     // mission 才有确定的优化轨迹可跑;--no-fresh 时保留现场当前工况(续跑语义)。
@@ -865,6 +929,8 @@ export async function runScenario(api, scen, ctx) {
       const fb = scen.plantWhole
         ? { warm: true, disturbances: { heaterDecay: 1, feedDriftPerMin: 0 } }
         : { id: scen.id, warm: true, disturbances: { heaterDecay: 1, feedDriftPerMin: 0 } }
+      // 独立种子:论文级重复实验要求每条轨迹从可复现的独立随机状态出发(ctx.seed 传入)
+      if (ctx.seed != null) fb.seed = ctx.seed
       await simApi('POST', '/api/plant/reset', fb)
       // 复位核对:逐 SP 回读,断言「现场=蓝图默认值」——防御残留工况/坏写混入使命起点
       // (2026-09-21 run2:上一轮的残留使 anneal 起点偏移,trim 后产能仍差一步;核对可当场拦截)
@@ -938,6 +1004,13 @@ export async function runScenarioBench(api, { scenarios = SCENARIO_IDS, sfx, too
   const t0 = Date.now()
   const list = scenarios.map(id => SCENARIOS[id]).filter(Boolean)
   onLog?.(`并行启动 ${list.length} 个场景闭环:${list.map(s => s.id).join(', ')}${fresh ? '(fresh 起点复位)' : ''}`)
+  // DAQ 采样总控必须在 mission 之前显式启动:冷启平台不会自动起采样器,
+  // 而 mission 的 PV 反馈读的是 /samples(TSDB)。采样断流时 readPvMean 返回 null、
+  // `w = pvAfter ?? w` 会把初值永远携带 —— 2026-10-26 四工况"PV 冻结/达标全红"的根因
+  // (写入与引擎全部正常,唯独反馈通道饿死;复现与判决见 docs/audit/2026-10-27-*)。
+  const gw = await ensureGateway(api)
+  if (!gw) throw new Error('DAQ 采样总控启动失败(/api/workshop/daq/controller start 非 200)')
+  onLog?.('DAQ 采样总控已启动(显式 ensureGateway)')
   const results = await Promise.all(list.map(s => runScenario(api, s, { sfx, toolHarness, fresh, onLog })))
   const wallS = r2((Date.now() - t0) / 1000)
   const ok = results.every(r => !r.errors.length && r.mission?.attained)

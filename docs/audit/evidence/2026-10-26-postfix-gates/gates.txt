@@ -1,0 +1,916 @@
+=== lint ===
+
+> agentworkshop@0.8.4 lint
+> eslint .
+
+=== typecheck ===
+
+> agentworkshop@0.8.4 typecheck
+> node scripts/typecheck.mjs
+
+[typecheck] ① nuxi prepare(重新生成 .nuxt 类型)
+│
+◆  Types generated in [36m.nuxt[39m.
+[typecheck] ② 剔除生成配置里已不存在的 volar 插件条目:vue-router/volar/sfc-route-blocks
+           · tsconfig.app.json: plugins 1 → 0
+           · tsconfig.json: plugins 1 → 0
+[typecheck] ③ vue-tsc -b --noEmit
+[typecheck] ✔ 类型检查通过
+=== unit ===
+
+> agentworkshop@0.8.4 test:unit
+> tsx --tsconfig .nuxt/tsconfig.server.json --test --test-force-exit tests/*.test.ts
+
+✔ 当前 token 命中;轮换后旧 token 宽限内仍命中,新 token 立即命中 (2.0627ms)
+✔ 宽限过期后旧 token 彻底失效(确定性:直接改写到期时刻,不等待) (0.5176ms)
+✔ 宽限窗 0ms:轮换后旧 token 立即失效 (0.5392ms)
+✔ 旋转不存在的 agent → undefined;重复旋转保留最新宽限 (0.5488ms)
+✔ safeTokenEqual:等长比较/异长不抛/空值 false (0.1849ms)
+✔ builds an authoritative binding snapshot from channel bindings with canonical epoch/hash (20.3169ms)
+✔ validates binding hash, epoch, frozen scene, recipe and node semantics (4.5913ms)
+✔ rejects duplicate bindings and cross-recipe bindings at construction (24.7845ms)
+✔ creates and verifies a TwinSnapshot only when binding and frozen scene lineage agree (14.5678ms)
+✔ rejects missing, stale, duplicate, out-of-order and cross-recipe samples in strict production mode (3.3146ms)
+✔ keeps the legacy TwinSnapshot path compatible when authority inputs are absent (0.3322ms)
+✔ 读租约计数与 ENV_BUSY (1.6258ms)
+✔ C12:状态机守卫——queued 不能直接 done;evaluating 才能 done;终态不可迁出 (2.3661ms)
+✔ C11:工件缺失 → 注册失败且不产生模型(无假成功) (3.8421ms)
+✔ C11:工件齐备 → 注册成功;重复注册返回同一 modelId(幂等) (42.2322ms)
+✔ validates the safe AST and rejects unknown operators, variables, units and parameter bounds (2.9688ms)
+✔ compiles a PhysicsModelProvider-compatible declarative provider (11.4267ms)
+✔ supports the complete operator whitelist without dynamic evaluation (0.3476ms)
+✔ discovers node roles with evidence and deterministic counts (1.1641ms)
+✔ compiles a stable semantic draft and enforces the 60 second write policy (25.4283ms)
+✔ freezes only with an approver without renaming the version (0.9943ms)
+✔ rejects unbounded scenes without controls or observables (0.2536ms)
+✔ registers providers, computes stable hashes, and is idempotent (29.7147ms)
+✔ resolves a lease and drains old generation without invalidating in-flight work (6.0143ms)
+✔ retire waits for references and health marks failed providers unavailable (1.179ms)
+✔ legacy injection provider can be registered without changing physics-runtime (1.2749ms)
+✔ global twin bridge replays pending operations and forwards live operations (1.5549ms)
+✔ registered ARX maps logical variable IDs across reordered history columns (112.1637ms)
+✔ registered quadratic response preserves logical coefficient and interaction keys (136.5335ms)
+✔ registered ARX maps legacy node IDs across reordered history columns (58.7118ms)
+✔ registered quadratic response preserves node ID coefficient and interaction keys (70.2343ms)
+✔ typed prediction rejects missing, duplicate and ambiguous node mappings explicitly (3.2678ms)
+[prompts] 已向 C:\Users\87287\AppData\Local\Temp\aw-analysis-test-dR4ZBI\prompts 补种 17 个提示词文件
+✔ repo:insert/get 全字段回读与 JSON roundtrip (3.506ms)
+✔ repo:过滤面(lineIds 范围/配方/类别/关键词/时间窗/limit 封顶)与 remove/count (5.5551ms)
+✔ repo:坏 JSON 列容错(解析失败回退 []/{}) (0.5345ms)
+✔ repo:update 人工修订(部分字段/归因固化/不存在返回 undefined) (0.8196ms)
+✔ analysis_save:缺参拒绝(title/summary 必填) (0.3974ms)
+✔ analysis_save:无绑线且未指定 line_id → 拒绝 (0.3148ms)
+✔ analysis_save:越界产线(存在但不可见)→ 拒绝 (0.6375ms)
+✔ analysis_save:不存在的配方 → 拒绝 (1.9305ms)
+✔ analysis_save→analysis_query:绑线端到端留痕与回读(归因快照断言) (5.9793ms)
+✔ 注册面:host-tools.json 注入面已收录(轻量 catalog;分发表源码行冒烟) (131.8732ms)
+✔ windowOf: defaults and clamping (2.2216ms)
+✔ windowOf: explicit from/to wins over minutes and normalizes to ISO (0.2055ms)
+✔ windowOf: invalid/backwards time range returns actionable error (0.2768ms)
+✔ fanoutQuery: fans out per line, dedups by id, preserves caller filtering (9.1559ms)
+✔ fanoutQuery: supports multiple query specs per line (recipe + rollback kinds) (0.2339ms)
+✔ readLock: 正常解析,损坏与越界端口忽略 (73.9775ms)
+✔ buildCandidates: 锁文件 > PORT env > config.yml > 默认,AW_HOME 抑制全局 home 锁 (50.5047ms)
+✔ discoverInstance: 锁文件命中随机端口 mock 实例 (57.6896ms)
+✔ discoverInstance: 锁指向死端口 → 无兜底时干净失败(null) (23.3249ms)
+✔ discoverInstance: 健康形状不对(非 aw 实例)不算命中 (24.9813ms)
+✔ tools/list: ≥30 个工具、名字唯一、schema 均为 object (18.3767ms)
+✔ initialize / ping / 通知 / 未知方法 (4.871ms)
+✔ 工具全链:懒登录 → 带鉴权调用 → 数据返回 (24.5936ms)
+✔ 未鉴权:错误文本给出可执行的补救指引 (2.334ms)
+✔ 断线重发现:实例换端口后下一次调用自动接上 (92.1807ms)
+✔ aw_request 逃生舱:仅放行 /api/ 前缀 (7.6107ms)
+✔ 凭据错误:抛登录失败且不缓存 token(不触发端口重发现) (17.0075ms)
+✔ MCP 集成开关:停用时除 aw_status 外全部工具被拒(指引去系统设置) (17.994ms)
+✔ MCP 集成开关:runtime-settings.json 文件路径生效(env AW_HOME=配置根) (68.3871ms)
+✔ binding-mode: manual→auto 无 confirm → 拒绝并标记 needConfirm (0.9663ms)
+✔ binding-mode: manual→auto confirm=true → 放行 (0.7996ms)
+✔ binding-mode: manual→auto confirm 须严格布尔(字符串/数字不算) (0.1035ms)
+✔ binding-mode: auto→manual 恢复人工审批,免 confirm (0.0842ms)
+✔ binding-mode: 同名 mode → ok 且 noop(无操作) (0.1004ms)
+✔ binding-mode: target undefined(请求无 mode 字段)→ 不变更 (0.0834ms)
+✔ runTransform:filter/聚合/异常/非数组 全收敛 (1.3735ms)
+✔ deriveFields:数值列判定(6 成以上数值) (0.2957ms)
+✔ aggregateRows:分组 avg 系列拆分与命名 (0.8765ms)
+✔ histogramBins:计数守恒 (0.2539ms)
+✔ seriesToRows:接受 daq/query 的 {at,v} 与兼容 {x,y} (17.6857ms)
+✔ buildPipelineOption:line/bar/pie/histogram 形状 (0.7356ms)
+✔ 向量帧节点:长表 CSV 升序 + manifest frames/points 计数 (15.2492ms)
+✔ 图像帧节点:逐帧原文件落盘 + manifest saved/files/mime + 上限截断标记 (10.144ms)
+✔ 帧上限:超 framesPerNode 截断并标记 truncated;未提供 readFrames 时帧节点跳过不报错 (73.1838ms)
+✔ daq_export:跨页拉全(12000 点 3 页)不丢不重,CSV 与 manifest 落盘正确 (78.4682ms)
+✔ daq_export:未知节点跳过;截断护栏命中时标注 truncated_nodes 且行数受限 (75.8193ms)
+✔ daq_export:空窗口导出仍产出 manifest(0 节点行)且不抛 (18.4623ms)
+✔ 清理临时目录 (7.8936ms)
+✔ 回填窗:缺省 1h (0.7697ms)
+✔ 回填窗:env 可调,钳制到 [0, 7d] (0.1388ms)
+✔ 超宽回填窗识别(>1h 视为安全开关打开) (0.1224ms)
+✔ 时间窗判定:±窗内放行、窗外拒绝、非有限值拒绝 (0.1092ms)
+✔ 鉴权模式:token 配置后必须匹配;未配置走会话路径(需产线 operate 权限) (0.1672ms)
+▶ eda_charts B4 可见性
+  ✔ 创建:private 合法;line 无 line_id 拒;非法 viz_type 拒;public 拒 (533.6867ms)
+  ✔ 读:private 仅 owner/admin;他人 404 语义(null);列表谓词不丢 owner 无产线私图 (2.2484ms)
+  ✔ line 图:无授权者不可见;写仅 owner/admin;version 自增 (63.6376ms)
+  ✔ 删除:级联看板关联(此处仅验证删除与再次不可见) (38.1991ms)
+✔ eda_charts B4 可见性 (639.0391ms)
+▶ redact(凭据脱敏)
+  ✔ headers:authorization/cookie/api-key 值替换为 ***,普通头原样保留 (1.9108ms)
+  ✔ query:token/secret 值脱敏,from/to 原样保留 (0.3174ms)
+✔ redact(凭据脱敏) (3.2814ms)
+▶ dataQuery 护栏
+  ✔ line_id 与 node_ids 均缺省 → 400 (10.6242ms)
+  ✔ node_ids 超 8 个 → 400 (4.258ms)
+  ✔ 窗口超 7 天 → 400 (0.3291ms)
+  ✔ from >= to → 400 (0.2234ms)
+  ✔ 不可读产线(admin 角色例外,普通用户需授权;此处验证空节点集 → 400)→ 400 (1.1499ms)
+✔ dataQuery 护栏 (17.7838ms)
+▶ E1 run 台账
+  ✔ 开账镜像:幂等落行,outcome=open (545.2132ms)
+  ✔ 关账镜像:回填 ended_at;重复关账不覆盖首值 (122.5035ms)
+  ✔ 关账先于开账镜像到达(动态 import 时序)→ UPSERT 兜底建行 (30.9603ms)
+  ✔ 清单过滤:line/outcome + outcome/labels 更新 + recentRunsByOutcome (46.5639ms)
+✔ E1 run 台账 (749.3948ms)
+✔ opcua write: ok when readback is finite and within tolerance; raw carries eng (4682.48ms)
+✔ opcua write: past-tolerance readback fails and names the tolerance band (0.4633ms)
+✔ opcua write: non-finite readback normalizes to null and reports 非数值 (0.2652ms)
+✔ opcua write: non-zero write status throws before any readback (0.427ms)
+✔ readbackAck passes when readback is finite and within tolerance (1.1229ms)
+✔ readbackAck: deadband is inclusive — |Δ| == tolerance passes (0.1919ms)
+✔ readbackAck fails past tolerance and reports the tolerance band (0.1685ms)
+✔ readbackAck treats non-finite readback as unconfirmed and nulls it (0.1408ms)
+✔ readbackAck omits the raw note for direct-write drivers (0.1425ms)
+✔ DCW exploration uses finite node step limit and refuses oversize delta (5.0185ms)
+✔ DCW exploration fails closed when step limit is explicitly cleared (0.313ms)
+✔ write-audit throttle: same value within 10s is deduped, new value records again (3.1434ms)
+✔ write-audit throttle: registry is capped to avoid unbounded growth (2.6172ms)
+✔ write-audit: recipe fallback in src resolution keeps ops log action accurate (0.2103ms)
+✔ uploadExportDataset:manifest 首位 + 节点 CSV 按清单序,带 Bearer,按名映射路径 (75.4542ms)
+✔ uploadExportDataset:数据集不存在 → ok:false 且错误带指引 (1.9748ms)
+✔ diag_run export_id+sync:轮询到完成,认领回执,文本含报告路径与 kb_agent 指引 (10088.4166ms)
+✔ sweep:完成时 deliver 回执带 agentId/channelId 与 kb_agent 指引(Channel 接收链) (2.9813ms)
+✔ /report 路由:任务 completed → workspace 匹配 run → 代理返回报告正文 (41.0838ms)
+✔ diag_run 产线模式:不可读产线在取数前拒绝(插件工具授权) (0.343ms)
+✔ sweep:queued 参与轮询,转为 running 后继续跟踪并在 completed 回执 (2.726ms)
+✔ sweep:终态回执投递抛错 → 保留 deliverPending,下一轮重试成功 (0.5055ms)
+✔ sweep:远端 404 连续 3 轮 → 收敛 failed 并回执(不再永久 running) (0.7692ms)
+✔ runningOfLine:queued 同样占用产线单飞锁 (0.2019ms)
+✔ A1.1 设置:results 组 + 5 键,默认全关/20/4000 (0.9219ms)
+✔ A1.2 工具:diag_results / diag_result_get / diag_result_annotate 均注册 (0.3852ms)
+✔ A1.3 角色:读工具注册 lead+worker(handler 内热判 worker 开关);annotate 恒 lead (0.2126ms)
+✔ A1.4 关闭态短路:三工具入口都先查 resultsEnabledOf (0.173ms)
+✔ A1.5 写面双闸门:annotate 同时要求 results_allow_annotate (0.1356ms)
+✔ A1.6 路由:results 索引/detail/edit/categories(exact-match,query 传参) (0.1526ms)
+✔ A1.7 helpers:jpatch/设置读取/探测/错误映射齐备 (0.216ms)
+✔ A1.8 SDK:ctx.http.patch 已补(context.mjs + 类型) (1.1308ms)
+✔ A1.9 客户端:第二面板 diag-results 注册且由 setup 挂载 (0.1423ms)
+✔ A1.10 上下文保护:brief 默认 true + brief=false 带 key_numbers + md 截断 + 绝对 URL (0.2815ms)
+✔ A1.11 查询参数完整:11 项透传(category_id/harness 不丢) (0.1846ms)
+✔ A1.12 写路由 admin 闸门 + 详情裁剪 IDD 主机路径 (0.1323ms)
+✔ A1.13 探测缓存按 base+token 指纹;网络错误有 base 指引 (0.1313ms)
+✔ A1.14 双副本一致(.AgentWorkShop 工作副本 vs server/plugins-builtin 装载源) (0.1452ms)
+✔ 创建模板:合法/空名/非法图型 (441.154ms)
+✔ 列表 owner 隔离:Bob 看不到 Alice 的,admin 全见 (9.2511ms)
+✔ 跨 owner 读取被拒(非 admin) (0.6694ms)
+✔ 更新:owner 可改,字段与 config 落库 (8.9401ms)
+✔ 删除:owner 可删,admin 可删他人,删后不可读 (37.7366ms)
+▶ SPC 数学(E4)
+  ✔ I-MR:恒定序列 σ≈0;已知漂移序列给出合理控制限 (1.8699ms)
+  ✔ Nelson 规则 1:单点 3σ 外命中;规则 2:连续 9 点同侧命中 (0.8517ms)
+  ✔ Xbar-R:子组结构给出 cl/ucl/lcl;d2 表生效 (0.3345ms)
+  ✔ EWMA 收敛于 CL;阶跃后偏离 (0.7392ms)
+  ✔ CUSUM:持续偏移累积越限;无偏移不越限 (0.5303ms)
+  ✔ buildLimits:n<2 返回 null (0.627ms)
+✔ SPC 数学(E4) (6.5862ms)
+▶ FDC 特征提取(E3 纯函数)
+  ✔ 整窗统计:cnt/mean/std/min/max/slope(平坦序列 slope≈0) (1.0918ms)
+  ✔ grace 期样本不计入 (0.3117ms)
+  ✔ 分段:0-50%/50-100% 两段各自统计 (1.9107ms)
+  ✔ 越限计数:warnHigh 生效 (0.3995ms)
+  ✔ 斜率:线性爬坡 60 点 +100/h 序列 slope≈100 (0.3187ms)
+✔ FDC 特征提取(E3 纯函数) (4.4579ms)
+✔ anchorsSince: lineId + sinceMs 过滤(含边界),保持时间正序,limit 短路 (3.1192ms)
+✔ unseenAnchorsSince: at 水位 + 已见 id 双剔重;推进水位后第二轮零新增(幂等) (0.3285ms)
+✔ aggregate: 同 recipeRunId 归一个 episode(跨节点/跨时刻),params 全量在册 (10.5237ms)
+✔ aggregate: 无 runId 按 nodeId + ±60s 簇归并(超窗/换节点即新 episode) (0.3279ms)
+✔ aggregate: 来源归因(簇内 manual 优先 / agent 次之 / 其余配方系统;actor 取同来源锚) (0.3332ms)
+✔ diffSnapshot: SET 变化且窗内无锚 → 候选确认;有锚/未变/单侧缺失 → 不推断 (0.9031ms)
+✔ diffSnapshot: 首轮只建快照(prev 空 → 零候选;后续轮才出推断) (0.193ms)
+✔ inferSemantic: 模板 key 含 -sp 判为设定值语义,其余 PV (0.1193ms)
+✔ exp-state: recordEpisodes 按 hash 去重(同语义重复采集不重记) (12.3401ms)
+✔ exp-state: episodeHashOf 与 params/anchors 顺序无关(canonical 化) (10.4455ms)
+✔ exp-state: episodes cap 500 FIFO 淘汰(最旧出局,最新保留) (1514.3327ms)
+✔ exp-state: 两阶段状态推进 pending → summarized → done (9.4764ms)
+✔ exp-state: confirm → episode 转换(确认转正入队,忽略不入队) (22.8176ms)
+✔ exp-state: confirmations cap 200 FIFO + list 过滤 (478.0987ms)
+✔ exp-state: 快照/水位/语义位/注册表 读写 + seenAnchorIds 保新剔旧 (11.9423ms)
+✔ exp-state: 落盘持久(重开实例读回;原子写文件存在) (11.1119ms)
+✔ high-risk tool set keeps the full expected membership (conscious-change guard) (2.0191ms)
+✔ every hybrid-twin direct-write tool is scope-gated as high risk (single declaration source) (0.271ms)
+✔ scope gate: high-risk tools need explicit grant; no scope or grant passes (0.1892ms)
+✔ scope gate: management tools follow the lead-only set (0.1423ms)
+✔ 无 questions 的提问型:answers[] 优先于 value(omp 群聊单选) (1.7449ms)
+✔ 无 questions 且无 answers:回退 value (0.176ms)
+✔ omp terminal 编码:UI answers[] → 原生 value 字符串 (0.1629ms)
+✔ 无 questions 且答案全空:不伪造答案 (0.1423ms)
+✔ 结构化 questions:按 id 对齐,缺省按下标 (0.4443ms)
+✔ host-tools:每个工具都有非空且足够具体的描述(≥40 字符) (2.5919ms)
+✔ host-tools:需绑定/授权工具的描述必须说明绑定前提 (1.7655ms)
+✔ host-tools:recipe 写族描述必须讲清 v2 三门(绑定/HITL 理由/运行门) (1.5377ms)
+✔ host-tools:line_log 与 ops_log 参数 schema 完全一致(别名不漂移) (1.8835ms)
+✔ host-tools:权限模型 v2 直写工具已摘除 (1.4633ms)
+✔ 模板语义完备:内置 dcw/daq 模板全部带非空 semantics(节点本体说明的兜底层) (91.8281ms)
+✔ D6 回扫收敛:sweep 后清单键 status=completed,不再滞留 running (15.2414ms)
+✔ D6 失败任务同样收敛:sweep 后清单 status=failed 且带错误信息 (1.4454ms)
+✔ configured ISO switches between Shanghai and Los Angeles without changing epoch (24.9566ms)
+✔ configured time zone exposes correct wall-clock parts and rejects invalid zones (2.4322ms)
+✔ manual approval: 下发 denial is an error with the original comment (1.498ms)
+✔ manual approval: 回退 denial is an error with the original comment (0.2043ms)
+✔ manual approval: an actual timeout is an error and retains expired history (39.9597ms)
+✔ manual approval: duplicate pending and revoked authorization remain errors (0.5402ms)
+✔ optimization exploration: denied preserves write status, response reads, and control values (10.9423ms)
+✔ optimization exploration: expired preserves write status, response reads, and control values (24.4404ms)
+✔ optimization exploration: approved preserves write status, response reads, and control values (14.9939ms)
+✔ manual approval: pending dedup refuses a second request for the same node (30.3193ms)
+✔ manual approval: deny path returns non-error text with user comment (38.7636ms)
+✔ manual approval: approve then unbind = permission expired at grant time (47.8299ms)
+✔ manual approval: approve path passes and rollback wording uses its own verbs (102.0998ms)
+✔ buildMatchQuery 惰性化时间戳/冒号片段 (1.3357ms)
+✔ save_memory 标题带时间戳(修复前 no such column: 10)可正常落库 (6.4971ms)
+✔ 近邻合并语义保留:标题重合+数值一致 → 并入既有条目 (4.7596ms)
+✔ schema: mes_datasets / mes_fetch_jobs 随 SCHEMA_SQL 启动建出 (84.4143ms)
+✔ csv 原语:RFC4180 转义与解析 roundtrip (1.0888ms)
+✔ roundtrip:CSV 写入/转义/sha256/读回(head/stats/rows 分页) (97.4269ms)
+✔ 向量数据集:宽表 + manifest 携带字段字典/批次归属,读回带字典 (85.1102ms)
+✔ 截断保护:驱动超发也被 maxRows 封顶 (120.1686ms)
+✔ 失败路径:驱动抛错 → job=failed + dataset=failed + error (85.2995ms)
+✔ 重启遗留 running 账本 → 查询侧呈现 failed(不自动续跑) (55.6209ms)
+✔ 护栏:窗口 > 7 天被拒 / from-to 必须成对 / maxRows > 5000 被拒 (3.3209ms)
+✔ 护栏:授权过滤 —— ids 必须是调用者可见(绑线)的 mes-rest 节点 (0.713ms)
+✔ 护栏:频次限流 —— 每 60s 第 7 次被拒,窗口滑过后恢复 (1.0364ms)
+✔ 取数模式:无 from/to=快照;≤2000 行=内联统计;>2000 行=异步数据集 (1.2911ms)
+✔ map/多参数表:内联按数值字段统计 + 字典标签 (1.1296ms)
+✔ 空窗口:scalar/vector/table/image 四种格式都不得因采样下标崩溃 (0.7436ms)
+✔ 目录:只列 mes-rest 节点,q/line_id 过滤 + 语义面完整 (0.7665ms)
+✔ mes_export:标量+向量导出到指定子目录,manifest/README 带单位/物理意义/逐点语义 (34.6523ms)
+✔ mes_export:图像格式导出 frames/ 原文件 + records.jsonl 元数据 (43.0581ms)
+✔ mes_export:folder 路径逃逸被拒绝(不写出根目录) (2.3745ms)
+✔ dataHook 快乐路径:统计+plot+saveCsv,产物落盘且回包带摘要 (425.0317ms)
+✔ dataHook:箭头函数/param 透传/ctx.log (315.8982ms)
+✔ dataHook 语法错误 → 诚实失败(不抛,ok=false) (278.4391ms)
+✔ dataHook 死循环 → 4s 超时击杀(ok=false,主进程不受影响) (4020.4782ms)
+✔ dataHook 抛错 → ok=false 且消息透传 (113.2472ms)
+✔ dataHook 图像帧:savePng 落盘(base64 数据 URI 前缀剥离) (107.7909ms)
+✔ saveMesImageArtifact 直存 + listMesArtifacts 清单 (8.5304ms)
+✔ requestHook:query 覆盖返回;非函数代码诚实失败 (257.9561ms)
+✔ mesDataHookCode/Request:空配置 null,超长 400 (0.5571ms)
+✔ hook 返回非对象 → context 兜底说明,ok=true (112.3906ms)
+✔ worker 产物限额:超过 20 文件被拒并诚实失败 (111.8495ms)
+✔ mesArtifactsRoot 指向配置根 (0.4862ms)
+✔ mes-rest read: valuePath 提取 42.5,消息携带 ts (43.6752ms)
+✔ mes-rest write: 2xx + ackPath 真值 → ok;{name} 占位符与 {{value}} 插值正确 (9.0683ms)
+✔ mes-rest write: 超 MES 侧量程(HTTP 400)→ ok=false 且状态分类文案 (13.0924ms)
+✔ mes-rest fetchHistory: cursor 分页 2 页共 5 行,complete=true (15.4586ms)
+✔ mes-rest: 未开 allowPrivateHost 访问 127.0.0.1 → 拒绝且文案含 allowPrivateHost (0.8729ms)
+✔ mes-rest: baseUrl ftp:// → 拒绝(仅 http/https) (0.3418ms)
+✔ mes-rest test: 试读 42.5 返回 ok 与耗时 (162.096ms)
+✔ mes-rest headers: 节点级默认头(字面量+{{SECRET:}} 插值)随请求携带 (221.4846ms)
+✔ mes-rest headers: 映射级覆盖节点默认;未解析占位符整头省略 (196.2872ms)
+✔ mes-rest historyMap format=vector: valuesPath 提取向量行 (185.7075ms)
+✔ mes-rest 字段字典:dictionaryPath 解析字段/单位/逐点语义,向量行保留伴随字段 (184.8136ms)
+✔ mes-rest 字段字典:readMap 当前值响应携带字典 (206.1993ms)
+✔ mes-rest historyMap format=image: dataPath/mimePath 提取帧 (181.4403ms)
+✔ mes-rest historyMap format=table: 整行记录保留 (226.3721ms)
+✔ mes-rest historyMap: vector 缺 valuesPath / image 缺 dataPath → 配置期拒绝(test → ok=false) (0.454ms)
+✔ mes-rest writeHook: 多字段 API 只下发声明字段(tem),ack 受理 (248.8989ms)
+✔ mes-rest writeCheckHook: applied.tem === 设定值二次校验通过/失败两向 (879.6261ms)
+✔ mes-rest writeHook 错误代码: hook 抛错 → ok=false 且消息透传(不抛) (203.3332ms)
+✔ delegation fails closed when node is outside the lead binding surface (2.0322ms)
+✔ delegation refused for non-lead caller and for lead-to-self (0.4897ms)
+✔ grant copies lead bindings (kind/tuning/mode) with provenance; mode override applies (18.8204ms)
+✔ revoke takes back granted nodes; refuses nodes neither granted nor held by lead (9.5648ms)
+✔ 有效文档:零修复,校验通过,原对象不被修改 (3.7271ms)
+✔ 补描述:文档/实体/规则描述一次补齐 (0.6872ms)
+✔ 量纲跟随单位:复合单位不强行声明量纲 (0.5122ms)
+✔ 作用域回填:规则与绑定的产线锚从文档继承 (0.4369ms)
+✔ 悬空引用与重复 id:确定性修复且保留不同内容的两份 (0.582ms)
+✔ 证据不足的控制级状态回退(证据不伪造) (0.5142ms)
+✔ 幂等:修复一次后第二次零修复 (0.4389ms)
+✔ 合法写入绑定通过并回填目标信息 (1.3028ms)
+✔ 单位量纲不相容 → UNIT_MISMATCH (0.5908ms)
+✔ 同量纲不同字面单位但未给换算 → UNIT_TRANSFORM_REQUIRED(禁止 1/0 兜底) (0.2993ms)
+✔ 只读通道声明写 → ACCESS_MODE_CONFLICT (0.1597ms)
+✔ 实体非数值类型绑数值通道 → TYPE_MISMATCH (0.1469ms)
+✔ 跨产线绑定 → ONTOLOGY_SCOPE_MISMATCH (0.1272ms)
+✔ 目标停用 → TARGET_DISABLED;scale=0 → UNIT_CONTRACT_INVALID (0.1598ms)
+✔ 目标不存在 → TARGET_NOT_FOUND(resolver 返回 null) (3.415ms)
+✔ 同一物理目标被两个实体声明写 → BINDING_TARGET_OWNED(一个量只有一个写语义) (0.8463ms)
+✔ 写语义独占(同单位目标)→ BINDING_TARGET_OWNED (0.8746ms)
+✔ 多读源允许(同目标两个实体只读 → 通过) (4.2399ms)
+✔ 漂移检测:目标删除/停用/单位变更 → drifted (1.289ms)
+✔ 编译产物:bound→problem_ir / rate→problem_ir / state_condition→guard / interlock+informal→explained / coupling→rejected (32.2298ms)
+✔ 每条规则必留一条 trace(fail-closed:禁止静默丢弃) (2.9075ms)
+✔ 只收紧:放宽现行下界/上界/步限 → TIGHTEN_ONLY_VIOLATED (8.7026ms)
+✔ 硬约束缺 validated_control 证据 → 结构校验直接拒绝(EVIDENCE_INSUFFICIENT) (0.793ms)
+✔ approvedOnly(发布路径):未获批的硬约束 → ONTOLOGY_NOT_APPROVED;守卫降为 annotate (1.2307ms)
+✔ 软约束不进数值域,只进 softRegularization(经验关系不得硬约束) (0.561ms)
+✔ 关系派生训练先验:特征候选 / 时滞(relation_lag + τ=D/v) / 单调性 (1.379ms)
+✔ 场景补丁:变量/约束/推断关系齐备 (0.889ms)
+✔ 确定性:同一文档重复编译产出相同 hash 与 trace (3.4323ms)
+✔ 结构非法文档 → status rejected 且不产产物 (1.0177ms)
+✔ packHash 由 rulePackHash+contentHash 决定(Profile 漂移比对口径) (2.7236ms)
+✔ 非线性阈值形态编译为守卫;复杂表达式拒绝 (1.1327ms)
+✔ ℃(U+2103) 与 °C 都归一为 degc(旧实现只替换 ° 的缺口已修) (1.8ms)
+✔ ℉ 归一为 degf;大小写与空白容错 (0.1799ms)
+✔ 未知单位自成一体,不与其它未知单位误配 (0.1462ms)
+✔ 复合单位原样保留;无量纲与 scalar 互认 (0.1051ms)
+✔ unitRelation:同字面 same / 同量纲 convertible / 跨量纲 incompatible (0.871ms)
+✔ 换算契约形状校验:scale=0 / NaN 一律拒绝(禁止兜底) (0.9249ms)
+✔ 温区未稳 + 提速 → 阻断(block_recommendation) (18.5527ms)
+✔ 温区未稳但降速/不动 → 放行(只禁正向增量) (2.2955ms)
+✔ 温区已稳 + 提速 → 放行 (1.9774ms)
+✔ fail-closed:状态未知且打算提速 → 阻断(不得默认认为可以提速) (1.5538ms)
+✔ scope 不匹配(跨配方/跨线)→ 跳过该守卫 (2.0364ms)
+✔ annotate 级守卫记录违规但不阻断 (0.1809ms)
+✔ extractGuardSet 从编译快照取守卫(缺省空集不抛错) (3.7085ms)
+✔ 多条守卫:任一 block 级违规即 blocked,违规全部列出 (2.1143ms)
+✔ profileContentHash 含 ontologyRefs;旧 Profile(无 refs)的内容域不含该字段 (10.9045ms)
+✔ 仓储往返:ontologyRefs 持久化;同内容幂等;改 refs 视为不同内容(409) (1.6678ms)
+✔ 旧 Profile(无 refs)插入后 contentHash 与不含该列时一致(不破既有冻结) (0.544ms)
+✔ 漂移校验:引用一致放行;篡改/缺失/退役 → ONTOLOGY_PACK_DRIFTED (2.1047ms)
+✔ 九张 ontology 表全部由 schema.ts 建出(启动即存在) (1.1715ms)
+✔ publish_log 预留 actor_kind 与 solo_operator(设计期一次到位) (0.2631ms)
+✔ 草稿单活跃 + 乐观锁 + 删除 (1.7027ms)
+✔ 版本号单调递增;实体/规则/绑定快照可读回 (2.1873ms)
+✔ 状态原子转移:条件不满足返回 false(由服务层转 409) (0.3582ms)
+✔ 证据/发布日志追加行可读回(append-only) (0.6472ms)
+✔ 草稿:单活跃 409 / 乐观锁 409 / 非法文档 422 / 跨用户不可改 (7.9423ms)
+✔ 规则状态机:跳级 409 / 自审 403 / 缺证据 422 / 第二人批准后才可 control 级 (8.4626ms)
+✔ 证据登记:落账本 + 写回草稿;非法目标 404 (16.8248ms)
+✔ 发布:仅 admin;快照不可变;运行时可按产线解析 (28.1595ms)
+✔ 未获批规则拒绝发布(ONTOLOGY_NOT_APPROVED) (8.4604ms)
+✔ 版本 diff:改界 → rules.changed;退役后不可被 Profile 引用 (35.1685ms)
+✔ 发布日志留痕:create/update/transition/approve/publish/retire 均有行 (3.8166ms)
+✔ 场景子图与 AML 派生:只读已发布版本 (6.1318ms)
+✔ A1 hops=1/both:4 节点 + 4 诱导边,center.hop=0 (11.6792ms)
+✔ A2 hops=2:新增 mv.hold_time(hop2)与 r-ht-w(hop2);r-mt-w 仍是 hop1 (0.4485ms)
+✔ A3 孤立实体:nodes 只含 center,edges 为空 (0.2286ms)
+✔ direction=in:只收敛入边方向的邻居与边 (0.2418ms)
+✔ direction=out:只保留正向跨跳边(横边与反向边都排除) (0.2089ms)
+✔ 自环:只出现一次、方向 loop、不扩展队列 (0.1471ms)
+✔ 平行边(同端点不同 predicate)按 id 全部保留 (0.624ms)
+✔ limit 截断:节点数=limit、truncated=true、center 必在 (0.2562ms)
+✔ limit 充足:truncated=false (7.888ms)
+✔ kinds 过滤同时作用于遍历与输出 (0.5349ms)
+✔ 排序确定:nodes 按 (hop,key),edges 按 (hop,id) (0.3382ms)
+✔ bindings 只挂在 center 上,保留状态与单位 (0.169ms)
+✔ 中心实体缺失 → 404 ONTOLOGY_SUBGRAPH_ENTITY_NOT_FOUND (0.433ms)
+✔ 参数校验:hops/direction/kinds/limit 非法 → 422 对应错误码 (0.4056ms)
+✔ parseSubgraphOptions 缺省:hops=1/direction=both/kinds=null/limit=50 (0.0998ms)
+✔ kinds 支持逗号分隔与去重 (0.0766ms)
+✔ BFS 不死循环:A→B→A 环 (0.1129ms)
+✔ 悬空关系(端点不存在)被跳过而非抛错 (0.0979ms)
+✔ host-tools.json 含 10 条本体工具(全名唯一)且总数为 104 (1.4438ms)
+✔ 每条本体工具:描述 ≥40 字、参数为 object、声明 references 或 noRefs、带 riskClass (0.2771ms)
+✔ 写工具清单:起草/写入/发布提议为 write;读工具为 read(写面不能误标) (0.1837ms)
+✔ 发布提议只能声明链式草稿引用(不能声明"无引用"绕过归属校验) (0.1233ms)
+✔ grant-guard 写族含本体四件,且能解析 draft_id → 产线(ONT-13 缺口修复) (0.3529ms)
+✔ tool-verify 链式类别含 ontology_draft/ontology_version,并有解析分支 (0.4281ms)
+✔ INDUSTRIAL_HANDLERS 登记 10 条(钩子存在性,避免"注入但不可执行") (0.2871ms)
+✔ 外置 MCP 只暴露 4 个只读本体工具,写面绝不外泄 (0.4485ms)
+✔ 本体只读工具不得进入 grant-guard 写族 (1.3398ms)
+✔ 合法夹具通过校验(0 error) (7.5465ms)
+✔ 悬空关系引用 → ONTOLOGY_UNKNOWN_ENTITY (1.1267ms)
+✔ 实体 key 重复 → ONTOLOGY_INVALID (2.4036ms)
+✔ 实体单位与声明量纲不相容 → ONTOLOGY_UNIT_MISMATCH(℃ 归一路径) (0.837ms)
+✔ 关系证据档高于证据级别 → ONTOLOGY_EVIDENCE_INSUFFICIENT (0.607ms)
+✔ 未验证关系携带增益/时滞 → ONTOLOGY_EVIDENCE_INSUFFICIENT(增益只来自受控验证) (0.5866ms)
+✔ 硬约束缺 validated_control 证据 → ONTOLOGY_EVIDENCE_INSUFFICIENT (0.5615ms)
+✔ 规则 kind 与 DSL 形态不一致 → ONTOLOGY_INVALID (0.5313ms)
+✔ 规则引用不存在的实体 → ONTOLOGY_UNKNOWN_ENTITY (0.677ms)
+✔ 界区间为空(min>max) → ONTOLOGY_RULE_CONFLICT (0.6504ms)
+✔ 绑定引用不存在的实体 → ONTOLOGY_UNKNOWN_ENTITY (0.4042ms)
+✔ 绑定单位与目标单位量纲不相容 → ONTOLOGY_UNIT_MISMATCH (0.3623ms)
+✔ 绑定 scale=0 → ONTOLOGY_INVALID(禁止兜底) (2.8211ms)
+✔ 复杂非线性表达式 → 提示不可执行(UNSUPPORTED_FORM,warning 不阻断) (0.567ms)
+✔ Schema 拒绝非法实体 key(点分小写规范) (0.752ms)
+✔ scope: 登录/备份为 system,产线操作为 line;line 行恒有 line_id (2.6931ms)
+✔ lineOnly 兼容别名等价 scope=line (0.6101ms)
+✔ 无 recipe/product 的产线事件:按线返回,按 recipe 排除 (0.5933ms)
+✔ scope=line + lineId + recipeId + 时间区间组合过滤 (0.6741ms)
+✔ actionPrefix 跨 kind 取配方全族(含 kind=write 的下发回执) (0.5743ms)
+✔ limit 仓储层收敛:负数→1,超大→1000 (0.4668ms)
+✔ 跨时区偏移按绝对时刻过滤与排序(julianday) (0.4425ms)
+✔ 空维度不误伤:lineOnly + q 可搜摘要与操作者 (1.4025ms)
+✔ fail-closed:scope=line 但无 lineId 的写入降级为 system (0.6393ms)
+✔ profile 是用户私有:owner 可读可发布,cross-user 拒绝且恰 1 条拒绝审计 (12.8234ms)
+✔ 404 不算授权失败(不写拒绝审计) (0.3441ms)
+✔ recordConfigAction 每次恰 1 条配置审计 (0.6058ms)
+✔ TrainingAdapter 真实注册:内置两家族可解析,未注册返回 null(不再恒 accepted) (1.4491ms)
+✔ SolverAdapter 租约:acquire→inFlight=1→release;drain 期间新 acquire 被拒 (0.9156ms)
+✔ 环境读租约:持租约时重建返回 ENV_BUSY (12.6647ms)
+✔ plan_get 混合 snake/camel 参数同样校验建议所属运行 (1.7426ms)
+✔ plan_get run_id: 自己的 run 不能掩盖他人的建议 (0.5056ms)
+✔ plan_get run_id: 显式建议必须存在,并与运行/候选同源 (1.5883ms)
+✔ plan_get run_id: 合法运行单参/建议单参/双参继续可用 (1.9158ms)
+✔ plan_get runId: 自己的 run 不能掩盖他人的建议 (0.2965ms)
+✔ plan_get runId: 显式建议必须存在,并与运行/候选同源 (0.7901ms)
+✔ plan_get runId: 合法运行单参/建议单参/双参继续可用 (1.5801ms)
+✔ binding 撤权:跨 Channel editor 与普通成员均拒绝,绑定和建议不变 (0.8377ms)
+✔ binding 撤权:owner/editor 与 admin 均可撤销,只失效对应建议 (2.0464ms)
+✔ binding 撤权:不存在的绑定不修改其他建议 (0.5001ms)
+✔ 模板 id 明确拒绝(AGENT_TEMPLATE_ID_NOT_ALLOWED) (12.6397ms)
+✔ channel/workspace 归属不一致拒绝 (2.1569ms)
+✔ 多绑定 → 歧义;他人绑定 → NOT_OWNED;唯一绑定可默认 (4.6776ms)
+✔ 有效期过期 → BINDING_STALE;成员删除 → 绑定级联 (1.9472ms)
+✔ 未知 artifactKind / modelInterface 一律 UNSUPPORTED_ARTIFACT(不回落 ONNX) (1.2572ms)
+✔ ONNX 黑箱不能直接交给 OSQP (0.1425ms)
+✔ 工况 exactly-one:零命中与重叠都拒绝 (0.3187ms)
+✔ spec 校验:MV 缺 delayMs 拒绝;接口与训练器不一致拒绝 (4.5538ms)
+✔ ProblemIR hash 稳定:同问题同 hash,上下文时间不影响身份 (11.3379ms)
+✔ 建议分级:缺 UQ/OOD → unverified;inputDistance 缺失不得当 0 (0.3309ms)
+✔ A2 反例:恒定 U(即使 Y 波动大)不得获得优化资格 (2.1393ms)
+✔ A2 反例:U 与扰动混杂、多输入共线、仅 ACK 动作均拒绝 (0.7979ms)
+✔ 同口径代价:候选轨迹的独立重算与约束报告一致 (0.7462ms)
+✔ units 契约:双向换算正确,scale=0/缺失/非有限一律 fail-closed (2.673ms)
+✔ aml_datasets.lineage_verified:migration 补列 + repo 透传(旧库默认 0) (1.1949ms)
+✔ optimizer_recommendations 下发状态机列存在且旧行回填 idle (1.3626ms)
+✔ optimizer_candidate_crosschecks 表存在(SW4 DDL 先行) (0.209ms)
+✔ 在飞去重:三前缀等值匹配 + excludeApprovalId 排除自身 (54.7166ms)
+✔ 建卡门序:unverified → 403 DISPATCH_GATE_UNVERIFIED;verified 未互校 → 403 DISPATCH_GATE_NOT_CROSSCHECKED (44.3379ms)
+✔ 建卡成功:幂等锚 idle→dispatched;二次建卡 409;卡 payload 服务端构造(模型/工程双值+basis+exp_ref) (29.8408ms)
+✔ 单一咽喉:批准 → D13 通过 → committed 抢占 → applyRecipe → executed + execute 审计 (13.8102ms)
+✔ 业务拒绝:批准时门序失败(工件被换)→ 零写 + denied + comment 含码 + reject 审计 (53.845ms)
+✔ 取消先赢:撤权收敛在飞卡(cancelPendingDispatchForUser)→ cancelled (7.8553ms)
+✔ 未建卡(idle)建议不可经状态机转移(条件要求 dispatched+dispatched_at) (0.7697ms)
+✔ ARX d=0: trained state preserves feedback across multiple future moves (4.3458ms)
+✔ ARX d=1: trained state preserves feedback across multiple future moves (0.7924ms)
+✔ ARX d=2: trained state preserves feedback across multiple future moves (0.6252ms)
+✔ ARX validation metrics use separate data and correct window counts (37.9649ms)
+✔ trainers reject missing independent holdouts rather than report perfect metrics (1.3024ms)
+✔ quality gates reject empty or nonfinite evaluation even with perfect claimed NRMSE (4.4344ms)
+✔ generalization gate accepts separately evaluated exact predictions (1.5275ms)
+✔ static constraint report independently rejects moves exceeding maxStep (0.391ms)
+✔ failed file acquisition clears local exclusive state and preserves foreign lock (23.1723ms)
+✔ timed-out worker is sealed until process exit, then its slot can restart (43.0464ms)
+✔ crashed worker cannot be respawned before its failed request is retired (0.6703ms)
+✔ propose:复制已发布配置+换新模型 → 草稿 v2 + 卡;未批准前零发布 (11.6788ms)
+✔ decide(approve):发布 v2 + 自动重绑(revision+1) + 审计 (3.9664ms)
+✔ 采纳后的绑定直接可解:profileVersion=2 无需人工重绑 (0.5658ms)
+✔ decide(reject):零写(草稿保留、版本不发布) (1.4583ms)
+✔ D21 兼容性:ONNX 工件 + OSQP 提议 → 422,不产生草稿 (1.6537ms)
+✔ 未知模型 / 无已发布基线 → 404 (0.5488ms)
+✔ 工具面登记:optimizer_profile_propose 进 host-tools/grant-guard/INDUSTRIAL_HANDLERS (2.3061ms)
+✔ Manager rejects horizon overrides and nonpositive/noninteger values before loading artifacts (8.1288ms)
+✔ Manager accepts matching fixed horizons and omission, preserving the downstream artifact check (2.2726ms)
+✔ Recommendation classification rejects invalid coverage, distance and unassessed evidence (0.4934ms)
+✔ Run status expires TTL recommendations after ownership checks and persists the audit status (3.0654ms)
+✔ Built-in trainers reject unsupported MD and feature inputs instead of silently discarding them (1.8121ms)
+✔ Artifact guard rejects only zero-delay ARX feedthrough and permits general state-space D (0.5513ms)
+✔ Optimizer and AML predictor reject existing legacy ARX artifacts without modifying frozen files (8.083ms)
+✔ 新表全部由 schema.ts 建出(启动即存在) (1.0321ms)
+✔ Spec 仓储:内容 hash 稳定;同版本不同内容拒绝;发布后不可改 (12.1576ms)
+✔ Profile 仓储:OSQP 只能配线性工件;发布冻结 hash;retired 不可发布 (1.8154ms)
+✔ A19 引用保护:被 optimizer profile / 训练计划 / 渠道绑定引用的模型拒删 (3.7165ms)
+✔ IR 结构 hash:context/x0/uPrev 不参与;weights/horizon/约束参与;键序稳定 (18.9534ms)
+✔ solverRef×template 分派矩阵:仅允许 osqp×linear 与 scipy×static (0.7851ms)
+✔ MPC:Worker 结果与 TS 独立重算代价/轨迹/约束一致(≤1e-6) (3235.7371ms)
+✔ Static:Worker 预测/代价与 evaluateStatic/独立代价一致(≤1e-6) (1673.5185ms)
+{"t":"2026-10-26T15:08:40.063Z","level":"info","scope":"optimizer.worker","msg":"[worker 0] ^\r\n  File \"D:\\tmp\\aw-main\\server\\services\\workshop\\optimization\\python\\problems.py\", line 182, in solve_linear_mpc\r\n    prob = LinearMpcProblem(ir)\r\n           ^^^^^^^^^^^^^^^^^^^^\r\n  File \"D:\\tmp\\aw-main\\server\\services\\workshop\\optimization\\python\\problems.py\", line 34, in __init__\r\n    self.A = _as_matrix(dyn[\"A\"], self.state_dim, self.state_dim)\r\n                        ~~~^^^^^\r\nKeyError: 'A'"}
+✔ Worker 对非法 IR 返回 422 SOLVER_ERROR(不崩溃、不伪造解) (2164.8614ms)
+✔ 静态特征展开:evaluateStatic 与 Python 响应面逐特征一致(bias/mv/mv^2/a*b) (1419.3607ms)
+✔ 协议:ready + ping + stdout 纯 NDJSON (3486.1192ms)
+✔ 协议:protocolVersion 不匹配 → PROTOCOL_MISMATCH 且进程存活 (1608.276ms)
+{"t":"2026-10-26T15:08:39.980Z","level":"info","scope":"optimizer.worker","msg":"[worker 0] Traceback (most recent call last):\r\n  File \"D:\\tmp\\aw-main\\server\\services\\workshop\\optimization\\python\\worker.py\", line 48, in run_solve\r\n    raise ValueError(\"payload.problemIr 必须是对象\")\r\nValueError: payload.problemIr 必须是对象"}
+✔ 协议:未知 op → UNKNOWN_OP;缺 problemIr → SOLVER_ERROR;两者后进程仍可用 (1471.8738ms)
+✔ 协议:坏 JSON → BAD_JSON 帧且不中断主循环 (1489.633ms)
+✔ 协议:未知问题模板 → ok:true + result.status=unsupported(不伪造最优解) (1431.2673ms)
+✔ 协议:同一 worker 并发的第二个 solve → SOLVER_BUSY(单任务互斥) (10676.3486ms)
+✔ SciPy 静态求解:解析解 u*=3,目标差 ≤1e-4 (2879.0767ms)
+✔ OSQP 线性 MPC:达到设定值、约束残差 ≤1e-5、候选非恒值 (962.9974ms)
+✔ spike:typed predictor 与 simulateLinear 在同一工件上 dev_per_cv < 1e-9(锁同源不同实现) (1.0405ms)
+✔ 扰动负例:单侧注入 1e-4 → 互校必须 fail(证明非空转) (0.1544ms)
+✔ import 边界(D25):aml/predictor.ts 不得 import problem-builder/simulateLinear (0.541ms)
+✔ crosscheck 行:row_hash = 全部证据列 sha256;追加不可变;D6 派生 stale (2.5463ms)
+✔ D2 双模式:≥9 块+≥2 run → split_conformal;2-8 块 → empirical_max(coverage 必须=1) (3.2727ms)
+✔ D2 emit 条件:nTestRuns<2 或 nUniqueTestSteps<120 → 不发证;单 val 块 → 不发证 (0.2935ms)
+✔ D3 门限:0.8 硬底(nTestRuns=2 时不得塌缩);empirical_max 必须 1.0 (0.1694ms)
+✔ D4 inputDistance:MV+CV 双偏移;σ≈0 → ∞;列数不符 → null (0.2532ms)
+✔ 分类门:coverage 低于阈值/OOD>3/距离 null → unverified;完整证据 → verified;旧 ONNX(无 uq)→ unverified (0.3111ms)
+✔ isUqFresh:超过 aml.uq.freshDays(默认 7 天)→ 过期 (6.7413ms)
+✔ 池能力探针:osqp + scipy 在同一解释器可用 (1865.1247ms)
+✔ 池并发:poolSize=2 两个 solve 真并行(不同 workerPid) (1810.2028ms)
+✔ 池超时:慢问题 SOLVE_TIMEOUT → 进程回收 → 新 pid 恢复服务 (5617.411ms)
+{"t":"2026-10-26T15:08:53.793Z","level":"error","scope":"optimizer.worker","msg":"[optimizer-worker] 连续 3 次失败,池降级为不可用"}
+✔ 池降级:连续 3 次超时 → degraded → SOLVER_UNAVAILABLE;shutdown 清空 pid (12696.2984ms)
+▶ platform-notice 模块契约
+  ✔ 未接线:全部 no-op 返回 false,不抛错 (0.7077ms)
+  ✔ 接线后:deliver 原子去重,claim 先到先得 (0.2588ms)
+  ✔ sink 抛错被吞掉:调用方(作业收口路径)零负担 (0.1989ms)
+✔ platform-notice 模块契约 (2.0937ms)
+✔ plugin driver registry: register, list, and clear (1.6895ms)
+✔ plugin driver registry: meta-less registration clears stale meta on hot reload (0.2607ms)
+✔ plugin driver registry: merged catalog overrides builtin entry and marks plugin (0.4648ms)
+✔ plugin driver registry: overriding a builtin without replaces declaration is rejected (0.5255ms)
+✔ plugin driver registry: overriding a builtin kind fires the override warning hook (0.1903ms)
+✔ plugin driver registry: illegal status coerces to real (0.1699ms)
+✔ kbActionOf:缺省=query;ingest/query 归一;非法值 invalid (0.9069ms)
+✔ 非法 action → 拒绝且提示合法取值 (0.4934ms)
+✔ 入库意图启发:action 缺省但 prompt 含"入库"→ 拒绝并提示 action=ingest (0.2493ms)
+✔ 查询语义不受影响:action 缺省 + 普通检索问题 → 放行 (0.3301ms)
+✔ AW_KB_INGEST_GUARD=0 关闭启发拦截(逃生门) (0.2105ms)
+✔ action=ingest 产生真实 HITL 审批单;超时默认拒绝 → isError 且未放行 (90.5417ms)
+✔ 声明式引用:插件声明 references 才校验;未声明放行(存量零变化) (0.6994ms)
+✔ linear_arx 辨识恢复真实系数(0.7 / 0.5)且 rollout 优于持值基线 ≥20% (44.7154ms)
+✔ static_response 一阶/二阶响应面恢复系数 (29.17ms)
+✔ kb_agent async → 后台轮询回执 → kb_agent_status 可取结果并 claim (94.6362ms)
+✔ kb_agent sync 失败文案与 success 断言 (1.1562ms)
+✔ recipe_apply rejects version-and-params changed during pending approval without actuation (538.3078ms)
+✔ recipe_apply rejects version-only changed during pending approval without actuation (107.6985ms)
+✔ recipe_apply rejects params-without-version changed during pending approval without actuation (90.4888ms)
+✔ recipe_apply rejects a change during the asynchronous post-approval recheck (94.9286ms)
+✔ recipe_apply dispatches the unchanged approved batch through the mock driver and readback (404.715ms)
+✔ recipe_apply keeps the approved values when the shared recipe mutates after the first write starts (279.8901ms)
+✔ recipe_apply still checks current node limits after approval and before driver actuation (151.7143ms)
+✔ recipe_apply preserves manual denial without creating a batch or writing controls (94.5653ms)
+✔ 默认值兼容:老配方无 opIntervalMs 字段 → 读取器返回 60000 (1.079ms)
+✔ 归一化:create/update 合法值生效;非法值 400;0=显式禁用 (8.5133ms)
+✔ 锚捕获:批准的 recipe-gate(trial)单落锚;拒绝的单不落锚 (60.9826ms)
+✔ 锚捕获:recipe_update 审批不计锚(仅写定义,不触产线) (29.3926ms)
+✔ 提案早拒:距锚不足间隔 → isError 且不创建审批卡 (16.7047ms)
+[dcw] AW_TRIAL_INTERVAL_MS=0:试验防震荡节拍已关闭(仅用于测试/基准;生产环境请勿设置)
+✔ emergency=true 豁免频控但审批照挂,卡片标注【应急】 (580.1889ms)
+✔ 执行兜底:锚新鲜 + 不同审批 id → 429;同审批 id 自豁免 (21.4654ms)
+✔ 锚过期/禁用间隔 → 判定放行;人工与系统路径豁免语义由"无 agentDispatch 不调用"保证 (20.9863ms)
+✔ 试验节拍 env:显式 0 关闭(不能被 falsy 默认值翻回 5 分钟) (0.4781ms)
+✔ 谓词:量程内 ok 且零 violations,不产生任何写副作用 (2.5796ms)
+✔ 谓词:超量程 → violations 携带与 assertWithinLimits 同文消息,error 保留原始错误码 (0.4763ms)
+✔ 谓词:非数字目标值 → 400 校验拒绝(与 write 咽喉点同口径) (0.3023ms)
+✔ 谓词 skipRecipe 语义镜像配方下发路径:配方工艺窗口不参与预检(在线写路径才参与) (14.2601ms)
+✔ 信号归并:两路全空 = 不活动;任一命中即活动且理由去重 (0.3842ms)
+✔ amlActivityForLine:空库产线不活动 (0.9052ms)
+✔ amlActivityForLine 信号①:投用(production)模型且策略非仅建议 → 活动;候选模型不触发 (3.7162ms)
+✔ amlActivityForLine 信号②:在跑优化作业经 datasetId 联查产线 → 活动 (0.9936ms)
+✔ amlActivityForLine:普通 Agent 写的 optimization.open 事件不再误判为 AML 活动(假阳性修复) (0.8024ms)
+✔ aml_activity 工具:可见产线输出活动判定与理由行,越权产线拒绝 (7.4629ms)
+✔ recipe_propose 预检:候选值越过当前配方窗口 → 在挂审批前拒绝(不得借 recipe 路径绕过) (15.7028ms)
+✔ recipe_propose 校验:recipe_id/packages 缺失与超量指明原因 (0.8302ms)
+✔ recipe_propose 校验:缺 basis/exp_ref 逐条指明哪套哪条缺什么,不挂审批单 (441.8081ms)
+✔ FAILED retry backoff: 回退窗内不得重派,窗外放行 (2.9488ms)
+✔ FAILED retry backoff: 非法 updatedAt 放行,避免历史脏数据永久卡死 (0.4565ms)
+✔ request opts.timeoutMs:expiresAt 与超时收敛同源取覆写值(短超时按拒绝收敛) (1019.2006ms)
+✔ request opts.payload:pending 携带结构化载荷;decide 后历史含 payload_json/choice (32.6619ms)
+✔ 向后兼容:不传 opts/choice 的既有调用形态行为不变 (28.0494ms)
+✔ normalize:schemaVersion=1 无 choice 的批准 → 归一为拒绝(fail-closed) (0.3798ms)
+✔ normalize:schemaVersion=1 越界/负数/非整数 choice → 归一为拒绝 (0.2255ms)
+✔ normalize:schemaVersion=1 合法 choice 原样放行;拒绝路径不干预 (0.1872ms)
+✔ normalize:schemaVersion=1 但无 packages 的 payload(如 recipe-gate 逐动作单)不干预 —— 批准照常放行 (0.1296ms)
+✔ normalize:legacy 审批单(无 payload/schemaVersion≠1)完全不干预 (0.0973ms)
+✔ 迁移:旧库 approval_history(无 payload_json/choice)经 initWorkshopDb 补列后载荷可落库 (31.264ms)
+✔ cancelPendingForBinding:配方解绑同时取消 recipe:/recipe-propose:/参数节点审批 (60.9557ms)
+✔ cancelPendingForBinding:节点直绑只取消该节点审批,不误伤其他节点 (61.3854ms)
+✔ optimizer 门控:legacy/训练/无绑定一律拒绝(非未知工具) (0.9399ms)
+✔ REST Agent 归属:非成员 403;admin 放行;成员放行;不存在 404 (1.2594ms)
+[prompts] 已向 C:\Users\87287\AppData\Local\Temp\aw-tool-profile-test-TN5jdo\prompts 补种 17 个提示词文件
+✔ exp-miner 纯装配:含观察读面(exp_collect/ops_log/line_context 等)+ 协作面,零写族 (1.0504ms)
+✔ line-doctor 纯装配:观察读面 + AML 只读查询面(aml_model_find/reference/gate/leaderboard),零写族且无优化执行族 (0.2229ms)
+✔ 白名单全集与写族两两不相交(单一声明源不变式) (0.2075ms)
+✔ 真实 HOST_TOOLS 按白名单收敛:读面/协作面保留,目录内写族不注入 (0.2531ms)
+✔ hostToolsForRole:exp-miner 频道注入清单含读面/协作面,零写族 (137.7504ms)
+✔ hostToolsForRole:line-doctor 频道含 AML 只读面,零写族且无优化执行族 (1.4909ms)
+✔ hostToolsForRole:legacy 频道工具面不受观察面白名单影响(对照回归) (1.5355ms)
+✔ seed 内置模板含经验工程师/产线诊断工程师,任务书关键纪律在文 (0.4138ms)
+✔ 双模板 id 已入 KNOWLEDGE_BASE_TEMPLATE_IDS(KB 作业段随 enableKnowledgeBase 追加) (0.172ms)
+✔ 迁移等价:旧代码表在 JSON 中的条目与 references 逐项相等(单源无漂移) (2.0889ms)
+✔ 登记制:全部 92 个工具都显式声明(references 或 noRefs),无裸奔 (0.2299ms)
+✔ 登记制判定:写族未声明→拒;读族未声明→告警放行;已声明→ok (0.1074ms)
+✔ 声明查表:noRefs 与未声明可区分;specHasRules 判定规则内容 (0.1106ms)
+✔ 执行期走声明:新工具(不在旧表)按声明拒绝;noRefs 直接放行 (0.436ms)
+✔ 非法声明形状(type 非字符串)在声明路径同样拒绝(与旧表行为等价) (0.1078ms)
+[prompts] 已向 C:\Users\87287\AppData\Local\Temp\aw-tool-registry-test-H5dkzF\prompts 补种 17 个提示词文件
+{"t":"2026-10-26T15:08:35.548Z","level":"info","scope":"workshop.tool-registry","msg":"synced builtin=104 plugin=0 unavailable=0 total=104 (test-initial)"}
+{"t":"2026-10-26T15:08:35.548Z","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「trp_plugin_echo」(trp-test-plugin)"}
+{"t":"2026-10-26T15:08:35.575Z","level":"info","scope":"workshop.tool-registry","msg":"synced builtin=104 plugin=1 unavailable=0 total=105 (test-plugin)"}
+✔ registry sync:内置全量入库,插件工具登记后可见 (155.555ms)
+{"t":"2026-10-26T15:08:35.613Z","level":"info","scope":"workshop.tool-registry","msg":"synced builtin=104 plugin=1 unavailable=0 total=105 (test-idempotent)"}
+{"t":"2026-10-26T15:08:35.658Z","level":"info","scope":"workshop.tool-registry","msg":"synced builtin=104 plugin=1 unavailable=1 total=105 (test-unregister)"}
+{"t":"2026-10-26T15:08:35.659Z","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「trp_plugin_echo」(trp-test-plugin)"}
+{"t":"2026-10-26T15:08:35.686Z","level":"info","scope":"workshop.tool-registry","msg":"synced builtin=104 plugin=1 unavailable=0 total=105 (test-reregister)"}
+{"t":"2026-10-26T15:08:35.819Z","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「report_progress」(trp-test-plugin)"}
+{"t":"2026-10-26T15:08:35.821Z","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「trp_plugin_echo」(trp-test-plugin)"}
+{"t":"2026-10-26T15:08:35.841Z","level":"info","scope":"workshop.tool-registry","msg":"synced builtin=104 plugin=1 unavailable=0 total=105 (test-cleanup)"}
+✔ registry sync:幂等且 hash 未变不推进 updated_at (35.0823ms)
+✔ registry sync:插件卸载后 available=0,重新注册恢复 (73.1996ms)
+✔ all 模式:停用 daq_query 后注入面/执行闸门同时生效,重置恢复 (48.2206ms)
+✔ selected 模式:仅勾选工具注入,缺省即停用 (47.547ms)
+✔ 硬规则:observer 档位不能通过 Channel 选择打开写工具 (29.8598ms)
+✔ 硬规则:worker 的 lead-only 工具记录 ROLE_DENIED,lead 正常 (2.0464ms)
+✔ 透明化视图:全局目录含内置与插件工具,统计一致 (3.1609ms)
+✔ 快照构建:插件同名内置时内置优先 (23.2842ms)
+✔ 策略仓储:removeForChannel 清理策略与行 (28.5921ms)
+✔ 折叠确定性:同一输入两次输出逐字节相同(乱序输入排序后一致) (0.7519ms)
+✔ 预算:小绑定面不折叠;超预算折叠为前 N 项 + 总数 + 查询引导 (0.2257ms)
+✔ 折叠回滚开关:AW_DESC_BUDGET=0 → 全量输出 (0.1671ms)
+✔ 单条超预算:首项必须保留(不得产出空「等 N 项」折叠) (0.2574ms)
+✔ 分页:确定性排序(kind→id)、query 过滤、limit 钳制、offset 越界 (0.9409ms)
+✔ user scenario: worker 绑 1 号节点、传 2 号节点(他线)→ 拒绝且文案列出绑定面 (2.6393ms)
+✔ user scenario: 同线但未绑定的 2 号节点、且频道未绑线 → 同样拒绝(未绑定不等于可见) (0.3464ms)
+✔ 绑定面内节点放行(node/line 引用均通过) (2.0478ms)
+✔ 不存在的节点:拒绝文案与「未授权」区分(提示核对 id) (0.399ms)
+✔ 频道绑线只读扩权:绑线数采节点(未绑定)可读;他线节点仍拒 (0.3567ms)
+✔ nodes[] 深路径与 arrays:aml_dataset_build 逐节点校验 (0.4616ms)
+✔ 配方面:绑定配方可操作;他线配方(未绑定/不可读)拒 (0.5358ms)
+✔ dcw_journal:无参(此前返回全量记录)与越界 node_id 均拒,越界文案列可查对象 (0.3316ms)
+✔ 形状:引用参数非字符串 → 拒绝并说明应为字符串 ID (0.1758ms)
+✔ 授权性拒绝写入 audit_log(tool.call.denied),形状类拒绝不入册 (0.3335ms)
+✔ 链式:跨线数据集拒(谱系回溯到产线),本人数据集放行 (1.1525ms)
+✔ 无引用参数的工具不受预检影响(my_industrial_nodes 原样进入 handler) (3.4044ms)
+✔ resolveRefFaces:绑定面/可读线/配方面/频道绑线面一致 (0.1922ms)
+✔ 契约:query() raw 路径时间正序(ASC),窗口超 limit 截取最旧段 (16.9001ms)
+✔ 契约:query() bucket 路径时间正序(ASC) (8.0492ms)
+✔ 导出:>5000 样本窗口游标续页取全(CSV 行数 == 样本数,不静默截断) (38.4026ms)
+✔ 契约:limit<=0 不得变成 SQL 无上限(适配器夹到 1) (7.6254ms)
+{"t":"2026-10-26T15:08:35.777Z","level":"info","scope":"daq.tsdb.sqlite","msg":"[daq-tsdb] 保留期清理 1 行(>168h)"}
+✔ A15:queryTagged raw 返回真实 state;cleanPoints 实际剔除坏点 (1.9936ms)
+✔ A16:同键不同值 → 首值保留且 correctionDropped+1(不静默) (0.677ms)
+✔ A1:逐节点分页稳定 ASC、游标续读、无漏无重 (1.1767ms)
+✔ A16 ④:旧数据 ingestedAt 缺失 → 分页点不伪造到达时间 (0.339ms)
+✔ A16 ③:迟到但新鲜的样本不被事件时间误删 (22.1358ms)
+ℹ tests 582
+ℹ suites 7
+ℹ pass 582
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 27035.6751
+=== docs ===
+
+> agentworkshop@0.8.4 docs:check
+> node scripts/check-docs-sync.mjs
+
+
+[1/6] 同源复制对(源 vs 站点内已提交副本)
+  ✔ docs/site/cli/index.md 与 docs/cli.md 一致(15950 字符)
+  ✔ docs/site/en/cli/index.md 与 docs/cli.en.md 一致(25954 字符)
+  ✔ docs/site/plugins/guide.md 与 docs/plugins.md 一致(29161 字符)
+  ✔ docs/site/en/plugins/guide.md 与 docs/plugins.en.md 一致(45573 字符)
+  ✔ docs/site/sdk/guide.md 与 docs/sdk.md 一致(36044 字符)
+  ✔ docs/site/en/sdk/guide.md 与 docs/sdk.en.md 一致(52906 字符)
+
+[2/6] 中英页面同构(标题层级序列 + 代码块数)
+  ✔ docs/site/en/cli/index.md 与中文页同构(33 个标题 / 15 个代码块)
+  ✔ docs/site/en/plugins/guide.md 与中文页同构(35 个标题 / 21 个代码块)
+  ✔ docs/site/en/plugins/index.md 与中文页同构(19 个标题 / 12 个代码块)
+  ✔ docs/site/en/plugins/lifecycle.md 与中文页同构(18 个标题 / 1 个代码块)
+  ✔ docs/site/en/plugins/example.md 与中文页同构(11 个标题 / 7 个代码块)
+  ✔ docs/site/en/sdk/guide.md 与中文页同构(41 个标题 / 26 个代码块)
+  ✔ docs/site/en/sdk/index.md 与中文页同构(7 个标题 / 4 个代码块)
+  ✔ docs/site/en/sdk/context.md 与中文页同构(13 个标题 / 11 个代码块)
+  ✔ docs/site/en/sdk/lifecycle.md 与中文页同构(6 个标题 / 2 个代码块)
+  ✔ docs/site/en/sdk/client.md 与中文页同构(8 个标题 / 3 个代码块)
+  ✔ docs/site/en/sdk/api-client.md 与中文页同构(9 个标题 / 5 个代码块)
+  ✔ docs/site/en/guide/getting-started.md 与中文页同构(6 个标题 / 6 个代码块)
+  ✔ docs/site/en/guide/configuration.md 与中文页同构(7 个标题 / 2 个代码块)
+  ✔ docs/site/en/guide/daq-protocols.md 与中文页同构(7 个标题 / 1 个代码块)
+  ✔ docs/site/en/guide/dcw-read-write.md 与中文页同构(5 个标题 / 2 个代码块)
+  ✔ docs/site/en/guide/hitl.md 与中文页同构(7 个标题 / 1 个代码块)
+  ✔ docs/site/en/guide/recipe-versions.md 与中文页同构(9 个标题 / 3 个代码块)
+  ✔ docs/site/en/guide/multi-harness.md 与中文页同构(10 个标题 / 0 个代码块)
+  ✔ docs/site/en/guide/aml.md 与中文页同构(12 个标题 / 2 个代码块)
+  ✔ docs/site/en/guide/line-permissions.md 与中文页同构(4 个标题 / 1 个代码块)
+  ✔ docs/site/en/guide/first-session.md 与中文页同构(3 个标题 / 2 个代码块)
+  ✔ docs/site/en/guide/license.md 与中文页同构(5 个标题 / 1 个代码块)
+
+[3/6] 已知陈旧/错误断言不得回归
+  ✔ 无 /73\s*(个)?\s*(设置项|settings)/i
+  ✔ 无 /(?<!\d)18\s*个设置项/
+  ✔ 无 /6\s*(个)?\s*(执行引擎|engines?)/i
+  ✔ 无 /kv\.reset\s*\(/
+  ✔ 无 /npx\s+-p\s+agentworkshop\s+doctor/
+  ✔ 无 /nuxt prepare/
+  ✔ 无 /不落全局/
+  ✔ 无 /-webkit-backdrop-filter/
+  ✔ 无 /AW_MESSAGES_RETENTION_D/
+  ✔ 无 /driverAvailability(?!\()/
+  ✔ 无 /0\.7\.9/
+  ✔ 无 /(修改|改动|编辑)插件(代码|源码|文件)[^。\n]{0,24}热重载/
+  ✔ 无 /Array\.isArray\(\s*await\s+[\w.]*lines\.list\(\)/
+
+[3b/6] 站点配置与新增页面存在性
+  ✔ docs/site/guide/aml.md 存在
+  ✔ docs/site/en/guide/aml.md 存在
+  ✔ config.mts 含 /guide/aml
+  ✔ config.mts 含 /en/guide/aml
+  ✔ 部署工作流同步 docs/cli.en.md
+  ✔ 部署工作流同步 docs/plugins.en.md
+  ✔ 部署工作流同步 docs/sdk.en.md
+
+[4/6] 文档里宣称的版本号必须等于 package.json
+  ✔ docs/cli.md 版本声明 = 0.8.4 = package.json
+  ✔ docs/cli.en.md 版本声明 = 0.8.4 = package.json
+  ✔ docs/sdk.md 版本声明 = 0.8.4 = package.json
+  ✔ docs/sdk.en.md 版本声明 = 0.8.4 = package.json
+  ✔ docs/plugins.md 版本声明 = 0.8.4 = package.json
+  ✔ docs/plugins.en.md 版本声明 = 0.8.4 = package.json
+  ✔ docs/cli.md 的 npx 锁定示例指向当前版本
+  ✔ docs/cli.en.md 的 npx 锁定示例指向当前版本
+  ✔ docs/sdk.md 无 npx 版本锁定示例
+  ✔ docs/sdk.en.md 无 npx 版本锁定示例
+  ✔ docs/plugins.md 无 npx 版本锁定示例
+  ✔ docs/plugins.en.md 无 npx 版本锁定示例
+
+[4b/6] 版本呈现面全链一致(config.yml / README / 站点 hero / 界面显示面)
+  ✔ config.yml app.version = 0.8.4 = package.json
+  ✔ README.md 版本声明 = 0.8.4 = package.json
+  ✔ README-zh.md 版本声明 = 0.8.4 = package.json
+  ✔ docs/site/index.md 版本声明 = 0.8.4 = package.json
+  ✔ docs/site/en/index.md 版本声明 = 0.8.4 = package.json
+  ✔ 界面版本显示面在位:app/layouts/default.vue
+  ✔ 界面版本显示面在位:app/layouts/town.vue
+  ✔ 界面版本显示面在位:app/components/AppSidebar.vue
+  ✔ 界面版本显示面在位:app/pages/settings.vue
+  ✔ 界面版本显示面在位:app/components/settings/SystemPane.vue
+
+[5/6] VitePress 模板安全:正文裸尖括号不得被当成未闭合标签
+  ✔ 正文裸尖括号检查通过(占位符都在行内代码里)
+
+[6b/6] 文档里宣称的设置项数量必须等于 schema.json
+  ✔ docs/cli.md 设置项总数 = 126(1 处断言)
+  ✔ docs/cli.en.md 设置项总数 = 126(3 处断言)
+  ✔ docs/plugins.md 未硬编码设置项总数
+  ✔ docs/plugins.en.md 未硬编码设置项总数
+  ✔ docs/sdk.md 未硬编码设置项总数
+  ✔ docs/sdk.en.md 未硬编码设置项总数
+  ✔ README.md 设置项总数 = 126(2 处断言)
+  ✔ README-zh.md 设置项总数 = 126(3 处断言)
+  ✔ docs/site/index.md 设置项总数 = 126(3 处断言)
+  ✔ docs/site/en/index.md 设置项总数 = 126(1 处断言)
+  ✔ docs/site/guide/configuration.md 设置项总数 = 126(1 处断言)
+  ✔ docs/site/en/guide/configuration.md 设置项总数 = 126(1 处断言)
+  ✔ README.md live/restart = 42/84
+  ✔ README-zh.md live/restart = 42/84
+  ✔ docs/site/index.md live/restart = 42/84
+  ✔ docs/site/en/index.md live/restart = 42/84
+  ✔ docs/site/guide/configuration.md live/restart = 42/84
+  ✔ docs/site/en/guide/configuration.md live/restart = 42/84
+  ✔ schema.json 基准:126 项 / 19 组 / live 42 · restart 84
+
+[6/6] 表格单元格内联代码不得含未转义竖线
+  ✔ 表格内联代码中的竖线均已转义(或不存在)
+
+✅ 文档一致性:91 通过 / 0 失败
+=== i18n ===
+
+> agentworkshop@0.8.4 i18n:check
+> node scripts/_i18n-verify-keys.mjs
+
+zh keys: 3149 / en keys: 3149
+used keys: 2756 / unresolved: 0
+PARITY OK
+=== readme ===
+
+> agentworkshop@0.8.4 readme:lint
+> node scripts/ui/md-lint.mjs README.md README-zh.md
+
+· README.md
+· README-zh.md
+
+全部通过
+=== docs build ===
+
+> agentworkshop@0.8.4 docs:build
+> cd docs/site && npx vitepress build
+
+
+  [32m[1mvitepress[22m v1.6.4[39m
+
+- building client + server bundles...
+[32m✓[0m building client + server bundles...
+- rendering pages...
+[32m✓[0m rendering pages...
+build complete in 4.90s.
+=== mcp ===
+
+> agentworkshop@0.8.4 test:mcp
+> tsx --tsconfig .nuxt/tsconfig.server.json --test --test-force-exit tests/aw-mcp-server.test.ts
+
+✔ readLock: 正常解析,损坏与越界端口忽略 (10.9293ms)
+✔ buildCandidates: 锁文件 > PORT env > config.yml > 默认,AW_HOME 抑制全局 home 锁 (24.76ms)
+✔ discoverInstance: 锁文件命中随机端口 mock 实例 (22.245ms)
+✔ discoverInstance: 锁指向死端口 → 无兜底时干净失败(null) (12.6325ms)
+✔ discoverInstance: 健康形状不对(非 aw 实例)不算命中 (14.3228ms)
+✔ tools/list: ≥30 个工具、名字唯一、schema 均为 object (1.1865ms)
+✔ initialize / ping / 通知 / 未知方法 (0.2418ms)
+✔ 工具全链:懒登录 → 带鉴权调用 → 数据返回 (29.8633ms)
+✔ 未鉴权:错误文本给出可执行的补救指引 (10.6167ms)
+✔ 断线重发现:实例换端口后下一次调用自动接上 (33.117ms)
+✔ aw_request 逃生舱:仅放行 /api/ 前缀 (3.8438ms)
+✔ 凭据错误:抛登录失败且不缓存 token(不触发端口重发现) (3.05ms)
+✔ MCP 集成开关:停用时除 aw_status 外全部工具被拒(指引去系统设置) (8.4216ms)
+✔ MCP 集成开关:runtime-settings.json 文件路径生效(env AW_HOME=配置根) (16.4713ms)
+ℹ tests 14
+ℹ suites 0
+ℹ pass 14
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 360.6707
+=== plugin ===
+
+> agentworkshop@0.8.4 test:plugin-lifecycle
+> node scripts/test-plugin-lifecycle.mjs
+
+
+━━━ 1. onDispose 必须转发到宿主回收队列 ━━━
+  PASS  ctx.onDispose(fn) 进入宿主队列
+  PASS  宿主逐个调用后清理真的执行
+
+━━━ 2. ctx.timer 的定时器必须可被关停回收 ━━━
+  PASS  setInterval 自动登记回收
+  PASS  clearInterval 已执行(定时器不再保持事件循环)
+
+━━━ 3. ctx.subscriptions.add 与 onDispose 同队列 ━━━
+  PASS  { dispose() } 形式被执行
+
+━━━ 4. kv 关停兜底必须登记(否则退出前 200ms 写入丢失)━━━
+  PASS  内存态即时可见
+  PASS  防抖期内尚未落盘(证明下面的 flush 来自回收钩子)
+  PASS  执行回收钩子后 kv 已同步落盘
+
+━━━ 5. 无宿主注入口时的本地兜底(单测/独立装配)━━━
+  PASS  无 onDispose 注入时注册不抛错
+
+━━━ 6. ctx.route 返回布尔(与 sdk/index.d.mts 契约一致)━━━
+  PASS  注册成功 → true
+  PASS  首次注册 → true
+  PASS  同键再注册 → true(覆盖语义)
+  PASS  resolve 取到最新 handler
+  PASS  大小写/缺前导斜杠归一化后同键
+  PASS  非法 handler → false
+
+━━━ 7. scope 取值面完整(builtin / project / user)━━━
+  PASS  scope=builtin 原样透出
+  PASS  scope=project 原样透出
+  PASS  scope=user 原样透出
+
+━━━ 8. 生命周期事件清单覆盖真实发射面 ━━━
+  PASS  LIFECYCLE_EVENTS 无缺项
+  PASS  服务端通配是裸 '*'(不是 event:*)
+  PASS  CLIENT_EVENTS 无缺项
+  PASS  客户端通配是 'event:*'(与服务端相反)
+
+✅ 插件生命周期:22 通过 / 0 失败
+=== sdk ===
+
+> agentworkshop@0.8.4 test:sdk-surface
+> node scripts/test-sdk-surface.mjs
+
+
+[1/3] 生命周期事件清单(类型声明 vs 运行时)
+  ✔ LIFECYCLE_EVENTS: 类型声明与运行时一致(11 项)
+  ✔ CLIENT_EVENTS: 类型声明与运行时一致(5 项)
+  ✔ sdk/index.mjs 转出的 LIFECYCLE_EVENTS 与 lifecycle.mjs 同源
+
+[2/3] sdk/client.d.mts 存在性
+  ✔ sdk/client.d.mts 存在
+  ✔ sdk/client.d.mts 声明了 createClientContext
+  ✔ sdk/client.d.mts 声明了 CLIENT_SDK_VERSION
+  ✔ sdk/client.d.mts 声明了 export interface ClientContext
+
+[3/3] package.json exports 目标文件存在性
+  ✔ exports["."].types → ./sdk/index.d.mts
+  ✔ exports["."].default → ./sdk/index.mjs
+  ✔ exports["./sdk"].types → ./sdk/index.d.mts
+  ✔ exports["./sdk"].default → ./sdk/index.mjs
+  ✔ exports["./sdk/client"].types → ./sdk/client.d.mts
+  ✔ exports["./sdk/client"].default → ./sdk/client.mjs
+  ✔ exports["./package.json"] → ./package.json
+
+✅ SDK 出口面校验通过(agentworkshop@0.8.4)
+=== twin ===
+
+> agentworkshop@0.8.4 test:twin-provider
+> tsx --test tests/aml-twin-provider-registry.test.ts
+
+✔ registers providers, computes stable hashes, and is idempotent (7.4764ms)
+✔ resolves a lease and drains old generation without invalidating in-flight work (0.6154ms)
+✔ retire waits for references and health marks failed providers unavailable (0.4271ms)
+✔ legacy injection provider can be registered without changing physics-runtime (0.2538ms)
+✔ global twin bridge replays pending operations and forwards live operations (0.6112ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 171.0115
+=== skills ===
+
+> agentworkshop@0.8.4 test:skills
+> node scripts/test-aw-skills.mjs
+
+
+═══ skill 规范校验:124 PASS / 0 FAIL(skills: aw-line-onboarding, aw-node-bind, aw-opt-channel, aw-plc-sim-twin, aw-plugin-dev, aw-system-acceptance) ═══
+

@@ -215,6 +215,7 @@ export async function provisionBiaxLine(api, { sfx }) {
     productId, name: `BOPET-25μm 标准工艺 biax-${sfx}`,
     description: '双拉全线标准工况(30 参数全窗纳管;厚度规格 25.0±0.8μm)',
     params: recipeParams, daqWindows,
+    opIntervalMs: 0, // 确定性基准:显式关闭配方级下发间隔(四层限界/运行门仍生效)
   })
   const recipeId = recipe.data?.recipe?.id
   if (!recipeId) errors.push('建配方失败: ' + JSON.stringify(recipe).slice(0, 200))
@@ -248,8 +249,12 @@ const parseLastFloats = (text, n = 3) => {
 /** 经平台 REST 读 DAQ 样本均值(权威读数,绕开文本解析歧义;取最近 N 个采样)。
  *  点形状:桶化 = {at, avg, min, max, cnt}(ORDER BY at DESC);非桶化 = {at, value, state}。 */
 async function readPvMean(api, nodeId, limit = 5) {
-  const s = await api.call('GET', `/api/workshop/daq/${nodeId}/samples?bucketMs=1000&limit=${limit}`)
-  const vs = (s.data?.points ?? []).map(p => Number(p.avg ?? p.value)).filter(Number.isFinite)
+  if (!nodeId) return null
+  const to = Date.now()
+  const from = to - Math.max(60_000, limit * 5000)
+  const s = await api.call('GET', `/api/workshop/daq/${nodeId}/samples?bucketMs=1000&from=${from}&to=${to}&limit=${limit}`)
+  const pts = [...(s.data?.points ?? [])].sort((a, b) => Number(a.at) - Number(b.at)).slice(-limit)
+  const vs = pts.map(p => Number(p.avg ?? p.value)).filter(Number.isFinite)
   return vs.length ? vs.reduce((a, b) => a + b, 0) / vs.length : null
 }
 
@@ -358,11 +363,17 @@ export async function runBiaxMission(api, { instId, line, simDevices, sfx, maxRo
     const dec = sig.decimals ?? 2
     const next = Number(clamp(cur * (1 + err * knob.share), sig.min, sig.max).toFixed(dec))
     if (Math.abs(next - cur) < Math.max(10 ** -dec, (sig.max - sig.min) * 0.002)) { ev.push(`iter${i + 1}: ${knob.sig} 变更量过小(cur=${cur}),换下一旋钮`); continue }
-    const c = await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: instId, tool: 'dcw_control', args: { node_id: nodeId, value: next, hypothesis: `biax mission iter ${i + 1}: 厚度 ${thickness.toFixed(2)}μm 偏${err > 0 ? '厚' : '薄'},经 ${knob.sig} 校正 ${cur}→${next}` } })
-    if (c.data?.result?.isError === true) { ev.push(`iter${i + 1}: ${knob.sig} 写被拒 → ${String(c.data?.result?.text ?? '').slice(0, 100)}`); continue }
+    const recipeId = line.ids?.recipeId ?? line.ids?.recipe
+    const c = await api.call('POST', '/api/workshop/agent-tools/invoke', {
+      agentId: instId,
+      tool: 'recipe_trial',
+      args: { recipe_id: recipeId, params: [{ node_id: nodeId, value: next }], hypothesis: `biax mission iter ${i + 1}: 厚度 ${thickness.toFixed(2)}μm 偏${err > 0 ? '厚' : '薄'},经 ${knob.sig} 校正 ${cur}→${next}` },
+    })
+    const cText = String(c.data?.result?.text ?? '')
+    if (c.data?.result?.isError === true) { ev.push(`iter${i + 1}: ${knob.sig} 试验被拒 → ${cText.slice(0, 140)}`); continue }
     out.writes++
     out.distinctNodes.add(knob.sig)
-    const recordId = (String(c.data?.result?.text ?? '').match(/优化记录\s+([A-Za-z0-9._:-]+)\s+已开窗/) ?? [])[1] ?? null
+    const recordId = (cText.match(/批次\s+([A-Za-z0-9-]+)/) ?? [])[1] ?? null
     if (recordId) out.records.push(recordId)
     // 物理随动:运输滞后(铸片→测厚 ≈8s 实际)+ 一阶收敛;先等最小窗,再等稳定(有界 60s)
     const tw = Date.now()
@@ -402,11 +413,7 @@ export async function runBiaxMission(api, { instId, line, simDevices, sfx, maxRo
     let meltNow = null
     if (meltDaq) meltNow = await readPvMean(api, meltDaq, 4)
     out.traj.push({ iter: i + 1, knob: knob.sig, node: nodeId, from: cur, to: next, record: recordId, thickness, meltTemp: meltNow })
-    if (recordId) {
-      const j = await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: instId, tool: 'dcw_judge', args: { record_id: recordId, verdict: 'keep', reason: `biax mission iter ${i + 1}: PV=${thickness?.toFixed(2)}μm target=${THICKNESS_TARGET}±${THICKNESS_TOL}` } })
-      ev.push(`iter${i + 1}: ${knob.sig} ${cur}→${next} ✔ record=${recordId.slice(0, 10)}… · thickness→${thickness?.toFixed(2)}μm · judge=${j.data?.result?.isError !== true ? 'keep✔' : '✘'}`)
-    }
-    else ev.push(`iter${i + 1}: ${knob.sig} ${cur}→${next} ✔ record 未开(异常)`)
+    ev.push(`iter${i + 1}: ${knob.sig} ${cur}→${next} ✔ batch=${recordId ? recordId.slice(0, 10) + '…' : '(未回传)'} · thickness→${thickness?.toFixed(2)}μm · 复测待判读`)
     if (meltNow != null) ev.push(`        meltTemp=${meltNow.toFixed(1)}℃(安全窗 268~300)`)
   }
   out.attained = out.thickness != null && Math.abs(out.thickness - THICKNESS_TARGET) <= THICKNESS_TOL

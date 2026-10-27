@@ -3,7 +3,7 @@ import { defineConfig } from 'vitepress'
 // 中文根站点 + /en/ 英文镜像(右上角语言切换);主题/搜索/页脚按 locale 各自声明
 const zhNav = [
   { text: '指南', link: '/guide/getting-started' },
-  { text: '产品演示', link: '/demo' },
+  { text: '演示', link: '/demo' },
   { text: 'SDK', link: '/sdk/' },
   { text: '插件', link: '/plugins/' },
   { text: 'CLI', link: '/cli/' },
@@ -12,7 +12,7 @@ const zhNav = [
 ]
 const enNav = [
   { text: 'Guide', link: '/en/guide/getting-started' },
-  { text: 'Product demo', link: '/en/demo' },
+  { text: 'Demo', link: '/en/demo' },
   { text: 'SDK', link: '/en/sdk/' },
   { text: 'Plugins', link: '/en/plugins/' },
   { text: 'CLI', link: '/en/cli/' },
@@ -30,6 +30,7 @@ const zhGuide = [
   { text: 'AML 自动建模', link: '/guide/aml' },
   { text: '本体与 AI 先行模型闭环', link: '/guide/ontology' },
   { text: '数据分析台账', link: '/guide/analysis-reports' },
+  { text: '数据管理台与 EDA 工坊', link: '/guide/eda' },
   { text: '产线级权限', link: '/guide/line-permissions' },
   { text: '第一次 Agent × 产线会话', link: '/guide/first-session' },
   { text: '版本历史', link: '/guide/changelog' },
@@ -46,6 +47,7 @@ const enGuide = [
   { text: 'AML auto-modeling', link: '/en/guide/aml' },
   { text: 'Ontology & AI-first model loop', link: '/en/guide/ontology' },
   { text: 'Data-analysis ledger', link: '/en/guide/analysis-reports' },
+  { text: 'Data workbench & EDA studio', link: '/en/guide/eda' },
   { text: 'Line-level permissions', link: '/en/guide/line-permissions' },
   { text: 'Your first agent × line session', link: '/en/guide/first-session' },
   { text: 'Version history', link: '/en/guide/changelog' },

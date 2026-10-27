@@ -1,0 +1,50 @@
+━━━ MQTT 协议专项 E2E (tag=mvqm7z00) ━━━
+  PASS  A0 平台在线 + 管理员会话 — http://127.0.0.1:3021
+  ·   · 模拟器未在线 → 自动启动 (cwd=C:\Users\87287\AppData\Local\Temp\aw-mqtt-e2e-sim-mvqm7z00, port=4021, 影子私有数据目录, 无 watch 常驻)
+(node:8008) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ·   · 冷启默认设备已清场(0 台) → 产线由预设从零重建
+  PASS  A1 模拟器内置 broker 监听 — 期望 29830, export={"host":"127.0.0.1","port":29830,"topic":"aw/sim/temp","jsonPath":"data.temp"}
+  PASS  A2 MQTT 写信号导出含状态回读主题 — readTopic=aw/sim/state
+  PASS  A3 设备周期发布遥测(独立订阅端) — 3 条 / 6s,样例 51.21,49.2,52.08
+  PASS  A4 状态主题 retained(晚订阅即时可取) — {"setpoint":60,"value":60,"signalId":"mqtt-sp","at":1793101357677}
+  PASS  B0 DAQ 网关启动
+  PASS  B1 产线开跑(配方 + 监控窗口) — rr-17cabdae
+  PASS  B2 MQTT 报文逐条入库(独立真值对账) — DB 7 行 / 真值 7 条
+  PASS  B3 入库值与设备发布值一致(逐条对齐) — 对齐 6/7
+  PASS  B4 入库节奏=设备发布周期(非 intervalMs 轮询) — 中位间隔 2000ms(设备 tick=2000,节点 interval=1000)
+  PASS  B5 库内时间戳严格递增(到达时刻) — 1793101359000 → 1793101371000
+  PASS  B6 报文到达 → 库内可查 ≤ 4s — 2642ms
+  PASS  B7 采集管线无丢弃(produced=consumed, dropped=0) — {"produced":10,"consumed":10,"dropped":0,"stored":9}
+  PASS  B8 /samples 无 from 时 limit=1 = 最新桶(UI 路径) — unbounded=71.8@1793101383000 bounded=71.8@1793101383000
+  PASS  C1 设备停发 → 0 新增样本(不伪造冻值) — 0 行
+  PASS  C2 停发 → 节点 offline + 可读 lastError — offline / MQTT 被动订阅:9s 未收到报文(设备停发/主题无发布/网络分区),节点置 offline(停发期间不写样本)
+  PASS  C3 恢复发布 → 自动续采 + 状态自愈 — 2 行 / state=ok / err=
+  PASS  D0 第二台 MQTT 设备创建 — mqtt-e2e-dev2-mvqm7z00
+  PASS  D1 同 broker 两节点并行入库 — node1 4 行 / node2 7 行
+  PASS  E1 外部 broker 订阅入库(标准 mosquitto) — 6 行
+  PASS  E2 外部 broker 写回 → 设备回显 → 平台回读 — lastCmd=44.4 read=44.4 msg=MQTT 回读 aw/e2e/mvqm7z00/ext/state = 44.4
+  PASS  F1 MQTT 直写 → 设备信号变化 — target=61.5 sim=61.5
+  PASS  F2 MQTT 写后回读(readTopic)= 写入值 — read=61.5 msg=MQTT 回读 aw/sim/state = 61.5
+  PASS  F3 配方批量下发 → 回读证实(readback-verified) — {"verdict":"verified","attempts":1}
+  PASS  F4 ACK 汇总无未证实/失败 — {"verified":1,"unverified":0,"failed":0,"total":1}
+  PASS  G0 Agent 建号 + DAQ 绑定 — 516440a5-219d-4a68-8cb6-2df67662c8ab / {"binding":{"id":"nb-8f22793e","agentId":"516440a5-219d-4a68-8cb6-2df67662c8ab","nodeId":"dn-68fb2341","kind":"daq","mod
+  PASS  G1 daq_query 最新值 = 窗口末尾桶(不是最旧段) — text=74.7 dbLast=74.7 dbFirst=53.9
+  PASS  G2 输出含数据源与库内滞后声明 —   工况判读: 活动配方「MQTT-E2E-R-mvqm7z00」监控窗口 [0, 100]:当前 74.7℃ 窗口内(正常) | 同产线数控设定: MQTT-DCW1-mvqm7z00=61.5℃;MQTT-DCW2-mvqm7z00=6
+  PASS  G3 agg=min 生效(输出最小值 = 库内窗口最小) — textMin=53.9 dbMin=53.9
+  PASS  G4 非法 agg 明确报错(不静默回退) — agg 只能是 avg|min|max(收到 bogus)。
+  PASS  G5 未绑定节点被拒绝(授权面) — 工具调用被拒(引用校验,daq_query):node_id = 「dn-not-bound」不在你的授权范围内(节点不存在或已删除)。
+请核对节点 id(先用
+  PASS  H1 网关停止 → 被动订阅停收(0 新增) — 0 行
+  PASS  H2 网关恢复 → 订阅重建并继续入库 — 2 行
+  PASS  I1 retained 首订阅种子一次(当前状态可查) — 1 行 / 12.3
+  PASS  I2 retained 重放不重复入库(静默期行数不增长) — 1 → 1
+  PASS  J1 节点停用即停收 / 启用即续采 — 停用期 0 行 / 恢复 2 行
+  PASS  J2 topic 变更 → 订阅重建并采新主题 — 3 行 / 值=42
+  PASS  J3 EDA 查询窗口超 limit 时取最新段 — 38 点 / 末点滞后 2s
+  PASS  J4 停线停收 / 重新开跑续采 — 停线期 0 行 / 重启 2 行
+  PASS  K1 停线期间 retained 状态在开跑后补种一次(含快速停用/启用) — 停线 0 / 启停后 0 / 开跑 1 行=23.4
+  PASS  K2 网关停止时外部入库如实 503(不静默丢帧) — status=503 msg=DAQ 网关已停止,外部入库暂停;请先启动采集网关(POST /api/workshop/daq/controller action=start)
+
+━━━ MQTT E2E: 41 passed / 0 failed / 0 skipped ━━━
+  (临时 home: C:\Users\87287\AppData\Local\Temp\aw-mqtt-e2e-mvqm7z00-ODNKux)

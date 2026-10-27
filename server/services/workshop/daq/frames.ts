@@ -143,19 +143,25 @@ const thumbnail: DaqFrameProcessor = {
 /** 最小灰度 PNG 解码(仅支持本仓 encodePng 产出的 filter-0/8bit 灰度;其余返回 null) */
 function decodeGrayPng(blob: Buffer, w: number, h: number): Uint8Array | null {
   try {
+    // 尺寸先验:像素/单边上限,防止不可信 IHDR 触发超大分配(图像载荷现在可来自 broker)
+    const MAX_PIXELS = 16_000_000
+    if (!Number.isInteger(w) || !Number.isInteger(h) || w <= 0 || h <= 0 || w > 16384 || h > 16384 || w * h > MAX_PIXELS) return null
     // 定位 IDAT(跳签名+IHDR;本仓编码器结构固定,宽容解析)
     let off = 8
     const idat: Buffer[] = []
     while (off + 8 <= blob.length) {
       const len = blob.readUInt32BE(off)
+      if (off + 12 + len > blob.length) return null
       const type = blob.subarray(off + 4, off + 8).toString('ascii')
       if (type === 'IDAT') idat.push(blob.subarray(off + 8, off + 8 + len))
       off += 12 + len
     }
     if (idat.length === 0) return null
-    const raw = inflateSync(Buffer.concat(idat))
     const stride = w + 1
-    if (raw.length < stride * h) return null
+    const expected = stride * h
+    // 解压上限 = 预期像素字节 + 余量:压缩炸弹无法把内存放大
+    const raw = inflateSync(Buffer.concat(idat), { maxOutputLength: expected + 1024 })
+    if (raw.length < expected) return null
     const out = new Uint8Array(w * h)
     for (let y = 0; y < h; y++) out.set(raw.subarray(y * stride + 1, y * stride + 1 + w), y * w)
     return out

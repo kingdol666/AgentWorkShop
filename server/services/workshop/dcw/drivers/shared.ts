@@ -55,6 +55,9 @@ export interface DcwWriteDriver {
   test(driverConfig: Record<string, unknown>): Promise<{ ok: boolean, message: string }>
   /** 读当前 PLC 值(可选原语;不支持读的驱动为 undefined,网关按 supportsRead 收敛) */
   read?(input: DcwReadInput): Promise<DcwReadResult>
+  /** 可选:该节点配置是否真的具备读能力(如 MQTT 需要 readTopic)。
+   *  返回 false 时网关跳过周期读,不把「无回读通道」记成节点读错误(避免每 5s 一条噪音)。 */
+  canRead?(driverConfig: Record<string, unknown>): boolean
   /** 拉取历史序列(可选原语;声明式分页由驱动内实现,调用方只管 onRows 增量消费) */
   fetchHistory?(input: DcwFetchHistoryInput): Promise<DcwFetchHistoryResult>
 }

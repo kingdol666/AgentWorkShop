@@ -120,7 +120,9 @@ export async function startTwinBatch(api, { lineId, productId, dcw, sfx, start =
  *  表现为"连续多轮读数逐位不变"）。厚度/压力为代数式，最近 6 桶即代表变更后稳态。 */
 async function observedMean(api, nodeId) {
   if (!nodeId) return null
-  const r = await api.call('GET', `/api/workshop/daq/${nodeId}/samples?bucketMs=1000&limit=60`)
+  const to = Date.now()
+  const from = to - 120_000
+  const r = await api.call('GET', `/api/workshop/daq/${nodeId}/samples?bucketMs=1000&from=${from}&to=${to}&limit=60`)
   const pts = (r.data?.points ?? [])
   if (!pts.length) return null
   const newest = [...pts].sort((a, b) => (Number(b.at ?? 0) - Number(a.at ?? 0))).slice(0, 6)

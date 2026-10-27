@@ -1,0 +1,97 @@
+line ln-8d4db203 recipe rc-05bbe2c2 start: {"code":0,"message":"ok","data":{"run":{"id":"rr-812b70ad","recipeId":"rc-05bbe2c2","recipeName":"scen-injection-recipe-acc2","productId":"pd-67f1805c","lineId":"ln-8d4db203","recipeVersion":1,"starte
+=== injection === 00:59:59
+✔ [P1] 场景/配方/worker 就绪
+✔ [P2] 当前已在配方基线
+  [hold-time +1] hitl=ap-5e00754a isError=false 试验已整批下发并全部设备证实(1/1,批次 rr-1e0d5):scen-injection:dcw:hold-time-sp→7s [证实✓]。假设:真实闭环 P4:保压寻优后 weight=34.64g flash=1.492% sink=0% melt=246.7℃ 仍未全窗,单变量保压时间 6→7s。。
+人工附言:注塑真实闭环 E2E 批准注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本
+✔ [P4] 保压时间补偿试验经 HITL 并复测
+✖ [P5] 最终质量入窗(克重/飞边/缩痕/熔温,DAQ 新鲜) — weight=34.68g flash=1.439% sink=0.021% melt=246.7℃ lastAt=2026-10-26T17:01:11.314Z offline=false
+  [corrective restore] hitl=ap-defeb2ed isError=true 试验下发失败:本产线上一次配方试验距今仅 66s,试验节拍为 ≥300s(防连发震荡),请等待 234s 后再试
+✖ [P6] 未达标时恢复基线并复测 — weight=34.6g flash=1.499% sink=0.077% melt=246.9℃ p=110 t=7
+✔ [P7] 写控/配方日志可追溯
+
+═══ 结论:FAIL(4/6) out=bench\results\injection-pressure-loop-2026-10-26T17-02-17-533Z ═══
+--- injection exit=1 01:02:17
+=== inj-fixture === 01:02:17
+channel 926afa1d-c87a-4549-8b6b-34f6d7df5c24 worker 836092b0-634d-46f6-90a4-df78e28ca3ab member 3e223915-af25-42f3-807c-08b549d0e826
+context written: {"lineId":"ln-8d4db203","recipeId":"rc-05bbe2c2","daqNodes":14,"recipes":1}
+--- inj-fixture exit=0 01:02:17
+=== data-studio === 01:02:17
+━━━ data-studio Phase A E2E @ http://127.0.0.1:3400 line=ln-8d4db203 ━━━
+✔ [PA0] 上下文就绪(daq 节点≥2) — daq=14
+✔ [PA0.5] 产线开跑且采样活性(探针 ≥3 点) — status=200 samples=100 msg=ok
+✔ [PA1.1] 批量查询:两节点一次返回且每节点≤2000 点 — series=2 pts=281,280 bucket=1000
+✔ [PA1.2] 序列时间升序(ASC 契约)
+✔ [PA1.3] >8 节点 → 400 护栏 — node_ids 一次最多 8 个(收到 9);请分组查询或按产线过滤。
+✔ [PA1.4] 产线>8 节点省略 node_ids → 400 要求显式指定 — 产线 ln-8d4db203 有 14 个数采节点,一次最多查询 8 个:请传 node_ids 显式选择(≤8)。
+✔ [PA1.5] 同参数(显式窗口)二次命中缓存
+✔ [PA2.1] 开跑产线 → run 台账有行(open) — {"id":"rr-52f6d66a","lineId":"ln-8d4db203","productId":"pd-67f1805c","recipeId":"rc-05bbe2c2","recipeName":"scen-injection-recipe-acc2","recipeVersion":1,"start
+✔ [PA2.2] 关账后 ended_at 回填且 sample_count>0(异步回填) — ended=2026-10-27T01:02:21.690+08:00 samples=24
+✔ [PA3.1] 导出任务受理(running) — {"id":"edajob-a84159a1","kind":"daq-export","status":"running","spec":{"nodeIds":["dn-03c481b9","dn-475b1dc7"],"fromMs":1793033843250,"toMs":1793034143250,"titl
+✔ [PA3.2] 导出完成(ready)且 totalRows>0 — status=ready rows=562 files=2 merged=true
+✔ [PA3.3] manifest.json 下载 200(application/json) — {
+  "schema": "aw.daq-export/1",
+  "export_id": "daqexp-20261027010223-fb4f3e",
+  "created_at": "202
+✔ [PA3.4] merged.csv 下载 200
+✔ [PA3.5] nodes/<id>.csv 下载 200 — ts_iso,ts_ms,value,state
+2026-10-27T00:57:24.234+08:00,1793033844234,246.5,ok
+
+✔ [PA3.6] 路径穿越被拒(404) — status=404
+✔ [PA4.1] MES 点位目录 200(空目录合法) — count=0
+✔ [PA4.2] 不存在/不可读点位 preview → 403 — 点位不存在、未启用或不在你的可读产线上。
+✔ [PA5.1] 不存在节点查询 → 403 — 指定的节点不存在、已停用或不在你的可读范围内。
+✔ [PB1.1] 创建私图 200 — {"id":"ec-01e75c95","title":"PhaseB 私图","vizType":"trend","datasource":{"lineId":"ln-8d4db203","nodeIds":["dn-03c481b9",
+✔ [PB1.2] visibility=line 无 line_id → 400 — visibility=line 必须携带 line_id(B4:产线可见图必须钉在产线上)
+✔ [PB1.3] PATCH 版本自增
+✔ [PB1.4] 他人读私图 → 404(B4) — status=404
+✔ [PB1.5] 他人列表不含该私图
+✔ [PB2.1] 从关账批次生成 golden 画像 — bins=20 fp={"mean":-0.027388,"std":0.004175,"min":-0.045,"max":-0.018,"cnt":139}
+✔ [PB2.2] single 取回画像(叠加用)
+✔ [PB2.3] 偏差分可算(自身 vs golden,分数有限) — score=0 bins=20
+✔ [PC1.1] E3 特征提取:关账批次有特征行 — rows=24 sample={"id":"feat-b361ce75-2b1","runId":"rr-52f6d66a","nodeId":"dn-98b1d572","metric":"daq-temp-tc","segment":"s2","cnt":1,"mean":15.3,"std":0,"min":15.3,"max":15.3,"
+✔ [PC1.2] E3 判定语义:参考带不足 3 批时仅记录不判定(或判定字段有限)
+✔ [PC1.3] E3 特征任务账本有 done 行 — {"id":"fjob-f84d6d7c","runId":"rr-52f6d66a","status":"done","features":24,"createdAt":"2026-10-27T01:02:21.704+08:00"}
+✔ [PC2.1] E4 注册控制图 — {"id":"spc-3bdb9fc5","lineId":"ln-8d4db203","nodeId":"dn-03c481b9","metric":"daq-temp-tc","kind":"i_mr","params":{},"cl"
+✔ [PC2.2] E4 重算控制限(run<25 → enabled=0 为正确冷启动语义) — n=2 enabled=false
+✔ [PC2.3] E4 详情+点序列 200
+✔ [PC2.4] E4 非法 kind → 400
+✔ [PC3.1] E5 共性分析(node 因子)200 且行有限 — rows=12 baseline=0.1667
+✔ [PC3.2] E5 hour 因子可用
+✔ [PC3.3] E5 非法因子 → 400
+✔ [PC4.1] E8 chamber 字段 + chamber 因子共性 — [{"factor":"chamber","factorValue":"CH-A","runsTotal":5,"runsBad":0,"badRate":0,"lift":0}]
+✔ [PD1.1] E7 开 OCAP 处置单 — {"id":"ocap-38ffb2aa","alarmId":"ops:mvpi8jpq","runId":"rr-52f6d66a","nodeId":"dn-03c481b9","title":"PhaseD 处置单","steps":[],"status":"open",
+✔ [PD1.2] E7 关单 + 弱关联(stale 不报错) — {"id":"ocap-38ffb2aa","alarmId":"ops:mvpi8jpq","runId":"rr-52f6d66a","nodeId":"dn-03c481b9","title":"PhaseD 处置单","steps":[{"at":"2026-10-27T01:02:28.834+08:00",
+✔ [PD1.3] E7 清单可见(终态过滤)
+✔ [PD2.1] E6 VM 推理入口:模型不存在 → 404 — 模型 aml-none 不存在
+✔ [PD3.1] M3 创建看板 — {"id":"edb-16468560","title":"PhaseD 看板","filters":{},"layout":[{"chartId":"ec-01e75c95","x":0,"y":0,"w":6,"h":3}],"owne
+✔ [PD3.2] M3 看板详情内嵌 chart(B4 判定随行) — [{"chart":{"id":"ec-01e75c95","title":"PhaseB 私图 v2","vizType":"trend","datasource":{"lineId":"ln-8d4db203","nodeIds":["dn-03c481b9","dn-475
+✔ [PD3.3] M3 布局保存(version 自增)
+✔ [PD3.4] M3 他人读看板:chart 不泄露(404 或 inaccessible=true) — status=404
+✔ [PD4.1] M3 派生数据集生成 — {"jobId":"edajob-a7e0113c","dir":"D:\\tmp\\aw-video\\home-en\\data\\eda-derived\\edajob-a7e0113c","rows":545}
+✔ [PD4.2] M3 派生 data.csv 可下载 — time,"scen-injection:daq:melt-temp-pv(dn-03c481b9) [℃]","scen-injection:daq:melt
+✔ [PD4.3] M3 非法算子 → 400(白名单)
+✔ [PD5.1] E8 相位段定义 — [{"id":"rseg-b4ea9c5b","recipe_id":"rc-05bbe2c2","seq":1,"name":"s1","phase_from":0,"phase_to":0.5},{"id":"rseg-e60e22c0","recipe_id":"rc-05
+✔ [PD5.2] E8 重算特征按段拆分 — segmented=24/24
+
+═══ data-studio Phase A: 50/50 PASS ═══
+--- data-studio exit=0 01:02:29
+=== data-studio-ui === 01:02:29
+✔ [UI1.1] 侧栏导航含「数据管理」
+✔ [UI1.2] 三个 tab 渲染 — tabs=3
+✔ [UI1.3] 产线下拉有可读产线 — options=2
+✔ [UI1.4] 勾选 2 个节点 — checked=2
+✔ [UI1.5] echarts canvas 渲染 — canvas=1
+✔ [UI1.6] 预览表 ≥1 行 — rows=100
+✔ [UI1.7] 导出任务出现在台账
+✔ [UI1.8] 批次台账视图渲染
+✔ [UI2.1] /studio 节点树非空 — nodes=6
+✔ [UI2.2] 字段井入 2 个 Y — chips=2
+✔ [UI2.3] /studio canvas 渲染 — canvas=1
+✔ [UI2.4] 保存后出现在我的图表
+✔ [UI3.1] /studio/board 可打开
+✔ [UI0.1] 全脚本 0 pageerror
+
+═══ data-studio UI: 14/14 PASS ═══
+--- data-studio-ui exit=0 01:03:07
+ROUND5 DONE Tue Oct 27 01:03:07     2026

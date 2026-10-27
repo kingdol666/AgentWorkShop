@@ -6,7 +6,8 @@
 
 ## v0.8.x — 知识与闭环(2026-10 下旬)
 
-- **v0.8.4(2026-10-28)** — **频道执行三模式(observe / manual / auto)**:频道级执行档位与产线总闸、绑定模式三层取最严——观察档物理零写(注入白名单+分发按名拒写双保险,MES 只读族纳入观察面)、手动档频道钳位强制逐动作 HITL(审批卡展示 Agent 依据,批准附言回流)、自动档治理写必须附带 `hypothesis` 依据并入审计(`dcw.write.*` detail 记 `executionMode`/`hypothesis`);切换 REST(owner-only,放开方向须 `confirm:true`)+ 每次切换审计 + 成员运行时热回收 + 执行模式提示卡注入 + Channel 设置面三选一(产线总闸压制提示/二次确认)。存量频道缺省 auto(零行为变化)。验收:单测 673/673 · lint/typecheck/i18n/readme/docs 全绿 · e2e 34/34 · 回归 line 44/44 + tool-surface 37/37 + api-live 60/60 · 真实模拟器三频道 omp 会话实测。
+- **v0.8.5(2026-10-28)** — **频道执行三模式(observe / manual / auto)**:频道级执行档位与产线总闸、绑定模式三层取最严——观察档物理零写(注入白名单+分发按名拒写双保险,MES 只读族纳入观察面)、手动档频道钳位强制逐动作 HITL(审批卡展示 Agent 依据,批准附言回流)、自动档治理写必须附带 `hypothesis` 依据并入审计(`dcw.write.*` detail 记 `executionMode`/`hypothesis`);切换 REST(owner-only,放开方向须 `confirm:true`)+ 每次切换审计 + 成员运行时热回收 + 执行模式提示卡注入 + Channel 设置面三选一(产线总闸压制提示/二次确认)。存量频道缺省 auto(零行为变化)。验收:单测 673/673 · lint/typecheck/i18n/readme/docs 全绿 · e2e 34/34 · 回归 line 44/44 + tool-surface 37/37 + api-live 60/60 · 真实模拟器产线实测(物理写入证实)。另含:审批后活动批次上下文复核、omp 工具执行事件钩子。
+- **v0.8.4(2026-10-26)** — 3 分钟英文界面宣传片(README / VitePress / 独立播放页)+ EDA 管道标题、在线查看器高度与本体基线 i18n 修复。
 - **v0.8.3(2026-10-26)** — 结果库复验收尾(L1/L2/L4)+ 净树发布准备;全局零态实测修正。
 - **v0.8.2(2026-10-25)** — 结果库 reviewer 修复:PATCH 角色闸门、热开关、绝对 URL 与证据链。
 - **v0.8.1(2026-10-25)** — **diag-bridge 分析结果库**(`diag_results` / `diag_result_get` / `diag_result_annotate` 三工具 + `/plugins` 结果面板 + 五项治理开关,默认关闭,可见面 = 诊断 Token 属主);模型**可读元数据**与本体草稿**一键自修复**;本体图 tab 升级为**节点-边可视化**(1/2 跳邻接抽屉)。同轮完成全量验收:821 检查全绿(单测 538+ · 真机 e2e · MCP · 注塑 · optimizer-live 104/104)。

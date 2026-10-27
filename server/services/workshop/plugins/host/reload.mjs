@@ -63,6 +63,12 @@ export async function doReload(host) {
     dcwDrivers.clearPluginWriteDrivers()
   }
   catch { /* dcw 未装载:同上 */ }
+  // 插件解码器同样先清空:停用/卸载的 decoder 立即失效,本轮装载成功的插件重新注册
+  try {
+    const decoders = await import('@/server/services/workshop/daq/decoders')
+    decoders.clearDecoders()
+  }
+  catch { /* daq 未装载:解码器注册表为空,无需清 */ }
   // 工具注销延后:先装载新集、后清「本轮未再装载」的旧插件工具。
   // 原先在装载前就全部注销 → 重载窗口内(秒级~数十秒)所有插件工具"未知工具",
   // 期间到达的 Agent 工具调用(daq:sample 自动诊断/kb_store 等)被误拒

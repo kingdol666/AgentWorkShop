@@ -1,0 +1,311 @@
+=== repeat-experiment 13:05:47 args:  ===
+05:05:48 平台就绪,采样总控已启动
+05:05:48 ══ 场景 injection(注塑成型质量窗口寻优) ══
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+[TypeError: fetch failed] {
+  [cause]: Error: connect ECONNREFUSED 127.0.0.1:4010
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1864:16) {
+    errno: -4078,
+    code: 'ECONNREFUSED',
+    syscall: 'connect',
+    address: '127.0.0.1',
+    port: 4010
+  }
+}
+
+Node.js v24.19.0
+=== exit=1 13:06:24 ===
+EXP DONE Tue Oct 27 13:06:24     2026
+=== repeat-experiment 13:16:42 scenarios=injection seeds=42,43 tag=pilot-inj ===
+05:16:42 平台就绪,采样总控已启动
+05:16:42 ══ 场景 injection(注塑成型质量窗口寻优) ══
+05:16:48   接入完成 5432ms line=ln-93b737ab dcw=11 daq=14 controlMode=auto
+05:16:48   E1 写入生效性矩阵…
+05:16:55   E1 injection/barrel-temp-1-sp(modbus-tcp): ✘ sim=undefined 平台=240 目标=5
+05:17:01   E1 injection/barrel-temp-2-sp(modbus-tcp): ✘ sim=undefined 平台=246 目标=5
+05:17:07   E1 injection/barrel-temp-3-sp(modbus-tcp): ✘ sim=undefined 平台=252 目标=5
+05:17:13   E1 injection/barrel-temp-4-sp(modbus-tcp): ✘ sim=undefined 平台=258 目标=5
+05:17:19   E1 injection/screw-speed-sp(modbus-tcp): ✘ sim=undefined 平台=120 目标=5
+05:17:25   E1 injection/mold-temp-sp(modbus-rtu): ✘ sim=undefined 平台=40 目标=5
+05:17:31   E1 injection/clamp-force-sp(modbus-rtu): ✘ sim=undefined 平台=1600 目标=5
+05:17:37   E1 injection/inject-speed-sp(opcua): ✘ sim=undefined 平台=NaN 目标=5
+05:17:43   E1 injection/hold-pressure-sp(opcua): ✘ sim=undefined 平台=61.9 目标=5
+05:17:49   E1 injection/hold-time-sp(opcua): ✔ sim=undefined 平台=5 目标=5
+05:17:55   E1 injection/cool-water-sp(mqtt): ✘ sim=undefined 平台=NaN 目标=5
+05:17:55   ✘ E1 有 11 项未落达,中止(先保证写入生效)
+05:17:55 实验数据写入 D:\tmp\aw-main\bench\results\repeat-pilot-inj
+=== exit=0 13:17:55 ===
+EXP DONE Tue Oct 27 13:17:55     2026
+=== repeat-experiment 13:32:34 scenarios=injection seeds=42,43 tag=pilot-inj2 ===
+05:32:34 平台就绪,采样总控已启动
+05:32:34 ══ 场景 injection(注塑成型质量窗口寻优) ══
+05:32:39   接入完成 5075ms line=ln-781d4d2a dcw=11 daq=14 controlMode=auto
+05:32:44   E1 写入生效性矩阵…
+05:32:51   E1 injection/barrel-temp-1-sp(modbus-tcp): ✔ sim=254 平台=254 目标=254
+05:32:57   E1 injection/barrel-temp-2-sp(modbus-tcp): ✔ sim=260 平台=260 目标=260
+05:33:04   E1 injection/barrel-temp-3-sp(modbus-tcp): ✔ sim=266 平台=NaN 目标=266
+05:33:10   E1 injection/barrel-temp-4-sp(modbus-tcp): ✔ sim=272 平台=272 目标=272
+05:33:16   E1 injection/screw-speed-sp(modbus-tcp): ✔ sim=134 平台=134 目标=134
+05:33:22   E1 injection/mold-temp-sp(modbus-rtu): ✔ sim=47.5 平台=47.5 目标=47.5
+05:33:28   E1 injection/clamp-force-sp(modbus-rtu): ✔ sim=1770 平台=1770 目标=1770
+05:33:34   E1 injection/inject-speed-sp(opcua): ✔ sim=95 平台=95 目标=95
+05:33:40   E1 injection/hold-pressure-sp(opcua): ✔ sim=70.9 平台=70.9 目标=70.9
+05:33:46   E1 injection/hold-time-sp(opcua): ✔ sim=6.2 平台=6.2 目标=6.2
+05:33:52   E1 injection/cool-water-sp(mqtt): ✘ sim=27.5 平台=NaN 目标=27.5
+05:33:52   ✘ E1 有 1 项未落达,中止(先保证写入生效)
+05:33:52 实验数据写入 D:\tmp\aw-main\bench\results\repeat-pilot-inj2
+=== exit=0 13:33:52 ===
+EXP DONE Tue Oct 27 13:33:52     2026
+=== repeat-experiment 13:48:46 scenarios=injection seeds=42,43 tag=pilot-inj3 ===
+05:48:46 平台就绪,采样总控已启动
+05:48:46 ══ 场景 injection(注塑成型质量窗口寻优) ══
+05:48:53   接入完成 7198ms line=ln-a123e011 dcw=11 daq=14 controlMode=auto
+05:48:58   E1 写入生效性矩阵…
+05:49:05   E1 injection/barrel-temp-1-sp(modbus-tcp): ✔ sim=268 平台=268 目标=268
+05:49:12   E1 injection/barrel-temp-2-sp(modbus-tcp): ✔ sim=274 平台=274 目标=274
+05:49:18   E1 injection/barrel-temp-3-sp(modbus-tcp): ✔ sim=280 平台=280 目标=280
+05:49:24   E1 injection/barrel-temp-4-sp(modbus-tcp): ✔ sim=286 平台=286 目标=286
+05:49:30   E1 injection/screw-speed-sp(modbus-tcp): ✔ sim=148 平台=148 目标=148
+05:49:36   E1 injection/mold-temp-sp(modbus-rtu): ✔ sim=55 平台=55 目标=55
+05:49:42   E1 injection/clamp-force-sp(modbus-rtu): ✔ sim=1940 平台=1940 目标=1940
+05:49:48   E1 injection/inject-speed-sp(opcua): ✔ sim=105 平台=105 目标=105
+05:49:54   E1 injection/hold-pressure-sp(opcua): ✔ sim=79.9 平台=79.9 目标=79.9
+05:50:00   E1 injection/hold-time-sp(opcua): ✔ sim=7.4 平台=7.4 目标=7.4
+05:50:06   E1 injection/cool-water-sp(mqtt): ✘ sim=31 平台=NaN 目标=31
+05:50:06   ── seed=42 ──
+05:51:10     B0 final|err|=1.29 inWindow=false
+05:52:14     B1 final|err|=0.56 inWindow=false writes=1
+05:52:59     T final|err|=0.17 inWindow=true t2w=26.356 writes=3 errors=0
+05:52:59   ── seed=43 ──
+05:54:03     B0 final|err|=1.25 inWindow=false
+05:55:07     B1 final|err|=0.53 inWindow=false writes=1
+05:55:51     T final|err|=0.23 inWindow=true t2w=24.332 writes=3 errors=0
+05:55:51 实验数据写入 D:\tmp\aw-main\bench\results\repeat-pilot-inj3
+=== exit=0 13:55:51 ===
+EXP DONE Tue Oct 27 13:55:51     2026
+=== repeat-experiment 14:02:13 scenarios=injection,wwtp,anneal,biax seeds=42,43,44,45,46,47,48 tag=full ===
+06:02:13 平台就绪,采样总控已启动
+06:02:13 ══ 场景 injection(注塑成型质量窗口寻优) ══
+06:02:18   接入完成 5014ms line=ln-9df9408d dcw=11 daq=14 controlMode=auto
+06:02:23   E1 写入生效性矩阵…
+06:02:31   E1 injection/barrel-temp-1-sp(modbus-tcp): ✔ sim=254 平台=254 目标=254
+06:02:37   E1 injection/barrel-temp-2-sp(modbus-tcp): ✔ sim=260 平台=260 目标=260
+06:02:43   E1 injection/barrel-temp-3-sp(modbus-tcp): ✔ sim=266 平台=266 目标=266
+06:02:49   E1 injection/barrel-temp-4-sp(modbus-tcp): ✔ sim=272 平台=272 目标=272
+06:02:55   E1 injection/screw-speed-sp(modbus-tcp): ✔ sim=134 平台=134 目标=134
+06:03:01   E1 injection/mold-temp-sp(modbus-rtu): ✔ sim=47.5 平台=47.5 目标=47.5
+06:03:07   E1 injection/clamp-force-sp(modbus-rtu): ✔ sim=1770 平台=1770 目标=1770
+06:03:13   E1 injection/inject-speed-sp(opcua): ✔ sim=95 平台=95 目标=95
+06:03:19   E1 injection/hold-pressure-sp(opcua): ✔ sim=74.3 平台=74.3 目标=74.3
+06:03:25   E1 injection/hold-time-sp(opcua): ✔ sim=7.2 平台=7.2 目标=7.2
+06:03:31   E1 injection/cool-water-sp(mqtt): ✘ sim=27.5 平台=NaN 目标=27.5
+06:03:31   ── seed=42 ──
+06:04:35     B0 final|err|=1.28 inWindow=false
+06:05:39     B1 final|err|=0.56 inWindow=false writes=1
+06:06:28     T final|err|=0.18 inWindow=true t2w=26.363 writes=3 errors=0
+06:06:28   ── seed=43 ──
+06:07:31     B0 final|err|=1.21 inWindow=false
+06:08:35     B1 final|err|=0.53 inWindow=false writes=1
+06:09:20     T final|err|=0.21 inWindow=true t2w=24.349 writes=3 errors=0
+06:09:20   ── seed=44 ──
+06:10:24     B0 final|err|=1.26 inWindow=false
+06:11:28     B1 final|err|=0.56 inWindow=false writes=1
+06:12:20     T final|err|=0.21 inWindow=true t2w=34.426 writes=3 errors=0
+06:12:20   ── seed=45 ──
+06:13:24     B0 final|err|=1.27 inWindow=false
+06:14:28     B1 final|err|=0.57 inWindow=false writes=1
+06:15:21     T final|err|=0.2 inWindow=true t2w=26.329 writes=3 errors=0
+06:15:21   ── seed=46 ──
+06:16:25     B0 final|err|=1.28 inWindow=false
+06:17:29     B1 final|err|=0.5 inWindow=false writes=1
+06:18:13     T final|err|=0.13 inWindow=true t2w=26.356 writes=3 errors=0
+06:18:13   ── seed=47 ──
+06:19:17     B0 final|err|=1.28 inWindow=false
+06:20:21     B1 final|err|=0.59 inWindow=false writes=1
+06:21:10     T final|err|=0.21 inWindow=true t2w=30.378 writes=3 errors=0
+06:21:10   ── seed=48 ──
+06:22:14     B0 final|err|=1.34 inWindow=false
+06:23:18     B1 final|err|=0.6 inWindow=false writes=1
+06:23:58     T final|err|=0.11 inWindow=true t2w=18.237 writes=3 errors=0
+06:23:58 ══ 场景 wwtp(A2O 污水生化处理达标降耗) ══
+06:24:01   接入完成 2337ms line=ln-831095ec dcw=7 daq=13 controlMode=auto
+06:24:01   E1 写入生效性矩阵…
+06:24:08   E1 wwtp/blower-hz-sp(modbus-tcp): ✔ sim=37.2 平台=37.20000076293945 目标=37.2
+06:24:14   E1 wwtp/naoh-dose-sp(opcua): ✔ sim=39 平台=39 目标=39
+06:24:20   E1 wwtp/pac-dose-sp(opcua): ✔ sim=81 平台=81 目标=81
+06:24:26   E1 wwtp/recycle-int-sp(modbus-rtu): ✔ sim=106 平台=106 目标=106
+06:24:32   E1 wwtp/recycle-sludge-sp(modbus-rtu): ✔ sim=79 平台=79 目标=79
+06:24:38   E1 wwtp/waste-sludge-sp(modbus-rtu): ✔ sim=185 平台=185 目标=185
+06:24:44   E1 wwtp/influent-flow-sp(mqtt): ✘ sim=1120 平台=NaN 目标=1120
+06:24:44   ── seed=42 ──
+06:26:18     B0 final|err|=3.2 inWindow=false
+06:27:52     B1 final|err|=1.29 inWindow=false writes=1
+06:30:31     T final|err|=0.32 inWindow=true t2w=72.868 writes=11 errors=0
+06:30:31   ── seed=43 ──
+06:32:05     B0 final|err|=3.21 inWindow=false
+06:33:39     B1 final|err|=1.26 inWindow=false writes=1
+06:35:54     T final|err|=0.59 inWindow=true t2w=54.672 writes=11 errors=0
+06:35:54   ── seed=44 ──
+06:37:28     B0 final|err|=3.21 inWindow=false
+06:39:02     B1 final|err|=1.28 inWindow=false writes=1
+06:41:38     T final|err|=0.47 inWindow=true t2w=60.797 writes=12 errors=0
+06:41:38   ── seed=45 ──
+06:43:11     B0 final|err|=3.27 inWindow=false
+06:44:45     B1 final|err|=1.36 inWindow=false writes=1
+06:47:29     T final|err|=0.18 inWindow=true t2w=93.163 writes=12 errors=0
+06:47:29   ── seed=46 ──
+06:49:03     B0 final|err|=3.25 inWindow=false
+06:50:37     B1 final|err|=1.11 inWindow=false writes=1
+06:53:20     T final|err|=0.25 inWindow=true t2w=64.801 writes=10 errors=0
+06:53:20   ── seed=47 ──
+06:54:54     B0 final|err|=3.18 inWindow=false
+06:56:27     B1 final|err|=1.32 inWindow=false writes=1
+06:59:27     T final|err|=0.53 inWindow=true t2w=54.703 writes=12 errors=0
+06:59:27   ── seed=48 ──
+07:01:01     B0 final|err|=3.21 inWindow=false
+07:02:35     B1 final|err|=1.29 inWindow=false writes=1
+07:05:30     T final|err|=0.34 inWindow=true t2w=78.989 writes=12 errors=0
+07:05:30 ══ 场景 anneal(连续退火质量窗内产能最大化) ══
+07:05:34   接入完成 3706ms line=ln-c9a017e3 dcw=7 daq=12 controlMode=auto
+07:05:34   E1 写入生效性矩阵…
+07:05:41   E1 anneal/zone1-sp(modbus-tcp): ✔ sim=715 平台=715 目标=715
+07:05:48   E1 anneal/zone2-sp(modbus-tcp): ✔ sim=825 平台=825 目标=825
+07:05:54   E1 anneal/zone3-sp(modbus-tcp): ✔ sim=825 平台=825 目标=825
+07:06:00   E1 anneal/line-speed-sp(opcua): ✔ sim=204 平台=204 目标=204
+07:06:06   E1 anneal/oa-temp-sp(modbus-rtu): ✔ sim=416 平台=416 目标=416
+07:06:12   E1 anneal/cool-rate-sp(modbus-rtu): ✔ sim=58 平台=58 目标=58
+07:06:18   E1 anneal/h2-ratio-sp(mqtt): ✘ sim=11.2 平台=NaN 目标=11.2
+07:06:18   ── seed=42 ──
+07:07:22     B0 final|err|=40 inWindow=false
+07:08:26     B1 final|err|=38.3 inWindow=false writes=1
+07:10:31     T final|err|=4.8 inWindow=true t2w=50.708 writes=8 errors=0
+07:10:31   ── seed=43 ──
+07:11:35     B0 final|err|=39.4 inWindow=false
+07:12:39     B1 final|err|=38.9 inWindow=false writes=1
+07:14:13     T final|err|=2 inWindow=true t2w=30.356 writes=6 errors=0
+07:14:13   ── seed=44 ──
+07:15:17     B0 final|err|=39.3 inWindow=false
+07:16:21     B1 final|err|=37.9 inWindow=false writes=1
+07:18:54     T final|err|=3.8 inWindow=true t2w=48.55 writes=8 errors=0
+07:18:54   ── seed=45 ──
+07:19:58     B0 final|err|=39.9 inWindow=false
+07:21:02     B1 final|err|=38.1 inWindow=false writes=1
+07:22:27     T final|err|=2.1 inWindow=true t2w=30.445 writes=6 errors=0
+07:22:27   ── seed=46 ──
+07:23:31     B0 final|err|=40 inWindow=false
+07:24:35     B1 final|err|=38.3 inWindow=false writes=1
+07:26:41     T final|err|=3.2 inWindow=true t2w=48.577 writes=9 errors=0
+07:26:41   ── seed=47 ──
+07:27:45     B0 final|err|=39.7 inWindow=false
+07:28:49     B1 final|err|=37.9 inWindow=false writes=1
+07:31:03     T final|err|=3.7 inWindow=true t2w=46.615 writes=8 errors=0
+07:31:03   ── seed=48 ──
+07:32:07     B0 final|err|=40.1 inWindow=false
+07:33:11     B1 final|err|=37.7 inWindow=false writes=1
+07:35:20     T final|err|=3.6 inWindow=true t2w=46.558 writes=7 errors=0
+07:35:20 ══ 场景 biax(双拉(BOPET)薄膜产线多节点闭环) ══
+07:35:26   接入完成 5415ms line=ln-3f71e934 dcw=30 daq=19 controlMode=auto
+07:35:26   E1 写入生效性矩阵…
+07:35:33   E1 biax/dry-temp-sp(opcua): ✔ sim=180 平台=180 目标=180
+07:35:39   E1 biax/dew-point-sp(opcua): ✔ sim=-34 平台=-34 目标=-34
+07:35:45   E1 biax/feed-rate-sp(opcua): ✔ sim=760 平台=760 目标=760
+07:35:51   E1 biax/zone1-sp(modbus-tcp): ✘ sim=690 平台=272 目标=715
+07:35:57   E1 biax/zone2-sp(modbus-tcp): ✘ sim=801 平台=278 目标=825
+07:36:03   E1 biax/zone3-sp(modbus-tcp): ✘ sim=850 平台=284 目标=825
+07:36:09   E1 biax/zone4-sp(modbus-tcp): ✔ sim=292 平台=292 目标=292
+07:36:16   E1 biax/zone5-sp(modbus-tcp): ✔ sim=292 平台=292 目标=292
+07:36:22   E1 biax/screw-sp(modbus-tcp): ✔ sim=66 平台=66 目标=66
+07:36:28   E1 biax/pump-sp(modbus-rtu): ✔ sim=36.5 平台=36.5 目标=36.5
+07:36:34   E1 biax/die-lip-sp(modbus-tcp): ✔ sim=290 平台=290 目标=290
+07:36:40   E1 biax/chill-temp-sp(modbus-tcp): ✔ sim=33 平台=33 目标=33
+07:36:46   E1 biax/cast-spd-sp(modbus-tcp): ✔ sim=40.5 平台=40.5 目标=40.5
+07:36:52   E1 biax/pinning-sp(modbus-tcp): ✔ sim=7.8 平台=7.800000190734863 目标=7.8
+07:36:58   E1 biax/mdo-preheat1-sp(modbus-tcp): ✔ sim=102 平台=102 目标=102
+07:37:04   E1 biax/mdo-preheat2-sp(modbus-tcp): ✔ sim=107 平台=107 目标=107
+07:37:10   E1 biax/mdo-preheat3-sp(modbus-tcp): ✔ sim=112 平台=112 目标=112
+07:37:16   E1 biax/slow-roll-sp(modbus-tcp): ✔ sim=49 平台=49 目标=49
+07:37:23   E1 biax/fast-roll-sp(modbus-tcp): ✔ sim=150 平台=150 目标=150
+07:37:29   E1 biax/mdo-anneal-sp(modbus-tcp): ✔ sim=143 平台=143 目标=143
+07:37:35   E1 biax/tdo-preheat-sp(opcua): ✔ sim=116 平台=116 目标=116
+07:37:41   E1 biax/tdo-stretch-sp(opcua): ✔ sim=124 平台=124 目标=124
+07:37:47   E1 biax/tdo-anneal-sp(opcua): ✔ sim=222 平台=222 目标=222
+07:37:53   E1 biax/chain-sp(opcua): ✔ sim=152 平台=152 目标=152
+07:37:59   E1 biax/rail-out-sp(opcua): ✔ sim=3435 平台=3435 目标=3435
+07:38:05   E1 biax/corona-sp(http): ✔ sim=4.3 平台=NaN 目标=4.25
+07:38:11   E1 biax/winder-tension-sp(modbus-tcp): ✔ sim=103 平台=103 目标=103
+07:38:17   E1 biax/taper-sp(modbus-tcp): ✔ sim=33 平台=33 目标=33
+07:38:23   E1 biax/contact-press-sp(modbus-tcp): ✔ sim=1.97 平台=1.9700000286102295 目标=1.97
+07:38:29   E1 biax/winder-speed-sp(modbus-tcp): ✔ sim=186 平台=186 目标=186
+07:38:29   ✘ E1 有 3 项未落达,中止(先保证写入生效)
+07:38:29 实验数据写入 D:\tmp\aw-main\bench\results\repeat-full
+=== exit=0 15:38:30 ===
+EXP DONE Tue Oct 27 15:38:30     2026
+=== repeat-experiment 15:55:46 scenarios=biax seeds=42,43,44,45,46,47,48 tag=full-biax ===
+07:55:46 平台就绪,采样总控已启动
+07:55:46 ══ 场景 biax(双拉(BOPET)薄膜产线多节点闭环) ══
+07:55:54   接入完成 7934ms line=ln-d1d65aa5 dcw=30 daq=19 controlMode=auto
+07:55:54   E1 写入生效性矩阵…
+07:55:58   E1 biax/dry-temp-sp(opcua): ✔ sim=188 平台=188 目标=188
+07:56:01   E1 biax/dew-point-sp(opcua): ✔ sim=-28 平台=-28 目标=-28
+07:56:04   E1 biax/feed-rate-sp(opcua): ✔ sim=870 平台=870 目标=870
+07:56:07   E1 biax/zone1-sp(modbus-tcp): ✔ sim=280 平台=280 目标=280
+07:56:11   E1 biax/zone2-sp(modbus-tcp): ✔ sim=286 平台=286 目标=286
+07:56:14   E1 biax/zone3-sp(modbus-tcp): ✔ sim=292 平台=292 目标=292
+07:56:17   E1 biax/zone4-sp(modbus-tcp): ✔ sim=292 平台=292 目标=292
+07:56:20   E1 biax/zone5-sp(modbus-tcp): ✔ sim=292 平台=292 目标=292
+07:56:23   E1 biax/screw-sp(modbus-tcp): ✔ sim=74 平台=74 目标=74
+07:56:26   E1 biax/pump-sp(modbus-rtu): ✔ sim=41 平台=41 目标=41
+07:56:29   E1 biax/die-lip-sp(modbus-tcp): ✔ sim=295 平台=295 目标=295
+07:56:32   E1 biax/chill-temp-sp(modbus-tcp): ✔ sim=38 平台=38 目标=38
+07:56:35   E1 biax/cast-spd-sp(modbus-tcp): ✔ sim=45.5 平台=45.5 目标=45.5
+07:56:38   E1 biax/pinning-sp(modbus-tcp): ✔ sim=8.6 平台=8.600000381469727 目标=8.6
+07:56:41   E1 biax/mdo-preheat1-sp(modbus-tcp): ✔ sim=109 平台=109 目标=109
+07:56:44   E1 biax/mdo-preheat2-sp(modbus-tcp): ✔ sim=114 平台=114 目标=114
+07:56:48   E1 biax/mdo-preheat3-sp(modbus-tcp): ✔ sim=119 平台=119 目标=119
+07:56:51   E1 biax/slow-roll-sp(modbus-tcp): ✔ sim=56 平台=56 目标=56
+07:56:54   E1 biax/fast-roll-sp(modbus-tcp): ✔ sim=173 平台=173 目标=173
+07:56:57   E1 biax/mdo-anneal-sp(modbus-tcp): ✔ sim=151 平台=151 目标=151
+07:57:00   E1 biax/tdo-preheat-sp(opcua): ✔ sim=122 平台=122 目标=122
+07:57:03   E1 biax/tdo-stretch-sp(opcua): ✔ sim=130 平台=130 目标=130
+07:57:06   E1 biax/tdo-anneal-sp(opcua): ✔ sim=229 平台=229 目标=229
+07:57:09   E1 biax/chain-sp(opcua): ✔ sim=174 平台=174 目标=174
+07:57:12   E1 biax/rail-out-sp(opcua): ✔ sim=3675 平台=3675 目标=3675
+07:57:15   E1 biax/corona-sp(http): ✔ sim=5 平台=NaN 目标=5.05
+07:57:18   E1 biax/winder-tension-sp(modbus-tcp): ✔ sim=118 平台=118 目标=118
+07:57:21   E1 biax/taper-sp(modbus-tcp): ✔ sim=38 平台=38 目标=38
+07:57:24   E1 biax/contact-press-sp(modbus-tcp): ✔ sim=2.34 平台=2.3399999141693115 目标=2.34
+07:57:27   E1 biax/winder-speed-sp(modbus-tcp): ✔ sim=212 平台=212 目标=212
+07:57:27   ── seed=42 ──
+07:59:02     B0 final|err|=2.95 inWindow=false
+08:00:36     B1 final|err|=2.95 inWindow=false writes=0
+08:02:00     T final|err|=0.88 inWindow=true t2w=50.662 writes=6 errors=0
+08:02:00   ── seed=43 ──
+08:03:34     B0 final|err|=3.13 inWindow=false
+08:05:09     B1 final|err|=3.13 inWindow=false writes=0
+08:07:41     T final|err|=3.03 inWindow=true t2w=52.706 writes=6 errors=0
+08:07:41   ── seed=44 ──
+08:09:16     B0 final|err|=2.95 inWindow=false
+08:10:50     B1 final|err|=2.95 inWindow=false writes=0
+08:12:42     T final|err|=1.01 inWindow=true t2w=50.719 writes=6 errors=0
+08:12:42   ── seed=45 ──
+08:14:17     B0 final|err|=2.97 inWindow=false
+08:15:51     B1 final|err|=2.94 inWindow=false writes=0
+08:18:15     T final|err|=2.9 inWindow=true t2w=52.743 writes=6 errors=0
+08:18:15   ── seed=46 ──
+08:19:50     B0 final|err|=2.89 inWindow=false
+08:21:24     B1 final|err|=2.89 inWindow=false writes=0
+08:22:52     T final|err|=1.08 inWindow=true t2w=52.772 writes=6 errors=0
+08:22:52   ── seed=47 ──
+08:24:27     B0 final|err|=3.05 inWindow=false
+08:26:01     B1 final|err|=2.97 inWindow=false writes=0
+08:28:17     T final|err|=2.8 inWindow=true t2w=52.754 writes=6 errors=0
+08:28:17   ── seed=48 ──
+08:29:52     B0 final|err|=2.9 inWindow=false
+08:31:26     B1 final|err|=2.88 inWindow=false writes=0
+08:32:54     T final|err|=1 inWindow=true t2w=52.773 writes=6 errors=0
+08:32:54 实验数据写入 D:\tmp\aw-main\bench\results\repeat-full-biax
+=== exit=0 16:32:56 ===
+EXP DONE Tue Oct 27 16:32:56     2026
