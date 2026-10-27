@@ -1,63 +1,79 @@
-\section{Engineering Interpretation}
-\label{sec:limits}
-The evaluated contribution is configuration-based reuse across industrial
-agent settings. Q4 exercises four process configurations, each with one
-seed-42 simulator trajectory; all met their declared terminal checks, two
-near a boundary. Q1 covers acquisition across five protocol families and
-writes on four (RTU-over-TCP was acquisition-only). Q2 contains two live
-engine tasks; Q3 uses three seeds and a restricted setpoint grid; Q5 records
-782 deterministic assertions across nine software-suite executions; Q6 is
-one accelerated recipe trajectory. Together, these archives exercise
-strategy, I/O, scene configuration, and workflow integration, but do not
-compare optimization performance.
+\section{Discussion}
+\label{sec:discussion}
+\subsection{Interpretation}
+Protocol connectivity and the onboarding replay test different parts of device
+integration: communication with configured simulator endpoints and access to
+declared acquisition and control nodes. They do not show that arbitrary
+equipment can be integrated without adaptation. The entry-path checks document
+which records were retained for each tested call. Because the calls used
+separate environments and no handler-level trace was retained, they cannot
+establish route equivalence or confirm that both reached the same handler. In
+the approval-context test, stale product and run identities reached mock writes
+when tuple comparison was removed and were rejected when it was enabled. This
+isolates the comparison's contribution within that setup.
 
-Authorization, admission, approval, and graded confirmation are
-cross-cutting operational services within the framework. Their records
-connect an actor and production scope to a command receipt and process
-observation. They do not measure operator comprehension, complacency, or
-responsibility allocation \cite{parasuramanmanzey2010complacency,parasuraman2000model,bainbridge1983ironies}.
-The execution boundary is independent of prompts and retrieved documents
-\cite{greshake2023injection,liu2024pinjection}; deployment still requires
-credential management, endpoint security, and IT/OT separation
-\cite{iec62443-3-3}. It complements rather than replaces independently
-engineered PLC interlocks and safety-instrumented systems; IEC~61511 governs
-the latter's process-safety lifecycle \cite{iec61511}.
+The six registered-harness tasks and four direct-node missions answer different
+questions. The harness tasks link approvals and receipts to single post-trial
+probes; the missions record one process trajectory per scenario. They use
+separate setups, including different film target bands and different annealing
+measures, so mission endpoints do not benchmark the harness probes. Across the
+missions, requested actions precede measured responses, including a reverted
+annealing candidate. In wastewater treatment, the structured aeration sequence
+and final mission summary also refer to different observations. These records
+describe trajectories, not isolated effects of individual commands.
 
-\noindent\textit{Experimental scope.}
-Process evidence is simulator-based and approvals were scripted. Q1--Q4 use
-a historical direct-node interface; Q5 comprises software assertions, not
-process samples; Q6 is one October 18 recipe trajectory with cadence
-overrides. The archives do not form a joint current-version end-to-end
-study, and a complete current exploration-to-process-response test is not
-archived. On October 23, the current public interface refused all eight
-historical direct-node attempts. A separate current recipe check verified
-only the 45-to-50-bar trial, refused later requests at 66 and 132 s under the
-default cadence, reached no target, saved no recipe, and failed its
-restoration assertion. These checks expose interface boundaries; they do
-not repeat the accelerated case. The evidence does not estimate physical
-transfer, general plant coverage, hard real-time behavior, fault frequency,
-human performance, or comparative benefit. Repeated matched runs, a
-current-route end-to-end study, and physical evaluation are needed; process
-benchmarks such as Tennessee Eastman \cite{downs1993tep} offer one further
-setting.
+The missions also illustrate the role of scene-specific configuration.
+Part weight, film thickness, hardness, and dissolved oxygen have different
+units, target bands, and available actuators. The operation--response
+structure accommodates these differences, but the trajectories do not
+identify which architectural component caused an outcome. Related approaches
+likewise connect industrial operations to semantic skills, equipment context,
+or process validation \cite{koehle2025semanticrecipes,graul2026aas,schall2026safe}.
+The present study complements those designs by describing a shared operation
+path and reporting responses in four simulated scenes.
+
+\subsection{Scope and Limitations}
+The optimization evidence comprises one deterministic simulated trajectory per scene,
+without independent replicates or a matched alternative controller. It cannot
+establish statistical repeatability, superiority to another platform, or the
+effect of individual controls. The missions use direct-node operations and
+do not test the full range of entry routes or language-model decisions
+described by the architecture. Final tensile-strength and surface-defect
+readings for annealing and the complete final wastewater effluent vector are
+missing, limiting conclusions about secondary constraints. The process model
+and simulator configuration also limit transfer to physical production.
+
+The mission records show automated judgments, not human pre-approval. The
+approval-context test uses simulated decisions and mock drivers; it tests a
+software condition, not operator performance or the effectiveness of human
+review \cite{parasuramanmanzey2010complacency,bainbridge1983ironies}.
+Software operation restrictions are not a complete security or safety
+assessment \cite{greshake2023injection,liu2024pinjection,iec62443-3-3};
+independent plant protection remains necessary \cite{iec61511}. Future work
+should repeat missions across initial conditions, preserve all terminal
+quality measurements, compare matched controllers and entry paths, and
+evaluate the system with suitable physical equipment and operator oversight.
+
+This modular separation is a property of the implemented software structure.
+The current evidence does not measure whether it reduces engineering effort,
+operating cost, or reliability; those outcomes require matched deployments.
 
 \section{Conclusion}
 \label{sec:conclusion}
-AgentWorkShop combines collaborative tasks and replaceable strategy
-services with production context, semantic industrial I/O, and distinct
-node and recipe workflows. Across the tested simulator scenes and protocol
-routes, the implementation exercised configuration-based reuse and
-route-specific evidence. These results clarify what the framework connects
-and where its current evidence stops; they do not establish general
-industrial coverage, physical transfer, or comparative control benefit.
+The platform links industrial task context to scene-specific device operations
+through shared dispatch, configured drivers, and separate command and
+observation records. The evaluation covered simulator protocol and node access,
+registered-harness tasks, mock-driver approval checks, and four direct-node
+missions. The four mission endpoints were within their primary target bands.
+Separately, all six single probes after harness tasks remained below their
+bands despite verified receipts. These simulator and mock-driver results do not
+establish repeatability, comparative benefit, human-review effectiveness, or
+performance on a physical plant.
 
-\noindent\textit{Data availability and AI assistance.}
-Run archives, original Q2 engine logs, replay entries, configuration notes,
-and claim-to-source mappings accompany the separate anonymous experimental
-evidence bundle. The manuscript source package contains plotting sources
-and figure mappings. An OpenAI language model assisted
-with manuscript organization, language revision, and plotting-code
-preparation. OpenAI image generation drafted the compositions of
-Figs.~\ref{fig:arch} and~\ref{fig:runtime}; the final artwork was redrawn
-as editable Python-generated vectors and checked against the implementation.
-The authors remain responsible for the final submission.
+\noindent\textbf{Data Availability:} The historical Supplementary File~S1
+contains route and integration-check records and the onboarding replay log;
+it does not contain the current four-mission traces. A separate supplementary
+evidence bundle contains pseudonymized mission logs and selected
+registered-harness records. The manuscript source, vector figures, and
+figure-source data accompany the submission package. No physical-plant data
+are included.

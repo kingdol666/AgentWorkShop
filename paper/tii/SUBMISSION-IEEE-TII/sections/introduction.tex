@@ -1,54 +1,60 @@
 \section{Introduction}
-\IEEEPARstart{L}{arge} language model (LLM) agents are being applied to
-industrial control, factory skills, shop-floor coordination, and production
-scheduling \cite{huang2026made,koehle2026llmdriven,lim2025llmenabled,zhao2026shopfloor,waseem2026pretrained}.
-These studies show that agent reasoning can be connected to plant-facing
-tasks, but deploying another process or line also changes signal maps,
-protocols, operating objectives, and production context. A reusable
-industrial-agent system must make those changes configurable while keeping
-collaboration, plant integration, and operational workflows coherent.
+\IEEEPARstart{I}{ndustrial-agent} deployments translate task-level goals into
+operations over production signals and equipment. A line-speed adjustment,
+for example, depends on the active product, recipe, run, applicable limits,
+and the control node mapped to the line. If that context changes while a
+proposal is awaiting approval, a formerly admissible request may no longer be
+appropriate. Device access also needs evidence at two distinct points: what
+the command interface reported and what the process was later observed to do.
+Connecting these steps across task and device interfaces is therefore a
+central industrial integration problem.
 
-Injection molding illustrates this systems problem. A team member may use
-recent measurements and prior process knowledge to diagnose insufficient
-packing and propose higher holding pressure. The framework must locate the
-active product, recipe, and run; map the semantic quantity to a device
-interface; apply the operation's configured checks; and return both
-endpoint evidence and subsequent quality observations. The same team and
-operational services should remain usable when another process changes the
-signal map, protocol, or target criteria. A proposal, a confirmed setting,
-and an observed process result therefore need distinct representations,
-linked to the same production context.
+Recent work explores end-to-end automation, control-sequence generation,
+modular factory skills, and robotic-line control
+\cite{xia2025control,huang2026made,koehle2026llmdriven,waseem2026pretrained}.
+Other studies address programmable logic controller (PLC) code generation,
+context-aware control, resource discovery, shop-floor coordination,
+digital-twin fault handling, and natural-language machine access
+\cite{liu2026agents4plc,wu2025instructmpc,lim2025llmenabled,zhao2026shopfloor,gill2025llmdt,hofmann2025nlc}.
+Recent platforms further connect proposals to Asset Administration Shell
+(AAS) models and signed approval, validate actions against process and
+instrumentation diagrams (P\&IDs), or organize sensor--manufacturing
+execution system (MES)--enterprise resource planning (ERP) evidence streams
+\cite{graul2026aas,schall2026safe,lin2026agentic}. The cited work covers agent
+reasoning, production context, and operation constraints.
 
-The research question is how an extensible industrial-agent framework can
-connect replaceable collaboration and strategy components to production
-context and heterogeneous industrial I/O, while retaining route-appropriate
-evidence from candidate action through process observation. AgentWorkShop
-addresses this question through four cooperating design areas: channels,
-teams, tasks, and shared memory host replaceable strategy adapters;
-analysis, retrieval, dataset, and model services inform proposals; a
-line--product--recipe--run model scopes work; and semantic acquisition and
-write-control nodes bridge process quantities to protocol drivers.
-Operational profiles and capabilities determine which workflow a channel
-can invoke. Bounded node exploration and recipe operation then preserve
-their distinct dispatch, observation, and retention lifecycles. Typed SDK,
-REST, MCP, agent-to-agent, CLI, and console interfaces expose extension and
-integration points.
+An integration question remains: how can task engines and direct calls share an
+operation boundary while accounting for scene-specific devices, production
+context, and route-specific evidence? The platform connects registered
+harnesses and direct representational state transfer (REST) calls to a shared
+named-operation dispatcher. Scene blueprints map semantic signals to configured
+drivers and define targets and guards.
 
-This paper makes three contributions:
-\begin{enumerate}
-\item It presents a modular framework architecture that joins agent
-collaboration and replaceable decision services with production objects,
-semantic industrial I/O, and external extension interfaces.
-\item It describes a configuration-based integration model in which
-process-specific signal maps, protocol bindings, objectives, and guards
-reuse shared orchestration and operational services, while node exploration
-and recipe workflows retain route-specific evidence.
-\item It evaluates protocol mappings, strategy substitutions, four
-simulator-based process configurations, deployment-suite behavior, and a
-recipe-path case. These experiments provide implementation evidence for the
-exercised configurations; they do not estimate physical transfer or
-comparative control benefit.
-\end{enumerate}
-The remainder presents related industrial-agent and integration work,
-details the AgentWorkShop architecture and operational workflows, evaluates
-the implemented routes, and discusses evidence scope and limitations.
+Fig.~\ref{fig:control-path} summarizes the control path. Task goals and
+production context inform an operation proposal. Shared checks and route guards
+precede writes through the device write-control (DCW) subsystem. When approval
+is required, the handler rechecks the approved context before dispatch. Command
+receipts and subsequent data-acquisition (DAQ) observations remain distinct: a
+readback can verify a setpoint, while a later observation describes the process
+state without, by itself, establishing causation.
+
+\begin{figure}[!b]
+\centering
+\includegraphics[width=\columnwidth]{resources/fig-agent-control.pdf}
+\caption{Agent-control path for a configured industrial task. The agent uses
+DAQ and MES context, passes shared operation checks, and routes writes through
+process guards. Approval and its context recheck apply when required. DCW and
+configured drivers provide device access; command receipts and later process
+observations remain separate. Scene configuration supplies targets and guards,
+while the application provides its optimization policy.}
+\label{fig:control-path}
+\end{figure}
+
+Evaluation covers simulator protocol and node access, registered-task
+execution, mock-driver approval-context checks, and four process missions under
+separate setups.
+
+Section~II reviews related work. Section~III presents the architecture and
+execution flow. Section~IV explains the cooperating modules and their device
+access and evidence mechanisms. Section~V describes the simulation protocol
+and results; Sections~VI and~VII discuss their implications and conclude.

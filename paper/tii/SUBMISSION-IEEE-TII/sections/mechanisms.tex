@@ -1,169 +1,72 @@
-\section{Operational Workflows and Execution Contracts}
+\subsection{Approval, Execution, and Evidence}
+\label{sec:routes}
 \label{sec:mech}
-AgentWorkShop connects a strategy proposal to plant-facing work through
-two route-specific lifecycles: bounded node exploration and operational
-recipe control. Both use the channel's profile and persisted capabilities,
-apply route-specific limits and approval, and return execution evidence to
-the task. Their records remain distinct: node exploration couples one
-changed-value intervention to a later target summary, whereas recipe work
-records a trial or dispatch before its caller observes the process and
-decides whether to retain a new version. The shared execution contract is
-described below.
-
-\begin{figure}[!t]
-\centering
-\includegraphics[width=\columnwidth]{resources/fig-runtime-2026.pdf}
-\caption{Route-specific operational lifecycles. Bounded exploration opens a
-node record after a successful changed-value write, then waits and saves
-an exploration summary. Recipe dispatch returns batch and per-parameter
-receipts; its caller observes and decides. Retaining a recipe requires a
-separate update. Checks and approval follow each route's policy.}
-\label{fig:runtime}
-\end{figure}
-
-\subsection{Authority, Admission, and Pacing}
 \label{sec:objective}
 \label{sec:nodeexec}
-A request identifies the actor, operation, node or recipe, and production
-context. The server resolves its persisted capability and channel profile;
-authority comes from these records. For an online node intervention, the
-admitted interval is
-\begin{equation}
-\mathcal{I}^{\mathrm{online}}_n(t)=\mathcal{H}_n\cap\mathcal{B}_n
-\cap\mathcal{P}_n(t)\cap\mathcal{R}_n(t),
-\label{eq:admission}
-\end{equation}
-where $\mathcal{H}_n$ is the hard engineering range and
-$\mathcal{B}_n$, $\mathcal{P}_n$, and $\mathcal{R}_n$ are baseline,
-active-product, and active-recipe limits. Missing optional limits impose no
-additional restriction. The interval in~\eqref{eq:admission} is the value-admission
-input to the executor; an empty intersection refuses the request. The
-resolver identifies the excluding layer (Fig.~\ref{fig:hitl}a), making the
-decision interpretable in production terms.
+\label{sec:ack}
+\label{sec:agentloop}
+Routes add timing checks and, when required by operation and configuration,
+approval checks. Online
+node writes enforce a 60\,s minimum spacing; recipe trials use a per-line
+cadence (300\,s by default), and recipe intervals are anchored to approval.
+Manual approval binds an actor and proposed operation to candidate values,
+applicable limits, expiry, and the active line--product--recipe--run tuple.
+After approval, the handler rechecks authority and compares the current tuple
+with the approved tuple before entering DCW dispatch. Single-parameter waits
+expire after 180\,s by default; recipe-dispatch approvals use a 30-minute
+window. A changed recipe definition requires a new
+\texttt{recipe\_apply} proposal.
 
-Admission follows the requested operation. Recipe dispatch checks
-$\mathcal{H}_n\cap\mathcal{B}_n\cap\mathcal{P}_n(t)$, omitting the existing
-recipe window when applying its replacement. This lets a new recipe carry
-its own setpoints while preserving equipment, baseline, and product bounds.
-Parameter admission constrains magnitudes. The process objective and
-coupled-variable guards are evaluated from subsequent observations.
-
-Timing checks regulate supervisory interventions. Online node writes have
-an effective minimum spacing of 60\,s. Recipe dispatch uses a persistent
-per-recipe interval anchored to approval; trials also use a configurable
-per-line cadence (default 300\,s). Applicable checks run at proposal or
-execution according to the route; the recipe-operation interval can
-refuse a proposal before creating an approval card. Experimental settings
-are stated with each trial. Stored-setpoint hold heartbeats form a
-separate, default-off maintenance route that reapplies the stored value
-without fresh admission.
+Fig.~\ref{fig:hitl}(a) illustrates the four-layer value interval in
+Eq.~(\ref{eq:admission}) using an illustrative rotational-speed
+configuration in revolutions per minute (rpm). Panel (b)
+shows a symbolic approval followed by authority and context rechecks; its
+values illustrate the approval sequence.
 
 \begin{figure*}[!t]
 \centering
 \includegraphics[width=\textwidth]{resources/fig-admission-hitl-2026.pdf}
-\caption{Admission and approval boundaries. (a) The four-layer interval for
-an online node intervention; recipe dispatch omits the old recipe window.
-(b) Structured human approval separates the requested value and authority
-fields from display-only model reasoning. Approval is followed by execution
-checks and does not reserve equipment state.}
+\caption{Admission and approval boundaries. (a) An illustrative rotational-speed
+configuration in revolutions per minute (rpm): online node interventions use the
+four-layer interval of Eq.~(\ref{eq:admission}), whereas recipe dispatch
+omits the previous recipe window. (b) Symbolic human approval binds a
+proposed action and its context tuple; execution rechecks the active
+line--product--recipe--run context, authority, and applicable limits before
+device dispatch.}
 \label{fig:hitl}
 \end{figure*}
 
-\subsection{Human Approval and Recipe Control}
-\label{sec:hitl}
-Manual execution bindings create an approval request carrying actor, node,
-candidate value, applicable interval, expiry, reasoning, and parameter
-bases. This structured object gives the approver the proposed operation
-alongside the governing context. The default timed wait expires after
-180\,s and refuses execution; a hold mode waits for an explicit decision.
-One pending request per member--node pair suppresses duplicates. The
-decision note returns to the proposing member, completing the interaction
-between strategy and approver.
+A \texttt{recipe\_trial} illustrates the operation sequence: the handler
+checks the bound recipe, active run, candidate parameters, and route timing;
+if required, it requests approval; after revalidation, it submits a bounded
+batch through the configured driver and returns a per-parameter receipt.
+The caller obtains later DAQ observations separately and may then update,
+apply, or roll back a recipe. A trial neither saves nor applies a recipe
+version. The driver registry maps semantic controls to configured protocol
+drivers, keeping protocol details out of agent operation arguments.
 
-Approval is bound to an action and followed by execution checks. The
-executor rechecks authorization and active limits, thereby accounting for
-capability or product changes during the wait. For
-\texttt{recipe\_apply}, a changed definition requires a new proposal; an
-unchanged approval dispatches a copied parameter snapshot. The approved
-definition thus determines the values passed to batch dispatch.
+For a concrete illustration, consider a simulated coating line whose semantic
+line-speed control is mapped to a Modbus TCP write node. A request to change
+the setpoint from 37 to 39\,m/min is inside a 28--48\,m/min recipe window;
+the remaining applicable limits and timing checks must also pass. If the
+configured policy requires approval, the proposal binds the candidate and
+active production context, and the handler rechecks that context before
+dispatch. The driver then returns a graded receipt. A later acquisition sample
+is stored separately and can be associated with the operation when the route
+provides the necessary context and timestamps. This example illustrates the
+handoffs, not a recorded human decision or a particular process response; the
+simulator onboarding replay in Section~\ref{sec:eval} used test-only automatic
+approval.
 
-A line-level recipe-dispatch master switch defaults to manual. It requires
-approval for otherwise approval-free recipe operations; changing it to
-automatic requires explicit administrator confirmation. The manual line
-mode also applies to internal exploration using an automatic recipe
-capability. Direct node bindings retain their own execution mode and
-admission checks. Agents use these policies but cannot change the master
-switch. Approval records workflow authorization; process protection retains
-its independently engineered control-system role.
-
-The proposer owns the candidate and interpretation, the authenticated
-approver authorizes the pending action, and the verdict issuer owns the
-recorded decision. Receipts and operations logs identify outcomes needing
-operator follow-up. Deployment assigns that responsibility and the
-line-specific approval roles; closing a record is a lifecycle operation
-rather than proof of equipment recovery.
-
-\subsection{Graded Command Confirmation}
-\label{sec:ack}
-Command evidence has two levels: the driver's acceptance ACK and the batch
-verifier's terminal verdict. The driver assigns
-\texttt{readback-verified}, \texttt{transport-ack}, or
-\texttt{unverified}. A matching post-command read supports the first;
-a transport or MES application receipt supports the second. The batch
-verifier assigns \texttt{verified}, \texttt{unverified}, or
-\texttt{failed}. It accepts an existing matching readback or performs up to
-three rereads, 2\,s apart. A matching reread upgrades the final ACK to
-\texttt{readback-verified}; exhausted confirmation attempts produce an
-unverified verdict, and command failure produces a failed verdict. MES
-acceptance without a read mapping follows the unverified outcome. Write
-history retains the initial ACK, while the batch result stores the final
-ACK and terminal verdict.
-
-Batch dispatch records each parameter's result and summarizes verified,
-unverified, and failed counts. This granularity preserves a verified
-parameter even when another parameter's command fails. A
-readback-verified value describes the endpoint's returned setting; target
-attainment is evaluated from process observations. Section~\ref{sec:hardening}
-tests the distinction with a publish-only endpoint whose
-\texttt{ok=true} broker receipt is transport acceptance and whose terminal
-confirmation remains unverified.
-
-\subsection{Observation, Verdict, and Compensation}
-\label{sec:agentloop}
-Bounded exploration couples an intervention with a target summary.
-It captures the starting control before asynchronous execution and averages
-1-s buckets over a trailing 45-s target window. A successful changed-value
-write opens the node record. The exploration workflow waits
-10--300\,s (default 45\,s) and queries another trailing 45-s window.
-These are query windows relative to their query times: approval can
-separate the baseline from actuation, and a 10-s wait can leave about 35\,s
-of pre-write observations in the later window. The receipt and target
-statistics are returned separately for interpretation of this single-factor
-probe. The exploration summary is saved after this observation; refused or
-expired approval instead produces a rejected summary without actuation or
-post-write sampling.
-
-The governed node lifecycle accepts attributed \texttt{keep},
-\texttt{rollback}, or \texttt{uncertain} verdicts with the caller's
-interpretation and queried window. Compensation requests a new command
-under its applicable admission policy and retains its own outcome,
-including partial completion. In the archived experiments, a harness also
-compares recipe value, endpoint readback, and an acquisition-store sample.
-This three-way check measures agreement between representations sharing an
-endpoint.
-
-A record backstop supplies monitoring while an optimization record remains
-open. After 120\,s it polls every 30\,s; three cumulative samples outside
-the recipe monitoring window trigger a system-attributed rollback toward
-the preceding value. Its window has a monitoring role separate from the
-admission interval and mission target. Available samples determine breach
-counts; missing samples contribute no breach. A caller's keep verdict
-closes the record and its monitoring. When retained rollback records reach
-the configured limit, further actuation follows the approval policy.
-
-Attribution joins actor, production context, receipt, verdict, and
-recipe/run records. The write audit deduplicates the same value on the same
-node within 10\,s, while batch records and optimization journals retain
-their route-specific lifecycles. Together these records let an investigator
-trace the command, the evidence available to its evaluator, and the
-parameterization retained for subsequent work.
+Receipts and observations answer different questions. A command result is
+graded as readback-verified, transport-acknowledged, or unverified; a
+readback mismatch can trigger up to three reads at 2\,s intervals. Recipe
+batches retain per-parameter verification outcomes. A readback-verified result
+records that the returned value matched the request; a transport acknowledgement
+alone does not establish that the device applied it, and an unverified result
+does not establish a matching readback. DAQ stores subsequent timestamped
+process observations, while recipe history, approvals, and task records remain
+with their owning services. Identifiers and timestamps can link these records
+when available, but a later observation alone does not prove that the command
+caused the measured change. Section~\ref{sec:eval} evaluates selected parts of
+this evidence chain under the stated test conditions.

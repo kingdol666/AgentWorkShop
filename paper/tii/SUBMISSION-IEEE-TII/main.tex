@@ -2,6 +2,7 @@
 % IEEE Transactions on Industrial Informatics -- anonymous regular-paper draft
 % Compile: latexmk -pdf main.tex
 \usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algpseudocode}
 % Local XeTeX/Tectonic builds: route IEEEtran's ptm (Times) family requests to
 % the legacy Times Type1 faces so metrics match the pdfLaTeX reference build;
 % the latexmk -pdf (pdfLaTeX) path is unaffected.
@@ -23,22 +24,24 @@
 \usepackage{stfloats}
 \usepackage{placeins}
 \usepackage{url}
+\usepackage{etoolbox}
+\usepackage{balance}
 \urlstyle{same}
 % Cross-references and citations. The cite package renders IEEE-style citation
 % groups ([14]--[16], [20], [21]) with hyperref support.
 \usepackage{cite}
 \usepackage[colorlinks=true,linkcolor=black,citecolor=black,urlcolor=black]{hyperref}
 \hypersetup{bookmarksnumbered=true,
-  pdftitle={AgentWorkShop: An Extensible Framework for Configurable Multi-Scenario Industrial Agent Integration},
-  pdfauthor={Anonymous Authors},
+  pdftitle={A Modular Task-to-Device Integration Framework for Industrial Agents},
+  pdfauthor={},
   pdfsubject={IEEE Transactions on Industrial Informatics},
-  pdfkeywords={industrial agents, industrial informatics, multi-agent systems, production system integration, process control, semantic data integration}}
+  pdfkeywords={industrial agents, industrial communication, industrial informatics, production systems, semantic data integration}}
 
 % Float placement only; IEEEtran margins and body type remain unchanged.
 \setcounter{topnumber}{4}
 \setcounter{bottomnumber}{3}
 \setcounter{totalnumber}{7}
-\setcounter{dbltopnumber}{4}
+\setcounter{dbltopnumber}{2}
 \renewcommand{\topfraction}{0.95}
 \renewcommand{\bottomfraction}{0.80}
 \renewcommand{\textfraction}{0.03}
@@ -53,53 +56,46 @@
 \setlength{\abovecaptionskip}{3pt plus 1pt minus 1pt}
 \setlength{\belowcaptionskip}{2pt plus 1pt minus 1pt}
 
-\input{resources/results-macros}
-
 \newcommand{\system}{the platform}
+% Review copy is anonymous. The AI-use statement is maintained in
+% AI-DISCLOSURE.md for the journal-approved disclosure channel and is not
+% compiled into this manuscript.
+\newif\ifblindreview
+\blindreviewtrue
 
 \begin{document}
 \bstctlcite{IEEEbstctl}
 
-\title{AgentWorkShop: An Extensible Framework for Configurable Multi-Scenario Industrial Agent Integration}
+\title{A Modular Task-to-Device Integration Framework for Industrial Agents}
 
-\author{Anonymous Authors}
-\markboth{IEEE Transactions on Industrial Informatics, Submitted Manuscript}{AgentWorkShop Industrial Agent Integration}
+\author{}
+\markboth{IEEE Transactions on Industrial Informatics, Submitted Manuscript}{Task-to-Device Integration}
 
 \maketitle
 
 \begin{abstract}
-Industrial agent applications must connect collaborative reasoning,
-production context, and heterogeneous plant interfaces while preserving a
-traceable path from a task proposal to its process outcome. This paper
-presents AgentWorkShop, an extensible framework for configuring these
-capabilities across industrial scenarios. Its architecture combines team
-and task orchestration with replaceable strategy adapters; analysis,
-retrieval, dataset, and model services; line--product--recipe--run context;
-semantic acquisition and write-control nodes; and typed interfaces for
-onboarding and extension. Scenario-specific signal maps, protocol bindings,
-objectives, and guards configure process integrations while shared
-collaboration and operational services remain reusable. Candidate actions
-enter either bounded node exploration or an operational recipe workflow,
-where dispatch evidence, process observations, and retained versions follow
-route-specific lifecycles. Evaluation exercised acquisition over five protocol families, controlled
-writes over four routes, strategy and controller substitutions, and four
-simulator process configurations. Each process had one seed-42 trajectory;
-all reached their declared terminal targets, two near a boundary. Nine
-sequential deployment-suite executions recorded 782 deterministic
-assertions.
-A single accelerated injection-molding trajectory linked four pressure trials
-from 45 to 65 bar, each approved by the scripted test harness, to a measured weight
-change from 31.28 to 32.30 g and subsequent recipe retention.
-The evidence supports
-configuration-based reuse across the exercised scenes and interfaces; all
-process results are simulator-based, and later checks exposed
-current-interface cadence limits. It does not establish physical transfer,
-broad plant coverage, or comparative optimization benefit.
+Industrial agents must turn task goals into device operations across changing
+production contexts and heterogeneous interfaces, while preserving evidence of
+both commands and process responses. The platform connects registered agent
+harnesses and direct-operation calls to a shared dispatcher. Scene mappings
+link semantic controls to configured drivers; command receipts remain separate
+from later process observations. When approval is required, the handler checks
+that the line, product, recipe, and active run still match the approved
+context. In simulation, one registered harness completed six sequential tasks
+across two scenes, each with three admitted candidate settings, synthetic
+approval, a verified trial receipt, and a run-tagged sample. All six single
+post-trial probes fell below their target bands. A mock-driver test rejected
+injected stale contexts before writes. Four simulated deterministic
+direct-node missions reported final primary values within their target bands
+without model-selected
+setpoints. These results cover selected configurations; repeatability,
+comparative optimization performance, human-review effectiveness, and
+physical-plant performance remain unverified.
 \end{abstract}
 
 \begin{IEEEkeywords}
-Industrial agents, industrial informatics, multi-agent systems, production
-system integration, process control, semantic data integration.
+Industrial agents, industrial communication, industrial informatics,
+production systems, semantic data integration.
 \end{IEEEkeywords}
 
 \IEEEpeerreviewmaketitle
@@ -107,11 +103,11 @@ system integration, process control, semantic data integration.
 \input{sections/introduction}
 \input{sections/related}
 \input{sections/system}
-\input{sections/mechanisms}
-\FloatBarrier
+\input{sections/modules}
 \input{sections/evaluation}
 \input{sections/discussion}
 
+\balance
 \bibliographystyle{IEEEtran}
 % Keep IEEEtran's default bibliography size and leading.
 \bibliography{resources/refs}

@@ -1,344 +1,221 @@
 \section{Experimental Evaluation}
 \label{sec:eval}
-The evaluation asks whether shared collaboration, production-context, and
-industrial-I/O services can be configured across different strategies and
-process scenes. It leads with Q4, which pairs controls and observations for
-four configured processes, and Q1, which exercises acquisition and
-controlled-write routes over multiple protocol mappings. Q2--Q3 then examine
-strategy and controller substitutions; Q5 and Q6 cover deployment-suite
-behavior and a recipe-path lifecycle. The archives are complementary
-implementation evidence, not one joint current-version trial. All process
-experiments use repository simulators.
+The evaluation examines selected parts of the task-to-device integration path
+using local simulators and a mock driver. A registered-harness test examines
+task execution and its retained operation records; Fig.~\ref{fig:r20} shows
+the associated process probes. Other checks examine protocol and node
+access, direct-operation records, and approval-context rejection. Separately, four deterministic
+direct-node missions illustrate how requests and observations are recorded
+across different process scenes. They cover injection molding, biaxially
+oriented polyethylene terephthalate (BOPET) film production, continuous annealing, and
+anaerobic/anoxic/oxic wastewater treatment. Table~\ref{tab:missions} summarizes
+their primary outcomes; their trajectories appear in Fig.~S2 of the
+supplementary evidence bundle. The missions and harness tasks address different
+evaluation questions and use different setups; neither is a control or
+repetition of the other.
 
-\subsection{Evidence Units and Experimental Procedure}
-\label{sec:testbed}
-\label{sec:procedure}
-Q1--Q4 use the seed-\resSeed{} integrated archive
-\texttt{20260921184204-10lc}, its raw scenario records, and companion ablation
-run \resAblationRun. The cast-film reference preset has an author-defined
-objective $J$ combining thickness conformance, defects, energy, and
-throughput. These historical missions use the direct-node interface.
-Scripted policies occupy the proposal slot except for two live engine
-tasks in Q2. Q3 additionally uses seeds 43--44. Q5 uses nine
-deployment-suite executions from October 2026; Q6 uses the October 18 recipe
-archive. The archives identify each tested interface and its own evidence
-unit. Separately, 65 channel/profile and composition checks passed in the
-October 20 archive and an October 24 rerun with temporary storage and mock I/O,
-covering approval outcomes, starting-control capture, and approved-recipe
-snapshot consistency. Q6 exercises the recipe
-route; these evidence sets are not pooled as one interface experiment.
+\subsection{Test Design and Evidence Rules}
+\label{sec:eval-protocol}
+All process experiments use local simulators, not physical equipment. The
+four missions use deterministic scenario-specific routines, a fixed random
+seed, and the direct-node interface; no language model selects their setpoints.
+In the available benchmark source, an automatic keep judgment follows a write
+and precedes the next observation, except in BOPET, where it follows the
+response. Annealing and wastewater logs also record later reversion decisions.
+These are software events, not human pre-approval. The full executed runtime
+snapshot was not retained, so the records cannot be replayed as a complete
+trace.
 
-The process missions follow six stages. First, provision the semantic nodes,
-their signal mappings and limits, and a baseline recipe in the active
-production context. Second, acquire the initial controls and target
-observations to establish the starting state. Third, submit a bounded
-candidate under the declared capability, binding, and approval policy.
-Fourth, retain the dispatch receipt and available readback, preserving each
-parameter's verification result. Fifth, wait the scenario's declared
-response interval and query the relevant DAQ quantities. Sixth, evaluate
-the observed target and guards, then continue, compensate, or stop. A
-retained parameterization can subsequently become a recipe version.
+Each mission contributes one trajectory, with its initial observation as a
+within-trajectory reference rather than an independent control. A requested
+setpoint is an action, not a device readback; subsequent process values are
+observations. The primary outcome is the mission-reported final value relative
+to its target band. Intermediate observations are not independent repetitions.
 
-This ordering produces three complementary result objects. The requested
-control sequence $u$ records the intervention, the endpoint confirmation
-records command evidence, and the target sequence $y$ records process
-observations. The task verdict joins them under the declared acceptance
-criteria. Figures~\ref{fig:missions} and~\ref{fig:injection} display $u$ and
-$y$ together so that a target change can be inspected alongside the
-corresponding control history; these plots validate evidence linkage and
-route behavior. An evidence unit is a run or a sequential
-trajectory; several writes within it are sequential observations rather
-than independent trials.
+\subsection{Protocol and Node Integration}
+The protocol test configured simulator endpoints using Modbus TCP, Modbus RTU,
+OPC UA, MQTT, and HTTP; its contemporaneous report records successful
+connectivity for each. In a Modbus TCP check, seven samples were collected
+and the simulated process reached within 3\,$^{\circ}$C of a requested
+182\,$^{\circ}$C setpoint after 24\,s. In a separate fault case, a
+185\,$^{\circ}$C write was read back while the process value remained frozen
+at 150\,$^{\circ}$C; monitoring raised an alarm within 2\,s. A reported
+link-fault exercise detected loss of connection and recovered after simulator
+restart. The complete per-sample protocol trace was not retained, so these
+results are limited to the contemporaneous summary.
 
-The integrated suite has 20 phases spanning commissioning, protocol I/O,
-governance, agent missions, controller reuse, and concurrent processes. The deployment
-pipeline uses S0 prechecks, S1 APIs, S2 acquisition/MES, S3 negative paths,
-S4 closed-loop execution, S5 fine-tuning, S6 diagnostics, and S7 report
-generation. Checks are author-defined regression assertions. Reported
-quantities are rejected probes, per-parameter confirmation grades,
-recipe/readback/mirror deviations, process-target margins, and timestamp
-spans. With six writes per protocol line, latency is reported as the archived
-upper median and observed maximum rather than a tail percentile.
+The BOPET line had nine devices and 49 signals: 30 writable setpoints and 19
+measurements. Its four requests addressed three control nodes. A separate
+onboarding replay configured one simulated Modbus TCP device with four write
+and seven acquisition nodes, together with scalar, vector, table, and image
+forms from a manufacturing execution system (MES) simulator. All seven
+acquisition nodes yielded samples, four invalid writes were rejected, and four
+legal writes were confirmed by readback; all 23 verifier checks passed. A
+test-only automatic approval allowed a 37-to-39\,m/min line-speed change,
+confirmed by the simulator. This was one integration instance. The source
+record does not fully identify the build, and the MES image used a local
+storage fallback.
 
-\subsection{Configuration-Based Reuse Across Four Processes (Q4)}
-\label{sec:scenarios}
-The concurrent campaign provides one seed-42 trajectory per process.
-Figure~\ref{fig:missions} pairs archived manipulated controls $u$ with the
-corresponding response $y$ rather than showing response alone. All four
-terminal attainment checks passed; two lay near a target boundary.
-
-Injection molding used two changes: hold pressure
-$45\rightarrow58.2$\,bar and hold time $6\rightarrow10.64$\,s. Part weight
-rose from \resInjStart{} to \resInjFinal{}\,g for a
-$32.5\pm0.35$\,g window, only $0.02$\,g above its lower limit.
-BOPET changed casting speed $32\rightarrow33.8$\,m/min, fast-roll speed
-$118\rightarrow120.3$\,m/min, and rail width $3000\rightarrow3035$\,mm.
-Thickness fell from \resBiaxStart{} to \resBiaxFinal{}\,$\mu$m for a
-$25.0\pm0.7$\,$\mu$m target, $0.04$\,$\mu$m inside the upper limit.
-Its three changes each have a recorded keep verdict and journal identifier.
-
-Wastewater treatment required 15 writes across several nodes. Dissolved
-oxygen rose from \resWwtpStart{} to \resWwtpFinal{}\,mg/L, within
-$3.4\pm0.6$\,mg/L. Some admissible blower proposals reduced compliance
-margin and were reverted. Terminal guards remained within their declared
-limits, although pH moved toward its lower bound (6.59 to 6.38; limit 6.0).
-Dissolved oxygen, total phosphorus, and pH are different quantities and are
-not concatenated into one output trajectory.
-
-Annealing combined furnace-temperature changes with line-speed increases
-from 140 to 164\,m/min. The recorded hardness trajectory moved from
-\resAnnealStart{} to 99.84\,HV; the separate terminal measurement was
-\resAnnealFinal{}\,HV, within $95\pm6$\,HV. A 176\,m/min attempt produced
-101.3\,HV and was reverted. The first temperature step has no optimization
-record identifier in the archive, which bounds record-level traceability.
-Together, the four missions exercise configuration-based process reuse and
-retain the distinction between a candidate command, a reverted candidate,
-and a terminal observation.
+\subsection{Registered-Harness Tasks and Direct Operations}
+A registered task harness (an open-model protocol engine operating over
+stdio JSON-RPC) configured with \texttt{glm-5.3-flash} executed six
+sequential tasks across two simulated scenes. Each
+task supplied a current control read, process measurement, target band, and
+three candidate settings admitted by the dispatch predicates of
+(\ref{eq:dispatch-contract}) and the interval admission of
+(\ref{eq:admission}); band attainment itself was not pre-verified. Application records associate the
+selected candidate with a registered-harness tool proposal; independent
+model-provider request and response logs were not retained. With synthetic
+administrator approval, all six tasks completed and each retained an approved
+proposal, a recipe-trial record, a 1/1 verified device receipt, and a
+run-tagged sample. The runner initiated a 20\,s delay after each receipt/readback
+checkpoint before probing the driver. Fig.~\ref{fig:r20} pairs each pre-task process
+measurement with its single post-trial probe. In the first film task, the
+pre-task value was 55.82\,$\mu$m, above the 48--52\,$\mu$m target band, while
+the probe was 45.69\,$\mu$m, below it. The other film probes were 46.69 and
+45.69\,$\mu$m; annealing probes were 679.60, 677.70, and 678.10\,$^{\circ}$C
+against a 700--760\,$^{\circ}$C target. Thus, despite task completion and
+verified receipts, all six probes were below target. The three tasks per scene
+shared one simulator instance, and samples used a local SQLite fallback because
+the isolated online queue and time-series service were unavailable. These
+paired checkpoints do not establish causation, convergence, independent
+replication, or normal online acquisition.
 
 \begin{figure*}[!t]
 \centering
-\includegraphics[width=\textwidth]{resources/fig-missions-controls.pdf}
-\caption{Historical scripted missions (seed 42, one trajectory per process).
-(a--d) Weight, dissolved oxygen (DO), hardness, and film thickness with their
-target windows. (e--h) Requested controls as percentage change from native
-baselines: injection pressure 45\,bar/time 6\,s; wastewater blower
-26\,Hz/NaOH 12\,L/h/PAC 30\,L/h; annealing zone 3
-730$^{\circ}$C/zone 2 710$^{\circ}$C/speed 140\,m/min; BOPET casting
-32\,m/min/fast roll 118\,m/min/rail 3000\,mm. Lines connect event indices,
-not physical time; unchanged requested values carry forward. Crosses mark
-reverted candidates and squares distinct terminal observations. DO excludes
-pH/TP events; annealing's first step lacks an optimization record.}
-\label{fig:missions}
+\includegraphics[width=\textwidth]{resources/fig-r20-paired-observations.pdf}
+\caption{Pre-task observations and single post-trial probes for six sequential
+registered-harness tasks in two simulated scenes. Shading denotes the target
+band; task numbers indicate order within each scene. Dashed connectors pair
+observations within a task, and vertical offsets separate markers without
+changing their measured values. The connectors do not represent a time series.
+The runner waited 20\,s after receipt/readback before each probe. Tasks in each
+scene shared a simulator instance; synthetic approval and a local SQLite
+fallback were used.}
+\label{fig:r20}
 \end{figure*}
 
-\subsection{Heterogeneous Protocol Integration and Route Checks (Q1)}
-\label{sec:protocol}
-The suite acquired \resDaqSamples{} samples over five protocol families and
-issued governed writes over four; the RTU-over-TCP line was acquisition-only.
-Archived upper-median write latencies ranged from \resPfiftyRange{}, with observed maxima
-\resPninetyfiveRange{}. The four writable lines accepted legal writes and
-rejected 24/24 out-of-window probes. A configuration-only second preset
-added 9/9 rejected probes on three further writable lines. These results
-exercise the same resolver against different signal maps.
+Separate checks without model-generated actions exercised a fixed-call
+registered task and a direct REST operation in each scene, using synthetic
+approval and isolated environments.
+Each returned a verified trial receipt and a run-tagged sample; the task route
+also retained a task--approval--receipt--sample link, but task completion was
+not asserted. At 20\,s, film samples were both 46.37\,$\mu$m; annealing samples
+were 674.80 and 675.20\,$^{\circ}$C, respectively, all below the corresponding
+target bands. The samples were explicit driver probes stored using a local
+database fallback with online DAQ disabled. The two checks document which
+records each route retained. They used separate environments and did not trace
+both calls to the same handler; neither adds a four-mission trajectory.
 
-Table~\ref{tab:ablation} isolates admission from confirmation in a
-mock-driver API fixture. Each arm replayed six attack classes in three
-deterministic repetitions (18 attacks per arm); separate boundary, legal,
-and timed probes are excluded from that denominator. Removing the
-soft-window interlock allowed six soft-window probes to execute, while
-the hard-range probes remained refused. Archived outcomes and journal
-records link the refusals and executed commands to their configured arms.
-Removing readback did not alter admission. Confirmation can therefore
-check an execution outcome, but cannot replace a pre-write gate. A frozen-measurement drill further
-separated command and process evidence: the setpoint and readback agreed,
-yet the monitoring quantity remained outside its window and triggered
-backstop rollback after \resBackstop{}. A manual-binding drill suspended
-execution until harness-issued approval (\resHitlLatency{} mediation span).
+\subsection{Approval Context and Dispatch}
+An independent component test exercised human-in-the-loop (HITL) approval
+using simulated decisions and a mock driver. A proposal binds the line,
+product, recipe, and active run to the approval context; after approval the
+handler compares that context with the current one before dispatch. The test
+changed each of the four fields for recipe application, trial, and rollback:
+all injected stale contexts were refused before mock writes. A further injected
+change between authorization revalidation and the final check was also
+refused. An unchanged approved context produced the expected mock writes,
+whereas a rejected proposal produced none.
+
+To examine the contribution of the context comparison, a test-only ablation
+removed that comparison while retaining the other checks. Six product or run
+changes then reached the mock driver and each produced two writes and an
+execution record. The remaining six line or recipe changes were still blocked
+by other checks. Thus the comparison supplied the tested product/run
+protection in this component setup; the result is not a measurement of
+operator effectiveness, human decision time, physical safety, or behavior
+during network and device I/O.
+Table~\ref{tab:integration-checks} summarizes the integration and approval
+checks. Table~\ref{tab:missions} reports the separate process-mission outcomes.
 
 \begin{table}[!t]
 \centering
-\caption{Mock-driver API ablation: six attack classes, three deterministic
-property-test repetitions per arm (18 attacks, excluding separate boundary probes).
-Four hard-range classes are refused in every arm; two soft-window classes
-change outcome.}
-\label{tab:ablation}
+\caption{Integration and approval checks. The protocol, onboarding, and
+harness checks used simulators; the approval test used mock drivers and
+simulated decisions.}
+\label{tab:integration-checks}
 \footnotesize
 \setlength{\tabcolsep}{3pt}
-\begin{tabular}{@{}lcccc@{}}
+\begin{tabularx}{\columnwidth}{@{}>{\raggedright\arraybackslash}p{2.15cm}X@{}}
 \toprule
-Arm & Soft window & Readback & Refused & Executed \\
+Check & Observed outcome \\
 \midrule
-full & \checkmark & \checkmark & 18/18 & 0 \\
-no-readback & \checkmark & --- & 18/18 & 0 \\
-no-interlock & --- & \checkmark & 12/18 & 6 \\
-ungated & --- & --- & 12/18 & 6 \\
+Protocol access & Five protocol connections succeeded \\
+Node onboarding & All seven acquisition nodes sampled; all invalid writes rejected; all legal writes read back \\
+Registered harness & Six tasks completed with verified receipts; all six probes outside target \\
+Approval context & All changed contexts refused before mock writes \\
+Without context comparison & Six product or run changes admitted; all line or recipe changes still refused \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
-
-\subsection{Strategy and Controller Substitution (Q2--Q3)}
-\label{sec:agentteam}
-The archived team workflow linked a parent task, a bound worker, a command,
-a verdict, and its journal. On the single-node cast-film mission, the policy
-changed the heater from \resMissionFrom{} to
-\resMissionTo\,$^{\circ}$C; the observation settled at
-\resMissionPv\,$^{\circ}$C within the declared target. The task reached
-\texttt{COMPLETED}. The BOPET mission expanded this workflow to nine devices
-and 49 signals, with three manipulated nodes
-(Section~\ref{sec:scenarios}).
-
-Two live engine tasks (omp adapter, glm-5.3-flash) occupied the same proposal
-slot on a scratch line. The archive records a bounded write, a goal-driven
-descent to \resGoalFinal\,$\mu$m for a $52.0\pm0.8$\,$\mu$m target, and a
-recipe save. The original contemporaneous omp logs and checked run outcomes
-trace proposal, governed action, observations, and retained recipe.
-The reported \resGoalFinal\,$\mu$m is the run-summary terminal value;
-the log's 52.02\,$\mu$m window mean is a different aggregation.
-
-\label{sec:controller}
-A deterministic controller used the dimensionless cast-film objective
-\begin{equation}
-\begin{aligned}
-J={}&55J_{\mathrm{thick}}+25J_{\mathrm{quality}}\\
-&+8J_{\mathrm{energy}}+7J_{\mathrm{throughput}},
-\end{aligned}
-\label{eq:objective}
-\end{equation}
-whose components score thickness conformance, product quality, and
-control-based energy and throughput proxies. The latter two terms use
-screw speed and line speed, rather than independently metered energy and
-production output. The functions in~\eqref{eq:objective}, constraints, grid,
-and replay settings are specified in the accompanying \path{REPRODUCIBILITY.md}.
-It made two governed writes
-per seed (42--44), without rejection. It raised $J$ from approximately
-\resJzero{} to $J/J^*=\resControllerMin$--\resControllerMax{}, with
-$J^*=\resJstar$ from an admissible setpoint grid. This finite restricted grid
-supplies a reference normalization, not a global continuous optimum.
-The result links the controller's native objective to admissible commands
-and endpoint evidence, exercising a conventional strategy through the
-same execution services.
-
-\subsection{Deployment Composition and Confirmation Semantics (Q5)}
-\label{sec:hardening}
-The deployment instance contained \resLinesLive{} provisioned lines,
-\resChannelsLive{} channels, \resDaqOnline{} online DAQ nodes,
-\resWriteNodesLive{} write nodes, \resRecipesLive{} recipes, and
-\resBindingsLive{} bindings, with \resLinesRunning{} lines running.
-These objects coexisted on one simulator-backed host.
-Nine pipeline executions passed 782 checks (Table~\ref{tab:campaign}).
 
 \begin{table}[!t]
 \centering
-\caption{Deployment-suite assertions across nine sequential executions;
-checks are deterministic assertions, not independent plant samples.}
-\label{tab:campaign}
+\caption{Primary process values in the four simulated missions. Each row is
+one trajectory; the final value is the mission-reported value.}
+\label{tab:missions}
 \footnotesize
 \setlength{\tabcolsep}{3pt}
-\begin{tabular}{@{}llrr@{}}
+\begin{tabularx}{\columnwidth}{@{}>{\raggedright\arraybackslash}p{1.30cm}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{2.55cm}@{}}
 \toprule
-Pass & Test surface & Runs & Checks \\
+Scenario & Target band & Initial $\rightarrow$ final \\
 \midrule
-1 & baseline S0--S7 & 3 & 237 \\
-2 & + grading and master switch & 3 & 273 \\
-3 & hardened regression surface & 3 & 272 \\
-\midrule
-Total & zero failed checks & 9 & 782 \\
+Injection & Part weight: 32.15--32.85\,g & 31.296 $\rightarrow$ 32.36\,g \\
+Film & Thickness: 24.3--25.7\,$\mu$m & 28.03 $\rightarrow$ 25.30\,$\mu$m \\
+Annealing & Hardness: 89--101\,HV & 134.9 $\rightarrow$ 99.5\,HV \\
+Wastewater & Dissolved oxygen: 2.8--4.0\,mg/L & 0.194 $\rightarrow$ 3.54\,mg/L \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
-The injection benchmark followed observation, proposal, pacing gate,
-approval, batch dispatch, and recipe/readback/mirror comparison.
-The three sources agreed at the endpoint's recording resolution
-(maximum deviation \resConsistencyErr{}; tolerances 0.05\,bar for device
-readback and 0.51\,bar for the bucketed mirror). This verifies setpoint
-consistency rather than process convergence. In the illustrated S4 run,
-the trial cadence refused the initial proposal before approval; the
-reproposal occurred 69\,s later and observation-to-verification took
-96.105\,s. S5's wait-to-restoration span was approximately 66\,s
-(Fig.~\ref{fig:loop}); the archived process result remained
-\texttt{converged=false}. Across the campaign, approval-to-dispatch spans
-were \resHitlDispatchMs{}. These spans measure server/harness execution between the recorded events.
+\subsection{Direct-Node Missions: Injection Molding and Film}
+The direct-node film mission uses a different thickness target from the
+registered-harness tasks.
+The injection-molding mission targeted $32.5\pm0.35$\,g. Starting at
+31.296\,g, the routine requested holding pressure from 45 to 57.73\,bar and
+holding time from 6 to 10.56\,s; observations rose to 31.93 and 32.09\,g.
+A further pressure request to 62\,bar preceded the final 32.36\,g observation
+within the target band. This single sequence does not isolate the effect of
+each parameter.
 
-\begin{figure}[!t]
-\centering
-\includegraphics[width=\columnwidth]{resources/fig-governance-timeline.pdf}
-\caption{Archived governance timing from event timestamps. (a) S4 takes
-96.105\,s from observation to set/device/mirror agreement at 65\,bar,
-including a 69.014-s cadence wait. (b) S5 starts 96.129\,s after the S4
-observation, applies $40\rightarrow40.5\,^{\circ}$C, blocks a further write,
-waits 66.046\,s, and restores 40$^{\circ}$C. Each row has its own elapsed-time
-origin. Scripted approval and command verification do not establish quality
-convergence; the S4 verdict is \texttt{converged=false}.}
-\label{fig:loop}
-\end{figure}
+The BOPET mission targeted $25.0\pm0.7$\,$\mu$m. From an initial
+28.03\,$\mu$m, four requests changed casting speed, fast-roll speed, rail
+width, and casting speed again; successive observations were 26.48, 26.06,
+25.78, and 25.30\,$\mu$m. The final value was within the band, while the
+first three remained above it. Reported melt temperatures were
+291.3--291.8\,$^{\circ}$C, within the configured 268--300\,$^{\circ}$C
+window. These observations describe one simulated sequence.
 
-The seven-leg fault suite tested the interpretation of receipts. A mock
-acceptance was promoted by reread; a broker outage produced one failed
-parameter while its healthy sibling verified; and a publish-only endpoint
-returned a broker receipt yet remained unverified after three attempts.
-Two parameters were promoted from transport acknowledgment to readback
-verification. Manual-to-automatic mode changes required confirmation, and a
-manual-mode recipe release queued approval before six parameters verified.
-API and documentation checks completed the suite. MES application-receipt
-semantics are covered by route tests, whereas the campaign used MES only in
-read mode. The suite therefore checks that receipt grades follow the available
-endpoint evidence under each deliberately injected condition.
+\subsection{Direct-Node Missions: Annealing and Wastewater}
+The direct-node annealing mission measures hardness, whereas the
+registered-harness tasks record strip temperature (Fig.~\ref{fig:r20}).
+The annealing mission combined a $95\pm6$\,HV hardness target with a
+line-speed increase. From 134.9\,HV, a zone-2 temperature request from 710 to
+850\,$^{\circ}$C preceded a structured observation of 99.18\,HV; a speed
+request from 140 to 152\,m/min preceded 99.74\,HV. A 164\,m/min candidate
+was reverted after event text reported 101.0\,HV, at the upper target boundary
+with no remaining hardness margin. The summary separately reported final
+hardness of 99.5\,HV and retained speed of 152\,m/min, 8.57\% above the initial
+setting, not a measured throughput gain. A zone-3 read failed before the
+zone-2 action. Final tensile-strength and surface-defect measurements were
+not archived, so the record cannot establish that all quality constraints
+were met.
 
-\subsection{Operational Recipe Workflow Case Study (Q6)}
-\label{sec:recipeexperiment}
-The October 18 recipe archive (R6 in the accompanying reproducibility notes)
-pairs recipe-path controls, receipts, and process observations. The replay
-entry is \path{scripts/e2e-injection-recipe-closedloop.mjs}.
-The setup used OPC UA setpoints and HTTP quality acquisition against the
-injection simulator. A live omp/deepseek-flash worker separately diagnosed
-insufficient packing. The archived intervention sequence and approvals
-were scripted, allowing the candidate, receipt, wait, observation, and
-recipe-update sequence to be inspected explicitly.
+The wastewater mission targeted dissolved oxygen (DO) at $3.4\pm0.6$\,mg/L.
+Five blower-frequency increases from 26 to 34.1\,Hz accompanied a rise from
+0.194 to 3.567\,mg/L in the structured aeration sequence. Subsequent alkali
+and coagulant dosing addressed pH and phosphorus; observed total phosphorus
+fell from 0.662 to 0.5507, 0.4607, and 0.413\,mg/L. A later blower reduction
+was reverted after insufficient margin. The summary separately reported final
+DO of 3.54\,mg/L and a simulator-defined cost index changing from 182.6 to
+180.2, not a measured operating cost. The complete final effluent vector was
+not archived, so these values do not verify all discharge constraints.
 
-Starting from 45\,bar and a fixed 6-s hold time, the script proposed
-5-bar pressure increments. Each step called \texttt{recipe\_trial}, answered
-the pending approval card, and retained the batch receipt. After 65\,s,
-it queried platform control-node values and DAQ outputs. It stopped when
-weight was in $[32.15,32.85]$\,g, flash was at most 0.4\%, and sink mark was
-at most 1.5\%, or after at most six pressure proposals. The replay also
-defines overshoot compensation and a hold-time fallback. The archived
-successful run used four pressure proposals and no hold-time change.
-The harness set \texttt{AW\_TRIAL\_INTERVAL\_MS=0}, disabling the per-line
-trial cadence, and issued \texttt{emergency=true} trials to bypass the
-separate recipe-operation interval. Approval, admission, and command
-confirmation remained active. This configuration tests the execution chain
-with experimental pacing.
-An earlier archived attempt exercised the default 300-s cadence: it
-refused a premature trial and the target was not attained in that attempt.
-
-Figure~\ref{fig:injection} shows the complete baseline-to-terminal sequence.
-Pressure advanced $45\rightarrow50\rightarrow55\rightarrow60\rightarrow65$
-\,bar; weight increased
-$31.28\rightarrow31.49\rightarrow31.74\rightarrow32.05\rightarrow32.30$\,g,
-and sink mark decreased from 1.977\% to 1.277\%. Final flash was 0.019\%.
-Each trial receipt reported one verified parameter out of one.
-The displayed controls are platform-node snapshots, while the receipt
-supplies the archived verification grade. After the final check,
-\texttt{recipe\_update} saved version 2 with 65\,bar/6\,s. The recipe log
-contains four trials and the update, while the optimization journal is empty,
-as expected for this lifecycle.
-
-The paired plot records the stopping rule: at 60\,bar, the 32.05-g
-observation remained below the 32.15-g acceptance limit; at 65\,bar, all
-three quality criteria passed. Pressure was the sole changed control.
-The separate recipe update retains the accepted setting. Its rationale
-contains different quality figures without a linked raw sample; the plot
-uses the archived final snapshot.
-
-\begin{figure*}[!t]
-\centering
-\includegraphics[width=\textwidth]{resources/fig-injection-controls.pdf}
-\caption{October 18 recipe-path injection case study ($n=1$ simulator
-trajectory). (a) Weight with the 32.15--32.85-g band and 32.5-g center.
-(b) Sink and flash snapshots with 1.5\% and 0.4\% limits.
-(c) Requested pressure and platform-node state after each 65-s wait;
-overlapping symbols indicate equality, and each trial receipt reports 1/1
-parameter verified. Hold time remains 6\,s. Points are discrete snapshots,
-not physical PLC traces; the harness supplied approvals.}
-\label{fig:injection}
-\end{figure*}
-
-The quality assertion allowed a missing melt-temperature value, and the
-freshness check used the newest timestamp among available sensors. The
-reported pass therefore covers the three observed quality quantities;
-temperature and individual-sensor freshness remain outside that assertion.
-The duplicate archive adds no repeat.
-A separate later check started at 65\,bar,
-32.29\,g, and 1.385\% sink mark; one 70-bar trial ended at 32.55\,g and
-0.976\%. It is a new initial state and is not appended to the plotted trace.
-Q6 connects baseline evidence, approved control changes, observed quality,
-and the retained recipe through one inspectable operational loop.
-
-October 23 boundary checks distinguish historical replay from current
-operation. The public interface refused all eight direct-node attempts
-(zero writes). A separate recipe check verified the first 45-to-50-bar trial
-but refused requests at 66 and 132\,s under the default 300-s cadence.
-Weight remained 31.46\,g and no recipe update was saved. These failed
-checks are not repetitions of the accelerated October 18 trajectory;
-their full outcomes are retained in the reproducibility notes.
+\subsection{Evidence Synthesis}
+The six registered-harness tasks retained operation records, and each single
+post-trial probe fell below its target band. Separately, the four direct-node
+missions reported final primary values within their respective target bands.
+Neither evaluation establishes repeatability, causal effects of individual
+actions, comparative performance, human-approval effectiveness, or transfer to
+a physical plant.

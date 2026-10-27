@@ -1,144 +1,165 @@
-\section{AgentWorkShop Architecture}
-\label{sec:arch}
-AgentWorkShop composes agent collaboration, production context, analysis,
-industrial I/O, and operational workflows (Fig.~\ref{fig:arch}). Channels
-organize tasks, members, shared memory, and replaceable strategy adapters;
-diagnostic, retrieval, dataset, and model services provide information to
-those strategies. A production-object model scopes the work to a
-line--product--recipe--run. Semantic DAQ/DCW nodes map engineering
-quantities to protocol drivers and return observations, while profile and
-capability services determine which operational route a channel may use.
-Typed SDK, REST, MCP, agent-to-agent, CLI, and console interfaces support
-integration and extension.
-
-The design separates scenario configuration from services shared across
-scenarios. A deployment configures its equipment, signal maps, units, roles,
-setpoints, objective, and process guards; collaboration, production
-context, and route lifecycles use common interfaces. At runtime, a task and
-its production identifiers provide the context for a strategy proposal.
-The operational route records what was admitted, dispatched, confirmed,
-and observed, then returns that evidence to the task workflow. Thus an
-engine can be replaced without redefining a recipe or a driver's evidence
-contract. The project is distributed under Apache-2.0; repository links are
-withheld for anonymous review.
+\section{System Design}
+\label{sec:design}
+The platform separates task execution from operation dispatch while allowing
+both to use current production context. Shared and route-specific checks govern
+device routing, and service-owned records distinguish command receipts from
+measured process responses.
 
 \begin{figure*}[!t]
 \centering
-\includegraphics[width=\textwidth]{resources/fig-architecture-2026.pdf}
-\caption{AgentWorkShop component architecture. Collaboration and strategy
-services produce candidate operations using task, production, and analytic
-context. Operational services apply the selected route and retain its
-execution evidence. Industrial integration maps control $u$ and acquisition
-$y$ to protocol I/O; dashed return paths carry receipts and observations.
-Equipment protection and fast regulation remain outside the framework boundary.}
+\includegraphics[width=\textwidth]{resources/fig-architecture-2026-9pt.pdf}
+\caption{Architecture and record ownership. Task/chat routes enter the
+collaboration runtime; direct REST and stdio-MCP calls enter shared dispatch
+checks without creating a task. One dashed link marks configuration. Write
+routes apply interval admission and, when configured, approval; recipe dispatch omits the
+previous-recipe window. The shared dispatcher always
+checks scope and channel policy, with grant and resource-binding checks applied
+when required by the operation. Owning services retain distinct records; plant
+controllers and safety systems retain equipment interlocks.}
 \label{fig:arch}
 \end{figure*}
 
-\subsection{Semantic Nodes and Production Context}
-DAQ nodes expose engineering quantities with units, precision, timestamps,
-and quality metadata. Their contracts cover scalars, vector profiles, image
-frames, and mirrored manufacturing-execution-system (MES) records. MES
-integration supports mirrored acquisition and direct endpoint mappings.
-DCW nodes describe writable engineering quantities and their driver
-configuration. Drivers own serialization, transport, and available readback;
-platform services own authority and admission. A proposal can name holding
-pressure in bar while its driver supplies the protocol representation.
+\subsection{Design Rationale and Requirements}
+\label{sec:principles}
+Five requirements---scene variability, harness variability, operation
+authority, outcome observability, and extensibility---shape the design.
+Scene variability is represented by blueprints and semantic driver mappings;
+harness variability by registered adapters; operation authority by shared
+dispatch checks and route-specific guards and admission; outcome observability
+by service-owned task, receipt, and observation records; and extensibility by
+registered interfaces for agent engines and device drivers. Tool visibility
+is separate from write authorization, and actuator writes converge on the
+shared DCW admission point.
 
-Implemented protocol families include Modbus TCP, Modbus RTU-over-TCP,
-OPC UA, MQTT, and HTTP/REST, with MES REST mappings. Q1 exercises simulator
-writes over Modbus TCP, OPC UA, MQTT, and HTTP; RTU-over-TCP is
-acquisition-only. The admission ablation uses a separate mock driver.
-DAQ acquisition uses per-node cadences and a rotating sweep. Timestamped
-history supplies decisions, exports, and response queries independently of
-the agent's reasoning duration.
+A scene blueprint bundles the process preset, signal inventory, DAQ/DCW driver
+mappings, and target and guard rules; judged operation records and later
+observations remain distinct evidence.
 
-Lines associate equipment with an active product, recipe, and run. Recipe
-definitions are versioned; a running batch retains its execution context,
-so saving a definition and applying it are separate operations. The workflow
-investigates a candidate, observes its result, saves the accepted
-parameterization, and applies the selected version to a run. Samples and
-receipts retain that production context.
+During setup, the integrator binds a validated blueprint to the active
+line--product--recipe--run tuple, maps semantic nodes to drivers, and declares
+target bands and guards. At runtime, the dispatcher checks current authority
+before the handler issues a command; the handler returns a receipt, and DAQ
+records subsequent observations.
 
-An onboarding blueprint declares devices, signal maps, units, roles, and
-initial setpoints. A differential ensure pass creates missing objects and
-reconciles declared configuration drift. Connecting another process changes
-this blueprint and its process-specific objective, guards, and proposal
-policy while reusing the execution services. The process missions exercise
-this reuse boundary.
-\label{sec:reuse}
+\subsection{Layered Architecture}
+\label{sec:layers}
+\label{sec:arch}
+Fig.~\ref{fig:arch} summarizes the access routes, shared dispatch path,
+production services, semantic I/O, configured drivers, and service ownership
+of records. Task and chat routes enter the
+collaboration band, which contains workspaces, channels, task queues, shared
+memory, mailboxes, task templates, and harness adapters. A \emph{task route}
+is an execution path through this runtime; a \emph{harness adapter} connects
+an agent engine to its task execution interface. Direct REST tool
+calls and the stdio MCP operation bridge bypass task execution in that band
+(the upper-right direct-operation entry in
+Fig.~\ref{fig:arch}) and enter the shared governance block without creating a
+task or starting a harness turn; MCP management and task methods remain on
+their service routes. Direct calls resolve current route state at invocation,
+without an agent-turn prompt or a task record.
+The governance block projects the operation catalog and applies the per-call
+checks. Write handlers apply admission limits and request approval when the
+operation and its configuration require it. The
+context block supplies the active line--product--recipe--run tuple to the gate
+and scene maps, objectives, and guards to the handlers. The dashed link from
+that block in Fig.~\ref{fig:arch} marks this configuration relationship; the
+runtime assembles prompt-time context from the same records. The service band,
+behind a route-handler interface that selects an adapter, provides
+acquisition, write control, analysis, retrieval, and optional model services.
+Field I/O resolves semantic nodes to built-in or plugin drivers for a plant or
+simulator. Services retain task, command, observation, and configuration
+records separately, linked to actor and production context.
 
-\subsection{Capabilities and Channel Profiles}
-A channel organizes a job and its collaborating members; persisted
-capabilities authorize industrial operations. Node bindings define readable
-or controlled node scope and execution mode, while recipe capabilities
-define an authorized production scope. Channel profiles restrict which tools
-a job may invoke; capabilities determine whether its member may act on the
-selected production objects.
+\subsection{Cross-Module Execution Flow}
+\label{sec:executionflow}
+Fig.~\ref{fig:runtime} summarizes a task turn from entry through operation
+execution, with route-specific evidence retained by owning services. Registered
+harness adapters receive a scoped tool catalog during setup and supported
+registry refreshes; the runtime assembles prompt-time production context from
+current records for each agent turn. For each returned tool call, the shared dispatcher rechecks
+invocation scope and channel policy and, for industrial operations, current
+grant and binding conditions before handler selection. The selected handler
+then applies route-specific guards, active-run checks, approval
+revalidation, and device-I/O steps as applicable. Command receipts and later
+process observations remain distinct records.
 
-In the inspected implementation, observation channels perform
-acquisition, analysis, and knowledge work, while Auto Modeling Lab (AML)
-training channels prepare datasets and models. Both have read-only plant
-access. AML-optimization channels invoke \texttt{optimization\_explore}
-with control and target-scope validation. Operational channels use
-authorized recipe operations. Direct public \texttt{dcw\_control} and
-\texttt{dcw\_rollback} are closed; sanctioned platform workflows reach the
-internal governed node executor. Consequently, a written task instruction
-or retrieved document cannot expand the industrial tool surface.
+For an industrial operation $u$ by agent $a$ in channel $c$, define the
+shared dispatch condition as
+\begin{equation}
+\mathcal{A}(a,c,u)=\bigwedge_{X\in\mathcal{C}(u)}X(a,c,u),
+\label{eq:dispatch-contract}
+\end{equation}
+where $S$, $P$, $G$, and $B$ denote invocation scope, current channel policy,
+runtime grant, and the agent's binding to referenced resources, respectively.
+$\mathcal{C}(u)\subseteq\{S,P,G,B\}$ is the set of predicates declared for
+operation $u$; it always contains $S$ and $P$. The grant predicate $G$ is
+omitted only for an explicitly grant-exempt industrial tool, and $B$ is
+included when the operation declares resource references. A declared
+no-reference operation omits $B$. Each included check must pass before
+handler selection. The policy predicate includes channel tool selection,
+profile, and duty-separation checks where configured. Once these predicates
+pass, the selected route applies its guards, active-run checks, admission
+limits, and any required approval. When approval is required, the handler
+revalidates its context before device dispatch.
 
-Collaboration transfers diagnostic reports and evaluated model references
-to members proposing bounded interventions. Each recipient retains its own
-profile and capability checks: information transfer does not transfer
-execution authority.
+For direct REST invocation, the service establishes $a$ and $c$ before applying
+these checks: an agent token must match the requested agent identifier, or an
+authenticated user must be the channel owner or an administrator. The manager
+loads the channel-agent record and rechecks scope and policy; industrial
+operations then pass the shared grant and binding checks. Handlers resolve live
+production state from request identifiers and owning services.
 
-\subsection{Analysis, Models, and Candidate Proposals}
-Analysis and modeling supply evidence to the proposer. A merged DAQ export
-aligns timestamped signals and production context for industrial data
-diagnostics (IDD); diagnostic reports describe the observed operating
-regime. Retrieval-augmented generation (RAG) supplies relevant process
-knowledge and prior reports for interpretation. These outputs inform the
-strategy's choice of controls, targets, and stopping criteria. Write
-authority is resolved independently when the candidate reaches execution.
+Fig.~\ref{fig:execution} gives reference pseudocode summarizing the
+registered-harness task path. Direct REST tool invocation
+bypasses the task runtime and harness but enters the same shared dispatcher.
+Route-specific timing, approval, and evidence rules are detailed in
+Section~\ref{sec:modules}.
 
-AML provides a separate data-to-model path. Its dataset builder selects
-line--product--recipe-scoped histories, cleans samples by state and range,
-aligns them to a sampling grid, and constructs windows within runs.
-Run-based partitions and training-partition normalization produce a
-dataset manifest, tensors, and a cleaning report. They identify the training
-controls, targets, features, runs, and transformations. The asynchronous
-production training route invokes Python,
-exports an Open Neural Network Exchange (ONNX) artifact, evaluates it, and
-applies gates before candidate registration. Registry stages distinguish
-candidate, shadow, production, and retired models; promotion carries its
-own approval workflow.
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=\textwidth]{resources/fig-runtime-2026-9pt.pdf}
+\caption{Registered-harness task flow. The runtime invokes the adapter with a
+scoped catalog. Scope and channel policy are checked for every call; grant
+applies to non-exempt industrial operations, and binding applies when resource
+references are declared. Failed checks return tool errors. The read path
+retrieves data. The write path applies route guards, conditional approval and
+its context revalidation, DCW admission, and receipt grading; a later process observation
+is separate. Results return to the harness. Device-level interlocks remain
+with the configured plant-control layer.}
+\label{fig:runtime}
+\end{figure*}
 
-Model binding and eligibility checks govern model-assisted tools, including
-declared uncertainty, out-of-distribution, and physics information. Current
-lineage enforcement is primarily line-scoped. Each production training job
-retains its exported model, evaluation report, and gate decision as
-identifiable artifacts. Bounded exploration also operates without a model.
-A separately bound optimizer returns versioned recommendations and
-eligibility/state evidence. A recommendation grants no actuation authority;
-execution must enter the governed route.
-A trained model, candidate proposal, and industrial command remain distinct.
-The evaluation focuses on execution contracts and does not evaluate
-model-assisted control--response.
-
-\subsection{Two Execution Lifecycles}
-\label{sec:tasklifecycle}
-Figure~\ref{fig:runtime} separates the current runtime routes. Bounded
-optimization exploration validates the writable node and target ownership,
-then invokes the internal governed executor. It associates a single-factor
-control intervention with target observations. Operational recipe work
-uses \texttt{recipe\_trial} for a candidate override without saving a
-version, \texttt{recipe\_update} for a new definition,
-\texttt{recipe\_apply} for dispatch, and \texttt{recipe\_rollback} for
-version restoration. Restoring a definition and commanding the equipment
-are separately evidenced operations.
-
-Persistence follows the route. A successful changed-value node write opens
-a node-optimization record before the observation wait. Bounded exploration
-then waits, queries the target, and saves a separate exploration summary.
-Recipe dispatch instead creates a batch run with per-parameter receipts;
-its caller performs the subsequent wait, observation, and decision. Saving
-an accepted parameterization requires a separate recipe update.
-Section~\ref{sec:eval} identifies each experiment's tested interface.
+\begin{figure}[!t]
+\centering
+\begin{algorithmic}[1]
+\Require task $q$, channel $c$, bound agent $a$, registered scoped catalog $T$
+\Ensure task result; any retained evidence remains with its owning service
+\State $x_t \gets \Call{ResolvePromptContext}{c,q}$
+\State $m \gets \Call{RetrieveMemory}{q}$
+\State $p \gets \Call{AssemblePrompt}{q,x_t,m}$
+\State $h \gets \Call{InvokeRegisteredHarness}{a,p,T}$
+\ForAll{tool request $u$ returned by $h$}
+  \State $g \gets \Call{CheckScopeAndChannelPolicy}{a,c,u}$
+  \If{\textbf{not} $g$}
+    \State \Call{EmitToolErrorToHarness}{h,u}; \textbf{continue}
+  \EndIf
+  \If{$u$ is an industrial operation}
+    \State $v \gets \Call{CheckApplicableGrantBinding}{a,u}$
+    \If{\textbf{not} $v$}
+      \State \Call{EmitToolErrorToHarness}{h,u}
+      \State \textbf{continue}
+    \EndIf
+  \EndIf
+  \State $k \gets \Call{SelectHandler}{u}$
+  \State $r \gets \Call{ExecuteRouteHandler}{k,a,c,u}$
+  \Comment{handler resolves live state and may persist route-specific records}
+  \State \Call{EmitDeclaredToolResultToHarness}{h,r}
+\EndFor
+\State \Return task state and tool results
+\end{algorithmic}
+\caption{Reference pseudocode for the registered-harness task path. Direct
+operation calls use the shared dispatcher from their own entry point. Each
+route persists records through its owning service and returns its declared
+response to its caller; task-route results return to the harness.}
+\label{fig:execution}
+\end{figure}
