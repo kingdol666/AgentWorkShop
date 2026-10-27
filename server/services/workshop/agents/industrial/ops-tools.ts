@@ -16,7 +16,7 @@ import { getDcwParamRepo } from '../../dcw/param-map.repo'
 import { getOps } from '../../ops/ops'
 import { settingOf } from '../../settings'
 import { fanoutQuery, windowOf } from './audit-query'
-import { assertRecipeCreate, assertRecipeOperation, recipeApprovalPayload } from './recipe-gate'
+import { assertRecipeCreate, assertRecipeOperation, recipeApprovalPayload, type ActiveRecipeContext } from './recipe-gate'
 
 // ================================================================
 // 运维日志 / Recipe 变更史查询(Agent 自查面:负责产线 scoped)
@@ -779,7 +779,7 @@ export async function toolRecipeUpdate(agentId: string, args: {
           const old = recipe.params.find(x => x.nodeId === String(p.node_id).trim())?.value
           return { nodeId: String(p.node_id).trim(), name: node?.name ?? String(p.node_id), from: old ?? null, to: Number(p.value), unit: node?.unit }
         }),
-        runId: gate.activeRunId,
+        context: gate.activeContext,
       }) },
     )
     if (!gateDecision.approved) {
@@ -788,7 +788,7 @@ export async function toolRecipeUpdate(agentId: string, args: {
       }
     }
     if (gateDecision.comment) hitlNote = `\n人工附言:${gateDecision.comment}`
-    const stale = await revalidateApprovedAction(agentId, recipe, 'update', 'recipe_update', { recipe_id: recipeId })
+    const stale = await revalidateApprovedAction(agentId, recipe, 'update', 'recipe_update', { recipe_id: recipeId }, gate.activeContext)
     if (stale) return stale
   }
   // 旧值快照(repo.update 原地改写 recipe.params,事后再取会把 before 读成新值)
@@ -887,7 +887,7 @@ export async function toolRecipeRollback(agentId: string, args: {
       recipe.id,
       `${emergency ? '【应急豁免频控】' : ''}配方回退:「${recipe.name}」→ ${toLastGood ? '已知良好批次冻结' : `v${version}`}${dispatch ? '(统一回退:定义回退+整批重下发)' : '(仅定义回退)'} | 理由:${reason} | 批准=执行回退;拒绝可附指导`,
       `${emergency ? '【应急】' : ''}配方回退审批`,
-      { payload: { ...recipeApprovalPayload('rollback', recipe.id, recipe.name, { reason, runId: gate.activeRunId }), ...(emergency ? { emergency: true } : {}) } },
+      { payload: { ...recipeApprovalPayload('rollback', recipe.id, recipe.name, { reason, context: gate.activeContext }), ...(emergency ? { emergency: true } : {}) } },
     )
     gateApprovalId = gateDecision.id
     if (!gateDecision.approved) {
@@ -896,11 +896,15 @@ export async function toolRecipeRollback(agentId: string, args: {
       }
     }
     if (gateDecision.comment) hitlNote = `\n人工附言:${gateDecision.comment}`
-    const stale = await revalidateApprovedAction(agentId, recipe, 'rollback', 'recipe_rollback', { recipe_id: recipeId })
+    const stale = await revalidateApprovedAction(agentId, recipe, 'rollback', 'recipe_rollback', { recipe_id: recipeId }, gate.activeContext)
     if (stale) return stale
   }
   try {
     if (dispatch) {
+      if (gate.hitlRequired) {
+        const staleAtDispatch = approvedContextError(agentId, recipe, 'rollback', gate.activeContext)
+        if (staleAtDispatch) return staleAtDispatch
+      }
       const { recipe: updated, run, definitionNoop } = await getDcwController().rollbackRecipeAndDispatch(recipeId, {
         version: toLastGood ? undefined : version,
         toLastGood,
@@ -979,23 +983,46 @@ async function hitlDispatchGate(agentId: string, recipeId: string, detail: strin
 }
 
 /**
- * 审批返回「批准」后的二次授权复核(2026-10-18):审批可能挂起数分钟,
- * 期间绑定/产线授权/运行批次都可能被撤销。批准不等于授权仍然有效:
+ * 审批返回「批准」后的二次状态复核:审批可能挂起数分钟,
+ * 期间绑定/产线授权/活动产线上下文都可能变化。批准不等于授权与上下文仍然有效:
  *  - 重新跑 assertRecipeOperation(绑定/二级认证/运行门);
+ *  - 将当前 line/product/recipe/run 元组与审批时快照比较,变化即拒绝;
  *  - 重新跑 grant-guard(频道属主的产线 grant,收权即失活)。
- * 任一失败 → 本次不执行,回包说明原因(Agent 可据此重新申请)。
+ * 任一失败 → 本次不执行,回包说明原因(Agent 可据此核实上下文并重新申请)。
  */
+function approvedContextError(
+  agentId: string,
+  recipe: { id: string, name: string, lineId?: string, access?: { requireAuth?: boolean, authorizedAgentIds?: string[] } },
+  op: 'update' | 'dispatch' | 'trial' | 'rollback',
+  expectedContext: ActiveRecipeContext,
+): { text: string, isError: true } | null {
+  const currentGate = assertRecipeOperation(agentId, recipe, op)
+  if (!currentGate.ok) {
+    return { text: `人工已批准,但审批期间授权已失效,本次未执行:${currentGate.text}`, isError: true }
+  }
+  const current = currentGate.activeContext
+  if (current.lineId !== expectedContext.lineId
+    || current.runId !== expectedContext.runId
+    || current.recipeId !== expectedContext.recipeId
+    || current.productId !== expectedContext.productId) {
+    return {
+      text: '人工已批准,但审批期间产线/产品/配方/批次上下文已变化,本次未执行。请核查当前运行上下文后重新提交。',
+      isError: true,
+    }
+  }
+  return null
+}
+
 export async function revalidateApprovedAction(
   agentId: string,
   recipe: { id: string, name: string, lineId?: string, access?: { requireAuth?: boolean, authorizedAgentIds?: string[] } },
   op: 'update' | 'dispatch' | 'trial' | 'rollback',
   toolName: string,
   args: Record<string, unknown>,
+  expectedContext: ActiveRecipeContext,
 ): Promise<{ text: string, isError: true } | null> {
-  const again = assertRecipeOperation(agentId, recipe, op)
-  if (!again.ok) {
-    return { text: `人工已批准,但审批期间授权已失效,本次未执行:${again.text}`, isError: true }
-  }
+  const initialContextError = approvedContextError(agentId, recipe, op, expectedContext)
+  if (initialContextError) return initialContextError
   try {
     // manager 未装配(单测/嵌入)→ 只做绑定与运行门复核;装配后叠加产线 grant 复核
     const g = globalThis as typeof globalThis & {
@@ -1011,6 +1038,11 @@ export async function revalidateApprovedAction(
   catch (err) {
     return { text: `人工已批准,但审批后权限复核不可用,本次未执行:${err instanceof Error ? err.message : String(err)}。请稍后重试。`, isError: true }
   }
+  // Grant lookup is asynchronous. Re-read the active tuple after that await so
+  // queued line/run changes cannot pass between the initial comparison and the
+  // caller's dispatch continuation.
+  const changedAfterGrantCheck = approvedContextError(agentId, recipe, op, expectedContext)
+  if (changedAfterGrantCheck) return changedAfterGrantCheck
   return null
 }
 
@@ -1086,7 +1118,7 @@ export async function toolRecipeTrial(agentId: string, args: {
             const old = recipe.params.find(x => x.nodeId === p.nodeId)?.value
             return { nodeId: p.nodeId, name: node?.name ?? p.nodeId, from: old ?? null, to: p.value, unit: node?.unit }
           }),
-          runId: gate.activeRunId,
+          context: gate.activeContext,
         }), ...(emergency ? { emergency: true } : {}) } },
       )
       gateApprovalId = gateDecision.id
@@ -1097,8 +1129,10 @@ export async function toolRecipeTrial(agentId: string, args: {
       }
       // 人工附言随批准回执回流(Agent 与审计都能看到放行时人的原话)
       if (gateDecision.comment) hitlNote = `\n人工附言:${gateDecision.comment}`
-      const stale = await revalidateApprovedAction(agentId, recipe, 'trial', 'recipe_trial', { recipe_id: recipeId })
+      const stale = await revalidateApprovedAction(agentId, recipe, 'trial', 'recipe_trial', { recipe_id: recipeId }, gate.activeContext)
       if (stale) return stale
+      const staleAtDispatch = approvedContextError(agentId, recipe, 'trial', gate.activeContext)
+      if (staleAtDispatch) return staleAtDispatch
     }
     const run = await getDcwController().applyRecipe(recipeId, { overrides: list, trial: true, agentDispatch: true, agentApprovalId: gateApprovalId, emergency })
     // ACK 鉴定三段口径(2026-10-08):ok 只是命令受理,未证实/失败必须如实回给 Agent
@@ -1187,7 +1221,7 @@ export async function toolRecipeApply(agentId: string, args: {
             const node = getDcwController().byId(p.nodeId)
             return { nodeId: p.nodeId, name: node?.name ?? p.nodeId, from: null, to: p.value, unit: node?.unit }
           }),
-          runId: gate.activeRunId,
+          context: gate.activeContext,
         }), recipeVersion: dispatch.version, ...(emergency ? { emergency: true } : {}) } },
       )
       gateApprovalId = gateDecision.id
@@ -1198,13 +1232,17 @@ export async function toolRecipeApply(agentId: string, args: {
       }
       // 人工附言随批准回执回流(与 recipe_trial 同口径)
       if (gateDecision.comment) hitlNote = `\n人工附言:${gateDecision.comment}`
-      const stale = await revalidateApprovedAction(agentId, recipe, 'dispatch', 'recipe_apply', { recipe_id: recipeId })
+      const stale = await revalidateApprovedAction(agentId, recipe, 'dispatch', 'recipe_apply', { recipe_id: recipeId }, gate.activeContext)
       if (stale) return stale
     }
     // 放在最后一次 await 之后,与 applyRecipe 的同步取值/建批之间不再让出执行权。
     const currentRecipe = getDcwRecipeRepo().byId(recipeId)
     if (!currentRecipe || JSON.stringify(currentRecipe) !== approvedDefinition) {
       return { text: '配方在审批期间已变更,与本次审批展示的快照不一致,本次未执行。请核查最新配方后重新提交 recipe_apply。', isError: true }
+    }
+    if (gate.hitlRequired) {
+      const staleAtDispatch = approvedContextError(agentId, recipe, 'dispatch', gate.activeContext)
+      if (staleAtDispatch) return staleAtDispatch
     }
     // 完整覆盖集让控制器复制每个已批准值,逐参数异步写期间也不再共享可变配方参数。
     const run = await getDcwController().applyRecipe(recipeId, { overrides: dispatch.params, agentDispatch: true, agentApprovalId: gateApprovalId, emergency })
