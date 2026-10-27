@@ -23,7 +23,7 @@ Inside the root: `runtime-settings.json`, `data/` (SQLite / JSON repos / backups
 ## CLI
 
 ```bash
-aw config list                       # 126 settings (19 groups): 42 live / 84 restart · effective value + source + effect
+aw config list                       # 128 settings (19 groups): 44 live / 84 restart · effective value + source + effect
 aw config get server.prod.port       # single key (value + source)
 aw config set server.prod.port 8080  # schema-validated, atomic write
 aw config set theme.primaryColor '#41c8f4'
@@ -116,3 +116,39 @@ variables take effect in exactly one place, the descriptor engine.
 **System settings → Runtime config** renders every editable key from the same descriptor
 registry — values written by the CLI show up in the browser immediately, and values saved
 in the browser are readable by the CLI: every writer converges on one point.
+
+## Channel execution modes (observe / manual / auto)
+
+The channel-level execution mode is the tier selector for line work, stored in
+`aml_channel_profiles.execution_mode` (additive-column migration; existing rows read as
+`auto` — the neutral tier adds no extra constraint, so upgrades change no behavior).
+It composes with the line `controlMode` master switch and per-binding `mode` under
+**strictest-wins** semantics: any layer manual ⇒ approval required; observe strips the
+write surface outright.
+
+| Mode | Semantics | Safety envelope |
+| --- | --- | --- |
+| `observe` | Read-only analysis: write-family / governed-write / proposal / line start-stop tools removed from injection | allowlist injection + dispatch choke point rejects direct calls by name; MES read family kept |
+| `manual` | Channel-level HITL clamp: every dispatch waits for human approval | reason required; approval card shows the agent's rationale; approver comment flows back |
+| `auto` (default) | Neutral tier: approval decided by line switch and binding modes | four-layer limits ∩ step caps ∩ run gate ∩ 60s interval ∩ out-of-window auto-rollback; governed writes must carry a `hypothesis` and are audited |
+
+Switch REST (owner-only):
+
+```bash
+# Tightening (auto→manual) applies immediately
+curl -X PATCH http://localhost:3000/api/workshop/channels/<id>/execution-mode \
+  -H 'authorization: Bearer <token>' -H 'content-type: application/json' \
+  -d '{"mode":"manual"}'
+
+# Loosening (manual→auto / observe→anything) requires explicit confirmation
+curl -X PATCH http://localhost:3000/api/workshop/channels/<id>/execution-mode \
+  -H 'authorization: Bearer <token>' -H 'content-type: application/json' \
+  -d '{"mode":"auto","confirm":true}'
+```
+
+A loosening switch without `confirm` returns 400 `MODE_CONFIRM_REQUIRED`; every switch is
+audited (`channel.execution_mode`, detail carries fromMode/toMode) and recycles member
+runtimes (execution-mode prompt card hot-reloads). UI entry: Channel instance settings →
+Execution mode (three-way choice + line-suppression hint + two-step confirmation). The
+response `effective` field returns the resolved picture (channel mode × line master
+switch × binding manual/auto counts and the `suppressed` flag).

@@ -22,7 +22,7 @@ config.yml(默认值)  <  .AgentWorkShop/runtime-settings.json(运行时)  <  �
 ## CLI 操作
 
 ```bash
-aw config list                       # 126 个设置项(19 组):42 live / 84 restart · 有效值 + 来源 + 生效方式
+aw config list                       # 128 个设置项(19 组):44 live / 84 restart · 有效值 + 来源 + 生效方式
 aw config get server.prod.port       # 单键(值 + 来源)
 aw config set server.prod.port 8080  # schema 校验 + 原子写盘
 aw config set theme.primaryColor '#41c8f4'
@@ -103,3 +103,36 @@ config 连接参数拼装兜底」语义。
 
 **系统设置 → 运行配置**按同一份描述符渲染全部可编辑键 —— CLI 写入的值会即时出现在
 网页上,网页保存的值也会被 CLI 读到:所有写入方共用一个收敛点。
+
+## 频道执行三模式(observe / manual / auto)
+
+频道级执行模式是产线作业的档位选择器,存于 `aml_channel_profiles.execution_mode`
+(加列式迁移,存量行 NULL 按 auto 生效——频道层不额外收紧,升级零行为变化)。
+它与产线 `controlMode` 总闸、绑定级 `mode` 取**最严生效**:任一层 manual 即挂审批,
+observe 直接摘除写面。
+
+| 模式 | 语义 | 安全边界 |
+| --- | --- | --- |
+| `observe` | 只读分析档:写族/治理写/整包方案/启停线工具从注入面摘除 | 注入面白名单 + 分发层按名拒写(REST/MCP 直调同样被拒);MES 只读族保留 |
+| `manual` | 频道层强制 HITL:所有下发挂起等人工批准 | reason 必填,审批卡展示 Agent 依据,批准附言回流 |
+| `auto`(默认) | 频道层中性:审批由产线总闸与绑定模式决定 | 四层限界∩单步上限∩运行门∩60s 联锁∩越窗自动回退;治理写必须附带 `hypothesis` 并入审计 |
+
+切换 REST(owner-only):
+
+```bash
+# 收紧(auto→manual)直接生效
+curl -X PATCH http://localhost:3000/api/workshop/channels/<id>/execution-mode \
+  -H 'authorization: Bearer <token>' -H 'content-type: application/json' \
+  -d '{"mode":"manual"}'
+
+# 放开(manual→auto / observe→任意)必须显式确认
+curl -X PATCH http://localhost:3000/api/workshop/channels/<id>/execution-mode \
+  -H 'authorization: Bearer <token>' -H 'content-type: application/json' \
+  -d '{"mode":"auto","confirm":true}'
+```
+
+缺 `confirm` 的放开方向返回 400 `MODE_CONFIRM_REQUIRED`;每次切换写审计
+(`channel.execution_mode`,detail 含 fromMode/toMode)并回收成员运行时
+(执行模式提示卡热更新)。UI 入口:Channel 实例设置 → 执行模式(三选一 +
+产线总闸压制提示 + 二次确认)。响应中的 `effective` 字段回传生效全景
+(频道模式 × 产线总闸 × 绑定 manual/auto 分布与 `suppressed` 压制标记)。

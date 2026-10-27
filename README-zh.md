@@ -28,7 +28,7 @@
 
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.8.3</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST 集成（镜像与直连双路径）· 数据分析台账（产线级权限隔离）· 工艺参数优化器（过程模型 → AML → OSQP 求解 → 治理下发）· **本体服务 + AI 先行模型闭环**（本体 · 孪生 · 求解器 · AML 采纳）· 104 个宿主工具 · 126 个运行时设置项 · 双语文档（简体中文 / English）</sub>
+<sub><b>v0.8.3</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST 集成（镜像与直连双路径）· 数据分析台账（产线级权限隔离）· 工艺参数优化器（过程模型 → AML → OSQP 求解 → 治理下发）· **本体服务 + AI 先行模型闭环**（本体 · 孪生 · 求解器 · AML 采纳）· 104 个宿主工具 · 128 个运行时设置项 · 双语文档（简体中文 / English）</sub>
 
 <br />
 
@@ -206,7 +206,7 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 | **运行时可观测** | `GET /api/system/monitor` 把 Agent 团队内部暴露成数字：根队列深度、看门狗介入次数、Harness 会话复用、记忆 outbox 积压——每项都有对应的文档化回退开关，新机制可以不重新部署就关掉。 |
 | **产线操作单页（`/operations`）** | 一页看全对产线的每一次触碰：实时操作流水（REST 快照 + WS 推流）把写控、数采、建模、配方、回退、报警、产线、人工、系统动作归入**九类分类**，写控行渲染结构化 **前值 → 后值 diff 徽章**（失败标红），并直接从事件流推断**闭环阶段**（监视 → 探索·小步 → 推荐搜索 → 影子验证 → 生产）。同一数据面也供工作台控制台的「产线作业」面板使用。 |
 | **外部 MCP 网关** | `aw mcp` 启动零依赖的 **stdio MCP 服务**（41 个工具），自动发现运行中的实例（环境变量 → 锁文件 → 配置文件），把产线、配方（含 mark-good）、受治理 DCW 写入、工艺参数语义映射、数采查询、频道、团队供给、模型晋升、判卷/回退与插件管理暴露给任意 MCP 客户端——受 `mcp.enabled` 运行时设置门控，附 `--doctor` 与 `--print-config` 辅助指令。此外每个 Channel 成员实例都有**专属的全量工具 stdio 桥**（104 个宿主工具 + 插件工具，按该 Agent 的角色/绑定面编译视图；ETag/304 增量轮询 + `tools/list_changed`），codex / dsh / opencode 等引擎以 MCP 形态拿到与原生注入完全同链的治理（token 自证 → 五层复核）。 |
-| **全量配置驱动运行时** | 全部运行旋钮（记忆预算、上下文压缩、回退护栏、保留策略、备份、日志级别、系统时区、MCP 开关…）在设置描述符注册表声明一次，优先级 **config.yml < runtime-settings < env**——**126 个设置项、19 组**（42 live / 84 restart），代码零硬编码默认。 |
+| **全量配置驱动运行时** | 全部运行旋钮（记忆预算、上下文压缩、回退护栏、保留策略、备份、日志级别、系统时区、MCP 开关…）在设置描述符注册表声明一次，优先级 **config.yml < runtime-settings < env**——**128 个设置项、19 组**（44 live / 84 restart），代码零硬编码默认。 |
 | **可配置系统时区** | 一个 `time.timeZone` 设置项（IANA 时区，live 热生效）统一驱动人读时间——日志、聊天、审计、Agent 记录与定时任务；机器时间轴（数采样本、`timestamptz`）仍保存绝对时间。 |
 | **可配置节拍** | 采样与查询的默认值/下限全部是 **live 设置**（`daq.sampling.*`、`daq.query.*`）：热重载、create/patch 时钳制，Agent 工具描述实时携带当前值。 |
 
@@ -284,7 +284,7 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 <td width="50%"><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-monitor.png" alt="运行时监控" width="100%" /><br/><sub><b>运行时监控。</b>每条已接线频道、成员数、依赖环与归属用户。</sub></td>
 </tr>
 <tr>
-<td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-settings.png" alt="系统设置" width="100%" /><br/><sub><b>系统设置。</b>19 组 126 个设置项，由描述符驱动——CLI 读的是同一份注册表。</sub></td>
+<td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-settings.png" alt="系统设置" width="100%" /><br/><sub><b>系统设置。</b>19 组 128 个设置项，由描述符驱动——CLI 读的是同一份注册表。</sub></td>
 <td><img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/shot-plugins.png" alt="插件管理" width="100%" /><br/><sub><b>插件管理。</b>三种作用域、改代码即热重载、按团队开关。</sub></td>
 </tr>
 </table>
@@ -510,6 +510,16 @@ export async function run(argv, ctx) {
 - **联锁**：产线运行时，活动配方的参数窗口对该节点**替代**全局安全量程。
 - **HITL**：`manual` 绑定挂起写入等用户批准（同 Agent+节点去重；批准时二次校验——权限在您点击批准那一刻重查）。
 
+### 频道执行三模式（observe / manual / auto）
+
+频道级执行模式是产线作业的档位选择器，与产线 `controlMode` 总闸、绑定级 `mode` 取**最严生效**（任一层 manual 即挂审批；observe 直接摘除写面）：
+
+- **观察（observe）**：只读分析档——写族/治理写/整包方案/启停线工具从注入面摘除，REST/MCP 按名直调也被分发层拒绝（物理零写）；Agent 专注数采集、台账查询与分析，并在提示词中收到「观察模式」明示。观察面含 MES 只读族（`mes_catalog/mes_fetch/…`），可拉 MES 数据做只读分析。
+- **手动（manual）**：所有下发/配方操作/回退挂起等人工批准，Agent 必须附带依据（reason/hypothesis），审批卡向人类展示「为什么」；批准附言原样回流给 Agent。
+- **自动（auto，默认）**：频道层中性档——不额外收紧，是否审批由产线总闸与绑定模式决定；自动执行仍受四层限界（量程∩参数∩产品∩配方）∩ 单步上限 ∩ 运行门 ∩ 60s 联锁 ∩ 越窗自动回退，且治理写入必须附带 `hypothesis` 依据——审计台账 `dcw.write.*` 的 detail 记录 `executionMode` 与 `hypothesis`，事后可审计「这次自动写入当时是什么模式、依据是什么」。
+
+切换：`PATCH /api/workshop/channels/:id/execution-mode`（owner-only）。收紧方向（auto→manual、任意→observe）直接生效；放开方向（manual→auto、observe→任意）必须显式 `confirm: true`，否则 400 `MODE_CONFIRM_REQUIRED`。每次切换写审计（`channel.execution_mode`）并回收成员运行时（提示词热更新）。UI 入口：Channel 实例设置 → 执行模式（三选一 + 产线总闸压制提示 + 二次确认）。存量频道缺省 auto（频道层不额外收紧），升级零行为变化。
+
 ### 配方与批次
 
 `产线 → 产品 → 配方 → 批次`。开跑逐节点应用配方参数（每次写都校验），逐线门控采集，每条样本打标 `line/product/recipe/run`——产品级数据隔离 + 五维查询（产线 × 产品 × 配方 × 时间 × 节点）。
@@ -682,7 +692,7 @@ AgentWorkShop/
 ├── sdk/                        # agentworkshop/sdk——插件上下文、钩子总线、REST 客户端、浏览器 SDK
 ├── tui/                        # 终端工作台（aw tui）
 ├── shared/
-│   └── config/                 # schema.json（126 个设置描述符）+ 引擎（合并/校验/持久化）+ 路径解析器
+│   └── config/                 # schema.json（128 个设置描述符）+ 引擎（合并/校验/持久化）+ 路径解析器
 ├── config.yml                  # 工厂默认值（构建/启动时读取；版本号来自 package.json）
 ├── .AgentWorkShop/             # 检出内的配置根——prompts（版本化）+ 运行时覆盖 · 数据 · 日志 · 指令（git 忽略）
 ├── data/                       # 迁移前的旧版位置（自动迁移进配置根）
