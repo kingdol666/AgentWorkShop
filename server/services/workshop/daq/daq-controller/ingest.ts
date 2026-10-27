@@ -1,8 +1,8 @@
 /**
  * DaqControllerIngest —— 样本与帧的入库、发布、告警评估
- * (拆分层,承 DaqControllerState;方法体与原文件逐行一致)
+ * (拆分层,承 DaqControllerPush;publishSample 供轮询与被动订阅两条生产路径共用)
  */
-import { DaqControllerState } from './state'
+import { DaqControllerPush } from './push'
 import type { AepDaqFrame, AepDaqReading } from '../../../../../shared/daq-protocol'
 import type { DaqSampleEnvelope } from '../bus/queue-port'
 import type { DaqNode } from '../daq-node'
@@ -12,7 +12,7 @@ import { findDaqTemplate } from '../daq-templates'
 import { getDaqHostPorts } from '../host-ports'
 import { getDaqQueue } from '../bus'
 
-export abstract class DaqControllerIngest extends DaqControllerState {
+export abstract class DaqControllerIngest extends DaqControllerPush {
   /** 生产面:样本帧入队 */
   protected publishSample(env: DaqSampleEnvelope): void {
     void getDaqQueue().then(q => q.publish(env)).catch(() => {})

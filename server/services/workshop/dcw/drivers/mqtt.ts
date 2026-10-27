@@ -1,11 +1,11 @@
 /**
- * MQTT 写驱动(一次性连接发布,无回读)
+ * MQTT 写驱动(publish 设定值到 Broker;可选状态主题回读)
  * (由 server/services/workshop/dcw/drivers.ts 按职责拆出;内容逐行原文搬运)
  */
 import type { DcwWriteDriver } from './shared'
 import { AppError } from '../../../../utils/errors'
 import { reqNative } from './shared'
-import { mqttConnectOpts } from '../../daq/drivers/mqtt'
+import { mqttConnectOpts, readMqttValue, invalidateMqttTopic } from '../../daq/drivers/mqtt'
 
 // ============================================================
 // MQTT 写驱动(publish 设定值到 Broker;fire-and-forget,无回读)
@@ -75,6 +75,8 @@ export const mqttDcwDriver: DcwWriteDriver = {
       }
       // ACK 鉴定如实上报:QoS puback 只是 **broker 受理**(transport-ack),设备侧未证实 ——
       // 生效判定交给写后验证器(readNow/兄弟节点补验),不在此虚报 readback-verified。
+      // 若配置了状态回读主题:清空其缓存,迫使后续 readNow 等待**写后**回显(不认写前旧值)。
+      if (cfg.readTopic) invalidateMqttTopic(cfg, String(cfg.readTopic))
       return {
         ok: true,
         ack: 'transport-ack',
@@ -104,6 +106,32 @@ export const mqttDcwDriver: DcwWriteDriver = {
     }
     catch (err) {
       return { ok: false, message: `MQTT 连接失败: ${err instanceof Error ? err.message : String(err)}` }
+    }
+  },
+
+  /**
+   * 可选回读:设备若在状态主题回显设定值,driverConfig.readTopic + readJsonPath
+   * (缺省沿用 jsonPath)即可把写后验证从 transport-ack 提升到 readback-verified。
+   * 未配置 readTopic 时明确返回「不支持读取」——网关立即收敛为 unverified,不空转重试。
+   */
+  async read(input) {
+    const cfg = input.driverConfig
+    const readTopic = cfg.readTopic ? String(cfg.readTopic) : ''
+    if (!readTopic) {
+      return { ok: false, eng: null, raw: null, message: 'MQTT 节点未配置 readTopic:仅下行,不支持读取回读(写结果按 transport-ack 如实记账)' }
+    }
+    try {
+      const jsonPath = cfg.readJsonPath != null ? String(cfg.readJsonPath) : (cfg.jsonPath != null ? String(cfg.jsonPath) : undefined)
+      // 周期读/手动读:缓存 4s 内可直接复用(状态主题按设备周期刷新),避免长时间占住读锁;
+      // 写后验证前 write() 已 invalidate,因此这里拿到的一定是写后报文或缓存过期后的新报文。
+      const hit = await readMqttValue(cfg, readTopic, jsonPath, 1200, { allowCachedMs: 4000 })
+      if (!hit) {
+        return { ok: false, eng: null, raw: null, message: `MQTT 回读超时:${readTopic} 在 1.2s 内无新报文且无 4s 内缓存(状态主题未发布) ` }
+      }
+      return { ok: true, eng: hit.value, raw: hit.value, message: `MQTT 回读 ${readTopic} = ${hit.value}` }
+    }
+    catch (err) {
+      return { ok: false, eng: null, raw: null, message: `MQTT 回读失败: ${err instanceof Error ? err.message : String(err)}` }
     }
   },
 }

@@ -1,0 +1,522 @@
+/**
+ * MQTT 协议专项 E2E(2026-10-27 审计)
+ *
+ * 覆盖(全部真实链路,不 mock 协议栈):
+ *  A. 模拟器侧:内置 broker 监听 / 设备周期发布 / retained 状态 / 命令主题回灌
+ *  B. 平台被动订阅入库:每条报文一行,时间戳=到达时刻,节奏=设备发布周期(不是 DAQ intervalMs)
+ *  C. 停发不伪造:设备停发后 0 新增样本 + 节点 offline + 可读 lastError;恢复发布自愈
+ *  D. 多节点同 broker:两条 MQTT 节点并行入库
+ *  E. 外部 broker(默认 127.0.0.1:1883,可用 AW_E2E_EXTERNAL_MQTT 覆盖):订阅入库 + 写回
+ *  F. DCW 写回:直写落到设备 / 状态主题回读 / 批量下发 readback-verified
+ *  G. Agent daq_query:库内最新值(不是最旧段)、agg、新鲜度、越权拒绝
+ *  H. 生命周期:网关停止即停收、恢复即续采;测试结束清理进程
+ *
+ * 运行:
+ *   npm run build            # 平台产物(或 AW_E2E_BASE 指向已运行实例)
+ *   node scripts/e2e-mqtt-protocol.mjs
+ * 环境:
+ *   AW_E2E_BASE        复用已运行平台(否则自起 .output/server/index.mjs)
+ *   AW_E2E_PORT        平台端口(默认 3021)
+ *   AW_E2E_SIM_BASE    模拟器地址(默认 http://127.0.0.1:4021,影子实例)
+ *   AW_E2E_KEEP=1      保留临时 home/进程(排障用)
+ */
+import { spawn, spawnSync } from 'node:child_process'
+import { existsSync, mkdtempSync, realpathSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { randomBytes } from 'node:crypto'
+
+const HERE = dirname(fileURLToPath(import.meta.url))
+const REPO = resolve(HERE, '..')
+const PLATFORM_PORT = Number(process.env.AW_E2E_PORT ?? 3021)
+const PLATFORM_BASE = process.env.AW_E2E_BASE ?? `http://127.0.0.1:${PLATFORM_PORT}`
+const SIM_BASE = process.env.AW_E2E_SIM_BASE ?? 'http://127.0.0.1:4021'
+const SIM_PORT = Number(new URL(SIM_BASE).port || 4021)
+const BROKER_PORT = 18830 + (SIM_PORT - 4010) * 1000
+const EXTERNAL_MQTT = process.env.AW_E2E_EXTERNAL_MQTT ?? 'mqtt://127.0.0.1:1883'
+const TAG = Date.now().toString(36)
+const KEEP = process.env.AW_E2E_KEEP === '1'
+const EMAIL = `mqtt-${TAG}@aw.local`
+const PASSWORD = `MqttE2E!${randomBytes(8).toString('hex')}`
+
+const NO_PROXY = { NO_PROXY: '127.0.0.1,localhost', no_proxy: '127.0.0.1,localhost' }
+const sleep = ms => new Promise(r => setTimeout(r, ms))
+
+let pass = 0
+let fail = 0
+let skip = 0
+const failures = []
+/** 登录后统一注入:GET 辅助函数(如 samples/nodeOf)不必逐处显式传 token */
+let AUTH_TOKEN = ''
+function ok(id, name, cond, detail = '') {
+  if (cond) {
+    pass++
+    console.log(`  PASS  ${id} ${name}${detail ? ` — ${detail}` : ''}`)
+  }
+  else {
+    fail++
+    failures.push(`${id} ${name}${detail ? ` — ${detail}` : ''}`)
+    console.log(`  FAIL  ${id} ${name}${detail ? ` — ${detail}` : ''}`)
+  }
+  return Boolean(cond)
+}
+function skipped(id, name, detail = '') {
+  skip++
+  console.log(`  SKIP  ${id} ${name}${detail ? ` — ${detail}` : ''}`)
+}
+
+async function http(base, method, path, { body, token, agentToken, timeout = 30_000 } = {}) {
+  const res = await fetch(base + path, {
+    method,
+    headers: {
+      'content-type': 'application/json',
+      ...(token ? { authorization: `Bearer ${token}` } : {}),
+      ...(agentToken ? { 'x-aw-agent-token': agentToken } : {}),
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+    signal: AbortSignal.timeout(timeout),
+  })
+  const json = await res.json().catch(() => null)
+  return { status: res.status, json, data: json?.data ?? json }
+}
+const api = (method, path, opts = {}) => http(PLATFORM_BASE, method, path, { token: AUTH_TOKEN, ...opts })
+const sim = (method, path, body) => http(SIM_BASE, method, path, { body })
+
+async function waitFor(name, fn, timeoutMs = 15_000, intervalMs = 500) {
+  const deadline = Date.now() + timeoutMs
+  let last
+  while (Date.now() < deadline) {
+    try {
+      last = await fn()
+      if (last) return last
+    }
+    catch (err) {
+      last = err
+    }
+    await sleep(intervalMs)
+  }
+  throw new Error(`timeout:${name} last=${String(last?.message ?? last).slice(0, 200)}`)
+}
+
+// ───────────────────────── 进程生命周期 ─────────────────────────
+const spawned = []
+function killTree(pid) {
+  if (!pid) return
+  try {
+    spawnSync('taskkill', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore', shell: true })
+  }
+  catch { /* 已退出 */ }
+}
+
+async function startupPlatform() {
+  const up = await http(PLATFORM_BASE, 'GET', '/api/users/setup-status').catch(() => null)
+  if (up?.status === 200) return { pid: null, home: null, reused: true }
+  const entry = join(REPO, '.output', 'server', 'index.mjs')
+  if (!existsSync(entry)) throw new Error(`平台产物不存在: ${entry} —— 先执行 npm run build,或用 AW_E2E_BASE 指向已运行实例`)
+  const home = mkdtempSync(join(tmpdir(), `aw-mqtt-e2e-${TAG}-`))
+  const child = spawn(process.execPath, [entry], {
+    cwd: REPO,
+    env: { ...process.env, ...NO_PROXY, AW_MODE: 'home', AW_HOME: home, PORT: String(PLATFORM_PORT), NUXT_SESSION_PASSWORD: randomBytes(24).toString('hex') },
+    stdio: 'ignore',
+    windowsHide: true,
+  })
+  spawned.push({ pid: child.pid, home })
+  await waitFor('platform ready', async () => (await http(PLATFORM_BASE, 'GET', '/api/users/setup-status')).status === 200, 120_000, 1500)
+  return { pid: child.pid, home, reused: false }
+}
+
+async function loginOrRegister() {
+  const st = await api('GET', '/api/users/setup-status')
+  if (st.data?.needsSetup) {
+    const reg = await api('POST', '/api/users/register', { body: { email: EMAIL, password: PASSWORD, name: `MQTT E2E ${TAG}` } })
+    return reg.data?.token ?? ''
+  }
+  const login = await api('POST', '/api/users/login', { body: { email: process.env.AW_E2E_EMAIL ?? 'admin@aw.local', password: process.env.AW_E2E_PASSWORD ?? '' } })
+  return login.data?.token ?? ''
+}
+
+async function ensureSimulator() {
+  process.env.SIM_BASE = SIM_BASE
+  process.env.SIM_PORT = String(SIM_PORT)
+  // worktree 里 plc-node-simulator 是 junction:cpSync 会把 junction 本身当 symlink 复制而 EEXIST。
+  // 解析到真实目录(主检出)后再做影子拷贝。
+  process.env.SIM_DIR = realpathSync(join(REPO, 'plc-node-simulator'))
+  process.env.SIM_SHADOW_DIR = join(tmpdir(), `aw-mqtt-e2e-sim-${TAG}`)
+  const mod = await import('../bench/lib/sim.mjs')
+  const r = await mod.ensureSimulator({ timeoutMs: 120_000, log: m => console.log(`  · ${m}`) })
+  if (!r.started && r.reason !== 'already-up') throw new Error(`模拟器未就绪: ${r.reason}`)
+  if (r.started) spawned.push({ pid: r.pid, simShadow: process.env.SIM_SHADOW_DIR })
+  return mod
+}
+
+async function mqttLib() {
+  const { default: mqtt } = await import('mqtt')
+  return mqtt
+}
+
+async function connectClient(mqtt, url) {
+  return mqtt.connectAsync(url, { connectTimeout: 5000, reconnectPeriod: 0 })
+}
+
+// ───────────────────────── 夹具 ─────────────────────────
+async function createLineFixture(token) {
+  const line = await api('POST', '/api/workshop/dcw/lines', { token, body: { name: `MQTT-E2E-${TAG}` } })
+  const lineId = line.data?.line?.id
+  const product = await api('POST', '/api/workshop/dcw/products', { token, body: { lineId, name: `MQTT-E2E-P-${TAG}` } })
+  const productId = product.data?.product?.id
+  if (!lineId || !productId) throw new Error(`建线失败: ${JSON.stringify(line).slice(0, 200)}`)
+  return { lineId, productId }
+}
+
+async function createDaq(token, { lineId, name, driverConfig, intervalMs = 1000, staleMs = 3000 }) {
+  const r = await api('POST', '/api/workshop/daq', {
+    token,
+    body: {
+      name, templateRef: 'daq-temp-tc', driver: 'mqtt',
+      driverConfig: { ...driverConfig, staleMs },
+      unit: '℃', min: 0, max: 100, lineId, intervalMs, publishIntervalMs: 0,
+      semantics: 'MQTT E2E 数采节点(被动订阅)',
+    },
+  })
+  const id = r.data?.node?.id
+  if (!id) throw new Error(`建 DAQ 失败: ${JSON.stringify(r).slice(0, 200)}`)
+  return id
+}
+
+async function createDcw(token, { lineId, name, driverConfig }) {
+  const r = await api('POST', '/api/workshop/dcw', {
+    token,
+    body: {
+      name, templateRef: 'dcw-temp-sp', driver: 'mqtt', driverConfig,
+      unit: '℃', min: 0, max: 100, decimals: 1, lineId, holdIntervalMs: 0,
+      semantics: 'MQTT E2E 写控节点',
+    },
+  })
+  const id = r.data?.node?.id
+  if (!id) throw new Error(`建 DCW 失败: ${JSON.stringify(r).slice(0, 200)}`)
+  return id
+}
+
+async function samples(nodeId, fromMs, toMs, bucketMs = 1000) {
+  const r = await api('GET', `/api/workshop/daq/${nodeId}/samples?bucketMs=${bucketMs}&from=${fromMs}&to=${toMs}&limit=5000`)
+  return r.data?.points ?? []
+}
+
+async function nodeOf(nodeId) {
+  const r = await api('GET', '/api/workshop/daq')
+  return (r.data?.nodes ?? []).find(n => n.id === nodeId)
+}
+
+/** 独立订阅抓取设备真值(与平台无关的旁路证据) */
+async function captureTopic(mqtt, url, topic, jsonPath, ms) {
+  const client = await connectClient(mqtt, url)
+  const got = []
+  await client.subscribeAsync(topic, { qos: 1 })
+  client.on('message', (t, payload) => {
+    if (t !== topic) return
+    try {
+      const obj = JSON.parse(payload.toString())
+      const v = String(jsonPath).split('.').reduce((a, k) => a?.[k], obj)
+      if (Number.isFinite(Number(v))) got.push({ at: Date.now(), value: Number(v) })
+    }
+    catch { /* 忽略非 JSON */ }
+  })
+  await sleep(ms)
+  await client.endAsync(true).catch(() => {})
+  return got
+}
+
+// ───────────────────────── 主流程 ─────────────────────────
+async function main() {
+  console.log(`━━━ MQTT 协议专项 E2E (tag=${TAG}) ━━━`)
+  const plat = await startupPlatform()
+  const token = await loginOrRegister()
+  if (!token) throw new Error('登录/注册失败(设置 AW_E2E_EMAIL / AW_E2E_PASSWORD,或使用全新实例)')
+  AUTH_TOKEN = token
+  ok('A0', '平台在线 + 管理员会话', true, PLATFORM_BASE)
+
+  const simLib = await ensureSimulator()
+  const devices = await simLib.applyPreset('film-line')
+  const dev = devices.find(d => d.protocol === 'mqtt')
+  if (!dev) throw new Error('film-line 预设无 MQTT 设备')
+  const exp = await simLib.simExport(dev.id)
+  const daqItem = exp.items.find(i => i.signal === 'temp')
+  const dcwItem = exp.items.find(i => i.signal === 'tempSP')
+  const brokerUrl = `mqtt://127.0.0.1:${BROKER_PORT}`
+  ok('A1', '模拟器内置 broker 监听', Boolean(daqItem?.driverConfig?.port === BROKER_PORT), `期望 ${BROKER_PORT}, export=${JSON.stringify(daqItem?.driverConfig ?? {})}`)
+  ok('A2', 'MQTT 写信号导出含状态回读主题', Boolean(dcwItem?.driverConfig?.readTopic), `readTopic=${dcwItem?.driverConfig?.readTopic ?? '缺失'}`)
+
+  const mqtt = await mqttLib()
+  const telemetry = daqItem.driverConfig.topic
+  const stateTopic = dcwItem.driverConfig.readTopic
+  const jp = daqItem.driverConfig.jsonPath
+  // A3:独立订阅端收到设备周期发布
+  const probe = await captureTopic(mqtt, brokerUrl, telemetry, jp, 6000)
+  ok('A3', '设备周期发布遥测(独立订阅端)', probe.length >= 2, `${probe.length} 条 / 6s,样例 ${probe.slice(-3).map(x => x.value).join(',')}`)
+  // A4:retained 状态主题(晚订阅立即拿到)
+  {
+    const c = await connectClient(mqtt, brokerUrl)
+    let retained = null
+    const t0 = Date.now()
+    c.on('message', (t, p) => { if (t === stateTopic) retained = { p: p.toString(), at: Date.now() } })
+    await c.subscribeAsync(stateTopic, { qos: 1 })
+    await sleep(1200)
+    await c.endAsync(true).catch(() => {})
+    ok('A4', '状态主题 retained(晚订阅即时可取)', Boolean(retained) && Date.now() - t0 < 1500, retained?.p?.slice(0, 80) ?? '无消息')
+  }
+
+  // ── 平台夹具 ──
+  const gw = await api('POST', '/api/workshop/daq/controller', { token, body: { action: 'start' } })
+  ok('B0', 'DAQ 网关启动', gw.status === 200 && gw.data?.controller?.running !== false)
+  const { lineId, productId } = await createLineFixture(token)
+  const daqId = await createDaq(token, { lineId, name: `MQTT-DAQ1-${TAG}`, driverConfig: daqItem.driverConfig })
+  const dcwId = await createDcw(token, { lineId, name: `MQTT-DCW1-${TAG}`, driverConfig: dcwItem.driverConfig })
+  const dcw2Id = await createDcw(token, { lineId, name: `MQTT-DCW2-${TAG}`, driverConfig: dcwItem.driverConfig })
+  const now0 = Date.now()
+  const recipe = await api('POST', '/api/workshop/dcw/recipes', {
+    token,
+    body: {
+      productId, name: `MQTT-E2E-R-${TAG}`, description: 'mqtt e2e',
+      params: [{ nodeId: dcw2Id, value: 60, min: 55, max: 65 }],
+      daqWindows: [{ nodeId: daqId, min: 0, max: 100 }],
+    },
+  })
+  const recipeId = recipe.data?.recipe?.id
+  const started = await api('POST', `/api/workshop/dcw/lines/${lineId}/start`, { token, body: { recipeId } })
+  ok('B1', '产线开跑(配方 + 监控窗口)', started.status === 200 && Boolean(started.data?.run?.id), started.data?.run?.id ?? started.json?.message)
+
+  // ── B2/B3/B4:被动入库对账 ──
+  const capStart = Date.now()
+  const truth = await captureTopic(mqtt, brokerUrl, telemetry, jp, 14_000)
+  const capEnd = Date.now()
+  const rows = await samples(daqId, capStart - 1500, capEnd + 1500)
+  ok('B2', 'MQTT 报文逐条入库(独立真值对账)', Math.abs(rows.length - truth.length) <= 2, `DB ${rows.length} 行 / 真值 ${truth.length} 条`)
+  {
+    // 按「时间邻近 + 值容差」对齐(节点 decimals=1 会量化真值 2 位小数)
+    const used = new Set()
+    let hit = 0
+    for (const t of truth) {
+      const idx = rows.findIndex((r, i) => !used.has(i) && Math.abs(r.at - t.at) <= 2500 && Math.abs(r.avg - t.value) <= 0.06)
+      if (idx >= 0) { used.add(idx); hit++ }
+    }
+    ok('B3', '入库值与设备发布值一致(逐条对齐)', truth.length > 0 && hit >= truth.length - 2, `对齐 ${hit}/${truth.length}`)
+  }
+  {
+    const gaps = rows.slice(1).map((r, i) => r.at - rows[i].at).filter(g => g > 0)
+    const median = gaps.sort((x, y) => x - y)[Math.floor(gaps.length / 2)] ?? 0
+    // 设备 tickMs=2000;节点 intervalMs=1000。节奏≈2s 证明不是按 intervalMs 轮询缓存。
+    ok('B4', '入库节奏=设备发布周期(非 intervalMs 轮询)', median >= 1500 && median <= 2600, `中位间隔 ${median}ms(设备 tick=2000,节点 interval=1000)`)
+    const mono = rows.every((r, i) => i === 0 || r.at > rows[i - 1].at)
+    ok('B5', '库内时间戳严格递增(到达时刻)', mono, `${rows[0]?.at} → ${rows[rows.length - 1]?.at}`)
+  }
+
+  // ── B6:端到端入库时延(手工值 → 库内可查) ──
+  {
+    const t0 = Date.now()
+    await simLib.simManual(dev.id, 'mqtt-temp', 77.7)
+    const hit = await waitFor('manual value in db', async () => {
+      const pts = await samples(daqId, t0 - 1000, Date.now())
+      return pts.find(p => Math.abs(p.avg - 77.7) < 0.05) ?? null
+    }, 6000, 400)
+    ok('B6', '报文到达 → 库内可查 ≤ 4s', Date.now() - t0 <= 4000, `${Date.now() - t0}ms`)
+  }
+
+  // ── B7:采集管线无丢弃(镜像完整性) ──
+  {
+    await sleep(1500)
+    const cs = (await api('GET', '/api/workshop/daq')).data?.controller
+    ok('B7', '采集管线无丢弃(produced=consumed, dropped=0)', Boolean(cs) && cs.dropped === 0 && Number(cs.consumed) === Number(cs.produced), JSON.stringify({ produced: cs?.produced, consumed: cs?.consumed, dropped: cs?.dropped, stored: cs?.samplesStored }))
+  }
+
+  // ── C:停发不伪造 + 恢复自愈 ──
+  {
+    const stop = await sim('POST', '/api/nodes/' + dev.id + '/stop', {})
+    const t0 = Date.now()
+    await sleep(9000)
+    const rows2 = await samples(daqId, t0, Date.now())
+    ok('C1', '设备停发 → 0 新增样本(不伪造冻值)', stop.status === 200 && rows2.length === 0, `${rows2.length} 行`)
+    const n = await nodeOf(daqId)
+    ok('C2', '停发 → 节点 offline + 可读 lastError', n?.state === 'offline' && /未收到报文|未收到首条/.test(String(n?.lastError ?? '')), `${n?.state} / ${String(n?.lastError ?? '').slice(0, 60)}`)
+    await sim('POST', '/api/nodes/' + dev.id + '/start', {})
+    const t1 = Date.now()
+    const resumed = await waitFor('resume rows', async () => {
+      const pts = await samples(daqId, t1, Date.now())
+      return pts.length >= 2 ? pts : null
+    }, 10_000, 800)
+    // 报文恢复后状态由运行时重新派生;给一个短窗口等 watchdog/状态收敛
+    const n2 = await waitFor('node ok after resume', async () => {
+      const n = await nodeOf(daqId)
+      return n?.state === 'ok' && !n?.lastError ? n : null
+    }, 6_000, 500).catch(() => nodeOf(daqId))
+    ok('C3', '恢复发布 → 自动续采 + 状态自愈', resumed.length >= 2 && n2?.state === 'ok' && !n2?.lastError, `${resumed.length} 行 / state=${n2?.state} / err=${String(n2?.lastError ?? '')}`)
+  }
+
+  // ── D:多节点同 broker ──
+  {
+    const dev2 = {
+      id: `mqtt-e2e-dev2-${TAG}`,
+      name: `MQTT E2E Sensor 2 ${TAG}`,
+      protocol: 'mqtt',
+      tickMs: 1000,
+      signals: [{ id: 'temp2', name: 'temp2', unit: '℃', min: 0, max: 100, decimals: 2, strategy: { kind: 'manual', value: 42 } }],
+      config: {
+        brokerUrl,
+        topics: [{ topic: `aw/e2e/${TAG}/temp2`, signalId: 'temp2', payloadTemplate: '{"data":{"temp":${value}}}', qos: 0 }],
+      },
+    }
+    const cr = await sim('POST', '/api/nodes', dev2)
+    ok('D0', '第二台 MQTT 设备创建', cr.status === 200, cr.data?.id ?? cr.json?.message)
+    const exp2 = await simLib.simExport(dev2.id)
+    const item2 = exp2.items.find(i => i.signal === 'temp2')
+    const daq2 = await createDaq(token, { lineId, name: `MQTT-DAQ2-${TAG}`, driverConfig: item2.driverConfig })
+    const t0 = Date.now()
+    await sleep(8000)
+    const r1 = await samples(daqId, t0, Date.now())
+    const r2 = await samples(daq2, t0, Date.now())
+    ok('D1', '同 broker 两节点并行入库', r1.length >= 2 && r2.length >= 4, `node1 ${r1.length} 行 / node2 ${r2.length} 行`)
+  }
+
+  // ── E:外部 broker(1883)──
+  {
+    let ext = null
+    try {
+      ext = await connectClient(mqtt, EXTERNAL_MQTT)
+    }
+    catch { ext = null }
+    if (!ext) {
+      skipped('E1', `外部 broker ${EXTERNAL_MQTT} 不可达`, '启动 docker mosquitto 或设置 AW_E2E_EXTERNAL_MQTT')
+    }
+    else {
+      const topic = `aw/e2e/${TAG}/ext`
+      const cmd = `aw/e2e/${TAG}/ext/set`
+      const state = `aw/e2e/${TAG}/ext/state`
+      // 设备模拟:收到命令 → 回显 retained 状态
+      let lastCmd = null
+      ext.on('message', (t, p) => {
+        if (t !== cmd) return
+        try { lastCmd = JSON.parse(p.toString()).setpoint } catch { lastCmd = Number(p.toString()) }
+        if (Number.isFinite(lastCmd)) ext.publish(state, JSON.stringify({ setpoint: lastCmd }), { qos: 0, retain: true })
+      })
+      await ext.subscribeAsync(cmd, { qos: 1 })
+      const pub = setInterval(() => ext.publish(topic, JSON.stringify({ data: { temp: 123.4 } }), { qos: 0 }), 1000)
+      const daqExt = await createDaq(token, { lineId, name: `MQTT-DAQ-EXT-${TAG}`, driverConfig: { host: '127.0.0.1', port: 1883, topic, jsonPath: 'data.temp' } })
+      const dcwExt = await createDcw(token, { lineId, name: `MQTT-DCW-EXT-${TAG}`, driverConfig: { host: '127.0.0.1', port: 1883, topic: cmd, jsonKey: 'setpoint', readTopic: state, readJsonPath: 'setpoint' } })
+      const t0 = Date.now()
+      await sleep(7000)
+      const extRows = await samples(daqExt, t0, Date.now())
+      clearInterval(pub)
+      ok('E1', '外部 broker 订阅入库(标准 mosquitto)', extRows.length >= 3 && extRows.every(r => Math.abs(r.avg - 123.4) < 1e-6), `${extRows.length} 行`)
+      const w = await api('POST', `/api/workshop/dcw/${dcwExt}/write`, { token, body: { value: 44.4 } })
+      await sleep(800)
+      const rd = await api('POST', `/api/workshop/dcw/${dcwExt}/read`, { token, body: {} })
+      ok('E2', '外部 broker 写回 → 设备回显 → 平台回读', w.status === 200 && Number(lastCmd) === 44.4 && Number(rd.data?.read?.value) === 44.4, `lastCmd=${lastCmd} read=${rd.data?.read?.value} msg=${String(rd.data?.read?.message ?? '').slice(0, 100)}`)
+      await ext.endAsync(true).catch(() => {})
+    }
+  }
+
+  // ── F:DCW 写回 + 回读验证 ──
+  {
+    const current = (await simLib.simNodes()).find(n => n.id === dev.id)?.signals?.find(s => s.id === 'mqtt-sp')?.value ?? 60
+    const target = Math.max(10, Math.min(90, Number(current) + 1.5))
+    const w = await api('POST', `/api/workshop/dcw/${dcwId}/write`, { token, body: { value: target } })
+    await sleep(1000)
+    const simVal = (await simLib.simNodes()).find(n => n.id === dev.id)?.signals?.find(s => s.id === 'mqtt-sp')?.value
+    // 周期读与手动读共用同一在飞闸门:写入后的那一刻周期读可能正在等回显,409 属预期,重试即可
+    let rdRead = null
+    for (let i = 0; i < 6; i++) {
+      const r = await api('POST', `/api/workshop/dcw/${dcwId}/read`, { token, body: {} })
+      if (r.data?.read?.ok) { rdRead = r.data.read; break }
+      await sleep(700)
+    }
+    ok('F1', 'MQTT 直写 → 设备信号变化', w.status === 200 && Math.abs(Number(simVal) - target) < 1e-6, `target=${target} sim=${simVal}`)
+    ok('F2', 'MQTT 写后回读(readTopic)= 写入值', Number(rdRead?.value) === Number(simVal), `read=${rdRead?.value} msg=${String(rdRead?.message ?? '').slice(0, 80)}`)
+    // 批量下发(配方 apply)应把 transport-ack 补验成 readback-verified
+    const nowVal = Number(simVal)
+    const newVal = Math.max(10, Math.min(90, nowVal + 1.5))
+    await api('PATCH', `/api/workshop/dcw/recipes/${recipeId}`, { token, body: { params: [{ nodeId: dcw2Id, value: newVal, min: 55, max: 65 }] } })
+    // 写间隔闸门(60s):直接 apply 可能 429;等待窗口内重试一次
+    let apply = await api('POST', `/api/workshop/dcw/recipes/${recipeId}/apply`, { token, body: {} })
+    if (apply.status === 429) {
+      await sleep(62_000)
+      apply = await api('POST', `/api/workshop/dcw/recipes/${recipeId}/apply`, { token, body: {} })
+    }
+    const res = apply.data?.run?.results?.[0]
+    ok('F3', '配方批量下发 → 回读证实(readback-verified)', apply.status === 200 && res?.verify?.verdict === 'verified' && res?.ack === 'readback-verified', JSON.stringify(res?.verify ?? res).slice(0, 160))
+    const sum = apply.data?.run?.ackSummary
+    ok('F4', 'ACK 汇总无未证实/失败', sum?.verified >= 1 && sum?.unverified === 0 && sum?.failed === 0, JSON.stringify(sum))
+  }
+
+  // ── G:Agent daq_query(库内最新值 + agg + 新鲜度)──
+  {
+    const ch = await api('POST', '/api/workshop/channels', { token, body: { name: `mqtt-e2e-${TAG}`, leadAgent: { name: `mqtt-lead-${TAG}`, harness: 'mock', config: { delayMs: 50 } } } })
+    const channelId = ch.data?.channelId
+    const agent = await api('POST', '/api/workshop/agents', { token, body: { name: `mqtt-qa-${TAG}`, harness: 'mock', config: {} } })
+    const join = await api('POST', `/api/workshop/channels/${channelId}/agents`, { token, body: { agentId: agent.data?.id, role: 'worker' } })
+    const instId = join.data?.id
+    const bind = await api('POST', '/api/workshop/agent-tools/bindings', { token, body: { agentId: instId, nodeId: daqId, kind: 'daq', mode: 'auto' } })
+    ok('G0', 'Agent 建号 + DAQ 绑定', Boolean(instId) && (bind.status === 200 || bind.json?.code === 0), `${instId} / ${JSON.stringify(bind.data ?? bind.json).slice(0, 120)}`)
+    const invoke = (tool, args) => api('POST', '/api/workshop/agent-tools/invoke', { token, body: { agentId: instId, tool, args } })
+    const q = await invoke('daq_query', { node_id: daqId, last_minutes: 2, bucket_ms: 1000, limit: 1 })
+    const text = q.data?.result?.text ?? JSON.stringify(q.data?.result ?? {}).slice(0, 400)
+    const dbLast = (await samples(daqId, Date.now() - 120_000, Date.now())) .slice(-1)[0]
+    const m = /最新\s+([\d.]+)/.exec(text)
+    const latestInText = m ? Number(m[1]) : NaN
+    const latestInDb = dbLast?.avg ?? NaN
+    ok('G1', 'daq_query 最新值 = 库内最后一条(不是最旧段)', Number.isFinite(latestInText) && Math.abs(latestInText - latestInDb) < 1e-6, `text=${latestInText} db=${latestInDb}`)
+    ok('G2', '输出含数据源与库内滞后声明', /数据源=时序库/.test(text) && /滞后\s+\d+s/.test(text), text.split('\n').find(l => l.includes('数据源'))?.slice(0, 120) ?? '缺失')
+    const qmin = await invoke('daq_query', { node_id: daqId, last_minutes: 2, bucket_ms: 1000, limit: 5, agg: 'min' })
+    ok('G3', 'agg=min 生效(参数可传)', /聚合 min/.test(qmin.data?.result?.text ?? ''), (qmin.data?.result?.text ?? '').split('\n')[0]?.slice(0, 100))
+    const qbad = await invoke('daq_query', { node_id: daqId, agg: 'bogus' })
+    ok('G4', '非法 agg 明确报错(不静默回退)', /agg 只能是/.test(qbad.data?.result?.text ?? ''), (qbad.data?.result?.text ?? '').slice(0, 80))
+    const qdeny = await invoke('daq_query', { node_id: 'dn-not-bound' })
+    ok('G5', '未绑定节点被拒绝(授权面)', qdeny.data?.result?.isError === true || /无权查询/.test(qdeny.data?.result?.text ?? ''), (qdeny.data?.result?.text ?? '').slice(0, 80))
+  }
+
+  // ── H:网关停止即停收 / 恢复续采 ──
+  {
+    const stopCtrl = await api('POST', '/api/workshop/daq/controller', { token, body: { action: 'stop' } })
+    const t0 = Date.now()
+    await sleep(7000)
+    const rows = await samples(daqId, t0, Date.now())
+    ok('H1', '网关停止 → 被动订阅停收(0 新增)', stopCtrl.status === 200 && rows.length === 0, `${rows.length} 行`)
+    await api('POST', '/api/workshop/daq/controller', { token, body: { action: 'start' } })
+    const resumed = await waitFor('ctrl resume', async () => {
+      const pts = await samples(daqId, t0 + 7000, Date.now())
+      return pts.length >= 2 ? pts : null
+    }, 10_000, 800)
+    ok('H2', '网关恢复 → 订阅重建并继续入库', resumed.length >= 2, `${resumed.length} 行`)
+  }
+
+  // ── 清理 ──
+  await api('POST', `/api/workshop/dcw/lines/${lineId}/stop`, { token, body: {} }).catch(() => {})
+  console.log(`\n━━━ MQTT E2E: ${pass} passed / ${fail} failed / ${skip} skipped ━━━`)
+  if (failures.length > 0) {
+    console.log('FAILURES:')
+    failures.forEach(f => console.log(`  ✘ ${f}`))
+  }
+  if (!plat.reused && plat.home) console.log(`  (临时 home: ${plat.home})`)
+  return fail
+}
+
+let exitCode = 1
+try {
+  exitCode = (await main()) > 0 ? 1 : 0
+}
+catch (err) {
+  console.error('FATAL', err instanceof Error ? err.stack ?? err.message : err)
+  exitCode = 1
+}
+finally {
+  if (!KEEP) {
+    for (const p of spawned.reverse()) {
+      killTree(p.pid)
+      if (p.home) { try { rmSync(p.home, { recursive: true, force: true }) } catch { /* 占用中 */ } }
+      if (p.simShadow) { try { rmSync(p.simShadow, { recursive: true, force: true }) } catch { /* 占用中 */ } }
+    }
+  }
+  else {
+    console.log(`  KEEP=1:保留 ${spawned.length} 个进程/目录`)
+  }
+}
+process.exit(exitCode)

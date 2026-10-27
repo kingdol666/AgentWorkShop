@@ -12,7 +12,7 @@ AgentWorkShop 的数采(DAQ)与写控(DCW)驱动面覆盖六种现场协议(5 �
 | Modbus TCP | ✅ 保持/输入寄存器,int16~float32,big/little/wordSwap | ✅ 写保持寄存器 + 回读校验 | `host` `port` `unitId` `register`(40001 风格) |
 | Modbus RTU(串口网关透传)| ✅ 同上(connectTcpRTUBuffered)| ✅ FC10 写 + FC03 回读 | 同 TCP,端口指向网关 |
 | OPC UA | ✅ 会话池,任意 NodeId,匿名/Sign | ✅ 写 Double 节点 + 回读 | `endpoint` `nodeId` |
-| MQTT | ✅ 订阅主题 + jsonPath 取值 | ✅ 发布 `{jsonKey: 值}` | `host` `port` `topic` `jsonPath` |
+| MQTT | ✅ **被动订阅**(连上 broker 即入库,报文到达时刻为样本时间;非轮询) + jsonPath | ✅ 发布 `{jsonKey: 值}`;配置 `readTopic`/`readJsonPath` 时写后回读可判 readback-verified | `host` `port` `topic` `jsonPath` `qos` `staleMs`;写侧另加 `jsonKey` `readTopic` `readJsonPath` |
 | HTTP | ✅ GET + jsonPath | ✅ POST `{bodyKey: 值}` + 响应回读 | `url` `jsonPath` / `bodyKey` |
 | **串口 Serial(serial-bridge 插件)** | ✅ Modbus RTU(FC03/FC04)+ ASCII 行协议(数值/JSON + 保鲜窗) | ✅ Modbus RTU 写保持寄存器(FC06/FC16)+ 同址回读校验;ASCII 模板下行 | `path` `baudRate` `parity` `unitId` `register` `dataType` `byteOrder`;[插件文档](/plugins/guide)(见「通信协议插件(自定义接口连接方式)」) |
 
@@ -34,6 +34,9 @@ curl -X POST $API/api/workshop/daq/$NODE_ID/test -H "Authorization: Bearer $TOKE
 
 - **每节点独立边缘运行时**:采集节拍(`intervalMs`)与 WS 下发节拍(`publishIntervalMs`)分离,
   单节点慢/停不波及邻居。
+- **推送式协议(MQTT)不走采样轮询**:控制器对节点建立常驻订阅,每条报文到达即进入
+  队列→入库(时间戳=到达时刻);设备停发时不写任何样本,超过 `staleMs`(默认 300s,
+  建议设为设备发布周期的 2–3 倍)置 offline 并在 `lastError` 说明原因;恢复发布自动续采。
 - **产线门控**:节点挂到产线(lineId)且产线开跑(绑定产品/配方批次)后才开始采集;
   停线即 offline。未分配节点不采集。
 - **批次打标**:运行中的每个样本自动携带 `product/recipe/runId`,数据按批次隔离查询。
@@ -48,6 +51,11 @@ curl -X POST $API/api/workshop/daq/$NODE_ID/test -H "Authorization: Bearer $TOKE
 4. 安全量程 ∩ 活动配方工艺窗口联锁;
 5. (manual 绑定模式)HITL 人工审批;
 6. PLC 写入 → 回读校验(超容差判失败)→ 签名写历史。
+
+> MQTT 写控:broker 的 QoS1 puback 只代表**链路受理**(transport-ack)。设备若在状态主题
+> 回显设定值,节点配置 `readTopic`(如 `aw/sim/state`)+ `readJsonPath`(如 `setpoint`)
+> 后,网关会在写后独立回读并判 `readback-verified`;未配置回读主题则如实记为
+> `unverified`,不虚报设备生效。
 
 配方参数引用的节点若已删除/停用/解绑,下发时自动跳过并在批次结果中记明原因,
 界面与 Agent 侧同步显示「已停用 / 已取消绑定 / 已删除」。
