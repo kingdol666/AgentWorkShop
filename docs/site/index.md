@@ -61,7 +61,7 @@ footer:
         <div class="hw-stat"><span class="v">6</span><span class="k">现场协议</span></div>
         <div class="hw-stat"><span class="v">4</span><span class="k">接入入口</span></div>
         <div class="hw-stat"><span class="v">14</span><span class="k">执行引擎</span></div>
-        <div class="hw-stat"><span class="v">126</span><span class="k">运行时设置项</span></div>
+        <div class="hw-stat"><span class="v">128</span><span class="k">运行时设置项</span></div>
         <div class="hw-stat"><span class="v">1100+<i>*</i></span><span class="k">验收断言</span></div>
         <div class="hw-stat"><span class="v">7</span><span class="k">任务机状态</span></div>
       </div>
@@ -72,7 +72,7 @@ footer:
         <code>docs/audit/e2e-2026-09-24-full-coverage.md</code> 与
         <code>docs/audit/e2e-2026-09-24-all-features.md</code>。
         其余是可数出来的静态事实:6 类驱动(5 内置 + serial-bridge 串口插件) / 4 个入口(WS · MCP · A2A · REST) /
-        14 个 harness(<code>agents/registry.ts</code>) / 126 个设置项分 19 组(<code>aw config list</code>) / 7 态任务机。
+        14 个 harness(<code>agents/registry.ts</code>) / 128 个设置项分 19 组(<code>aw config list</code>) / 7 态任务机。
       </p>
       <div class="aw-statusbar">
         <span>版本 <i>v0.8.3</i></span>
@@ -280,7 +280,7 @@ footer:
       <div class="hw-p">
         <span class="no">04</span>
         <h3>配置驱动</h3>
-        <p><code>config.yml &lt; runtime-settings &lt; env</code>,同一份描述符同时驱动 CLI 与设置页——126 个设置项(42 live / 84 restart),代码零硬编码默认。</p>
+        <p><code>config.yml &lt; runtime-settings &lt; env</code>,同一份描述符同时驱动 CLI 与设置页——128 个设置项(44 live / 84 restart),代码零硬编码默认。</p>
       </div>
       <div class="hw-p">
         <span class="no">05</span>
@@ -415,7 +415,7 @@ aw start            # → http://localhost:3001 · 配置根 ~/.AgentWorkShop
   <section class="hw-final">
     <h2>把 Agent 接到真实产线上</h2>
     <p>
-      14 个执行引擎、6 种现场协议、126 个运行时设置项和 1100+ 条基础波验收断言(另有补充波报告)都已经在仓库里。
+      14 个执行引擎、6 种现场协议、128 个运行时设置项和 1100+ 条基础波验收断言(另有补充波报告)都已经在仓库里。
       监督层,秒级软实时;协议真实,断言可复跑。
     </p>
     <div class="hw-cta">
