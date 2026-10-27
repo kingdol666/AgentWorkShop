@@ -183,7 +183,8 @@ export abstract class DaqControllerState extends DaqControllerContracts {
     }
     // 图像:主图 + 缩略图落对象存储(失败抛出 → tick 按驱动故障节流,采集不中断)
     const os = getObjectStore()
-    const objectKey = daqObjectKey(node.id, now, '.png')
+    const ext = wf.mime === 'image/jpeg' ? '.jpg' : wf.mime === 'image/webp' ? '.webp' : wf.mime === 'image/gif' ? '.gif' : '.png'
+    const objectKey = daqObjectKey(node.id, now, ext)
     await os.put(objectKey, wf.blob!, wf.mime ?? 'image/png')
     // P0-2 像素完整性:sha256+size 随帧入 daq_frames.meta(blob 就手计算,1Hz 下开销可忽略;
     // 存量文件不回填 —— 保留期内自然出清)

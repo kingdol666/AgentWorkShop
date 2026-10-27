@@ -363,6 +363,7 @@ export const DAQ_DRIVERS: DaqDriverMeta[] = [
       { key: 'imageFormat', label: '图像载荷格式', type: 'select', options: [{ value: 'json', label: 'JSON 内 base64' }, { value: 'binary', label: '报文字节(binary)' }], default: 'json', hint: '图像模板专用:JSON 字段 base64 或 MQTT 原始字节' },
       { key: 'imagePath', label: '图像字段路径(image 模板)', type: 'string', placeholder: 'data.png', hint: 'base64 图像字段(缺省 png;兼容 image/base64/blob;支持 data:image/... 前缀)' },
       { key: 'imageMime', label: '图像 MIME(可选)', type: 'string', default: 'image/png', hint: '缺省 image/png;JSON 内也可用 mimePath 指定字段' },
+      { key: 'mimePath', label: 'MIME 字段路径(可选)', type: 'string', placeholder: 'data.mime', hint: '载荷内携带 MIME 的字段路径(优先于 imageMime)' },
       { key: 'imageWidthPath', label: '图像宽路径(可选)', type: 'string', placeholder: 'data.width', hint: '非 PNG 且无内嵌尺寸时用;PNG 自动读 IHDR' },
       { key: 'imageHeightPath', label: '图像高路径(可选)', type: 'string', placeholder: 'data.height', hint: '非 PNG 且无内嵌尺寸时用;PNG 自动读 IHDR' },
       { key: 'decoder', label: '自定义解码器(可选)', type: 'string', placeholder: 'my-json-sink', hint: '插件 ctx.daq.registerDecoder 注册的名称;优先于上面声明式路径,返回 scalar/vector/image' },

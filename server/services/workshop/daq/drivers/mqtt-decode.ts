@@ -19,7 +19,11 @@ import { listDecoders, resolveDecoder } from '../decoders'
 
 const MAX_POINTS = 4096
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024
+const MAX_IMAGE_PIXELS = 16_000_000
+const MAX_IMAGE_SIDE = 16384
 const MAX_METRIC_KEYS = 64
+/** 允许的图像类型(禁止 SVG 等可执行内容;内容端点也不做外链解析) */
+const RASTER_MIMES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/bmp', 'image/gif', 'image/tiff'])
 
 function pick(root: unknown, path: string): unknown {
   if (!path) return root
@@ -30,10 +34,14 @@ function pick(root: unknown, path: string): unknown {
   }, root)
 }
 
+/** 严格数值:number 或非空数字字符串;null/boolean/空串/数组/对象一律 NaN(不静默变 0) */
 function asNumber(v: unknown): number {
-  if (typeof v === 'number' && Number.isFinite(v)) return v
-  const n = Number(v)
-  return Number.isFinite(n) ? n : Number.NaN
+  if (typeof v === 'number') return Number.isFinite(v) ? v : Number.NaN
+  if (typeof v === 'string' && v.trim() !== '') {
+    const n = Number(v)
+    return Number.isFinite(n) ? n : Number.NaN
+  }
+  return Number.NaN
 }
 
 function parseJson(raw: string): unknown {
@@ -57,38 +65,56 @@ function metricsOf(root: unknown, path: string): Record<string, number> | undefi
   return Object.keys(out).length > 0 ? out : undefined
 }
 
-/** PNG IHDR 尺寸(非 PNG 返回 0;非 PNG 图片可显式配置 width/height) */
+/** PNG IHDR 尺寸(校验 PNG 签名;非 PNG 返回 0,可显式配置 width/height) */
 function pngSize(blob: Buffer): { width: number, height: number } {
-  if (blob.length >= 24 && blob.readUInt32BE(12) === 0x49484452) {
+  const isPng = blob.length >= 24
+    && blob[0] === 0x89 && blob[1] === 0x50 && blob[2] === 0x4E && blob[3] === 0x47
+  if (isPng && blob.readUInt32BE(12) === 0x49484452) {
     return { width: blob.readUInt32BE(16), height: blob.readUInt32BE(20) }
   }
   return { width: 0, height: 0 }
 }
 
+function assertRasterMime(mime: string): void {
+  if (!RASTER_MIMES.has(mime.toLowerCase())) {
+    throw new Error(`图像 MIME 不受支持: ${mime}(允许 ${[...RASTER_MIMES].join('/')};不接受 SVG/HTML)`)
+  }
+}
+
+function assertImageSize(width: number, height: number): void {
+  if (!Number.isFinite(width) || !Number.isFinite(height) || width < 0 || height < 0) throw new Error('图像宽高非法')
+  if (width > MAX_IMAGE_SIDE || height > MAX_IMAGE_SIDE || width * height > MAX_IMAGE_PIXELS) {
+    throw new Error(`图像尺寸 ${width}x${height} 超过上限(${MAX_IMAGE_SIDE}/边,${MAX_IMAGE_PIXELS} 像素)`)
+  }
+}
+
 function mimeOf(cfg: Record<string, unknown>, json: unknown, fallback: string): string {
-  const configured = cfg.imageMime
-  if (configured != null && String(configured).trim()) return String(configured).trim()
+  // mimePath(载荷内字段)优先于静态 imageMime:UI 的 imageMime 有缺省值,不能盖住载荷自带 MIME
   const mimePath = cfg.mimePath != null ? String(cfg.mimePath) : ''
   if (mimePath) {
     const v = pick(json, mimePath)
     if (typeof v === 'string' && v.trim()) return v.trim()
   }
+  const configured = cfg.imageMime
+  if (configured != null && String(configured).trim()) return String(configured).trim()
   return fallback
 }
 
 function decodeBase64Image(cfg: Record<string, unknown>, json: unknown): DaqDecoded {
   const explicitPath = cfg.imagePath != null ? String(cfg.imagePath) : ''
   const candidates = explicitPath ? [explicitPath] : ['png', 'image', 'base64', 'blob']
+  const isBase64ish = (v: string): boolean => v.startsWith('data:') || /^[A-Za-z0-9+/=\s]+$/.test(v)
   let b64 = ''
   let dataUrlMime = ''
   let sourcePath = ''
   for (const p of candidates) {
     const v = pick(json, p)
-    if (typeof v === 'string' && v.trim()) {
-      b64 = v.trim()
-      sourcePath = p
-      break
-    }
+    if (typeof v !== 'string' || !v.trim()) continue
+    // 未显式指定 imagePath 时只接受 base64/data URL;普通 URL/文本字段跳过,避免遮住真正的 base64 字段
+    if (!explicitPath && !isBase64ish(v.trim())) continue
+    b64 = v.trim()
+    sourcePath = p
+    break
   }
   if (!b64) throw new Error(`image 载荷缺少 base64 字段(imagePath=${explicitPath || candidates.join('/')})`)
   // 兼容 data:image/png;base64,<data>(不用正则 exec,避免与命令执行模式混淆)
@@ -105,24 +131,26 @@ function decodeBase64Image(cfg: Record<string, unknown>, json: unknown): DaqDeco
   if (blob.length === 0) throw new Error('image 载荷 base64 解码后为空')
   const maxBytes = Number(cfg.imageMaxBytes ?? MAX_IMAGE_BYTES) || MAX_IMAGE_BYTES
   if (blob.length > maxBytes) throw new Error(`image 载荷 ${blob.length}B 超过上限 ${maxBytes}B`)
-  const mime = mimeOf(cfg, json, dataUrlMime || 'image/png')
-  if (!/^image\//i.test(mime)) throw new Error(`image MIME 必须为 image/*(收到 ${mime})`)
+  // data URL 自带 MIME 优先于 UI 缺省值(避免 jpeg 被默认 image/png 标错)
+  const mime = dataUrlMime || mimeOf(cfg, json, 'image/png')
+  assertRasterMime(mime)
   const ihdr = pngSize(blob)
-  const widthCfg = Number(cfg.width ?? 0) || 0
-  const heightCfg = Number(cfg.height ?? 0) || 0
+  const widthCfg = asNumber(cfg.width)
+  const heightCfg = asNumber(cfg.height)
   const widthPath = cfg.imageWidthPath != null ? String(cfg.imageWidthPath) : ''
   const heightPath = cfg.imageHeightPath != null ? String(cfg.imageHeightPath) : ''
   const widthRaw = widthPath ? asNumber(pick(json, widthPath)) : Number.NaN
   const heightRaw = heightPath ? asNumber(pick(json, heightPath)) : Number.NaN
-  const width = Number.isFinite(widthRaw) ? widthRaw : (widthCfg || ihdr.width)
-  const height = Number.isFinite(heightRaw) ? heightRaw : (heightCfg || ihdr.height)
+  const width = Number.isFinite(widthRaw) ? widthRaw : (Number.isFinite(widthCfg) && widthCfg > 0 ? widthCfg : ihdr.width)
+  const height = Number.isFinite(heightRaw) ? heightRaw : (Number.isFinite(heightCfg) && heightCfg > 0 ? heightCfg : ihdr.height)
+  assertImageSize(width, height)
   const metrics = metricsOf(json, cfg.metricsPath != null ? String(cfg.metricsPath) : '')
   return { kind: 'image', blob, mime, width, height, ...(metrics ? { metrics } : {}) }
 }
 
 function decodeDeclarative(input: DaqDecodeInput): DaqDecoded {
   const { raw, bytes, signalKind, config: cfg } = input
-  const json = parseJson(raw)
+  const json = input.json == null ? parseJson(raw) : input.json
   if (signalKind === 'scalar') {
     const path = cfg.jsonPath != null ? String(cfg.jsonPath) : (cfg.valuePath != null ? String(cfg.valuePath) : '')
     let target: unknown
@@ -130,7 +158,8 @@ function decodeDeclarative(input: DaqDecodeInput): DaqDecoded {
       if (json === undefined) throw new Error(`payload 不是合法 JSON(无法按 jsonPath=${path} 取值)`)
       target = pick(json, path)
     }
-    else if (typeof json === 'number') {
+    else if (typeof json === 'number' || typeof json === 'string') {
+      // JSON 数字或数字字符串("42")兼容;null/boolean/对象/数组落到 raw 后严格校验
       target = json
     }
     else {
@@ -149,7 +178,7 @@ function decodeDeclarative(input: DaqDecodeInput): DaqDecoded {
     const arr = target
     if (arr.length < 1 || arr.length > MAX_POINTS) throw new Error(`vector 点列长度 ${arr.length} 非法(1~${MAX_POINTS})`)
     const points = arr.map(asNumber)
-    if (!points.every(Number.isFinite)) throw new Error('vector 点列含非数值元素')
+    if (!points.every(Number.isFinite)) throw new Error('vector 点列含非数值元素(null/boolean/空串按非法处理)')
     const metrics = metricsOf(json, cfg.metricsPath != null ? String(cfg.metricsPath) : '')
     return { kind: 'vector', points, ...(metrics ? { metrics } : {}) }
   }
@@ -157,10 +186,12 @@ function decodeDeclarative(input: DaqDecodeInput): DaqDecoded {
   if (format === 'binary') {
     const blob = bytes
     if (blob.length === 0) throw new Error('image 二进制载荷为空')
-    if (blob.length > MAX_IMAGE_BYTES) throw new Error(`image 载荷 ${blob.length}B 超过上限 ${MAX_IMAGE_BYTES}B`)
+    const maxBytes = Number(cfg.imageMaxBytes ?? MAX_IMAGE_BYTES) || MAX_IMAGE_BYTES
+    if (blob.length > maxBytes) throw new Error(`image 载荷 ${blob.length}B 超过上限 ${maxBytes}B`)
     const mime = String(cfg.imageMime ?? cfg.mime ?? 'image/png')
-    if (!/^image\//i.test(mime)) throw new Error(`image MIME 必须为 image/*(收到 ${mime})`)
+    assertRasterMime(mime)
     const ihdr = pngSize(blob)
+    assertImageSize(ihdr.width, ihdr.height)
     return { kind: 'image', blob, mime, width: ihdr.width, height: ihdr.height }
   }
   if (json === undefined) throw new Error('image 载荷必须是 JSON(或使用 imageFormat=binary)')
@@ -168,29 +199,50 @@ function decodeDeclarative(input: DaqDecodeInput): DaqDecoded {
 }
 
 function assertKind(decoded: DaqDecoded, signalKind: DaqDecodeInput['signalKind'], source: string): DaqDecoded {
+  if (!decoded || typeof decoded !== 'object' || !('kind' in decoded)) {
+    throw new Error(`${source} 未返回类型化样本(必须是同步返回 {kind:...})`)
+  }
   if (decoded.kind !== signalKind) {
     throw new Error(`${source} 解码结果 ${decoded.kind} 与节点模板信号形态 ${signalKind} 不一致`)
   }
   if (decoded.kind === 'scalar' && !Number.isFinite(decoded.value)) throw new Error('解码结果不是有限数值')
-  if (decoded.kind === 'vector' && (decoded.points.length < 1 || decoded.points.length > MAX_POINTS || !decoded.points.every(Number.isFinite))) {
-    throw new Error(`解码点列非法(1~${MAX_POINTS} 个有限数值,实际 ${decoded.points.length})`)
+  if (decoded.kind === 'vector') {
+    if (!Array.isArray(decoded.points) || decoded.points.length < 1 || decoded.points.length > MAX_POINTS || !decoded.points.every(Number.isFinite)) {
+      throw new Error(`解码点列非法(1~${MAX_POINTS} 个有限数值)`)
+    }
+    if (decoded.metrics != null) {
+      if (typeof decoded.metrics !== 'object' || Array.isArray(decoded.metrics)) throw new Error('解码 metrics 必须是对象')
+      const entries = Object.entries(decoded.metrics)
+      if (entries.length > MAX_METRIC_KEYS || entries.some(([, v]) => !Number.isFinite(v))) throw new Error('解码 metrics 含非有限数值或条目过多')
+    }
   }
-  if (decoded.kind === 'image' && (decoded.blob.length === 0 || !/^image\//i.test(decoded.mime))) {
-    throw new Error('解码图像非法(空 blob 或非 image MIME)')
+  if (decoded.kind === 'image') {
+    if (!Buffer.isBuffer(decoded.blob) || decoded.blob.length === 0) throw new Error('解码图像 blob 必须是非空 Buffer')
+    if (decoded.blob.length > MAX_IMAGE_BYTES) throw new Error(`解码图像 ${decoded.blob.length}B 超过上限 ${MAX_IMAGE_BYTES}B`)
+    assertRasterMime(decoded.mime)
+    assertImageSize(decoded.width ?? 0, decoded.height ?? 0)
   }
   return decoded
 }
 
-/** 解码一条 MQTT 报文(自定义解码器优先,其次声明式) */
+/** 解码一条 MQTT 报文(自定义解码器优先,其次声明式)。
+ *  json 字段统一归一:调用方传 null/undefined 时在这里解析一次,自定义解码器可直接使用。 */
 export function decodeMqttPayload(input: DaqDecodeInput): DaqDecoded {
+  const normalized: DaqDecodeInput = {
+    ...input,
+    json: input.json == null ? (parseJson(input.raw) ?? null) : input.json,
+  }
   const decoderName = String(input.config.decoder ?? '').trim()
   if (decoderName) {
     const custom = resolveDecoder(decoderName)
     if (!custom) throw new Error(`未知解码器「${decoderName}」(可用:${listDecoders().join(', ') || '无'})`)
-    const result = custom(input)
+    const result = custom(normalized)
+    if (result && typeof (result as { then?: unknown }).then === 'function') {
+      throw new Error(`自定义解码器「${decoderName}」返回了 Promise:解码器必须是同步纯函数`)
+    }
     return assertKind(result, input.signalKind, `自定义解码器「${decoderName}」`)
   }
-  return assertKind(decodeDeclarative(input), input.signalKind, '声明式解析')
+  return assertKind(decodeDeclarative(normalized), input.signalKind, '声明式解析')
 }
 
 /** 连接测试用:自动识别载荷形态并给出摘要(不依赖节点模板) */
@@ -201,6 +253,9 @@ export function describeMqttPayload(raw: string, _bytes: Buffer, cfg: Record<str
     const points = pick(json, pointsPath)
     if (Array.isArray(points) && points.length > 0) {
       return { kind: 'vector', summary: `vector ${points.length} 点(pointsPath=${pointsPath})` }
+    }
+    if (!cfg.pointsPath && Array.isArray(json) && json.length > 0) {
+      return { kind: 'vector', summary: `vector ${json.length} 点(根数组)` }
     }
     const imgPath = cfg.imagePath != null ? String(cfg.imagePath) : ''
     const img = imgPath ? pick(json, imgPath) : (pick(json, 'png') ?? pick(json, 'image') ?? pick(json, 'base64') ?? pick(json, 'blob'))

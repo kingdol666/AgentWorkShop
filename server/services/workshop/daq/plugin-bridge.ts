@@ -8,18 +8,18 @@ interface DaqPluginBridge {
   pendingDrivers: unknown[]
   pendingProcessors: Array<{ kind: string, name: string, fn: unknown }>
   pendingTemplates: unknown[]
-  pendingDecoders: Array<{ name: string, fn: unknown }>
+  pendingDecoders: Array<{ name: string, fn: unknown, owner?: string }>
   /** 回放槽(drain 接管后设置;注册即时回调) */
   _drain?: () => void
   registerDriver(d: unknown): void
   registerProcessor(kind: string, name: string, fn: unknown): void
   registerTemplate(t: unknown): void
-  registerDecoder(name: string, fn: unknown): void
+  registerDecoder(name: string, fn: unknown, owner?: string): void
   drain(
     onDriver: (d: unknown) => void,
     onProcessor: (kind: string, name: string, fn: unknown) => void,
     onTemplate: (t: unknown) => void,
-    onDecoder: (name: string, fn: unknown) => void,
+    onDecoder: (name: string, fn: unknown, owner?: string) => void,
   ): void
 }
 
@@ -42,8 +42,8 @@ function makeDaqBridge(): DaqPluginBridge {
       this.pendingTemplates.push(t)
       this._drain?.()
     },
-    registerDecoder(name, fn) {
-      this.pendingDecoders.push({ name, fn })
+    registerDecoder(name, fn, owner) {
+      this.pendingDecoders.push({ name, fn, owner })
       this._drain?.()
     },
     drain(onDriver, onProcessor, onTemplate, onDecoder) {
@@ -51,7 +51,7 @@ function makeDaqBridge(): DaqPluginBridge {
         for (const d of this.pendingDrivers.splice(0)) onDriver(d)
         for (const p of this.pendingProcessors.splice(0)) onProcessor(p.kind, p.name, p.fn)
         for (const t of this.pendingTemplates.splice(0)) onTemplate(t)
-        for (const d of this.pendingDecoders.splice(0)) onDecoder(d.name, d.fn)
+        for (const d of this.pendingDecoders.splice(0)) onDecoder(d.name, d.fn, d.owner)
       }
       this._drain()
     },
@@ -83,9 +83,9 @@ export function attachDaqPluginBridge(): void {
         console.error('[daq] 插件模板注册失败:', err instanceof Error ? err.message : err)
       }
     },
-    (name, fn) => {
+    (name, fn, owner) => {
       try {
-        registerDecoder(name, fn as DaqDecoder)
+        registerDecoder(name, fn as DaqDecoder, owner)
       }
       catch (err) {
         console.error('[daq] 插件解码器注册失败:', err instanceof Error ? err.message : err)

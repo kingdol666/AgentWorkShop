@@ -651,6 +651,8 @@ async function main() {
     const mqttMeta = (meta.data?.drivers ?? []).find(d => d.kind === 'mqtt')
     const mKeys = (mqttMeta?.configFields ?? []).map(f => f.key)
     ok('L0', '节点创建表单暴露结构化解析字段', ['pointsPath', 'metricsPath', 'imageFormat', 'imagePath', 'decoder'].every(k => mKeys.includes(k)), mKeys.join(','))
+    // 帧管线对账基线(控制器 produced/consumed 是全局计数;只看本组增量,避免历史 retained 重放 late 计入)
+    const lStatsBefore = (await api('GET', '/api/workshop/daq')).data?.controller ?? {}
 
     // L1 自定义 vector 模板:5 点 + 内置 sink(avg/zones)+ 插件处理器 e2e-tag
     const vecTplR = await api('POST', '/api/workshop/daq/templates', {
@@ -683,7 +685,20 @@ async function main() {
     const vecFrames = vecFramesR.data?.frames ?? []
     await vecPub.endAsync(true).catch(() => {})
     ok('L2', '结构化 JSON 数组 → vector 帧入库(5 点)', vecFrames.length >= 2 && vecFrames.every(f => f.points?.length === 5), `${vecFrames.length} 帧 / 点数 ${vecFrames[0]?.points?.length}`)
+    // L0b 节点测试按模板形态解码(保存后的节点 test 传 signalKind)
+    {
+      const vt = await api('POST', `/api/workshop/daq/${vecNode}/test`, { token, body: {} })
+      const msg = String(vt.data?.test?.message ?? JSON.stringify(vt.data ?? {}).slice(0, 120))
+      ok('L0b', '节点测试按模板形态解码(vector 点数)', vt.status === 200 && /vector\s+\d+\s*点/.test(msg), msg.slice(0, 110))
+    }
     ok('L3', '模板 sink 生效(avg/zones)且帧带批次元信息', vecFrames.length > 0 && Math.abs(vecFrames[0].metrics?.avg - 30) < 1e-6 && vecFrames[0].metrics?.zone1_avg === 15 && vecFrames[0].metrics?.zone2_avg === 40 && vecFrames[0].lineId === lineId && Boolean(vecFrames[0].runId), JSON.stringify({ m: vecFrames[0]?.metrics, line: vecFrames[0]?.lineId, run: vecFrames[0]?.runId }).slice(0, 180))
+    // L2b 帧管线生产=消费(全局 late 计数可能含控制器重启时 retained 种子重放的乱序丢弃,非帧丢失)
+    {
+      await sleep(1500)
+      const cs = (await api('GET', '/api/workshop/daq')).data?.controller ?? {}
+      const d = (k) => Number(cs[k] ?? 0) - Number(lStatsBefore[k] ?? 0)
+      ok('L2b', '帧管线生产=消费(本组)', d('produced') > 0 && d('consumed') === d('produced'), JSON.stringify({ dProduced: d('produced'), dConsumed: d('consumed'), dLate: d('dropped'), totalDropped: cs.dropped }))
+    }
     if (!plat.reused) {
       ok('L4', '用户注册的 sink 处理器生效(e2e-tag)', vecFrames.some(f => f.metrics?.e2e_tag === 1), `e2e_tag=${vecFrames[0]?.metrics?.e2e_tag}`)
     }
@@ -730,6 +745,55 @@ async function main() {
       ok('L8', '图像内容端点可回取(对象存储 → PNG)', cres.status === 200 && String(cres.headers.get('content-type') ?? '').includes('image/png') && cbuf.length === Number(imgFrame?.meta?.size), `status=${cres.status} bytes=${cbuf.length} size=${imgFrame?.meta?.size}`)
     }
 
+    // L8b 帧内容未授权访问必须被拒
+    {
+      const noauth = await fetch(PLATFORM_BASE + String(imgFrame?.contentUrl ?? ''))
+      ok('L8b', '帧内容未授权访问被拒', noauth.status === 401 || noauth.status === 403, `status=${noauth.status}`)
+    }
+
+    // L6b IHDR 自动尺寸(节点不配 width/height 路径)
+    {
+      const ihdrNodeR = await api('POST', '/api/workshop/daq', {
+        token,
+        body: {
+          name: `MQTT-IMG-IHDR-${TAG}`, templateRef: imgTplKey, driver: 'mqtt',
+          driverConfig: { host: '127.0.0.1', port: BROKER_PORT, topic: `aw/e2e/${TAG}/img-ihdr`, imageFormat: 'json', imagePath: 'data.png', staleMs: 5000 },
+          unit: 'px', min: 0, max: 255, decimals: 0, lineId, intervalMs: 1000, publishIntervalMs: 0,
+        },
+      })
+      const ihdrNode = ihdrNodeR.data?.node?.id
+      const ihdrPub = await connectClient(mqtt, brokerUrl)
+      const ihdrTimer = setInterval(() => ihdrPub.publish(`aw/e2e/${TAG}/img-ihdr`, JSON.stringify({ data: { png: png4 } }), { qos: 0 }), 2000)
+      const ht0 = Date.now()
+      await sleep(6000)
+      clearInterval(ihdrTimer)
+      const ihdrFrames = (await api('GET', `/api/workshop/daq/${ihdrNode}/frames?kind=image&from=${ht0 - 1500}&to=${Date.now()}&limit=5`)).data?.frames ?? []
+      await ihdrPub.endAsync(true).catch(() => {})
+      ok('L6b', 'PNG IHDR 自动尺寸(未配置宽高路径)', ihdrFrames.length >= 1 && ihdrFrames[0]?.meta?.width === 4 && ihdrFrames[0]?.meta?.height === 4, `${ihdrFrames.length} 帧 / ${ihdrFrames[0]?.meta?.width}x${ihdrFrames[0]?.meta?.height}`)
+    }
+
+    // L6c 二进制图像(报文字节)
+    {
+      const binNodeR = await api('POST', '/api/workshop/daq', {
+        token,
+        body: {
+          name: `MQTT-IMG-BIN-${TAG}`, templateRef: imgTplKey, driver: 'mqtt',
+          driverConfig: { host: '127.0.0.1', port: BROKER_PORT, topic: `aw/e2e/${TAG}/img-bin`, imageFormat: 'binary', imageMime: 'image/png', staleMs: 5000 },
+          unit: 'px', min: 0, max: 255, decimals: 0, lineId, intervalMs: 1000, publishIntervalMs: 0,
+        },
+      })
+      const binNode = binNodeR.data?.node?.id
+      const binPub = await connectClient(mqtt, brokerUrl)
+      const pngBuf = Buffer.from(png4, 'base64')
+      const binTimer = setInterval(() => binPub.publish(`aw/e2e/${TAG}/img-bin`, pngBuf, { qos: 0 }), 2000)
+      const bt0 = Date.now()
+      await sleep(6000)
+      clearInterval(binTimer)
+      const binFrames = (await api('GET', `/api/workshop/daq/${binNode}/frames?kind=image&from=${bt0 - 1500}&to=${Date.now()}&limit=5`)).data?.frames ?? []
+      await binPub.endAsync(true).catch(() => {})
+      ok('L6c', '二进制图像报文 → image 帧(4×4/PNG)', binFrames.length >= 1 && binFrames[0]?.meta?.width === 4 && binFrames[0]?.meta?.height === 4 && binFrames[0]?.meta?.mime === 'image/png', `${binFrames.length} 帧 / ${binFrames[0]?.meta?.mime}`)
+    }
+
     // L9 解析失败可见(节点 lastError)+ 恢复
     {
       const badPub = await connectClient(mqtt, brokerUrl)
@@ -766,8 +830,21 @@ async function main() {
       await sleep(4500)
       clearInterval(sumTimer)
       const sumPts = await samples(sumNode, st0 - 1000, Date.now())
-      await sumPub.endAsync(true).catch(() => {})
       ok('L10', '用户自定义解码器 → scalar 入库(40+2.5=42.5)', sumPts.length >= 1 && Math.abs(sumPts[sumPts.length - 1].avg - 42.5) < 0.06, `${sumPts.length} 行 / ${sumPts[sumPts.length - 1]?.avg}`)
+      // L10b 自定义解码器抛错 → 0 行 + 可读错误;恢复
+      {
+        const tBad = Date.now()
+        sumPub.publish(sumTopic, JSON.stringify({ x: 'a', y: 2 }), { qos: 0 })
+        await sleep(2200)
+        const badPts = await samples(sumNode, tBad, Date.now())
+        const badNode = await nodeOf(sumNode)
+        sumPub.publish(sumTopic, JSON.stringify({ x: 40, y: 2.5 }), { qos: 0 })
+        await sleep(3200)
+        const goodPts = await samples(sumNode, tBad + 2200, Date.now())
+        const goodNode = await nodeOf(sumNode)
+        ok('L10b', '自定义解码器异常 → 0 行 + 可读 lastError;恢复自愈', badPts.length === 0 && /x\/y/.test(String(badNode?.lastError ?? '')) && goodPts.length >= 1 && !goodNode?.lastError, `bad=${badPts.length} err=${String(badNode?.lastError ?? '').slice(0, 50)} / recovered=${goodPts.length}`)
+      }
+      await sumPub.endAsync(true).catch(() => {})
 
       const addNodeR = await api('POST', '/api/workshop/daq', {
         token,
@@ -790,6 +867,27 @@ async function main() {
     else {
       skipped('L10', '用户自定义解码器(scalar)', 'AW_E2E_BASE 复用了已运行实例')
       skipped('L11', '用户自定义解码器(vector)', 'AW_E2E_BASE 复用了已运行实例')
+      skipped('L10b', '自定义解码器异常', 'AW_E2E_BASE 复用了已运行实例')
+    }
+
+    // L12 解码配置变更(PATCH pointsPath)→ 订阅重建,旧解析配置不得继续生效
+    {
+      const cfgPub = await connectClient(mqtt, brokerUrl)
+      await api('PATCH', `/api/workshop/daq/${vecNode}`, { token, body: { driverConfig: { pointsPath: 'data.nope' } } })
+      await sleep(1500)
+      const t0 = Date.now()
+      cfgPub.publish(vecTopic, JSON.stringify({ data: { points: [10, 20, 30, 40, 50] } }), { qos: 0 })
+      await sleep(2500)
+      const badFrames = (await api('GET', `/api/workshop/daq/${vecNode}/frames?kind=vector&from=${t0}&to=${Date.now()}&limit=10`)).data?.frames ?? []
+      const badNode = await nodeOf(vecNode)
+      await api('PATCH', `/api/workshop/daq/${vecNode}`, { token, body: { driverConfig: { pointsPath: 'data.points' } } })
+      await sleep(1500)
+      const t1 = Date.now()
+      cfgPub.publish(vecTopic, JSON.stringify({ data: { points: [10, 20, 30, 40, 50] } }), { qos: 0 })
+      await sleep(3000)
+      const goodFrames = (await api('GET', `/api/workshop/daq/${vecNode}/frames?kind=vector&from=${t1}&to=${Date.now()}&limit=10`)).data?.frames ?? []
+      await cfgPub.endAsync(true).catch(() => {})
+      ok('L12', '解码配置变更 → 订阅重建生效(PATCH pointsPath)', badFrames.length === 0 && /pointsPath/.test(String(badNode?.lastError ?? '')) && goodFrames.length >= 1, `bad=${badFrames.length} err=${String(badNode?.lastError ?? '').slice(0, 50)} / restored=${goodFrames.length}`)
     }
   }
 

@@ -449,10 +449,12 @@ export const mqttDaqDriver: DaqDriver = {
     }
   },
 
-  /** 订阅参数指纹:凭据/TLS/主题/QoS 任一变化都重建订阅(绝不因 CA 配置错误抛错) */
+  /** 订阅参数指纹:凭据/TLS/主题/QoS + 全部解码配置(改解析路径/decoder 必须重建订阅,绝不因 CA 配置错误抛错) */
   fingerprint(driverConfig) {
     const c = driverConfig
-    return `${safeMqttKey(c)}|topic=${String(c.topic ?? '')}|jsonPath=${String(c.jsonPath ?? '')}|qos=${Number(c.qos ?? 1)}`
+    const decodeKeys = ['jsonPath', 'valuePath', 'pointsPath', 'metricsPath', 'imageFormat', 'payloadFormat', 'imagePath', 'imageMime', 'mimePath', 'imageWidthPath', 'imageHeightPath', 'decoder', 'imageMaxBytes']
+    const decode = decodeKeys.map(k => `${k}=${String(c[k] ?? '')}`).join('|')
+    return `${safeMqttKey(c)}|topic=${String(c.topic ?? '')}|qos=${Number(c.qos ?? 1)}|${decode}`
   },
 
   async sample({ driverConfig, signalKind, ctx }) {
@@ -500,14 +502,20 @@ export const mqttDaqDriver: DaqDriver = {
       while (!entry.raw && Date.now() - t1 < 4000) await sleep(100)
       if (entry.raw) {
         if (signalKind) {
-          const decoded = decodeMqttPayload({ raw: entry.raw, bytes: entry.bytes, json: null, config: driverConfig, signalKind, nodeId: 'test' })
-          if (decoded.kind === 'scalar') {
-            return { ok: true, message: `Broker 连接成功,${topic} → scalar ${decoded.value}(被动订阅:收到报文即入库)`, sampleValue: decoded.value, latencyMs: Date.now() - t0 }
+          try {
+            const decoded = decodeMqttPayload({ raw: entry.raw, bytes: entry.bytes, json: null, config: driverConfig, signalKind, nodeId: 'test' })
+            if (decoded.kind === 'scalar') {
+              return { ok: true, message: `Broker 连接成功,${topic} → scalar ${decoded.value}(被动订阅:收到报文即入库)`, sampleValue: decoded.value, latencyMs: Date.now() - t0 }
+            }
+            if (decoded.kind === 'vector') {
+              return { ok: true, message: `Broker 连接成功,${topic} → vector ${decoded.points.length} 点(被动订阅:收到报文即入库)`, latencyMs: Date.now() - t0 }
+            }
+            return { ok: true, message: `Broker 连接成功,${topic} → image ${decoded.mime} ${decoded.blob.length}B(被动订阅:收到报文即入库)`, latencyMs: Date.now() - t0 }
           }
-          if (decoded.kind === 'vector') {
-            return { ok: true, message: `Broker 连接成功,${topic} → vector ${decoded.points.length} 点(被动订阅:收到报文即入库)`, latencyMs: Date.now() - t0 }
+          catch (err) {
+            // 链路已通、是解析失败:不要把原因误报成"连接失败"
+            return { ok: false, message: `Broker 连接成功但载荷解码失败: ${err instanceof Error ? err.message : String(err)}`, latencyMs: Date.now() - t0 }
           }
-          return { ok: true, message: `Broker 连接成功,${topic} → image ${decoded.mime} ${decoded.blob.length}B(被动订阅:收到报文即入库)`, latencyMs: Date.now() - t0 }
         }
         const auto = describeMqttPayload(entry.raw, entry.bytes, driverConfig)
         const scalarText = auto.summary.startsWith('scalar ') ? auto.summary.slice(7).split('(')[0] : ''

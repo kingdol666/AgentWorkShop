@@ -35,6 +35,10 @@ interface PushBinding {
   runId: string | null
   /** 本批次是否已把缓存/首条值作为种子入库(未开跑时收到的值在开跑后补种一次) */
   runSeeded: boolean
+  /** 帧处理在飞(异步落对象存储期间丢弃后续帧,防高码率图像无界并发) */
+  frameBusy: boolean
+  /** 帧背压丢弃计数(诊断) */
+  frameDropped: number
   /** 故障广播节流 */
   lastWarnAt: number
 }
@@ -115,7 +119,7 @@ export abstract class DaqControllerPush extends DaqControllerState {
     const fingerprint = this.pushFingerprint(node, drv)
     // 先放一个占位绑定再订阅:retained 种子报文可能在 subscribe() 的 SUBACK 之后、
     // Promise 续体之前到达(onPushSample 需要 binding 才入库);占位 stop 在成功后替换。
-    const provisional: PushBinding = { stop: () => { /* 订阅尚未建立 */ }, fingerprint, startedAt: Date.now(), lastAt: 0, lastValue: null, runId: null, runSeeded: false, lastWarnAt: 0 }
+    const provisional: PushBinding = { stop: () => { /* 订阅尚未建立 */ }, fingerprint, startedAt: Date.now(), lastAt: 0, lastValue: null, runId: null, runSeeded: false, frameBusy: false, frameDropped: 0, lastWarnAt: 0 }
     this.pushBindings.set(nodeId, provisional)
     try {
       const stop = await drv.subscribe!({
@@ -203,8 +207,19 @@ export abstract class DaqControllerPush extends DaqControllerState {
         bind.runId = run.runId
         bind.runSeeded = false
       }
-      void this.publishPushFrame(node, sample.frame, atMs, bind).catch((err) => {
+      if (bind.frameBusy) {
+        bind.frameDropped++
+        if (Date.now() - bind.lastWarnAt > 30_000) {
+          bind.lastWarnAt = Date.now()
+          log.warn(`[daq-push] ${node.name}(${nodeId}) 帧处理拥塞,丢弃累计 ${bind.frameDropped} 帧`)
+        }
+        return
+      }
+      bind.frameBusy = true
+      void this.publishPushFrame(node, sample.frame, bind.lastAt, bind, run.runId).catch((err) => {
         this.onPushError(nodeId, err instanceof Error ? err : new Error(String(err)))
+      }).finally(() => {
+        bind.frameBusy = false
       })
       return
     }
@@ -225,21 +240,21 @@ export abstract class DaqControllerPush extends DaqControllerState {
     bind.runSeeded = true
   }
 
-  /** 推送帧经统一后处理(模板 sink + 对象存储)后入队;处理跨越异步,完成时复核绑定/产线 */
-  private async publishPushFrame(node: DaqNode, frame: NonNullable<DaqPushSample['frame']>, atMs: number, bind: PushBinding): Promise<void> {
+  /** 推送帧经统一后处理(模板 sink + 对象存储)后入队;完成时复核绑定/批次/最新性 */
+  private async publishPushFrame(node: DaqNode, frame: NonNullable<DaqPushSample['frame']>, atMs: number, bind: PushBinding, runId: string): Promise<void> {
     if (!this.running) return
     const processed = await this.processFrameSample(node, frame, atMs)
     if (!processed) return
     if (!this.running || this.pushBindings.get(node.id) !== bind) return
     const host = getDaqHostPorts()
-    if (!host?.lineRun.activeRun(node.lineId)) return
-    // 解码/处理恢复即自愈:清掉上一帧的错误(状态由 runtime.onSample 重新派生)
-    if (node.lastError) node.lastError = null
+    const liveRun = host?.lineRun.activeRun(node.lineId)
+    // 异步处理期间批次已切换:该帧不能打上新区批次的标签(宁丢不错标)
+    if (!liveRun || liveRun.runId !== runId) return
+    // 只有最新一帧完成才清错误;慢帧晚到不能抹掉新帧的错误
+    if (bind.lastAt === atMs && node.lastError) node.lastError = null
     const metrics = processed.frame.metrics ?? {}
-    const pointsAvg = processed.frame.kind === 'vector' && processed.frame.points && processed.frame.points.length > 0
-      ? processed.frame.points.reduce((a, b) => a + b, 0) / processed.frame.points.length
-      : 0
-    const value = Number(metrics.avg ?? pointsAvg)
+    // 与轮询帧口径一致(runtime 帧分支 = metrics.avg ?? 0),避免推送/轮询展示值分叉
+    const value = Number(metrics.avg ?? 0)
     this.publishSample({
       nodeId: node.id,
       templateRef: node.templateRef,

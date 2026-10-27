@@ -217,8 +217,8 @@ export async function loadAllPlugins(host, { config, paths }) {
           this.pendingTemplates.push(def)
           this._drain?.()
         },
-        registerDecoder(name, fn) {
-          this.pendingDecoders.push({ name, fn })
+        registerDecoder(name, fn, owner) {
+          this.pendingDecoders.push({ name, fn, owner })
           this._drain?.()
         },
         drain(onDriver, onProcessor, onTemplate, onDecoder) {
@@ -226,7 +226,7 @@ export async function loadAllPlugins(host, { config, paths }) {
             for (const d of this.pendingDrivers.splice(0)) onDriver(d)
             for (const p of this.pendingProcessors.splice(0)) onProcessor(p.kind, p.name, p.fn)
             for (const t of this.pendingTemplates.splice(0)) onTemplate(t)
-            for (const d of this.pendingDecoders.splice(0)) onDecoder(d.name, d.fn)
+            for (const d of this.pendingDecoders.splice(0)) onDecoder(d.name, d.fn, d.owner)
           }
           this._drain()
         },
@@ -242,7 +242,7 @@ export async function loadAllPlugins(host, { config, paths }) {
          * 返回 { kind:'scalar',value } | { kind:'vector',points,metrics? } | { kind:'image',blob,mime,width?,height?,metrics? }。
          * 必须是同步纯函数;形态须与节点模板 signalKind 一致(控制器校验)。
          */
-        registerDecoder: (name, fn) => daqExt.registerDecoder(name, fn),
+        registerDecoder: (name, fn) => daqExt.registerDecoder(name, fn, def.name),
         /** 帧消费便捷别名(= hooks.on('daq:frame') / hooks.on('daq:sample')) */
         onFrame: fn => scopedHooks.on('daq:frame', fn),
         onSample: fn => scopedHooks.on('daq:sample', fn),
