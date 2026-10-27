@@ -83,12 +83,18 @@ export default {
 
 Set `driverConfig.decoder = 'my-json'` on the node (it takes precedence over the declarative
 paths). The decoded kind must match the template's `signalKind`, otherwise the node reports a
-`lastError` and stores nothing. Decoders are synchronous pure functions; heavier frame
-processing belongs in `ctx.daq.registerProcessor(kind, name, fn)` + the template sink.
+`lastError` and stores nothing. Decoders are synchronous pure functions (a Promise return is
+rejected), registered with plugin ownership and revoked on plugin reload/disable; `input.json`
+is already parsed. Heavier frame processing belongs in
+`ctx.daq.registerProcessor(kind, name, fn)` + the template sink. Decode config (paths/decoder)
+is part of the subscription fingerprint: PATCHing it rebuilds the live subscription.
 
-> Boundaries: no XML/HTML parsing; base64 image cap 10 MB (`imageMaxBytes`); non-PNG images need
-> explicit dimensions (or width/height paths); the connection test decodes with the node's
-> template kind and reports a scalar/vector/image summary.
+> Boundaries: no XML/HTML parsing; raster MIME only (PNG/JPEG/WebP/BMP/GIF/TIFF; SVG and other
+> executable content rejected); base64 cap 10 MB (`imageMaxBytes`), side ≤16384, ≤16M pixels,
+> bounded decompression; non-PNG needs explicit dimensions/MIME (`mimePath` beats the static
+> `imageMime`, a data-URL MIME beats both); null/boolean/empty strings are never silently
+> coerced to 0; the connection test decodes with the node template kind; image brightness and
+> thumbnails only understand this repo's 8-bit gray PNG (RGB/JPEG may yield no metrics).
 
 ## Write-control safety chain
 

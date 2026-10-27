@@ -73,12 +73,16 @@ export default {
 ```
 
 节点 `driverConfig.decoder = 'my-json'` 即启用(优先于声明式路径);解码结果必须与节点模板
-的 `signalKind` 一致,否则节点 `lastError` 报错且不入库。自定义解码器是**同步纯函数**;
+的 `signalKind` 一致,否则节点 `lastError` 报错且不入库。自定义解码器是**同步纯函数**
+(返回 Promise 会被拒绝),按插件归属注册、插件重载/停用自动撤销;`input.json` 已解析。
 更重的帧加工请用 `ctx.daq.registerProcessor(kind, name, fn)` + 模板 `sink.processors`。
+解析配置(路径/decoder 等)纳入订阅指纹:PATCH 节点解析配置会重建订阅立即生效。
 
-> 边界:不解析 XML/HTML;图像 base64 上限 10MB(可配 `imageMaxBytes`);非 PNG 图像需显式
-> 给宽高(或 `imageWidthPath`/`imageHeightPath`);连接测试按节点模板形态解码并给出
-> scalar/vector/image 摘要。
+> 边界:不解析 XML/HTML;图像仅接受 PNG/JPEG/WebP/BMP/GIF/TIFF(拒绝 SVG 等可执行内容),
+> base64 上限 10MB(`imageMaxBytes`)、单边 ≤16384、像素 ≤16M,解压有界;非 PNG 需显式
+> 宽高/MIME(`mimePath` 优先于静态 `imageMime`,data URL MIME 优先);null/boolean/空串
+> 不会被静默转成 0;连接测试按节点模板形态解码并给出 scalar/vector/image 摘要;
+> 图像 sink 的亮度/缩略图只理解本仓 8-bit 灰度 PNG(RGB/JPEG 可能不产生指标)。
 
 ## 写控安全链
 
