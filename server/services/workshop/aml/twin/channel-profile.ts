@@ -25,7 +25,7 @@ export interface HybridChannelProfile {
   boundAt?: string
   /** 工艺优化 Channel 子模式:exploration(真实写入探索,无 MPC) | aml(绑定模型,trial/bayes) */
   optimizationMode?: OptimizationMode
-  /** 频道执行模式(observe 只读观察 | manual 逐动作 HITL | auto 限界自动);读取侧恒归一(manual 缺省) */
+  /** 频道执行模式(observe 只读观察 | manual 频道层强制 HITL | auto 中性缺省,由线/绑定层判定);读取侧恒归一(auto 缺省) */
   executionMode?: 'observe' | 'manual' | 'auto'
 }
 

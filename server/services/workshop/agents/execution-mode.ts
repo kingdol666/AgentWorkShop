@@ -18,8 +18,6 @@ import { getChannelTwinProfile } from '../aml/twin/channel-profile'
 
 export type ExecutionMode = 'observe' | 'manual' | 'auto'
 
-export const EXECUTION_MODES: readonly ExecutionMode[] = ['observe', 'manual', 'auto']
-
 /** 非法/空值一律回落 auto(频道层中性:不额外收紧,fail-safe 由线/绑定层承担;升级零行为变化) */
 export function normalizeExecutionMode(value: unknown): ExecutionMode {
   return value === 'observe' || value === 'manual' ? value : 'auto'
