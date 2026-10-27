@@ -595,12 +595,18 @@ async function main() {
     const t0 = Date.now()
     await sleep(4000)
     const idleRows = await samples(daqIdle, t0 - 1500, Date.now())
+    // 快速停用/启用(5s 退订窗口内重用 entry):新绑定必须能从缓存 retained 补种
+    await api('PATCH', `/api/workshop/daq/${daqIdle}`, { token, body: { enabled: false } })
+    await sleep(300)
+    await api('PATCH', `/api/workshop/daq/${daqIdle}`, { token, body: { enabled: true } })
+    await sleep(2500)
+    const afterToggle = await samples(daqIdle, t0 - 1500, Date.now())
     await api('POST', `/api/workshop/dcw/lines/${lineId}/start`, { token, body: { recipeId } })
     const seeded = await waitFor('idle retained seed on run start', async () => {
       const pts = await samples(daqIdle, t0 - 1500, Date.now())
       return pts.length >= 1 ? pts : null
     }, 10_000, 600)
-    ok('K1', '停线期间 retained 状态在开跑后补种一次', idleRows.length === 0 && seeded.length >= 1 && Math.abs(seeded[0].avg - 23.4) < 0.06, `停线期 ${idleRows.length} 行 / 开跑 ${seeded.length} 行=${seeded[0]?.avg}`)
+    ok('K1', '停线期间 retained 状态在开跑后补种一次(含快速停用/启用)', idleRows.length === 0 && afterToggle.length === 0 && seeded.length >= 1 && Math.abs(seeded[0].avg - 23.4) < 0.06, `停线 ${idleRows.length} / 启停后 ${afterToggle.length} / 开跑 ${seeded.length} 行=${seeded[0]?.avg}`)
     // K2:网关停止时外部 /ingest 必须 503(不能 200 却无行)
     await api('POST', '/api/workshop/daq/controller', { token, body: { action: 'stop' } })
     const ing = await api('POST', `/api/workshop/daq/${daqId}/ingest`, { token, body: { value: 1 } })

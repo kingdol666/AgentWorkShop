@@ -375,7 +375,11 @@ export const mqttDaqDriver: DaqDriver = {
     if (!conn.connected) throw new Error(`MQTT 未连接(重连中): ${conn.lastError ?? brokerUrl(cfg)}`)
     const qos = Math.min(2, Math.max(0, Number(cfg.qos ?? 1)))
     const jsonPath = cfg.jsonPath ? String(cfg.jsonPath) : undefined
+    // delivered:本消费者是否已通过 message 事件收到过报文。用于在 subscribe 完成后
+    // 补发缓存里的 retained(只读订阅/快速重启重用 entry 时,broker 不会重发 retained)。
+    let delivered = false
     const consumer: MqttTopicConsumer = (raw, at) => {
+      delivered = true
       try {
         const value = extractNumeric(raw, jsonPath)
         input.onSample({ value, atMs: at })
@@ -396,11 +400,13 @@ export const mqttDaqDriver: DaqDriver = {
       if (entry.consumers.size === 0 && conn.topics.get(topic) === entry) conn.topics.delete(topic)
       throw err
     }
-    // 只读订阅(测试连接/readMqttValue)先拿到 retained 时不会消耗种子;
-    // 推送绑定后来挂到同一 entry 上,broker 不会重发 retained —— 这里用缓存补一次种子。
-    if (entry.retained && entry.raw && !entry.seeded) {
+    // 缓存里已有 retained 且本消费者尚未收到任何报文:补发一次当前状态。
+    // 覆盖三种场景:①只读订阅(test/readMqttValue)先拿到 retained;②快速停用/启用
+    // 在 5s 退订窗口内重用 entry;③同 topic 的第二个节点后加入。
+    // 断线重连不会走到这里(消费者已在 entry 上,subscribe() 不会被再次调用)。
+    if (entry.retained && entry.raw && !delivered) {
       entry.seeded = true
-      consumer(entry.raw, Date.now())
+      consumer(entry.raw, entry.at || Date.now())
     }
     let stopped = false
     return () => {

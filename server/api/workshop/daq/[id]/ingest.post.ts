@@ -102,6 +102,11 @@ export default defineApiHandler(async (event) => {
   }
 
   if (!node.enabled) throw new AppError(409, 'CONFLICT', `数采节点「${node.name}」已停用,不接受推送。`)
+  // 网关停止时消费侧会丢弃队列帧(采集暂停):必须在解析/上传任何载荷**之前**拒绝,
+  // 否则图像会先落对象存储再返回 503,留下无引用对象。
+  if (!getDaqController().running) {
+    throw new AppError(503, 'UNAVAILABLE', 'DAQ 网关已停止,外部入库暂停;请先启动采集网关(POST /api/workshop/daq/controller action=start)')
+  }
   const tpl = findDaqTemplate(node.templateKey)
   const kind = tpl?.signalKind ?? 'scalar'
   const body = await readBody<IngestBody>(event) ?? {}
@@ -179,10 +184,6 @@ export default defineApiHandler(async (event) => {
     env = { nodeId: node.id, templateRef: node.templateRef, value, state, at }
   }
 
-  // 网关停止时消费侧会丢弃队列帧(采集暂停):外部入库必须如实失败,不能 200 却无行。
-  if (!getDaqController().running) {
-    throw new AppError(503, 'UNAVAILABLE', 'DAQ 网关已停止,外部入库暂停;请先启动采集网关(POST /api/workshop/daq/controller action=start)')
-  }
   await getDaqQueue().then(q => q.publish(env))
   return {
     accepted: true,
