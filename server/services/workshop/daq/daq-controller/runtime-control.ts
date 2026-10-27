@@ -29,6 +29,8 @@ export abstract class DaqControllerRuntimeControl extends DaqControllerFrames {
 
   stopAll(): AepDaqControllerState {
     this.running = false
+    // 网关停止 = 采集停止:被动订阅一并回收(否则 MQTT 节点在"暂停"期间仍会收报文入库)
+    void this.stopAllPushBindings()
     for (const n of this.repo.all()) {
       if (n.enabled) n.state = 'offline'
     }

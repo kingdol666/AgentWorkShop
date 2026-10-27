@@ -106,6 +106,12 @@ export abstract class DcwControllerActuation extends DcwControllerState {
     if (!driver.read) {
       return { ok: false, value: null, raw: null, message: `驱动 ${node.driver} 不支持读取(仅观测型通道)`, at }
     }
+    // 驱动具备 read 原语 ≠ 该节点配置了读通道(如 MQTT 需要 readTopic)。
+    // 未配置时直接返回说明,不进入 applyReadResult —— 否则周期读会每 5s 给节点记一条
+    // lastReadError 噪音,把"仅下行写控节点"误显示成读取故障。
+    if (driver.canRead && !driver.canRead(node.driverConfig)) {
+      return { ok: false, value: null, raw: null, message: `驱动 ${node.driver} 未配置回读通道(readTopic),不支持读取回读`, at }
+    }
     let r: { ok: boolean, message: string, eng: number | null, raw: number | null }
     try {
       r = await driver.read({ domain: { min: node.min, max: node.max }, driverConfig: node.driverConfig })

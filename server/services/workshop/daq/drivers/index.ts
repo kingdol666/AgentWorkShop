@@ -15,15 +15,15 @@
  *   s7-stub.ts             S7 预留(未安装栈时的显式拒绝桩)
  *   registry.ts            驱动注册表与旧命名归一解析
  */
-export type { DaqSampleCtx, DaqDriverInput, DaqFrameSample, DaqDriver } from './shared'
+export type { DaqSampleCtx, DaqDriverInput, DaqFrameSample, DaqDriver, DaqPushInput, DaqPushSample } from './shared'
 export { mockDaqDriver } from './mock'
 export { evictModbusConn, closeModbusSafely, withModbusConn, modbusKey, getModbusConn, decodeRegisters, registerOffset, classifyCommError, WORDS_OF, modbusTcpDriver } from './modbus-tcp'
 export type { ModbusConn, ModbusTransport } from './modbus-tcp'
 export { opcuaKey, getOpcUaConn, evictOpcUaConn, opcUaDriver } from './opcua'
 export type { OpcUaConn } from './opcua'
 export { modbusRtuDriver } from './modbus-rtu'
-export { extractNumeric, parseHeaders, mqttDaqDriver } from './mqtt'
-export type { MqttConn } from './mqtt'
+export { extractNumeric, parseHeaders, mqttDaqDriver, readMqttValue, closeMqttPool } from './mqtt'
+export type { MqttConn, MqttTopicEntry } from './mqtt'
 export { httpDaqDriver } from './http'
 export { registerPluginDriver, listPluginDrivers, clearPluginDrivers, listPluginDriverMetas, normalizeDriverKind, requireDriverKind, migrateDriverKind, resolveDaqDriver, probeDriverAvailability, driverCatalog } from './registry'
 export type { PluginDriverMeta } from './registry'

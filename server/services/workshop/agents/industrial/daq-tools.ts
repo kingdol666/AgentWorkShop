@@ -9,6 +9,7 @@ import { getAgentNodeBindingRepo } from '../node-bindings.repo'
 import { getDaqNodeRepo } from '../../daq/daq-node.repo'
 import { getDcwController } from '../../dcw/dcw-controller'
 import { channelBoundLineId } from './ops-tools'
+import { queryLatest, queryTaggedLatest } from '../../daq/storage/latest-window'
 
 /**
  * 数采目标集解析(工具共用鉴权面):
@@ -72,6 +73,7 @@ export async function toolDaqQuery(agentId: string, args: {
   to_ms?: number | string
   bucket_ms?: number | string
   limit?: number | string
+  agg?: string
 }): Promise<{ text: string, isError?: boolean }> {
   const auth = daqTargetsOf(agentId, args.node_id, args.line_id)
   if ('error' in auth) return auth.error
@@ -96,6 +98,12 @@ export async function toolDaqQuery(agentId: string, args: {
   if (fromMs >= toMs) {
     return { text: `时间窗非法:from_ms(${fromMs})必须小于 to_ms(${toMs})。`, isError: true }
   }
+  // 聚合口径:avg(缺省)/min/max 作用于降采样桶;最新值始终取库内最后一条原始样本
+  const aggRaw = String(args.agg ?? '').trim().toLowerCase()
+  if (aggRaw && !['avg', 'min', 'max'].includes(aggRaw)) {
+    return { text: `agg 只能是 avg|min|max(收到 ${String(args.agg)})。`, isError: true }
+  }
+  const agg = (aggRaw || 'avg') as 'avg' | 'min' | 'max'
   // 时间间隔参数(bucket_ms 降采样桶宽):缺省与下限来自 daq.query.*(live 配置,热重载)
   const qCfg = daqRuntimeSettings().query
   if (provided(args.bucket_ms) && (!Number.isFinite(Number(args.bucket_ms)) || Number(args.bucket_ms) < 0)) {
@@ -121,6 +129,12 @@ export async function toolDaqQuery(agentId: string, args: {
   const { getTsdb, tsdbReady } = await import('../../daq/storage')
   await tsdbReady
   const tsdb = getTsdb()
+  // 各节点库内最新样本(用于「库内滞后」;查询本身走 tail 取窗口末尾,末元素才是最新)
+  let latestMap = new Map<string, { tsMs: number, value: number }>()
+  try {
+    latestMap = await tsdb.latest()
+  }
+  catch { /* 新鲜度指标可选,读不到不影响查询 */ }
 
   const sections: string[] = []
   let okNodes = 0
@@ -150,7 +164,7 @@ export async function toolDaqQuery(agentId: string, args: {
       // 是否有可用的打标过滤:显式 id、或活动批次(配方/批次 id 齐备)
       const useTagged = Boolean(scopeRun.recipeId || scopeRun.runId || scopeRun.productId)
       if (useTagged) {
-        const series = await tsdb.queryTagged({
+        const series = await queryTaggedLatest(tsdb, {
           lineId: nodeLine || undefined,
           productId: scopeRun.productId,
           recipeId: scopeRun.recipeId,
@@ -164,7 +178,7 @@ export async function toolDaqQuery(agentId: string, args: {
         points = series.get(nodeId) ?? []
       }
       else {
-        points = await tsdb.query(nodeId, { fromMs, toMs, bucketMs, limit })
+        points = await queryLatest(tsdb, nodeId, { fromMs, toMs, bucketMs, limit })
       }
       const scopeTag = scopeRun.source === 'explicit'
         ? `批次过滤(显式)${scopeRun.runId ? ` run=${scopeRun.runId}` : ''}${scopeRun.recipeId ? ` 配方=${scopeRun.recipeId}` : ''}${scopeRun.productId ? ` 产品=${scopeRun.productId}` : ''}`
@@ -173,7 +187,7 @@ export async function toolDaqQuery(agentId: string, args: {
           : wantAll
             ? '全量窗口(scope=all,不做配方过滤)'
             : '未过滤(该产线当前未开跑 → 无活动批次可限定)'
-      const head = `■ ${node.name}(${ch})单位 ${node.unit},正常量程 ${node.min}~${node.max}${node.unit},当前状态 ${node.state},时间窗 ${new Date(fromMs).toISOString().slice(0, 16)} ~ ${new Date(toMs).toISOString().slice(0, 16)}${bucketMs ? `(降采样 ${bucketMs}ms)` : ''}\n  ${scopeTag}`
+      const head = `■ ${node.name}(${ch})单位 ${node.unit},正常量程 ${node.min}~${node.max}${node.unit},当前状态 ${node.state},时间窗 ${new Date(fromMs).toISOString().slice(0, 16)} ~ ${new Date(toMs).toISOString().slice(0, 16)}(降采样 ${bucketMs}ms,聚合 ${agg})\n  ${scopeTag}`
       // 工况判读容器(具体判读在 values 计算后追加)
       const readout: string[] = []
       if (points.length === 0) {
@@ -181,8 +195,23 @@ export async function toolDaqQuery(agentId: string, args: {
         okNodes++
         continue
       }
-      const values = points.map(p => p.value ?? p.avg ?? 0).filter(Number.isFinite)
+      // 聚合口径:桶上取 avg/min/max;原始点直接取值
+      const pick = (p: { value?: number, avg?: number, min?: number, max?: number }): number => {
+        if (agg === 'min') return p.min ?? p.value ?? p.avg ?? Number.NaN
+        if (agg === 'max') return p.max ?? p.value ?? p.avg ?? Number.NaN
+        return p.value ?? p.avg ?? Number.NaN
+      }
+      const values = points.map(pick).filter(Number.isFinite)
+      if (values.length === 0) {
+        sections.push(`${head}\n  窗口内有桶但无可解析数值(数据异常)`)
+        failedNodes++
+        continue
+      }
+      // tail 取数保证 points 末元素 = 窗口内最新;最新值取末点(不是全局最新,窗口外不算)
       const latest = values[values.length - 1]!
+      const lastAt = points[points.length - 1]!.at
+      const dbLatest = latestMap.get(nodeId)
+      const dbAgeS = dbLatest == null ? null : Math.max(0, Math.round((Date.now() - dbLatest.tsMs) / 1000))
       // 工况判读:最新值相对活动配方监控窗口/同线数控设定的位置(数据 → 语义)
       const latestRaw = latest
       const rw = node.lineId ? getActiveLineRun(node.lineId) : null
@@ -199,7 +228,15 @@ export async function toolDaqQuery(agentId: string, args: {
         }
       }
       const avg = values.reduce((a, b) => a + b, 0) / values.length
-      const tail = points.slice(-12).map(p => `${new Date(p.at).toISOString().slice(11, 19)}=${p.value != null ? p.value : `avg ${Number((p.avg ?? 0).toFixed(2))}`}`)
+      const tail = points.slice(-12).map((p) => {
+        const v = pick(p)
+        const at = new Date(p.at).toISOString().slice(11, 19)
+        if (!bucketMs) return `${at}=${Number(v.toFixed(3))}`
+        return `${at}=${agg} ${Number(v.toFixed(2))}${p.cnt != null ? `(n=${p.cnt})` : ''}`
+      })
+      // 数据面声明:数值来自时序库(daq_samples),最新样本时间/滞后可核验 ——
+      // Agent 不必(也不应)假设"刚发生的写入立刻可读",滞后秒数就是它的证据。
+      readout.push(`数据源=时序库(库内样本);窗口末样本 ${new Date(lastAt).toISOString().slice(11, 19)}${dbAgeS != null ? `,库内最新 ${new Date(dbLatest!.tsMs).toISOString().slice(11, 19)}(滞后 ${dbAgeS}s)` : ''}`)
       sections.push(
         `${head}\n  样本 ${values.length} 点 | 最新 ${latest}${node.unit} | 均值 ${Number(avg.toFixed(3))} | 最小 ${Math.min(...values)} | 最大 ${Math.max(...values)}\n  最近序列: ${tail.join('; ')}${readout.length > 0 ? `\n  工况判读: ${readout.join(' | ')}` : ''}`,
       )

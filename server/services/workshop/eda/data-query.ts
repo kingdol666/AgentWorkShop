@@ -17,6 +17,7 @@ import { lineMode } from '../permissions'
 import { getDaqNodeRepo } from '../daq/daq-node.repo'
 import { getDcwController } from '../dcw/dcw-controller'
 import { getActiveLineRun } from '../dcw/line-run'
+import { queryTaggedLatest } from '../daq/storage/latest-window'
 
 export const QUERY_NODES_MAX = 8
 export const QUERY_POINTS_PER_NODE = 2000
@@ -164,7 +165,9 @@ export async function dataQuery(user: ResolvedUser, inp: DataQueryInput): Promis
     for (const nodeId of nodeIds) {
       const node = repo.byId(nodeId)
       if (!node) continue
-      const tagged = await tsdb.queryTagged({
+      // 图表/看板是实时面:窗口超 2000 桶时取**末尾**段(仍升序),
+      // 不能把窗口最旧段画成"最近趋势"(2026-10-27 MQTT 审计同类缺陷)。
+      const tagged = await queryTaggedLatest(tsdb, {
         lineId: node.lineId || lineId || undefined,
         runId: inp.runId || undefined,
         recipeId: inp.recipeId || undefined,

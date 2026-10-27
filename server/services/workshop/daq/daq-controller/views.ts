@@ -10,6 +10,7 @@ import type { DaqNode } from '../daq-node'
 import { g_queueLost } from './helpers'
 import { getDaqQueue } from '../bus'
 import { getTsdb, tsdbReady } from '../storage'
+import { queryLatest } from '../storage/latest-window'
 
 export abstract class DaqControllerViews extends DaqControllerTsdbTwin {
   protected emitNodeChanged(op: AepDaqNodeChange['op'], node: DaqNode | null): void {
@@ -74,12 +75,14 @@ export abstract class DaqControllerViews extends DaqControllerTsdbTwin {
     return this.repo.byId(id)
   }
 
-  /** 节点历史(时序库查询透传;raw 或 bucket 聚合形态) */
+  /** 节点历史(时序库查询透传;raw 或 bucket 聚合形态)。
+   *  实时面固定取**窗口末尾** limit 段(tail):样本/趋势/Agent 都按「末元素=最新」消费,
+   *  窗口超 limit 时不能拿最旧段冒充最新(2026-10-27 MQTT 审计实测的静默说谎)。 */
   async samples(id: string, opts: { fromMs?: number, toMs?: number, bucketMs?: number, limit?: number }) {
     this.ensureLoop()
     await tsdbReady
     const node = this.repo.byId(id)
     if (!node) throw new AppError(404, 'NOT_FOUND', `数采节点不存在: ${id}`)
-    return getTsdb().query(id, opts)
+    return queryLatest(getTsdb(), id, opts)
   }
 }
