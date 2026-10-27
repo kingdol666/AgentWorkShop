@@ -278,7 +278,7 @@ export async function toolRecipePropose(agentId: string, args: {
   }
 
   // 批准不等于授权仍有效:复核绑定/认证/运行门/产线 grant(审批期间可能被撤销)
-  const stale = await revalidateApprovedAction(agentId, recipe, 'dispatch', 'recipe_propose', { recipe_id: recipeId })
+  const stale = await revalidateApprovedAction(agentId, recipe, 'dispatch', 'recipe_propose', { recipe_id: recipeId }, gate.activeContext)
   if (stale) return stale
 
   // ---------- ⑦b 批准(choice 已由 decide 链 fail-closed 归一):选定包整批下发 ----------

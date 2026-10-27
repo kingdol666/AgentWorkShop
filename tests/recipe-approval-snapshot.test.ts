@@ -13,11 +13,11 @@ const { DcwNode } = await import('../server/services/workshop/dcw/dcw-node')
 const { getDcwNodeRepo } = await import('../server/services/workshop/dcw/dcw-node.repo')
 const { getDcwProductRepo } = await import('../server/services/workshop/dcw/dcw-product.repo')
 const { getDcwRecipeRepo } = await import('../server/services/workshop/dcw/dcw-recipe.repo')
-const { setActiveLineRun, clearActiveLineRun } = await import('../server/services/workshop/dcw/line-run')
+const { setActiveLineRun, clearActiveLineRun, getActiveLineRun, getAllActiveLineRuns } = await import('../server/services/workshop/dcw/line-run')
 const { mockDcwDriver, mockState } = await import('../server/services/workshop/dcw/drivers/mock')
 const { getAgentNodeBindingRepo } = await import('../server/services/workshop/agents/node-bindings.repo')
 const { getToolApprovals } = await import('../server/services/workshop/agents/tool-approvals')
-const { toolRecipeApply } = await import('../server/services/workshop/agents/industrial/ops-tools')
+const { toolRecipeApply, toolRecipeTrial, toolRecipeRollback } = await import('../server/services/workshop/agents/industrial/ops-tools')
 const { openWorkshopDb } = await import('../server/services/workshop/db/database')
 const { createAlarmEventRepo, createApprovalHistoryRepo, createApprovalRequestRepo, createAuditRepo } = await import('../server/services/workshop/db/ops.repo')
 const { bindOpsRepos } = await import('../server/services/workshop/ops/ops')
@@ -58,6 +58,7 @@ function fixture(id: string) {
     agentId, nodes, recipe,
     cleanup() {
       clearActiveLineRun(lineId)
+      for (const active of getAllActiveLineRuns().filter(run => run.recipeId === recipe.id)) clearActiveLineRun(active.lineId)
       for (const r of recipes.listRuns().filter(r => r.recipeId === recipe.id && !r.endedAt)) recipes.closeRun(r.id)
       getToolApprovals().cancelAllForAgent(agentId, 'Local test completed')
     },
@@ -70,7 +71,7 @@ async function pendingCard(agentId: string) {
     if (card) return card
     await new Promise(resolve => setTimeout(resolve, 10))
   }
-  assert.fail('recipe_apply did not create a pending approval')
+  assert.fail('recipe operation did not create a pending approval')
 }
 
 for (const change of ['version-and-params', 'version-only', 'params-without-version'] as const) {
@@ -105,10 +106,157 @@ for (const change of ['version-and-params', 'version-only', 'params-without-vers
   })
 }
 
-test('recipe_apply rejects a change during the asynchronous post-approval recheck', async (t) => {
+for (const change of ['line', 'product', 'recipe', 'run'] as const) {
+  test(`recipe_apply rejects a ${change} context change during pending approval without actuation`, async (t) => {
+    const f = fixture(`stale-context-${change}`)
+    t.after(f.cleanup)
+    const driverWrite = t.mock.method(mockDcwDriver, 'write', mockDcwDriver.write)
+    const result = toolRecipeApply(f.agentId, { recipe_id: f.recipe.id, reason: 'Bind approval to its active production context' })
+    const card = await pendingCard(f.agentId)
+    const approvedContext = (card.payload as { context: { lineId: string, runId: string, recipeId: string, productId: string } }).context
+    const active = getActiveLineRun(f.recipe.lineId)!
+    assert.deepEqual(approvedContext, {
+      lineId: f.recipe.lineId,
+      runId: active.runId,
+      recipeId: f.recipe.id,
+      productId: f.recipe.productId,
+    })
+
+    if (change === 'line') {
+      clearActiveLineRun(active.lineId)
+      setActiveLineRun({ ...active, lineId: `${active.lineId}-rebound` })
+    }
+    else if (change === 'product') {
+      setActiveLineRun({ ...active, productId: `${active.productId}-rebound` })
+    }
+    else if (change === 'recipe') {
+      setActiveLineRun({ ...active, recipeId: `${active.recipeId}-rebound` })
+    }
+    else {
+      getDcwRecipeRepo().closeRun(active.runId)
+      const replacement = getDcwRecipeRepo().createRun(f.recipe)
+      setActiveLineRun({ ...active, runId: replacement.id, startedAt: replacement.startedAt })
+    }
+    const runCountAfterContextChange = getDcwRecipeRepo().listRuns().length
+
+    getToolApprovals().decide(card.id, true, 'Approve the displayed context only', 'local-owner')
+    const out = await result
+    assert.equal(out.isError, true)
+    assert.match(out.text, /已批准.*(上下文已变化|授权已失效)/)
+    assert.equal(driverWrite.mock.callCount(), 0, `${change} context change must be refused before mock PLC actuation`)
+    assert.equal(getDcwRecipeRepo().listRuns().length, runCountAfterContextChange, `${change} context change must not create an execution batch`)
+    for (const { node } of f.nodes) assert.equal(node.value, null)
+  })
+}
+
+for (const change of ['line', 'product', 'recipe', 'run'] as const) {
+  test(`recipe_trial rejects a ${change} context change during pending approval without actuation`, async (t) => {
+    const f = fixture(`trial-stale-context-${change}`)
+    t.after(f.cleanup)
+    const driverWrite = t.mock.method(mockDcwDriver, 'write', mockDcwDriver.write)
+    const result = toolRecipeTrial(f.agentId, {
+      recipe_id: f.recipe.id,
+      params: f.nodes.map(({ node, value }) => ({ node_id: node.id, value: value + 5 })),
+      hypothesis: 'Bind the recipe-trial approval to its active production context',
+    })
+    const card = await pendingCard(f.agentId)
+    const approvedContext = (card.payload as { context: { lineId: string, runId: string, recipeId: string, productId: string } }).context
+    const active = getActiveLineRun(f.recipe.lineId)!
+    assert.deepEqual(approvedContext, {
+      lineId: f.recipe.lineId,
+      runId: active.runId,
+      recipeId: f.recipe.id,
+      productId: f.recipe.productId,
+    })
+
+    if (change === 'line') {
+      clearActiveLineRun(active.lineId)
+      setActiveLineRun({ ...active, lineId: `${active.lineId}-rebound` })
+    }
+    else if (change === 'product') {
+      setActiveLineRun({ ...active, productId: `${active.productId}-rebound` })
+    }
+    else if (change === 'recipe') {
+      setActiveLineRun({ ...active, recipeId: `${active.recipeId}-rebound` })
+    }
+    else {
+      getDcwRecipeRepo().closeRun(active.runId)
+      const replacement = getDcwRecipeRepo().createRun(f.recipe)
+      setActiveLineRun({ ...active, runId: replacement.id, startedAt: replacement.startedAt })
+    }
+    const runCountAfterContextChange = getDcwRecipeRepo().listRuns().length
+
+    getToolApprovals().decide(card.id, true, 'Approve the displayed context only', 'local-owner')
+    const out = await result
+    assert.equal(out.isError, true)
+    assert.match(out.text, /已批准.*(上下文已变化|授权已失效)/)
+    assert.equal(driverWrite.mock.callCount(), 0, `${change} context change must be refused before mock PLC actuation`)
+    assert.equal(getDcwRecipeRepo().listRuns().length, runCountAfterContextChange, `${change} context change must not create a trial execution record`)
+    for (const { node } of f.nodes) assert.equal(node.value, null)
+  })
+}
+
+for (const change of ['line', 'product', 'recipe', 'run'] as const) {
+  test(`recipe_rollback(dispatch=true) rejects a ${change} context change during pending approval without actuation`, async (t) => {
+    const f = fixture(`rollback-stale-context-${change}`)
+    t.after(f.cleanup)
+    const driverWrite = t.mock.method(mockDcwDriver, 'write', mockDcwDriver.write)
+    const currentParams = f.recipe.params.map(p => ({ ...p, value: p.value + 5 }))
+    getDcwRecipeRepo().update(f.recipe.id, { params: currentParams })
+    assert.equal(f.recipe.version, 2, 'the fixture must retain v1 as an actual rollback target')
+    assert.deepEqual(
+      getDcwRecipeRepo().versions(f.recipe.id).find(version => version.version === 1)?.params.map(p => p.value),
+      [50, 60],
+      'rollback target v1 must contain the original recipe parameters',
+    )
+
+    const result = toolRecipeRollback(f.agentId, {
+      recipe_id: f.recipe.id,
+      version: 1,
+      dispatch: true,
+      reason: 'Bind a unified rollback to its active production context',
+    })
+    const card = await pendingCard(f.agentId)
+    const approvedContext = (card.payload as { context: { lineId: string, runId: string, recipeId: string, productId: string } }).context
+    const active = getActiveLineRun(f.recipe.lineId)!
+    assert.deepEqual(approvedContext, {
+      lineId: f.recipe.lineId,
+      runId: active.runId,
+      recipeId: f.recipe.id,
+      productId: f.recipe.productId,
+    })
+    if (change === 'line') {
+      clearActiveLineRun(active.lineId)
+      setActiveLineRun({ ...active, lineId: `${active.lineId}-rebound` })
+    }
+    else if (change === 'product') {
+      setActiveLineRun({ ...active, productId: `${active.productId}-rebound` })
+    }
+    else if (change === 'recipe') {
+      setActiveLineRun({ ...active, recipeId: `${active.recipeId}-rebound` })
+    }
+    else {
+      getDcwRecipeRepo().closeRun(active.runId)
+      const replacement = getDcwRecipeRepo().createRun(f.recipe)
+      setActiveLineRun({ ...active, runId: replacement.id, startedAt: replacement.startedAt })
+    }
+    const runCountAfterContextChange = getDcwRecipeRepo().listRuns().length
+
+    getToolApprovals().decide(card.id, true, 'Approve the displayed context only', 'local-owner')
+    const out = await result
+    assert.equal(out.isError, true)
+    assert.match(out.text, /已批准.*(上下文已变化|授权已失效)/)
+    assert.equal(driverWrite.mock.callCount(), 0, `${change} context change must be refused before mock PLC actuation`)
+    assert.equal(getDcwRecipeRepo().listRuns().length, runCountAfterContextChange, `${change} context change must not create a rollback execution record`)
+    for (const { node } of f.nodes) assert.equal(node.value, null)
+  })
+}
+
+test('recipe_apply rejects an active-context change before the post-approval dispatch continuation', async (t) => {
   const f = fixture('post-recheck')
   t.after(f.cleanup)
   const driverWrite = t.mock.method(mockDcwDriver, 'write', mockDcwDriver.write)
+  const runsBefore = getDcwRecipeRepo().listRuns().length
   const g = globalThis as unknown as { __workshopManager?: unknown }
   const previousManager = g.__workshopManager
   t.after(() => {
@@ -116,13 +264,18 @@ test('recipe_apply rejects a change during the asynchronous post-approval rechec
   })
   let rechecked = false
   g.__workshopManager = {
-    deps: { repos: { channelAgents: { findById() {
-      rechecked = true
-      queueMicrotask(() => {
-        f.recipe.params[1]!.value = 75
-      })
-      return undefined
-    } } } },
+    deps: {
+      repos: {
+        channelAgents: { findById() {
+          rechecked = true
+          queueMicrotask(() => {
+            const active = getActiveLineRun(f.recipe.lineId)!
+            setActiveLineRun({ ...active, productId: `${active.productId}-changed` })
+          })
+          return undefined
+        } },
+      },
+    },
   }
   const result = toolRecipeApply(f.agentId, { recipe_id: f.recipe.id, reason: 'Check the last await before dispatch' })
   const card = await pendingCard(f.agentId)
@@ -130,8 +283,9 @@ test('recipe_apply rejects a change during the asynchronous post-approval rechec
   const out = await result
   assert.equal(rechecked, true)
   assert.equal(out.isError, true)
-  assert.match(out.text, /重新提交 recipe_apply/)
+  assert.match(out.text, /上下文已变化/)
   assert.equal(driverWrite.mock.callCount(), 0)
+  assert.equal(getDcwRecipeRepo().listRuns().length, runsBefore)
 })
 
 test('recipe_apply dispatches the unchanged approved batch through the mock driver and readback', async (t) => {

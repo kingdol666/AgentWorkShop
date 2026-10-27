@@ -7,6 +7,7 @@ import type { AgentEvent, AgentRunContext, AgentRunRequest, SupervisionDecision,
 import type { HostToolCallRequest } from '../adapters/omp-rpc-client'
 import { extractJsonArray, parseSteerBanner, peerPrompt, supervisePrompt, systemManual, workerPrompt } from '../prompt-builder'
 import { log } from './helpers'
+import { recordSupervisionToolHistory } from './supervision-history'
 
 export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle {
   /** 引擎无关工具面:REST/MCP 桥直调与 omp 内部 host_tool_call 共用同一实现 */
@@ -97,6 +98,12 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
     return new Promise<SupervisionDecision[]>((resolve) => {
       let assistantText = ''
       let resolved = false
+      const activeRootTask = snapshot.tasks.find(task =>
+        task.id === snapshot.activeRootId
+        && task.assigneeId === this.selfAgentId
+        && ['SUBMITTED', 'ASSIGNED', 'WORKING', 'WAITING'].includes(task.state),
+      )
+      let taskHistoryWrites = Promise.resolve()
 
       const finish = (decisions: SupervisionDecision[]) => {
         if (resolved) return
@@ -107,7 +114,7 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
         unsub()
         if (hardTimer) clearTimeout(hardTimer)
         signalUnsub?.()
-        resolve(decisions)
+        void taskHistoryWrites.then(() => resolve(decisions), () => resolve(decisions))
       }
 
       const abortTurn = (reason: string): void => {
@@ -118,6 +125,16 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
       }
 
       const unsub = this.client!.onEvent((event) => {
+        if (activeRootTask && (event.type === 'tool_execution_start' || event.type === 'tool_execution_end')) {
+          // Lead supervision is not a workerTurn, so its host-tool events do not
+          // pass through promptAndStream's task event mapper. Persist them on the
+          // active root while it is open, preserving tool-call/result chronology.
+          taskHistoryWrites = taskHistoryWrites.then(async () => {
+            await recordSupervisionToolHistory(ctx.workspace, activeRootTask.id, event)
+          }).catch((err) => {
+            log.error(`[OmpRpcAgent:${this.selfAgentId}] supervise task-history write failed:`, err)
+          })
+        }
         if (event.type === 'message_update' && event.assistantMessageEvent?.type === 'text_delta') {
           this.streaming = true
           assistantText += event.assistantMessageEvent.delta ?? ''
