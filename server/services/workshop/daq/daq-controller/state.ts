@@ -162,8 +162,15 @@ export abstract class DaqControllerState extends DaqControllerContracts {
       vector: tpl?.vector,
     })
     if (res == null || typeof res !== 'object' || !('frame' in res) || res.frame == null) return res
-    // 下沉管线(生产侧;单步失败保留原帧,永不抛出 —— 见 frames.ts runSinkPipeline)
-    const raw = res.frame
+    return this.processFrameSample(node, res.frame, now)
+  }
+
+  /**
+   * 帧后处理(轮询采样与推送订阅共用):模板 sink 下沉管线 → 图像落对象存储。
+   * 返回队列信封帧(vector 点列 / image 引用 + 完整性指纹);非法帧返回 null。
+   */
+  protected async processFrameSample(node: DaqNode, raw: DaqFrameSample['frame'], now: number): Promise<{ frame: NonNullable<DaqSampleEnvelope['frame']> } | null> {
+    const tpl = findDaqTemplate(node.templateKey)
     // 契约守卫:帧联合只有 vector/image;驱动返回未知 kind(如误包 scalar)直接丢帧,
     // 绝不蒙成 image 走 blob 管线(会在 sink 派生处炸出 undefined.length)
     if (raw.kind !== 'vector' && raw.kind !== 'image') return null

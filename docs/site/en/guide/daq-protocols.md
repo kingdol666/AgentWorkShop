@@ -48,6 +48,48 @@ curl -X POST $API/api/workshop/daq/$NODE_ID/test -H "Authorization: Bearer $TOKE
 - **Batch tagging**: every sample taken while running is tagged `product/recipe/runId`,
   so data is queried per batch.
 
+## MQTT structured decoding and user sinks
+
+An MQTT node can turn a structured JSON payload (or plain numbers / binary images) into one
+typed sample: `scalar` (a number), `vector` (a numeric array) or `image`. The mapping is
+declared in the node's `driverConfig` **at node creation**, and the result is stored with the
+node/template/line/batch metadata: scalars in `daq_samples`; vectors and images in
+`daq_frames` (points + metrics; image object key + dimensions + sha256 + metrics).
+
+| Template kind | driverConfig (set at node creation) | Storage |
+|---|---|---|
+| scalar | `jsonPath` (e.g. `data.temperature`; empty for plain-number payloads) | `daq_samples` |
+| vector | `pointsPath` (default `points`), optional `metricsPath` | `daq_frames` (points/metrics) |
+| image | `imageFormat=json|binary`, `imagePath` (default `png`), `imageMime`, optional `imageWidthPath`/`imageHeightPath` | `daq_frames` (objectKey/mime/width/height/sha256/metrics) |
+
+Example: `{"data":{"points":[10,20,30,40,50],"metrics":{"avg":30}}}` with a vector template and
+`pointsPath=data.points` becomes a 5-point frame; the template's `sink.processors`
+(`derive-metric`, `zones`, `thumbnail`, `quality-gate`, or plugin-registered processors) run on
+the production side before storage.
+
+**Custom parsing (one interface, owned by the user):** a plugin registers a decoder:
+
+```js
+export default {
+  name: 'my-mqtt-sink',
+  setup(ctx) {
+    ctx.daq.registerDecoder('my-json', (input) => {
+      const j = JSON.parse(input.raw)                 // input: raw/bytes/json/config/signalKind/nodeId
+      return { kind: 'scalar', value: j.a + j.b }     // or {kind:'vector',points:[...]} / {kind:'image',blob,mime,width,height}
+    })
+  },
+}
+```
+
+Set `driverConfig.decoder = 'my-json'` on the node (it takes precedence over the declarative
+paths). The decoded kind must match the template's `signalKind`, otherwise the node reports a
+`lastError` and stores nothing. Decoders are synchronous pure functions; heavier frame
+processing belongs in `ctx.daq.registerProcessor(kind, name, fn)` + the template sink.
+
+> Boundaries: no XML/HTML parsing; base64 image cap 10 MB (`imageMaxBytes`); non-PNG images need
+> explicit dimensions (or width/height paths); the connection test decodes with the node's
+> template kind and reports a scalar/vector/image summary.
+
 ## Write-control safety chain
 
 All dispatch (manual REST / recipe batch / agent tools) converges on a single entry point:

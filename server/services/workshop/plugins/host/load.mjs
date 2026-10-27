@@ -204,6 +204,7 @@ export async function loadAllPlugins(host, { config, paths }) {
         pendingDrivers: [],
         pendingProcessors: [],
         pendingTemplates: [],
+        pendingDecoders: [],
         registerDriver(d) {
           this.pendingDrivers.push(d)
           this._drain?.()
@@ -216,11 +217,16 @@ export async function loadAllPlugins(host, { config, paths }) {
           this.pendingTemplates.push(def)
           this._drain?.()
         },
-        drain(onDriver, onProcessor, onTemplate) {
+        registerDecoder(name, fn) {
+          this.pendingDecoders.push({ name, fn })
+          this._drain?.()
+        },
+        drain(onDriver, onProcessor, onTemplate, onDecoder) {
           this._drain = () => {
             for (const d of this.pendingDrivers.splice(0)) onDriver(d)
             for (const p of this.pendingProcessors.splice(0)) onProcessor(p.kind, p.name, p.fn)
             for (const t of this.pendingTemplates.splice(0)) onTemplate(t)
+            for (const d of this.pendingDecoders.splice(0)) onDecoder(d.name, d.fn)
           }
           this._drain()
         },
@@ -230,6 +236,13 @@ export async function loadAllPlugins(host, { config, paths }) {
         registerProcessor: (kind, name, fn) => daqExt.registerProcessor(kind, name, fn),
         /** 注册数采节点模板(signalKind/sink.processors/metrics 全量可用;同名覆盖) */
         registerTemplate: def => daqExt.registerTemplate(def),
+        /**
+         * 注册自定义载荷解码器(结构化报文 → scalar/vector/image;同名覆盖)。
+         * 节点 driverConfig.decoder = name 即启用;入参 { raw, bytes, json, config, signalKind, nodeId },
+         * 返回 { kind:'scalar',value } | { kind:'vector',points,metrics? } | { kind:'image',blob,mime,width?,height?,metrics? }。
+         * 必须是同步纯函数;形态须与节点模板 signalKind 一致(控制器校验)。
+         */
+        registerDecoder: (name, fn) => daqExt.registerDecoder(name, fn),
         /** 帧消费便捷别名(= hooks.on('daq:frame') / hooks.on('daq:sample')) */
         onFrame: fn => scopedHooks.on('daq:frame', fn),
         onSample: fn => scopedHooks.on('daq:sample', fn),

@@ -12,7 +12,7 @@
 import { DaqControllerState } from './state'
 import type { DaqNode } from '../daq-node'
 import type { DaqSampleEnvelope } from '../bus/queue-port'
-import type { DaqDriver } from '../drivers'
+import type { DaqDriver, DaqPushSample } from '../drivers'
 import { resolveDaqDriver } from '../drivers'
 import { getDaqHostPorts } from '../host-ports'
 import { MQTT_STALE_DEFAULT_MS } from '../drivers/mqtt'
@@ -120,7 +120,7 @@ export abstract class DaqControllerPush extends DaqControllerState {
     try {
       const stop = await drv.subscribe!({
         ...this.pushInputOf(node, Date.now()),
-        onSample: sample => this.onPushSample(nodeId, sample.value, sample.atMs),
+        onSample: sample => this.onPushSample(nodeId, sample),
         onError: err => this.onPushError(nodeId, err),
       })
       provisional.stop = stop
@@ -180,18 +180,35 @@ export abstract class DaqControllerPush extends DaqControllerState {
   }
 
   /** 报文回调:解析成功 + 网关运行 + 产线在跑 → 入队(时间戳=到达时刻,单调递增)。
-   *  未开跑时缓存最近值(不止丢弃):retained-only 设备在停线期间只收到一条状态,
-   *  开跑后由 checkPushLiveness 补种一次,否则整批没有初始值。 */
-  private onPushSample(nodeId: string, value: number, atMs: number): void {
+   *  - 标量:未开跑时缓存最近值(retained-only 设备停线期间只收到一条状态,开跑后补种一次);
+   *  - 帧(向量/图像):走与轮询相同的 sink 管线 + 图像落对象存储,帧信封入队。 */
+  private onPushSample(nodeId: string, sample: DaqPushSample): void {
     if (!this.running) return
     const bind = this.pushBindings.get(nodeId)
     if (!bind) return
+    const atMs = sample.atMs
     bind.lastAt = Math.max(bind.lastAt + 1, atMs)
-    bind.lastValue = value
     const node = this.repo.byId(nodeId)
     if (!node || !node.enabled) return
     const host = getDaqHostPorts()
     const run = host?.lineRun.activeRun(node.lineId) ?? null
+    if (sample.frame) {
+      // 帧不做停线缓存(图像可能很大):未开跑直接丢弃,开跑后由设备下一帧继续
+      if (!run) {
+        bind.runId = null
+        bind.runSeeded = false
+        return
+      }
+      if (bind.runId !== run.runId) {
+        bind.runId = run.runId
+        bind.runSeeded = false
+      }
+      void this.publishPushFrame(node, sample.frame, atMs, bind).catch((err) => {
+        this.onPushError(nodeId, err instanceof Error ? err : new Error(String(err)))
+      })
+      return
+    }
+    bind.lastValue = sample.value
     // 产线门控:未开跑期间订阅保持在线但不入库;记录当前批次,开跑瞬间补种缓存值
     if (!run) {
       bind.runId = null
@@ -204,7 +221,33 @@ export abstract class DaqControllerPush extends DaqControllerState {
     }
     // 报文恢复即自愈:清掉停发期写入的 lastError(状态由 runtime.onSample 重新派生)
     if (node.lastError) node.lastError = null
-    this.publishPushValue(node, value, bind.lastAt)
+    this.publishPushValue(node, sample.value, bind.lastAt)
+    bind.runSeeded = true
+  }
+
+  /** 推送帧经统一后处理(模板 sink + 对象存储)后入队;处理跨越异步,完成时复核绑定/产线 */
+  private async publishPushFrame(node: DaqNode, frame: NonNullable<DaqPushSample['frame']>, atMs: number, bind: PushBinding): Promise<void> {
+    if (!this.running) return
+    const processed = await this.processFrameSample(node, frame, atMs)
+    if (!processed) return
+    if (!this.running || this.pushBindings.get(node.id) !== bind) return
+    const host = getDaqHostPorts()
+    if (!host?.lineRun.activeRun(node.lineId)) return
+    // 解码/处理恢复即自愈:清掉上一帧的错误(状态由 runtime.onSample 重新派生)
+    if (node.lastError) node.lastError = null
+    const metrics = processed.frame.metrics ?? {}
+    const pointsAvg = processed.frame.kind === 'vector' && processed.frame.points && processed.frame.points.length > 0
+      ? processed.frame.points.reduce((a, b) => a + b, 0) / processed.frame.points.length
+      : 0
+    const value = Number(metrics.avg ?? pointsAvg)
+    this.publishSample({
+      nodeId: node.id,
+      templateRef: node.templateRef,
+      value: Number(value.toFixed(node.decimals)),
+      state: 'ok',
+      at: new Date(atMs).toISOString(),
+      frame: processed.frame,
+    })
     bind.runSeeded = true
   }
 

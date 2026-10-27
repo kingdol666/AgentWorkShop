@@ -1,0 +1,276 @@
+{
+  "tag": "mvqnhx88",
+  "at": "2026-10-27T12:22:06.625Z",
+  "tally": {
+    "pass": 53,
+    "fail": 0,
+    "skip": 0
+  },
+  "assertions": [
+    {
+      "status": "PASS",
+      "id": "A0",
+      "detail": "平台在线 + 管理员会话 — http://127.0.0.1:3021"
+    },
+    {
+      "status": "PASS",
+      "id": "A1",
+      "detail": "模拟器内置 broker 监听 — 期望 29830, export={\"host\":\"127.0.0.1\",\"port\":29830,\"topic\":\"aw/sim/temp\",\"jsonPath\":\"data.temp\"}"
+    },
+    {
+      "status": "PASS",
+      "id": "A2",
+      "detail": "MQTT 写信号导出含状态回读主题 — readTopic=aw/sim/state"
+    },
+    {
+      "status": "PASS",
+      "id": "A3",
+      "detail": "设备周期发布遥测(独立订阅端) — 3 条 / 6s,样例 53.25,55.55,56.82"
+    },
+    {
+      "status": "PASS",
+      "id": "A4",
+      "detail": "状态主题 retained(晚订阅即时可取) — {\"setpoint\":60,\"value\":60,\"signalId\":\"mqtt-sp\",\"at\":1793103513440}"
+    },
+    {
+      "status": "PASS",
+      "id": "B0",
+      "detail": "DAQ 网关启动"
+    },
+    {
+      "status": "PASS",
+      "id": "B1",
+      "detail": "产线开跑(配方 + 监控窗口) — rr-81683ad7"
+    },
+    {
+      "status": "PASS",
+      "id": "B2",
+      "detail": "MQTT 报文逐条入库(独立真值对账) — DB 7 行 / 真值 6 条"
+    },
+    {
+      "status": "PASS",
+      "id": "B3",
+      "detail": "入库值与设备发布值一致(逐条对齐) — 对齐 6/6"
+    },
+    {
+      "status": "PASS",
+      "id": "B4",
+      "detail": "入库节奏=设备发布周期(非 intervalMs 轮询) — 中位间隔 2000ms(设备 tick=2000,节点 interval=1000)"
+    },
+    {
+      "status": "PASS",
+      "id": "B5",
+      "detail": "库内时间戳严格递增(到达时刻) — 1793103515000 → 1793103527000"
+    },
+    {
+      "status": "PASS",
+      "id": "B6",
+      "detail": "报文到达 → 库内可查 ≤ 4s — 2627ms"
+    },
+    {
+      "status": "PASS",
+      "id": "B7",
+      "detail": "采集管线无丢弃(produced=consumed, dropped=0) — {\"produced\":10,\"consumed\":10,\"dropped\":0,\"stored\":9}"
+    },
+    {
+      "status": "PASS",
+      "id": "B8",
+      "detail": "/samples 无 from 时 limit=1 = 最新桶(UI 路径) — unbounded=55.4@1793103541000 bounded=55.4@1793103541000"
+    },
+    {
+      "status": "PASS",
+      "id": "C1",
+      "detail": "设备停发 → 0 新增样本(不伪造冻值) — 0 行"
+    },
+    {
+      "status": "PASS",
+      "id": "C2",
+      "detail": "停发 → 节点 offline + 可读 lastError — offline / MQTT 被动订阅:10s 未收到报文(设备停发/主题无发布/网络分区),节点置 offline(停发期间不写样本)"
+    },
+    {
+      "status": "PASS",
+      "id": "C3",
+      "detail": "恢复发布 → 自动续采 + 状态自愈 — 2 行 / state=ok / err="
+    },
+    {
+      "status": "PASS",
+      "id": "D0",
+      "detail": "第二台 MQTT 设备创建 — mqtt-e2e-dev2-mvqnhx88"
+    },
+    {
+      "status": "PASS",
+      "id": "D1",
+      "detail": "同 broker 两节点并行入库 — node1 3 行 / node2 7 行"
+    },
+    {
+      "status": "PASS",
+      "id": "E1",
+      "detail": "外部 broker 订阅入库(标准 mosquitto) — 6 行"
+    },
+    {
+      "status": "PASS",
+      "id": "E2",
+      "detail": "外部 broker 写回 → 设备回显 → 平台回读 — lastCmd=44.4 read=44.4 msg=MQTT 回读 aw/e2e/mvqnhx88/ext/state = 44.4"
+    },
+    {
+      "status": "PASS",
+      "id": "F1",
+      "detail": "MQTT 直写 → 设备信号变化 — target=61.5 sim=61.5"
+    },
+    {
+      "status": "PASS",
+      "id": "F2",
+      "detail": "MQTT 写后回读(readTopic)= 写入值 — read=61.5 msg=MQTT 回读 aw/sim/state = 61.5"
+    },
+    {
+      "status": "PASS",
+      "id": "F3",
+      "detail": "配方批量下发 → 回读证实(readback-verified) — {\"verdict\":\"verified\",\"attempts\":1}"
+    },
+    {
+      "status": "PASS",
+      "id": "F4",
+      "detail": "ACK 汇总无未证实/失败 — {\"verified\":1,\"unverified\":0,\"failed\":0,\"total\":1}"
+    },
+    {
+      "status": "PASS",
+      "id": "G0",
+      "detail": "Agent 建号 + DAQ 绑定 — db0fff1b-7793-42aa-8efc-c047c357fcfe / {\"binding\":{\"id\":\"nb-c63790e0\",\"agentId\":\"db0fff1b-7793-42aa-8efc-c047c357fcfe\",\"nodeId\":\"dn-a07a5e46\",\"kind\":\"daq\",\"mod"
+    },
+    {
+      "status": "PASS",
+      "id": "G1",
+      "detail": "daq_query 最新值 = 窗口末尾桶(不是最旧段) — text=70.9 dbLast=70.9 dbFirst=54.9"
+    },
+    {
+      "status": "PASS",
+      "id": "G2",
+      "detail": "输出含数据源与库内滞后声明 —   工况判读: 活动配方「MQTT-E2E-R-mvqnhx88」监控窗口 [0, 100]:当前 70.9℃ 窗口内(正常) | 同产线数控设定: MQTT-DCW1-mvqnhx88=61.5℃;MQTT-DCW2-mvqnhx88=6"
+    },
+    {
+      "status": "PASS",
+      "id": "G3",
+      "detail": "agg=min 生效(输出最小值 = 库内窗口最小) — textMin=53.3 dbMin=53.3"
+    },
+    {
+      "status": "PASS",
+      "id": "G4",
+      "detail": "非法 agg 明确报错(不静默回退) — agg 只能是 avg|min|max(收到 bogus)。"
+    },
+    {
+      "status": "PASS",
+      "id": "G5",
+      "detail": "未绑定节点被拒绝(授权面) — 工具调用被拒(引用校验,daq_query):node_id = 「dn-not-bound」不在你的授权范围内(节点不存在或已删除)。"
+    },
+    {
+      "status": "PASS",
+      "id": "H1",
+      "detail": "网关停止 → 被动订阅停收(0 新增) — 0 行"
+    },
+    {
+      "status": "PASS",
+      "id": "H2",
+      "detail": "网关恢复 → 订阅重建并继续入库 — 2 行"
+    },
+    {
+      "status": "PASS",
+      "id": "I1",
+      "detail": "retained 首订阅种子一次(当前状态可查) — 1 行 / 12.3"
+    },
+    {
+      "status": "PASS",
+      "id": "I2",
+      "detail": "retained 重放不重复入库(静默期行数不增长) — 1 → 1"
+    },
+    {
+      "status": "PASS",
+      "id": "J1",
+      "detail": "节点停用即停收 / 启用即续采 — 停用期 0 行 / 恢复 2 行"
+    },
+    {
+      "status": "PASS",
+      "id": "J2",
+      "detail": "topic 变更 → 订阅重建并采新主题 — 3 行 / 值=42"
+    },
+    {
+      "status": "PASS",
+      "id": "J3",
+      "detail": "EDA 查询窗口超 limit 时取最新段 — 38 点 / 末点滞后 1s"
+    },
+    {
+      "status": "PASS",
+      "id": "J4",
+      "detail": "停线停收 / 重新开跑续采 — 停线期 0 行 / 重启 2 行"
+    },
+    {
+      "status": "PASS",
+      "id": "K1",
+      "detail": "停线期间 retained 状态在开跑后补种一次(含快速停用/启用) — 停线 0 / 启停后 0 / 开跑 1 行=23.4"
+    },
+    {
+      "status": "PASS",
+      "id": "K2",
+      "detail": "网关停止时外部入库如实 503(不静默丢帧) — status=503 msg=DAQ 网关已停止,外部入库暂停;请先启动采集网关(POST /api/workshop/daq/controller action=start)"
+    },
+    {
+      "status": "PASS",
+      "id": "L0",
+      "detail": "节点创建表单暴露结构化解析字段 — host,port,topic,jsonPath,pointsPath,metricsPath,imageFormat,imagePath,imageMime,imageWidthPath,imageHeightPath,decoder,username,password"
+    },
+    {
+      "status": "PASS",
+      "id": "L1",
+      "detail": "自定义 vector 模板 + 节点创建(数组路径配置) — ct-d08aaffb / dn-30a0250e"
+    },
+    {
+      "status": "PASS",
+      "id": "L2",
+      "detail": "结构化 JSON 数组 → vector 帧入库(5 点) — 5 帧 / 点数 5"
+    },
+    {
+      "status": "PASS",
+      "id": "L3",
+      "detail": "模板 sink 生效(avg/zones)且帧带批次元信息 — {\"m\":{\"avg\":30,\"e2e_tag\":1,\"zone1_avg\":15,\"zone1_max\":20,\"zone1_min\":10,\"zone2_avg\":40,\"zone2_max\":50,\"zone2_min\":30},\"line\":\"ln-e4bed9c0\",\"run\":\"rr-079179a6\"}"
+    },
+    {
+      "status": "PASS",
+      "id": "L4",
+      "detail": "用户注册的 sink 处理器生效(e2e-tag) — e2e_tag=1"
+    },
+    {
+      "status": "PASS",
+      "id": "L5",
+      "detail": "自定义 image 模板 + 节点创建(base64 图像字段) — ct-1c820f45 / dn-0c854eb2"
+    },
+    {
+      "status": "PASS",
+      "id": "L6",
+      "detail": "结构化 JSON base64 → image 帧入库(尺寸/指纹/MIME) — {\"mime\":\"image/png\",\"size\":85,\"width\":4,\"height\":4,\"sha256\":\"2c1ebb95e6e262adb7d7c25151681f9832e30515fa18ce00a6f35214682b4fd3\",\"objectKey\":\"daq/dn-0c854eb2/2026/10/27/1793103636601"
+    },
+    {
+      "status": "PASS",
+      "id": "L7",
+      "detail": "图像 sink 派生指标(quality-gate brightness) — brightness=122"
+    },
+    {
+      "status": "PASS",
+      "id": "L8",
+      "detail": "图像内容端点可回取(对象存储 → PNG) — status=200 bytes=85 size=85"
+    },
+    {
+      "status": "PASS",
+      "id": "L9",
+      "detail": "坏结构 → 0 帧 + 可读 lastError;恢复发布自愈 — badFrames=0 err=被动订阅报文错误:vector 载荷缺少点列数组(pointsPath=data.points) / recovered=1"
+    },
+    {
+      "status": "PASS",
+      "id": "L10",
+      "detail": "用户自定义解码器 → scalar 入库(40+2.5=42.5) — 4 行 / 42.5"
+    },
+    {
+      "status": "PASS",
+      "id": "L11",
+      "detail": "用户自定义解码器 → vector 入库(逐点相加) — points=[11,22,33,44,55]"
+    }
+  ]
+}

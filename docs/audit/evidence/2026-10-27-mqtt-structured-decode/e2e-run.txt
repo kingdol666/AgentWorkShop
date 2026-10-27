@@ -1,0 +1,62 @@
+━━━ MQTT 协议专项 E2E (tag=mvqnhx88) ━━━
+  PASS  A0 平台在线 + 管理员会话 — http://127.0.0.1:3021
+  ·   · 模拟器未在线 → 自动启动 (cwd=C:\Users\87287\AppData\Local\Temp\aw-mqtt-e2e-sim-mvqnhx88, port=4021, 影子私有数据目录, 无 watch 常驻)
+(node:69920) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  ·   · 冷启默认设备已清场(0 台) → 产线由预设从零重建
+  PASS  A1 模拟器内置 broker 监听 — 期望 29830, export={"host":"127.0.0.1","port":29830,"topic":"aw/sim/temp","jsonPath":"data.temp"}
+  PASS  A2 MQTT 写信号导出含状态回读主题 — readTopic=aw/sim/state
+  PASS  A3 设备周期发布遥测(独立订阅端) — 3 条 / 6s,样例 53.25,55.55,56.82
+  PASS  A4 状态主题 retained(晚订阅即时可取) — {"setpoint":60,"value":60,"signalId":"mqtt-sp","at":1793103513440}
+  PASS  B0 DAQ 网关启动
+  PASS  B1 产线开跑(配方 + 监控窗口) — rr-81683ad7
+  PASS  B2 MQTT 报文逐条入库(独立真值对账) — DB 7 行 / 真值 6 条
+  PASS  B3 入库值与设备发布值一致(逐条对齐) — 对齐 6/6
+  PASS  B4 入库节奏=设备发布周期(非 intervalMs 轮询) — 中位间隔 2000ms(设备 tick=2000,节点 interval=1000)
+  PASS  B5 库内时间戳严格递增(到达时刻) — 1793103515000 → 1793103527000
+  PASS  B6 报文到达 → 库内可查 ≤ 4s — 2627ms
+  PASS  B7 采集管线无丢弃(produced=consumed, dropped=0) — {"produced":10,"consumed":10,"dropped":0,"stored":9}
+  PASS  B8 /samples 无 from 时 limit=1 = 最新桶(UI 路径) — unbounded=55.4@1793103541000 bounded=55.4@1793103541000
+  PASS  C1 设备停发 → 0 新增样本(不伪造冻值) — 0 行
+  PASS  C2 停发 → 节点 offline + 可读 lastError — offline / MQTT 被动订阅:10s 未收到报文(设备停发/主题无发布/网络分区),节点置 offline(停发期间不写样本)
+  PASS  C3 恢复发布 → 自动续采 + 状态自愈 — 2 行 / state=ok / err=
+  PASS  D0 第二台 MQTT 设备创建 — mqtt-e2e-dev2-mvqnhx88
+  PASS  D1 同 broker 两节点并行入库 — node1 3 行 / node2 7 行
+  PASS  E1 外部 broker 订阅入库(标准 mosquitto) — 6 行
+  PASS  E2 外部 broker 写回 → 设备回显 → 平台回读 — lastCmd=44.4 read=44.4 msg=MQTT 回读 aw/e2e/mvqnhx88/ext/state = 44.4
+  PASS  F1 MQTT 直写 → 设备信号变化 — target=61.5 sim=61.5
+  PASS  F2 MQTT 写后回读(readTopic)= 写入值 — read=61.5 msg=MQTT 回读 aw/sim/state = 61.5
+  PASS  F3 配方批量下发 → 回读证实(readback-verified) — {"verdict":"verified","attempts":1}
+  PASS  F4 ACK 汇总无未证实/失败 — {"verified":1,"unverified":0,"failed":0,"total":1}
+  PASS  G0 Agent 建号 + DAQ 绑定 — db0fff1b-7793-42aa-8efc-c047c357fcfe / {"binding":{"id":"nb-c63790e0","agentId":"db0fff1b-7793-42aa-8efc-c047c357fcfe","nodeId":"dn-a07a5e46","kind":"daq","mod
+  PASS  G1 daq_query 最新值 = 窗口末尾桶(不是最旧段) — text=70.9 dbLast=70.9 dbFirst=54.9
+  PASS  G2 输出含数据源与库内滞后声明 —   工况判读: 活动配方「MQTT-E2E-R-mvqnhx88」监控窗口 [0, 100]:当前 70.9℃ 窗口内(正常) | 同产线数控设定: MQTT-DCW1-mvqnhx88=61.5℃;MQTT-DCW2-mvqnhx88=6
+  PASS  G3 agg=min 生效(输出最小值 = 库内窗口最小) — textMin=53.3 dbMin=53.3
+  PASS  G4 非法 agg 明确报错(不静默回退) — agg 只能是 avg|min|max(收到 bogus)。
+  PASS  G5 未绑定节点被拒绝(授权面) — 工具调用被拒(引用校验,daq_query):node_id = 「dn-not-bound」不在你的授权范围内(节点不存在或已删除)。
+请核对节点 id(先用
+  PASS  H1 网关停止 → 被动订阅停收(0 新增) — 0 行
+  PASS  H2 网关恢复 → 订阅重建并继续入库 — 2 行
+  PASS  I1 retained 首订阅种子一次(当前状态可查) — 1 行 / 12.3
+  PASS  I2 retained 重放不重复入库(静默期行数不增长) — 1 → 1
+  PASS  J1 节点停用即停收 / 启用即续采 — 停用期 0 行 / 恢复 2 行
+  PASS  J2 topic 变更 → 订阅重建并采新主题 — 3 行 / 值=42
+  PASS  J3 EDA 查询窗口超 limit 时取最新段 — 38 点 / 末点滞后 1s
+  PASS  J4 停线停收 / 重新开跑续采 — 停线期 0 行 / 重启 2 行
+  PASS  K1 停线期间 retained 状态在开跑后补种一次(含快速停用/启用) — 停线 0 / 启停后 0 / 开跑 1 行=23.4
+  PASS  K2 网关停止时外部入库如实 503(不静默丢帧) — status=503 msg=DAQ 网关已停止,外部入库暂停;请先启动采集网关(POST /api/workshop/daq/controller action=start)
+  PASS  L0 节点创建表单暴露结构化解析字段 — host,port,topic,jsonPath,pointsPath,metricsPath,imageFormat,imagePath,imageMime,imageWidthPath,imageHeightPath,decoder,username,password
+  PASS  L1 自定义 vector 模板 + 节点创建(数组路径配置) — ct-d08aaffb / dn-30a0250e
+  PASS  L2 结构化 JSON 数组 → vector 帧入库(5 点) — 5 帧 / 点数 5
+  PASS  L3 模板 sink 生效(avg/zones)且帧带批次元信息 — {"m":{"avg":30,"e2e_tag":1,"zone1_avg":15,"zone1_max":20,"zone1_min":10,"zone2_avg":40,"zone2_max":50,"zone2_min":30},"line":"ln-e4bed9c0","run":"rr-079179a6"}
+  PASS  L4 用户注册的 sink 处理器生效(e2e-tag) — e2e_tag=1
+  PASS  L5 自定义 image 模板 + 节点创建(base64 图像字段) — ct-1c820f45 / dn-0c854eb2
+  PASS  L6 结构化 JSON base64 → image 帧入库(尺寸/指纹/MIME) — {"mime":"image/png","size":85,"width":4,"height":4,"sha256":"2c1ebb95e6e262adb7d7c25151681f9832e30515fa18ce00a6f35214682b4fd3","objectKey":"daq/dn-0c854eb2/2026/10/27/1793103636601
+  PASS  L7 图像 sink 派生指标(quality-gate brightness) — brightness=122
+  PASS  L8 图像内容端点可回取(对象存储 → PNG) — status=200 bytes=85 size=85
+  PASS  L9 坏结构 → 0 帧 + 可读 lastError;恢复发布自愈 — badFrames=0 err=被动订阅报文错误:vector 载荷缺少点列数组(pointsPath=data.points) / recovered=1
+  PASS  L10 用户自定义解码器 → scalar 入库(40+2.5=42.5) — 4 行 / 42.5
+  PASS  L11 用户自定义解码器 → vector 入库(逐点相加) — points=[11,22,33,44,55]
+
+━━━ MQTT E2E: 53 passed / 0 failed / 0 skipped ━━━
+  (临时 home: C:\Users\87287\AppData\Local\Temp\aw-mqtt-e2e-mvqnhx88-8Tvhp5)

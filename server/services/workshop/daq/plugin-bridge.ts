@@ -2,17 +2,25 @@ import type { DaqTemplateDef } from '../../../../shared/daq-protocol'
 import { getDaqTemplateRegistry } from './daq-templates'
 import { registerPluginDriver } from './drivers'
 import { registerFrameProcessor } from './frames'
+import { registerDecoder, type DaqDecoder } from './decoders'
 
 interface DaqPluginBridge {
   pendingDrivers: unknown[]
   pendingProcessors: Array<{ kind: string, name: string, fn: unknown }>
   pendingTemplates: unknown[]
+  pendingDecoders: Array<{ name: string, fn: unknown }>
   /** 回放槽(drain 接管后设置;注册即时回调) */
   _drain?: () => void
   registerDriver(d: unknown): void
   registerProcessor(kind: string, name: string, fn: unknown): void
   registerTemplate(t: unknown): void
-  drain(onDriver: (d: unknown) => void, onProcessor: (kind: string, name: string, fn: unknown) => void, onTemplate: (t: unknown) => void): void
+  registerDecoder(name: string, fn: unknown): void
+  drain(
+    onDriver: (d: unknown) => void,
+    onProcessor: (kind: string, name: string, fn: unknown) => void,
+    onTemplate: (t: unknown) => void,
+    onDecoder: (name: string, fn: unknown) => void,
+  ): void
 }
 
 /** 自建桥(仅队列 + drain 槽;宿主后到时由其接管) */
@@ -21,6 +29,7 @@ function makeDaqBridge(): DaqPluginBridge {
     pendingDrivers: [],
     pendingProcessors: [],
     pendingTemplates: [],
+    pendingDecoders: [],
     registerDriver(d) {
       this.pendingDrivers.push(d)
       this._drain?.()
@@ -33,11 +42,16 @@ function makeDaqBridge(): DaqPluginBridge {
       this.pendingTemplates.push(t)
       this._drain?.()
     },
-    drain(onDriver, onProcessor, onTemplate) {
+    registerDecoder(name, fn) {
+      this.pendingDecoders.push({ name, fn })
+      this._drain?.()
+    },
+    drain(onDriver, onProcessor, onTemplate, onDecoder) {
       this._drain = () => {
         for (const d of this.pendingDrivers.splice(0)) onDriver(d)
         for (const p of this.pendingProcessors.splice(0)) onProcessor(p.kind, p.name, p.fn)
         for (const t of this.pendingTemplates.splice(0)) onTemplate(t)
+        for (const d of this.pendingDecoders.splice(0)) onDecoder(d.name, d.fn)
       }
       this._drain()
     },
@@ -67,6 +81,14 @@ export function attachDaqPluginBridge(): void {
       }
       catch (err) {
         console.error('[daq] 插件模板注册失败:', err instanceof Error ? err.message : err)
+      }
+    },
+    (name, fn) => {
+      try {
+        registerDecoder(name, fn as DaqDecoder)
+      }
+      catch (err) {
+        console.error('[daq] 插件解码器注册失败:', err instanceof Error ? err.message : err)
       }
     },
   )
