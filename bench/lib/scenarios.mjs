@@ -843,7 +843,7 @@ export async function runBiaxScenarioMission(api, scen, { instId, line, sfx }) {
   return biaxMissionToScenarioResult(m)
 }
 
-const MISSIONS = {
+export const MISSIONS = {
   injection: runInjectionMission,
   wwtp: runWwtpMission,
   anneal: runAnnealMission,
@@ -930,6 +930,8 @@ export async function runScenario(api, scen, ctx) {
       const fb = scen.plantWhole
         ? { warm: true, disturbances: { heaterDecay: 1, feedDriftPerMin: 0 } }
         : { id: scen.id, warm: true, disturbances: { heaterDecay: 1, feedDriftPerMin: 0 } }
+      // 独立种子:论文级重复实验要求每条轨迹从可复现的独立随机状态出发(ctx.seed 传入)
+      if (ctx.seed != null) fb.seed = ctx.seed
       await simApi('POST', '/api/plant/reset', fb)
       // 复位核对:逐 SP 回读,断言「现场=蓝图默认值」——防御残留工况/坏写混入使命起点
       // (2026-09-21 run2:上一轮的残留使 anneal 起点偏移,trim 后产能仍差一步;核对可当场拦截)

@@ -1,0 +1,937 @@
+{
+  "tag": "full",
+  "base": "http://127.0.0.1:3600",
+  "seeds": [
+    42,
+    43,
+    44,
+    45,
+    46,
+    47,
+    48
+  ],
+  "scenarios": [
+    "injection",
+    "wwtp",
+    "anneal",
+    "biax"
+  ],
+  "startedAt": "2026-10-27T06:02:13.597Z",
+  "platform": "http://127.0.0.1:3600",
+  "scenariosData": {
+    "injection": {
+      "onboardingMs": 5014,
+      "e1Rows": 11,
+      "trajectories": [
+        {
+          "arm": "B0",
+          "seed": 42,
+          "finalErr": 1.28,
+          "inWindow": false,
+          "writes": 0,
+          "excluded": false
+        },
+        {
+          "arm": "B1",
+          "seed": 42,
+          "finalErr": 0.56,
+          "inWindow": false,
+          "writes": 1,
+          "excluded": false
+        },
+        {
+          "arm": "T",
+          "seed": 42,
+          "finalErr": 0.18,
+          "inWindow": true,
+          "writes": 3,
+          "excluded": false
+        },
+        {
+          "arm": "B0",
+          "seed": 43,
+          "finalErr": 1.21,
+          "inWindow": false,
+          "writes": 0,
+          "excluded": false
+        },
+        {
+          "arm": "B1",
+          "seed": 43,
+          "finalErr": 0.53,
+          "inWindow": false,
+          "writes": 1,
+          "excluded": false
+        },
+        {
+          "arm": "T",
+          "seed": 43,
+          "finalErr": 0.21,
+          "inWindow": true,
+          "writes": 3,
+          "excluded": false
+        },
+        {
+          "arm": "B0",
+          "seed": 44,
+          "finalErr": 1.26,
+          "inWindow": false,
+          "writes": 0,
+          "excluded": false
+        },
+        {
+          "arm": "B1",
+          "seed": 44,
+          "finalErr": 0.56,
+          "inWindow": false,
+          "writes": 1,
+          "excluded": false
+        },
+        {
+          "arm": "T",
+          "seed": 44,
+          "finalErr": 0.21,
+          "inWindow": true,
+          "writes": 3,
+          "excluded": false
+        },
+        {
+          "arm": "B0",
+          "seed": 45,
+          "finalErr": 1.27,
+          "inWindow": false,
+          "writes": 0,
+          "excluded": false
+        },
+        {
+          "arm": "B1",
+          "seed": 45,
+          "finalErr": 0.57,
+          "inWindow": false,
+          "writes": 1,
+          "excluded": false
+        },
+        {
+          "arm": "T",
+          "seed": 45,
+          "finalErr": 0.2,
+          "inWindow": true,
+          "writes": 3,
+          "excluded": false
+        },
+        {
+          "arm": "B0",
+          "seed": 46,
+          "finalErr": 1.28,
+          "inWindow": false,
+          "writes": 0,
+          "excluded": false
+        },
+        {
+          "arm": "B1",
+          "seed": 46,
+          "finalErr": 0.5,
+          "inWindow": false,
+          "writes": 1,
+          "excluded": false
+        },
+        {
+          "arm": "T",
+          "seed": 46,
+          "finalErr": 0.13,
+          "inWindow": true,
+          "writes": 3,
+          "excluded": false
+        },
+        {
+          "arm": "B0",
+          "seed": 47,
+          "finalErr": 1.28,
+          "inWindow": false,
+          "writes": 0,
+          "excluded": false
+        },
+        {
+          "arm": "B1",
+          "seed": 47,
+          "finalErr": 0.59,
+          "inWindow": false,
+          "writes": 1,
+          "excluded": false
+        },
+        {
+          "arm": "T",
+          "seed": 47,
+          "finalErr": 0.21,
+          "inWindow": true,
+          "writes": 3,
+          "excluded": false
+        },
+        {
+          "arm": "B0",
+          "seed": 48,
+          "finalErr": 1.34,
+          "inWindow": false,
+          "writes": 0,
+          "excluded": false
+        },
+        {
+          "arm": "B1",
+          "seed": 48,
+          "finalErr": 0.6,
+          "inWindow": false,
+          "writes": 1,
+          "excluded": false
+        },
+        {
+          "arm": "T",
+          "seed": 48,
+          "finalErr": 0.11,
+          "inWindow": true,
+          "writes": 3,
+          "excluded": false
+        }
+      ]
+    },
+    "wwtp": {
+      "onboardingMs": 2337,
+      "e1Rows": 7,
+      "trajectories": [
+        {
+          "arm": "B0",
+          "seed": 42,
+          "finalErr": 3.2,
+          "inWindow": false,
+          "writes": 0,
+          "excluded": false
+        },
+        {
+          "arm": "B1",
+          "seed": 42,
+          "finalErr": 1.29,
+          "inWindow": false,
+          "writes": 1,
+          "excluded": false
+        },
+        {
+          "arm": "T",
+          "seed": 42,
+          "finalErr": 0.32,
+          "inWindow": true,
+          "writes": 11,
+          "excluded": false
+        },
+        {
+          "arm": "B0",
+          "seed": 43,
+          "finalErr": 3.21,
+          "inWindow": false,
+          "writes": 0,
+          "excluded": false
+        },
+        {
+          "arm": "B1",
+          "seed": 43,
+          "finalErr": 1.26,
+          "inWindow": false,
+          "writes": 1,
+          "excluded": false
+        },
+        {
+          "arm": "T",
+          "seed": 43,
+          "finalErr": 0.59,
+          "inWindow": true,
+          "writes": 11,
+          "excluded": false
+        },
+        {
+          "arm": "B0",
+          "seed": 44,
+          "finalErr": 3.21,
+          "inWindow": false,
+          "writes": 0,
+          "excluded": false
+        },
+        {
+          "arm": "B1",
+          "seed": 44,
+          "finalErr": 1.28,
+          "inWindow": false,
+          "writes": 1,
+          "excluded": false
+        },
+        {
+          "arm": "T",
+          "seed": 44,
+          "finalErr": 0.47,
+          "inWindow": true,
+          "writes": 12,
+          "excluded": false
+        },
+        {
+          "arm": "B0",
+          "seed": 45,
+          "finalErr": 3.27,
+          "inWindow": false,
+          "writes": 0,
+          "excluded": false
+        },
+        {
+          "arm": "B1",
+          "seed": 45,
+          "finalErr": 1.36,
+          "inWindow": false,
+          "writes": 1,
+          "excluded": false
+        },
+        {
+          "arm": "T",
+          "seed": 45,
+          "finalErr": 0.18,
+          "inWindow": true,
+          "writes": 12,
+          "excluded": false
+        },
+        {
+          "arm": "B0",
+          "seed": 46,
+          "finalErr": 3.25,
+          "inWindow": false,
+          "writes": 0,
+          "excluded": false
+        },
+        {
+          "arm": "B1",
+          "seed": 46,
+          "finalErr": 1.11,
+          "inWindow": false,
+          "writes": 1,
+          "excluded": false
+        },
+        {
+          "arm": "T",
+          "seed": 46,
+          "finalErr": 0.25,
+          "inWindow": true,
+          "writes": 10,
+          "excluded": false
+        },
+        {
+          "arm": "B0",
+          "seed": 47,
+          "finalErr": 3.18,
+          "inWindow": false,
+          "writes": 0,
+          "excluded": false
+        },
+        {
+          "arm": "B1",
+          "seed": 47,
+          "finalErr": 1.32,
+          "inWindow": false,
+          "writes": 1,
+          "excluded": false
+        },
+        {
+          "arm": "T",
+          "seed": 47,
+          "finalErr": 0.53,
+          "inWindow": true,
+          "writes": 12,
+          "excluded": false
+        },
+        {
+          "arm": "B0",
+          "seed": 48,
+          "finalErr": 3.21,
+          "inWindow": false,
+          "writes": 0,
+          "excluded": false
+        },
+        {
+          "arm": "B1",
+          "seed": 48,
+          "finalErr": 1.29,
+          "inWindow": false,
+          "writes": 1,
+          "excluded": false
+        },
+        {
+          "arm": "T",
+          "seed": 48,
+          "finalErr": 0.34,
+          "inWindow": true,
+          "writes": 12,
+          "excluded": false
+        }
+      ]
+    },
+    "anneal": {
+      "onboardingMs": 3706,
+      "e1Rows": 7,
+      "trajectories": [
+        {
+          "arm": "B0",
+          "seed": 42,
+          "finalErr": 40,
+          "inWindow": false,
+          "writes": 0,
+          "excluded": false
+        },
+        {
+          "arm": "B1",
+          "seed": 42,
+          "finalErr": 38.3,
+          "inWindow": false,
+          "writes": 1,
+          "excluded": false
+        },
+        {
+          "arm": "T",
+          "seed": 42,
+          "finalErr": 4.8,
+          "inWindow": true,
+          "writes": 8,
+          "excluded": false
+        },
+        {
+          "arm": "B0",
+          "seed": 43,
+          "finalErr": 39.4,
+          "inWindow": false,
+          "writes": 0,
+          "excluded": false
+        },
+        {
+          "arm": "B1",
+          "seed": 43,
+          "finalErr": 38.9,
+          "inWindow": false,
+          "writes": 1,
+          "excluded": false
+        },
+        {
+          "arm": "T",
+          "seed": 43,
+          "finalErr": 2,
+          "inWindow": true,
+          "writes": 6,
+          "excluded": false
+        },
+        {
+          "arm": "B0",
+          "seed": 44,
+          "finalErr": 39.3,
+          "inWindow": false,
+          "writes": 0,
+          "excluded": false
+        },
+        {
+          "arm": "B1",
+          "seed": 44,
+          "finalErr": 37.9,
+          "inWindow": false,
+          "writes": 1,
+          "excluded": false
+        },
+        {
+          "arm": "T",
+          "seed": 44,
+          "finalErr": 3.8,
+          "inWindow": true,
+          "writes": 8,
+          "excluded": false
+        },
+        {
+          "arm": "B0",
+          "seed": 45,
+          "finalErr": 39.9,
+          "inWindow": false,
+          "writes": 0,
+          "excluded": false
+        },
+        {
+          "arm": "B1",
+          "seed": 45,
+          "finalErr": 38.1,
+          "inWindow": false,
+          "writes": 1,
+          "excluded": false
+        },
+        {
+          "arm": "T",
+          "seed": 45,
+          "finalErr": 2.1,
+          "inWindow": true,
+          "writes": 6,
+          "excluded": false
+        },
+        {
+          "arm": "B0",
+          "seed": 46,
+          "finalErr": 40,
+          "inWindow": false,
+          "writes": 0,
+          "excluded": false
+        },
+        {
+          "arm": "B1",
+          "seed": 46,
+          "finalErr": 38.3,
+          "inWindow": false,
+          "writes": 1,
+          "excluded": false
+        },
+        {
+          "arm": "T",
+          "seed": 46,
+          "finalErr": 3.2,
+          "inWindow": true,
+          "writes": 9,
+          "excluded": false
+        },
+        {
+          "arm": "B0",
+          "seed": 47,
+          "finalErr": 39.7,
+          "inWindow": false,
+          "writes": 0,
+          "excluded": false
+        },
+        {
+          "arm": "B1",
+          "seed": 47,
+          "finalErr": 37.9,
+          "inWindow": false,
+          "writes": 1,
+          "excluded": false
+        },
+        {
+          "arm": "T",
+          "seed": 47,
+          "finalErr": 3.7,
+          "inWindow": true,
+          "writes": 8,
+          "excluded": false
+        },
+        {
+          "arm": "B0",
+          "seed": 48,
+          "finalErr": 40.1,
+          "inWindow": false,
+          "writes": 0,
+          "excluded": false
+        },
+        {
+          "arm": "B1",
+          "seed": 48,
+          "finalErr": 37.7,
+          "inWindow": false,
+          "writes": 1,
+          "excluded": false
+        },
+        {
+          "arm": "T",
+          "seed": 48,
+          "finalErr": 3.6,
+          "inWindow": true,
+          "writes": 7,
+          "excluded": false
+        }
+      ]
+    },
+    "biax": {
+      "excluded": "write-effectiveness-failed",
+      "e1": [
+        {
+          "scenario": "biax",
+          "signal": "dry-temp-sp",
+          "node": "dw-eadc878b",
+          "protocol": "opcua",
+          "written": 180,
+          "batchId": "rr-14df6",
+          "accepted": true,
+          "platformReadback": 180,
+          "simSignal": 180,
+          "landed": true,
+          "latencyMs": 6048
+        },
+        {
+          "scenario": "biax",
+          "signal": "dew-point-sp",
+          "node": "dw-1715da7f",
+          "protocol": "opcua",
+          "written": -34,
+          "batchId": "rr-c43b3",
+          "accepted": true,
+          "platformReadback": -34,
+          "simSignal": -34,
+          "landed": true,
+          "latencyMs": 6043
+        },
+        {
+          "scenario": "biax",
+          "signal": "feed-rate-sp",
+          "node": "dw-41fe9f30",
+          "protocol": "opcua",
+          "written": 760,
+          "batchId": "rr-eaa4a",
+          "accepted": true,
+          "platformReadback": 760,
+          "simSignal": 760,
+          "landed": true,
+          "latencyMs": 6040
+        },
+        {
+          "scenario": "biax",
+          "signal": "zone1-sp",
+          "node": "dw-e61ecf43",
+          "protocol": "modbus-tcp",
+          "written": 715,
+          "accepted": false,
+          "platformReadback": 272,
+          "simSignal": 690,
+          "landed": false,
+          "latencyMs": 6068
+        },
+        {
+          "scenario": "biax",
+          "signal": "zone2-sp",
+          "node": "dw-54fc676f",
+          "protocol": "modbus-tcp",
+          "written": 825,
+          "accepted": false,
+          "platformReadback": 278,
+          "simSignal": 801,
+          "landed": false,
+          "latencyMs": 6055
+        },
+        {
+          "scenario": "biax",
+          "signal": "zone3-sp",
+          "node": "dw-4d44ccc8",
+          "protocol": "modbus-tcp",
+          "written": 825,
+          "accepted": false,
+          "platformReadback": 284,
+          "simSignal": 850,
+          "landed": false,
+          "latencyMs": 6055
+        },
+        {
+          "scenario": "biax",
+          "signal": "zone4-sp",
+          "node": "dw-231a1018",
+          "protocol": "modbus-tcp",
+          "written": 292,
+          "batchId": "rr-c94a5",
+          "accepted": true,
+          "platformReadback": 292,
+          "simSignal": 292,
+          "landed": true,
+          "latencyMs": 6074
+        },
+        {
+          "scenario": "biax",
+          "signal": "zone5-sp",
+          "node": "dw-b8c215b6",
+          "protocol": "modbus-tcp",
+          "written": 292,
+          "batchId": "rr-aabab",
+          "accepted": true,
+          "platformReadback": 292,
+          "simSignal": 292,
+          "landed": true,
+          "latencyMs": 6078
+        },
+        {
+          "scenario": "biax",
+          "signal": "screw-sp",
+          "node": "dw-f41de53f",
+          "protocol": "modbus-tcp",
+          "written": 66,
+          "batchId": "rr-c22d4",
+          "accepted": true,
+          "platformReadback": 66,
+          "simSignal": 66,
+          "landed": true,
+          "latencyMs": 6070
+        },
+        {
+          "scenario": "biax",
+          "signal": "pump-sp",
+          "node": "dw-f8442320",
+          "protocol": "modbus-rtu",
+          "written": 36.5,
+          "batchId": "rr-acc0c",
+          "accepted": true,
+          "platformReadback": 36.5,
+          "simSignal": 36.5,
+          "landed": true,
+          "latencyMs": 6044
+        },
+        {
+          "scenario": "biax",
+          "signal": "die-lip-sp",
+          "node": "dw-d073423a",
+          "protocol": "modbus-tcp",
+          "written": 290,
+          "batchId": "rr-d072d",
+          "accepted": true,
+          "platformReadback": 290,
+          "simSignal": 290,
+          "landed": true,
+          "latencyMs": 6092
+        },
+        {
+          "scenario": "biax",
+          "signal": "chill-temp-sp",
+          "node": "dw-89cbd5cd",
+          "protocol": "modbus-tcp",
+          "written": 33,
+          "batchId": "rr-095e9",
+          "accepted": true,
+          "platformReadback": 33,
+          "simSignal": 33,
+          "landed": true,
+          "latencyMs": 6094
+        },
+        {
+          "scenario": "biax",
+          "signal": "cast-spd-sp",
+          "node": "dw-50b8f608",
+          "protocol": "modbus-tcp",
+          "written": 40.5,
+          "batchId": "rr-2aeb0",
+          "accepted": true,
+          "platformReadback": 40.5,
+          "simSignal": 40.5,
+          "landed": true,
+          "latencyMs": 6080
+        },
+        {
+          "scenario": "biax",
+          "signal": "pinning-sp",
+          "node": "dw-41eec132",
+          "protocol": "modbus-tcp",
+          "written": 7.8,
+          "batchId": "rr-278a6",
+          "accepted": true,
+          "platformReadback": 7.800000190734863,
+          "simSignal": 7.8,
+          "landed": true,
+          "latencyMs": 6069
+        },
+        {
+          "scenario": "biax",
+          "signal": "mdo-preheat1-sp",
+          "node": "dw-9940282c",
+          "protocol": "modbus-tcp",
+          "written": 102,
+          "batchId": "rr-bce7a",
+          "accepted": true,
+          "platformReadback": 102,
+          "simSignal": 102,
+          "landed": true,
+          "latencyMs": 6079
+        },
+        {
+          "scenario": "biax",
+          "signal": "mdo-preheat2-sp",
+          "node": "dw-77ced2bf",
+          "protocol": "modbus-tcp",
+          "written": 107,
+          "batchId": "rr-f214e",
+          "accepted": true,
+          "platformReadback": 107,
+          "simSignal": 107,
+          "landed": true,
+          "latencyMs": 6072
+        },
+        {
+          "scenario": "biax",
+          "signal": "mdo-preheat3-sp",
+          "node": "dw-acabe3c8",
+          "protocol": "modbus-tcp",
+          "written": 112,
+          "batchId": "rr-d1208",
+          "accepted": true,
+          "platformReadback": 112,
+          "simSignal": 112,
+          "landed": true,
+          "latencyMs": 6080
+        },
+        {
+          "scenario": "biax",
+          "signal": "slow-roll-sp",
+          "node": "dw-5f70ea8a",
+          "protocol": "modbus-tcp",
+          "written": 49,
+          "batchId": "rr-45a7e",
+          "accepted": true,
+          "platformReadback": 49,
+          "simSignal": 49,
+          "landed": true,
+          "latencyMs": 6071
+        },
+        {
+          "scenario": "biax",
+          "signal": "fast-roll-sp",
+          "node": "dw-009c0ac1",
+          "protocol": "modbus-tcp",
+          "written": 150,
+          "batchId": "rr-dc959",
+          "accepted": true,
+          "platformReadback": 150,
+          "simSignal": 150,
+          "landed": true,
+          "latencyMs": 6078
+        },
+        {
+          "scenario": "biax",
+          "signal": "mdo-anneal-sp",
+          "node": "dw-04f96b22",
+          "protocol": "modbus-tcp",
+          "written": 143,
+          "batchId": "rr-9bd36",
+          "accepted": true,
+          "platformReadback": 143,
+          "simSignal": 143,
+          "landed": true,
+          "latencyMs": 6064
+        },
+        {
+          "scenario": "biax",
+          "signal": "tdo-preheat-sp",
+          "node": "dw-4f4d82df",
+          "protocol": "opcua",
+          "written": 116,
+          "batchId": "rr-7042c",
+          "accepted": true,
+          "platformReadback": 116,
+          "simSignal": 116,
+          "landed": true,
+          "latencyMs": 6056
+        },
+        {
+          "scenario": "biax",
+          "signal": "tdo-stretch-sp",
+          "node": "dw-3f593e58",
+          "protocol": "opcua",
+          "written": 124,
+          "batchId": "rr-e1560",
+          "accepted": true,
+          "platformReadback": 124,
+          "simSignal": 124,
+          "landed": true,
+          "latencyMs": 6052
+        },
+        {
+          "scenario": "biax",
+          "signal": "tdo-anneal-sp",
+          "node": "dw-c1d5e8e9",
+          "protocol": "opcua",
+          "written": 222,
+          "batchId": "rr-83d67",
+          "accepted": true,
+          "platformReadback": 222,
+          "simSignal": 222,
+          "landed": true,
+          "latencyMs": 6047
+        },
+        {
+          "scenario": "biax",
+          "signal": "chain-sp",
+          "node": "dw-a32506a6",
+          "protocol": "opcua",
+          "written": 152,
+          "batchId": "rr-bb3f7",
+          "accepted": true,
+          "platformReadback": 152,
+          "simSignal": 152,
+          "landed": true,
+          "latencyMs": 6030
+        },
+        {
+          "scenario": "biax",
+          "signal": "rail-out-sp",
+          "node": "dw-cf6e2891",
+          "protocol": "opcua",
+          "written": 3435,
+          "batchId": "rr-b37e0",
+          "accepted": true,
+          "platformReadback": 3435,
+          "simSignal": 3435,
+          "landed": true,
+          "latencyMs": 6035
+        },
+        {
+          "scenario": "biax",
+          "signal": "corona-sp",
+          "node": "dw-070f77fb",
+          "protocol": "http",
+          "written": 4.25,
+          "batchId": "rr-0beff",
+          "accepted": true,
+          "platformReadback": null,
+          "simSignal": 4.3,
+          "landed": true,
+          "latencyMs": 6041
+        },
+        {
+          "scenario": "biax",
+          "signal": "winder-tension-sp",
+          "node": "dw-cd3639b9",
+          "protocol": "modbus-tcp",
+          "written": 103,
+          "batchId": "rr-74996",
+          "accepted": true,
+          "platformReadback": 103,
+          "simSignal": 103,
+          "landed": true,
+          "latencyMs": 6091
+        },
+        {
+          "scenario": "biax",
+          "signal": "taper-sp",
+          "node": "dw-1f027335",
+          "protocol": "modbus-tcp",
+          "written": 33,
+          "batchId": "rr-84eb1",
+          "accepted": true,
+          "platformReadback": 33,
+          "simSignal": 33,
+          "landed": true,
+          "latencyMs": 6076
+        },
+        {
+          "scenario": "biax",
+          "signal": "contact-press-sp",
+          "node": "dw-83ee6ee5",
+          "protocol": "modbus-tcp",
+          "written": 1.97,
+          "batchId": "rr-62c7a",
+          "accepted": true,
+          "platformReadback": 1.9700000286102295,
+          "simSignal": 1.97,
+          "landed": true,
+          "latencyMs": 6078
+        },
+        {
+          "scenario": "biax",
+          "signal": "winder-speed-sp",
+          "node": "dw-d5ad1298",
+          "protocol": "modbus-tcp",
+          "written": 186,
+          "batchId": "rr-6af9b",
+          "accepted": true,
+          "platformReadback": 186,
+          "simSignal": 186,
+          "landed": true,
+          "latencyMs": 6070
+        }
+      ]
+    }
+  }
+}
