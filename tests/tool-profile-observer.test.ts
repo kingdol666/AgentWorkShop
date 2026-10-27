@@ -41,9 +41,9 @@ function syntheticBase() {
     'save_memory', 'search_memory', 'send_cross_channel_message', 'send_message_to_agent', 'poll_messages',
     // 直接写族(7 件)+ 治理链真实写入
     'dcw_control', 'param_control', 'dcw_rollback', 'recipe_update', 'recipe_rollback', 'recipe_trial', 'recipe_apply', 'optimization_explore',
-    // 训练/优化执行族与 MES/lead 治理面(观察面不应注入)
+    // 训练/优化执行族与 MES/lead 治理面(观察面不应注入执行/治理族;MES 只读族 G3 起纳入)
     'aml_model_find', 'aml_model_reference', 'aml_leaderboard', 'twin_gate_evaluate', 'twin_trial_run', 'mpc_optimize', 'twin_bayes_optimize', 'twin_snapshot_create',
-    'mes_fetch', 'dispatch_task', 'team_grant_nodes', 'aml_job_submit',
+    'mes_catalog', 'mes_fetch', 'dispatch_task', 'team_grant_nodes', 'aml_job_submit',
   ]
   return names.map(name => ({ name, label: name, description: `测试占位:${name}`, parameters: {} }))
 }
@@ -69,7 +69,8 @@ test('exp-miner 纯装配:含观察读面(exp_collect/ops_log/line_context 等)+
     assert.ok(surface.has(tool), `exp-miner 缺协作面工具 ${tool}`)
   }
   assertNoWriteFamily(surface, 'exp-miner')
-  assert.ok(!surface.has('mes_fetch'), 'exp-miner 不含 MES 工具')
+  // 2026-10-28 三模式 G3:MES 只读族纳入观察面(观察档位要能拉 MES 数据做只读分析)
+  assert.ok(surface.has('mes_fetch') && surface.has('mes_catalog'), 'exp-miner 应含 MES 只读族(G3)')
   assert.ok(!surface.has('dispatch_task') && !surface.has('team_grant_nodes'), 'exp-miner 不含 lead 治理面工具')
 })
 
