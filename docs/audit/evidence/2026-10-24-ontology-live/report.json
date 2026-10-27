@@ -1,10 +1,10 @@
 {
   "script": "scripts/e2e-ontology-live.mjs",
-  "generatedAt": "2026-10-25T17:17:30.449Z",
+  "generatedAt": "2026-10-27T16:41:43.782Z",
   "base": "http://127.0.0.1:3992",
-  "home": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-ontology-live-1792948446185\\home",
-  "ontology": "ont-ont7n56",
-  "lineId": "ln-006c5eb2",
+  "home": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-ontology-live-1793119168272\\home",
+  "ontology": "ont-ontut5c",
+  "lineId": "ln-bab9e0eb",
   "total": 87,
   "pass": 87,
   "fail": 0,
@@ -55,7 +55,7 @@
       "id": "L2.1",
       "name": "POST /ontology 创建草稿",
       "pass": true,
-      "detail": "status=200 id=ontd-mvo38unc-shy5vd"
+      "detail": "status=200 id=ontd-mvqwvi4a-mvf86j"
     },
     {
       "id": "L2.2",
@@ -109,7 +109,7 @@
       "id": "L2.10",
       "name": "申请批准单",
       "pass": true,
-      "detail": "id=oap-mvo38usl-fv6jru"
+      "detail": "id=oap-mvqwvi7q-i5hkxn"
     },
     {
       "id": "L2.11",
@@ -175,7 +175,7 @@
       "id": "L3.1",
       "name": "resolveActiveOntology 解析最新发布版本",
       "pass": true,
-      "detail": "v=2 pack=ce1924ad5a"
+      "detail": "v=2 pack=4dddba0e7f"
     },
     {
       "id": "L3.2",
@@ -253,7 +253,7 @@
       "id": "L4.7",
       "name": "训练 done + 模型登记",
       "pass": true,
-      "detail": "status=done model=mdl-mvo38v8f-jmzi6e err="
+      "detail": "status=done model=mdl-mvqwvik9-6chuua err="
     },
     {
       "id": "L4.8",
@@ -277,7 +277,7 @@
       "id": "L5.1",
       "name": "优化档位频道(模板实例化)+workspace 就绪",
       "pass": true,
-      "detail": "inst=200 ch=edd60646-cafe-4b0f-86cd-b13411183419"
+      "detail": "inst=200 ch=f6459485-f0b7-470d-a2d9-bdce76f2fccc"
     },
     {
       "id": "L5.2",
@@ -295,7 +295,7 @@
       "id": "L5.4",
       "name": "Agent↔Profile 绑定(revision=1)",
       "pass": true,
-      "detail": "id=ob-mvo38w5b-zc0iq"
+      "detail": "id=ob-mvqwvjh4-6r4in"
     },
     {
       "id": "L5.5",
@@ -331,19 +331,19 @@
       "id": "L5.10",
       "name": "采纳卡挂出(nodeId=optimizer-profile:<id>@<v>)",
       "pass": true,
-      "detail": "nodeId=optimizer-profile:optp-ont7n56@3"
+      "detail": "nodeId=optimizer-profile:optp-ontut5c@3"
     },
     {
       "id": "L5.11",
       "name": "HITL 批准 → 单一咽喉完成发布+重绑",
       "pass": true,
-      "detail": "status=200 body={\"status\":200,\"code\":0,\"message\":\"ok\",\"data\":{\"via\":\"profile-adopt\",\"result\":{\"approved\":true,\"comment\":\"采纳闭环验收批准\",\"published\":{\"profileId\":\"optp-ont7n56\",\"version\":3,\"rebindCount\":1}}}}"
+      "detail": "status=200 body={\"status\":200,\"code\":0,\"message\":\"ok\",\"data\":{\"via\":\"profile-adopt\",\"result\":{\"approved\":true,\"comment\":\"采纳闭环验收批准\",\"published\":{\"profileId\":\"optp-ontut5c\",\"version\":3,\"rebindCount\":1}}}}"
     },
     {
       "id": "L5.12",
       "name": "工具回执:模型采纳完成",
       "pass": true,
-      "detail": "status=200 body=✅ 模型采纳完成(HITL 批准):\noptp-ont7n56 v2 → v3(published)\n模型:mdl-mvo38v8f-jmzi6e;重绑绑定 1 个(revision+1,在飞求解 BINDING_STALE 收敛)\n裁决意见:采纳闭环验收批准\n下一次 optimizer_solve 即使用新模型;旧版本保留可回退(retire/rebind 走管理面)。"
+      "detail": "status=200 body=✅ 模型采纳完成(HITL 批准):\noptp-ontut5c v2 → v3(published)\n模型:mdl-mvqwvik9-6chuua;重绑绑定 1 个(revision+1,在飞求解 BINDING_STALE 收敛)\n裁决意见:采纳闭环验收批准\n下一次 optimizer_solve 即使用新模型;旧版本保留可回退(retire/rebind 走管理面)。"
     },
     {
       "id": "L5.13",
@@ -355,7 +355,7 @@
       "id": "L5.14",
       "name": "重绑后 solve optimal(新模型工件生效)",
       "pass": true,
-      "detail": "status=optimal binding=ob-mvo390eb-4znxa"
+      "detail": "status=optimal binding=ob-mvqwvlon-1kzzz"
     },
     {
       "id": "L6.0",
@@ -373,7 +373,7 @@
       "id": "L6.2",
       "name": "GET /analysis 台账读回",
       "pass": true,
-      "detail": "status=200 body={\"status\":200,\"code\":0,\"message\":\"ok\",\"data\":{\"reports\":[{\"id\":\"ar-897fdea4\",\"lineId\":\"ln-006c5eb2\",\"lineName\":\"本体验收线-ont7n56\",\"title\":\"本体验收分析-ont7n56\",\"category\":\"quality\",\"summary\":\"压力-膜厚负相关确认;本体规则 R-BOUND 界与数据一致\",\"conclusionsJson\":\"[\\\"R-BOUND 膜厚窗 [4.5,5.5] "
+      "detail": "status=200 body={\"status\":200,\"code\":0,\"message\":\"ok\",\"data\":{\"reports\":[{\"id\":\"ar-4d6eb7e9\",\"lineId\":\"ln-bab9e0eb\",\"lineName\":\"本体验收线-ontut5c\",\"title\":\"本体验收分析-ontut5c\",\"category\":\"quality\",\"summary\":\"压力-膜厚负相关确认;本体规则 R-BOUND 界与数据一致\",\"conclusionsJson\":\"[\\\"R-BOUND 膜厚窗 [4.5,5.5] "
     },
     {
       "id": "ON16.1",
@@ -415,7 +415,7 @@
       "id": "ON16.7",
       "name": "草稿子图端点可用(UI 图与抽屉同源)",
       "pass": true,
-      "detail": "{\"ontologyId\":\"本体验收-ont7n56\",\"version\":0,\"lineId\":\"ln-006c5eb2\",\"center\":{\"key\":\"pv.melt_pressure\",\"kind\":\"process_variable\",\"name\":\"熔体压力\",\"description\":\"\",\"unit\":\"bar\",\"role\":\"control\",\"hop\":0,\"bindi"
+      "detail": "{\"ontologyId\":\"本体验收-ontut5c\",\"version\":0,\"lineId\":\"ln-bab9e0eb\",\"center\":{\"key\":\"pv.melt_pressure\",\"kind\":\"process_variable\",\"name\":\"熔体压力\",\"description\":\"\",\"unit\":\"bar\",\"role\":\"control\",\"hop\":0,\"bindi"
     },
     {
       "id": "ON16.8",
@@ -427,19 +427,19 @@
       "id": "ON17.1",
       "name": "工具 hops=1 返回节点/边明细",
       "pass": true,
-      "detail": "邻接子图: center=pv.melt_pressure 本体=ont-ont7n56@2 hops=1 direction=both nodes=2 edges=1\n中心: pv.melt_pressure [process_variable/control] 熔体压力(bar) ← dcw_node:dcw-ont7n56-press(write,active), recipe_param:rc-09b9df38#dcw-ont7n56-press(write,acti"
+      "detail": "邻接子图: center=pv.melt_pressure 本体=ont-ontut5c@2 hops=1 direction=both nodes=2 edges=1\n中心: pv.melt_pressure [process_variable/control] 熔体压力(bar) ← dcw_node:dcw-ontut5c-press(write,active), recipe_param:rc-231978a0#dcw-ontut5c-press(write,acti"
     },
     {
       "id": "ON17.2",
       "name": "工具 hops=2 显示间接节点与 hop 标注",
       "pass": true,
-      "detail": "邻接子图: center=pv.melt_pressure 本体=ont-ont7n56@2 hops=2 direction=both nodes=3 edges=2\n中心: pv.melt_pressure [process_variable/control] 熔体压力(bar) ← dcw_node:dcw-ont7n56-press(write,active), recipe_param:rc-09b9df38#dcw-ont7n56-press(write,active)\n邻居节点:\n- cv.thick"
+      "detail": "邻接子图: center=pv.melt_pressure 本体=ont-ontut5c@2 hops=2 direction=both nodes=3 edges=2\n中心: pv.melt_pressure [process_variable/control] 熔体压力(bar) ← dcw_node:dcw-ontut5c-press(write,active), recipe_param:rc-231978a0#dcw-ontut5c-press(write,active)\n邻居节点:\n- cv.thick"
     },
     {
       "id": "ON17.3",
       "name": "跨线读取被拦截(引用校验/作用域如实回执)",
       "pass": true,
-      "detail": "工具调用被拒(引用校验,ontology_node_neighbors):line_id = 「ln-not-in-scope」(产线不存在)不在你的可读范围内。\n你的可读产线:ln-006c5eb2(其中「ln-006c5eb2」来自频道绑线,只读)。如需访问该产线,请让用户授予对应产线权限(权限管理),或把当前频道"
+      "detail": "工具调用被拒(引用校验,ontology_node_neighbors):line_id = 「ln-not-in-scope」(产线不存在)不在你的可读范围内。\n你的可读产线:ln-bab9e0eb(其中「ln-bab9e0eb」来自频道绑线,只读)。如需访问该产线,请让用户授予对应产线权限(权限管理),或把当前频道"
     },
     {
       "id": "L7.1",
@@ -505,13 +505,13 @@
       "id": "L7.6",
       "name": "/daq 可打开无 pageerror",
       "pass": true,
-      "detail": "len=6390 newErrors="
+      "detail": "len=6413 newErrors="
     },
     {
       "id": "L7.7",
       "name": "/aml 可打开无 pageerror",
       "pass": true,
-      "detail": "len=5156 newErrors="
+      "detail": "len=5157 newErrors="
     },
     {
       "id": "L7.8",
@@ -523,7 +523,7 @@
       "id": "L7.9",
       "name": "/analysis 可打开无 pageerror",
       "pass": true,
-      "detail": "len=7088 newErrors="
+      "detail": "len=7087 newErrors="
     },
     {
       "id": "L7.10",
