@@ -135,6 +135,12 @@ export function useWorkshopApi() {
     /** v18 绑定/解绑产线(lineId=null = 解绑;只读扩权,成员运行时自动回收) */
     bindChannelLine: (id: string, lineId: string | null) =>
       http.request<{ data: { ok: boolean, lineId: string } }>({ method: 'PUT', url: `/workshop/channels/${id}/line`, data: { lineId } }),
+    /** 读频道孪生 profile(含 executionMode 执行模式与 promptPreview) */
+    getTwinProfile: (id: string) =>
+      http.get<{ data: { profile: { executionMode?: 'observe' | 'manual' | 'auto', profile?: string, controlPolicy?: string }, derived: Record<string, unknown> } }>(`/workshop/channels/${id}/twin-profile`),
+    /** 切换频道执行模式(observe/manual/auto;放开方向须 confirm:true,后端 400 MODE_CONFIRM_REQUIRED) */
+    patchExecutionMode: (id: string, body: { mode: 'observe' | 'manual' | 'auto', confirm?: boolean }) =>
+      http.request<{ data: { channelId: string, executionMode: 'observe' | 'manual' | 'auto', changed: boolean, effective: { channelMode: string, lineMode: 'auto' | 'manual' | null, bindings: { manual: number, auto: number }, suppressed: boolean } } }>({ method: 'PATCH', url: `/workshop/channels/${id}/execution-mode`, data: body }),
     /** 产线清单(绑线选择器数据源) */
     listDcwLines: () => http.get<{ data: { lines: Array<{ id: string, name: string, state?: string }> } }>('/workshop/dcw/lines?limit=200'),
     // channel agents

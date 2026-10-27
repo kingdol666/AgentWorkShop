@@ -24,7 +24,7 @@ const api = useWorkshopApi()
 const settingsForm = reactive({ name: '', scenarioPrompt: '', workspace: '', lineId: '' })
 
 // ===== v18 绑定产线(只读扩权:成员可读该线日志/配方/历史/状态;写仍走节点授权) =====
-interface LineOption { id: string, name: string, state?: string }
+interface LineOption { id: string, name: string, state?: string, controlMode?: string }
 const lineOptions = ref<LineOption[]>([])
 const linesLoading = ref(false)
 const lineChanged = ref(false)
@@ -40,6 +40,59 @@ const loadLines = async (): Promise<void> => {
 const onLineChange = (v: unknown): void => {
   settingsForm.lineId = String(v ?? '')
   lineChanged.value = true
+}
+
+// ===== 频道执行模式(observe/manual/auto;2026-10-28 三模式计划 M4)=====
+type ExecMode = 'observe' | 'manual' | 'auto'
+const execForm = reactive<{ mode: ExecMode, saved: ExecMode }>({ mode: 'auto', saved: 'auto' })
+const execConfirming = ref(false)
+const execSaving = ref(false)
+interface ExecEffective { channelMode: string, lineMode: 'auto' | 'manual' | null, bindings: { manual: number, auto: number }, suppressed: boolean }
+const execEffective = ref<ExecEffective | null>(null)
+/** 放开方向(observe→任意、manual→auto)需二次确认;收紧方向自由 */
+const execEscalates = (from: ExecMode, to: ExecMode): boolean => from === 'observe' || (from === 'manual' && to === 'auto')
+const execNeedsConfirm = computed(() => execForm.mode !== execForm.saved && execEscalates(execForm.saved, execForm.mode))
+/** 绑定产线的总闸模式(压制提示用;绑定行未变时按当前选择查) */
+const execLineGate = computed<'auto' | 'manual' | null>(() => {
+  const lid = props.channelMeta?.lineId || settingsForm.lineId
+  return (lineOptions.value.find(l => l.id === lid)?.controlMode as 'auto' | 'manual' | undefined) ?? null
+})
+const onExecModeChange = (): void => {
+  execConfirming.value = false
+}
+const loadExecMode = async (): Promise<void> => {
+  try {
+    const res = await api.getTwinProfile(props.channelId)
+    const saved = (res?.data?.profile?.executionMode ?? 'auto') as ExecMode
+    execForm.mode = saved
+    execForm.saved = saved
+  }
+  catch { /* profile 不可得(未登录/单测):保持中性缺省展示 */ }
+}
+const saveExecutionMode = async (): Promise<void> => {
+  if (execForm.mode === execForm.saved || execSaving.value) return
+  // 两段式:放开方向第一次点=进入确认态,第二次点=带 confirm 提交(与产线总闸同交互语言)
+  if (execNeedsConfirm.value && !execConfirming.value) {
+    execConfirming.value = true
+    return
+  }
+  execSaving.value = true
+  try {
+    const res = await api.patchExecutionMode(props.channelId, { mode: execForm.mode, confirm: execNeedsConfirm.value ? true : undefined })
+    execEffective.value = res?.data?.effective ?? null
+    execForm.saved = (res?.data?.executionMode ?? execForm.mode) as ExecMode
+    execConfirming.value = false
+    message.success(t('channelSessionList.execModeSaved'))
+    emit('saved')
+  }
+  catch (e) {
+    // 后端 400 MODE_CONFIRM_REQUIRED(确认态丢失等)→ 回到二次确认态
+    execConfirming.value = true
+    message.error(apiErrorMessage(e))
+  }
+  finally {
+    execSaving.value = false
+  }
 }
 
 // ===== Channel 级默认 LLM(harness → provider/model/effort;空 = 用引擎默认) =====
@@ -96,6 +149,7 @@ const openSettings = (): void => {
   settingsForm.lineId = meta?.lineId ?? ''
   lineChanged.value = false
   void loadLines()
+  void loadExecMode()
   // 预填 channel 默认 LLM(llmJson 由列表接口透传)
   let saved: ChannelLlmDefaults | null = null
   try {
@@ -205,6 +259,60 @@ const openSaveTemplate = (): void => {
         />
         <div class="bind-line-hint">
           {{ $t('channelSessionList.bindLineHint') }}
+        </div>
+      </a-form-item>
+      <a-form-item :label="t('channelSessionList.execModeLabel')">
+        <a-radio-group
+          v-model:value="execForm.mode"
+          @change="onExecModeChange"
+        >
+          <a-radio value="observe">
+            {{ $t('channelSessionList.execModeObserve') }}
+          </a-radio>
+          <a-radio value="manual">
+            {{ $t('channelSessionList.execModeManual') }}
+          </a-radio>
+          <a-radio value="auto">
+            {{ $t('channelSessionList.execModeAuto') }}
+          </a-radio>
+        </a-radio-group>
+        <div class="bind-line-hint">
+          {{ execForm.mode === 'observe' ? $t('channelSessionList.execModeObserveHint') : execForm.mode === 'manual' ? $t('channelSessionList.execModeManualHint') : $t('channelSessionList.execModeAutoHint') }}
+        </div>
+        <div
+          v-if="execLineGate || execEffective"
+          class="bind-line-hint exec-effective"
+        >
+          <span>{{ $t('channelSessionList.execModeLineGate') }}: <b>{{ execLineGate ?? execEffective?.lineMode ?? '-' }}</b></span>
+          <span
+            v-if="execEffective"
+          >· {{ $t('channelSessionList.execModeBindings') }}: manual {{ execEffective.bindings.manual }} / auto {{ execEffective.bindings.auto }}</span>
+        </div>
+        <div
+          v-if="execEffective?.suppressed || (execLineGate === 'manual' && execForm.mode === 'auto')"
+          class="bind-line-hint exec-suppressed"
+        >
+          {{ $t('channelSessionList.execModeSuppressed') }}
+        </div>
+        <div
+          v-if="execForm.mode !== execForm.saved"
+          class="exec-actions"
+        >
+          <a-alert
+            v-if="execNeedsConfirm && execConfirming"
+            type="warning"
+            show-icon
+            :message="t('channelSessionList.execModeEscalateHint')"
+          />
+          <a-button
+            size="small"
+            type="primary"
+            danger
+            :loading="execSaving"
+            @click="saveExecutionMode"
+          >
+            {{ execNeedsConfirm && execConfirming ? $t('channelSessionList.execModeConfirmBtn') : $t('common.save') }}
+          </a-button>
         </div>
       </a-form-item>
       <a-form-item :label="$t('channelSessionList.k1i8q46x007')">
@@ -373,4 +481,7 @@ const openSaveTemplate = (): void => {
 }
 .ws-hint { font-size: 11px; color: var(--ink-faint); }
 .bind-line-hint { margin-top: 4px; font-size: 11px; color: var(--ink-faint); line-height: 1.5; }
+.exec-effective { display: flex; gap: 12px; flex-wrap: wrap; }
+.exec-suppressed { color: #d46b08; }
+.exec-actions { margin-top: 6px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 </style>
