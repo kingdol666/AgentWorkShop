@@ -110,18 +110,33 @@ mission 全轨迹闭环;run `20261026175025-1ijw`,并行 wall **96.8s**。
 | anneal 连续退火 | 硬度 95±6HV | 5 设备 ✔ · DCW 7+DAQ 12 | COMPLETED | 2 | 5 | 抗拉 310.8 / 表面缺陷 0.15 守卫终值 | ✗ | **恒 135.0HV** |
 | biax BOPET 双轴 | 膜厚 25±0.7μm | 9 设备/49 信号 ✔ · DCW 30+DAQ 19 | COMPLETED | 6 | 6 | **越权账本查询被拒**:Agent 查绑定作用域外节点,回执列出可查范围;熔体温度守卫窗 268~300℃ 全程在内 | ✗ | 27.97→28.00μm,微动 |
 
-### 6.2 如实归因
+### 6.2 首跑全红的排查与修复(2026-10-27 当日完成)
 
-- **全通的**:差分接入(幂等 ensure,24 台冷启清场重建)→ 五协议逐驱动回读 ✔ → 产线/配方/DCW/DAQ 建立 →
-  Channel+任务编排(四任务终态 COMPLETED)→ 治理写入(23 次全部受理且带试验批次)→ 守卫与作用域拒绝全部带可行动文案。
-- **红在**:`attained=false` 四场景一致,根因是**模拟器 SP→PV 响应映射未标定**——写入成功后
-  被控量基本不随设定值移动(注塑恒 31.26g、退火恒 135HV),闭环"写了但学不到"。
-  这与 `bench/V2-MIGRATION.md` 的归因完全一致("attainment, not write refusal… a simulator
-  blueprint/response-mapping calibration issue, not a platform governance defect")。
-  **是仿真标定问题,不是平台治理缺陷**;但它是走向真机前必须关闭的第 5 道闸门的直接证据。
-- 治理链的两次"拒绝"(wwtp 越量程、biax 越权查询)恰是本轮最有价值的产品证据:
-  约束不是装饰,是真的在拦。
+首跑四工况达标全红。**活体探针逐层排除**:引擎真值流显示 SP→PV 响应完全正确(保压 110→69,
+克重 34.65→32.5 两秒内入窗)——模拟器引擎/模型无缺陷。真正根因在 **bench 反馈通道**,两层:
 
+1. **多场景跑器从未启动 DAQ 采样总控**:`ensureGateway` 只被 checks 调用,`bench/scenarios.mjs`
+   全程不启采样器;冷启平台不自动起采样器,mission 的 PV 反馈(`/samples`)没有新样本。
+2. **`readPvMean` 的 60s 窗口踩中 `/samples` 的 `ORDER BY b_at ASC LIMIT n` 语义**:
+   取的是窗口内**最旧**的 n 桶(≈55s 前)。v2 迁移把迭代加快到 8-17s/轮后,
+   55s 陈旧度 = 控制器永远落后 4-5 轮、对着旧基线反复加码 —— 表象即"PV 冻结在初值"。
+
+修复(`bench/lib/scenarios.mjs`):入口显式 `ensureGateway`;每场景 mission 前加**采样活性+值跟动
+哨兵**(样本必须存在且等于设备现值,否则记 error 拒跑);`readPvMean` 窗口改 `limit×1s+3s`;
+慢动力学工况 settle 调优(wwtp 30s/anneal 25s/biax 20s)。
+
+**修复后复跑**(run `20261027043152-u80`,fresh home,四场景并行 168s):
+
+| 工况 | 结果 | 轨迹摘要 |
+| --- | --- | --- |
+| injection | **✔ attained** | 31.27 →(45→58)→ 31.95 →(hold-time 6→10.4)→ 32.13 →(58→61.9)→ **32.18 入窗**,3 发收敛 |
+| wwtp | **✔ attained** | DO 0.21 → 曝气逐级 +NaOH/PAC 修剪,11 发收敛(慢动力学,settle 30s) |
+| anneal | **✔ attained** | 硬度入窗 + 产能修剪,6 发 |
+| biax | ✘(剩余标定) | 膜厚 28.00→27.93 **实时递降**(通道已活),距 25±0.7 仍远 —— 剩余项是 biax mission 的控制器增益/轮次预算,不再是通道缺陷 |
+
+**归因更正**:此前写入 `bench/V2-MIGRATION.md` 的"模拟器 SP→PV 响应映射未标定"不成立,
+已在该文件追加更正章节;模拟器无缺陷,缺陷在 bench 反馈通道且已修复。
+本轮同时实证了治理面的两次真实拒绝(wwtp 越量程拒写 51.5Hz>50、biax 越权账本查询被拒)。
 
 ## 七、结论
 

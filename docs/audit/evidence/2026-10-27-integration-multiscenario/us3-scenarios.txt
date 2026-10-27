@@ -63,3 +63,223 @@ platform=http://127.0.0.1:3600  simulator=http://127.0.0.1:4010
   报告 → bench/results/20261026175025-1ijw/scenarios-benchmark.md + .html
 === exit=1 01:52:04 ===
 US3 DONE Tue Oct 27 01:52:05     2026
+=== multi-scenario bench start 11:44:36 ===
+
+=== AW-IndustrialBench · multi-scenario parallel closed-loop 20261027034436-24m4 ===
+scenarios=injection,wwtp,anneal,biax  seed=42  toolHarness=opencode
+platform=http://127.0.0.1:3600  simulator=http://127.0.0.1:4010
+
+  · 模拟器未在线 → 自动启动 (cwd=D:\tmp\aw-main\plc-node-simulator, port=4010, 无 watch 常驻)
+(node:99292) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  · 冷启默认设备已清场(24 台) → 产线由预设从零重建
+✔ 平台就绪并鉴权(login)
+
+· 预检场景 injection(注塑成型质量窗口寻优)
+· 预检场景 wwtp(A2O 污水生化处理达标降耗)
+· 预检场景 anneal(连续退火质量窗内产能最大化)
+· 预检场景 biax(双拉(BOPET)薄膜产线多节点闭环)
+  并行启动 4 个场景闭环:injection, wwtp, anneal, biax(fresh 起点复位)
+  DAQ 采样总控已启动(显式 ensureGateway)
+  [injection] ensure ✔ devices=5/5 sp=11 pv=14 created=5 repaired=0 untouched=0
+  [wwtp] ensure ✔ devices=5/5 sp=7 pv=13 created=5 repaired=0 untouched=0
+  [anneal] ensure ✔ devices=5/5 sp=7 pv=12 created=5 repaired=0 untouched=0
+  [biax] ensure ✔ devices=9/9 sp=30 pv=19 created=9 repaired=0 untouched=0
+  [wwtp] 平台建线(新建) ✔ line=ln-12f2e321 dcw=7 daq=13
+  [anneal] 平台建线(新建) ✔ line=ln-3048b15b dcw=7 daq=12
+  [wwtp] channel=cfedb128-590f-428d-9a34-e92a83597225 toolAgent=d72ee7f9-5939-4c2e-ac77-a953fc786c57 task=788bea3a-9ad0-4d3d-a6cb-ce8222017e51
+  [anneal] channel=84fc18a9-a542-4014-bf57-0318b9ec3920 toolAgent=27c5c3fe-a117-45c7-8ced-aed28c7ad8d0 task=5ca6c838-c64f-45ab-ac30-1b26e687281a
+  [injection] 平台建线(新建) ✔ line=ln-ed40c2da dcw=11 daq=14
+  [biax] 平台建线(新建) ✔ line=ln-a98e1ce1 dcw=30 daq=19
+  [injection] channel=57f0e3bb-be3d-4514-827a-4bf85cdc8d2c toolAgent=e776d44e-6f8c-4e87-b607-4d69f4a82bc9 task=560a5ba0-6066-41ec-abc2-d4350e9c6f4a
+  [biax] channel=b2b58e02-71f3-4a09-a379-7edd79cea6e4 toolAgent=e9915612-9749-4b6e-94dc-9e84d61758c0 task=cfe55846-c3ae-46fe-9cdf-9179a4071dcb
+  [anneal] mission ✔ writes=2 attained=false wall=17.88s
+  [injection] mission ✔ writes=5 attained=false wall=28.77s
+  [wwtp] mission ✔ writes=10 attained=false wall=49.51s
+  [biax] mission ✔ writes=6 attained=false wall=85.14s
+
+=== 结果 ===
+  ✘ injection  注塑成型质量窗口寻优     writes=5   rounds=8   wall=28.77s · errors: DAQ 样本断流:30s 窗口内 dn-a492c855 无新样本 —— 检查采样总控与产线活动批(反馈通道饿死会让 mission 拿旧基线假装闭环)
+  ✘ wwtp       A2O 污水生化处理达标降耗 writes=10  rounds=10  wall=49.51s
+  ✘ anneal     连续退火质量窗内产能最大化  writes=2   rounds=5   wall=17.88s · errors: DAQ 样本断流:30s 窗口内 dn-f9b6ff41 无新样本 —— 检查采样总控与产线活动批(反馈通道饿死会让 mission 拿旧基线假装闭环)
+  ✘ biax       双拉(BOPET)薄膜产线多节点闭环 writes=6   rounds=6   wall=85.14s
+  并行 wall = 88.2s(串行累计 181.3s)
+  报告 → bench/results/20261027034436-24m4/scenarios-benchmark.md + .html
+=== exit=1 11:47:33 ===
+US3 DONE Tue Oct 27 11:47:34     2026
+=== multi-scenario bench start 11:53:58 ===
+
+=== AW-IndustrialBench · multi-scenario parallel closed-loop 20261027035358-1c90 ===
+scenarios=injection,wwtp,anneal,biax  seed=42  toolHarness=opencode
+platform=http://127.0.0.1:3600  simulator=http://127.0.0.1:4010
+
+  · 模拟器未在线 → 自动启动 (cwd=D:\tmp\aw-main\plc-node-simulator, port=4010, 无 watch 常驻)
+(node:62532) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  · 冷启默认设备已清场(24 台) → 产线由预设从零重建
+✔ 平台就绪并鉴权(login)
+
+· 预检场景 injection(注塑成型质量窗口寻优)
+· 预检场景 wwtp(A2O 污水生化处理达标降耗)
+· 预检场景 anneal(连续退火质量窗内产能最大化)
+· 预检场景 biax(双拉(BOPET)薄膜产线多节点闭环)
+  并行启动 4 个场景闭环:injection, wwtp, anneal, biax(fresh 起点复位)
+  DAQ 采样总控已启动(显式 ensureGateway)
+  [anneal] ensure ✔ devices=5/5 sp=7 pv=12 created=5 repaired=0 untouched=0
+  [wwtp] ensure ✔ devices=5/5 sp=7 pv=13 created=5 repaired=0 untouched=0
+  [injection] ensure ✔ devices=5/5 sp=11 pv=14 created=5 repaired=0 untouched=0
+  [biax] ensure ✔ devices=9/9 sp=30 pv=19 created=9 repaired=0 untouched=0
+  [wwtp] 平台建线(新建) ✔ line=ln-0af2e690 dcw=7 daq=13
+  [anneal] 平台建线(新建) ✔ line=ln-9827ef77 dcw=7 daq=12
+  [injection] 平台建线(新建) ✔ line=ln-978b39f6 dcw=11 daq=14
+  [biax] 平台建线(新建) ✔ line=ln-3780a15f dcw=30 daq=19
+  [biax] channel=65730eb3-d659-4faa-96ff-f97fdcd719db toolAgent=024ed2cf-53c9-4016-959e-58f36fb24909 task=8f48695f-28a9-4d24-9a99-d80142f13819
+  [anneal] channel=a28c4f70-9491-46e2-a9e9-553dc1a8de2a toolAgent=0163f8ea-7c18-46a4-88f9-2c7e46a67003 task=6e14f06f-142c-47d7-89f2-c80549527d07
+  [wwtp] channel=50c1b232-f5b1-41ae-9025-ac08547b059c toolAgent=63012955-66c6-460f-b89a-a006f6df3f15 task=8aaad3cc-2273-4acd-9ce0-0bcfa08e1605
+  [injection] channel=0144c4eb-ab9c-4bca-a89b-85178bb55f6a toolAgent=93fb0e09-a0bf-416c-8a08-cc9c067a85b5 task=38c2fee5-476e-486c-bd0b-9d83fca297cc
+  [anneal] mission ✔ writes=2 attained=false wall=24.98s
+  [injection] mission ✔ writes=6 attained=false wall=40.88s
+  [wwtp] mission ✔ writes=7 attained=false wall=51.6s
+  [biax] mission ✔ writes=6 attained=false wall=94.81s
+
+=== 结果 ===
+  ✘ injection  注塑成型质量窗口寻优     writes=6   rounds=8   wall=40.88s
+  ✘ wwtp       A2O 污水生化处理达标降耗 writes=7   rounds=7   wall=51.6s
+  ✘ anneal     连续退火质量窗内产能最大化  writes=2   rounds=5   wall=24.98s
+  ✘ biax       双拉(BOPET)薄膜产线多节点闭环 writes=6   rounds=6   wall=94.81s
+  并行 wall = 97.8s(串行累计 212.27s)
+  报告 → bench/results/20261027035358-1c90/scenarios-benchmark.md + .html
+=== exit=1 11:56:55 ===
+US3 DONE Tue Oct 27 11:56:56     2026
+=== multi-scenario bench start 12:11:32 ===
+
+=== AW-IndustrialBench · multi-scenario parallel closed-loop 20261027041132-bco ===
+scenarios=injection,wwtp,anneal,biax  seed=42  toolHarness=opencode
+platform=http://127.0.0.1:3600  simulator=http://127.0.0.1:4010
+
+  · 模拟器未在线 → 自动启动 (cwd=D:\tmp\aw-main\plc-node-simulator, port=4010, 无 watch 常驻)
+(node:14712) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  · 冷启默认设备已清场(24 台) → 产线由预设从零重建
+✔ 平台就绪并鉴权(register-first-admin)
+
+· 预检场景 injection(注塑成型质量窗口寻优)
+· 预检场景 wwtp(A2O 污水生化处理达标降耗)
+· 预检场景 anneal(连续退火质量窗内产能最大化)
+· 预检场景 biax(双拉(BOPET)薄膜产线多节点闭环)
+  并行启动 4 个场景闭环:injection, wwtp, anneal, biax(fresh 起点复位)
+  DAQ 采样总控已启动(显式 ensureGateway)
+  [injection] ensure ✔ devices=5/5 sp=11 pv=14 created=5 repaired=0 untouched=0
+  [anneal] ensure ✔ devices=5/5 sp=7 pv=12 created=5 repaired=0 untouched=0
+  [wwtp] ensure ✔ devices=5/5 sp=7 pv=13 created=5 repaired=0 untouched=0
+  [biax] ensure ✔ devices=9/9 sp=30 pv=19 created=9 repaired=0 untouched=0
+  [wwtp] 平台建线(新建) ✔ line=ln-f2d01223 dcw=7 daq=13
+  [anneal] 平台建线(新建) ✔ line=ln-21f7906a dcw=7 daq=12
+  [injection] 平台建线(新建) ✔ line=ln-523e20b5 dcw=11 daq=14
+  [biax] 平台建线(新建) ✔ line=ln-8d36bc6f dcw=30 daq=19
+  [biax] channel=1e23f911-160d-4560-bb64-9a9afd2fbac3 toolAgent=c24d7312-1b06-4774-a649-689bc2ed35ac task=c6b7666e-aad2-40cb-adab-6f9f12ddb047
+  [anneal] channel=22a60b55-1e18-4de9-9985-28d0cfae12a6 toolAgent=ea739d49-1f08-4ea9-967b-014035251de7 task=6e0fb304-e072-416e-95f8-0fe0420049f2
+  [wwtp] channel=32e0654c-d605-4322-a491-d1e28eb03d7d toolAgent=bd98d698-ef26-409a-9971-0a9b0e4a5bbb task=93e6adb0-002d-4097-ae15-edf323c75ab9
+  [injection] channel=2ca0a7de-3854-46b5-95d3-caa213968900 toolAgent=06610914-43ac-4337-a389-9534de47b0a2 task=82dd7d1a-1dca-47a6-a8fc-d91b018a1d09
+  [anneal] mission ✔ writes=2 attained=false wall=23.9s
+  [injection] mission ✔ writes=6 attained=false wall=40.7s
+  [wwtp] mission ✔ writes=10 attained=false wall=58.41s
+  [biax] mission ✔ writes=6 attained=false wall=139.95s
+
+=== 结果 ===
+  ✘ injection  注塑成型质量窗口寻优     writes=6   rounds=8   wall=40.7s
+  ✘ wwtp       A2O 污水生化处理达标降耗 writes=10  rounds=10  wall=58.41s
+  ✘ anneal     连续退火质量窗内产能最大化  writes=2   rounds=5   wall=23.9s
+  ✘ biax       双拉(BOPET)薄膜产线多节点闭环 writes=6   rounds=6   wall=139.95s
+  并行 wall = 143s(串行累计 262.96s)
+  报告 → bench/results/20261027041132-bco/scenarios-benchmark.md + .html
+=== exit=1 12:15:14 ===
+US3 DONE Tue Oct 27 12:15:14     2026
+=== multi-scenario bench start 12:21:57 ===
+
+=== AW-IndustrialBench · multi-scenario parallel closed-loop 20261027042157-fb8 ===
+scenarios=injection,wwtp,anneal,biax  seed=42  toolHarness=opencode
+platform=http://127.0.0.1:3600  simulator=http://127.0.0.1:4010
+
+  · 模拟器未在线 → 自动启动 (cwd=D:\tmp\aw-main\plc-node-simulator, port=4010, 无 watch 常驻)
+(node:19844) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  · 冷启默认设备已清场(24 台) → 产线由预设从零重建
+✔ 平台就绪并鉴权(register-first-admin)
+
+· 预检场景 injection(注塑成型质量窗口寻优)
+· 预检场景 wwtp(A2O 污水生化处理达标降耗)
+· 预检场景 anneal(连续退火质量窗内产能最大化)
+· 预检场景 biax(双拉(BOPET)薄膜产线多节点闭环)
+  并行启动 4 个场景闭环:injection, wwtp, anneal, biax(fresh 起点复位)
+  DAQ 采样总控已启动(显式 ensureGateway)
+  [injection] ensure ✔ devices=5/5 sp=11 pv=14 created=5 repaired=0 untouched=0
+  [wwtp] ensure ✔ devices=5/5 sp=7 pv=13 created=5 repaired=0 untouched=0
+  [anneal] ensure ✔ devices=5/5 sp=7 pv=12 created=5 repaired=0 untouched=0
+  [biax] ensure ✔ devices=9/9 sp=30 pv=19 created=9 repaired=0 untouched=0
+  [wwtp] 平台建线(新建) ✔ line=ln-95d95116 dcw=7 daq=13
+  [anneal] 平台建线(新建) ✔ line=ln-3ee01883 dcw=7 daq=12
+  [injection] 平台建线(新建) ✔ line=ln-7e196331 dcw=11 daq=14
+  [biax] 平台建线(新建) ✔ line=ln-924450cf dcw=30 daq=19
+  [biax] channel=61e03d2e-9f1d-4102-b6c1-e5fd7fa4a4d8 toolAgent=fab1fa66-5c3d-4f01-b28d-1b9a1e47f37f task=34f16642-a12e-4b26-a5e0-6ccac5bf76cc
+  [wwtp] channel=b5cee16f-acd6-4297-bdb9-4732d3bda244 toolAgent=a3c4f4a2-2dad-4b93-9cac-a24920b67858 task=dce275b9-e057-4e14-af57-6064e99fbb30
+  [anneal] channel=5977014e-59f9-46f3-a086-70da50b1b201 toolAgent=75c9262e-61f5-45dd-af29-02dcaa171944 task=03b2eae5-3e90-4fe0-8b8c-23eb27d6e303
+  [injection] channel=cf3c15a9-0444-468f-83ab-48d43bebe121 toolAgent=52c66f90-d916-454a-8b7d-a81e51d8af3c task=c7204eb4-54fd-4a60-9149-51ce246ec8f4
+  [anneal] mission ✔ writes=2 attained=false wall=22.73s
+  [injection] mission ✔ writes=6 attained=false wall=40.08s
+  [wwtp] mission ✔ writes=10 attained=false wall=57.98s
+  [biax] mission ✔ writes=6 attained=false wall=96.57s
+
+=== 结果 ===
+  ✘ injection  注塑成型质量窗口寻优     writes=6   rounds=8   wall=40.08s
+  ✘ wwtp       A2O 污水生化处理达标降耗 writes=10  rounds=10  wall=57.98s
+  ✘ anneal     连续退火质量窗内产能最大化  writes=2   rounds=5   wall=22.73s
+  ✘ biax       双拉(BOPET)薄膜产线多节点闭环 writes=6   rounds=6   wall=96.57s
+  并行 wall = 99.6s(串行累计 217.36s)
+  报告 → bench/results/20261027042157-fb8/scenarios-benchmark.md + .html
+=== exit=1 12:25:21 ===
+US3 DONE Tue Oct 27 12:25:21     2026
+=== multi-scenario bench start 12:31:52 ===
+
+=== AW-IndustrialBench · multi-scenario parallel closed-loop 20261027043152-u80 ===
+scenarios=injection,wwtp,anneal,biax  seed=42  toolHarness=opencode
+platform=http://127.0.0.1:3600  simulator=http://127.0.0.1:4010
+
+  · 模拟器未在线 → 自动启动 (cwd=D:\tmp\aw-main\plc-node-simulator, port=4010, 无 watch 常驻)
+(node:39168) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+  · 冷启默认设备已清场(24 台) → 产线由预设从零重建
+✔ 平台就绪并鉴权(register-first-admin)
+
+· 预检场景 injection(注塑成型质量窗口寻优)
+· 预检场景 wwtp(A2O 污水生化处理达标降耗)
+· 预检场景 anneal(连续退火质量窗内产能最大化)
+· 预检场景 biax(双拉(BOPET)薄膜产线多节点闭环)
+  并行启动 4 个场景闭环:injection, wwtp, anneal, biax(fresh 起点复位)
+  DAQ 采样总控已启动(显式 ensureGateway)
+  [anneal] ensure ✔ devices=5/5 sp=7 pv=12 created=5 repaired=0 untouched=0
+  [wwtp] ensure ✔ devices=5/5 sp=7 pv=13 created=5 repaired=0 untouched=0
+  [injection] ensure ✔ devices=5/5 sp=11 pv=14 created=5 repaired=0 untouched=0
+  [biax] ensure ✔ devices=9/9 sp=30 pv=19 created=9 repaired=0 untouched=0
+  [wwtp] 平台建线(新建) ✔ line=ln-f3a0b528 dcw=7 daq=13
+  [anneal] 平台建线(新建) ✔ line=ln-ed652acc dcw=7 daq=12
+  [injection] 平台建线(新建) ✔ line=ln-b9e3ac64 dcw=11 daq=14
+  [biax] 平台建线(新建) ✔ line=ln-c3efa10c dcw=30 daq=19
+  [biax] channel=3087ba6f-a455-4586-bfb6-f4dbf8e304aa toolAgent=142830f4-fc28-4c67-80c9-ed20fb20af4b task=294b547f-d6c1-40f5-a23c-e6e68eb01730
+  [anneal] channel=f37975e2-e3b1-4f36-b90d-9f7898cd8970 toolAgent=9b3a5480-2fbe-4407-9c5d-5a2915c577f9 task=94dc62e5-dc68-476f-8f74-6102c8a6d123
+  [wwtp] channel=2fffc827-0f4d-491e-a66d-fb733aa30e6f toolAgent=4344ccd6-b64e-489d-81ab-45436adbfa8a task=04864c77-8d0f-4923-b60f-b9cabdff3b43
+  [injection] channel=488f26bd-8c15-40af-bcd5-998299a6561e toolAgent=3d4e6c12-dc54-495a-aa53-341e0c188c18 task=83aeff1e-bdf3-4c3f-a13a-fefd9c07b391
+  [injection] mission ✔ writes=3 attained=true wall=39.68s
+  [biax] mission ✔ writes=6 attained=false wall=87.31s
+  [anneal] mission ✔ writes=6 attained=true wall=95.61s
+  [wwtp] mission ✔ writes=11 attained=true wall=165.13s
+
+=== 结果 ===
+  ✔ injection  注塑成型质量窗口寻优     writes=3   rounds=4   wall=39.68s
+  ✔ wwtp       A2O 污水生化处理达标降耗 writes=11  rounds=12  wall=165.13s
+  ✔ anneal     连续退火质量窗内产能最大化  writes=6   rounds=7   wall=95.61s
+  ✘ biax       双拉(BOPET)薄膜产线多节点闭环 writes=6   rounds=6   wall=87.31s
+  并行 wall = 168.2s(串行累计 387.73s)
+  报告 → bench/results/20261027043152-u80/scenarios-benchmark.md + .html
+=== exit=1 12:35:57 ===
+US3 DONE Tue Oct 27 12:35:57     2026
