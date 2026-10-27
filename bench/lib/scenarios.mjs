@@ -24,6 +24,7 @@
 import { sleep } from './util.mjs'
 import { simApi, simNodes, simExport, plantReset } from './sim.mjs'
 import { runBiaxMission } from './biax.mjs'
+import { ensureGateway } from './provision.mjs'
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v))
 const isSp = s => /-sp$/.test(s.id)
@@ -85,7 +86,7 @@ export const SCENARIOS = {
       TpOut: [0, 0.5],
       PhOut: [6.0, 9.0],
     },
-    settleMs: 12000,
+    settleMs: 30000,
   },
   anneal: {
     id: 'anneal',
@@ -107,7 +108,7 @@ export const SCENARIOS = {
       Tensile: [275, 325],
       SurfaceDef: [0, 0.5],
     },
-    settleMs: 10000,
+    settleMs: 25000,
   },
   biax: {
     id: 'biax',
@@ -122,7 +123,7 @@ export const SCENARIOS = {
       'biax-thickness': [24.3, 25.7],
       'melt-temp': [268, 300],
     },
-    settleMs: 10000,
+    settleMs: 20000,
     // 多引擎并行必须按 id 隔离装载;plantWhole 会覆盖别的场景引擎(4 场景并行时实测)。
     plantWhole: false,
   },
@@ -386,10 +387,12 @@ export async function provisionScenarioLine(api, scen, { sfx }) {
 /** 经平台 REST 读 DAQ 均值(权威读数;桶化 = avg,非桶化 = value) */
 export async function readPvMean(api, nodeId, limit = 5) {
   if (!nodeId) return null
-  // 必须带 from/to 窗口:无窗口时 /samples 从最早样本开始取 limit 条,复用产线会
-  // 读到上一轮的历史值(实测:写入已生效但 mission 仍按旧基线反复加码)。
+  // 必须带 from/to 窗口,且窗口必须**短**:/samples 是 `ORDER BY b_at ASC LIMIT n`
+  // —— 取窗口内**最旧**的 n 桶。窗口 60s 时读到的永远是 ~55s 前的值:v2 迁移后
+  // mission 迭代仅 8-17s/轮,55s 陈旧度 = 永远落后 4-5 轮,控制器对着旧基线反复加码
+  // (2026-10-26/27 四工况"PV 冻结"的 SQL 级根因)。窗口=limit×1s+3s 余量,只读最新几桶。
   const to = Date.now()
-  const from = to - Math.max(60_000, limit * 5000)
+  const from = to - (limit * 1000 + 3_000)
   const s = await api.call('GET', `/api/workshop/daq/${nodeId}/samples?bucketMs=1000&from=${from}&to=${to}&limit=${limit}`)
   const pts = [...(s.data?.points ?? [])].sort((a, b) => Number(a.at) - Number(b.at)).slice(-limit)
   const vs = pts.map(p => Number(p.avg ?? p.value)).filter(Number.isFinite)
@@ -851,6 +854,17 @@ const MISSIONS = {
 // 单场景全流程(ensure → 建线 → channel → mission)+ 三场景并行编排
 // ─────────────────────────────────────────────────────────────
 
+
+/** 哨兵辅助:读某 DAQ 节点在模拟器侧对应信号的现值(经 /api/nodes;节点 id 形如 scen-<id>:daq:<sig>) */
+async function readDaqNodeSimValue(scen, sigId) {
+  const map = { injection: 'inj-', wwtp: 'wwtp-', anneal: 'anneal-', biax: 'biax-' }
+  const prefix = map[scen.id] ?? ''
+  const nodes = await simNodes()
+  const dev = nodes.find(n => n.id.startsWith(prefix) && (n.signals ?? []).some(x => x.id === sigId))
+  const sig = dev?.signals?.find(x => x.id === sigId)
+  return sig ? (sig.runtime?.value ?? sig.value ?? null) : null
+}
+
 export async function runScenario(api, scen, ctx) {
   const { sfx, toolHarness, onLog, fresh = true } = ctx
   const t0 = Date.now()
@@ -872,6 +886,34 @@ export async function runScenario(api, scen, ctx) {
       const cm = await api.call('PATCH', `/api/workshop/dcw/lines/${line.ids.lineId}`, { controlMode: 'auto', confirm: true })
       if (cm.status >= 400) res.errors.push(`线控制模式切 auto 失败: ${cm.message}`)
       else res.ev.push('线控制模式:auto(隔离基准;写路径仍经 recipe 门禁/运行门/四层限界)')
+    }
+
+    // 采样活性哨兵:PV 反馈全部走 /samples(TSDB)。采样总控没起/产线无活动批时
+    // 这里读不到新样本 —— 与其让 mission 拿着旧基线假装闭环(2026-10-26 四工况
+    // "PV 冻结"的教训),不如当场记 error 拒跑。
+    {
+      const pvId = Object.values(line.daq)[0]
+      // 值跟动校验:样本不仅要存在,还必须等于设备当前值(模拟器侧 runtime value)。
+      // 只验「有样本」不够 —— 2026-10-27 实测:样本存在但值冻结在陈旧快照,mission 照样拿旧基线假装闭环。
+      let pts = []
+      let tracked = false
+      for (let w = 0; w < 12; w++) {
+        const to = Date.now()
+        const probe = await api.call('GET', `/api/workshop/daq/${pvId}/samples?bucketMs=1000&from=${to - 30_000}&to=${to}&limit=5`)
+        pts = probe.data?.points ?? []
+        if (pts.length) {
+          // 从模拟器侧取本场景 PV 信号现值(蓝图 PV 信号 id = line.daq 的键名)
+          const sigId = Object.keys(line.daq)[0]
+          const nodeId = line.daq[sigId]
+          const cur = await readDaqNodeSimValue(scen, sigId)
+          const lastAvg = Number(pts[pts.length - 1]?.avg)
+          if (cur == null || !Number.isFinite(lastAvg) || Math.abs(cur - lastAvg) <= Math.max(0.05, Math.abs(cur) * 0.02)) { tracked = true; break }
+        }
+        await sleep(5000)
+      }
+      if (!pts.length) res.errors.push(`DAQ 样本断流:60s 内 ${pvId} 始终无新样本 —— 检查采样总控与产线活动批(反馈通道饿死会让 mission 拿旧基线假装闭环)`)
+      else if (!tracked) res.errors.push(`DAQ 样本值不跟动:${pvId} 样本存在但与设备现值持续偏离 —— 反馈通道陈旧,mission 拿旧基线假装闭环(2026-10-27 四工况冻结的精确形态)`)
+      else res.ev.push(`采样活性 ✔ ${pvId} 近 30s ${pts.length} 桶新样本且值跟动`)
     }
 
     // fresh(默认开):把 SP 复位到蓝图次优起点(只动本场景的信号值,不重连/不重建任何东西),
@@ -961,6 +1003,13 @@ export async function runScenarioBench(api, { scenarios = SCENARIO_IDS, sfx, too
   const t0 = Date.now()
   const list = scenarios.map(id => SCENARIOS[id]).filter(Boolean)
   onLog?.(`并行启动 ${list.length} 个场景闭环:${list.map(s => s.id).join(', ')}${fresh ? '(fresh 起点复位)' : ''}`)
+  // DAQ 采样总控必须在 mission 之前显式启动:冷启平台不会自动起采样器,
+  // 而 mission 的 PV 反馈读的是 /samples(TSDB)。采样断流时 readPvMean 返回 null、
+  // `w = pvAfter ?? w` 会把初值永远携带 —— 2026-10-26 四工况"PV 冻结/达标全红"的根因
+  // (写入与引擎全部正常,唯独反馈通道饿死;复现与判决见 docs/audit/2026-10-27-*)。
+  const gw = await ensureGateway(api)
+  if (!gw) throw new Error('DAQ 采样总控启动失败(/api/workshop/daq/controller start 非 200)')
+  onLog?.('DAQ 采样总控已启动(显式 ensureGateway)')
   const results = await Promise.all(list.map(s => runScenario(api, s, { sfx, toolHarness, fresh, onLog })))
   const wallS = r2((Date.now() - t0) / 1000)
   const ok = results.every(r => !r.errors.length && r.mission?.attained)
