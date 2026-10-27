@@ -1,37 +1,37 @@
-━━━ MQTT 协议专项 E2E (tag=mvqprlv0) ━━━
+━━━ MQTT 协议专项 E2E (tag=mvqqlr41) ━━━
   PASS  A0 平台在线 + 管理员会话 — http://127.0.0.1:3021
-  ·   · 模拟器未在线 → 自动启动 (cwd=C:\Users\87287\AppData\Local\Temp\aw-mqtt-e2e-sim-mvqprlv0, port=4021, 影子私有数据目录, 无 watch 常驻)
-(node:79520) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
+  ·   · 模拟器未在线 → 自动启动 (cwd=C:\Users\87287\AppData\Local\Temp\aw-mqtt-e2e-sim-mvqqlr41, port=4021, 影子私有数据目录, 无 watch 常驻)
+(node:51020) [DEP0190] DeprecationWarning: Passing args to a child process with shell option true can lead to security vulnerabilities, as the arguments are not escaped, only concatenated.
 (Use `node --trace-deprecation ...` to show where the warning was created)
   ·   · 冷启默认设备已清场(0 台) → 产线由预设从零重建
   PASS  A1 模拟器内置 broker 监听 — 期望 29830, export={"host":"127.0.0.1","port":29830,"topic":"aw/sim/temp","jsonPath":"data.temp"}
   PASS  A2 MQTT 写信号导出含状态回读主题 — readTopic=aw/sim/state
-  PASS  A3 设备周期发布遥测(独立订阅端) — 3 条 / 6s,样例 50.03,47.53,46.78
-  PASS  A4 状态主题 retained(晚订阅即时可取) — {"setpoint":60,"value":60,"signalId":"mqtt-sp","at":1793107326952}
+  PASS  A3 设备周期发布遥测(独立订阅端) — 3 条 / 6s,样例 55.59,55.78,55.88
+  PASS  A4 状态主题 retained(晚订阅即时可取) — {"setpoint":60,"value":60,"signalId":"mqtt-sp","at":1793108733359}
   PASS  B0 DAQ 网关启动
-  PASS  B1 产线开跑(配方 + 监控窗口) — rr-233439e8
+  PASS  B1 产线开跑(配方 + 监控窗口) — rr-f954eb02
   PASS  B2 MQTT 报文逐条入库(独立真值对账) — DB 7 行 / 真值 7 条
   PASS  B3 入库值与设备发布值一致(逐条对齐) — 对齐 6/7
   PASS  B4 入库节奏=设备发布周期(非 intervalMs 轮询) — 中位间隔 2000ms(设备 tick=2000,节点 interval=1000)
-  PASS  B5 库内时间戳严格递增(到达时刻) — 1793107329000 → 1793107340000
-  PASS  B6 报文到达 → 库内可查 ≤ 4s — 2195ms
+  PASS  B5 库内时间戳严格递增(到达时刻) — 1793108735000 → 1793108747000
+  PASS  B6 报文到达 → 库内可查 ≤ 4s — 2183ms
   PASS  B7 采集管线无丢弃(produced=consumed, dropped=0) — {"produced":10,"consumed":10,"dropped":0,"stored":9}
-  PASS  B8 /samples 无 from 时 limit=1 = 最新桶(UI 路径) — unbounded=42.6@1793107355000 bounded=42.6@1793107355000
+  PASS  B8 /samples 无 from 时 limit=1 = 最新桶(UI 路径) — unbounded=54.3@1793108761000 bounded=54.3@1793108761000
   PASS  C1 设备停发 → 0 新增样本(不伪造冻值) — 0 行
-  PASS  C2 停发 → 节点 offline + 可读 lastError — offline / MQTT 被动订阅:9s 未收到报文(设备停发/主题无发布/网络分区),节点置 offline(停发期间不写样本)
+  PASS  C2 停发 → 节点 offline + 可读 lastError — offline / MQTT 被动订阅:11s 未收到报文(设备停发/主题无发布/网络分区),节点置 offline(停发期间不写样本)
   PASS  C3 恢复发布 → 自动续采 + 状态自愈 — 2 行 / state=ok / err=
-  PASS  D0 第二台 MQTT 设备创建 — mqtt-e2e-dev2-mvqprlv0
-  PASS  D1 同 broker 两节点并行入库 — node1 4 行 / node2 7 行
+  PASS  D0 第二台 MQTT 设备创建 — mqtt-e2e-dev2-mvqqlr41
+  PASS  D1 同 broker 两节点并行入库 — node1 3 行 / node2 7 行
   PASS  E1 外部 broker 订阅入库(标准 mosquitto) — 6 行
-  PASS  E2 外部 broker 写回 → 设备回显 → 平台回读 — lastCmd=44.4 read=44.4 msg=MQTT 回读 aw/e2e/mvqprlv0/ext/state = 44.4
+  PASS  E2 外部 broker 写回 → 设备回显 → 平台回读 — lastCmd=44.4 read=44.4 msg=MQTT 回读 aw/e2e/mvqqlr41/ext/state = 44.4
   PASS  F1 MQTT 直写 → 设备信号变化 — target=61.5 sim=61.5
   PASS  F2 MQTT 写后回读(readTopic)= 写入值 — read=61.5 msg=MQTT 回读 aw/sim/state = 61.5
   PASS  F3 配方批量下发 → 回读证实(readback-verified) — {"verdict":"verified","attempts":1}
   PASS  F4 ACK 汇总无未证实/失败 — {"verified":1,"unverified":0,"failed":0,"total":1}
-  PASS  G0 Agent 建号 + DAQ 绑定 — 18cf48eb-c18d-4626-9fff-d81980c1c8a6 / {"binding":{"id":"nb-14a0068d","agentId":"18cf48eb-c18d-4626-9fff-d81980c1c8a6","nodeId":"dn-77d18bc0","kind":"daq","mod
-  PASS  G1 daq_query 最新值 = 窗口末尾桶(不是最旧段) — text=51.7 dbLast=51.7 dbFirst=49
-  PASS  G2 输出含数据源与库内滞后声明 —   工况判读: 活动配方「MQTT-E2E-R-mvqprlv0」监控窗口 [0, 100]:当前 51.7℃ 窗口内(正常) | 同产线数控设定: MQTT-DCW1-mvqprlv0=61.5℃;MQTT-DCW2-mvqprlv0=6
-  PASS  G3 agg=min 生效(输出最小值 = 库内窗口最小) — textMin=42.6 dbMin=42.6
+  PASS  G0 Agent 建号 + DAQ 绑定 — 0e2caacf-1e62-42ac-a426-c0fa7e603654 / {"binding":{"id":"nb-b171abc0","agentId":"0e2caacf-1e62-42ac-a426-c0fa7e603654","nodeId":"dn-668f1885","kind":"daq","mod
+  PASS  G1 daq_query 最新值 = 窗口末尾桶(不是最旧段) — text=37.7 dbLast=37.7 dbFirst=59.2
+  PASS  G2 输出含数据源与库内滞后声明 —   工况判读: 活动配方「MQTT-E2E-R-mvqqlr41」监控窗口 [0, 100]:当前 37.7℃ 窗口内(正常) | 同产线数控设定: MQTT-DCW1-mvqqlr41=61.5℃;MQTT-DCW2-mvqqlr41=6
+  PASS  G3 agg=min 生效(输出最小值 = 库内窗口最小) — textMin=37.7 dbMin=37.7
   PASS  G4 非法 agg 明确报错(不静默回退) — agg 只能是 avg|min|max(收到 bogus)。
   PASS  G5 未绑定节点被拒绝(授权面) — 工具调用被拒(引用校验,daq_query):node_id = 「dn-not-bound」不在你的授权范围内(节点不存在或已删除)。
 请核对节点 id(先用
@@ -41,29 +41,29 @@
   PASS  I2 retained 重放不重复入库(静默期行数不增长) — 1 → 1
   PASS  J1 节点停用即停收 / 启用即续采 — 停用期 0 行 / 恢复 2 行
   PASS  J2 topic 变更 → 订阅重建并采新主题 — 3 行 / 值=42
-  PASS  J3 EDA 查询窗口超 limit 时取最新段 — 39 点 / 末点滞后 2s
+  PASS  J3 EDA 查询窗口超 limit 时取最新段 — 37 点 / 末点滞后 1s
   PASS  J4 停线停收 / 重新开跑续采 — 停线期 0 行 / 重启 2 行
   PASS  K1 停线期间 retained 状态在开跑后补种一次(含快速停用/启用) — 停线 0 / 启停后 0 / 开跑 1 行=23.4
   PASS  K2 网关停止时外部入库如实 503(不静默丢帧) — status=503 msg=DAQ 网关已停止,外部入库暂停;请先启动采集网关(POST /api/workshop/daq/controller action=start)
-  PASS  L0 节点创建表单暴露结构化解析字段 — host,port,topic,jsonPath,pointsPath,metricsPath,imageFormat,imagePath,imageMime,mimePath,imageWidthPath,imageHeightPath,decoder,username,password
-  PASS  L1 自定义 vector 模板 + 节点创建(数组路径配置) — ct-4726c4a7 / dn-746cf520
+  PASS  L0 节点创建表单暴露结构化解析字段 — host,port,topic,jsonPath,pointsPath,metricsPath,imageFormat,imagePath,imageMime,mimePath,imageWidthPath,imageHeightPath,width,height,decoder,username,password
+  PASS  L1 自定义 vector 模板 + 节点创建(数组路径配置) — ct-16ebb28d / dn-838f3d43
   PASS  L2 结构化 JSON 数组 → vector 帧入库(5 点) — 5 帧 / 点数 5
-  PASS  L0b 节点测试按模板形态解码(vector 点数) — Broker 连接成功,aw/e2e/mvqprlv0/vec → vector 5 点(被动订阅:收到报文即入库)
-  PASS  L3 模板 sink 生效(avg/zones)且帧带批次元信息 — {"m":{"avg":30,"e2e_tag":1,"zone1_avg":15,"zone1_max":20,"zone1_min":10,"zone2_avg":40,"zone2_max":50,"zone2_min":30},"line":"ln-58115e70","run":"rr-2617a6c0"}
-  PASS  L2b 帧管线生产=消费(本组) — {"dProduced":23,"dConsumed":23,"dLate":1,"totalDropped":3}
+  PASS  L0b 节点测试按模板形态解码(vector 点数) — Broker 连接成功,aw/e2e/mvqqlr41/vec → vector 5 点(被动订阅:收到报文即入库)
+  PASS  L3 模板 sink 生效(avg/zones)且帧带批次元信息 — {"m":{"avg":30,"e2e_tag":1,"zone1_avg":15,"zone1_max":20,"zone1_min":10,"zone2_avg":40,"zone2_max":50,"zone2_min":30},"line":"ln-fb31fc13","run":"rr-01ff0bd2"}
+  PASS  L2b 帧管线生产=消费(本组) — {"dProduced":21,"dConsumed":21,"dLate":1,"totalDropped":3}
   PASS  L4 用户注册的 sink 处理器生效(e2e-tag) — e2e_tag=1
-  PASS  L5 自定义 image 模板 + 节点创建(base64 图像字段) — ct-36f3ce84 / dn-a83f80de
-  PASS  L6 结构化 JSON base64 → image 帧入库(尺寸/指纹/MIME) — {"mime":"image/png","size":85,"width":4,"height":4,"sha256":"2c1ebb95e6e262adb7d7c25151681f9832e30515fa18ce00a6f35214682b4fd3","objectKey":"daq/dn-a83f80de/2026/10/27/1793107456315
+  PASS  L5 自定义 image 模板 + 节点创建(base64 图像字段) — ct-f73a5cc0 / dn-7a8ebe26
+  PASS  L6 结构化 JSON base64 → image 帧入库(尺寸/指纹/MIME) — {"mime":"image/png","size":85,"width":4,"height":4,"sha256":"2c1ebb95e6e262adb7d7c25151681f9832e30515fa18ce00a6f35214682b4fd3","objectKey":"daq/dn-7a8ebe26/2026/10/27/1793108859196
   PASS  L7 图像 sink 派生指标(quality-gate brightness) — brightness=122
   PASS  L8 图像内容端点可回取(对象存储 → PNG) — status=200 bytes=85 size=85
   PASS  L8b 帧内容未授权访问被拒 — status=401
   PASS  L6b PNG IHDR 自动尺寸(未配置宽高路径) — 2 帧 / 4x4
   PASS  L6c 二进制图像报文 → image 帧(4×4/PNG) — 2 帧 / image/png
   PASS  L9 坏结构 → 0 帧 + 可读 lastError;恢复发布自愈 — badFrames=0 err=被动订阅报文错误:vector 载荷缺少点列数组(pointsPath=data.points) / recovered=1
-  PASS  L10 用户自定义解码器 → scalar 入库(40+2.5=42.5) — 4 行 / 42.5
+  PASS  L10 用户自定义解码器 → scalar 入库(40+2.5=42.5) — 3 行 / 42.5
   PASS  L10b 自定义解码器异常 → 0 行 + 可读 lastError;恢复自愈 — bad=0 err=被动订阅报文错误:x/y 必须是数字 / recovered=1
   PASS  L11 用户自定义解码器 → vector 入库(逐点相加) — points=[11,22,33,44,55]
   PASS  L12 解码配置变更 → 订阅重建生效(PATCH pointsPath) — bad=0 err=被动订阅报文错误:vector 载荷缺少点列数组(pointsPath=data.nope) / restored=1
 
 ━━━ MQTT E2E: 60 passed / 0 failed / 0 skipped ━━━
-  (临时 home: C:\Users\87287\AppData\Local\Temp\aw-mqtt-e2e-mvqprlv0-J7TDLC)
+  (临时 home: C:\Users\87287\AppData\Local\Temp\aw-mqtt-e2e-mvqqlr41-B3djCB)

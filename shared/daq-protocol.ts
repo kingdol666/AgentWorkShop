@@ -366,6 +366,8 @@ export const DAQ_DRIVERS: DaqDriverMeta[] = [
       { key: 'mimePath', label: 'MIME 字段路径(可选)', type: 'string', placeholder: 'data.mime', hint: '载荷内携带 MIME 的字段路径(优先于 imageMime)' },
       { key: 'imageWidthPath', label: '图像宽路径(可选)', type: 'string', placeholder: 'data.width', hint: '非 PNG 且无内嵌尺寸时用;PNG 自动读 IHDR' },
       { key: 'imageHeightPath', label: '图像高路径(可选)', type: 'string', placeholder: 'data.height', hint: '非 PNG 且无内嵌尺寸时用;PNG 自动读 IHDR' },
+      { key: 'width', label: '图像宽(可选,固定值)', type: 'number', hint: '非 PNG 二进制图像等无尺寸时显式给出;JSON 宽路径优先' },
+      { key: 'height', label: '图像高(可选,固定值)', type: 'number', hint: '非 PNG 二进制图像等无尺寸时显式给出;JSON 高路径优先' },
       { key: 'decoder', label: '自定义解码器(可选)', type: 'string', placeholder: 'my-json-sink', hint: '插件 ctx.daq.registerDecoder 注册的名称;优先于上面声明式路径,返回 scalar/vector/image' },
       { key: 'username', label: '用户名(可选)', type: 'string' },
       { key: 'password', label: '密码(可选)', type: 'string' },

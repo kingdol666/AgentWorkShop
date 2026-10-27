@@ -82,7 +82,9 @@ MQTT 报文 ──decode(声明式/用户 decoder)──► scalar | vector | im
 
 ### 2.4 验证与安全
 
-- 数字严格:null/boolean/空串/数组/对象不会被静默转成 0;数字字符串可接受。
+- 数字严格:null/boolean/空串/数组/对象不会被静默转成 0;数字字符串可接受;
+  显式给出的宽高必须为正,未提供时回落 PNG IHDR(未知则 0/0,非 PNG 二进制用固定
+  `width`/`height`)。
 - 图像:MIME 允许 PNG/JPEG/WebP/BMP/GIF/TIFF(**拒绝 SVG/HTML**);base64 上限 10MB
   (`imageMaxBytes`);单边 ≤16384、像素 ≤16M;PNG 签名 + IHDR 校验;
   `decodeGrayPng` 解压上限=预期像素字节(防压缩炸弹);data URL MIME 优先于缺省值。
@@ -102,7 +104,7 @@ MQTT 报文 ──decode(声明式/用户 decoder)──► scalar | vector | im
 | L2 | 结构化 JSON 数组 → 5 点 vector 帧入库(5 帧) | PASS |
 | L0b | 保存节点测试按模板形态解码 → "vector 5 点" | PASS |
 | L3 | 模板 sink:avg=30、zone1_avg=15、zone2_avg=40;帧带 line/run 批次元信息 | PASS |
-| L2b | 帧管线本组 produced=consumed(23=23;全局 late 含 retained 重放,非帧丢失) | PASS |
+| L2b | 帧管线本组 produced=consumed;全局 late 含 retained 重放,不据此主张"帧无 late" | PASS |
 | L4 | 用户注册 sink 处理器 `e2e-tag` 生效 | PASS |
 | L5 | 自定义 image 模板 + 节点创建(base64 字段) | PASS |
 | L6 | base64 PNG → image 帧:4×4、image/png、sha256(64)、size=85B | PASS |
@@ -128,7 +130,7 @@ binary、MIME/上限、自定义 decoder/异步拒绝/坏输出、owner 生命�
 | 修改解码配置不重建订阅(保存的节点仍用旧 decoder/path) | 解码相关字段纳入 MQTT 订阅指纹;L12 实测 PATCH 后旧路径立即失效、改回即恢复 |
 | 帧使用原始到达时刻、同毫秒覆盖对象键、无在飞限制 | 帧使用单调 `bind.lastAt`;单节点帧单飞(超额丢弃计数);对象键按 MIME 扩展名 |
 | 插件 decoder 停用/重载不撤销 | 注册按 owner;插件重载前 `clearDecoders()`;owner 单测 |
-| null/boolean/空串被静默转为 0 | `asNumber` 严格化;点列/metrics/宽高 null 全部拒绝;单测覆盖 |
+| null/boolean/空串被静默转为 0 | `asNumber` 严格化;点列/metrics 中的 null 拒绝;宽高 null 回落 IHDR,显式给出的宽高非正数拒绝;单测覆盖 |
 | 图像解压/尺寸无上限(压缩炸弹) | 像素/单边上限、PNG 签名+IHDR 校验、`inflateSync maxOutputLength`;内容端点 nosniff/attachment;MIME 白名单 |
 | 自定义 decoder 的 `json` 字段恒 null | 解码入口统一解析并传入 |
 | 自定义 decoder 异常/异步/坏输出提示不清 | 异步明确拒绝;输出类型/blob/metrics/尺寸校验;节点 lastError 可读 |
@@ -140,9 +142,10 @@ binary、MIME/上限、自定义 decoder/异步拒绝/坏输出、owner 生命�
 
 - **不解析 XML/HTML**(规避 XXE/外部实体);结构化解析仅 JSON/纯文本/二进制。
 - **SVG 等非栅格 MIME 拒绝**;图像上限 10MB、单边 16384、16M 像素;解压有上限。
-- **非 PNG 图像**需显式 `imageMime` 与宽高(或 `mimePath`/`imageWidthPath`/`imageHeightPath`);
-  图像 sink 的 `quality-gate`/`thumbnail` 只理解本仓 8-bit 灰度 PNG,RGB/JPEG 可能不产生
-  brightness/缩略图(不报错);真实相机图像建议先用 decoder 转灰度 PNG 或只做存储。
+- **非 PNG 图像**需显式 `imageMime` 与宽高(JSON 宽高路径或固定 `width`/`height`;二进制 JPEG
+  用固定宽高);图像 sink 的 `quality-gate`/`thumbnail` 只理解本仓 8-bit 灰度 PNG,
+  RGB/JPEG 可能不产生 brightness/缩略图(不报错);真实相机图像建议先用 decoder 转灰度 PNG
+  或只做存储。
 - **帧在停线期间不缓存**(图像可能很大):标量有停线补种,帧等下一次发布;帧在飞时新帧丢弃
   (计数不对外暴露,日志可见)。
 - **自定义 decoder 同步、运行在平台进程**(插件为受信代码);异步/外部依赖解析请用自定义驱动。

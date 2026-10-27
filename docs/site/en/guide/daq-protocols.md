@@ -91,9 +91,11 @@ is part of the subscription fingerprint: PATCHing it rebuilds the live subscript
 
 > Boundaries: no XML/HTML parsing; raster MIME only (PNG/JPEG/WebP/BMP/GIF/TIFF; SVG and other
 > executable content rejected); base64 cap 10 MB (`imageMaxBytes`), side ≤16384, ≤16M pixels,
-> bounded decompression; non-PNG needs explicit dimensions/MIME (`mimePath` beats the static
+> bounded decompression; non-PNG needs explicit dimensions (`width`/`height` or width/height
+> paths; binary JPEG uses fixed `width`/`height`) and MIME (`mimePath` beats the static
 > `imageMime`, a data-URL MIME beats both); null/boolean/empty strings are never silently
-> coerced to 0; the connection test decodes with the node template kind; image brightness and
+> coerced to 0, and explicitly provided dimensions must be positive; the saved-node test
+> decodes with the node template kind (the add wizard auto-detects); image brightness and
 > thumbnails only understand this repo's 8-bit gray PNG (RGB/JPEG may yield no metrics).
 
 ## Write-control safety chain

@@ -75,17 +75,27 @@ function pngSize(blob: Buffer): { width: number, height: number } {
   return { width: 0, height: 0 }
 }
 
-function assertRasterMime(mime: string): void {
+function assertRasterMime(mime: unknown): void {
+  if (typeof mime !== 'string' || !mime.trim()) throw new Error(`图像 MIME 必须是字符串(收到 ${String(mime)})`)
   if (!RASTER_MIMES.has(mime.toLowerCase())) {
     throw new Error(`图像 MIME 不受支持: ${mime}(允许 ${[...RASTER_MIMES].join('/')};不接受 SVG/HTML)`)
   }
 }
 
 function assertImageSize(width: number, height: number): void {
+  // 0/0 表示未知(非 PNG 且未显式给尺寸);负数非法;显式非正数由调用方单独拒绝
   if (!Number.isFinite(width) || !Number.isFinite(height) || width < 0 || height < 0) throw new Error('图像宽高非法')
   if (width > MAX_IMAGE_SIDE || height > MAX_IMAGE_SIDE || width * height > MAX_IMAGE_PIXELS) {
     throw new Error(`图像尺寸 ${width}x${height} 超过上限(${MAX_IMAGE_SIDE}/边,${MAX_IMAGE_PIXELS} 像素)`)
   }
+}
+
+/** 显式配置的尺寸必须是正数;未配置返回 NaN 以回落 IHDR/未知 */
+function explicitDim(cfg: Record<string, unknown>, key: 'width' | 'height'): number {
+  if (cfg[key] == null) return Number.NaN
+  const n = asNumber(cfg[key])
+  if (!Number.isFinite(n) || n <= 0) throw new Error(`image ${key} 必须是正数(收到 ${String(cfg[key])})`)
+  return n
 }
 
 function mimeOf(cfg: Record<string, unknown>, json: unknown, fallback: string): string {
@@ -135,14 +145,16 @@ function decodeBase64Image(cfg: Record<string, unknown>, json: unknown): DaqDeco
   const mime = dataUrlMime || mimeOf(cfg, json, 'image/png')
   assertRasterMime(mime)
   const ihdr = pngSize(blob)
-  const widthCfg = asNumber(cfg.width)
-  const heightCfg = asNumber(cfg.height)
+  const widthCfg = explicitDim(cfg, 'width')
+  const heightCfg = explicitDim(cfg, 'height')
   const widthPath = cfg.imageWidthPath != null ? String(cfg.imageWidthPath) : ''
   const heightPath = cfg.imageHeightPath != null ? String(cfg.imageHeightPath) : ''
   const widthRaw = widthPath ? asNumber(pick(json, widthPath)) : Number.NaN
   const heightRaw = heightPath ? asNumber(pick(json, heightPath)) : Number.NaN
-  const width = Number.isFinite(widthRaw) ? widthRaw : (Number.isFinite(widthCfg) && widthCfg > 0 ? widthCfg : ihdr.width)
-  const height = Number.isFinite(heightRaw) ? heightRaw : (Number.isFinite(heightCfg) && heightCfg > 0 ? heightCfg : ihdr.height)
+  if (widthPath && (!Number.isFinite(widthRaw) || widthRaw <= 0)) throw new Error(`imageWidthPath=${widthPath} 必须是正数`)
+  if (heightPath && (!Number.isFinite(heightRaw) || heightRaw <= 0)) throw new Error(`imageHeightPath=${heightPath} 必须是正数`)
+  const width = widthPath ? widthRaw : (Number.isFinite(widthCfg) ? widthCfg : ihdr.width)
+  const height = heightPath ? heightRaw : (Number.isFinite(heightCfg) ? heightCfg : ihdr.height)
   assertImageSize(width, height)
   const metrics = metricsOf(json, cfg.metricsPath != null ? String(cfg.metricsPath) : '')
   return { kind: 'image', blob, mime, width, height, ...(metrics ? { metrics } : {}) }
@@ -191,8 +203,13 @@ function decodeDeclarative(input: DaqDecodeInput): DaqDecoded {
     const mime = String(cfg.imageMime ?? cfg.mime ?? 'image/png')
     assertRasterMime(mime)
     const ihdr = pngSize(blob)
-    assertImageSize(ihdr.width, ihdr.height)
-    return { kind: 'image', blob, mime, width: ihdr.width, height: ihdr.height }
+    // 非 PNG 二进制(JPEG 等)用显式 width/height;PNG 自动 IHDR
+    const widthCfg = explicitDim(cfg, 'width')
+    const heightCfg = explicitDim(cfg, 'height')
+    const width = Number.isFinite(widthCfg) ? widthCfg : ihdr.width
+    const height = Number.isFinite(heightCfg) ? heightCfg : ihdr.height
+    assertImageSize(width, height)
+    return { kind: 'image', blob, mime, width, height }
   }
   if (json === undefined) throw new Error('image 载荷必须是 JSON(或使用 imageFormat=binary)')
   return decodeBase64Image(cfg, json)
@@ -221,6 +238,11 @@ function assertKind(decoded: DaqDecoded, signalKind: DaqDecodeInput['signalKind'
     if (decoded.blob.length > MAX_IMAGE_BYTES) throw new Error(`解码图像 ${decoded.blob.length}B 超过上限 ${MAX_IMAGE_BYTES}B`)
     assertRasterMime(decoded.mime)
     assertImageSize(decoded.width ?? 0, decoded.height ?? 0)
+    if (decoded.metrics != null) {
+      if (typeof decoded.metrics !== 'object' || Array.isArray(decoded.metrics)) throw new Error('解码 metrics 必须是对象')
+      const entries = Object.entries(decoded.metrics)
+      if (entries.length > MAX_METRIC_KEYS || entries.some(([, v]) => !Number.isFinite(v))) throw new Error('解码 metrics 含非有限数值或条目过多')
+    }
   }
   return decoded
 }

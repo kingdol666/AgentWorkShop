@@ -452,7 +452,7 @@ export const mqttDaqDriver: DaqDriver = {
   /** 订阅参数指纹:凭据/TLS/主题/QoS + 全部解码配置(改解析路径/decoder 必须重建订阅,绝不因 CA 配置错误抛错) */
   fingerprint(driverConfig) {
     const c = driverConfig
-    const decodeKeys = ['jsonPath', 'valuePath', 'pointsPath', 'metricsPath', 'imageFormat', 'payloadFormat', 'imagePath', 'imageMime', 'mimePath', 'imageWidthPath', 'imageHeightPath', 'decoder', 'imageMaxBytes']
+    const decodeKeys = ['jsonPath', 'valuePath', 'pointsPath', 'metricsPath', 'imageFormat', 'payloadFormat', 'imagePath', 'imageMime', 'mimePath', 'imageWidthPath', 'imageHeightPath', 'width', 'height', 'decoder', 'imageMaxBytes']
     const decode = decodeKeys.map(k => `${k}=${String(c[k] ?? '')}`).join('|')
     return `${safeMqttKey(c)}|topic=${String(c.topic ?? '')}|qos=${Number(c.qos ?? 1)}|${decode}`
   },

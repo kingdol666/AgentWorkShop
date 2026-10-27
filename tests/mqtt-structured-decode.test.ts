@@ -78,6 +78,11 @@ test('image:JSON base64(自动 PNG IHDR)/ data URL / binary / MIME 与上限', (
   const c = decode('', 'image', { imageFormat: 'binary', imageMime: 'image/png' }, png2x2)
   assert.equal(c.kind, 'image')
   assert.equal(c.kind === 'image' ? c.width : 0, 2)
+  // 非 PNG 二进制(JPEG)用显式宽高
+  const jpg = decode('', 'image', { imageFormat: 'binary', imageMime: 'image/jpeg', width: 10, height: 20 }, Buffer.from([0xff, 0xd8, 0xff]))
+  assert.deepEqual(jpg.kind === 'image' ? [jpg.width, jpg.height, jpg.mime] : [], [10, 20, 'image/jpeg'])
+  assert.throws(() => decode(JSON.stringify({ png: pngB64, w: 0 }), 'image', { imagePath: 'png', imageWidthPath: 'w' }), /必须是正数/)
+  assert.throws(() => decode(JSON.stringify({ png: pngB64 }), 'image', { width: -5 }), /必须是正数/)
   assert.throws(() => decode(JSON.stringify({ png: '%%%' }), 'image', { imagePath: 'png' }), /不是合法 base64/)
   assert.throws(() => decode(JSON.stringify({ png: 'http://camera/live.png' }), 'image'), /缺少 base64/, '非 base64 的 image 字段不得冒充图像')
   assert.throws(() => decode(JSON.stringify({}), 'image'), /缺少 base64/)
@@ -130,6 +135,10 @@ test('自定义解码器:用户 sink 解析结构化报文(注册表统一接口
   assert.throws(() => decode('{}', 'image', { decoder: 'bad-blob' }), /非空 Buffer/)
   registerDecoder('bad-metrics', (() => ({ kind: 'vector', points: [1, 2], metrics: { avg: Number.NaN } })) as never)
   assert.throws(() => decode('{}', 'vector', { decoder: 'bad-metrics' }), /metrics/)
+  registerDecoder('bad-img-metrics', (() => ({ kind: 'image', blob: png2x2, mime: 'image/png', metrics: { avg: 'x' } })) as never)
+  assert.throws(() => decode('{}', 'image', { decoder: 'bad-img-metrics' }), /metrics/)
+  registerDecoder('bad-mime', (() => ({ kind: 'image', blob: png2x2, mime: 123 })) as never)
+  assert.throws(() => decode('{}', 'image', { decoder: 'bad-mime' }), /MIME 必须是字符串/)
   clearDecoders()
 })
 

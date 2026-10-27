@@ -80,8 +80,9 @@ export default {
 
 > 边界:不解析 XML/HTML;图像仅接受 PNG/JPEG/WebP/BMP/GIF/TIFF(拒绝 SVG 等可执行内容),
 > base64 上限 10MB(`imageMaxBytes`)、单边 ≤16384、像素 ≤16M,解压有界;非 PNG 需显式
-> 宽高/MIME(`mimePath` 优先于静态 `imageMime`,data URL MIME 优先);null/boolean/空串
-> 不会被静默转成 0;连接测试按节点模板形态解码并给出 scalar/vector/image 摘要;
+> 宽高(`width/height` 或宽高路径;二进制 JPEG 用固定 `width/height`)与 MIME(`mimePath`
+> 优先于静态 `imageMime`,data URL MIME 优先);null/boolean/空串不会被静默转成 0,
+> 显式给出的宽高必须为正;保存后的节点测试按模板形态解码(添加向导按载荷自动识别);
 > 图像 sink 的亮度/缩略图只理解本仓 8-bit 灰度 PNG(RGB/JPEG 可能不产生指标)。
 
 ## 写控安全链
