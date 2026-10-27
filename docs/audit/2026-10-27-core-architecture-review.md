@@ -355,6 +355,7 @@
 - `npm run typecheck` 通过。
 - 受影响既有套件:`tests/mes-rest-driver.test.ts`(SSRF 重构回归)、`tests/daq-export*.test.ts`(护栏/分页)、`tests/team-grant-guard`、`tests/prompt-i18n`。
 - 未跑真实 PLC/MES/IDD;涉及设备的结论均为代码级核查,已在风险条目中标注“环境相关”。
+- 提交:`47b2dc57`(分支 `feat/daq-dcw-hardening-20261027`,已推送)。
 
 ---
 
