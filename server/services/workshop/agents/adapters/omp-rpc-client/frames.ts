@@ -13,6 +13,15 @@ export abstract class OmpRpcClientFrames extends OmpRpcClientStdout {
     const { id, toolCallId, toolName, arguments: args } = req
     let result: { text: string, isError?: boolean }
 
+    for (const fn of this.eventListeners) {
+      try {
+        fn({ type: 'tool_execution_start', toolCallId, toolName, args: args ?? {} })
+      }
+      catch {
+        // 事件 listener 异常不影响工具执行
+      }
+    }
+
     if (this.hostToolHandler) {
       try {
         result = await this.hostToolHandler({ id, toolCallId, toolName, arguments: args ?? {} })
@@ -23,6 +32,15 @@ export abstract class OmpRpcClientFrames extends OmpRpcClientStdout {
     }
     else {
       result = { text: `无 host tool handler 注册(toolName=${toolName})`, isError: true }
+    }
+
+    for (const fn of this.eventListeners) {
+      try {
+        fn({ type: 'tool_execution_end', toolCallId, toolName, isError: result.isError === true, result: result.text })
+      }
+      catch {
+        // 事件 listener 异常不影响工具结果
+      }
     }
 
     // 发送 host_tool_result
