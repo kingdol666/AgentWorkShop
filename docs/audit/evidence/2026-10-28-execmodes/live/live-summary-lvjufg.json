@@ -1,0 +1,18 @@
+{
+  "tag": "lvjufg",
+  "base": "http://127.0.0.1:3990",
+  "line": "ln-054270f1",
+  "spNode": "dw-537395a4",
+  "pvNode": "dn-b3c1213f",
+  "recipe": "rc-bd520634",
+  "channels": {
+    "A": "58780aa3-8dd0-41f4-b15c-624ebe6f2763",
+    "B": "74599c68-e7df-4675-9e7f-c2325cc1def8",
+    "C": "15b71610-b0a5-4b4c-9d53-b7fa98f41d3f"
+  },
+  "transcripts": {
+    "A": 0,
+    "B": 0,
+    "C": 0
+  }
+}

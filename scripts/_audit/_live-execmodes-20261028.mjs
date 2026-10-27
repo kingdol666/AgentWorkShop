@@ -93,6 +93,8 @@ try {
   }, H())).data?.node?.id
   const pvNode = (await api('POST', '/api/workshop/daq', {
     templateRef: 'daq-temp-tc', name: `熔温PV-${TAG}`, driver: 'modbus-tcp', lineId: line, intervalMs: 2000, publishIntervalMs: 0,
+    // 模板缺省量程 150~185℃ 会被入库策略拒收真实熔温(~247℃)——显式放宽覆盖
+    min: 100, max: 400,
     driverConfig: { host: '127.0.0.1', port: 16052, unitId: 1, register: 40001, registerType: 'holding', dataType: 'float32', byteOrder: 'big' },
   }, H())).data?.node?.id
   const product = (await api('POST', '/api/workshop/dcw/products', { lineId: line, name: `面板PP-${TAG}` }, H())).data?.product?.id

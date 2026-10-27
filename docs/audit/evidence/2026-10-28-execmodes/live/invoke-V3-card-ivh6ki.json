@@ -1,0 +1,18 @@
+{
+  "kind": "dcw-approval",
+  "id": "ap-72552c0f",
+  "channelId": "85b55b91-4605-4183-ae94-6b0b66a73572",
+  "agentId": "6a2147e4-b48e-4a90-a877-74854c8fae6f",
+  "agentName": "invoke-lead-ivh6ki",
+  "title": "配方试验(整批候选)下发审批",
+  "detail": "配方试验候选(整批 1 参数):一段桶温SP-ivh6ki 240→238℃ | 假设:V3 依据:熔温 246.7℃ 高于目标带,SP 240→238 小步下探(ivh6ki) | 批准=整批下发试验(不写版本);拒绝可附指导",
+  "createdAt": "2026-10-28T05:37:15.627+08:00",
+  "expiresAt": "2026-10-28T06:07:15.627+08:00",
+  "requestType": "approval",
+  "harness": "dcw",
+  "nodeId": "recipe:rc-c10f359e",
+  "status": "pending",
+  "policy": "owner_only",
+  "approvalPolicyVersion": 1,
+  "channelVersion": 1
+}

@@ -1,0 +1,28 @@
+{
+  "status": 200,
+  "code": 0,
+  "message": "ok",
+  "data": {
+    "lineId": "ln-1805969d",
+    "window": {
+      "fromMs": 1793133999631,
+      "toMs": 1793134119631,
+      "bucketMs": 1000,
+      "agg": "avg"
+    },
+    "series": [
+      {
+        "nodeId": "dn-0b1fd3ae",
+        "name": "熔温PV-lvoxhf",
+        "unit": "℃",
+        "lineId": "ln-1805969d",
+        "min": 150,
+        "max": 185,
+        "points": [],
+        "truncated": false
+      }
+    ],
+    "cached": false,
+    "activeRun": {}
+  }
+}

@@ -1,0 +1,172 @@
+[
+  {
+    "id": 13,
+    "actor": "c16f81c6-12fa-45ce-af6f-025689576bc9",
+    "actorName": "lv-admin-lvjufg",
+    "actorKind": "user",
+    "action": "auth.login",
+    "targetKind": "user",
+    "targetId": "c16f81c6-12fa-45ce-af6f-025689576bc9",
+    "detail": {},
+    "at": "2026-10-28T05:26:11.208+08:00"
+  },
+  {
+    "id": 12,
+    "actor": "c16f81c6-12fa-45ce-af6f-025689576bc9",
+    "actorName": "lv-admin-lvjufg",
+    "actorKind": "user",
+    "action": "binding.mode",
+    "targetKind": "agent_node_binding",
+    "targetId": "nb-61a5f3e0",
+    "detail": {
+      "nodeId": "rc-bd520634",
+      "bindingKind": "recipe",
+      "agentId": "e48e7e1d-9a31-495c-80c7-3e24c439667e",
+      "fromMode": "manual",
+      "toMode": "auto"
+    },
+    "at": "2026-10-28T05:22:25.701+08:00"
+  },
+  {
+    "id": 11,
+    "actor": "c16f81c6-12fa-45ce-af6f-025689576bc9",
+    "actorName": "lv-admin-lvjufg",
+    "actorKind": "user",
+    "action": "line.update",
+    "targetKind": "line",
+    "targetId": "ln-054270f1",
+    "detail": {
+      "keys": [
+        "controlMode",
+        "confirm"
+      ]
+    },
+    "at": "2026-10-28T05:22:25.691+08:00"
+  },
+  {
+    "id": 10,
+    "actor": "c16f81c6-12fa-45ce-af6f-025689576bc9",
+    "actorName": "lv-admin-lvjufg",
+    "actorKind": "user",
+    "action": "channel.execution_mode",
+    "targetKind": "channel",
+    "targetId": "74599c68-e7df-4675-9e7f-c2325cc1def8",
+    "detail": {
+      "channelId": "74599c68-e7df-4675-9e7f-c2325cc1def8",
+      "fromMode": "auto",
+      "toMode": "manual",
+      "confirmed": false
+    },
+    "at": "2026-10-28T05:16:45.766+08:00"
+  },
+  {
+    "id": 9,
+    "actor": "c16f81c6-12fa-45ce-af6f-025689576bc9",
+    "actorName": "lv-admin-lvjufg",
+    "actorKind": "user",
+    "action": "auth.login",
+    "targetKind": "user",
+    "targetId": "c16f81c6-12fa-45ce-af6f-025689576bc9",
+    "detail": {},
+    "at": "2026-10-28T05:15:35.959+08:00"
+  },
+  {
+    "id": 8,
+    "actor": "c16f81c6-12fa-45ce-af6f-025689576bc9",
+    "actorName": "lv-admin-lvjufg",
+    "actorKind": "user",
+    "action": "channel.execution_mode",
+    "targetKind": "channel",
+    "targetId": "58780aa3-8dd0-41f4-b15c-624ebe6f2763",
+    "detail": {
+      "channelId": "58780aa3-8dd0-41f4-b15c-624ebe6f2763",
+      "fromMode": "auto",
+      "toMode": "observe",
+      "confirmed": false
+    },
+    "at": "2026-10-28T05:12:45.165+08:00"
+  },
+  {
+    "id": 7,
+    "actor": "system",
+    "actorName": "backup",
+    "actorKind": "system",
+    "action": "system.backup.run",
+    "targetKind": "",
+    "targetId": "",
+    "detail": {},
+    "at": "2026-10-28T05:11:41.319+08:00"
+  },
+  {
+    "id": 6,
+    "actor": "c16f81c6-12fa-45ce-af6f-025689576bc9",
+    "actorName": "lv-admin-lvjufg",
+    "actorKind": "user",
+    "action": "daq.controller.start",
+    "targetKind": "daq-gateway",
+    "targetId": "gateway",
+    "detail": {},
+    "at": "2026-10-28T05:11:14.430+08:00"
+  },
+  {
+    "id": 5,
+    "actor": "c16f81c6-12fa-45ce-af6f-025689576bc9",
+    "actorName": "lv-admin-lvjufg",
+    "actorKind": "user",
+    "action": "dcw.controller.start",
+    "targetKind": "dcw-gateway",
+    "targetId": "gateway",
+    "detail": {},
+    "at": "2026-10-28T05:11:14.416+08:00"
+  },
+  {
+    "id": 4,
+    "actor": "c16f81c6-12fa-45ce-af6f-025689576bc9",
+    "actorName": "lv-admin-lvjufg",
+    "actorKind": "user",
+    "action": "recipe.create",
+    "targetKind": "recipe",
+    "targetId": "rc-bd520634",
+    "detail": {},
+    "at": "2026-10-28T05:11:14.407+08:00"
+  },
+  {
+    "id": 3,
+    "actor": "c16f81c6-12fa-45ce-af6f-025689576bc9",
+    "actorName": "lv-admin-lvjufg",
+    "actorKind": "user",
+    "action": "daq.node.create",
+    "targetKind": "daq-node",
+    "targetId": "dn-b3c1213f",
+    "detail": {
+      "driver": "modbus-tcp",
+      "templateRef": "daq-temp-tc"
+    },
+    "at": "2026-10-28T05:11:14.386+08:00"
+  },
+  {
+    "id": 2,
+    "actor": "c16f81c6-12fa-45ce-af6f-025689576bc9",
+    "actorName": "lv-admin-lvjufg",
+    "actorKind": "user",
+    "action": "dcw.create",
+    "targetKind": "dcw-node",
+    "targetId": "dw-537395a4",
+    "detail": {
+      "name": "一段桶温SP-lvjufg",
+      "lineId": "ln-054270f1"
+    },
+    "at": "2026-10-28T05:11:14.373+08:00"
+  },
+  {
+    "id": 1,
+    "actor": "c16f81c6-12fa-45ce-af6f-025689576bc9",
+    "actorName": "lv-admin-lvjufg",
+    "actorKind": "user",
+    "action": "line.create",
+    "targetKind": "line",
+    "targetId": "ln-054270f1",
+    "detail": {},
+    "at": "2026-10-28T05:11:14.356+08:00"
+  }
+]

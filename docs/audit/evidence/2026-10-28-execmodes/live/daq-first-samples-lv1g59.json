@@ -1,0 +1,28 @@
+{
+  "status": 200,
+  "code": 0,
+  "message": "ok",
+  "data": {
+    "lineId": "ln-5956b49b",
+    "window": {
+      "fromMs": 1793134585287,
+      "toMs": 1793134705287,
+      "bucketMs": 1000,
+      "agg": "avg"
+    },
+    "series": [
+      {
+        "nodeId": "dn-09681735",
+        "name": "熔温PV-lv1g59",
+        "unit": "℃",
+        "lineId": "ln-5956b49b",
+        "min": 150,
+        "max": 185,
+        "points": [],
+        "truncated": false
+      }
+    ],
+    "cached": false,
+    "activeRun": {}
+  }
+}

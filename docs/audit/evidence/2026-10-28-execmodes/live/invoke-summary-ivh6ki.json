@@ -1,0 +1,26 @@
+{
+  "tag": "ivh6ki",
+  "line": "ln-120571c5",
+  "spNode": "dw-ae2c872d",
+  "pvNode": "dn-4e0a1a1a",
+  "recipe": "rc-c10f359e",
+  "channelId": "85b55b91-4605-4183-ae94-6b0b66a73572",
+  "v1": {
+    "spBefore": 240,
+    "pvDirect": 246.6999969482422
+  },
+  "v2": {
+    "pvPoints": 2,
+    "observeRejected": true
+  },
+  "v3": {
+    "card": true,
+    "spAfterManual": 238
+  },
+  "v4": {
+    "autoExecuted": true,
+    "cards": 0,
+    "spAfterAuto": 236,
+    "noRationaleRejected": true
+  }
+}

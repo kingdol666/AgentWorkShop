@@ -1,0 +1,28 @@
+{
+  "status": 200,
+  "code": 0,
+  "message": "ok",
+  "data": {
+    "lineId": "ln-054270f1",
+    "window": {
+      "fromMs": 1793135444879,
+      "toMs": 1793135564879,
+      "bucketMs": 1000,
+      "agg": "avg"
+    },
+    "series": [
+      {
+        "nodeId": "dn-b3c1213f",
+        "name": "熔温PV-lvjufg",
+        "unit": "℃",
+        "lineId": "ln-054270f1",
+        "min": 150,
+        "max": 185,
+        "points": [],
+        "truncated": false
+      }
+    ],
+    "cached": false,
+    "activeRun": {}
+  }
+}
