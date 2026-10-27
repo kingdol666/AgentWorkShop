@@ -17,15 +17,23 @@ import { getAgentNodeBindingRepo, type AgentNodeBinding } from '../node-bindings
 import { getDcwController } from '../../dcw/dcw-controller'
 import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
 import { getActiveLineRun } from '../../dcw/line-run'
+import { executionModeOfAgent } from '../execution-mode'
 
 export type RecipeOp = 'update' | 'dispatch' | 'trial' | 'rollback' | 'create'
 
+export type ActiveRecipeContext = {
+  lineId: string
+  runId: string
+  recipeId: string
+  productId: string
+}
+
 export type RecipeGateResult
-  = | { ok: true, binding: AgentNodeBinding, hitlRequired: boolean, activeRunId: string }
+  = | { ok: true, binding: AgentNodeBinding, hitlRequired: boolean, activeContext: ActiveRecipeContext }
     | { ok: false, text: string }
 
 /** 运行门:该配方当前是否有活动批次(未结束的 run) */
-export function activeRunOfRecipe(recipeId: string): { id: string } | null {
+export function activeRunOfRecipe(recipeId: string): ActiveRecipeContext | null {
   const run = getDcwController().listRuns().find(r => r.recipeId === recipeId && !r.endedAt)
   if (!run) return null
   // 反僵尸交叉校验(鲁棒性):DB 行未结束 ≠ 产线在运行 —— 多次 apply/崩溃/重启会泄漏
@@ -33,8 +41,13 @@ export function activeRunOfRecipe(recipeId: string): { id: string } | null {
   // 权威运行态是 line-run 注册表(内存+line-runs.json 落盘,崩溃可恢复):
   // run 所属产线必须在注册表中运行,且注册表的活跃批次就是本批次。
   const active = getActiveLineRun(run.lineId)
-  if (!active || active.runId !== run.id) return null
-  return { id: run.id }
+  if (!active || active.runId !== run.id || active.recipeId !== recipeId) return null
+  return {
+    lineId: active.lineId,
+    runId: active.runId,
+    recipeId: active.recipeId,
+    productId: active.productId,
+  }
 }
 
 /** 统一鉴权门:绑定 → 二级认证 → 运行门;返回绑定与 HITL 判定(不做挂起,挂起由调用方执行) */
@@ -70,11 +83,14 @@ export function assertRecipeOperation(
   // ④ HITL 判定:manual 绑定 → 逐动作人工批准;auto → 免批。
   //    线级总闸(2026-10-08 生产化):line.controlMode='manual'(缺省)时,即便绑定为
   //    auto 也强制人工审批 —— 手动模式下人类必须过目每一次写动作(fail-safe)。
+  //    频道层钳位(2026-10-28 三模式):Agent 所属频道 executionMode='manual' 时同理强制;
+  //    'auto'(中性缺省)/'observe'(分发层已拒写,不可达)不改变本判定。
   const lineManual = recipe.lineId ? getDcwLineRepo().controlModeOf(recipe.lineId) === 'manual' : false
+  const channelManual = executionModeOfAgent(agentId) === 'manual'
   // ⑤ 全局开关兼容位:security.recipeDispatchApproval 开启时即便 auto 也挂审批(保留语义)
   const globalGate = false // 由调用方按 settingOf('security.recipeDispatchApproval') 叠加(本模块不依赖设置服务)
   void globalGate
-  return { ok: true, binding, hitlRequired: binding.mode === 'manual' || lineManual, activeRunId: run.id }
+  return { ok: true, binding, hitlRequired: binding.mode === 'manual' || lineManual || channelManual, activeContext: run }
 }
 
 /** 新建配方的授权门(尚无 recipe 可绑定):要求 Agent 在该线至少有一个写向绑定
@@ -109,13 +125,15 @@ export function assertRecipeCreate(agentId: string, lineId: string): { ok: true,
     }
   }
   const lineManual = getDcwLineRepo().controlModeOf(lineId) === 'manual'
-  return { ok: true, hitlRequired: manualBound || lineManual }
+  const channelManual = executionModeOfAgent(agentId) === 'manual'
+  return { ok: true, hitlRequired: manualBound || lineManual || channelManual }
 }
 
 /** 审批单载荷(结构化;前端审批卡渲染理由/参数/批次) */
 export function recipeApprovalPayload(op: RecipeOp, recipeId: string, recipeName: string, extra: {
   reason: string
   params?: Array<{ nodeId: string, name: string, from: number | null, to: number, unit?: string }>
+  context?: ActiveRecipeContext
   runId?: string
 }): Record<string, unknown> {
   return {
@@ -126,6 +144,6 @@ export function recipeApprovalPayload(op: RecipeOp, recipeId: string, recipeName
     recipeName,
     reason: extra.reason,
     ...(extra.params ? { params: extra.params } : {}),
-    ...(extra.runId ? { runId: extra.runId } : {}),
+    ...(extra.context ? { context: { ...extra.context }, runId: extra.context.runId } : extra.runId ? { runId: extra.runId } : {}),
   }
 }

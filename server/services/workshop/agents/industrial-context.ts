@@ -23,6 +23,7 @@ import { limitsBreakdownOf } from '../dcw/param-limits'
 import { MES_REST_DRIVER_KIND, mesCatalogEntryOf } from '../mes/mes-controller'
 import { getDcwParamRepo } from '../dcw/param-map.repo'
 import { promptLocaleOf, tr, type PromptLocale } from './prompt-i18n'
+import { executionModeOfAgent } from './execution-mode'
 
 /** 从属设备描述(名称/状态/实时遥测;数据驱动) */
 function describeTwin(bindId: string | null | undefined): string | null {
@@ -120,6 +121,18 @@ export function nodeSemanticCards(agentId: string, localeInput?: PromptLocale): 
   const cards: string[] = []
   let stale = 0
   const seen = new Set<string>()
+  // 执行模式卡(2026-10-28 三模式计划 M2):让 Agent 一开始就知道本频道的执行档位与后果
+  const execMode = executionModeOfAgent(agentId)
+  let modeCard: string
+  if (execMode === 'observe') {
+    modeCard = tr(locale, '### ⚙ 频道执行模式:observe(观察)—— 本频道为只读分析档:控制下发/配方操作/启停线工具均不可用,请专注数采集、台账查询与分析;若认为需要调整参数,请在结论中建议并由人执行', '### ⚙ Channel execution mode: observe (read-only) — control dispatch / recipe operations / line start-stop tools are unavailable; focus on data collection, ledger queries and analysis; suggest parameter changes in your conclusions and let a human execute them')
+  }
+  else if (execMode === 'manual') {
+    modeCard = tr(locale, '### ⚙ 频道执行模式:manual(手动)—— 本频道所有下发/配方/回退动作都会挂起等人工批准:下发前必须说明依据(数采/MES 证据),审批卡会向人类展示你的理由', '### ⚙ Channel execution mode: manual — every dispatch / recipe / rollback action waits for human approval: state your evidence (DAQ/MES) first; the approval card shows your rationale to the human')
+  }
+  else {
+    modeCard = tr(locale, '### ⚙ 频道执行模式:auto(默认,频道不加额外约束)—— 是否人工批准由产线总闸与你的绑定模式决定;自动执行的下发必须附带 hypothesis 依据,四层限界/单步上限/运行门照常生效', '### ⚙ Channel execution mode: auto (default; no extra channel-level constraint) — human approval is decided by the line master switch and your binding mode; automatic dispatches must carry a hypothesis, and the four-layer limits / step cap / run gate still apply')
+  }
   for (const b of bindings) {
     const card = b.kind === 'dcw' ? dcwSemanticCard(b.nodeId, b.mode, locale) : b.kind === 'daq' ? daqSemanticCard(b.nodeId, b.mode, locale) : null
     if (card) {
@@ -143,7 +156,7 @@ export function nodeSemanticCards(agentId: string, localeInput?: PromptLocale): 
       else stale++
     }
   }
-  return { text: cards.join('\n\n'), stale }
+  return { text: `${modeCard}\n\n${cards.join('\n\n')}`, stale }
 }
 
 /**

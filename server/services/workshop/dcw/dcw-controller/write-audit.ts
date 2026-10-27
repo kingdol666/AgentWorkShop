@@ -42,7 +42,7 @@ export function recordDcwWriteOps(args: {
     lineId: args.node.lineId ?? '',
     productId: runNow?.productId ?? '',
     recipeId: runNow?.recipeId ?? args.recipeRunId ?? '',
-    detail: { eng: args.eng, prevValue: args.prevValue, ok: args.outcome.ok, message: args.outcome.message, taskId: args.meta?.taskId ?? null },
+    detail: { eng: args.eng, prevValue: args.prevValue, ok: args.outcome.ok, message: args.outcome.message, taskId: args.meta?.taskId ?? null, hypothesis: args.meta?.hypothesis ?? '', executionMode: args.meta?.executionMode ?? null },
   })
   // 插件钩子:写控 ACK 观察(与运维入册同点同去重节流)
   emitDcwWrite({ nodeId: args.id, name: args.node.name, eng: args.eng, prevValue: args.prevValue, ok: args.outcome.ok, source: args.src, lineId: args.node.lineId ?? '', at: new Date().toISOString() })

@@ -232,6 +232,11 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
     return lineId || null
   }
 
+  /** v33 三模式:Agent 实例 → 所属频道 id(执行模式钳位依据;未绑/找不到 = null) */
+  channelIdOfAgent(agentId: string): string | null {
+    return this.deps.repos.channelAgents.findById(agentId)?.channelId ?? null
+  }
+
   /**
    * WP3:轮换 Agent 实例 token(旧 token 进入宽限窗,桥进程自动重连过渡)。
    * 返回 { token, prevTokenUntil, channelId, agentId };实例不属于该 channel → 404。

@@ -5,7 +5,7 @@
 import type { RpcHostToolDefinition } from '../adapters/omp-rpc-client'
 import { loadHostToolDefs } from '../../prompts/loader'
 import { daqRuntimeSettings } from '../../settings'
-import { HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES, LEAD_ONLY_TOOL_NAMES } from '../tool-classes'
+import { HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES, LEAD_ONLY_TOOL_NAMES, MES_READ_TOOL_NAMES } from '../tool-classes'
 import { listPluginTools, pluginOfTool } from '../plugin-tools'
 import { getChannelPluginsRepo } from '../../db/channel-plugins.repo'
 import { getChannelTwinProfile } from '../../aml/twin/channel-profile'
@@ -56,8 +56,8 @@ export const AML_MODEL_BACKED_TOOL_NAMES = new Set([
 ])
 
 /**
- * 产线 Co-Pilot 观察面档位(2026-10-01 计划 §5.2/§5.3):
- * exp-miner(经验工程师)/ line-doctor(诊断工程师)是**零写**只读档位 ——
+ * 产线 Co-Pilot 观察面档位(2026-10-01 计划 §5.2/§5.3)与频道执行模式 observe(2026-10-28 三模式计划 M2):
+ * exp-miner(经验工程师)/ line-doctor(诊断工程师)与 executionMode='observe' 是**零写**只读档 ——
  * 核心工业工具按白名单注入(channel_plugins 只过滤插件挡不住核心族,白名单是核心族唯一的排除机制),
  * 直接写族(agents/tool-classes 清单)在尾部 writesBlocked 再兜底过滤一道。
  * kb_agent/diag_run/diag_status 等 KB/诊断工具走 rag-bridge/diag-bridge 插件面,照常按频道插件开关注入,不进本白名单。
@@ -115,13 +115,25 @@ export const OBSERVER_COLLAB_TOOL_NAMES = new Set([
   'list_team_agents',
 ])
 
-/** 观察面档位允许注入的核心工具全集(纯派生;单测断言「工具面零写」的单一事实源) */
+/** 观察面档位允许注入的核心工具全集(纯派生;单测断言「工具面零写」的单一事实源)。
+ *  2026-10-28 三模式计划 G3:MES 只读族(mes_catalog/mes_fetch/mes_export/mes_dataset_read/mes_datasets)
+ *  纳入观察面 —— 观察档位要能拉 MES 数据做只读分析;工具自带绑线授权/窗口/行数/频控护栏,
+ *  观察面只读放大不加权。派生集再减去写族/治理族做 belt(即使未来白名单误收写工具也注不出去)。 */
 export function observerAllowedToolNames(kind: 'exp-miner' | 'line-doctor'): Set<string> {
-  return new Set([
+  const allowed = new Set([
     ...OBSERVER_READ_TOOL_NAMES,
+    ...MES_READ_TOOL_NAMES,
     ...OBSERVER_COLLAB_TOOL_NAMES,
     ...(kind === 'line-doctor' ? LINE_DOCTOR_AML_TOOL_NAMES : []),
   ])
+  for (const name of HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES) allowed.delete(name)
+  for (const name of OPTIMIZER_TOOL_NAMES) allowed.delete(name)
+  return allowed
+}
+
+/** 频道执行模式 observe(通用观察档,无角色 persona)的注入白名单:读面+协作面+MES 只读,零写 */
+export function observeModeAllowedToolNames(): Set<string> {
+  return observerAllowedToolNames('exp-miner')
 }
 
 /** 观察面档位的核心工具装配(纯函数:按白名单过滤 base;单测对合成目录与真实 HOST_TOOLS 各断言一层) */
@@ -194,8 +206,23 @@ export function scopeHostToolsForRole(role: 'lead' | 'worker', channelId?: strin
   const profile = channelId ? getChannelTwinProfile(channelId) : null
   const kind = profile?.profile ?? 'legacy'
   const flags = amlTwinFeatureFlags()
+  // 频道执行模式 observe(2026-10-28 三模式计划 M2):通用只读观察档,优先于各 profile 档位
+  // (观察是更强的收紧,任何档位叠加 observe 都按零写装配)。白名单与角色观察档同族:
+  // 读面+协作面+MES 只读,再减写族/治理族 belt。
+  const execMode = profile?.executionMode ?? 'auto'
   let scoped: RpcHostToolDefinition[]
-  if (kind === 'aml_training') {
+  if (execMode === 'observe') {
+    scoped = scopedToolsForObserverProfile('exp-miner', base)
+    const keptNames = new Set(scoped.map(t => t.name))
+    for (const tool of base) {
+      if (keptNames.has(tool.name)) continue
+      const writesFamily = HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES.has(tool.name) || tool.name === 'optimization_explore'
+      excluded.set(tool.name, writesFamily
+        ? { reason: 'WRITE_GUARD', message: '当前频道为观察执行模式(observe),物理零写,不开放产线写工具' }
+        : { reason: 'EXEC_MODE_OBSERVE', message: '当前频道为观察执行模式(observe),只开放读面与协作面' })
+    }
+  }
+  else if (kind === 'aml_training') {
     // 训练面:剔除优化族与优化器族(gate 保留 —— 模型晋升前需门禁评估)
     scoped = narrow(
       base,
@@ -244,10 +271,11 @@ export function scopeHostToolsForRole(role: 'lead' | 'worker', channelId?: strin
 
   // 直写工具守卫:hybrid 沿用 bounded_auto 开关;工艺优化 Channel 一律不给 dcw 直写
   // (真实写入统一走 optimization_explore 的治理链),训练 Channel 无写语义;
-  // 观察面档位(exp-miner/line-doctor)零写 —— 白名单已不含写族,此处再兜底一道。
+  // 观察面档位(exp-miner/line-doctor)与观察执行模式(observe)零写 —— 白名单已不含写族,此处再兜底一道。
   const writesBlocked = Boolean(profile?.profile === 'hybrid_twin' && (!flags.governedWriteEnabled || !flags.boundedAutoEnabled || profile.controlPolicy !== 'bounded_auto'))
     || kind === 'aml_optimization' || kind === 'aml_training'
     || kind === 'exp-miner' || kind === 'line-doctor'
+    || execMode === 'observe'
   const out = writesBlocked
     ? narrow(scoped, t => !HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES.has(t.name), 'WRITE_GUARD', '当前 Channel 档位不允许产线直接写工具')
     : [...scoped]

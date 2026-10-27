@@ -15,6 +15,7 @@ import { limitsBreakdownOf } from '../../dcw/param-limits'
 import { nodeSemanticCards, recipeOperationFace } from '../industrial-context'
 import { requestManualApproval } from './manual-approval'
 import { guardTwinWrite } from '../../aml/twin/write-guard'
+import { executionModeOfChannel, observeWriteRejectedText } from '../execution-mode'
 
 export async function toolMyIndustrialNodes(agentId: string): Promise<{ text: string }> {
   const repo = getAgentNodeBindingRepo()
@@ -114,6 +115,10 @@ export async function dcwControlGovernedInternal(agentId: string, args: { node_i
 async function dcwControlGovernedLegacy(agentId: string, args: { node_id?: string, value?: number | string, hypothesis?: string, task_id?: string }, channelId?: string): Promise<{ text: string, isError?: boolean }> {
   const twinGuard = guardTwinWrite(agentId, channelId)
   if (!twinGuard.allowed) return { text: `${twinGuard.code}: ${twinGuard.message}`, isError: true }
+  // 频道执行模式(2026-10-28 三模式计划 M2/M3):observe 兜底拒写(分发守卫之外的第二道
+  // fail-closed);manual 强制 HITL;auto(中性缺省)由既有线/绑定层判定。生效模式随 meta 入册。
+  const execMode = executionModeOfChannel(channelId ?? '')
+  if (execMode === 'observe') return { text: observeWriteRejectedText('dcw_control'), isError: true }
   const nodeId = String(args.node_id ?? '').trim()
   const value = Number(args.value)
   const repo = getAgentNodeBindingRepo()
@@ -170,18 +175,29 @@ async function dcwControlGovernedLegacy(agentId: string, args: { node_id?: strin
   // 配方授权路径同样受 HITL 约束(2026-10-18 修复):此前只认 dcw 直绑的 mode,
   // 持 recipe 绑定(首绑恒 manual)经 optimization_explore 写节点可绕过人工批准。
   const lineManual = (authorizedRecipe?.lineId ? getDcwLineRepo().controlModeOf(authorizedRecipe.lineId) === 'manual' : false)
-  const needsApproval = binding?.mode === 'manual'
+  // 频道层手动钳位(三层取最严):频道 manual 时即便绑定/产线全 auto 也挂审批
+  const channelManual = execMode === 'manual'
+  const needsApproval = channelManual
+    || binding?.mode === 'manual'
     || (!!recipeBinding && (recipeBinding.mode === 'manual' || lineManual))
+  // 自动模式 rationale 必填(三层全 auto 免批路径):自动执行也必须留下"为什么"。
+  // optimization_explore 缺省会合成 hypothesis(探索激励描述),既有闭环流零回归;
+  // 其他内部调用方不带依据 = fail-closed 拒绝。
+  const hypothesisText = String(args.hypothesis ?? '').trim()
+  if (!needsApproval && !hypothesisText) {
+    return { text: '自动模式下发必须附带 hypothesis(本次假设与依据:数采证据/判定结论)。请先 daq_query 取数判读,再带依据下发。', isError: true }
+  }
   let manualFeedback = ''
   if (needsApproval) {
     const bd = limitsBreakdownOf(node)
     const via = recipeBinding && authorizedRecipe
-      ? `经配方授权「${authorizedRecipe.name}」${lineManual ? '(产线手动模式)' : ''}`
-      : ''
+      ? `经配方授权「${authorizedRecipe.name}」${lineManual ? '(产线手动模式)' : ''}${channelManual ? '(频道手动模式)' : ''}`
+      : (channelManual ? '(频道手动模式)' : '')
     const ap = await requestManualApproval({
       agentId,
       nodeId,
-      detail: `${node.name}(${tpl?.ch ?? node.templateKey})设定 ${value}${node.unit},有效写入区间 ${bd.effective.min}~${bd.effective.max}${node.unit}(${bd.layers.map(l => l.label).join(' ∩ ')})${via ? ` ${via}` : ''}`,
+      // 审批卡可见"为什么":Agent 依据(hypothesis)随卡展示,人工批准时有判断材料
+      detail: `${node.name}(${tpl?.ch ?? node.templateKey})设定 ${value}${node.unit},有效写入区间 ${bd.effective.min}~${bd.effective.max}${node.unit}(${bd.layers.map(l => l.label).join(' ∩ ')})${via ? ` ${via}` : ''}${hypothesisText ? `;Agent 依据:${hypothesisText.slice(0, 200)}` : ''}`,
       // 批准后复核同一条授权路径:直绑看 dcw 绑定,配方授权看配方绑定与参数仍存在
       verify: recipeBinding
         ? () => {
@@ -216,6 +232,8 @@ async function dcwControlGovernedLegacy(agentId: string, args: { node_id?: strin
       actorName: agentBadgeLabel(agentId),
       taskId: args.task_id ? String(args.task_id) : undefined,
       hypothesis: args.hypothesis ? String(args.hypothesis) : '',
+      // 台账口径(三模式):该次写入发生时的频道生效执行模式(事后审计"这条写入当时是什么模式")
+      executionMode: execMode,
     }
     const outcome = await getDcwController().write(nodeId, value, null, meta)
     const run = node.lineId ? getActiveLineRun(node.lineId) : null

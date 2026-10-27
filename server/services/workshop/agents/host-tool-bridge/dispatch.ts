@@ -22,6 +22,7 @@ import type { HostToolBridgeContext, HostToolCall, HostToolResult } from './type
 import { INDUSTRIAL_TOOL_NAMES, dispatchIndustrialTool } from './tools/industrial'
 import { guardIndustrialToolGrant } from '../industrial/grant-guard'
 import { verifyIndustrialToolCall } from '../industrial/tool-verify'
+import { executionModeOfChannel, observeWriteRejectedText } from '../execution-mode'
 import { checkToolAgainstScope } from '../../runtime/permission-scope'
 import { optimizerDispatchGate, legacyMpcAliasGate } from './optimizer-gate'
 import { channelToolGate } from '../../tools/policy'
@@ -232,6 +233,12 @@ async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCa
   }
 
   // 所有真实写入口在统一分发层再做一次服务端 fail-closed 守卫；工具目录隐藏不是安全边界。
+  // observe 频道的拒写面比 profile 守卫更宽:8 个直写族之外,治理写(optimization_explore)、
+  // 整包方案(recipe_propose)与启停线(line_start/line_stop)同为产线操作,观察模式一并拒绝。
+  const observeBlocked = ['dcw_control', 'param_control', 'dcw_rollback', 'recipe_create', 'recipe_update', 'recipe_rollback', 'recipe_trial', 'recipe_apply', 'optimization_explore', 'recipe_propose', 'line_start', 'line_stop']
+  if (observeBlocked.includes(req.toolName) && executionModeOfChannel(identity.channelId) === 'observe') {
+    return { text: observeWriteRejectedText(req.toolName), isError: true }
+  }
   if (['dcw_control', 'param_control', 'dcw_rollback', 'recipe_create', 'recipe_update', 'recipe_rollback', 'recipe_trial', 'recipe_apply'].includes(req.toolName)) {
     // Profile 级写面(2026-10-18):观察面零写、训练面无产线写、优化面只认 optimization_explore。
     // 此前这些 Channel 只是目录不注入,按名直调(REST/MCP)仍可落到写 handler。
