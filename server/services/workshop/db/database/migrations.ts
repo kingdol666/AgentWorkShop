@@ -58,6 +58,14 @@ export function migrateAgentTokenGraceColumns(db: DatabaseSync): void {
 }
 
 /**
+ * v33(2026-10-28):频道执行模式列(observe/manual/auto;计划 docs/plans/2026-10-28-execution-modes-plan.md M1)。
+ * 加列式迁移:既有库安全,历史行 NULL = 按 auto(频道层中性,不额外收紧)生效,升级零行为变化。
+ */
+export function migrateChannelExecutionModeColumn(db: DatabaseSync): void {
+  migrateAddColumn(db, 'aml_channel_profiles', 'execution_mode', 'TEXT')
+}
+
+/**
  * 产线 Co-Pilot P2:审批历史结构化载荷列(加列式迁移,既有行安全 —— 历史行
  * payload_json 为 NULL、choice 为 NULL,读取层按「空则文本降级」处理,不回填改史)。
  * payload_json = 整包方案审批单的方案集+预检结果;choice = 批准时选定的包下标。

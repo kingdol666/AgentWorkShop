@@ -6,7 +6,7 @@ import type * as sqliteVec from 'sqlite-vec'
 import { DatabaseSync } from 'node:sqlite'
 import { SCHEMA_SQL } from './schema'
 import { createRequire } from 'node:module'
-import { migrateAddColumn, migrateAgentTeamExecutionLeaseColumns, migrateAgentTeamTaskGuardrailColumns, migrateAgentTeamTaskGuardrails, migrateAgentTeamTaskQueueColumns, migrateAmlChannelOptimizationColumns, migrateAmlModelIdentityColumns, migrateAnalysisEditColumns, migrateApprovalPayloadColumns, migrateAuditQueryIndexes, migrateAuditScopeColumn, migrateDropOwnerFks, migrateDualDriveColumns, migrateGroupChatV17, migrateLegacySchema, migrateMissingForeignKeys, migrateAmlTwinProviderColumns, migrateOptimizerFoundationColumns, migrateAgentTokenGraceColumns } from './migrations'
+import { migrateAddColumn, migrateAgentTeamExecutionLeaseColumns, migrateAgentTeamTaskGuardrailColumns, migrateAgentTeamTaskGuardrails, migrateAgentTeamTaskQueueColumns, migrateAmlChannelOptimizationColumns, migrateAmlModelIdentityColumns, migrateAnalysisEditColumns, migrateApprovalPayloadColumns, migrateAuditQueryIndexes, migrateAuditScopeColumn, migrateChannelExecutionModeColumn, migrateDropOwnerFks, migrateDualDriveColumns, migrateGroupChatV17, migrateLegacySchema, migrateMissingForeignKeys, migrateAmlTwinProviderColumns, migrateOptimizerFoundationColumns, migrateAgentTokenGraceColumns } from './migrations'
 import { seedDefaultWorkshopData } from './seed'
 
 export const require = createRequire(import.meta.url)
@@ -80,6 +80,8 @@ export function initWorkshopDb(db: DatabaseSync): void {
   migrateDualDriveColumns(db)
   // v31(WP3):agent token 轮换宽限列(prev_token/prev_token_until;既有库补列)
   migrateAgentTokenGraceColumns(db)
+  // v33(2026-10-28):频道执行模式列(observe/manual/auto;NULL 按 manual 生效)
+  migrateChannelExecutionModeColumn(db)
   // v32(ONT):Profile 冻结本体引用摘要(缺省 [] = 无本体约束域;只前滚,不回填)
   migrateAddColumn(db, 'optimizer_profiles', 'ontology_refs_json', 'TEXT NOT NULL DEFAULT \'[]\'')
   seedDefaultWorkshopData(db)

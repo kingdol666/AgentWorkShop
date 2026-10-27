@@ -565,6 +565,7 @@ CREATE TABLE IF NOT EXISTS aml_channel_profiles (
   bound_model_id TEXT,
   bound_at TEXT,
   optimization_mode TEXT, -- aml_optimization 子模式:exploration(真实写入探索,无 MPC) | aml(绑定模型,trial/bayes)
+  execution_mode TEXT, -- 频道执行模式:observe(只读观察)| manual(频道层强制 HITL)| auto(中性缺省,由线/绑定层判定);NULL 按 auto(零行为变化)
   created_by TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL

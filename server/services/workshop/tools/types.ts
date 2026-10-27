@@ -8,6 +8,7 @@ export type ToolBlockReason
     | 'PLUGIN_DISABLED'
     | 'CHANNEL_PLUGIN_DISABLED'
     | 'CHANNEL_TOOL_DISABLED'
+    | 'EXEC_MODE_OBSERVE'
     | 'UNAVAILABLE'
     | 'UNKNOWN'
 

@@ -25,33 +25,37 @@ export interface HybridChannelProfile {
   boundAt?: string
   /** 工艺优化 Channel 子模式:exploration(真实写入探索,无 MPC) | aml(绑定模型,trial/bayes) */
   optimizationMode?: OptimizationMode
+  /** 频道执行模式(observe 只读观察 | manual 逐动作 HITL | auto 限界自动);读取侧恒归一(manual 缺省) */
+  executionMode?: 'observe' | 'manual' | 'auto'
 }
 
 function repo(db: DatabaseSync) {
-  const upsert = db.prepare(`INSERT INTO aml_channel_profiles(channel_id,profile,capability_json,scene_id,scene_version,scene_contract_json,objective_json,control_policy,provider_id,provider_version,provider_hash,scene_pack_id,provider_generation,bound_model_id,bound_at,optimization_mode,created_by,created_at,updated_at)
-    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
-    ON CONFLICT(channel_id) DO UPDATE SET profile=excluded.profile, capability_json=excluded.capability_json, scene_id=excluded.scene_id, scene_version=excluded.scene_version, scene_contract_json=excluded.scene_contract_json, objective_json=excluded.objective_json, control_policy=excluded.control_policy, provider_id=excluded.provider_id, provider_version=excluded.provider_version, provider_hash=excluded.provider_hash, scene_pack_id=excluded.scene_pack_id, provider_generation=excluded.provider_generation, bound_model_id=excluded.bound_model_id, bound_at=excluded.bound_at, optimization_mode=excluded.optimization_mode, updated_at=excluded.updated_at`)
-  const get = db.prepare(`SELECT channel_id AS channelId, profile, capability_json AS capabilityJson, scene_id AS sceneId, scene_version AS sceneVersion, scene_contract_json AS sceneContractJson, objective_json AS objectiveJson, control_policy AS controlPolicy, provider_id AS providerId, provider_version AS providerVersion, provider_hash AS providerHash, scene_pack_id AS scenePackId, provider_generation AS providerGeneration, bound_model_id AS boundModelId, bound_at AS boundAt, optimization_mode AS optimizationMode FROM aml_channel_profiles WHERE channel_id=?`)
+  const upsert = db.prepare(`INSERT INTO aml_channel_profiles(channel_id,profile,capability_json,scene_id,scene_version,scene_contract_json,objective_json,control_policy,provider_id,provider_version,provider_hash,scene_pack_id,provider_generation,bound_model_id,bound_at,optimization_mode,execution_mode,created_by,created_at,updated_at)
+    VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+    ON CONFLICT(channel_id) DO UPDATE SET profile=excluded.profile, capability_json=excluded.capability_json, scene_id=excluded.scene_id, scene_version=excluded.scene_version, scene_contract_json=excluded.scene_contract_json, objective_json=excluded.objective_json, control_policy=excluded.control_policy, provider_id=excluded.provider_id, provider_version=excluded.provider_version, provider_hash=excluded.provider_hash, scene_pack_id=excluded.scene_pack_id, provider_generation=excluded.provider_generation, bound_model_id=excluded.bound_model_id, bound_at=excluded.bound_at, optimization_mode=excluded.optimization_mode, execution_mode=COALESCE(excluded.execution_mode, aml_channel_profiles.execution_mode), updated_at=excluded.updated_at`)
+  const get = db.prepare(`SELECT channel_id AS channelId, profile, capability_json AS capabilityJson, scene_id AS sceneId, scene_version AS sceneVersion, scene_contract_json AS sceneContractJson, objective_json AS objectiveJson, control_policy AS controlPolicy, provider_id AS providerId, provider_version AS providerVersion, provider_hash AS providerHash, scene_pack_id AS scenePackId, provider_generation AS providerGeneration, bound_model_id AS boundModelId, bound_at AS boundAt, optimization_mode AS optimizationMode, execution_mode AS executionMode FROM aml_channel_profiles WHERE channel_id=?`)
   return { upsert, get }
 }
 
 export function setHybridChannelProfile(input: Omit<HybridChannelProfile, 'channelId'> & { channelId: string, createdBy?: string }): HybridChannelProfile {
   const rt = getAmlRuntime()
   const now = new Date().toISOString()
-  repo(rt.db).upsert.run(input.channelId, input.profile, JSON.stringify(input.capability ?? {}), input.sceneId ?? null, input.sceneVersion ?? null, JSON.stringify(input.sceneContract ?? {}), JSON.stringify(input.objective ?? {}), input.controlPolicy ?? 'recommendation_only', input.providerId ?? null, input.providerVersion ?? null, input.providerHash ?? null, input.scenePackId ?? null, input.providerGeneration ?? null, input.boundModelId ?? null, input.boundAt ?? null, input.optimizationMode ?? null, input.createdBy ?? 'system', now, now)
+  repo(rt.db).upsert.run(input.channelId, input.profile, JSON.stringify(input.capability ?? {}), input.sceneId ?? null, input.sceneVersion ?? null, JSON.stringify(input.sceneContract ?? {}), JSON.stringify(input.objective ?? {}), input.controlPolicy ?? 'recommendation_only', input.providerId ?? null, input.providerVersion ?? null, input.providerHash ?? null, input.scenePackId ?? null, input.providerGeneration ?? null, input.boundModelId ?? null, input.boundAt ?? null, input.optimizationMode ?? null, input.executionMode ?? null, input.createdBy ?? 'system', now, now)
   return input
 }
 
 export function getChannelTwinProfile(channelId: string): HybridChannelProfile {
   try {
     const row = repo(getAmlRuntime().db).get.get(channelId) as Record<string, unknown> | undefined
-    if (!row) return { channelId, profile: 'legacy', capability: {}, controlPolicy: 'recommendation_only' }
+    if (!row) return { channelId, profile: 'legacy', capability: {}, controlPolicy: 'recommendation_only', executionMode: 'auto' }
     const profile = (['legacy', 'hybrid_twin', 'aml_training', 'aml_optimization', 'exp-miner', 'line-doctor'] as const).includes(row.profile as never) ? row.profile as AmlChannelProfileKind : 'legacy'
     const mode = row.optimizationMode === 'aml' || row.optimizationMode === 'exploration' ? (row.optimizationMode as OptimizationMode) : undefined
-    return { channelId, profile, capability: JSON.parse(String(row.capabilityJson ?? '{}')), sceneId: row.sceneId ? String(row.sceneId) : undefined, sceneVersion: row.sceneVersion ? String(row.sceneVersion) : undefined, sceneContract: JSON.parse(String(row.sceneContractJson ?? '{}')), objective: JSON.parse(String(row.objectiveJson ?? '{}')), controlPolicy: (['recommendation_only', 'hitl_governed', 'bounded_auto'] as const).includes(row.controlPolicy as never) ? row.controlPolicy as HybridChannelProfile['controlPolicy'] : 'recommendation_only', providerId: row.providerId ? String(row.providerId) : undefined, providerVersion: row.providerVersion ? String(row.providerVersion) : undefined, providerHash: row.providerHash ? String(row.providerHash) : undefined, scenePackId: row.scenePackId ? String(row.scenePackId) : undefined, providerGeneration: row.providerGeneration != null ? Number(row.providerGeneration) : undefined, boundModelId: row.boundModelId ? String(row.boundModelId) : undefined, boundAt: row.boundAt ? String(row.boundAt) : undefined, optimizationMode: mode }
+    // 执行模式归一:NULL/未知值一律 auto(频道层中性不收紧;与 agents/execution-mode.normalizeExecutionMode 同语义,内联避免运行时环依赖)
+    const executionMode = row.executionMode === 'observe' || row.executionMode === 'manual' ? (row.executionMode as 'observe' | 'manual' | 'auto') : 'auto'
+    return { channelId, profile, capability: JSON.parse(String(row.capabilityJson ?? '{}')), sceneId: row.sceneId ? String(row.sceneId) : undefined, sceneVersion: row.sceneVersion ? String(row.sceneVersion) : undefined, sceneContract: JSON.parse(String(row.sceneContractJson ?? '{}')), objective: JSON.parse(String(row.objectiveJson ?? '{}')), controlPolicy: (['recommendation_only', 'hitl_governed', 'bounded_auto'] as const).includes(row.controlPolicy as never) ? row.controlPolicy as HybridChannelProfile['controlPolicy'] : 'recommendation_only', providerId: row.providerId ? String(row.providerId) : undefined, providerVersion: row.providerVersion ? String(row.providerVersion) : undefined, providerHash: row.providerHash ? String(row.providerHash) : undefined, scenePackId: row.scenePackId ? String(row.scenePackId) : undefined, providerGeneration: row.providerGeneration != null ? Number(row.providerGeneration) : undefined, boundModelId: row.boundModelId ? String(row.boundModelId) : undefined, boundAt: row.boundAt ? String(row.boundAt) : undefined, optimizationMode: mode, executionMode }
   }
   catch {
-    return { channelId, profile: 'legacy', capability: {}, controlPolicy: 'recommendation_only' }
+    return { channelId, profile: 'legacy', capability: {}, controlPolicy: 'recommendation_only', executionMode: 'auto' }
   }
 }
 
