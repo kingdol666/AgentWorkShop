@@ -1,0 +1,553 @@
+{
+  "schemaVersion": 1,
+  "experiment": {
+    "id": "drtmvn6aim4",
+    "name": "direct-REST recipe_trial route coverage",
+    "projectVersion": "0.8.0",
+    "route": "POST /api/workshop/agent-tools/invoke",
+    "executionMode": "direct HTTP invocation; worker identity supplies agent scope, with no harness transport or LLM decision",
+    "startedAt": "2026-10-25T01:52:32.957Z",
+    "postTrialSnapshotDelaySeconds": 20,
+    "scenes": [
+      {
+        "id": "cast-film",
+        "status": "verified",
+        "preset": "cast-film-physics",
+        "process": "cast-film extrusion",
+        "entities": {
+          "lineId": "ln-5153fcc4",
+          "productId": "pd-05d02591",
+          "recipeId": "rc-9be924ee",
+          "controlNodeId": "dw-3f37919b",
+          "daqNodeId": "dn-8c5e436f",
+          "channelId": "586ed156-7e26-4e3c-b49e-56602b33d6d8",
+          "agentId": "60fe3dc2-64cc-4069-8f86-dea162f19218"
+        },
+        "bindings": {
+          "recipe": "manual",
+          "daq": "auto"
+        },
+        "protocolMapping": {
+          "manipulationDevice": "dev-extruder-opcua",
+          "manipulationSignal": "ScrewSpeedSP",
+          "manipulationProtocol": "opcua",
+          "observationDevice": "dev-gauge-mqtt",
+          "observationSignal": "thick",
+          "observationProtocol": "mqtt",
+          "candidate": 125,
+          "baseline": 120
+        },
+        "activeRun": {
+          "id": "rr-ecb4099f",
+          "recipeId": "rc-9be924ee",
+          "endedAt": "2026-10-25T09:53:22.523+08:00"
+        },
+        "invocation": {
+          "endpoint": "/api/workshop/agent-tools/invoke",
+          "method": "POST",
+          "auth": "synthetic administrator bearer; secret omitted",
+          "body": {
+            "agentId": "60fe3dc2-64cc-4069-8f86-dea162f19218",
+            "tool": "recipe_trial",
+            "args": {
+              "recipe_id": "rc-9be924ee",
+              "params": [
+                {
+                  "node_id": "dw-3f37919b",
+                  "value": 125
+                }
+              ],
+              "hypothesis": "Bounded single-candidate direct-route check for cast-film simulator mapping."
+            }
+          },
+          "retryCount": 0,
+          "startedAt": "2026-10-25T01:52:59.973Z",
+          "completedAt": "2026-10-25T01:53:00.354Z",
+          "httpStatus": 200,
+          "toolResult": {
+            "present": true,
+            "isError": false,
+            "text": "试验已整批下发并全部设备证实(1/1,批次 rr-1a277):drtmvn6aim4-cast-film-control→125rpm [证实✓]。假设:Bounded single-candidate direct-route check for cast-film simulator mapping.。\n人工附言:Approved for one bounded direct-REST local simulator check.注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC 整批恢复)。"
+          }
+        },
+        "approval": {
+          "id": "ap-c52a4b52",
+          "nodeId": "recipe:rc-9be924ee",
+          "statusBeforeDecision": "pending",
+          "title": "",
+          "decision": "approved by synthetic isolated administrator",
+          "statusAfterDecision": "approved",
+          "syntheticDecisionActor": "first administrator in fresh isolated AW_HOME"
+        },
+        "trial": {
+          "runId": "rr-1a2774a3",
+          "linkedTrialAckRows": true,
+          "ackSummary": {
+            "verified": 1,
+            "unverified": 0,
+            "failed": 0,
+            "total": 1
+          },
+          "result": {
+            "templateRef": "cw-dd25f9f0",
+            "nodeId": "dw-3f37919b",
+            "ok": true,
+            "message": "写入并回读一致:125,回读 125(标定后物理值 125)",
+            "value": 125,
+            "ack": "readback-verified",
+            "verify": {
+              "verdict": "verified",
+              "attempts": 0
+            }
+          }
+        },
+        "readback": {
+          "expected": 125,
+          "observed": 125,
+          "matches": true
+        },
+        "recipeRecords": {
+          "trialCount": 1,
+          "trialAckCount": 1,
+          "trialRunId": "rr-1a2774a3"
+        },
+        "observation": {
+          "method": "one driver probe, accepted into the isolated time-series store, then queried by active run ID",
+          "postTrialDelaySeconds": 20,
+          "waitStartedAt": "2026-10-25T01:53:00.410Z",
+          "probeStartedAt": "2026-10-25T01:53:20.419Z",
+          "probeCompletedAt": "2026-10-25T01:53:22.512Z",
+          "driver": "mqtt",
+          "value": 46.37,
+          "unit": "μm",
+          "targetBand": {
+            "min": 48,
+            "max": 52
+          },
+          "withinTargetBand": false,
+          "acceptedIngest": true,
+          "queryRunId": "rr-ecb4099f",
+          "matchingPoint": {
+            "at": 1792893201000,
+            "v": 46.37
+          }
+        },
+        "activeRunDataKeys": [
+          "run",
+          "daq",
+          "writes"
+        ]
+      },
+      {
+        "id": "annealing",
+        "status": "verified",
+        "preset": "anneal-line",
+        "process": "continuous annealing",
+        "entities": {
+          "lineId": "ln-6155d845",
+          "productId": "pd-2eee2667",
+          "recipeId": "rc-95d9cde3",
+          "controlNodeId": "dw-c5fe8489",
+          "daqNodeId": "dn-60f2ef41",
+          "channelId": "422797fc-1c6c-4660-970c-6ab35cd4292a",
+          "agentId": "3d3318bd-2d32-4632-8ea6-254ca1269a53"
+        },
+        "bindings": {
+          "recipe": "manual",
+          "daq": "auto"
+        },
+        "protocolMapping": {
+          "manipulationDevice": "anneal-heating-mbtcp",
+          "manipulationSignal": "均热区3炉温SP",
+          "manipulationProtocol": "modbus-tcp",
+          "observationDevice": "anneal-heating-mbtcp",
+          "observationSignal": "StripTemp",
+          "observationProtocol": "modbus-tcp",
+          "candidate": 735,
+          "baseline": 730
+        },
+        "activeRun": {
+          "id": "rr-d5a56711",
+          "recipeId": "rc-95d9cde3",
+          "endedAt": "2026-10-25T09:53:44.009+08:00"
+        },
+        "invocation": {
+          "endpoint": "/api/workshop/agent-tools/invoke",
+          "method": "POST",
+          "auth": "synthetic administrator bearer; secret omitted",
+          "body": {
+            "agentId": "3d3318bd-2d32-4632-8ea6-254ca1269a53",
+            "tool": "recipe_trial",
+            "args": {
+              "recipe_id": "rc-95d9cde3",
+              "params": [
+                {
+                  "node_id": "dw-c5fe8489",
+                  "value": 735
+                }
+              ],
+              "hypothesis": "Bounded single-candidate direct-route check for annealing simulator mapping."
+            }
+          },
+          "retryCount": 0,
+          "startedAt": "2026-10-25T01:53:23.024Z",
+          "completedAt": "2026-10-25T01:53:23.071Z",
+          "httpStatus": 200,
+          "toolResult": {
+            "present": true,
+            "isError": false,
+            "text": "试验已整批下发并全部设备证实(1/1,批次 rr-9746f):drtmvn6aim4-annealing-control→735℃ [证实✓]。假设:Bounded single-candidate direct-route check for annealing simulator mapping.。\n人工附言:Approved for one bounded direct-REST local simulator check.注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC 整批恢复)。"
+          }
+        },
+        "approval": {
+          "id": "ap-7175e210",
+          "nodeId": "recipe:rc-95d9cde3",
+          "statusBeforeDecision": "pending",
+          "title": "",
+          "decision": "approved by synthetic isolated administrator",
+          "statusAfterDecision": "approved",
+          "syntheticDecisionActor": "first administrator in fresh isolated AW_HOME"
+        },
+        "trial": {
+          "runId": "rr-9746fbcc",
+          "linkedTrialAckRows": true,
+          "ackSummary": {
+            "verified": 1,
+            "unverified": 0,
+            "failed": 0,
+            "total": 1
+          },
+          "result": {
+            "templateRef": "cw-34646ac7",
+            "nodeId": "dw-c5fe8489",
+            "ok": true,
+            "message": "写入并回读一致:735 → raw 735,回读 735(标定后物理值 735)",
+            "value": 735,
+            "ack": "readback-verified",
+            "verify": {
+              "verdict": "verified",
+              "attempts": 0
+            }
+          }
+        },
+        "readback": {
+          "expected": 735,
+          "observed": 735,
+          "matches": true
+        },
+        "recipeRecords": {
+          "trialCount": 1,
+          "trialAckCount": 1,
+          "trialRunId": "rr-9746fbcc"
+        },
+        "observation": {
+          "method": "one driver probe, accepted into the isolated time-series store, then queried by active run ID",
+          "postTrialDelaySeconds": 20,
+          "waitStartedAt": "2026-10-25T01:53:23.148Z",
+          "probeStartedAt": "2026-10-25T01:53:43.157Z",
+          "probeCompletedAt": "2026-10-25T01:53:43.999Z",
+          "driver": "modbus-tcp",
+          "value": 675.2000122070312,
+          "unit": "℃",
+          "targetBand": {
+            "min": 700,
+            "max": 760
+          },
+          "withinTargetBand": false,
+          "acceptedIngest": true,
+          "queryRunId": "rr-d5a56711",
+          "matchingPoint": {
+            "at": 1792893223000,
+            "v": 675.200012
+          }
+        },
+        "activeRunDataKeys": [
+          "run",
+          "daq",
+          "writes"
+        ]
+      }
+    ],
+    "server": {
+      "version": "0.8.0",
+      "mode": "dev",
+      "workshop": "ready"
+    },
+    "syntheticAdmin": {
+      "id": "812add7d-8f5e-48ff-9940-21e890ebb666",
+      "role": "admin",
+      "source": "first registration in fresh isolated AW_HOME"
+    },
+    "sourceIdentity": {
+      "gitHead": "e6bcb16fb5ac1a38f3e3ddb3cc05e200b58453c7",
+      "appTreeSha256": "86371e84bae910ad95ad12ab71d5bc919e11d0316f88840ffccd81d49efa1d3f",
+      "simulatorCommit": "0db5f403f9fa9db97e5485b72867f459fcb93eff",
+      "scriptSha256": "fef4f0ca1441b8895c883253f8b1d8a25b307ae7e857b13107274b3ff38e48bf"
+    },
+    "finishedAt": "2026-10-25T01:53:47.207Z",
+    "outputDirectory": "direct-rest-trial-2026-10-25/run-*"
+  },
+  "isolation": {
+    "result": "passed",
+    "appBase": "http://127.0.0.1:3997",
+    "simulatorBase": "http://127.0.0.1:4020",
+    "awHome": "fresh isolated home mode",
+    "loopbackOnly": true,
+    "checks": [
+      {
+        "id": "free-loopback-app-port",
+        "status": "pass",
+        "detail": {
+          "host": "127.0.0.1",
+          "port": 3997
+        }
+      },
+      {
+        "id": "free-loopback-sim-port",
+        "status": "pass",
+        "detail": {
+          "host": "127.0.0.1",
+          "port": 4020
+        }
+      },
+      {
+        "id": "free-loopback-mqtt-port",
+        "status": "pass",
+        "detail": {
+          "host": "127.0.0.1",
+          "port": 18840
+        }
+      },
+      {
+        "id": "free-loopback-appMqtt-port",
+        "status": "pass",
+        "detail": {
+          "host": "127.0.0.1",
+          "port": 45323
+        }
+      },
+      {
+        "id": "free-loopback-tsdb-port",
+        "status": "pass",
+        "detail": {
+          "host": "127.0.0.1",
+          "port": 45321
+        }
+      },
+      {
+        "id": "free-loopback-objectstore-port",
+        "status": "pass",
+        "detail": {
+          "host": "127.0.0.1",
+          "port": 45322
+        }
+      },
+      {
+        "id": "local-inputs-only",
+        "status": "pass",
+        "detail": {
+          "version": "0.8.0",
+          "simulatorSource": true,
+          "simulatorRuntime": true,
+          "noExternalArchiveOrLLM": true
+        }
+      },
+      {
+        "id": "isolated-home-settings",
+        "status": "pass",
+        "detail": {
+          "homeMode": true,
+          "infrastructure": "never",
+          "offlineServices": "loopback only",
+          "promptAssetsCopied": true,
+          "pluginsDisabledExcept": "outbound-disabled rag-bridge"
+        }
+      },
+      {
+        "id": "simulator-http-and-mqtt-loopback",
+        "status": "pass",
+        "detail": {
+          "http": "http://127.0.0.1:4020",
+          "mqtt": "127.0.0.1:18840"
+        }
+      },
+      {
+        "id": "application-loopback-ready",
+        "status": "pass",
+        "detail": {
+          "version": "0.8.0",
+          "host": "127.0.0.1",
+          "port": 3997
+        }
+      },
+      {
+        "id": "only-outbound-disabled-rag-bridge-enabled",
+        "status": "pass",
+        "detail": {
+          "enabled": [
+            "rag-bridge"
+          ],
+          "outboundGuard": "invalid non-routable host configured"
+        }
+      },
+      {
+        "id": "external-rag-outbound-disabled",
+        "status": "pass",
+        "detail": {
+          "outbound": false
+        }
+      }
+    ]
+  },
+  "checks": [
+    {
+      "id": "isolated-daq-backends",
+      "status": "pass",
+      "detail": {
+        "queue": "inproc",
+        "tsdb": "sqlite-emulated"
+      }
+    },
+    {
+      "id": "cast-film-direct-rest-http-success",
+      "status": "pass",
+      "detail": {
+        "status": 200,
+        "endpoint": "/api/workshop/agent-tools/invoke"
+      }
+    },
+    {
+      "id": "cast-film-tool-result-success",
+      "status": "pass",
+      "detail": {
+        "present": true,
+        "isError": false,
+        "text": "试验已整批下发并全部设备证实(1/1,批次 rr-1a277):drtmvn6aim4-cast-film-control→125rpm [证实✓]。假设:Bounded single-candidate direct-route check for cast-film simulator mapping.。\n人工附言:Approved for one bounded direct-REST local simulator check.注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC 整批恢复)。"
+      }
+    },
+    {
+      "id": "cast-film-candidate-readback",
+      "status": "pass",
+      "detail": {
+        "candidate": 125,
+        "observed": 125
+      }
+    },
+    {
+      "id": "annealing-direct-rest-http-success",
+      "status": "pass",
+      "detail": {
+        "status": 200,
+        "endpoint": "/api/workshop/agent-tools/invoke"
+      }
+    },
+    {
+      "id": "annealing-tool-result-success",
+      "status": "pass",
+      "detail": {
+        "present": true,
+        "isError": false,
+        "text": "试验已整批下发并全部设备证实(1/1,批次 rr-9746f):drtmvn6aim4-annealing-control→735℃ [证实✓]。假设:Bounded single-candidate direct-route check for annealing simulator mapping.。\n人工附言:Approved for one bounded direct-REST local simulator check.注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC 整批恢复)。"
+      }
+    },
+    {
+      "id": "annealing-candidate-readback",
+      "status": "pass",
+      "detail": {
+        "candidate": 735,
+        "observed": 735
+      }
+    },
+    {
+      "id": "simulator-stopped",
+      "status": "pass",
+      "detail": {
+        "pid": 17112,
+        "treeStopped": true
+      }
+    },
+    {
+      "id": "agentworkshop-stopped",
+      "status": "pass",
+      "detail": {
+        "pid": 4248,
+        "treeStopped": true
+      }
+    },
+    {
+      "id": "app-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 3997
+      }
+    },
+    {
+      "id": "simulator-http-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 4020
+      }
+    },
+    {
+      "id": "simulator-mqtt-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 18840
+      }
+    },
+    {
+      "id": "app-mqtt-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 45323
+      }
+    },
+    {
+      "id": "timeseries-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 45321
+      }
+    },
+    {
+      "id": "objectstore-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 45322
+      }
+    },
+    {
+      "id": "simulator-device-0-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 44400
+      }
+    },
+    {
+      "id": "simulator-device-1-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 44401
+      }
+    },
+    {
+      "id": "simulator-device-2-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 44500
+      }
+    },
+    {
+      "id": "simulator-device-3-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 44501
+      }
+    }
+  ],
+  "status": "passed",
+  "cleanup": {
+    "status": "passed",
+    "requiredProcessesAndPortsChecked": true
+  }
+}

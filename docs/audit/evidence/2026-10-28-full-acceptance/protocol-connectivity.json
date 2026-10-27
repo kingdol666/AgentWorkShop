@@ -1,0 +1,74 @@
+[
+ {
+  "kind": "daq",
+  "driver": "modbus-tcp",
+  "node": "dn-1b68b77f",
+  "status": 200,
+  "ok": true,
+  "message": "连接成功,读取 40001 = 246.39999389648438"
+ },
+ {
+  "kind": "daq",
+  "driver": "modbus-rtu",
+  "node": "dn-bacf3b52",
+  "status": 200,
+  "ok": true,
+  "message": "网关连接成功,读取 40001 = 39.599998474121094"
+ },
+ {
+  "kind": "daq",
+  "driver": "opcua",
+  "node": "dn-4c2bec1d",
+  "status": 200,
+  "ok": true,
+  "message": "会话建立成功,读取 ns=2;s=Inj.Inj.P.Pv = 51.1"
+ },
+ {
+  "kind": "daq",
+  "driver": "mqtt",
+  "node": "dn-1a4a2733",
+  "status": 200,
+  "ok": false,
+  "message": "MQTT 连接失败: MQTT 连接失败: connect ECONNREFUSED 127.0.0.1:18830"
+ },
+ {
+  "kind": "daq",
+  "driver": "http",
+  "node": "dn-d74ee497",
+  "status": 200,
+  "ok": true,
+  "message": "接口可达,取值 = 31.16"
+ },
+ {
+  "kind": "dcw",
+  "driver": "modbus-tcp",
+  "node": "dw-b9b80a4f",
+  "status": 200,
+  "ok": true,
+  "message": "连接成功,写寄存器可访问(offset=20), 14ms"
+ },
+ {
+  "kind": "dcw",
+  "driver": "modbus-rtu",
+  "node": "dw-cada98b7",
+  "status": 200,
+  "ok": true,
+  "message": "网关连接成功,写寄存器可访问(2ms)"
+ },
+ {
+  "kind": "dcw",
+  "driver": "opcua",
+  "node": "dw-7edcf46a",
+  "status": 200,
+  "ok": true,
+  "message": "会话建立成功,写节点可访问(ns=2;s=Inj.Inj.Speed.Sp)"
+ },
+ {
+  "kind": "dcw",
+  "driver": "mqtt",
+  "node": "dw-c7df35f6",
+  "status": 200,
+  "ok": false,
+  "message": "MQTT 连接失败: connect ECONNREFUSED 127.0.0.1:18830"
+ }
+]

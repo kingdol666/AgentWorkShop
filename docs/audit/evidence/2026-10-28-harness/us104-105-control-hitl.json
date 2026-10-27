@@ -1,0 +1,16 @@
+{
+  "at": "2026-10-27T19:34:38.001Z",
+  "baselineMelt": 246.657,
+  "baselineN": 58,
+  "approval": {
+    "approved": true,
+    "apNote": "ap-74fbc4bb status=approved"
+  },
+  "trial": {
+    "ok": true,
+    "text": "试验已整批下发并全部设备证实(1/1,批次 rr-7b4b4):scen-injection:dcw:barrel-temp-1-sp→242.8℃ [证实✓]。假设:US-104 桶温一段 240→242.8(+2.8 单步内):预期熔温随 zoneAvg 上移,验证 modbus 耦合。\n人工附言:US-104 验收批准:窗口内单步试探注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC 整批恢复)。"
+  },
+  "afterMelt": 247.223,
+  "afterN": 86,
+  "delta": 0.566
+}

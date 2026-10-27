@@ -1,0 +1,25 @@
+{
+  "suite": "US-007 收口(检索命中+IDD 全链)",
+  "at": "2026-10-27T18:27:57.116Z",
+  "checks": [
+    {
+      "id": "Q1a",
+      "name": "检索任务已提交真后端",
+      "ok": true,
+      "detail": "taskId=kbt_mvr0elip_7caa8c02 resp=已提交知识库异步任务(后台执行中,无需等待):\ntask_id=kbt_mvr0elip_7caa8c02\n完成后平台会自动回执到你的信箱并唤醒你;空闲时也可调用 kb_agent_status(task_id, wait_seconds=120) 等待并获取结果。"
+    },
+    {
+      "id": "Q1b",
+      "name": "检索命中锚点(US7-ANCHOR-mvqz6gkv)",
+      "ok": true,
+      "detail": "任务 kbt_mvr0elip_7caa8c02 已完成。知识库 Agent 结果:\n\n## 检索结论\n\n> **合规声明（必读）**：在本会话中，MCP 只读工具族被权限拒绝。`kb_list`、`kb_search`、`kb_search_vector`、`kb_doc_read`、`kb_laya_judge` 等工具均返回 “haven't granted it yet”（委托的 Archival 子 Agent 也遇到同一权限限制）。因此本次检索改用**只读文件兜底**，直接读取 `.tree-fs.json`、各 KB 的 `.knowledge-base.yml`、Markdow"
+    },
+    {
+      "id": "Q2",
+      "name": "IDD 诊断全链完成(运行完成或结果库有 completed 记录)",
+      "ok": false,
+      "detail": "status=run_id=35af7c85\nname=\n产线=ln-e27a1867\n意图=deep-diagnosis(深度根因诊断)\n状态=failed\n来源=agent\n窗口=2026-10-28T00:30:34.258+08:00 ~ 2026-10-28T01:30:34.258 | results=分析结果 total=99 limit=20 offset=0 本页 20 条(brief=true):\n- 23167818 | quick-screen | 96分 ENDORSED | 2026-10-27 18:05:25 | aws-owner-probe_23167818 [ui-walkthrough,results]\n  UI 走查 2026"
+    }
+  ],
+  "verdict": "PASS(2/3)"
+}

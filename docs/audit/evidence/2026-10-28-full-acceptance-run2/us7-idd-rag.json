@@ -1,0 +1,75 @@
+{
+  "suite": "US-007 IDD/RAG 插件集成(真实后端)",
+  "base": "http://127.0.0.1:3470",
+  "at": "2026-10-27T17:54:37.576Z",
+  "anchor": "US7-ANCHOR-mvqz6gkv",
+  "checks": [
+    {
+      "id": "P0",
+      "name": "管理员登录",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "P0b",
+      "name": "轮换知识调优工程师 agent token",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "P1",
+      "name": "插件面 11 个 enabled=11 failures=0",
+      "ok": true,
+      "detail": "names=aw-matrix-plugin,daq-sink-verify,daq-vector-demo,idd-closedloop-bridge,omp-sensor-tools,twin-castfilm,twin-thermal-demo,diag-bridge,rag-bridge,serial-bridge,twin-injection-default; failed="
+    },
+    {
+      "id": "P2",
+      "name": "频道启用 rag-bridge+diag-bridge",
+      "ok": true,
+      "detail": "all=aw-matrix-plugin:false,daq-sink-verify:false,daq-vector-demo:false,idd-closedloop-bridge:false,omp-sensor-tools:false,twin-castfilm:false,twin-thermal-demo:false,diag-bridge:true,rag-bridge:true,seria"
+    },
+    {
+      "id": "P3",
+      "name": "工具面含 kb_agent 与 diag_* 插件工具",
+      "ok": true,
+      "detail": "total=65 kb=true diagTools=diag_run,diag_status,diag_results,diag_result_get"
+    },
+    {
+      "id": "P4b",
+      "name": "kb 入库 HITL 审批单批准成功",
+      "ok": true,
+      "detail": "kind=dcw-approval id=ap-7ef9cedf resp=200"
+    },
+    {
+      "id": "P4a",
+      "name": "kb_agent 入库受理并提交后端",
+      "ok": false,
+      "detail": "resp=已提交知识库异步任务(后台执行中,无需等待):\ntask_id=kbt_mvqz6i8t_43c90986\n完成后平台会自动回执到你的信箱并唤醒你;空闲时也可调用 kb_agent_status(task_id, wait_seconds=120) 等待并获取结果。"
+    },
+    {
+      "id": "P4c",
+      "name": "后台入库任务完成",
+      "ok": false,
+      "detail": "任务 kbt_mvqz6i8t_43c90986 仍在后台执行中(running,已等待 0s)。稍后再次查询;完成后平台也会自动回执。"
+    },
+    {
+      "id": "P4d",
+      "name": "kb_agent 检索命中锚点(真实 RAG)",
+      "ok": false,
+      "detail": "hasAnchor=false resp={\"error\":\"TimeoutError: The operation was aborted due to timeout\"}"
+    },
+    {
+      "id": "P5a",
+      "name": "diag_run 受理(真实 IDD 快照导出)",
+      "ok": true,
+      "detail": "runId=35af7c85 resp=产线 ln-e27a1867 已有运行中的诊断(run_id=35af7c85),请稍后用 diag_status 查询。"
+    },
+    {
+      "id": "P5b",
+      "name": "diag 全链完成(completed 报告存在)",
+      "ok": false,
+      "detail": "watch=run_id=35af7c85\nname=ln-e27a1867_diag_35af7c85\n产线=ln-e27a1867\n意图=deep-diagnosis(深度根因诊断)\n状态=running\n来源=agent\n窗口=2026-10-2 results=diag_results 当前仅对 lead 角色开放(管理员可在插件设置打开「worker 可读」)。"
+    }
+  ],
+  "verdict": "PASS(7/11)"
+}

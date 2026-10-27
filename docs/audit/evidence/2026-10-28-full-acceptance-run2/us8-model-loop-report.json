@@ -1,0 +1,351 @@
+{
+  "script": "scripts/e2e-model-loop-live.mjs",
+  "generatedAt": "2026-10-27T16:42:45.707Z",
+  "base": "http://127.0.0.1:3997",
+  "home": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-model-loop-live-1793119253792\\home",
+  "ontology": "ont-mlpwn4x",
+  "profileId": "optp-mlpwn4x",
+  "sceneId": "scn-mlpwn4x",
+  "lineId": "ln-c648b452",
+  "modelA": {
+    "id": "mdl-mvqwxglz-uj95qb",
+    "artifactHash": "abecf94e19caa6fe43636986770142a7598a33ce2993ec22ae236162af22318e"
+  },
+  "modelB": {
+    "id": "mdl-mvqwxjaz-ld1coi",
+    "artifactHash": "5e48b58d4fd88b8a4d8b3007e061e05f6362cc224402ad81068b77c8096e115d"
+  },
+  "modelC": {
+    "id": "mdl-mvqwxky9-ms2n95",
+    "artifactHash": "df38daaf153452b07b9ffc6809f344fb36584365716679f9739a78858394b9a2"
+  },
+  "total": 54,
+  "pass": 54,
+  "fail": 0,
+  "results": [
+    {
+      "id": "BOOT",
+      "name": "隔离实例启动 + workshop ready",
+      "pass": true,
+      "detail": "port=3997"
+    },
+    {
+      "id": "BOOT",
+      "name": "管理员注册(首注册=admin)",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "M0.1",
+      "name": "hybrid_twin 频道实例化(全功能档位)+workspace",
+      "pass": true,
+      "detail": "inst=200 ch=4489d09d-5b10-4649-938b-16420ceacb5e lead=42680657-4b27-4cc7-9ca2-e983164fcd2b"
+    },
+    {
+      "id": "M0.2",
+      "name": "hybrid 档位工具面:训练+孪生+优化器+本体四族同面注入",
+      "pass": true,
+      "detail": "missing= total=99"
+    },
+    {
+      "id": "M0.3",
+      "name": "Agent 节点绑定:daq×3 + recipe(参数面)",
+      "pass": true,
+      "detail": "daq=200,200,200 recipe=200/0"
+    },
+    {
+      "id": "M0.4",
+      "name": "过程 spec 登记+发布(求解器谱系前置)",
+      "pass": true,
+      "detail": "create=200/0 pub=200"
+    },
+    {
+      "id": "M1.1",
+      "name": "本体起草(活体校验+绑定通过)",
+      "pass": true,
+      "detail": "saved=200 issues=[]"
+    },
+    {
+      "id": "M1.1b",
+      "name": "本体描述可读(用户理解模型代表什么)",
+      "pass": true,
+      "detail": "膜厚闭环控制本体:压力/线速→膜厚,温区守门(mlpwn4x)"
+    },
+    {
+      "id": "M1.2",
+      "name": "本体 v1 发布(contentHash+packHash)",
+      "pass": true,
+      "detail": "200/0"
+    },
+    {
+      "id": "M1.3",
+      "name": "管理者修正规则窗 → v2 发布",
+      "pass": true,
+      "detail": "saved=200/0 pub=200/0"
+    },
+    {
+      "id": "M1.5",
+      "name": "Agent 工具 ontology_draft_autofix:自动修复并落库",
+      "pass": true,
+      "detail": "草稿 ontd-mvqwxgb3-tzwb50 自动修复 13 项(rev=3):\n- [DOC_DESCRIPTION] description: 补写文档描述(供 Agent 与用户理解模型含义)\n- [ENTITY_DESCRIPTION] entities[0]: 实体「pv.melt_pressure」补描述为名称\n- [ENTITY_DESCRI"
+    },
+    {
+      "id": "M1.6",
+      "name": "修复后:描述/作用域已补齐且校验通过",
+      "pass": true,
+      "detail": "desc=模型闭环验收-mlpwn4x(产线 ln-c648b452) —— 实体 4 / savedMessy=200"
+    },
+    {
+      "id": "M1.4",
+      "name": "四段 diff 反映管理者意志(R-BOUND changed)",
+      "pass": true,
+      "detail": "[\"R-BOUND\",\"R-GUARD\"]"
+    },
+    {
+      "id": "M2.1",
+      "name": "工具 twin_scene_discover:从真实绑定发现场景",
+      "pass": true,
+      "detail": "{\n  \"scene_kind\": \"unknown\",\n  \"nodeCount\": 5,\n  \"counts\": {\n    \"control\": 2,\n    \"state\": 2,\n    \"feature\": 0,\n    \"disturbance\": 0,\n    \"observation\": 0,\n   "
+    },
+    {
+      "id": "M2.2",
+      "name": "工具 twin_scene_compile:SceneContract 草稿(controls+artifact)",
+      "pass": true,
+      "detail": "SceneContract Draft 已生成\n  scene_id: scn-mlpwn4x\n  scene_version: 1.0.0\n  contract_hash: ff64d971f2f4a72819214fe6b6ed0c2611a4ac9d69fe95be7b174b30c7e6f44b\n  status: draft\n  controls: 2\n  states: 2\n  tar"
+    },
+    {
+      "id": "M2.3",
+      "name": "场景草稿持久化(控制面+目标面齐备,谱系可复用)",
+      "pass": true,
+      "detail": "controls=2 states=2 obs=1(targets=1)"
+    },
+    {
+      "id": "M2.4",
+      "name": "工具 twin_scene_freeze:人批准冻结(approvedBy=管理者)",
+      "pass": true,
+      "detail": "{\n  \"sceneId\": \"scn-mlpwn4x\",\n  \"sceneVersion\": \"1.0.0\",\n  \"status\": \"frozen\",\n  \"contractHash\": \"ff64d971f2f4a72819214fe6b6ed0c2611a4ac9d69fe95be7b174b30c7e6f44b\",\n  \"approvedBy\": \"mlp-mlpwn4x@awshop"
+    },
+    {
+      "id": "M2.5",
+      "name": "冻结治理红线:缺确认令牌 → 拒绝",
+      "pass": true,
+      "detail": "冻结被拒绝：必须先完成用户确认，并传入 confirmation=USER_CONFIRMED_SCENE_CONTRACT。"
+    },
+    {
+      "id": "M2.6",
+      "name": "工具 twin_physics_spec_draft:虚拟模型骨架(状态+参数可校准)",
+      "pass": true,
+      "detail": "PhysicsSpec 骨架已生成(场景 scn-mlpwn4x@1.0.0):\n  model_id: draft-scn-mlpwn4x | 状态变量 3 | 观测方程 1 | 参数 12(可校准 12)\n  结构: 每个 state = 一阶惯性弛豫(τ/增益为先验盒内可校准参数);观测 = persistence 恒等基线\n  artifact: C:\\Users\\87287\\AppDat"
+    },
+    {
+      "id": "M2.7",
+      "name": "工具 twin_physics_spec_validate:valid=true",
+      "pass": true,
+      "detail": "{\n  \"apiVersion\": \"physics-spec.v1\",\n  \"valid\": true,\n  \"errors\": [],\n  \"warnings\": [],\n  \"issues\": [],\n  \"spec\": {\n    \"specVersion\": \"physics-spec.v1\",\n    \"m"
+    },
+    {
+      "id": "M2.8",
+      "name": "工具 twin_physics_spec_compile:候选 Provider(candidate_not_registered)",
+      "pass": true,
+      "detail": "{\n  \"apiVersion\": \"physics-spec.v1\",\n  \"kind\": \"declarative-provider-candidate\",\n  \"sceneId\": \"scn-mlpwn4x\",\n  \"sceneVersion\": \"1.0.0\",\n  \"providerId\": \"draft-s"
+    },
+    {
+      "id": "M2.9",
+      "name": "频道场景谱系重链(REST 可读)",
+      "pass": true,
+      "detail": "sceneId=scn-mlpwn4x"
+    },
+    {
+      "id": "M2.10",
+      "name": "工具 twin_snapshot_create:服务端真采快照(auto_daq,fresh)",
+      "pass": true,
+      "detail": "TwinSnapshot 已创建\n  source: bound DAQ\n  snapshot_id: snap-mvqwxghp-ncfj8d\n  hash: 38beaab7539ac25b6b01de69d676947e8e6d79007e23d8bec504dc5bb5829d21\n  fresh: true\n  completeness: 1\n  stale_nodes: (none)\n"
+    },
+    {
+      "id": "M2.11",
+      "name": "工具 twin_trial_run:虚拟试验完成(模型驱动 rollout)",
+      "pass": true,
+      "detail": "VirtualTrial 已完成(candidateExecuted=false)\n  trial_id: trial-mvqwxgjh-u8vrs2\n  rollout_model: injection-greybox-v1(物理 provider 驱动;传 model_id 可用训练模型 rollout)\n  uq: coverage=1.000 members=1 ood=accepted\n  constraints_passed"
+    },
+    {
+      "id": "M2.12",
+      "name": "虚拟试验治理语义:candidateExecuted=false + 约束 fail-closed(候选 provider 未注册不投产)",
+      "pass": true,
+      "detail": "VirtualTrial 已完成(candidateExecuted=false) |   trial_id: trial-mvqwxgjh-u8vrs2 |   rollout_model: injection-greybox-v1(物理 provider 驱动;传 model_id 可用训练模型 rollout) |   uq: coverage=1.000 members=1 ood=accepted"
+    },
+    {
+      "id": "M3.0",
+      "name": "Agent 工具 aml_model_annotate:补模型名称/描述",
+      "pass": true,
+      "detail": "模型 mdl-mvqwxglz-uj95qb 人读身份已更新:\n  label: 膜厚模型A-mlpwn4x\n  description: 产线A 膜厚预测:线性状态空间,适配保压/线速工况\n用户与 Agent 都会在 /aml 模型台账看到这两项;阶段/工件/指标不受影响(不能"
+    },
+    {
+      "id": "M3.1",
+      "name": "第 1 轮训练 done + 模型登记 + 优化资格(artifactHash)",
+      "pass": true,
+      "detail": "status=done model=mdl-mvqwxglz-uj95qb rows=786 err="
+    },
+    {
+      "id": "M3.2",
+      "name": "Profile v1 创建(模型A 工件回填)+发布",
+      "pass": true,
+      "detail": "create=200/0 pub=200/0"
+    },
+    {
+      "id": "M3.3",
+      "name": "Agent↔Profile 绑定(revision=1,推荐模式)",
+      "pass": true,
+      "detail": "id=ob-mvqwxhjm-809zq code=0"
+    },
+    {
+      "id": "M3.4",
+      "name": "基线模型 A solve optimal",
+      "pass": true,
+      "detail": "status=optimal http=200 msg=ok"
+    },
+    {
+      "id": "M3.5",
+      "name": "第 2 轮训练 done + 资格(数据集不缩水,工件不同)",
+      "pass": true,
+      "detail": "status=done rows 786→786 hashDiff=true"
+    },
+    {
+      "id": "M3.6",
+      "name": "采纳卡挂出(optimizer-profile:<id>@<v>)",
+      "pass": true,
+      "detail": "nodeId=optimizer-profile:optp-mlpwn4x@2"
+    },
+    {
+      "id": "M3.7",
+      "name": "HITL 批准 → 单一咽喉发布+重绑",
+      "pass": true,
+      "detail": "{\"status\":200,\"code\":0,\"message\":\"ok\",\"data\":{\"via\":\"profile-adopt\",\"result\":{\"approved\":true,\"comment\":\"模型进化闭环验收批准\",\"published\":{\"profileId\":\"optp-mlpwn4x\",\"version\":2,\"rebindCount\":1}}}}"
+    },
+    {
+      "id": "M3.8",
+      "name": "工具回执:模型采纳完成(诚实汇报)",
+      "pass": true,
+      "detail": "✅ 模型采纳完成(HITL 批准):\noptp-mlpwn4x v1 → v2(published)\n模型:mdl-mvqwxjaz-ld1coi;重绑绑定 1 个(revision+1,在飞求解 BINDING_STALE 收敛)\n裁决意见:模型进化闭环验收批准\n下一次 optimizer_solve 即使用新模型;旧版本保留可回退(retire/rebind 走管理面)。"
+    },
+    {
+      "id": "M3.9",
+      "name": "绑定自动重绑到采纳版本(revision+1)",
+      "pass": true,
+      "detail": "versions=[2] card=v2 rev=2"
+    },
+    {
+      "id": "M3.10",
+      "name": "已发布 Profile v2 携带新模型工件 B",
+      "pass": true,
+      "detail": "len=3165"
+    },
+    {
+      "id": "M3.10b",
+      "name": "Profile 描述由 Agent 提议写入并落版本台账",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "M3.11",
+      "name": "新模型 B solve optimal",
+      "pass": true,
+      "detail": "status=optimal http=200 msg=ok"
+    },
+    {
+      "id": "M4.1",
+      "name": "第 3 次训练 done + 资格(反馈持续积累)",
+      "pass": true,
+      "detail": "status=done model=mdl-mvqwxky9-ms2n95 rows=786"
+    },
+    {
+      "id": "M4.2",
+      "name": "第 2 轮采纳卡挂出+HITL 批准",
+      "pass": true,
+      "detail": "nodeId=optimizer-profile:optp-mlpwn4x@3 dec=200"
+    },
+    {
+      "id": "M4.3",
+      "name": "第 2 轮工具回执:采纳完成",
+      "pass": true,
+      "detail": "✅ 模型采纳完成(HITL 批准):\noptp-mlpwn4x v2 → v3(published)\n模型:mdl-mvqwxky9-ms2n95;重绑绑定 1 个(revision+1,在飞求解 BINDING_STALE 收敛)\n裁决意见:模型进化闭环验收批准\n下一次 optimizer_solve 即使用新模型;旧版本保留可回退(retire/rebind 走管理面)。"
+    },
+    {
+      "id": "M4.4",
+      "name": "持续进化:绑定再次重绑(revision 递增)",
+      "pass": true,
+      "detail": "versions=[3] card=v3 rev=3"
+    },
+    {
+      "id": "M4.5",
+      "name": "第 2 轮新模型 C solve optimal",
+      "pass": true,
+      "detail": "status=optimal http=200"
+    },
+    {
+      "id": "M4.6",
+      "name": "全闭环零 DCW 写入(三轮训练+两轮采纳+求解)",
+      "pass": true,
+      "detail": "dcw-writes.json 不存在"
+    },
+    {
+      "id": "M5.1",
+      "name": "本体版本台账(v1+v2,管理者可查)",
+      "pass": true,
+      "detail": "n=2"
+    },
+    {
+      "id": "M5.2",
+      "name": "Profile 版本台账含三轮模型工件(A/B/C 全可查)",
+      "pass": true,
+      "detail": "len=4767"
+    },
+    {
+      "id": "M5.3",
+      "name": "孪生谱系台账(场景/冻结态可查)",
+      "pass": true,
+      "detail": "sceneId=scn-mlpwn4x"
+    },
+    {
+      "id": "M5.4",
+      "name": "审计三态留痕:AI 提议 + 人批准(adopt_propose+adopt)",
+      "pass": true,
+      "detail": "n=4 actions=optimizer.profile.adopt,optimizer.profile.adopt_propose,optimizer.profile.adopt,optimizer.profile.adopt_propose kinds=user,agent"
+    },
+    {
+      "id": "M5.5",
+      "name": "本体审计留痕(起草/发布/修正)",
+      "pass": true,
+      "detail": "n=10 sample=ontology.draft.update"
+    },
+    {
+      "id": "M6.1",
+      "name": "管理者三台(/optimizer /aml /ontology)渲染无错",
+      "pass": true,
+      "detail": "optimizer:len=4065,errs=0 aml:len=5283,errs=0 ontology:len=5156,errs=0"
+    },
+    {
+      "id": "M6.3",
+      "name": "UI:Profile 描述在 /optimizer 台账可见",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "M6.4",
+      "name": "UI:模型描述在 /aml 台账可见",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "M6.5",
+      "name": "UI:本体描述与「自动修复」入口在 /ontology 可见",
+      "pass": true,
+      "detail": "desc=true fixBtn=true"
+    },
+    {
+      "id": "M6.2",
+      "name": "全程无未捕获 pageerror",
+      "pass": true,
+      "detail": ""
+    }
+  ]
+}

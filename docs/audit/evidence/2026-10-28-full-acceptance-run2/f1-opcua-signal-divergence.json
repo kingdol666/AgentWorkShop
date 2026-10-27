@@ -1,0 +1,36 @@
+{
+  "finding": "F1 OPC UA 变量与 signal 存储双向失联(疑似未提交子模块回归)",
+  "at": "2026-10-27T18:34:57.478Z",
+  "steps": [
+    {
+      "step": 0,
+      "note": "初态",
+      "signal_hold_pressure": 85
+    },
+    {
+      "step": 1,
+      "note": "REST 写 85 后:signal vs 平台读",
+      "simSignal": 85,
+      "platformRead": 56.5,
+      "diverged": true
+    },
+    {
+      "step": 2,
+      "note": "平台写 57 后:平台回读 vs signal",
+      "platformOutcome": "写入并回读一致:57,回读 57(标定后物理值 57)",
+      "platformReadback": 57,
+      "simSignal": 85,
+      "diverged": true
+    },
+    {
+      "step": 3,
+      "note": "物理验证(前序实验)",
+      "simSignal85_weight": 33.45,
+      "modelExpected": "31.0+0.052×45+0.05×4+melt修正 ≈ 33.5",
+      "conclusion": "植物模型链路正常;失联发生在 OPC UA 变量↔signal 同步层"
+    }
+  ],
+  "cleanup": {
+    "simSignal": 55
+  }
+}

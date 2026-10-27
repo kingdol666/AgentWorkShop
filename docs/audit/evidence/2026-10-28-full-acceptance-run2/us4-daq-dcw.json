@@ -1,0 +1,70 @@
+{
+  "suite": "US-004 数采/数控实机验证",
+  "base": "http://127.0.0.1:3470",
+  "at": "2026-10-27T16:49:23.195Z",
+  "line": {
+    "id": "ln-e27a1867",
+    "name": "注塑成型质量窗口寻优 injection-mission1"
+  },
+  "holdNode": {
+    "id": "dw-05bba123",
+    "name": "scen-injection:dcw:hold-pressure-sp"
+  },
+  "checks": [
+    {
+      "id": "D0",
+      "name": "管理员登录",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "D1a",
+      "name": "产线在册(注塑 mission1)",
+      "ok": true,
+      "detail": "id=ln-e27a1867 name=注塑成型质量窗口寻优 injection-mission1 status=undefined"
+    },
+    {
+      "id": "D1b",
+      "name": "DCW 节点在册 ≥11",
+      "ok": true,
+      "detail": "count=11"
+    },
+    {
+      "id": "D2a",
+      "name": "DAQ 窗口1 有样本(series.points)",
+      "ok": true,
+      "detail": "points=686 nodes=8"
+    },
+    {
+      "id": "D2b",
+      "name": "样本随时间前进",
+      "ok": true,
+      "detail": "tsMax1=1793119755000 tsMax2=1793119762000"
+    },
+    {
+      "id": "D3",
+      "name": "DCW 手动读 ok",
+      "ok": true,
+      "detail": "status=200 value=56 raw={\"ok\":true,\"value\":56,\"raw\":56,\"message\":\"读回 56\",\"at\":\"2026-10-28T00:49:23.141+08:00\"}"
+    },
+    {
+      "id": "D4a",
+      "name": "DCW 写穿+回读校验(readback-verified)",
+      "ok": true,
+      "detail": "status=200 outcome={\"ok\":true,\"message\":\"写入并回读一致:57,回读 57(标定后物理值 57)\",\"raw\":57,\"readback\":57,\"ack\":\"readback-verified\",\"anchorId\":\"anc-fb334fec\"}"
+    },
+    {
+      "id": "D4b",
+      "name": "回读一致(写后读回 == 目标)",
+      "ok": true,
+      "detail": "target=57 readback=57"
+    },
+    {
+      "id": "D5",
+      "name": "超步限/量程写被拒(4xx)",
+      "ok": true,
+      "detail": "status=400 msg=\"设定值 1057bar 超出上限 节点工艺安全量程 的 110bar —— 约束层:节点安全量程(当前有效写入区间 20~110bar;各层限界按安全规约取交集,越界写入已拒绝)\""
+    }
+  ],
+  "verdict": "PASS(9/9)"
+}

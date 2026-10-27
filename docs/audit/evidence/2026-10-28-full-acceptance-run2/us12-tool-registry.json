@@ -1,0 +1,50 @@
+{
+  "suite": "US-012 T4 插件装载与工具注册面",
+  "base": "http://127.0.0.1:3470",
+  "at": "2026-10-27T18:10:58.989Z",
+  "checks": [
+    {
+      "id": "R0",
+      "name": "管理员登录",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "R0b",
+      "name": "轮换 lead token",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "R1",
+      "name": "插件 11 个 enabled=11 failures=0",
+      "ok": true,
+      "detail": "failed=无"
+    },
+    {
+      "id": "R2",
+      "name": "注册表 builtin=104(≥104) plugin=21(≥21) unavailable=0",
+      "ok": true,
+      "detail": "total=125 unavailable=无"
+    },
+    {
+      "id": "R3",
+      "name": "diag_status 实调成功",
+      "ok": true,
+      "detail": "resp=最近 5 条诊断:\n- 35af7c85 | ln-e27a1867 | [深度根因诊断] failed | agent | 2026-10-28T01:30:35.311+08:00 | 零件重量波动诊断:检查保压压力-重量链路,给出结论与证据\n- 093c38c0 | offline-data | [DOE 试验分析] completed | agent"
+    },
+    {
+      "id": "R4a",
+      "name": "my_industrial_nodes 回包含节点面",
+      "ok": true,
+      "detail": "resp=#### ◇ scen-injection:daq:melt-temp-pv [id=dn-26c5162a]\n- 物理量: 熔体/箱体温度,单位 ℃,正常量程 [20, 320] ℃\n- 采集语义: 喷嘴前熔体实测温度(采集);工艺窗 235~262℃,超窗劣化飞边/缩痕(采集,真实 modbus-tcp 链路)\n- 预警带: [44, 296] ℃(出带"
+    },
+    {
+      "id": "R4b",
+      "name": "list_channel_tasks 回包含任务面",
+      "ok": true,
+      "detail": "resp=Channel 任务(6):\n  5c66ef7f-1ec7-4794-a99c-4373040f7230 [WAITING] \"注塑质量窗口寻优:保压压力寻优使零件重量入窗\" assignee=80dd5691-f5db-46f7-beef-97c7cfd11c99 progress=0%\n  75ff5cf8-2171-44ec-af64-a694791"
+    }
+  ],
+  "verdict": "PASS(7/7)"
+}

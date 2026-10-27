@@ -1,0 +1,45 @@
+{
+  "title": "AgentWorkShop Core Product Walkthrough",
+  "voice": "af_bella",
+  "sampleRate": 24000,
+  "durationSeconds": 66.1825,
+  "transitionSeconds": 0.38,
+  "scenes": [
+    {
+      "id": "01-workspace",
+      "start": 0,
+      "end": 12.336625,
+      "duration": 12.336625
+    },
+    {
+      "id": "02-templates",
+      "start": 12.336625,
+      "end": 21.163875,
+      "duration": 8.827250000000001
+    },
+    {
+      "id": "03-agent-channel",
+      "start": 21.163875,
+      "end": 31.341875,
+      "duration": 10.178
+    },
+    {
+      "id": "04-line-context",
+      "start": 31.341875,
+      "end": 42.529875,
+      "duration": 11.187999999999995
+    },
+    {
+      "id": "05-line-standby",
+      "start": 42.529875,
+      "end": 50.62320833333333,
+      "duration": 8.093333333333334
+    },
+    {
+      "id": "06-mock-boundary",
+      "start": 50.62320833333333,
+      "end": 66.1825,
+      "duration": 15.559291666666674
+    }
+  ]
+}

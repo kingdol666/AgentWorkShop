@@ -1,0 +1,68 @@
+{
+  "suite": "US-005 自定义 MES API 绑定实机验证",
+  "base": "http://127.0.0.1:3470",
+  "mes": "http://127.0.0.1:15160",
+  "at": "2026-10-27T16:57:15.529Z",
+  "node": {
+    "id": "dw-c7355ca7",
+    "name": "mes-rest:mission-rot-set",
+    "lineId": "ln-e27a1867"
+  },
+  "checks": [
+    {
+      "id": "M0",
+      "name": "管理员登录",
+      "ok": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "M1",
+      "name": "MES 运行时凭据注册(mission-mes)",
+      "ok": true,
+      "detail": "status=200 resp={\"code\":0,\"message\":\"ok\",\"data\":{\"ref\":\"mission-mes\",\"updatedAt\":\"2026-10-28T00:57:15.324+08:00\",\"updatedBy\":\"c9f0da3c-3"
+    },
+    {
+      "id": "M2",
+      "name": "mes-rest 节点创建并绑定产线",
+      "ok": true,
+      "detail": "status=200 id=dw-c7355ca7 line=ln-e27a1867 err=ok"
+    },
+    {
+      "id": "M3",
+      "name": "读原语经自定义 API 取 live 值(与直连真值一致)",
+      "ok": true,
+      "detail": "status=200 value=82 sim=82 msg=MES 读数 82,ts=未提供"
+    },
+    {
+      "id": "M4a",
+      "name": "写原语写穿自定义 API(outcome ok+readback)",
+      "ok": true,
+      "detail": "status=200 outcome={\"ok\":true,\"message\":\"写入并回读一致:82,回读 82(标定后物理值 82)\",\"raw\":82,\"readback\":82,\"ack\":\"readback-verified\",\"anchorId\":\"anc-d0a7c7e7\"}"
+    },
+    {
+      "id": "M4b",
+      "name": "MES 侧真值已变更(applied rot=82)",
+      "ok": true,
+      "detail": "rot=82"
+    },
+    {
+      "id": "M5",
+      "name": "历史原语拉到真实行(preview totalRows>0 且有采样)",
+      "ok": true,
+      "detail": "status=200 err=ok totalRows=50 sample=3 format=scalar"
+    },
+    {
+      "id": "M6",
+      "name": "错凭据 fail-closed(读失败且文案指向凭据链路)",
+      "ok": true,
+      "detail": "status=200 readOk=false msg=MES 鉴权失败(HTTP 401):凭据失效,请检查 secretRef 对应的 token(env AW_MES_<REF>_TOKEN 或运行时设置 mes.secret.<ref>)"
+    },
+    {
+      "id": "M7",
+      "name": "私有地址未放行被拒(SSRF 守卫)",
+      "ok": true,
+      "detail": "msg=目标 127.0.0.1 解析到内网/环回地址(127.0.0.1),已按 SSRF 防护拒绝;若数据源确在内网,请把驱动配置 allowPrivateHost 显式设为 'true' 开启白名单"
+    }
+  ],
+  "verdict": "PASS(9/9)"
+}

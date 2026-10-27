@@ -1,0 +1,346 @@
+{
+  "suite": "US-010 真实 Agent harness 优化下发与监控",
+  "base": "http://127.0.0.1:3470",
+  "channel": "28239c1f-2e82-4207-a528-5edfb59b27ca",
+  "at": "2026-10-27T18:12:21.848Z",
+  "engine": "omp(真实 LLM;deepseek/ark/ustc 供应商池)",
+  "taskChain": [
+    {
+      "id": "5c66ef7f-1ec7-4794-a99c-4373040f7230",
+      "title": "注塑质量窗口寻优:保压压力寻优使零件重量入窗",
+      "state": "WAITING",
+      "progress": 0,
+      "retry": 0,
+      "updatedAt": "2026-10-28T02:01:46.427+08:00"
+    },
+    {
+      "id": "75ff5cf8-2171-44ec-af64-a6947912cb07",
+      "title": "基线取证与保压→克重增益测定(注塑线 ln-e27a1867 批次 rr-a2bb283e)",
+      "state": "COMPLETED",
+      "progress": 100,
+      "retry": 0,
+      "updatedAt": "2026-10-28T01:18:53.491+08:00"
+    },
+    {
+      "id": "b8a14d03-3605-4c26-acc0-f6c2b25357b2",
+      "title": "知识检索与保压调优方案(注塑克重越下限→入窗)",
+      "state": "COMPLETED",
+      "progress": 100,
+      "retry": 0,
+      "updatedAt": "2026-10-28T01:26:20.156+08:00"
+    },
+    {
+      "id": "8f297281-25fd-492d-8404-b2ac9e807505",
+      "title": "首轮保压试验:57→58.8bar 单步标定与复测(rc-b09a45f6)",
+      "state": "CANCELED",
+      "progress": 0,
+      "retry": 0,
+      "updatedAt": "2026-10-28T01:31:08.630+08:00"
+    },
+    {
+      "id": "75b8e237-1271-462a-9b1a-a48057f5a8a7",
+      "title": "保压试验提交与审批回报(58.8bar,单次调用)",
+      "state": "CANCELED",
+      "progress": 0,
+      "retry": 0,
+      "updatedAt": "2026-10-28T01:37:28.471+08:00"
+    },
+    {
+      "id": "dee7ac21-3442-4f21-a82e-e9371a69d867",
+      "title": "保压时间 8→8.2s 传递探针(cycle-time 二值判据)",
+      "state": "CANCELED",
+      "progress": 0,
+      "retry": 0,
+      "updatedAt": "2026-10-28T01:43:59.729+08:00"
+    }
+  ],
+  "taskStateSummary": {
+    "WAITING": 1,
+    "COMPLETED": 2,
+    "CANCELED": 3
+  },
+  "messageFlow": {
+    "total": 51,
+    "byAgent": {
+      "user": 7,
+      "5d3d004d": 7,
+      "80dd5691": 25,
+      "50283c08": 6,
+      "69c05613": 6
+    }
+  },
+  "dcwJournal": [
+    {
+      "at": "2026-10-28T02:11:31.521+08:00",
+      "node": "dw-05bba123",
+      "prev": 75,
+      "value": 80,
+      "source": "recipe",
+      "recipeRunId": "rr-e199b300"
+    },
+    {
+      "at": "2026-10-28T02:10:25.413+08:00",
+      "node": "dw-05bba123",
+      "prev": 70,
+      "value": 75,
+      "source": "recipe",
+      "recipeRunId": "rr-b8a8b59b"
+    },
+    {
+      "at": "2026-10-28T02:09:19.251+08:00",
+      "node": "dw-05bba123",
+      "prev": 65,
+      "value": 70,
+      "source": "recipe",
+      "recipeRunId": "rr-d187f13b"
+    },
+    {
+      "at": "2026-10-28T02:08:13.150+08:00",
+      "node": "dw-05bba123",
+      "prev": 60,
+      "value": 65,
+      "source": "recipe",
+      "recipeRunId": "rr-943dbb32"
+    },
+    {
+      "at": "2026-10-28T02:07:07.025+08:00",
+      "node": "dw-05bba123",
+      "prev": 55,
+      "value": 60,
+      "source": "recipe",
+      "recipeRunId": "rr-fe4407f6"
+    },
+    {
+      "at": "2026-10-28T02:05:23.747+08:00",
+      "node": "dw-1bf2fa2b",
+      "prev": 9,
+      "value": 8,
+      "source": "recipe",
+      "recipeRunId": "rr-17b135e4"
+    },
+    {
+      "at": "2026-10-28T02:05:23.741+08:00",
+      "node": "dw-05bba123",
+      "prev": 85,
+      "value": 55,
+      "source": "recipe",
+      "recipeRunId": "rr-17b135e4"
+    },
+    {
+      "at": "2026-10-28T02:04:17.502+08:00",
+      "node": "dw-1bf2fa2b",
+      "prev": 8,
+      "value": 9,
+      "source": "recipe",
+      "recipeRunId": "rr-a60112d6"
+    },
+    {
+      "at": "2026-10-28T02:03:11.418+08:00",
+      "node": "dw-05bba123",
+      "prev": 80,
+      "value": 85,
+      "source": "recipe",
+      "recipeRunId": "rr-218aada2"
+    },
+    {
+      "at": "2026-10-28T02:02:05.272+08:00",
+      "node": "dw-05bba123",
+      "prev": 75,
+      "value": 80,
+      "source": "recipe",
+      "recipeRunId": "rr-7d012cb9"
+    },
+    {
+      "at": "2026-10-28T02:00:59.177+08:00",
+      "node": "dw-05bba123",
+      "prev": 70,
+      "value": 75,
+      "source": "recipe",
+      "recipeRunId": "rr-2cde42de"
+    },
+    {
+      "at": "2026-10-28T01:59:53.024+08:00",
+      "node": "dw-05bba123",
+      "prev": 65,
+      "value": 70,
+      "source": "recipe",
+      "recipeRunId": "rr-d06abdc0"
+    },
+    {
+      "at": "2026-10-28T01:58:46.390+08:00",
+      "node": "dw-05bba123",
+      "prev": 60,
+      "value": 65,
+      "source": "recipe",
+      "recipeRunId": "rr-70d1b9cd"
+    },
+    {
+      "at": "2026-10-28T01:57:39.808+08:00",
+      "node": "dw-05bba123",
+      "prev": 55,
+      "value": 60,
+      "source": "recipe",
+      "recipeRunId": "rr-e178239d"
+    },
+    {
+      "at": "2026-10-28T01:56:33.526+08:00",
+      "node": "dw-05bba123",
+      "prev": 58.8,
+      "value": 55,
+      "source": "recipe",
+      "recipeRunId": "rr-2683386c"
+    },
+    {
+      "at": "2026-10-28T01:28:02.244+08:00",
+      "node": "dw-05bba123",
+      "prev": 57,
+      "value": 58.8,
+      "source": "recipe",
+      "recipeRunId": "rr-85d05127"
+    },
+    {
+      "at": "2026-10-28T00:57:15.411+08:00",
+      "node": "dw-c7355ca7",
+      "prev": null,
+      "value": 82,
+      "source": "manual",
+      "recipeRunId": null
+    },
+    {
+      "at": "2026-10-28T00:57:01.140+08:00",
+      "node": "dw-78a0362d",
+      "prev": null,
+      "value": 82,
+      "source": "manual",
+      "recipeRunId": null
+    },
+    {
+      "at": "2026-10-28T00:56:33.437+08:00",
+      "node": "dw-58a812b8",
+      "prev": null,
+      "value": 82,
+      "source": "manual",
+      "recipeRunId": null
+    },
+    {
+      "at": "2026-10-28T00:55:24.079+08:00",
+      "node": "dw-ba75f5d3",
+      "prev": null,
+      "value": 82,
+      "source": "manual",
+      "recipeRunId": null
+    },
+    {
+      "at": "2026-10-28T00:49:23.159+08:00",
+      "node": "dw-05bba123",
+      "prev": 56,
+      "value": 57,
+      "source": "manual",
+      "recipeRunId": null
+    },
+    {
+      "at": "2026-10-28T00:47:51.753+08:00",
+      "node": "dw-05bba123",
+      "prev": 55,
+      "value": 56,
+      "source": "manual",
+      "recipeRunId": null
+    },
+    {
+      "at": "2026-10-28T00:46:16.958+08:00",
+      "node": "dw-9bcf99d7",
+      "prev": null,
+      "value": 24,
+      "source": "recipe",
+      "recipeRunId": "rr-a2bb283e"
+    },
+    {
+      "at": "2026-10-28T00:46:16.952+08:00",
+      "node": "dw-1bf2fa2b",
+      "prev": null,
+      "value": 8,
+      "source": "recipe",
+      "recipeRunId": "rr-a2bb283e"
+    },
+    {
+      "at": "2026-10-28T00:46:16.949+08:00",
+      "node": "dw-05bba123",
+      "prev": null,
+      "value": 55,
+      "source": "recipe",
+      "recipeRunId": "rr-a2bb283e"
+    },
+    {
+      "at": "2026-10-28T00:46:16.947+08:00",
+      "node": "dw-89d958eb",
+      "prev": null,
+      "value": 85,
+      "source": "recipe",
+      "recipeRunId": "rr-a2bb283e"
+    },
+    {
+      "at": "2026-10-28T00:46:16.940+08:00",
+      "node": "dw-7ccb9047",
+      "prev": null,
+      "value": 1600,
+      "source": "recipe",
+      "recipeRunId": "rr-a2bb283e"
+    },
+    {
+      "at": "2026-10-28T00:46:16.938+08:00",
+      "node": "dw-c0aa048e",
+      "prev": null,
+      "value": 45,
+      "source": "recipe",
+      "recipeRunId": "rr-a2bb283e"
+    },
+    {
+      "at": "2026-10-28T00:46:16.932+08:00",
+      "node": "dw-728b634d",
+      "prev": null,
+      "value": 120,
+      "source": "recipe",
+      "recipeRunId": "rr-a2bb283e"
+    },
+    {
+      "at": "2026-10-28T00:46:16.906+08:00",
+      "node": "dw-82541463",
+      "prev": null,
+      "value": 258,
+      "source": "recipe",
+      "recipeRunId": "rr-a2bb283e"
+    },
+    {
+      "at": "2026-10-28T00:46:16.880+08:00",
+      "node": "dw-a1fe6240",
+      "prev": null,
+      "value": 252,
+      "source": "recipe",
+      "recipeRunId": "rr-a2bb283e"
+    },
+    {
+      "at": "2026-10-28T00:46:16.844+08:00",
+      "node": "dw-e2416275",
+      "prev": null,
+      "value": 246,
+      "source": "recipe",
+      "recipeRunId": "rr-a2bb283e"
+    },
+    {
+      "at": "2026-10-28T00:46:16.814+08:00",
+      "node": "dw-166865f2",
+      "prev": null,
+      "value": 240,
+      "source": "recipe",
+      "recipeRunId": "rr-a2bb283e"
+    }
+  ],
+  "daqWindow": {
+    "weightPoints": 1714,
+    "weightFirst": 31.85,
+    "weightLast": 31.88,
+    "cyclePoints": 1712,
+    "cycleLast": 17.6
+  },
+  "hitlPendingNow": 1
+}

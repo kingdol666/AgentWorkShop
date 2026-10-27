@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 1,
+  "experiment": {
+    "id": "drtmvpgfdu4",
+    "name": "direct-REST recipe_trial route coverage",
+    "projectVersion": "0.8.3",
+    "route": "POST /api/workshop/agent-tools/invoke",
+    "executionMode": "direct HTTP invocation; worker identity supplies agent scope, with no harness transport or LLM decision",
+    "startedAt": "2026-10-26T16:11:48.557Z",
+    "postTrialSnapshotDelaySeconds": 20,
+    "scenes": [],
+    "finishedAt": "2026-10-26T16:11:48.586Z",
+    "outputDirectory": "direct-rest-trial-2026-10-25/run-*"
+  },
+  "isolation": {
+    "result": "failed",
+    "appBase": "http://127.0.0.1:3997",
+    "simulatorBase": "http://127.0.0.1:4020",
+    "awHome": "fresh isolated home mode",
+    "loopbackOnly": true,
+    "checks": []
+  },
+  "checks": [
+    {
+      "id": "app-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 3997
+      }
+    },
+    {
+      "id": "simulator-http-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 4020
+      }
+    },
+    {
+      "id": "simulator-mqtt-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 18840
+      }
+    },
+    {
+      "id": "app-mqtt-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 45323
+      }
+    },
+    {
+      "id": "timeseries-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 45321
+      }
+    },
+    {
+      "id": "objectstore-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 45322
+      }
+    }
+  ],
+  "status": "failed",
+  "failure": {
+    "stage": "preflight",
+    "scene": null,
+    "name": "Error",
+    "message": "expected package 0.8.0, got 0.8.3"
+  },
+  "cleanup": {
+    "status": "passed",
+    "requiredProcessesAndPortsChecked": true
+  }
+}

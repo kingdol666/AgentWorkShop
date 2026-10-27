@@ -1,0 +1,7 @@
+{
+  "_note": "文件名沿用以保路径稳定;实际结论 completed:false —— IDD 升级后 line-mode quick-screen 两次(72679968/c22611a5)均缺 sentinel 工件 failed(见 F2)。平台 fail-closed 行为正确。",
+  "at": "2026-10-27T19:10:47.207Z",
+  "runId": "c22611a5",
+  "completed": false,
+  "note": "run_id=c22611a5\nname=ln-e27a1867_diag_c22611a5\n产线=ln-e27a1867\n意图=quick-screen(快速筛查)\n状态=failed\n来源=agent\n窗口=2026-10-28T02:10:36.499+08:00 ~ 2026-10-28T03:10:36.499+08:00\n问题=注塑线快速质量筛查\n错误=Run ended without required artifacts (sentinel/alert.json, sentinel/quick_screen_report.html) — marked failed to pre"
+}
