@@ -63,9 +63,15 @@ export abstract class DaqControllerPush extends DaqControllerState {
     }
   }
 
-  /** 订阅参数指纹:驱动优先自报(凭据/TLS/主题/QoS),否则按常见字段保守拼接 */
+  /** 订阅参数指纹:驱动优先自报(凭据/TLS/主题/QoS),否则按常见字段保守拼接。
+   *  指纹计算绝不能抛错 —— 它在 250ms sweep 定时器里执行,异常会被稳定性守卫判 fatal。 */
   private pushFingerprint(node: DaqNode, drv: DaqDriver): string {
-    if (typeof drv.fingerprint === 'function') return drv.fingerprint(node.driverConfig)
+    try {
+      if (typeof drv.fingerprint === 'function') return drv.fingerprint(node.driverConfig)
+    }
+    catch (err) {
+      return `fingerprint-error:${err instanceof Error ? err.message : String(err)}`
+    }
     const c = node.driverConfig ?? {}
     return [node.driver, c.host, c.port, c.topic, c.jsonPath, c.username, c.secure, c.tls].map(v => String(v ?? '')).join('|')
   }
@@ -102,28 +108,35 @@ export abstract class DaqControllerPush extends DaqControllerState {
 
   private async startPushBinding(node: DaqNode, drv: DaqDriver): Promise<void> {
     const nodeId = node.id
+    const fingerprint = this.pushFingerprint(node, drv)
+    // 先放一个占位绑定再订阅:retained 种子报文可能在 subscribe() 的 SUBACK 之后、
+    // Promise 续体之前到达(onPushSample 需要 binding 才入库);占位 stop 在成功后替换。
+    const provisional: PushBinding = { stop: () => { /* 订阅尚未建立 */ }, fingerprint, startedAt: Date.now(), lastAt: 0, lastValue: null, lastWarnAt: 0 }
+    this.pushBindings.set(nodeId, provisional)
     try {
       const stop = await drv.subscribe!({
         ...this.pushInputOf(node, Date.now()),
         onSample: sample => this.onPushSample(nodeId, sample.value, sample.atMs),
         onError: err => this.onPushError(nodeId, err),
       })
+      provisional.stop = stop
       const live = this.repo.byId(nodeId)
-      // 建连期间节点可能被停用/删除/换线,或网关被停止:立刻回收,不留孤儿订阅。
-      // 网关停止时订阅若在建连中仍可能完成 —— 必须用 running 兜底,否则"停止"后仍持续入库。
-      if (!live || !live.enabled || !live.lineId || !this.running) {
+      // 建连期间节点可能被停用/删除/换线/换 topic,或网关被停止:立刻回收,不留孤儿订阅。
+      if (!live || !live.enabled || !live.lineId || !this.running
+        || this.pushFingerprint(live, resolveDaqDriver(live.driver)) !== fingerprint) {
+        this.pushBindings.delete(nodeId)
         try {
           await stop()
         }
         catch { /* 已停 */ }
         return
       }
-      this.pushBindings.set(nodeId, { stop, fingerprint: this.pushFingerprint(node, drv), startedAt: Date.now(), lastAt: 0, lastValue: null, lastWarnAt: 0 })
       this.pushRetryAt.delete(nodeId)
       live.lastError = null
       log.info(`[daq-push] ${live.name}(${nodeId}) ${live.driver} 被动订阅已建立`)
     }
     catch (err) {
+      this.pushBindings.delete(nodeId)
       const msg = err instanceof Error ? err.message : String(err)
       const live = this.repo.byId(nodeId)
       if (live && this.running) {

@@ -1,8 +1,8 @@
 {
-  "tag": "mvqkdoj8",
-  "at": "2026-10-27T10:52:49.022Z",
+  "tag": "mvql0i3f",
+  "at": "2026-10-27T11:11:27.406Z",
   "tally": {
-    "pass": 35,
+    "pass": 39,
     "fail": 0,
     "skip": 0
   },
@@ -25,12 +25,12 @@
     {
       "status": "PASS",
       "id": "A3",
-      "detail": "设备周期发布遥测(独立订阅端) — 3 条 / 6s,样例 45.49,43.21,41.99"
+      "detail": "设备周期发布遥测(独立订阅端) — 3 条 / 6s,样例 53.3,53.45,54.34"
     },
     {
       "status": "PASS",
       "id": "A4",
-      "detail": "状态主题 retained(晚订阅即时可取) — {\"setpoint\":60,\"value\":60,\"signalId\":\"mqtt-sp\",\"at\":1793098263303}"
+      "detail": "状态主题 retained(晚订阅即时可取) — {\"setpoint\":60,\"value\":60,\"signalId\":\"mqtt-sp\",\"at\":1793099328269}"
     },
     {
       "status": "PASS",
@@ -40,12 +40,12 @@
     {
       "status": "PASS",
       "id": "B1",
-      "detail": "产线开跑(配方 + 监控窗口) — rr-2e0fcc35"
+      "detail": "产线开跑(配方 + 监控窗口) — rr-8ba5c408"
     },
     {
       "status": "PASS",
       "id": "B2",
-      "detail": "MQTT 报文逐条入库(独立真值对账) — DB 7 行 / 真值 7 条"
+      "detail": "MQTT 报文逐条入库(独立真值对账) — DB 6 行 / 真值 7 条"
     },
     {
       "status": "PASS",
@@ -60,22 +60,22 @@
     {
       "status": "PASS",
       "id": "B5",
-      "detail": "库内时间戳严格递增(到达时刻) — 1793098265000 → 1793098277000"
+      "detail": "库内时间戳严格递增(到达时刻) — 1793099332000 → 1793099342000"
     },
     {
       "status": "PASS",
       "id": "B6",
-      "detail": "报文到达 → 库内可查 ≤ 4s — 2608ms"
+      "detail": "报文到达 → 库内可查 ≤ 4s — 2621ms"
     },
     {
       "status": "PASS",
       "id": "B7",
-      "detail": "采集管线无丢弃(produced=consumed, dropped=0) — {\"produced\":10,\"consumed\":10,\"dropped\":0,\"stored\":9}"
+      "detail": "采集管线无丢弃(produced=consumed, dropped=0) — {\"produced\":9,\"consumed\":9,\"dropped\":0,\"stored\":8}"
     },
     {
       "status": "PASS",
       "id": "B8",
-      "detail": "/samples 无 from 时 limit=1 = 最新桶(UI 路径) — unbounded=40.1@1793098289000 bounded=40.1@1793098289000"
+      "detail": "/samples 无 from 时 limit=1 = 最新桶(UI 路径) — unbounded=54.4@1793099354000 bounded=54.4@1793099354000"
     },
     {
       "status": "PASS",
@@ -95,7 +95,7 @@
     {
       "status": "PASS",
       "id": "D0",
-      "detail": "第二台 MQTT 设备创建 — mqtt-e2e-dev2-mvqkdoj8"
+      "detail": "第二台 MQTT 设备创建 — mqtt-e2e-dev2-mvql0i3f"
     },
     {
       "status": "PASS",
@@ -110,7 +110,7 @@
     {
       "status": "PASS",
       "id": "E2",
-      "detail": "外部 broker 写回 → 设备回显 → 平台回读 — lastCmd=44.4 read=44.4 msg=MQTT 回读 aw/e2e/mvqkdoj8/ext/state = 44.4"
+      "detail": "外部 broker 写回 → 设备回显 → 平台回读 — lastCmd=44.4 read=44.4 msg=MQTT 回读 aw/e2e/mvql0i3f/ext/state = 44.4"
     },
     {
       "status": "PASS",
@@ -135,22 +135,22 @@
     {
       "status": "PASS",
       "id": "G0",
-      "detail": "Agent 建号 + DAQ 绑定 — 72573eed-89c3-4382-9e90-d6292dc8b9b3 / {\"binding\":{\"id\":\"nb-9b6ceae9\",\"agentId\":\"72573eed-89c3-4382-9e90-d6292dc8b9b3\",\"nodeId\":\"dn-433312ae\",\"kind\":\"daq\",\"mod"
+      "detail": "Agent 建号 + DAQ 绑定 — 2f71c35a-5d44-400c-982a-6961dc25359b / {\"binding\":{\"id\":\"nb-f43796ff\",\"agentId\":\"2f71c35a-5d44-400c-982a-6961dc25359b\",\"nodeId\":\"dn-8c7ce962\",\"kind\":\"daq\",\"mod"
     },
     {
       "status": "PASS",
       "id": "G1",
-      "detail": "daq_query 最新值 = 窗口末尾桶(不是最旧段) — text=40.8 dbLast=40.8 dbFirst=42.9"
+      "detail": "daq_query 最新值 = 窗口末尾桶(不是最旧段) — text=47.9 dbLast=47.9 dbFirst=53.1"
     },
     {
       "status": "PASS",
       "id": "G2",
-      "detail": "输出含数据源与库内滞后声明 —   工况判读: 活动配方「MQTT-E2E-R-mvqkdoj8」监控窗口 [0, 100]:当前 40.8℃ 窗口内(正常) | 同产线数控设定: MQTT-DCW1-mvqkdoj8=61.5℃;MQTT-DCW2-mvqkdoj8=6"
+      "detail": "输出含数据源与库内滞后声明 —   工况判读: 活动配方「MQTT-E2E-R-mvql0i3f」监控窗口 [0, 100]:当前 47.9℃ 窗口内(正常) | 同产线数控设定: MQTT-DCW1-mvql0i3f=61.5℃;MQTT-DCW2-mvql0i3f=6"
     },
     {
       "status": "PASS",
       "id": "G3",
-      "detail": "agg=min 生效(输出最小值 = 库内窗口最小) — textMin=33.3 dbMin=33.3"
+      "detail": "agg=min 生效(输出最小值 = 库内窗口最小) — textMin=44 dbMin=44"
     },
     {
       "status": "PASS",
@@ -181,6 +181,26 @@
       "status": "PASS",
       "id": "I2",
       "detail": "retained 重放不重复入库(静默期行数不增长) — 1 → 1"
+    },
+    {
+      "status": "PASS",
+      "id": "J1",
+      "detail": "节点停用即停收 / 启用即续采 — 停用期 0 行 / 恢复 2 行"
+    },
+    {
+      "status": "PASS",
+      "id": "J2",
+      "detail": "topic 变更 → 订阅重建并采新主题 — 3 行 / 值=42"
+    },
+    {
+      "status": "PASS",
+      "id": "J3",
+      "detail": "EDA 查询窗口超 limit 时取最新段 — 37 点 / 末点滞后 2s"
+    },
+    {
+      "status": "PASS",
+      "id": "J4",
+      "detail": "停线停收 / 重新开跑续采 — 停线期 0 行 / 重启 2 行"
     }
   ]
 }

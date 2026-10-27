@@ -487,7 +487,8 @@ async function main() {
     const minText = qmin.data?.result?.text ?? ''
     const mMin = /最小\s+([-\d.]+)/.exec(minText)
     const minInText = mMin ? Number(mMin[1]) : NaN
-    const dbMin = Math.min(...dbWindow.map(p => Number(p.min)))
+    // 与 daq_query 同窗口同 limit:窗口末尾 50 个桶(不是整 2 分钟,避免窗口错配)
+    const dbMin = Math.min(...dbWindow.slice(-50).map(p => Number(p.min)))
     ok('G3', 'agg=min 生效(输出最小值 = 库内窗口最小)', Number.isFinite(minInText) && Math.abs(minInText - dbMin) < 1e-6 && /聚合 min/.test(minText), `textMin=${minInText} dbMin=${dbMin}`)
     const qbad = await invoke('daq_query', { node_id: daqId, agg: 'bogus' })
     ok('G4', '非法 agg 明确报错(不静默回退)', /agg 只能是/.test(qbad.data?.result?.text ?? ''), (qbad.data?.result?.text ?? '').slice(0, 80))
@@ -534,6 +535,52 @@ async function main() {
     await sleep(6000)
     const after = await samples(daqRet, t0 - 1500, Date.now())
     ok('I2', 'retained 重放不重复入库(静默期行数不增长)', after.length === first.length, `${first.length} → ${after.length}`)
+  }
+
+  // ── J:生命周期(节点停用/启用、topic 变更、EDA 尾段、停线门控)──
+  {
+    // J1 节点停用 → 停收;启用 → 续采
+    await api('PATCH', `/api/workshop/daq/${daqId}`, { token, body: { enabled: false } })
+    const t0 = Date.now()
+    await sleep(4500)
+    const offRows = await samples(daqId, t0, Date.now())
+    await api('PATCH', `/api/workshop/daq/${daqId}`, { token, body: { enabled: true } })
+    const resumed = await waitFor('reenable rows', async () => {
+      const pts = await samples(daqId, t0 + 4500, Date.now())
+      return pts.length >= 2 ? pts : null
+    }, 10_000, 800)
+    ok('J1', '节点停用即停收 / 启用即续采', offRows.length === 0 && resumed.length >= 2, `停用期 ${offRows.length} 行 / 恢复 ${resumed.length} 行`)
+
+    // J2 topic 变更 → 指纹重建订阅,新主题数据入库
+    const newTopic = `aw/e2e/${TAG}/temp2`
+    await api('PATCH', `/api/workshop/daq/${daqId}`, { token, body: { driverConfig: { topic: newTopic, jsonPath: 'data.temp', staleMs: 3000 } } })
+    const t1 = Date.now()
+    const changed = await waitFor('topic change rows', async () => {
+      const pts = await samples(daqId, t1, Date.now())
+      return pts.length >= 3 && pts.every(p => Math.abs(p.avg - 42) < 0.06) ? pts : null
+    }, 10_000, 800)
+    ok('J2', 'topic 变更 → 订阅重建并采新主题', changed.length >= 3, `${changed.length} 行 / 值=${changed[0]?.avg}`)
+
+    // J3 EDA 产线查询(窗口桶数 > limit)也必须取最新段
+    {
+      const to = Date.now()
+      const q = await api('GET', `/api/workshop/daq/query?node_ids=${daqId}&last_minutes=60&bucket_ms=1000&limit=5`)
+      const pts = q.data?.series?.[0]?.points ?? []
+      const last = pts[pts.length - 1]
+      ok('J3', 'EDA 查询窗口超 limit 时取最新段', pts.length > 0 && last && (to - last.at) < 5000, `${pts.length} 点 / 末点滞后 ${last ? Math.round((to - last.at) / 1000) : '?'}s`)
+    }
+
+    // J4 停线 → 停收;重新开跑 → 续采(订阅保持在线,门控在入库侧)
+    await api('POST', `/api/workshop/dcw/lines/${lineId}/stop`, { token, body: {} })
+    const t2 = Date.now()
+    await sleep(5000)
+    const stoppedRows = await samples(daqId, t2, Date.now())
+    const restart = await api('POST', `/api/workshop/dcw/lines/${lineId}/start`, { token, body: { recipeId } })
+    const restarted = await waitFor('line restart rows', async () => {
+      const pts = await samples(daqId, t2 + 5000, Date.now())
+      return pts.length >= 2 ? pts : null
+    }, 10_000, 800)
+    ok('J4', '停线停收 / 重新开跑续采', restart.status === 200 && stoppedRows.length === 0 && restarted.length >= 2, `停线期 ${stoppedRows.length} 行 / 重启 ${restarted.length} 行`)
   }
 
   // ── 清理 ──

@@ -110,6 +110,9 @@ export const mqttDcwDriver: DcwWriteDriver = {
       const url = `mqtt${secure ? 's' : ''}://${String(driverConfig.host)}:${Number(driverConfig.port ?? 1883)}`
       c = await new Promise<import('mqtt').MqttClient>((resolve, reject) => {
         const cli = mqtt.connect(url, { ...mqttConnectOpts(driverConfig), reconnectPeriod: 0 })
+        // 立即登记到外层变量:connect 失败时 catch 里能销毁该 client(reconnectPeriod=0 虽不重连,
+        // 但失败的 socket/句柄仍要显式释放,避免"测试连接"把池撑大)
+        c = cli
         cli.once('connect', () => resolve(cli))
         cli.once('error', err => reject(new Error(err.message)))
       })

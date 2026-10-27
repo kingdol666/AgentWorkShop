@@ -107,6 +107,18 @@ export function mqttKey(cfg: Record<string, unknown>): string {
   return `mqtt${secure ? 's' : ''}://${cfg.host}:${Number(cfg.port ?? 1883)}|u=${user}|p=${pass}|ca=${caFile}|ru=${rejectUnauthorized}`
 }
 
+/** 指纹专用安全键:CA 文件缺失/不可读不能让 sweep 定时器抛错(会被稳定性守卫判 fatal 退出进程)。
+ *  这里把 TLS 配置错误编码进键,in：subscribe 阶段会以可读错误失败并重试。 */
+function safeMqttKey(cfg: Record<string, unknown>): string {
+  try {
+    return mqttKey(cfg)
+  }
+  catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    return `mqtt-invalid://${String(cfg.host)}:${Number(cfg.port ?? 1883)}|host=${String(cfg.host)}|topic=${String(cfg.topic ?? '')}|err=${msg.slice(0, 80)}`
+  }
+}
+
 function brokerUrl(cfg: Record<string, unknown>): string {
   const { secure } = tlsOpts(cfg)
   return `mqtt${secure ? 's' : ''}://${String(cfg.host)}:${Number(cfg.port ?? 1883)}`
@@ -181,11 +193,13 @@ export async function getMqttConn(cfg: Record<string, unknown>): Promise<MqttCon
       entry.at = at
       entry.retained = retained
       // retained 语义:
-      //  - 本订阅周期首条 retained = 设备当前状态,作为**一次**种子样本入库(时间=到达时刻);
-      //  - 后续重复投递(断线重连/重订阅时 broker 重放)只刷新缓存,**不再入库** ——
-      //    否则停发设备每次重连都会凭空多一行冻值。
+      //  - 本订阅 entry 生命周期内首条 retained = 设备当前状态,作为**一次**种子样本入库;
+      //  - 后续重复投递(断线重连重放)只刷新缓存,不再入库;
+      //  - 若当前没有消费者(仅 sample()/readMqttValue 的只读订阅),不消耗种子 ——
+      //    留给随后建立的推送绑定,避免"先测连接后建节点"导致首条状态丢失。
       if (retained) {
         if (entry.seeded) return
+        if (entry.consumers.size === 0) return
         entry.seeded = true
       }
       for (const fn of [...entry.consumers]) {
@@ -387,21 +401,27 @@ export const mqttDaqDriver: DaqDriver = {
       if (stopped) return
       stopped = true
       entry.consumers.delete(consumer)
-      // 最后一个消费者离开:退订并移除缓存(避免已删除/换主题节点的订阅永久堆积)
-      if (entry.consumers.size === 0 && conn.topics.get(topic) === entry) {
-        conn.topics.delete(topic)
-        try {
-          conn.client.unsubscribe(topic, () => { /* 已断/已退订 */ })
-        }
-        catch { /* 连接已关闭 */ }
+      // 最后一个消费者离开:延迟 5s 再退订/移除缓存。
+      // 不能立刻 UNSUBSCRIBE —— 换 topic/停用后立即启用会在同一 tick 重建订阅,
+      // 迟到的 UNSUBSCRIBE 会把新订阅一起取消(新 entry 收不到任何消息)。
+      if (entry.consumers.size === 0) {
+        const timer = setTimeout(() => {
+          if (entry.consumers.size > 0 || conn.topics.get(topic) !== entry) return
+          conn.topics.delete(topic)
+          try {
+            conn.client.unsubscribe(topic, () => { /* 已断/已退订 */ })
+          }
+          catch { /* 连接已关闭 */ }
+        }, 5000)
+        timer.unref?.()
       }
     }
   },
 
-  /** 订阅参数指纹:凭据/TLS/主题/QoS 任一变化都重建订阅 */
+  /** 订阅参数指纹:凭据/TLS/主题/QoS 任一变化都重建订阅(绝不因 CA 配置错误抛错) */
   fingerprint(driverConfig) {
     const c = driverConfig
-    return `${mqttKey(c)}|topic=${String(c.topic ?? '')}|jsonPath=${String(c.jsonPath ?? '')}|qos=${Number(c.qos ?? 1)}`
+    return `${safeMqttKey(c)}|topic=${String(c.topic ?? '')}|jsonPath=${String(c.jsonPath ?? '')}|qos=${Number(c.qos ?? 1)}`
   },
 
   async sample({ driverConfig }) {

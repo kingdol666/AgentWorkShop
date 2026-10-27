@@ -14,15 +14,13 @@ import { getTsdb } from '../storage'
 
 export abstract class DaqControllerTsdbTwin extends DaqControllerSweepAlarms {
   /** 网关消费泵:队列帧按节点分发回其运行时(乱序防御/状态派生/下发门控在 runtime)。
-   *  消费侧再校验一次运行态与产线门控 —— 停网关/停线瞬间已在队列里的帧不能入库,
-   *  否则会落成无批次打标的样本(生产侧采集资格已在 sweep/推送入口判定)。 */
+   *  只校验网关运行态:外部 /ingest 是文档化的入库入口,产线门控由来源侧/路由自身判定,
+   *  不能在这里静默丢弃(否则 /ingest 返回 accepted 却没有行)。 */
   protected onSampleFromQueue(env: DaqSampleEnvelope): void {
     this.consumedCount++
     if (!this.running) return
     const rt = this.runtimes.get(env.nodeId)
     if (!rt) return
-    const host = getDaqHostPorts()
-    if (host && !host.lineRun.activeRun(rt.node.lineId)) return
     if (rt.onSample(env) === 'late') this.lateDropped++
   }
 

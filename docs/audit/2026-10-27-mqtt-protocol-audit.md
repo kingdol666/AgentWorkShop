@@ -3,7 +3,7 @@
 **结论:MQTT 此前"老是出问题"不是 broker 或外部设备的问题,而是平台把一个推送协议
 接到了轮询模型上。** 修复后 MQTT 走真正的被动订阅:报文到达即入库(时间戳=到达时刻),
 设备停发不再伪造冻值,查询面返回库内最新段,写控可用状态主题回读判 `readback-verified`。
-MQTT 专项 E2E **35/35 通过**,全量单测 **592/592 通过**,模拟器协议自测 **5/5 通过**。
+MQTT 专项 E2E **39/39 通过**,全量单测 **595/595 通过**,模拟器协议自测 **5/5 通过**。
 
 - 复现与验收分支:`fix/mqtt-passive-ingest-20261027`(PR #13)
 - 模拟器子模块:`plc-node-simulator@d47eb7c`(分支 `fix/mqtt-passive-ingest-20261027`,已推送)
@@ -51,20 +51,29 @@ P4 的机理:MQTT 驱动只有 publish,没有 read;设备也没有状态回显�
   - 时间戳 = 报文到达时刻,并对同毫秒多报文做单调递增修正。
 - 生命周期兜底:网关停止时不仅回收已有绑定,还在建连完成处、报文回调、队列消费三处
   校验 `running` —— 建连中的订阅晚到、队列里在飞的帧都不会在"停止"后继续入库。
-- retained 语义:本订阅周期**首条** retained 作为设备当前状态入库一次(种子);断线重连/
-  重订阅时 broker 重放的 retained 只刷新缓存、**不再入库**(`seeded` 标记)。因此
-  retained-only 主题既能在首次订阅看到当前值,也不会每 tick 伪造新样本。
+  绑定在 `subscribe()` 之前先占位登记:retained 种子报文即使在 SUBACK 后立即到达,
+  也能被 `onPushSample` 接收,不会因"绑定尚未登记"丢失。
+- retained 语义:每个 topic 订阅 entry 生命周期内**首条** retained 作为设备当前状态
+  入库一次(种子);断线重连时 broker 重放的 retained 只刷新缓存、**不再入库**
+  (`seeded` 标记;entry 在节点停用/换 topic/网关重启后重建,新订阅会重新种子一次)。
+  只读订阅(测试连接/readMqttValue)不消耗种子,留给随后建立的推送绑定。
 
 ### 2.2 MQTT 连接管理(平台侧)
 
 - 连接池键按 `broker + TLS + **有效**账号 + 密码指纹` 复用:有效凭据 = 节点显式配置,
   缺省回落全局 `daq.mqtt.*`,连接与池键同源(旧键包含 username/caFile,但漏了 password);
 - 订阅指纹由驱动自报(`fingerprint`):broker/凭据/TLS/主题/jsonPath/QoS 任一变化都重建订阅;
+  指纹计算做了**不抛错**保护(CA 文件缺失只编码进键,由 subscribe 阶段给可读错误),
+  不会让 250ms sweep 定时器抛出异常触发稳定性守卫退出进程;
 - 断线不再 `end(true)` 驱逐整池:交给 mqtt.js `reconnectPeriod=5000` 自动重连,
   `connect` 事件重放全部 topic 订阅;`close` 时清空报文缓存;
-- `sample()`/`test()` 在未连接时快速失败;测试失败的 client 显式销毁(不再后台重连泄漏);
-- 最后一个消费者退订时 `UNSUBSCRIBE` 并移除 topic 缓存;并发首订阅共享同一个 `ready`
+- `sample()`/`test()` 在未连接时快速失败;测试失败的 client 显式销毁;
+- 最后一个消费者退订时**延迟 5s** 再 `UNSUBSCRIBE`/移除缓存(立即退订会与同 tick 的
+  换 topic/停用后启用重建订阅竞争,把新订阅一起取消);并发首订阅共享同一个 `ready`
   Promise,失败不留下已 reject 的 entry。
+- 队列消费侧只校验网关 `running`,**不**按产线门控丢弃:外部 `/ingest` 是文档化的入库入口,
+  产线门控由来源侧(采样 sweep / 推送回调)与路由自身判定,消费侧静默丢弃会让
+  `/ingest` 返回 accepted 却无行。停线瞬间在飞的极少量帧可能以未打标样本落库(诚实边界)。
 
 ### 2.3 查询取库内最新段(平台侧)
 
@@ -86,7 +95,10 @@ P4 的机理:MQTT 驱动只有 publish,没有 read;设备也没有状态回显�
 - DCW MQTT 驱动新增 `read` + `canRead`:`readTopic + readJsonPath` 存在时才启用回读;
   未配置时网关跳过周期读、不把"无回读通道"记成节点读错误(旧实现会每 5s 一条 lastReadError)。
 - 写前顺序严格为 **预热订阅 → 清空缓存 → publish**:预热把 broker 的 retained 旧值读进缓存,
-  清空后发布,写后回读只可能拿到写后报文;冷连接直接订阅也不会把 retained 旧值误当本次回读。
+  清空后发布,正常路径的写后回读只可能拿到写后报文;冷连接直接订阅也不会把 retained
+  旧值误当本次回读。
+  - 残余窄竞态:若 broker 在"清空缓存"之后才投递写前 retained(300ms 预热超时 + 网络抖动),
+    同值重复下发仍可能被判 verified;F2/F3 覆盖正常路径(attempts=1),未做穷尽竞态证明。
 - 周期读允许复用 4s 内缓存(避免长时间占住读锁导致手动读 409);写后验证清缓存后等待新回显。
 - 批量下发经 `verifyRecipeWrite` 补验后,结果从 `transport-ack` 提升为
   `ack=readback-verified / verify.verdict=verified`;无 `readTopic` 时如实保持 `unverified`。
@@ -113,9 +125,13 @@ P4 的机理:MQTT 驱动只有 publish,没有 read;设备也没有状态回显�
 | 写后 readback 可能吃到写前 retained,或丢掉立即回显 | 改为写前预热+清缓存再发布;E2E F2/F3 |
 | E2E G1 是常值下的伪通过;G3 只查表头 | 恢复随机游走后对比窗口首/末值;G3 对比库内最小值;新增 B8 覆盖 UI 路径 |
 | 无 readTopic 的 MQTT 节点每 5s 记读错误噪音 | `canRead` + 网关跳过周期读 |
-| 并发首订阅失败会留下孤儿/死 entry;测试失败 client 泄漏;订阅永不退订 | `ready` 共享 + 失败清理 + 最后消费者退订 + 测试 client 销毁 |
+| 并发首订阅失败会留下孤儿/死 entry;测试失败 client 泄漏;订阅永不退订 | `ready` 共享 + 失败清理 + 延迟 5s 退订 + 测试 client 销毁 |
+| 第二轮:指纹计算遇 CA 缺失会抛错(定时器异常→稳定性守卫退出);订阅成功后才登记绑定导致 retained 种子丢失 | 指纹不抛错(CA 错误编码进键);subscribe 前先占位登记绑定,再替换真实 stop |
+| 第二轮:队列消费侧按产线门控丢弃,外部 `/ingest` 返回 accepted 却无行 | 消费侧只校验 `running`;产线门控保留在来源侧与路由自身 |
+| 第二轮:retained 种子在 SUBACK 后立即到达时可能被丢;`seeded` 语义表述为"每订阅周期" | 占位绑定 + 只有存在消费者才消耗种子;文档改为"每个 topic entry 生命周期首条" |
+| 第二轮:G3 的 dbMin 用整 2 分钟窗口,与 daq_query 的末尾 50 桶窗口不一致 | 改为同窗口 `dbWindow.slice(-50)` 对比 |
 
-## 3. 验收矩阵(35/35)
+## 3. 验收矩阵(39/39)
 
 E2E 使用**专用影子模拟器**(端口 4021 → broker 29830)+ **全新隔离 home 的生产构建**,
 不接触共享实例;外部 broker 使用 Docker mosquitto `:1883`。
@@ -123,17 +139,18 @@ E2E 使用**专用影子模拟器**(端口 4021 → broker 29830)+ **全新隔�
 | 组 | 断言 | 结果 |
 |---|---|---|
 | A0–A4 | 平台会话 / 内置 broker 端口 / 写信号导出回读主题 / 设备周期发布 / retained 晚订阅 | 5/5 |
-| B0–B8 | 网关启动 / 产线开跑 / **逐条真值对账(7 行 vs 7 条,6/7 值对齐)** / **入库节奏 2000ms(=设备 tick,非 intervalMs)** / 时间戳递增 / 到达→可查 2608ms / **produced=consumed,dropped=0** / **from 缺省 limit=1=最新桶** | 9/9 |
+| B0–B8 | 网关启动 / 产线开跑 / **逐条真值对账(7 行 vs 7 条,6/7 值对齐)** / **入库节奏 2000ms(=设备 tick,非 intervalMs)** / 时间戳递增 / 到达→可查 2621ms / **produced=consumed,dropped=0** / **from 缺省 limit=1=最新桶** | 9/9 |
 | C1–C3 | 停发 → **0 新增样本** / offline + 可读 lastError / 恢复 → 续采 + 状态自愈 | 3/3 |
 | D0–D1 | 同 broker 第二台 MQTT 设备 / 两节点并行入库 | 2/2 |
 | E1–E2 | 外部 mosquitto 订阅入库(6 行) / 写回 → 设备回显 → 平台回读 44.4 | 2/2 |
 | F1–F4 | 直写落到设备(61.5) / 写后回读=61.5 / 批量下发 `readback-verified`(attempts=1) / ACK 汇总 0 未证实 0 失败 | 4/4 |
-| G0–G5 | Agent 绑定 / **最新值=窗口末尾桶(40.8,窗口首值 42.9 可区分)** / 数据源+滞后 / **agg=min 输出 33.3=库内最小 33.3** / 非法 agg 报错 / 越权拒绝 | 6/6 |
+| G0–G5 | Agent 绑定 / **最新值=窗口末尾桶(40.8,窗口首值 42.9 可区分)** / 数据源+滞后 / **agg=min 输出 44=库内最小 44** / 非法 agg 报错 / 越权拒绝 | 6/6 |
 | H1–H2 | 网关停止 → 0 新增 / 恢复 → 订阅重建续采 | 2/2 |
 | I1–I2 | retained 首订阅种子一次(12.3 可查) / **重放不重复入库(1→1)** | 2/2 |
+| J1–J4 | 节点停用→停收/启用→续采 / **topic 变更→指纹重建订阅(新主题 42)** / EDA 查询窗口超 limit 取最新段(末点滞后 2s) / 停线停收→重开续采 | 4/4 |
 
-**合计 35 passed / 0 failed / 0 skipped。**
-全量单测 `npm run test:unit`:592 passed / 0 failed(含 `tests/tsdb-tail.test.ts` 10 条)。
+**合计 39 passed / 0 failed / 0 skipped。**
+全量单测 `npm run test:unit`:595 passed / 0 failed(含 tail 10 条 + MQTT 驱动指纹/解析 3 条)。
 模拟器 `npm run test:mqtt`:5 passed / 0 failed。
 
 关键对照(修复前 → 修复后):
@@ -173,9 +190,11 @@ E2E 使用**专用影子模拟器**(端口 4021 → broker 29830)+ **全新隔�
   仍可能按到达时刻形成两行(未做 DUP 去重)。
 - **设备自带时间戳**:样本时间取平台到达时刻;若设备报文内带采集时间,需再实现
   `timeJsonPath`(未做,避免把时钟不同步引入数据)。
-- **retained 语义**:按"状态快照"处理(首条种子一次,重放不入库)。若设备把**周期性遥测**
-  也设 `retain=true`,后续更新会被当作重放跳过 —— 周期遥测请用 `retain=false`,
-  仅状态/设定值回显用 retain。
+- **retained 语义**:按"状态快照"处理 —— 每个 topic 订阅 entry 生命周期内首条种子一次,
+  重连重放不入库;entry 在节点停用/换 topic/网关重启后重建,新订阅会重新种子。
+  若设备把**周期性遥测**也设 `retain=true`,后续更新会被当作重放跳过;周期遥测请用
+  `retain=false`,仅状态/设定值回显用 retain。retained-only 设备的后续状态变化不会自动
+  变成新样本,需要变更事件(`retain=false`)或由 `readTopic` 读取缓存。
 - **多节点共享连接**:同 broker 两节点并行入库已验证,但未对"只建一条 TCP 连接"做进程内
   连接计数断言。
 - **安全扫描**:本轮 Mimosa 未给出完整扫描结论(此前 hook 提示 `scanner_enobufs` /
