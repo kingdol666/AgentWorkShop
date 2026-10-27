@@ -31,6 +31,10 @@ interface PushBinding {
   /** 最近一条报文到达时刻(0 = 尚未收到) */
   lastAt: number
   lastValue: number | null
+  /** 当前活动批次 runId(用于识别新一批次开跑) */
+  runId: string | null
+  /** 本批次是否已把缓存/首条值作为种子入库(未开跑时收到的值在开跑后补种一次) */
+  runSeeded: boolean
   /** 故障广播节流 */
   lastWarnAt: number
 }
@@ -111,7 +115,7 @@ export abstract class DaqControllerPush extends DaqControllerState {
     const fingerprint = this.pushFingerprint(node, drv)
     // 先放一个占位绑定再订阅:retained 种子报文可能在 subscribe() 的 SUBACK 之后、
     // Promise 续体之前到达(onPushSample 需要 binding 才入库);占位 stop 在成功后替换。
-    const provisional: PushBinding = { stop: () => { /* 订阅尚未建立 */ }, fingerprint, startedAt: Date.now(), lastAt: 0, lastValue: null, lastWarnAt: 0 }
+    const provisional: PushBinding = { stop: () => { /* 订阅尚未建立 */ }, fingerprint, startedAt: Date.now(), lastAt: 0, lastValue: null, runId: null, runSeeded: false, lastWarnAt: 0 }
     this.pushBindings.set(nodeId, provisional)
     try {
       const stop = await drv.subscribe!({
@@ -122,9 +126,11 @@ export abstract class DaqControllerPush extends DaqControllerState {
       provisional.stop = stop
       const live = this.repo.byId(nodeId)
       // 建连期间节点可能被停用/删除/换线/换 topic,或网关被停止:立刻回收,不留孤儿订阅。
-      if (!live || !live.enabled || !live.lineId || !this.running
+      // 也必须确认 map 里仍是本次占位(期间可能已被 stop 并被新一轮 sweep 替换)。
+      if (this.pushBindings.get(nodeId) !== provisional
+        || !live || !live.enabled || !live.lineId || !this.running
         || this.pushFingerprint(live, resolveDaqDriver(live.driver)) !== fingerprint) {
-        this.pushBindings.delete(nodeId)
+        if (this.pushBindings.get(nodeId) === provisional) this.pushBindings.delete(nodeId)
         try {
           await stop()
         }
@@ -173,7 +179,9 @@ export abstract class DaqControllerPush extends DaqControllerState {
     await Promise.all(ids.map(id => this.stopPushBinding(id)))
   }
 
-  /** 报文回调:解析成功 + 网关运行 + 产线在跑 → 入队(时间戳=到达时刻,单调递增) */
+  /** 报文回调:解析成功 + 网关运行 + 产线在跑 → 入队(时间戳=到达时刻,单调递增)。
+   *  未开跑时缓存最近值(不止丢弃):retained-only 设备在停线期间只收到一条状态,
+   *  开跑后由 checkPushLiveness 补种一次,否则整批没有初始值。 */
   private onPushSample(nodeId: string, value: number, atMs: number): void {
     if (!this.running) return
     const bind = this.pushBindings.get(nodeId)
@@ -183,17 +191,32 @@ export abstract class DaqControllerPush extends DaqControllerState {
     const node = this.repo.byId(nodeId)
     if (!node || !node.enabled) return
     const host = getDaqHostPorts()
-    // 产线门控:与 sweep 的 activeRun 判定同源;未开跑期间订阅保持在线但不入库
-    if (!host?.lineRun.activeRun(node.lineId)) return
+    const run = host?.lineRun.activeRun(node.lineId) ?? null
+    // 产线门控:未开跑期间订阅保持在线但不入库;记录当前批次,开跑瞬间补种缓存值
+    if (!run) {
+      bind.runId = null
+      bind.runSeeded = false
+      return
+    }
+    if (bind.runId !== run.runId) {
+      bind.runId = run.runId
+      bind.runSeeded = false
+    }
     // 报文恢复即自愈:清掉停发期写入的 lastError(状态由 runtime.onSample 重新派生)
     if (node.lastError) node.lastError = null
+    this.publishPushValue(node, value, bind.lastAt)
+    bind.runSeeded = true
+  }
+
+  /** 推送值经队列进入统一管线(物理量标定 + 节点精度) */
+  private publishPushValue(node: DaqNode, value: number, atMs: number): void {
     const phys = applyTransform(value, node.transform)
     this.publishSample({
       nodeId: node.id,
       templateRef: node.templateRef,
       value: Number(phys.toFixed(node.decimals)),
       state: 'ok',
-      at: new Date(bind.lastAt).toISOString(),
+      at: new Date(atMs).toISOString(),
     })
   }
 
@@ -220,7 +243,23 @@ export abstract class DaqControllerPush extends DaqControllerState {
     for (const [nodeId, bind] of this.pushBindings) {
       const node = this.repo.byId(nodeId)
       if (!node || !node.enabled) continue
-      if (!host.lineRun.activeRun(node.lineId)) continue
+      const run = host.lineRun.activeRun(node.lineId)
+      if (!run) {
+        bind.runId = null
+        bind.runSeeded = false
+        continue
+      }
+      // 新批次开跑:把停线期间缓存的最近值补种一次(retained-only 设备整批只有这一条状态;
+      // 时间戳=消息到达时刻,超过 10 分钟的旧值不补,等新报文)
+      if (bind.runId !== run.runId) {
+        bind.runId = run.runId
+        bind.runSeeded = false
+      }
+      if (!bind.runSeeded && bind.lastValue != null && (now - bind.lastAt) <= 600_000) {
+        this.publishPushValue(node, bind.lastValue, bind.lastAt || now)
+        bind.runSeeded = true
+        if (node.lastError) node.lastError = null
+      }
       const staleMs = Number(node.driverConfig?.staleMs ?? MQTT_STALE_DEFAULT_MS)
       if (!(staleMs > 0)) continue
       const since = bind.lastAt || bind.startedAt

@@ -179,6 +179,10 @@ export default defineApiHandler(async (event) => {
     env = { nodeId: node.id, templateRef: node.templateRef, value, state, at }
   }
 
+  // 网关停止时消费侧会丢弃队列帧(采集暂停):外部入库必须如实失败,不能 200 却无行。
+  if (!getDaqController().running) {
+    throw new AppError(503, 'UNAVAILABLE', 'DAQ 网关已停止,外部入库暂停;请先启动采集网关(POST /api/workshop/daq/controller action=start)')
+  }
   await getDaqQueue().then(q => q.publish(env))
   return {
     accepted: true,

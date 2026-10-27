@@ -583,6 +583,31 @@ async function main() {
     ok('J4', '停线停收 / 重新开跑续采', restart.status === 200 && stoppedRows.length === 0 && restarted.length >= 2, `停线期 ${stoppedRows.length} 行 / 重启 ${restarted.length} 行`)
   }
 
+  // ── K:停线期间的 retained 状态在开跑后补种;网关停止时外部入库如实 503 ──
+  {
+    const idleTopic = `aw/e2e/${TAG}/idle-retained`
+    await api('POST', `/api/workshop/dcw/lines/${lineId}/stop`, { token, body: {} })
+    const seedPub = await connectClient(mqtt, brokerUrl)
+    await seedPub.publishAsync(idleTopic, JSON.stringify({ v: 23.4 }), { qos: 0, retain: true })
+    await sleep(400)
+    await seedPub.endAsync(false).catch(() => {})
+    const daqIdle = await createDaq(token, { lineId, name: `MQTT-DAQ-IDLE-${TAG}`, driverConfig: { host: '127.0.0.1', port: BROKER_PORT, topic: idleTopic, jsonPath: 'v' } })
+    const t0 = Date.now()
+    await sleep(4000)
+    const idleRows = await samples(daqIdle, t0 - 1500, Date.now())
+    await api('POST', `/api/workshop/dcw/lines/${lineId}/start`, { token, body: { recipeId } })
+    const seeded = await waitFor('idle retained seed on run start', async () => {
+      const pts = await samples(daqIdle, t0 - 1500, Date.now())
+      return pts.length >= 1 ? pts : null
+    }, 10_000, 600)
+    ok('K1', '停线期间 retained 状态在开跑后补种一次', idleRows.length === 0 && seeded.length >= 1 && Math.abs(seeded[0].avg - 23.4) < 0.06, `停线期 ${idleRows.length} 行 / 开跑 ${seeded.length} 行=${seeded[0]?.avg}`)
+    // K2:网关停止时外部 /ingest 必须 503(不能 200 却无行)
+    await api('POST', '/api/workshop/daq/controller', { token, body: { action: 'stop' } })
+    const ing = await api('POST', `/api/workshop/daq/${daqId}/ingest`, { token, body: { value: 1 } })
+    await api('POST', '/api/workshop/daq/controller', { token, body: { action: 'start' } })
+    ok('K2', '网关停止时外部入库如实 503(不静默丢帧)', ing.status === 503, `status=${ing.status} msg=${String(ing.json?.message ?? '').slice(0, 80)}`)
+  }
+
   // ── 清理 ──
   await api('POST', `/api/workshop/dcw/lines/${lineId}/stop`, { token, body: {} }).catch(() => {})
   console.log(`\n━━━ MQTT E2E: ${pass} passed / ${fail} failed / ${skip} skipped ━━━`)

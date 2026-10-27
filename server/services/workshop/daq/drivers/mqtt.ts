@@ -396,6 +396,12 @@ export const mqttDaqDriver: DaqDriver = {
       if (entry.consumers.size === 0 && conn.topics.get(topic) === entry) conn.topics.delete(topic)
       throw err
     }
+    // 只读订阅(测试连接/readMqttValue)先拿到 retained 时不会消耗种子;
+    // 推送绑定后来挂到同一 entry 上,broker 不会重发 retained —— 这里用缓存补一次种子。
+    if (entry.retained && entry.raw && !entry.seeded) {
+      entry.seeded = true
+      consumer(entry.raw, Date.now())
+    }
     let stopped = false
     return () => {
       if (stopped) return
