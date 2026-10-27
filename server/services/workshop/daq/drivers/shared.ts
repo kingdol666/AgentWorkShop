@@ -84,4 +84,9 @@ export interface DaqDriver {
    * 轮询订阅缓存会把同一条报文按采样 tick 重复入库、并在停发后伪造冻值。
    */
   subscribe?(input: DaqPushInput): Promise<() => void | Promise<void>>
+  /**
+   * 可选:订阅参数指纹(凭据/TLS/主题/QoS 等)。控制器发现指纹变化会重建订阅,
+   * 避免改密码/换主题后仍挂在旧连接上。缺省由控制器按常见字段拼一个保守指纹。
+   */
+  fingerprint?(driverConfig: Record<string, unknown>): string
 }

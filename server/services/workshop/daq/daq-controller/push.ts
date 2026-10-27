@@ -63,8 +63,9 @@ export abstract class DaqControllerPush extends DaqControllerState {
     }
   }
 
-  /** 订阅参数指纹:driver/topic/host/jsonPath 变更必须重建订阅(否则一直收旧主题) */
-  private pushFingerprint(node: DaqNode): string {
+  /** 订阅参数指纹:驱动优先自报(凭据/TLS/主题/QoS),否则按常见字段保守拼接 */
+  private pushFingerprint(node: DaqNode, drv: DaqDriver): string {
+    if (typeof drv.fingerprint === 'function') return drv.fingerprint(node.driverConfig)
     const c = node.driverConfig ?? {}
     return [node.driver, c.host, c.port, c.topic, c.jsonPath, c.username, c.secure, c.tls].map(v => String(v ?? '')).join('|')
   }
@@ -80,8 +81,8 @@ export abstract class DaqControllerPush extends DaqControllerState {
       }
       const existing = this.pushBindings.get(node.id)
       if (existing) {
-        // topic/host 等订阅参数变更:回收后下一拍按新参数重建
-        if (existing.fingerprint !== this.pushFingerprint(node)) void this.stopPushBinding(node.id)
+        // topic/host/凭据/QoS 等订阅参数变更:回收后下一拍按新参数重建
+        if (existing.fingerprint !== this.pushFingerprint(node, drv)) void this.stopPushBinding(node.id)
         continue
       }
       if (this.pushPending.has(node.id)) continue
@@ -108,15 +109,16 @@ export abstract class DaqControllerPush extends DaqControllerState {
         onError: err => this.onPushError(nodeId, err),
       })
       const live = this.repo.byId(nodeId)
-      // 建连期间节点可能被停用/删除/换线:立刻回收,不留孤儿订阅
-      if (!live || !live.enabled || !live.lineId) {
+      // 建连期间节点可能被停用/删除/换线,或网关被停止:立刻回收,不留孤儿订阅。
+      // 网关停止时订阅若在建连中仍可能完成 —— 必须用 running 兜底,否则"停止"后仍持续入库。
+      if (!live || !live.enabled || !live.lineId || !this.running) {
         try {
           await stop()
         }
         catch { /* 已停 */ }
         return
       }
-      this.pushBindings.set(nodeId, { stop, fingerprint: this.pushFingerprint(node), startedAt: Date.now(), lastAt: 0, lastValue: null, lastWarnAt: 0 })
+      this.pushBindings.set(nodeId, { stop, fingerprint: this.pushFingerprint(node, drv), startedAt: Date.now(), lastAt: 0, lastValue: null, lastWarnAt: 0 })
       this.pushRetryAt.delete(nodeId)
       live.lastError = null
       log.info(`[daq-push] ${live.name}(${nodeId}) ${live.driver} 被动订阅已建立`)
@@ -124,7 +126,7 @@ export abstract class DaqControllerPush extends DaqControllerState {
     catch (err) {
       const msg = err instanceof Error ? err.message : String(err)
       const live = this.repo.byId(nodeId)
-      if (live) {
+      if (live && this.running) {
         live.lastError = `被动订阅建立失败:${msg}`
         if (live.state !== 'alarm') live.state = 'offline'
         const now = Date.now()
@@ -132,7 +134,7 @@ export abstract class DaqControllerPush extends DaqControllerState {
           this.broadcastDriverError(live, `被动订阅建立失败:${msg}`)
         }
       }
-      this.pushRetryAt.set(nodeId, Date.now() + PUSH_RETRY_BACKOFF_MS)
+      if (this.running) this.pushRetryAt.set(nodeId, Date.now() + PUSH_RETRY_BACKOFF_MS)
       log.warn(`[daq-push] ${node.name}(${nodeId}) 订阅失败(5s 后重试): ${msg}`)
     }
     finally {
@@ -158,8 +160,9 @@ export abstract class DaqControllerPush extends DaqControllerState {
     await Promise.all(ids.map(id => this.stopPushBinding(id)))
   }
 
-  /** 报文回调:解析成功 + 产线在跑 → 入队(时间戳=到达时刻,单调递增) */
+  /** 报文回调:解析成功 + 网关运行 + 产线在跑 → 入队(时间戳=到达时刻,单调递增) */
   private onPushSample(nodeId: string, value: number, atMs: number): void {
+    if (!this.running) return
     const bind = this.pushBindings.get(nodeId)
     if (!bind) return
     bind.lastAt = Math.max(bind.lastAt + 1, atMs)
@@ -181,12 +184,15 @@ export abstract class DaqControllerPush extends DaqControllerState {
     })
   }
 
-  /** 订阅期错误:落 lastError(是否 offline 交由陈值看门狗判定,避免瞬时解析错误误判链路) */
+  /** 订阅期错误:落 lastError(是否 offline 交由陈值看门狗判定,避免瞬时解析错误误判链路)。
+   *  报文确实到达但解析失败也算"链路有消息"—— 更新 lastAt,避免 watchdog 误报"未收到报文"。 */
   private onPushError(nodeId: string, err: Error): void {
+    if (!this.running) return
+    const bind = this.pushBindings.get(nodeId)
+    if (bind) bind.lastAt = Math.max(bind.lastAt + 1, Date.now())
     const node = this.repo.byId(nodeId)
     if (!node) return
     node.lastError = `被动订阅报文错误:${err.message}`
-    const bind = this.pushBindings.get(nodeId)
     if (bind && Date.now() - bind.lastWarnAt > 30_000) {
       bind.lastWarnAt = Date.now()
       this.broadcastDriverError(node, `被动订阅报文错误:${err.message}`)

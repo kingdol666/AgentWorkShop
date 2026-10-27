@@ -329,6 +329,17 @@ async function main() {
     ok('B7', '采集管线无丢弃(produced=consumed, dropped=0)', Boolean(cs) && cs.dropped === 0 && Number(cs.consumed) === Number(cs.produced), JSON.stringify({ produced: cs?.produced, consumed: cs?.consumed, dropped: cs?.dropped, stored: cs?.samplesStored }))
   }
 
+  // ── B8:UI 趋势路径(from 缺省)limit=1 必须取最新桶 ──
+  {
+    // 恢复随机游走,使旧段/新段可区分(否则常值下 tail 与最旧段无法证伪)
+    await sim('POST', `/api/nodes/${dev.id}/signals/mqtt-temp/strategy`, { strategy: { kind: 'random-walk', start: 50, step: 3, min: 30, max: 75 } })
+    await sleep(7000)
+    const now = Date.now()
+    const unbounded = (await api('GET', `/api/workshop/daq/${daqId}/samples?bucketMs=1000&to=${now}&limit=1`)).data?.points ?? []
+    const bounded = (await samples(daqId, now - 120_000, now)).slice(-1)
+    ok('B8', '/samples 无 from 时 limit=1 = 最新桶(UI 路径)', unbounded.length === 1 && bounded.length === 1 && Math.abs(unbounded[0].at - bounded[0].at) <= 1000, `unbounded=${unbounded[0]?.avg}@${unbounded[0]?.at} bounded=${bounded[0]?.avg}@${bounded[0]?.at}`)
+  }
+
   // ── C:停发不伪造 + 恢复自愈 ──
   {
     const stop = await sim('POST', '/api/nodes/' + dev.id + '/stop', {})
@@ -457,16 +468,27 @@ async function main() {
     const bind = await api('POST', '/api/workshop/agent-tools/bindings', { token, body: { agentId: instId, nodeId: daqId, kind: 'daq', mode: 'auto' } })
     ok('G0', 'Agent 建号 + DAQ 绑定', Boolean(instId) && (bind.status === 200 || bind.json?.code === 0), `${instId} / ${JSON.stringify(bind.data ?? bind.json).slice(0, 120)}`)
     const invoke = (tool, args) => api('POST', '/api/workshop/agent-tools/invoke', { token, body: { agentId: instId, tool, args } })
+    // 先确保信号是变化的随机游走(B6 改成常值 77.7;常值下"最新"与"最旧段"不可区分)
+    await sim('POST', `/api/nodes/${dev.id}/signals/mqtt-temp/strategy`, { strategy: { kind: 'random-walk', start: 50, step: 3, min: 30, max: 75 } })
+    await sleep(6000)
     const q = await invoke('daq_query', { node_id: daqId, last_minutes: 2, bucket_ms: 1000, limit: 1 })
     const text = q.data?.result?.text ?? JSON.stringify(q.data?.result ?? {}).slice(0, 400)
-    const dbLast = (await samples(daqId, Date.now() - 120_000, Date.now())) .slice(-1)[0]
+    const dbWindow = await samples(daqId, Date.now() - 120_000, Date.now())
+    const dbLast = dbWindow.slice(-1)[0]
+    const dbFirst = dbWindow[0]
     const m = /最新\s+([\d.]+)/.exec(text)
     const latestInText = m ? Number(m[1]) : NaN
     const latestInDb = dbLast?.avg ?? NaN
-    ok('G1', 'daq_query 最新值 = 库内最后一条(不是最旧段)', Number.isFinite(latestInText) && Math.abs(latestInText - latestInDb) < 1e-6, `text=${latestInText} db=${latestInDb}`)
+    // 关键:窗口首样本与末样本必须不同(排除常值下的伪通过);文本最新 = 窗口末桶(节点 decimals=1)
+    const distinguishable = dbFirst && dbLast && Math.abs(dbLast.avg - dbFirst.avg) > 0.2
+    ok('G1', 'daq_query 最新值 = 窗口末尾桶(不是最旧段)', Number.isFinite(latestInText) && Math.abs(latestInText - latestInDb) < 0.06 && distinguishable, `text=${latestInText} dbLast=${latestInDb} dbFirst=${dbFirst?.avg}`)
     ok('G2', '输出含数据源与库内滞后声明', /数据源=时序库/.test(text) && /滞后\s+\d+s/.test(text), text.split('\n').find(l => l.includes('数据源'))?.slice(0, 120) ?? '缺失')
-    const qmin = await invoke('daq_query', { node_id: daqId, last_minutes: 2, bucket_ms: 1000, limit: 5, agg: 'min' })
-    ok('G3', 'agg=min 生效(参数可传)', /聚合 min/.test(qmin.data?.result?.text ?? ''), (qmin.data?.result?.text ?? '').split('\n')[0]?.slice(0, 100))
+    const qmin = await invoke('daq_query', { node_id: daqId, last_minutes: 2, bucket_ms: 1000, limit: 50, agg: 'min' })
+    const minText = qmin.data?.result?.text ?? ''
+    const mMin = /最小\s+([-\d.]+)/.exec(minText)
+    const minInText = mMin ? Number(mMin[1]) : NaN
+    const dbMin = Math.min(...dbWindow.map(p => Number(p.min)))
+    ok('G3', 'agg=min 生效(输出最小值 = 库内窗口最小)', Number.isFinite(minInText) && Math.abs(minInText - dbMin) < 1e-6 && /聚合 min/.test(minText), `textMin=${minInText} dbMin=${dbMin}`)
     const qbad = await invoke('daq_query', { node_id: daqId, agg: 'bogus' })
     ok('G4', '非法 agg 明确报错(不静默回退)', /agg 只能是/.test(qbad.data?.result?.text ?? ''), (qbad.data?.result?.text ?? '').slice(0, 80))
     const qdeny = await invoke('daq_query', { node_id: 'dn-not-bound' })
@@ -486,6 +508,32 @@ async function main() {
       return pts.length >= 2 ? pts : null
     }, 10_000, 800)
     ok('H2', '网关恢复 → 订阅重建并继续入库', resumed.length >= 2, `${resumed.length} 行`)
+  }
+
+  // ── I:retained-only 主题:首订阅种子一次,重放不再入库 ──
+  {
+    const retainedTopic = `aw/e2e/${TAG}/retained`
+    const pub = await connectClient(mqtt, brokerUrl)
+    await pub.publishAsync(retainedTopic, JSON.stringify({ v: 12.3 }), { qos: 0, retain: true })
+    // 优雅关闭前留出 broker 落盘时间(QoS0 后立刻 force-end 可能丢 retained)
+    await sleep(400)
+    await pub.endAsync(false).catch(() => {})
+    await sleep(300)
+    const daqRet = await createDaq(token, { lineId, name: `MQTT-DAQ-RETAIN-${TAG}`, driverConfig: { host: '127.0.0.1', port: BROKER_PORT, topic: retainedTopic, jsonPath: 'v' } })
+    const t0 = Date.now()
+    const first = await waitFor('retained seed row', async () => {
+      const pts = await samples(daqRet, t0 - 1500, Date.now())
+      return pts.length >= 1 ? pts : null
+    }, 10_000, 500)
+    ok('I1', 'retained 首订阅种子一次(当前状态可查)', first.length >= 1 && Math.abs(first[0].avg - 12.3) < 0.06, `${first.length} 行 / ${first[0]?.avg}`)
+    // 再发布一条 retained(模拟重连/重订阅时 broker 重放):seeded=true 后不再入库
+    const again = await connectClient(mqtt, brokerUrl)
+    await again.publishAsync(retainedTopic, JSON.stringify({ v: 12.3 }), { qos: 0, retain: true })
+    await sleep(400)
+    await again.endAsync(false).catch(() => {})
+    await sleep(6000)
+    const after = await samples(daqRet, t0 - 1500, Date.now())
+    ok('I2', 'retained 重放不重复入库(静默期行数不增长)', after.length === first.length, `${first.length} → ${after.length}`)
   }
 
   // ── 清理 ──

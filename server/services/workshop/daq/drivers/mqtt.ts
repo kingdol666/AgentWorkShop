@@ -28,6 +28,12 @@ export interface MqttTopicEntry {
   raw: string
   /** 最新报文到达时刻(epoch ms;0 = 尚未收到) */
   at: number
+  /** 最新报文是否为 broker 保留消息(retain) */
+  retained: boolean
+  /** 本订阅周期内是否已消费过首条 retained(重连重放的 retained 不再入库) */
+  seeded: boolean
+  /** 首个 SUBSCRIBE 完成信号(并发首订阅共享;失败则整条 entry 移除) */
+  ready: Promise<void>
   consumers: Set<MqttTopicConsumer>
 }
 
@@ -65,13 +71,19 @@ function tlsOpts(cfg: Record<string, unknown>): { secure: boolean, ca: string[] 
   return { secure, ca, rejectUnauthorized, caFile }
 }
 
+/** 有效凭据:节点显式配置优先,缺省回落全局 daq.mqtt.*(连接与池键必须同源) */
+function effectiveCredentials(cfg: Record<string, unknown>): { username: string | undefined, password: string | undefined } {
+  const bus = daqRuntimeSettings().mqtt
+  return {
+    username: cfg.username != null ? String(cfg.username) : (bus.username || undefined),
+    password: cfg.password != null ? String(cfg.password) : (bus.password || undefined),
+  }
+}
+
 /** 连接选项(采/控共用):TLS 与凭据语义同源,调用方补各自的重连策略 */
 export function mqttConnectOpts(cfg: Record<string, unknown>): import('mqtt').IClientOptions {
   const { secure, ca, rejectUnauthorized } = tlsOpts(cfg)
-  // 凭据:节点显式配置优先,缺省回落全局 daq.mqtt.*(此前只回落 TLS,账号密码各说各话)
-  const bus = daqRuntimeSettings().mqtt
-  const username = cfg.username != null ? String(cfg.username) : (bus.username || undefined)
-  const password = cfg.password != null ? String(cfg.password) : (bus.password || undefined)
+  const { username, password } = effectiveCredentials(cfg)
   return {
     username,
     password,
@@ -84,12 +96,13 @@ export function mqttConnectOpts(cfg: Record<string, unknown>): import('mqtt').IC
   }
 }
 
-/** 连接池键:broker + TLS + 账号 + 密码指纹(不同凭据绝不复用同一连接) */
+/** 连接池键:broker + TLS + 有效账号 + 密码指纹(不同凭据绝不复用同一连接) */
 export function mqttKey(cfg: Record<string, unknown>): string {
   const { secure, caFile, rejectUnauthorized } = tlsOpts(cfg)
-  const user = cfg.username != null ? String(cfg.username) : ''
-  const pass = cfg.password != null
-    ? createHash('sha256').update(String(cfg.password)).digest('hex').slice(0, 12)
+  const { username, password } = effectiveCredentials(cfg)
+  const user = username ?? ''
+  const pass = password
+    ? createHash('sha256').update(password).digest('hex').slice(0, 12)
     : ''
   return `mqtt${secure ? 's' : ''}://${cfg.host}:${Number(cfg.port ?? 1883)}|u=${user}|p=${pass}|ca=${caFile}|ru=${rejectUnauthorized}`
 }
@@ -150,6 +163,7 @@ export async function getMqttConn(cfg: Record<string, unknown>): Promise<MqttCon
       for (const t of conn.topics.values()) {
         t.raw = ''
         t.at = 0
+        t.retained = false
       }
     })
     client.on('error', (err) => {
@@ -158,12 +172,22 @@ export async function getMqttConn(cfg: Record<string, unknown>): Promise<MqttCon
       // 运行期 error 不驱逐连接:mqtt.js 会继续重连,节点侧由控制器陈值看门狗如实报 offline
       log.warn(`[mqtt] ${brokerUrl(cfg)} 连接错误: ${err.message}(保持重连)`)
     })
-    client.on('message', (topic, payload) => {
+    client.on('message', (topic, payload, packet) => {
       const entry = conn.topics.get(topic)
       if (!entry) return
       const at = Date.now()
+      const retained = Boolean(packet?.retain)
       entry.raw = payload.toString()
       entry.at = at
+      entry.retained = retained
+      // retained 语义:
+      //  - 本订阅周期首条 retained = 设备当前状态,作为**一次**种子样本入库(时间=到达时刻);
+      //  - 后续重复投递(断线重连/重订阅时 broker 重放)只刷新缓存,**不再入库** ——
+      //    否则停发设备每次重连都会凭空多一行冻值。
+      if (retained) {
+        if (entry.seeded) return
+        entry.seeded = true
+      }
       for (const fn of [...entry.consumers]) {
         try {
           fn(entry.raw, at)
@@ -245,19 +269,24 @@ export function parseHeaders(headersJSON: unknown): Record<string, string> {
 
 export const sleep = (ms: number): Promise<void> => new Promise(r => setTimeout(r, ms))
 
-/** 确保 topic 已在池内并完成订阅(共享连接;已有订阅者不重复 SUBSCRIBE) */
-async function ensureTopic(conn: MqttConn, topic: string, qos: number): Promise<MqttTopicEntry> {
+/** 取/建 topic entry(不等待 SUBACK;ready 由首个调用者触发,后续调用共享) */
+function topicEntry(conn: MqttConn, topic: string, qos: number): MqttTopicEntry {
   const existing = conn.topics.get(topic)
   if (existing) return existing
-  const entry: MqttTopicEntry = { raw: '', at: 0, consumers: new Set() }
+  const entry: MqttTopicEntry = { raw: '', at: 0, retained: false, seeded: false, consumers: new Set(), ready: Promise.resolve() }
   conn.topics.set(topic, entry)
-  try {
-    await subscribeTopic(conn, topic, qos)
-  }
-  catch (err) {
-    conn.topics.delete(topic)
+  entry.ready = subscribeTopic(conn, topic, qos).catch((err) => {
+    // 订阅失败且无人等待消费:移除 entry,允许下次重试(有消费者时保留,由调用方清理)
+    if (entry.consumers.size === 0 && conn.topics.get(topic) === entry) conn.topics.delete(topic)
     throw err
-  }
+  })
+  return entry
+}
+
+/** 确保 topic 已在池内并完成订阅(共享连接;已有订阅者不重复 SUBSCRIBE) */
+async function ensureTopic(conn: MqttConn, topic: string, qos: number): Promise<MqttTopicEntry> {
+  const entry = topicEntry(conn, topic, qos)
+  await entry.ready
   return entry
 }
 
@@ -305,6 +334,7 @@ export function invalidateMqttTopic(cfg: Record<string, unknown>, topic: string)
   if (!entry) return
   entry.raw = ''
   entry.at = 0
+  entry.retained = false
 }
 
 export const mqttDaqDriver: DaqDriver = {
@@ -330,7 +360,6 @@ export const mqttDaqDriver: DaqDriver = {
     const conn = await getMqttConn(cfg)
     if (!conn.connected) throw new Error(`MQTT 未连接(重连中): ${conn.lastError ?? brokerUrl(cfg)}`)
     const qos = Math.min(2, Math.max(0, Number(cfg.qos ?? 1)))
-    const entry = await ensureTopic(conn, topic, qos)
     const jsonPath = cfg.jsonPath ? String(cfg.jsonPath) : undefined
     const consumer: MqttTopicConsumer = (raw, at) => {
       try {
@@ -341,15 +370,38 @@ export const mqttDaqDriver: DaqDriver = {
         input.onError?.(err instanceof Error ? err : new Error(String(err)))
       }
     }
+    // 先挂消费者再等 SUBACK:SUBACK 与消息到达的窗口内不丢报文
+    const entry = topicEntry(conn, topic, qos)
     entry.consumers.add(consumer)
+    try {
+      await entry.ready
+    }
+    catch (err) {
+      entry.consumers.delete(consumer)
+      // 订阅失败的 entry 不能留(否则后续订阅会复用已 reject 的 ready)
+      if (entry.consumers.size === 0 && conn.topics.get(topic) === entry) conn.topics.delete(topic)
+      throw err
+    }
     let stopped = false
     return () => {
       if (stopped) return
       stopped = true
       entry.consumers.delete(consumer)
-      // 订阅本身不主动 UNSUBSCRIBE:同 broker 其他节点可能共享该 topic;
-      // 无人消费的 topic 缓存保留(容量 = broker 下 topic 数,可忽略)。
+      // 最后一个消费者离开:退订并移除缓存(避免已删除/换主题节点的订阅永久堆积)
+      if (entry.consumers.size === 0 && conn.topics.get(topic) === entry) {
+        conn.topics.delete(topic)
+        try {
+          conn.client.unsubscribe(topic, () => { /* 已断/已退订 */ })
+        }
+        catch { /* 连接已关闭 */ }
+      }
     }
+  },
+
+  /** 订阅参数指纹:凭据/TLS/主题/QoS 任一变化都重建订阅 */
+  fingerprint(driverConfig) {
+    const c = driverConfig
+    return `${mqttKey(c)}|topic=${String(c.topic ?? '')}|jsonPath=${String(c.jsonPath ?? '')}|qos=${Number(c.qos ?? 1)}`
   },
 
   async sample({ driverConfig }) {

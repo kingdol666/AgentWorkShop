@@ -103,3 +103,46 @@ test('freshnessOf:返回最后一点的时间与滞后', async () => {
   assert.equal(f.ageMs, 3000)
   assert.equal(freshnessOf([], 8000).latestAt, null)
 })
+
+test('tail:from 缺省(UI 趋势路径)也必须取最新段,不能退化为 epoch 级旧段', async () => {
+  const a = new SqliteTimeSeriesAdapter()
+  await a.init()
+  const n = 20_000
+  // 分批写,避免单事务过大
+  for (let off = 0; off < n; off += 5000) {
+    await a.writeSamples(Array.from({ length: Math.min(5000, n - off) }, (_, i) => ({
+      nodeId: 'n-unbounded', tsMs: BASE + (off + i) * 1000, value: off + i, state: 'ok',
+    })))
+  }
+  const to = BASE + n * 1000
+  const one = await queryLatest(a, 'n-unbounded', { toMs: to, bucketMs: 1000, limit: 1 })
+  assert.equal(one.length, 1)
+  assert.equal(one[0]!.avg, n - 1, 'limit=1 必须是最新桶')
+  const many = await queryLatest(a, 'n-unbounded', { toMs: to, bucketMs: 1000, limit: 400 })
+  assert.equal(many.length, 400)
+  assert.equal(many[0]!.avg, n - 400, '末尾 400 个桶的起点')
+  assert.equal(many[many.length - 1]!.avg, n - 1, '末元素=最新')
+})
+
+test('tail:limit=5000(适配器单次行数上限)仍能取到最新桶', async () => {
+  const a = new SqliteTimeSeriesAdapter()
+  await a.init()
+  const n = 6000
+  await a.writeSamples(Array.from({ length: n }, (_, i) => ({ nodeId: 'n-cap', tsMs: BASE + i * 1000, value: i, state: 'ok' })))
+  const pts = await queryLatest(a, 'n-cap', { fromMs: BASE - 1, toMs: BASE + n * 1000, bucketMs: 1000, limit: 5000 })
+  assert.equal(pts.length, 5000)
+  assert.equal(pts[0]!.avg, n - 5000)
+  assert.equal(pts[pts.length - 1]!.avg, n - 1, '不能因 5000 行上限丢掉最新桶')
+})
+
+test('tail:from 缺省 + 稀疏数据仍取末尾 limit 个非空桶', async () => {
+  const a = new SqliteTimeSeriesAdapter()
+  await a.init()
+  await a.writeSamples([
+    { nodeId: 'n-sparse', tsMs: BASE, value: 1, state: 'ok' },
+    { nodeId: 'n-sparse', tsMs: BASE + 3_600_000, value: 2, state: 'ok' },
+    { nodeId: 'n-sparse', tsMs: BASE + 7_200_000, value: 3, state: 'ok' },
+  ])
+  const pts = await queryLatest(a, 'n-sparse', { toMs: BASE + 7_200_001, bucketMs: 1000, limit: 2 })
+  assert.deepEqual(pts.map(p => p.avg), [2, 3])
+})

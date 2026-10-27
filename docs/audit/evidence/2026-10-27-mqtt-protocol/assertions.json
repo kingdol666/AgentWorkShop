@@ -1,8 +1,8 @@
 {
-  "tag": "mvqj5oqo",
-  "at": "2026-10-27T10:18:34.474Z",
+  "tag": "mvqkdoj8",
+  "at": "2026-10-27T10:52:49.022Z",
   "tally": {
-    "pass": 32,
+    "pass": 35,
     "fail": 0,
     "skip": 0
   },
@@ -25,12 +25,12 @@
     {
       "status": "PASS",
       "id": "A3",
-      "detail": "设备周期发布遥测(独立订阅端) — 3 条 / 6s,样例 51.51,55.75,55.26"
+      "detail": "设备周期发布遥测(独立订阅端) — 3 条 / 6s,样例 45.49,43.21,41.99"
     },
     {
       "status": "PASS",
       "id": "A4",
-      "detail": "状态主题 retained(晚订阅即时可取) — {\"setpoint\":60,\"value\":60,\"signalId\":\"mqtt-sp\",\"at\":1793096210552}"
+      "detail": "状态主题 retained(晚订阅即时可取) — {\"setpoint\":60,\"value\":60,\"signalId\":\"mqtt-sp\",\"at\":1793098263303}"
     },
     {
       "status": "PASS",
@@ -40,7 +40,7 @@
     {
       "status": "PASS",
       "id": "B1",
-      "detail": "产线开跑(配方 + 监控窗口) — rr-88b6f7a4"
+      "detail": "产线开跑(配方 + 监控窗口) — rr-2e0fcc35"
     },
     {
       "status": "PASS",
@@ -60,17 +60,22 @@
     {
       "status": "PASS",
       "id": "B5",
-      "detail": "库内时间戳严格递增(到达时刻) — 1793096212000 → 1793096224000"
+      "detail": "库内时间戳严格递增(到达时刻) — 1793098265000 → 1793098277000"
     },
     {
       "status": "PASS",
       "id": "B6",
-      "detail": "报文到达 → 库内可查 ≤ 4s — 2625ms"
+      "detail": "报文到达 → 库内可查 ≤ 4s — 2608ms"
     },
     {
       "status": "PASS",
       "id": "B7",
       "detail": "采集管线无丢弃(produced=consumed, dropped=0) — {\"produced\":10,\"consumed\":10,\"dropped\":0,\"stored\":9}"
+    },
+    {
+      "status": "PASS",
+      "id": "B8",
+      "detail": "/samples 无 from 时 limit=1 = 最新桶(UI 路径) — unbounded=40.1@1793098289000 bounded=40.1@1793098289000"
     },
     {
       "status": "PASS",
@@ -80,7 +85,7 @@
     {
       "status": "PASS",
       "id": "C2",
-      "detail": "停发 → 节点 offline + 可读 lastError — offline / MQTT 被动订阅:10s 未收到报文(设备停发/主题无发布/网络分区),节点置 offline(停发期间不写样本)"
+      "detail": "停发 → 节点 offline + 可读 lastError — offline / MQTT 被动订阅:9s 未收到报文(设备停发/主题无发布/网络分区),节点置 offline(停发期间不写样本)"
     },
     {
       "status": "PASS",
@@ -90,12 +95,12 @@
     {
       "status": "PASS",
       "id": "D0",
-      "detail": "第二台 MQTT 设备创建 — mqtt-e2e-dev2-mvqj5oqo"
+      "detail": "第二台 MQTT 设备创建 — mqtt-e2e-dev2-mvqkdoj8"
     },
     {
       "status": "PASS",
       "id": "D1",
-      "detail": "同 broker 两节点并行入库 — node1 4 行 / node2 7 行"
+      "detail": "同 broker 两节点并行入库 — node1 3 行 / node2 7 行"
     },
     {
       "status": "PASS",
@@ -105,7 +110,7 @@
     {
       "status": "PASS",
       "id": "E2",
-      "detail": "外部 broker 写回 → 设备回显 → 平台回读 — lastCmd=44.4 read=44.4 msg=MQTT 回读 aw/e2e/mvqj5oqo/ext/state = 44.4"
+      "detail": "外部 broker 写回 → 设备回显 → 平台回读 — lastCmd=44.4 read=44.4 msg=MQTT 回读 aw/e2e/mvqkdoj8/ext/state = 44.4"
     },
     {
       "status": "PASS",
@@ -120,7 +125,7 @@
     {
       "status": "PASS",
       "id": "F3",
-      "detail": "配方批量下发 → 回读证实(readback-verified) — {\"verdict\":\"verified\",\"attempts\":2}"
+      "detail": "配方批量下发 → 回读证实(readback-verified) — {\"verdict\":\"verified\",\"attempts\":1}"
     },
     {
       "status": "PASS",
@@ -130,22 +135,22 @@
     {
       "status": "PASS",
       "id": "G0",
-      "detail": "Agent 建号 + DAQ 绑定 — 339978a8-c265-4086-9f29-a71c0650397f / {\"binding\":{\"id\":\"nb-e5790b64\",\"agentId\":\"339978a8-c265-4086-9f29-a71c0650397f\",\"nodeId\":\"dn-3fcbe08a\",\"kind\":\"daq\",\"mod"
+      "detail": "Agent 建号 + DAQ 绑定 — 72573eed-89c3-4382-9e90-d6292dc8b9b3 / {\"binding\":{\"id\":\"nb-9b6ceae9\",\"agentId\":\"72573eed-89c3-4382-9e90-d6292dc8b9b3\",\"nodeId\":\"dn-433312ae\",\"kind\":\"daq\",\"mod"
     },
     {
       "status": "PASS",
       "id": "G1",
-      "detail": "daq_query 最新值 = 库内最后一条(不是最旧段) — text=77.7 db=77.7"
+      "detail": "daq_query 最新值 = 窗口末尾桶(不是最旧段) — text=40.8 dbLast=40.8 dbFirst=42.9"
     },
     {
       "status": "PASS",
       "id": "G2",
-      "detail": "输出含数据源与库内滞后声明 —   工况判读: 活动配方「MQTT-E2E-R-mvqj5oqo」监控窗口 [0, 100]:当前 77.7℃ 窗口内(正常) | 同产线数控设定: MQTT-DCW1-mvqj5oqo=61.5℃;MQTT-DCW2-mvqj5oqo=6"
+      "detail": "输出含数据源与库内滞后声明 —   工况判读: 活动配方「MQTT-E2E-R-mvqkdoj8」监控窗口 [0, 100]:当前 40.8℃ 窗口内(正常) | 同产线数控设定: MQTT-DCW1-mvqkdoj8=61.5℃;MQTT-DCW2-mvqkdoj8=6"
     },
     {
       "status": "PASS",
       "id": "G3",
-      "detail": "agg=min 生效(参数可传) — 数采数据查询结果(1 个节点):"
+      "detail": "agg=min 生效(输出最小值 = 库内窗口最小) — textMin=33.3 dbMin=33.3"
     },
     {
       "status": "PASS",
@@ -166,6 +171,16 @@
       "status": "PASS",
       "id": "H2",
       "detail": "网关恢复 → 订阅重建并继续入库 — 2 行"
+    },
+    {
+      "status": "PASS",
+      "id": "I1",
+      "detail": "retained 首订阅种子一次(当前状态可查) — 1 行 / 12.3"
+    },
+    {
+      "status": "PASS",
+      "id": "I2",
+      "detail": "retained 重放不重复入库(静默期行数不增长) — 1 → 1"
     }
   ]
 }

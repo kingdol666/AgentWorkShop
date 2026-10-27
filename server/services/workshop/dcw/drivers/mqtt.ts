@@ -50,6 +50,18 @@ export const mqttDcwDriver: DcwWriteDriver = {
         })
       })
       const qos = Math.min(2, Math.max(0, Number(cfg.qos ?? 1))) as 0 | 1 | 2
+      // 回读准备(必须在发布**之前**):先把状态主题订阅就绪并把 broker 的 retained 旧值读进缓存,
+      // 再清空缓存 —— 这样发布后的回读只可能拿到写后报文;冷连接直接订阅也不会把 retained
+      // 旧值误当成本次写入的回读(配方重复下发同值时的假 verified)。
+      if (cfg.readTopic) {
+        const readTopic = String(cfg.readTopic)
+        const readJsonPath = cfg.readJsonPath != null ? String(cfg.readJsonPath) : (cfg.jsonPath != null ? String(cfg.jsonPath) : undefined)
+        try {
+          await readMqttValue(cfg, readTopic, readJsonPath, 300, { allowCachedMs: 5000 })
+        }
+        catch { /* 预热失败不阻断发布;验证阶段会如实判 unverified */ }
+        invalidateMqttTopic(cfg, readTopic)
+      }
       try {
         await new Promise<void>((resolve, reject) => {
           client.publish(String(cfg.topic), payload, { qos }, (err) => {
@@ -75,8 +87,6 @@ export const mqttDcwDriver: DcwWriteDriver = {
       }
       // ACK 鉴定如实上报:QoS puback 只是 **broker 受理**(transport-ack),设备侧未证实 ——
       // 生效判定交给写后验证器(readNow/兄弟节点补验),不在此虚报 readback-verified。
-      // 若配置了状态回读主题:清空其缓存,迫使后续 readNow 等待**写后**回显(不认写前旧值)。
-      if (cfg.readTopic) invalidateMqttTopic(cfg, String(cfg.readTopic))
       return {
         ok: true,
         ack: 'transport-ack',
@@ -91,20 +101,27 @@ export const mqttDcwDriver: DcwWriteDriver = {
     }
   },
   async test(driverConfig) {
+    let c: import('mqtt').MqttClient | null = null
     try {
       if (!driverConfig.host) return { ok: false, message: '缺少 Broker 地址 host' }
       if (!driverConfig.topic) return { ok: false, message: '缺少下发主题 topic' }
       const mqtt = reqNative('mqtt') as typeof import('mqtt')
       const secure = Boolean(driverConfig.secure ?? driverConfig.tls)
       const url = `mqtt${secure ? 's' : ''}://${String(driverConfig.host)}:${Number(driverConfig.port ?? 1883)}`
-      await new Promise<import('mqtt').MqttClient>((resolve, reject) => {
-        const c = mqtt.connect(url, mqttConnectOpts(driverConfig))
-        c.once('connect', () => resolve(c))
-        c.once('error', err => reject(new Error(err.message)))
-      }).then(c => new Promise<void>(r => c.end(false, {}, () => r())))
+      c = await new Promise<import('mqtt').MqttClient>((resolve, reject) => {
+        const cli = mqtt.connect(url, { ...mqttConnectOpts(driverConfig), reconnectPeriod: 0 })
+        cli.once('connect', () => resolve(cli))
+        cli.once('error', err => reject(new Error(err.message)))
+      })
+      await new Promise<void>(r => c!.end(false, {}, () => r()))
       return { ok: true, message: `Broker 连接成功(${String(driverConfig.host)}:${Number(driverConfig.port ?? 1883)});未执行发布,避免误触发真实设备动作` }
     }
     catch (err) {
+      // 失败路径必须销毁 client(否则 mqtt.js 后台重连泄漏)
+      try {
+        c?.end(true)
+      }
+      catch { /* 未连上 */ }
       return { ok: false, message: `MQTT 连接失败: ${err instanceof Error ? err.message : String(err)}` }
     }
   },
@@ -114,6 +131,9 @@ export const mqttDcwDriver: DcwWriteDriver = {
    * (缺省沿用 jsonPath)即可把写后验证从 transport-ack 提升到 readback-verified。
    * 未配置 readTopic 时明确返回「不支持读取」——网关立即收敛为 unverified,不空转重试。
    */
+  canRead(driverConfig) {
+    return Boolean(driverConfig.readTopic)
+  },
   async read(input) {
     const cfg = input.driverConfig
     const readTopic = cfg.readTopic ? String(cfg.readTopic) : ''
