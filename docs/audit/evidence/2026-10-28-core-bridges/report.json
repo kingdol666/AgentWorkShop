@@ -1,0 +1,223 @@
+{
+  "at": "2026-10-28T11:50:53.402Z",
+  "env": {
+    "base": "http://127.0.0.1:3411",
+    "home": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-bridges-e2e-cbyyja\\home",
+    "devLog": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-bridges-e2e-cbyyja\\dev.log",
+    "instance": "②-core-bridges",
+    "mode": "isolated",
+    "harness": "mock(deterministic)"
+  },
+  "summary": {
+    "total": 34,
+    "passed": 34,
+    "failed": 0,
+    "verdict": "PASS"
+  },
+  "results": [
+    {
+      "id": "X0",
+      "name": "隔离实例②启动 + workshop ready",
+      "pass": true,
+      "detail": "port=3411"
+    },
+    {
+      "id": "X0b",
+      "name": "admin 注册",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "X1",
+      "name": "两线/数采/数控/产品/双参数配方就绪",
+      "pass": true,
+      "detail": "{\"lineA\":\"ln-4521e1f2\",\"lineB\":\"ln-62d3160c\",\"dnA1\":\"dn-d1065566\",\"dnA2\":\"dn-235878c4\",\"dnB\":\"dn-c095011f\",\"dwA1\":\"dw-cc1909ec\",\"dwA2\":\"dw-6fce7e97\",\"dwB\":\"dw-653a9439\",\"rcA\":\"rc-d0f48f1f\"}"
+    },
+    {
+      "id": "X1b",
+      "name": "DAQ 控制器开采",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "X1c",
+      "name": "线A开跑(活动批次,配方整批下发)",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "X1d",
+      "name": "线A controlMode 切 auto(confirm)",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "X2",
+      "name": "频道绑线A + 3 worker",
+      "pass": true,
+      "detail": "{\"channelId\":\"dbd1080f-a3b4-4a3f-ab38-7841b622601c\",\"w1\":\"eb051e15-66d8-4286-b00e-a50786f640cd\",\"w2\":\"92076c31-a9bd-4ac2-8880-75f7f39f5077\",\"w3\":\"8814fee1-cc77-43db-a280-7ebcb556de2d\"}"
+    },
+    {
+      "id": "X2b",
+      "name": "差异化绑定落库(w1=daqA1+recipeA / w2=daqA2 / w3=dcwA1)",
+      "pass": true,
+      "detail": "status=200/200/200/200"
+    },
+    {
+      "id": "X3",
+      "name": "Agent 工具面非空且同工具集(视图编译非克隆)",
+      "pass": true,
+      "detail": "w1=79 w2=79"
+    },
+    {
+      "id": "X3b",
+      "name": "注入面按绑定差异化:直接绑定段 w1 只见 dnA1;w2 只见 dnA2",
+      "pass": true,
+      "detail": "w1=[数采A1-cbyyja(dn-d1065566,℃)] w2=[数采A2-cbyyja(dn-235878c4,℃)]"
+    },
+    {
+      "id": "X3c",
+      "name": "配方注入面只进持配方授权的 Agent",
+      "pass": true,
+      "detail": "w1=配方定义,要把参数推到运行中的产线用 recipe_apply。\n\n本 Agent 已绑定的配方(仅这些可写/下发):桥梁配方A-cbyyja(rc-d0f48f1f,v1;参数:数控A1-cbyyja(dw-cc1909ec)、数控A2-cbyyja(dw-6fce7e97))"
+    },
+    {
+      "id": "X3d",
+      "name": "点位写授权面注入 w3 的下发工具描述",
+      "pass": true,
+      "detail": "cipe_update 固化,劣化用 recipe_rollback(dispatch=true) 统一回退。受同线试验节拍(默认 ≥5 分钟)与四层限界卡控。\n\n本 Agent 的数控节点写授权面(点位写授权;可在这些节点上 trial/apply,换配方仍有效):数控A1-cbyyja(dw-cc1909ec,℃)"
+    },
+    {
+      "id": "X3e",
+      "name": "解绑后注入面即时收窄:直接绑定段不再含 dnA2(无绑定时段整体消失,节点只留在频道只读段)",
+      "pass": true,
+      "detail": "direct=[]"
+    },
+    {
+      "id": "X3f",
+      "name": "授予产线管理权后注入面即时声明(动态注册)",
+      "pass": true,
+      "detail": "批卡会向人类展示。只改配方定义,要把参数推到运行中的产线用 recipe_apply。\n\n本 Agent 持有的产线配方管理权(可 查看/新建/修改/回退 该线全部配方;下发仍受点位绑定约束:未绑定任何数控节点时默认可对配方全部参数下发,绑了数控节点则只能下发这些点位):桥梁线A-cbyyja(ln-4521e1f2)"
+    },
+    {
+      "id": "X3g",
+      "name": "observe 频道注入面零写族(动态摘除)",
+      "pass": true,
+      "detail": "tools=55 writeTools=recipe_log,recipe_versions,recipe_catalog"
+    },
+    {
+      "id": "X4",
+      "name": "错误 agent token → 401",
+      "pass": true,
+      "detail": "status=401"
+    },
+    {
+      "id": "X4b",
+      "name": "token 与 agentId 错配 → 401(自证失败)",
+      "pass": true,
+      "detail": "status=401"
+    },
+    {
+      "id": "X4c",
+      "name": "无任何身份 invoke → 401",
+      "pass": true,
+      "detail": "status=401"
+    },
+    {
+      "id": "X4d",
+      "name": "w1 查他线节点 → 引用面拒绝",
+      "pass": true,
+      "detail": "工具调用被拒(引用校验,daq_query):node_id = 「dn-c095011f」不在你的授权范围内(节点「数采B-cbyyja」,归属产线 ln-62d3160c)。\n该节点不在你的绑定范围内。你的绑定节点:dn-d1065566, dw-cc1909ec, dw-6fce7e97;频道绑线「ln-4521e1f2」只读数采节点:dn-d1065566, dn-235878c4。如需访"
+    },
+    {
+      "id": "X4e",
+      "name": "w1 查自己绑定节点 → 放行",
+      "pass": true,
+      "detail": "数采数据查询结果(1 个节点):\n\n■ 数采A1-cbyyja(熔体/箱体温度)单位 ℃,正常量程 0~100℃,当前状态 alarm,时间窗 2026-10-28T19:20 ~ 2026-10-28T19:50(降采样 15000ms,聚合 avg)\n  当前活动批次 run=rr-25ab3c22 配方「桥梁配方"
+    },
+    {
+      "id": "X4f",
+      "name": "频道绑线只读扩权:w2(绑 dnA2,频道绑线A)可读 dnA1",
+      "pass": true,
+      "detail": "数采数据查询结果(1 个节点):\n\n■ 数采A1-cbyyja(熔体/箱体温度)单位 ℃,正常量程 0~100℃,当前状态 alarm,时间窗 2026-10-28T19:20 ~ 2026-10-28T19:50(降采样 15000ms,聚合 avg)\n  当前活动批次 run=rr-25ab3c22 配方「桥梁配方"
+    },
+    {
+      "id": "X5",
+      "name": "DAQ 采样落库且 daq_query 可取(真实采集)",
+      "pass": true,
+      "detail": "数采数据查询结果(1 个节点):\n\n■ 数采A1-cbyyja(熔体/箱体温度)单位 ℃,正常量程 0~100℃,当前状态 alarm,时间窗 2026-10-28T19:45 ~ 2026-10-28T19:50(降采样 15000ms,聚合 avg)\n  当前活动批次 run=rr-25ab3c22 配方「桥梁配方A-cbyyja」(rc-d0f48f1f)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 2 点 | 最新 107℃ |"
+    },
+    {
+      "id": "X6",
+      "name": "下发未绑定节点 → 写面预检拒绝(点名节点)",
+      "pass": true,
+      "detail": "工具调用被拒(写授权校验,recipe_trial):参数节点「dw-6fce7e97」不在你的写授权面内(节点「数控A2-cbyyja」,归属产线 ln-4521e1f2)。\n该节点不在你的写授权面(节点绑定=点位写授权;配方绑定=配方操作权;产线管理权=该线配方参数)。你的可写节点:dw-cc1909ec。 如需写入,请让用户或 lead 为你绑定该数控节点(dcw),或授予配方绑定/产线配方管理权。"
+    },
+    {
+      "id": "X6b",
+      "name": "首绑 manual → trial 挂人工审批卡",
+      "pass": true,
+      "detail": "card=ap-9f3f7e01"
+    },
+    {
+      "id": "X6c",
+      "name": "人工批准(附言回流路径)",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "X6d",
+      "name": "批准后下发执行且 ACK 设备证实",
+      "pass": true,
+      "detail": "试验已整批下发并全部设备证实(1/1,批次 rr-0af65):数控A1-cbyyja→55℃ [证实✓]。假设:E2E:点位绑定 + HITL 下发。\n人工附言:E2E:批准点位下发注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…"
+    },
+    {
+      "id": "X6e",
+      "name": "下发落 journal 账本(50→55,绑定 run)",
+      "pass": true,
+      "detail": "{\"lineId\":\"ln-4521e1f2\",\"nodeId\":\"dw-cc1909ec\",\"prevValue\":50,\"newValue\":55,\"source\":\"recipe\",\"actor\":\"recipe\",\"recipeRunId\":\"rr-0af65877\",\"id\":\"anc-59e9c6ec\",\"at\":\"2026-10-28T19:50:53.026+08:00\"}"
+    },
+    {
+      "id": "X6f",
+      "name": "设备侧现值=账本新值(独立回读)",
+      "pass": true,
+      "detail": "value=55"
+    },
+    {
+      "id": "X7",
+      "name": "管理权 Agent 修改线A配方(无单配方绑定)→ 成功生成新版本",
+      "pass": true,
+      "detail": "已保存为 v2:「桥梁配方A-cbyyja」参数 数控A2-cbyyja 50→52;原因:E2E:管理权直接修改全线配方。\n注意:配方定义已更新,运行中批次仍按开跑时冻结的参数生产;要把新参数推到运行中的产线(经治理联锁整批下发),用 recipe_apply。回退用 recipe_rollback。"
+    },
+    {
+      "id": "X7b",
+      "name": "管理权 + 无 dcw 绑定 → trial 全参数放行(向下兼容)",
+      "pass": true,
+      "detail": "试验已整批下发并全部设备证实(1/1,批次 rr-f30ce):数控A2-cbyyja→56℃ [证实✓]。假设:E2E:管理权无 dcw → 全参数下发。注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, re"
+    },
+    {
+      "id": "X7c",
+      "name": "补绑 dcw 后下发收窄:未绑定节点拒(点名)",
+      "pass": true,
+      "detail": "下发被收窄:你已绑定数控节点,试验下发只能覆盖这些点位。本次覆盖的节点中有 1 个未绑定 —— 数控A2-cbyyja(dw-6fce7e97)。你已绑定的可写节点:数控A1-cbyyja(dw-cc1909ec)。请只对已绑定节点下发,或让用户/lead 补绑后再试(未绑定任何数控节点时才默认对配方全部参数放行)。"
+    },
+    {
+      "id": "X7d",
+      "name": "收窄后绑定点位内 trial 放行",
+      "pass": true,
+      "detail": "试验已整批下发并全部设备证实(1/1,批次 rr-b6aac):数控A1-cbyyja→57℃ [证实✓]。假设:E2E:绑定点位内放行。注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统"
+    },
+    {
+      "id": "X7e",
+      "name": "dcw 收窄不影响版本操作(管理权仍可 update 成功)",
+      "pass": true,
+      "detail": "已保存为 v3:「桥梁配方A-cbyyja」参数 数控A2-cbyyja 52→53;原因:E2E:收窄后版本操作仍放行。\n注意:配方定义已更新,运行中批次仍按开跑时冻结的参数生产;要把新参数推到运行中的产线(经治理联锁整批下发),用 recipe_apply。回退用 recipe_rollback。"
+    },
+    {
+      "id": "X7f",
+      "name": "收回产线管理权后 recipe_update → 拒绝(需配方级授权)",
+      "pass": true,
+      "detail": "status=200 工具调用被拒(写授权校验,recipe_update):参数节点「dw-6fce7e97」不在你的写授权面内(节点「数控A2-cbyyja」,归属产线 ln-4521e1f2)。\n该节点不在你的写授权面(节点绑定=点位写授权;配方绑定=配方操作权;产线管理权=该线配方参数)。你的可写节点:dw-cc1909ec。 如需写入,请让用户或 lead 为你绑定该数控节点(dcw),或授予配方绑定/产线配方管理权。"
+    }
+  ]
+}

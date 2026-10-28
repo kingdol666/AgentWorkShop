@@ -15,7 +15,7 @@ import type { AgentNodeBindingRow, ChatEntry, ToolApprovalRow, TownModelRow } fr
 import TownAgentBindings from './TownAgentBindings.vue'
 
 const agentRangeDraft = defineModel<{ radiusX: number, radiusZ: number, shape: 'ellipse' | 'rect' } | null>('agentRangeDraft', { required: true })
-const agentBindKind = defineModel<'dcw' | 'daq'>('agentBindKind', { required: true })
+const agentBindKind = defineModel<'dcw' | 'daq' | 'line-recipe'>('agentBindKind', { required: true })
 const agentBindNodeId = defineModel<string>('agentBindNodeId', { required: true })
 const agentBindMode = defineModel<'auto' | 'manual'>('agentBindMode', { required: true })
 const approvalComments = defineModel<Record<string, string>>('approvalComments', { required: true })

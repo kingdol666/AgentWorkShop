@@ -62,12 +62,12 @@ export interface DcwTemplate {
 }
 export interface DaqSimState { value: number, hist: number[], phase: number, tpl: DaqTemplate, alarm?: boolean }
 export interface RtcPoint { value: number, state: string, atMs: number }
-/** Agent ↔ 工业节点绑定行 */
+/** Agent ↔ 工业对象绑定行(kind: dcw=点位写授权 / daq=数采只读 / line-recipe=产线配方管理权) */
 export interface AgentNodeBindingRow {
   id: string
   agentId: string
   nodeId: string
-  kind: 'dcw' | 'daq'
+  kind: 'dcw' | 'daq' | 'line-recipe'
   mode: 'auto' | 'manual'
 }
 /** 手动确认审批行 */

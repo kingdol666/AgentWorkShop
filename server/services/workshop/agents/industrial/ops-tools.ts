@@ -553,9 +553,15 @@ export async function toolRecipeCreate(agentId: string, args: {
   }
   if (!lineId) return { text: '无法确定产线:请提供 line_id 或 source_recipe_id(from_run_id 也可推断)。', isError: true }
   if (!readable.includes(lineId)) return { text: `无权在产线 ${lineId} 新建配方(你的可读产线:${readable.join(', ') || '(无)'})。`, isError: true }
-  const productId = String(args.product_id ?? '').trim() || source?.productId || (run?.productId ?? '')
+  let productId = String(args.product_id ?? '').trim() || source?.productId || (run?.productId ?? '')
+  if (!productId && lineId) {
+    // 只给 line_id 时:该线仅挂一个产品则自动归属(与"只传 line_id 即可操作"的工具哲学一致;
+    // 多产品歧义仍要求显式 product_id,fail-closed)
+    const lineProducts = getDcwProductRepo().all().filter(p => p.lineId === lineId)
+    if (lineProducts.length === 1) productId = lineProducts[0]!.id
+  }
   const product = productId ? getDcwProductRepo().byId(productId) : undefined
-  if (!productId || !product) return { text: `产品 ${productId || '(未提供)'} 不存在;新配方必须归属产品(product_id 或源配方可推断)。`, isError: true }
+  if (!productId || !product) return { text: `产品 ${productId || '(未提供)'} 不存在;新配方必须归属产品(product_id、源配方推断,或该产线恰好只挂一个产品时自动归属)。`, isError: true }
   if (product.lineId !== lineId) return { text: `产品「${product.name}」归属产线 ${product.lineId},与目标产线 ${lineId} 不一致。`, isError: true }
   if (source && source.lineId !== lineId) return { text: `源配方「${source.name}」归属产线 ${source.lineId},与目标产线 ${lineId} 不一致。`, isError: true }
 

@@ -2,10 +2,12 @@
  * AgentNodeBindingRepo —— Agent ↔ 工业对象绑定持久化(agent-node-bindings.json)。
  *
  * 一个绑定 = 某 Channel 内的 Agent 对某个工业对象的授权:
- *   - kind: 'daq' = 可查询数采; 'recipe' = 配方操作权(参数写入+下发+版本;nodeId 字段存 recipeId);
- *     'dcw' = 点位写授权(2026-10-28 恢复,非直写入口):对活动配方的 trial/apply,
- *     覆盖集 ⊆ 节点绑定面即放行;直写工具(param_control/dcw_control)仍恒拒,
- *     写路径 100% 收敛在配方管道(权限模型 v2)。
+ *   - kind: 'daq' = 可查询数采; 'recipe' = 单配方操作权(参数写入+下发+版本;nodeId 字段存 recipeId);
+ *     'dcw' = 点位写授权(2026-10-28 恢复,非直写入口):下发覆盖集 ⊆ 节点绑定面即放行,
+ *     且**绑了 dcw 就把下发范围收窄到这些点位**;直写工具(param_control/dcw_control)仍恒拒,
+ *     写路径 100% 收敛在配方管道(权限模型 v2);
+ *     'line-recipe' = 产线配方管理权(2026-10-28,nodeId 字段存 lineId):对该产线全部配方
+ *     (含未来新建)可 查看/新建/修改/回退;下发仍按 dcw 收窄规则(未绑任何 dcw = 全参数可发)。
  *   - mode: 'auto' = 工具调用自动执行; 'manual' = 每次执行需用户批准(可附备注)
  */
 
@@ -18,7 +20,7 @@ import { loadJsonFile, saveJsonFileAtomic } from '../json-store.mjs'
 
 const log = createLogger('workshop.node-bindings')
 
-export type AgentNodeBindingKind = 'dcw' | 'daq' | 'recipe'
+export type AgentNodeBindingKind = 'dcw' | 'daq' | 'recipe' | 'line-recipe'
 export type AgentNodeBindingMode = 'auto' | 'manual'
 
 /** 绑定级调试元数据(工况提示词组装与探索步长来源;优先于节点自带元数据) */
@@ -92,7 +94,7 @@ export class AgentNodeBindingRepo {
   bind(agentId: string, nodeId: string, kind: AgentNodeBindingKind, mode: AgentNodeBindingMode, tuning?: AgentNodeBindingTuning, provenance?: { grantedByAgentId?: string }): AgentNodeBinding {
     if (!agentId) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'agentId 必填')
     if (!nodeId) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'nodeId 必填')
-    if (kind !== 'dcw' && kind !== 'daq' && kind !== 'recipe') throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `未知节点类型: ${kind}`)
+    if (kind !== 'dcw' && kind !== 'daq' && kind !== 'recipe' && kind !== 'line-recipe') throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `未知节点类型: ${kind}`)
     if (mode !== 'auto' && mode !== 'manual') throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `未知控制模式: ${mode}`)
     const prev = this.find(agentId, nodeId, kind)
     if (prev) {

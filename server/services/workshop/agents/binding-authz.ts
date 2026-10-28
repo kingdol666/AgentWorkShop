@@ -22,14 +22,20 @@
 import type { AgentNodeBinding } from './node-bindings.repo'
 import { getDaqController } from '../daq/daq-controller'
 import { getDcwController } from '../dcw/dcw-controller'
+import { getDcwLineRepo } from '../dcw/dcw-line.repo'
 import { lineMode } from '../permissions'
 import { AppError, ErrorCodes } from '../../../utils/errors'
 
-/** 绑定 → 所属产线 id(节点/配方不存在返回 null;recipe 绑定的 nodeId 字段 = 配方 id) */
+/** 绑定 → 所属产线 id(节点/配方/产线不存在返回 null;recipe 绑定的 nodeId 字段 = 配方 id,
+ *  line-recipe 绑定的 nodeId 字段 = 产线 id 本身) */
 export function lineIdOfBinding(binding: Pick<AgentNodeBinding, 'nodeId' | 'kind'>): string | null | undefined {
   if (binding.kind === 'daq') return getDaqController().byId(binding.nodeId)?.lineId
   if (binding.kind === 'recipe') {
     return getDcwController().listRecipes().find(r => r.id === binding.nodeId)?.lineId ?? null
+  }
+  if (binding.kind === 'line-recipe') {
+    // 产线管理权:nodeId 即产线 id;产线已删除 → 悬空(404,不构成任何授权)
+    return getDcwLineRepo().byId(binding.nodeId) ? binding.nodeId : null
   }
   return getDcwController().byId(binding.nodeId)?.lineId
 }

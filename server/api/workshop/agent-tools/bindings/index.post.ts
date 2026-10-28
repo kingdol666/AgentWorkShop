@@ -1,20 +1,20 @@
 /**
  * POST /api/workshop/agent-tools/bindings —— 绑定 Agent ↔ 工业对象。
- * body: { agentId, nodeId, kind: 'dcw'|'daq'|'recipe', mode?: 'auto'|'manual' }
- * 产线权限:普通用户仅可绑定自己有权产线的节点——daq 绑定需「仅查看」及以上,
- * dcw/recipe(写向)绑定需「可操控」;admin/editor 不受限。
+ * body: { agentId, nodeId, kind: 'dcw'|'daq'|'recipe'|'line-recipe', mode?: 'auto'|'manual' }
+ * 产线权限:普通用户仅可绑定自己有权产线的对象——daq 绑定需「仅查看」及以上,
+ * dcw/recipe/line-recipe(写向/管理向)绑定需「可操控」;admin/editor 不受限。
  *
- * 双轨授权(2026-10-28 节点级写授权计划 M1):
- *   - kind='recipe'(nodeId=配方 id)= 配方操作权(update/apply/trial/rollback);
- *   - kind='dcw'(nodeId=数控节点 id)= **点位写授权面** —— Agent 仍不能直写节点
- *     (param_control/dcw_control 恒拒桩不动),但持有该节点后,对"当前活动配方"的
- *     trial/apply 只要覆盖集 ⊆ 自己的节点绑定面即放行;换配方不停摆。
+ * 三轨授权(2026-10-28 节点级写授权 + 产线配方管理权):
+ *   - kind='recipe'(nodeId=配方 id)= 单配方操作权(update/apply/trial/rollback);
+ *   - kind='dcw'(nodeId=数控节点 id)= **点位写授权面 + 下发范围收窄器** —— Agent 仍不能
+ *     直写节点(param_control/dcw_control 恒拒桩不动);绑了 dcw 后,下发只能覆盖这些点位;
+ *   - kind='line-recipe'(nodeId=产线 id)= **产线配方管理权**:对该线全部配方(含未来新建)
+ *     可 查看/新建/修改/回退;下发仍按 dcw 收窄规则(未绑任何 dcw = 配方全参数可发,向下兼容)。
  *
- * auto 治理(产线 Co-Pilot P2,计划 §5.4 铁律 2):**写向绑定首绑强制 manual**——
- * dcw/recipe 写控面挂着逐次人工审批闸,创建即 auto 等于免审上线,故 body.mode 对
- * 写向绑定一律忽略;显式传 auto 不静默吞掉,响应附 modeForced + notice 提示
- * (响应形状向后兼容,多余字段无害)。如需 auto,应在绑定创建后走 PATCH 携
- * confirm:true 显式切换(见 [id].patch.ts)。
+ * auto 治理(产线 Co-Pilot P2,计划 §5.4 铁律 2):**写向/管理向绑定首绑强制 manual**——
+ * 创建即 auto 等于免审上线,故 body.mode 对 dcw/recipe/line-recipe 一律忽略;显式传 auto
+ * 不静默吞掉,响应附 modeForced + notice 提示(响应形状向后兼容)。如需 auto,应在绑定
+ * 创建后走 PATCH 携 confirm:true 显式切换(见 [id].patch.ts)。
  * daq 绑定仅授权 daq_query 读(工具面无写族、mode 无审批语义可摘),维持原样。
  */
 import { readBody } from 'h3'
@@ -29,7 +29,7 @@ import { AppError, ErrorCodes } from '@/server/utils/errors'
 
 export default defineApiHandler(async (event) => {
   const user = resolveUser(event)
-  const body = await readBody<{ agentId?: string, nodeId?: string, kind?: 'dcw' | 'daq' | 'recipe', mode?: 'auto' | 'manual' }>(event) ?? {}
+  const body = await readBody<{ agentId?: string, nodeId?: string, kind?: 'dcw' | 'daq' | 'recipe' | 'line-recipe', mode?: 'auto' | 'manual' }>(event) ?? {}
   const kind = body.kind ?? 'daq'
   const nodeId = String(body.nodeId ?? '')
   const agentId = String(body.agentId ?? '')
@@ -53,9 +53,10 @@ export default defineApiHandler(async (event) => {
   }
 
   // 权限模型 v3:绑线 channel 的产线一致性 —— channel 绑了产线后,其成员 agent 只能
-  // 绑定同产线的节点/配方(产线隔离的工作空间语义;未绑线的纯协作频道不受此限)。
-  const nodeLineOf = (nid: string, k: 'daq' | 'dcw' | 'recipe'): string | null | undefined => {
+  // 绑定同产线的节点/配方/产线管理权(产线隔离的工作空间语义;未绑线的纯协作频道不受此限)。
+  const nodeLineOf = (nid: string, k: 'daq' | 'dcw' | 'recipe' | 'line-recipe'): string | null | undefined => {
     if (k === 'recipe') return getDcwController().listRecipes().find(r => r.id === nid)?.lineId
+    if (k === 'line-recipe') return nid
     return k === 'daq' ? getDaqController().byId(nid)?.lineId : getDcwController().byId(nid)?.lineId
   }
   const targetLine = nodeLineOf(nodeId, kind)
@@ -63,6 +64,27 @@ export default defineApiHandler(async (event) => {
   if (channelRow?.lineId && targetLine && channelRow.lineId !== targetLine) {
     throw new AppError(403, 'LINE_SCOPE_MISMATCH',
       `该频道已绑定产线「${channelRow.lineId}」,成员 agent 只能绑定同产线的节点/配方(目标 ${nodeId} 属于产线「${targetLine}」)。请改绑同产线对象,或将频道解绑/换绑。`)
+  }
+
+  if (kind === 'line-recipe') {
+    // 产线配方管理权:nodeId 字段 = 产线 id;要求调用者对该产线「可操控」(管理向授权)
+    const { getDcwLineRepo } = await import('@/server/services/workshop/dcw/dcw-line.repo')
+    const line = getDcwLineRepo().byId(nodeId)
+    if (!line) throw new AppError(404, ErrorCodes.NOT_FOUND, `产线不存在: ${nodeId}`)
+    const mode = lineMode(user, line.id)
+    if (mode !== 'operate') {
+      throw new AppError(403, 'LINE_FORBIDDEN', `无该产线权限:授予产线配方管理权需对产线「${line.name}」拥有可操控权限`)
+    }
+    // 管理向绑定首绑恒 manual(每次 创建/修改/回退 需人工批准);auto 须 PATCH confirm:true 显式切换
+    const binding = getAgentNodeBindingRepo().bind(agentId, nodeId, 'line-recipe', 'manual')
+    if (body.mode === 'auto') {
+      return {
+        binding,
+        modeForced: 'manual',
+        notice: '产线配方管理权默认 manual(该线配方的创建/修改/回退每次需人工批准),body.mode=auto 已被忽略;如需 auto 请对该绑定 PATCH { mode: "auto", confirm: true } 显式确认切换',
+      }
+    }
+    return { binding }
   }
 
   if (kind === 'recipe') {

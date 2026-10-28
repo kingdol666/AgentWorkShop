@@ -2491,6 +2491,8 @@ export default {
     k1duyr8q096: 'Manual Approval',
     k40ifw097: 'Control',
     k40rjw098: 'DAQ',
+    klinercp820: 'Line Recipes',
+    klinercp821: 'Select a line…',
     kurjldk099: 'Select nodes…',
     k45kpj100: 'Auto',
     k3zul4101: 'Manual',

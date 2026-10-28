@@ -57,6 +57,8 @@ export interface ToolRefFaces {
   channelLineId: string
   /** 频道绑线下的数采节点(v28 只读扩权面) */
   channelLineNodes: Set<string>
+  /** 产线配方管理权(kind='line-recipe'):lineId → 授权(2026-10-28) */
+  managedLines: Map<string, { mode: 'auto' | 'manual' }>
 }
 
 /** 解析调用者的合法引用面(只读,不缓存——绑定可在调用间隙被用户改写) */
@@ -94,7 +96,22 @@ export function resolveRefFaces(agentId: string): ToolRefFaces {
   if (channelLineId) {
     for (const n of getDaqNodeRepo().all()) if (n.lineId === channelLineId) channelLineNodes.add(n.id)
   }
-  return { agentId, boundNodes, writeFace, daqBoundNodes, boundRecipes, recipeLines, readableLines, channelLineId, channelLineNodes }
+  // 产线配方管理权:该线全部配方的参数进入写面(下发仍受「绑 dcw 即收窄」规则约束,
+  // 精确判定在 recipe-gate;预检面放宽到线配方参数,避免管理操作在预检被误拦)
+  const managedLines = new Map<string, { mode: 'auto' | 'manual' }>()
+  for (const b of bindings) {
+    if (b.kind !== 'line-recipe') continue
+    if (managedLines.has(b.nodeId)) continue
+    managedLines.set(b.nodeId, { mode: b.mode })
+    for (const r of getDcwController().listRecipes()) {
+      if (r.lineId !== b.nodeId) continue
+      for (const p of (r.params ?? [])) {
+        boundNodes.add(p.nodeId)
+        writeFace.add(p.nodeId)
+      }
+    }
+  }
+  return { agentId, boundNodes, writeFace, daqBoundNodes, boundRecipes, recipeLines, readableLines, channelLineId, channelLineNodes, managedLines }
 }
 
 // ===== 归属判定 =====
@@ -151,12 +168,15 @@ function denyNode(faces: ToolRefFaces, toolName: string, args: Record<string, un
   ], faces, hint, { param, value: id, lineId: row?.lineId })
 }
 
-/** 写面拒绝(2026-10-28):参数要写到的节点必须落在 W(a)=dcw 绑定 ∪ 绑定配方参数节点。
+/** 写面拒绝(2026-10-28):参数要写到的节点必须落在 W(a)=dcw 绑定 ∪ 绑定配方参数节点 ∪ 管理线配方参数。
  *  比 denyNode 更明确:读得到 ≠ 写得到(频道绑线只读扩权/他配方节点都不构成写授权)。 */
 function denyWriteNode(faces: ToolRefFaces, toolName: string, args: Record<string, unknown>, param: string, id: string, exists: boolean): HostToolResult {
   const row = exists ? nodeRow(id) : null
   const where = row ? `(节点「${row.name}」${row.lineId ? `,归属产线 ${row.lineId}` : ''})` : '(节点不存在或已删除)'
-  const hint = `该节点不在你的写授权面(节点绑定=点位写授权;配方绑定=配方操作权)。你的可写节点:${listOf(faces.writeFace)};你已绑定的配方参数节点也在此列。如需写入,请让用户或 lead 为你绑定该数控节点(dcw),或改用上述已授权节点;若要对整批配方操作,可请求绑定配方(kind='recipe')。`
+  const managedNote = faces.managedLines.size > 0
+    ? `你持有产线配方管理权的线:[${[...faces.managedLines.keys()].join(', ')}](仅覆盖这些线上的配方参数)。`
+    : ''
+  const hint = `该节点不在你的写授权面(节点绑定=点位写授权;配方绑定=配方操作权;产线管理权=该线配方参数)。你的可写节点:${listOf(faces.writeFace)}。${managedNote} 如需写入,请让用户或 lead 为你绑定该数控节点(dcw),或授予配方绑定/产线配方管理权。`
   return deny(toolName, args, [
     `工具调用被拒(写授权校验,${toolName}):参数节点「${id}」不在你的写授权面内${where}。`,
   ], faces, hint, { param, value: id, lineId: row?.lineId })

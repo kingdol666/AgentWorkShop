@@ -3,17 +3,39 @@
     "description": "Query historical/live data for DAQ nodes you can access. Access is granted either by direct node binding or by the channel's line binding (read-only for all DAQ nodes on that line). Filters: line/product/recipe/run/time window/downsampling (product and recipe filters use per-sample tags, so a specific batch can be selected precisely). Results carry physical meaning (semantics, unit, range, statistics, recent series). By default only the **current active batch (active recipe)** is queried; pass scope=all explicitly to compare across recipes or review full history.",
     "parameters": {
       "properties": {
-        "node_id": { "description": "Restrict to one DAQ node id (default: all bound nodes)" },
-        "line_id": { "description": "Filter by line (data ownership)" },
-        "product_id": { "description": "Filter by product (per-sample tags); passing it overrides the default active-batch filter" },
-        "recipe_id": { "description": "Filter by recipe (per-sample tags); passing it overrides the default filter. Default: the active recipe of the node's line (no filter if the line is not running)" },
-        "run_id": { "description": "Filter by run id (pin one run when a recipe was started multiple times); passing it overrides the default filter" },
-        "scope": { "description": "Scope: active (default) = current active batch only; all = no recipe filter, return every sample in the window (cross-recipe comparison/history review)" },
-        "last_minutes": { "description": "Last N minutes (default 30)" },
-        "from_ms": { "description": "Start epoch ms (paired with to_ms; takes precedence over last_minutes)" },
-        "to_ms": { "description": "End epoch ms" },
-        "bucket_ms": { "description": "Downsampling bucket width in ms (default {queryDefaultBucketMs}, floor {queryMinBucketMs})" },
-        "limit": { "description": "Maximum number of points returned (default 500)" }
+        "node_id": {
+          "description": "Restrict to one DAQ node id (default: all bound nodes)"
+        },
+        "line_id": {
+          "description": "Filter by line (data ownership)"
+        },
+        "product_id": {
+          "description": "Filter by product (per-sample tags); passing it overrides the default active-batch filter"
+        },
+        "recipe_id": {
+          "description": "Filter by recipe (per-sample tags); passing it overrides the default filter. Default: the active recipe of the node's line (no filter if the line is not running)"
+        },
+        "run_id": {
+          "description": "Filter by run id (pin one run when a recipe was started multiple times); passing it overrides the default filter"
+        },
+        "scope": {
+          "description": "Scope: active (default) = current active batch only; all = no recipe filter, return every sample in the window (cross-recipe comparison/history review)"
+        },
+        "last_minutes": {
+          "description": "Last N minutes (default 30)"
+        },
+        "from_ms": {
+          "description": "Start epoch ms (paired with to_ms; takes precedence over last_minutes)"
+        },
+        "to_ms": {
+          "description": "End epoch ms"
+        },
+        "bucket_ms": {
+          "description": "Downsampling bucket width in ms (default {queryDefaultBucketMs}, floor {queryMinBucketMs})"
+        },
+        "limit": {
+          "description": "Maximum number of points returned (default 500)"
+        }
       }
     }
   },
@@ -21,76 +43,132 @@
     "description": "List recipe definitions on lines you can read (find recipe_id / the currently running recipe / product ownership). Each entry includes recipe id, version, product, whether it is running, parameter count, each node's target and PLC value, and last good batch. Supports line_id/product_id/keyword filters. Use this first when unsure of a recipe_id; recipe_apply/recipe_trial/recipe_update can also take line_id and resolve the active recipe. Read-only.",
     "parameters": {
       "properties": {
-        "line_id": { "description": "Restrict to a line id (must be readable)" },
-        "product_id": { "description": "Restrict to a product id" },
-        "q": { "description": "Keyword substring filter (recipe name/description)" },
-        "limit": { "description": "Maximum rows (default 20, max 100)" }
+        "line_id": {
+          "description": "Restrict to a line id (must be readable)"
+        },
+        "product_id": {
+          "description": "Restrict to a product id"
+        },
+        "q": {
+          "description": "Keyword substring filter (recipe name/description)"
+        },
+        "limit": {
+          "description": "Maximum rows (default 20, max 100)"
+        }
       }
     }
   },
   "recipe_update": {
-    "description": "Save verified best parameters into a recipe as a new version with attribution and rationale. You may target the currently running recipe by passing only line_id (resolved from the active batch), or pass recipe_id explicitly. Permission model (two tracks): version operations require a recipe binding (kind='recipe', multiple bindings allowed) — a DCW node binding is a point-level write grant and does not grant version rights; the recipe's secondary auth must pass; the recipe must be running (run gate). With a manual binding or manual line, the save suspends for human approval — reason is required and must cite evidence (DAQ data/analysis); the approval card shows it. This changes the definition only; use recipe_apply to push parameters to the running line.",
+    "description": "Save verified best parameters into a recipe as a new version with attribution and rationale. You may target the currently running recipe by passing only line_id (resolved from the active batch), or pass recipe_id explicitly. Permission model (three tracks): version operations require recipe-level authorization — a recipe binding (kind='recipe') or a line recipe-management grant (kind='line-recipe', valid for every recipe on that line); a DCW node binding is a point-level write grant and does not grant version rights; the recipe's secondary auth must pass; the recipe must be running (run gate). With a manual binding or manual line, the save suspends for human approval — reason is required and must cite evidence (DAQ data/analysis); the approval card shows it. This changes the definition only; use recipe_apply to push parameters to the running line.",
     "parameters": {
       "properties": {
-        "recipe_id": { "description": "Recipe id (mutually exclusive with line_id; explicit id wins)" },
+        "recipe_id": {
+          "description": "Recipe id (mutually exclusive with line_id; explicit id wins)"
+        },
         "params": {
           "description": "Parameters to update (partial merge; list only nodes that change)",
           "items": {
             "properties": {
-              "node_id": { "description": "DCW node id (must be one of your bound DCW nodes)" },
-              "value": { "description": "New target value" },
-              "min": { "description": "Optional new recipe window lower bound" },
-              "max": { "description": "Optional new recipe window upper bound" }
+              "node_id": {
+                "description": "DCW node id (must be one of your bound DCW nodes)"
+              },
+              "value": {
+                "description": "New target value"
+              },
+              "min": {
+                "description": "Optional new recipe window lower bound"
+              },
+              "max": {
+                "description": "Optional new recipe window upper bound"
+              }
             }
           }
         },
-        "reason": { "description": "Why this change is saved (required; state the evidence)" },
-        "task_id": { "description": "Optional related task id" },
-        "line_id": { "description": "Line id (mutually exclusive with recipe_id): resolve the recipe from that line's active batch" }
+        "reason": {
+          "description": "Why this change is saved (required; state the evidence)"
+        },
+        "task_id": {
+          "description": "Optional related task id"
+        },
+        "line_id": {
+          "description": "Line id (mutually exclusive with recipe_id): resolve the recipe from that line's active batch"
+        }
       }
     }
   },
   "recipe_apply": {
-    "description": "Dispatch the recipe's currently persisted parameters to the running line as one batch (use after recipe_update). You may target the running recipe with only line_id (resolved from the active batch) or pass recipe_id explicitly. Permission model (two tracks): a recipe binding (kind='recipe') covers the whole batch; alternatively every parameter node of the recipe must be inside your DCW node binding face (kind='dcw' point-level write grant). Both require secondary auth and the run gate (recipe must be executing). With a manual binding or manual line, dispatch suspends for human approval — reason is required and must explain why and on what evidence. After approval the batch goes through governance interlocks (range/step/rate) with per-parameter acknowledgements. A rejection may include guidance; revise and resubmit.",
+    "description": "Dispatch the recipe's currently persisted parameters to the running line as one batch (use after recipe_update). You may target the running recipe with only line_id (resolved from the active batch) or pass recipe_id explicitly. Permission model (three tracks): a recipe binding (kind='recipe') or a line recipe-management grant (kind='line-recipe') covers the whole batch; alternatively every parameter node must be inside your DCW node binding face (kind='dcw'). With DCW bindings, dispatch narrows to those points; with none, a recipe-level grant allows all params (backward compatible). Both require secondary auth and the run gate (recipe must be executing). With a manual binding or manual line, dispatch suspends for human approval — reason is required and must explain why and on what evidence. After approval the batch goes through governance interlocks (range/step/rate) with per-parameter acknowledgements. A rejection may include guidance; revise and resubmit.",
     "parameters": {
       "properties": {
-        "recipe_id": { "description": "Recipe id (mutually exclusive with line_id; explicit id wins)" },
-        "reason": { "description": "Why dispatch (required): data evidence/trial conclusion/goal-gap analysis; the line expert must understand your reasoning on the approval card" },
-        "emergency": { "description": "Emergency exemption from the recipe dispatch rate limit (does NOT skip approval; the card is marked [EMERGENCY] and still needs a human; abuse is audited)" },
-        "line_id": { "description": "Line id (mutually exclusive with recipe_id): resolve the recipe from the active batch; use to dispatch to the current recipe" }
+        "recipe_id": {
+          "description": "Recipe id (mutually exclusive with line_id; explicit id wins)"
+        },
+        "reason": {
+          "description": "Why dispatch (required): data evidence/trial conclusion/goal-gap analysis; the line expert must understand your reasoning on the approval card"
+        },
+        "emergency": {
+          "description": "Emergency exemption from the recipe dispatch rate limit (does NOT skip approval; the card is marked [EMERGENCY] and still needs a human; abuse is audited)"
+        },
+        "line_id": {
+          "description": "Line id (mutually exclusive with recipe_id): resolve the recipe from the active batch; use to dispatch to the current recipe"
+        }
       }
     }
   },
   "recipe_trial": {
-    "description": "Dispatch a multi-parameter candidate batch without writing a recipe version. You may target the running recipe with only line_id or pass recipe_id explicitly. Permission model (two tracks): a recipe binding (kind='recipe') covers the whole batch; alternatively every candidate node must be inside your DCW node binding face (kind='dcw' point-level write grant that survives recipe switches; partial coverage is rejected with the missing node list). Both require secondary auth and the run gate; candidates may only cover parameters in the recipe. With a manual binding or manual line, the trial suspends for human approval — hypothesis is required (why this trial and on what evidence). The whole batch lands at once; after re-measurement, persist improvement with recipe_update or roll back with recipe_rollback(dispatch=true). Subject to the per-line trial interval (default >=5 minutes) and the four-layer limits.",
+    "description": "Dispatch a multi-parameter candidate batch without writing a recipe version. You may target the running recipe with only line_id or pass recipe_id explicitly. Permission model (three tracks): a recipe binding (kind='recipe') or a line recipe-management grant (kind='line-recipe') covers the whole batch; alternatively every candidate node must be inside your DCW node binding face (kind='dcw' point-level write grant that survives recipe switches). Note: an agent with DCW bindings can only dispatch to those points (partial coverage is rejected with the missing node list); with no DCW bindings at all, a recipe-level grant allows all recipe params (backward compatible). Both require secondary auth and the run gate; candidates may only cover parameters in the recipe. With a manual binding or manual line, the trial suspends for human approval — hypothesis is required (why this trial and on what evidence). The whole batch lands at once; after re-measurement, persist improvement with recipe_update or roll back with recipe_rollback(dispatch=true). Subject to the per-line trial interval (default >=5 minutes) and the four-layer limits.",
     "parameters": {
       "properties": {
-        "recipe_id": { "description": "Recipe id (mutually exclusive with line_id; explicit id wins)" },
+        "recipe_id": {
+          "description": "Recipe id (mutually exclusive with line_id; explicit id wins)"
+        },
         "params": {
           "description": "Candidate parameters (>=1; include every change in one batch to avoid oscillation)",
           "items": {
             "properties": {
-              "node_id": { "description": "DCW node id" },
-              "value": { "description": "Candidate engineering value" }
+              "node_id": {
+                "description": "DCW node id"
+              },
+              "value": {
+                "description": "Candidate engineering value"
+              }
             }
           }
         },
-        "hypothesis": { "description": "Trial hypothesis/rationale (required: knowledge-base entry or data analysis conclusion)" },
-        "emergency": { "description": "Emergency exemption from the recipe dispatch rate limit (does NOT skip approval; the card is marked [EMERGENCY] and still needs a human; abuse is audited)" },
-        "line_id": { "description": "Line id (mutually exclusive with recipe_id): resolve the active recipe" }
+        "hypothesis": {
+          "description": "Trial hypothesis/rationale (required: knowledge-base entry or data analysis conclusion)"
+        },
+        "emergency": {
+          "description": "Emergency exemption from the recipe dispatch rate limit (does NOT skip approval; the card is marked [EMERGENCY] and still needs a human; abuse is audited)"
+        },
+        "line_id": {
+          "description": "Line id (mutually exclusive with recipe_id): resolve the active recipe"
+        }
       }
     }
   },
   "recipe_rollback": {
-    "description": "Roll recipe parameters back to a stable version (a historical version or the last good batch) by creating a new non-destructive version; with dispatch=true it also restores the parameters to the line as a batch. Permission model: bound recipe, secondary auth, and run gate; manual bindings suspend for HITL — reason is required (e.g. optimization degradation/out-of-limit).",
+    "description": "Roll recipe parameters back to a stable version (a historical version or the last good batch) by creating a new non-destructive version; with dispatch=true it also restores the parameters to the line as a batch. Permission model: a recipe binding (kind='recipe') or a line recipe-management grant (kind='line-recipe'), secondary auth, and run gate; manual bindings suspend for HITL — reason is required (e.g. optimization degradation/out-of-limit).",
     "parameters": {
       "properties": {
-        "recipe_id": { "description": "Recipe id (required)" },
-        "version": { "description": "Roll back to this historical version (either version or to_last_good)" },
-        "to_last_good": { "description": "true = restore the last good batch parameters" },
-        "reason": { "description": "Rollback reason (required)" },
-        "dispatch": { "description": "true = restore the definition AND re-dispatch parameters to the PLC (use when the optimization loop degrades); default false = definition only" },
-        "emergency": { "description": "Emergency exemption from the recipe dispatch rate limit (does NOT skip approval; still needs a human; abuse is audited)" }
+        "recipe_id": {
+          "description": "Recipe id (required)"
+        },
+        "version": {
+          "description": "Roll back to this historical version (either version or to_last_good)"
+        },
+        "to_last_good": {
+          "description": "true = restore the last good batch parameters"
+        },
+        "reason": {
+          "description": "Rollback reason (required)"
+        },
+        "dispatch": {
+          "description": "true = restore the definition AND re-dispatch parameters to the PLC (use when the optimization loop degrades); default false = definition only"
+        },
+        "emergency": {
+          "description": "Emergency exemption from the recipe dispatch rate limit (does NOT skip approval; still needs a human; abuse is audited)"
+        }
       }
     }
   },
@@ -98,13 +176,27 @@
     "description": "Query recipe change history (create/update/trial/apply/per-parameter ACK/approval/optimization window verdict/rollback/start-batch dispatch; newest first). Returns only scope=line records, each with line and recipe attribution. Pass recipe_id to get the whole event family across kinds (including kind=write dispatch ACKs); line.start/line.stop are included (starting a line dispatches recipe parameters). Without line_id the channel-bound line is used; recipe_id narrows to that recipe's line. Time via from/to or minutes. Use dcw_journal for per-node write history.",
     "parameters": {
       "properties": {
-        "line_id": { "description": "Line id (must be readable; default: channel-bound line, or all readable lines when unbound)" },
-        "recipe_id": { "description": "Filter by recipe id (implies its line)" },
-        "product_id": { "description": "Filter by product id (must belong to a readable line)" },
-        "from": { "description": "Window start (ISO or 2026-10-19T08:00)" },
-        "to": { "description": "Window end (ISO; must be after from)" },
-        "minutes": { "description": "Lookback minutes when from is omitted (default 1440 = 24h)" },
-        "limit": { "description": "Maximum rows (default 20, max 100)" }
+        "line_id": {
+          "description": "Line id (must be readable; default: channel-bound line, or all readable lines when unbound)"
+        },
+        "recipe_id": {
+          "description": "Filter by recipe id (implies its line)"
+        },
+        "product_id": {
+          "description": "Filter by product id (must belong to a readable line)"
+        },
+        "from": {
+          "description": "Window start (ISO or 2026-10-19T08:00)"
+        },
+        "to": {
+          "description": "Window end (ISO; must be after from)"
+        },
+        "minutes": {
+          "description": "Lookback minutes when from is omitted (default 1440 = 24h)"
+        },
+        "limit": {
+          "description": "Maximum rows (default 20, max 100)"
+        }
       }
     }
   },
@@ -112,8 +204,12 @@
     "description": "View the parameter version history of a recipe (old to new): version, time, source (user/agent/system), actor name, change reason, and parameter diff. Use it to confirm a target version before rollback and to review who changed what and why. Visibility = recipe line readable (node-granted line ∪ bound recipe line ∪ channel-bound line). Rollback goes through recipe_rollback (write gate; manual bindings need HITL).",
     "parameters": {
       "properties": {
-        "recipe_id": { "description": "Recipe id (required; visible in line_context)" },
-        "limit": { "description": "Return the latest N versions (default 20, max 50)" }
+        "recipe_id": {
+          "description": "Recipe id (required; visible in line_context)"
+        },
+        "limit": {
+          "description": "Return the latest N versions (default 20, max 50)"
+        }
       }
     }
   },
@@ -121,12 +217,24 @@
     "description": "Fetch data from MES REST points (code-enforced guards: only your bound DCW points; window <=7 days; <=5000 rows; <=6 fetches per 60 seconds). Formats are auto-detected: scalar/vector (thickness profile)/image frame (CCD, persisted automatically)/table/event stream. Responses include field-level dictionaries; with include_data=true, sampled rows carry actual arrays (field names, labels, units, ranges, physical meaning; vector fields also list per-point meaning) so the Agent can reason on meaning, not bare numbers. If no dictionary exists it says so explicitly — do not guess units. Three modes: no from/to = current snapshot; from/to and max_rows<=2000 = synchronous inline; max_rows>2000 = asynchronous CSV dataset plus a same-name *.manifest.json (dictionary/units/ranges/batch attribution), returning job_id/dataset_id. Use mes_export for full raw offline analysis.",
     "parameters": {
       "properties": {
-        "ids": { "description": "Target point id array (ids from mes_catalog; must be your bound DCW points)" },
-        "from": { "description": "Window start ISO time (paired with to; omit both for a current snapshot)" },
-        "to": { "description": "Window end ISO time (paired with from; window <=7 days)" },
-        "max_rows": { "description": "Row cap (default 500, hard cap 5000; >2000 goes to an async dataset)" },
-        "param": { "description": "Business parameters passed through to the point data hook (e.g. {\"lane\":12,\"agg\":\"mean\"}); omit for points without a hook" },
-        "include_data": { "description": "Include actual sampled values/arrays in inline/snapshot responses (vectors show up to 64 points with labels; default false = statistics only)" }
+        "ids": {
+          "description": "Target point id array (ids from mes_catalog; must be your bound DCW points)"
+        },
+        "from": {
+          "description": "Window start ISO time (paired with to; omit both for a current snapshot)"
+        },
+        "to": {
+          "description": "Window end ISO time (paired with from; window <=7 days)"
+        },
+        "max_rows": {
+          "description": "Row cap (default 500, hard cap 5000; >2000 goes to an async dataset)"
+        },
+        "param": {
+          "description": "Business parameters passed through to the point data hook (e.g. {\"lane\":12,\"agg\":\"mean\"}); omit for points without a hook"
+        },
+        "include_data": {
+          "description": "Include actual sampled values/arrays in inline/snapshot responses (vectors show up to 64 points with labels; default false = statistics only)"
+        }
       }
     }
   },
@@ -134,11 +242,21 @@
     "description": "Search the MES REST point catalog (DCW points with driver=mes-rest). Each entry includes id/name/line/unit/range, capability flags (read/write/history/hook), point description, and the field-level data dictionary (field names/labels/units/ranges/vector point count; from the MES response dictionaryPath or node driverConfig.dictionary, cached after the first mes_fetch). This is the addressing entry for mes_fetch/mes_export; supports keyword (q) and line_id filters. Read-only catalog, never touches the device. Visibility = your bound DCW points plus parameter points inside your bound recipes.",
     "parameters": {
       "properties": {
-        "q": { "description": "Keyword substring filter (point name and description)" },
-        "line_id": { "description": "Restrict to a line id" },
-        "limit": { "description": "Maximum rows (default 20, max 100)" },
-        "product_id": { "description": "Narrow to the product's line (rejected if it conflicts with line_id)" },
-        "recipe_id": { "description": "Narrow to the recipe's line (rejected if it conflicts with line_id)" }
+        "q": {
+          "description": "Keyword substring filter (point name and description)"
+        },
+        "line_id": {
+          "description": "Restrict to a line id"
+        },
+        "limit": {
+          "description": "Maximum rows (default 20, max 100)"
+        },
+        "product_id": {
+          "description": "Narrow to the product's line (rejected if it conflicts with line_id)"
+        },
+        "recipe_id": {
+          "description": "Narrow to the recipe's line (rejected if it conflicts with line_id)"
+        }
       }
     }
   },
@@ -146,20 +264,28 @@
     "description": "Read the full picture of the lines/products/recipes you control (read before acting): line scenario description, run state and active batch, product description, active recipe (name/version/description) with per-parameter target vs PLC value vs process window (plus parameter key and description), your bound nodes and recipes (running/not running), and known good batches; when no batch is active, the line's recipe definitions are listed. Visibility = node-granted line ∪ bound recipe line ∪ channel-bound line (read-only). Confirm ownership and state before using recipe_* tools. [Value semantics: value = platform setpoint, readValue = PLC measured feedback; they may differ briefly during hold/heartbeat windows or disconnections — state which one you cite.]",
     "parameters": {
       "properties": {
-        "line_id": { "description": "Restrict to a line id (must be a line of your bound nodes; default: all lines you own)" }
+        "line_id": {
+          "description": "Restrict to a line id (must be a line of your bound nodes; default: all lines you own)"
+        }
       }
     }
   },
   "my_industrial_nodes": {
     "description": "List all your industrial bindings and semantic cards — one card per DCW node (PLC/MES point) and DAQ node: physical quantity/unit/range/precision, process semantics (mechanism and tuning rules), safe range and active-recipe process window, current setpoint, dispatch path (PLC driver or MES writeHook single field), per-step cap and operating rules; plus the recipe operation surface for your bound recipes (run state/binding mode manual=per-action HITL or auto/ secondary auth state/parameter table with keys and descriptions). Call this before any industrial operation. Binding prerequisites: daq/dcw bindings for nodes, recipe bindings for recipes — unbound objects never appear.",
-    "parameters": { "properties": {} }
+    "parameters": {
+      "properties": {}
+    }
   },
   "optimizer_solve": {
     "description": "Solve one optimization problem under your binding authorization (numeric backends: SciPy/OSQP), returning a candidate MV trajectory and first-step suggestion. The channel must be bound to an optimizer profile; with multiple bindings pass binding_id explicitly. Missing optimization eligibility returns a locatable gap instead of fabricating a plan. Recommendations do not grant device write permission.",
     "parameters": {
       "properties": {
-        "binding_id": { "description": "Binding id (required with multiple bindings; optional when unique)" },
-        "timeout_ms": { "description": "Request-level timeout in milliseconds" }
+        "binding_id": {
+          "description": "Binding id (required with multiple bindings; optional when unique)"
+        },
+        "timeout_ms": {
+          "description": "Request-level timeout in milliseconds"
+        }
       }
     }
   },
@@ -167,7 +293,9 @@
     "description": "Read the terminal state, candidates, and recommendation status of an optimization run (read-only). The run must belong to the current agent's binding; cross-agent queries return BINDING_NOT_OWNED.",
     "parameters": {
       "properties": {
-        "run_id": { "description": "Optimization run id (returned by optimizer_solve)" }
+        "run_id": {
+          "description": "Optimization run id (returned by optimizer_solve)"
+        }
       }
     }
   }

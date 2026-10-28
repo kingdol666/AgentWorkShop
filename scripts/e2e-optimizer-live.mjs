@@ -1217,6 +1217,10 @@ console.log('\n=== 11. live closed-loop value ===')
   check('W6', '审批面精确返回当前下发卡及首步工程值', pending.status === 200 && Boolean(card) && Number.isFinite(cardMove?.to) && Math.abs(cardMove.to - firstMoveEngineering) <= 1e-6 && card.payload?.modelFirstMove?.mv1 === freshOutcome?.result?.firstMove?.mv1, `id=${card?.id ?? 'none'} nodeId=${card?.nodeId ?? 'none'} expected=${firstMoveEngineering} card=${cardMove?.to}`)
 
   if (card) {
+    // 运行门前置(S7 加固):治理下发批准时要求产线在跑目标配方(活动批次)。
+    // 治理 profile 绑定线A(line/recipe)—— 开跑线A(配方A 参数整批下发)。
+    const wStart = await api('POST', `/api/workshop/dcw/lines/${line.id}/start`, { recipeId: recipe.id }, token)
+    check('W6b', '治理下发的运行门前置:线A 开跑(活动批次=配方A)', wStart.status === 200, `status=${wStart.status} msg=${String(wStart?.message ?? '').slice(0, 140)}`)
     const decide = await api('POST', `/api/workshop/agent-tools/approvals/${encodeURIComponent(card.id)}/decide`, { approved: true, choice: 0, comment: '集成验收批准' }, token)
     const decided = data(decide)
     const dispatchResult = decided?.dispatch

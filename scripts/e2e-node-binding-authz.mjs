@@ -274,7 +274,8 @@ try {
   // ── M4:委派建/撤 dcw 绑定 + 在飞审批收回即失活 ──
   const leadBind = await bind(leadId, n1, 'dcw', 'auto')
   await setBindingMode(String(leadBind?.data?.binding?.id ?? ''), 'auto', true)
-  const grant = await callAs(leadId, tok.lead, 'team_grant_nodes', { agent_id: w3, node_ids: [n1], mode: 'auto' })
+  // 委派 auto = 摘除 worker 的逐次审批闸门,系统要求显式 confirm:true(并行会话新增的安全闸)
+  const grant = await callAs(leadId, tok.lead, 'team_grant_nodes', { agent_id: w3, node_ids: [n1], mode: 'auto', confirm: true })
   ok('T9', 'lead 委派 dcw 节点给 worker(team_grant_nodes)成功', !invErr(grant) && /已把\s*1\s*条节点授权授予/.test(invText(grant)), invText(grant).slice(0, 240))
   const w3b = await api('GET', `/api/workshop/agent-tools/bindings?agentId=${encodeURIComponent(w3)}`, undefined, admin)
   const w3has = (w3b?.data?.bindings ?? []).some(b => b.nodeId === n1 && b.kind === 'dcw')
@@ -302,6 +303,45 @@ try {
   ok('T10', '频道绑 A 线 → 成员绑定 B 线节点被拒(403 产线隔离)', cross.status === 403, `status=${cross.status} code=${String(cross?.code ?? '')}`)
   const direct = await callAs(w1, tok.w1, 'dcw_control', { node_id: n1, value: 50, hypothesis: 'E2E:直写工具必须仍不可达' })
   ok('T10b', '直写工具 dcw_control 仍不可达(未注册/禁写)', invErr(direct) || /未知工具|不可用|停用|拒绝/.test(invText(direct)), invText(direct).slice(0, 200))
+
+  // ── M6 产线配方管理权(kind='line-recipe'):管理全线配方 + 下发按 dcw 收窄 ──
+  const lineGrant = await bind(w3, line, 'line-recipe', 'auto')
+  ok('T11', 'POST kind=line-recipe → 200 且首绑强制 manual(modeForced)',
+    lineGrant.status === 200 && lineGrant?.data?.binding?.kind === 'line-recipe' && lineGrant?.data?.binding?.mode === 'manual' && lineGrant?.data?.modeForced === 'manual',
+    `status=${lineGrant.status} mode=${lineGrant?.data?.binding?.mode}`)
+  const lgId = String(lineGrant?.data?.binding?.id ?? '')
+  const lgAuto = await setBindingMode(lgId, 'auto', true)
+  ok('T11b', '管理权 manual→auto 携 confirm → 200', lgAuto.status === 200 && lgAuto?.data?.binding?.mode === 'auto', `status=${lgAuto.status}`)
+  const plainGrant = await api('POST', '/api/workshop/agent-tools/bindings', { agentId: w3, nodeId: line, kind: 'line-recipe' }, plain)
+  ok('T11c', '只读用户授产线管理权 → 403(需 operate)', plainGrant.status === 403, `status=${plainGrant.status} code=${String(plainGrant?.code ?? '')}`)
+  // 管理权:版本操作(update)全线放行 —— w3 此前没有任何 dcw/recipe 绑定(T9 已全撤)
+  const upd = await callAs(w3, tok.w3, 'recipe_update', { line_id: line, params: [{ node_id: n1, value: 57 }], reason: 'E2E:产线管理权直接修改任意配方' })
+  ok('T12', '管理权 recipe_update(无单配方绑定)→ 成功生成新版本', !invErr(upd) && /已保存|新版本|v\d/.test(invText(upd)), invText(upd).slice(0, 260))
+  // T12 已把配方B 升到 v2(upd)→ 回退到 v1(仅定义,PLC 不动)
+  const rlb = await callAs(w3, tok.w3, 'recipe_rollback', { recipe_id: recipeB, version: 1, reason: 'E2E:管理权回退(仅定义)' })
+  ok('T12b', '管理权 recipe_rollback(仅定义)→ 成功', !invErr(rlb) && /回退完成/.test(invText(rlb)), invText(rlb).slice(0, 260))
+  // 下发(向下兼容):w3 无任何 dcw 绑定 → 管理权默认全参数可发(活动配方B 参数 = n1+n3)
+  const trialFull = await callAs(w3, tok.w3, 'recipe_trial', { line_id: line, params: [{ node_id: n3, value: 58 }], hypothesis: 'E2E:管理权 + 无 dcw 绑定 → 全参数下发' })
+  ok('T12c', '管理权无 dcw 绑定 → trial 全参数放行(向下兼容)', !invErr(trialFull) && /试验已整批下发/.test(invText(trialFull)), invText(trialFull).slice(0, 260))
+  // 绑一个 dcw → 下发立即收窄:未绑节点被拒,绑定点位放行
+  const w3d = await bind(w3, n3, 'dcw', 'auto')
+  await setBindingMode(String(w3d?.data?.binding?.id ?? ''), 'auto', true)
+  ok('T12d', '管理权 Agent 补绑 n3(dcw)', w3d.status === 200, `status=${w3d.status}`)
+  const trialNarrow = await callAs(w3, tok.w3, 'recipe_trial', { line_id: line, params: [{ node_id: n2, value: 59 }], hypothesis: 'E2E:未绑定节点应被收窄拒绝' })
+  ok('T12e', '管理权 + dcw 绑定 → 未绑定节点下发被收窄拒', invErr(trialNarrow) && /下发被收窄|只能覆盖这些点位/.test(invText(trialNarrow)) && invText(trialNarrow).includes(n2), invText(trialNarrow).slice(0, 300))
+  const trialScoped = await callAs(w3, tok.w3, 'recipe_trial', { line_id: line, params: [{ node_id: n3, value: 59 }], hypothesis: 'E2E:绑定点位内应放行' })
+  ok('T12f', '管理权 + dcw 绑定 → 绑定点位内 trial 放行', !invErr(trialScoped) && /试验已整批下发/.test(invText(trialScoped)), invText(trialScoped).slice(0, 260))
+  // 版本操作不受收窄影响(仍凭管理权)
+  const updAfter = await callAs(w3, tok.w3, 'recipe_update', { line_id: line, params: [{ node_id: n2, value: 58 }], reason: 'E2E:收窄后版本操作仍放行' })
+  ok('T12g', 'dcw 收窄不影响版本操作(管理权仍可 update)', !invErr(updAfter), invText(updAfter).slice(0, 220))
+  // 工具注入面声明管理权
+  const listW3 = await api('GET', `/api/workshop/agent-tools/list?agentId=${encodeURIComponent(w3)}`, undefined, undefined, { 'x-aw-agent-token': tok.w3 })
+  const updDesc = String((listW3?.data?.tools ?? []).find(t => t.name === 'recipe_update')?.description ?? '')
+  ok('T12h', '工具注入面带产线配方管理权声明', updDesc.includes(line) && /配方管理权/.test(updDesc), updDesc.slice(-260))
+  // 收回管理权 → 再 update 被拒(收权即失活)
+  const lgRevoke = await api('DELETE', `/api/workshop/agent-tools/bindings/${lgId}`, undefined, admin)
+  const updAfterRevoke = await callAs(w3, tok.w3, 'recipe_update', { line_id: line, params: [{ node_id: n2, value: 56 }], reason: 'E2E:收回管理权后应拒绝' })
+  ok('T13', '收回产线管理权后 recipe_update → 拒绝(需配方级授权)', lgRevoke.status === 200 && invErr(updAfterRevoke) && /配方级授权|版本操作|配方管理权/.test(invText(updAfterRevoke)), `status=${lgRevoke.status} ${invText(updAfterRevoke).slice(0, 260)}`)
 }
 catch (err) {
   ok('FATAL', 'E2E 未捕获异常', false, err instanceof Error ? `${err.message}\n${err.stack ?? ''}` : String(err))

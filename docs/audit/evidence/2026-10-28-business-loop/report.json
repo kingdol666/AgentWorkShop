@@ -1,0 +1,225 @@
+{
+  "at": "2026-10-28T13:11:45.878Z",
+  "env": {
+    "base": "http://127.0.0.1:3412",
+    "home": "D:/tmp/aw-bizloop-20261028",
+    "model": {
+      "provider": "lm-studio",
+      "model": "qwen3.5-9b-32k",
+      "contextTokens": 32768
+    },
+    "harness": "omp",
+    "devices": "mock(daq+dcw)",
+    "instance": "③-business-loop"
+  },
+  "scenario": {
+    "line": "ln-62af3e80",
+    "daq": "dn-a6faa3ca",
+    "dw": "dw-2148e65a",
+    "recipe": "rc-8fa0db2d",
+    "channel": "7e373ff9-b313-42a0-b4ac-4f7d60ab57b8",
+    "agent": "9014bd72-bbf1-47fe-98b0-03ad3d4d19bd",
+    "bindings": {
+      "dcw": "nb-2937f32e",
+      "grant": "nb-2b12bc35"
+    }
+  },
+  "tasks": {
+    "loop": {
+      "id": "35b446b4-00c3-4fb0-8144-b9bb569d0a27",
+      "state": "CANCELED",
+      "cancelledByOperator": true,
+      "deliverable": "",
+      "toolCalls": [
+        "🔧 my_industrial_nodes",
+        "🔧 line_context(line_id=ln-62af3e80)",
+        "🔧 my_industrial_nodes",
+        "🔧 line_context(line_id=ln-62af3e80)",
+        "🔧 my_industrial_nodes ✅ 完成: ### ⚙ 频道执行模式:manual(手动)—— 本频道所有下发/配方/回退动作都会挂起等人工批准:下发前必须说明依据(数采/MES 证据),审批卡会向人类展示你的理由 #### ◆ 温度设定 [id=dw-2148e65a] - 物理量: 烘箱温度设定,单位 C,精度 2 位小数 - 工艺语义: 温度设定;调参步幅 ≤4C,目标落配方窗",
+        "🔧 line_context ✅ 完成: 你控制的产线全景(1 条): ■ 产线 业务闭环线(ln-62af3e80) · 状态:运行中 场景说明: 抓取→决策→下发→复测 真实作业链验收 活动批次 rr-30f34 · 产品「业务闭环产品」(pd-b3b1021a) · 开跑 21:11:50 · 已打标 33 样本 我绑定的节点:数控 [温度设定];数采 [无] 配方「业务闭环配方」(rc-",
+        "🔧 my_industrial_nodes ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"### ⚙ 频道执行模式:manual(手动)—— 本频道所有下发/配方/回退动作都会挂起等人工批准:下发前必须说明依据(数采/MES 证据),审批卡会向人类展示你的理由\\n\\n#### ◆ 温度设定 [id=dw-2148e65a]\\n- 物理量: 烘箱温度设定,单位 ",
+        "🔧 line_context ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"你控制的产线全景(1 条):\\n\\n■ 产线 业务闭环线(ln-62af3e80) · 状态:运行中\\n 场景说明: 抓取→决策→下发→复测 真实作业链验收\\n 活动批次 rr-30f34 · 产品「业务闭环产品」(pd-b3b1021a) · 开跑 21:11:50 · 已打标 33",
+        "🔧 daq_query(node_id=dn-a6faa3ca, line_id=ln-62af3e80)",
+        "🔧 daq_query(node_id=dn-a6faa3ca, line_id=ln-62af3e80)",
+        "🔧 daq_query ❌ 失败: to_ms 必须是正的 epoch 毫秒(收到 0)。",
+        "🔧 daq_query ❌ 失败: {\"content\":[{\"type\":\"text\",\"text\":\"to_ms 必须是正的 epoch 毫秒(收到 0)。\"}],\"details\":{},\"isError\":true}",
+        "🔧 daq_query(agg=avg, bucket_ms=15000)",
+        "🔧 daq_query(agg=avg, bucket_ms=15000)",
+        "🔧 daq_query ❌ 失败: to_ms 必须是正的 epoch 毫秒(收到 0)。",
+        "🔧 daq_query ❌ 失败: {\"content\":[{\"type\":\"text\",\"text\":\"to_ms 必须是正的 epoch 毫秒(收到 0)。\"}],\"details\":{},\"isError\":true}",
+        "🔧 daq_query(agg=avg, bucket_ms=15000)",
+        "🔧 daq_query(agg=avg, bucket_ms=15000)",
+        "🔧 daq_query ✅ 完成: 数采数据查询结果(1 个节点): ■ 腔体温度(熔体/箱体温度)单位 ℃,正常量程 0~100℃,当前状态 alarm,时间窗 2026-10-28T20:42 ~ 2026-10-28T21:12(降采样 15000ms,聚合 avg) 当前活动批次 run=rr-30f34674 配方「业务闭环配方」(rc-8fa0db2d)(可直接把 run_id/re",
+        "🔧 daq_query ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"数采数据查询结果(1 个节点):\\n\\n■ 腔体温度(熔体/箱体温度)单位 ℃,正常量程 0~100℃,当前状态 alarm,时间窗 2026-10-28T20:42 ~ 2026-10-28T21:12(降采样 15000ms,聚合 avg)\\n 当前活动批次 run=rr-30f3467",
+        "🔧 report_progress(progress=30, message=Observed chamber 107℃ over window; deciding…)",
+        "🔧 recipe_trial(recipe_id=, line_id=ln-62af3e80)",
+        "🔧 report_progress(progress=30, message=Observed chamber 107℃ over window; deciding…)",
+        "🔧 recipe_trial(recipe_id=, line_id=ln-62af3e80)",
+        "🔧 report_progress ❌ 失败: 无当前任务上下文",
+        "🔧 report_progress ❌ 失败: {\"content\":[{\"type\":\"text\",\"text\":\"无当前任务上下文\"}],\"details\":{},\"isError\":true}",
+        "🔧 recipe_trial ✅ 完成: 试验已整批下发并全部设备证实(1/1,批次 rr-21228):温度设定→56C [证实✓]。假设:腔体温度实测 107℃(daq_query 21:12:45 样本),远超配方监控窗口[50,70]与设定 60℃,判读为真实过程过热(非设定-响应滞后:设定仅 60 而实测 107)。为驱动腔体温度回落至窗口内,下调温度设定 60→56℃(步幅 4℃,在",
+        "🔧 recipe_trial ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"试验已整批下发并全部设备证实(1/1,批次 rr-21228):温度设定→56C [证实✓]。假设:腔体温度实测 107℃(daq_query 21:12:45 样本),远超配方监控窗口[50,70]与设定 60℃,判读为真实过程过热(非设定-响应滞后:设定仅 60 而实测 107)。",
+        "🔧 daq_query(agg=avg, bucket_ms=15000)",
+        "🔧 daq_query(agg=avg, bucket_ms=15000)",
+        "🔧 daq_query ✅ 完成: 数采数据查询结果(1 个节点): ■ 腔体温度(熔体/箱体温度)单位 ℃,正常量程 0~100℃,当前状态 alarm,时间窗 2026-10-28T21:03 ~ 2026-10-28T21:13(降采样 15000ms,聚合 avg) 当前活动批次 run=rr-30f34674 配方「业务闭环配方」(rc-8fa0db2d)(可直接把 run_id/re",
+        "🔧 daq_query ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"数采数据查询结果(1 个节点):\\n\\n■ 腔体温度(熔体/箱体温度)单位 ℃,正常量程 0~100℃,当前状态 alarm,时间窗 2026-10-28T21:03 ~ 2026-10-28T21:13(降采样 15000ms,聚合 avg)\\n 当前活动批次 run=rr-30f3467"
+      ],
+      "journal": [
+        {
+          "lineId": "ln-62af3e80",
+          "nodeId": "dw-2148e65a",
+          "prevValue": 60,
+          "newValue": 56,
+          "source": "recipe",
+          "actor": "recipe",
+          "recipeRunId": "rr-21228230",
+          "id": "anc-868f7777",
+          "at": "2026-10-28T21:13:21.706+08:00"
+        }
+      ],
+      "hitl": [
+        {
+          "id": "ap-628f38ba",
+          "status": "pending"
+        }
+      ]
+    },
+    "manage": {
+      "id": "a24f7261-3abf-47cc-8f3a-70f6ecc8ce7a",
+      "id2": "562e1f89-f391-46f7-91f0-1415dcdeccc7",
+      "recipe": "rc-2e559dbd",
+      "versions": [
+        {
+          "version": 1,
+          "values": [
+            60
+          ]
+        },
+        {
+          "version": 2,
+          "values": [
+            62
+          ]
+        },
+        {
+          "version": 3,
+          "values": [
+            60
+          ]
+        }
+      ],
+      "deliverable": "验收-业务闭环-配方创建:完成。\n\n操作:recipe_create 以当前活动批次(rr-30f34,活动配方 rc-8fa0db2d,温度设定 60C/窗口 50~70)为源,另存为新配方。\n\n结果:\n- 新配方「业务闭环配方-验收新建」(id=rc-2e559dbd,v1)\n- 归属产品:业务闭环产品(pd-b3b1021a)\n- 参数 1 项:温度设定 60C(窗口 50~70)\n- 产线未发生变化(仅创建定义,未下发)\n\n判定:配方创建链路验收通过 —— recipe_create 正确生成新配方定义并冻结源配方参数。\n\n注意项:新配方尚未绑定给本 Agent;后续需用户/lead 在配方管理中绑定「业务闭环配方-验收新建」后才能 recipe_update/recipe_apply。此项超出本验收任务范围,不自行操作。",
+      "deliverable2": "验收-业务闭环-修改并回退:完成。\n\n操作(两步链路):\n1. 修改:recipe_update(rc-2e559dbd,温度设定 60→62℃,窗口 50~70)→ 生成 v2。\n2. 回退:recipe_rollback(rc-2e559dbd,version=1)→ 生成 v3,参数恢复目标版本 v1(温度设定 60℃)。\n\n结果:\n- 配方「业务闭环配方-验收新建」(rc-2e559dbd)v2:温度设定 62℃(修改成功)\n- v3:温度设定 60℃(回退到 v1 成功)\n\n判定:修改并回退链路验收通过 —— recipe_update 正确生成新版本、recipe_rollback 正确回退到指定历史版本。\n\n注意项:本次仅改动配方定义,运行中 PLC 未变动(recipe_update/recipe_rollback 均不触发下发);将参数推到运行中产线需 recipe_apply,统一回退需 recipe_rollback(dispatch=true)。本验收任务范围仅验证「修改并回退」两操作链路,不额外下发。",
+      "toolCalls": [
+        "🔧 line_context(line_id=ln-62af3e80)",
+        "🔧 line_context(line_id=ln-62af3e80)",
+        "🔧 line_context ✅ 完成: 你控制的产线全景(1 条): ■ 产线 业务闭环线(ln-62af3e80) · 状态:运行中 场景说明: 抓取→决策→下发→复测 真实作业链验收 活动批次 rr-30f34 · 产品「业务闭环产品」(pd-b3b1021a) · 开跑 21:11:50 · 已打标 211 样本 我绑定的节点:数控 [温度设定];数采 [无] 配方「业务闭环配方」(rc",
+        "🔧 line_context ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"你控制的产线全景(1 条):\\n\\n■ 产线 业务闭环线(ln-62af3e80) · 状态:运行中\\n 场景说明: 抓取→决策→下发→复测 真实作业链验收\\n 活动批次 rr-30f34 · 产品「业务闭环产品」(pd-b3b1021a) · 开跑 21:11:50 · 已打标 21",
+        "🔧 recipe_create(业务闭环配方-验收新建)",
+        "🔧 recipe_create(业务闭环配方-验收新建)",
+        "🔧 recipe_create ✅ 完成: 已创建配方「业务闭环配方-验收新建」(id=rc-2e559dbd,v1,产品 业务闭环产品,参数 1 项)。 人工附言:验收:批准配方管理操作 注意:新配方尚未绑定给你 —— 请让用户/lead 在配方管理中把「业务闭环配方-验收新建」绑定给你的 Agent(首绑 manual,需人工批准),之后才能 recipe_update/recipe_app",
+        "🔧 recipe_create ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"已创建配方「业务闭环配方-验收新建」(id=rc-2e559dbd,v1,产品 业务闭环产品,参数 1 项)。\\n人工附言:验收:批准配方管理操作\\n注意:新配方尚未绑定给你 —— 请让用户/lead 在配方管理中把「业务闭环配方-验收新建」绑定给你的 Agent(首绑 manual",
+        "🔧 complete_task(a24f7261-3abf-47cc-8f3a-70f6ecc8ce7a)"
+      ],
+      "toolCalls2": [
+        "🔧 line_context(line_id=ln-62af3e80)",
+        "🔧 my_industrial_nodes",
+        "🔧 line_context(line_id=ln-62af3e80)",
+        "🔧 my_industrial_nodes",
+        "🔧 line_context ✅ 完成: 你控制的产线全景(1 条): ■ 产线 业务闭环线(ln-62af3e80) · 状态:运行中 场景说明: 抓取→决策→下发→复测 真实作业链验收 活动批次 rr-3bfcc · 产品「业务闭环产品」(pd-b3b1021a) · 开跑 21:15:57 · 已打标 121 样本 我绑定的节点:数控 [温度设定];数采 [无] 配方「业务闭环配方-验收新",
+        "🔧 my_industrial_nodes ✅ 完成: ### ⚙ 频道执行模式:manual(手动)—— 本频道所有下发/配方/回退动作都会挂起等人工批准:下发前必须说明依据(数采/MES 证据),审批卡会向人类展示你的理由 #### ◆ 温度设定 [id=dw-2148e65a] - 物理量: 烘箱温度设定,单位 C,精度 2 位小数 - 工艺语义: 温度设定;调参步幅 ≤4C,目标落配方窗",
+        "🔧 line_context ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"你控制的产线全景(1 条):\\n\\n■ 产线 业务闭环线(ln-62af3e80) · 状态:运行中\\n 场景说明: 抓取→决策→下发→复测 真实作业链验收\\n 活动批次 rr-3bfcc · 产品「业务闭环产品」(pd-b3b1021a) · 开跑 21:15:57 · 已打标 12",
+        "🔧 my_industrial_nodes ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"### ⚙ 频道执行模式:manual(手动)—— 本频道所有下发/配方/回退动作都会挂起等人工批准:下发前必须说明依据(数采/MES 证据),审批卡会向人类展示你的理由\\n\\n#### ◆ 温度设定 [id=dw-2148e65a]\\n- 物理量: 烘箱温度设定,单位 ",
+        "🔧 recipe_update(562e1f89-f391-46f7-91f0-1415dcdeccc7)",
+        "🔧 recipe_update(562e1f89-f391-46f7-91f0-1415dcdeccc7)",
+        "🔧 recipe_update ✅ 完成: 已保存为 v2:「业务闭环配方-验收新建」参数 温度设定 60→62;原因:验收-业务闭环-修改并回退:验证 recipe_update 修改链路。将温度设定 60→62℃(步幅 2℃,在单步上限 ≤4C 与配方窗口[50,70]内),生成新版本。。 人工附言:验收:批准配方管理操作 注意:配方定义已更新,运行中批次仍按开跑时冻结的参数生产;要把新参数",
+        "🔧 recipe_update ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"已保存为 v2:「业务闭环配方-验收新建」参数 温度设定 60→62;原因:验收-业务闭环-修改并回退:验证 recipe_update 修改链路。将温度设定 60→62℃(步幅 2℃,在单步上限 ≤4C 与配方窗口[50,70]内),生成新版本。。\\n人工附言:验收:批准配方管理操",
+        "🔧 recipe_rollback(recipe_id=rc-2e559dbd, version=1)",
+        "🔧 recipe_rollback(recipe_id=rc-2e559dbd, version=1)",
+        "🔧 recipe_rollback ✅ 完成: 回退完成:配方「业务闭环配方-验收新建」已生成 v3,参数恢复为目标版本(v1);原因:验收-业务闭环-修改并回退:验证 recipe_rollback 回退链路。将配方从 v2(温度设定 62℃)回退到 v1(温度设定 60℃)。。 人工附言:验收:批准配方管理操作 注意:仅回退了配方定义,运行中 PLC 未变动;要把恢复参数写入产线(统一回退)",
+        "🔧 recipe_rollback ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"回退完成:配方「业务闭环配方-验收新建」已生成 v3,参数恢复为目标版本(v1);原因:验收-业务闭环-修改并回退:验证 recipe_rollback 回退链路。将配方从 v2(温度设定 62℃)回退到 v1(温度设定 60℃)。。\\n人工附言:验收:批准配方管理操作\\n注意:",
+        "🔧 complete_task(562e1f89-f391-46f7-91f0-1415dcdeccc7)"
+      ]
+    }
+  },
+  "assertions": [
+    {
+      "id": "B0",
+      "name": "生产构建隔离实例③就绪",
+      "pass": true,
+      "detail": "port=3412 version=0.8.6"
+    },
+    {
+      "id": "B0b",
+      "name": "admin 注册",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "B1",
+      "name": "场景就绪:开跑+开采+总闸 auto",
+      "pass": true,
+      "detail": "{\"line\":\"ln-62af3e80\",\"daq\":\"dn-a6faa3ca\",\"dw\":\"dw-2148e65a\",\"recipe\":\"rc-8fa0db2d\",\"start\":200}"
+    },
+    {
+      "id": "B2",
+      "name": "频道(manual/HITL)+ omp lead + 点位/管理权双绑定 + 工具面",
+      "pass": true,
+      "detail": "{\"channelId\":\"7e373ff9-b313-42a0-b4ac-4f7d60ab57b8\",\"lead\":\"9014bd72-bbf1-47fe-98b0-03ad3d4d19bd\",\"tools\":200,\"dcw\":\"dcw\",\"grant\":\"line-recipe\"}"
+    },
+    {
+      "id": "C2",
+      "name": "控制链:HITL 批准 + 落账 60→56 + 设备回读一致",
+      "pass": true,
+      "detail": "journal={\"lineId\":\"ln-62af3e80\",\"nodeId\":\"dw-2148e65a\",\"prevValue\":60,\"newValue\":56,\"source\":\"recipe\",\"actor\":\"recipe\",\"recipeRunId\":\"rr-21228230\",\"id\":\"anc-868f7777\",\"at\":\"2026-10-28T21:13:21.706+08:00\"} device=56 card=approved"
+    },
+    {
+      "id": "C3",
+      "name": "抓取环节真实发生(交付物引用采样数据,或工具轨迹含 daq_query)",
+      "pass": true,
+      "detail": "cancelled; toolCalls=🔧 my_industrial_nodes | 🔧 line_context(line_id=ln-62af3e80) | 🔧 my_industrial_nodes | 🔧 line_context(line_id=ln-62af3e80) | 🔧 my_industrial_nodes ✅ 完成: ### ⚙ 频道执行模式:manual(手动)—— 本频道所有下发/配方/回退动作都会挂起等人工批准:下发前必须说明依据(数采/MES 证据),审批卡会向人类展示你的理由 #### ◆ 温度设定 [id=dw-2148e65a] - 物理量: 烘箱温度设定,单位 C,精度 2 位小数 - 工艺语义: 温度设定;调参步幅 ≤4C,目标落配方窗 | 🔧 line_context ✅ 完成: 你控制的产线全景(1 条): ■ 产线 业务闭环线(ln-62af3e80) · 状态:运行中 场景说明: 抓取→决策→下发→复测 真实作业链验收 活动批次 rr-30f34 · 产品「业务闭环产品」(pd-b3b1021a) · 开跑 21:11:50 · 已打标 33 样本 我绑定的节点:数控 [温度设定];数采 [无] 配方「业务闭环配方」(rc-"
+    },
+    {
+      "id": "C1",
+      "name": "任务1 状态收口(COMPLETED 或平台取消收敛)",
+      "pass": true,
+      "detail": "state=CANCELED cancelled=true elapsed=97s"
+    },
+    {
+      "id": "C4a",
+      "name": "真实 Agent 凭管理权新建配方(无单配方绑定)",
+      "pass": true,
+      "detail": "state=COMPLETED recipe=rc-2e559dbd deliv=验收-业务闭环-配方创建:完成。\n\n操作:recipe_create 以当前活动批次(rr-30f34,活动配方 rc-8fa0db2d,温度设定 60C/窗口 50~70)为源,另存为新配方。\n\n结果:\n- 新配方「业务闭环配方-验收新建」(id=rc-2e559dbd,v1)\n- 归属产品:业务闭环产品(pd-b3b1021a)\n- 参数 1 项:温度设定 60C(窗口 50~70)\n- 产线未发生变化(仅创建定义,未下发)\n\n判定"
+    },
+    {
+      "id": "C4b",
+      "name": "新配方开跑接管 DCW(=v1 定义值)",
+      "pass": true,
+      "detail": "stop=200 start=200 device=60 v1A=60"
+    },
+    {
+      "id": "C4c",
+      "name": "修改+回退版本轨迹(v2≠v1 → v3=v1)",
+      "pass": true,
+      "detail": "versions=1:60,2:62,3:60"
+    },
+    {
+      "id": "C1b",
+      "name": "任务2 状态收口",
+      "pass": true,
+      "detail": "t2=COMPLETED t2b=COMPLETED"
+    },
+    {
+      "id": "C5",
+      "name": "收回管理权后版本操作被拒(需配方级授权)",
+      "pass": true,
+      "detail": "无权参数写入配方「业务闭环配方-验收新建」(rc-2e559dbd):节点绑定(dcw)只授予参数下发/试验权(点位授权),配方版本操作(参数保存/回退)需要配方级授权 —— 绑定该配方(kind='recipe')或持有其产线的配方管理权(kind='line-recipe')。请让用户或 lead 为你授权(recipe 绑定首绑默认 manual,每次动作需人工批准)。"
+    }
+  ],
+  "summary": {
+    "total": 12,
+    "passed": 12,
+    "failed": 0,
+    "verdict": "PASS"
+  }
+}

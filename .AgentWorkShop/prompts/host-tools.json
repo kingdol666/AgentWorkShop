@@ -1252,7 +1252,7 @@
   {
     "name": "recipe_update",
     "label": "Recipe Update",
-    "description": "把验证过的最佳参数保存进指定配方(生成新版本,带归因与理由)。可直接保存到当前在跑的配方:只传 line_id 时解析活动批次配方;也可显式 recipe_id。权限模型(双轨):版本操作只认配方绑定(kind='recipe',可绑定多个配方)—— 数控节点绑定(dcw)是点位写授权,不授予版本操作权;且通过二级认证;配方必须正在执行(运行门,未运行拒绝);绑定 manual 或产线 manual 时本次保存挂 HITL 等人工批准——reason 必填且要给出判断依据(数采证据/分析结论),审批卡会向人类展示。只改配方定义,要把参数推到运行中的产线用 recipe_apply。",
+    "description": "把验证过的最佳参数保存进指定配方(生成新版本,带归因与理由)。可直接保存到当前在跑的配方:只传 line_id 时解析活动批次配方;也可显式 recipe_id。权限模型(三轨):版本操作需要配方级授权 —— 绑定该配方(kind='recipe')或持有其产线配方管理权(kind='line-recipe',对该线全部配方有效);数控节点绑定(dcw)是点位写授权,不授予版本操作权;且通过二级认证;配方必须正在执行(运行门,未运行拒绝);绑定 manual 或产线 manual 时本次保存挂 HITL 等人工批准——reason 必填且要给出判断依据(数采证据/分析结论),审批卡会向人类展示。只改配方定义,要把参数推到运行中的产线用 recipe_apply。",
     "parameters": {
       "type": "object",
       "properties": {
@@ -1338,7 +1338,7 @@
   {
     "name": "recipe_rollback",
     "label": "Recipe Rollback",
-    "description": "回退配方参数到稳定版本(指定历史版本或已知良好批次),生成新版本(非破坏);dispatch=true 时统一回退(定义回退+参数整批重下发)。权限模型:须已绑定该 recipe 且过二级认证与运行门;绑定 manual 时挂 HITL——reason 必填说明回退原因(如优化劣化/越限)。",
+    "description": "回退配方参数到稳定版本(指定历史版本或已知良好批次),生成新版本(非破坏);dispatch=true 时统一回退(定义回退+参数整批重下发)。权限模型:须持有该配方绑定(kind='recipe')或其产线的配方管理权(kind='line-recipe'),且过二级认证与运行门;绑定 manual 时挂 HITL——reason 必填说明回退原因(如优化劣化/越限)。",
     "parameters": {
       "type": "object",
       "properties": {
@@ -2800,7 +2800,7 @@
   {
     "name": "recipe_trial",
     "label": "Recipe Trial",
-    "description": "多参数候选整批试验下发(不写配方版本)。可直接对当前在跑的配方试验:只传 line_id 时解析活动批次配方;也可显式 recipe_id。权限模型(双轨):绑定该 recipe(kind='recipe')可整批试验;或本次候选覆盖的节点全部在你的数控节点绑定面内(kind='dcw' 节点绑定=点位写授权,换配方仍有效,部分覆盖即拒并列出缺失节点)。均须过二级认证与运行门;候选只能覆盖配方内参数节点;绑定 manual 或产线 manual 时挂 HITL 等人工批准——hypothesis 必填,即本次试验的理由与判断依据。整批一次落产线;复测判读后有进步用 recipe_update 固化,劣化用 recipe_rollback(dispatch=true) 统一回退。受同线试验节拍(默认 ≥5 分钟)与四层限界卡控。",
+    "description": "多参数候选整批试验下发(不写配方版本)。可直接对当前在跑的配方试验:只传 line_id 时解析活动批次配方;也可显式 recipe_id。权限模型(三轨):绑定该 recipe(kind='recipe')或持有其产线配方管理权(kind='line-recipe')可整批;或本次候选覆盖的节点全部在你的数控节点绑定面内(kind='dcw' 点位写授权,换配方仍有效)。注意:绑定了数控节点的 Agent,下发范围收窄到这些点位(部分覆盖即拒并列出缺失节点);未绑定任何数控节点时,持配方级授权即默认对配方全部参数放行(向下兼容)。均须过二级认证与运行门;候选只能覆盖配方内参数节点;绑定 manual 或产线 manual 时挂 HITL 等人工批准——hypothesis 必填,即本次试验的理由与判断依据。整批一次落产线;复测判读后有进步用 recipe_update 固化,劣化用 recipe_rollback(dispatch=true) 统一回退。受同线试验节拍(默认 ≥5 分钟)与四层限界卡控。",
     "parameters": {
       "type": "object",
       "properties": {
@@ -2882,7 +2882,7 @@
   {
     "name": "recipe_apply",
     "label": "Recipe Apply",
-    "description": "把配方当前已固化参数整批下发到运行中的产线(改配方 recipe_update 之后用)。可直接对当前在跑的配方下发:只传 line_id,工具会解析该产线活动批次的 recipe_id;也可显式传 recipe_id。权限模型(双轨):绑定该 recipe(kind='recipe')可整批下发;或配方全部参数节点都在你的数控节点绑定面内(kind='dcw' 点位写授权)。均须过二级认证与运行门(配方须在执行);绑定 manual 或产线 manual 时挂 HITL 等人工批准——reason 必填,说明为什么要下发、依据是什么。批准后整批经治理联锁(量程/步长/限速)下发,逐参数回执;拒绝可附指导,按指导修订后重提。",
+    "description": "把配方当前已固化参数整批下发到运行中的产线(改配方 recipe_update 之后用)。可直接对当前在跑的配方下发:只传 line_id,工具会解析该产线活动批次的 recipe_id;也可显式传 recipe_id。权限模型(三轨):绑定该 recipe(kind='recipe')或持有其产线配方管理权(kind='line-recipe')可整批下发;或配方全部参数节点都在你的数控节点绑定面内(kind='dcw' 点位写授权)。绑定了数控节点的 Agent,下发范围收窄到这些点位;未绑定任何数控节点时,持配方级授权即默认全参数放行(向下兼容)。均须过二级认证与运行门(配方须在执行);绑定 manual 或产线 manual 时挂 HITL 等人工批准——reason 必填,说明为什么要下发、依据是什么。批准后整批经治理联锁(量程/步长/限速)下发,逐参数回执;拒绝可附指导,按指导修订后重提。",
     "parameters": {
       "type": "object",
       "properties": {
@@ -3399,7 +3399,7 @@
   {
     "name": "recipe_create",
     "label": "Recipe Create",
-    "description": "把当前配方或批次冻结参数另存为新配方(仅创建定义,不触发产线)。典型:把优化后当前有效配方+实测参数固化为新产品/新工艺基线;参数来源优先级=显式 params > from_run_id 的批次冻结快照 > source_recipe_id 的配方定义。权限:需在该产线已有写向绑定(数控节点或配方);manual 线/绑定必须人工批准(reason 必填,审批卡展示参数与来源)。新建后不会自动绑定给 Agent——返回文案会提示让用户/lead 在配方管理中绑定后才能 update/apply。",
+    "description": "把当前配方或批次冻结参数另存为新配方(仅创建定义,不触发产线)。典型:把优化后当前有效配方+实测参数固化为新产品/新工艺基线;参数来源优先级=显式 params > from_run_id 的批次冻结快照 > source_recipe_id 的配方定义。权限:需在该产线已有授权锚(数控节点绑定、配方绑定或产线配方管理权 kind='line-recipe',管理权可对该线任意新建);manual 线/绑定必须人工批准(reason 必填,审批卡展示参数与来源)。新建后不会自动绑定给 Agent——返回文案会提示让用户/lead 在配方管理中绑定后才能 update/apply。",
     "parameters": {
       "type": "object",
       "properties": {

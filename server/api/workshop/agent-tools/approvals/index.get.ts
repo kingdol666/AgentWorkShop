@@ -39,5 +39,7 @@ export default defineApiHandler(async (event) => {
   }
 
   const all = scope === 'history' ? getToolApprovals().historyList() : getToolApprovals().listPending(agentId)
-  return { approvals: all.filter(a => visible(a.agentId, a.id)) }
+  // agentId 过滤对两个 scope 一致生效(pending 走 listPending(agentId);history 此前漏过滤,
+  // 面板/脚本按 Agent 查历史会看到其他 Agent 的审批 —— 2026-10-28 修复)
+  return { approvals: all.filter(a => visible(a.agentId, a.id) && (!agentId || a.agentId === agentId)) }
 })

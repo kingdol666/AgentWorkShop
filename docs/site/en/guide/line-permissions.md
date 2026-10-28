@@ -38,11 +38,14 @@ admin-only):
   Permission Management");
 - Agent ↔ node binding: DAQ binding requires read-only or above, DCW binding requires
   operate;
-- Agent write authorization is two-track: a `kind='dcw'` node binding is a **point-level
-  write grant** (trial/apply on the active recipe, with coverage ⊆ the bound node face;
-  it survives recipe switches), while a `kind='recipe'` binding is a **recipe-level
-  operation right** (including version writes/rollback). The two are unioned; node
-  bindings never grant recipe version operations and direct-write tools stay rejected;
+- Agent write authorization is three-track: a `kind='dcw'` node binding is a **point-level
+  write grant** (trial/apply on the active recipe; with DCW bindings, dispatch narrows to
+  those points — with no DCW bindings at all, a recipe-level grant allows all recipe
+  params by default); a `kind='recipe'` binding is a **single-recipe operation right**
+  (including version writes/rollback); a `kind='line-recipe'` grant is **line-level
+  recipe management** — view/create/update/rollback every recipe on that line, including
+  ones created later (nodeId holds the line id; granting requires operate; first bind is
+  manual). Direct-write tools stay rejected;
 - **Changing the control mode removes a gate — explicit confirmation required**: a
   binding's `mode` decides whether every write needs human approval. `manual→auto` and
   "delegate with auto" (`team_grant_nodes` / `dispatch_task.grant_node_ids`) must carry

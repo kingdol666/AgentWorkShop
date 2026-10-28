@@ -19,7 +19,8 @@ function membersOf(ws: MembersView): Promise<DelegationMember[]> {
 }
 
 function summaryText(bindings: Array<{ nodeId: string, kind: string, mode: string }>): string {
-  const lines = bindings.map(b => `  - ${b.kind === 'daq' ? '数采' : '写控'} ${b.nodeId}(mode=${b.mode})`)
+  const kindLabel: Record<string, string> = { 'daq': '数采', 'dcw': '写控', 'line-recipe': '产线配方管理' }
+  const lines = bindings.map(b => `  - ${kindLabel[b.kind] ?? b.kind} ${b.nodeId}(mode=${b.mode})`)
   return `\n${lines.join('\n')}`
 }
 

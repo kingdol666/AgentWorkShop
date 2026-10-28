@@ -580,7 +580,7 @@ curl http://localhost:3000/api/workshop/channels \
 - `admin` / `editor` 为运营角色，不受授权约束（全量全权）。
 - 普通用户**默认无权**——未授权前看不到任何产线数据。
 - 强制点在数据面：列表接口按授权过滤，写控/下发接口返回人类可读的 403，Agent↔节点绑定校验产线授权（数采需仅查看+，写控需可操控）。
-- Agent 写授权双轨：`kind='dcw'` 节点绑定 = 点位写授权（trial/apply 的覆盖集须 ⊆ 绑定节点面，跟设备走、换配方不停摆）；`kind='recipe'` 配方绑定 = 配方操作权（含版本写入/回退）。两种绑定取并集；节点绑定不授予配方版本权，直写工具仍恒拒，全部写入仍经四层限界/运行门/HITL/逐参数 ACK。
+- Agent 写授权三轨：`kind='dcw'` 节点绑定 = 点位写授权兼**下发收窄器**（绑了 dcw，下发只能覆盖这些点位，换配方不停摆；一个都没绑时，持配方级授权默认可对配方全部参数下发，向下兼容）；`kind='recipe'` 配方绑定 = 单配方操作权（含版本写入/回退与下发）；`kind='line-recipe'` 产线配方管理权 = 对该线**全部配方**（含未来新建）可 查看/新建/修改/回退。直写工具恒拒，全部写入仍经四层限界/运行门/HITL/逐参数 ACK。
 - 插件经 `ctx.permissions`（`lineMode` / `visibleLineIds` / `listGrants` / `setGrants`）获得同一能力面，并有 `permissions:changed` 生命周期钩子；SDK REST 客户端提供 `client.permissions.overview()` / `client.permissions.set(...)`。
 
 ### 执行模式

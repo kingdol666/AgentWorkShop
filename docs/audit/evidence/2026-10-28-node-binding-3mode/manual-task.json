@@ -1,38 +1,34 @@
 {
-  "id": "043aad25-02cd-4d1d-b2e5-ba99eeefb0c1",
+  "id": "c2a5305b-753b-48de-97db-49e44fce90f9",
   "state": "CANCELED",
   "cancelledByOperator": true,
-  "elapsedSec": 112,
+  "elapsedSec": 175,
   "deliverable": "",
   "toolCalls": [
     "🔧 my_industrial_nodes",
     "🔧 my_industrial_nodes",
-    "🔧 my_industrial_nodes ✅ 完成: ### ⚙ 频道执行模式:manual(手动)—— 本频道所有下发/配方/回退动作都会挂起等人工批准:下发前必须说明依据(数采/MES 证据),审批卡会向人类展示你的理由 #### ◆ 温度设定A(写入线) [id=dw-4dceface] - 物理量: 烘箱温度设定,单位 C,精度 2 位小数 - 工艺语义: 手动频道 Agent 的点位",
-    "🔧 my_industrial_nodes ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"### ⚙ 频道执行模式:manual(手动)—— 本频道所有下发/配方/回退动作都会挂起等人工批准:下发前必须说明依据(数采/MES 证据),审批卡会向人类展示你的理由\\n\\n#### ◆ 温度设定A(写入线) [id=dw-4dceface]\\n- 物理量: 烘箱温度",
-    "🔧 report_progress(progress=30, message=读取节点语义卡完成:绑定点位 温度设定A(写入线) dw-4dceface,当前 60…)",
-    "🔧 recipe_trial(line_id=ln-3899893b, hypothesis=手动模式点位试验验收:产线「验收-写入线」运行中(批次 rr-c…)",
-    "🔧 report_progress(progress=30, message=读取节点语义卡完成:绑定点位 温度设定A(写入线) dw-4dceface,当前 60…)",
-    "🔧 recipe_trial(line_id=ln-3899893b, hypothesis=手动模式点位试验验收:产线「验收-写入线」运行中(批次 rr-c…)",
-    "🔧 report_progress ❌ 失败: 无当前任务上下文",
-    "🔧 report_progress ❌ 失败: {\"content\":[{\"type\":\"text\",\"text\":\"无当前任务上下文\"}],\"details\":{},\"isError\":true}",
-    "🔧 recipe_trial ✅ 完成: 试验已整批下发并全部设备证实(1/1,批次 rr-693d7):温度设定A(写入线)→62C [证实✓]。假设:手动模式点位试验验收:产线「验收-写入线」运行中(批次 rr-c46fc,已运行 8 分钟,447 打标样本),活动配方「验收配方-写入线」温度设定A 目标 60C、工艺窗口 50~70C,数采监控窗口同为 50~70C。候选将温度设定A 由 ",
-    "🔧 recipe_trial ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"试验已整批下发并全部设备证实(1/1,批次 rr-693d7):温度设定A(写入线)→62C [证实✓]。假设:手动模式点位试验验收:产线「验收-写入线」运行中(批次 rr-c46fc,已运行 8 分钟,447 打标样本),活动配方「验收配方-写入线」温度设定A 目标 60C、工艺窗口"
+    "🔧 my_industrial_nodes ✅ 完成: ### ⚙ 频道执行模式:manual(手动)—— 本频道所有下发/配方/回退动作都会挂起等人工批准:下发前必须说明依据(数采/MES 证据),审批卡会向人类展示你的理由 #### ◆ 温度设定A(写入线) [id=dw-7e8f5a8e] - 物理量: 烘箱温度设定,单位 C,精度 2 位小数 - 工艺语义: 手动频道 Agent 的点位",
+    "🔧 my_industrial_nodes ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"### ⚙ 频道执行模式:manual(手动)—— 本频道所有下发/配方/回退动作都会挂起等人工批准:下发前必须说明依据(数采/MES 证据),审批卡会向人类展示你的理由\\n\\n#### ◆ 温度设定A(写入线) [id=dw-7e8f5a8e]\\n- 物理量: 烘箱温度",
+    "🔧 recipe_trial(line_id=ln-d13fa9be, hypothesis=验收依据(手动模式点位试验):产线「验收-写入线」运行中,批次 …)",
+    "🔧 recipe_trial(line_id=ln-d13fa9be, hypothesis=验收依据(手动模式点位试验):产线「验收-写入线」运行中,批次 …)",
+    "🔧 recipe_trial ✅ 完成: 试验已整批下发并全部设备证实(1/1,批次 rr-57f51):温度设定A(写入线)→62C [证实✓]。假设:验收依据(手动模式点位试验):产线「验收-写入线」运行中,批次 rr-6b78d,活动配方「验收配方-写入线」;绑定点位 温度设定A(dw-7e8f5a8e)当前设定 60C、精度 2 位小数、配方工艺窗口 50~70C、单步上限 ≤4C;本次",
+    "🔧 recipe_trial ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"试验已整批下发并全部设备证实(1/1,批次 rr-57f51):温度设定A(写入线)→62C [证实✓]。假设:验收依据(手动模式点位试验):产线「验收-写入线」运行中,批次 rr-6b78d,活动配方「验收配方-写入线」;绑定点位 温度设定A(dw-7e8f5a8e)当前设定 60C"
   ],
   "hitl": [
     {
-      "id": "ap-59e8521a",
+      "id": "ap-0ce373e3",
       "status": "pending",
-      "detail": "配方试验候选(整批 1 参数):温度设定A(写入线) 60→62C | 假设:手动模式点位试验验收:产线「验收-写入线」运行中(批次 rr-c46fc,已运行 8 分钟,447 打标样本),活动配方「验收配方-写入线」温度设定A 目标 60C、工艺窗口 50~70C,数采监控窗口同为 50~70C。候选将温度设定A 由 60C 上调至 62C(单步 +2C,≤4C 硬上限),目标值位于窗口内,用于验证写入链路的工程量下发与窗口联锁;仅操作本人绑定点位 dw-4dceface,不涉及温度设定B。 | 批准=整批下发试验(不写版本);拒绝可附指导",
+      "detail": "配方试验候选(整批 1 参数):温度设定A(写入线) 60→62C | 假设:验收依据(手动模式点位试验):产线「验收-写入线」运行中,批次 rr-6b78d,活动配方「验收配方-写入线」;绑定点位 温度设定A(dw-7e8f5a8e)当前设定 60C、精度 2 位小数、配方工艺窗口 50~70C、单步上限 ≤4C;本次候选 60C→62C(+2C)落在窗口与单步限内,用于验证手动模式 HITL 审批与点位写授权链路,不涉及配方版本固化。期望腔体温度在 [50,70]C 监控窗口内小幅响应。 | 批准=整批下发试验(不写版本);拒绝可附指导",
       "payload": {
         "schemaVersion": 1,
         "kind": "recipe-gate",
         "op": "trial",
-        "recipeId": "rc-fb3f9ce4",
+        "recipeId": "rc-448a79a3",
         "recipeName": "验收配方-写入线",
-        "reason": "手动模式点位试验验收:产线「验收-写入线」运行中(批次 rr-c46fc,已运行 8 分钟,447 打标样本),活动配方「验收配方-写入线」温度设定A 目标 60C、工艺窗口 50~70C,数采监控窗口同为 50~70C。候选将温度设定A 由 60C 上调至 62C(单步 +2C,≤4C 硬上限),目标值位于窗口内,用于验证写入链路的工程量下发与窗口联锁;仅操作本人绑定点位 dw-4dceface,不涉及温度设定B。",
+        "reason": "验收依据(手动模式点位试验):产线「验收-写入线」运行中,批次 rr-6b78d,活动配方「验收配方-写入线」;绑定点位 温度设定A(dw-7e8f5a8e)当前设定 60C、精度 2 位小数、配方工艺窗口 50~70C、单步上限 ≤4C;本次候选 60C→62C(+2C)落在窗口与单步限内,用于验证手动模式 HITL 审批与点位写授权链路,不涉及配方版本固化。期望腔体温度在 [50,70]C 监控窗口内小幅响应。",
         "params": [
           {
-            "nodeId": "dw-4dceface",
+            "nodeId": "dw-7e8f5a8e",
             "name": "温度设定A(写入线)",
             "from": 60,
             "to": 62,
@@ -40,35 +36,35 @@
           }
         ],
         "context": {
-          "lineId": "ln-3899893b",
-          "runId": "rr-c46fc4f7",
-          "recipeId": "rc-fb3f9ce4",
-          "productId": "pd-8893716a"
+          "lineId": "ln-d13fa9be",
+          "runId": "rr-6b78d945",
+          "recipeId": "rc-448a79a3",
+          "productId": "pd-36bf6e4a"
         },
-        "runId": "rr-c46fc4f7"
+        "runId": "rr-6b78d945"
       }
     }
   ],
   "hitlHistory": [
     {
-      "id": "ap-59e8521a",
+      "id": "ap-0ce373e3",
       "status": "approved",
       "comment": "验收:批准手动模式点位试验",
-      "decidedBy": "eb5304ce-69a8-4c25-95b3-a9d36d36e2ce"
+      "decidedBy": "5c981c39-c476-41a5-80b0-f906bbcb81a7"
     }
   ],
   "journal": [
     {
-      "lineId": "ln-3899893b",
-      "nodeId": "dw-4dceface",
+      "lineId": "ln-d13fa9be",
+      "nodeId": "dw-7e8f5a8e",
       "prevValue": 60,
       "newValue": 62,
       "source": "recipe",
       "actor": "recipe",
-      "recipeRunId": "rr-693d7240",
-      "id": "anc-89ae8228",
-      "at": "2026-10-28T15:44:36.752+08:00"
+      "recipeRunId": "rr-57f51017",
+      "id": "anc-2e360bb9",
+      "at": "2026-10-28T19:57:45.258+08:00"
     }
   ],
-  "approvals": "ap-59e8521a"
+  "approvals": "ap-0ce373e3"
 }

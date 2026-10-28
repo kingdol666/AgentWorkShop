@@ -29,6 +29,8 @@ export interface AgentToolResourceView {
   daqLineNodes: Array<{ id: string, name: string, unit: string }>
   /** Agent 显式绑定的数控节点(kind=dcw)= 点位写授权面(2026-10-28 双轨授权) */
   writeNodes: Array<{ id: string, name: string, unit: string }>
+  /** 产线配方管理权(kind=line-recipe):该 Agent 可管理全部配方的产线 */
+  managedLines: Array<{ id: string, name: string }>
   recipes: Array<{ id: string, name: string, version: number, params: Array<{ nodeId: string, name: string, unit: string }> }>
   mesNodes: Array<{ id: string, name: string, unit: string }>
 }
@@ -48,7 +50,7 @@ function channelLineOf(agentId: string): string {
 
 /** 读取 Agent 的绑定面(只读;异常降级为空,绝不影响工具注入) */
 export function agentToolResources(agentId: string): AgentToolResourceView {
-  const out: AgentToolResourceView = { daqNodes: [], daqLineNodes: [], writeNodes: [], recipes: [], mesNodes: [] }
+  const out: AgentToolResourceView = { daqNodes: [], daqLineNodes: [], writeNodes: [], managedLines: [], recipes: [], mesNodes: [] }
   if (!agentId) return out
   try {
     const bindings = getAgentNodeBindingRepo().byAgent(agentId)
@@ -69,6 +71,11 @@ export function agentToolResources(agentId: string): AgentToolResourceView {
         // 点位写授权面:让模型不必先探测就知道自己能对哪些节点 trial/apply
         const n = dcw.byId(b.nodeId)
         if (n) out.writeNodes.push({ id: n.id, name: n.name, unit: n.unit ?? '' })
+      }
+      else if (b.kind === 'line-recipe') {
+        // 产线配方管理权:该线全部配方(含未来新建)可 查看/新建/修改/回退
+        const line = dcw.listLines().find(l => l.id === b.nodeId)
+        if (line) out.managedLines.push({ id: line.id, name: line.name })
       }
       else if (b.kind === 'recipe') {
         const r = dcw.listRecipes().find(x => x.id === b.nodeId)
@@ -117,10 +124,11 @@ export function hostToolsForAgent(agentId: string, role: 'lead' | 'worker', chan
   // WP6:排序保证同一绑定面确定性输出(折叠/不折叠都稳定)
   const sortedDaq = sortedById(res.daqNodes)
   const sortedWrite = sortedById(res.writeNodes)
+  const sortedManaged = sortedById(res.managedLines)
   const sortedRecipes = sortedById(res.recipes)
   const sortedMes = sortedById(res.mesNodes)
   const lineOnlyDaq = sortedById(res.daqLineNodes.filter(n => !sortedDaq.some(x => x.id === n.id)))
-  if (sortedDaq.length === 0 && lineOnlyDaq.length === 0 && sortedWrite.length === 0 && sortedRecipes.length === 0 && !bindings.length) return filtered
+  if (sortedDaq.length === 0 && lineOnlyDaq.length === 0 && sortedWrite.length === 0 && sortedManaged.length === 0 && sortedRecipes.length === 0 && !bindings.length) return filtered
   const daqParts = [
     sortedDaq.length > 0 ? foldList(tr(locale, `本 Agent 直接绑定的数采节点(仅这些可查):`, `DAQ nodes bound directly to this agent (queryable):`), sortedDaq.map(x => `${x.name}(${x.id}${x.unit ? `,${x.unit}` : ''})`)) : '',
     lineOnlyDaq.length > 0 ? foldList(tr(locale, `频道绑线只读数采节点(可查):`, `Read-only DAQ nodes from the channel line binding:`), lineOnlyDaq.map(x => `${x.name}(${x.id}${x.unit ? `,${x.unit}` : ''})`)) : '',
@@ -130,6 +138,12 @@ export function hostToolsForAgent(agentId: string, role: 'lead' | 'worker', chan
     ? foldList(
         tr(locale, `\n\n本 Agent 的数控节点写授权面(点位写授权;可在这些节点上 trial/apply,换配方仍有效):`, `\n\nDCW node write-authorization face of this agent (point-level; trial/apply allowed on these nodes, survives recipe switches):`),
         sortedWrite.map(x => `${x.name}(${x.id}${x.unit ? `,${x.unit}` : ''})`),
+      )
+    : ''
+  const managedLine = sortedManaged.length > 0
+    ? foldList(
+        tr(locale, `\n\n本 Agent 持有的产线配方管理权(可 查看/新建/修改/回退 该线全部配方;下发仍受点位绑定约束:未绑定任何数控节点时默认可对配方全部参数下发,绑了数控节点则只能下发这些点位):`, `\n\nLine recipe-management grants of this agent (view/create/update/rollback ALL recipes on these lines; dispatch still follows point-binding rules: with no DCW bindings at all, all recipe params are dispatchable; with DCW bindings, only those points):`),
+        sortedManaged.map(x => `${x.name}(${x.id})`),
       )
     : ''
   const recipeLine = sortedRecipes.length > 0
@@ -144,7 +158,7 @@ export function hostToolsForAgent(agentId: string, role: 'lead' | 'worker', chan
   return filtered.map((t) => {
     let suffix = ''
     if (DAQ_TOOLS.has(t.name)) suffix = daqLine
-    else if (RECIPE_TOOLS.has(t.name)) suffix = `${recipeLine}${writeLine}`
+    else if (RECIPE_TOOLS.has(t.name)) suffix = `${recipeLine}${writeLine}${managedLine}`
     else if (MES_TOOLS.has(t.name)) suffix = mesLine
     else if (OPTIMIZER_TOOL_NAMES.has(t.name)) suffix = optimizerLine
     if (!suffix) return t

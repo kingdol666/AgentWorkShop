@@ -54,8 +54,18 @@ export async function toolMyIndustrialNodes(agentId: string): Promise<{ text: st
     catch { /* 节点刚被删等情况忽略 */ }
   }
   const insightBlock = insights.length > 0 ? `\n\n调控闭环状态:\n${insights.join('\n')}` : ''
+  // 产线配方管理权面(2026-10-28):列出管理线、配方数与能力边界(含下发收窄规则)
+  const managedBindings = bindings.filter(x => x.kind === 'line-recipe')
+  const managedBlock = managedBindings.length > 0
+    ? `\n\n产线配方管理权:\n${managedBindings.map((b) => {
+      const line = getDcwController().listLines().find(l => l.id === b.nodeId)
+      const count = getDcwController().listRecipes().filter(r => r.lineId === b.nodeId).length
+      const dcwCount = bindings.filter(x => x.kind === 'dcw').length
+      return `- 产线「${line?.name ?? b.nodeId}」(${b.nodeId}) mode=${b.mode}:当前 ${count} 个配方;可 查看/新建(recipe_create)/修改(recipe_update)/回退(recipe_rollback);下发规则:${dcwCount > 0 ? '你已绑定数控节点 —— 只能下发这些点位' : '你未绑定任何数控节点 —— 默认可对线上配方全部参数下发'}`
+    }).join('\n')}`
+    : ''
   return {
-    text: `${cards.text}${staleNote}${insightBlock}${recipeFace ? `\n\n${recipeFace}` : ''}
+    text: `${cards.text}${staleNote}${insightBlock}${recipeFace ? `\n\n${recipeFace}` : ''}${managedBlock}
 
 ---
 通用规则:

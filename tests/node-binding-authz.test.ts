@@ -290,3 +290,105 @@ test('US-04 换配方:同一 dcw 绑定 Agent 对新活动配方继续 trial(无
   assert.notEqual(out.isError, true, out.text)
   assert.match(out.text, /试验已整批下发/)
 })
+
+// ===== 产线配方管理权(kind='line-recipe',2026-10-28)=====
+
+const { assertRecipeCreate } = await import('../server/services/workshop/agents/industrial/recipe-gate')
+
+test('产线配方管理权:update/rollback 全线放行;无 dcw 绑定时 trial/apply 全参数放行(向下兼容)', (t) => {
+  const f = fixture('line-mgr-full')
+  t.after(f.cleanup)
+  const repo = getAgentNodeBindingRepo()
+  repo.bind(f.agentId, f.line.id, 'line-recipe', 'auto')
+  // 版本操作:无需单配方绑定,凭产线管理权即可
+  expectOk(assertRecipeOperation(f.agentId, f.recipe, 'update'))
+  expectOk(assertRecipeOperation(f.agentId, f.recipe, 'rollback'))
+  // 下发:未绑任何 dcw → 配方全部参数默认可发(向下兼容)
+  expectOk(assertRecipeOperation(f.agentId, f.recipe, 'trial', [f.nodes[0]!.id]))
+  expectOk(assertRecipeOperation(f.agentId, f.recipe, 'dispatch'))
+})
+
+test('产线配方管理权 + dcw 绑定:下发收窄到绑定点位,版本操作不受影响', (t) => {
+  const f = fixture('line-mgr-scoped')
+  t.after(f.cleanup)
+  const repo = getAgentNodeBindingRepo()
+  repo.bind(f.agentId, f.line.id, 'line-recipe', 'auto')
+  repo.bind(f.agentId, f.nodes[0]!.id, 'dcw', 'auto')
+  // 绑定点位内 trial 放行
+  expectOk(assertRecipeOperation(f.agentId, f.recipe, 'trial', [f.nodes[0]!.id]))
+  // 覆盖未绑定节点 → 下发被收窄拒绝(点名缺失节点)
+  const narrowed = assertRecipeOperation(f.agentId, f.recipe, 'trial', [f.nodes[0]!.id, f.nodes[1]!.id])
+  assert.equal(narrowed.ok, false)
+  if (!narrowed.ok) {
+    assert.match(narrowed.text, /下发被收窄|只能覆盖这些点位/)
+    assert.ok(narrowed.text.includes(f.nodes[1]!.id), '拒绝文案应点名未绑定节点')
+  }
+  // 整批 apply(全参数)同样被收窄拒
+  const applyNarrowed = assertRecipeOperation(f.agentId, f.recipe, 'dispatch')
+  assert.equal(applyNarrowed.ok, false)
+  // 版本操作不受 dcw 收窄影响:仍凭管理权放行
+  expectOk(assertRecipeOperation(f.agentId, f.recipe, 'update'))
+  expectOk(assertRecipeOperation(f.agentId, f.recipe, 'rollback'))
+})
+
+test('单配方绑定 + 无 dcw:整批下发放行(存量行为不变);补绑 dcw 后收窄', (t) => {
+  const f = fixture('recipe-compat')
+  t.after(f.cleanup)
+  const repo = getAgentNodeBindingRepo()
+  repo.bind(f.agentId, f.recipe.id, 'recipe', 'auto')
+  // 存量:recipe 绑定 + 无 dcw → 全参数可发
+  expectOk(assertRecipeOperation(f.agentId, f.recipe, 'dispatch'))
+  // 绑了一个 dcw → 下发立即收窄到该点位
+  repo.bind(f.agentId, f.nodes[0]!.id, 'dcw', 'auto')
+  expectOk(assertRecipeOperation(f.agentId, f.recipe, 'trial', [f.nodes[0]!.id]))
+  const narrowed = assertRecipeOperation(f.agentId, f.recipe, 'dispatch')
+  assert.equal(narrowed.ok, false)
+})
+
+test('assertRecipeCreate:产线配方管理权可作为新建配方的授权锚', () => {
+  const f = fixture('line-mgr-create')
+  const repo = getAgentNodeBindingRepo()
+  repo.bind(f.agentId, f.line.id, 'line-recipe', 'auto')
+  const gate = assertRecipeCreate(f.agentId, f.line.id)
+  assert.equal(gate.ok, true, gate.ok ? '' : gate.text)
+  for (const b of repo.byAgent(f.agentId)) repo.unbind(b.id)
+})
+
+test('撤销 line-recipe:在飞配方管理审批按拒收敛,零写入', async (t) => {
+  const f = fixture('line-mgr-revoke')
+  t.after(f.cleanup)
+  const repo = getAgentNodeBindingRepo()
+  const binding = repo.bind(f.agentId, f.line.id, 'line-recipe', 'manual')
+  const trial = toolRecipeTrial(f.agentId, {
+    line_id: f.line.id,
+    params: [{ node_id: f.nodes[0]!.id, value: 55 }],
+    hypothesis: '收权即失活:撤销产线管理权后审批单必须失效',
+  })
+  let card = getToolApprovals().listPending(f.agentId)[0]
+  for (let i = 0; i < 100 && !card; i++) {
+    await new Promise(resolve => setTimeout(resolve, 10))
+    card = getToolApprovals().listPending(f.agentId)[0]
+  }
+  assert.ok(card, 'trial 应挂起一张人工审批卡')
+  repo.unbind(binding.id)
+  const cancelled = getToolApprovals().cancelPendingForBinding(f.agentId, binding)
+  assert.equal(cancelled, 1, '撤销产线管理权应取消该线配方审批单')
+  const out = await trial
+  assert.match(out.text, /未批准|失效|授权/)
+  assert.equal(f.nodes[0]!.value, null, '审批失效后不得写入 PLC')
+})
+
+test('tool-verify:管理线配方参数进入写授权面,配方外节点仍不因管理权放行', (t) => {
+  const f = fixture('verify-managed-face')
+  t.after(f.cleanup)
+  getAgentNodeBindingRepo().bind(f.agentId, f.line.id, 'line-recipe', 'auto')
+  const faces = resolveRefFaces(f.agentId)
+  assert.ok(faces.managedLines.has(f.line.id), '管理线应进入 managedLines')
+  assert.ok(faces.writeFace.has(f.nodes[0]!.id), '管理线配方参数应进入写授权面')
+  const denied = verifyIndustrialToolCall(f.agentId, 'recipe_trial', {
+    recipe_id: f.recipe.id,
+    params: [{ node_id: f.nodes[2]!.id, value: 55 }],
+    hypothesis: '配方外节点不因管理权进入候选',
+  })
+  assert.ok(denied?.isError, '配方外参数节点应被拒(候选只能覆盖配方内参数)')
+})

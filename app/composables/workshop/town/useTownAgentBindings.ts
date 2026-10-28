@@ -42,7 +42,7 @@ export function useTownAgentBindings(params: {
   }
 
   const agentBindings = ref<AgentNodeBindingRow[]>([])
-  const agentBindKind = ref<'dcw' | 'daq'>('dcw')
+  const agentBindKind = ref<'dcw' | 'daq' | 'line-recipe'>('dcw')
   const agentBindNodeId = ref('')
   const agentBindMode = ref<'auto' | 'manual'>('auto')
   const pendingApprovals = ref<ToolApprovalRow[]>([])
@@ -173,8 +173,9 @@ export function useTownAgentBindings(params: {
     if (approvalPoll) clearInterval(approvalPoll)
   })
 
-  /** 绑定行的节点名(dcw/daq store 解析) */
+  /** 绑定行的对象名(dcw=数控节点 / daq=数采节点 / line-recipe=产线名;store 解析) */
   function bindingNodeName(b: AgentNodeBindingRow): string {
+    if (b.kind === 'line-recipe') return dcw.lines.find(l => l.id === b.nodeId)?.name ?? b.nodeId
     return b.kind === 'dcw' ? dcw.nodeById(b.nodeId)?.name ?? b.nodeId : daq.nodeById(b.nodeId)?.name ?? b.nodeId
   }
 

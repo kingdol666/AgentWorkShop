@@ -1,7 +1,7 @@
 # 节点级写授权(dcw 绑定恢复)× 配方管控下发 —— 双轨授权优化计划
 
 - 日期:2026-10-28
-- 状态:**pending approval**(待用户批准后实施)
+- 状态:**已实施 + 真机验收通过**(M1–M5 全部落地;证据见 `docs/audit/2026-10-28-node-scoped-binding-acceptance.md`、`docs/audit/evidence/2026-10-28-node-binding-3mode/report.json`、`docs/audit/evidence/2026-10-28-node-binding-authz/report.json`)
 - 关联:`docs/audit/evidence/2026-10-28-execmodes/`(三模式已落地)、权限模型 v2(`bindings/index.post.ts`)
 
 ---

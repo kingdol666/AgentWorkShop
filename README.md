@@ -574,12 +574,15 @@ in the built-in **Permissions** page (`/permissions`, admin-only in the sidebar)
 - Enforcement lives in the data plane: list endpoints filter by grant, write/dispatch
   endpoints return a human-readable 403, and Agent↔node bindings validate the line grant
   (DAQ needs read-only+, DCW needs operate).
-- Agent write authorization is two-track: a `kind='dcw'` node binding is a point-level
-  write grant (trial/apply coverage must stay within the bound node face; it follows the
-  device and survives recipe switches), while a `kind='recipe'` binding is a recipe-level
-  operation right (including version writes/rollback). The two are unioned; node bindings
-  never grant recipe version rights, direct-write tools stay rejected, and every write
-  still passes the four-layer limits / run gate / HITL / per-parameter ACK.
+- Agent write authorization is three-track: a `kind='dcw'` node binding is a point-level
+  write grant that also **narrows dispatch scope** (with DCW bindings, dispatch may only
+  cover those points and survives recipe switches; with none, a recipe-level grant allows
+  all recipe params by default for backward compatibility); a `kind='recipe'` binding is
+  a single-recipe operation right (version writes/rollback plus dispatch); a
+  `kind='line-recipe'` grant is line-level recipe management — view/create/update/rollback
+  **every recipe on the line**, including ones created later. Direct-write tools stay
+  rejected, and every write still passes the four-layer limits / run gate / HITL /
+  per-parameter ACK.
 - Plugins get the same surface via `ctx.permissions` (`lineMode` / `visibleLineIds` /
   `listGrants` / `setGrants`) plus a `permissions:changed` lifecycle hook; the SDK REST
   client exposes `client.permissions.overview()` / `client.permissions.set(...)`.

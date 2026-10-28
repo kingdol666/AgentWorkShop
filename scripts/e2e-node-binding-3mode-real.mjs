@@ -433,8 +433,8 @@ try {
 
   // ── 三个 Channel(真实 omp) ──
   const obsCh = await makeChannel('验收-三模式-观察', obsLine.id, '观察模式频道:只做数采与工艺分析,物理零写。', 'observe', OBS_TOOLS)
-  const manualCh = await makeChannel('验收-三模式-手动', writeLine.id, '手动模式频道:每次配方试验都必须经人工批准;只操作你绑定的点位。验收场景只执行任务描述,不复测、不等待、不固化。', 'manual', OPS_TOOLS)
-  const autoCh = await makeChannel('验收-三模式-自动', writeLine.id, '自动模式频道:限界内自动执行配方试验;只操作你绑定的点位。验收场景只执行任务描述,不复测、不等待、不固化。', 'auto', OPS_TOOLS)
+  const manualCh = await makeChannel('验收-三模式-手动', writeLine.id, '手动模式频道:每次配方试验都必须经人工批准;只操作你绑定的点位。验收场景只执行任务描述,不复测、不等待、不固化;未收到任务时禁止自主发起任何下发。', 'manual', OPS_TOOLS)
+  const autoCh = await makeChannel('验收-三模式-自动', writeLine.id, '自动模式频道:限界内自动执行配方试验;只操作你绑定的点位。验收场景只执行任务描述,不复测、不等待、不固化;未收到任务时禁止自主发起任何下发。', 'auto', OPS_TOOLS)
   ok('R2', '三频道创建 + 执行模式 + 工具面(omp/selected)', Boolean(obsCh.channelId && manualCh.channelId && autoCh.channelId) && obsCh.toolsSaved === 200 && manualCh.toolsSaved === 200 && autoCh.toolsSaved === 200,
     JSON.stringify({ obs: obsCh.channelId, manual: manualCh.channelId, auto: autoCh.channelId, tools: [obsCh.toolsSaved, manualCh.toolsSaved, autoCh.toolsSaved] }))
 
@@ -486,15 +486,17 @@ try {
   ok('R3d', '观察模式无写审批(只读频道)', obsHistory.length === 0, `approvals=${obsHistory.length}`)
   evidence.tasks.obs = { id: obsTask.id, state: obsRun.task?.state, elapsedSec: Math.round((Date.now() - t0) / 1000), deliverable: obsDeliverable, toolCalls: toolCallsOf(obsRun.task) }
 
-  // ── 手动模式任务(频道钳位 → HITL) ──
-  const manualTask = await submitTask(manualCh.channelId, '验收-手动模式-点位试验', opsPrompt(58, writeLine.id))
+  // ── 手动模式任务(频道钳位 → HITL)。基线取提交时设备现值(值无关断言)。 ──
+  const nodesPreManual = await api('GET', '/api/workshop/dcw')
+  const preManualA = Number((nodesPreManual?.data?.nodes ?? []).find(n => n.id === dcwA.id)?.value)
+  const manualTask = await submitTask(manualCh.channelId, '验收-手动模式-点位试验', opsPrompt(Number.isFinite(preManualA) ? Math.min(preManualA + 2, 70) : 58, writeLine.id))
   const m0 = Date.now()
   const manualRun = await waitTrialAndClose(manualTask.id, manualLead.id, writeLine.id, dcwA.id, {
-    prevValue: 60,
+    prevValue: preManualA,
     approvalComment: '验收:批准手动模式点位试验',
   })
   const writeJournal = await journalCount(writeLine.id)
-  const manualEntries = writeJournal.filter(a => a.nodeId === dcwA.id && a.prevValue === 60 && a.newValue !== 60 && Date.parse(a.at) >= m0 - 5000)
+  const manualEntries = writeJournal.filter(a => a.nodeId === dcwA.id && a.prevValue === preManualA && a.newValue !== preManualA && Date.parse(a.at) >= m0 - 5000)
   const manualTrial = manualEntries[0]
   const manualHistory = await approvalsHistory(manualLead.id)
   const manualCard = manualRun.cards[0]
@@ -504,7 +506,7 @@ try {
   ok('R4', '手动模式控制链完成(HITL → 点位写授权下发)', Boolean(manualTrial), `journal=${JSON.stringify(manualTrial ?? null)} task=${manualRun.task?.state}`)
   ok('R4a', '手动模式触发人工审批(频道 manual 钳位)', manualRun.cards.length >= 1, `cards=${manualRun.cards.map(c => c.id).join(',')}`)
   ok('R4b', '人工审批落定 approved(附言回流)', manualCardRow?.status === 'approved', `card=${manualCard?.id} status=${manualCardRow?.status} comment=${manualCardRow?.comment}`)
-  ok('R4c', `手动模式点位写入落账 60→${manualTrial?.newValue ?? '?'}(点位写授权,无配方绑定)`,
+  ok('R4c', `手动模式点位写入落账 ${preManualA}→${manualTrial?.newValue ?? '?'}(点位写授权,无配方绑定)`,
     Boolean(manualTrial) && Number(manualTrial.newValue) >= 50 && Number(manualTrial.newValue) <= 70,
     JSON.stringify(manualTrial ?? null).slice(0, 400))
   ok('R4d', '手动模式设备侧现值=账本新值(独立回读)', Number(manualNodeRow?.value) === Number(manualTrial?.newValue),
@@ -523,23 +525,26 @@ try {
     journal: manualEntries.slice(-3), approvals: manualCard ? manualCard.id : null,
   }
 
-  // ── 自动模式任务(全链 auto,免批) ──
-  const autoTask = await submitTask(autoCh.channelId, '验收-自动模式-点位试验', opsPrompt(62, writeLine.id))
+  // ── 自动模式任务(全链 auto,免批)。基线取提交时设备现值(值无关断言,
+  //    模型可自选 +2C 内的候选);opsPrompt 里的候选值仅为引导。 ──
+  const nodesPreAuto = await api('GET', '/api/workshop/dcw')
+  const preAutoB = Number((nodesPreAuto?.data?.nodes ?? []).find(n => n.id === dcwB.id)?.value)
+  const autoTask = await submitTask(autoCh.channelId, '验收-自动模式-点位试验', opsPrompt(Number.isFinite(preAutoB) ? Math.min(preAutoB + 2, 70) : 62, writeLine.id))
   const a0 = Date.now()
   const autoRun = await waitTrialAndClose(autoTask.id, autoLead.id, writeLine.id, dcwB.id, {
-    prevValue: 60,
+    prevValue: preAutoB,
     expectNoHitl: true,
   })
   const autoHistory = await approvalsHistory(autoLead.id)
   const autoCardsInWindow = autoHistory.filter(a => Date.parse(a.createdAt ?? 0) >= a0 - 5000)
-  const autoEntries = (await journalCount(writeLine.id)).filter(a => a.nodeId === dcwB.id && a.prevValue === 60 && a.newValue !== 60 && Date.parse(a.at) >= a0 - 5000)
+  const autoEntries = (await journalCount(writeLine.id)).filter(a => a.nodeId === dcwB.id && a.prevValue === preAutoB && a.newValue !== preAutoB && Date.parse(a.at) >= a0 - 5000)
   const autoTrial = autoEntries[0]
   const autoNode = await api('GET', '/api/workshop/dcw')
   const autoNodeRow = (autoNode?.data?.nodes ?? []).find(n => n.id === dcwB.id)
   ok('R5', '自动模式控制链完成(免批 → 点位写授权下发)', Boolean(autoTrial), `journal=${JSON.stringify(autoTrial ?? null)} task=${autoRun.task?.state}`)
   ok('R5a', '自动模式全程无人工审批(全链 auto)', autoRun.cards.length === 0 && autoCardsInWindow.length === 0,
     `cards=${autoRun.cards.length} historyInWindow=${autoCardsInWindow.length}`)
-  ok('R5b', `自动模式点位写入落账 60→${autoTrial?.newValue ?? '?'}(点位写授权,无配方绑定)`,
+  ok('R5b', `自动模式点位写入落账 ${preAutoB}→${autoTrial?.newValue ?? '?'}(点位写授权,无配方绑定)`,
     Boolean(autoTrial) && Number(autoTrial.newValue) >= 50 && Number(autoTrial.newValue) <= 70,
     JSON.stringify(autoTrial ?? null).slice(0, 400))
   ok('R5c', '自动模式设备侧现值=账本新值(独立回读)', Number(autoNodeRow?.value) === Number(autoTrial?.newValue),
@@ -554,9 +559,9 @@ try {
 
   // ── 双轨授权复核:同一活动配方、两个 Agent 各写自己的点位,互不越权 ──
   const writeJournalAll = await journalCount(writeLine.id)
-  const trialA = writeJournalAll.filter(a => a.nodeId === dcwA.id && a.prevValue === 60 && a.newValue !== 60)
-  const trialB = writeJournalAll.filter(a => a.nodeId === dcwB.id && a.prevValue === 60 && a.newValue !== 60)
-  ok('R6', `同一活动配方下两条轨迹各自落账(A 60→${trialA[0]?.newValue ?? '?'}, B 60→${trialB[0]?.newValue ?? '?'})`,
+  const trialA = writeJournalAll.filter(a => a.nodeId === dcwA.id && a.prevValue === preManualA && a.newValue !== preManualA)
+  const trialB = writeJournalAll.filter(a => a.nodeId === dcwB.id && a.prevValue === preAutoB && a.newValue !== preAutoB)
+  ok('R6', `同一活动配方下两条轨迹各自落账(A ${preManualA}→${trialA[0]?.newValue ?? '?'}, B ${preAutoB}→${trialB[0]?.newValue ?? '?'})`,
     trialA.length >= 1 && trialB.length >= 1 && trialA[0].recipeRunId !== trialB[0].recipeRunId,
     `A=${JSON.stringify(trialA.slice(0, 1))} B=${JSON.stringify(trialB.slice(0, 1))}`)
 
@@ -646,6 +651,96 @@ try {
     `journal=${JSON.stringify(switchJournal.slice(0, 1))} runRecipe=${startB?.data?.run?.recipeId} A=${sNodeA?.value} B=${sNodeB?.value}`)
   evidence.switch = {
     recipeB: recipeB?.id, runB: startB?.data?.run?.id, trialResponse: switchText, journal: switchJournal.slice(0, 2),
+  }
+
+  // ── 产线配方管理权(kind='line-recipe'):真实 Agent 建/改/回退全线配方 + 下发按 dcw 收窄 ──
+  const mgrCh = await makeChannel('验收-配方管理员', writeLine.id,
+    '你是产线配方管理员:可查看/新建/修改/回退本产线全部配方;参数下发只允许你绑定的数控点位。严格按任务步骤执行,不复测、不等待、不固化。', 'auto',
+    ['my_industrial_nodes', 'line_context', 'recipe_create', 'recipe_update', 'recipe_rollback', 'recipe_trial', 'complete_task', 'report_progress'])
+  const mgrLead = mgrCh.lead
+  ok('R10', '配方管理员频道创建(omp/selected/工具面含管理工具)', Boolean(mgrCh.channelId) && mgrCh.toolsSaved === 200, `channel=${mgrCh.channelId} tools=${mgrCh.toolsSaved}`)
+  const mgrLineGrant = await bindAuto(mgrLead.id, writeLine.id, 'line-recipe')
+  const mgrDcwBind = await bindAuto(mgrLead.id, dcwA.id, 'dcw')
+  ok('R10b', '管理权 + 单点位 dcw 绑定落库', mgrLineGrant.status === 200 && mgrDcwBind.status === 200,
+    `grant=${mgrLineGrant?.data?.binding?.kind}:${mgrLineGrant?.data?.binding?.mode} dcw=${mgrDcwBind?.data?.binding?.kind}:${mgrDcwBind?.data?.binding?.mode}`)
+  const tokMgr = agentTokenOf(mgrLead.id)
+
+  // 下发收窄(对当时活动配方 writeRecipe,A/B 都是参数):未绑定节点拒,绑定点位放行
+  const curNodes = await api('GET', '/api/workshop/dcw')
+  const curA = (curNodes?.data?.nodes ?? []).find(n => n.id === dcwA.id)
+  const trialUnbound = await api('POST', '/api/workshop/agent-tools/invoke', {
+    agentId: mgrLead.id, tool: 'recipe_trial',
+    args: { line_id: writeLine.id, params: [{ node_id: dcwB.id, value: 62 }], hypothesis: '验收:管理权 Agent 未绑定该点位,应被收窄拒绝' },
+  }, undefined, { 'x-aw-agent-token': tokMgr })
+  const unboundText = String(trialUnbound?.data?.result?.text ?? trialUnbound?.data?.text ?? '')
+  ok('R10c', '管理权 + dcw 绑定 → 未绑定节点下发被收窄拒', Boolean(trialUnbound?.data?.result?.isError ?? trialUnbound?.data?.isError) && /下发被收窄|只能覆盖这些点位/.test(unboundText), unboundText.slice(0, 300))
+  const trialBound = await api('POST', '/api/workshop/agent-tools/invoke', {
+    agentId: mgrLead.id, tool: 'recipe_trial',
+    args: { line_id: writeLine.id, params: [{ node_id: dcwA.id, value: Number(curA?.value ?? 52) + 2 }], hypothesis: '验收:绑定点位内下发放行' },
+  }, undefined, { 'x-aw-agent-token': tokMgr })
+  const boundText = String(trialBound?.data?.result?.text ?? trialBound?.data?.text ?? '')
+  ok('R10d', '管理权 + dcw 绑定 → 绑定点位内 trial 放行(真实 Agent 身份)', !(trialBound?.data?.result?.isError ?? trialBound?.data?.isError) && /试验已整批下发/.test(boundText), boundText.slice(0, 300))
+
+  // 真实 omp 任务:创建配方(用绑定的节点)。9B 模型可能自选 use_active_run 快照,
+  // 断言按「任务窗口内本线新增的配方」判定(能力级),不绑死命名。
+  const recipesBefore = (await api('GET', `/api/workshop/dcw/recipes`))?.data?.recipes ?? []
+  const knownIds = new Set(recipesBefore.map(r => r.id))
+  const mgrCreateTask = await submitTask(mgrCh.channelId, '验收-管理权-新建配方',
+    '严格按三步执行,不要做别的:\n'
+    + '1) 调用 my_industrial_nodes 查看你的授权(记下绑定的数控节点 id);\n'
+    + `2) 调用 recipe_create:line_id="${writeLine.id}",name="验收-管理权配方",显式传 params=[{node_id:"<你绑定的节点id>",value:58}](不要使用 use_active_run/source_recipe_id/from_run_id),reason 写「验收:产线配方管理权新建配方」;\n`
+    + '3) 立即调用 complete_task 提交 recipe_create 完整回执与新配方 id。\n'
+    + '禁止其他任何工具。')
+  const mgrCreateRun = await waitTask(mgrCreateTask.id, { timeoutMs: 10 * 60_000 })
+  const recipesOnLine = (await api('GET', `/api/workshop/dcw/recipes`))?.data?.recipes ?? []
+  const mgrRecipe = recipesOnLine.find(r => r.lineId === writeLine.id && !knownIds.has(r.id))
+  ok('R10e', '真实 Agent 凭产线管理权新建配方成功(无单配方绑定,窗口内新增)', mgrCreateRun.task?.state === 'COMPLETED' && Boolean(mgrRecipe),
+    `task=${mgrCreateRun.task?.state} recipe=${mgrRecipe?.id ?? '(未找到)'} deliverable=${deliverableOf(mgrCreateRun.task).slice(0, 200)}`)
+
+  if (mgrRecipe) {
+    // 管理权:切换产线到新配方(其参数接管 DCW),再由同一 Agent 修改+回退。
+    // 新配方参数值可能是模型自选的快照值:以 v1 定义里 dcwA 的实际值为基线断言。
+    const mgrV1 = ((await api('GET', `/api/workshop/dcw/recipes/${mgrRecipe.id}/versions`))?.data?.versions ?? [])[0]
+    const baseA = Number((mgrV1?.params ?? []).find(p => p.nodeId === dcwA.id)?.value)
+    const stopPrev = await api('POST', `/api/workshop/dcw/lines/${writeLine.id}/stop`, undefined, admin)
+    const startM = await api('POST', `/api/workshop/dcw/lines/${writeLine.id}/start`, { recipeId: mgrRecipe.id }, admin)
+    const afterStart = await api('GET', '/api/workshop/dcw')
+    const mNodeA = (afterStart?.data?.nodes ?? []).find(n => n.id === dcwA.id)
+    ok('R10f', '新配方开跑:管理权新建的配方接管 DCW(A=v1 定义值)', stopPrev.status === 200 && startM.status === 200 && Number.isFinite(baseA) && Number(mNodeA?.value) === baseA,
+      `stop=${stopPrev.status} start=${startM.status} A=${mNodeA?.value} v1A=${baseA}`)
+    const mgrEditTask = await submitTask(mgrCh.channelId, '验收-管理权-修改并回退',
+      '严格按三步执行,不要做别的:\n'
+      + `1) 调用 recipe_update:recipe_id="${mgrRecipe.id}",params=[{node_id:"${dcwA.id}",value:56}],reason 写「验收:管理权直接修改全线配方」;\n`
+      + `2) 调用 recipe_rollback:recipe_id="${mgrRecipe.id}",version=1,reason 写「验收:管理权回退到 v1(仅定义)」;\n`
+      + '3) 立即调用 complete_task 提交两步回执原文。\n'
+      + '禁止其他任何工具。')
+    const mgrEditRun = await waitTask(mgrEditTask.id, { timeoutMs: 10 * 60_000 })
+    const mgrVersions = (await api('GET', `/api/workshop/dcw/recipes/${mgrRecipe.id}/versions`))?.data?.versions ?? []
+    const v2Row = mgrVersions.find(v => v.version === 2)
+    const lastRow = mgrVersions[mgrVersions.length - 1]
+    ok('R10g', '同一 Agent 修改配方(update v2=56)成功', mgrVersions.some(v => v.version === 2),
+      `task=${mgrEditRun.task?.state} versions=${mgrVersions.map(v => `${v.version}:${(v.params ?? []).map(p => p.value).join('/')}`).join(',')}`)
+    ok('R10h', '同一 Agent 回退配方(生成新版本,参数回到 v1)', Number(lastRow?.version) >= 3
+    && Array.isArray(lastRow?.params) && Number.isFinite(baseA) && lastRow.params.some(p => p.nodeId === dcwA.id && p.value === baseA)
+    && Array.isArray(v2Row?.params) && v2Row.params.some(p => p.nodeId === dcwA.id && p.value !== baseA),
+    `versions=${mgrVersions.map(v => `${v.version}:${(v.params ?? []).map(p => p.value).join('/')}`).join(',')}`)
+    // 收回管理权 → 版本操作立即被拒(dcw 点位绑定不授予版本权)
+    const mgrGrantId = mgrLineGrant?.data?.binding?.id
+    await api('DELETE', `/api/workshop/agent-tools/bindings/${mgrGrantId}`, undefined, admin)
+    const updAfterRevoke = await api('POST', '/api/workshop/agent-tools/invoke', {
+      agentId: mgrLead.id, tool: 'recipe_update',
+      args: { recipe_id: mgrRecipe.id, params: [{ node_id: dcwA.id, value: 55 }], reason: '验收:收回管理权后应拒绝' },
+    }, undefined, { 'x-aw-agent-token': tokMgr })
+    const revokeText = String(updAfterRevoke?.data?.result?.text ?? updAfterRevoke?.data?.text ?? '')
+    ok('R10i', '收回产线管理权后 recipe_update → 拒绝(需配方级授权)',
+      Boolean(updAfterRevoke?.data?.result?.isError ?? updAfterRevoke?.data?.isError) && /配方级授权|版本操作|配方管理权/.test(revokeText), revokeText.slice(0, 300))
+    evidence.lineManager = {
+      channel: mgrCh.channelId, agent: mgrLead.id, lineGrant: mgrGrantId, dcw: dcwA.id,
+      recipe: mgrRecipe.id, versions: mgrVersions.map(v => ({ version: v.version, values: (v.params ?? []).map(p => p.value) })),
+      scopedTrial: { unbound: unboundText.slice(0, 200), bound: boundText.slice(0, 200) },
+      createDeliverable: deliverableOf(mgrCreateRun.task), editDeliverable: deliverableOf(mgrEditRun.task),
+      toolCallsCreate: toolCallsOf(mgrCreateRun.task), toolCallsEdit: toolCallsOf(mgrEditRun.task),
+    }
   }
 
   // ── IDD 集成(仅检查,不启动分析) ──

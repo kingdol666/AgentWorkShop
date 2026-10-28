@@ -14,7 +14,7 @@ import { dcwDriverBadgeKey } from '@/app/utils/dcw-driver-badge'
 // 子组件(同目录,必须显式引入:Nuxt 自动引入按路径前缀命名,不产出裸组件名)
 import AutoModeConfirmModal from './AutoModeConfirmModal.vue'
 
-const agentBindKind = defineModel<'dcw' | 'daq'>('agentBindKind', { required: true })
+const agentBindKind = defineModel<'dcw' | 'daq' | 'line-recipe'>('agentBindKind', { required: true })
 const agentBindNodeId = defineModel<string>('agentBindNodeId', { required: true })
 const agentBindMode = defineModel<'auto' | 'manual'>('agentBindMode', { required: true })
 const approvalComments = defineModel<Record<string, string>>('approvalComments', { required: true })
@@ -59,9 +59,9 @@ defineProps<{
   >
     <span
       class="ins-chip"
-      :class="b.kind === 'dcw' ? 'accent' : ''"
+      :class="b.kind !== 'daq' ? 'accent' : ''"
       style="flex: none;"
-    >{{ b.kind === 'dcw' ? $t('townView.k40ifw097') : $t('townView.k40rjw098') }}</span>
+    >{{ b.kind === 'dcw' ? $t('townView.k40ifw097') : b.kind === 'line-recipe' ? $t('townView.klinercp820') : $t('townView.k40rjw098') }}</span>
     <span class="bind-meta">
       <span class="bind-label">{{ bindingNodeName(b) }}</span>
       <select
@@ -109,13 +109,16 @@ defineProps<{
       <option value="daq">
         {{ $t('townView.k40rjw098') }}
       </option>
+      <option value="line-recipe">
+        {{ $t('townView.klinercp820') }}
+      </option>
     </select>
     <select
       v-model="agentBindNodeId"
       class="bind-select"
     >
       <option value="">
-        {{ $t('townView.kurjldk099') }}
+        {{ agentBindKind === 'line-recipe' ? $t('townView.klinercp821') : $t('townView.kurjldk099') }}
       </option>
       <template v-if="agentBindKind === 'dcw'">
         <option
@@ -124,6 +127,15 @@ defineProps<{
           :value="n.id"
         >
           {{ n.name }}{{ bindBadgeSuffix(n.driver) }}
+        </option>
+      </template>
+      <template v-else-if="agentBindKind === 'line-recipe'">
+        <option
+          v-for="l in dcw.lines"
+          :key="l.id"
+          :value="l.id"
+        >
+          {{ l.name }}
         </option>
       </template>
       <template v-else>

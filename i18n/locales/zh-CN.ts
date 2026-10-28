@@ -2491,6 +2491,8 @@ export default {
     k1duyr8q096: '手动确认',
     k40ifw097: '数控',
     k40rjw098: '数采',
+    klinercp820: '产线配方',
+    klinercp821: '选择产线…',
     kurjldk099: '选择节点…',
     k45kpj100: '自动',
     k3zul4101: '手动',

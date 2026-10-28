@@ -145,9 +145,10 @@ export async function toolRecipePropose(agentId: string, args: {
   // 权限模型 v2:持有该配方绑定(kind=recipe)即算"配方内授权";兼容历史 dcw 节点绑定
   const bindings = getAgentNodeBindingRepo().byAgent(agentId)
   const boundInRecipe = bindings.some(b => b.kind === 'recipe' && b.nodeId === recipeId)
+    || bindings.some(b => b.kind === 'line-recipe' && b.nodeId === recipe.lineId)
     || bindings.some(b => b.kind === 'dcw' && recipe.params.some(p => p.nodeId === b.nodeId))
   if (!boundInRecipe) {
-    return { text: `无权提交配方 ${recipeId} 的整包方案(需持有该配方的绑定;找 lead 授予配方操作权)。`, isError: true }
+    return { text: `无权提交配方 ${recipeId} 的整包方案(需持有该配方的绑定或其产线的配方管理权;找 lead 授予)。`, isError: true }
   }
   const line = getDcwLineRepo().byId(recipe.lineId)
 

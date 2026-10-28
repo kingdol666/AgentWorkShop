@@ -313,10 +313,10 @@ class ToolApprovalService {
       }
       catch { /* 配方已删除 → 无参数节点可清理 */ }
     }
-    else if (binding.kind === 'dcw') {
-      // 2026-10-28 节点级写授权:收回点位授权后,在飞的配方审批单按当前覆盖集重新判定 ——
-      // 覆盖失效即按拒收敛(收回即失活)。仍被其余节点绑定/配方绑定完整覆盖的审批保留,
-      // 不做过度撤销。
+    else if (binding.kind === 'dcw' || binding.kind === 'line-recipe') {
+      // 2026-10-28 写授权/管理权收回:在飞的配方审批单按当前授权面重新判定 ——
+      // 覆盖失效即按拒收敛(收回即失活)。仍被其余授权完整覆盖的审批保留,不做过度撤销。
+      // dcw=该节点的点位授权(只重判含该节点的配方);line-recipe=该线全部配方的管理授权。
       for (const entry of [...this.pending.values()]) {
         if (entry.approval.agentId !== agentId) continue
         const nodeRef = entry.approval.nodeId
@@ -326,6 +326,8 @@ class ToolApprovalService {
         if (!recipeId) continue
         const recipe = getDcwController().listRecipes().find(r => r.id === recipeId)
         if (!recipe) continue
+        if (binding.kind === 'line-recipe' && recipe.lineId !== binding.nodeId) continue
+        if (binding.kind === 'dcw' && !recipe.params.some(p => p.nodeId === binding.nodeId)) continue
         const payload = entry.approval.payload as { op?: string, params?: Array<{ nodeId?: string }> } | undefined
         const op = payload?.op === 'update' || payload?.op === 'rollback' || payload?.op === 'trial'
           ? payload.op

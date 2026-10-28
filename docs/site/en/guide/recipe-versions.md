@@ -32,12 +32,13 @@ POST /api/workshop/dcw/recipes/:id/revert
 |---|---|---|
 | `line_context` | panorama of my line/product/recipe (targets vs PLC values) | lines of bound nodes ∪ channel-bound line (read-only) |
 | `recipe_versions` | version history + param diffs (who/when/why) | same |
-| `recipe_trial` | **multi-parameter candidate batch trial**: dispatch all intended changes in one batch without writing a recipe version (hypothesis required; ≥5 min per-line cadence) | recipe binding, or candidate coverage ⊆ DCW node binding face (point-level write grant) |
-| `recipe_apply` | batch-dispatch the current saved version — the formal dispatch after `recipe_update` | recipe binding, or all recipe parameters ⊆ DCW node binding face |
-| `recipe_update` | save best parameters (partial merge, reason required, new version) | recipe binding (recipe-level operation right; node bindings do not grant version rights) |
-| `recipe_rollback` | roll back to a version / lastGood; with `dispatch: true` = **unified rollback** (definition revert + batch re-dispatch of that version's params to the PLC) | recipe binding |
+| `recipe_trial` | **multi-parameter candidate batch trial**: dispatch all intended changes in one batch without writing a recipe version (hypothesis required; ≥5 min per-line cadence) | recipe-level grant (recipe binding or line management), or candidate coverage ⊆ DCW node binding face |
+| `recipe_apply` | batch-dispatch the current saved version — the formal dispatch after `recipe_update` | recipe-level grant, or all recipe parameters ⊆ DCW node binding face |
+| `recipe_update` | save best parameters (partial merge, reason required, new version) | recipe-level grant (recipe binding or line management; point bindings alone do not grant version rights) |
+| `recipe_rollback` | roll back to a version / lastGood; with `dispatch: true` = **unified rollback** (definition revert + batch re-dispatch of that version's params to the PLC) | recipe-level grant |
+| `recipe_create` | save-as new recipe (definition only, no dispatch; explicit params / run snapshot / source recipe) | any authorization anchor on the line (node/recipe binding, or line management grant) |
 
-Two-track authorization: a DCW node binding is a point-level write grant that follows the device and survives recipe switches; a recipe binding grants recipe-level operation rights. The two are unioned; every write still passes the four-layer limits, run gate, HITL, and per-parameter ACK.
+Three-track authorization (2026-10-28): a `kind='dcw'` node binding is a point-level write grant that also **narrows dispatch scope** — with DCW bindings, dispatch may only cover those points (partial coverage is rejected); with none, a recipe-level grant allows all recipe params by default (backward compatible). A `kind='line-recipe'` grant is line-level recipe management — view/create/update/rollback **every recipe on the line**, including future ones. **Recipe management and parameter dispatch are separate business functions**: a management grant dispatches nothing; dispatch recognizes points. Every write still passes the four-layer limits, run gate, HITL, and per-parameter ACK.
 
 For per-node value history use `dcw_journal`; for a single-node restore use `dcw_rollback`.
 
