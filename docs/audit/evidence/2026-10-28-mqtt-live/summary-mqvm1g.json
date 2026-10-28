@@ -1,0 +1,74 @@
+{
+  "tag": "mqvm1g",
+  "topics": {
+    "temp": "mqtte2e/mqvm1g/temp",
+    "setpoint": "mqtte2e/mqvm1g/setpoint",
+    "state": "mqtte2e/mqvm1g/state"
+  },
+  "line": "ln-277abf7e",
+  "spNode": "dw-96739ba6",
+  "pvNode": "dn-d1f33ca3",
+  "recipe": "rc-e844a377",
+  "receivedWrites": [
+    {
+      "at": 1793159551434,
+      "raw": "{\"setpoint\":240}",
+      "setpoint": 240
+    },
+    {
+      "at": 1793159569125,
+      "raw": "{\"setpoint\":238}",
+      "setpoint": 238
+    }
+  ],
+  "daqPoints": {
+    "atT1": 9,
+    "atT3": 55
+  },
+  "results": [
+    {
+      "id": "S1",
+      "pass": true
+    },
+    {
+      "id": "T0",
+      "pass": true
+    },
+    {
+      "id": "T0b",
+      "pass": true
+    },
+    {
+      "id": "T1a",
+      "pass": true
+    },
+    {
+      "id": "T1b",
+      "pass": false
+    },
+    {
+      "id": "T2a",
+      "pass": true
+    },
+    {
+      "id": "T2b",
+      "pass": true
+    },
+    {
+      "id": "T2c",
+      "pass": true
+    },
+    {
+      "id": "T3a",
+      "pass": true
+    },
+    {
+      "id": "T3b",
+      "pass": true
+    },
+    {
+      "id": "T3c",
+      "pass": false
+    }
+  ]
+}

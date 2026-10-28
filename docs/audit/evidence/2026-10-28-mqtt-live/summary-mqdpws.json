@@ -1,0 +1,74 @@
+{
+  "tag": "mqdpws",
+  "topics": {
+    "temp": "mqtte2e/mqdpws/temp",
+    "setpoint": "mqtte2e/mqdpws/setpoint",
+    "state": "mqtte2e/mqdpws/state"
+  },
+  "line": "ln-4a4e2da5",
+  "spNode": "dw-424a95ac",
+  "pvNode": "dn-c9a0b033",
+  "recipe": "rc-199ff945",
+  "receivedWrites": [
+    {
+      "at": 1793160365872,
+      "raw": "{\"setpoint\":240}",
+      "setpoint": 240
+    },
+    {
+      "at": 1793160384800,
+      "raw": "{\"setpoint\":238}",
+      "setpoint": 238
+    }
+  ],
+  "daqPoints": {
+    "atT1": 5,
+    "atT3": 55
+  },
+  "results": [
+    {
+      "id": "S1",
+      "pass": true
+    },
+    {
+      "id": "T0",
+      "pass": true
+    },
+    {
+      "id": "T0b",
+      "pass": true
+    },
+    {
+      "id": "T1a",
+      "pass": true
+    },
+    {
+      "id": "T1b",
+      "pass": true
+    },
+    {
+      "id": "T2a",
+      "pass": true
+    },
+    {
+      "id": "T2b",
+      "pass": true
+    },
+    {
+      "id": "T2c",
+      "pass": true
+    },
+    {
+      "id": "T3a",
+      "pass": true
+    },
+    {
+      "id": "T3b",
+      "pass": true
+    },
+    {
+      "id": "T3c",
+      "pass": true
+    }
+  ]
+}

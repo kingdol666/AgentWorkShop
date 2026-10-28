@@ -1,0 +1,74 @@
+{
+  "tag": "mqh2sa",
+  "topics": {
+    "temp": "mqtte2e/mqh2sa/temp",
+    "setpoint": "mqtte2e/mqh2sa/setpoint",
+    "state": "mqtte2e/mqh2sa/state"
+  },
+  "line": "ln-7dd59937",
+  "spNode": "dw-348848dc",
+  "pvNode": "dn-a314c89e",
+  "recipe": "rc-989cecf0",
+  "receivedWrites": [
+    {
+      "at": 1793160522304,
+      "raw": "{\"setpoint\":240}",
+      "setpoint": 240
+    },
+    {
+      "at": 1793160539715,
+      "raw": "{\"setpoint\":238}",
+      "setpoint": 238
+    }
+  ],
+  "daqPoints": {
+    "atT1": 8,
+    "atT3": 56
+  },
+  "results": [
+    {
+      "id": "S1",
+      "pass": true
+    },
+    {
+      "id": "T0",
+      "pass": true
+    },
+    {
+      "id": "T0b",
+      "pass": true
+    },
+    {
+      "id": "T1a",
+      "pass": true
+    },
+    {
+      "id": "T1b",
+      "pass": true
+    },
+    {
+      "id": "T2a",
+      "pass": true
+    },
+    {
+      "id": "T2b",
+      "pass": true
+    },
+    {
+      "id": "T2c",
+      "pass": true
+    },
+    {
+      "id": "T3a",
+      "pass": true
+    },
+    {
+      "id": "T3b",
+      "pass": true
+    },
+    {
+      "id": "T3c",
+      "pass": true
+    }
+  ]
+}
