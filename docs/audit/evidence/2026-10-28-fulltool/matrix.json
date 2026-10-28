@@ -1,0 +1,789 @@
+{
+  "at": "2026-10-28T09:36:40.065Z",
+  "catalogSize": 104,
+  "kit": [
+    "my_industrial_nodes",
+    "daq_query",
+    "dcw_journal",
+    "line_context",
+    "ops_log",
+    "recipe_catalog",
+    "recipe_versions",
+    "analysis_save",
+    "analysis_query",
+    "recipe_trial",
+    "recipe_rollback",
+    "complete_task",
+    "report_progress"
+  ],
+  "workers": {
+    "omp": {
+      "agentId": "a3cede38-8a49-44b8-9764-e2c161a99427",
+      "injectedCount": 13,
+      "injected": [
+        "analysis_query",
+        "analysis_save",
+        "complete_task",
+        "daq_query",
+        "dcw_journal",
+        "line_context",
+        "my_industrial_nodes",
+        "ops_log",
+        "recipe_catalog",
+        "recipe_rollback",
+        "recipe_trial",
+        "recipe_versions",
+        "report_progress"
+      ]
+    },
+    "opencode": {
+      "agentId": "702c2aa4-79e1-4de2-941c-e01a570beff1",
+      "injectedCount": 13,
+      "injected": [
+        "analysis_query",
+        "analysis_save",
+        "complete_task",
+        "daq_query",
+        "dcw_journal",
+        "line_context",
+        "my_industrial_nodes",
+        "ops_log",
+        "recipe_catalog",
+        "recipe_rollback",
+        "recipe_trial",
+        "recipe_versions",
+        "report_progress"
+      ]
+    }
+  },
+  "catalog": [
+    {
+      "name": "report_progress",
+      "risk": "read",
+      "inKit": true,
+      "injectedToWorker": true,
+      "leadOnly": false
+    },
+    {
+      "name": "complete_task",
+      "risk": "read",
+      "inKit": true,
+      "injectedToWorker": true,
+      "leadOnly": false
+    },
+    {
+      "name": "submit_task",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "dispatch_task",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": true
+    },
+    {
+      "name": "send_message_to_agent",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "poll_messages",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "read_channel_mail",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "broadcast_message",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "list_channel_tasks",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "list_team_agents",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": true
+    },
+    {
+      "name": "get_task_details",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "get_my_task_queue",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "get_queue_overview",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "reassign_task",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": true
+    },
+    {
+      "name": "update_task",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "cancel_task",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": true
+    },
+    {
+      "name": "search_memory",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "save_memory",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "create_team_agent",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": true
+    },
+    {
+      "name": "update_team_agent",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": true
+    },
+    {
+      "name": "remove_team_agent",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": true
+    },
+    {
+      "name": "refuse_task",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "my_industrial_nodes",
+      "risk": "read",
+      "inKit": true,
+      "injectedToWorker": true,
+      "leadOnly": false
+    },
+    {
+      "name": "industrial_resources",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "daq_query",
+      "risk": "read",
+      "inKit": true,
+      "injectedToWorker": true,
+      "leadOnly": false
+    },
+    {
+      "name": "dcw_judge",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "dcw_journal",
+      "risk": "read",
+      "inKit": true,
+      "injectedToWorker": true,
+      "leadOnly": false
+    },
+    {
+      "name": "send_cross_channel_message",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "list_other_teams",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "search_other_teams_memory",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "daq_export",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "daq_frames",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "ops_log",
+      "risk": "read",
+      "inKit": true,
+      "injectedToWorker": true,
+      "leadOnly": false
+    },
+    {
+      "name": "line_log",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "recipe_log",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "line_context",
+      "risk": "read",
+      "inKit": true,
+      "injectedToWorker": true,
+      "leadOnly": false
+    },
+    {
+      "name": "recipe_versions",
+      "risk": "read",
+      "inKit": true,
+      "injectedToWorker": true,
+      "leadOnly": false
+    },
+    {
+      "name": "recipe_update",
+      "risk": "write",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "recipe_rollback",
+      "risk": "write",
+      "inKit": true,
+      "injectedToWorker": true,
+      "leadOnly": false
+    },
+    {
+      "name": "mes_catalog",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "mes_fetch",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "mes_dataset_read",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "mes_datasets",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "aml_node_catalog",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "aml_dataset_build",
+      "risk": "write",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "aml_dataset_stats",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "aml_job_submit",
+      "risk": "write",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "aml_job_status",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "aml_job_logs",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "aml_job_cancel",
+      "risk": "write",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "aml_leaderboard",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "aml_model_find",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "aml_model_promote",
+      "risk": "write",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "aml_model_reference",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "aml_model_annotate",
+      "risk": "write",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "twin_provider_catalog",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "twin_scene_discover",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "twin_scene_compile",
+      "risk": "write",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "twin_scene_freeze",
+      "risk": "write",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "twin_physics_spec_draft",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "twin_physics_spec_validate",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "twin_physics_spec_compile",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "twin_scene_read",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "twin_snapshot_create",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "twin_trial_run",
+      "risk": "write",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "mpc_optimize",
+      "risk": "write",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "twin_gate_evaluate",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "twin_calibration_request",
+      "risk": "write",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "optimization_explore",
+      "risk": "write",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "twin_bayes_optimize",
+      "risk": "write",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "aml_training_plan_list",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "aml_training_plan_create",
+      "risk": "write",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "aml_training_plan_train",
+      "risk": "write",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "team_grant_nodes",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": true
+    },
+    {
+      "name": "team_revoke_nodes",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": true
+    },
+    {
+      "name": "recipe_trial",
+      "risk": "write",
+      "inKit": true,
+      "injectedToWorker": true,
+      "leadOnly": false
+    },
+    {
+      "name": "recipe_apply",
+      "risk": "write",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "exp_collect",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "aml_activity",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "recipe_propose",
+      "risk": "write",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "line_start",
+      "risk": "write",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "line_stop",
+      "risk": "write",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "line_status",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "analysis_save",
+      "risk": "write",
+      "inKit": true,
+      "injectedToWorker": true,
+      "leadOnly": false
+    },
+    {
+      "name": "analysis_query",
+      "risk": "read",
+      "inKit": true,
+      "injectedToWorker": true,
+      "leadOnly": false
+    },
+    {
+      "name": "mes_export",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "recipe_catalog",
+      "risk": "read",
+      "inKit": true,
+      "injectedToWorker": true,
+      "leadOnly": false
+    },
+    {
+      "name": "recipe_create",
+      "risk": "write",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "optimizer_capabilities",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "optimizer_solve",
+      "risk": "write",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "optimizer_status",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "optimizer_cancel",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "optimizer_plan_get",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "ontology_scene_inspect",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "ontology_node_neighbors",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "ontology_draft_create",
+      "risk": "write",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "ontology_draft_update",
+      "risk": "write",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "ontology_draft_validate",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "ontology_draft_autofix",
+      "risk": "write",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "ontology_rule_explain",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "ontology_compile_preview",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "ontology_publish_propose",
+      "risk": "write",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "ontology_version_compare",
+      "risk": "read",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    },
+    {
+      "name": "optimizer_profile_propose",
+      "risk": "write",
+      "inKit": false,
+      "injectedToWorker": false,
+      "leadOnly": false
+    }
+  ]
+}
