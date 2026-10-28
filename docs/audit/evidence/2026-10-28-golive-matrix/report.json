@@ -1,0 +1,334 @@
+{
+  "at": "2026-10-28T17:05:35.570Z",
+  "env": {
+    "base": "http://127.0.0.1:3419",
+    "simBase": "http://127.0.0.1:4036",
+    "home": "D:/tmp/aw-golive-20261028",
+    "simShadow": "D:/tmp/aw-phys-sim-shadow-4036",
+    "model": {
+      "provider": "lm-studio",
+      "model": "qwen3.5-9b-32k"
+    },
+    "harness": "omp",
+    "devices": "real-protocol(simulator): modbus-tcp / modbus-rtu / opcua / mqtt / http",
+    "instance": "⑤-go-live-matrix"
+  },
+  "scenario": {
+    "ports": {
+      "modbusTcp": 42040,
+      "modbusRtu": 41041,
+      "opcua": "opc.tcp://127.0.0.1:31840",
+      "mqtt": 44830,
+      "http": "http://127.0.0.1:4036/sim-http/dev-inspect-http/api/defect"
+    },
+    "line": "ln-24364c0a",
+    "channel": "820fc7c2-3439-4e50-8d8e-2360b659d8e2",
+    "agent": "79407f22-dae2-48bf-8819-3bc30bbbde88",
+    "recipe": "rc-7f84184b",
+    "dcwIds": [
+      "dw-4f5aae59",
+      "dw-20defa6b",
+      "dw-859ef861",
+      "dw-ae16effd"
+    ],
+    "daq": {
+      "daqTemp": "dn-b54b7bfb",
+      "daqGels": "dn-ba8f4ff8",
+      "daqPress": "dn-7990554a",
+      "daqThick": "dn-c6be7f52",
+      "daqDefect": "dn-21a07950"
+    }
+  },
+  "writeLatencyMs": [
+    7
+  ],
+  "assertions": [
+    {
+      "id": "S0",
+      "name": "隔离模拟器在线(4036)",
+      "pass": true,
+      "detail": "{\"started\":false,\"dir\":\"D:\\\\codes\\\\ABO\\\\AgentWorkShop\\\\plc-node-simulator\",\"reason\":\"already-up\"}"
+    },
+    {
+      "id": "S1",
+      "name": "五协议设备端点全部在线",
+      "pass": true,
+      "detail": "dev-extruder-mbtcp:modbus-tcp, dev-gels-rtu:modbus-rtu, dev-extruder-opcua:opcua, dev-gauge-mqtt:mqtt, dev-inspect-http:http"
+    },
+    {
+      "id": "P0",
+      "name": "生产构建隔离实例⑤就绪",
+      "pass": true,
+      "detail": "port=3419 version=0.8.6"
+    },
+    {
+      "id": "P0b",
+      "name": "admin 注册",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "P1",
+      "name": "真实协议 DAQ 节点接入(五族)",
+      "pass": true,
+      "detail": "{\"daqTemp\":\"dn-b54b7bfb\",\"daqGels\":\"dn-ba8f4ff8\",\"daqPress\":\"dn-7990554a\",\"daqThick\":\"dn-c6be7f52\",\"daqDefect\":\"dn-21a07950\"}"
+    },
+    {
+      "id": "P2",
+      "name": "真实协议 DCW 节点接入(四族写控)",
+      "pass": true,
+      "detail": "{\"dcwZone\":\"dw-4f5aae59\",\"dcwScrew\":\"dw-20defa6b\",\"dcwLine\":\"dw-859ef861\",\"dcwGap\":\"dw-ae16effd\"}"
+    },
+    {
+      "id": "D-modbus-tcp",
+      "name": "modbus-tcp 采样落库(≥3 点)",
+      "pass": true,
+      "detail": "points=29 tail=206.44/206.89/206.99"
+    },
+    {
+      "id": "D-modbus-rtu",
+      "name": "modbus-rtu 采样落库(≥3 点)",
+      "pass": true,
+      "detail": "points=29 tail=2/5/3"
+    },
+    {
+      "id": "D-opcua",
+      "name": "opcua 采样落库(≥3 点)",
+      "pass": true,
+      "detail": "points=29 tail=19.841/19.826/19.909"
+    },
+    {
+      "id": "D-mqtt",
+      "name": "mqtt 采样落库(≥3 点)",
+      "pass": true,
+      "detail": "points=15 tail=68.82/68.54/68.51"
+    },
+    {
+      "id": "D-http",
+      "name": "http 采样落库(≥3 点)",
+      "pass": true,
+      "detail": "points=29 tail=0.045/0.178/0.251"
+    },
+    {
+      "id": "D-match",
+      "name": "平台样本 = 设备侧信号值(五协议,误差在传感器噪声内)",
+      "pass": true,
+      "detail": "[{\"proto\":\"modbus-tcp\",\"platform\":206.99,\"device\":206.99,\"gap\":0,\"tol\":1.5,\"points\":29},{\"proto\":\"modbus-rtu\",\"platform\":3,\"device\":5,\"gap\":2,\"tol\":6,\"points\":29},{\"proto\":\"opcua\",\"platform\":19.848,\"device\":19.878,\"gap\":0.030000000000001137,\"tol\":0.5,\"points\":29},{\"proto\":\"mqtt\",\"platform\":68.82,\"device\":69.03,\"gap\":0.21000000000000796,\"tol\":5,\"points\":15},{\"proto\":\"http\",\"platform\":0.232,\"device\":0.252,\"gap\":0.01999999999999999,\"tol\":1,\"points\":29}]"
+    },
+    {
+      "id": "W1",
+      "name": "开线配方四协议写穿(设备侧=配方基线)",
+      "pass": true,
+      "detail": "start=200 device=[[\"dw-4f5aae59\",195],[\"dw-20defa6b\",160],[\"dw-859ef861\",90],[\"dw-ae16effd\",1.1]] platform=[[\"dw-4f5aae59\",195],[\"dw-20defa6b\",160],[\"dw-859ef861\",90],[\"dw-ae16effd\",1.1]]"
+    },
+    {
+      "id": "G0",
+      "name": "频道(manual/HITL)+ omp lead + 四协议点位绑定",
+      "pass": true,
+      "detail": "{\"channelId\":\"820fc7c2-3439-4e50-8d8e-2360b659d8e2\",\"lead\":\"79407f22-dae2-48bf-8819-3bc30bbbde88\",\"bindingIds\":[\"nb-e6739ef1\",\"nb-1a4c8e18\",\"nb-3e078296\",\"nb-d9b2959e\"]}"
+    },
+    {
+      "id": "W3",
+      "name": "Agent 令牌四协议批量下发(设备侧=目标,四族全部落穿)",
+      "pass": true,
+      "detail": "text=试验已整批下发并全部设备证实(4/4,批次 rr-9e6fa):加热区1设定→200C [证实✓];螺杆转速设定→170rpm [证实✓];线速度设定→85m/min [证实✓];模口间隙设定→1.2mm [证实✓]。假设:上线就绪验收:四协议配置一次整批下发(每点均在单步限内)。 人工附言:验收:批准四协议批量注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC device=[[\"dw-4f5aae59\",200],[\"dw-20defa6b\",170],[\"dw-859ef861\",85],[\"dw-ae16effd\",1.2]] targets=[[\"dw-4f5aae59\",200],[\"dw-20defa6b\",170],[\"dw-859ef861\",85],[\"dw-ae16effd\",1.2]]"
+    },
+    {
+      "id": "W4",
+      "name": "平台回读=目标(四协议)",
+      "pass": true,
+      "detail": "[[\"dw-4f5aae59\",200],[\"dw-20defa6b\",170],[\"dw-859ef861\",85],[\"dw-ae16effd\",1.2]]"
+    },
+    {
+      "id": "N1",
+      "name": "越量程写入被拒且设备不变",
+      "pass": true,
+      "detail": "status=400 device=200 resp={\"status\":400,\"code\":\"NODE_RANGE_EXCEEDED\",\"message\":\"设定值 300C 超出上限 节点工艺安全量程 的 260C —— 约束层:节点安全量程(当前有效写入区间 120~260C;各层限界按安全规约取交集,越界写入已拒绝)\",\"data\":null}"
+    },
+    {
+      "id": "N2",
+      "name": "点位直写超单步被拒且设备不变(recipe_trial 边界=配方窗口)",
+      "pass": true,
+      "detail": "status=409 resp={\"status\":409,\"code\":\"STEP_LIMIT_EXCEEDED\",\"message\":\"节点「加热区1设定」本次变化 20C 超过单步限制 5C（来源:recipe）\",\"data\":null}"
+    },
+    {
+      "id": "F1",
+      "name": "设备断链:连接测试如实失败(不伪造成功)",
+      "pass": true,
+      "detail": "{\"ok\":false,\"message\":\"OPC UA 连接失败: The connection cannot be established with server opc.tcp://127.0.0.1:31840 .\\nPlease check that the server is up and running or your network configuration.\\nErr = (connect ECONNREFUSED 127.0.0.1:31840)\"}"
+    },
+    {
+      "id": "F2",
+      "name": "设备断链:写入如实失败且设备值不变(不静默成功)",
+      "pass": true,
+      "detail": "status=200 outcome={\"ok\":false,\"message\":\"OPC UA 写入失败: 无法建立连接——检查 PLC 电源/IP/端口与防火墙(The connection cannot be established with server opc.tcp://127.0.0.1:31840 .\\nPlease check that the server is up and running or your network configuration.\\nErr = (connect ECONNREFUSED 127.0.0.1:31840))\",\"raw\":null,\"readback\":null,\"ack\" device=170"
+    },
+    {
+      "id": "F3",
+      "name": "设备恢复:连接测试与写入重新成功(ACK 设备证实)",
+      "pass": true,
+      "detail": "test={\"ok\":true,\"message\":\"会话建立成功,读取 ns=2;s=AW.P = 20.816\",\"sampleValue\":20.816,\"latencyMs\":1} outcome={\"ok\":true,\"message\":\"写入并回读一致:175,回读 175(标定后物理值 175)\",\"raw\":175,\"readback\":175,\"ack\":\"readback-verified\",\"anchorId\":\"anc-5717df4c\"} retries=[{\"status\":200,\"code\":0,\"ok\":true}] device=175"
+    }
+  ],
+  "agent": {
+    "via": "agent-tools/invoke + x-aw-agent-token",
+    "bindings": [
+      "nb-e6739ef1",
+      "nb-1a4c8e18",
+      "nb-3e078296",
+      "nb-d9b2959e"
+    ],
+    "batchCards": [
+      "ap-0623a5f0"
+    ]
+  },
+  "batch": {
+    "targets": [
+      [
+        "dw-4f5aae59",
+        200
+      ],
+      [
+        "dw-20defa6b",
+        170
+      ],
+      [
+        "dw-859ef861",
+        85
+      ],
+      [
+        "dw-ae16effd",
+        1.2
+      ]
+    ],
+    "device": [
+      [
+        "dw-4f5aae59",
+        200
+      ],
+      [
+        "dw-20defa6b",
+        170
+      ],
+      [
+        "dw-859ef861",
+        85
+      ],
+      [
+        "dw-ae16effd",
+        1.2
+      ]
+    ],
+    "platform": [
+      [
+        "dw-4f5aae59",
+        200
+      ],
+      [
+        "dw-20defa6b",
+        170
+      ],
+      [
+        "dw-859ef861",
+        85
+      ],
+      [
+        "dw-ae16effd",
+        1.2
+      ]
+    ],
+    "text": "试验已整批下发并全部设备证实(4/4,批次 rr-9e6fa):加热区1设定→200C [证实✓];螺杆转速设定→170rpm [证实✓];线速度设定→85m/min [证实✓];模口间隙设定→1.2mm [证实✓]。假设:上线就绪验收:四协议配置一次整批下发(每点均在单步限内)。\n人工附言:验收:批准四协议批量注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC 整批恢复)。"
+  },
+  "fault": {
+    "offlineTest": {
+      "ok": false,
+      "message": "OPC UA 连接失败: The connection cannot be established with server opc.tcp://127.0.0.1:31840 .\nPlease check that the server is up and running or your network configuration.\nErr = (connect ECONNREFUSED 127.0.0.1:31840)"
+    },
+    "offlineWrite": {
+      "ok": false,
+      "message": "OPC UA 写入失败: 无法建立连接——检查 PLC 电源/IP/端口与防火墙(The connection cannot be established with server opc.tcp://127.0.0.1:31840 .\nPlease check that the server is up and running or your network configuration.\nErr = (connect ECONNREFUSED 127.0.0.1:31840))",
+      "raw": null,
+      "readback": null,
+      "ack": "unverified"
+    },
+    "onlineTest": {
+      "ok": true,
+      "message": "会话建立成功,读取 ns=2;s=AW.P = 20.816",
+      "sampleValue": 20.816,
+      "latencyMs": 1
+    },
+    "onlineWrite": {
+      "ok": true,
+      "message": "写入并回读一致:175,回读 175(标定后物理值 175)",
+      "raw": 175,
+      "readback": 175,
+      "ack": "readback-verified",
+      "anchorId": "anc-5717df4c"
+    },
+    "retryLog": [
+      {
+        "status": 200,
+        "code": 0,
+        "ok": true
+      }
+    ]
+  },
+  "samples": {
+    "modbus-tcp": {
+      "points": 29,
+      "tail": [
+        207.23,
+        207.25,
+        206.44,
+        206.89,
+        206.99
+      ]
+    },
+    "modbus-rtu": {
+      "points": 29,
+      "tail": [
+        4,
+        3,
+        2,
+        5,
+        3
+      ]
+    },
+    "opcua": {
+      "points": 29,
+      "tail": [
+        19.848,
+        19.894,
+        19.841,
+        19.826,
+        19.909
+      ]
+    },
+    "mqtt": {
+      "points": 15,
+      "tail": [
+        68.97,
+        68.87,
+        68.82,
+        68.54,
+        68.51
+      ]
+    },
+    "http": {
+      "points": 29,
+      "tail": [
+        0.268,
+        0.232,
+        0.045,
+        0.178,
+        0.251
+      ]
+    }
+  },
+  "summary": {
+    "total": 21,
+    "passed": 21,
+    "failed": 0,
+    "verdict": "PASS"
+  }
+}

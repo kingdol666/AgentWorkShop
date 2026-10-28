@@ -50,6 +50,20 @@ re-read with `dcw_read` to check whether ACT converged to SET. Every successful 
 still opens a control-loop optimization record, and `dcw_read` is one of the evidence tools
 used to decide `keep / rollback`.
 
+## Write cadence and failure semantics
+
+Online point writes (`source=agent/manual`) enforce a 60-second minimum interval and a
+write-hold window, but **only successful dispatches count**:
+
+- Every attempt records `lastAttemptAt` (including failures); `lastWriteAt` / `lastAckAt`
+  advance only when the device confirms or accepts the write.
+- **A failed write does not consume the 60-second window** — retry immediately after a link
+  recovers; a 5-second cooldown only prevents back-to-back hammering.
+- The node view exposes both timestamps; UI/WS events update them by `ok`; legacy snapshots
+  are migrated automatically.
+- Recipe trial / apply / rollback use their own path (not the 60s/step gate); their bound is
+  the recipe window (see [Recipe versions](recipe-versions.md)).
+
 ## Driver support
 
 | Driver | Read | Write | Notes |

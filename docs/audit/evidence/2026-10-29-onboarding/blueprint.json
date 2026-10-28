@@ -1,0 +1,113 @@
+{
+ "simPort": 4035,
+ "shadowDir": "..",
+ "devices": [
+  {
+   "id": "coat-machine-1",
+   "name": "涂布主机",
+   "protocol": "modbus-tcp",
+   "port": 41502,
+   "unitId": 1,
+   "signals": [
+    {
+     "id": "coat-gap-sp",
+     "name": "涂布间隙SP",
+     "unit": "μm",
+     "min": 100,
+     "max": 400,
+     "decimals": 1,
+     "kind": "sp",
+     "initial": 180
+    },
+    {
+     "id": "oven-temp-sp",
+     "name": "烘干温度SP",
+     "unit": "℃",
+     "min": 60,
+     "max": 150,
+     "decimals": 1,
+     "kind": "sp",
+     "initial": 110
+    },
+    {
+     "id": "line-speed-sp",
+     "name": "走带速度SP",
+     "unit": "m/min",
+     "min": 5,
+     "max": 40,
+     "decimals": 1,
+     "kind": "sp",
+     "initial": 20
+    },
+    {
+     "id": "coat-thickness-pv",
+     "name": "涂布厚度PV",
+     "unit": "μm",
+     "min": 0,
+     "max": 400,
+     "decimals": 1,
+     "kind": "pv",
+     "dynamics": {
+      "base": 96,
+      "tau": 10,
+      "noise": 2,
+      "follows": [
+       {
+        "sp": "涂布间隙SP",
+        "gain": 0.9
+       },
+       {
+        "sp": "烘干温度SP",
+        "gain": 0.2
+       },
+       {
+        "sp": "走带速度SP",
+        "gain": -1.2
+       }
+      ]
+     }
+    },
+    {
+     "id": "oven-temp-pv",
+     "name": "烘干温度PV",
+     "unit": "℃",
+     "min": 0,
+     "max": 200,
+     "decimals": 1,
+     "kind": "pv",
+     "dynamics": {
+      "base": 108,
+      "tau": 8,
+      "noise": 0.8,
+      "follows": [
+       {
+        "sp": "烘干温度SP",
+        "gain": 0.95
+       }
+      ]
+     }
+    },
+    {
+     "id": "web-tension-pv",
+     "name": "张力PV",
+     "unit": "N",
+     "min": 0,
+     "max": 300,
+     "decimals": 1,
+     "kind": "pv",
+     "dynamics": {
+      "base": 38,
+      "tau": 6,
+      "noise": 1.5,
+      "follows": [
+       {
+        "sp": "走带速度SP",
+        "gain": 2
+       }
+      ]
+     }
+    }
+   ]
+  }
+ ]
+}

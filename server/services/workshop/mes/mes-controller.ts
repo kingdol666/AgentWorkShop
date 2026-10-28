@@ -743,10 +743,12 @@ export function createMesController(deps: Partial<MesControllerDeps> = {}) {
     // 模式一:当前值快照(无 from/to)
     if (!win.from || !win.to) {
       const lines: string[] = []
+      let failed = 0
       for (const node of vis.nodes) {
         const driver = d.resolveDriver(node.driver)
         try {
           if (typeof driver.read !== 'function') {
+            failed++
             lines.push(`- ${node.name}(${node.id}):驱动 ${node.driver} 不支持读取`)
             continue
           }
@@ -754,16 +756,19 @@ export function createMesController(deps: Partial<MesControllerDeps> = {}) {
           const at = new Date(d.nowMs()).toISOString()
           if (r.dictionary && r.dictionary.length > 0) cacheDictionary(node.id, r.dictionary)
           const dict = r.dictionary && r.dictionary.length > 0 ? r.dictionary : mesDictionaryOfNode(node.id, node.driverConfig as Record<string, unknown>)
+          if (!(r.ok && r.eng != null)) failed++
           lines.push(r.ok && r.eng != null
             ? `- ${node.name}(${node.id}):${fmtN(r.eng)}${node.unit} @ ${shortTs(at)}${dict.length > 0 ? `\n${formatDictionary(dict, '    ')}` : ''}`
             : `- ${node.name}(${node.id}):读取失败(${r.message.slice(0, 80)})`)
         }
         catch (err) {
+          failed++
           lines.push(`- ${node.name}(${node.id}):读取异常(${(err instanceof Error ? err.message : String(err)).slice(0, 80)})`)
         }
       }
       return {
         mode: 'snapshot',
+        ...(failed === vis.nodes.length ? { isError: true } : {}),
         text: `MES 当前值快照(${vis.nodes.length} 个点位,内联直读):\n${lines.join('\n')}\n\n说明:当前值为直读快照;历史窗口用 mes_fetch 带 from/to(≤7 天,max_rows≤${MES_MAX_ROWS_CAP})。`,
       }
     }
@@ -772,6 +777,7 @@ export function createMesController(deps: Partial<MesControllerDeps> = {}) {
     if (win.maxRows <= MES_SYNC_INLINE_MAX_ROWS) {
       const sections: string[] = []
       const statsOut: NonNullable<MesFetchOutcome['data']>['stats'] = []
+      let failed = 0
       for (const node of vis.nodes) {
         try {
           const one = await inlineFetchNode(node, win.from, win.to, win.maxRows, args.param, args.include_data === true || args.include_data === 'true')
@@ -779,11 +785,14 @@ export function createMesController(deps: Partial<MesControllerDeps> = {}) {
           statsOut.push({ nodeId: node.id, stats: one.stats, truncated: one.truncated })
         }
         catch (err) {
+          failed++
           sections.push(`■ ${node.name}(id=${node.id})\n  取数失败:${err instanceof Error ? err.message : String(err)}`)
         }
       }
       return {
         mode: 'inline',
+        // 全部点位失败时如实置 isError(此前仅文本提示"取数失败",Agent 可能当成功继续)
+        ...(failed === vis.nodes.length ? { isError: true } : {}),
         text: `MES 历史取数(内联同步,${vis.nodes.length} 个点位,窗口 ${shortTs(win.from)} ~ ${shortTs(win.to)}):\n${sections.join('\n')}\n\n说明:以上为统计摘要与 ≤3 行采样;MES 原文不进入对话。向量/图像/记录点位按各自格式呈现,已配置数据钩子(dataHook)的点位会附处理摘要与产物清单(文件落 <数据根>/mes-artifacts/<点位id>/)。需要标量/向量全量行请用更大 max_rows(> ${MES_SYNC_INLINE_MAX_ROWS})走异步数据集,再用 mes_dataset_read 读。`,
         data: { stats: statsOut },
       }

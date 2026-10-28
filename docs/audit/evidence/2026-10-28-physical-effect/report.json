@@ -1,0 +1,625 @@
+{
+  "at": "2026-10-28T14:29:12.603Z",
+  "env": {
+    "base": "http://127.0.0.1:3418",
+    "simBase": "http://127.0.0.1:4036",
+    "home": "D:/tmp/aw-phys-20261028",
+    "simShadow": "D:/tmp/aw-phys-sim-shadow-4036",
+    "devicePort": 18740,
+    "model": {
+      "provider": "lm-studio",
+      "model": "qwen3.5-9b-32k",
+      "contextTokens": 32768
+    },
+    "harness": "omp",
+    "devices": "real-protocol(modbus-tcp → 物理孪生模拟器)",
+    "instance": "④-physical-effect"
+  },
+  "scenario": {
+    "line": "ln-07ccc74a",
+    "daq": "dn-80bee2f3",
+    "dcwIds": [
+      "dw-45f1a97e",
+      "dw-2936e950",
+      "dw-aba2b651"
+    ],
+    "recipe": "rc-94260d8f",
+    "channel": "f9156d79-c6d7-42b2-9e39-52f663056186",
+    "agent": "fc02b1ba-306a-48ea-85e5-e17dd17f43c4",
+    "bindings": [
+      "nb-c05f641e",
+      "nb-61f74acd",
+      "nb-2e94fab9"
+    ],
+    "baseline": 198,
+    "devicePort": 18740
+  },
+  "timeline": [
+    {
+      "t": "2026-10-28T14:34:19.259Z",
+      "elapsedS": 2,
+      "deviceSp": [
+        205,
+        205,
+        205
+      ],
+      "devicePv": 199.19,
+      "platformSample": 198.53,
+      "platformNodeValues": [
+        205,
+        205,
+        205
+      ]
+    },
+    {
+      "t": "2026-10-28T14:34:21.350Z",
+      "elapsedS": 4,
+      "deviceSp": [
+        205,
+        205,
+        205
+      ],
+      "devicePv": 199.44,
+      "platformSample": 198.49,
+      "platformNodeValues": [
+        205,
+        205,
+        205
+      ]
+    },
+    {
+      "t": "2026-10-28T14:34:23.427Z",
+      "elapsedS": 6,
+      "deviceSp": [
+        205,
+        205,
+        205
+      ],
+      "devicePv": 198.66,
+      "platformSample": 198.18,
+      "platformNodeValues": [
+        205,
+        205,
+        205
+      ]
+    },
+    {
+      "t": "2026-10-28T14:34:25.510Z",
+      "elapsedS": 8,
+      "deviceSp": [
+        205,
+        205,
+        205
+      ],
+      "devicePv": 198.94,
+      "platformSample": 198.63,
+      "platformNodeValues": [
+        205,
+        205,
+        205
+      ]
+    },
+    {
+      "t": "2026-10-28T14:34:27.591Z",
+      "elapsedS": 10,
+      "deviceSp": [
+        205,
+        205,
+        205
+      ],
+      "devicePv": 198.13,
+      "platformSample": 198.69,
+      "platformNodeValues": [
+        205,
+        205,
+        205
+      ]
+    },
+    {
+      "t": "2026-10-28T14:34:29.672Z",
+      "elapsedS": 13,
+      "deviceSp": [
+        205,
+        205,
+        205
+      ],
+      "devicePv": 199.26,
+      "platformSample": 199.28,
+      "platformNodeValues": [
+        205,
+        205,
+        205
+      ]
+    },
+    {
+      "t": "2026-10-28T14:34:31.768Z",
+      "elapsedS": 15,
+      "deviceSp": [
+        205,
+        205,
+        205
+      ],
+      "devicePv": 198.68,
+      "platformSample": 198.64,
+      "platformNodeValues": [
+        205,
+        205,
+        205
+      ]
+    },
+    {
+      "t": "2026-10-28T14:34:33.853Z",
+      "elapsedS": 17,
+      "deviceSp": [
+        205,
+        205,
+        205
+      ],
+      "devicePv": 198.7,
+      "platformSample": 199.67,
+      "platformNodeValues": [
+        205,
+        205,
+        205
+      ]
+    },
+    {
+      "t": "2026-10-28T14:34:35.920Z",
+      "elapsedS": 19,
+      "deviceSp": [
+        205,
+        205,
+        205
+      ],
+      "devicePv": 199.52,
+      "platformSample": 199.23,
+      "platformNodeValues": [
+        205,
+        205,
+        205
+      ]
+    },
+    {
+      "t": "2026-10-28T14:34:38.017Z",
+      "elapsedS": 21,
+      "deviceSp": [
+        205,
+        205,
+        205
+      ],
+      "devicePv": 200,
+      "platformSample": 199.29,
+      "platformNodeValues": [
+        205,
+        205,
+        205
+      ]
+    },
+    {
+      "t": "2026-10-28T14:34:40.098Z",
+      "elapsedS": 23,
+      "deviceSp": [
+        205,
+        205,
+        205
+      ],
+      "devicePv": 199.66,
+      "platformSample": 199.42,
+      "platformNodeValues": [
+        205,
+        205,
+        205
+      ]
+    },
+    {
+      "t": "2026-10-28T14:34:42.175Z",
+      "elapsedS": 25,
+      "deviceSp": [
+        205,
+        205,
+        205
+      ],
+      "devicePv": 199.29,
+      "platformSample": 199.52,
+      "platformNodeValues": [
+        205,
+        205,
+        205
+      ]
+    },
+    {
+      "t": "2026-10-28T14:34:44.278Z",
+      "elapsedS": 27,
+      "deviceSp": [
+        205,
+        205,
+        205
+      ],
+      "devicePv": 199.85,
+      "platformSample": 199.37,
+      "platformNodeValues": [
+        205,
+        205,
+        205
+      ]
+    },
+    {
+      "t": "2026-10-28T14:34:46.375Z",
+      "elapsedS": 29,
+      "deviceSp": [
+        205,
+        205,
+        205
+      ],
+      "devicePv": 199.33,
+      "platformSample": 199.51,
+      "platformNodeValues": [
+        205,
+        205,
+        205
+      ]
+    },
+    {
+      "t": "2026-10-28T14:34:48.485Z",
+      "elapsedS": 31,
+      "deviceSp": [
+        205,
+        205,
+        205
+      ],
+      "devicePv": 199.41,
+      "platformSample": 200.4,
+      "platformNodeValues": [
+        205,
+        205,
+        205
+      ]
+    },
+    {
+      "t": "2026-10-28T14:34:50.572Z",
+      "elapsedS": 33,
+      "deviceSp": [
+        205,
+        205,
+        205
+      ],
+      "devicePv": 199.98,
+      "platformSample": 200.07,
+      "platformNodeValues": [
+        205,
+        205,
+        205
+      ]
+    },
+    {
+      "t": "2026-10-28T14:34:52.653Z",
+      "elapsedS": 35,
+      "deviceSp": [
+        205,
+        205,
+        205
+      ],
+      "devicePv": 199.38,
+      "platformSample": 200.33,
+      "platformNodeValues": [
+        205,
+        205,
+        205
+      ]
+    },
+    {
+      "t": "2026-10-28T14:34:54.746Z",
+      "elapsedS": 38,
+      "deviceSp": [
+        205,
+        205,
+        205
+      ],
+      "devicePv": 200.03,
+      "platformSample": 199.97,
+      "platformNodeValues": [
+        205,
+        205,
+        205
+      ]
+    },
+    {
+      "t": "2026-10-28T14:34:56.839Z",
+      "elapsedS": 40,
+      "deviceSp": [
+        205,
+        205,
+        205
+      ],
+      "devicePv": 200.73,
+      "platformSample": 200.49,
+      "platformNodeValues": [
+        205,
+        205,
+        205
+      ]
+    }
+  ],
+  "assertions": [
+    {
+      "id": "S0",
+      "name": "隔离模拟器就绪(4036,影子私有 data/)",
+      "pass": true,
+      "detail": "{\"started\":true,\"pid\":108200,\"dir\":\"D:/tmp/aw-phys-sim-shadow-4036\",\"reason\":\"spawned\"}"
+    },
+    {
+      "id": "S1",
+      "name": "挤出设备在线且端口隔离",
+      "pass": true,
+      "detail": "port=18740"
+    },
+    {
+      "id": "S2",
+      "name": "设备侧直读可用(PV+三区SP,Modbus 18740)",
+      "pass": true,
+      "detail": "{\"sp\":[200,200,200],\"pv\":209.24}"
+    },
+    {
+      "id": "P0",
+      "name": "生产构建隔离实例④就绪",
+      "pass": true,
+      "detail": "port=3418 version=0.8.6"
+    },
+    {
+      "id": "P0b",
+      "name": "admin 注册",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "P1",
+      "name": "真实协议节点接入(DAQ×1 + DCW×3,modbus-tcp)",
+      "pass": true,
+      "detail": "{\"line\":\"ln-07ccc74a\",\"daq\":\"dn-80bee2f3\",\"dcwIds\":[\"dw-45f1a97e\",\"dw-2936e950\",\"dw-aba2b651\"],\"port\":18740}"
+    },
+    {
+      "id": "P2",
+      "name": "开线配方直达设备寄存器(三区 SP=基线 198)",
+      "pass": true,
+      "detail": "start=200 device={\"sp\":[198,198,198],\"pv\":209.48}"
+    },
+    {
+      "id": "P3",
+      "name": "采样活性:窗口内样本充足且非恒定",
+      "pass": true,
+      "detail": "count=57 latest=200.63 devicePV=200.75"
+    },
+    {
+      "id": "P4",
+      "name": "平台样本 = 设备直读(同一物理量,误差 ≤1.5C)",
+      "pass": true,
+      "detail": "platform=200.63 device=200.75 gap=0.120"
+    },
+    {
+      "id": "C0",
+      "name": "频道(manual/HITL)+ omp lead + 三区点位绑定",
+      "pass": true,
+      "detail": "{\"channelId\":\"f9156d79-c6d7-42b2-9e39-52f663056186\",\"lead\":\"fc02b1ba-306a-48ea-85e5-e17dd17f43c4\",\"tools\":200,\"bindings\":[\"nb-c05f641e\",\"nb-61f74acd\",\"nb-2e94fab9\"]}"
+    },
+    {
+      "id": "A1",
+      "name": "Agent 自主调用 daq_query 抓取真实数据",
+      "pass": true,
+      "detail": "state=COMPLETED cancelled=false calls=🔧 my_industrial_nodes | 🔧 line_context(line_id=ln-07ccc74a) | 🔧 daq_query(node_id=dn-80bee2f3, line_id=ln-07ccc74a) | 🔧 my_industrial_nodes | 🔧 line_context(line_id=ln-07ccc74a) | 🔧 daq_query(node_id=dn-80bee2f3, line_id=ln-07ccc74a) | 🔧 my_industrial_nodes ✅ 完成: ### ⚙ 频道执行模式:manual(手动)—— 本频道所有下发/配方/回退动作都会挂起等人工批准:下发前必须说明依据(数采/MES 证据),审批卡会向人类展示你的理由 #### ◆ 加热区1SP [id=dw-45f1a97e] - 物理量: 烘箱温度设"
+    },
+    {
+      "id": "A2",
+      "name": "Agent 工具面直查:返回样本数与最新值,且与平台样本一致(≤2C)",
+      "pass": true,
+      "detail": "text=数采数据查询结果(1 个节点): ■ 熔体温度(熔体/箱体温度)单位 ℃,正常量程 0~400℃,当前状态 ok,时间窗 2026-10-28T22:31 ~ 2026-10-28T22:34(降采样 1000ms,聚合 avg) 当前活动批次 run=rr-2dc7bf8a 配方「物理生效配方」(rc-94260d8f)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build) 样本 172 点 | 最新 198.41℃ | 均值 200.72 | 最小 197.95 | 最大 204.65 最近序列: 22:34:01=avg 198.8(n=1); 22:34:02=avg 199.47(n=1); 22:34:03=avg 199.1(n=1); 22:34:04=avg 198.61("
+    },
+    {
+      "id": "W0",
+      "name": "Agent 自主发起的试验真实落到设备寄存器(模型自选幅度)",
+      "pass": true,
+      "detail": "state=COMPLETED cancelled=false cards=1 anchors=[{\"n\":\"dw-aba2b\",\"prev\":198,\"new\":200},{\"n\":\"dw-2936e\",\"prev\":198,\"new\":200},{\"n\":\"dw-45f1a\",\"prev\":198,\"new\":200}] device={\"sp\":[200,200,200],\"pv\":199.08}"
+    },
+    {
+      "id": "W1",
+      "name": "HITL 批准后批量账本落账(三区 new=各自目标)",
+      "pass": true,
+      "detail": "cards=1 err=false text=试验已整批下发并全部设备证实(3/3,批次 rr-9c3f5):加热区1SP→205C [证实✓];加热区2SP→205C [证实✓];加热区3SP→205C [证实✓]。假设:物理生效验收:三个加热区同步上调 5C,观察熔体温度一阶响应。 人工附言:验收:批准三区批量试验注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC anchors=[{\"n\":\"dw-aba2b\",\"prev\":200,\"new\":205,\"src\":\"recipe\"},{\"n\":\"dw-2936e\",\"prev\":200,\"new\":205,\"src\":\"recipe\"},{\"n\":\"dw-45f1a\",\"prev\":200,\"new\":205,\"src\":\"recipe\"}]"
+    },
+    {
+      "id": "W2",
+      "name": "设备寄存器直读 = 账本目标值(平台外真值)",
+      "pass": true,
+      "detail": "targets=[205,205,205] device={\"sp\":[205,205,205],\"pv\":199.12}"
+    },
+    {
+      "id": "W3",
+      "name": "平台回读 = 目标值且写入留痕",
+      "pass": true,
+      "detail": "[{\"id\":\"dw-45f1a\",\"value\":205,\"at\":\"2026-10-28T22:34:15.553+08:00\"},{\"id\":\"dw-2936e\",\"value\":205,\"at\":\"2026-10-28T22:34:15.580+08:00\"},{\"id\":\"dw-aba2b\",\"value\":205,\"at\":\"2026-10-28T22:34:15.596+08:00\"}]"
+    },
+    {
+      "id": "W4",
+      "name": "下发幅度受单步限界约束(每点 ≤5C)",
+      "pass": true,
+      "detail": "cur=[200,200,200] targets=[205,205,205]"
+    },
+    {
+      "id": "R1",
+      "name": "物理响应:熔体温度沿 SP 方向响应(ΔPV=2.71C,阈值 1.50C)",
+      "pass": true,
+      "detail": "pvBase=198.41 pvStart=198.02 pvFinal=200.73 deltaSP=6.59 need=1.50 elapsed=40s"
+    },
+    {
+      "id": "R2",
+      "name": "下发后的变化被平台重新采到(样本随设备上移)",
+      "pass": true,
+      "detail": "pvSampleBase=198.41 pvSampleNow=200.49 devicePv=200.73"
+    },
+    {
+      "id": "A3",
+      "name": "下发后 Agent 工具面复抓成功(返回样本数与最新值)",
+      "pass": true,
+      "detail": "text=数采数据查询结果(1 个节点): ■ 熔体温度(熔体/箱体温度)单位 ℃,正常量程 0~400℃,当前状态 ok,时间窗 2026-10-28T22:32 ~ 2026-10-28T22:34(降采样 1000ms,聚合 avg) 当前活动批次 run=rr-2dc7bf8a 配方「物理生效配方」(rc-94260d8f)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build) 样本 114 点 | 最新 200.49℃ | 均值 199.308 | 最小 197.95 | 最大 200.49 最近序列: 22:34:44=avg 199.85(n=1); 22:34:45="
+    },
+    {
+      "id": "A4",
+      "name": "复抓值沿 SP 方向变化且与平台样本一致(变化可被 Agent 观测)",
+      "pass": true,
+      "detail": "refetch=200.49 platform=200.49 pvBase=198.41 deltaSP=6.59"
+    }
+  ],
+  "tasks": {
+    "main": {
+      "id": "1d649d75-3cbd-4f75-a568-72db0ff7084d",
+      "state": "COMPLETED",
+      "cancelled": false,
+      "toolCalls": [
+        "🔧 my_industrial_nodes",
+        "🔧 line_context(line_id=ln-07ccc74a)",
+        "🔧 daq_query(node_id=dn-80bee2f3, line_id=ln-07ccc74a)",
+        "🔧 my_industrial_nodes",
+        "🔧 line_context(line_id=ln-07ccc74a)",
+        "🔧 daq_query(node_id=dn-80bee2f3, line_id=ln-07ccc74a)",
+        "🔧 my_industrial_nodes ✅ 完成: ### ⚙ 频道执行模式:manual(手动)—— 本频道所有下发/配方/回退动作都会挂起等人工批准:下发前必须说明依据(数采/MES 证据),审批卡会向人类展示你的理由 #### ◆ 加热区1SP [id=dw-45f1a97e] - 物理量: 烘箱温度设定,单位 C,精度 2 位小数 - 工艺语义: 加热区1SP(加热区 1);单步 ≤5C,工艺窗口 120~260C - 安全量程: [120, 260] C(硬联",
+        "🔧 line_context ✅ 完成: 你控制的产线全景(1 条): ■ 产线 物理生效线(ln-07ccc74a) · 状态:运行中 场景说明: 真实 Modbus TCP → 挤出流延物理孪生:抓数/下发/物理响应验收 活动批次 rr-2dc7b · 产品「物理生效产品」(pd-8874ee33) · 开跑 22:29:58 · 已打标 179 样本 我绑定的节点:数控 [加热区1SP, 加热区2SP, 加热区3SP];数采 [无] 配方「物理生效配方」(rc-942",
+        "🔧 daq_query ❌ 失败: to_ms 必须是正的 epoch 毫秒(收到 0)。",
+        "🔧 my_industrial_nodes ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"### ⚙ 频道执行模式:manual(手动)—— 本频道所有下发/配方/回退动作都会挂起等人工批准:下发前必须说明依据(数采/MES 证据),审批卡会向人类展示你的理由\\n\\n#### ◆ 加热区1SP [id=dw-45f1a97e]\\n- 物理量: 烘箱温度设定,单位 C,精度 2 位小数\\n- 工艺语义: 加热区1SP(加热区 1);单步 ≤",
+        "🔧 line_context ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"你控制的产线全景(1 条):\\n\\n■ 产线 物理生效线(ln-07ccc74a) · 状态:运行中\\n 场景说明: 真实 Modbus TCP → 挤出流延物理孪生:抓数/下发/物理响应验收\\n 活动批次 rr-2dc7b · 产品「物理生效产品」(pd-8874ee33) · 开跑 22:29:58 · 已打标 179 样本\\n 我绑定的节点:数控 [加热区1",
+        "🔧 daq_query ❌ 失败: {\"content\":[{\"type\":\"text\",\"text\":\"to_ms 必须是正的 epoch 毫秒(收到 0)。\"}],\"details\":{},\"isError\":true}",
+        "🔧 daq_query(agg=avg, bucket_ms=15000)",
+        "🔧 daq_query(agg=avg, bucket_ms=15000)",
+        "🔧 daq_query ❌ 失败: to_ms 必须是正的 epoch 毫秒(收到 0)。",
+        "🔧 daq_query ❌ 失败: {\"content\":[{\"type\":\"text\",\"text\":\"to_ms 必须是正的 epoch 毫秒(收到 0)。\"}],\"details\":{},\"isError\":true}",
+        "🔧 daq_query(agg=avg, bucket_ms=15000)",
+        "🔧 daq_query(agg=avg, bucket_ms=15000)",
+        "🔧 daq_query ✅ 完成: 数采数据查询结果(1 个节点): ■ 熔体温度(熔体/箱体温度)单位 ℃,正常量程 0~400℃,当前状态 ok,时间窗 2026-10-28T22:03 ~ 2026-10-28T22:33(降采样 15000ms,聚合 avg) 当前活动批次 run=rr-2dc7bf8a 配方「物理生效配方」(rc-94260d8f)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build) ",
+        "🔧 daq_query ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"数采数据查询结果(1 个节点):\\n\\n■ 熔体温度(熔体/箱体温度)单位 ℃,正常量程 0~400℃,当前状态 ok,时间窗 2026-10-28T22:03 ~ 2026-10-28T22:33(降采样 15000ms,聚合 avg)\\n 当前活动批次 run=rr-2dc7bf8a 配方「物理生效配方」(rc-94260d8f)(可直接把 run_id/recip",
+        "🔧 recipe_trial(line_id=ln-07ccc74a, recipe_id=)",
+        "🔧 recipe_trial(line_id=ln-07ccc74a, recipe_id=)",
+        "🔧 recipe_trial ✅ 完成: 试验已整批下发并全部设备证实(3/3,批次 rr-1b046):加热区1SP→200C [证实✓];加热区2SP→200C [证实✓];加热区3SP→200C [证实✓]。假设:验收任务「抓数并调参」：验证真实 Modbus TCP 下发链路与物理响应。当前三区 SP=198C、熔体温度 199.36℃ 已趋稳（22:33:15 样本）。整批 +2C 至 200C（单步 ≤5C 限内，窗口 120~260C 内），观察 PLC 设定",
+        "🔧 recipe_trial ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"试验已整批下发并全部设备证实(3/3,批次 rr-1b046):加热区1SP→200C [证实✓];加热区2SP→200C [证实✓];加热区3SP→200C [证实✓]。假设:验收任务「抓数并调参」：验证真实 Modbus TCP 下发链路与物理响应。当前三区 SP=198C、熔体温度 199.36℃ 已趋稳（22:33:15 样本）。整批 +2C 至 200C",
+        "🔧 complete_task(1d649d75-3cbd-4f75-a568-72db0ff7084d)"
+      ],
+      "deliverable": "【抓数】daq_query 熔体温度(dn-80bee2f3):时间窗 22:03~22:33,15 点,最新 199.36℃(22:33:15,库内最新滞后 1s),窗口 [0,400]℃ 内正常;均值 203.78℃,自 210.04℃ 逐点回落至 199.36℃,趋稳于三区设定 198C 附近 —— 数采链路正常,数据为标定后真实物理量纲。\n\n【调参】recipe_trial 整批试验:三区加热 SP 198→200℃(+2C,单步 ≤5C 限内,窗口 120~260℃ 内),试验批次 rr-1b046,结果 3/3 全部设备证实:加热区1SP→200C[证实✓]、加热区2SP→200C[证实✓]、加热区3SP→200C[证实✓]。Modbus TCP 下发链路与 PLC 物理响应验收通过。\n\n【范围/边界】本次为验收试验(recipe_trial),未写入配方版本(按频道守则「不固化」);未做工艺惯性后复测判读(按守则「不等待、不复测」)。参数仍为候选值 200C,后续如需优化固化走 recipe_update、需回退走 recipe_rollback(dispatch=true)。",
+      "cards": [
+        "ap-ee6cb058"
+      ],
+      "anchors": [
+        {
+          "nodeId": "dw-aba2b651",
+          "prev": 198,
+          "new": 200,
+          "at": "2026-10-28T22:33:51.291+08:00"
+        },
+        {
+          "nodeId": "dw-2936e950",
+          "prev": 198,
+          "new": 200,
+          "at": "2026-10-28T22:33:51.260+08:00"
+        },
+        {
+          "nodeId": "dw-45f1a97e",
+          "prev": 198,
+          "new": 200,
+          "at": "2026-10-28T22:33:51.230+08:00"
+        }
+      ],
+      "device": {
+        "sp": [
+          200,
+          200,
+          200
+        ],
+        "pv": 199.08
+      }
+    },
+    "fetchTool": {
+      "toolText": "数采数据查询结果(1 个节点):\n\n■ 熔体温度(熔体/箱体温度)单位 ℃,正常量程 0~400℃,当前状态 ok,时间窗 2026-10-28T22:31 ~ 2026-10-28T22:34(降采样 1000ms,聚合 avg)\n  当前活动批次 run=rr-2dc7bf8a 配方「物理生效配方」(rc-94260d8f)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 172 点 | 最新 198.41℃ | 均值 200.72 | 最小 197.95 | 最大 204.65\n  最近序列: 22:34:01=avg 198.8(n=1); 22:34:02=avg 199.47(n=1); 22:34:03=avg 199.1(n=1); 22:34:04=avg 198.61(n=1); 22:34:05=avg 199.25(n=1); 22:34:06=avg 199.33(n=1); 22:34:07=avg 198.31(n=1); 22:34:08=avg 199.07(n=1); 22:34:09=avg 199.52(n=1); 22:34:10=avg 198.65(n=1); 22:34:11=avg 199.03(n=1); 22:34:12=avg 198.41(n=1)\n  工况判读: 活动配方「物理生效配方」监控窗口 [0, 400]:当前 198.41℃ 窗口内(正常) | 同产线数控设定: 加热区1SP=200C;加热区2SP=200C;加热区3SP=200C(判读时考虑设定↔实际量的耦合与滞后) | 数据源=时序库(库内样本);窗口末样本 22:34:12,库内最新 22:34:12(滞后 1s)\n(过滤条件:产线 ln-07ccc74a —— 默认作用域:仅当前活动批次 rc-94260d8f@rr-2dc7bf8a(逐样本打标;跨配方对比请传 scope=all))\n\n数值均为经标定钩子处理后的真实物理量纲;调整工艺前请结合 my_industrial_nodes 的节点判读方法与操作守则。"
+    },
+    "batchDispatch": {
+      "cards": [
+        "ap-85b4344b"
+      ],
+      "targets": [
+        205,
+        205,
+        205
+      ],
+      "text": "试验已整批下发并全部设备证实(3/3,批次 rr-9c3f5):加热区1SP→205C [证实✓];加热区2SP→205C [证实✓];加热区3SP→205C [证实✓]。假设:物理生效验收:三个加热区同步上调 5C,观察熔体温度一阶响应。\n人工附言:验收:批准三区批量试验注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC 整批恢复)。",
+      "err": false,
+      "anchors": [
+        {
+          "nodeId": "dw-aba2b651",
+          "prev": 200,
+          "new": 205,
+          "at": "2026-10-28T22:34:15.626+08:00"
+        },
+        {
+          "nodeId": "dw-2936e950",
+          "prev": 200,
+          "new": 205,
+          "at": "2026-10-28T22:34:15.595+08:00"
+        },
+        {
+          "nodeId": "dw-45f1a97e",
+          "prev": 200,
+          "new": 205,
+          "at": "2026-10-28T22:34:15.579+08:00"
+        }
+      ]
+    },
+    "refetch": {
+      "text": "数采数据查询结果(1 个节点):\n\n■ 熔体温度(熔体/箱体温度)单位 ℃,正常量程 0~400℃,当前状态 ok,时间窗 2026-10-28T22:32 ~ 2026-10-28T22:34(降采样 1000ms,聚合 avg)\n  当前活动批次 run=rr-2dc7bf8a 配方「物理生效配方」(rc-94260d8f)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 114 点 | 最新 200.49℃ | 均值 199.308 | 最小 197.95 | 最大 200.49\n  最近序列: 22:34:44=avg 199.85(n=1); 22:34:45=avg 199.51(n=1); 22:34:46=avg 199.33(n=1); 22:34:47=avg 200.4(n=1); 22:34:48=avg 199.41(n=1); 22:34:49=avg 200.07(n=1); 22:34:50=avg 199.98(n=1); 22:34:51=avg 200.33(n=1); 22:34:52=avg 199.49(n=1); 22:34:53=avg 199.97(n=1); 22:34:54=avg 200.03(n=1); 22:34:55=avg 200.49(n=1)\n  工况判读: 活动配方「物理生效配方」监控窗口 [0, 400]:当前 200.49℃ 窗口内(正常) | 同产线数控设定: 加热区1SP=205C;加热区2SP=205C;加热区3SP=205C(判读时考虑设定↔实际量的耦合与滞后) | 数据源=时序库(库内样本);窗口末样本 22:34:55,库内最新 22:34:55(滞后 1s)\n(过滤条件:产线 ln-07ccc74a —— 默认作用域:仅当前活动批次 rc-94260d8f@rr-2dc7bf8a(逐样本打标;跨配方对比请传 scope=all))\n\n数值均为经标定钩子处理后的真实物理量纲;调整工艺前请结合 my_industrial_nodes 的节点判读方法与操作守则。",
+      "latest": 200.49,
+      "platform": 200.49
+    }
+  },
+  "device": {
+    "initial": {
+      "sp": [
+        200,
+        200,
+        200
+      ],
+      "pv": 209.24
+    },
+    "afterStart": {
+      "sp": [
+        198,
+        198,
+        198
+      ],
+      "pv": 209.48
+    },
+    "beforeBatch": {
+      "sp": [
+        200,
+        200,
+        200
+      ],
+      "pv": 198.02
+    },
+    "afterWrite": {
+      "sp": [
+        205,
+        205,
+        205
+      ],
+      "pv": 199.12
+    },
+    "final": {
+      "sp": [
+        205,
+        205,
+        205
+      ],
+      "pv": 200.73
+    }
+  },
+  "summary": {
+    "total": 21,
+    "passed": 21,
+    "failed": 0,
+    "verdict": "PASS"
+  }
+}

@@ -82,7 +82,10 @@ export class DcwNode {
   /** 单次控制步长上限(工程量);探索阶段必须有有限值 */
   stepLimit: number | null
   lastAckAt: string | null = null
+  /** 最近一次**成功**下发(设备已证实/受理)的时刻;失败写不更新 */
   lastWriteAt: string | null = null
+  /** 最近一次写**尝试**的时刻(含失败);仅用于诊断/失败冷却,不参与 60s 成功间隔 */
+  lastAttemptAt: string | null = null
   state: DcwNodeState = 'idle'
   /** 所属产线('' = 未分配;采集门控/写联锁/场景光晕按产线隔离) */
   lineId = ''
@@ -137,8 +140,12 @@ export class DcwNode {
    *  此前失败写把从未被 PLC 接受的指令值占进 value —— 保写心跳按 value 周期重下发,
    *  会把幻影指令值反复写向设备(10-07 事故放大器);同时污染步长基准与回退账本 prevValue。 */
   applyWriteResult(eng: number, ok: boolean, message: string, at: string): void {
-    this.lastWriteAt = at
+    // 尝试时间恒更新;成功时间只在设备证实/受理时更新 ——
+    // 失败写不再占用 60s 成功间隔(现场瞬断恢复后可立即重试),失败冷却另由
+    // write.ts 用 lastAttemptAt 做 5s 防轰炸。
+    this.lastAttemptAt = at
     if (ok) {
+      this.lastWriteAt = at
       this.value = Number(eng.toFixed(this.decimals))
       this.lastAckAt = at
       this.state = 'ok'
@@ -191,6 +198,7 @@ export class DcwNode {
       lastReadError: this.lastReadError,
       lastAckAt: this.lastAckAt,
       lastWriteAt: this.lastWriteAt,
+      lastAttemptAt: this.lastAttemptAt,
       state: this.state,
       lastError: this.lastError,
       createdAt: this.createdAt,
@@ -228,6 +236,9 @@ export class DcwNode {
     if (row.lastReadError != null) node.lastReadError = String(row.lastReadError)
     if (row.lastAckAt != null) node.lastAckAt = String(row.lastAckAt)
     if (row.lastWriteAt != null) node.lastWriteAt = String(row.lastWriteAt)
+    if (row.lastAttemptAt != null) node.lastAttemptAt = String(row.lastAttemptAt)
+    // 旧快照兼容:历史 lastWriteAt 是「尝试时间」语义,补一份到 lastAttemptAt
+    else if (row.lastWriteAt != null) node.lastAttemptAt = String(row.lastWriteAt)
     if (row.state != null) {
       const restored = String(row.state)
       // 持久化恢复消毒:'writing' 是进程内瞬态(写事务在飞)。若被快照带出后进程
@@ -275,6 +286,7 @@ export class DcwNode {
       stepLimit: this.stepLimit,
       lastAckAt: this.lastAckAt,
       lastWriteAt: this.lastWriteAt,
+      lastAttemptAt: this.lastAttemptAt,
       state: this.state,
       lastError: this.lastError,
       createdAt: this.createdAt,

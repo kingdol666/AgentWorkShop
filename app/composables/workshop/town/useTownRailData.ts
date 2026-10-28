@@ -63,7 +63,7 @@ export function useTownRailData(params: {
       posZ: n.posZ,
       lineId: n.lineId || undefined,
       lineColor: n.lineId ? lineColorOf(n.lineId) : undefined,
-      updatedAt: n.lastWriteAt ?? n.createdAt,
+      updatedAt: n.lastAttemptAt ?? n.lastWriteAt ?? n.createdAt,
     })))
 
   const sceneTwinPool = computed<DeviceTwinView[]>(() => [

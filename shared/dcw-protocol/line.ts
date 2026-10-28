@@ -102,9 +102,12 @@ export interface DcwNodeView {
   writeLockSeconds?: number
   /** 单次控制步长上限(工程量;null = 未配置,探索阶段拒绝无界写入) */
   stepLimit: number | null
-  /** 最近一次成功下发时刻 / 最近一次写尝试时刻 */
+  /** 最近一次成功 ACK(设备证实/受理)的时刻 */
   lastAckAt: string | null
+  /** 最近一次**成功**下发时刻(失败写不更新;60s 成功间隔以此为准) */
   lastWriteAt: string | null
+  /** 最近一次写**尝试**时刻(含失败;诊断/失败冷却用) */
+  lastAttemptAt?: string | null
   state: DcwNodeState
   lastError: string | null
   createdAt: string

@@ -80,7 +80,8 @@ export class DcwNodeRuntime {
     }
     this.writing = true
     node.state = 'writing'
-    node.lastWriteAt = new Date().toISOString()
+    // 只记「尝试」;成功时间由 applyWriteResult 在设备证实后写入
+    node.lastAttemptAt = new Date().toISOString()
     try {
       // D8 基准消融:no-readback/ungated 臂由 write() 传入 MAX 容差 → 回读差异不再致败(假成功语义)
       return await this.host.executeWrite(node, eng, toleranceOverride ?? writeTolerance(node), recipeRunId)

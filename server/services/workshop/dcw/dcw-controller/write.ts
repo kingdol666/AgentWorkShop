@@ -123,6 +123,18 @@ export abstract class DcwControllerWrite extends DcwControllerBindings {
       catch (err) {
         reject(err instanceof AppError ? err : new AppError(409, ErrorCodes.STEP_LIMIT_EXCEEDED, String(err instanceof Error ? err.message : err)))
       }
+      // 失败冷却(5s):失败写不占 60s 成功间隔(断链恢复可立即重试),
+      // 但也不允许失败后无间隔轰炸设备 —— 只认最近一次**尝试**且节点仍处 error。
+      if (node.state === 'error' && node.lastAttemptAt) {
+        const failedAt = Date.parse(node.lastAttemptAt)
+        if (Number.isFinite(failedAt)) {
+          const sinceFail = Date.now() - failedAt
+          if (sinceFail < 5_000) {
+            reject(new AppError(429, ErrorCodes.WRITE_INTERVAL_NOT_ELAPSED, `DCW 节点「${node.name}」上次写入失败,${Math.ceil((5_000 - sinceFail) / 1000)}s 后可重试`))
+          }
+        }
+      }
+      // 60s 成功间隔:只认最近一次**成功**下发(失败尝试不占用窗口)
       const previousAt = node.lastWriteAt ? Date.parse(node.lastWriteAt) : NaN
       if (Number.isFinite(previousAt)) {
         const elapsed = Date.now() - previousAt

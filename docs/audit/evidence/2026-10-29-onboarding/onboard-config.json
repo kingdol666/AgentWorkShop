@@ -1,0 +1,292 @@
+{
+ "line": {
+  "name": "锂电池涂布线(测试)",
+  "description": "onboarding-e2e-20261028 全流程测试线:文档接入→模拟孪生→频道锻造"
+ },
+ "product": {
+  "name": "NCM811 正极极片"
+ },
+ "startLine": true,
+ "connectivity": {
+  "tests": [
+   {
+    "label": "涂布间隙SP(modbus-tcp)",
+    "driver": "modbus-tcp",
+    "driverConfig": {
+     "host": "127.0.0.1",
+     "port": 41502,
+     "unitId": 1,
+     "register": 40001,
+     "registerType": "holding",
+     "dataType": "float32",
+     "byteOrder": "big"
+    }
+   },
+   {
+    "label": "烘干温度SP(modbus-tcp)",
+    "driver": "modbus-tcp",
+    "driverConfig": {
+     "host": "127.0.0.1",
+     "port": 41502,
+     "unitId": 1,
+     "register": 40003,
+     "registerType": "holding",
+     "dataType": "float32",
+     "byteOrder": "big"
+    }
+   },
+   {
+    "label": "走带速度SP(modbus-tcp)",
+    "driver": "modbus-tcp",
+    "driverConfig": {
+     "host": "127.0.0.1",
+     "port": 41502,
+     "unitId": 1,
+     "register": 40005,
+     "registerType": "holding",
+     "dataType": "float32",
+     "byteOrder": "big"
+    }
+   },
+   {
+    "label": "涂布厚度PV(modbus-tcp)",
+    "driver": "modbus-tcp",
+    "driverConfig": {
+     "host": "127.0.0.1",
+     "port": 41502,
+     "unitId": 1,
+     "register": 40007,
+     "registerType": "holding",
+     "dataType": "float32",
+     "byteOrder": "big"
+    }
+   },
+   {
+    "label": "烘干温度PV(modbus-tcp)",
+    "driver": "modbus-tcp",
+    "driverConfig": {
+     "host": "127.0.0.1",
+     "port": 41502,
+     "unitId": 1,
+     "register": 40009,
+     "registerType": "holding",
+     "dataType": "float32",
+     "byteOrder": "big"
+    }
+   },
+   {
+    "label": "张力PV(modbus-tcp)",
+    "driver": "modbus-tcp",
+    "driverConfig": {
+     "host": "127.0.0.1",
+     "port": 41502,
+     "unitId": 1,
+     "register": 40011,
+     "registerType": "holding",
+     "dataType": "float32",
+     "byteOrder": "big"
+    }
+   }
+  ]
+ },
+ "nodes": [
+  {
+   "name": "涂布间隙SP",
+   "driver": "modbus-tcp",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 41502,
+    "unitId": 1,
+    "register": 40001,
+    "registerType": "holding",
+    "dataType": "float32",
+    "byteOrder": "big"
+   },
+   "kind": "dcw",
+   "unit": "μm",
+   "min": 100,
+   "max": 400,
+   "decimals": 1,
+   "stepLimit": 5,
+   "holdIntervalMs": 120000,
+   "templateRef": "dcw-pressure-sp"
+  },
+  {
+   "name": "烘干温度SP",
+   "driver": "modbus-tcp",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 41502,
+    "unitId": 1,
+    "register": 40003,
+    "registerType": "holding",
+    "dataType": "float32",
+    "byteOrder": "big"
+   },
+   "kind": "dcw",
+   "unit": "℃",
+   "min": 60,
+   "max": 150,
+   "decimals": 1,
+   "stepLimit": 2,
+   "holdIntervalMs": 120000,
+   "templateRef": "dcw-temp-sp"
+  },
+  {
+   "name": "走带速度SP",
+   "driver": "modbus-tcp",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 41502,
+    "unitId": 1,
+    "register": 40005,
+    "registerType": "holding",
+    "dataType": "float32",
+    "byteOrder": "big"
+   },
+   "kind": "dcw",
+   "unit": "m/min",
+   "min": 5,
+   "max": 40,
+   "decimals": 1,
+   "stepLimit": 1,
+   "holdIntervalMs": 120000,
+   "templateRef": "dcw-speed-sp"
+  },
+  {
+   "name": "涂布厚度PV",
+   "driver": "modbus-tcp",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 41502,
+    "unitId": 1,
+    "register": 40007,
+    "registerType": "holding",
+    "dataType": "float32",
+    "byteOrder": "big"
+   },
+   "kind": "daq",
+   "unit": "μm",
+   "min": 0,
+   "max": 400,
+   "decimals": 1,
+   "warnLow": 92,
+   "warnHigh": 108,
+   "intervalMs": 2000,
+   "templateRef": "daq-pressure-tx"
+  },
+  {
+   "name": "烘干温度PV",
+   "driver": "modbus-tcp",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 41502,
+    "unitId": 1,
+    "register": 40009,
+    "registerType": "holding",
+    "dataType": "float32",
+    "byteOrder": "big"
+   },
+   "kind": "daq",
+   "unit": "℃",
+   "min": 0,
+   "max": 200,
+   "decimals": 1,
+   "warnLow": 140,
+   "warnHigh": 148,
+   "intervalMs": 2000,
+   "templateRef": "daq-temp-tc"
+  },
+  {
+   "name": "张力PV",
+   "driver": "modbus-tcp",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 41502,
+    "unitId": 1,
+    "register": 40011,
+    "registerType": "holding",
+    "dataType": "float32",
+    "byteOrder": "big"
+   },
+   "kind": "daq",
+   "unit": "N",
+   "min": 0,
+   "max": 300,
+   "decimals": 1,
+   "warnLow": 20,
+   "warnHigh": 70,
+   "intervalMs": 2000,
+   "templateRef": "daq-tension-cell"
+  }
+ ],
+ "recipe": {
+  "name": "涂布基线配方 v1",
+  "params": [
+   {
+    "node": "涂布间隙SP",
+    "value": 180,
+    "min": 150,
+    "max": 240,
+    "stepLimit": 5
+   },
+   {
+    "node": "烘干温度SP",
+    "value": 110,
+    "min": 95,
+    "max": 135,
+    "stepLimit": 2
+   },
+   {
+    "node": "走带速度SP",
+    "value": 20,
+    "min": 12,
+    "max": 30,
+    "stepLimit": 1
+   }
+  ]
+ },
+ "channel": {
+  "scenario": "optimize",
+  "name": "涂布闭环优化频道",
+  "plugins": {
+   "idd-closedloop-bridge": true,
+   "rag-bridge": true
+  },
+  "bindings": [
+   {
+    "agentRole": "worker:2",
+    "kind": "recipe",
+    "nodeId": "$RECIPE",
+    "mode": "manual"
+   },
+   {
+    "agentRole": "worker:0",
+    "kind": "daq",
+    "nodeId": "$DAQ:涂布厚度PV",
+    "mode": "auto"
+   },
+   {
+    "agentRole": "worker:0",
+    "kind": "daq",
+    "nodeId": "$DAQ:烘干温度PV",
+    "mode": "auto"
+   },
+   {
+    "agentRole": "worker:0",
+    "kind": "daq",
+    "nodeId": "$DAQ:张力PV",
+    "mode": "auto"
+   }
+  ],
+  "seedTask": {
+   "title": "涂布厚度基线建档与优化战役启动",
+   "description": "先用 sentinel_baseline 建立涂布厚度PV基线档案;再以 optimizer_campaign 发起带安全限(烘干温度≤145℃、速度≤35m/min、张力<70N)的优化战役;按 optimizer_round design→ingest 小步循环逼近厚度 100±4μm;外推点报 HITL 人工确认;收敛后治理下发并 experience_log 沉淀。试验预算 ≤60 分钟。",
+   "budget_minutes": 60
+  }
+ },
+ "smoke": {
+  "param": "烘干温度SP",
+  "delta": 2
+ }
+}

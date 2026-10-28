@@ -86,8 +86,11 @@ function createStore() {
         if (n) {
           n.value = p.value
           n.state = p.ok ? 'ok' : 'error'
-          n.lastWriteAt = p.at
-          if (p.ok) n.lastAckAt = p.at
+          n.lastAttemptAt = p.at
+          if (p.ok) {
+            n.lastWriteAt = p.at
+            n.lastAckAt = p.at
+          }
         }
         history.unshift({ id: `${p.nodeId}-${p.at}`, nodeId: p.nodeId, nodeName: n?.name ?? p.nodeId, param: '', eng: p.value, raw: p.raw, ok: p.ok, message: p.message, recipeRunId: p.recipeRunId, at: p.at })
         if (history.length > 60) history.splice(60)
