@@ -1,0 +1,12 @@
+{
+  "R1_108k": {
+    "taskId": "165ac00d-38f8-4401-9d1e-630e983c151a",
+    "state": "FAILED",
+    "error": "执行失败(OPENCODE_ERROR_UnknownError): {\"message\":\"The number of tokens to keep from the initial prompt is greater than the context length (n_keep: 108823>= n_ctx: 32768). Try to load the model with a larger context length, or provide a shorter input.\"}"
+  },
+  "R2_33k": {
+    "taskId": "b959bf2f-efa9-4b63-9f4f-3ee81fbd1c2a",
+    "state": "FAILED",
+    "error": "执行失败(OPENCODE_ERROR_UnknownError): {\"message\":\"The number of tokens to keep from the initial prompt is greater than the context length (n_keep: 33435>= n_ctx: 32768). Try to load the model with a larger context length, or provide a shorter input.\"}"
+  }
+}

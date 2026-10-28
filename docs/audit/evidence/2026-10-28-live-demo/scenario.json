@@ -1,0 +1,21 @@
+{
+  "at": "2026-10-28T08:15:50.078Z",
+  "base": "http://127.0.0.1:3415",
+  "version": "0.8.6",
+  "admin": {
+    "email": "live-demo-1793175337558@awshop.local",
+    "password": "Demo#2026",
+    "token": "ut-740cbe5712ce46bf9c4d801d05a44878"
+  },
+  "line": "ln-3e4e8fcd",
+  "daq": "dn-b567e949",
+  "dcw": "dw-761492d8",
+  "recipe": "rc-3061a9dc",
+  "product": "pd-b6ea4683",
+  "channel": "61da885a-e64e-48fd-8050-5f1c15985cf9",
+  "worker": "a3cede38-8a49-44b8-9764-e2c161a99427",
+  "bindings": {
+    "daq": "nb-9c17789f",
+    "dcw": "nb-1b1495b6"
+  }
+}

@@ -1,0 +1,32 @@
+{
+  "omp": {
+    "agentId": "a3cede38-8a49-44b8-9764-e2c161a99427",
+    "toolNames": [
+      "complete_task",
+      "daq_query",
+      "my_industrial_nodes",
+      "recipe_rollback",
+      "recipe_trial",
+      "report_progress"
+    ],
+    "daq_query_mentionsBoundDaq": true,
+    "recipe_trial_mentionsBoundDcw": true,
+    "daq_query_descTail": "可精确取某批次数据);返回结果携带物理含义(参数语义/单位/量程/统计摘要/最近序列)。默认只取**当前活动批次(活动配方)**的数据:产线正在跑什么配方就只查那个配方,不会把上一轮配方的样本混进本轮判读;需要跨配方看整段历史时显式传 scope=all。 取数语义:结果来自时序库 daq_samples,返回窗口末尾的样本段(不是最旧段);每节点附带库内最新样本时间与滞后秒数,可用于判断 MQTT 等推送协议是否仍在收数。\n\n本 Agent 直接绑定的数采节点(仅这些可查):腔体温度(dn-b567e949,C)",
+    "recipe_trial_descTail": "二级认证与运行门;候选只能覆盖配方内参数节点;绑定 manual 或产线 manual 时挂 HITL 等人工批准——hypothesis 必填,即本次试验的理由与判断依据。整批一次落产线;复测判读后有进步用 recipe_update 固化,劣化用 recipe_rollback(dispatch=true) 统一回退。受同线试验节拍(默认 ≥5 分钟)与四层限界卡控。\n\n本 Agent 的数控节点写授权面(点位写授权;可在这些节点上 trial/apply,换配方仍有效):温度设定(dw-761492d8,C)"
+  },
+  "opencode": {
+    "agentId": "702c2aa4-79e1-4de2-941c-e01a570beff1",
+    "toolNames": [
+      "complete_task",
+      "daq_query",
+      "my_industrial_nodes",
+      "recipe_rollback",
+      "recipe_trial",
+      "report_progress"
+    ],
+    "daq_query_mentionsBoundDaq": true,
+    "recipe_trial_mentionsBoundDcw": true,
+    "daq_query_descTail": "可精确取某批次数据);返回结果携带物理含义(参数语义/单位/量程/统计摘要/最近序列)。默认只取**当前活动批次(活动配方)**的数据:产线正在跑什么配方就只查那个配方,不会把上一轮配方的样本混进本轮判读;需要跨配方看整段历史时显式传 scope=all。 取数语义:结果来自时序库 daq_samples,返回窗口末尾的样本段(不是最旧段);每节点附带库内最新样本时间与滞后秒数,可用于判断 MQTT 等推送协议是否仍在收数。\n\n本 Agent 直接绑定的数采节点(仅这些可查):腔体温度(dn-b567e949,C)",
+    "recipe_trial_descTail": "二级认证与运行门;候选只能覆盖配方内参数节点;绑定 manual 或产线 manual 时挂 HITL 等人工批准——hypothesis 必填,即本次试验的理由与判断依据。整批一次落产线;复测判读后有进步用 recipe_update 固化,劣化用 recipe_rollback(dispatch=true) 统一回退。受同线试验节拍(默认 ≥5 分钟)与四层限界卡控。\n\n本 Agent 的数控节点写授权面(点位写授权;可在这些节点上 trial/apply,换配方仍有效):温度设定(dw-761492d8,C)"
+  }
+}

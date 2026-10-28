@@ -1,0 +1,41 @@
+{
+  "omp": {
+    "id": "77129431-67bb-4b43-8541-577c942765c0",
+    "state": "COMPLETED",
+    "progress": 100,
+    "deliverable": "## Scenario Brief (channel-wide, highest priority — user-defined operating rules)\n实机演示频道:worker 绑定节点后按任务执行;手动模式所有下发需人工批准(在数控节点页批准)。\n\n\n## 绑定产线(只读上下文)\n本频道已绑定产线「实机演示-产线」(ln-3e4e8fcd) — 浏览器实机操作演示线:腔体温度监测 + 温度设定点位(模拟设备)。全员可用 line_context 查看该产线实时全景(运行状态/活动批次/当前配方与参数窗口),ops_log / recipe_log / recipe_versions 查运维日志与配方历史(频道绑定 = 只读授权);参数下发等写操作仍需节点授权(lead 可用 team_grant_nodes/grant_node_ids 授予)。\n\n## 产线工况简报(实时",
+    "toolCalls": [
+      "🔧 my_industrial_nodes",
+      "🔧 daq_query(line_id=ln-3e4e8fcd, last_minutes=10)",
+      "🔧 my_industrial_nodes",
+      "🔧 daq_query(line_id=ln-3e4e8fcd, last_minutes=10)",
+      "🔧 my_industrial_nodes ✅ 完成: ### ⚙ 频道执行模式:manual(手动)—— 本频道所有下发/配方/回退动作都会挂起等人工批准:下发前必须说明依据(数采/MES 证据),审批卡会向人类展示你的理由 #### ◇ 腔体温度 [id=dn-b567e949] - 物理量: 熔体/箱体温度,单位 C,正常量程 [0, 100] C - 采集语义: 腔体温度测点;正常工艺窗",
+      "🔧 my_industrial_nodes ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"### ⚙ 频道执行模式:manual(手动)—— 本频道所有下发/配方/回退动作都会挂起等人工批准:下发前必须说明依据(数采/MES 证据),审批卡会向人类展示你的理由\\n\\n#### ◇ 腔体温度 [id=dn-b567e949]\\n- 物理量: 熔体/箱体温度,单位",
+      "🔧 daq_query ✅ 完成: 数采数据查询结果(1 个节点): ■ 腔体温度(熔体/箱体温度)单位 C,正常量程 0~100C,当前状态 alarm,时间窗 2026-10-28T16:40 ~ 2026-10-28T16:50(降采样 15000ms,聚合 avg) 当前活动批次 run=rr-79a39577 配方「实机演示配方」(rc-3061a9dc)(可直接把 run_id/re",
+      "🔧 daq_query ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"数采数据查询结果(1 个节点):\\n\\n■ 腔体温度(熔体/箱体温度)单位 C,正常量程 0~100C,当前状态 alarm,时间窗 2026-10-28T16:40 ~ 2026-10-28T16:50(降采样 15000ms,聚合 avg)\\n 当前活动批次 run=rr-79a3957",
+      "🔧 recipe_trial(hypothesis=负例验证:90C 超出 50~70C 工艺窗口,预期被治理链拒绝)",
+      "🔧 recipe_trial(hypothesis=负例验证:90C 超出 50~70C 工艺窗口,预期被治理链拒绝)",
+      "🔧 recipe_trial ❌ 失败: 工具调用被拒(参数校验,recipe_trial):recipe_id 或 line_id 至少提供一个:只给 line_id 时按该线当前活动批次解析配方。 参数补齐后重试。",
+      "🔧 recipe_trial ❌ 失败: {\"content\":[{\"type\":\"text\",\"text\":\"工具调用被拒(参数校验,recipe_trial):recipe_id 或 line_id 至少提供一个:只给 line_id 时按该线当前活动批次解析配方。\\n参数补齐后重试。\"}],\"details\":{},\"isError\":true}",
+      "🔧 recipe_trial(hypothesis=负例验证:90C 超出 50~70C 工艺窗口,预期被治理链拒绝, line_id=ln-3e4e8fcd)",
+      "🔧 recipe_trial(hypothesis=负例验证:90C 超出 50~70C 工艺窗口,预期被治理链拒绝, line_id=ln-3e4e8fcd)",
+      "🔧 recipe_trial ✅ 完成: 人工未批准本次试验下发。人工指导:拒绝:90C 超出工艺窗口 50~70C(软联锁),负例验证目的已达成;请继续第 4 步用 58C(窗内)重试。请按人工指导修订候选参数(必要时先 recipe_update 调整基线),然后重新提交 recipe_trial。",
+      "🔧 recipe_trial ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"人工未批准本次试验下发。人工指导:拒绝:90C 超出工艺窗口 50~70C(软联锁),负例验证目的已达成;请继续第 4 步用 58C(窗内)重试。请按人工指导修订候选参数(必要时先 recipe_update 调整基线),然后重新提交 recipe_trial。\"}],\"details",
+      "🔧 recipe_trial(hypothesis=基于数采证据把温度设定由 60 调到 58,|Δ|=2 在单步 4 内,验证窗内响应, line_id=l…)",
+      "🔧 recipe_trial(hypothesis=基于数采证据把温度设定由 60 调到 58,|Δ|=2 在单步 4 内,验证窗内响应, line_id=l…)"
+    ]
+  },
+  "oc3": {
+    "id": "a5e21a47-d654-469a-b277-b63e74a6cd93",
+    "state": "COMPLETED",
+    "progress": 100,
+    "deliverable": "数采分析结果:\n\n测点：腔体温度 (dn-b567e949)\n- 样本数：41 点\n- 均值：107.04°C\n- 最小值：107.04°C\n- 最大值：107.04°C\n\n判定：**严重越限**。配方监控窗口为 [50, 70]°C，当前温度 107.04°C 超出上限 37.04°C，已触发 alarm 状态。需立即核查设备状态并采取处置措施。",
+    "toolCalls": [
+      "🔧 aw-host-tools_my_industrial_nodes",
+      "🔧 aw-host-tools_my_industrial_nodes",
+      "🔧 aw-host-tools_daq_query",
+      "🔧 aw-host-tools_daq_query(line_id=ln-3e4e8fcd, last_minutes=10)",
+      "🔧 aw-host-tools_complete_task"
+    ]
+  }
+}
