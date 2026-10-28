@@ -11,6 +11,7 @@ import { createError, getRouterParam, readBody } from 'h3'
 import type { DcwPatchInput } from '@/server/services/workshop/dcw/dcw-controller'
 import { resolveUser } from '@/server/api/workshop/caller'
 import { defineApiHandler } from '@/server/utils/response'
+import { AppError } from '@/server/utils/errors'
 import { requireLineMode } from '@/server/services/workshop/permissions'
 import { bindDcwBroadcast, getDcwController } from '@/server/services/workshop/dcw/dcw-controller'
 import { broadcastSceneEvent } from '@/server/services/workshop/scene-events'
@@ -26,6 +27,14 @@ export default defineApiHandler(async (event) => {
   // 目标产线:允许本次 PATCH 迁移产线,则新产线也须有操控权(防止把节点搬到无权产线)
   const targetLine = body.lineId !== undefined ? String(body.lineId || '') || null : node0.lineId
   requireLineMode(user, targetLine, 'operate')
+  // 落点/安全配置分权(2026-10-28):operate 只能改运行参数,不能改"往哪个设备写、
+  // 量程/步限/保持窗、标定函数"。driverConfig 支持 hook/任意 host,等价于代码执行与
+  // 跨线重定向,必须与 create 同权(admin)。此前这里只校验 operate。
+  const ADMIN_ONLY_FIELDS = ['driver', 'driverConfig', 'transform', 'min', 'max', 'decimals', 'stepLimit', 'writeLockSeconds', 'lineId'] as const
+  const deniedFields = ADMIN_ONLY_FIELDS.filter(k => body[k] !== undefined)
+  if (deniedFields.length > 0 && user.role !== 'admin') {
+    throw new AppError(403, 'DCW_CONFIG_ADMIN_ONLY', `字段「${deniedFields.join('/')}」决定设备落点与安全限界，仅管理员可修改（当前角色 ${user.role}）。运行参数（name/enabled/holdIntervalMs/readIntervalMs/semantics/位置）可由产线操控者调整。`)
+  }
   const node = getDcwController().patch(id, body)
   // 节点参数/落点/量程/启停变更 = 产线可写面变更,必须进产线日志(含跨线迁移)
   const changed = Object.keys(body)

@@ -8,6 +8,7 @@ import { resolveUser } from '../../../caller'
 import { AppError } from '../../../../../utils/errors'
 import { defineApiHandler } from '../../../../../utils/response'
 import { getWorkshopManager } from '../../../../../plugins/workshop'
+import { assertSpawnConfigAllowed } from '../../../../../services/workshop/agents/harness-spawn-policy'
 
 export default defineApiHandler(async (event) => {
   const channelId = getRouterParam(event, 'id')!
@@ -19,6 +20,10 @@ export default defineApiHandler(async (event) => {
   manager.requireWritable(channel.ownerUserId, user, 'channel')
   const members = await manager.listChannelAgents(channelId)
   if (!members.some(a => a.id === agentId)) throw new AppError(404, 'NOT_FOUND', `成员不存在: ${agentId}`)
+  if (body?.config) {
+    const member = members.find(a => a.id === agentId)!
+    assertSpawnConfigAllowed(member.harness, body.config, user)
+  }
   const patch: { name?: string, config?: Record<string, unknown>, enabled?: number } = {}
   if (typeof body?.name === 'string' && body.name.trim()) patch.name = body.name.trim()
   if (body?.config && typeof body.config === 'object') patch.config = body.config

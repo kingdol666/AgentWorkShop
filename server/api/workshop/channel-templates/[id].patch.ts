@@ -9,6 +9,7 @@ import { defineApiHandler } from '../../../utils/response'
 import { AppError } from '../../../utils/errors'
 import { resolveUser } from '../caller'
 import { getWorkshopManager } from '../../../plugins/workshop'
+import { assertSpawnConfigAllowed } from '../../../services/workshop/agents/harness-spawn-policy'
 
 const memberSchema = z.union([
   z.object({ templateId: z.string().min(1), role: z.enum(['lead', 'worker']) }),
@@ -44,5 +45,9 @@ export default defineApiHandler(async (event) => {
   const tpl = manager.getChannelTemplate(templateId)
   if (!tpl) throw new AppError(404, 'NOT_FOUND', `Channel 模板不存在: ${templateId}`)
   manager.requireWritable(tpl.ownerUserId, user, 'Channel 模板')
+  if (body.lead) assertSpawnConfigAllowed(body.lead.harness, body.lead.config, user)
+  for (const m of body.members ?? []) {
+    if ('inline' in m) assertSpawnConfigAllowed(m.inline.harness, m.inline.config, user)
+  }
   return manager.updateChannelTemplate(templateId, body)
 })

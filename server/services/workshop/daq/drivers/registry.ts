@@ -85,14 +85,15 @@ export function requireDriverKind(kind: string): DaqDriverKind {
 }
 
 /**
- * 启动迁移:磁盘遗留 kind 别名归一;无法归一的未知 kind 降级 mock 并打标
- * (fail-visible,不砖启动 —— 由 daq-node.repo load() 调用,该节点采样路径显式失败待重配)。
+ * 启动迁移:磁盘遗留 kind 别名归一。
+ * 2026-10-28(S11):未知 kind **不再降级为 mock**(真实节点被悄悄换成假数据是工业高危默认);
+ * 保留原 kind,由 resolveDaqDriver 的 unavailableDaqDriver 显式拒绝采样,等插件注册/人工重配。
  */
-export function migrateDriverKind(kind: string): { kind: DaqDriverKind, downgraded: boolean } {
+export function migrateDriverKind(kind: string): { kind: DaqDriverKind, downgraded: boolean, unknown?: boolean } {
   if (kind === 'modbus') return { kind: 'modbus-tcp', downgraded: false }
   if (kind === 'rtu' || kind === 'modbus-rtu-tcp') return { kind: 'modbus-rtu', downgraded: false }
   if (kind in REGISTRY || pluginRegistry().has(kind)) return { kind: kind as DaqDriverKind, downgraded: false }
-  return { kind: 'mock', downgraded: true }
+  return { kind: kind as DaqDriverKind, downgraded: false, unknown: true }
 }
 
 /**

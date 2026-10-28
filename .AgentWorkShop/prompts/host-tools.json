@@ -1252,7 +1252,7 @@
   {
     "name": "recipe_update",
     "label": "Recipe Update",
-    "description": "把验证过的最佳参数保存进指定配方(生成新版本,带归因与理由)。可直接保存到当前在跑的配方:只传 line_id 时解析活动批次配方;也可显式 recipe_id。权限模型:须已绑定该 recipe(可绑定多个配方)且通过其二级认证;配方必须正在执行(运行门,未运行拒绝);绑定 manual 或产线 manual 时本次保存挂 HITL 等人工批准——reason 必填且要给出判断依据(数采证据/分析结论),审批卡会向人类展示。只改配方定义,要把参数推到运行中的产线用 recipe_apply。",
+    "description": "把验证过的最佳参数保存进指定配方(生成新版本,带归因与理由)。可直接保存到当前在跑的配方:只传 line_id 时解析活动批次配方;也可显式 recipe_id。权限模型(双轨):版本操作只认配方绑定(kind='recipe',可绑定多个配方)—— 数控节点绑定(dcw)是点位写授权,不授予版本操作权;且通过二级认证;配方必须正在执行(运行门,未运行拒绝);绑定 manual 或产线 manual 时本次保存挂 HITL 等人工批准——reason 必填且要给出判断依据(数采证据/分析结论),审批卡会向人类展示。只改配方定义,要把参数推到运行中的产线用 recipe_apply。",
     "parameters": {
       "type": "object",
       "properties": {
@@ -1327,6 +1327,9 @@
         }
       ],
       "deepNodeRefs": [
+        "params[].node_id"
+      ],
+      "writeNodeRefs": [
         "params[].node_id"
       ]
     },
@@ -2750,7 +2753,11 @@
             "auto",
             "manual"
           ],
-          "description": "Optional binding mode for the granted nodes; default = the mode of YOUR own binding for that node (manual = every write needs user approval)"
+          "description": "Optional binding mode for the granted nodes. DEFAULT (omitted) = manual — every write needs human approval. mode=auto removes the worker's per-write human approval gate and therefore REQUIRES confirm: true; without it the grant is rejected and nothing changes."
+        },
+        "confirm": {
+          "type": "boolean",
+          "description": "Explicit risk acknowledgement. Required (strict boolean true) when mode=auto (removes the worker's per-write HITL gate). Ignored for manual grants."
         }
       },
       "required": [
@@ -2793,7 +2800,7 @@
   {
     "name": "recipe_trial",
     "label": "Recipe Trial",
-    "description": "多参数候选整批试验下发(不写配方版本)。可直接对当前在跑的配方试验:只传 line_id 时解析活动批次配方;也可显式 recipe_id。权限模型:须已绑定该 recipe 且过二级认证与运行门;候选只能覆盖配方内参数节点;绑定 manual 或产线 manual 时挂 HITL 等人工批准——hypothesis 必填,即本次试验的理由与判断依据。整批一次落产线;复测判读后有进步用 recipe_update 固化,劣化用 recipe_rollback(dispatch=true) 统一回退。受同线试验节拍(默认 ≥5 分钟)与四层限界卡控。",
+    "description": "多参数候选整批试验下发(不写配方版本)。可直接对当前在跑的配方试验:只传 line_id 时解析活动批次配方;也可显式 recipe_id。权限模型(双轨):绑定该 recipe(kind='recipe')可整批试验;或本次候选覆盖的节点全部在你的数控节点绑定面内(kind='dcw' 节点绑定=点位写授权,换配方仍有效,部分覆盖即拒并列出缺失节点)。均须过二级认证与运行门;候选只能覆盖配方内参数节点;绑定 manual 或产线 manual 时挂 HITL 等人工批准——hypothesis 必填,即本次试验的理由与判断依据。整批一次落产线;复测判读后有进步用 recipe_update 固化,劣化用 recipe_rollback(dispatch=true) 统一回退。受同线试验节拍(默认 ≥5 分钟)与四层限界卡控。",
     "parameters": {
       "type": "object",
       "properties": {
@@ -2865,6 +2872,9 @@
       ],
       "deepNodeRefs": [
         "params[].node_id"
+      ],
+      "writeNodeRefs": [
+        "params[].node_id"
       ]
     },
     "riskClass": "write"
@@ -2872,7 +2882,7 @@
   {
     "name": "recipe_apply",
     "label": "Recipe Apply",
-    "description": "把配方当前已固化参数整批下发到运行中的产线(改配方 recipe_update 之后用)。可直接对当前在跑的配方下发:只传 line_id,工具会解析该产线活动批次的 recipe_id;也可显式传 recipe_id。权限模型:须已绑定该 recipe 且过二级认证与运行门(配方须在执行);绑定 manual 或产线 manual 时挂 HITL 等人工批准——reason 必填,说明为什么要下发、依据是什么。批准后整批经治理联锁(量程/步长/限速)下发,逐参数回执;拒绝可附指导,按指导修订后重提。",
+    "description": "把配方当前已固化参数整批下发到运行中的产线(改配方 recipe_update 之后用)。可直接对当前在跑的配方下发:只传 line_id,工具会解析该产线活动批次的 recipe_id;也可显式传 recipe_id。权限模型(双轨):绑定该 recipe(kind='recipe')可整批下发;或配方全部参数节点都在你的数控节点绑定面内(kind='dcw' 点位写授权)。均须过二级认证与运行门(配方须在执行);绑定 manual 或产线 manual 时挂 HITL 等人工批准——reason 必填,说明为什么要下发、依据是什么。批准后整批经治理联锁(量程/步长/限速)下发,逐参数回执;拒绝可附指导,按指导修订后重提。",
     "parameters": {
       "type": "object",
       "properties": {

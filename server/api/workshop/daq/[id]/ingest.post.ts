@@ -17,17 +17,14 @@
  *   - 向量 1..4096 个有限数;图像 ≤10MB 且 MIME image/*;
  *   - at 缺省=当前时间,回填窗默认 ±1h(env AW_DAQ_INGEST_BACKFILL_MS 可调,上限 7 天)。
  */
-import { createHash } from 'node:crypto'
 import { getHeader, getRouterParam, readBody } from 'h3'
 import { resolveUser } from '@/server/api/workshop/caller'
 import { defineApiHandler } from '@/server/utils/response'
 import { getDaqController } from '@/server/services/workshop/daq/daq-controller'
 import { findDaqTemplate } from '@/server/services/workshop/daq/daq-templates'
 import { getDaqQueue } from '@/server/services/workshop/daq/bus'
-import { getObjectStore } from '@/server/services/workshop/daq/objectstore'
-import { daqObjectKey } from '@/server/services/workshop/daq/objectstore/objectstore-port'
 import type { DaqSampleEnvelope } from '@/server/services/workshop/daq/bus/queue-port'
-import { ingestAuthMode, ingestBackfillWindowMs, isWideBackfillWindow, withinBackfillWindow } from '@/server/services/workshop/daq/ingest-policy'
+import { ingestAuthMode, ingestBackfillWindowMs, ingestFutureSkewMs, ingestTimeVerdict, isWideBackfillWindow } from '@/server/services/workshop/daq/ingest-policy'
 import { recordOps } from '@/server/services/workshop/ops/ops'
 import { AppError } from '@/server/utils/errors'
 
@@ -116,8 +113,12 @@ export default defineApiHandler(async (event) => {
   const atMs = atRaw ? Date.parse(atRaw) : now
   if (!Number.isFinite(atMs)) throw new AppError(400, 'VALIDATION_ERROR', `at 不是合法时间: ${atRaw}(示例 2026-10-19T12:00:00+08:00)`)
   const windowMs = ingestBackfillWindowMs()
-  if (!withinBackfillWindow(atMs, now, windowMs)) {
-    throw new AppError(400, 'VALIDATION_ERROR', `at 超出允许范围(±${Math.round(windowMs / 60_000)} 分钟),请检查时区/时钟。`)
+  const verdict = ingestTimeVerdict(atMs, now, windowMs, ingestFutureSkewMs())
+  if (verdict === 'future') {
+    throw new AppError(400, 'FUTURE_TIMESTAMP', `at 超出当前时间允许的前瞻偏差(最多 ${Math.round(ingestFutureSkewMs() / 1000)}s);请校准上游时钟后重试。`)
+  }
+  if (verdict === 'out-of-window') {
+    throw new AppError(400, 'VALIDATION_ERROR', `at 超出允许的回填范围(${Math.round(windowMs / 60_000)} 分钟),请检查时区/时钟。`)
   }
   const at = new Date(atMs).toISOString()
   const state = ['ok', 'warn', 'alarm', 'offline'].includes(String(body.state ?? '')) ? String(body.state) : 'ok'
@@ -141,27 +142,27 @@ export default defineApiHandler(async (event) => {
     }
     if (buf.length === 0) throw new AppError(400, 'VALIDATION_ERROR', '图像内容为空。')
     if (buf.length > IMAGE_MAX_BYTES) throw new AppError(413, 'PAYLOAD_TOO_LARGE', `图像超过 ${IMAGE_MAX_BYTES / 1024 / 1024}MB 上限。`)
-    const objectKey = daqObjectKey(node.id, atMs, mime.includes('jpeg') ? '.jpg' : mime.includes('webp') ? '.webp' : '.png')
-    await getObjectStore().put(objectKey, buf, mime)
-    const sha256 = createHash('sha256').update(buf).digest('hex')
     const width = Number(body.image && typeof body.image === 'object' ? body.image.width : NaN)
     const height = Number(body.image && typeof body.image === 'object' ? body.image.height : NaN)
+    // A-P1-3(2026-10-28 审查):外部推送与驱动采样/推送订阅走**同一个** processFrameSample
+    // —— 模板 sink 管线(thumbnail/deriveMetric/qualityGate)与落对象存储、sha256/size
+    // 计算都在服务端完成,绝不信任调用方自报的指标/指纹,也不绕过质量门。
+    const processed = await getDaqController().processExternalFrame(node, {
+      kind: 'image',
+      blob: buf,
+      mime,
+      width: Number.isFinite(width) ? width : undefined,
+      height: Number.isFinite(height) ? height : undefined,
+      metrics,
+    }, atMs)
+    if (!processed) throw new AppError(400, 'VALIDATION_ERROR', '图像帧被 sink 管线拒绝(模板/处理器配置不支持该帧)。')
     env = {
       nodeId: node.id,
       templateRef: node.templateRef,
-      value: Number((metrics.avg ?? 0).toFixed(node.decimals)),
+      value: Number((processed.frame.metrics?.avg ?? metrics.avg ?? 0).toFixed(node.decimals)),
       state,
       at,
-      frame: {
-        kind: 'image',
-        objectKey,
-        mime,
-        width: Number.isFinite(width) ? width : undefined,
-        height: Number.isFinite(height) ? height : undefined,
-        sha256,
-        size: buf.length,
-        metrics,
-      },
+      frame: processed.frame,
     }
   }
   else if (kind === 'vector') {
@@ -169,13 +170,16 @@ export default defineApiHandler(async (event) => {
     if (!points || points.length === 0) throw new AppError(400, 'VALIDATION_ERROR', '向量节点的载荷必须提供 points 数组。')
     if (points.length > VECTOR_MAX_POINTS) throw new AppError(413, 'PAYLOAD_TOO_LARGE', `向量点数 ${points.length} 超过 ${VECTOR_MAX_POINTS} 上限。`)
     const avg = points.reduce((a, b) => a + b, 0) / points.length
+    // 同上:派生指标由模板 sink 处理器产生(调用方只提供原始点列/可选初值)
+    const processed = await getDaqController().processExternalFrame(node, { kind: 'vector', points, metrics }, atMs)
+    if (!processed) throw new AppError(400, 'VALIDATION_ERROR', '向量帧被 sink 管线拒绝(模板/处理器配置不支持该帧)。')
     env = {
       nodeId: node.id,
       templateRef: node.templateRef,
-      value: Number((metrics.avg ?? avg).toFixed(node.decimals)),
+      value: Number((processed.frame.metrics?.avg ?? metrics.avg ?? avg).toFixed(node.decimals)),
       state,
       at,
-      frame: { kind: 'vector', points, metrics },
+      frame: processed.frame,
     }
   }
   else {

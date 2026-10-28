@@ -174,6 +174,25 @@ const applyRecipeCalls: Array<{ overrides: Array<{ nodeId: string, value: number
   return { id: `dcw-run-${applyRecipeCalls.length}`, results: [{ ok: true, nodeId: input.overrides[0]?.nodeId, value: input.overrides[0]?.value, verify: { verdict: 'verified' } }], ackSummary: { verified: 1, unverified: 0, failed: 0, total: 1 } }
 }
 
+// 2026-10-28 运行门:下发批准要求产线有活动批次。测试夹具默认开一条与 recipeView 匹配的窗口;
+// 「停线拒绝」由文件末尾的独立用例覆盖(它临时清空窗口)。
+const { setActiveLineRun, clearActiveLineRun } = await import('@/server/services/workshop/dcw/line-run')
+const activeRunFixture = {
+  lineId: 'ln-d',
+  runId: 'rr-dispatch-test',
+  recipeId: 'rc-d',
+  recipeVersion: 1,
+  recipeName: '配方D',
+  productId: 'pd-d',
+  productName: '产品D',
+  startedAt: new Date().toISOString(),
+  taggedSamples: 0,
+}
+function startLineWindow(): void {
+  setActiveLineRun({ ...activeRunFixture, startedAt: new Date().toISOString() })
+}
+startLineWindow()
+
 function auditCount(action: string): number {
   return (db.prepare('SELECT COUNT(*) AS n FROM audit_log WHERE action = ?').get(action) as { n: number }).n
 }
@@ -327,6 +346,30 @@ test('未建卡(idle)建议不可经状态机转移(条件要求 dispatched+disp
     WHERE id = ? AND dispatch_state = 'dispatched' AND dispatched_at IS NOT NULL`).run(recId)
   assert.equal(Number(claim.changes), 0, 'idle 建议的 committed 抢占 changes=0')
   assert.equal(dispatchState(recId), 'idle')
+})
+
+test('运行门(2026-10-28):产线无活动批次 → 批准被拒且零写', async () => {
+  cleanupDispatchCards()
+  clearActiveLineRun('ln-d')
+  try {
+    const recId = seedRunRec({})
+    await createDispatchCard(admin as never, recId, '停线下发测试')
+    const pending = getToolApprovals().listPending().find(a => a.nodeId === 'optimizer-recipe:rc-d' && (a.payload as { recommendationId?: string })?.recommendationId === recId)
+    assert.ok(pending, '卡已挂审批面')
+    const writesBefore = applyRecipeCalls.length
+    const result = await decideOptimizerDispatch({
+      cardId: pending!.id, approved: true, comment: '', choice: 0,
+      actingUser: { id: admin.id, name: 'Admin' }, via: 'test',
+    })
+    assert.equal(result.handled, true)
+    assert.equal(result.approved, false)
+    assert.equal(result.code, 'DISPATCH_GATE_LINE_NOT_RUNNING')
+    assert.equal(applyRecipeCalls.length, writesBefore, '停线时批准不触发 applyRecipe')
+    assert.equal(dispatchState(recId), 'denied')
+  }
+  finally {
+    startLineWindow()
+  }
 })
 
 after(async () => {

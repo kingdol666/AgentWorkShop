@@ -113,13 +113,12 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
         // 人类调用已收口:解除该 Agent 的发起者作用域限制(§13.3)。
         // 仅当这次回复对应的正是当前记录的那次人类调用时清除(invocationId 比对),
         // 避免把随后到达的另一次调用的作用域误删;老路径无 deliveryId 时按"收口即清除"。
-        {
-          const active = this.activeInvocationScopes.get(agent.id)
-          if (active && (!reply.deliveryId || active.invocationId === reply.deliveryId)) {
-            this.activeInvocationScopes.delete(agent.id)
-          }
-        }
+        this.clearInvocationScope(agent.id, reply.deliveryId ?? null)
       },
+      // C-P1-2(2026-10-28 审查):回合结束(无论是否产生回执)都收口人类调用作用域。
+      // 无回执的回合(模型只调工具/报错/被停)不会再触发 platformReply,旧实现在这条
+      // 失败路径上让 scope 永久驻留 → lead 管理面/worker 写面被陈旧限制封锁。
+      onInvocationSettled: e => this.clearInvocationScope(e.agentId, e.deliveryId ?? null),
       // 监督信号(§7.1 supervise.watchdog)与 Harness 重建(§7.1 harness.restarted)
       // 必须落 Channel 共享记忆 —— watchdog 只在内存态可见等于"零观测"。
       onSupervisionSignal: e => this.recordSupervisionSignal(e),
@@ -136,9 +135,11 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     return runtime
   }
 
-  /** 按需装配实例运行时(幂等):已装配返回缓存,否则从实例行 wire;禁用/不存在返回 undefined */
+  /** 按需装配实例运行时(幂等):已装配返回缓存,否则从实例行 wire;禁用/不存在/停机中返回 undefined */
   protected ensureAgentRuntime(channelId: string, agentId: string): AgentRuntime | undefined {
     const key = runtimeKey(channelId, agentId)
+    // 停机窗口墓碑:既不返回半关闭的旧运行时,也不重建新运行时(否则消息进闭箱)
+    if (this.stoppingAgents.has(key)) return undefined
     const existing = this.agentIndex.get(key)
     if (existing) return existing
     const m = this.deps.repos.channelAgents.findByChannelAgent(channelId, agentId)
@@ -216,8 +217,9 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
       // 以前写死在 SchedulerLoop 构造默认值里,mock/规则引擎路径上最长要 10 分钟才可见。
       ...(Number.isFinite(workshopSettings().stall_ms) ? { stallMs: workshopSettings().stall_ms } : {}),
       ...options,
-      // 停滞看门狗活性源:agent 最近一次工具 invoke 时刻(工具调用即健康推进)
-      toolActivityOf: (agentId: string) => this.lastToolInvokeAt.get(agentId) ?? null,
+      // 停滞看门狗活性源:agent 最近一次工具 invoke 时刻(工具调用即健康推进)。
+      // C-P1-3:取 REST/MCP 回程与全引擎分发入口打点的并集 —— omp 原生/pi 从不过 REST。
+      toolActivityOf: (agentId: string) => this.toolActivityOf(agentId),
       // 调度快照的邮件上下文(lead 观察 worker 间通信的唯一来源;DB 为事实源)
       supervisionMail: limit => this.deps.repos.messages
         .listRecentByChannel(channelId, limit)
@@ -242,18 +244,28 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     const key = runtimeKey(channelId, agentId)
     const runtime = this.agentIndex.get(key)
     if (!runtime) return
-    const cr = this.channels.get(channelId)
-    const scheduler = runtime.role === 'lead' ? cr?.scheduler : null
-    if (scheduler) {
-      await scheduler.stopAndWait()
-      cr!.scheduler = null
-    }
-    // 先摘除再停机:runtime.stop() 会关闭 mailbox,若成员仍在 route 视野内,
-    // 停机窗口内到达的消息会被 closed mailbox 静默吞掉但 delivered 照常上报
-    // (发送方收到成功假象);先 detach 让 route 立即按"成员不存在"如实失败
-    cr?.detachAgent(agentId)
-    await runtime.stop()
+    // C-P1-1(2026-10-28 审查):所有"摘除"动作在第一个 await 之前同步完成。
+    // 旧实现把 agentIndex.delete 放在 await stop() 之后,停机窗口内:
+    //   route → ensureAgentRuntime 命中旧索引 → enqueue 进正在关闭的信箱 → 假送达 + 永久丢失;
+    //   即便先 detach,loader 也能按 agentIndex 缓存把旧运行时装回去。
+    // 现在的顺序 = 立墓碑 → 摘索引 → 摘频道成员 → 清人类调用作用域 → 后台停机。
+    this.stoppingAgents.add(key)
     this.agentIndex.delete(key)
+    const cr = this.channels.get(channelId)
+    cr?.detachAgent(agentId)
+    this.clearInvocationScope(agentId)
+    try {
+      const scheduler = runtime.role === 'lead' ? cr?.scheduler : null
+      if (scheduler) {
+        await scheduler.stopAndWait()
+        if (cr) cr.scheduler = null
+      }
+      await runtime.stop()
+    }
+    finally {
+      // 停机完成即允许惰性复活(新消息触发 wireMember 重建)
+      this.stoppingAgents.delete(key)
+    }
     if (cr && cr.getAgents().length === 0 && !cr.scheduler) {
       this.channels.delete(channelId)
       this.buses.delete(channelId)

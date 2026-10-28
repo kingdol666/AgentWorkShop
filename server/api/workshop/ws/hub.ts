@@ -9,7 +9,7 @@ import { PEER_SEND_BUDGET_BYTES, hub, streams } from './shared'
 import { ensureStream } from './streams'
 import { flushDbBuffer } from './db-buffer'
 import { getWorkshopManager } from '../../../plugins/workshop'
-import { registerScenePeer, setPeerVisibleLines } from '../../../services/workshop/scene-events'
+import { registerScenePeer, setPeerIdentity, setPeerVisibleLines } from '../../../services/workshop/scene-events'
 import { visibleLineIds } from '../../../services/workshop/permissions'
 
 export function ensureHubBound(manager: AgentChannelManager): void {
@@ -87,6 +87,7 @@ export function resolveChannelIdFromUrl(peer: WsPeer): string | undefined {
 /** 场景事件注册(鉴权后):按用户产线可见集挂 per-peer 过滤,未经鉴权的 peer 不注册 */
 export function attachScenePeer(peer: WsPeer, user: { id: string, role: string }): void {
   setPeerVisibleLines(peer, visibleLineIds(user))
+  setPeerIdentity(peer, user)
   registerScenePeer(peer)
 }
 

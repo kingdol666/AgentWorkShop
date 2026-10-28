@@ -7,11 +7,16 @@ import { resolveUser } from '@/server/api/workshop/caller'
 import { defineApiHandler } from '@/server/utils/response'
 import { bindDcwBroadcast, getDcwController } from '@/server/services/workshop/dcw/dcw-controller'
 import { broadcastSceneEvent } from '@/server/services/workshop/scene-events'
+import { getDcwParamRepo } from '@/server/services/workshop/dcw/param-map.repo'
+import { AppError, ErrorCodes } from '@/server/utils/errors'
+import { paramLineId, requireLineForResource } from '@/server/services/workshop/line-scope'
 
 export default defineApiHandler(async (event) => {
-  resolveUser(event)
+  const user = resolveUser(event)
   bindDcwBroadcast(broadcastSceneEvent)
   const id = getRouterParam(event, 'id') ?? ''
+  if (!getDcwParamRepo().byId(id)) throw new AppError(404, ErrorCodes.NOT_FOUND, `工艺参数不存在: ${id}`)
+  requireLineForResource(user, paramLineId(id), '工艺参数', 'readonly')
   const read = await getDcwController().readParam(id)
   return { read }
 })

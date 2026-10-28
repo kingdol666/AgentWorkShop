@@ -7,12 +7,13 @@ import type { DcwWriteHistoryEntry } from '../dcw-recipe.repo'
 import type { RecipeInput, RecipeRunView, RecipeView, WriteVerifyOutcome } from '../../../../../shared/dcw-protocol'
 import { AppError, ErrorCodes } from '../../../../utils/errors'
 import { getDcwRecipeRepo } from '../dcw-recipe.repo'
-import { assertRecipeOpIntervalForExecution, recordRecipeOpAnchor } from '../recipe-op-anchor'
+import { assertRecipeOpIntervalForExecution, beginRecipeOp, endRecipeOp, recordRecipeOpAnchor } from '../recipe-op-anchor'
 import { hydrateTrialLastAt, setTrialLastAt } from './gate-persist'
 import { recordOps } from '../../ops/ops'
 import { summarizeAck, verifyRecipeWrite } from './write-verify'
 import { writeTolerance } from '../dcw-runtime'
 import { notifyLineOperators } from '../../runtime/line-notify'
+import { assertWithinLimits } from '../param-limits'
 
 /**
  * 试验节拍 env 解析(显式 0 = 关闭;空/非法 = 默认 5 分钟)。
@@ -111,7 +112,7 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
    * 2026-10-08 ACK 鉴定:每参数写后经 verifyRecipeWrite 补验(链路受理→独立回读
    * 证实),结果行携带 ack/verify —— 「ok」不再被当成「设备已生效」。
    */
-  protected async writeRecipeParams(recipe: RecipeView, run: RecipeRunView): Promise<void> {
+  protected async writeRecipeParams(recipe: RecipeView, run: RecipeRunView, opts: { enforceRecipeWindow?: boolean } = {}): Promise<void> {
     const results: RecipeRunView['results'] = []
     for (const param of recipe.params) {
       const node = param.nodeId ? this.repo.byId(param.nodeId) : undefined
@@ -128,6 +129,24 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
       if (node.lineId !== recipe.lineId) {
         results.push({ templateRef: node.templateRef, nodeId: node.id, ok: false, message: `已跳过:节点「${node.name}」已取消绑定(${node.lineId ? '已改挂其他产线' : '已从产线移除'}),参数未下发`, value: param.value })
         continue
+      }
+      // 2026-10-28:trial/候选覆盖值必须再过一次配方工艺窗口。
+      // 配方路径在 write() 里 skipRecipe:true(保存值已在保存时校验),但 trial 的
+      // overrides 是新值 —— 曾在 40~48 的配方窗下把 80/120 写进 PLC。
+      if (opts.enforceRecipeWindow) {
+        try {
+          assertWithinLimits(node, param.value, { includeSoft: true, skipRecipe: false })
+        }
+        catch (err) {
+          results.push({
+            templateRef: node.templateRef,
+            nodeId: node.id,
+            ok: false,
+            message: `候选值未下发(越界):${err instanceof Error ? err.message : String(err)}`,
+            value: param.value,
+          })
+          continue
+        }
       }
       try {
         const outcome = await this.write(node.id, param.value, run.id, { source: 'recipe', actor: 'recipe' })
@@ -169,6 +188,13 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
     }
   }
 
+  /** 占位试验节拍(与 assertTrialCadence 同步调用,中间不得有 await;B-P1-2)。 */
+  private claimTrialCadence(lineId: string): void {
+    const at = Date.now()
+    this.trialLastAt.set(lineId, at)
+    setTrialLastAt(lineId, at) // P1-5 落盘
+  }
+
   /**
    * Recipe 手动应用 / Agent 试验(一键下发工艺参数集;不激活产线窗口)。
    * v19 trial 语义:**声明式覆盖集** —— 提供 overrides 时只写 overrides 列出的节点
@@ -197,9 +223,41 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
     if (unknown.length) {
       throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `覆盖参数不在配方内: ${unknown.map(o => o.nodeId).join(', ')}(试验只能修改配方已有参数的值;新增参数请先 recipe_update)`)
     }
-    if (opts.trial) this.assertTrialCadence(recipe.lineId)
+    if (opts.trial) {
+      // B-P1-2(2026-10-28 审查):判定与占位必须同一次同步执行(中间无 await),
+      // 否则并发 trial 双双过检;写入完成前第二次会被节拍拦下。
+      this.assertTrialCadence(recipe.lineId)
+      this.claimTrialCadence(recipe.lineId)
+    }
     // Recipe 级下发间隔卡控(执行时兜底):仅 Agent 路径;approvalId 自豁免防审批竞态
-    if (opts.agentDispatch) assertRecipeOpIntervalForExecution(recipe, { approvalId: opts.agentApprovalId, emergency: opts.emergency })
+    if (opts.agentDispatch) {
+      assertRecipeOpIntervalForExecution(recipe, { approvalId: opts.agentApprovalId, emergency: opts.emergency })
+      // 在飞占位:频控是"查-做-记"三段,首尾之间隔着整批写入(秒级)。两个并发下发
+      // 都会在"查"时看到旧锚。占位与判定同步完成,follow 到 finally 释放。
+      beginRecipeOp(recipeId, recipe.name)
+    }
+    try {
+      return await this.applyRecipeLocked(recipe, opts, overrides)
+    }
+    finally {
+      if (opts.agentDispatch) endRecipeOp(recipeId)
+    }
+  }
+
+  /** applyRecipe 的持锁段(调用方已通过节拍/频控判定并在飞占位;不得在此重复占位)。 */
+  private async applyRecipeLocked(
+    recipe: RecipeView,
+    opts: {
+      overrides?: Array<{ nodeId: string, value: number }>
+      trial?: boolean
+      agentDispatch?: boolean
+      agentApprovalId?: string
+      emergency?: boolean
+    },
+    overrides: Array<{ nodeId: string, value: number }>,
+  ): Promise<RecipeRunView> {
+    const repo = getDcwRecipeRepo()
+    const recipeId = recipe.id
     // 声明式覆盖集:有 overrides 只写声明的节点(未声明参数保持现状,绝不顺带整批);
     // 无 overrides(手动应用/统一回退重下发)= 整批语义
     const effective = overrides.length > 0
@@ -209,7 +267,7 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
         })
       : recipe.params
     const run = repo.createRun(recipe, effective)
-    await this.writeRecipeParams({ ...recipe, params: effective }, run)
+    await this.writeRecipeParams({ ...recipe, params: effective }, run, { enforceRecipeWindow: overrides.length > 0 })
     // 运行中应用新配方版本 → 谱系拆段(A13):旧段在 now 闭合,新段记录新版本/内容 hash。
     try {
       const { getActiveLineRun, setActiveLineRun } = await import('../line-run')

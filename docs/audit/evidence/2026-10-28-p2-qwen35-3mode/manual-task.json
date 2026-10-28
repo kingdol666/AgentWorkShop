@@ -1,0 +1,192 @@
+{
+  "id": "ba39e61c-9a0a-4b8b-bebe-d57f5d407964",
+  "channelId": "93002bf0-94ee-4dd1-87f8-650fd7f66397",
+  "rootQueueSeq": 4,
+  "assigneeId": "17fc9c52-e17a-40ff-8957-4110b6c7313c",
+  "creatorId": "",
+  "title": "最终构建-手动模式",
+  "description": "严格按三步执行，不要做别的：1) 调用 daq_query（line_id=ln-9ceed1e7，last_minutes=5，bucket_ms=15000）取温度均值；2) 调用 recipe_trial（recipe_id=rc-9363b8d1，params=[{node_id:\"dw-f3471765\",value:56}]，hypothesis=\"实测107C高于配方窗口50~70C，设定从58下调2C观察响应\"）；3) 若返回等待人工批准，立即停止并说明已提交审批；不要调用其他工具。",
+  "state": "COMPLETED",
+  "progress": 100,
+  "retryCount": 0,
+  "artifacts": [
+    {
+      "artifactId": "b609b26c-7b80-4691-95dd-776db1f8ef4f",
+      "name": "input",
+      "parts": [
+        {
+          "text": "严格按三步执行，不要做别的：1) 调用 daq_query（line_id=ln-9ceed1e7，last_minutes=5，bucket_ms=15000）取温度均值；2) 调用 recipe_trial（recipe_id=rc-9363b8d1，params=[{node_id:\"dw-f3471765\",value:56}]，hypothesis=\"实测107C高于配方窗口50~70C，设定从58下调2C观察响应\"）；3) 若返回等待人工批准，立即停止并说明已提交审批；不要调用其他工具。"
+        }
+      ]
+    },
+    {
+      "artifactId": "e7882160-359c-4c47-85be-3d47b6c48927",
+      "name": "deliverable",
+      "parts": [
+        {
+          "text": "# 最终构建-手动模式 — 执行结果\n\n## 1) 取证 daq_query(line_id=ln-9ceed1e7, last_minutes=5, bucket_ms=15000)\n- 时间窗 2026-10-28T13:42~13:47，20 桶×15s，agg=avg\n- 腔体温度(手动线) dn-3af21407：最新 **107.04C**，均值 107.04/min 107.04/max 107.04，状态 **alarm**，超监控窗口 [50,70]C\n- 同线数控设定 温度设定(手动线)=58C；活动批次 rr-18003b01，活动配方 验收配方-手动线(rc-9363b8d1)\n- 库内最新样本 13:47:20，滞后 1s（推送正常）\n- 旁证：系统压力 0.855bar（量程 0~10bar，warn），均值稳定 0.81~0.85\n\n## 2) 试验 recipe_trial(recipe_id=rc-9363b8d1, params=[{dw-f3471765, 56}])\n- hypothesis: 实测107C高于配方窗口50~70C，设定从58下调2C观察响应\n- 结果：**已整批下发并全部设备证实 1/1**，批次 **rr-70cbc**；温度设定(手动线) 58→**56C**（证实✓）\n- 人工附言：验收批准——证据充分，同意整批试验\n- 未写入配方版本（v1 仍为 58C），候选值处于窗口 50~70C 内、步幅 2C ≤ 4C\n\n## 3) 结论\n返回值**不是**「等待人工批准」——审批已在调用中闭环，试验已落产线并在设备侧证实，因此不触发停止条件。按任务指令「严格三步、不要做别的」，执行在此终止，未做复测判读与 recipe_update 固化。\n\n## 待办（若后续需要闭环）\n本轮候选值 56C 尚未判读：需在工艺惯性稳定后 daq_query 复测（有进步→recipe_update 固化；劣化→recipe_rollback dispatch=true）。"
+        }
+      ]
+    }
+  ],
+  "history": [
+    {
+      "messageId": "113fb866-6ff5-4f17-b018-e92ab9fce0c6",
+      "contextId": "93002bf0-94ee-4dd1-87f8-650fd7f66397",
+      "role": "ROLE_AGENT",
+      "parts": [
+        {
+          "text": "🔧 read(xd://daq_query)"
+        }
+      ]
+    },
+    {
+      "messageId": "07548313-9d41-47f4-b240-f9174ae1cf64",
+      "contextId": "93002bf0-94ee-4dd1-87f8-650fd7f66397",
+      "role": "ROLE_AGENT",
+      "parts": [
+        {
+          "text": "🔧 read(xd://recipe_trial)"
+        }
+      ]
+    },
+    {
+      "messageId": "09ab5fc1-e0ed-4886-ac58-d9286683c391",
+      "contextId": "93002bf0-94ee-4dd1-87f8-650fd7f66397",
+      "role": "ROLE_AGENT",
+      "parts": [
+        {
+          "text": "🔧 read ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"# daq_query — DAQ Query\\n\\n从时序数据库检索你可访问的数采节点的历史/实时数据。授权两途径:绑定数采节点,或所在频道绑定产线(绑线后可只读查询该线全部数采节点)。支持按产线/产品/配方/批次/时间窗/降采样多维过滤(产品/配方过滤基于逐样本打标,可精确取某批次数据);返回结果携带物理含义(参数语义/单位/量程/统计摘要/最近序列)。默认只取**当前活动批次(活动配方)**的数据:产线正在跑什么配方就只查那个配方,不会把上一轮配方的样本混进本轮判读;需要跨配方看整段历史时显式传 scope=all。 "
+        }
+      ]
+    },
+    {
+      "messageId": "babcf6b1-d915-4e4b-975a-dcc51a78ff56",
+      "contextId": "93002bf0-94ee-4dd1-87f8-650fd7f66397",
+      "role": "ROLE_AGENT",
+      "parts": [
+        {
+          "text": "🔧 read ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"# recipe_trial — Recipe Trial\\n\\n多参数候选整批试验下发(不写配方版本)。可直接对当前在跑的配方试验:只传 line_id 时解析活动批次配方;也可显式 recipe_id。权限模型:须已绑定该 recipe 且过二级认证与运行门;候选只能覆盖配方内参数节点;绑定 manual 或产线 manual 时挂 HITL 等人工批准——hypothesis 必填,即本次试验的理由与判断依据。整批一次落产线;复测判读后有进步用 recipe_update 固化,劣化用 recipe_rollback("
+        }
+      ]
+    },
+    {
+      "messageId": "a9c07a23-f9aa-4a13-867f-3ddee1212fd6",
+      "contextId": "93002bf0-94ee-4dd1-87f8-650fd7f66397",
+      "role": "ROLE_AGENT",
+      "parts": [
+        {
+          "text": "🔧 daq_query(line_id=ln-9ceed1e7, last_minutes=5)"
+        }
+      ]
+    },
+    {
+      "messageId": "27a0a41f-0ac7-41ae-a73e-c54bd07ca312",
+      "contextId": "93002bf0-94ee-4dd1-87f8-650fd7f66397",
+      "role": "ROLE_AGENT",
+      "parts": [
+        {
+          "text": "🔧 write(xd://daq_query)"
+        }
+      ]
+    },
+    {
+      "messageId": "3e56f562-59b5-4f38-9b76-02de928fc5db",
+      "contextId": "93002bf0-94ee-4dd1-87f8-650fd7f66397",
+      "role": "ROLE_AGENT",
+      "parts": [
+        {
+          "text": "🔧 daq_query ✅ 完成: 数采数据查询结果(2 个节点):\n\n■ 腔体温度(手动线)(熔体/箱体温度)单位 C,正常量程 0~100C,当前状态 alarm,时间窗 2026-10-28T13:42 ~ 2026-10-28T13:47(降采样 15000ms,聚合 avg)\n  当前活动批次 run=rr-18003b01 配方「验收配方-手动线」(rc-9363b8d1)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\n  样本 20 点 | 最新 107.04C | 均值 107.04 | 最小 107.03999999999998 | 最大 10"
+        }
+      ]
+    },
+    {
+      "messageId": "018b0da2-6f03-4f82-8a99-81760c7192b1",
+      "contextId": "93002bf0-94ee-4dd1-87f8-650fd7f66397",
+      "role": "ROLE_AGENT",
+      "parts": [
+        {
+          "text": "🔧 write ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"数采数据查询结果(2 个节点):\\n\\n■ 腔体温度(手动线)(熔体/箱体温度)单位 C,正常量程 0~100C,当前状态 alarm,时间窗 2026-10-28T13:42 ~ 2026-10-28T13:47(降采样 15000ms,聚合 avg)\\n  当前活动批次 run=rr-18003b01 配方「验收配方-手动线」(rc-9363b8d1)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build)\\n  样本 20 点 | 最新 107.04C | 均值"
+        }
+      ]
+    },
+    {
+      "messageId": "e09cf611-a426-40c6-a41a-6e642e0f5d59",
+      "contextId": "93002bf0-94ee-4dd1-87f8-650fd7f66397",
+      "role": "ROLE_AGENT",
+      "parts": [
+        {
+          "text": "🔧 recipe_trial(recipe_id=rc-9363b8d1, hypothesis=实测107C高于配方窗口50~70C，设定从58下调2C观察…)"
+        }
+      ]
+    },
+    {
+      "messageId": "d9f9e148-a6a6-4f9a-b8bc-63c1376834ce",
+      "contextId": "93002bf0-94ee-4dd1-87f8-650fd7f66397",
+      "role": "ROLE_AGENT",
+      "parts": [
+        {
+          "text": "🔧 write(xd://recipe_trial)"
+        }
+      ]
+    },
+    {
+      "messageId": "0420b8a3-a5bd-475a-babf-d18bc87e4484",
+      "contextId": "93002bf0-94ee-4dd1-87f8-650fd7f66397",
+      "role": "ROLE_AGENT",
+      "parts": [
+        {
+          "text": "🔧 recipe_trial ✅ 完成: 试验已整批下发并全部设备证实(1/1,批次 rr-70cbc):温度设定(手动线)→56C [证实✓]。假设:实测107C高于配方窗口50~70C，设定从58下调2C观察响应。\n人工附言:验收批准：证据充分，同意整批试验注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC 整批恢复)。"
+        }
+      ]
+    },
+    {
+      "messageId": "c307197b-ff76-424c-90a8-bf17e79a60c4",
+      "contextId": "93002bf0-94ee-4dd1-87f8-650fd7f66397",
+      "role": "ROLE_AGENT",
+      "parts": [
+        {
+          "text": "🔧 write ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"试验已整批下发并全部设备证实(1/1,批次 rr-70cbc):温度设定(手动线)→56C [证实✓]。假设:实测107C高于配方窗口50~70C，设定从58下调2C观察响应。\\n人工附言:验收批准：证据充分，同意整批试验注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退"
+        }
+      ]
+    },
+    {
+      "messageId": "833381d7-2db0-478b-8c49-8e8798e8edf6",
+      "contextId": "93002bf0-94ee-4dd1-87f8-650fd7f66397",
+      "role": "ROLE_AGENT",
+      "parts": [
+        {
+          "text": "🔧 read(xd://complete_task)"
+        }
+      ]
+    },
+    {
+      "messageId": "22c7cf0f-2077-460b-8855-5c46ab43f11c",
+      "contextId": "93002bf0-94ee-4dd1-87f8-650fd7f66397",
+      "role": "ROLE_AGENT",
+      "parts": [
+        {
+          "text": "🔧 read ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"# complete_task — Complete Task\\n\\nMark a task as completed with final deliverables. Workers call this when their assigned task is done. Lead calls this for parent tasks when all children are done.\\n\\n## Schema\\n```ts\\ntype Args = {\\n  /** Summary of what was accom"
+        }
+      ]
+    },
+    {
+      "messageId": "60c77afc-df4f-4fd8-8688-e3e3145b739f",
+      "contextId": "93002bf0-94ee-4dd1-87f8-650fd7f66397",
+      "role": "ROLE_AGENT",
+      "parts": [
+        {
+          "text": "🔧 complete_task(ba39e61c-9a0a-4b8b-bebe-d57f5d407964)"
+        }
+      ]
+    }
+  ],
+  "deadlineAt": "2026-10-28T14:01:51.734+08:00",
+  "assignmentGeneration": 0,
+  "executionLeaseId": "b866a9c0-27b5-4029-9186-0f6464aa44cd",
+  "executionLeaseAgentId": "17fc9c52-e17a-40ff-8957-4110b6c7313c",
+  "executionLeaseStartedAt": "2026-10-28T13:46:51.735+08:00",
+  "executionLeaseRevokedAt": "2026-10-28T13:48:21.795+08:00",
+  "createdAt": "2026-10-28T13:46:51.735+08:00",
+  "updatedAt": "2026-10-28T13:48:21.795+08:00"
+}

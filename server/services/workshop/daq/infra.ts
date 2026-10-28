@@ -109,6 +109,19 @@ export function daqInfraStatus(): DaqInfraStatus {
   return { ...state().status }
 }
 
+/**
+ * 后端装配失败(S10):端口探测通过但 TSDB/队列/对象存储 init 失败时,
+ * 必须把状态显式置为 degraded —— 否则 30s 自动重连永不触发,采样会写进占位后端。
+ */
+export function markDaqInfraFailure(err: unknown): void {
+  const s = state().status
+  s.degraded = true
+  s.lastCheckAt = new Date().toISOString()
+  s.lastError = err instanceof Error ? err.message : String(err)
+  s.warning = `数采后端初始化失败,已降级并停采:${s.lastError}`
+  log.error('[daq-infra]', s.warning)
+}
+
 /** 运行配置快照(启动插件装配时写入;重连端点复用) */
 export function daqInfraConfig(): DaqInfraConfig {
   return state().cfg

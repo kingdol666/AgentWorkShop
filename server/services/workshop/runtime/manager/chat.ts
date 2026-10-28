@@ -364,11 +364,13 @@ export abstract class ManagerChat extends ManagerAccess {
         }),
       })
       // 记为该 Agent 当前人类调用作用域:工具调用与 Agent 间委派都要按它收紧(§13.3)。
-      this.activeInvocationScopes.set(targetAgentId, parseWorkshopPermissionScope(
+      this.setInvocationScope(targetAgentId, parseWorkshopPermissionScope(
         message.metadata?.[WORKSHOP_PERMISSION_SCOPE_HEADER],
       ) as WorkshopPermissionScope)
       const delivered = this.route(channelId, message)
       if (!delivered.includes(targetAgentId)) {
+        // C-P1-2:投递失败 → 作用域立即撤销(否则一次失败投递会永久封锁该 Agent)
+        this.clearInvocationScope(targetAgentId, deliveryId)
         return finish('failed', {
           mailboxMessageId: message.messageId,
           error: `未投递到 ${targetAgentId} 的 mailbox`,

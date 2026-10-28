@@ -81,3 +81,24 @@ export function scopeFromMetadata(
   if (!metadata) return null
   return parse(metadata[header])
 }
+
+/**
+ * 人类调用作用域收口(C-P1-2,2026-10-28 审查)。
+ *
+ * 作用域必须随"该次人类调用收口"而失效:正常回执时按 invocationId 精确清除;
+ * 回合失败/无回执时由回合落定回调兜底清除 —— 否则陈旧 scope 永久封锁该 Agent 的
+ * 管理面/写面,且后续系统调用无从解开。invocationId 为空 = 无条件清除(老路径)。
+ *
+ * @returns true = 确实清除了一条作用域
+ */
+export function settleInvocationScope(
+  map: Map<string, { invocationId?: string | null }>,
+  agentId: string,
+  invocationId?: string | null,
+): boolean {
+  const active = map.get(agentId)
+  if (!active) return false
+  if (invocationId && active.invocationId && active.invocationId !== invocationId) return false
+  map.delete(agentId)
+  return true
+}

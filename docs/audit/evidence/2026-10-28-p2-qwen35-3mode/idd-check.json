@@ -1,0 +1,1 @@
+{"code":0,"message":"ok","data":{"result":{"text":"诊断 integration-healthcheck-nonexistent 不存在或诊断服务不可达(HTTP 401 {\"success\":false,\"code\":\"AUTH_REQUIRED\",\"error\":\"缺少认证凭据：请在 Authorization 头携带 Bearer <token>（登录会话或 API Token）\"};修复:在 系统设置→运行配置→插件 更新「诊断 API Token」(推荐使用诊断服务侧的持久化 API Token,idd_ 前缀,服务重启不失效))。","isError":true}}}

@@ -202,11 +202,17 @@ async function main() {
 
   const members = await api('GET', `/api/workshop/channels/${ids.channel}/agents`)
   check('GET /channels/:id/agents 成员列表', members.code === 0 && members.data.length === 3, `members=${members.data?.length}`)
+  // 2026-10-28 安全修复:列表不再回显 agent token(防 worker 冒充 lead);
+  // 套件改经"轮换端点一次性取全量 token"(owner/admin 可调,响应只此一次)
   const leadInfo = members.data.find(a => a.id === ids.lead)
   const workerInfo = members.data.find(a => a.id === ids.worker)
-  ids.leadToken = leadInfo?.token
-  ids.workerToken = workerInfo?.token
-  check('成员带实例 token(auth 基础)', Boolean(ids.leadToken && ids.workerToken))
+  check('成员列表不回显 token(防冒充)', Boolean(leadInfo) && !('token' in leadInfo) && !('token' in workerInfo))
+  const rotLead = await api('POST', `/api/workshop/channels/${ids.channel}/agents/${ids.lead}/rotate-token`)
+  const rotWorker = await api('POST', `/api/workshop/channels/${ids.channel}/agents/${ids.worker}/rotate-token`)
+  ids.leadToken = rotLead?.data?.token
+  ids.workerToken = rotWorker?.data?.token
+  check('成员实例 token 经轮换端点一次性获取(auth 基础)', Boolean(ids.leadToken && ids.workerToken),
+    `leadRot=${rotLead.status} workerRot=${rotWorker.status}`)
 
   const dupLead = await api('POST', `/api/workshop/channels/${ids.channel}/agents`, { body: { agentId: tpl2.data.id, role: 'lead' } })
   check('第二个 lead → 409 LEAD_EXISTS', dupLead.status === 409 || dupLead.code === 'LEAD_EXISTS', `code=${dupLead.code}`)

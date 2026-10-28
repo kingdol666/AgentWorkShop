@@ -9,6 +9,7 @@ import { readValidatedBody } from 'h3'
 import { zValidator } from '../../utils/validate'
 import { defineApiHandler } from '../../utils/response'
 import { getWorkshopManager, ensureLeadSchedulerLoop } from '../../plugins/workshop'
+import { assertSpawnConfigAllowed } from '../../services/workshop/agents/harness-spawn-policy'
 
 const createChannelSchema = z.object({
   name: z.string().min(1, 'name 必填'),
@@ -38,6 +39,8 @@ const createChannelSchema = z.object({
 export default defineApiHandler(async (event) => {
   const user = resolveUser(event)
   const body = await readValidatedBody(event, zValidator(createChannelSchema))
+  // 启动面收权(2026-10-28):lead harness 的 command/args/cwd/env 只有 admin 能指定
+  if (body.leadAgent) assertSpawnConfigAllowed(body.leadAgent.harness, body.leadAgent.config, user)
   const manager = getWorkshopManager()
   const result = await manager.createChannel({
     name: body.name,

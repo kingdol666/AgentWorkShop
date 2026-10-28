@@ -8,6 +8,7 @@
 
 import { AppError, ErrorCodes } from '../../../utils/errors'
 import type { DcwNode } from './dcw-node'
+import { assertWithinLimits } from './param-limits'
 
 /** 回读死区容差:max(0.5×10^-小数位, 量程 0.5%) */
 export function writeTolerance(node: DcwNode): number {
@@ -49,6 +50,8 @@ export interface DcwReadOutcome {
 export class DcwNodeRuntime {
   private writing = false
   private lastHoldAt = 0
+  /** 保写被限界拒绝的最近告警时刻(节流,避免每拍刷日志) */
+  private holdBlockedAt = 0
   /** 周期读节拍 + 在飞互斥(读事务不与写事务互斥,但同节点读不重入) */
   private lastReadTick = 0
   private reading = false
@@ -107,20 +110,40 @@ export class DcwNodeRuntime {
       const hold = node.holdIntervalMs ?? this.host.defaults().holdIntervalMs
       // P0-1 保写产线门:绑定产线的节点仅在产线活动(有运行批次窗口)时保写,停线即挂起,
       // 开线后下一拍自然恢复(10-07 事故根因④:停线不挂起心跳,残留节点持续直写)。
-      // lineId=''(未分配产线的独立通道)不受门控,保持独立节点用法。
-      if (hold && hold > 0 && now - this.lastHoldAt >= hold && (!node.lineId || this.host.lineActive(node.lineId))) {
-        this.lastHoldAt = now
-        this.writing = true
-        node.state = 'writing'
-        // tick 是同步节拍(由 sweep 同步调用),这里 fire-and-forget 但**全程持锁**,
-        // 保证与 write() 互斥;finally 里收敛状态并释放闸门。
-        void Promise.resolve()
-          .then(() => this.host.executeWrite(node, node.value!, writeTolerance(node), null))
-          .catch(() => { /* 保写失败不抛出:下一拍重试 */ })
-          .finally(() => {
-            this.writing = false
-            if (node.state === 'writing') node.state = 'error'
-          })
+      // 2026-10-28:未分配产线的节点不再默认豁免 —— 删线(purge=false)会把 lineId 置空,
+      // 旧逻辑因此让已下线产线的设定值被永久重写。现在必须显式 AW_HOLD_UNASSIGNED=1 才保写。
+      const lineGate = node.lineId ? this.host.lineActive(node.lineId) : process.env.AW_HOLD_UNASSIGNED === '1'
+      if (hold && hold > 0 && now - this.lastHoldAt >= hold && lineGate) {
+        // 2026-10-28:保写心跳也过四层限界(含配方窗)。此前只查在飞闸门,操作员收窄量程/
+        // 换配方后可写被拒、心跳却按旧值持续重写 PLC。
+        let withinLimits = true
+        try {
+          assertWithinLimits(node, node.value!, { includeSoft: true, skipRecipe: false })
+        }
+        catch (err) {
+          withinLimits = false
+          if (now - this.holdBlockedAt > 60_000) {
+            this.holdBlockedAt = now
+            console.warn(`[dcw] 保写心跳被限界拒绝(跳过本拍):${node.name}(${node.id}) ${err instanceof Error ? err.message : String(err)}`)
+          }
+        }
+        if (!withinLimits) {
+          // 不写,但周期读继续(下方读路径与本块独立)
+        }
+        else {
+          this.lastHoldAt = now
+          this.writing = true
+          node.state = 'writing'
+          // tick 是同步节拍(由 sweep 同步调用),这里 fire-and-forget 但**全程持锁**,
+          // 保证与 write() 互斥;finally 里收敛状态并释放闸门。
+          void Promise.resolve()
+            .then(() => this.host.executeWrite(node, node.value!, writeTolerance(node), null))
+            .catch(() => { /* 保写失败不抛出:下一拍重试 */ })
+            .finally(() => {
+              this.writing = false
+              if (node.state === 'writing') node.state = 'error'
+            })
+        }
       }
     }
     // 周期读:被动观测,不依赖写过、不与写在飞互斥(仅同节点读串行)。

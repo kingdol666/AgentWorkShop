@@ -221,7 +221,7 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
    * 此前只有 REST/MCP 路径生效,群成员 @Agent 时的高危工具限制被绕过。
    */
   invocationScopeOf(agentId: string) {
-    return this.activeInvocationScopes.get(agentId) ?? null
+    return this.activeScopeOf(agentId)
   }
 
   /** v18:Agent 实例 → 其频道绑定的产线 id(只读扩权依据;未绑/找不到 = null) */

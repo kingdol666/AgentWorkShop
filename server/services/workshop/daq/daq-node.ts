@@ -211,6 +211,8 @@ export class DaqNode {
       value: this.value,
       state: this.state,
       lastAt: this.lastAt,
+      // S11:驱动不可用/采样失败原因必须随快照落盘,否则重启即丢、UI 无从解释
+      lastError: this.lastError,
       createdAt: this.createdAt,
     }
   }

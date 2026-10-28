@@ -357,7 +357,16 @@ class DcwRecipeRepo {
   markGood(recipeId: string, runId: string): RecipeView {
     const r = this.byId(recipeId)
     if (!r) throw new AppError(404, ErrorCodes.NOT_FOUND, `Recipe 不存在: ${recipeId}`)
-    if (!this.runById(runId)) throw new AppError(404, ErrorCodes.NOT_FOUND, `批次不存在: ${runId}`)
+    const run = this.runById(runId)
+    if (!run) throw new AppError(404, ErrorCodes.NOT_FOUND, `批次不存在: ${runId}`)
+    // 2026-10-28:此前只校验 run 存在 —— 可把同线另一个配方/别的产品的批次标为"已知良好",
+    // 之后 to_last_good 会把那个批次的 setpoints 整批写进当前配方。
+    if (run.recipeId !== recipeId) {
+      throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `批次 ${runId} 属于配方 ${run.recipeId},不能标记为配方 ${recipeId} 的良好批次`)
+    }
+    if (run.lineId !== r.lineId) {
+      throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `批次 ${runId} 属于产线 ${run.lineId},与配方产线 ${r.lineId} 不一致`)
+    }
     r.lastGoodRunId = runId
     this.flushRecipes()
     return r

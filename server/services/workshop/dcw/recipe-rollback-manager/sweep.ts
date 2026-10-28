@@ -26,8 +26,28 @@ export abstract class RecipeRollBackManagerSweep extends RecipeRollBackManagerRo
 
   protected async evaluateOnce(record: OptimizationRecord): Promise<void> {
     try {
+      // 2026-10-28:回退写产生的记录不再参与自动兜底 —— 否则"回退的回退"会写回问题值。
+      if (record.rollbackOf) return
       const from = Date.parse(record.setAt)
       const agg = await this.captureMetrics(record.nodeId, record.lineId, record.recipeId, from, Date.now())
+      // B-P1-1(2026-10-28 审查):captureMetrics 是跨 await 的长查询 —— 期间世界已变。
+      // 判定/执行前必须重验"这条记录还是不是当前该行动的那条",否则会:
+      //  ① 覆盖人工已下的 uncertain/判词(推翻人的裁决);
+      //  ② 记录已被关闭/被执行(重复物理写);
+      //  ③ 同节点已有更新的写意图接管(按旧值回退,把最新意图冲掉)。
+      // 三者任一发生都只补记聚合(windowAgg)并返回,绝不产生任何写入。
+      const latest = this.repo.byId(record.id)
+      if (!latest || latest.status !== 'open' || latest.judge) {
+        if (latest?.status === 'open') {
+          this.repo.updateRecord(latest.id, { evaluatedAt: latest.evaluatedAt, windowAgg: latest.windowAgg ?? agg })
+        }
+        return
+      }
+      const current = this.repo.openRecordOf(record.nodeId)
+      if (!current || current.id !== record.id) {
+        this.repo.updateRecord(latest.id, { evaluatedAt: latest.evaluatedAt, windowAgg: latest.windowAgg ?? agg })
+        return
+      }
       const totalBreaches = agg.channels.reduce((sum, c) => sum + Math.max(0, c.breaches), 0)
       if (totalBreaches < BREACH_THRESHOLD) {
         this.repo.updateRecord(record.id, { evaluatedAt: record.evaluatedAt, windowAgg: record.windowAgg ?? agg })

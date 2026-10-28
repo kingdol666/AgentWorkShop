@@ -1,15 +1,24 @@
 /**
- * Recipe 操作统一鉴权门(权限模型 v2)。
+ * Recipe 操作统一鉴权门(权限模型 v2 + 2026-10-28 节点级写授权双轨)。
  *
- * Agent 不再直碰数控节点 —— 对产线的全部写动作收敛到「绑定的 recipe」上:
- *   ① 绑定门:必须持有该 recipe 的绑定(kind='recipe';可绑定多个配方);
+ * 对产线的全部写动作仍收敛在配方管道上;授权面有两条轨(取并集):
+ *   ① 绑定门:
+ *      - recipe 绑定(kind='recipe',nodeId 字段=配方 id)= **配方操作权**
+ *        (update/apply/trial/rollback 全部放行,维持权限模型 v2 语义);
+ *      - dcw 节点绑定(kind='dcw')= **点位写授权**(2026-10-28 恢复,非直写入口):
+ *        对「当前活动配方」的 trial/apply,只要本次覆盖的节点 ⊆ 自己的 dcw 绑定面
+ *        即放行 —— 授权跟设备节点走(稳定),管控跟活动配方走(动态),换配方不停摆。
+ *        版本操作(update/rollback)不授予:配方级操作权仍须 recipe 绑定。
+ *      - 目标节点集缺省 = 配方全部参数(apply / 无 overrides 的 trial);
+ *        trial 传本次 overrides 的节点集(只写声明节点,部分覆盖即拒)。
  *   ② 认证门:recipe.access.requireAuth=true 时,只有 authorizedAgentIds 清单内的
  *      Agent 可操作(fail-closed:开认证但清单为空 = 无人可操作);
  *   ③ 运行门:配方必须**正在执行**(该产线存在本配方的活动批次)—— 未运行的配方
  *      一律不可操作(参数写入/下发/试验/回退同样受限);
  *   ④ HITL 判定:绑定 mode='manual' → 每次动作挂起等人工批准(必带 Agent 理由);
  *      mode='auto'(显式确认切换)→ 免批直执行。全局开关 security.recipeDispatchApproval
- *      保持兼容:开启时即便 auto 绑定也挂审批。
+ *      保持兼容:开启时即便 auto 绑定也挂审批。节点级轨的 manual 语义跟随覆盖该批
+ *      节点的 dcw 绑定(任一 manual 即挂审批)。
  *      线级总闸(2026-10-08):line.controlMode='manual'(缺省,fail-safe)时 auto 绑定
  *      也强制人工审批 —— 手动模式下人类必须过目每一次写动作。
  */
@@ -50,22 +59,59 @@ export function activeRunOfRecipe(recipeId: string): ActiveRecipeContext | null 
   }
 }
 
-/** 统一鉴权门:绑定 → 二级认证 → 运行门;返回绑定与 HITL 判定(不做挂起,挂起由调用方执行) */
+/** 节点展示名(拒绝文案用;节点已删除时退回 id) */
+function nodeLabel(nodeId: string): string {
+  const n = getDcwController().byId(nodeId)
+  return n ? `${n.name}(${nodeId})` : nodeId
+}
+
+function listNodes(ids: string[]): string {
+  return ids.length > 0 ? ids.map(nodeLabel).join('、') : '(无)'
+}
+
+/** 统一鉴权门:绑定(配方级 ∪ 节点级)→ 二级认证 → 运行门;返回绑定与 HITL 判定(不做挂起,挂起由调用方执行)
+ *  targetNodeIds:本次动作实际覆盖的节点集;缺省 = 配方全部参数(整批 apply)。 */
 export function assertRecipeOperation(
   agentId: string,
-  recipe: { id: string, name: string, lineId?: string, access?: { requireAuth?: boolean, authorizedAgentIds?: string[] } },
+  recipe: { id: string, name: string, lineId?: string, params?: Array<{ nodeId: string }>, access?: { requireAuth?: boolean, authorizedAgentIds?: string[] } },
   op: RecipeOp,
+  targetNodeIds?: string[],
 ): RecipeGateResult {
   const opLabel = op === 'update' ? '参数写入' : op === 'dispatch' ? '下发' : op === 'trial' ? '试验下发' : '回退'
-  // ① 绑定门(kind='recipe';nodeId 字段 = recipeId)
-  const binding = getAgentNodeBindingRepo().find(agentId, recipe.id, 'recipe')
-  if (!binding) {
-    return {
-      ok: false,
-      text: `无权${opLabel}配方「${recipe.name}」(${recipe.id}):你未绑定该配方。权限模型 v2 下 Agent 不直接操作数控节点 —— 通过绑定 recipe 获得参数写入与下发能力(可绑定多个配方);请让用户或 lead 为你绑定(recipe 绑定首绑默认 manual,每次动作需人工批准)。`,
+  // ① 绑定门(双轨):recipe 绑定 = 配方操作权;dcw 绑定 = 点位写授权(仅 trial/apply)
+  const bindings = getAgentNodeBindingRepo().byAgent(agentId)
+  const recipeBinding = bindings.find(b => b.kind === 'recipe' && b.nodeId === recipe.id)
+  const dcwBindings = bindings.filter(b => b.kind === 'dcw')
+  const dcwBound = new Set(dcwBindings.map(b => b.nodeId))
+  const recipeNodes = (recipe.params ?? []).map(p => p.nodeId).filter(Boolean)
+  const targets = (targetNodeIds && targetNodeIds.length > 0 ? targetNodeIds : recipeNodes)
+    .map(id => String(id ?? '').trim())
+    .filter(Boolean)
+  const versionOp = op === 'update' || op === 'rollback'
+  let coveringBindings: AgentNodeBinding[] = []
+  if (!recipeBinding) {
+    if (versionOp) {
+      return {
+        ok: false,
+        text: `无权${opLabel}配方「${recipe.name}」(${recipe.id}):节点绑定(dcw)只授予参数下发/试验权(点位授权),配方版本操作(参数保存/回退)需要绑定该配方(kind='recipe',配方级操作权)。请让用户或 lead 为你绑定该配方(recipe 绑定首绑默认 manual,每次动作需人工批准)。`,
+      }
     }
+    if (targets.length === 0) {
+      return {
+        ok: false,
+        text: `无权${opLabel}配方「${recipe.name}」:配方没有参数节点,无法确认授权覆盖集。请先为配方配置参数节点,或让用户/lead 绑定该配方(kind='recipe')。`,
+      }
+    }
+    const missing = targets.filter(id => !dcwBound.has(id))
+    if (missing.length > 0) {
+      return {
+        ok: false,
+        text: `无权${opLabel}配方「${recipe.name}」:本次覆盖的节点中有 ${missing.length} 个不在你的数控节点绑定面内 —— ${listNodes(missing)}。你已绑定的可写节点:${listNodes([...dcwBound])}。请让用户或 lead 为你补绑这些节点(节点绑定 = 点位写授权),或改用已授权节点重试;若要对整批配方操作,也可改为绑定配方(kind='recipe')。`,
+      }
+    }
+    coveringBindings = dcwBindings.filter(b => targets.includes(b.nodeId))
   }
-  // ② 二级认证(用户在配方编辑里开启并勾选授权 Agent)
+  // ② 二级认证(用户在配方编辑里开启并勾选授权 Agent;双轨共用)
   if (recipe.access?.requireAuth && !(recipe.access.authorizedAgentIds ?? []).includes(agentId)) {
     return {
       ok: false,
@@ -82,7 +128,7 @@ export function assertRecipeOperation(
   }
   // ④ HITL 判定:manual 绑定 → 逐动作人工批准;auto → 免批。
   //    线级总闸(2026-10-08 生产化):line.controlMode='manual'(缺省)时,即便绑定为
-  //    auto 也强制人工审批 —— 手动模式下人类必须过目每一次写动作(fail-safe)。
+  //    auto 也强制人工审批 —— 手动模式下人类必须过目每一次写动作。
   //    频道层钳位(2026-10-28 三模式):Agent 所属频道 executionMode='manual' 时同理强制;
   //    'auto'(中性缺省)/'observe'(分发层已拒写,不可达)不改变本判定。
   const lineManual = recipe.lineId ? getDcwLineRepo().controlModeOf(recipe.lineId) === 'manual' : false
@@ -90,7 +136,14 @@ export function assertRecipeOperation(
   // ⑤ 全局开关兼容位:security.recipeDispatchApproval 开启时即便 auto 也挂审批(保留语义)
   const globalGate = false // 由调用方按 settingOf('security.recipeDispatchApproval') 叠加(本模块不依赖设置服务)
   void globalGate
-  return { ok: true, binding, hitlRequired: binding.mode === 'manual' || lineManual || channelManual, activeContext: run }
+  // 节点级轨的 manual 语义:覆盖本次批次的 dcw 绑定任一 manual 即挂审批(fail-safe)
+  const nodeManual = coveringBindings.some(b => b.mode === 'manual')
+  const binding = recipeBinding ?? coveringBindings[0]
+  if (!binding) {
+    // 理论上不可达(targets 非空且全部已覆盖);fail-closed 防实现漂移
+    return { ok: false, text: `无权${opLabel}配方「${recipe.name}」:未找到有效授权绑定。` }
+  }
+  return { ok: true, binding, hitlRequired: binding.mode === 'manual' || nodeManual || lineManual || channelManual, activeContext: run }
 }
 
 /** 新建配方的授权门(尚无 recipe 可绑定):要求 Agent 在该线至少有一个写向绑定

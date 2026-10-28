@@ -8,6 +8,7 @@ import { readValidatedBody } from 'h3'
 import { zValidator } from '../../../utils/validate'
 import { defineApiHandler } from '../../../utils/response'
 import { getWorkshopManager } from '../../../plugins/workshop'
+import { assertSpawnConfigAllowed } from '../../../services/workshop/agents/harness-spawn-policy'
 
 const createAgentSchema = z.object({
   name: z.string().min(1, 'name 必填'),
@@ -19,6 +20,8 @@ const createAgentSchema = z.object({
 export default defineApiHandler(async (event) => {
   const user = resolveUser(event)
   const body = await readValidatedBody(event, zValidator(createAgentSchema))
+  // 启动面收权(2026-10-28):非 admin 不得指定 command/args/cwd/env
+  assertSpawnConfigAllowed(body.harness, body.config, user)
   return getWorkshopManager().createAgent({
     name: body.name,
     harness: body.harness,

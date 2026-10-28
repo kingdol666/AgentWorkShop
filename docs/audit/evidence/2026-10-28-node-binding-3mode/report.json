@@ -1,0 +1,491 @@
+{
+  "at": "2026-10-28T07:35:05.565Z",
+  "env": {
+    "base": "http://127.0.0.1:3410",
+    "home": "D:/tmp/aw-node-scoped-20261028",
+    "version": "0.8.5",
+    "model": {
+      "provider": "lm-studio",
+      "model": "qwen3.5-9b-32k",
+      "contextTokens": 32768
+    },
+    "harness": "omp",
+    "devices": "mock(daq+dcw)",
+    "note": "真实平台 + 真实 omp 子进程 + 本地 Qwen3.5-9B(32k);设备为内置 mock,无物理响应耦合"
+  },
+  "scenario": {
+    "lines": {
+      "obs": "ln-68ccf72b",
+      "write": "ln-3899893b"
+    },
+    "recipes": {
+      "obs": "rc-44b1d28d",
+      "write": "rc-fb3f9ce4"
+    },
+    "dcw": {
+      "a": "dw-4dceface",
+      "b": "dw-9b233f9e"
+    },
+    "daq": {
+      "obsTemp": "dn-127e76e2",
+      "obsPress": "dn-b198dee8",
+      "write": "dn-2f8209dc"
+    },
+    "channels": {
+      "obs": "f74dc45e-5052-434b-88f8-b19d99198d13",
+      "manual": "c09ecdac-5d45-443b-b019-1a7e7ac29749",
+      "auto": "31fd9154-26df-4647-bcd8-77e95761791c"
+    },
+    "agents": {
+      "obs": "05a8901f-497f-4a14-8093-2815ba1e1f60",
+      "manual": "74a0d8c8-475b-4a4e-8094-25258953614d",
+      "auto": "853954ce-5fb9-42c8-8989-a806e817b33e"
+    },
+    "bindings": {
+      "obs": "nb-25daa85d",
+      "manual": "nb-1943d901",
+      "auto": "nb-4b0608e6"
+    }
+  },
+  "tasks": {
+    "obs": {
+      "id": "77caf73b-edc2-4224-aabe-732361953df4",
+      "state": "COMPLETED",
+      "elapsedSec": 449,
+      "deliverable": "【验收-观察模式-数采分析 结论】\n\n一、观察(真实取数,4 次 daq_query + 1 次 line_context)\n- 产线:验收-观察线 ln-68ccf72b,运行中;活动批次 run=rr-3c626e17,配方「验收配方-观察线」rc-44b1d28d v1,产品 pd-fa8f4be0,开跑 15:35:20。\n- 节点1 腔体温度(观察线) dn-127e76e2,单位 C,仪表正常量程 0~100C,状态 alarm。\n  活动批次 30s 桶 15:35:00–15:39:00 共 9 桶,每桶 n=29 样本(首桶 9、末桶 2),max=min=avg=107.04C(全窗口 ≥200 样本,方差为 0);另以 15s 桶复核 15:35:15–15:36:00 同样恒为 107.04C。库内最新样本 15:39:01,滞后 1s。\n- 节点2 系统压力(观察线) dn-b198dee8,单位 bar,正常量程 0~10bar,状态 warn。\n  30s 桶均值序列:0.82 / 0.45 / 0.82 / 0.49 / 0.82 / 1.27 / 0.82 / 0.82 / 0.84 bar;min 聚合出现 -0.11 bar(15:35–15:36),最新 0.845 bar。\n- 口径:活动配方温度设定 60C(PLC 当前 60C),监控窗口 [50,70]C;温度实测 107.04C 同时越过窗口上限 37.04C、越过仪表满量程 7.04C。\n\n二、判读\n1) 温度 107.04C —— 量测恒定值故障,排除「设定-响应滞后」与「真实超温」\n   - 滞后假设不成立:设定 60C 的响应只会单调趋近 60C,不可能在开跑瞬间越窗至 107.04C 并稳定高出窗口上限 37.04C;且 4 分钟内 ≥200 个样本逐位相同,真实热偶/变送器至少有 0.01~0.1C 噪声。\n   - 真实异常假设不成立:无升温爬坡曲线;且读数 107.04C 超过仪表铭牌量程上限 100C,物理上不可信。\n   - 最可能原因:PLC/变送器寄存器恒定(采样卡死)、工程单位或标定偏移错误、模拟设备输出默认值。属量测可信度故障,不是工艺过程事件。\n2) 压力波动 —— 量程内但需复核\n   - 0.45↔1.27bar 约 30~60s 周期波动 + -0.11bar 负压尖峰(-0.11 低于 0~10bar 下限),节点已从 ok 转 warn;量级未越上限,判为噪声/零点问题或设备脉动,信息级告警。\n3) 数据链路验收通过:两节点均实时入库(滞后 1~2s),run/recipe 逐样本打标正确,多源取数与配方窗口判读可用;异常在测量值本身,不在采集链路。\n\n三、处置建议(观察模式,物理零写)\n- 不调整设定值、不抑制/复位报警、不据此关闭批次;温度窗口在传感器验证前视为不可用。\n- 升级仪控复核:读取温度 PV 原始寄存器与工程量程/标定偏移,核对 0~100C 变送器配置,检查热偶/接线与模拟设备输出是否为默认恒定值;用独立测点交叉验证后再做任何工艺决策。\n- 数据使用约束:批次 rr-3c626e17 的温度样本在验证前标记为无效;压力样本可用区间 0.45~1.27bar,-0.11bar 尖峰应剔除。\n\n四、局限\n- 节点在 15:35:00 之前无历史样本(3h 全量窗口仅 3 个桶),无法建立开跑前基线,故只能依据「零方差+越满量程+无爬坡」判定,不能给出故障起始精确时刻。\n- 未做物理写操作(频道规则),以上为量测侧判读,现场复核需人工执行。",
+      "toolCalls": [
+        "🔧 daq_query(last_minutes=30, bucket_ms=15000)",
+        "🔧 line_context",
+        "🔧 daq_query(last_minutes=30, bucket_ms=15000)",
+        "🔧 line_context",
+        "🔧 line_context ✅ 完成: 你控制的产线全景(1 条): ■ 产线 验收-观察线(ln-68ccf72b) · 状态:运行中 场景说明: 观察线:薄膜腔体温度/压力监测(模拟设备;真实平台/真实 Agent) 活动批次 rr-3c626 · 产品「验收产品-观察线」(pd-fa8f4be0) · 开跑 15:35:20 · 已打标 96 样本 我绑定的节点:数控 [无];数采 [腔",
+        "🔧 line_context ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"你控制的产线全景(1 条):\\n\\n■ 产线 验收-观察线(ln-68ccf72b) · 状态:运行中\\n 场景说明: 观察线:薄膜腔体温度/压力监测(模拟设备;真实平台/真实 Agent)\\n 活动批次 rr-3c626 · 产品「验收产品-观察线」(pd-fa8f4be0) · 开",
+        "🔧 daq_query ✅ 完成: 数采数据查询结果(2 个节点): ■ 腔体温度(观察线)(熔体/箱体温度)单位 C,正常量程 0~100C,当前状态 alarm,时间窗 2026-10-28T15:06 ~ 2026-10-28T15:36(降采样 15000ms,聚合 avg) 当前活动批次 run=rr-3c626e17 配方「验收配方-观察线」(rc-44b1d28d)(可直接把 ru",
+        "🔧 daq_query ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"数采数据查询结果(2 个节点):\\n\\n■ 腔体温度(观察线)(熔体/箱体温度)单位 C,正常量程 0~100C,当前状态 alarm,时间窗 2026-10-28T15:06 ~ 2026-10-28T15:36(降采样 15000ms,聚合 avg)\\n 当前活动批次 run=rr-3c",
+        "🔧 daq_query(agg=avg, bucket_ms=60000)",
+        "🔧 daq_query(agg=min, bucket_ms=60000)",
+        "🔧 daq_query(agg=avg, bucket_ms=60000)",
+        "🔧 daq_query(agg=min, bucket_ms=60000)",
+        "🔧 daq_query ✅ 完成: 数采数据查询结果(1 个节点): ■ 腔体温度(观察线)(熔体/箱体温度)单位 C,正常量程 0~100C,当前状态 alarm,时间窗 2026-10-28T12:37 ~ 2026-10-28T15:37(降采样 60000ms,聚合 avg) 全量窗口(scope=all,不做配方过滤) 样本 3 点 | 最新 107.03999999999998C |",
+        "🔧 daq_query ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"数采数据查询结果(1 个节点):\\n\\n■ 腔体温度(观察线)(熔体/箱体温度)单位 C,正常量程 0~100C,当前状态 alarm,时间窗 2026-10-28T12:37 ~ 2026-10-28T15:37(降采样 60000ms,聚合 avg)\\n 全量窗口(scope=all,不",
+        "🔧 daq_query ✅ 完成: 数采数据查询结果(1 个节点): ■ 系统压力(观察线)(熔体压力)单位 bar,正常量程 0~10bar,当前状态 ok,时间窗 2026-10-28T12:37 ~ 2026-10-28T15:37(降采样 60000ms,聚合 min) 全量窗口(scope=all,不做配方过滤) 样本 3 点 | 最新 0.8bar | 均值 0.193 | 最小 -",
+        "🔧 daq_query ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"数采数据查询结果(1 个节点):\\n\\n■ 系统压力(观察线)(熔体压力)单位 bar,正常量程 0~10bar,当前状态 ok,时间窗 2026-10-28T12:37 ~ 2026-10-28T15:37(降采样 60000ms,聚合 min)\\n 全量窗口(scope=all,不做配方",
+        "🔧 daq_query(agg=max, bucket_ms=30000)",
+        "🔧 daq_query(agg=avg, bucket_ms=30000)",
+        "🔧 daq_query(agg=max, bucket_ms=30000)",
+        "🔧 daq_query(agg=avg, bucket_ms=30000)",
+        "🔧 daq_query ✅ 完成: 数采数据查询结果(1 个节点): ■ 腔体温度(观察线)(熔体/箱体温度)单位 C,正常量程 0~100C,当前状态 alarm,时间窗 2026-10-28T15:09 ~ 2026-10-28T15:39(降采样 30000ms,聚合 max) 当前活动批次 run=rr-3c626e17 配方「验收配方-观察线」(rc-44b1d28d)(可直接把 ru",
+        "🔧 daq_query ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"数采数据查询结果(1 个节点):\\n\\n■ 腔体温度(观察线)(熔体/箱体温度)单位 C,正常量程 0~100C,当前状态 alarm,时间窗 2026-10-28T15:09 ~ 2026-10-28T15:39(降采样 30000ms,聚合 max)\\n 当前活动批次 run=rr-3c",
+        "🔧 daq_query ✅ 完成: 数采数据查询结果(1 个节点): ■ 系统压力(观察线)(熔体压力)单位 bar,正常量程 0~10bar,当前状态 warn,时间窗 2026-10-28T15:09 ~ 2026-10-28T15:39(降采样 30000ms,聚合 avg) 当前活动批次 run=rr-3c626e17 配方「验收配方-观察线」(rc-44b1d28d)(可直接把 run",
+        "🔧 daq_query ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"数采数据查询结果(1 个节点):\\n\\n■ 系统压力(观察线)(熔体压力)单位 bar,正常量程 0~10bar,当前状态 warn,时间窗 2026-10-28T15:09 ~ 2026-10-28T15:39(降采样 30000ms,聚合 avg)\\n 当前活动批次 run=rr-3c6",
+        "🔧 report_progress(progress=85, message=完成 4 次取数(温度/压力,活动批次+全量窗口),已定性:温度 107.04C 为零…)",
+        "🔧 report_progress(progress=85, message=完成 4 次取数(温度/压力,活动批次+全量窗口),已定性:温度 107.04C 为零…)",
+        "🔧 report_progress ❌ 失败: 无当前任务上下文",
+        "🔧 report_progress ❌ 失败: {\"content\":[{\"type\":\"text\",\"text\":\"无当前任务上下文\"}],\"details\":{},\"isError\":true}",
+        "🔧 complete_task(77caf73b-edc2-4224-aabe-732361953df4)"
+      ]
+    },
+    "manual": {
+      "id": "043aad25-02cd-4d1d-b2e5-ba99eeefb0c1",
+      "state": "CANCELED",
+      "cancelledByOperator": true,
+      "elapsedSec": 112,
+      "deliverable": "",
+      "toolCalls": [
+        "🔧 my_industrial_nodes",
+        "🔧 my_industrial_nodes",
+        "🔧 my_industrial_nodes ✅ 完成: ### ⚙ 频道执行模式:manual(手动)—— 本频道所有下发/配方/回退动作都会挂起等人工批准:下发前必须说明依据(数采/MES 证据),审批卡会向人类展示你的理由 #### ◆ 温度设定A(写入线) [id=dw-4dceface] - 物理量: 烘箱温度设定,单位 C,精度 2 位小数 - 工艺语义: 手动频道 Agent 的点位",
+        "🔧 my_industrial_nodes ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"### ⚙ 频道执行模式:manual(手动)—— 本频道所有下发/配方/回退动作都会挂起等人工批准:下发前必须说明依据(数采/MES 证据),审批卡会向人类展示你的理由\\n\\n#### ◆ 温度设定A(写入线) [id=dw-4dceface]\\n- 物理量: 烘箱温度",
+        "🔧 report_progress(progress=30, message=读取节点语义卡完成:绑定点位 温度设定A(写入线) dw-4dceface,当前 60…)",
+        "🔧 recipe_trial(line_id=ln-3899893b, hypothesis=手动模式点位试验验收:产线「验收-写入线」运行中(批次 rr-c…)",
+        "🔧 report_progress(progress=30, message=读取节点语义卡完成:绑定点位 温度设定A(写入线) dw-4dceface,当前 60…)",
+        "🔧 recipe_trial(line_id=ln-3899893b, hypothesis=手动模式点位试验验收:产线「验收-写入线」运行中(批次 rr-c…)",
+        "🔧 report_progress ❌ 失败: 无当前任务上下文",
+        "🔧 report_progress ❌ 失败: {\"content\":[{\"type\":\"text\",\"text\":\"无当前任务上下文\"}],\"details\":{},\"isError\":true}",
+        "🔧 recipe_trial ✅ 完成: 试验已整批下发并全部设备证实(1/1,批次 rr-693d7):温度设定A(写入线)→62C [证实✓]。假设:手动模式点位试验验收:产线「验收-写入线」运行中(批次 rr-c46fc,已运行 8 分钟,447 打标样本),活动配方「验收配方-写入线」温度设定A 目标 60C、工艺窗口 50~70C,数采监控窗口同为 50~70C。候选将温度设定A 由 ",
+        "🔧 recipe_trial ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"试验已整批下发并全部设备证实(1/1,批次 rr-693d7):温度设定A(写入线)→62C [证实✓]。假设:手动模式点位试验验收:产线「验收-写入线」运行中(批次 rr-c46fc,已运行 8 分钟,447 打标样本),活动配方「验收配方-写入线」温度设定A 目标 60C、工艺窗口"
+      ],
+      "hitl": [
+        {
+          "id": "ap-59e8521a",
+          "status": "pending",
+          "detail": "配方试验候选(整批 1 参数):温度设定A(写入线) 60→62C | 假设:手动模式点位试验验收:产线「验收-写入线」运行中(批次 rr-c46fc,已运行 8 分钟,447 打标样本),活动配方「验收配方-写入线」温度设定A 目标 60C、工艺窗口 50~70C,数采监控窗口同为 50~70C。候选将温度设定A 由 60C 上调至 62C(单步 +2C,≤4C 硬上限),目标值位于窗口内,用于验证写入链路的工程量下发与窗口联锁;仅操作本人绑定点位 dw-4dceface,不涉及温度设定B。 | 批准=整批下发试验(不写版本);拒绝可附指导",
+          "payload": {
+            "schemaVersion": 1,
+            "kind": "recipe-gate",
+            "op": "trial",
+            "recipeId": "rc-fb3f9ce4",
+            "recipeName": "验收配方-写入线",
+            "reason": "手动模式点位试验验收:产线「验收-写入线」运行中(批次 rr-c46fc,已运行 8 分钟,447 打标样本),活动配方「验收配方-写入线」温度设定A 目标 60C、工艺窗口 50~70C,数采监控窗口同为 50~70C。候选将温度设定A 由 60C 上调至 62C(单步 +2C,≤4C 硬上限),目标值位于窗口内,用于验证写入链路的工程量下发与窗口联锁;仅操作本人绑定点位 dw-4dceface,不涉及温度设定B。",
+            "params": [
+              {
+                "nodeId": "dw-4dceface",
+                "name": "温度设定A(写入线)",
+                "from": 60,
+                "to": 62,
+                "unit": "C"
+              }
+            ],
+            "context": {
+              "lineId": "ln-3899893b",
+              "runId": "rr-c46fc4f7",
+              "recipeId": "rc-fb3f9ce4",
+              "productId": "pd-8893716a"
+            },
+            "runId": "rr-c46fc4f7"
+          }
+        }
+      ],
+      "hitlHistory": [
+        {
+          "id": "ap-59e8521a",
+          "status": "approved",
+          "comment": "验收:批准手动模式点位试验",
+          "decidedBy": "eb5304ce-69a8-4c25-95b3-a9d36d36e2ce"
+        }
+      ],
+      "journal": [
+        {
+          "lineId": "ln-3899893b",
+          "nodeId": "dw-4dceface",
+          "prevValue": 60,
+          "newValue": 62,
+          "source": "recipe",
+          "actor": "recipe",
+          "recipeRunId": "rr-693d7240",
+          "id": "anc-89ae8228",
+          "at": "2026-10-28T15:44:36.752+08:00"
+        }
+      ],
+      "approvals": "ap-59e8521a"
+    },
+    "auto": {
+      "id": "80d1e3dd-e0db-4471-963a-08c865169352",
+      "state": "CANCELED",
+      "cancelledByOperator": true,
+      "elapsedSec": 103,
+      "deliverable": "",
+      "toolCalls": [
+        "🔧 my_industrial_nodes",
+        "🔧 my_industrial_nodes",
+        "🔧 my_industrial_nodes ✅ 完成: ### ⚙ 频道执行模式:auto(默认,频道不加额外约束)—— 是否人工批准由产线总闸与你的绑定模式决定;自动执行的下发必须附带 hypothesis 依据,四层限界/单步上限/运行门照常生效 #### ◆ 温度设定B(写入线) [id=dw-9b233f9e] - 物理量: 烘箱温度设定,单位 C,精度 2 位小数 - 工艺语义: 自动",
+        "🔧 my_industrial_nodes ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"### ⚙ 频道执行模式:auto(默认,频道不加额外约束)—— 是否人工批准由产线总闸与你的绑定模式决定;自动执行的下发必须附带 hypothesis 依据,四层限界/单步上限/运行门照常生效\\n\\n#### ◆ 温度设定B(写入线) [id=dw-9b233f9e]\\",
+        "🔧 recipe_trial(line_id=ln-3899893b, hypothesis=验收-自动模式点位试验:节点「温度设定B(写入线)」(dw-9b…)",
+        "🔧 recipe_trial(line_id=ln-3899893b, hypothesis=验收-自动模式点位试验:节点「温度设定B(写入线)」(dw-9b…)",
+        "🔧 recipe_trial ✅ 完成: 试验已整批下发并全部设备证实(1/1,批次 rr-098d1):温度设定B(写入线)→62C [证实✓]。假设:验收-自动模式点位试验:节点「温度设定B(写入线)」(dw-9b233f9e)当前设定60C,活动配方「验收配方-写入线」工艺窗口50~70C、配方目标60C。候选62C(+2C)在窗口内,且≤单步硬上限4C,不触及节点安全量程[0,100]C",
+        "🔧 recipe_trial ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"试验已整批下发并全部设备证实(1/1,批次 rr-098d1):温度设定B(写入线)→62C [证实✓]。假设:验收-自动模式点位试验:节点「温度设定B(写入线)」(dw-9b233f9e)当前设定60C,活动配方「验收配方-写入线」工艺窗口50~70C、配方目标60C。候选62C(+"
+      ],
+      "hitl": [],
+      "journal": [
+        {
+          "lineId": "ln-3899893b",
+          "nodeId": "dw-9b233f9e",
+          "prevValue": 60,
+          "newValue": 62,
+          "source": "recipe",
+          "actor": "recipe",
+          "recipeRunId": "rr-098d1804",
+          "id": "anc-d273564b",
+          "at": "2026-10-28T15:46:21.583+08:00"
+        }
+      ]
+    }
+  },
+  "assertions": [
+    {
+      "id": "R0",
+      "name": "生产构建隔离实例就绪(workshop ready)",
+      "pass": true,
+      "detail": "port=3410 version=0.8.5"
+    },
+    {
+      "id": "R0b",
+      "name": "admin 注册/登录",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "R1",
+      "name": "两线开跑(活动批次建立,配方整批下发)",
+      "pass": true,
+      "detail": "obs=200 write=200"
+    },
+    {
+      "id": "R2",
+      "name": "三频道创建 + 执行模式 + 工具面(omp/selected)",
+      "pass": true,
+      "detail": "{\"obs\":\"f74dc45e-5052-434b-88f8-b19d99198d13\",\"manual\":\"c09ecdac-5d45-443b-b019-1a7e7ac29749\",\"auto\":\"31fd9154-26df-4647-bcd8-77e95761791c\",\"tools\":[200,200,200]}"
+    },
+    {
+      "id": "R2b",
+      "name": "点位绑定落库(观察=daq,手动/自动=各自 dcw;无配方绑定)",
+      "pass": true,
+      "detail": "status=200/200/200 kinds=daq/dcw/dcw"
+    },
+    {
+      "id": "R2c",
+      "name": "工具注入面按 Agent 点位授权差异化(手动只见A,自动只见B)",
+      "pass": true,
+      "detail": "manual=。整批一次落产线;复测判读后有进步用 recipe_update 固化,劣化用 recipe_rollback(dispatch=true) 统一回退。受同线试验节拍(默认 ≥5 分钟)与四层限界卡控。\n\n本 Agent 的数控节点写授权面(点位写授权;可在这些节点上 trial/apply,换配方仍有效):温度设定A(写入线)(dw-4dceface,C) | auto=。整批一次落产线;复测判读后有进步用 recipe_update 固化,劣化用 recipe_rollback(dispatch=true) 统一回退。受同线试验节拍(默认 ≥5 分钟)与四层限界卡控。\n\n本 Agent 的数控节点写授权面(点位写授权;可在这些节点上 trial/apply,换配方仍有效):温度设定B(写入线)(dw-9b233f9e,C)"
+    },
+    {
+      "id": "R3",
+      "name": "观察模式任务 COMPLETED",
+      "pass": true,
+      "detail": "state=COMPLETED elapsed=449s"
+    },
+    {
+      "id": "R3b",
+      "name": "观察结论含样本统计与温度窗口判定",
+      "pass": true,
+      "detail": "【验收-观察模式-数采分析 结论】\n\n一、观察(真实取数,4 次 daq_query + 1 次 line_context)\n- 产线:验收-观察线 ln-68ccf72b,运行中;活动批次 run=rr-3c626e17,配方「验收配方-观察线」rc-44b1d28d v1,产品 pd-fa8f4be0,开跑 15:35:20。\n- 节点1 腔体温度(观察线) dn-127e76e2,单位 C,仪表正常量程 0~100C,状态 alarm。\n  活动批次 30s 桶 15:35:00–15:39:00 共 9 桶,每桶 n=29 样本(首桶 9、末桶 2),max=min=avg=107.04C(全窗口 ≥200 样本,方差为 0);另以 15s 桶复核 15:35:15–15:36:00 同样恒为 107.04C。库内最新样本 15:39:01,滞后 1s。\n- 节点2 系统压力(观察"
+    },
+    {
+      "id": "R3c",
+      "name": "观察模式产线零写入(账本条数不增)",
+      "pass": true,
+      "detail": "before=1 after=1"
+    },
+    {
+      "id": "R3d",
+      "name": "观察模式无写审批(只读频道)",
+      "pass": true,
+      "detail": "approvals=0"
+    },
+    {
+      "id": "R4",
+      "name": "手动模式控制链完成(HITL → 点位写授权下发)",
+      "pass": true,
+      "detail": "journal={\"lineId\":\"ln-3899893b\",\"nodeId\":\"dw-4dceface\",\"prevValue\":60,\"newValue\":62,\"source\":\"recipe\",\"actor\":\"recipe\",\"recipeRunId\":\"rr-693d7240\",\"id\":\"anc-89ae8228\",\"at\":\"2026-10-28T15:44:36.752+08:00\"} task=CANCELED"
+    },
+    {
+      "id": "R4a",
+      "name": "手动模式触发人工审批(频道 manual 钳位)",
+      "pass": true,
+      "detail": "cards=ap-59e8521a"
+    },
+    {
+      "id": "R4b",
+      "name": "人工审批落定 approved(附言回流)",
+      "pass": true,
+      "detail": "card=ap-59e8521a status=approved comment=验收:批准手动模式点位试验"
+    },
+    {
+      "id": "R4c",
+      "name": "手动模式点位写入落账 60→62(点位写授权,无配方绑定)",
+      "pass": true,
+      "detail": "{\"lineId\":\"ln-3899893b\",\"nodeId\":\"dw-4dceface\",\"prevValue\":60,\"newValue\":62,\"source\":\"recipe\",\"actor\":\"recipe\",\"recipeRunId\":\"rr-693d7240\",\"id\":\"anc-89ae8228\",\"at\":\"2026-10-28T15:44:36.752+08:00\"}"
+    },
+    {
+      "id": "R4d",
+      "name": "手动模式设备侧现值=账本新值(独立回读)",
+      "pass": true,
+      "detail": "value=62 journal=62"
+    },
+    {
+      "id": "R4e",
+      "name": "试验不写配方版本(仍为 v1)",
+      "pass": true,
+      "detail": "versions=1"
+    },
+    {
+      "id": "R4f",
+      "name": "任务收口(模型 complete_task 或平台取消收敛)",
+      "pass": true,
+      "detail": "state=CANCELED cancelledByOperator=true"
+    },
+    {
+      "id": "R5",
+      "name": "自动模式控制链完成(免批 → 点位写授权下发)",
+      "pass": true,
+      "detail": "journal={\"lineId\":\"ln-3899893b\",\"nodeId\":\"dw-9b233f9e\",\"prevValue\":60,\"newValue\":62,\"source\":\"recipe\",\"actor\":\"recipe\",\"recipeRunId\":\"rr-098d1804\",\"id\":\"anc-d273564b\",\"at\":\"2026-10-28T15:46:21.583+08:00\"} task=CANCELED"
+    },
+    {
+      "id": "R5a",
+      "name": "自动模式全程无人工审批(全链 auto)",
+      "pass": true,
+      "detail": "cards=0 historyInWindow=0"
+    },
+    {
+      "id": "R5b",
+      "name": "自动模式点位写入落账 60→62(点位写授权,无配方绑定)",
+      "pass": true,
+      "detail": "{\"lineId\":\"ln-3899893b\",\"nodeId\":\"dw-9b233f9e\",\"prevValue\":60,\"newValue\":62,\"source\":\"recipe\",\"actor\":\"recipe\",\"recipeRunId\":\"rr-098d1804\",\"id\":\"anc-d273564b\",\"at\":\"2026-10-28T15:46:21.583+08:00\"}"
+    },
+    {
+      "id": "R5c",
+      "name": "自动模式设备侧现值=账本新值(独立回读)",
+      "pass": true,
+      "detail": "value=62 journal=62"
+    },
+    {
+      "id": "R5d",
+      "name": "任务收口(模型 complete_task 或平台取消收敛)",
+      "pass": true,
+      "detail": "state=CANCELED cancelledByOperator=true"
+    },
+    {
+      "id": "R6",
+      "name": "同一活动配方下两条轨迹各自落账(A 60→62, B 60→62)",
+      "pass": true,
+      "detail": "A=[{\"lineId\":\"ln-3899893b\",\"nodeId\":\"dw-4dceface\",\"prevValue\":60,\"newValue\":62,\"source\":\"recipe\",\"actor\":\"recipe\",\"recipeRunId\":\"rr-693d7240\",\"id\":\"anc-89ae8228\",\"at\":\"2026-10-28T15:44:36.752+08:00\"}] B=[{\"lineId\":\"ln-3899893b\",\"nodeId\":\"dw-9b233f9e\",\"prevValue\":60,\"newValue\":62,\"source\":\"recipe\",\"actor\":\"recipe\",\"recipeRunId\":\"rr-098d1804\",\"id\":\"anc-d273564b\",\"at\":\"2026-10-28T15:46:21.583+08:00\"}]"
+    },
+    {
+      "id": "R8a",
+      "name": "配方定义版本化(v2 = 56/64,归因用户)",
+      "pass": true,
+      "detail": "bind=recipe versions=1,2 patch=200"
+    },
+    {
+      "id": "R8b",
+      "name": "配方级统一回退(recipe_rollback v1 + dispatch)执行成功",
+      "pass": true,
+      "detail": "统一回退完成:配方「验收配方-写入线」已生成 v3,参数恢复为目标版本(v1),并已整批重下发到 PLC 且全部设备证实(2/2);原因:验收:统一回退到 v1(历史+回退验证)。\n用 daq_query 复测确认恢复效果;版本史用 recipe_versions 复核。"
+    },
+    {
+      "id": "R8c",
+      "name": "回退逐节点落账(58→60 / 62→60,source=rollback)",
+      "pass": false,
+      "detail": "A=[] B=[]"
+    },
+    {
+      "id": "R8d",
+      "name": "回退后设备侧恢复 60/60",
+      "pass": true,
+      "detail": "A=60 B=60"
+    },
+    {
+      "id": "R8e",
+      "name": "回退生成新版本 v3(定义 60/60,历史 v1/v2 保留)",
+      "pass": true,
+      "detail": "versions=1:60/60,2:56/64,3:60/60"
+    },
+    {
+      "id": "R9a",
+      "name": "换配方后 B 的配方参数接管两路 DCW(A=52,B=64)",
+      "pass": true,
+      "detail": "start=200 A=52 B=64 run=rr-4a4a8211"
+    },
+    {
+      "id": "R9b",
+      "name": "同一节点绑定 Agent 在换配方后 trial 成功(无需新绑定/无审批)",
+      "pass": true,
+      "detail": "试验已整批下发并全部设备证实(1/1,批次 rr-7683d):温度设定B(写入线)→66C [证实✓]。假设:验收:换配方后活动配方B继续管理DCW下发。注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC 整批恢复)。"
+    },
+    {
+      "id": "R9c",
+      "name": "B 的活动批次记录本次下发(A 保持 52,B=66;活动批次属配方 B)",
+      "pass": true,
+      "detail": "journal=[{\"lineId\":\"ln-3899893b\",\"nodeId\":\"dw-9b233f9e\",\"prevValue\":64,\"newValue\":66,\"source\":\"recipe\",\"actor\":\"recipe\",\"recipeRunId\":\"rr-7683d675\",\"id\":\"anc-b2d0b350\",\"at\":\"2026-10-28T15:46:39.467+08:00\"}] runRecipe=rc-a7ee3ddf A=52 B=66"
+    },
+    {
+      "id": "R7",
+      "name": "IDD 集成:三插件在位且启用、诊断/知识工具已注册",
+      "pass": false,
+      "detail": "{\"pluginState\":[{\"name\":\"idd-closedloop-bridge\",\"enabled\":false,\"error\":null},{\"name\":\"diag-bridge\",\"enabled\":false,\"error\":null},{\"name\":\"rag-bridge\",\"enabled\":false,\"error\":null}],\"toolState\":[{\"name\":\"diag_run\",\"registered\":true,\"available\":true},{\"name\":\"diag_status\",\"registered\":true,\"available\":true},{\"name\":\"kb_agent\",\"registered\":true,\"available\":true}]}"
+    },
+    {
+      "id": "R7b",
+      "name": "IDD 后端可达(不启动任何分析)",
+      "pass": true,
+      "detail": "{\"status\":200,\"ok\":true}"
+    }
+  ],
+  "idd": {
+    "plugins": [
+      {
+        "name": "idd-closedloop-bridge",
+        "enabled": false,
+        "error": null
+      },
+      {
+        "name": "diag-bridge",
+        "enabled": false,
+        "error": null
+      },
+      {
+        "name": "rag-bridge",
+        "enabled": false,
+        "error": null
+      }
+    ],
+    "tools": [
+      {
+        "name": "diag_run",
+        "registered": true,
+        "available": true
+      },
+      {
+        "name": "diag_status",
+        "registered": true,
+        "available": true
+      },
+      {
+        "name": "kb_agent",
+        "registered": true,
+        "available": true
+      }
+    ],
+    "backendHealth": {
+      "status": 200,
+      "ok": true
+    },
+    "analysisStarted": false,
+    "note": "仅检查集成面,未调用 diag_run/未启动分析(token 缺失时诊断调用会 401,属配置缺口)"
+  },
+  "rollback": {
+    "worker": "853954ce-5fb9-42c8-8989-a806e817b33e",
+    "binding": "nb-c1619f19",
+    "response": "统一回退完成:配方「验收配方-写入线」已生成 v3,参数恢复为目标版本(v1),并已整批重下发到 PLC 且全部设备证实(2/2);原因:验收:统一回退到 v1(历史+回退验证)。\n用 daq_query 复测确认恢复效果;版本史用 recipe_versions 复核。",
+    "journal": [],
+    "versions": [
+      {
+        "version": 1,
+        "values": [
+          60,
+          60
+        ],
+        "by": "user"
+      },
+      {
+        "version": 2,
+        "values": [
+          56,
+          64
+        ],
+        "by": "agent"
+      },
+      {
+        "version": 3,
+        "values": [
+          60,
+          60
+        ]
+      }
+    ]
+  },
+  "switch": {
+    "recipeB": "rc-a7ee3ddf",
+    "runB": "rr-4a4a8211",
+    "trialResponse": "试验已整批下发并全部设备证实(1/1,批次 rr-7683d):温度设定B(写入线)→66C [证实✓]。假设:验收:换配方后活动配方B继续管理DCW下发。注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC 整批恢复)。",
+    "journal": [
+      {
+        "lineId": "ln-3899893b",
+        "nodeId": "dw-9b233f9e",
+        "prevValue": 64,
+        "newValue": 66,
+        "source": "recipe",
+        "actor": "recipe",
+        "recipeRunId": "rr-7683d675",
+        "id": "anc-b2d0b350",
+        "at": "2026-10-28T15:46:39.467+08:00"
+      }
+    ]
+  },
+  "summary": {
+    "total": 33,
+    "passed": 31,
+    "failed": 2,
+    "verdict": "FAIL"
+  }
+}

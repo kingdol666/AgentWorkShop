@@ -13,6 +13,8 @@ import { workshopSettings } from '../../settings'
 export abstract class SchedulerLoopTick extends SchedulerLoopState {
   /** HITL 等待豁免登记:同一根任务只发一次顺延日志(落定后清理) */
   protected hitlDeferred = new Set<string>()
+  /** 每个根被 HITL 顺延的次数(上限后恢复 ROOT_TIMEOUT,避免 hold 模式永久挂起) */
+  protected hitlDeferrals = new Map<string, number>()
   protected async runRound(): Promise<void> {
     this.running = true
     try {
@@ -65,19 +67,28 @@ export abstract class SchedulerLoopTick extends SchedulerLoopState {
       // 执行预算顺延一个 root_timeout,不做 ROOT_TIMEOUT 收口 —— 审批自身有 fail-closed
       // 超时(security.recipe_dispatch_timeout_ms),人类思考期不应处决整棵任务树。
       // 豁免仅在「有待批」时生效;审批落定(批准执行/超时关闭)后预算仍耗尽则照常收口。
+      // 2026-10-28:此前的 listPending() 无任何过滤 —— 任意 channel 的一张待批单都会让
+      // 本 channel 的每个超期根每 tick 顺延并提前 return(不派发/不判超时);hold 模式下
+      // 一张无人处理的单可让全平台调度永久停摆。现在只统计本 channel 成员的待批。
       const hitlPending = await (async () => {
         try {
           const { getToolApprovals } = await import('../../agents/tool-approvals')
-          return getToolApprovals().listPending().length > 0
+          const memberIds = new Set(snapshot.members.map(m => m.agentId))
+          return getToolApprovals().listPending().some(a => memberIds.has(a.agentId))
         }
         catch { return false }
       })()
-      if (hitlPending) {
+      const MAX_HITL_DEFERRALS = 3
+      const deferrable = hitlPending
+        ? expiredRoots.filter(r => (this.hitlDeferrals.get(r.id) ?? 0) < MAX_HITL_DEFERRALS)
+        : []
+      if (deferrable.length > 0 && deferrable.length === expiredRoots.length) {
         const budget = new Date(Date.now() + (Number(workshopSettings().root_timeout_ms) || 900_000)).toISOString()
-        for (const root of expiredRoots) {
+        for (const root of deferrable) {
+          this.hitlDeferrals.set(root.id, (this.hitlDeferrals.get(root.id) ?? 0) + 1)
           if (!this.hitlDeferred.has(root.id)) {
             this.hitlDeferred.add(root.id)
-            log.warn(`[SchedulerLoop:${this.lead.agentId}] 根任务 ${root.id.slice(0, 8)} 预算耗尽,但频道有 HITL 待批 —— 执行预算顺延至 ${budget}`)
+            log.warn(`[SchedulerLoop:${this.lead.agentId}] 根任务 ${root.id.slice(0, 8)} 预算耗尽,但本频道有 HITL 待批 —— 执行预算顺延至 ${budget}(第 ${this.hitlDeferrals.get(root.id)}/${MAX_HITL_DEFERRALS} 次)`)
           }
           try {
             // 能力探测(mirror execute.ts):极简 TaskEngine 替身可能缺 refreshDeadline,缺失时跳过
@@ -90,6 +101,7 @@ export abstract class SchedulerLoopTick extends SchedulerLoopState {
         return
       }
       this.hitlDeferred.clear()
+      this.hitlDeferrals.clear()
       for (const root of expiredRoots) {
         const closed = this.lead.taskEngine.timeoutTree(root.id, this.lead.agentId)
         for (const task of closed) {

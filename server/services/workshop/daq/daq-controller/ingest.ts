@@ -12,12 +12,35 @@ import { findDaqTemplate } from '../daq-templates'
 import { getDaqHostPorts } from '../host-ports'
 import { getDaqQueue } from '../bus'
 import { tsdbRowOf } from './tsdb-row'
+import type { DaqFrameSample } from '../drivers'
 
 export abstract class DaqControllerIngest extends DaqControllerPush {
   /** 生产面:样本帧入队 */
   protected publishSample(env: DaqSampleEnvelope): void {
     void getDaqQueue().then(q => q.publish(env)).catch(() => {})
     this.producedCount++
+  }
+
+  /**
+   * 外部推送帧的统一后处理入口(2026-10-28 审查 A-P1-3)。
+   *
+   * 轮询采样 / 被动订阅 / 外部 ingest 三条生产路径必须共用同一 sink 管线:
+   * 模板 processor(thumbnail/deriveMetric/qualityGate)→ 图像落对象存储 → 服务端
+   * 计算 sha256/size。外部调用方只提供原始 blob 或点列,绝不信任其自报指标与指纹;
+   * 否则"完全相同链路"的承诺不成立(缩略图缺失、质量门被绕过、派生指标为空)。
+   */
+  async processExternalFrame(
+    node: DaqNode,
+    raw:
+      | { kind: 'vector', points: number[], metrics?: Record<string, number> }
+      | { kind: 'image', blob: Buffer, mime: string, width?: number, height?: number, metrics?: Record<string, number> },
+    atMs: number,
+  ): Promise<{ frame: NonNullable<DaqSampleEnvelope['frame']> } | null> {
+    // 外部推送未必携带像素尺寸;缺省记 0(未知),不阻断落库与缩略图生成
+    const frame: DaqFrameSample['frame'] = raw.kind === 'image'
+      ? { ...raw, width: raw.width ?? 0, height: raw.height ?? 0 }
+      : raw
+    return this.processFrameSample(node, frame, atMs)
   }
 
   /** 消费面:样本入网关管线(状态派生已在 runtime 完成)。

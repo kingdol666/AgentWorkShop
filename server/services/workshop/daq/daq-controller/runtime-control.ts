@@ -10,6 +10,7 @@ import { getObjectStore } from '../objectstore'
 import { getTsdb } from '../storage'
 import { listPluginDrivers } from '../drivers'
 import { startAlarmEscalator } from '../alarm-notify'
+import { AppError } from '../../../../utils/errors'
 
 export abstract class DaqControllerRuntimeControl extends DaqControllerFrames {
   /** 后端能力自描述(meta 用) */
@@ -20,6 +21,11 @@ export abstract class DaqControllerRuntimeControl extends DaqControllerFrames {
   // ---------- 控制器全局 ----------
 
   startAll(): AepDaqControllerState {
+    // S10:后端明确降级时禁止开采(手动 resume 也不能绕过启动屏障)
+    const infra = (globalThis as unknown as { __daqInfraStatus?: () => { degraded: boolean, warning?: string } }).__daqInfraStatus?.()
+    if (infra?.degraded) {
+      throw new AppError(409, 'DAQ_INFRA_DEGRADED', `数采基础设施降级,禁止启动采集:${infra.warning ?? '后端不可用'}。请先修复后端或调用 /api/workshop/daq/infra/reconnect。`)
+    }
     this.running = true
     this.ensureLoop()
     startAlarmEscalator() // S5:升级通知扫描器(懒启动,进程内单例)

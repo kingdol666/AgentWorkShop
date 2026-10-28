@@ -12,6 +12,7 @@ import { zValidator } from '../../../../../utils/validate'
 import { defineApiHandler } from '../../../../../utils/response'
 import { AppError } from '../../../../../utils/errors'
 import { getWorkshopManager, ensureLeadSchedulerLoop } from '../../../../../plugins/workshop'
+import { assertSpawnConfigAllowed } from '../../../../../services/workshop/agents/harness-spawn-policy'
 
 const createAgentSchema = z.object({
   agentId: z.string().min(1).optional(),
@@ -32,6 +33,12 @@ export default defineApiHandler(async (event) => {
   const ch = manager.getChannelForUser(channelId, user.id)
   manager.requireWritable(ch.ownerUserId, user, 'channel')
   const role = body.role ?? 'worker'
+  // 启动面收权(2026-10-28):成员 config 的 command/args/cwd/env 同样只有 admin 可给
+  if (body.harness) assertSpawnConfigAllowed(body.harness, body.config, user)
+  else if (body.config) {
+    const tplHarness = body.agentId ? manager.getAgent(body.agentId)?.harness : undefined
+    if (tplHarness) assertSpawnConfigAllowed(tplHarness, body.config, user)
+  }
   // 克隆模板时校验模板可读(属主/public 含内置/admin;他人 private → 403)
   if (body.agentId) {
     const tpl = manager.getAgent(body.agentId)

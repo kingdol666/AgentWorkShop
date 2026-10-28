@@ -23,7 +23,7 @@ export abstract class ManagerA2A extends ManagerTasks {
     // 调用者若正在服务一次人类发起的调用,其委派必须继承**同一个**(并只收紧)作用域:
     // 否则普通成员 @Agent 后,该 Agent 再委派给兄弟 Agent,被委派者就变回"无人类上下文",
     // 等于用一次委派把成员权限洗成系统权限。
-    const callerScope = this.activeInvocationScopes.get(callerAgentId) ?? null
+    const callerScope = this.activeScopeOf(callerAgentId)
     const inbound = parseWorkshopPermissionScope(input.metadata?.[WORKSHOP_PERMISSION_SCOPE_HEADER])
     const delegatedScope = callerScope
       ? intersectWorkshopPermissionScope(callerScope, inbound)
@@ -36,11 +36,13 @@ export abstract class ManagerA2A extends ManagerTasks {
       'x-aw-target-agent': target.id,
       'x-aw-from-agent': callerAgentId,
     })
-    if (delegatedScope) this.activeInvocationScopes.set(target.id, delegatedScope)
+    if (delegatedScope) this.setInvocationScope(target.id, delegatedScope)
     // 真送达契约:route 回执必须包含目标(落库 enqueue 同步完成),否则向上抛错 ——
     // 消息绝不允许"报告已发送"却没进对方信箱
     const delivered = this.route(channelId, message)
     if (!delivered.includes(target.id)) {
+      // C-P1-2:未送达 → 被委派者身上的作用域必须撤销(否则一次失败委派永久收紧其权限)
+      this.clearInvocationScope(target.id, delegatedScope?.invocationId ?? null)
       throw new AppError(502, 'DELIVERY_FAILED', `消息未能投递到 ${target.name} 的信箱(成员装配失败),请重试或改投其他成员`)
     }
     return message

@@ -20,6 +20,8 @@ import { TERMINAL_TASK_STATES } from '../../types/task'
 import { TaskEngine as TaskEngineImpl } from '../task-engine'
 import { createEnvEmbeddingProvider } from '../embedding-provider'
 import { log, buildMessage } from './helpers'
+import { toolActivityAt } from '../../agents/host-tool-bridge'
+import { settleInvocationScope } from '../permission-scope'
 
 import { rowToMessage } from '../mailbox'
 import { platformNoticeKey, newPlatformNoticeId, setPlatformNoticeSink, type PlatformNotice, type PlatformNoticeSink } from '../platform-notice'
@@ -75,6 +77,12 @@ export abstract class ManagerState extends ManagerContracts {
   protected channels = new Map<string, ChannelRuntime>()
   /** 键 = runtimeKey(channelId, 实例 id);每个实例一个独立运行时 */
   protected agentIndex = new Map<string, AgentRuntime>()
+  /**
+   * 正在停机卸载的实例(runtimeKey)。C-P1-1:stopAndDetach 必须在第一个 await 之前
+   * 同步摘除索引并立墓碑,否则 route 的按需装载会在停机窗口命中原运行时/重建新运行时,
+   * 把消息投进正在关闭的信箱(假送达 + 永久丢失)。
+   */
+  protected readonly stoppingAgents = new Set<string>()
   protected buses = new Map<string, ChannelBus>()
   protected taskEngine: TaskEngine | null = null
   protected idleSweeperTimer: NodeJS.Timeout | null = null
@@ -87,8 +95,21 @@ export abstract class ManagerState extends ManagerContracts {
   protected readonly reflectCounts = new Map<string, number>()
   /** shared task digest 节流：channel/task/event bucket -> last write time */
   protected readonly teamMemoryCheckpointAt = new Map<string, number>()
-  /** agent 最近一次工具 invoke 时刻(调度器停滞看门狗的活性源;工具调用即健康推进) */
+  /**
+   * agent 最近一次工具 invoke 时刻(REST/MCP 回程路径)。
+   * C-P1-3:omp 原生/pi 扩展不经此处,必须与 host-tool-bridge 的统一活性注册表取并集
+   * (见 toolActivityOf;否则默认引擎下信号恒空)。
+   */
   protected readonly lastToolInvokeAt = new Map<string, number>()
+
+  /** 调度器活性信号:两条来源取最新(REST/MCP 回程 + 全引擎分发入口打点) */
+  protected toolActivityOf(agentId: string): number | null {
+    const a = this.lastToolInvokeAt.get(agentId) ?? 0
+    const b = toolActivityAt(agentId) ?? 0
+    const at = Math.max(a, b)
+    return at > 0 ? at : null
+  }
+
   /**
    * 每个 Agent 当前正在服务的**人类发起者作用域**(§13.3)。
    * 由群聊投递(deliverChatToAgent)写入,Agent 回复(platformReply)后清除。
@@ -97,6 +118,27 @@ export abstract class ManagerState extends ManagerContracts {
    * 而工具调用是由 harness 侧发起的往返,逐次透传需要改协议,取本表更保守(宁可收紧)。
    */
   protected readonly activeInvocationScopes = new Map<string, WorkshopPermissionScope>()
+
+  /** 读作用域(统一入口;所有读点经此,便于集中加失效语义) */
+  protected activeScopeOf(agentId: string): WorkshopPermissionScope | null {
+    return this.activeInvocationScopes.get(agentId) ?? null
+  }
+
+  /** 写作用域(人类调用投递时登记) */
+  protected setInvocationScope(agentId: string, scope: WorkshopPermissionScope): void {
+    this.activeInvocationScopes.set(agentId, scope)
+  }
+
+  /**
+   * 清作用域。C-P1-2(2026-10-28 审查):除"回复收口"外,回合结束未产生回执
+   * (模型只调工具/报错/被停)也必须清除 —— 旧实现只在 platformReply 里清,
+   * 失败回合会让陈旧 scope 永久封锁该 Agent 的管理面/写面(自增强卡死)。
+   * invocationId 给出时只清对应那次调用(不误删随后到达的新调用)。
+   */
+  protected clearInvocationScope(agentId: string, invocationId?: string | null): void {
+    settleInvocationScope(this.activeInvocationScopes, agentId, invocationId)
+  }
+
   /** v16 定时任务执行器(timer 唯一持有者;startScheduleRuntime 装配,shutdown 停止) */
   protected scheduleRuntime: ScheduleRuntime | null = null
   /**

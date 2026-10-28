@@ -5,6 +5,7 @@ import { getRouterParam, readBody } from 'h3'
 import { resolveUser } from '@/server/api/workshop/caller'
 import { requireLineMode } from '@/server/services/workshop/permissions'
 import { defineApiHandler } from '@/server/utils/response'
+import { AppError } from '@/server/utils/errors'
 import { bindDaqHost } from '@/server/services/workshop/daq/host-bindings'
 import { getDaqController, type DaqPatchInput } from '@/server/services/workshop/daq/daq-controller'
 import { broadcastSceneEvent } from '../../../services/workshop/scene-events'
@@ -17,6 +18,13 @@ export default defineApiHandler(async (event) => {
   const body = await readBody<DaqPatchInput>(event) ?? {}
   // 产线权限:参数下发=操控能力(readonly/无权用户 403)
   requireLineMode(user, getDaqController().byId(id)?.lineId, 'operate')
+  // 驱动/连接配置分权(2026-10-28):http/mqtt 驱动的 URL/topic 由 driverConfig 决定,
+  // operate 可借此让服务端连接任意目标;与节点 create 同口径收敛到 admin。
+  const DAQ_ADMIN_ONLY = ['driver', 'driverConfig'] as const
+  const denied = DAQ_ADMIN_ONLY.filter(k => (body as Record<string, unknown>)[k] !== undefined)
+  if (denied.length > 0 && user.role !== 'admin') {
+    throw new AppError(403, 'DAQ_CONFIG_ADMIN_ONLY', `字段「${denied.join('/')}」决定采集落点与协议参数，仅管理员可修改（当前角色 ${user.role}）。`)
+  }
   const node = getDaqController().patch(id, body)
   recordOps({
     actor: user.id,

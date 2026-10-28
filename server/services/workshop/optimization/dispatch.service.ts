@@ -34,6 +34,7 @@ import { toModel } from '@/shared/units'
 import { getDcwController } from '../dcw/dcw-controller'
 import { evaluateRecipeParamLimits } from '../dcw/dcw-controller/write'
 import { getDcwLineRepo } from '../dcw/dcw-line.repo'
+import { getActiveLineRun } from '../dcw/line-run'
 import { assertRecipeOpInterval } from '../dcw/recipe-op-anchor'
 import { getToolApprovals } from '../agents/tool-approvals'
 import { amlActivityForLine } from '../agents/industrial/aml-activity'
@@ -116,7 +117,7 @@ export type DispatchGateResult = { ok: true } | { ok: false, code: string, comme
 
 /** D13 批准时刻八项重验(fail-closed)。任一失败 → {ok:false,code,comment}。
  *  overrides:建卡时刻预检用 —— 卡尚未挂出,payload 不可读,由调用方传入本地构造值。 */
-export async function assertDispatchApprovable(recId: string, overrides?: { modelFirstMove?: Record<string, number>, packages?: Array<{ params: Array<{ nodeId: string, to: number }> }> }): Promise<DispatchGateResult> {
+export async function assertDispatchApprovable(recId: string, overrides?: { modelFirstMove?: Record<string, number>, packages?: Array<{ params: Array<{ nodeId: string, to: number }> }> }, opts: { requireRunning?: boolean } = {}): Promise<DispatchGateResult> {
   try {
     const { rec, run, binding, profile, spec, candidate, recipe } = loadRec(recId)
     // ① 建议:未过期(显式持久失效)+ 最新 crosscheck 行 pass 且读时 stale=false
@@ -154,6 +155,21 @@ export async function assertDispatchApprovable(recId: string, overrides?: { mode
     // ⑥ 当前操作点:MV 步限(模型单位)+ CV 新鲜度
     const line = getDcwLineRepo().byId(spec.lineId)
     if (!line) return { ok: false, code: 'DISPATCH_GATE_LINE_GONE', comment: `产线 ${spec.lineId} 不存在` }
+    // 运行门(2026-10-28):D13 八项重验此前不含"产线在跑" —— 停线检修中的设备仍会收到
+    // 首步下发(applyRecipe 自身也无运行门)。批准时刻再查一次(decide 会重跑本函数)。
+    // 建卡时刻不做运行门(允许先备好方案,开线后再批准),由调用方传 requireRunning:false。
+    if (opts.requireRunning !== false) {
+      const activeLine = getActiveLineRun(spec.lineId)
+      if (!activeLine) {
+        return { ok: false, code: 'DISPATCH_GATE_LINE_NOT_RUNNING', comment: '产线当前未运行(无活动批次):真实下发已拒绝。请先开线并确认参数写入完成后再批准。' }
+      }
+      if (activeLine.recipeId !== recipe.id) {
+        return { ok: false, code: 'DISPATCH_GATE_RECIPE_NOT_ACTIVE', comment: `活动批次正在执行配方 ${activeLine.recipeId},与本建议配方 ${recipe.id} 不一致;请重新 solve 或切换产线配方。` }
+      }
+      if (recipe.productId && activeLine.productId !== recipe.productId) {
+        return { ok: false, code: 'DISPATCH_GATE_PRODUCT_MISMATCH', comment: `活动批次产品 ${activeLine.productId} 与配方产品 ${recipe.productId} 不一致;按拒收敛。` }
+      }
+    }
     const modelFirstMove = overrides?.modelFirstMove
       ?? (getToolApprovals().listPending().map(a => a.payload).find(p => (p as { recommendationId?: string } | null)?.recommendationId === recId) as (RecipeProposePayload & { modelFirstMove?: Record<string, number> }) | undefined)?.modelFirstMove
       ?? {}
@@ -359,7 +375,7 @@ export async function createDispatchCard(initiator: ResolvedUser, recommendation
     if (dispatchProfileRow) assertOntologyUnchanged(parseProfileRow(dispatchProfileRow).ontologyRefs)
   }
   // 闸序预检(建卡时刻;批准时刻 D13 全量重验)
-  const gate = await assertDispatchApprovable(recommendationId, { modelFirstMove, packages: [{ params: paramRows }] })
+  const gate = await assertDispatchApprovable(recommendationId, { modelFirstMove, packages: [{ params: paramRows }] }, { requireRunning: false })
   if (!gate.ok) throw new AppError(gate.code.startsWith('DISPATCH_GATE') || gate.code === 'DISPATCH_STEP_EXCEEDED' ? 403 : 409, gate.code, gate.comment)
   // 在飞去重(三前缀;建卡时无自身卡可排除)
   const inflight = recipeWriteInFlight(recipe.id)

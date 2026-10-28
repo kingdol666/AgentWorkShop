@@ -38,6 +38,17 @@ admin-only):
   Permission Management");
 - Agent ↔ node binding: DAQ binding requires read-only or above, DCW binding requires
   operate;
+- Agent write authorization is two-track: a `kind='dcw'` node binding is a **point-level
+  write grant** (trial/apply on the active recipe, with coverage ⊆ the bound node face;
+  it survives recipe switches), while a `kind='recipe'` binding is a **recipe-level
+  operation right** (including version writes/rollback). The two are unioned; node
+  bindings never grant recipe version operations and direct-write tools stay rejected;
+- **Changing the control mode removes a gate — explicit confirmation required**: a
+  binding's `mode` decides whether every write needs human approval. `manual→auto` and
+  "delegate with auto" (`team_grant_nodes` / `dispatch_task.grant_node_ids`) must carry
+  `confirm: true`, otherwise the request is rejected with 400 and nothing changes; the
+  default is always `manual` (a lead's own auto is never inherited). Every switch/grant
+  writes a `binding.mode` audit entry;
 - The digital twin's entity baseline comes from the same REST endpoints, so unauthorized
   lines are equally invisible in the twin view.
 

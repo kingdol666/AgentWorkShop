@@ -1,0 +1,31 @@
+{
+  "id": "80d1e3dd-e0db-4471-963a-08c865169352",
+  "state": "CANCELED",
+  "cancelledByOperator": true,
+  "elapsedSec": 103,
+  "deliverable": "",
+  "toolCalls": [
+    "🔧 my_industrial_nodes",
+    "🔧 my_industrial_nodes",
+    "🔧 my_industrial_nodes ✅ 完成: ### ⚙ 频道执行模式:auto(默认,频道不加额外约束)—— 是否人工批准由产线总闸与你的绑定模式决定;自动执行的下发必须附带 hypothesis 依据,四层限界/单步上限/运行门照常生效 #### ◆ 温度设定B(写入线) [id=dw-9b233f9e] - 物理量: 烘箱温度设定,单位 C,精度 2 位小数 - 工艺语义: 自动",
+    "🔧 my_industrial_nodes ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"### ⚙ 频道执行模式:auto(默认,频道不加额外约束)—— 是否人工批准由产线总闸与你的绑定模式决定;自动执行的下发必须附带 hypothesis 依据,四层限界/单步上限/运行门照常生效\\n\\n#### ◆ 温度设定B(写入线) [id=dw-9b233f9e]\\",
+    "🔧 recipe_trial(line_id=ln-3899893b, hypothesis=验收-自动模式点位试验:节点「温度设定B(写入线)」(dw-9b…)",
+    "🔧 recipe_trial(line_id=ln-3899893b, hypothesis=验收-自动模式点位试验:节点「温度设定B(写入线)」(dw-9b…)",
+    "🔧 recipe_trial ✅ 完成: 试验已整批下发并全部设备证实(1/1,批次 rr-098d1):温度设定B(写入线)→62C [证实✓]。假设:验收-自动模式点位试验:节点「温度设定B(写入线)」(dw-9b233f9e)当前设定60C,活动配方「验收配方-写入线」工艺窗口50~70C、配方目标60C。候选62C(+2C)在窗口内,且≤单步硬上限4C,不触及节点安全量程[0,100]C",
+    "🔧 recipe_trial ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"试验已整批下发并全部设备证实(1/1,批次 rr-098d1):温度设定B(写入线)→62C [证实✓]。假设:验收-自动模式点位试验:节点「温度设定B(写入线)」(dw-9b233f9e)当前设定60C,活动配方「验收配方-写入线」工艺窗口50~70C、配方目标60C。候选62C(+"
+  ],
+  "hitl": [],
+  "journal": [
+    {
+      "lineId": "ln-3899893b",
+      "nodeId": "dw-9b233f9e",
+      "prevValue": 60,
+      "newValue": 62,
+      "source": "recipe",
+      "actor": "recipe",
+      "recipeRunId": "rr-098d1804",
+      "id": "anc-d273564b",
+      "at": "2026-10-28T15:46:21.583+08:00"
+    }
+  ]
+}

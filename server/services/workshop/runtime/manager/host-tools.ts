@@ -106,7 +106,7 @@ export abstract class ManagerHostTools extends ManagerA2A {
     // @Agent 不等于把 owner 权限委托给成员,发起者权限不得因 Agent 身份更高而放大。
     // 无作用域(系统/agent 自发调用)→ 放行,沿用既有授权(MCP token / REST 用户鉴权)。
     {
-      const scope = this.activeInvocationScopes.get(input.agentId)
+      const scope = this.activeScopeOf(input.agentId)
       const verdict = checkToolAgainstScope(scope, input.tool)
       if (!verdict.allowed) throw new AppError(403, verdict.reason, verdict.message)
     }

@@ -14,6 +14,7 @@ import { sendHitlNote } from '../runtime/platform-notice'
 import { notifyLineOperators } from '../runtime/line-notify'
 import { getDcwController } from '../dcw/dcw-controller'
 import { recordRecipeOpAnchor } from '../dcw/recipe-op-anchor'
+import { assertRecipeOperation } from './industrial/recipe-gate'
 
 export interface ToolApproval {
   id: string
@@ -311,6 +312,28 @@ class ToolApprovalService {
         for (const p of recipe?.params ?? []) n += this.cancelPendingFor(agentId, p.nodeId)
       }
       catch { /* 配方已删除 → 无参数节点可清理 */ }
+    }
+    else if (binding.kind === 'dcw') {
+      // 2026-10-28 节点级写授权:收回点位授权后,在飞的配方审批单按当前覆盖集重新判定 ——
+      // 覆盖失效即按拒收敛(收回即失活)。仍被其余节点绑定/配方绑定完整覆盖的审批保留,
+      // 不做过度撤销。
+      for (const entry of [...this.pending.values()]) {
+        if (entry.approval.agentId !== agentId) continue
+        const nodeRef = entry.approval.nodeId
+        const recipeId = nodeRef.startsWith('recipe:')
+          ? nodeRef.slice('recipe:'.length)
+          : nodeRef.startsWith('recipe-propose:') ? nodeRef.slice('recipe-propose:'.length) : ''
+        if (!recipeId) continue
+        const recipe = getDcwController().listRecipes().find(r => r.id === recipeId)
+        if (!recipe) continue
+        const payload = entry.approval.payload as { op?: string, params?: Array<{ nodeId?: string }> } | undefined
+        const op = payload?.op === 'update' || payload?.op === 'rollback' || payload?.op === 'trial'
+          ? payload.op
+          : 'dispatch'
+        const target = (payload?.params ?? []).map(p => String(p.nodeId ?? '')).filter(Boolean)
+        const gate = assertRecipeOperation(agentId, recipe, op, target.length > 0 ? target : undefined)
+        if (!gate.ok) n += this.cancelPendingFor(agentId, nodeRef)
+      }
     }
     return n
   }

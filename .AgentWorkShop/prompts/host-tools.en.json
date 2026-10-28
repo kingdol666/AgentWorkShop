@@ -29,7 +29,7 @@
     }
   },
   "recipe_update": {
-    "description": "Save verified best parameters into a recipe as a new version with attribution and rationale. You may target the currently running recipe by passing only line_id (resolved from the active batch), or pass recipe_id explicitly. Permission model: you must be bound to the recipe (multiple bindings allowed) and pass its secondary auth; the recipe must be running (run gate). With a manual binding or manual line, the save suspends for human approval — reason is required and must cite evidence (DAQ data/analysis); the approval card shows it. This changes the definition only; use recipe_apply to push parameters to the running line.",
+    "description": "Save verified best parameters into a recipe as a new version with attribution and rationale. You may target the currently running recipe by passing only line_id (resolved from the active batch), or pass recipe_id explicitly. Permission model (two tracks): version operations require a recipe binding (kind='recipe', multiple bindings allowed) — a DCW node binding is a point-level write grant and does not grant version rights; the recipe's secondary auth must pass; the recipe must be running (run gate). With a manual binding or manual line, the save suspends for human approval — reason is required and must cite evidence (DAQ data/analysis); the approval card shows it. This changes the definition only; use recipe_apply to push parameters to the running line.",
     "parameters": {
       "properties": {
         "recipe_id": { "description": "Recipe id (mutually exclusive with line_id; explicit id wins)" },
@@ -51,7 +51,7 @@
     }
   },
   "recipe_apply": {
-    "description": "Dispatch the recipe's currently persisted parameters to the running line as one batch (use after recipe_update). You may target the running recipe with only line_id (resolved from the active batch) or pass recipe_id explicitly. Permission model: bound recipe, secondary auth, and run gate (recipe must be executing). With a manual binding or manual line, dispatch suspends for human approval — reason is required and must explain why and on what evidence. After approval the batch goes through governance interlocks (range/step/rate) with per-parameter acknowledgements. A rejection may include guidance; revise and resubmit.",
+    "description": "Dispatch the recipe's currently persisted parameters to the running line as one batch (use after recipe_update). You may target the running recipe with only line_id (resolved from the active batch) or pass recipe_id explicitly. Permission model (two tracks): a recipe binding (kind='recipe') covers the whole batch; alternatively every parameter node of the recipe must be inside your DCW node binding face (kind='dcw' point-level write grant). Both require secondary auth and the run gate (recipe must be executing). With a manual binding or manual line, dispatch suspends for human approval — reason is required and must explain why and on what evidence. After approval the batch goes through governance interlocks (range/step/rate) with per-parameter acknowledgements. A rejection may include guidance; revise and resubmit.",
     "parameters": {
       "properties": {
         "recipe_id": { "description": "Recipe id (mutually exclusive with line_id; explicit id wins)" },
@@ -62,7 +62,7 @@
     }
   },
   "recipe_trial": {
-    "description": "Dispatch a multi-parameter candidate batch without writing a recipe version. You may target the running recipe with only line_id or pass recipe_id explicitly. Permission model: bound recipe, secondary auth, and run gate; candidates may only cover parameters in the recipe. With a manual binding or manual line, the trial suspends for human approval — hypothesis is required (why this trial and on what evidence). The whole batch lands at once; after re-measurement, persist improvement with recipe_update or roll back with recipe_rollback(dispatch=true). Subject to the per-line trial interval (default >=5 minutes) and the four-layer limits.",
+    "description": "Dispatch a multi-parameter candidate batch without writing a recipe version. You may target the running recipe with only line_id or pass recipe_id explicitly. Permission model (two tracks): a recipe binding (kind='recipe') covers the whole batch; alternatively every candidate node must be inside your DCW node binding face (kind='dcw' point-level write grant that survives recipe switches; partial coverage is rejected with the missing node list). Both require secondary auth and the run gate; candidates may only cover parameters in the recipe. With a manual binding or manual line, the trial suspends for human approval — hypothesis is required (why this trial and on what evidence). The whole batch lands at once; after re-measurement, persist improvement with recipe_update or roll back with recipe_rollback(dispatch=true). Subject to the per-line trial interval (default >=5 minutes) and the four-layer limits.",
     "parameters": {
       "properties": {
         "recipe_id": { "description": "Recipe id (mutually exclusive with line_id; explicit id wins)" },

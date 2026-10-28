@@ -6,7 +6,7 @@ import { DaqControllerRuntimeControl } from './runtime-control'
 import type { DaqCreateInput, DaqPatchInput } from './types'
 import { AppError, ErrorCodes } from '../../../../utils/errors'
 import { DaqNode } from '../daq-node'
-import { daqKeyFromRef, normalizeDataTransform } from '../../../../../shared/daq-protocol'
+import { daqKeyFromRef, normalizeDataTransform, stripMaskedSecrets } from '../../../../../shared/daq-protocol'
 import { findDaqTemplate } from '../daq-templates'
 import { getDaqHostPorts } from '../host-ports'
 import { requireDriverKind } from '../drivers'
@@ -31,7 +31,7 @@ export abstract class DaqControllerCrud extends DaqControllerRuntimeControl {
       templateRef: input.templateRef,
       name: input.name ?? (tpl ? `${tpl.name} ${String(seq).padStart(2, '0')}` : (input.driver && input.driver !== 'mock' ? `${input.driver.toUpperCase()} 通道` : undefined)),
       driver: input.driver ? requireDriverKind(input.driver) : undefined,
-      driverConfig: input.driverConfig ?? {},
+      driverConfig: stripMaskedSecrets(input.driverConfig ?? {}),
       transform: normalizeDataTransform(input.transform),
       enabled: input.enabled,
       intervalMs: input.intervalMs == null ? null : Math.max(this.minIntervalMs, Math.min(60_000, Math.round(input.intervalMs))),
@@ -61,7 +61,9 @@ export abstract class DaqControllerCrud extends DaqControllerRuntimeControl {
     if (!node) throw Object.assign(new Error(`数采节点不存在: ${id}`), { status: 404 })
     if (patch.name !== undefined) node.name = patch.name
     if (patch.driver !== undefined) node.driver = requireDriverKind(patch.driver)
-    if (patch.driverConfig !== undefined) node.driverConfig = { ...node.driverConfig, ...patch.driverConfig }
+    // P0-2(2026-10-28 审查):GET 投影的 `******` 可能是整包 PATCH 回来的回显,
+    // 入口单点剔除,绝不让掩码覆盖真实凭据(新明文照常写入)。
+    if (patch.driverConfig !== undefined) node.driverConfig = { ...node.driverConfig, ...stripMaskedSecrets(patch.driverConfig) }
     if (patch.transform !== undefined) {
       if (patch.transform.kind === 'linear' && (!Number.isFinite(Number(patch.transform.scale)) || Number(patch.transform.scale) === 0)) {
         throw new AppError(400, ErrorCodes.VALIDATION_ERROR, '标定系数 scale 必须为非零数字(物理值 = scale × PLC值 + offset)')

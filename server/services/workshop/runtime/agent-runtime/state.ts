@@ -95,6 +95,12 @@ export abstract class AgentRuntimeState extends AgentRuntimeContracts {
         deliveryId?: string
       }) => void
       /**
+       * C-P1-2(2026-10-28 审查):回合落定回调 —— **无论是否产生回执**都触发。
+       * manager 据此收口"人类发起者作用域":失败回合(只调工具/报错/被停)不会再走
+       * platformReply,旧实现让 scope 永久驻留并封锁该 Agent 的管理面/写面。
+       */
+      onInvocationSettled?: (e: { agentId: string, deliveryId: string | null, replied: boolean }) => void
+      /**
        * 监督信号回调(§7.1 supervise.watchdog):watchdog 触发时把结构化信号交给
        * manager 落 Channel 共享记忆。平台侧回调,不改变 watchdog 的非破坏语义。
        */
@@ -134,9 +140,9 @@ export abstract class AgentRuntimeState extends AgentRuntimeContracts {
     if (typeof attach === 'function') attach.call(this.impl, deps.workspace)
   }
 
-  /** 投递消息;idle 时立即唤醒消费 */
-  enqueue(message: A2AMessage): void {
-    this.deps.mailbox.enqueue(message)
+  /** 投递消息;idle 时立即唤醒消费。返回 false = 信箱已关闭(停机窗口),消息未落地。 */
+  enqueue(message: A2AMessage): boolean {
+    return this.deps.mailbox.enqueue(message)
   }
 
   getState(): 'idle' | 'busy' | 'stopped' {

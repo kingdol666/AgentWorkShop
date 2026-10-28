@@ -10,6 +10,9 @@ import { readFileSync, statSync } from 'node:fs'
 import { basename, join, resolve, sep } from 'node:path'
 import { resolveUser } from '@/server/api/workshop/caller'
 import { mesArtifactsRoot } from '@/server/services/workshop/mes/mes-hook'
+import { getDcwController } from '@/server/services/workshop/dcw/dcw-controller'
+import { AppError, ErrorCodes } from '@/server/utils/errors'
+import { requireLineForResource } from '@/server/services/workshop/line-scope'
 
 const MIME_OF = (name: string): string => {
   const n = name.toLowerCase()
@@ -22,13 +25,16 @@ const MIME_OF = (name: string): string => {
 }
 
 export default defineEventHandler(async (event) => {
-  resolveUser(event)
+  const user = resolveUser(event)
   const q = getQuery(event)
   const nodeId = String(q.node_id ?? '').trim().slice(0, 64)
   const name = basename(String(q.name ?? '').trim())
   if (!nodeId || !name) {
     throw createError({ statusCode: 400, statusMessage: 'node_id 与 name 必填' })
   }
+  const node = getDcwController().byId(nodeId)
+  if (!node) throw new AppError(404, ErrorCodes.NOT_FOUND, `控制节点不存在: ${nodeId}`)
+  requireLineForResource(user, node.lineId, 'MES 点位', 'readonly')
   const root = resolve(join(mesArtifactsRoot(), nodeId))
   const file = resolve(join(root, name))
   if (file !== root && !file.startsWith(root + sep)) {

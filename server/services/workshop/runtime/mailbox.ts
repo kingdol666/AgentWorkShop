@@ -56,9 +56,11 @@ export class Mailbox {
     this.onWake = wake
   }
 
-  /** 投递:落库 pending + 唤醒 dequeue 门闩 + 到信回调 + 通知外部 */
-  enqueue(message: A2AMessage): void {
-    if (this.closed) return
+  /** 投递:落库 pending + 唤醒 dequeue 门闩 + 到信回调 + 通知外部。
+   *  返回 false = 信箱已关闭(停机窗口):消息**未落库**,调用方不得上报"已送达"
+   *  (2026-10-28 审查 C-P1-1:闭箱静默吞消息 + route 照常计入 delivered = 假送达)。 */
+  enqueue(message: A2AMessage): boolean {
+    if (this.closed) return false
     this.messageRepo.create({
       // 保留发送方 messageId 作为落库 id:API 返回的 messageId 才能与历史/状态一致关联
       id: message.messageId,
@@ -78,6 +80,7 @@ export class Mailbox {
       catch { /* 回调异常不阻断投递 */ }
     }
     this.onWake()
+    return true
   }
 
   /** 到信回调注册(即时唤醒阻塞等待方);返回注销函数 */

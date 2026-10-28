@@ -9,6 +9,7 @@ import { zValidator } from '../../../utils/validate'
 import { defineApiHandler } from '../../../utils/response'
 import { AppError } from '../../../utils/errors'
 import { getWorkshopManager } from '../../../plugins/workshop'
+import { assertSpawnConfigAllowed } from '../../../services/workshop/agents/harness-spawn-policy'
 
 const memberSchema = z.union([
   z.object({ templateId: z.string().min(1), role: z.enum(['lead', 'worker']) }),
@@ -40,6 +41,11 @@ export default defineApiHandler(async (event) => {
   const user = resolveUser(event)
   const body = await readValidatedBody(event, zValidator(createSchema))
   const manager = getWorkshopManager()
+  // 启动面收权(2026-10-28):模板内联成员同样不得由非 admin 指定 command/args/cwd/env
+  if (body.lead) assertSpawnConfigAllowed(body.lead.harness, body.lead.config, user)
+  for (const m of body.members ?? []) {
+    if ('inline' in m) assertSpawnConfigAllowed(m.inline.harness, m.inline.config, user)
+  }
   // 成员模板引用校验:引用的 Agent 模板须操作者可读
   for (const m of body.members ?? []) {
     if ('templateId' in m) {

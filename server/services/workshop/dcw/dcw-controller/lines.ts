@@ -37,6 +37,10 @@ export abstract class DcwControllerLines extends DcwControllerRecipes {
       if (opts?.purge) this.remove(n.id)
       else {
         n.lineId = ''
+        // 2026-10-28:解绑产线必须清掉当前设定 —— 否则保写心跳会以"未分配产线"身份
+        // 继续把该线最后的 setpoint 写给 PLC(旧逻辑 !lineId 默认豁免产线门)。
+        n.value = null
+        this.runtimes.get(n.id)?.rearm()
         this.emitNodeChanged('updated', n)
       }
     }
@@ -78,10 +82,17 @@ export abstract class DcwControllerLines extends DcwControllerRecipes {
     }
     const line = getDcwLineRepo().byId(lineId)
     if (!line) throw new AppError(404, ErrorCodes.NOT_FOUND, `产线不存在: ${lineId}`)
-    if (getActiveLineRun(lineId)) {
-      throw new AppError(409, ErrorCodes.CONFLICT, `产线「${line.name}」已在运行(批次 ${getActiveLineRun(lineId)!.runId}),请先停止当前数据采集`)
-    }
     const repo = getDcwRecipeRepo()
+    // 2026-10-28:注册表可能指向一个已被关闭/不存在的批次(关闭接口/多入口/崩溃恢复竞态)。
+    // 这种情况应清掉过期窗口后继续开跑,而不是把整条线永久卡在"已在运行"。
+    const current = getActiveLineRun(lineId)
+    if (current) {
+      const dbRun = repo.runById(current.runId)
+      if (dbRun && !dbRun.endedAt) {
+        throw new AppError(409, ErrorCodes.CONFLICT, `产线「${line.name}」已在运行(批次 ${current.runId}),请先停止当前数据采集`)
+      }
+      clearActiveLineRun(lineId)
+    }
     const recipe = repo.byId(recipeId)
     if (!recipe) throw new AppError(404, ErrorCodes.NOT_FOUND, `Recipe 不存在: ${recipeId}`)
     if (recipe.lineId !== lineId) {

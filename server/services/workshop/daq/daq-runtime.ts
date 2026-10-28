@@ -11,6 +11,7 @@
 
 import { applyTransform } from '../../../../shared/daq-protocol'
 import { classifyCommError, type DaqFrameSample } from './drivers'
+import { ingestFutureSkewMs } from './ingest-policy'
 import type { DaqNode } from './daq-node'
 import type { DaqSampleEnvelope } from './bus/queue-port'
 
@@ -45,7 +46,7 @@ export interface DaqRuntimeHost {
 }
 
 /** onSample 结果(网关据此计指标) */
-export type ConsumeVerdict = 'late' | 'ok' | 'unknown-node'
+export type ConsumeVerdict = 'late' | 'future' | 'ok' | 'unknown-node'
 
 export class DaqNodeRuntime {
   /** 采样时点(epoch ms;-Inf = 立即到期) */
@@ -157,6 +158,9 @@ export class DaqNodeRuntime {
   onSample(env: DaqSampleEnvelope): ConsumeVerdict {
     const node = this.node
     const tsMs = Date.parse(env.at)
+    // 2026-10-28(S12):未来时间戳必须拒绝且**不推进游标** —— 否则一条未来样本会把
+    // lastIngestAt 推到未来,之后所有实时样本被判 late 静默丢弃。
+    if (tsMs && tsMs > Date.now() + ingestFutureSkewMs()) return 'future'
     // 乱序防御(broker 多投递者场景):迟到帧直接丢弃
     if (tsMs && tsMs <= this.lastIngestAt) return 'late'
     this.lastIngestAt = tsMs
@@ -165,7 +169,11 @@ export class DaqNodeRuntime {
     // 指标阈值告警在网关 ingestFrame 按模板 metrics 规则边沿判定,这里只做
     // 节点活跃度/展示值更新 + WS 下发节拍门控。
     if (env.frame) {
-      node.state = 'ok'
+      // 2026-10-28 审查 A-P1-1:帧只负责"活性"(offline→ok)。指标阈值告警是跨帧持续态,
+      // 旧代码每帧无条件置 ok,会把 ingestFrame 刚判出的 alarm 立即抹掉,告警面板
+      // (metricStates)与节点态直接矛盾。warn/alarm 的进入与恢复由网关
+      // evaluateMetricAlarms 的边沿语义独占,此处不得改写。
+      if (node.state === 'offline') node.state = 'ok'
       node.touchReading(env.value, env.at)
       const pubMs = Math.max(0, Math.min(PUBLISH_INTERVAL_MAX, node.publishIntervalMs ?? this.host.defaults().publishIntervalMs))
       const now = Date.now()

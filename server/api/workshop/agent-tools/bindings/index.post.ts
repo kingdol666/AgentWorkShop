@@ -1,14 +1,20 @@
 /**
- * POST /api/workshop/agent-tools/bindings —— 绑定 Agent ↔ 工业节点。
- * body: { agentId, nodeId, kind: 'dcw'|'daq', mode?: 'auto'|'manual' }
+ * POST /api/workshop/agent-tools/bindings —— 绑定 Agent ↔ 工业对象。
+ * body: { agentId, nodeId, kind: 'dcw'|'daq'|'recipe', mode?: 'auto'|'manual' }
  * 产线权限:普通用户仅可绑定自己有权产线的节点——daq 绑定需「仅查看」及以上,
- * dcw(写控)绑定需「可操控」;admin/editor 不受限。
+ * dcw/recipe(写向)绑定需「可操控」;admin/editor 不受限。
  *
- * auto 治理(产线 Co-Pilot P2,计划 §5.4 铁律 2):**dcw 绑定首绑强制 manual**——
- * dcw 写控面挂着逐次人工审批闸,创建即 auto 等于免审上线(旧实现 body.mode 缺省
- * 还是 'auto'),故 body.mode 对 dcw 一律忽略;显式传 auto 不静默吞掉,响应附
- * modeForced + notice 提示(响应形状向后兼容,多余字段无害)。如需 auto,应在
- * 绑定创建后走 PATCH 携 confirm:true 显式切换(见 [id].patch.ts)。
+ * 双轨授权(2026-10-28 节点级写授权计划 M1):
+ *   - kind='recipe'(nodeId=配方 id)= 配方操作权(update/apply/trial/rollback);
+ *   - kind='dcw'(nodeId=数控节点 id)= **点位写授权面** —— Agent 仍不能直写节点
+ *     (param_control/dcw_control 恒拒桩不动),但持有该节点后,对"当前活动配方"的
+ *     trial/apply 只要覆盖集 ⊆ 自己的节点绑定面即放行;换配方不停摆。
+ *
+ * auto 治理(产线 Co-Pilot P2,计划 §5.4 铁律 2):**写向绑定首绑强制 manual**——
+ * dcw/recipe 写控面挂着逐次人工审批闸,创建即 auto 等于免审上线,故 body.mode 对
+ * 写向绑定一律忽略;显式传 auto 不静默吞掉,响应附 modeForced + notice 提示
+ * (响应形状向后兼容,多余字段无害)。如需 auto,应在绑定创建后走 PATCH 携
+ * confirm:true 显式切换(见 [id].patch.ts)。
  * daq 绑定仅授权 daq_query 读(工具面无写族、mode 无审批语义可摘),维持原样。
  */
 import { readBody } from 'h3'
@@ -27,13 +33,6 @@ export default defineApiHandler(async (event) => {
   const kind = body.kind ?? 'daq'
   const nodeId = String(body.nodeId ?? '')
   const agentId = String(body.agentId ?? '')
-
-  // 权限模型 v2:数控节点不再直接绑定 —— Agent 只对 recipe 做参数写入与下发;
-  // 节点级写控/dcw 绑定一律拒绝(存量绑定仅历史兼容,工具层已全部收敛到 recipe 面)。
-  if (kind === 'dcw') {
-    throw new AppError(400, 'BINDING_KIND_DEPRECATED',
-      `数控节点(dcw)不再支持直接绑定:Agent 通过绑定 recipe(kind='recipe',nodeId=配方id)获得该配方参数写入与下发能力;数采观察用 kind='daq'。`)
-  }
 
   // 绑定主体必须是**已部署的 Channel 成员实例**(运行时就是它持这条绑定做工具鉴权)。
   // 传 Agent 模板 id 是极易发生的误用:旧实现照单全收,绑定落在模板 id 上,
@@ -55,7 +54,7 @@ export default defineApiHandler(async (event) => {
 
   // 权限模型 v3:绑线 channel 的产线一致性 —— channel 绑了产线后,其成员 agent 只能
   // 绑定同产线的节点/配方(产线隔离的工作空间语义;未绑线的纯协作频道不受此限)。
-  const nodeLineOf = (nid: string, k: 'daq' | 'recipe'): string | null | undefined => {
+  const nodeLineOf = (nid: string, k: 'daq' | 'dcw' | 'recipe'): string | null | undefined => {
     if (k === 'recipe') return getDcwController().listRecipes().find(r => r.id === nid)?.lineId
     return k === 'daq' ? getDaqController().byId(nid)?.lineId : getDcwController().byId(nid)?.lineId
   }
@@ -96,8 +95,25 @@ export default defineApiHandler(async (event) => {
     throw new AppError(404, ErrorCodes.NOT_FOUND, `${kind === 'daq' ? '数采' : '写控'}节点不存在: ${nodeId}`)
   }
   const mode = lineMode(user, lineId)
+  // daq 只读绑定「仅查看」即可;dcw 是写授权面,需「可操控」(与 binding-authz 同口径)
+  const need = kind === 'daq' ? '仅查看' : '可操控'
   if (mode === 'none') {
-    throw new AppError(403, 'LINE_FORBIDDEN', `无该产线权限:绑定数采节点需对产线「${lineId}」拥有仅查看及以上权限`)
+    throw new AppError(403, 'LINE_FORBIDDEN', `无该产线权限:绑定${kind === 'daq' ? '数采' : '数控'}节点需对产线「${lineId}」拥有${need}及以上权限`)
+  }
+  if (kind === 'dcw' && mode !== 'operate') {
+    throw new AppError(403, 'LINE_READONLY', `该绑定涉及写控节点,需对产线「${lineId}」拥有可操控权限(当前:仅查看)`)
+  }
+  if (kind === 'dcw') {
+    // 写向绑定首绑恒 manual(每次下发/试验需人工批准);auto 须 PATCH confirm:true 显式切换
+    const binding = getAgentNodeBindingRepo().bind(agentId, nodeId, 'dcw', 'manual')
+    if (body.mode === 'auto') {
+      return {
+        binding,
+        modeForced: 'manual',
+        notice: '数控节点绑定默认 manual(点位写授权,每次下发/试验需人工批准),body.mode=auto 已被忽略;如需 auto 请对该绑定 PATCH { mode: "auto", confirm: true } 显式确认切换',
+      }
+    }
+    return { binding }
   }
   // daq 维持 body.mode ?? 'auto' 缺省
   const bindingMode = body.mode ?? 'auto'

@@ -38,8 +38,30 @@ import { handleCreateTeamAgent, handleGetQueueOverview, handleListTeamAgents, ha
  * 分发一次 host tool 调用(全引擎唯一入口):
  * 插件工具优先 → workspace 面 → 工业工具族 → 插件兜底 → 未知工具。
  */
+/**
+ * 工具活性注册表(2026-10-28 审查 C-P1-3)。
+ *
+ * 调度停滞看门狗以「最近一次工具调用」为健康信号,但旧实现只在 manager.invokeHostTool
+ * (REST/MCP 回程)打点 —— 默认引擎 omp 的原生 host_tool_call 与 pi 扩展完全不经那里,
+ * 信号恒空:biz 忙碌 5min 误 notify、回合间隙被误判 stall 而 COMPLETED/CANCELED。
+ * 打点必须放在**全引擎唯一分发入口**;这里只存 epoch ms,零业务耦合。
+ */
+const toolActivity = new Map<string, number>()
+export function noteToolActivity(agentId: string): void {
+  if (agentId) toolActivity.set(agentId, Date.now())
+}
+export function toolActivityAt(agentId: string): number | null {
+  return toolActivity.get(agentId) ?? null
+}
+/** 仅供测试:清空活性注册表 */
+export function resetToolActivity(): void {
+  toolActivity.clear()
+}
+
 /** 统一出口:所有工具结果经截断收口(单点修改,全族生效) */
 export async function dispatchHostTool(ctx: HostToolBridgeContext, req: HostToolCall): Promise<HostToolResult> {
+  // 活性打点先于一切校验:被拒的工具调用同样证明 agent 在推进(不是死锁)
+  noteToolActivity(ctx.identity.agentId)
   return truncateToolResult(await dispatchHostToolInner(ctx, req), req.toolName)
 }
 

@@ -28,7 +28,7 @@
 
 **[简体中文](./README-zh.md)** · **[Documentation](https://kingdol666.github.io/AgentWorkShop)** · **[Releases](https://github.com/kingdol666/AgentWorkShop/releases)** · **[Changelog](./changelog.md)** · **[Plugin API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.8.5</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST integration (mirror & live) · data-analysis ledger with line-scoped permissions · process optimizer (process model → AML → OSQP solver → governed dispatch) · **ontology service + AI-first model loop** (ontology · twin · solver · AML adoption) · 104 host tools · 128 runtime settings · bilingual docs (简体中文 / English)</sub>
+<sub><b>v0.8.6</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST integration (mirror & live) · data-analysis ledger with line-scoped permissions · process optimizer (process model → AML → OSQP solver → governed dispatch) · **ontology service + AI-first model loop** (ontology · twin · solver · AML adoption) · 104 host tools · 128 runtime settings · bilingual docs (简体中文 / English)</sub>
 
 <br />
 
@@ -399,7 +399,7 @@ aw update --check                      # only report; nothing is installed
 npm install -g agentworkshop@latest    # manual equivalent
 ```
 
-Releases follow semver. `aw start` verifies the config root on every launch and migrates the legacy pre-`home` `data/` layout into it (newest file wins), so data survives upgrades. SQLite schema migrations run server-side at boot. Current version: **v0.8.4** — see [Releases](https://github.com/kingdol666/AgentWorkShop/releases).
+Releases follow semver. `aw start` verifies the config root on every launch and migrates the legacy pre-`home` `data/` layout into it (newest file wins), so data survives upgrades. SQLite schema migrations run server-side at boot. Current version: **v0.8.6** — see [Releases](https://github.com/kingdol666/AgentWorkShop/releases).
 
 ### Your first agent × line session (~2 minutes)
 
@@ -574,6 +574,12 @@ in the built-in **Permissions** page (`/permissions`, admin-only in the sidebar)
 - Enforcement lives in the data plane: list endpoints filter by grant, write/dispatch
   endpoints return a human-readable 403, and Agent↔node bindings validate the line grant
   (DAQ needs read-only+, DCW needs operate).
+- Agent write authorization is two-track: a `kind='dcw'` node binding is a point-level
+  write grant (trial/apply coverage must stay within the bound node face; it follows the
+  device and survives recipe switches), while a `kind='recipe'` binding is a recipe-level
+  operation right (including version writes/rollback). The two are unioned; node bindings
+  never grant recipe version rights, direct-write tools stay rejected, and every write
+  still passes the four-layer limits / run gate / HITL / per-parameter ACK.
 - Plugins get the same surface via `ctx.permissions` (`lineMode` / `visibleLineIds` /
   `listGrants` / `setGrants`) plus a `permissions:changed` lifecycle hook; the SDK REST
   client exposes `client.permissions.overview()` / `client.permissions.set(...)`.
@@ -640,6 +646,7 @@ in [`docs/audit/e2e-2026-09-24-all-features.md`](./docs/audit/e2e-2026-09-24-all
 
 | Suite | Latest result | What it covers | Reproduce |
 |---|---|---|---|
+| `e2e-multiexpert-remediation-real.mjs` | **17 / 17** (2026-10-28, `.output` production build + real `omp` + local **Qwen3.5-9B**, **worker identity**) | create AgentChannel (lead + worker) → worker binds DAQ/DCW → **runtime prompt injection** (execution-mode card + node semantic cards: range / step cap / manual-approval) → tool surface differs by binding → `daq_query` on live samples → `recipe_trial` raises HITL → human approval → **ACK verified by device** → node value changed / version unchanged / ledger anchor appended / samples queryable | `node scripts/e2e-multiexpert-remediation-real.mjs` (needs LM Studio at `127.0.0.1:1234`) |
 | `real-injection-closed-loop.mjs` | **2 goals COMPLETED / 0 failed** (2026-09-24, real PLC simulator + real `omp` team) | injection line provisioned from the simulator (11 DCW + 14 DAQ nodes) → real AgentTeam lead/analyst/optimizer → governed writes with a **65.8 s gap ≥ 60 s policy** → DAQ re-measurement → `qualityOk`, verdict `keep` | `AW_BASE=<base> SIM_BASE=http://127.0.0.1:4010 AW_TOKEN=<token> node scripts/real-injection-closed-loop.mjs` |
 | `_run-real-injection-fifo-goals.mjs` | exit 0 (2026-09-24) | **FIFO root queue with multi-task serialization**: goal 2 dispatched only after goal 1 closed, role gate flip, two governed writes 65.04 s apart, two judged records, 4-anchor ledger | `AW_BASE=<base> SIM_BASE=… AW_TOKEN=<token> node scripts/_run-real-injection-fifo-goals.mjs` |
 | `e2e-plc-plugin-closedloop.mjs` | core stages A–D all green (2026-09-24) | PLC simulator supply over Modbus 16040 → DAQ cross-check (AW sample 197 vs simulator register 197.37) → HITL closed-loop write to 3 zones (registers 40021/40023/40025 = 210, verified write-through) → `dcw_judge` keep; plugin stages E–H need the external diagnosis service and are reported as SKIP | `AW_BASE=<base> KB_BASE=http://127.0.0.1:8771 AW_E2E_USERS_DB=<home>/data/users.sqlite node scripts/e2e-plc-plugin-closedloop.mjs` |

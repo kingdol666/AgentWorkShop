@@ -750,8 +750,8 @@ export async function toolRecipeUpdate(agentId: string, args: {
   if (!target.ok) return { text: target.text, isError: true }
   const recipe = target.recipe
   const recipeId = recipe.id
-  // 权限模型 v2:绑定 → 二级认证 → 运行门(未在执行的配方不可操作)
-  const gate = assertRecipeOperation(agentId, recipe, 'update')
+  // 权限模型 v2 + 2026-10-28 双轨:版本操作只认 recipe 绑定(节点绑定不授予版本权)
+  const gate = assertRecipeOperation(agentId, recipe, 'update', list.map(p => String(p.node_id).trim()))
   if (!gate.ok) return { text: gate.text, isError: true }
   for (const p of list) {
     const nodeId = String(p.node_id).trim()
@@ -761,6 +761,13 @@ export async function toolRecipeUpdate(agentId: string, args: {
     if (!node.enabled) return { text: `节点「${node.name}」已停用,参数保存被拒。请先让用户恢复节点控制,或保存到其他节点。`, isError: true }
   }
   // HITL:manual 绑定(或全局下发审批开关)→ 保存前挂人工审批,理由随审批卡展示
+  // B-P1-4(2026-10-28 审查):审批卡展示的是"此刻的"配方定义;审批窗口内若有人并发
+  // 编辑同一配方,旧实现会把批准结果静默并进**已变的**定义(本次只改列出的参数,其余
+  // 取最新值),人工批准的语义被偷换。进入审批前记录定义指纹,批准后逐字比对。
+  const approvedDefinitionSnapshot = JSON.stringify({
+    version: recipe.version ?? 1,
+    params: recipe.params.map(p => ({ nodeId: p.nodeId, value: p.value, min: p.min ?? null, max: p.max ?? null })),
+  })
   let hitlNote = ''
   if (gate.hitlRequired) {
     const gateDecision = await hitlDispatchGate(
@@ -788,8 +795,24 @@ export async function toolRecipeUpdate(agentId: string, args: {
       }
     }
     if (gateDecision.comment) hitlNote = `\n人工附言:${gateDecision.comment}`
-    const stale = await revalidateApprovedAction(agentId, recipe, 'update', 'recipe_update', { recipe_id: recipeId }, gate.activeContext)
+    const stale = await revalidateApprovedAction(agentId, recipe, 'update', 'recipe_update', { recipe_id: recipeId, params: list.map(p => ({ node_id: p.node_id })) }, gate.activeContext)
     if (stale) return stale
+    // B-P1-4:批准后复核配方定义 —— 审批窗口内的并发编辑不得被静默并入已批版本。
+    const latestRecipe = getDcwRecipeRepo().byId(recipeId)
+    const latestSnapshot = latestRecipe
+      ? JSON.stringify({
+          version: latestRecipe.version ?? 1,
+          params: latestRecipe.params.map(p => ({ nodeId: p.nodeId, value: p.value, min: p.min ?? null, max: p.max ?? null })),
+        })
+      : ''
+    if (!latestRecipe || latestSnapshot !== approvedDefinitionSnapshot) {
+      return {
+        text: `人工已批准,但审批期间配方「${recipe.name}」的定义已被其他操作修改(v${recipe.version ?? 1} → v${latestRecipe?.version ?? '已删除'});`
+          + `为避免把本次批准静默并入已变更的定义,本次未执行、配方未改动。`
+          + `请调用 recipe_catalog/recipe_versions 重新读取最新参数与理由后,基于最新定义重新提交 recipe_update。`,
+        isError: true,
+      }
+    }
   }
   // 旧值快照(repo.update 原地改写 recipe.params,事后再取会把 before 读成新值)
   const beforeOf = new Map(recipe.params.map(p => [p.nodeId, p.value]))
@@ -992,11 +1015,12 @@ async function hitlDispatchGate(agentId: string, recipeId: string, detail: strin
  */
 function approvedContextError(
   agentId: string,
-  recipe: { id: string, name: string, lineId?: string, access?: { requireAuth?: boolean, authorizedAgentIds?: string[] } },
+  recipe: { id: string, name: string, lineId?: string, params?: Array<{ nodeId: string }>, access?: { requireAuth?: boolean, authorizedAgentIds?: string[] } },
   op: 'update' | 'dispatch' | 'trial' | 'rollback',
   expectedContext: ActiveRecipeContext,
+  targetNodeIds?: string[],
 ): { text: string, isError: true } | null {
-  const currentGate = assertRecipeOperation(agentId, recipe, op)
+  const currentGate = assertRecipeOperation(agentId, recipe, op, targetNodeIds)
   if (!currentGate.ok) {
     return { text: `人工已批准,但审批期间授权已失效,本次未执行:${currentGate.text}`, isError: true }
   }
@@ -1013,15 +1037,26 @@ function approvedContextError(
   return null
 }
 
+/** 从审批时的工具参数还原「本次覆盖的节点集」(trial/update 只写声明节点;其余=整批)。 */
+function targetNodesFromArgs(op: 'update' | 'dispatch' | 'trial' | 'rollback', args: Record<string, unknown>): string[] | undefined {
+  if (op !== 'trial' && op !== 'update') return undefined
+  const params = Array.isArray(args.params) ? args.params : []
+  const ids = params
+    .map(p => String((p as { node_id?: unknown } | null)?.node_id ?? '').trim())
+    .filter(Boolean)
+  return ids.length > 0 ? ids : undefined
+}
+
 export async function revalidateApprovedAction(
   agentId: string,
-  recipe: { id: string, name: string, lineId?: string, access?: { requireAuth?: boolean, authorizedAgentIds?: string[] } },
+  recipe: { id: string, name: string, lineId?: string, params?: Array<{ nodeId: string }>, access?: { requireAuth?: boolean, authorizedAgentIds?: string[] } },
   op: 'update' | 'dispatch' | 'trial' | 'rollback',
   toolName: string,
   args: Record<string, unknown>,
   expectedContext: ActiveRecipeContext,
 ): Promise<{ text: string, isError: true } | null> {
-  const initialContextError = approvedContextError(agentId, recipe, op, expectedContext)
+  const targetNodeIds = targetNodesFromArgs(op, args)
+  const initialContextError = approvedContextError(agentId, recipe, op, expectedContext, targetNodeIds)
   if (initialContextError) return initialContextError
   try {
     // manager 未装配(单测/嵌入)→ 只做绑定与运行门复核;装配后叠加产线 grant 复核
@@ -1041,7 +1076,7 @@ export async function revalidateApprovedAction(
   // Grant lookup is asynchronous. Re-read the active tuple after that await so
   // queued line/run changes cannot pass between the initial comparison and the
   // caller's dispatch continuation.
-  const changedAfterGrantCheck = approvedContextError(agentId, recipe, op, expectedContext)
+  const changedAfterGrantCheck = approvedContextError(agentId, recipe, op, expectedContext, targetNodeIds)
   if (changedAfterGrantCheck) return changedAfterGrantCheck
   return null
 }
@@ -1082,8 +1117,8 @@ export async function toolRecipeTrial(agentId: string, args: {
   if (!target.ok) return { text: target.text, isError: true }
   const recipe = target.recipe
   const recipeId = recipe.id
-  // 权限模型 v2:绑定 → 二级认证 → 运行门(未在执行的配方不可试验)
-  const gate = assertRecipeOperation(agentId, recipe, 'trial')
+  // 权限模型 v2 + 2026-10-28 双轨:recipe 绑定 ∨ 本次候选覆盖集 ⊆ dcw 节点绑定面
+  const gate = assertRecipeOperation(agentId, recipe, 'trial', list.map(p => p.nodeId))
   if (!gate.ok) return { text: gate.text, isError: true }
   for (const p of list) {
     const node = getDcwController().byId(p.nodeId)
@@ -1129,11 +1164,15 @@ export async function toolRecipeTrial(agentId: string, args: {
       }
       // 人工附言随批准回执回流(Agent 与审计都能看到放行时人的原话)
       if (gateDecision.comment) hitlNote = `\n人工附言:${gateDecision.comment}`
-      const stale = await revalidateApprovedAction(agentId, recipe, 'trial', 'recipe_trial', { recipe_id: recipeId }, gate.activeContext)
+      const stale = await revalidateApprovedAction(agentId, recipe, 'trial', 'recipe_trial', { recipe_id: recipeId, params: list.map(p => ({ node_id: p.nodeId })) }, gate.activeContext)
       if (stale) return stale
-      const staleAtDispatch = approvedContextError(agentId, recipe, 'trial', gate.activeContext)
+      const staleAtDispatch = approvedContextError(agentId, recipe, 'trial', gate.activeContext, list.map(p => p.nodeId))
       if (staleAtDispatch) return staleAtDispatch
     }
+    // 2026-10-28 执行点复核(双轨授权,D13 同款):审批/节拍等待期间绑定可能被撤销,
+    // 下发前最后一次同步重算覆盖集 —— 收回即失活,不把授权变更带进写入。
+    const execGate = assertRecipeOperation(agentId, recipe, 'trial', list.map(p => p.nodeId))
+    if (!execGate.ok) return { text: `下发前授权复核未通过,本次未执行:${execGate.text}`, isError: true }
     const run = await getDcwController().applyRecipe(recipeId, { overrides: list, trial: true, agentDispatch: true, agentApprovalId: gateApprovalId, emergency })
     // ACK 鉴定三段口径(2026-10-08):ok 只是命令受理,未证实/失败必须如实回给 Agent
     const acks = run.ackSummary ?? { verified: run.results.filter(r => r.ok).length, unverified: 0, failed: run.results.filter(r => !r.ok).length, total: run.results.length }
@@ -1244,6 +1283,9 @@ export async function toolRecipeApply(agentId: string, args: {
       const staleAtDispatch = approvedContextError(agentId, recipe, 'dispatch', gate.activeContext)
       if (staleAtDispatch) return staleAtDispatch
     }
+    // 2026-10-28 执行点复核(双轨授权):recipe 绑定或节点覆盖集在下发前再算一次
+    const execGate = assertRecipeOperation(agentId, recipe, 'dispatch')
+    if (!execGate.ok) return { text: `下发前授权复核未通过,本次未执行:${execGate.text}`, isError: true }
     // 完整覆盖集让控制器复制每个已批准值,逐参数异步写期间也不再共享可变配方参数。
     const run = await getDcwController().applyRecipe(recipeId, { overrides: dispatch.params, agentDispatch: true, agentApprovalId: gateApprovalId, emergency })
     // ACK 鉴定三段口径(2026-10-08):ok 只是命令受理,未证实/失败必须如实回给 Agent

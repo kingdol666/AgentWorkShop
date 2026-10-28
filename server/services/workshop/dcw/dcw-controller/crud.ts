@@ -7,10 +7,12 @@ import type { DcwCreateInput, DcwPatchInput } from './types'
 import { AppError, ErrorCodes } from '../../../../utils/errors'
 import { DcwNode } from '../dcw-node'
 import { dcwKeyFromRef, normalizeDataTransform } from '../../../../../shared/dcw-protocol'
+import { stripMaskedSecrets } from '../../../../../shared/daq-protocol'
 import { findDcwTemplate } from '../dcw-templates'
 import { getDcwLineRepo } from '../dcw-line.repo'
 import { getDcwParamRepo } from '../param-map.repo'
 import { requireDcwDriverKind } from '../drivers'
+import { assertDriverRawRange } from '../drivers/shared'
 import { randomUUID } from 'node:crypto'
 
 function normalizeStepLimitInput(value: unknown): number | null | undefined {
@@ -37,7 +39,7 @@ export abstract class DcwControllerCrud extends DcwControllerControl {
       templateRef: input.templateRef,
       name: input.name ?? `${tpl.name} ${String(seq).padStart(2, '0')}`,
       driver: input.driver ? requireDcwDriverKind(input.driver) : undefined,
-      driverConfig: input.driverConfig ?? {},
+      driverConfig: stripMaskedSecrets(input.driverConfig ?? {}),
       transform: normalizeDataTransform(input.transform),
       enabled: input.enabled,
       holdIntervalMs: input.holdIntervalMs ?? null,
@@ -55,6 +57,13 @@ export abstract class DcwControllerCrud extends DcwControllerControl {
       writeLockSeconds: input.writeLockSeconds,
       stepLimit: normalizeStepLimitInput(input.stepLimit),
     })
+    // S15:Modbus 原始量程必须在配置期可被 dataType 表示(越界运行期会拒绝写,但提前拦更好)
+    try {
+      assertDriverRawRange(node.driver, node.driverConfig)
+    }
+    catch (err) {
+      throw new AppError(400, ErrorCodes.VALIDATION_ERROR, err instanceof Error ? err.message : String(err))
+    }
     this.repo.insert(node)
     // 工艺参数映射面:节点创建即自动生成同名映射(用户/Agent 的参数语义面;
     // PLC 寻址细节仍封装在节点驱动配置内)。失败不阻断节点创建(可事后手工补建)。
@@ -72,20 +81,34 @@ export abstract class DcwControllerCrud extends DcwControllerControl {
     // 保写心跳若继续按旧值周期重下发,会把陈旧设定写向新目标(10-07 换绑残留事故根因①)。
     // 清值后心跳自动停驻,须新写成功才重新锚定。
     let invalidateValue = false
+    const prevDriver = node.driver
+    const prevDriverConfig = node.driverConfig
     if (patch.name !== undefined) node.name = patch.name
     if (patch.driver !== undefined) {
       node.driver = requireDcwDriverKind(patch.driver)
       invalidateValue = true
     }
     if (patch.driverConfig !== undefined) {
-      node.driverConfig = { ...node.driverConfig, ...patch.driverConfig }
+      // P0-2(2026-10-28 审查):掩码回显不得覆盖真实凭据(与 DAQ 同源单点过滤)
+      node.driverConfig = { ...node.driverConfig, ...stripMaskedSecrets(patch.driverConfig) }
       invalidateValue = true
+    }
+    // S15:配置期校验(失败回滚 driver/driverConfig,避免内存里留下半改状态)
+    try {
+      assertDriverRawRange(node.driver, node.driverConfig)
+    }
+    catch (err) {
+      node.driver = prevDriver
+      node.driverConfig = prevDriverConfig
+      throw new AppError(400, ErrorCodes.VALIDATION_ERROR, err instanceof Error ? err.message : String(err))
     }
     if (patch.transform !== undefined) {
       if (patch.transform.kind === 'linear' && (!Number.isFinite(Number(patch.transform.scale)) || Number(patch.transform.scale) === 0)) {
         throw new AppError(400, ErrorCodes.VALIDATION_ERROR, '标定系数 scale 必须为非零数字(物理值 = scale × PLC值 + offset)')
       }
       node.transform = normalizeDataTransform(patch.transform)
+      // 标定变了 → 旧 value 的物理含义变了,保写心跳必须停驻到下一次成功写
+      invalidateValue = true
     }
     if (patch.unit !== undefined) node.unit = patch.unit
     // decimals 必须 0..6 整数:它同时喂给 toFixed() —— 越界值会在**驱动已经写进 PLC 之后**
@@ -102,11 +125,13 @@ export abstract class DcwControllerCrud extends DcwControllerControl {
     if (patch.min !== undefined) {
       const v = Number(patch.min)
       if (!Number.isFinite(v)) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `min 必须为有限数字(当前: ${String(patch.min)})`)
+      if (node.min !== v) invalidateValue = true
       node.min = v
     }
     if (patch.max !== undefined) {
       const v = Number(patch.max)
       if (!Number.isFinite(v)) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `max 必须为有限数字(当前: ${String(patch.max)})`)
+      if (node.max !== v) invalidateValue = true
       node.max = v
     }
     // 量程交叉校验放在两者都应用之后:min>max 会让 writeTolerance 变负、越界判定恒真

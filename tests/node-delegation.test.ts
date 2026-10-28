@@ -40,7 +40,7 @@ test('delegation refused for non-lead caller and for lead-to-self', () => {
   )
 })
 
-test('grant copies lead bindings (kind/tuning/mode) with provenance; mode override applies', () => {
+test('grant copies kind/tuning with provenance; mode defaults to manual (never inherits auto)', () => {
   cleanup()
   const repo = getAgentNodeBindingRepo()
   repo.bind(leadId, 'node-a', 'dcw', 'manual', { step: 2, note: '温度设定' })
@@ -53,13 +53,19 @@ test('grant copies lead bindings (kind/tuning/mode) with provenance; mode overri
   assert.equal(bindings.length, 3)
   assert.ok(bindings.every(b => b.grantedByAgentId === leadId && b.grantedAt))
   const dcwA = bindings.find(b => b.nodeId === 'node-a' && b.kind === 'dcw')
-  assert.equal(dcwA?.mode, 'manual') // 缺省随 lead
+  assert.equal(dcwA?.mode, 'manual')
   assert.equal(dcwA?.tuning?.step, 2)
+  // 2026-10-28 审查 B-P1-3:缺省不再继承 lead 的 auto —— 委派不得静默摘闸门
   const daqA = bindings.find(b => b.nodeId === 'node-a' && b.kind === 'daq')
-  assert.equal(daqA?.mode, 'auto')
+  assert.equal(daqA?.mode, 'manual')
+  assert.ok(bindings.every(b => b.mode === 'manual'), '缺省委派必须全部 manual')
 
-  // 显式 mode 覆盖
-  const plan2 = planDelegation({ leaderAgentId: leadId, channelId: 'c1', targetAgentId: workerId, nodeIds: ['node-a'], members, mode: 'auto' })
+  // 显式 mode=auto 必须带 confirm:true(摘除逐次人工审批)
+  assert.throws(
+    () => planDelegation({ leaderAgentId: leadId, channelId: 'c1', targetAgentId: workerId, nodeIds: ['node-a'], members, mode: 'auto' }),
+    (err: unknown) => (err as { code?: string }).code === 'DELEGATION_MODE_CONFIRM_REQUIRED',
+  )
+  const plan2 = planDelegation({ leaderAgentId: leadId, channelId: 'c1', targetAgentId: workerId, nodeIds: ['node-a'], members, mode: 'auto', confirm: true })
   applyDelegation(plan2, leadId)
   const after = repo.find(workerId, 'node-a', 'dcw')
   assert.equal(after?.mode, 'auto')

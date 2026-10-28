@@ -1,0 +1,74 @@
+{
+  "id": "043aad25-02cd-4d1d-b2e5-ba99eeefb0c1",
+  "state": "CANCELED",
+  "cancelledByOperator": true,
+  "elapsedSec": 112,
+  "deliverable": "",
+  "toolCalls": [
+    "🔧 my_industrial_nodes",
+    "🔧 my_industrial_nodes",
+    "🔧 my_industrial_nodes ✅ 完成: ### ⚙ 频道执行模式:manual(手动)—— 本频道所有下发/配方/回退动作都会挂起等人工批准:下发前必须说明依据(数采/MES 证据),审批卡会向人类展示你的理由 #### ◆ 温度设定A(写入线) [id=dw-4dceface] - 物理量: 烘箱温度设定,单位 C,精度 2 位小数 - 工艺语义: 手动频道 Agent 的点位",
+    "🔧 my_industrial_nodes ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"### ⚙ 频道执行模式:manual(手动)—— 本频道所有下发/配方/回退动作都会挂起等人工批准:下发前必须说明依据(数采/MES 证据),审批卡会向人类展示你的理由\\n\\n#### ◆ 温度设定A(写入线) [id=dw-4dceface]\\n- 物理量: 烘箱温度",
+    "🔧 report_progress(progress=30, message=读取节点语义卡完成:绑定点位 温度设定A(写入线) dw-4dceface,当前 60…)",
+    "🔧 recipe_trial(line_id=ln-3899893b, hypothesis=手动模式点位试验验收:产线「验收-写入线」运行中(批次 rr-c…)",
+    "🔧 report_progress(progress=30, message=读取节点语义卡完成:绑定点位 温度设定A(写入线) dw-4dceface,当前 60…)",
+    "🔧 recipe_trial(line_id=ln-3899893b, hypothesis=手动模式点位试验验收:产线「验收-写入线」运行中(批次 rr-c…)",
+    "🔧 report_progress ❌ 失败: 无当前任务上下文",
+    "🔧 report_progress ❌ 失败: {\"content\":[{\"type\":\"text\",\"text\":\"无当前任务上下文\"}],\"details\":{},\"isError\":true}",
+    "🔧 recipe_trial ✅ 完成: 试验已整批下发并全部设备证实(1/1,批次 rr-693d7):温度设定A(写入线)→62C [证实✓]。假设:手动模式点位试验验收:产线「验收-写入线」运行中(批次 rr-c46fc,已运行 8 分钟,447 打标样本),活动配方「验收配方-写入线」温度设定A 目标 60C、工艺窗口 50~70C,数采监控窗口同为 50~70C。候选将温度设定A 由 ",
+    "🔧 recipe_trial ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"试验已整批下发并全部设备证实(1/1,批次 rr-693d7):温度设定A(写入线)→62C [证实✓]。假设:手动模式点位试验验收:产线「验收-写入线」运行中(批次 rr-c46fc,已运行 8 分钟,447 打标样本),活动配方「验收配方-写入线」温度设定A 目标 60C、工艺窗口"
+  ],
+  "hitl": [
+    {
+      "id": "ap-59e8521a",
+      "status": "pending",
+      "detail": "配方试验候选(整批 1 参数):温度设定A(写入线) 60→62C | 假设:手动模式点位试验验收:产线「验收-写入线」运行中(批次 rr-c46fc,已运行 8 分钟,447 打标样本),活动配方「验收配方-写入线」温度设定A 目标 60C、工艺窗口 50~70C,数采监控窗口同为 50~70C。候选将温度设定A 由 60C 上调至 62C(单步 +2C,≤4C 硬上限),目标值位于窗口内,用于验证写入链路的工程量下发与窗口联锁;仅操作本人绑定点位 dw-4dceface,不涉及温度设定B。 | 批准=整批下发试验(不写版本);拒绝可附指导",
+      "payload": {
+        "schemaVersion": 1,
+        "kind": "recipe-gate",
+        "op": "trial",
+        "recipeId": "rc-fb3f9ce4",
+        "recipeName": "验收配方-写入线",
+        "reason": "手动模式点位试验验收:产线「验收-写入线」运行中(批次 rr-c46fc,已运行 8 分钟,447 打标样本),活动配方「验收配方-写入线」温度设定A 目标 60C、工艺窗口 50~70C,数采监控窗口同为 50~70C。候选将温度设定A 由 60C 上调至 62C(单步 +2C,≤4C 硬上限),目标值位于窗口内,用于验证写入链路的工程量下发与窗口联锁;仅操作本人绑定点位 dw-4dceface,不涉及温度设定B。",
+        "params": [
+          {
+            "nodeId": "dw-4dceface",
+            "name": "温度设定A(写入线)",
+            "from": 60,
+            "to": 62,
+            "unit": "C"
+          }
+        ],
+        "context": {
+          "lineId": "ln-3899893b",
+          "runId": "rr-c46fc4f7",
+          "recipeId": "rc-fb3f9ce4",
+          "productId": "pd-8893716a"
+        },
+        "runId": "rr-c46fc4f7"
+      }
+    }
+  ],
+  "hitlHistory": [
+    {
+      "id": "ap-59e8521a",
+      "status": "approved",
+      "comment": "验收:批准手动模式点位试验",
+      "decidedBy": "eb5304ce-69a8-4c25-95b3-a9d36d36e2ce"
+    }
+  ],
+  "journal": [
+    {
+      "lineId": "ln-3899893b",
+      "nodeId": "dw-4dceface",
+      "prevValue": 60,
+      "newValue": 62,
+      "source": "recipe",
+      "actor": "recipe",
+      "recipeRunId": "rr-693d7240",
+      "id": "anc-89ae8228",
+      "at": "2026-10-28T15:44:36.752+08:00"
+    }
+  ],
+  "approvals": "ap-59e8521a"
+}

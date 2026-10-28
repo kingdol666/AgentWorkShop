@@ -235,80 +235,95 @@ export function migrateMissingForeignKeys(db: DatabaseSync): void {
  * 身份与 token 已迁移至全局用户系统(data/users.sqlite),owner 列仅存用户 id 引用,
  * 保留 FK 会使新全局用户 id 在本地 users 表无行而写入失败。
  * 表重建期间临时关闭外键,避免 DROP 触发级联;重建后以原名重新命名,引用方 FK 依旧有效。
+ *
+ * 2026-10-28 审查 D-P1-2:旧实现用**白名单 DDL** 重建 channels/agents/teams ——
+ * 白名单随后续版本加列而漂移(channels 缺 scenario_prompt/llm_json/visibility/
+ * join_policy/approval_policy/chat_enabled/version/line_id 共 8 列),带 owner FK 的
+ * 老库升级时整列数据被静默丢弃且不可复现。现在每条重建语句都携带**完整列清单**,
+ * 由 tests/migration-owner-fk.test.ts 守护:升级前后"列集 + 全部业务数据"逐列相等
+ * (任一列漏抄 → 列集变化 → 测试红)。
  */
 export function migrateDropOwnerFks(db: DatabaseSync): void {
-  const rebuilds: Array<{ table: string, ddl: string }> = []
-  if (hasForeignKey(db, 'workspaces', 'owner_user_id', 'users')) {
-    rebuilds.push({
-      table: 'workspaces',
-      ddl: `CREATE TABLE workspaces_new (
-          id            TEXT PRIMARY KEY,
-          owner_user_id TEXT NOT NULL,
-          name          TEXT NOT NULL,
-          created_at    TEXT NOT NULL
-        );
-        INSERT INTO workspaces_new SELECT id, owner_user_id, name, created_at FROM workspaces;`,
-    })
-  }
-  if (hasForeignKey(db, 'channels', 'owner_user_id', 'users')) {
-    rebuilds.push({
-      table: 'channels',
-      ddl: `CREATE TABLE channels_new (
-          id             TEXT PRIMARY KEY,
-          name           TEXT NOT NULL,
-          description    TEXT NOT NULL DEFAULT '',
-          lead_agent_id  TEXT,
-          workspace      TEXT NOT NULL DEFAULT '',
-          enabled        INTEGER NOT NULL DEFAULT 1,
-          owner_user_id  TEXT,
-          created_at     TEXT NOT NULL,
-          updated_at     TEXT NOT NULL
-        );
-        INSERT INTO channels_new SELECT id, name, description, lead_agent_id, workspace, enabled, owner_user_id, created_at, updated_at FROM channels;`,
-    })
-  }
-  if (hasForeignKey(db, 'agents', 'owner_user_id', 'users')) {
-    rebuilds.push({
-      table: 'agents',
-      ddl: `CREATE TABLE agents_new (
-          id           TEXT PRIMARY KEY,
-          name         TEXT NOT NULL,
-          harness      TEXT NOT NULL,
-          config_json  TEXT NOT NULL DEFAULT '{}',
-          enabled      INTEGER NOT NULL DEFAULT 1,
-          visibility   TEXT NOT NULL DEFAULT 'private',
-          owner_user_id TEXT,
-          created_at   TEXT NOT NULL,
-          updated_at   TEXT NOT NULL
-        );
-        INSERT INTO agents_new SELECT id, name, harness, config_json, enabled, visibility, owner_user_id, created_at, updated_at FROM agents;`,
-    })
-  }
-  if (hasForeignKey(db, 'teams', 'owner_user_id', 'users')) {
-    rebuilds.push({
-      table: 'teams',
-      ddl: `CREATE TABLE teams_new (
-          id            TEXT PRIMARY KEY,
-          name          TEXT NOT NULL,
-          description   TEXT NOT NULL DEFAULT '',
-          visibility    TEXT NOT NULL DEFAULT 'private',
-          owner_user_id TEXT,
-          created_at    TEXT NOT NULL,
-          updated_at    TEXT NOT NULL
-        );
-        INSERT INTO teams_new SELECT id, name, description, visibility, owner_user_id, created_at, updated_at FROM teams;`,
-    })
-  }
-  if (rebuilds.length === 0) return
+  const needWorkspaces = hasForeignKey(db, 'workspaces', 'owner_user_id', 'users')
+  const needChannels = hasForeignKey(db, 'channels', 'owner_user_id', 'users')
+  const needAgents = hasForeignKey(db, 'agents', 'owner_user_id', 'users')
+  const needTeams = hasForeignKey(db, 'teams', 'owner_user_id', 'users')
+  if (!needWorkspaces && !needChannels && !needAgents && !needTeams) return
 
   db.exec('PRAGMA foreign_keys = OFF;')
   try {
-    for (const { table, ddl } of rebuilds) {
-      db.exec(`${ddl}
-        DROP TABLE ${table};
-        ALTER TABLE ${table}_new RENAME TO ${table};`)
+    if (needWorkspaces) {
+      db.prepare(`CREATE TABLE workspaces_new (
+        id            TEXT PRIMARY KEY,
+        owner_user_id TEXT NOT NULL,
+        name          TEXT NOT NULL,
+        created_at    TEXT NOT NULL
+      )`).run()
+      db.prepare('INSERT INTO workspaces_new (id, owner_user_id, name, created_at) SELECT id, owner_user_id, name, created_at FROM workspaces').run()
+      db.prepare('DROP TABLE workspaces').run()
+      db.prepare('ALTER TABLE workspaces_new RENAME TO workspaces').run()
     }
-    db.exec(`CREATE INDEX IF NOT EXISTS idx_workspaces_owner ON workspaces(owner_user_id);`)
+    if (needChannels) {
+      db.prepare(`CREATE TABLE channels_new (
+        id              TEXT PRIMARY KEY,
+        name            TEXT NOT NULL,
+        description     TEXT NOT NULL DEFAULT '',
+        scenario_prompt TEXT NOT NULL DEFAULT '',
+        llm_json        TEXT NOT NULL DEFAULT '',
+        lead_agent_id   TEXT,
+        workspace       TEXT NOT NULL DEFAULT '',
+        enabled         INTEGER NOT NULL DEFAULT 1,
+        created_at      TEXT NOT NULL,
+        updated_at      TEXT NOT NULL,
+        owner_user_id   TEXT,
+        visibility      TEXT NOT NULL DEFAULT 'private',
+        join_policy     TEXT NOT NULL DEFAULT 'owner_approve',
+        approval_policy TEXT NOT NULL DEFAULT 'owner_only',
+        chat_enabled    INTEGER NOT NULL DEFAULT 0,
+        version         INTEGER NOT NULL DEFAULT 1,
+        line_id         TEXT NOT NULL DEFAULT ''
+      )`).run()
+      db.prepare(`INSERT INTO channels_new (id, name, description, scenario_prompt, llm_json, lead_agent_id,
+          workspace, enabled, created_at, updated_at, owner_user_id, visibility,
+          join_policy, approval_policy, chat_enabled, version, line_id)
+        SELECT id, name, description, scenario_prompt, llm_json, lead_agent_id,
+          workspace, enabled, created_at, updated_at, owner_user_id, visibility,
+          join_policy, approval_policy, chat_enabled, version, line_id FROM channels`).run()
+      db.prepare('DROP TABLE channels').run()
+      db.prepare('ALTER TABLE channels_new RENAME TO channels').run()
+    }
+    if (needAgents) {
+      db.prepare(`CREATE TABLE agents_new (
+        id            TEXT PRIMARY KEY,
+        name          TEXT NOT NULL,
+        harness       TEXT NOT NULL,
+        config_json   TEXT NOT NULL DEFAULT '{}',
+        enabled       INTEGER NOT NULL DEFAULT 1,
+        visibility    TEXT NOT NULL DEFAULT 'private',
+        created_at    TEXT NOT NULL,
+        updated_at    TEXT NOT NULL,
+        owner_user_id TEXT
+      )`).run()
+      db.prepare('INSERT INTO agents_new (id, name, harness, config_json, enabled, visibility, created_at, updated_at, owner_user_id) SELECT id, name, harness, config_json, enabled, visibility, created_at, updated_at, owner_user_id FROM agents').run()
+      db.prepare('DROP TABLE agents').run()
+      db.prepare('ALTER TABLE agents_new RENAME TO agents').run()
+    }
+    if (needTeams) {
+      db.prepare(`CREATE TABLE teams_new (
+        id            TEXT PRIMARY KEY,
+        name          TEXT NOT NULL,
+        description   TEXT NOT NULL DEFAULT '',
+        visibility    TEXT NOT NULL DEFAULT 'private',
+        created_at    TEXT NOT NULL,
+        updated_at    TEXT NOT NULL,
+        owner_user_id TEXT
+      )`).run()
+      db.prepare('INSERT INTO teams_new (id, name, description, visibility, created_at, updated_at, owner_user_id) SELECT id, name, description, visibility, created_at, updated_at, owner_user_id FROM teams').run()
+      db.prepare('DROP TABLE teams').run()
+      db.prepare('ALTER TABLE teams_new RENAME TO teams').run()
+    }
+    // 重建会连带删除该表的索引;这 4 张表在 SCHEMA_SQL 里只有一个索引,原样补回
+    db.prepare('CREATE INDEX IF NOT EXISTS idx_workspaces_owner ON workspaces(owner_user_id)').run()
   }
   finally {
     db.exec('PRAGMA foreign_keys = ON;')

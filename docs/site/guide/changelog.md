@@ -5,6 +5,8 @@
 
 ## v0.8.x — 知识与闭环(2026-10 下旬)
 
+- **v0.8.6(2026-10-28)** — **多专家设计审查整改(P0×2 + P1×11)**:Modbus `little` 字节序纠正为**标准 DCBA**(旧实现实际解出 BADC,真实设备会静默读成 1e-41 量级);掩码凭据回写不再覆盖真实口令(入口单点剔除);帧指标告警跨帧保持;停线补种以补种时刻入库;外部 ingest 与驱动共用 sink 管线;系统兜底回退 await 后重验;配方频控在飞占位;委派 auto 必须显式确认 + 审计;`recipe_update` 审批期定义指纹比对;停机窗口不再假送达;人类调用作用域失败路径收口;工具活性信号覆盖 omp 原生;Timescale `queryTagged` 补 state/ingested_at 与分页;owner-FK 老库迁移补齐 8 列不再丢数据。验收:单测 739/739、API 61/61、产线治理 44/44、真实场景(Qwen3.5-9B + omp,worker 身份)17/17。详见 `docs/audit/2026-10-28-multiexpert-remediation-acceptance.md`。
+- **v0.8.5(2026-10-28)** — **频道执行三模式**(observe / manual / auto)+ MQTT 结构化解码(jsonPath 单字段入库 / jsonKey 封装下发 / readTopic 回读)+ 安全加固 S1–S16(启动屏障、未知驱动 fail-loud、未来时间戳、MQTT 身份、告警产线隔离、Modbus 范围、单实例数据锁等)。
 - **v0.8.4(2026-10-26)** — 3 分钟英文界面宣传片(README / VitePress / 独立播放页)+ EDA 管道标题、在线查看器高度与本体基线 i18n 修复。
 - **v0.8.3(2026-10-26)** — 结果库复验收尾(L1/L2/L4)+ 净树发布准备;全局零态实测修正。
 - **v0.8.2(2026-10-25)** — 结果库 reviewer 修复:PATCH 角色闸门、热开关、绝对 URL 与证据链。

@@ -67,6 +67,34 @@ export function getRecipeOpAnchor(recipeId: string): RecipeOpAnchor | null {
   return store().anchors.find(a => a.recipeId === recipeId) ?? null
 }
 
+/**
+ * 执行在飞占位(2026-10-28 审查 B-P1-2)。
+ *
+ * 频控判定是"查锚 → 写入(秒级 await)→ 落锚"三段:两个并发下发都会在"查"时
+ * 读到同一旧锚而双双过检,opIntervalMs/试验节拍被整体绕过。占位与判定必须在
+ * 同一次同步执行内完成(JS 单线程内天然原子),写入结束在 finally 释放。
+ * 跨进程语义仍由单进程写锁约束(与本仓库其它写路径同口径)。
+ */
+const inflight = new Set<string>()
+
+export function beginRecipeOp(recipeId: string, recipeName: string): void {
+  if (inflight.has(recipeId)) {
+    throw new AppError(429, ErrorCodes.WRITE_FREQUENT,
+      `配方「${recipeName}」已有一次下发正在执行(在飞占位),本次未获执行、产线未做任何变更。`
+      + `请等待该次下发返回后重试;若长时间无响应,请检查产线连接与写历史。`)
+  }
+  inflight.add(recipeId)
+}
+
+export function endRecipeOp(recipeId: string): void {
+  inflight.delete(recipeId)
+}
+
+/** 仅供测试/观测:该配方是否有在飞下发。 */
+export function isRecipeOpInflight(recipeId: string): boolean {
+  return inflight.has(recipeId)
+}
+
 /** 仅供测试:清空全部锚(内存+落盘) */
 export function resetRecipeOpAnchors(): void {
   g.__recipeOpAnchors = { anchors: [] }

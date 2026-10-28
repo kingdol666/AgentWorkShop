@@ -42,6 +42,9 @@ export interface ToolRefFaces {
   agentId: string
   /** 绑定面节点:dcw+daq 绑定节点 ∪ 绑定配方参数节点 */
   boundNodes: Set<string>
+  /** 写授权面 W(a):dcw 绑定节点 ∪ 绑定配方参数节点(节点级写授权,与 recipe-gate 同口径;
+   *  daq 只读绑定与频道绑线只读扩权不进写面) */
+  writeFace: Set<string>
   /** 仅数采绑定(dcw 工具只认 dcw 绑定,读取面只认 daq 绑定——分面保留) */
   daqBoundNodes: Set<string>
   /** 绑定的配方(kind='recipe' 的绑定,nodeId 字段存 recipeId) */
@@ -60,6 +63,7 @@ export interface ToolRefFaces {
 export function resolveRefFaces(agentId: string): ToolRefFaces {
   const bindings = getAgentNodeBindingRepo().byAgent(agentId)
   const boundNodes = new Set<string>()
+  const writeFace = new Set<string>()
   const daqBoundNodes = new Set<string>()
   const boundRecipes = new Set<string>()
   const recipeLines = new Set<string>()
@@ -72,11 +76,15 @@ export function resolveRefFaces(agentId: string): ToolRefFaces {
         recipeLines.add(r.lineId)
         readableLines.add(r.lineId)
       }
-      for (const p of (r?.params ?? [])) boundNodes.add(p.nodeId)
+      for (const p of (r?.params ?? [])) {
+        boundNodes.add(p.nodeId)
+        writeFace.add(p.nodeId)
+      }
       continue
     }
     boundNodes.add(b.nodeId)
     if (b.kind === 'daq') daqBoundNodes.add(b.nodeId)
+    else writeFace.add(b.nodeId)
     const n = b.kind === 'dcw' ? getDcwController().byId(b.nodeId) : getDaqNodeRepo().byId(b.nodeId)
     if (n?.lineId) readableLines.add(n.lineId)
   }
@@ -86,7 +94,7 @@ export function resolveRefFaces(agentId: string): ToolRefFaces {
   if (channelLineId) {
     for (const n of getDaqNodeRepo().all()) if (n.lineId === channelLineId) channelLineNodes.add(n.id)
   }
-  return { agentId, boundNodes, daqBoundNodes, boundRecipes, recipeLines, readableLines, channelLineId, channelLineNodes }
+  return { agentId, boundNodes, writeFace, daqBoundNodes, boundRecipes, recipeLines, readableLines, channelLineId, channelLineNodes }
 }
 
 // ===== 归属判定 =====
@@ -140,6 +148,17 @@ function denyNode(faces: ToolRefFaces, toolName: string, args: Record<string, un
     : `请核对节点 id(先用 my_industrial_nodes / line_context 查看在线对象);节点被删除时原绑定会失效,需要重新绑定。`
   return deny(toolName, args, [
     `工具调用被拒(引用校验,${toolName}):${param} = 「${id}」不在你的授权范围内${where}。`,
+  ], faces, hint, { param, value: id, lineId: row?.lineId })
+}
+
+/** 写面拒绝(2026-10-28):参数要写到的节点必须落在 W(a)=dcw 绑定 ∪ 绑定配方参数节点。
+ *  比 denyNode 更明确:读得到 ≠ 写得到(频道绑线只读扩权/他配方节点都不构成写授权)。 */
+function denyWriteNode(faces: ToolRefFaces, toolName: string, args: Record<string, unknown>, param: string, id: string, exists: boolean): HostToolResult {
+  const row = exists ? nodeRow(id) : null
+  const where = row ? `(节点「${row.name}」${row.lineId ? `,归属产线 ${row.lineId}` : ''})` : '(节点不存在或已删除)'
+  const hint = `该节点不在你的写授权面(节点绑定=点位写授权;配方绑定=配方操作权)。你的可写节点:${listOf(faces.writeFace)};你已绑定的配方参数节点也在此列。如需写入,请让用户或 lead 为你绑定该数控节点(dcw),或改用上述已授权节点;若要对整批配方操作,可请求绑定配方(kind='recipe')。`
+  return deny(toolName, args, [
+    `工具调用被拒(写授权校验,${toolName}):参数节点「${id}」不在你的写授权面内${where}。`,
   ], faces, hint, { param, value: id, lineId: row?.lineId })
 }
 
@@ -368,6 +387,16 @@ export function verifyToolReferences(agentId: string, toolName: string, args: Re
         if (!id) continue
         const exists = nodeRow(id) !== null
         if (!exists || !nodeAllowed(faces, id)) return denyNode(faces, toolName, args, key, id, exists)
+      }
+    }
+    // 写入型参数节点:必须落在写授权面 W(a)(只读面/频道绑线/他配方节点不构成写授权)。
+    // 先于 deepNodeRefs 检查:nodeAllowed 允许"绑定配方所在产线的任意节点",对写入过宽,
+    // 写面判定才是本工具真正的授权边界(拒绝文案也更能行动)。
+    for (const path of spec.writeNodeRefs ?? []) {
+      const leaf = path.split('.').pop() ?? path
+      for (const id of collectDeep(args, path)) {
+        const exists = nodeRow(id) !== null
+        if (!exists || !faces.writeFace.has(id)) return denyWriteNode(faces, toolName, args, leaf, id, exists)
       }
     }
     for (const path of spec.deepNodeRefs ?? []) {

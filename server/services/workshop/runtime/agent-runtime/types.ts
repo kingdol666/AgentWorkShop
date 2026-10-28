@@ -164,7 +164,8 @@ export interface AgentRuntimeLike {
   readonly role: 'lead' | 'worker'
   readonly channelId: string
   readonly name: string
-  enqueue(message: A2AMessage): void
+  /** 投递消息;返回 false = 信箱已关闭(停机窗口),调用方必须如实上报未送达 */
+  enqueue(message: A2AMessage): boolean
   getState(): 'idle' | 'busy' | 'stopped'
   /** 实时状态视图(idle/busy/stopped + 当前任务 + 队列长度) */
   getStatus(): AgentStatusView

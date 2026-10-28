@@ -8,13 +8,19 @@ import { statSync } from 'node:fs'
 import { resolveUser } from '@/server/api/workshop/caller'
 import { defineApiHandler } from '@/server/utils/response'
 import { listMesArtifacts } from '@/server/services/workshop/mes/mes-hook'
+import { getDcwController } from '@/server/services/workshop/dcw/dcw-controller'
+import { AppError, ErrorCodes } from '@/server/utils/errors'
+import { requireLineForResource } from '@/server/services/workshop/line-scope'
 
 export default defineApiHandler(async (event) => {
-  resolveUser(event)
+  const user = resolveUser(event)
   const q = getQuery(event)
   const nodeId = String(q.node_id ?? '').trim()
   const limit = Math.max(1, Math.min(Number(q.limit) || 50, 200))
   if (!nodeId) return { artifacts: [], message: '缺少 node_id' }
+  const node = getDcwController().byId(nodeId)
+  if (!node) throw new AppError(404, ErrorCodes.NOT_FOUND, `控制节点不存在: ${nodeId}`)
+  requireLineForResource(user, node.lineId, 'MES 点位', 'readonly')
   const artifacts = listMesArtifacts(nodeId, limit).map((a) => {
     let mtime: string | null = null
     try {

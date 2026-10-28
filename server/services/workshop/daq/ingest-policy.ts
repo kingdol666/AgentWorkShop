@@ -29,9 +29,32 @@ export function isWideBackfillWindow(env: Record<string, string | undefined> = p
   return ingestBackfillWindowMs(env) > WIDE_WINDOW_THRESHOLD_MS
 }
 
-/** 时间点是否在允许窗内 */
+/** 时间点是否在允许窗内(旧口径:双向 ±window;新代码请用 ingestTimeVerdict) */
 export function withinBackfillWindow(atMs: number, now: number, windowMs: number): boolean {
   return Number.isFinite(atMs) && Math.abs(atMs - now) <= windowMs
+}
+
+/** 未来时间戳容忍度(ms):缺省 60s;env AW_DAQ_INGEST_FUTURE_SKEW_MS 可调,钳 0..1h */
+export function ingestFutureSkewMs(env: Record<string, string | undefined> = process.env): number {
+  const raw = Number(env.AW_DAQ_INGEST_FUTURE_SKEW_MS)
+  if (!Number.isFinite(raw) || raw < 0) return 60_000
+  return Math.min(raw, 3600_000)
+}
+
+export type IngestTimeVerdict = 'ok' | 'future' | 'out-of-window'
+
+/**
+ * 时间戳方向判定(2026-10-28 S12):
+ *  - 未来超过 skew → future(必须拒绝;否则单条未来样本会把该节点 lastIngestAt 推到未来,
+ *    之后所有实时样本被判 late 丢弃,最长持续到墙钟追上);
+ *  - 过去超过回填窗 → out-of-window;
+ *  - 其余 ok。
+ */
+export function ingestTimeVerdict(atMs: number, now: number, windowMs: number, skewMs: number): IngestTimeVerdict {
+  if (!Number.isFinite(atMs)) return 'out-of-window'
+  if (atMs > now + skewMs) return 'future'
+  if (now - atMs > windowMs) return 'out-of-window'
+  return 'ok'
 }
 
 /** 推送鉴权模式判定(纯函数便于单测):token 已配置 → 校验头;未配置 → 会话+产线权限 */

@@ -8,11 +8,16 @@ import { resolveUser } from '@/server/api/workshop/caller'
 import { defineApiHandler } from '@/server/utils/response'
 import { bindDcwBroadcast, getDcwController } from '@/server/services/workshop/dcw/dcw-controller'
 import { broadcastSceneEvent } from '@/server/services/workshop/scene-events'
+import { AppError, ErrorCodes } from '@/server/utils/errors'
+import { requireLineForResource } from '@/server/services/workshop/line-scope'
 
 export default defineApiHandler(async (event) => {
-  resolveUser(event)
+  const user = resolveUser(event)
   bindDcwBroadcast(broadcastSceneEvent)
   const id = getRouterParam(event, 'id') ?? ''
+  const node = getDcwController().byId(id)
+  if (!node) throw new AppError(404, ErrorCodes.NOT_FOUND, `控制节点不存在: ${id}`)
+  requireLineForResource(user, node.lineId, '数控节点', 'readonly')
   const read = await getDcwController().readNow(id)
   return { read }
 })

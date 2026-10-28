@@ -2,9 +2,10 @@
  * AgentNodeBindingRepo —— Agent ↔ 工业对象绑定持久化(agent-node-bindings.json)。
  *
  * 一个绑定 = 某 Channel 内的 Agent 对某个工业对象的授权:
- *   - kind: 'daq' = 可查询数采; 'recipe' = 可操作配方(参数写入+下发;nodeId 字段存 recipeId);
- *     'dcw' = (已废弃)直写数控节点 —— 新绑定一律拒绝,存量绑定仅保留只读可见性,
- *     写路径在工具层全部收敛到 recipe(权限模型 v2:Agent 不直碰节点,只碰配方)。
+ *   - kind: 'daq' = 可查询数采; 'recipe' = 配方操作权(参数写入+下发+版本;nodeId 字段存 recipeId);
+ *     'dcw' = 点位写授权(2026-10-28 恢复,非直写入口):对活动配方的 trial/apply,
+ *     覆盖集 ⊆ 节点绑定面即放行;直写工具(param_control/dcw_control)仍恒拒,
+ *     写路径 100% 收敛在配方管道(权限模型 v2)。
  *   - mode: 'auto' = 工具调用自动执行; 'manual' = 每次执行需用户批准(可附备注)
  */
 

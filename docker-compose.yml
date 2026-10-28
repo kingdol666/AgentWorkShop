@@ -12,10 +12,12 @@ services:
   daq-mosquitto:
     image: eclipse-mosquitto:2
     container_name: awshop-daq-mosquitto
-    # no-auth 配置:内网/开发态;生产请挂载自定义 mosquitto.conf 启用鉴权/TLS
+    # no-auth 配置:内网/开发态;生产请挂载自定义 mosquitto.conf 启用鉴权/TLS。
+    # 2026-10-28(S13):默认只绑 127.0.0.1,避免同网段任意主机向队列注入样本;
+    # 跨机部署请显式改回 0.0.0.0 并同时启用 broker 账号/TLS。
     command: ["mosquitto", "-c", "/mosquitto-no-auth.conf"]
     ports:
-      - "1883:1883"   # 与 config.yml daq.mqtt.port 一致
+      - "127.0.0.1:1883:1883"   # 与 config.yml daq.mqtt.port 一致
     restart: unless-stopped
 
   daq-timescale:

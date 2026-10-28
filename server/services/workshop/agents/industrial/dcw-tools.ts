@@ -263,8 +263,12 @@ async function dcwControlGovernedLegacy(agentId: string, args: { node_id?: strin
         text: `下发受理:${node.name}(${tpl?.ch ?? node.templateKey})设定 ${value}${node.unit} → PLC 原始值 ${outcome.raw ?? '-'};${ackTxt}。${winTxt}。${outcome.message}\n[调控闭环] ${loopTxt}${manualFeedback ? `\n[人工反馈] ${manualFeedback}` : ''}`,
       }
     }
-    // 失败文案带自我纠正线索:当前保持原值 + 建议动作(缩小步进/稍后重试)
-    const keptHint = `当前设定值保持 ${node.value ?? '原值'}${node.unit} 未被改动`
+    // 失败文案带自我纠正线索:区分「确定未写」与「可能已写但未证实」
+    // S15:回读不一致/无确认通道时,PLC 可能已经被改,不能再宣称"值未被改动"。
+    const uncertain = outcome.raw != null || outcome.ack === 'unverified'
+    const keptHint = uncertain
+      ? `写入未获证实,PLC 值可能已变更(原始值 ${outcome.raw ?? '-'})，请先读取核对后再决定是否重试`
+      : `当前设定值保持 ${node.value ?? '原值'}${node.unit} 未被改动`
     const retryHint = /忙|busy/i.test(outcome.message) ? '链路忙属瞬时状态,可稍后重试' : '可缩小步进幅度后重试'
     return { text: `下发失败:${outcome.message}(节点 ${node.name},物理量 ${tpl?.ch ?? node.templateKey},安全量程 ${node.min}~${node.max}${node.unit};${keptHint};${retryHint})`, isError: true }
   }

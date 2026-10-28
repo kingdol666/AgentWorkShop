@@ -35,6 +35,25 @@ export function setPeerVisibleLines(peer: WsPeer, visible: Set<string> | null): 
   (peer as WsPeer & { __awVisibleLines?: Set<string> | null }).__awVisibleLines = visible
 }
 
+/** S14:记录 peer 的用户身份,便于授权变更时就地刷新可见集(无需客户端重连) */
+export function setPeerIdentity(peer: WsPeer, user: { id: string, role: string }): void {
+  (peer as WsPeer & { __awPeerUser?: { id: string, role: string } }).__awPeerUser = user
+}
+
+/** S14:授权变更后重算该用户所有在线 peer 的产线可见集(撤权立即生效) */
+export async function refreshPeerVisibility(userId: string): Promise<void> {
+  const targets = [...peers()].filter(p => (p as WsPeer & { __awPeerUser?: { id: string } }).__awPeerUser?.id === userId)
+  if (targets.length === 0) return
+  try {
+    const { visibleLineIds } = await import('./permissions')
+    for (const peer of targets) {
+      const u = (peer as WsPeer & { __awPeerUser?: { id: string, role: string } }).__awPeerUser
+      if (u) setPeerVisibleLines(peer, visibleLineIds(u))
+    }
+  }
+  catch { /* 权限服务未就绪:保留旧可见集,下次重连刷新 */ }
+}
+
 function peerSeesLine(peer: WsPeer, lineId: string): boolean {
   const visible = (peer as WsPeer & { __awVisibleLines?: Set<string> | null }).__awVisibleLines
   if (visible == null) return true

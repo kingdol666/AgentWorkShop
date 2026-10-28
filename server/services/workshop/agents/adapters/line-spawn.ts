@@ -16,6 +16,29 @@ import { join } from 'node:path'
 
 const SHELL_META = /[\r\n;&|`<>$]/
 
+/**
+ * 平台自身凭据:不得随 process.env 继承给 harness 子进程。
+ * 引擎需要的 provider key 与 AW_ 身份变量由各 impl 的显式 env 传入(cleanEnv 或 bridgeEnv),
+ * 这里只剥离"平台会话/管理员口令/隧道令牌"这类与引擎无关的秘密。
+ */
+const PLATFORM_SECRET_ENV = [
+  'NUXT_SESSION_PASSWORD',
+  'AW_ADMIN_PASSWORD',
+  'AW_E2E_ADMIN_PASSWORD',
+  'AW_E2E_PASSWORD',
+  'AW_E2E_TOKEN',
+  'AW_E2E_ADMIN_TOKEN',
+  'SCHED_E2E_PASSWORD',
+  'AW_TUI_PASSWORD',
+  'ADMIN_TOKEN',
+  'CLOUDFLARE_TUNNEL_TOKEN',
+] as const
+
+function scrubPlatformSecrets(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const deny = new Set<string>(PLATFORM_SECRET_ENV)
+  return Object.fromEntries(Object.entries(env).filter(([k]) => !deny.has(k)))
+}
+
 /** 拒绝 shell 元字符(命令只能是纯可执行路径) */
 export function assertPlainExecutable(command: string): string {
   if (!command || SHELL_META.test(command)) {
@@ -87,7 +110,7 @@ export function spawnLineProcess(command: string, args: string[], options: LineS
   const { file, needsCmd } = resolveExecutable(command)
   const env = options.cleanEnv
     ? { ...options.env }
-    : { ...process.env, ...options.env }
+    : scrubPlatformSecrets({ ...process.env, ...options.env })
   if (needsCmd) {
     // Windows .cmd shim:固定包装器 'cmd.exe' + /d /s /c。
     // 可执行文件路径无条件引号包裹:无空格路径裸奔时,/s 模式的 cmd 会吞掉

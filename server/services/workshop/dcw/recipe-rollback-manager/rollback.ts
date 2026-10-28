@@ -16,6 +16,10 @@ export abstract class RecipeRollBackManagerRollback extends RecipeRollBackManage
     const record = this.repo.byId(recordId)
     if (!record)
       throw new AppError(404, ErrorCodes.NOT_FOUND, `优化记录不存在: ${recordId}`)
+    // 2026-10-28:回退写自身会生成 open 记录(from=回退前的问题值),再回退它会写回问题值。
+    if (record.rollbackOf) {
+      throw new AppError(409, ErrorCodes.CONFLICT, `记录 ${recordId} 是一次回退产生的记录,不允许再次作为回退目标(会把回退前的问题值写回)。请对节点/批次重新发起调控。`)
+    }
     const from = record.params[0]?.from
     if (from == null)
       throw new AppError(409, ErrorCodes.CONFLICT, `记录 ${recordId} 无基线值(首写无 prevValue),无法回退`)
@@ -29,11 +33,21 @@ export abstract class RecipeRollBackManagerRollback extends RecipeRollBackManage
     const node = getDcwNodeRepo().byId(nodeId)
     if (!node)
       throw new AppError(404, ErrorCodes.NOT_FOUND, `控制节点不存在: ${nodeId}`)
-    const anchor = toAnchorId ? this.repo.anchorById(toAnchorId) : this.repo.lastStableAnchor(nodeId)
+    // 2026-10-28:回退目标必须来自"正常写"的稳定锚。若最新锚本身就是回退写
+    // (prev=坏值,new=恢复值),直接取 prevValue 会把坏值再写回去。
+    const anchor = toAnchorId
+      ? this.repo.anchorById(toAnchorId)
+      : this.repo.listAnchors({ nodeId, limit: 200 }).find(a => a.source !== 'rollback' && a.prevValue != null && a.prevValue !== a.newValue)
     if (!anchor)
-      throw new AppError(409, ErrorCodes.CONFLICT, `节点「${node.name}」无可回退锚(账本无 prevValue≠newValue 的历史)`)
+      throw new AppError(409, ErrorCodes.CONFLICT, `节点「${node.name}」无可回退锚(账本无 prevValue≠newValue 的正常写历史)`)
+    if (anchor.nodeId !== nodeId) {
+      throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `目标锚 ${anchor.id} 属于节点 ${anchor.nodeId},不能用于节点 ${nodeId} 的回退`)
+    }
     if (anchor.prevValue == null)
       throw new AppError(409, ErrorCodes.CONFLICT, '目标锚无基线值(首写锚),无法回退')
+    if (typeof node.value === 'number' && anchor.prevValue === node.value && by !== 'agent') {
+      throw new AppError(409, ErrorCodes.CONFLICT, `节点「${node.name}」当前值已是回退目标 ${anchor.prevValue}${node.unit || ''},无需回退`)
+    }
     if (by === 'agent')
       this.checkRollbackAllowed(nodeId)
     return this.executeRollbackWrite(

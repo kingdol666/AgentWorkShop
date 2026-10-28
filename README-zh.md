@@ -28,7 +28,7 @@
 
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.8.5</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST 集成（镜像与直连双路径）· 数据分析台账（产线级权限隔离）· 工艺参数优化器（过程模型 → AML → OSQP 求解 → 治理下发）· **本体服务 + AI 先行模型闭环**（本体 · 孪生 · 求解器 · AML 采纳）· 104 个宿主工具 · 128 个运行时设置项 · 双语文档（简体中文 / English）</sub>
+<sub><b>v0.8.6</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST 集成（镜像与直连双路径）· 数据分析台账（产线级权限隔离）· 工艺参数优化器（过程模型 → AML → OSQP 求解 → 治理下发）· **本体服务 + AI 先行模型闭环**（本体 · 孪生 · 求解器 · AML 采纳）· 104 个宿主工具 · 128 个运行时设置项 · 双语文档（简体中文 / English）</sub>
 
 <br />
 
@@ -408,7 +408,7 @@ aw update --check                      # 只报告，不安装
 npm install -g agentworkshop@latest    # 手动等效
 ```
 
-版本遵循 semver。每次 `aw start` 都会校验配置根，并把 `home` 之前的旧版 `data/` 布局迁移进来（以最新文件为准），因此数据可以跨版本存活。SQLite schema 迁移在服务端启动时执行。当前版本：**v0.8.4**——见[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)。
+版本遵循 semver。每次 `aw start` 都会校验配置根，并把 `home` 之前的旧版 `data/` 布局迁移进来（以最新文件为准），因此数据可以跨版本存活。SQLite schema 迁移在服务端启动时执行。当前版本：**v0.8.6**——见[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)。
 
 ### 第一次「Agent × 产线」会话（约 2 分钟）
 
@@ -580,6 +580,7 @@ curl http://localhost:3000/api/workshop/channels \
 - `admin` / `editor` 为运营角色，不受授权约束（全量全权）。
 - 普通用户**默认无权**——未授权前看不到任何产线数据。
 - 强制点在数据面：列表接口按授权过滤，写控/下发接口返回人类可读的 403，Agent↔节点绑定校验产线授权（数采需仅查看+，写控需可操控）。
+- Agent 写授权双轨：`kind='dcw'` 节点绑定 = 点位写授权（trial/apply 的覆盖集须 ⊆ 绑定节点面，跟设备走、换配方不停摆）；`kind='recipe'` 配方绑定 = 配方操作权（含版本写入/回退）。两种绑定取并集；节点绑定不授予配方版本权，直写工具仍恒拒，全部写入仍经四层限界/运行门/HITL/逐参数 ACK。
 - 插件经 `ctx.permissions`（`lineMode` / `visibleLineIds` / `listGrants` / `setGrants`）获得同一能力面，并有 `permissions:changed` 生命周期钩子；SDK REST 客户端提供 `client.permissions.overview()` / `client.permissions.set(...)`。
 
 ### 执行模式
@@ -635,6 +636,7 @@ SUBMITTED ─▶ ASSIGNED ─▶ WORKING ─▶ WAITING ─▶ COMPLETED
 
 | 套件 | 最新结果 | 覆盖 | 复现 |
 |---|---|---|---|
+| `e2e-multiexpert-remediation-real.mjs` | **17 / 17**（2026-10-28，`.output` 生产构建 + 真实 `omp` + 本机 **Qwen3.5-9B**，**worker 身份**） | 建 AgentChannel(lead+worker) → worker 绑 DAQ/DCW → **运行时提示词注入**(执行模式卡 + 节点语义卡:量程/单步/手动确认) → 工具注入面按绑定差异化 → `daq_query` 真实取数 → `recipe_trial` 挂 HITL → 人工批准 → **ACK 设备证实** → 节点值变更/版本不变/账本新增/数采可查 | `node scripts/e2e-multiexpert-remediation-real.mjs`（需 LM Studio `127.0.0.1:1234`） |
 | `real-injection-closed-loop.mjs` | **双 goal 全部 COMPLETED / 0 失败**（2026-09-24，真实 PLC 模拟器 + 真实 `omp` 团队） | 从模拟器供给注塑产线（11 个数控 + 14 个数采节点）→ 真实 AgentTeam(lead/分析/优化) → 受治理写入且**间隔 65.8s ≥ 60s 策略** → 数采复测 → `qualityOk`、判定 `keep` | `AW_BASE=<base> SIM_BASE=http://127.0.0.1:4010 AW_TOKEN=<token> node scripts/real-injection-closed-loop.mjs` |
 | `_run-real-injection-fifo-goals.mjs` | exit 0（2026-09-24） | **FIFO 根队列多任务串行**：GOAL-2 仅在 GOAL-1 收口后派发；角色门控切换；两次受治理写入间隔 65.04s；两条记录均判定；账本 4 条锚 | `AW_BASE=<base> SIM_BASE=… AW_TOKEN=<token> node scripts/_run-real-injection-fifo-goals.mjs` |
 | `e2e-plc-plugin-closedloop.mjs` | 核心 Stage A–D 全绿（2026-09-24） | PLC 模拟器 Modbus 16040 真实供给 → 数采交叉核对（AW 采样 197 vs 模拟器寄存器 197.37）→ HITL 闭环写 3 区（寄存器 40021/40023/40025 = 210，真实写穿）→ `dcw_judge` keep；插件段 E–H 需外部诊断服务，按约定显式 SKIP | `AW_BASE=<base> KB_BASE=http://127.0.0.1:8771 AW_E2E_USERS_DB=<home>/data/users.sqlite node scripts/e2e-plc-plugin-closedloop.mjs` |

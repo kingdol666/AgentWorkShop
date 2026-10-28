@@ -11,6 +11,7 @@ import { TSDB_WRITE_RETRIES, log } from './helpers'
 import { findDaqTemplate } from '../daq-templates'
 import { getDaqHostPorts } from '../host-ports'
 import { getTsdb } from '../storage'
+import { getDcwNodeRepo } from '../../dcw/dcw-node.repo'
 
 export abstract class DaqControllerTsdbTwin extends DaqControllerSweepAlarms {
   /** 网关消费泵:队列帧按节点分发回其运行时(乱序防御/状态派生/下发门控在 runtime)。
@@ -131,11 +132,30 @@ export abstract class DaqControllerTsdbTwin extends DaqControllerSweepAlarms {
   /** 遥测 WS 推送(1s/设备节流):孪生状态/遥测事件化直推,前端全量轮询降级为断线兜底 */
   protected twinPushAt = new Map<string, number>()
 
+  /** 孪生绑定节点所属产线(唯一时返回;多线/未绑定 → null,保持全局语义) */
+  private twinLineId(twinId: string): string | null {
+    try {
+      const lines = new Set<string>()
+      for (const n of this.repo.all()) {
+        if (n.lineId && (n.deviceIds ?? []).includes(twinId)) lines.add(n.lineId)
+      }
+      for (const n of getDcwNodeRepo().all()) {
+        if (n.lineId && (n.deviceIds ?? []).includes(twinId)) lines.add(n.lineId)
+      }
+      return lines.size === 1 ? [...lines][0]! : null
+    }
+    catch { return null }
+  }
+
   protected pushTwinTelemetry(twinId: string): void {
     const now = Date.now()
     if (now - (this.twinPushAt.get(twinId) ?? 0) < 1000) return
     this.twinPushAt.set(twinId, now)
     const payload = getDaqHostPorts()?.telemetry.scenePayload(twinId)
-    if (payload) this.broadcast?.('device.updated', payload)
+    if (payload) {
+      // S14:补产线归属,让 scene-events 按 peer 可见集过滤;唯一产线才补,多线保持全局
+      const lineId = this.twinLineId(twinId)
+      this.broadcast?.('device.updated', lineId ? { ...(payload as object), lineId } : payload)
+    }
   }
 }

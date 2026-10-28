@@ -1,0 +1,257 @@
+{
+  "at": "2026-10-28T06:16:07.577Z",
+  "env": {
+    "base": "http://127.0.0.1:3983",
+    "home": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-node-binding-e2e-nb0kmd\\home",
+    "devLog": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-node-binding-e2e-nb0kmd\\dev.log",
+    "mode": "isolated"
+  },
+  "summary": {
+    "total": 40,
+    "passed": 40,
+    "failed": 0,
+    "verdict": "PASS"
+  },
+  "results": [
+    {
+      "id": "T0",
+      "name": "隔离实例启动 + workshop ready",
+      "pass": true,
+      "detail": "port=3983"
+    },
+    {
+      "id": "T0b",
+      "name": "admin 注册",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "T0c",
+      "name": "普通用户创建+登录",
+      "pass": true,
+      "detail": "create=200 id=0a6b3e49-8502-49b3-8895-d1187734c063"
+    },
+    {
+      "id": "T1",
+      "name": "产线/参数模板/3 数控节点/产品/配方A 就绪",
+      "pass": true,
+      "detail": "{\"line\":\"ln-5d9d4463\",\"tpl\":\"cw-9389c973\",\"n1\":\"dw-e9631c89\",\"n2\":\"dw-e3b1c858\",\"n3\":\"dw-aa841225\",\"recipeA\":\"rc-6fb73566\"}"
+    },
+    {
+      "id": "T1b",
+      "name": "产线开跑(配方A 整批下发,活动批次建立)",
+      "pass": true,
+      "detail": "status=200 msg=ok"
+    },
+    {
+      "id": "T1c",
+      "name": "产线 controlMode 切 auto(confirm)",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "T2",
+      "name": "频道绑线 + lead + 3 worker",
+      "pass": true,
+      "detail": "{\"channelId\":\"8b2de808-d87b-4b62-9fd8-d180971e8147\",\"leadId\":\"18c74677-0481-4fc5-8562-5fae98da221b\",\"w1\":\"ac0ab5c5-0634-48b4-9aad-70c17d7fdd51\",\"w2\":\"156cd6f1-2822-4778-b2be-4b8a35b41166\",\"w3\":\"732c7b95-d65a-4ad7-8bd7-ea0288327737\"}"
+    },
+    {
+      "id": "T2b",
+      "name": "Agent token 自证可用(4 个独立 token)",
+      "pass": true,
+      "detail": "{\"lead\":36,\"w1\":36,\"w2\":36,\"w3\":36}"
+    },
+    {
+      "id": "T3",
+      "name": "POST kind=dcw 绑定 → 200 且首绑强制 manual(modeForced 回执)",
+      "pass": true,
+      "detail": "status=200 mode=manual forced=manual msg=ok"
+    },
+    {
+      "id": "T3b",
+      "name": "只读用户建 dcw 绑定 → 403(写授权面需 operate)",
+      "pass": true,
+      "detail": "status=403 code=LINE_READONLY msg=该绑定涉及写控节点,需对产线「ln-5d9d4463」拥有可操控权限(当前:仅查看)"
+    },
+    {
+      "id": "T3c",
+      "name": "绑定 manual→auto 无 confirm → 400 MODE_CONFIRM_REQUIRED",
+      "pass": true,
+      "detail": "status=400 code=MODE_CONFIRM_REQUIRED"
+    },
+    {
+      "id": "T3d",
+      "name": "绑定 manual→auto 携 confirm:true → 200 auto",
+      "pass": true,
+      "detail": "status=200 mode=auto"
+    },
+    {
+      "id": "T3e",
+      "name": "工具注入面带点位写授权清单(模型无需探测绑定面)",
+      "pass": true,
+      "detail": "nual 或产线 manual 时挂 HITL 等人工批准——hypothesis 必填,即本次试验的理由与判断依据。整批一次落产线;复测判读后有进步用 recipe_update 固化,劣化用 recipe_rollback(dispatch=true) 统一回退。受同线试验节拍(默认 ≥5 分钟)与四层限界卡控。\n\n本 Agent 的数控节点写授权面(点位写授权;可在这些节点上 trial/apply,换配方仍有效):授权节点1-nb0kmd(dw-e9631c89,℃)"
+    },
+    {
+      "id": "T4",
+      "name": "频道切 manual(降险方向免 confirm)",
+      "pass": true,
+      "detail": "status=200 mode=manual"
+    },
+    {
+      "id": "T4b",
+      "name": "频道 manual + dcw auto 绑定 → trial 挂起人工审批",
+      "pass": true,
+      "detail": "card=ap-1b639402"
+    },
+    {
+      "id": "T4c",
+      "name": "人工批准后节点绑定 trial 执行成功(ACK 证实)",
+      "pass": true,
+      "detail": "试验已整批下发并全部设备证实(1/1,批次 rr-9ab03):授权节点1-nb0kmd→55℃ [证实✓]。假设:E2E:频道 manual 钳位对节点绑定 Agent 生效。\n人工附言:E2E 批准:频道 manual 钳位验证注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id,"
+    },
+    {
+      "id": "T4d",
+      "name": "频道切回 auto(confirm)",
+      "pass": true,
+      "detail": "status=200 mode=auto"
+    },
+    {
+      "id": "T5",
+      "name": "trial 覆盖集 ⊆ 节点绑定面 → 成功(line_id 解析活动配方)",
+      "pass": true,
+      "detail": "试验已整批下发并全部设备证实(1/1,批次 rr-fc714):授权节点1-nb0kmd→56℃ [证实✓]。假设:E2E:节点绑定覆盖集内。注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…)"
+    },
+    {
+      "id": "T5b",
+      "name": "trial 含未授权节点 → 写面拒绝且点名节点",
+      "pass": true,
+      "detail": "工具调用被拒(写授权校验,recipe_trial):参数节点「dw-e3b1c858」不在你的写授权面内(节点「授权节点2-nb0kmd」,归属产线 ln-5d9d4463)。\n该节点不在你的写授权面(节点绑定=点位写授权;配方绑定=配方操作权)。你的可写节点:dw-e9631c89;你已绑定的配方参数节点也在此列。如需写入,请让用户或 lead 为你绑定该数控节点(dcw),或改用上述已授权节点;若要对整批配方操作,可请求绑定配方(kind='recipe')。"
+    },
+    {
+      "id": "T5c",
+      "name": "apply 整批(2 参数)仅 1 节点绑定 → 拒绝并给出补绑指引",
+      "pass": true,
+      "detail": "无权下发配方「配方A-nb0kmd」:本次覆盖的节点中有 1 个不在你的数控节点绑定面内 —— 授权节点2-nb0kmd(dw-e3b1c858)。你已绑定的可写节点:授权节点1-nb0kmd(dw-e9631c89)。请让用户或 lead 为你补绑这些节点(节点绑定 = 点位写授权),或改用已授权节点重试;若要对整批配方操作,也可改为绑定配方(kind='recipe')。"
+    },
+    {
+      "id": "T5d",
+      "name": "recipe_update(版本操作)纯 dcw 绑定 → 拒绝",
+      "pass": true,
+      "detail": "无权参数写入配方「配方A-nb0kmd」(rc-6fb73566):节点绑定(dcw)只授予参数下发/试验权(点位授权),配方版本操作(参数保存/回退)需要绑定该配方(kind='recipe',配方级操作权)。请让用户或 lead 为你绑定该配方(recipe 绑定首绑默认 manual,每次动作需人工批准)。"
+    },
+    {
+      "id": "T6",
+      "name": "补齐第二节点绑定(auto)",
+      "pass": true,
+      "detail": "status=200 id=nb-dbbf0155"
+    },
+    {
+      "id": "T6b",
+      "name": "apply 全覆盖 → 成功(整批 ACK 证实)",
+      "pass": true,
+      "detail": "配方「配方A-nb0kmd」v1 已整批下发并全部设备证实(2/2,批次 rr-d7b8f)。用 daq_query 复测确认工艺响应。"
+    },
+    {
+      "id": "T7",
+      "name": "删除 n1 绑定 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "T7b",
+      "name": "撤销 n1 绑定后 trial n1 → 拒绝(收权即失活)",
+      "pass": true,
+      "detail": "工具调用被拒(写授权校验,recipe_trial):参数节点「dw-e9631c89」不在你的写授权面内(节点「授权节点1-nb0kmd」,归属产线 ln-5d9d4463)。\n该节点不在你的写授权面(节点绑定=点位写授权;配方绑定=配方操作权)。你的可写节点:dw-e3b1c858;你已绑定的配方参数节点也在此列。如需写入,请让用户或 lead 为你绑定该数控节点(dcw),或改用上述已授权节点;若要对整批配方操作,可请求绑定配方("
+    },
+    {
+      "id": "T8",
+      "name": "换配方:停 A 开 B(活动批次切换)",
+      "pass": true,
+      "detail": "stop=200 start=200 recipeB=rc-9565bdef"
+    },
+    {
+      "id": "T8b",
+      "name": "为配方B 绑定 n1+n3 点位授权",
+      "pass": true,
+      "detail": "status=200/200"
+    },
+    {
+      "id": "T8c",
+      "name": "换配方后同一 Agent 对 B 的已授权节点 trial 成功(无新配方绑定)",
+      "pass": true,
+      "detail": "试验已整批下发并全部设备证实(1/1,批次 rr-93325):授权节点3-nb0kmd→66℃ [证实✓]。假设:E2E:换配方后节点绑定继续生效。注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC 整"
+    },
+    {
+      "id": "T8d",
+      "name": "w2 绑定配方A(配方级操作权)",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "T8e",
+      "name": "配方绑定 Agent 对 B 仍被拒(授权是配方级,不随换配方漂移)",
+      "pass": true,
+      "detail": "无权试验下发配方「配方B-nb0kmd」:本次覆盖的节点中有 1 个不在你的数控节点绑定面内 —— 授权节点1-nb0kmd(dw-e9631c89)。你已绑定的可写节点:(无)。请让用户或 lead 为你补绑这些节点(节点绑定 = 点位写授权),或改用已授权节点重试;若要对整批配方操作,也可改为绑定配方(kind='recipe')。"
+    },
+    {
+      "id": "T9",
+      "name": "lead 委派 dcw 节点给 worker(team_grant_nodes)成功",
+      "pass": true,
+      "detail": "已把 1 条节点授权授予 732c7b95-d65a-4ad7-8bd7-ea0288327737:\n  - 写控 dw-e9631c89(mode=auto)\n来源:lead 绑定面内的节点;worker 现在可用 my_industrial_nodes 查看自己的授权。"
+    },
+    {
+      "id": "T9b",
+      "name": "委派落库:worker 绑定面出现 n1(dcw)",
+      "pass": true,
+      "detail": "[{\"id\":\"nb-eae68dde\",\"agentId\":\"732c7b95-d65a-4ad7-8bd7-ea0288327737\",\"nodeId\":\"dw-e9631c89\",\"kind\":\"dcw\",\"mode\":\"auto\",\"grantedByAgentId\":\"18c74677-0481-4fc5-8562-5fae98da221b\",\"grantedAt\":\"2026-10-28T14:16:07.312+08:00\",\"createdAt\":\"2026-10-28T14:16:07.312+08:00\"}]"
+    },
+    {
+      "id": "T9c",
+      "name": "频道 manual(为在飞审批收回测试)",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "T9d",
+      "name": "委派绑定(auto)在频道 manual 下仍挂人工审批",
+      "pass": true,
+      "detail": "card=ap-de736560"
+    },
+    {
+      "id": "T9e",
+      "name": "lead 收回委派(dcw 写授权)",
+      "pass": true,
+      "detail": "已收回 1 条授权\n  - dcw dw-e9631c89"
+    },
+    {
+      "id": "T9f",
+      "name": "收回后在飞审批按拒收敛(trial 未执行)",
+      "pass": true,
+      "detail": "人工未批准本次试验下发。人工指导:绑定已解除,审批失效。请按人工指导修订候选参数(必要时先 recipe_update 调整基线),然后重新提交 recipe_trial。"
+    },
+    {
+      "id": "T9g",
+      "name": "审批面板无残留 pending(收回即失活)",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "id": "T9h",
+      "name": "收回后再提交 → 写面拒绝",
+      "pass": true,
+      "detail": "工具调用被拒(写授权校验,recipe_trial):参数节点「dw-e9631c89」不在你的写授权面内(节点「授权节点1-nb0kmd」,归属产线 ln-5d9d4463)。\n该节点不在你的写授权面(节点绑定=点位写授权;配方绑定=配方操作权)。你的可写节点:(无);你已绑定的配方参数节点也在此列。如需写入,请让用户或 lead 为你绑定该数控节点(dcw),或改用上述已授权节点;若要对整批配方操作,可请求绑定配方(kind='re"
+    },
+    {
+      "id": "T10",
+      "name": "频道绑 A 线 → 成员绑定 B 线节点被拒(403 产线隔离)",
+      "pass": true,
+      "detail": "status=403 code=LINE_SCOPE_MISMATCH"
+    },
+    {
+      "id": "T10b",
+      "name": "直写工具 dcw_control 仍不可达(未注册/禁写)",
+      "pass": true,
+      "detail": "直接节点写控已禁用(权限模型 v2):Agent 不再直接操作数控节点。请改用绑定的配方完成同样动作 —— recipe_update(参数写入,生成新版本)/ recipe_apply(整批下发)/ recipe_trial(候选整批试验,不写版本)/ recipe_rollback(回退);均为带理由与 HITL 的配方面操作,治理联锁(量程/步长/限速)照常生效。"
+    }
+  ]
+}

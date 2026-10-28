@@ -42,7 +42,7 @@ export async function handleDispatchTask(args: Record<string, unknown>, ws: Agen
     const grantNodeIds = (Array.isArray(rawGrant) ? rawGrant : String(rawGrant).split(',')).map(x => String(x ?? '').trim()).filter(Boolean)
     if (!grantNodeIds.length) return { text: 'grant_node_ids 为空:要么不传,要么给出至少一个节点 id。', isError: true }
     const grantMode = args.grant_mode === 'manual' || args.grant_mode === 'auto' ? (args.grant_mode as 'auto' | 'manual') : undefined
-    const grant = await grantNodesForDispatch(identity, assigneeId, grantNodeIds, grantMode, ws)
+    const grant = await grantNodesForDispatch(identity, assigneeId, grantNodeIds, grantMode, ws, args.grant_confirm)
     if (!grant.ok) return { text: `未派发:${grant.text}\n请先用 team_grant_nodes 确认你持有这些节点,或修正 node id 后重试。`, isError: true }
     grantNote = `\n${grant.text}`
   }

@@ -35,6 +35,8 @@ export class MqttQueueAdapter implements DaqQueuePort {
   private consumers = new Set<DaqConsumer>()
   published = 0
   received = 0
+  /** topic 与 payload.nodeId 不一致而丢弃的帧数(S13 身份校验) */
+  identityMismatch = 0
   /** 断连窗口未发布计数(仪表可见的队列层丢弃) */
   lostCount = 0
   /** 断连离线缓冲(重连后按原序补发;带上限防内存无限涨) */
@@ -82,6 +84,16 @@ export class MqttQueueAdapter implements DaqQueuePort {
     this.client.on('message', (topic, payload) => {
       try {
         const env = JSON.parse(payload.toString()) as DaqSampleEnvelope
+        // 2026-10-28(S13):topic 的 nodeId 与 payload.nodeId 必须一致 ——
+        // 否则任何能发布到 broker 的进程都能冒充任意节点注入样本。
+        const topicNode = String(topic ?? '').split('/')[2] ?? ''
+        if (topicNode && env.nodeId && topicNode !== env.nodeId) {
+          this.identityMismatch++
+          if (this.identityMismatch <= 5 || this.identityMismatch % 100 === 0) {
+            log.warn(`[daq-mqtt] 丢弃身份不一致帧:topic=${topic} payload.nodeId=${env.nodeId}(累计 ${this.identityMismatch})`)
+          }
+          return
+        }
         this.received++
         for (const fn of this.consumers) fn(env)
       }

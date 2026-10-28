@@ -162,14 +162,17 @@ export function decodeRegisters(data: number[], dataType: string, byteOrder: str
     const raw = data[0] ?? 0
     return dataType === 'int16' ? (raw << 16) >> 16 : raw
   }
-  // 字节序约定(寄存器字 w0=[A B], w1=[C D],float32 内存字节序按 4 字节解):
-  //   big = ABCD(w0 高字在前,w0/w1 各自大端) —— Modbus 标准大端,最常用
-  //   little = DCBA(全小端:w1 字节反转在前)
-  //   wordSwap = CDAB(字交换:每字内部仍大端,低字在前)
+  // 字节序约定(值字节 A B C D = MSB..LSB;寄存器字 w0/w1 各按"高字节在前"读):
+  //   big      = ABCD → w0=[A B], w1=[C D] —— Modbus 标准大端,最常用
+  //   wordSwap = CDAB → w0=[C D], w1=[A B](仅交换字序)
+  //   little   = DCBA → w0=[D C], w1=[B A](整 32 位小端:每字字节反转 + 字序反转)
+  // 2026-10-28 审查 P0-1:旧 little 分支实际解出 BADC(与注释 DCBA、写侧 encodeWords
+  // 均不一致),真实 DCBA/CDAB 设备会静默读成 1e-41 量级错值。三序现与
+  // dcw/drivers/shared.ts:encodeWords 严格互逆,并与 UI 目录标签同义。
   const hi = (x: number) => (x >> 8) & 0xFF
   const lo = (x: number) => x & 0xFF
   let b: number[]
-  if (byteOrder === 'little') b = [hi(data[1]!), lo(data[1]!), hi(data[0]!), lo(data[0]!)].reverse()
+  if (byteOrder === 'little') b = [lo(data[1]!), hi(data[1]!), lo(data[0]!), hi(data[0]!)]
   else if (byteOrder === 'wordSwap') b = [hi(data[1]!), lo(data[1]!), hi(data[0]!), lo(data[0]!)]
   else b = [hi(data[0]!), lo(data[0]!), hi(data[1]!), lo(data[1]!)]
   const buf = Buffer.from(b)

@@ -232,6 +232,18 @@ export default function workshopPlugin(nitroApp: {
       ])
       const { broadcastSceneEvent } = await import('../services/workshop/scene-events')
       bindDaqHost(broadcastSceneEvent)
+      // S10 启动屏障:等 daq 插件把后端装配完(成功或明确降级),再决定是否开采。
+      // 此前直接 resumeAll 会让采样先写进占位 SQLite/进程内队列,切库后不迁移。
+      const g = globalThis as unknown as {
+        __daqInfraReady?: Promise<void>
+        __daqInfraStatus?: () => { degraded: boolean, warning?: string }
+      }
+      if (g.__daqInfraReady) await g.__daqInfraReady
+      const infra = g.__daqInfraStatus?.()
+      if (infra?.degraded) {
+        console.warn(`[workshop] DAQ 基础设施降级,跳过 resumeAll:${infra.warning ?? '后端不可用'}`)
+        return
+      }
       const st = getDaqController().resumeAll()
       console.log(`[workshop] DAQ 采集补挂完成(running=${st.running},宿主端口已装配)`)
     }

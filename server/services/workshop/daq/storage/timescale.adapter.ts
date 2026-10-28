@@ -229,15 +229,54 @@ export class TimescaleAdapter implements TsdbPort {
       return out
     }
     const { rows } = await this.pool.query(
-      `SELECT node_id, ts, value FROM daq_samples WHERE ${whereSql} ORDER BY ts ASC LIMIT $${params.length + 1}`,
+      `SELECT node_id, ts, value, state, ingested_at FROM daq_samples WHERE ${whereSql} ORDER BY ts ASC LIMIT $${params.length + 1}`,
       [...params, limit],
     )
-    for (const r of rows as Array<{ node_id: string, ts: string, value: number }>) {
+    for (const r of rows as Array<{ node_id: string, ts: string, value: number, state: string | null, ingested_at: string | number | null }>) {
       const list = out.get(String(r.node_id)) ?? []
-      list.push({ at: tsToMs(r.ts), value: Number(r.value) })
+      // D-P1-1(2026-10-28 审查):state/ingested_at 与 sqlite 同口径返回;
+      // 否则生产后端上的坏点清洗(cleanPoints)与入库水位判定是静默空操作。
+      list.push({
+        at: tsToMs(r.ts),
+        value: Number(r.value),
+        state: String(r.state ?? 'ok'),
+        ...(r.ingested_at == null ? {} : { ingestedAt: Number(r.ingested_at) }),
+      })
       out.set(String(r.node_id), list)
     }
     return out
+  }
+
+  /**
+   * 逐节点 raw 分页(D-P1-1,2026-10-28 审查:此前后端缺 queryTaggedPage,
+   * 训练/导出在 Timescale 上退化为 query() 截断)。
+   * 语义与 sqlite.adapter 完全一致:稳定 ASC、游标严格大于 afterTs、每页限额、
+   * done=false 时 nextCursor = 本页最后 at。
+   */
+  async queryTaggedPage(nodeId: string, q: import('./tsdb-port').TsdbPageQuery = {}): Promise<import('./tsdb-port').TsdbPage> {
+    if (!this.pool) return { nodeId, points: [], nextCursor: null, done: true }
+    const limit = Math.max(1, Math.min(q.limit ?? 5000, 500_000))
+    const from = Math.max(q.fromMs ?? 0, (q.afterTs ?? -1) + 1)
+    const to = q.toMs ?? Date.now()
+    const withState = q.withState !== false
+    const args = [nodeId, new Date(from).toISOString(), new Date(to).toISOString(), limit]
+    const rows = withState
+      ? (await this.pool.query(
+          'SELECT ts, value, state, ingested_at FROM daq_samples WHERE node_id = $1 AND ts >= $2 AND ts <= $3 ORDER BY ts ASC LIMIT $4',
+          args,
+        )).rows
+      : (await this.pool.query(
+          'SELECT ts, value FROM daq_samples WHERE node_id = $1 AND ts >= $2 AND ts <= $3 ORDER BY ts ASC LIMIT $4',
+          args,
+        )).rows
+    const points = (rows as Array<{ ts: string, value: number, state?: string | null, ingested_at?: string | number | null }>).map(r => ({
+      at: tsToMs(r.ts),
+      value: Number(r.value),
+      ...(withState ? { state: String(r.state ?? 'ok') } : {}),
+      ...(r.ingested_at == null ? {} : { ingestedAt: Number(r.ingested_at) }),
+    }))
+    const done = points.length < limit
+    return { nodeId, points, nextCursor: done ? null : points[points.length - 1]?.at ?? null, done }
   }
 
   async latest(): Promise<Map<string, DaqSampleRow>> {

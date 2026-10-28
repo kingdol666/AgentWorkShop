@@ -42,6 +42,8 @@ export async function handleGrantNodes(identity: HostToolBridgeContext['identity
       nodeIds,
       members: await membersOf(ws),
       mode,
+      // B-P1-3:mode=auto 摘除逐次人工审批,须显式风险确认(与 REST 同语义)
+      confirm: args.confirm,
     })
     const bindings = applyDelegation(plan, identity.agentId)
     return {
@@ -84,7 +86,7 @@ export interface DispatchGrantResult {
  * 派发时随任务授予节点(dispatch_task 的 grant_node_ids;lead 专属)。
  * fail-closed:任一节点不在 lead 绑定面 → 整单失败,任务不创建。
  */
-export async function grantNodesForDispatch(identity: HostToolBridgeContext['identity'], assigneeId: string, nodeIds: string[], mode: 'auto' | 'manual' | undefined, ws: MembersView): Promise<DispatchGrantResult> {
+export async function grantNodesForDispatch(identity: HostToolBridgeContext['identity'], assigneeId: string, nodeIds: string[], mode: 'auto' | 'manual' | undefined, ws: MembersView, confirm?: unknown): Promise<DispatchGrantResult> {
   try {
     const plan = planDelegation({
       leaderAgentId: identity.agentId,
@@ -93,6 +95,8 @@ export async function grantNodesForDispatch(identity: HostToolBridgeContext['ide
       nodeIds,
       members: await membersOf(ws),
       mode,
+      // B-P1-3:随任务授予同样不得绕过 auto 的显式确认(dispatch_task.grant_confirm)
+      confirm,
     })
     const bindings = applyDelegation(plan, identity.agentId)
     return { ok: true, text: `随任务授予 ${bindings.length} 条节点授权 → ${assigneeId}${summaryText(bindings)}` }

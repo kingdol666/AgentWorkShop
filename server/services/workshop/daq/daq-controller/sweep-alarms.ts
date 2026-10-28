@@ -118,6 +118,8 @@ export abstract class DaqControllerSweepAlarms extends DaqControllerIngest {
     const payload = {
       id, nodeId: node.id, nodeName: node.name, metric,
       value, rule, threshold, escalation: 0, createdAt,
+      // S14:告警帧必须带产线归属,否则 scene-events 会当作"线无关"广播给所有 peer
+      lineId: node.lineId || null,
     }
     this.broadcast?.('daq.alarm', payload)
     notifyAlarm(payload)
@@ -143,7 +145,7 @@ export abstract class DaqControllerSweepAlarms extends DaqControllerIngest {
 
   /** alarm 恢复沿:广播恢复(报警保持 open 待人工 ack) */
   protected handleAlarmRecover(node: DaqNode, value: number): void {
-    this.broadcast?.('daq.alarm.changed', { nodeId: node.id, nodeName: node.name, recovered: true, value, at: new Date().toISOString() })
+    this.broadcast?.('daq.alarm.changed', { nodeId: node.id, nodeName: node.name, recovered: true, value, at: new Date().toISOString(), lineId: node.lineId || null })
   }
 
   /** 报警确认(HITL 闭环的人为一步;幂等:已确认返回 false) */

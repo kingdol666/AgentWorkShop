@@ -42,6 +42,9 @@ export interface ToolVerifySpec {
   nodeLists?: string[]
   /** 深路径节点引用(如 'params[].node_id' / 'packages[].params[].node_id') */
   deepNodeRefs?: string[]
+  /** 深路径节点引用,要求落在**写授权面** W(a)=dcw 绑定节点 ∪ 绑定配方参数节点
+   *  (2026-10-28 节点级写授权:配方 trial/update 的 params[].node_id) */
+  writeNodeRefs?: string[]
   /** 链式引用(dataset_id/job_id/model_id/plan_id/scene_id/binding_id/run_id/recommendation_id) */
   chained?: ToolChainRule[]
   /** 只读工具:节点只要归属可读产线即可引用(与频道绑线只读扩权同口径;写工具不得开启) */

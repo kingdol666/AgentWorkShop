@@ -67,6 +67,8 @@ export function notifyGrantsChanged(userId: string): void {
     // 延迟动态导入避免与 scene-events 循环依赖
     void import('@/server/services/workshop/scene-events').then((m) => {
       m.broadcastSceneEvent('permissions.changed', { userId, at: new Date().toISOString() })
+      // S14:已连接的 peer 就地重算可见集(撤权后不必等重连)
+      void m.refreshPeerVisibility(userId)
     }).catch(() => {})
   }
   catch { /* 广播失败不影响授权写入 */ }

@@ -23,17 +23,20 @@ function load(): { nodes: DaqNode[], migrated: number } {
     let migrated = 0
     const nodes = (parsed as Record<string, unknown>[]).map((r) => {
       const node = DaqNode.fromRow(r)
-      // P0-5 启动迁移:旧命名归一(modbus→modbus-tcp 等);无法归一的未知 kind
-      // 降级 mock 并打标(fail-visible,不砖启动)—— 该节点采样路径显式失败待重配。
+      // P0-5 启动迁移:旧命名归一(modbus→modbus-tcp 等)。
+      // S11(2026-10-28):未知 kind 保留原名并显式标记不可用,**绝不降级 mock** ——
+      // 真实节点被悄悄换成假数据会污染训练/质量链;采样由 resolveDaqDriver 显式失败。
       if (r.driver != null) {
         const m = migrateDriverKind(String(r.driver))
-        if (m.kind !== node.driver) {
+        if (m.unknown) {
           node.driver = m.kind
           migrated++
-          if (m.downgraded) {
-            node.lastError = `驱动「${String(r.driver)}」未注册,已降级 mock —— 请重新配置节点驱动后重采`
-            log.warn(`[daq] 节点 ${node.id}(${node.name}) 驱动「${String(r.driver)}」未注册,已降级 mock`)
-          }
+          node.lastError = `驱动「${String(r.driver)}」未注册 —— 已拒绝采样,请安装对应驱动插件或重新配置节点驱动`
+          log.warn(`[daq] 节点 ${node.id}(${node.name}) 驱动「${String(r.driver)}」未注册,已拒绝采样(不降级 mock)`)
+        }
+        else if (m.kind !== node.driver) {
+          node.driver = m.kind
+          migrated++
         }
       }
       return node

@@ -124,8 +124,8 @@ export const DCW_DRIVERS: DcwDriverMeta[] = [
       ] },
       { key: 'byteOrder', label: '字节序', type: 'select', default: 'big', options: [
         { value: 'big', label: '大端(AB CD)' },
-        { value: 'little', label: '小端(CD AB)' },
-        { value: 'wordSwap', label: '字交换(CD AB / 交换单字)' },
+        { value: 'little', label: '小端(DC BA / 全字节反转)' },
+        { value: 'wordSwap', label: '字交换(CD AB / 仅换字序)' },
       ] },
       { key: 'engMin', label: '工程量程下限', type: 'number', hint: '线性换算:eng ∈ [engMin, engMax] ↔ raw ∈ [rawMin, rawMax];float32 且未填原始量程时 raw=eng' },
       { key: 'engMax', label: '工程量程上限', type: 'number' },
@@ -167,8 +167,8 @@ export const DCW_DRIVERS: DcwDriverMeta[] = [
       ] },
       { key: 'byteOrder', label: '字节序', type: 'select', default: 'big', options: [
         { value: 'big', label: '大端(AB CD)' },
-        { value: 'little', label: '小端(CD AB)' },
-        { value: 'wordSwap', label: '字交换(CD AB / 交换单字)' },
+        { value: 'little', label: '小端(DC BA / 全字节反转)' },
+        { value: 'wordSwap', label: '字交换(CD AB / 仅换字序)' },
       ] },
       { key: 'engMin', label: '工程量程下限', type: 'number', hint: '线性换算:eng ∈ [engMin, engMax] ↔ raw ∈ [rawMin, rawMax];float32 且未填原始量程时 raw=eng' },
       { key: 'engMax', label: '工程量程上限', type: 'number' },

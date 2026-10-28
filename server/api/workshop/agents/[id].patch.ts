@@ -9,6 +9,7 @@ import { zValidator } from '../../../utils/validate'
 import { defineApiHandler } from '../../../utils/response'
 import { AppError } from '../../../utils/errors'
 import { getWorkshopManager } from '../../../plugins/workshop'
+import { assertSpawnConfigAllowed } from '../../../services/workshop/agents/harness-spawn-policy'
 
 const patchAgentSchema = z.object({
   name: z.string().min(1).optional(),
@@ -26,5 +27,7 @@ export default defineApiHandler(async (event) => {
   const agent = manager.getAgent(agentId)
   if (!agent) throw new AppError(404, 'NOT_FOUND', `Agent 不存在: ${agentId}`)
   manager.requireWritable(agent.ownerUserId, user, 'Agent 模板')
+  // 启动面收权(2026-10-28):command/args/cwd/env 只有 admin 能改,且命令须与引擎同族
+  assertSpawnConfigAllowed(String(body.harness ?? agent.harness), body.config, user)
   return manager.updateAgent(agentId, body)
 })

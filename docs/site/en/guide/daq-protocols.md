@@ -18,6 +18,25 @@ protocol dropdown and dynamic forms (⌁ badge) with zero frontend changes.
 | HTTP | ✅ GET + jsonPath | ✅ POST `{bodyKey: value}` + response readback | `url` `jsonPath` / `bodyKey` |
 | **Serial (serial-bridge plugin)** | ✅ Modbus RTU (FC03/FC04) + ASCII line protocol (numeric/JSON + freshness window) | ✅ Modbus RTU write holding registers (FC06/FC16) + same-address readback; ASCII template dispatch | `path` `baudRate` `parity` `unitId` `register` `dataType` `byteOrder`; [plugin docs](/en/plugins/guide) (see "Communication-protocol plugins") |
 
+## Byte order (32-bit types)
+
+For 32-bit `dataType` values (int32/uint32/float32), `byteOrder` decides how the two
+registers are assembled (value bytes MSB→LSB written as A B C D):
+
+| `byteOrder` | Layout | Registers | Typical use |
+|---|---|---|---|
+| `big` (default) | **ABCD** | w0=[A B], w1=[C D] | Standard Modbus big-endian, most common |
+| `wordSwap` | **CDAB** | w0=[C D], w1=[A B] | Word swap only (some meters/PLCs) |
+| `little` | **DCBA** | w0=[D C], w1=[B A] | Full 32-bit little-endian (byte-swapped words, reversed order) |
+
+- Decoding (DAQ) and encoding (DCW) are **exact inverses**: a value written with one order
+  always reads back identically with the same order.
+- Since 0.8.6 `little` means **standard DCBA**; older releases actually produced the
+  non-standard BADC layout for this option. If a node was calibrated under the old
+  behaviour, do one known-value write/read comparison before putting it back into production.
+- A wrong byte order shows up as a tiny (1e-38-ish) or huge number, not as an error —
+  always verify on first commissioning.
+
 ## Connectivity tests
 
 Test the driver before creating a node (the create wizard enforces a "test connection" step):
@@ -60,7 +79,7 @@ node/template/line/batch metadata: scalars in `daq_samples`; vectors and images 
 |---|---|---|
 | scalar | `jsonPath` (e.g. `data.temperature`; empty for plain-number payloads) | `daq_samples` |
 | vector | `pointsPath` (default `points`), optional `metricsPath` | `daq_frames` (points/metrics) |
-| image | `imageFormat=json|binary`, `imagePath` (default `png`), `imageMime`, optional `imageWidthPath`/`imageHeightPath` | `daq_frames` (objectKey/mime/width/height/sha256/metrics) |
+| image | `imageFormat=json\|binary`, `imagePath` (default `png`), `imageMime`, optional `imageWidthPath`/`imageHeightPath` | `daq_frames` (objectKey/mime/width/height/sha256/metrics) |
 
 Example: `{"data":{"points":[10,20,30,40,50],"metrics":{"avg":30}}}` with a vector template and
 `pointsPath=data.points` becomes a 5-point frame; the template's `sink.processors`

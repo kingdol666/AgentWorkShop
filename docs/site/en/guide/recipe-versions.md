@@ -32,10 +32,12 @@ POST /api/workshop/dcw/recipes/:id/revert
 |---|---|---|
 | `line_context` | panorama of my line/product/recipe (targets vs PLC values) | lines of bound nodes ∪ channel-bound line (read-only) |
 | `recipe_versions` | version history + param diffs (who/when/why) | same |
-| `recipe_trial` | **multi-parameter candidate batch trial**: dispatch all intended changes in one batch without writing a recipe version (hypothesis required; ≥5 min per-line cadence) | per-node dcw binding |
-| `recipe_apply` | batch-dispatch the current saved version — the formal dispatch after `recipe_update` | ≥1 bound node of the recipe |
-| `recipe_update` | save best parameters (partial merge, reason required, new version) | per-node dcw binding |
-| `recipe_rollback` | roll back to a version / lastGood; with `dispatch: true` = **unified rollback** (definition revert + batch re-dispatch of that version's params to the PLC) | same |
+| `recipe_trial` | **multi-parameter candidate batch trial**: dispatch all intended changes in one batch without writing a recipe version (hypothesis required; ≥5 min per-line cadence) | recipe binding, or candidate coverage ⊆ DCW node binding face (point-level write grant) |
+| `recipe_apply` | batch-dispatch the current saved version — the formal dispatch after `recipe_update` | recipe binding, or all recipe parameters ⊆ DCW node binding face |
+| `recipe_update` | save best parameters (partial merge, reason required, new version) | recipe binding (recipe-level operation right; node bindings do not grant version rights) |
+| `recipe_rollback` | roll back to a version / lastGood; with `dispatch: true` = **unified rollback** (definition revert + batch re-dispatch of that version's params to the PLC) | recipe binding |
+
+Two-track authorization: a DCW node binding is a point-level write grant that follows the device and survives recipe switches; a recipe binding grants recipe-level operation rights. The two are unioned; every write still passes the four-layer limits, run gate, HITL, and per-parameter ACK.
 
 For per-node value history use `dcw_journal`; for a single-node restore use `dcw_rollback`.
 

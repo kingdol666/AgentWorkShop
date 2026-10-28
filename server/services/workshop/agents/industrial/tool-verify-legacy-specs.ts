@@ -34,9 +34,9 @@ export const LEGACY_VERIFY_SPECS: Record<string, ToolVerifySpec> = {
   line_status: { refs: [{ param: 'line_id', kind: 'line', mode: 'read' }] },
   line_start: { refs: [{ param: 'recipe_id', kind: 'recipe', mode: 'write' }] },
   recipe_versions: { refs: [{ param: 'recipe_id', kind: 'recipe', mode: 'read' }] },
-  recipe_update: { atLeastOne: [{ params: ['recipe_id', 'line_id'], hint: 'recipe_id 或 line_id 至少提供一个:只给 line_id 时按该线当前活动批次解析配方。' }], refs: [{ param: 'recipe_id', kind: 'recipe', mode: 'write' }, { param: 'line_id', kind: 'line', mode: 'read' }], deepNodeRefs: ['params[].node_id'] },
+  recipe_update: { atLeastOne: [{ params: ['recipe_id', 'line_id'], hint: 'recipe_id 或 line_id 至少提供一个:只给 line_id 时按该线当前活动批次解析配方。' }], refs: [{ param: 'recipe_id', kind: 'recipe', mode: 'write' }, { param: 'line_id', kind: 'line', mode: 'read' }], deepNodeRefs: ['params[].node_id'], writeNodeRefs: ['params[].node_id'] },
   recipe_rollback: { refs: [{ param: 'recipe_id', kind: 'recipe', mode: 'write' }] },
-  recipe_trial: { atLeastOne: [{ params: ['recipe_id', 'line_id'], hint: 'recipe_id 或 line_id 至少提供一个:只给 line_id 时按该线当前活动批次解析配方。' }], refs: [{ param: 'recipe_id', kind: 'recipe', mode: 'write' }, { param: 'line_id', kind: 'line', mode: 'read' }], deepNodeRefs: ['params[].node_id'] },
+  recipe_trial: { atLeastOne: [{ params: ['recipe_id', 'line_id'], hint: 'recipe_id 或 line_id 至少提供一个:只给 line_id 时按该线当前活动批次解析配方。' }], refs: [{ param: 'recipe_id', kind: 'recipe', mode: 'write' }, { param: 'line_id', kind: 'line', mode: 'read' }], deepNodeRefs: ['params[].node_id'], writeNodeRefs: ['params[].node_id'] },
   recipe_apply: { atLeastOne: [{ params: ['recipe_id', 'line_id'], hint: 'recipe_id 或 line_id 至少提供一个:只给 line_id 时按该线当前活动批次解析配方。' }], refs: [{ param: 'recipe_id', kind: 'recipe', mode: 'write' }, { param: 'line_id', kind: 'line', mode: 'read' }] },
   recipe_propose: { refs: [{ param: 'recipe_id', kind: 'recipe', mode: 'read' }], deepNodeRefs: ['packages[].params[].node_id'] },
   // 分析与经验面

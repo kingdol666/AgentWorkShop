@@ -164,6 +164,8 @@ export const num = (v: unknown): number | undefined => {
 /**
  * 工程量 → 原始值:线性映射 eng ∈ [engMin, engMax] ↔ raw ∈ [rawMin, rawMax]。
  * 未提供原始量程时 raw = eng(float32 直写;int 类型仍需映射,缺省按量程直传并取整)。
+ * 2026-10-28(S15):换算结果必须落在 rawMin~rawMax 内 —— 此前越界值会被 encodeWords
+ * 静默按位回绕(int16/uint16)后写进 PLC,造成"写失败但设备已变"。
  */
 export function engToRaw(eng: number, input: DcwWriteInput): number {
   const cfg = input.driverConfig
@@ -173,7 +175,14 @@ export function engToRaw(eng: number, input: DcwWriteInput): number {
   const engMin = num(cfg.engMin) ?? input.domain.min
   const engMax = num(cfg.engMax) ?? input.domain.max
   if (engMax === engMin) return eng
-  return rawMin + ((eng - engMin) / (engMax - engMin)) * (rawMax - rawMin)
+  const out = rawMin + ((eng - engMin) / (engMax - engMin)) * (rawMax - rawMin)
+  if (!Number.isFinite(out)) throw new Error(`工程量 ${eng} 换算原始值失败(结果非有限数)`)
+  const lo = Math.min(rawMin, rawMax)
+  const hi = Math.max(rawMin, rawMax)
+  if (out < lo - 1e-9 || out > hi + 1e-9) {
+    throw new Error(`工程量 ${eng} 换算原始值 ${Number(out.toFixed(4))} 超出驱动原始量程 ${lo}~${hi}(eng ${engMin}~${engMax});请核对节点量程与 engMin/engMax/rawMin/rawMax 配置`)
+  }
+  return out
 }
 
 /** 原始值 → 工程量(回读换算;映射参数对称) */
@@ -208,16 +217,63 @@ export function readbackAck(
   return { ok, message, raw: opts.raw, readback, ack: ok ? 'readback-verified' : 'unverified' }
 }
 
-/** 原始值 → 寄存器字序(数据类型 + 字节序;与数采 decodeRegisters 互逆) */
+/**
+ * 原始值 → 寄存器字序(数据类型 + 字节序;与数采 decodeRegisters 互逆)。
+ * 2026-10-28(S15):整数类型先校验可表示范围,越界抛错而不是按位回绕。
+ */
 export function encodeWords(raw: number, dataType: string, byteOrder: string): number[] {
-  if (dataType === 'int16' || dataType === 'uint16') return [raw & 0xFFFF]
+  if (dataType === 'int16' || dataType === 'uint16') {
+    const r = Math.round(raw)
+    if (!Number.isFinite(r)) throw new Error(`原始值 ${raw} 不是有限数,拒绝编码为 ${dataType}`)
+    if (dataType === 'int16' && (r < -32768 || r > 32767)) throw new Error(`原始值 ${r} 超出 int16 范围(-32768~32767),拒绝写入`)
+    if (dataType === 'uint16' && (r < 0 || r > 65535)) throw new Error(`原始值 ${r} 超出 uint16 范围(0~65535),拒绝写入`)
+    return [r & 0xFFFF]
+  }
+  if (dataType === 'uint32') {
+    const r = Math.round(raw)
+    if (!Number.isFinite(r) || r < 0 || r > 4294967295) throw new Error(`原始值 ${raw} 超出 uint32 范围,拒绝写入`)
+  }
+  if (dataType === 'int32') {
+    const r = Math.round(raw)
+    if (!Number.isFinite(r) || r < -2147483648 || r > 2147483647) throw new Error(`原始值 ${raw} 超出 int32 范围,拒绝写入`)
+  }
   const buf = Buffer.alloc(4)
   if (dataType === 'float32') buf.writeFloatBE(raw, 0)
-  else if (dataType === 'uint32') buf.writeUInt32BE(raw, 0)
-  else buf.writeInt32BE(raw, 0)
+  else if (dataType === 'uint32') buf.writeUInt32BE(Math.round(raw), 0)
+  else buf.writeInt32BE(Math.round(raw), 0)
   const B = [buf[0]!, buf[1]!, buf[2]!, buf[3]!]
   const word = (hi: number, lo: number) => ((hi & 0xFF) << 8) | (lo & 0xFF)
-  if (byteOrder === 'little') return [word(B[1]!, B[0]!), word(B[3]!, B[2]!)]
+  // 与 daq/drivers/modbus-tcp.ts:decodeRegisters 严格互逆(2026-10-28 P0-1):
+  //   little=DCBA → [D C][B A];wordSwap=CDAB → [C D][A B];big=ABCD → [A B][C D]
+  if (byteOrder === 'little') return [word(B[3]!, B[2]!), word(B[1]!, B[0]!)]
   if (byteOrder === 'wordSwap') return [word(B[2]!, B[3]!), word(B[0]!, B[1]!)]
   return [word(B[0]!, B[1]!), word(B[2]!, B[3]!)]
+}
+
+const INT_RANGES: Record<string, [number, number]> = {
+  int16: [-32768, 32767],
+  uint16: [0, 65535],
+  int32: [-2147483648, 2147483647],
+  uint32: [0, 4294967295],
+}
+
+/**
+ * 配置期校验(S15):Modbus 原始量程必须能被 dataType 表示。
+ * 在节点创建/编辑时拒绝,避免运行期写坏 PLC 后才发现。
+ */
+export function assertDriverRawRange(driver: string, cfg: Record<string, unknown> = {}): void {
+  if (!driver.startsWith('modbus')) return
+  const rawMin = num(cfg.rawMin)
+  const rawMax = num(cfg.rawMax)
+  if (rawMin === undefined && rawMax === undefined) return
+  if (rawMin === undefined || rawMax === undefined) throw new Error('rawMin 与 rawMax 必须同时提供')
+  if (!(rawMax > rawMin)) throw new Error('rawMin 必须小于 rawMax')
+  const dt = String(cfg.dataType ?? 'float32')
+  const range = INT_RANGES[dt]
+  if (range && (rawMin < range[0] || rawMax > range[1])) {
+    throw new Error(`原始量程 ${rawMin}~${rawMax} 超出 ${dt} 可表示范围 ${range[0]}~${range[1]}`)
+  }
+  const engMin = num(cfg.engMin)
+  const engMax = num(cfg.engMax)
+  if (engMin !== undefined && engMax !== undefined && !(engMax > engMin)) throw new Error('engMin 必须小于 engMax')
 }

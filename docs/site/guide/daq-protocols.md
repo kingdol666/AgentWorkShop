@@ -16,6 +16,22 @@ AgentWorkShop 的数采(DAQ)与写控(DCW)驱动面覆盖六种现场协议(5 �
 | HTTP | ✅ GET + jsonPath | ✅ POST `{bodyKey: 值}` + 响应回读 | `url` `jsonPath` / `bodyKey` |
 | **串口 Serial(serial-bridge 插件)** | ✅ Modbus RTU(FC03/FC04)+ ASCII 行协议(数值/JSON + 保鲜窗) | ✅ Modbus RTU 写保持寄存器(FC06/FC16)+ 同址回读校验;ASCII 模板下行 | `path` `baudRate` `parity` `unitId` `register` `dataType` `byteOrder`;[插件文档](/plugins/guide)(见「通信协议插件(自定义接口连接方式)」) |
 
+## 字节序(32 位类型)
+
+`dataType` 为 32 位(int32/uint32/float32)时,`byteOrder` 决定两个寄存器如何拼装
+(值的 4 个字节按 MSB→LSB 记作 A B C D):
+
+| `byteOrder` | 布局 | 寄存器 | 典型适用 |
+|---|---|---|---|
+| `big`(缺省) | **ABCD** | w0=[A B], w1=[C D] | Modbus 标准大端,最常见 |
+| `wordSwap` | **CDAB** | w0=[C D], w1=[A B] | 只交换字序(部分仪表/PLC) |
+| `little` | **DCBA** | w0=[D C], w1=[B A] | 整 32 位小端(每字字节反转 + 字序反转) |
+
+- 采集解码与写控编码**严格互逆**:按某序写下去的值,按同序一定能读回同一个数。
+- 0.8.6 起 `little` 的语义是**标准 DCBA**;旧版本该选项实际解出的是非标准的 BADC 位序。
+  升级后若节点此前按旧行为标定过,请先用已知值做一次写读比对再投入生产。
+- 选错序的症状是"数值极小(1e-38 量级)或极大",不会报错 —— 首次接入务必核对。
+
 ## 连通性测试
 
 创建节点前先测驱动(前端向导内置「测试连接」步骤):
@@ -52,7 +68,7 @@ MQTT 节点可以把 broker 传来的**结构化 JSON**(或纯数字/二进制�
 |---|---|---|
 | scalar | `jsonPath`(如 `data.temperature`;纯数字报文留空) | `daq_samples` |
 | vector | `pointsPath`(缺省 `points`)、`metricsPath`(可选) | `daq_frames`(points/metrics) |
-| image | `imageFormat=json|binary`、`imagePath`(缺省 `png`)、`imageMime`、`imageWidthPath`/`imageHeightPath` | `daq_frames`(objectKey/mime/宽高/sha256/metrics) |
+| image | `imageFormat=json\|binary`、`imagePath`(缺省 `png`)、`imageMime`、`imageWidthPath`/`imageHeightPath` | `daq_frames`(objectKey/mime/宽高/sha256/metrics) |
 
 示例:载荷 `{"data":{"points":[10,20,30,40,50],"metrics":{"avg":30}}}` + 数组模板 +
 `pointsPath=data.points` → 5 点帧;模板 `sink.processors`(如 `derive-metric`、`zones`、

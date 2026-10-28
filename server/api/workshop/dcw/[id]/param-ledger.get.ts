@@ -6,10 +6,16 @@ import { getRouterParam } from 'h3'
 import { resolveUser } from '@/server/api/workshop/caller'
 import { defineApiHandler } from '@/server/utils/response'
 import { getRecipeRollBackManager } from '@/server/services/workshop/dcw/recipe-rollback-manager'
+import { getDcwController } from '@/server/services/workshop/dcw/dcw-controller'
+import { AppError, ErrorCodes } from '@/server/utils/errors'
+import { requireLineForResource } from '@/server/services/workshop/line-scope'
 
 export default defineApiHandler(async (event) => {
-  resolveUser(event)
+  const user = resolveUser(event)
   const id = getRouterParam(event, 'id') ?? ''
+  const node = getDcwController().byId(id)
+  if (!node) throw new AppError(404, ErrorCodes.NOT_FOUND, `控制节点不存在: ${id}`)
+  requireLineForResource(user, node.lineId, '数控节点', 'readonly')
   const ledger = getRecipeRollBackManager().ledger(id)
   return { ledger }
 })

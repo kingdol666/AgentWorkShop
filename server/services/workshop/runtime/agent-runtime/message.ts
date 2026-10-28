@@ -44,6 +44,8 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
     this.deps.bus.notifyAgent({ agentId: this.agentId, state: 'busy', ...this.queueContext() })
     // 回合失败标记(须在 try 外声明,finally 依据它决定重投还是消费)
     let sawRunError = false
+    /** C-P1-2:本回合是否产生过平台回执(决定人类调用作用域是否还需由 settle 兜底收口) */
+    let repliedToRequester = false
     /** 失败原因(事件 error / 生成器抛错):写入任务 history,供事后诊断 */
     let runErrorMessage = ''
     try {
@@ -205,6 +207,7 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
           replyToId: typeof msg.metadata['x-aw-reply-to'] === 'string' ? msg.metadata['x-aw-reply-to'] : undefined,
           deliveryId: typeof msg.metadata['x-aw-delivery-id'] === 'string' ? msg.metadata['x-aw-delivery-id'] : undefined,
         })
+        repliedToRequester = true
       }
       // 交付兜底(harness 回合结束 ≠ 任务完成):
       //  - 回合产出过实质 artifact(LLM 完成了工作但跳过 complete_task 工具)→ 隐式完成,
@@ -318,6 +321,20 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
     finally {
       this.abortController = null
       this.currentTaskId = null
+      // C-P1-2:回合落定即通知 manager。回执成功时 manager 已在 platformReply 里按
+      // invocationId 精确清除;失败/无回执路径必须由这里兜底清除,否则 scope 永久驻留。
+      if (this.deps.onInvocationSettled) {
+        try {
+          this.deps.onInvocationSettled({
+            agentId: this.agentId,
+            deliveryId: typeof msg.metadata?.['x-aw-delivery-id'] === 'string' ? msg.metadata['x-aw-delivery-id'] : null,
+            replied: repliedToRequester,
+          })
+        }
+        catch (err) {
+          log.error(`[AgentRuntime:${this.agentId}] 调用作用域收口回调失败:`, err)
+        }
+      }
       if (this.state === 'busy') {
         this.state = 'idle'
         this.deps.bus.notifyAgent({ agentId: this.agentId, state: 'idle', ...this.queueContext() })

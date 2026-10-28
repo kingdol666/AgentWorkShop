@@ -79,7 +79,9 @@ export class ChannelRuntime {
     for (const agentId of this.resolveRecipients(message)) {
       const agent = this.ensureAgent(agentId)
       if (!agent) continue
-      agent.enqueue(message)
+      // 闭箱(停机窗口)不算送达:如实返回未投递,发送方据此可重试/报错,
+      // 绝不出现"success + 消息永久丢失"(2026-10-28 审查 C-P1-1)。
+      if (!agent.enqueue(message)) continue
       delivered.push(agentId)
       // 空闲收件人即时唤醒消费循环
       if (agent.getState() === 'idle') agent.wakeMailbox()

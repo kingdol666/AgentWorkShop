@@ -23,6 +23,25 @@ import { log } from './helpers'
 /** 订阅失败后的重试退避(避免 sweep 每 250ms 打一次 broker) */
 const PUSH_RETRY_BACKOFF_MS = 5_000
 
+/** 停线缓存值的最大补种年龄(超过视为无关,等设备新报文) */
+export const RETAINED_SEED_MAX_AGE_MS = 600_000
+
+/**
+ * 停线补种计划(纯函数,便于单测;A-P1-2)。
+ *
+ * retained-only 设备在停线期间只发过一条状态,开跑后需把缓存值补种一次。补种的
+ * **时间戳必须是补种时刻**(now):用缓存到达时刻会被运行时乱序游标判 late 丢弃
+ * (上一批样本已推进游标),而 runSeeded 又已置真 → 整批零数据。
+ */
+export function retainedSeedPlan(
+  bind: { runSeeded: boolean, lastValue: number | null, lastAt: number },
+  now: number,
+): { value: number, atMs: number } | null {
+  if (bind.runSeeded || bind.lastValue == null) return null
+  if (now - bind.lastAt > RETAINED_SEED_MAX_AGE_MS) return null
+  return { value: bind.lastValue, atMs: now }
+}
+
 interface PushBinding {
   stop: () => void | Promise<void>
   /** 订阅参数指纹(节点 topic/host/jsonPath 变更 → 重建订阅) */
@@ -308,13 +327,15 @@ export abstract class DaqControllerPush extends DaqControllerState {
         continue
       }
       // 新批次开跑:把停线期间缓存的最近值补种一次(retained-only 设备整批只有这一条状态;
-      // 时间戳=消息到达时刻,超过 10 分钟的旧值不补,等新报文)
+      // 超过 10 分钟的旧缓存不补,等新报文)
       if (bind.runId !== run.runId) {
         bind.runId = run.runId
         bind.runSeeded = false
       }
-      if (!bind.runSeeded && bind.lastValue != null && (now - bind.lastAt) <= 600_000) {
-        this.publishPushValue(node, bind.lastValue, bind.lastAt || now)
+      if (!bind.runSeeded && bind.lastValue != null && (now - bind.lastAt) <= RETAINED_SEED_MAX_AGE_MS) {
+        // 2026-10-28 审查 A-P1-2:补种时间戳 = 补种时刻(见 retainedSeedPlan 注释)。
+        const seed = retainedSeedPlan(bind, now)
+        if (seed) this.publishPushValue(node, seed.value, seed.atMs)
         bind.runSeeded = true
         if (node.lastError) node.lastError = null
       }

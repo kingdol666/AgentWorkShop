@@ -298,8 +298,8 @@ export const DAQ_DRIVERS: DaqDriverMeta[] = [
       { key: 'scale', label: '缩放系数', type: 'number', default: 1, hint: '原始值 × scale = 工程量(如 0.1)' },
       { key: 'byteOrder', label: '字节序', type: 'select', default: 'big', options: [
         { value: 'big', label: '大端(AB CD)' },
-        { value: 'little', label: '小端(CD AB)' },
-        { value: 'wordSwap', label: '字交换(CD AB / 交换单字)' },
+        { value: 'little', label: '小端(DC BA / 全字节反转)' },
+        { value: 'wordSwap', label: '字交换(CD AB / 仅换字序)' },
       ] },
     ],
   },
@@ -344,8 +344,8 @@ export const DAQ_DRIVERS: DaqDriverMeta[] = [
       { key: 'scale', label: '缩放系数', type: 'number', default: 1, hint: '原始值 × scale = 工程量(如 0.1)' },
       { key: 'byteOrder', label: '字节序', type: 'select', default: 'big', options: [
         { value: 'big', label: '大端(AB CD)' },
-        { value: 'little', label: '小端(CD AB)' },
-        { value: 'wordSwap', label: '字交换(CD AB / 交换单字)' },
+        { value: 'little', label: '小端(DC BA / 全字节反转)' },
+        { value: 'wordSwap', label: '字交换(CD AB / 仅换字序)' },
       ] },
     ],
   },
@@ -539,11 +539,30 @@ export interface AepDaqControllerState {
 }
 
 /** driverConfig 出口脱敏:键名含 password/secret/token/passwd/api_key 的值置换为 '******'(REST/AEP 投影用;持久化与驱动内部不经过此函数) */
+export const MASKED_SECRET = '******'
+const SECRET_KEY_RE = /pass(word)?|secret|token|passwd|api[-_]?key/i
 export function maskDriverConfigSecrets<T extends Record<string, unknown>>(cfg: T | undefined | null): T {
   if (!cfg || typeof cfg !== 'object') return {} as T
   const out: Record<string, unknown> = { ...cfg }
   for (const k of Object.keys(out)) {
-    if (/pass(word)?|secret|token|passwd|api[-_]?key/i.test(k)) out[k] = '******'
+    if (SECRET_KEY_RE.test(k)) out[k] = MASKED_SECRET
+  }
+  return out as T
+}
+
+/**
+ * driverConfig 入口过滤(2026-10-28 审查 P0-2):剔除"回显回来的掩码值"键。
+ *
+ * 前端参数页把 GET 投影(含 `******`)整包 PATCH 回来时,若直接 merge,真实口令
+ * 会被字面量 `******` 覆盖 → 节点永久 offline 且无法从视图发现。掩码哨兵只允许
+ * 出现在出口方向;入口在 merge 之前单点剔除,新明文照常写入(掩码键给新值 = 修改)。
+ */
+export function stripMaskedSecrets<T extends Record<string, unknown>>(cfg: T | undefined | null): T {
+  if (!cfg || typeof cfg !== 'object') return {} as T
+  const out: Record<string, unknown> = {}
+  for (const [k, v] of Object.entries(cfg)) {
+    if (v === MASKED_SECRET && SECRET_KEY_RE.test(k)) continue
+    out[k] = v
   }
   return out as T
 }
