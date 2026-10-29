@@ -16,6 +16,8 @@ export interface LogsManualDraft {
   lineId: string
   productId: string
   recipeId: string
+  /** 严重级(2026-10-29):值班上报异常选 warn/error,与自动 error-ledger 同一口径 */
+  level: 'info' | 'warn' | 'error'
 }
 
 /** 人工记录的归属口径(打开弹窗时 = 筛选区当前维度) */
@@ -53,6 +55,7 @@ export function useLogsManual(deps: LogsManualDeps) {
         lineId: draft.lineId,
         productId: draft.productId,
         recipeId: draft.recipeId,
+        level: draft.level,
         ...(note ? { detail: { note } } : {}),
       })
       message.success(tt('logs.mOk'))

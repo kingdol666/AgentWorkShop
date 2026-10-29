@@ -28,7 +28,7 @@
 
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.8.6</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST 集成（镜像与直连双路径）· 数据分析台账（产线级权限隔离）· 工艺参数优化器（过程模型 → AML → OSQP 求解 → 治理下发）· **本体服务 + AI 先行模型闭环**（本体 · 孪生 · 求解器 · AML 采纳）· 104 个宿主工具 · 128 个运行时设置项 · 双语文档（简体中文 / English）</sub>
+<sub><b>v0.8.7</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST 集成（镜像与直连双路径）· 数据分析台账（产线级权限隔离）· 工艺参数优化器（过程模型 → AML → OSQP 求解 → 治理下发）· **本体服务 + AI 先行模型闭环**（本体 · 孪生 · 求解器 · AML 采纳）· 104 个宿主工具 · 128 个运行时设置项 · 双语文档（简体中文 / English）</sub>
 
 <br />
 
@@ -177,7 +177,7 @@ AgentWorkShop 起家于**多智能体软件工作坊**——Channel 内的编码
 | **MES REST 集成（双数据路径）** | 生产管理数据进入同一受治理工作空间：`mes-rest` 节点用**声明式请求映射**对接 MES API 的目录/当前值/历史端点（`secretRef`→env token 凭证零明文；钩子可对取数做下沉后处理）。Agent 两种读法——**直连**：`mes_fetch` 按映射发请求实时拿 API 响应（大窗异步分页落 `mesds-*` CSV 数据集，经 `mes_datasets` / `mes_dataset_read` 读取，原始行不进对话）；**镜像**：`http` 数采节点轮询同一 API 入本地 TSDB，`daq_query` 与原生节点同面取数——API 宕机也不断供。`mes_catalog` 按产线严格过滤（fail-closed）。 |
 | **多形态数采帧管线** | 多点轮廓（测厚仪/扫描仪）与 CCD 图像帧流经模板 sink 管线：向量与元数据入 Timescale（`daq_frames`），像素入对象存储（MinIO，不可达时自动降级到本地磁盘）；派生指标阈值越限走既有告警链路。 |
 | **生产化硬化（v0.7.58）** | 保写心跳生命周期根治——失败写不占位（心跳不再直发幻影指令值）、驱动/连接/产线变更即清值、停线自动挂起保写；mock 静默兜底封堵（未知协议显式报错，插件卸载不再假成功）；帧像素 sha256 完整性指纹 + 对象存储按天 GC（删前 DB 交叉校验防误删）；Timescale 按天 chunk + 列存压缩（TSL）；堆水位监控 + 崩溃/失联/水位三重自动重生；写保持窗与试验节拍落盘（重启不绕频控）；grant 运行时复核并入频道绑线（撤权即失活无死角）。 |
-| **写入频控语义修正（v0.8.6）** | “最近一次写尝试”与“最近一次成功下发”拆分：**失败写不再占用 60 秒在线写窗口**，断链恢复后可立即重试；只有成功写才更新 `lastWriteAt`/ACK 并进入写保持窗；失败后 5 秒冷却防轰炸。视图/WS/持久化同步暴露 `lastAttemptAt`；配方/回退路径仍按配方窗口治理。 |
+| **写入频控语义修正（v0.8.7）** | “最近一次写尝试”与“最近一次成功下发”拆分：**失败写不再占用 60 秒在线写窗口**，断链恢复后可立即重试；只有成功写才更新 `lastWriteAt`/ACK 并进入写保持窗；失败后 5 秒冷却防轰炸。视图/WS/持久化同步暴露 `lastAttemptAt`；配方/回退路径仍按配方窗口治理。 |
 | **Agent 自查工具** | `line_context`、`ops_log`、`recipe_log`、`recipe_versions`、`dcw_journal`——Agent 清楚自己操控的产线/产品/配方，谁做过什么，每个值怎么变。 |
 
 #### 模型闭环 —— AI 先行（本体 · 孪生 · 求解器 · AML，v0.8.0）
@@ -409,7 +409,7 @@ aw update --check                      # 只报告，不安装
 npm install -g agentworkshop@latest    # 手动等效
 ```
 
-版本遵循 semver。每次 `aw start` 都会校验配置根，并把 `home` 之前的旧版 `data/` 布局迁移进来（以最新文件为准），因此数据可以跨版本存活。SQLite schema 迁移在服务端启动时执行。当前版本：**v0.8.6**——见[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)。
+版本遵循 semver。每次 `aw start` 都会校验配置根，并把 `home` 之前的旧版 `data/` 布局迁移进来（以最新文件为准），因此数据可以跨版本存活。SQLite schema 迁移在服务端启动时执行。当前版本：**v0.8.7**——见[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)。
 
 ### 第一次「Agent × 产线」会话（约 2 分钟）
 

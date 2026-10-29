@@ -13,11 +13,15 @@
  * 数采/数控/数字孪生全平台被一台设备带走,属可用性事故。
  */
 import { classifyFatalCandidate, describeReason } from '../utils/stability-severity'
+import { captureProcessFault } from '../services/workshop/ops/error-ledger'
 
 export default defineNitroPlugin(() => {
   // 'db-busy' 必须引号 → 按 @stylistic/quote-props 的 consistent 口径,同对象内全部加引号
   const counts: Record<string, number> = { 'socket': 0, 'db-busy': 0, 'upstream': 0, 'engine': 0 }
   const onFatalCandidate = (kind: string, reason: unknown): void => {
+    // 先落错误台账再谈退出:crash 前的最后一行必须留在审计账里,而不是只进 console
+    // (captureProcessFault 自吞异常 + sqlite 同步写,fatal exit(1) 也不会丢这条)
+    captureProcessFault(kind as 'unhandledRejection' | 'uncaughtException', reason)
     const severity = classifyFatalCandidate(reason)
     if (severity === 'fatal') {
       console.error(`[stability-guard] fatal ${kind}, exiting:\n${describeReason(reason)}`)

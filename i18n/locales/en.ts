@@ -840,6 +840,13 @@ export default {
     totalCount: '{n} records',
     mDetail: 'Detail (optional)',
     mDetailPh: 'Context, handling notes, related ticket… (stored in the log detail)',
+    mLevel: 'Severity',
+    quickErrHint: 'Show error-level events only (system faults / failed writes); count = live track; click again to clear',
+    quickWarnHint: 'Show warn-level events only (alarms / unverified); count = live track; click again to clear',
+    export: 'Export CSV',
+    exportHint: 'Export the current query snapshot as CSV (incident report / ticket attachment)',
+    copyDetail: 'Copy details',
+    copied: 'Copied',
     src: {
       user: 'User',
       system: 'System',

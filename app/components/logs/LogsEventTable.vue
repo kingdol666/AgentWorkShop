@@ -27,6 +27,19 @@ defineEmits<{
 const { hasDetail, pretty, fmtTime, srcLabel, kindLabel } = useLogsFormat()
 const { lineName, productName, recipeName } = useLogsScope()
 
+/** 详情 JSON 一键复制(事故报告/工单附件);失败降级选中文本,不再弹层 */
+const copiedId = ref<number | null>(null)
+async function copyDetail(row: OpsLogRow): Promise<void> {
+  try {
+    await navigator.clipboard.writeText(pretty(row.detailJson))
+    copiedId.value = row.id
+    setTimeout(() => {
+      if (copiedId.value === row.id) copiedId.value = null
+    }, 1600)
+  }
+  catch { /* 剪贴板不可用(非安全上下文):静默降级,用户仍可手动选择文本 */ }
+}
+
 /* 审计账页分页:服务端一次给到 300 条快照,整表直出会形成 2 万像素的
  * 单页文档(实测 scrollHeight=22009),滚动定位与详情展开都失去参照。
  * 25 条/页是扫描密度与翻页成本的折中;换筛选/新查询时回到第 1 页。 */
@@ -76,7 +89,9 @@ watch(() => props.rows, () => {
           v-for="row in pagedRows"
           :key="row.id"
         >
-          <tr>
+          <tr
+            :class="{ 'is-error': row.level === 'error', 'is-warn': row.level === 'warn' }"
+          >
             <td class="mono dim">
               {{ fmtTime(row.at) }}
             </td>
@@ -140,7 +155,7 @@ watch(() => props.rows, () => {
               >{{ $t('logs.noDetail') }}</span>
             </td>
           </tr>
-          <!-- 详情行内展开:紧贴事件行,点击即见(不再沉到表尾) -->
+          <!-- 详情行内展开:紧贴事件行,点击即见(不再沉到表尾);error/warn 行附一键复制 -->
           <tr
             v-if="expandedId === row.id"
             class="log-detail-row"
@@ -149,6 +164,15 @@ watch(() => props.rows, () => {
               colspan="7"
               class="detail-td"
             >
+              <div class="detail-bar">
+                <button
+                  class="mini-btn"
+                  @click="copyDetail(row)"
+                >
+                  <span :class="copiedId === row.id ? 'i-tabler-check' : 'i-tabler-copy'" />
+                  {{ copiedId === row.id ? $t('logs.copied') : $t('logs.copyDetail') }}
+                </button>
+              </div>
               <pre class="detail-box mono">{{ pretty(row.detailJson) }}</pre>
             </td>
           </tr>
@@ -210,6 +234,11 @@ watch(() => props.rows, () => {
   vertical-align: top;
 }
 .log-table tbody tr:hover td { background: var(--hover-tint); }
+/* 错误/警告行整行着色(生产落地:扫一眼即见故障分布,不用逐行找红标) */
+.log-table tbody tr.is-error td { background: color-mix(in srgb, var(--tone-danger-dot) 7%, transparent); }
+.log-table tbody tr.is-warn td { background: color-mix(in srgb, var(--tone-warning-dot) 7%, transparent); }
+.log-table tbody tr.is-error:hover td { background: color-mix(in srgb, var(--tone-danger-dot) 12%, transparent); }
+.log-table tbody tr.is-warn:hover td { background: color-mix(in srgb, var(--tone-warning-dot) 12%, transparent); }
 .th-time, .th-src, .th-kind { white-space: nowrap; }
 .th-detail { width: 72px; }
 .actor { white-space: nowrap; }
@@ -243,8 +272,12 @@ watch(() => props.rows, () => {
   color: var(--ink-faint);
   font-variant-numeric: tabular-nums;
 }
-/* 详情行内展开:紧贴事件行的整行 pre 面板 */
+/* 详情行内展开:紧贴事件行的整行 pre 面板;顶栏放复制等行内动作 */
 .detail-td { padding: 0 !important; }
+.detail-bar {
+  display: flex; justify-content: flex-end; gap: 8px;
+  padding: 6px 10px 0;
+}
 .detail-box {
   max-height: 260px; margin: 0; padding: 10px 14px; overflow: auto;
   font-size: 12.5px; color: var(--ink-soft); white-space: pre-wrap; word-break: break-word;

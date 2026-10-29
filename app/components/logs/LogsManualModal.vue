@@ -29,7 +29,7 @@ const emit = defineEmits<{
 /** 开合经 v-model 回流页面:页面持有唯一副本,页头入口与遮罩/取消按钮都落在它上面 */
 const open = defineModel<boolean>('open', { required: true })
 
-const draft = reactive<LogsManualDraft>({ summary: '', detail: '', lineId: '', productId: '', recipeId: '' })
+const draft = reactive<LogsManualDraft>({ summary: '', detail: '', lineId: '', productId: '', recipeId: '', level: 'info' })
 
 const { lines, productsOfLine, recipesOfScope } = useLogsScope()
 
@@ -44,6 +44,7 @@ watch(open, (on) => {
   draft.lineId = props.scope.lineId
   draft.productId = props.scope.productId
   draft.recipeId = props.scope.recipeId
+  draft.level = 'info'
 })
 
 function close(): void {
@@ -94,6 +95,24 @@ function onSubmit(): void {
             rows="2"
             :placeholder="$t('logs.mDetailPh')"
           />
+        </label>
+        <label class="m-f">
+          <span>{{ $t('logs.mLevel') }}</span>
+          <select
+            v-model="draft.level"
+            class="inp-sel"
+            :class="{ 'lv-error': draft.level === 'error', 'lv-warn': draft.level === 'warn' }"
+          >
+            <option value="info">
+              info
+            </option>
+            <option value="warn">
+              warn
+            </option>
+            <option value="error">
+              error
+            </option>
+          </select>
         </label>
         <div class="m-grid">
           <label class="m-f">
@@ -214,6 +233,9 @@ function onSubmit(): void {
   font-family: inherit; resize: vertical;
 }
 .m-f textarea:focus, .m-f .inp-sel:focus { border-color: color-mix(in srgb, var(--tone-info-dot) 55%, transparent); }
+/* 级别选择着色:选中 warn/error 时下拉框本身带色,与表格红黄标同一视觉语言 */
+.inp-sel.lv-error { color: var(--tone-danger-dot); border-color: color-mix(in srgb, var(--tone-danger-dot) 55%, transparent); }
+.inp-sel.lv-warn { color: var(--tone-warning-dot); border-color: color-mix(in srgb, var(--tone-warning-dot) 55%, transparent); }
 .m-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 8px; }
 .m-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; }
 

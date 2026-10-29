@@ -152,7 +152,7 @@ const createStore = () => {
   }
 
   /** 人工手动记录事件(值班/处置/备注;与自动操作同一流水) */
-  async function postManual(input: { summary: string, lineId?: string, productId?: string, recipeId?: string, detail?: Record<string, unknown> }): Promise<void> {
+  async function postManual(input: { summary: string, lineId?: string, productId?: string, recipeId?: string, detail?: Record<string, unknown>, level?: 'info' | 'warn' | 'error' }): Promise<void> {
     loading.posting = true
     error.post = ''
     try {

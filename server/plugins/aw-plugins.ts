@@ -7,6 +7,7 @@ import { initPluginHost, shutdownPluginHost } from '@/server/services/workshop/p
 import { attachTwinPluginBridge } from '@/server/services/workshop/aml/twin/provider-loader'
 import { servicesExt } from '@/server/services/workshop/plugins/host/services.mjs'
 import { InjectionGreyboxProvider, defaultInjectionScene } from '@/server/services/workshop/aml/twin/physics-runtime'
+import { capturePluginError } from '@/server/services/workshop/ops/error-ledger'
 import { fileURLToPath } from 'node:url'
 import { existsSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
@@ -61,7 +62,9 @@ export default defineNitroPlugin((nitroApp) => {
         host.setSelfOrigin(listener.port)
     })
   }).catch((err: unknown) => {
-    // 插件发现/装载失败不应成为 unhandled rejection(dev-stability-guard 会因此退进程)
+    // 插件发现/装载失败不应成为 unhandled rejection(dev-stability-guard 会因此退进程);
+    // 同时必须进错误台账 —— 插件面故障是"要有人知道"的运维信号,不能只活在 console
+    capturePluginError('plugin-host-init', err)
     console.error('[aw-plugins] 插件宿主初始化失败(服务继续运行):', err instanceof Error ? err.message : err)
   })
   nitroApp.hooks.hookOnce('close', () => {

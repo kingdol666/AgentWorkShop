@@ -1,0 +1,13 @@
+[
+  {
+    "route": "logs",
+    "path": "/logs",
+    "theme": "dark",
+    "landed": "/logs",
+    "overflowX": 0,
+    "scrollH": 900,
+    "pageErrors": [],
+    "consoleErrors": [],
+    "file": "docs\\audit\\evidence\\2026-10-29-error-handling\\screens\\dark__logs.png"
+  }
+]

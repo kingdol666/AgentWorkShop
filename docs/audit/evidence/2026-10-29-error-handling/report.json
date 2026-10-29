@@ -1,0 +1,169 @@
+{
+  "suite": "error-handling",
+  "at": "2026-10-29T05:46:59.681Z",
+  "base": "http://127.0.0.1:3450",
+  "summary": {
+    "total": 26,
+    "passed": 26,
+    "failed": 0,
+    "verdict": "PASS"
+  },
+  "results": [
+    {
+      "id": "E0",
+      "name": "error-ledger 钩子已武装(启动日志)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "E0b",
+      "name": "admin 注册",
+      "pass": true,
+      "detail": "status=200 body={\"code\":0,\"message\":\"ok\",\"data\":{\"user\":{\"id\":\"ca71fbc3-6aaf-456b-8084-a0c1c322cac7\",\"name\":\"eh-admin\",\"email\":\"eh@test.local\",\"role\":\"admin\",\"createdAt\":\"2026-10-29 13:46:57\",\"mustChangePassword\":fal"
+    },
+    {
+      "id": "E1",
+      "name": "畸形 JSON → 结构化拒绝(非 5xx 裸奔)",
+      "pass": true,
+      "detail": "status=400"
+    },
+    {
+      "id": "E1b",
+      "name": "畸形 JSON 后实例存活",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "E2",
+      "name": "错误 Content-Type → 不崩、结构化回包",
+      "pass": true,
+      "detail": "status=400"
+    },
+    {
+      "id": "E3",
+      "name": "10MB 超大摘要 → 拒绝且不炸",
+      "pass": true,
+      "detail": "status=400"
+    },
+    {
+      "id": "E3b",
+      "name": "超大载荷后实例存活",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "E4",
+      "name": "控制字符查询参数 → 安全处理",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "E5",
+      "name": "SQL 注入样式查询 → 无害(参数化查询)",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "E5b",
+      "name": "Unicode/emoji 查询 → 正常",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "E6",
+      "name": "非法 scope 枚举 → 400 且点名合法值",
+      "pass": true,
+      "detail": "status=400 {\"code\":\"VALIDATION_ERROR\",\"message\":\"scope 只支持 line(默认)/system/all,收到: hack\",\"data\":null}"
+    },
+    {
+      "id": "E7",
+      "name": "时间区间倒置 → 400 拒绝",
+      "pass": true,
+      "detail": "status=400"
+    },
+    {
+      "id": "E7b",
+      "name": "非法时间格式 → 400 带示例指引",
+      "pass": true,
+      "detail": "status=400"
+    },
+    {
+      "id": "E7c",
+      "name": "level 枚举外值 → 空集或 400(不 500)",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "E8",
+      "name": "引用不存在产线 → 400 点名",
+      "pass": true,
+      "detail": "status=400"
+    },
+    {
+      "id": "E9",
+      "name": "临时产线建立",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "E10",
+      "name": "手动记录非法 level → 400 枚举校验",
+      "pass": true,
+      "detail": "status=400"
+    },
+    {
+      "id": "E11",
+      "name": "手动 error 记录入册",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "E11b",
+      "name": "error 记录可按级别+产线检索回(红标渲染数据源)",
+      "pass": true,
+      "detail": "n=1"
+    },
+    {
+      "id": "E12",
+      "name": "普通用户注册(已开自助注册)",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "E13",
+      "name": "普通用户访问 admin 设置面 → 403",
+      "pass": true,
+      "detail": "status=403"
+    },
+    {
+      "id": "E14",
+      "name": "未知工具调用 → 结构化错误回执(非 500)",
+      "pass": true,
+      "detail": "status=404"
+    },
+    {
+      "id": "E15",
+      "name": "引用不存在 DCW 参数 → 404/400 干净回执",
+      "pass": true,
+      "detail": "status=404"
+    },
+    {
+      "id": "E16",
+      "name": "50 连发 adversarial 查询全部结构化应答(58ms)",
+      "pass": true,
+      "detail": "answered=50"
+    },
+    {
+      "id": "E17",
+      "name": "4xx 洪泛零 server.error 入账(不淹没真错误)",
+      "pass": true,
+      "detail": "before=0 after=0"
+    },
+    {
+      "id": "E18",
+      "name": "轰炸后实例存活且零重启",
+      "pass": true,
+      "detail": "health ok"
+    }
+  ]
+}

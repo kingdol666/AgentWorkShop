@@ -1,6 +1,9 @@
 /**
- * POST /api/workshop/ops-logs —— 人工手动记录事件(值班记录/现场处置/备注)。
- * body: { summary(必填), lineId?, productId?, recipeId?, detail? }
+ * POST /api/workshop/ops-logs —— 人工手动记录事件(值班记录/现场处置/备注/异常上报)。
+ * body: { summary(必填), lineId?, productId?, recipeId?, detail?, level? }
+ *
+ * level(2026-10-29):人工记录也带严重级 —— 值班员上报异常时选 warn/error,
+ * 记录在 /logs 与实时轨带红黄标,与自动 error-ledger/写控 ACK 同一口径。
  *
  * 产线归属一致性:给了 productId / recipeId 时自动补全 lineId,并与显式 lineId 交叉校验
  * (不允许把 A 线配方写进 B 线日志)。lineId 为空的记录只进全局审计台账,
@@ -15,6 +18,11 @@ import { getDcwLineRepo } from '@/server/services/workshop/dcw/dcw-line.repo'
 import { getDcwController } from '@/server/services/workshop/dcw/dcw-controller'
 import { getDcwProductRepo } from '@/server/services/workshop/dcw/dcw-product.repo'
 
+const MANUAL_LEVELS = ['info', 'warn', 'error'] as const
+/** 防御上限:摘要 2k 字符 / 详情 32KB(超限 400 拒绝,防单条日志撑爆 sqlite 与前端渲染) */
+const SUMMARY_MAX_CHARS = 2000
+const DETAIL_MAX_BYTES = 32 * 1024
+
 export default defineApiHandler(async (event) => {
   const user = resolveUser(event)
   const body = await readBody<{
@@ -23,10 +31,19 @@ export default defineApiHandler(async (event) => {
     productId?: string
     recipeId?: string
     detail?: Record<string, unknown>
+    level?: string
   }>(event) ?? {}
   const summary = String(body.summary ?? '').trim()
   if (!summary)
     throw new AppError(400, ErrorCodes.VALIDATION_ERROR, '手动记录内容(summary)不能为空')
+  if (summary.length > SUMMARY_MAX_CHARS)
+    throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `手动记录内容超长:${summary.length} 字符(上限 ${SUMMARY_MAX_CHARS},长文请放附件/文档后引用)`)
+  if (body.detail !== undefined && JSON.stringify(body.detail ?? {}).length > DETAIL_MAX_BYTES)
+    throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `手动记录详情过大(序列化后超 ${DETAIL_MAX_BYTES} 字节);大段内容请落文档后在此引用`)
+  const levelInput = String(body.level ?? 'info').trim()
+  if (!MANUAL_LEVELS.includes(levelInput as typeof MANUAL_LEVELS[number]))
+    throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `level 只支持 info/warn/error,收到: ${levelInput}`)
+  const level = levelInput as typeof MANUAL_LEVELS[number]
 
   let lineId = String(body.lineId ?? '').trim()
   const productId = String(body.productId ?? '').trim()
@@ -63,6 +80,7 @@ export default defineApiHandler(async (event) => {
     lineId,
     productId,
     recipeId,
+    level,
     detail: { manual: true, ...(body.detail ?? {}) },
   })
   return { ok: true, lineScoped: Boolean(lineId), lineId, productId, recipeId }
