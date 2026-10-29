@@ -1,7 +1,7 @@
 {
   "script": "scripts/e2e-idd-results.mjs",
-  "generatedAt": "2026-10-27T18:05:28.459Z",
-  "base": "http://127.0.0.1:3470",
+  "generatedAt": "2026-10-29T06:37:01.686Z",
+  "base": "http://127.0.0.1:3350",
   "pass": 36,
   "total": 36,
   "results": [
@@ -9,13 +9,13 @@
       "id": "A0.1",
       "name": "演示频道在线",
       "pass": true,
-      "detail": "注塑优化任务频道-mission1,注塑配方闭环验证-suite"
+      "detail": "注塑产线作业-demo"
     },
     {
       "id": "A0.2",
       "name": "频道 Agent 可用",
       "pass": true,
-      "detail": "[[\"80dd5691-f5db-46f7-beef-97c7cfd11c99\",\"lead\"],[\"50283c08-818c-4a7a-af44-78e7359bfb21\",\"worker\"],[\"5d3d004d-6607-478d-a9c0-8dad749b9dfb\",\"worker\"],[\"69c05613-a276-4c47-b78f-5a684bed340b\",\"worker\"]]"
+      "detail": "[[\"8430569b-c791-499e-899c-35c696912ee5\",\"lead\"],[\"0d2e678c-fe86-4dce-8bc6-1b76a1a3d4fa\",\"worker\"]]"
     },
     {
       "id": "A2.1",
@@ -39,25 +39,25 @@
       "id": "A3.1",
       "name": "diag_results 返回 total/limit/offset",
       "pass": true,
-      "detail": "分析结果 total=98 limit=20 offset=0 本页 20 条(brief=true):\n- e2e-nosess-savcx | deep-diagnosis | 96分 ENDORSED | 2026-10-25 12:08:41 | e2e-nosess-savcx\n  Conclusion\n- "
+      "detail": "分析结果 total=99 limit=20 offset=0 本页 20 条(brief=true):\n- 33ee4f9d | quick-screen | 96分 ENDORSED | 2026-10-29 04:31:20 | aws-owner-probe_33ee4f9d [ui-walkthrough,r"
     },
     {
       "id": "A3.2",
       "name": "brief 默认 true(文本含 brief=true)",
       "pass": true,
-      "detail": "分析结果 total=98 limit=3 offset=0 本页 3 条(brief=true):\n- e2e-nosess-savcx | deep-diagnosis | 96分 ENDORSED | 2026-10-25 12:08"
+      "detail": "分析结果 total=99 limit=3 offset=0 本页 3 条(brief=true):\n- 33ee4f9d | quick-screen | 96分 ENDORSED | 2026-10-29 04:31:20 | aws-"
     },
     {
       "id": "A3.3",
       "name": "brief=false 卡片带 key_numbers",
       "pass": true,
-      "detail": "分析结果 total=98 limit=5 offset=0 本页 5 条(brief=false):\n- e2e-nosess-savcx | deep-diagnosis | 96分 ENDORSED | 2026-10-25 12:08:41 | e2e-nosess-savcx\n  Conclusion\n  key_numbers={\"score\":96,\"verdict\":\"ENDORSED\"}\n- e2e-mismatch-savcx | deep-diagnosis | -分  | 2026-10-2"
+      "detail": "分析结果 total=99 limit=5 offset=0 本页 5 条(brief=false):\n- 33ee4f9d | quick-screen | 96分 ENDORSED | 2026-10-29 04:31:20 | aws-owner-probe_33ee4f9d [ui-walkthrough,results]\n  UI 走查 2026-10-29T04:31\n  key_numbers={\"score\":96,\"verdict\":\"ENDORSED\"}\n- e2e-nosess-savcx |"
     },
     {
       "id": "A3.4",
       "name": "可从索引文本解析首个 result_id",
       "pass": true,
-      "detail": "分析结果 total=98 limit=20 offset=0 本页 20 条(brief=true):\n- e2e-nosess-savcx | deep-diagnosis | 96分 ENDORSED | 2026-10-25 12:08:41 | e2e-nosess-savcx\n  Conclusion\n- e2e-mismatch-savcx | deep-diagnosis | -分"
+      "detail": "分析结果 total=99 limit=20 offset=0 本页 20 条(brief=true):\n- 33ee4f9d | quick-screen | 96分 ENDORSED | 2026-10-29 04:31:20 | aws-owner-probe_33ee4f9d [ui-walkthrough,results]\n  UI 走查 2026-10-29T04:31\n- e2e-n"
     },
     {
       "id": "A4.1",
@@ -75,13 +75,13 @@
       "id": "A4.3",
       "name": "min_score 过滤正常",
       "pass": true,
-      "detail": "分析结果 total=66 limit=5 offset=0 本页 5 条(brief=true):\n- e2e-nosess-savcx | deep-diagnosis | 96分 ENDORSED | 2026-10-25 12:08"
+      "detail": "分析结果 total=67 limit=5 offset=0 本页 5 条(brief=true):\n- 33ee4f9d | quick-screen | 96分 ENDORSED | 2026-10-29 04:31:20 | aws-"
     },
     {
       "id": "A4.4",
       "name": "score_desc 排序正常",
       "pass": true,
-      "detail": "分析结果 total=98 limit=3 offset=0 本页 3 条(brief=true):\n- e2e-nosess-savcx | deep-diagnosis | 96分 ENDORSED | 2026-10-25 12:08"
+      "detail": "分析结果 total=99 limit=3 offset=0 本页 3 条(brief=true):\n- 33ee4f9d | quick-screen | 96分 ENDORSED | 2026-10-29 04:31:20 | aws-"
     },
     {
       "id": "A4.5",
@@ -93,13 +93,13 @@
       "id": "A5.1",
       "name": "详情默认不带 md 正文、报告 URL 已绝对化",
       "pass": true,
-      "detail": "result_id=b687fbc6\n标题=x 意图=quick-screen 评分=96 结论=ENDORSED\n摘要=Conclusion\n关键数字={\"score\":96,\"verdict\":\"ENDORSED\"}\n数字溯源=summary_json.sources(每个数字钉到 工件路径#字段)\n工件 1 项:report.md\n报告=http://127.0.0.1:3210/api/files/workspace/repor"
+      "detail": "result_id=33ee4f9d\n标题=aws-owner-probe_33ee4f9d 意图=quick-screen 评分=96 结论=ENDORSED\n摘要=Conclusion\n关键数字={\"score\":96,\"verdict\":\"ENDORSED\"}\n数字溯源=summary_json.sources(每个数字钉到 工件路径#字段)\n工件 1 项:report.md\n报告=http://127.0.0.1:3210/ap"
     },
     {
       "id": "A5.2",
       "name": "include_md=true 携带 md 且遵守截断上限",
       "pass": true,
-      "detail": "result_id=b687fbc6\n标题=x 意图=quick-screen 评分=96 结论=ENDORSED\n摘要=Conclusion\n关键数字={\"score\":96,\"verdict\":\"ENDORSED\"}\n数字溯源=summary_json.sources(每个数字钉到 工件路径#字段)\n工件 1 项:"
+      "detail": "result_id=33ee4f9d\n标题=aws-owner-probe_33ee4f9d 意图=quick-screen 评分=96 结论=ENDORSED\n摘要=Conclusion\n关键数字={\"score\":96,\"verdict\":\"ENDORSED\"}\n数字溯源=summary_json.sources("
     },
     {
       "id": "A9.0",
@@ -117,13 +117,13 @@
       "id": "A6.0",
       "name": "找到本 token 属主的结果(results-lib-demo)",
       "pass": true,
-      "detail": "分析结果 total=1 limit=20 offset=0 本页 1 条(brief=false):\n- b687fbc6 | quick-screen | 96分 ENDORSED | 2026-10-25 02:50:21 | x [aws-e2e,results]\n  AW 集成验收 2026-10-26T03:21 (面板)\n  key_numbers={\"score\":96,\"verd"
+      "detail": "分析结果 total=1 limit=20 offset=0 本页 1 条(brief=false):\n- b687fbc6 | quick-screen | 96分 ENDORSED | 2026-10-25 02:50:21 | x [aws-e2e,results]\n  AW 集成验收 2026-10-29T04:31 (面板)\n  key_numbers={\"score\":96,\"verd"
     },
     {
       "id": "A6.1",
       "name": "annotate 成功并回读 description/tags",
       "pass": true,
-      "detail": "已更新 result_id=b687fbc6:title=x\ndescription=AW 集成验收 2026-10-27T18:05\ntags=[aws-e2e,results]\n(display_text 现为:AW 集成验收 2026-10-27T18:05…)。"
+      "detail": "已更新 result_id=b687fbc6:title=x\ndescription=AW 集成验收 2026-10-29T06:36\ntags=[aws-e2e,results]\n(display_text 现为:AW 集成验收 2026-10-29T06:36…)。"
     },
     {
       "id": "A6.2",
@@ -147,19 +147,19 @@
       "id": "A7.2b",
       "name": "混合给 summary → 仅 description 生效(summary 被过滤)",
       "pass": true,
-      "detail": "已更新 result_id=b687fbc6:title=x\ndescription=AW 集成验收 2026-10-27T18:05 (summary过滤)\ntags=[aws-e2e,results]\n(display_text 现为:AW 集成验收 2026-10-27T18:05 (summary过滤)…)。"
+      "detail": "已更新 result_id=b687fbc6:title=x\ndescription=AW 集成验收 2026-10-29T06:36 (summary过滤)\ntags=[aws-e2e,results]\n(display_text 现为:AW 集成验收 2026-10-29T06:36 (summary过滤)…)。"
     },
     {
       "id": "A7.3a",
       "name": "新结果已归属当前 Token(results_demo)",
       "pass": true,
-      "detail": "{\"success\":true,\"data\":{\"task_id\":\"TASK-MVQZXCNE-3AAL\",\"run_id\":\"23167818\",\"intent\":\"quick-screen\",\"harness\":\"mock\",\"analysis_mode\":\"mock\",\"scene\":\"aws-owner-probe\",\"objective\":\"属主校验探针\",\"status\":\"comp"
+      "detail": "{\"success\":true,\"data\":{\"task_id\":\"TASK-MVT67PGJ-2BZT\",\"run_id\":\"e36ef651\",\"intent\":\"quick-screen\",\"harness\":\"mock\",\"analysis_mode\":\"mock\",\"scene\":\"aws-owner-probe\",\"objective\":\"属主校验探针\",\"status\":\"comp"
     },
     {
       "id": "A7.3b",
       "name": "属主编辑新结果成功",
       "pass": true,
-      "detail": "已更新 result_id=23167818:title=aws-owner-probe_23167818\ndescription=AW 集成验收 2026-10-27T18:05 (属主自证)\ntags=[]\n(display_text 现为:AW 集成验收 2026-10-27T18:05 (属主自证)…)。"
+      "detail": "已更新 result_id=e36ef651:title=aws-owner-probe_e36ef651\ndescription=AW 集成验收 2026-10-29T06:36 (属主自证)\ntags=[]\n(display_text 现为:AW 集成验收 2026-10-29T06:36 (属主自证)…)。"
     },
     {
       "id": "A7.3",
@@ -183,19 +183,19 @@
       "id": "A12.1",
       "name": "GET /results(面板) 返回索引",
       "pass": true,
-      "detail": "{\"success\":true,\"data\":{\"total\":99,\"limit\":5,\"offset\":0,\"brief\":false,\"results\":[{\"result_id\":\"23167818\",\"title\":\"aws-owner-probe_23167818\",\"description\":\"AW 集成"
+      "detail": "{\"success\":true,\"data\":{\"total\":100,\"limit\":5,\"offset\":0,\"brief\":false,\"results\":[{\"result_id\":\"e36ef651\",\"title\":\"aws-owner-probe_e36ef651\",\"description\":\"AW 集"
     },
     {
       "id": "A12.2",
       "name": "GET /results/detail 返回详情",
       "pass": true,
-      "detail": "{\"success\":true,\"data\":{\"result_id\":\"b687fbc6\",\"title\":\"x\",\"description\":\"AW 集成验收 2026-10-27T18:05 (summary过滤)\",\"summary"
+      "detail": "{\"success\":true,\"data\":{\"result_id\":\"b687fbc6\",\"title\":\"x\",\"description\":\"AW 集成验收 2026-10-29T06:36 (summary过滤)\",\"summary"
     },
     {
       "id": "A12.3",
       "name": "PATCH /results/edit(面板) 编辑成功",
       "pass": true,
-      "detail": "{\"success\":true,\"data\":{\"result_id\":\"b687fbc6\",\"title\":\"x\",\"description\":\"AW 集成验收 2026-10-27T18:05 (面板)\",\"summary\":\"Conclusion\",\"summary_json\":{\"conclusion\":\"Co"
+      "detail": "{\"success\":true,\"data\":{\"result_id\":\"b687fbc6\",\"title\":\"x\",\"description\":\"AW 集成验收 2026-10-29T06:36 (面板)\",\"summary\":\"Conclusion\",\"summary_json\":{\"conclusion\":\"Co"
     },
     {
       "id": "A12.4",
@@ -207,7 +207,7 @@
       "id": "A13.1",
       "name": "diag_status 仍正常(最近记录/空态)",
       "pass": true,
-      "detail": "最近 5 条诊断:\n- 35af7c85 | ln-e27a1867 | [深度根因诊断] failed | agent | 2026-10-28T01:30:35.311+08:00 | 零件重量波动诊断:检查保压压力-重量链路,给出结论"
+      "detail": "暂无诊断记录。用 diag_run 发起一次深度诊断。"
     },
     {
       "id": "A13.2",

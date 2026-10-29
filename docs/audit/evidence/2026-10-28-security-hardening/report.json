@@ -1,19 +1,19 @@
 {
   "suite": "security-hardening",
-  "at": "2026-10-28T07:46:19.046Z",
+  "at": "2026-10-29T06:39:56.878Z",
   "base": "http://127.0.0.1:3410",
   "totals": {
     "total": 29,
-    "pass": 5,
-    "fail": 24
+    "pass": 29,
+    "fail": 0
   },
   "results": [
     {
       "id": "AUTH-0",
       "name": "普通用户创建/登录(幂等)",
-      "pass": false,
+      "pass": true,
       "expected": "token",
-      "actual": 401,
+      "actual": 200,
       "note": ""
     },
     {
@@ -27,9 +27,9 @@
     {
       "id": "S4-2",
       "name": "无产线授权读配方列表 → 空集(非全量)",
-      "pass": false,
+      "pass": true,
       "expected": "200 + []",
-      "actual": "401 + recipes=undefined",
+      "actual": "200 + recipes=0",
       "note": ""
     },
     {
@@ -51,129 +51,129 @@
     {
       "id": "S4-5",
       "name": "无授权读节点 PLC 值 → 403",
-      "pass": false,
+      "pass": true,
       "expected": 403,
-      "actual": 401,
+      "actual": 403,
       "note": ""
     },
     {
       "id": "S4-6",
       "name": "无授权删配方 → 403",
-      "pass": false,
+      "pass": true,
       "expected": 403,
-      "actual": 401,
+      "actual": 403,
       "note": ""
     },
     {
       "id": "S4-7",
       "name": "无授权关批次 → 403",
-      "pass": false,
+      "pass": true,
       "expected": 403,
-      "actual": 401,
+      "actual": 403,
       "note": ""
     },
     {
       "id": "S5-1",
       "name": "普通用户 test-driver → 403",
-      "pass": false,
+      "pass": true,
       "expected": 403,
-      "actual": 401,
+      "actual": 403,
       "note": ""
     },
     {
       "id": "S5-2",
       "name": "普通用户 dcw test-driver → 403",
-      "pass": false,
+      "pass": true,
       "expected": 403,
-      "actual": 401,
+      "actual": 403,
       "note": ""
     },
     {
       "id": "S5-3",
       "name": "普通用户 infra/reconnect → 403",
-      "pass": false,
+      "pass": true,
       "expected": 403,
-      "actual": 401,
+      "actual": 403,
       "note": ""
     },
     {
       "id": "S5-4",
       "name": "admin test-driver 仍可用",
-      "pass": false,
+      "pass": true,
       "expected": 200,
-      "actual": 401,
+      "actual": 200,
       "note": ""
     },
     {
       "id": "S12-1",
       "name": "未来时间戳 ingest → 400 FUTURE_TIMESTAMP",
-      "pass": false,
+      "pass": true,
       "expected": "400 FUTURE_TIMESTAMP",
-      "actual": "404 NOT_FOUND",
+      "actual": "400 FUTURE_TIMESTAMP",
       "note": ""
     },
     {
       "id": "S12-2",
       "name": "10 分钟前回填 ingest → 200",
-      "pass": false,
+      "pass": true,
       "expected": 200,
-      "actual": 404,
+      "actual": 200,
       "note": ""
     },
     {
       "id": "S15-1",
       "name": "int16 rawMax=70000 → 400 配置期拒绝",
-      "pass": false,
+      "pass": true,
       "expected": "400 + int16",
-      "actual": "401 {\"code\":\"USER_UNAUTHORIZED\",\"message\":\"需要有效的用户 token(Authorization: Bearer <用户token>;经 /api/users/register 或 /api/users/",
+      "actual": "400 {\"code\":\"VALIDATION_ERROR\",\"message\":\"原始量程 0~70000 超出 int16 可表示范围 -32768~32767\",\"data\":null}",
       "note": ""
     },
     {
       "id": "S1-1",
       "name": "非 admin 创建 Channel 带 command → 403",
-      "pass": false,
+      "pass": true,
       "expected": "403 HARNESS_SPAWN_FORBIDDEN",
-      "actual": "401 USER_UNAUTHORIZED",
+      "actual": "403 HARNESS_SPAWN_FORBIDDEN",
       "note": ""
     },
     {
       "id": "S1-2",
       "name": "非 admin 创建 Agent 带 command → 403",
-      "pass": false,
+      "pass": true,
       "expected": "403 HARNESS_SPAWN_FORBIDDEN",
-      "actual": "401 USER_UNAUTHORIZED",
+      "actual": "403 HARNESS_SPAWN_FORBIDDEN",
       "note": ""
     },
     {
       "id": "S1-3",
       "name": "admin 指定通用解释器 → 403 HARNESS_COMMAND_DENIED",
-      "pass": false,
+      "pass": true,
       "expected": "403 HARNESS_COMMAND_DENIED",
-      "actual": "401 USER_UNAUTHORIZED",
+      "actual": "403 HARNESS_COMMAND_DENIED",
       "note": ""
     },
     {
       "id": "S1-4",
       "name": "非 admin 新增成员带 args → 403",
-      "pass": false,
+      "pass": true,
       "expected": "403 HARNESS_SPAWN_FORBIDDEN",
-      "actual": "0 undefined",
+      "actual": "403 HARNESS_SPAWN_FORBIDDEN",
       "note": ""
     },
     {
       "id": "S1-5",
       "name": "非 admin 建模板内联 args → 403",
-      "pass": false,
+      "pass": true,
       "expected": "403 HARNESS_SPAWN_FORBIDDEN",
-      "actual": "401 USER_UNAUTHORIZED",
+      "actual": "403 HARNESS_SPAWN_FORBIDDEN",
       "note": ""
     },
     {
       "id": "S3-1",
       "name": "worker Agent token 拉名册 → 200",
-      "pass": false,
+      "pass": true,
       "expected": 200,
-      "actual": 401,
+      "actual": 200,
       "note": ""
     },
     {
@@ -195,49 +195,49 @@
     {
       "id": "S4-8",
       "name": "仅授权线A → 只看到线A的1个配方",
-      "pass": false,
+      "pass": true,
       "expected": 1,
-      "actual": 0,
+      "actual": 1,
       "note": ""
     },
     {
       "id": "S2-1",
       "name": "operate 改 min(安全字段) → 403",
-      "pass": false,
+      "pass": true,
       "expected": "403 DCW_CONFIG_ADMIN_ONLY",
-      "actual": "401 USER_UNAUTHORIZED",
+      "actual": "403 DCW_CONFIG_ADMIN_ONLY",
       "note": ""
     },
     {
       "id": "S2-2",
       "name": "operate 改 name(运行字段) → 200",
-      "pass": false,
+      "pass": true,
       "expected": 200,
-      "actual": 401,
+      "actual": 200,
       "note": ""
     },
     {
       "id": "S2-3",
       "name": "operate 改 DAQ driver → 403",
-      "pass": false,
+      "pass": true,
       "expected": "403 DAQ_CONFIG_ADMIN_ONLY",
-      "actual": "401 USER_UNAUTHORIZED",
+      "actual": "403 DAQ_CONFIG_ADMIN_ONLY",
       "note": ""
     },
     {
       "id": "S4-9",
       "name": "授权线A后可读节点 PLC 值 → 200",
-      "pass": false,
+      "pass": true,
       "expected": 200,
-      "actual": 401,
+      "actual": 200,
       "note": ""
     },
     {
       "id": "S4-10",
       "name": "授权线A后可查数采 → 200",
-      "pass": false,
+      "pass": true,
       "expected": 200,
-      "actual": 401,
+      "actual": 200,
       "note": ""
     }
   ]

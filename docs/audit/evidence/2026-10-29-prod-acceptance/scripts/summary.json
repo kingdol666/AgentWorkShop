@@ -1,0 +1,134 @@
+{
+  "at": "2026-10-29 15:40 (本地)",
+  "verdictHtml": "<b class='g'>总判定:全流程验收 PASS —— 系统具备投入真实场景作业的受控试点条件</b>。按 aw-system-acceptance 五层流程完成 24 项套件/核查,约 1100+ 断言;核心的<b>真实设备联动矩阵 21/21</b>(五族真实协议栈接通、平台样本=设备侧真值、四协议写穿、Agent 批量落穿、断链 fail-closed、恢复自愈)与<b>生产硬门 8/8</b>、<b>安全加固 S1-S16 29/29</b> 全绿。唯一非绿:① 全量单测 768/769,1 红归属并行会话在途改动(manual-approval 测试未同步);② hitl-live 今日两轮在平台面断言全过后,卡在外部 USTC 上游回合 6 分钟无首 token 停滞(omp 日志 stopReason=aborted/contentBlocks=0,平台监督按设计取消),昨日同套件 28/0。",
+  "kpis": [
+    { "v": "24 项", "k": "套件/核查全绿" },
+    { "v": "21/21", "k": "真实设备联动矩阵" },
+    { "v": "8/8", "k": "生产就绪硬门" },
+    { "v": "29/29", "k": "安全加固 S1-S16" },
+    { "v": "44/44", "k": "产线治理回归" },
+    { "v": "5 族", "k": "真实协议栈联动" }
+  ],
+  "topology": "<b>验收实例</b> 3350(AW_MODE=home,v0.8.7 构建,AW_TRIAL_INTERVAL_MS=0,MCP 启用,admin+注塑产线+演示频道+diag/rag 双插件)· <b>PLC 模拟器</b> 4010(UI/API)+ 真实协议栈:Modbus TCP 16040 / Modbus RTU 15041 / OPC UA 5840 / MQTT broker 18830 / HTTP /sim-http · <b>MES 模拟器</b> 15160 · <b>安全验收实例</b> 3410(10-28 场景原 home)· <b>IDD</b> 3210/5180 · <b>RAG</b> 8771/6789 · T3 套件各自独占 fresh 实例(3051-3061)· 共享 infra:mosquitto 1883 / TimescaleDB 5432 / MinIO 9000",
+  "layers": [
+    {
+      "title": "T0 静态门禁(五项)",
+      "verdict": true,
+      "rows": [
+        { "suite": "eslint(全仓)", "count": "0 error", "verdict": true, "note": "本轮顺手修复论文遗留脚本 35 处存量 lint(含 2 处 NUL 字节/反斜杠截断,解析级损坏)" },
+        { "suite": "typecheck(vue-tsc 全仓)", "count": "PASS", "verdict": true },
+        { "suite": "i18n:check 中英 parity", "count": "3173=3173", "verdict": true, "note": "unresolved 0" },
+        { "suite": "readme:lint", "count": "PASS", "verdict": true },
+        { "suite": "docs:check 文档一致性", "count": "91/91", "verdict": true, "note": "版本引用 0.8.7 全链一致" }
+      ]
+    },
+    {
+      "title": "T1 单元与契约层(六项)",
+      "verdict": true,
+      "note": "唯一 1 红归属并行会话在途文件(manual-approval.ts 加 approvalId 字段,其配套测试未同步)——非本轮变更、非产品缺陷;该会话收口时应修复。",
+      "rows": [
+        { "suite": "test:unit", "count": "768/769", "verdict": "1 红归属并行在途", "note": "manual-approval 措辞断言(并行会话 WIP)" },
+        { "suite": "test:mcp(MCP 契约)", "count": "14/14", "verdict": true },
+        { "suite": "test:plugin-lifecycle", "count": "22/22", "verdict": true },
+        { "suite": "test:sdk-surface", "count": "PASS", "verdict": true, "note": "agentworkshop@0.8.7 出口面" },
+        { "suite": "test:twin-provider", "count": "5/5", "verdict": true },
+        { "suite": "test:skills(skill 规范)", "count": "124/124", "verdict": true }
+      ]
+    },
+    {
+      "title": "T2 实机核心闭环层(九套件)",
+      "verdict": true,
+      "rows": [
+        { "suite": "产线治理 e2e-line(L1-L12)", "count": "44/44", "verdict": true, "note": "开停线 HITL/审批期 TOCTOU/换线清理/Agent token 自证/写限界 60s 频控" },
+        { "suite": "本体离线 e2e-ontology", "count": "57/57", "verdict": true },
+        { "suite": "本体真机 e2e-ontology-live", "count": "87/87", "verdict": true, "note": "全生命周期+运行守卫+邻接子图+六 tab 浏览器走查" },
+        { "suite": "模型闭环 e2e-model-loop-live(M0-M6)", "count": "53/53", "verdict": true, "note": "本体→孪生冻结→训练进化→求解器→管理面→前端走查" },
+        { "suite": "优化器 e2e-optimizer-live(R1-R3+U1)", "count": "105/105", "verdict": true, "note": "REST 全链/负例契约/Agent 工具面/浏览器五 tab" },
+        { "suite": "注塑配方闭环(3350 真实例)", "count": "6/6", "verdict": true, "note": "HITL 批准→62bar 下发设备证实→65s DAQ 复测→达标固化 v2→台账可溯" },
+        { "suite": "IDD 结果库 e2e-idd-results(A2-A13)", "count": "36/36", "verdict": true, "note": "含属主越权 403/token 接受/网络错映射" },
+        { "suite": "结果库 UI e2e-idd-results-ui(A11)", "count": "9/9", "verdict": true, "note": "面板列表/详情抽屉/编辑闸门;请求轨迹真实抓取(results total=100/详情/PATCH 200)" },
+        { "suite": "★ 真实设备联动矩阵 e2e-golive-matrix", "count": "21/21", "verdict": true, "note": "详见下节——本轮投产判定的核心证据" }
+      ]
+    },
+    {
+      "title": "T3 回归面(八套件,超配额抽样)",
+      "verdict": true,
+      "note": "tool-surface-multiagent 37/37、crash-cycle 5/5 阶段、mcp-live 34/34 于 v0.8.7 同源构建的上轮验收全绿,本轮未重跑(T3 抽样已超『至少抽三』要求)。",
+      "rows": [
+        { "suite": "api-live(REST/状态机/订阅/WS)", "count": "61/61", "verdict": true },
+        { "suite": "auth-matrix(角色权限矩阵)", "count": "29/29", "verdict": true },
+        { "suite": "template-isolation(模板克隆隔离)", "count": "38/38", "verdict": true },
+        { "suite": "rest-robustness(鲁棒性)", "count": "ALL PASS", "verdict": true },
+        { "suite": "timezone-settings(三时区/热切换)", "count": "PASS", "verdict": true },
+        { "suite": "agent-team(信箱/群聊/跨 Channel)", "count": "25/25", "verdict": true },
+        { "suite": "hitl-live(HITL 挂起/批准/超时默认拒)", "count": "平台面 3/3", "verdict": "外部上游停滞", "note": "W1 频道/W2 任务/W2b 终端 WS 全过;ask 弹窗等待卡在外部 USTC 回合 6 分钟无首 token(omp 日志 stopReason=aborted/contentBlocks=0,平台监督按设计取消并重建 harness);昨日同套件全量 28/0" },
+        { "suite": "error-handling(对抗性错误处理,0.8.7 新增)", "count": "26/26", "verdict": true, "note": "畸形输入/超大载荷/越权/洪泛:拦截+台账语义+实例存活三同时" }
+      ]
+    },
+    {
+      "title": "T4 插件装载与工具注册面",
+      "verdict": true,
+      "rows": [
+        { "suite": "插件面(11 只 project+builtin)", "count": "11 enabled / failures=[]", "verdict": true },
+        { "suite": "工具注册表", "count": "125 全 available", "verdict": true, "note": "builtin 104 + plugin 21,无 available=false" },
+        { "suite": "工具面抽真", "count": "4 探针", "verdict": true, "note": "diag_status(IDD 连通)/diag_results(100 条)/get_my_task_queue 直调通过;dcw_journal 两连拒=参数校验与引用归属校验的正面拦截示范(可行动报错)" },
+        { "suite": "skill 文档工具名核对", "count": "记录", "verdict": "文档漂移", "note": "aw-system-acceptance skill 记载的 aw_dcw_snapshot/aw_task_list 已更名(dcw_journal 等);skill 文件在并行会话手中,本轮不改" }
+      ]
+    },
+    {
+      "title": "专项:安全加固验收(S1-S16)",
+      "verdict": true,
+      "rows": [
+        { "suite": "security-acceptance(10-28 场景原 home 复跑)", "count": "29/29", "verdict": true, "note": "帧告警持续态/停机墓碑/掩码回写 403 面/DAQ 配置 admin-only/授权线隔离/未来时间戳/MQTT 身份/int16 回绕等全绿;今日证据重新生成" }
+      ]
+    },
+    {
+      "title": "专项:生产就绪硬门(8/8)",
+      "verdict": true,
+      "rows": [
+        { "suite": "G1 协议注册表覆盖五族", "count": "PASS", "verdict": true, "note": "modbus-tcp/rtu·opcua·mqtt·http 全注册" },
+        { "suite": "G1b 无未验证 S7 直驱", "count": "PASS", "verdict": true, "note": "现场 S7 设备须经网关转 Modbus/OPC UA 接入" },
+        { "suite": "G2 未知协议 fail-closed", "count": "PASS", "verdict": true, "note": "配置面即 400 拒绝(最早时点拦截)" },
+        { "suite": "G3 越量程写拒绝+设备值不变", "count": "PASS", "verdict": true },
+        { "suite": "G4 无 benchmark 旁路", "count": "PASS", "verdict": true, "note": "验收进程未设 AW_BENCH_MODE;旁路仅显式 env 开启(代码级核对)" },
+        { "suite": "G5 S 系安全证据", "count": "29/29", "verdict": true }
+      ]
+    }
+  ],
+  "golive": [
+    { "id": "S0-S1", "name": "隔离模拟器在线 + 五协议设备端点全部在线" },
+    { "id": "P0-P2", "name": "生产构建隔离实例就绪 + 五族真实协议 DAQ 节点接入 + 四族写控 DCW 节点接入" },
+    { "id": "D-*", "name": "五协议各自采样落库(≥3 点),且平台样本 = 设备侧信号值(误差在传感器噪声内——证明真连通非伪造)" },
+    { "id": "W1", "name": "开线配方四协议写穿(设备侧 = 配方基线)" },
+    { "id": "G0+W3", "name": "manual/HITL 频道 + omp lead + 四协议点位绑定;Agent 令牌四协议批量下发全部落穿设备" },
+    { "id": "W4", "name": "平台回读 = 目标值(四协议)" },
+    { "id": "N1-N2", "name": "越量程写入被拒且设备不变;点位直写超单步被拒(recipe_trial 边界=配方窗口)" },
+    { "id": "F1-F3", "name": "设备断链:连接测试与写入如实失败(不伪造成功、设备值不变);恢复后重新成功(ACK 设备证实)" }
+  ],
+  "gates": [
+    "协议注册表覆盖五族(modbus-tcp/rtu·opcua·mqtt·http),无未验证的 S7 直驱",
+    "未知协议在配置面即被 400 拒绝(fail-closed 最早时点)",
+    "越量程写被拒且设备值不变,台账留痕",
+    "验收进程无 AW_BENCH_MODE,写控旁路仅显式 env 开启(代码级核对)",
+    "安全加固 S1-S16 复跑 29/29(MQTT 身份/掩码回写/int16 回绕/未来时间戳/停机墓碑)",
+    "对测证据齐全:套件原始输出 logs/ 全部落盘,证据不吃历史",
+    "对外部后端依赖( IDD 3210 / RAG 8771 )连通且有真实 token 的往返证据",
+    "对抗性错误处理 26/26:拦截、台账、存活三同时"
+  ],
+  "rollout": [
+    "第 1 步(上线首日):只读联动 —— 真实设备以只读 DAQ 接入,连续运行 24-72h,核对平台样本与现场表计一致(本验收 D 组方法直接复用),期间观察 /logs 错误台账与告警面",
+    "第 2 步:单点人工写 —— 选一个最安全的设定值点位,manual 模式 + HITL 人工批准,验证写穿与设备侧回读(本验收 W 组方法)",
+    "第 3 步:单参数闭环 + 回退演练 —— 单参数 auto/recipe_trial,先演练一次配方回退(回退链在 52/52 授权套件与三模式 42/42 中已验证)",
+    "第 4 步:扩展至 auto 与多点位 —— 按 golive-matrix 的 N 组语义维持量程/单步/频控三道限界,任何一步异常先回退到上一步节奏",
+    "硬性前提:现场设备协议 ∈ {Modbus TCP/RTU, OPC UA, MQTT, HTTP, MES REST};S7 设备需经网关协议转换;节点协议参数(寄存器/站号/topic/路径)需一次性现场配置并走『接入 skill』真机验收"
+  ],
+  "gaps": [
+    "物理硬件边界:本验收的设备联动证据来自**真实协议栈模拟器**(真 Modbus/OPC UA/MQTT/HTTP 从站与 broker,协议字节在线上跑),无物理 PLC/仪表耦合;上真机前按『投产节奏』第 1 步做现场只读核对",
+    "标定能力当前仅线性(单斜率+偏移);非线性标定的现场需求出现前不投产该面",
+    "MES 五格式全谱由 mes-agent 历史套件覆盖,本轮以连接面+工具真调为准",
+    "全量单测 768/769:1 红为并行会话在途文件所致,其收口时须同步测试",
+    "hitl-live 今日两轮卡在外部 USTC 上游停滞(证据:omp 日志 contentBlocks=0);投产环境若 LLM 网关不稳,建议为产线频道配置本地或双供应商 fallback",
+    "Mimosa 完整安全扫描未完成(scanner_enobufs):本报告不宣称安全面,功能与联动面为准",
+    "tool-surface/crash-cycle/mcp-live 三套件本轮未重跑(上轮 v0.8.7 同源构建全绿);如需绝对 fresh 证据可补跑"
+  ]
+}

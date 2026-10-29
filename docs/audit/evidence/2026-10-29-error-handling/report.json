@@ -1,6 +1,6 @@
 {
   "suite": "error-handling",
-  "at": "2026-10-29T05:46:59.681Z",
+  "at": "2026-10-29T07:14:54.483Z",
   "base": "http://127.0.0.1:3450",
   "summary": {
     "total": 26,
@@ -19,7 +19,7 @@
       "id": "E0b",
       "name": "admin 注册",
       "pass": true,
-      "detail": "status=200 body={\"code\":0,\"message\":\"ok\",\"data\":{\"user\":{\"id\":\"ca71fbc3-6aaf-456b-8084-a0c1c322cac7\",\"name\":\"eh-admin\",\"email\":\"eh@test.local\",\"role\":\"admin\",\"createdAt\":\"2026-10-29 13:46:57\",\"mustChangePassword\":fal"
+      "detail": "status=200 body={\"code\":0,\"message\":\"ok\",\"data\":{\"user\":{\"id\":\"c135ff55-38f6-4d8c-8ff8-7af77c16c7fa\",\"name\":\"eh-admin\",\"email\":\"eh@test.local\",\"role\":\"admin\",\"createdAt\":\"2026-10-29 15:14:52\",\"mustChangePassword\":fal"
     },
     {
       "id": "E1",
@@ -149,7 +149,7 @@
     },
     {
       "id": "E16",
-      "name": "50 连发 adversarial 查询全部结构化应答(58ms)",
+      "name": "50 连发 adversarial 查询全部结构化应答(55ms)",
       "pass": true,
       "detail": "answered=50"
     },

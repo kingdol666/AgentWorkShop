@@ -1,5 +1,5 @@
 {
-  "at": "2026-10-28T17:05:35.570Z",
+  "at": "2026-10-29T06:39:30.537Z",
   "env": {
     "base": "http://127.0.0.1:3419",
     "simBase": "http://127.0.0.1:4036",
@@ -21,33 +21,33 @@
       "mqtt": 44830,
       "http": "http://127.0.0.1:4036/sim-http/dev-inspect-http/api/defect"
     },
-    "line": "ln-24364c0a",
-    "channel": "820fc7c2-3439-4e50-8d8e-2360b659d8e2",
-    "agent": "79407f22-dae2-48bf-8819-3bc30bbbde88",
-    "recipe": "rc-7f84184b",
+    "line": "ln-296ea8a5",
+    "channel": "380dd977-58f2-402d-9531-e44a22b62b0f",
+    "agent": "4702cb56-9f61-41dc-91af-bcca50181912",
+    "recipe": "rc-3fdb035a",
     "dcwIds": [
-      "dw-4f5aae59",
-      "dw-20defa6b",
-      "dw-859ef861",
-      "dw-ae16effd"
+      "dw-02ff1f5c",
+      "dw-887eb915",
+      "dw-4e61df49",
+      "dw-ed96e4e9"
     ],
     "daq": {
-      "daqTemp": "dn-b54b7bfb",
-      "daqGels": "dn-ba8f4ff8",
-      "daqPress": "dn-7990554a",
-      "daqThick": "dn-c6be7f52",
-      "daqDefect": "dn-21a07950"
+      "daqTemp": "dn-a27256a9",
+      "daqGels": "dn-7104f2b5",
+      "daqPress": "dn-dff043f5",
+      "daqThick": "dn-61c8a96e",
+      "daqDefect": "dn-0fa1ea71"
     }
   },
   "writeLatencyMs": [
-    7
+    5
   ],
   "assertions": [
     {
       "id": "S0",
       "name": "隔离模拟器在线(4036)",
       "pass": true,
-      "detail": "{\"started\":false,\"dir\":\"D:\\\\codes\\\\ABO\\\\AgentWorkShop\\\\plc-node-simulator\",\"reason\":\"already-up\"}"
+      "detail": "{\"started\":true,\"pid\":81432,\"dir\":\"D:/tmp/aw-phys-sim-shadow-4036\",\"reason\":\"spawned\"}"
     },
     {
       "id": "S1",
@@ -59,7 +59,7 @@
       "id": "P0",
       "name": "生产构建隔离实例⑤就绪",
       "pass": true,
-      "detail": "port=3419 version=0.8.6"
+      "detail": "port=3419 version=0.8.7"
     },
     {
       "id": "P0b",
@@ -71,73 +71,73 @@
       "id": "P1",
       "name": "真实协议 DAQ 节点接入(五族)",
       "pass": true,
-      "detail": "{\"daqTemp\":\"dn-b54b7bfb\",\"daqGels\":\"dn-ba8f4ff8\",\"daqPress\":\"dn-7990554a\",\"daqThick\":\"dn-c6be7f52\",\"daqDefect\":\"dn-21a07950\"}"
+      "detail": "{\"daqTemp\":\"dn-a27256a9\",\"daqGels\":\"dn-7104f2b5\",\"daqPress\":\"dn-dff043f5\",\"daqThick\":\"dn-61c8a96e\",\"daqDefect\":\"dn-0fa1ea71\"}"
     },
     {
       "id": "P2",
       "name": "真实协议 DCW 节点接入(四族写控)",
       "pass": true,
-      "detail": "{\"dcwZone\":\"dw-4f5aae59\",\"dcwScrew\":\"dw-20defa6b\",\"dcwLine\":\"dw-859ef861\",\"dcwGap\":\"dw-ae16effd\"}"
+      "detail": "{\"dcwZone\":\"dw-02ff1f5c\",\"dcwScrew\":\"dw-887eb915\",\"dcwLine\":\"dw-4e61df49\",\"dcwGap\":\"dw-ed96e4e9\"}"
     },
     {
       "id": "D-modbus-tcp",
       "name": "modbus-tcp 采样落库(≥3 点)",
       "pass": true,
-      "detail": "points=29 tail=206.44/206.89/206.99"
+      "detail": "points=29 tail=208.19/207.97/208.39"
     },
     {
       "id": "D-modbus-rtu",
       "name": "modbus-rtu 采样落库(≥3 点)",
       "pass": true,
-      "detail": "points=29 tail=2/5/3"
+      "detail": "points=29 tail=3/5/7"
     },
     {
       "id": "D-opcua",
       "name": "opcua 采样落库(≥3 点)",
       "pass": true,
-      "detail": "points=29 tail=19.841/19.826/19.909"
+      "detail": "points=29 tail=19.899/19.811/19.966"
     },
     {
       "id": "D-mqtt",
       "name": "mqtt 采样落库(≥3 点)",
       "pass": true,
-      "detail": "points=15 tail=68.82/68.54/68.51"
+      "detail": "points=15 tail=69.57/68.23/70.07"
     },
     {
       "id": "D-http",
       "name": "http 采样落库(≥3 点)",
       "pass": true,
-      "detail": "points=29 tail=0.045/0.178/0.251"
+      "detail": "points=29 tail=0/0.205/0.287"
     },
     {
       "id": "D-match",
       "name": "平台样本 = 设备侧信号值(五协议,误差在传感器噪声内)",
       "pass": true,
-      "detail": "[{\"proto\":\"modbus-tcp\",\"platform\":206.99,\"device\":206.99,\"gap\":0,\"tol\":1.5,\"points\":29},{\"proto\":\"modbus-rtu\",\"platform\":3,\"device\":5,\"gap\":2,\"tol\":6,\"points\":29},{\"proto\":\"opcua\",\"platform\":19.848,\"device\":19.878,\"gap\":0.030000000000001137,\"tol\":0.5,\"points\":29},{\"proto\":\"mqtt\",\"platform\":68.82,\"device\":69.03,\"gap\":0.21000000000000796,\"tol\":5,\"points\":15},{\"proto\":\"http\",\"platform\":0.232,\"device\":0.252,\"gap\":0.01999999999999999,\"tol\":1,\"points\":29}]"
+      "detail": "[{\"proto\":\"modbus-tcp\",\"platform\":208.19,\"device\":207.97,\"gap\":0.21999999999999886,\"tol\":1.5,\"points\":29},{\"proto\":\"modbus-rtu\",\"platform\":4,\"device\":6,\"gap\":2,\"tol\":6,\"points\":29},{\"proto\":\"opcua\",\"platform\":19.899,\"device\":19.947,\"gap\":0.047999999999998266,\"tol\":0.5,\"points\":29},{\"proto\":\"mqtt\",\"platform\":69.25,\"device\":69.27,\"gap\":0.01999999999999602,\"tol\":5,\"points\":15},{\"proto\":\"http\",\"platform\":0.063,\"device\":0,\"gap\":0.063,\"tol\":1,\"points\":29}]"
     },
     {
       "id": "W1",
       "name": "开线配方四协议写穿(设备侧=配方基线)",
       "pass": true,
-      "detail": "start=200 device=[[\"dw-4f5aae59\",195],[\"dw-20defa6b\",160],[\"dw-859ef861\",90],[\"dw-ae16effd\",1.1]] platform=[[\"dw-4f5aae59\",195],[\"dw-20defa6b\",160],[\"dw-859ef861\",90],[\"dw-ae16effd\",1.1]]"
+      "detail": "start=200 device=[[\"dw-02ff1f5c\",195],[\"dw-887eb915\",160],[\"dw-4e61df49\",90],[\"dw-ed96e4e9\",1.1]] platform=[[\"dw-02ff1f5c\",195],[\"dw-887eb915\",160],[\"dw-4e61df49\",90],[\"dw-ed96e4e9\",1.1]]"
     },
     {
       "id": "G0",
       "name": "频道(manual/HITL)+ omp lead + 四协议点位绑定",
       "pass": true,
-      "detail": "{\"channelId\":\"820fc7c2-3439-4e50-8d8e-2360b659d8e2\",\"lead\":\"79407f22-dae2-48bf-8819-3bc30bbbde88\",\"bindingIds\":[\"nb-e6739ef1\",\"nb-1a4c8e18\",\"nb-3e078296\",\"nb-d9b2959e\"]}"
+      "detail": "{\"channelId\":\"380dd977-58f2-402d-9531-e44a22b62b0f\",\"lead\":\"4702cb56-9f61-41dc-91af-bcca50181912\",\"bindingIds\":[\"nb-d35a1825\",\"nb-a192dbc2\",\"nb-02d95c9f\",\"nb-a9aeb2be\"]}"
     },
     {
       "id": "W3",
       "name": "Agent 令牌四协议批量下发(设备侧=目标,四族全部落穿)",
       "pass": true,
-      "detail": "text=试验已整批下发并全部设备证实(4/4,批次 rr-9e6fa):加热区1设定→200C [证实✓];螺杆转速设定→170rpm [证实✓];线速度设定→85m/min [证实✓];模口间隙设定→1.2mm [证实✓]。假设:上线就绪验收:四协议配置一次整批下发(每点均在单步限内)。 人工附言:验收:批准四协议批量注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC device=[[\"dw-4f5aae59\",200],[\"dw-20defa6b\",170],[\"dw-859ef861\",85],[\"dw-ae16effd\",1.2]] targets=[[\"dw-4f5aae59\",200],[\"dw-20defa6b\",170],[\"dw-859ef861\",85],[\"dw-ae16effd\",1.2]]"
+      "detail": "text=试验已整批下发并全部设备证实(4/4,批次 rr-f2c44):加热区1设定→200C [证实✓];螺杆转速设定→170rpm [证实✓];线速度设定→85m/min [证实✓];模口间隙设定→1.2mm [证实✓]。假设:上线就绪验收:四协议配置一次整批下发(每点均在单步限内)。 人工附言:验收:批准四协议批量注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC device=[[\"dw-02ff1f5c\",200],[\"dw-887eb915\",170],[\"dw-4e61df49\",85],[\"dw-ed96e4e9\",1.2]] targets=[[\"dw-02ff1f5c\",200],[\"dw-887eb915\",170],[\"dw-4e61df49\",85],[\"dw-ed96e4e9\",1.2]]"
     },
     {
       "id": "W4",
       "name": "平台回读=目标(四协议)",
       "pass": true,
-      "detail": "[[\"dw-4f5aae59\",200],[\"dw-20defa6b\",170],[\"dw-859ef861\",85],[\"dw-ae16effd\",1.2]]"
+      "detail": "[[\"dw-02ff1f5c\",200],[\"dw-887eb915\",170],[\"dw-4e61df49\",85],[\"dw-ed96e4e9\",1.2]]"
     },
     {
       "id": "N1",
@@ -167,77 +167,77 @@
       "id": "F3",
       "name": "设备恢复:连接测试与写入重新成功(ACK 设备证实)",
       "pass": true,
-      "detail": "test={\"ok\":true,\"message\":\"会话建立成功,读取 ns=2;s=AW.P = 20.816\",\"sampleValue\":20.816,\"latencyMs\":1} outcome={\"ok\":true,\"message\":\"写入并回读一致:175,回读 175(标定后物理值 175)\",\"raw\":175,\"readback\":175,\"ack\":\"readback-verified\",\"anchorId\":\"anc-5717df4c\"} retries=[{\"status\":200,\"code\":0,\"ok\":true}] device=175"
+      "detail": "test={\"ok\":true,\"message\":\"会话建立成功,读取 ns=2;s=AW.P = 20.856\",\"sampleValue\":20.856,\"latencyMs\":1} outcome={\"ok\":true,\"message\":\"写入并回读一致:175,回读 175(标定后物理值 175)\",\"raw\":175,\"readback\":175,\"ack\":\"readback-verified\",\"anchorId\":\"anc-2f1e3e82\"} retries=[{\"status\":200,\"code\":0,\"ok\":true}] device=175"
     }
   ],
   "agent": {
     "via": "agent-tools/invoke + x-aw-agent-token",
     "bindings": [
-      "nb-e6739ef1",
-      "nb-1a4c8e18",
-      "nb-3e078296",
-      "nb-d9b2959e"
+      "nb-d35a1825",
+      "nb-a192dbc2",
+      "nb-02d95c9f",
+      "nb-a9aeb2be"
     ],
     "batchCards": [
-      "ap-0623a5f0"
+      "ap-fbed4fbb"
     ]
   },
   "batch": {
     "targets": [
       [
-        "dw-4f5aae59",
+        "dw-02ff1f5c",
         200
       ],
       [
-        "dw-20defa6b",
+        "dw-887eb915",
         170
       ],
       [
-        "dw-859ef861",
+        "dw-4e61df49",
         85
       ],
       [
-        "dw-ae16effd",
+        "dw-ed96e4e9",
         1.2
       ]
     ],
     "device": [
       [
-        "dw-4f5aae59",
+        "dw-02ff1f5c",
         200
       ],
       [
-        "dw-20defa6b",
+        "dw-887eb915",
         170
       ],
       [
-        "dw-859ef861",
+        "dw-4e61df49",
         85
       ],
       [
-        "dw-ae16effd",
+        "dw-ed96e4e9",
         1.2
       ]
     ],
     "platform": [
       [
-        "dw-4f5aae59",
+        "dw-02ff1f5c",
         200
       ],
       [
-        "dw-20defa6b",
+        "dw-887eb915",
         170
       ],
       [
-        "dw-859ef861",
+        "dw-4e61df49",
         85
       ],
       [
-        "dw-ae16effd",
+        "dw-ed96e4e9",
         1.2
       ]
     ],
-    "text": "试验已整批下发并全部设备证实(4/4,批次 rr-9e6fa):加热区1设定→200C [证实✓];螺杆转速设定→170rpm [证实✓];线速度设定→85m/min [证实✓];模口间隙设定→1.2mm [证实✓]。假设:上线就绪验收:四协议配置一次整批下发(每点均在单步限内)。\n人工附言:验收:批准四协议批量注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC 整批恢复)。"
+    "text": "试验已整批下发并全部设备证实(4/4,批次 rr-f2c44):加热区1设定→200C [证实✓];螺杆转速设定→170rpm [证实✓];线速度设定→85m/min [证实✓];模口间隙设定→1.2mm [证实✓]。假设:上线就绪验收:四协议配置一次整批下发(每点均在单步限内)。\n人工附言:验收:批准四协议批量注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC 整批恢复)。"
   },
   "fault": {
     "offlineTest": {
@@ -253,8 +253,8 @@
     },
     "onlineTest": {
       "ok": true,
-      "message": "会话建立成功,读取 ns=2;s=AW.P = 20.816",
-      "sampleValue": 20.816,
+      "message": "会话建立成功,读取 ns=2;s=AW.P = 20.856",
+      "sampleValue": 20.856,
       "latencyMs": 1
     },
     "onlineWrite": {
@@ -263,7 +263,7 @@
       "raw": 175,
       "readback": 175,
       "ack": "readback-verified",
-      "anchorId": "anc-5717df4c"
+      "anchorId": "anc-2f1e3e82"
     },
     "retryLog": [
       {
@@ -277,51 +277,51 @@
     "modbus-tcp": {
       "points": 29,
       "tail": [
-        207.23,
-        207.25,
-        206.44,
-        206.89,
-        206.99
+        208.42,
+        207.98,
+        208.19,
+        207.97,
+        208.39
       ]
     },
     "modbus-rtu": {
       "points": 29,
       "tail": [
+        3,
         4,
         3,
-        2,
         5,
-        3
+        7
       ]
     },
     "opcua": {
       "points": 29,
       "tail": [
-        19.848,
-        19.894,
-        19.841,
-        19.826,
-        19.909
+        19.89,
+        19.932,
+        19.899,
+        19.811,
+        19.966
       ]
     },
     "mqtt": {
       "points": 15,
       "tail": [
-        68.97,
-        68.87,
-        68.82,
-        68.54,
-        68.51
+        69.25,
+        69.14,
+        69.57,
+        68.23,
+        70.07
       ]
     },
     "http": {
       "points": 29,
       "tail": [
-        0.268,
-        0.232,
-        0.045,
-        0.178,
-        0.251
+        0.05,
+        0.063,
+        0,
+        0.205,
+        0.287
       ]
     }
   },

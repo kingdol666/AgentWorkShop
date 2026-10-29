@@ -1,9 +1,9 @@
 {
-  "at": "2026-10-28T11:47:34.151Z",
+  "at": "2026-10-29T04:58:59.639Z",
   "env": {
     "base": "http://127.0.0.1:3983",
-    "home": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-node-binding-e2e-nbutsw\\home",
-    "devLog": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-node-binding-e2e-nbutsw\\dev.log",
+    "home": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-node-binding-e2e-nbp21f\\home",
+    "devLog": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-node-binding-e2e-nbp21f\\dev.log",
     "mode": "isolated"
   },
   "summary": {
@@ -29,13 +29,13 @@
       "id": "T0c",
       "name": "普通用户创建+登录",
       "pass": true,
-      "detail": "create=200 id=82922371-69f5-49d3-a2c4-972fcc4106ac"
+      "detail": "create=200 id=4d8da5b9-3c80-4ddf-b803-c46c9cdf2e30"
     },
     {
       "id": "T1",
       "name": "产线/参数模板/3 数控节点/产品/配方A 就绪",
       "pass": true,
-      "detail": "{\"line\":\"ln-3eb30045\",\"tpl\":\"cw-0bdceea3\",\"n1\":\"dw-931e3f31\",\"n2\":\"dw-7d66b4d1\",\"n3\":\"dw-d733fd30\",\"recipeA\":\"rc-05b736e4\"}"
+      "detail": "{\"line\":\"ln-1c6bf141\",\"tpl\":\"cw-979c7796\",\"n1\":\"dw-77707208\",\"n2\":\"dw-2c4bdb86\",\"n3\":\"dw-ba9199af\",\"recipeA\":\"rc-5a56ee3c\"}"
     },
     {
       "id": "T1b",
@@ -53,7 +53,7 @@
       "id": "T2",
       "name": "频道绑线 + lead + 3 worker",
       "pass": true,
-      "detail": "{\"channelId\":\"afdceb1b-fb34-4e04-963e-cd49d0fd3640\",\"leadId\":\"07a916ab-618d-4a69-856a-9a9579ce8256\",\"w1\":\"2770a319-6673-4cf9-8513-c4d32e5be8d0\",\"w2\":\"d4f32fcc-2f03-48f1-a67a-11dda98f824c\",\"w3\":\"ef79cc36-5f62-43eb-9cad-25a65d2d162c\"}"
+      "detail": "{\"channelId\":\"26e7da1e-2b4f-43d6-86f8-610345f438a0\",\"leadId\":\"546132e5-28d7-46d9-822d-44449d4da768\",\"w1\":\"b6f95377-65e0-4209-8de6-15d7b88aec02\",\"w2\":\"747300f4-7471-4236-a7a7-d332829b2ca0\",\"w3\":\"e46386f1-fb90-42a8-9297-d53347213fa2\"}"
     },
     {
       "id": "T2b",
@@ -71,7 +71,7 @@
       "id": "T3b",
       "name": "只读用户建 dcw 绑定 → 403(写授权面需 operate)",
       "pass": true,
-      "detail": "status=403 code=LINE_READONLY msg=该绑定涉及写控节点,需对产线「ln-3eb30045」拥有可操控权限(当前:仅查看)"
+      "detail": "status=403 code=LINE_READONLY msg=该绑定涉及写控节点,需对产线「ln-1c6bf141」拥有可操控权限(当前:仅查看)"
     },
     {
       "id": "T3c",
@@ -89,7 +89,7 @@
       "id": "T3e",
       "name": "工具注入面带点位写授权清单(模型无需探测绑定面)",
       "pass": true,
-      "detail": "nual 或产线 manual 时挂 HITL 等人工批准——hypothesis 必填,即本次试验的理由与判断依据。整批一次落产线;复测判读后有进步用 recipe_update 固化,劣化用 recipe_rollback(dispatch=true) 统一回退。受同线试验节拍(默认 ≥5 分钟)与四层限界卡控。\n\n本 Agent 的数控节点写授权面(点位写授权;可在这些节点上 trial/apply,换配方仍有效):授权节点1-nbutsw(dw-931e3f31,℃)"
+      "detail": "nual 或产线 manual 时挂 HITL 等人工批准——hypothesis 必填,即本次试验的理由与判断依据。整批一次落产线;复测判读后有进步用 recipe_update 固化,劣化用 recipe_rollback(dispatch=true) 统一回退。受同线试验节拍(默认 ≥5 分钟)与四层限界卡控。\n\n本 Agent 的数控节点写授权面(点位写授权;可在这些节点上 trial/apply,换配方仍有效):授权节点1-nbp21f(dw-77707208,℃)"
     },
     {
       "id": "T4",
@@ -101,13 +101,13 @@
       "id": "T4b",
       "name": "频道 manual + dcw auto 绑定 → trial 挂起人工审批",
       "pass": true,
-      "detail": "card=ap-31ff0f1c"
+      "detail": "card=ap-56f4be9c"
     },
     {
       "id": "T4c",
       "name": "人工批准后节点绑定 trial 执行成功(ACK 证实)",
       "pass": true,
-      "detail": "试验已整批下发并全部设备证实(1/1,批次 rr-a011d):授权节点1-nbutsw→55℃ [证实✓]。假设:E2E:频道 manual 钳位对节点绑定 Agent 生效。\n人工附言:E2E 批准:频道 manual 钳位验证注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id,"
+      "detail": "试验已整批下发并全部设备证实(1/1,批次 rr-1789f):授权节点1-nbp21f→55℃ [证实✓]。假设:E2E:频道 manual 钳位对节点绑定 Agent 生效。\n人工附言:E2E 批准:频道 manual 钳位验证注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id,"
     },
     {
       "id": "T4d",
@@ -119,37 +119,37 @@
       "id": "T5",
       "name": "trial 覆盖集 ⊆ 节点绑定面 → 成功(line_id 解析活动配方)",
       "pass": true,
-      "detail": "试验已整批下发并全部设备证实(1/1,批次 rr-cb505):授权节点1-nbutsw→56℃ [证实✓]。假设:E2E:节点绑定覆盖集内。注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…)"
+      "detail": "试验已整批下发并全部设备证实(1/1,批次 rr-644f5):授权节点1-nbp21f→56℃ [证实✓]。假设:E2E:节点绑定覆盖集内。注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…)"
     },
     {
       "id": "T5b",
       "name": "trial 含未授权节点 → 写面拒绝且点名节点",
       "pass": true,
-      "detail": "工具调用被拒(写授权校验,recipe_trial):参数节点「dw-7d66b4d1」不在你的写授权面内(节点「授权节点2-nbutsw」,归属产线 ln-3eb30045)。\n该节点不在你的写授权面(节点绑定=点位写授权;配方绑定=配方操作权;产线管理权=该线配方参数)。你的可写节点:dw-931e3f31。 如需写入,请让用户或 lead 为你绑定该数控节点(dcw),或授予配方绑定/产线配方管理权。"
+      "detail": "工具调用被拒(写授权校验,recipe_trial):参数节点「dw-2c4bdb86」不在你的写授权面内(节点「授权节点2-nbp21f」,归属产线 ln-1c6bf141)。\n该节点不在你的写授权面(节点绑定=点位写授权;配方绑定=配方操作权;产线管理权=该线配方参数)。你的可写节点:dw-77707208。 如需写入,请让用户或 lead 为你绑定该数控节点(dcw),或授予配方绑定/产线配方管理权。"
     },
     {
       "id": "T5c",
       "name": "apply 整批(2 参数)仅 1 节点绑定 → 拒绝并给出补绑指引",
       "pass": true,
-      "detail": "无权下发配方「配方A-nbutsw」:本次覆盖的节点中有 1 个不在你的数控节点绑定面内 —— 授权节点2-nbutsw(dw-7d66b4d1)。你已绑定的可写节点:授权节点1-nbutsw(dw-931e3f31)。请让用户或 lead 为你补绑这些节点(节点绑定 = 点位写授权),或改用已授权节点重试;若要对整批配方操作,可请用户授予配方绑定(kind='recipe')或产线配方管理权(kind='line-recipe')。"
+      "detail": "无权下发配方「配方A-nbp21f」:本次覆盖的节点中有 1 个不在你的数控节点绑定面内 —— 授权节点2-nbp21f(dw-2c4bdb86)。你已绑定的可写节点:授权节点1-nbp21f(dw-77707208)。请让用户或 lead 为你补绑这些节点(节点绑定 = 点位写授权),或改用已授权节点重试;若要对整批配方操作,可请用户授予配方绑定(kind='recipe')或产线配方管理权(kind='line-recipe')。"
     },
     {
       "id": "T5d",
       "name": "recipe_update(版本操作)纯 dcw 绑定 → 拒绝",
       "pass": true,
-      "detail": "无权参数写入配方「配方A-nbutsw」(rc-05b736e4):节点绑定(dcw)只授予参数下发/试验权(点位授权),配方版本操作(参数保存/回退)需要配方级授权 —— 绑定该配方(kind='recipe')或持有其产线的配方管理权(kind='line-recipe')。请让用户或 lead 为你授权(recipe 绑定首绑默认 manual,每次动作需人工批准)。"
+      "detail": "无权参数写入配方「配方A-nbp21f」(rc-5a56ee3c):节点绑定(dcw)只授予参数下发/试验权(点位授权),配方版本操作(参数保存/回退)需要配方级授权 —— 绑定该配方(kind='recipe')或持有其产线的配方管理权(kind='line-recipe')。请让用户或 lead 为你授权(recipe 绑定首绑默认 manual,每次动作需人工批准)。"
     },
     {
       "id": "T6",
       "name": "补齐第二节点绑定(auto)",
       "pass": true,
-      "detail": "status=200 id=nb-b08aada5"
+      "detail": "status=200 id=nb-776dfe52"
     },
     {
       "id": "T6b",
       "name": "apply 全覆盖 → 成功(整批 ACK 证实)",
       "pass": true,
-      "detail": "配方「配方A-nbutsw」v1 已整批下发并全部设备证实(2/2,批次 rr-84455)。用 daq_query 复测确认工艺响应。"
+      "detail": "配方「配方A-nbp21f」v1 已整批下发并全部设备证实(2/2,批次 rr-1bc42)。用 daq_query 复测确认工艺响应。"
     },
     {
       "id": "T7",
@@ -161,13 +161,13 @@
       "id": "T7b",
       "name": "撤销 n1 绑定后 trial n1 → 拒绝(收权即失活)",
       "pass": true,
-      "detail": "工具调用被拒(写授权校验,recipe_trial):参数节点「dw-931e3f31」不在你的写授权面内(节点「授权节点1-nbutsw」,归属产线 ln-3eb30045)。\n该节点不在你的写授权面(节点绑定=点位写授权;配方绑定=配方操作权;产线管理权=该线配方参数)。你的可写节点:dw-7d66b4d1。 如需写入,请让用户或 lead 为你绑定该数控节点(dcw),或授予配方绑定/产线配方管理权。"
+      "detail": "工具调用被拒(写授权校验,recipe_trial):参数节点「dw-77707208」不在你的写授权面内(节点「授权节点1-nbp21f」,归属产线 ln-1c6bf141)。\n该节点不在你的写授权面(节点绑定=点位写授权;配方绑定=配方操作权;产线管理权=该线配方参数)。你的可写节点:dw-2c4bdb86。 如需写入,请让用户或 lead 为你绑定该数控节点(dcw),或授予配方绑定/产线配方管理权。"
     },
     {
       "id": "T8",
       "name": "换配方:停 A 开 B(活动批次切换)",
       "pass": true,
-      "detail": "stop=200 start=200 recipeB=rc-ca3e3034"
+      "detail": "stop=200 start=200 recipeB=rc-940a5fbc"
     },
     {
       "id": "T8b",
@@ -179,7 +179,7 @@
       "id": "T8c",
       "name": "换配方后同一 Agent 对 B 的已授权节点 trial 成功(无新配方绑定)",
       "pass": true,
-      "detail": "试验已整批下发并全部设备证实(1/1,批次 rr-d7170):授权节点3-nbutsw→66℃ [证实✓]。假设:E2E:换配方后节点绑定继续生效。注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC 整"
+      "detail": "试验已整批下发并全部设备证实(1/1,批次 rr-43aad):授权节点3-nbp21f→66℃ [证实✓]。假设:E2E:换配方后节点绑定继续生效。注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC 整"
     },
     {
       "id": "T8d",
@@ -191,19 +191,19 @@
       "id": "T8e",
       "name": "配方绑定 Agent 对 B 仍被拒(授权是配方级,不随换配方漂移)",
       "pass": true,
-      "detail": "无权试验下发配方「配方B-nbutsw」:本次覆盖的节点中有 1 个不在你的数控节点绑定面内 —— 授权节点1-nbutsw(dw-931e3f31)。你已绑定的可写节点:(无)。请让用户或 lead 为你补绑这些节点(节点绑定 = 点位写授权),或改用已授权节点重试;若要对整批配方操作,可请用户授予配方绑定(kind='recipe')或产线配方管理权(kind='line-recipe')。"
+      "detail": "无权试验下发配方「配方B-nbp21f」:本次覆盖的节点中有 1 个不在你的数控节点绑定面内 —— 授权节点1-nbp21f(dw-77707208)。你已绑定的可写节点:(无)。请让用户或 lead 为你补绑这些节点(节点绑定 = 点位写授权),或改用已授权节点重试;若要对整批配方操作,可请用户授予配方绑定(kind='recipe')或产线配方管理权(kind='line-recipe')。"
     },
     {
       "id": "T9",
       "name": "lead 委派 dcw 节点给 worker(team_grant_nodes)成功",
       "pass": true,
-      "detail": "已把 1 条节点授权授予 ef79cc36-5f62-43eb-9cad-25a65d2d162c:\n  - 写控 dw-931e3f31(mode=auto)\n来源:lead 绑定面内的节点;worker 现在可用 my_industrial_nodes 查看自己的授权。"
+      "detail": "已把 1 条节点授权授予 e46386f1-fb90-42a8-9297-d53347213fa2:\n  - 写控 dw-77707208(mode=auto)\n来源:lead 绑定面内的节点;worker 现在可用 my_industrial_nodes 查看自己的授权。"
     },
     {
       "id": "T9b",
       "name": "委派落库:worker 绑定面出现 n1(dcw)",
       "pass": true,
-      "detail": "[{\"id\":\"nb-d934d0e0\",\"agentId\":\"ef79cc36-5f62-43eb-9cad-25a65d2d162c\",\"nodeId\":\"dw-931e3f31\",\"kind\":\"dcw\",\"mode\":\"auto\",\"grantedByAgentId\":\"07a916ab-618d-4a69-856a-9a9579ce8256\",\"grantedAt\":\"2026-10-28T19:47:33.513+08:00\",\"createdAt\":\"2026-10-28T19:47:33.513+08:00\"}]"
+      "detail": "[{\"id\":\"nb-95463bcc\",\"agentId\":\"e46386f1-fb90-42a8-9297-d53347213fa2\",\"nodeId\":\"dw-77707208\",\"kind\":\"dcw\",\"mode\":\"auto\",\"grantedByAgentId\":\"546132e5-28d7-46d9-822d-44449d4da768\",\"grantedAt\":\"2026-10-29T12:58:59.008+08:00\",\"createdAt\":\"2026-10-29T12:58:59.008+08:00\"}]"
     },
     {
       "id": "T9c",
@@ -215,13 +215,13 @@
       "id": "T9d",
       "name": "委派绑定(auto)在频道 manual 下仍挂人工审批",
       "pass": true,
-      "detail": "card=ap-9c665010"
+      "detail": "card=ap-b05204b0"
     },
     {
       "id": "T9e",
       "name": "lead 收回委派(dcw 写授权)",
       "pass": true,
-      "detail": "已收回 1 条授权\n  - dcw dw-931e3f31"
+      "detail": "已收回 1 条授权\n  - dcw dw-77707208"
     },
     {
       "id": "T9f",
@@ -239,7 +239,7 @@
       "id": "T9h",
       "name": "收回后再提交 → 写面拒绝",
       "pass": true,
-      "detail": "工具调用被拒(写授权校验,recipe_trial):参数节点「dw-931e3f31」不在你的写授权面内(节点「授权节点1-nbutsw」,归属产线 ln-3eb30045)。\n该节点不在你的写授权面(节点绑定=点位写授权;配方绑定=配方操作权;产线管理权=该线配方参数)。你的可写节点:(无)。 如需写入,请让用户或 lead 为你绑定该数控节点(dcw),或授予配方绑定/产线配方管理权。"
+      "detail": "工具调用被拒(写授权校验,recipe_trial):参数节点「dw-77707208」不在你的写授权面内(节点「授权节点1-nbp21f」,归属产线 ln-1c6bf141)。\n该节点不在你的写授权面(节点绑定=点位写授权;配方绑定=配方操作权;产线管理权=该线配方参数)。你的可写节点:(无)。 如需写入,请让用户或 lead 为你绑定该数控节点(dcw),或授予配方绑定/产线配方管理权。"
     },
     {
       "id": "T10",
@@ -275,19 +275,19 @@
       "id": "T12",
       "name": "管理权 recipe_update(无单配方绑定)→ 成功生成新版本",
       "pass": true,
-      "detail": "已保存为 v2:「配方B-nbutsw」参数 授权节点1-nbutsw 45→57;原因:E2E:产线管理权直接修改任意配方。\n注意:配方定义已更新,运行中批次仍按开跑时冻结的参数生产;要把新参数推到运行中的产线(经治理联锁整批下发),用 recipe_apply。回退用 recipe_rollback。"
+      "detail": "已保存为 v2:「配方B-nbp21f」参数 授权节点1-nbp21f 45→57;原因:E2E:产线管理权直接修改任意配方。\n注意:配方定义已更新,运行中批次仍按开跑时冻结的参数生产;要把新参数推到运行中的产线(经治理联锁整批下发),用 recipe_apply。回退用 recipe_rollback。"
     },
     {
       "id": "T12b",
       "name": "管理权 recipe_rollback(仅定义)→ 成功",
       "pass": true,
-      "detail": "回退完成:配方「配方B-nbutsw」已生成 v3,参数恢复为目标版本(v1);原因:E2E:管理权回退(仅定义)。\n注意:仅回退了配方定义,运行中 PLC 未变动;要把恢复参数写入产线(统一回退),用 recipe_rollback 并带 dispatch=true。版本史用 recipe_versions 复核。"
+      "detail": "回退完成:配方「配方B-nbp21f」已生成 v3,参数恢复为目标版本(v1);原因:E2E:管理权回退(仅定义)。\n注意:仅回退了配方定义,运行中 PLC 未变动;要把恢复参数写入产线(统一回退),用 recipe_rollback 并带 dispatch=true。版本史用 recipe_versions 复核。"
     },
     {
       "id": "T12c",
       "name": "管理权无 dcw 绑定 → trial 全参数放行(向下兼容)",
       "pass": true,
-      "detail": "试验已整批下发并全部设备证实(1/1,批次 rr-bc4c2):授权节点3-nbutsw→58℃ [证实✓]。假设:E2E:管理权 + 无 dcw 绑定 → 全参数下发。注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC 整批恢复)。"
+      "detail": "试验已整批下发并全部设备证实(1/1,批次 rr-ce638):授权节点3-nbp21f→58℃ [证实✓]。假设:E2E:管理权 + 无 dcw 绑定 → 全参数下发。注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC 整批恢复)。"
     },
     {
       "id": "T12d",
@@ -299,31 +299,31 @@
       "id": "T12e",
       "name": "管理权 + dcw 绑定 → 未绑定节点下发被收窄拒",
       "pass": true,
-      "detail": "下发被收窄:你已绑定数控节点,试验下发只能覆盖这些点位。本次覆盖的节点中有 1 个未绑定 —— 授权节点2-nbutsw(dw-7d66b4d1)。你已绑定的可写节点:授权节点3-nbutsw(dw-d733fd30)。请只对已绑定节点下发,或让用户/lead 补绑后再试(未绑定任何数控节点时才默认对配方全部参数放行)。"
+      "detail": "下发被收窄:你已绑定数控节点,试验下发只能覆盖这些点位。本次覆盖的节点中有 1 个未绑定 —— 授权节点2-nbp21f(dw-2c4bdb86)。你已绑定的可写节点:授权节点3-nbp21f(dw-ba9199af)。请只对已绑定节点下发,或让用户/lead 补绑后再试(未绑定任何数控节点时才默认对配方全部参数放行)。"
     },
     {
       "id": "T12f",
       "name": "管理权 + dcw 绑定 → 绑定点位内 trial 放行",
       "pass": true,
-      "detail": "试验已整批下发并全部设备证实(1/1,批次 rr-8dff8):授权节点3-nbutsw→59℃ [证实✓]。假设:E2E:绑定点位内应放行。注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC 整批恢复)。"
+      "detail": "试验已整批下发并全部设备证实(1/1,批次 rr-fea19):授权节点3-nbp21f→59℃ [证实✓]。假设:E2E:绑定点位内应放行。注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC 整批恢复)。"
     },
     {
       "id": "T12g",
       "name": "dcw 收窄不影响版本操作(管理权仍可 update)",
       "pass": true,
-      "detail": "已保存为 v4:「配方B-nbutsw」参数 授权节点2-nbutsw ?→58;原因:E2E:收窄后版本操作仍放行。\n注意:配方定义已更新,运行中批次仍按开跑时冻结的参数生产;要把新参数推到运行中的产线(经治理联锁整批下发),用 recipe_apply。回退用 recipe_rollback。"
+      "detail": "已保存为 v4:「配方B-nbp21f」参数 授权节点2-nbp21f ?→58;原因:E2E:收窄后版本操作仍放行。\n注意:配方定义已更新,运行中批次仍按开跑时冻结的参数生产;要把新参数推到运行中的产线(经治理联锁整批下发),用 recipe_apply。回退用 recipe_rollback。"
     },
     {
       "id": "T12h",
       "name": "工具注入面带产线配方管理权声明",
       "pass": true,
-      "detail": "出判断依据(数采证据/分析结论),审批卡会向人类展示。只改配方定义,要把参数推到运行中的产线用 recipe_apply。\n\n本 Agent 的数控节点写授权面(点位写授权;可在这些节点上 trial/apply,换配方仍有效):授权节点3-nbutsw(dw-d733fd30,℃)\n\n本 Agent 持有的产线配方管理权(可 查看/新建/修改/回退 该线全部配方;下发仍受点位绑定约束:未绑定任何数控节点时默认可对配方全部参数下发,绑了数控节点则只能下发这些点位):节点授权线-nbutsw(ln-3eb30045)"
+      "detail": "出判断依据(数采证据/分析结论),审批卡会向人类展示。只改配方定义,要把参数推到运行中的产线用 recipe_apply。\n\n本 Agent 的数控节点写授权面(点位写授权;可在这些节点上 trial/apply,换配方仍有效):授权节点3-nbp21f(dw-ba9199af,℃)\n\n本 Agent 持有的产线配方管理权(可 查看/新建/修改/回退 该线全部配方;下发仍受点位绑定约束:未绑定任何数控节点时默认可对配方全部参数下发,绑了数控节点则只能下发这些点位):节点授权线-nbp21f(ln-1c6bf141)"
     },
     {
       "id": "T13",
       "name": "收回产线管理权后 recipe_update → 拒绝(需配方级授权)",
       "pass": true,
-      "detail": "status=200 工具调用被拒(写授权校验,recipe_update):参数节点「dw-7d66b4d1」不在你的写授权面内(节点「授权节点2-nbutsw」,归属产线 ln-3eb30045)。\n该节点不在你的写授权面(节点绑定=点位写授权;配方绑定=配方操作权;产线管理权=该线配方参数)。你的可写节点:dw-d733fd30。 如需写入,请让用户或 lead 为你绑定该数控节点(dcw),或授予配方绑定/产线配方管理权。"
+      "detail": "status=200 工具调用被拒(写授权校验,recipe_update):参数节点「dw-2c4bdb86」不在你的写授权面内(节点「授权节点2-nbp21f」,归属产线 ln-1c6bf141)。\n该节点不在你的写授权面(节点绑定=点位写授权;配方绑定=配方操作权;产线管理权=该线配方参数)。你的可写节点:dw-ba9199af。 如需写入,请让用户或 lead 为你绑定该数控节点(dcw),或授予配方绑定/产线配方管理权。"
     }
   ]
 }

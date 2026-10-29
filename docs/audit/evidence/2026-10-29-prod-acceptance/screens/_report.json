@@ -1,0 +1,15 @@
+[
+  {
+    "route": "plugins",
+    "path": "/plugins",
+    "theme": "dark",
+    "landed": "/plugins",
+    "overflowX": 0,
+    "scrollH": 3008,
+    "pageErrors": [],
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ],
+    "file": "docs\\audit\\evidence\\2026-10-29-prod-acceptance\\screens\\dark__plugins.png"
+  }
+]

@@ -1,0 +1,42 @@
+[
+  {
+    "name": "api-live",
+    "exit": 0,
+    "tail": "  PASS  DELETE /agents/:id |   PASS  删除后 channel 列表回退(旧数据保留) — count=0 | ★ ALL PASS  (61 passed)"
+  },
+  {
+    "name": "auth-matrix",
+    "exit": 0,
+    "tail": "PASS  U1 /api/users 无 token → 401 | PASS  U2 /api/users 普通用户 → 403 ADMIN_REQUIRED | 29 pass / 0 fail"
+  },
+  {
+    "name": "template-isolation",
+    "exit": 0,
+    "tail": "PASS  E9 admin 可见全部 Channel 模板 + 创建者 | PASS  E10 admin 可改他人私有模板 | 38 pass / 0 fail"
+  },
+  {
+    "name": "rest-robustness",
+    "exit": 0,
+    "tail": "PASS  被删 channel 公共记忆不泄漏进他 channel 检索 — [] | PASS  清理主 channel | ALL PASS"
+  },
+  {
+    "name": "timezone-settings",
+    "exit": 0,
+    "tail": "    \"offset\": \"-07:00\" |   } | }"
+  },
+  {
+    "name": "agent-team",
+    "exit": 0,
+    "tail": "  PASS  DELETE team |   PASS  删除后 GET → 404 | ━━━ 结果: PASS=25 FAIL=0 ━━━"
+  },
+  {
+    "name": "hitl-live",
+    "exit": 1,
+    "tail": "  PASS  W2b 终端 WS 接入(agentId 寻址) |   … 等待 agent 弹出 ask 对话框(目标:options 含 yes/no)… | FATAL waitUntil timeout: AEP hitl.request 帧(yes/no) (last=null)"
+  },
+  {
+    "name": "error-handling",
+    "exit": 0,
+    "tail": "✔ [E18] 轰炸后实例存活且零重启 | 结论:PASS(26/26) | 证据:D:\\codes\\ABO\\AgentWorkShop\\docs\\audit\\evidence\\2026-10-29-error-handling\\report.json"
+  }
+]

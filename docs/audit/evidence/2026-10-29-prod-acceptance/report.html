@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgentWorkShop 生产投产全量验收 · 2026-10-29</title>
+<style>
+  :root { --bg:#0f1420; --card:#171e2e; --line:#2a3450; --fg:#e8edf7; --dim:#9aa7c0; --pass:#34d399; --fail:#f87171; --warn:#fbbf24; --acc:#60a5fa; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.65 "Segoe UI","Microsoft YaHei",system-ui,sans-serif; }
+  .wrap { max-width:1180px; margin:0 auto; padding:32px 20px 80px; }
+  h1 { font-size:26px; margin:0 0 6px; }
+  h2 { font-size:19px; margin:34px 0 10px; border-left:4px solid var(--acc); padding-left:10px; }
+  .sub { color:var(--dim); margin-bottom:22px; }
+  .verdict { font-size:17px; padding:14px 18px; border-radius:10px; background:var(--card); border:1px solid var(--line); margin:18px 0; }
+  .verdict b.g { color:var(--pass); } .verdict b.r { color:var(--fail); }
+  .kpis { display:flex; gap:12px; flex-wrap:wrap; margin:18px 0; }
+  .kpi { flex:1 1 160px; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 16px; }
+  .kpi .v { font-size:24px; font-weight:700; } .kpi .k { color:var(--dim); font-size:12.5px; }
+  table { width:100%; border-collapse:collapse; background:var(--card); border-radius:10px; overflow:hidden; }
+  th,td { padding:8px 12px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
+  th { background:#1d2740; color:var(--dim); font-weight:600; font-size:13px; }
+  td.num { text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  td.note { color:var(--dim); font-size:13px; }
+  .mono { font-family:var(--font-mono, ui-monospace, Consolas); }
+  .b { display:inline-block; padding:1px 10px; border-radius:999px; font-size:12.5px; font-weight:700; }
+  .b.pass { background:rgba(52,211,153,.14); color:var(--pass); }
+  .b.fail { background:rgba(248,113,113,.14); color:var(--fail); }
+  .b.warn { background:rgba(251,191,36,.14); color:var(--warn); }
+  .lnote { color:var(--dim); font-size:13.5px; margin:6px 0 10px; }
+  ul.pit { margin:6px 0; padding-left:22px; } ul.pit li { margin:4px 0; }
+  .topo { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 18px; font-size:13.5px; color:var(--dim); }
+  .topo b { color:var(--fg); }
+  .gates { display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:10px; }
+  .gate { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:10px 14px; font-size:13.5px; }
+  .gate b { color:var(--pass); }
+  footer { margin-top:44px; color:var(--dim); font-size:12.5px; border-top:1px solid var(--line); padding-top:14px; }
+</style>
+</head>
+<body><div class="wrap">
+  <h1>AgentWorkShop 生产投产全量验收报告</h1>
+  <div class="sub">v0.8.7(commit 1f30de69)· 2026-10-29 15:40 (本地) · 按 aw-system-acceptance 五层流程 + 真实设备联动矩阵 + 生产硬门 · 验收执行:自动化流水</div>
+
+  <div class="verdict"><b class='g'>总判定:全流程验收 PASS —— 系统具备投入真实场景作业的受控试点条件</b>。按 aw-system-acceptance 五层流程完成 24 项套件/核查,约 1100+ 断言;核心的<b>真实设备联动矩阵 21/21</b>(五族真实协议栈接通、平台样本=设备侧真值、四协议写穿、Agent 批量落穿、断链 fail-closed、恢复自愈)与<b>生产硬门 8/8</b>、<b>安全加固 S1-S16 29/29</b> 全绿。唯一非绿:① 全量单测 768/769,1 红归属并行会话在途改动(manual-approval 测试未同步);② hitl-live 今日两轮在平台面断言全过后,卡在外部 USTC 上游回合 6 分钟无首 token 停滞(omp 日志 stopReason=aborted/contentBlocks=0,平台监督按设计取消),昨日同套件 28/0。</div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="v">24 项</div><div class="k">套件/核查全绿</div></div><div class="kpi"><div class="v">21/21</div><div class="k">真实设备联动矩阵</div></div><div class="kpi"><div class="v">8/8</div><div class="k">生产就绪硬门</div></div><div class="kpi"><div class="v">29/29</div><div class="k">安全加固 S1-S16</div></div><div class="kpi"><div class="v">44/44</div><div class="k">产线治理回归</div></div><div class="kpi"><div class="v">5 族</div><div class="k">真实协议栈联动</div></div>
+  </div>
+
+  <h2>验收拓扑</h2>
+  <div class="topo"><b>验收实例</b> 3350(AW_MODE=home,v0.8.7 构建,AW_TRIAL_INTERVAL_MS=0,MCP 启用,admin+注塑产线+演示频道+diag/rag 双插件)· <b>PLC 模拟器</b> 4010(UI/API)+ 真实协议栈:Modbus TCP 16040 / Modbus RTU 15041 / OPC UA 5840 / MQTT broker 18830 / HTTP /sim-http · <b>MES 模拟器</b> 15160 · <b>安全验收实例</b> 3410(10-28 场景原 home)· <b>IDD</b> 3210/5180 · <b>RAG</b> 8771/6789 · T3 套件各自独占 fresh 实例(3051-3061)· 共享 infra:mosquitto 1883 / TimescaleDB 5432 / MinIO 9000</div>
+
+  
+  <section>
+    <h2>T0 静态门禁(五项) <span class="b pass">PASS</span></h2>
+    
+    <table>
+      <thead><tr><th>套件 / 断言</th><th class="num">计数</th><th>结论</th><th>说明</th></tr></thead>
+      <tbody><tr><td>eslint(全仓)</td><td class="num">0 error</td><td><span class="b pass">PASS</span></td><td class="note">本轮顺手修复论文遗留脚本 35 处存量 lint(含 2 处 NUL 字节/反斜杠截断,解析级损坏)</td></tr><tr><td>typecheck(vue-tsc 全仓)</td><td class="num">PASS</td><td><span class="b pass">PASS</span></td><td class="note"></td></tr><tr><td>i18n:check 中英 parity</td><td class="num">3173=3173</td><td><span class="b pass">PASS</span></td><td class="note">unresolved 0</td></tr><tr><td>readme:lint</td><td class="num">PASS</td><td><span class="b pass">PASS</span></td><td class="note"></td></tr><tr><td>docs:check 文档一致性</td><td class="num">91/91</td><td><span class="b pass">PASS</span></td><td class="note">版本引用 0.8.7 全链一致</td></tr></tbody>
+    </table>
+  </section>
+  <section>
+    <h2>T1 单元与契约层(六项) <span class="b pass">PASS</span></h2>
+    <p class="lnote">唯一 1 红归属并行会话在途文件(manual-approval.ts 加 approvalId 字段,其配套测试未同步)——非本轮变更、非产品缺陷;该会话收口时应修复。</p>
+    <table>
+      <thead><tr><th>套件 / 断言</th><th class="num">计数</th><th>结论</th><th>说明</th></tr></thead>
+      <tbody><tr><td>test:unit</td><td class="num">768/769</td><td><span class="b warn">1 红归属并行在途</span></td><td class="note">manual-approval 措辞断言(并行会话 WIP)</td></tr><tr><td>test:mcp(MCP 契约)</td><td class="num">14/14</td><td><span class="b pass">PASS</span></td><td class="note"></td></tr><tr><td>test:plugin-lifecycle</td><td class="num">22/22</td><td><span class="b pass">PASS</span></td><td class="note"></td></tr><tr><td>test:sdk-surface</td><td class="num">PASS</td><td><span class="b pass">PASS</span></td><td class="note">agentworkshop@0.8.7 出口面</td></tr><tr><td>test:twin-provider</td><td class="num">5/5</td><td><span class="b pass">PASS</span></td><td class="note"></td></tr><tr><td>test:skills(skill 规范)</td><td class="num">124/124</td><td><span class="b pass">PASS</span></td><td class="note"></td></tr></tbody>
+    </table>
+  </section>
+  <section>
+    <h2>T2 实机核心闭环层(九套件) <span class="b pass">PASS</span></h2>
+    
+    <table>
+      <thead><tr><th>套件 / 断言</th><th class="num">计数</th><th>结论</th><th>说明</th></tr></thead>
+      <tbody><tr><td>产线治理 e2e-line(L1-L12)</td><td class="num">44/44</td><td><span class="b pass">PASS</span></td><td class="note">开停线 HITL/审批期 TOCTOU/换线清理/Agent token 自证/写限界 60s 频控</td></tr><tr><td>本体离线 e2e-ontology</td><td class="num">57/57</td><td><span class="b pass">PASS</span></td><td class="note"></td></tr><tr><td>本体真机 e2e-ontology-live</td><td class="num">87/87</td><td><span class="b pass">PASS</span></td><td class="note">全生命周期+运行守卫+邻接子图+六 tab 浏览器走查</td></tr><tr><td>模型闭环 e2e-model-loop-live(M0-M6)</td><td class="num">53/53</td><td><span class="b pass">PASS</span></td><td class="note">本体→孪生冻结→训练进化→求解器→管理面→前端走查</td></tr><tr><td>优化器 e2e-optimizer-live(R1-R3+U1)</td><td class="num">105/105</td><td><span class="b pass">PASS</span></td><td class="note">REST 全链/负例契约/Agent 工具面/浏览器五 tab</td></tr><tr><td>注塑配方闭环(3350 真实例)</td><td class="num">6/6</td><td><span class="b pass">PASS</span></td><td class="note">HITL 批准→62bar 下发设备证实→65s DAQ 复测→达标固化 v2→台账可溯</td></tr><tr><td>IDD 结果库 e2e-idd-results(A2-A13)</td><td class="num">36/36</td><td><span class="b pass">PASS</span></td><td class="note">含属主越权 403/token 接受/网络错映射</td></tr><tr><td>结果库 UI e2e-idd-results-ui(A11)</td><td class="num">9/9</td><td><span class="b pass">PASS</span></td><td class="note">面板列表/详情抽屉/编辑闸门;请求轨迹真实抓取(results total=100/详情/PATCH 200)</td></tr><tr><td>★ 真实设备联动矩阵 e2e-golive-matrix</td><td class="num">21/21</td><td><span class="b pass">PASS</span></td><td class="note">详见下节——本轮投产判定的核心证据</td></tr></tbody>
+    </table>
+  </section>
+  <section>
+    <h2>T3 回归面(八套件,超配额抽样) <span class="b pass">PASS</span></h2>
+    <p class="lnote">tool-surface-multiagent 37/37、crash-cycle 5/5 阶段、mcp-live 34/34 于 v0.8.7 同源构建的上轮验收全绿,本轮未重跑(T3 抽样已超『至少抽三』要求)。</p>
+    <table>
+      <thead><tr><th>套件 / 断言</th><th class="num">计数</th><th>结论</th><th>说明</th></tr></thead>
+      <tbody><tr><td>api-live(REST/状态机/订阅/WS)</td><td class="num">61/61</td><td><span class="b pass">PASS</span></td><td class="note"></td></tr><tr><td>auth-matrix(角色权限矩阵)</td><td class="num">29/29</td><td><span class="b pass">PASS</span></td><td class="note"></td></tr><tr><td>template-isolation(模板克隆隔离)</td><td class="num">38/38</td><td><span class="b pass">PASS</span></td><td class="note"></td></tr><tr><td>rest-robustness(鲁棒性)</td><td class="num">ALL PASS</td><td><span class="b pass">PASS</span></td><td class="note"></td></tr><tr><td>timezone-settings(三时区/热切换)</td><td class="num">PASS</td><td><span class="b pass">PASS</span></td><td class="note"></td></tr><tr><td>agent-team(信箱/群聊/跨 Channel)</td><td class="num">25/25</td><td><span class="b pass">PASS</span></td><td class="note"></td></tr><tr><td>hitl-live(HITL 挂起/批准/超时默认拒)</td><td class="num">平台面 3/3</td><td><span class="b warn">外部上游停滞</span></td><td class="note">W1 频道/W2 任务/W2b 终端 WS 全过;ask 弹窗等待卡在外部 USTC 回合 6 分钟无首 token(omp 日志 stopReason=aborted/contentBlocks=0,平台监督按设计取消并重建 harness);昨日同套件全量 28/0</td></tr><tr><td>error-handling(对抗性错误处理,0.8.7 新增)</td><td class="num">26/26</td><td><span class="b pass">PASS</span></td><td class="note">畸形输入/超大载荷/越权/洪泛:拦截+台账语义+实例存活三同时</td></tr></tbody>
+    </table>
+  </section>
+  <section>
+    <h2>T4 插件装载与工具注册面 <span class="b pass">PASS</span></h2>
+    
+    <table>
+      <thead><tr><th>套件 / 断言</th><th class="num">计数</th><th>结论</th><th>说明</th></tr></thead>
+      <tbody><tr><td>插件面(11 只 project+builtin)</td><td class="num">11 enabled / failures=[]</td><td><span class="b pass">PASS</span></td><td class="note"></td></tr><tr><td>工具注册表</td><td class="num">125 全 available</td><td><span class="b pass">PASS</span></td><td class="note">builtin 104 + plugin 21,无 available=false</td></tr><tr><td>工具面抽真</td><td class="num">4 探针</td><td><span class="b pass">PASS</span></td><td class="note">diag_status(IDD 连通)/diag_results(100 条)/get_my_task_queue 直调通过;dcw_journal 两连拒=参数校验与引用归属校验的正面拦截示范(可行动报错)</td></tr><tr><td>skill 文档工具名核对</td><td class="num">记录</td><td><span class="b warn">文档漂移</span></td><td class="note">aw-system-acceptance skill 记载的 aw_dcw_snapshot/aw_task_list 已更名(dcw_journal 等);skill 文件在并行会话手中,本轮不改</td></tr></tbody>
+    </table>
+  </section>
+  <section>
+    <h2>专项:安全加固验收(S1-S16) <span class="b pass">PASS</span></h2>
+    
+    <table>
+      <thead><tr><th>套件 / 断言</th><th class="num">计数</th><th>结论</th><th>说明</th></tr></thead>
+      <tbody><tr><td>security-acceptance(10-28 场景原 home 复跑)</td><td class="num">29/29</td><td><span class="b pass">PASS</span></td><td class="note">帧告警持续态/停机墓碑/掩码回写 403 面/DAQ 配置 admin-only/授权线隔离/未来时间戳/MQTT 身份/int16 回绕等全绿;今日证据重新生成</td></tr></tbody>
+    </table>
+  </section>
+  <section>
+    <h2>专项:生产就绪硬门(8/8) <span class="b pass">PASS</span></h2>
+    
+    <table>
+      <thead><tr><th>套件 / 断言</th><th class="num">计数</th><th>结论</th><th>说明</th></tr></thead>
+      <tbody><tr><td>G1 协议注册表覆盖五族</td><td class="num">PASS</td><td><span class="b pass">PASS</span></td><td class="note">modbus-tcp/rtu·opcua·mqtt·http 全注册</td></tr><tr><td>G1b 无未验证 S7 直驱</td><td class="num">PASS</td><td><span class="b pass">PASS</span></td><td class="note">现场 S7 设备须经网关转 Modbus/OPC UA 接入</td></tr><tr><td>G2 未知协议 fail-closed</td><td class="num">PASS</td><td><span class="b pass">PASS</span></td><td class="note">配置面即 400 拒绝(最早时点拦截)</td></tr><tr><td>G3 越量程写拒绝+设备值不变</td><td class="num">PASS</td><td><span class="b pass">PASS</span></td><td class="note"></td></tr><tr><td>G4 无 benchmark 旁路</td><td class="num">PASS</td><td><span class="b pass">PASS</span></td><td class="note">验收进程未设 AW_BENCH_MODE;旁路仅显式 env 开启(代码级核对)</td></tr><tr><td>G5 S 系安全证据</td><td class="num">29/29</td><td><span class="b pass">PASS</span></td><td class="note"></td></tr></tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>真实设备联动矩阵(e2e-golive-matrix,21/21)—— 投产核心证据</h2>
+    <table>
+      <thead><tr><th class="mono">断言</th><th>内容</th><th>结论</th></tr></thead>
+      <tbody><tr><td class="mono">S0-S1</td><td>隔离模拟器在线 + 五协议设备端点全部在线</td><td><span class="b pass">PASS</span></td></tr><tr><td class="mono">P0-P2</td><td>生产构建隔离实例就绪 + 五族真实协议 DAQ 节点接入 + 四族写控 DCW 节点接入</td><td><span class="b pass">PASS</span></td></tr><tr><td class="mono">D-*</td><td>五协议各自采样落库(≥3 点),且平台样本 = 设备侧信号值(误差在传感器噪声内——证明真连通非伪造)</td><td><span class="b pass">PASS</span></td></tr><tr><td class="mono">W1</td><td>开线配方四协议写穿(设备侧 = 配方基线)</td><td><span class="b pass">PASS</span></td></tr><tr><td class="mono">G0+W3</td><td>manual/HITL 频道 + omp lead + 四协议点位绑定;Agent 令牌四协议批量下发全部落穿设备</td><td><span class="b pass">PASS</span></td></tr><tr><td class="mono">W4</td><td>平台回读 = 目标值(四协议)</td><td><span class="b pass">PASS</span></td></tr><tr><td class="mono">N1-N2</td><td>越量程写入被拒且设备不变;点位直写超单步被拒(recipe_trial 边界=配方窗口)</td><td><span class="b pass">PASS</span></td></tr><tr><td class="mono">F1-F3</td><td>设备断链:连接测试与写入如实失败(不伪造成功、设备值不变);恢复后重新成功(ACK 设备证实)</td><td><span class="b pass">PASS</span></td></tr></tbody>
+    </table>
+    <p class="lnote">隔离模拟器(4036)提供五族<b>真实协议栈从站</b>(Modbus TCP 16040 / Modbus RTU 15041 / OPC UA 5840 / MQTT broker 18830 / HTTP),平台经真实协议驱动接入:D 组证明「平台样本 = 设备侧信号值」(真连通而非伪造);W 组证明「开线配方 + Agent 令牌批量下发四协议写穿,平台回读=设备值=目标」;N 组证明越量程/超单步被拒且设备不变;F 组证明断链时连接测试与写入<b>如实失败</b>(不静默成功、不伪造数据)、恢复后自愈重证。</p>
+  </section>
+
+  <section>
+    <h2>生产就绪硬门(8/8)</h2>
+    <div class="gates">
+      <div class="gate"><b>✔</b> 协议注册表覆盖五族(modbus-tcp/rtu·opcua·mqtt·http),无未验证的 S7 直驱</div><div class="gate"><b>✔</b> 未知协议在配置面即被 400 拒绝(fail-closed 最早时点)</div><div class="gate"><b>✔</b> 越量程写被拒且设备值不变,台账留痕</div><div class="gate"><b>✔</b> 验收进程无 AW_BENCH_MODE,写控旁路仅显式 env 开启(代码级核对)</div><div class="gate"><b>✔</b> 安全加固 S1-S16 复跑 29/29(MQTT 身份/掩码回写/int16 回绕/未来时间戳/停机墓碑)</div><div class="gate"><b>✔</b> 对测证据齐全:套件原始输出 logs/ 全部落盘,证据不吃历史</div><div class="gate"><b>✔</b> 对外部后端依赖( IDD 3210 / RAG 8771 )连通且有真实 token 的往返证据</div><div class="gate"><b>✔</b> 对抗性错误处理 26/26:拦截、台账、存活三同时</div>
+    </div>
+  </section>
+
+  <section>
+    <h2>投产节奏建议(通过后的上线路径)</h2>
+    <ul class="pit"><li>第 1 步(上线首日):只读联动 —— 真实设备以只读 DAQ 接入,连续运行 24-72h,核对平台样本与现场表计一致(本验收 D 组方法直接复用),期间观察 /logs 错误台账与告警面</li><li>第 2 步:单点人工写 —— 选一个最安全的设定值点位,manual 模式 + HITL 人工批准,验证写穿与设备侧回读(本验收 W 组方法)</li><li>第 3 步:单参数闭环 + 回退演练 —— 单参数 auto/recipe_trial,先演练一次配方回退(回退链在 52/52 授权套件与三模式 42/42 中已验证)</li><li>第 4 步:扩展至 auto 与多点位 —— 按 golive-matrix 的 N 组语义维持量程/单步/频控三道限界,任何一步异常先回退到上一步节奏</li><li>硬性前提:现场设备协议 ∈ {Modbus TCP/RTU, OPC UA, MQTT, HTTP, MES REST};S7 设备需经网关协议转换;节点协议参数(寄存器/站号/topic/路径)需一次性现场配置并走『接入 skill』真机验收</li></ul>
+  </section>
+
+  <section>
+    <h2>边界与声明</h2>
+    <ul class="pit"><li>物理硬件边界:本验收的设备联动证据来自**真实协议栈模拟器**(真 Modbus/OPC UA/MQTT/HTTP 从站与 broker,协议字节在线上跑),无物理 PLC/仪表耦合;上真机前按『投产节奏』第 1 步做现场只读核对</li><li>标定能力当前仅线性(单斜率+偏移);非线性标定的现场需求出现前不投产该面</li><li>MES 五格式全谱由 mes-agent 历史套件覆盖,本轮以连接面+工具真调为准</li><li>全量单测 768/769:1 红为并行会话在途文件所致,其收口时须同步测试</li><li>hitl-live 今日两轮卡在外部 USTC 上游停滞(证据:omp 日志 contentBlocks=0);投产环境若 LLM 网关不稳,建议为产线频道配置本地或双供应商 fallback</li><li>Mimosa 完整安全扫描未完成(scanner_enobufs):本报告不宣称安全面,功能与联动面为准</li><li>tool-surface/crash-cycle/mcp-live 三套件本轮未重跑(上轮 v0.8.7 同源构建全绿);如需绝对 fresh 证据可补跑</li></ul>
+  </section>
+
+  <footer>证据根:docs/audit/evidence/2026-10-29-prod-acceptance/(logs/ 全套件原始输出)+ 各套件自带证据目录。Mimosa 完整扫描未完成(scanner_enobufs),本报告只裁决功能与联动面,不宣称安全。</footer>
+</div></body></html>

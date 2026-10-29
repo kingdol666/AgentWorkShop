@@ -80,6 +80,13 @@ if (hasPwd) {
   console.log('login:', await login())
   await sleep(3500)
 }
+else {
+  // 无登录框 = 已登录(持久会话/免登录环境)。直接验证登录态,不要误判成"页面没起来":
+  // 既有轮次实测过 hasPwd 轮询在特定时序下假阴,而应用壳已完整水合。
+  const authed = await page.evaluate(() => /仪表盘|插件管理|用户管理/.test(document.body.textContent ?? ''))
+  console.log('login:', authed ? 'already-authenticated(skip)' : 'no-password-box-and-not-authed(continuing)')
+  await sleep(1500)
+}
 // 插件面板直接挂在 /plugins 页(无需点插件卡片)
 await page.goto(BASE + '/plugins', { waitUntil: 'domcontentloaded', timeout: 120000 })
 await sleep(4000)

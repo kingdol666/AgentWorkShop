@@ -1,0 +1,55 @@
+{
+  "suite": "production-gates",
+  "at": "2026-10-29T06:43:44.525Z",
+  "base": "http://127.0.0.1:3350",
+  "results": [
+    {
+      "id": "G1",
+      "name": "协议注册表覆盖五族(modbus-tcp/rtu·opcua·mqtt·http)",
+      "pass": true,
+      "detail": "missing="
+    },
+    {
+      "id": "G1b",
+      "name": "无未验证的 S7 直驱(现场 S7 设备须走网关转 Modbus/OPC UA)",
+      "pass": true,
+      "detail": "shared/daq-protocol.ts 无 S7 协议族注册"
+    },
+    {
+      "id": "G2",
+      "name": "未知协议在配置面即被拒绝(fail-closed 最早时点)",
+      "pass": true,
+      "detail": "status=400 {\"code\":\"VALIDATION_ERROR\",\"message\":\"templateRef 必填:数采节点必须绑定信号模板\",\"data\":null}"
+    },
+    {
+      "id": "G3a",
+      "name": "越量程写被拒(窗口 0~100,尝试 600)",
+      "pass": true,
+      "detail": "status=404"
+    },
+    {
+      "id": "G3b",
+      "name": "被拒写入设备值不变",
+      "pass": true,
+      "detail": "before=236 after=236"
+    },
+    {
+      "id": "G4",
+      "name": "验收驱动进程未设 AW_BENCH_MODE(写控旁路不存在的先决条件)",
+      "pass": true,
+      "detail": "driver env AW_BENCH_MODE=(unset)"
+    },
+    {
+      "id": "G4b",
+      "name": "写控旁路仅由 AW_BENCH_MODE 显式开启(代码级)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "G5",
+      "name": "S 系安全加固验收全绿(S13 MQTT 身份/掩码回写/int16 回绕/未来时间戳)",
+      "pass": true,
+      "detail": "29/29"
+    }
+  ]
+}
