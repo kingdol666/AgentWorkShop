@@ -87,6 +87,13 @@
 
 ## 设计架构
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/architecture.png" alt="AgentWorkShop 架构:前端 → 四个入口 → Agent 运行时 → 工业栈 → 时序存储" width="92%" />
+</p>
+
+<details>
+<summary><b>完整架构图源(mermaid,点开)</b></summary>
+
 ```mermaid
 flowchart TB
     subgraph FE["前端 — Nuxt 4 / Vue 3"]
@@ -134,6 +141,8 @@ messages · memories (FTS5) · events")]
     DCW --> BR
     DAQ & DCW --> BUS
 ```
+
+</details>
 
 **Agent × 机器之桥**（值得读源码的部分）：
 

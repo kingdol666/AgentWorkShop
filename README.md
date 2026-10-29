@@ -86,38 +86,45 @@ A configuration-driven platform where **AI agent teams** and an **industrial pro
 
 ## Architecture
 
+<p align="center">
+  <img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/architecture.png" alt="AgentWorkShop architecture: frontend → four entry points → agent runtime → industrial stack → time-series store" width="92%" />
+</p>
+
+<details>
+<summary><b>Full diagram source (mermaid, open)</b></summary>
+
 ```mermaid
 flowchart TB
-    subgraph FE["Frontend — Nuxt 4 / Vue 3"]
-        UI["Workbench UI · 3D twin · boards"]
-        WS["AEP client — seq resume"]
+    subgraph FE["前端 — Nuxt 4 / Vue 3"]
+        UI["工作台 UI · 3D 孪生 · 大屏"]
+        WS["AEP 客户端 — seq 续传"]
     end
-    subgraph SRV["Server — Nitro / h3"]
+    subgraph SRV["服务端 — Nitro / h3"]
         REST["REST /api/workshop/**"]
         HUB["WS Hub — AEP v1"]
         A2A["A2A JSON-RPC"]
         MCP["MCP Server"]
-        subgraph RT["Runtime"]
+        subgraph RT["运行时"]
             MGR["AgentChannelManager"]
-            SCH["SchedulerLoop — lead supervision"]
-            TE["TaskEngine — 7-state machine"]
+            SCH["SchedulerLoop — lead 监督"]
+            TE["TaskEngine — 7 态任务机"]
             AR["AgentRuntime × N"]
-            MEM["AgentMemory — FTS5 + vector"]
-            BUS["Event bus (ManagerBus) — per-channel seq + ring buffer"]
+            MEM["AgentMemory — FTS5 + 向量"]
+            BUS["事件总线 (ManagerBus) — per-channel seq + 环形缓冲"]
         end
-        subgraph IND["Industrial"]
-            DAQ["DAQ gateway — per-node edge runtime"]
-            DCW["write-control gateway"]
-            BR["Queue — inproc / MQTT"]
-            TSDB["Time-series — SQLite / Timescale"]
+        subgraph IND["工业"]
+            DAQ["数采网关 — 逐节点边缘运行时"]
+            DCW["数控网关 — 写控"]
+            BR["队列 — inproc / MQTT"]
+            TSDB["时序库 — SQLite / Timescale"]
         end
-        subgraph HB["Harness adapters — 14 engines"]
-            MOCK["mock · claude — in-process"]
-            OMP["omp — RPC subprocess"]
+        subgraph HB["Harness 适配器 — 14 个引擎"]
+            MOCK["mock · claude — 进程内"]
+            OMP["omp — RPC 子进程"]
             CDX["codex — app-server"]
             DSH["dsh · qwen · hermes — ACP"]
             OC["opencode — serve"]
-            FAM["gemini · copilot · cursor · crush · goose · pi — headless CLI"]
+            FAM["gemini · copilot · cursor · crush · goose · pi — 无头 CLI"]
         end
         DB[("SQLite — channels · agents · tasks
 messages · memories (FTS5) · events")]
@@ -133,6 +140,8 @@ messages · memories (FTS5) · events")]
     DCW --> BR
     DAQ & DCW --> BUS
 ```
+
+</details>
 
 **The agent × machine bridge** (the part worth reading source for):
 
