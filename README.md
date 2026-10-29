@@ -54,11 +54,7 @@ A configuration-driven platform where **AI agent teams** and an **industrial pro
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/readme-grid-core.png" alt="Dashboard / Line Ops / DAQ Center / AutoML Lab" width="86%" />
-</p>
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/readme-grid-ops.png" alt="Digital Twin 3D / Monitor & HITL / Analysis Reports / Audit Log" width="86%" />
+  <img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/readme-grid-core.jpg" alt="Dashboard / Line Ops / DAQ Center / AutoML Lab / Digital Twin 3D / Monitor & HITL / Analysis / Audit Log" width="100%" />
 </p>
 
 > [!NOTE]

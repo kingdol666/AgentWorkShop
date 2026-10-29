@@ -55,11 +55,7 @@
 </p>
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/readme-grid-core.png" alt="仪表盘 / 产线作业 / 数采中心 / 自动建模实验室" width="86%" />
-</p>
-
-<p align="center">
-  <img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/readme-grid-ops.png" alt="数字孪生 3D / 运行时监控与 HITL / 数据分析台账 / 产线日志" width="86%" />
+  <img src="https://raw.githubusercontent.com/kingdol666/AgentWorkShop/main/docs/readme-assets/readme-grid-core.jpg" alt="仪表盘 / 产线作业 / 数采中心 / 自动建模实验室 / 数字孪生 3D / 监控 HITL / 数据分析 / 产线日志" width="100%" />
 </p>
 
 > [!NOTE]
