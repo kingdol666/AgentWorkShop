@@ -26,7 +26,7 @@
 [![Docs](https://img.shields.io/badge/%E6%96%87%E6%A1%A3-VitePress%20%C2%B7%20%E4%B8%AD%2FEN-ffd75e?logo=vitepress&logoColor=black)](https://kingdol666.github.io/AgentWorkShop)
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.8.7</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST 集成（镜像与直连双路径）· 数据分析台账（产线级权限隔离）· 工艺参数优化器（过程模型 → AML → OSQP 求解 → 治理下发）· **本体服务 + AI 先行模型闭环**（本体 · 孪生 · 求解器 · AML 采纳）· 104 个宿主工具 · 128 个运行时设置项 · 双语文档（简体中文 / English）</sub>
+<sub><b>v0.8.7</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST 集成（镜像与直连双路径）· 数据分析台账（产线级权限隔离）· 工艺参数优化器（过程模型 → AML → OSQP 求解 → 治理下发）· **本体服务 + AI 先行模型闭环**（本体 · 孪生 · 求解器 · AML 采纳）· 104 个宿主工具 · 129 个运行时设置项 · 双语文档（简体中文 / English）</sub>
 
 <br />
 
@@ -193,7 +193,7 @@ aw start                           # → http://localhost:3001，一切初始化
 
 **四个入口**：WS（AEP v1，seq 续传）· MCP（进程内服务）· A2A（JSON-RPC 2.0 + AgentCard）· REST（完整管理面）。
 
-**任务状态机**：`SUBMITTED → ASSIGNED → WORKING → WAITING → COMPLETED`（任一态可 `CANCELED / FAILED`，重试 ≤ 3）。
+**任务状态机**：`SUBMITTED → ASSIGNED → WORKING → WAITING → COMPLETED`（任一态可转 `CANCELED / FAILED`；FAILED 可改派重试并重置执行预算，根任务受预算守卫）。
 
 </details>
 
