@@ -23,6 +23,7 @@ import { assertRecipeOpInterval } from '../../dcw/recipe-op-anchor'
 import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
 import { recordOps } from '../../ops/ops'
 import { evaluateRecipeParamLimits } from '../../dcw/dcw-controller/write'
+import { GOVERNED_DISPATCH_HINT, RECOVERY_RETRY_HINT, RECOVERY_TRACE_HINT, RECOVERY_VERIFY_HINT } from './fallback-hints'
 import { amlActivityForLine } from './aml-activity'
 import { agentOpsScope, revalidateApprovedAction } from './ops-tools'
 
@@ -304,7 +305,7 @@ export async function toolRecipePropose(agentId: string, args: {
     return {
       text: [
         `方案「${chosen.name}」已获批准,但整批下发启动失败:${err instanceof Error ? err.message : String(err)}`,
-        '产线未做任何变更;请等待节拍窗放行后用 dcw_control 逐节点直发本方案参数,或稍后重新提交 recipe_propose。',
+        `产线未做任何变更;请等待节拍窗放行后重新提交 recipe_propose 整批下发本方案参数 —— ${GOVERNED_DISPATCH_HINT}。`,
       ].join('\n'),
       isError: true,
     }
@@ -347,7 +348,7 @@ export async function toolRecipePropose(agentId: string, args: {
     return {
       text: [
         `整包下发失败:方案「${chosen.name}」已获批准,但整批下发 0/${run.results.length} 参数成功(典型:节点写入保持窗/节流未放行)。${runIdNote}${feedback}`,
-        '产线仍在运行原参数 —— 请等待约 60s 后用 dcw_control 逐节点直发本方案参数,或用 recipe_rollback(recipe_id, dispatch=true) 统一回退到已知良好版本;并把失败原因写入汇报提醒人类。',
+        `产线仍在运行原参数 —— 请${RECOVERY_RETRY_HINT},或用 recipe_rollback(recipe_id, to_last_good=true) 统一回退到已知良好版本;并把失败原因写入汇报提醒人类。`,
       ].join('\n'),
       isError: true,
     }
@@ -358,7 +359,7 @@ export async function toolRecipePropose(agentId: string, args: {
       text: [
         `整批下发 ACK 鉴定未全绿:方案「${chosen.name}」已获批并下发,但设备证实 ${acks.verified}/${acks.total},未证实 ${acks.unverified}(仅链路受理),失败 ${acks.failed}。${runIdNote}${feedback}`,
         ...rows,
-        '「未证实」=命令已发到链路但设备侧未确认生效(mqtt/http 等无回读驱动或回读超时);「失败」=写入被拒。请:①逐条核查未证实参数的产线侧真实状态(daq_query 复测);②必要时用 dcw_control 对未证实参数单独重发;③把未证实/失败清单写入汇报提醒人类,劣化风险下用 recipe_rollback(recipe_id, dispatch=true) 统一回退。',
+        `「未证实」=命令已发到链路但设备侧未确认生效(mqtt/http 等无回读驱动或回读超时);「失败」=写入被拒。请:①${RECOVERY_VERIFY_HINT};②${RECOVERY_TRACE_HINT};③把未证实/失败清单写入汇报提醒人类,劣化风险下用 recipe_rollback(recipe_id, dispatch=true) 统一回退。`,
       ].join('\n'),
       isError: true,
     }

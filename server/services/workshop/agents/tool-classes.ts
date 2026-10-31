@@ -32,6 +32,18 @@ export const HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES = new Set([
   'recipe_apply',
 ])
 
+/**
+ * 观察模式(executionMode=observe)的拒绝面 = 8 个直写族 ∪ 治理写 ∪ 整包方案 ∪ 启停线。
+ * 由 HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES 派生,不再各层手抄(历史上有过注入/执行分裂)。
+ */
+export const OBSERVE_BLOCKED_TOOL_NAMES: ReadonlySet<string> = new Set([
+  ...HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES,
+  'optimization_explore',
+  'recipe_propose',
+  'line_start',
+  'line_stop',
+])
+
 /** MES 数据集工具(只读面:点位目录/历史取数/数据集读取与清单)。
  *  不落 HIGH_RISK、不写 PLC —— fetch 只写 CSV 数据集文件(护栏在 mes-controller 代码级:
  *  绑线授权/窗口≤7天/行数≤5000/频次限流);权限面与目录注入面可同源引用本集合。 */

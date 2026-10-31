@@ -7,7 +7,7 @@ import type { DatabaseSync } from 'node:sqlite'
 import type { TaskRow } from './database'
 
 const COLS
-  = 'id, channel_id AS channelId, parent_id AS parentId, root_queue_seq AS rootQueueSeq, assignee_id AS assigneeId, creator_id AS creatorId, title, description, state, progress, retry_count AS retryCount, artifacts_json AS artifactsJson, history_json AS historyJson, route_reason AS routeReason, source_chat_message_id AS sourceChatMessageId, source_chat_delivery_id AS sourceChatDeliveryId, close_reason AS closeReason, deadline_at AS deadlineAt, assignment_generation AS assignmentGeneration, execution_lease_id AS executionLeaseId, execution_lease_agent_id AS executionLeaseAgentId, execution_lease_started_at AS executionLeaseStartedAt, execution_lease_revoked_at AS executionLeaseRevokedAt, created_at AS createdAt, updated_at AS updatedAt'
+  = 'id, channel_id AS channelId, parent_id AS parentId, root_queue_seq AS rootQueueSeq, assignee_id AS assigneeId, creator_id AS creatorId, title, description, state, progress, retry_count AS retryCount, artifacts_json AS artifactsJson, history_json AS historyJson, route_reason AS routeReason, source_chat_message_id AS sourceChatMessageId, source_chat_delivery_id AS sourceChatDeliveryId, close_reason AS closeReason, deadline_at AS deadlineAt, superseded_by_task_id AS supersededByTaskId, assignment_generation AS assignmentGeneration, execution_lease_id AS executionLeaseId, execution_lease_agent_id AS executionLeaseAgentId, execution_lease_started_at AS executionLeaseStartedAt, execution_lease_revoked_at AS executionLeaseRevokedAt, created_at AS createdAt, updated_at AS updatedAt'
 
 const NON_TERMINAL_STATES = `'SUBMITTED', 'ASSIGNED', 'WORKING', 'WAITING'`
 
@@ -29,6 +29,7 @@ export interface TaskCreateInput {
   sourceChatDeliveryId?: string | null
   closeReason?: string | null
   deadlineAt?: string | null
+  supersededByTaskId?: string | null
   assignmentGeneration?: number
   executionLeaseId?: string | null
   executionLeaseAgentId?: string | null
@@ -51,6 +52,7 @@ export interface TaskPatch {
   sourceChatDeliveryId?: string | null
   closeReason?: string | null
   deadlineAt?: string | null
+  supersededByTaskId?: string | null
   assignmentGeneration?: number
   executionLeaseId?: string | null
   executionLeaseAgentId?: string | null
@@ -76,6 +78,7 @@ export interface TaskMetaRow {
   sourceChatDeliveryId: string | null
   closeReason: string | null
   deadlineAt: string | null
+  supersededByTaskId: string | null
   assignmentGeneration: number
   executionLeaseId: string | null
   executionLeaseAgentId: string | null
@@ -131,12 +134,12 @@ export function createTaskRepo(db: DatabaseSync) {
     `SELECT ${COLS} FROM tasks WHERE state IN (${NON_TERMINAL_STATES}) ORDER BY createdAt ASC, rowid ASC`,
   )
   const META_COLS
-    = 'id, channel_id AS channelId, parent_id AS parentId, root_queue_seq AS rootQueueSeq, assignee_id AS assigneeId, creator_id AS creatorId, title, description, state, progress, retry_count AS retryCount, route_reason AS routeReason, source_chat_message_id AS sourceChatMessageId, source_chat_delivery_id AS sourceChatDeliveryId, close_reason AS closeReason, deadline_at AS deadlineAt, assignment_generation AS assignmentGeneration, execution_lease_id AS executionLeaseId, execution_lease_agent_id AS executionLeaseAgentId, execution_lease_started_at AS executionLeaseStartedAt, execution_lease_revoked_at AS executionLeaseRevokedAt, created_at AS createdAt, updated_at AS updatedAt'
+    = 'id, channel_id AS channelId, parent_id AS parentId, root_queue_seq AS rootQueueSeq, assignee_id AS assigneeId, creator_id AS creatorId, title, description, state, progress, retry_count AS retryCount, route_reason AS routeReason, source_chat_message_id AS sourceChatMessageId, source_chat_delivery_id AS sourceChatDeliveryId, close_reason AS closeReason, deadline_at AS deadlineAt, superseded_by_task_id AS supersededByTaskId, assignment_generation AS assignmentGeneration, execution_lease_id AS executionLeaseId, execution_lease_agent_id AS executionLeaseAgentId, execution_lease_started_at AS executionLeaseStartedAt, execution_lease_revoked_at AS executionLeaseRevokedAt, created_at AS createdAt, updated_at AS updatedAt'
   const selectByChannelMeta = db.prepare(`SELECT ${META_COLS} FROM tasks WHERE channel_id = ? ORDER BY COALESCE(root_queue_seq, 2147483647) ASC, created_at ASC, rowid ASC`)
   const selectByChannelAssigneeMeta = db.prepare(`SELECT ${META_COLS} FROM tasks WHERE channel_id = ? AND assignee_id = ? ORDER BY created_at ASC, rowid ASC`)
   const selectChildrenMeta = db.prepare(`SELECT ${META_COLS} FROM tasks WHERE channel_id = ? AND parent_id = ? ORDER BY created_at ASC, rowid ASC`)
   const updateStmt = db.prepare(
-    `UPDATE tasks SET parent_id = ?, assignee_id = ?, creator_id = ?, title = ?, description = ?, state = ?, progress = ?, retry_count = ?, artifacts_json = ?, history_json = ?, source_chat_message_id = ?, source_chat_delivery_id = ?, close_reason = ?, deadline_at = ?, assignment_generation = ?, execution_lease_id = ?, execution_lease_agent_id = ?, execution_lease_started_at = ?, execution_lease_revoked_at = ?, updated_at = ? WHERE id = ?`,
+    `UPDATE tasks SET parent_id = ?, assignee_id = ?, creator_id = ?, title = ?, description = ?, state = ?, progress = ?, retry_count = ?, artifacts_json = ?, history_json = ?, source_chat_message_id = ?, source_chat_delivery_id = ?, close_reason = ?, deadline_at = ?, superseded_by_task_id = ?, assignment_generation = ?, execution_lease_id = ?, execution_lease_agent_id = ?, execution_lease_started_at = ?, execution_lease_revoked_at = ?, updated_at = ? WHERE id = ?`,
   )
 
   const buildRow = (input: TaskCreateInput, rootQueueSeq: number | null): TaskRow => {
@@ -272,6 +275,7 @@ export function createTaskRepo(db: DatabaseSync) {
         sourceChatDeliveryId: patch.sourceChatDeliveryId !== undefined ? patch.sourceChatDeliveryId : current.sourceChatDeliveryId,
         closeReason: patch.closeReason !== undefined ? patch.closeReason : current.closeReason,
         deadlineAt: patch.deadlineAt !== undefined ? patch.deadlineAt : current.deadlineAt,
+        supersededByTaskId: patch.supersededByTaskId !== undefined ? patch.supersededByTaskId : current.supersededByTaskId,
         assignmentGeneration: patch.assignmentGeneration ?? current.assignmentGeneration,
         executionLeaseId: patch.executionLeaseId !== undefined ? patch.executionLeaseId : current.executionLeaseId,
         executionLeaseAgentId: patch.executionLeaseAgentId !== undefined ? patch.executionLeaseAgentId : current.executionLeaseAgentId,
@@ -282,6 +286,7 @@ export function createTaskRepo(db: DatabaseSync) {
       updateStmt.run(
         next.parentId, next.assigneeId, next.creatorId, next.title, next.description, next.state, next.progress, next.retryCount,
         next.artifactsJson, next.historyJson, next.sourceChatMessageId, next.sourceChatDeliveryId, next.closeReason, next.deadlineAt,
+        next.supersededByTaskId ?? null,
         next.assignmentGeneration, next.executionLeaseId, next.executionLeaseAgentId, next.executionLeaseStartedAt, next.executionLeaseRevokedAt,
         next.updatedAt, id,
       )

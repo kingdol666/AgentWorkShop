@@ -6,6 +6,7 @@
  * 维度:首次成功 embed 的返回长度(不信任配置,以实测为准)。
  */
 import { memorySettings } from '../settings'
+import { allowPrivateOutbound, assertSafeHttpUrl } from '../net/ssrf'
 
 export interface EmbeddingProvider {
   embed(texts: string[]): Promise<Float32Array[]>
@@ -26,11 +27,27 @@ export function createEnvEmbeddingProvider(): EmbeddingProvider | null {
   let dims: number | null = null
   let fails = 0
   let disabledUntil = 0
+  // baseUrl 来自运行时设置(admin 可改):必须过 SSRF 护栏,否则可被指向内网/元数据服务。
+  // 每实例校验一次(URL 不变),失败即永久熔断并记原因。
+  let urlChecked = false
+  let urlError: string | null = null
 
   return {
     dims: () => dims,
     async embed(texts: string[]): Promise<Float32Array[]> {
       if (Date.now() < disabledUntil) throw new Error('embedding provider 冷却中')
+      if (!urlChecked) {
+        urlChecked = true
+        try {
+          await assertSafeHttpUrl(baseUrl, { label: 'embedding 服务', allowPrivateHost: allowPrivateOutbound() ? 'true' : 'false' })
+        }
+        catch (err) {
+          urlError = err instanceof Error ? err.message : String(err)
+          disabledUntil = Number.POSITIVE_INFINITY
+          // cause 保留原始错误栈/类型,便于上游诊断 SSRF 拒因
+          throw new Error(`embedding 服务地址被 SSRF 防护拒绝:${urlError}`, { cause: err })
+        }
+      }
       let res: Response
       try {
         res = await fetch(`${baseUrl.replace(/\/$/, '')}/embeddings`, {

@@ -27,12 +27,14 @@ import { checkToolAgainstScope } from '../../runtime/permission-scope'
 import { optimizerDispatchGate, legacyMpcAliasGate } from './optimizer-gate'
 import { channelToolGate } from '../../tools/policy'
 import type { WorkshopPermissionScope } from '../../../../../shared/workshop-protocol'
-import { handleCompleteTask, handleReportProgress } from './tools/progress'
+import { handleCompleteTask, handleReportProgress, handleSupersedeTask } from './tools/progress'
 import { handleCancelTask, handleDispatchTask, handleGetMyTaskQueue, handleGetTaskDetails, handleListChannelTasks, handleReassignTask, handleRefuseTask, handleSubmitTask, handleUpdateTask } from './tools/tasks'
 import { handleGrantNodes, handleRevokeNodes } from './tools/team-delegation'
 import { handleBroadcastMessage, handleListOtherTeams, handlePollMessages, handleReadChannelMail, handleSearchOtherTeamsMemory, handleSendCrossChannelMessage, handleSendMessageToAgent } from './tools/messaging'
 import { handleSaveMemory, handleSearchMemory } from './tools/memory'
 import { handleCreateTeamAgent, handleGetQueueOverview, handleListTeamAgents, handleRemoveTeamAgent, handleUpdateTeamAgent } from './tools/team'
+import { HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES, OBSERVE_BLOCKED_TOOL_NAMES } from '../tool-classes'
+import { GovernanceHarnessAuditError, withGovernanceHarnessToolAudit } from '../governance-harness-audit'
 
 /**
  * 分发一次 host tool 调用(全引擎唯一入口):
@@ -59,10 +61,20 @@ export function resetToolActivity(): void {
 }
 
 /** 统一出口:所有工具结果经截断收口(单点修改,全族生效) */
-export async function dispatchHostTool(ctx: HostToolBridgeContext, req: HostToolCall): Promise<HostToolResult> {
+export async function dispatchHostTool(ctx: HostToolBridgeContext, req: HostToolCall, activeRootTaskId?: string): Promise<HostToolResult> {
   // 活性打点先于一切校验:被拒的工具调用同样证明 agent 在推进(不是死锁)
   noteToolActivity(ctx.identity.agentId)
-  return truncateToolResult(await dispatchHostToolInner(ctx, req), req.toolName)
+  try {
+    return await withGovernanceHarnessToolAudit(ctx, req, activeRootTaskId, async () =>
+      truncateToolResult(await dispatchHostToolInner(ctx, req, activeRootTaskId), req.toolName))
+  }
+  catch (error) {
+    if (!(error instanceof GovernanceHarnessAuditError)) throw error
+    const execution = error.phase === 'configuration' || error.phase === 'capture_ready' || error.phase === 'tool_start'
+      ? '工具未执行'
+      : '执行可能已发生,必须核查设备读回和原始记录'
+    return { text: `实验审计失败:${error.message};${execution},本次不得记为已验证成功。`, isError: true }
+  }
 }
 
 /** 内置工具名(插件同名注册不参与分发:注入面已显示内置定义,执行面必须同源) */
@@ -133,7 +145,7 @@ function truncateToolResult(result: HostToolResult, toolName: string): HostToolR
   }
 }
 
-async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCall): Promise<HostToolResult> {
+async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCall, activeRootTaskId?: string): Promise<HostToolResult> {
   const identity = ctx.identity
   const state = ctx.state
   // §13.3 人类发起者作用域:进程内工具调用同样受管理面/高危写限制。
@@ -257,11 +269,13 @@ async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCa
   // 所有真实写入口在统一分发层再做一次服务端 fail-closed 守卫；工具目录隐藏不是安全边界。
   // observe 频道的拒写面比 profile 守卫更宽:8 个直写族之外,治理写(optimization_explore)、
   // 整包方案(recipe_propose)与启停线(line_start/line_stop)同为产线操作,观察模式一并拒绝。
-  const observeBlocked = ['dcw_control', 'param_control', 'dcw_rollback', 'recipe_create', 'recipe_update', 'recipe_rollback', 'recipe_trial', 'recipe_apply', 'optimization_explore', 'recipe_propose', 'line_start', 'line_stop']
-  if (observeBlocked.includes(req.toolName) && executionModeOfChannel(identity.channelId) === 'observe') {
+  // 清单单一源(tool-classes.ts):此前此处内联了第三份 8 项数组,已与单一源漂移风险并存
+  // (tool-classes 注释明令禁止再抄一份)。治理写/整包方案/启停线在观察模式一并拒绝。
+  const observeBlocked = OBSERVE_BLOCKED_TOOL_NAMES
+  if (observeBlocked.has(req.toolName) && executionModeOfChannel(identity.channelId) === 'observe') {
     return { text: observeWriteRejectedText(req.toolName), isError: true }
   }
-  if (['dcw_control', 'param_control', 'dcw_rollback', 'recipe_create', 'recipe_update', 'recipe_rollback', 'recipe_trial', 'recipe_apply'].includes(req.toolName)) {
+  if (HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES.has(req.toolName)) {
     // Profile 级写面(2026-10-18):观察面零写、训练面无产线写、优化面只认 optimization_explore。
     // 此前这些 Channel 只是目录不注入,按名直调(REST/MCP)仍可落到写 handler。
     if (twinKind === 'exp-miner' || twinKind === 'line-doctor') {
@@ -308,13 +322,17 @@ async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCa
   try {
     switch (req.toolName) {
       case 'report_progress':
-        return await handleReportProgress(args, state, ws)
+        // 2026-10-30 修复:lead 监督回合 session.currentTaskId 恒空,把分发层已验证的
+        // 活动根任务透传(与 dispatch_task 同源);否则 lead 的进度/收口恒报无任务 ID。
+        return await handleReportProgress(args, state, ws, activeRootTaskId)
       case 'complete_task':
-        return await handleCompleteTask(args, state, ws)
+        return await handleCompleteTask(args, state, ws, activeRootTaskId)
+      case 'supersede_task':
+        return await handleSupersedeTask(args, state, ws)
       case 'submit_task':
         return await handleSubmitTask(args, state, ws)
       case 'dispatch_task':
-        return await handleDispatchTask(args, ws, identity)
+        return await handleDispatchTask(args, ws, identity, activeRootTaskId)
       case 'team_grant_nodes':
         return await handleGrantNodes(identity, args, ws)
       case 'team_revoke_nodes':

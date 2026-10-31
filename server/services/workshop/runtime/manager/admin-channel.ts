@@ -261,18 +261,25 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
   protected async unloadChannelAgents(channelId: string): Promise<void> {
     const cr = this.channels.get(channelId)
     if (cr) {
-      const scheduler = cr.scheduler
-      if (scheduler) await scheduler.stopAndWait()
-      cr.scheduler = null
-      const agents = [...cr.getAgents()]
-      for (const agent of agents) {
-        await agent.stop()
-        cr.detachAgent(agent.agentId)
-        this.agentIndex.delete(runtimeKey(channelId, agent.agentId))
+      let releaseSchedulerStarts: (() => void) | null = null
+      let unloaded = false
+      try {
+        releaseSchedulerStarts = await cr.stopSchedulersAndWait()
+        const agents = [...cr.getAgents()]
+        for (const agent of agents) {
+          await agent.stop()
+          cr.detachAgent(agent.agentId)
+          this.agentIndex.delete(runtimeKey(channelId, agent.agentId))
+        }
+        if (cr.getAgents().length === 0) {
+          this.channels.delete(channelId)
+          this.buses.delete(channelId)
+        }
+        unloaded = true
       }
-      if (cr.getAgents().length === 0) {
-        this.channels.delete(channelId)
-        this.buses.delete(channelId)
+      finally {
+        // Reopening is safe only after every old runtime has been detached.
+        if (unloaded && this.channels.get(channelId) === cr) releaseSchedulerStarts?.()
       }
     }
   }
@@ -296,9 +303,7 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
   async removeChannel(channelId: string): Promise<void> {
     const cr = this.channels.get(channelId)
     if (cr) {
-      const scheduler = cr.scheduler
-      if (scheduler) await scheduler.stopAndWait()
-      cr.scheduler = null
+      await cr.stopSchedulersAndWait()
       for (const agent of [...cr.getAgents()]) {
         await agent.stop()
         this.agentIndex.delete(runtimeKey(channelId, agent.agentId))

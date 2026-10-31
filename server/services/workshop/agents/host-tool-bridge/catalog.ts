@@ -106,6 +106,7 @@ export const OBSERVER_COLLAB_TOOL_NAMES = new Set([
   'send_cross_channel_message',
   'submit_task',
   'complete_task',
+  'supersede_task',
   'report_progress',
   'refuse_task',
   'cancel_task',

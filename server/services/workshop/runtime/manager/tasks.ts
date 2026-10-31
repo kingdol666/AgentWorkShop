@@ -276,8 +276,17 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
     const trimmedReason = reason.trim()
     if (!trimmedReason) throw new AppError(400, 'BAD_REQUEST', '拒绝必须说明原因(reason)')
 
+    // 2026-10-30 修复(诚实回执对齐):终态任务此前「跳过迁移但照发拒绝回执+照报成功」
+    // —— lead 据「请改派」回执会对已收口任务重复派发(双倍执行/双倍产线操作)。
+    // completeTask/cancelTask 对终态都显式 409,唯独 refuse 沿用旧静默路径;
+    // 迟到回合的拒绝必须显式失败,不能污染调度。
+    if (TERMINAL_TASK_STATES[task.state]) {
+      throw new AppError(409, 'TASK_TERMINAL',
+        `任务 ${taskId.slice(0, 8)} 已终态(${task.state}),拒绝无效 —— 该任务已收口,这不是你的错误,请勿再处理,继续处理队列下一项`)
+    }
+
     let current = task
-    if (!TERMINAL_TASK_STATES[current.state]) {
+    {
       // 状态机需经 WORKING 到 FAILED(SUBMITTED/ASSIGNED 直达 FAILED 非法)
       if (current.state === 'SUBMITTED' || current.state === 'ASSIGNED') {
         current = engine.transition(taskId, 'WORKING', refuserId)
@@ -378,6 +387,30 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
       if (parent) this.wakeAgent(completed.channelId, parent.assigneeId)
     }
     return completed
+  }
+
+  /** 显式替代(整改计划阶段1/F1):lead 把 FAILED/CANCELED 分支标记为被 replacement 覆盖。
+   *  权限与 completeTask 同口径:仅父任务 assignee(lead)可处置分支收口。 */
+  async supersedeTask(
+    channelId: string,
+    callerAgentId: string,
+    input: { taskId: string, replacementTaskId: string, reason?: string },
+  ): Promise<WorkspaceTask> {
+    const task = this.requireTaskInScope(channelId, callerAgentId, input.taskId)
+    if (!task.parentId) {
+      throw new AppError(400, 'INVALID_STATE', '仅子任务分支可被替代')
+    }
+    const parent = this.requireTaskInScope(channelId, callerAgentId, task.parentId)
+    if (parent.assigneeId !== callerAgentId) {
+      throw new AppError(403, 'SCOPE_VIOLATION', '仅父任务 assignee(lead)可标记替代')
+    }
+    const replacement = this.requireTaskInScope(channelId, callerAgentId, input.replacementTaskId)
+    if (replacement.channelId !== channelId) {
+      throw new AppError(403, 'SCOPE_VIOLATION', '替代任务不在本频道作用域内')
+    }
+    const result = this.getTaskEngine().supersede(input.taskId, input.replacementTaskId, callerAgentId, input.reason)
+    this.wakeAgent(channelId, parent.assigneeId)
+    return result
   }
 
   async cancelTask(

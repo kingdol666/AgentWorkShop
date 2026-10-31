@@ -34,7 +34,11 @@ const PLATFORM_SECRET_ENV = [
   'CLOUDFLARE_TUNNEL_TOKEN',
 ] as const
 
-function scrubPlatformSecrets(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+/**
+ * 剥离平台自身秘密(会话口令/管理员口令/隧道令牌)。
+ * 导出给不经 spawnLineProcess 的启动器(omp RPC 客户端)复用,避免两套口径。
+ */
+export function scrubPlatformSecrets(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
   const deny = new Set<string>(PLATFORM_SECRET_ENV)
   return Object.fromEntries(Object.entries(env).filter(([k]) => !deny.has(k)))
 }

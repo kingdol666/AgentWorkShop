@@ -4,7 +4,7 @@
  */
 import { TaskEngineUpdate } from './update'
 import type { Part } from '../../types/a2a'
-import type { WorkspaceTask } from '../../types/task'
+import { TERMINAL_TASK_STATES, type WorkspaceTask } from '../../types/task'
 import { AppError } from '../../../../utils/errors'
 import { rowToTask } from './helpers'
 import { assertDispatchAllowed, rootLineage } from './policy'
@@ -94,6 +94,20 @@ export abstract class TaskEngineCreate extends TaskEngineUpdate {
   ): WorkspaceTask {
     // TaskEngine 是所有派发入口的最终预算闸门；Manager/host tool 的提示不能替代它。
     assertDispatchAllowed(this.repos.tasks, parent)
+    // 2026-10-30 修复(引擎直调路径的状态前置):manager.dispatchTask 有「终态先拒 +
+    // SUBMITTED/ASSIGNED 先接取」前置(manager/tasks.ts:199-210),但调度器
+    // execute('dispatch') 直调引擎时绕过它 —— 父任务为 ASSIGNED(人类直发 worker 的
+    // 根任务未被接取)时,子任务已创建/assign 已外投,末尾 ASSIGNED→WAITING 才抛
+    // INVALID_TRANSITION(不在 TRANSITIONS)→ 孤儿子任务;父停留 ASSIGNED 不参与
+    // WAITING 收口,预算一到 timeoutTree 连带处决正常执行的子树。
+    // 与 manager 同口径:终态先拒(任何副作用之前),SUBMITTED/ASSIGNED 先接取 WORKING。
+    if (TERMINAL_TASK_STATES[parent.state]) {
+      throw new AppError(409, 'TASK_TERMINAL',
+        `父任务 ${parent.id.slice(0, 8)} 已终态(${parent.state}),无法再派发子任务;请另起根任务,或对失败分支用 reassign/supersede 处置`)
+    }
+    if (parent.state === 'SUBMITTED' || parent.state === 'ASSIGNED') {
+      this.transition(parent.id, 'WORKING', parent.assigneeId)
+    }
     // 根任务 FIFO：只有当前 active root 可以继续拆解；后续 roots 先排队。
     // §11 回滚开关 root_queue_enabled=false 时退回多根并发(不改变 source 幂等与预算)。
     const activeRoot = rootQueueEnabled() ? this.activeRootOf(parent.channelId) : null

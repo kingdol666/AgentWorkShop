@@ -458,7 +458,7 @@ export function buildToolDefs() {
     },
     {
       name: 'aw_daq_samples',
-      description: '数采时序历史(点序新→旧!)。{ id, bucketMs?, limit?, from?, to? }。取时间窗口前先按 at 升序整理。',
+      description: '数采时序历史(点序旧→新,末元素=最新!)。{ id, bucketMs?, limit?, from?, to? }。窗口截断时保留的是最新 limit 个点,取「最新值」读末元素。',
       inputSchema: obj({ id: s('数采节点 id'), bucketMs: s('桶化毫秒', 'number'), limit: s('条数上限', 'number'), from: s('起始 ISO 时间'), to: s('结束 ISO 时间') }, ['id']),
       run: async (args, state) => {
         const { id, ...query } = args

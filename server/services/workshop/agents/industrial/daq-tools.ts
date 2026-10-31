@@ -31,17 +31,27 @@ export function daqTargetsOf(agentId: string, nodeIdArg: unknown, lineIdArg: unk
   if (readable.size === 0) {
     return { error: { text: '你尚未绑定任何数采节点,频道也未绑定产线,无权查询采集数据。请在数字孪生界面绑定数采节点,或将频道绑定到目标产线(绑线后可只读查询该线数采数据)。', isError: true } }
   }
-  const wanted = nodeIdArg ? String(nodeIdArg) : ''
-  if (wanted && !readable.has(wanted)) {
-    return { error: { text: `无权查询节点 ${wanted}。你有权访问的数采节点:${[...readable].join(', ')}`, isError: true } }
+  const wantedList = (Array.isArray(nodeIdArg)
+    ? nodeIdArg.map(v => String(v))
+    : String(nodeIdArg ?? '').split(','))
+    .map(s => s.trim())
+    .filter(Boolean)
+  if (wantedList.length > 20) {
+    return { error: { text: `一次最多查询 20 个数采节点(收到 ${wantedList.length});请分组查询或按 line_id 过滤。`, isError: true } }
+  }
+  for (const w of wantedList) {
+    if (!readable.has(w)) {
+      return { error: { text: `无权查询节点 ${w}。你有权访问的数采节点:${[...readable].join(', ')}`, isError: true } }
+    }
   }
   const lineFilter = lineIdArg ? String(lineIdArg).trim() : ''
   const lineOf = (id: string): string => getDaqNodeRepo().byId(id)?.lineId ?? ''
-  if (lineFilter && wanted && lineOf(wanted) !== lineFilter) {
-    return { error: { text: `节点 ${wanted} 不属于产线 ${lineFilter}(实际归属:${lineOf(wanted) || '未分配'}),line_id 与 node_id 过滤冲突。`, isError: true } }
+  const wrongLine = lineFilter ? wantedList.filter(id => lineOf(id) !== lineFilter) : []
+  if (wrongLine.length > 0) {
+    return { error: { text: `节点 ${wrongLine.join(', ')} 不属于产线 ${lineFilter}(实际归属:${wrongLine.map(id => lineOf(id) || '未分配').join('/')}),line_id 与 node_id 过滤冲突。`, isError: true } }
   }
-  let targets = wanted ? [wanted] : [...readable]
-  if (lineFilter && !wanted) {
+  let targets = wantedList.length > 0 ? wantedList : [...readable]
+  if (lineFilter && wantedList.length === 0) {
     const onLine = targets.filter(id => lineOf(id) === lineFilter)
     if (onLine.length === 0) {
       return { error: { text: `你有权访问的数采节点中没有归属产线 ${lineFilter} 的(各节点归属:${[...readable].map(id => `${id}=${lineOf(id) || '未分配'}`).join('; ')})。`, isError: true } }
@@ -61,42 +71,64 @@ export function daqTargetsOf(agentId: string, nodeIdArg: unknown, lineIdArg: unk
  * 只取当前配方 3 点/均值 247.99,差异足以改变 keep/rollback 结论)。
  * 需要跨配方对比或历史复盘时显式传 `scope: 'all'`(或直接给 product_id/recipe_id/run_id)。
  */
+/** 时间参数解析:epoch 毫秒 或 ISO 8601(含 date-only、带时区偏移);非法 → null(调用方必须报错) */
+function epochOfArg(v: unknown): number | null {
+  if (v == null) return null
+  const s = String(v).trim()
+  if (!s) return null
+  if (/^\d+$/.test(s)) {
+    const n = Number(s)
+    return Number.isFinite(n) && n > 0 ? n : null
+  }
+  const ms = Date.parse(s)
+  return Number.isFinite(ms) ? ms : null
+}
+
 export async function toolDaqQuery(agentId: string, args: {
   node_id?: string
+  /** 多字段查询(逗号分隔或数组;与 node_id 二选一,最多 20 个) */
+  node_ids?: string | string[]
   line_id?: string
   product_id?: string
   recipe_id?: string
   run_id?: string
   scope?: string
   last_minutes?: number | string
+  /** 起始时间:ISO 8601(如 2026-10-01T08:00:00+08:00)或 epoch 毫秒 */
+  from?: string | number
+  /** 结束时间:同上;缺省 = now */
+  to?: string | number
   from_ms?: number | string
   to_ms?: number | string
   bucket_ms?: number | string
   limit?: number | string
   agg?: string
 }): Promise<{ text: string, isError?: boolean }> {
-  const auth = daqTargetsOf(agentId, args.node_id, args.line_id)
+  const auth = daqTargetsOf(agentId, args.node_ids ?? args.node_id, args.line_id)
   if ('error' in auth) return auth.error
   const { targets } = auth
   const lineFilter = args.line_id ? String(args.line_id).trim() : ''
 
   // 参数校验:显式传入的非法值必须报错,不能静默回退(否则 Agent 以为按自己的窗口/条数查了)
   const provided = (v: unknown): boolean => v !== undefined && v !== null && String(v).trim() !== ''
-  if (provided(args.to_ms) && (!Number.isFinite(Number(args.to_ms)) || Number(args.to_ms) <= 0)) {
-    return { text: `to_ms 必须是正的 epoch 毫秒(收到 ${String(args.to_ms)})。`, isError: true }
+  const toArg = args.to ?? args.to_ms
+  const fromArg = args.from ?? args.from_ms
+  const toParsed = epochOfArg(toArg)
+  if (provided(toArg) && toParsed == null) {
+    return { text: `to 必须是 ISO 8601 时间(如 2026-10-01T08:00:00+08:00)或正的 epoch 毫秒(收到 ${String(toArg)})。`, isError: true }
   }
-  if (provided(args.from_ms) && (!Number.isFinite(Number(args.from_ms)) || Number(args.from_ms) <= 0)) {
-    return { text: `from_ms 必须是正的 epoch 毫秒(收到 ${String(args.from_ms)})。`, isError: true }
+  const fromParsed = epochOfArg(fromArg)
+  if (provided(fromArg) && fromParsed == null) {
+    return { text: `from 必须是 ISO 8601 时间(如 2026-10-01T08:00:00+08:00)或正的 epoch 毫秒(收到 ${String(fromArg)})。`, isError: true }
   }
   if (provided(args.last_minutes) && (!Number.isFinite(Number(args.last_minutes)) || Number(args.last_minutes) <= 0)) {
     return { text: `last_minutes 必须大于 0(收到 ${String(args.last_minutes)})。`, isError: true }
   }
-  const toMs = provided(args.to_ms) ? Number(args.to_ms) : Date.now()
-  const fromMs = provided(args.from_ms)
-    ? Number(args.from_ms)
-    : toMs - (provided(args.last_minutes) ? Number(args.last_minutes) : 30) * 60_000
+  const toMs = toParsed ?? Date.now()
+  const fromMs = fromParsed
+    ?? toMs - (provided(args.last_minutes) ? Number(args.last_minutes) : 30) * 60_000
   if (fromMs >= toMs) {
-    return { text: `时间窗非法:from_ms(${fromMs})必须小于 to_ms(${toMs})。`, isError: true }
+    return { text: `时间窗非法:from(${fromMs})必须小于 to(${toMs})。`, isError: true }
   }
   // 聚合口径:avg(缺省)/min/max 作用于降采样桶;最新值始终取库内最后一条原始样本
   const aggRaw = String(args.agg ?? '').trim().toLowerCase()
@@ -126,9 +158,13 @@ export async function toolDaqQuery(agentId: string, args: {
   /** scope=all:显式要求不过滤(跨配方/历史复盘),仅在无显式 id 时生效 */
   const wantAll = !explicitScoped && String(args.scope ?? '').trim().toLowerCase() === 'all'
 
-  const { getTsdb, tsdbReady } = await import('../../daq/storage')
+  const { getTsdb, tsdbReady, tsdbQueryHistory, tsdbRetentionInfo } = await import('../../daq/storage')
   await tsdbReady
   const tsdb = getTsdb()
+  // 分层保留:窗口早于原始样本保留期 → 自动改走 1m/1h 聚合(不静默返回空)
+  const rawRetentionH = tsdbRetentionInfo().rawRetentionH
+  const rawCutoffMs = Date.now() - rawRetentionH * 3_600_000
+  const needHistory = fromMs < rawCutoffMs
   // 各节点库内最新样本(用于「库内滞后」;查询本身走 tail 取窗口末尾,末元素才是最新)
   let latestMap = new Map<string, { tsMs: number, value: number }>()
   try {
@@ -161,9 +197,31 @@ export async function toolDaqQuery(agentId: string, args: {
     applied.push({ nodeId, lineId: nodeLine, runId: scopeRun.runId, recipeId: scopeRun.recipeId, source: scopeRun.source })
     try {
       let points: Array<{ at: number, value?: number, avg?: number, min?: number, max?: number, cnt?: number }>
+      let historyNote = ''
       // 是否有可用的打标过滤:显式 id、或活动批次(配方/批次 id 齐备)
       const useTagged = Boolean(scopeRun.recipeId || scopeRun.runId || scopeRun.productId)
-      if (useTagged) {
+      if (needHistory) {
+        // 超出原始保留期:走分层历史(1m/1h 聚合;跨边界时老段聚合 + 新段原始)
+        const h = await tsdbQueryHistory(nodeId, {
+          fromMs,
+          toMs,
+          bucketMs,
+          limit,
+          lineId: nodeLine || undefined,
+          productId: scopeRun.productId,
+          recipeId: scopeRun.recipeId,
+          runId: scopeRun.runId,
+        })
+        points = h.points
+        const label = h.resolution === 'minute'
+          ? '1 分钟聚合'
+          : h.resolution === 'hour' ? '1 小时聚合' : h.resolution === 'mixed' ? '聚合+原始拼接' : '原始样本'
+        historyNote = `数据分辨率=${label};${h.coverage.note}`
+        if (h.coverage.availableFromMs != null && h.coverage.availableFromMs > fromMs) {
+          historyNote += `;实际最早可查 ${new Date(h.coverage.availableFromMs).toISOString().slice(0, 16)}`
+        }
+      }
+      else if (useTagged) {
         const series = await queryTaggedLatest(tsdb, {
           lineId: nodeLine || undefined,
           productId: scopeRun.productId,
@@ -187,7 +245,8 @@ export async function toolDaqQuery(agentId: string, args: {
           : wantAll
             ? '全量窗口(scope=all,不做配方过滤)'
             : '未过滤(该产线当前未开跑 → 无活动批次可限定)'
-      const head = `■ ${node.name}(${ch})单位 ${node.unit},正常量程 ${node.min}~${node.max}${node.unit},当前状态 ${node.state},时间窗 ${new Date(fromMs).toISOString().slice(0, 16)} ~ ${new Date(toMs).toISOString().slice(0, 16)}(降采样 ${bucketMs}ms,聚合 ${agg})\n  ${scopeTag}`
+      // 表头携带节点 id(2026-10-30):多节点查询时模型/人可把数值精确回指到节点
+      const head = `■ ${node.name}[id=${nodeId}](${ch})单位 ${node.unit},正常量程 ${node.min}~${node.max}${node.unit},当前状态 ${node.state},时间窗 ${new Date(fromMs).toISOString().slice(0, 16)} ~ ${new Date(toMs).toISOString().slice(0, 16)}(降采样 ${bucketMs}ms,聚合 ${agg})\n  ${scopeTag}${historyNote ? `\n  ${historyNote}` : ''}`
       // 工况判读容器(具体判读在 values 计算后追加)
       const readout: string[] = []
       if (points.length === 0) {

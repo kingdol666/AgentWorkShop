@@ -25,7 +25,7 @@ export interface HostToolSessionState {
 
 /** 桥上下文:impl 注入身份与 workspace 取值器 */
 export interface HostToolBridgeContext {
-  identity: { agentId: string, channelId: string, role: 'lead' | 'worker', name: string }
+  identity: { agentId: string, channelId: string, role: 'lead' | 'worker', name: string, harness?: string }
   state: HostToolSessionState
   getWorkspace(): AgentWorkspace | null
 }

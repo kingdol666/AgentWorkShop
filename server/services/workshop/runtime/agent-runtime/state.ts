@@ -22,6 +22,8 @@ export abstract class AgentRuntimeState extends AgentRuntimeContracts {
   protected state: 'idle' | 'busy' | 'stopped' = 'idle'
   /** 回合失败重投计数(每消息;进程内存,重启由 resetConsuming 重新给机会) */
   protected runErrorRetries = new Map<string, number>()
+  /** harness 连败串(分类熔断;成功回合复位,冷却窗后半开放行探测) */
+  protected harnessFailStreak: import('./harness-failure').HarnessFailStreak | null = null
   /** 正在执行的任务 id(run 期间;空闲时 null) */
   protected currentTaskId: string | null = null
   /** poll_messages 阻塞等待数(waitPending 活动计数;>0 = 有轮询在等,实时消息留信箱由其取走) */
@@ -264,9 +266,17 @@ export abstract class AgentRuntimeState extends AgentRuntimeContracts {
 
   /** 仅中止仍在执行指定任务的当前 run;不影响其它任务或 supervise 回合 */
   abortTask(taskId: string): boolean {
-    if (this.currentTaskId !== taskId) return false
+    const abortingRun = this.currentTaskId === taskId
+    const abortingSupervision = this.supervisionAttempt.activeRootId === taskId
+      && this.hasActiveSupervisionAttempt()
+    if (!abortingRun && !abortingSupervision) return false
     log.warn(`[AgentRuntime:${this.agentId}] abortTask 调用(task=${taskId},state=${this.state})`)
-    this.abortController?.abort()
+    if (abortingRun) this.abortController?.abort()
+    if (abortingSupervision) {
+      this.supervisionAttempt = { ...this.supervisionAttempt, state: 'ABORT_REQUESTED' }
+      this.superviseController?.abort()
+      this.refreshStatus()
+    }
     return true
   }
 

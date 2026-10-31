@@ -22,6 +22,13 @@ export abstract class ManagerSchedules extends ManagerHostTools {
     catch (err) {
       log.error('[restore] outbox 补偿失败(不阻断恢复):', err)
     }
+    // 2026-10-30 阶段2:重启即恢复 chat 投递(崩溃窗口滞留的 pending 立即重投,不等 15s 周期)
+    try {
+      this.recoverPendingChatDeliveries()
+    }
+    catch (err) {
+      log.error('[restore] chat 投递恢复失败(不阻断恢复):', err)
+    }
     const nonTerminal = this.deps.repos.tasks.listNonTerminal()
     const activeChannelIds = new Set(nonTerminal.map(t => t.channelId))
     for (const channelId of activeChannelIds) {

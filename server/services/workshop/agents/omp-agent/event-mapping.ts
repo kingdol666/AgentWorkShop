@@ -9,9 +9,18 @@ import type { AgentSessionEvent, CompactionResult } from '../adapters/omp-rpc-cl
 import { log } from './helpers'
 import { randomUUID } from 'node:crypto'
 import { toolArgsPreview } from '../prompt-builder'
+import { recordOmpAgentTeamToolEvent } from './agentteam-audit'
 
 export abstract class OmpRpcAgentImplEventMapping extends OmpRpcAgentImplToolsSteer {
   protected mapOmpEvent(event: AgentSessionEvent, taskId: string | undefined): AgentEvent[] {
+    const supervisionLease = this.activeSupervisionToolLease
+    const knownTaskId = taskId
+      ?? (supervisionLease?.client === this.client && supervisionLease.rootActive && !supervisionLease.signal?.aborted
+        ? supervisionLease.rootId ?? undefined
+        : undefined)
+      ?? this.toolState.currentTaskId
+      ?? undefined
+
     switch (event.type) {
       case 'agent_start':
         return [{
@@ -43,6 +52,12 @@ export abstract class OmpRpcAgentImplEventMapping extends OmpRpcAgentImplToolsSt
       }
 
       case 'tool_execution_start': {
+        recordOmpAgentTeamToolEvent(event, {
+          agentId: this.selfAgentId,
+          role: this.agentRole,
+          channelId: this.channelId,
+          taskId: knownTaskId,
+        })
         const toolName = event.toolName ?? 'tool'
         return [{
           kind: 'status',
@@ -60,6 +75,12 @@ export abstract class OmpRpcAgentImplEventMapping extends OmpRpcAgentImplToolsSt
       }
 
       case 'tool_execution_end': {
+        recordOmpAgentTeamToolEvent(event, {
+          agentId: this.selfAgentId,
+          role: this.agentRole,
+          channelId: this.channelId,
+          taskId: knownTaskId,
+        })
         // 工具结果事件(2026-10-05 评审):此前只有 start,end 被默认分支静默丢弃 ——
         // 工具调用不可审计。end 帧带 isError 与结果摘要(短截断)。
         // 结果可能是字符串或结构化对象:对象直接 String() 会变成 "[object Object]",

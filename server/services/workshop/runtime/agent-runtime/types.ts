@@ -133,6 +133,8 @@ export interface TaskEngine {
   list(channelId: string): WorkspaceTask[]
   get(taskId: string): WorkspaceTask | undefined
   complete(taskId: string, artifacts?: A2AArtifact[]): WorkspaceTask
+  /** 显式替代:FAILED/CANCELED 分支被 replacement 覆盖(父任务收口前置处置;整改计划 2026-10-30 阶段1) */
+  supersede(taskId: string, replacementTaskId: string, by: string, reason?: string): WorkspaceTask
   reassign(taskId: string, toAgentId: string, reason?: string): WorkspaceTask
   /** §5.2 运行中重分配(WORKING/WAITING;撤销旧 lease + generation+1 + 新 assign) */
   reassignRunning(taskId: string, toAgentId: string, by: string, reason?: string): { task: WorkspaceTask, previousAssigneeId: string }

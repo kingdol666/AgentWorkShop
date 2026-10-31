@@ -4,15 +4,83 @@
  */
 import { OmpRpcAgentImplLifecycle } from './lifecycle'
 import type { AgentEvent, AgentRunContext, AgentRunRequest, SupervisionDecision, SupervisionSnapshot, SupervisionOptions } from '../agent-interface'
-import type { HostToolCallRequest } from '../adapters/omp-rpc-client'
+import type { HostToolCallRequest, OmpRpcClient } from '../adapters/omp-rpc-client'
 import { extractJsonArray, parseSteerBanner, peerPrompt, supervisePrompt, systemManual, workerPrompt } from '../prompt-builder'
 import { log } from './helpers'
 import { recordSupervisionToolHistory } from './supervision-history'
+import { ompAgentTeamAuditFailure, recordOmpAgentTeamToolEvent } from './agentteam-audit'
+import { TERMINAL_TASK_STATES } from '../../types/task'
 
 export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle {
+  protected activeSupervisionToolLease: {
+    client: OmpRpcClient
+    rootId: string | null
+    rootActive: boolean
+    signal?: AbortSignal
+  } | null = null
+
+  protected retireSupervisionClient(client: OmpRpcClient): void {
+    if (this.client === client) this.client = null
+    if (this.activeSupervisionToolLease?.client === client) this.activeSupervisionToolLease = null
+    this.hostToolsRegistered = false
+    client.kill()
+  }
+
+  protected async retireEndedSupervisionClient(nextRootId?: string | null): Promise<void> {
+    const lease = this.activeSupervisionToolLease
+    if (!lease?.rootId || lease.client !== this.client) return
+    if (lease.signal?.aborted) {
+      this.retireSupervisionClient(lease.client)
+      return
+    }
+    if (nextRootId !== undefined && lease.rootId !== nextRootId) {
+      this.retireSupervisionClient(lease.client)
+      return
+    }
+    const rootTask = await this.workspace?.getTask(lease.rootId).catch(() => null)
+    if (!rootTask || TERMINAL_TASK_STATES[rootTask.state]) this.retireSupervisionClient(lease.client)
+  }
+
   /** 引擎无关工具面:REST/MCP 桥直调与 omp 内部 host_tool_call 共用同一实现 */
-  protected async handleHostTool(req: HostToolCallRequest): Promise<{ text: string, isError?: boolean }> {
-    return this.dispatchHostTool(req.toolName, req.arguments ?? {})
+  protected async handleHostTool(req: HostToolCallRequest, sourceClient: OmpRpcClient): Promise<{ text: string, isError?: boolean }> {
+    if (sourceClient !== this.client) {
+      return { text: '监督回合已取消，拒绝过期 Harness 工具调用。', isError: true }
+    }
+    if (!this.turnActive) {
+      return { text: 'Harness 回合已结束，拒绝迟到的工具调用。', isError: true }
+    }
+    const lease = this.activeSupervisionToolLease
+    if (lease?.client === sourceClient && lease.rootId) {
+      if (!lease.rootActive || lease.signal?.aborted) {
+        this.retireSupervisionClient(sourceClient)
+        return { text: '监督根任务已取消或结束，拒绝后续工具调用。', isError: true }
+      }
+      const rootTask = await this.workspace?.getTask(lease.rootId).catch(() => null)
+      if (!rootTask || TERMINAL_TASK_STATES[rootTask.state]
+        || this.activeSupervisionToolLease !== lease
+        || lease.signal?.aborted
+        || sourceClient !== this.client) {
+        if (!rootTask || TERMINAL_TASK_STATES[rootTask.state]) this.retireSupervisionClient(sourceClient)
+        return { text: '监督根任务已取消或结束，拒绝后续工具调用。', isError: true }
+      }
+    }
+    const auditFailure = ompAgentTeamAuditFailure()
+    if (auditFailure) {
+      return { text: `AgentTeam 工具事件采集失败，已阻止后续工具分发: ${auditFailure}`, isError: true }
+    }
+    if (req.toolName === 'dispatch_task' && this.agentRole !== 'lead') {
+      return { text: '拒绝:dispatch_task 仅对 lead 开放。', isError: true }
+    }
+    const activeRootTaskId = this.agentRole === 'lead'
+      && lease?.client === sourceClient
+      && lease.rootActive
+      && !lease.signal?.aborted
+      ? lease.rootId ?? undefined
+      : undefined
+    if (this.agentRole === 'lead' && req.toolName === 'dispatch_task' && !activeRootTaskId) {
+      return { text: '拒绝:dispatch_task 需要已验证的活动根任务；请在监督回合内派发。', isError: true }
+    }
+    return this.dispatchHostTool(req.toolName, req.arguments ?? {}, activeRootTaskId)
   }
 
   // ===== prompt 组合 =====
@@ -76,9 +144,11 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
    */
 
   override async supervise(snapshot: SupervisionSnapshot, ctx: AgentRunContext, opts?: SupervisionOptions): Promise<SupervisionDecision[]> {
+    if (!this.supervising) await this.retireEndedSupervisionClient(snapshot.activeRootId ?? null)
     await this.ensureClient(ctx)
     if (!this.client) return []
     if (this.supervising) return [] // 上一轮 supervise 未收口:跳过本拍(节流即正确)
+    const client = this.client
 
     // 上下文门控(≥70% 先压缩再调度;回合间隙发起,失败放行)
     await this.contextGate('supervise')
@@ -98,11 +168,19 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
     return new Promise<SupervisionDecision[]>((resolve) => {
       let assistantText = ''
       let resolved = false
+      const rootTask = snapshot.tasks.find(task => task.id === snapshot.activeRootId)
       const activeRootTask = snapshot.tasks.find(task =>
         task.id === snapshot.activeRootId
         && task.assigneeId === this.selfAgentId
         && ['SUBMITTED', 'ASSIGNED', 'WORKING', 'WAITING'].includes(task.state),
       )
+      const rootId = snapshot.activeRootId ?? null
+      this.activeSupervisionToolLease = {
+        client,
+        rootId,
+        rootActive: Boolean(rootTask && !TERMINAL_TASK_STATES[rootTask.state]),
+        signal: opts?.signal,
+      }
       let taskHistoryWrites = Promise.resolve()
 
       const finish = (decisions: SupervisionDecision[]) => {
@@ -112,6 +190,7 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
         this.turnActive = false
         this.streaming = false
         unsub()
+        if (this.activeSupervisionToolLease?.client === client) this.activeSupervisionToolLease = null
         if (hardTimer) clearTimeout(hardTimer)
         signalUnsub?.()
         void taskHistoryWrites.then(() => resolve(decisions), () => resolve(decisions))
@@ -120,11 +199,24 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
       const abortTurn = (reason: string): void => {
         // 只有显式取消、Runtime stop 或 hard timeout 才 abort；watchdog 本身不 abort。
         log.warn(`[OmpRpcAgent:${this.selfAgentId}] supervise ${reason} → abort 当前调度回合`)
-        void this.client?.send({ type: 'abort' }).catch(() => {})
+        void client.send({ type: 'abort' }).catch(() => {})
+        if (rootId) {
+          // 旧 stdio 上的迟到 host_tool_call 无法再归属新一轮监督;立即退役客户端,
+          // 后续 ensureClient 会重建,handleHostTool 依据客户端身份拒绝旧帧。
+          this.retireSupervisionClient(client)
+        }
         finish([])
       }
 
-      const unsub = this.client!.onEvent((event) => {
+      const unsub = client.onEvent((event) => {
+        if (event.type === 'tool_execution_start' || event.type === 'tool_execution_end') {
+          recordOmpAgentTeamToolEvent(event, {
+            agentId: this.selfAgentId,
+            role: this.agentRole,
+            channelId: this.channelId,
+            taskId: rootTask && !TERMINAL_TASK_STATES[rootTask.state] ? rootTask.id : undefined,
+          })
+        }
         if (activeRootTask && (event.type === 'tool_execution_start' || event.type === 'tool_execution_end')) {
           // Lead supervision is not a workerTurn, so its host-tool events do not
           // pass through promptAndStream's task event mapper. Persist them on the
@@ -173,7 +265,7 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
       this.supervising = true
       this.turnActive = true
       this.streaming = false
-      this.client!.send({ type: 'prompt', message: prompt }).catch(() => finish([]))
+      client.send({ type: 'prompt', message: prompt }).catch(() => finish([]))
     })
   }
 
@@ -233,6 +325,8 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
    * 回给发送者:执行结果 + 对方所需内容,in_reply_to 关联原消息,并声明是否需再响应。
    */
   protected async* peerTurn(request: AgentRunRequest, ctx: AgentRunContext): AsyncGenerator<AgentEvent, void, unknown> {
+    await this.retireEndedSupervisionClient()
+    if (!this.supervising) this.activeSupervisionToolLease = null
     try {
       await this.ensureClient(ctx)
     }

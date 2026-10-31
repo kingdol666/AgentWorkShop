@@ -49,6 +49,7 @@ export function rowToTask(row: TaskRow): WorkspaceTask {
     sourceChatDeliveryId: row.sourceChatDeliveryId || undefined,
     closeReason: row.closeReason || undefined,
     deadlineAt: row.deadlineAt || undefined,
+    supersededByTaskId: row.supersededByTaskId || undefined,
     assignmentGeneration: row.assignmentGeneration ?? 0,
     executionLeaseId: row.executionLeaseId || undefined,
     executionLeaseAgentId: row.executionLeaseAgentId || undefined,
@@ -80,6 +81,7 @@ export function rowToTaskLite(row: TaskMetaRow): WorkspaceTask {
     sourceChatDeliveryId: row.sourceChatDeliveryId || undefined,
     closeReason: row.closeReason || undefined,
     deadlineAt: row.deadlineAt || undefined,
+    supersededByTaskId: row.supersededByTaskId || undefined,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }

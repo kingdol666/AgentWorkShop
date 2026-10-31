@@ -13,10 +13,14 @@ import { getDcwProductRepo } from '../../dcw/dcw-product.repo'
 import { getDcwRecipeRepo } from '../../dcw/dcw-recipe.repo'
 import { assertRecipeOpInterval } from '../../dcw/recipe-op-anchor'
 import { getDcwParamRepo } from '../../dcw/param-map.repo'
-import { getOps } from '../../ops/ops'
+import { getOps, recordOps } from '../../ops/ops'
 import { settingOf } from '../../settings'
 import { fanoutQuery, windowOf } from './audit-query'
 import { assertRecipeCreate, assertRecipeOperation, recipeApprovalPayload, type ActiveRecipeContext } from './recipe-gate'
+import { RECOVERY_RETRY_HINT, RECOVERY_TRACE_HINT, RECOVERY_VERIFY_HINT } from './fallback-hints'
+import { approvalOnlyTrialReceipt } from './bench-approval-only'
+import { currentToolInvocation } from '../governance-harness-audit'
+import { executionModeOfAgent } from '../execution-mode'
 
 // ================================================================
 // 运维日志 / Recipe 变更史查询(Agent 自查面:负责产线 scoped)
@@ -951,10 +955,10 @@ export async function toolRecipeRollback(agentId: string, args: {
         ? `定义已在目标版本 v${updated.version ?? 1}(未生成新版本)`
         : `已生成 v${updated.version ?? 1}`
       // 整批重下发全部失败(典型:节点写入保持窗/节流未放行)→ 响亮失败:定义已回退但产线仍运行
-      // 旧参数,Agent 必须知道并稍后重发(再调本工具会再生成一个回退版本,或用 dcw_control 直发)。
+      // 旧参数,Agent 必须知道并稍后重发(再调本工具会再生成一个回退版本,或按 RECOVERY_RETRY_HINT 整批重试)。
       if (run.results.length > 0 && okN === 0) {
         return {
-          text: `回退部分失败:配方「${updated.name}」${defNote},但整批重下发 0/${run.results.length} 参数成功(节点写入保持窗/节流未放行)。产线仍在运行旧参数 —— 等待约 60s 后重新调用 recipe_rollback(dispatch=true,回退目标 v${updated.version ?? 1}),或用 dcw_control 逐节点直发;原因:${reason}。`,
+          text: `回退部分失败:配方「${updated.name}」${defNote},但整批重下发 0/${run.results.length} 参数成功(节点写入保持窗/节流未放行)。产线仍在运行旧参数 —— ${RECOVERY_RETRY_HINT}(回退目标 v${updated.version ?? 1});原因:${reason}。`,
           isError: true,
         }
       }
@@ -963,7 +967,7 @@ export async function toolRecipeRollback(agentId: string, args: {
         return {
           text: [
             `统一回退执行,但 ACK 鉴定未全绿:配方「${updated.name}」${defNote},设备证实 ${acks.verified}/${acks.total},未证实 ${acks.unverified},失败 ${acks.failed}(回退目标:${toLastGood ? '已知良好批次冻结' : `v${version}`});原因:${reason}。${hitlNote}`,
-            '「未证实」参数可能未真正恢复到目标值 —— 请立即用 daq_query/dcw_read 核实产线侧现值,必要时 dcw_control 逐节点直发目标值,并把清单写入汇报提醒人类。',
+            `「未证实」参数可能未真正恢复到目标值 —— 请立即核实:${RECOVERY_VERIFY_HINT},并把清单写入汇报提醒人类。`,
           ].join('\n'),
           isError: true,
         }
@@ -999,7 +1003,24 @@ export async function toolRecipeRollback(agentId: string, args: {
  *   即"改好配方交给人类判断是否下发;不下发则人告诉 Agent 怎么修"的真实作业语义。
  * 超时(默认 security.recipe_dispatch_timeout_ms,30min)自动按拒绝收敛。
  */
-async function hitlDispatchGate(agentId: string, recipeId: string, detail: string, title: string, opts?: { payload?: unknown }): Promise<{ approved: boolean, comment: string, id: string }> {
+async function hitlDispatchGate(agentId: string, recipeId: string, detail: string, title: string, opts?: {
+  payload?: unknown
+  trialTargets?: Array<{ id: string, driver: string, driverConfig: Record<string, unknown> }>
+  lineId?: string
+}): Promise<{ approved: boolean, comment: string, id: string, approval_bypassed?: true }> {
+  if (opts?.trialTargets) {
+    const receipt = approvalOnlyTrialReceipt({ recipeId, line: getDcwLineRepo().byId(opts.lineId ?? ''), nodes: opts.trialTargets })
+    if (receipt) {
+      recordOps({
+        actor: agentId, actorName: agentBadgeLabel(agentId), actorKind: 'agent',
+        action: 'recipe.approval.bypassed', kind: 'recipe', targetKind: 'recipe', targetId: recipeId,
+        lineId: opts.lineId ?? '', recipeId,
+        summary: '隔离模拟器审批消融:仅跳过人工审批等待,无人工批准记录',
+        detail: receipt,
+      })
+      return { approved: true, comment: '', id: '', approval_bypassed: true }
+    }
+  }
   const { getToolApprovals } = await import('../tool-approvals')
   const timeoutMs = Number(settingOf('security.recipe_dispatch_timeout_ms')) || undefined
   // nodeId = `recipe:<id>`:审批卡分流键(与 recipe-propose:<id> 平行;kind 保持 'dcw' 兼容既有裁决端点)
@@ -1025,10 +1046,12 @@ function approvedContextError(
   op: 'update' | 'dispatch' | 'trial' | 'rollback',
   expectedContext: ActiveRecipeContext,
   targetNodeIds?: string[],
+  approvalBypassed = false,
 ): { text: string, isError: true } | null {
+  const prefix = approvalBypassed ? '实验审批已旁路,但执行前' : '人工已批准,但审批期间'
   const currentGate = assertRecipeOperation(agentId, recipe, op, targetNodeIds)
   if (!currentGate.ok) {
-    return { text: `人工已批准,但审批期间授权已失效,本次未执行:${currentGate.text}`, isError: true }
+    return { text: `${prefix}授权已失效,本次未执行:${currentGate.text}`, isError: true }
   }
   const current = currentGate.activeContext
   if (current.lineId !== expectedContext.lineId
@@ -1036,7 +1059,7 @@ function approvedContextError(
     || current.recipeId !== expectedContext.recipeId
     || current.productId !== expectedContext.productId) {
     return {
-      text: '人工已批准,但审批期间产线/产品/配方/批次上下文已变化,本次未执行。请核查当前运行上下文后重新提交。',
+      text: `${prefix}产线/产品/配方/批次上下文已变化,本次未执行。请核查当前运行上下文后重新提交。`,
       isError: true,
     }
   }
@@ -1060,9 +1083,11 @@ export async function revalidateApprovedAction(
   toolName: string,
   args: Record<string, unknown>,
   expectedContext: ActiveRecipeContext,
+  approvalBypassed = false,
 ): Promise<{ text: string, isError: true } | null> {
+  const prefix = approvalBypassed ? '实验审批已旁路,但执行前' : '人工已批准,但审批期间'
   const targetNodeIds = targetNodesFromArgs(op, args)
-  const initialContextError = approvedContextError(agentId, recipe, op, expectedContext, targetNodeIds)
+  const initialContextError = approvedContextError(agentId, recipe, op, expectedContext, targetNodeIds, approvalBypassed)
   if (initialContextError) return initialContextError
   try {
     // manager 未装配(单测/嵌入)→ 只做绑定与运行门复核;装配后叠加产线 grant 复核
@@ -1073,16 +1098,16 @@ export async function revalidateApprovedAction(
     if (channelId) {
       const { guardIndustrialToolGrant } = await import('./grant-guard')
       const denied = await guardIndustrialToolGrant({ agentId, channelId }, toolName, args)
-      if (denied) return { text: `人工已批准,但审批期间产线授权已被收回,本次未执行:${denied.text}`, isError: true }
+      if (denied) return { text: `${prefix}产线授权已被收回,本次未执行:${denied.text}`, isError: true }
     }
   }
   catch (err) {
-    return { text: `人工已批准,但审批后权限复核不可用,本次未执行:${err instanceof Error ? err.message : String(err)}。请稍后重试。`, isError: true }
+    return { text: `${prefix}权限复核不可用,本次未执行:${err instanceof Error ? err.message : String(err)}。请稍后重试。`, isError: true }
   }
   // Grant lookup is asynchronous. Re-read the active tuple after that await so
   // queued line/run changes cannot pass between the initial comparison and the
   // caller's dispatch continuation.
-  const changedAfterGrantCheck = approvedContextError(agentId, recipe, op, expectedContext, targetNodeIds)
+  const changedAfterGrantCheck = approvedContextError(agentId, recipe, op, expectedContext, targetNodeIds, approvalBypassed)
   if (changedAfterGrantCheck) return changedAfterGrantCheck
   return null
 }
@@ -1112,7 +1137,7 @@ export async function toolRecipeTrial(agentId: string, args: {
   params?: Array<{ node_id?: string, value?: number | string }>
   hypothesis?: string
   emergency?: boolean | string
-}): Promise<{ text: string, isError?: boolean }> {
+}): Promise<{ text: string, isError?: boolean, approval_bypassed?: true }> {
   const hypothesis = String(args.hypothesis ?? '').trim()
   const emergency = args.emergency === true || args.emergency === 'true'
   if (!hypothesis) return { text: 'hypothesis 必填:试验必须声明依据(知识库条目/数据分析结论),便于审计追溯与人工审批判断。', isError: true }
@@ -1126,6 +1151,9 @@ export async function toolRecipeTrial(agentId: string, args: {
   // 权限模型 v2 + 2026-10-28 双轨:recipe 绑定 ∨ 本次候选覆盖集 ⊆ dcw 节点绑定面
   const gate = assertRecipeOperation(agentId, recipe, 'trial', list.map(p => p.nodeId))
   if (!gate.ok) return { text: gate.text, isError: true }
+  if (process.env.AW_BENCH_APPROVAL_ONLY === '1' && !gate.hitlRequired) {
+    return { text: 'Approval-only trial refused: the normal manual approval gate must remain enabled', isError: true }
+  }
   for (const p of list) {
     const node = getDcwController().byId(p.nodeId)
     if (!node) return { text: `节点 ${p.nodeId} 已删除,不能纳入试验。`, isError: true }
@@ -1142,6 +1170,7 @@ export async function toolRecipeTrial(agentId: string, args: {
     // HITL 门:manual 绑定(或全局开关)时,整批试验前先挂起等人工裁决(拒绝附指导 → 回给 Agent 修订)
     let hitlNote = ''
     let gateApprovalId = ''
+    let approvalBypassed = false
     if (gate.hitlRequired) {
       const gateDecision = await hitlDispatchGate(
         agentId,
@@ -1152,7 +1181,7 @@ export async function toolRecipeTrial(agentId: string, args: {
           return `${node?.name ?? p.nodeId} ${old ?? '?'}→${p.value}${node?.unit ?? ''}`
         }).join(';')} | 假设:${hypothesis} | 批准=整批下发试验(不写版本);拒绝可附指导`,
         `${emergency ? '【应急】' : ''}配方试验(整批候选)下发审批`,
-        { payload: { ...recipeApprovalPayload('trial', recipe.id, recipe.name, {
+        { lineId: recipe.lineId, trialTargets: list.map(p => getDcwController().byId(p.nodeId)!), payload: { ...recipeApprovalPayload('trial', recipe.id, recipe.name, {
           reason: hypothesis,
           params: list.map((p) => {
             const node = getDcwController().byId(p.nodeId)
@@ -1163,23 +1192,35 @@ export async function toolRecipeTrial(agentId: string, args: {
         }), ...(emergency ? { emergency: true } : {}) } },
       )
       gateApprovalId = gateDecision.id
+      approvalBypassed = gateDecision.approval_bypassed === true
       if (!gateDecision.approved) {
         return {
           text: `人工未批准本次试验下发。人工指导:${gateDecision.comment || '(无附言,仅不同意候选)'}。请按人工指导修订候选参数(必要时先 recipe_update 调整基线),然后重新提交 recipe_trial。`,
         }
       }
       // 人工附言随批准回执回流(Agent 与审计都能看到放行时人的原话)
-      if (gateDecision.comment) hitlNote = `\n人工附言:${gateDecision.comment}`
-      const stale = await revalidateApprovedAction(agentId, recipe, 'trial', 'recipe_trial', { recipe_id: recipeId, params: list.map(p => ({ node_id: p.nodeId })) }, gate.activeContext)
-      if (stale) return stale
-      const staleAtDispatch = approvedContextError(agentId, recipe, 'trial', gate.activeContext, list.map(p => p.nodeId))
-      if (staleAtDispatch) return staleAtDispatch
+      if (approvalBypassed) hitlNote = '\n实验审批旁路:approval_bypassed=true;仅用于隔离模拟器,未获得人工批准。'
+      else if (gateDecision.comment) hitlNote = `\n人工附言:${gateDecision.comment}`
+      const stale = await revalidateApprovedAction(agentId, recipe, 'trial', 'recipe_trial', { recipe_id: recipeId, params: list.map(p => ({ node_id: p.nodeId })) }, gate.activeContext, approvalBypassed)
+      if (stale) return { ...stale, ...(approvalBypassed ? { approval_bypassed: true as const } : {}) }
+      const staleAtDispatch = approvedContextError(agentId, recipe, 'trial', gate.activeContext, list.map(p => p.nodeId), approvalBypassed)
+      if (staleAtDispatch) return { ...staleAtDispatch, ...(approvalBypassed ? { approval_bypassed: true as const } : {}) }
     }
     // 2026-10-28 执行点复核(双轨授权,D13 同款):审批/节拍等待期间绑定可能被撤销,
     // 下发前最后一次同步重算覆盖集 —— 收回即失活,不把授权变更带进写入。
     const execGate = assertRecipeOperation(agentId, recipe, 'trial', list.map(p => p.nodeId))
     if (!execGate.ok) return { text: `下发前授权复核未通过,本次未执行:${execGate.text}`, isError: true }
-    const run = await getDcwController().applyRecipe(recipeId, { overrides: list, trial: true, agentDispatch: true, agentApprovalId: gateApprovalId, emergency })
+    // Recheck the qualified driver/PID after the asynchronous grant revalidation.
+    if (approvalBypassed) approvalOnlyTrialReceipt({ recipeId, line: getDcwLineRepo().byId(recipe.lineId), nodes: list.map(p => getDcwController().byId(p.nodeId)!) })
+    const invocation = currentToolInvocation()
+    const run = await getDcwController().applyRecipe(recipeId, {
+      overrides: list, trial: true, agentDispatch: true, agentApprovalId: gateApprovalId, emergency,
+      agentTrialMeta: {
+        actor: agentId, actorName: agentBadgeLabel(agentId), hypothesis,
+        ...(invocation?.agentId === agentId && invocation.taskId ? { taskId: invocation.taskId } : {}),
+        executionMode: executionModeOfAgent(agentId),
+      },
+    })
     // ACK 鉴定三段口径(2026-10-08):ok 只是命令受理,未证实/失败必须如实回给 Agent
     const acks = run.ackSummary ?? { verified: run.results.filter(r => r.ok).length, unverified: 0, failed: run.results.filter(r => !r.ok).length, total: run.results.length }
     // 批次级留痕:试验动作入审计(逐参数写已有 write-audit;这里是"一次试验"粒度)
@@ -1190,7 +1231,7 @@ export async function toolRecipeTrial(agentId: string, args: {
         action: 'recipe.trial', kind: 'recipe', targetKind: 'recipe', targetId: recipeId, recipeId, lineId: recipe.lineId, productId: recipe.productId,
         level: acks.failed > 0 ? 'error' : acks.unverified > 0 ? 'warn' : 'info',
         summary: `${emergency ? '【应急】' : ''}配方试验整批下发(证实 ${acks.verified}/${acks.total},未证实 ${acks.unverified},失败 ${acks.failed},批次 ${run.id.slice(0, 8)}):${list.map(p => `${p.nodeId.slice(0, 8)}→${p.value}`).join(';')} | 假设:${hypothesis}`,
-        detail: { runId: run.id, ackSummary: acks, ...(emergency ? { emergency: true } : {}) },
+        detail: { runId: run.id, ackSummary: acks, ...(emergency ? { emergency: true } : {}), ...(approvalBypassed ? { approval_bypassed: true } : {}) },
       })
     }
     catch { /* 审计失败不影响试验结果 */ }
@@ -1211,10 +1252,12 @@ export async function toolRecipeTrial(agentId: string, args: {
           '「未证实」=命令已发到链路但设备侧未确认生效;请用 daq_query 复测这些参数的真实状态后再判读试验效果,必要时对未证实参数单独重发或 recipe_rollback 统一回退,并写入汇报提醒人类。',
         ].join('\n'),
         isError: true,
+        ...(approvalBypassed ? { approval_bypassed: true as const } : {}),
       }
     }
     return {
       text: `试验已整批下发并全部设备证实(${acks.verified}/${acks.total},批次 ${run.id.slice(0, 8)}):${changed}。假设:${hypothesis}。${hitlNote}注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC 整批恢复)。`,
+      ...(approvalBypassed ? { approval_bypassed: true as const } : {}),
     }
   }
   catch (err) {
@@ -1327,7 +1370,7 @@ export async function toolRecipeApply(agentId: string, args: {
         text: [
           `配方「${dispatch.name}」v${dispatch.version} 整批下发 ACK 鉴定未全绿(证实 ${acks.verified}/${acks.total},未证实 ${acks.unverified},失败 ${acks.failed},批次 ${run.id.slice(0, 8)})。${hitlNote}`,
           `${skippedNote}${unverifiedNote}`,
-          '请用 daq_query 复测未证实参数的真实状态;必要时 dcw_control 单独重发或 recipe_rollback(dispatch=true) 统一回退,并把清单写入汇报提醒人类。',
+          `${RECOVERY_VERIFY_HINT};必要时用 recipe_rollback(dispatch=true) 统一回退,${RECOVERY_TRACE_HINT},并把清单写入汇报提醒人类。`,
         ].filter(Boolean).join('\n'),
         isError: true,
       }

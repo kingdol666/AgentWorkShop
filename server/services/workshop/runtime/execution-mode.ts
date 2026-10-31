@@ -29,6 +29,8 @@ export interface ModeConfig {
   stages?: PipelineStage[]
   /** goal: 满意度判断提示(注入 lead prompt) */
   goalCriteria?: string
+  /** goal: 完成策略(缺省 default=必须有真实交付物;no-deliverable=显式声明无交付目标) */
+  completionPolicy?: 'default' | 'no-deliverable'
 }
 
 /** pipeline 阶段定义 */
@@ -76,6 +78,9 @@ function parseModeConfig(desc: string, mode: ExecutionMode): ModeConfig {
     // goalCriteria 从 description 中 [criteria:...] 提取
     const criteriaMatch = desc.match(/\[criteria:([^\]]+)\]/)
     config.goalCriteria = criteriaMatch?.[1]?.trim()
+    // 完成策略:[policy:no-deliverable] 显式声明无交付目标(缺省 default=必须有真实证据)
+    const policyMatch = desc.match(/\[policy:(no-deliverable|default)\]/)
+    config.completionPolicy = (policyMatch?.[1] as ModeConfig['completionPolicy']) ?? 'default'
   }
   if (mode === 'pipeline') {
     // 阶段名从 [stages:name1->name2] 提取(与 encodeTaskMode 编码格式对称)
@@ -108,6 +113,9 @@ export function encodeTaskMode(mode: ExecutionMode, config: ModeConfig, descript
   }
   if (mode === 'goal' && config.goalCriteria) {
     parts.push(`[criteria:${config.goalCriteria}]`)
+  }
+  if (mode === 'goal' && config.completionPolicy === 'no-deliverable') {
+    parts.push('[policy:no-deliverable]')
   }
   if (mode === 'pipeline' && config.stages) {
     parts.push(`[stages:${config.stages.map(s => s.name).join('->')}]`)

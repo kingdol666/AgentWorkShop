@@ -19,6 +19,7 @@ import { predictProduction, readIoSpecFor } from '../../aml/predictor'
 import { recordOps } from '../../ops/ops'
 import { transitionModel } from '../../aml/model-registry'
 import { resolveRefFaces } from './tool-verify'
+import { GOVERNED_DISPATCH_HINT } from './fallback-hints'
 
 /** 工具:aml_job_submit —— 提交训练作业(train.py 全文内联;归因 agentId;队列 FIFO) */
 export async function toolAmlJobSubmit(agentId: string, args: {
@@ -236,7 +237,7 @@ export async function toolAmlModelPromote(agentId: string, args: { model_id?: st
       .list({ stage: 'production', productId: model.productId, recipeId: model.recipeId, limit: 50 })
       .find(m => m.id !== modelId && m.purpose === model.purpose)?.id
   }
-  // 同模型挂起审批去重(防审批面板堆积,与 dcw_control 同纪律)
+  // 同模型挂起审批去重(防审批面板堆积,与配方面治理下发同纪律)
   const approvals = getToolApprovals()
   if (approvals.hasPendingFor(agentId, modelId)) {
     return amlErr(`模型 ${modelId} 已有一条待审批的晋升请求,请等待用户处理后再发起新请求。`)
@@ -249,8 +250,9 @@ export async function toolAmlModelPromote(agentId: string, args: { model_id?: st
   try {
     const r = transitionModel(modelId, toStage, agentBadgeLabel(agentId), 'agent')
     // 归属审计已由 transitionModel 内部 recordOps(aml.model.promote)完成,此处不重复记录
+    const warnText = (r.warnings ?? []).length > 0 ? `⚠ ${r.warnings!.join('；')}。` : ''
     return {
-      text: `晋升完成:${modelId} ${r.from} → ${toStage}。${r.retiredId ? `原生产模型 ${r.retiredId} 已自动退役。` : ''}${toStage === 'shadow'
+      text: `晋升完成:${modelId} ${r.from} → ${toStage}。${r.retiredId ? `原生产模型 ${r.retiredId} 已自动退役。` : ''}${warnText}${toStage === 'shadow'
         ? '影子阶段:用 aml_model_reference 观测其预测与实际偏差,积累证据后再申请 production。'
         : '该模型已作为生产模型生效:aml_model_reference 的影子参考即来自它;调控 Agent 调参前请先查它。'}`,
     }
@@ -471,7 +473,7 @@ export async function toolAmlModelReference(agentId: string, args: {
       : '无控制节点'
     return {
       text: [
-        `影子模型参考(调参前先问影子模型;预测≠承诺,真实下发仍走 dcw_control 安全联锁):`,
+        `影子模型参考(调参前先问影子模型;预测≠承诺,真实下发不走逐节点直写 —— ${GOVERNED_DISPATCH_HINT}):`,
         `  模型 ${r.modelId}「${model.label || '(未打标)'}」(stage=${r.stage},purpose=${purpose}${model.objectiveId ? `,objective=${model.objectiveId}` : ''})| 三元组:产品 ${getDcwProductRepo().byId(productId)?.name ?? productId} / 配方 ${getDcwRecipeRepo().byId(recipeId)?.name ?? recipeId}(解析:${resolveHow})`,
         model.description ? `  模型说明: ${model.description}` : null,
         `  输入:最近 ${H} 拍 × ${io.allNodes.length} 节点(beat=${beatMs}ms),截至 ${new Date(now).toISOString().slice(11, 19)};控制轨迹(共 ${steps} 步):${ctrlTxt}${unknownKeys.length > 0 ? `(已忽略非控制节点的键:${unknownKeys.join(', ')})` : ''}`,
@@ -479,7 +481,7 @@ export async function toolAmlModelReference(agentId: string, args: {
         `    ${header}`,
         ...forecastLines,
         `  假设: ${r.assumptions}`,
-        `\n用法:把候选设定值作为 controls 传入(键 = 控制节点 id)对比不同方案的预测轨迹;选定后 dcw_control 下发并 daq_query 复测。`,
+        `\n用法:把候选设定值作为 controls 传入(键 = 控制节点 id)对比不同方案的预测轨迹;选定后经配方面/优化面受治理下发(${GOVERNED_DISPATCH_HINT}),下发后 daq_query 复测。`,
       ].filter(x => x !== null).join('\n'),
     }
   }

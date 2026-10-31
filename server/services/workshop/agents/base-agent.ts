@@ -97,7 +97,7 @@ export abstract class BaseAgentImpl implements AgentInterface {
   }
 
   protected refreshIdentity(): void {
-    this.bridgeCtx.identity = { agentId: this.selfAgentId, channelId: this.channelId, role: this.agentRole, name: this.agentName }
+    this.bridgeCtx.identity = { agentId: this.selfAgentId, channelId: this.channelId, role: this.agentRole, name: this.agentName, harness: this.harnessId }
     this.roster = this.makeRoster()
   }
 
@@ -110,8 +110,8 @@ export abstract class BaseAgentImpl implements AgentInterface {
     this.refreshIdentity()
   }
 
-  dispatchHostTool(toolName: string, args: Record<string, unknown>): Promise<{ text: string, isError?: boolean }> {
-    return dispatchHostTool(this.bridgeCtx, { toolName, arguments: args })
+  dispatchHostTool(toolName: string, args: Record<string, unknown>, activeRootTaskId?: string): Promise<{ text: string, isError?: boolean }> {
+    return dispatchHostTool(this.bridgeCtx, { toolName, arguments: args }, activeRootTaskId)
   }
 
   /** HITL:默认无程序化审批面(有审批能力的引擎覆盖;能力面如实声明) */

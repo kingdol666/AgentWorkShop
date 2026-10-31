@@ -87,7 +87,7 @@ export abstract class OmpRpcAgentImplClient extends OmpRpcAgentImplEventMapping 
       }
 
       // 注册 host tools(按角色差异化:lead 全量,worker 剔除调度/团队管理专属工具)
-      client.onHostToolCall(req => this.handleHostTool(req))
+      client.onHostToolCall(req => this.handleHostTool(req, client))
       await client.send({ type: 'set_host_tools', tools: hostToolsForAgent(this.selfAgentId, this.agentRole, this.channelId) })
 
       // 上下文治理探测(feature-detect 一次;失败退化被动 usage 跟踪)+ 原生压缩兜底保持开启

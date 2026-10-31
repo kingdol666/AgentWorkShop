@@ -18,7 +18,11 @@ export abstract class TaskEngineLifecycle extends TaskEngineTransition {
   /** 完成任务:WORKING → COMPLETED(终态)+ 进度置 100(广播由上层 ChannelBus 监听 onTaskEvent 承担);
    *  WAITING → COMPLETED 仅在所有子任务有交付且 Lead 已提交验收总结时允许。
    *  goal 模式父任务收口保底:lead 未自带结构化「目标完成总结」时平台合成同构交付物
-   *  (mock/omp/规则引擎三条完成路径共用此处,确保 goal 完成标志恒存在)。 */
+   *  (mock/omp/规则引擎三条完成路径共用此处,确保 goal 完成标志恒存在)。
+   *
+   *  2026-10-30 证据闸(整改计划阶段1):goal-summary(含平台合成)只是**记录**,不是证据——
+   *  无子任务 Goal 必须有真实交付物(或显式 [policy:no-deliverable]);失败/取消子任务
+   *  经 supersede 显式处置后方可收口。 */
   complete(taskId: string, artifacts?: A2AArtifact[]): WorkspaceTask {
     const task = this.requireTask(taskId)
     if (task.state === 'COMPLETED') return task
@@ -30,16 +34,20 @@ export abstract class TaskEngineLifecycle extends TaskEngineTransition {
       .filter(t => t.parentId === task.id)
     const allArtifacts = [...task.artifacts, ...(artifacts ?? [])]
     const modeInfo = extractTaskMode(task)
-    const hasDeliverable = allArtifacts.some(a => a.name !== 'input'
+    // 证据 = 非输入且非 goal-summary(goal-summary 是平台/lead 的收口记录,可自证,不作数)
+    const hasEvidence = allArtifacts.some(a => a.name !== 'input' && !isGoalSummaryArtifact(a)
       && a.parts.some(p => 'text' in p ? p.text.trim().length > 0 : true))
     if (children.length > 0) {
       // 父任务不是“所有子任务终态”就可完成：worker 的 COMPLETED 只是交付，
       // Leader 必须检查每个交付并提交自己的验收总结后，才可收口父任务。
-      const pending = children.filter(t => t.state !== 'COMPLETED')
+      // 失败/取消分支经 supersede(显式替代)处置后不再阻塞;否则必须显式处置。
+      const pending = children.filter(t => t.state !== 'COMPLETED' && !t.supersededByTaskId)
       if (pending.length > 0) {
-        throw new AppError(400, 'INVALID_STATE', `父任务仍有 ${pending.length} 个未通过验收的子任务(失败/取消也需 Lead 明确处理)`)
+        const detail = pending.map(t => `「${t.title}」(${t.state}${t.supersededByTaskId ? '' : ',未处置'})`).join(', ')
+        throw new AppError(400, 'INVALID_STATE', `父任务仍有 ${pending.length} 个未收口的子任务: ${detail}。请先派发替代任务并调用 supersede 处置失败/取消分支,或给出明确处置`)
       }
       const missingDeliverables = children.filter((child) => {
+        if (child.state !== 'COMPLETED') return false
         const row = this.repos.tasks.findById(child.id)
         if (!row) return true
         const completed = rowToTask(row)
@@ -50,15 +58,21 @@ export abstract class TaskEngineLifecycle extends TaskEngineTransition {
         throw new AppError(400, 'WORKER_DELIVERABLE_MISSING', `子任务缺少可验收交付物: ${missingDeliverables.map(c => c.title).join(', ')}`)
       }
       // goal 模式的显式 complete 决策本身是 Lead 的接受动作；若未附总结，
-      // 下方会合成 goal-summary。普通分解任务必须附 Lead 验收总结。
+      // 下方会合成 goal-summary(仅作记录)。普通分解任务必须附 Lead 验收总结。
       const hasLeadAcceptance = allArtifacts.some(a => a.name !== 'input'
         && a.parts.some(p => 'text' in p ? p.text.trim().length > 0 : true))
       if (!hasLeadAcceptance && modeInfo?.mode !== 'goal') {
         throw new AppError(400, 'LEAD_ACCEPTANCE_REQUIRED', '父任务必须由 Lead 提交验收总结后才能完成')
       }
     }
-    else if (!hasDeliverable && modeInfo?.mode !== 'goal') {
-      throw new AppError(400, 'TASK_DELIVERABLE_REQUIRED', '任务完成前必须提交非空 deliverable/summary artifact')
+    else if (!hasEvidence) {
+      // goal 不再豁免证据闸:显式 [policy:no-deliverable] 的 Goal 才允许无交付收口
+      const policyWaived = modeInfo?.mode === 'goal' && modeInfo.config.completionPolicy === 'no-deliverable'
+      if (!policyWaived) {
+        throw new AppError(400, 'TASK_DELIVERABLE_REQUIRED', modeInfo?.mode === 'goal'
+          ? 'Goal 完成前必须提交真实成果 artifact(平台生成的目标总结不算证据);确无交付的目标请在创建时声明 [policy:no-deliverable]'
+          : '任务完成前必须提交非空 deliverable/summary artifact')
+      }
     }
     // goal 收口保底:已有总结(lead 自写/前置合成)则原样保留
     if (modeInfo?.mode === 'goal') {
@@ -238,6 +252,41 @@ export abstract class TaskEngineLifecycle extends TaskEngineTransition {
     return this.requireTask(taskId)
   }
 
+  /**
+   * 显式替代(整改计划阶段1/F1):把 FAILED/CANCELED 分支标记为被 replacement 覆盖。
+   * 失败事实保留(状态不变),但父任务收口不再被该分支阻塞;替代关系落库可审计。
+   * 前置:仅 FAILED/CANCELED 可被替代;替代任务必须同属一个父任务且自身未被替代。
+   */
+  supersede(taskId: string, replacementTaskId: string, by: string, reason?: string): WorkspaceTask {
+    const task = this.requireTask(taskId)
+    if (!task.parentId) {
+      throw new AppError(400, 'INVALID_STATE', '仅子任务分支可被替代(根任务请走取消/失败语义)')
+    }
+    if (task.state !== 'FAILED' && task.state !== 'CANCELED') {
+      throw new AppError(400, 'INVALID_STATE', `仅失败/取消的分支可标记替代(当前 ${task.state})`)
+    }
+    if (replacementTaskId === task.id) {
+      throw new AppError(400, 'INVALID_STATE', '任务不能被自身替代')
+    }
+    const replacement = this.requireTask(replacementTaskId)
+    if ((replacement.parentId ?? null) !== (task.parentId ?? null)) {
+      throw new AppError(400, 'INVALID_STATE', '替代任务必须与被替代任务同属一个父任务')
+    }
+    if (replacement.supersededByTaskId) {
+      throw new AppError(400, 'INVALID_STATE', '替代任务自身已被其他任务替代,不可作为替代目标')
+    }
+    const updated = this.repos.tasks.update(taskId, {
+      supersededByTaskId: replacementTaskId,
+      closeReason: reason ?? task.closeReason ?? `SUPERSEDED_BY_${replacementTaskId.slice(0, 8)}`,
+    })
+    if (!updated) throw new AppError(404, 'NOT_FOUND', `任务不存在: ${taskId}`)
+    const view = rowToTask(updated)
+    this.hooks?.onTaskChange?.({ taskId, channelId: task.channelId, state: view.state, agentId: by, task: view, reason: reason ?? 'SUPERSEDED' })
+    // 替代完成后,父任务的等待口径可能已满足(最后一个未处置分支被处置):唤醒验收
+    if (task.parentId) this.onChildResolved(task.parentId, task.channelId, by)
+    return view
+  }
+
   /** 普通根任务超时:活动后代取消,根任务以 FAILED 保留明确超时语义。 */
   timeoutTree(taskId: string, by: string): WorkspaceTask[] {
     const root = this.requireTask(taskId)
@@ -302,13 +351,23 @@ export abstract class TaskEngineLifecycle extends TaskEngineTransition {
       kind: 'child-completed',
       childTaskId: child.id,
     })
-    // 统计未完成子任务数(排除 COMPLETED/CANCELED);为 0 即最后一个完成。
+    // 统计未收口子任务数:仅「非终态且未被 supersede」的分支阻塞;全终态/全处置即把父推回
+    // WORKING 给 Lead 验收回合(FAILED/CANCELED 也要推——Lead 的回合正是用来 supersede 的)。
     // 子任务直查(免全 channel 扫描);完成闸门仅需 state → 元数据投影足够。
     const siblings = this.repos.tasks.listChildrenMeta(parent.channelId, parent.id)
-    const incomplete = siblings.filter(t => t.state !== 'COMPLETED' && t.state !== 'CANCELED')
+    const incomplete = siblings.filter(t => t.state !== 'COMPLETED' && t.state !== 'FAILED' && t.state !== 'CANCELED' && !t.supersededByTaskId)
     if (incomplete.length === 0 && parent.state === 'WAITING') {
       this.transition(parent.id, 'WORKING', child.assigneeId)
     }
+  }
+
+  /** supersede 后的父任务等待口径复检(与 onChildCompleted 同一过滤口径);满足则 WAITING → WORKING */
+  protected onChildResolved(parentId: string, channelId: string, by: string): void {
+    const parent = this.get(parentId)
+    if (!parent || parent.state !== 'WAITING') return
+    const siblings = this.repos.tasks.listChildrenMeta(channelId, parentId)
+    const incomplete = siblings.filter(t => t.state !== 'COMPLETED' && t.state !== 'FAILED' && t.state !== 'CANCELED' && !t.supersededByTaskId)
+    if (incomplete.length === 0) this.transition(parentId, 'WORKING', by)
   }
 
   protected requireTask(taskId: string): WorkspaceTask {

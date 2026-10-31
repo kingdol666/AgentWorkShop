@@ -88,6 +88,13 @@ export abstract class ManagerContracts {
     callerAgentId: string,
     input: { taskId: string, artifacts?: A2AArtifact[] },
   ): Promise<WorkspaceTask>
+  abstract supersedeTask(
+    channelId: string,
+    callerAgentId: string,
+    input: { taskId: string, replacementTaskId: string, reason?: string },
+  ): Promise<WorkspaceTask>
+  /** chat 投递崩溃恢复补偿器(阶段2;实现在 chat 层,由 state 定时器与 restore 驱动) */
+  protected abstract recoverPendingChatDeliveries(): void
   abstract createTeamMember(
     channelId: string,
     callerAgentId: string,

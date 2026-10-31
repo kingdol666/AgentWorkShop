@@ -289,9 +289,7 @@ export abstract class ManagerRuntimeObserve extends ManagerRuntimeWiring {
     }
     this.scheduleRuntime?.stop()
     this.scheduleRuntime = null
-    const schedulers = [...this.channels.values()].map(cr => cr.scheduler).filter((s): s is NonNullable<typeof s> => !!s)
-    await Promise.all(schedulers.map(s => s.stopAndWait()))
-    for (const cr of this.channels.values()) cr.scheduler = null
+    await Promise.all([...this.channels.values()].map(cr => cr.stopSchedulersAndWait()))
     await Promise.all([...this.agentIndex.values()].map(a => a.stop()))
     this.agentIndex.clear()
     this.channels.clear()

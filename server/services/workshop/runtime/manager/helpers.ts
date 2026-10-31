@@ -48,6 +48,8 @@ export function rowToTask(row: TaskRow): WorkspaceTask {
     artifacts: parseJson<A2AArtifact[]>(row.artifactsJson, []),
     history: parseJson<A2AMessage[]>(row.historyJson, []),
     routeReason: row.routeReason || undefined,
+    // 显式替代关系(整改计划阶段1):host 工具面 precheck 依赖此字段豁免已处置分支
+    supersededByTaskId: row.supersededByTaskId || undefined,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }
@@ -69,14 +71,15 @@ export function rowToChannelMail(row: MessageRow): ChannelMail {
   }
 }
 
-/** 构造 A2AMessage(统一入口) */
+/** 构造 A2AMessage(统一入口);id 显式传入时用之(崩溃重投按确定性 id 去重,阶段2) */
 export function buildMessage(
   channelId: string,
   role: 'ROLE_USER' | 'ROLE_AGENT',
   parts: Part[],
   metadata: Record<string, unknown>,
+  id?: string,
 ): A2AMessage {
-  return { messageId: randomUUID(), contextId: channelId, role, parts, metadata }
+  return { messageId: id ?? randomUUID(), contextId: channelId, role, parts, metadata }
 }
 
 /** 运行时实例复合键(channel, 实例) */

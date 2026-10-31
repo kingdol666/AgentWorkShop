@@ -63,6 +63,8 @@ export interface AgentWorkspace {
   reportTask(input: { taskId: string, progress?: number, artifact?: A2AArtifact, message?: string }): Promise<WorkspaceTask>
   /** 完成任务 */
   completeTask(taskId: string, artifacts?: A2AArtifact[]): Promise<WorkspaceTask>
+  /** (lead)显式替代:把 FAILED/CANCELED 子任务分支标记为被 replacement 覆盖(收口前置处置) */
+  supersedeTask(taskId: string, replacementTaskId: string, reason?: string): Promise<WorkspaceTask>
   /** 查看自己的任务队列(待执行 FIFO / 执行中 / 已完成)——每个 agent 自己的任务管理系统 */
   myQueue(): Promise<AgentTaskQueueView>
   /** (lead)全员状态 + 队列总览:统一调度与最优调配的观察面 */

@@ -135,7 +135,23 @@ export abstract class SchedulerLoopRules extends SchedulerLoopSnapshot {
         // progress=90、产物齐全,却因没走收口动作被整单取消;换成真实 harness lead 时
         // 由 lead 的监督回合兜住,所以只在 mock/规则引擎这条路径上暴露)。
         // 现在按"有没有真干过活"分流:干过 → 收口(成果保留);没干过 → 仍然取消(防永挂)。
-        const didWork = (task.artifacts ?? []).some(a => a.name !== 'input'
+        // 2026-10-30 修复:快照 artifacts 是监督投影(listForSupervision),子任务分支只含
+        // COMPLETED(selectActiveSupervisionArtifacts 硬条件)→ WORKING 子任务恒
+        // artifacts=[],didWork 恒 false → 分流对子任务是死代码,有交付物仍被整单取消;
+        // 而 WORKING 根任务 artifacts 恒可见 → 停滞时被规则引擎自动 complete,违反
+        // "恢复引擎绝不自动验收父任务"不变量(本文件末尾注释)。改为:判定点现读该任务
+        // 全行 artifacts(单行,绕开投影裁剪);根任务一律不做破坏性/越权收口,只重复上报。
+        if (!task.parentId) {
+          this.lastProgress.set(task.id, { progress: task.progress, at: now })
+          decisions.push({
+            kind: 'notify',
+            toAgentId: task.assigneeId,
+            parts: [{ text: `根任务「${task.title}」停滞且进度长期无变化 —— 请立即检查并处置(验收收口/继续推进/说明阻塞);恢复引擎不会代你验收或取消根任务` }],
+          })
+          continue
+        }
+        const fresh = (this.lead.taskEngine as { get?: (id: string) => typeof task | undefined }).get?.(task.id)
+        const didWork = ((fresh ?? task).artifacts ?? []).some(a => a.name !== 'input'
           && (a.parts ?? []).some(p => 'text' in p ? p.text.trim().length > 0 : true))
         decisions.push(didWork ? { kind: 'complete', taskId: task.id } : { kind: 'cancel', taskId: task.id })
       }

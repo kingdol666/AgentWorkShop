@@ -72,6 +72,8 @@ const MEMORY_OUTBOX_MAX_ATTEMPTS = 5
 const TEAM_MEMORY_CHECKPOINT_CAP = 500
 /** §7.3 outbox 补偿扫描周期(独立于记忆维护的 6h 周期) */
 const OUTBOX_COMPENSATION_MS = 30_000
+/** chat 投递崩溃恢复扫描周期(整改计划 2026-10-30 阶段2) */
+const CHAT_DELIVERY_RECOVERY_MS = 15_000
 
 export abstract class ManagerState extends ManagerContracts {
   protected channels = new Map<string, ChannelRuntime>()
@@ -89,6 +91,7 @@ export abstract class ManagerState extends ManagerContracts {
   protected memoryTimer: NodeJS.Timeout | null = null
   /** §7.3 outbox 独立补偿定时器(短周期重试;与记忆维护 6h 周期解耦) */
   protected outboxTimer: NodeJS.Timeout | null = null
+  protected chatDeliveryTimer: NodeJS.Timeout | null = null
   /** 全 manager 共享的 env 向量 provider(未配置 → null 纯 FTS;熔断/维度全体实例共享) */
   protected readonly memoryEmbedder = createEnvEmbeddingProvider()
   /** 反思游标:每 agent 上次聚合的当月任务数(月度幂等增量判定) */
@@ -202,6 +205,17 @@ export abstract class ManagerState extends ManagerContracts {
       }
     }, OUTBOX_COMPENSATION_MS)
     this.outboxTimer.unref?.()
+    // 2026-10-30 阶段2:chat 投递崩溃恢复补偿器 —— pending 且 mailbox 未落库的投递退避重投
+    // (窗口=事务已提交、route 未完成;mailbox 已落库的 pending 由确定性消息 id 去重,不会重复投递)
+    this.chatDeliveryTimer = setInterval(() => {
+      try {
+        this.recoverPendingChatDeliveries()
+      }
+      catch (err) {
+        log.error('[chat] 投递恢复 worker 异常', err)
+      }
+    }, CHAT_DELIVERY_RECOVERY_MS)
+    this.chatDeliveryTimer.unref?.()
   }
 
   /**

@@ -28,6 +28,11 @@ export class ChannelRuntime {
   readonly channelId: string
   private agents = new Map<string, AgentRuntimeLike>()
   private schedulerLoop: SchedulerLoopLike | null = null
+  /** All loops ever attached during this ChannelRuntime lifetime; the pointer alone can hide an overwritten loop. */
+  private readonly schedulerLoops = new Set<SchedulerLoopLike>()
+  private schedulerStopLeaseCount = 0
+  private schedulerStopFailureLatched = false
+  private schedulerStopBarrier: Promise<void> | null = null
   /** 懒加载回调(manager 注入);未装配的收件人经此按需 wire */
   private loader: AgentLoader | null = null
 
@@ -205,11 +210,85 @@ export class ChannelRuntime {
   }
 
   set scheduler(loop: SchedulerLoopLike | null) {
+    if (!loop) {
+      if (this.schedulerLoop) this.schedulerLoops.delete(this.schedulerLoop)
+      this.schedulerLoop = null
+      return
+    }
     this.schedulerLoop = loop
+    this.schedulerLoops.add(loop)
   }
 
   get scheduler(): SchedulerLoopLike | null {
-    return this.schedulerLoop
+    return this.schedulerLoop ?? this.schedulerLoops.values().next().value ?? null
+  }
+
+  get schedulerStoppingInProgress(): boolean {
+    return this.schedulerStopLeaseCount > 0 || this.schedulerStopFailureLatched
+  }
+
+  /**
+   * Stop every attached loop and return a lease that keeps replacements gated until teardown ends.
+   * The owner must release it after dependent runtimes are detached; a stop failure leaves the gate closed.
+   */
+  async stopSchedulersAndWait(): Promise<() => void> {
+    this.schedulerStopLeaseCount += 1
+    let released = false
+    const release = () => {
+      if (released) return
+      released = true
+      this.schedulerStopLeaseCount = Math.max(0, this.schedulerStopLeaseCount - 1)
+    }
+    try {
+      await this.stopSchedulerBarrier()
+    }
+    catch (error) {
+      release()
+      throw error
+    }
+    return release
+  }
+
+  /** Coalesce concurrent stops so one failed barrier cannot race a successful retry's recovery. */
+  private stopSchedulerBarrier(): Promise<void> {
+    if (this.schedulerStopBarrier) return this.schedulerStopBarrier
+
+    const barrier = (async () => {
+      while (this.schedulerLoops.size > 0) {
+        const loops = [...this.schedulerLoops]
+        const results = await Promise.allSettled(loops.map(loop => loop.stopAndWait()))
+        let failure: unknown
+        let failed = false
+        for (const [index, result] of results.entries()) {
+          const loop = loops[index]!
+          if (result.status === 'fulfilled') {
+            this.schedulerLoops.delete(loop)
+          }
+          else if (!failed) {
+            failed = true
+            failure = result.reason
+          }
+        }
+        this.schedulerLoop = this.schedulerLoops.values().next().value ?? null
+        if (failed) throw failure
+      }
+      this.schedulerLoop = null
+    })()
+      .then(() => {
+        // A complete retry proves every still-tracked loop has stopped. Active leases remain held.
+        this.schedulerStopFailureLatched = false
+      })
+      .catch((error: unknown) => {
+        // Keep scheduler starts fail-closed until a later complete barrier succeeds.
+        this.schedulerStopFailureLatched = true
+        throw error
+      })
+      .finally(() => {
+        if (this.schedulerStopBarrier === barrier) this.schedulerStopBarrier = null
+      })
+
+    this.schedulerStopBarrier = barrier
+    return barrier
   }
 
   /** 唤醒调度循环(事件驱动) */

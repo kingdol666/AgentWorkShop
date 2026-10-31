@@ -139,7 +139,7 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
   protected ensureAgentRuntime(channelId: string, agentId: string): AgentRuntime | undefined {
     const key = runtimeKey(channelId, agentId)
     // 停机窗口墓碑:既不返回半关闭的旧运行时,也不重建新运行时(否则消息进闭箱)
-    if (this.stoppingAgents.has(key)) return undefined
+    if (this.stoppingAgents.has(key) || this.channels.get(channelId)?.schedulerStoppingInProgress) return undefined
     const existing = this.agentIndex.get(key)
     if (existing) return existing
     const m = this.deps.repos.channelAgents.findByChannelAgent(channelId, agentId)
@@ -156,6 +156,7 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     const channel = this.deps.repos.channels.findById(channelId)
     if (!channel || channel.enabled !== 1 || !channel.leadAgentId) return
     const cr = this.ensureChannelRuntime(channelId)
+    if (cr.schedulerStoppingInProgress) return
     if (cr.scheduler) return
     const lead = this.ensureAgentRuntime(channelId, channel.leadAgentId)
     if (!lead) return
@@ -185,6 +186,7 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     const channel = this.deps.repos.channels.findById(channelId)
     if (!channel || channel.enabled !== 1 || !channel.leadAgentId) return
     const cr = this.ensureChannelRuntime(channelId)
+    if (cr.schedulerStoppingInProgress) return
     if (cr.scheduler) return
     const lead = this.runtimeOf(channelId, channel.leadAgentId)
     if (!lead || lead.role !== 'lead') return
@@ -209,7 +211,7 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     // shutdown 之后不得再挂新调度器:shutdown 会停掉全部循环并置空 cr.scheduler,
     // 但此窗口内仍可能有在途的懒装配(channelRuntime loader / 定时任务 / 在飞投递)
     // 经 wireMember → reviveScheduler 重新挂载。
-    if (this.shutdownStarted) return
+    if (this.shutdownStarted || cr.schedulerStoppingInProgress) return
     if (cr.scheduler) return
     const loop = new SchedulerLoop(cr, lead, {
       // 停滞窗口默认取 workshop.stall_ms(默认 5 分钟,可经设置调整):
@@ -254,15 +256,15 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     const cr = this.channels.get(channelId)
     cr?.detachAgent(agentId)
     this.clearInvocationScope(agentId)
+    let releaseSchedulerStarts: (() => void) | null = null
     try {
-      const scheduler = runtime.role === 'lead' ? cr?.scheduler : null
-      if (scheduler) {
-        await scheduler.stopAndWait()
-        if (cr) cr.scheduler = null
+      if (runtime.role === 'lead' && cr) {
+        releaseSchedulerStarts = await cr.stopSchedulersAndWait()
       }
       await runtime.stop()
     }
     finally {
+      releaseSchedulerStarts?.()
       // 停机完成即允许惰性复活(新消息触发 wireMember 重建)
       this.stoppingAgents.delete(key)
     }
@@ -415,6 +417,16 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
       // 正规 assign 消息(与人类直发 worker 同构):FIFO 准入已满足(无活跃根+最老 seq),
       // assign 语义让 lead 消息路径自动 SUBMITTED→WORKING(补 RUNNING 中间态可见性),
       // 回合载荷=任务简报,走消息消费循环的稳健入场路径。
+      // 2026-10-30 修复(救援竞争):上面 unloadAgent 是秒级 await,窗口内旧运行时的在途
+      // 消费/监督决策可能已把该根 SUBMITTED→WORKING(甚至继续派发子任务)。投递前必须
+      // 复读:非 SUBMITTED 说明入场已发生,再投 assign 会复活出同任务的第二回合并发执行
+      // (双份 history/artifact 交错、重复派发子任务;lease 栅栏对无栅栏字段的救援 assign
+      // 不设防)。复读与 route 之间无 await,单进程下原子。
+      const freshHead = this.deps.repos.tasks.findById(head.id)
+      if (!freshHead || String(freshHead.state) !== 'SUBMITTED') {
+        log.warn(`[AgentChannelManager] D1 兜底:根任务 ${head.id.slice(0, 8)} 在重组窗口内已入场(state=${freshHead ? String(freshHead.state) : '缺失'}),跳过重复投递`)
+        continue
+      }
       const brief = [head.title, head.description ?? ''].filter(Boolean).join('\n')
       const rescueMessage = buildMessage(
         channel.id,

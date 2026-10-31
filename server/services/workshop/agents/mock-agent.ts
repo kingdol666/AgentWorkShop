@@ -171,6 +171,10 @@ export class MockAgentImpl implements AgentInterface {
     // FAILED 且重试次数 < 3 → reassign 给空闲 worker(模式无关)
     // 回退窗:与规则引擎同源 —— 避免 worker 尚未消费新 assign 就被下一次重试换 lease。
     for (const task of snapshot.tasks) {
+      // 2026-10-30 修复:与规则引擎(rules.ts)同源补齐两道守卫 —— 根任务是 lead 编排
+      // 记录不得改派给 worker;ROOT_TIMEOUT 已是超时收口结果,不能被重试规则重新派发。
+      if (!task.parentId) continue
+      if (task.closeReason === 'ROOT_TIMEOUT') continue
       if (task.state === 'FAILED' && task.retryCount < 3 && failedRetryReady(task, now)) {
         const worker = this.pickWorker(pool, now, task.assigneeId)
         if (worker) {

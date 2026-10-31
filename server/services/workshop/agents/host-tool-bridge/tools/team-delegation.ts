@@ -107,3 +107,23 @@ export async function grantNodesForDispatch(identity: HostToolBridgeContext['ide
     return { ok: false, text: msg }
   }
 }
+
+/**
+ * 2026-10-30 新增:dispatch 失败回滚 —— 尽力撤销 grantNodesForDispatch 刚落库的授权。
+ * 授权-任务绑定不变量:任务没创建,授权不得残留(尤其 grant_mode=auto 摘过人工审批的)。
+ * 返回实际撤销条数;任何异常按 0 处理(调用方如实标注"请手工核销")。
+ */
+export async function revokeNodesForDispatchRollback(identity: HostToolBridgeContext['identity'], assigneeId: string, nodeIds: string[], ws: MembersView): Promise<number> {
+  try {
+    const results = revokeDelegation({
+      leaderAgentId: identity.agentId,
+      targetAgentId: assigneeId,
+      nodeIds,
+      members: await membersOf(ws),
+    })
+    return results.filter(r => r.revoked).length
+  }
+  catch {
+    return 0
+  }
+}

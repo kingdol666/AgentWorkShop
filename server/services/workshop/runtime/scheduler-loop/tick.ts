@@ -82,8 +82,14 @@ export abstract class SchedulerLoopTick extends SchedulerLoopState {
       const deferrable = hitlPending
         ? expiredRoots.filter(r => (this.hitlDeferrals.get(r.id) ?? 0) < MAX_HITL_DEFERRALS)
         : []
-      if (deferrable.length > 0 && deferrable.length === expiredRoots.length) {
+      if (deferrable.length > 0) {
+        // 2026-10-30 修复:原实现要求「全部可顺延」(deferrable.length === expiredRoots.length)
+        // 才顺延 —— 只要有一根达顺延上限,连仍受审批保护的根一起 ROOT_TIMEOUT 处决,
+        // 留下悬空审批单(人类随后批准,决议落在已死树上,审批面无任务可归)。
+        // 改为逐根分流:可顺延的刷新预算(消耗一次顺延),已达上限的照常收口 ——
+        // 与"人类思考期不应处决受审批保护的树"语义逐根对齐。
         const budget = new Date(Date.now() + (Number(workshopSettings().root_timeout_ms) || 900_000)).toISOString()
+        const deferredIds = new Set(deferrable.map(r => r.id))
         for (const root of deferrable) {
           this.hitlDeferrals.set(root.id, (this.hitlDeferrals.get(root.id) ?? 0) + 1)
           if (!this.hitlDeferred.has(root.id)) {
@@ -96,6 +102,16 @@ export abstract class SchedulerLoopTick extends SchedulerLoopState {
             engine.refreshDeadline?.(root.id, budget)
           }
           catch { /* 任务恰好终态:下一 tick 自然收敛 */ }
+        }
+        for (const root of expiredRoots) {
+          if (deferredIds.has(root.id)) continue
+          const closed = this.lead.taskEngine.timeoutTree(root.id, this.lead.agentId)
+          for (const task of closed) {
+            this.channelRuntime.getAgents().find(a => a.agentId === task.assigneeId)?.abortTask?.(task.id)
+          }
+          // 已收口的根清掉顺延记账(与下方全清语义一致,只是范围收窄到本轮处决的根)
+          this.hitlDeferrals.delete(root.id)
+          this.hitlDeferred.delete(root.id)
         }
         this.lead.refreshStatus()
         return
@@ -175,7 +191,17 @@ export abstract class SchedulerLoopTick extends SchedulerLoopState {
     if (this.lead.supervise === null) return false // no Lead decision capability: recovery only
     if (this.lastSuperviseAt === 0) return true
     const fingerprint = this.superviseFingerprint(snapshot)
-    if (fingerprint !== this.lastFingerprint) return true
+    if (fingerprint !== this.lastFingerprint) {
+      const [, previousMembers, previousMail] = this.lastFingerprint.split('#')
+      const [, currentMembers, currentMail] = fingerprint.split('#')
+      const activeRoot = snapshot.activeRootId ? snapshot.tasks.find(t => t.id === snapshot.activeRootId) : null
+      const activeRootAlive = Boolean(activeRoot) && !TERMINAL_TASK_STATES[activeRoot!.state]
+      const terminalTaskOnlyChange = snapshot.tasks.every(task => TERMINAL_TASK_STATES[task.state])
+        && !activeRootAlive
+        && previousMembers === currentMembers
+        && previousMail === currentMail
+      if (!terminalTaskOnlyChange) return true
+    }
 
     // Retry incomplete acceptance periodically, including the WORKING parent state
     // used after the final child completes.
@@ -203,7 +229,9 @@ export abstract class SchedulerLoopTick extends SchedulerLoopState {
 
   protected lastCloseOutAt = 0
 
-  /** 存在子任务已全部终态但尚未由 Lead 明确验收的 WAITING 父任务 */
+  /** 存在子任务已全部终态但尚未由 Lead 明确验收的父任务。
+   *  口径=「全部终态即提醒」:失败/取消分支此刻正是需要 Lead 行动的信号——
+   *  Lead 拥有 supersede(显式替代)工具可处置后再收口(整改计划阶段1 F2)。 */
   protected hasReviewableParent(snapshot: SupervisionSnapshot): boolean {
     return snapshot.tasks.some((t) => {
       if ((t.state !== 'WAITING' && t.state !== 'WORKING') || t.assigneeId !== this.lead.agentId) return false

@@ -8,6 +8,7 @@ import type { AgentContextStats, AgentStatusView } from '../../types/task'
 import type { AgentRunContext, AgentRunRequest } from '../../agents/agent-interface'
 import { TERMINAL_TASK_STATES } from '../../types/task'
 import { log, partsToText } from './helpers'
+import { classifyHarnessFailure, harnessBreakerActive, recordHarnessFailure, HARNESS_FAIL_COOLDOWN_MS, HARNESS_FAIL_STREAK_LIMIT } from './harness-failure'
 import { fenceFromMetadata } from '../task-engine/lease'
 import type { ExecutionFence } from '../task-engine/lease'
 import { randomUUID } from 'node:crypto'
@@ -48,6 +49,7 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
     let repliedToRequester = false
     /** 失败原因(事件 error / 生成器抛错):写入任务 history,供事后诊断 */
     let runErrorMessage = ''
+    let runErrorCode = ''
     try {
       // 任务消息联动:assign → WORKING(自动接取;状态事件由 TaskEngine transition hooks 广播)
       // 仅 SUBMITTED/ASSIGNED 自动接取:WAITING(已有子任务)的任务由 SchedulerLoop/子任务汇总推进,
@@ -115,7 +117,10 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
           }
           if (event.kind === 'error') {
             sawRunError = true
-            if (!runErrorMessage) runErrorMessage = `${event.error.code}: ${event.error.message}`
+            if (!runErrorMessage) {
+              runErrorCode = String(event.error.code ?? '')
+              runErrorMessage = `${event.error.code}: ${event.error.message}`
+            }
           }
           // 无原生工具面的 harness(codex/dsh 等)以 shell/文本方式作业:回合 error 收束
           // 但已有实质输出时,不落入 FAILED(交由回合结束后的交付兜底按最终输出隐式收口)——
@@ -140,6 +145,7 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
       catch (err) {
         // run 生成器抛错(如 omp 子进程 spawn 失败):按回合失败走重投,不外抛断循环
         sawRunError = true
+        runErrorCode = 'RUN_ERROR'
         runErrorMessage = err instanceof Error ? err.message : String(err)
         // Harness 重建归因(§6.2):下回合若换了 client/进程,原因取自此处
         this.pendingHarnessFailure = 'RPC_BROKEN'
@@ -345,7 +351,36 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
       // 由调度器 reassign/新 assign 驱动,重投只会空转(启动即被终态检查消费)。
       const taskNow = taskId ? this.deps.taskEngine.get(taskId) : undefined
       const taskDone = !!taskNow && TERMINAL_TASK_STATES[taskNow.state]
-      if (sawRunError && !taskDone && (this.runErrorRetries.get(msg.messageId) ?? 0) < 2
+      // ── 缺陷2修复:harness 回合失败分类熔断(2026-10-30)──
+      // 预算/凭据/模型缺失这类"重试不可能成功"的失败,连续达阈值即:
+      // 当前 WORKING 任务按 HARNESS_UNAVAILABLE_* 收口(原因入 history)+ 停止重投,
+      // 防"任务假活 + 无意义重试打供应商"。冷却窗(5min)后半开:放行探测回合,
+      // 成功整串复位;再失败立即重新熔断。network 等可重试类别不参与熔断。
+      let stopRetry = false
+      if (sawRunError) {
+        const cls = classifyHarnessFailure(runErrorCode, runErrorMessage)
+        const streak = recordHarnessFailure(this.harnessFailStreak, cls)
+        this.harnessFailStreak = streak
+        if (harnessBreakerActive(streak)) {
+          stopRetry = true
+          if (taskNow && taskNow.state === 'WORKING' && taskId) {
+            this.deps.taskEngine.applyEvent(taskId, {
+              kind: 'error',
+              error: {
+                code: `HARNESS_UNAVAILABLE_${cls.toUpperCase()}`,
+                message: `harness 连续 ${streak.count} 次 ${cls} 类失败(${String(runErrorMessage ?? '').slice(0, 200)})——熔断收口:停止自动重试;排除预算/凭据/模型问题后重新派发即可恢复`,
+              },
+            }, fence)
+          }
+          if (streak.count === HARNESS_FAIL_STREAK_LIMIT) {
+            log.error(`[AgentRuntime:${this.agentId}] harness 失败熔断(${cls} ×${streak.count}):任务按失败收口并停止重投;${Math.round(HARNESS_FAIL_COOLDOWN_MS / 60_000)} 分钟后半开探测`)
+          }
+        }
+      }
+      else {
+        this.harnessFailStreak = null
+      }
+      if (sawRunError && !taskDone && !stopRetry && (this.runErrorRetries.get(msg.messageId) ?? 0) < 2
         && this.deps.mailbox.requeue(msg.messageId)) {
         const attempt = (this.runErrorRetries.get(msg.messageId) ?? 0) + 1
         this.runErrorRetries.set(msg.messageId, attempt)

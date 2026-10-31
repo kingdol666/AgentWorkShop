@@ -198,6 +198,7 @@ async function dcwControlGovernedLegacy(agentId: string, args: { node_id?: strin
     return { text: '自动模式下发必须附带 hypothesis(本次假设与依据:数采证据/判定结论)。请先 daq_query 取数判读,再带依据下发。', isError: true }
   }
   let manualFeedback = ''
+  let approvalId = ''
   if (needsApproval) {
     const bd = limitsBreakdownOf(node)
     const via = recipeBinding && authorizedRecipe
@@ -218,6 +219,7 @@ async function dcwControlGovernedLegacy(agentId: string, args: { node_id?: strin
         : undefined,
     })
     if (!ap.ok) return { text: ap.text, isError: true }
+    approvalId = ap.approvalId
     manualFeedback = ap.comment ?? ''
   }
 
@@ -242,6 +244,7 @@ async function dcwControlGovernedLegacy(agentId: string, args: { node_id?: strin
       actorName: agentBadgeLabel(agentId),
       taskId: args.task_id ? String(args.task_id) : undefined,
       hypothesis: args.hypothesis ? String(args.hypothesis) : '',
+      approvalId: approvalId || undefined,
       // 台账口径(三模式):该次写入发生时的频道生效执行模式(事后审计"这条写入当时是什么模式")
       executionMode: execMode,
     }

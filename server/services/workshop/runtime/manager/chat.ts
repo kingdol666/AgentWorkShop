@@ -12,12 +12,14 @@ import type { WorkshopPermissionScope } from '../../../../../shared/workshop-pro
 import { AppError } from '../../../../utils/errors'
 import { WORKSHOP_PERMISSION_SCOPE_HEADER, parseWorkshopPermissionScope } from '../../../../../shared/workshop-protocol'
 import { agentMentions, resolveMentions, userMentions } from '../chat-mention'
-import { buildMessage, resolveOwnerName } from './helpers'
+import { buildMessage, log, resolveOwnerName } from './helpers'
 import { parseJson } from '../../db/database'
 import { projectChatMessage, projectChatSnapshot } from '../chat-projection'
 import { withTransaction } from '../../db/transaction'
 
 export abstract class ManagerChat extends ManagerAccess {
+  /** chat 投递重试上限(超过转 failed 死信;与 memory outbox 对齐) */
+  protected static readonly CHAT_DELIVERY_MAX_ATTEMPTS = 5
   /**
    * SQLite 事务包裹(可重入;失败一律回滚)。
    *
@@ -339,6 +341,10 @@ export abstract class ManagerChat extends ManagerAccess {
     if (current && current.status !== 'pending') {
       return { deliveryId, agentId: targetAgentId, status: current.status }
     }
+    // 确定性 mailbox 消息 id(=投递台账 id 派生):同一条 delivery 无论正常投递还是
+    // 崩溃重投,messages 表行 id 恒同 —— PK 冲突天然去重,第二窗口(已落库/台账未更)
+    // 的重投不会产生第二条 mailbox 消息(整改计划阶段2)
+    const mailboxMessageId = `dlv-${deliveryId}`
     try {
       const message = buildMessage(channelId, 'ROLE_USER', [{ text: this.chatPromptText(ctx.requesterName, text) }], {
         'x-aw-target-agent': targetAgentId,
@@ -380,7 +386,61 @@ export abstract class ManagerChat extends ManagerAccess {
       return finish('delivered', { mailboxMessageId: message.messageId })
     }
     catch (err) {
-      return finish('failed', { error: err instanceof Error ? err.message : String(err) })
+      const msgText = err instanceof Error ? err.message : String(err)
+      // 崩溃重投幂等:mailbox 行已存在(上一进程已 route 但未及 finish)→ 视为已投递,
+      // 回填既有确定性 id,不产生第二条 mailbox 消息(阶段2)
+      if (/UNIQUE|PRIMARY KEY|already exists/i.test(msgText)) {
+        return finish('delivered', { mailboxMessageId })
+      }
+      return finish('failed', { error: msgText })
+    }
+  }
+
+  /**
+   * chat 投递崩溃恢复补偿器(整改计划 2026-10-30 阶段2):
+   * 扫描 pending 且 mailbox 未落库的投递(丢失窗口=事务已提交、route 未完成),
+   * 退避重投;超限转 failed 死信(可见、可审计)。mailbox 已落库的 pending(第二窗口)
+   * 经确定性消息 id 去重,重投不会产生第二条 mailbox 消息。
+   * 由 ManagerState 的 15s 定时器与 restore() 驱动;体内只做同步 DB 写(§ chat.ts:28 事务纪律)。
+   */
+  protected recoverPendingChatDeliveries(): void {
+    const now = new Date().toISOString()
+    const rows = this.chatMessageRepo.listRetryableDeliveries(now, 50)
+    for (const row of rows) {
+      if (row.attempts >= ManagerChat.CHAT_DELIVERY_MAX_ATTEMPTS) {
+        if (this.chatMessageRepo.markDeliveryDead(row.id, `投递重试 ${row.attempts} 次仍未落 mailbox,转死信(可人工排查后重试)`)) {
+          this.publishChatDelivery(row.channelId, row.id)
+        }
+        continue
+      }
+      const source = this.chatMessageRepo.findById(row.chatMessageId)
+      if (!source || source.channelId !== row.channelId) {
+        if (this.chatMessageRepo.markDeliveryDead(row.id, '源消息缺失或跨频道,无法重投'))
+          this.publishChatDelivery(row.channelId, row.id)
+        continue
+      }
+      // claim + 退避排程先行(单进程同步写;崩溃后下次扫描按 next_retry_at 续跑)
+      const backoffMs = Math.min(15_000 * 2 ** row.attempts, 300_000)
+      this.chatMessageRepo.bumpDeliveryRetry(row.id, new Date(Date.now() + backoffMs).toISOString())
+      const requesterUserId = source.requesterUserId ?? (source.senderType === 'user' ? source.senderId : '')
+      const requesterName = source.senderName || this.displayNameOf(requesterUserId)
+      let mentions: ChatMention[]
+      try {
+        mentions = JSON.parse(source.mentionsJson ?? '[]') as ChatMention[]
+      }
+      catch {
+        mentions = []
+      }
+      try {
+        this.deliverChatToAgent(row.channelId, source.id, row.id, row.targetAgentId, source.text, {
+          requesterUserId,
+          requesterName,
+          mentions,
+        })
+      }
+      catch (err) {
+        log.warn(`[chat] 投递恢复失败 delivery=${row.id.slice(0, 8)}: ${err instanceof Error ? err.message : String(err)}`)
+      }
     }
   }
 }

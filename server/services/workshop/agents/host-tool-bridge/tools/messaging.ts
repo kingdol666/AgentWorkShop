@@ -14,15 +14,21 @@ export async function handleSendMessageToAgent(
 ): Promise<HostToolResult> {
   const toAgentId = args.to_agent_id as string
   const message = args.message as string
+  // 2026-10-30 修复:参数完全来自 LLM,缺省/空 message 会把 parts 序列化成 [{}] 静默
+  // 送达空消息(白烧对端一个回合,发送方还收到「已发送」)。fail-closed 校验。
+  if (!toAgentId || typeof message !== 'string' || !message.trim()) {
+    return { text: '缺少 to_agent_id,或 message 为空 —— 空消息不会投递,请给出实际内容', isError: true }
+  }
   // 回执自动实时:回复(in_reply_to)默认提升为 immediate——
   // 接收方正等待该结果,realtime 路由会把回复直接注入其运行中的会话
   let priority = (args.priority as string | undefined) ?? 'task'
   const metadata: Record<string, unknown> = {}
   if (args.require_reply === true) metadata['x-aw-require-reply'] = 'true'
   let inReplyTo = args.in_reply_to as string | undefined
-  // 自动关联兜底:LLM 省略 in_reply_to 时,按待回执上下文盖章
+  // 自动关联兜底:LLM 省略 in_reply_to 时,按待回执上下文盖章。
+  // 2026-10-30 修复:replyContext 是「发送成功」才消费的票据 —— 原实现先清后发,
+  // 发送失败即永久丢失线程关联与 immediate 提升;现在成功才清,失败保留供重试盖章。
   const replyCtx = state.replyContext
-  state.replyContext = null
   if (!inReplyTo && replyCtx && replyCtx.fromId === toAgentId) {
     inReplyTo = replyCtx.messageId
   }
@@ -37,11 +43,19 @@ export async function handleSendMessageToAgent(
     metadata['x-aw-thread-root'] = inReplyTo
   }
   metadata['x-aw-msg-priority'] = priority
-  const sent = await ws.sendMessage({ toAgentId, parts: [{ text: message }], metadata })
-  const triggerNote = inReplyTo
-    ? `(回复 ${inReplyTo.slice(0, 8)}…,已实时推送给对方)`
-    : metadata['x-aw-require-reply'] === 'true' ? '(已要求对方回复)' : ''
-  return { text: `消息 ${sent.messageId.slice(0, 8)}… 已发送给 ${toAgentId}(priority=${priority})${triggerNote}` }
+  try {
+    const sent = await ws.sendMessage({ toAgentId, parts: [{ text: message }], metadata })
+    state.replyContext = null
+    const triggerNote = inReplyTo
+      ? `(回复 ${inReplyTo.slice(0, 8)}…,已实时推送给对方)`
+      : metadata['x-aw-require-reply'] === 'true' ? '(已要求对方回复)' : ''
+    return { text: `消息 ${sent.messageId.slice(0, 8)}… 已发送给 ${toAgentId}(priority=${priority})${triggerNote}` }
+  }
+  catch (err) {
+    // 发送失败:保留待回执票据,重试仍可自动盖 in_reply_to
+    state.replyContext = replyCtx
+    throw err
+  }
 }
 
 export async function handleSendCrossChannelMessage(args: Record<string, unknown>, ws: AgentWorkspace): Promise<HostToolResult> {
@@ -202,15 +216,34 @@ export async function handleBroadcastMessage(
   ws: AgentWorkspace,
 ): Promise<HostToolResult> {
   const message = args.message as string
+  // 2026-10-30 修复:与 send_message_to_agent 同口径,空广播不再静默送达全员。
+  if (typeof message !== 'string' || !message.trim()) {
+    return { text: 'message 为空 —— 广播内容不能为空串', isError: true }
+  }
   const priority = (args.priority as string | undefined) ?? 'task'
   const agents = await ws.listAgents()
   const others = agents.filter(a => a.id !== identity.agentId)
+  // 2026-10-30 修复:广播是无幂等键的扇出写 —— 原实现中途失败直接抛错,前面成员已
+  // 收到而 LLM 见错重试 → 重复投递。改为逐个收集结果,如实回报送达/失败名单,
+  // 失败者建议单点补发而非全量重试。
+  const delivered: string[] = []
+  const failed: string[] = []
   for (const agent of others) {
-    await ws.sendMessage({
-      toAgentId: agent.id,
-      parts: [{ text: message }],
-      metadata: { 'x-aw-msg-priority': priority },
-    })
+    try {
+      await ws.sendMessage({
+        toAgentId: agent.id,
+        parts: [{ text: message }],
+        metadata: { 'x-aw-msg-priority': priority },
+      })
+      delivered.push(agent.id)
+    }
+    catch {
+      failed.push(agent.id)
+    }
   }
-  return { text: `已广播给 ${others.length} 个 agent(priority=${priority})` }
+  const parts = [`广播完成:送达 ${delivered.length}/${others.length} 个 agent(priority=${priority})`]
+  if (failed.length) {
+    parts.push(`失败 ${failed.length} 个:${failed.map(id => id.slice(0, 8)).join('、')} —— 请用 send_message_to_agent 对失败者单点补发,不要重复全量广播`)
+  }
+  return { text: parts.join('\n'), isError: delivered.length === 0 && others.length > 0 }
 }

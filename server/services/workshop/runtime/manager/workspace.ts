@@ -21,6 +21,7 @@ export abstract class ManagerWorkspace extends ManagerRuntimeObserve {
       getTask: taskId => this.getTask(channelId, agent.id, taskId),
       reportTask: input => this.reportTask(channelId, agent.id, input),
       completeTask: (taskId, artifacts) => this.completeTask(channelId, agent.id, { taskId, artifacts }),
+      supersedeTask: (taskId, replacementTaskId, reason) => this.supersedeTask(channelId, agent.id, { taskId, replacementTaskId, reason }),
       cancelTask: taskId => this.cancelTask(channelId, agent.id, { taskId }),
       myQueue: () => this.myQueue(channelId, agent.id),
       queueOverview: () => this.queueOverview(channelId, agent.id),

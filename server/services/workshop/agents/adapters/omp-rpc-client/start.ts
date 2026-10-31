@@ -6,6 +6,7 @@ import { OmpRpcClientUsage } from './usage'
 import type { AgentSessionEvent } from './types'
 import { STDERR_CAP } from './helpers'
 import { spawn } from 'node:child_process'
+import { scrubPlatformSecrets } from '../line-spawn'
 
 export abstract class OmpRpcClientStart extends OmpRpcClientUsage {
   /** spawn omp 子进程,等待 ready frame */
@@ -17,7 +18,10 @@ export abstract class OmpRpcClientStart extends OmpRpcClientUsage {
     this.child = spawn(command, args, {
       stdio: ['pipe', 'pipe', 'pipe'],
       cwd: this.options.cwd ?? process.cwd(),
-      env: { ...process.env, ...this.options.env },
+      // 平台会话/管理员凭据不得泄入引擎子进程(与 spawnLineProcess 同一清洗函数,
+      // 避免"其余 harness 清洗、omp 全量继承"的双标)。omp 自身需要的 provider key
+      // 由引擎配置文件/显式 options.env 提供。
+      env: scrubPlatformSecrets({ ...process.env, ...this.options.env }),
       windowsHide: true,
     })
 

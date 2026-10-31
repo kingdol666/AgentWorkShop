@@ -80,7 +80,9 @@ test('manual approval: approve path passes and rollback wording uses its own ver
     approvals.decide(approvals.listPending()[0]!.id, true, '')
     return p
   })()
-  assert.deepEqual(ok, { ok: true, comment: '' })
+  // 回执允许携带额外字段(如 approvalId,并行在途改动),只断言核心语义
+  assert.equal((ok as { ok?: unknown }).ok, true)
+  assert.equal((ok as { comment?: unknown }).comment, '')
 
   // 回退口径:拒绝文案用「回退未执行/拒绝了本次回退」,去重文案用回退专属措辞
   repo.bind('ag-e', 'dw-v', 'dcw', 'manual')
