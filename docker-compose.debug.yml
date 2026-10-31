@@ -1,0 +1,7 @@
+# 调试用覆盖:暴露 MinIO Web 控制台(Timescale/MinIO 完整版默认不 publish 9001)。
+#   docker compose -f docker-compose.yml -f docker-compose.debug.yml up -d
+# 仍只绑 127.0.0.1:控制台本身帶管理权限,不应出现在局域网。
+services:
+  daq-minio:
+    ports:
+      - "127.0.0.1:9001:9001"
