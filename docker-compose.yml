@@ -6,7 +6,11 @@
 #   - daq-mosquitto:标准 MQTT 3.1.1/5 broker(数采下沉队列)
 #   - daq-timescale:TimescaleDB(时序数据/帧元数据持久化;named volume 常驻)
 #   - daq-minio:    S3 兼容对象存储(图像帧像素;named volume 常驻)
-# 手动启动:docker compose up -d
+# 手动启动(凭据必须显式提供,仓库不再内置口令):
+#   docker compose --env-file <AW_DATA_DIR>/daq-infra-credentials.env up -d
+#   (服务端首次启动会生成该文件;或自行 export AW_DAQ_TIMESCALE_PASSWORD /
+#    AW_DAQ_OBJECTSTORE_ACCESSKEY / AW_DAQ_OBJECTSTORE_SECRETKEY)
+# 端口只绑 127.0.0.1:跨机部署请显式改绑定并启用 TLS/账号(audit P0-5,2026-10-30)。
 # ============================================================
 services:
   daq-mosquitto:
@@ -35,10 +39,10 @@ services:
     shm_size: 512mb
     environment:
       POSTGRES_USER: postgres        # config.yml daq.timescale.user
-      POSTGRES_PASSWORD: awshop      # config.yml daq.timescale.password
+      POSTGRES_PASSWORD: ${AW_DAQ_TIMESCALE_PASSWORD:?AW_DAQ_TIMESCALE_PASSWORD 未设置:见服务端数据目录 daq-infra-credentials.env 或自行 export}
       POSTGRES_DB: awshop            # config.yml daq.timescale.database
     ports:
-      - "5432:5432"                  # 与 config.yml daq.timescale.port 一致
+      - "127.0.0.1:5432:5432"        # 与 config.yml daq.timescale.port 一致;仅本机可连
     volumes:
       - awshop-daq-tsdata:/var/lib/postgresql/data
     restart: unless-stopped
@@ -49,11 +53,13 @@ services:
     # S3 兼容对象存储:图像帧像素落这里,Timescale 只存元数据(daq_frames.meta.objectKey)
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
-      MINIO_ROOT_USER: awshop            # config.yml daq.objectstore.accessKey
-      MINIO_ROOT_PASSWORD: awshop-secret # config.yml daq.objectstore.secretKey
+      MINIO_ROOT_USER: ${AW_DAQ_OBJECTSTORE_ACCESSKEY:?AW_DAQ_OBJECTSTORE_ACCESSKEY 未设置}
+      MINIO_ROOT_PASSWORD: ${AW_DAQ_OBJECTSTORE_SECRETKEY:?AW_DAQ_OBJECTSTORE_SECRETKEY 未设置}
     ports:
-      - "9000:9000"                  # S3 API(与 config.yml daq.objectstore.port 一致)
-      - "9001:9001"                  # Web 控制台(开发态观察用)
+      - "127.0.0.1:9000:9000"        # S3 API(与 config.yml daq.objectstore.port 一致;仅本机可连)
+    # Web 控制台(9001)默认不 publish:需要调试时用
+    #   docker compose -f docker-compose.yml -f docker-compose.debug.yml up -d
+    # 或临时 `docker port awshop-daq-minio 9001` 走容器网络访问。
     volumes:
       - awshop-daq-objdata:/data
     restart: unless-stopped

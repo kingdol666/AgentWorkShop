@@ -1,0 +1,36 @@
+# CI 快测门禁:PR 必跑 typecheck / lint / unit 三件套。
+# Team/chat/HITL/DAQ-DCW 模拟器 e2e 与外部依赖测试按环境分层,不在 PR 必跑
+# (套件矩阵见 docs/audit/2026-10-30-real-harness-acceptance-report.md)。
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quick-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # 包管理器为 pnpm(package.json packageManager: pnpm@11.9.0,pnpm-lock.yaml 为准);
+      # setup-node 按 packageManager 字段启用 pnpm 缓存。
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Typecheck
+        run: pnpm run typecheck
+      - name: Lint
+        run: pnpm run lint
+      - name: Unit tests
+        run: pnpm run test:unit

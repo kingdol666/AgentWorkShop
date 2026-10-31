@@ -52,6 +52,35 @@
     "riskClass": "read"
   },
   {
+    "name": "supersede_task",
+    "label": "Supersede Task Branch",
+    "description": "(Lead only, GOAL mode) Mark a FAILED/CANCELED child task branch as superseded by a replacement child that covers the same work. The failed branch keeps its history but no longer blocks closing the parent goal. Call this after a replacement subtask delivered the work, then complete_task on the parent.",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "task_id": {
+          "type": "string",
+          "description": "ID of the FAILED/CANCELED child task branch to supersede"
+        },
+        "replacement_task_id": {
+          "type": "string",
+          "description": "ID of the child task that covers the superseded branch's work (same parent)"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Why this branch is superseded (audit record)"
+        }
+      },
+      "required": [
+        "task_id",
+        "replacement_task_id"
+      ],
+      "additionalProperties": false
+    },
+    "noRefs": true,
+    "riskClass": "read"
+  },
+  {
     "name": "submit_task",
     "label": "Submit Task",
     "description": "(Lead only) Register one tracked root task for a genuinely multi-step HUMAN request. A single source chat message has exactly one root, even if the title changes. Do not create a second root to polish or revise wording; reuse the existing root and close it with an ordered acceptance summary. If the request is simple, answer directly without submit_task.",

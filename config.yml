@@ -12,7 +12,7 @@
 app:
   name: AgentWorkShop
   title: AgentWorkShop
-  version: 0.8.7
+  version: 0.8.8
   description: 基于 Nuxt 4 的配置驱动运行范式
 
 # 运行模式（dev/prod 实际由启动命令决定，此处仅作运行时展示）
@@ -67,14 +67,33 @@ daq:
     host: 127.0.0.1
     port: 5432
     user: postgres
-    password: awshop
+    # 口令不落仓库:留空则用服务端生成的本机凭据(data/daq-infra-credentials.env),
+    # 或用环境变量 AW_DAQ_TIMESCALE_PASSWORD 显式覆盖(外部托管实例请显式设置)。
+    password: ""
     database: awshop
+    poolMax: 8                       # 连接池上限(写入攒批 + 并发查询)
+    statementTimeoutMs: 30000        # 单条 SQL 超时,防异常查询长期占用连接
+  # 分层保留(数据不会"满 7 天直接删"):
+  #   raw 原始样本 → tsRetentionH(缺省 720h = 30 天)
+  #   之后自动保留 1 分钟聚合 → rollup.minuteRetentionH(缺省 8760h = 1 年)
+  #   再之后保留 1 小时聚合 → rollup.hourRetentionH(0 = 永久,适合长期趋势/审计)
+  # 超过 raw 保留期的查询会自动走聚合表;逐产线可在 /api/workshop/daq/storage/retention 覆写。
+  tsRetentionH: 720
+  rollup:
+    enabled: true
+    intervalMs: 600000             # 聚合调度间隔 10min
+    lagMs: 300000                  # 只聚合 5min 前的闭合窗口
+    windowMs: 3600000              # 单窗口 1h
+    maxWindowsPerRun: 24           # 单轮最多 24 个窗口(积压多轮追平)
+    minuteRetentionH: 8760         # 1m 聚合保留 1 年
+    hourRetentionH: 0              # 1h 聚合永久保留
   # 对象存储(图像帧;MinIO,S3 兼容)。不可达时自动降级本地磁盘 data/daq-objects/,采集不中断。
   objectstore:
     host: 127.0.0.1
     port: 9000
-    accessKey: awshop
-    secretKey: awshop-secret
+    # 同上:留空 = 本机生成的凭据;也可用 AW_DAQ_OBJECTSTORE_ACCESSKEY / AW_DAQ_OBJECTSTORE_SECRETKEY
+    accessKey: ""
+    secretKey: ""
     bucket: daq
   # 采样节拍(live 可调,热重载):节点未显式指定 intervalMs 时的采集周期与可配置下限。
   # 下限同时钳制 create/patch/存量节点;设置页/`aw config set daq.sampling.*` 均可改。
