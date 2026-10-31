@@ -11,6 +11,9 @@ import { getDcwNodeRepo } from '../dcw-node.repo'
 import { getRecipeRollBackManager } from '../recipe-rollback-manager'
 import { getActiveLineRun } from '../line-run'
 import { hydrateWriteLocks } from './gate-persist'
+import { createLogger } from '../../logger'
+
+const log = createLogger('dcw.controller')
 
 export abstract class DcwControllerState extends DcwControllerContracts {
   protected repo = getDcwNodeRepo()
@@ -41,8 +44,22 @@ export abstract class DcwControllerState extends DcwControllerContracts {
   protected sweep(): void {
     if (!this.running) return
     const now = Date.now()
-    for (const rt of this.runtimes.values()) rt.tick(now)
-    getRecipeRollBackManager().evaluateOpenRecords(now)
+    // 500ms 定时器回调:逐 runtime 兜底,单个节点 tick 抛错不得跳过其余节点、
+    // 也不得升级为进程级 uncaughtException(与 runtime/manager/state.ts 同口径)。
+    for (const rt of this.runtimes.values()) {
+      try {
+        rt.tick(now)
+      }
+      catch (err) {
+        log.error(`[dcw] 节点 ${rt.node.id} tick 异常(已隔离):`, err)
+      }
+    }
+    try {
+      getRecipeRollBackManager().evaluateOpenRecords(now)
+    }
+    catch (err) {
+      log.error('[dcw] 回退评估异常(已隔离):', err)
+    }
   }
 
   protected syncRuntimes(): void {

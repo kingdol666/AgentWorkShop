@@ -13,6 +13,7 @@ import { getDcwLineRepo } from '../dcw-line.repo'
 import { getDcwParamRepo } from '../param-map.repo'
 import { requireDcwDriverKind } from '../drivers'
 import { assertDriverRawRange } from '../drivers/shared'
+import { validateMqttWriteConfig } from '../mqtt-payload'
 import { randomUUID } from 'node:crypto'
 
 function normalizeStepLimitInput(value: unknown): number | null | undefined {
@@ -60,6 +61,9 @@ export abstract class DcwControllerCrud extends DcwControllerControl {
     // S15:Modbus 原始量程必须在配置期可被 dataType 表示(越界运行期会拒绝写,但提前拦更好)
     try {
       assertDriverRawRange(node.driver, node.driverConfig)
+      // MQTT 下发载荷模板配置期校验:jsonTemplate 必须可渲染且渲染后是合法 JSON
+      // (坏模板若留到写入期才炸,一次下发失败会占用写锁/留下半套审计)
+      if (node.driver === 'mqtt') validateMqttWriteConfig(node.driverConfig)
     }
     catch (err) {
       throw new AppError(400, ErrorCodes.VALIDATION_ERROR, err instanceof Error ? err.message : String(err))
@@ -96,6 +100,7 @@ export abstract class DcwControllerCrud extends DcwControllerControl {
     // S15:配置期校验(失败回滚 driver/driverConfig,避免内存里留下半改状态)
     try {
       assertDriverRawRange(node.driver, node.driverConfig)
+      if (node.driver === 'mqtt') validateMqttWriteConfig(node.driverConfig)
     }
     catch (err) {
       node.driver = prevDriver

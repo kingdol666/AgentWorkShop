@@ -281,6 +281,13 @@ export class DaqNode {
       semantics: this.semantics,
       chamber: this.chamber,
       unitPath: this.unitPath,
+      // 多字段组:driverConfig 里存 groupId/label(随节点持久化),视图面提升为一级字段
+      fieldGroup: typeof this.driverConfig.fieldGroup === 'string' && this.driverConfig.fieldGroup
+        ? this.driverConfig.fieldGroup
+        : undefined,
+      fieldLabel: typeof this.driverConfig.fieldLabel === 'string' && this.driverConfig.fieldLabel
+        ? this.driverConfig.fieldLabel
+        : undefined,
       value: this.value,
       state: this.state,
       lastAt: this.lastAt,

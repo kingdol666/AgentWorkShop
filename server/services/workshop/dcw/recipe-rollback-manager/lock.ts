@@ -73,6 +73,7 @@ export abstract class RecipeRollBackManagerLock extends RecipeRollBackManagerSta
         newValue: eng,
         source: meta.source,
         actor: meta.actor,
+        approvalId: meta.approvalId,
         recipeRunId,
         taskId: meta.taskId,
       })

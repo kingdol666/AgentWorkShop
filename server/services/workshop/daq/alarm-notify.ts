@@ -8,6 +8,7 @@
  */
 import { randomUUID } from 'node:crypto'
 import { getOps } from '../ops/ops'
+import { allowPrivateOutbound, assertSafeHttpUrl } from '../net/ssrf'
 import { daqRuntimeSettings } from '../settings'
 
 const RETRIES = 3
@@ -48,11 +49,30 @@ export function notifyAlarm(payload: AlarmNotifyPayload): void {
   // daq.alarmWebhookUrl(env ALARM_WEBHOOK_URL 兼容别名);未配置 = 仅 WS/面板可见(合法降级)
   const url = daqRuntimeSettings().alarmWebhookUrl || undefined
   if (!url) return
+  // URL 来自运行时设置(admin/editor 可改):必须过 SSRF 护栏,否则可被指向内网/元数据服务。
+  // 私网解析是异步的 → 放进下面的异步段(失败即整次外送跳过并留痕)。
+  const safeUrl = url
   const repo = getOps()?.alarmEvents
   void (async () => {
+    try {
+      await assertSafeHttpUrl(safeUrl, { label: '报警 webhook', allowPrivateHost: allowPrivateOutbound() ? 'true' : 'false' })
+    }
+    catch (err) {
+      // 校验失败不外送(否则 SSRF 面直接打开),但把拒绝原因写进报警事件的外送记录
+      const repo = getOps()?.alarmEvents
+      if (repo) {
+        try {
+          const reason = `webhook 地址被 SSRF 防护拒绝:${err instanceof Error ? err.message : String(err)}`
+          const log = [{ url: safeUrl, ok: false, at: new Date().toISOString(), attempt: 0, error: reason }]
+          repo.recordNotify(payload.id, JSON.stringify(log))
+        }
+        catch { /* 留痕尽力而为 */ }
+      }
+      return
+    }
     let ok = false
     for (let attempt = 1; attempt <= RETRIES && !ok; attempt++) {
-      ok = await postWebhook(payload, url)
+      ok = await postWebhook(payload, safeUrl)
       if (!ok && attempt < RETRIES) await new Promise(r => setTimeout(r, 2 ** (attempt - 1) * 1000))
     }
     if (!repo) return

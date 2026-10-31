@@ -27,6 +27,11 @@ export interface DaqCreateInput {
   /** 节点级采集语义备注(覆盖模板) */
   semantics?: string
   deviceBindingId?: string | null
+  /** MQTT 单 topic 多字段:声明后展开为多个子信号节点(每字段一个,独立量程/告警)。
+   *  也可放在 driverConfig.fields(前端动态表单的文本域形态) */
+  fields?: unknown
+  /** 多字段路径公共前缀(可选;与 fields 的 path 拼接) */
+  fieldsBase?: string
 }
 
 export interface DaqPatchInput {

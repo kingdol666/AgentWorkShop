@@ -65,6 +65,130 @@ test('C-P1-1:停机窗口 route 不把闭箱成员计入 delivered', () => {
   assert.deepEqual(cr.route(msg('ag-1', 'm-2')), ['ag-1'])
 })
 
+test('lead scheduler shutdown waits for every loop even if the channel pointer was overwritten', async () => {
+  const cr = new ChannelRuntime('ch-1', {
+    taskEngine: { get: () => undefined } as never,
+    subscriptionRepo: {} as never,
+    channelAgents: { findByChannelAgent: () => undefined } as never,
+  } as never, () => {})
+  const stopped: string[] = []
+  let releaseFirst!: () => void
+  const firstGate = new Promise<void>((resolve) => {
+    releaseFirst = resolve
+  })
+  const loop = (name: string, hold = false) => ({
+    start() {},
+    wake() {},
+    stop() {},
+    async stopAndWait() {
+      stopped.push(name)
+      if (hold) await firstGate
+    },
+    setLoopResubmitCallback() {},
+  })
+
+  const first = loop('orphan', true)
+  const visible = loop('visible')
+  cr.scheduler = first
+  cr.scheduler = visible
+  assert.equal(cr.scheduler, visible)
+
+  // Simulate a lost public pointer after replacement; registry fallback still finds an orphan loop.
+  ;(cr as unknown as { schedulerLoop: typeof first | null }).schedulerLoop = null
+  assert.equal(cr.scheduler, first)
+  const stopping = cr.stopSchedulersAndWait()
+  assert.equal(cr.schedulerStoppingInProgress, true)
+  await Promise.resolve()
+  assert.deepEqual(stopped.sort(), ['orphan', 'visible'])
+
+  releaseFirst()
+  const releaseStarts = await stopping
+  assert.equal(cr.scheduler, null)
+  assert.equal(cr.schedulerStoppingInProgress, true, 'replacement stays gated until owner teardown finishes')
+  releaseStarts()
+  assert.equal(cr.schedulerStoppingInProgress, false)
+
+  const restarted = loop('restarted')
+  cr.scheduler = restarted
+  assert.equal(cr.scheduler, restarted, 'a fully stopped ChannelRuntime accepts a fresh scheduler')
+  await restarted.stopAndWait()
+  cr.scheduler = null
+  assert.equal(cr.scheduler, null, 'clearing an already-stopped loop removes its registry entry')
+  const afterClear = loop('after-clear')
+  cr.scheduler = afterClear
+  assert.equal(cr.scheduler, afterClear, 'a cleared ChannelRuntime accepts another fresh scheduler')
+  const releaseAfterClear = await cr.stopSchedulersAndWait()
+  releaseAfterClear()
+  assert.deepEqual(stopped.sort(), ['after-clear', 'orphan', 'restarted', 'visible'])
+})
+
+test('overlapping scheduler teardowns keep starts gated until the final owner releases', async () => {
+  const cr = new ChannelRuntime('ch-1', {
+    taskEngine: { get: () => undefined } as never,
+    subscriptionRepo: {} as never,
+    channelAgents: { findByChannelAgent: () => undefined } as never,
+  } as never, () => {})
+
+  const [releaseFirst, releaseSecond] = await Promise.all([
+    cr.stopSchedulersAndWait(),
+    cr.stopSchedulersAndWait(),
+  ])
+  assert.equal(cr.schedulerStoppingInProgress, true)
+
+  releaseFirst()
+  assert.equal(cr.schedulerStoppingInProgress, true, 'one teardown cannot reopen another teardown\'s gate')
+
+  releaseSecond()
+  assert.equal(cr.schedulerStoppingInProgress, false, 'the final teardown owner reopens scheduler starts')
+
+  const restarted = {
+    start() {},
+    wake() {},
+    stop() {},
+    async stopAndWait() {},
+    setLoopResubmitCallback() {},
+  }
+  cr.scheduler = restarted
+  assert.equal(cr.scheduler, restarted, 'scheduler restart is allowed after all teardown leases release')
+  const releaseRestarted = await cr.stopSchedulersAndWait()
+  releaseRestarted()
+})
+
+test('a rejected scheduler stop stays fail-closed until a successful retry and lease release', async () => {
+  const cr = new ChannelRuntime('ch-1', {
+    taskEngine: { get: () => undefined } as never,
+    subscriptionRepo: {} as never,
+    channelAgents: { findByChannelAgent: () => undefined } as never,
+  } as never, () => {})
+  let stopAttempts = 0
+  cr.scheduler = {
+    start() {},
+    wake() {},
+    stop() {},
+    async stopAndWait() {
+      stopAttempts += 1
+      if (stopAttempts === 1) throw new Error('transient stop failure')
+    },
+    setLoopResubmitCallback() {},
+  }
+
+  const failedAttempts = await Promise.allSettled([
+    cr.stopSchedulersAndWait(),
+    cr.stopSchedulersAndWait(),
+  ])
+  assert.equal(stopAttempts, 1, 'concurrent callers share one stop barrier')
+  assert.deepEqual(failedAttempts.map(result => result.status), ['rejected', 'rejected'])
+  assert.equal(cr.schedulerStoppingInProgress, true, 'a rejected stop leaves a stale fail-closed hold')
+
+  const releaseRetry = await cr.stopSchedulersAndWait()
+  assert.equal(stopAttempts, 2, 'a later barrier retries the still-tracked loop')
+  assert.equal(cr.scheduler, null)
+  assert.equal(cr.schedulerStoppingInProgress, true, 'successful retry clears stale failure but retains its active lease')
+
+  releaseRetry()
+  assert.equal(cr.schedulerStoppingInProgress, false, 'the final active lease release reopens starts')
+})
+
 test('C-P1-2:作用域收口 —— 同调用清除/不同调用保留/无 id 无条件清除', () => {
   const map = new Map<string, { invocationId?: string | null }>()
   map.set('ag-1', { invocationId: 'd-1' })

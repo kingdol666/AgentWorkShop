@@ -26,7 +26,9 @@ const SAMPLE = [
   { nodeId: 'dn-1', tsMs: T0 + 2000, value: 12.5, state: 'alarm', ingestedAt: T0 + 2001 },
 ]
 
-/** 假 pg Pool:只回答本用例用到的两种查询形状(列/行映射即被测面) */
+/** 假 pg Pool:只回答本用例用到的两种查询形状(列/行映射即被测面);
+ *  2026-10-29:queryTaggedPage 改为 8 参数静态 SQL(node,from,to,line,product,recipe,run,limit),
+ *  桩按参数位置解构,标签参数 NULL 即不过滤(与真实语义一致)。 */
 function fakePool(rows: Array<{ node_id: string, ts: string, value: number, state: string | null, ingested_at: number | null }> = SAMPLE.map(r => ({
   node_id: r.nodeId,
   ts: new Date(r.tsMs).toISOString(),
@@ -41,12 +43,16 @@ function fakePool(rows: Array<{ node_id: string, ts: string, value: number, stat
         return { rows: rows.filter(r => Date.parse(r.ts) >= fromMs) }
       }
       if (sql.includes('FROM daq_samples') && sql.includes('ORDER BY ts ASC LIMIT')) {
-        const [nodeId, fromIso, toIso, limit] = params as [string, string, string, number]
+        const [nodeId, fromIso, toIso, lineId, productId, recipeId, runId, limit] = params as [string, string, string, string | null, string | null, string | null, string | null, number]
         const from = Date.parse(fromIso)
         const to = Date.parse(toIso)
+        const tagOk = (col: keyof (typeof rows)[number], v: string | null) => v == null || (rows[0]![col] as string | null) === v
         return {
           rows: rows
-            .filter(r => r.node_id === nodeId && Date.parse(r.ts) >= from && Date.parse(r.ts) <= to)
+            .filter(r => r.node_id === nodeId
+              && Date.parse(r.ts) >= from && Date.parse(r.ts) <= to
+              && tagOk('line_id', lineId) && tagOk('product_id', productId)
+              && tagOk('recipe_id', recipeId) && tagOk('run_id', runId))
             .slice(0, limit)
             .map(r => sql.includes('state')
               ? { ts: r.ts, value: r.value, state: r.state, ingested_at: r.ingested_at }

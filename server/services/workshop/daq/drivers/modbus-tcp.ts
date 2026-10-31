@@ -29,6 +29,13 @@ export interface ModbusConn {
 }
 
 export const modbusPool = new Map<string, ModbusConn>()
+
+/**
+ * 首连在飞去重(2026-10-30 P1-4):同 key 并发首采时池中还没有条目,
+ * 两个调用各自建连,后写覆盖 modbusPool → 前一条 socket 永不 close(泄漏)。
+ * OPC UA 驱动已用同一模式;这里对齐。
+ */
+const modbusInflight = new Map<string, Promise<ModbusConn>>()
 /** 空闲连接回收(10 分钟未用断开;采样周期最长 60s,足够保守) */
 export const MODBUS_IDLE_MS = 600_000
 
@@ -39,10 +46,8 @@ export function evictModbusConn(cfg: Record<string, unknown>, transport: ModbusT
   const key = modbusKey(cfg, transport)
   const conn = modbusPool.get(key)
   if (!conn) return
-  try {
-    void conn.client.close()
-  }
-  catch { /* 已断 */ }
+  // 安全关闭:close() 可能因半开 socket 返回 rejecting promise,裸 void 会成 unhandledRejection
+  void closeModbusSafely(conn.client)
   modbusPool.delete(key)
 }
 
@@ -75,10 +80,7 @@ export function withModbusConn<R>(conn: ModbusConn, fn: () => Promise<R>): Promi
     new Promise<never>((_, rej) => {
       timer = setTimeout(() => {
         dead = true
-        try {
-          void conn.client.close()
-        }
-        catch { /* 已断 */ }
+        void closeModbusSafely(conn.client)
         rej(new Error('Modbus 响应超时(3s)——连接可能半开,已作废重连'))
       }, 3000)
     }),
@@ -107,6 +109,21 @@ export async function getModbusConn(cfg: Record<string, unknown>, transport: Mod
   const key = modbusKey(cfg, transport)
   const existing = modbusPool.get(key)
   if (existing && existing.client.isOpen) return existing
+  const pending = modbusInflight.get(key)
+  if (pending) return pending
+  const task = createModbusConn(cfg, transport, key)
+  modbusInflight.set(key, task)
+  try {
+    return await task
+  }
+  finally {
+    modbusInflight.delete(key)
+  }
+}
+
+async function createModbusConn(cfg: Record<string, unknown>, transport: ModbusTransport, key: string): Promise<ModbusConn> {
+  const existing = modbusPool.get(key)
+  if (existing && existing.client.isOpen) return existing
   if (existing) {
     try {
       await closeModbusSafely(existing.client)
@@ -128,10 +145,7 @@ export async function getModbusConn(cfg: Record<string, unknown>, transport: Mod
     connect,
     new Promise((_, rej) => setTimeout(() => rej(new Error(`连接超时(3s)——检查 PLC 电源/IP/端口与防火墙`)), 3000)),
   ]).catch((err) => {
-    try {
-      void client.close()
-    }
-    catch { /* 未连上 */ }
+    void closeModbusSafely(client)
     throw err
   })
   client.setID(Number(cfg.unitId ?? 1))
@@ -298,10 +312,7 @@ if (!sweepGlobal.__daqModbusSweep) {
     const now = Date.now()
     for (const [key, conn] of modbusPool) {
       if (now - conn.lastUsed > MODBUS_IDLE_MS && conn.pending === 0) {
-        try {
-          void conn.client.close()
-        }
-        catch { /* ignore */ }
+        void closeModbusSafely(conn.client)
         modbusPool.delete(key)
       }
     }

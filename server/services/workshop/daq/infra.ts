@@ -13,9 +13,11 @@
  */
 import { createLogger } from '../logger'
 import { execFile } from 'node:child_process'
+import { existsSync } from 'node:fs'
 import { createConnection } from 'node:net'
 import { promisify } from 'node:util'
 import { join } from 'node:path'
+import { composeEnvFor, credentialsEnvFilePath, loadOrCreateCredentials } from './infra-credentials'
 
 const log = createLogger('daq.infra')
 
@@ -82,7 +84,12 @@ async function dockerAvailable(): Promise<boolean> {
 
 async function dockerComposeUp(projectRoot: string): Promise<{ ok: boolean, error?: string }> {
   try {
-    await execFileAsync('docker', ['compose', '-f', join(projectRoot, 'docker-compose.yml'), 'up', '-d', 'daq-mosquitto', 'daq-timescale', 'daq-minio'], { timeout: 180_000, cwd: projectRoot })
+    // 凭据由服务端生成/采纳后经环境注入(仓库零口令字面量,audit P0-5);
+    // 已落盘时额外给 --env-file,便于 compose 在子进程 env 被裁剪时仍能解析。
+    const envFile = credentialsEnvFilePath()
+    const args = ['compose', '-f', join(projectRoot, 'docker-compose.yml'), 'up', '-d', 'daq-mosquitto', 'daq-timescale', 'daq-minio']
+    const finalArgs = existsSync(envFile) ? ['compose', '--env-file', envFile, ...args.slice(1)] : args
+    await execFileAsync('docker', finalArgs, { timeout: 180_000, cwd: projectRoot, env: composeEnvFor() })
     return { ok: true }
   }
   catch (err) {
@@ -141,13 +148,27 @@ export function daqUrls(cfg = state().cfg): { mqttUrl: string | null, tsdbUrl: s
       : ''
     mqttUrl = `${scheme}://${cred}${cfg.mqtt.host}:${cfg.mqtt.port}`
   }
+  // 配置里的凭据留空 = 用本机生成/采纳的基础设施凭据(与 docker compose 同一份;
+  // 见 infra-credentials.ts)。runtimeConfig 的装配早于配置服务 init,不能只依赖它。
+  const local = (() => {
+    try {
+      return loadOrCreateCredentials({ adopt: false })
+    }
+    catch {
+      return null
+    }
+  })()
   const { user, password, database, host, port } = cfg.timescale
-  const tsdbUrl = process.env.DAQ_TSDB_URL ?? `postgres://${encodeURIComponent(user)}:${encodeURIComponent(password)}@${host}:${port}/${database}`
+  // 优先级:显式环境变量(外部托管) > config.yml > 本机凭据文件(compose 同一份)
+  const tsPassword = process.env.AW_DAQ_TIMESCALE_PASSWORD || password || local?.tsSecret || ''
+  const tsdbUrl = process.env.DAQ_TSDB_URL ?? `postgres://${encodeURIComponent(user)}:${encodeURIComponent(tsPassword)}@${host}:${port}/${database}`
   // 对象存储(v2):DAQ_OS_URL 覆盖;未配置 objectstore 段 → null(磁盘降级)
   const osCfg = cfg.objectstore
+  const osAccess = process.env.AW_DAQ_OBJECTSTORE_ACCESSKEY || osCfg?.accessKey || local?.osAccessId || ''
+  const osSecret = process.env.AW_DAQ_OBJECTSTORE_SECRETKEY || osCfg?.secretKey || local?.osSecret || ''
   const objectStoreUrl = process.env.DAQ_OS_URL
     ?? (osCfg
-      ? `http://${encodeURIComponent(osCfg.accessKey)}:${encodeURIComponent(osCfg.secretKey)}@${osCfg.host}:${osCfg.port}/${osCfg.bucket}`
+      ? `http://${encodeURIComponent(osAccess)}:${encodeURIComponent(osSecret)}@${osCfg.host}:${osCfg.port}/${osCfg.bucket}`
       : null)
   return { mqttUrl, tsdbUrl, objectStoreUrl }
 }

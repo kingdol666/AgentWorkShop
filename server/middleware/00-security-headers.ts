@@ -8,9 +8,16 @@
 import { defineEventHandler, getRequestURL, setResponseHeader } from 'h3'
 import { settingOf } from '../services/workshop/settings'
 
+/**
+ * script-src 不再无条件带 'unsafe-eval'(2026-10-30 P2-3):Vue3/Nuxt4 生产运行时不需要 eval,
+ * 而 eval 会把任何 XSS 升级为任意代码执行。开发模式仍需 HMR/new Function → 仅非生产放行。
+ * style-src 保留 'unsafe-inline':antd cssinjs 运行时插入 <style>,改 nonce 需整体改造样式管线。
+ */
+const ALLOW_EVAL = process.env.NODE_ENV !== 'production'
+
 const CSP = [
   'default-src \'self\'',
-  'script-src \'self\' \'unsafe-inline\' \'unsafe-eval\'',
+  `script-src 'self' 'unsafe-inline'${ALLOW_EVAL ? ' \'unsafe-eval\'' : ''}`,
   'style-src \'self\' \'unsafe-inline\'',
   'img-src \'self\' data: blob: https:',
   'font-src \'self\' data:',

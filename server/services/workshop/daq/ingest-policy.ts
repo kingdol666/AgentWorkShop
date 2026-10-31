@@ -10,6 +10,7 @@
  *
  * token 路径(AW_DAQ_INGEST_TOKEN)语义不变:全局推送凭据,用于边缘系统无会话接入。
  */
+import { createHash, timingSafeEqual } from 'node:crypto'
 
 export const DEFAULT_BACKFILL_MS = 3600_000
 export const MAX_BACKFILL_MS = 7 * 24 * 3600_000
@@ -57,10 +58,23 @@ export function ingestTimeVerdict(atMs: number, now: number, windowMs: number, s
   return 'ok'
 }
 
+/**
+ * 常量时间字符串比较。
+ * 直接 === 会按字节提前返回,攻击者可借响应时间逐字节猜 token。
+ * 先各自 sha256 再 timingSafeEqual:长度不同也不泄露长度信息。
+ */
+function constantTimeEqual(a: string, b: string): boolean {
+  const ha = createHash('sha256').update(a, 'utf8').digest()
+  const hb = createHash('sha256').update(b, 'utf8').digest()
+  return timingSafeEqual(ha, hb)
+}
+
 /** 推送鉴权模式判定(纯函数便于单测):token 已配置 → 校验头;未配置 → 会话+产线权限 */
 export function ingestAuthMode(input: { configuredToken?: string, providedToken?: string }): 'token' | 'token-mismatch' | 'session' {
   if (input.configuredToken) {
-    return input.providedToken === input.configuredToken ? 'token' : 'token-mismatch'
+    const provided = input.providedToken ?? ''
+    if (!provided) return 'token-mismatch'
+    return constantTimeEqual(provided, input.configuredToken) ? 'token' : 'token-mismatch'
   }
   return 'session'
 }

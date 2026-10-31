@@ -12,6 +12,7 @@ import { findDcwTemplate } from '../dcw-templates'
 import { getDcwRecipeRepo } from '../dcw-recipe.repo'
 import { randomUUID } from 'node:crypto'
 import { resolveDcwDriver } from '../drivers'
+import { beginGovernanceDriverCall, endGovernanceDriverCall } from '../../agents/governance-harness-audit'
 
 /** 驱动未显式上报 ack 时的旧口径归一(ok+回读→设备证实;ok 无回读→链路受理;失败→未证实) */
 function normalizeAck(outcome: { ok: boolean, readback: number | null, ack?: WriteAckLevel }): WriteAckLevel {
@@ -32,6 +33,11 @@ export abstract class DcwControllerActuation extends DcwControllerState {
     const t = node.transform
     const plcValue = inverseTransform(eng, t)
     const plcTolerance = Math.max(tolerance, 1e-9) / (t?.kind === 'linear' && Math.abs(t.scale ?? 1) > 0 ? Math.abs(t.scale!) : 1)
+    const driverAudit = beginGovernanceDriverCall({
+      node_id: node.id, line_id: node.lineId ?? null, driver: node.driver,
+      requested_value: eng, plc_value: plcValue, tolerance: plcTolerance,
+      recipe_run_id: recipeRunId, driver_config: node.driverConfig,
+    })
     let outcome: { ok: boolean, message: string, raw: number | null, readback: number | null, ack?: WriteAckLevel }
     try {
       outcome = await resolveDcwDriver(node.driver).write({
@@ -87,6 +93,7 @@ export abstract class DcwControllerActuation extends DcwControllerState {
       at,
     })
     this.emitNodeChanged('updated', node)
+    endGovernanceDriverCall(driverAudit, outcome)
     return outcome
   }
 

@@ -23,7 +23,7 @@ export function parseObjectStoreUrl(url: string): { endPoint: string, port: numb
     return {
       endPoint: u.hostname,
       port: Number(u.port || (u.protocol === 'https:' ? 443 : 80)),
-      accessKey: decodeURIComponent(u.username || 'awshop'),
+      accessKey: decodeURIComponent(u.username || ''),
       secretKey: decodeURIComponent(u.password || 'awshop'),
       bucket: decodeURIComponent(u.pathname.replace(/^\//, '')) || 'daq',
     }

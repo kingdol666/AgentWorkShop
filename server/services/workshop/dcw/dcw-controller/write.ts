@@ -13,6 +13,7 @@ import { recordDcwWriteOps } from './write-audit'
 import { setWriteLockUntil } from './gate-persist'
 import { recordOps } from '../../ops/ops'
 import { getActiveLineRun } from '../line-run'
+import { benchModeEnabled } from '../../bench-mode'
 
 // ================================================================
 // 只读预检谓词(产线 Co-Pilot P2:recipe_propose 整包方案的预审批校验)
@@ -99,7 +100,7 @@ export abstract class DcwControllerWrite extends DcwControllerBindings {
     // D8 基准消融:仅 AW_BENCH_MODE=1 且 meta.benchArm='no-interlock'/'ungated' 时
     // 旁路软联锁层(参数/产品/配方);结构层与硬量程校验结构性不可旁路;
     // 生产模式(env 缺省)恒为 full 臂。
-    const benchNoInterlock = process.env.AW_BENCH_MODE === '1' && (meta?.benchArm === 'no-interlock' || meta?.benchArm === 'ungated')
+    const benchNoInterlock = benchModeEnabled() && (meta?.benchArm === 'no-interlock' || meta?.benchArm === 'ungated')
     // 配方下发路径(recipeRunId != null)跳过配方窗口层:下发值已在配方保存时对自身窗口校验,
     // 且中途应用新配方不应被旧批次配方窗口误伤;产品/参数基准层对配方下发照常约束。
     // 预检谓词(evaluateRecipeParamLimits)与本咽喉点共用同一断言:结果 ok=false 时
@@ -109,7 +110,7 @@ export abstract class DcwControllerWrite extends DcwControllerBindings {
       reject(limits.error ?? new AppError(400, ErrorCodes.VALIDATION_ERROR, limits.violations[0] ?? '写入限界校验失败'))
     }
     const srcForLock = meta?.source ?? (recipeRunId ? 'recipe' : 'manual')
-    const benchBypass = process.env.AW_BENCH_MODE === '1'
+    const benchBypass = benchModeEnabled()
     // 在线 Agent/人工控制都走安全小步与 60s 最小间隔:这是探索阶段的硬卡控，
     // 不依赖提示词也不依赖前端，驱动调用前完成拒绝。recipe/rollback 仍由其
     // 专用路径管理，避免启动批次时把整套配方误判为在线探索步。
@@ -170,7 +171,7 @@ export abstract class DcwControllerWrite extends DcwControllerBindings {
       }
     }
     // D8: no-readback / ungated 臂 → 容差置 MAX,回读差异不致败(假成功语义,供 I2 消融)
-    const benchNoReadback = process.env.AW_BENCH_MODE === '1' && (meta?.benchArm === 'no-readback' || meta?.benchArm === 'ungated')
+    const benchNoReadback = benchModeEnabled() && (meta?.benchArm === 'no-readback' || meta?.benchArm === 'ungated')
     const benchToleranceOverride = benchNoReadback ? Number.MAX_VALUE : undefined
     const prevValue = typeof node.value === 'number' ? node.value : null
     const outcome = await rt.write(eng, recipeRunId, benchToleranceOverride)

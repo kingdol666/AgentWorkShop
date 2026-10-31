@@ -149,7 +149,18 @@ async function backupFlatFiles(dataDir: string, backupDir: string, stamp: string
   }
 }
 
+/** 在飞去重:定时器与 admin API 可能同刻触发(同秒 stamp 会踩同一个 tmp 文件) */
+let inFlightBackup: Promise<void> | null = null
+
 export async function backupOnce(dataDir: string): Promise<void> {
+  if (inFlightBackup) return inFlightBackup
+  inFlightBackup = runBackupOnce(dataDir).finally(() => {
+    inFlightBackup = null
+  })
+  return inFlightBackup
+}
+
+async function runBackupOnce(dataDir: string): Promise<void> {
   const backupDir = resolve(dataDir, 'backups')
   mkdirSync(backupDir, { recursive: true })
   const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)

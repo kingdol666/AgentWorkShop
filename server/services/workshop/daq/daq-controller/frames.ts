@@ -6,6 +6,7 @@ import { DaqControllerViews } from './views'
 import type { DaqFrameRecord, DaqFrameRow } from '../storage/tsdb-port'
 import { getObjectStore } from '../objectstore'
 import { getTsdb, tsdbReady } from '../storage'
+import { AppError } from '../../../../utils/errors'
 
 export abstract class DaqControllerFrames extends DaqControllerViews {
   /**
@@ -99,7 +100,7 @@ export abstract class DaqControllerFrames extends DaqControllerViews {
     this.ensureLoop()
     await tsdbReady
     const node = this.repo.byId(id)
-    if (!node) throw Object.assign(new Error(`数采节点不存在: ${id}`), { status: 404 })
+    if (!node) throw new AppError(404, 'NOT_FOUND', `数采节点不存在: ${id}`)
     const rows = await getTsdb().queryFrames(id, opts)
     // 未刷盘的帧补进结果集:同 (nodeId, tsMs) 以落库行为准(去重),按 at 降序
     const seen = new Set(rows.map(r => r.at))
@@ -120,7 +121,7 @@ export abstract class DaqControllerFrames extends DaqControllerViews {
     this.ensureLoop()
     await tsdbReady
     const node = this.repo.byId(id)
-    if (!node) throw Object.assign(new Error(`数采节点不存在: ${id}`), { status: 404 })
+    if (!node) throw new AppError(404, 'NOT_FOUND', `数采节点不存在: ${id}`)
     // 读穿透:先查内存攒批缓冲(帧刚 ingest、尚未刷盘时命中),未命中再查 TSDB
     const buffered = this.bufferedFrameAt(id, tsMs)
     const rows = buffered
@@ -128,9 +129,9 @@ export abstract class DaqControllerFrames extends DaqControllerViews {
       : await getTsdb().queryFrames(id, { fromMs: tsMs - 1, toMs: tsMs + 1, limit: 5 })
     if (rows.length === 0) rows.push(...await getTsdb().queryFrames(id, { fromMs: tsMs - 1, toMs: tsMs + 1, limit: 5 }))
     const row = rows.find(r => r.at === tsMs)
-    if (!row || row.kind !== 'image') throw Object.assign(new Error(`帧不存在: ${id}@${tsMs}`), { status: 404 })
+    if (!row || row.kind !== 'image') throw new AppError(404, 'NOT_FOUND', `帧不存在: ${id}@${tsMs}`)
     const key = (thumb ? row.meta.thumbKey : row.meta.objectKey) as string | undefined
-    if (!key) throw Object.assign(new Error(`帧对象缺失: ${id}@${tsMs}`), { status: 404 })
+    if (!key) throw new AppError(404, 'NOT_FOUND', `帧对象缺失: ${id}@${tsMs}`)
     const data = await getObjectStore().get(String(key))
     return { data, mime: typeof row.meta.mime === 'string' ? row.meta.mime : 'image/png' }
   }

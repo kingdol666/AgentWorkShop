@@ -11,11 +11,12 @@
  */
 import { useRuntimeConfig } from '#imports'
 import { daqInfraStatus, daqUrls, ensureDaqInfrastructure, markDaqInfraFailure, scheduleAutoReconnect, type DaqInfraConfig } from '../services/workshop/daq/infra'
-import { rebuildTsdb } from '../services/workshop/daq/storage'
+import { rebuildTsdb, tsdbRunRollup, tsdbSweepAll } from '../services/workshop/daq/storage'
 import { rebuildObjectStore } from '../services/workshop/daq/objectstore'
 import { startDaqObjectGc } from '../services/workshop/daq/objectstore/gc'
 import { rebuildDaqQueue } from '../services/workshop/daq/bus'
 import { getDaqController } from '../services/workshop/daq/daq-controller'
+import { daqRuntimeSettings } from '../services/workshop/settings'
 
 interface DaqBootState {
   __daqInfraReady?: Promise<void>
@@ -104,8 +105,46 @@ export default async function daqPlugin() {
   scheduleAutoReconnect(() => {
     void applyInfra(cfg).catch(markDaqInfraFailure)
   })
+  // 分层保留:增量聚合调度(1m/1h;只处理已闭合窗口)。与采集解耦 —— 失败只告警,
+  // 不阻断数采;积压会在下一轮继续追平(水位落库)。
+  startRollupScheduler()
   // P0-2 对象存储 GC:帧行出清后像素文件孤儿回收(90s 首轮 + 24h 周期;disk 后端)
   startDaqObjectGc()
   // 重连端点复用同一装配函数
   ;(globalThis as unknown as { __daqApplyInfra?: (c: DaqInfraConfig) => Promise<void> }).__daqApplyInfra = applyInfra
+}
+
+/** 增量聚合 + 保留期清理调度(幂等:全局各挂一个定时器;配置变更需重启生效) */
+function startRollupScheduler(): void {
+  const g = globalThis as { __daqRollupTimer?: NodeJS.Timeout, __daqSweepTimer?: NodeJS.Timeout }
+  if (g.__daqSweepTimer) return
+  let s: ReturnType<typeof daqRuntimeSettings>
+  try {
+    s = daqRuntimeSettings()
+  }
+  catch {
+    return
+  }
+  const tick = (): void => {
+    void tsdbRunRollup()
+      .then((r) => {
+        if (r && (r.minuteRows > 0 || r.hourRows > 0)) {
+          console.info(`[daq-rollup] 聚合完成:1m=${r.minuteRows} 行,1h=${r.hourRows} 行,产线 ${r.lines}`)
+        }
+      })
+      .catch(err => console.warn('[daq-rollup] 聚合失败(下轮重试):', err instanceof Error ? err.message : err))
+  }
+  // 保留期清理与聚合分离:聚合 10min 一轮,清理 30min 一轮(逐线删除/聚合裁剪)
+  const sweep = (): void => {
+    void tsdbSweepAll().catch(err => console.warn('[daq-retention] 清理失败(下轮重试):', err instanceof Error ? err.message : err))
+  }
+  setTimeout(sweep, 60_000).unref?.()
+  const sweepTimer = setInterval(sweep, 30 * 60_000)
+  sweepTimer.unref?.()
+  g.__daqSweepTimer = sweepTimer
+  if (!s.rollup.enabled) return
+  setTimeout(tick, 15_000).unref?.()
+  const timer = setInterval(tick, Math.max(60_000, Number(s.rollup.intervalMs)))
+  timer.unref?.()
+  g.__daqRollupTimer = timer
 }

@@ -4,7 +4,7 @@
  */
 import { DcwControllerParams } from './params'
 import type { DcwWriteHistoryEntry } from '../dcw-recipe.repo'
-import type { RecipeInput, RecipeRunView, RecipeView, WriteVerifyOutcome } from '../../../../../shared/dcw-protocol'
+import type { DcwWriteMeta, RecipeInput, RecipeRunView, RecipeView, WriteVerifyOutcome } from '../../../../../shared/dcw-protocol'
 import { AppError, ErrorCodes } from '../../../../utils/errors'
 import { getDcwRecipeRepo } from '../dcw-recipe.repo'
 import { assertRecipeOpIntervalForExecution, beginRecipeOp, endRecipeOp, recordRecipeOpAnchor } from '../recipe-op-anchor'
@@ -112,7 +112,7 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
    * 2026-10-08 ACK 鉴定:每参数写后经 verifyRecipeWrite 补验(链路受理→独立回读
    * 证实),结果行携带 ack/verify —— 「ok」不再被当成「设备已生效」。
    */
-  protected async writeRecipeParams(recipe: RecipeView, run: RecipeRunView, opts: { enforceRecipeWindow?: boolean } = {}): Promise<void> {
+  protected async writeRecipeParams(recipe: RecipeView, run: RecipeRunView, opts: { enforceRecipeWindow?: boolean, writeMeta?: DcwWriteMeta } = {}): Promise<void> {
     const results: RecipeRunView['results'] = []
     for (const param of recipe.params) {
       const node = param.nodeId ? this.repo.byId(param.nodeId) : undefined
@@ -149,7 +149,7 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
         }
       }
       try {
-        const outcome = await this.write(node.id, param.value, run.id, { source: 'recipe', actor: 'recipe' })
+        const outcome = await this.write(node.id, param.value, run.id, opts.writeMeta ?? { source: 'recipe', actor: 'recipe' })
         // ACK 鉴定:命令 ok 但仅链路受理(mqtt/http-no-echo/mock)→ 独立回读补验
         const v: WriteVerifyOutcome = await verifyRecipeWrite(this, node, param.value, outcome, { tolerance: writeTolerance(node) })
         const ackTag = v.verdict === 'verified' ? '' : v.verdict === 'failed' ? '' : ` · ${v.message}`
@@ -210,6 +210,8 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
     agentDispatch?: boolean
     /** 本次下发的审批单 id(锚自豁免:自己刚获批的那次不卡自己;不同 id 且锚新鲜 = 竞态拦截) */
     agentApprovalId?: string
+    /** Trusted identity for Agent trial writes; other recipe operations keep recipe semantics. */
+    agentTrialMeta?: Omit<DcwWriteMeta, 'source' | 'approvalId'>
     /** 应急豁免:仅跳过 recipe 级频控(审批/四层限界/试验节拍照常) */
     emergency?: boolean
   } = {}) {
@@ -252,6 +254,7 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
       trial?: boolean
       agentDispatch?: boolean
       agentApprovalId?: string
+      agentTrialMeta?: Omit<DcwWriteMeta, 'source' | 'approvalId'>
       emergency?: boolean
     },
     overrides: Array<{ nodeId: string, value: number }>,
@@ -267,7 +270,10 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
         })
       : recipe.params
     const run = repo.createRun(recipe, effective)
-    await this.writeRecipeParams({ ...recipe, params: effective }, run, { enforceRecipeWindow: overrides.length > 0 })
+    const trialMeta: DcwWriteMeta | undefined = opts.trial && opts.agentDispatch && opts.agentTrialMeta
+      ? { ...opts.agentTrialMeta, source: 'agent', ...(opts.agentApprovalId ? { approvalId: opts.agentApprovalId } : {}) }
+      : undefined
+    await this.writeRecipeParams({ ...recipe, params: effective }, run, { enforceRecipeWindow: overrides.length > 0, writeMeta: trialMeta })
     // 运行中应用新配方版本 → 谱系拆段(A13):旧段在 now 闭合,新段记录新版本/内容 hash。
     try {
       const { getActiveLineRun, setActiveLineRun } = await import('../line-run')
@@ -302,9 +308,9 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
     const level: 'info' | 'warn' | 'error' = acks.failed > 0 ? 'error' : acks.unverified > 0 ? 'warn' : 'info'
     try {
       recordOps({
-        actor: opts.agentDispatch ? 'agent-dispatch' : 'system',
-        actorName: opts.agentDispatch ? 'Agent 整批下发' : '产线系统',
-        actorKind: 'system',
+        actor: trialMeta?.actor ?? (opts.agentDispatch ? 'agent-dispatch' : 'system'),
+        actorName: trialMeta?.actorName ?? (opts.agentDispatch ? 'Agent 整批下发' : '产线系统'),
+        actorKind: trialMeta ? 'agent' : 'system',
         action: 'recipe.dispatch.ack',
         kind: 'write',
         targetKind: 'recipe',
@@ -336,7 +342,7 @@ export abstract class DcwControllerRecipes extends DcwControllerParams {
         recipeId,
         at: Date.now(),
         approvalId: opts.agentApprovalId ?? '',
-        agentId: '',
+        agentId: trialMeta?.actor ?? '',
         op: opts.trial ? 'trial' : 'apply',
         source: 'agent-executed',
       })

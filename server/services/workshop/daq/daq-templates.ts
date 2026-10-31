@@ -159,8 +159,16 @@ class DaqTemplateRegistry {
     return this.pluginTpls.has(key)
   }
 
-  create(input: DaqTemplateInput): DaqTemplateDef {
-    const tpl = normalize(input)
+  /** 改删守卫:属主 / admin 放行;内置与插件模板不接受 REST 改删(调用方已先判) */
+  private assertWritable(tpl: DaqTemplateDef, user?: { id: string, role: string }): void {
+    if (!user) return
+    if (user.role === 'admin') return
+    if (tpl.ownerUserId && tpl.ownerUserId === user.id) return
+    throw new AppError(403, 'FORBIDDEN', `自定义模板「${tpl.name}」不属于当前用户`)
+  }
+
+  create(input: DaqTemplateInput, ownerUserId?: string): DaqTemplateDef {
+    const tpl: DaqTemplateDef = { ...normalize(input), ownerUserId: ownerUserId ?? null }
     if (this.customs.some(t => t.name === tpl.name)) {
       throw new AppError(409, ErrorCodes.CONFLICT, `同名自定义模板已存在: ${tpl.name}`)
     }
@@ -169,7 +177,7 @@ class DaqTemplateRegistry {
     return tpl
   }
 
-  update(key: string, patch: Partial<DaqTemplateInput>): DaqTemplateDef {
+  update(key: string, patch: Partial<DaqTemplateInput>, user?: { id: string, role: string }): DaqTemplateDef {
     if (this.pluginTpls.has(key)) {
       throw new AppError(400, ErrorCodes.BAD_REQUEST, '插件模板不可经 REST 修改(由插件自身管理)')
     }
@@ -177,13 +185,14 @@ class DaqTemplateRegistry {
     if (!prev) {
       throw new AppError(400, ErrorCodes.BAD_REQUEST, daqTemplateByKey(key) ? '内置模板不可修改(可复制为自定义)' : `自定义模板不存在: ${key}`)
     }
-    const tpl = normalize(patch, prev)
+    this.assertWritable(prev, user)
+    const tpl: DaqTemplateDef = { ...normalize(patch, prev), ownerUserId: prev.ownerUserId ?? user?.id ?? null }
     this.customs = this.customs.map(t => (t.key === key ? tpl : t))
     this.flush()
     return tpl
   }
 
-  remove(key: string): DaqTemplateDef {
+  remove(key: string, user?: { id: string, role: string }): DaqTemplateDef {
     if (this.pluginTpls.has(key)) {
       throw new AppError(400, ErrorCodes.BAD_REQUEST, '插件模板不可经 REST 删除(由插件自身管理)')
     }
@@ -191,6 +200,7 @@ class DaqTemplateRegistry {
     if (!prev) {
       throw new AppError(400, ErrorCodes.BAD_REQUEST, daqTemplateByKey(key) ? '内置模板不可删除' : `自定义模板不存在: ${key}`)
     }
+    this.assertWritable(prev, user)
     this.customs = this.customs.filter(t => t.key !== key)
     this.flush()
     return prev

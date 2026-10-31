@@ -21,17 +21,28 @@ export abstract class DaqControllerSweepAlarms extends DaqControllerIngest {
    *  该循环只负责订阅对账与陈值看门狗。 */
   protected sweep(): void {
     if (!this.pipelineReady || !this.running) return
-    // 订阅对账与看门狗不依赖"是否有活动批次"(未开跑也保持 broker 在线,开跑即恢复入库)
-    this.syncPushBindings()
+    // 250ms 定时器回调:任何未捕获异常都会走到进程级 uncaughtException,
+    // 而 stability-guard 只豁免 4 类已知噪声,其余一律 exit(1) —— 一处普通 bug 就能打崩生产。
+    // 逐段兜底(与 runtime/manager/state.ts 同口径):失败只记日志,绝不抛出,
+    // 且保证后面的段仍会执行(此前一拍抛错会跳过同拍剩余逻辑)。
+    this.guardStep('syncPushBindings', () => this.syncPushBindings())
     const now = Date.now()
-    this.checkPushLiveness(now)
+    this.guardStep('checkPushLiveness', () => this.checkPushLiveness(now))
     const host = getDaqHostPorts()
     if (!host || !host.lineRun.hasAnyActiveRun()) return
     // 在飞闸门:上一拍未消化的并发额度不叠加(避免积压 tick 雪崩)
     const budget = SWEEP_MAX_CONCURRENCY - this.samplingInFlight
     if (budget <= 0) return
-    const defs = this.runtimeDefaults()
-    const rts = [...this.runtimes.values()]
+    let defs: ReturnType<typeof this.runtimeDefaults>
+    let rts: typeof this.runtimes extends Map<string, infer V> ? V[] : never
+    try {
+      defs = this.runtimeDefaults()
+      rts = [...this.runtimes.values()]
+    }
+    catch (err) {
+      log.error('[daq] sweep 准备阶段异常(已隔离):', err)
+      return
+    }
     const total = rts.length
     if (!total) return
     let started = 0
@@ -42,17 +53,34 @@ export abstract class DaqControllerSweepAlarms extends DaqControllerIngest {
     for (let i = 0; i < total && started < budget; i++) {
       const rt = rts[(this.sweepCursor + i) % total]!
       examined = i + 1
-      // 推送式驱动(存在 subscribe)不轮询:否则同一条报文会被采样 tick 重复入库
-      if (typeof resolveDaqDriver(rt.node.driver).subscribe === 'function') continue
-      // 逐产线门控:节点只在其所属产线的活动批次窗口内采集(lineId 空 = 未分配,不采集)
-      if (!host.lineRun.activeRun(rt.node.lineId)) continue
-      if (!rt.isDue(now, defs)) continue
+      try {
+        // 推送式驱动(存在 subscribe)不轮询:否则同一条报文会被采样 tick 重复入库
+        if (typeof resolveDaqDriver(rt.node.driver).subscribe === 'function') continue
+        // 逐产线门控:节点只在其所属产线的活动批次窗口内采集(lineId 空 = 未分配,不采集)
+        if (!host.lineRun.activeRun(rt.node.lineId)) continue
+        if (!rt.isDue(now, defs)) continue
+      }
+      catch (err) {
+        // 单节点判定失败不阻断同拍其余节点
+        log.error(`[daq] 节点 ${rt.node.id} 到期判定异常(已隔离):`, err)
+        continue
+      }
       this.samplingInFlight += 1
       started += 1
       void rt.tick(now).catch(() => { /* 单节点采样异常已在 runtime 内隔离 */ })
         .finally(() => { this.samplingInFlight -= 1 })
     }
     this.sweepCursor = (this.sweepCursor + examined) % total
+  }
+
+  /** 定时器回调内的安全包裹:异常只记日志,绝不冒泡到进程级 */
+  private guardStep(label: string, fn: () => void): void {
+    try {
+      fn()
+    }
+    catch (err) {
+      log.error(`[daq] sweep ${label} 异常(已隔离):`, err)
+    }
   }
 
   /** 产线停止:该产线全部节点置 offline(开跑后由采样自然恢复) */

@@ -58,7 +58,7 @@ export abstract class DaqControllerCrud extends DaqControllerRuntimeControl {
 
   patch(id: string, patch: DaqPatchInput): DaqNode {
     const node = this.repo.byId(id)
-    if (!node) throw Object.assign(new Error(`数采节点不存在: ${id}`), { status: 404 })
+    if (!node) throw new AppError(404, 'NOT_FOUND', `数采节点不存在: ${id}`)
     if (patch.name !== undefined) node.name = patch.name
     if (patch.driver !== undefined) node.driver = requireDriverKind(patch.driver)
     // P0-2(2026-10-28 审查):GET 投影的 `******` 可能是整包 PATCH 回来的回显,
@@ -113,7 +113,7 @@ export abstract class DaqControllerCrud extends DaqControllerRuntimeControl {
 
   remove(id: string): void {
     const node = this.repo.byId(id)
-    if (!node) throw Object.assign(new Error(`数采节点不存在: ${id}`), { status: 404 })
+    if (!node) throw new AppError(404, 'NOT_FOUND', `数采节点不存在: ${id}`)
     this.repo.remove(id)
     this.runtimes.delete(id) // 运行时随节点注销(先停采样,再删对象)
     // P0-2 级联:该节点的像素对象(daqs 下 daq/<nodeId>/** 全部天目录)随节点删除。
@@ -164,7 +164,7 @@ export abstract class DaqControllerCrud extends DaqControllerRuntimeControl {
   /** 解绑一台设备(其余绑定保留) */
   unbindDeviceNode(id: string, deviceId: string): DaqNode {
     const node = this.repo.byId(id)
-    if (!node) throw Object.assign(new Error(`数采节点不存在: ${id}`), { status: 404 })
+    if (!node) throw new AppError(404, 'NOT_FOUND', `数采节点不存在: ${id}`)
     if (!node.deviceIds.includes(deviceId)) return node
     node.deviceIds = node.deviceIds.filter(d => d !== deviceId)
     node.deviceBindingId = node.deviceIds[0] ?? null
@@ -176,7 +176,7 @@ export abstract class DaqControllerCrud extends DaqControllerRuntimeControl {
   /** 整体设定绑定设备列表(去重、校验存在性;全量替换) */
   setDeviceBindings(id: string, deviceIds: string[]): DaqNode {
     const node = this.repo.byId(id)
-    if (!node) throw Object.assign(new Error(`数采节点不存在: ${id}`), { status: 404 })
+    if (!node) throw new AppError(404, 'NOT_FOUND', `数采节点不存在: ${id}`)
     const unique = [...new Set(deviceIds.map(String).filter(Boolean))]
     for (const d of unique) {
       if (!getDaqHostPorts()?.telemetry.deviceExists(d)) {

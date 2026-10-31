@@ -5,9 +5,12 @@
  * 3. 频率限流:/api 认证面(login/register/mcp/a2a)严限,A其余 API 宽限(AW_RATE_LIMIT_API_PER_MIN,默认 600)
  * 4. 404 扫描封锁:1 分钟内 /api/* 404 超过阈值(AW_SCAN_404_LIMIT,默认 60)→ 封 IP 10 分钟(反爬/反目录爆破)
  * 旁路:AW_RATE_LIMIT_OFF=1 或 AW_BENCH_MODE=1(基准隔离实例)整体停用;
- *      全部状态内存态(重启即清),多实例部署时反代层应另配限流。
+ *      客户端 IP 取数见 server/utils/request-ip.ts(AW_TRUST_PROXY=1 才采信 X-Forwarded-For);
+ *      全部状态内存态(重启即清),过期条目惰性清扫;多实例部署时反代层应另配限流。
  */
-import { defineEventHandler, createError, getRequestIP, getRequestHeaders, getRequestURL } from 'h3'
+import { defineEventHandler, createError, getRequestHeaders, getRequestURL } from 'h3'
+import { clientIp } from '@/server/utils/request-ip'
+import { benchModeEnabled } from '@/server/services/workshop/bench-mode'
 
 const g = globalThis as typeof globalThis & {
   __awRateBuckets?: Map<string, { count: number, reset: number }>
@@ -20,7 +23,7 @@ const envNum = (v: string | undefined, dflt: number) => {
   return Number.isFinite(n) && n > 0 ? n : dflt
 }
 
-const OFF = process.env.AW_RATE_LIMIT_OFF === '1' || process.env.AW_BENCH_MODE === '1'
+const OFF = process.env.AW_RATE_LIMIT_OFF === '1' || benchModeEnabled()
 const AUTH_LIMIT = envNum(process.env.AW_RATE_LIMIT_AUTH_PER_MIN, 20)
 const API_LIMIT = envNum(process.env.AW_RATE_LIMIT_API_PER_MIN, 600)
 const SCAN_LIMIT = envNum(process.env.AW_SCAN_404_LIMIT, 60)
@@ -51,11 +54,29 @@ function bucketOf(map: Map<string, { count: number, reset: number }>, key: strin
   return limit - b.count
 }
 
+/**
+ * 惰性清扫过期条目:三个 Map 的键按唯一 IP 无界增长(慢泄漏),每 SWEEP_EVERY 次
+ * 请求顺带清一次过期键。Map 命中率不受影响(过期键本就要重建)。
+ */
+const SWEEP_EVERY = 200
+let sinceSweep = 0
+function sweepExpired(now: number): void {
+  if (++sinceSweep < SWEEP_EVERY) return
+  sinceSweep = 0
+  for (const map of [g.__awRateBuckets, g.__awScanHits]) {
+    if (!map) continue
+    for (const [k, v] of map) if (v.reset <= now) map.delete(k)
+  }
+  if (g.__awScanBlocked) {
+    for (const [k, until] of g.__awScanBlocked) if (until <= now) g.__awScanBlocked.delete(k)
+  }
+}
+
 export default defineEventHandler((event) => {
   if (OFF) return
   const url = getRequestURL(event)
   const path = url.pathname
-  const ip = getRequestIP(event, { xForwardedFor: true }) ?? 'local'
+  const ip = clientIp(event)
   const now = Date.now()
 
   // 已封锁 IP(404 扫描触发):直接 403,不看别的
@@ -71,14 +92,21 @@ export default defineEventHandler((event) => {
     throw createError({ statusCode: 403, statusMessage: 'User agent not allowed' })
   }
 
-  // 请求体上限(带 Content-Length 才拦;chunked 走 nitro 默认)
-  const len = Number(getRequestHeaders(event)['content-length'] ?? 0)
+  // 请求体上限:Content-Length 可直接判定;chunked(无 Content-Length)无法预知大小,
+  // 而下游 readValidatedBody 无字节上限 → 直接拒绝带 body 的 chunked 请求(fail-closed)。
+  const headers = getRequestHeaders(event)
+  const len = Number(headers['content-length'] ?? 0)
   if (len > BODY_LIMIT_MB * 1024 * 1024) {
     throw createError({ statusCode: 413, statusMessage: `Request body too large (limit ${BODY_LIMIT_MB}MB)` })
+  }
+  const method = event.node?.req?.method?.toUpperCase() ?? 'GET'
+  if (headers['transfer-encoding'] && method !== 'GET' && method !== 'HEAD' && method !== 'DELETE') {
+    throw createError({ statusCode: 413, statusMessage: 'Chunked request body not allowed: send Content-Length' })
   }
 
   // 只对 /api/* 限流(静态/页面不做)
   if (path.startsWith('/api/')) {
+    sweepExpired(now)
     if (!g.__awRateBuckets) g.__awRateBuckets = new Map()
     const limit = isAuthFace(path) ? AUTH_LIMIT : API_LIMIT
     const remaining = bucketOf(g.__awRateBuckets, `${ip}|${limit}`, limit, now)

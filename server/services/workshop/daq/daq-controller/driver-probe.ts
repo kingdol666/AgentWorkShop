@@ -9,6 +9,7 @@ import { DaqNode } from '../daq-node'
 import { driverCatalog, probeDriverAvailability, requireDriverKind, resolveDaqDriver } from '../drivers'
 import { getDaqHostPorts } from '../host-ports'
 import { findDaqTemplate } from '../daq-templates'
+import { AppError } from '../../../../utils/errors'
 
 export abstract class DaqControllerDriverProbe extends DaqControllerCrud {
   /** 连接测试:按协议参数建连 + 读一次(前端"测试连接"按钮直达;未知协议显式报错 —— P0-5) */
@@ -23,7 +24,7 @@ export abstract class DaqControllerDriverProbe extends DaqControllerCrud {
   /** 存量节点连接测试(用节点已保存参数;按模板信号形态解码,向量/图像节点也能给出真实测试结果) */
   async testNode(id: string): Promise<DriverTestResult> {
     const node = this.repo.byId(id)
-    if (!node) throw Object.assign(new Error(`数采节点不存在: ${id}`), { status: 404 })
+    if (!node) throw new AppError(404, 'NOT_FOUND', `数采节点不存在: ${id}`)
     const tpl = findDaqTemplate(node.templateKey)
     return this.testDriver(node.driver, node.driverConfig, normalizeSignalKind(tpl?.signalKind))
   }

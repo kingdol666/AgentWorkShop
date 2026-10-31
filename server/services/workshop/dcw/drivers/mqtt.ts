@@ -6,6 +6,7 @@ import type { DcwWriteDriver } from './shared'
 import { AppError } from '../../../../utils/errors'
 import { reqNative } from './shared'
 import { mqttConnectOpts, readMqttValue, invalidateMqttTopic } from '../../daq/drivers/mqtt'
+import { renderMqttWritePayload } from '../mqtt-payload'
 
 // ============================================================
 // MQTT 写驱动(publish 设定值到 Broker;fire-and-forget,无回读)
@@ -33,9 +34,9 @@ export const mqttDcwDriver: DcwWriteDriver = {
       const mqtt = reqNative('mqtt') as typeof import('mqtt')
       const secure = Boolean(cfg.secure ?? cfg.tls)
       const url = `mqtt${secure ? 's' : ''}://${String(cfg.host)}:${Number(cfg.port ?? 1883)}`
-      const payload = cfg.jsonKey
-        ? JSON.stringify({ [String(cfg.jsonKey)]: input.eng })
-        : String(input.eng)
+      // 载荷三档:jsonTemplate(嵌套/多字段,{{value}} 插值)> jsonKey(单键)> 裸数值。
+      // 模板先渲染再 JSON.parse 规范化:坏模板在发布前就 400,绝不把畸形报文发给设备。
+      const payload = renderMqttWritePayload(cfg, input.eng)
       // 控制发布用一次性连接(低频关键动作,不复用采样的长连接;发布即断,资源可控)。
       // TLS 语义经采侧 mqttConnectOpts 同源;一次性连接绝不能让 mqtt.js 默认重连后台空转。
       const client = await new Promise<import('mqtt').MqttClient>((resolve, reject) => {

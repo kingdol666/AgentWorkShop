@@ -45,6 +45,15 @@ export async function resolveTargetIps(hostname: string, label = 'MES'): Promise
 }
 
 /**
+ * 出站目标允许内网的统一开关(默认拒绝)。
+ * 报警 webhook / embedding 服务 / 插件 ctx.http 都可能部署在内网,因此提供显式
+ * 开关而不是永远拒绝;但必须由运维明确打开,不能默认放行(否则等于没护栏)。
+ */
+export function allowPrivateOutbound(): boolean {
+  return process.env.AW_ALLOW_PRIVATE_OUTBOUND === '1'
+}
+
+/**
  * 校验出站 URL:仅 http/https;未显式开白名单时解析目标并拒绝私网/环回地址。
  * 返回解析后的 URL(调用方用 .origin/.toString())。
  */
