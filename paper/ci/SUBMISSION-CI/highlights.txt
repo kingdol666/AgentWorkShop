@@ -1,0 +1,7 @@
+Highlights
+
+- Agent write authority becomes a configuration fact bound to plant context
+- Four-layer interlocks attribute every blocked write to its deciding layer
+- Approvals bind exact values and tuples and are rechecked at dispatch
+- Receipts grade writes as readback-verified or transport-acknowledged
+- Ablation: interlock is load-bearing with zero false blocks on legitimate writes

@@ -100,8 +100,18 @@ for k in sorted(pinned):
 if not any(x.startswith("F7") for x in fails):
     print(f"F7 pass: all {len(cited)} cited titles render in main.pdf; pinned must-cites present")
 
-# F8: vector figures must keep minimum rendered font size >= 5pt at placed size
-for fig in sorted(glob.glob("resources/fig-*.pdf")) + ["resources/fig2-architecture.pdf"]:
+# F8: check only vector figures used by this manuscript. The resources folder
+# also retains inactive figure alternatives from prior revisions.
+active_vector_figures = set()
+for f in sorted(glob.glob("sections/*.tex")) + ["main.tex"]:
+    source = open(f, encoding="utf-8").read()
+    for match in re.finditer(r"\\includegraphics(?:\[[^\]]*\])?\{([^}]*)\}", source):
+        target = match.group(1)
+        if target.lower().endswith(".pdf"):
+            active_vector_figures.add(target)
+
+# Vector figures must keep minimum source type >= 5pt.
+for fig in sorted(active_vector_figures):
     fdoc = pymupdf.open(fig)
     sizes = [s["size"] for b in fdoc[0].get_text("dict")["blocks"] for ln in b.get("lines", [])
              for s in ln["spans"] if s["text"].strip()]

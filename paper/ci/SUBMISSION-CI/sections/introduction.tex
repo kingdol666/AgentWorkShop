@@ -1,0 +1,135 @@
+\section{Introduction}
+\label{sec:intro}
+
+Production information systems are acquiring a new class of tenant. Industry
+4.0 and Industry 5.0 framings place progressively more autonomy in the plant
+while keeping human oversight central \cite{xu2021industry}. Beyond
+the deterministic programs that have historically automated plants, large
+language model (LLM) agent teams now read production telemetry, reason about
+process state, and coordinate with each other over shop-floor tasks. These
+agents inherit the reasoning and instruction-following capability of large
+pretrained models \cite{zhao2023survey}. Recent
+systems demonstrate LLM-based multi-agent orchestration on shop floors
+\cite{zhao2026shopfloor}, LLM agents that operate industrial automation
+systems \cite{xia2025control}, and LLM-driven control for skill-based
+manufacturing \cite{koehle2026llmdriven}. Journal scopes that historically
+hosted industrial informatics now explicitly name intelligent agents among
+their enabling technologies. Application-oriented studies of LLM
+assistants on assembly lines have appeared in this journal
+\cite{llmdia2024}. The direction of travel is not in doubt: language-model
+agents are moving from prototypes into the software stack that surrounds
+production equipment.
+
+Where these systems reach the equipment, they tend to encapsulate the action
+inside a skill, a controller, or a validated proposal. The setpoint write
+itself is different. A
+supervisory setpoint write (changing a temperature setpoint, a pump speed,
+a batch parameter) crosses from the information system into the physical
+process. Its effect is delayed by process inertia, partially irreversible,
+and intertwined with equipment-level protection that the information system
+cannot see. Classical automation research has long warned about the
+organizational, not merely technical, hazards of delegating control
+\cite{bainbridge1983ironies}. Human-factors models place action
+selection and execution at the stages where automation support changes
+operator responsibility \cite{parasuraman2000model}. When the candidate
+actor is an LLM agent, the delegation question becomes sharper: the agent is
+capable, fallible, and susceptible to injected instructions
+\cite{greshake2023injection,liu2024pinjection}.
+
+Agent frameworks do govern actions, but at the wrong granularity for plants.
+Session-level tool permissions decide \emph{whether} a tool may be called.
+They do not encode \emph{plant semantics}: safe ranges, recipe windows,
+batch context, and the one-proposal-per-actuator constraint are invisible
+to them. Runtime
+enforcement frameworks for LLM agents constrain tool calls by policies over
+arguments \cite{wang2025agentspec}, and capability-based designs contain
+prompt injection \cite{debenedetti2025camel}. Neither resolves which
+control caught a given plant write. Neither binds a human approval to the
+exact proposed operation under changing plant state, and neither
+distinguishes a write that a device confirmed from one that a transport
+layer merely acknowledged. On the industrial side, policy-governed agentic control
+\cite{lin2026agentic} and P\&ID-grounded validation \cite{schall2026safe}
+show that governance is recognized as necessary. Yet the audit question
+remains open: when a write is blocked or executed, an engineer must be able
+to see \emph{which layer} decided, on \emph{which configuration}, with
+\emph{what receipt}.
+
+A running example makes the unit of governance concrete. An agent observes
+a melt-pressure excursion and proposes $130\to127$\,rpm. The value is
+inside the node's hard engineering range, but the active recipe window and
+the one-proposal-in-flight rule must also be consulted, and a second team
+may already hold an opposing proposal. The platform binds the request to
+the current line--product--recipe--run tuple, returns a typed verdict that
+names any excluding layer, asks a human to approve the exact value and
+applicable limits when the binding is manual, rechecks the tuple at
+dispatch, reads the value back, and records the receipt grade and every
+decision in the ledger. This is the path that Sections~\ref{sec:arch}
+and~\ref{sec:eval} evaluate; the rest of the paper explains why each
+boundary is necessary and what evidence supports it.
+
+This paper takes the agent-to-plant write path itself as the unit of
+governance. We present a configuration-driven platform in which LLM agent
+teams and a production line share one runtime, and in which every
+machine-originated setpoint write must cross a sequence of separately
+inspectable boundaries. A binding model scopes agent authority to plant
+nodes. A four-layer admission interval is formed by intersecting the node's
+hard engineering range with parameter, product, and recipe limits. A human
+approval record is bound to the exact proposed values, applicable limits,
+and the active line--product--recipe--run tuple, and is rechecked at
+dispatch time. A receipt grade separates readback-verified writes from
+transport-acknowledged and unverified ones. Every decision on this path,
+including every rejection, is recorded in an auditable ledger. The design
+intentionally makes attribution and prevention separable: a layer that
+cannot block still records, and a layer that blocks states why.
+
+We evaluate the platform across five question areas, each backed by
+re-runnable evidence artifacts. A five-protocol device integration matrix
+(Modbus TCP, Modbus RTU, OPC UA, MQTT, HTTP) on real protocol stacks passes
+21 of 21 checks, including platform-versus-device readback equality and
+honest failure on disconnects. A four-arm ablation isolates which layer
+provides interception of window-breaching writes: removing the soft
+batch-window interlock lets six attack writes execute (all journaled), while
+the hard engineering range produces zero false blocks in every arm. A
+closed-loop case study on a simulator-backed OPC UA line (real protocol
+stacks, simulated process physics) shows an LLM agent team (running a
+9B-class open model through a standard harness) moving melt pressure
+from 16.1 to 15.6\,MPa with two human approvals, an
+agent-self-calibrated process gain, and an independent physical recheck. An
+adversarial episode with the same weak model class ends with the platform
+canceling the task after recording twelve tool-surface violations and nine
+unapproved harness calls, with zero unapproved writes. Finally, the open
+implementation passes 913 of 915 unit tests and reproduces a frozen
+benchmark baseline bit-exactly across twelve days.
+
+The contributions are:
+\begin{enumerate}
+\item \textbf{Configuration-driven binding model.} A configuration model
+that binds agent authority to production context (lines, products,
+recipes, runs, and nodes) and injects derived semantic context into agent
+prompts, so that write scope is a configuration fact rather than a prompt
+convention (Section~\ref{sec:arch-binding}).
+\item \textbf{Layer-attributable governed write path.} A write path that
+admits setpoint writes through a four-layer interval, bound human approval
+with tuple recheck, and receipt-graded verification, and that records every
+admission decision (execution or rejection) with the deciding layer
+identified (Section~\ref{sec:arch-write}).
+\item \textbf{Multi-level evaluation with mechanism attribution.} An
+evaluation combining device-level protocol integration, a four-arm ablation
+that attributes interception to a specific layer with zero false blocks, a
+real LLM-agent closed-loop case study, a model-driven optimization tier, and
+an adversarial episode (Section~\ref{sec:eval}).
+\item \textbf{Deployable open implementation.} A single-runtime
+implementation distributed as an installable package, with five industrial
+connectivity protocols, fourteen agent harness adapters, 913 of 915 unit
+tests passing, and bit-exact frozen-baseline reproduction
+(Section~\ref{sec:impl}, Section~\ref{sec:eval-quality}).
+\end{enumerate}
+
+The remainder of this paper is organized as follows.
+Section~\ref{sec:related} reviews LLM agents in industrial systems and
+governance for machine-originated actions. Section~\ref{sec:problem} states
+the failure model and requirements. Section~\ref{sec:arch} presents the
+architecture and the governed write path. Section~\ref{sec:impl} describes
+the implementation and deployment. Section~\ref{sec:eval} reports the
+evaluation. Section~\ref{sec:discussion} discusses implications, limitations,
+and threats to validity, and Section~\ref{sec:conclusion} concludes.

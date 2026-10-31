@@ -5,11 +5,12 @@ and raster DPI for every figure included by the manuscript.
 The general audit (tools/audit.py, gate F8) only checks the vector source
 type floor (5 pt).  This gate applies the manuscript's own targets:
 
- Fig. 1 agent-control path >= 8.0 pt (single-column diagram)
+ Fig. 1 agent-control path >= 9.0 pt (single-column diagram)
  Fig. 2 architecture       >= 9.0 pt (full-width diagram)
  Fig. 3 runtime             >= 9.0 pt
- Fig. 4 admission/HITL      >= 8.0 pt
- Fig. 6 four-scenario optimization trajectories >= 9.0 pt (full-width four-panel figure)
+ Fig. 5 admission/HITL      >= 9.0 pt (full-width mechanism diagram)
+ Fig. 6 objective ratios    >= 9.0 pt (single-column scientific plot)
+ Fig. 7 BOPET task trace    >= 9.0 pt (single-column scientific plot)
 
 Rasters, if any, must be >= 300 dpi at their placed width.  The manuscript
 currently includes only PDFs; the raster branch is kept so a future PNG
@@ -25,12 +26,12 @@ ROOT = Path(__file__).resolve().parent.parent
 SECTIONS = sorted((ROOT / "sections").glob("*.tex")) + [ROOT / "main.tex"]
 
 TARGETS = {
-    "fig-agent-control.pdf": (8.0, 180.0),
-    "fig-architecture-2026-9pt.pdf": (9.0, 260.0),
-    "fig-runtime-2026-9pt.pdf": (9.0, 260.0),
-    "fig-admission-hitl-2026.pdf": (8.0, 185.0),
-    "fig-missions-controls.pdf": (9.0, 260.0),
-    "fig-missions-origin.pdf": (8.0, 290.0),
+    "fig1-nature-A.pdf": (9.0, 310.0, "Arial"),
+    "fig-architecture-2026-9pt.pdf": (9.0, 260.0, "Arial"),
+    "fig-runtime-2026-9pt.pdf": (9.0, 260.0, "Arial"),
+    "fig5-nature-A.pdf": (9.0, 220.0, "Arial"),
+    "fig-objective-ratios-current-run.pdf": (9.0, 180.0, "Arial"),
+    "fig-bopet-integration-trace.pdf": (9.0, 180.0, "Arial"),
 }
 
 # Placed width for raster DPI accounting (full-width figures use 182 mm).
@@ -62,7 +63,7 @@ def main() -> int:
     for name in unknown:
         failures.append(f"{name}: no per-figure target registered")
 
-    for name, (min_pt, max_h) in TARGETS.items():
+    for name, (min_pt, max_h, expected_font) in TARGETS.items():
         if name not in included:
             continue
         path = ROOT / "resources" / name
@@ -85,8 +86,8 @@ def main() -> int:
         text = "".join(s["text"] for s in spans)
         if min(sizes) < min_pt - 0.01:
             failures.append(f"{name}: min type {min(sizes)} pt < {min_pt} pt")
-        if any("Arial" not in f for f in fonts):
-            failures.append(f"{name}: non-Arial font(s) {fonts}")
+        if any(expected_font not in f for f in fonts):
+            failures.append(f"{name}: expected {expected_font} font(s), found {fonts}")
         if any("\u4e00" <= ch <= "\u9fff" for ch in text):
             failures.append(f"{name}: CJK text present")
         if page.rect.height > max_h + 0.1:

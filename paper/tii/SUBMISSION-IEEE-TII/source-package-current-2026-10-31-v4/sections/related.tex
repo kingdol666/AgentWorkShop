@@ -1,0 +1,121 @@
+\section{Related Work}
+\label{sec:related}
+Table~\ref{tab:nearest} summarizes selected studies that connect agents or
+software services to industrial equipment, production data, or process
+operations. The studies locate the integration problem addressed here; they
+are not matched performance baselines.
+
+\subsection{Industrial Agents and Plant Integration}
+Industrial-agent studies span process supervision, control generation, and
+equipment-facing assistance. Large language model (LLM) frameworks address
+end-to-end automation and industrial cyber-physical-system control
+\cite{xia2025control,huang2026made}; related work generates programmable
+logic controller (PLC) code or
+combines human guidance with control
+\cite{liu2026agents4plc,wu2025instructmpc}. Other studies examine resource
+capabilities, shop-floor coordination, and digital-twin fault handling
+\cite{lim2025llmenabled,zhao2026shopfloor,gill2025llmdt}, as well as
+natural-language machine access and robotic-line control
+\cite{hofmann2025nlc,waseem2026pretrained}. Biskupovic et al. are especially
+close in using agents to supervise industrial systems: their agents select
+services from a component library using performance and computational-load
+metrics, monitor online performance, and reconfigure service selection when
+performance degrades \cite{biskupovic2025supervision}. Taken together, this
+strand studies agent behavior at the level of control, service choice, or
+equipment interaction; the question here is how those agents connect to
+scene-specific signals and governed operations.
+
+Xia et al. connect cognitive, digital-twin, and physical-automation layers and
+organize twin information as state snapshots, event messages, and plan
+sequences \cite{xia2025architecture}. Other nearby designs expose factory-module
+operations through the Model Context Protocol (MCP) with state-based tool
+filtering, constrain manufacturing plans, or compose semantic recipes from
+OPC Unified Architecture (OPC UA) skills
+\cite{koehle2026llmdriven,silva2025mcpmanufacturing,koehle2025semanticrecipes}.
+Several recent systems also combine agent execution with approval, industrial
+data, or audit records. Graul et al. ground proposals in the Asset
+Administration Shell (AAS) and route approved actions through OPC UA Methods,
+with signed approvals and audit logging \cite{graul2026aas}. Schall separates
+advisory language-model agents from process and instrumentation diagram
+(P\&ID)-grounded verification and execution, and evaluates structural checks
+across five simulated process scenarios \cite{schall2026safe}; its context
+includes supervisory control and data acquisition (SCADA) and standard
+operating procedure (SOP) information. Lin and Chen build a governed digital
+thread across sensors, the manufacturing execution system (MES), and enterprise
+resource planning (ERP) for closed-loop monitoring and control on real
+manufacturing records \cite{lin2026agentic}. These systems address
+complementary parts of industrial-agent deployment, including process
+reasoning, service adaptation, asset grounding, action validation, and
+evidence organization. This paper addresses a related but distinct integration
+boundary: how to connect replaceable agent harnesses and task roles to
+different configured production scenes while preserving
+line--product--recipe--run context, semantic signal mappings, and a governed
+parameter-write path. Whereas Biskupovic et al. study agent-based service
+selection and reconfiguration, this architecture centers on scene configuration
+and a shared operation boundary that resolves configured device nodes and
+retains command receipts separately from process observations. The contribution
+is an integration architecture and implementation, not a new process-control
+law. Table~\ref{tab:nearest} compares reported mechanisms and evaluation
+settings only; it does not rank features or performance.
+\begin{table*}[!t]
+\centering
+\caption{Reported operation mechanisms and evaluations in selected
+plant-facing studies. Evaluation settings and outcomes are source-specific;
+this table does not compare performance across studies.}
+\label{tab:nearest}
+\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{1.8cm}>{\raggedright\arraybackslash}p{7.0cm}>{\raggedright\arraybackslash}X@{}}
+\toprule
+System & Reported operation or integration mechanism & Reported evaluation \\
+\midrule
+Xia et al. \cite{xia2025architecture} & Cognitive, twin, and physical layers; twin snapshots, event messages, and plan sequences & Robotic automation and process-simulation cases \\
+Biskupovic et al. \cite{biskupovic2025supervision} & Agent-based selection and online reselection of services using performance and computational-load metrics & Reported adaptability and performance improvement in service-oriented industrial cyber-physical systems \\
+K{\"o}hle et al. \cite{koehle2026llmdriven} & Injected live state and state-based filtering; MCP-to-OPC UA operations and Message Queuing Telemetry Transport (MQTT) coordination & Nine simulated production challenges \\
+Vieira da Silva et al. \cite{silva2025mcpmanufacturing} & Constrained multi-step plans over MCP manufacturing functions & Laboratory multi-step process \\
+K{\"o}hle et al. \cite{koehle2025semanticrecipes} & Semantic recipes composed from OPC UA skills; virtual commissioning & Unity assembly-workstation proof of concept \\
+Graul et al. \cite{graul2026aas} & AAS-grounded proposals, signed human approval, PLC-validated OPC UA Methods, and immutable audit log & Two laboratory PoCs; single scripted runs \\
+Lin and Chen \cite{lin2026agentic} & Governed sensor--MES--ERP digital thread with SOP-, risk-, and capability-aware action gating & 25,275 real records; operational metrics \\
+Schall \cite{schall2026safe} & P\&ID-, SCADA-, and SOP-grounded proposal verification with gated execution & Five simulated scenarios; 43 proposals and 50 LLM runs \\
+\midrule
+This work & Common task-operation interface with registered harness adapters; scene-bound context and acquisition/write-node mappings; bounded named operations; separate command and observation records & One deterministic integrated simulator run; distinct protocol and guard checks, fixed-seed objective cases, and a scripted BOPET integration trace \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+Industrial-informatics architectures offer complementary design precedents.
+Gehrmann and Gunnarsson define trust boundaries and synchronization
+requirements for digital-twin-based industrial control and evaluate a
+protected-update proof of concept
+\cite{gehrmann2020dtiacs}. Mahmood et al. organize special-purpose industrial
+IoT functions around network requirements, while Sengupta et al. distribute
+security services across fog and device layers and report simulation and
+testbed evidence \cite{mahmood2023functional,sengupta2021securefog}. These
+works address communication, security, and functional decomposition. The
+present system focuses on a different interface: binding scene-specific
+context and device mappings to task-level operations while retaining
+execution-time checks and separate command and process records. Its operation
+checks complement safety-aware decision support
+\cite{jiang2026agentic} and do not replace configured plant protection.
+
+\subsection{Production Context, Agent Interfaces, and Automation}
+Industrial integration also depends on abstractions that are not specific to
+agent architectures. The Model Context Protocol (MCP) specifies interoperable
+tool discovery and call mechanisms \cite{mcp2024}. The platform dispatcher's
+operation-level scope, policy, grant, and binding checks are distinct from MCP
+transport authorization. In parallel,
+ISA-88 and ISA-95 describe recipes and production operations
+\cite{isa88_2010,isa95_2025}. Run-to-run methods connect process observations
+to successive production runs \cite{moyne2000r2r}. Human--automation research
+also formalizes the allocation of information acquisition, analysis, decisions,
+and actions between people and automation \cite{parasuraman2000model}. At the
+agent level, AgentSpec and CaMeL address tool behavior and capability-based
+information flow \cite{wang2025agentspec,debenedetti2025camel}. These
+standards and concepts inform the design's treatment of production context,
+tool interaction, human allocation, and information-flow boundaries; their
+mention does not imply implementation of every listed standard or safety
+mechanism. Within this selected literature, these concerns are treated through
+separate interfaces and validation layers; how to bind scene context and
+heterogeneous I/O to a shared task-operation interface and write-governance
+path remains under-specified. This paper addresses that integration question,
+and the evaluation tests selected links in a deterministic simulator run.

@@ -1,79 +1,62 @@
 \section{Discussion}
 \label{sec:discussion}
 \subsection{Interpretation}
-Protocol connectivity and the onboarding replay test different parts of device
-integration: communication with configured simulator endpoints and access to
-declared acquisition and control nodes. They do not show that arbitrary
-equipment can be integrated without adaptation. The entry-path checks document
-which records were retained for each tested call. Because the calls used
-separate environments and no handler-level trace was retained, they cannot
-establish route equivalence or confirm that both reached the same handler. In
-the approval-context test, stale product and run identities reached mock writes
-when tuple comparison was removed and were rejected when it was enabled. This
-isolates the comparison's contribution within that setup.
+In the integrated run, both scene configurations used the shared operation
+boundary while retaining their own signal and route mappings. Five protocol
+endpoints returned acquisition samples, and the tested negative probes were
+rejected in both scenes. The result supports integration for these
+configurations; it does not show that an arbitrary plant can be connected
+without commissioning or route-specific setup.
 
-The six registered-harness tasks and four direct-node missions answer different
-questions. The harness tasks link approvals and receipts to single post-trial
-probes; the missions record one process trajectory per scenario. They use
-separate setups, including different film target bands and different annealing
-measures, so mission endpoints do not benchmark the harness probes. Across the
-missions, requested actions precede measured responses, including a reverted
-annealing candidate. In wastewater treatment, the structured aeration sequence
-and final mission summary also refer to different observations. These records
-describe trajectories, not isolated effects of individual commands.
+The deterministic OpenCode task route completed three-step sequences on four
+writable cast-film routes with the model loop disabled. Modbus TCP and OPC UA
+returned actuator readbacks; MQTT and HTTP recorded accepted operations and
+DAQ checks without readback. The second scene was exercised for acquisition
+and guard checks only, so this run does not establish harness portability or
+a cross-scene write-response chain.
 
-The missions also illustrate the role of scene-specific configuration.
-Part weight, film thickness, hardness, and dissolved oxygen have different
-units, target bands, and available actuators. The operation--response
-structure accommodates these differences, but the trajectories do not
-identify which architectural component caused an outcome. Related approaches
-likewise connect industrial operations to semantic skills, equipment context,
-or process validation \cite{koehle2025semanticrecipes,graul2026aas,schall2026safe}.
-The present study complements those designs by describing a shared operation
-path and reporting responses in four simulated scenes.
+The objective cases and BOPET task are separate simulator activities from the
+same run. The former were compared with an offline simulator reference; the
+latter ended inside its configured thickness band, while its associated
+parameter-change record remained open and unjudged. Neither activity provides
+a matched controller comparison or shows that a write caused a process change.
+
+Prior work grounds industrial actions in digital-twin state, asset models,
+process diagrams, or supervisory checks
+\cite{gehrmann2020dtiacs,graul2026aas,schall2026safe}. This paper focuses on
+the interface between task or harness execution, scene-specific signal and
+driver mappings, and the shared device-operation path. The run tested selected
+links across that interface. It did not measure whether configuration reduces
+integration time, maintenance effort, or operational risk; those questions
+require matched deployments and workload measurements.
 
 \subsection{Scope and Limitations}
-The optimization evidence comprises one deterministic simulated trajectory per scene,
-without independent replicates or a matched alternative controller. It cannot
-establish statistical repeatability, superiority to another platform, or the
-effect of individual controls. The missions use direct-node operations and
-do not test the full range of entry routes or language-model decisions
-described by the architecture. Final tensile-strength and surface-defect
-readings for annealing and the complete final wastewater effluent vector are
-missing, limiting conclusions about secondary constraints. The process model
-and simulator configuration also limit transfer to physical production.
+The evidence comes from one deterministic simulator run, with the platform
+and simulators already running. There was no active language-model loop,
+cold-start commissioning, matched comparison of task and direct calls,
+multi-harness test, approval ablation, controller baseline, or physical
+equipment. The three seeds are cases within that run, not independent system
+repetitions; seed 43 stopped before any update, so they do not establish
+convergence across initial conditions.
 
-The mission records show automated judgments, not human pre-approval. The
-approval-context test uses simulated decisions and mock drivers; it tests a
-software condition, not operator performance or the effectiveness of human
-review \cite{parasuramanmanzey2010complacency,bainbridge1983ironies}.
-Software operation restrictions are not a complete security or safety
-assessment \cite{greshake2023injection,liu2024pinjection,iec62443-3-3};
-independent plant protection remains necessary \cite{iec61511}. Future work
-should repeat missions across initial conditions, preserve all terminal
-quality measurements, compare matched controllers and entry paths, and
-evaluate the system with suitable physical equipment and operator oversight.
+The negative probes exercise recorded software guards only. They do not
+measure approval effectiveness or establish plant safety, and the missing
+denominator of legal-write attempts prevents an estimate of false blocks.
+Supplementary File~S6 retains latency summaries as diagnostics because the run
+did not preserve event-level timings. Its delivery manifest was created after
+execution and does not establish that the runtime configuration was frozen.
 
-This modular separation is a property of the implemented software structure.
-The current evidence does not measure whether it reduces engineering effort,
-operating cost, or reliability; those outcomes require matched deployments.
+To test effectiveness, a follow-up should repeat the run with a frozen
+configuration, record complete request-to-readback traces, and compare matched
+controller and approval-policy conditions. Hardware-in-the-loop evaluation
+can then test whether the software results transfer to equipment.
 
 \section{Conclusion}
 \label{sec:conclusion}
-The platform links industrial task context to scene-specific device operations
-through shared dispatch, configured drivers, and separate command and
-observation records. The evaluation covered simulator protocol and node access,
-registered-harness tasks, mock-driver approval checks, and four direct-node
-missions. The four mission endpoints were within their primary target bands.
-Separately, all six single probes after harness tasks remained below their
-bands despite verified receipts. These simulator and mock-driver results do not
-establish repeatability, comparative benefit, human-review effectiveness, or
-performance on a physical plant.
-
-\noindent\textbf{Data Availability:} The historical Supplementary File~S1
-contains route and integration-check records and the onboarding replay log;
-it does not contain the current four-mission traces. A separate supplementary
-evidence bundle contains pseudonymized mission logs and selected
-registered-harness records. The manuscript source, vector figures, and
-figure-source data accompany the submission package. No physical-plant data
-are included.
+We presented a configuration-driven architecture that connects task-level
+industrial agents to scene context, signal mappings, and device routes through
+a shared governed interface. In one deterministic simulator run, configured
+acquisition and write-guard paths operated in two scenes; 76 of 77 workflow
+checks passed, with one warning. These results document the integration in
+simulation; portability across harnesses and control effectiveness remain open
+questions.

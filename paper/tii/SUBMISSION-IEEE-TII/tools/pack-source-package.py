@@ -1,11 +1,7 @@
-"""Assemble the self-contained IEEE TII manuscript source package.
+"""Assemble a clean source package for the current IEEE TII manuscript.
 
-Copies the exact dependency set verified against the LaTeX source graph
-(sections, bibliography, figure PDFs/SVGs, figure source data and generator
-scripts, figure audit tool) plus the compiled reference PDF, and vendors
-IEEEtran.cls so the folder compiles on a plain TeX installation or Overleaf.
-
-Usage:  python tools/pack-source-package.py [output-dir]
+Only the current paper sources, referenced figures, and Supplementary File S6
+are included. Historical experiment assets are deliberately excluded.
 """
 from __future__ import annotations
 
@@ -15,112 +11,100 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "source-package-2026-10-26"
+OUT = Path(sys.argv[1]) if len(sys.argv) > 1 else ROOT / "source-package-current-2026-10-31"
 
 SECTIONS = [
     "introduction", "related", "system", "modules",
     "mechanisms", "evaluation", "discussion",
 ]
 FIGURES = [
-    "fig-agent-control.pdf", "fig-agent-control.svg", "fig-agent-control.png",
-    "fig-architecture-2026-9pt.pdf", "fig-architecture-2026-9pt.svg",
-    "fig-runtime-2026-9pt.pdf", "fig-runtime-2026-9pt.svg",
-    "fig-admission-hitl-2026.pdf", "fig-admission-hitl-2026.svg",
-    "fig-missions-origin.pdf", "fig-missions-origin.svg",
-    "fig-missions-origin.png",
+    "fig1-nature-A.pdf",
+    "fig-architecture-2026-9pt.pdf",
+    "fig-runtime-2026-9pt.pdf",
+    "fig5-nature-A.pdf",
+    "fig-objective-ratios-current-run.pdf",
+    "fig-bopet-integration-trace.pdf",
 ]
-SOURCE_DATA = [
-    "four-scenario-2026-09-28.json",
-    "four-scenario-2026-09-28.csv",
-    "four-scenario-2026-09-28-manifest.json",
-    "current-route-observations.csv",
-    "current-route-observations.json",
-]
-FIGURE_TOOLS = ["make-system-2026.py", "make-agent-control-figure.py",
-                "make-admission-figure.py", "plot-missions-origin.py"]
+COPY_PLAN: list[tuple[str, str]] = (
+    [
+        ("main.tex", "main.tex"),
+        ("main.pdf", "main.pdf"),
+        ("main.bbl", "main.bbl"),
+        ("REPRODUCIBILITY.md", "REPRODUCIBILITY.md"),
+        ("Supplementary-File-S6.tex", "Supplementary-File-S6.tex"),
+        ("Supplementary-File-S6.pdf", "Supplementary-File-S6.pdf"),
+        ("Supplementary-File-S6-Evidence.zip", "Supplementary-File-S6-Evidence.zip"),
+    ]
+    + [(f"sections/{name}.tex", f"sections/{name}.tex") for name in SECTIONS]
+    + [("resources/refs.bib", "resources/refs.bib")]
+    + [(f"resources/{name}", f"resources/{name}") for name in FIGURES]
+    + [
+        ("figures/build_current_run_figures.py", "figures/build_current_run_figures.py"),
+        ("resources/current-run-data/p6-seeds.csv", "resources/current-run-data/p6-seeds.csv"),
+        ("resources/current-run-data/bopet-trace.csv", "resources/current-run-data/bopet-trace.csv"),
+        ("resources/current-run-data/README.md", "resources/current-run-data/README.md"),
+    ]
+)
 
 README = """\
-# IEEE TII manuscript — self-contained source package
+# IEEE TII manuscript — current integrated-run package
 
-This package contains the current anonymous review manuscript and its source
-dependencies. The author block and PDF metadata are empty; acknowledgments are
-held for the journal-approved channel.
+This clean package contains the current anonymous manuscript, the figures it
+references, and Supplementary File S6 for the single integrated simulator run.
+Older run data and inactive figure assets are excluded.
 
 ## Compile
 
-    pdflatex main && bibtex main && pdflatex main && pdflatex main
+    latexmk -pdf main.tex
 
-or simply `latexmk -pdf main.tex`. `IEEEtran.cls` is vendored so the folder
-needs no extra class installation; a system IEEEtran is also fine. `main.bbl`
-is included, so even a single `pdflatex main` pass renders the references.
-
-Expected result: a 10-page, US Letter, two-column paper. The bibliography is
-included in `main.bbl` for a single-pass reference build.
+`IEEEtran.cls` is vendored. The included PDFs are the verified manuscript and
+supplementary build; `main.bbl` is provided for a single-pass reference build.
 
 ## Contents
 
-- `main.tex` — manuscript entry point
-- `sections/` — Sections I–VII sources (`modules.tex` inputs `mechanisms.tex`)
-- `resources/refs.bib` — bibliography (includes the IEEEtranBSTCTL record)
-- `resources/fig-*.pdf|svg` — the five vector figures used by the manuscript:
-  the introduction control path, architecture, task flow, admission/HITL, and
-  four-scenario control sequences
-- `resources/figure-source-data/` — CSV/JSON data behind the figures
-- `figures/*.py` — figure generators: `make-agent-control-figure.py`,
-  `make-system-2026.py`, `make-admission-figure.py`, and
-  `plot-missions-origin.py`; the scenario generator reads the included
-  four-scenario source data
-- `tools/audit-figures.py` — figure QA gate (min font size, Arial-only,
-  text-width budget, raster check)
-- `main.pdf`, `main.bbl` — compiled reference output
+- `main.tex`, `sections/`, `resources/refs.bib` — manuscript source
+- `resources/*.pdf` — the six figures referenced in the paper
+- `figures/build_current_run_figures.py` and `resources/current-run-data/` —
+  source data and script for regenerating the two current-run result figures
+- `Supplementary-File-S6.*` — the current-run supplement and selected evidence
+- `REPRODUCIBILITY.md` — run conditions and evidence limits
 
-## Notes
-
-- Figures and tables are content-frozen for this manuscript; regenerate only
-  via the included scripts if data changes.
-- The supplementary evidence unit (Supplementary File S1) is submitted
-  separately and is not part of this source package.
+The evidence bundle contains selected records from the latest integrated run;
+it is not a runtime image and includes no physical-plant data.
 """
 
-COPY_PLAN: list[tuple[str, str]] = (
-    [("main.tex", "main.tex"),
-     ("main.pdf", "main.pdf"),
-     ("main.bbl", "main.bbl")]
-    + [(f"sections/{s}.tex", f"sections/{s}.tex") for s in SECTIONS]
-    + [("resources/refs.bib", "resources/refs.bib")]
-    + [(f"resources/{f}", f"resources/{f}") for f in FIGURES]
-    + [(f"resources/figure-source-data/{f}",
-        f"resources/figure-source-data/{f}") for f in SOURCE_DATA]
-    + [(f"figures/{f}", f"figures/{f}") for f in FIGURE_TOOLS]
-    + [("tools/audit-figures.py", "tools/audit-figures.py")]
-)
 
-
-def vendor_ieeetran(dest: Path) -> None:
+def vendor_ieeetran(destination: Path) -> None:
     try:
-        cls = subprocess.run(["kpsewhich", "IEEEtran.cls"], check=True,
-                             capture_output=True, text=True).stdout.strip()
+        cls_path = subprocess.run(
+            ["kpsewhich", "IEEEtran.cls"], check=True,
+            capture_output=True, text=True,
+        ).stdout.strip()
     except (OSError, subprocess.CalledProcessError) as exc:
-        raise SystemExit("Cannot locate IEEEtran.cls via kpsewhich; "
-                         "install TeX Live or copy the class manually.") from exc
-    shutil.copyfile(cls, dest)
+        raise SystemExit("Cannot locate IEEEtran.cls via kpsewhich.") from exc
+    if not cls_path:
+        raise SystemExit("kpsewhich did not return IEEEtran.cls.")
+    shutil.copyfile(cls_path, destination)
 
 
 def main() -> None:
-    missing = [src for src, _ in COPY_PLAN if not (ROOT / src).is_file()]
+    missing = [source for source, _ in COPY_PLAN if not (ROOT / source).is_file()]
     if missing:
-        raise SystemExit("Manifest inputs missing: " + ", ".join(missing))
+        raise SystemExit("Missing current-package inputs: " + ", ".join(missing))
     if OUT.exists():
-        shutil.rmtree(OUT)
-    for src, rel in COPY_PLAN:
-        target = OUT / rel
+        raise SystemExit(f"Output directory already exists; choose a new path: {OUT}")
+
+    for source, relative in COPY_PLAN:
+        target = OUT / relative
         target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(ROOT / src, target)
+        shutil.copyfile(ROOT / source, target)
     vendor_ieeetran(OUT / "IEEEtran.cls")
     (OUT / "README.md").write_text(README, encoding="utf-8")
+    files = [path for path in OUT.rglob("*") if path.is_file()]
+    total_bytes = sum(path.stat().st_size for path in files)
     print(f"package: {OUT}")
-    print(f"files: {len(COPY_PLAN) + 2}")  # + IEEEtran.cls + README.md
-    print("size: %.1f MB" % (sum(f.stat().st_size for f in OUT.rglob('*') if f.is_file()) / 1e6))
+    print(f"files: {len(files)}")
+    print(f"size: {total_bytes} bytes")
 
 
 if __name__ == "__main__":

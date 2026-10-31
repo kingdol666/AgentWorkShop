@@ -32,7 +32,7 @@
 \usepackage{cite}
 \usepackage[colorlinks=true,linkcolor=black,citecolor=black,urlcolor=black]{hyperref}
 \hypersetup{bookmarksnumbered=true,
-  pdftitle={A Modular Task-to-Device Integration Framework for Industrial Agents},
+  pdftitle={Configuration-Driven Integration of Industrial Agents Across Production Scenes},
   pdfauthor={},
   pdfsubject={IEEE Transactions on Industrial Informatics},
   pdfkeywords={industrial agents, industrial communication, industrial informatics, production systems, semantic data integration}}
@@ -57,45 +57,46 @@
 \setlength{\belowcaptionskip}{2pt plus 1pt minus 1pt}
 
 \newcommand{\system}{the platform}
-% Review copy is anonymous. The AI-use statement is maintained in
-% AI-DISCLOSURE.md for the journal-approved disclosure channel and is not
-% compiled into this manuscript.
+% This review copy includes the AI-assisted writing disclosure in the
+% acknowledgment; author identities and funding details remain withheld.
 \newif\ifblindreview
 \blindreviewtrue
 
 \begin{document}
 \bstctlcite{IEEEbstctl}
 
-\title{A Modular Task-to-Device Integration Framework for Industrial Agents}
+\title{Configuration-Driven Integration of Industrial Agents Across Production Scenes}
 
 \author{}
-\markboth{IEEE Transactions on Industrial Informatics, Submitted Manuscript}{Task-to-Device Integration}
+\markboth{IEEE Transactions on Industrial Informatics, Submitted Manuscript}{Industrial Agent Integration}
 
 \maketitle
 
 \begin{abstract}
-Industrial agents must turn task goals into device operations across changing
-production contexts and heterogeneous interfaces, while preserving evidence of
-both commands and process responses. The platform connects registered agent
-harnesses and direct-operation calls to a shared dispatcher. Scene mappings
-link semantic controls to configured drivers; command receipts remain separate
-from later process observations. When approval is required, the handler checks
-that the line, product, recipe, and active run still match the approved
-context. In simulation, one registered harness completed six sequential tasks
-across two scenes, each with three admitted candidate settings, synthetic
-approval, a verified trial receipt, and a run-tagged sample. All six single
-post-trial probes fell below their target bands. A mock-driver test rejected
-injected stale contexts before writes. Four simulated deterministic
-direct-node missions reported final primary values within their target bands
-without model-selected
-setpoints. These results cover selected configurations; repeatability,
-comparative optimization performance, human-review effectiveness, and
-physical-plant performance remain unverified.
+Industrial production scenes expose different process contexts, signal
+meanings, and communication protocols, yet task-level agents need a consistent
+way to read measurements and issue bounded commands. This paper presents a
+configuration-driven architecture that maps line--product--recipe--run
+context, acquisition and write-control nodes, protocol drivers, and named
+operations. Harness adapters connect agent turns to those operations; a
+shared dispatcher checks authority, while route handlers apply scene-specific
+limits and approval requirements. Command receipts remain separate from
+later process observations. We assessed the configured paths in one integrated
+run using deterministic simulators. Five endpoints in the primary cast-film
+scene returned 54 samples, and
+the write-admission checks rejected all 24 negative probes across four
+writable paths. A second scene returned 51 samples and rejected all nine
+probes across three writable paths. The 77 workflow checks comprised 76
+passes, one warning, and no failures. Three fixed-seed objective cases ended
+at 96.3\%--98.8\% of the simulator's offline reference; one case stopped
+without an update. The run documents the configured mappings and guarded
+operations in simulation. It used no active language-model loop or physical
+equipment and did not compare agent harnesses or control baselines.
 \end{abstract}
 
 \begin{IEEEkeywords}
 Industrial agents, industrial communication, industrial informatics,
-production systems, semantic data integration.
+production systems, system integration.
 \end{IEEEkeywords}
 
 \IEEEpeerreviewmaketitle
@@ -106,6 +107,25 @@ production systems, semantic data integration.
 \input{sections/modules}
 \input{sections/evaluation}
 \input{sections/discussion}
+
+\raggedbottom
+\section*{Acknowledgment}
+The authors used AI-assisted tools for language editing and take responsibility
+for the manuscript. Funding and author identities are withheld in this review
+copy.
+
+\section*{Author Contributions}
+Individual CRediT contributions are declared in the submission system and
+withheld in this review copy.
+
+\section*{Declaration of Competing Interest}
+The authors declare no known competing financial interests or personal
+relationships that could have appeared to influence this work.
+
+\section*{Data Availability}
+Supplementary File~S6 contains selected run records, source data, and figure
+inputs. Its checksums are delivery-time hashes, not runtime signatures; it
+contains no physical-plant data.
 
 \balance
 \bibliographystyle{IEEEtran}

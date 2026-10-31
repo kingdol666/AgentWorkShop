@@ -1,0 +1,122 @@
+\documentclass[journal]{IEEEtran}
+% IEEE Transactions on Industrial Informatics -- anonymous regular-paper draft
+% Compile: latexmk -pdf main.tex
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algpseudocode}
+% Local XeTeX/Tectonic builds: route IEEEtran's ptm (Times) family requests to
+% the legacy Times Type1 faces so metrics match the pdfLaTeX reference build;
+% the latexmk -pdf (pdfLaTeX) path is unaffected.
+\usepackage{iftex}
+\ifxetex
+  \DeclareFontFamily{TU}{ptm}{}
+  \DeclareFontShape{TU}{ptm}{m}{n}{<->ptmr8t}{}
+  \DeclareFontShape{TU}{ptm}{b}{n}{<->ptmb8t}{}
+  \DeclareFontShape{TU}{ptm}{m}{it}{<->ptmri8t}{}
+  \DeclareFontShape{TU}{ptm}{b}{it}{<->ptmbi8t}{}
+  \DeclareFontShape{TU}{ptm}{m}{sl}{<->ptmro8t}{}
+  \DeclareFontShape{TU}{ptm}{m}{sc}{<->ptmr8t}{}
+\fi
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage[table]{xcolor}
+\usepackage{stfloats}
+\usepackage{placeins}
+\usepackage{url}
+\usepackage{etoolbox}
+\usepackage{balance}
+\urlstyle{same}
+% Cross-references and citations. The cite package renders IEEE-style citation
+% groups ([14]--[16], [20], [21]) with hyperref support.
+\usepackage{cite}
+\usepackage[colorlinks=true,linkcolor=black,citecolor=black,urlcolor=black]{hyperref}
+\hypersetup{bookmarksnumbered=true,
+  pdftitle={Configuration-Driven Integration of Industrial Agents Across Production Scenes},
+  pdfauthor={},
+  pdfsubject={IEEE Transactions on Industrial Informatics},
+  pdfkeywords={industrial agents, industrial communication, industrial informatics, production systems, semantic data integration}}
+
+% Float placement only; IEEEtran margins and body type remain unchanged.
+\setcounter{topnumber}{4}
+\setcounter{bottomnumber}{3}
+\setcounter{totalnumber}{7}
+\setcounter{dbltopnumber}{2}
+\renewcommand{\topfraction}{0.95}
+\renewcommand{\bottomfraction}{0.80}
+\renewcommand{\textfraction}{0.03}
+\renewcommand{\floatpagefraction}{0.72}
+\renewcommand{\dbltopfraction}{0.95}
+\renewcommand{\dblfloatpagefraction}{0.72}
+
+% Tight but conventional float separation; body type and margins are unchanged.
+\setlength{\textfloatsep}{8pt plus 2pt minus 3pt}
+\setlength{\dbltextfloatsep}{8pt plus 2pt minus 3pt}
+\setlength{\intextsep}{7pt plus 2pt minus 3pt}
+\setlength{\abovecaptionskip}{3pt plus 1pt minus 1pt}
+\setlength{\belowcaptionskip}{2pt plus 1pt minus 1pt}
+
+\newcommand{\system}{the platform}
+% Review copy is anonymous. The AI-use statement is maintained in
+% AI-DISCLOSURE.md for the journal-approved disclosure channel and is not
+% compiled into this manuscript.
+\newif\ifblindreview
+\blindreviewtrue
+
+\begin{document}
+\bstctlcite{IEEEbstctl}
+
+\title{Configuration-Driven Integration of Industrial Agents Across Production Scenes}
+
+\author{}
+\markboth{IEEE Transactions on Industrial Informatics, Submitted Manuscript}{Industrial Agent Integration}
+
+\maketitle
+
+\begin{abstract}
+Industrial production scenes vary in process context, signal semantics, and
+communication protocols, while task-level agents require bounded access to
+equipment operations. A deployment must therefore connect scene-specific
+context and I/O mappings to a common task-operation interface and check each
+write against current authority and configured limits. This paper presents a
+configuration-driven architecture that binds line--product--recipe--run
+context and semantic data-acquisition and write-control nodes to protocol
+drivers and named operations. Harness adapters separate agent-turn execution
+from scene-specific I/O, and a shared dispatcher applies authority and
+route-specific write checks.
+
+We evaluated one integrated deterministic-simulator run. The primary
+cast-film configuration returned 54 acquisition samples, and all 24 negative
+probes across four writable paths were rejected by write-admission checks. A
+second configuration, tested within the same run, returned 51 samples and
+rejected all nine probes across three writable paths. The run passed 76 of 77
+checks, with one warning and no failed checks. Three fixed-seed objective
+cases had end scores at 96.3\%--98.8\% of the simulator's offline reference;
+one case stopped before any update. These results show that selected scene
+mappings, protocol routes, and guards operated together in the tested
+simulator. The language-model loop and physical equipment were not used; the
+results therefore do not establish real-harness interchangeability,
+autonomous-agent performance, comparative control benefit, repeatability, or
+field operation.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Industrial agents, industrial communication, industrial informatics,
+production systems, system integration.
+\end{IEEEkeywords}
+
+\IEEEpeerreviewmaketitle
+
+\input{sections/introduction}
+\input{sections/related}
+\input{sections/system}
+\input{sections/modules}
+\input{sections/evaluation}
+\input{sections/discussion}
+
+\balance
+\bibliographystyle{IEEEtran}
+% Keep IEEEtran's default bibliography size and leading.
+\bibliography{resources/refs}
+
+\end{document}

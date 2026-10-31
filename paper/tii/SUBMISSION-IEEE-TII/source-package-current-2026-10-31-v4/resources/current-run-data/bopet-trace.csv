@@ -1,0 +1,5 @@
+﻿action_index,thickness_um,knob,from,to
+0,28.05,baseline,,
+1,27.98,cast-spd-sp,32,33.7
+2,27.98,fast-roll-sp,118,122.4
+3,24.840000000000003,rail-out-sp,3000,3096

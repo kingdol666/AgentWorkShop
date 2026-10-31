@@ -1,0 +1,134 @@
+\section{Related work}
+\label{sec:related}
+
+\subsection{LLM agents in industrial systems}
+\label{sec:related-agents}
+
+A growing body of work connects LLM agents to production equipment. At the
+execution level, an agent turn interleaves reasoning with tool invocation
+\cite{yao2023react}, and models can be taught to call tools
+\cite{schick2023toolformer}; the governing question is therefore not
+whether an agent can invoke an operation but what bounds that invocation.
+Architectural studies integrate LLMs with digital twins and automation
+systems \cite{xia2025architecture} and with asset administration shells and
+OPC UA information models \cite{graul2026aas}. Control-facing systems use
+LLM agents to operate automation systems \cite{xia2025control}, to explore
+resource capabilities in multi-agent manufacturing
+\cite{lim2025llmenabled}, to drive skill-based manufacturing control
+\cite{koehle2026llmdriven}, and to compose semantic recipes on OPC UA
+skills \cite{koehle2025semanticrecipes}. Shop-floor orchestration systems
+coordinate multi-agent LLM teams for manufacturing tasks
+\cite{zhao2026shopfloor}, and pretrained LLMs have been placed in the loop
+of robot-operated serial production lines \cite{waseem2026pretrained}.
+Process-industry studies use LLM agents with digital twins for fault
+handling \cite{gill2025llmdt} and natural-language machine operation over
+OPC UA \cite{hofmann2025nlc}. Reviews of agentic AI for process monitoring
+and fault diagnosis \cite{jiang2026agentic} and of LLM-enabled digital
+twins \cite{gill2025llmdt} catalog the application space. Closer to control
+theory, InstructMPC embeds human--LLM interaction into context-aware MPC
+\cite{wu2025instructmpc}, and LLM-based architectures have been proposed
+for automated control-code generation in industrial cyber-physical systems
+\cite{huang2026made} and closed-loop PLC code generation with verification
+\cite{liu2026agents4plc}. This journal has hosted platform papers of
+comparable shape, including an open-source compositional digital twin
+framework \cite{opentwins2023} and requirements and design patterns for
+adaptive digital twins \cite{dtpatterns2023}, as well as a controlled
+assessment of an LLM-based digital intelligent assistant in assembly
+manufacturing \cite{llmdia2024}.
+
+Across these systems the LLM occupies one of two positions. In
+\emph{advisory} positions the agent reads state and recommends; a human or a
+conventional controller acts. In \emph{actuating} positions the agent's
+output reaches equipment directly \cite{waseem2026pretrained,
+xia2025control,koehle2026llmdriven,hofmann2025nlc}. The actuating position is
+where governance matters most, and it is the position this paper addresses.
+
+\subsection{Governing machine-originated actions}
+\label{sec:related-gov}
+
+Human-factors research frames the delegation of action to automation as a
+allocation problem across types and levels of human interaction
+\cite{parasuraman2000model}, and warns that human oversight of a
+predominantly automatic system degrades through complacency and bias
+\cite{parasuramanmanzey2010complacency,bainbridge1983ironies}. These
+results motivate designs in which the human decision is exercised against a
+concrete, inspectable proposal rather than a summary. In the agent-safety
+literature, runtime enforcement systems constrain LLM agent behavior with
+user-defined rules \cite{wang2025agentspec}; capability-based architectures
+defeat prompt injection by construction \cite{debenedetti2025camel};
+benchmarks formalize injection attacks and defenses
+\cite{liu2024pinjection,zhan2024injecagent} and dynamic environments
+evaluate attacks and defenses against tool-using agents
+\cite{debenedetti2024agentdojo}, demonstrating that agents that read
+plant-facing content are exposed to manipulated instructions. Industrial
+security standards contribute the zone-and-conduit model
+\cite{iec62443-3-2} and system security requirements
+\cite{iec62443-3-3}, and safety instrumented systems define the
+plant-side final barrier \cite{iec61511}; both assume the information
+system's requests arrive through designed channels, which is exactly the
+assumption an unconstrained agent violates. Architectural work on
+digital-twin-based automation security \cite{gehrmann2020dtiacs}, secure
+fog layers for the industrial IoT \cite{sengupta2021securefog}, and
+functional architectures for special-purpose industrial networks
+\cite{mahmood2023functional} shows that separating concerns across layers
+is an established design idiom for industrial trust boundaries.
+
+On the industrial side, Lin et al.~\cite{lin2026agentic} integrate policy-governed
+agentic AI with multi-source sensor--MES--ERP data for closed-loop
+manufacturing control, and Schall~\cite{schall2026safe} validate LLM proposals
+against P\&ID-derived structure before they reach process control.
+Biskupovic et al.~\cite{biskupovic2025supervision} realize agent-based supervision for
+service-oriented industrial cyber-physical systems. These works establish
+that plant writes need governance. What remains under-specified is the
+audit dimension: the ability to answer, after the fact, \emph{which layer}
+of the path admitted or rejected a specific write, against \emph{which
+configuration revision}, and with \emph{what device-side receipt}. Existing
+descriptions typically report governance as a property of the overall
+pipeline; they do not separate the layers, nor grade the evidence that a
+write actually took effect.
+
+Two honest boundaries on this positioning should be stated. First,
+\emph{the individual mechanisms have industrial precedents}: limit
+checking against engineered ranges, post-write verification, and
+approval workflows with audit trails are established practice in
+process control and regulated industries (cf. electronic-record audit
+trail requirements such as 21 CFR Part 11), and run-to-run control
+already bounded recipe execution decades ago \cite{moyne2000r2r}. The
+contribution claimed here is not any single mechanism but their
+configuration-driven composition into one agent-facing path in which
+every layer's verdict is separately recorded, the deciding layer of a
+rejection is identifiable, receipts are graded by device-side evidence,
+and no bypass exists from the agent surface. Second, \emph{a conservative
+alternative exists}: keeping the LLM strictly read-only and leaving
+writes to conventional DCS limits plus historian audit covers much of
+the same ground when actuating agents are not wanted. The platform's
+value proposition is for deployments that \emph{do} want supervised
+agent-initiated writes, where it makes such writes governed by
+construction rather than by convention. Table~\ref{tab:position}
+positions representative systems along this dimension.
+
+\begin{table}[!t]
+\centering
+\caption{Representative LLM-agent industrial systems and their treatment of
+plant-facing writes (characterizations at citation level, from the cited
+works' stated scope).}
+\label{tab:position}
+\small
+\begin{spacing}{1.0}
+\begin{tabularx}{\columnwidth}{@{}p{0.24\columnwidth}p{0.30\columnwidth}X@{}}
+\toprule
+Study & LLM role & Plant-facing write treatment \\
+\midrule
+Zhao et al.~\cite{zhao2026shopfloor} & Shop-floor multi-agent orchestration & Task-level coordination; not centered on setpoint writes \\
+Xia et al.~\cite{xia2025control} & Operates automation systems & Direct system operation; engineering limits not the focus \\
+K{\"o}hle et al.~\cite{koehle2026llmdriven} & Skill-based control & Skill invocation; skills encapsulate equipment access \\
+Lin et al.~\cite{lin2026agentic} & Policy-governed closed-loop control & Policies govern agent actions in the control loop \\
+Schall~\cite{schall2026safe} & Process-control integration & P\&ID-grounded validation of proposals \\
+Wu et al.~\cite{wu2025instructmpc} & Context provider for MPC & Human--LLM interaction around a conventional controller \\
+Hofmann et al.~\cite{hofmann2025nlc} & Natural-language operation & NL commands mapped to OPC UA operations \\
+\midrule
+This work & Supervisory agent teams & Layer-attributable interlocks, bound approvals, receipt grading, audited ledger \\
+\bottomrule
+\end{tabularx}
+\end{spacing}
+\end{table}

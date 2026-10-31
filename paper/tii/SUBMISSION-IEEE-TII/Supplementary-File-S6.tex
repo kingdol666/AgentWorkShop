@@ -1,0 +1,173 @@
+\documentclass[journal]{IEEEtran}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage[hidelinks]{hyperref}
+\title{Supplementary File S6: Integrated Simulator Run}
+\author{}
+\begin{document}
+\maketitle
+
+\noindent This supplement reports the run described in Section~V. The
+accompanying ZIP contains selected machine-readable records, source tables,
+and figures; it is not a runnable system image.
+
+\section{Run Conditions and Phase Checks}
+The run used a deterministic cast-film simulator and tool adapter. No
+language-model loop or physical equipment was used. The platform and
+simulator were already running, and the run reused a shared data directory.
+Its identifier was \texttt{20261031034253-1dbo}; the command was
+\texttt{node bench/pipeline.mjs --profile integrated --seed 42 --cl-seeds 3}.
+The recorded runtime was Node.js 24.19.0 on Windows x64, and the source
+commit was \texttt{60fa983e}. All measurements refer to that snapshot; they
+do not validate the repository's current HEAD.
+
+All 17 phase gates passed. Of the 77 underlying checks, 76 passed, one raised
+a warning, and none failed. The warning came from the BOPET semantic-card
+check in P10; the phase gate itself passed. Table~\ref{tab:s6-stages} groups
+the checks by pipeline stage.
+
+\begin{table}[!t]
+\centering
+\caption{Grouped check outcomes from the integrated run.}
+\label{tab:s6-stages}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabularx}{\columnwidth}{@{}>{\raggedright\arraybackslash}p{2.65cm}r r r X@{}}
+\toprule
+Pipeline stages & Pass & Warn & Fail & Step purpose\\
+\midrule
+P0--P2 & 11 & 0 & 0 & Bootstrap, model reference, and provisioning\\
+P3, P4, P4m, P4b--P4f & 30 & 0 & 0 & Acquisition, operation, governance, and records\\
+P6--P7 & 7 & 0 & 0 & Seeded objective and multimodal acquisition checks\\
+P8, P8b & 16 & 0 & 0 & Second-scene check and bounded-backstop drill\\
+P9 & 3 & 0 & 0 & Platform subsystem checks\\
+P10 & 9 & 1 & 0 & BOPET line provisioning and scripted task path\\
+\midrule
+Total & 76 & 1 & 0 & 17 phase gates passed\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Acquisition, Write Probes, and Latency}
+The primary cast-film scene used five simulated endpoints: Modbus TCP,
+OPC UA, MQTT, HTTP, and Modbus RTU. Five acquisition nodes returned 54 samples.
+Modbus RTU was an acquisition
+endpoint without a write-control node. Each of the other four protocol paths
+received six negative probes, all of which the configured write-admission
+checks rejected. Each writable path also recorded one accepted legal write.
+The run did not record all legal-write attempts, so it does not support an
+estimate of the false-block rate.
+
+The \texttt{film-line} configuration was checked in the same run across five
+endpoints: Modbus TCP, OPC UA, MQTT, Modbus RTU, and HTTP. They returned 12,
+12, 5, 11, and 11 samples, respectively (51 total). Each of its three
+writable paths recorded one accepted legal write and rejected three negative
+probes (9/9 total). The report recorded no false block or code change. This
+was an in-run configuration check, not an independent deployment or
+repetition, and it does not estimate a general false-block rate.
+
+\begin{table}[!t]
+\centering
+\caption{Endpoint checks for the in-run \texttt{film-line} configuration.}
+\label{tab:s6-second-scene}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabularx}{\columnwidth}{@{}>{\raggedright\arraybackslash}p{1.45cm}r r X@{}}
+\toprule
+Protocol & Samples & Rejected probes & Legal-write check\\
+\midrule
+Modbus TCP & 12 & 3/3 & One accepted\\
+OPC UA & 12 & 3/3 & One accepted\\
+MQTT & 5 & 3/3 & One accepted\\
+Modbus RTU & 11 & -- & Acquisition only\\
+HTTP & 11 & -- & Acquisition only\\
+\midrule
+Total & 51 & 9/9 & Three accepted checks\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\begin{table}[!t]
+\centering
+\caption{Protocol-level measurements recorded in the integrated run.}
+\label{tab:s6-protocol}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabularx}{\columnwidth}{@{}>{\raggedright\arraybackslash}p{1.35cm}r r X@{}}
+\toprule
+Protocol & Samples & Rejected probes & Reported $p_{50}/p_{95}$ (ms)\\
+\midrule
+Modbus TCP & 9 & 6/6 & 47.673/48.348\\
+OPC UA & 11 & 6/6 & 21.494/24.175\\
+MQTT & 6 & 6/6 & 23.015/94.108\\
+HTTP & 13 & 6/6 & 34.414/47.784\\
+Modbus RTU & 15 & -- & --\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The run stored these latency summaries by protocol. Its log mentions
+approximately six writes but does not retain the exact per-protocol
+denominators or event-level timings. The summary's 31.649\,ms value is the
+unweighted mean of the four protocol-level $p_{50}$ values, not a pooled
+median. These values are descriptive; they do not support adapter rankings or
+population-level tail estimates.
+
+The same run exercised one approval-enabled write path (P4c). A Line 2
+request for configured value 145.5 remained pending until approval returned
+status 200. The pending write was then released; the report records a simulated
+PLC readback of 146 and a 452-ms pending-to-approval interval, including
+polling. No approval-disabled condition was run, so this check documents the
+enabled path but does not estimate the effect of approval.
+
+\section{Seeded Objective and BOPET Task}
+The three fixed-seed cases used the simulator's offline reference
+$J^*=89.894$. The simulator score is
+$J=55J_{\mathrm{thick}}+25J_{\mathrm{quality}}+8J_{\mathrm{energy}}+7J_{\mathrm{throughput}}$.
+The thickness term scores deviation from $50\pm2\,\mu\mathrm{m}$ with soft
+degradation outside the band; the quality term reflects defect rate, the
+energy term screw speed, and the throughput term line speed. The score is
+defined only for melt temperature in $195$--$225\,^{\circ}\mathrm{C}$ and
+pressure no greater than $22\,\mathrm{MPa}$. The runner defines $J_{end}$ as
+the mean of the last two valid trajectory scores, or as the sole score when
+the stopping rule ends a case before a second score is available.
+Table~\ref{tab:s6-seeds} also lists $J_{last}$, the final individual score.
+Seed 43 began inside the configured stopping region and ended with no
+iterations or writes. It is a zero-update case and provides no evidence of
+iterative convergence. Seeds 42 and 44 each used two writes.
+
+\begin{table}[!t]
+\centering
+\caption{Fixed-seed simulator objective values. $J_0$ is the initial score;
+$J_{end}$ is the mean of the last two valid trajectory scores, or the sole valid score if the seed stops
+before a second score is available; $J_{last}$ is the final per-iteration
+score retained in the trajectory.}
+\label{tab:s6-seeds}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}r r r r r r r r@{}}
+\toprule
+Seed & $J_0$ & $J_{end}$ & $J_{last}$ & $J^*$ & Ratio & Iter. & Writes\\
+\midrule
+42 & 66.271 & 88.775 & 88.853 & 89.894 & 98.8\% & 2 & 2\\
+43 & 86.542 & 86.542 & 86.542 & 89.894 & 96.3\% & 0 & 0\\
+44 & 63.981 & 88.384 & 88.540 & 89.894 & 98.3\% & 2 & 2\\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The BOPET thickness readings were 28.05, 27.98, 27.98, and
+$24.84\,\mu\mathrm{m}$, from the initial state through the three writes. The
+final reading was within the configured $25.0\pm0.7\,\mu\mathrm{m}$ band.
+The task board marked the task COMPLETED, but its associated
+parameter-change/optimization record remained open and unjudged. This is an
+integration observation; it does not establish a completed optimization or
+show that the writes caused the measured change.
+
+\section{Provenance and Interpretation}
+The source run did not include a contemporaneous SHA-256 manifest. The ZIP
+hashes verify the delivered files, not the runtime state at the time of
+execution.
+
+\end{document}

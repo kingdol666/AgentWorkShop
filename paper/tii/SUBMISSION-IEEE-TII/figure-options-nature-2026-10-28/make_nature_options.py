@@ -1,8 +1,7 @@
 """Nature-figure-style alternatives for manuscript Figs. 1 and 5.
 
 The diagrams are rebuilt in Matplotlib from implementation semantics. Fig. 5
-intervals are illustrative values from a separate archived admission drill;
-they are not measurements from the four current simulated missions.
+uses a normalized conceptual interval sketch and contains no run-derived data.
 """
 from __future__ import annotations
 
@@ -26,7 +25,7 @@ plt.rcParams['font.sans-serif'] = ['Arial', 'DejaVu Sans', 'Liberation Sans']
 plt.rcParams['svg.fonttype'] = 'none'
 plt.rcParams['pdf.fonttype'] = 42
 plt.rcParams["ps.fonttype"] = 42
-plt.rcParams["font.size"] = 8.0
+plt.rcParams["font.size"] = 9.0
 plt.rcParams["axes.unicode_minus"] = False
 plt.rcParams["savefig.facecolor"] = "white"
 
@@ -52,7 +51,7 @@ FIG5_SIZE = (7.16, 2.95)
 
 
 def rounded_box(ax, x, y, w, h, title, detail="", *, color=NAVY,
-                fill=WHITE, edge=EDGE, title_size=8.8, detail_size=7.7,
+                fill=WHITE, edge=EDGE, title_size=9.3, detail_size=8.4,
                 rounding=0.06, weight="bold", title_y=0.68,
                 detail_y=0.31, detail_linespacing=1.13):
     ax.add_patch(FancyBboxPatch(
@@ -121,14 +120,14 @@ def fig1_a_vertical():
     w, h = 2.52, 0.48
     nodes = [
         (3.62, "Task and production context", "goal, line, product, recipe, run", BLUE, PALE_BLUE),
-        (2.91, "Agent control", "available DAQ/MES context → named operation", BLUE, WHITE),
-        (2.20, "Shared operation dispatcher", "scope + policy; applicable grant/binding", TEAL, PALE_TEAL),
-        (1.49, "Route checks", "scene guards; approval and recheck if required", TEAL, WHITE),
-        (0.78, "Device access", "DCW → configured driver → PLC/simulator", NAVY, PALE_BLUE),
+        (2.91, "Agent control", "DAQ/MES context → named operation", BLUE, WHITE),
+        (2.20, "Shared operation dispatcher", "scope, policy, applicable grant", TEAL, PALE_TEAL),
+        (1.49, "Route checks", "scene limits; approval and recheck", TEAL, WHITE),
+        (0.78, "Device access", "DCW → driver → PLC / simulator", NAVY, PALE_BLUE),
     ]
     for y, title, detail, color, fill in nodes:
         rounded_box(ax, xs - w / 2, y, w, h, title, detail,
-                    color=color, fill=fill, title_size=8.2, detail_size=7.3)
+                    color=color, fill=fill, title_size=9.1, detail_size=9.0)
     for upper, lower in zip(nodes, nodes[1:]):
         arrow(ax, (xs, upper[0]), (xs, lower[0] + h), color=BLUE, lw=1.0, scale=8.2)
 
@@ -137,10 +136,10 @@ def fig1_a_vertical():
     left_c, right_c = 0.92, 2.58
     rounded_box(ax, left_c - out_w / 2, out_y, out_w, out_h,
                 "Command receipt", "write / readback", color=BLUE,
-                fill=PALE_BLUE, title_size=7.8, detail_size=7.2)
+                fill=PALE_BLUE, title_size=9.0, detail_size=9.0)
     rounded_box(ax, right_c - out_w / 2, out_y, out_w, out_h,
                 "Later observation", "timestamped DAQ", color=TEAL,
-                fill=PALE_TEAL, title_size=7.8, detail_size=7.2)
+                fill=PALE_TEAL, title_size=9.0, detail_size=9.0)
     arrow(ax, (xs - 0.16, 0.78), (left_c, out_y + out_h), color=BLUE,
           lw=0.95, scale=7.5, rad=0.10)
     arrow(ax, (xs + 0.16, 0.78), (right_c, out_y + out_h), color=TEAL,
@@ -256,10 +255,10 @@ def panel_letter(ax, letter, title, subtitle):
             fontsize=9.2, weight="bold", color=INK,
             ha="left", va="bottom", clip_on=False)
     ax.text(0.105, 1.025, title, transform=ax.transAxes,
-            fontsize=8.8, weight="bold", color=INK,
+            fontsize=9.3, weight="bold", color=INK,
             ha="left", va="bottom", clip_on=False)
     ax.text(0.105, 0.925, subtitle, transform=ax.transAxes,
-            fontsize=7.6, color=MUTED,
+            fontsize=9.0, color=MUTED,
             ha="left", va="bottom", clip_on=False)
 
 
@@ -275,85 +274,51 @@ def draw_intervals(ax, style="color"):
         common_fill, hard_line = "#D5E8E5", NAVY
 
     x_left, x_right = 0.98, 3.38
-    xmap = lambda value: x_left + (value - 140.0) / 20.0 * (x_right - x_left)
+    xmap = lambda value: x_left + value * (x_right - x_left)
     rows = [
-        ("Baseline", 143.7, 156.3, baseline, 1.63, "[143.7, 156.3]"),
-        ("Product", 146.22, 153.78, product, 1.25, "[146.22, 153.78]"),
-        ("Recipe", 141.0, 159.0, recipe, 0.87, "[141, 159]"),
+        ("Hard limit", 0.06, 0.94, hard_line, 2.28),
+        ("Baseline", 0.16, 0.84, baseline, 1.86),
+        ("Product", 0.12, 0.88, product, 1.44),
+        ("Recipe", 0.30, 0.70, recipe, 1.02),
     ]
-    y_hard = 2.09
-    ax.text(0.12, y_hard + 0.10, "Hard limit", fontsize=7.8,
-            color=INK, ha="left", va="center", weight="bold")
-    ax.text(0.12, y_hard - 0.12, "50–200 rpm", fontsize=7.3,
-            color=MUTED, ha="left", va="center")
-    ax.plot([x_left, x_right], [y_hard, y_hard], color=hard_line,
-            linewidth=2.8, solid_capstyle="butt", zorder=1)
-    ax.plot([x_left, x_right], [y_hard, y_hard], color=WHITE,
-            linewidth=0.8, linestyle=(0, (2.8, 2.8)), zorder=2)
-    for endpoint in (x_left, x_right):
-        ax.plot([endpoint, endpoint], [y_hard - 0.07, y_hard + 0.07],
-                color=hard_line, linewidth=0.8, zorder=3)
-    hard_map = lambda value: x_left + (value - 50.0) / 150.0 * (x_right - x_left)
-    detail_left, detail_right = hard_map(140.0), hard_map(160.0)
-    ax.add_patch(Rectangle((detail_left, y_hard - 0.12),
-                           detail_right - detail_left, 0.24,
-                           facecolor=PALE_TEAL, edgecolor=TEAL,
-                           linewidth=0.9, linestyle="--", zorder=4))
-    ax.text((detail_left + detail_right) / 2, y_hard + 0.22,
-            "detail: 140–160 rpm", fontsize=7.35, color=TEAL,
-            ha="center", va="bottom")
-
-    for name, lo, hi, color, yy, label in rows:
+    common_lo, common_hi, y_common = 0.30, 0.70, 0.47
+    for name, lo, hi, color, yy in rows:
         ax.plot([x_left, x_right], [yy, yy], color=GRID, linewidth=0.65, zorder=0)
-        ax.text(0.12, yy, name, fontsize=7.55, color=INK,
-                ha="left", va="center")
+        ax.text(0.12, yy, name, fontsize=9.0, color=INK,
+                ha="left", va="center", weight="bold" if name == "Hard limit" else "normal")
         ax.plot([xmap(lo), xmap(hi)], [yy, yy], color=color,
                 linewidth=4.3 if style == "hero" else 3.5,
                 solid_capstyle="butt", zorder=3)
-        ax.plot([xmap(lo), xmap(lo)], [yy - 0.075, yy + 0.075],
-                color=INK, linewidth=0.8, zorder=4)
-        ax.plot([xmap(hi), xmap(hi)], [yy - 0.075, yy + 0.075],
-                color=INK, linewidth=0.8, zorder=4)
-        ax.text((xmap(lo) + xmap(hi)) / 2, yy + 0.105,
-                label, fontsize=7.2, color=MUTED,
-                ha="center", va="bottom")
+        for endpoint in (lo, hi):
+            ax.plot([xmap(endpoint), xmap(endpoint)], [yy - 0.075, yy + 0.075],
+                    color=INK, linewidth=0.8, zorder=4)
 
-    common_lo, common_hi, y_common = 146.22, 153.78, 0.49
-    ax.text(0.12, y_common, "Common", fontsize=7.7,
+    # The highlighted interval is the conceptual intersection of all four
+    # constraints. No numeric test values or measurements are encoded.
+    if style == "hero":
+        ax.add_patch(Rectangle((xmap(common_lo), 0.35),
+                               xmap(common_hi) - xmap(common_lo), 2.09,
+                               facecolor=common_fill, alpha=0.34,
+                               edgecolor="none", zorder=0))
+        for endpoint in (common_lo, common_hi):
+            ax.plot([xmap(endpoint), xmap(endpoint)], [0.40, 2.43],
+                    color=TEAL, linewidth=0.8, linestyle=(0, (2, 2)), zorder=1)
+    ax.text(0.12, y_common, "Admissible", fontsize=9.0,
             color=common if style != "mono" else INK,
             ha="left", va="center", weight="bold")
-    # Shade the overlap only in the hero alternative; bars remain visible in all styles.
-    if style == "hero":
-        ax.add_patch(Rectangle((xmap(common_lo), 0.34),
-                               xmap(common_hi) - xmap(common_lo), 1.56,
-                               facecolor=common_fill, alpha=0.43,
-                               edgecolor="none", zorder=0))
-        ax.plot([xmap(common_lo), xmap(common_lo)], [0.36, 1.91],
-                color=TEAL, linewidth=0.8, linestyle=(0, (2, 2)), zorder=1)
-        ax.plot([xmap(common_hi), xmap(common_hi)], [0.36, 1.91],
-                color=TEAL, linewidth=0.8, linestyle=(0, (2, 2)), zorder=1)
     ax.plot([xmap(common_lo), xmap(common_hi)], [y_common, y_common],
             color=common,
             linewidth=5.2 if style == "hero" else 4.2,
             solid_capstyle="butt", zorder=4)
-    ax.text((xmap(common_lo) + xmap(common_hi)) / 2, y_common + 0.105,
-            "[146.22, 153.78]", fontsize=7.1, color=MUTED,
-            ha="center", va="bottom")
-    ax.text(0.12, 0.065,
-            "Illustrative archived admission drill; not a current mission",
-            fontsize=6.9, color=MUTED, ha="left", va="bottom", style="italic")
+    ax.text(0.12, 0.10, "Conceptual intersection; no experimental values",
+            fontsize=9.0, color=MUTED, ha="left", va="bottom", style="italic")
 
     ax.set_xlim(0, 3.60)
     ax.set_ylim(0, 2.92)
-    ax.set_xticks([xmap(value) for value in (140, 145, 150, 155, 160)])
-    ax.set_xticklabels(["140", "145", "150", "155", "160"],
-                       fontsize=7.2, color=MUTED)
+    ax.set_xticks([])
     ax.set_yticks([])
-    ax.tick_params(axis="x", length=2.5, width=0.65, color=MUTED, pad=2.8)
-    for side in ("left", "right", "top"):
+    for side in ("left", "right", "top", "bottom"):
         ax.spines[side].set_visible(False)
-    ax.spines["bottom"].set_color(EDGE)
-    ax.spines["bottom"].set_linewidth(0.7)
 
 
 def draw_approval(ax, style="color"):
@@ -368,17 +333,17 @@ def draw_approval(ax, style="color"):
     rounded_box(ax, 0.53, 2.00, 2.48, 0.45,
                 "Operation proposal", "operation + active context",
                 color=NAVY, fill=PALE_BLUE if style != "mono" else WHITE,
-                edge=edge, title_size=8.0, detail_size=7.1,
+                edge=edge, title_size=9.2, detail_size=9.0,
                 title_y=0.69, detail_y=0.27)
     rounded_box(ax, 0.83, 1.31, 1.88, 0.43,
                 "Human decision", "only when required",
                 color=approve, fill=PALE_TEAL if style != "mono" else WHITE,
-                edge=edge, title_size=7.9, detail_size=7.1,
+                edge=edge, title_size=9.0, detail_size=9.0,
                 title_y=0.69, detail_y=0.27)
     arrow(ax, (1.77, 2.00), (1.77, 1.75), color=MUTED, lw=0.9, scale=7.6)
 
     left_x, card_w, right_x = 0.17, 1.48, 1.95
-    card_y, card_h = 0.22, 0.77
+    card_y, card_h = 0.05, 0.94
     branch_y = 1.16
     ax.plot([1.77, 1.77], [1.31, branch_y], color=MUTED, linewidth=0.8)
     ax.plot([left_x + card_w / 2, right_x + card_w / 2],
@@ -392,14 +357,14 @@ def draw_approval(ax, style="color"):
     rounded_box(ax, left_x, card_y, card_w, card_h,
                 "Decline", "record decision\nno dispatch",
                 color=decline, fill=PALE_AMBER if style != "mono" else WHITE,
-                edge=edge, title_size=7.8, detail_size=7.0,
-                title_y=0.77, detail_y=0.35)
+                edge=edge, title_size=9.0, detail_size=9.0,
+                title_y=0.86, detail_y=0.38)
     rounded_box(ax, right_x, card_y, card_w, card_h,
                 "Approve + recheck",
                 "authority + tuple\nlimits checked\npass: dispatch\nfail: stop",
                 color=approve, fill=PALE_TEAL if style != "mono" else WHITE,
-                edge=edge, title_size=7.15, detail_size=6.75,
-                title_y=0.82, detail_y=0.36, detail_linespacing=1.25)
+                edge=edge, title_size=9.0, detail_size=9.0,
+                title_y=0.86, detail_y=0.38, detail_linespacing=1.20)
 
 
 def make_fig5(variant):
@@ -425,7 +390,7 @@ def make_fig5(variant):
         exemptions = []
     for ax in (ax_a, ax_b):
         ax.set_facecolor(WHITE)
-    panel_letter(ax_a, "a", "Four-layer admission", "Illustrative interval drill · rpm")
+    panel_letter(ax_a, "a", "Configured range intersection", "Conceptual mechanism · no run data")
     draw_intervals(ax_a, style=style)
     draw_approval(ax_b, style=style)
     fig.canvas.draw()
@@ -456,11 +421,11 @@ def make_contact_sheet(fig_number, stems, output, captions):
 
 def write_source_data():
     rows = [
-        ("hard", 50.0, 200.0, "rpm", "hard engineering limit"),
-        ("baseline", 143.7, 156.3, "rpm", "separate archived admission drill"),
-        ("product", 146.22, 153.78, "rpm", "separate archived admission drill"),
-        ("recipe", 141.0, 159.0, "rpm", "separate archived admission drill"),
-        ("common_intersection", 146.22, 153.78, "rpm", "computed intersection of displayed limits"),
+        ("hard", 0.06, 0.94, "normalized sketch position", "conceptual layout coordinate; not experimental data"),
+        ("baseline", 0.16, 0.84, "normalized sketch position", "conceptual layout coordinate; not experimental data"),
+        ("product", 0.12, 0.88, "normalized sketch position", "conceptual layout coordinate; not experimental data"),
+        ("recipe", 0.30, 0.70, "normalized sketch position", "conceptual layout coordinate; not experimental data"),
+        ("admissible_intersection", 0.30, 0.70, "normalized sketch position", "conceptual intersection only; not experimental data"),
     ]
     with (ROOT / "fig5_interval_source.csv").open("w", newline="", encoding="utf-8") as f:
         writer = csv.writer(f)
@@ -478,7 +443,7 @@ The six alternatives are author-selection drafts. They are not inserted into the
 - **Fig. 1 claim:** registered-harness operations and direct operations converge at a shared named-operation dispatcher, while command receipts and later process observations remain distinct evidence records.
 - **Fig. 1 archetype:** single-system execution schematic. A/B/C vary only the layout and evidence-lane emphasis; they do not add system behavior.
 - **Fig. 5 claim:** configured value ranges constrain online admission, and a required human approval is followed by an authority/context/limit recheck before dispatch.
-- **Fig. 5 archetype:** schematic-led mixed-modality composite. Panel a is the interval evidence; panel b is a symbolic execution path. The interval values are from a separate archived admission drill, not the four current process missions. Panel b contains no measured process values.
+- **Fig. 5 archetype:** schematic-led mixed-modality composite. Panel a is a normalized conceptual interval intersection with no run-derived values; panel b is a symbolic execution path.
 - **Statistics:** none. These are limit ranges and a symbolic flow, not replicate summaries; no error bars or significance claims are appropriate.
 - **Output:** IEEE TII two-column width 7.16 in for Fig. 1 B/C and all Fig. 5 alternatives; Fig. 1 A is 3.50 in single-column width. Editable SVG, embedded-font vector PDF, and 600-dpi PNG previews.
 
@@ -496,9 +461,9 @@ The six alternatives are author-selection drafts. They are not inserted into the
 - **B — `fig5_B_interval_hero_and_recheck.pdf`:** gives the common interval the dominant visual weight and keeps the approval path subordinate. Recommended for the clearest evidence hierarchy.
 - **C — `fig5_C_grayscale_admission_flow.pdf`:** monochrome-safe line and fill treatment.
 
-**Proposed caption:** (a) Intersection of the hard, baseline, product, and recipe admission ranges, using illustrative values from a separate archived rotational-speed admission drill; the highlighted interval is their common range. (b) Symbolic conditional-approval path: a decline is recorded without dispatch, while approval triggers a recheck of authority, the production tuple, and applicable limits before dispatch. Panel (b) contains no measured process values.
+**Proposed caption:** (a) Conceptual intersection of hard, baseline, product, and recipe admission ranges; horizontal positions are schematic and do not encode experimental values. (b) Symbolic conditional-approval path: a decline is recorded without dispatch, while approval triggers a recheck of authority, production context, and applicable limits before dispatch.
 
-The interval source values are listed in `fig5_interval_source.csv`. They are ranges, not sample distributions. No values were inferred from the four current process missions. The common range is the exact intersection of the displayed intervals.
+The interval source coordinates are listed in `fig5_interval_source.csv` and are layout coordinates only. They do not encode measurements or a particular test run.
 
 ## Review notes
 

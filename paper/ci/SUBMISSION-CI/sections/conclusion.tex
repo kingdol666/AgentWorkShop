@@ -1,0 +1,32 @@
+\section{Conclusion}
+\label{sec:conclusion}
+
+This paper treated the agent-to-plant write path (not the agent, and
+not the chat) as the unit of governance for LLM-agent teams on
+production lines. A configuration-driven binding model scopes agent
+authority as a fact of plant structure; a four-layer admission interval
+admits writes through independently inspectable boundaries; human
+approval records bind exact proposals to tuples and are rechecked at
+dispatch; receipt grading separates device-confirmed writes from
+transport acknowledgments; and a total ledger records every decision,
+including every rejection with its deciding layer.
+
+The evaluation attributed interception to a specific layer with a
+four-arm ablation (zero false blocks, executed breaches still journaled)
+and demonstrated five-protocol device integration on real protocol stacks
+with fault-honest behavior. It also showed a complete governed correction
+on a running OPC UA line, from goal to self-calibrated proposal to human
+approval to a readback-verified write that an independent recheck
+corroborated. An adversarial episode showed a weak model's
+out-of-surface behavior contained to zero plant writes. The
+implementation is openly available, installs as a single service, and
+reproduces its frozen ablation baseline bit-exactly under matched
+commits.
+
+Future work follows the limitations: replaying write-ledger trajectories
+into training data so that the model tier can consume the platform's own
+control history, externalizing the audit ledger to write-once storage,
+and formal verification of the admission path's composition. Beyond
+these, the agenda includes multi-site federations with shared governance
+policy and replication of the closed-loop case study on physical plants
+with measured approval workload for human experts.

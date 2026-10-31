@@ -1,0 +1,66 @@
+\section{Implementation and deployment}
+\label{sec:impl}
+
+The platform is implemented as a single server runtime in TypeScript on
+Node.js, with a Vue 3 front end. One process hosts the four entry points
+(HTTP, WebSocket, A2A, MCP), the agent runtime, and the industrial stack;
+there is no separate governance service to deploy or bypass. State lives
+in an embedded SQLite database (via the Node built-in driver) by default;
+when production-grade history is required, a provisioned deployment adds a
+TimescaleDB (compressed, chunked daily) and an MQTT broker, and the
+acquisition gateway switches its storage backend without changes to the
+governed path.
+
+\textbf{Protocol surface.} Five industrial connectivity protocol drivers
+are built in:
+Modbus TCP, Modbus RTU, OPC UA \cite{iec62541}, MQTT, and HTTP, plus a
+serial-port plugin driver and a MES REST integration with mirror and live
+modes. Drivers implement a common read/write contract, so admission
+limits, approval, and receipt grading apply uniformly; a driver cannot
+weaken them. Write nodes carry per-driver configuration (register maps,
+byte order, scaling, topic maps) declared once in the scene configuration.
+
+\textbf{Agent harness surface.} Fourteen harness adapters execute agent
+teams: two in-process engines (a deterministic mock for testing and a
+Claude-compatible engine), an RPC-subprocess engine, an app-server engine,
+three ACP-style engines, a served engine, and six headless CLI adapters.
+The registry normalizes turn execution and tool invocation, so the
+governed operation surface is identical across engines; an episode can mix
+engines per channel. Teams are described declaratively (lead and worker
+roles, model preferences) and instantiated from templates.
+
+\textbf{Configuration and extension.} A single configuration schema feeds
+defaults (a YAML file), runtime overrides, and environment variables;
+settings and their descriptions are declared once and consumed by both the
+settings UI and the CLI. A hot-reloadable plugin surface registers
+additional drivers, processors, node templates, agent tools, HTTP routes,
+browser panels, twin providers, and line-permission hooks; a failing
+plugin is isolated from the runtime. The platform ships as an installable
+npm package with an \texttt{aw} CLI (\texttt{aw start} initializes a home
+directory, migrates prior versions, and serves the UI); production
+posture terminates TLS on a reverse proxy in front of the single service.
+The host tool surface exposed to agents comprises 105 built-in tools plus 21
+plugin-registered tools (126 at the evaluated release), including the
+industrial operations used in this paper; every tool's description and
+scope semantics are generated from the same operation catalog that the
+governance block enforces.
+
+\textbf{Evidence pipeline.} All experiments in Section~\ref{sec:eval} are
+driven by a benchmark pipeline in the same repository. A runner provisions
+scenes through the platform's own REST surface, executes scenario scripts,
+and freezes a report, raw event logs, and checksums into a versioned
+results directory. Each result records the runner command, source commit,
+and harness hash, which is what enables the frozen-baseline reproduction
+checks of Section~\ref{sec:eval-quality}.
+
+\textbf{Deployment posture and its boundaries.} The single-process design
+places the agent runtimes (including outbound-capable harness adapters) and
+the protocol write drivers in one trust domain. That is a deliberate
+simplicity for evaluation, but it does not by itself satisfy IEC 62443-3-2
+zoning. A plant deployment should place the platform inside a defined zone
+with conduits to the control network, isolate harness adapters from
+field-facing interfaces, and provide backup and restart procedures. Node
+version, resource sizing, and high-availability specifications are
+deployment-engineering tasks this paper does not claim; harness-side
+isolation, air-gapped packaging, and a zoned reference architecture are
+future work (Section~\ref{sec:conclusion}).

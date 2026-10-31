@@ -6,7 +6,7 @@
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
     <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
-    <dc:date>2026-10-28T21:05:32.808568</dc:date>
+    <dc:date>2026-10-31T23:56:13.086688</dc:date>
     <dc:format>image/svg+xml</dc:format>
     <dc:creator>
      <cc:Agent>
@@ -40,7 +40,7 @@ Q 34.2 7.56 34.2 11.88
 L 34.2 39.96 
 Q 34.2 44.28 38.52 44.28 
 z
-" clip-path="url(#p2ed2b60ce6)" style="fill: #eef3f6; stroke: #b7c3cb; stroke-width: 0.8; stroke-linejoin: miter"/>
+" clip-path="url(#p3c21ded4d1)" style="fill: #eef3f6; stroke: #b7c3cb; stroke-width: 0.8; stroke-linejoin: miter"/>
    </g>
    <g id="patch_3">
     <path d="M 38.52 95.4 
@@ -53,7 +53,7 @@ Q 34.2 58.68 34.2 63
 L 34.2 91.08 
 Q 34.2 95.4 38.52 95.4 
 z
-" clip-path="url(#p2ed2b60ce6)" style="fill: #ffffff; stroke: #b7c3cb; stroke-width: 0.8; stroke-linejoin: miter"/>
+" clip-path="url(#p3c21ded4d1)" style="fill: #ffffff; stroke: #b7c3cb; stroke-width: 0.8; stroke-linejoin: miter"/>
    </g>
    <g id="patch_4">
     <path d="M 38.52 146.52 
@@ -66,7 +66,7 @@ Q 34.2 109.8 34.2 114.12
 L 34.2 142.2 
 Q 34.2 146.52 38.52 146.52 
 z
-" clip-path="url(#p2ed2b60ce6)" style="fill: #edf5f3; stroke: #b7c3cb; stroke-width: 0.8; stroke-linejoin: miter"/>
+" clip-path="url(#p3c21ded4d1)" style="fill: #edf5f3; stroke: #b7c3cb; stroke-width: 0.8; stroke-linejoin: miter"/>
    </g>
    <g id="patch_5">
     <path d="M 38.52 197.64 
@@ -79,7 +79,7 @@ Q 34.2 160.92 34.2 165.24
 L 34.2 193.32 
 Q 34.2 197.64 38.52 197.64 
 z
-" clip-path="url(#p2ed2b60ce6)" style="fill: #ffffff; stroke: #b7c3cb; stroke-width: 0.8; stroke-linejoin: miter"/>
+" clip-path="url(#p3c21ded4d1)" style="fill: #ffffff; stroke: #b7c3cb; stroke-width: 0.8; stroke-linejoin: miter"/>
    </g>
    <g id="patch_6">
     <path d="M 38.52 248.76 
@@ -92,47 +92,47 @@ Q 34.2 212.04 34.2 216.36
 L 34.2 244.44 
 Q 34.2 248.76 38.52 248.76 
 z
-" clip-path="url(#p2ed2b60ce6)" style="fill: #eef3f6; stroke: #b7c3cb; stroke-width: 0.8; stroke-linejoin: miter"/>
+" clip-path="url(#p3c21ded4d1)" style="fill: #eef3f6; stroke: #b7c3cb; stroke-width: 0.8; stroke-linejoin: miter"/>
    </g>
    <g id="patch_7">
     <path d="M 126 43.2 
 Q 126 51.48 126 58.641966 
-" clip-path="url(#p2ed2b60ce6)" style="fill: none; stroke: #4e7895; stroke-linecap: round"/>
+" clip-path="url(#p3c21ded4d1)" style="fill: none; stroke: #4e7895; stroke-linecap: round"/>
     <path d="M 127.64 55.361966 
 L 126 58.641966 
 L 124.36 55.361966 
 z
-" clip-path="url(#p2ed2b60ce6)" style="fill: #4e7895; stroke: #4e7895; stroke-linecap: round"/>
+" clip-path="url(#p3c21ded4d1)" style="fill: #4e7895; stroke: #4e7895; stroke-linecap: round"/>
    </g>
    <g id="patch_8">
     <path d="M 126 94.32 
 Q 126 102.6 126 109.761966 
-" clip-path="url(#p2ed2b60ce6)" style="fill: none; stroke: #4e7895; stroke-linecap: round"/>
+" clip-path="url(#p3c21ded4d1)" style="fill: none; stroke: #4e7895; stroke-linecap: round"/>
     <path d="M 127.64 106.481966 
 L 126 109.761966 
 L 124.36 106.481966 
 z
-" clip-path="url(#p2ed2b60ce6)" style="fill: #4e7895; stroke: #4e7895; stroke-linecap: round"/>
+" clip-path="url(#p3c21ded4d1)" style="fill: #4e7895; stroke: #4e7895; stroke-linecap: round"/>
    </g>
    <g id="patch_9">
     <path d="M 126 145.44 
 Q 126 153.72 126 160.881966 
-" clip-path="url(#p2ed2b60ce6)" style="fill: none; stroke: #4e7895; stroke-linecap: round"/>
+" clip-path="url(#p3c21ded4d1)" style="fill: none; stroke: #4e7895; stroke-linecap: round"/>
     <path d="M 127.64 157.601966 
 L 126 160.881966 
 L 124.36 157.601966 
 z
-" clip-path="url(#p2ed2b60ce6)" style="fill: #4e7895; stroke: #4e7895; stroke-linecap: round"/>
+" clip-path="url(#p3c21ded4d1)" style="fill: #4e7895; stroke: #4e7895; stroke-linecap: round"/>
    </g>
    <g id="patch_10">
     <path d="M 126 196.56 
 Q 126 204.84 126 212.001966 
-" clip-path="url(#p2ed2b60ce6)" style="fill: none; stroke: #4e7895; stroke-linecap: round"/>
+" clip-path="url(#p3c21ded4d1)" style="fill: none; stroke: #4e7895; stroke-linecap: round"/>
     <path d="M 127.64 208.721966 
 L 126 212.001966 
 L 124.36 208.721966 
 z
-" clip-path="url(#p2ed2b60ce6)" style="fill: #4e7895; stroke: #4e7895; stroke-linecap: round"/>
+" clip-path="url(#p3c21ded4d1)" style="fill: #4e7895; stroke: #4e7895; stroke-linecap: round"/>
    </g>
    <g id="patch_11">
     <path d="M 15.48 297.72 
@@ -145,7 +145,7 @@ Q 11.16 264.6 11.16 268.92
 L 11.16 293.4 
 Q 11.16 297.72 15.48 297.72 
 z
-" clip-path="url(#p2ed2b60ce6)" style="fill: #eef3f6; stroke: #b7c3cb; stroke-width: 0.8; stroke-linejoin: miter"/>
+" clip-path="url(#p3c21ded4d1)" style="fill: #eef3f6; stroke: #b7c3cb; stroke-width: 0.8; stroke-linejoin: miter"/>
    </g>
    <g id="patch_12">
     <path d="M 135 297.72 
@@ -158,74 +158,74 @@ Q 130.68 264.6 130.68 268.92
 L 130.68 293.4 
 Q 130.68 297.72 135 297.72 
 z
-" clip-path="url(#p2ed2b60ce6)" style="fill: #edf5f3; stroke: #b7c3cb; stroke-width: 0.8; stroke-linejoin: miter"/>
+" clip-path="url(#p3c21ded4d1)" style="fill: #edf5f3; stroke: #b7c3cb; stroke-width: 0.8; stroke-linejoin: miter"/>
    </g>
    <g id="patch_13">
     <path d="M 114.48 247.68 
 Q 88.56 251.856 67.14297 265.120741 
-" clip-path="url(#p2ed2b60ce6)" style="fill: none; stroke: #4e7895; stroke-width: 0.95; stroke-linecap: round"/>
+" clip-path="url(#p3c21ded4d1)" style="fill: none; stroke: #4e7895; stroke-width: 0.95; stroke-linecap: round"/>
     <path d="M 70.48323 264.816333 
 L 67.14297 265.120741 
 L 68.903599 262.265889 
 z
-" clip-path="url(#p2ed2b60ce6)" style="fill: #4e7895; stroke: #4e7895; stroke-width: 0.95; stroke-linecap: round"/>
+" clip-path="url(#p3c21ded4d1)" style="fill: #4e7895; stroke: #4e7895; stroke-width: 0.95; stroke-linecap: round"/>
    </g>
    <g id="patch_14">
     <path d="M 137.52 247.68 
 Q 163.44 251.856 184.85703 265.120741 
-" clip-path="url(#p2ed2b60ce6)" style="fill: none; stroke-dasharray: 3.515,1.52; stroke-dashoffset: 0; stroke: #2d7f78; stroke-width: 0.95; stroke-linecap: round"/>
+" clip-path="url(#p3c21ded4d1)" style="fill: none; stroke-dasharray: 3.515,1.52; stroke-dashoffset: 0; stroke: #2d7f78; stroke-width: 0.95; stroke-linecap: round"/>
     <path d="M 183.096401 262.265889 
 L 184.85703 265.120741 
 L 181.51677 264.816333 
 z
-" clip-path="url(#p2ed2b60ce6)" style="fill: #2d7f78; stroke-dasharray: 3.515,1.52; stroke-dashoffset: 0; stroke: #2d7f78; stroke-width: 0.95; stroke-linecap: round"/>
+" clip-path="url(#p3c21ded4d1)" style="fill: #2d7f78; stroke-dasharray: 3.515,1.52; stroke-dashoffset: 0; stroke: #2d7f78; stroke-width: 0.95; stroke-linecap: round"/>
    </g>
    <g id="text_1">
-    <text style="font-weight: 700; font-size: 8.2px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; text-anchor: middle; fill: #4e7895" x="126" y="21.824794" transform="rotate(-0 126 21.824794)">Task and production context</text>
+    <text style="font-weight: 700; font-size: 9.1px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; text-anchor: middle; fill: #4e7895" x="126" y="22.058091" transform="rotate(-0 126 22.058091)">Task and production context</text>
    </g>
    <g id="text_2">
-    <text style="font-size: 7.3px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; text-anchor: middle; fill: #24313d" x="126" y="34.330791" transform="rotate(-0 126 34.330791)">goal, line, product, recipe, run</text>
+    <text style="font-size: 9px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; text-anchor: middle; fill: #24313d" x="126" y="34.760306" transform="rotate(-0 126 34.760306)">goal, line, product, recipe, run</text>
    </g>
    <g id="text_3">
-    <text style="font-weight: 700; font-size: 8.2px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; text-anchor: middle; fill: #4e7895" x="126" y="72.890981" transform="rotate(-0 126 72.890981)">Agent control</text>
+    <text style="font-weight: 700; font-size: 9.1px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; text-anchor: middle; fill: #4e7895" x="126" y="73.118372" transform="rotate(-0 126 73.118372)">Agent control</text>
    </g>
    <g id="text_4">
-    <text style="font-size: 7.3px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; text-anchor: middle; fill: #24313d" x="126" y="85.54033" transform="rotate(-0 126 85.54033)">available DAQ/MES context → named operation</text>
+    <text style="font-size: 9px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; text-anchor: middle; fill: #24313d" x="126" y="85.990697" transform="rotate(-0 126 85.990697)">DAQ/MES context → named operation</text>
    </g>
    <g id="text_5">
-    <text style="font-weight: 700; font-size: 8.2px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; text-anchor: middle; fill: #2d7f78" x="126" y="124.114762" transform="rotate(-0 126 124.114762)">Shared operation dispatcher</text>
+    <text style="font-weight: 700; font-size: 9.1px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; text-anchor: middle; fill: #2d7f78" x="126" y="124.353544" transform="rotate(-0 126 124.353544)">Shared operation dispatcher</text>
    </g>
    <g id="text_6">
-    <text style="font-size: 7.3px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; text-anchor: middle; fill: #24313d" x="126" y="136.615275" transform="rotate(-0 126 136.615275)">scope + policy; applicable grant/binding</text>
+    <text style="font-size: 9px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; text-anchor: middle; fill: #24313d" x="126" y="137.000306" transform="rotate(-0 126 137.000306)">scope, policy, applicable grant</text>
    </g>
    <g id="text_7">
-    <text style="font-weight: 700; font-size: 8.2px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; text-anchor: middle; fill: #2d7f78" x="126" y="175.945856" transform="rotate(-0 126 175.945856)">Route checks</text>
+    <text style="font-weight: 700; font-size: 9.1px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; text-anchor: middle; fill: #2d7f78" x="126" y="176.262684" transform="rotate(-0 126 176.262684)">Route checks</text>
    </g>
    <g id="text_8">
-    <text style="font-size: 7.3px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; text-anchor: middle; fill: #24313d" x="126" y="187.735275" transform="rotate(-0 126 187.735275)">scene guards; approval and recheck if required</text>
+    <text style="font-size: 9px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; text-anchor: middle; fill: #24313d" x="126" y="188.173041" transform="rotate(-0 126 188.173041)">scene limits; approval and recheck</text>
    </g>
    <g id="text_9">
-    <text style="font-weight: 700; font-size: 8.2px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; text-anchor: middle; fill: #315f7c" x="126" y="227.065856" transform="rotate(-0 126 227.065856)">Device access</text>
+    <text style="font-weight: 700; font-size: 9.1px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; text-anchor: middle; fill: #315f7c" x="126" y="227.382684" transform="rotate(-0 126 227.382684)">Device access</text>
    </g>
    <g id="text_10">
-    <text style="font-size: 7.3px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; text-anchor: middle; fill: #24313d" x="126" y="238.855275" transform="rotate(-0 126 238.855275)">DCW → configured driver → PLC/simulator</text>
+    <text style="font-size: 9px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; text-anchor: middle; fill: #24313d" x="126" y="240.187416" transform="rotate(-0 126 240.187416)">DCW → driver → PLC / simulator</text>
    </g>
    <g id="text_11">
-    <text style="font-weight: 700; font-size: 7.8px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; text-anchor: middle; fill: #4e7895" x="66.24" y="277.656637" transform="rotate(-0 66.24 277.656637)">Command receipt</text>
+    <text style="font-weight: 700; font-size: 9px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; text-anchor: middle; fill: #4e7895" x="66.24" y="277.975012" transform="rotate(-0 66.24 277.975012)">Command receipt</text>
    </g>
    <g id="text_12">
-    <text style="font-size: 7.2px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; text-anchor: middle; fill: #24313d" x="66.24" y="289.619213" transform="rotate(-0 66.24 289.619213)">write / readback</text>
+    <text style="font-size: 9px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; text-anchor: middle; fill: #24313d" x="66.24" y="290.263416" transform="rotate(-0 66.24 290.263416)">write / readback</text>
    </g>
    <g id="text_13">
-    <text style="font-weight: 700; font-size: 7.8px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; text-anchor: middle; fill: #2d7f78" x="185.76" y="278.333044" transform="rotate(-0 185.76 278.333044)">Later observation</text>
+    <text style="font-weight: 700; font-size: 9px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; text-anchor: middle; fill: #2d7f78" x="185.76" y="278.755481" transform="rotate(-0 185.76 278.755481)">Later observation</text>
    </g>
    <g id="text_14">
-    <text style="font-size: 7.2px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; text-anchor: middle; fill: #24313d" x="185.76" y="288.949838" transform="rotate(-0 185.76 288.949838)">timestamped DAQ</text>
+    <text style="font-size: 9px; font-family: 'Arial', 'DejaVu Sans', 'Liberation Sans', sans-serif; text-anchor: middle; fill: #24313d" x="185.76" y="289.426697" transform="rotate(-0 185.76 289.426697)">timestamped DAQ</text>
    </g>
   </g>
  </g>
  <defs>
-  <clipPath id="p2ed2b60ce6">
+  <clipPath id="p3c21ded4d1">
    <rect x="0" y="0" width="252" height="303.84"/>
   </clipPath>
  </defs>

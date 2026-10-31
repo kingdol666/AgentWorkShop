@@ -1,12 +1,12 @@
 {
-  "pdf": "D:\\codes\\ABO\\AgentWorkShop\\paper\\tii\\SUBMISSION-IEEE-TII\\figure-options-nature-2026-10-28\\fig5_A_balanced_ranges_and_approval.pdf",
+  "pdf": "resources\\fig5-nature-A.pdf",
   "auditable": true,
   "verdict": "PASS",
   "page_count": 1,
-  "visible_text_box_count": 35,
-  "text_trace_count": 35,
-  "stroke_path_count": 37,
-  "filled_region_count": 15,
+  "visible_text_box_count": 24,
+  "text_trace_count": 24,
+  "stroke_path_count": 30,
+  "filled_region_count": 9,
   "image_region_count": 0,
   "summary": {
     "fail": 0,

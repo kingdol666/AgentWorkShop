@@ -1,0 +1,194 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{xu2021industry}
+\citation{zhao2023survey}
+\citation{zhao2026shopfloor}
+\citation{xia2025control}
+\citation{koehle2026llmdriven}
+\citation{llmdia2024}
+\citation{bainbridge1983ironies}
+\citation{parasuraman2000model}
+\citation{greshake2023injection,liu2024pinjection}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{2}{section.1}\protected@file@percent }
+\newlabel{sec:intro}{{1}{2}{Introduction}{section.1}{}}
+\citation{wang2025agentspec}
+\citation{debenedetti2025camel}
+\citation{lin2026agentic}
+\citation{schall2026safe}
+\citation{yao2023react}
+\citation{schick2023toolformer}
+\citation{xia2025architecture}
+\citation{graul2026aas}
+\citation{xia2025control}
+\citation{lim2025llmenabled}
+\citation{koehle2026llmdriven}
+\citation{koehle2025semanticrecipes}
+\citation{zhao2026shopfloor}
+\citation{waseem2026pretrained}
+\citation{gill2025llmdt}
+\citation{hofmann2025nlc}
+\citation{jiang2026agentic}
+\citation{gill2025llmdt}
+\citation{wu2025instructmpc}
+\citation{huang2026made}
+\citation{liu2026agents4plc}
+\citation{opentwins2023}
+\citation{dtpatterns2023}
+\citation{llmdia2024}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Related work}{6}{section.2}\protected@file@percent }
+\newlabel{sec:related}{{2}{6}{Related work}{section.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}LLM agents in industrial systems}{6}{subsection.2.1}\protected@file@percent }
+\newlabel{sec:related-agents}{{2.1}{6}{LLM agents in industrial systems}{subsection.2.1}{}}
+\citation{waseem2026pretrained,xia2025control,koehle2026llmdriven,hofmann2025nlc}
+\citation{parasuraman2000model}
+\citation{parasuramanmanzey2010complacency,bainbridge1983ironies}
+\citation{wang2025agentspec}
+\citation{debenedetti2025camel}
+\citation{liu2024pinjection,zhan2024injecagent}
+\citation{debenedetti2024agentdojo}
+\citation{iec62443-3-2}
+\citation{iec62443-3-3}
+\citation{iec61511}
+\citation{gehrmann2020dtiacs}
+\citation{sengupta2021securefog}
+\citation{mahmood2023functional}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Governing machine-originated actions}{7}{subsection.2.2}\protected@file@percent }
+\newlabel{sec:related-gov}{{2.2}{7}{Governing machine-originated actions}{subsection.2.2}{}}
+\citation{lin2026agentic}
+\citation{schall2026safe}
+\citation{biskupovic2025supervision}
+\citation{moyne2000r2r}
+\citation{zhao2026shopfloor}
+\citation{xia2025control}
+\citation{koehle2026llmdriven}
+\citation{lin2026agentic}
+\citation{schall2026safe}
+\citation{wu2025instructmpc}
+\citation{hofmann2025nlc}
+\citation{isa95_2025}
+\citation{isa88_2010}
+\citation{iec61511}
+\@writefile{toc}{\contentsline {section}{\numberline {3}Problem statement and requirements}{9}{section.3}\protected@file@percent }
+\newlabel{sec:problem}{{3}{9}{Problem statement and requirements}{section.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Representative LLM-agent industrial systems and their treatment of plant-facing writes (characterizations at citation level, from the cited works' stated scope).}}{10}{table.1}\protected@file@percent }
+\newlabel{tab:position}{{1}{10}{Representative LLM-agent industrial systems and their treatment of plant-facing writes (characterizations at citation level, from the cited works' stated scope)}{table.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.1}Failure model}{10}{subsection.3.1}\protected@file@percent }
+\newlabel{sec:problem-fm}{{3.1}{10}{Failure model}{subsection.3.1}{}}
+\citation{greshake2023injection,liu2024pinjection}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.2}Requirements}{11}{subsection.3.2}\protected@file@percent }
+\newlabel{sec:problem-req}{{3.2}{11}{Requirements}{subsection.3.2}{}}
+\citation{mcp2024,silva2025mcpmanufacturing}
+\@writefile{toc}{\contentsline {section}{\numberline {4}System architecture}{13}{section.4}\protected@file@percent }
+\newlabel{sec:arch}{{4}{13}{System architecture}{section.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Runtime overview}{13}{subsection.4.1}\protected@file@percent }
+\newlabel{sec:arch-overview}{{4.1}{13}{Runtime overview}{subsection.4.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}Configuration-driven binding model}{13}{subsection.4.2}\protected@file@percent }
+\newlabel{sec:arch-binding}{{4.2}{13}{Configuration-driven binding model}{subsection.4.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Platform architecture. Agent teams run inside the collaboration runtime through pluggable harness adapters; all plant-facing operations cross the governance block, which evaluates binding scope, the four-layer admission interval, approval records, and receipt grading, and writes every decision to the audit ledger. The industrial side separates acquisition from write control and persists telemetry in an embedded or provisioned time-series store.}}{14}{figure.1}\protected@file@percent }
+\newlabel{fig:arch}{{1}{14}{Platform architecture. Agent teams run inside the collaboration runtime through pluggable harness adapters; all plant-facing operations cross the governance block, which evaluates binding scope, the four-layer admission interval, approval records, and receipt grading, and writes every decision to the audit ledger. The industrial side separates acquisition from write control and persists telemetry in an embedded or provisioned time-series store}{figure.1}{}}
+\newlabel{eq:dispatch}{{1}{15}{Configuration-driven binding model}{equation.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}The governed write path}{16}{subsection.4.3}\protected@file@percent }
+\newlabel{sec:arch-write}{{4.3}{16}{The governed write path}{subsection.4.3}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces The governed write path. A machine-originated setpoint write crosses scope and policy checks, the four-layer admission interval, rate and step limits, a human approval record with tuple recheck, dispatch-time revalidation, driver execution, readback verification, and receipt grading; every stage's verdict, including rejections, lands in the audit ledger. Rejection paths are drawn dashed.}}{17}{figure.2}\protected@file@percent }
+\newlabel{fig:writepath}{{2}{17}{The governed write path. A machine-originated setpoint write crosses scope and policy checks, the four-layer admission interval, rate and step limits, a human approval record with tuple recheck, dispatch-time revalidation, driver execution, readback verification, and receipt grading; every stage's verdict, including rejections, lands in the audit ledger. Rejection paths are drawn dashed}{figure.2}{}}
+\newlabel{eq:interval}{{2}{17}{The governed write path}{equation.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Acquisition, context, and agent runtime}{19}{subsection.4.4}\protected@file@percent }
+\newlabel{sec:arch-daq}{{4.4}{19}{Acquisition, context, and agent runtime}{subsection.4.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.5}Model-driven optimization tier}{20}{subsection.4.5}\protected@file@percent }
+\newlabel{sec:arch-opt}{{4.5}{20}{Model-driven optimization tier}{subsection.4.5}{}}
+\citation{jones2020characterising}
+\@writefile{toc}{\contentsline {section}{\numberline {5}Implementation and deployment}{21}{section.5}\protected@file@percent }
+\newlabel{sec:impl}{{5}{21}{Implementation and deployment}{section.5}{}}
+\citation{iec62541}
+\@writefile{toc}{\contentsline {section}{\numberline {6}Experimental evaluation}{23}{section.6}\protected@file@percent }
+\newlabel{sec:eval}{{6}{23}{Experimental evaluation}{section.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Method and evidence discipline}{23}{subsection.6.1}\protected@file@percent }
+\newlabel{sec:eval-method}{{6.1}{23}{Method and evidence discipline}{subsection.6.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Device integration across five protocols (RQ1)}{25}{subsection.6.2}\protected@file@percent }
+\newlabel{sec:eval-integration}{{6.2}{25}{Device integration across five protocols (RQ1)}{subsection.6.2}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Device integration matrix on real protocol stacks (21/21 assertions pass). Grouped view of the frozen assertion set; every group passed in full.}}{26}{table.2}\protected@file@percent }
+\newlabel{tab:integration}{{2}{26}{Device integration matrix on real protocol stacks (21/21 assertions pass). Grouped view of the frozen assertion set; every group passed in full}{table.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Governance mechanism attribution (RQ2)}{26}{subsection.6.3}\protected@file@percent }
+\newlabel{sec:eval-ablation}{{6.3}{26}{Governance mechanism attribution (RQ2)}{subsection.6.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Four-arm governance ablation (3 repetitions per arm; 6 attack writes per repetition, 18 per arm; 69 legitimate writes overall).}}{28}{table.3}\protected@file@percent }
+\newlabel{tab:ablation}{{3}{28}{Four-arm governance ablation (3 repetitions per arm; 6 attack writes per repetition, 18 per arm; 69 legitimate writes overall)}{table.3}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Mechanism attribution. (a)~Interception rate per repetition per arm; only arms without the batch-window interlock admit the two window-class attacks per repetition, and all executed breaches are journaled. (b)~False blocks remain zero in every arm (the structural hard range bounds writes without harassing legitimate traffic), and all nine boundary probes pass in every arm.}}{28}{figure.3}\protected@file@percent }
+\newlabel{fig:ablation}{{3}{28}{Mechanism attribution. (a)~Interception rate per repetition per arm; only arms without the batch-window interlock admit the two window-class attacks per repetition, and all executed breaches are journaled. (b)~False blocks remain zero in every arm (the structural hard range bounds writes without harassing legitimate traffic), and all nine boundary probes pass in every arm}{figure.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.4}Closed-loop case study on a running line (RQ3)}{28}{subsection.6.4}\protected@file@percent }
+\newlabel{sec:eval-casestudy}{{6.4}{28}{Closed-loop case study on a running line (RQ3)}{subsection.6.4}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {4}{\ignorespaces Case-study decision timeline (melt-pressure correction on an OPC UA line; all events ledger-reconstructed).}}{31}{table.4}\protected@file@percent }
+\newlabel{tab:casestudy}{{4}{31}{Case-study decision timeline (melt-pressure correction on an OPC UA line; all events ledger-reconstructed)}{table.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.5}Model-driven optimization tier (RQ4)}{31}{subsection.6.5}\protected@file@percent }
+\newlabel{sec:eval-modeltier}{{6.5}{31}{Model-driven optimization tier (RQ4)}{subsection.6.5}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Model-driven optimization tier. (a)~Median quality error over a twelve-beat live closed loop: 6.42 before optimization to 0.02 at the final beat (99.7\% reduction), with every MV inside its process window. (b)~Twenty-seed paired comparison of dynamic model-driven solving versus static response-surface solving: 94.8\% versus 42.2\% success.}}{32}{figure.4}\protected@file@percent }
+\newlabel{fig:modeltier}{{4}{32}{Model-driven optimization tier. (a)~Median quality error over a twelve-beat live closed loop: 6.42 before optimization to 0.02 at the final beat (99.7\% reduction), with every MV inside its process window. (b)~Twenty-seed paired comparison of dynamic model-driven solving versus static response-surface solving: 94.8\% versus 42.2\% success}{figure.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.6}Adversarial containment (RQ5)}{32}{subsection.6.6}\protected@file@percent }
+\newlabel{sec:eval-adversarial}{{6.6}{32}{Adversarial containment (RQ5)}{subsection.6.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.7}Engineering quality and reproducibility (RQ1--RQ5)}{33}{subsection.6.7}\protected@file@percent }
+\newlabel{sec:eval-quality}{{6.7}{33}{Engineering quality and reproducibility (RQ1--RQ5)}{subsection.6.7}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {7}Discussion}{33}{section.7}\protected@file@percent }
+\newlabel{sec:discussion}{{7}{33}{Discussion}{section.7}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.1}What the evidence establishes}{33}{subsection.7.1}\protected@file@percent }
+\newlabel{sec:discussion-establishes}{{7.1}{33}{What the evidence establishes}{subsection.7.1}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {5}{\ignorespaces Regression and evidence base underlying the behavioral results.}}{34}{table.5}\protected@file@percent }
+\newlabel{tab:quality}{{5}{34}{Regression and evidence base underlying the behavioral results}{table.5}{}}
+\citation{parasuraman2000model}
+\citation{parasuramanmanzey2010complacency}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.2}Implications for practitioners}{35}{subsection.7.2}\protected@file@percent }
+\newlabel{sec:discussion-practitioners}{{7.2}{35}{Implications for practitioners}{subsection.7.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.3}Limitations and threats to validity}{36}{subsection.7.3}\protected@file@percent }
+\newlabel{sec:discussion-limits}{{7.3}{36}{Limitations and threats to validity}{subsection.7.3}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {8}Conclusion}{38}{section.8}\protected@file@percent }
+\newlabel{sec:conclusion}{{8}{38}{Conclusion}{section.8}{}}
+\bibstyle{elsarticle-num}
+\bibdata{resources/refs}
+\bibcite{xu2021industry}{{1}{}{{}}{{}}}
+\bibcite{zhao2023survey}{{2}{}{{}}{{}}}
+\bibcite{zhao2026shopfloor}{{3}{}{{}}{{}}}
+\bibcite{xia2025control}{{4}{}{{}}{{}}}
+\bibcite{koehle2026llmdriven}{{5}{}{{}}{{}}}
+\bibcite{llmdia2024}{{6}{}{{}}{{}}}
+\bibcite{bainbridge1983ironies}{{7}{}{{}}{{}}}
+\bibcite{parasuraman2000model}{{8}{}{{}}{{}}}
+\bibcite{greshake2023injection}{{9}{}{{}}{{}}}
+\bibcite{liu2024pinjection}{{10}{}{{}}{{}}}
+\bibcite{wang2025agentspec}{{11}{}{{}}{{}}}
+\bibcite{debenedetti2025camel}{{12}{}{{}}{{}}}
+\bibcite{lin2026agentic}{{13}{}{{}}{{}}}
+\bibcite{schall2026safe}{{14}{}{{}}{{}}}
+\bibcite{yao2023react}{{15}{}{{}}{{}}}
+\bibcite{schick2023toolformer}{{16}{}{{}}{{}}}
+\bibcite{xia2025architecture}{{17}{}{{}}{{}}}
+\bibcite{graul2026aas}{{18}{}{{}}{{}}}
+\bibcite{lim2025llmenabled}{{19}{}{{}}{{}}}
+\bibcite{koehle2025semanticrecipes}{{20}{}{{}}{{}}}
+\bibcite{waseem2026pretrained}{{21}{}{{}}{{}}}
+\bibcite{gill2025llmdt}{{22}{}{{}}{{}}}
+\bibcite{hofmann2025nlc}{{23}{}{{}}{{}}}
+\bibcite{jiang2026agentic}{{24}{}{{}}{{}}}
+\bibcite{wu2025instructmpc}{{25}{}{{}}{{}}}
+\bibcite{huang2026made}{{26}{}{{}}{{}}}
+\bibcite{liu2026agents4plc}{{27}{}{{}}{{}}}
+\bibcite{opentwins2023}{{28}{}{{}}{{}}}
+\bibcite{dtpatterns2023}{{29}{}{{}}{{}}}
+\bibcite{parasuramanmanzey2010complacency}{{30}{}{{}}{{}}}
+\bibcite{zhan2024injecagent}{{31}{}{{}}{{}}}
+\bibcite{debenedetti2024agentdojo}{{32}{}{{}}{{}}}
+\bibcite{iec62443-3-2}{{33}{}{{}}{{}}}
+\bibcite{iec62443-3-3}{{34}{}{{}}{{}}}
+\bibcite{iec61511}{{35}{}{{}}{{}}}
+\bibcite{gehrmann2020dtiacs}{{36}{}{{}}{{}}}
+\bibcite{sengupta2021securefog}{{37}{}{{}}{{}}}
+\bibcite{mahmood2023functional}{{38}{}{{}}{{}}}
+\bibcite{biskupovic2025supervision}{{39}{}{{}}{{}}}
+\bibcite{moyne2000r2r}{{40}{}{{}}{{}}}
+\bibcite{isa95_2025}{{41}{}{{}}{{}}}
+\bibcite{isa88_2010}{{42}{}{{}}{{}}}
+\bibcite{mcp2024}{{43}{}{{}}{{}}}
+\bibcite{silva2025mcpmanufacturing}{{44}{}{{}}{{}}}
+\bibcite{jones2020characterising}{{45}{}{{}}{{}}}
+\bibcite{iec62541}{{46}{}{{}}{{}}}
+\providecommand\NAT@force@numbers{}\NAT@force@numbers
+\gdef \@abspage@last{46}

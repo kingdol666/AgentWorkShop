@@ -1,0 +1,316 @@
+\begin{thebibliography}{10}
+\expandafter\ifx\csname url\endcsname\relax
+  \def\url#1{\texttt{#1}}\fi
+\expandafter\ifx\csname urlprefix\endcsname\relax\def\urlprefix{URL }\fi
+\expandafter\ifx\csname href\endcsname\relax
+  \def\href#1#2{#2} \def\path#1{#1}\fi
+
+\bibitem{xu2021industry}
+X.~Xu, Y.~Lu, B.~Vogel-Heuser, L.~Wang, Industry 4.0 and industry
+  5.0---{I}nception, conception and perception, J. Manuf. Syst. 61 (2021)
+  530--535.
+\newblock \href {https://doi.org/10.1016/j.jmsy.2021.10.006}
+  {\path{doi:10.1016/j.jmsy.2021.10.006}}.
+
+\bibitem{zhao2023survey}
+W.~X. Zhao, K.~Zhou, J.~Li, T.~Tang, X.~Wang, Y.~Hou, Y.~Min, B.~Zhang,
+  J.~Zhang, Z.~Dong, Y.~Du, C.~Yang, Y.~Chen, Z.~Chen, J.~Jiang, R.~Ren, Y.~Li,
+  X.~Tang, Z.~Liu, P.~Liu, J.-Y. Nie, J.-R. Wen, A survey of large language
+  models, arXiv preprint arXiv:2303.18223 (2023).
+
+\bibitem{zhao2026shopfloor}
+Z.~Zhao, D.~Tang, C.~Liu, L.~Wang, Z.~Zhang, H.~Zhu, K.~Chen, Q.~Nie, Y.~Ji, A
+  large language model-based multi-agent manufacturing system for intelligent
+  shopfloors, Adv. Eng. Inform. 69 (2026) 103888.
+\newblock \href {https://doi.org/10.1016/j.aei.2025.103888}
+  {\path{doi:10.1016/j.aei.2025.103888}}.
+
+\bibitem{xia2025control}
+Y.~Xia, N.~Jazdi, J.~Zhang, C.~Shah, M.~Weyrich, Control industrial automation
+  system with large language model agents, in: Proc. IEEE 30th Int. Conf. on
+  Emerging Technologies and Factory Automation (ETFA), 2025, pp. 1--8.
+\newblock \href {https://doi.org/10.1109/ETFA65518.2025.11205539}
+  {\path{doi:10.1109/ETFA65518.2025.11205539}}.
+
+\bibitem{koehle2026llmdriven}
+K.~K{\"o}hle, D.~Anicic, T.~A. Runkler, R.~Graf, {LLM}-driven multi-agent
+  control for skill-based smart manufacturing, in: Proc. IEEE 31st Int. Conf.
+  on Emerging Technologies and Factory Automation (ETFA), 2026, pp. 1--8.
+\newblock \href {https://doi.org/10.1109/ETFA68377.2026.11725257}
+  {\path{doi:10.1109/ETFA68377.2026.11725257}}.
+
+\bibitem{llmdia2024}
+S.~Colabianchi, F.~Costantino, N.~Sabetta, Assessment of a large language model
+  based digital intelligent assistant in assembly manufacturing, Comput. Ind.
+  162 (2024) 104129.
+\newblock \href {https://doi.org/10.1016/j.compind.2024.104129}
+  {\path{doi:10.1016/j.compind.2024.104129}}.
+
+\bibitem{bainbridge1983ironies}
+L.~Bainbridge, Ironies of automation, Automatica 19~(6) (1983) 775--779.
+\newblock \href {https://doi.org/10.1016/0005-1098(83)90046-8}
+  {\path{doi:10.1016/0005-1098(83)90046-8}}.
+
+\bibitem{parasuraman2000model}
+R.~Parasuraman, T.~B. Sheridan, C.~D. Wickens, A model for types and levels of
+  human interaction with automation, IEEE Trans. Syst., Man, Cybern., Part A
+  30~(3) (2000) 286--297.
+\newblock \href {https://doi.org/10.1109/3468.844354}
+  {\path{doi:10.1109/3468.844354}}.
+
+\bibitem{greshake2023injection}
+K.~Greshake, S.~Abdelnabi, S.~Mishra, C.~Endres, T.~Holz, M.~Fritz, Not what
+  you've signed up for: Compromising real-world {LLM}-integrated applications
+  with indirect prompt injection, in: Proc. 16th ACM Workshop on Artificial
+  Intelligence and Security, 2023, pp. 79--90.
+\newblock \href {https://doi.org/10.1145/3605764.3623985}
+  {\path{doi:10.1145/3605764.3623985}}.
+
+\bibitem{liu2024pinjection}
+Y.~Liu, Y.~Jia, R.~Geng, J.~Jia, N.~Z. Gong,
+  \href{https://www.usenix.org/conference/usenixsecurity24/presentation/liu-yupei}{Formalizing
+  and benchmarking prompt injection attacks and defenses}, in: Proc. 33rd
+  USENIX Security Symposium (USENIX Security 24), 2024, pp. 1831--1847.
+\newline\urlprefix\url{https://www.usenix.org/conference/usenixsecurity24/presentation/liu-yupei}
+
+\bibitem{wang2025agentspec}
+H.~Wang, C.~M. Poskitt, J.~Sun, {AgentSpec}: Customizable runtime enforcement
+  for safe and reliable {LLM} agents, in: Proc. IEEE/ACM 48th Int. Conf. on
+  Software Engineering (ICSE), 2026, pp. 2938--2950.
+\newblock \href {https://doi.org/10.1145/3744916.3764546}
+  {\path{doi:10.1145/3744916.3764546}}.
+
+\bibitem{debenedetti2025camel}
+E.~Debenedetti, et~al., \href{https://arxiv.org/abs/2503.18813}{Defeating
+  prompt injections by design} (2025).
+\newblock \href {https://doi.org/10.48550/arXiv.2503.18813}
+  {\path{doi:10.48550/arXiv.2503.18813}}.
+\newline\urlprefix\url{https://arxiv.org/abs/2503.18813}
+
+\bibitem{lin2026agentic}
+S.-C. Lin, C.-Y. Chen, An integrated framework featuring policy-governed
+  agentic {AI} for closed-loop manufacturing control with multi-source
+  sensor--{MES}--{ERP}, Int. J. Adv. Manuf. Technol. 143 (2026) 6405--6428.
+\newblock \href {https://doi.org/10.1007/s00170-026-17806-2}
+  {\path{doi:10.1007/s00170-026-17806-2}}.
+
+\bibitem{schall2026safe}
+D.~Schall, Safe integration of large language models into industrial process
+  control: A multi-agent architecture with {P\&ID}-grounded validation, Auton.
+  Intell. Syst. 6 (2026) 14.
+\newblock \href {https://doi.org/10.1007/s43684-026-00136-1}
+  {\path{doi:10.1007/s43684-026-00136-1}}.
+
+\bibitem{yao2023react}
+S.~Yao, J.~Zhao, D.~Yu, N.~Du, I.~Shafran, K.~Narasimhan, Y.~Cao, {ReAct}:
+  Synergizing reasoning and acting in language models, International Conference
+  on Learning Representations (ICLR), arXiv:2210.03629 (2023).
+
+\bibitem{schick2023toolformer}
+T.~Schick, J.~Dwivedi-Yu, R.~Dess{\`i}, R.~Raileanu, M.~Lomeli, E.~Hambro,
+  L.~Zettlemoyer, N.~Cancedda, T.~Scialom, Toolformer: Language models can
+  teach themselves to use tools, in: Advances in Neural Information Processing
+  Systems 36 (NeurIPS 2023), 2023, pp. 68539--68551.
+\newblock \href {https://doi.org/10.52202/075280-2997}
+  {\path{doi:10.52202/075280-2997}}.
+
+\bibitem{xia2025architecture}
+Y.~Xia, N.~Jazdi, M.~Weyrich, An architecture for integrating large language
+  models with digital twins and automation systems, in: Proc. IEEE 30th Int.
+  Conf. on Emerging Technologies and Factory Automation (ETFA), 2025, pp. 1--8.
+\newblock \href {https://doi.org/10.1109/ETFA65518.2025.11205636}
+  {\path{doi:10.1109/ETFA65518.2025.11205636}}.
+
+\bibitem{graul2026aas}
+C.~Graul, W.~{\.Z}arski, D.~Miko{\l}ajewski, I.~Rojek, {AI} agents in industry
+  4.0: {AAS}--{OPC UA}--{LLM} architecture as the foundation of intelligent
+  manufacturing systems in the context of industrial enterprise implementation,
+  Appl. Sci. 16~(11) (2026) 5428.
+\newblock \href {https://doi.org/10.3390/app16115428}
+  {\path{doi:10.3390/app16115428}}.
+
+\bibitem{lim2025llmenabled}
+J.~Lim, I.~Kovalenko, A large language model-enabled control architecture for
+  dynamic resource capability exploration in multi-agent manufacturing systems,
+  in: Proc. IEEE 21st Int. Conf. on Automation Science and Engineering (CASE),
+  2025, pp. 2088--2095.
+\newblock \href {https://doi.org/10.1109/CASE58245.2025.11163802}
+  {\path{doi:10.1109/CASE58245.2025.11163802}}.
+
+\bibitem{koehle2025semanticrecipes}
+K.~K{\"o}hle, D.~Anicic, T.~A. Runkler, K.~Dorofeev, A.~S. Thuluva, R.~Graf,
+  Virtually commissioned semantic recipes based on {OPC UA} skills, in: Proc.
+  IEEE 8th Int. Conf. on Industrial Cyber-Physical Systems (ICPS), 2025, pp.
+  1--6.
+\newblock \href {https://doi.org/10.1109/ICPS65515.2025.11087832}
+  {\path{doi:10.1109/ICPS65515.2025.11087832}}.
+
+\bibitem{waseem2026pretrained}
+M.~Waseem, K.~Bhatta, C.~Li, Q.~Chang, Pretrained {LLMs} as real-time
+  controllers for robot operated serial production line, Mach. Learn.: Eng.
+  2~(1) (2026) 015006.
+\newblock \href {https://doi.org/10.1088/3049-4761/ae4ee8}
+  {\path{doi:10.1088/3049-4761/ae4ee8}}.
+
+\bibitem{gill2025llmdt}
+M.~S. Gill, J.~Vyas, A.~Markaj, F.~Gehlhoff, M.~Mercang{\"o}z, Leveraging {LLM}
+  agents and digital twins for fault handling in process plants, in: Proc. IEEE
+  30th Int. Conf. on Emerging Technologies and Factory Automation (ETFA), 2025,
+  pp. 1--8.
+\newblock \href {https://doi.org/10.1109/ETFA65518.2025.11205597}
+  {\path{doi:10.1109/ETFA65518.2025.11205597}}.
+
+\bibitem{hofmann2025nlc}
+B.~Hofmann, N.~Piechulek, S.~Kreitlein, J.~Franke, P.~Bruendl,
+  \href{https://arxiv.org/abs/2510.11300}{Beyond touch-based human-machine
+  interface: Control your machines in natural language by utilizing large
+  language models and {OPC UA}}, arXiv preprint arXiv:2510.11300 (2025).
+\newline\urlprefix\url{https://arxiv.org/abs/2510.11300}
+
+\bibitem{jiang2026agentic}
+X.~Jiang, H.~Xie, J.~Wang, Z.~Yang, Y.~Zhou, L.~Yao, Z.~Zhu, Agentic {AI} for
+  safety-aware process monitoring and fault diagnosis: A review, Processes
+  14~(13) (2026) 2112.
+\newblock \href {https://doi.org/10.3390/pr14132112}
+  {\path{doi:10.3390/pr14132112}}.
+
+\bibitem{wu2025instructmpc}
+R.~Wu, J.~Ai, T.~Li, {InstructMPC}: A human-{LLM}-in-the-loop framework for
+  context-aware control, in: Proc. IEEE 64th Conf. on Decision and Control
+  (CDC), 2025, pp. 172--179.
+\newblock \href {https://doi.org/10.1109/CDC57313.2025.11312156}
+  {\path{doi:10.1109/CDC57313.2025.11312156}}.
+
+\bibitem{huang2026made}
+K.-C. Huang, H.-T. Lin, C.-H. Lin, M.-T. Huang, Large language model
+  integration in industrial cyber-physical systems: A multi-modal architecture
+  for automated control generation, in: Proc. Int. Conf. on Control, Automation
+  and Diagnosis (ICCAD), 2026, pp. 1--6.
+\newblock \href {https://doi.org/10.1109/ICCAD69956.2026.11643124}
+  {\path{doi:10.1109/ICCAD69956.2026.11643124}}.
+
+\bibitem{liu2026agents4plc}
+Z.~Liu, R.~Zeng, D.~Wang, G.~Peng, X.~Liu, Q.~Liu, P.~Liu, W.~Wang, J.~Wang,
+  {Agents4PLC}: Automating closed-loop {PLC} code generation and verification
+  in industrial control systems using {LLM}-based agents, IEEE Trans. Softw.
+  Eng. 52~(5) (2026) 1672--1687.
+\newblock \href {https://doi.org/10.1109/TSE.2026.3667895}
+  {\path{doi:10.1109/TSE.2026.3667895}}.
+
+\bibitem{opentwins2023}
+J.~Robles, C.~Mart{\'i}n, M.~D{\'i}az, {OpenTwins}: An open-source framework
+  for the development of next-gen compositional digital twins, Comput. Ind. 152
+  (2023) 104007.
+\newblock \href {https://doi.org/10.1016/j.compind.2023.104007}
+  {\path{doi:10.1016/j.compind.2023.104007}}.
+
+\bibitem{dtpatterns2023}
+P.~Bellavista, N.~Bicocchi, M.~Fogli, C.~Giannelli, M.~Mamei, M.~Picone,
+  Requirements and design patterns for adaptive, autonomous, and context-aware
+  digital twins in industry 4.0 digital factories, Comput. Ind. 149 (2023)
+  103918.
+\newblock \href {https://doi.org/10.1016/j.compind.2023.103918}
+  {\path{doi:10.1016/j.compind.2023.103918}}.
+
+\bibitem{parasuramanmanzey2010complacency}
+R.~Parasuraman, D.~H. Manzey, Complacency and bias in human use of automation:
+  An attentional integration, Hum. Factors 52~(3) (2010) 381--410.
+\newblock \href {https://doi.org/10.1177/0018720810376055}
+  {\path{doi:10.1177/0018720810376055}}.
+
+\bibitem{zhan2024injecagent}
+Q.~Zhan, Z.~Liang, Z.~Ying, D.~Kang, Injecagent: Benchmarking indirect prompt
+  injections in tool-integrated large language model agents, in: Findings of
+  the Association for Computational Linguistics ACL 2024, 2024, pp.
+  10471--10506.
+\newblock \href {https://doi.org/10.18653/v1/2024.findings-acl.624}
+  {\path{doi:10.18653/v1/2024.findings-acl.624}}.
+
+\bibitem{debenedetti2024agentdojo}
+E.~Debenedetti, J.~Zhang, M.~Balunovic, L.~Beurer-Kellner, M.~Fischer,
+  F.~Tram{\`e}r, Agentdojo: A dynamic environment to evaluate prompt injection
+  attacks and defenses for {LLM} agents, in: Advances in Neural Information
+  Processing Systems 37, 2024, pp. 82895--82920.
+\newblock \href {https://doi.org/10.52202/079017-2636}
+  {\path{doi:10.52202/079017-2636}}.
+
+\bibitem{iec62443-3-2}
+{IEC}, {IEC} 62443-3-2:2020: Security for industrial automation and control
+  systems---part 3-2: Security risk assessment for system design, Standard
+  (2020).
+
+\bibitem{iec62443-3-3}
+{IEC}, {IEC} 62443-3-3:2013: Industrial communication networks---network and
+  system security---part 3-3: System security requirements and security levels,
+  Standard (2013).
+
+\bibitem{iec61511}
+{IEC}, {IEC} 61511-1:2016: Functional safety---safety instrumented systems for
+  the process industry sector, International Standard (2016).
+
+\bibitem{gehrmann2020dtiacs}
+C.~Gehrmann, M.~Gunnarsson, A digital twin based industrial automation and
+  control system security architecture, IEEE Trans. Ind. Inform. 16~(1) (2020)
+  669--680.
+\newblock \href {https://doi.org/10.1109/TII.2019.2938885}
+  {\path{doi:10.1109/TII.2019.2938885}}.
+
+\bibitem{sengupta2021securefog}
+J.~Sengupta, S.~Ruj, S.~Das~Bit, A secure fog-based architecture for industrial
+  internet of things and industry 4.0, IEEE Trans. Ind. Inform. 17~(4) (2021)
+  2316--2324.
+\newblock \href {https://doi.org/10.1109/TII.2020.2998105}
+  {\path{doi:10.1109/TII.2020.2998105}}.
+
+\bibitem{mahmood2023functional}
+N.~H. Mahmood, G.~Berardinelli, E.~J. Khatib, R.~Hashemi, C.~de~Lima,
+  M.~Latva-aho, A functional architecture for {6G} special-purpose industrial
+  {IoT} networks, IEEE Trans. Ind. Inform. 19~(3) (2023) 2530--2540.
+\newblock \href {https://doi.org/10.1109/TII.2022.3182988}
+  {\path{doi:10.1109/TII.2022.3182988}}.
+
+\bibitem{biskupovic2025supervision}
+A.~Biskupovic, A.~Villalonga, F.~Casta{\~n}o, R.~E. Haber, F.~N{\'u}{\~n}ez,
+  Agent-based supervision for service-oriented industrial cyber--physical
+  systems, IEEE Trans. Ind. Inform. 21~(3) (2025) 2719--2728.
+\newblock \href {https://doi.org/10.1109/TII.2024.3514178}
+  {\path{doi:10.1109/TII.2024.3514178}}.
+
+\bibitem{moyne2000r2r}
+J.~Moyne, E.~del Castillo, A.~M. Hurwitz (Eds.), Run-to-Run Control in
+  Semiconductor Manufacturing, 1st Edition, CRC Press, Boca Raton, FL, 2000.
+
+\bibitem{isa95_2025}
+{ISA}, {ANSI/ISA-95.00.01-2025} ({IEC} 62264-1 mod): Enterprise-control system
+  integration---part 1: Models and terminology, International Standard (2025).
+
+\bibitem{isa88_2010}
+{ISA}, {ISA-88.00.01-2010}: Batch control---part 1: Models and terminology,
+  International Standard (2010).
+
+\bibitem{mcp2024}
+{Model Context Protocol contributors},
+  \href{https://modelcontextprotocol.io/specification/2026-07-28/server/tools}{{Model
+  Context Protocol}: Tools}, Specification (2026).
+\newline\urlprefix\url{https://modelcontextprotocol.io/specification/2026-07-28/server/tools}
+
+\bibitem{silva2025mcpmanufacturing}
+L.~M. Vieira~da Silva, A.~K{\"o}cher, F.~Gehlhoff, Beyond formal semantics for
+  capabilities and skills: Model context protocol in manufacturing, in: Proc.
+  IEEE 30th Int. Conf. on Emerging Technologies and Factory Automation (ETFA),
+  2025, pp. 1--4.
+\newblock \href {https://doi.org/10.1109/ETFA65518.2025.11205601}
+  {\path{doi:10.1109/ETFA65518.2025.11205601}}.
+
+\bibitem{jones2020characterising}
+D.~Jones, C.~Snider, A.~Nassehi, J.~Yon, B.~Hicks, Characterising the {D}igital
+  {T}win: {A} systematic literature review, CIRP J. Manuf. Sci. Technol. 29
+  (2020) 36--52.
+\newblock \href {https://doi.org/10.1016/j.cirpj.2020.02.002}
+  {\path{doi:10.1016/j.cirpj.2020.02.002}}.
+
+\bibitem{iec62541}
+{IEC}, {IEC} 62541: {OPC} unified architecture specification, IEC Standard,
+  series of parts (2025).
+
+\end{thebibliography}

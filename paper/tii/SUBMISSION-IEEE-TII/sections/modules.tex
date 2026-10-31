@@ -1,67 +1,34 @@
-\section{Module Functions and Integration}
+\section{Operation Governance and Evidence}
 \label{sec:modules}
-Section~\ref{sec:design} defines the architecture and shared dispatch
-contract. This section specifies the runtime context passed to adapters and
-the route-specific admission, approval, and evidence steps.
+Section~\ref{sec:design} defines the shared dispatch contract. This section
+focuses on the checks that follow it: scene-specific write admission,
+conditional approval, and the records returned by each route.
 
-\subsection{Task, Harness, and Context}
-Task and chat entry points create or join a workspace channel. The task
-runtime manages membership, roles, task state, and shared execution context;
-a harness registry adapts agent engines to a common execution interface. This
-separation lets agents collaborate through shared tasks and channel resources
-without coupling their engine-specific turn protocol to a production scene.
-At each turn, the prompt builder assembles the task, active scene description,
-line--product--recipe--run state, channel profile, agent binding, and retrieved
-memory. The resulting context supports process-aware proposals, while the
-dispatcher independently checks authority and the operation handler resolves
-current state before a write.
-
-Direct REST and selected stdio-MCP operation calls reach the same dispatcher
-without a task or harness turn. REST authentication and identity resolution
-follow Section~\ref{sec:executionflow}; each handler reads live route state
-at invocation. Handlers receive the resolved actor, channel, and operation
-arguments through the same interface for either entry route; records are keyed
-by the identifiers supplied in each request. A registered task additionally
-receives prompt context and a scoped tool catalog. Catalog visibility alone
-does not grant write authority: the dispatcher checks authority at invocation.
-
-\subsection{Shared Dispatch and Device Admission}
+\subsection{Scene-Specific Write Admission}
 \label{sec:governed}
-Each operation must satisfy the predicates in
-Eq.~(\ref{eq:dispatch-contract}) before handler selection; the selected
-handler then revalidates route-specific state. Scene configuration maps
-semantic signals and controls to
-drivers and specifies process objectives and guards. Capability profiles and
-tool policies narrow available operations, while resource bindings constrain
-accessible nodes, controls, and recipes. Optional DAQ, MES, analysis,
-retrieval, optimization, and digital-twin services are invoked through
-registered handlers. The application supplies its optimization strategy;
-the framework coordinates context, operation access, and execution.
+After the shared dispatch checks pass, the selected handler applies the
+limits configured for the target scene and control. Authorization and value
+admission are separate checks. The target band describes a desired process
+outcome; it does not define the admissible write interval. A candidate may
+satisfy all write constraints while the measured process value remains outside
+the target band.
 
-The target band describes a desired process outcome. It is not the admissible
-write interval: the latter is computed from engineering, product, recipe, and
-route-specific limits below. A candidate can therefore satisfy all write
-constraints yet fail to move the measured process value into its target band.
-
-Actuator writes converge on the shared DCW admission point.
 For an online node write, the admissible value interval is
 \begin{equation}
 \mathcal{I}^{\mathrm{online}}_n(t)=
 \mathcal{H}_n\cap\mathcal{L}^{\mathrm{base}}_n\cap\mathcal{L}^{\mathrm{prod}}_n(t)\cap\mathcal{L}^{\mathrm{rec}}_n(t),
 \label{eq:admission}
 \end{equation}
-where $\mathcal{H}_n$ is the hard engineering range and
+where $\mathcal{H}_n$ is the hard engineering range, and
 $\mathcal{L}^{\mathrm{base}}_n$, $\mathcal{L}^{\mathrm{prod}}_n$, and
 $\mathcal{L}^{\mathrm{rec}}_n$ are the baseline, active-product, and
-active-recipe limits; the $\mathcal{L}$ limits here are deliberately named
-apart from the policy and binding predicates of
-(\ref{eq:dispatch-contract}). Missing optional limits impose no
-restriction; an empty intersection rejects the request and identifies the
-excluding layer. Recipe dispatch validates the replacement recipe against
-the hard, baseline, and product limits rather than the previous recipe
-window. Step, interval, and hold-window checks apply as configured for each route.
-These application-level checks bound commands alongside independent
-programmable-logic-controller and safety-instrumented protection. They do not
-replace equipment interlocks or certify the safety of a plant deployment.
+active-recipe limits. These numerical bounds are distinct from the scope,
+policy, grant, and binding predicates in Eq.~(\ref{eq:dispatch-contract}).
+Missing optional limits impose no restriction. An empty intersection rejects
+the request and identifies the excluding layer. Recipe dispatch checks a
+replacement recipe against the hard, baseline, and product limits rather than
+the previous recipe's window. Step, interval, and hold-window limits apply
+when configured. These application-level checks complement, but do not
+replace, equipment interlocks.
 
 \input{sections/mechanisms}

@@ -1,0 +1,143 @@
+\section{Discussion}
+\label{sec:discussion}
+
+\subsection{What the evidence establishes}
+\label{sec:discussion-establishes}
+
+The evaluation supports four claims at graded strength. Device-level
+integration is established strongly (RQ1): five protocol stacks behave
+identically on platform and device sides, including under faults, and the
+behavior survives configuration changes and re-runs. Mechanism
+attribution is established at the platform tier (RQ2). Its
+epistemic status should be stated plainly: the ablation is an engineering
+validation that the design's attribution story is true (the interlock
+predicate does carry interception; the structural layers survive its
+removal), not a causal comparison of governed against ungoverned
+operation on plant outcomes. Such a comparison was deliberately not run
+on a live path, and plant-KPI superiority is not claimed. What the
+ablation does establish is defense in depth (the hard range survives
+every disabled configuration) and the cost of governance on this
+workload. The cost result is zero false blocks on injected legitimate
+traffic. It is not a false-block rate for natural or adversarially
+ambiguous plant traffic, and not a statement about in-range harmful
+writes, such as compliant amplitudes applied at harmful times, which the
+interval layers do not address. The closed-loop result (RQ3) is a feasibility demonstration
+with unusually complete instrumentation: every decision is
+ledger-reconstructed, approvals bind concrete tuples, and an independent
+physical recheck corroborates the outcome. It is not a statistical
+comparison, and one of its two episodes exercised the human decision
+point with an automated approver. The adversarial result (RQ5) is a
+negative-outcome containment case: it shows the platform bounding a weak
+model's damage to zero writes, not that weak models can be made to
+succeed. Throughout, the model-driven tier's benefits (RQ4) are
+simulation-tier results by construction.
+
+\subsection{Implications for practitioners}
+\label{sec:discussion-practitioners}
+
+Three lessons generalize beyond this implementation. First,
+\emph{governance must live in configuration, not in prompts}. The same
+agent surface that passed the ablation's legitimate traffic and blocked
+its attacks never received a rule as text; the rules were intersections
+of configuration facts. Teams deploying LLM agents against plants should
+resist encoding limits in system prompts, which are advisory, and
+instead make them admission predicates, which are enforceable.
+
+Second, \emph{attribution is a first-class requirement, not a logging
+by-product}. The ablation could identify the load-bearing layer only
+because every layer records its own verdict. Operators debugging a
+blocked write, or an auditor reconstructing an executed one, need
+the excluding layer and the configuration revision, and they need
+rejections recorded as faithfully as executions. The
+\emph{attribution $\neq$ prevention} separation also has a practical
+consequence: disabling a soft layer for commissioning does not blind the
+audit, and a write that executes under a disabled interlock is still
+visible.
+
+Third, \emph{receipt grading changes what agents can honestly report}.
+An agent that cites a readback-verified write and one that cites a
+transport acknowledgment are making different claims; surfacing the
+grade in the tool result makes the difference visible to the model and
+to any human reading the report. This is the same discipline
+human-factors research asks of automation: the human decision should be
+exercised against concrete, inspectable evidence
+\cite{parasuraman2000model}, not against a summary. The
+complacency failure mode \cite{parasuramanmanzey2010complacency}
+argues for keeping the approval payload specific enough that approving
+is an informed act.
+
+A deployment path follows from the architecture: commission bindings in
+manual mode with batch-window interlocks on, review the ledger's
+rejection records to tune limits, and promote individual bindings to
+auto only after their rejection history is understood. The
+configuration that the ablation exercised maps directly onto this
+ramp-up.
+
+For an application-oriented venue, the relevant question is whether the
+governance layer survives deployment, not whether the underlying model is
+stronger. The evaluation is deliberately staged: protocol-level fidelity
+on real stacks, process-level behavior on a simulator, and plant-level
+generalization as the next empirical step. The staging is a scope choice,
+not a claim that simulation substitutes for a plant. A plant pilot should
+start read-only, then move to single-point manual writes, then to bounded
+automatic writes, keeping the same ledger and approval records throughout;
+the protocol matrix and the four-layer path are the parts that transfer
+unchanged.
+
+\subsection{Limitations and threats to validity}
+\label{sec:discussion-limits}
+
+\textbf{Construct validity.} The ablation measures interception of
+injected policy-breaching writes and false blocks on legitimate ones;
+these are mechanistic constructs, not plant-outcome constructs. We do
+not claim that governed supervision improves plant KPIs relative to
+ungoverned supervision: that comparison was deliberately not run on a
+live path, and the model-tier benefits are simulation-tier.
+
+\textbf{External validity.} All plant contact is against simulator
+backends: a physical-engine line simulator and a PLC node simulator
+exposing real protocol stacks. The protocol behavior is real; the
+process physics is simulated. The case-study line is single-site, and
+the LLM episodes use one 9B-class open model family; stronger or
+weaker models may shift where governance is exercised, though the
+containment episode suggests the bound holds when the model is weak.
+
+\textbf{Internal validity.} Case-study timelines are reconstructed from
+the platform's own ledger; an independent log source does not exist for
+these episodes (the physical recheck provides one external corroboration
+point). The ablation's workload is synthetic by design, which is what
+makes its attribution exact. Statistical-conclusion validity is
+deliberately thin: most reported numbers are single-run or small-$n$
+descriptive statistics, and we have marked each as such rather than
+attaching tests they cannot support. Experimenter bias is a live
+threat: the attack sets and legitimate workloads were designed by the
+platform's authors with known expected outcomes, and no pre-registered
+hypothesis test was run. The frozen-artifact discipline makes the
+workloads auditable but not independent. Approval quality (whether human
+approvers scrutinize records) is not measured; the replication episode's
+scripted approver avoids claiming otherwise. Receipt grading under a
+mis-applying device (a transport acknowledgment where the value is never
+applied) is covered by design and by disconnect-fault checks, but no
+experiment forced that exact failure; the readback-mismatch path
+(re-reads, downgrade to unverified) is exercised by the
+governance suite rather than by a dedicated plant-level probe.
+Configuration governance is a further open side door: limits and recipe
+windows are themselves configuration, and putting configuration changes
+under the same approval-and-ledger discipline (management of change) is
+future work. So is quantitative ramp-up guidance for the
+manual-to-auto promotion path of
+Section~\ref{sec:discussion-practitioners}.
+
+\textbf{Reliability.} The frozen-baseline mechanism reproduced the
+ablation bit-exactly across twelve days but correctly refused
+reproduction on a drifted scenario, so regression claims are scoped to
+commit- and hash-matched runs.
+
+\textbf{Known product gaps.} The case study surfaced a real assembly
+gap: the dataset builder derives control dimensions from acquisition
+nodes only, so setpoint trajectories that live in the write ledger do
+not yet flow into training data without an additional readback node.
+The affected training path was locked closed by the twin gate rather
+than producing an unsafe model. The audit ledger is append-only within
+the platform process; externalizing it to write-once storage is future
+work.

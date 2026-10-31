@@ -1,0 +1,100 @@
+\section{Problem statement and requirements}
+\label{sec:problem}
+
+We consider a production line supervised by an information platform that
+provides data acquisition from plant nodes and controlled writes to plant
+nodes, in the sense of the enterprise--control integration models of
+ISA-95 \cite{isa95_2025} and batch control models of ISA-88
+\cite{isa88_2010}; the line--product--recipe--run tuples used throughout
+this paper correspond to ISA-88 control-recipe and batch identities. LLM
+agent teams run inside the same platform. Each team
+is led by a coordinator agent that decomposes a stated production goal into
+worker tasks; agents perceive the plant through queries against acquired
+telemetry and act through platform operations. We do not consider
+real-time control loops: the platform occupies a supervisory position in
+which decisions occur on second-to-minute cadences, and equipment-level
+protection remains with the plant's own basic process control and safety
+instrumented systems \cite{iec61511}. The platform is not a safety
+barrier and makes no claim inside a safety-instrumented function.
+
+\subsection{Failure model}
+\label{sec:problem-fm}
+
+Four failure classes motivate the design. They are stated from the plant
+operator's perspective: each is an event that can occur, that operators must
+afterwards reconstruct, and that current agent frameworks make difficult to
+reconstruct.
+
+\textbf{M1: Unconstrained machine-originated write.} An agent issues a
+setpoint write that violates plant engineering context: outside the
+node's safe range, outside the recipe window of the product currently in
+production, or in conflict with another proposal in flight. Session-level
+tool permissions cannot see this context: the write tool is either allowed
+(and the violation passes) or denied (and no legitimate write is possible).
+
+\textbf{M2: Unattributable decision.} A write is blocked (or executes)
+and the operator cannot determine which control decided. If scope checks,
+engineering interlocks, and approval requirements are evaluated in one
+amalgamated policy, the audit log records an outcome but not its cause.
+Attribution matters operationally: a block caused by an expired approval
+window is fixed differently from one caused by a recipe window.
+
+\textbf{M3: Stale or replayed approval.} A human approves a proposed write;
+plant state changes before the write executes (a different recipe starts, a
+batch closes, limits are revised); the write executes under the old
+approval. The approval was real, but it no longer describes the operation
+performed.
+
+\textbf{M4: Unverified receipt.} The platform reports success because a
+protocol stack acknowledged a transmission. The device may not have applied
+the value. A readback would have shown so. Operators who rely on the
+transport acknowledgment form beliefs about plant state that the device does
+not support.
+
+Prompt injection sharpens all four classes: an agent that reads plant-facing
+content can be steered to request writes it was never asked for
+\cite{greshake2023injection,liu2024pinjection}. The path must therefore
+treat the \emph{requester} as untrusted even when the request is
+well-formed.
+
+\subsection{Requirements}
+\label{sec:problem-req}
+
+From the failure model we derive six requirements for a governed write path.
+
+\textbf{R1 (Context-encoded scope).} Agent authority over writes must be a
+configuration fact (bound to specific nodes, expressible per point, per
+recipe, or per line) and must derive from plant structure (lines,
+products, recipes, runs), not from prompt conventions.
+
+\textbf{R2 (Layered admission).} Every write must cross an admission
+interval formed by independent layers: a structural hard range at the node,
+then parameter, product, and recipe limits. Layers must be evaluated in a
+fixed order and the first excluding layer must be identifiable.
+
+\textbf{R3 (Defense in depth).} No single layer may be load-bearing for
+safety. If one layer is disabled or misconfigured, remaining layers must
+still bound writes, and the hard node range must be bypassable by no
+configuration flag.
+
+\textbf{R4 (Bound, rechecked approval).} When a binding requires human
+approval, the approval must record the proposed values, the applicable
+limits, an expiry, and the active line--product--recipe--run tuple; the
+dispatching stage must recheck the record against current state before
+executing, so that M3 fails closed.
+
+\textbf{R5 (Honest receipts).} Write outcomes must be graded into at least
+three classes (readback-verified, transport-acknowledged, and unverified),
+and the platform must not represent a transport acknowledgment as
+device-side confirmation.
+
+\textbf{R6 (Total audit).} Every admission decision, including every
+rejection with its deciding layer, must be recorded in an append-only
+ledger, so that M2 fails closed: an absent record is itself evidence.
+
+R1--R2 address M1; R2's layer ordering plus R6 address M2; R4 addresses M3;
+R5 addresses M4; R3 constrains the whole chain. Section~\ref{sec:arch}
+presents the architecture that realizes these requirements, and
+Section~\ref{sec:eval} evaluates them, including a four-arm ablation
+designed to attribute interception to specific layers (R2--R3) and to
+measure false blocks, the cost side of governance.

@@ -1,0 +1,79 @@
+\section{Discussion}
+\label{sec:discussion}
+\subsection{Interpretation}
+The integrated execution shows that configured scene mappings and a shared
+operation boundary can be exercised together in a deterministic simulator.
+Five protocol endpoints returned acquisition samples, and the tested negative
+probes were rejected by the configured write guards. A second scene configuration
+also exercised the guard path within the same pipeline invocation. These
+observations support integration across the tested configurations; they do
+not establish that arbitrary industrial scenes can be connected without
+commissioning or route-specific configuration.
+
+The seeded objective cases and BOPET task are separate observations, although
+both were recorded by the same pipeline execution. The objective cases
+compare selected simulator scores with an offline reference. The BOPET trace
+records one scripted sequence of setpoint changes and a terminal thickness
+inside the configured band; the task board marked the task COMPLETED, while
+the associated parameter-change/optimization record remained open and unjudged.
+Neither result provides a matched controller comparison, and the BOPET trace
+does not isolate the effect of each write. The architecture and these
+observations therefore describe a governed integration path, not autonomous
+agent control or demonstrated process improvement.
+
+The design complements work that grounds industrial actions in digital-twin
+state, asset models, process diagrams, or supervisory checks
+\cite{gehrmann2020dtiacs,graul2026aas,schall2026safe}. Its distinguishing
+emphasis is the configuration boundary between task or harness execution,
+scene-specific signal and driver mappings, and a shared device-operation path.
+The current evaluation tests selected links across this boundary. It does not
+measure whether configuration reduces integration time, maintenance effort,
+or operational risk; those claims require matched deployments and workload
+measurements.
+
+\subsection{Scope and Limitations}
+The evaluation used deterministic tool calls and local simulators. The
+language-model loop was disabled, and the platform and simulator were already
+running with shared data present. The run therefore does not test autonomous
+LLM behavior or cold-start commissioning. Its three fixed-seed cases are
+subcases of one pipeline execution, not independent system repetitions. One
+seed stopped inside the configured region before updating, so the objective
+results do not establish iterative convergence across initial conditions.
+
+No conventional controller baseline, approval-on/off ablation, or physical
+equipment was included. The negative probes support only the tested software
+guard behavior; they do not measure human-approval effectiveness or establish
+plant safety. The BOPET task's unjudged parameter-change/optimization record
+and semantic-card warning further limit interpretation of its in-band endpoint.
+Protocol latency summaries are retained in Supplementary File~S6 as
+diagnostics only because the run did not
+preserve event-level timings or complete denominators. The delivery manifest
+was created after execution and does not establish a runtime-frozen
+configuration.
+
+The results therefore support an integrated simulator demonstration. Assessing
+effectiveness requires independent system runs with a frozen configuration,
+complete request-to-readback records, and matched controller and
+approval-policy conditions, followed by hardware-in-the-loop evaluation.
+
+\section{Conclusion}
+\label{sec:conclusion}
+This paper presents a configuration-driven architecture that connects
+industrial task execution to scene-specific signals and protocol drivers
+through a shared, governed operation interface. In one deterministic
+simulator pipeline run, 76 of 77 checks passed, five protocol endpoints
+returned 54 samples, and all 24 negative probes on four writable paths were
+rejected by the configured write guards. An in-run second-scene check rejected 9 of
+9 additional probes and returned 51 acquisition samples. The seeded objective
+cases and the separate BOPET task provide bounded simulator observations; one
+seed performed no update, and the BOPET task-board task completed while its
+associated parameter-change/optimization record remained open and unjudged.
+The evidence supports configured multi-protocol integration and selected guard
+behavior. It does not establish
+autonomous-agent performance, comparative control benefit, independent
+repeatability, or physical-plant performance.
+
+\noindent\textbf{Data Availability:} Supplementary File~S6 and its evidence
+archive contain selected records, source data, and figures from the integrated
+run. The archive includes delivery-time checksums, not runtime signatures for
+the original execution. No physical-plant data are included.

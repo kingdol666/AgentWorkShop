@@ -1,72 +1,73 @@
 \section{Introduction}
-\IEEEPARstart{I}{ndustrial-agent} deployments must connect a changing process
-context to heterogeneous equipment without giving a language model unrestricted
-access to control points. A line-speed proposal, for example, depends on the
-active product, recipe, run, engineering limits, and node that represents the
-control. It must also reach the correct device through a configured protocol,
-and its receipt must not be confused with a later process response. When these
-elements are implemented separately for each agent and production scene,
-integrating a new engine or line requires repeating substantial interface and
-context work.
+\IEEEPARstart{I}{ndustrial} production systems expose measurements and control
+points through devices and protocols configured for each production scene.
+Before an agent request can reach a controller, the platform must resolve the
+active line, product, recipe, and run; map the requested variable to the
+intended control node; and apply the limits for that process. It must also
+keep an accepted command separate from the later process observation. In the
+cast-film configuration studied here, an MQTT endpoint carries a line-speed
+setpoint and film-thickness samples. The shared endpoint does not make the
+sample a readback of the setpoint or establish that the write caused a process
+response.
 
-Prior work has advanced industrial-agent supervision, language-model control
-and programmable logic controller (PLC) code generation, modular manufacturing
-skills, and digital-twin and shop-floor integration
-\cite{xia2025control,huang2026made,koehle2026llmdriven,waseem2026pretrained,biskupovic2025supervision,liu2026agents4plc,wu2025instructmpc,lim2025llmenabled,zhao2026shopfloor,gill2025llmdt,hofmann2025nlc}.
-Related platforms ground approved actions in Asset Administration Shell (AAS)
-or process and instrumentation diagram (P\&ID) models, and integrate sensor,
-manufacturing execution system (MES), and enterprise resource planning (ERP)
-evidence streams \cite{graul2026aas,schall2026safe,lin2026agentic}.
+Industrial-agent research addresses process supervision, control generation,
+service selection, and human-guided automation
+\cite{xia2025control,huang2026made,koehle2026llmdriven,biskupovic2025supervision,
+liu2026agents4plc,wu2025instructmpc,lim2025llmenabled,zhao2026shopfloor,
+hofmann2025nlc}. Other work connects agents with digital twins, manufacturing
+skills, and shop-floor services
+\cite{xia2025architecture,silva2025mcpmanufacturing,
+koehle2025semanticrecipes,graul2026aas,schall2026safe,lin2026agentic}.
+Industrial-informatics architectures have also formalized trust boundaries for
+digital-twin control, functional blocks for industrial IoT networks, and
+security services at the fog layer
+\cite{gehrmann2020dtiacs,mahmood2023functional,sengupta2021securefog}.
+Together, these studies address agent reasoning, asset grounding, industrial
+communication, and guarded execution. The system-integration problem examined
+here is how to connect agent runtimes to scene-specific signal and protocol
+maps while applying the same operation checks to task-mediated and direct
+calls.
 
-The deployment problem addressed here is how to map distinct industrial scenes
-to a common operation interface, provide active production context to agent
-tasks, and translate a proposal into a bounded, traceable device operation.
-We present a configuration-driven integration architecture, not a new control
-law, optimization algorithm, or experimentally validated multi-agent
-controller. Its central design choice is to keep harness execution,
-scene-specific signal and driver mappings, and device-write governance modular
-while connecting them through named industrial operations.
+We implement a configuration-driven architecture for this integration path.
+Each scene binds its production context to semantic acquisition and
+write-control nodes, protocol drivers, objectives, and engineering limits.
+Harness adapters expose agent turns through a common operation interface.
+Task-mediated and direct calls enter the same dispatcher; route handlers
+resolve current context and apply route-specific limits and approval
+requirements. Service-owned records distinguish command receipts from later
+process measurements. The work contributes an integration architecture and
+its implementation, rather than a new control law or agent algorithm.
 
-The contributions are threefold:
+The paper makes two contributions:
 \begin{enumerate}
-  \item A scene-integration model binds production context
-  (line--product--recipe--run), semantic acquisition and control nodes,
-  protocol drivers, objectives, and engineering guards. Distinct processes can
-  therefore be represented through configuration and a common operation
-  interface, while protocol-specific access remains in drivers.
-  \item An integration runtime registers replaceable harness adapters against
-  a common task-operation interface, assembles current production context at
-  each turn, and scopes available operations to channel policy and resource
-  bindings. Multiple engines and task roles are supported by the architecture;
-  the experiments evaluate a narrower set of routes and configurations.
-  \item A governed write path combines shared dispatch checks with
-  route-specific admission, conditional human approval, post-approval context
-  revalidation, and device-side receipt grading. Owning services retain
-  command receipts separately from later process observations.
+  \item A scene-configuration model that binds line--product--recipe--run
+  context to semantic acquisition and write-control nodes, protocol drivers,
+  process objectives, and engineering limits behind a common operation
+  interface.
+  \item A task-to-device runtime that separates harness execution from
+  scene-specific I/O and routes task and direct calls through shared
+  authorization checks. Route handlers enforce configured limits and
+  approval requirements, while service-owned records preserve the distinction
+  between command receipts and process observations.
 \end{enumerate}
 
-Fig.~\ref{fig:arch} presents the architecture and its module boundaries;
-Fig.~\ref{fig:control-path} follows one task proposal through operation
-dispatch, device access, and evidence capture. Evaluation examines configured
-protocol and scene integration, model-backed task-to-device operations on a
-thermal twin, and separate route, approval, and process checks. These evidence
-units use different configurations and are not pooled as repeated trials.
-They verify selected software paths; they do not validate all agent--scene
-combinations or establish multi-agent performance or physical-plant behavior.
+Section~II reviews related work. Sections~III and IV describe the architecture
+and its execution and governance paths. Section~V reports workflow coverage,
+protocol acquisition and guarded operations, simulator objective cases, and a
+scripted BOPET task. Sections~VI and VII interpret the results and state the
+scope of the evidence.
+
+Fig.~\ref{fig:control-path} shows how scene context and I/O mappings feed into
+the shared dispatcher and configured driver.
 
 \begin{figure}[!b]
 \centering
 \includegraphics[width=\columnwidth]{resources/fig1-nature-A.pdf}
-\caption{Task execution path from context to device and observation. The agent
-uses available acquisition and MES context to propose a named operation.
-Shared dispatch checks precede route guards and any required approval and
-context revalidation. Configured drivers provide device access; command
-receipts and later process observations are retained separately.}
+\caption{Task execution from process context to device observation. Data
+acquisition (DAQ) and manufacturing execution system (MES) services provide
+context for a named operation. Shared dispatch checks are followed by
+route-specific limits and, when required, approval with context revalidation.
+A configured driver accesses the device; the receipt and later process
+measurement remain separate records.}
 \label{fig:control-path}
 \end{figure}
-
-Section~II reviews related work. Section~III presents the system architecture
-and execution flow. Section~IV explains agent context, scene integration, and
-governed device access. Section~V reports the protocol, onboarding, agent-task,
-approval, and process-mission evidence. Sections~VI and~VII discuss the
-findings and conclude the paper.

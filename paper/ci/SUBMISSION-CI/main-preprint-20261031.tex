@@ -1,0 +1,101 @@
+\documentclass[authoryear,preprint,12pt,a4paper]{elsarticle}
+
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{tabularx}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage[colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+
+\journal{Computers in Industry}
+
+\emergencystretch=1.5em
+\tolerance=2000
+\hyphenpenalty=50
+
+\begin{document}
+
+\begin{frontmatter}
+
+\title{From agent goals to plant setpoints: configuration-driven governance
+of LLM-agent writes on production lines}
+
+% Double-blind submission: author metadata omitted.
+\author[inst1]{Anonymous Author(s)}
+\affiliation[inst1]{organization={Affiliation omitted for double-blind review}}
+
+\begin{abstract}
+Large language model (LLM) agent teams are beginning to operate on industrial
+production lines, where they can read plant telemetry and issue supervisory
+setpoint writes. Existing agent frameworks govern such actions at session
+granularity. Such control cannot express plant semantics such as safe ranges,
+recipe windows, or batch context, nor attribute a blocked or executed write
+to a specific control. This paper treats the agent-to-plant write path itself
+as the unit of governance. We present a configuration-driven platform in
+which every machine-originated setpoint write must cross a sequence of
+separately inspectable boundaries. These boundaries comprise a binding model
+that scopes agent authority to plant nodes, and a four-layer admission
+interval derived from node, parameter, product, and recipe configuration. A
+human approval record binds the exact proposed operation and is rechecked at
+dispatch time; a receipt grade distinguishes readback-verified from
+transport-acknowledged writes. We evaluate the platform on five fronts. A
+five-protocol device integration matrix on real protocol stacks passes 21/21
+runner-defined checks. A four-arm ablation attributes interception of
+window-breaching writes to the interlock layer, with zero false blocks on
+the legitimate traffic. In a closed-loop case study, an LLM agent team
+corrects melt pressure on a simulator-backed OPC UA line from 16.1 to
+15.6\,MPa under human approval. In an adversarial episode, governance
+cancels twelve out-of-surface model calls and journals them before any
+unapproved write. The implementation is openly available, passes 913 of 915
+unit tests, and reproduces its frozen ablation baseline bit-exactly across
+twelve days.
+\end{abstract}
+
+\begin{keyword}
+LLM agents \sep industrial cyber-physical systems \sep human-in-the-loop
+control \sep production line governance \sep write access control \sep
+OPC UA
+\end{keyword}
+
+\end{frontmatter}
+
+\input{sections/introduction}
+\input{sections/related}
+\input{sections/problem}
+\input{sections/architecture}
+\input{sections/implementation}
+\input{sections/evaluation}
+\input{sections/discussion}
+\input{sections/conclusion}
+
+\section*{Declaration of generative AI and AI-assisted technologies in the
+writing process}
+During the preparation of this work the authors used AI-assisted writing
+tools in order to improve the language and structure of the manuscript.
+After using these tools, the authors reviewed and edited the content as
+needed and take full responsibility for the content of the published
+article.
+
+\section*{CRediT authorship contribution statement}
+Author names are withheld for double-blind review. Individual contributions
+follow the CRediT taxonomy (conceptualization, methodology, software,
+validation, formal analysis, investigation, data curation, writing of the
+original draft, review and editing, visualization, and supervision) and are
+declared in full to the editorial system.
+
+\section*{Declaration of competing interest}
+The authors declare that they have no known competing financial interests or
+personal relationships that could have appeared to influence the work
+reported in this paper.
+
+\section*{Data availability}
+The platform implementation, configuration schemas, benchmark pipeline, and
+the evidence artifacts for every experiment reported in Section~\ref{sec:eval}
+are openly available. An anonymized repository link is provided to the
+editorial system during double-blind review.
+
+\bibliographystyle{elsarticle-harv}
+\bibliography{resources/refs}
+
+\end{document}
