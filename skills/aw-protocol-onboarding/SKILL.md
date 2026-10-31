@@ -7,7 +7,7 @@ description: AgentWorkShop 协议与异构数据接入 skill。当用户给出�
 
 > 双位置说明:校验基准副本在仓库 `skills/aw-protocol-onboarding/`,ZCode 发现副本在 `.agents/skills/aw-protocol-onboarding/`;改动须两处同步。脚本实体在 `scripts/onboarding/`。
 
-从厂家文档到真实产线只走一条确定性路径:**预检 → 蓝图 → 能力匹配 → 配置 → 模拟跑通 → 导出验收 → 插件适配 → 割接**。任何一步没有证据,不进入下一步。
+从厂家文档到真实产线只走一条确定性路径:**预检 → 蓝图 → 澄清门 → 能力匹配 → 配置 → 模拟跑通 → 导出验收 → 插件适配 → 割接**。任何一步没有证据,不进入下一步。
 
 ## 最高红线:运行中的实例一律按生产对待
 
@@ -44,6 +44,18 @@ description: AgentWorkShop 协议与异构数据接入 skill。当用户给出�
 
 各协议的完整字段表与“哪些形态内置支持/哪些要插件”见 `references/protocol-matrix.md`。
 
+### 1.5 澄清门:文档 → 系统字段 → 问题清单(蓝图后、任何写操作前强制)
+
+蓝图提完 ≠ 可以配置。把蓝图与**系统实际配置字段**逐一对表,凡文档没有、而系统配置必需的字段,整理成问题清单**问用户**,禁止代答。问题分三类:
+
+- **A 文档缺口**:文档标注"未注明/由客户确定"的字段(采样周期/单步上限/冷却时间/QoS/凭据归属)。每问给出厂家建议默认值与后果说明。
+- **B 系统必需而文档不涉及**:测试线命名与归属(命名空间)、执行模式(observe/manual/auto)、作业模型(频道 provider/model)、HITL 策略、模板选择(templateRef)、保写语义(holdIntervalMs)。这类字段用户往往没意识到要给——必须问。
+- **C 意图确认**:一期接入范围(选配点位要不要)、哪些点进分析窗、是否接知识库、验收以哪份判据为准。确保"用户真实想做的"就是"即将配置的"。
+
+产出 `clarifications[]`:每条 `{no, category, question, options, answer, mapsTo}`——`mapsTo` 必须写到具体配置字段(如 "dcw 节点 X 的 stepLimit=0.1"),并入交接记录与验收清单。**没有澄清记录,不进入第 3 步。**
+
+提问纪律:每问带选项与推荐项及理由;分轮问(每轮 ≤4 问,先问阻塞供给的);用户答复原文记录不改写;**用户选了不推荐项时如实执行并标注风险**(例:作业模型选了已知不能胜任全量工具面的本地小模型——照做、如实测试、以平台台账为准,不悄悄换成推荐模型)。
+
 ### 2. 能力匹配:内置优先,插件兜底
 
 对照 `references/protocol-matrix.md` 判定三件事:
@@ -62,6 +74,10 @@ description: AgentWorkShop 协议与异构数据接入 skill。当用户给出�
 - 建线:`aw_line_create`(专用测试线,名字带 `PROTO-<时间戳>`),或复用用户明确指定的测试线;不要用生产主线做试验。
 - 建节点:`aw_daq_create` / `aw_dcw_create`。DAQ 必带 `templateRef`;DCW 服务端只强制 `templateRef`,但生产接入必须显式给 `min/max/stepLimit/holdIntervalMs` —— 缺省时 `stepLimit` 会被推导为 `max(10^-decimals, 2% 量程)`(不是 fail-closed),等于把步长交给默认值。
 - 建配方:`aw_recipe_create`;节点引用用 id,不用名字。
+- **DCW 写控字段语义(实测踩坑后钉死)**:
+  - `holdIntervalMs` 是**保写心跳**(对当前设定值周期性重下发,PLC 掉电恢复语义),不是"两次写变更的冷却时间"。设成 <60s 的值会让心跳写持续刷新在线写闸(`WRITE_INTERVAL_NOT_ELAPSED` 60s),人工在线写被永久饿死。文档里"两次变更间隔≥N"是设备侧约束,平台面不模拟——映射为 `holdIntervalMs=0`(或 ≥60s),并向用户说明差别。
+  - **http 写驱动仅发 POST**(`method` 不可配),回读只认**顶层** `bodyKey` 字段。厂家合同是 PUT 或嵌套信封时,不改平台:在网关/适配层做别名(方法别名+写应答平铺),并把该决定写进割接清单。
+  - **MQTT 写侧**:driverConfig `{host, port, topic, qos, jsonKey|jsonTemplate, readTopic, readJsonPath}`;发布受理=transport-ack,**设备确认报文才是合同级证实面**——每个 MQTT 写控点都应配一个订阅确认主题的 DAQ 兄弟节点做独立回读。
 - **本阶段不建 Channel**。频道会拉起 Agent 与工具面,在镜像采集/导出验收通过前创建,等于把未验证的数据源接进生产作业面。
 
 统一配置式批量供给可用 `node scripts/onboarding/provision-line.mjs <config.json>`;它按指纹幂等复用,但只应指向本次测试线。请求返回 400 先看 `message` 定位字段;401 是鉴权/行权限;409 多为重名或在飞写;超时先确认实例是否被别的作业占用,不要重启。
@@ -74,6 +90,7 @@ description: AgentWorkShop 协议与异构数据接入 skill。当用户给出�
 2. 把节点 `driverConfig` 指向模拟端点;确保采集总控 running(生产实例上先问用户,不要擅自 stop/start)。
 3. 等 2~3 个采样周期,用 `aw_daq_samples` 或 `aw_request GET /api/workshop/daq/:id/samples` 看真实样本;向量/图像看 `/frames`。
 4. 用确定性断言收口:`node scripts/onboarding/verify-mirror.mjs --node <id> --kind scalar --expect '{"value":25.3,"tolerance":0.2}'`。它校验窗口内样本、期望值、时间戳单调;向量校验点数/指标/首末点;图像校验 objectKey/MIME/宽高/内容字节。
+   - **vector/image 端点无法经 test-driver 预检**(REST 不透传 signalKind,标量提取对数组必失败)——这类点在供给后按真节点模板用 verify-mirror 验证,预检报告如实标注"未预检,由镜像验证覆盖"。
 5. 同一 topic 的多个字段用 MQTT `fields` 一次展开;验收时每个子节点都要有样本,且同一报文的时间戳应重合。
 
 只有第 4 步全绿,才允许进入导出验收。
@@ -124,7 +141,7 @@ description: AgentWorkShop 协议与异构数据接入 skill。当用户给出�
 
 ## 红线
 
-- 文档没写的字段不猜;量程/方向/凭据不明停下来问。
+- 文档没写的字段不猜;量程/方向/凭据/命名空间/执行模式/作业模型不明,走澄清门问用户。
 - 不碰既有资源;只改本次创建 id;清理按 id 逆序。
 - 不重启、不杀进程、不换生产 home、不启第二个写者。
 - 插件不得绕过治理面直写 PLC/数据库;凭据只进 secretRef/env,不进对话与配置文件。
@@ -133,6 +150,7 @@ description: AgentWorkShop 协议与异构数据接入 skill。当用户给出�
 ## 验收清单
 
 - [ ] `preflight.mjs --json` 已记录;生产实例处于附加模式,无任何停止/重启动作
+- [ ] **澄清门已实跑**:A 文档缺口/B 系统必需/C 意图确认三类问题清单 + 用户答复 + `mapsTo` 字段映射齐全;无一项关键配置凭空假设
 - [ ] 蓝图逐点有来源(文档/设备 export/用户确认),缺项已问
 - [ ] 能力匹配表完成:内置/插件/不支持三分类清楚
 - [ ] 连通性预检全绿(失败项已修正并重跑)
