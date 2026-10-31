@@ -11,7 +11,7 @@ description: AgentWorkShop 全系统验收测试 skill。当用户要求全功�
 
 ### 0. 环境与实例纪律(先于一切套件)
 
-- 隔离实例试跑(回归首选):fresh 目录 `AW_HOME=<dir> PORT=<port> NUXT_SESSION_PASSWORD=<≥32字符> node .output/server/index.mjs`(先 `npm run build`);首注册即 admin。长跑实例用 `node scripts/_audit/detached-start.mjs --port <port>` 真分离,别挂在会话后台里。
+- 隔离实例试跑(回归首选):fresh 目录 `AW_MODE=home AW_HOME=<dir> PORT=<port> NUXT_SESSION_PASSWORD=<≥32字符> node .output/server/index.mjs`(先 `npm run build`);首注册即 admin。**缺 `AW_MODE=home` 时 repo 检出目录内启动会把 `AW_HOME` 静默忽略、挂到共享 `.AgentWorkShop` 库**(识别特征:needsSetup=false / activeChannels>0;2026-10-28 实测,见 aw-line-onboarding 前置条件)。长跑实例用 `node scripts/_audit/detached-start.mjs --port <port>` 真分离,别挂在会话后台里。
 - 连接检查:`aw_status` 确认 base/鉴权与 `mcpEnabled=true`(false 则引导开「系统设置 → MCP 集成」,不要绕过);未鉴权先 `aw_login`。
 - 单测必须 `npm run test:unit`(自带 `--tsconfig .nuxt/tsconfig.server.json --test-force-exit`);裸 tsx --test 会因路径解析挂掉。
 - 注塑闭环前置:平台进程 env `AW_TRIAL_INTERVAL_MS=0`(试验节拍门),设完必须**重启进程**才生效。

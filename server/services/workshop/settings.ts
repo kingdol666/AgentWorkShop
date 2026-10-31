@@ -188,6 +188,27 @@ export interface DaqRuntimeSettings {
   }
   tsRetentionH: number
   frameRetentionH: number
+  /** 时序库连接与超时(生产调优) */
+  timescale: {
+    poolMax: number
+    statementTimeoutMs: number
+  }
+  /** 分层保留的聚合策略(1m/1h;历史查询跨保留期时自动使用) */
+  rollup: {
+    enabled: boolean
+    /** 调度间隔 */
+    intervalMs: number
+    /** 只聚合 now-lag 之前的闭合窗口 */
+    lagMs: number
+    /** 单窗口跨度(按 bucket 对齐) */
+    windowMs: number
+    /** 单轮最多窗口数 */
+    maxWindowsPerRun: number
+    /** 1 分钟聚合保留小时数 */
+    minuteRetentionH: number
+    /** 1 小时聚合保留小时数(0 = 永久) */
+    hourRetentionH: number
+  }
   alarmWebhookUrl: string
   alarmEscalateMinutes: number
 }
@@ -252,8 +273,21 @@ export function daqRuntimeSettings(): DaqRuntimeSettings {
       qos: Number(get('mqtt.qos', 0)),
       rejectUnauthorized: Boolean(get('mqtt.rejectUnauthorized', true)),
     },
-    tsRetentionH: Number(get('tsRetentionH', 168)),
+    tsRetentionH: Number(get('tsRetentionH', 720)),
     frameRetentionH: Number(get('frameRetentionH', 720)),
+    timescale: {
+      poolMax: Number(get('timescale.poolMax', 8)),
+      statementTimeoutMs: Number(get('timescale.statementTimeoutMs', 30_000)),
+    },
+    rollup: {
+      enabled: Boolean(get('rollup.enabled', true)),
+      intervalMs: Number(get('rollup.intervalMs', 600_000)),
+      lagMs: Number(get('rollup.lagMs', 300_000)),
+      windowMs: Number(get('rollup.windowMs', 3_600_000)),
+      maxWindowsPerRun: Number(get('rollup.maxWindowsPerRun', 24)),
+      minuteRetentionH: Number(get('rollup.minuteRetentionH', 8760)),
+      hourRetentionH: Number(get('rollup.hourRetentionH', 0)),
+    },
     alarmWebhookUrl: String(get('alarmWebhookUrl', '')),
     alarmEscalateMinutes: Number(get('alarmEscalateMinutes', 15)),
     sampling: {

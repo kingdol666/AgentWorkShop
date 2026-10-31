@@ -83,8 +83,8 @@ unit/min/max/decimals、intervalMs,并写 `semantics` 语义标注(场景编译�
    `aw_param_read {id}` 回读,偏差应在 decimals 量化精度内。
 2. 限界验证:对参数写一个超出四层限界的值,必须 400 且报文点名约束层
    (参数基准/产品限界/配方窗/节点量程之一)。400 是联锁生效的证据,不是故障。
-3. 数据落库:`aw_daq_samples {id, bucketMs, limit}`——注意点序**新→旧**,
-   判断趋势前先按 at 升序整理。
+3. 数据落库:`aw_daq_samples {id, bucketMs, limit}`——点序**旧→新,末元素=最新**(limit 截断保留的是最新段),
+   判断趋势可直接按序读;取「最新值」读末元素。
 
 ### 8. (可选)授权给 Agent
 

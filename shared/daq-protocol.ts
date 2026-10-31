@@ -15,6 +15,8 @@
 export interface DaqTemplateDef {
   key: string
   name: string
+  /** 自定义模板属主(内置/插件模板为 null);改删仅属主或 admin 可做 */
+  ownerUserId?: string | null
   /** 位号风格代号(左轨卡片小字) */
   code: string
   /** 通道语义(callout/bind-row 主标题,如 熔体压力) */
@@ -358,6 +360,8 @@ export const DAQ_DRIVERS: DaqDriverMeta[] = [
       { key: 'port', label: '端口', type: 'number', default: 1883, hint: 'MQTT TCP 标准端口 1883(TLS 8883)' },
       { key: 'topic', label: '主题(topic)', type: 'string', required: true, placeholder: 'factory/line1/temp', hint: '设备上报数值的主题;支持 +/# 通配' },
       { key: 'jsonPath', label: '取值路径(可选)', type: 'string', placeholder: 'data.temperature', hint: 'payload 为 JSON 时按路径取数值,如 data.temp;纯数字报文留空' },
+      { key: 'fields', label: '多字段解析(单 topic 多字段)', type: 'text', placeholder: '{"temp":"data.temp","humidity":{"path":"data.humidity","unit":"%","min":0,"max":100,"warnLow":20,"warnHigh":80}}', hint: 'JSON 对象或数组:一次配置展开为多个子信号节点(每字段独立单位/量程/告警入库,共享同一 topic 订阅)。值可为路径字符串或 {path,unit,min,max,warnLow,warnHigh,decimals,templateRef};与 pointsPath/metricsPath/imagePath/decoder 互斥' },
+      { key: 'fieldsBase', label: '多字段公共前缀(可选)', type: 'string', placeholder: 'data', hint: 'fields 中相对路径的前缀,如 fieldsBase=data + temp → data.temp(路径已含前缀时不重复拼接)' },
       { key: 'pointsPath', label: '数组路径(vector 模板)', type: 'string', placeholder: 'data.points', hint: '数组/轮廓模板:JSON 数值数组的路径(缺省 points);1~4096 个有限数' },
       { key: 'metricsPath', label: '指标路径(可选)', type: 'string', placeholder: 'data.metrics', hint: '随载荷携带的指标对象(avg/min/max...),并入帧指标' },
       { key: 'imageFormat', label: '图像载荷格式', type: 'select', options: [{ value: 'json', label: 'JSON 内 base64' }, { value: 'binary', label: '报文字节(binary)' }], default: 'json', hint: '图像模板专用:JSON 字段 base64 或 MQTT 原始字节' },
@@ -475,6 +479,10 @@ export interface DaqNodeView {
   /** E8 上下文扩展:设备/腔室名与层级路径(EDA commonality 的 chamber 因子;纯标签) */
   chamber?: string
   unitPath?: string
+  /** 多字段组 id(同一 topic 一次配置展开出的子信号共享;单独节点为空) */
+  fieldGroup?: string
+  /** 多字段标签(组内字段名,如 temp/humidity) */
+  fieldLabel?: string
   value: number | null
   state: DaqNodeState
   lastAt: string | null

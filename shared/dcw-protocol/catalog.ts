@@ -185,6 +185,7 @@ export const DCW_DRIVERS: DcwDriverMeta[] = [
       { key: 'port', label: '端口', type: 'number', default: 1883, hint: 'MQTT TCP 端口 1883' },
       { key: 'topic', label: '下发主题(topic)', type: 'string', required: true, placeholder: 'factory/line1/setpoint', hint: '网关订阅的控制主题(勿与采集主题相同)' },
       { key: 'jsonKey', label: 'JSON 键(可选)', type: 'string', placeholder: 'setpoint', hint: '留空 = 纯数字报文;填写 = {"键":值} JSON 报文' },
+      { key: 'jsonTemplate', label: 'JSON 模板(可选,支持嵌套/多字段)', type: 'text', placeholder: '{"cmd":"set","params":{"temp":{{value}},"hold":8}}', hint: '用 {{value}} 插入下发值(可多处/可嵌套/可带静态字段);渲染后必须是合法 JSON,与 jsonKey 互斥。例:{"cmd":"set","setpoint":{{value}}}' },
       { key: 'qos', label: 'QoS', type: 'number', default: 1, hint: '0=至多一次 1=至少一次(推荐)' },
       { key: 'username', label: '用户名(可选)', type: 'string' },
       { key: 'password', label: '密码(可选)', type: 'string' },

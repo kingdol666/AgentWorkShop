@@ -20,8 +20,11 @@ export default withNuxt(
   {
     // .AgentWorkShop = 配置根(运行时数据,含 aml/.venv 的三方 site-packages);
     // aml* = AML 资产根(.venv 同理);docs/audit/** = 验收证据归档快照(含按时间戳
-    // 复制的整脚本副本,不是源码)。这些目录里的 JS 是 vendored/归档产物,不属于待检源码。
-    ignores: ['.omc/**', '.zcode/**', '.crush/**', '.agent-teams/**', '.aw-ui-home/**', 'paper/**', 'scripts/_dbg-*.mjs', 'scripts/_dbg-*.ts', '.AgentWorkShop/**', 'aml/**', 'aml.pre-clean*/**', '.e2e-tmp/**', '.e2e-home*/**', 'docs/audit/**'],
+    // 复制的整脚本副本,不是源码);bench/results/** = bench harness 运行结果/归档
+    // (harness 本体 bench/** 仍在 lint 范围);docs/dev/onboarding-e2e-20261028/** =
+    // 2026-10-28 入职演示的归档快照(窄范围排除,不代表 docs/** 整体豁免)。
+    // 这些目录里的 JS 是 vendored/归档/运行产物,不属于待检源码。
+    ignores: ['.omc/**', '.zcode/**', '.crush/**', '.agent-teams/**', '.aw-ui-home/**', 'paper/**', 'scripts/_dbg-*.mjs', 'scripts/_dbg-*.ts', '.AgentWorkShop/**', 'aml/**', 'aml.pre-clean*/**', '.e2e-tmp/**', '.e2e-home*/**', 'docs/audit/**', 'bench/results/**', 'docs/dev/onboarding-e2e-20261028/**'],
   },
   // 审计取证脚本(scripts/_audit/**):为 docs/audit/*.md 的结论提供可复现证据,
   // 写成密集单行是刻意选择(单文件自包含、便于对照报告逐条运行),不是产品代码。

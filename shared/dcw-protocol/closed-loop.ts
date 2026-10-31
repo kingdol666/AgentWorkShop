@@ -21,6 +21,8 @@ export interface DcwWriteMeta {
   taskId?: string
   /** Agent 判定假设(作业环第 3 步声明) */
   hypothesis?: string
+  /** 精确关联触发本次 Agent 写入的人工审批记录 */
+  approvalId?: string
   /** 写入发生时频道的生效执行模式(observe/manual/auto;2026-10-28 三模式台账口径,事后审计用) */
   executionMode?: 'observe' | 'manual' | 'auto'
   /** D8 基准消融臂(仅 AW_BENCH_MODE=1 时被 write() 识别;生产模式恒忽略) */

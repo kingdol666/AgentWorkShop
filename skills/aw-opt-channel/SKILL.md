@@ -91,7 +91,7 @@ exploration 模式且未绑模型时,孪生寻优工具必须 fail-closed:
 ### 6. 验收
 
 - `aw_twin_profile_get { channelId }`:mode 与 boundModelId 符合预期。
-- 复测 PV 在目标带内(`daq_query` / `aw_daq_samples`,点序新→旧)。
+- 复测 PV 在目标带内(`daq_query` / `aw_daq_samples`,点序旧→新,末元素=最新)。
 - 每轮决策有留痕(optimization_explorations / dcw journal)。
 - 任务 `aw_task_list` 到 COMPLETED 且 goalCriteria 满足。
 - (2026-10-24 增补)**本体先验与求解器联动**:线已发布本体时,Profile 携带 ontologyRefs

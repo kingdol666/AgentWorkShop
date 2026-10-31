@@ -1,134 +1,161 @@
 ---
 name: aw-plugin-dev
-description: AgentWorkShop 插件开发 skill。当需要为 AgentWorkShop 开发、调试、启停或发布插件(服务端钩子/API 路由/Agent 工具/数采扩展/混合孪生 Provider)时使用。覆盖脚手架、index.mjs 入口契约、setup(ctx) 服务面、热重载验证与发布前清单,经 aw 工业 MCP 服务做装载验证。
+description: AgentWorkShop 插件开发手册 skill。当需要为平台开发、修改、调试、热加载或发布插件(服务端钩子/API 路由/Agent 工具/数采读驱动/写控驱动/解码器/下沉处理器/节点模板/混合孪生 Provider)时使用。覆盖 index.mjs 契约、ctx 全表面、DAQ/DCW 驱动接口、解码器与处理器、模板注册、热重载、测试与导出验收、安全红线。触发词:插件开发、自定义协议、自定义驱动、解码器、下沉处理器、registerDriver、热加载、插件发布。
 ---
 
-# AgentWorkShop 插件开发
+# AgentWorkShop 插件开发手册
 
-从脚手架到热重载验证的插件开发闭环:create → 实现 setup(ctx)(钩子/路由/工具/孪生 Provider)
-→ enable 验证装载 → 按发布清单自检。
+> 权威契约在 `docs/plugins.md`(§二 入口、§六 ctx 全参考、§十三 发布清单)与 `sdk/index.mjs`;本 skill 是开发流程、接口选择与验收口径。示例以实现为准:`server/plugins-builtin/serial-bridge/index.mjs`(读+写驱动)、`.AgentWorkShop/plugins/aw-matrix-plugin/index.mjs`(驱动+处理器+模板+工具)。
 
-## 前置条件
+## 先读契约再动手
 
-- **MCP 集成开关已启用**:平台 Web「系统设置 → MCP 集成 → 启动 MCP 集成」打开(或 env `AW_MCP_ENABLED=true`);未启用时除 `aw_status` 外全部工具被拒。
-- 在 AgentWorkShop 仓库工作区内(`aw plugin create` 落 project 级)。
-- 实例运行中(热重载验证需要;`aw_status` 确认 `mcpEnabled=true` 与鉴权)。插件改动 ~1s 自动重装载,无需重启。
-- 权威参考:`docs/plugins.md`(契约与 ctx 全参考)、`docs/sdk.md` §ctx.twin(孪生 Provider SDK)。
-  实现前先读对应章节,不要凭记忆写契约。
+- `docs/plugins.md` §二:manifest 字段与装载校验;§六:ctx 每个方法;§十三:发布前清单。
+- `sdk/index.mjs` 导出 `definePlugin/createPluginContext/validatePluginModule`;类型见 `sdk/index.d.mts`。
+- 驱动接口以代码为准:`server/services/workshop/daq/drivers/shared.ts`(读)、`server/services/workshop/dcw/drivers/shared.ts`(写)、`server/services/workshop/daq/decoders.ts`、`server/services/workshop/daq/frames.ts`。
 
-## 工作流程
+### 0. 生产安全与装载位置
 
-### 1. 脚手架
+先跑 `node scripts/onboarding/preflight.mjs --json`;已运行实例一律按生产对待,不重启、不杀进程。
 
+| 位置 | 生效 | 生产可用 |
+| --- | --- | --- |
+| `.AgentWorkShop/plugins/aw-matrix-plugin/`(project) | 状态文件变化 → ~1s 全量重载 | 是 |
+| `~/.AgentWorkShop/plugins/<name>/`(user) | 同上 | 是 |
+| `server/plugins-builtin/`(builtin) | entry 随状态文件重载;helper 模块可能被 ESM 缓存,builtin 优先级遮蔽 project 同名副本 | 验证后仍不确定 → 维护窗口 |
+
+保存代码**不会**自动触发重载(宿主只监听 `plugins-state.json`);保存后 `aw_plugin_toggle`(或触碰状态文件)一次即可,不要为了生效重启进程。
+
+### 1. 选择扩展面
+
+| 需求 | 接口 | 说明 |
+| --- | --- | --- |
+| 新传输协议(读) | `ctx.daq.registerDriver(driver)` | 注册任意 kind;前端表单来自 `meta.configFields` |
+| 新传输协议(写) | `ctx.dcw.registerWriteDriver(driver)` | 与读驱动对称;ack 分级 |
+| 私有报文 → 标量/向量/图像 | `ctx.daq.registerDecoder(name, fn)` | 同步纯函数;优先于声明式路径 |
+| 向量/图像后处理 | `ctx.daq.registerProcessor(kind, name, fn)` | **只对 vector/image 帧执行** |
+| 新节点模板 | `ctx.daq.registerTemplate(def)` | 含 `sink.processors`/`metrics`;内存态 |
+| Agent 工具 | `ctx.omp.registerTool({name,...})` | 同步进 tool_registry |
+| 平台 API | `ctx.route(method, path, handler)` | 挂 `/api/plugins/<name><path>`,精确匹配 |
+| 浏览器增强 | `client.mjs` + `ctx.ui.registerPanel` | 见 docs/plugins.md §八 |
+| 新数据形态(text/file/音频) | **核心扩展,不是插件面** | 需改 `shared/daq-protocol.ts`、`drivers/shared.ts`、`frames.ts`、`daq-controller/*`、`storage/*`、API/UI |
+
+判断顺序:声明式路径(`jsonPath/pointsPath/imagePath/fields`)→ 解码器 → 读/写驱动 → 核心扩展。每往下一层,回归面更大。
+
+### 2. 入口契约与 ctx
+
+`index.mjs` 默认导出普通对象,零导入依赖:
+
+```js
+export default {
+  name: 'my-plugin',            // 必填,全局唯一
+  version: '1.0.0',
+  description: '…',
+  auth: 'user',                 // none|user|admin|agent-or-user
+  client: './client.mjs',       // 可选
+  settings: [ /* {key,type,default,label} */ ],
+  configGroups: [ /* {id,label} */ ],
+  routes: [ { method: 'GET', path: '/health', handler: () => ({ ok: true }) } ],
+  async setup(ctx) { /* 注册驱动/处理器/模板/工具/路由/钩子 */ },
+}
 ```
-aw plugin create <name>            # project 级:.AgentWorkShop/plugins/<name>/
-aw plugin create <name> --global   # user 级:~/.AgentWorkShop/plugins/<name>/
+
+ctx 关键面:`logger`、`kv.get/set/all/bump`、`config.get/all/onChange`、`timer.setInterval/setTimeout`、`onDispose/subscriptions`、`route`、`api`(平台 REST 客户端)、`http.get/post`(出站,SSRF 守卫)、`events.on`、`daq`、`dcw`、`omp`、`services`、`twin`、`permissions`、`paths/dataDir`。完整表见 `docs/plugins.md` §六;常用细节在 `references/plugin-ctx-api.md`。
+
+### 3. DAQ 读驱动
+
+```ts
+interface DaqDriver {
+  readonly kind: string
+  available(): Promise<boolean>
+  sample(input: DaqDriverInput): Promise<number | DaqFrameSample | null> | number | DaqFrameSample | null
+  test(cfg: Record<string, unknown>, signalKind?: 'scalar'|'vector'|'image'): Promise<DriverTestResult>
+  subscribe?(input: DaqPushInput): Promise<() => void | Promise<void>>
+  fingerprint?(cfg: Record<string, unknown>): string
+  meta?: { label: string; status: 'builtin'|'real'|'planned'; configFields: DriverConfigField[] }
+}
 ```
 
-生成 `index.mjs`(入口)+ `client.mjs`(浏览器增强,可选)+ `README.md`。
-同名优先级 builtin > project > user(宿主先扫先占)——命名前先 `aw_plugin_list` 查重。
+- 标量直接返回 `number`;数组/图像返回 `{ frame: { kind:'vector', points, metrics? } }` 或 `{ frame: { kind:'image', blob, mime, width, height } }`。
+- `sample` 抛错 → 节点 `lastError` 可见;不要返回假值/0 掩盖故障。
+- 实现 `subscribe` 后按事件驱动采集,不再轮询;返回的 stop 必须幂等。`fingerprint` 用于凭据/主题变化时重建订阅。
+- `meta.configFields` 决定前端“添加节点”下拉与表单;没有 meta 的驱动只能出现在可用性里,不能出表单。
 
-### 2. 实现入口契约(index.mjs)
+完整签名、帧限制与推送语义见 `references/daq-dcw-driver-contract.md`。
 
-default export:`{ name, version?, description?, auth?, client?, settings?, configGroups?,
-routes?, setup(ctx) }`。入口保持零导入依赖、自包含。
+### 4. DCW 写驱动
 
-`setup(ctx)` 服务面(细节以 docs/plugins.md 为准):
+```ts
+interface DcwWriteDriver {
+  readonly kind: string
+  available(): Promise<boolean>
+  write(input: DcwWriteInput): Promise<DcwWriteResult>
+  test(cfg: Record<string, unknown>): Promise<{ ok: boolean; message: string }>
+  read?(input: DcwReadInput): Promise<DcwReadResult>
+  canRead?(cfg: Record<string, unknown>): boolean
+  fetchHistory?(input: DcwFetchHistoryInput): Promise<DcwFetchHistoryResult>
+}
+```
 
-- `ctx.hooks.on(event, fn)`:daq:sample / daq:frame / dcw:write / line:start|stop /
-  config:changed / plugins:reloaded / event:*(scene 全事件)/ server:close;通配 `'*'`。
-- `ctx.events`:同事件总线;高频事件勿无脑全订。
-- `ctx.kv.get/set/all/bump`:插件私有 KV,落 `<configRoot>/data/plugins/<name>/kv.json`
-  (**不在插件目录**;没有 reset)。
-- `ctx.config.groups()/fields()`:配置分组;`settings[]` 声明式字段 + 运行时注册。
-- `ctx.logger.debug/info/warn/error`:自动前缀。
-- `ctx.http.get/post(url, opt)`:出站请求,只校验协议(http/https),默认超时 8s。
-- `ctx.route`:注册插件 API 路由(挂 `/api/plugins/<name>/...`)。
-- `ctx.services.names()/get(name)/provide(name, getter)`:get('daq'|'lines'|'channels'|'plugins');
-  provide 自动加 `<插件名>.` 前缀。
-- `ctx.twin`(混合孪生 Provider):registerPhysicsProvider / registerScenePack /
-  registerObjectiveProfile / registerTrainingAdapter / registerSolverAdapter +
-  listProviders / getProviderHealth / resolveProvider / validateProvider / retireProvider /
-  isRegistryAvailable。内置 twinCore 经 `ctx.services.get('twinCore')` 取
-  createInjectionProvider / defaultInjectionScene。
+- `write` 必须返回 `ack`:`readback-verified` / `transport-ack` / `unverified`;网关据此分级,不要冒充。
+- 有回读通道就实现 `read` + `canRead`;没有就如实返回“不支持读取”,避免每 5s 一条噪音。
+- `fetchHistory` 用于 MES/历史 API:行格式 `scalar/vector/image/table/event`,分页游标 `nextCursorPath` 必须配。
+- 工程量↔原始值换算用 `shared.ts` 的 `engToRaw/rawToEng/readbackAck`,不要自己重写。
 
-### 3. 孪生 Provider 插件(可选)
+### 5. 解码器、处理器、模板
 
-Provider manifest 要点:`apiVersion: 'twin-provider.v1'`、`providerId`、`version`、
-`sceneKinds[]`、`backend`、四类变量表(control/target/feature/ disturbance)、
-`parameterPriors`、`capabilities`、`artifactContract`;生命周期
-DISCOVERED→VALIDATED→REGISTERED→READY→DRAINING→RETIRED(按 generation 热替换)。
+- 解码器:`(input: {raw, bytes, json, config, signalKind, nodeId}) => {kind:'scalar'|'vector'|'image'}`;必须同步纯函数;形态必须与模板 `signalKind` 一致。
+- 处理器:`{ name, applies:'vector'|'image'|'any', process(frame,args) }`;执行点是 `runSinkPipeline`,只在帧采样路径调用。注册 `'scalar'` 会被映射成 `'any'`,**不会处理标量样本,反而会跑在 vector/image 帧上**;标量加工写在驱动/解码器里。
+- 模板:`ctx.daq.registerTemplate({key,name,unit,min,max,signalKind,vector?,sink?,metrics?})`;插件模板是内存态,REST 不可改;停用/重载**不会**自动清退模板(当前代码缺口),需要维护窗口重启或换 key。
 
-- 参考实现:外部插件 `.AgentWorkShop/plugins/twin-thermal-demo/index.mjs`(~100 行,
-  只用 ctx.twin);内置 `server/plugins-builtin/twin-injection-default/index.mjs`。
-- SDK 与类型:`sdk/index.mjs`(definePlugin)+ `sdk/index.d.mts`;示例在 `sdk/examples/`。
-- 查询面:`aw_request { method:'GET', path:'/api/workshop/aml/twin/providers' }` 看注册结果
-  与 generation/健康(装裁验证的孪生侧证据)。
+### 6. 热加载与生效验证
 
-### 4. 前端增强(可选)
+1. 写文件 → 保存(**保存本身不触发重载**,宿主只监听状态文件)。
+2. `aw_plugin_toggle { name, enabled: true }` 或触碰 `<home>/plugins-state.json` 触发重载(ESM `?t=` 破缓存),约 1s。
+3. `aw_plugin_list` 确认插件出现、`failures=[]`。
+4. 实测驱动:用 `aw_request GET /api/workshop/daq` 看 `drivers[]` 是否出现该 kind(带 `plugin:true`);路由 `GET /api/plugins/<name>/health` 可访问;钩子计数增加。
+5. 改一行行为再 toggle,确认热重载真的生效;不要用重启“试试看”。
 
-`client.mjs`:订阅面板事件、插槽注入。注意高频事件的通配订阅在玻璃页/后台页不可达
-(详见 docs/plugins.md「通配与不可达的订阅」),勿在 client 里做数据总线。
+建节点(`aw_daq_create`)/写参数返回 400 先看 `message` 定位字段;401 是鉴权/产线权限;409 是重名/在飞写/单实例锁;超时先确认实例是否被其它作业占用,不要重启。
 
-### 5. i18n(可选)
+内置插件改动:entry 会随状态文件重载,但 helper 模块可能被 ESM 缓存;验证不生效时走维护窗口,不要在生产重启。
 
-`i18n.json` 多语言键值;前端按当前 locale 取。
+### 7. 测试与导出正确性
 
-### 6. 启停与热重载验证
+| 测试面 | 命令/方法 |
+| --- | --- |
+| 生命周期/装载/启停 | `node scripts/test-plugin-lifecycle.mjs` |
+| 插件治理/路由/设置 | `npx tsx --tsconfig .nuxt/tsconfig.server.json --test --test-force-exit tests/plugin-governance.test.ts` |
+| 驱动/解码器纯逻辑 | 新增 `tests/plugin-governance.test.ts` 同款结构,纯函数断言,不依赖平台实例 |
+| 热加载实测 | `aw_plugin_toggle` → `aw_plugin_list` → 路由/驱动目录 |
+| 镜像值 | `aw_daq_samples` 或 `node scripts/onboarding/verify-mirror.mjs --node <id> --expect '{"value":...}'` |
+| 导出 | 行数/列名/时间戳/标签/对象键五项核对(DAQ manifest 无 sha256,需自行计算);工具面可用 `aw_agent_tool_invoke` 实调 |
 
-1. 新脚手架目录的首次装载:触碰 plugins-state.json(create 完成时的输出会提示)或
-   直接 `aw_plugin_toggle { name, enabled: true }` —— 宿主监视该文件,~1s 全量重装载。
-2. `aw_plugin_list`(MCP)或 `aw plugin list`:确认插件出现、loaded 无 failures。
-3. 改代码 → 保存:保存后触碰 plugins-state.json(或任意启停操作)触发热重载(ESM cache-bust)。
-4. `aw_plugin_toggle { name, enabled: false }` 再 true:验证启停回路。
-5. 有路由的插件:curl 实测 `GET /api/plugins/<name>/health` 等。
-6. 装载失败看 `aw_plugin_list` 的 `failures`(错误隔离,单插件失败不拖垮主服务)。
+“接上了”不等于“数据对了”:必须验证值(不是常量/残留)、量(行数/点数/帧数)、时间(窗口内/单调)、标识(line/product/recipe/run)与对象键(图像可被内容端点取回且字节非空)。
 
-### 7. 测试
+### 8. 发布清单
 
-- 生命周期:`node scripts/test-plugin-lifecycle.mjs`
-- 孪生 SDK:`npm run test:twin-provider`(tests/aml-twin-provider-registry.test.ts)
-- 自写验证脚本参考 `scripts/test-twin-plugin-sdk.mjs`
-- 带工具/路由的插件参考 `tests/diag-bridge-results-surface.test.ts`:设置缺省值/工具
-  roles/路由表/双副本字节一致等 14 项结构断言,可整套照抄改名字。
+- `docs/plugins.md` §十三逐条过:manifest 完整、settings 类型正确、路由 auth 声明、KV 只走 `ctx.kv`、事件订阅有 `onDispose`、README/i18n 齐备。
+- 版本语义:`version` 只在发布时递增;project/user 插件随目录分发,builtin 随包。
+- 安全:凭据走 `secretRef`/env,不进源码/KV;出站走 `ctx.http`(SSRF 白名单);日志不打印 token。
+- 权限:`auth` 与路由级 auth 一致;`ctx.omp.registerTool` 的 `roles` 在注册时冻结,需要热切换的闸门在 handler 里现读设置。
+- builtin 插件:entry 会随状态文件重载,但 helper 模块可能被 ESM 缓存;有工作副本的插件保持字节一致,没有副本的(如 serial-bridge)直接改 builtin 目录。验证不生效时走维护窗口。
 
-### 8. 发布前清单
+## 红线
 
-按 docs/plugins.md §十三逐条过:契约完整/settings 类型正确/路由鉴权/KV 只走 ctx.kv/
-事件订阅有对应清理/README 与 i18n 齐备。
-
-### 9. 工具注册面与路由契约(2026-10-24 增补)
-
-- **工具注册表联动**:`ctx.omp.registerTool` 注册的工具会同步 tool_registry
-  (GET /api/workshop/tools 可查);插件停载后 available=false,Channel 侧调用会被
-  channelToolGate 拒(「当前未注册」)。陈旧 dev 进程会反向污染共享注册表——排查先杀树重启。
-- **roles 在注册时冻结**:需要热切换的闸门(如 worker 只读开关)必须写在 handler 里
-  每次调用现读设置(denyWorkerIfDisabled 模式),不能靠重注册换 roles。
-- **路由表是精确匹配字符串键**:不支持路径参数,详情类路由用查询串
-  (`/results/detail?id=`);新增路由后 forwarding 层 auth 模式(user/admin/agent-or-user/none)
-  按路由逐条声明。
-- **ctx.fetch 自动解信封**:`json && 'data' in json ? json.data : json`——客户端读回包
-  直接取业务体;需要透传的信封字段(canAnnotate/baseUrl 之类)必须嵌进 data 里。
-- **内置插件双副本纪律**:builtin 插件 packageRoot 在 server/plugins-builtin/&lt;插件名&gt;/
-  (如 `server/plugins-builtin/diag-bridge/`),`.AgentWorkShop/plugins/` 下同名目录是工作副本,
-  两处必须字节一致(改完同步复制);内置副本
-  变更受 ESM 模块缓存影响,必须真杀进程重启才生效,热重载只对 project/user 级可靠。
-- 出站 HTTP 用 ctx.http.get/post(**patch 需自验 SDK 支持**,老宿主无 patch 时用 post 语义或升级);URL 拼接显式带 base,相对路径裸返会误导调用方。
-
-## 治理红线
-
-- 插件不得绕过平台治理面直接写 PLC 或改库;数据访问走 ctx.services 与事件。
-- KV 只经 ctx.kv(原子落盘),不要自己在插件目录写状态文件。
-- dev 进程的 ESM alias 坑:裸相对导入按输出目录重算会溢出盘符根——插件保持自包含,
-  确需引宿主模块先读 docs/plugins.md 故障排查章节。
+- 插件不得绕过治理面直写 PLC/数据库;写路径走 DCW 网关/HITL/量程/步长。
+- 不吞异常、不返回假值;失败要让 `sample/write` 抛错或返回 `ok:false`。
+- 不把凭据写进源码、KV、日志或对话;只进 `secretRef`/环境变量。
+- 不为让插件生效重启生产进程;builtin 需要重启时移交维护窗口。
+- 新数据形态不要硬塞进 `image` MIME 冒充;如实告知需要核心扩展。
 
 ## 验收清单
 
-- [ ] aw_plugin_list 无 failures,插件 enabled
-- [ ] setup 内日志出现(前缀 [aw-plugins] [<插件名>])
-- [ ] 热重载后行为更新(改一行文案验证)
-- [ ] 启停回路 enable/disable 通过
-- [ ] 路由/钩子/KV 行为与声明一致
-- [ ] (增补)工具注册进 tool_registry 且 available;worker/角色闸门按设置热生效
-- [ ] (增补)内置插件双副本字节一致(server/plugins-builtin 与 .AgentWorkShop 工作副本)
-- [ ] 发布前清单(docs/plugins.md §十三)全过
+- [ ] `aw_plugin_list` 无 failures,插件 enabled,`aw_status` 的 `mcpEnabled=true`
+- [ ] `setup` 日志出现(`[aw-plugins] [<name>]`)
+- [ ] 驱动出现在 `/api/workshop/daq|dcw` 的 `drivers[]`,meta 表单可用
+- [ ] 解码器/处理器/模板行为与声明一致(纯函数单测 + 实机样本)
+- [ ] 热重载后行为更新;启停回路 enable/disable 通过
+- [ ] 路由鉴权正确,`ctx.http` 出站受白名单约束
+- [ ] 镜像值/行数/时间戳/标签/objectKey 五项验收通过
+- [ ] builtin 插件改动已验证(entry 重载/helper 缓存),生产未重启
+- [ ] `docs/plugins.md` §十三发布清单全过

@@ -46,6 +46,8 @@ export interface WorkspaceTask {
   /** 终态/关闭原因与持久化 deadline */
   closeReason?: string
   deadlineAt?: string
+  /** 显式替代关系:本任务(FAILED/CANCELED 分支)被替代任务覆盖,不再阻塞父任务收口 */
+  supersededByTaskId?: string
   /** 执行交接代次(§5.1;每次新分配/重分配 +1,用于拒绝旧 worker 迟到事件) */
   assignmentGeneration?: number
   /** 当前执行租约 id / 持有者 / 起止时间(§2.1) */
