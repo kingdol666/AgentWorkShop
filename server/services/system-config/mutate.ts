@@ -6,6 +6,7 @@ import { SystemConfigServiceSnapshot } from './snapshot'
 import type { ConfigEventPayload, Listener } from './types'
 import { AppError } from '../../utils/errors'
 import { saveSettings, validateValue } from '@/shared/config/engine.mjs'
+import { maskSecretSettings, stripMaskedSettings } from './secrets'
 
 export abstract class SystemConfigServiceMutate extends SystemConfigServiceSnapshot {
   /**
@@ -14,10 +15,15 @@ export abstract class SystemConfigServiceMutate extends SystemConfigServiceSnaps
    * @returns { changed, restartRequired, effective, sources }
    */
   patch(patch: Record<string, unknown>): { changed: string[], restartRequired: string[], effective: Record<string, unknown>, sources: Record<string, unknown> } {
+    // 前端把掩码值(***)原样回传时不得覆盖真实凭据
+    const { clean: incoming, skipped } = stripMaskedSettings(patch)
+    if (skipped.length) {
+      console.log(`[system-config] 忽略回传的掩码值(保留原凭据):${skipped.join(', ')}`)
+    }
     const errors: Record<string, string[]> = {}
     const next = { ...this.overrides }
     const changed: string[] = []
-    for (const [key, rawValue] of Object.entries(patch)) {
+    for (const [key, rawValue] of Object.entries(incoming)) {
       const desc = this.map[key]
       if (!desc) {
         errors[key] = ['未知设置项（不在 shared/config/schema.json 中）']
@@ -76,7 +82,8 @@ export abstract class SystemConfigServiceMutate extends SystemConfigServiceSnaps
   }
 
   protected eventTail() {
-    return { restartRequired: this.restartRequiredKeys(), effective: { ...this.effective }, sources: { ...this.sources }, overrides: { ...this.overrides }, at: new Date().toISOString() }
+    // 事件/返回值同样掩码:WS 订阅方与 PATCH 响应不得泄露明文凭据
+    return { restartRequired: this.restartRequiredKeys(), effective: maskSecretSettings(this.effective), sources: { ...this.sources }, overrides: maskSecretSettings(this.overrides), at: new Date().toISOString() }
   }
 
   protected result(changed: string[]): { changed: string[], restartRequired: string[], effective: Record<string, unknown>, sources: Record<string, unknown> } {

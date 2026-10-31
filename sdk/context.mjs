@@ -256,11 +256,44 @@ function maybeQueueAfterUnavailable(bridge, kind, payload, source, invoke) {
   }
 }
 
-/** 允许的对外请求协议守卫(拒绝 file:/data: 等;宿主/插件同守此规则) */
+/**
+ * 私网/环回/保留地址判定(2026-10-30 SSRF 补口)。
+ * 与 server/services/workshop/net/ssrf.ts 的 isPrivateIp 同口径;SDK 是独立 .mjs,
+ * 不能反向 import 服务端 TS,故此处内联最小实现(改动时两侧需同步)。
+ */
+function isPrivateAddress(host) {
+  const h = String(host || '').replace(/^\[|\]$/g, '').toLowerCase()
+  if (!h) return true
+  if (h === 'localhost' || h.endsWith('.localhost') || h.endsWith('.internal')) return true
+  const ipv4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(h)
+  if (ipv4) {
+    const a = Number(ipv4[1])
+    const b = Number(ipv4[2])
+    if (a === 0 || a === 127) return true // 本机/未指定
+    if (a === 10) return true
+    if (a === 172 && b >= 16 && b <= 31) return true
+    if (a === 192 && b === 168) return true
+    if (a === 169 && b === 254) return true // 链路本地/云元数据(169.254.169.254)
+    if (a === 100 && b >= 64 && b <= 127) return true // CGNAT
+    if (a >= 224) return true // 组播/保留
+    return false
+  }
+  if (h === '::1' || h === '::' || /^f[cd][0-9a-f]{2}:/.test(h) || /^fe[89ab][0-9a-f]:/.test(h)) return true
+  return false
+}
+
+/** 允许出站到内网(显式开关;默认拒绝,与 server 侧 AW_ALLOW_PRIVATE_OUTBOUND 同名) */
+function allowPrivateOutbound() {
+  return process.env.AW_ALLOW_PRIVATE_OUTBOUND === '1'
+}
+
+/** 允许的对外请求协议守卫(拒绝 file:/data: 与私网/环回目标;宿主/插件同守此规则) */
 function safeUrl(raw, timeoutMs = 8000) {
   const u = new URL(String(raw))
   if (u.protocol !== 'http:' && u.protocol !== 'https:')
     throw new Error(`协议不允许: ${u.protocol}(仅 http/https)`)
+  if (!allowPrivateOutbound() && isPrivateAddress(u.hostname))
+    throw new Error(`目标 ${u.hostname} 是私网/环回地址,已按 SSRF 防护拒绝(如确需访问内网,设置 AW_ALLOW_PRIVATE_OUTBOUND=1)`)
   return { signal: AbortSignal.timeout(timeoutMs) }
 }
 

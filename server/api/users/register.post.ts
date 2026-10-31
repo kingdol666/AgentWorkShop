@@ -9,8 +9,9 @@ import { zValidator } from '../../utils/validate'
 
 /**
  * POST /api/users/register —— 公开注册（name + email + password），签发首个 token。
- * 公网部署闸门:security.allowRegistration=false 且首管理员已就位时关闭自助注册
- * (首 admin 引导不受此门限制;默认 true 保持"用户可自助注册"的产品语义)。
+ * 公网部署闸门:security.allowRegistration(默认 **false**,见 shared/config/schema.json)
+ * 为 false 且首管理员已就位时关闭自助注册;首 admin 引导不受此门限制。
+ * 需要开放自助注册的部署请显式置 true(设置页 / AW_SECURITY_ALLOWREGISTRATION=1)。
  */
 export default defineApiHandler(async (event) => {
   if (settingOf('security.allowRegistration') === false && userRepository.hasActiveAdmin()) {

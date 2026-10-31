@@ -141,45 +141,64 @@ export const userService = {
     return { user: this.publicProfile(user), token: raw }
   },
 
-  /** 登录：密码校验通过后签发新 token（每次登录生成一个可独立吊销的会话 token） */
+  /**
+   * 登录：密码校验通过后签发新 token（每次登录生成一个可独立吊销的会话 token）。
+   *
+   * 失败锁定(2026-10-30 P2-7 重构):
+   *  - 锁键**只按账号**(此前是 `ip|email`,叠加 XFF 伪造即可把任意受害者锁死);
+   *  - 先验密码再判锁:密码正确一律放行 —— 攻击者狂刷错误密码无法把真实用户挡在门外;
+   *  - 密码错误时累计,达阈值返回 429 统一文案(不泄露"账号是否存在");
+   *  - IP 只入审计(来源可追溯),不参与判定。
+   */
   login(input: UserLogin, opts: { ip?: string } = {}): AuthResult {
     const FAIL_WINDOW_MS = 15 * 60_000
     const LOCK_THRESHOLD = 5
-    const lockKey = `${opts.ip ?? 'local'}|${input.email.toLowerCase()}`
+    const accountKey = input.email.trim().toLowerCase()
     const fails = this._loginFails
     if (fails.size > 5000) {
       const oldest = fails.keys().next().value
       if (oldest) fails.delete(oldest)
     }
-    const rec = fails.get(lockKey)
-    // 已达阈值且窗口未过 → 锁定;偶发失败(1-4 次)不锁,窗口滑过即重置
-    if (rec && rec.count >= LOCK_THRESHOLD && Date.now() - rec.firstAt < FAIL_WINDOW_MS) {
-      const waitMin = Math.ceil((FAIL_WINDOW_MS - (Date.now() - rec.firstAt)) / 60_000)
-      recordOps({
-        actor: input.email, actorName: input.email, actorKind: 'user',
-        action: 'auth.login.locked', kind: 'system', targetKind: 'user', targetId: input.email,
-        summary: `登录锁定:账号 ${input.email} 连续失败过多,已临时锁定(约 ${waitMin} 分钟,来源 IP ${opts.ip ?? 'local'})`,
-      })
-      throw new AppError(429, 'LOGIN_LOCKED', `失败次数过多,账号已临时锁定,请约 ${waitMin} 分钟后再试`)
-    }
+    const rec = fails.get(accountKey)
+    const locked = Boolean(rec && rec.count >= LOCK_THRESHOLD && Date.now() - rec.firstAt < FAIL_WINDOW_MS)
+
     const { id, hash } = userRepository.getPasswordHash(input.email) ?? {}
-    if (!id || !hash || !verifyPassword(input.password, hash)) {
-      if (!rec || Date.now() - rec.firstAt >= FAIL_WINDOW_MS) fails.set(lockKey, { count: 1, firstAt: Date.now() })
+    const passwordOk = Boolean(id && hash && verifyPassword(input.password, hash))
+    if (!passwordOk) {
+      if (!rec || Date.now() - rec.firstAt >= FAIL_WINDOW_MS) fails.set(accountKey, { count: 1, firstAt: Date.now() })
       else rec.count += 1
+      const now = fails.get(accountKey)!
+      if (now.count >= LOCK_THRESHOLD) {
+        const waitMin = Math.max(1, Math.ceil((FAIL_WINDOW_MS - (Date.now() - now.firstAt)) / 60_000))
+        recordOps({
+          actor: input.email, actorName: input.email, actorKind: 'user',
+          action: 'auth.login.locked', kind: 'system', targetKind: 'user', targetId: input.email,
+          summary: `登录失败达阈值:账号 ${input.email} 暂缓签发(约 ${waitMin} 分钟,来源 IP ${opts.ip ?? 'local'})`,
+        })
+        throw new AppError(429, 'LOGIN_LOCKED', `失败次数过多,请约 ${waitMin} 分钟后再试`)
+      }
       throw new AppError(401, 'UNAUTHORIZED', '邮箱或密码错误')
     }
-    const user = userRepository.findById(id)
+    if (locked) {
+      // 密码正确但此前处于锁定期:放行,并记一条审计(说明确有攻击面在发生)
+      recordOps({
+        actor: input.email, actorName: input.email, actorKind: 'user',
+        action: 'auth.login.lock_bypassed', kind: 'system', targetKind: 'user', targetId: input.email,
+        summary: `账号 ${input.email} 处于失败锁定期,凭正确密码正常登录(来源 IP ${opts.ip ?? 'local'})`,
+      })
+    }
+    const user = userRepository.findById(id!)
     if (!user) {
       throw new AppError(404, ErrorCodes.NOT_FOUND, '用户不存在')
     }
     if (user.status !== 'active') {
       throw new AppError(403, 'FORBIDDEN', '账号已禁用')
     }
-    fails.delete(lockKey)
-    const { raw } = userRepository.createToken(id, `session-${Date.now()}`)
+    fails.delete(accountKey)
+    const { raw } = userRepository.createToken(id!, `session-${Date.now()}`)
     recordOps({
-      actor: id, actorName: user.name, actorKind: 'user',
-      action: 'auth.login', kind: 'system', targetKind: 'user', targetId: id,
+      actor: id!, actorName: user.name, actorKind: 'user',
+      action: 'auth.login', kind: 'system', targetKind: 'user', targetId: id!,
       summary: `用户 ${user.name}(${user.email})登录成功(IP ${opts.ip ?? 'local'})`,
     })
     return { user: this.publicProfile(user), token: raw }

@@ -10,9 +10,11 @@ import { AppError } from '@/server/utils/errors'
 import { defineApiHandler } from '@/server/utils/response'
 import { getDeviceTwinRepo, deviceScenePayload } from '@/server/services/workshop/assets/device-twin.repo'
 import { broadcastSceneEvent } from '@/server/api/workshop/ws'
+import { assertAssetManager } from '@/server/utils/asset-auth'
 
 export default defineApiHandler(async (event) => {
-  resolveUser(event)
+  const user = resolveUser(event)
+  assertAssetManager(user, '更新设备孪生')
   const id = getRouterParam(event, 'id')!
   const body = await readBody<{ name?: string, modelRef?: string, posX?: number, posZ?: number, rotationY?: number, scale?: number }>(event)
   const twin = getDeviceTwinRepo().update(id, {

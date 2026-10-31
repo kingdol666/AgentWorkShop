@@ -19,7 +19,9 @@ import { recordOps } from '../ops/ops'
 import { getProfileRepo, parseProfileRow } from './profile.repo'
 import { getBindingRepo } from './binding.repo'
 import { assertProfileSolverCompatible, type OptimizationProfile } from './contracts'
-import type { ProblemTemplateRef, SolverRef } from '../process-model/contracts'
+import type { ProblemTemplateRef, SolverRef, ProcessModelSpec } from '../process-model/contracts'
+import { getProcessModelSpecRepo } from '../process-model/spec.repo'
+import { parseProcessModelSpec } from '../process-model/spec'
 import { securityRecipeDispatchTimeoutMs } from '../settings'
 import { createLogger } from '../logger'
 
@@ -31,6 +33,15 @@ export const PROFILE_ADOPT_PREFIX = 'optimizer-profile:'
 
 export function isProfileAdoptCard(nodeId: string): boolean {
   return nodeId.startsWith(PROFILE_ADOPT_PREFIX)
+}
+
+/** 解析 Profile 引用的 ProcessModelSpec(id[@version];与 manager.loadSpec 同语义)。 */
+function loadAdoptSpec(ref: string): ProcessModelSpec {
+  const [id, versionText] = ref.split('@')
+  if (!id) throw new AppError(422, 'PROFILE_SPEC_MISSING', 'Profile 未引用 ProcessModelSpec(processSpecRef 为空),无法校验模型血缘')
+  const row = getProcessModelSpecRepo().get(id, versionText ? Number(versionText) : undefined)
+  if (!row) throw new AppError(404, 'SPEC_NOT_FOUND', `ProcessModelSpec ${ref} 不存在`)
+  return parseProcessModelSpec(JSON.parse(row.specJson))
 }
 
 export interface ProposeAdoptionInput {
@@ -75,8 +86,23 @@ export async function proposeProfileAdoption(input: ProposeAdoptionInput): Promi
   }
   const model = getAmlRuntime().repo.model.get(input.modelId)
   if (!model) throw new AppError(404, 'MODEL_NOT_FOUND', `模型 ${input.modelId} 不存在(先经 AML 训练登记)`)
-
   const prior = parseProfileRow(published)
+
+  // 血缘一致性(2026-10-29):采纳的模型必须与 Profile 场景规格同产线/同产品/同配方 ——
+  // 防止把别的产品/配方训练的模型工件挂进本场景求解(数据串味的最后一道结构闸)。
+  // 训练数据按隔离三元组构建(dataset-builder 硬校验),这里按同一三元组对齐。
+  const adoptSpec = loadAdoptSpec(prior.processSpecRef)
+  const adoptDataset = getAmlRuntime().repo.dataset.get(model.datasetId)
+  if (!adoptDataset) {
+    throw new AppError(422, 'MODEL_LINEAGE_MISSING', `模型 ${input.modelId} 缺少数据集谱系(dataset ${model.datasetId} 不存在),无法核验训练数据归属;拒绝采纳`)
+  }
+  if (adoptDataset.lineId !== adoptSpec.lineId) {
+    throw new AppError(422, 'MODEL_LINE_MISMATCH', `模型 ${input.modelId} 训练数据归属产线 ${adoptDataset.lineId},与 Profile 场景产线 ${adoptSpec.lineId} 不一致;跨产线模型禁止采纳`)
+  }
+  if (model.productId !== adoptSpec.productId || model.recipeId !== adoptSpec.recipeId) {
+    throw new AppError(422, 'MODEL_PRODUCT_MISMATCH', `模型 ${input.modelId} 训练于 (产品 ${model.productId}, 配方 ${model.recipeId}),与 Profile 场景 (产品 ${adoptSpec.productId}, 配方 ${adoptSpec.recipeId}) 不一致;跨产品/配方模型禁止采纳(防串味)`)
+  }
+
   const version = published.version + 1
   const nextProfile: OptimizationProfile = {
     ...prior,

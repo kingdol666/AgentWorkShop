@@ -54,6 +54,31 @@ const profileV1 = {
 profileRepo.insert(profileV1, 'u1')
 profileRepo.publish('optp-adopt', 1)
 
+// ── 血缘一致性夹具(2026-10-29):Profile 引用的规格 + 跨产品/跨产线模型 ──
+const { getProcessModelSpecRepo } = await import('../server/services/workshop/process-model/spec.repo')
+const specFixture = (overrides: Record<string, unknown> = {}) => ({
+  schemaVersion: 2 as const, id: 'pms-adopt', version: 1,
+  lineId: 'ln-1', productId: 'pd-1', recipeId: 'rc-1', recipeVersion: 1,
+  conditions: [{ id: 'c1', match: [{ field: 'recipeId' as const, op: 'eq' as const, value: 'rc-1' }] }],
+  variables: [
+    { id: 'mv1', nodeId: 'n-mv', role: 'mv', field: 'value', unit: 'bar', scale: 1, offset: 0, delayMs: 5000, min: 0, max: 100, maxStep: 5 },
+    { id: 'cv1', nodeId: 'n-cv', role: 'cv', field: 'value', unit: 'μm', scale: 1, offset: 0, min: 0, max: 200 },
+  ],
+  timing: { beatMs: 5000, historySteps: 24, horizonSteps: 10, fixedDt: true },
+  trainer: { ref: 'linear_arx@1', config: { arOrder: 2, inputOrder: 1, ridgeLambda: 0.001, standardize: true } },
+  datasetPolicy: { split: { valRatio: 0.2, testRatio: 0.2, seed: 42 } },
+  gatePolicyRef: 'process-model.gates@1',
+  modelInterface: { id: 'linear_state_space', version: 1, inputSemantics: 'setpoint', mode: 'state_space' },
+  effectiveDomain: { mv: { mv1: { min: 0, max: 100, maxStep: 5 } }, cv: { cv1: { min: 0, max: 200 } } },
+  purpose: 'mpc_surrogate',
+  ...overrides,
+})
+getProcessModelSpecRepo().insert(specFixture() as never)
+rt.repo.dataset.insert({ id: 'ds-p2', lineId: 'ln-1', productId: 'pd-2', recipeId: 'rc-1', runIds: [], specJson: '{}', sha256: 'x', rowCount: 1, fromMs: 0, toMs: 1, path: 'p2', createdBy: 't', createdByKind: 'user', note: '', createdAt: now })
+rt.repo.model.insert({ id: 'mdl-p2', experimentId: 'exp-a', datasetId: 'ds-p2', productId: 'pd-2', recipeId: 'rc-1', purpose: 'mpc_surrogate', ioSpecJson: '{}', metricsJson: '{}', path: 'p2m', createdBy: 't', note: '别家产品的模型', lineId: 'ln-1', createdAt: now, artifactKind: 'linear_state_space@1', modelInterface: 'linear_state_space' })
+rt.repo.dataset.insert({ id: 'ds-ln2', lineId: 'ln-2', productId: 'pd-1', recipeId: 'rc-1', runIds: [], specJson: '{}', sha256: 'x', rowCount: 1, fromMs: 0, toMs: 1, path: 'l2', createdBy: 't', createdByKind: 'user', note: '', createdAt: now })
+rt.repo.model.insert({ id: 'mdl-ln2', experimentId: 'exp-a', datasetId: 'ds-ln2', productId: 'pd-1', recipeId: 'rc-1', purpose: 'mpc_surrogate', ioSpecJson: '{}', metricsJson: '{}', path: 'l2m', createdBy: 't', note: '别条产线的模型', lineId: 'ln-2', createdAt: now, artifactKind: 'linear_state_space@1', modelInterface: 'linear_state_space' })
+
 db.prepare(`INSERT INTO channels (id, name, description, enabled, created_at, updated_at) VALUES ('ch-a','c','',1,?,?)`).run(now, now)
 db.prepare(`INSERT INTO channel_agents (id, channel_id, name, harness, token, created_at, updated_at) VALUES ('ca-a','ch-a','a','mock','t1',?,?)`).run(now, now)
 db.prepare(`INSERT INTO workspaces (id, owner_user_id, name, created_at) VALUES ('ws-a','u1','w',?)`).run(now)
@@ -153,6 +178,22 @@ test('未知模型 / 无已发布基线 → 404', async () => {
     agentInstanceId: 'ca-a', initiatorId: 'ca-a', profileId: 'optp-none', modelId: 'mdl-v2', reason: 'x',
     deps: { requestApproval: async () => ({ approved: true, comment: '', choice: null }) },
   }), (err: { code?: string }) => err.code === 'PROFILE_NOT_PUBLISHED')
+})
+
+test('血缘一致性:跨产品模型采纳 → 422 MODEL_PRODUCT_MISMATCH(不产生草稿/卡)', async () => {
+  const before = profileRepo.nextVersion('optp-adopt')
+  await assert.rejects(() => svc.proposeProfileAdoption({
+    agentInstanceId: 'ca-a', initiatorId: 'ca-a', profileId: 'optp-adopt', modelId: 'mdl-p2', reason: '串味模型不该被采纳',
+    deps: { requestApproval: async () => ({ approved: true, comment: '', choice: null }) },
+  }), (err: { code?: string }) => err.code === 'MODEL_PRODUCT_MISMATCH')
+  assert.equal(profileRepo.nextVersion('optp-adopt'), before, '不应产生新版本行')
+})
+
+test('血缘一致性:跨产线模型采纳 → 422 MODEL_LINE_MISMATCH', async () => {
+  await assert.rejects(() => svc.proposeProfileAdoption({
+    agentInstanceId: 'ca-a', initiatorId: 'ca-a', profileId: 'optp-adopt', modelId: 'mdl-ln2', reason: '跨产线模型',
+    deps: { requestApproval: async () => ({ approved: true, comment: '', choice: null }) },
+  }), (err: { code?: string }) => err.code === 'MODEL_LINE_MISMATCH')
 })
 
 test('工具面登记:optimizer_profile_propose 进 host-tools/grant-guard/INDUSTRIAL_HANDLERS', () => {

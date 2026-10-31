@@ -17,6 +17,7 @@ import { recordOps } from '../../../services/workshop/ops/ops'
 import { getDcwLineRepo } from '@/server/services/workshop/dcw/dcw-line.repo'
 import { getDcwController } from '@/server/services/workshop/dcw/dcw-controller'
 import { getDcwProductRepo } from '@/server/services/workshop/dcw/dcw-product.repo'
+import { requireLineForResource } from '@/server/services/workshop/line-scope'
 
 const MANUAL_LEVELS = ['info', 'warn', 'error'] as const
 /** 防御上限:摘要 2k 字符 / 详情 32KB(超限 400 拒绝,防单条日志撑爆 sqlite 与前端渲染) */
@@ -67,6 +68,10 @@ export default defineApiHandler(async (event) => {
       throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `配方「${recipe.name}」归属产线 ${recipe.lineId},与 lineId=${lineId} 不一致`)
     if (!lineId && recipe.lineId) lineId = recipe.lineId
   }
+
+  // 产线归属归一后统一授权:写产线日志需要该线 operate;
+  // lineId 为空 = 全局审计台账(跨线运维信息),仅 admin 可写(与 GET 收权同口径)。
+  requireLineForResource(user, lineId, '运行日志', 'operate')
 
   recordOps({
     actor: user.id,

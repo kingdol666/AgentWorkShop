@@ -14,12 +14,14 @@ const EXPECTED = [
   'ontology_publish_propose', 'ontology_version_compare',
 ]
 
-test('host-tools.json 含 10 条本体工具(全名唯一)且总数为 104', () => {
+test('host-tools.json 含 10 条本体工具(全名唯一)且总数为 105', () => {
   const names = TOOLS.map(t => String(t.name))
   for (const name of EXPECTED) assert.ok(names.includes(name), `缺少工具 ${name}`)
   assert.equal(new Set(names).size, names.length, '工具名必须唯一')
   assert.deepEqual(names.filter(n => n.startsWith('ontology_')).sort(), [...EXPECTED].sort(), '本体工具集合必须精确等于预期')
-  assert.equal(TOOLS.length, 104, '宿主工具总数应为 104')
+  // 105 = 104 + supersede_task(2026-10-30 整改阶段1:失败/取消分支显式替代)
+  assert.equal(TOOLS.length, 105, '宿主工具总数应为 105')
+  assert.ok(names.includes('supersede_task'), '缺少 supersede_task(分支替代)')
 })
 
 test('每条本体工具:描述 ≥40 字、参数为 object、声明 references 或 noRefs、带 riskClass', () => {

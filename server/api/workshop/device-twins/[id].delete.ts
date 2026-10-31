@@ -10,9 +10,11 @@ import { getDeviceTwinRepo } from '@/server/services/workshop/assets/device-twin
 import { getDaqController } from '@/server/services/workshop/daq/daq-controller'
 import { getDcwController } from '@/server/services/workshop/dcw/dcw-controller'
 import { broadcastSceneEvent } from '@/server/services/workshop/scene-events'
+import { assertAssetManager } from '@/server/utils/asset-auth'
 
 export default defineApiHandler(async (event) => {
-  resolveUser(event)
+  const user = resolveUser(event)
+  assertAssetManager(user, '删除设备孪生')
   const id = getRouterParam(event, 'id')!
   const twin = getDeviceTwinRepo().findById(id)
   const ok = getDeviceTwinRepo().remove(id)

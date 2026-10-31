@@ -1,11 +1,20 @@
 /**
  * POST /api/workshop/daq/:id/ingest —— 外部 API 推送多源异构数采样本。
  *
+ * 值域契约(路线 B:REST 收物理值):
+ *   - 标量 value = 已标定物理值(engineering value),与轮询/MQTT 管线一致;
+ *     本端点不做 transform(转换由调用方/驱动完成)。请求可携带可选
+ *     `valueDomain: 'engineering'` 显式声明值域(缺省按 engineering;传其它值 400)。
+ *     节点若配置了非恒等 transform,本端点仅打 warn 提醒调用方自行负责标定,
+ *     不改变"不做转换"的行为;
+ *   - 向量/图像帧走 processExternalFrame 管线(sink 处理器/质量门/落存储)。
+ *
  * 适用:第三方/边缘系统每次调用返回一张图片或一个数组(如膜厚模头点位数组),
  * 由调用方主动推入本平台,走与网关采样完全相同的队列/入库/打标/告警链路。
  *
  * body:
- *   { at?: ISO, value?: number, points?: number[], metrics?: {k:number},
+ *   { at?: ISO, value?: number, valueDomain?: 'engineering',
+ *     points?: number[], metrics?: {k:number},
  *     state?: 'ok'|'warn'|'alarm'|'offline',
  *     image?: { base64|data: string, mime?: string, width?: number, height?: number } | string }
  *
@@ -36,6 +45,8 @@ let wideWindowWarned = false
 interface IngestBody {
   at?: string
   value?: number | string
+  /** 值域声明:缺省/仅支持 'engineering'(REST ingest 按契约收物理值,不做 transform);其它值 400 */
+  valueDomain?: string
   points?: unknown
   values?: unknown
   metrics?: Record<string, unknown>
@@ -183,8 +194,21 @@ export default defineApiHandler(async (event) => {
     }
   }
   else {
+    // 值域契约:缺省按 engineering;显式传其它值 → 400(见文件头"值域契约")。
+    const valueDomain = body.valueDomain === undefined ? 'engineering' : String(body.valueDomain).trim()
+    if (valueDomain !== 'engineering') {
+      throw new AppError(400, 'VALIDATION_ERROR', `valueDomain 仅支持 "engineering"(REST ingest 按契约接收物理值、不做 transform);收到 "${String(body.valueDomain)}"。`)
+    }
     const value = Number(body.value)
     if (!Number.isFinite(value)) throw new AppError(400, 'VALIDATION_ERROR', '标量节点的载荷必须提供数值 value。')
+    // 非恒等 transform 提醒(kind='none'/缺省=透传即恒等;kind='linear' 且 scale≠1∨offset≠0 才非恒等):
+    // 按契约本端点不做转换 —— 打 warn 提示调用方确认传入的已是物理值。
+    const tf = node.transform
+    const effScale = tf && tf.kind === 'linear' && Number.isFinite(tf.scale) && tf.scale !== 0 ? tf.scale : 1
+    const effOffset = tf && Number.isFinite(tf.offset) ? tf.offset : 0
+    if (effScale !== 1 || effOffset !== 0) {
+      console.warn(`[daq.ingest] 节点 ${node.id}(${node.name})配置了非恒等 transform(scale=${effScale}, offset=${effOffset});REST ingest 按契约不做转换,请确认调用方传的是物理值。`)
+    }
     env = { nodeId: node.id, templateRef: node.templateRef, value, state, at }
   }
 

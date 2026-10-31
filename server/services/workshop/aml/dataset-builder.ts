@@ -144,6 +144,9 @@ interface PageQuery {
 /**
  * 单节点取数(C7):优先逐节点分页接口(游标续读、无总量截断);
  * 后端未实现时退化为单节点 queryTagged(旧语义在 nodeIds 单元素时等价)。
+ * 2026-10-29:分页路径**必须携带批次标签**(line/product/recipe/run 等值过滤)——
+ * 此前分页只按时间窗取数,Timescale 部署上会把窗口内全部样本当目标批次,
+ * 产品/配方隔离退化为时间窗推断(串味隐患);两条路径现在语义等价。
  */
 export async function fetchNodeSeries(
   tsdb: Pick<TsdbPort, 'queryTagged' | 'queryTaggedPage'>,
@@ -157,6 +160,7 @@ export async function fetchNodeSeries(
     for (;;) {
       const page = await tsdb.queryTaggedPage(nodeId, {
         afterTs, fromMs: q.fromMs, toMs: q.toMs, limit: pageLimit, withState: true,
+        lineId: q.lineId, productId: q.productId, recipeId: q.recipeId, runId: q.runId,
       })
       out.push(...page.points)
       if (page.done || page.nextCursor == null) break

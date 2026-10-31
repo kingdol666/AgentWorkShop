@@ -10,9 +10,9 @@ import { broadcastSceneEvent } from '@/server/services/workshop/scene-events'
 import type { AepDaqTemplateChange } from '#shared/daq-protocol'
 
 export default defineApiHandler(async (event) => {
-  resolveUser(event)
+  const user = resolveUser(event)
   const key = getRouterParam(event, 'key') ?? ''
-  const removed = getDaqTemplateRegistry().remove(key)
+  const removed = getDaqTemplateRegistry().remove(key, user)
   broadcastSceneEvent('daq.template.changed', { op: 'removed', template: removed } satisfies AepDaqTemplateChange)
   return { removed: removed.key }
 })

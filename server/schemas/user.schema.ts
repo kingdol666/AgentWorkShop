@@ -8,10 +8,10 @@ import { z } from 'zod'
 export const userRoleSchema = z.enum(['admin', 'editor', 'user'])
 export const userStatusSchema = z.enum(['active', 'disabled'])
 
-/** 密码规则（注册/登录共用）：6-128 位，至少含字母与数字 */
+/** 密码规则（注册/登录共用）：8-128 位，至少含字母与数字(2026-10-30 由 6 位提升) */
 export const passwordSchema = z
   .string()
-  .min(6, '密码至少 6 位')
+  .min(8, '密码至少 8 位')
   .max(128, '密码最多 128 位')
   .regex(/[A-Za-z]/, '密码需包含字母')
   .regex(/[0-9]/, '密码需包含数字')

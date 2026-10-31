@@ -77,7 +77,14 @@ export async function doReload(host) {
   host.plugins.clear()
   host.routes = createRouteTable()
   host.failures = []
-  await loadAllPlugins(host, { config: host.config, settingsPath: null, paths: { home: modePaths(host.cwd).homeDir, configRoot: join(host.cwd, '.AgentWorkShop'), dataDir: join(host.cwd, '.AgentWorkShop', 'data') } })
+  // 2026-10-31 修复(home 模式路径回归):重载路径此前硬编码 join(host.cwd,'.AgentWorkShop')
+  // —— repo 模式恰好重合所以从未暴露;home/隔离模式(AW_HOME≠repo)下,设置热更触发重载后
+  // 插件 ctx.paths.dataDir 落到仓库数据根,diag_run 读 daq-export 数据集 ENOENT
+  // (daq_export 由平台服务写 AW_HOME/data,两边根不一致;实测 iddrag-e2e 抓获)。
+  // init.mjs 已按 resolveRunMode 解析正确根并存 host.paths;重载必须复用,不得自算。
+  const reloadPaths = host.paths
+    ?? { home: modePaths(host.cwd).homeDir, configRoot: join(host.cwd, '.AgentWorkShop'), dataDir: join(host.cwd, '.AgentWorkShop', 'data') }
+  await loadAllPlugins(host, { config: host.config, settingsPath: null, paths: reloadPaths })
   // 装载中途失败(setup 抛错)的插件可能留下半注册工具,兜底再清一次
   for (const prev of prevNames) {
     if (!host.plugins.has(prev)) {

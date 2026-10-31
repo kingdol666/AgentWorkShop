@@ -11,12 +11,14 @@ import { AppError } from '@/server/utils/errors'
 import { defineApiHandler } from '@/server/utils/response'
 import fs from 'node:fs'
 import path from 'node:path'
+import { assertAssetManager } from '@/server/utils/asset-auth'
 
 const ALLOWED_EXT = new Set(['.glb', '.gltf', '.obj', '.fbx'])
 const MAX_BYTES = 30 * 1024 * 1024
 
 export default defineApiHandler(async (event) => {
-  resolveUser(event)
+  const user = resolveUser(event)
+  assertAssetManager(user, '上传设备模型')
   const parts = await readMultipartFormData(event)
   if (!parts || parts.length === 0) throw new AppError(400, 'BAD_REQUEST', '缺少上传文件(multipart form-data)')
 

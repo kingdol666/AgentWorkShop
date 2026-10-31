@@ -158,11 +158,25 @@ let restartTimes = []
 let healthFailStreak = 0
 let heapHotStreak = 0
 
-function killChild(sig = 'SIGTERM') {
+/**
+ * 停止服务子进程。**必须杀整棵进程树**:
+ *  - Windows 上 child.kill('SIGTERM') 等价 TerminateProcess —— 子进程的信号处理器
+ *    (nitro graceful shutdown / close 钩子)根本不执行,且 omp/AML python 等孙进程
+ *    不在 Job Object 里,父被杀后成为孤儿,继续占 venv/env.lock;
+ *  - taskkill /T 递归终止整棵树,是 Windows 上唯一可靠口径(与 shared/config/single-instance.mjs
+ *    的 terminatePid 同源)。
+ * POSIX 保留 SIGTERM 优雅语义,由调用方在超时后升级 SIGKILL。
+ */
+function killChild(mode = 'graceful') {
   const c = serviceChild
   if (!c || c.exitCode !== null || c.signalCode) return
   try {
-    c.kill(sig)
+    if (process.platform === 'win32') {
+      spawn('taskkill', ['/PID', String(c.pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true })
+    }
+    else {
+      c.kill(mode === 'force' ? 'SIGKILL' : 'SIGTERM')
+    }
   }
   catch { /* 已死 */ }
 }
@@ -237,14 +251,29 @@ const healthTimer = setInterval(async () => {
 }, 30_000)
 healthTimer.unref?.()
 
-// 父进程任何退出路径先杀子进程(含锁心跳自杀 process.exit → 'exit' 事件)
+// 父进程任何退出路径先杀子进程树(含锁心跳自杀 process.exit → 'exit' 事件)
+// POSIX:先 SIGTERM 让 nitro 跑完 close 钩子(杀训练树/关库),12s 未退出再强杀;
+// Windows:taskkill /T 直接树杀(无信号语义,见 killChild 注释)。
+const GRACE_MS = 12_000
 for (const sig of ['SIGINT', 'SIGTERM', 'SIGBREAK']) {
   process.on(sig, () => {
-    killChild('SIGTERM')
-    const t = setTimeout(() => process.exit(0), 500)
+    killChild('graceful')
+    const c = serviceChild
+    if (!c || c.exitCode !== null || c.signalCode) {
+      process.exit(0)
+      return
+    }
+    const t = setTimeout(() => {
+      killChild('force')
+      setTimeout(() => process.exit(0), 200).unref?.()
+    }, GRACE_MS)
     t.unref?.()
+    c.once('exit', () => {
+      clearTimeout(t)
+      process.exit(0)
+    })
   })
 }
-process.on('exit', () => killChild('SIGKILL'))
+process.on('exit', () => killChild('force'))
 
 spawnServiceChild()

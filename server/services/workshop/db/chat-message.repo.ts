@@ -229,5 +229,33 @@ export function createChatMessageRepo(db: DatabaseSync) {
          WHERE channel_id = ? AND target_agent_id = ? AND status IN ('pending', 'delivered')`,
       ).run(new Date().toISOString(), channelId, targetAgentId).changes ?? 0)
     },
+
+    /** 崩溃恢复扫描(整改计划 2026-10-30 阶段2):pending 且 mailbox 未落库、到期可重试的投递 */
+    listRetryableDeliveries(nowIso: string, limit = 50): Array<{ id: string, chatMessageId: string, channelId: string, targetAgentId: string, attempts: number }> {
+      return db.prepare(
+        `SELECT id, chat_message_id AS chatMessageId, channel_id AS channelId, target_agent_id AS targetAgentId, attempts
+         FROM chat_deliveries
+         WHERE status = 'pending' AND mailbox_message_id IS NULL
+           AND (next_retry_at IS NULL OR next_retry_at <= ?)
+         ORDER BY created_at ASC LIMIT ?`,
+      ).all(nowIso, limit) as unknown as Array<{ id: string, chatMessageId: string, channelId: string, targetAgentId: string, attempts: number }>
+    },
+
+    /** 记一次重试(claim + 退避排程);返回累计 attempts */
+    bumpDeliveryRetry(id: string, nextRetryAt: string): number {
+      const now = new Date().toISOString()
+      db.prepare(
+        `UPDATE chat_deliveries SET attempts = attempts + 1, next_retry_at = ?, claimed_at = ?, updated_at = ? WHERE id = ?`,
+      ).run(nextRetryAt, now, now, id)
+      const row = db.prepare(`SELECT attempts FROM chat_deliveries WHERE id = ?`).get(id) as { attempts?: number } | undefined
+      return Number(row?.attempts ?? 0)
+    },
+
+    /** 重试超限转死信(failed;仅 pending 可转) */
+    markDeliveryDead(id: string, error: string): boolean {
+      return db.prepare(
+        `UPDATE chat_deliveries SET status = 'failed', error = ?, updated_at = ? WHERE id = ? AND status = 'pending'`,
+      ).run(error, new Date().toISOString(), id).changes > 0
+    },
   }
 }

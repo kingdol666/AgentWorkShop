@@ -9,6 +9,7 @@ import { requireLineMode } from '@/server/services/workshop/permissions'
 import { defineApiHandler } from '@/server/utils/response'
 import { bindDcwBroadcast, getDcwController } from '@/server/services/workshop/dcw/dcw-controller'
 import { broadcastSceneEvent } from '@/server/services/workshop/scene-events'
+import { benchModeEnabled } from '@/server/services/workshop/bench-mode'
 
 export default defineApiHandler(async (event) => {
   const user = resolveUser(event)
@@ -19,7 +20,7 @@ export default defineApiHandler(async (event) => {
   requireLineMode(user, getDcwController().byId(id)?.lineId, 'operate')
   // D8 基准消融臂透传(仅 AW_BENCH_MODE=1 时生效;生产模式恒 undefined=full 臂)
 
-  const benchArm = process.env.AW_BENCH_MODE === '1'
+  const benchArm = benchModeEnabled()
 
     ? (getRequestHeader(event, 'x-aw-bench-arm') || undefined) as 'no-interlock' | 'no-readback' | 'ungated' | undefined
 

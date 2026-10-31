@@ -322,6 +322,8 @@ export interface TaskRow {
   sourceChatDeliveryId: string | null
   closeReason: string | null
   deadlineAt: string | null
+  /** 显式替代关系:本任务(FAILED/CANCELED)被 replacement 覆盖 */
+  supersededByTaskId?: string | null
   /** 执行交接代次(§5.1;每次重分配 +1) */
   assignmentGeneration: number
   /** 当前执行租约(§5.1/§5.2;旧 worker 迟到事件据此丢弃) */

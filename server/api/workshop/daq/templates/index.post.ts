@@ -10,9 +10,9 @@ import { broadcastSceneEvent } from '@/server/services/workshop/scene-events'
 import type { AepDaqTemplateChange, DaqTemplateInput } from '#shared/daq-protocol'
 
 export default defineApiHandler(async (event) => {
-  resolveUser(event)
+  const user = resolveUser(event)
   const body = (await readBody(event) ?? {}) as DaqTemplateInput
-  const template = getDaqTemplateRegistry().create(body)
+  const template = getDaqTemplateRegistry().create(body, user.id)
   broadcastSceneEvent('daq.template.changed', { op: 'added', template } satisfies AepDaqTemplateChange)
   return { template }
 })

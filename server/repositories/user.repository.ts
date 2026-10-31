@@ -188,6 +188,12 @@ function hashToken(token: string): string {
 }
 
 /** 签发新 token：明文仅此一次返回,库中只存 SHA-256 哈希(0.7.10 起不再存档明文) */
+/**
+ * 每用户 token 上限。此前无上限:每次登录都新发一枚,长期使用后 token 表无界增长
+ * (且旧会话永不失效 → 泄露面随时间扩大)。超出时淘汰**最老**的会话 token。
+ */
+const MAX_TOKENS_PER_USER = 20
+
 function issueToken(userId: string, label: string): { raw: string, row: UserToken } {
   const raw = `ut-${randomUUID().replace(/-/g, '')}`
   const hash = hashToken(raw)
@@ -201,6 +207,13 @@ function issueToken(userId: string, label: string): { raw: string, row: UserToke
     hasPlain: false,
   }
   const d = getDb()
+  // 先淘汰超额最老 token(同一事务语义下先删后插,数量恒 ≤ 上限)
+  const excess = d.prepare('SELECT id FROM user_tokens WHERE user_id = ? ORDER BY created_at ASC').all(userId) as Array<{ id: string }>
+  if (excess.length >= MAX_TOKENS_PER_USER) {
+    const drop = excess.slice(0, excess.length - MAX_TOKENS_PER_USER + 1)
+    const del = d.prepare('DELETE FROM user_tokens WHERE id = ?')
+    for (const t of drop) del.run(t.id)
+  }
   d.prepare('INSERT INTO user_tokens (id, user_id, label, token_hash, token_plain, created_at, expires_at) VALUES (?, ?, ?, ?, NULL, ?, ?)')
     .run(row.id, userId, label, hash, row.createdAt, isoInDays(TOKEN_TTL_DAYS))
   return { raw, row }

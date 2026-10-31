@@ -118,18 +118,48 @@ function readFileLock(path: string): FileLock | null {
   }
 }
 
-function acquireFileLock(path: string, holder: string): string {
-  const token = randomUUID()
+function pidAlive(pid: number): boolean {
+  if (!Number.isInteger(pid) || pid <= 0) return false
   try {
-    writeFileSync(path, JSON.stringify({ owner: holder, pid: process.pid, heartbeatAt: Date.now(), token }), { flag: 'wx' })
+    process.kill(pid, 0)
+    return true
   }
   catch (err) {
-    if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err
-    const existing = readFileLock(path)
-    // 不做 read-then-delete 过期回收:另一个进程可能已换入新锁。
-    throw new AppError(409, 'ENV_BUSY', `AML 环境被进程 ${existing?.pid ?? '?'}(${existing?.owner ?? '未知'})锁定;如确认其已退出,请清理 ${path}`)
+    // EPERM = 进程存在但无权限;仅 ESRCH 才算已死
+    return (err as NodeJS.ErrnoException)?.code === 'EPERM'
   }
-  return token
+}
+
+function acquireFileLock(path: string, holder: string): string {
+  const token = randomUUID()
+  const payload = () => JSON.stringify({ owner: holder, pid: process.pid, heartbeatAt: Date.now(), token })
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      writeFileSync(path, payload(), { flag: 'wx' })
+      return token
+    }
+    catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err
+    }
+    // 独占创建失败:区分"活锁"与"崩溃残留"。
+    // 持有者崩溃(尤其 Windows TerminateProcess 不跑信号处理)会留下永久锁,
+    // 使 AML 环境维护(venv 安装)此后每次 409 直到人工删文件 —— 必须能自愈。
+    // 注意:同 PID + 不同 token 视为**另一个持有者**(同进程并发维护也必须互斥),
+    // 只有 PID 已不存在才允许接管。
+    const existing = readFileLock(path)
+    // 存活即拒绝(含本进程的并发维护:同 PID 不同 token 仍是另一个持有者)
+    if (existing?.pid && pidAlive(existing.pid)) {
+      throw new AppError(409, 'ENV_BUSY', `AML 环境被进程 ${existing.pid}(${existing.owner ?? '未知'})锁定;如确认其已退出,请清理 ${path}`)
+    }
+    // 死 PID / 内容损坏 → 清理后重试 wx(仍保持"另一进程可能已换入新锁"的竞态安全:
+    // 只有本轮 wx 成功才算拿到;两进程同时清理时只有一个能 wx 成功)。
+    console.warn(`[aml-env] 接管崩溃残留的环境锁(pid=${existing?.pid ?? '?'} 已不存在):${path}`)
+    try {
+      rmSync(path, { force: true })
+    }
+    catch { /* 竞态留待下一轮 */ }
+  }
+  throw new AppError(409, 'ENV_BUSY', `AML 环境锁竞争失败(持续 EEXIST):${path}`)
 }
 
 function releaseFileLock(path: string, token: string): void {

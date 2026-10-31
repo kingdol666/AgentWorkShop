@@ -43,7 +43,13 @@ export function loadJsonFile(filePath, fallback) {
   try {
     raw = readFileSync(filePath, 'utf-8')
   }
-  catch {
+  catch (err) {
+    // 读失败此前完全静默(ENOENT/EACCES/ENOTDIR 不分):运行时只看到"空库",排障无从下手。
+    // 这里只对非 ENOENT 留一条 warn,返回值仍回落 fallback(行为不变)。
+    try {
+      if (err?.code !== 'ENOENT') console.warn(`[json-store] 读取失败(${err?.code ?? 'unknown'}),回落默认值:${filePath}`)
+    }
+    catch { /* 日志失败不影响主流程 */ }
     return fallback
   }
   try {

@@ -83,6 +83,8 @@ CREATE TABLE IF NOT EXISTS tasks (
   source_chat_delivery_id TEXT,
   close_reason   TEXT,
   deadline_at    TEXT,
+  -- 显式替代关系:FAILED/CANCELED 分支被 replacement 覆盖后仍保留失败事实,但不再阻塞父任务收口
+  superseded_by_task_id TEXT,
   -- 执行交接栅栏(§2.1/§5.1):每次新分配/重分配 generation+1 并换新 lease;
   -- worker 的 message/artifact/progress/complete/failed 事件携带 generation+lease,
   -- 与当前值不符的迟到事件被丢弃,避免旧 worker 覆盖重分配后的新执行结果。
@@ -460,10 +462,16 @@ CREATE TABLE IF NOT EXISTS chat_deliveries (
   mailbox_message_id  TEXT,
   status              TEXT NOT NULL DEFAULT 'pending', -- pending|delivered|consumed|failed|cancelled
   error               TEXT NOT NULL DEFAULT '',
+  -- 崩溃恢复(整改计划 2026-10-30 阶段2):pending 且 mailbox 未落库的投递由补偿器重投;
+  -- attempts 退避,超限转 failed 死信;mailbox 已落库的 pending(第二窗口)按确定性消息 id 去重,不重复投递
+  attempts            INTEGER NOT NULL DEFAULT 0,
+  next_retry_at       TEXT,
+  claimed_at          TEXT,
   created_at          TEXT NOT NULL,
   updated_at          TEXT NOT NULL,
   UNIQUE(chat_message_id, target_agent_id)
 );
+CREATE INDEX IF NOT EXISTS idx_chat_deliveries_retry ON chat_deliveries(status, next_retry_at);
 CREATE INDEX IF NOT EXISTS idx_chat_deliveries_message ON chat_deliveries(chat_message_id);
 CREATE INDEX IF NOT EXISTS idx_chat_deliveries_agent ON chat_deliveries(target_agent_id, status);
 -- Agent 回复关联链热路径:agentReplyToChat 按 mailboxMessageId 反查群聊来源

@@ -42,6 +42,12 @@ export function initWorkshopDb(db: DatabaseSync): void {
   migrateAddColumn(db, 'channels', 'llm_json', 'TEXT NOT NULL DEFAULT \'\'')
   // 派发路由理由(koda RouteDecision 借鉴):lead 派发留痕"为什么派给他",供审计与前端呈现
   migrateAddColumn(db, 'tasks', 'route_reason', 'TEXT NOT NULL DEFAULT \'\'')
+  // 2026-10-30 子任务显式替代关系:FAILED/CANCELED 分支被 replacement 覆盖后不再阻塞父 Goal 收口
+  migrateAddColumn(db, 'tasks', 'superseded_by_task_id', 'TEXT')
+  // 2026-10-30 chat 投递崩溃恢复:pending 且 mailbox 未落库的投递由补偿器退避重投(阶段2)
+  migrateAddColumn(db, 'chat_deliveries', 'attempts', 'INTEGER NOT NULL DEFAULT 0')
+  migrateAddColumn(db, 'chat_deliveries', 'next_retry_at', 'TEXT')
+  migrateAddColumn(db, 'chat_deliveries', 'claimed_at', 'TEXT')
   // v10:模板可见性列(既有库补列;默认 private,仅属主可见)
   migrateAddColumn(db, 'agents', 'visibility', 'TEXT NOT NULL DEFAULT \'private\'')
   migrateAddColumn(db, 'teams', 'visibility', 'TEXT NOT NULL DEFAULT \'private\'')

@@ -48,6 +48,8 @@ const submitTaskSchema = z.object({
     intervalMs: z.number().int().min(100).max(86_400_000).optional(),
     maxIterations: z.number().int().min(1).max(10_000).optional(),
     goalCriteria: z.string().optional(),
+    /** goal:显式声明无交付目标(缺省 default=收口必须有真实交付物) */
+    completionPolicy: z.enum(['default', 'no-deliverable']).optional(),
     stages: z.array(z.object({
       name: z.string(),
       description: z.string(),

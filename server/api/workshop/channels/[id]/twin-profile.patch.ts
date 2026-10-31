@@ -17,6 +17,7 @@ import { defineApiHandler } from '@/server/utils/response'
 import { AppError } from '@/server/utils/errors'
 import { getChannelTwinProfile, setHybridChannelProfile, assertModelBindableToChannel } from '@/server/services/workshop/aml/twin/channel-profile'
 import { getWorkshopManager } from '@/server/plugins/workshop'
+import { recordOps } from '@/server/services/workshop/ops/ops'
 
 const patchSchema = z.object({
   optimizationMode: z.enum(['exploration', 'aml']).optional(),
@@ -26,9 +27,12 @@ const patchSchema = z.object({
 })
 
 export default defineApiHandler(async (event) => {
-  resolveUser(event)
+  // 治理档位/目标/生产模型绑定均为频道管理字段:切换 bounded_auto 等于放开审批面,
+  // 与 execution-mode 同档,必须 owner-only(此前仅认证不验属主 → 任意用户可绕 HITL)。
+  const user = resolveUser(event)
   const id = getRouterParam(event, 'id') ?? ''
   if (!id) throw new AppError(400, 'VALIDATION_ERROR', 'channel id 必填')
+  getWorkshopManager().requireChannelOwner(id, user, 'channel')
   const body = await readValidatedBody(event, zValidator(patchSchema))
   const prev = getChannelTwinProfile(id)
   if (prev.profile !== 'aml_optimization' && prev.profile !== 'hybrid_twin') {
@@ -62,6 +66,21 @@ export default defineApiHandler(async (event) => {
   }
 
   setHybridChannelProfile({ ...next, createdBy: 'api' })
+  // 治理相关变更入审计轨(与 execution-mode.patch 同口径):controlPolicy 放行面 / 生产模型绑定
+  if (body.controlPolicy !== undefined || body.boundModelId !== undefined) {
+    recordOps({
+      at: new Date().toISOString(),
+      actor: user.id,
+      actorName: user.name,
+      actorKind: 'user',
+      action: 'channel.twin_profile',
+      kind: 'system',
+      summary: `频道孪生配置变更(档位 ${prev.controlPolicy}→${next.controlPolicy}${body.boundModelId !== undefined ? `, 模型 ${prev.boundModelId ?? '无'}→${next.boundModelId ?? '无'}` : ''})`,
+      targetKind: 'channel',
+      targetId: id,
+      detail: { channelId: id, controlPolicy: next.controlPolicy, boundModelId: next.boundModelId ?? null },
+    })
+  }
   // 模式/绑定/goal 变更 → 回收成员运行时:下次装配由 prompt-composer 注入新工况提示词
   try {
     await getWorkshopManager().recycleChannelForTwinProfile(id)

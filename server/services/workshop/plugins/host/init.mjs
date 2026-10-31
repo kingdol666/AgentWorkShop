@@ -35,6 +35,10 @@ export async function initPluginHost({ cwd = process.cwd(), packageRoot } = {}) 
   // 有效配置(只读面;引擎/模式解析从运行根动态加载)
   let config = null
   let settingsPath = null
+  // 未掩码内部消费面:插件 ctx.config 必须读真值(rag-bridge/diag-bridge 的出站 token)。
+  // 不能用 system-config 广播里的 tail.effective —— 那是出口面(凭据已掩码为 ***),
+  // 合并进插件 ctx.config 会让插件读到 *** 而不是真 token(2026-10-30 P1-3 掩码
+  // 加固后的回归:本机桥接全部 401)。内部消费面走 SystemConfigService.internalEffective()。
   let paths = { home: homeDir, configRoot: join(cwd, '.AgentWorkShop'), dataDir: join(cwd, '.AgentWorkShop', 'data') }
   try {
     // home.mjs 探测根:cwd 优先;cwd 漂移(计划任务/服务方式启动,schtasks 默认 System32、
@@ -55,17 +59,23 @@ export async function initPluginHost({ cwd = process.cwd(), packageRoot } = {}) 
     }
     paths = { home: rm.home, configRoot: rm.configRoot, dataDir: rm.dataDir }
     host.logger.info(`配置根: ${rm.configRoot} (${rm.mode} 模式)`)
+    // 2026-10-31:把解析结果存到 host 上,供 reload 复用(reload 自算 cwd 相对路径
+    // 会在 home 模式下把插件 ctx.paths 带回仓库根,daq-export/diag 数据集 ENOENT)。
+    host.paths = paths
   }
   catch (err) {
     host.logger.warn('配置引擎加载降级(插件 ctx.config 将为空):', err?.message)
   }
   // 配置热更新:system-config 变化(设置页 PATCH / runtime-settings 文件监听)即刷新
   // effective —— 插件 ctx.config.get 每次调用实时读到新值(插件 API 地址等改配置即生效,无需重启)
+  let configService = null
   try {
     const { getSystemConfigService } = await import('@/server/services/system-config')
-    getSystemConfigService().subscribe((tail) => {
+    configService = getSystemConfigService()
+    configService.subscribe(() => {
       try {
-        if (config?.effective && tail?.effective) Object.assign(config.effective, tail.effective)
+        if (!config?.effective || !configService) return
+        Object.assign(config.effective, configService.internalEffective())
       }
       catch { /* 刷新失败保留旧值 */ }
     })
@@ -94,6 +104,15 @@ export async function initPluginHost({ cwd = process.cwd(), packageRoot } = {}) 
 
   await loadAllPlugins(host, { config, settingsPath, paths })
   await syncPluginSettings()
+  // 插件 settings 描述符在装载期才注册进 SystemConfigService(engine.loadEffective 的
+  // 静态描述符表里没有 plugins.* 键)→ 装载完成后再从服务同步一次未掩码 effective,
+  // 让 ctx.config.get('plugins.<name>.token') 从第一次调用起就能读到真值。
+  try {
+    if (config?.effective && configService) Object.assign(config.effective, configService.internalEffective())
+  }
+  catch (err) {
+    host.logger.warn('插件设置初值同步失败:', err?.message ?? err)
+  }
   relayConfigEvents(host)
   ensureStateWatcher(host)
   return host

@@ -373,7 +373,7 @@ export function parseIoSpec(model: AmlModelRow): ReturnType<typeof buildIoSpec> 
  *  - candidate→shadow / shadow→production;production 晋升时同组旧 production 自动 retired。
  *  - 返回流转结果;SQL 条件更新兜底并发(他人已流转则失败)。
  */
-export function transitionModel(modelId: string, toStage: Exclude<AmlModelStage, 'candidate'>, by: string, byKind: 'user' | 'agent' = 'user'): { ok: boolean, from?: AmlModelStage, retiredId?: string } {
+export function transitionModel(modelId: string, toStage: Exclude<AmlModelStage, 'candidate'>, by: string, byKind: 'user' | 'agent' = 'user'): { ok: boolean, from?: AmlModelStage, retiredId?: string, warnings?: string[] } {
   const rt = getAmlRuntime()
   const model = rt.repo.model.get(modelId)
   if (!model) throw new AppError(404, 'AML_MODEL_MISSING', `模型 ${modelId} 不存在`)
@@ -422,6 +422,20 @@ export function transitionModel(modelId: string, toStage: Exclude<AmlModelStage,
     }
   }
   const dataset = rt.repo.dataset.get(model.datasetId)
+  // 生产晋升新鲜度提示(2026-10-29,非阻断):训练数据若早于当前配方版本的最后一次变更,
+  // 说明模型是在旧配方语义下训练的 —— 提示用新版本批次重训,不拦晋升(由 lead 判断)。
+  const warnings: string[] = []
+  if (toStage === 'production' && dataset) {
+    try {
+      const versions = getDcwRecipeRepo().versions(model.recipeId)
+      const lastAt = versions.length > 0 ? versions[versions.length - 1]?.at : undefined
+      if (lastAt && Date.parse(lastAt) > Date.parse(dataset.createdAt)) {
+        const curVer = versions[versions.length - 1]?.version
+        warnings.push(`训练数据(${dataset.createdAt.slice(0, 10)})早于配方当前版本 v${curVer ?? '?'} 的变更时间(${lastAt.slice(0, 10)});建议用新版本批次重训后再评估`)
+      }
+    }
+    catch { /* 配方已删等;提示属增强,失败不阻断晋升 */ }
+  }
   recordOps({
     actor: by, actorName: by, actorKind: byKind, action: 'aml.model.promote', kind: 'write',
     summary: `模型 ${modelId}: ${model.stage} → ${toStage}${retiredId ? `(旧生产 ${retiredId} 退役)` : ''}`,
@@ -433,5 +447,5 @@ export function transitionModel(modelId: string, toStage: Exclude<AmlModelStage,
     op: 'promoted', modelId, stage: toStage, from: model.stage,
     productId: model.productId, recipeId: model.recipeId, lineId: dataset?.lineId,
   })
-  return { ok: true, from: model.stage, retiredId }
+  return { ok: true, from: model.stage, retiredId, warnings }
 }

@@ -11,6 +11,21 @@ import { resolveUser } from '@/server/api/workshop/caller'
 import { getDcwLineRepo } from '@/server/services/workshop/dcw/dcw-line.repo'
 import { getAnalysisRepo } from '@/server/services/workshop/analysis/analysis.repo'
 import { recordOps } from '@/server/services/workshop/ops/ops'
+import { requireLineForResource } from '@/server/services/workshop/line-scope'
+
+/** 报告正文/结构化上下文上限(防单条撑爆 SQLite 与列表渲染) */
+const REPORT_MAX_CHARS = 1024 * 1024
+const METRICS_MAX_BYTES = 256 * 1024
+const clampJson = (v: unknown, maxBytes: number): Record<string, unknown> => {
+  const obj = (v ?? {}) as Record<string, unknown>
+  try {
+    const text = JSON.stringify(obj)
+    return text.length <= maxBytes ? obj : { truncated: true, bytes: text.length }
+  }
+  catch {
+    return {}
+  }
+}
 
 export default defineApiHandler(async (event) => {
   const user = resolveUser(event)
@@ -19,6 +34,8 @@ export default defineApiHandler(async (event) => {
   const title = String(body.title ?? '').trim()
   if (!lineId) throw new AppError(400, 'VALIDATION_ERROR' as never, 'line_id 必填。')
   if (!title) throw new AppError(400, 'VALIDATION_ERROR' as never, 'title 必填。')
+  // 写报告是产线维度操作:零授权用户不得向任意产线写入(污染审计轨)
+  requireLineForResource(user, lineId, '分析报告', 'operate')
   const repo = getAnalysisRepo()
   const id = `ar-${randomUUID().slice(0, 8)}`
   const now = new Date().toISOString()
@@ -31,14 +48,14 @@ export default defineApiHandler(async (event) => {
     category: String(body.category ?? 'eda-pipeline').slice(0, 60),
     summary: String(body.summary ?? '').slice(0, 500),
     conclusions: Array.isArray(body.conclusions) ? (body.conclusions as unknown[]).map(c => String(c)) : [],
-    report: String(body.report ?? ''),
-    metrics: (body.metrics ?? {}) as Record<string, unknown>,
+    report: String(body.report ?? '').slice(0, REPORT_MAX_CHARS),
+    metrics: clampJson(body.metrics, METRICS_MAX_BYTES),
     recipeId: String(body.recipe_id ?? ''),
     recipeVersion: String(body.recipe_version ?? ''),
     windowFrom: body.window_from ? String(body.window_from) : null,
     windowTo: body.window_to ? String(body.window_to) : null,
     dataSources: String(body.data_sources ?? ''),
-    context,
+    context: clampJson(context, METRICS_MAX_BYTES),
     channelId: '',
     channelName: '',
     actor: user.id,

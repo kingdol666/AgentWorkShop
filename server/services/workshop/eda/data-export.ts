@@ -17,6 +17,7 @@ import { lineMode } from '../permissions'
 import { getDaqNodeRepo } from '../daq/daq-node.repo'
 import { ensureDataDir } from '@/shared/config/home.mjs'
 import { recordOps } from '../ops/ops'
+import { AppError } from '../../../utils/errors'
 import { edaDb } from './eda-db'
 import { exportWindowMaxH, exportWindowMaxMs } from '../daq/export-limits'
 
@@ -179,16 +180,16 @@ export function startDaqExport(user: ResolvedUser, args: {
   sweepStaleOnce()
   const allowed = new Set(readableNodeIds(user))
   if (allowed.size === 0) {
-    throw Object.assign(new Error('你没有可读产线的数采节点,无权导出。'), { status: 403, code: 'SCOPE_VIOLATION' })
+    throw new AppError(403, 'SCOPE_VIOLATION', '你没有可读产线的数采节点,无权导出。')
   }
   let targets = (args.nodeIds ?? []).map(s => String(s).trim()).filter(Boolean)
   if (targets.length > NODES_MAX) {
-    throw Object.assign(new Error(`node_ids 一次最多 ${NODES_MAX} 个。`), { status: 400, code: 'VALIDATION_ERROR' })
+    throw new AppError(400, 'VALIDATION_ERROR', `node_ids 一次最多 ${NODES_MAX} 个。`)
   }
   if (targets.length > 0) {
     const illegal = targets.filter(id => !allowed.has(id))
     if (illegal.length > 0) {
-      throw Object.assign(new Error(`无权导出节点:${illegal.join(', ')}。`), { status: 403, code: 'SCOPE_VIOLATION' })
+      throw new AppError(403, 'SCOPE_VIOLATION', `无权导出节点:${illegal.join(', ')}。`)
     }
   }
   else {
@@ -200,15 +201,15 @@ export function startDaqExport(user: ResolvedUser, args: {
   }
   targets = [...new Set(targets)].filter(id => getDaqNodeRepo().byId(id))
   if (targets.length === 0) {
-    throw Object.assign(new Error('没有可导出的节点(指定节点均不存在或不在可读产线上)。'), { status: 400, code: 'VALIDATION_ERROR' })
+    throw new AppError(400, 'VALIDATION_ERROR', '没有可导出的节点(指定节点均不存在或不在可读产线上)。')
   }
   const toMs = Number(args.toMs) || Date.now()
   const fromMs = Number(args.fromMs) || toMs - (Number(args.lastMinutes) || 60) * 60_000
   if (!Number.isFinite(fromMs) || !Number.isFinite(toMs) || fromMs >= toMs) {
-    throw Object.assign(new Error('时间窗非法:from 必须小于 to。'), { status: 400, code: 'VALIDATION_ERROR' })
+    throw new AppError(400, 'VALIDATION_ERROR', '时间窗非法:from 必须小于 to。')
   }
   if (toMs - fromMs > exportWindowMaxMs()) {
-    throw Object.assign(new Error(`时间窗超限(最大 ${exportWindowMaxH()} 小时),请缩小窗口。`), { status: 400, code: 'VALIDATION_ERROR' })
+    throw new AppError(400, 'VALIDATION_ERROR', `时间窗超限(最大 ${exportWindowMaxH()} 小时),请缩小窗口。`)
   }
   const id = `edajob-${randomUUID().slice(0, 8)}`
   const now = new Date().toISOString()

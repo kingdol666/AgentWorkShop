@@ -9,9 +9,11 @@ import { resolveUser } from '@/server/api/workshop/caller'
 import { AppError } from '@/server/utils/errors'
 import { defineApiHandler } from '@/server/utils/response'
 import { getDeviceTwinRepo } from '@/server/services/workshop/assets/device-twin.repo'
+import { assertAssetManager } from '@/server/utils/asset-auth'
 
 export default defineApiHandler(async (event) => {
-  resolveUser(event)
+  const user = resolveUser(event)
+  assertAssetManager(user, '设备孪生操控')
   const id = getRouterParam(event, 'id')!
   const body = await readBody<{ command?: string, args?: Record<string, unknown> }>(event)
   if (!body?.command) throw new AppError(400, 'BAD_REQUEST', 'command 必填')

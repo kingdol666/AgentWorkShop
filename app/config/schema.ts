@@ -68,6 +68,10 @@ export const appConfigSchema = z.object({
       user: z.string().default('postgres'),
       password: z.string().default('awshop'),
       database: z.string().default('awshop'),
+      /** 连接池上限(写入攒批 + 并发查询共用) */
+      poolMax: z.number().int().min(1).max(32).default(8),
+      /** 单条 SQL 超时(ms),防异常查询长期占用连接 */
+      statementTimeoutMs: z.number().int().min(1000).max(300000).default(30000),
     }),
     // 对象存储(v2 帧管线:图像帧像素;MinIO S3 兼容。不可达 → 本地磁盘降级,采集不中断)
     objectstore: z.object({
@@ -78,8 +82,18 @@ export const appConfigSchema = z.object({
       bucket: z.string().default('daq'),
     }).optional(),
     // 保留策略(legacy DAQ_TS_RETENTION_H / DAQ_FRAME_RETENTION_H)
-    tsRetentionH: z.number().int().min(1).max(8760).default(168),
+    // raw 样本 30 天 → 1m 聚合 1 年 → 1h 聚合永久(0 = 永久)
+    tsRetentionH: z.number().int().min(1).max(87600).default(720),
     frameRetentionH: z.number().int().min(1).max(8760).default(720),
+    rollup: z.object({
+      enabled: z.boolean().default(true),
+      intervalMs: z.number().int().min(60000).max(86400000).default(600000),
+      lagMs: z.number().int().min(60000).max(3600000).default(300000),
+      windowMs: z.number().int().min(60000).max(86400000).default(3600000),
+      maxWindowsPerRun: z.number().int().min(1).max(512).default(24),
+      minuteRetentionH: z.number().int().min(1).max(87600).default(8760),
+      hourRetentionH: z.number().int().min(0).max(87600).default(0),
+    }).default({}),
     // 导出护栏(设置化;硬上限在 server/services/workshop/daq/export-limits.ts 再钳一次)
     export: z.object({
       pagesPerNode: z.number().int().min(1).max(2000).default(400),

@@ -300,6 +300,33 @@ interface WorkerReply {
   error?: string
 }
 
+/**
+ * hook 子进程环境白名单。
+ *
+ * hook 是管理员配置的用户代码(信任层与 AML 训练器同级),但此前走
+ * spawnLineProcess 的默认分支 = 全量 process.env 仅剥 10 个平台口令键 ——
+ * 引擎 provider key、MQTT/对象存储凭据等全部可见,与 AML 训练器的白名单口径不一致。
+ * 这里改为显式白名单:系统运行必需键 + AW_MES_* 显式注入,其余一律不继承。
+ */
+const HOOK_ENV_ALLOW = [
+  'PATH', 'Path', 'PATHEXT', 'SystemRoot', 'WINDIR',
+  'TEMP', 'TMP', 'HOME', 'USERPROFILE', 'APPDATA', 'LOCALAPPDATA',
+  'LANG', 'LC_ALL', 'TZ',
+] as const
+
+function hookEnv(): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const key of HOOK_ENV_ALLOW) {
+    const v = process.env[key]
+    if (v !== undefined) out[key] = v
+  }
+  // hook 专用注入面:只放行显式命名的 AW_MES_* 键(如 token/超时)
+  for (const [k, v] of Object.entries(process.env)) {
+    if (v !== undefined && k.startsWith('AW_MES_')) out[k] = v
+  }
+  return out
+}
+
 async function runHookModule(kind: 'data' | 'request' | 'write' | 'write-check', code: string, payload: {
   param: unknown
   data?: MesHookData
@@ -313,7 +340,7 @@ async function runHookModule(kind: 'data' | 'request' | 'write' | 'write-check',
   writeFileSync(moduleFile, WORKER_MODULE_OF(code), 'utf-8')
   active += 1
   try {
-    const child = spawnLineProcess(process.execPath, [moduleFile])
+    const child = spawnLineProcess(process.execPath, [moduleFile], { cleanEnv: true, env: hookEnv() })
     const request = JSON.stringify({
       kind,
       param: payload.param,
