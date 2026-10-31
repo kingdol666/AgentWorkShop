@@ -1,0 +1,70 @@
+{
+  "round": "2026-10-31 生产上线前最终集成验收",
+  "phase": "phase2-businessloop-and-suites(US-007~US-011)",
+  "at": "2026-10-31T16:00:00+08:00",
+  "idd": {
+    "deepDiagnosis": {
+      "runId": "d819851e", "dataset": "exp-daqexp-20261031134514-6c10c3(14节点+manifest)", "intent": "deep-diagnosis", "harness": "omp",
+      "accepted": "受理成功(提交即返 task_id,异步执行)",
+      "outcome": "failed — Agent ended without producing report.md (pipeline incomplete at end_turn) — marked failed to prevent false success",
+      "verdict": "fail-closed 防虚报生效;与知识库沉淀的已知边界一致(IDD deep-diagnosis 未产出 report.md 连续失败时的替代取证 exp-8df56ad2232f)"
+    },
+    "stabilityReport": {
+      "runId": "7b574ca6", "dataset": "exp-daqexp-20261031144429-24a1eb(14节点,15min)", "intent": "stability-report",
+      "outcome": "completed — 评分 81.9/100,B级(亚稳定);报告落盘 D:/codes/myskills/idd-doe-impl/workspace/diagnostic-runs/202610310647450_injection-prod-accept-stability/report.md;机器可读契约 line_report/stability_report.json(contract line-stability-report/1.0)",
+      "keyFindings": "11 有效通道 8 个 ≥88,扣分集中在 4 个检测类信号;稳态偏出规格是主关注点而非波动"
+    },
+    "resultsLibraryRegression": "scripts/e2e-idd-results.mjs 36/36 全绿(修复两处:token 文件指向本轮 admin;频道名 GBK 乱码经 PATCH 修复后 /注塑/ 命中)"
+  },
+  "rag": {
+    "kbAgentRead": "kb_agent sync/async 双模式全活;检索命中 20+ 条历史真实知识(保压→克重增益 0.052-0.057 g/bar、九步阶梯、DOE 全因子);kb-mcp 权限墙如实自述并降级只读直读(外部边界,非本轮缺陷)",
+    "kbIngest": {
+      "attempts": "ap-b3459cd2/approved-但断连后不回放 → ap-6e4d19d5/同 → ap-269744ae/活连接窗口内批准 → task kbt_mvw3mm2o_c049e144 提交成功",
+      "finding": "HITL 挂起 Promise 语义:plugin 工具审批必须在 HTTP 连接存活窗口内批准,断连后批准不回放(审批卡 approved 但调用结果孤儿)——设计如此(挂起 Promise/180s),但对审计面呈现 approved≠executed,建议后续在审批卡标注 caller 存活态",
+      "guardHeuristic": "入库守卫启发式两次误伤纯检索 prompt(词面「入库/存」),按指引改措辞通过——守卫方向正确,误报率待观察",
+      "verification": "入库 task 提交后 KB 全树字面扫描验证(第二轮扫描 kbt_mvw3b9gl_4f35d852 与第三轮 kbt_mvw3mm2o_c049e144 结果见 phase3 补录)"
+    }
+  },
+  "goalTask": {
+    "root": "2b485254-c1e8-40b8-abe3-4b51206f42c4(mode=goal,budget 45min)",
+    "orchestration": [
+      "D1 兜底实录:lead 消费循环失活 → 平台自动复活并重投 assign(14:08:05)",
+      "lead 派数据分析子任务 2504f160 → COMPLETED:专业级基线判读(克重 31.252g 低于 LSL 0.898g,缩痕 2.152% 超限,飞边 0.011% 余量大 → 排除法收敛保压链路;滑动窗 A/B 无漂移;复现性声明)artifact 3253e6f4 + 共享记忆沉淀",
+      "lead 派知识调优子任务 5da73c63 → COMPLETED(kb 检索机理+方案)",
+      "lead 派试验子任务 65b6f14f → BLOCKED(授权):工艺工程师可写节点=空,recipe_trial 被拒原文留痕,零副作用;lead 自纠(前版 45→65 作废,重发 45→46.8 单步限幅版)",
+      "管理员补授权:dcw 写绑定(nb-61293d31,manual)+ line-recipe(nb-473556fa);重试根任务 92e0cdff 下发",
+      "阶梯试验 in-flight:19eda81c(45→63.0,每步+1.8,预授权批准器逐笔留痕 D:/tmp/ladder-approvals.log)",
+      "HITL 全链:每步审批卡 pending → approved → recipe_trial 整批下发 → dcw 台账 readback-verified(rr-34a74744 试验批次)"
+    ],
+    "ladderProgress": "step1 46.8(15:21)→step2 48.6→step3 50.4(15:37)→step5 54(15:48)→step6 55.8(15:54),全部 readback-verified,台账 19 行"
+  },
+  "suites": {
+    "T0": { "lint": 0, "typecheck": 0, "docs:check": 0, "i18n:check": 0, "readme:lint": 0 },
+    "T1": { "unit": "915 tests / 913 pass / 0 fail / 2 skip(35s,基线 913 一致)", "mcp": 0, "plugin-lifecycle": 0, "sdk-surface": 0, "twin-provider": 0, "skills": 0 },
+    "T2": {
+      "产线治理e2e-line": "PASS(EXIT=0,44 断言基线)",
+      "本体离线": "PASS(EXIT=0)",
+      "本体真机": "首轮 84✔ 后 UI 腿 Puppeteer goto 崩(负载);重跑中",
+      "模型闭环": "51/53(2 失败=M2.11/M2.12 TWIN_PROVIDER_UNAVAILABLE:injection-greybox-v1 provider 代次解析落空,fail-closed 语义方向正确)",
+      "优化器": "105/105(基线 104 上浮)",
+      "IDD结果库": "36/36",
+      "注塑闭环": "延后(单写者协议:阶梯试验占用 hold-pressure-sp,套件并发会互踩)"
+    },
+    "T3": {
+      "api-live": 0, "hitl-live": 0, "auth-matrix": 0, "timezone": "重跑后 0(需 AW_TZ_DATA 指向实例 data)",
+      "rest-robustness": 0, "tool-surface": "37/37", "template-isolation": "重跑后 38/38(需种子 admin;套件支持 E2E_USER/E2E_PASS)",
+      "agent-team": 0, "mcp-live": "34/34"
+    },
+    "T4": { "plugins": "11/11 failures=[]", "tools": "126/126 available", "mcp-stdio": "42 工具,diag_status 抽真通过", "agent-face": "diag_status/diag_run/kb_agent/kb_agent_status 实调通过" }
+  },
+  "pipeline": {
+    "attempts": [
+      { "run": "20261031063117-9ws(共享sim 4010+3001套件实例)", "result": "pass 4/warn 25/fail 3/skip 8 — 环境碰撞:复用在线 3001+共享 4010,applied cast-film 预设顶掉注塑场景(已用 ensureScenarioLine 幂等恢复)" },
+      { "run": "20261031064055-1f4w(3400+4011)", "result": "P0 fail:fetch failed(手起 4011 与 4010 共享数据目录协议端口互踩)" },
+      { "run": "20261031065357-sfc", "result": "P0 fail:port collision 16052 pid=43512" },
+      { "run": "20261031071523-30s(清影子 data 后)", "result": "P0 fail:同 16052 碰撞" }
+    ],
+    "rootCause": "plc-node-simulator 子模块前移(b8624dc)在 src/server/presets.ts:756 新增注塑预设 port:16052(host 0.0.0.0);bench 影子预检 simulatorDeclaredPorts 端口集合含未偏移预设口(实证 declared(4011)=[...,16041,16042,16052,16054,16056,17040..17056,...] 双份并存),而共享 4010 sim 正托管同端口注塑场景 → 拒启。fail-closed 方向正确,但端口核算缺陷使「影子隔离」与「共享 sim 托管同名场景」互斥",
+    "verdict": "US-010 CONDITIONAL:bench integrated 本轮无法在「共享 sim 托管注塑场景」状态下运行;需专属窗口或修复预检端口核算。四跑 run.json 证据齐全(bench/results/20261031-*)"
+  }
+}

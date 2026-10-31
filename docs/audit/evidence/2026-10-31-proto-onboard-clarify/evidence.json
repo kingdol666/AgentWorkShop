@@ -1,0 +1,105 @@
+{
+ "round": "proto-onboard-clarify",
+ "date": "2026-10-31",
+ "platform": "v0.8.8 @3300 (warm home aw-prod-1031, production-attach, zero restarts)",
+ "skillChange": {
+  "files": [
+   "skills/aw-protocol-onboarding/SKILL.md",
+   ".agents/skills/aw-protocol-onboarding/SKILL.md"
+  ],
+  "twoCopiesIdentical": true,
+  "changes": [
+   "路径插入澄清门",
+   "新增 §1.5 澄清门(A/B/C 三类+clarifications[] mapsTo+不推荐项如实执行)",
+   "§3 DCW 写控语义三条(holdIntervalMs=保写心跳/http 仅 POST+顶层回读/MQTT 写侧+确认订阅兄弟节点)",
+   "§4 vector 不可 REST 预检注记",
+   "红线第一条强化",
+   "验收清单新增澄清门条目"
+  ]
+ },
+ "clarifyGate": {
+  "rounds": 2,
+  "questions": 8,
+  "allAnsweredByUser": true,
+  "evidence": "clarifications.json"
+ },
+ "doc": {
+  "path": "docs/audit/2026-10-31-b3-blowline-protocol-manual.md",
+  "version": "v1.4",
+  "openItems": 6
+ },
+ "simulation": {
+  "device": "scripts/_audit/proto-b3-device-4021.mjs",
+  "http": 4021,
+  "mqtt": "18830/aw/blow/b3/*"
+ },
+ "precheck": {
+  "passed": 6,
+  "failed": 0,
+  "note": "vector 不可经 test-driver 预检(signalKind 不透传),由 verify-mirror 覆盖"
+ },
+ "provision": {
+  "passed": 14,
+  "failed": 0,
+  "lineId": "ln-5402968a",
+  "recipeId": "rc-f6db68db",
+  "runId": "rr-17d8a079",
+  "daqNodes": 6,
+  "dcwNodes": 2,
+  "vectorTemplate": "ct-0b39ab45"
+ },
+ "mirror": {
+  "rawJson": "evidence/mirror/*.json",
+  "readNodes": "melt-pressure 3/3, preform-temp 3/3, env-temp 3/3, env-humidity 3/3, wall-vector 2/2, sp-readback 3/3(all pass:true)"
+ },
+ "writes": {
+  "http": {
+   "from": 212,
+   "to": 213,
+   "ack": "readback-verified",
+   "readback": 213,
+   "anchor": "anc-b65d50ca"
+  },
+  "mqtt": {
+   "from": 2.6,
+   "to": 2.7,
+   "ack": "transport-ack",
+   "deviceConfirm": "sp/pressure topic",
+   "independentDaqValue": 2.7,
+   "anchor": "anc-176a8d87"
+  },
+  "negatives": [
+   "STEP_LIMIT_EXCEEDED 0.2>0.1",
+   "STEP_LIMIT_EXCEEDED 4>2",
+   "NODE_RANGE_EXCEEDED 3.5>3.0",
+   "WRITE_INTERVAL_NOT_ELAPSED 60s"
+  ],
+  "negativesRaw": "evidence/writes/neg1-step-blow.json, neg2-range-blow.json, neg3-step-head.json"
+ },
+ "export": {
+  "id": "daqexp-20261031231549-bb7802",
+  "fiveChecks": "PASS",
+  "envSameTs": "393/393",
+  "vectorRows": "2448=153×16",
+  "readbackValues": [
+   "2.6",
+   "2.7"
+  ]
+ },
+ "jobRound": {
+  "channel": "f8906572-9bee-4022-b053-78d2cb5e49d6",
+  "llm": "lm-studio/qwen3.5-9b-64k",
+  "executionMode": "manual",
+  "seedTask": "66732095",
+  "outcome": "CANCELED by operator after 55min zero-progress (0 assistant text/0 approval requests/0 device writes; ledger ~200 tool-activity entries all OFF the bound tool face - hallucinated tool names x8/kb scans/python eval simulated sensors; bound daq/dcw tools never called; 2 PROCESS_EXIT; compact churn). Blind flailing, not silence. Verdict: 9B unfit for full tool-face channel jobs; platform backstops (D1/stall watchdog/ledger/operator cancel) all worked",
+  "nudges": 6,
+  "newFinding": "F-5 stall-nudge refreshes budget -> budget backstop starved"
+ },
+ "findings": [
+  "F-1 holdIntervalMs 语义误配饿死写闸(P2+设计张力)",
+  "F-2 dcw http 写驱动仅 POST+顶层回读(网关别名)",
+  "F-3 test-connection 须 AW_BASE",
+  "F-4 9B spawn PROCESS_EXIT×2+compact 链(D1 兜底生效)",
+  "F-5 停滞催办刷新预算→兜底饿死(建议:催办不刷新预算或次数上限强制收口)"
+ ]
+}

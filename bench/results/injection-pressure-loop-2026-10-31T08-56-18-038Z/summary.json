@@ -1,0 +1,75 @@
+{
+  "at": "2026-10-31T08:56:18.038Z",
+  "base": "http://127.0.0.1:3000",
+  "line": "ln-a0b80fc8",
+  "recipe": "rc-eb38c3cb",
+  "optimizer": "de960b5a-1d00-4591-b00f-fcb0b1be3bd0",
+  "baseline": {
+    "p": 63,
+    "t": 6,
+    "q": {
+      "weight": 32.16,
+      "flash": 0.032,
+      "sink": 1.253,
+      "melt": 246.6,
+      "lastAt": 1793436570860,
+      "offline": false
+    }
+  },
+  "final": {
+    "weight": 32.26,
+    "flash": 0,
+    "sink": 1.33,
+    "melt": 246.7,
+    "lastAt": 1793436885796,
+    "offline": false
+  },
+  "finalOk": true,
+  "update": "recipe_update 在工艺优化 Channel 不开放:真实写入统一走 optimization_explore 治理链(绑定/HITL/限界/回读同源)。请改用 optimization_explore。",
+  "journal": "窗口内无优化记录(该节点/配方尚无 Agent 调控历史)。",
+  "recipeLog": "Recipe 变更史(产线 注塑成型质量窗口寻优 injection-s3000[ln-a0b80fc8]; 配方 scen-injection-recipe-s3000[rc-eb38c3cb], 近 60 分钟, 2 条, 新→旧):\n- [10-31 16:46:37] 开跑整批下发 scope=line 产线=注塑成型质量窗口寻优 injection-s3000[ln-a0b80fc8] 配方=scen-injection-recipe-s3000[rc-eb38c3cb] 产品=scen-injection-product-s3000[pd-0461d7b7] | 来源=用户 操作者=suite3000-admin | 产线开跑:批次 rr-0bb436b9 · 配方「scen-injection-recipe-s3000」已下发\n- [10-31 16:46:36] 配方创建 scope=line 产线=注塑成型质量窗口寻优 injection-s3000[ln-a0b80fc8] 配方=scen-injection-recipe-s3000[rc-eb38c3cb] 产品=scen-injection-product-s3000[pd-0461d7b7] | 来源=用户 操作者=suite3000-admin | 创建配方「scen-injection-recipe-s3000」(产线 ln-a0b80fc8)\n\n说明:只含产线域记录;配方下发=整批参数写命令;下发回执=逐参数 ACK 鉴定;配方试验=候选整批下发(不写版本);优化开窗/判定/回退=单次设定变更与恢复。节点级参数值逐笔历史用 dcw_journal(node_id)。",
+  "results": [
+    {
+      "id": "P1",
+      "name": "场景/配方/worker 就绪",
+      "pass": true,
+      "detail": "line=ln-a0b80fc8 recipe=rc-eb38c3cb optimizer=de960b5a-1d00-4591-b00f-fcb0b1be3bd0 weight=32.16g flash=0.032% sink=1.253% melt=246.6℃"
+    },
+    {
+      "id": "P2",
+      "name": "当前已在配方基线",
+      "pass": true,
+      "detail": "weight=32.16g flash=0.032% sink=1.253% melt=246.6℃ p=63 t=6"
+    },
+    {
+      "id": "P3-1",
+      "name": "保压 68bar 试验经 HITL 并设备证实",
+      "pass": false,
+      "detail": "weight=32.18g flash=0.019% sink=1.25% melt=247.2℃ p=63 lastAt=2026-10-31T08:52:08.477Z recipe_trial 在工艺优化 Channel 不开放:真实写入统一走 optimization_explore 治理链(绑定/HITL/限界/回读同源)。请改用 optimization_explore。"
+    },
+    {
+      "id": "P4",
+      "name": "保压时间补偿试验经 HITL 并复测",
+      "pass": false,
+      "detail": "weight=32.26g flash=0% sink=1.33% melt=246.7℃ t=6 lastAt=2026-10-31T08:54:45.796Z recipe_trial 在工艺优化 Channel 不开放:真实写入统一走 optimization_explore 治理链(绑定/HITL/限界/回读同源)。请改用 optimization_explore。"
+    },
+    {
+      "id": "P5",
+      "name": "最终质量入窗(克重/飞边/缩痕/熔温,DAQ 新鲜)",
+      "pass": true,
+      "detail": "weight=32.26g flash=0% sink=1.33% melt=246.7℃ lastAt=2026-10-31T08:54:45.796Z offline=false"
+    },
+    {
+      "id": "P6",
+      "name": "达标配方固化(v2 且参数独立回读)",
+      "pass": false,
+      "detail": "v=1 p=63 t=6 recipe_update 在工艺优化 Channel 不开放:真实写入统一走 optimization_explore 治理链(绑定/HITL/限界/回读同源)。请改用 optimization_explore。"
+    },
+    {
+      "id": "P7",
+      "name": "写控/配方日志可追溯",
+      "pass": true,
+      "detail": "窗口内无优化记录(该节点/配方尚无 Agent 调控历史)。 | Recipe 变更史(产线 注塑成型质量窗口寻优 injection-s3000[ln-a0b80fc8]; 配方 scen-injection-recipe-s3000[rc-eb38c3cb], 近 60 分钟, 2 条, 新→旧):\n- [10-31 16:46:37] 开跑整批下发 scope=line 产线="
+    }
+  ]
+}

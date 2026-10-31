@@ -1,0 +1,106 @@
+{
+ "clarifyGate": {
+  "doc": "docs/audit/2026-10-31-b3-blowline-protocol-manual.md (v1.4)",
+  "askedAt": "2026-10-31",
+  "rounds": 2,
+  "questions": 8,
+  "items": [
+   {
+    "no": 1,
+    "category": "C-意图",
+    "question": "本轮『真实使用产线文档』用哪份文档驱动接入?",
+    "options": [
+     "新编吹瓶线手册 v1.4",
+     "复用上轮验证合同",
+     "用户另供真实文档"
+    ],
+    "answer": "新编吹瓶线手册 v1.4",
+    "mapsTo": "blueprint.json sourceDoc;全部节点/配方/Channel 依据该文档"
+   },
+   {
+    "no": 2,
+    "category": "A-文档缺口(B-1)",
+    "question": "P2 瓶坯温度 PV 采样周期?",
+    "options": [
+     "1s",
+     "2s",
+     "5s"
+    ],
+    "answer": "1s",
+    "mapsTo": "daq 节点 PROTO3-B3-PV-瓶坯温度 driverConfig.intervalMs=1000"
+   },
+   {
+    "no": 3,
+    "category": "A-文档缺口(B-3)",
+    "question": "S2 吹气压力 SP 单步上限 stepLimit?",
+    "options": [
+     "0.05 bar",
+     "0.10 bar",
+     "0.20 bar"
+    ],
+    "answer": "0.10 bar",
+    "mapsTo": "dcw 节点 PROTO3-B3-SP-吹气压力 stepLimit=0.1(写控安全闸)"
+   },
+   {
+    "no": 4,
+    "category": "C-意图(B-5)",
+    "question": "P5 壁厚截面向量(16点)是否一期接入?",
+    "options": [
+     "一期接入",
+     "二期再接"
+    ],
+    "answer": "一期接入",
+    "mapsTo": "创建 16 点向量模板 + daq 向量节点 PROTO3-B3-PV-壁厚截面 templateRef=<新模板>"
+   },
+   {
+    "no": 5,
+    "category": "C-意图(B-6)",
+    "question": "测试线/节点命名空间?",
+    "options": [
+     "PROTO3-B3-* 标准",
+     "自定义演示名",
+     "挂既有线(不建议)"
+    ],
+    "answer": "PROTO3-B3-* 标准命名",
+    "mapsTo": "provision config line.name=PROTO3-B3-文档驱动接入线;全部节点名前缀 PROTO3-B3-"
+   },
+   {
+    "no": 6,
+    "category": "B-系统必需",
+    "question": "Channel 执行模式?",
+    "options": [
+     "manual+预授权批准",
+     "auto",
+     "observe"
+    ],
+    "answer": "manual + 预授权批准器(范围匹配+审计留痕)",
+    "mapsTo": "channel.executionMode=manual;真实作业轮挂起审批由预授权批准器代批(操作口径=用户预授权)"
+   },
+   {
+    "no": 7,
+    "category": "B-系统必需",
+    "question": "作业模型?",
+    "options": [
+     "ustc/deepseek-flash(推荐)",
+     "claude",
+     "本地 9B(不建议)"
+    ],
+    "answer": "本地 9B —— 用户明知风险后明确选择,如实测试并如实记录",
+    "mapsTo": "channel.llm=本地 LM Studio 模型;作业轮结果以平台台账为准,不虚报"
+   },
+   {
+    "no": 8,
+    "category": "A-文档缺口(B-4)",
+    "question": "S2 两次变更冷却时间 holdIntervalMs?",
+    "options": [
+     "0s(不限)",
+     "2s",
+     "5s"
+    ],
+    "answer": "0s(平台频控+步限兜底)",
+    "mapsTo": "dcw 节点 PROTO3-B3-SP-吹气压力 holdIntervalMs=0"
+   }
+  ],
+  "noAssumptionCheck": "7 点位中:文档已定字段(P1 周期/S1 步限/P3/P4/P5 量程周期)按文档;缺口字段(B-1/B-3/B-4/B-5/B-6)全部经用户答复;系统必需字段(执行模式/模型)经用户答复;B-2(QoS)未单独提问——文档自身给出『厂家建议 QoS1』默认值且标注可接受,按文档默认执行(非凭空假设,来源=文档 §3.2);无一项配置凭空假设"
+ }
+}

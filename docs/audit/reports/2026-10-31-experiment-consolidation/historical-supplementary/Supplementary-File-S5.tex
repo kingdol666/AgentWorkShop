@@ -1,0 +1,146 @@
+\documentclass[journal]{IEEEtran}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage{url}
+\usepackage[hidelinks]{hyperref}
+\title{Supplementary File S5: Experimental Protocol and Evidence Ledger}
+\author{}
+\begin{document}
+\maketitle
+
+\noindent This supplement documents the latest available system-integration
+evidence and its limits. The runs below were performed against local virtual
+industrial endpoints. Evidence units are kept separate because they differ in
+task, actor, runtime configuration, and endpoint state. The associated
+machine-readable records and original CSV exports are supplied in
+\texttt{Supplementary-File-S5-Evidence.zip}. A companion HTML audit report
+provides an interactive step-by-step view.
+
+\section{Evidence Scope and Separation}
+The primary case is the completed 2026-10-31 document-driven HTTP/MQTT
+integration. It evaluates interface mapping, acquisition, read-only lead-task
+execution, and export consistency. The setpoint write/readback check was
+operator initiated and is reported separately from the agent task. Separate
+protocol and process-mission records are independent
+supporting evidence; counts and trajectories are not pooled. No physical plant
+was connected.
+
+\section{Document-Driven Virtual Integration}
+\subsection{Configuration and execution}
+An interface contract declared six signals: HTTP enclosure temperature PV,
+setpoint, setpoint readback, and a 64-point thickness profile; and MQTT
+ambient temperature and humidity. The configuration created one new line,
+five DAQ nodes, one DCW node, a product, and a recipe. Provisioning reported
+11/11 checks passed and zero cross-line write-point conflicts. The resulting
+Channel contained a lead and three configured worker roles. The archived
+activation evidence verifies only the lead as wired, and the retained task
+was assigned to that lead. The task was read-only and terminated
+\texttt{COMPLETED} at 100\%.
+
+\subsection{Acquisition and export}
+The lead task queried five acquisition streams: four scalar signals and the
+vector profile. The task record contains 17 aggregated buckets for each scalar
+signal and 22 profile frames, each with 64 points. The observed ranges and
+export checks are summarized in Table~\ref{tab:s5-read}. Scalar query buckets
+and exported CSV rows have different aggregation semantics and must not be
+added together. The 19/19 export checks verify headers, manifest counts, value
+ranges, and vector shape. The CSV archive includes startup rows marked
+\texttt{offline}; thus, contract consistency does not imply that every row is
+a valid online observation.
+
+\begin{table}[!t]
+\centering
+\caption{Read-only task observations and exported data.}
+\label{tab:s5-read}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabularx}{\columnwidth}{@{}>{\raggedright\arraybackslash}p{1.28cm}>{\raggedright\arraybackslash}p{1.12cm}X@{}}
+\toprule
+Signal & Task coverage & Observed range or structure \\
+\midrule
+Enclosure PV & 17 buckets & 24.515--25.480\,$^{\circ}$C; mean 25.052\,$^{\circ}$C \\
+SP readback & 17 buckets & 25.0\,$^{\circ}$C throughout the task window \\
+Thickness profile & 22 frames & 64 points/frame; frame means 2.4975--2.5041\,mm \\
+Ambient temperature & 17 buckets & 20.5--23.44\,$^{\circ}$C \\
+Ambient humidity & 17 buckets & 50.0--59.8\% \\
+\midrule
+Scalar CSVs & 818 rows & Four files; includes startup offline rows \\
+Vector CSV & 3,456 rows & 54 frames $\times$ 64 points/frame \\
+Export validation & 19/19 & Manifest, headers, counts, ranges, and shape checks \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Independent write/readback check}
+The virtual line began at a recipe setpoint of 25\,$^{\circ}$C. An early
+operator request for 27\,$^{\circ}$C was rejected because the 60-s write
+interval had not elapsed. A later operator/controller check wrote 27 and
+restored 25. A separate DAQ node observed both values. The HTTP write response
+echoed the request and is not treated as device readback. The write records
+have no task, approval, actor, or driver-event identifier linking them to the
+read-only agent task. This sequence therefore demonstrates an independent
+simulator write/readback path, not agent-controlled actuation.
+
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=0.94\textwidth]{resources/fig-latest-doc-driven-integration.pdf}
+\caption{Evidence sequence for the document-driven virtual-line case. The
+read-only lead task and operator-initiated writes are intentionally shown as
+separate paths. The lower panels summarize the retained scalar buckets,
+vector frames, and ordered setpoint observations. Horizontal spacing denotes
+event order only, not elapsed time or a causal trajectory.}
+\label{fig:s5-integration}
+\end{figure*}
+
+\section{Separate Protocol-Matrix Record}
+An earlier deterministic protocol matrix covered five local simulator
+protocols, 52 acquisition samples, and four write-capable protocol paths; all
+24 out-of-window probes were rejected. The LLM loop was disabled. This run is
+reported as a separate protocol/guard check and is not pooled with the
+document-driven case or the latest integrated benchmark.
+
+\section{Four Scripted Process Missions}
+The September 28 mission records provide additional multi-scene simulator
+coverage. Each row is one deterministic trajectory; scripted routines, rather
+than an LLM, selected setpoints. These trajectories are not replications of
+the October document-driven integration and do not isolate causal action
+effects. Some terminal secondary variables were not archived.
+
+\begin{table}[!t]
+\centering
+\caption{Reported primary values in the four scripted missions.}
+\label{tab:s5-missions}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabularx}{\columnwidth}{@{}>{\raggedright\arraybackslash}p{1.28cm}X@{}}
+\toprule
+Scene & Target band; initial $\rightarrow$ reported final \\
+\midrule
+Injection & 32.15--32.85\,g; 31.296 $\rightarrow$ 32.36\,g \\
+BOPET film & 24.3--25.7\,$\mu$m; 28.03 $\rightarrow$ 25.30\,$\mu$m \\
+Annealing & 89--101\,HV; 134.9 $\rightarrow$ 99.5\,HV \\
+Wastewater & 2.8--4.0\,mg/L DO; 0.194 $\rightarrow$ 3.54\,mg/L \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\section{Evidence Completeness and Manuscript Use}
+The primary integration case supports a bounded claim that a declared
+HTTP/MQTT virtual scene can be mapped into configured acquisition/control
+nodes, queried by a completed lead task, and exported with checked
+manifest/vector structure. The separate DAQ observations support one
+operator-initiated simulator write/readback demonstration. These data do not demonstrate
+multi-agent collaboration, approval-only causal effects, harness/model
+equivalence, repeated-run process performance, or physical deployment.
+
+The evidence ZIP contains selected task, provisioning, readback, export, and
+process-mission records together with the raw CSV exports. The local temporary
+path in the export-statistics record is redacted; its original and delivered
+SHA-256 hashes are listed in \texttt{S5-EVIDENCE-MANIFEST.json}, and the
+delivered-file hashes are repeated in \texttt{SHA256SUMS}. The package hashes
+establish integrity of the delivered copy, not a run-time-signed provenance
+chain.
+
+\end{document}

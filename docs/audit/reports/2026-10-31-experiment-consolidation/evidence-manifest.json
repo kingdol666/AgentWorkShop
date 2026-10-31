@@ -1,0 +1,376 @@
+{
+  "schema": "experiment-evidence-manifest/1.0",
+  "generated_from": "build_report.py",
+  "files": [
+    {
+      "path": "bench/PIPELINE/EXPERIMENT-PLAN-GOVERNANCE-HARNESS.md",
+      "bytes": 28285,
+      "sha256_at_report_build": "598ca85a90e7dca7e17b6ca0e526037f0197131f2304fe4d95afab2905c93f23"
+    },
+    {
+      "path": "bench/PIPELINE.md",
+      "bytes": 93158,
+      "sha256_at_report_build": "66862e7a4d67ee9e1243fb0c772ae0dc74c889855f6750a2f60067dc157cb8e2"
+    },
+    {
+      "path": "bench/results/20261030171011-e1lite/e1-lite.csv",
+      "bytes": 18262,
+      "sha256_at_report_build": "a02bea8ba5636aa783148bfd33368b6f5091c90736f62f210845aff004932443"
+    },
+    {
+      "path": "bench/results/20261030171011-e1lite/report.md",
+      "bytes": 1294,
+      "sha256_at_report_build": "9e438ed3cb0d309e3cb8955fb9dd25ec55e691902099fc1017293aa6d94c0dea"
+    },
+    {
+      "path": "bench/results/20261030171011-e1lite/run.json",
+      "bytes": 52372,
+      "sha256_at_report_build": "1b5b5123a38af6a3c45e136983283787229aa20b4f2fbd87de4b10036adcb040"
+    },
+    {
+      "path": "bench/results/20261031025846-czk/line-profile.json",
+      "bytes": 1064,
+      "sha256_at_report_build": "8a86ca58165647d44b2c7a3cac2fc9eee7ca02402ba176fc85a82493936c458a"
+    },
+    {
+      "path": "bench/results/20261031025846-czk/metrics.csv",
+      "bytes": 0,
+      "sha256_at_report_build": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "bench/results/20261031025846-czk/report.md",
+      "bytes": 6927,
+      "sha256_at_report_build": "1fce87fae001ad02242aa64c3108881aee04538e54af90fe961ff060d7b1605b"
+    },
+    {
+      "path": "bench/results/20261031025846-czk/run.json",
+      "bytes": 10562,
+      "sha256_at_report_build": "c63e6b6b3d0f9d26dc6ef5d92e13a6c19938f5a52b9a4db196bbf142b03ce774"
+    },
+    {
+      "path": "bench/results/20261031025846-czk/summary.json",
+      "bytes": 3518,
+      "sha256_at_report_build": "7741e242fb76c44b948ee2903f476f860256f9e58a9cb757650de55992902972"
+    },
+    {
+      "path": "bench/results/20261031030602-1sng/agentteam-biax.log",
+      "bytes": 1497,
+      "sha256_at_report_build": "c07f5e79925cebf5b3ac259db2ce7a08a862e87734b402431ecd645192df77fa"
+    },
+    {
+      "path": "bench/results/20261031030602-1sng/agentteam-mission.log",
+      "bytes": 1084,
+      "sha256_at_report_build": "f550ec864a1f20acf6e7ff44c29f1d89877377e2bd747f194fdd11ef7fa1400a"
+    },
+    {
+      "path": "bench/results/20261031030602-1sng/line-profile.json",
+      "bytes": 82210,
+      "sha256_at_report_build": "2da6e9c6056b0d15f25ba7b22dfd575b27258b67062345e14d15537edcb2a791"
+    },
+    {
+      "path": "bench/results/20261031030602-1sng/metrics.csv",
+      "bytes": 2851,
+      "sha256_at_report_build": "deccf6dc6dabd1e927181682e75d0922db2ded692494de452bf40b56f520ac4e"
+    },
+    {
+      "path": "bench/results/20261031030602-1sng/report.md",
+      "bytes": 42982,
+      "sha256_at_report_build": "7c2fbc1b7d13f5c690d3eca1f38af71355b0b21c3f4a703289b4e4baaed036b0"
+    },
+    {
+      "path": "bench/results/20261031030602-1sng/run.json",
+      "bytes": 153128,
+      "sha256_at_report_build": "68d02e7ed307542d09a5536b902330084e2c44bbadfc4c644ae795d75c5e0b6e"
+    },
+    {
+      "path": "bench/results/20261031030602-1sng/summary.json",
+      "bytes": 16237,
+      "sha256_at_report_build": "83f7049ee50e10efe8c3ec86676bf5d13bdc8fbf565eac012411c2a4604de63f"
+    },
+    {
+      "path": "bench/results/20261031032514-1eyw/agentteam-biax.log",
+      "bytes": 1497,
+      "sha256_at_report_build": "20eb442c5be1b4cd4b109c21bd1b3a414b3bd2b52c1a438bf335d96c236fe3ac"
+    },
+    {
+      "path": "bench/results/20261031032514-1eyw/agentteam-mission.log",
+      "bytes": 1084,
+      "sha256_at_report_build": "8c39ead8560cbb3ffa5f1e371be8d4c273821fdb33d79629a7421bd8af183cff"
+    },
+    {
+      "path": "bench/results/20261031032514-1eyw/line-profile.json",
+      "bytes": 103041,
+      "sha256_at_report_build": "fa5359dced5c01735391e1a9f11569053b55e692e74f2b4d8006f14f598c5247"
+    },
+    {
+      "path": "bench/results/20261031032514-1eyw/metrics.csv",
+      "bytes": 2848,
+      "sha256_at_report_build": "af0389d2c1dd165aee2dea0390e3ebca2b6e70714ee10d79428022df08a7804a"
+    },
+    {
+      "path": "bench/results/20261031032514-1eyw/report.md",
+      "bytes": 42901,
+      "sha256_at_report_build": "deba3a040c03588cbdaf7d0770b9d5d9cc07e47d3abe2ca151a16908e1e3d8f5"
+    },
+    {
+      "path": "bench/results/20261031032514-1eyw/run.json",
+      "bytes": 175417,
+      "sha256_at_report_build": "6b92890819dd3abb6fe85c0e58f05e4ee015320b463bbb1b77456e59a2bc5e91"
+    },
+    {
+      "path": "bench/results/20261031032514-1eyw/summary.json",
+      "bytes": 16232,
+      "sha256_at_report_build": "6d9187bf5bb6d258310574524c44f0a3a0c7f3e9dd9616aff5d94f3c1e01d309"
+    },
+    {
+      "path": "bench/results/20261031033645-22n0/scenarios-benchmark.md",
+      "bytes": 11181,
+      "sha256_at_report_build": "ea9da75e0992cff715113effeba87476e437373c10afae11e801e67eb1647043"
+    },
+    {
+      "path": "bench/results/20261031033645-22n0/scenarios-mission-anneal.log",
+      "bytes": 2370,
+      "sha256_at_report_build": "cb2db0978b28817b4d0793b5942688205eb569e5125edc64319e78ffc8a5943a"
+    },
+    {
+      "path": "bench/results/20261031033645-22n0/scenarios-mission-biax.log",
+      "bytes": 2374,
+      "sha256_at_report_build": "7dd853ce81ff18d5746a9671d7f1149b3e175e41532c5c0ab11d71b8046868c5"
+    },
+    {
+      "path": "bench/results/20261031033645-22n0/scenarios-mission-injection.log",
+      "bytes": 1582,
+      "sha256_at_report_build": "ea128b0538f0345ca749664da69349569a3b3ef08ecf2512ebfc3eb92b783ebb"
+    },
+    {
+      "path": "bench/results/20261031033645-22n0/scenarios-mission-wwtp.log",
+      "bytes": 2784,
+      "sha256_at_report_build": "c4c2b33910a4ee14cd1ef535e36722485fbf442735ae56ee03b907f4c882ab9c"
+    },
+    {
+      "path": "bench/results/20261031033645-22n0/scenarios.json",
+      "bytes": 110401,
+      "sha256_at_report_build": "2e2494ada05f7ff35ec4d1c1fc8d118b27a193a023e057c6fda5a3c9c9c9dcd6"
+    },
+    {
+      "path": "bench/results/20261031034253-1dbo/agentteam-biax.log",
+      "bytes": 1497,
+      "sha256_at_report_build": "c281b5ae05c8be4a44417b8720df69822372162b9e980547f06824bdfa4d220f"
+    },
+    {
+      "path": "bench/results/20261031034253-1dbo/agentteam-mission.log",
+      "bytes": 1084,
+      "sha256_at_report_build": "750827540dc8a43c0e53be5bad23d86c7778c01365347c97442bafef1e6d44b9"
+    },
+    {
+      "path": "bench/results/20261031034253-1dbo/line-profile.json",
+      "bytes": 123872,
+      "sha256_at_report_build": "45c1b5278f5aaa976183e8c1e54cfa39439b923a3526d572828ad253b7892f69"
+    },
+    {
+      "path": "bench/results/20261031034253-1dbo/metrics.csv",
+      "bytes": 2850,
+      "sha256_at_report_build": "0eeeec940dbcdacb5227d01a149a72f3eadaa4120a9a32621f92c98ab5fc097b"
+    },
+    {
+      "path": "bench/results/20261031034253-1dbo/report.md",
+      "bytes": 42800,
+      "sha256_at_report_build": "231901c166c357c168881b2f74cf750767967eaa629e15581e3f8481ae87bea0"
+    },
+    {
+      "path": "bench/results/20261031034253-1dbo/run.json",
+      "bytes": 197236,
+      "sha256_at_report_build": "1a80278d06d7f62242f32331263b7c33d55b98aa5056aaecb3ccceb5c752170d"
+    },
+    {
+      "path": "bench/results/20261031034253-1dbo/summary.json",
+      "bytes": 16273,
+      "sha256_at_report_build": "2eadf7b8840495208f40b0969b3710d39499a0091880e61de75e0645e41b108d"
+    },
+    {
+      "path": "bench/results/p12-20261030173217-8f6e4715-agentteam/checks.json",
+      "bytes": 16825,
+      "sha256_at_report_build": "aa7ac755125a16525c2238d7a943df6eef5ab84d63f7f203d766d88fab63dc64"
+    },
+    {
+      "path": "bench/results/p12-20261030173217-8f6e4715-agentteam/coverage.json",
+      "bytes": 8315,
+      "sha256_at_report_build": "8444791adabff94e5340f6231550f4dfd805018314fbb00f9e0cadb666835ba1"
+    },
+    {
+      "path": "bench/results/p12-20261030173217-8f6e4715-agentteam/manifest.json",
+      "bytes": 19331,
+      "sha256_at_report_build": "0bed138345384eb8641b12b23befe06ceb678516c257166125a73c2e534dea35"
+    },
+    {
+      "path": "bench/results/p12-20261030173217-8f6e4715-agentteam/reconciliation.json",
+      "bytes": 111498,
+      "sha256_at_report_build": "3897fd9f841cab63ced711b8d87e78cccec56747f08f999f1b8f546d42ef3435"
+    },
+    {
+      "path": "bench/results/p12-20261030173217-8f6e4715-agentteam/report.md",
+      "bytes": 2623,
+      "sha256_at_report_build": "65246c85fa15fd62787bfa5f53085546ade4517ff8fdae2743d8ad20a7744239"
+    },
+    {
+      "path": "docs/audit/2026-10-31-doc-driven-full-acceptance-report.md",
+      "bytes": 10534,
+      "sha256_at_report_build": "367a259a72bb5f8ddc526e5ea76257f7486c85cd2a0ba14c97535ce1d5b11fc3"
+    },
+    {
+      "path": "docs/audit/evidence/2026-10-31-doc-driven-full-acceptance/blueprint.json",
+      "bytes": 1907,
+      "sha256_at_report_build": "b5f90bb16ede9a9a494204b49f120227d75aac775b16cbf681d1d96bac7721ec"
+    },
+    {
+      "path": "docs/audit/evidence/2026-10-31-doc-driven-full-acceptance/channel-activate.json",
+      "bytes": 245,
+      "sha256_at_report_build": "7b459f487a0d5ce951c3d9ebb3f3f57dd1fcfe2d77e0c3f825cee008c3d62d22"
+    },
+    {
+      "path": "docs/audit/evidence/2026-10-31-doc-driven-full-acceptance/channel.json",
+      "bytes": 1102,
+      "sha256_at_report_build": "8957d8cdfb5572cdea4300c5c6fae6c6feaab81a335796415b07c626414e0d83"
+    },
+    {
+      "path": "docs/audit/evidence/2026-10-31-doc-driven-full-acceptance/dcw-roundtrip.json",
+      "bytes": 2268,
+      "sha256_at_report_build": "365ac9dc2b1124932c2b79f81c44d0fc7d867304b6b9ae40ddad8dbb9535e628"
+    },
+    {
+      "path": "docs/audit/evidence/2026-10-31-doc-driven-full-acceptance/doc-summary.json",
+      "bytes": 1909,
+      "sha256_at_report_build": "f3a005a873495915e88567bb1525bb7af16747e55badbcc671642bc3bdacd390"
+    },
+    {
+      "path": "docs/audit/evidence/2026-10-31-doc-driven-full-acceptance/export-stats.json",
+      "bytes": 2550,
+      "sha256_at_report_build": "88c7253b45bf10dcb4091846dbe82866e977e7dd5b6d10753136daeebc996aea"
+    },
+    {
+      "path": "docs/audit/evidence/2026-10-31-doc-driven-full-acceptance/live-final.json",
+      "bytes": 1424,
+      "sha256_at_report_build": "75623cb66853eb6685cb717db85a21c6a67e5cb3437c5871f4285db306438560"
+    },
+    {
+      "path": "docs/audit/evidence/2026-10-31-doc-driven-full-acceptance/provision.json",
+      "bytes": 2515,
+      "sha256_at_report_build": "93ebeaeda42493db345deb8141c149be82b2fe973d5a3dddf870e9cd38f1c003"
+    },
+    {
+      "path": "docs/audit/evidence/2026-10-31-doc-driven-full-acceptance/task.json",
+      "bytes": 30147,
+      "sha256_at_report_build": "38e993a8568fdc5d0e11e738c0b2d7de6b86da9726bb8b4976a0d293bfc5c446"
+    },
+    {
+      "path": "docs/audit/reports/2026-10-31-experiment-consolidation/build_report.py",
+      "bytes": 38447,
+      "sha256_at_report_build": "b6d0c649afc0853afcc054bfee4f3e497d2900aaf4d6b2b7ae17aceddf9dd602"
+    },
+    {
+      "path": "docs/audit/reports/2026-10-31-experiment-consolidation/figures/fig-governance-ablation-e1a-single.pdf",
+      "bytes": 31346,
+      "sha256_at_report_build": "d00eb0a16b115a0ee8970321157593b25143ab0e28d761aa5074638504f9594b"
+    },
+    {
+      "path": "docs/audit/reports/2026-10-31-experiment-consolidation/figures/fig-governance-ablation-e1a-single.png",
+      "bytes": 54477,
+      "sha256_at_report_build": "78e25e9ba6927f93c0c70548eec595993124619ee481c81dd8311248ff2bf4ed"
+    },
+    {
+      "path": "docs/audit/reports/2026-10-31-experiment-consolidation/figures/fig-governance-ablation-e1a-single.svg",
+      "bytes": 41904,
+      "sha256_at_report_build": "0acf65c9796d21fd8119b7454196e87d11c8798a3a7cce5c60dc9e37bf8f6d85"
+    },
+    {
+      "path": "docs/audit/reports/2026-10-31-experiment-consolidation/figures/fig-governance-ablation-e1a.pdf",
+      "bytes": 37888,
+      "sha256_at_report_build": "91b5a6c8c94bf49ec89b8e6b881e7d5b3edf395d2d331fb53fe9cbea58ad6ade"
+    },
+    {
+      "path": "docs/audit/reports/2026-10-31-experiment-consolidation/figures/fig-governance-ablation-e1a.png",
+      "bytes": 85048,
+      "sha256_at_report_build": "e31533916b87960d3cb1bd75bfbf18eea768205777ee41d0fdf8fe8071c115ac"
+    },
+    {
+      "path": "docs/audit/reports/2026-10-31-experiment-consolidation/figures/fig-governance-ablation-e1a.svg",
+      "bytes": 66189,
+      "sha256_at_report_build": "b7ca9872f8d2724846e5e75bebab0d677c9e6dce191a296f37fef29edacfd61b"
+    },
+    {
+      "path": "docs/audit/reports/2026-10-31-experiment-consolidation/figures/fig-integrated-run-results.pdf",
+      "bytes": 47010,
+      "sha256_at_report_build": "1c46ba0f79a5ce73798fa25409a19babaf56b7d82647fd859bcb41e1bcb6a452"
+    },
+    {
+      "path": "docs/audit/reports/2026-10-31-experiment-consolidation/figures/fig-integrated-run-results.png",
+      "bytes": 96807,
+      "sha256_at_report_build": "2e63bb86f7eb18c768789a605a0e78d2d0ccc94abe5c5b898a91b241f3f605a4"
+    },
+    {
+      "path": "docs/audit/reports/2026-10-31-experiment-consolidation/figures/fig-integrated-run-results.svg",
+      "bytes": 69407,
+      "sha256_at_report_build": "ec696e16f1a87d4de3f70c80f635aa94e44e911ddf61df79c910b644016ae7b5"
+    },
+    {
+      "path": "docs/audit/reports/2026-10-31-experiment-consolidation/figures/fig-integrated-stage-status.pdf",
+      "bytes": 22821,
+      "sha256_at_report_build": "45684a41a57d2612ceb28a5f79c48d62b922a3215423c70aa3fbb1cfdc9d6f7e"
+    },
+    {
+      "path": "docs/audit/reports/2026-10-31-experiment-consolidation/figures/fig-integrated-stage-status.png",
+      "bytes": 63388,
+      "sha256_at_report_build": "a8273db5e03cfb0b06a33c902bb0a41edbdabd33def529fb34b09cdfaa60cf38"
+    },
+    {
+      "path": "docs/audit/reports/2026-10-31-experiment-consolidation/figures/fig-integrated-stage-status.svg",
+      "bytes": 31192,
+      "sha256_at_report_build": "f76a974e92a914652068394307ae279810552186bf831a9d56c29465c7735779"
+    },
+    {
+      "path": "docs/audit/reports/2026-10-31-experiment-consolidation/report.html",
+      "bytes": 17103,
+      "sha256_at_report_build": "a4d69204939c7c9c523213f641e0ef7deba4f1760553a12934684ec31b2b5bc8"
+    },
+    {
+      "path": "docs/audit/reports/2026-10-31-experiment-consolidation/report.md",
+      "bytes": 4336,
+      "sha256_at_report_build": "d11e4b88255290d13c4eef2971b0f6d51ba10cfa6ed68dba5c4c838b1fef8ebb"
+    },
+    {
+      "path": "docs/audit/reports/2026-10-31-experiment-consolidation/source-data/biax-single-mission-trajectory.csv",
+      "bytes": 168,
+      "sha256_at_report_build": "ef96ec2a2936d107ae433be44142ee06caafa0109deafc501c41d4d87305f776"
+    },
+    {
+      "path": "docs/audit/reports/2026-10-31-experiment-consolidation/source-data/e1a-ablation-summary.csv",
+      "bytes": 547,
+      "sha256_at_report_build": "ea2468d66343c1f14f2b6ec65a32e35b4b2969a2784d339d825081c68a2beed2"
+    },
+    {
+      "path": "docs/audit/reports/2026-10-31-experiment-consolidation/source-data/integrated-p6-seeds.csv",
+      "bytes": 196,
+      "sha256_at_report_build": "c6e563a67d66135ea207a8f59c41c170f350f23537833840e732bd154d399e61"
+    },
+    {
+      "path": "paper/tii/SUBMISSION-IEEE-TII/qa/approval-context-ablation-round18.log",
+      "bytes": 4261,
+      "sha256_at_report_build": "5bd938d594d858bd02cec77e2dd16d9ad9df7a5f468c6c79c2b22df9d392b253"
+    },
+    {
+      "path": "paper/tii/SUBMISSION-IEEE-TII/qa/current-full-software-tests-round18.log",
+      "bytes": 56468,
+      "sha256_at_report_build": "2b45bd01308f3415c719ecbab06829492bd1233238257c1a2bf659aeead3497d"
+    },
+    {
+      "path": "tests/recipe-approval-context-ablation.test.ts",
+      "bytes": 7905,
+      "sha256_at_report_build": "3905cb1b92e9819cf7910cf9cc40e75c93c2f0310d6943752769a884fecfd427"
+    },
+    {
+      "path": "tests/recipe-approval-snapshot.test.ts",
+      "bytes": 18780,
+      "sha256_at_report_build": "9e43811542d03ebd475033b8e11d83f2d19eb4e2404096ee2217f7bd44554701"
+    }
+  ]
+}

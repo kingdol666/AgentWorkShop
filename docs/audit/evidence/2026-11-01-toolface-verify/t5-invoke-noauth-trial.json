@@ -1,0 +1,1 @@
+{"code":0,"message":"ok","data":{"result":{"text":"工具调用被拒(参数校验,recipe_trial):recipe_id 或 line_id 至少提供一个:只给 line_id 时按该线当前活动批次解析配方。\n参数补齐后重试。","isError":true}}}

@@ -1,0 +1,4 @@
+seed,J0,Jend,Jlast,Jstar,Jend_over_Jstar,iterations,governed_writes,converged
+42,66.271,88.775,88.853333,89.894,0.988,2,2,True
+43,86.542,86.542,86.541667,89.894,0.963,0,0,True
+44,63.981,88.384,88.539583,89.894,0.983,2,2,True

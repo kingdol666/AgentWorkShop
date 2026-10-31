@@ -1,0 +1,92 @@
+{
+  "at": "2026-10-30T17:46:48.234Z",
+  "lineId": "ln-b8c1d3ac",
+  "channelId": "6ab6e710-be3d-4961-a8cb-88d4d079d920",
+  "channel": {
+    "name": "PROTO-文档驱动优化频道-1031",
+    "lineId": "ln-b8c1d3ac",
+    "enabled": 1
+  },
+  "members": [
+    {
+      "id": "ab21360f-b4dc-4a64-8392-e61358cab6de",
+      "role": "lead",
+      "name": "生产主管",
+      "harness": "omp"
+    },
+    {
+      "id": "d3a2eb57-5ed0-4aab-b0f8-6667bb61556f",
+      "role": "worker",
+      "name": "数据分析师",
+      "harness": "omp"
+    },
+    {
+      "id": "53ad4fce-896e-4191-b247-336c8d1ed901",
+      "role": "worker",
+      "name": "知识调优工程师",
+      "harness": "omp"
+    },
+    {
+      "id": "e1ba66c5-ee9f-488e-8c16-cd1b68af99f0",
+      "role": "worker",
+      "name": "工艺工程师",
+      "harness": "omp"
+    }
+  ],
+  "task": {
+    "id": "0100983c-176c-4d21-8356-8ff66bf86ed1",
+    "state": "COMPLETED",
+    "progress": 100,
+    "artifact": "deliverable"
+  },
+  "nodes": [
+    {
+      "name": "DOC-箱体温度PV",
+      "id": "dn-2441bc04",
+      "driver": "http",
+      "state": "ok",
+      "value": 25.3
+    },
+    {
+      "name": "DOC-SP回读",
+      "id": "dn-ae545180",
+      "driver": "http",
+      "state": "ok",
+      "value": 25
+    },
+    {
+      "name": "DOC-壁厚轮廓",
+      "id": "dn-e4934f70",
+      "driver": "http",
+      "state": "ok",
+      "value": 2.497
+    },
+    {
+      "name": "DOC-环境温度",
+      "id": "dn-970e00ea",
+      "driver": "mqtt",
+      "state": "ok",
+      "value": 22.1
+    },
+    {
+      "name": "DOC-环境湿度",
+      "id": "dn-2a0acb1f",
+      "driver": "mqtt",
+      "state": "ok",
+      "value": 59
+    }
+  ],
+  "vectorFrames": {
+    "count": 3,
+    "lastPoints": 64,
+    "metrics": {
+      "avg": 2.496611,
+      "max": 2.5195
+    }
+  },
+  "export": {
+    "id": "edajob-5f55b3f5",
+    "status": "ready",
+    "totalRows": 818
+  }
+}

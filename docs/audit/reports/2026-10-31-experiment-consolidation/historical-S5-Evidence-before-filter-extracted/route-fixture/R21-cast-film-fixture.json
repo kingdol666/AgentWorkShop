@@ -1,0 +1,38 @@
+{
+  "fixture": "deterministic-local-omp-rpc-transport",
+  "decisionSource": "predeclared-test-vector; not an LLM or harness decision",
+  "scene": "cast-film",
+  "hostToolCalls": [
+    {
+      "id": "paper-cast-film-mvn2s3me",
+      "toolCallId": "paper-cast-film-mvn2s3me-tc",
+      "toolName": "recipe_trial",
+      "arguments": {
+        "recipe_id": "rc-c412da51",
+        "params": [
+          {
+            "node_id": "dw-b24b1a9c",
+            "value": 125
+          }
+        ],
+        "hypothesis": "Deterministic simulator integration check for cast-film; apply one bounded candidate and verify the device ACK/readback."
+      },
+      "emittedAt": "2026-10-25T00:14:14.870Z"
+    }
+  ],
+  "hostToolResults": [
+    {
+      "id": "paper-cast-film-mvn2s3me",
+      "result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "试验已整批下发并全部设备证实(1/1,批次 rr-8622a):rhemvn2qt3g-cast-film-control→125rpm [证实✓]。假设:Deterministic simulator integration check for cast-film; apply one bounded candidate and verify the device ACK/readback.。\n人工附言:Approved for the isolated deterministic simulator integration check.注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC 整批恢复)。"
+          }
+        ]
+      },
+      "receivedAt": "2026-10-25T00:14:15.174Z"
+    }
+  ],
+  "protocolError": "expected exactly one prompt and one host_tool_call per scene"
+}

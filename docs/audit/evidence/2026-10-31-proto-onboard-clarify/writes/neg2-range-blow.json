@@ -1,0 +1,1 @@
+{"code":"NODE_RANGE_EXCEEDED","message":"设定值 3.5bar 超出上限 节点工艺安全量程 的 3bar —— 约束层:节点安全量程(当前有效写入区间 0~3bar;各层限界按安全规约取交集,越界写入已拒绝)","data":null}

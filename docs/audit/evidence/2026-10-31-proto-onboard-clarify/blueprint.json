@@ -1,0 +1,24 @@
+{
+  "sourceDoc": "docs/audit/2026-10-31-b3-blowline-protocol-manual.md",
+  "docVersion": "v1.4",
+  "extractedAt": "2026-10-31",
+  "blueprints": [
+    { "id": "P1", "name": "熔体压力PV", "direction": "read", "protocol": "http", "address": "http://127.0.0.1:4021/api/v1/melt/pressure", "method": "GET", "jsonPath": "data.pressure", "dataType": "scalar", "unit": "bar", "decimals": 2, "min": 0, "max": 50, "intervalMs": 1000, "stepLimit": null, "expectedValue": "23.5±1.5(正弦工况)", "source": "doc §2.1 P1", "gaps": [] },
+    { "id": "P2", "name": "瓶坯温度PV", "direction": "read", "protocol": "http", "address": "http://127.0.0.1:4021/api/v1/preform/temp", "method": "GET", "jsonPath": "data.temp", "dataType": "scalar", "unit": "℃", "decimals": 1, "min": 0, "max": 300, "intervalMs": null, "stepLimit": null, "expectedValue": "105±3", "source": "doc §2.1 P2", "gaps": ["intervalMs: doc B-1 未注明 → 澄清门问用户"] },
+    { "id": "P3", "name": "环境温度", "direction": "read", "protocol": "mqtt", "address": "mqtt://127.0.0.1:18830/aw/blow/b3/env", "jsonPath": "temp", "dataType": "scalar", "unit": "℃", "decimals": 1, "min": 0, "max": 60, "intervalMs": 2000, "stepLimit": null, "expectedValue": "22~24", "source": "doc §2.2 P3", "gaps": [], "sameMessageWith": "P4" },
+    { "id": "P4", "name": "环境湿度", "direction": "read", "protocol": "mqtt", "address": "mqtt://127.0.0.1:18830/aw/blow/b3/env", "jsonPath": "humidity", "dataType": "scalar", "unit": "%RH", "decimals": 1, "min": 0, "max": 100, "intervalMs": 2000, "stepLimit": null, "expectedValue": "50~55", "source": "doc §2.2 P4", "gaps": [], "sameMessageWith": "P3" },
+    { "id": "S1", "name": "模头温度SP", "direction": "write", "protocol": "http", "address": "http://127.0.0.1:4021/api/v1/head/temp/sp", "method": "PUT", "bodyKey": "sp", "readbackJsonPath": "data.sp", "dataType": "scalar", "unit": "℃", "decimals": 1, "min": 150, "max": 260, "stepLimit": 2.0, "holdIntervalMs": 1000, "expectedValue": "写后 applied=true 且读回=写值", "source": "doc §3.1 S1", "gaps": [] },
+    { "id": "S2", "name": "吹气压力SP", "direction": "write", "protocol": "mqtt", "address": "cmd: aw/blow/b3/cmd/pressure; confirm: aw/blow/b3/sp/pressure", "jsonKey": "sp", "readTopic": "aw/blow/b3/sp/pressure", "readJsonPath": "sp", "qos": 1, "dataType": "scalar", "unit": "bar", "decimals": 2, "min": 0, "max": 3.0, "stepLimit": null, "holdIntervalMs": null, "expectedValue": "确认报文值=写值且独立订阅点可见", "source": "doc §3.2 S2", "gaps": ["stepLimit: doc B-3 → 澄清门问用户", "holdIntervalMs: doc B-4 未注明 → 澄清门", "max 取厂家预警线 3.0 而非物理量程 4.0(§5 安全约束)"] },
+    { "id": "P5", "name": "壁厚截面向量", "direction": "read", "protocol": "http", "address": "http://127.0.0.1:4021/api/v1/wall/profile", "method": "GET", "jsonPath": "points", "dataType": "vector(16点)", "unit": "mm", "decimals": 3, "min": 0.8, "max": 3.0, "intervalMs": 5000, "stepLimit": null, "expectedValue": "1.0~2.0 mm 变化带", "source": "doc §6 P5", "gaps": ["一期是否接入: doc B-5 → 澄清门问用户"] }
+  ],
+  "capabilityMatch": [
+    { "point": "P1", "builtin": "http 轮询驱动 + scalar jsonPath", "verdict": "内置" },
+    { "point": "P2", "builtin": "http 轮询驱动 + scalar jsonPath", "verdict": "内置" },
+    { "point": "P3/P4", "builtin": "mqtt 驱动订阅池;同报文多字段=同 topic 两节点各取 jsonPath(时间戳天然重合)", "verdict": "内置" },
+    { "point": "S1", "builtin": "dcw http 写驱动 bodyKey+jsonPath 应答回读", "verdict": "内置" },
+    { "point": "S2", "builtin": "dcw mqtt 写驱动 topic+jsonKey 发布 + readTopic/readJsonPath 独立回读(readback-verified)", "verdict": "内置(上轮报告未覆盖面,本轮首次纳入合同)" },
+    { "point": "P5", "builtin": "http 驱动 + vector 模板(points 数组)", "verdict": "内置(若一期接入需现场建 16 点向量模板)" }
+  ],
+  "pluginNeeds": "无——全部点位落内置 http/mqtt × scalar/vector",
+  "clarifyGateInputs": ["B-1 采样周期", "B-3 步限(安全)", "B-4 冷却时间", "B-5 一期范围(意图)", "B-6 线命名(意图)", "执行模式/作业模型(系统必需,文档不涉及)"]
+}

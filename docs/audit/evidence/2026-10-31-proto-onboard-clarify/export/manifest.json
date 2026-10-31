@@ -1,0 +1,184 @@
+{
+  "schema": "aw.daq-export/1",
+  "export_id": "daqexp-20261031231549-bb7802",
+  "created_at": "2026-10-31T23:15:49.936+08:00",
+  "title": "PROTO3-B3 �������ֵ�������",
+  "note": "�ĵ���ģ���д�� ȫ��֤��;��ͬ����ʱ����˶�",
+  "window": {
+    "from_ms": 1793457949885,
+    "to_ms": 1793459749885,
+    "from": "2026-10-31T22:45:49.885+08:00",
+    "to": "2026-10-31T23:15:49.885+08:00"
+  },
+  "lines": [
+    {
+      "lineId": "ln-5402968a",
+      "lineName": "PROTO3-B3-文档驱动接入线",
+      "description": ""
+    }
+  ],
+  "nodes": [
+    {
+      "id": "dn-812822ad",
+      "name": "PROTO3-B3-PV-熔体压力",
+      "unit": "bar",
+      "line_id": "ln-5402968a",
+      "range": {
+        "min": 0,
+        "max": 50
+      },
+      "warn": {
+        "low": 4,
+        "high": 46
+      },
+      "interval_ms": 1000,
+      "decimals": 2,
+      "semantics": "熔体压力:挤出负荷的「血压计」。判读:与温度负相关(温度升→熔体黏度降→压力降);压力突升常见于滤网堵塞或出料受阻。",
+      "file": "nodes/dn-812822ad.csv",
+      "rows": 757,
+      "value_range_observed": {
+        "min": 21.96,
+        "max": 25.04
+      },
+      "state_summary": {
+        "offline": 6,
+        "ok": 751
+      }
+    },
+    {
+      "id": "dn-0f7c8b75",
+      "name": "PROTO3-B3-PV-瓶坯温度",
+      "unit": "℃",
+      "line_id": "ln-5402968a",
+      "range": {
+        "min": 0,
+        "max": 300
+      },
+      "warn": {
+        "low": 24,
+        "high": 276
+      },
+      "interval_ms": 1000,
+      "decimals": 1,
+      "semantics": "熔体/箱体温度:热工艺核心被控量,热惯性大(变化平缓)。判读:与设定值偏差 ±2℃ 内为稳态;持续单边漂移 = 加热/散热失衡;骤升骤降多为扰动或传感器异常。",
+      "file": "nodes/dn-0f7c8b75.csv",
+      "rows": 757,
+      "value_range_observed": {
+        "min": 102.8,
+        "max": 107.2
+      },
+      "state_summary": {
+        "offline": 6,
+        "ok": 751
+      }
+    },
+    {
+      "id": "dn-767e0a6c",
+      "name": "PROTO3-B3-PV-环境温度",
+      "unit": "℃",
+      "line_id": "ln-5402968a",
+      "range": {
+        "min": 0,
+        "max": 60
+      },
+      "warn": {
+        "low": 4.8,
+        "high": 55.2
+      },
+      "interval_ms": 2000,
+      "decimals": 1,
+      "semantics": "熔体/箱体温度:热工艺核心被控量,热惯性大(变化平缓)。判读:与设定值偏差 ±2℃ 内为稳态;持续单边漂移 = 加热/散热失衡;骤升骤降多为扰动或传感器异常。",
+      "file": "nodes/dn-767e0a6c.csv",
+      "rows": 393,
+      "value_range_observed": {
+        "min": 21.8,
+        "max": 22.2
+      },
+      "state_summary": {
+        "offline": 2,
+        "ok": 391
+      }
+    },
+    {
+      "id": "dn-f9ea1045",
+      "name": "PROTO3-B3-PV-环境湿度",
+      "unit": "%RH",
+      "line_id": "ln-5402968a",
+      "range": {
+        "min": 0,
+        "max": 100
+      },
+      "warn": {
+        "low": 8,
+        "high": 92
+      },
+      "interval_ms": 2000,
+      "decimals": 1,
+      "semantics": "熔体/箱体温度:热工艺核心被控量,热惯性大(变化平缓)。判读:与设定值偏差 ±2℃ 内为稳态;持续单边漂移 = 加热/散热失衡;骤升骤降多为扰动或传感器异常。",
+      "file": "nodes/dn-f9ea1045.csv",
+      "rows": 393,
+      "value_range_observed": {
+        "min": 50.4,
+        "max": 52.9
+      },
+      "state_summary": {
+        "offline": 2,
+        "ok": 391
+      }
+    },
+    {
+      "id": "dn-df726c9e",
+      "name": "PROTO3-B3-回读-吹气压力",
+      "unit": "bar",
+      "line_id": "ln-5402968a",
+      "range": {
+        "min": 0,
+        "max": 4
+      },
+      "warn": {
+        "low": 0.32,
+        "high": 3.68
+      },
+      "interval_ms": 2000,
+      "decimals": 2,
+      "semantics": "熔体压力:挤出负荷的「血压计」。判读:与温度负相关(温度升→熔体黏度降→压力降);压力突升常见于滤网堵塞或出料受阻。",
+      "file": "nodes/dn-df726c9e.csv",
+      "rows": 2,
+      "value_range_observed": {
+        "min": 2.6,
+        "max": 2.7
+      },
+      "state_summary": {
+        "offline": 2
+      }
+    },
+    {
+      "id": "dn-3d2dd37e",
+      "name": "PROTO3-B3-PV-壁厚截面",
+      "kind": "vector",
+      "line_id": "ln-5402968a",
+      "semantics": "瓶坯周向壁厚截面,16 点;判读:均值 1.2~1.8mm,相邻点差 <0.25mm",
+      "unit": "mm",
+      "file": "frames/dn-3d2dd37e.csv",
+      "frames": 153,
+      "points": 2448,
+      "value_range_observed": null,
+      "state_summary": {},
+      "vector": {
+        "points": 16,
+        "min": 0.8,
+        "max": 3,
+        "axis": "周向 16 点截面(0°起顺时针)",
+        "pointIndexBase": 1
+      },
+      "metrics_summary": {}
+    }
+  ],
+  "totals": {
+    "files": 5,
+    "rows": 2302
+  },
+  "truncated_nodes": [],
+  "usage": "nodes/ 下每标量节点一份全量原始时序 CSV(ts_iso,ts_ms,value,state;无降采样);帧节点(vector/image)在 frames/ 下:向量=单 CSV 长表(ts_iso,ts_ms,point_index,value),图像=逐帧原文件 frames/<node_id>/<ts>.<ext>。请结合本清单的节点语义/量程/产线-配方上下文做分析;深度根因诊断请用 diag-bridge 的 diag_run(export_id=本 export_id)。",
+  "readme": "README.md"
+}

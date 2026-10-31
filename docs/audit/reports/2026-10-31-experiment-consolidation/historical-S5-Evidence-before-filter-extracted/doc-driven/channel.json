@@ -1,0 +1,19 @@
+{
+  "scenario": "optimize",
+  "name": "PROTO-文档驱动优化频道-1031",
+  "lineId": "ln-b8c1d3ac",
+  "plugins": {},
+  "bindings": [
+    { "agentRole": "worker:0", "kind": "daq", "nodeId": "dn-2441bc04", "mode": "auto" },
+    { "agentRole": "worker:0", "kind": "daq", "nodeId": "dn-970e00ea", "mode": "auto" },
+    { "agentRole": "worker:0", "kind": "daq", "nodeId": "dn-2a0acb1f", "mode": "auto" },
+    { "agentRole": "worker:0", "kind": "daq", "nodeId": "dn-e4934f70", "mode": "auto" },
+    { "agentRole": "worker:1", "kind": "recipe", "nodeId": "rc-5b3912d2", "mode": "manual" },
+    { "agentRole": "worker:2", "kind": "daq", "nodeId": "dn-ae545180", "mode": "auto" }
+  ],
+  "seedTask": {
+    "title": "PROTO 文档驱动启动自检:读取五路数据并核对 SP 回读",
+    "description": "只读任务:用 daq_query 读取 DOC-箱体温度PV、DOC-环境温度、DOC-环境湿度、DOC-SP回读最近10分钟样本,并查询 DOC-壁厚轮廓最近帧;报告均值/范围,确认 SP 回读是否为 25℃(允许 ±0.5),明确声明未执行任何写操作。",
+    "budget_minutes": 10
+  }
+}

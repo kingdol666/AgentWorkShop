@@ -1,0 +1,160 @@
+{
+ "line": {
+  "name": "PROTO3-B3-文档驱动接入线",
+  "description": "aw-protocol-onboarding 澄清门轮:吹瓶产线协议与工况手册 v1.4(docs/audit/2026-10-31-b3-blowline-protocol-manual.md)→模拟端点→镜像采集→写穿验收。命名空间/采样/步限/一期范围经澄清门用户答复(见 clarifications.json)"
+ },
+ "nodes": [
+  {
+   "kind": "daq",
+   "name": "PROTO3-B3-PV-熔体压力",
+   "driver": "http",
+   "driverConfig": {
+    "url": "http://127.0.0.1:4021/api/v1/melt/pressure",
+    "method": "GET",
+    "jsonPath": "data.pressure"
+   },
+   "unit": "bar",
+   "decimals": 2,
+   "min": 0,
+   "max": 50,
+   "intervalMs": 1000,
+   "templateRef": "daq-pressure-tx"
+  },
+  {
+   "kind": "daq",
+   "name": "PROTO3-B3-PV-瓶坯温度",
+   "driver": "http",
+   "driverConfig": {
+    "url": "http://127.0.0.1:4021/api/v1/preform/temp",
+    "method": "GET",
+    "jsonPath": "data.temp"
+   },
+   "unit": "℃",
+   "decimals": 1,
+   "min": 0,
+   "max": 300,
+   "intervalMs": 1000,
+   "templateRef": "daq-temp-tc"
+  },
+  {
+   "kind": "daq",
+   "name": "PROTO3-B3-PV-环境温度",
+   "driver": "mqtt",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 18830,
+    "topic": "aw/blow/b3/env",
+    "jsonPath": "temp"
+   },
+   "unit": "℃",
+   "decimals": 1,
+   "min": 0,
+   "max": 60,
+   "intervalMs": 2000,
+   "templateRef": "daq-temp-tc"
+  },
+  {
+   "kind": "daq",
+   "name": "PROTO3-B3-PV-环境湿度",
+   "driver": "mqtt",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 18830,
+    "topic": "aw/blow/b3/env",
+    "jsonPath": "humidity"
+   },
+   "unit": "%RH",
+   "decimals": 1,
+   "min": 0,
+   "max": 100,
+   "intervalMs": 2000,
+   "templateRef": "daq-temp-tc"
+  },
+  {
+   "kind": "daq",
+   "name": "PROTO3-B3-回读-吹气压力",
+   "driver": "mqtt",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 18830,
+    "topic": "aw/blow/b3/sp/pressure",
+    "jsonPath": "sp"
+   },
+   "unit": "bar",
+   "decimals": 2,
+   "min": 0,
+   "max": 4,
+   "intervalMs": 2000,
+   "templateRef": "daq-pressure-tx"
+  },
+  {
+   "kind": "daq",
+   "name": "PROTO3-B3-PV-壁厚截面",
+   "driver": "http",
+   "driverConfig": {
+    "url": "http://127.0.0.1:4021/api/v1/wall/profile",
+    "method": "GET",
+    "jsonPath": "data.points"
+   },
+   "unit": "mm",
+   "decimals": 3,
+   "min": 0.8,
+   "max": 3.0,
+   "intervalMs": 5000,
+   "templateRef": "ct-0b39ab45"
+  },
+  {
+   "kind": "dcw",
+   "name": "PROTO3-B3-SP-模头温度",
+   "driver": "http",
+   "driverConfig": {
+    "url": "http://127.0.0.1:4021/api/v1/head/temp/sp",
+    "method": "PUT",
+    "bodyKey": "sp",
+    "jsonPath": "data.sp"
+   },
+   "unit": "℃",
+   "decimals": 1,
+   "min": 150,
+   "max": 260,
+   "stepLimit": 2.0,
+   "holdIntervalMs": 1000,
+   "templateRef": "dcw-temp-sp"
+  },
+  {
+   "kind": "dcw",
+   "name": "PROTO3-B3-SP-吹气压力",
+   "driver": "mqtt",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 18830,
+    "topic": "aw/blow/b3/cmd/pressure",
+    "jsonKey": "sp",
+    "readTopic": "aw/blow/b3/sp/pressure",
+    "readJsonPath": "sp",
+    "qos": 1
+   },
+   "unit": "bar",
+   "decimals": 2,
+   "min": 0,
+   "max": 3.0,
+   "stepLimit": 0.1,
+   "holdIntervalMs": 0,
+   "templateRef": "dcw-pressure-sp"
+  }
+ ],
+ "recipe": {
+  "name": "PROTO3-B3 基线配方",
+  "params": [
+   {
+    "node": "PROTO3-B3-SP-模头温度",
+    "value": 210
+   },
+   {
+    "node": "PROTO3-B3-SP-吹气压力",
+    "value": 2.6
+   }
+  ]
+ },
+ "startLine": true
+}

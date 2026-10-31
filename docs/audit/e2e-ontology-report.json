@@ -1,7 +1,7 @@
 {
   "script": "scripts/e2e-ontology.mjs",
-  "generatedAt": "2026-10-30T09:34:05.615Z",
-  "home": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-e2e-ontology-qfcc9i",
+  "generatedAt": "2026-10-31T06:47:58.739Z",
+  "home": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-e2e-ontology-mqPu20",
   "ontology": "ont-e2e-pva",
   "lineId": "ln-e2e-pva",
   "total": 57,
@@ -246,7 +246,7 @@
       "id": "ON10.1",
       "name": "全链审计动作齐备",
       "ok": true,
-      "detail": "retire,publish,draft.update,rule.approve_request,rule.approve,rule.transition,evidence.append,draft.create"
+      "detail": "retire,publish,draft.update,rule.approve,rule.approve_request,rule.transition,evidence.append,draft.create"
     },
     {
       "id": "ON10.2",

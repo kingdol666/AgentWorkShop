@@ -1,0 +1,1 @@
+{"code":0,"message":"ok","data":{"outcome":{"ok":true,"message":"POST 成功(HTTP 200),写入并回读一致:216,回读 216(标定后物理值 216)","raw":216,"readback":216,"ack":"readback-verified","anchorId":"anc-c08bf9f9"}}}

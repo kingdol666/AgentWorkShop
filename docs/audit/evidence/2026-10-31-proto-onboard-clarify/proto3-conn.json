@@ -1,0 +1,67 @@
+{
+ "tests": [
+  {
+   "label": "PROTO3-B3-PV-熔体压力(http)",
+   "driver": "http",
+   "driverConfig": {
+    "url": "http://127.0.0.1:4021/api/v1/melt/pressure",
+    "method": "GET",
+    "jsonPath": "data.pressure"
+   }
+  },
+  {
+   "label": "PROTO3-B3-PV-瓶坯温度(http)",
+   "driver": "http",
+   "driverConfig": {
+    "url": "http://127.0.0.1:4021/api/v1/preform/temp",
+    "method": "GET",
+    "jsonPath": "data.temp"
+   }
+  },
+  {
+   "label": "PROTO3-B3-PV-环境温度(mqtt)",
+   "driver": "mqtt",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 18830,
+    "topic": "aw/blow/b3/env",
+    "jsonPath": "temp"
+   }
+  },
+  {
+   "label": "PROTO3-B3-PV-环境湿度(mqtt)",
+   "driver": "mqtt",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 18830,
+    "topic": "aw/blow/b3/env",
+    "jsonPath": "humidity"
+   }
+  },
+  {
+   "label": "PROTO3-B3-回读-吹气压力(mqtt,预热后)",
+   "driver": "mqtt",
+   "driverConfig": {
+    "host": "127.0.0.1",
+    "port": 18830,
+    "topic": "aw/blow/b3/sp/pressure",
+    "jsonPath": "sp"
+   }
+  },
+  {
+   "label": "PROTO3-B3-SP-模头温度写(http)",
+   "driver": "http",
+   "driverConfig": {
+    "url": "http://127.0.0.1:4021/api/v1/head/temp/sp",
+    "method": "PUT",
+    "bodyKey": "sp",
+    "jsonPath": "data.sp"
+   },
+   "domain": {
+    "min": 150,
+    "max": 260
+   }
+  }
+ ],
+ "note": "16点向量端点不经 test-driver 预检(REST 不透传 signalKind,标量提取对数组 fail);连通性=同端点 http 驱动已证,值正确性=供给后 verify-mirror 真节点验证"
+}

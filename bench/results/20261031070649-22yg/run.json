@@ -1,0 +1,504 @@
+{
+  "env": {
+    "runId": "20261031070649-22yg",
+    "profile": "integrated",
+    "seed": 42,
+    "base": "http://127.0.0.1:3400",
+    "simBase": "http://127.0.0.1:4011",
+    "simDir": "D:\\codes\\ABO\\AgentWorkShop\\plc-node-simulator",
+    "lines": 0,
+    "awHome": "D:/tmp/aw-bench-1031",
+    "awMode": "home",
+    "ownLines": 0,
+    "satelliteDaq": 0,
+    "protocols": "",
+    "preset": "cast-film-physics",
+    "agentHarness": "(none)",
+    "toolHarness": "opencode",
+    "startedAt": "2026-10-31T07:12:23.822Z",
+    "node": "v24.19.0",
+    "platform": "win32 x64",
+    "harnessHash": "82daeac2691efc94",
+    "gitCommit": "269640bf",
+    "harnessFiles": 13,
+    "closedloop": null,
+    "portability": null,
+    "biax": null,
+    "backstop": {
+      "fired": false,
+      "restored": false,
+      "latencyS": null,
+      "recordId": null,
+      "from": null,
+      "to": null
+    },
+    "aml": null,
+    "surfaces": null,
+    "verdict": {
+      "pass": 0,
+      "warn": 5,
+      "fail": 2,
+      "phaseFails": 7,
+      "ok": false
+    },
+    "reproCmd": "node bench/pipeline.mjs --profile integrated --seed 42 --cl-seeds 3"
+  },
+  "phases": [
+    {
+      "id": "P0·preflight",
+      "phase": "P0",
+      "title": "Bootstrap simulator & platform",
+      "status": "fail",
+      "note": "simulator自动启动failed: private simulator port collision; no process was started: 0.0.0.0:16052 pid=43512",
+      "durationMs": 110711
+    },
+    {
+      "id": "P1·plant-model",
+      "phase": "P1",
+      "title": "plant model preset + offline optimum W*",
+      "status": "fail",
+      "note": "fetch failed",
+      "durationMs": 36086
+    },
+    {
+      "id": "P2·provision",
+      "phase": "P2",
+      "title": "multi-protocol multi-line provisioning（≤5 ）",
+      "status": "fail",
+      "note": "fetch failed",
+      "durationMs": 36080
+    },
+    {
+      "id": "P3·integration",
+      "phase": "P3",
+      "title": "multi-protocol DAQ + governed write/read + F5 interception",
+      "status": "pass",
+      "note": "0/0 Linesampling",
+      "durationMs": 7013
+    },
+    {
+      "id": "P4·tool-loop",
+      "phase": "P4",
+      "title": "数采→数控→判定 工具级闭环（harness=opencode，不经 LLM）",
+      "status": "fail",
+      "note": "",
+      "durationMs": 33
+    },
+    {
+      "id": "P4m·team-mission",
+      "phase": "P4m",
+      "title": "AgentTeam 优化任务：目标下达 → 时段读数 → 治理写 → 达标收口",
+      "status": "skip",
+      "note": "",
+      "durationMs": 1
+    },
+    {
+      "id": "P4b·rollback-records",
+      "phase": "P4b",
+      "title": "Rollback & optimization records (node rollback · verdict/execution separation · param ledger)",
+      "status": "skip",
+      "note": "",
+      "durationMs": 0
+    },
+    {
+      "id": "P4c·hitl",
+      "phase": "P4c",
+      "title": "HITL 审批闭环（挂起→面板可见→批准→真实写生效）",
+      "status": "skip",
+      "note": "",
+      "durationMs": 0
+    },
+    {
+      "id": "P4d·audit-surfaces",
+      "phase": "P4d",
+      "title": "治理只读面（参数账本·审计·运维日志·报警）",
+      "status": "warn",
+      "note": "0 锚 / 0 审计",
+      "durationMs": 45
+    },
+    {
+      "id": "P4e·recipe-lifecycle",
+      "phase": "P4e",
+      "title": "配方管理全生命周期（版本·已知良好·回退·基准恢复·一键下发）",
+      "status": "skip",
+      "note": "",
+      "durationMs": 0
+    },
+    {
+      "id": "P4f·param-map",
+      "phase": "P4f",
+      "title": "工艺参数映射层：参数面读写 · 标准转换模式 · 分层限界联锁 · Agent param_control",
+      "status": "skip",
+      "note": "",
+      "durationMs": 10
+    },
+    {
+      "id": "P6·closedloop",
+      "phase": "P6",
+      "title": "闭环优化参数 benchmark（3 seed · 写路径=governed · ≤8 迭代/seed）",
+      "status": "fail",
+      "note": "fetch failed",
+      "durationMs": 36081
+    },
+    {
+      "id": "P7·frames",
+      "phase": "P7",
+      "title": "多形态数采：向量轮廓与图像帧落库",
+      "status": "fail",
+      "note": "fetch failed",
+      "durationMs": 36071
+    },
+    {
+      "id": "P8·portability",
+      "phase": "P8",
+      "title": "Cross-scenario portability (re-commission on a second plant preset, config-only)",
+      "status": "fail",
+      "note": "fetch failed",
+      "durationMs": 36065
+    },
+    {
+      "id": "P8b·backstop",
+      "phase": "P8b",
+      "title": "System backstop drill (PV frozen out of window → system-judged bounded rollback)",
+      "status": "skip",
+      "note": "",
+      "durationMs": 0
+    },
+    {
+      "id": "P10·biax-line",
+      "phase": "P10",
+      "title": "双拉产线:节点探测补建 → 五协议多节点建线 → AgentTeam 多节点闭环",
+      "status": "skip",
+      "note": "",
+      "durationMs": 1
+    },
+    {
+      "id": "P9·subsystems",
+      "phase": "P9",
+      "title": "Platform subsystems (team dispatch · team memory idempotency · harness registry)",
+      "status": "warn",
+      "note": "team — · mem ✘ · engines 0(0 avail)",
+      "durationMs": 123
+    }
+  ],
+  "checks": [
+    {
+      "phase": "P0",
+      "id": "simulator-reachable",
+      "title": "simulator reachable",
+      "status": "fail",
+      "evidence": [
+        "simulator http://127.0.0.1:4011 自动启动失败: private simulator port collision; no process was started: 0.0.0.0:16052 pid=43512",
+        "处置: cd D:\\codes\\ABO\\AgentWorkShop\\plc-node-simulator && npm install && npm run dev"
+      ]
+    },
+    {
+      "phase": "P2",
+      "id": "gateway",
+      "title": "gateway controller start (idempotent)",
+      "status": "warn",
+      "evidence": [
+        "POST /api/workshop/daq/controller {action:start}",
+        "采样仍受「活动Line批」门控，故每台有 SP 的devices自成一可开跑Line"
+      ]
+    },
+    {
+      "phase": "P4",
+      "id": "tool-loop-setup",
+      "title": "闭环夹具（channel+agent）",
+      "status": "fail",
+      "evidence": [
+        "channel=undefined agent=undefined",
+        "{}"
+      ]
+    },
+    {
+      "phase": "P4m",
+      "id": "mission-board",
+      "title": "AgentTeam 优化任务",
+      "status": "skip",
+      "evidence": [
+        "P4 夹具未就绪"
+      ]
+    },
+    {
+      "phase": "P4b",
+      "id": "rollback-records",
+      "title": "回退与优化记录",
+      "status": "skip",
+      "evidence": [
+        "P4 夹具未就绪"
+      ]
+    },
+    {
+      "phase": "P4c",
+      "id": "hitl",
+      "title": "HITL 审批",
+      "status": "skip",
+      "evidence": [
+        "P4 夹具未就绪"
+      ]
+    },
+    {
+      "phase": "P4d",
+      "id": "audit-surfaces",
+      "title": "治理只读面",
+      "status": "warn",
+      "evidence": [
+        "✘ 参数变更账本 journal：本产线 0  anchors (source coverage  —）",
+        "✘ audit: 0 entries",
+        "✘ ops-logs: 0 entries",
+        "— 报警记录：全局 0 （含历史）"
+      ]
+    },
+    {
+      "phase": "P4e",
+      "id": "recipe-lifecycle",
+      "title": "recipe lifecycle",
+      "status": "skip",
+      "evidence": [
+        "无可开跑Line"
+      ]
+    },
+    {
+      "phase": "P4f",
+      "id": "param-facade",
+      "title": "工艺参数映射层",
+      "status": "skip",
+      "evidence": [
+        "无可开跑Line或P4夹具未就绪"
+      ]
+    },
+    {
+      "phase": "P8b",
+      "id": "backstop",
+      "title": "系统兜底 drilling",
+      "status": "skip",
+      "evidence": [
+        "P8 场景或 P4 夹具未就绪"
+      ]
+    },
+    {
+      "phase": "P10",
+      "id": "biax-ensure",
+      "title": "双拉产线全节点",
+      "status": "skip",
+      "evidence": [
+        "P4 夹具未就绪"
+      ]
+    },
+    {
+      "phase": "P9",
+      "id": "team-dispatch",
+      "title": "团队调度（lead 派发 → worker 完成）",
+      "status": "warn",
+      "evidence": [
+        "终态 (超时) · assignee=—（lead 认领父任务） · 子任务派发给 worker: 未观察到"
+      ]
+    },
+    {
+      "phase": "P9",
+      "id": "team-memory",
+      "title": "团队记忆写入 + dedupKey 幂等",
+      "status": "warn",
+      "evidence": [
+        "POST×2 status 401/401 → 列表中匹配 0 条（期望 1）"
+      ]
+    },
+    {
+      "phase": "P9",
+      "id": "harness-registry",
+      "title": "引擎注册表枚举 + 可用性探测",
+      "status": "warn",
+      "evidence": [
+        "注册 0 引擎（期望 ≥14） · 环境可用 0 · 覆盖 mock/RPC/SDK/CLI 族"
+      ]
+    }
+  ],
+  "lines": [],
+  "kpis": [
+    {
+      "label": "Provisionable lines",
+      "value": 0,
+      "unit": "",
+      "note": "+0 satellite DAQ · ",
+      "tone": "good"
+    },
+    {
+      "label": "DAQ samples total",
+      "value": 0,
+      "unit": "",
+      "note": "0/0 nodes sampling",
+      "tone": "good"
+    },
+    {
+      "label": "Governance interception (pooled)",
+      "value": "—",
+      "unit": "%",
+      "note": "F5 attacks",
+      "tone": "good"
+    },
+    {
+      "label": "Write p50 (all protocols)",
+      "value": null,
+      "unit": "ms",
+      "note": "incl. real protocol transactions"
+    },
+    {
+      "label": "Closed-loop J/J*",
+      "value": "off",
+      "unit": "",
+      "note": "--cl-seeds 3 enables",
+      "tone": "warn"
+    },
+    {
+      "label": "Tool-level loops",
+      "value": 0,
+      "unit": "",
+      "note": "dcw→daq→judge ×3 convergence"
+    },
+    {
+      "label": "Param-layer governance",
+      "value": "—/4",
+      "unit": "",
+      "note": "semantic surface · 4-layer write limits · agent param_control",
+      "tone": "good"
+    },
+    {
+      "label": "System backstop",
+      "value": "not fired",
+      "unit": "",
+      "note": "P8b drill requires scenario 2",
+      "tone": "warn"
+    },
+    {
+      "label": "Scenario portability",
+      "value": "off",
+      "unit": "",
+      "note": "P8 runs in integrated profile",
+      "tone": "warn"
+    },
+    {
+      "label": "Biax line (BOPET)",
+      "value": "off",
+      "unit": "",
+      "note": "P10 requires P4 fixture",
+      "tone": "warn"
+    },
+    {
+      "label": "LLM agent loop",
+      "value": "off",
+      "unit": "",
+      "note": "--agent omp enables",
+      "tone": "warn"
+    },
+    {
+      "label": "Verdict",
+      "value": "FAIL",
+      "unit": "",
+      "note": "0/7 checks · hard gate tripped",
+      "tone": "bad"
+    }
+  ],
+  "metrics": [
+    {
+      "section": "provision",
+      "key": "lines_sampling",
+      "value": 0,
+      "unit": "",
+      "note": "real driver produced samples"
+    },
+    {
+      "section": "gov",
+      "key": "intercept_rate_all",
+      "value": null,
+      "unit": "",
+      "note": "全协议合并"
+    },
+    {
+      "section": "audit",
+      "key": "journal_anchors",
+      "value": 0,
+      "unit": "",
+      "note": "本Line参数变更账本"
+    },
+    {
+      "section": "audit",
+      "key": "audit_entries",
+      "value": 0,
+      "unit": "",
+      "note": "全局审计目"
+    },
+    {
+      "section": "audit",
+      "key": "ops_logs",
+      "value": 0,
+      "unit": "",
+      "note": "全局运维日志"
+    },
+    {
+      "section": "team",
+      "key": "team_dispatch_ok",
+      "value": 0,
+      "unit": "",
+      "note": "lead→worker dispatch closed loop"
+    },
+    {
+      "section": "memory",
+      "key": "team_memory_idempotent",
+      "value": 0,
+      "unit": "",
+      "note": "dedupKey idempotent refresh"
+    },
+    {
+      "section": "agent",
+      "key": "harness_registry",
+      "value": 0,
+      "unit": "",
+      "note": "environment-available 0"
+    }
+  ],
+  "lineProfile": {
+    "preset": "cast-film-physics",
+    "scenario": {
+      "name": "Cast-film extrusion digital twin (plant-model physics engine)",
+      "process": "An extrusion cast-film line: resin → screw melting → die → casting → thickness gauge. Six writable setpoints (3 zone temperatures, screw speed, line speed, die gap) act on a physics engine whose observable process quantities are melt temperature, melt pressure, film thickness, defect rate and gels count.",
+      "physics": "Deterministic plant model (seeded): first-order thermal lag on melt temperature, algebraic thickness h ∝ N/v from mass conservation, pressure/defect couplings — scored by J = 55·J_thick + 25·J_quality + 8·J_energy + 7·J_throughput."
+    },
+    "plant": null,
+    "totals": {
+      "devices": 0,
+      "protocols": 0,
+      "protocolsList": "",
+      "spSignals": 0,
+      "pvSignals": 0,
+      "awDcwNodes": 0,
+      "awDaqNodes": 0,
+      "awLines": 0
+    },
+    "devices": [],
+    "aw": {
+      "lines": [],
+      "dcw": [],
+      "daq": []
+    }
+  },
+  "agentteam": {
+    "biax": {
+      "traj": [],
+      "writes": null,
+      "distinctKnobs": null,
+      "records": null,
+      "final": null,
+      "attained": null,
+      "finalUm": null,
+      "targetUm": 25,
+      "toleranceUm": 0.7
+    },
+    "cl": {
+      "seeds": []
+    }
+  },
+  "closedloop": null,
+  "portability": null
+}

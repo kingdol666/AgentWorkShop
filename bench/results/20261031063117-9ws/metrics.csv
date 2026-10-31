@@ -1,0 +1,12 @@
+phase,line,protocol,daq_samples,write_p50_ms,write_p95_ms,readback_delta,f5_rejected,f5_total,false_block,preset,team_state,team_dispatched,memory_idempotent,harnesses,harnesses_available
+P3,1,modbus-tcp,0,,,,,,,,,,,,
+P3,2,opcua,0,,,,,,,,,,,,
+P3,3,mqtt,0,,,,,,,,,,,,
+P3,4,http,0,,,,,,,,,,,,
+P3,5,modbus-rtu,0,,,,,,,,,,,,
+P8,1,modbus-tcp,0,,,,,,,film-line,,,,,
+P8,2,opcua,0,,,,,,,film-line,,,,,
+P8,3,mqtt,0,,,,,,,film-line,,,,,
+P8,4,modbus-rtu,0,,,,,,,film-line,,,,,
+P8,5,http,0,,,,,,,film-line,,,,,
+P9,,,,,,,,,,,,false,false,0,0

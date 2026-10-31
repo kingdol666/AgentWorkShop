@@ -1,0 +1,71 @@
+{
+  "round": "2026-10-31 生产上线前最终集成验收",
+  "evidenceRoot": "docs/audit/evidence/2026-10-31-prod-accept-final",
+  "phase": "phase1-foundation(US-001~US-006)",
+  "at": "2026-10-31T13:55:00+08:00",
+  "platform": { "port": 3300, "version": "0.8.8", "mode": "prod:home", "home": "D:/tmp/aw-prod-1031(零态新建)", "build": ".output Oct 31 12:21 >= HEAD 269640bf(12:12)" },
+  "restart": {
+    "killed": {
+      "aw": [107632, 78540, 27752, 46524],
+      "mesSim": [27984],
+      "plcSimBench": [18232],
+      "idd": [66688, 72892],
+      "rag": [36232, 96132, 95560, 33424]
+    },
+    "preserved": "Codex CUA(94132/93340)/未知 8080(5536)/ZCode MCP 小进程未误杀",
+    "restarted": {
+      "platform": "detached-start pid 记录 /d/tmp/aw-3300-1031.log.pid,AW_MODE=home AW_HOME=D:/tmp/aw-prod-1031 AW_ALLOW_PRIVATE_OUTBOUND=1 AW_TRIAL_INTERVAL_MS=0 NUXT_SESSION_PASSWORD=***",
+      "idd": "npm start(3210/5180/内置RAG引擎 OK)",
+      "rag": "backend .venv python main.py(8771,BACKEND_PORT env)+ web nuxt dev(6789)",
+      "plcSim": "scripts/_plc-sim-detached.cjs(4010+内置broker 18830+Modbus 16040,pid 82640→43512)",
+      "mesSim": "scripts/dev-mes-simulator.mjs --port 15160"
+    },
+    "healthMatrix": {
+      "3300/api/health": 200, "3210/health": 200, "3210/api/health": 200, "5180/": 200,
+      "8771/health": 200, "8771/api/health": 401, "6789/": 200, "4010/health": 200,
+      "4010/api/health": 200, "15160/health": 200
+    }
+  },
+  "onboarding": {
+    "adminRegister": "prod-admin@awshop.local 首注册即 admin(ut-c78b8135...)",
+    "settingsPatch": "plugins.diag-bridge{base_url,token,results_enabled,harness=omp}+plugins.rag-bridge{base_url,web_url,token}+workshop.root_timeout_ms=2700000 共 9 项 override,热生效",
+    "plugins": "11/11 enabled failures=[](7 project+4 builtin)",
+    "tools": "126/126 available(0 unavailable)",
+    "mcpStdio": "aw mcp initialize ok,42 工具(aw_line_create/aw_daq_controller/aw_dcw_write/aw_agent_tool_invoke 等)"
+  },
+  "provisioning": {
+    "simulatorScenario": "injection 装载于 4010",
+    "line": { "id": "ln-b715163a", "name": "注塑成型质量窗口寻优 injection-prod1031", "spec": "克重 32.5±0.35g/飞边≤0.4%/缩痕≤1.5%/尺寸±0.05mm" },
+    "dcwNodes": 11, "daqNodes": 14, "errors": [],
+    "holdPressureNode": { "id": "dw-036f0a6e", "driver": "opcua", "range": [20, 110], "unit": "bar", "baseline": 45 },
+    "channel": {
+      "id": "6667341f-0709-49c1-885a-819e9fa80935",
+      "template": "chtpl-generic-optimize-default(生产主管 lead+数据分析师/知识调优工程师/工艺工程师,全 omp)",
+      "llm": "ustc/deepseek-flash contextTokens=131072",
+      "bindLineId": "ln-b715163a", "enableKnowledgeBase": true,
+      "activated": true, "wiredAgents": ["1fdf0246-33fa-42ca-a5d0-5cfc29e2a7a3(lead)"]
+    }
+  },
+  "daq": {
+    "liveness": "melt-temp-pv 1s 节拍 246~247℃ 实时流入(查询回包 series=4,activeRun 在)",
+    "query": "GET /api/workshop/daq/query line_id+node_ids(≤8)→ {lineId,window,series,activeRun}",
+    "export": { "jobId": "edajob-f3559638", "exportId": "daqexp-20261031134514-6c10c3", "status": "ready", "nodes": 14, "rowsPerNode": "164(慢节拍 86)", "dir": "D:/tmp/aw-prod-1031/data/daq-exports/daqexp-20261031134514-6c10c3" }
+  },
+  "dcw": {
+    "positiveWrite": { "node": "dw-036f0a6e", "value": 46.5, "readback": 46.5, "ack": "readback-verified", "anchorId": "anc-1272797d" },
+    "baselineRestore": { "value": 45, "readback": 45, "ack": "readback-verified", "anchorId": "anc-8a2c87ae" },
+    "negativeTests": [
+      { "case": "越界 999bar", "code": "NODE_RANGE_EXCEEDED", "message": "超出上限 节点工艺安全量程 110bar,约束层:节点安全量程(20~110bar)" },
+      { "case": "+5bar 超单步", "code": "STEP_LIMIT_EXCEEDED", "message": "变化 5bar 超过单步限制 1.8bar(来源:param)" },
+      { "case": "60s 内重写", "code": "WRITE_INTERVAL_NOT_ELAPSED", "message": "两次在线写入间隔必须至少 60s,当前还需 49s" }
+    ],
+    "ledger": "data/dcw-writes.json 12 行,末行 ack=readback-verified"
+  },
+  "analysis": { "saved": "ar-a9aa14f2", "queryBack": "GET /api/workshop/analysis?line_id → 1 行命中" },
+  "inFlight": {
+    "iddDeepDiagnosis": { "runId": "d819851e", "dataset": "exp-daqexp-20261031134514-6c10c3(14节点+manifest)", "intent": "deep-diagnosis", "harness": "omp", "submittedAt": "13:51" },
+    "kbQuery": { "taskId": "kbt_mvvzq5k4_77003358", "mode": "async" },
+    "goalTask": { "taskId": "2b485254-c1e8-40b8-abe3-4b51206f42c4", "mode": "goal", "budget_minutes": 45, "title": "PROD验收-克重窗口寻优作业(保压单变量闭环)" },
+    "unitSuite": "npm run test:unit 后台进行中"
+  }
+}

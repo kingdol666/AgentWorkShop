@@ -1,0 +1,20 @@
+{
+  "suite": "verify-mirror",
+  "node": "dn-3d2dd37e",
+  "kind": "vector",
+  "base": "http://127.0.0.1:3300",
+  "checks": [
+    {
+      "name": "vector:窗口内有帧",
+      "pass": true,
+      "detail": "frames=58"
+    },
+    {
+      "name": "vector:点数符合期望",
+      "pass": true,
+      "detail": "expect=16 actual=16"
+    }
+  ],
+  "verdict": "PASS(2/2)",
+  "at": "2026-10-31T16:27:42.019Z"
+}

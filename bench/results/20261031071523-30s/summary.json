@@ -1,0 +1,199 @@
+{
+  "runId": "20261031071523-30s",
+  "env": {
+    "runId": "20261031071523-30s",
+    "profile": "integrated",
+    "seed": 42,
+    "base": "http://127.0.0.1:3400",
+    "simBase": "http://127.0.0.1:4011",
+    "simDir": "D:\\codes\\ABO\\AgentWorkShop\\plc-node-simulator",
+    "lines": 0,
+    "awHome": "D:/tmp/aw-bench-1031",
+    "awMode": "home",
+    "ownLines": 0,
+    "satelliteDaq": 0,
+    "protocols": "",
+    "preset": "cast-film-physics",
+    "agentHarness": "(none)",
+    "toolHarness": "opencode",
+    "startedAt": "2026-10-31T07:20:58.118Z",
+    "node": "v24.19.0",
+    "platform": "win32 x64",
+    "harnessHash": "82daeac2691efc94",
+    "gitCommit": "269640bf",
+    "harnessFiles": 13,
+    "closedloop": null,
+    "portability": null,
+    "biax": null,
+    "backstop": {
+      "fired": false,
+      "restored": false,
+      "latencyS": null,
+      "recordId": null,
+      "from": null,
+      "to": null
+    },
+    "aml": null,
+    "surfaces": null,
+    "verdict": {
+      "pass": 0,
+      "warn": 5,
+      "fail": 2,
+      "phaseFails": 7,
+      "ok": false
+    },
+    "reproCmd": "node bench/pipeline.mjs --profile integrated --seed 42 --cl-seeds 3"
+  },
+  "verdict": {
+    "pass": 0,
+    "warn": 5,
+    "fail": 2,
+    "phaseFails": 7,
+    "ok": false
+  },
+  "kpis": [
+    {
+      "label": "Provisionable lines",
+      "value": 0,
+      "unit": "",
+      "note": "+0 satellite DAQ · ",
+      "tone": "good"
+    },
+    {
+      "label": "DAQ samples total",
+      "value": 0,
+      "unit": "",
+      "note": "0/0 nodes sampling",
+      "tone": "good"
+    },
+    {
+      "label": "Governance interception (pooled)",
+      "value": "—",
+      "unit": "%",
+      "note": "F5 attacks",
+      "tone": "good"
+    },
+    {
+      "label": "Write p50 (all protocols)",
+      "value": null,
+      "unit": "ms",
+      "note": "incl. real protocol transactions"
+    },
+    {
+      "label": "Closed-loop J/J*",
+      "value": "off",
+      "unit": "",
+      "note": "--cl-seeds 3 enables",
+      "tone": "warn"
+    },
+    {
+      "label": "Tool-level loops",
+      "value": 0,
+      "unit": "",
+      "note": "dcw→daq→judge ×3 convergence"
+    },
+    {
+      "label": "Param-layer governance",
+      "value": "—/4",
+      "unit": "",
+      "note": "semantic surface · 4-layer write limits · agent param_control",
+      "tone": "good"
+    },
+    {
+      "label": "System backstop",
+      "value": "not fired",
+      "unit": "",
+      "note": "P8b drill requires scenario 2",
+      "tone": "warn"
+    },
+    {
+      "label": "Scenario portability",
+      "value": "off",
+      "unit": "",
+      "note": "P8 runs in integrated profile",
+      "tone": "warn"
+    },
+    {
+      "label": "Biax line (BOPET)",
+      "value": "off",
+      "unit": "",
+      "note": "P10 requires P4 fixture",
+      "tone": "warn"
+    },
+    {
+      "label": "LLM agent loop",
+      "value": "off",
+      "unit": "",
+      "note": "--agent omp enables",
+      "tone": "warn"
+    },
+    {
+      "label": "Verdict",
+      "value": "FAIL",
+      "unit": "",
+      "note": "0/7 checks · hard gate tripped",
+      "tone": "bad"
+    }
+  ],
+  "perLine": [],
+  "metrics": [
+    {
+      "section": "provision",
+      "key": "lines_sampling",
+      "value": 0,
+      "unit": "",
+      "note": "real driver produced samples"
+    },
+    {
+      "section": "gov",
+      "key": "intercept_rate_all",
+      "value": null,
+      "unit": "",
+      "note": "全协议合并"
+    },
+    {
+      "section": "audit",
+      "key": "journal_anchors",
+      "value": 0,
+      "unit": "",
+      "note": "本Line参数变更账本"
+    },
+    {
+      "section": "audit",
+      "key": "audit_entries",
+      "value": 0,
+      "unit": "",
+      "note": "全局审计目"
+    },
+    {
+      "section": "audit",
+      "key": "ops_logs",
+      "value": 0,
+      "unit": "",
+      "note": "全局运维日志"
+    },
+    {
+      "section": "team",
+      "key": "team_dispatch_ok",
+      "value": 0,
+      "unit": "",
+      "note": "lead→worker dispatch closed loop"
+    },
+    {
+      "section": "memory",
+      "key": "team_memory_idempotent",
+      "value": 0,
+      "unit": "",
+      "note": "dedupKey idempotent refresh"
+    },
+    {
+      "section": "agent",
+      "key": "harness_registry",
+      "value": 0,
+      "unit": "",
+      "note": "environment-available 0"
+    }
+  ],
+  "portability": null,
+  "closedloop": null
+}

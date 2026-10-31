@@ -1,0 +1,93 @@
+{
+ "round": "2026-10-31 协议文档→模拟接口→割接 全链验收(proto-accept)",
+ "doc": "docs/audit/2026-10-31-doc-driven-virtual-validation.md(产线协议与工况合同)",
+ "preflight": {
+  "running": true,
+  "treatAsProduction": true,
+  "mode": "附加模式(零重启作业)"
+ },
+ "blueprint": {
+  "doc_points": 6,
+  "capability_match": "http/mqtt 均内置驱动,scalar/vector 落地OK",
+  "裁剪": "环境湿度初判设备缺信号→后发现文档合同 MQTT(18830/aw/proto/doc/env 温湿度同报文)活,6/6 全供",
+  "连通预检": "首轮 4/5(SP 写缺 jsonPath→修正)→5/5"
+ },
+ "provision": {
+  "lineId": "ln-35547b24",
+  "nodes": {
+   "daq": [
+    "dn-bc3cf349(PV)",
+    "dn-e18a9d93(回读)",
+    "dn-f9306351(壁厚向量64点,模板 ct-c64939ad)",
+    "dn-66c740e2(环境温度)",
+    "dn-f86a5c83(环境湿度)"
+   ],
+   "dcw": [
+    "dw-22b5c0ed(SP写)"
+   ]
+  },
+  "recipeId": "rc-41713fb9",
+  "结果": "11/11"
+ },
+ "mirror": {
+  "verify-mirror": "scalar×4 各 3/3 PASS + vector 2/2 PASS(PV正弦25.3/回读25/温度22.3/湿度52/64点1-5mm)"
+ },
+ "sp_write": {
+  "write": 27,
+  "ack": "readback-verified",
+  "independent_readback": "过渡桶25.86→settled 27(一桶内)",
+  "write_back": 25,
+  "verified": true
+ },
+ "export": {
+  "job": "edajob-cbe9ebfc",
+  "exportId": "daqexp-20261031221858-856922",
+  "rows": {
+   "PV": 197,
+   "回读": 197,
+   "湿度": 1400,
+   "环境温度": 796,
+   "壁厚长表": "1984=64点×31帧"
+  },
+  "columns": {
+   "scalar": "ts_iso,ts_ms,value,state",
+   "vector": "ts_iso,ts_ms,point_index,value"
+  },
+  "manifest": "schema/nodes 元数据在案"
+ },
+ "cutover": {
+  "real_standin": "4120(proto-doc-device-4120.mjs,同合同)",
+  "step1_连通": "4/4",
+  "step2_浸泡": "生产窗口门(演练标注)",
+  "step3_首验": "三方一致:节点回读25.5=设备侧25.5=独立DAQ桶25.4→25.5",
+  "step4_PATCH": "仅 driverConfig url 4020→4120(节点/配方/限界未动);数据立即从4120流入",
+  "step5_verify_line": "11/11(V1五节点采样/V2量程拒65/V3合法写27.5回读一致/V4配方在册/V5频道4成员/V6保护线零扰动)",
+  "step6_清单": "REPORT.md 交付"
+ },
+ "runtime_findings": [
+  {
+   "id": "R-1",
+   "内容": "Agent runtime 卸载可阻塞健康探针(3次失联)→守护判僵死重启子进程;秒级自愈,数据零损;副作用=一个在飞 stability-report 被中断并如实记录 failed(Server restarted — diagnosis interrupted)",
+   "级别": "P3(韧性正向/副作用已知)"
+  },
+  {
+   "id": "R-2",
+   "内容": "verify-line.mjs 配置 daq 须裸 id 串(传对象→[object Object] URL 洪流);脚本对错误配置无 fail-fast",
+   "级别": "P4(脚本健壮性)"
+  }
+ ],
+ "suites": {
+  "LINT": 0,
+  "TC": 0,
+  "UNIT": "915 tests 全过(EXIT=0)",
+  "LINE": 0,
+  "APILIVE": 0,
+  "RESTR": 0,
+  "TPLISO": "38/38"
+ },
+ "running_state": {
+  "plugins": "11/11 failures=0",
+  "tools": "126/126 available",
+  "platform": "PID 107952(守护拉起 #3)"
+ }
+}
