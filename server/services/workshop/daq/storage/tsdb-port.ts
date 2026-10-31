@@ -75,6 +75,15 @@ export interface TsdbPageQuery {
   limit?: number
   /** 置 false 可省 state 列(默认 true) */
   withState?: boolean
+  /**
+   * 批次标签过滤(2026-10-29):任一提供即按**等值**过滤(等值天然排除未打标 NULL 行)。
+   * 训练/导出等按批次隔离取数的调用方必须传三元组(line/product/recipe[+run]);
+   * 留空 = 纯时间窗原始分页(可用性水位等全量观测语义)。
+   */
+  lineId?: string
+  productId?: string
+  recipeId?: string
+  runId?: string
 }
 
 export interface TsdbPage {
@@ -90,9 +99,104 @@ export interface TsdbStats {
   correctionDropped: number
 }
 
+// ===== 按产线分表(生产布局)=====
+
+/** 布局形态:single = 升级前的单表;per-line = 一产线一表(物理隔离 + 独立保留期) */
+export type TsdbLayoutKind = 'single' | 'per-line'
+
+/** 单条产线的物理表与保留策略 */
+export interface TsdbLineTableInfo {
+  /** 空 = 未分配产线(哨兵行为 __unassigned__) */
+  lineId: string
+  samplesTable: string
+  framesTable?: string | null
+  rollupTable?: string | null
+  rawRetentionH: number
+  minuteRetentionH?: number | null
+  hourRetentionH?: number | null
+  /** 近似行数(pg_class.reltuples;SQLite 为 NULL) */
+  rows?: number | null
+  /** 物理占用字节(pg_total_relation_size) */
+  bytes?: number | null
+}
+
+/** 存储布局/保留期/rollup 水位(运维可见面;不含数据本身) */
+export interface TsdbLayoutInfo {
+  backend: string
+  layout: TsdbLayoutKind
+  rawRetentionH: number
+  frameRetentionH: number
+  rollup: {
+    enabled: boolean
+    minuteRetentionH: number
+    /** 0 = 永久 */
+    hourRetentionH: number
+    /** key = `${lineId}|${resMs}`;value = 已聚合到的上界 epoch ms */
+    watermarks: Record<string, number>
+  }
+  lines: TsdbLineTableInfo[]
+  legacy?: { table: string, rows: number | null, bytes: number | null, migrated: boolean } | null
+}
+
+/** 历史查询(跨原始保留期自动走 rollup;起止时间必填) */
+export interface TsdbHistoryQuery {
+  fromMs: number
+  toMs: number
+  /** 期望桶宽(≥100ms;1 分钟以上可命中 rollup) */
+  bucketMs: number
+  limit?: number
+  lineId?: string
+  productId?: string
+  recipeId?: string
+  runId?: string
+}
+
+export interface TsdbHistoryResult {
+  points: TsdbPoint[]
+  /** raw = 精确样本;minute/hour = 聚合历史;mixed = 边界两侧拼接 */
+  resolution: 'raw' | 'minute' | 'hour' | 'mixed'
+  /** 实际可查范围与说明(超出保留期必须显式说明,不得静默返回空) */
+  coverage: {
+    requestedFromMs: number
+    requestedToMs: number
+    /** 实际最早可查时刻(null = 无数据/未知) */
+    availableFromMs: number | null
+    /** 原始样本可用下界(该时刻之前只有聚合) */
+    rawFromMs: number
+    truncated: boolean
+    note: string
+  }
+}
+
+export interface TsdbRollupResult {
+  at: string
+  lines: number
+  minuteRows: number
+  hourRows: number
+  /** 因单次预算/窗口未闭合而留待下轮的水位说明 */
+  notes: string[]
+}
+
+export interface TsdbRetentionPatch {
+  rawRetentionH?: number | null
+  minuteRetentionH?: number | null
+  hourRetentionH?: number | null
+}
+
+/** 轻量保留期信息(Agent 工具输出用,不做任何统计扫描) */
+export interface TsdbRetentionInfo {
+  rawRetentionH: number
+  rollupEnabled: boolean
+  rollupResolutions: number[]
+}
+
 export interface TsdbPort {
   /** 后端标识(sqlite-emulated | timescale)——REST meta 直报前端 */
   readonly backend: string
+  /** 布局形态(single | per-line;缺省 single) */
+  readonly layout?: TsdbLayoutKind
+  /** 单批建议行数(生产者攒批上限;缺省由调用方决定) */
+  readonly writeBatchHint?: number
   init(): Promise<void>
   writeSamples(rows: DaqSampleRow[]): Promise<void>
   query(nodeId: string, opts: DaqQueryOpts): Promise<TsdbPoint[]>
@@ -108,6 +212,22 @@ export interface TsdbPort {
   // ===== 多形态帧(v2:向量/图像;像素 blob 在对象存储,这里只存元数据+派生指标)=====
   writeFrames(rows: DaqFrameRow[]): Promise<void>
   queryFrames(nodeId: string, opts: DaqFrameQueryOpts): Promise<DaqFrameRecord[]>
+  // ===== 按产线分表后的运维面(可选实现:后端不支持时调用方降级)=====
+  /** 布局/保留期/rollup 水位 */
+  layoutInfo?(): Promise<TsdbLayoutInfo>
+  /** 轻量保留期信息(不扫表) */
+  retentionInfo?(): TsdbRetentionInfo
+  /**
+   * 历史查询:窗口早于原始保留期时自动改走聚合表。
+   * 未实现的后端由调用方退化为 query()/queryTagged()。
+   */
+  queryHistory?(nodeId: string, q: TsdbHistoryQuery): Promise<TsdbHistoryResult>
+  /** 增量聚合(幂等:仅处理已闭合窗口;返回本轮处理量) */
+  runRollup?(): Promise<TsdbRollupResult>
+  /** 逐产线保留期覆写(null = 回到全局缺省) */
+  setLineRetention?(lineId: string, patch: TsdbRetentionPatch): Promise<void>
+  /** 立即执行一轮保留期清理(运维/测试;定时器本身仍按 30min 跑) */
+  sweepNow?(): Promise<void>
   /** 释放底层连接池/句柄(rebuild 换池时由工厂调用;可选) */
   close?(): Promise<void> | void
 }

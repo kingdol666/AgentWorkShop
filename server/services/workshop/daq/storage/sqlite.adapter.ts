@@ -246,7 +246,11 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
     return out
   }
 
-  /** 逐节点 raw 分页(新增;C7):稳定 ASC、游标严格大于、每页限额、无漏无重。 */
+  /**
+   * 逐节点 raw 分页(新增;C7):稳定 ASC、游标严格大于、每页限额、无漏无重。
+   * 2026-10-29:支持批次标签等值过滤(参数 NULL 即不过滤该列;提供值即等值,
+   * 天然排除未打标 NULL 行)——与 timescale.adapter 同契约(全静态参数化 SQL)。
+   */
   async queryTaggedPage(nodeId: string, q: import('./tsdb-port').TsdbPageQuery = {}): Promise<import('./tsdb-port').TsdbPage> {
     if (!this.db) await this.init()
     const db = this.db as DatabaseSync
@@ -254,17 +258,26 @@ export class SqliteTimeSeriesAdapter implements TsdbPort {
     const from = Math.max(q.fromMs ?? 0, (q.afterTs ?? -1) + 1)
     const to = q.toMs ?? Date.now()
     const withState = q.withState !== false
+    const tagOf = (v: string | undefined): string | null => (v != null && String(v).trim() !== '' ? String(v) : null)
     const rows = (withState
       ? db.prepare(`
           SELECT ts_ms, value, state, ingested_at FROM daq_samples
           WHERE node_id = ? AND ts_ms >= ? AND ts_ms <= ?
+            AND (? IS NULL OR line_id = ?)
+            AND (? IS NULL OR product_id = ?)
+            AND (? IS NULL OR recipe_id = ?)
+            AND (? IS NULL OR run_id = ?)
           ORDER BY ts_ms ASC LIMIT ?
-        `).all(nodeId, from, to, limit)
+        `).all(nodeId, from, to, tagOf(q.lineId), tagOf(q.lineId), tagOf(q.productId), tagOf(q.productId), tagOf(q.recipeId), tagOf(q.recipeId), tagOf(q.runId), tagOf(q.runId), limit)
       : db.prepare(`
           SELECT ts_ms, value FROM daq_samples
           WHERE node_id = ? AND ts_ms >= ? AND ts_ms <= ?
+            AND (? IS NULL OR line_id = ?)
+            AND (? IS NULL OR product_id = ?)
+            AND (? IS NULL OR recipe_id = ?)
+            AND (? IS NULL OR run_id = ?)
           ORDER BY ts_ms ASC LIMIT ?
-        `).all(nodeId, from, to, limit)) as Array<{ ts_ms: number, value: number, state?: string, ingested_at?: number | null }>
+        `).all(nodeId, from, to, tagOf(q.lineId), tagOf(q.lineId), tagOf(q.productId), tagOf(q.productId), tagOf(q.recipeId), tagOf(q.recipeId), tagOf(q.runId), tagOf(q.runId), limit)) as Array<{ ts_ms: number, value: number, state?: string, ingested_at?: number | null }>
     const points = rows.map(r => ({
       at: Number(r.ts_ms),
       value: Number(r.value),

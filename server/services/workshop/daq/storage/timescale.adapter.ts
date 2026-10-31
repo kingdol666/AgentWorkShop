@@ -29,7 +29,16 @@ export class TimescaleAdapter implements TsdbPort {
 
   async init(): Promise<void> {
     const mod = requirePg('pg') as typeof import('pg')
-    this.pool = new mod.Pool({ connectionString: this.url, max: 4 })
+    // 连接池/语句超时来自 daq.timescale.*(生产调优;异常查询不得长期占用连接)
+    const s = daqRuntimeSettings()
+    const timeoutMs = Math.max(1000, Math.min(300_000, Number(s.timescale.statementTimeoutMs)))
+    // pg 运行期支持 statement_timeout(连接参数),但 @types/pg 未声明 → 收窄后传入
+    const poolConfig = {
+      connectionString: this.url,
+      max: Math.max(1, Math.min(32, Number(s.timescale.poolMax))),
+      statement_timeout: timeoutMs,
+    } as unknown as import('pg').PoolConfig
+    this.pool = new mod.Pool(poolConfig)
     await this.pool.query(`
       CREATE TABLE IF NOT EXISTS daq_samples (
         node_id text        NOT NULL,
@@ -102,12 +111,13 @@ export class TimescaleAdapter implements TsdbPort {
   }
 
   private async sweepRetention(): Promise<void> {
-    if (!this.pool) return
+    // 2026-10-30 修复:门控此前错挂在样本保留期(retentionH)上;本函数只清帧,
+    // 应按帧保留期判定(0 = 永久保留帧,不清理)。
+    if (!this.pool || this.frameRetentionH <= 0) return
+    // 样本保留期由 TimescaleRollupStore 统一执行:它感知逐产线覆写(含"保留更久"的线),
+    // 而全局 drop_chunks 会按全局保留期整块丢弃,误删长保留产线的数据。
+    // 这里只保留帧元数据的全局清理(帧保留期不支持逐线覆写)。
     try {
-      await this.pool.query(
-        `SELECT drop_chunks('daq_samples', older_than => now() - ($1 || ' hours')::interval)`,
-        [this.retentionH],
-      )
       await this.pool.query(
         `SELECT drop_chunks('daq_frames', older_than => now() - ($1 || ' hours')::interval)`,
         [this.frameRetentionH],
@@ -146,12 +156,14 @@ export class TimescaleAdapter implements TsdbPort {
        ON CONFLICT (node_id, ts) DO NOTHING
        RETURNING node_id, ts`,
       [col.node, col.ts, col.value, col.state, col.line, col.product, col.recipe, col.run, col.ingested],
-    ) as { rows: Array<{ node_id: string, ts: string }> }
+    ) as { rows: Array<{ node_id: string, ts: string | Date }> }
     // 首写胜出:被忽略的键里,值/状态不同则计数(可观测,不静默更正)
-    const insertedKeys = new Set(inserted.rows.map(r => `${r.node_id}\u0000${r.ts}`))
+    // 2026-10-30 修复:pg 对 timestamptz RETURNING 回传 Date 对象(类型标注不改变运行时),
+    // 旧实现用 toISOString() 拼 key 恒不匹配 → 冲突快路径失效,每行多打一次 SELECT
+    // (写入热路径 N+1)。统一用 epoch ms 做 key,两侧行同源。
+    const insertedKeys = new Set(inserted.rows.map(r => `${r.node_id}\u0000${tsToMs(r.ts)}`))
     for (const r of rows) {
-      const key = `${r.nodeId}\u0000${new Date(r.tsMs).toISOString()}`
-      if (insertedKeys.has(key)) continue
+      if (insertedKeys.has(`${r.nodeId}\u0000${r.tsMs}`)) continue
       const prev = await this.pool.query('SELECT value, state FROM daq_samples WHERE node_id = $1 AND ts = $2', [r.nodeId, new Date(r.tsMs).toISOString()]) as { rows: Array<{ value: number, state: string }> }
       const row = prev.rows[0]
       if (row && (Math.abs(Number(row.value) - Number(r.value)) > 1e-9 || String(row.state) !== String(r.state))) this.correctionDropped++
@@ -252,6 +264,10 @@ export class TimescaleAdapter implements TsdbPort {
    * 训练/导出在 Timescale 上退化为 query() 截断)。
    * 语义与 sqlite.adapter 完全一致:稳定 ASC、游标严格大于 afterTs、每页限额、
    * done=false 时 nextCursor = 本页最后 at。
+   * 2026-10-29:支持批次标签等值过滤(line/product/recipe/run;SQL 全静态参数化,
+   * 参数为 NULL 即不过滤该列;提供值即等值过滤,天然排除未打标 NULL 行)——
+   * 此前训练分页不过滤标签,在 Timescale 上会把窗口内全部样本当目标批次,
+   * 产品隔离退化为时间窗推断(串味隐患)。
    */
   async queryTaggedPage(nodeId: string, q: import('./tsdb-port').TsdbPageQuery = {}): Promise<import('./tsdb-port').TsdbPage> {
     if (!this.pool) return { nodeId, points: [], nextCursor: null, done: true }
@@ -259,14 +275,31 @@ export class TimescaleAdapter implements TsdbPort {
     const from = Math.max(q.fromMs ?? 0, (q.afterTs ?? -1) + 1)
     const to = q.toMs ?? Date.now()
     const withState = q.withState !== false
-    const args = [nodeId, new Date(from).toISOString(), new Date(to).toISOString(), limit]
+    const tagOf = (v: string | undefined): string | null => (v != null && String(v).trim() !== '' ? String(v) : null)
+    const args: unknown[] = [
+      nodeId, new Date(from).toISOString(), new Date(to).toISOString(),
+      tagOf(q.lineId), tagOf(q.productId), tagOf(q.recipeId), tagOf(q.runId), limit,
+    ]
+    // 静态 SQL:占位符 $4..$7 为 NULL 时该列不过滤,提供值时等值过滤(NULL 行不匹配)
     const rows = withState
       ? (await this.pool.query(
-          'SELECT ts, value, state, ingested_at FROM daq_samples WHERE node_id = $1 AND ts >= $2 AND ts <= $3 ORDER BY ts ASC LIMIT $4',
+          `SELECT ts, value, state, ingested_at FROM daq_samples
+           WHERE node_id = $1 AND ts >= $2 AND ts <= $3
+             AND ($4::text IS NULL OR line_id = $4)
+             AND ($5::text IS NULL OR product_id = $5)
+             AND ($6::text IS NULL OR recipe_id = $6)
+             AND ($7::text IS NULL OR run_id = $7)
+           ORDER BY ts ASC LIMIT $8`,
           args,
         )).rows
       : (await this.pool.query(
-          'SELECT ts, value FROM daq_samples WHERE node_id = $1 AND ts >= $2 AND ts <= $3 ORDER BY ts ASC LIMIT $4',
+          `SELECT ts, value FROM daq_samples
+           WHERE node_id = $1 AND ts >= $2 AND ts <= $3
+             AND ($4::text IS NULL OR line_id = $4)
+             AND ($5::text IS NULL OR product_id = $5)
+             AND ($6::text IS NULL OR recipe_id = $6)
+             AND ($7::text IS NULL OR run_id = $7)
+           ORDER BY ts ASC LIMIT $8`,
           args,
         )).rows
     const points = (rows as Array<{ ts: string, value: number, state?: string | null, ingested_at?: string | number | null }>).map(r => ({
