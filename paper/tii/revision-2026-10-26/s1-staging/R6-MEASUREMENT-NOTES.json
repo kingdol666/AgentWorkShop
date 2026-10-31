@@ -1,0 +1,19 @@
+{
+  "source": "R6/summary.json",
+  "plotted_observation_pointer": "/final",
+  "plotted_values": {
+    "weight_g": 32.3,
+    "flash_percent": 0.019,
+    "sink_percent": 1.277
+  },
+  "plotted_sensor_timestamp_ms": 1792327040027,
+  "later_update_reason_pointer": "/update",
+  "update_reason_text_values": {
+    "weight_g": 32.34,
+    "flash_percent": 0.012,
+    "sink_percent": 1.276
+  },
+  "update_reason_linked_measurement_id": null,
+  "update_reason_per_sensor_timestamps": null,
+  "interpretation": "The later recipe-update reason contains different text values. No linked raw measurement is archived for that rationale; it is not assigned a new sample or substituted for /final in the paper/plots. Both original fields are retained."
+}

@@ -1,0 +1,39 @@
+{
+  "lineId": "ln-10104780",
+  "productId": "pd-a619595c",
+  "recipeId": "rc-fb573457",
+  "runIds": [
+    "rr-50b17b58",
+    "rr-7cdee430",
+    "rr-08eb45f8",
+    "rr-65efe570",
+    "rr-751a5286",
+    "rr-afbb5fbb"
+  ],
+  "nodes": [
+    {
+      "nodeId": "dn-56ba979f",
+      "role": "control"
+    },
+    {
+      "nodeId": "dn-bb487073",
+      "role": "target"
+    }
+  ],
+  "beatMs": 1000,
+  "window": {
+    "historySteps": 8,
+    "horizonSteps": 4
+  },
+  "cleaning": {
+    "hampelK": 0,
+    "maxInterpMs": 1000
+  },
+  "split": {
+    "valRatio": 0.4,
+    "testRatio": 0.4,
+    "seed": 42
+  },
+  "purpose": "mpc_surrogate",
+  "note": ""
+}

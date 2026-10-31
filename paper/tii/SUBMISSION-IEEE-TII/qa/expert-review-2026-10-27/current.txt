@@ -1,0 +1,723 @@
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT                                                                              1
+
+
+
+
+          AgentWorkShop: A Modular Task-to-Device
+          Integration Framework for Industrial Agents
+
+   Abstract—Industrial agents must connect tasks to scene-            and direct operation calls converge on named handlers. This
+specific process signals and equipment interfaces while preserving    is an implementation property. A separate matched-operation
+evidence from operation requests to process responses. This paper     check exercises both entry paths in cast-film and annealing
+presents AgentWorkShop, a modular task-to-device framework.
+It combines task and harness adapters, production context,            simulators, while the four-scene process evaluation remains
+named operations, semantic input and output, runtime checks,          a distinct experiment. The route check is limited to one fixed
+configured drivers, and service-owned records. Registered tasks       candidate and one later sample per route and scene; it does not
+and direct operation calls converge on shared dispatch while          establish behavioral equivalence or comparative performance.
+retaining route-specific records. We evaluate one deterministic       The literature comparison therefore describes this mechanism
+task trajectory in each of four configured simulator scenes: injec-
+tion molding, biaxially oriented polyethylene terephthalate film,     as implemented here without claiming priority over prior
+continuous annealing, and wastewater treatment. Separately, a         platforms.
+matched-operation integration check exercises both entry paths           The empirical question is narrower: can configured task
+in distinct cast-film and annealing simulator configurations.         workflows execute bounded operations and retain process
+Results show that all 4 process missions ended with an in-band
+                                                                      observations and mission judgments in simulator scenes with
+structured process-variable reading. Both entry paths returned
+readback-verified command results in the separate check, but all      different signals and target rules? We examine one determin-
+4 delayed samples remained below target; this result concerns         istic control trajectory in each of four preconfigured scenes:
+integration and traceability, not process performance. However,       injection molding, biaxially oriented polyethylene tereph-
+annealing quality evidence and terminal wastewater measure-           thalate (BOPET) film, continuous annealing, and anaero-
+ments are incomplete or discordant with mission summaries,
+                                                                      bic/anoxic/oxic (A2O) wastewater treatment. These runs assess
+preventing independent verification of those outcomes. These
+traces characterize configured task-to-device execution across        configured execution, not automatic onboarding, repeatability,
+distinct simulated process settings, without establishing route       or transfer to unseen plants. Fig. 1 summarizes the design path:
+equivalence, repeatability, automatic onboarding, general porta-      a task goal and active context inform an operation proposal;
+bility, or physical-plant performance. The framework provides         shared checks, route guards, configured approval, and a pre-
+a concrete design pattern for organizing scene-specific execution
+                                                                      dispatch context recheck govern writes through the device
+and its evidence trail; its operational benefit remains unmeasured.
+                                                                      write-control (DCW) subsystem. A command receipt remains
+                                                                      distinct from later process observations.
+  Index Terms—Industrial agents, industrial communication,
+industrial informatics, production systems, semantic data inte-
+                                                                         AgentWorkShop implements this path as a modular task-to-
+gration.                                                              device framework. Registered harnesses connect collaborative
+                                                                      tasks to production context, MES data, analysis and modeling
+                                                                      services, DAQ and DCW nodes, and protocol-specific drivers.
+                       I. I NTRODUCTION
+
+I  NDUSTRIAL-AGENT deployments must connect each
+   task to its production context, process signals, and equip-
+ment interfaces. Prior work studies end-to-end automa-
+                                                                          Goal + production context
+                                                                          active line · product · recipe · run
+
+tion, control-sequence generation, modular factory skills, and            Agent control
+robotic-line control [1]–[4], as well as programmable logic               reads DAQ/MES; proposes a named operation
+controller (PLC) code generation, context-aware control, re-
+source discovery, shop-floor coordination, digital-twin fault             Shared operation dispatcher
+                                                                          scope + channel policy; applicable grant/binding checks
+handling, and natural-language machine access [5]–[10]. Re-
+cent systems add Asset Administration Shell (AAS)-grounded                Write guards + approval
+OPC Unified Architecture (OPC UA) actions with signed ap-                 process limits; approval as required; context rechecked
+proval, process and instrumentation diagram (P&ID)-grounded
+proposal checks, or governed sensor–manufacturing execu-                  DCW → driver → PLC / simulator
+                                                                          command receipt and later PV observation remain distinct
+tion system (MES)–enterprise resource planning (ERP) evi-
+dence streams [11]–[13]. Across production lines, agent roles,
+signal maps, protocols, objectives, and product/run context
+vary. This paper addresses a software-integration question at         Fig. 1. Agent-control path for a configured industrial task. The agent uses
+that boundary: how can a task-to-device framework compose             data-acquisition (DAQ) and MES context, passes shared operation checks,
+                                                                      and routes writes through process guards, conditional approval, and a pre-
+scene-specific mappings with shared operation handling while          dispatch context recheck. DCW and configured drivers provide device access;
+preserving evidence from invocation to process response?              command receipts and later process observations remain separate. The frame-
+AgentWorkShop implements this architecture. Registered tasks          work does not prescribe an optimization policy.
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT                                                                 2
+
+
+
+Command-line, web, software development kit (SDK), Rep-            Agents4PLC and InstructMPC address PLC code generation
+resentational State Transfer (REST), Model Context Protocol        and human–LLM context-aware control, respectively [5], [6].
+(MCP), and Agent-to-Agent (A2A) interfaces serve different         Manufacturing studies consider dynamic resource-capability
+callers. Task and chat requests enter the collaboration runtime;   exploration [7], multi-agent shop-floor coordination [8], and
+direct REST calls reach the shared dispatcher without creating     digital-twin-supported fault handling [9]. Natural-language
+a task. Scene blueprints define signal maps, objectives, and       machine access [10] and real-time LLM control of a robot-
+guards, while channel profiles, tool policies, and agent bind-     operated serial line [4] extend this work to operator inter-
+ings scope operations. The framework supplies this execution       faces and robotic-line control. Together, these studies address
+path without selecting routes autonomously or prescribing an       different operational contexts, interfaces, and allocations of
+optimization strategy. Fig. 2 shows the architecture, and Fig. 3   responsibility between agents, operators, and controllers.
+traces a task through it.                                             The closest architecture-level comparison is Xia et al.,
+   This paper makes two contributions. First, it presents a        who connect cognitive, digital-twin, and physical-automation
+modular execution architecture combining scene configuration,      layers and organize twin information as state snapshots, event
+harness adapters, named operations, shared checks, config-         messages, and plan sequences [15]. Other nearby designs
+ured drivers, and service-owned records. For approved recipe       expose factory-module operations through MCP with state-
+actions, approval is bound to the active line–product–recipe–      based tool filtering, constrain manufacturing plans, or compose
+run tuple and rechecked before software dispatch; this check       semantic recipes from OPC UA skills [3], [16], [17]. Several
+is not an atomic lock across device I/O. Second, it reports        recent systems also combine agent execution with approval,
+configured task-to-device execution in four simulator scenes       industrial data, or audit records. Graul et al. ground proposals
+through ordered operation requests, process observations,          in the Asset Administration Shell (AAS) and route approved
+scenario-specific target bands, and mission-level judgments,       actions through OPC UA Methods, with signed approvals and
+together with a separate two-scene, matched-operation inte-        audit logging [11]. Schall separates advisory language-model
+gration check of task and direct REST entry. The process           agents from process and instrumentation diagram (P&ID)-
+trajectories and route check are analyzed separately; neither      grounded verification and execution, and evaluates structural
+establishes physical-plant performance, route equivalence, or      checks across five simulated process scenarios [12]; its context
+operational benefit.                                               includes supervisory control and data acquisition (SCADA)
+   Section II reviews related work. Section III presents the       and standard operating procedure (SOP) information. Lin and
+design rationale, architecture, and execution flow; Section IV     Chen build a governed sensor–MES–ERP digital thread for
+describes module functions and integration. Section V reports      closed-loop monitoring and control on real manufacturing
+the experimental protocol and results, Section VI discusses        records [13]. These works address asset-specific approval, pro-
+evidence limits, and Section VII concludes the paper.              cess validation, or closed-loop analytics. The complementary
+                                                                   design question is how a modular task-to-device framework
+                     II. R ELATED W ORK                            can place registered-task and direct-operation entries behind
+   This section relates AgentWorkShop to plant-facing in-          shared named handlers while retaining route-specific records;
+dustrial agents and to production abstractions for context,        the approved recipe path also rechecks the line–product–
+tool access, and operational constraints. Table I is a focused     recipe–run tuple before software dispatch. This paper’s pro-
+functional comparison, not an exhaustive survey. It includes       cess evaluation covers four configured simulator missions. A
+studies discussed below that report plant-facing actions, man-     separate, bounded check exercises task and direct REST entry
+ufacturing task execution, or production-context and operation-    with matched fixed operations in two simulator scenes; it does
+evidence mechanisms. The table compares two aspects of             not establish route equivalence. The study does not report
+the integration contract: whether task and direct-operation        onboarding or context-guard experiments. Table I positions
+entries share a named handler, and how operational evidence is     the implementation mechanisms and evaluation scope without
+associated. Entries describe reported features; “not reported”     implying comparative performance.
+does not imply absence, and evaluation descriptions retain            The operation checks complement safety-aware decision
+each source’s metrics.                                             support [18] but do not replace independent process protection.
+
+A. Industrial Agents and Plant Integration                         B. Production Context, Agent Interfaces, and Automation
+   Industrial-agent systems, including large language model           Industrial integration also depends on abstractions that
+(LLM)-based systems, span end-to-end automation control,           are not specific to agent architectures. The Model Context
+supervisory services, programmable logic controller (PLC)          Protocol (MCP) specifies interoperable tool discovery and
+interfaces, manufacturing coordination, and operator-facing        call mechanisms [19]; the operation-level scope, policy, grant,
+machine access. Xia et al. present an LLM agent framework          and binding checks discussed here are AgentWorkShop’s own
+for end-to-end industrial automation control, using structured     dispatcher rules, distinct from MCP transport authorization. In
+prompts and event-driven context for production planning and       parallel, ISA-88 and ISA-95 describe recipes and production
+operation [1]. Huang et al. present a multimodal architecture      operations [20], [21]. Run-to-run methods connect process
+whose stated focus is automated control generation for indus-      observations to successive production runs [22]. Human–
+trial cyber-physical systems [2]. Biskupovic et al. study agent-   automation research also formalizes the allocation of infor-
+based supervision for service-oriented industrial systems [14];    mation acquisition, analysis, decisions, and actions between
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT                                                                        3
+
+
+
+                                                             TABLE I
+R EPORTED SHARED - ENTRY HANDLING AND EVIDENCE STRUCTURE IN SELECTED PLANT- FACING STUDIES . S HARED HANDLING MEANS THAT TASK AND
+   DIRECT- OPERATION ENTRIES RESOLVE TO THE SAME NAMED HANDLER ; “ NOT REPORTED ” IS NOT A CLAIM THAT A SYSTEM LACKS THE FEATURE .
+                                      E VALUATIONS RETAIN SOURCE - SPECIFIC SCOPE AND CRITERIA .
+
+System       Shared handler for   Reported operation and evidence          Reported evaluation
+             task and direct      structure
+             entries
+Xia et al.   Not reported         Cognitive, twin, and physical layers;    Robotic automation and process-simulation cases
+[15]                              twin snapshots, event messages, and
+                                  plan sequences
+Köhle et    Not reported         Injected live state and state-based      Nine simulated production challenges
+al. [3]                           filtering; MCP-to-OPC UA operations
+                                  and MQTT coordination
+Vieira da    Not reported         Constrained multi-step plans over        Laboratory multi-step process
+Silva et al.                      MCP manufacturing functions
+[16]
+Köhle et    Not reported         Semantic recipes composed from OPC       Unity assembly-workstation proof of concept
+al. [17]                          UA skills; virtual commissioning
+Graul et     Not reported         AAS-grounded proposals, signed           Two laboratory PoCs; single scripted runs
+al. [11]                          human approval, PLC-validated OPC
+                                  UA Methods, and immutable audit log
+Schall [12] Not reported          P&ID-, SCADA-, and SOP-grounded          Five simulated scenarios; 43 proposals and 50 LLM runs
+                                  proposal verification with gated
+                                  execution
+Lin and      Not reported         Governed sensor–MES–ERP digital          25,275 real records; operational metrics
+Chen [13]                         thread with SOP-, risk-, and
+                                  capability-aware action gating
+This work    Implemented;         Shared named dispatcher and              Four deterministic process missions; separate matched-operation
+             equivalence not      route-specific record ownership are      task/direct REST check in two scenes; no route-equivalence,
+             established          implementation properties                onboarding, or guard-ablation result
+
+people and automation [23]. At the agent level, AgentSpec               shape the design. Scene variability is represented by blueprints
+and CaMeL address tool behavior and capability-based infor-             and semantic driver mappings; harness variability by registered
+mation flow [24], [25]. Together, these standards and agent-            adapters; operation authority by shared dispatch checks and
+level mechanisms provide abstractions for production con-               route-specific guards and admission; outcome observability
+text, tool interaction, and information flow. They motivate             by service-owned task, receipt, and observation records; and
+a focused design question: how can a modular task runtime               extensibility by registered interfaces for agent engines and
+and direct-operation interface converge on one named handler            device drivers. Tool discovery does not grant write authority,
+while preserving route-specific evidence under scene-specific           and actuator writes converge on the shared DCW admission
+signal and protocol mappings? AgentWorkShop implements                  point.
+this composition, and Section V reports process-execution                  These mechanisms define an intended reuse boundary,
+trajectories from four configured simulator scenes plus a sep-          not automatic portability. A new scene supplies a validated
+arate two-scene matched-operation check of task and direct-             blueprint, policies, and driver mapping, while a new engine
+operation entry. The latter exercises the two paths but does not        or protocol requires its configured adapter. The four simulator
+test their behavioral equivalence. Onboarding, context-guard            missions in Section V exercise configured scene workflows
+ablation, comparative platform performance, and general plant           and retain process observations. A separate two-scene check
+portability remain outside the evaluation.                              exercises task and direct REST entry with matched fixed
+                                                                        operations, but its single later sample per route does not estab-
+                    III. S YSTEM D ESIGN                                lish route equivalence. Neither experiment isolates dispatcher
+   AgentWorkShop is designed for industrial tasks whose                 checks, measures onboarding, substitutes harnesses, or tests
+agents, production contexts, interfaces, and process signals            driver extensibility. Those remain architecture-level claims in
+vary between deployments. Its architecture organizes these              this study. Agent strategy and independent process protection
+variations around shared task and operation services, checks            remain outside the evaluation.
+each proposed operation against the active production context              At setup, the integrator binds a blueprint to the active
+before device routing, and retains route-specific evidence that         production tuple (line, product, recipe, and run), maps seman-
+distinguishes a command receipt from a measured process                 tic process and control nodes to drivers, and declares target
+response.                                                               bands and route guards. At runtime, the dispatcher checks
+                                                                        current authority before handing an accepted request to its
+A. Design Rationale and Requirements                                    route handler. The handler returns a command receipt, and
+  Five requirements—scene variability, harness variability,             DAQ records later process observations separately. The shared
+operation authority, outcome observability, and extensibility—          element is the execution contract; process semantics remain
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT                                                                                       4
+
+
+
+
+                                    Production context + scene blueprint
+                                                                                                                       Service-owned evidence
+                          line / product / recipe / run · signals · objectives · guards
+                                                                                                                         separate record types
+
+                   Task / chat route                                  Direct operation route                                Task: task / approval
+           CLI · web · SDK · A2A · MCP tasks                    REST · selected stdio MCP operations
+                                                                                                                            DCW: ACK / readback
+                                         Shared per-call dispatcher
+                                                                                                                            DAQ: observations
+                                     S/P always · G/B only when declared
+                                                                                                                            Analysis: summaries
+               Read / analysis services                                   Write / recipe services
+             DAQ · MES · retrieval · models                           live context · approval · DCW                         Recipe: versions
+
+
+                                                                    Configured protocol drivers                       Joined by actor / context IDs
+           Semantic DAQ / DCW nodes
+          typed sensing · bounded writes                           e.g., OPC UA · MQTT · Modbus
+                                                                           plant / simulator                                  when available
+
+                                                                                                                         Command and process
+               Independent PLC / safety-instrumented system (SIS) protection is external                                   remain separate
+
+
+Fig. 2. Architecture and record ownership. Task/chat routes enter the collaboration runtime; direct REST and stdio-MCP calls enter shared dispatch checks
+without creating a task. One dashed link marks configuration. Write routes add approval and interval admission; recipe dispatch omits the previous-recipe
+window. The shared dispatcher always checks scope and channel policy, with grant and resource-binding checks applied when required by the operation.
+Owning services retain distinct records. Section V reports four configured simulator missions and a separate two-scene matched-operation entry-path check;
+the latter does not establish route equivalence. Independent PLC and safety-instrumented protection is external.
+
+deployment-specific and require validation.                                   and both use shared operation checks. A harness adapter
+                                                                              supplies agent-specific interaction, semantic nodes hide pro-
+B. Layered Architecture                                                       tocol details, and the driver registry provides the device-
+   Fig. 2 summarizes the access routes, shared dispatch path,                 facing extension point. Owning services retain task, command,
+production services, semantic I/O, configured drivers, and                    observation, and version records separately and link them to
+service ownership of records. Task and chat routes enter                      actor and production context; no single status conflates these
+the collaboration band, which contains workspaces, channels,                  outcomes.
+task queues, shared memory, mailboxes, task templates, and
+harness adapters. A task route is an execution path through                   C. Cross-Module Execution Flow
+this runtime; a harness adapter connects an agent engine to
+its task execution interface. Direct REST tool calls and the                     Fig. 3 summarizes a task turn from entry through operation
+stdio MCP operation bridge bypass task execution in that                      execution, with route-specific evidence retained by owning
+band (the upper-right direct-operation entry in Fig. 2) and                   services. Registered harness adapters receive a scoped tool
+enter the shared governance block without creating a task or                  catalog during setup and supported registry refreshes; the
+starting a harness turn; MCP management and task methods                      runtime assembles prompt-time production context for each
+remain on their service routes. Direct calls resolve current                  agent turn. This context is grounding information, not a task-
+route state at invocation, without an agent-turn prompt or                    pinned transaction. For each returned tool call, the shared
+a task record. The governance block projects the operation                    dispatcher rechecks invocation scope and channel policy and,
+catalog and applies the per-call checks; write routes add the                 for industrial operations, current grant and binding conditions
+approval card and the admission interval. The context block                   before handler selection. The selected handler then applies
+supplies the active line–product–recipe–run tuple to the gate                 route-specific guards, active-run checks, approval revalidation,
+and scene maps, objectives, and guards to the handlers. The                   and device-I/O steps as applicable. Command receipts and
+dashed link from that block in Fig. 2 marks this configuration                later process observations remain distinct records.
+relationship; the runtime assembles prompt-time context from                     For an industrial operation u by agent a in channel c, define
+the same records. The service band, behind a route-handler                    the shared dispatch condition as
+interface that selects an adapter, provides acquisition, write                                                ^
+                                                                                              A(a, c, u) =          X(a, c, u),            (1)
+control, analysis, retrieval, and optional model services. Field
+                                                                                                                 X∈C(u)
+I/O resolves semantic nodes to built-in or plugin drivers for a
+plant or simulator.                                                           where S, P , G, and B denote invocation scope, current
+   Each band has a distinct responsibility: task/chat routes                  channel policy, runtime grant, and the agent’s binding to
+enter the task runtime, direct operations enter the dispatcher,               referenced resources, respectively. C(u) ⊆ {S, P, G, B} is
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT                                                                                             5
+
+
+
+
+              Task / chat entry                         Turn context / tool catalog                          Harness + agent turn
+       channel task · chat message                 context/turn · catalog setup/refresh              registered adapter · named request
+
+
+                                                               Per-call dispatch gate
+                                                        S/P always · G/B only when declared
+
+
+                                                                          Route?
+
+
+                        Read / analysis route                                                         Write / recipe route
+              DAQ · MES · retrieval · model services                                         approval context recheck · DCW driver
+
+
+
+                                                       Tool result → harness continuation
+                                                           host text · optional error flag
+
+
+
+
+Fig. 3. Registered-harness task flow. The runtime invokes the adapter with a scoped catalog. Scope and channel policy are checked for every call; grant
+applies to non-exempt industrial operations, and binding applies when resource references are declared (figure label: S/P always, G/B only when declared).
+Failed checks return tool errors. The read path retrieves data. The write path applies route guards, approval and context revalidation, DCW admission, and
+receipt grading; a later process observation is separate. Results return to the harness. Checks occur at the software boundary and reserve no equipment state.
+
+the set of predicates declared for operation u; it always                       Require: task q, channel c, bound agent a, registered scoped
+contains S and P . The grant predicate G is omitted only for                        catalog T
+an explicitly grant-exempt industrial tool, and B is included                   Ensure: task result; any retained evidence remains with its
+when the operation declares resource references. A declared                         owning service
+no-reference operation omits B. Each included check must                         1: xt ← R ESOLVE P ROMPT C ONTEXT(c, q)
+pass before handler selection. The policy predicate includes                     2: m ← R ETRIEVE M EMORY(q)
+channel tool selection, profile, and duty-separation checks                      3: p ← A SSEMBLE P ROMPT(q, xt , m)
+where configured. This condition is necessary for handler                        4: h ← I NVOKE R EGISTERED H ARNESS (a, p, T )
+selection, not sufficient for actuation: the selected route applies              5: for all tool request u returned by h do
+its own guards and approval, then rechecks authority, context,                   6:     g ← C HECK S COPE A ND C HANNEL P OLICY(a, c, u)
+and applicable limits before dispatch.                                           7:     if not g then
+   For direct REST invocation, the REST service establishes                      8:         E MIT T OOL E RRORT O H ARNESS(h,u); continue
+a and c before applying these checks. An agent token must                        9:     end if
+match the requested agent identifier; otherwise, an authenti-                   10:     if u is an industrial operation then
+cated user must be the channel owner or an administrator. The                   11:         v ← C HECK A PPLICABLE G RANT B INDING(a, u)
+manager loads the channel-agent record to obtain the agent                      12:         if not v then
+identity, role, and channel, then rechecks invocation scope and                 13:             E MIT T OOL E RRORT O H ARNESS(h,u)
+channel tool policy. Industrial operations continue through the                 14:             continue
+declared shared grant and binding checks. Handlers resolve                      15:         end if
+live production state from request identifiers and owning                       16:     end if
+services, supplying the authorization and production context                    17:     k ← S ELECT H ANDLER(u)
+for direct dispatch.                                                            18:     r ← E XECUTE ROUTE H ANDLER(k, a, c, u) ▷ handler
+   Fig. 4 gives reference pseudocode for the registered-harness                     resolves live state and may persist route-specific records
+task path, not one literal orchestrator function. Direct REST                   19:     E MIT D ECLARED T OOL R ESULT T O H ARNESS(h,r)
+tool invocation bypasses the task runtime and harness but                       20: end for
+enters the same shared dispatcher. Route-specific timing, ap-                   21: return task state and tool results
+proval, and evidence rules are detailed in Section IV.                          Fig. 4. Reference pseudocode for the registered-harness task path. Direct
+                                                                                operation invocation is not shown. Evidence persistence is route-specific and
+                                                                                remains with the owning service; the shared tool result does not carry a generic
+         IV. M ODULE F UNCTIONS AND I NTEGRATION                                evidence envelope.
+
+   The design in Section III is realized through three cooper-
+ating functions: task and context assembly, shared operation                    dispatch, and controlled device access with route-specific
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT                                                                   6
+
+
+
+evidence. We follow one agent action through them.                  C. Approval, Execution, and Evidence
+                                                                       Routes add timing and approval checks appropriate to their
+A. Task, Harness, and Context                                       operation. Online node writes enforce a 60 s minimum spacing;
+                                                                    recipe trials use a per-line cadence (300 s by default), and
+   Task and chat entry points create or join a workspace            recipe intervals are anchored to approval. Manual approval
+channel. The task runtime manages membership, task state,           binds an actor and proposed operation to candidate values, ap-
+and shared execution context; a harness registry adapts each        plicable limits, expiry, and the active line–product–recipe–run
+supported agent engine to a common execution interface. At          tuple. After approval, the handler rechecks authority and com-
+each agent turn, the prompt builder assembles the task, active      pares the current tuple with the approved tuple before entering
+scene description, production context, channel profile, agent       DCW dispatch. The default approval wait expires after 180 s.
+binding, and retrieved memory. This keeps engine-specific           A changed recipe definition requires a new recipe_apply
+interaction behind the harness interface while preserving the       proposal. These checks reject stale requests at the software
+current line and operation context for the agent.                   dispatch boundary; they do not lock equipment state across
+   Direct REST and selected stdio-MCP operation calls reach         network or device I/O.
+the same dispatcher without a task or harness turn. REST               Fig. 5(a) illustrates the four-layer value interval in Eq. (2)
+authentication and identity resolution follow Section III-C;        using an illustrative rotational-speed configuration in revolu-
+each handler reads live route state at invocation. Handlers         tions per minute (rpm). Panel (b) shows a symbolic approval
+do not branch on the entry route: they receive the resolved         followed by authority and context rechecks; its values are
+actor, channel, and operation arguments, and the records they       illustrative, not experimental measurements.
+write are keyed by the identifiers that request supplies. For          A recipe_trial illustrates the operation sequence: the
+either entry path, prompt context and tool-catalog visibility       handler checks the bound recipe, active run, candidate param-
+describe available information and capabilities; neither grants     eters, and route timing; if required, it requests approval; after
+write authority.                                                    revalidation, it submits a bounded batch through the configured
+                                                                    driver and returns a per-parameter receipt. The caller obtains
+                                                                    later DAQ observations separately and may then update, apply,
+B. Shared Dispatch and Device Admission
+                                                                    or roll back a recipe. A trial neither saves nor applies a
+   The dispatcher is the shared operation boundary. It checks       recipe version. The driver registry maps semantic controls to
+invocation scope and current channel policy, then verifies the      configured protocol drivers, keeping protocol details out of
+agent binding, runtime grant, and ownership of referenced           agent operation arguments.
+resources before selecting a handler. In the notation of (1),          Receipts and observations answer different questions. A
+scope and policy apply to every call; grant is skipped only for     command result is graded as readback-verified, transport-
+a grant-exempt tool, and binding applies only when references       acknowledged, or unverified; a readback mismatch can trig-
+are declared. Handlers revalidate route-specific state at execu-    ger up to three reads at 2 s intervals. Recipe batches retain
+tion time; a previously displayed tool catalog does not preserve    per-parameter verification outcomes. DAQ stores subsequent
+authority after a policy or grant changes. Scene blueprints         timestamped process observations, while recipe versions, ap-
+define device and signal maps, objectives, and process guards.      provals, and task records remain service-owned records linked
+Capability profiles and tool policies narrow available opera-       where a route supplies the corresponding identifiers. A verified
+tions, while bindings constrain accessible nodes, controls, and     setpoint confirms the command path, not target attainment.
+recipes. Optional DAQ, MES, analysis, retrieval, optimization,      This distinction defines the evidence chain evaluated in Sec-
+and digital-twin services are invoked through registered han-       tion V.
+dlers; the framework does not prescribe a single optimization
+strategy.                                                                          V. E XPERIMENTAL E VALUATION
+   Actuator writes converge on the shared DCW admission                This evaluation asks whether a configured task-to-device
+point. For an online node write, the admissible value interval      workflow can execute scenario-specific control sequences,
+is                                                                  retain process-response evidence, and judge the stated target in
+            Inonline (t) = Hn ∩ Bn ∩ Pn (t) ∩ Rn (t),        (2)    heterogeneous industrial simulator scenes. The reported data
+                                                                    come from one integrated benchmark output containing four
+where Hn is the hard engineering range and Bn , Pn , and Rn         scenario-specific missions: injection molding, A2O wastew-
+are the baseline, active-product, and active-recipe limits; the     ater treatment, continuous annealing, and biaxially oriented
+subscripted limits here are distinct from the policy and binding    polyethylene terephthalate (BOPET) film. The BOPET mis-
+predicates of (1). Missing optional limits impose no restriction;   sion was provisioned in a separate sub-run and combined with
+an empty intersection rejects the request and identifies the        the other three mission logs in the same benchmark output.
+excluding layer. Recipe dispatch validates the replacement          Here, a scene denotes a configured process setting, and a
+recipe against the hard, baseline, and product limits rather than   mission denotes the single trajectory executed in that scene.
+the previous recipe window. Step, interval, and hold-window         The four trajectories are not repeated trials of a common
+checks also constrain each route. These software checks bound       objective. They comprise all four missions in this archived
+commands but do not replace independent programmable-               benchmark output and provide coverage of distinct configured
+logic-controller or safety-instrumented protection.                 settings, not a representative sample of industrial plants.
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT                                                                                        7
+
+
+
+
+ a   Source-aware admission                                                     b    Approval and recheck
+ I = H ∩ B ∩ P ∩ R = [146.22,153.78] rpm                                        Symbolic schematic; no measured values
+
+ H hard                                                                             Line / recipe binding + active run
+                     50                                       200 rpm
+                                                                                    Parameter                       Current           Proposed
+                      Detail scale: 140–160 rpm
+                                                                                    Control u                       u(now)            u(next)
+ B baseline
+ 143.7–156.3                                                                        Reason / hypothesis + execution context
+ P product
+ 146.22–153.78                                                                              Approve                           Decline
+ R recipe
+ 141–159                                                                        Approve → recheck grants, binding and context
+                                                                                Then admission → dispatch; failure → no dispatch
+                     140                     150                      160
+                                                                                Decline → no dispatch; decision is recorded
+
+Fig. 5. Admission and approval boundaries. (a) Illustrative rotational-speed configuration in revolutions per minute (rpm), not experimental data: online
+node interventions use the four-layer interval of Eq. (2), whereas recipe dispatch omits the previous recipe window. (b) Symbolic human approval binds
+a proposed action and its context tuple; execution rechecks the active line–product–recipe–run context, authority, and applicable limits. Approval does not
+reserve equipment state.
+
+A. Test Design and Procedure                                                   ation record marked that write as readback-verified (1/1); a
+                                                                               separate explicit device-read call then returned the candidate
+   Each scene used its own configured process-variable (PV)
+                                                                               setpoint. After command completion and readback, the runner
+target, control variables, signal map, and simulator preset. The
+                                                                               waited 20 s and issued one probe through the configured
+task execution shell used a mock lead/worker team and a
+                                                                               process-variable driver. For cast-film, this direct probe used
+deterministic, non-LLM control routine. It read the initial PV
+                                                                               the configured MQTT device driver; the runner then sub-
+through data-acquisition (DAQ) before any operation, issued
+                                                                               mitted the returned value to the local SQLite time-series
+bounded setpoint requests through the configured platform
+                                                                               store. Thus, MQTT describes the probe-to-device protocol,
+operation interface, waited for the simulator response, and
+                                                                               whereas SQLite replaced the application’s online MQTT-
+recorded the resulting PV and operation judgment. A candidate
+                                                                               queue/Timescale persistence path. The sample was queried by
+was retained or restored according to the scenario rule. Each
+                                                                               active-run identifier. This probe-and-store sequence provides
+mission is one ordered trace; its individual writes are se-
+                                                                               neither steady-state nor terminal-quality evidence. The evi-
+quential steps, not independent process trials. The experiment
+                                                                               dence records the invoked operation and route-specific records
+therefore tests request, response, and outcome recording for
+                                                                               but not an internal handler identifier; shared-handler conver-
+configured scenes. It does not test model-selected setpoints,
+                                                                               gence remains an implementation property, not a measurement
+onboarding, harness substitution, or context-guard behavior.
+                                                                               from this check. The four single-call checks are separate from
+   A separate matched-operation software-integration check
+                                                                               the process benchmark, are not process replications, and do
+exercised the same recipe_trial operation through a
+                                                                               not establish target attainment or route equivalence.
+registered-task route and direct REST in two simulator con-
+figurations. The operation and candidate were matched across                      The primary reported outcome for each mission was its
+entry paths within each configuration, but each route ran in                   scenario-specific mission judgment under the target and guard
+an independent simulator instance; initial process states were                 rules. We assessed trace-level target attainment from structured
+not paired. The cast-film check wrote a 125-rpm screw-speed                    PV observations and available secondary readings. The initial
+setpoint over OPC UA and sampled thickness over MQTT                           PV sample is a within-mission reference, not a competing
+against a 48–52 µm band. This configuration is distinct from                   controller or platform baseline. Fig. 6 plots the logged PV
+the BOPET process mission, whose thickness band is 24.3–                       sequence in native units and its target band. Event order,
+25.7 µm. The annealing check wrote a 735 ◦ C furnace setpoint                  rather than elapsed time, is used on the horizontal axis
+and sampled strip temperature over Modbus TCP against a                        because the mission traces lack consistent timestamps; the
+700–760 ◦ C band; the four-mission annealing task instead                      plots therefore do not establish response latency or settling
+evaluates hardness and line-speed throughput. These route-                     time. The table and figure use the same four mission logs and
+check measurements are not process-mission outcomes.                           retain their separate objectives. The wastewater analysis uses
+   For each invocation, the runner observed a pending approval                 the structured dissolved-oxygen (DO) target (3.4±0.6 mg/L),
+associated with the test recipe. An administrator created in the               which drives the recorded target-band check. The free-text
+isolated application home approved it through the protected                    description states 3.2±0.6 mg/L, and the source records do not
+approval endpoint before dispatch. The task entry used a                       resolve the intended value. No physical PLC or production line
+deterministic local harness fixture with a predeclared tool                    was tested.
+request and no LLM decision. This tests routing after synthetic                  The analysis separates three evidence types: the process-
+approval, not human review decisions or approval latency.                      variable trajectory, secondary constraint readings, and the
+   Each invocation contained one requested write. Its oper-                    mission’s terminal report. The plotted sequence includes only
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT                                                                                                                                           8
+
+
+
+                                                                TABLE II
+   S CENARIO OBJECTIVES , CONTROL SEQUENCES , AND MISSION - REPORTED OUTCOMES IN THE INTEGRATED SIMULATOR BENCHMARK . N UMERICAL
+                                                 VALUES RETAIN SOURCE - LOG PRECISION .
+
+Scenario and target                   Process trajectory and operations                                                               Reported outcome and evidence boundary
+Injection molding
+Weight:                               Three record-linked, judged actions changed hold pressure, hold                                 The terminal weight is within [32.15, 32.85] g. The log reports
+32.5 ± 0.35 g                         time, and hold pressure again. Weight progressed from 31.262 to                                 flash rate 0.0158% (limit 0.4%) and sink index 0.9458 (limit 1.5).
+                                      31.913, 32.140, and 32.370 g.
+BOPET film
+Thickness:                            Four record-linked, judged actions adjusted casting speed, fast-                                The terminal thickness is within [24.3, 25.7] µm. The companion
+25.0 ± 0.7 µm                         roll speed, and rail-out width. Thickness decreased from 28.00 to                               execution log reports melt temperature of 291.5–291.8 ◦ C within
+                                      26.58, 25.98, 25.78, and 25.30 µm.                                                              the configured 268–300 ◦ C interval and 9/9 driver checks.
+Continuous
+annealing
+Hardness:                             The hardness trajectory decreased from 134.92 to 99.38 HV after                                 The mission log reports a final hardness of 98.7 HV in [89,
+95 ± 6 HV;                            an unlinked zone-3 action, then to 99.42 and 98.14 HV after two                                 101] HV and a 17.14% speed increase, above the 5% mission
+throughput: ≥ 5%                      zone-2 trims. Speed increases from 140 to 164 m/min yielded                                     threshold; the last structured reading was 99.54 HV at 164 m/min.
+                                      structured readings of 98.72 and 99.54 HV; a 176 m/min candidate                                Its narrative records the reverted 176 m/min candidate at 100.8 HV,
+                                      was reverted.                                                                                   above the 100 HV margin cutoff but within the [89, 101] HV target
+                                                                                                                                      band. This value is absent from the structured trajectory. The first
+                                                                                                                                      action lacks a linked judgment record, and final tensile and surface-
+                                                                                                                                      defect values are absent.
+A2O wastewater
+Dissolved oxygen                      Five blower adjustments increased structured dissolved oxygen                                   The mission summary reports DO of 3.55 mg/L and labels the
+(DO):                                 (DO) from 0.228 to 2.157, 2.807, 2.860, 3.227, and 3.507 mg/L. A                                effluent compliant. The simulator-defined cost index decreased
+3.4 ± 0.6 mg/L                        NaOH adjustment reported pH 6.62 (configured range 6–9); three                                  from 181.2 to 180.0 after the retained NaOH change; this is not
+                                      polyaluminium-chloride (PAC) actions reduced total phosphorus                                   measured energy or currency. The outcome DO differs from the
+                                      (TP) from 0.549 to 0.416 mg/L (configured upper limit 0.5 mg/L).                                final structured trace value, and a complete terminal effluent vector
+                                      Three later cost-trim writes were restored after checks; a NaOH                                 is not archived.
+                                      reduction from 30 to 26 L/h was retained after a margin check.
+
+
+                             (a) Injection molding                                                                                        (b) BOPET film
+                                                                                                   Film thickness (µm)
+
+
+
+
+                                                                                                                              28
+   Part weight (g)
+
+
+
+
+                      32.5
+
+                      32.0                                                                                                    26
+
+                      31.5
+
+                              Start         Pressure            Time          Pressure                                                    Start      Casting         Roll          Rail           Casting
+                                                                                                            Dissolved oxygen (mg/L)
+
+
+
+
+                             (c) Continuous annealing                                                                                     (d) A2O wastewater
+                                                                                                                                      4
+      Hardness (HV)
+
+
+
+
+                      120
+                                                                                                                                      2
+                      100
+
+                             Start Zone 3 Zone 2 Zone 2 Speed Speed                 End                                                   Start   Air 1    Air 2     Air 3     Air 4      Air 5     End
+
+
+                                       Target band           Structured observations             Unlinked response                                           Reported endpoint
+
+
+Fig. 6. Four scenario-specific process trajectories from the integrated simulator benchmark output. Each panel uses its native process-variable unit; the
+shaded region marks that scenario’s target band, and the horizontal axis shows event order rather than elapsed time. Tick labels name the control stage; the
+setpoint changes are listed in Table II. Circles mark structured observations, the open triangle marks the annealing observation after an action without a linked
+judgment record, and open squares mark separately reported mission endpoints that are not connected to the structured trajectory. The wastewater sequence
+plots dissolved oxygen during aeration; later NaOH and PAC stages act on different variables. The reverted 176 m/min annealing candidate appears only in
+the narrative log as 100.8 HV, above the 100 HV margin cutoff, and is not plotted as a structured process observation.
+
+recorded PV samples; a discrepant mission endpoint is re-                                     stitute for missing observations.
+ported separately. Secondary constraints are included when
+logged, and a mission-level compliance label does not sub-
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT                                                                   9
+
+
+
+B. Process Trajectories and Results                                   both below the 700–760 ◦ C band. Each point was queried
+   Fig. 6 shows the four PV trajectories against their own            under its active run; the registered-task path also retained
+target bands. The plotted markers are recorded observations,          task and approval links. The single snapshots demonstrate the
+not interpolated or averaged values. The open marker in the           tested operation-to-record sequence, not steady-state behavior,
+annealing panel identifies the observation after the zone-3           route equivalence, or process improvement.
+request that lacks a linked judgment record. Separate squares
+show the annealing and wastewater mission-end values; they            D. Interpretation and Limitations
+are not connected to the structured trajectories because the logs        The records support configured task-to-device execution
+report different terminal values. The wastewater panel plots          across four simulator profiles, each with its own signal map,
+the aeration-stage DO sequence; later pH and total-phosphorus         controls, and target rules. Evidence completeness differs: in-
+actions use different PVs and are summarized in Table II.             jection and BOPET link judged operations to their reported
+   Injection molding and BOPET provide the clearest record-           endpoints, whereas annealing and wastewater have incomplete
+linked results: in both missions, judged operations moved             or discordant terminal records. The deterministic routines
+the primary process variable into its configured target band,         and unlike objectives do not establish learned optimization,
+and the available secondary checks remained within their              arbitrary-scene portability, or comparative performance. The
+stated limits. The table and figure show the individual action        separate route check is limited to two configured scenes and
+and response sequences. Together, these records illustrate the        one sampled point per path; its SQLite fallback does not
+operation–response– judgment chain; they do not estimate              validate the online DAQ backend.
+improvement over a baseline.                                             Each process scenario has one trajectory and no independent
+   The annealing mission first brought the logged hardness            process replication, so the study provides no estimate of
+observations into the 95 ±6 HV band, then increased line              run-to-run variation or statistical uncertainty. The separate
+speed from 140 to 164 m/min while the structured hardness             route check likewise has one operation per route and scene;
+values remained below the 100 HV line-speed margin cutoff.            its samples are integration snapshots, not repeated process
+The last structured value was 99.54 HV at 164 m/min; the              outcomes. The figure-data manifest identifies source logs and
+mission summary separately reports 98.7 HV. The narrative             code hashes, and the plotting script supports reconstruction of
+log records 100.8 HV at the reverted 176 m/min candidate.             the displayed trajectories. However, the archive lacks a run-
+This value remains within the 89–101 HV target band but               configuration manifest, pinned source revision, and consistent
+exceeds the stricter margin cutoff. The first, zone-3 action          timing metadata needed for exact mission replay. All observa-
+has no linked judgment record, and final tensile-strength and         tions come from local simulators, not physical equipment; the
+surface-defect readings are not retained. The trace therefore         findings are bounded to execution in these four preconfigured
+does not independently verify all final quality constraints.          scenes.
+   In wastewater treatment, the structured DO observations
+entered the 2.8–4.0 mg/L band after the second blower adjust-                               VI. D ISCUSSION
+ment. The mission then addressed pH and total phosphorus
+                                                                      A. Interpretation
+using separate NaOH and PAC stages; the records report pH
+6.62 and TP decreasing from 0.549 to 0.416 mg/L against                  The four missions show that the framework’s shared task
+a 0.5 mg/L upper limit. The simulator defines its cost index          and dispatch services can execute configured workflows across
+as J = 100(f /30)2.6 + 0.30n + 0.45p, where f is blower               scenes with different mappings and target rules. They do
+frequency and n and p are the NaOH and PAC setpoints.                 not measure configuration effort or transfer to unseen scenes.
+After the first compliant setting, the routine tried four cost-trim   Shared dispatch and route-specific record ownership are im-
+writes: it retained the NaOH reduction from 30 to 26 after a          plemented properties. A separate matched-operation check
+margin check and rolled back the other three. Under the stated        exercises both task and direct REST entry in two simulator
+objective, the retained change reduces J by 1.2, matching the         scenes, but one run per path and scene does not establish route
+reported decrease from 181.2 to 180.0. This modeled index             equivalence or comparative benefit. The design complements
+is not measured energy or monetary cost. The final effluent           prior work on task-level industrial agents and plant-specific
+vector is absent, and the mission-reported DO endpoint differs        action checks by making the task-to-device boundary explicit
+from the last structured observation, so the compliance flag is       [1], [11], [12].
+not an independently verified terminal effluent assessment.              The incomplete annealing and wastewater endpoints point to
+                                                                      a recording requirement. A mission-level success flag cannot
+                                                                      verify terminal quality when the final tensile-strength and
+C. Matched-Operation Route Check                                      surface-defect readings or the complete wastewater effluent
+   For each one-parameter call, the result record marked its          vector are missing, or when the reported endpoint differs
+sole requested write as readback-verified (1/1); the runner’s         from the structured trace. A deployment that relies on process
+additional device read returned the candidate setpoint. After         evidence should declare required terminal variables for each
+the 20-s post-readback wait, the cast-film thickness snapshot         scene and persist their observations with operation records.
+was 46.37 µm through each route, below the 48–52 µm band.             This implication follows from the observed evidence gaps;
+The annealing strip-temperature snapshots were 674.8 ◦ C              the benchmark does not validate such a terminal evidence
+through the registered task and 675.2 ◦ C through direct REST,        mechanism.
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT                                                                                             10
+
+
+
+   The process objectives also remain distinct. Part weight,                       [6] R. Wu, J. Ai, and T. Li, “InstructMPC: A human-LLM-in-the-loop
+film thickness, hardness, dissolved oxygen, and the simulator-                         framework for context-aware control,” in Proc. IEEE 64th Conf. on De-
+                                                                                       cision and Control (CDC), 2025, pp. 172–179, doi: 10.1109/CDC57313.
+defined wastewater cost index have different units and mean-                           2025.11312156.
+ings; they cannot be pooled into one score. Because the                            [7] J. Lim and I. Kovalenko, “A large language model-enabled control
+routines are deterministic and do not use a language model,                            architecture for dynamic resource capability exploration in multi-agent
+                                                                                       manufacturing systems,” in Proc. IEEE 21st Int. Conf. on Automation
+the study evaluates configured execution rather than learned                           Science and Engineering (CASE), 2025, pp. 2088–2095, doi: 10.1109/
+reasoning or optimization-policy quality.                                              CASE58245.2025.11163802.
+                                                                                   [8] Z. Zhao et al., “A large language model-based multi-agent manufacturing
+                                                                                       system for intelligent shopfloors,” Adv. Eng. Inform., vol. 69, 2026, art.
+B. Scope and Limitations                                                               no. 103888; doi: 10.1016/j.aei.2025.103888.
+                                                                                   [9] M. S. Gill, J. Vyas, A. Markaj, F. Gehlhoff, and M. Mercangöz,
+   One deterministic trajectory per process scene, without an                          “Leveraging LLM agents and digital twins for fault handling in process
+alternative policy, leaves repeatability and comparative process                       plants,” in Proc. IEEE ETFA, 2025, pp. 1–8, doi: 10.1109/ETFA65518.
+                                                                                       2025.11205597.
+benefit unmeasured. The separate route check uses one fixed                       [10] B. Hofmann, N. Piechulek, S. Kreitlein, J. Franke, and P. Bruendl,
+operation and one later sample per path and scene, so it does                          “Beyond touch-based human-machine interface: Control your machines
+not establish equivalence. Next steps are replicated paired                            in natural language by utilizing large language models and OPC
+                                                                                       UA,” arXiv preprint arXiv:2510.11300, 2025. [Online]. Available:
+route tests, a new-scene onboarding study, and repeated pro-                           https://arxiv.org/abs/2510.11300v2
+cess trials with an explicit comparison policy. These simulator                   [11] C. Graul, W. Żarski, D. Mikołajewski, and I. Rojek, “Ai agents in
+results do not establish physical transfer, operator effective-                        industry 4.0: AAS–OPC UA–LLM architecture as the foundation of
+                                                                                       intelligent manufacturing systems in the context of industrial enterprise
+ness, or energy and chemical savings. Hardware evaluation                              implementation,” Applied Sciences, vol. 16, no. 11, p. 5428, 2026, doi:
+would also require synchronized terminal-guard records and                             10.3390/app16115428.
+independent PLC or safety-instrumented protection.                                [12] D. Schall, “Safe integration of large language models into industrial
+                                                                                       process control: A multi-agent architecture with P&ID-grounded vali-
+                                                                                       dation,” Autonomous Intelligent Systems, vol. 6, 2026, article no. 14;
+                          VII. C ONCLUSION                                             doi: 10.1007/s43684-026-00136-1.
+                                                                                  [13] S.-C. Lin and C.-Y. Chen, “An integrated framework featuring policy-
+   AgentWorkShop connects task and direct-operation entry to                           governed agentic AI for closed-loop manufacturing control with multi-
+                                                                                       source sensor–MES–ERP,” The International Journal of Advanced Man-
+shared dispatch, scene-specific mappings, configured drivers,                          ufacturing Technology, vol. 143, pp. 6405–6428, 2026, doi: 10.1007/
+and service-owned records. In four simulator missions, the                             s00170-026-17806-2.
+final structured process-variable samples fell within their sce-                  [14] A. Biskupovic, A. Villalonga, F. Castaño, R. E. Haber, and F. Núñez,
+nario targets. The annealing quality endpoints and wastewater                          “Agent-based supervision for service-oriented industrial cyber–physical
+                                                                                       systems,” IEEE Trans. Ind. Inform., vol. 21, no. 3, pp. 2719–2728, 2025,
+effluent evidence remain incomplete or discordant, so the                              doi: 10.1109/TII.2024.3514178.
+wastewater mission’s compliance label cannot be indepen-                          [15] Y. Xia, N. Jazdi, and M. Weyrich, “An architecture for integrating large
+dently verified. These results demonstrate configured work-                            language models with digital twins and automation systems,” in Proc.
+                                                                                       IEEE 30th Int. Conf. on Emerging Technologies and Factory Automation
+flow execution in the tested scenes. The separate two-scene                            (ETFA), 2025, pp. 1–8, doi: 10.1109/ETFA65518.2025.11205636.
+check returned verified readbacks through both task and direct                    [16] L. M. Vieira da Silva, A. Köcher, and F. Gehlhoff, “Beyond formal
+REST entry, but one below-target sample per path and scene                             semantics for capabilities and skills: Model context protocol in manu-
+                                                                                       facturing,” in Proc. IEEE 30th Int. Conf. on Emerging Technologies and
+cannot establish route equivalence. Replicated paired tests                            Factory Automation (ETFA), 2025, pp. 1–4, doi: 10.1109/ETFA65518.
+under shared process and DAQ conditions are the next step,                             2025.11205601.
+followed by onboarding measurements, repeated process trials,                     [17] K. Köhle, D. Anicic, T. A. Runkler, K. Dorofeev, A. S. Thuluva, and
+and plant evaluation to assess reuse and operational benefit.                          R. Graf, “Virtually commissioned semantic recipes based on OPC UA
+                                                                                       skills,” in Proc. IEEE 8th Int. Conf. on Industrial Cyber-Physical Sys-
+                                                                                       tems (ICPS), 2025, pp. 1–6, doi: 10.1109/ICPS65515.2025.11087832.
+                                                                                  [18] X. Jiang et al., “Agentic AI for safety-aware process monitoring and
+                              R EFERENCES                                              fault diagnosis: A review,” Processes, vol. 14, no. 13, 2026, art. no.
+                                                                                       2112; doi: 10.3390/pr14132112.
+ [1] Y. Xia, N. Jazdi, J. Zhang, C. Shah, and M. Weyrich, “Control industrial
+     automation system with large language model agents,” in Proc. IEEE           [19] Model Context Protocol contributors, “Model Context Protocol:
+     30th Int. Conf. on Emerging Technologies and Factory Automation                   Tools,” Specification, version 2026-07-28, 2026, accessed: Oct. 20,
+     (ETFA), 2025, pp. 1–8, doi: 10.1109/ETFA65518.2025.11205539.                      2026. [Online]. Available: https://modelcontextprotocol.io/specification/
+                                                                                       2026-07-28/server/tools
+ [2] K.-C. Huang, H.-T. Lin, C.-H. Lin, and M.-T. Huang, “Large language
+     model integration in industrial cyber-physical systems: A multi-modal        [20] ISA, “ISA-88.00.01-2010: Batch control—part 1: Models and terminol-
+     architecture for automated control generation,” in Proc. Int. Conf. on            ogy,” International Standard, 2010.
+     Control, Automation and Diagnosis (ICCAD), 2026, pp. 1–6, doi: 10.           [21] ——, “ANSI/ISA-95.00.01-2025 (IEC 62264-1 mod): Enterprise-control
+     1109/ICCAD69956.2026.11643124.                                                    system integration—part 1: Models and terminology,” International
+ [3] K. Köhle, D. Anicic, T. A. Runkler, and R. Graf, “LLM-driven multi-              Standard, 2025.
+     agent control for skill-based smart manufacturing,” in Proc. IEEE 31st       [22] J. Moyne, E. del Castillo, and A. M. Hurwitz, Eds., Run-to-Run Control
+     Int. Conf. on Emerging Technologies and Factory Automation (ETFA),                in Semiconductor Manufacturing, 1st ed. Boca Raton, FL: CRC Press,
+     2026, pp. 1–8, doi: 10.1109/ETFA68377.2026.11725257.                              2000.
+ [4] M. Waseem, K. Bhatta, C. Li, and Q. Chang, “Pretrained LLMs as real-         [23] R. Parasuraman, T. B. Sheridan, and C. D. Wickens, “A model for types
+     time controllers for robot operated serial production line,” Mach. Learn.:        and levels of human interaction with automation,” IEEE Trans. Syst.,
+     Eng., vol. 2, no. 1, 2026, art. no. 015006; doi: 10.1088/3049-4761/               Man, Cybern., Part A, vol. 30, no. 3, pp. 286–297, 2000, doi: 10.1109/
+     ae4ee8.                                                                           3468.844354.
+ [5] Z. Liu et al., “Agents4PLC: Automating closed-loop PLC code gen-             [24] H. Wang, C. M. Poskitt, and J. Sun, “AgentSpec: Customizable runtime
+     eration and verification in industrial control systems using LLM-based            enforcement for safe and reliable LLM agents,” in Proc. IEEE/ACM
+     agents,” IEEE Trans. Softw. Eng., vol. 52, no. 5, pp. 1672–1687, 2026,            48th Int. Conf. on Software Engineering (ICSE), 2026, pp. 2938–2950,
+     doi: 10.1109/TSE.2026.3667895.                                                    doi: 10.1145/3744916.3764546.
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT         11
+
+
+
+[25] E. Debenedetti et al., “Defeating prompt injections by design,”
+     2025, arXiv preprint arXiv:2503.18813. [Online]. Available: https:
+     //arxiv.org/abs/2503.18813
+

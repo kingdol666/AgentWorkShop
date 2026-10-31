@@ -1,0 +1,16 @@
+{
+  "version": 1,
+  "updatedAt": "2026-10-24T20:49:12.006Z",
+  "disabled": [
+    "aw-matrix-plugin",
+    "daq-sink-verify",
+    "daq-vector-demo",
+    "diag-bridge",
+    "idd-closedloop-bridge",
+    "omp-sensor-tools",
+    "serial-bridge",
+    "twin-castfilm",
+    "twin-injection-default",
+    "twin-thermal-demo"
+  ]
+}

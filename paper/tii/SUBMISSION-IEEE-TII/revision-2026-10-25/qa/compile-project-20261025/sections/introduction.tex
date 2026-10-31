@@ -1,0 +1,68 @@
+\section{Introduction}
+\IEEEPARstart{L}{arge} language-model agents are being explored for
+plant-facing tasks. Xia et al. present an end-to-end industrial-control
+framework using structured prompts and event-driven production context
+\cite{xia2025control}. Other work studies operator-reviewed control-sequence
+generation \cite{huang2026made}, modular factory skills
+\cite{koehle2026llmdriven}, and production scheduling
+\cite{waseem2026pretrained}. Together, these studies establish a broad
+industrial-agent research direction, with different task and integration
+boundaries. Across plants, agent roles, signals, protocols, objectives, and
+production context vary. This paper focuses on the software integration
+problem of configuring those differences around reusable task services,
+registered harnesses, shared operation checks, semantic process I/O, and
+route-specific records; it does not claim the first agent-to-control
+integration.
+
+Consider injection molding. An agent team may use recent measurements and
+process knowledge to diagnose insufficient packing and propose a holding-
+pressure change. To carry that proposal into an auditable production task, a
+system must resolve the active line, product, recipe, and run; map the
+quantity to the correct device interface; check that the requested operation
+is available for that context; and retain the command evidence alongside
+subsequent quality observations. Another process may use different signals,
+protocols, or objectives while reusing the same collaboration and runtime
+services. The design problem is therefore to make scene-specific variation
+configurable while keeping each operation tied to its production context.
+
+This paper presents AgentWorkShop, a configurable industrial-agent framework
+that connects collaborative tasks and registered harnesses to production
+context, manufacturing execution system (MES) data, analysis and modeling
+services, data-acquisition (DAQ) and write-control (DCW) nodes, and
+protocol-specific drivers. Its access surfaces include a command-line
+interface (CLI), web, software development kit (SDK), representational state
+transfer (REST), Model Context Protocol (MCP), and Agent-to-Agent (A2A)
+interfaces.
+Scene blueprints define signal maps, objectives, and guards; channel profiles,
+tool policies, and agent bindings scope operations. Agents and callers invoke
+named operations through shared runtime checks; the framework does not choose
+routes autonomously and retains proposals, command confirmation, and process
+observations as distinct records. Figure~\ref{fig:arch} presents the system
+architecture, and Fig.~\ref{fig:runtime} shows the cross-module task flow.
+Section~IV details the node-exploration and recipe lifecycles.
+
+The paper makes three contributions:
+\begin{enumerate}
+\item It formulates five deployment requirements and six design rules for
+  connecting agent collaboration, production context, process interfaces, and
+  route-specific evidence. These are explicit design choices for the target
+  workflows, not a taxonomy claimed to be empirically derived.
+\item It specifies AgentWorkShop's cross-module execution flow and software
+  modules, including task and harness integration, production-context
+  configuration, analysis and modeling services, semantic device access, and
+  route-specific evidence handling.
+\item It reports complementary evidence from historical simulator and
+  protocol archives, live-engine tasks, a deterministic controller,
+  deployment regressions, and a recipe-path case. A current-version
+  two-scene integration run verifies protocol reads, bounded writes,
+  readback, and data lineage, while its model gates reject both candidate
+  datasets. Each evidence unit is tied to its interface and software
+  version; the results do not establish successful current-version
+  optimization, multi-harness portability, or comparative control benefit.
+\end{enumerate}
+
+Section~II reviews related industrial-agent and integration work.
+Section~III presents the design rationale, architecture, and cross-module
+execution flow; Section~IV explains module responsibilities and their
+integrated operation. Section~V describes the experiments and results, and
+Sections~VI and~VII discuss the evidence limits and conclude the paper.

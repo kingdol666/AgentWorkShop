@@ -1,0 +1,118 @@
+\documentclass[journal]{IEEEtran}
+% IEEE Transactions on Industrial Informatics -- anonymous regular-paper draft
+% Compile: latexmk -pdf main.tex
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algpseudocode}
+% Local XeTeX/Tectonic builds: route IEEEtran's ptm (Times) family requests to
+% the legacy Times Type1 faces so metrics match the pdfLaTeX reference build;
+% the latexmk -pdf (pdfLaTeX) path is unaffected.
+\usepackage{iftex}
+\ifxetex
+  \DeclareFontFamily{TU}{ptm}{}
+  \DeclareFontShape{TU}{ptm}{m}{n}{<->ptmr8t}{}
+  \DeclareFontShape{TU}{ptm}{b}{n}{<->ptmb8t}{}
+  \DeclareFontShape{TU}{ptm}{m}{it}{<->ptmri8t}{}
+  \DeclareFontShape{TU}{ptm}{b}{it}{<->ptmbi8t}{}
+  \DeclareFontShape{TU}{ptm}{m}{sl}{<->ptmro8t}{}
+  \DeclareFontShape{TU}{ptm}{m}{sc}{<->ptmr8t}{}
+\fi
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage[table]{xcolor}
+\usepackage{stfloats}
+\usepackage{placeins}
+\usepackage{url}
+\usepackage{balance}
+\usepackage{etoolbox}
+\urlstyle{same}
+% Cross-references and citations. The cite package renders IEEE-style citation
+% groups ([14]--[16], [20], [21]) with hyperref support.
+\usepackage{cite}
+\usepackage[colorlinks=true,linkcolor=black,citecolor=black,urlcolor=black]{hyperref}
+\hypersetup{bookmarksnumbered=true,
+  pdftitle={AgentWorkShop: A Modular Task-to-Device Integration Framework for Industrial Agents},
+  pdfauthor={},
+  pdfsubject={IEEE Transactions on Industrial Informatics},
+  pdfkeywords={industrial agents, industrial communication, industrial informatics, production systems, semantic data integration}}
+
+% Float placement only; IEEEtran margins and body type remain unchanged.
+\setcounter{topnumber}{4}
+\setcounter{bottomnumber}{3}
+\setcounter{totalnumber}{7}
+\setcounter{dbltopnumber}{2}
+\renewcommand{\topfraction}{0.95}
+\renewcommand{\bottomfraction}{0.80}
+\renewcommand{\textfraction}{0.03}
+\renewcommand{\floatpagefraction}{0.72}
+\renewcommand{\dbltopfraction}{0.95}
+\renewcommand{\dblfloatpagefraction}{0.72}
+
+% Tight but conventional float separation; body type and margins are unchanged.
+\setlength{\textfloatsep}{8pt plus 2pt minus 3pt}
+\setlength{\dbltextfloatsep}{8pt plus 2pt minus 3pt}
+\setlength{\intextsep}{7pt plus 2pt minus 3pt}
+\setlength{\abovecaptionskip}{3pt plus 1pt minus 1pt}
+\setlength{\belowcaptionskip}{2pt plus 1pt minus 1pt}
+
+\newcommand{\system}{the platform}
+% Review copy is anonymous. The AI-use statement is maintained in
+% AI-DISCLOSURE.md for the journal-approved disclosure channel and is not
+% compiled into this manuscript.
+\newif\ifblindreview
+\blindreviewtrue
+
+\begin{document}
+\bstctlcite{IEEEbstctl}
+
+\title{AgentWorkShop: A Modular Task-to-Device Integration Framework for Industrial Agents}
+
+\author{}
+\markboth{IEEE Transactions on Industrial Informatics, Submitted Manuscript}{AgentWorkShop: Task-to-Device Integration}
+
+\maketitle
+
+\begin{abstract}
+Industrial agents must translate task goals into device operations while
+respecting changing production context and scene-specific signals and limits.
+We present AgentWorkShop, an integration framework that connects task and
+direct-operation entries to shared dispatch, maps semantic controls to device
+drivers, and retains command receipts separately from subsequent observations.
+Simulator checks examine protocol and node access, and two entry paths are
+tested for their retained records. In a separate mock-driver test with
+simulated approval decisions, every injected stale production context was
+rejected before a write; removing the context comparison allowed six product
+or run changes. Four deterministic simulator missions recorded on September
+28, 2026, trace control requests and observations for injection molding, film
+production, annealing, and wastewater treatment. In one trajectory per scene,
+each reported final primary value fell within its target band. The tested
+routes retained entry-specific records, and the missions reached their reported
+target bands in simulation. The missions do not use a
+language model to select setpoints; they do not establish human-review
+effectiveness, statistical repeatability, or physical-plant performance, and
+some secondary terminal measurements were not archived.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Industrial agents, industrial communication, industrial informatics,
+production systems, semantic data integration.
+\end{IEEEkeywords}
+
+\IEEEpeerreviewmaketitle
+
+\input{sections/introduction}
+\input{sections/related}
+\input{sections/system}
+\input{sections/modules}
+\input{sections/evaluation}
+\input{sections/discussion}
+
+% Start the bibliography on a fresh page and balance its two columns.
+\clearpage
+\balance
+\bibliographystyle{IEEEtran}
+% Keep IEEEtran's default bibliography size and leading.
+\bibliography{resources/refs}
+
+\end{document}

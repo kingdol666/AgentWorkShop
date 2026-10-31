@@ -86,6 +86,41 @@ Example: `{"data":{"points":[10,20,30,40,50],"metrics":{"avg":30}}}` with a vect
 (`derive-metric`, `zones`, `thumbnail`, `quality-gate`, or plugin-registered processors) run on
 the production side before storage.
 
+### Multiple fields on one topic (one config, many signal nodes)
+
+When a device publishes a multi-field JSON object on one topic (temperature/humidity/pressure…),
+declare it once in `driverConfig.fields`; the platform expands it into **one scalar node per field**
+(each a real signal with its own unit/range/warn band/storage/alarm). All children share a **single
+broker subscription** and decode the same message via their own `jsonPath`:
+
+```json
+{
+  "name": "Env station",
+  "driver": "mqtt",
+  "templateRef": "daq-temp-tc",
+  "lineId": "ln-xxxx",
+  "driverConfig": {
+    "host": "127.0.0.1", "port": 1883, "topic": "factory/env/1", "qos": 0,
+    "fields": {
+      "temp":     { "path": "data.temp", "unit": "C", "min": 0, "max": 60, "warnHigh": 45 },
+      "humidity": { "path": "data.humidity", "unit": "%", "min": 0, "max": 100, "warnLow": 20, "warnHigh": 80 },
+      "dew":      "data.nested.dew"
+    }
+  }
+}
+```
+
+- `fields` accepts an **object** (key = field name, value = path string or
+  `{path,unit,min,max,warnLow,warnHigh,decimals,templateRef,name,semantics}`) or an **array**
+  (`["data.temp","data.humidity"]`, field name = last path segment); `fieldsBase` adds a common prefix.
+- The response is `{nodes, groupId, count}`; child names are `<parent>·<field>` and the view exposes
+  `fieldGroup` (shared id) and `fieldLabel`. Query/alarm/dashboard treat them as ordinary nodes.
+- Constraints: MQTT only, scalar templates only; mutually exclusive with
+  `pointsPath`/`metricsPath`/`imagePath`/`decoder`; max 64 fields; any invalid field rolls back the
+  whole group (no half-created nodes).
+- One subscription, many parses: all children receive the same message with identical timestamps
+  (visible as N nodes in `daq_samples` sharing the same ts), avoiding extra connections/subscriptions.
+
 **Custom parsing (one interface, owned by the user):** a plugin registers a decoder:
 
 ```js

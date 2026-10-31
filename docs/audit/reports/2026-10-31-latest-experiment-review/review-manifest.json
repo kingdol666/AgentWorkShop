@@ -1,0 +1,71 @@
+{
+  "schema": "latest-experiment-review/1",
+  "source_hashes": {
+    "doc_task": "38e993a8568fdc5d0e11e738c0b2d7de6b86da9726bb8b4976a0d293bfc5c446",
+    "doc_summary": "f3a005a873495915e88567bb1525bb7af16747e55badbcc671642bc3bdacd390",
+    "independent_write": "365ac9dc2b1124932c2b79f81c44d0fc7d867304b6b9ae40ddad8dbb9535e628",
+    "export_stats": "88c7253b45bf10dcb4091846dbe82866e977e7dd5b6d10753136daeebc996aea",
+    "latest_iddrag": "fbafab1f8d9b486a7e381332aa48b398b9c8ac44450f5c83c7e5f600ab4a4471",
+    "qwen_run": "462b392c167b44f9ed322cad8414015e98138a1721b22d6ad7a901c313b41d45",
+    "p12_report": "65246c85fa15fd62787bfa5f53085546ade4517ff8fdae2743d8ad20a7744239",
+    "p12_checks": "aa7ac755125a16525c2238d7a943df6eef5ab84d63f7f203d766d88fab63dc64"
+  },
+  "csv_recount": [
+    {
+      "file": "nodes/dn-2441bc04.csv",
+      "rows": 134,
+      "min": 24.5,
+      "max": 25.5,
+      "states": {
+        "offline": 2,
+        "ok": 132
+      }
+    },
+    {
+      "file": "nodes/dn-2a0acb1f.csv",
+      "rows": 275,
+      "min": 50.0,
+      "max": 60.0,
+      "states": {
+        "offline": 2,
+        "ok": 273
+      }
+    },
+    {
+      "file": "nodes/dn-970e00ea.csv",
+      "rows": 275,
+      "min": 20.5,
+      "max": 23.5,
+      "states": {
+        "offline": 2,
+        "ok": 273
+      }
+    },
+    {
+      "file": "nodes/dn-ae545180.csv",
+      "rows": 134,
+      "min": 25.0,
+      "max": 27.0,
+      "states": {
+        "offline": 2,
+        "ok": 132
+      }
+    },
+    {
+      "file": "frames/dn-e4934f70.csv",
+      "rows": 3456,
+      "min": 2.475,
+      "max": 2.525,
+      "states": {}
+    }
+  ],
+  "checks": {
+    "doc_task_completed": true,
+    "export_19_of_19": true,
+    "scalar_csv_rows": 818,
+    "vector_points": 3456,
+    "iddrag_pass_count": 10,
+    "iddrag_total": 13,
+    "a1_a2_status": "NOT-RUN"
+  }
+}

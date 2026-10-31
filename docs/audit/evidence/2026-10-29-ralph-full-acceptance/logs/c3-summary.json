@@ -1,0 +1,23 @@
+[
+  {
+    "name": "auth-matrix",
+    "exit": 0,
+    "boot": "ok",
+    "adminBootstrapped": true,
+    "tail": "=== 用户管理面分层 === | PASS  U1 /api/users 无 token → 401 | PASS  U2 /api/users 普通用户 → 403 ADMIN_REQUIRED | 29 pass / 0 fail"
+  },
+  {
+    "name": "template-isolation",
+    "exit": 1,
+    "boot": "ok",
+    "adminBootstrapped": true,
+    "tail": "E2E 崩溃: Error: admin 登录失败(zhangwei@awshop.io): 邮箱或密码错误;请确认 data/users.sqlite 已种子 admin 账号 |     at main (file:///D:/codes/ABO/AgentWorkShop/scripts/e2e-template-isolation.mjs:62:11) |     at process.processTicksAndRejections (node:internal/process/task_queues:104:5)"
+  },
+  {
+    "name": "timezone-settings",
+    "exit": 3221226505,
+    "boot": "ok",
+    "adminBootstrapped": true,
+    "tail": "  diff: 'simple' | } | Node.js v24.19.0 | Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), file src\\win\\async.c, line 94"
+  }
+]

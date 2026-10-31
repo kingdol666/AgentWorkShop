@@ -1,0 +1,36 @@
+\section{Discussion}
+\label{sec:limits}
+In the exploratory R13 application run, both model candidates fail the
+configured eligibility and performance gates. Signal pairs were selected
+after a pilot, and the exact runtime source was not pinned; the retained
+correlations and NRMSE values therefore document the recorded gate path rather
+than confirmatory model performance. In R20, six sequential tasks complete a
+synthetically approved, readback-verified recipe trial and task closure. Each
+has one run-tagged sample, collected after a 20-s wait initiated after task
+completion and evidence queries through an isolated SQLite fallback; all six
+samples remain outside their target bands. This supports the tested
+application path, not successful process control.
+
+R20 uses one simulator instance per scene and does not establish independent
+replication, convergence, or quality improvement. Its post-task sample is not
+a response trajectory or a fixed command-to-sample latency measurement.
+Controlled profile/binding adaptation, cross-harness portability, normal
+online DAQ backend behavior, and physical transfer remain untested. The
+synthetic approval records do not measure operator effectiveness
+\cite{parasuramanmanzey2010complacency,parasuraman2000model,bainbridge1983ironies};
+restricted tool access does not establish deployment security
+\cite{greshake2023injection,liu2024pinjection,iec62443-3-3} or replace
+independently engineered PLC/SIS protection \cite{iec61511}.
+
+Further evaluation needs a versioned build, matched configuration changes,
+independent simulator replications, normal online DAQ, and physical-plant
+trials.
+
+\section{Conclusion}
+\label{sec:conclusion}
+AgentWorkShop provides an implemented task-to-device integration architecture
+that joins collaborative harnesses, production context, operation checks,
+semantic I/O, and route-specific records. R13 and R20 demonstrate selected
+simulator paths: R13's model candidates fail their gates, and all six R20
+samples remain outside target. The evidence establishes integration behavior
+and does not establish process-control efficacy.

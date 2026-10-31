@@ -1,60 +1,72 @@
 \section{Introduction}
-\IEEEPARstart{I}{ndustrial-agent} deployments translate task-level goals into
-operations over production signals and equipment. A line-speed adjustment,
-for example, depends on the active product, recipe, run, applicable limits,
-and the control node mapped to the line. If that context changes while a
-proposal is awaiting approval, a formerly admissible request may no longer be
-appropriate. Device access also needs evidence at two distinct points: what
-the command interface reported and what the process was later observed to do.
-Connecting these steps across task and device interfaces is therefore a
-central industrial integration problem.
+\IEEEPARstart{I}{ndustrial-agent} deployments must connect a changing process
+context to heterogeneous equipment without giving a language model unrestricted
+access to control points. A line-speed proposal, for example, depends on the
+active product, recipe, run, engineering limits, and node that represents the
+control. It must also reach the correct device through a configured protocol,
+and its receipt must not be confused with a later process response. When these
+elements are implemented separately for each agent and production scene,
+integrating a new engine or line requires repeating substantial interface and
+context work.
 
-Recent work explores end-to-end automation, control-sequence generation,
-modular factory skills, and robotic-line control
-\cite{xia2025control,huang2026made,koehle2026llmdriven,waseem2026pretrained}.
-Other studies address programmable logic controller (PLC) code generation,
-context-aware control, resource discovery, shop-floor coordination,
-digital-twin fault handling, and natural-language machine access
-\cite{liu2026agents4plc,wu2025instructmpc,lim2025llmenabled,zhao2026shopfloor,gill2025llmdt,hofmann2025nlc}.
-Recent platforms further connect proposals to Asset Administration Shell
-(AAS) models and signed approval, validate actions against process and
-instrumentation diagrams (P\&IDs), or organize sensor--manufacturing
-execution system (MES)--enterprise resource planning (ERP) evidence streams
-\cite{graul2026aas,schall2026safe,lin2026agentic}. The cited work covers agent
-reasoning, production context, and operation constraints.
+Prior work has advanced industrial-agent supervision, language-model control
+and programmable logic controller (PLC) code generation, modular manufacturing
+skills, and digital-twin and shop-floor integration
+\cite{xia2025control,huang2026made,koehle2026llmdriven,waseem2026pretrained,biskupovic2025supervision,liu2026agents4plc,wu2025instructmpc,lim2025llmenabled,zhao2026shopfloor,gill2025llmdt,hofmann2025nlc}.
+Related platforms ground approved actions in Asset Administration Shell (AAS)
+or process and instrumentation diagram (P\&ID) models, and integrate sensor,
+manufacturing execution system (MES), and enterprise resource planning (ERP)
+evidence streams \cite{graul2026aas,schall2026safe,lin2026agentic}.
 
-An integration question remains: how can task engines and direct calls share an
-operation boundary while accounting for scene-specific devices, production
-context, and route-specific evidence? The platform connects registered
-harnesses and direct representational state transfer (REST) calls to a shared
-named-operation dispatcher. Scene blueprints map semantic signals to configured
-drivers and define targets and guards.
+The deployment problem addressed here is how to map distinct industrial scenes
+to a common operation interface, provide active production context to agent
+tasks, and translate a proposal into a bounded, traceable device operation.
+We present a configuration-driven integration architecture, not a new control
+law, optimization algorithm, or experimentally validated multi-agent
+controller. Its central design choice is to keep harness execution,
+scene-specific signal and driver mappings, and device-write governance modular
+while connecting them through named industrial operations.
 
-Fig.~\ref{fig:control-path} summarizes the control path. Task goals and
-production context inform an operation proposal. Shared checks and route guards
-precede writes through the device write-control (DCW) subsystem. When approval
-is required, the handler rechecks the approved context before dispatch. Command
-receipts and subsequent data-acquisition (DAQ) observations remain distinct: a
-readback can verify a setpoint, while a later observation describes the process
-state without, by itself, establishing causation.
+The contributions are threefold:
+\begin{enumerate}
+  \item A scene-integration model binds production context
+  (line--product--recipe--run), semantic acquisition and control nodes,
+  protocol drivers, objectives, and engineering guards. Distinct processes can
+  therefore be represented through configuration and a common operation
+  interface, while protocol-specific access remains in drivers.
+  \item An integration runtime registers replaceable harness adapters against
+  a common task-operation interface, assembles current production context at
+  each turn, and scopes available operations to channel policy and resource
+  bindings. Multiple engines and task roles are supported by the architecture;
+  the experiments evaluate a narrower set of routes and configurations.
+  \item A governed write path combines shared dispatch checks with
+  route-specific admission, conditional human approval, post-approval context
+  revalidation, and device-side receipt grading. Owning services retain
+  command receipts separately from later process observations.
+\end{enumerate}
+
+Fig.~\ref{fig:arch} presents the architecture and its module boundaries;
+Fig.~\ref{fig:control-path} follows one task proposal through operation
+dispatch, device access, and evidence capture. Evaluation examines configured
+protocol and scene integration, model-backed task-to-device operations on a
+thermal twin, and separate route, approval, and process checks. These evidence
+units use different configurations and are not pooled as repeated trials.
+They verify selected software paths; they do not validate all agent--scene
+combinations or establish multi-agent performance or physical-plant behavior.
 
 \begin{figure}[!b]
 \centering
-\includegraphics[width=\columnwidth]{resources/fig-agent-control.pdf}
-\caption{Agent-control path for a configured industrial task. The agent uses
-DAQ and MES context, passes shared operation checks, and routes writes through
-process guards. Approval and its context recheck apply when required. DCW and
-configured drivers provide device access; command receipts and later process
-observations remain separate. Scene configuration supplies targets and guards,
-while the application provides its optimization policy.}
+\includegraphics[width=\columnwidth]{resources/fig1-nature-A.pdf}
+\caption{Task execution path from context to device and observation. The agent
+uses available acquisition and MES context to propose a named operation.
+Shared dispatch checks precede route guards and any required approval and
+context revalidation. Configured drivers provide device access; command
+receipts and later process observations are retained separately.}
 \label{fig:control-path}
 \end{figure}
 
-Evaluation covers simulator protocol and node access, registered-task
-execution, mock-driver approval-context checks, and four process missions under
-separate setups.
-
-Section~II reviews related work. Section~III presents the architecture and
-execution flow. Section~IV explains the cooperating modules and their device
-access and evidence mechanisms. Section~V describes the simulation protocol
-and results; Sections~VI and~VII discuss their implications and conclude.
+Section~II reviews related work. Section~III presents the system architecture
+and execution flow. Section~IV explains agent context, scene integration, and
+governed device access. Section~V reports the protocol, onboarding, agent-task,
+approval, and process-mission evidence. Sections~VI and~VII discuss the
+findings and conclude the paper.

@@ -1,0 +1,17 @@
+source,line,ts,stage,type,detail,local_elapsed_s,S4_elapsed_s
+docs/benchmarks/benchmark-20261009033810/timeline.jsonl,3,2026-10-09T03:38:11.128Z,S4,observation,"{""holdP"":63,""weight"":32.22,""sink"":1.51,""window"":""8min""}",0.0,0.0
+docs/benchmarks/benchmark-20261009033810/timeline.jsonl,4,2026-10-09T03:38:11.129Z,S4,decision,"{""mode"":""corrective"",""err"":0.276,""to"":65,""rationale"":""误差 0.28g / 斜率 0.052g/bar → 单变量小步""}",0.0009999275207519531,0.0009999275207519531
+docs/benchmarks/benchmark-20261009033810/timeline.jsonl,5,2026-10-09T03:38:11.129Z,S4,propose,"{""to"":65,""package"":""BM-保压微升(灵敏度激励步)""}",0.0009999275207519531,0.0009999275207519531
+docs/benchmarks/benchmark-20261009033810/timeline.jsonl,6,2026-10-09T03:38:13.137Z,S4,cadence-wait,提案挂卡前被频控早拒(治理在岗)—— 等 69s 后重提(attempt 1 → 2),2.009000062942505,2.009000062942505
+docs/benchmarks/benchmark-20261009033810/timeline.jsonl,7,2026-10-09T03:39:22.151Z,S4,propose,"{""to"":65,""package"":""BM-保压微升(灵敏度激励步)"",""attempt"":2}",71.02300000190735,71.02300000190735
+docs/benchmarks/benchmark-20261009033810/timeline.jsonl,8,2026-10-09T03:39:24.158Z,S4,hitl_card,"{""id"":""ap-2950a5b6"",""reasoning"":true,""attempt"":2}",73.02999997138977,73.02999997138977
+docs/benchmarks/benchmark-20261009033810/timeline.jsonl,9,2026-10-09T03:39:24.165Z,S4,approved,"{""id"":""ap-2950a5b6"",""attempt"":2}",73.03699994087219,73.03699994087219
+docs/benchmarks/benchmark-20261009033810/timeline.jsonl,10,2026-10-09T03:39:24.171Z,S4,dispatch,"{""runId"":""rr-51b0a0ac"",""ok"":true,""summary"":""方案「BM-保压微升(灵敏度激励步)」已获批准并整批下发,全部参数设备证实(1/1,批次 rr-51b0a)。runId:rr-51b0a0ac(后续轮次按此回访效果并回写经验)""}",73.04299998283386,73.04299998283386
+docs/benchmarks/benchmark-20261009033810/timeline.jsonl,11,2026-10-09T03:39:32.218Z,S4,settle-wait,等待镜像 SP 采样跟上(15s),81.08999991416931,81.08999991416931
+docs/benchmarks/benchmark-20261009033810/timeline.jsonl,12,2026-10-09T03:39:47.233Z,S4,verify,"{""set"":65,""device"":65,""mirror"":65,""threeWay"":true}",96.10500001907349,96.10500001907349
+docs/benchmarks/benchmark-20261009033810/timeline.jsonl,13,2026-10-09T03:39:47.233Z,S4,verdict,"{""converged"":false,""dispatchedTo"":65,""nextReview"":""4min 惯性窗后复测""}",96.10500001907349,96.10500001907349
+docs/benchmarks/benchmark-20261009033810/timeline.jsonl,14,2026-10-09T03:39:47.257Z,S5,observation,"{""moldT"":40,""stepLimit"":10}",0.0,96.12899994850159
+docs/benchmarks/benchmark-20261009033810/timeline.jsonl,15,2026-10-09T03:39:47.263Z,S5,micro-step,"{""from"":40,""to"":40.5,""ok"":true,""readback"":40.5}",0.006000041961669922,96.13499999046326
+docs/benchmarks/benchmark-20261009033810/timeline.jsonl,16,2026-10-09T03:39:47.265Z,S5,rate-limited,"{""blocked"":true,""message"":""DCW 节点「注塑·模温机SP」两次在线写入间隔必须至少 60s，当前还需 60s""}",0.00800013542175293,96.13700008392334
+docs/benchmarks/benchmark-20261009033810/timeline.jsonl,17,2026-10-09T03:39:47.265Z,S5,settle-wait,等待 66s 治理窗放行,0.00800013542175293,96.13700008392334
+docs/benchmarks/benchmark-20261009033810/timeline.jsonl,18,2026-10-09T03:40:53.311Z,S5,verdict,"{""restored"":true,""value"":40}",66.05400013923645,162.18300008773804

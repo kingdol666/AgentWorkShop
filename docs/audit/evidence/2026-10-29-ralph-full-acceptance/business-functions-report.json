@@ -1,0 +1,134 @@
+{
+  "suite": "business-functions",
+  "base": "http://127.0.0.1:3300",
+  "at": "2026-10-29T03:55:49.058Z",
+  "line": "ln-7d37c452",
+  "results": [
+    {
+      "id": "B0",
+      "name": "产线清单与目标线",
+      "pass": true,
+      "detail": "[{\"n\":\"注塑成型质量窗口寻优 injection-ralph1\"}]"
+    },
+    {
+      "id": "B0b",
+      "name": "DCW 节点在位(写点≥8)",
+      "pass": true,
+      "detail": "nodes=11 lineNodes=11"
+    },
+    {
+      "id": "B1",
+      "name": "产线详情含运行状态",
+      "pass": true,
+      "detail": "{\"path\":\"/api/workshop/dcw/lines/ln-7d37c452\"}"
+    },
+    {
+      "id": "B1b",
+      "name": "批次台账可查",
+      "pass": true,
+      "detail": "{\"path\":\"/api/workshop/dcw/batches?lineId=ln-7d37c452&limit=5\"}"
+    },
+    {
+      "id": "B2",
+      "name": "daq_query 工具真调(样本>0)",
+      "pass": true,
+      "detail": "数采数据查询结果(14 个节点):\n\n■ scen-injection:daq:melt-temp-pv(熔体/箱体温度)单位 ℃,正常量程 20~320℃,当前状态 ok,时间窗 2026-10-29T11:50 ~ 2026-10-29T11:55(降采样 15000ms,聚合 avg)\n  当前活动批次 run=rr-7f7715ca 配方「scen-injection-recipe-ralph1」(rc-e5508d91)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_"
+    },
+    {
+      "id": "B2b",
+      "name": "DAQ 节点清单(采点≥8)",
+      "pass": true,
+      "detail": "n=14"
+    },
+    {
+      "id": "B3",
+      "name": "DAQ REST 样本行(≥1)",
+      "pass": true,
+      "detail": "{\"points\":[{\"at\":1793246085000,\"avg\":245.70000000000002,\"min\":245,\"max\":246.3,\"cnt\":15},{\"at\":1793246100000,\"avg\":245.67142857142855,\"min\":245,\"max\":246.2,\"cnt\":14},{\"at\":1793246115000,\"avg\":245.56428"
+    },
+    {
+      "id": "B4",
+      "name": "MES 连接配置面可读",
+      "pass": true,
+      "detail": "{\"code\":\"NOT_FOUND\",\"message\":\"接口不存在: /api/workshop/mes/connections\",\"data\":null}"
+    },
+    {
+      "id": "B4b",
+      "name": "mes_fetch 工具真调(回执或明确未配置均记录)",
+      "pass": true,
+      "detail": "ids 必填:目标 mes-rest 点位 id 数组(catalog 输出的 id;至少 1 个)。"
+    },
+    {
+      "id": "B5",
+      "name": "配方清单在位",
+      "pass": true,
+      "detail": "[{\"id\":\"rc-e5508d91\",\"productId\":\"pd-b2ccc362\",\"lineId\":\"ln-7d37c452\",\"name\":\"scen-injection-recipe-ralph1\",\"description\":\"注塑成型质量窗口寻优 标准工况(11 参数全窗纳管)\""
+    },
+    {
+      "id": "B5b",
+      "name": "配方版本历史(v1 在)",
+      "pass": true,
+      "detail": "{\"versions\":[{\"version\":1,\"at\":\"2026-10-29T11:34:06.179+08:00\",\"description\":\"当前版本\",\"params\":[{\"nodeId\":\"dw-fe508542\",\"templateRef\":\"dcw-temp-sp\",\"value\":236,\"min\":160,\"max\":300},{\"nodeId\":\"dw-b657e10"
+    },
+    {
+      "id": "B6",
+      "name": "recipe_trial 发起(窗口内→HITL 卡或立即回执)",
+      "pass": true,
+      "detail": "工具调用被拒(写授权校验,recipe_trial):参数节点「dw-fe508542」不在你的写授权面内(节点「scen-injection:dcw:barrel-temp-1-sp」,归属产线 ln-7d37c452)。\n该节点不在你的写授权面(节点绑定=点位写授权;配方绑定=配方操作权;产线管理权=该线配方参数)。你的可写节点:(无)。 如需写入,请让用户或 lead 为你绑定该数控节点(dcw),或授予配方绑定/产线配方管理权。"
+    },
+    {
+      "id": "B7",
+      "name": "DCW 写控台账可查",
+      "pass": true,
+      "detail": "{\"anchors\":[{\"lineId\":\"ln-7d37c452\",\"nodeId\":\"dw-5a952f96\",\"prevValue\":null,\"newValue\":24,\"source\":\"recipe\",\"actor\":\"recipe\",\"recipeRunId\":\"rr-7f7715ca\",\"id\":\"anc-4e5b9836\",\"at\":\"2026-10-29T11:34:06.4"
+    },
+    {
+      "id": "B7b",
+      "name": "运维日志台账可查(≥1 行)",
+      "pass": true,
+      "detail": "[{\"id\":42,\"actor\":\"efd33a27-fa15-4d3d-a3ae-411e3b3292eb\",\"actorName\":\"ralph-admin\",\"actorKind\":\"user\",\"action\":\"line.start\",\"targetKind\":\"line\",\"targetId\":\"ln-7d37c452\",\"detailJson\":\"{\\\"runId\\\":\\\"rr-7"
+    },
+    {
+      "id": "B8",
+      "name": "EDA 运行数据面可读",
+      "pass": true,
+      "detail": "status=200 body={\"code\":0,\"message\":\"ok\",\"data\":{\"runs\":[{\"id\":\"rr-7f7715ca\",\"lineId\":\"ln-7d37c452\",\"productId\":\"pd-b2ccc362\",\"recipeId\":\"rc-e5508d91\",\"recipeName\":\"scen-injection-recipe-ralph1\",\"recipeVersion\":1,\"st"
+    },
+    {
+      "id": "B8b",
+      "name": "EDA 图表面可读",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "B9",
+      "name": "孪生模型清单面可读",
+      "pass": true,
+      "detail": "status=200 body={\"code\":0,\"message\":\"ok\",\"data\":{\"models\":[]}}"
+    },
+    {
+      "id": "B9b",
+      "name": "孪生场景/设备孪生面可读(渲染数据源)",
+      "pass": true,
+      "detail": "scene=404 deviceTwins=200"
+    },
+    {
+      "id": "B10",
+      "name": "节点绑定面可读",
+      "pass": true,
+      "detail": "{\"bindings\":[],\"filtered\":false}"
+    },
+    {
+      "id": "B10b",
+      "name": "my_industrial_nodes 工具真调",
+      "pass": true,
+      "detail": "你尚未绑定任何工业对象。请让用户或 lead 为你绑定:数控/数采节点(kind=daq 观察)或配方(kind=recipe,参数写入与下发)。"
+    },
+    {
+      "id": "B11",
+      "name": "line_context 工具真调",
+      "pass": true,
+      "detail": "你控制的产线全景(1 条):\n\n■ 产线 注塑成型质量窗口寻优 injection-ralph1(ln-7d37c452)(频道绑定,只读) · 状态:运行中\n  场景说明: 家用电器面板(PP)注塑:规格克重 32.5±0.35 g、飞边 ≤0.4%、缩痕 ≤1.5%、尺寸偏差 ±0.05 mm。起始保压偏低 → 克重 ≈31.3 g 偏轻 + 缩痕超标;闭环把保压/保压时间/模温调回窗口,同时守住飞边上限。 [AWB-SCEN:injection 重复接入自动复用本线]\n  活动批次 rr-7f771 · 产品"
+    }
+  ]
+}

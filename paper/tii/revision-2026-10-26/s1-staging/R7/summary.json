@@ -1,0 +1,107 @@
+{
+  "at": "2026-10-18T11:23:30.086Z",
+  "base": "http://127.0.0.1:3000",
+  "line": "ln-bea81ffa",
+  "recipe": "rc-205e29f4",
+  "optimizer": "568e15ee-344f-47a1-8c78-ec4e9c14a7fa",
+  "runId": "rr-dcfc8dc5",
+  "baseline": {
+    "dcw": {
+      "pressure": 45,
+      "time": 6
+    },
+    "quality": {
+      "weight": 31.2,
+      "flash": 0.022,
+      "sink": 2.191,
+      "melt": 247.3
+    }
+  },
+  "trial1": {
+    "target": 50,
+    "result": "试验已整批下发并全部设备证实(1/1,批次 rr-ddca5):scen-injection:dcw:hold-pressure-sp→50bar [证实✓]。假设:真实闭环 C4:基线克重 31.2g 偏轻、缩痕 2.191% 超标;单变量保压 45→50bar,提高补缩,观察 65s 后 DAQ 复测。。\n人工附言:真实场景闭环 E2E 批准注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC 整批恢复)。",
+    "text": "试验已整批下发并全部设备证实(1/1,批次 rr-ddca5):scen-injection:dcw:hold-pressure-sp→50bar [证实✓]。假设:真实闭环 C4:基线克重 31.2g 偏轻、缩痕 2.191% 超标;单变量保压 45→50bar,提高补缩,观察 65s 后 DAQ 复测。。\n人工附言:真实场景闭环 E2E 批准注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC 整批恢复)。"
+  },
+  "quality1": {
+    "weight": 31.49,
+    "flash": 0.022,
+    "sink": 2.053,
+    "melt": 247.4
+  },
+  "trial2": {
+    "result": "试验下发失败:本产线上一次配方试验距今仅 66s,试验节拍为 ≥300s(防连发震荡),请等待 234s 后再试"
+  },
+  "quality2": {
+    "weight": 31.45,
+    "flash": 0.003,
+    "sink": 1.988,
+    "melt": 246
+  },
+  "corrective": "试验下发失败:本产线上一次配方试验距今仅 132s,试验节拍为 ≥300s(防连发震荡),请等待 168s 后再试",
+  "finalQuality": {
+    "weight": 31.57,
+    "flash": 0.016,
+    "sink": 1.906,
+    "melt": 247.2
+  },
+  "qualityOk": false,
+  "update": null,
+  "journal": "窗口内无优化记录(该节点/配方尚无 Agent 调控历史)。",
+  "recipeLog": "Recipe 变更史(可读产线 1 条,近 30 分钟,1 条,新→旧):\n- [10-18 19:20:12] recipe.trial 来源=Agent 操作者=注塑真实场景闭环控制 Channel live-mvdqd330/注塑工艺优化 worker live-mvdqd330 | 【应急】配方试验整批下发(证实 1/1,未证实 0,失败 0,批次 rr-ddca5):dw-fb4c9→50 | 假设:真实闭环 C4:基线克重 31.2g 偏轻、缩痕 2.191% 超标;单变量保压 45→50bar,提高补缩,观察 65s 后 DAQ 复测。(配方 rc-205e2)\n\n说明:配方下发=整批参数写命令;优化开窗=单次设定变更(含 Agent 假设);回退执行=已恢复基线值。节点级参数值逐笔历史用 dcw_journal(node_id)。",
+  "results": [
+    {
+      "id": "C1",
+      "name": "场景与角色就绪",
+      "pass": true,
+      "detail": "line=ln-bea81ffa recipe=rc-205e29f4 optimizer=568e15ee-344f-47a1-8c78-ec4e9c14a7fa run=rr-dcfc8dc5"
+    },
+    {
+      "id": "C2",
+      "name": "配方绑定到工艺优化 worker",
+      "pass": true,
+      "detail": "{\"status\":200,\"code\":0,\"message\":\"ok\",\"data\":{\"binding\":{\"id\":\"nb-1bd59321\",\"agentId\":\"568e15ee-344f-47a1-8c78-ec4e9c14a7fa\",\"nodeId\":\"rc-205e29f4\",\"kind\":\"recipe\",\"mode\":\"manual\",\"createdAt\":\"2026-10"
+    },
+    {
+      "id": "C3",
+      "name": "基线 DAQ/DCW 可读",
+      "pass": true,
+      "detail": "weight=31.2g flash=0.022% sink=2.191% melt=247.3℃ pressure=45 time=6"
+    },
+    {
+      "id": "C4",
+      "name": "保压试验经 HITL 批准并设备证实",
+      "pass": true,
+      "detail": "试验已整批下发并全部设备证实(1/1,批次 rr-ddca5):scen-injection:dcw:hold-pressure-sp→50bar [证实✓]。假设:真实闭环 C4:基线克重 31.2g 偏轻、缩痕 2.191% 超标;单变量保压 45→50bar,提高补缩,观察 65s 后 DAQ 复测。。\n人工附言:真实场景闭环 E2E 批准注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, d"
+    },
+    {
+      "id": "C5",
+      "name": "DCW 保压值已跟随 + DAQ 复测",
+      "pass": true,
+      "detail": "pressure=50 weight=31.49g flash=0.022% sink=2.053% melt=247.4℃"
+    },
+    {
+      "id": "C6",
+      "name": "保压时间试验经 HITL 批准并设备证实",
+      "pass": false,
+      "detail": "试验下发失败:本产线上一次配方试验距今仅 66s,试验节拍为 ≥300s(防连发震荡),请等待 234s 后再试"
+    },
+    {
+      "id": "C7",
+      "name": "最终质量判定与安全动作",
+      "pass": true,
+      "detail": "weight=31.57g flash=0.016% sink=1.906% melt=247.2℃ ok=false corrective=true"
+    },
+    {
+      "id": "C8",
+      "name": "未达标保持基线,不固化",
+      "pass": true,
+      "detail": "weight=31.57g flash=0.016% sink=1.906% melt=247.2℃"
+    },
+    {
+      "id": "C9",
+      "name": "写控/配方日志可追溯",
+      "pass": true,
+      "detail": "窗口内无优化记录(该节点/配方尚无 Agent 调控历史)。 | Recipe 变更史(可读产线 1 条,近 30 分钟,1 条,新→旧):\n- [10-18 19:20:12] recipe.trial 来源=Agent 操作者=注塑真实场景闭环控制 Channel live-mvdqd330/注塑工艺优化 worker live-mvdqd330 | 【应急】配方试验整批下发(证"
+    }
+  ]
+}

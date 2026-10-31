@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>当前系统最新测试结果评审 · 2026-10-30</title>
+<style>
+  :root{--ink:#1e2d39;--muted:#5d6e7a;--line:#dbe4e9;--paper:#fff;--bg:#f1f5f7;--teal:#147d92;--green:#2f7a5b;--amber:#9a6719;--red:#a44942;--pale:#eaf4f5;--shadow:0 7px 22px #1937480c}
+  *{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.62 -apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif}
+  main{max-width:1200px;margin:0 auto;padding:36px 28px 60px}.hero{padding:32px 34px;background:linear-gradient(125deg,#fff 15%,#eaf4f5 100%);border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow)}
+  .eyebrow{font-size:12px;text-transform:uppercase;letter-spacing:.12em;color:var(--teal);font-weight:800}.hero h1{font-size:32px;line-height:1.25;margin:9px 0 10px}.hero p{max-width:900px;color:#455966;margin:0}.status{display:inline-flex;align-items:center;gap:8px;margin-top:20px;padding:8px 12px;border:1px solid #e3bd91;border-radius:999px;background:#fff8ed;color:#825614;font-weight:700;font-size:13px}
+  .cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin:18px 0}.card,.section{background:var(--paper);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}.card{padding:18px 20px}.card .num{font-size:28px;font-weight:800;letter-spacing:-.03em}.card .label{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em}.card .note{font-size:13px;color:var(--muted);margin-top:4px}.good{color:var(--green)}.warntext{color:var(--amber)}.bad{color:var(--red)}
+  .section{padding:24px 26px;margin-top:16px}.section h2{font-size:21px;margin:0 0 12px}.section h3{font-size:16px;margin:20px 0 8px}.section p{margin:8px 0}.lead{font-size:16px;color:#344b59}.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}.tag{display:inline-block;border-radius:5px;padding:2px 7px;font-size:12px;font-weight:700}.tag.pass{background:#e7f3ed;color:#28684b}.tag.warn{background:#fff3df;color:#8e6119}.tag.fail{background:#fbe9e7;color:#97423c}.tag.neutral{background:#edf1f4;color:#53636e}
+  table{border-collapse:collapse;width:100%;font-size:14px;margin:12px 0 4px}th,td{text-align:left;vertical-align:top;padding:10px 11px;border-bottom:1px solid var(--line)}th{background:#f6f9fa;color:#435a68;font-size:12px;letter-spacing:.04em;text-transform:uppercase}tbody tr:last-child td{border-bottom:0}.small{font-size:13px;color:var(--muted)}
+  .flow{display:grid;grid-template-columns:repeat(7,1fr);gap:7px;align-items:stretch;margin:18px 0 8px}.step{position:relative;min-height:98px;padding:12px 9px;border:1px solid #cbdce1;border-radius:10px;background:#f6fbfb;text-align:center}.step b{display:block;color:#126d81;margin-bottom:5px}.step:not(:last-child):after{content:"›";position:absolute;right:-10px;top:30px;z-index:1;background:#fff;border-radius:50%;width:20px;height:28px;font-size:24px;line-height:24px;color:#64808d}
+  .callout{padding:14px 16px;border-radius:10px;border-left:4px solid var(--amber);background:#fff8eb;color:#624d2e}.callout.red{border-color:var(--red);background:#fff2f0;color:#653a36}.callout.green{border-color:var(--green);background:#edf7f1;color:#315543}.chart{display:block;width:100%;height:auto;border:1px solid var(--line);border-radius:12px;background:#f5f8fa;margin:14px 0 8px}
+  details{border:1px solid var(--line);border-radius:9px;margin:8px 0;padding:10px 13px;background:#fbfcfd}summary{cursor:pointer;font-weight:700;color:#354e5d}a{color:#116f84;text-decoration:none}a:hover{text-decoration:underline}.sources li{margin:7px 0;overflow-wrap:anywhere}.foot{margin-top:18px;color:var(--muted);font-size:12px;text-align:center}
+  @media(max-width:850px){main{padding:16px 12px 35px}.hero{padding:24px}.hero h1{font-size:25px}.cards{grid-template-columns:1fr 1fr}.grid2{grid-template-columns:1fr}.flow{grid-template-columns:1fr 1fr}.step:not(:last-child):after{content:"↓";right:calc(50% - 10px);top:auto;bottom:-18px}}
+  @media(max-width:520px){.cards{grid-template-columns:1fr}.section{padding:18px 15px}table{font-size:12px}th,td{padding:8px 6px}}
+</style>
+</head>
+<body>
+<main>
+  <header class="hero">
+    <div class="eyebrow">Evidence review · 2026-10-30</div>
+    <h1>当前系统最新测试结果评审</h1>
+    <p>最新测试展示了真实 LLM Agent 在本地工况模拟器中的采集、受治理写入和读回路径。结果比论文 R20 覆盖更多系统模块，但不代表 PIPELINE P12 完整通过，也没有证明实体设备可以直接投产。</p>
+    <div class="status">结论：模拟器集成得到支持；完整 AgentTeam 与现场投运仍缺证据</div>
+  </header>
+
+  <section class="cards" aria-label="关键结果">
+    <div class="card"><div class="label">Live OMP Channel</div><div class="num good">24 / 24</div><div class="note">单 Agent · 模拟场景 · 5 项协议端点在线</div></div>
+    <div class="card"><div class="label">Integrated bench</div><div class="num good">72 / 77</div><div class="note">5 警告、0 失败；确定性 harness，LLM 关闭</div></div>
+    <div class="card"><div class="label">Latest PIPELINE P12</div><div class="num bad">未资格</div><div class="note">DAQ 预检样本变旧，goal 未创建</div></div>
+    <div class="card"><div class="label">Physical commissioning</div><div class="num warntext">未验证</div><div class="note">审阅证据均来自模拟器/数字孪生</div></div>
+  </section>
+
+  <section class="section">
+    <h2>核心判断</h2>
+    <p class="lead">“更全面”要按测试目标分别判断：最新 Channel 验收横跨 DAQ、HITL、DCW、AML、求解器和本体接口；集成基准的协议与仿真覆盖最广；P12 才是 PIPELINE 定义的 lead＋worker 完整团队实验，而最近一次 P12 没有进入任务阶段。</p>
+    <div class="grid2">
+      <div class="callout green"><b>已验证的部分</b><br>所测配置下，Agent 可读取模拟 DAQ 数据；HITL pending 时 SP 未变，脚本批准后读回 198；后续探索写读回 200.5，并留下治理记录。</div>
+      <div class="callout red"><b>未验证的部分</b><br>真实操作员审批、真实 PLC/现场协议、跨场景的 AgentTeam 完整执行、目标达成与稳定过程表现、故障恢复和上线安全。</div>
+    </div>
+  </section>
+
+  <section class="section">
+    <h2>设定值下发与过程观测</h2>
+    <p>以下图表只还原报告中记录的值。设定值读回与 PV 观测分开展示；PV 点之间不连成连续曲线。R4 的两个优化条目仍处于 open/未判定状态。</p>
+    <img class="chart" src="parameter-write-sequence.png" alt="模拟场景中的 SP 写入序列和稀疏 PV 观测" />
+    <p class="small">矢量图：<a href="parameter-write-sequence.pdf">PDF</a> · <a href="parameter-write-sequence.svg">SVG</a>；逐步数据：<a href="parameter-write-sequence.csv">CSV</a>。原始断言：<a href="../../../audit/evidence/2026-10-30-real-channel-mission/report.json">report.json</a>。</p>
+  </section>
+
+  <section class="section">
+    <h2>最新 Channel 测试流程</h2>
+    <div class="flow" aria-label="采集到参数写入流程">
+      <div class="step"><b>1 · 配置</b>隔离 AW home<br>连接既有模拟器</div>
+      <div class="step"><b>2 · 建线</b>五种协议端点在线<br>SP 基线 195</div>
+      <div class="step"><b>3 · 采集</b>OMP Agent 调用 DAQ<br>31 点查询</div>
+      <div class="step"><b>4 · 请求写入</b>manual 模式<br>pending 时 SP=195</div>
+      <div class="step"><b>5 · 批准</b>验收脚本调用批准 API<br>SP 读回 198</div>
+      <div class="step"><b>6 · 再次探索</b>auto 绑定<br>198 → 200.5</div>
+      <div class="step"><b>7 · 留痕复测</b>PV 单点与窗口摘要<br>台账 open/未判定</div>
+    </div>
+    <p class="small">流程中的“批准”由测试脚本自动完成，不是操作员在 UI 中人工批准。R0.1 返回 `started=false, reason=already-up`，所以模拟器由本轮隔离启动这一说法不成立。</p>
+  </section>
+
+  <section class="section">
+    <h2>不同测试批次的证据边界</h2>
+    <table>
+      <thead><tr><th>批次</th><th>做了什么</th><th>结果</th><th>能支持的结论</th></tr></thead>
+      <tbody>
+        <tr><td><b>最新 Channel</b><br>24 assertions</td><td>单 OMP Agent；DAQ 查询、手动门控写、自动探索写、readback、journal、AML/solver/ontology 接口。</td><td><span class="tag pass">PASS 24/24</span><br>SP 195→198→200.5</td><td>证明本地模拟配置下的一条真实 Agent 接入与受治理写路径。非人工审批；非真实 PLC；非 P12 Team。</td></tr>
+        <tr><td><b>集成基准</b><br>77 checks</td><td>五协议驱动与接口、多种治理检查、另一模拟预设、三 seed 闭环、Biax 模拟任务。</td><td><span class="tag pass">72 PASS</span> <span class="tag warn">5 WARN</span><br>0 FAIL</td><td>系统集成覆盖更广，但 harness 是 deterministic，LLM Agent loop 关闭，平台和模拟器已运行并被复用。警告包括 MQTT 0/3、HTTP 1/3、HITL 冷却期拒写、采样恢复与语义卡检查；RTU 仅采集。</td></tr>
+        <tr><td><b>最新 P12</b><br>strict PIPELINE</td><td>目标前的 DAQ 新鲜度资格检查。</td><td><span class="tag fail">NOT-QUALIFIED</span><br>未创建 goal</td><td>说明当前无法据此报告完整团队任务成功。</td></tr>
+        <tr><td><b>前一 P12</b><br>strict PIPELINE</td><td>尝试 lead＋2 workers、任务派发、事件与设备/治理对账。</td><td><span class="tag warn">QUALIFIED</span><br><span class="tag fail">workflow / integrity FAIL</span></td><td>未完成 worker 派发与可对账写入；不能计为完整 episode 成功。</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="section">
+    <h2>集成基准的作业流程</h2>
+    <p>以下是确定性集成基准的执行脉络。每个阶段由独立子检查构成；该批次没有开启 LLM Agent loop，平台和模拟器使用已有运行实例。</p>
+    <div class="flow" style="grid-template-columns:repeat(5,1fr)" aria-label="集成基准流程">
+      <div class="step"><b>P0–P1 · 环境/工况</b>平台与模拟器预检<br>载入物理模型与离线参考最优值</div>
+      <div class="step"><b>P2–P3 · 接入/I-O</b>建立多协议 Line<br>DAQ、治理写与越界拦截</div>
+      <div class="step"><b>P4 · 闭环控制</b>读数 → 判定 → 限界写入<br>设备读回 → DAQ 复测</div>
+      <div class="step"><b>P4b–P4m · 治理/任务</b>回滚、HITL、台账、Recipe<br>lead-worker 任务路径</div>
+      <div class="step"><b>P6–P10 · 场景/优化</b>多 seed、图像/向量、迁移<br>后备回滚与 Biax 多旋钮任务</div>
+    </div>
+    <div class="callout"><b>结果阅读提示</b><br>这是 72/77 通过、5 警告、0 失败的确定性模拟基准；它与 24/24 的实时 OMP 单 Agent 验收不是同一批运行。两者不能混用分母。五项警告里，MQTT 为 0/3 轮、HTTP 为 1/3 轮，HITL 批准后受回退冷却期拦截；另外两项涉及 DAQ sampling-ready 与 Biax 语义卡检查。</div>
+  </section>
+
+  <section class="section">
+    <h2>集成基准功能矩阵</h2>
+    <table>
+      <thead><tr><th>阶段</th><th>检查内容</th><th>关键结果 / 限制</th></tr></thead>
+      <tbody>
+        <tr><td>P0–P1</td><td>环境预检、工况模型、离线 W*</td><td>P0 的采样恢复检查警告；P1 模型/reference 检查通过。</td></tr>
+        <tr><td>P2–P3</td><td>Modbus TCP、OPC UA、MQTT、HTTP、Modbus RTU 配置与读写</td><td>五类端点合计 52 个 DAQ 样本；4 条可写端点越界请求各 6/6 拦截；RTU 仅数采，HTTP 无设备读回偏差。</td></tr>
+        <tr><td>P4</td><td>逐线三轮“观察—探索写—读回—复测”</td><td>Modbus TCP/OPC UA 为 3/3；MQTT 0/3；HTTP 1/3，且 HTTP 不提供读回。</td></tr>
+        <tr><td>P4b–P4f</td><td>优化记录 keep/rollback、HITL、审计台账、Recipe 版本、参数语义与四层写限</td><td>rollback 与配方非破坏回退通过；台账含 11 个 anchors、200 条审计/运维记录；四层限界及边界拒绝通过。HITL pending/approve 接口通过，但写效果被 cooldown 拦截。</td></tr>
+        <tr><td>P4m</td><td>AgentTeam 任务板、受治理单步写与目标复测</td><td>SP=204.704，终值 PV≈204.70，在 ±0.75 内；报告有即时 PV 判读未达、后续终点达标，使用确定性 harness。</td></tr>
+        <tr><td>P6</td><td>三 seed 闭环目标调优</td><td>报告汇总 mean J/J*=97.5%、4 次写、3/3 停止条件满足；seed 42/43 的汇总 Jend 与轨迹终点需对账。</td></tr>
+        <tr><td>P7–P9</td><td>向量/图像采集、第二预设接入、backstop 回滚、team/memory/registry</td><td>采到 2 个向量帧和 2 个图像帧；第二预设 3 条可写 Line + 2 条 satellite DAQ，9/9 越界拦截、0 合法误拦；越界后 120.144 s 恢复基线；团队/记忆检查及 14 个引擎登记通过。</td></tr>
+        <tr><td>P10</td><td>Biax 九设备发现/补建、五协议驱动、确定性 harness 驱动的任务板/lead-worker 路径</td><td>9 设备、30 SP/19 DAQ、9/9 驱动检查；3 次写入后厚度 24.80 μm 达到目标。语义卡为 warning；run.json 汇总 0 条记录、任务时 journal 查询 1 条 open entry，两个证据面未对账。</td></tr>
+      </tbody>
+    </table>
+    <p class="small">详见 <a href="../../../../bench/results/20261029180436-1lo0/report.md">完整集成报告</a>、<a href="../../../../bench/results/20261029180436-1lo0/run.json">原始 run.json</a> 和 <a href="../../../../bench/results/20261029180436-1lo0/summary.json">summary.json</a>。</p>
+    <h3>协议驱动数据与写入检查</h3>
+    <p class="small">以下均是驱动对本机模拟协议端点的事务结果，不代表现场 PLC 通信。读回差值为空表示该通道没有可用读回值。</p>
+    <table>
+      <thead><tr><th>协议</th><th>DAQ 点</th><th>写入 p50 / p95</th><th>读回</th><th>结果限定</th></tr></thead>
+      <tbody>
+        <tr><td>Modbus TCP</td><td>9</td><td>46.988 / 47.690 ms</td><td>偏差 0.04</td><td>F5 拦截 6/6</td></tr>
+        <tr><td>OPC UA</td><td>10</td><td>19.893 / 20.114 ms</td><td>偏差 0</td><td>F5 拦截 6/6</td></tr>
+        <tr><td>MQTT</td><td>6</td><td>21.135 / 22.004 ms</td><td>偏差 0</td><td>F5 拦截 6/6</td></tr>
+        <tr><td>HTTP</td><td>13</td><td>33.062 / 44.601 ms</td><td>无读回值</td><td>F5 拦截 6/6</td></tr>
+        <tr><td>Modbus RTU</td><td>14</td><td>—</td><td>—</td><td>DAQ-only satellite</td></tr>
+      </tbody>
+    </table>
+    <h3>独立佐证套件</h3>
+    <p>同一验收报告还列出离线本体服务层 57/57、绑定方式×协议 19/19、MES 镜像数采与模型查询 17/17。它们有独立证据目录，不能加进 24/24 或 72/77。该报告注明 optimizer 正向求解、AML 全训练链和本体 UI 六 tab 本轮没有重跑。</p>
+  </section>
+
+  <section class="section">
+    <h2>P6 · 三 seed 闭环参数调优面板</h2>
+    <p>图中把每次仿真评估的 J、螺杆转速和厚度轨迹分开展示。Seed 42/43 各做两次治理写；Seed 44 的初始厚度 51.45 μm 已在 50±2 μm 带内，因此没有写入即满足停止判据。</p>
+    <img class="chart" src="closed-loop-tuning-dashboard.png" alt="P6 三 seed 的目标函数、螺杆转速和厚度轨迹；对比了逐轮 J 与汇总 Jend" />
+    <p class="small">图例中的实心圆为轨迹值，空心菱形为汇总 `Jend`。Seed 42 差 +0.182；Seed 43 差 −0.078。汇总仍记录 mean J/J*=97.5%，但精确终点应在引用前核实。<a href="closed-loop-tuning-dashboard.pdf">PDF</a> · <a href="optimization-trajectories.csv">轨迹 CSV</a> · <a href="build-optimization-panels.py">生成脚本</a></p>
+    <div class="callout"><b>结果分析</b><br>Seed 42 的 J 由 66.454 升至 88.703 后，最后轨迹点回到 88.339；Seed 43 首轮降至 77.701，随后回升至 88.280。两条轨迹都不是逐轮单调改进。Seed 44 零次写入即停止。该结果证明固定模拟器与判据下的闭环执行，不是三次独立现场试验，也不单独证明策略的泛化性能。</div>
+  </section>
+
+  <section class="section">
+    <h2>P10 · Biax 多节点调参过程</h2>
+    <p>这一项记录了三个不同工艺旋钮的顺序调整，以及每轮之后的厚度读数。厚度直到第三次写入后才进入预设目标带。</p>
+    <img class="chart" src="biax-mission-tuning.png" alt="Biax 模拟任务三次参数写入后厚度从28.05降至24.80微米并进入目标带" />
+    <p class="small"><a href="biax-mission-tuning.pdf">PDF 图</a> · <a href="../../../../bench/results/20261029180436-1lo0/agentteam-biax.log">任务轨迹原始日志</a>。</p>
+    <div class="callout"><b>结果分析</b><br>铸片辊速度 32→33.7 后厚度 28.05→28.00 μm；快辊速度 118→122.4 后为 27.98 μm；出口轨宽 3000→3096 后为 24.80 μm，落在 24.3–25.7 μm 目标带。图中虚线仅连接离散迭代点以显示次序，不代表连续采样或因果隔离。该顺序任务目标达成，但 run.json 汇总字段为 0 条 optimization records，任务期间的 journal 查询显示 1 条 open entry；两个证据面未对账，不能声称三次写入均有完整对应记录。该 mission 是确定性 harness 驱动的任务板/lead-worker 路径，不是实时 OMP Agent 任务。</div>
+  </section>
+
+  <section class="section">
+    <h2>24 条断言逐项归纳</h2>
+    <table>
+      <thead><tr><th>阶段</th><th>条数</th><th>结果摘要 / 限定</th></tr></thead>
+      <tbody>
+        <tr><td>R0 环境</td><td>5</td><td>隔离应用 home、管理员、开线和基线通过；模拟器为已有运行进程。端点列表实际含 Modbus TCP、Modbus RTU、OPC UA、MQTT、HTTP 五类，报告的“四种”计数错误。</td></tr>
+        <tr><td>R1 工具面</td><td>4</td><td>Channel、OMP/LM Studio Agent、绑定模式和 10 项收窄工具面通过。</td></tr>
+        <tr><td>R2 数采</td><td>1</td><td>DAQ 返回最新 207.67°C、均值 209.279°C；对照模拟器真值 205.83°C。范围为一条模拟线。</td></tr>
+        <tr><td>R3 HITL</td><td>3</td><td>pending 阶段保持 SP=195，批准后 SP=198；批准由脚本执行。10 s PV 读数 203.822→203.212°C。</td></tr>
+        <tr><td>R4 写入与台账</td><td>6</td><td>SP=198→200.5；最后 PV=200.84°C，和 SP 相差 0.34°C。报告的 10 s ΔPV 为 −0.095°C，记录未判定；不能写成已证明改善/收敛。</td></tr>
+        <tr><td>R5 AML/solver</td><td>3</td><td>模型检索可用但无匹配项；solver ready=0。solve 断言实际因工具被禁用而拒绝，不是资格 Profile 门控证明。</td></tr>
+        <tr><td>R6 本体</td><td>2</td><td>Agent 上下文能读取节点工艺语义、单位及产线信息。</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="section">
+    <h2>与论文 R20 相比</h2>
+    <p>R20 有两个模拟场景、六个顺序任务，并保留六次任务的读回回执与 run-tagged 单点样本；六个样本都未达到目标带，采用合成审批和 SQLite 回退。最新 Channel 测试覆盖的模块更多，但只有一个场景、一个 Agent 和两次参数写入；没有连续 PV 轨迹。它们证明不同方面，不能作为前后重复或合并计数。</p>
+    <div class="callout"><b>论文可写边界</b><br>可报告“所测本地模拟映射下，Agent 完成一次 DAQ 查询及两次受治理的 Modbus-TCP 设定值写入，脚本批准后读回一致并形成治理记录”。不要据此声称现场部署、跨协议自动迁移、工艺优化效果或多 Agent Team 成功。</div>
+  </section>
+
+  <section class="section">
+    <h2>PIPELINE 与上线判断</h2>
+    <table>
+      <thead><tr><th>问题</th><th>判定</th><th>理由</th></tr></thead>
+      <tbody>
+        <tr><td>是否按 PIPELINE 完成真实场景实验？</td><td><span class="tag fail">否</span></td><td>最新 Channel 测试不是 P12 的 lead＋2 worker episode；最近 P12 在资格阶段停止，之前一次 workflow 与 evidence integrity 均失败。</td></tr>
+        <tr><td>是否证明配置驱动的虚拟场景接入？</td><td><span class="tag pass">有条件支持</span></td><td>多协议仿真集成基准与 Modbus-TCP Agent 写入证据都证明了所测配置可以接通。未覆盖任意新设备/现场映射。</td></tr>
+        <tr><td>是否支持真实场景上线？</td><td><span class="tag fail">证据不足</span></td><td>没有现场 PLC/传感器 commissioning；没有验证编码、缩放、单位、联锁、现场网络、失联恢复、真实采样延迟与操作员审批。</td></tr>
+      </tbody>
+    </table>
+    <p class="small">“接口配置正确即可接入”是系统设计目标。当前证据只验证了几组已配置模拟端点；不能把该设计假设表述成已验证的现场无缝迁移能力。</p>
+  </section>
+
+  <section class="section">
+    <h2>原始报告可读性</h2>
+    <p>集成基准有 Markdown 报告和 HTML 仪表盘，便于浏览，但 5 项警告必须保留在结论中。最新 Channel 报告用 JSON 逐条保存断言，细节可复核但不适合快速理解执行顺序；其摘要中端点数量和 solver 拒绝原因也需要勘误。P12 报告的三段判定（qualification/workflow/integrity）清楚，但结果未通过主终点。本文件补充了流程图和写入/观测图，原始证据未被改写。</p>
+    <details><summary>打开本次审查引用的证据文件</summary>
+      <ul class="sources">
+        <li><a href="../../2026-10-30-real-harness-acceptance-report.md">真实 Harness 验收报告</a></li>
+        <li><a href="../../../audit/evidence/2026-10-30-real-channel-mission/report.json">24 条断言原始 JSON</a></li>
+        <li><a href="../../../../bench/results/20261029180436-1lo0/report.html">集成基准 HTML 报告</a> · <a href="../../../../bench/results/20261029180436-1lo0/dashboard.html">Dashboard</a></li>
+        <li><a href="../../../../bench/results/p12-20261029172346-67eb04e5-agentteam/report.md">最新 P12 结果</a> · <a href="../../../../bench/results/p12-20261029171555-ba13fcfd-agentteam/report.md">前一 P12 结果</a></li>
+        <li><a href="../../../../bench/PIPELINE/EXPERIMENT-PLAN.md">PIPELINE 实验计划与通过条件</a></li>
+        <li><a href="../../../../paper/tii/SUBMISSION-IEEE-TII/REPRODUCIBILITY.md">论文复现记录（含 R20）</a></li>
+      </ul>
+    </details>
+  </section>
+  <div class="foot">本报告从现有留存证据整理，未重新执行测试。所有数据保留原始范围与限制。</div>
+</main>
+</body>
+</html>

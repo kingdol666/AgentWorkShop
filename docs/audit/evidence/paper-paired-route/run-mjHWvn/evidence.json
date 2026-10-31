@@ -1,0 +1,204 @@
+{
+  "schemaVersion": 1,
+  "experiment": {
+    "id": "pprmvsznrqi",
+    "name": "paired registered-harness and direct-REST recipe_trial entry evaluation",
+    "projectVersion": "0.8.6",
+    "executionMode": "one isolated loopback-only application/simulator startup; deterministic local OMP-RPC fixture plus direct REST route; shared per-scene configuration and candidate set with route-specific candidates; no LLM inference",
+    "claimBoundary": "Validates two real AgentWorkShop software entry paths, shared dispatch, bounded simulated device writes, approval, platform receipts, and independent readback. Does not validate Agent decision quality, LLM reasoning, multi-Agent coordination, physical PLC behavior, or process convergence.",
+    "startedAt": "2026-10-29T03:33:31.050Z",
+    "scenes": [],
+    "server": {
+      "version": "0.8.6",
+      "mode": "dev",
+      "workshop": "ready"
+    },
+    "finishedAt": "2026-10-29T03:33:36.047Z",
+    "runtimeDirectory": ".omc/paper-paired-route-*",
+    "outputDirectory": "docs/audit/evidence/paper-paired-route/run-*"
+  },
+  "isolation": {
+    "result": "incomplete",
+    "appBase": "http://127.0.0.1:3997",
+    "simulatorBase": "http://127.0.0.1:4020",
+    "awHome": "fresh isolated home mode",
+    "loopbackOnly": true,
+    "externalModelCalls": false,
+    "checks": [
+      {
+        "id": "fresh-aw-home-data-path",
+        "status": "pass",
+        "detail": {
+          "mode": "home",
+          "dataDir": "isolated AW_HOME/data"
+        }
+      },
+      {
+        "id": "free-loopback-app-port",
+        "status": "pass",
+        "detail": {
+          "host": "127.0.0.1",
+          "port": 3997
+        }
+      },
+      {
+        "id": "free-loopback-sim-port",
+        "status": "pass",
+        "detail": {
+          "host": "127.0.0.1",
+          "port": 4020
+        }
+      },
+      {
+        "id": "free-loopback-mqtt-port",
+        "status": "pass",
+        "detail": {
+          "host": "127.0.0.1",
+          "port": 18840
+        }
+      },
+      {
+        "id": "free-loopback-appMqtt-port",
+        "status": "pass",
+        "detail": {
+          "host": "127.0.0.1",
+          "port": 45323
+        }
+      },
+      {
+        "id": "free-loopback-tsdb-port",
+        "status": "pass",
+        "detail": {
+          "host": "127.0.0.1",
+          "port": 45321
+        }
+      },
+      {
+        "id": "free-loopback-objectstore-port",
+        "status": "pass",
+        "detail": {
+          "host": "127.0.0.1",
+          "port": 45322
+        }
+      },
+      {
+        "id": "deterministic-fixture-only",
+        "status": "pass",
+        "detail": {
+          "fixture": "scripts/fixtures/omp-paper-harness.mjs",
+          "noExternalModel": true,
+          "llmInference": false
+        }
+      },
+      {
+        "id": "isolated-home-and-outbound-guard-configured",
+        "status": "pass",
+        "detail": {
+          "infrastructure": "never",
+          "services": "loopback only",
+          "enabledPluginAllowlist": [
+            "rag-bridge"
+          ],
+          "outboundHost": "invalid non-routable hostname"
+        }
+      },
+      {
+        "id": "registered-fixture-launcher-ready",
+        "status": "pass",
+        "detail": {
+          "platform": "win32",
+          "launcher": "local stdio shim",
+          "fixture": "deterministic OMP-RPC fixture"
+        }
+      },
+      {
+        "id": "simulator-http-and-mqtt-loopback",
+        "status": "pass",
+        "detail": {
+          "http": "127.0.0.1:4020",
+          "mqtt": "127.0.0.1:18840"
+        }
+      },
+      {
+        "id": "application-loopback-ready",
+        "status": "pass",
+        "detail": {
+          "version": "0.8.6",
+          "host": "127.0.0.1",
+          "port": 3997
+        }
+      }
+    ]
+  },
+  "checks": [
+    {
+      "id": "simulator-stopped",
+      "status": "pass",
+      "detail": {
+        "pid": 92508,
+        "processTreeStopped": true
+      }
+    },
+    {
+      "id": "agentworkshop-stopped",
+      "status": "pass",
+      "detail": {
+        "pid": 74888,
+        "processTreeStopped": true
+      }
+    },
+    {
+      "id": "app-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 3997
+      }
+    },
+    {
+      "id": "simulator-http-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 4020
+      }
+    },
+    {
+      "id": "simulator-mqtt-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 18840
+      }
+    },
+    {
+      "id": "app-mqtt-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 45323
+      }
+    },
+    {
+      "id": "timeseries-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 45321
+      }
+    },
+    {
+      "id": "objectstore-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 45322
+      }
+    }
+  ],
+  "status": "failed",
+  "failure": {
+    "stage": "application-startup",
+    "scene": null,
+    "name": "Error",
+    "message": "synthetic administrator registration returned HTTP 403: 自助注册已关闭(security.allowRegistration=false),请联系管理员开通账号"
+  },
+  "cleanup": {
+    "status": "passed",
+    "allStartedProcessTreesAndLoopbackPortsChecked": true
+  }
+}

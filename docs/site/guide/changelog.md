@@ -5,6 +5,8 @@
 
 ## v0.8.x — 知识与闭环(2026-10 下旬)
 
+- **v0.8.8(2026-10-31)** — **时序存储治理与生命周期健壮性收口 + bench v2 写面**:压缩 chunk 上 `ctid` 批删必炸(TimescaleDB 2.29 实证)改为时间分片普通 DELETE;rollup SQL 三层修复使 1m/1h 聚合首次真正落行(运行期新线免重启);历史截断保最新段;逐线保留期 PUT 部分更新不再抹覆写;裁剪上界受聚合水位钳制。任务生命周期四修(停滞误杀/救援竞争/HITL 顺延/孤儿派发);Agent 工具面六修(终态诚实回执/进度钳位/授权回滚/消息校验);插件宿主 home 模式路径回归修复;MQTT 多字段(fields/jsonTemplate);bench v2 写面收尾复绿。验收:单测 913/913 · PIPELINE 执行卡全层(静态 100% · plc 13/13 · E1a 消融 · api-live 75/75 · 冻结基线逐位复现 ×2)· IDD/RAG 集成链真机全通 · P12 真实 harness episode。
+- **v0.8.7(2026-10-29)** — **错误台账 error-ledger 全链 + /logs 日志页生产化**:全异常入账三入口、限流去重、对抗套件 26 断言;/logs 采集-检索-脱敏;README 双语重设计。
 - **v0.8.6(2026-10-28)** — **多专家设计审查整改(P0×2 + P1×11)**:Modbus `little` 字节序纠正为**标准 DCBA**(旧实现实际解出 BADC,真实设备会静默读成 1e-41 量级);掩码凭据回写不再覆盖真实口令(入口单点剔除);帧指标告警跨帧保持;停线补种以补种时刻入库;外部 ingest 与驱动共用 sink 管线;系统兜底回退 await 后重验;配方频控在飞占位;委派 auto 必须显式确认 + 审计;`recipe_update` 审批期定义指纹比对;停机窗口不再假送达;人类调用作用域失败路径收口;工具活性信号覆盖 omp 原生;Timescale `queryTagged` 补 state/ingested_at 与分页;owner-FK 老库迁移补齐 8 列不再丢数据。验收:单测 739/739、API 61/61、产线治理 44/44、真实场景(Qwen3.5-9B + omp,worker 身份)17/17。详见 `docs/audit/2026-10-28-multiexpert-remediation-acceptance.md`。
 - **v0.8.5(2026-10-28)** — **频道执行三模式**(observe / manual / auto)+ MQTT 结构化解码(jsonPath 单字段入库 / jsonKey 封装下发 / readTopic 回读)+ 安全加固 S1–S16(启动屏障、未知驱动 fail-loud、未来时间戳、MQTT 身份、告警产线隔离、Modbus 范围、单实例数据锁等)。
 - **v0.8.4(2026-10-26)** — 3 分钟英文界面宣传片(README / VitePress / 独立播放页)+ EDA 管道标题、在线查看器高度与本体基线 i18n 修复。

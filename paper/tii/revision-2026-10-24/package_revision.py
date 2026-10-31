@@ -10,6 +10,7 @@ import argparse
 import hashlib
 import json
 import re
+import shutil
 import zipfile
 from pathlib import Path, PurePosixPath
 
@@ -20,6 +21,7 @@ PRIOR_DATA = HERE.parent / "revision-2026-10-20"
 BASE_ZIP = HERE.parent / "final-revision-2026-10-20" / "IEEE-TII-anonymous-evidence.zip"
 SOURCE_NAME = "IEEE-TII-manuscript-source-2026-10-24.zip"
 EVIDENCE_NAME = "IEEE-TII-anonymous-evidence-2026-10-24.zip"
+PDF_NAME = "IEEE-TII-manuscript-2026-10-24.pdf"
 REVISION = "2026-10-24"
 TEXT_SUFFIXES = {".md", ".txt", ".json", ".jsonl", ".csv", ".log", ".tex",
                  ".bib", ".bbl", ".py", ".mjs", ".js", ".ts", ".svg", ".eps"}
@@ -186,7 +188,7 @@ def active_source_files() -> tuple[dict[str, Path], list[Path]]:
     assert len(tex) == 7, "Expected main and six section sources"
     joined = "\n".join(path.read_text(encoding="utf-8") for path in tex)
     figures = [PAPER / item for item in re.findall(r"\\includegraphics(?:\[[^]]*\])?\{([^}]+)\}", joined)]
-    assert len(figures) == 6 and len(set(figures)) == 6, "Expected six active figures"
+    assert len(figures) == 5 and len(set(figures)) == 5, "Expected five active figures"
     local = [*tex, PAPER / "main.pdf", PAPER / "main.bbl", *figures,
              *(path.with_suffix(".svg") for path in figures),
              PAPER / "resources/fig-architecture-2026.eps", PAPER / "resources/fig-runtime-2026.eps",
@@ -402,9 +404,13 @@ def main() -> None:
     source_zip, evidence_zip = HERE / SOURCE_NAME, HERE / EVIDENCE_NAME
     zip_payload(source_zip, source_payload)
     zip_payload(evidence_zip, evidence_payload)
+    final_pdf = HERE / PDF_NAME
+    shutil.copyfile(PAPER / "main.pdf", final_pdf)
     # This copy now describes precisely the final delivered source assets.
     (PAPER / "FILE-MANIFEST.json").write_bytes(source_payload["FILE-MANIFEST.json"])
     delivery = {"revision": REVISION, "pages": pages,
+                "manuscript_pdf": {"name": PDF_NAME, "sha256": sha(final_pdf.read_bytes()),
+                                   "bytes": final_pdf.stat().st_size},
                 "base_evidence_package": {"name": BASE_ZIP.name, "sha256": sha(BASE_ZIP.read_bytes()), "bytes": BASE_ZIP.stat().st_size},
                 "source": {"name": SOURCE_NAME, "sha256": sha(source_zip.read_bytes()), "bytes": source_zip.stat().st_size,
                            "entries": len(source_payload), "files": {name: sha(data) for name, data in sorted(source_payload.items())},
@@ -417,7 +423,7 @@ def main() -> None:
     (HERE / "DELIVERY-MANIFEST.json").write_bytes(json_bytes(delivery))
     if args.extract_source_to:
         extract_clean_source(source_zip, args.extract_source_to.resolve())
-    print(json.dumps({"source": SOURCE_NAME, "evidence": EVIDENCE_NAME, "pages": pages,
+    print(json.dumps({"pdf": PDF_NAME, "source": SOURCE_NAME, "evidence": EVIDENCE_NAME, "pages": pages,
                       "source_entries": len(source_payload), "evidence_entries": len(evidence_payload),
                       "evidence_checks": evidence_checks}, indent=2))
 

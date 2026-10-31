@@ -1,0 +1,39 @@
+{
+  "lineId": "ln-f0dc5ff4",
+  "productId": "pd-214d17e1",
+  "recipeId": "rc-65b50241",
+  "runIds": [
+    "rr-c602c1a2",
+    "rr-3cb13d5e",
+    "rr-97c589b6",
+    "rr-d6384d1c",
+    "rr-77698bb2",
+    "rr-a27a226c"
+  ],
+  "nodes": [
+    {
+      "nodeId": "dn-34f21505",
+      "role": "control"
+    },
+    {
+      "nodeId": "dn-6e008bf8",
+      "role": "target"
+    }
+  ],
+  "beatMs": 1000,
+  "window": {
+    "historySteps": 8,
+    "horizonSteps": 4
+  },
+  "cleaning": {
+    "hampelK": 0,
+    "maxInterpMs": 1000
+  },
+  "split": {
+    "valRatio": 0.4,
+    "testRatio": 0.4,
+    "seed": 42
+  },
+  "purpose": "mpc_surrogate",
+  "note": ""
+}

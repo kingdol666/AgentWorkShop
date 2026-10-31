@@ -1,5 +1,8 @@
 ﻿import pymupdf, sys, os
-RES = r"D:\codes\AgentWorkShop\paper\tii\SUBMISSION-IEEE-TII\resources"
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+RES = ROOT / "resources"
 
 def overlap(a, b, tol=0.0):
     ix = min(a.x1,b.x1) - max(a.x0,b.x0)
@@ -47,8 +50,9 @@ def qa(path):
     print(f"  fonts: {fonts}")
 
 import sys
-targets = sys.argv[1:] or ["fig-process-campaign.pdf", "fig-missions.pdf",
-                           "fig-admission.pdf", "fig2-architecture.pdf"]
+targets = sys.argv[1:] or ["fig-architecture-2026-9pt.pdf",
+                           "fig-runtime-2026-9pt.pdf",
+                           "fig-admission-hitl-2026.pdf"]
 for f in targets:
-    p = os.path.join(RES, f)
+    p = RES / f
     qa(p) if os.path.exists(p) else print("MISSING", p)

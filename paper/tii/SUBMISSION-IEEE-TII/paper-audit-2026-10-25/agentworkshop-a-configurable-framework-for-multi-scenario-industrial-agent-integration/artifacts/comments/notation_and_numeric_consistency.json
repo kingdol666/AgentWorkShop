@@ -1,0 +1,33 @@
+[
+  {
+    "title": "说明 65 项 profile/composition 检查是否为同一套重复运行",
+    "quote": "65 channel/profile and composition checks passed in an October",
+    "explanation": "复现台账说明这是同一组 65 项检查在两个日期各运行一次，并非 130 个不同断言；正文这句话仍可能被读成累计数量或两次独立套件。建议直接写成“同一套 65 项检查于两个日期各运行一次”，并在摘要保持 65 个独立断言的口径。",
+    "comment_type": "presentation",
+    "severity": "minor",
+    "confidence": "high",
+    "source_kind": "llm",
+    "source_section": "evaluation",
+    "related_sections": [
+      "abstract",
+      "evaluation"
+    ],
+    "root_cause_key": "profile-suite-repeated-count-clarity",
+    "review_lane": "notation_and_numeric_consistency, evaluation_fairness_and_reproducibility",
+    "gate_blocker": false,
+    "quote_verified": null,
+    "evidence_anchor": [
+      {
+        "type": "analysis_artifact",
+        "text": "CLAIM-EVIDENCE-LEDGER.md states the same 65 isolated checks passed on Oct. 20 and Oct. 24, not 130 distinct checks."
+      }
+    ],
+    "claim_strength": "supported",
+    "missing_evidence": [],
+    "allowed_wording": "The same 65 checks passed in an October 20 archive and an October 24 rerun.",
+    "forbidden_wording": [
+      "130 distinct profile/composition checks."
+    ]
+  }
+]
+

@@ -1,0 +1,33 @@
+{
+  "issues": [
+    {
+      "title": "A float barrier leaves the lower right of page 2 conspicuously empty",
+      "quote": "\\FloatBarrier",
+      "explanation": "In the current PDF, page 2 has a large unused lower-right column while text continues in the left column. The barrier immediately follows the deferred two-column Fig. 1 and prevents the framework prose after it from filling that space. Remove this immediate barrier and retain the existing \\clearpage before Fig. 2; the current PDF already places Fig. 1 on page 3 and Fig. 2 on page 4, and the clearpage preserves their order and page separation.",
+      "comment_type": "presentation",
+      "severity": "moderate",
+      "confidence": "high",
+      "source_kind": "llm",
+      "source_section": "framework_architecture",
+      "related_sections": [
+        "operational_workflows"
+      ],
+      "root_cause_key": "framework_fig1_barrier_page2_column_whitespace",
+      "review_lane": "committee_logic",
+      "evidence_anchor": [
+        {
+          "type": "section",
+          "text": "sections/system.tex:28–40, two-column Fig. 1 followed by \\FloatBarrier"
+        },
+        {
+          "type": "section",
+          "text": "sections/system.tex:71, existing \\clearpage before Fig. 2"
+        }
+      ],
+      "gate_blocker": false,
+      "quote_verified": true
+    }
+  ],
+  "surrender_rate": 0.0,
+  "frame_lock_alert": false
+}

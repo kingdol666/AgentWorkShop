@@ -1,0 +1,79 @@
+{
+  "suite": "dual-plugin-integration",
+  "base": "http://127.0.0.1:3300",
+  "at": "2026-10-29T04:13:48.015Z",
+  "channel": "2d7d10af-2c29-4261-a623-8b7a8da255d2",
+  "lead": "81ccae5f-7d4b-4cd3-aa1d-dbb27b6d5576",
+  "mark": "RALPH-AW-INT-K9Z-1793247189849",
+  "kbIngest": "已提交知识库异步任务(后台执行中,无需等待):\ntask_id=kbt_mvt12tk9_f40cfb67\n完成后平台会自动回执到你的信箱并唤醒你;空闲时也可调用 kb_agent_status(task_id, wait_seconds=120) 等待并获取结果。",
+  "kbQuery": "已提交知识库异步任务(后台执行中,无需等待):\ntask_id=kbt_mvt13912_e6dade24\n完成后平台会自动回执到你的信箱并唤醒你;空闲时也可调用 kb_agent_status(task_id, wait_seconds=120) 等待并获取结果。",
+  "diagStatus": "最近 5 条诊断:\n- 093c38c0 | offline-data | [DOE 试验分析] completed | agent | 2026-10-18T10:26:48.752+08:00 | DOE 试验分析(2 因子 2 水平 + 中心点,注塑线)。因子:A=保压压力SP(45/51 bar),B=机筒一区温度SP(240/250 ℃)。条件窗:C1: A(保压)=45bar B(机筒一区)=240℃ 窗 2026-10-18T01:54:21.268Z~2026-10-18T01:58:21.274Z；C2: A(保压)=51bar B(机筒一区)=240℃ 窗 2026-10-18T01:58:21.274Z~2026-10-18T02:04:33.364Z；C3: A(保压)=51bar B(机筒一区)=250℃ 窗 2026-10-18T02:04:33.364Z~20",
+  "results": [
+    {
+      "id": "P1",
+      "name": "插件设置 PATCH(diag/rag 基址+token+结果库开关)",
+      "pass": true,
+      "detail": "status=200 {\"code\":0,\"message\":\"ok\",\"data\":{\"ok\":true,\"changed\":[],\"restartRequired\":[],\"effective\":{\"server.host\":\"0.0.0.0\",\"server.dev.port\":3000,\"server.prod.port\":3001"
+    },
+    {
+      "id": "P2",
+      "name": "diag/rag 插件 enabled 且无 error",
+      "pass": true,
+      "detail": "[{\"n\":\"diag-bridge\",\"e\":true,\"err\":null},{\"n\":\"rag-bridge\",\"e\":true,\"err\":null}]"
+    },
+    {
+      "id": "P2b",
+      "name": "全插件 failures=[](11 插件)",
+      "pass": true,
+      "detail": "count=11 errs="
+    },
+    {
+      "id": "P3",
+      "name": "诊断/知识工具注册且 available",
+      "pass": true,
+      "detail": "[{\"n\":\"diag_run\",\"registered\":true,\"available\":true},{\"n\":\"diag_status\",\"registered\":true,\"available\":true},{\"n\":\"kb_agent\",\"registered\":true,\"available\":true}]"
+    },
+    {
+      "id": "P3b",
+      "name": "工具注册表规模(builtin+plugin)",
+      "pass": true,
+      "detail": "total=125 available=125"
+    },
+    {
+      "id": "P4",
+      "name": "可用频道在位",
+      "pass": true,
+      "detail": "注塑产线作业-demo"
+    },
+    {
+      "id": "P4b",
+      "name": "频道 lead Agent 可用",
+      "pass": true,
+      "detail": "lead:81ccae5f-7d4b-4cd3-aa1d-dbb27b6d5576"
+    },
+    {
+      "id": "P5",
+      "name": "diag_status 真调 IDD 后端",
+      "pass": true,
+      "detail": "最近 5 条诊断:\n- 093c38c0 | offline-data | [DOE 试验分析] completed | agent | 2026-10-18T10:26:48.752+08:00 | DOE 试验分析(2 因子 2 水平 + 中心点,注塑线)。因子:A=保压压力SP(45/51 bar),B=机筒一区温度SP(240/250 ℃)。条件窗:C1: A(保压)=45bar B(机筒一区)=240℃ 窗 2026-10-18T01:54:21.268Z~2026-10-18T01:58:21.274Z"
+    },
+    {
+      "id": "P6",
+      "name": "kb_agent 入库(在飞审批→提交→完成)",
+      "pass": true,
+      "detail": "card=ap-6904c6c6 task=kbt_mvt12tk9_f40cfb67 status=任务 kbt_mvt12tk9_f40cfb67 仍在后台执行中(running,已等待 0s)。稍后再次查询;完成后平台也会自动回执。"
+    },
+    {
+      "id": "P7",
+      "name": "kb_agent 检索返回",
+      "pass": true,
+      "detail": "任务 kbt_mvt13912_e6dade24 仍在后台执行中(running,已等待 0s)。稍后再次查询;完成后平台也会自动回执。"
+    },
+    {
+      "id": "P8",
+      "name": "diag_results 结果库查询(未启用回执或真数据均算通过)",
+      "pass": true,
+      "detail": "分析结果 total=98 limit=20 offset=0 本页 20 条(brief=true):\n- e2e-nosess-savcx | deep-diagnosis | 96分 ENDORSED | 2026-10-25 12:08:41 | e2e-nosess-savcx\n  Conclusion\n- e2e-mismatch-savcx | deep-diagnosis | -分"
+    }
+  ]
+}

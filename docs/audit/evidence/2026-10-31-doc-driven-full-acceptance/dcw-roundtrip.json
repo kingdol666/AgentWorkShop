@@ -1,0 +1,76 @@
+{
+  "at": "2026-10-30T17:46:08.655Z",
+  "paramId": "pp-5e71b7ca",
+  "write27": {
+    "status": 200,
+    "outcome": {
+      "ok": true,
+      "message": "POST 成功(HTTP 200),写入并回读一致:27,回读 27(标定后物理值 27)",
+      "raw": 27,
+      "readback": 27,
+      "ack": "readback-verified",
+      "anchorId": "anc-67306c6c",
+      "param": {
+        "id": "pp-5e71b7ca",
+        "key": "temp-sp",
+        "name": "DOC-箱体温度SP",
+        "templateRef": "temp-sp",
+        "unit": "℃",
+        "decimals": 2,
+        "min": null,
+        "max": null,
+        "stepLimit": 2,
+        "nodeId": "dw-1f825abb",
+        "desc": "烘箱温度设定:烘箱/熔体温度设定:升高使热塑温度上升(成膜更均匀但能耗高、过热降解风险),降低则偏冷易厚度不均(执行点:DOC-箱体温度SP)",
+        "lineId": "ln-b8c1d3ac",
+        "driver": "http",
+        "enabled": true,
+        "value": 27,
+        "readValue": null,
+        "state": "ok",
+        "createdAt": "2026-10-31T01:40:48.834+08:00"
+      }
+    }
+  },
+  "readback27": {
+    "value": 27,
+    "state": "ok",
+    "lastAt": "2026-10-31T01:45:01.601+08:00"
+  },
+  "restore25": {
+    "status": 200,
+    "outcome": {
+      "ok": true,
+      "message": "POST 成功(HTTP 200),写入并回读一致:25,回读 25(标定后物理值 25)",
+      "raw": 25,
+      "readback": 25,
+      "ack": "readback-verified",
+      "anchorId": "anc-79c092fb",
+      "param": {
+        "id": "pp-5e71b7ca",
+        "key": "temp-sp",
+        "name": "DOC-箱体温度SP",
+        "templateRef": "temp-sp",
+        "unit": "℃",
+        "decimals": 2,
+        "min": null,
+        "max": null,
+        "stepLimit": 2,
+        "nodeId": "dw-1f825abb",
+        "desc": "烘箱温度设定:烘箱/熔体温度设定:升高使热塑温度上升(成膜更均匀但能耗高、过热降解风险),降低则偏冷易厚度不均(执行点:DOC-箱体温度SP)",
+        "lineId": "ln-b8c1d3ac",
+        "driver": "http",
+        "enabled": true,
+        "value": 25,
+        "readValue": null,
+        "state": "ok",
+        "createdAt": "2026-10-31T01:40:48.834+08:00"
+      }
+    }
+  },
+  "readback25": {
+    "value": 25,
+    "state": "ok",
+    "lastAt": "2026-10-31T01:46:08.126+08:00"
+  }
+}

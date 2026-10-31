@@ -1,0 +1,29 @@
+\section{Discussion}
+\label{sec:limits}
+R20 produced six complete task-to-approval-to-receipt-to-sample traces across
+two simulator scenes; none of its single post-readback samples reached target.
+R21 passed 31 assertions on the same configured route, and a 20-case mock
+suite refused twelve stale approval-context mutations across three recipe
+actuation routes before actuation.
+
+Each scene used one simulator instance and a single post-readback probe per
+task; the results therefore do not establish independent process replication,
+convergence, or quality improvement. Configuration reuse, alternate harnesses
+or direct REST entry, online DAQ, physical transfer, and comparative
+architecture value remain untested. Synthetic approval does not measure
+operator effectiveness
+\cite{parasuramanmanzey2010complacency,parasuraman2000model,bainbridge1983ironies};
+tool restrictions do not establish deployment security
+\cite{greshake2023injection,liu2024pinjection,iec62443-3-3} or replace
+independently engineered PLC/SIS protection \cite{iec61511}. Future work
+should compare a defined baseline and include independent simulator and
+physical-plant trials.
+
+\section{Conclusion}
+\label{sec:conclusion}
+AgentWorkShop connects collaborative tasks to production context, checked
+operations, semantic I/O, and service-owned records. R20 and R21 verify
+selected paths across two simulator mappings; a mock-state suite confirms
+refusal when an approved line--product--recipe--run tuple changes on three
+actuation routes. These results validate selected software behavior and leave
+comparative integration value and process performance for future evaluation.

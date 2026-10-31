@@ -1,0 +1,118 @@
+{
+  "at": "2026-10-29T11:07:17.236Z",
+  "port": 39277,
+  "home": "D:/tmp/aw-security-b0-20261030",
+  "tag": "mvtfurns",
+  "total": 18,
+  "passed": 18,
+  "results": [
+    {
+      "id": "BOOT",
+      "name": "隔离实例启动 + workshop ready",
+      "pass": true,
+      "detail": "port=39277"
+    },
+    {
+      "id": "S0.1",
+      "name": "首注册 = admin",
+      "pass": true,
+      "detail": "status=200 role=admin"
+    },
+    {
+      "id": "S0.2",
+      "name": "管理员建普通用户",
+      "pass": true,
+      "detail": "status=200 {\"status\":200,\"code\":0,\"message\":\"ok\",\"data\":{\"id\":\"3ec8eb4c-3228-48ce-9c96-61551a57ac4f\",\"name\":\"B0 普通用户-mvtfurns\",\"email\":\"b0-user-mvtfurns@awshop.local\",\"rol"
+    },
+    {
+      "id": "S0.3",
+      "name": "普通用户登录取得令牌",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "S1.0",
+      "name": "hybrid_twin 频道实例化(治理档位可调前置)",
+      "pass": true,
+      "detail": "status=200 ch=6dd84f6d-a98c-42fc-ba6a-19a6235e7da0"
+    },
+    {
+      "id": "S1.1",
+      "name": "P0-1 非属主改治理档位 → 403",
+      "pass": true,
+      "detail": "status=403 code=SCOPE_VIOLATION"
+    },
+    {
+      "id": "S1.2",
+      "name": "P0-1 非属主解绑生产模型 → 403",
+      "pass": true,
+      "detail": "status=403"
+    },
+    {
+      "id": "S1.3",
+      "name": "P0-1 档位未被越权请求改写",
+      "pass": true,
+      "detail": "before=recommendation_only after=recommendation_only"
+    },
+    {
+      "id": "S1.4",
+      "name": "P0-1 属主/admin 改档位 → 放行且生效",
+      "pass": true,
+      "detail": "status=200 policy=hitl_governed"
+    },
+    {
+      "id": "S1.5",
+      "name": "P0-1 治理变更留审计(ops_log)",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "S2.1",
+      "name": "P0-2 伪造 XFF 不能换桶:22 次内触发 429",
+      "pass": true,
+      "detail": "limited=4 firstLimitAt=19"
+    },
+    {
+      "id": "S2.2",
+      "name": "P0-2 限流阈值仍为 20/min(此前已用 2 次 → 第 19 次触顶)",
+      "pass": true,
+      "detail": "firstLimitAt=19"
+    },
+    {
+      "id": "S3.1",
+      "name": "P0-5 首次启动生成/采纳本机凭据文件",
+      "pass": true,
+      "detail": "exists=true origin=adopted len=6"
+    },
+    {
+      "id": "S3.2",
+      "name": "P0-5 本机凭据使数采链路真实连通(Timescale/对象存储在线)",
+      "pass": true,
+      "detail": "tsdb=true os=true degraded=false err="
+    },
+    {
+      "id": "S3.3",
+      "name": "P0-5 采纳来源 = 运行中容器(升级不断连)",
+      "pass": true,
+      "detail": "containerLen=6"
+    },
+    {
+      "id": "S4.1",
+      "name": "compose 渲染:5432/9000/1883 只绑 127.0.0.1",
+      "pass": true,
+      "detail": "bindings=[[\"9000\",\"127.0.0.1\"],[\"1883\",\"127.0.0.1\"],[\"5432\",\"127.0.0.1\"]]"
+    },
+    {
+      "id": "S4.2",
+      "name": "compose 渲染:9001 无 publish(控制台默认关)",
+      "pass": true,
+      "detail": "published=9000,1883,5432"
+    },
+    {
+      "id": "S4.3",
+      "name": "compose 渲染:三项凭据全部来自 env 文件(运行时注入)",
+      "pass": true,
+      "detail": "credentials"
+    }
+  ]
+}

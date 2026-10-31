@@ -1,0 +1,45 @@
+{
+  "delays": {
+    "mv": 0,
+    "cv": 0
+  },
+  "units": [
+    {
+      "id": "mv",
+      "unit": "rpm",
+      "modelUnit": "rpm",
+      "scale": 1,
+      "offset": 0
+    },
+    {
+      "id": "cv",
+      "unit": "MPa",
+      "modelUnit": "MPa",
+      "scale": 1,
+      "offset": 0
+    }
+  ],
+  "variableOrder": [
+    "mv",
+    "cv"
+  ],
+  "trainerRef": "linear_arx@1",
+  "conditionId": "physical",
+  "recipeContentHash": "d8e8d6a30a6a4da0cc17f2e5c3f542b8cb867cf878173b4178b40672a70f9a6a",
+  "evidenceSource": "simulation",
+  "availabilityWatermark": null,
+  "splitRunIds": {
+    "train": [
+      "rr-4f6db4d6",
+      "rr-3929f1aa"
+    ],
+    "val": [
+      "rr-5df33b7d",
+      "rr-82d4a871"
+    ],
+    "test": [
+      "rr-de68521f",
+      "rr-b4d26b2d"
+    ]
+  }
+}

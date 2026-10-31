@@ -1,0 +1,27 @@
+\section{Discussion}
+\label{sec:limits}
+R20 produced six complete task-to-approval-to-receipt-to-sample traces across
+two simulator scenes; none of its single post-readback samples reached target.
+R21 passed 31 assertions on the same configured route, and a separate mock
+test refused execution after the approved active run changed. Together, these
+results verify selected software behavior, not manufacturing performance.
+
+The runs do not establish independent replication, process convergence, or
+quality improvement. Each scene used one simulator instance, and its single
+probe is not a response trajectory. Configuration reuse, alternative
+harnesses and direct REST entry, normal online DAQ, operator effectiveness,
+and physical transfer remain untested. Synthetic approvals do not assess
+operator effectiveness \cite{parasuramanmanzey2010complacency,parasuraman2000model,bainbridge1983ironies}; restricted tool access does not establish deployment security \cite{greshake2023injection,liu2024pinjection,iec62443-3-3} or replace independently engineered PLC/SIS protection \cite{iec61511}.
+
+Further work should measure configuration changes against a baseline and test
+alternate routes, independent simulator runs, and the online DAQ backend.
+Physical-plant trials are required to assess process outcomes.
+
+\section{Conclusion}
+\label{sec:conclusion}
+AgentWorkShop connects collaborative tasks to production context, checked
+operations, semantic I/O, and service-owned records. R20 and R21 verify
+selected paths across two simulator mappings; a regression test confirms that
+a stale approval cannot cross an active-run change. The evidence supports the
+implemented software contract, not process-control efficacy, comparative
+advantage, or portability.

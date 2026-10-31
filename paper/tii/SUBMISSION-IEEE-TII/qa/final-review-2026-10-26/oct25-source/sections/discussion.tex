@@ -1,0 +1,27 @@
+\section{Discussion}
+\label{sec:limits}
+OMP, Pi-fixture, and REST routes completed the evaluated integration traces
+in two simulator scenes. This case study complements asset-specific approval
+and process-validation studies \cite{graul2026aas,schall2026safe}, but
+measures neither process performance nor comparative platform value.
+
+One simulator and one probe per task preclude independent process
+replication. Only reported adapter configurations were tested; general
+interchangeability, model behavior, online DAQ, configuration reuse, physical
+transfer, and a platform baseline remain untested. The tuple check guards
+software dispatch, not device I/O. Synthetic approval does not assess operator
+performance \cite{parasuramanmanzey2010complacency,parasuraman2000model,bainbridge1983ironies};
+operation restrictions do not establish security
+\cite{greshake2023injection,liu2024pinjection,iec62443-3-3} or replace PLC/SIS
+safeguards \cite{iec61511}. Future work needs a defined comparison and
+independent simulator/plant trials.
+
+Scope and channel-policy refusals are not uniformly persisted; auditability
+is limited to the records and denial classes described in Section~IV.
+
+\section{Conclusion}
+\label{sec:conclusion}
+AgentWorkShop unifies registered-task and direct-call access to shared
+industrial services while retaining route-specific records. Tests across two
+simulator mappings verify selected traces and one pre-dispatch context guard,
+not process improvement or comparative platform benefit.

@@ -1,0 +1,32 @@
+{
+  "note": "pre-work DCW baseline from backup at 00:17; preflight run at 00:37; saved preflight/inventory are post-work snapshots",
+  "backupPath": "D:/tmp/aw-idd-rag-e2e-20261030/data/backups/files-2026-10-31T00-17-08/dcws.json",
+  "dcwBaseline": [
+    {
+      "id": "dw-7ead6ec4",
+      "name": "机筒温度区3SP",
+      "value": 248,
+      "holdIntervalMs": 120000
+    },
+    {
+      "id": "dw-fca065d0",
+      "name": "机筒温度区4SP",
+      "value": 246,
+      "holdIntervalMs": 120000
+    },
+    {
+      "id": "dw-530ba323",
+      "name": "锁模力SP",
+      "value": 1500,
+      "holdIntervalMs": 120000
+    }
+  ],
+  "existingResources": {
+    "line": "ln-cf47d3b6",
+    "recipe": "rc-9e1b18cf",
+    "channels": [
+      "1febb0b5-8612-4d3a-a471-4197700461fc",
+      "5482d1a5-c6e8-4cf6-a1a4-367a17713ea0"
+    ]
+  }
+}

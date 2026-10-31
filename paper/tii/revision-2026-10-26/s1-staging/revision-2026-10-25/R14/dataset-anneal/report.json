@@ -1,0 +1,117 @@
+{
+  "builtAt": "2026-10-25T02:19:44.834+08:00",
+  "nodeSummaries": [
+    {
+      "nodeId": "dn-38990ecf",
+      "role": "control",
+      "count": 101,
+      "mean": 719.9009900990098,
+      "std": 12.287802855266715,
+      "min": 710,
+      "max": 735,
+      "p05": 710,
+      "p50": 710,
+      "p95": 735,
+      "missingRatio": 0,
+      "cleanedRatio": 0
+    },
+    {
+      "nodeId": "dn-4d2f51af",
+      "role": "target",
+      "count": 101,
+      "mean": 720.5173267326736,
+      "std": 1.9524015422494987,
+      "min": 716.9,
+      "max": 724.9,
+      "p05": 717.6,
+      "p50": 720.1,
+      "p95": 724,
+      "missingRatio": 0,
+      "cleanedRatio": 0
+    }
+  ],
+  "lagEstimates": [
+    {
+      "controlId": "dn-38990ecf",
+      "targetId": "dn-4d2f51af",
+      "lagSteps": 20,
+      "corr": 0.836
+    }
+  ],
+  "runProfiles": [
+    {
+      "runId": "rr-3c82542f",
+      "steps": 101,
+      "targetMeans": {
+        "dn-4d2f51af": 718.3549504950493
+      }
+    },
+    {
+      "runId": "rr-6f9e3761",
+      "steps": 100,
+      "targetMeans": {
+        "dn-4d2f51af": 720.4399999999997
+      }
+    },
+    {
+      "runId": "rr-293adbeb",
+      "steps": 101,
+      "targetMeans": {
+        "dn-4d2f51af": 720.5173267326736
+      }
+    },
+    {
+      "runId": "rr-dad682a9",
+      "steps": 101,
+      "targetMeans": {
+        "dn-4d2f51af": 720.4400990099009
+      }
+    },
+    {
+      "runId": "rr-81bc2c4c",
+      "steps": 101,
+      "targetMeans": {
+        "dn-4d2f51af": 720.5123762376238
+      }
+    },
+    {
+      "runId": "rr-e9be4873",
+      "steps": 100,
+      "targetMeans": {
+        "dn-4d2f51af": 720.3959999999997
+      }
+    }
+  ],
+  "cleaning": {
+    "dn-38990ecf": {
+      "total": 97,
+      "droppedState": 0,
+      "droppedRange": 0,
+      "droppedHampel": 0,
+      "interpolated": 0,
+      "missingRatio": 0
+    },
+    "dn-4d2f51af": {
+      "total": 97,
+      "droppedState": 0,
+      "droppedRange": 0,
+      "droppedHampel": 0,
+      "interpolated": 0,
+      "missingRatio": 0
+    }
+  },
+  "runsUsed": [
+    "rr-3c82542f",
+    "rr-6f9e3761",
+    "rr-293adbeb",
+    "rr-dad682a9",
+    "rr-81bc2c4c",
+    "rr-e9be4873"
+  ],
+  "runsDropped": [],
+  "windowCount": {
+    "train": 180,
+    "val": 179,
+    "test": 179
+  }
+}

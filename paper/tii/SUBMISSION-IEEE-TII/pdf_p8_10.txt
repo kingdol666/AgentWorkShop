@@ -1,0 +1,433 @@
+====================== PAGE 8 ======================
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT
+8
+0
+1
+2
+32
+33
+Weight (g)
+(a)
+Injection molding
+Final: 32.17 g
+0
+4
+8
+12
+0.0
+2.5
+DO (mg/L)
+(b)
+Wastewater
+Final: 3.50 mg/L
+0
+2
+4
+6
+100
+125
+Hardness (HV)
+(c)
+Annealing
+Final: 100.08 HV
+0
+1
+2
+3
+25.0
+27.5
+Thickness (µm)
+(d)
+BOPET film
+Final: 25.66 µm
+0
+1
+2
+Control event index
+0
+100
+Requested change (%)
+(e)
+Pressure
+Hold time
+0
+4
+8
+12
+Control event index
+0
+200
+Requested change (%)
+(f)
+Blower
+NaOH
+PAC
+0
+2
+4
+6
+Control event index
+0
+25
+Requested change (%)
+(g)
+Zone 3
+Zone 2
+Line speed
+0
+1
+2
+3
+Control event index
+0
+5
+Requested change (%)
+(h)
+Casting
+Fast roll
+Rail width
+Pressure 45 → 58.2 bar
+Time 6 → 10.64 s
+Blower 26 → 34 Hz
+NaOH 12 → 23 L/h
+PAC 30 → 75 L/h
+Z3 730 → 850 °C
+Z2 710 → 722 °C
+Speed 140 → 164 m/min
+Cast 32 → 33.8 m/min
+Roll 118 → 120.3 m/min
+Rail 3000 → 3035 mm
+Fig. 5.
+Archived control sequences and outcomes for four simulator scenarios (seed 42; one scripted trajectory per scenario). Upper panels show PV
+observations and scenario-specific target windows; lower panels show requested setpoint changes from baseline. Black squares mark mission-final readings;
+for injection molding and BOPET they overlap the last observation. In wastewater treatment, later NaOH and PAC requests belong to pH and total-phosphorus
+stages, and the terminal DO reading is not joined to the DO trajectory. Crosses mark reverted requests. In annealing, the open triangle is the 99.46-HV event
+without a linked optimization record; the cross is the 101.3-HV event-text value after a reverted candidate, not a structured trajectory observation. Requests
+are not device readbacks. These historical direct-node missions are separate from the route study and do not show current route performance or a common
+optimizer score.
+D. Approval-Context Guard and Ablation
+The production handler blocked all 12 one-field mutations
+before a mock write or execution record. The queued context
+change was also refused before recipe_apply dispatch.
+In the ablation, removing the tuple comparison allowed six
+product/run changes through; each produced two mock writes
+and an execution record, while the other checks still blocked
+line/recipe changes. The local unit suite passed 566/566 checks
+across seven suites.
+The ablation isolates the tuple comparison within the tested
+software state. It does not demonstrate atomicity during net-
+work or device I/O, safe physical operation, operator effec-
+tiveness, or end-to-end DAQ integrity.
+E. Archived Four-Scenario Control Sequences and Outcomes
+The current route study collected one post-trial process
+sample per task. Fig. 5 instead shows four archived seed-
+42 simulator missions from an earlier scripted direct-node
+interface. Each column pairs requested setpoint changes with
+process-variable (PV) observations and its own target window;
+event indices give order, not elapsed time.
+In injection molding, hold pressure and time increased from
+45 to 58.2 bar and 6 to 10.64 s; measured weight rose from
+31.25 to 32.17 g, ending 0.02 g inside the 32.5±0.35 g window.
+Five wastewater blower increments from 26 to 34 Hz raised
+dissolved oxygen (DO) from 0.214 to 3.517 mg/L, inside
+the 3.4 ± 0.6 mg/L window; later NaOH and PAC actions
+addressed separate pH and phosphorus stages. In annealing,
+zone-3 temperature requests rose from 730 to 850◦C; later
+zone-2 and speed changes produced 97.88–99.84 HV, and the
+terminal value was 100.08 HV in the 95 ± 6 HV window.
+The 101.3 HV value after a reverted 176 m/min candidate
+appears only in event text. For BOPET, casting speed, fast-
+roll speed, and rail width changed from 32 to 33.8 m/min,
+118 to 120.3 m/min, and 3000 to 3035 mm; thickness fell from
+28.10 to 25.66 µm, ending 0.04 µm inside the upper edge of
+its 25.0 ± 0.7 µm window. There is one historical trajectory
+per scenario; the records illustrate scenario-specific feedback
+but not repeatability or current-route attainment.
+F. Evidence Synthesis
+The route study supports record continuity for the tested
+task and direct-call contracts across two preconfigured map-
+pings; all twelve route-linked samples were below target. The
+separate onboarding replay passed the documented C01 con-
+figuration checks with isolated online MQTT/Timescale and
+one simulator- confirmed write. The mock-state comparison
+shows that the tested context check blocked stale requests
+before software dispatch. Fig. 5 is historical evidence and is
+not pooled with these results.
+Together, these results distinguish command completion
+from process outcome: a verified readback confirms the set-
+point path, whereas the later run-tagged sample indicates
+whether the process variable entered its target band. The
+study establishes selected integration behavior, one simulated
+onboarding instance, and a bounded software guard; it does
+not establish process improvement, general portability, or
+physical-plant performance. Supplementary File S1 includes
+
+====================== PAGE 9 ======================
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT
+9
+the route inputs and logs, the separate onboarding replay,
+historical scenario records, and the evidence/hash manifests.
+The model-mediated tasks are not deterministic replays, and
+the route samples are not independent replicates.
+VI. DISCUSSION
+This section reads the results against the design contract.
+It first interprets what the tested routes and the onboarding
+replay support, then states the scope that the evidence does
+not cover.
+A. Interpretation
+AgentWorkShop composes collaborative-task services, pro-
+duction context, named operations, semantic signal access,
+configured device drivers, and service-owned records into a
+shared task-to-device path. The current experiments trace this
+design through task or direct-operation entry, approval-bound
+dispatch, readback receipt, and a later run-tagged process sam-
+ple. Registered task routes preserve the task, approval, receipt,
+and sample associations; direct REST preserves operation,
+readback, and sample records without a task edge. The two
+simulator scenes use different signal and protocol mappings,
+so the observed joins support the tested composition and route-
+specific record contract.
+The v0.8.3 onboarding replay answers a different question
+from the route runs: it exercises protocol access, heterogeneous
+MES data, channel construction, acquisition, and an approved
+write inside one workflow, which single operation calls cannot
+show. Because the workflow was not repeated under a changed
+profile or binding set, it supports workflow execution for the
+documented blueprint while leaving configuration reuse open.
+A replay with a pinned revision and a changed binding set
+would separate those two readings.
+The process results bound the interpretation of that ev-
+idence. Cast-film samples range from 45.69 to 46.69 µm,
+or 1.31–2.31 µm below the 48 µm lower bound. Annealing
+samples range from 674.40 to 679.60 ◦C, or 20.40–25.60 ◦C
+below the 700 ◦C lower bound. These measurements are
+single snapshots taken 20 s after an operation, so they cannot
+establish a response curve, convergence, or the cause of the
+observed shortfall.
+Fig. 5 pairs requested setpoint changes with the result-
+ing process observations in four separate archived seed-42
+simulator missions. The trajectories show scenario-specific
+responses, including the wastewater mission’s later pH and
+total-phosphorus actions and the annealing candidate that
+was reverted. Their terminal observations lie within their
+own target windows, but each panel contains one historical
+scripted direct-node trajectory. The figure therefore explains
+the structure of those archived action–response records; it does
+not establish target attainment by current v0.8.0 routes or
+repeatability across runs.
+This gap between command evidence and process evidence
+is central to the framework’s execution model. A verified
+readback confirms that the requested setpoint reached the
+configured device; it does not show that the process variable
+entered its target band. A task can therefore complete its
+approved operation path while its associated process sample
+remains out of band. Keeping the receipt and run-tagged
+sample as separate, linked records lets the system report
+both facts without treating command completion as product
+attainment. The current results validate this distinction in the
+tested software paths, not an improvement in control quality.
+The route evidence also depends on each entry contract.
+Registered model-mediated and fixture-backed CLI tasks re-
+tain task, approval, receipt, and sample links. The fixed-call
+replay exercises the registered harness with deterministic input
+but does not assert task completion. Direct REST reaches the
+same operation boundary and retains a verified receipt and run-
+tagged sample without a task edge. The fixture replay, direct
+REST, and CLI checks ran in separate isolated environments;
+the model-mediated triplets shared a persistent simulator per
+scene. These path-specific contexts and unequal sample counts
+mean their numerical similarity is not evidence of route
+equivalence. All route-study runs used the SQLite fallback
+because MQTT and Timescale were unavailable; the separate
+C01 onboarding replay exercised online MQTT/Timescale on
+isolated services. The results support the specified record
+contracts under two configured signal and protocol mappings
+and feasibility of one blueprint-driven simulated onboarding
+workflow. They do not establish interchangeable adapters,
+configuration reuse, or general portability to an unseen scene.
+The context-guard test identifies the software check’s con-
+tribution under mock state: comparing the approved line–
+product–recipe–run tuple blocked product/run mutations that
+the retained checks alone did not reject. This supports a
+bounded claim about software dispatch. It does not show atom-
+icity across network or device I/O, safe physical operation,
+or operator effectiveness. Synthetic approval also does not
+measure human review performance [25]–[27].
+B. Scope and Limitations
+Only the reported adapter and scene configurations were
+exercised. The single C01 replay does not test repeatable
+onboarding, profile or binding reuse across lines, arbitrary
+unseen-scene configuration, or physical transfer, and it ran on a
+working-tree build whose source commit was not pinned. The
+evaluation also does not establish general adapter interchange-
+ability, normal online DAQ operation in the route trials, or a
+platform baseline. The feature-level related-work comparison
+positions the implementation question; it does not show that
+AgentWorkShop is more efficient or more capable than another
+platform. A comparative study would need a shared task set,
+explicit integration-effort or record-completeness measures,
+and matched deployments.
+The route study used one simulator instance per scene,
+three sequential model-mediated trials per scene, and one
+post-trial process sample per trial. These samples are not
+independent replicates and cannot establish a process response
+curve. Follow-up evaluation should vary configuration profiles
+under a controlled onboarding protocol, use repeated process
+trials, and compare against a defined alternative integration
+path. Operation restrictions do not establish security [28]–[30]
+or replace independent PLC/SIS safeguards [31].
+
+====================== PAGE 10 ======================
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT
+10
+Scope and channel-policy refusals are not uniformly per-
+sisted; auditability is limited to the records and denial classes
+described in Section IV.
+VII. CONCLUSION
+AgentWorkShop brings task adapters, production context,
+named operations, semantic I/O, configured protocol drivers,
+and service-owned records into a modular task-to-device
+framework. Tested task routes and direct calls used a shared
+operation boundary across cast-film and annealing simulator
+mappings while preserving route-specific records. A sepa-
+rate v0.8.3 replay completed one documented coating-line
+onboarding configuration with online DAQ checks and a
+simulator-confirmed smoke write. Route-study samples re-
+mained below target, and a mock-state ablation isolated the
+effect of an approval-bound context check. The study estab-
+lishes selected integration, one simulated onboarding instance,
+and software-contract behavior; it does not establish process
+improvement, configuration reuse, physical transfer, general
+portability, or comparative platform benefit.
+REFERENCES
+[1] Y. Xia, N. Jazdi, J. Zhang, C. Shah, and M. Weyrich, “Control industrial
+automation system with large language model agents,” in Proc. IEEE
+30th Int. Conf. on Emerging Technologies and Factory Automation
+(ETFA), 2025, pp. 1–8, doi: 10.1109/ETFA65518.2025.11205539.
+[2] K.-C. Huang, H.-T. Lin, C.-H. Lin, and M.-T. Huang, “Large language
+model integration in industrial cyber-physical systems: A multi-modal
+architecture for automated control generation,” in Proc. Int. Conf. on
+Control, Automation and Diagnosis (ICCAD), 2026, pp. 1–6, doi: 10.
+1109/ICCAD69956.2026.11643124.
+[3] K. K¨ohle, D. Anicic, T. A. Runkler, and R. Graf, “LLM-driven multi-
+agent control for skill-based smart manufacturing,” in Proc. IEEE 31st
+Int. Conf. on Emerging Technologies and Factory Automation (ETFA),
+2026, pp. 1–8, doi: 10.1109/ETFA68377.2026.11725257.
+[4] M. Waseem, K. Bhatta, C. Li, and Q. Chang, “Pretrained LLMs as real-
+time controllers for robot operated serial production line,” Mach. Learn.:
+Eng., vol. 2, no. 1, 2026, art. no. 015006; doi: 10.1088/3049-4761/
+ae4ee8.
+[5] Z. Liu et al., “Agents4PLC: Automating closed-loop PLC code gen-
+eration and verification in industrial control systems using LLM-based
+agents,” IEEE Trans. Softw. Eng., vol. 52, no. 5, pp. 1672–1687, 2026,
+doi: 10.1109/TSE.2026.3667895.
+[6] R. Wu, J. Ai, and T. Li, “InstructMPC: A human-LLM-in-the-loop
+framework for context-aware control,” in Proc. 2025 IEEE 64th Con-
+ference on Decision and Control (CDC), 2025, pp. 172–179, doi:
+10.1109/CDC57313.2025.11312156.
+[7] J. Lim and I. Kovalenko, “A large language model-enabled control
+architecture for dynamic resource capability exploration in multi-agent
+manufacturing systems,” in Proc. IEEE 21st Int. Conf. on Automation
+Science and Engineering (CASE), 2025, pp. 2088–2095, doi: 10.1109/
+CASE58245.2025.11163802.
+[8] Z. Zhao et al., “A large language model-based multi-agent manufacturing
+system for intelligent shopfloors,” Adv. Eng. Inform., vol. 69, 2026, art.
+no. 103888; doi: 10.1016/j.aei.2025.103888.
+[9] M. S. Gill, J. Vyas, A. Markaj, F. Gehlhoff, and M. Mercang¨oz,
+“Leveraging LLM agents and digital twins for fault handling in process
+plants,” in Proc. IEEE ETFA, 2025, pp. 1–8, doi: 10.1109/ETFA65518.
+2025.11205597.
+[10] B. Hofmann, N. Piechulek, S. Kreitlein, J. Franke, and P. Bruendl,
+“Beyond touch-based human-machine interface: Control your machines
+in natural language by utilizing large language models and OPC
+UA,” arXiv preprint arXiv:2510.11300, 2025. [Online]. Available:
+https://arxiv.org/abs/2510.11300v2
+[11] C. Graul, W. ˙Zarski, D. Mikołajewski, and I. Rojek, “Ai agents in
+industry 4.0: AAS–OPC UA–LLM architecture as the foundation of
+intelligent manufacturing systems in the context of industrial enterprise
+implementation,” Applied Sciences, vol. 16, no. 11, p. 5428, 2026, doi:
+10.3390/app16115428.
+[12] D. Schall, “Safe integration of large language models into industrial
+process control: A multi-agent architecture with P&ID-grounded vali-
+dation,” Autonomous Intelligent Systems, vol. 6, 2026, article no. 14;
+doi: 10.1007/s43684-026-00136-1.
+[13] S.-C. Lin and C.-Y. Chen, “An integrated framework featuring policy-
+governed agentic AI for closed-loop manufacturing control with multi-
+source sensor–MES–ERP,” The International Journal of Advanced Man-
+ufacturing Technology, vol. 143, pp. 6405–6428, 2026, doi: 10.1007/
+s00170-026-17806-2.
+[14] A. Biskupovic, A. Villalonga, F. Casta˜no, R. E. Haber, and F. N´u˜nez,
+“Agent-based supervision for service-oriented industrial cyber–physical
+systems,” IEEE Trans. Ind. Inform., vol. 21, no. 3, pp. 2719–2728, 2025,
+doi: 10.1109/TII.2024.3514178.
+[15] Y. Xia, N. Jazdi, and M. Weyrich, “An architecture for integrating large
+language models with digital twins and automation systems,” in 2025
+IEEE 30th International Conference on Emerging Technologies and
+Factory Automation (ETFA), 2025, pp. 1–8, doi: 10.1109/ETFA65518.
+2025.11205636.
+[16] L. M. Vieira da Silva, A. K¨ocher, and F. Gehlhoff, “Beyond formal
+semantics for capabilities and skills: Model context protocol in manu-
+facturing,” in 2025 IEEE 30th International Conference on Emerging
+Technologies and Factory Automation (ETFA), 2025, pp. 1–4, doi:
+10.1109/ETFA65518.2025.11205601.
+[17] K. K¨ohle, D. Anicic, T. A. Runkler, K. Dorofeev, A. S. Thuluva, and
+R. Graf, “Virtually commissioned semantic recipes based on OPC UA
+skills,” in 2025 IEEE 8th International Conference on Industrial Cyber-
+Physical Systems (ICPS), 2025, pp. 1–6, doi: 10.1109/ICPS65515.2025.
+11087832.
+[18] X. Jiang et al., “Agentic AI for safety-aware process monitoring and
+fault diagnosis: A review,” Processes, vol. 14, no. 13, 2026, art. no.
+2112; doi: 10.3390/pr14132112.
+[19] Model
+Context
+Protocol
+contributors,
+“Model
+Context
+Protocol:
+Tools,” Specification, version 2026-07-28, 2026, accessed: Oct. 20,
+2026. [Online]. Available: https://modelcontextprotocol.io/specification/
+2026-07-28/server/tools
+[20] ISA, “ISA-88.00.01-2010: Batch control—part 1: Models and terminol-
+ogy,” International Standard, 2010.
+[21] ——, “ANSI/ISA-95.00.01-2025 (IEC 62264-1 mod): Enterprise-control
+system integration—part 1: Models and terminology,” International
+Standard, 2025.
+[22] J. Moyne, E. del Castillo, and A. M. Hurwitz, Eds., Run-to-Run Control
+in Semiconductor Manufacturing, 1st ed.
+Boca Raton, FL: CRC Press,
+2000.
+[23] H. Wang, C. M. Poskitt, and J. Sun, “AgentSpec: Customizable runtime
+enforcement for safe and reliable LLM agents,” in Proc. IEEE/ACM
+48th Int. Conf. on Software Engineering (ICSE), 2026, pp. 2938–2950,
+doi: 10.1145/3744916.3764546.
+[24] E. Debenedetti et al., “Defeating prompt injections by design,”
+2025, arXiv preprint arXiv:2503.18813. [Online]. Available: https:
+//arxiv.org/abs/2503.18813
+[25] R. Parasuraman and D. H. Manzey, “Complacency and bias in human
+use of automation: An attentional integration,” Hum. Factors, vol. 52,
+no. 3, pp. 381–410, 2010, doi: 10.1177/0018720810376055.
+[26] R. Parasuraman, T. B. Sheridan, and C. D. Wickens, “A model for types
+and levels of human interaction with automation,” IEEE Trans. Syst.,
+Man, Cybern., Part A, vol. 30, no. 3, pp. 286–297, 2000, doi: 10.1109/
+3468.844354.
+[27] L. Bainbridge, “Ironies of automation,” Automatica, vol. 19, no. 6, pp.
+775–779, 1983, doi: 10.1016/0005-1098(83)90046-8.
+[28] K. Greshake, S. Abdelnabi, S. Mishra, C. Endres, T. Holz, and M. Fritz,
+“Not what you’ve signed up for: Compromising real-world LLM-
+integrated applications with indirect prompt injection,” in Proc. 16th
+ACM Workshop on Artificial Intelligence and Security, 2023, pp. 79–90,
+doi: 10.1145/3605764.3623985.
+[29] Y. Liu, Y. Jia, R. Geng, J. Jia, and N. Z. Gong, “Formalizing
+and benchmarking prompt injection attacks and defenses,” in Proc.
+33rd USENIX Security Symposium (USENIX Security 24), 2024,
+pp. 1831–1847. [Online]. Available: https://www.usenix.org/conference/
+usenixsecurity24/presentation/liu-yupei
+[30] IEC, “IEC 62443-3-3:2013: Industrial communication networks—
+network and system security—part 3-3: System security requirements
+and security levels,” Standard, 2013.
+[31] ——, “IEC 61511-1:2016: Functional safety—safety instrumented sys-
+tems for the process industry sector—part 1: Framework, definitions,
+system, hardware and application programming requirements,” Interna-
+tional Standard, 2016.
+

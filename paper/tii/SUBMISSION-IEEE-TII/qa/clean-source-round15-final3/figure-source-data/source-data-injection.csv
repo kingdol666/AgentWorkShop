@@ -1,0 +1,6 @@
+trial,source,anchor,requested_bar,platform_bar,hold_time_s,weight,flash,sink,melt,lastAt,offline,timestamp,confirmed_parameters,snapshot_elapsed_s,batch_prefix
+0,bench/results/injection-pressure-loop-2026-10-18T12-37-22-157Z/summary.json,baseline,45,45,6,31.28,0,1.977,,1792326776159,False,2026-10-18T12:32:56.159000+00:00,,0.0,
+1,bench/results/injection-pressure-loop-2026-10-18T12-37-22-157Z/summary.json,results[P3-1].detail,50.0,50.0,6,31.49,0.014,1.956,,,,2026-10-18T12:34:02.131Z,1/1,65.97200012207031,rr-f8782
+2,bench/results/injection-pressure-loop-2026-10-18T12-37-22-157Z/summary.json,results[P3-2].detail,55.0,55.0,6,31.74,0.031,1.76,,,,2026-10-18T12:35:08.145Z,1/1,131.98600006103516,rr-da6c9
+3,bench/results/injection-pressure-loop-2026-10-18T12-37-22-157Z/summary.json,results[P3-3].detail,60.0,60.0,6,32.05,0.0,1.534,,,,2026-10-18T12:36:14.071Z,1/1,197.91200017929077,rr-f0bca
+4,bench/results/injection-pressure-loop-2026-10-18T12-37-22-157Z/summary.json,results[P3-4].detail,65.0,65.0,6,32.3,0.019,1.277,,,,2026-10-18T12:37:20.027Z,1/1,263.8680000305176,rr-7a386

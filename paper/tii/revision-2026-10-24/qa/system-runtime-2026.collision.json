@@ -1,17 +1,17 @@
 {
   "pdf": "D:\\codes\\ABO\\AgentWorkShop\\paper\\tii\\SUBMISSION-IEEE-TII\\resources\\fig-runtime-2026.pdf",
   "auditable": true,
-  "verdict": "PASS",
+  "verdict": "REVIEW REQUIRED",
   "page_count": 1,
-  "visible_text_box_count": 29,
-  "text_trace_count": 29,
-  "stroke_path_count": 24,
-  "filled_region_count": 18,
+  "visible_text_box_count": 30,
+  "text_trace_count": 30,
+  "stroke_path_count": 55,
+  "filled_region_count": 37,
   "image_region_count": 0,
   "summary": {
     "fail": 0,
-    "warn": 0,
-    "contained_fill_overlays": 23,
+    "warn": 1,
+    "contained_fill_overlays": 26,
     "contained_image_overlays": 0
   },
   "thresholds": {
@@ -19,5 +19,30 @@
     "min_overlap_ratio": 0.05,
     "clipping_tolerance_pt": 0.5
   },
-  "findings": []
+  "findings": [
+    {
+      "severity": "WARN",
+      "kind": "text-fill-edge",
+      "page": 1,
+      "message": "Text partially overlaps the edge of 1 filled region(s)",
+      "text": "Yes",
+      "text_bbox": [
+        317.953125,
+        95.4873046875,
+        331.00274658203125,
+        103.4873046875
+      ],
+      "other_text": null,
+      "other_bbox": [
+        295.0,
+        56.399993896484375,
+        405.0,
+        100.39999389648438
+      ],
+      "object_count": 1,
+      "object_indexes": [
+        44
+      ]
+    }
+  ]
 }

@@ -12,7 +12,7 @@ AgentWorkShop 的数采(DAQ)与写控(DCW)驱动面覆盖六种现场协议(5 �
 | Modbus TCP | ✅ 保持/输入寄存器,int16~float32,big/little/wordSwap | ✅ 写保持寄存器 + 回读校验 | `host` `port` `unitId` `register`(40001 风格) |
 | Modbus RTU(串口网关透传)| ✅ 同上(connectTcpRTUBuffered)| ✅ FC10 写 + FC03 回读 | 同 TCP,端口指向网关 |
 | OPC UA | ✅ 会话池,任意 NodeId,匿名/Sign | ✅ 写 Double 节点 + 回读 | `endpoint` `nodeId` |
-| MQTT | ✅ **被动订阅**(连上 broker 即入库,报文到达时刻为样本时间;非轮询) + jsonPath | ✅ 发布 `{jsonKey: 值}`;配置 `readTopic`/`readJsonPath` 时写后回读可判 readback-verified | `host` `port` `topic` `jsonPath` `qos` `staleMs`;写侧另加 `jsonKey` `readTopic` `readJsonPath` |
+| MQTT | ✅ **被动订阅**(连上 broker 即入库,报文到达时刻为样本时间;非轮询) + jsonPath;**同 topic 多字段**用 `fields` 一次展开 | ✅ 发布 `{jsonKey: 值}` 或 `jsonTemplate`(`{{value}}` 插值,支持嵌套/多字段);配置 `readTopic`/`readJsonPath` 时写后回读可判 readback-verified | `host` `port` `topic` `jsonPath`/`fields` `qos` `staleMs`;写侧另加 `jsonKey`/`jsonTemplate` `readTopic` `readJsonPath` |
 | HTTP | ✅ GET + jsonPath | ✅ POST `{bodyKey: 值}` + 响应回读 | `url` `jsonPath` / `bodyKey` |
 | **串口 Serial(serial-bridge 插件)** | ✅ Modbus RTU(FC03/FC04)+ ASCII 行协议(数值/JSON + 保鲜窗) | ✅ Modbus RTU 写保持寄存器(FC06/FC16)+ 同址回读校验;ASCII 模板下行 | `path` `baudRate` `parity` `unitId` `register` `dataType` `byteOrder`;[插件文档](/plugins/guide)(见「通信协议插件(自定义接口连接方式)」) |
 
@@ -73,6 +73,38 @@ MQTT 节点可以把 broker 传来的**结构化 JSON**(或纯数字/二进制�
 示例:载荷 `{"data":{"points":[10,20,30,40,50],"metrics":{"avg":30}}}` + 数组模板 +
 `pointsPath=data.points` → 5 点帧;模板 `sink.processors`(如 `derive-metric`、`zones`、
 `thumbnail`、`quality-gate`)在生产侧执行后再入库,也可由插件注册自定义处理器。
+
+### 单 topic 多字段(一次配置,展开为多个信号节点)
+
+设备在一个 topic 上发多字段 JSON(温度/湿度/压力…)时,不必手工逐个建节点:在 MQTT 节点
+`driverConfig.fields` 里一次声明,平台会**展开为多个 scalar 子节点**(每字段一个真实信号:
+独立单位/量程/预警带/入库/告警),它们共享**同一次 broker 订阅**,报文按各自 `jsonPath` 扇出:
+
+```json
+{
+  "name": "环境站",
+  "driver": "mqtt",
+  "templateRef": "daq-temp-tc",
+  "lineId": "ln-xxxx",
+  "driverConfig": {
+    "host": "127.0.0.1", "port": 1883, "topic": "factory/env/1", "qos": 0,
+    "fields": {
+      "temp":     { "path": "data.temp", "unit": "℃", "min": 0, "max": 60, "warnHigh": 45 },
+      "humidity": { "path": "data.humidity", "unit": "%", "min": 0, "max": 100, "warnLow": 20, "warnHigh": 80 },
+      "dew":      "data.nested.dew"
+    }
+  }
+}
+```
+
+- `fields` 支持**对象**(键=字段名,值=路径字符串或 `{path,unit,min,max,warnLow,warnHigh,decimals,templateRef,name,semantics}`)
+  或**数组**(`["data.temp","data.humidity"]`,字段名取路径末段);`fieldsBase` 可给公共前缀。
+- 响应返回 `{nodes, groupId, count}`;子节点 `name = <父名>·<字段名>`,视图额外带
+  `fieldGroup`(同组 id)与 `fieldLabel`,查询/告警/面板按普通节点使用。
+- 约束:仅 `mqtt` 驱动、仅 `scalar` 模板;与 `pointsPath`/`metricsPath`/`imagePath`/`decoder`
+  互斥;最多 64 字段;任一字段非法则整组回滚(不会留下半套节点)。
+- 采集侧一次订阅多次解析:同一报文到达时各子节点时间戳一致(可在 `daq_samples` 直接看到
+  4 个节点同 ts 落库),避免多份连接/多次订阅。
 
 **自定义解析(统一接口,交给用户)**:插件在 `setup(ctx)` 中注册解码器:
 

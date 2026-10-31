@@ -5,12 +5,11 @@ and raster DPI for every figure included by the manuscript.
 The general audit (tools/audit.py, gate F8) only checks the vector source
 type floor (5 pt).  This gate applies the manuscript's own targets:
 
-  Fig. 1 architecture       >= 6.0 pt (full-width dense diagram)
-  Fig. 2 runtime            >= 8.0 pt
-  Fig. 3(a) admission       >= 6.0 pt (compact interval geometry)
-  Fig. 3(b) approval card   >= 8.0 pt
-  Fig. 4 process campaign   >= 7.0 pt
-  Fig. 5 missions           >= 7.0 pt
+ Fig. 1 agent-control path >= 8.0 pt (single-column diagram)
+ Fig. 2 architecture       >= 9.0 pt (full-width diagram)
+ Fig. 3 runtime             >= 9.0 pt
+ Fig. 4 admission/HITL      >= 8.0 pt
+ Fig. 6 four-scenario optimization trajectories >= 9.0 pt (full-width four-panel figure)
 
 Rasters, if any, must be >= 300 dpi at their placed width.  The manuscript
 currently includes only PDFs; the raster branch is kept so a future PNG
@@ -26,21 +25,16 @@ ROOT = Path(__file__).resolve().parent.parent
 SECTIONS = sorted((ROOT / "sections").glob("*.tex")) + [ROOT / "main.tex"]
 
 TARGETS = {
-    "fig2-architecture.pdf": (8.0, 200.0),
-    "fig-runtime.pdf": (8.0, 166.0),
-    "fig-arch-2026.png": (0.0, 210.0),
-    "fig-runtime-team.png": (0.0, 300.0),
-    "fig-admission.pdf": (8.0, 120.0),
-    "fig-hitl-card.pdf": (8.0, 122.0),
-    "fig-process-campaign.pdf": (8.0, 122.0),
-    "fig-missions.pdf": (8.0, 265.0),
+    "fig-agent-control.pdf": (8.0, 180.0),
+    "fig-architecture-2026-9pt.pdf": (9.0, 260.0),
+    "fig-runtime-2026-9pt.pdf": (9.0, 260.0),
+    "fig-admission-hitl-2026.pdf": (8.0, 185.0),
+    "fig-missions-controls.pdf": (9.0, 260.0),
+    "fig-missions-origin.pdf": (8.0, 290.0),
 }
 
 # Placed width for raster DPI accounting (full-width figures use 182 mm).
-RASTER_WIDTH_MM = {
-    "fig-arch-2026.png": 182.0,
-    "fig-runtime-team.png": 182.0,
-}
+RASTER_WIDTH_MM: dict[str, float] = {}
 
 def included_figures() -> set[str]:
     pat = re.compile(r"\\includegraphics(?:\[[^\]]*\])?\{([^}]+)\}")

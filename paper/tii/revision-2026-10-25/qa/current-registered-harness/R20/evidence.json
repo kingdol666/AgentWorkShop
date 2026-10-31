@@ -1,0 +1,3354 @@
+{
+  "schemaVersion": 1,
+  "experiment": {
+    "id": "rhemvmy1w9e",
+    "projectVersion": "0.8.0",
+    "campaign": "R20",
+    "harnessMode": "real-omp",
+    "provider": "zhipu-coding-plan",
+    "model": "glm-5.3-flash",
+    "trialsPerScene": 3,
+    "runOutcomes": [
+      {
+        "id": "cast-film-r1",
+        "scene": "cast-film",
+        "repetition": 1,
+        "provider": "zhipu-coding-plan",
+        "model": "glm-5.3-flash",
+        "candidate": 125,
+        "candidateChoices": [
+          125,
+          130,
+          135
+        ],
+        "usage": {
+          "source": "channel queue OMP context snapshot (not request-level billing)",
+          "context": {
+            "usedTokens": 15692,
+            "contextWindow": 1000000,
+            "percent": 0.015692,
+            "compacting": false
+          },
+          "requestInputTokens": null,
+          "requestOutputTokens": null,
+          "costUsd": null,
+          "costAvailable": false
+        },
+        "costUsd": null,
+        "status": "verified",
+        "startedAt": "2026-10-24T22:02:22.404Z",
+        "entities": {
+          "lineId": "ln-75d61349",
+          "productId": "pd-52a8419d",
+          "recipeId": "rc-f42811b1",
+          "controlNodeId": "dw-dcee7f9d",
+          "daqNodeId": "dn-b5936f77",
+          "channelId": "96a1b71c-b8ef-44ce-82ad-338ead512c31",
+          "agentId": "3fb88575-b569-4c63-adc3-3582b4b9c89d"
+        },
+        "runId": "rr-5f1c6e35",
+        "taskId": "1987fc20-4301-4198-bedc-90fac3a54057",
+        "modelDecision": {
+          "source": "registered OMP host-tool proposal, checked against current protocol reads and prevalidated set",
+          "controlValue": 120,
+          "processValue": 55.82,
+          "targetBand": [
+            48,
+            52
+          ],
+          "allowedValues": [
+            125,
+            130,
+            135
+          ],
+          "selectedValue": 125,
+          "selectionRationale": "",
+          "selectedValueWithinRangeAndStep": true
+        },
+        "finishedAt": "2026-10-24T22:04:14.467Z",
+        "trialRunId": "rr-8a109c51",
+        "taskState": "COMPLETED",
+        "evidenceSceneId": "cast-film-r1"
+      },
+      {
+        "id": "cast-film-r2",
+        "scene": "cast-film",
+        "repetition": 2,
+        "provider": "zhipu-coding-plan",
+        "model": "glm-5.3-flash",
+        "candidate": 130,
+        "candidateChoices": [
+          125,
+          130,
+          135
+        ],
+        "usage": {
+          "source": "channel queue OMP context snapshot (not request-level billing)",
+          "context": {
+            "usedTokens": 14373,
+            "contextWindow": 1000000,
+            "percent": 0.014373,
+            "compacting": false
+          },
+          "requestInputTokens": null,
+          "requestOutputTokens": null,
+          "costUsd": null,
+          "costAvailable": false
+        },
+        "costUsd": null,
+        "status": "verified",
+        "startedAt": "2026-10-24T22:04:14.467Z",
+        "entities": {
+          "lineId": "ln-ac7a90b8",
+          "productId": "pd-376fa8af",
+          "recipeId": "rc-589bcc79",
+          "controlNodeId": "dw-33482200",
+          "daqNodeId": "dn-150d4c21",
+          "channelId": "4d37c43c-57d8-4ee7-b195-3287eefe3615",
+          "agentId": "c706fb14-9008-4931-8a2e-87388be0bf64"
+        },
+        "runId": "rr-bf378f69",
+        "taskId": "abd1676e-71a2-410d-bfc4-6616cebe7067",
+        "modelDecision": {
+          "source": "registered OMP host-tool proposal, checked against current protocol reads and prevalidated set",
+          "controlValue": 120,
+          "processValue": 45.69,
+          "targetBand": [
+            48,
+            52
+          ],
+          "allowedValues": [
+            125,
+            130,
+            135
+          ],
+          "selectedValue": 130,
+          "selectionRationale": "",
+          "selectedValueWithinRangeAndStep": true
+        },
+        "finishedAt": "2026-10-24T22:05:34.381Z",
+        "trialRunId": "rr-124d359f",
+        "taskState": "COMPLETED",
+        "evidenceSceneId": "cast-film-r2"
+      },
+      {
+        "id": "cast-film-r3",
+        "scene": "cast-film",
+        "repetition": 3,
+        "provider": "zhipu-coding-plan",
+        "model": "glm-5.3-flash",
+        "candidate": 125,
+        "candidateChoices": [
+          125,
+          130,
+          135
+        ],
+        "usage": {
+          "source": "channel queue OMP context snapshot (not request-level billing)",
+          "context": {
+            "usedTokens": 18581,
+            "contextWindow": 1000000,
+            "percent": 0.018581,
+            "compacting": false
+          },
+          "requestInputTokens": null,
+          "requestOutputTokens": null,
+          "costUsd": null,
+          "costAvailable": false
+        },
+        "costUsd": null,
+        "status": "verified",
+        "startedAt": "2026-10-24T22:05:34.381Z",
+        "entities": {
+          "lineId": "ln-eacd7af5",
+          "productId": "pd-e98141be",
+          "recipeId": "rc-ffc44ae2",
+          "controlNodeId": "dw-05723cd9",
+          "daqNodeId": "dn-dc826dd9",
+          "channelId": "97914e0a-b06b-4b32-8d34-826d3c0346d3",
+          "agentId": "a1f0bf01-20ff-431f-b245-8b572183a5d5"
+        },
+        "runId": "rr-2b5f445e",
+        "taskId": "4b9857d4-dc13-4d5f-8fe4-caba084e888a",
+        "modelDecision": {
+          "source": "registered OMP host-tool proposal, checked against current protocol reads and prevalidated set",
+          "controlValue": 120,
+          "processValue": 46.69,
+          "targetBand": [
+            48,
+            52
+          ],
+          "allowedValues": [
+            125,
+            130,
+            135
+          ],
+          "selectedValue": 125,
+          "selectionRationale": "",
+          "selectedValueWithinRangeAndStep": true
+        },
+        "finishedAt": "2026-10-24T22:06:58.621Z",
+        "trialRunId": "rr-1edfa835",
+        "taskState": "COMPLETED",
+        "evidenceSceneId": "cast-film-r3"
+      },
+      {
+        "id": "annealing-r1",
+        "scene": "annealing",
+        "repetition": 1,
+        "provider": "zhipu-coding-plan",
+        "model": "glm-5.3-flash",
+        "candidate": 745,
+        "candidateChoices": [
+          735,
+          740,
+          745
+        ],
+        "usage": {
+          "source": "channel queue OMP context snapshot (not request-level billing)",
+          "context": {
+            "usedTokens": 15729,
+            "contextWindow": 1000000,
+            "percent": 0.015729,
+            "compacting": false
+          },
+          "requestInputTokens": null,
+          "requestOutputTokens": null,
+          "costUsd": null,
+          "costAvailable": false
+        },
+        "costUsd": null,
+        "status": "verified",
+        "startedAt": "2026-10-24T22:06:58.897Z",
+        "entities": {
+          "lineId": "ln-f07351f9",
+          "productId": "pd-9b861b76",
+          "recipeId": "rc-2b925f71",
+          "controlNodeId": "dw-32b2e9b0",
+          "daqNodeId": "dn-9efe1134",
+          "channelId": "e69f275e-560e-4c45-8fb7-f176e5580947",
+          "agentId": "48d3538f-686a-4c5b-9d7f-e9acbc59f2c5"
+        },
+        "runId": "rr-013b2f6a",
+        "taskId": "5041b79c-2fba-4983-8b81-1f018ec93958",
+        "modelDecision": {
+          "source": "registered OMP host-tool proposal, checked against current protocol reads and prevalidated set",
+          "controlValue": 730,
+          "processValue": 675.4000244140625,
+          "targetBand": [
+            700,
+            760
+          ],
+          "allowedValues": [
+            735,
+            740,
+            745
+          ],
+          "selectedValue": 745,
+          "selectionRationale": "",
+          "selectedValueWithinRangeAndStep": true
+        },
+        "finishedAt": "2026-10-24T22:08:51.543Z",
+        "trialRunId": "rr-8b8e5899",
+        "taskState": "COMPLETED",
+        "evidenceSceneId": "annealing-r1"
+      },
+      {
+        "id": "annealing-r2",
+        "scene": "annealing",
+        "repetition": 2,
+        "provider": "zhipu-coding-plan",
+        "model": "glm-5.3-flash",
+        "candidate": 745,
+        "candidateChoices": [
+          735,
+          740,
+          745
+        ],
+        "usage": {
+          "source": "channel queue OMP context snapshot (not request-level billing)",
+          "context": {
+            "usedTokens": 19896,
+            "contextWindow": 1000000,
+            "percent": 0.019896,
+            "compacting": false
+          },
+          "requestInputTokens": null,
+          "requestOutputTokens": null,
+          "costUsd": null,
+          "costAvailable": false
+        },
+        "costUsd": null,
+        "status": "verified",
+        "startedAt": "2026-10-24T22:08:51.543Z",
+        "entities": {
+          "lineId": "ln-2b5b293b",
+          "productId": "pd-3e05a1d5",
+          "recipeId": "rc-d09b9841",
+          "controlNodeId": "dw-93f08a02",
+          "daqNodeId": "dn-4e3839ec",
+          "channelId": "6d210cc4-6cf6-441d-9d7b-b7689ed7209f",
+          "agentId": "362625cb-0632-4f09-a01e-cee515f0afda"
+        },
+        "runId": "rr-0809199c",
+        "taskId": "be80ec5a-7caa-404d-8b91-ab4f03e4a1c1",
+        "modelDecision": {
+          "source": "registered OMP host-tool proposal, checked against current protocol reads and prevalidated set",
+          "controlValue": 730,
+          "processValue": 678.2999877929688,
+          "targetBand": [
+            700,
+            760
+          ],
+          "allowedValues": [
+            735,
+            740,
+            745
+          ],
+          "selectedValue": 745,
+          "selectionRationale": "",
+          "selectedValueWithinRangeAndStep": true
+        },
+        "finishedAt": "2026-10-24T22:10:40.088Z",
+        "trialRunId": "rr-66301240",
+        "taskState": "COMPLETED",
+        "evidenceSceneId": "annealing-r2"
+      },
+      {
+        "id": "annealing-r3",
+        "scene": "annealing",
+        "repetition": 3,
+        "provider": "zhipu-coding-plan",
+        "model": "glm-5.3-flash",
+        "candidate": 745,
+        "candidateChoices": [
+          735,
+          740,
+          745
+        ],
+        "usage": {
+          "source": "channel queue OMP context snapshot (not request-level billing)",
+          "context": {
+            "usedTokens": 18277,
+            "contextWindow": 1000000,
+            "percent": 0.018277,
+            "compacting": false
+          },
+          "requestInputTokens": null,
+          "requestOutputTokens": null,
+          "costUsd": null,
+          "costAvailable": false
+        },
+        "costUsd": null,
+        "status": "verified",
+        "startedAt": "2026-10-24T22:10:40.088Z",
+        "entities": {
+          "lineId": "ln-422525c3",
+          "productId": "pd-afa21205",
+          "recipeId": "rc-edb12179",
+          "controlNodeId": "dw-d4d1d1f3",
+          "daqNodeId": "dn-fdb36452",
+          "channelId": "4370735a-8c5b-473e-a7d9-d7c4d61d8da0",
+          "agentId": "2c4bfb6e-e923-4d4c-8c7c-c72a9a4eda09"
+        },
+        "runId": "rr-52743484",
+        "taskId": "e46a4eec-c2f5-4eab-b4f5-e7fd1fcc88e5",
+        "modelDecision": {
+          "source": "registered OMP host-tool proposal, checked against current protocol reads and prevalidated set",
+          "controlValue": 730,
+          "processValue": 676.9000244140625,
+          "targetBand": [
+            700,
+            760
+          ],
+          "allowedValues": [
+            735,
+            740,
+            745
+          ],
+          "selectedValue": 745,
+          "selectionRationale": "",
+          "selectedValueWithinRangeAndStep": true
+        },
+        "finishedAt": "2026-10-24T22:12:02.097Z",
+        "trialRunId": "rr-34ba1848",
+        "taskState": "COMPLETED",
+        "evidenceSceneId": "annealing-r3"
+      }
+    ],
+    "startedAt": "2026-10-24T22:01:53.810Z",
+    "postTrialSnapshotDelaySeconds": 20,
+    "scenes": [
+      {
+        "id": "cast-film-r1",
+        "simulatorPreset": "cast-film-physics",
+        "simulator": {
+          "mv": {
+            "signal": "ScrewSpeedSP",
+            "driver": "opcua",
+            "unit": "rpm",
+            "min": 50,
+            "max": 200,
+            "decimals": 0,
+            "driverConfig": {
+              "endpoint": "opc.tcp://127.0.0.1:44001",
+              "nodeId": "ns=2;s=AW.N.Sp"
+            },
+            "deviceId": "dev-extruder-opcua"
+          },
+          "cv": {
+            "signal": "thick",
+            "driver": "mqtt",
+            "unit": "μm",
+            "min": 0,
+            "max": 400,
+            "decimals": 2,
+            "driverConfig": {
+              "host": "127.0.0.1",
+              "port": 18840,
+              "topic": "aw/sim/thick",
+              "jsonPath": "data.thick"
+            },
+            "deviceId": "dev-gauge-mqtt"
+          },
+          "plant": {
+            "id": "rhemvmy1w9e-cast-film",
+            "kind": "simulator",
+            "seed": 42,
+            "timeScale": 1
+          },
+          "deviceCount": 4,
+          "candidateChoices": [
+            125,
+            130,
+            135
+          ],
+          "baseline": 120,
+          "candidate": 125
+        },
+        "status": "verified",
+        "approvals": [
+          {
+            "id": "ap-fdbd80c0",
+            "statusBeforeDecision": "pending",
+            "nodeId": "recipe:rc-f42811b1",
+            "title": null,
+            "candidateValue": 125,
+            "decision": "approve",
+            "statusAfterDecision": "approved",
+            "decisionActor": "synthetic isolated administrator via protected approval API",
+            "commentRecorded": true
+          }
+        ],
+        "runs": [],
+        "activeRun": {
+          "id": "rr-5f1c6e35",
+          "status": null,
+          "startedAt": "2026-10-25T06:02:22.446+08:00",
+          "recipeId": "rc-f42811b1",
+          "endedAt": "2026-10-25T06:04:14.429+08:00"
+        },
+        "decisionStimulus": {
+          "controlValue": 120,
+          "processValue": 55.82,
+          "processUnit": "μm",
+          "targetMin": 48,
+          "targetMax": 52,
+          "allowedValues": [
+            125,
+            130,
+            135
+          ],
+          "probeDriver": "mqtt",
+          "probeLatencyMs": 1810,
+          "controlReadAttempts": 1,
+          "processProbeAttempts": 1,
+          "measuredAt": "2026-10-24T22:02:24.434Z"
+        },
+        "entities": {
+          "lineId": "ln-75d61349",
+          "productId": "pd-52a8419d",
+          "recipeId": "rc-f42811b1",
+          "controlNodeId": "dw-dcee7f9d",
+          "daqNodeId": "dn-b5936f77",
+          "channelId": "96a1b71c-b8ef-44ce-82ad-338ead512c31",
+          "agentId": "3fb88575-b569-4c63-adc3-3582b4b9c89d"
+        },
+        "bindings": {
+          "recipe": {
+            "kind": "recipe",
+            "mode": "manual"
+          },
+          "daq": {
+            "kind": "daq",
+            "mode": "auto"
+          }
+        },
+        "routePolicy": {
+          "tool": "recipe_trial",
+          "emergency": false,
+          "cadenceBypass": false,
+          "recipeBindingMode": "manual"
+        },
+        "taskId": "1987fc20-4301-4198-bedc-90fac3a54057",
+        "modelDecision": {
+          "source": "registered OMP host-tool proposal, checked against current protocol reads and prevalidated set",
+          "controlValue": 120,
+          "processValue": 55.82,
+          "targetBand": [
+            48,
+            52
+          ],
+          "allowedValues": [
+            125,
+            130,
+            135
+          ],
+          "selectedValue": 125,
+          "selectionRationale": "",
+          "selectedValueWithinRangeAndStep": true
+        },
+        "modelExecution": {
+          "provider": "zhipu-coding-plan",
+          "model": "glm-5.3-flash",
+          "taskId": "1987fc20-4301-4198-bedc-90fac3a54057",
+          "taskState": "COMPLETED",
+          "taskArtifactCount": 1,
+          "evidenceSource": "registered OMP task history, approval payload, task state, and route-specific recipe/ACK records",
+          "hostToolCallEvents": 2,
+          "hostToolResultEvents": 1,
+          "taskCompletionToolCallEvents": 1,
+          "taskToolEvents": [
+            {
+              "toolName": "recipe_trial",
+              "phase": "call",
+              "isError": false
+            },
+            {
+              "toolName": "recipe_trial",
+              "phase": "call",
+              "isError": false
+            },
+            {
+              "toolName": "recipe_trial",
+              "phase": "result",
+              "isError": false
+            },
+            {
+              "toolName": "recipe_trial",
+              "phase": "result",
+              "isError": false
+            },
+            {
+              "toolName": "complete_task",
+              "phase": "call",
+              "isError": false
+            }
+          ],
+          "hostToolEventHistoryAvailable": true,
+          "approvedProposalValue": 125,
+          "approvedProposalCount": 1,
+          "channelEvidence": {
+            "source": "GET /api/workshop/channels/:id/messages",
+            "taskMessageCount": 0,
+            "agentMessageCount": 0,
+            "roles": []
+          },
+          "usage": {
+            "source": "channel queue OMP context snapshot (not request-level billing)",
+            "context": {
+              "usedTokens": 15692,
+              "contextWindow": 1000000,
+              "percent": 0.015692,
+              "compacting": false
+            },
+            "requestInputTokens": null,
+            "requestOutputTokens": null,
+            "costUsd": null,
+            "costAvailable": false
+          },
+          "taskStateAfterObservation": "COMPLETED",
+          "taskCompleted": true
+        },
+        "hostToolExecution": {
+          "provenance": "registered OMP model proposal → protected synthetic approval → one recipe.trial and one verified DCW receipt",
+          "hostToolEventHistoryAvailable": true,
+          "taskStateAfterObservation": "COMPLETED",
+          "taskCompleted": true,
+          "approvedProposalCount": 1,
+          "recipeTrialCount": 1,
+          "recipeTrialAckCount": 1,
+          "toolName": "recipe_trial",
+          "resultReceived": true
+        },
+        "trial": {
+          "runId": "rr-8a109c51",
+          "approvalId": "ap-fdbd80c0",
+          "ackSummary": {
+            "verified": 1,
+            "unverified": 0,
+            "failed": 0,
+            "total": 1
+          },
+          "resultCount": 1,
+          "resultRows": [
+            {
+              "templateRef": "cw-51f7883d",
+              "nodeId": "dw-dcee7f9d",
+              "ok": true,
+              "message": "写入并回读一致:125,回读 125(标定后物理值 125)",
+              "value": 125,
+              "ack": "readback-verified",
+              "verify": {
+                "verdict": "verified",
+                "attempts": 0
+              }
+            }
+          ]
+        },
+        "readback": {
+          "expectedCandidate": 125,
+          "response": {
+            "ok": true,
+            "value": 125,
+            "raw": 125,
+            "message": "读回 125",
+            "at": "2026-10-25T06:03:53.508+08:00"
+          },
+          "resultMatchesCandidate": true
+        },
+        "daq": {
+          "nodeId": "dn-b5936f77",
+          "method": "single driver-probe/ingest snapshot",
+          "storageBackend": "isolated AW_HOME SQLite time-series fallback",
+          "postTrialDelaySeconds": 20,
+          "snapshotDelayStartedAt": "2026-10-24T22:03:53.556Z",
+          "sampleCount": 1,
+          "runTags": [
+            "rr-5f1c6e35"
+          ],
+          "expectedActiveRunId": "rr-5f1c6e35",
+          "probe": {
+            "driver": "mqtt",
+            "startedAt": "2026-10-24T22:04:13.557Z",
+            "completedAt": "2026-10-24T22:04:13.564Z",
+            "sampleValue": 45.69,
+            "latencyMs": 0
+          },
+          "ingest": {
+            "accepted": true,
+            "at": "2026-10-25T06:04:13.564+08:00",
+            "value": 45.69,
+            "state": "ok"
+          },
+          "taggedQuery": {
+            "requestedRunId": "rr-5f1c6e35",
+            "returnedRunId": "rr-5f1c6e35",
+            "seriesPointCount": 1,
+            "probeValueMatched": true,
+            "snapshotBucketAt": "2026-10-24T22:04:13.000Z",
+            "matchingProbePoint": {
+              "at": 1792879453000,
+              "v": 45.69
+            },
+            "series": [
+              {
+                "at": 1792879453000,
+                "v": 45.69
+              }
+            ]
+          },
+          "activeRunDataKeys": [
+            "run",
+            "daq",
+            "writes"
+          ]
+        },
+        "recipeLog": {
+          "query": "ops-logs filtered by lineId and recipeId (recipe_log-equivalent audit view)",
+          "rowCount": 3,
+          "trialAction": "recipe.trial",
+          "trialSummary": "配方试验整批下发(证实 1/1,未证实 0,失败 0,批次 rr-8a109):dw-dcee7→125 | 假设:PV 55.82 μm (2026-10-25, 120 rpm setpoint) exceeds target band 48–52 μm by 3.82 μm; a bounded correction is warranted. Candidate set permits upward-only moves and no gain estimate exists, so the smallest prevalidated step (125 rpm, +5 rpm, within 50–200 rpm window and step bound) is selected as the conservative single trial. Direction of response unverified; no improvement claimed.",
+          "ackAction": "recipe.dispatch.ack",
+          "ackSummary": "批次 rr-8a109 ACK 鉴定:证实 1/1,未证实 0,失败 0",
+          "trialRunDataKeys": [
+            "run",
+            "daq",
+            "writes"
+          ]
+        }
+      },
+      {
+        "id": "cast-film-r2",
+        "simulatorPreset": "cast-film-physics",
+        "simulator": {
+          "mv": {
+            "signal": "ScrewSpeedSP",
+            "driver": "opcua",
+            "unit": "rpm",
+            "min": 50,
+            "max": 200,
+            "decimals": 0,
+            "driverConfig": {
+              "endpoint": "opc.tcp://127.0.0.1:44001",
+              "nodeId": "ns=2;s=AW.N.Sp"
+            },
+            "deviceId": "dev-extruder-opcua"
+          },
+          "cv": {
+            "signal": "thick",
+            "driver": "mqtt",
+            "unit": "μm",
+            "min": 0,
+            "max": 400,
+            "decimals": 2,
+            "driverConfig": {
+              "host": "127.0.0.1",
+              "port": 18840,
+              "topic": "aw/sim/thick",
+              "jsonPath": "data.thick"
+            },
+            "deviceId": "dev-gauge-mqtt"
+          },
+          "plant": {
+            "id": "rhemvmy1w9e-cast-film",
+            "kind": "simulator",
+            "seed": 42,
+            "timeScale": 1
+          },
+          "deviceCount": 4,
+          "candidateChoices": [
+            125,
+            130,
+            135
+          ],
+          "baseline": 120,
+          "candidate": 130
+        },
+        "status": "verified",
+        "approvals": [
+          {
+            "id": "ap-67708457",
+            "statusBeforeDecision": "pending",
+            "nodeId": "recipe:rc-589bcc79",
+            "title": null,
+            "candidateValue": 130,
+            "decision": "approve",
+            "statusAfterDecision": "approved",
+            "decisionActor": "synthetic isolated administrator via protected approval API",
+            "commentRecorded": true
+          }
+        ],
+        "runs": [],
+        "activeRun": {
+          "id": "rr-bf378f69",
+          "status": null,
+          "startedAt": "2026-10-25T06:04:14.551+08:00",
+          "recipeId": "rc-589bcc79",
+          "endedAt": "2026-10-25T06:05:34.337+08:00"
+        },
+        "decisionStimulus": {
+          "controlValue": 120,
+          "processValue": 45.69,
+          "processUnit": "μm",
+          "targetMin": 48,
+          "targetMax": 52,
+          "allowedValues": [
+            125,
+            130,
+            135
+          ],
+          "probeDriver": "mqtt",
+          "probeLatencyMs": 0,
+          "controlReadAttempts": 1,
+          "processProbeAttempts": 1,
+          "measuredAt": "2026-10-24T22:04:14.583Z"
+        },
+        "entities": {
+          "lineId": "ln-ac7a90b8",
+          "productId": "pd-376fa8af",
+          "recipeId": "rc-589bcc79",
+          "controlNodeId": "dw-33482200",
+          "daqNodeId": "dn-150d4c21",
+          "channelId": "4d37c43c-57d8-4ee7-b195-3287eefe3615",
+          "agentId": "c706fb14-9008-4931-8a2e-87388be0bf64"
+        },
+        "bindings": {
+          "recipe": {
+            "kind": "recipe",
+            "mode": "manual"
+          },
+          "daq": {
+            "kind": "daq",
+            "mode": "auto"
+          }
+        },
+        "routePolicy": {
+          "tool": "recipe_trial",
+          "emergency": false,
+          "cadenceBypass": false,
+          "recipeBindingMode": "manual"
+        },
+        "taskId": "abd1676e-71a2-410d-bfc4-6616cebe7067",
+        "modelDecision": {
+          "source": "registered OMP host-tool proposal, checked against current protocol reads and prevalidated set",
+          "controlValue": 120,
+          "processValue": 45.69,
+          "targetBand": [
+            48,
+            52
+          ],
+          "allowedValues": [
+            125,
+            130,
+            135
+          ],
+          "selectedValue": 130,
+          "selectionRationale": "",
+          "selectedValueWithinRangeAndStep": true
+        },
+        "modelExecution": {
+          "provider": "zhipu-coding-plan",
+          "model": "glm-5.3-flash",
+          "taskId": "abd1676e-71a2-410d-bfc4-6616cebe7067",
+          "taskState": "COMPLETED",
+          "taskArtifactCount": 1,
+          "evidenceSource": "registered OMP task history, approval payload, task state, and route-specific recipe/ACK records",
+          "hostToolCallEvents": 2,
+          "hostToolResultEvents": 1,
+          "taskCompletionToolCallEvents": 1,
+          "taskToolEvents": [
+            {
+              "toolName": "recipe_trial",
+              "phase": "call",
+              "isError": false
+            },
+            {
+              "toolName": "recipe_trial",
+              "phase": "call",
+              "isError": false
+            },
+            {
+              "toolName": "recipe_trial",
+              "phase": "result",
+              "isError": false
+            },
+            {
+              "toolName": "recipe_trial",
+              "phase": "result",
+              "isError": false
+            },
+            {
+              "toolName": "complete_task",
+              "phase": "call",
+              "isError": false
+            }
+          ],
+          "hostToolEventHistoryAvailable": true,
+          "approvedProposalValue": 130,
+          "approvedProposalCount": 1,
+          "channelEvidence": {
+            "source": "GET /api/workshop/channels/:id/messages",
+            "taskMessageCount": 0,
+            "agentMessageCount": 0,
+            "roles": []
+          },
+          "usage": {
+            "source": "channel queue OMP context snapshot (not request-level billing)",
+            "context": {
+              "usedTokens": 14373,
+              "contextWindow": 1000000,
+              "percent": 0.014373,
+              "compacting": false
+            },
+            "requestInputTokens": null,
+            "requestOutputTokens": null,
+            "costUsd": null,
+            "costAvailable": false
+          },
+          "taskStateAfterObservation": "COMPLETED",
+          "taskCompleted": true
+        },
+        "hostToolExecution": {
+          "provenance": "registered OMP model proposal → protected synthetic approval → one recipe.trial and one verified DCW receipt",
+          "hostToolEventHistoryAvailable": true,
+          "taskStateAfterObservation": "COMPLETED",
+          "taskCompleted": true,
+          "approvedProposalCount": 1,
+          "recipeTrialCount": 1,
+          "recipeTrialAckCount": 1,
+          "toolName": "recipe_trial",
+          "resultReceived": true
+        },
+        "trial": {
+          "runId": "rr-124d359f",
+          "approvalId": "ap-67708457",
+          "ackSummary": {
+            "verified": 1,
+            "unverified": 0,
+            "failed": 0,
+            "total": 1
+          },
+          "resultCount": 1,
+          "resultRows": [
+            {
+              "templateRef": "cw-dd68e700",
+              "nodeId": "dw-33482200",
+              "ok": true,
+              "message": "写入并回读一致:130,回读 130(标定后物理值 130)",
+              "value": 130,
+              "ack": "readback-verified",
+              "verify": {
+                "verdict": "verified",
+                "attempts": 0
+              }
+            }
+          ]
+        },
+        "readback": {
+          "expectedCandidate": 130,
+          "response": {
+            "ok": true,
+            "value": 130,
+            "raw": 130,
+            "message": "读回 130",
+            "at": "2026-10-25T06:05:13.427+08:00"
+          },
+          "resultMatchesCandidate": true
+        },
+        "daq": {
+          "nodeId": "dn-150d4c21",
+          "method": "single driver-probe/ingest snapshot",
+          "storageBackend": "isolated AW_HOME SQLite time-series fallback",
+          "postTrialDelaySeconds": 20,
+          "snapshotDelayStartedAt": "2026-10-24T22:05:13.471Z",
+          "sampleCount": 1,
+          "runTags": [
+            "rr-bf378f69"
+          ],
+          "expectedActiveRunId": "rr-bf378f69",
+          "probe": {
+            "driver": "mqtt",
+            "startedAt": "2026-10-24T22:05:33.476Z",
+            "completedAt": "2026-10-24T22:05:33.481Z",
+            "sampleValue": 46.69,
+            "latencyMs": 0
+          },
+          "ingest": {
+            "accepted": true,
+            "at": "2026-10-25T06:05:33.481+08:00",
+            "value": 46.69,
+            "state": "ok"
+          },
+          "taggedQuery": {
+            "requestedRunId": "rr-bf378f69",
+            "returnedRunId": "rr-bf378f69",
+            "seriesPointCount": 1,
+            "probeValueMatched": true,
+            "snapshotBucketAt": "2026-10-24T22:05:33.000Z",
+            "matchingProbePoint": {
+              "at": 1792879533000,
+              "v": 46.69
+            },
+            "series": [
+              {
+                "at": 1792879533000,
+                "v": 46.69
+              }
+            ]
+          },
+          "activeRunDataKeys": [
+            "run",
+            "daq",
+            "writes"
+          ]
+        },
+        "recipeLog": {
+          "query": "ops-logs filtered by lineId and recipeId (recipe_log-equivalent audit view)",
+          "rowCount": 3,
+          "trialAction": "recipe.trial",
+          "trialSummary": "配方试验整批下发(证实 1/1,未证实 0,失败 0,批次 rr-124d3):dw-33482→130 | 假设:实测45.69μm(120rpm)低于目标带48~52μm;按增益0.38μm/rpm估算入带需约+11rpm,选最小充分候选130rpm(+10rpm),预计~49.5μm入带;125rpm预计不足,135rpm偏带上缘。",
+          "ackAction": "recipe.dispatch.ack",
+          "ackSummary": "批次 rr-124d3 ACK 鉴定:证实 1/1,未证实 0,失败 0",
+          "trialRunDataKeys": [
+            "run",
+            "daq",
+            "writes"
+          ]
+        }
+      },
+      {
+        "id": "cast-film-r3",
+        "simulatorPreset": "cast-film-physics",
+        "simulator": {
+          "mv": {
+            "signal": "ScrewSpeedSP",
+            "driver": "opcua",
+            "unit": "rpm",
+            "min": 50,
+            "max": 200,
+            "decimals": 0,
+            "driverConfig": {
+              "endpoint": "opc.tcp://127.0.0.1:44001",
+              "nodeId": "ns=2;s=AW.N.Sp"
+            },
+            "deviceId": "dev-extruder-opcua"
+          },
+          "cv": {
+            "signal": "thick",
+            "driver": "mqtt",
+            "unit": "μm",
+            "min": 0,
+            "max": 400,
+            "decimals": 2,
+            "driverConfig": {
+              "host": "127.0.0.1",
+              "port": 18840,
+              "topic": "aw/sim/thick",
+              "jsonPath": "data.thick"
+            },
+            "deviceId": "dev-gauge-mqtt"
+          },
+          "plant": {
+            "id": "rhemvmy1w9e-cast-film",
+            "kind": "simulator",
+            "seed": 42,
+            "timeScale": 1
+          },
+          "deviceCount": 4,
+          "candidateChoices": [
+            125,
+            130,
+            135
+          ],
+          "baseline": 120,
+          "candidate": 125
+        },
+        "status": "verified",
+        "approvals": [
+          {
+            "id": "ap-9737ad2f",
+            "statusBeforeDecision": "pending",
+            "nodeId": "recipe:rc-ffc44ae2",
+            "title": null,
+            "candidateValue": 125,
+            "decision": "approve",
+            "statusAfterDecision": "approved",
+            "decisionActor": "synthetic isolated administrator via protected approval API",
+            "commentRecorded": true
+          }
+        ],
+        "runs": [],
+        "activeRun": {
+          "id": "rr-2b5f445e",
+          "status": null,
+          "startedAt": "2026-10-25T06:05:34.459+08:00",
+          "recipeId": "rc-ffc44ae2",
+          "endedAt": "2026-10-25T06:06:58.589+08:00"
+        },
+        "decisionStimulus": {
+          "controlValue": 120,
+          "processValue": 46.69,
+          "processUnit": "μm",
+          "targetMin": 48,
+          "targetMax": 52,
+          "allowedValues": [
+            125,
+            130,
+            135
+          ],
+          "probeDriver": "mqtt",
+          "probeLatencyMs": 0,
+          "controlReadAttempts": 1,
+          "processProbeAttempts": 1,
+          "measuredAt": "2026-10-24T22:05:34.502Z"
+        },
+        "entities": {
+          "lineId": "ln-eacd7af5",
+          "productId": "pd-e98141be",
+          "recipeId": "rc-ffc44ae2",
+          "controlNodeId": "dw-05723cd9",
+          "daqNodeId": "dn-dc826dd9",
+          "channelId": "97914e0a-b06b-4b32-8d34-826d3c0346d3",
+          "agentId": "a1f0bf01-20ff-431f-b245-8b572183a5d5"
+        },
+        "bindings": {
+          "recipe": {
+            "kind": "recipe",
+            "mode": "manual"
+          },
+          "daq": {
+            "kind": "daq",
+            "mode": "auto"
+          }
+        },
+        "routePolicy": {
+          "tool": "recipe_trial",
+          "emergency": false,
+          "cadenceBypass": false,
+          "recipeBindingMode": "manual"
+        },
+        "taskId": "4b9857d4-dc13-4d5f-8fe4-caba084e888a",
+        "modelDecision": {
+          "source": "registered OMP host-tool proposal, checked against current protocol reads and prevalidated set",
+          "controlValue": 120,
+          "processValue": 46.69,
+          "targetBand": [
+            48,
+            52
+          ],
+          "allowedValues": [
+            125,
+            130,
+            135
+          ],
+          "selectedValue": 125,
+          "selectionRationale": "",
+          "selectedValueWithinRangeAndStep": true
+        },
+        "modelExecution": {
+          "provider": "zhipu-coding-plan",
+          "model": "glm-5.3-flash",
+          "taskId": "4b9857d4-dc13-4d5f-8fe4-caba084e888a",
+          "taskState": "COMPLETED",
+          "taskArtifactCount": 1,
+          "evidenceSource": "registered OMP task history, approval payload, task state, and route-specific recipe/ACK records",
+          "hostToolCallEvents": 2,
+          "hostToolResultEvents": 1,
+          "taskCompletionToolCallEvents": 1,
+          "taskToolEvents": [
+            {
+              "toolName": "recipe_trial",
+              "phase": "call",
+              "isError": false
+            },
+            {
+              "toolName": "recipe_trial",
+              "phase": "call",
+              "isError": false
+            },
+            {
+              "toolName": "recipe_trial",
+              "phase": "result",
+              "isError": false
+            },
+            {
+              "toolName": "recipe_trial",
+              "phase": "result",
+              "isError": false
+            },
+            {
+              "toolName": "complete_task",
+              "phase": "call",
+              "isError": false
+            }
+          ],
+          "hostToolEventHistoryAvailable": true,
+          "approvedProposalValue": 125,
+          "approvedProposalCount": 1,
+          "channelEvidence": {
+            "source": "GET /api/workshop/channels/:id/messages",
+            "taskMessageCount": 0,
+            "agentMessageCount": 0,
+            "roles": []
+          },
+          "usage": {
+            "source": "channel queue OMP context snapshot (not request-level billing)",
+            "context": {
+              "usedTokens": 18581,
+              "contextWindow": 1000000,
+              "percent": 0.018581,
+              "compacting": false
+            },
+            "requestInputTokens": null,
+            "requestOutputTokens": null,
+            "costUsd": null,
+            "costAvailable": false
+          },
+          "taskStateAfterObservation": "COMPLETED",
+          "taskCompleted": true
+        },
+        "hostToolExecution": {
+          "provenance": "registered OMP model proposal → protected synthetic approval → one recipe.trial and one verified DCW receipt",
+          "hostToolEventHistoryAvailable": true,
+          "taskStateAfterObservation": "COMPLETED",
+          "taskCompleted": true,
+          "approvedProposalCount": 1,
+          "recipeTrialCount": 1,
+          "recipeTrialAckCount": 1,
+          "toolName": "recipe_trial",
+          "resultReceived": true
+        },
+        "trial": {
+          "runId": "rr-1edfa835",
+          "approvalId": "ap-9737ad2f",
+          "ackSummary": {
+            "verified": 1,
+            "unverified": 0,
+            "failed": 0,
+            "total": 1
+          },
+          "resultCount": 1,
+          "resultRows": [
+            {
+              "templateRef": "cw-6e4fbfd3",
+              "nodeId": "dw-05723cd9",
+              "ok": true,
+              "message": "写入并回读一致:125,回读 125(标定后物理值 125)",
+              "value": 125,
+              "ack": "readback-verified",
+              "verify": {
+                "verdict": "verified",
+                "attempts": 0
+              }
+            }
+          ]
+        },
+        "readback": {
+          "expectedCandidate": 125,
+          "response": {
+            "ok": true,
+            "value": 125,
+            "raw": 125,
+            "message": "读回 125",
+            "at": "2026-10-25T06:06:37.666+08:00"
+          },
+          "resultMatchesCandidate": true
+        },
+        "daq": {
+          "nodeId": "dn-dc826dd9",
+          "method": "single driver-probe/ingest snapshot",
+          "storageBackend": "isolated AW_HOME SQLite time-series fallback",
+          "postTrialDelaySeconds": 20,
+          "snapshotDelayStartedAt": "2026-10-24T22:06:37.715Z",
+          "sampleCount": 1,
+          "runTags": [
+            "rr-2b5f445e"
+          ],
+          "expectedActiveRunId": "rr-2b5f445e",
+          "probe": {
+            "driver": "mqtt",
+            "startedAt": "2026-10-24T22:06:57.720Z",
+            "completedAt": "2026-10-24T22:06:57.725Z",
+            "sampleValue": 45.69,
+            "latencyMs": 0
+          },
+          "ingest": {
+            "accepted": true,
+            "at": "2026-10-25T06:06:57.725+08:00",
+            "value": 45.69,
+            "state": "ok"
+          },
+          "taggedQuery": {
+            "requestedRunId": "rr-2b5f445e",
+            "returnedRunId": "rr-2b5f445e",
+            "seriesPointCount": 1,
+            "probeValueMatched": true,
+            "snapshotBucketAt": "2026-10-24T22:06:57.000Z",
+            "matchingProbePoint": {
+              "at": 1792879617000,
+              "v": 45.69
+            },
+            "series": [
+              {
+                "at": 1792879617000,
+                "v": 45.69
+              }
+            ]
+          },
+          "activeRunDataKeys": [
+            "run",
+            "daq",
+            "writes"
+          ]
+        },
+        "recipeLog": {
+          "query": "ops-logs filtered by lineId and recipeId (recipe_log-equivalent audit view)",
+          "rowCount": 3,
+          "trialAction": "recipe.trial",
+          "trialSummary": "配方试验整批下发(证实 1/1,未证实 0,失败 0,批次 rr-1edfa):dw-05723→125 | 假设:PV 46.69μm 低于目标带 48–52μm(距带中心 −3.31μm);螺杆转速是厚度控制杠杆,需上调。125rpm(+5rpm,预设候选集中最小步幅,约为量程 50–200 跨度的 3.3%)为最保守有界增量;单次试验,不预断改善。",
+          "ackAction": "recipe.dispatch.ack",
+          "ackSummary": "批次 rr-1edfa ACK 鉴定:证实 1/1,未证实 0,失败 0",
+          "trialRunDataKeys": [
+            "run",
+            "daq",
+            "writes"
+          ]
+        }
+      },
+      {
+        "id": "annealing-r1",
+        "simulatorPreset": "anneal-line",
+        "simulator": {
+          "mv": {
+            "signal": "均热区3炉温SP",
+            "driver": "modbus-tcp",
+            "description": "均热出口区炉温(℃);区权最大(0.40),带温第一驱动",
+            "unit": "℃",
+            "min": 600,
+            "max": 850,
+            "decimals": 1,
+            "driverConfig": {
+              "host": "127.0.0.1",
+              "port": 44300,
+              "unitId": 1,
+              "register": 40025,
+              "registerType": "holding",
+              "dataType": "float32",
+              "byteOrder": "big"
+            },
+            "deviceId": "anneal-heating-mbtcp"
+          },
+          "cv": {
+            "signal": "StripTemp",
+            "driver": "modbus-tcp",
+            "description": "均热段出口带温(采集,℃);再结晶窗 ≈700~760",
+            "unit": "℃",
+            "min": 20,
+            "max": 900,
+            "decimals": 1,
+            "driverConfig": {
+              "host": "127.0.0.1",
+              "port": 44300,
+              "unitId": 1,
+              "register": 40003,
+              "registerType": "holding",
+              "dataType": "float32",
+              "byteOrder": "big"
+            },
+            "deviceId": "anneal-heating-mbtcp"
+          },
+          "plant": {
+            "id": "rhemvmy1w9e-annealing",
+            "kind": "anneal",
+            "seed": 42,
+            "timeScale": 1
+          },
+          "deviceCount": 4,
+          "candidateChoices": [
+            735,
+            740,
+            745
+          ],
+          "baseline": 730,
+          "candidate": 745
+        },
+        "status": "verified",
+        "approvals": [
+          {
+            "id": "ap-3a920263",
+            "statusBeforeDecision": "pending",
+            "nodeId": "recipe:rc-2b925f71",
+            "title": null,
+            "candidateValue": 745,
+            "decision": "approve",
+            "statusAfterDecision": "approved",
+            "decisionActor": "synthetic isolated administrator via protected approval API",
+            "commentRecorded": true
+          }
+        ],
+        "runs": [],
+        "activeRun": {
+          "id": "rr-013b2f6a",
+          "status": null,
+          "startedAt": "2026-10-25T06:06:58.976+08:00",
+          "recipeId": "rc-2b925f71",
+          "endedAt": "2026-10-25T06:08:51.496+08:00"
+        },
+        "decisionStimulus": {
+          "controlValue": 730,
+          "processValue": 675.4000244140625,
+          "processUnit": "℃",
+          "targetMin": 700,
+          "targetMax": 760,
+          "allowedValues": [
+            735,
+            740,
+            745
+          ],
+          "probeDriver": "modbus-tcp",
+          "probeLatencyMs": 15,
+          "controlReadAttempts": 1,
+          "processProbeAttempts": 1,
+          "measuredAt": "2026-10-24T22:06:59.083Z"
+        },
+        "entities": {
+          "lineId": "ln-f07351f9",
+          "productId": "pd-9b861b76",
+          "recipeId": "rc-2b925f71",
+          "controlNodeId": "dw-32b2e9b0",
+          "daqNodeId": "dn-9efe1134",
+          "channelId": "e69f275e-560e-4c45-8fb7-f176e5580947",
+          "agentId": "48d3538f-686a-4c5b-9d7f-e9acbc59f2c5"
+        },
+        "bindings": {
+          "recipe": {
+            "kind": "recipe",
+            "mode": "manual"
+          },
+          "daq": {
+            "kind": "daq",
+            "mode": "auto"
+          }
+        },
+        "routePolicy": {
+          "tool": "recipe_trial",
+          "emergency": false,
+          "cadenceBypass": false,
+          "recipeBindingMode": "manual"
+        },
+        "taskId": "5041b79c-2fba-4983-8b81-1f018ec93958",
+        "modelDecision": {
+          "source": "registered OMP host-tool proposal, checked against current protocol reads and prevalidated set",
+          "controlValue": 730,
+          "processValue": 675.4000244140625,
+          "targetBand": [
+            700,
+            760
+          ],
+          "allowedValues": [
+            735,
+            740,
+            745
+          ],
+          "selectedValue": 745,
+          "selectionRationale": "",
+          "selectedValueWithinRangeAndStep": true
+        },
+        "modelExecution": {
+          "provider": "zhipu-coding-plan",
+          "model": "glm-5.3-flash",
+          "taskId": "5041b79c-2fba-4983-8b81-1f018ec93958",
+          "taskState": "COMPLETED",
+          "taskArtifactCount": 1,
+          "evidenceSource": "registered OMP task history, approval payload, task state, and route-specific recipe/ACK records",
+          "hostToolCallEvents": 2,
+          "hostToolResultEvents": 1,
+          "taskCompletionToolCallEvents": 1,
+          "taskToolEvents": [
+            {
+              "toolName": "recipe_trial",
+              "phase": "call",
+              "isError": false
+            },
+            {
+              "toolName": "recipe_trial",
+              "phase": "call",
+              "isError": false
+            },
+            {
+              "toolName": "recipe_trial",
+              "phase": "result",
+              "isError": false
+            },
+            {
+              "toolName": "recipe_trial",
+              "phase": "result",
+              "isError": false
+            },
+            {
+              "toolName": "complete_task",
+              "phase": "call",
+              "isError": false
+            }
+          ],
+          "hostToolEventHistoryAvailable": true,
+          "approvedProposalValue": 745,
+          "approvedProposalCount": 1,
+          "channelEvidence": {
+            "source": "GET /api/workshop/channels/:id/messages",
+            "taskMessageCount": 0,
+            "agentMessageCount": 0,
+            "roles": []
+          },
+          "usage": {
+            "source": "channel queue OMP context snapshot (not request-level billing)",
+            "context": {
+              "usedTokens": 15729,
+              "contextWindow": 1000000,
+              "percent": 0.015729,
+              "compacting": false
+            },
+            "requestInputTokens": null,
+            "requestOutputTokens": null,
+            "costUsd": null,
+            "costAvailable": false
+          },
+          "taskStateAfterObservation": "COMPLETED",
+          "taskCompleted": true
+        },
+        "hostToolExecution": {
+          "provenance": "registered OMP model proposal → protected synthetic approval → one recipe.trial and one verified DCW receipt",
+          "hostToolEventHistoryAvailable": true,
+          "taskStateAfterObservation": "COMPLETED",
+          "taskCompleted": true,
+          "approvedProposalCount": 1,
+          "recipeTrialCount": 1,
+          "recipeTrialAckCount": 1,
+          "toolName": "recipe_trial",
+          "resultReceived": true
+        },
+        "trial": {
+          "runId": "rr-8b8e5899",
+          "approvalId": "ap-3a920263",
+          "ackSummary": {
+            "verified": 1,
+            "unverified": 0,
+            "failed": 0,
+            "total": 1
+          },
+          "resultCount": 1,
+          "resultRows": [
+            {
+              "templateRef": "cw-ebb24ea5",
+              "nodeId": "dw-32b2e9b0",
+              "ok": true,
+              "message": "写入并回读一致:745 → raw 745,回读 745(标定后物理值 745)",
+              "value": 745,
+              "ack": "readback-verified",
+              "verify": {
+                "verdict": "verified",
+                "attempts": 0
+              }
+            }
+          ]
+        },
+        "readback": {
+          "expectedCandidate": 745,
+          "response": {
+            "ok": true,
+            "value": 745,
+            "raw": 745,
+            "message": "读回 raw 745 → eng 745",
+            "at": "2026-10-25T06:08:30.561+08:00"
+          },
+          "resultMatchesCandidate": true
+        },
+        "daq": {
+          "nodeId": "dn-9efe1134",
+          "method": "single driver-probe/ingest snapshot",
+          "storageBackend": "isolated AW_HOME SQLite time-series fallback",
+          "postTrialDelaySeconds": 20,
+          "snapshotDelayStartedAt": "2026-10-24T22:08:30.613Z",
+          "sampleCount": 1,
+          "runTags": [
+            "rr-013b2f6a"
+          ],
+          "expectedActiveRunId": "rr-013b2f6a",
+          "probe": {
+            "driver": "modbus-tcp",
+            "startedAt": "2026-10-24T22:08:50.625Z",
+            "completedAt": "2026-10-24T22:08:50.641Z",
+            "sampleValue": 679.5999755859375,
+            "latencyMs": 13
+          },
+          "ingest": {
+            "accepted": true,
+            "at": "2026-10-25T06:08:50.641+08:00",
+            "value": 679.5999755859375,
+            "state": "ok"
+          },
+          "taggedQuery": {
+            "requestedRunId": "rr-013b2f6a",
+            "returnedRunId": "rr-013b2f6a",
+            "seriesPointCount": 1,
+            "probeValueMatched": true,
+            "snapshotBucketAt": "2026-10-24T22:08:50.000Z",
+            "matchingProbePoint": {
+              "at": 1792879730000,
+              "v": 679.599976
+            },
+            "series": [
+              {
+                "at": 1792879730000,
+                "v": 679.599976
+              }
+            ]
+          },
+          "activeRunDataKeys": [
+            "run",
+            "daq",
+            "writes"
+          ]
+        },
+        "recipeLog": {
+          "query": "ops-logs filtered by lineId and recipeId (recipe_log-equivalent audit view)",
+          "rowCount": 3,
+          "trialAction": "recipe.trial",
+          "trialSummary": "配方试验整批下发(证实 1/1,未证实 0,失败 0,批次 rr-8b8e5):dw-32b2e→745 | 假设:PV 675.4℃ is 24.6℃ below the 700℃ band floor; SP 730→745℃ (+15℃, largest prevalidated step) stays below the measured error, raising PV toward band without overshoot risk.",
+          "ackAction": "recipe.dispatch.ack",
+          "ackSummary": "批次 rr-8b8e5 ACK 鉴定:证实 1/1,未证实 0,失败 0",
+          "trialRunDataKeys": [
+            "run",
+            "daq",
+            "writes"
+          ]
+        }
+      },
+      {
+        "id": "annealing-r2",
+        "simulatorPreset": "anneal-line",
+        "simulator": {
+          "mv": {
+            "signal": "均热区3炉温SP",
+            "driver": "modbus-tcp",
+            "description": "均热出口区炉温(℃);区权最大(0.40),带温第一驱动",
+            "unit": "℃",
+            "min": 600,
+            "max": 850,
+            "decimals": 1,
+            "driverConfig": {
+              "host": "127.0.0.1",
+              "port": 44300,
+              "unitId": 1,
+              "register": 40025,
+              "registerType": "holding",
+              "dataType": "float32",
+              "byteOrder": "big"
+            },
+            "deviceId": "anneal-heating-mbtcp"
+          },
+          "cv": {
+            "signal": "StripTemp",
+            "driver": "modbus-tcp",
+            "description": "均热段出口带温(采集,℃);再结晶窗 ≈700~760",
+            "unit": "℃",
+            "min": 20,
+            "max": 900,
+            "decimals": 1,
+            "driverConfig": {
+              "host": "127.0.0.1",
+              "port": 44300,
+              "unitId": 1,
+              "register": 40003,
+              "registerType": "holding",
+              "dataType": "float32",
+              "byteOrder": "big"
+            },
+            "deviceId": "anneal-heating-mbtcp"
+          },
+          "plant": {
+            "id": "rhemvmy1w9e-annealing",
+            "kind": "anneal",
+            "seed": 42,
+            "timeScale": 1
+          },
+          "deviceCount": 4,
+          "candidateChoices": [
+            735,
+            740,
+            745
+          ],
+          "baseline": 730,
+          "candidate": 745
+        },
+        "status": "verified",
+        "approvals": [
+          {
+            "id": "ap-d357e4b4",
+            "statusBeforeDecision": "pending",
+            "nodeId": "recipe:rc-d09b9841",
+            "title": null,
+            "candidateValue": 745,
+            "decision": "approve",
+            "statusAfterDecision": "approved",
+            "decisionActor": "synthetic isolated administrator via protected approval API",
+            "commentRecorded": true
+          }
+        ],
+        "runs": [],
+        "activeRun": {
+          "id": "rr-0809199c",
+          "status": null,
+          "startedAt": "2026-10-25T06:08:51.649+08:00",
+          "recipeId": "rc-d09b9841",
+          "endedAt": "2026-10-25T06:10:40.039+08:00"
+        },
+        "decisionStimulus": {
+          "controlValue": 730,
+          "processValue": 678.2999877929688,
+          "processUnit": "℃",
+          "targetMin": 700,
+          "targetMax": 760,
+          "allowedValues": [
+            735,
+            740,
+            745
+          ],
+          "probeDriver": "modbus-tcp",
+          "probeLatencyMs": 15,
+          "controlReadAttempts": 1,
+          "processProbeAttempts": 1,
+          "measuredAt": "2026-10-24T22:08:51.748Z"
+        },
+        "entities": {
+          "lineId": "ln-2b5b293b",
+          "productId": "pd-3e05a1d5",
+          "recipeId": "rc-d09b9841",
+          "controlNodeId": "dw-93f08a02",
+          "daqNodeId": "dn-4e3839ec",
+          "channelId": "6d210cc4-6cf6-441d-9d7b-b7689ed7209f",
+          "agentId": "362625cb-0632-4f09-a01e-cee515f0afda"
+        },
+        "bindings": {
+          "recipe": {
+            "kind": "recipe",
+            "mode": "manual"
+          },
+          "daq": {
+            "kind": "daq",
+            "mode": "auto"
+          }
+        },
+        "routePolicy": {
+          "tool": "recipe_trial",
+          "emergency": false,
+          "cadenceBypass": false,
+          "recipeBindingMode": "manual"
+        },
+        "taskId": "be80ec5a-7caa-404d-8b91-ab4f03e4a1c1",
+        "modelDecision": {
+          "source": "registered OMP host-tool proposal, checked against current protocol reads and prevalidated set",
+          "controlValue": 730,
+          "processValue": 678.2999877929688,
+          "targetBand": [
+            700,
+            760
+          ],
+          "allowedValues": [
+            735,
+            740,
+            745
+          ],
+          "selectedValue": 745,
+          "selectionRationale": "",
+          "selectedValueWithinRangeAndStep": true
+        },
+        "modelExecution": {
+          "provider": "zhipu-coding-plan",
+          "model": "glm-5.3-flash",
+          "taskId": "be80ec5a-7caa-404d-8b91-ab4f03e4a1c1",
+          "taskState": "COMPLETED",
+          "taskArtifactCount": 1,
+          "evidenceSource": "registered OMP task history, approval payload, task state, and route-specific recipe/ACK records",
+          "hostToolCallEvents": 2,
+          "hostToolResultEvents": 1,
+          "taskCompletionToolCallEvents": 1,
+          "taskToolEvents": [
+            {
+              "toolName": "recipe_trial",
+              "phase": "call",
+              "isError": false
+            },
+            {
+              "toolName": "recipe_trial",
+              "phase": "call",
+              "isError": false
+            },
+            {
+              "toolName": "recipe_trial",
+              "phase": "result",
+              "isError": false
+            },
+            {
+              "toolName": "recipe_trial",
+              "phase": "result",
+              "isError": false
+            },
+            {
+              "toolName": "complete_task",
+              "phase": "call",
+              "isError": false
+            }
+          ],
+          "hostToolEventHistoryAvailable": true,
+          "approvedProposalValue": 745,
+          "approvedProposalCount": 1,
+          "channelEvidence": {
+            "source": "GET /api/workshop/channels/:id/messages",
+            "taskMessageCount": 0,
+            "agentMessageCount": 0,
+            "roles": []
+          },
+          "usage": {
+            "source": "channel queue OMP context snapshot (not request-level billing)",
+            "context": {
+              "usedTokens": 19896,
+              "contextWindow": 1000000,
+              "percent": 0.019896,
+              "compacting": false
+            },
+            "requestInputTokens": null,
+            "requestOutputTokens": null,
+            "costUsd": null,
+            "costAvailable": false
+          },
+          "taskStateAfterObservation": "COMPLETED",
+          "taskCompleted": true
+        },
+        "hostToolExecution": {
+          "provenance": "registered OMP model proposal → protected synthetic approval → one recipe.trial and one verified DCW receipt",
+          "hostToolEventHistoryAvailable": true,
+          "taskStateAfterObservation": "COMPLETED",
+          "taskCompleted": true,
+          "approvedProposalCount": 1,
+          "recipeTrialCount": 1,
+          "recipeTrialAckCount": 1,
+          "toolName": "recipe_trial",
+          "resultReceived": true
+        },
+        "trial": {
+          "runId": "rr-66301240",
+          "approvalId": "ap-d357e4b4",
+          "ackSummary": {
+            "verified": 1,
+            "unverified": 0,
+            "failed": 0,
+            "total": 1
+          },
+          "resultCount": 1,
+          "resultRows": [
+            {
+              "templateRef": "cw-7206807f",
+              "nodeId": "dw-93f08a02",
+              "ok": true,
+              "message": "写入并回读一致:745 → raw 745,回读 745(标定后物理值 745)",
+              "value": 745,
+              "ack": "readback-verified",
+              "verify": {
+                "verdict": "verified",
+                "attempts": 0
+              }
+            }
+          ]
+        },
+        "readback": {
+          "expectedCandidate": 745,
+          "response": {
+            "ok": true,
+            "value": 745,
+            "raw": 745,
+            "message": "读回 raw 745 → eng 745",
+            "at": "2026-10-25T06:10:19.098+08:00"
+          },
+          "resultMatchesCandidate": true
+        },
+        "daq": {
+          "nodeId": "dn-4e3839ec",
+          "method": "single driver-probe/ingest snapshot",
+          "storageBackend": "isolated AW_HOME SQLite time-series fallback",
+          "postTrialDelaySeconds": 20,
+          "snapshotDelayStartedAt": "2026-10-24T22:10:19.162Z",
+          "sampleCount": 1,
+          "runTags": [
+            "rr-0809199c"
+          ],
+          "expectedActiveRunId": "rr-0809199c",
+          "probe": {
+            "driver": "modbus-tcp",
+            "startedAt": "2026-10-24T22:10:39.172Z",
+            "completedAt": "2026-10-24T22:10:39.189Z",
+            "sampleValue": 677.7000122070312,
+            "latencyMs": 12
+          },
+          "ingest": {
+            "accepted": true,
+            "at": "2026-10-25T06:10:39.189+08:00",
+            "value": 677.7000122070312,
+            "state": "ok"
+          },
+          "taggedQuery": {
+            "requestedRunId": "rr-0809199c",
+            "returnedRunId": "rr-0809199c",
+            "seriesPointCount": 1,
+            "probeValueMatched": true,
+            "snapshotBucketAt": "2026-10-24T22:10:39.000Z",
+            "matchingProbePoint": {
+              "at": 1792879839000,
+              "v": 677.700012
+            },
+            "series": [
+              {
+                "at": 1792879839000,
+                "v": 677.700012
+              }
+            ]
+          },
+          "activeRunDataKeys": [
+            "run",
+            "daq",
+            "writes"
+          ]
+        },
+        "recipeLog": {
+          "query": "ops-logs filtered by lineId and recipeId (recipe_log-equivalent audit view)",
+          "rowCount": 3,
+          "trialAction": "recipe.trial",
+          "trialSummary": "配方试验整批下发(证实 1/1,未证实 0,失败 0,批次 rr-66301):dw-93f08→745 | 假设:PV 实测 678.3℃,低于目标带下沿 700℃ 达 21.7℃(SP=730℃,SP-PV 偏差约 51.7℃,呈欠温)。候选 {735,740,745} 中选 745℃:在既定限界内朝目标带的最大单步,效应待复测验证。",
+          "ackAction": "recipe.dispatch.ack",
+          "ackSummary": "批次 rr-66301 ACK 鉴定:证实 1/1,未证实 0,失败 0",
+          "trialRunDataKeys": [
+            "run",
+            "daq",
+            "writes"
+          ]
+        }
+      },
+      {
+        "id": "annealing-r3",
+        "simulatorPreset": "anneal-line",
+        "simulator": {
+          "mv": {
+            "signal": "均热区3炉温SP",
+            "driver": "modbus-tcp",
+            "description": "均热出口区炉温(℃);区权最大(0.40),带温第一驱动",
+            "unit": "℃",
+            "min": 600,
+            "max": 850,
+            "decimals": 1,
+            "driverConfig": {
+              "host": "127.0.0.1",
+              "port": 44300,
+              "unitId": 1,
+              "register": 40025,
+              "registerType": "holding",
+              "dataType": "float32",
+              "byteOrder": "big"
+            },
+            "deviceId": "anneal-heating-mbtcp"
+          },
+          "cv": {
+            "signal": "StripTemp",
+            "driver": "modbus-tcp",
+            "description": "均热段出口带温(采集,℃);再结晶窗 ≈700~760",
+            "unit": "℃",
+            "min": 20,
+            "max": 900,
+            "decimals": 1,
+            "driverConfig": {
+              "host": "127.0.0.1",
+              "port": 44300,
+              "unitId": 1,
+              "register": 40003,
+              "registerType": "holding",
+              "dataType": "float32",
+              "byteOrder": "big"
+            },
+            "deviceId": "anneal-heating-mbtcp"
+          },
+          "plant": {
+            "id": "rhemvmy1w9e-annealing",
+            "kind": "anneal",
+            "seed": 42,
+            "timeScale": 1
+          },
+          "deviceCount": 4,
+          "candidateChoices": [
+            735,
+            740,
+            745
+          ],
+          "baseline": 730,
+          "candidate": 745
+        },
+        "status": "verified",
+        "approvals": [
+          {
+            "id": "ap-adb4eb67",
+            "statusBeforeDecision": "pending",
+            "nodeId": "recipe:rc-edb12179",
+            "title": null,
+            "candidateValue": 745,
+            "decision": "approve",
+            "statusAfterDecision": "approved",
+            "decisionActor": "synthetic isolated administrator via protected approval API",
+            "commentRecorded": true
+          }
+        ],
+        "runs": [],
+        "activeRun": {
+          "id": "rr-52743484",
+          "status": null,
+          "startedAt": "2026-10-25T06:10:40.182+08:00",
+          "recipeId": "rc-edb12179",
+          "endedAt": "2026-10-25T06:12:02.049+08:00"
+        },
+        "decisionStimulus": {
+          "controlValue": 730,
+          "processValue": 676.9000244140625,
+          "processUnit": "℃",
+          "targetMin": 700,
+          "targetMax": 760,
+          "allowedValues": [
+            735,
+            740,
+            745
+          ],
+          "probeDriver": "modbus-tcp",
+          "probeLatencyMs": 14,
+          "controlReadAttempts": 1,
+          "processProbeAttempts": 1,
+          "measuredAt": "2026-10-24T22:10:40.254Z"
+        },
+        "entities": {
+          "lineId": "ln-422525c3",
+          "productId": "pd-afa21205",
+          "recipeId": "rc-edb12179",
+          "controlNodeId": "dw-d4d1d1f3",
+          "daqNodeId": "dn-fdb36452",
+          "channelId": "4370735a-8c5b-473e-a7d9-d7c4d61d8da0",
+          "agentId": "2c4bfb6e-e923-4d4c-8c7c-c72a9a4eda09"
+        },
+        "bindings": {
+          "recipe": {
+            "kind": "recipe",
+            "mode": "manual"
+          },
+          "daq": {
+            "kind": "daq",
+            "mode": "auto"
+          }
+        },
+        "routePolicy": {
+          "tool": "recipe_trial",
+          "emergency": false,
+          "cadenceBypass": false,
+          "recipeBindingMode": "manual"
+        },
+        "taskId": "e46a4eec-c2f5-4eab-b4f5-e7fd1fcc88e5",
+        "modelDecision": {
+          "source": "registered OMP host-tool proposal, checked against current protocol reads and prevalidated set",
+          "controlValue": 730,
+          "processValue": 676.9000244140625,
+          "targetBand": [
+            700,
+            760
+          ],
+          "allowedValues": [
+            735,
+            740,
+            745
+          ],
+          "selectedValue": 745,
+          "selectionRationale": "",
+          "selectedValueWithinRangeAndStep": true
+        },
+        "modelExecution": {
+          "provider": "zhipu-coding-plan",
+          "model": "glm-5.3-flash",
+          "taskId": "e46a4eec-c2f5-4eab-b4f5-e7fd1fcc88e5",
+          "taskState": "COMPLETED",
+          "taskArtifactCount": 1,
+          "evidenceSource": "registered OMP task history, approval payload, task state, and route-specific recipe/ACK records",
+          "hostToolCallEvents": 2,
+          "hostToolResultEvents": 1,
+          "taskCompletionToolCallEvents": 1,
+          "taskToolEvents": [
+            {
+              "toolName": "recipe_trial",
+              "phase": "call",
+              "isError": false
+            },
+            {
+              "toolName": "recipe_trial",
+              "phase": "call",
+              "isError": false
+            },
+            {
+              "toolName": "recipe_trial",
+              "phase": "result",
+              "isError": false
+            },
+            {
+              "toolName": "recipe_trial",
+              "phase": "result",
+              "isError": false
+            },
+            {
+              "toolName": "complete_task",
+              "phase": "call",
+              "isError": false
+            }
+          ],
+          "hostToolEventHistoryAvailable": true,
+          "approvedProposalValue": 745,
+          "approvedProposalCount": 1,
+          "channelEvidence": {
+            "source": "GET /api/workshop/channels/:id/messages",
+            "taskMessageCount": 0,
+            "agentMessageCount": 0,
+            "roles": []
+          },
+          "usage": {
+            "source": "channel queue OMP context snapshot (not request-level billing)",
+            "context": {
+              "usedTokens": 18277,
+              "contextWindow": 1000000,
+              "percent": 0.018277,
+              "compacting": false
+            },
+            "requestInputTokens": null,
+            "requestOutputTokens": null,
+            "costUsd": null,
+            "costAvailable": false
+          },
+          "taskStateAfterObservation": "COMPLETED",
+          "taskCompleted": true
+        },
+        "hostToolExecution": {
+          "provenance": "registered OMP model proposal → protected synthetic approval → one recipe.trial and one verified DCW receipt",
+          "hostToolEventHistoryAvailable": true,
+          "taskStateAfterObservation": "COMPLETED",
+          "taskCompleted": true,
+          "approvedProposalCount": 1,
+          "recipeTrialCount": 1,
+          "recipeTrialAckCount": 1,
+          "toolName": "recipe_trial",
+          "resultReceived": true
+        },
+        "trial": {
+          "runId": "rr-34ba1848",
+          "approvalId": "ap-adb4eb67",
+          "ackSummary": {
+            "verified": 1,
+            "unverified": 0,
+            "failed": 0,
+            "total": 1
+          },
+          "resultCount": 1,
+          "resultRows": [
+            {
+              "templateRef": "cw-447cff85",
+              "nodeId": "dw-d4d1d1f3",
+              "ok": true,
+              "message": "写入并回读一致:745 → raw 745,回读 745(标定后物理值 745)",
+              "value": 745,
+              "ack": "readback-verified",
+              "verify": {
+                "verdict": "verified",
+                "attempts": 0
+              }
+            }
+          ]
+        },
+        "readback": {
+          "expectedCandidate": 745,
+          "response": {
+            "ok": true,
+            "value": 745,
+            "raw": 745,
+            "message": "读回 raw 745 → eng 745",
+            "at": "2026-10-25T06:11:41.115+08:00"
+          },
+          "resultMatchesCandidate": true
+        },
+        "daq": {
+          "nodeId": "dn-fdb36452",
+          "method": "single driver-probe/ingest snapshot",
+          "storageBackend": "isolated AW_HOME SQLite time-series fallback",
+          "postTrialDelaySeconds": 20,
+          "snapshotDelayStartedAt": "2026-10-24T22:11:41.179Z",
+          "sampleCount": 1,
+          "runTags": [
+            "rr-52743484"
+          ],
+          "expectedActiveRunId": "rr-52743484",
+          "probe": {
+            "driver": "modbus-tcp",
+            "startedAt": "2026-10-24T22:12:01.183Z",
+            "completedAt": "2026-10-24T22:12:01.199Z",
+            "sampleValue": 678.0999755859375,
+            "latencyMs": 5
+          },
+          "ingest": {
+            "accepted": true,
+            "at": "2026-10-25T06:12:01.199+08:00",
+            "value": 678.0999755859375,
+            "state": "ok"
+          },
+          "taggedQuery": {
+            "requestedRunId": "rr-52743484",
+            "returnedRunId": "rr-52743484",
+            "seriesPointCount": 1,
+            "probeValueMatched": true,
+            "snapshotBucketAt": "2026-10-24T22:12:01.000Z",
+            "matchingProbePoint": {
+              "at": 1792879921000,
+              "v": 678.099976
+            },
+            "series": [
+              {
+                "at": 1792879921000,
+                "v": 678.099976
+              }
+            ]
+          },
+          "activeRunDataKeys": [
+            "run",
+            "daq",
+            "writes"
+          ]
+        },
+        "recipeLog": {
+          "query": "ops-logs filtered by lineId and recipeId (recipe_log-equivalent audit view)",
+          "rowCount": 3,
+          "trialAction": "recipe.trial",
+          "trialSummary": "配方试验整批下发(证实 1/1,未证实 0,失败 0,批次 rr-34ba1):dw-d4d1d→745 | 假设:PV 676.9℃ is 23.1℃ below the 700–760℃ target band (control 730℃); step 730→745℃ is the largest prevalidated candidate, chosen because the measured error exceeds the smaller steps, to move measured strip temperature toward the band.",
+          "ackAction": "recipe.dispatch.ack",
+          "ackSummary": "批次 rr-34ba1 ACK 鉴定:证实 1/1,未证实 0,失败 0",
+          "trialRunDataKeys": [
+            "run",
+            "daq",
+            "writes"
+          ]
+        }
+      }
+    ],
+    "server": {
+      "version": "0.8.0",
+      "mode": "dev",
+      "workshop": "ready",
+      "uptimeMsAtReady": 18613
+    },
+    "sourceIdentity": {
+      "recordedAt": "2026-10-24T22:02:14.815Z",
+      "nodeVersion": "v24.19.0",
+      "platform": "win32",
+      "architecture": "x64",
+      "app": {
+        "version": "0.8.0",
+        "gitHead": "e6bcb16fb5ac1a38f3e3ddb3cc05e200b58453c7",
+        "sourceTree": {
+          "sha256": "0d5b8f337408693fab3686568ba7df5b7878fc1f8784291bfb7d0aff13a0ed32",
+          "fileCount": 1614
+        },
+        "workingTreeStatus": "M server/services/workshop/agents/adapters/omp-rpc-client/frames.ts\n M server/services/workshop/agents/omp-agent/tools-steer.ts\n M server/services/workshop/daq/bus/index.ts\n?? server/services/workshop/agents/omp-agent/supervision-history.ts",
+        "packageManifestSha256": "5cfdac29b6a5b5b375a3184bc075a72eb19f03416882fec9ac22e3771de80091",
+        "lockfileSha256": "a700582071a884225f47d11450ebcdee7fc3fa7a488fc4f35c0f5641d640af9e",
+        "projectPluginTree": {
+          "sha256": "27163d9408d2a5cdef3e18501a8d171d04e38c62ee46194156bdf99c3e847e59",
+          "fileCount": 28
+        },
+        "projectPluginNames": [
+          "aw-matrix-plugin",
+          "daq-sink-verify",
+          "daq-vector-demo",
+          "diag-bridge",
+          "idd-closedloop-bridge",
+          "omp-sensor-tools",
+          "rag-bridge",
+          "twin-castfilm",
+          "twin-thermal-demo"
+        ]
+      },
+      "pluginIsolation": {
+        "disabledNames": [
+          "aw-matrix-plugin",
+          "daq-sink-verify",
+          "daq-vector-demo",
+          "diag-bridge",
+          "idd-closedloop-bridge",
+          "omp-sensor-tools",
+          "serial-bridge",
+          "twin-castfilm",
+          "twin-injection-default",
+          "twin-thermal-demo"
+        ],
+        "enabledAllowlist": [
+          "rag-bridge"
+        ],
+        "setupExpectedForOtherPlugins": false,
+        "disabledStatePath": "AW_HOME/plugins-state.json",
+        "projectPluginNames": [
+          "aw-matrix-plugin",
+          "daq-sink-verify",
+          "daq-vector-demo",
+          "diag-bridge",
+          "idd-closedloop-bridge",
+          "omp-sensor-tools",
+          "rag-bridge",
+          "twin-castfilm",
+          "twin-thermal-demo"
+        ],
+        "projectPluginTree": {
+          "sha256": "27163d9408d2a5cdef3e18501a8d171d04e38c62ee46194156bdf99c3e847e59",
+          "fileCount": 28
+        }
+      },
+      "promptIsolation": {
+        "sourceDirectory": "repository/.AgentWorkShop/prompts",
+        "isolatedDirectory": "AW_HOME/prompts",
+        "sourceTree": {
+          "sha256": "01c87bde3a9adf55f34a7f3cff8c3a111ebad5f4acb43781402dd92e7d41013e",
+          "fileCount": 17
+        },
+        "runtimeTree": {
+          "sha256": "01c87bde3a9adf55f34a7f3cff8c3a111ebad5f4acb43781402dd92e7d41013e",
+          "fileCount": 17
+        }
+      },
+      "experimentScriptSha256": "eec35018b9260cc667a881dd5dd45e0c8f71ef8e11627807fa92f3800bde060f",
+      "registeredHarness": {
+        "mode": "real-omp",
+        "provider": "zhipu-coding-plan",
+        "model": "glm-5.3-flash",
+        "ompCliVersion": "omp/18.12.2",
+        "fixtureSha256": null,
+        "launcherSha256": null
+      },
+      "simulator": {
+        "gitlinkHead": "0db5f403f9fa9db97e5485b72867f459fcb93eff",
+        "gitHead": "0db5f403f9fa9db97e5485b72867f459fcb93eff",
+        "sourceTree": {
+          "sha256": "c14a601d6550fee49fabf0855b384229ce9d29e0897d515eee96c3e8b3ee2143",
+          "fileCount": 27
+        },
+        "workingTreeStatus": "M src/server/engine/plant-model.ts\n M src/server/engine/plant-runtime.ts\n M src/shared/types.ts",
+        "executedTree": {
+          "sha256": "b5a5944ac3ed853cbec149c0da2cb0efc35be1c9d3174a1afcc5444ce9c6ab5a",
+          "fileCount": 26
+        },
+        "lockfileSha256": "bdd14b62fb0041aef776f2a851e6871856f9025d2b91a5ba497b3ec115d9f37b",
+        "copyPatch": "bind copied simulator HTTP and MQTT listeners to 127.0.0.1 and remap only their ports; source script hash records the transformation"
+      }
+    },
+    "syntheticAdmin": {
+      "id": "afb7cd70-9a34-413d-af1c-6cc6fc7e8c98",
+      "role": "admin"
+    },
+    "finishedAt": "2026-10-24T22:12:05.324Z",
+    "evidencePath": "evidence.json",
+    "runtimeLogPaths": {
+      "app": "agentworkshop.log",
+      "simulator": "simulator.log"
+    }
+  },
+  "isolation": {
+    "result": "passed",
+    "awHome": "fresh isolated AW_HOME",
+    "appBase": "http://127.0.0.1:3997",
+    "simulatorBase": "http://127.0.0.1:4020",
+    "simulatorMqttLoopbackPort": 18840,
+    "appMqttQueueOfflineProbePort": 45323,
+    "explicitLoopbackOnly": false,
+    "externalLlmDisabled": false,
+    "externalLlmAllowedOnlyForRegisteredOmpProcess": true,
+    "forbiddenServicePortExcluded": true,
+    "checks": [
+      {
+        "id": "fresh-home-mode-resolution",
+        "status": "pass",
+        "detail": {
+          "mode": "home",
+          "dataDir": "D:\\codes\\ABO\\AgentWorkShop\\.omc\\registered-harness-paper-InVikA\\aw-home\\data"
+        }
+      },
+      {
+        "id": "app-free-loopback-port",
+        "status": "pass",
+        "detail": {
+          "port": 3997,
+          "host": "127.0.0.1"
+        }
+      },
+      {
+        "id": "simulator-http-free-loopback-port",
+        "status": "pass",
+        "detail": {
+          "port": 4020,
+          "host": "127.0.0.1"
+        }
+      },
+      {
+        "id": "simulator-mqtt-free-loopback-port",
+        "status": "pass",
+        "detail": {
+          "port": 18840,
+          "host": "127.0.0.1"
+        }
+      },
+      {
+        "id": "offline-app-mqtt-queue-probe-free-loopback-port",
+        "status": "pass",
+        "detail": {
+          "port": 45323,
+          "host": "127.0.0.1"
+        }
+      },
+      {
+        "id": "offline-timescale-probe-free-loopback-port",
+        "status": "pass",
+        "detail": {
+          "port": 45321,
+          "host": "127.0.0.1"
+        }
+      },
+      {
+        "id": "offline-objectstore-probe-free-loopback-port",
+        "status": "pass",
+        "detail": {
+          "port": 45322,
+          "host": "127.0.0.1"
+        }
+      },
+      {
+        "id": "project-version-and-local-inputs",
+        "status": "pass",
+        "detail": {
+          "version": "0.8.0",
+          "simulatorSourcePresent": true,
+          "fixturePresent": null,
+          "nuxtCliPresent": true,
+          "noUserOrBusinessArchiveInput": true
+        }
+      },
+      {
+        "id": "strict-child-environment-allowlist",
+        "status": "pass",
+        "detail": {
+          "osKeys": [
+            "PATH",
+            "PATHEXT",
+            "SystemRoot",
+            "WINDIR",
+            "TEMP",
+            "TMP",
+            "USERPROFILE",
+            "APPDATA",
+            "LOCALAPPDATA",
+            "HOMEDRIVE",
+            "HOMEPATH",
+            "ProgramData"
+          ],
+          "harnessMode": "real-omp",
+          "credentialValuesExposedToRunnerOrEvidence": false,
+          "noStorageServiceEnvironment": true
+        }
+      },
+      {
+        "id": "isolated-runtime-config",
+        "status": "pass",
+        "detail": {
+          "configRoot": "fresh isolated AW_HOME",
+          "startInfrastructure": "never",
+          "simulatorMqttBroker": "127.0.0.1:18840",
+          "appMqttQueueProbe": "127.0.0.1:45323",
+          "offlineTimescaleProbe": "127.0.0.1:45321",
+          "offlineObjectstoreProbe": "127.0.0.1:45322",
+          "ragBridgeOutboundGuardSetting": "plugins.rag-bridge.base_url",
+          "ragBridgeOutboundGuardConfigPresent": true,
+          "ragBridgeOutboundGuardKvFallbackPresent": true,
+          "emptyDotenv": true,
+          "repoDotenvBypassed": true
+        }
+      },
+      {
+        "id": "pre-existing-plugin-scopes-disabled",
+        "status": "pass",
+        "detail": {
+          "builtinNames": [
+            "diag-bridge",
+            "rag-bridge",
+            "serial-bridge",
+            "twin-injection-default"
+          ],
+          "projectNames": [
+            "aw-matrix-plugin",
+            "daq-sink-verify",
+            "daq-vector-demo",
+            "diag-bridge",
+            "idd-closedloop-bridge",
+            "omp-sensor-tools",
+            "rag-bridge",
+            "twin-castfilm",
+            "twin-thermal-demo"
+          ],
+          "userNames": [],
+          "disabledStatePath": "AW_HOME/plugins-state.json",
+          "projectPluginTreeSha256": "27163d9408d2a5cdef3e18501a8d171d04e38c62ee46194156bdf99c3e847e59",
+          "enabledPluginAllowlist": [
+            "rag-bridge"
+          ]
+        }
+      },
+      {
+        "id": "project-prompt-assets-isolated",
+        "status": "pass",
+        "detail": {
+          "sourceDirectory": "repository/.AgentWorkShop/prompts",
+          "isolatedDirectory": "AW_HOME/prompts",
+          "sourceTreeSha256": "01c87bde3a9adf55f34a7f3cff8c3a111ebad5f4acb43781402dd92e7d41013e",
+          "runtimeTreeSha256": "01c87bde3a9adf55f34a7f3cff8c3a111ebad5f4acb43781402dd92e7d41013e",
+          "awPromptsDir": "AW_HOME/prompts"
+        }
+      },
+      {
+        "id": "registered-omp-real-provider-model-declared",
+        "status": "pass",
+        "detail": {
+          "command": "omp from allowlisted PATH",
+          "provider": "zhipu-coding-plan",
+          "model": "glm-5.3-flash",
+          "cwd": "fresh isolated AW_HOME",
+          "authSource": "local OMP auth store; value is not inspected or added to evidence",
+          "discoveryDisabled": [
+            "extensions",
+            "skills",
+            "rules"
+          ],
+          "credentialValuesExposedToRunnerOrEvidence": false
+        }
+      },
+      {
+        "id": "simulator-listener-address-verified",
+        "status": "pass",
+        "detail": {
+          "address": "127.0.0.1",
+          "port": 4020,
+          "copiedSourceOnly": true
+        }
+      },
+      {
+        "id": "simulator-mqtt-broker-loopback-ready",
+        "status": "pass",
+        "detail": {
+          "address": "127.0.0.1",
+          "port": 18840,
+          "brokerStartupConfirmed": true
+        }
+      },
+      {
+        "id": "simulator-local-http-ready",
+        "status": "pass",
+        "detail": {
+          "version": "local repository source",
+          "port": 4020,
+          "host": "127.0.0.1"
+        }
+      },
+      {
+        "id": "offline-app-mqtt-queue-port-free-immediately-before-startup",
+        "status": "pass",
+        "detail": {
+          "port": 45323,
+          "host": "127.0.0.1"
+        }
+      },
+      {
+        "id": "application-loopback-ready",
+        "status": "pass",
+        "detail": {
+          "version": "0.8.0",
+          "workshop": "ready",
+          "port": 3997,
+          "host": "127.0.0.1"
+        }
+      },
+      {
+        "id": "rag-bridge-outbound-disabled",
+        "status": "pass",
+        "detail": {
+          "setting": "plugins.rag-bridge.base_url",
+          "pluginHealthOutbound": false,
+          "startupLogConfirmed": true
+        }
+      },
+      {
+        "id": "application-message-path-is-inproc",
+        "status": "pass",
+        "detail": {
+          "queue": "inproc",
+          "effectiveMqttHost": "127.0.0.1",
+          "effectiveMqttPort": 45323,
+          "effectiveMqttPortSource": "runtime",
+          "simulatorMqttBrokerRemainsLoopback": "127.0.0.1:18840"
+        }
+      },
+      {
+        "id": "application-env-and-dotenv-isolation",
+        "status": "pass",
+        "detail": {
+          "launch": "direct Nuxt CLI; dev-guard .env preload bypassed",
+          "dotenvFile": "D:\\codes\\ABO\\AgentWorkShop\\.omc\\registered-harness-paper-InVikA\\aw-home\\empty.env",
+          "childEnvironmentAllowlisted": true,
+          "storageEndpointsRestrictedToFreeLoopbackPorts": true
+        }
+      },
+      {
+        "id": "cast-film-device-port-free-loopback",
+        "status": "pass",
+        "detail": {
+          "port": 44000,
+          "host": "127.0.0.1",
+          "protocol": "modbus-tcp"
+        }
+      },
+      {
+        "id": "cast-film-device-port-free-loopback",
+        "status": "pass",
+        "detail": {
+          "port": 44001,
+          "host": "127.0.0.1",
+          "protocol": "opcua"
+        }
+      },
+      {
+        "id": "annealing-device-port-free-loopback",
+        "status": "pass",
+        "detail": {
+          "port": 44300,
+          "host": "127.0.0.1",
+          "protocol": "modbus-tcp"
+        }
+      },
+      {
+        "id": "annealing-device-port-free-loopback",
+        "status": "pass",
+        "detail": {
+          "port": 44301,
+          "host": "127.0.0.1",
+          "protocol": "opcua"
+        }
+      }
+    ]
+  },
+  "checks": [
+    {
+      "id": "only-outbound-disabled-rag-bridge-enabled",
+      "status": "pass",
+      "detail": {
+        "names": [
+          "aw-matrix-plugin",
+          "daq-sink-verify",
+          "daq-vector-demo",
+          "diag-bridge",
+          "idd-closedloop-bridge",
+          "omp-sensor-tools",
+          "rag-bridge",
+          "serial-bridge",
+          "twin-castfilm",
+          "twin-injection-default",
+          "twin-thermal-demo"
+        ],
+        "enabledNames": [
+          "rag-bridge"
+        ],
+        "disabledNames": [
+          "aw-matrix-plugin",
+          "daq-sink-verify",
+          "daq-vector-demo",
+          "diag-bridge",
+          "idd-closedloop-bridge",
+          "omp-sensor-tools",
+          "serial-bridge",
+          "twin-castfilm",
+          "twin-injection-default",
+          "twin-thermal-demo"
+        ],
+        "invalidStateNames": []
+      }
+    },
+    {
+      "id": "runtime-settings-target-offline-loopback-queue",
+      "status": "pass",
+      "detail": {
+        "mqttHost": "127.0.0.1",
+        "mqttPort": 45323,
+        "mqttPortSource": "runtime",
+        "infrastructurePolicy": "never",
+        "infrastructurePolicySource": "runtime"
+      }
+    },
+    {
+      "id": "isolated-inproc-queue-and-sqlite-tsdb",
+      "status": "pass",
+      "detail": {
+        "queue": "inproc",
+        "tsdb": "sqlite-emulated",
+        "effectiveMqttHost": "127.0.0.1",
+        "effectiveMqttPort": 45323,
+        "effectiveMqttPortSource": "runtime"
+      }
+    },
+    {
+      "id": "real-omp-six-unique-trials-planned",
+      "status": "pass",
+      "detail": {
+        "scenes": [
+          "cast-film",
+          "annealing"
+        ],
+        "repetitionsPerScene": 3
+      }
+    },
+    {
+      "id": "cast-film-r1-registered-omp",
+      "status": "pass",
+      "detail": {
+        "harness": "omp",
+        "agentId": "3fb88575-b569-4c63-adc3-3582b4b9c89d"
+      }
+    },
+    {
+      "id": "cast-film-r1-manual-recipe-binding",
+      "status": "pass",
+      "detail": {
+        "kind": "recipe",
+        "mode": "manual"
+      }
+    },
+    {
+      "id": "cast-film-r1-daq-observation-binding",
+      "status": "pass",
+      "detail": {
+        "kind": "daq"
+      }
+    },
+    {
+      "id": "cast-film-r1-real-omp-approved-model-proposal",
+      "status": "pass",
+      "detail": {
+        "provider": "zhipu-coding-plan",
+        "model": "glm-5.3-flash",
+        "selectedValue": 125,
+        "toolEventHistoryAvailable": true
+      }
+    },
+    {
+      "id": "cast-film-r1-real-omp-one-recipe-trial-ledger",
+      "status": "pass",
+      "detail": {
+        "recipeTrialCount": 1,
+        "recipeTrialAckCount": 1
+      }
+    },
+    {
+      "id": "cast-film-r1-ack-verified",
+      "status": "pass",
+      "detail": {
+        "verified": 1,
+        "unverified": 0,
+        "failed": 0,
+        "total": 1
+      }
+    },
+    {
+      "id": "cast-film-r1-readback-matches",
+      "status": "pass",
+      "detail": {
+        "expectedCandidate": 125,
+        "response": {
+          "ok": true,
+          "value": 125,
+          "raw": 125,
+          "message": "读回 125",
+          "at": "2026-10-25T06:03:53.508+08:00"
+        },
+        "resultMatchesCandidate": true
+      }
+    },
+    {
+      "id": "cast-film-r1-run-tagged-daq-probe-ingest-snapshot",
+      "status": "pass",
+      "detail": {
+        "method": "single driver-probe/ingest snapshot",
+        "value": 45.69,
+        "runId": "rr-5f1c6e35",
+        "matchingPoint": {
+          "at": 1792879453000,
+          "v": 45.69
+        }
+      }
+    },
+    {
+      "id": "cast-film-r1-recipe-log",
+      "status": "pass",
+      "detail": {
+        "trialAction": "recipe.trial",
+        "ackAction": "recipe.dispatch.ack"
+      }
+    },
+    {
+      "id": "cast-film-r1-real-omp-task-completed",
+      "status": "pass",
+      "detail": {
+        "taskState": "COMPLETED"
+      }
+    },
+    {
+      "id": "cast-film-r2-registered-omp",
+      "status": "pass",
+      "detail": {
+        "harness": "omp",
+        "agentId": "c706fb14-9008-4931-8a2e-87388be0bf64"
+      }
+    },
+    {
+      "id": "cast-film-r2-manual-recipe-binding",
+      "status": "pass",
+      "detail": {
+        "kind": "recipe",
+        "mode": "manual"
+      }
+    },
+    {
+      "id": "cast-film-r2-daq-observation-binding",
+      "status": "pass",
+      "detail": {
+        "kind": "daq"
+      }
+    },
+    {
+      "id": "cast-film-r2-real-omp-approved-model-proposal",
+      "status": "pass",
+      "detail": {
+        "provider": "zhipu-coding-plan",
+        "model": "glm-5.3-flash",
+        "selectedValue": 130,
+        "toolEventHistoryAvailable": true
+      }
+    },
+    {
+      "id": "cast-film-r2-real-omp-one-recipe-trial-ledger",
+      "status": "pass",
+      "detail": {
+        "recipeTrialCount": 1,
+        "recipeTrialAckCount": 1
+      }
+    },
+    {
+      "id": "cast-film-r2-ack-verified",
+      "status": "pass",
+      "detail": {
+        "verified": 1,
+        "unverified": 0,
+        "failed": 0,
+        "total": 1
+      }
+    },
+    {
+      "id": "cast-film-r2-readback-matches",
+      "status": "pass",
+      "detail": {
+        "expectedCandidate": 130,
+        "response": {
+          "ok": true,
+          "value": 130,
+          "raw": 130,
+          "message": "读回 130",
+          "at": "2026-10-25T06:05:13.427+08:00"
+        },
+        "resultMatchesCandidate": true
+      }
+    },
+    {
+      "id": "cast-film-r2-run-tagged-daq-probe-ingest-snapshot",
+      "status": "pass",
+      "detail": {
+        "method": "single driver-probe/ingest snapshot",
+        "value": 46.69,
+        "runId": "rr-bf378f69",
+        "matchingPoint": {
+          "at": 1792879533000,
+          "v": 46.69
+        }
+      }
+    },
+    {
+      "id": "cast-film-r2-recipe-log",
+      "status": "pass",
+      "detail": {
+        "trialAction": "recipe.trial",
+        "ackAction": "recipe.dispatch.ack"
+      }
+    },
+    {
+      "id": "cast-film-r2-real-omp-task-completed",
+      "status": "pass",
+      "detail": {
+        "taskState": "COMPLETED"
+      }
+    },
+    {
+      "id": "cast-film-r3-registered-omp",
+      "status": "pass",
+      "detail": {
+        "harness": "omp",
+        "agentId": "a1f0bf01-20ff-431f-b245-8b572183a5d5"
+      }
+    },
+    {
+      "id": "cast-film-r3-manual-recipe-binding",
+      "status": "pass",
+      "detail": {
+        "kind": "recipe",
+        "mode": "manual"
+      }
+    },
+    {
+      "id": "cast-film-r3-daq-observation-binding",
+      "status": "pass",
+      "detail": {
+        "kind": "daq"
+      }
+    },
+    {
+      "id": "cast-film-r3-real-omp-approved-model-proposal",
+      "status": "pass",
+      "detail": {
+        "provider": "zhipu-coding-plan",
+        "model": "glm-5.3-flash",
+        "selectedValue": 125,
+        "toolEventHistoryAvailable": true
+      }
+    },
+    {
+      "id": "cast-film-r3-real-omp-one-recipe-trial-ledger",
+      "status": "pass",
+      "detail": {
+        "recipeTrialCount": 1,
+        "recipeTrialAckCount": 1
+      }
+    },
+    {
+      "id": "cast-film-r3-ack-verified",
+      "status": "pass",
+      "detail": {
+        "verified": 1,
+        "unverified": 0,
+        "failed": 0,
+        "total": 1
+      }
+    },
+    {
+      "id": "cast-film-r3-readback-matches",
+      "status": "pass",
+      "detail": {
+        "expectedCandidate": 125,
+        "response": {
+          "ok": true,
+          "value": 125,
+          "raw": 125,
+          "message": "读回 125",
+          "at": "2026-10-25T06:06:37.666+08:00"
+        },
+        "resultMatchesCandidate": true
+      }
+    },
+    {
+      "id": "cast-film-r3-run-tagged-daq-probe-ingest-snapshot",
+      "status": "pass",
+      "detail": {
+        "method": "single driver-probe/ingest snapshot",
+        "value": 45.69,
+        "runId": "rr-2b5f445e",
+        "matchingPoint": {
+          "at": 1792879617000,
+          "v": 45.69
+        }
+      }
+    },
+    {
+      "id": "cast-film-r3-recipe-log",
+      "status": "pass",
+      "detail": {
+        "trialAction": "recipe.trial",
+        "ackAction": "recipe.dispatch.ack"
+      }
+    },
+    {
+      "id": "cast-film-r3-real-omp-task-completed",
+      "status": "pass",
+      "detail": {
+        "taskState": "COMPLETED"
+      }
+    },
+    {
+      "id": "annealing-r1-registered-omp",
+      "status": "pass",
+      "detail": {
+        "harness": "omp",
+        "agentId": "48d3538f-686a-4c5b-9d7f-e9acbc59f2c5"
+      }
+    },
+    {
+      "id": "annealing-r1-manual-recipe-binding",
+      "status": "pass",
+      "detail": {
+        "kind": "recipe",
+        "mode": "manual"
+      }
+    },
+    {
+      "id": "annealing-r1-daq-observation-binding",
+      "status": "pass",
+      "detail": {
+        "kind": "daq"
+      }
+    },
+    {
+      "id": "annealing-r1-real-omp-approved-model-proposal",
+      "status": "pass",
+      "detail": {
+        "provider": "zhipu-coding-plan",
+        "model": "glm-5.3-flash",
+        "selectedValue": 745,
+        "toolEventHistoryAvailable": true
+      }
+    },
+    {
+      "id": "annealing-r1-real-omp-one-recipe-trial-ledger",
+      "status": "pass",
+      "detail": {
+        "recipeTrialCount": 1,
+        "recipeTrialAckCount": 1
+      }
+    },
+    {
+      "id": "annealing-r1-ack-verified",
+      "status": "pass",
+      "detail": {
+        "verified": 1,
+        "unverified": 0,
+        "failed": 0,
+        "total": 1
+      }
+    },
+    {
+      "id": "annealing-r1-readback-matches",
+      "status": "pass",
+      "detail": {
+        "expectedCandidate": 745,
+        "response": {
+          "ok": true,
+          "value": 745,
+          "raw": 745,
+          "message": "读回 raw 745 → eng 745",
+          "at": "2026-10-25T06:08:30.561+08:00"
+        },
+        "resultMatchesCandidate": true
+      }
+    },
+    {
+      "id": "annealing-r1-run-tagged-daq-probe-ingest-snapshot",
+      "status": "pass",
+      "detail": {
+        "method": "single driver-probe/ingest snapshot",
+        "value": 679.5999755859375,
+        "runId": "rr-013b2f6a",
+        "matchingPoint": {
+          "at": 1792879730000,
+          "v": 679.599976
+        }
+      }
+    },
+    {
+      "id": "annealing-r1-recipe-log",
+      "status": "pass",
+      "detail": {
+        "trialAction": "recipe.trial",
+        "ackAction": "recipe.dispatch.ack"
+      }
+    },
+    {
+      "id": "annealing-r1-real-omp-task-completed",
+      "status": "pass",
+      "detail": {
+        "taskState": "COMPLETED"
+      }
+    },
+    {
+      "id": "annealing-r2-registered-omp",
+      "status": "pass",
+      "detail": {
+        "harness": "omp",
+        "agentId": "362625cb-0632-4f09-a01e-cee515f0afda"
+      }
+    },
+    {
+      "id": "annealing-r2-manual-recipe-binding",
+      "status": "pass",
+      "detail": {
+        "kind": "recipe",
+        "mode": "manual"
+      }
+    },
+    {
+      "id": "annealing-r2-daq-observation-binding",
+      "status": "pass",
+      "detail": {
+        "kind": "daq"
+      }
+    },
+    {
+      "id": "annealing-r2-real-omp-approved-model-proposal",
+      "status": "pass",
+      "detail": {
+        "provider": "zhipu-coding-plan",
+        "model": "glm-5.3-flash",
+        "selectedValue": 745,
+        "toolEventHistoryAvailable": true
+      }
+    },
+    {
+      "id": "annealing-r2-real-omp-one-recipe-trial-ledger",
+      "status": "pass",
+      "detail": {
+        "recipeTrialCount": 1,
+        "recipeTrialAckCount": 1
+      }
+    },
+    {
+      "id": "annealing-r2-ack-verified",
+      "status": "pass",
+      "detail": {
+        "verified": 1,
+        "unverified": 0,
+        "failed": 0,
+        "total": 1
+      }
+    },
+    {
+      "id": "annealing-r2-readback-matches",
+      "status": "pass",
+      "detail": {
+        "expectedCandidate": 745,
+        "response": {
+          "ok": true,
+          "value": 745,
+          "raw": 745,
+          "message": "读回 raw 745 → eng 745",
+          "at": "2026-10-25T06:10:19.098+08:00"
+        },
+        "resultMatchesCandidate": true
+      }
+    },
+    {
+      "id": "annealing-r2-run-tagged-daq-probe-ingest-snapshot",
+      "status": "pass",
+      "detail": {
+        "method": "single driver-probe/ingest snapshot",
+        "value": 677.7000122070312,
+        "runId": "rr-0809199c",
+        "matchingPoint": {
+          "at": 1792879839000,
+          "v": 677.700012
+        }
+      }
+    },
+    {
+      "id": "annealing-r2-recipe-log",
+      "status": "pass",
+      "detail": {
+        "trialAction": "recipe.trial",
+        "ackAction": "recipe.dispatch.ack"
+      }
+    },
+    {
+      "id": "annealing-r2-real-omp-task-completed",
+      "status": "pass",
+      "detail": {
+        "taskState": "COMPLETED"
+      }
+    },
+    {
+      "id": "annealing-r3-registered-omp",
+      "status": "pass",
+      "detail": {
+        "harness": "omp",
+        "agentId": "2c4bfb6e-e923-4d4c-8c7c-c72a9a4eda09"
+      }
+    },
+    {
+      "id": "annealing-r3-manual-recipe-binding",
+      "status": "pass",
+      "detail": {
+        "kind": "recipe",
+        "mode": "manual"
+      }
+    },
+    {
+      "id": "annealing-r3-daq-observation-binding",
+      "status": "pass",
+      "detail": {
+        "kind": "daq"
+      }
+    },
+    {
+      "id": "annealing-r3-real-omp-approved-model-proposal",
+      "status": "pass",
+      "detail": {
+        "provider": "zhipu-coding-plan",
+        "model": "glm-5.3-flash",
+        "selectedValue": 745,
+        "toolEventHistoryAvailable": true
+      }
+    },
+    {
+      "id": "annealing-r3-real-omp-one-recipe-trial-ledger",
+      "status": "pass",
+      "detail": {
+        "recipeTrialCount": 1,
+        "recipeTrialAckCount": 1
+      }
+    },
+    {
+      "id": "annealing-r3-ack-verified",
+      "status": "pass",
+      "detail": {
+        "verified": 1,
+        "unverified": 0,
+        "failed": 0,
+        "total": 1
+      }
+    },
+    {
+      "id": "annealing-r3-readback-matches",
+      "status": "pass",
+      "detail": {
+        "expectedCandidate": 745,
+        "response": {
+          "ok": true,
+          "value": 745,
+          "raw": 745,
+          "message": "读回 raw 745 → eng 745",
+          "at": "2026-10-25T06:11:41.115+08:00"
+        },
+        "resultMatchesCandidate": true
+      }
+    },
+    {
+      "id": "annealing-r3-run-tagged-daq-probe-ingest-snapshot",
+      "status": "pass",
+      "detail": {
+        "method": "single driver-probe/ingest snapshot",
+        "value": 678.0999755859375,
+        "runId": "rr-52743484",
+        "matchingPoint": {
+          "at": 1792879921000,
+          "v": 678.099976
+        }
+      }
+    },
+    {
+      "id": "annealing-r3-recipe-log",
+      "status": "pass",
+      "detail": {
+        "trialAction": "recipe.trial",
+        "ackAction": "recipe.dispatch.ack"
+      }
+    },
+    {
+      "id": "annealing-r3-real-omp-task-completed",
+      "status": "pass",
+      "detail": {
+        "taskState": "COMPLETED"
+      }
+    },
+    {
+      "id": "simulator-process-stopped",
+      "status": "pass",
+      "detail": {
+        "pid": 15328,
+        "terminationStatus": 0,
+        "processTreePresentAfterCleanup": false,
+        "rootWasAlreadyExited": false
+      }
+    },
+    {
+      "id": "agentworkshop-process-stopped",
+      "status": "pass",
+      "detail": {
+        "pid": 53404,
+        "terminationStatus": 0,
+        "processTreePresentAfterCleanup": false,
+        "rootWasAlreadyExited": false
+      }
+    },
+    {
+      "id": "app-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 3997,
+        "host": "127.0.0.1"
+      }
+    },
+    {
+      "id": "simulator-http-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 4020,
+        "host": "127.0.0.1"
+      }
+    },
+    {
+      "id": "simulator-mqtt-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 18840,
+        "host": "127.0.0.1"
+      }
+    },
+    {
+      "id": "offline-app-mqtt-queue-probe-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 45323,
+        "host": "127.0.0.1"
+      }
+    },
+    {
+      "id": "offline-timescale-probe-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 45321,
+        "host": "127.0.0.1"
+      }
+    },
+    {
+      "id": "offline-objectstore-probe-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 45322,
+        "host": "127.0.0.1"
+      }
+    },
+    {
+      "id": "simulator-device-0-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 44000,
+        "host": "127.0.0.1"
+      }
+    },
+    {
+      "id": "simulator-device-1-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 44001,
+        "host": "127.0.0.1"
+      }
+    },
+    {
+      "id": "simulator-device-2-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 44300,
+        "host": "127.0.0.1"
+      }
+    },
+    {
+      "id": "simulator-device-3-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 44301,
+        "host": "127.0.0.1"
+      }
+    }
+  ],
+  "status": "passed",
+  "cleanup": {
+    "status": "passed",
+    "requiredProcessAndPortChecks": true
+  }
+}

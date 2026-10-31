@@ -1,0 +1,25 @@
+{
+  "suite": "verify-mirror",
+  "node": "dn-069d794a",
+  "kind": "scalar",
+  "base": "http://127.0.0.1:3300",
+  "checks": [
+    {
+      "name": "scalar:窗口内有样本",
+      "pass": true,
+      "detail": "buckets=57 samples=57 window=120s"
+    },
+    {
+      "name": "scalar:期望值命中",
+      "pass": true,
+      "detail": "expect=242.6±3 observed=241.7,241.8,242.7,241.7"
+    },
+    {
+      "name": "scalar:时间戳单调",
+      "pass": true,
+      "detail": "last=1793380527000"
+    }
+  ],
+  "verdict": "PASS(3/3)",
+  "at": "2026-10-30T17:15:30.214Z"
+}

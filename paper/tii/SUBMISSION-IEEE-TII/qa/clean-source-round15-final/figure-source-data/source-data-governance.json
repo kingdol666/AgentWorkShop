@@ -1,0 +1,172 @@
+{
+  "sources": [
+    {
+      "path": "docs/benchmarks/benchmark-20261009033810/timeline.jsonl",
+      "sha256": "27de81c2e80d0d56bc8779cba455f24ac8bcfabc6cc2362173a4b16c140b773e"
+    }
+  ],
+  "events": [
+    {
+      "source": "docs/benchmarks/benchmark-20261009033810/timeline.jsonl",
+      "line": 3,
+      "ts": "2026-10-09T03:38:11.128Z",
+      "stage": "S4",
+      "type": "observation",
+      "detail": "{\"holdP\":63,\"weight\":32.22,\"sink\":1.51,\"window\":\"8min\"}",
+      "local_elapsed_s": 0.0,
+      "S4_elapsed_s": 0.0
+    },
+    {
+      "source": "docs/benchmarks/benchmark-20261009033810/timeline.jsonl",
+      "line": 4,
+      "ts": "2026-10-09T03:38:11.129Z",
+      "stage": "S4",
+      "type": "decision",
+      "detail": "{\"mode\":\"corrective\",\"err\":0.276,\"to\":65,\"rationale\":\"误差 0.28g / 斜率 0.052g/bar → 单变量小步\"}",
+      "local_elapsed_s": 0.0009999275207519531,
+      "S4_elapsed_s": 0.0009999275207519531
+    },
+    {
+      "source": "docs/benchmarks/benchmark-20261009033810/timeline.jsonl",
+      "line": 5,
+      "ts": "2026-10-09T03:38:11.129Z",
+      "stage": "S4",
+      "type": "propose",
+      "detail": "{\"to\":65,\"package\":\"BM-保压微升(灵敏度激励步)\"}",
+      "local_elapsed_s": 0.0009999275207519531,
+      "S4_elapsed_s": 0.0009999275207519531
+    },
+    {
+      "source": "docs/benchmarks/benchmark-20261009033810/timeline.jsonl",
+      "line": 6,
+      "ts": "2026-10-09T03:38:13.137Z",
+      "stage": "S4",
+      "type": "cadence-wait",
+      "detail": "提案挂卡前被频控早拒(治理在岗)—— 等 69s 后重提(attempt 1 → 2)",
+      "local_elapsed_s": 2.009000062942505,
+      "S4_elapsed_s": 2.009000062942505
+    },
+    {
+      "source": "docs/benchmarks/benchmark-20261009033810/timeline.jsonl",
+      "line": 7,
+      "ts": "2026-10-09T03:39:22.151Z",
+      "stage": "S4",
+      "type": "propose",
+      "detail": "{\"to\":65,\"package\":\"BM-保压微升(灵敏度激励步)\",\"attempt\":2}",
+      "local_elapsed_s": 71.02300000190735,
+      "S4_elapsed_s": 71.02300000190735
+    },
+    {
+      "source": "docs/benchmarks/benchmark-20261009033810/timeline.jsonl",
+      "line": 8,
+      "ts": "2026-10-09T03:39:24.158Z",
+      "stage": "S4",
+      "type": "hitl_card",
+      "detail": "{\"id\":\"ap-2950a5b6\",\"reasoning\":true,\"attempt\":2}",
+      "local_elapsed_s": 73.02999997138977,
+      "S4_elapsed_s": 73.02999997138977
+    },
+    {
+      "source": "docs/benchmarks/benchmark-20261009033810/timeline.jsonl",
+      "line": 9,
+      "ts": "2026-10-09T03:39:24.165Z",
+      "stage": "S4",
+      "type": "approved",
+      "detail": "{\"id\":\"ap-2950a5b6\",\"attempt\":2}",
+      "local_elapsed_s": 73.03699994087219,
+      "S4_elapsed_s": 73.03699994087219
+    },
+    {
+      "source": "docs/benchmarks/benchmark-20261009033810/timeline.jsonl",
+      "line": 10,
+      "ts": "2026-10-09T03:39:24.171Z",
+      "stage": "S4",
+      "type": "dispatch",
+      "detail": "{\"runId\":\"rr-51b0a0ac\",\"ok\":true,\"summary\":\"方案「BM-保压微升(灵敏度激励步)」已获批准并整批下发,全部参数设备证实(1/1,批次 rr-51b0a)。runId:rr-51b0a0ac(后续轮次按此回访效果并回写经验)\"}",
+      "local_elapsed_s": 73.04299998283386,
+      "S4_elapsed_s": 73.04299998283386
+    },
+    {
+      "source": "docs/benchmarks/benchmark-20261009033810/timeline.jsonl",
+      "line": 11,
+      "ts": "2026-10-09T03:39:32.218Z",
+      "stage": "S4",
+      "type": "settle-wait",
+      "detail": "等待镜像 SP 采样跟上(15s)",
+      "local_elapsed_s": 81.08999991416931,
+      "S4_elapsed_s": 81.08999991416931
+    },
+    {
+      "source": "docs/benchmarks/benchmark-20261009033810/timeline.jsonl",
+      "line": 12,
+      "ts": "2026-10-09T03:39:47.233Z",
+      "stage": "S4",
+      "type": "verify",
+      "detail": "{\"set\":65,\"device\":65,\"mirror\":65,\"threeWay\":true}",
+      "local_elapsed_s": 96.10500001907349,
+      "S4_elapsed_s": 96.10500001907349
+    },
+    {
+      "source": "docs/benchmarks/benchmark-20261009033810/timeline.jsonl",
+      "line": 13,
+      "ts": "2026-10-09T03:39:47.233Z",
+      "stage": "S4",
+      "type": "verdict",
+      "detail": "{\"converged\":false,\"dispatchedTo\":65,\"nextReview\":\"4min 惯性窗后复测\"}",
+      "local_elapsed_s": 96.10500001907349,
+      "S4_elapsed_s": 96.10500001907349
+    },
+    {
+      "source": "docs/benchmarks/benchmark-20261009033810/timeline.jsonl",
+      "line": 14,
+      "ts": "2026-10-09T03:39:47.257Z",
+      "stage": "S5",
+      "type": "observation",
+      "detail": "{\"moldT\":40,\"stepLimit\":10}",
+      "local_elapsed_s": 0.0,
+      "S4_elapsed_s": 96.12899994850159
+    },
+    {
+      "source": "docs/benchmarks/benchmark-20261009033810/timeline.jsonl",
+      "line": 15,
+      "ts": "2026-10-09T03:39:47.263Z",
+      "stage": "S5",
+      "type": "micro-step",
+      "detail": "{\"from\":40,\"to\":40.5,\"ok\":true,\"readback\":40.5}",
+      "local_elapsed_s": 0.006000041961669922,
+      "S4_elapsed_s": 96.13499999046326
+    },
+    {
+      "source": "docs/benchmarks/benchmark-20261009033810/timeline.jsonl",
+      "line": 16,
+      "ts": "2026-10-09T03:39:47.265Z",
+      "stage": "S5",
+      "type": "rate-limited",
+      "detail": "{\"blocked\":true,\"message\":\"DCW 节点「注塑·模温机SP」两次在线写入间隔必须至少 60s，当前还需 60s\"}",
+      "local_elapsed_s": 0.00800013542175293,
+      "S4_elapsed_s": 96.13700008392334
+    },
+    {
+      "source": "docs/benchmarks/benchmark-20261009033810/timeline.jsonl",
+      "line": 17,
+      "ts": "2026-10-09T03:39:47.265Z",
+      "stage": "S5",
+      "type": "settle-wait",
+      "detail": "等待 66s 治理窗放行",
+      "local_elapsed_s": 0.00800013542175293,
+      "S4_elapsed_s": 96.13700008392334
+    },
+    {
+      "source": "docs/benchmarks/benchmark-20261009033810/timeline.jsonl",
+      "line": 18,
+      "ts": "2026-10-09T03:40:53.311Z",
+      "stage": "S5",
+      "type": "verdict",
+      "detail": "{\"restored\":true,\"value\":40}",
+      "local_elapsed_s": 66.05400013923645,
+      "S4_elapsed_s": 162.18300008773804
+    }
+  ],
+  "n": 1,
+  "approval": "test harness supplied"
+}

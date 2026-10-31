@@ -1,0 +1,31 @@
+# 安全加固批 B2–B5 真机验收
+
+- 时间:2026-10-29T11:41:38.500Z
+- 结果:26/26
+
+- PASS `BOOT` 隔离实例启动
+- PASS `S0.1` 首注册 = admin
+- PASS `S0.2` editor 登录
+- PASS `S0.3` user 登录
+- PASS `M1.1` editor GET settings:凭据键一律掩码/空(无明文)
+- PASS `M1.2` admin GET settings 同样掩码(明文只留服务端)
+- PASS `M1.3` 回传 *** 不覆盖真实凭据(不产生变更)
+- PASS `M2.0` 建产线(授权断言前置)
+- PASS `M2.1` 零授权用户写分析报告 → 403
+- PASS `M2.2` 零授权用户写产线日志 → 403
+- PASS `M2.3` 非 admin 写全局台账(空 lineId) → 403
+- PASS `M2.4` admin 写全局台账 → 200
+- PASS `M2.5` admin 写该线分析报告 → 200
+- PASS `M3.0` admin 建自定义模板
+- PASS `M3.1` 他人改模板 → 403
+- PASS `M3.2` 他人删模板 → 403
+- PASS `M3.3` 属主改模板 → 200
+- PASS `M4.1` user 角色操控设备孪生 → 403
+- PASS `M4.2` user 角色删设备孪生 → 403
+- PASS `M4.3` editor 操控设备孪生 → 200
+- PASS `M5.1` 7 位密码建号 → 400/422 拒绝
+- PASS `M5.2` 连错 5 次后正确密码仍可登录(账号不被第三方锁死)
+- PASS `M6.1` 默认 AgentCard 公开(向后兼容)
+- PASS `M6.2` 关闭公开面设置生效
+- PASS `M6.3` 关闭后未认证 → 401
+- PASS `M6.4` 关闭后带有效 token → 200

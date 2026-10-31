@@ -1,0 +1,120 @@
+\section{Experimental Evaluation}
+\label{sec:eval}
+The evaluation asks whether registered-harness tasks and direct operation calls
+can execute bounded recipe actions across two simulator scenes with different
+signal and protocol mappings while retaining route-appropriate records. R20 is
+the primary result: six sequential tasks through one registered harness, three
+per scene on one simulator instance per scene, with task-to-approval-to-receipt-
+to-sample links. R21 is a deterministic fixture replay of the registered-
+harness path; R22 separately exercises the direct operation endpoint without a
+task or harness. All runs use repository simulators. Supplementary File~S1
+contains their separate records, scripts, and trace checks.
+
+\subsection{Evidence Units and Experimental Procedure}
+\label{sec:testbed}
+\label{sec:procedure}
+R20 uses the registered harness adapter named \texttt{omp} in cast-film and
+annealing scenes
+(\texttt{omp} is the project adapter key, not a network protocol),
+with three sequential task executions per scene on one simulator instance per
+scene. Each execution creates a new logical line, product, recipe, active run,
+channel, agent, and task on that shared scene simulator. Line start reapplies the recipe baseline
+(120~rpm or 730~$^{\circ}$C), so the control read returns to baseline while
+the simulated process state carries forward. These are sequential software
+runs, not independent process replications. R21 and R22 use fresh isolated
+application/simulator environments and are reported separately from R20.
+
+Table~\ref{tab:routes} summarizes the evaluated paths and their inference
+limits; Table~\ref{tab:q8} gives the six R20 process snapshots.
+
+\begin{table*}[!t]
+\centering
+\caption{Evaluation paths, recorded outcomes, and inference limits. The route
+counts are kept separate because the runs use different entry paths and
+execution modes.}
+\label{tab:routes}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabularx}{\textwidth}{@{}p{1.25cm}p{3.4cm}X p{4.0cm}@{}}
+\toprule
+Path & Execution & Recorded outcome & Inference limit \\
+\midrule
+R20 & Six sequential tasks through one registered harness; three per scene. & 6/6 task--approval--receipt--sample links; six verified receipts; all six single probes were outside target. & One simulator per scene; one probe per task; no process-attainment claim. \\
+R21 & One deterministic fixture task per scene on the registered-harness route. & 2/2 fixture traces; 31 runner assertions passed. & No external model decision or independent process replication. \\
+R22 & One direct operation call per scene, without a task, harness, or language-model decision. & 2/2 calls approved; each returned a 1/1 verified receipt and matching readback, then one active-run-tagged snapshot; both were outside target; 19 checks passed. & No task-to-sample link; one snapshot per scene; no alternate-harness portability claim. \\
+Context tests & Twelve stale-context mutations on three recipe routes; production handler and test-only ablation. & Production handler refused 12/12 before writes; one queued post-recheck change was also refused. Without tuple equality, six product/run mutations triggered 12 mock writes and six execution records. & Temporary/mock state; component ablation, not a platform baseline or physical safety test. \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+\subsection{Registered-Harness Process Path (R20)}
+\label{sec:harness-e2e}
+R20 ran the local v0.8.0 working-tree application with the registered
+\texttt{omp} adapter and GLM-5.3-Flash. Supplementary File~S1 lists the source
+reconstruction requirements; credentials are omitted and external model
+decisions are not deterministic. Cast-film used OPC UA control and MQTT
+thickness sensing; annealing used Modbus TCP for control and sensing. In each
+scene the model selected one value from a prevalidated candidate set for a
+bounded \texttt{recipe\_trial}, and a synthetic administrator approved it.
+Each route record contains one 1/1 readback-verified receipt. After verifying
+the receipt, the runner waited 20~s, probed and ingested one sample, and queried
+it by active-run ID through the isolated SQLite fallback. All six tasks
+completed and passed 76 runner assertions. The trace audit found 6/6 complete
+task--approval--receipt--sample links. The trial-operation run ID differs from
+the active production-run ID used for the sample; both link through the task
+and approval. Task state was checked after sampling, so completion-to-sample
+latency is unavailable. Table~\ref{tab:q8} reports all six values and
+identifiers are in the S1 trace matrix. All samples remained outside target;
+one probe per task does not measure process response or normal online DAQ.
+
+\begin{table}[!t]
+\centering
+\caption{Bounded recipe-trial settings and post-readback simulator probes. All
+six samples remained outside their target bands.}
+\label{tab:q8}
+\footnotesize
+\setlength{\tabcolsep}{2.5pt}
+\begin{tabularx}{\columnwidth}{@{}lXcX@{}}
+\toprule
+Case & Pre-task value / target band & Control: start$\to$trial & Sample \\
+\midrule
+Film-1 & $55.82/48$--$52~\mu$m & $120\to125$~rpm & $45.69~\mu$m \\
+Film-2 & $45.69/48$--$52~\mu$m & $120\to130$~rpm & $46.69~\mu$m \\
+Film-3 & $46.69/48$--$52~\mu$m & $120\to125$~rpm & $45.69~\mu$m \\
+Anneal-1 & $675.40/700$--$760~^{\circ}$C & $730\to745$~$^{\circ}$C & $679.60~^{\circ}$C \\
+Anneal-2 & $678.30/700$--$760~^{\circ}$C & $730\to745$~$^{\circ}$C & $677.70~^{\circ}$C \\
+Anneal-3 & $676.90/700$--$760~^{\circ}$C & $730\to745$~$^{\circ}$C & $678.10~^{\circ}$C \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Deterministic Fixture Replay (R21)}
+R21 used a deterministic transport fixture for the registered \texttt{omp}
+adapter, without an LLM decision. One task per scene exercised approval,
+verified receipt/readback, and a run-tagged sample; all 31 runner checks,
+including cleanup, passed. This is a replay of the same harness route, not an
+independent agent or process replication, and is reported separately from R20.
+
+\subsection{Direct Operation Endpoint (R22)}
+R22 used a fresh isolated environment. A worker identity issued one direct
+\texttt{recipe\_trial} call per scene through
+\texttt{/api/workshop/agent-tools/invoke}, without a task, harness transport,
+or external model. Synthetic approval produced a 1/1 verified receipt and
+matching readback for each call. After 20~s, one sample per scene was queried
+by active-run ID: 46.37~$\mu$m versus a 48--52~$\mu$m band and 675.20~$^{\circ}$C
+versus a 700--760~$^{\circ}$C band. All 19 checks passed. This tests a direct
+entry route and two mappings, not process response or cross-harness
+portability; R22 is separate from R20 and R21.
+
+\subsection{Software Contract Checks}
+The local unit suite passed 566/566 tests across seven suites. In the 20-case
+approval suite, twelve injected line, product, recipe, or run changes across
+three recipe routes were refused before mock writes or new execution records.
+One queued post-recheck context change was also refused before dispatch. In a
+test-only ablation that removed tuple equality but retained authority and
+limit checks, six product/run changes caused twelve mock writes and six
+execution records; independent checks still blocked line/recipe changes.
+This component ablation shows the tuple check's incremental software-state
+coverage, not a platform baseline or safety guarantee. Tests use mock or
+temporary state and do not establish atomicity during device I/O or test
+end-to-end DAQ tag failures.

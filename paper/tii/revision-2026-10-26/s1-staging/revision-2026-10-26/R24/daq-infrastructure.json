@@ -1,0 +1,9 @@
+{
+  "mqttOnline": true,
+  "tsdbOnline": true,
+  "objectStoreOnline": false,
+  "degraded": false,
+  "warning": "对象存储(MinIO)不可达:图像帧已降级本地磁盘(data/daq-objects/),采集不中断。",
+  "startedBy": "direct",
+  "lastCheckAt": "2026-10-26T00:46:08.067+08:00"
+}

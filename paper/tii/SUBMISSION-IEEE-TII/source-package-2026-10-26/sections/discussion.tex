@@ -1,0 +1,84 @@
+\section{Discussion}
+\label{sec:limits}
+This section interprets the results against the design contract and then states
+what the evidence does not cover.
+
+\subsection{Interpretation}
+The implementation routes selected task and direct-call paths through a
+shared named-operation boundary. Tests verify the applicable task, approval,
+receipt, readback, and sample links across two different simulator mappings;
+they do not establish route equivalence.
+
+The blueprint replay adds protocol access, heterogeneous MES data, channel
+construction, acquisition, and one approved simulator write. It was not
+repeated with changed profiles or bindings, so it supports only the documented
+blueprint workflow.
+
+Route-study samples ranged from 45.69 to 46.69\,$\mu$m for cast film and
+674.40 to 679.60\,$^{\circ}$C for annealing, all outside their target bands.
+Each was a single probe 20\,s after an operation; pre-task values were already
+out of band, so these readings establish neither a response curve nor
+convergence.
+
+The four-scenario campaign reports mission-terminal values inside the
+scenario windows for injection molding, wastewater treatment, annealing, and
+BOPET film. Each has one deterministic scripted trajectory; for wastewater
+and annealing, the terminal mission value differs from the final structured
+sample, as Fig.~5 marks. This shows scenario-specific feedback, not
+repeatability or route-level process attainment.
+
+This distinction is central to the framework: readback confirms that a
+setpoint reached the configured device, while the later process sample records
+whether the target was met. Keeping these as separate linked records avoids
+equating command completion with product attainment. The tests validate this
+reporting behavior, not improved control quality.
+
+All route-study runs used SQLite fallback because MQTT and Timescale were
+unavailable; they therefore do not validate the online DAQ pipeline. The
+onboarding replay used
+isolated online MQTT/Timescale services. Together, the tests cover two
+configured route mappings and one separate blueprint-driven onboarding
+workflow.
+
+Under mock state, comparing the approved line--product--recipe--run tuple
+blocked product/run mutations that the retained checks alone did not reject.
+This is a software-dispatch result; synthetic approval does not measure human
+review performance \cite{parasuramanmanzey2010complacency,parasuraman2000model,bainbridge1983ironies}.
+
+\subsection{Scope and Limitations}
+Only the reported adapters and scene configurations were exercised. The
+single blueprint replay does not test repeated onboarding, profile/binding
+reuse, unseen scenes, or physical transfer; the runs used working-tree builds without pinned
+source commits. The study also lacks a platform baseline and does not establish
+adapter interchangeability, online DAQ operation in route trials, or comparative
+efficiency. Such claims require matched deployments and shared integration
+effort or record-completeness measures.
+
+The route study used three sequential tasks and one post-trial sample per task
+on one simulator per scene; the four-scenario campaign used one trajectory per
+scene. These are not independent replicates and cannot establish a response
+curve or repeatability. Follow-up work should vary profiles, repeat trials
+with pre/post measurements, and compare a defined alternative integration
+path. Operation restrictions do not establish security
+\cite{greshake2023injection,liu2024pinjection,iec62443-3-3} or replace
+independent PLC/safety-instrumented system (SIS) safeguards \cite{iec61511}.
+
+Scope and channel-policy refusals are not uniformly persisted; auditability
+is limited to the records and denial classes described in Section~IV.
+
+\section{Conclusion}
+\label{sec:conclusion}
+AgentWorkShop brings task adapters, production context, named operations,
+semantic I/O, configured protocol drivers, and service-owned records into a
+modular task-to-device framework. Tested task routes and direct calls used a
+shared operation boundary across cast-film and annealing simulator mappings
+while preserving route-specific records. A separate replay completed one
+documented coating-line onboarding configuration with online DAQ checks and a
+simulator-confirmed smoke write. A four-scenario simulator campaign recorded
+scripted control sequences and mission-terminal values within scenario target
+windows, while route-study samples remained below target. A mock-state ablation
+isolated the effect of an approval-bound context check. The study establishes
+selected integration, scenario-specific simulator behavior, one simulated
+onboarding instance, and software-contract behavior; it does not establish
+repeatability, route equivalence, process improvement, configuration reuse,
+physical transfer, general portability, or comparative platform benefit.

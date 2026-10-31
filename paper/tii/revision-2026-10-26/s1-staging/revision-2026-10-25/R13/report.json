@@ -1,0 +1,1487 @@
+{
+  "at": "2026-10-24T18:36:30.149Z",
+  "base": "http://127.0.0.1:4198",
+  "simulator": "http://127.0.0.1:4020",
+  "simulatorRoot": "[local-path]",
+  "applicationHome": "[local-path]",
+  "counts": {
+    "pass": 50,
+    "fail": 0,
+    "blocked": 2,
+    "not-run": 0
+  },
+  "scope": {
+    "businessInstanceTouched": false,
+    "originalSimulatorTouched": false,
+    "realHardwareTouched": false,
+    "truthConsumed": false,
+    "benefitBenchmark": false,
+    "realAgentLlm": false
+  },
+  "scenes": [
+    {
+      "scene": "film",
+      "lineId": "ln-10104780",
+      "recipeId": "rc-fb573457",
+      "runs": [
+        "rr-50b17b58",
+        "rr-7cdee430",
+        "rr-08eb45f8",
+        "rr-65efe570",
+        "rr-751a5286",
+        "rr-afbb5fbb"
+      ]
+    },
+    {
+      "scene": "anneal",
+      "lineId": "ln-f0dc5ff4",
+      "recipeId": "rc-65b50241",
+      "runs": [
+        "rr-c602c1a2",
+        "rr-3cb13d5e",
+        "rr-97c589b6",
+        "rr-d6384d1c",
+        "rr-77698bb2",
+        "rr-a27a226c"
+      ]
+    }
+  ],
+  "checks": [
+    {
+      "id": "film.plant",
+      "name": "Simulator model loaded at real time scale",
+      "status": "pass",
+      "detail": {
+        "kind": "castfilm",
+        "timeScale": 1
+      }
+    },
+    {
+      "id": "film.probe.0",
+      "name": "Platform opcua driver reads simulator signal ScrewSpeedSP",
+      "status": "pass",
+      "detail": {
+        "ok": true,
+        "message": "会话建立成功,读取 ns=2;s=AW.N.Sp = 150",
+        "sampleValue": 150,
+        "latencyMs": 72
+      }
+    },
+    {
+      "id": "film.probe.1",
+      "name": "Platform mqtt driver reads simulator signal thick",
+      "status": "pass",
+      "detail": {
+        "ok": true,
+        "message": "Broker 连接成功,收到 aw/sim/thick = 55.43",
+        "sampleValue": 55.43,
+        "latencyMs": 1692
+      }
+    },
+    {
+      "id": "film.probe.2",
+      "name": "Platform modbus-tcp driver reads simulator signal 加热区1SP",
+      "status": "pass",
+      "detail": {
+        "ok": true,
+        "message": "连接成功,读取 40021 = 200",
+        "sampleValue": 200,
+        "latencyMs": 14
+      }
+    },
+    {
+      "id": "film.probe.3",
+      "name": "Platform modbus-rtu driver reads simulator signal 晶点计数",
+      "status": "pass",
+      "detail": {
+        "ok": true,
+        "message": "网关连接成功,读取 40001 = 5",
+        "sampleValue": 5,
+        "latencyMs": 2
+      }
+    },
+    {
+      "id": "film.probe.4",
+      "name": "Platform http driver reads simulator signal defect",
+      "status": "pass",
+      "detail": {
+        "ok": true,
+        "message": "接口可达,取值 = 0.143",
+        "sampleValue": 0.143,
+        "latencyMs": 4
+      }
+    },
+    {
+      "id": "film.write",
+      "name": "Application DCW writes through simulator protocol endpoint",
+      "status": "pass",
+      "detail": {
+        "ok": true,
+        "message": "写入并回读一致:125,回读 125(标定后物理值 125)",
+        "raw": 125,
+        "readback": 125,
+        "ack": "readback-verified",
+        "anchorId": "anc-d9593308"
+      }
+    },
+    {
+      "id": "film.readback",
+      "name": "Exposed PLC setpoint equals application write",
+      "status": "pass",
+      "detail": {
+        "expected": 125,
+        "observed": 125
+      }
+    },
+    {
+      "id": "anneal.plant",
+      "name": "Simulator model loaded at real time scale",
+      "status": "pass",
+      "detail": {
+        "kind": "anneal",
+        "timeScale": 1
+      }
+    },
+    {
+      "id": "anneal.probe.0",
+      "name": "Platform modbus-tcp driver reads simulator signal 均热区3炉温SP",
+      "status": "pass",
+      "detail": {
+        "ok": true,
+        "message": "连接成功,读取 40025 = 730",
+        "sampleValue": 730,
+        "latencyMs": 14
+      }
+    },
+    {
+      "id": "anneal.probe.1",
+      "name": "Platform modbus-tcp driver reads simulator signal StripTemp",
+      "status": "pass",
+      "detail": {
+        "ok": true,
+        "message": "连接成功,读取 40003 = 675.4000244140625",
+        "sampleValue": 675.4000244140625,
+        "latencyMs": 14
+      }
+    },
+    {
+      "id": "anneal.probe.2",
+      "name": "Platform modbus-rtu driver reads simulator signal 过时效温度SP",
+      "status": "pass",
+      "detail": {
+        "ok": true,
+        "message": "网关连接成功,读取 40021 = 400",
+        "sampleValue": 400,
+        "latencyMs": 1
+      }
+    },
+    {
+      "id": "anneal.probe.3",
+      "name": "Platform opcua driver reads simulator signal LineSpeedSP",
+      "status": "pass",
+      "detail": {
+        "ok": true,
+        "message": "会话建立成功,读取 ns=2;s=Anneal.Line.Speed.Sp = 140",
+        "sampleValue": 140,
+        "latencyMs": 22
+      }
+    },
+    {
+      "id": "anneal.probe.4",
+      "name": "Platform mqtt driver reads simulator signal DewPoint",
+      "status": "pass",
+      "detail": {
+        "ok": true,
+        "message": "Broker 连接成功,收到 aw/anneal/dew = -39.1",
+        "sampleValue": -39.1,
+        "latencyMs": 1725
+      }
+    },
+    {
+      "id": "anneal.probe.5",
+      "name": "Platform http driver reads simulator signal Hardness",
+      "status": "pass",
+      "detail": {
+        "ok": true,
+        "message": "接口可达,取值 = 134.6",
+        "sampleValue": 134.6,
+        "latencyMs": 15
+      }
+    },
+    {
+      "id": "anneal.write",
+      "name": "Application DCW writes through simulator protocol endpoint",
+      "status": "pass",
+      "detail": {
+        "ok": true,
+        "message": "写入并回读一致:735 → raw 735,回读 735(标定后物理值 735)",
+        "raw": 735,
+        "readback": 735,
+        "ack": "readback-verified",
+        "anchorId": "anc-ad0c448f"
+      }
+    },
+    {
+      "id": "anneal.readback",
+      "name": "Exposed PLC setpoint equals application write",
+      "status": "pass",
+      "detail": {
+        "expected": 735,
+        "observed": 735
+      }
+    },
+    {
+      "id": "infra.observed",
+      "name": "DAQ infrastructure state is explicitly observed",
+      "status": "pass",
+      "detail": {
+        "infra": {
+          "mqttOnline": true,
+          "tsdbOnline": true,
+          "objectStoreOnline": true,
+          "degraded": false,
+          "warning": "",
+          "startedBy": "direct",
+          "lastCheckAt": "2026-10-25T02:23:55.824+08:00"
+        },
+        "meta": {
+          "tsdb": "timescale",
+          "queue": "mqtt",
+          "objectstore": "disk",
+          "pluginDrivers": [
+            "matrix-thermo",
+            "verify-burst",
+            "serial"
+          ],
+          "drivers": [
+            {
+              "kind": "mock",
+              "label": "Mock 模拟源",
+              "status": "builtin",
+              "configFields": []
+            },
+            {
+              "kind": "modbus-tcp",
+              "label": "Modbus TCP(PLC/网关)",
+              "status": "real",
+              "configFields": [
+                {
+                  "key": "host",
+                  "label": "设备地址(host)",
+                  "type": "string",
+                  "required": true,
+                  "placeholder": "192.168.1.10",
+                  "hint": "PLC 或 Modbus 网关 IP"
+                },
+                {
+                  "key": "port",
+                  "label": "端口",
+                  "type": "number",
+                  "default": 502,
+                  "hint": "Modbus TCP 标准端口 502"
+                },
+                {
+                  "key": "unitId",
+                  "label": "单元号(unitId)",
+                  "type": "number",
+                  "default": 1,
+                  "hint": "从站地址,常见 1"
+                },
+                {
+                  "key": "register",
+                  "label": "寄存器地址",
+                  "type": "number",
+                  "required": true,
+                  "placeholder": "40001",
+                  "hint": "4xxxx=保持寄存器(地址-40001 为协议偏移);3xxxx=输入寄存器"
+                },
+                {
+                  "key": "registerType",
+                  "label": "寄存器区",
+                  "type": "select",
+                  "default": "holding",
+                  "options": [
+                    {
+                      "value": "holding",
+                      "label": "保持寄存器(4x)"
+                    },
+                    {
+                      "value": "input",
+                      "label": "输入寄存器(3x)"
+                    }
+                  ]
+                },
+                {
+                  "key": "dataType",
+                  "label": "数据类型",
+                  "type": "select",
+                  "default": "float32",
+                  "options": [
+                    {
+                      "value": "int16",
+                      "label": "int16(1 寄存器)"
+                    },
+                    {
+                      "value": "uint16",
+                      "label": "uint16(1 寄存器)"
+                    },
+                    {
+                      "value": "int32",
+                      "label": "int32(2 寄存器)"
+                    },
+                    {
+                      "value": "uint32",
+                      "label": "uint32(2 寄存器)"
+                    },
+                    {
+                      "value": "float32",
+                      "label": "float32(2 寄存器,常用)"
+                    }
+                  ]
+                },
+                {
+                  "key": "scale",
+                  "label": "缩放系数",
+                  "type": "number",
+                  "default": 1,
+                  "hint": "原始值 × scale = 工程量(如 0.1)"
+                },
+                {
+                  "key": "byteOrder",
+                  "label": "字节序",
+                  "type": "select",
+                  "default": "big",
+                  "options": [
+                    {
+                      "value": "big",
+                      "label": "大端(AB CD)"
+                    },
+                    {
+                      "value": "little",
+                      "label": "小端(CD AB)"
+                    },
+                    {
+                      "value": "wordSwap",
+                      "label": "字交换(CD AB / 交换单字)"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "opcua",
+              "label": "OPC UA(PLC/MES)",
+              "status": "real",
+              "configFields": [
+                {
+                  "key": "endpoint",
+                  "label": "端点(endpoint)",
+                  "type": "string",
+                  "required": true,
+                  "placeholder": "opc.tcp://192.168.1.10:4840",
+                  "hint": "OPC UA 服务器地址"
+                },
+                {
+                  "key": "nodeId",
+                  "label": "节点 ID(NodeId)",
+                  "type": "string",
+                  "required": true,
+                  "placeholder": "ns=2;s=Channel1.Device1.Tag1",
+                  "hint": "要采集的变量节点"
+                },
+                {
+                  "key": "securityMode",
+                  "label": "安全策略",
+                  "type": "select",
+                  "default": "None",
+                  "options": [
+                    {
+                      "value": "None",
+                      "label": "None(无加密,内网常用)"
+                    },
+                    {
+                      "value": "Sign",
+                      "label": "Sign(签名)"
+                    },
+                    {
+                      "value": "SignAndEncrypt",
+                      "label": "SignAndEncrypt(签名+加密)"
+                    }
+                  ]
+                },
+                {
+                  "key": "username",
+                  "label": "用户名(可选)",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "label": "密码(可选)",
+                  "type": "string"
+                },
+                {
+                  "key": "certificateFile",
+                  "label": "客户端证书路径(可选)",
+                  "type": "string",
+                  "placeholder": "certs/client_cert.pem",
+                  "hint": "Sign/SignAndEncrypt 时的 PEM 证书;留空自动生成自签"
+                },
+                {
+                  "key": "privateKeyFile",
+                  "label": "私钥路径(可选)",
+                  "type": "string",
+                  "placeholder": "certs/client_key.pem",
+                  "hint": "与证书配对的 PEM 私钥"
+                }
+              ]
+            },
+            {
+              "kind": "modbus-rtu",
+              "label": "Modbus RTU over TCP(串口网关)",
+              "status": "real",
+              "configFields": [
+                {
+                  "key": "host",
+                  "label": "网关地址(host)",
+                  "type": "string",
+                  "required": true,
+                  "placeholder": "192.168.1.50",
+                  "hint": "串口服务器/RTU 转 TCP 网关 IP(设备本身走 RS-485)"
+                },
+                {
+                  "key": "port",
+                  "label": "端口",
+                  "type": "number",
+                  "default": 502,
+                  "hint": "网关透传端口(常见 502 / 8899 / 26)"
+                },
+                {
+                  "key": "unitId",
+                  "label": "从站地址(unitId)",
+                  "type": "number",
+                  "default": 1,
+                  "hint": "RS-485 总线上的从站地址"
+                },
+                {
+                  "key": "register",
+                  "label": "寄存器地址",
+                  "type": "number",
+                  "required": true,
+                  "placeholder": "40001",
+                  "hint": "4xxxx=保持寄存器(地址-40001 为协议偏移);3xxxx=输入寄存器"
+                },
+                {
+                  "key": "registerType",
+                  "label": "寄存器区",
+                  "type": "select",
+                  "default": "holding",
+                  "options": [
+                    {
+                      "value": "holding",
+                      "label": "保持寄存器(4x)"
+                    },
+                    {
+                      "value": "input",
+                      "label": "输入寄存器(3x)"
+                    }
+                  ]
+                },
+                {
+                  "key": "dataType",
+                  "label": "数据类型",
+                  "type": "select",
+                  "default": "float32",
+                  "options": [
+                    {
+                      "value": "int16",
+                      "label": "int16(1 寄存器)"
+                    },
+                    {
+                      "value": "uint16",
+                      "label": "uint16(1 寄存器)"
+                    },
+                    {
+                      "value": "int32",
+                      "label": "int32(2 寄存器)"
+                    },
+                    {
+                      "value": "uint32",
+                      "label": "uint32(2 寄存器)"
+                    },
+                    {
+                      "value": "float32",
+                      "label": "float32(2 寄存器,常用)"
+                    }
+                  ]
+                },
+                {
+                  "key": "scale",
+                  "label": "缩放系数",
+                  "type": "number",
+                  "default": 1,
+                  "hint": "原始值 × scale = 工程量(如 0.1)"
+                },
+                {
+                  "key": "byteOrder",
+                  "label": "字节序",
+                  "type": "select",
+                  "default": "big",
+                  "options": [
+                    {
+                      "value": "big",
+                      "label": "大端(AB CD)"
+                    },
+                    {
+                      "value": "little",
+                      "label": "小端(CD AB)"
+                    },
+                    {
+                      "value": "wordSwap",
+                      "label": "字交换(CD AB / 交换单字)"
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "kind": "mqtt",
+              "label": "MQTT(网关/边缘采集)",
+              "status": "real",
+              "configFields": [
+                {
+                  "key": "host",
+                  "label": "Broker 地址(host)",
+                  "type": "string",
+                  "required": true,
+                  "placeholder": "192.168.1.20 或 mqtt.example.com",
+                  "hint": "MQTT Broker(EMQX/Mosquitto/Aliyun IoT)地址"
+                },
+                {
+                  "key": "port",
+                  "label": "端口",
+                  "type": "number",
+                  "default": 1883,
+                  "hint": "MQTT TCP 标准端口 1883(TLS 8883)"
+                },
+                {
+                  "key": "topic",
+                  "label": "主题(topic)",
+                  "type": "string",
+                  "required": true,
+                  "placeholder": "factory/line1/temp",
+                  "hint": "设备上报数值的主题;支持 +/# 通配"
+                },
+                {
+                  "key": "jsonPath",
+                  "label": "取值路径(可选)",
+                  "type": "string",
+                  "placeholder": "data.temperature",
+                  "hint": "payload 为 JSON 时按路径取数值,如 data.temp;纯数字报文留空"
+                },
+                {
+                  "key": "username",
+                  "label": "用户名(可选)",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "label": "密码(可选)",
+                  "type": "string"
+                }
+              ]
+            },
+            {
+              "kind": "http",
+              "label": "HTTP/REST(轮询)",
+              "status": "real",
+              "configFields": [
+                {
+                  "key": "url",
+                  "label": "接口地址(URL)",
+                  "type": "string",
+                  "required": true,
+                  "placeholder": "http://192.168.1.30/api/sensor",
+                  "hint": "返回数值或 JSON 的 HTTP 接口"
+                },
+                {
+                  "key": "jsonPath",
+                  "label": "取值路径(可选)",
+                  "type": "string",
+                  "placeholder": "data.value",
+                  "hint": "响应为 JSON 时按路径取数值,如 data.value;纯文本留空"
+                },
+                {
+                  "key": "headersJSON",
+                  "label": "请求头(可选)",
+                  "type": "string",
+                  "placeholder": "{\"Authorization\":\"Bearer xxx\"}",
+                  "hint": "JSON 对象形式的 HTTP 头"
+                }
+              ]
+            },
+            {
+              "kind": "s7",
+              "label": "S7(西门子 PLC)",
+              "status": "planned",
+              "configFields": []
+            }
+          ],
+          "produced": 0,
+          "consumed": 13,
+          "dropped": 0,
+          "samplesStored": 0
+        }
+      }
+    },
+    {
+      "id": "film.run.0",
+      "name": "Real application line start opens a tagged collection window",
+      "status": "pass",
+      "detail": {
+        "status": 200,
+        "code": 0,
+        "message": "ok"
+      }
+    },
+    {
+      "id": "anneal.run.0",
+      "name": "Real application line start opens a tagged collection window",
+      "status": "pass",
+      "detail": {
+        "status": 200,
+        "code": 0,
+        "message": "ok"
+      }
+    },
+    {
+      "id": "film.stimulus.0.60",
+      "name": "Governed online parameter step through DCW",
+      "status": "pass",
+      "detail": {
+        "ok": true,
+        "message": "写入并回读一致:135,回读 135(标定后物理值 135)",
+        "raw": 135,
+        "readback": 135,
+        "ack": "readback-verified",
+        "anchorId": "anc-9d173ee4"
+      }
+    },
+    {
+      "id": "anneal.stimulus.0.60",
+      "name": "Governed online parameter step through DCW",
+      "status": "pass",
+      "detail": {
+        "ok": true,
+        "message": "写入并回读一致:745 → raw 745,回读 745(标定后物理值 745)",
+        "raw": 745,
+        "readback": 745,
+        "ack": "readback-verified",
+        "anchorId": "anc-6f8ffbca"
+      }
+    },
+    {
+      "id": "film.run.1",
+      "name": "Real application line start opens a tagged collection window",
+      "status": "pass",
+      "detail": {
+        "status": 200,
+        "code": 0,
+        "message": "ok"
+      }
+    },
+    {
+      "id": "anneal.run.1",
+      "name": "Real application line start opens a tagged collection window",
+      "status": "pass",
+      "detail": {
+        "status": 200,
+        "code": 0,
+        "message": "ok"
+      }
+    },
+    {
+      "id": "film.stimulus.1.60",
+      "name": "Governed online parameter step through DCW",
+      "status": "pass",
+      "detail": {
+        "ok": true,
+        "message": "写入并回读一致:105,回读 105(标定后物理值 105)",
+        "raw": 105,
+        "readback": 105,
+        "ack": "readback-verified",
+        "anchorId": "anc-031923ab"
+      }
+    },
+    {
+      "id": "anneal.stimulus.1.60",
+      "name": "Governed online parameter step through DCW",
+      "status": "pass",
+      "detail": {
+        "ok": true,
+        "message": "写入并回读一致:715 → raw 715,回读 715(标定后物理值 715)",
+        "raw": 715,
+        "readback": 715,
+        "ack": "readback-verified",
+        "anchorId": "anc-9c8d6964"
+      }
+    },
+    {
+      "id": "film.run.2",
+      "name": "Real application line start opens a tagged collection window",
+      "status": "pass",
+      "detail": {
+        "status": 200,
+        "code": 0,
+        "message": "ok"
+      }
+    },
+    {
+      "id": "anneal.run.2",
+      "name": "Real application line start opens a tagged collection window",
+      "status": "pass",
+      "detail": {
+        "status": 200,
+        "code": 0,
+        "message": "ok"
+      }
+    },
+    {
+      "id": "film.stimulus.2.60",
+      "name": "Governed online parameter step through DCW",
+      "status": "pass",
+      "detail": {
+        "ok": true,
+        "message": "写入并回读一致:135,回读 135(标定后物理值 135)",
+        "raw": 135,
+        "readback": 135,
+        "ack": "readback-verified",
+        "anchorId": "anc-f675648a"
+      }
+    },
+    {
+      "id": "anneal.stimulus.2.60",
+      "name": "Governed online parameter step through DCW",
+      "status": "pass",
+      "detail": {
+        "ok": true,
+        "message": "写入并回读一致:745 → raw 745,回读 745(标定后物理值 745)",
+        "raw": 745,
+        "readback": 745,
+        "ack": "readback-verified",
+        "anchorId": "anc-2a502aef"
+      }
+    },
+    {
+      "id": "film.run.3",
+      "name": "Real application line start opens a tagged collection window",
+      "status": "pass",
+      "detail": {
+        "status": 200,
+        "code": 0,
+        "message": "ok"
+      }
+    },
+    {
+      "id": "anneal.run.3",
+      "name": "Real application line start opens a tagged collection window",
+      "status": "pass",
+      "detail": {
+        "status": 200,
+        "code": 0,
+        "message": "ok"
+      }
+    },
+    {
+      "id": "film.stimulus.3.60",
+      "name": "Governed online parameter step through DCW",
+      "status": "pass",
+      "detail": {
+        "ok": true,
+        "message": "写入并回读一致:105,回读 105(标定后物理值 105)",
+        "raw": 105,
+        "readback": 105,
+        "ack": "readback-verified",
+        "anchorId": "anc-e6219343"
+      }
+    },
+    {
+      "id": "anneal.stimulus.3.60",
+      "name": "Governed online parameter step through DCW",
+      "status": "pass",
+      "detail": {
+        "ok": true,
+        "message": "写入并回读一致:715 → raw 715,回读 715(标定后物理值 715)",
+        "raw": 715,
+        "readback": 715,
+        "ack": "readback-verified",
+        "anchorId": "anc-8c695d74"
+      }
+    },
+    {
+      "id": "film.run.4",
+      "name": "Real application line start opens a tagged collection window",
+      "status": "pass",
+      "detail": {
+        "status": 200,
+        "code": 0,
+        "message": "ok"
+      }
+    },
+    {
+      "id": "anneal.run.4",
+      "name": "Real application line start opens a tagged collection window",
+      "status": "pass",
+      "detail": {
+        "status": 200,
+        "code": 0,
+        "message": "ok"
+      }
+    },
+    {
+      "id": "film.stimulus.4.60",
+      "name": "Governed online parameter step through DCW",
+      "status": "pass",
+      "detail": {
+        "ok": true,
+        "message": "写入并回读一致:135,回读 135(标定后物理值 135)",
+        "raw": 135,
+        "readback": 135,
+        "ack": "readback-verified",
+        "anchorId": "anc-96808cb9"
+      }
+    },
+    {
+      "id": "anneal.stimulus.4.60",
+      "name": "Governed online parameter step through DCW",
+      "status": "pass",
+      "detail": {
+        "ok": true,
+        "message": "写入并回读一致:745 → raw 745,回读 745(标定后物理值 745)",
+        "raw": 745,
+        "readback": 745,
+        "ack": "readback-verified",
+        "anchorId": "anc-72668cff"
+      }
+    },
+    {
+      "id": "film.run.5",
+      "name": "Real application line start opens a tagged collection window",
+      "status": "pass",
+      "detail": {
+        "status": 200,
+        "code": 0,
+        "message": "ok"
+      }
+    },
+    {
+      "id": "anneal.run.5",
+      "name": "Real application line start opens a tagged collection window",
+      "status": "pass",
+      "detail": {
+        "status": 200,
+        "code": 0,
+        "message": "ok"
+      }
+    },
+    {
+      "id": "film.stimulus.5.60",
+      "name": "Governed online parameter step through DCW",
+      "status": "pass",
+      "detail": {
+        "ok": true,
+        "message": "写入并回读一致:105,回读 105(标定后物理值 105)",
+        "raw": 105,
+        "readback": 105,
+        "ack": "readback-verified",
+        "anchorId": "anc-b6f41d60"
+      }
+    },
+    {
+      "id": "anneal.stimulus.5.60",
+      "name": "Governed online parameter step through DCW",
+      "status": "pass",
+      "detail": {
+        "ok": true,
+        "message": "写入并回读一致:715 → raw 715,回读 715(标定后物理值 715)",
+        "raw": 715,
+        "readback": 715,
+        "ack": "readback-verified",
+        "anchorId": "anc-a1eef804"
+      }
+    },
+    {
+      "id": "film.collection",
+      "name": "Simulator samples persisted by platform DAQ",
+      "status": "pass",
+      "detail": {
+        "points": 697,
+        "tail": [
+          {
+            "at": 1792866985000,
+            "avg": 37.9,
+            "min": 37.9,
+            "max": 37.9,
+            "cnt": 1
+          },
+          {
+            "at": 1792866986000,
+            "avg": 37.9,
+            "min": 37.9,
+            "max": 37.9,
+            "cnt": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "film.spec",
+      "name": "Scene-specific ProcessModelSpec accepted",
+      "status": "pass",
+      "detail": {
+        "status": 200,
+        "code": 0,
+        "message": "ok"
+      }
+    },
+    {
+      "id": "film.dataset",
+      "name": "Dataset built from platform-collected simulator data",
+      "status": "pass",
+      "detail": {
+        "datasetId": "ds-mvmqppac-0ehzrk",
+        "rowCount": 658,
+        "sha256": "8104bbbf6ff5093870f937fb12b6c16b59576b73f9d27a0cece8437adfbecb2f",
+        "path": "[local-path]",
+        "evidenceSource": "simulation",
+        "availabilityWatermark": null,
+        "recipeVersion": 1,
+        "runIds": [
+          "rr-50b17b58",
+          "rr-7cdee430",
+          "rr-08eb45f8",
+          "rr-65efe570",
+          "rr-751a5286",
+          "rr-afbb5fbb"
+        ],
+        "lineageVerified": 1,
+        "runLineage": {
+          "verified": [
+            "rr-50b17b58",
+            "rr-7cdee430",
+            "rr-08eb45f8",
+            "rr-65efe570",
+            "rr-751a5286",
+            "rr-afbb5fbb"
+          ],
+          "unknown": [],
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "film.eligibility",
+      "name": "Simulator data eligibility evaluated",
+      "status": "pass",
+      "detail": {
+        "predictionEligible": true,
+        "optimizationEligible": false,
+        "scope": "simulation",
+        "conditionId": "simulator",
+        "evidenceVersion": "ds:ds-mvmqppac-0ehzrk:8104bbbf6ff5",
+        "gaps": [
+          {
+            "code": "NO_OBSERVABLE_DELAYED_RESPONSE",
+            "message": "MV 变化后未见可观测的延迟响应(最大滞后相关 0.095 < 0.2)",
+            "detail": {
+              "mv": "mv",
+              "cv": "cv",
+              "lag": 2,
+              "corr": 0.09487391764285394
+            }
+          }
+        ],
+        "metrics": {
+          "sampleCount": 658,
+          "mvVariation.mv": 0.2,
+          "mvChanges.mv": 11,
+          "maxMvCollinearity": 0,
+          "maxDisturbanceConfounding": 0,
+          "bestDelayedResponse": 0.094874,
+          "bestDelayedResponseLag": 2,
+          "bestDelayedResponsePair": "mv->cv",
+          "actionEvidence": "simulation_commanded"
+        },
+        "createdAt": "2026-10-25T02:36:27.611+08:00"
+      }
+    },
+    {
+      "id": "film.train",
+      "name": "Training, model gates and optimization eligibility",
+      "status": "blocked",
+      "detail": {
+        "job": {
+          "id": "job-mvmqppbd-dzfbs7",
+          "datasetId": "ds-mvmqppac-0ehzrk",
+          "purpose": "mpc_surrogate",
+          "status": "failed",
+          "stage": "evaluate",
+          "progress": 80,
+          "budgetJson": "{\"maxExperiments\":12,\"timeoutMs\":1800000,\"stallMs\":600000,\"seed\":42,\"params\":{},\"changeNote\":\"\",\"parentExperimentId\":null,\"inlineCode\":null,\"byKind\":\"user\",\"sceneId\":null,\"sceneVersion\":null,\"objectiveId\":null,\"jobKind\":\"supervised\",\"physicsManifest\":null,\"physicsSpec\":null,\"twinSnapshot\":null,\"objectiveProfile\":null,\"providerId\":null,\"providerVersion\":null,\"providerHash\":null,\"providerGeneration\":null,\"modelName\":\"phymvmqa0bv-film\",\"modelDescription\":\"ProcessModelSpec phymvmqa0bv-film@1(linear_arx@1)\",\"trainerRef\":\"linear_arx@1\",\"processModelSpec\":{\"schemaVersion\":2,\"id\":\"phymvmqa0bv-film\",\"version\":1,\"lineId\":\"ln-10104780\",\"productId\":\"pd-a619595c\",\"recipeId\":\"rc-fb573457\",\"recipeVersion\":1,\"conditions\":[{\"id\":\"simulator\",\"match\":[{\"field\":\"recipeId\",\"op\":\"eq\",\"value\":\"rc-fb573457\"}]}],\"variables\":[{\"id\":\"mv\",\"nodeId\":\"dn-56ba979f\",\"role\":\"mv\",\"field\":\"value\",\"unit\":\"rpm\",\"scale\":1,\"offset\":0,\"delayMs\":0,\"min\":50,\"max\":200,\"maxStep\":30,\"controlNodeId\":\"dw-e424857a\"},{\"id\":\"cv\",\"nodeId\":\"dn-bb487073\",\"role\":\"cv\",\"field\":\"value\",\"unit\":\"μm\",\"scale\":1,\"offset\":0,\"min\":0,\"max\":400}],\"timing\":{\"beatMs\":1000,\"historySteps\":8,\"horizonSteps\":4,\"fixedDt\":true},\"trainer\":{\"ref\":\"linear_arx@1\",\"config\":{\"arOrder\":1,\"inputOrder\":1,\"ridgeLambda\":0.0001,\"standardize\":true}},\"datasetPolicy\":{\"split\":{\"valRatio\":0.4,\"testRatio\":0.4,\"seed\":42},\"cleaning\":{\"hampelK\":0,\"maxInterpMs\":1000}},\"gatePolicyRef\":\"process-model.gates@1\",\"modelInterface\":{\"id\":\"linear_state_space\",\"version\":1,\"inputSemantics\":\"setpoint\",\"mode\":\"state_space\"},\"effectiveDomain\":{\"mv\":{\"mv\":{\"min\":50,\"max\":200,\"maxStep\":30}},\"cv\":{\"cv\":{\"min\":0,\"max\":400}}},\"purpose\":\"mpc_surrogate\"}}",
+          "metricsJson": null,
+          "gatesJson": null,
+          "artifactsPath": null,
+          "modelId": null,
+          "error": "评测门未通过:G1 实测 0.2587 / 上限 0.1(linear_state_space@1); G2 改善 14.1% / 下限 20%(rollout=0.2790, 持值=0.3248)",
+          "retryCount": 0,
+          "agentId": "388cb91f-06ab-4da2-a4c2-03122587b039",
+          "channelId": "",
+          "taskId": "",
+          "createdAt": "2026-10-25T02:36:27.625+08:00",
+          "startedAt": null,
+          "endedAt": "2026-10-25T02:36:28.645+08:00",
+          "budget": {
+            "maxExperiments": 12,
+            "timeoutMs": 1800000,
+            "stallMs": 600000,
+            "seed": 42,
+            "params": {},
+            "changeNote": "",
+            "parentExperimentId": null,
+            "inlineCode": null,
+            "byKind": "user",
+            "sceneId": null,
+            "sceneVersion": null,
+            "objectiveId": null,
+            "jobKind": "supervised",
+            "physicsManifest": null,
+            "physicsSpec": null,
+            "twinSnapshot": null,
+            "objectiveProfile": null,
+            "providerId": null,
+            "providerVersion": null,
+            "providerHash": null,
+            "providerGeneration": null,
+            "modelName": "phymvmqa0bv-film",
+            "modelDescription": "ProcessModelSpec phymvmqa0bv-film@1(linear_arx@1)",
+            "trainerRef": "linear_arx@1",
+            "processModelSpec": {
+              "schemaVersion": 2,
+              "id": "phymvmqa0bv-film",
+              "version": 1,
+              "lineId": "ln-10104780",
+              "productId": "pd-a619595c",
+              "recipeId": "rc-fb573457",
+              "recipeVersion": 1,
+              "conditions": [
+                {
+                  "id": "simulator",
+                  "match": [
+                    {
+                      "field": "recipeId",
+                      "op": "eq",
+                      "value": "rc-fb573457"
+                    }
+                  ]
+                }
+              ],
+              "variables": [
+                {
+                  "id": "mv",
+                  "nodeId": "dn-56ba979f",
+                  "role": "mv",
+                  "field": "value",
+                  "unit": "rpm",
+                  "scale": 1,
+                  "offset": 0,
+                  "delayMs": 0,
+                  "min": 50,
+                  "max": 200,
+                  "maxStep": 30,
+                  "controlNodeId": "dw-e424857a"
+                },
+                {
+                  "id": "cv",
+                  "nodeId": "dn-bb487073",
+                  "role": "cv",
+                  "field": "value",
+                  "unit": "μm",
+                  "scale": 1,
+                  "offset": 0,
+                  "min": 0,
+                  "max": 400
+                }
+              ],
+              "timing": {
+                "beatMs": 1000,
+                "historySteps": 8,
+                "horizonSteps": 4,
+                "fixedDt": true
+              },
+              "trainer": {
+                "ref": "linear_arx@1",
+                "config": {
+                  "arOrder": 1,
+                  "inputOrder": 1,
+                  "ridgeLambda": 0.0001,
+                  "standardize": true
+                }
+              },
+              "datasetPolicy": {
+                "split": {
+                  "valRatio": 0.4,
+                  "testRatio": 0.4,
+                  "seed": 42
+                },
+                "cleaning": {
+                  "hampelK": 0,
+                  "maxInterpMs": 1000
+                }
+              },
+              "gatePolicyRef": "process-model.gates@1",
+              "modelInterface": {
+                "id": "linear_state_space",
+                "version": 1,
+                "inputSemantics": "setpoint",
+                "mode": "state_space"
+              },
+              "effectiveDomain": {
+                "mv": {
+                  "mv": {
+                    "min": 50,
+                    "max": 200,
+                    "maxStep": 30
+                  }
+                },
+                "cv": {
+                  "cv": {
+                    "min": 0,
+                    "max": 400
+                  }
+                }
+              },
+              "purpose": "mpc_surrogate"
+            }
+          }
+        },
+        "report": {
+          "predictionEligible": true,
+          "optimizationEligible": false,
+          "scope": "simulation",
+          "conditionId": "simulator",
+          "evidenceVersion": "ds:ds-mvmqppac-0ehzrk:8104bbbf6ff5",
+          "gaps": [
+            {
+              "code": "NO_OBSERVABLE_DELAYED_RESPONSE",
+              "message": "MV 变化后未见可观测的延迟响应(最大滞后相关 0.095 < 0.2)",
+              "detail": {
+                "mv": "mv",
+                "cv": "cv",
+                "lag": 2,
+                "corr": 0.09487391764285394
+              }
+            }
+          ],
+          "metrics": {
+            "sampleCount": 658,
+            "mvVariation.mv": 0.2,
+            "mvChanges.mv": 11,
+            "maxMvCollinearity": 0,
+            "maxDisturbanceConfounding": 0,
+            "bestDelayedResponse": 0.094874,
+            "bestDelayedResponseLag": 2,
+            "bestDelayedResponsePair": "mv->cv",
+            "actionEvidence": "simulation_commanded"
+          },
+          "createdAt": "2026-10-25T02:36:27.611+08:00"
+        }
+      }
+    },
+    {
+      "id": "anneal.collection",
+      "name": "Simulator samples persisted by platform DAQ",
+      "status": "pass",
+      "detail": {
+        "points": 696,
+        "tail": [
+          {
+            "at": 1792866985000,
+            "avg": 669.4,
+            "min": 669.4,
+            "max": 669.4,
+            "cnt": 1
+          },
+          {
+            "at": 1792866986000,
+            "avg": 669.4,
+            "min": 669.4,
+            "max": 669.4,
+            "cnt": 1
+          }
+        ]
+      }
+    },
+    {
+      "id": "anneal.spec",
+      "name": "Scene-specific ProcessModelSpec accepted",
+      "status": "pass",
+      "detail": {
+        "status": 200,
+        "code": 0,
+        "message": "ok"
+      }
+    },
+    {
+      "id": "anneal.dataset",
+      "name": "Dataset built from platform-collected simulator data",
+      "status": "pass",
+      "detail": {
+        "datasetId": "ds-mvmqpq8k-z8r0nt",
+        "rowCount": 655,
+        "sha256": "743d95edd8eaa6c9e4c2b2b47af67fa3adab921792585f36c4091600eef98f0f",
+        "path": "[local-path]",
+        "evidenceSource": "simulation",
+        "availabilityWatermark": null,
+        "recipeVersion": 1,
+        "runIds": [
+          "rr-c602c1a2",
+          "rr-3cb13d5e",
+          "rr-97c589b6",
+          "rr-d6384d1c",
+          "rr-77698bb2",
+          "rr-a27a226c"
+        ],
+        "lineageVerified": 1,
+        "runLineage": {
+          "verified": [
+            "rr-c602c1a2",
+            "rr-3cb13d5e",
+            "rr-97c589b6",
+            "rr-d6384d1c",
+            "rr-77698bb2",
+            "rr-a27a226c"
+          ],
+          "unknown": [],
+          "excluded": []
+        }
+      }
+    },
+    {
+      "id": "anneal.eligibility",
+      "name": "Simulator data eligibility evaluated",
+      "status": "pass",
+      "detail": {
+        "predictionEligible": true,
+        "optimizationEligible": false,
+        "scope": "simulation",
+        "conditionId": "simulator",
+        "evidenceVersion": "ds:ds-mvmqpq8k-z8r0nt:743d95edd8ea",
+        "gaps": [
+          {
+            "code": "NO_OBSERVABLE_DELAYED_RESPONSE",
+            "message": "MV 变化后未见可观测的延迟响应(最大滞后相关 0.053 < 0.2)",
+            "detail": {
+              "mv": "mv",
+              "cv": "cv",
+              "lag": 3,
+              "corr": 0.05259274436523622
+            }
+          }
+        ],
+        "metrics": {
+          "sampleCount": 655,
+          "mvVariation.mv": 0.12,
+          "mvChanges.mv": 12,
+          "maxMvCollinearity": 0,
+          "maxDisturbanceConfounding": 0,
+          "bestDelayedResponse": 0.052593,
+          "bestDelayedResponseLag": 3,
+          "bestDelayedResponsePair": "mv->cv",
+          "actionEvidence": "simulation_commanded"
+        },
+        "createdAt": "2026-10-25T02:36:28.845+08:00"
+      }
+    },
+    {
+      "id": "anneal.train",
+      "name": "Training, model gates and optimization eligibility",
+      "status": "blocked",
+      "detail": {
+        "job": {
+          "id": "job-mvmqpq9o-sukk4n",
+          "datasetId": "ds-mvmqpq8k-z8r0nt",
+          "purpose": "mpc_surrogate",
+          "status": "failed",
+          "stage": "evaluate",
+          "progress": 80,
+          "budgetJson": "{\"maxExperiments\":12,\"timeoutMs\":1800000,\"stallMs\":600000,\"seed\":42,\"params\":{},\"changeNote\":\"\",\"parentExperimentId\":null,\"inlineCode\":null,\"byKind\":\"user\",\"sceneId\":null,\"sceneVersion\":null,\"objectiveId\":null,\"jobKind\":\"supervised\",\"physicsManifest\":null,\"physicsSpec\":null,\"twinSnapshot\":null,\"objectiveProfile\":null,\"providerId\":null,\"providerVersion\":null,\"providerHash\":null,\"providerGeneration\":null,\"modelName\":\"phymvmqa0bv-anneal\",\"modelDescription\":\"ProcessModelSpec phymvmqa0bv-anneal@1(linear_arx@1)\",\"trainerRef\":\"linear_arx@1\",\"processModelSpec\":{\"schemaVersion\":2,\"id\":\"phymvmqa0bv-anneal\",\"version\":1,\"lineId\":\"ln-f0dc5ff4\",\"productId\":\"pd-214d17e1\",\"recipeId\":\"rc-65b50241\",\"recipeVersion\":1,\"conditions\":[{\"id\":\"simulator\",\"match\":[{\"field\":\"recipeId\",\"op\":\"eq\",\"value\":\"rc-65b50241\"}]}],\"variables\":[{\"id\":\"mv\",\"nodeId\":\"dn-34f21505\",\"role\":\"mv\",\"field\":\"value\",\"unit\":\"℃\",\"scale\":1,\"offset\":0,\"delayMs\":0,\"min\":600,\"max\":850,\"maxStep\":30,\"controlNodeId\":\"dw-601a201c\"},{\"id\":\"cv\",\"nodeId\":\"dn-6e008bf8\",\"role\":\"cv\",\"field\":\"value\",\"unit\":\"℃\",\"scale\":1,\"offset\":0,\"min\":20,\"max\":900}],\"timing\":{\"beatMs\":1000,\"historySteps\":8,\"horizonSteps\":4,\"fixedDt\":true},\"trainer\":{\"ref\":\"linear_arx@1\",\"config\":{\"arOrder\":1,\"inputOrder\":1,\"ridgeLambda\":0.0001,\"standardize\":true}},\"datasetPolicy\":{\"split\":{\"valRatio\":0.4,\"testRatio\":0.4,\"seed\":42},\"cleaning\":{\"hampelK\":0,\"maxInterpMs\":1000}},\"gatePolicyRef\":\"process-model.gates@1\",\"modelInterface\":{\"id\":\"linear_state_space\",\"version\":1,\"inputSemantics\":\"setpoint\",\"mode\":\"state_space\"},\"effectiveDomain\":{\"mv\":{\"mv\":{\"min\":600,\"max\":850,\"maxStep\":30}},\"cv\":{\"cv\":{\"min\":20,\"max\":900}}},\"purpose\":\"mpc_surrogate\"}}",
+          "metricsJson": null,
+          "gatesJson": null,
+          "artifactsPath": null,
+          "modelId": null,
+          "error": "评测门未通过:G1 实测 0.3632 / 上限 0.1(linear_state_space@1); G2 改善 4.8% / 下限 20%(rollout=0.3661, 持值=0.3847)",
+          "retryCount": 0,
+          "agentId": "388cb91f-06ab-4da2-a4c2-03122587b039",
+          "channelId": "",
+          "taskId": "",
+          "createdAt": "2026-10-25T02:36:28.860+08:00",
+          "startedAt": null,
+          "endedAt": "2026-10-25T02:36:29.645+08:00",
+          "budget": {
+            "maxExperiments": 12,
+            "timeoutMs": 1800000,
+            "stallMs": 600000,
+            "seed": 42,
+            "params": {},
+            "changeNote": "",
+            "parentExperimentId": null,
+            "inlineCode": null,
+            "byKind": "user",
+            "sceneId": null,
+            "sceneVersion": null,
+            "objectiveId": null,
+            "jobKind": "supervised",
+            "physicsManifest": null,
+            "physicsSpec": null,
+            "twinSnapshot": null,
+            "objectiveProfile": null,
+            "providerId": null,
+            "providerVersion": null,
+            "providerHash": null,
+            "providerGeneration": null,
+            "modelName": "phymvmqa0bv-anneal",
+            "modelDescription": "ProcessModelSpec phymvmqa0bv-anneal@1(linear_arx@1)",
+            "trainerRef": "linear_arx@1",
+            "processModelSpec": {
+              "schemaVersion": 2,
+              "id": "phymvmqa0bv-anneal",
+              "version": 1,
+              "lineId": "ln-f0dc5ff4",
+              "productId": "pd-214d17e1",
+              "recipeId": "rc-65b50241",
+              "recipeVersion": 1,
+              "conditions": [
+                {
+                  "id": "simulator",
+                  "match": [
+                    {
+                      "field": "recipeId",
+                      "op": "eq",
+                      "value": "rc-65b50241"
+                    }
+                  ]
+                }
+              ],
+              "variables": [
+                {
+                  "id": "mv",
+                  "nodeId": "dn-34f21505",
+                  "role": "mv",
+                  "field": "value",
+                  "unit": "℃",
+                  "scale": 1,
+                  "offset": 0,
+                  "delayMs": 0,
+                  "min": 600,
+                  "max": 850,
+                  "maxStep": 30,
+                  "controlNodeId": "dw-601a201c"
+                },
+                {
+                  "id": "cv",
+                  "nodeId": "dn-6e008bf8",
+                  "role": "cv",
+                  "field": "value",
+                  "unit": "℃",
+                  "scale": 1,
+                  "offset": 0,
+                  "min": 20,
+                  "max": 900
+                }
+              ],
+              "timing": {
+                "beatMs": 1000,
+                "historySteps": 8,
+                "horizonSteps": 4,
+                "fixedDt": true
+              },
+              "trainer": {
+                "ref": "linear_arx@1",
+                "config": {
+                  "arOrder": 1,
+                  "inputOrder": 1,
+                  "ridgeLambda": 0.0001,
+                  "standardize": true
+                }
+              },
+              "datasetPolicy": {
+                "split": {
+                  "valRatio": 0.4,
+                  "testRatio": 0.4,
+                  "seed": 42
+                },
+                "cleaning": {
+                  "hampelK": 0,
+                  "maxInterpMs": 1000
+                }
+              },
+              "gatePolicyRef": "process-model.gates@1",
+              "modelInterface": {
+                "id": "linear_state_space",
+                "version": 1,
+                "inputSemantics": "setpoint",
+                "mode": "state_space"
+              },
+              "effectiveDomain": {
+                "mv": {
+                  "mv": {
+                    "min": 600,
+                    "max": 850,
+                    "maxStep": 30
+                  }
+                },
+                "cv": {
+                  "cv": {
+                    "min": 20,
+                    "max": 900
+                  }
+                }
+              },
+              "purpose": "mpc_surrogate"
+            }
+          }
+        },
+        "report": {
+          "predictionEligible": true,
+          "optimizationEligible": false,
+          "scope": "simulation",
+          "conditionId": "simulator",
+          "evidenceVersion": "ds:ds-mvmqpq8k-z8r0nt:743d95edd8ea",
+          "gaps": [
+            {
+              "code": "NO_OBSERVABLE_DELAYED_RESPONSE",
+              "message": "MV 变化后未见可观测的延迟响应(最大滞后相关 0.053 < 0.2)",
+              "detail": {
+                "mv": "mv",
+                "cv": "cv",
+                "lag": 3,
+                "corr": 0.05259274436523622
+              }
+            }
+          ],
+          "metrics": {
+            "sampleCount": 655,
+            "mvVariation.mv": 0.12,
+            "mvChanges.mv": 12,
+            "maxMvCollinearity": 0,
+            "maxDisturbanceConfounding": 0,
+            "bestDelayedResponse": 0.052593,
+            "bestDelayedResponseLag": 3,
+            "bestDelayedResponsePair": "mv->cv",
+            "actionEvidence": "simulation_commanded"
+          },
+          "createdAt": "2026-10-25T02:36:28.845+08:00"
+        }
+      }
+    }
+  ]
+}

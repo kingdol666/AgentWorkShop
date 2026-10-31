@@ -1,0 +1,122 @@
+\section{Related Work}
+\label{sec:related}
+This section relates AgentWorkShop to plant-facing industrial agents and to
+production and automation abstractions for context, tool access, and
+operational constraints. Table~\ref{tab:nearest} compares integration and
+execution features described in selected industrial-agent architectures,
+including systems with adjacent but distinct process-control objectives. The
+comparison is focused rather than exhaustive; a feature marked as not
+specified was not described in the cited study and is not inferred to be
+absent.
+Studies were included in this comparison when they describe an industrial
+agent's production context, plant-facing operations, or an action, approval,
+or evidence pathway. This criterion defines the table's scope; it is not a
+comprehensive survey or a performance ranking.
+Feature entries were coded from the cited study's full text only when the
+feature was explicitly described; otherwise the cell is marked ``Not
+specified.'' Evaluation descriptions are transcribed at the level reported
+by each source, without normalizing sample units, success criteria, or
+metrics across studies.
+
+\subsection{Industrial Agents and Plant Integration}
+Industrial-agent systems, including large language model (LLM)-based systems,
+span end-to-end automation control, supervisory
+services, programmable logic controller (PLC) interfaces, manufacturing
+coordination, and operator-facing machine access. Xia et al. present an
+LLM agent framework for end-to-end industrial automation control, using
+structured prompts and event-driven context for production planning and
+operation \cite{xia2025control}. Huang et al. present a multimodal
+architecture whose stated focus is automated control generation for
+industrial cyber-physical systems \cite{huang2026made}. Biskupovic et al.
+study agent-based supervision for service-oriented industrial systems
+\cite{biskupovic2025supervision};
+Agents4PLC and InstructMPC address PLC code generation and human--LLM
+context-aware control, respectively
+\cite{liu2026agents4plc,wu2025instructmpc}. Manufacturing studies consider
+dynamic resource-capability exploration \cite{lim2025llmenabled}, multi-agent
+shop-floor coordination \cite{zhao2026shopfloor}, and digital-twin-supported
+fault handling \cite{gill2025llmdt}. Natural-language machine access
+\cite{hofmann2025nlc} and real-time LLM control of a robot-operated serial
+line \cite{waseem2026pretrained} extend this work to operator interfaces and
+robotic-line control. Together, these studies address different operational
+contexts, interfaces, and allocations of responsibility between agents,
+operators, and controllers.
+
+The closest architecture-level comparison is Xia et al., who connect cognitive,
+digital-twin, and physical-automation layers and organize twin information as
+state snapshots, event messages, and plan sequences; their case studies
+address robotic automation and process simulation
+\cite{xia2025architecture}. Other nearby designs expose factory-module
+operations through MCP with state-based tool filtering, plan constrained
+manufacturing steps, or compose semantic recipes from OPC UA skills
+\cite{koehle2026llmdriven,silva2025mcpmanufacturing,koehle2025semanticrecipes}.
+These studies describe important parts of plant-facing integration. The
+recent systems in Table~\ref{tab:nearest} also combine agent execution with
+approval, industrial data, or audit records. Graul et al. ground proposals in
+the Asset Administration Shell (AAS) and route approved actions through OPC UA
+Methods, with signed approvals and audit logging
+\cite{graul2026aas}. Schall separates advisory language-model agents from
+process and instrumentation diagram (P\&ID)-grounded verification and
+execution, and evaluates structural checks across five simulated process
+scenarios \cite{schall2026safe}; its context includes supervisory control and
+data acquisition (SCADA) and standard operating procedure (SOP) information.
+Lin and Chen build a governed sensor--MES--ERP digital thread for closed-loop
+monitoring and control, evaluated on real manufacturing
+records \cite{lin2026agentic}. These works address asset-specific approval,
+process validation, or closed-loop analytics. AgentWorkShop examines the
+complementary software-integration question of whether distinct registered
+task adapters and a direct-call surface can reach one named industrial
+operation through a common handler while retaining route-appropriate records.
+The evaluated contract covers production context, semantic I/O, configured
+drivers, command receipts, and later process observations. Its route-specific
+approval check also rechecks the line--product--recipe--run tuple immediately
+before software dispatch. This is a scoped implementation contract, not a
+claim that other systems lack equivalent mechanisms. The study tests the
+contract with two registered adapters, direct REST, and two simulator
+mappings; it does not establish general adapter interchangeability, reduced
+integration effort, or superiority over another platform.
+Table~\ref{tab:nearest} summarizes only
+features explicitly described in the cited studies.
+\begin{table*}[!t]
+\centering
+\caption{Feature-level comparison of selected plant-facing integration
+studies. Entries summarize reported design scope and evaluation, not performance.}
+\label{tab:nearest}
+\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{1.45cm}>{\raggedright\arraybackslash}p{3.85cm}>{\raggedright\arraybackslash}p{2.7cm}>{\raggedright\arraybackslash}X@{}}
+\toprule
+System & Context and operation checks & Device-facing route & Reported evaluation \\
+\midrule
+Xia et al. \cite{xia2025architecture} & Cognitive, twin, and physical layers; snapshots, events, plans & Digital-twin/physical automation & Robotic automation and process-simulation cases \\
+K{\"o}hle et al. \cite{koehle2026llmdriven} & Factory agents with injected live state; state-based tool filtering & MCP exposes OPC UA methods; MQTT coordination & Nine simulated production challenges \\
+Vieira da Silva et al. \cite{silva2025mcpmanufacturing} & Constrained LLM planning; operation checks not specified & MCP-exposed manufacturing functions & Laboratory multi-step process \\
+K{\"o}hle et al. \cite{koehle2025semanticrecipes} & AI-assisted recipes from OPC UA skills; checks not specified & OPC UA skills and virtual commissioning & Unity assembly-workstation proof of concept \\
+Graul et al. \cite{graul2026aas} & AAS-grounded context; signed human approval & PLC-validated OPC UA Methods; immutable audit log & Two laboratory PoCs; single scripted runs \\
+Schall \cite{schall2026safe} & P\&ID, SCADA, time-series, SOP; topology and rule checks & Advisory proposal with gated execution & Five simulated scenarios; 43 proposals and 50 LLM runs \\
+Lin and Chen \cite{lin2026agentic} & Sensor--MES--ERP thread; SOP-, risk-, capability-aware gating & Edge monitoring and closed-loop actions & 25,275 real records; operational metrics \\
+\midrule
+This work & OMP and Pi registered task adapters plus direct calls; approval-bound context rechecked before recipe dispatch & Shared dispatcher; semantic nodes resolve to configured DAQ/DCW drivers & Three tested entry paths across two simulator mappings; deterministic Pi fixture; no attainment claim \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+The operation checks complement safety-aware decision support
+\cite{jiang2026agentic} but do not replace independent process protection.
+
+\subsection{Production Context, Agent Interfaces, and Automation}
+Industrial integration also depends on abstractions that are not specific to
+agent architectures. The Model Context Protocol (MCP) specifies interoperable
+tool discovery and call mechanisms \cite{mcp2024}; the operation-level scope,
+policy, grant, and binding checks discussed here are AgentWorkShop's own
+dispatcher rules, distinct from MCP transport authorization. In parallel,
+ISA-88 and ISA-95 describe recipes and production operations
+\cite{isa88_2010,isa95_2025}. Run-to-run methods connect process observations
+to successive production runs \cite{moyne2000r2r}. At the agent level,
+AgentSpec and CaMeL address tool behavior and capability-based information
+flow \cite{wang2025agentspec,debenedetti2025camel}. Together, these works
+provide complementary abstractions for production context, tool interaction,
+and information flow. AgentWorkShop composes such abstractions with its task
+runtime, operation checks, semantic I/O, and route-specific records; this
+paper evaluates selected paths through that composition rather than proposing
+a replacement for the underlying standards.

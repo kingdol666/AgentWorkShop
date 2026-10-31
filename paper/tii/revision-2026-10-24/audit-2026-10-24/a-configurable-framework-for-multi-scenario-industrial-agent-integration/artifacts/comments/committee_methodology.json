@@ -1,0 +1,69 @@
+[
+  {
+    "title": "Cross-archive evidence does not establish a current-version multi-scene end-to-end trial",
+    "quote": "The archives are complementary implementation evidence, not one joint current-version trial.",
+    "explanation": "The manuscript correctly identifies this boundary. Q1–Q4 use historical direct-node traces, Q5 is a software-assertion campaign, and Q6 is one accelerated recipe trajectory with scripted approvals. Together they support separately exercised configuration and route behavior across the stated archives, but they do not establish that the current agent harness, profile/capability selection, and process outcome operated together across multiple scenes. Keep the claims at the archive/route level; a stronger current-version end-to-end claim requires a matched new experiment.",
+    "comment_type": "methodology",
+    "severity": "moderate",
+    "confidence": "high",
+    "source_kind": "llm",
+    "source_section": "experimental evaluation",
+    "source_location": "sections/evaluation.tex:10-13; sections/discussion.tex:3-8",
+    "related_sections": [
+      "experimental evaluation",
+      "engineering interpretation",
+      "conclusion"
+    ],
+    "root_cause_key": "cross_archive_evidence_not_current_multiscene_end_to_end_validation",
+    "review_lane": "committee_methodology",
+    "gate_blocker": false,
+    "quote_verified": true,
+    "evidence_anchor": [
+      {
+        "type": "section",
+        "text": "Q1–Q4 historical direct-node traces; Q5 software assertions; Q6 one cadence-overridden recipe trajectory"
+      }
+    ],
+    "claim_strength": "observed",
+    "missing_evidence": [
+      "A current-version run that combines agent harness execution, profile/capability route selection, and process outcomes across multiple configured scenes"
+    ],
+    "allowed_wording": "The separate archives provide evidence of configuration and route behavior in the tested simulator settings.",
+    "forbidden_wording": [
+      "The current framework was validated end-to-end across multiple scenes."
+    ]
+  },
+  {
+    "title": "Exact historical R1 runtime worktree is unavailable for rerun",
+    "quote": "A source commit recorded in a run does not prove that every uncommitted harness file matched that commit.",
+    "explanation": "The reproducibility notes report that R1 records commit e692df1 and an 11-file harness fingerprint, while the recorded commit's pipeline fingerprints nine files; the exact runtime worktree is not archived. The raw outputs and scenario records remain available and hash-identified, so the reported numbers are auditable, but an independent reader cannot fully rerun the exact Q1–Q4 harness. Preserve the distinction between auditability of archived outcomes and exact replayability; only describe exact reruns as reproducible if the historical worktree can be recovered.",
+    "comment_type": "methodology",
+    "severity": "moderate",
+    "confidence": "high",
+    "source_kind": "llm",
+    "source_section": "reproducibility notes",
+    "source_location": "REPRODUCIBILITY.md:29-40",
+    "related_sections": [
+      "experimental evaluation",
+      "data availability"
+    ],
+    "root_cause_key": "historical_r1_runtime_worktree_not_archived",
+    "review_lane": "committee_methodology",
+    "gate_blocker": false,
+    "quote_verified": true,
+    "evidence_anchor": [
+      {
+        "type": "analysis_artifact",
+        "text": "R1 commit e692df1; recorded harness fingerprint 9f2756dce4a4cbb3 covers 11 files, while the committed pipeline fingerprints nine files"
+      }
+    ],
+    "claim_strength": "observed",
+    "missing_evidence": [
+      "Exact R1 harness worktree or a deterministic replay matching the archived 11-file fingerprint"
+    ],
+    "allowed_wording": "The archived Q1–Q4 outputs and raw records can be audited against the supplied evidence package.",
+    "forbidden_wording": [
+      "The exact historical Q1–Q4 execution can be rerun from the recorded commit."
+    ]
+  }
+]

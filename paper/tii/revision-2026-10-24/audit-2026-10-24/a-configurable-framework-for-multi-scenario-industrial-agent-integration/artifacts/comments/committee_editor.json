@@ -1,0 +1,40 @@
+[
+  {
+    "title": "Abstract evaluation evidence is presented as an unprioritized inventory",
+    "quote": "Evaluation draws on separate archives: four simulator scenes met their terminal checks; acquisition covered five protocol families, while writes used four protocol mappings; nine deployment-suite runs passed 782 assertions.",
+    "explanation": "This sentence places scenario completion, protocol coverage, and deployment-suite reliability side by side without identifying which result is the primary evidence for the paper's multi-scenario integration claim. The following sentence adds live-engine tasks and a controller exercise but gives no outcome beyond confirming that proposal and command paths were exercised. The abstract is complete and quantitatively grounded, but its result hierarchy is difficult to see on a first read. Foreground the four-scene outcome and compress the supporting counts; retain the narrower conclusion and limitations.",
+    "comment_type": "presentation",
+    "severity": "moderate",
+    "confidence": "high",
+    "source_kind": "llm",
+    "source_section": "abstract",
+    "source_location": "main.tex:80-84",
+    "related_sections": [
+      "abstract",
+      "introduction"
+    ],
+    "root_cause_key": "abstract-results-not-prioritized-around-primary-integration-outcome",
+    "review_lane": "committee_editor",
+    "gate_blocker": false,
+    "quote_verified": true
+  },
+  {
+    "title": "Opening motivation does not state the prior-art capability gap",
+    "quote": "A reusable framework must make these components configurable while keeping collaboration and operational workflows composable.",
+    "explanation": "The opening establishes that industrial scenes differ and states a design requirement, but the first three introduction paragraphs do not say which capability existing industrial-agent or integration approaches lack. As a result, the reader can identify the engineering problem and research question but cannot yet judge why the proposed framework is distinct. Add a concise, citation-backed contrast before or alongside the research question; avoid making an unsupported novelty claim.",
+    "comment_type": "missing_information",
+    "severity": "moderate",
+    "confidence": "medium",
+    "source_kind": "llm",
+    "source_section": "introduction",
+    "source_location": "sections/introduction.tex:5-8",
+    "related_sections": [
+      "introduction",
+      "related work"
+    ],
+    "root_cause_key": "intro-opening-omits-specific-prior-art-gap",
+    "review_lane": "committee_editor",
+    "gate_blocker": false,
+    "quote_verified": true
+  }
+]

@@ -1,0 +1,22 @@
+{
+  "code": 0,
+  "message": "ok",
+  "data": {
+    "status": "ok",
+    "app": "AgentWorkShop",
+    "version": "0.8.3",
+    "mode": "dev",
+    "uptimeMs": 52404,
+    "timestamp": "2026-10-26T00:47:00.292+08:00",
+    "workshop": "ready",
+    "wiredAgents": 0,
+    "activeChannels": 0,
+    "memory": {
+      "heapUsedMb": 30,
+      "heapLimitMb": 4288,
+      "rssMb": 104,
+      "externalMb": 11,
+      "heapRatio": 0.0069
+    }
+  }
+}

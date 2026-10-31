@@ -1,0 +1,8 @@
+{
+  "appMode": "dev",
+  "daqIsolation": "Dedicated local MQTT 59995 and Timescale 59996 containers; object store disk fallback",
+  "appVersion": "0.8.3",
+  "adminCredentialPersisted": false,
+  "runDate": "2026-10-26",
+  "onboardingExitCode": 0
+}

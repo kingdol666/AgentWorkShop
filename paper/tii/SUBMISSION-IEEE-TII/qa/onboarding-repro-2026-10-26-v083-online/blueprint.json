@@ -1,0 +1,59 @@
+{
+  "simPort": 4046,
+  "devices": [
+    {
+      "id": "coating-c01",
+      "name": "流延膜精密产线 C01 主机",
+      "protocol": "modbus-tcp",
+      "port": 37550,
+      "unitId": 1,
+      "signals": [
+        { "id": "line-speed-sp", "name": "线速SP", "unit": "m/min", "min": 20, "max": 60, "decimals": 1, "kind": "sp", "initial": 35 },
+        { "id": "melt-temp-sp", "name": "熔体温度SP", "unit": "℃", "min": 220, "max": 280, "decimals": 1, "kind": "sp", "initial": 250 },
+        { "id": "die-pressure-sp", "name": "模头压力SP", "unit": "bar", "min": 40, "max": 100, "decimals": 1, "kind": "sp", "initial": 65 },
+        { "id": "chill-temp-sp", "name": "冷却辊温度SP", "unit": "℃", "min": 15, "max": 45, "decimals": 1, "kind": "sp", "initial": 28 },
+        {
+          "id": "line-speed-pv", "name": "线速PV", "unit": "m/min", "min": 20, "max": 60, "decimals": 1, "kind": "pv",
+          "dynamics": { "base": 35, "tau": 4, "noise": 0.15, "follows": [{ "sp": "线速SP", "gain": 1, "at": 35 }] }
+        },
+        {
+          "id": "melt-temp-pv", "name": "熔体温度PV", "unit": "℃", "min": 220, "max": 280, "decimals": 1, "kind": "pv",
+          "dynamics": { "base": 250, "tau": 12, "noise": 0.25, "follows": [{ "sp": "熔体温度SP", "gain": 1, "at": 250 }] }
+        },
+        {
+          "id": "die-pressure-pv", "name": "模头压力PV", "unit": "bar", "min": 40, "max": 100, "decimals": 1, "kind": "pv",
+          "dynamics": { "base": 65, "tau": 8, "noise": 0.4, "follows": [{ "sp": "模头压力SP", "gain": 1, "at": 65 }] }
+        },
+        {
+          "id": "chill-temp-pv", "name": "冷却辊温度PV", "unit": "℃", "min": 15, "max": 45, "decimals": 1, "kind": "pv",
+          "dynamics": { "base": 28, "tau": 10, "noise": 0.2, "follows": [{ "sp": "冷却辊温度SP", "gain": 1, "at": 28 }] }
+        },
+        {
+          "id": "thickness-pv", "name": "膜厚PV", "unit": "um", "min": 30, "max": 40, "decimals": 3, "kind": "pv",
+          "dynamics": {
+            "base": 35.2, "tau": 12, "noise": 0.06,
+            "follows": [
+              { "sp": "线速SP", "gain": -0.06, "at": 35 },
+              { "sp": "熔体温度SP", "gain": 0.04, "at": 250 },
+              { "sp": "模头压力SP", "gain": 0.08, "at": 65 }
+            ]
+          }
+        },
+        {
+          "id": "thickness-uniformity-pv", "name": "膜厚横向均匀性PV", "unit": "um", "min": 0.5, "max": 5, "decimals": 3, "kind": "pv",
+          "dynamics": {
+            "base": 2.0, "tau": 10, "noise": 0.05,
+            "follows": [
+              { "sp": "熔体温度SP", "gain": 0.02, "at": 250 },
+              { "sp": "模头压力SP", "gain": -0.03, "at": 65 }
+            ]
+          }
+        },
+        {
+          "id": "tension-pv", "name": "膜张力PV", "unit": "N", "min": 100, "max": 200, "decimals": 1, "kind": "pv",
+          "dynamics": { "base": 145, "tau": 6, "noise": 0.8, "follows": [{ "sp": "线速SP", "gain": 1.2, "at": 35 }] }
+        }
+      ]
+    }
+  ]
+}

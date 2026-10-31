@@ -1,0 +1,165 @@
+{
+  "at": "2026-10-29T11:41:38.499Z",
+  "port": 39366,
+  "home": "D:/tmp/aw-security-b2b5-20261030",
+  "total": 26,
+  "passed": 26,
+  "results": [
+    {
+      "id": "BOOT",
+      "name": "隔离实例启动",
+      "pass": true,
+      "detail": "port=39366"
+    },
+    {
+      "id": "S0.1",
+      "name": "首注册 = admin",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "S0.2",
+      "name": "editor 登录",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "S0.3",
+      "name": "user 登录",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "M1.1",
+      "name": "editor GET settings:凭据键一律掩码/空(无明文)",
+      "pass": true,
+      "detail": "daq.mqtt.password= daq.objectstore.secretKey=*** daq.objectstore.accessKey=***"
+    },
+    {
+      "id": "M1.2",
+      "name": "admin GET settings 同样掩码(明文只留服务端)",
+      "pass": true,
+      "detail": "daq.mqtt.password= daq.objectstore.secretKey=*** daq.objectstore.accessKey=***"
+    },
+    {
+      "id": "M1.3",
+      "name": "回传 *** 不覆盖真实凭据(不产生变更)",
+      "pass": true,
+      "detail": "changed=[]"
+    },
+    {
+      "id": "M2.0",
+      "name": "建产线(授权断言前置)",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "M2.1",
+      "name": "零授权用户写分析报告 → 403",
+      "pass": true,
+      "detail": "status=403 code=LINE_FORBIDDEN"
+    },
+    {
+      "id": "M2.2",
+      "name": "零授权用户写产线日志 → 403",
+      "pass": true,
+      "detail": "status=403"
+    },
+    {
+      "id": "M2.3",
+      "name": "非 admin 写全局台账(空 lineId) → 403",
+      "pass": true,
+      "detail": "status=403"
+    },
+    {
+      "id": "M2.4",
+      "name": "admin 写全局台账 → 200",
+      "pass": true,
+      "detail": "status=200 code=0"
+    },
+    {
+      "id": "M2.5",
+      "name": "admin 写该线分析报告 → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "M3.0",
+      "name": "admin 建自定义模板",
+      "pass": true,
+      "detail": "status=200 {\"status\":200,\"code\":0,\"message\":\"ok\",\"data\":{\"template\":{\"key\":\"ct-6e35c044\",\"name\":\"B25 模板 A-mvth2vpb\",\"code\":\"B25A\",\"ch\":\"测试通道\",\"unit\":\"%\",\"base\":10,\"amp\":1,"
+    },
+    {
+      "id": "M3.1",
+      "name": "他人改模板 → 403",
+      "pass": true,
+      "detail": "status=403 code=FORBIDDEN"
+    },
+    {
+      "id": "M3.2",
+      "name": "他人删模板 → 403",
+      "pass": true,
+      "detail": "status=403"
+    },
+    {
+      "id": "M3.3",
+      "name": "属主改模板 → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "M4.1",
+      "name": "user 角色操控设备孪生 → 403",
+      "pass": true,
+      "detail": "status=403 code=FORBIDDEN"
+    },
+    {
+      "id": "M4.2",
+      "name": "user 角色删设备孪生 → 403",
+      "pass": true,
+      "detail": "status=403"
+    },
+    {
+      "id": "M4.3",
+      "name": "editor 操控设备孪生 → 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "M5.1",
+      "name": "7 位密码建号 → 400/422 拒绝",
+      "pass": true,
+      "detail": "status=400 code=VALIDATION_ERROR"
+    },
+    {
+      "id": "M5.2",
+      "name": "连错 5 次后正确密码仍可登录(账号不被第三方锁死)",
+      "pass": true,
+      "detail": "status=200 code=0"
+    },
+    {
+      "id": "M6.1",
+      "name": "默认 AgentCard 公开(向后兼容)",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "M6.2",
+      "name": "关闭公开面设置生效",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "M6.3",
+      "name": "关闭后未认证 → 401",
+      "pass": true,
+      "detail": "status=401"
+    },
+    {
+      "id": "M6.4",
+      "name": "关闭后带有效 token → 200",
+      "pass": true,
+      "detail": "status=200"
+    }
+  ]
+}

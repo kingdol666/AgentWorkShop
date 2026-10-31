@@ -1,0 +1,142 @@
+\section{Experimental Evaluation}
+\label{sec:eval}
+The evaluation examines two bounded simulator paths. R13 is an exploratory
+application-level protocol and data-path run; it supports only the recorded
+protocol, readback, lineage, and model-gate outcomes because its exact runtime
+source was not pinned. R20 is the primary current-version result: six
+sequential tasks through one registered harness across two configured scenes,
+with a run-specific source reconstruction kit. It supports the tested
+task-to-device integration path, not configuration-reuse benefit or process
+attainment. All process experiments use repository simulators. Older
+scripted and regression records remain in the companion evidence package and
+are not pooled with these results.
+
+\subsection{Evidence Units and Experimental Procedure}
+\label{sec:testbed}
+\label{sec:procedure}
+R13 uses two configured protocol/data paths in cast-film and annealing
+simulators. R20 uses the registered \texttt{omp} harness in those scenes, with
+three sequential task executions per scene on one simulator instance per
+scene. The companion reproducibility package records the older protocol,
+controller, deployment, direct-node, and scripted-recipe cases separately;
+they are not part of the current primary result.
+
+\subsection{Current-Version Two-Scene Simulator Integration}
+\label{sec:crossscene}
+An exploratory v0.8.0 application run used the cast-film and annealing
+simulator presets. Five protocol families---OPC UA, MQTT, Modbus TCP, Modbus
+RTU over TCP, and HTTP/REST---passed read probes; bounded writes returned
+matching readbacks. Six 120-s runs per scene at 1-s sampling produced
+lineage-verified datasets.
+
+For each dataset row $i$, let $m_i$ be the last MV value in its history window
+and $c_i$ the first CV value in its target horizon. The gate computes
+\begin{equation}
+r_{\Delta}(\ell)=\operatorname{corr}(\Delta m_i,\Delta c_{i+\ell}),
+\qquad \ell\in\{1,2,3\},
+\label{eq:r13corr}
+\end{equation}
+using all rows in the dataset for which the shifted pair is defined, and
+selects the lag with greatest $|r_{\Delta}(\ell)|$. It then requires
+$|r_{\Delta}|\geq0.2$, one-step test NRMSE $\leq0.10$, and at least 20\%
+four-step rollout NRMSE reduction over persistence. Both
+post-pilot candidates failed the gates; neither produced an accepted model,
+profile, recommendation, or dispatch. The overlapping 1-s windows are
+serially dependent. This run therefore supports protocol/data-path execution
+and rejection behavior only, not model quality or process performance.
+Signal-pair selection followed an exploratory pilot, and the run-time source
+diff was not preserved; the R13 results are included as secondary diagnostic
+evidence, with detailed records in the reproducibility supplement.
+
+Table~\ref{tab:r13gates} reports the selected signal pair, the full-dataset
+first-difference correlation used for eligibility screening, and two model
+metrics computed on held-out test rows. Both scenes failed all three criteria;
+these values document the recorded rejection path and are not confirmatory
+model-performance estimates. The archived run does not identify its exact
+runtime source, so the NRMSE normalization implementation cannot be verified
+against that run; the companion provenance notes describe the available
+candidate evaluator and this limit.
+\begin{table}[!t]
+\centering
+\caption{R13 exploratory model-gate diagnostics. The correlation column is
+the full-dataset eligibility screen; NRMSE and rollout reduction use held-out
+test rows. Both candidates fail all three criteria.}
+\label{tab:r13gates}
+\footnotesize
+\setlength{\tabcolsep}{2.2pt}
+\begin{tabularx}{\columnwidth}{@{}lXccc@{}}
+\toprule
+Scene & MV $\to$ CV & $|r_{\Delta}|$ (lag) & 1-step NRMSE & 4-step reduction \\
+\midrule
+Film & \shortstack[l]{\texttt{ScrewSpeedSP}\\$\to$ \texttt{thick}} & 0.0949 (2) & 0.2587 & 14.11\% \\
+Anneal & \shortstack[l]{Z3 setpoint\\$\to$ \texttt{StripTemp}} & 0.0526 (3) & 0.3632 & 4.83\% \\
+\bottomrule
+\end{tabularx}
+\end{table}
+\subsection{Registered-Harness Process Path}
+\label{sec:harness-e2e}
+R20 ran the isolated v0.8.0 working-tree application with the registered
+\texttt{omp} adapter and GLM-5.3-Flash in cast-film and annealing simulator
+scenes. The app and simulator diffs, base revisions, dependency lockfiles, and
+runtime prompt assets are included with the run record; package manifests are
+recovered from the recorded base revisions. The external model service does
+not provide a deterministic replay of its selection. Each execution created
+a separate line, product, recipe, run, channel, agent, and task context; three
+sequential executions used one simulator
+instance per scene, so they are not independent replicates. Cast film used
+OPC UA for screw-speed control and MQTT for the thickness probe; annealing
+used Modbus TCP for both the zone-3 setpoint and strip-temperature probe.
+The cast-film candidate set was $\{125,130,135\}$~rpm and the annealing
+candidate set was $\{735,740,745\}\,^{\circ}$C. Given a live control read,
+process measurement, and target band, GLM-5.3-Flash proposed one bounded
+\texttt{recipe\_trial}. A synthetic administrator approved each proposal;
+the route log recorded one trial and a 1/1 verified device receipt, and all
+six tasks reached the completed state. Following task completion and its
+evidence queries, a 20-s wait was initiated; one driver probe per task was
+then ingested through the isolated SQLite time-series fallback and returned
+under the active run tag. The integration checks cover per-execution context, an approved bounded
+proposal, route-specific receipt and readback, task completion, and an
+active-run-tagged sample; all six records contain this software path. The
+runner recorded 76 passing checks and no failures. The task history contains
+mirrored event projections, so the per-task operation count is taken from the
+route-specific recipe and ACK records.
+
+Table~\ref{tab:q8} reports the pre-task measurement, selected setpoint, and
+single post-trial sample. All six post-trial values remained outside the
+declared target bands. This experiment verifies the bounded
+harness-to-simulator execution and evidence path; it does not show process
+attainment, convergence, or quality improvement. The single sample is not a
+response trajectory, and the SQLite fallback does not test the normal online
+DAQ backend. The two-scene run also does not isolate profile/binding changes
+or establish cross-harness portability.
+
+\begin{table}[!t]
+\centering
+\caption{Model-selected settings and simulator measurements. Each row
+reports the pre-task value, configured target band, manipulated variable's
+initial-to-selected setting, and one run-tagged sample taken after a 20-s wait
+initiated following task completion and evidence queries. All six samples are
+outside target; executions are sequential within each scene.}
+\label{tab:q8}
+\footnotesize
+\setlength{\tabcolsep}{2.5pt}
+\begin{tabularx}{\columnwidth}{@{}lXcX@{}}
+\toprule
+Case & Pre-task CV / target & Setting: start$\to$trial & CV after wait \\
+\midrule
+Film-1 & $55.82/48$--$52~\mu$m & $120\to125$~rpm & $45.69~\mu$m \\
+Film-2 & $45.69/48$--$52~\mu$m & $120\to130$~rpm & $46.69~\mu$m \\
+Film-3 & $46.69/48$--$52~\mu$m & $120\to125$~rpm & $45.69~\mu$m \\
+Anneal-1 & $675.40/700$--$760~^{\circ}$C & $730\to745~^{\circ}$C & $679.60~^{\circ}$C \\
+Anneal-2 & $678.30/700$--$760~^{\circ}$C & $730\to745~^{\circ}$C & $677.70~^{\circ}$C \\
+Anneal-3 & $676.90/700$--$760~^{\circ}$C & $730\to745~^{\circ}$C & $678.10~^{\circ}$C \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Earlier protocol and admission-ablation suites, deterministic-controller
+runs, deployment regressions, direct-node missions, and a scripted recipe
+case are retained in the companion reproducibility package for auditability.
+They use older versions or interfaces and are not pooled with R13 or R20, used
+as matched strategy comparisons, or relied on for the current integration
+claims.

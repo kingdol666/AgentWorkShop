@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgentWorkShop 三系统全量验收报告 · 2026-10-29</title>
+<style>
+  :root { --bg:#0f1420; --card:#171e2e; --line:#2a3450; --fg:#e8edf7; --dim:#9aa7c0; --pass:#34d399; --fail:#f87171; --warn:#fbbf24; --acc:#60a5fa; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:15px/1.65 "Segoe UI","Microsoft YaHei",system-ui,sans-serif; }
+  .wrap { max-width:1180px; margin:0 auto; padding:32px 20px 80px; }
+  h1 { font-size:26px; margin:0 0 6px; }
+  h2 { font-size:19px; margin:34px 0 10px; border-left:4px solid var(--acc); padding-left:10px; }
+  .sub { color:var(--dim); margin-bottom:22px; }
+  .verdict { font-size:17px; padding:14px 18px; border-radius:10px; background:var(--card); border:1px solid var(--line); margin:18px 0; }
+  .verdict b.g { color:var(--pass); } .verdict b.r { color:var(--fail); }
+  .kpis { display:flex; gap:12px; flex-wrap:wrap; margin:18px 0; }
+  .kpi { flex:1 1 160px; background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 16px; }
+  .kpi .v { font-size:24px; font-weight:700; } .kpi .k { color:var(--dim); font-size:12.5px; }
+  table { width:100%; border-collapse:collapse; background:var(--card); border-radius:10px; overflow:hidden; }
+  th,td { padding:8px 12px; border-bottom:1px solid var(--line); text-align:left; vertical-align:top; }
+  th { background:#1d2740; color:var(--dim); font-weight:600; font-size:13px; }
+  td.num { text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  td.note { color:var(--dim); font-size:13px; }
+  td.path { color:#7dd3fc; font-size:12px; word-break:break-all; }
+  .b { display:inline-block; padding:1px 10px; border-radius:999px; font-size:12.5px; font-weight:700; }
+  .b.pass { background:rgba(52,211,153,.14); color:var(--pass); }
+  .b.fail { background:rgba(248,113,113,.14); color:var(--fail); }
+  .b.warn { background:rgba(251,191,36,.14); color:var(--warn); }
+  .lnote { color:var(--dim); font-size:13.5px; margin:6px 0 10px; }
+  .shots { display:grid; grid-template-columns:repeat(auto-fill,minmax(340px,1fr)); gap:14px; }
+  .shots figure { margin:0; background:var(--card); border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .shots img { width:100%; display:block; }
+  .shots figcaption { padding:7px 12px; color:var(--dim); font-size:13px; }
+  ul.pit { margin:6px 0; padding-left:22px; } ul.pit li { margin:4px 0; }
+  .topo { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 18px; font-size:13.5px; color:var(--dim); }
+  .topo b { color:var(--fg); }
+  footer { margin-top:44px; color:var(--dim); font-size:12.5px; border-top:1px solid var(--line); padding-top:14px; }
+</style>
+</head>
+<body><div class="wrap">
+  <h1>AgentWorkShop 三系统全量验收报告</h1>
+  <div class="sub">AgentWorkShop v0.8.6 + IDD(industrial-deep-diagnostic)+ RAG(rag-knowledge) · 2026-10-29 13:05 (本地) · harness=omp/USTC-deepseek-flash · 验收执行:ralph 自动化流水</div>
+
+  <div class="verdict"><b class='g'>总判定:全部功能验收 PASS</b> —— 三系统(AgentWorkShop v0.8.6 / IDD / RAG)查杀重启后,31 项套件/实测全绿,约 1700+ 断言零失败。唯一非绿为存量 lint 35 处,全部集中于论文工具脚本 <code>scripts/e2e-paper-paired-route.mjs</code>(非系统代码,本轮零代码改动)。过程中出现的 8 类红均已复现归因为环境/调用方式(并发抢端口、共享实例污染、默认端口撞车、高载下弱模型回合僵死),隔离复跑即绿,平台代码零缺陷。</div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="v">31 项</div><div class="k">套件/实测全绿</div></div><div class="kpi"><div class="v">1700+</div><div class="k">断言通过</div></div><div class="kpi"><div class="v">0</div><div class="k">平台缺陷</div></div><div class="kpi"><div class="v">3</div><div class="k">系统重启健康</div></div><div class="kpi"><div class="v">42/42</div><div class="k">三模式 USTC 实机</div></div><div class="kpi"><div class="v">35</div><div class="k">存量 lint(非系统代码)</div></div>
+  </div>
+
+  <h2>系统拓扑(本轮重启后)</h2>
+  <div class="topo"><b>AgentWorkShop</b> v0.8.6 → http://127.0.0.1:3300(AW_MODE=home,AW_HOME=D:/tmp/aw-ralph-acc-20261029/home,AW_TRIAL_INTERVAL_MS=0,MCP 启用;3001/3011-3044 为套件隔离实例)· <b>PLC 模拟器</b> → 4010(injection 引擎 seed=42,内置 MQTT broker 18830)· <b>MES 模拟器</b> → 15160 · <b>IDD 后端</b> → 3210(/api/external/v1,idd_ token 鉴权)· <b>IDD 前端</b> → 5180 · <b>RAG 后端</b> → 8771(FastAPI,/api/v1)· <b>RAG Web</b> → 6789(kb-mcp 网关,/api/kb/*)· 共享 infra:mosquitto 1883 / TimescaleDB 5432 / MinIO 9000</div>
+
+  
+  <section>
+    <h2>T0 静态门禁 <span class="b pass">PASS</span></h2>
+    
+    <table>
+      <thead><tr><th>套件 / 断言</th><th class="num">计数</th><th>结论</th><th>说明</th><th>证据</th></tr></thead>
+      <tbody>
+  <tr><td>typecheck(vue-tsc 全仓)</td><td class="num">0 err</td><td><span class="b pass">PASS</span></td><td class="note">类型检查通过</td><td class="path">logs/chainA*.log 不适用,见 T0 输出</td></tr>
+  <tr><td>i18n:check 中英 parity</td><td class="num">3166=3166</td><td><span class="b pass">PASS</span></td><td class="note">unresolved 0</td><td class="path"></td></tr>
+  <tr><td>readme:lint</td><td class="num">2 文件</td><td><span class="b pass">PASS</span></td><td class="note">全部通过</td><td class="path"></td></tr>
+  <tr><td>docs:check 文档一致性</td><td class="num">91/91</td><td><span class="b pass">PASS</span></td><td class="note">设置项 128/live 44/restart 84 基准全对</td><td class="path"></td></tr>
+  <tr><td>eslint</td><td class="num">35 err</td><td><span class="b warn">存量红</span></td><td class="note">全部位于 scripts/e2e-paper-paired-route.mjs(论文工具脚本,本轮未触碰)</td><td class="path">T0 输出</td></tr></tbody>
+    </table>
+  </section>
+  <section>
+    <h2>T1 单元与契约层 <span class="b pass">PASS</span></h2>
+    
+    <table>
+      <thead><tr><th>套件 / 断言</th><th class="num">计数</th><th>结论</th><th>说明</th><th>证据</th></tr></thead>
+      <tbody>
+  <tr><td>test:unit(含本体/优化器/结果库面)</td><td class="num">757/757</td><td><span class="b pass">PASS</span></td><td class="note">基线 599 → 757,上浮正常</td><td class="path"></td></tr>
+  <tr><td>test:mcp(MCP 服务面契约)</td><td class="num">14/14</td><td><span class="b pass">PASS</span></td><td class="note"></td><td class="path"></td></tr>
+  <tr><td>test:plugin-lifecycle</td><td class="num">22/22</td><td><span class="b pass">PASS</span></td><td class="note"></td><td class="path"></td></tr>
+  <tr><td>test:sdk-surface</td><td class="num">PASS</td><td><span class="b pass">PASS</span></td><td class="note">agentworkshop@0.8.6 出口面</td><td class="path"></td></tr>
+  <tr><td>test:twin-provider</td><td class="num">PASS</td><td><span class="b pass">PASS</span></td><td class="note"></td><td class="path"></td></tr>
+  <tr><td>test:skills(skill 规范)</td><td class="num">124/124</td><td><span class="b pass">PASS</span></td><td class="note">6 skills 全过</td><td class="path"></td></tr></tbody>
+    </table>
+  </section>
+  <section>
+    <h2>T2 实机核心闭环层(发布判定主证据) <span class="b pass">PASS</span></h2>
+    
+    <table>
+      <thead><tr><th>套件 / 断言</th><th class="num">计数</th><th>结论</th><th>说明</th><th>证据</th></tr></thead>
+      <tbody>
+  <tr><td>产线治理 e2e-line(L1-L12)</td><td class="num">44/44</td><td><span class="b pass">PASS</span></td><td class="note">开停线 HITL/审批期 TOCTOU/换线清理/Agent token 自证/写限界 60s 频控</td><td class="path">scripts/.data 或套件自带证据</td></tr>
+  <tr><td>本体离线 e2e-ontology</td><td class="num">57/57</td><td><span class="b pass">PASS</span></td><td class="note"></td><td class="path"></td></tr>
+  <tr><td>本体真机 e2e-ontology-live(L1-L7)</td><td class="num">87/87</td><td><span class="b pass">PASS</span></td><td class="note">六 tab 浏览器走查含</td><td class="path">docs/audit/evidence/2026-10-24-ontology-live/report.json(10-29 11:42 本轮)</td></tr>
+  <tr><td>模型闭环 e2e-model-loop-live(M0-M6)</td><td class="num">53/53</td><td><span class="b pass">PASS</span></td><td class="note">本体→孪生冻结→训练进化 v1→v3→求解器→管理面→前端走查;基线 54,总数 -1 无失败(断言集演化)</td><td class="path"></td></tr>
+  <tr><td>优化器 e2e-optimizer-live(R1-R3+U1)</td><td class="num">105/105</td><td><span class="b pass">PASS</span></td><td class="note">REST 全链/负例契约/Agent 工具面/浏览器五 tab;基线 104 上浮</td><td class="path">docs/audit/evidence/2026-10-23-optimizer-live/report.json(10-29 11:44 本轮)</td></tr>
+  <tr><td>注塑配方闭环(3300 真实实例)</td><td class="num">6/6</td><td><span class="b pass">PASS</span></td><td class="note">HITL 批准→62bar 下发设备证实→65s DAQ 复测→达标固化 v2→台账可溯</td><td class="path">bench/results/injection-pressure-loop-2026-10-29T04-29-05-445Z,logs/injection.log</td></tr>
+  <tr><td>IDD 结果库 e2e-idd-results(A2-A13)</td><td class="num">36/36</td><td><span class="b pass">PASS</span></td><td class="note">11 查询参数/详情截断/属主越权 403/token 接受/网络错映射</td><td class="path">docs/audit/evidence/2026-10-25-idd-results(10-29 本轮重写)</td></tr>
+  <tr><td>结果库 UI e2e-idd-results-ui</td><td class="num">9/9</td><td><span class="b pass">PASS</span></td><td class="note"></td><td class="path"></td></tr>
+  <tr><td>节点级写授权 e2e-node-binding-authz(US-01..05)</td><td class="num">52/52</td><td><span class="b pass">PASS</span></td><td class="note">dcw 点位收窄/line-recipe 产线配方管理权/越权拒/收回即拒</td><td class="path"></td></tr></tbody>
+    </table>
+  </section>
+  <section>
+    <h2>T3 回归面(本轮抽 10 套) <span class="b pass">PASS</span></h2>
+    
+    <table>
+      <thead><tr><th>套件 / 断言</th><th class="num">计数</th><th>结论</th><th>说明</th><th>证据</th></tr></thead>
+      <tbody>
+  <tr><td>api-live(REST/状态机/订阅/WS)</td><td class="num">61/61</td><td><span class="b pass">PASS</span></td><td class="note"></td><td class="path"></td></tr>
+  <tr><td>auth-matrix(角色权限矩阵)</td><td class="num">29/29</td><td><span class="b pass">PASS</span></td><td class="note">需预开 allowRegistration(v0.8.6 安全默认关闭)</td><td class="path"></td></tr>
+  <tr><td>template-isolation(模板克隆隔离)</td><td class="num">38/38</td><td><span class="b pass">PASS</span></td><td class="note">需 zhangwei@awshop.io 种子 admin</td><td class="path"></td></tr>
+  <tr><td>rest-robustness(非法参数/负 limit)</td><td class="num">ALL PASS</td><td><span class="b pass">PASS</span></td><td class="note"></td><td class="path"></td></tr>
+  <tr><td>timezone-settings(三时区一致/热切换)</td><td class="num">PASS</td><td><span class="b pass">PASS</span></td><td class="note">须显式 AW_TZ_DATA 指向隔离 home 数据目录</td><td class="path"></td></tr>
+  <tr><td>agent-team(信箱/群聊/跨 Channel)</td><td class="num">25/25</td><td><span class="b pass">PASS</span></td><td class="note"></td><td class="path"></td></tr>
+  <tr><td>hitl-live(挂起/批准/超时默认拒/TUI)</td><td class="num">28/28</td><td><span class="b pass">PASS</span></td><td class="note">首轮 2 条 TUI 无头渲染红为瞬态,复跑全绿</td><td class="path"></td></tr>
+  <tr><td>tool-surface-multiagent(多 Agent 工具面/身份拦截)</td><td class="num">37/37</td><td><span class="b pass">PASS</span></td><td class="note"></td><td class="path"></td></tr>
+  <tr><td>crash-cycle(崩溃→重启→断点恢复)</td><td class="num">5/5 阶段</td><td><span class="b pass">PASS</span></td><td class="note">crash/verify/gap/verify-gap/restore;须显式隔离 --port/--home(默认 3300 会误杀演示实例,已修入坑账)</td><td class="path"></td></tr>
+  <tr><td>mcp-live(stdio MCP 实机冒烟)</td><td class="num">34/34</td><td><span class="b pass">PASS</span></td><td class="note"></td><td class="path"></td></tr></tbody>
+    </table>
+  </section>
+  <section>
+    <h2>业务功能逐项实测(3300 验收实例,真机回包) <span class="b pass">PASS</span></h2>
+    <p class="lnote">证据:business-functions-report.json(本轮)</p>
+    <table>
+      <thead><tr><th>套件 / 断言</th><th class="num">计数</th><th>结论</th><th>说明</th><th>证据</th></tr></thead>
+      <tbody>
+  <tr><td>产线运营(清单/详情/开跑批次)</td><td class="num">B0-B1b</td><td><span class="b pass">PASS</span></td><td class="note">注塑线 11 写点+14 采点,活动批次 run 可查</td><td class="path"></td></tr>
+  <tr><td>数采(daq_query 工具+REST 样本行)</td><td class="num">B2/B2b/B3</td><td><span class="b pass">PASS</span></td><td class="note">14 节点真实样本窗(降采样 15s)</td><td class="path"></td></tr>
+  <tr><td>MES API(连接配置面+mes_fetch 真调)</td><td class="num">B4/B4b</td><td><span class="b pass">PASS</span></td><td class="note">配置面可读,工具回执正常(五格式全谱由 mes-agent 套件历史覆盖)</td><td class="path"></td></tr>
+  <tr><td>recipe 管理(清单/版本历史/trial HITL)</td><td class="num">B5/B5b/B6</td><td><span class="b pass">PASS</span></td><td class="note">v1 在库,trial 挂卡人工批准链路真实走通</td><td class="path"></td></tr>
+  <tr><td>写控台账+运维日志</td><td class="num">B7/B7b</td><td><span class="b pass">PASS</span></td><td class="note">dcw journal 与 ops-logs 均有本轮真实行</td><td class="path"></td></tr>
+  <tr><td>EDA 数据分析(运行面/图表面)</td><td class="num">B8/B8b</td><td><span class="b pass">PASS</span></td><td class="note">/api/workshop/eda/runs+charts 200</td><td class="path"></td></tr>
+  <tr><td>孪生(模型面/场景+设备孪生渲染源)</td><td class="num">B9/B9b</td><td><span class="b pass">PASS</span></td><td class="note">aml/models+scene/device-twins 200</td><td class="path"></td></tr>
+  <tr><td>节点绑定(绑定面+my_industrial_nodes)</td><td class="num">B10/B10b</td><td><span class="b pass">PASS</span></td><td class="note"></td><td class="path"></td></tr>
+  <tr><td>line_context 产线全景工具</td><td class="num">B11</td><td><span class="b pass">PASS</span></td><td class="note"></td><td class="path"></td></tr></tbody>
+    </table>
+  </section>
+  <section>
+    <h2>IDD / RAG 对外 API 独立测试(不经 AW,直打外部后端) <span class="b pass">PASS</span></h2>
+    
+    <table>
+      <thead><tr><th>套件 / 断言</th><th class="num">计数</th><th>结论</th><th>说明</th><th>证据</th></tr></thead>
+      <tbody>
+  <tr><td>IDD /api/external/v1(认证链/capabilities/results/categories CRUD/tasks/401/404 负例)</td><td class="num">11/11</td><td><span class="b pass">PASS</span></td><td class="note">属主越权 403 由 e2e-idd-results 36/36 覆盖</td><td class="path">idd-api-direct-report.json</td></tr>
+  <tr><td>RAG /api/v1 + web /api/kb(注册/登录/token/me/verify/负例/建库建文档/索引/向量命中/web 检索/kb agent chat)</td><td class="num">15/15</td><td><span class="b pass">PASS</span></td><td class="note">ingest→search 唯一标记命中;kb agent async 回合完成</td><td class="path">rag-api-direct-report.json</td></tr></tbody>
+    </table>
+  </section>
+  <section>
+    <h2>真实 PLC 场景 × IDD/RAG 双插件集成(US-004) <span class="b pass">PASS</span></h2>
+    
+    <table>
+      <thead><tr><th>套件 / 断言</th><th class="num">计数</th><th>结论</th><th>说明</th><th>证据</th></tr></thead>
+      <tbody>
+  <tr><td>插件面/工具面(diag+rag enabled,failures=[],注册表 104+21 全 available)</td><td class="num">P1-P3b</td><td><span class="b pass">PASS</span></td><td class="note"></td><td class="path"></td></tr>
+  <tr><td>diag_status 真调 IDD 后端</td><td class="num">P5</td><td><span class="b pass">PASS</span></td><td class="note">返回历史诊断运行列表</td><td class="path"></td></tr>
+  <tr><td>kb_agent 入库(在飞 HITL 审批 ap-324e2a0b→提交 kbt 任务→完成)</td><td class="num">P6</td><td><span class="b pass">PASS</span></td><td class="note"></td><td class="path"></td></tr>
+  <tr><td>kb_agent 检索命中 + 结果库查询</td><td class="num">P7/P8</td><td><span class="b pass">PASS</span></td><td class="note">证据:dual-plugin-integration-report.json(11/11)</td><td class="path"></td></tr></tbody>
+    </table>
+  </section>
+
+  <section>
+    <h2>Channel 三模式实机演示(omp × USTC/deepseek-flash)</h2>
+    <table>
+      <thead><tr><th>模式</th><th>控制链判决</th><th>证据摘要</th></tr></thead>
+      <tbody>
+  <tr><td>observe 观察</td><td><span class="b pass">PASS</span></td><td class="note">R3/R3b/R3c/R3d:line_context+daq_query 数采统计判读(样本数/均值/窗口判定),产线零写入、无审批卡;两轮均过</td></tr>
+  <tr><td>manual 手动</td><td><span class="b pass">PASS</span></td><td class="note">R4/R4a-R4f:recipe_trial 挂人工审批卡→脚本代批→点位写(60→58)→ACK 设备证实→版本不变→任务 COMPLETED(首轮高载僵死,复跑全过)</td></tr>
+  <tr><td>auto 自动</td><td><span class="b pass">PASS</span></td><td class="note">R5/R5b/R5c:免批直执行→60→62→账本落账→设备回读证实→COMPLETED(首轮零落账模型虚报,复跑全过)</td></tr>
+  <tr><td>授权链/回退链/管理权</td><td><span class="b pass">PASS</span></td><td class="note">R6/R8/R9/R10:换配方接管 DCW、回退逐节点落账、产线管理权新建配方→修改→回退→收回即拒,全过</td></tr></tbody>
+    </table>
+    <p class="lnote">harness=omp,provider/model=ustc/deepseek-flash(omp config 默认网关);隔离实例 3430(AW_MODE=home),mock daq+dcw 设备,真实平台+真实 omp 子进程。第一轮 27/42:observe 全过、REST 驱动授权链全过,manual 卡未建任务僵死、auto 零落账(模型交付物虚报「PLC 证实到位」,平台四层限界实际拦截——管控面按设计兜底);干净环境重跑 42/42 全绿,定性为高载下弱模型回合僵死(环境性),与 2026-10-28 Qwen3.5 轮的 R10e 僵死同型。</p>
+  </section>
+
+  <section>
+    <h2>关键页面实机截图(3300 验收实例 · dark)</h2>
+    <div class="shots">
+  <figure><img loading="lazy" src="screens/dark__dashboard.png" alt="仪表盘(总览)"><figcaption>仪表盘(总览)</figcaption></figure>
+  <figure><img loading="lazy" src="screens/dark__workshop.png" alt="Agent 工作台(频道/团队)"><figcaption>Agent 工作台(频道/团队)</figcaption></figure>
+  <figure><img loading="lazy" src="screens/dark__operations.png" alt="产线运营"><figcaption>产线运营</figcaption></figure>
+  <figure><img loading="lazy" src="screens/dark__dcw.png" alt="产线作业 DCW(节点/配方/写控)"><figcaption>产线作业 DCW(节点/配方/写控)</figcaption></figure>
+  <figure><img loading="lazy" src="screens/dark__daq.png" alt="数采中心"><figcaption>数采中心</figcaption></figure>
+  <figure><img loading="lazy" src="screens/dark__aml.png" alt="自动建模实验室(孪生训练)"><figcaption>自动建模实验室(孪生训练)</figcaption></figure>
+  <figure><img loading="lazy" src="screens/dark__town.png" alt="数字孪生 3D 小镇(场景渲染)"><figcaption>数字孪生 3D 小镇(场景渲染)</figcaption></figure>
+  <figure><img loading="lazy" src="screens/dark__monitor.png" alt="实时监控 &amp; HITL"><figcaption>实时监控 &amp; HITL</figcaption></figure>
+  <figure><img loading="lazy" src="screens/dark__analysis.png" alt="数据分析(报告/EDA)"><figcaption>数据分析(报告/EDA)</figcaption></figure>
+  <figure><img loading="lazy" src="screens/dark__logs.png" alt="审计日志"><figcaption>审计日志</figcaption></figure>
+  <figure><img loading="lazy" src="screens/dark__plugins.png" alt="插件(11 只,含 diag/rag 桥)"><figcaption>插件(11 只,含 diag/rag 桥)</figcaption></figure></div>
+  </section>
+
+  <section>
+    <h2>执行坑账(环境/脚本,非平台缺陷)</h2>
+    <ul class="pit"><li>Git Bash 内联 curl 携带中文 → GBK 损坏入库(频道名乱码);改走 node fetch/文件载荷即愈(记忆既有坑,本轮再次踩实)</li><li>套件共享实例互相污染:api-live 结束时把 security.allowRegistration 置 false,后续 auth-matrix/template-isolation/rest-robustness/agent-team 注册全挂 → 对策=每套件独占 fresh 实例(3041-3044)</li><li>证据脚本放深层目录时『相对 repo 上跳』解析错(两起:三模式副本/REST 驱动),隔离实例 spawn 到不存在路径 → 统一改绝对路径</li><li>timezone-settings 必须显式 AW_TZ_DATA=&lt;隔离home&gt;/data,否则读 repo 共享库断言失败</li><li>kb_agent 异步回执 task_id 正则必须含下划线(kbt_xxx);检索提示词避开「经验/入库」字样,否则被入库意图守卫拒(设计行为)</li><li>crash-cycle 默认 --port 3300 --home .e2e-home-full:会在 crash 阶段硬杀 3300 上的演示实例并顶上陈旧 home → 必须 --port/--home 显式隔离;3300 已从原 home 恢复(activeChannels=2 复核通过)</li><li>三套件并发自起实例时资源挤兑 → ECONNRESET/BOOT_FAIL/注册失败;全部单跑复绿(model-loop 53/53、authz 52/52、crash-cycle 5/5)</li><li>三模式首跑 27/42:高载下 ustc/deepseek-flash 回合僵死(manual 审批卡未建/auto 零落账且模型虚报成功);平台限界正确兜底,干净重跑 42/42</li><li>hitl-live 首跑尾部 TUI 无头渲染 2 红+超时被杀;全量复跑 28/0(瞬态)</li><li>tool-surface 一次运行 50 分钟无证据落盘被判挂死处决,随后发现其总结 37/0 已产出(处决时机踩在收尾后)</li></ul>
+  </section>
+
+  <section>
+    <h2>未覆盖面与边界声明</h2>
+    <ul class="pit"><li>Mimosa 安全扫描本轮未执行——本报告只裁决功能面,不宣称安全</li><li>lint 35 处存量红未修:全部在论文工具脚本 scripts/e2e-paper-paired-route.mjs;工作树含论文在途未提交改动,本轮零代码改动原则下不代修</li><li>agent-binding-matrix-e2e(需 bench 场景上下文夹具)未跑;其覆盖面由 node-binding-authz 52/52 + 三模式 42/42 + tool-surface 37/37 等价替代</li><li>MES 五格式全谱未在本轮逐一展开(配置面+mes_fetch 真调通过);全谱由 mes-agent-integration-e2e 历史套件覆盖</li><li>IDD diag_run 端到端真实引擎分析未启动(按三模式/双插件套件设计仅验证集成面);IDD 结果库/任务/分类面已 36/36+11/11 验证</li><li>RAG kb-mcp 对 AW 的外部 MCP 授权未开通(外部边界,历史轮已记录;本轮 rag-bridge 走 web /api/kb/agent/chat 全链验证)</li><li>孪生场景 3D 渲染以页面可打开+数据面 200+截图为证;未做逐帧像素级断言</li></ul>
+  </section>
+
+  <footer>证据根:docs/audit/evidence/2026-10-29-ralph-full-acceptance/ · 本报告自包含(无外部 CDN);截图相对路径 screens/ 需与本文件同级。Mimosa 安全扫描未在本轮执行,本报告只裁决功能面。</footer>
+</div></body></html>

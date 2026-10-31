@@ -1,0 +1,46 @@
+{
+  "id": "edajob-5f55b3f5",
+  "kind": "daq-export",
+  "status": "ready",
+  "spec": {
+    "nodeIds": [
+      "dn-2441bc04",
+      "dn-ae545180",
+      "dn-e4934f70",
+      "dn-970e00ea",
+      "dn-2a0acb1f"
+    ],
+    "fromMs": 1793381789823,
+    "toMs": 1793382389823,
+    "title": "PROTO-文档驱动导出验收",
+    "note": "",
+    "merge": false
+  },
+  "result": {
+    "exportId": "daqexp-20261031014629-b6bee4",
+    "dir": "D:\\tmp\\aw-idd-rag-e2e-20261030\\data\\daq-exports\\daqexp-20261031014629-b6bee4",
+    "files": [
+      {
+        "nodeId": "dn-2441bc04",
+        "rows": 134
+      },
+      {
+        "nodeId": "dn-ae545180",
+        "rows": 134
+      },
+      {
+        "nodeId": "dn-970e00ea",
+        "rows": 275
+      },
+      {
+        "nodeId": "dn-2a0acb1f",
+        "rows": 275
+      }
+    ],
+    "totalRows": 818,
+    "truncated": []
+  },
+  "createdBy": "9b62e433-a78f-4ef1-963c-5173ba14113a",
+  "createdAt": "2026-10-31T01:46:29.823+08:00",
+  "updatedAt": "2026-10-31T01:46:29.876+08:00"
+}

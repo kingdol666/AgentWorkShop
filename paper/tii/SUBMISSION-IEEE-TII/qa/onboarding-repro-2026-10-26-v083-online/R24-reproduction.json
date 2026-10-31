@@ -1,0 +1,60 @@
+{
+  "evidenceId": "R24",
+  "runDate": "2026-10-26",
+  "appVersion": "0.8.3",
+  "appMode": "dev",
+  "sourceRevision": "working-tree build; commit not pinned",
+  "environment": "Fresh isolated AW_HOME; local PLC twin and MES simulator; dedicated MQTT and Timescale containers",
+  "services": {
+    "app": "127.0.0.1:3021",
+    "plcTwinApi": "127.0.0.1:4046",
+    "modbusTcp": "127.0.0.1:37550",
+    "mesRest": "127.0.0.1:15062",
+    "mqtt": "127.0.0.1:59995",
+    "timescale": "127.0.0.1:59996",
+    "objectStore": "unavailable; image artifact used local-disk fallback"
+  },
+  "blueprint": {
+    "device": "coating-c01",
+    "protocol": "Modbus TCP",
+    "signals": 11,
+    "setpoints": 4,
+    "daqNodes": 7
+  },
+  "mesDataForms": [
+    "scalar",
+    "48-point vector",
+    "batch table",
+    "PNG image"
+  ],
+  "checks": {
+    "connectivity": "3/3",
+    "provisioning": "20/20",
+    "channelConstruction": "13/13",
+    "v1ToV6": "23/23",
+    "smoke": "11/11",
+    "failed": 0
+  },
+  "smoke": {
+    "setpoint": "line speed",
+    "from": 37,
+    "to": 39,
+    "unit": "m/min",
+    "recipeWindow": "28–48 m/min",
+    "deviceReadback": "confirmed by PLC twin",
+    "approval": "test-only automatic approval; not human review"
+  },
+  "scopeLimit": "One documented blueprint-to-simulated-device onboarding instance; no arbitrary portability, configuration reuse, repeatability, physical transfer, or process-quality claim.",
+  "credentialScan": {
+    "rawVerifierLogContainsCredential": false,
+    "adminCredentialPersisted": false
+  },
+  "sha256": {
+    "health-version.json": "1363993fe7a83d9ab9ff25e370b4eb62c63f8370e5f66c1d2e5ad9bd150d3bfe",
+    "onboard.json": "fb2a296a1eeea3703048c9b67187dae516cd356fe356e2b3d08c229721547884",
+    "blueprint.json": "e3163bfc7b750e00929a6b732f2fc5a984f09e53022ef92e749f804d82e196ff",
+    "verify-line.log": "2f7ab2a89f5e418e093dbbc22cda2062d9539d04d1cca43e11c8c75303521d01",
+    "daq-infrastructure.json": "3f44823c1a3d5c208b54aa4fc365cb09c9fda37546be2c4b7033bdbb52984d8a",
+    "onboarding.log": "c3d8a8aba329a96a77cff8b142391f2cd9d4c5e92bdcb94f719708dd8e27476a"
+  }
+}

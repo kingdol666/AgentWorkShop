@@ -1,0 +1,167 @@
+[
+  {
+    "route": "dashboard",
+    "path": "/",
+    "theme": "dark",
+    "landed": "/",
+    "overflowX": 0,
+    "scrollH": 1496,
+    "pageErrors": [],
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 500 (Server Error)",
+      "Failed to load resource: the server responded with a status of 500 (Server Error)"
+    ],
+    "file": "docs\\audit\\evidence\\2026-10-29-ralph-full-acceptance\\screens\\dark__dashboard.png"
+  },
+  {
+    "route": "workshop",
+    "path": "/workshop",
+    "theme": "dark",
+    "landed": "/workshop",
+    "overflowX": 0,
+    "scrollH": 900,
+    "pageErrors": [],
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 500 (Server Error)",
+      "Failed to load resource: the server responded with a status of 500 (Server Error)"
+    ],
+    "file": "docs\\audit\\evidence\\2026-10-29-ralph-full-acceptance\\screens\\dark__workshop.png"
+  },
+  {
+    "route": "operations",
+    "path": "/operations",
+    "theme": "dark",
+    "landed": "/operations",
+    "overflowX": 0,
+    "scrollH": 900,
+    "pageErrors": [],
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ],
+    "file": "docs\\audit\\evidence\\2026-10-29-ralph-full-acceptance\\screens\\dark__operations.png"
+  },
+  {
+    "route": "analysis",
+    "path": "/analysis",
+    "theme": "dark",
+    "landed": "/analysis",
+    "overflowX": 0,
+    "scrollH": 900,
+    "pageErrors": [],
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 500 (Server Error)",
+      "Failed to load resource: the server responded with a status of 500 (Server Error)"
+    ],
+    "file": "docs\\audit\\evidence\\2026-10-29-ralph-full-acceptance\\screens\\dark__analysis.png"
+  },
+  {
+    "route": "monitor",
+    "path": "/monitor",
+    "theme": "dark",
+    "landed": "/monitor",
+    "overflowX": 0,
+    "scrollH": 1270,
+    "pageErrors": [],
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 500 (Server Error)",
+      "Failed to load resource: the server responded with a status of 500 (Server Error)"
+    ],
+    "file": "docs\\audit\\evidence\\2026-10-29-ralph-full-acceptance\\screens\\dark__monitor.png"
+  },
+  {
+    "route": "daq",
+    "path": "/daq",
+    "theme": "dark",
+    "landed": "/daq",
+    "overflowX": 0,
+    "scrollH": 999,
+    "pageErrors": [],
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 500 (Server Error)"
+    ],
+    "file": "docs\\audit\\evidence\\2026-10-29-ralph-full-acceptance\\screens\\dark__daq.png"
+  },
+  {
+    "route": "dcw",
+    "path": "/dcw",
+    "theme": "dark",
+    "landed": "/dcw",
+    "overflowX": 0,
+    "scrollH": 900,
+    "pageErrors": [],
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 500 (Server Error)",
+      "Failed to load resource: the server responded with a status of 500 (Server Error)"
+    ],
+    "file": "docs\\audit\\evidence\\2026-10-29-ralph-full-acceptance\\screens\\dark__dcw.png"
+  },
+  {
+    "route": "aml",
+    "path": "/aml",
+    "theme": "dark",
+    "landed": "/aml",
+    "overflowX": 0,
+    "scrollH": 1311,
+    "pageErrors": [],
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 500 (Server Error)",
+      "Failed to load resource: the server responded with a status of 500 (Server Error)"
+    ],
+    "file": "docs\\audit\\evidence\\2026-10-29-ralph-full-acceptance\\screens\\dark__aml.png"
+  },
+  {
+    "route": "town",
+    "path": "/town",
+    "theme": "dark",
+    "landed": "/town",
+    "overflowX": 0,
+    "scrollH": 900,
+    "pageErrors": [],
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 500 (Server Error)",
+      "Failed to load resource: the server responded with a status of 500 (Server Error)"
+    ],
+    "file": "docs\\audit\\evidence\\2026-10-29-ralph-full-acceptance\\screens\\dark__town.png"
+  },
+  {
+    "route": "logs",
+    "path": "/logs",
+    "theme": "dark",
+    "landed": "/logs",
+    "overflowX": 0,
+    "scrollH": 900,
+    "pageErrors": [],
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)"
+    ],
+    "file": "docs\\audit\\evidence\\2026-10-29-ralph-full-acceptance\\screens\\dark__logs.png"
+  },
+  {
+    "route": "plugins",
+    "path": "/plugins",
+    "theme": "dark",
+    "landed": "/plugins",
+    "overflowX": 0,
+    "scrollH": 3008,
+    "pageErrors": [],
+    "consoleErrors": [
+      "Failed to load resource: the server responded with a status of 403 (Forbidden)",
+      "Failed to load resource: the server responded with a status of 500 (Server Error)",
+      "Failed to load resource: the server responded with a status of 500 (Server Error)"
+    ],
+    "file": "docs\\audit\\evidence\\2026-10-29-ralph-full-acceptance\\screens\\dark__plugins.png"
+  }
+]

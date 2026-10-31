@@ -1,0 +1,31 @@
+{
+  "figure": "Current-version route-linked process samples (archival diagnostic; not an active manuscript figure)",
+  "generated_utc": "2026-10-25T13:20:03.668130+00:00",
+  "source_archive": "Supplementary-File-S1.zip",
+  "source_archive_sha256": "af9b90b87fc9f867b679eb40f7cf5d79d459f9fadd3f25d32be7bf73ff984d5a",
+  "source_entries": [
+    "revision-2026-10-25/R20/R20-TRACE-MATRIX.csv",
+    "revision-2026-10-25/R21/R21-TRACE-MATRIX.csv",
+    "revision-2026-10-25/R22/evidence.json",
+    "revision-2026-10-25/R23/R23-TRACE-MATRIX.csv"
+  ],
+  "transform": "Plot each raw process sample in its recorded unit; no aggregation or vertical jitter",
+  "display_only_adjustment": "The three sequential model-mediated samples per scene receive small arbitrary horizontal offsets only to separate markers; offsets do not represent elapsed time or run order.",
+  "sample_count": 12,
+  "independent_process_replicates": 0,
+  "target_bands": {
+    "cast-film": {
+      "min": 48.0,
+      "max": 52.0,
+      "unit": "µm",
+      "label": "Cast-film thickness (µm)"
+    },
+    "annealing": {
+      "min": 700.0,
+      "max": 760.0,
+      "unit": "°C",
+      "label": "Annealing-strip temperature (°C)"
+    }
+  },
+  "csv": "current-route-observations.csv"
+}

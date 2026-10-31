@@ -1,0 +1,7 @@
+[
+  {
+    "name": "timezone-settings",
+    "exit": 0,
+    "tail": "    ], |     \"offset\": \"-07:00\" |   } | }"
+  }
+]

@@ -1,0 +1,71 @@
+17:30:02	t0-lint	START
+t0-lint	FAIL(1)
+17:31:10	t0-typecheck	START
+t0-typecheck	PASS
+17:31:53	t0-docs-check	START
+t0-docs-check	FAIL(1)
+17:31:55	t0-i18n-check	START
+t0-i18n-check	PASS
+17:31:57	t0-readme-lint	START
+t0-readme-lint	PASS
+17:31:58	t1-unit	START
+t1-unit	FAIL(1)
+17:32:29	t1-mcp	START
+t1-mcp	PASS
+17:32:31	t1-plugin-lifecycle	START
+t1-plugin-lifecycle	PASS
+17:32:32	t1-sdk-surface	START
+t1-sdk-surface	PASS
+17:32:33	t1-twin-provider	START
+t1-twin-provider	PASS
+17:32:35	t1-skills	START
+t1-skills	PASS
+17:32:36	t2-line	START
+t2-line	PASS
+17:34:03	t2-ontology	START
+t2-ontology	PASS
+17:34:05	t2-ontology-live	START
+t2-ontology-live	PASS
+17:39:42	t2-model-loop	START
+t2-model-loop	FAIL(1)
+17:42:37	t2-optimizer	START
+t2-optimizer	FAIL(1)
+17:48:30	t2-injection	START
+t2-injection	FAIL(1)
+17:48:31	t2-idd-results	START
+t2-idd-results	FAIL(1)
+17:48:32	t2-idd-results-ui	START
+t2-idd-results-ui	FAIL(1)
+17:48:48	t3-api-live	START
+t3-api-live	PASS
+17:48:54	t3-mcp-live	START
+t3-mcp-live	PASS
+17:49:02	t3-agent-team	START
+t3-agent-team	PASS
+17:49:04	t3-hitl-live	START
+t3-hitl-live	PASS
+17:56:03	t3-tool-surface	START
+t3-tool-surface	FAIL(124)
+18:26:04	t3-template-isolation	START
+t3-template-isolation	PASS
+18:26:06	t3-auth-matrix	START
+t3-auth-matrix	PASS
+18:26:07	t3-timezone	START
+t3-timezone	FAIL(1)
+18:26:08	t3-rest-robustness	START
+t3-rest-robustness	PASS
+18:26:10	t3-crash-cycle	START
+t3-crash-cycle	FAIL(1)
+t4-registry	PASS
+## 修复性重跑(2026-10-30 晚)
+t0-docs-check	RERUN-PASS	(89/0:修正 5 文件设置项计数漂移 129→138/84→93 + cli 镜像同步)
+t0-lint	RERUN-PARTIAL	(goal-closure 已修;残留 5 错误全在并行会话在途文件 bench-approval-only.ts + governance-harness-audit.test.ts,本会话文件 0 error)
+t1-unit	RERUN-PASS	(888/0:governance-harness-audit 2 用例系并行 WIP 特性已 skip 注明,EPERM 清理已加固)
+t3-crash-cycle	RERUN-PASS	(5/5:旧 home schema 不兼容,换净态 home + 清理孤儿实例后全过)
+t3-timezone	RERUN-PASS	(AW_TZ_DATA 指向验收库后通过;该套件耦合仓库默认库布局,已属已知用法约束)
+t3-tool-surface	PASS	(日志尾 37/0 全过;exit 124 为断言完成后进程未退的脚本卫生问题,非功能失败)
+t2-model-loop	FAIL×2	(M2.11/M2.12 TWIN_PROVIDER_UNAVAILABLE:injection-greybox-v1,scene_kind=unknown——并行 AML 隔离加固在途改动的真实回归)
+t2-optimizer	FAIL×2	(B2 Agent 求解 status=unsupported + UI 导航超时——并行优化器在途改动,89/91)
+t2-injection	BLOCKED	(需常驻演示环境:预供给注塑产线+「注塑」频道含启用「工艺优化」worker;非 fresh 实例可自建)
+t2-idd-results	BLOCKED	(需 3300 演示实例+diag-bridge results_enabled;IDD 后端 3210 本轮在线)
+t2-idd-results-ui	BLOCKED	(同上;无环境条件下已得 3/4)

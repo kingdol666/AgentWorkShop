@@ -1,0 +1,127 @@
+{
+  "at": "2026-10-30T17:28:56.481Z",
+  "platform": "http://127.0.0.1:3300",
+  "health": "ok",
+  "daq": {
+    "total": 13,
+    "online": 13
+  },
+  "channels": 3,
+  "newChannel": "1a5c55b5-03e7-4e26-83e7-d7feb22dba11",
+  "task": {
+    "id": "e465a6ee-4975-4e8f-8a0b-2ad6aa61adfa",
+    "state": "COMPLETED",
+    "progress": 100,
+    "artifacts": [
+      "PROTO 启动自检报告"
+    ]
+  },
+  "dcwReads": {
+    "pp-3081785c": {
+      "ok": true,
+      "value": 248,
+      "raw": 248,
+      "message": "读回 raw 248 → eng 248",
+      "at": "2026-10-31T01:28:56.448+08:00",
+      "param": {
+        "id": "pp-3081785c",
+        "key": "temp-sp",
+        "name": "机筒温度区3SP",
+        "templateRef": "temp-sp",
+        "unit": "℃",
+        "decimals": 1,
+        "min": null,
+        "max": null,
+        "stepLimit": 5,
+        "nodeId": "dw-7ead6ec4",
+        "desc": "烘箱温度设定:烘箱/熔体温度设定:升高使热塑温度上升(成膜更均匀但能耗高、过热降解风险),降低则偏冷易厚度不均(执行点:机筒温度区3SP)",
+        "lineId": "ln-cf47d3b6",
+        "driver": "modbus-tcp",
+        "enabled": true,
+        "value": 248,
+        "readValue": 248,
+        "state": "ok",
+        "createdAt": "2026-10-30T22:08:24.081+08:00"
+      }
+    },
+    "pp-f13c6665": {
+      "ok": true,
+      "value": 246,
+      "raw": 246,
+      "message": "读回 raw 246 → eng 246",
+      "at": "2026-10-31T01:28:56.464+08:00",
+      "param": {
+        "id": "pp-f13c6665",
+        "key": "temp-sp-2",
+        "name": "机筒温度区4SP",
+        "templateRef": "temp-sp",
+        "unit": "℃",
+        "decimals": 1,
+        "min": null,
+        "max": null,
+        "stepLimit": 5,
+        "nodeId": "dw-fca065d0",
+        "desc": "烘箱温度设定:烘箱/熔体温度设定:升高使热塑温度上升(成膜更均匀但能耗高、过热降解风险),降低则偏冷易厚度不均(执行点:机筒温度区4SP)",
+        "lineId": "ln-cf47d3b6",
+        "driver": "modbus-tcp",
+        "enabled": true,
+        "value": 246,
+        "readValue": 246,
+        "state": "error",
+        "createdAt": "2026-10-30T22:08:24.089+08:00"
+      }
+    },
+    "pp-5a617275": {
+      "ok": true,
+      "value": 1500,
+      "raw": 1500,
+      "message": "读回 raw 1500 → eng 1500",
+      "at": "2026-10-31T01:28:56.479+08:00",
+      "param": {
+        "id": "pp-5a617275",
+        "key": "temp-sp-3",
+        "name": "锁模力SP",
+        "templateRef": "temp-sp",
+        "unit": "kN",
+        "decimals": 0,
+        "min": null,
+        "max": null,
+        "stepLimit": 80,
+        "nodeId": "dw-530ba323",
+        "desc": "烘箱温度设定:烘箱/熔体温度设定:升高使热塑温度上升(成膜更均匀但能耗高、过热降解风险),降低则偏冷易厚度不均(执行点:锁模力SP)",
+        "lineId": "ln-cf47d3b6",
+        "driver": "modbus-rtu",
+        "enabled": true,
+        "value": 1500,
+        "readValue": 1500,
+        "state": "error",
+        "createdAt": "2026-10-30T22:08:24.105+08:00"
+      }
+    }
+  },
+  "export": {
+    "id": "edajob-5101a8be",
+    "status": "ready",
+    "totalRows": 978,
+    "files": 4
+  },
+  "verdict": "PASS(受控,复审整改后)",
+  "knownDefects": [
+    "agent auto complete_task missing; task closed via assignee token after independent verification",
+    "provision-line PATCHes existing node driverConfig and clears DCW platform values; restored 248/246/1500",
+    "export manifest totals exclude vector frames; no sha256/column list",
+    "image/objectstore not covered in this scenario"
+  ],
+  "reviewer": {
+    "verdict": "APPROVED",
+    "firstPass": "REJECTED (5 items)",
+    "approvedAt": "2026-10-30T17:31:34.973Z",
+    "caveats": [
+      "00:37 preflight raw output not in evidence pack; saved preflight is 01:15 re-run",
+      "raw 429 body recorded as observation + audit events 214/219/220",
+      "activate response now saved as channel-activate.json"
+    ]
+  },
+  "dcwStates": "248/246/1500 all state=ok",
+  "finalInventory": "inventory-final.json"
+}

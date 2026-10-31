@@ -1,0 +1,43 @@
+\section{Discussion}
+\label{sec:limits}
+R20 demonstrates the bounded registered-harness path across the two tested
+simulator scenes: tasks completed with synthetic approval and verified
+readback, and all six records passed the task-to-approval-to-receipt-to-sample
+link checks. R21 exercised one deterministic fixture task per scene and
+passed its 31 runner assertions, including the run-tagged sample checks. No
+R20 post-trial sample reached its target band. The 20-s sample delay began
+after receipt/readback verification; the runner checked task state after the
+sample query, and no task-completion-to-sample interval is retained. R13
+separately contributes exploratory protocol and data-lineage evidence.
+Together, these runs support only the configured software paths; they do not
+establish process-control efficacy or portability.
+
+R20 uses one simulator instance per scene and does not establish independent
+replication, convergence, or quality improvement. Its single post-trial
+sample per execution is not a response trajectory or a
+task-completion-to-sample latency measurement. Controlled profile/binding
+adaptation, cross-harness portability, normal online DAQ backend behavior, and
+physical transfer remain untested. The synthetic approval records do not
+measure operator effectiveness
+\cite{parasuramanmanzey2010complacency,parasuraman2000model,bainbridge1983ironies};
+restricted tool access does not establish deployment security
+\cite{greshake2023injection,liu2024pinjection,iec62443-3-3} or replace
+independently engineered PLC/SIS protection \cite{iec61511}.
+
+Future evaluation should use independent simulator replications, a controlled
+configuration-change test, the normal online DAQ backend, and physical-plant
+trials. These tests are needed to assess benefits beyond the configured paths
+reported here.
+
+\section{Conclusion}
+\label{sec:conclusion}
+AgentWorkShop provides a modular reference implementation that connects
+collaborative tasks, production context, operation checks, semantic I/O, and
+route-specific records. R20 demonstrates a live-agent task-to-probe-and-ingest
+trace in two simulator scenes, with complete linkage checks for six
+executions; each post-readback sample was a single snapshot through the
+isolated SQLite fallback, and none reached target. R21 separately verifies the
+deterministic task route in both scenes, while R13 supplies exploratory
+protocol and data-path evidence. These results establish behavior of the
+tested software paths, not process-control efficacy, comparative advantage,
+or portability.

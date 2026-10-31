@@ -26,7 +26,7 @@
 [![Docs](https://img.shields.io/badge/%E6%96%87%E6%A1%A3-VitePress%20%C2%B7%20%E4%B8%AD%2FEN-ffd75e?logo=vitepress&logoColor=black)](https://kingdol666.github.io/AgentWorkShop)
 **[English](./README.md)** · **[在线文档](https://kingdol666.github.io/AgentWorkShop)** · **[版本发布](https://github.com/kingdol666/AgentWorkShop/releases)** · **[更新日志](./changelog.md)** · **[插件 API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.8.7</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST 集成（镜像与直连双路径）· 数据分析台账（产线级权限隔离）· 工艺参数优化器（过程模型 → AML → OSQP 求解 → 治理下发）· **本体服务 + AI 先行模型闭环**（本体 · 孪生 · 求解器 · AML 采纳）· 104 个宿主工具 · 129 个运行时设置项 · 双语文档（简体中文 / English）</sub>
+<sub><b>v0.8.8</b> · 14 个执行引擎 · 6 种现场协议（5 内置 + 串口插件）+ MES REST 集成（镜像与直连双路径）· 数据分析台账（产线级权限隔离）· 工艺参数优化器（过程模型 → AML → OSQP 求解 → 治理下发）· **本体服务 + AI 先行模型闭环**（本体 · 孪生 · 求解器 · AML 采纳）· 104 个宿主工具 · 138 个运行时设置项 · 双语文档（简体中文 / English）</sub>
 
 <br />
 
@@ -59,7 +59,7 @@
 </p>
 
 > [!NOTE]
-> 本 README 中的每一张图都是**运行中实例**的截图（v0.8.7 生产构建），没有一张是效果图。
+> 本 README 中的每一张图都是**运行中实例**的截图（v0.8.8 生产构建），没有一张是效果图。
 
 <p align="center">
   <a href="https://kingdol666.github.io/AgentWorkShop/demo/player.html">
@@ -212,11 +212,13 @@ aw start                           # → http://localhost:3001，一切初始化
 
 每一层论断背后都有可复跑的套件。验收按 **aw-system-acceptance 五层流程**（静态门禁 → 单元契约 → 实机核心闭环 → 回归面 → 插件工具面）执行，2026-10-29 全量轮：**24 项套件/核查、约 1100+ 断言全绿**；真实设备联动矩阵（`e2e-golive-matrix`）**21/21**——五族真实协议栈接通、平台样本=设备侧真值、四协议写穿、Agent 令牌批量落穿、断链如实失败与自愈；安全加固 **29/29**；对抗性错误处理 **26/26**。
 
+**2026-10-31 可执行测试卡全层轮**（`bench/PIPELINE.md` 执行合同，ralplan 共识规划）：静态论文-代码一致性 **100%**（20 锚点）· 真实五协议层 **13/13（100 分，含 F5 拦截率=1 与断链恢复）** · **E1a 治理四臂消融**理论模式全对（摘除联锁/授权门后越窗写 6/6 执行、误拦恒 0——机制归因证据）· api-live **75/75** · 单元 913/913 · 对 **20260914 冻结基线判定类逐位复现 ×2（REPRODUCIBLE，跨 12 天）** · IDD/RAG 插件集成链真机全通（真 PLC 工况 + omp/ustc-deepseek-flash：导出 → IDD 深度诊断 → 知识入库(HITL) → 检索命中）· P12 真实 harness 透明闭环 episode（资格门全过；弱模型越权调用被事件监控门当场取消并冻结 153 事件证据）。
+
 | 验收层 | 代表套件（本轮结果） |
 |---|---|
-| 实机核心闭环 | 产线治理 44/44 · 本体 87/87 · 模型闭环 53/53 · 优化器 105/105 · 注塑闭环 6/6 · 设备联动矩阵 21/21 |
-| 回归面 | api-live 61/61 · auth-matrix 29/29 · 模板隔离 38/38 · 鲁棒性 ALL · agent-team 25/25 · 错误处理 26/26 |
-| 专项 | 安全加固 S1-S16 29/29 · 生产硬门 8/8 · 节点授权 52/52 · 三模式真机 42/42 |
+| 实机核心闭环 | 产线治理 44/44 · 本体 87/87 · 模型闭环 53/53 · 优化器 105/105 · 注塑闭环 6/6 · 设备联动矩阵 21/21 · 真实五协议层 13/13 |
+| 回归面 | api-live 75/75 · auth-matrix 29/29 · 模板隔离 38/38 · 鲁棒性 ALL · agent-team 25/25 · 错误处理 26/26 · E1a 消融四臂×3 轮 |
+| 专项 | 安全加固 S1-S16 29/29 · 生产硬门 8/8 · 节点授权 52/52 · 三模式真机 42/42 · 冻结基线复现 ×2 |
 
 证据与复现命令见 [`docs/audit/evidence/`](./docs/audit/evidence) 与 [`docs/full-test-plan.md`](./docs/full-test-plan.md)；历史基线（约 1100+ 条，2026-09-24）见 [验收波次归档](./docs/audit/e2e-2026-09-24-full-coverage.md)。
 
@@ -248,6 +250,6 @@ aw start                           # → http://localhost:3001，一切初始化
 
 **如果这个项目对你有用，点一个 ⭐ 能让更多人找到它。**
 
-当前版本：**v0.8.7** —— [版本发布](https://github.com/kingdol666/AgentWorkShop/releases) · [更新日志](./changelog.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop)
+当前版本：**v0.8.8** —— [版本发布](https://github.com/kingdol666/AgentWorkShop/releases) · [更新日志](./changelog.md) · [在线文档](https://kingdol666.github.io/AgentWorkShop)
 
 </div>

@@ -1,0 +1,115 @@
+{
+  "kind": "linear_state_space@1",
+  "schemaVersion": 1,
+  "stateDim": 2,
+  "arOrder": 1,
+  "inputOrder": 1,
+  "mvOrder": [
+    "mv"
+  ],
+  "cvOrder": [
+    "cv"
+  ],
+  "delaysSteps": {
+    "mv": 0
+  },
+  "K": 1,
+  "A": [
+    [
+      0.9020394145647734,
+      0
+    ],
+    [
+      0,
+      0
+    ]
+  ],
+  "B": [
+    [
+      0.012046759735669555
+    ],
+    [
+      1
+    ]
+  ],
+  "C": [
+    [
+      1,
+      0
+    ]
+  ],
+  "D": [
+    [
+      0
+    ]
+  ],
+  "bias": [
+    -0.03306878179378287,
+    0
+  ],
+  "layout": {
+    "yOffset": 0,
+    "uOffset": 1,
+    "stateDim": 2,
+    "K": 1
+  },
+  "norm": {
+    "x": {
+      "mean": [
+        149.16666666666666,
+        17.930763757228853
+      ],
+      "std": [
+        12.051545536829186,
+        1.1430021410154878
+      ]
+    },
+    "u": {
+      "mean": [
+        150.83333333333334
+      ],
+      "std": [
+        12.397002643703095
+      ]
+    },
+    "y": {
+      "mean": [
+        18.024791521496244
+      ],
+      "std": [
+        1.2302966753967155
+      ]
+    }
+  },
+  "uq": {
+    "method": "split_conformal",
+    "qhatPerCv": [
+      0.260798571
+    ],
+    "coverageTest": 0.733333,
+    "alpha": 0.1,
+    "horizon": 4,
+    "nValBlocks": 179,
+    "nValRuns": 2,
+    "nValUniqueSteps": 0,
+    "nTestBlocks": 180,
+    "nTestRuns": 2,
+    "nUniqueTestSteps": 720,
+    "calibratedAt": "2026-10-25T02:19:44.707+08:00"
+  },
+  "metrics": {
+    "oneStepVal": {
+      "windows": 179,
+      "nrmse": 0.093487
+    },
+    "oneStepNrmse": 0.111869,
+    "rolloutNrmse": 0.124614,
+    "persistenceNrmse": 0.20198,
+    "rolloutImprovement": 0.38304,
+    "windows": 180
+  },
+  "residual": {
+    "mean": -3e-09,
+    "std": 0.120379277
+  }
+}

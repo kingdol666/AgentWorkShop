@@ -1,0 +1,48 @@
+\section{Discussion}
+\label{sec:limits}
+R20 produced six complete task-to-approval-to-receipt-to-sample traces across
+two simulator scenes; none of its single post-readback samples reached target.
+R21 passed 31 assertions on the deterministic registered-harness route. R22
+separately exercised two direct operation calls, one per simulator scene;
+both returned verified receipts and run-tagged snapshots, with each snapshot
+outside its target band. A 20-case mock suite refused twelve stale
+approval-context mutations across three recipe actuation routes before
+actuation. A test-only ablation that removed tuple-equality checks allowed the
+product and active-run mutations to proceed on all three routes, while
+independent checks still blocked line and recipe changes. This isolates the
+added coverage of the tuple check for those two context fields; it is a
+component ablation, not a baseline comparison with another integration
+framework. A separate queued-context test confirms refusal before the handler
+resumes dispatch after the asynchronous grant check.
+
+Each scene used one simulator instance and a single post-readback probe per
+task; the results therefore do not establish independent process replication,
+convergence, or quality improvement. R22 covers direct operation entry but
+does not test another registered harness. Configuration reuse, normal online
+data acquisition, physical transfer, and comparative architecture value
+remain untested. The context comparison is a software-state check at the
+dispatch boundary, not a lock across asynchronous device I/O or external
+process transitions. Synthetic approval does not measure
+operator effectiveness
+\cite{parasuramanmanzey2010complacency,parasuraman2000model,bainbridge1983ironies};
+tool restrictions do not establish deployment security
+\cite{greshake2023injection,liu2024pinjection,iec62443-3-3} or replace
+independently engineered PLC/SIS protection \cite{iec61511}. Future work
+should compare a defined platform-level baseline and include independent
+simulator and physical-plant trials.
+
+The positive-path records evaluated here do not constitute a complete durable
+denial ledger. In particular, scope and channel-policy refusals are not
+uniformly persisted, so auditability claims are limited to the route records
+and denial classes explicitly described in Section~IV.
+
+\section{Conclusion}
+\label{sec:conclusion}
+AgentWorkShop connects collaborative tasks and direct operation calls to
+production context, checked operations, semantic I/O, and service-owned
+records. R20 and R21 verify selected registered-harness paths, and R22
+verifies a direct operation endpoint across two simulator mappings. Mock-state
+tests confirm refusal when the approved context changes before dispatch; the
+ablation isolates added refusal coverage for product and active-run changes.
+These results validate selected software behavior, not platform-level
+comparative integration value or process performance.

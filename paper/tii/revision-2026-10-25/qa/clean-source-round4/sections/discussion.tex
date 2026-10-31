@@ -1,0 +1,42 @@
+\section{Discussion}
+\label{sec:limits}
+In the exploratory R13 application run, both model candidates fail the
+configured eligibility and performance gates. Signal pairs were selected
+after a pilot, and the exact runtime source was not pinned; the retained
+correlations and NRMSE values therefore document the recorded gate path rather
+than confirmatory model performance. In R20, six sequential tasks complete a
+synthetically approved, readback-verified recipe trial and task closure. Each
+has one run-tagged sample, collected after a 20-s wait initiated after task
+completion and evidence queries through an isolated SQLite fallback; all six
+samples remain outside their target bands. This supports the tested
+application path, not successful process control.
+
+R20 uses one simulator instance per scene and does not establish independent
+replication, convergence, or quality improvement. Its post-task sample is not
+a response trajectory or a fixed command-to-sample latency measurement.
+Controlled profile/binding adaptation, cross-harness portability, normal
+online DAQ backend behavior, and physical transfer remain untested. The
+synthetic approval records do not measure operator effectiveness
+\cite{parasuramanmanzey2010complacency,parasuraman2000model,bainbridge1983ironies};
+restricted tool access does not establish deployment security
+\cite{greshake2023injection,liu2024pinjection,iec62443-3-3} or replace
+independently engineered PLC/SIS protection \cite{iec61511}.
+
+Further evaluation needs a versioned build, matched scenes, a predeclared
+signal-pair/excitation plan, default-paced recipe baselines, and physical
+plant trials.
+
+\section{Conclusion}
+\label{sec:conclusion}
+AgentWorkShop connects collaborative harnesses, production context, model
+services, semantic I/O, and node/recipe workflows while retaining distinct
+authorization, command-confirmation, and observation records. Current
+simulator evidence verifies selected integration paths: the two-scene
+application gate rejects both candidates, while all six registered-agent task
+executions
+complete with verified command receipts and run-tagged samples. None of the
+six post-trial samples reaches its target band. The results support the
+framework's tested software integration, but do not establish optimization
+success, process convergence, configuration-reuse benefit, cross-harness
+portability, normal online DAQ performance, physical-plant transfer, or
+comparative control benefit.

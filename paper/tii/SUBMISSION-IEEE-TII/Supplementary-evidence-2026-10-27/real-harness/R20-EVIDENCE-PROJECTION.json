@@ -1,0 +1,409 @@
+{
+  "schemaVersion": 1,
+  "campaign": "R20",
+  "projectVersion": "0.8.0",
+  "harnessMode": "real-omp",
+  "provider": "zhipu-coding-plan",
+  "model": "glm-5.3-flash",
+  "trialsPerScene": 3,
+  "postTrialSnapshotDelaySeconds": 20,
+  "status": "passed",
+  "runs": [
+    {
+      "id": "cast-film-r1",
+      "scene": "cast-film",
+      "repetition": 1,
+      "provider": "zhipu-coding-plan",
+      "model": "glm-5.3-flash",
+      "candidate": 125,
+      "candidateChoices": [
+        125,
+        130,
+        135
+      ],
+      "status": "verified",
+      "taskState": "COMPLETED"
+    },
+    {
+      "id": "cast-film-r2",
+      "scene": "cast-film",
+      "repetition": 2,
+      "provider": "zhipu-coding-plan",
+      "model": "glm-5.3-flash",
+      "candidate": 130,
+      "candidateChoices": [
+        125,
+        130,
+        135
+      ],
+      "status": "verified",
+      "taskState": "COMPLETED"
+    },
+    {
+      "id": "cast-film-r3",
+      "scene": "cast-film",
+      "repetition": 3,
+      "provider": "zhipu-coding-plan",
+      "model": "glm-5.3-flash",
+      "candidate": 125,
+      "candidateChoices": [
+        125,
+        130,
+        135
+      ],
+      "status": "verified",
+      "taskState": "COMPLETED"
+    },
+    {
+      "id": "annealing-r1",
+      "scene": "annealing",
+      "repetition": 1,
+      "provider": "zhipu-coding-plan",
+      "model": "glm-5.3-flash",
+      "candidate": 745,
+      "candidateChoices": [
+        735,
+        740,
+        745
+      ],
+      "status": "verified",
+      "taskState": "COMPLETED"
+    },
+    {
+      "id": "annealing-r2",
+      "scene": "annealing",
+      "repetition": 2,
+      "provider": "zhipu-coding-plan",
+      "model": "glm-5.3-flash",
+      "candidate": 745,
+      "candidateChoices": [
+        735,
+        740,
+        745
+      ],
+      "status": "verified",
+      "taskState": "COMPLETED"
+    },
+    {
+      "id": "annealing-r3",
+      "scene": "annealing",
+      "repetition": 3,
+      "provider": "zhipu-coding-plan",
+      "model": "glm-5.3-flash",
+      "candidate": 745,
+      "candidateChoices": [
+        735,
+        740,
+        745
+      ],
+      "status": "verified",
+      "taskState": "COMPLETED"
+    }
+  ],
+  "checks": [
+    {
+      "id": "only-outbound-disabled-rag-bridge-enabled",
+      "status": "pass"
+    },
+    {
+      "id": "runtime-settings-target-offline-loopback-queue",
+      "status": "pass"
+    },
+    {
+      "id": "isolated-inproc-queue-and-sqlite-tsdb",
+      "status": "pass"
+    },
+    {
+      "id": "real-omp-six-unique-trials-planned",
+      "status": "pass"
+    },
+    {
+      "id": "cast-film-r1-registered-omp",
+      "status": "pass"
+    },
+    {
+      "id": "cast-film-r1-manual-recipe-binding",
+      "status": "pass"
+    },
+    {
+      "id": "cast-film-r1-daq-observation-binding",
+      "status": "pass"
+    },
+    {
+      "id": "cast-film-r1-real-omp-approved-model-proposal",
+      "status": "pass"
+    },
+    {
+      "id": "cast-film-r1-real-omp-one-recipe-trial-ledger",
+      "status": "pass"
+    },
+    {
+      "id": "cast-film-r1-ack-verified",
+      "status": "pass"
+    },
+    {
+      "id": "cast-film-r1-readback-matches",
+      "status": "pass"
+    },
+    {
+      "id": "cast-film-r1-run-tagged-daq-probe-ingest-snapshot",
+      "status": "pass"
+    },
+    {
+      "id": "cast-film-r1-recipe-log",
+      "status": "pass"
+    },
+    {
+      "id": "cast-film-r1-real-omp-task-completed",
+      "status": "pass"
+    },
+    {
+      "id": "cast-film-r2-registered-omp",
+      "status": "pass"
+    },
+    {
+      "id": "cast-film-r2-manual-recipe-binding",
+      "status": "pass"
+    },
+    {
+      "id": "cast-film-r2-daq-observation-binding",
+      "status": "pass"
+    },
+    {
+      "id": "cast-film-r2-real-omp-approved-model-proposal",
+      "status": "pass"
+    },
+    {
+      "id": "cast-film-r2-real-omp-one-recipe-trial-ledger",
+      "status": "pass"
+    },
+    {
+      "id": "cast-film-r2-ack-verified",
+      "status": "pass"
+    },
+    {
+      "id": "cast-film-r2-readback-matches",
+      "status": "pass"
+    },
+    {
+      "id": "cast-film-r2-run-tagged-daq-probe-ingest-snapshot",
+      "status": "pass"
+    },
+    {
+      "id": "cast-film-r2-recipe-log",
+      "status": "pass"
+    },
+    {
+      "id": "cast-film-r2-real-omp-task-completed",
+      "status": "pass"
+    },
+    {
+      "id": "cast-film-r3-registered-omp",
+      "status": "pass"
+    },
+    {
+      "id": "cast-film-r3-manual-recipe-binding",
+      "status": "pass"
+    },
+    {
+      "id": "cast-film-r3-daq-observation-binding",
+      "status": "pass"
+    },
+    {
+      "id": "cast-film-r3-real-omp-approved-model-proposal",
+      "status": "pass"
+    },
+    {
+      "id": "cast-film-r3-real-omp-one-recipe-trial-ledger",
+      "status": "pass"
+    },
+    {
+      "id": "cast-film-r3-ack-verified",
+      "status": "pass"
+    },
+    {
+      "id": "cast-film-r3-readback-matches",
+      "status": "pass"
+    },
+    {
+      "id": "cast-film-r3-run-tagged-daq-probe-ingest-snapshot",
+      "status": "pass"
+    },
+    {
+      "id": "cast-film-r3-recipe-log",
+      "status": "pass"
+    },
+    {
+      "id": "cast-film-r3-real-omp-task-completed",
+      "status": "pass"
+    },
+    {
+      "id": "annealing-r1-registered-omp",
+      "status": "pass"
+    },
+    {
+      "id": "annealing-r1-manual-recipe-binding",
+      "status": "pass"
+    },
+    {
+      "id": "annealing-r1-daq-observation-binding",
+      "status": "pass"
+    },
+    {
+      "id": "annealing-r1-real-omp-approved-model-proposal",
+      "status": "pass"
+    },
+    {
+      "id": "annealing-r1-real-omp-one-recipe-trial-ledger",
+      "status": "pass"
+    },
+    {
+      "id": "annealing-r1-ack-verified",
+      "status": "pass"
+    },
+    {
+      "id": "annealing-r1-readback-matches",
+      "status": "pass"
+    },
+    {
+      "id": "annealing-r1-run-tagged-daq-probe-ingest-snapshot",
+      "status": "pass"
+    },
+    {
+      "id": "annealing-r1-recipe-log",
+      "status": "pass"
+    },
+    {
+      "id": "annealing-r1-real-omp-task-completed",
+      "status": "pass"
+    },
+    {
+      "id": "annealing-r2-registered-omp",
+      "status": "pass"
+    },
+    {
+      "id": "annealing-r2-manual-recipe-binding",
+      "status": "pass"
+    },
+    {
+      "id": "annealing-r2-daq-observation-binding",
+      "status": "pass"
+    },
+    {
+      "id": "annealing-r2-real-omp-approved-model-proposal",
+      "status": "pass"
+    },
+    {
+      "id": "annealing-r2-real-omp-one-recipe-trial-ledger",
+      "status": "pass"
+    },
+    {
+      "id": "annealing-r2-ack-verified",
+      "status": "pass"
+    },
+    {
+      "id": "annealing-r2-readback-matches",
+      "status": "pass"
+    },
+    {
+      "id": "annealing-r2-run-tagged-daq-probe-ingest-snapshot",
+      "status": "pass"
+    },
+    {
+      "id": "annealing-r2-recipe-log",
+      "status": "pass"
+    },
+    {
+      "id": "annealing-r2-real-omp-task-completed",
+      "status": "pass"
+    },
+    {
+      "id": "annealing-r3-registered-omp",
+      "status": "pass"
+    },
+    {
+      "id": "annealing-r3-manual-recipe-binding",
+      "status": "pass"
+    },
+    {
+      "id": "annealing-r3-daq-observation-binding",
+      "status": "pass"
+    },
+    {
+      "id": "annealing-r3-real-omp-approved-model-proposal",
+      "status": "pass"
+    },
+    {
+      "id": "annealing-r3-real-omp-one-recipe-trial-ledger",
+      "status": "pass"
+    },
+    {
+      "id": "annealing-r3-ack-verified",
+      "status": "pass"
+    },
+    {
+      "id": "annealing-r3-readback-matches",
+      "status": "pass"
+    },
+    {
+      "id": "annealing-r3-run-tagged-daq-probe-ingest-snapshot",
+      "status": "pass"
+    },
+    {
+      "id": "annealing-r3-recipe-log",
+      "status": "pass"
+    },
+    {
+      "id": "annealing-r3-real-omp-task-completed",
+      "status": "pass"
+    },
+    {
+      "id": "simulator-process-stopped",
+      "status": "pass"
+    },
+    {
+      "id": "agentworkshop-process-stopped",
+      "status": "pass"
+    },
+    {
+      "id": "app-port-released",
+      "status": "pass"
+    },
+    {
+      "id": "simulator-http-port-released",
+      "status": "pass"
+    },
+    {
+      "id": "simulator-mqtt-port-released",
+      "status": "pass"
+    },
+    {
+      "id": "offline-app-mqtt-queue-probe-port-released",
+      "status": "pass"
+    },
+    {
+      "id": "offline-timescale-probe-port-released",
+      "status": "pass"
+    },
+    {
+      "id": "offline-objectstore-probe-port-released",
+      "status": "pass"
+    },
+    {
+      "id": "simulator-device-0-port-released",
+      "status": "pass"
+    },
+    {
+      "id": "simulator-device-1-port-released",
+      "status": "pass"
+    },
+    {
+      "id": "simulator-device-2-port-released",
+      "status": "pass"
+    },
+    {
+      "id": "simulator-device-3-port-released",
+      "status": "pass"
+    }
+  ]
+}

@@ -1,19 +1,20 @@
 \section{Module Functions and Integration}
 \label{sec:modules}
-The architecture in Section~\ref{sec:design} assembles task context,
-dispatches operations, and connects device access to separate records of
-commands and observations. The following subsections explain the handoffs
-between these functions.
+Section~\ref{sec:design} defines the architecture and shared dispatch
+contract. This section specifies the runtime context passed to adapters and
+the route-specific admission, approval, and evidence steps.
 
 \subsection{Task, Harness, and Context}
 Task and chat entry points create or join a workspace channel. The task
-runtime manages membership, task state, and shared execution context; a
-harness registry adapts each supported agent engine to a common execution
-interface. At each agent turn, the prompt builder assembles the task, active
-scene description, production context, channel profile, agent binding, and
-retrieved memory. This keeps engine-specific interaction behind the harness
-interface while preserving the current line and operation context for the
-agent.
+runtime manages membership, roles, task state, and shared execution context;
+a harness registry adapts agent engines to a common execution interface. This
+separation lets agents collaborate through shared tasks and channel resources
+without coupling their engine-specific turn protocol to a production scene.
+At each turn, the prompt builder assembles the task, active scene description,
+line--product--recipe--run state, channel profile, agent binding, and retrieved
+memory. The resulting context supports process-aware proposals, while the
+dispatcher independently checks authority and the operation handler resolves
+current state before a write.
 
 Direct REST and selected stdio-MCP operation calls reach the same dispatcher
 without a task or harness turn. REST authentication and identity resolution
@@ -26,18 +27,21 @@ does not grant write authority: the dispatcher checks authority at invocation.
 
 \subsection{Shared Dispatch and Device Admission}
 \label{sec:governed}
-The dispatcher is the shared operation boundary. As specified by
-(\ref{eq:dispatch-contract}), it checks invocation scope and channel policy
-for every call; grant is skipped only for a grant-exempt industrial tool,
-and binding applies when the operation declares resource references.
-Applicable checks precede handler selection. Handlers revalidate route-specific
-state at execution time; the dispatcher applies grant checks when required.
-Scene blueprints define device and signal maps, objectives, and process
-guards. Capability profiles and tool policies narrow available operations,
-while bindings constrain accessible nodes, controls, and recipes. Optional
-DAQ, MES, analysis, retrieval, optimization, and digital-twin services are
-invoked through registered handlers. The application supplies its optimization
-strategy while the framework coordinates operation execution.
+Each operation must satisfy the predicates in
+Eq.~(\ref{eq:dispatch-contract}) before handler selection; the selected
+handler then revalidates route-specific state. Scene configuration maps
+semantic signals and controls to
+drivers and specifies process objectives and guards. Capability profiles and
+tool policies narrow available operations, while resource bindings constrain
+accessible nodes, controls, and recipes. Optional DAQ, MES, analysis,
+retrieval, optimization, and digital-twin services are invoked through
+registered handlers. The application supplies its optimization strategy;
+the framework coordinates context, operation access, and execution.
+
+The target band describes a desired process outcome. It is not the admissible
+write interval: the latter is computed from engineering, product, recipe, and
+route-specific limits below. A candidate can therefore satisfy all write
+constraints yet fail to move the measured process value into its target band.
 
 Actuator writes converge on the shared DCW admission point.
 For an online node write, the admissible value interval is
@@ -55,8 +59,9 @@ apart from the policy and binding predicates of
 restriction; an empty intersection rejects the request and identifies the
 excluding layer. Recipe dispatch validates the replacement recipe against
 the hard, baseline, and product limits rather than the previous recipe
-window. Step, interval, and hold-window checks also constrain each route.
-These software checks bound commands alongside independent
-programmable-logic-controller and safety-instrumented protection.
+window. Step, interval, and hold-window checks apply as configured for each route.
+These application-level checks bound commands alongside independent
+programmable-logic-controller and safety-instrumented protection. They do not
+replace equipment interlocks or certify the safety of a plant deployment.
 
 \input{sections/mechanisms}

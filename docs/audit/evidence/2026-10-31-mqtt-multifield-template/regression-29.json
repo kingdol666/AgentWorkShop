@@ -1,0 +1,220 @@
+{
+  "suite": "MQTT 协议专项(多字段解析 + 下发封装)",
+  "at": "2026-10-30T15:46:42.905Z",
+  "topic": "aw/e2e/env/complex",
+  "publishedSample": [
+    {
+      "ts": 1793375201851,
+      "device": "env-01",
+      "data": {
+        "temp": 23.5,
+        "humidity": 57,
+        "pressure": 100.4,
+        "nested": {
+          "dew": 10.9
+        },
+        "samples": [
+          102,
+          201,
+          302
+        ]
+      },
+      "status": "ok"
+    },
+    {
+      "ts": 1793375202857,
+      "device": "env-01",
+      "data": {
+        "temp": 24,
+        "humidity": 58,
+        "pressure": 100.6,
+        "nested": {
+          "dew": 11.2
+        },
+        "samples": [
+          100,
+          202,
+          303
+        ]
+      },
+      "status": "ok"
+    }
+  ],
+  "checks": [
+    {
+      "id": "A.temp",
+      "name": "建 MQTT 节点 MQTT多字段-温度",
+      "pass": true,
+      "detail": "dn-69342ee3"
+    },
+    {
+      "id": "A.humidity",
+      "name": "建 MQTT 节点 MQTT多字段-湿度",
+      "pass": true,
+      "detail": "dn-68076bdf"
+    },
+    {
+      "id": "A.pressure",
+      "name": "建 MQTT 节点 MQTT多字段-气压",
+      "pass": true,
+      "detail": "dn-74db4784"
+    },
+    {
+      "id": "A.dew",
+      "name": "建 MQTT 节点 MQTT多字段-嵌套露点",
+      "pass": true,
+      "detail": "dn-7faa3808"
+    },
+    {
+      "id": "A.arr",
+      "name": "建 MQTT 节点 MQTT多字段-数组元素",
+      "pass": true,
+      "detail": "dn-a60af282"
+    },
+    {
+      "id": "A.badString",
+      "name": "建 MQTT 节点 MQTT多字段-字符串字段(应报错)",
+      "pass": true,
+      "detail": "dn-7d76f3a3"
+    },
+    {
+      "id": "A.badMissing",
+      "name": "建 MQTT 节点 MQTT多字段-缺失字段(应报错)",
+      "pass": true,
+      "detail": "dn-17fd06cc"
+    },
+    {
+      "id": "A.temp.data",
+      "name": "MQTT多字段-温度 有真实样本",
+      "pass": true,
+      "detail": "buckets=12 samples=12 last=21"
+    },
+    {
+      "id": "A.humidity.data",
+      "name": "MQTT多字段-湿度 有真实样本",
+      "pass": true,
+      "detail": "buckets=12 samples=12 last=52"
+    },
+    {
+      "id": "A.pressure.data",
+      "name": "MQTT多字段-气压 有真实样本",
+      "pass": true,
+      "detail": "buckets=12 samples=12 last=100.4"
+    },
+    {
+      "id": "A.dew.data",
+      "name": "MQTT多字段-嵌套露点 有真实样本",
+      "pass": true,
+      "detail": "buckets=12 samples=12 last=11.5"
+    },
+    {
+      "id": "A.arr.data",
+      "name": "MQTT多字段-数组元素 有真实样本",
+      "pass": true,
+      "detail": "buckets=12 samples=12 last=200"
+    },
+    {
+      "id": "A.badString.reject",
+      "name": "MQTT多字段-字符串字段(应报错) 如实报错且零入库",
+      "pass": true,
+      "detail": "samples=0"
+    },
+    {
+      "id": "A.badMissing.reject",
+      "name": "MQTT多字段-缺失字段(应报错) 如实报错且零入库",
+      "pass": true,
+      "detail": "samples=0"
+    },
+    {
+      "id": "A.temp.match",
+      "name": "MQTT多字段-温度 值命中发布集合",
+      "pass": true,
+      "detail": "observed=24,24.5,20,20.5,21"
+    },
+    {
+      "id": "A.humidity.match",
+      "name": "MQTT多字段-湿度 值命中发布集合",
+      "pass": true,
+      "detail": "observed=48,49,50,51,52"
+    },
+    {
+      "id": "A.pressure.match",
+      "name": "MQTT多字段-气压 值命中发布集合",
+      "pass": true,
+      "detail": "observed=100.6,100.8,100,100.2,100.4"
+    },
+    {
+      "id": "A.dew.match",
+      "name": "MQTT多字段-嵌套露点 值命中发布集合",
+      "pass": true,
+      "detail": "observed=10.3,10.6,10.9,11.2,11.5"
+    },
+    {
+      "id": "A.arr.match",
+      "name": "MQTT多字段-数组元素 值命中发布集合",
+      "pass": true,
+      "detail": "observed=200,201,202,203,200"
+    },
+    {
+      "id": "A.fanout",
+      "name": "同 topic 多节点逐报文扇出(时间戳重合)",
+      "pass": true,
+      "detail": "overlapBuckets=12"
+    },
+    {
+      "id": "A.errText.string",
+      "name": "字符串字段被拒并给出可读错误",
+      "pass": true,
+      "detail": "被动订阅报文错误:无法得到单个数值(jsonPath=status;payload={\"ts\":1793375196815,\"device\":\"env-01\",\"data\":{\"temp\":21,\"humidity\":52,\"pressure\")"
+    },
+    {
+      "id": "A.errText.missing",
+      "name": "缺失字段被拒并给出可读错误",
+      "pass": true,
+      "detail": "被动订阅报文错误:无法得到单个数值(jsonPath=data.missing;payload={\"ts\":1793375196815,\"device\":\"env-01\",\"data\":{\"temp\":21,\"humidity\":52,\"pressure\")"
+    },
+    {
+      "id": "B1.create",
+      "name": "建 MQTT 写控节点(真实设备 commandTopic)",
+      "pass": true,
+      "detail": "dw-e1d59b5e"
+    },
+    {
+      "id": "B1.device",
+      "name": "设备侧设定值真实生效",
+      "pass": true,
+      "detail": "before=24 after=26 resp={\"ok\":true,\"ack\":\"transport-ack\",\"message\":\"已发布 26 → aw/inj/coolwater/set(QoS 1;broker 已受理,设备侧待验证)(标定后物理值 26)\",\"raw\":26,\"readback\":null,\"anchorId\":\"anc-6b17e8ac\",\"param\":{\"id\":\"pp-70a698ac\",\"key\":\"tem"
+    },
+    {
+      "id": "B1.ack",
+      "name": "写回执分级(readback-verified / transport-ack 如实)",
+      "pass": true,
+      "detail": "{\"ok\":true,\"ack\":\"transport-ack\",\"message\":\"已发布 26 → aw/inj/coolwater/set(QoS 1;broker 已受理,设备侧待验证)(标定后物理值 26)\",\"raw\":26,\"readback\":null,\"anchorId\":\"anc-6b17e8ac\",\"param\":{\"id\":\"pp-70a698ac\",\"key\":\"temp-sp-8\",\"name\":\"MQTT写-冷却水温SP\",\"templateRef\":\"temp-sp\",\"unit\":\"℃\",\"decimals\":1,\"min\":null,\"max\":null,"
+    },
+    {
+      "id": "B1.range",
+      "name": "越量程写入被拒(设备不变)",
+      "pass": true,
+      "detail": "status=400 msg=设定值 99℃ 超出上限 节点工艺安全量程 的 40℃ —— 约束层:节点安全量程(当前有效写入区间 10~40℃;各层限界按安全规约取交集,越界写入已拒绝)"
+    },
+    {
+      "id": "B2.create",
+      "name": "建 jsonKey=params.temp 试验节点",
+      "pass": true,
+      "detail": "dw-af23bedc"
+    },
+    {
+      "id": "B2.nestedKey",
+      "name": "jsonKey 点号被当作字面键(不产生嵌套对象)",
+      "pass": true,
+      "detail": "payload={\"params.temp\":230}"
+    },
+    {
+      "id": "B3.multiField",
+      "name": "同 topic 两节点=两条独立报文(非单条多字段封装)",
+      "pass": true,
+      "detail": "payloads=[\"{\\\"temp\\\":230}\",\"{\\\"hold\\\":8}\"]"
+    }
+  ],
+  "verdict": "PASS(29/29)"
+}

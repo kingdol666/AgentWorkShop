@@ -1,0 +1,14 @@
+{
+  "pdf": "main.pdf",
+  "pages": 10,
+  "page_size_pt": [
+    612.0,
+    792.0
+  ],
+  "bytes": 426452,
+  "sha256": "f1f82d9370ce6dd571ba78897abdcfaea0e558d6a99ed535195ba900fe0d1c97",
+  "abstract_word_count_approx": 176,
+  "overfull_box_count": 0,
+  "undefined_reference_or_citation": false,
+  "underfull_warning_count": 23
+}

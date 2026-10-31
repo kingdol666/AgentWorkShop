@@ -1,13 +1,13 @@
 {
-  "at": "2026-10-28T17:23:31.438Z",
+  "at": "2026-10-29T19:15:28.414Z",
   "scenario": {
-    "line": "ln-9dd0c22c",
-    "anchor": "dw-de68dd23",
-    "mesNode": "dw-2920cf05",
-    "mirror": "dn-b063bcb8",
-    "mesRecipe": "rc-7bcae552",
-    "channel": "3792eb7d-882a-4123-ad8c-a0ff0e36d8ec",
-    "agent": "1b28af09-da9f-40ab-96f1-954faa9b56ae",
+    "line": "ln-f98eae6a",
+    "anchor": "dw-567fae6c",
+    "mesNode": "dw-7022bb8f",
+    "mirror": "dn-f7586b02",
+    "mesRecipe": "rc-4297b434",
+    "channel": "d3a503e8-58a9-449b-aab3-c17a0f0f5c19",
+    "agent": "a856b136-b85f-46bb-a73d-d1db6f824942",
     "mesApi": "http://127.0.0.1:15071"
   },
   "assertions": [
@@ -15,13 +15,13 @@
       "id": "M0a",
       "name": "自定义 MES API(v1)就绪",
       "pass": true,
-      "detail": "http://127.0.0.1:15071 token=***vbam"
+      "detail": "http://127.0.0.1:15071 token=***b4ta"
     },
     {
       "id": "M0b",
       "name": "平台隔离实例就绪",
       "pass": true,
-      "detail": "port=3422 version=0.8.6"
+      "detail": "port=3422 version=0.8.7"
     },
     {
       "id": "M0c",
@@ -33,61 +33,61 @@
       "id": "M1",
       "name": "MES 直连节点 + 镜像数采节点接入",
       "pass": true,
-      "detail": "{\"mesNode\":\"dw-2920cf05\",\"mirror\":\"dn-b063bcb8\"}"
+      "detail": "{\"mesNode\":\"dw-7022bb8f\",\"mirror\":\"dn-f7586b02\"}"
     },
     {
       "id": "M2",
       "name": "频道/绑定(MES 授权配方)就绪",
       "pass": true,
-      "detail": "{\"channel\":\"3792eb7d-882a-4123-ad8c-a0ff0e36d8ec\",\"agent\":\"1b28af09-da9f-40ab-96f1-954faa9b56ae\",\"bind\":200}"
+      "detail": "{\"channel\":\"d3a503e8-58a9-449b-aab3-c17a0f0f5c19\",\"agent\":\"a856b136-b85f-46bb-a73d-d1db6f824942\",\"bind\":200}"
     },
     {
       "id": "M3",
       "name": "mes_catalog 可见自定义 MES 点位",
       "pass": true,
-      "detail": "MES REST 点位目录(共 1 个,产线 ln-9dd0c22c;显示 1 条): - MES熔体压力(id=dw-2920cf05) | 产线 ln-9dd0c22c | 单位 MPa | 量程 0~45 | 能力 读/史 | 自定义 MES API v1 熔体压力 说明:能力 读=可读当前值,写=可写设定值,史=可取历史(史·vector=每时间点检测向量,史·image=图像帧,史·table/event=记录流),钩子=已配 dataHook(取数后自动做下沉处理并回传摘要与产物)。字段级语义来自 MES 响应 dictionaryPath 或节点 driverConfig.dictionary;首次 mes_fetch 后缓存,后续目录可直接看到字段标签/单位/点位。历史取数用 mes_fetch(ids=[点位id], from, to, max_rows, param?);需要落盘到目录做离线分析用 mes_e"
+      "detail": "MES REST 点位目录(共 1 个,产线 ln-f98eae6a;显示 1 条): - MES熔体压力(id=dw-7022bb8f) | 产线 ln-f98eae6a | 单位 MPa | 量程 0~45 | 能力 读/史 | 自定义 MES API v1 熔体压力 说明:能力 读=可读当前值,写=可写设定值,史=可取历史(史·vector=每时间点检测向量,史·image=图像帧,史·table/event=记录流),钩子=已配 dataHook(取数后自动做下沉处理并回传摘要与产物)。字段级语义来自 MES 响应 dictionaryPath 或节点 driverConfig.dictionary;首次 mes_fetch 后缓存,后续目录可直接看到字段标签/单位/点位。历史取数用 mes_fetch(ids=[点位id], from, to, max_rows, param?);需要落盘到目录做离线分析用 mes_e"
     },
     {
       "id": "M4",
       "name": "mes_fetch 直连取到历史(行数>0,数值与 API 当前值同量级)",
       "pass": true,
-      "detail": "api=8.492 text=MES 历史取数(内联同步,1 个点位,窗口 10-28 17:13:58 ~ 10-28 17:23:58): ■ MES熔体压力(id=dw-2920cf05)[格式 标量;节点单位 MPa;量程 0~45] 行数 200(截断:达到 maxRows 上限) | 首 10-29 01:13:59 ~ 末 10-29 01:17:18 统计:min 8.225 / max 8.805 / mean 8.493 / stddev 0.119 MPa 采样(≤3 行): 10-29 01:13:59,8.577 | 10-29 01:15:38,8.604 | 10-29 01:17:18,8.602 字段字典(1 个字段,来自 MES 响应/节点配置): - value [标签 melt_pressure 测量值 | 单位 MPa | 形态 scalar] — MES 历史接口返回的工程值 说明:以上为统计摘要与 ≤3 行采样;MES 原文不进入对话。向量/图像/记录点位按各自格式呈现,已配置数据钩子(dataHook)的点位会附处理摘要与产物清单(文件落 <数据根>/mes-arti"
+      "detail": "api=8.43 text=MES 历史取数(内联同步,1 个点位,窗口 10-29 19:05:57 ~ 10-29 19:15:57): ■ MES熔体压力(id=dw-7022bb8f)[格式 标量;节点单位 MPa;量程 0~45] 行数 200(截断:达到 maxRows 上限) | 首 10-30 03:05:58 ~ 末 10-30 03:09:17 统计:min 8.129 / max 8.768 / mean 8.478 / stddev 0.119 MPa 采样(≤3 行): 10-30 03:05:58,8.33 | 10-30 03:07:37,8.338 | 10-30 03:09:17,8.428 字段字典(1 个字段,来自 MES 响应/节点配置): - value [标签 melt_pressure 测量值 | 单位 MPa | 形态 scalar] — MES 历史接口返回的工程值 说明:以上为统计摘要与 ≤3 行采样;MES 原文不进入对话。向量/图像/记录点位按各自格式呈现,已配置数据钩子(dataHook)的点位会附处理摘要与产物清单(文件落 <数据根>/mes-artif"
     },
     {
       "id": "M5",
       "name": "镜像样本落库(≥5 点)",
       "pass": true,
-      "detail": "points=19 tail=8.392/8.527/8.562"
+      "detail": "points=19 tail=8.551/8.222/8.512"
     },
     {
       "id": "M6",
       "name": "镜像样本 = MES API 当前值(≤0.5MPa)",
       "pass": true,
-      "detail": "mirror=8.562 api=8.492"
+      "detail": "mirror=8.512 api=8.43"
     },
     {
       "id": "M7",
       "name": "Agent daq_query 能取到镜像样本",
       "pass": true,
-      "detail": "数采数据查询结果(1 个节点): ■ MES熔体压力镜像(熔体压力)单位 MPa,正常量程 0~45MPa,当前状态 ok,时间窗 2026-10-29T01:20 ~ 2026-10-29T01:23(降采样 1000ms,聚合 avg) 当前活动批次 run=rr-0a2dd251 配方「镜像线配方」(rc-b10836ae)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build) 样本 20 点 | 最新 8.492MPa | 均值 8.413 | 最小 8.231 | 最大 8.593 最近序列: 01:23:47=avg 8.43(n=1); 01:23:48=avg 8.41(n=1); 01:23:49=avg 8.35(n=1); 01:23:50=avg 8.3(n=1); 01:23:51=avg 8.32(n=1); 01:23:52=avg 8.4"
+      "detail": "数采数据查询结果(1 个节点): ■ MES熔体压力镜像(熔体压力)单位 MPa,正常量程 0~45MPa,当前状态 ok,时间窗 2026-10-30T03:12 ~ 2026-10-30T03:15(降采样 1000ms,聚合 avg) 当前活动批次 run=rr-fb43e823 配方「镜像线配方」(rc-f4425499)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_build) 样本 19 点 | 最新 8.512MPa | 均值 8.506 | 最小 8.222 | 最大 8.766 最近序列: 03:15:44=avg 8.6(n=1); 03:15:45=avg 8.6(n=1); 03:15:46=avg 8.55(n=1); 03:15:47=avg 8.58(n=1); 03:15:48=avg 8.56(n=1); 03:15:49=avg 8.52"
     },
     {
       "id": "M8",
       "name": "API 宕机:mes_fetch 如实失败",
       "pass": true,
-      "detail": "MES 历史取数(内联同步,1 个点位,窗口 10-28 17:13:58 ~ 10-28 17:24:11): ■ MES熔体压力(id=dw-2920cf05) 取数失败:fetch failed 说明:以上为统计摘要与 ≤3 行采样;MES 原文不进入对话。向量/图像/记录点位按各自格式呈现,已配置数据钩子(dataHook)的点位会附处理摘要与产物清单(文件落 <数据根>/mes-artifacts/<点位id>/)。需要标量/向量全量行请用更大 max_rows(> 2000)走异步数据集,再用 mes_dataset_read 读。"
+      "detail": "MES 历史取数(内联同步,1 个点位,窗口 10-29 19:05:57 ~ 10-29 19:16:09): ■ MES熔体压力(id=dw-7022bb8f) 取数失败:fetch failed 说明:以上为统计摘要与 ≤3 行采样;MES 原文不进入对话。向量/图像/记录点位按各自格式呈现,已配置数据钩子(dataHook)的点位会附处理摘要与产物清单(文件落 <数据根>/mes-artifacts/<点位id>/)。需要标量/向量全量行请用更大 max_rows(> 2000)走异步数据集,再用 mes_dataset_read 读。"
     },
     {
       "id": "M9",
       "name": "API 宕机:镜像历史仍可查(不断供)",
       "pass": true,
-      "detail": "history=21 lastBefore=2026-10-28T17:23:58.000Z lastNow=2026-10-28T17:23:59.000Z"
+      "detail": "history=20 lastBefore=2026-10-29T19:15:56.000Z lastNow=2026-10-29T19:15:57.000Z"
     },
     {
       "id": "M10",
       "name": "API 宕机:新样本停止(最新样本不再前进)",
       "pass": true,
-      "detail": "lastBefore=2026-10-28T17:23:58.000Z lastNow=2026-10-28T17:23:59.000Z"
+      "detail": "lastBefore=2026-10-29T19:15:56.000Z lastNow=2026-10-29T19:15:57.000Z"
     },
     {
       "id": "M11",
@@ -99,13 +99,13 @@
       "id": "M12",
       "name": "恢复后镜像继续采样(新样本前进)",
       "pass": true,
-      "detail": "lastDown=2026-10-28T17:23:59.000Z lastUp=2026-10-28T17:24:25.000Z"
+      "detail": "lastDown=2026-10-29T19:15:57.000Z lastUp=2026-10-29T19:16:23.000Z"
     },
     {
       "id": "Q1",
       "name": "Qwen 通过 daq_query 在线抓到镜像数采样本",
       "pass": true,
-      "detail": "state=CANCELED cancelled=true calls=🔧 daq_query | 🔧 daq_query | 🔧 daq_query ✅ 完成: 数采数据查询结果(1 个节点): ■ MES熔体压力镜像(熔体压力)单位 MPa,正常量程 0~45MPa,当前状态 ok,时间窗 2026-10-29T00:55 ~ 2026-10-29T01:25(降采样 15000ms,聚合 avg) 当前活动批次 run=rr-0a2dd251 配方「镜像线配方」(rc-b10836ae)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_bui | 🔧 daq_query ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"数采数据查询结果(1 个节点):\\n\\n■ MES熔体压力镜像(熔体压力)单位 MPa,正常量程 0~45MPa,当前状态 ok,时间窗 2026-10-29T00:55 ~ 2026-"
+      "detail": "state=CANCELED cancelled=true calls=🔧 daq_query | 🔧 daq_query | 🔧 daq_query ✅ 完成: 数采数据查询结果(1 个节点): ■ MES熔体压力镜像(熔体压力)单位 MPa,正常量程 0~45MPa,当前状态 ok,时间窗 2026-10-30T02:47 ~ 2026-10-30T03:17(降采样 15000ms,聚合 avg) 当前活动批次 run=rr-fb43e823 配方「镜像线配方」(rc-f4425499)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_bui | 🔧 daq_query ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"数采数据查询结果(1 个节点):\\n\\n■ MES熔体压力镜像(熔体压力)单位 MPa,正常量程 0~45MPa,当前状态 ok,时间窗 2026-10-30T02:47 ~ 2026-"
     },
     {
       "id": "Q2",
@@ -115,23 +115,23 @@
     }
   ],
   "data": {
-    "apiNow": 8.492,
-    "latestMirror": 8.562,
+    "apiNow": 8.43,
+    "latestMirror": 8.512,
     "mirrorPoints": 19,
     "beforeDown": {
-      "count": 20,
-      "lastAt": 1793208238000
+      "count": 19,
+      "lastAt": 1793301356000
     },
     "afterDown": {
-      "count": 21,
-      "lastAt": 1793208239000
+      "count": 20,
+      "lastAt": 1793301357000
     },
     "afterUp": {
-      "count": 33,
-      "lastAt": 1793208265000
+      "count": 31,
+      "lastAt": 1793301383000
     },
-    "fetchText": "MES 历史取数(内联同步,1 个点位,窗口 10-28 17:13:58 ~ 10-28 17:23:58):\n■ MES熔体压力(id=dw-2920cf05)[格式 标量;节点单位 MPa;量程 0~45]\n  行数 200(截断:达到 maxRows 上限) | 首 10-29 01:13:59 ~ 末 10-29 01:17:18\n  统计:min 8.225 / max 8.805 / mean 8.493 / stddev 0.119 MPa\n  采样(≤3 行): 10-29 01:13:59,8.577 | 10-29 01:15:38,8.604 | 10-29 01:17:18,8.602\n字段字典(1 个字段,来自 MES 响应/节点配置):\n  - value [标签 melt_pressure 测量值 | 单位 MPa | 形态 scalar] — MES 历史接口返回的工程值\n\n说明:以上为统计摘要与 ≤3 行采样;MES 原文不进入对话。向量/图像/记录点位按各自格式呈现,已配置数据钩子(dataHook)的点位会附处理摘要与产物清单(文件落 <数据根>/mes-artifacts/<点位id>/)。需要标量/向量全量行请用更大 max_rows(> 2000)走异步数据集,再用 mes_dataset_read 读。",
-    "downText": "MES 历史取数(内联同步,1 个点位,窗口 10-28 17:13:58 ~ 10-28 17:24:11):\n■ MES熔体压力(id=dw-2920cf05)\n  取数失败:fetch failed\n\n说明:以上为统计摘要与 ≤3 行采样;MES 原文不进入对话。向量/图像/记录点位按各自格式呈现,已配置数据钩子(dataHook)的点位会附处理摘要与产物清单(文件落 <数据根>/mes-artifacts/<点位id>/)。需要标量/向量全量行请用更大 max_rows(> 2000)走异步数据集,再用 mes_dataset_read 读。"
+    "fetchText": "MES 历史取数(内联同步,1 个点位,窗口 10-29 19:05:57 ~ 10-29 19:15:57):\n■ MES熔体压力(id=dw-7022bb8f)[格式 标量;节点单位 MPa;量程 0~45]\n  行数 200(截断:达到 maxRows 上限) | 首 10-30 03:05:58 ~ 末 10-30 03:09:17\n  统计:min 8.129 / max 8.768 / mean 8.478 / stddev 0.119 MPa\n  采样(≤3 行): 10-30 03:05:58,8.33 | 10-30 03:07:37,8.338 | 10-30 03:09:17,8.428\n字段字典(1 个字段,来自 MES 响应/节点配置):\n  - value [标签 melt_pressure 测量值 | 单位 MPa | 形态 scalar] — MES 历史接口返回的工程值\n\n说明:以上为统计摘要与 ≤3 行采样;MES 原文不进入对话。向量/图像/记录点位按各自格式呈现,已配置数据钩子(dataHook)的点位会附处理摘要与产物清单(文件落 <数据根>/mes-artifacts/<点位id>/)。需要标量/向量全量行请用更大 max_rows(> 2000)走异步数据集,再用 mes_dataset_read 读。",
+    "downText": "MES 历史取数(内联同步,1 个点位,窗口 10-29 19:05:57 ~ 10-29 19:16:09):\n■ MES熔体压力(id=dw-7022bb8f)\n  取数失败:fetch failed\n\n说明:以上为统计摘要与 ≤3 行采样;MES 原文不进入对话。向量/图像/记录点位按各自格式呈现,已配置数据钩子(dataHook)的点位会附处理摘要与产物清单(文件落 <数据根>/mes-artifacts/<点位id>/)。需要标量/向量全量行请用更大 max_rows(> 2000)走异步数据集,再用 mes_dataset_read 读。"
   },
   "qwen": {
     "state": "CANCELED",
@@ -139,16 +139,16 @@
     "toolCalls": [
       "🔧 daq_query",
       "🔧 daq_query",
-      "🔧 daq_query ✅ 完成: 数采数据查询结果(1 个节点): ■ MES熔体压力镜像(熔体压力)单位 MPa,正常量程 0~45MPa,当前状态 ok,时间窗 2026-10-29T00:55 ~ 2026-10-29T01:25(降采样 15000ms,聚合 avg) 当前活动批次 run=rr-0a2dd251 配方「镜像线配方」(rc-b10836ae)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_bui",
-      "🔧 daq_query ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"数采数据查询结果(1 个节点):\\n\\n■ MES熔体压力镜像(熔体压力)单位 MPa,正常量程 0~45MPa,当前状态 ok,时间窗 2026-10-29T00:55 ~ 2026-10-29T01:25(降采样 15000ms,聚合 avg)\\n 当前活动批次 run=rr-0a2dd251 配方「镜像线配方」(rc-b10836ae)(可直接把 run_id/r",
-      "🔧 mcp__kb_mcp_parse_task_status(artifact://0)",
-      "🔧 mcp__kb_mcp_parse_task_status ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"{\\\"success\\\": false, \\\"error\\\": \\\"unknown task_id: C:\\\\\\\\Users\\\\\\\\87287\\\\\\\\.omp\\\\\\\\agent\\\\\\\\sessions\\\\\\\\--D--codes-ABO-AgentWorkShop-data-workspaces-3792eb7d-882a-412",
-      "🔧 mcp__kb_mcp_parse_task_status(artifact://1)",
-      "🔧 mcp__kb_mcp_parse_task_status ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"{\\\"success\\\": false, \\\"error\\\": \\\"unknown task_id: C:\\\\\\\\Users\\\\\\\\87287\\\\\\\\.omp\\\\\\\\agent\\\\\\\\sessions\\\\\\\\--D--codes-ABO-AgentWorkShop-data-workspaces-3792eb7d-882a-412",
-      "🔧 daq_query(line_id=ln-9dd0c22c, scope=active)",
-      "🔧 daq_query(line_id=ln-9dd0c22c, scope=active)",
-      "🔧 daq_query ✅ 完成: 数采数据查询结果(1 个节点): ■ MES熔体压力镜像(熔体压力)单位 MPa,正常量程 0~45MPa,当前状态 ok,时间窗 2026-10-29T00:56 ~ 2026-10-29T01:26(降采样 15000ms,聚合 avg) 当前活动批次 run=rr-0a2dd251 配方「镜像线配方」(rc-b10836ae)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_bui",
-      "🔧 daq_query ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"数采数据查询结果(1 个节点):\\n\\n■ MES熔体压力镜像(熔体压力)单位 MPa,正常量程 0~45MPa,当前状态 ok,时间窗 2026-10-29T00:56 ~ 2026-10-29T01:26(降采样 15000ms,聚合 avg)\\n 当前活动批次 run=rr-0a2dd251 配方「镜像线配方」(rc-b10836ae)(可直接把 run_id/r"
+      "🔧 daq_query ✅ 完成: 数采数据查询结果(1 个节点): ■ MES熔体压力镜像(熔体压力)单位 MPa,正常量程 0~45MPa,当前状态 ok,时间窗 2026-10-30T02:47 ~ 2026-10-30T03:17(降采样 15000ms,聚合 avg) 当前活动批次 run=rr-fb43e823 配方「镜像线配方」(rc-f4425499)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_bui",
+      "🔧 daq_query ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"数采数据查询结果(1 个节点):\\n\\n■ MES熔体压力镜像(熔体压力)单位 MPa,正常量程 0~45MPa,当前状态 ok,时间窗 2026-10-30T02:47 ~ 2026-10-30T03:17(降采样 15000ms,聚合 avg)\\n 当前活动批次 run=rr-fb43e823 配方「镜像线配方」(rc-f4425499)(可直接把 run_id/r",
+      "🔧 daq_query",
+      "🔧 daq_query",
+      "🔧 daq_query ✅ 完成: 数采数据查询结果(1 个节点): ■ MES熔体压力镜像(熔体压力)单位 MPa,正常量程 0~45MPa,当前状态 ok,时间窗 2026-10-30T02:47 ~ 2026-10-30T03:17(降采样 15000ms,聚合 avg) 当前活动批次 run=rr-fb43e823 配方「镜像线配方」(rc-f4425499)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_bui",
+      "🔧 daq_query ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"数采数据查询结果(1 个节点):\\n\\n■ MES熔体压力镜像(熔体压力)单位 MPa,正常量程 0~45MPa,当前状态 ok,时间窗 2026-10-30T02:47 ~ 2026-10-30T03:17(降采样 15000ms,聚合 avg)\\n 当前活动批次 run=rr-fb43e823 配方「镜像线配方」(rc-f4425499)(可直接把 run_id/r",
+      "🔧 daq_query",
+      "🔧 daq_query",
+      "🔧 daq_query ✅ 完成: 数采数据查询结果(1 个节点): ■ MES熔体压力镜像(熔体压力)单位 MPa,正常量程 0~45MPa,当前状态 ok,时间窗 2026-10-30T02:47 ~ 2026-10-30T03:17(降采样 15000ms,聚合 avg) 当前活动批次 run=rr-fb43e823 配方「镜像线配方」(rc-f4425499)(可直接把 run_id/recipe_id 回传给 daq_query 或 aml_dataset_bui",
+      "🔧 daq_query ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"数采数据查询结果(1 个节点):\\n\\n■ MES熔体压力镜像(熔体压力)单位 MPa,正常量程 0~45MPa,当前状态 ok,时间窗 2026-10-30T02:47 ~ 2026-10-30T03:17(降采样 15000ms,聚合 avg)\\n 当前活动批次 run=rr-fb43e823 配方「镜像线配方」(rc-f4425499)(可直接把 run_id/r"
     ],
     "deliverable": ""
   },

@@ -1,0 +1,16 @@
+{
+  "date": "2026-10-26",
+  "status": "PASS",
+  "checks": {
+    "r24_artifacts_present": 8,
+    "r24_original_and_delivered_hashes_recorded": true,
+    "r24_embedded_health_hash_matches_delivered_copy": true,
+    "claim_map_artifacts_exist": true,
+    "numeric_boolean_null_values_preserved_in_redacted_json": true,
+    "personal_identity_scan_pass": true,
+    "local_user_path_scan_pass": true,
+    "credential_value_scan_pass": true,
+    "source_commit_pinned": false
+  },
+  "scope": "Offline package-integrity validation; no services contacted and no controls issued."
+}

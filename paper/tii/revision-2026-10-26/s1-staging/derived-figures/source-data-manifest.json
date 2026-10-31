@@ -1,0 +1,244 @@
+{
+  "created_at": "2026-10-20T02:48:21.247Z",
+  "scope": "local archived evidence and figure reconstruction; no live calls or new experiments",
+  "generator": {
+    "path": "paper/tii/SUBMISSION-IEEE-TII/figures/make-evaluation-2026.py",
+    "bytes": 19172,
+    "sha256": "beb69dd350e3dcc6a4e7c4febbdbe001eee662bb292f5d6625ddd2ca7d6b0427"
+  },
+  "backend": "Python/matplotlib Agg",
+  "execution": "Initial rendering by coordinating root; final 9 pt typography and fresh QA by executor with [local-runtime]",
+  "raw_sources": [
+    {
+      "path": "bench/results/injection-pressure-loop-2026-10-18T12-37-22-157Z/summary.json",
+      "bytes": 6764,
+      "sha256": "f706f513b043d035dead3c82c5c900cd65e5ae730b8d06780e03f6891428a7d5"
+    },
+    {
+      "path": "bench/results/20260921184204-10lc/scenarios.json",
+      "bytes": 69687,
+      "sha256": "83f3ef3140df02809749003bd5bad7778870ae966a598572631b895028aeb3b4"
+    },
+    {
+      "path": "docs/benchmarks/benchmark-20261009033810/timeline.jsonl",
+      "bytes": 3621,
+      "sha256": "27de81c2e80d0d56bc8779cba455f24ac8bcfabc6cc2362173a4b16c140b773e"
+    }
+  ],
+  "derived_sources": [
+    {
+      "path": "paper/tii/revision-2026-10-20/source-data-injection.csv",
+      "bytes": 1085,
+      "sha256": "b7f646059fa3f2d71db7216a6d7e903951141673e83803b645b45cd49c5ed259"
+    },
+    {
+      "path": "paper/tii/revision-2026-10-20/source-data-injection.json",
+      "bytes": 3149,
+      "sha256": "460ac5afe322d7db334a10992f4638ec0c83260b36a5b2d451deb4f2bf50f55e"
+    },
+    {
+      "path": "paper/tii/revision-2026-10-20/source-data-governance.csv",
+      "bytes": 3421,
+      "sha256": "cd5045eb2198d1c0545b099e635091f7403e5fc44e9f70321b0eaa2e984daf99"
+    },
+    {
+      "path": "paper/tii/revision-2026-10-20/source-data-governance.json",
+      "bytes": 6370,
+      "sha256": "e4d1b8adf22f74f8cb915eef1457de7ae7882fd65d665899ce99cbf3885dc52c"
+    },
+    {
+      "path": "paper/tii/revision-2026-10-20/source-data-missions-controls.csv",
+      "bytes": 3759,
+      "sha256": "cb68c7d4405d6c351b36dc7e61bce6d9ac75bcc298869065409f8ba1080a6cd8"
+    },
+    {
+      "path": "paper/tii/revision-2026-10-20/source-data-missions-outcomes.csv",
+      "bytes": 3513,
+      "sha256": "cada5f27e281e7b858dd6fa4f872335d214e44b594d5534e05409db9e73ee2c4"
+    },
+    {
+      "path": "paper/tii/revision-2026-10-20/source-data-missions.json",
+      "bytes": 80578,
+      "sha256": "68cb99a8629174deae9ddcb11f101b91c29473359427bb3490b95d6e00ba832e"
+    }
+  ],
+  "outputs": [
+    {
+      "path": "paper/tii/SUBMISSION-IEEE-TII/resources/fig-injection-controls.pdf",
+      "bytes": 44441,
+      "sha256": "b3f818a5b0a77cf7917a1c103d1e219a1bd5c81c31685cc4e8861b0d930b2913"
+    },
+    {
+      "path": "paper/tii/SUBMISSION-IEEE-TII/resources/fig-injection-controls.svg",
+      "bytes": 27781,
+      "sha256": "892654370bdeba1a1e1651a63c8f0528b7ecc7bae289a961aedd79470fee2bbd"
+    },
+    {
+      "path": "paper/tii/SUBMISSION-IEEE-TII/resources/fig-injection-controls.png",
+      "bytes": 324889,
+      "sha256": "da6bccdd88f828a51c752ee7154ea992cd759810ed466487cf0c6fcdaafc489e"
+    },
+    {
+      "path": "paper/tii/SUBMISSION-IEEE-TII/resources/fig-governance-timeline.pdf",
+      "bytes": 41337,
+      "sha256": "1147f2d1deac1fd66852d44256dfb7ba2af4d964b2ddf603bbf66d3c2ab7a4cf"
+    },
+    {
+      "path": "paper/tii/SUBMISSION-IEEE-TII/resources/fig-governance-timeline.svg",
+      "bytes": 13778,
+      "sha256": "b8158e3f270305d83fed36e1ff6bb331f1925489fce09a77557ecc37443ad8f9"
+    },
+    {
+      "path": "paper/tii/SUBMISSION-IEEE-TII/resources/fig-governance-timeline.png",
+      "bytes": 210865,
+      "sha256": "4af1da9cea7e95c1dc6e68bf74b31330d95917a66a369b61bb9347571d289b60"
+    },
+    {
+      "path": "paper/tii/SUBMISSION-IEEE-TII/resources/fig-missions-controls.pdf",
+      "bytes": 53341,
+      "sha256": "71015341734842f0c0d44759d83a22aeaabab75f000e006ebee986c2430e5ff4"
+    },
+    {
+      "path": "paper/tii/SUBMISSION-IEEE-TII/resources/fig-missions-controls.svg",
+      "bytes": 62570,
+      "sha256": "eeef504620f1b5779f23982276788ba6713e31a560a74a0e98a031fcf57358e5"
+    },
+    {
+      "path": "paper/tii/SUBMISSION-IEEE-TII/resources/fig-missions-controls.png",
+      "bytes": 503343,
+      "sha256": "3bb5946c53e92efe6603dcd90d7dd13aeef02e0838a8419e81046a078a9eea4e"
+    }
+  ],
+  "display_contract": {
+    "fig-injection-controls": {
+      "width_in": 7.16,
+      "height_in": 2.35,
+      "n": 1,
+      "baseline_marker": "platform only; no command fabricated at index0",
+      "minimum_rendered_text_pt": 9
+    },
+    "fig-governance-timeline": {
+      "width_in": 3.5,
+      "height_in": 2.75,
+      "n": 1,
+      "S4_elapsed_s": 96.105,
+      "S4_cadence_wait_s": 69.014,
+      "S5_wait_s": 66.046,
+      "converged": false,
+      "minimum_rendered_text_pt": 9
+    },
+    "fig-missions-controls": {
+      "width_in": 7.16,
+      "height_in": 3.55,
+      "n_per_mission": 1,
+      "control_axis": "separate-knob percentage request change with native engineering-unit baseline→terminal footers",
+      "normalization": "100*(u-u_baseline)/u_baseline",
+      "minimum_rendered_text_pt": 9
+    }
+  },
+  "png_metadata": [
+    {
+      "name": "fig-injection-controls",
+      "width": 4296,
+      "height": 1410,
+      "dpi": 599.9988
+    },
+    {
+      "name": "fig-governance-timeline",
+      "width": 2100,
+      "height": 1650,
+      "dpi": 599.9988
+    },
+    {
+      "name": "fig-missions-controls",
+      "width": 4296,
+      "height": 2130,
+      "dpi": 599.9988
+    }
+  ],
+  "qa": [
+    {
+      "audit": "evaluation-source-audit",
+      "exit_code": 0
+    },
+    {
+      "audit": "fig-injection-controls.text-audit",
+      "exit_code": 0
+    },
+    {
+      "audit": "fig-injection-controls.collision-audit",
+      "exit_code": 0
+    },
+    {
+      "audit": "fig-governance-timeline.text-audit",
+      "exit_code": 0
+    },
+    {
+      "audit": "fig-governance-timeline.collision-audit",
+      "exit_code": 0
+    },
+    {
+      "audit": "fig-missions-controls.text-audit",
+      "exit_code": 0
+    },
+    {
+      "audit": "fig-missions-controls.collision-audit",
+      "exit_code": 0
+    }
+  ],
+  "limitations": [
+    "physical PLC untested; repository simulator over real protocols",
+    "command request and platform snapshot are different from raw device waveforms",
+    "missing melt-temperature guard in current main trajectory",
+    "scripted approvals; no human-response study",
+    "historic direct-node experiments are not current recipe-only validation",
+    "single traces do not justify CI or significance claims"
+  ],
+  "typography_revision": {
+    "date": "2026-10-20",
+    "earlier_minimum_pt": 8,
+    "current_minimum_pt": 9,
+    "text_audit_minimum_required_pt": 9,
+    "raw_and_derived_hashes_unchanged": true,
+    "timeline_height_increase_in": 0.1
+  },
+  "source_validation": {
+    "ready": true,
+    "strict": false,
+    "counts": {
+      "PASS": 20,
+      "WARN": 1,
+      "FAIL": 0
+    },
+    "advisory_rationale": "PDF/SVG are authoritative editable submission graphics; 600-dpi PNG is a preview, so the existing absent-TIFF advisory is retained."
+  },
+  "rendered_qa": [
+    {
+      "name": "fig-injection-controls",
+      "alignment": "PASS",
+      "collision": "PASS",
+      "fail": 0,
+      "warn": 0,
+      "minimum_text_pt": 9.0,
+      "text_run_count": 48
+    },
+    {
+      "name": "fig-governance-timeline",
+      "alignment": "PASS",
+      "collision": "PASS",
+      "fail": 0,
+      "warn": 0,
+      "minimum_text_pt": 9.0,
+      "text_run_count": 23
+    },
+    {
+      "name": "fig-missions-controls",
+      "alignment": "PASS",
+      "collision": "PASS",
+      "fail": 0,
+      "warn": 0,
+      "minimum_text_pt": 9.0,
+      "text_run_count": 92
+    }
+  ]
+}

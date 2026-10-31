@@ -1,0 +1,75 @@
+\section{Introduction}
+\IEEEPARstart{I}{ndustrial-agent} deployments must connect each task to its
+production context, process signals, and equipment interfaces. Existing work
+addresses end-to-end automation control, operator-reviewed control-sequence
+generation, modular factory skills, and production scheduling
+\cite{xia2025control,huang2026made,koehle2026llmdriven,waseem2026pretrained}.
+Other studies target PLC code generation, context-aware control, resource
+capability discovery, shop-floor coordination, digital-twin fault handling,
+natural-language machine access, and robotic-line control
+\cite{liu2026agents4plc,wu2025instructmpc,lim2025llmenabled,zhao2026shopfloor,gill2025llmdt,hofmann2025nlc}.
+Across production lines, agent roles, signal maps, protocols, objectives, and
+product/run context vary. A reusable framework must configure these
+differences around shared task and operation services while keeping each
+action tied to its active production context.
+
+Consider two production scenes with different process signals and interfaces:
+cast-film thickness control and annealing-zone temperature control. An agent
+task in either scene needs production context, typed signal access, and a
+route from a named operation to the configured device protocol. The framework
+must also distinguish a command receipt from a subsequent process
+observation. The shared task and operation services can therefore be
+configured with scene-specific signal maps, protocols, and limits while
+retaining a common execution path. In this paper, the two simulator scenes
+demonstrate that configured composition; they do not measure the effort or
+benefit of changing configurations.
+
+This paper presents AgentWorkShop, a configurable industrial-agent framework
+that connects collaborative tasks and registered harnesses to production
+context, manufacturing execution system (MES) data, analysis and modeling
+services, data-acquisition (DAQ) and write-control (DCW) nodes, and
+protocol-specific drivers. Its access surfaces include command-line, web,
+SDK, REST, MCP, and A2A interfaces. Task and chat routes enter the
+collaboration runtime, whereas a direct REST tool-invocation route can call
+the shared operation dispatcher without creating a task.
+Scene blueprints define signal maps, objectives, and guards; channel profiles,
+tool policies, and agent bindings scope operations. Agents and callers invoke
+named operations through shared runtime checks; the framework does not choose
+routes autonomously and retains proposals, command confirmation, and process
+observations as distinct records. Fig.~\ref{fig:arch} presents the system
+architecture, and Fig.~\ref{fig:runtime} shows the cross-module task flow.
+Section~IV details the node-exploration and recipe lifecycles.
+
+The paper makes three contributions:
+\begin{enumerate}
+\item It defines a cross-layer task-to-operation contract that resolves
+  production context before an agent turn, rechecks each returned operation
+  at a shared dispatcher, routes semantic process nodes to configured device
+  drivers, and links command receipts separately from process observations.
+\item It implements this contract through replaceable harness adapters,
+  scene and production-context configuration, analysis and modeling
+  services, semantic device access, and route-specific command and recipe
+  lifecycles. The contribution is this composition and evidence boundary;
+  it does not introduce a new agent-reasoning or process-control algorithm.
+\item It reports complementary evidence from historical simulator and
+  protocol archives, live-engine tasks, a deterministic controller,
+  deployment regressions, and a recipe-path case. A current-version
+  application-level two-scene integration run verifies protocol reads,
+  bounded writes,
+  readback, and data lineage, while its model gates reject both candidate
+  datasets. Six current-version task executions then exercise one registered
+  agent harness in two simulator scenes, with three sequential executions per
+  scene. Each language-model-proposed bounded recipe change receives synthetic
+  approval, verified command readback, and explicit task completion. All six
+  run-tagged samples collected after a 20-s wait initiated after task
+  completion remain outside their target bands.
+  The evidence supports these tested integration paths, not successful
+  process optimization, convergence, multi-harness portability, or
+  comparative control benefit.
+\end{enumerate}
+
+Section~II reviews related industrial-agent and integration work.
+Section~III presents the design rationale, architecture, and cross-module
+execution flow; Section~IV explains module responsibilities and their
+integrated operation. Section~V describes the experiments and results, and
+Sections~VI and~VII discuss the evidence limits and conclude the paper.

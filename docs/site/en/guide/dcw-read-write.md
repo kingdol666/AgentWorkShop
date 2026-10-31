@@ -73,6 +73,33 @@ write-hold window, but **only successful dispatches count**:
 | mock | ✅ | ✅ | simulated retentive PLC, used by the acceptance chain |
 | MQTT / HTTP | — | ✅ | publish-only channels; for reading, use a DAQ node on the same address |
 
+### MQTT payload template (jsonTemplate)
+
+When the device expects a **nested / multi-field** command in a single message, use `jsonTemplate`
+instead of `jsonKey`:
+
+```json
+{
+  "driver": "mqtt",
+  "driverConfig": {
+    "host": "127.0.0.1", "port": 1883, "topic": "factory/line1/cmd", "qos": 1,
+    "jsonTemplate": "{\"cmd\":\"set\",\"params\":{\"temp\":{{value}},\"hold\":8}}",
+    "readTopic": "factory/line1/state", "readJsonPath": "setpoint"
+  }
+}
+```
+
+- `{{value}}` is replaced by the **finite number** being written and may appear multiple times;
+  static fields are preserved as-is.
+- Payload precedence: `jsonTemplate` > `jsonKey` (`{"key":value}`) > bare number;
+  **`jsonTemplate` and `jsonKey` are mutually exclusive**.
+- Templates are validated at **create/PATCH time**: a missing placeholder, non-JSON rendering, or
+  a template over 4 KB is rejected with 400 — a bad template never reaches the write path or the device.
+- The rendered payload is `JSON.parse`d and normalized before publishing, so the device client can
+  parse its own fields (e.g. `params.temp` / `hold`) exactly as configured.
+- Readback still uses `readTopic` + `readJsonPath`; single manual writes report `transport-ack`
+  (honest grading), while batch/recipe writes are promoted to `readback-verified` by `readNow`.
+
 Real-link validation: `scripts/dev-modbus-simulator.mjs` (a slave on port 1502 where 40021+
 holds write-retained setpoints) together with `scripts/_dbg-dcw-read-rest.mjs` and
 `scripts/_dbg-agent-dcw-rw.ts` performs a write→read roundtrip against a **real Modbus TCP**

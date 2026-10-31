@@ -1,0 +1,1255 @@
+{
+  "schema": "claim-evidence-map/1.0",
+  "missing_value_semantics": "null means not archived or not established; it is never an estimated value",
+  "claims": [
+    {
+      "question": "Q1",
+      "manuscript_anchor": "sec:protocol; protocol acquisition/writes and latency",
+      "evidence_unit": "R1",
+      "artifacts": [
+        {
+          "path": "R1/run.json",
+          "json_pointer": "/lines",
+          "line": null
+        },
+        {
+          "path": "R1/metrics.csv",
+          "json_pointer": null,
+          "line": 2
+        },
+        {
+          "path": "R1/report.md",
+          "json_pointer": null,
+          "line": 18
+        }
+      ],
+      "n": {
+        "acquired_families": 5,
+        "writable_families": 4,
+        "acquired_samples": 55
+      },
+      "units": [
+        "ms",
+        "samples",
+        "refused probes"
+      ],
+      "interface": "historical direct-node REST + real protocol simulators",
+      "source_version": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "configuration": {
+        "seed": 42,
+        "preset": "cast-film-physics",
+        "RTU-over-TCP": "acquisition only"
+      },
+      "missing_fields": {}
+    },
+    {
+      "question": "Q1",
+      "manuscript_anchor": "tab:ablation; admission versus confirmation",
+      "evidence_unit": "R2",
+      "artifacts": [
+        {
+          "path": "R2/e1-lite.csv",
+          "json_pointer": null,
+          "line": 2
+        },
+        {
+          "path": "R2/run.json",
+          "json_pointer": "/rows",
+          "line": null
+        }
+      ],
+      "n": {
+        "attack_classes_per_arm": 6,
+        "deterministic_repetitions": 3,
+        "attacks_per_arm": 18
+      },
+      "units": [
+        "refusal count",
+        "ms"
+      ],
+      "interface": "historical mock-driver direct-node API fixture",
+      "source_version": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "configuration": {
+        "seed": 42,
+        "arms": [
+          "full",
+          "no-interlock",
+          "no-readback",
+          "ungated"
+        ]
+      },
+      "missing_fields": {}
+    },
+    {
+      "question": "Q2",
+      "manuscript_anchor": "sec:agentteam; live engine proposal and goal workflow",
+      "evidence_unit": "R1",
+      "artifacts": [
+        {
+          "path": "R1/run.json",
+          "json_pointer": "/env",
+          "line": null
+        },
+        {
+          "path": "R1/agent-loop-omp.log",
+          "json_pointer": null,
+          "line": 1
+        },
+        {
+          "path": "R1/agent-goal-loop-omp.log",
+          "json_pointer": null,
+          "line": 1
+        }
+      ],
+      "n": {
+        "live_engine_tasks": 2
+      },
+      "units": [
+        "degrees C",
+        "micrometers"
+      ],
+      "interface": "historical omp agent / direct-node tools",
+      "source_version": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "configuration": {
+        "provider": "zhipu-coding-plan",
+        "model": "glm-5.3-flash"
+      },
+      "missing_fields": {
+        "independent_log_capture_origin": null
+      }
+    },
+    {
+      "question": "Q3",
+      "manuscript_anchor": "eq:objective; three-seed controller handling",
+      "evidence_unit": "R1",
+      "artifacts": [
+        {
+          "path": "R1/run.json",
+          "json_pointer": "/env/closedloop",
+          "line": null
+        },
+        {
+          "path": "R1/metrics.csv",
+          "json_pointer": null,
+          "line": 1
+        },
+        {
+          "path": "code/current/bench/lib/closedloop.mjs",
+          "json_pointer": null,
+          "line": 34
+        }
+      ],
+      "n": {
+        "seeds": 3,
+        "writes_per_seed": 2
+      },
+      "units": [
+        "dimensionless J",
+        "J/Jstar"
+      ],
+      "interface": "historical governed direct-node controller",
+      "source_version": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "configuration": {
+        "seeds": [
+          42,
+          43,
+          44
+        ],
+        "Jstar": 89.894,
+        "reference": "restricted admissible steady-state grid"
+      },
+      "missing_fields": {
+        "exact_runtime_harness_snapshot": null
+      }
+    },
+    {
+      "question": "Q4",
+      "manuscript_anchor": "sec:scenarios; fig:missions; controls and outputs",
+      "evidence_unit": "R1",
+      "artifacts": [
+        {
+          "path": "R1/scenarios.json",
+          "json_pointer": "/results",
+          "line": null
+        },
+        {
+          "path": "R1/run.json",
+          "json_pointer": "/env/biax",
+          "line": null
+        },
+        {
+          "path": "derived-figures/source-data-missions.json",
+          "json_pointer": "/controls",
+          "line": null
+        }
+      ],
+      "n": {
+        "trajectories_per_process": 1,
+        "processes": 4
+      },
+      "units": [
+        "bar",
+        "s",
+        "g",
+        "mg/L",
+        "HV",
+        "micrometers",
+        "m/min",
+        "mm"
+      ],
+      "interface": "historical scripted direct-node missions",
+      "source_version": "e692df1439127a6db6859b51d92d9376bf486de2",
+      "configuration": {
+        "seed": 42
+      },
+      "missing_fields": {
+        "first_annealing_optimization_record_id": null,
+        "physical_device_waveform": null
+      }
+    },
+    {
+      "question": "Q5",
+      "manuscript_anchor": "sec:hardening; nine sequential regressions",
+      "evidence_unit": "R3",
+      "artifacts": [
+        {
+          "path": "R3/benchmark-20261007194240/benchmark.json",
+          "json_pointer": "/checks",
+          "line": null
+        },
+        {
+          "path": "R3/benchmark-20261007194413/benchmark.json",
+          "json_pointer": "/checks",
+          "line": null
+        },
+        {
+          "path": "R3/benchmark-20261007194925/benchmark.json",
+          "json_pointer": "/checks",
+          "line": null
+        },
+        {
+          "path": "R3/benchmark-20261008045434/benchmark.json",
+          "json_pointer": "/checks",
+          "line": null
+        },
+        {
+          "path": "R3/benchmark-20261008135743/benchmark.json",
+          "json_pointer": "/checks",
+          "line": null
+        },
+        {
+          "path": "R3/benchmark-20261008140955/benchmark.json",
+          "json_pointer": "/checks",
+          "line": null
+        },
+        {
+          "path": "R3/benchmark-20261009021149/benchmark.json",
+          "json_pointer": "/checks",
+          "line": null
+        },
+        {
+          "path": "R3/benchmark-20261009024141/benchmark.json",
+          "json_pointer": "/checks",
+          "line": null
+        },
+        {
+          "path": "R3/benchmark-20261009033810/benchmark.json",
+          "json_pointer": "/checks",
+          "line": null
+        }
+      ],
+      "n": {
+        "suite_executions": 9,
+        "assertions": 782
+      },
+      "units": [
+        "software assertions",
+        "ms"
+      ],
+      "interface": "deployment regression suite; recipe composition with simulator I/O",
+      "source_version": null,
+      "configuration": {
+        "days": [
+          "2026-10-07",
+          "2026-10-08",
+          "2026-10-09"
+        ]
+      },
+      "missing_fields": {
+        "per_run_exact_source_commit": null
+      }
+    },
+    {
+      "question": "Q5",
+      "manuscript_anchor": "fig:loop; S4/S5 timestamp spans and nonconvergence",
+      "evidence_unit": "R4",
+      "artifacts": [
+        {
+          "path": "R4/timeline.jsonl",
+          "json_pointer": null,
+          "line": 3
+        },
+        {
+          "path": "derived-figures/source-data-governance.json",
+          "json_pointer": "/events",
+          "line": null
+        }
+      ],
+      "n": {
+        "events": 21,
+        "sequential_execution": 1
+      },
+      "units": [
+        "s",
+        "bar",
+        "g"
+      ],
+      "interface": "same final R3 suite execution, not additional data",
+      "source_version": "0.7.57",
+      "configuration": {
+        "S4_span_s": 96.105,
+        "cadence_wait_s": 69.014,
+        "converged": false
+      },
+      "missing_fields": {}
+    },
+    {
+      "question": "Q5",
+      "manuscript_anchor": "sec:hardening; ACK grades and success-flag baseline",
+      "evidence_unit": "R5",
+      "artifacts": [
+        {
+          "path": "R5/2026-10-08-production-hardening-report.md",
+          "json_pointer": null,
+          "line": 20
+        },
+        {
+          "path": "R5/2026-10-17-ack-baseline.md",
+          "json_pointer": null,
+          "line": 1
+        },
+        {
+          "path": "R5/2026-10-17-ack-baseline.log",
+          "json_pointer": null,
+          "line": 1
+        }
+      ],
+      "n": {
+        "baseline_checks": 22
+      },
+      "units": [
+        "verified/unverified/failed counts"
+      ],
+      "interface": "fault injection with mock/MQTT receipts; same receipt for both reporting rules",
+      "source_version": null,
+      "configuration": {
+        "AW_ONLY_ACK": 1
+      },
+      "missing_fields": {
+        "original_October8_console_log": null
+      }
+    },
+    {
+      "question": "Q6",
+      "manuscript_anchor": "sec:recipeexperiment; fig:injection; primary trajectory",
+      "evidence_unit": "R6",
+      "artifacts": [
+        {
+          "path": "R6/summary.json",
+          "json_pointer": "/baseline",
+          "line": null
+        },
+        {
+          "path": "R6/summary.json",
+          "json_pointer": "/results",
+          "line": null
+        },
+        {
+          "path": "R6/summary.json",
+          "json_pointer": "/final",
+          "line": null
+        },
+        {
+          "path": "derived-figures/source-data-injection.json",
+          "json_pointer": "/snapshots",
+          "line": null
+        }
+      ],
+      "n": {
+        "sequential_trajectories": 1,
+        "quality_snapshots": 5,
+        "pressure_trials": 4
+      },
+      "units": [
+        "bar",
+        "s",
+        "g",
+        "%"
+      ],
+      "interface": "recipe_trial -> graded receipt -> DAQ; recipe_update separately",
+      "source_version": null,
+      "configuration": {
+        "hold_time_s": 6,
+        "pressure_bar": [
+          45,
+          50,
+          55,
+          60,
+          65
+        ],
+        "weight_g": [
+          31.28,
+          31.49,
+          31.74,
+          32.05,
+          32.3
+        ],
+        "wait_s": 65,
+        "AW_TRIAL_INTERVAL_MS": 0,
+        "emergency_trials": true,
+        "approval": "scripted"
+      },
+      "missing_fields": {
+        "seed": null,
+        "exact_commit": null,
+        "per_sensor_timestamps": null,
+        "melt_temperature": null,
+        "physical_PLC_waveform": null
+      }
+    },
+    {
+      "question": "Q6",
+      "manuscript_anchor": "sec:recipeexperiment; earlier cadence boundary",
+      "evidence_unit": "R7",
+      "artifacts": [
+        {
+          "path": "R7/summary.json",
+          "json_pointer": "/trial2",
+          "line": null
+        },
+        {
+          "path": "R7/summary.json",
+          "json_pointer": "/results",
+          "line": null
+        },
+        {
+          "path": "R7/failed-attempt-1/execution.jsonl",
+          "json_pointer": null,
+          "line": 1
+        },
+        {
+          "path": "R7/failed-attempt-2/execution.jsonl",
+          "json_pointer": null,
+          "line": 1
+        },
+        {
+          "path": "R7/failed-attempt-3/execution.jsonl",
+          "json_pointer": null,
+          "line": 1
+        }
+      ],
+      "n": {
+        "summarized_attempt": 1,
+        "other_earlier_failed_attempt_logs": 3
+      },
+      "units": [
+        "s",
+        "bar",
+        "g"
+      ],
+      "interface": "recipe trial and failed historical harness attempts",
+      "source_version": null,
+      "configuration": {
+        "default_trial_interval_s": 300
+      },
+      "missing_fields": {
+        "exact_commit": null
+      }
+    },
+    {
+      "question": "Q6",
+      "manuscript_anchor": "sec:recipeexperiment; separate later check",
+      "evidence_unit": "R8",
+      "artifacts": [
+        {
+          "path": "R8/summary.json",
+          "json_pointer": "/baseline",
+          "line": null
+        },
+        {
+          "path": "R8/summary.json",
+          "json_pointer": "/final",
+          "line": null
+        }
+      ],
+      "n": {
+        "separate_check": 1
+      },
+      "units": [
+        "bar",
+        "g",
+        "s"
+      ],
+      "interface": "same recipe interface; different initial state",
+      "source_version": null,
+      "configuration": {
+        "pressure_bar": [
+          65,
+          70
+        ],
+        "weight_g": [
+          32.29,
+          32.55
+        ],
+        "hold_time_s": 6
+      },
+      "missing_fields": {
+        "seed": null,
+        "exact_commit": null
+      }
+    },
+    {
+      "question": "CURRENT",
+      "manuscript_anchor": "sec:testbed; current profile/scope tests",
+      "evidence_unit": "R9",
+      "artifacts": [
+        {
+          "path": "R9/tests/high-risk-tool-scope.test.ts",
+          "json_pointer": null,
+          "line": 1
+        },
+        {
+          "path": "R9/tests/tool-profile-observer.test.ts",
+          "json_pointer": null,
+          "line": 1
+        },
+        {
+          "path": "R9/tests/recipe-propose.test.ts",
+          "json_pointer": null,
+          "line": 1
+        },
+        {
+          "path": "R10/logs/final-independent-tests.log",
+          "json_pointer": null,
+          "line": 1
+        }
+      ],
+      "n": {
+        "tests": 26,
+        "subset_of_R10": true
+      },
+      "units": [
+        "isolated software tests"
+      ],
+      "interface": "current profile/tool authorization in temporary/mock state",
+      "source_version": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "configuration": null,
+      "missing_fields": {
+        "standalone_26_test_console_log": null
+      }
+    },
+    {
+      "question": "CURRENT",
+      "manuscript_anchor": "sec:testbed; current composition checks",
+      "evidence_unit": "R10",
+      "artifacts": [
+        {
+          "path": "R10/tests/manual-approval-optimization.test.ts",
+          "json_pointer": null,
+          "line": 1
+        },
+        {
+          "path": "R10/tests/recipe-approval-snapshot.test.ts",
+          "json_pointer": null,
+          "line": 1
+        },
+        {
+          "path": "R10/logs/final-independent-tests.log",
+          "json_pointer": null,
+          "line": 1
+        }
+      ],
+      "n": {
+        "combined_tests": 65
+      },
+      "units": [
+        "isolated software tests"
+      ],
+      "interface": "current approval/profile/recipe composition; no process-response E2E",
+      "source_version": "d7755ef41e999bf4c219df5d62f040085001e2b1",
+      "configuration": {
+        "temporary_storage": true,
+        "mock_IO": true
+      },
+      "missing_fields": {
+        "complete_current_optimization_explore_process_trial": null
+      }
+    },
+    {
+      "question": "Q7",
+      "manuscript_anchor": "sec:crossscene; current-version two-scene simulator integration",
+      "evidence_unit": "R13",
+      "artifacts": [
+        {
+          "path": "revision-2026-10-25/R13/report.json",
+          "json_pointer": "/checks",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R13-PROVENANCE.json",
+          "json_pointer": "",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R13/dataset-film/manifest.json",
+          "json_pointer": "",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R13/dataset-anneal/manifest.json",
+          "json_pointer": "",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R13/job-film-artifacts/metrics.json",
+          "json_pointer": "/platform",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R13/job-anneal-artifacts/metrics.json",
+          "json_pointer": "/platform",
+          "line": null
+        }
+      ],
+      "n": {
+        "scenes": 2,
+        "windows_per_scene": 6,
+        "daq_points": {
+          "cast_film": 697,
+          "annealing": 696
+        },
+        "dataset_rows": {
+          "cast_film": 658,
+          "annealing": 655
+        },
+        "held_out_test_rows": {
+          "cast_film": 220,
+          "annealing": 218
+        },
+        "passed_checks": 50,
+        "failed_checks": 0,
+        "gate_blocked_outcomes": 2,
+        "recommendations": 0,
+        "dispatches": 0
+      },
+      "units": [
+        "DAQ points",
+        "dataset rows",
+        "correlation",
+        "NRMSE",
+        "percent improvement"
+      ],
+      "interface": "Local v0.8.0 working tree; registered protocol drivers to isolated repository simulators; no physical equipment or LLM service",
+      "source_version": "Run-time source identity not recorded; retrospective context and limits in revision-2026-10-25/R13-PROVENANCE.json",
+      "configuration": {
+        "cast_film": "ScrewSpeedSP OPC UA -> thick MQTT",
+        "annealing": "zone-3 furnace setpoint -> StripTemp Modbus TCP",
+        "sampling": "1 s; six sequential 120-s windows per scene",
+        "model": "linear_arx@1, seed 42",
+        "eligibility": "delayed-response correlation >= 0.2; test NRMSE <= 0.10; rollout improvement >= 20%"
+      },
+      "missing_fields": {
+        "independent_scene_replicates": null,
+        "physical_plant_validation": null,
+        "successful_optimization_recommendation": null,
+        "cross_harness_portability": null
+      }
+    },
+    {
+      "question": "Q7-PILOT",
+      "manuscript_anchor": "sec:crossscene; exploratory signal-pair selection history",
+      "evidence_unit": "R14",
+      "artifacts": [
+        {
+          "path": "revision-2026-10-25/R14/report.json",
+          "json_pointer": "/checks",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R14/dataset-film/manifest.json",
+          "json_pointer": "",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R14/dataset-anneal/manifest.json",
+          "json_pointer": "",
+          "line": null
+        }
+      ],
+      "n": {
+        "scenes": 2,
+        "daq_points_per_scene": 582,
+        "dataset_rows": {
+          "cast_film": 539,
+          "annealing": 538
+        },
+        "passed_checks": 51,
+        "failed_checks": 0,
+        "gate_blocked_outcomes": 2
+      },
+      "units": [
+        "DAQ points",
+        "dataset rows",
+        "correlation",
+        "NRMSE",
+        "percent improvement"
+      ],
+      "interface": "Local v0.8.0 working tree; exploratory simulator pilot; outcomes informed later signal-pair selection",
+      "source_version": "Run-time source identity not recorded; exploratory pilot source is not pinned",
+      "configuration": {
+        "cast_film": "screw speed -> melt pressure",
+        "annealing": "zone-1 temperature setpoint -> furnace temperature",
+        "use": "selection history only; not pooled with R13"
+      },
+      "missing_fields": {
+        "independent_scene_replicates": null,
+        "physical_plant_validation": null
+      }
+    },
+    {
+      "question": "Q8",
+      "manuscript_anchor": "sec:harness-e2e; current registered-harness process path",
+      "evidence_unit": "R20",
+      "artifacts": [
+        {
+          "path": "revision-2026-10-25/R20/evidence.json",
+          "json_pointer": "/experiment/runOutcomes",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R20/evidence.json",
+          "json_pointer": "/experiment/scenes",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R20/evidence.json",
+          "json_pointer": "/checks",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R20/R20-TRACE-MATRIX.csv",
+          "json_pointer": "",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R20/R20-SUMMARY.md",
+          "json_pointer": "",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R20/agentworkshop.log",
+          "json_pointer": "",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R20/simulator.log",
+          "json_pointer": "",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R20/e2e-registered-harness-simulator-paper.mjs",
+          "json_pointer": "",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R20/source-snapshot/",
+          "json_pointer": "",
+          "line": null
+        }
+      ],
+      "n": {
+        "task_executions": 6,
+        "scenes": 2,
+        "sequential_executions_per_scene": 3,
+        "completed_tasks": 6,
+        "synthetic_approvals": 6,
+        "verified_ack_readback": "1/1 in each execution",
+        "run_tagged_daq_samples": 6,
+        "points_per_sample": 1,
+        "post_trial_wait_seconds": 20,
+        "runner_checks_passed": 76,
+        "runner_checks_failed": 0,
+        "trace_complete_executions": 6,
+        "post_trial_values": {
+          "cast_film_um": [
+            45.69,
+            46.69,
+            45.69
+          ],
+          "annealing_C": [
+            679.6,
+            677.7,
+            678.1
+          ]
+        },
+        "target_attainment": {
+          "cast_film": 0,
+          "annealing": 0
+        }
+      },
+      "execution_keys": [
+        "cast-film-r1",
+        "cast-film-r2",
+        "cast-film-r3",
+        "annealing-r1",
+        "annealing-r2",
+        "annealing-r3"
+      ],
+      "trace_matrix": "revision-2026-10-25/R20/R20-TRACE-MATRIX.csv",
+      "trace_join": "For each key, evidence.json links taskId to a unique active runId and approvalId to recipe trialRunId; the verified receipt checks and run-tagged sample query match that runId, and task completion is checked after the sample query.",
+      "units": [
+        "simulator command",
+        "readback",
+        "DAQ sample",
+        "target band"
+      ],
+      "interface": "Local v0.8.0 working-tree application; registered OMP adapter and glm-5.3-flash; repository simulators; synthetic approval; SQLite time-series fallback",
+      "source_version": "R20/source-snapshot conditionally reconstructs app and simulator working trees from recorded base commits, lockfiles, and exact prompt assets; package manifests come from the base commits and external model decisions are not deterministic",
+      "configuration": {
+        "cast_film": "ScrewSpeedSP OPC UA -> thickness MQTT; candidates 125/130/135 rpm; target 48--52 um",
+        "annealing": "zone-3 setpoint Modbus TCP -> StripTemp Modbus TCP; candidates 735/740/745 C; target 700--760 C",
+        "sampling": "verified route ACK and returned trial result -> 20-s delay -> one driver probe -> ingest -> active-run-tagged query -> task-state check; task-completion timestamp and task-completion-to-sample latency are not recorded; one persistent simulator per scene",
+        "approval": "synthetic isolated administrator via protected approval API"
+      },
+      "missing_fields": {
+        "independent_replicates": null,
+        "normal_online_daq_backend": null,
+        "controlled_profile_binding_comparison": null,
+        "process_trajectory": null,
+        "physical_plant_validation": null,
+        "cross_harness_portability": null
+      }
+    },
+    {
+      "question": "Q8-DIAGNOSTIC",
+      "manuscript_anchor": "supplement; earlier deterministic registered-harness fixture diagnostic",
+      "evidence_unit": "R16",
+      "artifacts": [
+        {
+          "path": "revision-2026-10-25/R16/evidence.json",
+          "json_pointer": "/experiment/scenes",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R16/fixture-cast-film.json",
+          "json_pointer": "/hostToolCalls",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R16/fixture-annealing.json",
+          "json_pointer": "/hostToolCalls",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R16/R16-SUMMARY.md",
+          "json_pointer": "",
+          "line": null
+        }
+      ],
+      "n": {
+        "scenes": 2,
+        "fixture_host_tool_calls": 2,
+        "manual_approvals": 2,
+        "verified_ack_readback": {
+          "cast_film": "1/1",
+          "annealing": "1/1"
+        },
+        "run_tagged_daq_snapshots": 2,
+        "points_per_snapshot": 1,
+        "post_trial_wait_seconds": 20,
+        "snapshot_values": {
+          "cast_film_um": 46.37,
+          "annealing_C": 674.799988
+        }
+      },
+      "units": [
+        "simulator command",
+        "readback",
+        "DAQ snapshot"
+      ],
+      "interface": "Local v0.8.0 working-tree application; registered omp adapter and shared dispatcher; loopback repository simulators",
+      "source_version": "Evidence records application and simulator source-tree hashes, git heads, working-tree state, fixture hashes, and run-script hash; see R16/evidence.json",
+      "configuration": {
+        "cast_film": "ScrewSpeedSP 120->125 rpm via OPC UA",
+        "annealing": "zone-3 setpoint 730->735 C via Modbus TCP",
+        "agent": "deterministic local OMP-RPC fixture; not an LLM or autonomous decision",
+        "approval": "synthetic isolated administrator via protected approval API",
+        "DAQ": "one explicit driver probe and ingest per scene after 20 s; SQLite fallback"
+      },
+      "missing_fields": {
+        "process_trajectory": null,
+        "convergence": null,
+        "quality_improvement": null,
+        "physical_plant_validation": null,
+        "cross_harness_portability": null
+      }
+    },
+    {
+      "question": "Q9",
+      "manuscript_anchor": "sec:fixture-replay; current-version deterministic registered-harness fixture path",
+      "evidence_unit": "R21",
+      "artifacts": [
+        {
+          "path": "revision-2026-10-25/R21/evidence.json",
+          "json_pointer": "/experiment/scenes",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R21/evidence.json",
+          "json_pointer": "/checks",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R21/R21-TRACE-MATRIX.csv",
+          "json_pointer": "",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R21/README.md",
+          "json_pointer": "",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R21/agentworkshop.log",
+          "json_pointer": "",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R21/simulator.log",
+          "json_pointer": "",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R21/fixture-cast-film.json",
+          "json_pointer": "",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R21/fixture-annealing.json",
+          "json_pointer": "",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R21/e2e-registered-harness-simulator-paper.mjs",
+          "json_pointer": "",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R21/omp-paper-harness.mjs",
+          "json_pointer": "",
+          "line": null
+        }
+      ],
+      "n": {
+        "task_contexts": 2,
+        "scenes": 2,
+        "fixture_tool_calls": 2,
+        "synthetic_approvals": 2,
+        "verified_receipts": 2,
+        "active_run_tagged_samples": 2,
+        "runner_checks_passed": 31,
+        "runner_checks_failed": 0,
+        "isolation_checks_passed": 25,
+        "trace_complete_scenes": 2
+      },
+      "trace_matrix": "revision-2026-10-25/R21/R21-TRACE-MATRIX.csv",
+      "trace_join": "Each scene record links its task context and one deterministic fixture call to an approved recipe trial and verified receipt; the single queried sample run ID matches the scene active run. Task completion is not asserted by R21.",
+      "units": [
+        "fixture task call",
+        "synthetic approval",
+        "verified readback",
+        "run-tagged DAQ sample",
+        "runner assertion"
+      ],
+      "interface": "Local v0.8.0 isolated application and repository simulators; deterministic OMP-RPC fixture; no LLM or autonomous harness decision; SQLite fallback",
+      "source_version": "R21 runner bytes match the R20-retained runner; fixture source and runtime source reconstruction are separately available in the evidence extension. See R21/README.md for replay scope.",
+      "configuration": {
+        "cast_film": "ScrewSpeedSP OPC UA control and thickness MQTT observation",
+        "annealing": "zone-3 setpoint and StripTemp Modbus TCP",
+        "sampling": "one driver probe and run-tagged query per scene after 20 s",
+        "candidate": "predeclared deterministic fixture value"
+      },
+      "missing_fields": {
+        "real_agent_decision": null,
+        "task_completion_state": null,
+        "independent_simulator_replication": null,
+        "process_trajectory": null,
+        "process_performance": null,
+        "cross_harness_portability": null
+      }
+    },
+    {
+      "question": "Q10",
+      "manuscript_anchor": "sec:direct-endpoint; direct operation route across two simulator mappings",
+      "evidence_unit": "R22",
+      "artifacts": [
+        {
+          "path": "revision-2026-10-25/R22/evidence.json",
+          "json_pointer": "/experiment/scenes",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R22/evidence.json",
+          "json_pointer": "/checks",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R22/README.md",
+          "json_pointer": "",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R22/agentworkshop.log",
+          "json_pointer": "",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R22/simulator.log",
+          "json_pointer": "",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R22/e2e-direct-rest-simulator-paper.mjs",
+          "json_pointer": "",
+          "line": null
+        }
+      ],
+      "n": {
+        "scenes": [
+          "cast-film",
+          "annealing"
+        ],
+        "direct_calls": 2,
+        "verified_receipts": 2,
+        "run_tagged_snapshots": 2,
+        "runner_checks_passed": 19,
+        "target_attainment": false,
+        "cross_harness_portability": false
+      },
+      "trace_join": "For each direct call, the synthetic approval maps to one recipe-trial record with a verified readback; the later sample query uses the active-run ID. No task ID or harness turn exists in this route.",
+      "units": [
+        "direct operation call",
+        "synthetic approval",
+        "verified receipt/readback",
+        "run-tagged snapshot",
+        "runner assertion"
+      ],
+      "interface": "Local v0.8.0 isolated application and repository simulators; worker identity; direct REST invocation; no harness transport or LLM; synthetic approval; SQLite fallback",
+      "configuration": {
+        "cast_film": "ScrewSpeedSP OPC UA control and thickness MQTT observation; 125 rpm candidate; 46.37 um snapshot vs 48--52 um target",
+        "annealing": "zone-3 setpoint and StripTemp Modbus TCP; 735 C candidate; 675.20 C snapshot vs 700--760 C target",
+        "sampling": "one explicit probe/ingest and active-run-tagged query 20 s after call"
+      },
+      "missing_fields": {
+        "task_to_sample_link": null,
+        "alternate_registered_harness": null,
+        "independent_simulator_replication": null,
+        "process_response": null,
+        "target_attainment": null,
+        "physical_plant_validation": null
+      }
+    },
+    {
+      "question": "Q11",
+      "manuscript_anchor": "sec:eval; second registered-harness path (R23)",
+      "evidence_unit": "R23",
+      "artifacts": [
+        {
+          "path": "revision-2026-10-25/R23/evidence.json",
+          "json_pointer": "/experiment/scenes",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R23/evidence.json",
+          "json_pointer": "/checks",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R23/R23-TRACE-MATRIX.csv",
+          "json_pointer": "",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R23/README.md",
+          "json_pointer": "",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R23/agentworkshop.log",
+          "json_pointer": "",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R23/simulator.log",
+          "json_pointer": "",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R23/pi-model-api-trace.json",
+          "json_pointer": "",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-25/R23/e2e-pi-simulator-paper.mjs",
+          "json_pointer": "",
+          "line": null
+        }
+      ],
+      "n": {
+        "task_executions": 2,
+        "scenes": [
+          "cast-film",
+          "annealing"
+        ],
+        "completed_tasks": 2,
+        "synthetic_approvals": 2,
+        "verified_receipts": 2,
+        "readback_verified": 2,
+        "run_tagged_samples": 2,
+        "runner_checks_passed": 37,
+        "runner_checks_failed": 0,
+        "isolation_checks_passed": 28,
+        "post_trial_wait_seconds": 20,
+        "model_provider": "agentworkshop-local",
+        "model_fixture": "aw-deterministic-paper-fixture",
+        "external_model_decisions": 0,
+        "sample_values": {
+          "cast-film": 46.38,
+          "annealing": 674.4000244140625
+        },
+        "candidates": {
+          "cast-film": 125.0,
+          "annealing": 735.0
+        },
+        "target_bands": {
+          "cast-film": [
+            48,
+            52
+          ],
+          "annealing": [
+            700,
+            760
+          ]
+        },
+        "target_attainment": false,
+        "general_harness_interchangeability": false
+      },
+      "trace_matrix": "revision-2026-10-25/R23/R23-TRACE-MATRIX.csv",
+      "trace_join": "Each completed task ID links the approval and recipe-trial record; the task's active-run ID matches the later DAQ sample tag. Trial-run and active-run IDs remain distinct.",
+      "units": [
+        "registered Pi task",
+        "synthetic approval",
+        "recipe-trial receipt",
+        "readback",
+        "run-tagged sample",
+        "runner assertion"
+      ],
+      "interface": "Local v0.8.0 isolated application and repository simulators; registered Pi CLI adapter; deterministic loopback OpenAI-compatible fixture; no external provider or LLM decision; synthetic approval; SQLite fallback",
+      "source_version": "R23 records application, simulator, plugin, fixture, and runner hashes plus working-tree status in evidence.json; the archived runner is included and its SHA-256 is validated by the package builder.",
+      "configuration": {
+        "cast-film": "ScrewSpeedSP OPC UA control; thickness MQTT sample; 120 to 125 rpm; 46.38 um vs 48--52 um target",
+        "annealing": "zone-3 control; StripTemp Modbus TCP sample; 730 to 735 C; 674.40 C vs 700--760 C target",
+        "sampling": "one run-tagged sample 20 s after recipe_trial per scene; sample returned under active-run ID"
+      },
+      "missing_fields": {
+        "external_model_decision_quality": null,
+        "general_harness_interchangeability": null,
+        "independent_simulator_replication": null,
+        "process_response": null,
+        "target_attainment": null,
+        "physical_plant_validation": null
+      }
+    },
+    {
+      "question": "R24",
+      "manuscript_anchor": "sec:coating-onboarding",
+      "evidence_unit": "R24",
+      "artifacts": [
+        {
+          "path": "revision-2026-10-26/R24/R24-reproduction.json",
+          "json_pointer": "/checks/v1ToV6",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-26/R24/R24-reproduction.json",
+          "json_pointer": "/services/mqtt",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-26/R24/blueprint.json",
+          "json_pointer": null,
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-26/R24/onboard.json",
+          "json_pointer": null,
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-26/R24/onboarding.log",
+          "json_pointer": null,
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-26/R24/verify-line.log",
+          "json_pointer": null,
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-26/R24/health-version.json",
+          "json_pointer": "/data/version",
+          "line": null
+        },
+        {
+          "path": "revision-2026-10-26/R24/daq-infrastructure.json",
+          "json_pointer": "/tsdbOnline",
+          "line": null
+        }
+      ],
+      "n": {
+        "connectivity_checks": 3,
+        "provisioning_checks": 20,
+        "channel_construction_checks": 13,
+        "v1_to_v6_checks": 23,
+        "onboarding_smoke_checks": 11,
+        "devices": 1,
+        "signals": 11,
+        "setpoints": 4,
+        "daq_nodes": 7
+      },
+      "units": [
+        "software checks",
+        "signals",
+        "simulator setpoint (m/min)"
+      ],
+      "interface": "v0.8.3 blueprint onboarding; local Modbus/TCP PLC twin and MES REST simulator; isolated MQTT/Timescale online",
+      "source_version": "Working-tree build identified as v0.8.3; source commit was not pinned.",
+      "configuration": {
+        "device": "coating-c01",
+        "protocol": "Modbus TCP",
+        "signal_mapping": "4 setpoints and 7 DAQ nodes",
+        "object_store": "unavailable; image artifacts used local-disk fallback",
+        "approval": "test-only automatic approval; not human review",
+        "scope": "one documented simulated blueprint instance"
+      },
+      "missing_fields": {
+        "source_commit": null,
+        "repeatability": null,
+        "configuration_reuse": null,
+        "physical_plant_validation": null,
+        "human_review_performance": null,
+        "process_quality": null
+      }
+    }
+  ]
+}

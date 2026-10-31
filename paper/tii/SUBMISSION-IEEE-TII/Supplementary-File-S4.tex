@@ -1,0 +1,62 @@
+\documentclass[10pt]{article}
+\usepackage[margin=0.65in]{geometry}
+\usepackage[T1]{fontenc}
+\usepackage{newtxtext,newtxmath}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+
+\title{Supplementary File S4: Direct-Node Process Mission Summaries}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+This file gives the parameter and secondary-measurement details for the four
+deterministic direct-node missions summarized in the manuscript. Each row
+represents one simulator trajectory with a fixed seed. The missions used
+different process models and were not repeated trials or matched controls.
+
+\begin{table}[ht]
+\centering
+\caption{Recorded actions, endpoint observations, and evidence limits.}
+\label{tab:s4-missions}
+\footnotesize
+\renewcommand{\arraystretch}{1.12}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{1.55cm}X X@{}}
+\toprule
+Scene & Recorded sequence and endpoint & Interpretation limit \\
+\midrule
+Injection molding & Target $32.5\pm0.35$ g. Holding pressure changed from
+45 to 57.73 bar and holding time from 6 to 10.56 s; a later pressure request
+reached 62 bar. Final part weight was 32.36 g. & One trajectory with multiple
+parameter changes; effects cannot be separated. \\
+Film extrusion & Target thickness $25.0\pm0.7\,\mu$m. Four requests changed
+casting speed, fast-roll speed, rail width, and casting speed again. Thickness
+changed from 28.03 to 25.30 $\mu$m. Recorded melt temperatures stayed within
+268--300$^{\circ}$C. & No repeated trajectory or matched controller; no causal
+attribution to an individual request. \\
+Annealing & Target hardness $95\pm6$ HV. A zone-2 temperature request changed
+710 to 850$^{\circ}$C, and speed changed from 140 to 152 m/min. Hardness
+observations were 99.18 and 99.74 HV. A 164 m/min candidate was reverted after
+event text reported 101.0 HV; the mission summary reported 99.5 HV at the final
+152 m/min setting. & No measured throughput gain. Final tensile-strength and
+surface-defect readings were not archived. \\
+Wastewater & Target dissolved oxygen (DO) was 2.8--4.0 mg/L. Five blower
+increases changed frequency from 26 to 34.1 Hz; the structured DO sequence
+rose from 0.194 to 3.567 mg/L. Total phosphorus changed from 0.662 to 0.5507,
+0.4607, and 0.413 mg/L after subsequent dosing. The mission summary reported
+final DO of 3.54 mg/L and a simulator cost index of 180.2, down from 182.6. &
+The index is simulator-defined, not measured operating cost. The complete
+final effluent vector was not archived. \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+These summaries do not supply complete raw trajectories or independent
+replications. The endpoints support the reported mission outcomes only; they
+do not establish the causal effect of each control action, a repeatable
+process benefit, or performance on physical equipment.
+
+\end{document}

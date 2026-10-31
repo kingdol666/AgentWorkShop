@@ -1,0 +1,26 @@
+{
+  "platform": {
+    "modelType": "linear_state_space@1",
+    "modelKind": "linear_state_space",
+    "oneStepVal": {
+      "windows": 179,
+      "nrmse": 0.093487
+    },
+    "oneStepTest": {
+      "windows": 180,
+      "nrmse": 0.111869
+    },
+    "rolloutTest": {
+      "windows": 180,
+      "horizon": 4,
+      "nrmse": 0.124614
+    },
+    "rolloutImprovement": 0.38304,
+    "persistenceNrmse": 0.20198
+  },
+  "artifactKind": "linear_state_space@1",
+  "residual": {
+    "mean": -3e-9,
+    "std": 0.120379277
+  }
+}

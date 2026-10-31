@@ -1,0 +1,9 @@
+{
+  "note": "single simulator after cleanup; old bench exited",
+  "listeners": [
+    "  TCP    0.0.0.0:16052          0.0.0.0:0              LISTENING       106944"
+  ],
+  "pids": [
+    "106944"
+  ]
+}

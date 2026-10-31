@@ -1,0 +1,120 @@
+{
+  "at": "2026-10-30T09:52:14.512Z",
+  "model": "qwen3.5-9b-64k",
+  "scenario": {
+    "ch1": "f1adbbe0-c348-4abc-8566-caf886012f8b",
+    "ch2": "d6d8aa79-1eab-434a-a171-b9ae997d2be9",
+    "lead2": "4b1f5170-f947-4e12-9f4d-5bf04fb46bfa",
+    "w2": "0706803c-e345-4f7f-b3fc-4f25a55928ae"
+  },
+  "assertions": [
+    {
+      "id": "S0.1",
+      "name": "隔离实例就绪(3424,全新 home)",
+      "pass": true,
+      "detail": "port=3424"
+    },
+    {
+      "id": "S0.2",
+      "name": "admin 鉴权",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "S1.0",
+      "name": "频道+mock lead/worker 就绪(令牌可读)",
+      "pass": true,
+      "detail": "lead=466f3b29-7277-4b04-8cc5-31bb227f91e0 worker=00bcb1eb-0511-42c4-a1b7-b116bee643cd"
+    },
+    {
+      "id": "S1.2",
+      "name": "失败分支 B 稳定 FAILED(retryCount≥3)",
+      "pass": true,
+      "detail": "state=FAILED retry=3"
+    },
+    {
+      "id": "S1.3",
+      "name": "未处置失败分支时收口被拒(错误点名分支+supersede 指引)",
+      "pass": true,
+      "detail": "任务 e60e5133-57f9-4a63-9912-d7f4d212ec89 有 1 个未收口的子任务: 「B [mock:fail] 注入失败采集」(FAILED)。失败/取消分支请先派发替代任务并用 supersede 工具(或 REST POST /tasks/:id/supersede)显式处置，再由 Lead 检查交付物并提交验收总结。"
+    },
+    {
+      "id": "S1.1",
+      "name": "正常子任务 A 派发",
+      "pass": true,
+      "detail": "id=85848b28-820a-46f4-b1c0-4e99280afa0a"
+    },
+    {
+      "id": "S1.4",
+      "name": "supersede_task 显式替代成功",
+      "pass": true,
+      "detail": "分支「B [mock:fail] 注入失败采集」(FAILED)已标记为被 5ecc5a5d 替代,不再阻塞父任务收口。失败事实保留在任务记录中;现在可对父任务检查交付并 complete_task。"
+    },
+    {
+      "id": "S1.5",
+      "name": "失败分支处置后 Goal 收口 COMPLETED",
+      "pass": true,
+      "detail": "state=COMPLETED resp=任务 e60e5133-57f9-4a63-9912-d7f4d212ec89 已完成(状态已同步为 COMPLETED),队列为空。保持待命:新任务/实时消息会自动到达你的信箱。"
+    },
+    {
+      "id": "S1.6",
+      "name": "superseded_by_task_id 落库指向替代任务",
+      "pass": true,
+      "detail": "sup=5ecc5a5d-cd3d-43c1-8d0e-6b2c9e32515e → C=5ecc5a5d-cd3d-43c1-8d0e-6b2c9e32515e"
+    },
+    {
+      "id": "S2.1",
+      "name": "取消分支 E(CANCELED,重试窗取消)",
+      "pass": true,
+      "detail": "id=7ec3897e-cef3-449e-a035-d850c4dceb38"
+    },
+    {
+      "id": "S2.2",
+      "name": "CANCELED 分支未处置时收口同样被拒",
+      "pass": true,
+      "detail": "任务 251ae80c-5473-43df-9c38-c04ec301add8 有 1 个未收口的子任务: 「E2 [mock:fail] 待取消分支」(CANCELED)。失败/取消分支请先派发替代任务并用 supersede 工具(或 REST POST /tasks/:id/supersede)显式处置，再由 Lead 检查交付物并提交验收总结。"
+    },
+    {
+      "id": "S2.3",
+      "name": "CANCELED 分支 supersede 后 Goal 收口 COMPLETED(F1 出口)",
+      "pass": true,
+      "detail": "sup=true done=true"
+    },
+    {
+      "id": "S3.0",
+      "name": "真实 harness 频道就绪(omp lead + mock worker)",
+      "pass": true,
+      "detail": "lead=4b1f5170-f947-4e12-9f4d-5bf04fb46bfa worker=0706803c-e345-4f7f-b3fc-4f25a55928ae"
+    },
+    {
+      "id": "S3.1",
+      "name": "G3 真实 Goal 下达(指派 omp lead)",
+      "pass": true,
+      "detail": "id=774cdc7f-8b62-4b1e-ba8e-4c1f0d3e686e"
+    },
+    {
+      "id": "S3.2",
+      "name": "Demo A:真实 lead 协同收口(派发→worker 交付→lead 完成含真实证据)",
+      "pass": false,
+      "detail": "attempt=3 goal=CANCELED 子任务=0(完成0) lead交付=false calls=🔧 list_channel_tasks|🔧 list_channel_tasks|🔧 list_channel_tasks ✅ 完成: Channel 任务(5|🔧 list_channel_tasks ✅ 完成: {\"content\":[|🔧 get_task_details(e99cf73d-92e5-"
+    },
+    {
+      "id": "S3.3",
+      "name": "Demo B:失败分支协同收口(模型尝试 supersede + 验收方兜底收口,provenance 披露)",
+      "pass": false,
+      "detail": "attempt=3 goal=CANCELED 子=6(败3/成3) supDB=2 supTool=true · 模型supersede调用=有(历史尝试) · 验收方补齐:supersede 1/1 + complete → goal=CANCELED 未处置余=0"
+    },
+    {
+      "id": "S3.4",
+      "name": "硬闸兜底:本轮无任何 Goal 在失败分支未处置时达成 COMPLETED",
+      "pass": true,
+      "detail": "由 S1.3/S2.2 拒绝断言与本场景终态共同证明"
+    }
+  ],
+  "summary": {
+    "total": 17,
+    "passed": 15,
+    "failed": 2,
+    "verdict": "FAIL"
+  }
+}

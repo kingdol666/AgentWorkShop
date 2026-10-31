@@ -1,0 +1,101 @@
+diff --git a/src/server/engine/plant-model.ts b/src/server/engine/plant-model.ts
+index c048cca..fa2079f 100644
+--- a/src/server/engine/plant-model.ts
++++ b/src/server/engine/plant-model.ts
+@@ -109,6 +109,8 @@ export class CastFilmModel {
+   private p = 0.5
+   private meltDelay: number[] = []
+   private hSegments: HSegment[] = []
++  /** 已到达测量点的最后厚度(C18:延迟队列未到达时**沿用**该值,不得提前输出新厚度) */
++  private lastDeliveredH: number | null = null
+   private pWindow: number[] = []
+   private feedTemp = 0
+   private defectCache = 0
+@@ -126,6 +128,7 @@ export class CastFilmModel {
+     this.p = cold ? 0.5 : NOMINAL.screw * this.params.flowK / this.params.pumpK
+     this.meltDelay = []
+     this.hSegments = []
++    this.lastDeliveredH = null
+     this.pWindow = []
+     this.feedTemp = 0
+     this.defectCache = 0
+@@ -182,9 +185,13 @@ export class CastFilmModel {
+     const vmps = Math.max(c.lineSpeed, 1) / 60
+     for (const seg of this.hSegments) seg.dist -= vmps * dt
+     this.hSegments.push({ dist: P.gaugeDistance, h: hExit })
+-    let h = hExit
++    // 测厚仪只看到**已到达**的料段:队列未弹出前保持上一有效输出。
++    // 冷启动首拍以首个 hExit 作为初始测量值(与初始状态连续),此后不再跟随当前产量。
++    if (this.lastDeliveredH == null) this.lastDeliveredH = hExit
++    let h = this.lastDeliveredH
+     while (this.hSegments.length > 0 && this.hSegments[0]!.dist <= 0) {
+       h = this.hSegments.shift()!.h // FIFO:先投放的先到达
++      this.lastDeliveredH = h
+     }
+ 
+     // 压力波动窗口(≈10s)
+diff --git a/src/server/engine/plant-runtime.ts b/src/server/engine/plant-runtime.ts
+index be6241a..4476dfa 100644
+--- a/src/server/engine/plant-runtime.ts
++++ b/src/server/engine/plant-runtime.ts
+@@ -34,6 +34,8 @@ interface RunningPlant {
+   timer?: NodeJS.Timeout
+   truthStream?: fs.WriteStream
+   truthCount: number
++  /** 已推进的模拟时间(ms;由 step × dt 派生,C18 供 truth.tSim 断言) */
++  simMs: number
+ }
+ 
+ const plants = new Map<string, RunningPlant>()
+@@ -189,7 +191,9 @@ function stepOnce(key: string): void {
+   if (!rp) return
+   const cfg = rp.cfg
+   if (!cfg.enabled) return
+-  const dtSec = (cfg.dtMs / 1000) * cfg.timeScale
++  // 首版强制 timeScale=1:加速过程生成的"延迟"不能当真实秒数(C18)
++  const dtSec = cfg.dtMs / 1000
++  rp.simMs += cfg.dtMs
+   const kind = kindOf(cfg)
+   const dist = {
+     heaterDecay: cfg.disturbances?.heaterDecay ?? 1,
+@@ -255,6 +259,7 @@ function stepOnce(key: string): void {
+     if (!rp.truthStream) openTruthStream(rp)
+     const sample: PlantTruthSample = {
+       t: new Date().toISOString(),
++      tSim: rp.simMs,
+       phase: cfg.phase ?? 'steady',
+       sp: controls,
+       truth,
+@@ -277,7 +282,7 @@ function startEngine(pc: PlantModelConfig, warm: boolean): void {
+   else if (kind === 'anneal') model = new AnnealModel(pc.params, pc.seed)
+   else model = new CastFilmModel(pc.params, pc.seed)
+   model.reset(pc.seed, /* cold = */ !warm)
+-  const rp: RunningPlant = { key, cfg: pc, model, truthCount: 0 }
++  const rp: RunningPlant = { key, cfg: pc, model, truthCount: 0, simMs: 0 }
+   plants.set(key, rp)
+   if (pc.truthExport) openTruthStream(rp)
+   rp.timer = setInterval(() => stepOnce(key), Math.max(pc.dtMs, 100))
+@@ -371,7 +376,9 @@ export function plantSnapshot(): Record<string, unknown> | null {
+     phase: cfg.plantModel?.phase ?? 'steady',
+     disturbances: cfg.plantModel?.disturbances ?? {},
+     seed: cfg.plantModel?.seed,
+-    timeScale: cfg.plantModel?.timeScale ?? 1,
++    // 首版强制 1(加速时间不参与延迟/收益断言;配置的 timeScale 只作历史字段)
++    timeScale: 1,
++    configuredTimeScale: cfg.plantModel?.timeScale ?? 1,
+   }
+   const primary = cfg.plantModel ? plants.get(keyOf(cfg.plantModel)) : undefined
+   const head: Record<string, unknown> = { ...base }
+diff --git a/src/shared/types.ts b/src/shared/types.ts
+index f998bd1..375e39e 100644
+--- a/src/shared/types.ts
++++ b/src/shared/types.ts
+@@ -522,6 +522,8 @@ export interface PlantModelConfig {
+ /** plant-model 单步真值快照(JSONL 一行;sp/truth/exposed 为「控制键→工程量」平面记录,按 kind 取键) */
+ export interface PlantTruthSample {
+   t: string
++  /** 模拟时间(ms,由 step × dt 派生;timeScale 首版强制 1) */
++  tSim?: number
+   phase: PlantPhase
+   /** 控制输入(工程量) */
+   sp: Record<string, number>

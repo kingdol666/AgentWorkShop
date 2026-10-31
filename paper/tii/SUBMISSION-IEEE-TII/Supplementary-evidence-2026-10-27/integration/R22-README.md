@@ -1,0 +1,7 @@
+**Editorial note for this supplementary bundle:** The following describes the original R22 archive. This bundle does not include the R22 runner, evidence.json, application/simulator logs, or R20 reconstruction assets; see MANIFEST.json.
+
+# R22 direct operation endpoint
+
+A fresh isolated v0.8.0 application and simulator environment received one direct `POST /api/workshop/agent-tools/invoke` recipe-trial call per scene. The worker identity supplied agent scope; no task, harness transport, or external language model participated. A synthetic administrator approved each bounded operation. Both calls returned HTTP 200, one 1/1 verified receipt and matching control readback, followed 20 s later by one accepted and active-run-tagged sample query. Cast-film used OPC UA control and MQTT observation; annealing used Modbus TCP for control and observation. The observed values, 46.37 um and 675.20 C, were both outside their target bands. All 19 checks, isolation checks, and cleanup checks passed.
+
+R22 demonstrates the direct operation entry route and these two simulator mappings only. It does not create a task-to-sample link, exercise another registered harness, measure a process response, establish target attainment, or validate physical equipment. The earlier lead-role attempt with a scheduler subprocess is invalid and excluded; its evidence is not included in this R22 unit. Reproduce with `node scripts/e2e-direct-rest-simulator-paper.mjs` from the reconstructed repository described in `R20/source-snapshot/README.md`.

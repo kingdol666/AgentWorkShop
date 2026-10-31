@@ -1,0 +1,80 @@
+{
+  "at": "2026-10-30T17:57:23.208Z",
+  "health": "ok",
+  "docNodes": [
+    {
+      "name": "DOC-箱体温度PV",
+      "state": "ok",
+      "value": 24.73
+    },
+    {
+      "name": "DOC-SP回读",
+      "state": "ok",
+      "value": 25
+    },
+    {
+      "name": "DOC-壁厚轮廓",
+      "state": "ok",
+      "value": 2.498
+    },
+    {
+      "name": "DOC-环境温度",
+      "state": "ok",
+      "value": 23.4
+    },
+    {
+      "name": "DOC-环境湿度",
+      "state": "ok",
+      "value": 60
+    }
+  ],
+  "injectionNodes": {
+    "total": 13,
+    "online": 13
+  },
+  "channel": {
+    "name": "PROTO-文档驱动优化频道-1031",
+    "lineId": "ln-b8c1d3ac",
+    "enabled": 1,
+    "members": [
+      {
+        "role": "lead",
+        "name": "生产主管",
+        "harness": "omp"
+      },
+      {
+        "role": "worker",
+        "name": "数据分析师",
+        "harness": "omp"
+      },
+      {
+        "role": "worker",
+        "name": "知识调优工程师",
+        "harness": "omp"
+      },
+      {
+        "role": "worker",
+        "name": "工艺工程师",
+        "harness": "omp"
+      }
+    ]
+  },
+  "task": {
+    "state": "COMPLETED",
+    "progress": 100,
+    "artifact": "deliverable"
+  },
+  "export": {
+    "id": "edajob-5f55b3f5",
+    "status": "ready",
+    "totalRows": 818
+  },
+  "plugins": {
+    "count": 11,
+    "failures": 0
+  },
+  "tools": {
+    "total": 126,
+    "unavailable": 0
+  }
+}

@@ -1,0 +1,147 @@
+{
+  "note": "60s manual write interval evidence; audit event 214 at 01:12:16.273; controlled retest first attempt also 429 because a hold heartbeat refreshed the window; second immediate attempt 429; restore 200 unverified while simulator was down; post-restart reads 248/246/1500",
+  "auditEvents": [
+    {
+      "id": 220,
+      "actor": "9b62e433-a78f-4ef1-963c-5173ba14113a",
+      "actorName": "E2E 集成验收管理员",
+      "actorKind": "user",
+      "action": "dcw.write.rejected",
+      "targetKind": "dcw",
+      "targetId": "dw-fca065d0",
+      "detail": {},
+      "at": "2026-10-31T01:25:46.853+08:00"
+    },
+    {
+      "id": 219,
+      "actor": "9b62e433-a78f-4ef1-963c-5173ba14113a",
+      "actorName": "E2E 集成验收管理员",
+      "actorKind": "user",
+      "action": "dcw.write.rejected",
+      "targetKind": "dcw",
+      "targetId": "dw-fca065d0",
+      "detail": {},
+      "at": "2026-10-31T01:25:46.846+08:00"
+    },
+    {
+      "id": 214,
+      "actor": "9b62e433-a78f-4ef1-963c-5173ba14113a",
+      "actorName": "E2E 集成验收管理员",
+      "actorKind": "user",
+      "action": "dcw.write.rejected",
+      "targetKind": "dcw",
+      "targetId": "dw-7ead6ec4",
+      "detail": {},
+      "at": "2026-10-31T01:12:16.273+08:00"
+    },
+    {
+      "id": 88,
+      "actor": "9b62e433-a78f-4ef1-963c-5173ba14113a",
+      "actorName": "E2E 集成验收管理员",
+      "actorKind": "user",
+      "action": "dcw.write.rejected",
+      "targetKind": "dcw",
+      "targetId": "dw-e1d59b5e",
+      "detail": {},
+      "at": "2026-10-30T23:46:39.831+08:00"
+    }
+  ],
+  "postRestartReads": {
+    "pp-3081785c": {
+      "ok": true,
+      "value": 248,
+      "raw": 248,
+      "message": "读回 raw 248 → eng 248",
+      "at": "2026-10-31T01:28:39.567+08:00",
+      "param": {
+        "id": "pp-3081785c",
+        "key": "temp-sp",
+        "name": "机筒温度区3SP",
+        "templateRef": "temp-sp",
+        "unit": "℃",
+        "decimals": 1,
+        "min": null,
+        "max": null,
+        "stepLimit": 5,
+        "nodeId": "dw-7ead6ec4",
+        "desc": "烘箱温度设定:烘箱/熔体温度设定:升高使热塑温度上升(成膜更均匀但能耗高、过热降解风险),降低则偏冷易厚度不均(执行点:机筒温度区3SP)",
+        "lineId": "ln-cf47d3b6",
+        "driver": "modbus-tcp",
+        "enabled": true,
+        "value": 248,
+        "readValue": 248,
+        "state": "ok",
+        "createdAt": "2026-10-30T22:08:24.081+08:00"
+      }
+    },
+    "pp-f13c6665": {
+      "ok": true,
+      "value": 246,
+      "raw": 246,
+      "message": "读回 raw 246 → eng 246",
+      "at": "2026-10-31T01:28:39.591+08:00",
+      "param": {
+        "id": "pp-f13c6665",
+        "key": "temp-sp-2",
+        "name": "机筒温度区4SP",
+        "templateRef": "temp-sp",
+        "unit": "℃",
+        "decimals": 1,
+        "min": null,
+        "max": null,
+        "stepLimit": 5,
+        "nodeId": "dw-fca065d0",
+        "desc": "烘箱温度设定:烘箱/熔体温度设定:升高使热塑温度上升(成膜更均匀但能耗高、过热降解风险),降低则偏冷易厚度不均(执行点:机筒温度区4SP)",
+        "lineId": "ln-cf47d3b6",
+        "driver": "modbus-tcp",
+        "enabled": true,
+        "value": 246,
+        "readValue": 246,
+        "state": "error",
+        "createdAt": "2026-10-30T22:08:24.089+08:00"
+      }
+    },
+    "pp-5a617275": {
+      "ok": true,
+      "value": 1500,
+      "raw": 1500,
+      "message": "读回 raw 1500 → eng 1500",
+      "at": "2026-10-31T01:28:39.595+08:00",
+      "param": {
+        "id": "pp-5a617275",
+        "key": "temp-sp-3",
+        "name": "锁模力SP",
+        "templateRef": "temp-sp",
+        "unit": "kN",
+        "decimals": 0,
+        "min": null,
+        "max": null,
+        "stepLimit": 80,
+        "nodeId": "dw-530ba323",
+        "desc": "烘箱温度设定:烘箱/熔体温度设定:升高使热塑温度上升(成膜更均匀但能耗高、过热降解风险),降低则偏冷易厚度不均(执行点:锁模力SP)",
+        "lineId": "ln-cf47d3b6",
+        "driver": "modbus-rtu",
+        "enabled": true,
+        "value": 1500,
+        "readValue": 1500,
+        "state": "error",
+        "createdAt": "2026-10-30T22:08:24.105+08:00"
+      }
+    }
+  },
+  "controlledRetest": {
+    "first": "429 (hold heartbeat refreshed window)",
+    "second": "429 WRITE_INTERVAL_NOT_ELAPSED",
+    "restore": "200 ack=unverified (simulator down at that moment)"
+  },
+  "rawResponseExample": {
+    "at": "2026-10-31T01:12:16Z",
+    "status": 429,
+    "body": {
+      "code": "WRITE_INTERVAL_NOT_ELAPSED",
+      "message": "DCW 节点「机筒温度区3SP」两次在线写入间隔必须至少 60s，当前还需 60s",
+      "data": null
+    },
+    "note": "exact 429 body observed at 01:12:16; audit event 214"
+  }
+}

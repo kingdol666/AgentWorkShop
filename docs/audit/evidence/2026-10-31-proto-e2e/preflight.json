@@ -1,0 +1,110 @@
+{
+  "at": "2026-10-30T17:15:42.523Z",
+  "repo": "D:\\codes\\ABO\\AgentWorkShop",
+  "homes": [
+    "D:\\codes\\ABO\\AgentWorkShop\\.AgentWorkShop",
+    "C:\\Users\\87287\\.AgentWorkShop",
+    "D:\\codes\\ABO\\AgentWorkShop"
+  ],
+  "ports": [
+    3300,
+    3001
+  ],
+  "running": true,
+  "liveInstances": [
+    {
+      "home": "D:\\codes\\ABO\\AgentWorkShop\\.AgentWorkShop",
+      "mode": "prod:repo",
+      "port": 3300,
+      "pid": 30316,
+      "startedAt": "2026-10-30T21:38:21.213+08:00",
+      "awLock": {
+        "pid": 30316,
+        "startedAt": "2026-10-30T21:38:21.213+08:00",
+        "mode": "prod:repo",
+        "port": 3300
+      },
+      "dataLock": null,
+      "pidAlive": false,
+      "portListening": true,
+      "stale": true,
+      "note": "锁指向的 PID 已退出,但端口仍在监听:实际写者未知,不要据此杀任何进程;先查端口对应的进程",
+      "health": {
+        "status": "ok",
+        "app": "AgentWorkShop",
+        "version": "0.8.7",
+        "mode": "dev",
+        "uptimeMs": 3544545,
+        "timestamp": "2026-10-31T01:15:42.517+08:00",
+        "workshop": "ready",
+        "wiredAgents": 1,
+        "activeChannels": 2,
+        "memory": {
+          "heapUsedMb": 185,
+          "heapLimitMb": 4288,
+          "rssMb": 227,
+          "externalMb": 17,
+          "heapRatio": 0.0431
+        }
+      }
+    }
+  ],
+  "instances": [
+    {
+      "home": "D:\\codes\\ABO\\AgentWorkShop\\.AgentWorkShop",
+      "mode": "prod:repo",
+      "port": 3300,
+      "pid": 30316,
+      "startedAt": "2026-10-30T21:38:21.213+08:00",
+      "awLock": {
+        "pid": 30316,
+        "startedAt": "2026-10-30T21:38:21.213+08:00",
+        "mode": "prod:repo",
+        "port": 3300
+      },
+      "dataLock": null,
+      "pidAlive": false,
+      "portListening": true,
+      "stale": true,
+      "note": "锁指向的 PID 已退出,但端口仍在监听:实际写者未知,不要据此杀任何进程;先查端口对应的进程",
+      "health": {
+        "status": "ok",
+        "app": "AgentWorkShop",
+        "version": "0.8.7",
+        "mode": "dev",
+        "uptimeMs": 3544545,
+        "timestamp": "2026-10-31T01:15:42.517+08:00",
+        "workshop": "ready",
+        "wiredAgents": 1,
+        "activeChannels": 2,
+        "memory": {
+          "heapUsedMb": 185,
+          "heapLimitMb": 4288,
+          "rssMb": 227,
+          "externalMb": 17,
+          "heapRatio": 0.0431
+        }
+      }
+    }
+  ],
+  "treatAsProduction": true,
+  "testInstance": false,
+  "safeToStart": false,
+  "forbiddenActions": [
+    "aw start / node bin/aw.mjs start(会读 aw.lock 并自动停止既有实例,不是“启动失败”)",
+    "aw stop / node bin/aw.mjs stop",
+    "taskkill / Stop-Process / kill / pkill",
+    "docker compose down / docker stop awshop-*",
+    "在同一个 AW_HOME 或同一端口再启动一个实例(直接启动会被 data.lock 拒绝)",
+    "停止/重启 DAQ 采集总控(POST /api/workshop/daq/controller action=stop)",
+    "修改或删除既有的线/节点/配方/频道",
+    "重启进程来让插件生效(builtin 除外,需先验证 helper 缓存)"
+  ],
+  "next": [
+    "附加到已运行实例:export AW_BASE=http://127.0.0.1:<port>;然后 aw_status / aw_login",
+    "不要运行 aw start(它会自动停止既有实例)",
+    "只创建本次作业资源(PROTO/E2E 前缀 + 专用测试线),不改不删既有资源",
+    "插件优先 project/user 级热加载;需要重启的改动移交维护窗口",
+    "收尾只清理本次创建的 id"
+  ]
+}

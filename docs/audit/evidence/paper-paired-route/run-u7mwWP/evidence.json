@@ -1,0 +1,448 @@
+{
+  "schemaVersion": 1,
+  "experiment": {
+    "id": "pprmvszqi42",
+    "name": "paired registered-harness and direct-REST recipe_trial entry evaluation",
+    "projectVersion": "0.8.6",
+    "executionMode": "one isolated loopback-only application/simulator startup; deterministic local OMP-RPC fixture plus direct REST route; shared per-scene configuration and candidate set with route-specific candidates; no LLM inference",
+    "claimBoundary": "Validates two real AgentWorkShop software entry paths, shared dispatch, bounded simulated device writes, approval, platform receipts, and independent readback. Does not validate Agent decision quality, LLM reasoning, multi-Agent coordination, physical PLC behavior, or process convergence.",
+    "startedAt": "2026-10-29T03:35:38.546Z",
+    "scenes": [
+      {
+        "id": "cast-film",
+        "status": "running",
+        "simulator": {
+          "preset": "cast-film-physics",
+          "plant": {
+            "id": "pprmvszqi42-cast-film",
+            "kind": "simulator",
+            "seed": 42,
+            "timeScale": 1
+          },
+          "deviceCount": 4
+        },
+        "sharedConfiguration": {
+          "canonical": {
+            "scene": "cast-film",
+            "preset": "cast-film-physics",
+            "process": "cast-film extrusion",
+            "protocol": "opcua",
+            "controlSignal": "ScrewSpeedSP",
+            "observationSignal": "thick",
+            "manipulationDevice": "dev-extruder-opcua",
+            "observationDevice": "dev-gauge-mqtt",
+            "controlDriverConfigSha256": "5bf05b7d626c07855f72e058bb7c510b43f5312cbc9488f617e62ed94d5a32f3",
+            "observationDriverConfigSha256": "cc52b4d297eb5f06ee57edb4b090ed3365632423474709a25482edc4a9c5e923",
+            "engineeringRange": [
+              50,
+              200
+            ],
+            "stepLimit": 30,
+            "baseline": 120,
+            "targetBand": [
+              48,
+              52
+            ],
+            "candidateSet": [
+              125,
+              130
+            ],
+            "candidateSetSha256": "493755fefb4a25576739cac9ca46e78f64cb7ca25372d5d7d871b07d4e4de23a"
+          },
+          "fingerprintSha256": "08abfa3217bbcc749a5a930453eebe580bb379f21c5d7df5602a69980a23568d"
+        },
+        "routeConfigurationFingerprints": {
+          "registeredHarness": "08abfa3217bbcc749a5a930453eebe580bb379f21c5d7df5602a69980a23568d",
+          "directRest": "08abfa3217bbcc749a5a930453eebe580bb379f21c5d7df5602a69980a23568d",
+          "equal": true
+        },
+        "protocolMapping": {
+          "driver": "opcua",
+          "control": {
+            "deviceId": "dev-extruder-opcua",
+            "signal": "ScrewSpeedSP",
+            "driverConfigSha256": "5bf05b7d626c07855f72e058bb7c510b43f5312cbc9488f617e62ed94d5a32f3"
+          },
+          "observation": {
+            "deviceId": "dev-gauge-mqtt",
+            "signal": "thick",
+            "driverConfigSha256": "cc52b4d297eb5f06ee57edb4b090ed3365632423474709a25482edc4a9c5e923"
+          }
+        },
+        "values": {
+          "engineeringRange": [
+            50,
+            200
+          ],
+          "stepLimit": 30,
+          "baseline": 120,
+          "targetBand": [
+            48,
+            52
+          ],
+          "candidateSet": [
+            125,
+            130
+          ],
+          "candidateSetSha256": "493755fefb4a25576739cac9ca46e78f64cb7ca25372d5d7d871b07d4e4de23a",
+          "routeCandidates": {
+            "registeredHarness": 125,
+            "directRest": 130
+          }
+        },
+        "routes": [
+          {
+            "route": "registered-harness",
+            "status": "verified",
+            "endpoint": "registered OMP-RPC harness → shared host-tool dispatch",
+            "entities": {
+              "lineId": "ln-c803d9f9",
+              "recipeId": "rc-fc35e9de",
+              "controlNodeId": "dw-775613a4",
+              "daqNodeId": "dn-7a0f2a01",
+              "channelId": "a205aea9-e83d-4a4a-9281-abcb98e9fb49",
+              "agentId": "cec86b92-3946-4d58-bec6-b1477bb3dd4c"
+            },
+            "activeRunId": "rr-3c1dbb95",
+            "approvalId": "ap-b18f43b1",
+            "approvedBy": "synthetic isolated administrator",
+            "toolResult": {
+              "success": true,
+              "text": "试验已整批下发并全部设备证实(1/1,批次 rr-0efba):pprmvszqi42-cast-film-paired-control→125rpm [证实✓]。假设:Deterministic simulator integration check for cast-film; apply one bounded candidate and verify the device ACK/readback.。\n人工附言:Approved for the bounded paired registered-harness local simulator check.注意:本次试验**未写入配方版本** —— 等待工艺惯性后 daq_query 复测判读:有进步/达标 → recipe_update 把候选值固化进配方(同 id 版本+1);无进步/劣化 → recipe_rollback(recipe_id, dispatch=true, reason=…) 统一回退(定义回退+PLC 整批恢复)。"
+            },
+            "platformReceipt": {
+              "trialRunId": "rr-0efba868",
+              "trialRows": 1,
+              "trialAckRows": 1,
+              "ackSummary": {
+                "verified": 1,
+                "unverified": 0,
+                "failed": 0,
+                "total": 1
+              },
+              "verifiedResult": {
+                "templateRef": "cw-19281b1a",
+                "nodeId": "dw-775613a4",
+                "ok": true,
+                "message": "写入并回读一致:125,回读 125(标定后物理值 125)",
+                "value": 125,
+                "ack": "readback-verified",
+                "verify": {
+                  "verdict": "verified",
+                  "attempts": 0
+                }
+              }
+            },
+            "preWriteReadback": {
+              "value": 120,
+              "attempts": [
+                {
+                  "attempt": 1,
+                  "status": 200,
+                  "at": "2026-10-29T03:36:06.520Z"
+                }
+              ],
+              "waitedMs": 15
+            },
+            "independentReadback": {
+              "expected": 125,
+              "observed": 125,
+              "matches": true,
+              "retryAttempts": [
+                {
+                  "attempt": 1,
+                  "status": 200,
+                  "at": "2026-10-29T03:36:07.343Z"
+                }
+              ],
+              "waitedMs": 184
+            },
+            "operationLog": {
+              "trialAction": "recipe.trial",
+              "ackAction": "recipe.dispatch.ack",
+              "linkedRunId": "rr-0efba868",
+              "priorTrialRunIds": [],
+              "selectedCurrentInvocationOnly": true
+            },
+            "lineStoppedAfterPair": false,
+            "trace": {
+              "fixture": "deterministic-local-omp-rpc-transport",
+              "decisionSource": "predeclared-test-vector; not an LLM or harness decision",
+              "hostToolCallCount": 1,
+              "hostToolResultCount": 1,
+              "taskId": "a408804b-52b9-4b3d-911b-5ef5850e9ef1",
+              "taskState": "SUBMITTED",
+              "traceSha256": "2f5a7086259b2ea41e3f9865d0da0c01091cff841a774914c8515c1c60e324c5"
+            }
+          }
+        ]
+      }
+    ],
+    "server": {
+      "version": "0.8.6",
+      "mode": "dev",
+      "workshop": "ready"
+    },
+    "syntheticAdmin": {
+      "id": "b6c7f593-dc5f-4d4f-a491-2c8c1cb629a4",
+      "role": "admin",
+      "source": "first registration in fresh isolated AW_HOME"
+    },
+    "sourceIdentity": {
+      "appGitHead": "21969ef92bd63c96b0e64035b4797351cc865e02",
+      "simulatorGitHead": "d47eb7c0a7ae5e84d306a332d64844e4ea2499ac",
+      "appSourceSha256": "83bc094168bb8717108eee86948ee870abae09f0eb7559b3ac9f2586847e1bc7",
+      "simulatorEntrySha256": "01516e2de3d7cfb19a188b2edca45a7cb031165832bce06e0b165e46d59e3610",
+      "runnerSha256": "6e0fe93c4766505038b8f3b889dbc9e43fb7e095dff510dc0fefbc2c4e11760e",
+      "fixtureSha256": "1245496d12a93342967b04dc789a1ae3a2cc6463bf8f6eb4206fd8890cf5ae8f",
+      "nodeVersion": "v24.19.0",
+      "platform": "win32",
+      "architecture": "x64"
+    },
+    "finishedAt": "2026-10-29T03:36:41.075Z",
+    "runtimeDirectory": ".omc/paper-paired-route-*",
+    "outputDirectory": "docs/audit/evidence/paper-paired-route/run-*"
+  },
+  "isolation": {
+    "result": "passed",
+    "appBase": "http://127.0.0.1:3997",
+    "simulatorBase": "http://127.0.0.1:4020",
+    "awHome": "fresh isolated home mode",
+    "loopbackOnly": true,
+    "externalModelCalls": false,
+    "checks": [
+      {
+        "id": "fresh-aw-home-data-path",
+        "status": "pass",
+        "detail": {
+          "mode": "home",
+          "dataDir": "isolated AW_HOME/data"
+        }
+      },
+      {
+        "id": "free-loopback-app-port",
+        "status": "pass",
+        "detail": {
+          "host": "127.0.0.1",
+          "port": 3997
+        }
+      },
+      {
+        "id": "free-loopback-sim-port",
+        "status": "pass",
+        "detail": {
+          "host": "127.0.0.1",
+          "port": 4020
+        }
+      },
+      {
+        "id": "free-loopback-mqtt-port",
+        "status": "pass",
+        "detail": {
+          "host": "127.0.0.1",
+          "port": 18840
+        }
+      },
+      {
+        "id": "free-loopback-appMqtt-port",
+        "status": "pass",
+        "detail": {
+          "host": "127.0.0.1",
+          "port": 45323
+        }
+      },
+      {
+        "id": "free-loopback-tsdb-port",
+        "status": "pass",
+        "detail": {
+          "host": "127.0.0.1",
+          "port": 45321
+        }
+      },
+      {
+        "id": "free-loopback-objectstore-port",
+        "status": "pass",
+        "detail": {
+          "host": "127.0.0.1",
+          "port": 45322
+        }
+      },
+      {
+        "id": "deterministic-fixture-only",
+        "status": "pass",
+        "detail": {
+          "fixture": "scripts/fixtures/omp-paper-harness.mjs",
+          "noExternalModel": true,
+          "llmInference": false
+        }
+      },
+      {
+        "id": "isolated-home-and-outbound-guard-configured",
+        "status": "pass",
+        "detail": {
+          "infrastructure": "never",
+          "services": "loopback only",
+          "enabledPluginAllowlist": [
+            "rag-bridge"
+          ],
+          "outboundHost": "invalid non-routable hostname"
+        }
+      },
+      {
+        "id": "registered-fixture-launcher-ready",
+        "status": "pass",
+        "detail": {
+          "platform": "win32",
+          "launcher": "local stdio shim",
+          "fixture": "deterministic OMP-RPC fixture"
+        }
+      },
+      {
+        "id": "simulator-http-and-mqtt-loopback",
+        "status": "pass",
+        "detail": {
+          "http": "127.0.0.1:4020",
+          "mqtt": "127.0.0.1:18840"
+        }
+      },
+      {
+        "id": "application-loaded-isolated-home-and-empty-admin-state",
+        "status": "pass",
+        "detail": {
+          "home": "fresh isolated AW_HOME",
+          "firstAccount": "synthetic experiment administrator"
+        }
+      },
+      {
+        "id": "application-loopback-ready",
+        "status": "pass",
+        "detail": {
+          "version": "0.8.6",
+          "host": "127.0.0.1",
+          "port": 3997
+        }
+      },
+      {
+        "id": "application-plugin-outbound-and-daq-isolation",
+        "status": "pass",
+        "detail": {
+          "enabledPlugins": [
+            "rag-bridge"
+          ],
+          "outbound": false,
+          "daqQueue": "inproc",
+          "timeSeries": "sqlite-emulated"
+        }
+      }
+    ]
+  },
+  "checks": [
+    {
+      "id": "cast-film-registered-harness-device-readback",
+      "status": "pass",
+      "detail": {
+        "expected": 125,
+        "observed": 125
+      }
+    },
+    {
+      "id": "cast-film-registered-harness-actual-state-transition",
+      "status": "pass",
+      "detail": {
+        "before": 120,
+        "candidate": 125,
+        "after": 125
+      }
+    },
+    {
+      "id": "cleanup-stop-active-line",
+      "status": "pass",
+      "detail": {
+        "lineId": "ln-c803d9f9"
+      }
+    },
+    {
+      "id": "simulator-stopped",
+      "status": "pass",
+      "detail": {
+        "pid": 41396,
+        "processTreeStopped": true
+      }
+    },
+    {
+      "id": "agentworkshop-stopped",
+      "status": "pass",
+      "detail": {
+        "pid": 80428,
+        "processTreeStopped": true
+      }
+    },
+    {
+      "id": "app-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 3997
+      }
+    },
+    {
+      "id": "simulator-http-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 4020
+      }
+    },
+    {
+      "id": "simulator-mqtt-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 18840
+      }
+    },
+    {
+      "id": "app-mqtt-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 45323
+      }
+    },
+    {
+      "id": "timeseries-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 45321
+      }
+    },
+    {
+      "id": "objectstore-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 45322
+      }
+    },
+    {
+      "id": "simulator-device-0-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 44400
+      }
+    },
+    {
+      "id": "simulator-device-1-port-released",
+      "status": "pass",
+      "detail": {
+        "port": 44401
+      }
+    }
+  ],
+  "status": "failed",
+  "failure": {
+    "stage": "cast-film:direct-rest-route",
+    "scene": "cast-film",
+    "name": "Error",
+    "message": "direct-rest approval was not observed within the bound"
+  },
+  "cleanup": {
+    "status": "passed",
+    "allStartedProcessTreesAndLoopbackPortsChecked": true
+  }
+}

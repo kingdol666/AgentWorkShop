@@ -1,0 +1,163 @@
+{
+  "schema": "aw.daq-export/1",
+  "export_id": "daqexp-20261031014629-b6bee4",
+  "created_at": "2026-10-31T01:46:29.875+08:00",
+  "title": "PROTO-文档驱动导出验收",
+  "note": "",
+  "window": {
+    "from_ms": 1793381789823,
+    "to_ms": 1793382389823,
+    "from": "2026-10-31T01:36:29.823+08:00",
+    "to": "2026-10-31T01:46:29.823+08:00"
+  },
+  "lines": [
+    {
+      "lineId": "ln-b8c1d3ac",
+      "lineName": "PROTO-文档驱动虚拟线-1031",
+      "description": ""
+    }
+  ],
+  "nodes": [
+    {
+      "id": "dn-2441bc04",
+      "name": "DOC-箱体温度PV",
+      "unit": "℃",
+      "line_id": "ln-b8c1d3ac",
+      "range": {
+        "min": 10,
+        "max": 60
+      },
+      "warn": {
+        "low": 14,
+        "high": 56
+      },
+      "interval_ms": 2000,
+      "decimals": 2,
+      "semantics": "熔体/箱体温度:热工艺核心被控量,热惯性大(变化平缓)。判读:与设定值偏差 ±2℃ 内为稳态;持续单边漂移 = 加热/散热失衡;骤升骤降多为扰动或传感器异常。",
+      "file": "nodes/dn-2441bc04.csv",
+      "rows": 134,
+      "value_range_observed": {
+        "min": 24.5,
+        "max": 25.5
+      },
+      "state_summary": {
+        "offline": 2,
+        "ok": 132
+      }
+    },
+    {
+      "id": "dn-ae545180",
+      "name": "DOC-SP回读",
+      "unit": "℃",
+      "line_id": "ln-b8c1d3ac",
+      "range": {
+        "min": 10,
+        "max": 60
+      },
+      "warn": {
+        "low": 14,
+        "high": 56
+      },
+      "interval_ms": 2000,
+      "decimals": 2,
+      "semantics": "熔体/箱体温度:热工艺核心被控量,热惯性大(变化平缓)。判读:与设定值偏差 ±2℃ 内为稳态;持续单边漂移 = 加热/散热失衡;骤升骤降多为扰动或传感器异常。",
+      "file": "nodes/dn-ae545180.csv",
+      "rows": 134,
+      "value_range_observed": {
+        "min": 25,
+        "max": 27
+      },
+      "state_summary": {
+        "offline": 2,
+        "ok": 132
+      }
+    },
+    {
+      "id": "dn-e4934f70",
+      "name": "DOC-壁厚轮廓",
+      "kind": "vector",
+      "line_id": "ln-b8c1d3ac",
+      "semantics": "壁厚轮廓",
+      "unit": "mm",
+      "file": "frames/dn-e4934f70.csv",
+      "frames": 54,
+      "points": 3456,
+      "value_range_observed": null,
+      "state_summary": {},
+      "vector": {
+        "points": 64,
+        "min": 1,
+        "max": 5,
+        "axis": "模头横向位置(操作侧→传动侧)",
+        "pointUnit": "点",
+        "pointLabelPrefix": "模头点",
+        "pointIndexBase": 1
+      },
+      "metrics_summary": {
+        "avg": 2.500166,
+        "max": 2.5248
+      }
+    },
+    {
+      "id": "dn-970e00ea",
+      "name": "DOC-环境温度",
+      "unit": "℃",
+      "line_id": "ln-b8c1d3ac",
+      "range": {
+        "min": 0,
+        "max": 50
+      },
+      "warn": {
+        "low": 4,
+        "high": 46
+      },
+      "interval_ms": 3000,
+      "decimals": 1,
+      "semantics": "熔体/箱体温度:热工艺核心被控量,热惯性大(变化平缓)。判读:与设定值偏差 ±2℃ 内为稳态;持续单边漂移 = 加热/散热失衡;骤升骤降多为扰动或传感器异常。",
+      "file": "nodes/dn-970e00ea.csv",
+      "rows": 275,
+      "value_range_observed": {
+        "min": 20.5,
+        "max": 23.5
+      },
+      "state_summary": {
+        "offline": 2,
+        "ok": 273
+      }
+    },
+    {
+      "id": "dn-2a0acb1f",
+      "name": "DOC-环境湿度",
+      "unit": "%",
+      "line_id": "ln-b8c1d3ac",
+      "range": {
+        "min": 0,
+        "max": 100
+      },
+      "warn": {
+        "low": 8,
+        "high": 92
+      },
+      "interval_ms": 3000,
+      "decimals": 0,
+      "semantics": "熔体/箱体温度:热工艺核心被控量,热惯性大(变化平缓)。判读:与设定值偏差 ±2℃ 内为稳态;持续单边漂移 = 加热/散热失衡;骤升骤降多为扰动或传感器异常。",
+      "file": "nodes/dn-2a0acb1f.csv",
+      "rows": 275,
+      "value_range_observed": {
+        "min": 50,
+        "max": 60
+      },
+      "state_summary": {
+        "offline": 2,
+        "ok": 273
+      }
+    }
+  ],
+  "totals": {
+    "files": 4,
+    "rows": 818
+  },
+  "truncated_nodes": [],
+  "usage": "nodes/ 下每标量节点一份全量原始时序 CSV(ts_iso,ts_ms,value,state;无降采样);帧节点(vector/image)在 frames/ 下:向量=单 CSV 长表(ts_iso,ts_ms,point_index,value),图像=逐帧原文件 frames/<node_id>/<ts>.<ext>。请结合本清单的节点语义/量程/产线-配方上下文做分析;深度根因诊断请用 diag-bridge 的 diag_run(export_id=本 export_id)。",
+  "readme": "README.md"
+}

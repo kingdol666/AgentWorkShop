@@ -1,0 +1,31 @@
+{
+  "id": "3bf6f501-c031-4115-80fb-f8738388cdbd",
+  "state": "CANCELED",
+  "cancelledByOperator": true,
+  "elapsedSec": 370,
+  "deliverable": "",
+  "toolCalls": [
+    "🔧 my_industrial_nodes",
+    "🔧 my_industrial_nodes ✅ 完成: ### ⚙ 频道执行模式:auto(默认,频道不加额外约束)—— 是否人工批准由产线总闸与你的绑定模式决定;自动执行的下发必须附带 hypothesis 依据,四层限界/单步上限/运行门照常生效 #### ◆ 温度设定B(写入线) [id=dw-4d698442] - 物理量: 烘箱温度设定,单位 C,精度 2 位小数 - 工艺语义: 自动",
+    "🔧 my_industrial_nodes",
+    "🔧 my_industrial_nodes ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"### ⚙ 频道执行模式:auto(默认,频道不加额外约束)—— 是否人工批准由产线总闸与你的绑定模式决定;自动执行的下发必须附带 hypothesis 依据,四层限界/单步上限/运行门照常生效\\n\\n#### ◆ 温度设定B(写入线) [id=dw-4d698442]\\",
+    "🔧 recipe_trial(line_id=ln-09ceb7e0, hypothesis=验收场景(自动模式-点位试验):依据节点 dw-4d698442…)",
+    "🔧 recipe_trial(line_id=ln-09ceb7e0, hypothesis=验收场景(自动模式-点位试验):依据节点 dw-4d698442…)",
+    "🔧 recipe_trial ✅ 完成: 试验已整批下发并全部设备证实(1/1,批次 rr-ab2bd):温度设定B(写入线)→62C [证实✓]。假设:验收场景(自动模式-点位试验):依据节点 dw-4d698442 语义卡——当前设定 60C、活动配方窗口 50~70C、单步上限 ≤4C,候选 62C(+2C)完全处于四层限界内。假设:自动模式下该点位的整批候选下发应免人工审批直达驱动并回执",
+    "🔧 recipe_trial ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"试验已整批下发并全部设备证实(1/1,批次 rr-ab2bd):温度设定B(写入线)→62C [证实✓]。假设:验收场景(自动模式-点位试验):依据节点 dw-4d698442 语义卡——当前设定 60C、活动配方窗口 50~70C、单步上限 ≤4C,候选 62C(+2C)完全处于四层"
+  ],
+  "hitl": [],
+  "journal": [
+    {
+      "lineId": "ln-09ceb7e0",
+      "nodeId": "dw-4d698442",
+      "prevValue": 60,
+      "newValue": 62,
+      "source": "recipe",
+      "actor": "recipe",
+      "recipeRunId": "rr-ab2bd963",
+      "id": "anc-8a55111e",
+      "at": "2026-10-29T12:49:57.603+08:00"
+    }
+  ]
+}

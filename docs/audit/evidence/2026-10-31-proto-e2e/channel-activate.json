@@ -1,0 +1,17 @@
+{
+  "at": "2026-10-30T17:31:16.118Z",
+  "status": 200,
+  "response": {
+    "code": 0,
+    "message": "ok",
+    "data": {
+      "wiredAgents": [
+        "07ea9178-a0bd-4da1-915b-9ed9f489399c"
+      ],
+      "activeChannels": [
+        "1febb0b5-8612-4d3a-a471-4197700461fc",
+        "1a5c55b5-03e7-4e26-83e7-d7feb22dba11"
+      ]
+    }
+  }
+}

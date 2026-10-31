@@ -1,0 +1,22 @@
+scenario,display,point_order,point_type,operation,value,unit,target_center,target_lower,target_upper,recorded,source_path
+injection,Injection molding,0,structured_trajectory,baseline,31.296,g,32.5,32.15,32.85,True,bench/results/20260928020612-1juc/scenarios-mission-injection.log
+injection,Injection molding,1,structured_trajectory,Hold pressure 45 to 57.73 bar,31.93,g,32.5,32.15,32.85,True,bench/results/20260928020612-1juc/scenarios-mission-injection.log
+injection,Injection molding,2,structured_trajectory,Hold time 6 to 10.56 s,32.0933333333,g,32.5,32.15,32.85,True,bench/results/20260928020612-1juc/scenarios-mission-injection.log
+injection,Injection molding,3,structured_trajectory,Hold pressure 57.7 to 62 bar,32.36,g,32.5,32.15,32.85,True,bench/results/20260928020612-1juc/scenarios-mission-injection.log
+biax,BOPET film,0,structured_trajectory,baseline,28.0333333333,µm,25.0,24.3,25.7,True,bench/results/20260928020612-1juc/scenarios-mission-biax.log
+biax,BOPET film,1,structured_trajectory,Casting speed 32 to 33.7,26.48,µm,25.0,24.3,25.7,True,bench/results/20260928020612-1juc/scenarios-mission-biax.log
+biax,BOPET film,2,structured_trajectory,Fast-roll speed 118 to 120.3,26.06,µm,25.0,24.3,25.7,True,bench/results/20260928020612-1juc/scenarios-mission-biax.log
+biax,BOPET film,3,structured_trajectory,Rail-out width 3000 to 3037,25.78,µm,25.0,24.3,25.7,True,bench/results/20260928020612-1juc/scenarios-mission-biax.log
+biax,BOPET film,4,structured_trajectory,Casting speed 33.7 to 34.2,25.3,µm,25.0,24.3,25.7,True,bench/results/20260928020612-1juc/scenarios-mission-biax.log
+anneal,Continuous annealing,0,structured_trajectory,baseline,134.9,HV,95,89,101,True,bench/results/20260928020612-1juc/scenarios-mission-anneal.log
+anneal,Continuous annealing,1,structured_trajectory,Zone-2 temperature 710 to 850,99.18,HV,95,89,101,True,bench/results/20260928020612-1juc/scenarios-mission-anneal.log
+anneal,Continuous annealing,2,structured_trajectory,Line speed 140 to 152 m/min,99.74,HV,95,89,101,True,bench/results/20260928020612-1juc/scenarios-mission-anneal.log
+anneal,Continuous annealing,3,structured_trajectory,Line speed candidate 152 to 164 m/min; reverted,101.0,HV,95,89,101,False,bench/results/20260928020612-1juc/scenarios-mission-anneal.log
+anneal,Continuous annealing,4,separate_mission_endpoint,mission-reported endpoint; not connected to trajectory,99.5,HV,95,89,101,False,bench/results/20260928020612-1juc/scenarios-mission-anneal.log
+wwtp,A2O wastewater,0,structured_trajectory,baseline,0.194,mg/L,3.4,2.8,4.0,True,bench/results/20260928020612-1juc/scenarios-mission-wwtp.log
+wwtp,A2O wastewater,1,structured_trajectory,Blower frequency 26 to 30.08 Hz,2.1433333333,mg/L,3.4,2.8,4.0,True,bench/results/20260928020612-1juc/scenarios-mission-wwtp.log
+wwtp,A2O wastewater,2,structured_trajectory,Blower frequency 30.1 to 31.67 Hz,2.78,mg/L,3.4,2.8,4.0,True,bench/results/20260928020612-1juc/scenarios-mission-wwtp.log
+wwtp,A2O wastewater,3,structured_trajectory,Blower frequency 31.7 to 32.5 Hz,3.05,mg/L,3.4,2.8,4.0,True,bench/results/20260928020612-1juc/scenarios-mission-wwtp.log
+wwtp,A2O wastewater,4,structured_trajectory,Blower frequency 32.5 to 33.3 Hz,3.1733333333,mg/L,3.4,2.8,4.0,True,bench/results/20260928020612-1juc/scenarios-mission-wwtp.log
+wwtp,A2O wastewater,5,structured_trajectory,Blower frequency 33.3 to 34.1 Hz,3.5666666667,mg/L,3.4,2.8,4.0,True,bench/results/20260928020612-1juc/scenarios-mission-wwtp.log
+wwtp,A2O wastewater,6,separate_mission_endpoint,mission-reported endpoint; not connected to trajectory,3.54,mg/L,3.4,2.8,4.0,False,bench/results/20260928020612-1juc/scenarios-mission-wwtp.log

@@ -1,0 +1,439 @@
+{
+  "schema": "tii-supplement-evidence/1",
+  "generated_at_local": "2026-10-31T11:17:20+08:00",
+  "primary_run": "2026-10-31 document-driven virtual integration",
+  "separate_runs": [
+    "2026-10-30 OMP/Qwen assertion record (R2 query result is reclassified as unverified)",
+    "2026-10-30 P12 AgentTeam (qualification PASS, workflow FAIL, integrity FAIL)",
+    "2026-10-31 03:37 OMP configured USTC/DeepSeek Flash task (10/13, WORKING)",
+    "2026-10-29 deterministic five-protocol matrix"
+  ],
+  "source_checksums": {
+    "doc_task": "38e993a8568fdc5d0e11e738c0b2d7de6b86da9726bb8b4976a0d293bfc5c446",
+    "doc_summary": "f3a005a873495915e88567bb1525bb7af16747e55badbcc671642bc3bdacd390",
+    "independent_write": "365ac9dc2b1124932c2b79f81c44d0fc7d867304b6b9ae40ddad8dbb9535e628",
+    "export_stats": "88c7253b45bf10dcb4091846dbe82866e977e7dd5b6d10753136daeebc996aea",
+    "latest_iddrag": "fbafab1f8d9b486a7e381332aa48b398b9c8ac44450f5c83c7e5f600ab4a4471",
+    "qwen_run": "462b392c167b44f9ed322cad8414015e98138a1721b22d6ad7a901c313b41d45",
+    "p12_report": "65246c85fa15fd62787bfa5f53085546ade4517ff8fdae2743d8ad20a7744239",
+    "p12_checks": "aa7ac755125a16525c2238d7a943df6eef5ab84d63f7f203d766d88fab63dc64"
+  },
+  "delivered_files": [
+    {
+      "source": "docs/audit/2026-10-31-doc-driven-full-acceptance-report.md",
+      "delivered": "doc-driven\\full-acceptance-report.md",
+      "source_sha256": "367a259a72bb5f8ddc526e5ea76257f7486c85cd2a0ba14c97535ce1d5b11fc3",
+      "delivered_sha256": "367a259a72bb5f8ddc526e5ea76257f7486c85cd2a0ba14c97535ce1d5b11fc3",
+      "bytes": 10534,
+      "transformed": false
+    },
+    {
+      "source": "docs/audit/evidence/2026-10-31-doc-driven-full-acceptance/blueprint.json",
+      "delivered": "doc-driven\\blueprint.json",
+      "source_sha256": "b5f90bb16ede9a9a494204b49f120227d75aac775b16cbf681d1d96bac7721ec",
+      "delivered_sha256": "b5f90bb16ede9a9a494204b49f120227d75aac775b16cbf681d1d96bac7721ec",
+      "bytes": 1907,
+      "transformed": false
+    },
+    {
+      "source": "docs/audit/evidence/2026-10-31-doc-driven-full-acceptance/provision.json",
+      "delivered": "doc-driven\\provision.json",
+      "source_sha256": "93ebeaeda42493db345deb8141c149be82b2fe973d5a3dddf870e9cd38f1c003",
+      "delivered_sha256": "93ebeaeda42493db345deb8141c149be82b2fe973d5a3dddf870e9cd38f1c003",
+      "bytes": 2515,
+      "transformed": false
+    },
+    {
+      "source": "docs/audit/evidence/2026-10-31-doc-driven-full-acceptance/provision.log",
+      "delivered": "doc-driven\\provision.log",
+      "source_sha256": "7d33719286c156ff2d7ef5a690cbf91c876035bed5123f78211722e58f7e995a",
+      "delivered_sha256": "7d33719286c156ff2d7ef5a690cbf91c876035bed5123f78211722e58f7e995a",
+      "bytes": 855,
+      "transformed": false
+    },
+    {
+      "source": "docs/audit/evidence/2026-10-31-doc-driven-full-acceptance/channel.json",
+      "delivered": "doc-driven\\channel.json",
+      "source_sha256": "8957d8cdfb5572cdea4300c5c6fae6c6feaab81a335796415b07c626414e0d83",
+      "delivered_sha256": "8957d8cdfb5572cdea4300c5c6fae6c6feaab81a335796415b07c626414e0d83",
+      "bytes": 1102,
+      "transformed": false
+    },
+    {
+      "source": "docs/audit/evidence/2026-10-31-doc-driven-full-acceptance/channel-activate.json",
+      "delivered": "doc-driven\\channel-activate.json",
+      "source_sha256": "7b459f487a0d5ce951c3d9ebb3f3f57dd1fcfe2d77e0c3f825cee008c3d62d22",
+      "delivered_sha256": "7b459f487a0d5ce951c3d9ebb3f3f57dd1fcfe2d77e0c3f825cee008c3d62d22",
+      "bytes": 245,
+      "transformed": false
+    },
+    {
+      "source": "docs/audit/evidence/2026-10-31-doc-driven-full-acceptance/channel.log",
+      "delivered": "doc-driven\\channel.log",
+      "source_sha256": "dd9b34aaa618154dca332e980f18fc1f2deb7c225dbc5306a5d222038995d46b",
+      "delivered_sha256": "dd9b34aaa618154dca332e980f18fc1f2deb7c225dbc5306a5d222038995d46b",
+      "bytes": 699,
+      "transformed": false
+    },
+    {
+      "source": "docs/audit/evidence/2026-10-31-doc-driven-full-acceptance/task.json",
+      "delivered": "doc-driven\\task.json",
+      "source_sha256": "38e993a8568fdc5d0e11e738c0b2d7de6b86da9726bb8b4976a0d293bfc5c446",
+      "delivered_sha256": "38e993a8568fdc5d0e11e738c0b2d7de6b86da9726bb8b4976a0d293bfc5c446",
+      "bytes": 30147,
+      "transformed": false
+    },
+    {
+      "source": "docs/audit/evidence/2026-10-31-doc-driven-full-acceptance/doc-summary.json",
+      "delivered": "doc-driven\\doc-summary.json",
+      "source_sha256": "f3a005a873495915e88567bb1525bb7af16747e55badbcc671642bc3bdacd390",
+      "delivered_sha256": "f3a005a873495915e88567bb1525bb7af16747e55badbcc671642bc3bdacd390",
+      "bytes": 1909,
+      "transformed": false
+    },
+    {
+      "source": "docs/audit/evidence/2026-10-31-doc-driven-full-acceptance/dcw-roundtrip.json",
+      "delivered": "doc-driven\\dcw-roundtrip.json",
+      "source_sha256": "365ac9dc2b1124932c2b79f81c44d0fc7d867304b6b9ae40ddad8dbb9535e628",
+      "delivered_sha256": "365ac9dc2b1124932c2b79f81c44d0fc7d867304b6b9ae40ddad8dbb9535e628",
+      "bytes": 2268,
+      "transformed": false
+    },
+    {
+      "source": "docs/audit/evidence/2026-10-31-doc-driven-full-acceptance/export-stats.json",
+      "delivered": "doc-driven\\export-stats.json",
+      "source_sha256": "88c7253b45bf10dcb4091846dbe82866e977e7dd5b6d10753136daeebc996aea",
+      "delivered_sha256": "88c7253b45bf10dcb4091846dbe82866e977e7dd5b6d10753136daeebc996aea",
+      "bytes": 2550,
+      "transformed": false
+    },
+    {
+      "source": "docs/audit/evidence/2026-10-31-doc-driven-full-acceptance/logs/t0-static.log",
+      "delivered": "doc-driven\\logs\\t0-static.log",
+      "source_sha256": "22663c9b1154dbca6897b339a6aa50d4c00c5156f54f04d948ec5db4b135fa8b",
+      "delivered_sha256": "22663c9b1154dbca6897b339a6aa50d4c00c5156f54f04d948ec5db4b135fa8b",
+      "bytes": 9690,
+      "transformed": false
+    },
+    {
+      "source": "docs/audit/evidence/2026-10-31-doc-driven-full-acceptance/logs/t0-lint-final.log",
+      "delivered": "doc-driven\\logs\\t0-lint-final.log",
+      "source_sha256": "d0b492c7036864c337c0972e0031ebb299233ff5bba15a15d29914b317b80f5b",
+      "delivered_sha256": "d0b492c7036864c337c0972e0031ebb299233ff5bba15a15d29914b317b80f5b",
+      "bytes": 377,
+      "transformed": false
+    },
+    {
+      "source": "docs/audit/evidence/2026-10-31-doc-driven-full-acceptance/logs/t1-unit-contract.log",
+      "delivered": "doc-driven\\logs\\t1-unit-contract.log",
+      "source_sha256": "878f28716e4cdf40e4aa83f5920e76a32e10828dddcf879c9c5c39cc34fc0b3c",
+      "delivered_sha256": "878f28716e4cdf40e4aa83f5920e76a32e10828dddcf879c9c5c39cc34fc0b3c",
+      "bytes": 93362,
+      "transformed": false
+    },
+    {
+      "source": "docs/audit/evidence/2026-10-31-doc-driven-full-acceptance/logs/t1-rerun-after-lintfix.log",
+      "delivered": "doc-driven\\logs\\t1-rerun-after-lintfix.log",
+      "source_sha256": "33830406ba6721387fae07449ed6fd494fe275f6fe24a3029834013cb31d3bed",
+      "delivered_sha256": "33830406ba6721387fae07449ed6fd494fe275f6fe24a3029834013cb31d3bed",
+      "bytes": 87423,
+      "transformed": false
+    },
+    {
+      "source": "docs/audit/evidence/2026-10-31-doc-driven-full-acceptance/logs/t2-line-governance.log",
+      "delivered": "doc-driven\\logs\\t2-line-governance.log",
+      "source_sha256": "2fe579942bd2f64aea453bf56551da84906fe89a752fb97f03e8a1f2ecd372d7",
+      "delivered_sha256": "2fe579942bd2f64aea453bf56551da84906fe89a752fb97f03e8a1f2ecd372d7",
+      "bytes": 2391,
+      "transformed": false
+    },
+    {
+      "source": "docs/audit/evidence/2026-10-31-doc-driven-full-acceptance/logs/t3-api-live.log",
+      "delivered": "doc-driven\\logs\\t3-api-live.log",
+      "source_sha256": "5334e1b4f160ff37d6b2acc3368db4df0d5347c091de40372f2d3e3d9e0fe81d",
+      "delivered_sha256": "5334e1b4f160ff37d6b2acc3368db4df0d5347c091de40372f2d3e3d9e0fe81d",
+      "bytes": 515,
+      "transformed": false
+    },
+    {
+      "source": "docs/audit/evidence/2026-10-31-doc-driven-full-acceptance/t4-plugin-tools.json",
+      "delivered": "doc-driven\\t4-plugin-tools.json",
+      "source_sha256": "90defbf5cf56ff4c3f5d73db0d7bbebc037d1b7eb3679a8fd4735dbf9c98222e",
+      "delivered_sha256": "90defbf5cf56ff4c3f5d73db0d7bbebc037d1b7eb3679a8fd4735dbf9c98222e",
+      "bytes": 1393,
+      "transformed": false
+    },
+    {
+      "source": "docs/audit/evidence/2026-10-30-real-channel-mission/report.json",
+      "delivered": "agent-runs\\2026-10-30-qwen-report.json",
+      "source_sha256": "462b392c167b44f9ed322cad8414015e98138a1721b22d6ad7a901c313b41d45",
+      "delivered_sha256": "462b392c167b44f9ed322cad8414015e98138a1721b22d6ad7a901c313b41d45",
+      "bytes": 15818,
+      "transformed": false
+    },
+    {
+      "source": "docs/audit/evidence/2026-10-31-idd-rag-integration/aw-iddrag-run.log",
+      "delivered": "agent-runs\\2026-10-31-idd-rag-run.log",
+      "source_sha256": "e74665ae4144ca730264678dfbc468d42eb4082253c62ad7a1dac8f61e388327",
+      "delivered_sha256": "e74665ae4144ca730264678dfbc468d42eb4082253c62ad7a1dac8f61e388327",
+      "bytes": 806,
+      "transformed": false
+    },
+    {
+      "source": "docs/audit/evidence/2026-10-31-idd-rag-integration/aw-iddrag-evidence.json",
+      "delivered": "agent-runs\\2026-10-31-idd-rag-evidence.json",
+      "source_sha256": "fbafab1f8d9b486a7e381332aa48b398b9c8ac44450f5c83c7e5f600ab4a4471",
+      "delivered_sha256": "fbafab1f8d9b486a7e381332aa48b398b9c8ac44450f5c83c7e5f600ab4a4471",
+      "bytes": 3340,
+      "transformed": false
+    },
+    {
+      "source": "bench/results/p12-20261030173217-8f6e4715-agentteam/report.md",
+      "delivered": "agent-runs\\2026-10-30-p12-report.md",
+      "source_sha256": "65246c85fa15fd62787bfa5f53085546ade4517ff8fdae2743d8ad20a7744239",
+      "delivered_sha256": "65246c85fa15fd62787bfa5f53085546ade4517ff8fdae2743d8ad20a7744239",
+      "bytes": 2623,
+      "transformed": false
+    },
+    {
+      "source": "bench/results/p12-20261030173217-8f6e4715-agentteam/checks.json",
+      "delivered": "agent-runs\\2026-10-30-p12-checks.json",
+      "source_sha256": "aa7ac755125a16525c2238d7a943df6eef5ab84d63f7f203d766d88fab63dc64",
+      "delivered_sha256": "aa7ac755125a16525c2238d7a943df6eef5ab84d63f7f203d766d88fab63dc64",
+      "bytes": 16825,
+      "transformed": false
+    },
+    {
+      "source": "bench/results/p12-20261030173217-8f6e4715-agentteam/manifest.json",
+      "delivered": "agent-runs\\2026-10-30-p12-manifest.json",
+      "source_sha256": "0bed138345384eb8641b12b23befe06ceb678516c257166125a73c2e534dea35",
+      "delivered_sha256": "0bed138345384eb8641b12b23befe06ceb678516c257166125a73c2e534dea35",
+      "bytes": 19331,
+      "transformed": false
+    },
+    {
+      "source": "bench/results/p12-20261030173217-8f6e4715-agentteam/SHA256SUMS",
+      "delivered": "agent-runs\\2026-10-30-p12-SHA256SUMS",
+      "source_sha256": "803a08069d81cf34ec6b017426d9313f38db9f1ca322643c276bc1d993399f2f",
+      "delivered_sha256": "803a08069d81cf34ec6b017426d9313f38db9f1ca322643c276bc1d993399f2f",
+      "bytes": 4525,
+      "transformed": false
+    },
+    {
+      "source": "bench/results/20261029180436-1lo0/report.md",
+      "delivered": "protocol-matrix\\2026-10-29-report.md",
+      "source_sha256": "a1430da39b684c89473eb3c6cecbc67603e7ae2b16cb3982edc1fe744b4a98fd",
+      "delivered_sha256": "a1430da39b684c89473eb3c6cecbc67603e7ae2b16cb3982edc1fe744b4a98fd",
+      "bytes": 43718,
+      "transformed": false
+    },
+    {
+      "source": "bench/results/20261029180436-1lo0/summary.json",
+      "delivered": "protocol-matrix\\2026-10-29-summary.json",
+      "source_sha256": "f8d9b8b1405d13ccfaf84f3c8134f27b29770badf391a451b322bd87b466e34c",
+      "delivered_sha256": "f8d9b8b1405d13ccfaf84f3c8134f27b29770badf391a451b322bd87b466e34c",
+      "bytes": 16204,
+      "transformed": false
+    },
+    {
+      "source": "paper/tii/revision-2026-10-26/s1-staging/revision-2026-10-25/R21/evidence.json",
+      "delivered": "route-fixture\\R21-evidence.json",
+      "source_sha256": "82c134c3e684c9ac428f01d17e1bb542c9f274e4c0ddf172cd2a2799ac67686c",
+      "delivered_sha256": "82c134c3e684c9ac428f01d17e1bb542c9f274e4c0ddf172cd2a2799ac67686c",
+      "bytes": 33822,
+      "transformed": false
+    },
+    {
+      "source": "paper/tii/revision-2026-10-26/s1-staging/revision-2026-10-25/R21/R21-TRACE-MATRIX.csv",
+      "delivered": "route-fixture\\R21-trace-matrix.csv",
+      "source_sha256": "21988f4805cb1a7cc352acaff6ad04c7247be2158b42e0eff65d60a59e92d3dd",
+      "delivered_sha256": "21988f4805cb1a7cc352acaff6ad04c7247be2158b42e0eff65d60a59e92d3dd",
+      "bytes": 430,
+      "transformed": false
+    },
+    {
+      "source": "paper/tii/revision-2026-10-26/s1-staging/revision-2026-10-25/R21/fixture-cast-film.json",
+      "delivered": "route-fixture\\R21-cast-film-fixture.json",
+      "source_sha256": "dec6ab437abfd5f5783a1e6732026dacb6d4db1f349870e98c91bb1b710d3986",
+      "delivered_sha256": "dec6ab437abfd5f5783a1e6732026dacb6d4db1f349870e98c91bb1b710d3986",
+      "bytes": 1669,
+      "transformed": false
+    },
+    {
+      "source": "paper/tii/revision-2026-10-26/s1-staging/revision-2026-10-25/R21/fixture-annealing.json",
+      "delivered": "route-fixture\\R21-annealing-fixture.json",
+      "source_sha256": "1f80f1c28c85099ba3718d3558c063267f9f76b260626f74aa2667c328e6efe2",
+      "delivered_sha256": "1f80f1c28c85099ba3718d3558c063267f9f76b260626f74aa2667c328e6efe2",
+      "bytes": 1669,
+      "transformed": false
+    },
+    {
+      "source": "paper/tii/revision-2026-10-26/s1-staging/revision-2026-10-25/R21/README.md",
+      "delivered": "route-fixture\\R21-README.md",
+      "source_sha256": "808036cc33c153c2cf4385916c44f728794295da106c398e151709b84a31cf7a",
+      "delivered_sha256": "808036cc33c153c2cf4385916c44f728794295da106c398e151709b84a31cf7a",
+      "bytes": 1363,
+      "transformed": false
+    },
+    {
+      "source": "paper/tii/revision-2026-10-26/s1-staging/revision-2026-10-25/R22/evidence.json",
+      "delivered": "route-fixture\\R22-evidence.json",
+      "source_sha256": "77ccf73fac015f5c29e8ecd742a569620bd409a371256d8caa080b7645dca136",
+      "delivered_sha256": "77ccf73fac015f5c29e8ecd742a569620bd409a371256d8caa080b7645dca136",
+      "bytes": 17338,
+      "transformed": false
+    },
+    {
+      "source": "paper/tii/revision-2026-10-26/s1-staging/revision-2026-10-25/R22/README.md",
+      "delivered": "route-fixture\\R22-README.md",
+      "source_sha256": "148c4f38a797b9cf350deb4510676a75b8ebee0b8353dcfd286dbbb7fa11a069",
+      "delivered_sha256": "148c4f38a797b9cf350deb4510676a75b8ebee0b8353dcfd286dbbb7fa11a069",
+      "bytes": 1295,
+      "transformed": false
+    },
+    {
+      "source": "paper/tii/SUBMISSION-IEEE-TII/resources/figure-source-data/four-scenario-2026-09-28.json",
+      "delivered": "process-missions\\four-scenario-2026-09-28.json",
+      "source_sha256": "65c3bba99824326b5f596118dae1d6611b154194dfd9b41718f89eec3081a36e",
+      "delivered_sha256": "65c3bba99824326b5f596118dae1d6611b154194dfd9b41718f89eec3081a36e",
+      "bytes": 8386,
+      "transformed": false
+    },
+    {
+      "source": "bench/results/20260928020612-1juc/scenarios-mission-injection.log",
+      "delivered": "process-missions\\injection.log",
+      "source_sha256": "6ec2797065c1cedd3578098c9bce8fc50891b5325225119678450dc2630b5a2a",
+      "delivered_sha256": "6ec2797065c1cedd3578098c9bce8fc50891b5325225119678450dc2630b5a2a",
+      "bytes": 1644,
+      "transformed": false
+    },
+    {
+      "source": "bench/results/20260928020612-1juc/scenarios-mission-biax.log",
+      "delivered": "process-missions\\bopet-film.log",
+      "source_sha256": "c6381d6eaf29d4130791ab088c39c15d2952059a8f2c6764f49848ca5dcc5657",
+      "delivered_sha256": "c6381d6eaf29d4130791ab088c39c15d2952059a8f2c6764f49848ca5dcc5657",
+      "bytes": 2092,
+      "transformed": false
+    },
+    {
+      "source": "bench/results/20260928020612-1juc/scenarios-mission-anneal.log",
+      "delivered": "process-missions\\annealing.log",
+      "source_sha256": "2c0953b6deb83901d597050b95cee5a64b408d9f2b5afbff7136ab9cfa9be05c",
+      "delivered_sha256": "2c0953b6deb83901d597050b95cee5a64b408d9f2b5afbff7136ab9cfa9be05c",
+      "bytes": 1580,
+      "transformed": false
+    },
+    {
+      "source": "bench/results/20260928020612-1juc/scenarios-mission-wwtp.log",
+      "delivered": "process-missions\\wastewater.log",
+      "source_sha256": "2d02b978b2f95be83ebf34a5831a3ddf2ce074493e846fabaca6c5041826028d",
+      "delivered_sha256": "2d02b978b2f95be83ebf34a5831a3ddf2ce074493e846fabaca6c5041826028d",
+      "bytes": 3134,
+      "transformed": false
+    },
+    {
+      "source": "external-export/nodes/dn-2441bc04.csv",
+      "delivered": "doc-driven\\raw-export\\nodes\\dn-2441bc04.csv",
+      "source_sha256": "93bf0cdac6a192f28f6b022c274084839df233085c01b2d5c6832e505fb616fb",
+      "delivered_sha256": "93bf0cdac6a192f28f6b022c274084839df233085c01b2d5c6832e505fb616fb",
+      "bytes": 7246,
+      "transformed": false
+    },
+    {
+      "source": "external-export/nodes/dn-2a0acb1f.csv",
+      "delivered": "doc-driven\\raw-export\\nodes\\dn-2a0acb1f.csv",
+      "source_sha256": "23e90fe23fc01a56600ad5b02787c90b8621e0bac4dadd065bfbdce7020f98a6",
+      "delivered_sha256": "23e90fe23fc01a56600ad5b02787c90b8621e0bac4dadd065bfbdce7020f98a6",
+      "bytes": 14059,
+      "transformed": false
+    },
+    {
+      "source": "external-export/nodes/dn-970e00ea.csv",
+      "delivered": "doc-driven\\raw-export\\nodes\\dn-970e00ea.csv",
+      "source_sha256": "2090b211c8dfa02c07658ba898ff581f6c6e08f6306e0ef6680ff707d8adc540",
+      "delivered_sha256": "2090b211c8dfa02c07658ba898ff581f6c6e08f6306e0ef6680ff707d8adc540",
+      "bytes": 14569,
+      "transformed": false
+    },
+    {
+      "source": "external-export/nodes/dn-ae545180.csv",
+      "delivered": "doc-driven\\raw-export\\nodes\\dn-ae545180.csv",
+      "source_sha256": "21c85b34100c10680c801d50b121aa6a28a8ec44a4212c6b8027268dc5e27d61",
+      "delivered_sha256": "21c85b34100c10680c801d50b121aa6a28a8ec44a4212c6b8027268dc5e27d61",
+      "bytes": 6868,
+      "transformed": false
+    },
+    {
+      "source": "external-export/frames/dn-e4934f70.csv",
+      "delivered": "doc-driven\\raw-export\\frames\\dn-e4934f70.csv",
+      "source_sha256": "58b8ba1548fa8208a5a7723b696f357fc36b56d11982ecf848f6f1def7ecaa0f",
+      "delivered_sha256": "58b8ba1548fa8208a5a7723b696f357fc36b56d11982ecf848f6f1def7ecaa0f",
+      "bytes": 189211,
+      "transformed": false
+    },
+    {
+      "source": "external-export/manifest.json",
+      "delivered": "doc-driven\\raw-export\\manifest.json",
+      "source_sha256": "93d177e6fb1073df0c152f75cd3c35d2886d083eac420589555ad9212e9acfc9",
+      "delivered_sha256": "93d177e6fb1073df0c152f75cd3c35d2886d083eac420589555ad9212e9acfc9",
+      "bytes": 4625,
+      "transformed": false
+    }
+  ],
+  "export_csv_rows": [
+    {
+      "file": "nodes/dn-2441bc04.csv",
+      "rows": 134,
+      "min": 24.5,
+      "max": 25.5,
+      "states": {
+        "offline": 2,
+        "ok": 132
+      }
+    },
+    {
+      "file": "nodes/dn-2a0acb1f.csv",
+      "rows": 275,
+      "min": 50.0,
+      "max": 60.0,
+      "states": {
+        "offline": 2,
+        "ok": 273
+      }
+    },
+    {
+      "file": "nodes/dn-970e00ea.csv",
+      "rows": 275,
+      "min": 20.5,
+      "max": 23.5,
+      "states": {
+        "offline": 2,
+        "ok": 273
+      }
+    },
+    {
+      "file": "nodes/dn-ae545180.csv",
+      "rows": 134,
+      "min": 25.0,
+      "max": 27.0,
+      "states": {
+        "offline": 2,
+        "ok": 132
+      }
+    },
+    {
+      "file": "frames/dn-e4934f70.csv",
+      "rows": 3456,
+      "min": 2.475,
+      "max": 2.525,
+      "states": {}
+    }
+  ],
+  "interpretation": [
+    "The 2026-10-31 channel seed task was read-only and assigned to the lead; it was not a four-agent execution.",
+    "The 27 and 25 setpoint writes were an independent operator/controller check, not linked to the read-only agent task.",
+    "No A1 approval ablation or A2 Harness/model factorial run is present in this evidence package.",
+    "All process endpoints in these results are simulators; no physical plant was tested.",
+    "The September four-scene process missions are single scripted trajectories and are not replications of the October integration case."
+  ]
+}

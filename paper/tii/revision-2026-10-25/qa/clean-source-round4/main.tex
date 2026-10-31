@@ -1,0 +1,126 @@
+\documentclass[journal]{IEEEtran}
+% IEEE Transactions on Industrial Informatics -- anonymous regular-paper draft
+% Compile: latexmk -pdf main.tex
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algpseudocode}
+% Local XeTeX/Tectonic builds: route IEEEtran's ptm (Times) family requests to
+% the legacy Times Type1 faces so metrics match the pdfLaTeX reference build;
+% the latexmk -pdf (pdfLaTeX) path is unaffected.
+\usepackage{iftex}
+\ifxetex
+  \DeclareFontFamily{TU}{ptm}{}
+  \DeclareFontShape{TU}{ptm}{m}{n}{<->ptmr8t}{}
+  \DeclareFontShape{TU}{ptm}{b}{n}{<->ptmb8t}{}
+  \DeclareFontShape{TU}{ptm}{m}{it}{<->ptmri8t}{}
+  \DeclareFontShape{TU}{ptm}{b}{it}{<->ptmbi8t}{}
+  \DeclareFontShape{TU}{ptm}{m}{sl}{<->ptmro8t}{}
+  \DeclareFontShape{TU}{ptm}{m}{sc}{<->ptmr8t}{}
+\fi
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage[table]{xcolor}
+\usepackage{stfloats}
+\usepackage{placeins}
+\usepackage{url}
+\urlstyle{same}
+% Cross-references and citations. The cite package renders IEEE-style citation
+% groups ([14]--[16], [20], [21]) with hyperref support.
+\usepackage{cite}
+\usepackage[colorlinks=true,linkcolor=black,citecolor=black,urlcolor=black]{hyperref}
+\hypersetup{bookmarksnumbered=true,
+  pdftitle={AgentWorkShop: A Modular Framework for Industrial Agent Integration},
+  pdfauthor={},
+  pdfsubject={IEEE Transactions on Industrial Informatics},
+  pdfkeywords={industrial informatics, industrial agents, multi-agent systems, production system integration, semantic data integration}}
+
+% Float placement only; IEEEtran margins and body type remain unchanged.
+\setcounter{topnumber}{4}
+\setcounter{bottomnumber}{3}
+\setcounter{totalnumber}{7}
+\setcounter{dbltopnumber}{2}
+\renewcommand{\topfraction}{0.95}
+\renewcommand{\bottomfraction}{0.80}
+\renewcommand{\textfraction}{0.03}
+\renewcommand{\floatpagefraction}{0.72}
+\renewcommand{\dbltopfraction}{0.95}
+\renewcommand{\dblfloatpagefraction}{0.72}
+
+% Tight but conventional float separation; body type and margins are unchanged.
+\setlength{\textfloatsep}{8pt plus 2pt minus 3pt}
+\setlength{\dbltextfloatsep}{8pt plus 2pt minus 3pt}
+\setlength{\intextsep}{7pt plus 2pt minus 3pt}
+\setlength{\abovecaptionskip}{3pt plus 1pt minus 1pt}
+\setlength{\belowcaptionskip}{2pt plus 1pt minus 1pt}
+
+\input{resources/results-macros}
+
+\newcommand{\system}{the platform}
+
+\begin{document}
+\bstctlcite{IEEEbstctl}
+
+\title{AgentWorkShop: A Modular Framework for Industrial Agent Integration}
+
+\author{}
+\markboth{IEEE Transactions on Industrial Informatics, Submitted Manuscript}{AgentWorkShop: Industrial Agent Integration}
+
+\maketitle
+
+\begin{abstract}
+Industrial-agent applications must connect collaborative tasks to production
+context, equipment interfaces, and process observations. AgentWorkShop is a
+modular software framework that combines workspace and task services,
+registered agent-harness adapters, scene configuration,
+line--product--recipe--run context, semantic acquisition and control nodes,
+protocol drivers, and analysis and modeling services. A task turn assembles
+prompt context and scoped tools; a shared dispatcher checks each returned
+operation before routing it to a handler. Industrial handlers apply
+route-specific live-state checks, and owning services retain available
+command, approval, observation, and recipe-version records. We evaluate two
+implemented simulator paths in cast-film and annealing scenes. The
+application-level path tests protocol access, readback, data lineage, and
+model-gate enforcement; both model candidates fail the configured gates. Six
+sequential tasks through one registered harness exercise bounded recipe
+trials, synthetic approval, verified command readback, task completion, and
+one run-tagged sample per task. All six post-completion samples remain outside
+their target bands. The evidence supports the tested software integration
+paths, but does not measure configuration-reuse benefit, process convergence,
+quality improvement, physical-plant transfer, or cross-harness portability.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Industrial agents, industrial communication, industrial informatics,
+production systems, semantic data integration.
+\end{IEEEkeywords}
+
+\IEEEpeerreviewmaketitle
+
+\input{sections/introduction}
+\input{sections/related}
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=\textwidth]{resources/fig-architecture-2026-9pt.pdf}
+\caption{AgentWorkShop software architecture. Access, collaboration,
+governance, production context, services, and field I/O form six connected
+bands. Registered harness and driver interfaces expose extension points;
+route-specific records remain in their owning services and are linked by
+actor and production context. The field interface ends at the registered
+drivers; PLC and safety-instrumented protection remain external.}
+\label{fig:arch}
+\end{figure*}
+\input{sections/system}
+\input{sections/modules}
+\FloatBarrier
+\input{sections/evaluation}
+\input{sections/discussion}
+
+% TII's anonymous-review checklist requires acknowledgments to be omitted.
+% Restore the separate AI disclosure after the review stage; see the author note.
+
+\bibliographystyle{IEEEtran}
+% Keep IEEEtran's default bibliography size and leading.
+\bibliography{resources/refs}
+
+\end{document}

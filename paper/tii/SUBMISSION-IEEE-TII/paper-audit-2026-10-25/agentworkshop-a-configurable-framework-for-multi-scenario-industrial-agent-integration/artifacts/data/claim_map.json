@@ -1,0 +1,45 @@
+{
+  "headline_claims": [
+    "We present AgentWorkShop, a modular framework that combines agent collaboration and configurable execution harnesses with line--product--recipe--run context, analysis and modeling services, semantic data-acquisition and write-control nodes, and protocol drivers."
+  ],
+  "closure_targets": [],
+  "section_claims": {
+    "abstract": [
+      "We present AgentWorkShop, a modular framework that combines agent collaboration and configurable execution harnesses with line--product--recipe--run context, analysis and modeling services, semantic data-acquisition and write-control nodes, and protocol drivers."
+    ]
+  },
+  "claim_candidates": [
+    {
+      "id": "abstract:1",
+      "section_key": "abstract",
+      "claim": "We present AgentWorkShop, a modular framework that combines agent collaboration and configurable execution harnesses with line--product--recipe--run context, analysis and modeling services, semantic data-acquisition and write-control nodes, and protocol drivers.",
+      "evidence_anchor": [],
+      "claim_strength": "unsupported",
+      "missing_evidence": [
+        "add an evidence anchor or soften the claim boundary"
+      ],
+      "allowed_wording": "We present AgentWorkShop, a modular framework that combines agent collaboration and configurable execution harnesses with line--product--recipe--run context, analysis and modeling services, semantic data-acquisition and write-control nodes, and protocol drivers.",
+      "forbidden_wording": [
+        "unqualified conclusion without visible evidence"
+      ]
+    }
+  ],
+  "section_claim_candidates": {
+    "abstract": [
+      {
+        "id": "abstract:1",
+        "section_key": "abstract",
+        "claim": "We present AgentWorkShop, a modular framework that combines agent collaboration and configurable execution harnesses with line--product--recipe--run context, analysis and modeling services, semantic data-acquisition and write-control nodes, and protocol drivers.",
+        "evidence_anchor": [],
+        "claim_strength": "unsupported",
+        "missing_evidence": [
+          "add an evidence anchor or soften the claim boundary"
+        ],
+        "allowed_wording": "We present AgentWorkShop, a modular framework that combines agent collaboration and configurable execution harnesses with line--product--recipe--run context, analysis and modeling services, semantic data-acquisition and write-control nodes, and protocol drivers.",
+        "forbidden_wording": [
+          "unqualified conclusion without visible evidence"
+        ]
+      }
+    ]
+  }
+}

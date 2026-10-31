@@ -1,0 +1,76 @@
+{
+  "plugins": [
+    {
+      "name": "aw-matrix-plugin",
+      "scope": "project",
+      "enabled": true,
+      "error": null
+    },
+    {
+      "name": "daq-sink-verify",
+      "scope": "project",
+      "enabled": true,
+      "error": null
+    },
+    {
+      "name": "daq-vector-demo",
+      "scope": "project",
+      "enabled": true,
+      "error": null
+    },
+    {
+      "name": "idd-closedloop-bridge",
+      "scope": "project",
+      "enabled": true,
+      "error": null
+    },
+    {
+      "name": "omp-sensor-tools",
+      "scope": "project",
+      "enabled": true,
+      "error": null
+    },
+    {
+      "name": "twin-castfilm",
+      "scope": "project",
+      "enabled": true,
+      "error": null
+    },
+    {
+      "name": "twin-thermal-demo",
+      "scope": "project",
+      "enabled": true,
+      "error": null
+    },
+    {
+      "name": "diag-bridge",
+      "scope": "builtin",
+      "enabled": true,
+      "error": null
+    },
+    {
+      "name": "rag-bridge",
+      "scope": "builtin",
+      "enabled": true,
+      "error": null
+    },
+    {
+      "name": "serial-bridge",
+      "scope": "builtin",
+      "enabled": true,
+      "error": null
+    },
+    {
+      "name": "twin-injection-default",
+      "scope": "builtin",
+      "enabled": true,
+      "error": null
+    }
+  ],
+  "pluginFailures": 0,
+  "tools": {
+    "total": 126,
+    "available": 126,
+    "unavailable": []
+  }
+}

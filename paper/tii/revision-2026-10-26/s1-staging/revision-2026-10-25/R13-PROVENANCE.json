@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "evidenceUnit": "R13",
+  "run": {
+    "reportedAt": "2026-10-24T18:36:30Z",
+    "applicationVersion": "0.8.0",
+    "reportPath": "qa/current-cross-scene/raw/report.json",
+    "reportSha256": "d287f55360cd96bea5920eb0e63b1c1a3a8762a6c4d54bd8b0fb66a44a81fa2c",
+    "sourceIdentityRecordedAtRuntime": false,
+    "reportRecordsGitRevision": false,
+    "reportRecordsHarnessHash": false,
+    "reportRecordsLockfileHashes": false
+  },
+  "retrospectiveSnapshot": {
+    "reviewDate": "2026-10-25",
+    "interpretation": "This snapshot documents files available during retrospective review. It does not prove that these exact files or dependency installations were used by R13.",
+    "application": {
+      "repositoryHead": "e6bcb16fb5ac1a38f3e3ddb3cc05e200b58453c7",
+      "commitDate": "2026-10-25T01:15:17+08:00",
+      "relevantApplicationAndLockFilesCleanAtReview": true,
+      "statusScope": "server/, package.json, pnpm-lock.yaml",
+      "qualification": "The clean post-run status and preceding commit support source attribution, but the run report does not link R13 to this revision."
+    },
+    "simulator": {
+      "repositoryGitlink": "0db5f403f9fa9db97e5485b72867f459fcb93eff",
+      "checkoutHeadAtReview": "0db5f403f9fa9db97e5485b72867f459fcb93eff",
+      "dirtyFilesAtReview": [
+        "src/server/engine/plant-model.ts",
+        "src/server/engine/plant-runtime.ts",
+        "src/shared/types.ts",
+        "tests/plant-model.test.ts"
+      ],
+      "workingTreePatchSha256AtReview": "fbd82f20ce630107424ecddb77bef10d2b0235097ba2f341a090279cbe6891f5",
+      "retainedSimulatorSource": {
+        "path": ".omc/optimizer-physical-gDxT65/simulator/src",
+        "fileCount": 25,
+        "treeSha256": "7fd42993dcfd0d0dde2f2d1f4094e05fdea81102b450b54d5035019925e84d00",
+        "matchesCurrentSimulatorSourceSnapshot": true,
+        "qualification": "The report points to this temporary simulator root, but contains no source hash linking its copied files to the current checkout."
+      }
+    },
+    "availableButNotProvenRunInputs": {
+      "candidateHarness": {
+        "path": "scripts/e2e-simulator-optimizer-paper.mjs",
+        "sha256AtReview": "907848c9faa8c64444eab036b20bd7c3ed09030aa87251ad6cdcfd59242e5952",
+        "qualification": "The available file has a later modification time than the R13 report; its exact run-time contents are unknown."
+      },
+      "applicationLockfile": {
+        "path": "pnpm-lock.yaml",
+        "sha256AtReview": "a700582071a884225f47d11450ebcdee7fc3fa7a488fc4f35c0f5641d640af9e",
+        "qualification": "Run-time lockfile hash and installed dependency resolution were not recorded."
+      },
+      "simulatorLockfile": {
+        "path": "plc-node-simulator/package-lock.json",
+        "sha256AtReview": "bdd14b62fb0041aef776f2a851e6871856f9025d2b91a5ba497b3ec115d9f37b",
+        "qualification": "The harness symlinked the existing simulator node_modules; this lockfile hash does not establish the installed dependency tree used at runtime."
+      }
+    }
+  },
+  "reproducibilityConclusion": "R13 artifacts and outputs are retained, but the exact application, harness, simulator, and dependency identity at execution time was not fully pinned. Treat R13 as an auditable archived integration run with retrospective source context, not as a fully source-pinned replay."
+}

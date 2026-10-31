@@ -1,0 +1,5 @@
+## Methodology Perspective
+
+Q1–Q6 are mostly reported with appropriate units and boundaries: Q4 is one seed-42 trajectory per simulator scene; Q1 reports five acquisition families, four writable mappings, and bounded probe counts; Q2 has two tasks under one harness/provider/model; Q3 uses three seeds and a finite-grid reference with proxy energy/throughput terms; Q5 reports nine sequential suite runs and 782 software assertions; Q6 is one cadence-overridden recipe trajectory. The paper distinguishes these archives and includes failures R11/R12 rather than presenting task completion as process success.
+
+The main unresolved issue is that the evidence set does not validate the current version's profile/binding adaptation across scenes. We independently inspected all nine Q5 benchmark JSON records: each reports v0.7.57; the current package metadata reports v0.8.0. The manuscript does not state the Q5 version. A current-version matched cross-scene trial and an explicit version label for Q5 are needed. All process experiments are repository-simulator experiments; that boundary is stated honestly but limits evidence of plant-level industrial feasibility.

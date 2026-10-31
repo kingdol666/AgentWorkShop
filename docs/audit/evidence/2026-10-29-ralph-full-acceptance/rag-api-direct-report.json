@@ -1,0 +1,98 @@
+{
+  "suite": "rag-api-direct",
+  "base": "http://127.0.0.1:8771",
+  "web": "http://127.0.0.1:6789",
+  "at": "2026-10-29T03:29:00.710Z",
+  "results": [
+    {
+      "id": "R1",
+      "name": "RAG 后端 /health 200",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "R2",
+      "name": "register 新用户(或已存在)",
+      "pass": true,
+      "detail": "status=409 body={\"detail\":{\"error\":\"auth_error\",\"message\":\"用户名已存在: ralph_acc_ralph20261029\"}}"
+    },
+    {
+      "id": "R3",
+      "name": "login 返回会话 token",
+      "pass": true,
+      "detail": "status=200 body={\"success\":true,\"user\":{\"id\":\"usr-da4f11dbf846d3f8\",\"username\":\"ralph_acc_ralph20261029\",\"email\":\"ralph_acc_ralph20261029@test.local\",\"role\":\"user\",\"status\":\"ac"
+    },
+    {
+      "id": "R4",
+      "name": "tokens 铸造长期 API token",
+      "pass": true,
+      "detail": "status=200 body={\"success\":true,\"token\":\"sk-DaTeQPlSKQAvZJkTNXjJVFlw3Th3OgQw5CCiQtO0pEc\",\"record\":{\"id\":\"tok-26f8d7c1a0bb0797\",\"user_id\":\"usr-da4f11dbf846d3f8\",\"name\":\"ralph-ac"
+    },
+    {
+      "id": "R5",
+      "name": "/auth/me 返回当前身份",
+      "pass": true,
+      "detail": "status=200 body={\"success\":true,\"user\":{\"id\":\"usr-da4f11dbf846d3f8\",\"username\":\"ralph_acc_ralph20261029\",\"role\":\"user\",\"via\":\"user-token\"}}"
+    },
+    {
+      "id": "R6",
+      "name": "坏 token /auth/me → 401",
+      "pass": true,
+      "detail": "status=401"
+    },
+    {
+      "id": "R7",
+      "name": "/auth/verify valid=true",
+      "pass": true,
+      "detail": "status=200 body={\"valid\":true,\"user\":{\"id\":\"usr-da4f11dbf846d3f8\",\"username\":\"ralph_acc_ralph20261029\",\"role\":\"user\"},\"token\":{\"id\":\"tok"
+    },
+    {
+      "id": "R8",
+      "name": "/auth/tokens 列表≥1 且无明文",
+      "pass": true,
+      "detail": "status=200 n=8"
+    },
+    {
+      "id": "R9",
+      "name": "web /api/kb/catalog 200",
+      "pass": true,
+      "detail": "status=200 n=22"
+    },
+    {
+      "id": "R10a",
+      "name": "复用既有 ralph-acc 库",
+      "pass": true,
+      "detail": "f59cba1c-8dbb-431c-8aa6-eaa69a57d65d"
+    },
+    {
+      "id": "R11",
+      "name": "web /api/kb/documents/create 建文档",
+      "pass": true,
+      "detail": "status=200 docPath=ralph-acc-kb-ralph20261029\\ralph-acceptance-fixture.md"
+    },
+    {
+      "id": "R12",
+      "name": "后端 index-document 索引成功",
+      "pass": true,
+      "detail": "status=200 body={\"success\":true,\"vector_index\":{\"collection\":\"kb_f59cba1c-8dbb-431c-8aa6-eaa69a57d65d\",\"chunk_id_prefix\":\"ralph-acc-kb-ralph20261029/ralph-acceptance-fixture.md__chunk_\",\"total_chunks\":1,\"embedding_mo"
+    },
+    {
+      "id": "R13",
+      "name": "向量检索命中 ingest 标记",
+      "pass": true,
+      "detail": "status=200 count=5 body={\"success\":true,\"results\":[{\"content\":\"# Ralph 验收夹具\\n\\n标记 RALPH-ACC-MARKER-7F3Q-ralph20261029。\\n注塑工艺参数窗口:料温 240-260℃,注射压力 45-65bar。\\n本文件由 2026-10-29 ralph 全量验收写入,用于 ingest→search 命中闭环。\",\"score\":0.6029"
+    },
+    {
+      "id": "R14",
+      "name": "web /api/kb/search 命中",
+      "pass": true,
+      "detail": "status=200 count=5"
+    },
+    {
+      "id": "R15",
+      "name": "kb/agent/chat 异步回合完成(rag-bridge 消费面)",
+      "pass": true,
+      "detail": "{\"success\":true,\"task_id\":\"kbt_mvszggxt_0e7048af\",\"status\":\"completed\",\"mode\":\"async\",\"prompt\":\"只回答文档路径:检索标记 RALPH-ACC-MARKER-7F3Q-ralph20261029 在哪个文档?\",\"engine\":\"claude\",\"permission\":\"bypassPermissions\",\"created_at\":\"2026-10-29T03:27:50.465Z\",\"finished_at\":\"2026-10-29T03:29:00.247Z\",\"result\":{\"success\":true,\"reply\":\"内容验证通过（kb_doc_read 直读正文，命中标记原文）。\\n\\n## Result\\n\\n- **文档路径**：`ralph-acc-kb-ralph20"
+    }
+  ]
+}

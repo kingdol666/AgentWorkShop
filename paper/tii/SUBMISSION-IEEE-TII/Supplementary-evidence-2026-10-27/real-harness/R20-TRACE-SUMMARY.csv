@@ -1,0 +1,7 @@
+execution_key,verified_count,unverified_count,failed_count,sample_value,task_state_after_sample_query
+cast-film-r1,1,0,0,45.69,COMPLETED
+cast-film-r2,1,0,0,46.69,COMPLETED
+cast-film-r3,1,0,0,45.69,COMPLETED
+annealing-r1,1,0,0,679.5999755859375,COMPLETED
+annealing-r2,1,0,0,677.7000122070312,COMPLETED
+annealing-r3,1,0,0,678.0999755859375,COMPLETED

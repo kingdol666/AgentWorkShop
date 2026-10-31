@@ -1,0 +1,114 @@
+{
+  "exportId": "daqexp-20261031014629-b6bee4",
+  "dir": "D:/tmp/aw-idd-rag-e2e-20261030/data/daq-exports/daqexp-20261031014629-b6bee4",
+  "window": {
+    "from_ms": 1793381789823,
+    "to_ms": 1793382389823,
+    "from": "2026-10-31T01:36:29.823+08:00",
+    "to": "2026-10-31T01:46:29.823+08:00"
+  },
+  "totals": {
+    "files": 4,
+    "rows": 818
+  },
+  "checks": [
+    {
+      "name": "DOC-箱体温度PV 表头",
+      "pass": true,
+      "detail": "ts_iso,ts_ms,value,state"
+    },
+    {
+      "name": "DOC-箱体温度PV 行数=manifest",
+      "pass": true,
+      "detail": "134 vs 134"
+    },
+    {
+      "name": "DOC-箱体温度PV 值域=manifest",
+      "pass": true,
+      "detail": "24.5~25.5 vs 24.5~25.5"
+    },
+    {
+      "name": "DOC-SP回读 表头",
+      "pass": true,
+      "detail": "ts_iso,ts_ms,value,state"
+    },
+    {
+      "name": "DOC-SP回读 行数=manifest",
+      "pass": true,
+      "detail": "134 vs 134"
+    },
+    {
+      "name": "DOC-SP回读 值域=manifest",
+      "pass": true,
+      "detail": "25~27 vs 25~27"
+    },
+    {
+      "name": "vector 表头",
+      "pass": true,
+      "detail": "ts_iso,ts_ms,point_index,value"
+    },
+    {
+      "name": "vector 行数=points",
+      "pass": true,
+      "detail": "3456 vs 3456"
+    },
+    {
+      "name": "vector 点数=帧×64",
+      "pass": true,
+      "detail": "3456 vs 54x64"
+    },
+    {
+      "name": "vector 每帧点数",
+      "pass": true,
+      "detail": "[64]"
+    },
+    {
+      "name": "vector 帧数",
+      "pass": true,
+      "detail": "54 vs 54"
+    },
+    {
+      "name": "DOC-环境温度 表头",
+      "pass": true,
+      "detail": "ts_iso,ts_ms,value,state"
+    },
+    {
+      "name": "DOC-环境温度 行数=manifest",
+      "pass": true,
+      "detail": "275 vs 275"
+    },
+    {
+      "name": "DOC-环境温度 值域=manifest",
+      "pass": true,
+      "detail": "20.5~23.5 vs 20.5~23.5"
+    },
+    {
+      "name": "DOC-环境湿度 表头",
+      "pass": true,
+      "detail": "ts_iso,ts_ms,value,state"
+    },
+    {
+      "name": "DOC-环境湿度 行数=manifest",
+      "pass": true,
+      "detail": "275 vs 275"
+    },
+    {
+      "name": "DOC-环境湿度 值域=manifest",
+      "pass": true,
+      "detail": "50~60 vs 50~60"
+    },
+    {
+      "name": "totals 只统计标量",
+      "pass": true,
+      "detail": "{\"files\":4,\"rows\":818}"
+    },
+    {
+      "name": "manifest 无 sha256(按设计)",
+      "pass": true,
+      "detail": "sha256 自行计算"
+    }
+  ],
+  "verdict": "PASS",
+  "pass": 19,
+  "total": 19
+}

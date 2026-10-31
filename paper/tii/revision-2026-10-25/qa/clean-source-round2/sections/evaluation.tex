@@ -1,0 +1,268 @@
+\section{Experimental Evaluation}
+\label{sec:eval}
+The primary current evidence is R20: six sequential tasks through one
+registered harness across two configured simulator scenes, with an
+R20-specific source reconstruction kit; it supports bounded task-to-device
+integration only. Secondary current evidence is R13: an application-level
+two-scene protocol and data-path run whose exact runtime source was not pinned;
+it supports protocol, readback, lineage, and gate-refusal behavior. Historical
+R1/R2 archives and other protocol, agent, controller, deployment, process,
+and recipe records use older versions or direct-node/scripted interfaces and
+are contextual software evidence, not pooled process results or matched
+strategy comparisons. All process experiments use repository simulators; the
+reproducibility notes map each claim to its source and interface version.
+
+\subsection{Evidence Units and Experimental Procedure}
+\label{sec:testbed}
+\label{sec:procedure}
+Historical R1/R2 cases use seed-42 direct-node missions with scripted
+proposals; R1's runtime worktree is not archived, so its recorded commit does
+not guarantee exact replay. The deterministic controller also uses seeds
+43--44. Deployment evidence comprises nine v0.7.57 runs and 782 software
+assertions; the recipe case is from the October 18 archive. The same 65
+profile/composition assertions were repeated on October 20, 24, and 25 with
+mock I/O, not 195 distinct checks or process trials. The cast-film reference
+uses an author-defined objective $J$ for thickness conformance, defects,
+energy, and throughput.
+
+\subsection{Current-Version Two-Scene Simulator Integration}
+\label{sec:crossscene}
+An exploratory v0.8.0 application run used the cast-film and annealing
+simulator presets. Five protocol families---OPC UA, MQTT, Modbus TCP, Modbus
+RTU over TCP, and HTTP/REST---passed read probes; bounded writes returned
+matching readbacks. Six 120-s runs per scene at 1-s sampling produced
+lineage-verified datasets.
+
+The configured data gate selected the largest absolute signed Pearson
+correlation between first-differenced MV and lagged CV over row lags 1--3,
+then required $|r_{\Delta}|\geq0.2$, one-step test NRMSE $\leq0.10$, and at
+least 20\% four-step rollout NRMSE reduction over persistence. Both
+post-pilot candidates failed the gates; neither produced an accepted model,
+profile, recommendation, or dispatch. The overlapping 1-s windows are
+serially dependent. This run therefore supports protocol/data-path execution
+and rejection behavior only, not model quality or process performance.
+Signal-pair selection followed an exploratory pilot, and the run-time source
+diff was not preserved; the R13 results are included as secondary diagnostic
+evidence, with detailed records in the reproducibility supplement.
+
+Table~\ref{tab:r13gates} reports the selected signal pair, the full-dataset
+first-difference correlation used for eligibility screening, and two model
+metrics computed on held-out test rows. Both scenes failed all three criteria;
+these values document the recorded rejection path and are not confirmatory
+model-performance estimates.
+\begin{table}[!t]
+\centering
+\caption{R13 exploratory model-gate diagnostics. The correlation column is
+the full-dataset eligibility screen; NRMSE and rollout reduction use held-out
+test rows. Both candidates fail all three criteria.}
+\label{tab:r13gates}
+\footnotesize
+\setlength{\tabcolsep}{2.2pt}
+\begin{tabularx}{\columnwidth}{@{}lXccc@{}}
+\toprule
+Scene & MV $\to$ CV & $|r_{\Delta}|$ (lag) & 1-step NRMSE & 4-step reduction \\
+\midrule
+Film & \shortstack[l]{\texttt{ScrewSpeedSP}\\$\to$ \texttt{thick}} & 0.0949 (2) & 0.2587 & 14.11\% \\
+Anneal & \shortstack[l]{Z3 setpoint\\$\to$ \texttt{StripTemp}} & 0.0526 (3) & 0.3632 & 4.83\% \\
+\bottomrule
+\end{tabularx}
+\end{table}
+\subsection{Registered-Harness Process Path}
+\label{sec:harness-e2e}
+R20 ran the isolated v0.8.0 working-tree application with the registered
+\texttt{omp} adapter and GLM-5.3-Flash in cast-film and annealing simulator
+scenes. The app and simulator diffs, base revisions, dependency lockfiles, and
+runtime prompt assets are included with the run record; package manifests are
+recovered from the recorded base revisions. The external model service does
+not provide a deterministic replay of its selection. Each execution created
+a separate line, product, recipe, run, channel, agent, and task context; three
+sequential executions used one simulator
+instance per scene, so they are not independent replicates. Cast film used
+OPC UA for screw-speed control and MQTT for the thickness probe; annealing
+used Modbus TCP for both the zone-3 setpoint and strip-temperature probe.
+The cast-film candidate set was $\{125,130,135\}$~rpm and the annealing
+candidate set was $\{735,740,745\}\,^{\circ}$C. Given a live control read,
+process measurement, and target band, GLM-5.3-Flash proposed one bounded
+\texttt{recipe\_trial}. A synthetic administrator approved each proposal;
+the route log recorded one trial and a 1/1 verified device receipt, and all
+six tasks reached the completed state. Following task completion and its
+evidence queries, a 20-s wait was initiated; one driver probe per task was
+then ingested through the isolated SQLite time-series fallback and returned
+under the active run tag. The integration checks cover per-execution context, an approved bounded
+proposal, route-specific receipt and readback, task completion, and an
+active-run-tagged sample; all six records contain this software path. The
+runner recorded 76 passing checks and no failures. The task history contains
+mirrored event projections, so the per-task operation count is taken from the
+route-specific recipe and ACK records.
+
+Table~\ref{tab:q8} reports the pre-task measurement, selected setpoint, and
+single post-trial sample. All six post-trial values remained outside the
+declared target bands. This experiment verifies the bounded
+harness-to-simulator execution and evidence path; it does not show process
+attainment, convergence, or quality improvement. The single sample is not a
+response trajectory, and the SQLite fallback does not test the normal online
+DAQ backend. The two-scene run also does not isolate profile/binding changes
+or establish cross-harness portability.
+
+\begin{table}[!t]
+\centering
+\caption{Model-selected settings and simulator measurements. Each row
+reports the pre-task value, configured target band, manipulated variable's
+initial-to-selected setting, and one run-tagged sample taken after a 20-s wait
+initiated following task completion and evidence queries. All six samples are
+outside target; executions are sequential within each scene.}
+\label{tab:q8}
+\footnotesize
+\setlength{\tabcolsep}{2.5pt}
+\begin{tabularx}{\columnwidth}{@{}lXcX@{}}
+\toprule
+Case & Pre-task CV / target & Setting: start$\to$trial & CV after wait \\
+\midrule
+Film-1 & $55.82/48$--$52~\mu$m & $120\to125$~rpm & $45.69~\mu$m \\
+Film-2 & $45.69/48$--$52~\mu$m & $120\to130$~rpm & $46.69~\mu$m \\
+Film-3 & $46.69/48$--$52~\mu$m & $120\to125$~rpm & $45.69~\mu$m \\
+Anneal-1 & $675.40/700$--$760~^{\circ}$C & $730\to745~^{\circ}$C & $679.60~^{\circ}$C \\
+Anneal-2 & $678.30/700$--$760~^{\circ}$C & $730\to745~^{\circ}$C & $677.70~^{\circ}$C \\
+Anneal-3 & $676.90/700$--$760~^{\circ}$C & $730\to745~^{\circ}$C & $678.10~^{\circ}$C \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Heterogeneous Protocol Integration and Route Checks}
+\label{sec:protocol}
+The suite acquired \resDaqSamples{} samples over five protocol families and
+issued policy-checked writes over four; the RTU-over-TCP line was
+acquisition-only.
+Archived upper-median write latencies ranged from \resPfiftyRange{}, with observed maxima
+\resPninetyfiveRange{}. The four writable lines accepted legal writes and
+rejected 24/24 out-of-window probes. A configuration-only second preset
+added 9/9 rejected probes on three further writable lines. These results
+exercise the same resolver against different signal maps.
+
+In a mock-driver API fixture, three deterministic repetitions of six attack
+classes per arm isolated admission from endpoint confirmation. The full and
+no-readback arms each rejected all 18 probes. The no-interlock and ungated
+arms each rejected the 12 hard-range probes but allowed all six soft-window
+probes to execute. Thus removing readback did not change admission, while
+removing the soft-window gate changed it; confirmation cannot replace a
+pre-write gate. A frozen-measurement drill further separated command and
+process evidence: the setpoint and readback agreed, yet the monitoring
+quantity remained outside its window and triggered backstop rollback after
+\resBackstop{}. A manual-binding drill suspended execution until
+harness-issued approval (\resHitlLatency{} mediation span).
+
+\subsection{Live-Engine Tasks and Deterministic Controller}
+\label{sec:agentteam}
+The archived team workflow linked parent task, worker, command, verdict, and
+journal. Its single-node cast-film task completed after changing the heater
+from \resMissionFrom{} to \resMissionTo\,$^{\circ}$C and observing
+\resMissionPv\,$^{\circ}$C within target. Two live-engine tasks used the
+same \texttt{omp} harness and GLM-5.3-Flash provider on a scratch line. Their
+logs trace a bounded write, descent to \resGoalFinal\,$\mu$m for a
+$52.0\pm0.8$\,$\mu$m target, and recipe save; the 52.02\,$\mu$m window
+mean differs from the run-summary terminal value. These traces demonstrate
+execution integration, not strategy comparison or cross-harness portability.
+
+\label{sec:controller}
+A deterministic controller used the dimensionless cast-film objective
+\begin{equation}
+\begin{aligned}
+J={}&55J_{\mathrm{thick}}+25J_{\mathrm{quality}}\\
+&+8J_{\mathrm{energy}}+7J_{\mathrm{throughput}},
+\end{aligned}
+\label{eq:objective}
+\end{equation}
+whose components score thickness conformance, quality, and energy/throughput
+proxies. The latter use screw and line speed, not metered energy or output.
+This deterministic controller is not the optional model service.
+Table~\ref{tab:q3search} gives its finite grid; formulas and replay details
+are in \path{REPRODUCIBILITY.md}.
+
+\begin{table*}[!t]
+\centering
+\caption{Finite-grid search protocol for the deterministic cast-film
+controller. The reference score is restricted to this grid and is not
+a global continuous optimum.}
+\label{tab:q3search}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\textwidth}{@{}p{2.4cm}Xp{3.0cm}@{}}
+\toprule
+Search element & Candidate set or rule & Role in the search \\
+\midrule
+Objective & Eq.~(\ref{eq:objective}); weights 55/25/8/7 for thickness,
+quality, energy proxy, and throughput proxy & Rank eligible steady states \\
+Eligibility & Melt temperature 195--225~$^{\circ}$C; melt pressure
+$\leq 22$~MPa & Discard ineligible states \\
+Equal zone setpoint & 195--225~$^{\circ}$C in 2.5~$^{\circ}$C steps & Search variable \\
+Screw speed & 50--200~rpm in 5-rpm steps & Search variable \\
+Line speed & 20--120~m/min in 2.5-m/min steps & Search variable \\
+Die gap & Fixed at 1~mm & Held constant \\
+Selection & Evaluate modeled steady state and retain the highest eligible
+score; $J^{*}=89.894$ & Finite-grid reference \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+Across seeds 42--44, the controller made two policy-checked writes per seed
+without rejection and raised $J$ from about \resJzero{} to
+$J/J^*=\resControllerMin$--\resControllerMax{} ($J^*=\resJstar$ on the
+admissible finite grid). This demonstrates one conventional strategy through
+the shared execution services, not comparative control benefit.
+
+\begin{table*}[!t]
+\centering
+\caption{Recorded injection-recipe actions and post-wait observations
+($n=1$ simulator trajectory). Hold time remained 6\,s; each trial used
+harness approval, a 65-s wait, and a 1/1 parameter-verification receipt.}
+\label{tab:q6actions}
+\footnotesize
+\setlength{\tabcolsep}{3.5pt}
+\begin{tabularx}{\textwidth}{@{}l c c c c X@{}}
+\toprule
+Stage & Pressure (bar) & Weight (g) & Flash (\%) & Sink (\%) & Recorded action and outcome \\
+\midrule
+Baseline & 45 & 31.28 & 0 & 1.977 & No command; initial observation \\
+Trial 1 & 45$\rightarrow$50 & 31.49 & 0.014 & 1.956 & Approved; 1/1 verified; continue \\
+Trial 2 & 50$\rightarrow$55 & 31.74 & 0.031 & 1.760 & Approved; 1/1 verified; continue \\
+Trial 3 & 55$\rightarrow$60 & 32.05 & 0 & 1.534 & Weight below 32.15-g minimum and sink above 1.50\%; continue \\
+Trial 4 & 60$\rightarrow$65 & 32.30 & 0.019 & 1.277 & Stop recorded; displayed values are within ranges \\
+Save & 65 & --- & --- & --- & \texttt{recipe\_update} saved version 2; no \texttt{recipe\_apply} is archived \\
+\bottomrule
+\end{tabularx}
+\end{table*}
+
+\subsection{Deployment Composition and Confirmation Semantics}
+\label{sec:hardening}
+The archived v0.7.57 deployment suite composed \resLinesLive{} lines,
+\resChannelsLive{} channels, \resDaqOnline{} online DAQ nodes,
+\resWriteNodesLive{} write nodes, \resRecipesLive{} recipes, and
+\resBindingsLive{} bindings on one simulator host. Setpoint/readback/mirror
+values agreed within \resConsistencyErr{}, but S4 remained
+\texttt{converged=false}; 65-bar observation-to-verification took 96.105\,s.
+S5 applied 40-to-40.5$^{\circ}$C, refused a subsequent write, and restored
+40$^{\circ}$C after 66.046\,s. Seven injected faults exercised receipt
+grading, partial batch failure, and manual confirmation. These software
+checks characterize only the tested faults and do not estimate field rates.
+
+\subsection{Historical Four-Process Simulator Missions}
+\label{sec:scenarios}
+The historical Q4 archive contains one seed-42 scripted, direct-node trajectory
+for each of four processes. All four recorded terminal checks met their target
+bands, but these runs bypass the current task runtime and do not test
+profile/binding adaptation. They are contextual simulator evidence and are
+not used to support the current-version integration claims.
+
+\subsection{Operational Recipe Workflow Case Study}
+\label{sec:recipeexperiment}
+R6 is one October 18 injection-simulator trajectory with four approved
+5-bar \texttt{recipe\_trial}s from 45\,bar, each followed by a 65-s wait.
+It saved recipe version 2 but did not apply it (Table~\ref{tab:q6actions});
+the source commit, seed, and per-sensor timestamps are unavailable, and the
+intervention was scripted. R6 bypassed trial cadence and the separate
+operation interval. Melt temperature was missing; stopping used weight,
+flash, and sink, with freshness based on the newest available timestamp.
+Thus the recorded stop is not an independently audited guard pass. A separate
+October 23 public-route check refused eight direct-node writes; its
+default-cadence recipe run missed target and failed restoration. Neither it
+nor the distinct 65-to-70\,bar check replicates R6.

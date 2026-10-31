@@ -1,0 +1,124 @@
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT                                                                               9
+
+
+
+signal map, controls, and target rules. Evidence completeness                                VII. C ONCLUSION
+differs: injection and BOPET link judged operations to their
+reported endpoints, whereas annealing and wastewater have             AgentWorkShop provides a modular task-to-device frame-
+incomplete or discordant terminal records. The deterministic       work that connects configured scene context, named opera-
+routines and unlike objectives do not establish learned op-        tions, device drivers, and service-owned records. One inte-
+timization, arbitrary-scene portability, or comparative perfor-    grated simulator benchmark output contains four scenario-
+mance.                                                             specific missions whose logs report target attainment for
+   Each scenario has one trajectory and no independent process     injection molding, BOPET film, annealing, and wastewater
+replication, so the study provides no estimate of run-to-run       treatment. The clearest traces show operation requests fol-
+variation or statistical uncertainty. The output lacks a run       lowed by process measurements and scenario judgments; the
+manifest, source revision, and consistent timing metadata. The     annealing and wastewater evidence also exposes endpoint-
+wastewater plot uses the structured DO target because it differs   record gaps that limit interpretation. The results demonstrate
+from the free-text target. All observations come from local        configured execution across the four tested simulator scenes,
+simulators, not physical equipment; the findings are bounded       but not model-selected optimization, independent repeatabil-
+to execution in these four preconfigured scenes.                   ity, comparative process improvement, general portability, or
+                                                                   physical-plant performance.
+
+                      VI. D ISCUSSION
+                                                                                                 R EFERENCES
+A. Interpretation                                                   [1] Y. Xia, N. Jazdi, J. Zhang, C. Shah, and M. Weyrich, “Control industrial
+                                                                        automation system with large language model agents,” in Proc. IEEE
+   The four missions support a narrow architectural interpre-           30th Int. Conf. on Emerging Technologies and Factory Automation
+tation. Reuse lies in keeping task context, operation dispatch,         (ETFA), 2025, pp. 1–8, doi: 10.1109/ETFA65518.2025.11205539.
+device mapping, and evidence ownership stable while each            [2] K.-C. Huang, H.-T. Lin, C.-H. Lin, and M.-T. Huang, “Large language
+                                                                        model integration in industrial cyber-physical systems: A multi-modal
+scene defines its own target and constraints. This complements          architecture for automated control generation,” in Proc. Int. Conf. on
+prior work on task-level industrial agents and on plant-specific        Control, Automation and Diagnosis (ICCAD), 2026, pp. 1–6, doi: 10.
+approval or process validation, but addresses their software            1109/ICCAD69956.2026.11643124.
+                                                                    [3] K. Köhle, D. Anicic, T. A. Runkler, and R. Graf, “LLM-driven multi-
+integration boundary [1], [11], [12]. The evaluation illustrates        agent control for skill-based smart manufacturing,” in Proc. IEEE 31st
+this composition without comparing platforms or entry routes,           Int. Conf. on Emerging Technologies and Factory Automation (ETFA),
+so it supports no claim of superior performance.                        2026, pp. 1–8, doi: 10.1109/ETFA68377.2026.11725257.
+                                                                    [4] M. Waseem, K. Bhatta, C. Li, and Q. Chang, “Pretrained LLMs as real-
+   The incomplete annealing and wastewater endpoints also               time controllers for robot operated serial production line,” Mach. Learn.:
+have a system-level implication. A mission-level success flag           Eng., vol. 2, no. 1, 2026, art. no. 015006; doi: 10.1088/3049-4761/
+cannot verify terminal quality when the final process vector is         ae4ee8.
+                                                                    [5] Z. Liu et al., “Agents4PLC: Automating closed-loop PLC code gen-
+missing or differs from the structured trace. A deployment that         eration and verification in industrial control systems using LLM-based
+relies on process evidence should declare required terminal             agents,” IEEE Trans. Softw. Eng., vol. 52, no. 5, pp. 1672–1687, 2026,
+variables for each scene and persist their observations with            doi: 10.1109/TSE.2026.3667895.
+operation records. This is a design requirement suggested by        [6] R. Wu, J. Ai, and T. Li, “InstructMPC: A human-LLM-in-the-loop
+                                                                        framework for context-aware control,” in Proc. IEEE 64th Conf. on De-
+the evidence gaps, not a feature validated by this benchmark.           cision and Control (CDC), 2025, pp. 172–179, doi: 10.1109/CDC57313.
+   The process objectives also remain distinct. Part weight,            2025.11312156.
+                                                                    [7] J. Lim and I. Kovalenko, “A large language model-enabled control
+film thickness, hardness, dissolved oxygen, and the simulator-          architecture for dynamic resource capability exploration in multi-agent
+defined wastewater cost index have different units and mean-            manufacturing systems,” in Proc. IEEE 21st Int. Conf. on Automation
+ings; they cannot be pooled into one score. Because the                 Science and Engineering (CASE), 2025, pp. 2088–2095, doi: 10.1109/
+                                                                        CASE58245.2025.11163802.
+routines are deterministic and do not use a language model,
+                                                                    [8] Z. Zhao et al., “A large language model-based multi-agent manufacturing
+the study evaluates configured execution rather than learned            system for intelligent shopfloors,” Adv. Eng. Inform., vol. 69, 2026, art.
+reasoning or optimization-policy quality.                               no. 103888; doi: 10.1016/j.aei.2025.103888.
+                                                                    [9] M. S. Gill, J. Vyas, A. Markaj, F. Gehlhoff, and M. Mercangöz,
+                                                                        “Leveraging LLM agents and digital twins for fault handling in process
+                                                                        plants,” in Proc. IEEE ETFA, 2025, pp. 1–8, doi: 10.1109/ETFA65518.
+B. Scope and Limitations                                                2025.11205597.
+                                                                   [10] B. Hofmann, N. Piechulek, S. Kreitlein, J. Franke, and P. Bruendl,
+   One deterministic trajectory per scene, without an alterna-          “Beyond touch-based human-machine interface: Control your machines
+tive policy, precludes claims about repeatability or compara-           in natural language by utilizing large language models and OPC
+                                                                        UA,” arXiv preprint arXiv:2510.11300, 2025. [Online]. Available:
+tive benefit. Independent repeats from controlled initial states        https://arxiv.org/abs/2510.11300v2
+would test whether the observed paths recur; a matched policy      [11] C. Graul, W. Żarski, D. Mikołajewski, and I. Rojek, “Ai agents in
+comparison would test whether the framework changes process             industry 4.0: AAS–OPC UA–LLM architecture as the foundation of
+                                                                        intelligent manufacturing systems in the context of industrial enterprise
+performance. Simulator results also do not establish physical           implementation,” Applied Sciences, vol. 16, no. 11, p. 5428, 2026, doi:
+transfer, operator effectiveness, or energy and chemical sav-           10.3390/app16115428.
+ings. A hardware study would need synchronized terminal            [12] D. Schall, “Safe integration of large language models into industrial
+                                                                        process control: A multi-agent architecture with P&ID-grounded vali-
+guard records and independent PLC or safety-instrumented                dation,” Autonomous Intelligent Systems, vol. 6, 2026, article no. 14;
+protection, which this experiment does not replace.                     doi: 10.1007/s43684-026-00136-1.
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT                10
+
+
+
+[13] S.-C. Lin and C.-Y. Chen, “An integrated framework featuring policy-
+     governed agentic AI for closed-loop manufacturing control with multi-
+     source sensor–MES–ERP,” The International Journal of Advanced Man-
+     ufacturing Technology, vol. 143, pp. 6405–6428, 2026, doi: 10.1007/
+     s00170-026-17806-2.
+[14] A. Biskupovic, A. Villalonga, F. Castaño, R. E. Haber, and F. Núñez,
+     “Agent-based supervision for service-oriented industrial cyber–physical
+     systems,” IEEE Trans. Ind. Inform., vol. 21, no. 3, pp. 2719–2728, 2025,
+     doi: 10.1109/TII.2024.3514178.
+[15] Y. Xia, N. Jazdi, and M. Weyrich, “An architecture for integrating large
+     language models with digital twins and automation systems,” in Proc.
+     IEEE 30th Int. Conf. on Emerging Technologies and Factory Automation
+     (ETFA), 2025, pp. 1–8, doi: 10.1109/ETFA65518.2025.11205636.
+[16] L. M. Vieira da Silva, A. Köcher, and F. Gehlhoff, “Beyond formal
+     semantics for capabilities and skills: Model context protocol in manu-
+     facturing,” in Proc. IEEE 30th Int. Conf. on Emerging Technologies and
+     Factory Automation (ETFA), 2025, pp. 1–4, doi: 10.1109/ETFA65518.
+     2025.11205601.
+[17] K. Köhle, D. Anicic, T. A. Runkler, K. Dorofeev, A. S. Thuluva, and
+     R. Graf, “Virtually commissioned semantic recipes based on OPC UA
+     skills,” in Proc. IEEE 8th Int. Conf. on Industrial Cyber-Physical Sys-
+     tems (ICPS), 2025, pp. 1–6, doi: 10.1109/ICPS65515.2025.11087832.
+[18] X. Jiang et al., “Agentic AI for safety-aware process monitoring and
+     fault diagnosis: A review,” Processes, vol. 14, no. 13, 2026, art. no.
+     2112; doi: 10.3390/pr14132112.
+[19] Model Context Protocol contributors, “Model Context Protocol:
+     Tools,” Specification, version 2026-07-28, 2026, accessed: Oct. 20,
+     2026. [Online]. Available: https://modelcontextprotocol.io/specification/
+     2026-07-28/server/tools
+[20] ISA, “ISA-88.00.01-2010: Batch control—part 1: Models and terminol-
+     ogy,” International Standard, 2010.
+[21] ——, “ANSI/ISA-95.00.01-2025 (IEC 62264-1 mod): Enterprise-control
+     system integration—part 1: Models and terminology,” International
+     Standard, 2025.
+[22] J. Moyne, E. del Castillo, and A. M. Hurwitz, Eds., Run-to-Run Control
+     in Semiconductor Manufacturing, 1st ed. Boca Raton, FL: CRC Press,
+     2000.
+[23] H. Wang, C. M. Poskitt, and J. Sun, “AgentSpec: Customizable runtime
+     enforcement for safe and reliable LLM agents,” in Proc. IEEE/ACM
+     48th Int. Conf. on Software Engineering (ICSE), 2026, pp. 2938–2950,
+     doi: 10.1145/3744916.3764546.
+[24] E. Debenedetti et al., “Defeating prompt injections by design,”
+     2025, arXiv preprint arXiv:2503.18813. [Online]. Available: https:
+     //arxiv.org/abs/2503.18813
+

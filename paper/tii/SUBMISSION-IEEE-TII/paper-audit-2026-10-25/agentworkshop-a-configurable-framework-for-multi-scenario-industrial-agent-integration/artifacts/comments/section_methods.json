@@ -1,0 +1,41 @@
+[
+  {
+    "title": "需求、设计规则、模块实现与实验之间缺少可追踪映射",
+    "quote": "These requirements lead to six design rules",
+    "explanation": "Introduction item 1 presents deriving five requirements and six principles as a contribution; Section III lists both sets, then Sections III–V describe modules and separate experiments. The manuscript does not show how each requirement motivates a rule, which module enforces it, or which evidence group tests it. As written, this reads as a useful design inventory but not yet a reproducible design argument. Add a compact mapping in prose or a space-neutral matrix: requirement → rule → module/invariant → evidence and uncovered boundary. Keep the contribution framed as an integration architecture and implementation, not as a new control algorithm.",
+    "comment_type": "presentation",
+    "severity": "moderate",
+    "confidence": "high",
+    "source_kind": "llm",
+    "source_section": "system",
+    "related_sections": [
+      "introduction",
+      "system",
+      "modules",
+      "evaluation"
+    ],
+    "root_cause_key": "design-requirements-principles-evidence-traceability",
+    "review_lane": "section_methods, claims_vs_evidence",
+    "gate_blocker": false,
+    "quote_verified": null,
+    "evidence_anchor": [
+      {
+        "type": "section",
+        "text": "Introduction, contribution 1: five integration requirements and six design principles."
+      },
+      {
+        "type": "section",
+        "text": "System Design, Design Rationale and Requirements; Module Functions and Integration; Experimental Evaluation."
+      }
+    ],
+    "claim_strength": "observed",
+    "missing_evidence": [
+      "Explicit mapping from requirements and rules to implementation modules and evidence groups."
+    ],
+    "allowed_wording": "The paper organizes the implementation around five requirements and six design rules.",
+    "forbidden_wording": [
+      "The requirements are empirically validated design principles without a traceable mapping."
+    ]
+  }
+]
+

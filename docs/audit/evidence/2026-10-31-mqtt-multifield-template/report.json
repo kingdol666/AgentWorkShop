@@ -1,0 +1,133 @@
+{
+  "suite": "MQTT 多字段采集 + jsonTemplate 下发(实机)",
+  "at": "2026-10-30T16:11:31.867Z",
+  "checks": [
+    {
+      "id": "A.create",
+      "name": "一次 fields 配置展开 4 个子信号节点",
+      "pass": true,
+      "detail": "status=200 count=4 msg=ok"
+    },
+    {
+      "id": "A.group",
+      "name": "同一 groupId + 字段标签暴露到节点视图",
+      "pass": true,
+      "detail": "groupId=dg-0c5e1b54 labels=temp,humidity,dew,arr1"
+    },
+    {
+      "id": "A.names",
+      "name": "子节点命名带父名+字段名",
+      "pass": true,
+      "detail": "E2E-MQTT-多字段站·temp,E2E-MQTT-多字段站·humidity,E2E-MQTT-多字段站·dew,E2E-MQTT-多字段站·arr1"
+    },
+    {
+      "id": "A.temp.data",
+      "name": "子信号 temp 有真实样本入库",
+      "pass": true,
+      "detail": "buckets=8 samples=8 last=20"
+    },
+    {
+      "id": "A.humidity.data",
+      "name": "子信号 humidity 有真实样本入库",
+      "pass": true,
+      "detail": "buckets=8 samples=8 last=40"
+    },
+    {
+      "id": "A.dew.data",
+      "name": "子信号 dew 有真实样本入库",
+      "pass": true,
+      "detail": "buckets=9 samples=9 last=12"
+    },
+    {
+      "id": "A.arr1.data",
+      "name": "子信号 arr1 有真实样本入库",
+      "pass": true,
+      "detail": "buckets=9 samples=9 last=203"
+    },
+    {
+      "id": "A.temp.match",
+      "name": "子信号 temp 值与发布 JSON 一致",
+      "pass": true,
+      "detail": "observed=22,23,24,20"
+    },
+    {
+      "id": "A.humidity.match",
+      "name": "子信号 humidity 值与发布 JSON 一致",
+      "pass": true,
+      "detail": "observed=47,48,49,40"
+    },
+    {
+      "id": "A.dew.match",
+      "name": "子信号 dew 值与发布 JSON 一致",
+      "pass": true,
+      "detail": "observed=12,10,11,12"
+    },
+    {
+      "id": "A.arr1.match",
+      "name": "子信号 arr1 值与发布 JSON 一致",
+      "pass": true,
+      "detail": "observed=200,201,202,203"
+    },
+    {
+      "id": "A.fanout",
+      "name": "4 子节点共享一次订阅(同报文时间戳重合)",
+      "pass": true,
+      "detail": "overlapBuckets=8"
+    },
+    {
+      "id": "A.alarm",
+      "name": "字段级告警限生效(温度子信号 warn/告警)",
+      "pass": true,
+      "detail": "state=warn value=21 alarms=1"
+    },
+    {
+      "id": "B.tpl-create",
+      "name": "建 jsonTemplate 节点(嵌套/多字段)",
+      "pass": true,
+      "detail": "dw-20bae275"
+    },
+    {
+      "id": "B.tpl-payload",
+      "name": "下发报文为合法 JSON 且嵌套字段正确",
+      "pass": true,
+      "detail": "payload={\"cmd\":\"set\",\"params\":{\"temp\":230,\"hold\":8},\"ts\":123} ack=\"transport-ack\""
+    },
+    {
+      "id": "B.device",
+      "name": "设备端解析模板报文并生效(setpoint 30)",
+      "pass": true,
+      "detail": "before=28 after=30"
+    },
+    {
+      "id": "B.readback",
+      "name": "状态主题回读模板下发值",
+      "pass": true,
+      "detail": "{\"ok\":true,\"value\":30,\"raw\":30,\"message\":\"MQTT 回读 aw/inj/coolwater/state = 30\",\"at\":\"2026-10-31T00:11:30.598+08:00\",\"param\":{\"id\":\"pp-4d4f4e56\",\"key\":\"temp-sp-5\",\"name\":\"E2E-MQTT-真机模板\",\"templateRef\":\"temp-sp\",\"unit\":\"℃\","
+    },
+    {
+      "id": "B.bad-no-placeholder",
+      "name": "缺 {{value}} 模板创建期拒绝",
+      "pass": true,
+      "detail": "status=400 msg=jsonTemplate 缺少 {{value}} 占位符(模板必须把下发值插入报文)"
+    },
+    {
+      "id": "B.conflict",
+      "name": "jsonKey 与 jsonTemplate 互斥(创建期 400)",
+      "pass": true,
+      "detail": "status=400 msg=jsonTemplate 与 jsonKey 互斥:嵌套/多字段报文用 jsonTemplate,单键报文用 jsonKey"
+    },
+    {
+      "id": "B.bad-json",
+      "name": "渲染后非 JSON 模板创建期拒绝",
+      "pass": true,
+      "detail": "status=400 msg=jsonTemplate 渲染后不是合法 JSON:Expected double-quoted property name in JSON at position 8 (line 1 column 9)(渲染结果:{\"sp\":0,})"
+    },
+    {
+      "id": "C.jsonKey",
+      "name": "jsonKey 单键下发保持兼容",
+      "pass": true,
+      "detail": "payload={\"setpoint\":27}"
+    }
+  ],
+  "verdict": "PASS(21/21)"
+}

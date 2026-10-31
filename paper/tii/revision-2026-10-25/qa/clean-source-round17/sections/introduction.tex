@@ -1,0 +1,88 @@
+\section{Introduction}
+\IEEEPARstart{I}{ndustrial-agent} deployments must connect each task to its
+production context, process signals, and equipment interfaces. Existing work
+addresses end-to-end automation control, operator-reviewed control-sequence
+generation, modular factory skills, and production scheduling
+\cite{xia2025control,huang2026made,koehle2026llmdriven,waseem2026pretrained}.
+Other studies target PLC code generation, context-aware control, resource
+capability discovery, shop-floor coordination, digital-twin fault handling,
+natural-language machine access, and robotic-line control
+\cite{liu2026agents4plc,wu2025instructmpc,lim2025llmenabled,zhao2026shopfloor,gill2025llmdt,hofmann2025nlc}.
+Across production lines, agent roles, signal maps, protocols, objectives, and
+product/run context vary. An integration architecture must accommodate these
+differences around shared task and operation services while keeping each
+action tied to its active production context. Recent industrial-agent
+architectures add AAS-grounded OPC UA actions with signed approval,
+P\&ID-grounded proposal checks, and governed sensor--MES--ERP evidence
+streams \cite{graul2026aas,schall2026safe,lin2026agentic}. These works address
+asset-specific execution, process validation, or closed-loop analytics. This
+paper addresses the complementary software-integration question of composing
+task and harness routes, production context, semantic protocol I/O, and
+route-owned records.
+
+Consider two production scenes with different process signals and interfaces:
+cast-film thickness control and annealing-zone temperature control. An agent
+task in either scene needs production context, typed signal access, and a
+route from a named operation to the configured device protocol. The framework
+must also distinguish a command receipt from a subsequent process
+observation. The shared task and operation services can therefore be
+configured with scene-specific signal maps, protocols, and limits while
+retaining a common execution path. The evaluation instantiates this path in
+two simulator scenes.
+
+This paper presents AgentWorkShop as a reference implementation of
+task-to-device integration for industrial agents. It connects collaborative tasks
+and registered harnesses to production context, manufacturing execution
+system (MES) data, analysis and modeling services, data-acquisition (DAQ) and
+write-control (DCW) nodes, and protocol-specific drivers. Its interfaces include
+command-line, web, SDK, REST, Model Context Protocol (MCP), and Agent-to-Agent
+(A2A) surfaces. Task and chat routes enter the
+collaboration runtime, whereas a direct REST tool-invocation route can call
+the shared operation dispatcher without creating a task.
+Scene blueprints define signal maps, objectives, and guards; channel profiles,
+tool policies, and agent bindings scope operations. Agents and callers invoke
+named operations through shared runtime checks; the framework does not choose
+routes autonomously and retains proposals, command confirmation, and process
+observations as distinct records. Fig.~\ref{fig:arch} presents the system
+architecture, and Fig.~\ref{fig:runtime} shows the cross-module task flow.
+Section~IV details the node-exploration and recipe lifecycles.
+
+This paper asks whether a configured registered-harness path can execute
+bounded tasks in two simulator scenes with different signal and protocol
+mappings while retaining a checkable relation from task through approval and
+verified route receipt to a subsequent run-tagged measurement. A deterministic
+fixture separately replays the software route without external model
+decisions. A 20-case mock-state suite injects line, product, recipe, and run
+changes during approval for \texttt{recipe\_apply}, \texttt{recipe\_trial},
+and dispatching \texttt{recipe\_rollback}; all stale actions are refused
+before mock-driver writes. In a focused test-only ablation that omits only the
+post-approval tuple comparison, six stale product/run changes reach mock
+actuation, while independent checks still refuse the other six cases.
+
+The paper makes two contributions:
+\begin{enumerate}
+\item It specifies and implements a modular task-to-device reference path that
+  joins collaborative tasks and registered harnesses to turn-time production
+  context, per-call operation checks, semantic I/O, configured protocol
+  drivers, and service-owned records. For approved recipe actions, the
+  implementation binds the approval to a line--product--recipe--run tuple and
+  refuses execution if that tuple changes while approval is pending. This
+  distinguishes prompt grounding, dispatch authority, device receipt, and
+  later process observation; it is an implementation contribution, not a new
+  protocol, safety-verification method, or process-control algorithm.
+\item It evaluates selected paths in cast-film and annealing simulator scenes.
+  In R20, six sequential tasks through one registered harness passed the
+  task-to-approval-to-receipt-to-sample linkage checks; none of the six samples
+  reached its target band. In R21, a deterministic fixture executed one task
+  per scene with no external model and passed 31 runner assertions, including
+  cleanup checks. A separate mock-state suite refused all 12 stale
+  line--product--recipe--run mutations on three recipe actuation routes before
+  mock-driver writes; a targeted ablation isolates the additional coverage for
+  product and run changes provided by the tuple comparison.
+\end{enumerate}
+
+Section~II reviews related industrial-agent and integration work.
+Section~III presents the design rationale, architecture, and cross-module
+execution flow; Section~IV explains module responsibilities and their
+integrated operation. Section~V describes the experiments and results, and
+Sections~VI and~VII discuss the evidence limits and conclude the paper.

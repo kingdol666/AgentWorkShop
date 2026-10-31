@@ -1,9 +1,12 @@
 \section{System Design}
 \label{sec:design}
-The platform separates task execution from operation dispatch while allowing
-both to use current production context. Shared and route-specific checks govern
-device routing, and service-owned records distinguish command receipts from
-measured process responses.
+The architecture connects two configurable sides of an industrial deployment:
+an agent collaboration runtime and a production-scene configuration. The
+runtime supplies task context and scoped operations; scene configuration maps
+process semantics to acquisition and control nodes, drivers, targets, and
+guards. Named operations connect these sides to shared dispatch and governed
+device access. The design separates task execution from operation dispatch and
+keeps command receipts distinct from measured process responses.
 
 \begin{figure*}[!t]
 \centering
@@ -21,36 +24,37 @@ controllers and safety systems retain equipment interlocks.}
 
 \subsection{Design Rationale and Requirements}
 \label{sec:principles}
-Five requirements---scene variability, harness variability, operation
-authority, outcome observability, and extensibility---shape the design.
-Scene variability is represented by blueprints and semantic driver mappings;
-harness variability by registered adapters; operation authority by shared
-dispatch checks and route-specific guards and admission; outcome observability
-by service-owned task, receipt, and observation records; and extensibility by
-registered interfaces for agent engines and device drivers. Tool visibility
-is separate from write authorization, and actuator writes converge on the
-shared DCW admission point.
+Five requirements shape the design: scene variability, harness variability,
+operation authority, outcome observability, and extensibility. Scene
+configuration binds production records and semantic DAQ/DCW nodes to drivers,
+objectives, and process guards. Harness adapters isolate agent-engine
+interfaces from named operations. Shared dispatch checks and route-specific
+write limits govern authority, while service-owned task, receipt, and
+observation records preserve outcomes. Registered interfaces allow additional
+agent engines and device drivers to be integrated without changing the
+operation contract. Tool visibility alone does not authorize a write; all
+actuator writes pass through the DCW admission point.
 
-A scene blueprint bundles the process preset, signal inventory, DAQ/DCW driver
-mappings, and target and guard rules; judged operation records and later
-observations remain distinct evidence.
-
-During setup, the integrator binds a validated blueprint to the active
-line--product--recipe--run tuple, maps semantic nodes to drivers, and declares
-target bands and guards. At runtime, the dispatcher checks current authority
-before the handler issues a command; the handler returns a receipt, and DAQ
-records subsequent observations.
+Commissioning associates the line with products, recipes, active-run rules,
+signal meanings, units, driver mappings, and admissible limits. At runtime,
+the context builder assembles the active line--product--recipe--run state and
+relevant process summaries for each agent turn. An operation handler resolves
+live state again before dispatch, so the prompt context informs a proposal but
+does not substitute for current authorization or admission checks. Direct
+operations resolve the current context at invocation without creating a task.
 
 \subsection{Layered Architecture}
 \label{sec:layers}
 \label{sec:arch}
 Fig.~\ref{fig:arch} summarizes the access routes, shared dispatch path,
 production services, semantic I/O, configured drivers, and service ownership
-of records. Task and chat routes enter the
-collaboration band, which contains workspaces, channels, task queues, shared
-memory, mailboxes, task templates, and harness adapters. A \emph{task route}
-is an execution path through this runtime; a \emph{harness adapter} connects
-an agent engine to its task execution interface. Direct REST tool
+of records. Task and chat routes enter the collaboration runtime, which
+contains workspaces, channels, task queues, shared memory, mailboxes, task
+templates, and harness adapters. A \emph{task route} is an execution path
+through this runtime; a \emph{harness adapter} connects an agent engine to its
+task interface. Multiple registered agents can participate through shared
+tasks and channel context, with each agent's available tools constrained by
+its binding and channel policy. Direct REST tool
 calls and the stdio MCP operation bridge bypass task execution in that band
 (the upper-right direct-operation entry in
 Fig.~\ref{fig:arch}) and enter the shared governance block without creating a
@@ -76,9 +80,9 @@ Fig.~\ref{fig:runtime} summarizes a task turn from entry through operation
 execution, with route-specific evidence retained by owning services. Registered
 harness adapters receive a scoped tool catalog during setup and supported
 registry refreshes; the runtime assembles prompt-time production context from
-current records for each agent turn. For each returned tool call, the shared dispatcher rechecks
-invocation scope and channel policy and, for industrial operations, current
-grant and binding conditions before handler selection. The selected handler
+current records for each agent turn. For each returned tool call, the shared
+dispatcher rechecks invocation scope, channel policy, and applicable grant and
+binding conditions before handler selection. The selected handler
 then applies route-specific guards, active-run checks, approval
 revalidation, and device-I/O steps as applicable. Command receipts and later
 process observations remain distinct records.
@@ -90,12 +94,13 @@ shared dispatch condition as
 \label{eq:dispatch-contract}
 \end{equation}
 where $S$, $P$, $G$, and $B$ denote invocation scope, current channel policy,
-runtime grant, and the agent's binding to referenced resources, respectively.
-$\mathcal{C}(u)\subseteq\{S,P,G,B\}$ is the set of predicates declared for
-operation $u$; it always contains $S$ and $P$. The grant predicate $G$ is
-omitted only for an explicitly grant-exempt industrial tool, and $B$ is
-included when the operation declares resource references. A declared
-no-reference operation omits $B$. Each included check must pass before
+applicable industrial grant, and the agent's binding to referenced resources,
+respectively. $\mathcal{C}(u)\subseteq\{S,P,G,B\}$ is the set of predicates
+declared for operation $u$; it always contains $S$ and $P$. The grant predicate
+$G$ is included when the resolved channel, target line, and owner/grant policy
+require it; explicit exemptions omit it. The binding predicate $B$ is included
+when the operation declares resource references. A declared no-reference
+operation omits $B$. Each included check must pass before
 handler selection. The policy predicate includes channel tool selection,
 profile, and duty-separation checks where configured. Once these predicates
 pass, the selected route applies its guards, active-run checks, admission
@@ -105,8 +110,8 @@ revalidates its context before device dispatch.
 For direct REST invocation, the service establishes $a$ and $c$ before applying
 these checks: an agent token must match the requested agent identifier, or an
 authenticated user must be the channel owner or an administrator. The manager
-loads the channel-agent record and rechecks scope and policy; industrial
-operations then pass the shared grant and binding checks. Handlers resolve live
+loads the channel-agent record and rechecks scope and policy; applicable grant
+and binding checks follow. Handlers resolve live
 production state from request identifiers and owning services.
 
 Fig.~\ref{fig:execution} gives reference pseudocode summarizing the

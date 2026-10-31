@@ -1,0 +1,19 @@
+[
+  {
+    "title": "Abstract and conclusion claims need explicit evidence traceability",
+    "quote": "",
+    "explanation": "At least one headline claim was detected. Deep review should check whether experiments and conclusion language trace back to the same bounded evidence base.",
+    "comment_type": "claim_accuracy",
+    "severity": "major",
+    "confidence": "low",
+    "source_kind": "llm",
+    "source_section": "abstract",
+    "related_sections": [
+      "abstract",
+      "results",
+      "conclusion"
+    ],
+    "review_lane": "claims_vs_evidence",
+    "gate_blocker": false
+  }
+]

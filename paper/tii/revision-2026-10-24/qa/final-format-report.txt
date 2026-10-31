@@ -1,0 +1,28 @@
+============================================================
+LaTeX Format Check Report
+============================================================
+File: D:\codes\ABO\AgentWorkShop\paper\tii\SUBMISSION-IEEE-TII\main.tex
+Status: WARNING
+Message: Found 78 issues
+
+------------------------------------------------------------
+Issues Found:
+------------------------------------------------------------
+
+[PUNCTUATION] (11 issues)
+  Line 63: Wrong length of dash may have been used.
+  Line 63: Wrong length of dash may have been used.
+  Line 6: Wrong length of dash may have been used.
+  Line 6: Wrong length of dash may have been used.
+  Line 6: Wrong length of dash may have been used.
+  ... and 6 more
+
+[SPACING] (67 issues)
+  Line 9: Command terminated with space.
+  Line 97: Command terminated with space.
+  Line 4: Non-breaking space (`~') should have been used.
+  Line 2: Delete this space to maintain correct pagereferences.
+  Line 6: Non-breaking space (`~') should have been used.
+  ... and 62 more
+
+============================================================

@@ -1,0 +1,88 @@
+{
+  "at": "2026-10-30T19:37:13.903Z",
+  "taskId": "081c3664-9503-4427-977a-db40417d5c03",
+  "state": "WORKING",
+  "channelId": "5904185b-37e5-485b-a31e-bba76e4c3ee8",
+  "lineId": "ln-c75503cf",
+  "daqNodeId": "dn-564d8f4d",
+  "results": [
+    {
+      "id": "E0",
+      "name": "复用在跑隔离实例+admin token",
+      "pass": true,
+      "detail": "port=3411"
+    },
+    {
+      "id": "E0b",
+      "name": "IDD(3210)/RAG(8771) 后端健康",
+      "pass": true,
+      "detail": "idd={\"status\":\"ok\",\"timestamp\":\"2026-10-30T19:16:52.285Z\",\"uptime\":4242.6791445,\"mem rag={\"status\":\"healthy\",\"vector\":{\"ready\":true,\"embedding_available\":true}}"
+    },
+    {
+      "id": "E0c",
+      "name": "插件设置 PATCH(基址+token+结果库)",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "E0d",
+      "name": "插件面启用且无故障",
+      "pass": false,
+      "detail": "{}"
+    },
+    {
+      "id": "E1",
+      "name": "真产线供给(4010 注塑工况,五协议真 driverConfig)",
+      "pass": false,
+      "detail": "line=ln-c75503cf dcw=11 daq=14 errors=[\"复用产线开跑失败: undefined\"]"
+    },
+    {
+      "id": "E1b",
+      "name": "DAQ 真实采样落库(活动批次门控放行)",
+      "pass": true,
+      "detail": "node=dn-564d8f4d points=50"
+    },
+    {
+      "id": "E2",
+      "name": "插件+工业工具注册面",
+      "pass": true,
+      "detail": "missing= total=126"
+    },
+    {
+      "id": "E3a",
+      "name": "omp 频道+ustc/deepseek-flash lead",
+      "pass": true,
+      "detail": "channel=5904185b-37e5-485b-a31e-bba76e4c3ee8 lead=6b8111a7-2964-45cc-8ef7-d385ddb1a2ef"
+    },
+    {
+      "id": "E3b",
+      "name": "任务下达(真 omp LLM 回合开始)",
+      "pass": true,
+      "detail": "task=081c3664-9503-4427-977a-db40417d5c03"
+    },
+    {
+      "id": "E3c",
+      "name": "任务收口 state=WORKING(审批卡自动裁决 0 张)",
+      "pass": false,
+      "detail": "decisions=[]"
+    },
+    {
+      "id": "E3d",
+      "name": "模型真实调用四类工具(非脚本代打)",
+      "pass": true,
+      "detail": "used=daq_query,daq_export,diag_run,kb_agent historyLen=31454"
+    },
+    {
+      "id": "E4a",
+      "name": "IDD 诊断报告要点入交付",
+      "pass": true,
+      "detail": "(kind=recipe,参数写入与下发)。\n🔧 line_context ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"你控制的产线全景(1 条):\\n\\n■ 产线 注塑成型质量窗口寻优 injection-mvvb2dca(ln-c75503cf)(频道绑定,只读) · 状态:运行中\\n  场景说明: 家用电器面板(PP)注塑:规格克重 32.5±0.35 g、飞边 ≤0.4%、缩痕 ≤1.5%、尺寸偏差 ±0.05 mm。起始保压偏低 → 克重 ≈31.3 g 偏轻 + 缩痕超标;闭环把保压/保压时间/模温调回窗口,同时守住飞边上限。 [AWB-SCEN:injection 重复接入自动复用本线]\\n  活动批次 rr-618e6 · 产\n🔧 my_industrial_nodes ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"你尚未绑定任何工业对象。请让用户或 lead 为你绑定:数控/数采节点(kind=daq 观察)或配方(kind=recipe,参数写入与下发)。\"}],\"details\":{}}"
+    },
+    {
+      "id": "E4b",
+      "name": "RAG 检索命中标记",
+      "pass": true,
+      "detail": "mark=IDDRAG-E2E-mvvcsuc9 inBlob=true"
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "at": "2026-10-24T17:44:14.789Z",
+  "base": "http://127.0.0.1:3997",
+  "simulator": "http://127.0.0.1:4020",
+  "simulatorRoot": "[local-path]",
+  "applicationHome": "[local-path]",
+  "counts": {
+    "pass": 1,
+    "fail": 1,
+    "blocked": 0,
+    "not-run": 0
+  },
+  "scope": {
+    "businessInstanceTouched": false,
+    "originalSimulatorTouched": false,
+    "realHardwareTouched": false,
+    "truthConsumed": false,
+    "benefitBenchmark": false,
+    "realAgentLlm": false
+  },
+  "scenes": [],
+  "checks": [
+    {
+      "id": "film.plant",
+      "name": "Physical model loaded at real time scale",
+      "status": "pass",
+      "detail": {
+        "kind": "castfilm",
+        "timeScale": 1
+      }
+    },
+    {
+      "id": "harness",
+      "name": "Physical harness execution",
+      "status": "fail",
+      "detail": "TypeError: fetch failed"
+    }
+  ]
+}

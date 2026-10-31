@@ -1,0 +1,341 @@
+====================== PAGE 5 ======================
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT
+5
+Task / chat entry
+channel task · chat message
+Turn context / tool catalog
+context/turn · catalog setup/refresh
+Harness + agent turn
+registered adapter · named request
+Per-call dispatch gate
+S/P always · G/B only when declared
+Route?
+Read / analysis route
+DAQ · MES · retrieval · model services
+Write / recipe route
+approval context recheck · DCW driver
+Tool result → harness continuation
+host text · optional error flag
+Fig. 2. Registered-harness task flow. The runtime invokes the adapter with a scoped catalog. Scope and channel policy are checked for every call; grant applies
+to non-exempt industrial operations, and binding applies when resource references are declared. Failed checks return tool errors. The read path retrieves data.
+The write path applies route guards, approval and context revalidation, DCW admission, and receipt grading; a later process observation is separate. Results
+return to the harness. Checks occur at the software boundary and reserve no equipment state.
+tool invocation bypasses the task runtime and harness but
+enters the same shared dispatcher. Route-specific timing, ap-
+proval, and evidence rules are detailed in Section IV.
+IV. MODULE FUNCTIONS AND INTEGRATION
+The design in Section III is realized through three cooper-
+ating functions: task and context assembly, shared operation
+dispatch, and controlled device access with route-specific
+evidence. We follow one agent action through them.
+A. Task, Harness, and Context
+Task and chat entry points create or join a workspace
+channel. The task runtime manages membership, task state,
+and shared execution context; a harness registry adapts each
+supported agent engine to a common execution interface. At
+each agent turn, the prompt builder assembles the task, active
+scene description, production context, channel profile, agent
+binding, and retrieved memory. This keeps engine-specific
+interaction behind the harness interface while preserving the
+current line and operation context for the agent.
+Direct REST and selected stdio-MCP operation calls reach
+the same dispatcher without a task or harness turn. REST
+authentication and identity resolution follow Section III-C;
+each handler reads live route state at invocation. For either
+entry path, prompt context and tool-catalog visibility describe
+available information and capabilities; neither grants write
+authority.
+B. Shared Dispatch and Device Admission
+The dispatcher is the shared operation boundary. It checks
+invocation scope and current channel policy, then verifies the
+Require: task q, channel c, bound agent a, registered scoped
+catalog T
+Ensure: task result; any retained evidence remains with its
+owning service
+1: xt ←RESOLVEPROMPTCONTEXT(c, q)
+2: m ←RETRIEVEMEMORY(q)
+3: p ←ASSEMBLEPROMPT(q, xt, m)
+4: h ←INVOKEREGISTEREDHARNESS(a, p, T)
+5: for all tool request u returned by h do
+6:
+g ←CHECKSCOPEANDCHANNELPOLICY(a, c, u)
+7:
+if not g then
+8:
+EMITTOOLERRORTOHARNESS(h,u); continue
+9:
+end if
+10:
+if u is an industrial operation then
+11:
+v ←CHECKAPPLICABLEGRANTBINDING(a, u)
+12:
+if not v then
+13:
+EMITTOOLERRORTOHARNESS(h,u)
+14:
+continue
+15:
+end if
+16:
+end if
+17:
+k ←SELECTHANDLER(u)
+18:
+r ←EXECUTEROUTEHANDLER(k, a, c, u) ▷handler
+resolves live state and may persist route-specific records
+19:
+EMITDECLAREDTOOLRESULTTOHARNESS(h,r)
+20: end for
+21: return task state and tool results
+Fig. 3.
+Reference pseudocode for the registered-harness task path. Direct
+operation invocation is not shown. Evidence persistence is route-specific and
+remains with the owning service; the shared tool result does not carry a generic
+evidence envelope.
+agent binding, runtime grant, and ownership of referenced
+
+====================== PAGE 6 ======================
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT
+6
+resources before selecting a handler. Handlers revalidate route-
+specific state at execution time; a previously displayed tool
+catalog does not preserve authority after a policy or grant
+changes. Scene blueprints define device and signal maps,
+objectives, and process guards. Capability profiles and tool
+policies narrow available operations, while bindings constrain
+accessible nodes, controls, and recipes. Optional DAQ, MES,
+analysis, retrieval, optimization, and digital-twin services are
+invoked through registered handlers; the framework does not
+prescribe a single optimization strategy.
+Actuator writes converge on the shared write-control (DCW)
+admission point. For an online node write, the admissible value
+interval is
+Ionline
+n
+(t) = Hn ∩Bn ∩Pn(t) ∩Rn(t),
+(2)
+where Hn is the hard engineering range and Bn, Pn, and
+Rn are the baseline, active-product, and active-recipe limits.
+Missing optional limits impose no restriction; an empty inter-
+section rejects the request and identifies the excluding layer.
+Recipe dispatch validates the replacement recipe against the
+hard, baseline, and product limits rather than the previous
+recipe window. Step, interval, and hold-window checks also
+constrain each route. These software checks bound commands
+but do not replace independent programmable-logic-controller
+or safety-instrumented protection.
+C. Approval, Execution, and Evidence
+Routes add timing and approval checks appropriate to their
+operation. Online node writes enforce a 60 s minimum spacing;
+recipe trials use a per-line cadence (300 s by default), and
+recipe intervals are anchored to approval. Manual approval
+binds an actor and proposed operation to candidate values, ap-
+plicable limits, expiry, and the active line–product–recipe–run
+tuple. After approval, the handler rechecks authority and com-
+pares the current tuple with the approved tuple before entering
+DCW dispatch. The default approval wait expires after 180 s.
+A changed recipe definition requires a new recipe_apply
+proposal. These checks reject stale requests at the software
+dispatch boundary; they do not lock equipment state across
+network or device I/O.
+Fig. 4(a) illustrates the four-layer value interval in Eq. (2)
+using an archived RPM configuration. Panel (b) shows a
+symbolic approval followed by authority and context rechecks;
+its values are illustrative, not experimental measurements.
+A recipe_trial illustrates the operation sequence: the
+handler checks the bound recipe, active run, candidate param-
+eters, and route timing; if required, it requests approval; after
+revalidation, it submits a bounded batch through the configured
+driver and returns a per-parameter receipt. The caller obtains
+later DAQ observations separately and may then update, apply,
+or roll back a recipe. A trial neither saves nor applies a
+recipe version. The driver registry maps semantic controls to
+configured protocol drivers, keeping protocol details out of
+agent operation arguments.
+Receipts and observations answer different questions. A
+command result is graded as readback-verified, transport-
+acknowledged, or unverified; a readback mismatch can trig-
+ger up to three reads at 2 s intervals. Recipe batches retain
+per-parameter verification outcomes. DAQ stores subsequent
+timestamped process observations, while recipe versions, ap-
+provals, and task records remain service-owned records linked
+where a route supplies the corresponding identifiers. A verified
+setpoint confirms the command path, not target attainment.
+This distinction defines the evidence chain evaluated in Sec-
+tion V.
+V. EXPERIMENTAL EVALUATION
+The experiments examine four aspects of AgentWork-
+Shop: route-specific record continuity across two configured
+simulator scenes, completion of one documented blueprint-
+onboarding workflow, rejection of stale approval context be-
+fore software dispatch, and the process samples associated
+with the tested routes. These outcomes are kept separate. All
+plant-facing checks used software simulators; none involved a
+physical plant or independent process replication. Sections V-B
+to V-D report each outcome on its own terms; the evidence is
+complementary and is not pooled into a single score.
+A. Test Design and Protocol
+For a registered task, the integration criterion is a task
+linked to its approval, readback-verified command receipt, and
+a process sample tagged to the active run. A direct operation
+call has no task edge; its criterion is a verified receipt/readback
+and an active-run-tagged sample. The fixed-call harness replay
+checks record links, not task completion. The context guard is
+assessed by whether a changed line, product, recipe, or run is
+refused before a driver write.
+The route-continuity study used the v0.8.0 application with
+cast-film and continuous-annealing simulator scenes. Cast film
+wrote screw speed through OPC UA and observed thickness
+through MQTT (target: 48–52 µm). Annealing wrote the zone-
+3 setpoint through Modbus TCP and observed strip temper-
+ature (target: 700–760 ◦C). The registered-harness path ran
+three sequential tasks per scene on one persistent simulator;
+each task used its own production and task context, while
+process state carried forward. After each verified receipt, the
+runner waited 20 s, probed and ingested one process sample,
+queried it by active-run ID, and then checked task state. Thus,
+task-completion-to-sample latency is unavailable. The fixed-
+call replay, direct REST call, and fixture-backed command-line
+task ran once per scene in separate isolated environments.
+All route-study records report unavailable MQTT and
+Timescale endpoints; their samples used the local SQLite fall-
+back, with online DAQ collection disabled. The route results
+therefore assess invocation and application-record handling,
+not the normal online DAQ path. Fixture-backed routes used
+deterministic input; direct REST created no task and did not
+invoke an external model.
+A separate v0.8.3 onboarding replay used a fresh isolated
+application home and the documented C01 blueprint. The
+blueprint configured one Modbus/TCP device with four set-
+points and seven DAQ nodes, plus MES REST scalar, 48-
+point vector, table, and image forms. Dedicated local MQTT
+and Timescale services were online for DAQ checks; object
+storage was unavailable, so image artifacts used the local-disk
+
+====================== PAGE 7 ======================
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT
+7
+a
+Source-aware admission
+I = H ∩ B ∩ P ∩ R = [146.22,153.78] rpm
+H hard
+50
+200 rpm
+Detail scale: 140–160 rpm
+B baseline
+143.7–156.3
+P product
+146.22–153.78
+R recipe
+141–159
+140
+150
+160
+b
+Approval and recheck
+Symbolic schematic; no measured values
+Line / recipe binding + active run
+Parameter
+Current
+Proposed
+Control u
+u(now)
+u(next)
+Reason / hypothesis + execution context
+Approve
+Decline
+Approve → recheck grants, binding and context
+Then admission → dispatch; failure → no dispatch
+Decline → no dispatch; decision is recorded
+Fig. 4. Admission and approval boundaries. (a) Illustrative archived RPM configuration, not experimental data: online node interventions use the four-layer
+interval of Eq. (2), whereas recipe dispatch omits the previous recipe window. (b) Symbolic human approval binds a proposed action and its context tuple;
+execution rechecks the active line–product–recipe–run context, authority, and applicable limits. Approval does not reserve equipment state.
+fallback. This was one configuration replay, not a route-study
+trial.
+The approval-context suite changed each field of the ap-
+proved line–product–recipe–run tuple for recipe apply, trial,
+and rollback with dispatch enabled (12 cases). A separate
+fault-injection case changed context after asynchronous grant
+revalidation but before the caller’s final synchronous check. A
+test-only ablation removed only the tuple comparison while
+retaining the other checks. These outcomes were recorded
+in mock-driver state and are not process-level reliability es-
+timates.
+B. Registered and Direct-Call Route Results
+All six model-mediated registered tasks completed and
+passed the task, approval, receipt, and sample-link checks
+(76 runner assertions). Cast-film settings of 125/130/125 rpm
+produced single 20-s samples of 45.69/46.69/45.69 µm. An-
+nealing settings of 745 ◦C produced 679.60/677.70/678.10 ◦C.
+All six samples were below their target bands; they do not
+describe a response trajectory, steady state, or the quality of
+the model-selected settings.
+The fixed-call harness replay linked both tasks to approval,
+receipt, and active-run samples (31 assertions); task comple-
+tion was not asserted. Its cast-film and annealing samples
+were 46.37 µm and 674.80 ◦C, both below target. Direct REST
+returned verified receipts/readbacks and run-tagged samples
+in both scenes (19 checks); its samples were 46.37 µm and
+675.20 ◦C, also below target. The fixture-backed command-
+line adapter completed both tasks and linked their samples
+(37 application and 28 isolation checks); its samples were
+46.38 µm and 674.40 ◦C, also below target. The tested routes
+reached the shared operation services under two preconfigured
+signal and protocol mappings. They do not establish process
+attainment, configuration reuse, general adapter interchange-
+ability, or portability to an unseen scene.
+C. Blueprint-Driven Scenario Onboarding
+On the v0.8.3 build, the C01 connectivity preflight passed
+3/3 checks; line provisioning passed 20/20; channel construc-
+TABLE II
+ROUTE AND APPROVAL-CONTEXT CHECKS. ASSERTION COUNTS ARE
+SOFTWARE CHECKS, NOT INDEPENDENT PROCESS REPLICATIONS.
+Execution
+path
+Result and inference limit
+Registered
+task harness
+Six sequential tasks; 6/6 task-to-sample links and verified
+receipts; 76 runner assertions. One sample per task; all below
+target.
+Fixed-call
+harness
+replay
+One task per scene; 2/2 approval/receipt/sample links; 31
+assertions. Task completion was not asserted.
+Direct REST
+operation
+One call per scene; 2/2 verified receipts/readbacks and run-
+tagged samples; 19 checks. No task edge.
+Fixture-
+backed
+command-
+line task
+One completed task per scene; 2/2 task-to-sample links;
+37 application and 28 isolation checks. No external model
+decision.
+Approval-
+context guard
+12/12 injected tuple changes blocked before mock writes;
+queued between-check mutation refused before dispatch.
+Mock state only.
+tion passed 13/13; and all four MES forms returned records
+with the expected format and field dictionary. The V1–V6
+verifier passed 23/23 checks, including sample availability for
+all seven DAQ nodes, range rejection, legal write/readback,
+recipe mapping, channel/plugin checks, and zero writes to a
+protected demonstration line. One smoke proposal used the
+test-only automatic-approval policy to change line speed from
+37 to 39 m/min within the 28–48 m/min recipe window; the
+PLC twin confirmed the write. The approval was synthetic.
+The replay ran on a working-tree build whose source commit
+was not pinned, and it did not vary the profile or bind-
+ing set between runs. These checks therefore establish one
+documented blueprint-to-simulator onboarding instance, not
+human-review performance, film quality, process attainment,
+arbitrary protocol coverage, configuration reuse, repeatability,
+or physical transfer. Supplementary File S1 includes the inputs,
+health and DAQ status, runner output, and complete V1–V6
+log.
+

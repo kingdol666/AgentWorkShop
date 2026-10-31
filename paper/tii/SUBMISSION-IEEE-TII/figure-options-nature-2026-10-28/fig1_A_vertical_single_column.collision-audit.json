@@ -1,0 +1,23 @@
+{
+  "pdf": "D:\\codes\\ABO\\AgentWorkShop\\paper\\tii\\SUBMISSION-IEEE-TII\\figure-options-nature-2026-10-28\\fig1_A_vertical_single_column.pdf",
+  "auditable": true,
+  "verdict": "PASS",
+  "page_count": 1,
+  "visible_text_box_count": 14,
+  "text_trace_count": 14,
+  "stroke_path_count": 19,
+  "filled_region_count": 14,
+  "image_region_count": 0,
+  "summary": {
+    "fail": 0,
+    "warn": 0,
+    "contained_fill_overlays": 14,
+    "contained_image_overlays": 0
+  },
+  "thresholds": {
+    "text_inset_pt": 0.6,
+    "min_overlap_ratio": 0.05,
+    "clipping_tolerance_pt": 0.5
+  },
+  "findings": []
+}

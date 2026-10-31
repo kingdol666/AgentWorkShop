@@ -1,0 +1,32 @@
+[
+  {
+    "name": "auth-matrix",
+    "exit": 1,
+    "boot": "ok",
+    "tail": "=== 有效 token 行为抽检 === | E2E 崩溃: Error: 注册失败: 自助注册已关闭(security.allowRegistration=false),请联系管理员开通账号 |     at main (file:///D:/codes/ABO/AgentWorkShop/scripts/e2e-auth-matrix.mjs:91:21) |     at process.processTicksAndRejections (node:internal/process/task_queues:104:5)"
+  },
+  {
+    "name": "template-isolation",
+    "exit": 3221226505,
+    "boot": "ok",
+    "tail": "    at mkUser (file:///D:/codes/ABO/AgentWorkShop/scripts/e2e-template-isolation.mjs:55:25) |     at process.processTicksAndRejections (node:internal/process/task_queues:104:5) |     at async main (file:///D:/codes/ABO/AgentWorkShop/scripts/e2e-template-isolation.mjs:59:15) | Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), file src\\win\\async.c, line 94"
+  },
+  {
+    "name": "rest-robustness",
+    "exit": 0,
+    "boot": "ok",
+    "tail": "PASS  删除后列成员 → 404/401(鉴权先于存在性) — status=401 | PASS  被删 channel 公共记忆不泄漏进他 channel 检索 — [] | PASS  清理主 channel | ALL PASS"
+  },
+  {
+    "name": "timezone-settings",
+    "exit": 1,
+    "boot": "ok",
+    "tail": "  operator: '==', |   diff: 'simple' | } | Node.js v24.19.0"
+  },
+  {
+    "name": "agent-team",
+    "exit": 0,
+    "boot": "ok",
+    "tail": "  PASS  PATCH team 改名 |   PASS  DELETE team |   PASS  删除后 GET → 404 | ━━━ 结果: PASS=25 FAIL=0 ━━━"
+  }
+]

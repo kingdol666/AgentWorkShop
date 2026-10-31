@@ -21,7 +21,7 @@
     "backend": "python-matplotlib",
     "figure": {
       "width_pt": 515.52,
-      "height_pt": 226.79999999999998
+      "height_pt": 255.6
     },
     "panels": [
       {
@@ -30,7 +30,7 @@
           0.0,
           0.0,
           515.52,
-          226.79999999999998
+          255.6
         ]
       }
     ],

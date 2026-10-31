@@ -1,0 +1,402 @@
+{
+  "description": "One scripted simulator mission per scene from the archived seed-42 integrated run.",
+  "source": "bench/results/20260921184204-10lc/scenarios.json",
+  "source_sha256": "83f3ef3140df02809749003bd5bad7778870ae966a598572631b895028aeb3b4",
+  "seed": 42,
+  "n_per_scene": 1,
+  "metric": "normalized absolute target deviation = |PV - target| / tolerance; <= 1 is within the declared target band",
+  "metric_scope": "descriptive target-tracking metric computed from archived PV values; not an optimizer-internal J",
+  "parameter_semantics": "requested setpoints; not independent device readbacks",
+  "wastewater_scope": "DO/blower phase only; pH and total-phosphorus stages have distinct objectives and are excluded from the DO curve",
+  "annealing_scope": "the first temperature point has no optimization record; the 176 m/min candidate and rollback are taken from the event narrative; terminal hardness is separate",
+  "traces": {
+    "injection": [
+      {
+        "step": 0,
+        "value": 31.252,
+        "target": 32.5,
+        "tolerance": 0.35,
+        "deviation": 3.565714285714289,
+        "phase": "baseline",
+        "status": "observed",
+        "source_anchor": "results[id=injection].mission.traj[0]"
+      },
+      {
+        "step": 1,
+        "value": 31.919999999999998,
+        "target": 32.5,
+        "tolerance": 0.35,
+        "deviation": 1.6571428571428626,
+        "phase": "converge",
+        "status": "observed",
+        "source_anchor": "results[id=injection].mission.traj[1]"
+      },
+      {
+        "step": 2,
+        "value": 32.17,
+        "target": 32.5,
+        "tolerance": 0.35,
+        "deviation": 0.9428571428571381,
+        "phase": "converge",
+        "status": "observed",
+        "source_anchor": "results[id=injection].mission.traj[2]"
+      }
+    ],
+    "wwtp": [
+      {
+        "step": 0,
+        "value": 0.21400000000000002,
+        "target": 3.4,
+        "tolerance": 0.6,
+        "deviation": 5.3100000000000005,
+        "phase": "baseline",
+        "status": "observed",
+        "source_anchor": "results[id=wwtp].mission.traj[0]"
+      },
+      {
+        "step": 1,
+        "value": 2.1533333333333333,
+        "target": 3.4,
+        "tolerance": 0.6,
+        "deviation": 2.077777777777778,
+        "phase": "blower",
+        "status": "observed",
+        "source_anchor": "results[id=wwtp].mission.traj[1]"
+      },
+      {
+        "step": 2,
+        "value": 2.7433333333333336,
+        "target": 3.4,
+        "tolerance": 0.6,
+        "deviation": 1.0944444444444439,
+        "phase": "blower",
+        "status": "observed",
+        "source_anchor": "results[id=wwtp].mission.traj[2]"
+      },
+      {
+        "step": 3,
+        "value": 3.0566666666666666,
+        "target": 3.4,
+        "tolerance": 0.6,
+        "deviation": 0.5722222222222222,
+        "phase": "blower",
+        "status": "observed",
+        "source_anchor": "results[id=wwtp].mission.traj[3]"
+      },
+      {
+        "step": 4,
+        "value": 3.1833333333333336,
+        "target": 3.4,
+        "tolerance": 0.6,
+        "deviation": 0.3611111111111106,
+        "phase": "blower",
+        "status": "observed",
+        "source_anchor": "results[id=wwtp].mission.traj[4]"
+      },
+      {
+        "step": 5,
+        "value": 3.516666666666667,
+        "target": 3.4,
+        "tolerance": 0.6,
+        "deviation": 0.19444444444444525,
+        "phase": "blower",
+        "status": "observed",
+        "source_anchor": "results[id=wwtp].mission.traj[5]"
+      },
+      {
+        "step": 6,
+        "value": 3.504,
+        "target": 3.4,
+        "tolerance": 0.6,
+        "deviation": 0.1733333333333335,
+        "phase": "separate terminal observation after pH/TP stages",
+        "status": "terminal_observation",
+        "source_anchor": "results[id=wwtp].mission.final"
+      }
+    ],
+    "anneal": [
+      {
+        "step": 0,
+        "value": 134.51999999999998,
+        "target": 95.0,
+        "tolerance": 6.0,
+        "deviation": 6.586666666666663,
+        "phase": "baseline",
+        "status": "observed",
+        "source_anchor": "results[id=anneal].mission.traj[0]"
+      },
+      {
+        "step": 1,
+        "value": 99.46000000000001,
+        "target": 95.0,
+        "tolerance": 6.0,
+        "deviation": 0.7433333333333346,
+        "phase": "converge",
+        "status": "observation_after_unlinked_candidate",
+        "source_anchor": "results[id=anneal].mission.traj[1]"
+      },
+      {
+        "step": 2,
+        "value": 97.88,
+        "target": 95.0,
+        "tolerance": 6.0,
+        "deviation": 0.47999999999999926,
+        "phase": "margin",
+        "status": "observed",
+        "source_anchor": "results[id=anneal].mission.traj[2]"
+      },
+      {
+        "step": 3,
+        "value": 99.24,
+        "target": 95.0,
+        "tolerance": 6.0,
+        "deviation": 0.7066666666666658,
+        "phase": "throughput",
+        "status": "observed",
+        "source_anchor": "results[id=anneal].mission.traj[3]"
+      },
+      {
+        "step": 4,
+        "value": 99.84,
+        "target": 95.0,
+        "tolerance": 6.0,
+        "deviation": 0.8066666666666672,
+        "phase": "throughput",
+        "status": "observed",
+        "source_anchor": "results[id=anneal].mission.traj[4]"
+      },
+      {
+        "step": 5,
+        "value": 101.3,
+        "target": 95.0,
+        "tolerance": 6.0,
+        "deviation": 1.0499999999999996,
+        "phase": "reverted 176 m/min candidate",
+        "status": "reverted_candidate",
+        "source_anchor": "results[id=anneal].mission.ev[5]"
+      },
+      {
+        "step": 6,
+        "value": 100.08000000000001,
+        "target": 95.0,
+        "tolerance": 6.0,
+        "deviation": 0.8466666666666688,
+        "phase": "separate terminal observation",
+        "status": "terminal_observation",
+        "source_anchor": "results[id=anneal].mission.final"
+      }
+    ],
+    "biax": [
+      {
+        "step": 0,
+        "value": 28.1,
+        "target": 25.0,
+        "tolerance": 0.7,
+        "deviation": 4.428571428571431,
+        "phase": "baseline",
+        "status": "observed",
+        "source_anchor": "results[id=biax].mission.traj[0]"
+      },
+      {
+        "step": 1,
+        "value": 26.5,
+        "target": 25.0,
+        "tolerance": 0.7,
+        "deviation": 2.142857142857143,
+        "phase": "converge",
+        "status": "observed",
+        "source_anchor": "results[id=biax].mission.traj[1]"
+      },
+      {
+        "step": 2,
+        "value": 26.0,
+        "target": 25.0,
+        "tolerance": 0.7,
+        "deviation": 1.4285714285714286,
+        "phase": "converge",
+        "status": "observed",
+        "source_anchor": "results[id=biax].mission.traj[2]"
+      },
+      {
+        "step": 3,
+        "value": 25.659999999999997,
+        "target": 25.0,
+        "tolerance": 0.7,
+        "deviation": 0.9428571428571381,
+        "phase": "converge",
+        "status": "observed",
+        "source_anchor": "results[id=biax].mission.traj[3]"
+      }
+    ]
+  },
+  "controls": {
+    "injection": [
+      {
+        "step": 1,
+        "knob": "hold-pressure-sp",
+        "from": 45.0,
+        "to": 58.2,
+        "unit": "bar",
+        "record_id": "opt-aa41022a",
+        "status": "verified_record",
+        "source_anchor": "results[id=injection].mission.traj[1]"
+      },
+      {
+        "step": 2,
+        "knob": "hold-time-sp",
+        "from": 6.0,
+        "to": 10.64,
+        "unit": "s",
+        "record_id": "opt-bd1116cd",
+        "status": "verified_record",
+        "source_anchor": "results[id=injection].mission.traj[2]"
+      }
+    ],
+    "wwtp": [
+      {
+        "step": 1,
+        "knob": "blower-hz-sp",
+        "from": 26.0,
+        "to": 30.05,
+        "unit": "Hz",
+        "record_id": "opt-6ad0afc9",
+        "status": "verified_record",
+        "source_anchor": "results[id=wwtp].mission.traj[1]"
+      },
+      {
+        "step": 2,
+        "knob": "blower-hz-sp",
+        "from": 30.0,
+        "to": 31.59,
+        "unit": "Hz",
+        "record_id": "opt-2c3ca660",
+        "status": "verified_record",
+        "source_anchor": "results[id=wwtp].mission.traj[2]"
+      },
+      {
+        "step": 3,
+        "knob": "blower-hz-sp",
+        "from": 31.600000381469727,
+        "to": 32.42,
+        "unit": "Hz",
+        "record_id": "opt-ef0d93a7",
+        "status": "verified_record",
+        "source_anchor": "results[id=wwtp].mission.traj[3]"
+      },
+      {
+        "step": 4,
+        "knob": "blower-hz-sp",
+        "from": 32.400001525878906,
+        "to": 33.2,
+        "unit": "Hz",
+        "record_id": "opt-d72d2e54",
+        "status": "verified_record",
+        "source_anchor": "results[id=wwtp].mission.traj[4]"
+      },
+      {
+        "step": 5,
+        "knob": "blower-hz-sp",
+        "from": 33.20000076293945,
+        "to": 34.0,
+        "unit": "Hz",
+        "record_id": "opt-aac91666",
+        "status": "verified_record",
+        "source_anchor": "results[id=wwtp].mission.traj[5]"
+      }
+    ],
+    "anneal": [
+      {
+        "step": 1,
+        "knob": "zone3-sp",
+        "from": 730.0,
+        "to": 850.0,
+        "unit": "°C",
+        "record_id": null,
+        "status": "candidate_without_record",
+        "source_anchor": "results[id=anneal].mission.traj[1]"
+      },
+      {
+        "step": 2,
+        "knob": "zone2-sp",
+        "from": 710.0,
+        "to": 722.0,
+        "unit": "°C",
+        "record_id": "opt-82bfc5e7",
+        "status": "verified_record",
+        "source_anchor": "results[id=anneal].mission.traj[2]"
+      },
+      {
+        "step": 3,
+        "knob": "line-speed-sp",
+        "from": 140.0,
+        "to": 152.0,
+        "unit": "m/min",
+        "record_id": "opt-86e29ac0",
+        "status": "verified_record",
+        "source_anchor": "results[id=anneal].mission.traj[3]"
+      },
+      {
+        "step": 4,
+        "knob": "line-speed-sp",
+        "from": 152.0,
+        "to": 164.0,
+        "unit": "m/min",
+        "record_id": "opt-c6af19bd",
+        "status": "verified_record",
+        "source_anchor": "results[id=anneal].mission.traj[4]"
+      },
+      {
+        "step": 5,
+        "knob": "line-speed-sp",
+        "from": 164.0,
+        "to": 176.0,
+        "unit": "m/min",
+        "record_id": null,
+        "status": "reverted_candidate",
+        "source_anchor": "results[id=anneal].mission.ev[5]"
+      },
+      {
+        "step": 6,
+        "knob": "line-speed-sp",
+        "from": 176.0,
+        "to": 164.0,
+        "unit": "m/min",
+        "record_id": null,
+        "status": "compensation",
+        "source_anchor": "results[id=anneal].mission.ev[5] (rollback stated)"
+      }
+    ],
+    "biax": [
+      {
+        "step": 1,
+        "knob": "cast-spd-sp",
+        "from": 32.0,
+        "to": 33.8,
+        "unit": "m/min",
+        "record_id": "opt-cbdee859",
+        "status": "verified_record",
+        "source_anchor": "results[id=biax].mission.traj[1]"
+      },
+      {
+        "step": 2,
+        "knob": "fast-roll-sp",
+        "from": 118.0,
+        "to": 120.3,
+        "unit": "m/min",
+        "record_id": "opt-9a056780",
+        "status": "verified_record",
+        "source_anchor": "results[id=biax].mission.traj[2]"
+      },
+      {
+        "step": 3,
+        "knob": "rail-out-sp",
+        "from": 3000.0,
+        "to": 3035.0,
+        "unit": "mm",
+        "record_id": "opt-3197b244",
+        "status": "verified_record",
+        "source_anchor": "results[id=biax].mission.traj[3]"
+      }
+    ]
+  }
+}

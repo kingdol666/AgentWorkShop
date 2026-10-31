@@ -1,0 +1,121 @@
+\documentclass[journal]{IEEEtran}
+% IEEE Transactions on Industrial Informatics -- anonymous regular-paper draft
+% Compile: latexmk -pdf main.tex
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algpseudocode}
+% Local XeTeX/Tectonic builds: route IEEEtran's ptm (Times) family requests to
+% the legacy Times Type1 faces so metrics match the pdfLaTeX reference build;
+% the latexmk -pdf (pdfLaTeX) path is unaffected.
+\usepackage{iftex}
+\ifxetex
+  \DeclareFontFamily{TU}{ptm}{}
+  \DeclareFontShape{TU}{ptm}{m}{n}{<->ptmr8t}{}
+  \DeclareFontShape{TU}{ptm}{b}{n}{<->ptmb8t}{}
+  \DeclareFontShape{TU}{ptm}{m}{it}{<->ptmri8t}{}
+  \DeclareFontShape{TU}{ptm}{b}{it}{<->ptmbi8t}{}
+  \DeclareFontShape{TU}{ptm}{m}{sl}{<->ptmro8t}{}
+  \DeclareFontShape{TU}{ptm}{m}{sc}{<->ptmr8t}{}
+\fi
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage[table]{xcolor}
+\usepackage{stfloats}
+\usepackage{placeins}
+\usepackage{url}
+\urlstyle{same}
+% Cross-references and citations. The cite package renders IEEE-style citation
+% groups ([14]--[16], [20], [21]) with hyperref support.
+\usepackage{cite}
+\usepackage[colorlinks=true,linkcolor=black,citecolor=black,urlcolor=black]{hyperref}
+\hypersetup{bookmarksnumbered=true,
+  pdftitle={AgentWorkShop: A Modular Task-to-Device Integration Framework for Industrial Agents},
+  pdfauthor={},
+  pdfsubject={IEEE Transactions on Industrial Informatics},
+  pdfkeywords={industrial informatics, industrial agents, multi-agent systems, production system integration, semantic data integration}}
+
+% Float placement only; IEEEtran margins and body type remain unchanged.
+\setcounter{topnumber}{4}
+\setcounter{bottomnumber}{3}
+\setcounter{totalnumber}{7}
+\setcounter{dbltopnumber}{2}
+\renewcommand{\topfraction}{0.95}
+\renewcommand{\bottomfraction}{0.80}
+\renewcommand{\textfraction}{0.03}
+\renewcommand{\floatpagefraction}{0.72}
+\renewcommand{\dbltopfraction}{0.95}
+\renewcommand{\dblfloatpagefraction}{0.72}
+
+% Tight but conventional float separation; body type and margins are unchanged.
+\setlength{\textfloatsep}{8pt plus 2pt minus 3pt}
+\setlength{\dbltextfloatsep}{8pt plus 2pt minus 3pt}
+\setlength{\intextsep}{7pt plus 2pt minus 3pt}
+\setlength{\abovecaptionskip}{3pt plus 1pt minus 1pt}
+\setlength{\belowcaptionskip}{2pt plus 1pt minus 1pt}
+
+\newcommand{\system}{the platform}
+% Review copy is anonymous. The AI-use statement is maintained in
+% AI-DISCLOSURE.md for the journal-approved disclosure channel and is not
+% compiled into this manuscript.
+\newif\ifblindreview
+\blindreviewtrue
+
+\begin{document}
+\bstctlcite{IEEEbstctl}
+
+\title{AgentWorkShop: A Modular Task-to-Device Integration Framework for Industrial Agents}
+
+\author{}
+\markboth{IEEE Transactions on Industrial Informatics, Submitted Manuscript}{AgentWorkShop: Task-to-Device Integration}
+
+\maketitle
+
+\begin{abstract}
+Industrial agents must adapt to scene-specific process signals and protocols
+while preserving links among task context, device commands, and process
+evidence. This paper presents AgentWorkShop, a modular task-to-device framework
+that composes task adapters, production context, shared named operations,
+semantic input/output (I/O), runtime checks, configured drivers, and
+service-owned records.
+Registered tasks enter through the collaboration runtime, whereas direct
+operation calls use the same dispatcher without creating a task. For writes,
+applicable guards, any configured approval, and context revalidation precede
+software dispatch; command receipts remain distinct from later process
+observations.
+We evaluate three caller routes---registered harness, fixture-backed
+command-line task, and direct Representational State Transfer (REST)---across
+cast-film and annealing simulators with different signal and protocol
+mappings. Within the registered-harness route, deterministic fixed-request
+replays isolate route execution from model selection. Six model-mediated
+registered tasks and six deterministic executions across fixed-request
+harness replays, direct REST calls, and fixture-backed command-line tasks
+preserved their applicable record links; all 12 post-operation samples remained below their
+scene target bands. A mock-state context guard rejected every injected
+stale-context change before writes, while its ablation allowed six product/run
+changes. One coating-line blueprint replay confirmed a simulator write. Four
+deterministic simulator missions, one per scenario, ended within their
+scenario-specific target windows. These results characterize selected
+integration paths and scenario-specific simulator behavior; they do not
+demonstrate process improvement or general portability.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Industrial agents, industrial communication, industrial informatics,
+production systems, semantic data integration.
+\end{IEEEkeywords}
+
+\IEEEpeerreviewmaketitle
+
+\input{sections/introduction}
+\input{sections/related}
+\input{sections/system}
+\input{sections/modules}
+\input{sections/evaluation}
+\input{sections/discussion}
+
+\bibliographystyle{IEEEtran}
+% Keep IEEEtran's default bibliography size and leading.
+\bibliography{resources/refs}
+
+\end{document}

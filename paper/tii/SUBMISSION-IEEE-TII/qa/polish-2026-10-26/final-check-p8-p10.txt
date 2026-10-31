@@ -1,0 +1,214 @@
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT                                                                                                                                                             8
+
+
+
+                                                                TABLE II
+   S CENARIO OBJECTIVES , CONTROL SEQUENCES , AND MISSION - REPORTED OUTCOMES IN THE INTEGRATED SIMULATOR BENCHMARK . N UMERICAL
+                                                 VALUES RETAIN SOURCE - LOG PRECISION .
+
+Scenario and target                       Process trajectory and operations                                                                    Reported outcome and evidence boundary
+Injection molding
+Weight:                                   Three record-linked, judged actions changed hold pressure, hold                                      The terminal weight is within [32.15, 32.85] g. The log reports
+32.5 ± 0.35 g                             time, and hold pressure again. Weight progressed from 31.262 to                                      flash rate 0.0158% (limit 0.4%) and sink index 0.9458 (limit 1.5).
+                                          31.913, 32.140, and 32.370 g.
+BOPET film
+Thickness:                                Four record-linked, judged actions adjusted casting speed, fast-                                     The terminal thickness is within [24.3, 25.7] µm. The companion
+25.0 ± 0.7 µm                             roll speed, and rail-out width. Thickness decreased from 28.00 to                                    execution log reports melt temperature of 291.5–291.8 ◦ C within
+                                          26.58, 25.98, 25.78, and 25.30 µm.                                                                   the configured 268–300 ◦ C interval and 9/9 driver checks.
+Continuous
+annealing
+Hardness:                                 The hardness trajectory decreased from 134.92 to 99.38 HV after                                      The mission log reports a final hardness of 98.7 HV in [89,
+95 ± 6 HV;                                an unlinked zone-3 action, then to 99.42 and 98.14 HV after two                                      101] HV and a 17.14% speed increase, above the 5% mission
+throughput: ≥ 5%                          zone-2 trims. Two speed increases took the line from 140 to                                          threshold. Its narrative records the reverted 176 m/min candidate
+                                          164 m/min; a 176 m/min candidate was reverted.                                                       at 100.8 HV: below the 101 HV target limit but above the 100 HV
+                                                                                                                                               margin cutoff used for speed acceptance. This value is absent from
+                                                                                                                                               the structured trajectory. The first action lacks a linked judgment
+                                                                                                                                               record, and final tensile and surface-defect values are absent.
+A2O wastewater
+DO: 3.4 ± 0.6 mg/L                        Five blower adjustments increased structured dissolved oxygen                                        The mission outcome reports DO of 3.55 mg/L and effluent com-
+                                          (DO) from 0.228 to 2.157, 2.807, 2.860, 3.227, and 3.507 mg/L. A                                     pliance. Its simulator cost index changed from 181.2 to 180.0; this
+                                          NaOH adjustment reported pH 6.62 (configured range 6–9); three                                       is not measured energy or currency. The outcome DO differs from
+                                          polyaluminium-chloride (PAC) actions reduced total phosphorus                                        the final structured trace value, and a complete terminal effluent
+                                          (TP) from 0.549 to 0.416 mg/L (configured upper limit 0.5 mg/L).                                     vector is not archived.
+                                          Three later cost-trim writes were restored after checks.
+
+
+                              (a) Injection molding                                                                                                (b) BOPET film
+                                                                                                                                         28
+                                                                                                             Film thickness (µm)
+    Part weight (g)
+
+
+
+
+                       32.5
+
+                       32.0                                                                                                              26
+
+                       31.5
+
+                                Start              HP                   HT               HP                                                         Start          Cast              Roll          Rail            Cast
+                                                 45→58.09             6→10.69        58.1→61.91                                                                  32→33.7          118→120.5     3000→3034       33.7→34.2
+
+
+
+                              (c) Continuous annealing                                                                                             (d) A2O wastewater
+                                                                                                                     Dissolved oxygen (mg/L)
+
+
+
+
+                                                                                                                                               4
+       Hardness (HV)
+
+
+
+
+                       120
+                                                                                                                                               2
+
+                       100
+
+
+                              Start        Z3      Z2      Z2    Speed   Speed             Mission                                                 Start    Aeration   Aeration    Aeration   Aeration   Aeration   Mission
+                                        730→850 710→722 722→734 140→152 152→164             end                                                                1          2           3          4          5        end
+
+
+                              Narrative: 100.8 HV at 176 m/min; reverted.                                                                          NaOH and PAC stages follow aeration; their PVs differ from DO.
+
+                                           Target band          Structured PV trajectory       Observation after unlinked action                                       Separate mission endpoint
+
+
+Fig. 6. Four scenario-specific process trajectories from the integrated simulator benchmark output. Each panel uses its native process-variable unit; the shaded
+region marks that scenario’s target band, and the horizontal axis shows event order rather than elapsed time. HP/HT denote hold pressure/time; Z2/Z3 denote
+annealing zones. Circles mark structured observations, the open triangle marks the annealing observation after an action without a linked judgment record,
+and open squares mark separately reported mission endpoints that are not connected to the structured trajectory. The wastewater sequence plots dissolved
+oxygen during aeration; later NaOH and PAC stages act on different variables. The reverted 176 m/min annealing candidate appears only in the narrative log
+as 100.8 HV, above the 100 HV margin cutoff, and is not plotted as a structured process observation.
+
+A2O. This variation illustrates what remains common at the                                            C. Interpretation and Limitations
+framework boundary while each control problem stays scene-
+specific. It does not test transfer of a shared control law.                                            The records support configured task-to-device execution
+                                                                                                      across four simulator profiles, each with its own signal map,
+                                                                                                      controls, and target rules. Evidence completeness differs: in-
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT                                                                               9
+
+
+
+jection and BOPET link judged operations to their reported         tions, device drivers, and service-owned records. One inte-
+endpoints, whereas annealing and wastewater have incomplete        grated simulator benchmark output contains four scenario-
+or discordant terminal records. The deterministic routines         specific missions whose logs report target attainment for
+and unlike objectives do not establish learned optimization,       injection molding, BOPET film, annealing, and wastewater
+arbitrary-scene portability, or comparative performance.           treatment. The clearest traces show operation requests fol-
+   Each scenario has one trajectory and no independent process     lowed by process measurements and scenario judgments; the
+replication, so the study provides no estimate of run-to-run       annealing and wastewater evidence also exposes endpoint-
+variation or statistical uncertainty. The output lacks a run       record gaps that limit interpretation. The results demonstrate
+manifest, source revision, and consistent timing metadata. The     configured execution across the four tested simulator scenes,
+wastewater plot uses the structured DO target because it differs   but not model-selected optimization, independent repeatabil-
+from the free-text target. All observations come from local        ity, comparative process improvement, general portability, or
+simulators, not physical equipment; the findings are bounded       physical-plant performance.
+to execution in these four preconfigured scenes.
+
+                                                                                                 R EFERENCES
+                      VI. D ISCUSSION
+A. Interpretation                                                   [1] Y. Xia, N. Jazdi, J. Zhang, C. Shah, and M. Weyrich, “Control industrial
+                                                                        automation system with large language model agents,” in Proc. IEEE
+   The four missions support a narrow architectural interpre-           30th Int. Conf. on Emerging Technologies and Factory Automation
+tation. Reuse lies in keeping task context, operation dispatch,         (ETFA), 2025, pp. 1–8, doi: 10.1109/ETFA65518.2025.11205539.
+                                                                    [2] K.-C. Huang, H.-T. Lin, C.-H. Lin, and M.-T. Huang, “Large language
+device mapping, and evidence ownership stable while each                model integration in industrial cyber-physical systems: A multi-modal
+scene defines its own target and constraints. This complements          architecture for automated control generation,” in Proc. Int. Conf. on
+prior work on task-level industrial agents and on plant-specific        Control, Automation and Diagnosis (ICCAD), 2026, pp. 1–6, doi: 10.
+                                                                        1109/ICCAD69956.2026.11643124.
+approval or process validation, but addresses their software        [3] K. Köhle, D. Anicic, T. A. Runkler, and R. Graf, “LLM-driven multi-
+integration boundary [1], [11], [12]. The evaluation illustrates        agent control for skill-based smart manufacturing,” in Proc. IEEE 31st
+this composition without comparing platforms or entry routes,           Int. Conf. on Emerging Technologies and Factory Automation (ETFA),
+                                                                        2026, pp. 1–8, doi: 10.1109/ETFA68377.2026.11725257.
+so it supports no claim of superior performance.                    [4] M. Waseem, K. Bhatta, C. Li, and Q. Chang, “Pretrained LLMs as real-
+   The incomplete annealing and wastewater endpoints also               time controllers for robot operated serial production line,” Mach. Learn.:
+have a system-level implication. A mission-level success flag           Eng., vol. 2, no. 1, 2026, art. no. 015006; doi: 10.1088/3049-4761/
+                                                                        ae4ee8.
+cannot verify terminal quality when the final process vector is     [5] Z. Liu et al., “Agents4PLC: Automating closed-loop PLC code gen-
+missing or differs from the structured trace. A deployment that         eration and verification in industrial control systems using LLM-based
+relies on process evidence should declare required terminal             agents,” IEEE Trans. Softw. Eng., vol. 52, no. 5, pp. 1672–1687, 2026,
+                                                                        doi: 10.1109/TSE.2026.3667895.
+variables for each scene and persist their observations with
+                                                                    [6] R. Wu, J. Ai, and T. Li, “InstructMPC: A human-LLM-in-the-loop
+operation records. This is a design requirement suggested by            framework for context-aware control,” in Proc. IEEE 64th Conf. on De-
+the evidence gaps, not a feature validated by this benchmark.           cision and Control (CDC), 2025, pp. 172–179, doi: 10.1109/CDC57313.
+   The process objectives also remain distinct. Part weight,            2025.11312156.
+                                                                    [7] J. Lim and I. Kovalenko, “A large language model-enabled control
+film thickness, hardness, dissolved oxygen, and the simulator-          architecture for dynamic resource capability exploration in multi-agent
+defined wastewater cost index have different units and mean-            manufacturing systems,” in Proc. IEEE 21st Int. Conf. on Automation
+ings; they cannot be pooled into one score. Because the                 Science and Engineering (CASE), 2025, pp. 2088–2095, doi: 10.1109/
+                                                                        CASE58245.2025.11163802.
+routines are deterministic and do not use a language model,         [8] Z. Zhao et al., “A large language model-based multi-agent manufacturing
+the study evaluates configured execution rather than learned            system for intelligent shopfloors,” Adv. Eng. Inform., vol. 69, 2026, art.
+reasoning or optimization-policy quality.                               no. 103888; doi: 10.1016/j.aei.2025.103888.
+                                                                    [9] M. S. Gill, J. Vyas, A. Markaj, F. Gehlhoff, and M. Mercangöz,
+                                                                        “Leveraging LLM agents and digital twins for fault handling in process
+                                                                        plants,” in Proc. IEEE ETFA, 2025, pp. 1–8, doi: 10.1109/ETFA65518.
+B. Scope and Limitations                                                2025.11205597.
+   One deterministic trajectory per scene, without an alterna-     [10] B. Hofmann, N. Piechulek, S. Kreitlein, J. Franke, and P. Bruendl,
+                                                                        “Beyond touch-based human-machine interface: Control your machines
+tive policy, precludes claims about repeatability or compara-           in natural language by utilizing large language models and OPC
+tive benefit. Independent repeats from controlled initial states        UA,” arXiv preprint arXiv:2510.11300, 2025. [Online]. Available:
+would test whether the observed paths recur; a matched policy           https://arxiv.org/abs/2510.11300v2
+comparison would test whether the framework changes process        [11] C. Graul, W. Żarski, D. Mikołajewski, and I. Rojek, “Ai agents in
+                                                                        industry 4.0: AAS–OPC UA–LLM architecture as the foundation of
+performance. Simulator results also do not establish physical           intelligent manufacturing systems in the context of industrial enterprise
+transfer, operator effectiveness, or energy and chemical sav-           implementation,” Applied Sciences, vol. 16, no. 11, p. 5428, 2026, doi:
+ings. A hardware study would need synchronized terminal                 10.3390/app16115428.
+                                                                   [12] D. Schall, “Safe integration of large language models into industrial
+guard records and independent PLC or safety-instrumented                process control: A multi-agent architecture with P&ID-grounded vali-
+protection, which this experiment does not replace.                     dation,” Autonomous Intelligent Systems, vol. 6, 2026, article no. 14;
+                                                                        doi: 10.1007/s43684-026-00136-1.
+                                                                   [13] S.-C. Lin and C.-Y. Chen, “An integrated framework featuring policy-
+                     VII. C ONCLUSION                                   governed agentic AI for closed-loop manufacturing control with multi-
+                                                                        source sensor–MES–ERP,” The International Journal of Advanced Man-
+  AgentWorkShop provides a modular task-to-device frame-                ufacturing Technology, vol. 143, pp. 6405–6428, 2026, doi: 10.1007/
+work that connects configured scene context, named opera-               s00170-026-17806-2.
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT                10
+
+
+
+[14] A. Biskupovic, A. Villalonga, F. Castaño, R. E. Haber, and F. Núñez,
+     “Agent-based supervision for service-oriented industrial cyber–physical
+     systems,” IEEE Trans. Ind. Inform., vol. 21, no. 3, pp. 2719–2728, 2025,
+     doi: 10.1109/TII.2024.3514178.
+[15] Y. Xia, N. Jazdi, and M. Weyrich, “An architecture for integrating large
+     language models with digital twins and automation systems,” in Proc.
+     IEEE 30th Int. Conf. on Emerging Technologies and Factory Automation
+     (ETFA), 2025, pp. 1–8, doi: 10.1109/ETFA65518.2025.11205636.
+[16] L. M. Vieira da Silva, A. Köcher, and F. Gehlhoff, “Beyond formal
+     semantics for capabilities and skills: Model context protocol in manu-
+     facturing,” in Proc. IEEE 30th Int. Conf. on Emerging Technologies and
+     Factory Automation (ETFA), 2025, pp. 1–4, doi: 10.1109/ETFA65518.
+     2025.11205601.
+[17] K. Köhle, D. Anicic, T. A. Runkler, K. Dorofeev, A. S. Thuluva, and
+     R. Graf, “Virtually commissioned semantic recipes based on OPC UA
+     skills,” in Proc. IEEE 8th Int. Conf. on Industrial Cyber-Physical Sys-
+     tems (ICPS), 2025, pp. 1–6, doi: 10.1109/ICPS65515.2025.11087832.
+[18] X. Jiang et al., “Agentic AI for safety-aware process monitoring and
+     fault diagnosis: A review,” Processes, vol. 14, no. 13, 2026, art. no.
+     2112; doi: 10.3390/pr14132112.
+[19] Model Context Protocol contributors, “Model Context Protocol:
+     Tools,” Specification, version 2026-07-28, 2026, accessed: Oct. 20,
+     2026. [Online]. Available: https://modelcontextprotocol.io/specification/
+     2026-07-28/server/tools
+[20] ISA, “ISA-88.00.01-2010: Batch control—part 1: Models and terminol-
+     ogy,” International Standard, 2010.
+[21] ——, “ANSI/ISA-95.00.01-2025 (IEC 62264-1 mod): Enterprise-control
+     system integration—part 1: Models and terminology,” International
+     Standard, 2025.
+[22] J. Moyne, E. del Castillo, and A. M. Hurwitz, Eds., Run-to-Run Control
+     in Semiconductor Manufacturing, 1st ed. Boca Raton, FL: CRC Press,
+     2000.
+[23] H. Wang, C. M. Poskitt, and J. Sun, “AgentSpec: Customizable runtime
+     enforcement for safe and reliable LLM agents,” in Proc. IEEE/ACM
+     48th Int. Conf. on Software Engineering (ICSE), 2026, pp. 2938–2950,
+     doi: 10.1145/3744916.3764546.
+[24] E. Debenedetti et al., “Defeating prompt injections by design,”
+     2025, arXiv preprint arXiv:2503.18813. [Online]. Available: https:
+     //arxiv.org/abs/2503.18813
+

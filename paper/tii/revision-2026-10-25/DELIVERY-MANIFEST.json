@@ -1,0 +1,1760 @@
+{
+  "revision": "2026-10-25",
+  "pages": 10,
+  "manuscript_pdf": {
+    "name": "IEEE-TII-manuscript-2026-10-25.pdf",
+    "sha256": "6dc1ba6cbef682b886eaeddcb410e7706be840e1b3a5b91793636d0fe3c8b514",
+    "bytes": 391317
+  },
+  "base_evidence_package": {
+    "name": "IEEE-TII-anonymous-evidence.zip",
+    "sha256": "578a14539c6ca8e17226106f93fed302d43a83ff5eb81ea01c2a560e1f394ae3",
+    "bytes": 981848
+  },
+  "source": {
+    "name": "IEEE-TII-manuscript-source-2026-10-25.zip",
+    "sha256": "d3d7192a23b75b9a4506505637e8e3ec6c9519bbe754385baf33f87e34fe609f",
+    "bytes": 3143245,
+    "entries": 41,
+    "files": {
+      "CLAIM-EVIDENCE-LEDGER.md": "3bd0b635950572ec0edacaaa718b1455757078ce9d4b85a153bcc93adc24d977",
+      "EVIDENCE-PACKAGE.txt": "d7f6e66ebe3444d88250ca7bc30490fcb73b47738261b224daef6fe4b5a94620",
+      "FILE-MANIFEST.json": "80dab46d50b38788ab4bdb00886e38cac8e789b254b7e692d755851dc952f29f",
+      "README.md": "ce3e68170ec2b42b55c7c1b43fa403223c040031c8fbab091768495ade1af6ec",
+      "REPRODUCIBILITY.md": "3e8fee9cc20691d34534ba6b7cad78ceb3e221f950f90f695d008c876c8ca30c",
+      "figure-design/README.md": "1c1953eeb9f121fa14816fcfc0a53d32741142c502ecb7b09444ee20e57dcb2b",
+      "figure-design/fig1-generated-concept.png": "14824282a0234e332f132534fc3d2d6343bf034775724da17a830410ee426812",
+      "figure-design/fig1-prompt.txt": "9abf3b177428a2cefb5b70fbfb5ac1c13057ecccbef830ef624f9143b40d30ca",
+      "figure-design/fig2-generated-concept.png": "4c84aa0ff5282af2050960bdebac9ccf8eeadb5b587caa1d5bdaa80a2b4bc3e4",
+      "figure-design/fig2-prompt.txt": "459712ea587883a68418b1e03256107cec84e9c97622b55617544a1d8da1946a",
+      "figure-source-data/source-data-governance.csv": "cd5045eb2198d1c0545b099e635091f7403e5fc44e9f70321b0eaa2e984daf99",
+      "figure-source-data/source-data-governance.json": "17ad5f3408b77a47f96e5121a119432f96e0efed9b9d8590cbd1b60fb3e8dc9e",
+      "figure-source-data/source-data-injection.csv": "b7f646059fa3f2d71db7216a6d7e903951141673e83803b645b45cd49c5ed259",
+      "figure-source-data/source-data-injection.json": "16ead5067549d9f821b2df7c800543d0d788e8f022e945b8eac793fcb9d50c92",
+      "figure-source-data/source-data-manifest.json": "cadae220750fd12121c6dad14318f73d4479f6c89ed2ca1026e9a89e6400d9c5",
+      "figure-source-data/source-data-missions-controls.csv": "cb68c7d4405d6c351b36dc7e61bce6d9ac75bcc298869065409f8ba1080a6cd8",
+      "figure-source-data/source-data-missions-outcomes.csv": "cada5f27e281e7b858dd6fa4f872335d214e44b594d5534e05409db9e73ee2c4",
+      "figure-source-data/source-data-missions.json": "4d22b75630f1b871b21bbaca3038a26f63ae9deb01c16279a5ee8a38a31bc621",
+      "figures/make-evaluation-2026.py": "beb69dd350e3dcc6a4e7c4febbdbe001eee662bb292f5d6625ddd2ca7d6b0427",
+      "figures/make-system-2026.py": "d33447e06a3424246867e64708a4bae4cb9d5ded001a9168e3bff10e0870803a",
+      "main.bbl": "55a22bdbe09d9562bbe75b364b1acfaf0e4fd5eae59e4c0d0d575c386526f2c4",
+      "main.pdf": "6dc1ba6cbef682b886eaeddcb410e7706be840e1b3a5b91793636d0fe3c8b514",
+      "main.tex": "e9bf8f356ff2304d5b5e238fc1e9b4a7476994af2e97738dfdb1d23125b6b537",
+      "requirements/IEEE-TII-REQUIREMENTS.md": "d613bf380da6bd8085e6484cc78dfc11ee1652eab451eedd8181197f07652ced",
+      "resources/fig-admission-hitl-2026.pdf": "921082cb80c73cbcc508dac7d8cf6a062f4cde89fa18ae0dd5ee50c371b4bc17",
+      "resources/fig-admission-hitl-2026.svg": "008b8fa8b0ecca1699bbfd53f4b11577dcb4d31ce7bcf01f9516e0f47cced836",
+      "resources/fig-architecture-2026-9pt.eps": "b73b8c1e4d037f7b4d5d0c0118864feaa9ece8734170589793de09d129da260b",
+      "resources/fig-architecture-2026-9pt.pdf": "d2d88fd6885e60e86bc2ede03a79b25451875bbaa854c0c08dca7ba540c1ed55",
+      "resources/fig-architecture-2026-9pt.svg": "ada9724f09d6452d9e5dac331a89971988c5d950399d64ea635b45568891fb0e",
+      "resources/fig-runtime-2026-9pt.eps": "d265720744e91199791a15fa335220ee6afa485ba746d41ddda6ab4d3ab6297d",
+      "resources/fig-runtime-2026-9pt.pdf": "26c9ad6767969f283ce758d52cbeb73941d63f5dd757845ec526eb41291057db",
+      "resources/fig-runtime-2026-9pt.svg": "5f07f03bfd8e7a5d8d5a9d0e1c12e75db739ec3ab24d034b84f08bdec98d8f52",
+      "resources/refs.bib": "78171dee786b4cc6aa0852f39fa3f06698fb28457a6b386acc99d7c346126c72",
+      "resources/results-macros.tex": "ea537a79f5ad245e950daf2bb468ee2dcd92b76dfdbe19d5d334fb8f96c5b4b5",
+      "sections/discussion.tex": "f836a4e88f873174017f2e47b655e7f42960cbd96fba677389bc7b717f673c59",
+      "sections/evaluation.tex": "d1544eae59c69ceee7943e00e5756cd35beff0d497b3b61e70c9d5f4cb2bfa6f",
+      "sections/introduction.tex": "3da9ec53bb86b9b7f7f1532f915fb7607a0ff256be8466a15b174391db8a6f5f",
+      "sections/mechanisms.tex": "2e5d11b5120b0da9f4454d5d247be17d0536503a7f98fc4df6affb21de75451a",
+      "sections/modules.tex": "89bf7ab19219e7ea0b87f7ab25dcdcbe344939c29f0c044b74aba75b2970cfa7",
+      "sections/related.tex": "4044a2bd94bfcec93f3534b4394eb470961d68b8e5e8a41a3e9974d8be7c81b9",
+      "sections/system.tex": "4145a6f96277788d07a170edb94b38e34bbf1a8a662077456036c863fec2268e"
+    },
+    "original_and_delivered": {
+      "main.tex": {
+        "original_sha256": "e9bf8f356ff2304d5b5e238fc1e9b4a7476994af2e97738dfdb1d23125b6b537",
+        "delivered_sha256": "e9bf8f356ff2304d5b5e238fc1e9b4a7476994af2e97738dfdb1d23125b6b537",
+        "bytes_original": 5617,
+        "bytes_delivered": 5617,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "sections/discussion.tex": {
+        "original_sha256": "f836a4e88f873174017f2e47b655e7f42960cbd96fba677389bc7b717f673c59",
+        "delivered_sha256": "f836a4e88f873174017f2e47b655e7f42960cbd96fba677389bc7b717f673c59",
+        "bytes_original": 1535,
+        "bytes_delivered": 1535,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "sections/evaluation.tex": {
+        "original_sha256": "d1544eae59c69ceee7943e00e5756cd35beff0d497b3b61e70c9d5f4cb2bfa6f",
+        "delivered_sha256": "d1544eae59c69ceee7943e00e5756cd35beff0d497b3b61e70c9d5f4cb2bfa6f",
+        "bytes_original": 9531,
+        "bytes_delivered": 9531,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "sections/introduction.tex": {
+        "original_sha256": "3da9ec53bb86b9b7f7f1532f915fb7607a0ff256be8466a15b174391db8a6f5f",
+        "delivered_sha256": "3da9ec53bb86b9b7f7f1532f915fb7607a0ff256be8466a15b174391db8a6f5f",
+        "bytes_original": 6775,
+        "bytes_delivered": 6775,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "sections/mechanisms.tex": {
+        "original_sha256": "2e5d11b5120b0da9f4454d5d247be17d0536503a7f98fc4df6affb21de75451a",
+        "delivered_sha256": "2e5d11b5120b0da9f4454d5d247be17d0536503a7f98fc4df6affb21de75451a",
+        "bytes_original": 5062,
+        "bytes_delivered": 5062,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "sections/modules.tex": {
+        "original_sha256": "89bf7ab19219e7ea0b87f7ab25dcdcbe344939c29f0c044b74aba75b2970cfa7",
+        "delivered_sha256": "89bf7ab19219e7ea0b87f7ab25dcdcbe344939c29f0c044b74aba75b2970cfa7",
+        "bytes_original": 9497,
+        "bytes_delivered": 9497,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "sections/related.tex": {
+        "original_sha256": "4044a2bd94bfcec93f3534b4394eb470961d68b8e5e8a41a3e9974d8be7c81b9",
+        "delivered_sha256": "4044a2bd94bfcec93f3534b4394eb470961d68b8e5e8a41a3e9974d8be7c81b9",
+        "bytes_original": 8657,
+        "bytes_delivered": 8657,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "sections/system.tex": {
+        "original_sha256": "4145a6f96277788d07a170edb94b38e34bbf1a8a662077456036c863fec2268e",
+        "delivered_sha256": "4145a6f96277788d07a170edb94b38e34bbf1a8a662077456036c863fec2268e",
+        "bytes_original": 7866,
+        "bytes_delivered": 7866,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "main.pdf": {
+        "original_sha256": "6dc1ba6cbef682b886eaeddcb410e7706be840e1b3a5b91793636d0fe3c8b514",
+        "delivered_sha256": "6dc1ba6cbef682b886eaeddcb410e7706be840e1b3a5b91793636d0fe3c8b514",
+        "bytes_original": 391317,
+        "bytes_delivered": 391317,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "main.bbl": {
+        "original_sha256": "55a22bdbe09d9562bbe75b364b1acfaf0e4fd5eae59e4c0d0d575c386526f2c4",
+        "delivered_sha256": "55a22bdbe09d9562bbe75b364b1acfaf0e4fd5eae59e4c0d0d575c386526f2c4",
+        "bytes_original": 11218,
+        "bytes_delivered": 11218,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "resources/fig-architecture-2026-9pt.pdf": {
+        "original_sha256": "d2d88fd6885e60e86bc2ede03a79b25451875bbaa854c0c08dca7ba540c1ed55",
+        "delivered_sha256": "d2d88fd6885e60e86bc2ede03a79b25451875bbaa854c0c08dca7ba540c1ed55",
+        "bytes_original": 50822,
+        "bytes_delivered": 50822,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "resources/fig-admission-hitl-2026.pdf": {
+        "original_sha256": "921082cb80c73cbcc508dac7d8cf6a062f4cde89fa18ae0dd5ee50c371b4bc17",
+        "delivered_sha256": "921082cb80c73cbcc508dac7d8cf6a062f4cde89fa18ae0dd5ee50c371b4bc17",
+        "bytes_original": 51099,
+        "bytes_delivered": 51099,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "resources/fig-runtime-2026-9pt.pdf": {
+        "original_sha256": "26c9ad6767969f283ce758d52cbeb73941d63f5dd757845ec526eb41291057db",
+        "delivered_sha256": "26c9ad6767969f283ce758d52cbeb73941d63f5dd757845ec526eb41291057db",
+        "bytes_original": 42475,
+        "bytes_delivered": 42475,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "resources/fig-architecture-2026-9pt.svg": {
+        "original_sha256": "ada9724f09d6452d9e5dac331a89971988c5d950399d64ea635b45568891fb0e",
+        "delivered_sha256": "ada9724f09d6452d9e5dac331a89971988c5d950399d64ea635b45568891fb0e",
+        "bytes_original": 16494,
+        "bytes_delivered": 16494,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "resources/fig-admission-hitl-2026.svg": {
+        "original_sha256": "008b8fa8b0ecca1699bbfd53f4b11577dcb4d31ce7bcf01f9516e0f47cced836",
+        "delivered_sha256": "008b8fa8b0ecca1699bbfd53f4b11577dcb4d31ce7bcf01f9516e0f47cced836",
+        "bytes_original": 12181,
+        "bytes_delivered": 12181,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "resources/fig-runtime-2026-9pt.svg": {
+        "original_sha256": "5f07f03bfd8e7a5d8d5a9d0e1c12e75db739ec3ab24d034b84f08bdec98d8f52",
+        "delivered_sha256": "5f07f03bfd8e7a5d8d5a9d0e1c12e75db739ec3ab24d034b84f08bdec98d8f52",
+        "bytes_original": 10373,
+        "bytes_delivered": 10373,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "resources/fig-architecture-2026-9pt.eps": {
+        "original_sha256": "b73b8c1e4d037f7b4d5d0c0118864feaa9ece8734170589793de09d129da260b",
+        "delivered_sha256": "b73b8c1e4d037f7b4d5d0c0118864feaa9ece8734170589793de09d129da260b",
+        "bytes_original": 187922,
+        "bytes_delivered": 187922,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "resources/fig-runtime-2026-9pt.eps": {
+        "original_sha256": "d265720744e91199791a15fa335220ee6afa485ba746d41ddda6ab4d3ab6297d",
+        "delivered_sha256": "d265720744e91199791a15fa335220ee6afa485ba746d41ddda6ab4d3ab6297d",
+        "bytes_original": 146235,
+        "bytes_delivered": 146235,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "resources/refs.bib": {
+        "original_sha256": "78171dee786b4cc6aa0852f39fa3f06698fb28457a6b386acc99d7c346126c72",
+        "delivered_sha256": "78171dee786b4cc6aa0852f39fa3f06698fb28457a6b386acc99d7c346126c72",
+        "bytes_original": 14029,
+        "bytes_delivered": 14029,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "resources/results-macros.tex": {
+        "original_sha256": "ea537a79f5ad245e950daf2bb468ee2dcd92b76dfdbe19d5d334fb8f96c5b4b5",
+        "delivered_sha256": "ea537a79f5ad245e950daf2bb468ee2dcd92b76dfdbe19d5d334fb8f96c5b4b5",
+        "bytes_original": 7131,
+        "bytes_delivered": 7131,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "figures/make-system-2026.py": {
+        "original_sha256": "d33447e06a3424246867e64708a4bae4cb9d5ded001a9168e3bff10e0870803a",
+        "delivered_sha256": "d33447e06a3424246867e64708a4bae4cb9d5ded001a9168e3bff10e0870803a",
+        "bytes_original": 20340,
+        "bytes_delivered": 20340,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "figures/make-evaluation-2026.py": {
+        "original_sha256": "beb69dd350e3dcc6a4e7c4febbdbe001eee662bb292f5d6625ddd2ca7d6b0427",
+        "delivered_sha256": "beb69dd350e3dcc6a4e7c4febbdbe001eee662bb292f5d6625ddd2ca7d6b0427",
+        "bytes_original": 19172,
+        "bytes_delivered": 19172,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "README.md": {
+        "original_sha256": "ce3e68170ec2b42b55c7c1b43fa403223c040031c8fbab091768495ade1af6ec",
+        "delivered_sha256": "ce3e68170ec2b42b55c7c1b43fa403223c040031c8fbab091768495ade1af6ec",
+        "bytes_original": 6403,
+        "bytes_delivered": 6403,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "REPRODUCIBILITY.md": {
+        "original_sha256": "3e8fee9cc20691d34534ba6b7cad78ceb3e221f950f90f695d008c876c8ca30c",
+        "delivered_sha256": "3e8fee9cc20691d34534ba6b7cad78ceb3e221f950f90f695d008c876c8ca30c",
+        "bytes_original": 39389,
+        "bytes_delivered": 39389,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "CLAIM-EVIDENCE-LEDGER.md": {
+        "original_sha256": "3bd0b635950572ec0edacaaa718b1455757078ce9d4b85a153bcc93adc24d977",
+        "delivered_sha256": "3bd0b635950572ec0edacaaa718b1455757078ce9d4b85a153bcc93adc24d977",
+        "bytes_original": 13511,
+        "bytes_delivered": 13511,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "figure-source-data/source-data-governance.json": {
+        "original_sha256": "e4d1b8adf22f74f8cb915eef1457de7ae7882fd65d665899ce99cbf3885dc52c",
+        "delivered_sha256": "17ad5f3408b77a47f96e5121a119432f96e0efed9b9d8590cbd1b60fb3e8dc9e",
+        "bytes_original": 6370,
+        "bytes_delivered": 6198,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "figure-source-data/source-data-injection.json": {
+        "original_sha256": "460ac5afe322d7db334a10992f4638ec0c83260b36a5b2d451deb4f2bf50f55e",
+        "delivered_sha256": "16ead5067549d9f821b2df7c800543d0d788e8f022e945b8eac793fcb9d50c92",
+        "bytes_original": 3149,
+        "bytes_delivered": 3052,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "figure-source-data/source-data-manifest.json": {
+        "original_sha256": "3b814b3bd8b0c48ef260bc7742424c3a9402b2d482954119934736cfe69b305b",
+        "delivered_sha256": "cadae220750fd12121c6dad14318f73d4479f6c89ed2ca1026e9a89e6400d9c5",
+        "bytes_original": 8008,
+        "bytes_delivered": 7753,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "figure-source-data/source-data-missions.json": {
+        "original_sha256": "68cb99a8629174deae9ddcb11f101b91c29473359427bb3490b95d6e00ba832e",
+        "delivered_sha256": "4d22b75630f1b871b21bbaca3038a26f63ae9deb01c16279a5ee8a38a31bc621",
+        "bytes_original": 80578,
+        "bytes_delivered": 78163,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "figure-source-data/source-data-governance.csv": {
+        "original_sha256": "cd5045eb2198d1c0545b099e635091f7403e5fc44e9f70321b0eaa2e984daf99",
+        "delivered_sha256": "cd5045eb2198d1c0545b099e635091f7403e5fc44e9f70321b0eaa2e984daf99",
+        "bytes_original": 3421,
+        "bytes_delivered": 3421,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "figure-source-data/source-data-injection.csv": {
+        "original_sha256": "b7f646059fa3f2d71db7216a6d7e903951141673e83803b645b45cd49c5ed259",
+        "delivered_sha256": "b7f646059fa3f2d71db7216a6d7e903951141673e83803b645b45cd49c5ed259",
+        "bytes_original": 1085,
+        "bytes_delivered": 1085,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "figure-source-data/source-data-missions-controls.csv": {
+        "original_sha256": "cb68c7d4405d6c351b36dc7e61bce6d9ac75bcc298869065409f8ba1080a6cd8",
+        "delivered_sha256": "cb68c7d4405d6c351b36dc7e61bce6d9ac75bcc298869065409f8ba1080a6cd8",
+        "bytes_original": 3759,
+        "bytes_delivered": 3759,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "figure-source-data/source-data-missions-outcomes.csv": {
+        "original_sha256": "cada5f27e281e7b858dd6fa4f872335d214e44b594d5534e05409db9e73ee2c4",
+        "delivered_sha256": "cada5f27e281e7b858dd6fa4f872335d214e44b594d5534e05409db9e73ee2c4",
+        "bytes_original": 3513,
+        "bytes_delivered": 3513,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "requirements/IEEE-TII-REQUIREMENTS.md": {
+        "original_sha256": "d613bf380da6bd8085e6484cc78dfc11ee1652eab451eedd8181197f07652ced",
+        "delivered_sha256": "d613bf380da6bd8085e6484cc78dfc11ee1652eab451eedd8181197f07652ced",
+        "bytes_original": 15137,
+        "bytes_delivered": 15137,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "figure-design/fig1-prompt.txt": {
+        "original_sha256": "9abf3b177428a2cefb5b70fbfb5ac1c13057ecccbef830ef624f9143b40d30ca",
+        "delivered_sha256": "9abf3b177428a2cefb5b70fbfb5ac1c13057ecccbef830ef624f9143b40d30ca",
+        "bytes_original": 3011,
+        "bytes_delivered": 3011,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "figure-design/fig2-prompt.txt": {
+        "original_sha256": "459712ea587883a68418b1e03256107cec84e9c97622b55617544a1d8da1946a",
+        "delivered_sha256": "459712ea587883a68418b1e03256107cec84e9c97622b55617544a1d8da1946a",
+        "bytes_original": 2572,
+        "bytes_delivered": 2572,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "figure-design/fig1-generated-concept.png": {
+        "original_sha256": "14824282a0234e332f132534fc3d2d6343bf034775724da17a830410ee426812",
+        "delivered_sha256": "14824282a0234e332f132534fc3d2d6343bf034775724da17a830410ee426812",
+        "bytes_original": 1251247,
+        "bytes_delivered": 1251247,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "figure-design/fig2-generated-concept.png": {
+        "original_sha256": "4c84aa0ff5282af2050960bdebac9ccf8eeadb5b587caa1d5bdaa80a2b4bc3e4",
+        "delivered_sha256": "4c84aa0ff5282af2050960bdebac9ccf8eeadb5b587caa1d5bdaa80a2b4bc3e4",
+        "bytes_original": 1521449,
+        "bytes_delivered": 1521449,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      }
+    },
+    "privacy_scan": {
+      "passed": true,
+      "entries": 41,
+      "scope": "explicit identities, local drive/user paths, identifying repository URLs; PDF text/metadata and PNG metadata"
+    }
+  },
+  "evidence": {
+    "name": "IEEE-TII-anonymous-evidence-2026-10-25.zip",
+    "sha256": "af9b90b87fc9f867b679eb40f7cf5d79d459f9fadd3f25d32be7bf73ff984d5a",
+    "bytes": 1712689,
+    "entries": 341,
+    "extension_original_and_delivered": {
+      "revision-2026-10-25/R11/scenarios.json": {
+        "original_sha256": "2f0c13551e909ea30d502c19b351024ed918ec5ea8bb25d9a4184b8855c7aafc",
+        "delivered_sha256": "88835e77d8e8e1a0b6e44cb3a5a954dd42800cdf0b6bb3da9c4f2f52be48bb45",
+        "bytes_original": 26587,
+        "bytes_delivered": 25860,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R11/scenarios-benchmark.md": {
+        "original_sha256": "c8a46c68e7cc0792cbb84c5ea46385a231acafc217d3709c5fe19220fd54865a",
+        "delivered_sha256": "c8a46c68e7cc0792cbb84c5ea46385a231acafc217d3709c5fe19220fd54865a",
+        "bytes_original": 5203,
+        "bytes_delivered": 5203,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R11/scenarios-mission-injection.log": {
+        "original_sha256": "bb6e5baefa3bf7eb60c7ea82b773bbbe02ac5ec805937082beb3dddffa3b08a3",
+        "delivered_sha256": "bb6e5baefa3bf7eb60c7ea82b773bbbe02ac5ec805937082beb3dddffa3b08a3",
+        "bytes_original": 3249,
+        "bytes_delivered": 3249,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R12/summary.json": {
+        "original_sha256": "d9162a4215abdcf201d42da68316da3716909209c76103d306a979c1dec45f12",
+        "delivered_sha256": "7b6f4836e7f97d35f0832b0d8cbd93d186e9a3d83b7bcb075c728652f45de202",
+        "bytes_original": 5148,
+        "bytes_delivered": 5069,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/software/current-software-tests.log": {
+        "original_sha256": "e64a660c32ac1a2af16edc4f06a8f198f2337013da1330565bf32f84eaf92d12",
+        "delivered_sha256": "80acb53ecbc42543d1c442b7ea8101c9d1600cad4b14d67d64ecc7b63486b763",
+        "bytes_original": 6828,
+        "bytes_delivered": 6771,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/software/current-full-software-tests.log": {
+        "original_sha256": "2b45bd01308f3415c719ecbab06829492bd1233238257c1a2bf659aeead3497d",
+        "delivered_sha256": "81874a78272f7e50839224e74bf3258e3f1c78ef1a7e6c86179d88b306169d9b",
+        "bytes_original": 56468,
+        "bytes_delivered": 56300,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/software/approval-context-regression.log": {
+        "original_sha256": "b16e56523b2818fafac3d127c08e38a715771a6f7f8eef0ade01e1cde28276fd",
+        "delivered_sha256": "b16e56523b2818fafac3d127c08e38a715771a6f7f8eef0ade01e1cde28276fd",
+        "bytes_original": 2356,
+        "bytes_delivered": 2356,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/software/approval-context-ablation.log": {
+        "original_sha256": "5bd938d594d858bd02cec77e2dd16d9ad9df7a5f468c6c79c2b22df9d392b253",
+        "delivered_sha256": "5bd938d594d858bd02cec77e2dd16d9ad9df7a5f468c6c79c2b22df9d392b253",
+        "bytes_original": 4261,
+        "bytes_delivered": 4261,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/software/current-simulator-harness-blocked.json": {
+        "original_sha256": "fb75be8268601eb13bd6c4547bb23e88dda4b5468f10487cfd4e1af483d9c4cb",
+        "delivered_sha256": "97c952d4d1f0aafc4ce3f7474446d9129b1ebcad4df1505075ea5c3f7ab440a5",
+        "bytes_original": 980,
+        "bytes_delivered": 862,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/REPRODUCIBILITY.md": {
+        "original_sha256": "3e8fee9cc20691d34534ba6b7cad78ceb3e221f950f90f695d008c876c8ca30c",
+        "delivered_sha256": "3e8fee9cc20691d34534ba6b7cad78ceb3e221f950f90f695d008c876c8ca30c",
+        "bytes_original": 39389,
+        "bytes_delivered": 39389,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/CLAIM-EVIDENCE-LEDGER.md": {
+        "original_sha256": "3bd0b635950572ec0edacaaa718b1455757078ce9d4b85a153bcc93adc24d977",
+        "delivered_sha256": "3bd0b635950572ec0edacaaa718b1455757078ce9d4b85a153bcc93adc24d977",
+        "bytes_original": 13511,
+        "bytes_delivered": 13511,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R13/README.md": {
+        "original_sha256": "67e69d1389de1c362c7216faef86784588dc9bdfb117079f195de1fe92b7e389",
+        "delivered_sha256": "67e69d1389de1c362c7216faef86784588dc9bdfb117079f195de1fe92b7e389",
+        "bytes_original": 5092,
+        "bytes_delivered": 5092,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R14/README.md": {
+        "original_sha256": "81f0d2d3f6c54338d0303ac66d219cfc12c41a09f1debba3d0fd2be8e9317f8d",
+        "delivered_sha256": "81f0d2d3f6c54338d0303ac66d219cfc12c41a09f1debba3d0fd2be8e9317f8d",
+        "bytes_original": 1183,
+        "bytes_delivered": 1183,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R13-PROVENANCE.json": {
+        "original_sha256": "5832e14ba5c236faef88a60ec4be839db4d0fc4bc4fe9dec900c3c24bd9bc518",
+        "delivered_sha256": "5832e14ba5c236faef88a60ec4be839db4d0fc4bc4fe9dec900c3c24bd9bc518",
+        "bytes_original": 3349,
+        "bytes_delivered": 3349,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/source-snapshot/scripts/e2e-simulator-optimizer-paper.mjs": {
+        "original_sha256": "907848c9faa8c64444eab036b20bd7c3ed09030aa87251ad6cdcfd59242e5952",
+        "delivered_sha256": "907848c9faa8c64444eab036b20bd7c3ed09030aa87251ad6cdcfd59242e5952",
+        "bytes_original": 21506,
+        "bytes_delivered": 21506,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R21/e2e-registered-harness-simulator-paper.mjs": {
+        "original_sha256": "eec35018b9260cc667a881dd5dd45e0c8f71ef8e11627807fa92f3800bde060f",
+        "delivered_sha256": "eec35018b9260cc667a881dd5dd45e0c8f71ef8e11627807fa92f3800bde060f",
+        "bytes_original": 99576,
+        "bytes_delivered": 99576,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R21/omp-paper-harness.mjs": {
+        "original_sha256": "99328f6548e80f0cf5ef2bd980f7971d8660ebb5339ac0fdf0222fee5d2152e6",
+        "delivered_sha256": "99328f6548e80f0cf5ef2bd980f7971d8660ebb5339ac0fdf0222fee5d2152e6",
+        "bytes_original": 4908,
+        "bytes_delivered": 4908,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R22/e2e-direct-rest-simulator-paper.mjs": {
+        "original_sha256": "f6bb7b771848d363f22aba74bb7ff7bcce9b4f1013252e9770d9320aac542c0c",
+        "delivered_sha256": "f6bb7b771848d363f22aba74bb7ff7bcce9b4f1013252e9770d9320aac542c0c",
+        "bytes_original": 39853,
+        "bytes_delivered": 39853,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R13/execution.log": {
+        "original_sha256": "324e6aa98b65a5f9a3f6d3284c5a989c609e4c825399a69f5598265dc22c36ff",
+        "delivered_sha256": "9b2ff9ceb7536ad4078d097b98a123e249b022305c5d655dddaed2682f3971bb",
+        "bytes_original": 27877,
+        "bytes_delivered": 27905,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R13/report.json": {
+        "original_sha256": "d287f55360cd96bea5920eb0e63b1c1a3a8762a6c4d54bd8b0fb66a44a81fa2c",
+        "delivered_sha256": "f077628ac351c0854eb881a09edfea2841849289c86206a92cbd10a5a54c903c",
+        "bytes_original": 48796,
+        "bytes_delivered": 48458,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R13/dataset-anneal/manifest.json": {
+        "original_sha256": "578d08205900f043a3deb5df9af567d77313a9d091c4739f3b31b09ec720fbad",
+        "delivered_sha256": "f6c973d08616ba3f5b2a6ddb46be0bf1fdf2809228a094f371fe9a990b269146",
+        "bytes_original": 4383,
+        "bytes_delivered": 4384,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R13/dataset-anneal/report.json": {
+        "original_sha256": "9190ab61dc1900af534d235773b6e067f0b3c3fe1868dc77d6f4e89562eff645",
+        "delivered_sha256": "8edbaed48b0d4deea9e8b956770e9fefefaeb4b2c9983b9e00d85e20d3658461",
+        "bytes_original": 2234,
+        "bytes_delivered": 2235,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R13/dataset-anneal/spec.json": {
+        "original_sha256": "0b2c0afd234a02db58fd0757de0c1160df3af044465647bfe3f3c89c6aebdf05",
+        "delivered_sha256": "e93274d1110489c0d27d2b0accbc5800b5169a98881223a8e4daa0606d876e9b",
+        "bytes_original": 637,
+        "bytes_delivered": 638,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R13/dataset-film/manifest.json": {
+        "original_sha256": "3463a18d911caac591527565a16dda431928f7b873c581cfe48185d33c4bdcbd",
+        "delivered_sha256": "e527440b6880dece0d969d06336846aced72e61b228cd0b74b6303cc6668ba95",
+        "bytes_original": 4379,
+        "bytes_delivered": 4380,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R13/dataset-film/report.json": {
+        "original_sha256": "8bab190471373a49c1afc8ff51e241dd5600339f45fe2c8b0e5ce462f7443460",
+        "delivered_sha256": "e2dffd2649f8d688787d1190318efa16d40b6d51f8f37ec9aec9acb08dcddc86",
+        "bytes_original": 2229,
+        "bytes_delivered": 2230,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R13/dataset-film/spec.json": {
+        "original_sha256": "2beacd6281ec8edf7d6e8db3ec9f94b5bdb2232e4fa0f0204698b7997d5f1573",
+        "delivered_sha256": "23e2d70c462187522a2b3eb17fef9aa86651b22d85be2d133f6727e9c0defa96",
+        "bytes_original": 637,
+        "bytes_delivered": 638,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R13/job-anneal-artifacts/artifact_manifest.json": {
+        "original_sha256": "ae4a334cbf3b1a9a041892167b4695e5960554375a45a287e214e38ae89eb3cd",
+        "delivered_sha256": "90b72fd1b59e429863ef28f46608d634ac3f038184f443bb432ae39eb5ca866a",
+        "bytes_original": 236,
+        "bytes_delivered": 237,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R13/job-anneal-artifacts/metrics.json": {
+        "original_sha256": "3aee9c7922f9e8dd065675368d9994e58183a6efb761d96da93328060052899f",
+        "delivered_sha256": "a04afeb110517d019a47d87d700c107498e568b9ec2786e0ca2576d410aa2535",
+        "bytes_original": 524,
+        "bytes_delivered": 523,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R13/job-anneal-artifacts/model.json": {
+        "original_sha256": "6b78511413f6636b6a01767645cdaca035e0964405527c43d9afe5b1c24fcf17",
+        "delivered_sha256": "eef29a3734546f4a25ce24188c8c52b68cb2c66d50eed9dab300bb711f6645fe",
+        "bytes_original": 1675,
+        "bytes_delivered": 1674,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R13/job-film-artifacts/artifact_manifest.json": {
+        "original_sha256": "0e0869354b50b424b0dae646532b1535d2ec6c6d321daf77ccfd34b6e3e9d849",
+        "delivered_sha256": "5b22ff69f97263af9661cfa7bfb8a4fde48e69e2f44f300070d7457021443127",
+        "bytes_original": 236,
+        "bytes_delivered": 237,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R13/job-film-artifacts/metrics.json": {
+        "original_sha256": "8693362b764f5c3ede52d936a52858da66b76d058d1fda7364c448b87c02793b",
+        "delivered_sha256": "c52877c2ab209b341084bbaab4e3afc3b9a1f130b7a91acd046230dec7851f23",
+        "bytes_original": 519,
+        "bytes_delivered": 521,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R13/job-film-artifacts/model.json": {
+        "original_sha256": "bcdff88790aabbeac845440bc0855d8b976e8f8d9020fd974a02bd22efa81aa3",
+        "delivered_sha256": "d4838a6b93252028d0bc2889c3e8c78ae67e8f0caad83d74c5acadcac43794f0",
+        "bytes_original": 1668,
+        "bytes_delivered": 1670,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R13/dataset-anneal/arrays/mask.f32": {
+        "original_sha256": "9d66813108bdcdbb537934da647c315ef1bdc365998e13b52fe37c47b70f254d",
+        "delivered_sha256": "9d66813108bdcdbb537934da647c315ef1bdc365998e13b52fe37c47b70f254d",
+        "bytes_original": 31440,
+        "bytes_delivered": 31440,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R13/dataset-anneal/arrays/sidecar.json": {
+        "original_sha256": "d7d57831c8c7d47c06caa73133388d4c351c5f23755780ceddb1f9552a389836",
+        "delivered_sha256": "39a0eb49297d659bff5aa1e9e680d076b551469531aecebbe5f07771afbe78aa",
+        "bytes_original": 765,
+        "bytes_delivered": 766,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R13/dataset-anneal/arrays/timestamps.f64": {
+        "original_sha256": "186271af557c7b5363c386baa8d0b954b1ddc29da1ea5295586cd8be24f6bae5",
+        "delivered_sha256": "186271af557c7b5363c386baa8d0b954b1ddc29da1ea5295586cd8be24f6bae5",
+        "bytes_original": 62880,
+        "bytes_delivered": 62880,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R13/dataset-anneal/arrays/u.f32": {
+        "original_sha256": "0dab25789272e760893af7db02f5b7e6828759dca67389122170397c5408bd7c",
+        "delivered_sha256": "0dab25789272e760893af7db02f5b7e6828759dca67389122170397c5408bd7c",
+        "bytes_original": 10480,
+        "bytes_delivered": 10480,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R13/dataset-anneal/arrays/x.f32": {
+        "original_sha256": "325294af5e055292780a81997c1304a7e54ad1f3d8c2660e826fe6e225ea5e0e",
+        "delivered_sha256": "325294af5e055292780a81997c1304a7e54ad1f3d8c2660e826fe6e225ea5e0e",
+        "bytes_original": 41920,
+        "bytes_delivered": 41920,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R13/dataset-anneal/arrays/y.f32": {
+        "original_sha256": "060590d3a7cecc4b3740651711f16bd56b93947bd29e18ef58a3d49eca83405e",
+        "delivered_sha256": "060590d3a7cecc4b3740651711f16bd56b93947bd29e18ef58a3d49eca83405e",
+        "bytes_original": 10480,
+        "bytes_delivered": 10480,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R13/dataset-film/arrays/mask.f32": {
+        "original_sha256": "0fc82ecc9dcbb4f9fa125476767ddc45980c109b80c58c4f98d80c9c865ebdcd",
+        "delivered_sha256": "0fc82ecc9dcbb4f9fa125476767ddc45980c109b80c58c4f98d80c9c865ebdcd",
+        "bytes_original": 31584,
+        "bytes_delivered": 31584,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R13/dataset-film/arrays/sidecar.json": {
+        "original_sha256": "ef468322816995f8b8a47f867c5923a2f31cd5d779bf278935350973290cc9e4",
+        "delivered_sha256": "7473d826bd592a4f30f25c6c7274abbc064c42d3a9b1e0b7ad518c26c18b08c0",
+        "bytes_original": 765,
+        "bytes_delivered": 766,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R13/dataset-film/arrays/timestamps.f64": {
+        "original_sha256": "7b39b0853a759a8d9afcaf1206aff9cf1f5510c01bfc55ddaa877bfc4b2e4192",
+        "delivered_sha256": "7b39b0853a759a8d9afcaf1206aff9cf1f5510c01bfc55ddaa877bfc4b2e4192",
+        "bytes_original": 63168,
+        "bytes_delivered": 63168,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R13/dataset-film/arrays/u.f32": {
+        "original_sha256": "dc0718a6de17be6f8fd456e74f257b196a8ca5f73a06435981840d9c771374b2",
+        "delivered_sha256": "dc0718a6de17be6f8fd456e74f257b196a8ca5f73a06435981840d9c771374b2",
+        "bytes_original": 10528,
+        "bytes_delivered": 10528,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R13/dataset-film/arrays/x.f32": {
+        "original_sha256": "c622593c816d3effbdc09014449084e1b28057d6a147abc6a35ed01250114ad1",
+        "delivered_sha256": "c622593c816d3effbdc09014449084e1b28057d6a147abc6a35ed01250114ad1",
+        "bytes_original": 42112,
+        "bytes_delivered": 42112,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R13/dataset-film/arrays/y.f32": {
+        "original_sha256": "d1a340590b5afc07af20875e1e0f50fb089e739fcfa470dad3880971b4d2cf29",
+        "delivered_sha256": "d1a340590b5afc07af20875e1e0f50fb089e739fcfa470dad3880971b4d2cf29",
+        "bytes_original": 10528,
+        "bytes_delivered": 10528,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R14/execution.log": {
+        "original_sha256": "99473ac3d1086c77da79500da2b3fa64bd2485a79c35f6fa360c513d2550c681",
+        "delivered_sha256": "7f35b7ce10ae23b5fe455fff8df9aea4c4b28038a0eb10f08a05397085f359a4",
+        "bytes_original": 27908,
+        "bytes_delivered": 27936,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R14/report.json": {
+        "original_sha256": "cd621a7c365e6dec950d0a8c1986a2268970b1cbbb1b6326962af527e961358a",
+        "delivered_sha256": "ba6d31f3131120b1746d6f215c1c6c2dba1402a9be6317e5a911434d2fd9d9f5",
+        "bytes_original": 48952,
+        "bytes_delivered": 48614,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R14/dataset-anneal/manifest.json": {
+        "original_sha256": "8c431e99f5659fea66c8392106e66b6fa16e9d0e2d827fe49e52e369876c8a68",
+        "delivered_sha256": "b27082a287534a972d86eeca28a1cdc2fb1b551c977a84538bf242e16016f745",
+        "bytes_original": 4378,
+        "bytes_delivered": 4379,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R14/dataset-anneal/report.json": {
+        "original_sha256": "eab513333cd59f0a30e09ee1bbbe92bcb8239e65b790de152e1ed1e7e905ce2f",
+        "delivered_sha256": "81ad123df21a29a3213f72dbe3a2b215542256ac45b23402cff0321fe7506181",
+        "bytes_original": 2240,
+        "bytes_delivered": 2241,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R14/dataset-anneal/spec.json": {
+        "original_sha256": "ccae28cb0d33248f6ee30e4a54f554ae97d6395228cc9ab80c862b4df4138aee",
+        "delivered_sha256": "26515360d957392b48789e4318deb14cf818299190709a6433009626f7b65ac8",
+        "bytes_original": 637,
+        "bytes_delivered": 638,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R14/dataset-film/manifest.json": {
+        "original_sha256": "941e705a21026492f01f6a1119c0c836e757070c81a396be159675c9097bee50",
+        "delivered_sha256": "996d758d37f65384f471a8deb7b83fb2a5ab88347241d8a3ff5c548c2462cb07",
+        "bytes_original": 4380,
+        "bytes_delivered": 4381,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R14/dataset-film/report.json": {
+        "original_sha256": "9b80e3b6e2e8e40232925cbc886d5f61e7998a562c295669c72e2368cb7fd68b",
+        "delivered_sha256": "44f185102b5397adac34a8edd33d2fc409456555d920f28e0f2d926e29777f56",
+        "bytes_original": 2238,
+        "bytes_delivered": 2239,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R14/dataset-film/spec.json": {
+        "original_sha256": "e506e5310094c2ccbc1e46379e88577f4c377b74bdbcbec7f54594ce381d8b22",
+        "delivered_sha256": "0ded8ad2f804918e8a177a9bdc1cc644dc0db257b2cc1ea9c70f0a757340cc87",
+        "bytes_original": 637,
+        "bytes_delivered": 638,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R14/job-anneal-artifacts/artifact_manifest.json": {
+        "original_sha256": "ef0425ea6e8e6db91e2f54e21b1413599cd9c00c1034c25ee6a76ccec1ffce5e",
+        "delivered_sha256": "5c4ae2ef906cda9e3141ac6367f9601fcc4c1b1f68052ceefa8102c2be300bf9",
+        "bytes_original": 236,
+        "bytes_delivered": 237,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R14/job-anneal-artifacts/metrics.json": {
+        "original_sha256": "f5bba439dfdfde2b82751984839c85921e0bfc0384ee951aa0ad1e133293e955",
+        "delivered_sha256": "53cd68c535af7761ae64a9150a02d5cfb5d5acb378c91eb352bb01001d700457",
+        "bytes_original": 524,
+        "bytes_delivered": 524,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R14/job-anneal-artifacts/model.json": {
+        "original_sha256": "f77c14006a801f6ff588d0a754a577d0e5e5899d33d1d2dea4769dd2e3f96f68",
+        "delivered_sha256": "8fab7a51fc338a04dd4c695a82761c63bb657520626c0f7bb63116c80bc0f31f",
+        "bytes_original": 1676,
+        "bytes_delivered": 1676,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R14/job-film-artifacts/artifact_manifest.json": {
+        "original_sha256": "7d94010ad4e56329fc872583107bf5b6adfda0647bfdc4ef407aea841a0b8078",
+        "delivered_sha256": "3574e82fbbd804c8722a2e1aa8d43a527777d7bf6a9a532a7a00a5c63945772c",
+        "bytes_original": 236,
+        "bytes_delivered": 237,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R14/job-film-artifacts/metrics.json": {
+        "original_sha256": "c98ae788bd3724af428d34e9b085c720f9c5aafebe5e80de1e084016c28b5df1",
+        "delivered_sha256": "f00a179e073e839bd0f2fd898d59a018aca3249204e6e3ad166c227aee36723c",
+        "bytes_original": 516,
+        "bytes_delivered": 518,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R14/job-film-artifacts/model.json": {
+        "original_sha256": "f996c80fcccecce61a4e90a927de04837db69fdd98322229422afcee39cd4565",
+        "delivered_sha256": "ad961ddfa47ed7b1e37d4e4f1eafd2da04072323eeea89e30c8edd4a03702274",
+        "bytes_original": 1675,
+        "bytes_delivered": 1677,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R14/dataset-anneal/arrays/mask.f32": {
+        "original_sha256": "42479ec53686bcd224a1925e6dbc6ef9ed36df71d79c029a1aa04a78c08c6ea5",
+        "delivered_sha256": "42479ec53686bcd224a1925e6dbc6ef9ed36df71d79c029a1aa04a78c08c6ea5",
+        "bytes_original": 25824,
+        "bytes_delivered": 25824,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R14/dataset-anneal/arrays/sidecar.json": {
+        "original_sha256": "ee594e5065cee57e6e6f8bb7cd8f79413207a9886caa8a6838ad1d2298c455d2",
+        "delivered_sha256": "25419ce6befca2a54c6d659548f5dc1d40e47869bc9fed5ecde108bde56dfdb4",
+        "bytes_original": 764,
+        "bytes_delivered": 765,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R14/dataset-anneal/arrays/timestamps.f64": {
+        "original_sha256": "1385a73c44aa456b536eb7d492a8342ee23d0a54730592c7b9e2c14467a4da3b",
+        "delivered_sha256": "1385a73c44aa456b536eb7d492a8342ee23d0a54730592c7b9e2c14467a4da3b",
+        "bytes_original": 51648,
+        "bytes_delivered": 51648,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R14/dataset-anneal/arrays/u.f32": {
+        "original_sha256": "13a94df4223441ee5599bb5b2f2b7ac4e6dff5f3d058f584ed37574d1861b47a",
+        "delivered_sha256": "13a94df4223441ee5599bb5b2f2b7ac4e6dff5f3d058f584ed37574d1861b47a",
+        "bytes_original": 8608,
+        "bytes_delivered": 8608,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R14/dataset-anneal/arrays/x.f32": {
+        "original_sha256": "09198af06413d94c9608c7ccc137dd0a763102f1caae8310d27a99ca0c8150f9",
+        "delivered_sha256": "09198af06413d94c9608c7ccc137dd0a763102f1caae8310d27a99ca0c8150f9",
+        "bytes_original": 34432,
+        "bytes_delivered": 34432,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R14/dataset-anneal/arrays/y.f32": {
+        "original_sha256": "0b029feab83af960f9652a8af21b8240fd9555d5ce32e9d8aff8b81f6879cc18",
+        "delivered_sha256": "0b029feab83af960f9652a8af21b8240fd9555d5ce32e9d8aff8b81f6879cc18",
+        "bytes_original": 8608,
+        "bytes_delivered": 8608,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R14/dataset-film/arrays/mask.f32": {
+        "original_sha256": "23562f49f18ae5a8fba1d4a9dd034bdb8bb6e1f807ade2efebe534e6e1a0c922",
+        "delivered_sha256": "23562f49f18ae5a8fba1d4a9dd034bdb8bb6e1f807ade2efebe534e6e1a0c922",
+        "bytes_original": 25872,
+        "bytes_delivered": 25872,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R14/dataset-film/arrays/sidecar.json": {
+        "original_sha256": "248625a735f6c1a7fdc2d0d9bee588f2ef547f3069bf02001529fdf341b9fde6",
+        "delivered_sha256": "b3a1bf6a0412e1bdd8d193562c34bc8b5ae77e6bc4633a5e82dd945bd607551d",
+        "bytes_original": 764,
+        "bytes_delivered": 765,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R14/dataset-film/arrays/timestamps.f64": {
+        "original_sha256": "2bb685d39d0f09b03cafbbf6268f07eef2119289f5a94bfcf6b99523c42ba7ed",
+        "delivered_sha256": "2bb685d39d0f09b03cafbbf6268f07eef2119289f5a94bfcf6b99523c42ba7ed",
+        "bytes_original": 51744,
+        "bytes_delivered": 51744,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R14/dataset-film/arrays/u.f32": {
+        "original_sha256": "0a8ee34b8c0fdbe6f99e5c5e2ce6d216c6cbe52e493a55656d87cfe7d3602d1d",
+        "delivered_sha256": "0a8ee34b8c0fdbe6f99e5c5e2ce6d216c6cbe52e493a55656d87cfe7d3602d1d",
+        "bytes_original": 8624,
+        "bytes_delivered": 8624,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R14/dataset-film/arrays/x.f32": {
+        "original_sha256": "66f6edf845494874d72cf2033598fc1f87c9ca41e7284eacde709389110539ac",
+        "delivered_sha256": "66f6edf845494874d72cf2033598fc1f87c9ca41e7284eacde709389110539ac",
+        "bytes_original": 34496,
+        "bytes_delivered": 34496,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R14/dataset-film/arrays/y.f32": {
+        "original_sha256": "eccbb6b436fb70714590c073b22eeb0bc759afddfe96613f8fa58ec99ea476e1",
+        "delivered_sha256": "eccbb6b436fb70714590c073b22eeb0bc759afddfe96613f8fa58ec99ea476e1",
+        "bytes_original": 8624,
+        "bytes_delivered": 8624,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R16/agentworkshop.log": {
+        "original_sha256": "4ff667a496125a05af31434eb33ea2c386fb52e80c7dcfa0a647f71070e05af3",
+        "delivered_sha256": "ddb6dc2d2fea678dda919dcf95aab5d156ec94f9b1e44a88e76fd99137660372",
+        "bytes_original": 10407,
+        "bytes_delivered": 9850,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R16/application-daq-queue.patch": {
+        "original_sha256": "42913904ffb0e1cc8fba2120f2f65a1fc2b4dc8eaf90c1786fa0f5f831e09479",
+        "delivered_sha256": "42913904ffb0e1cc8fba2120f2f65a1fc2b4dc8eaf90c1786fa0f5f831e09479",
+        "bytes_original": 1604,
+        "bytes_delivered": 1604,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R16/daq-bus-index.ts": {
+        "original_sha256": "36f834451e837ef39d411f3501ffdec345929eab612aa3767e68557818c9c0ec",
+        "delivered_sha256": "36f834451e837ef39d411f3501ffdec345929eab612aa3767e68557818c9c0ec",
+        "bytes_original": 2163,
+        "bytes_delivered": 2163,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R16/e2e-registered-harness-simulator-paper.mjs": {
+        "original_sha256": "474c48921c61fb45c8305f1e389b9f2d8e4371bc3b92e815c27eed8b2933c8b3",
+        "delivered_sha256": "474c48921c61fb45c8305f1e389b9f2d8e4371bc3b92e815c27eed8b2933c8b3",
+        "bytes_original": 68362,
+        "bytes_delivered": 68362,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R16/evidence.json": {
+        "original_sha256": "cf35ee0b01102dc7f7d7f7477cce3b98b8c5750c3b7d3d09c4b8c412efe63eb0",
+        "delivered_sha256": "81168f3e6dafb4174f5ea3b645e45de47d34a55243085f94a96d12ce7fb25739",
+        "bytes_original": 33635,
+        "bytes_delivered": 33488,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R16/fixture-annealing.json": {
+        "original_sha256": "67f3a66adfb10c5627fff747bba4fc2c266868436740687da6abdbfc0c0d18d3",
+        "delivered_sha256": "67f3a66adfb10c5627fff747bba4fc2c266868436740687da6abdbfc0c0d18d3",
+        "bytes_original": 1669,
+        "bytes_delivered": 1669,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R16/fixture-cast-film.json": {
+        "original_sha256": "5899d1f99bfb63400b67dfc57fc12dd1e71a45e27aad09bd6326203a079e7714",
+        "delivered_sha256": "5899d1f99bfb63400b67dfc57fc12dd1e71a45e27aad09bd6326203a079e7714",
+        "bytes_original": 1669,
+        "bytes_delivered": 1669,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R16/omp-paper-harness.mjs": {
+        "original_sha256": "99328f6548e80f0cf5ef2bd980f7971d8660ebb5339ac0fdf0222fee5d2152e6",
+        "delivered_sha256": "99328f6548e80f0cf5ef2bd980f7971d8660ebb5339ac0fdf0222fee5d2152e6",
+        "bytes_original": 4908,
+        "bytes_delivered": 4908,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R16/plugins-state.json": {
+        "original_sha256": "9c293b9608c6d42082ae7afe11391dcae75123de68585578fbec8e55d282b3a5",
+        "delivered_sha256": "9c293b9608c6d42082ae7afe11391dcae75123de68585578fbec8e55d282b3a5",
+        "bytes_original": 321,
+        "bytes_delivered": 321,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R16/R16-SUMMARY.md": {
+        "original_sha256": "43ac74347db31565646c87b417d7febd74c1119fc2c65b9d3cfd5ed505dc9d40",
+        "delivered_sha256": "43ac74347db31565646c87b417d7febd74c1119fc2c65b9d3cfd5ed505dc9d40",
+        "bytes_original": 3027,
+        "bytes_delivered": 3027,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R16/runtime-settings.json": {
+        "original_sha256": "9eb4f925e518aa8e9dfb7996e52586d03b9ddcc5532eba3c08df5315f187d5ce",
+        "delivered_sha256": "9eb4f925e518aa8e9dfb7996e52586d03b9ddcc5532eba3c08df5315f187d5ce",
+        "bytes_original": 418,
+        "bytes_delivered": 418,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R16/simulator-model.patch": {
+        "original_sha256": "962acb0cc25a6df108724d3ebed645c2b71363a17346ac97283716fc7d3cd5e3",
+        "delivered_sha256": "962acb0cc25a6df108724d3ebed645c2b71363a17346ac97283716fc7d3cd5e3",
+        "bytes_original": 4588,
+        "bytes_delivered": 4588,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R16/simulator.log": {
+        "original_sha256": "981e5889a83cb1596da64250f04ceb6c7824d6df04676760dc806ff6a64973a6",
+        "delivered_sha256": "981e5889a83cb1596da64250f04ceb6c7824d6df04676760dc806ff6a64973a6",
+        "bytes_original": 980,
+        "bytes_delivered": 980,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R20/agentworkshop.log": {
+        "original_sha256": "e925deeca1e00211285c1b3b34df0bb762b1a2a99764f37a5b7ee9a73905804e",
+        "delivered_sha256": "fcb16c6a49b25f8ef31efbac23c36286c4afc519bc6cbf63d054e6e35866bf7b",
+        "bytes_original": 192821,
+        "bytes_delivered": 192264,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R20/e2e-registered-harness-simulator-paper.mjs": {
+        "original_sha256": "eec35018b9260cc667a881dd5dd45e0c8f71ef8e11627807fa92f3800bde060f",
+        "delivered_sha256": "eec35018b9260cc667a881dd5dd45e0c8f71ef8e11627807fa92f3800bde060f",
+        "bytes_original": 99576,
+        "bytes_delivered": 99576,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R20/evidence.json": {
+        "original_sha256": "a1c9843cb379751253529bd5b769d6658d4dd8d59632527eac87eeb73e0b1615",
+        "delivered_sha256": "62ff3d5fb7789c6749ca736b9c0747618ddccedcf5e74536249cdc40e36cbf01",
+        "bytes_original": 101066,
+        "bytes_delivered": 100919,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R20/R20-SUMMARY.md": {
+        "original_sha256": "efdf0798e5208777b256b9c4db6181f8484771f735b9ff385e2e818568691a90",
+        "delivered_sha256": "efdf0798e5208777b256b9c4db6181f8484771f735b9ff385e2e818568691a90",
+        "bytes_original": 3894,
+        "bytes_delivered": 3894,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R20/simulator.log": {
+        "original_sha256": "7d17cab36b4ee448c210e1f296e853dab79ff838ada2afced9ae862ea01a194b",
+        "delivered_sha256": "7d17cab36b4ee448c210e1f296e853dab79ff838ada2afced9ae862ea01a194b",
+        "bytes_original": 980,
+        "bytes_delivered": 980,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R20/source-snapshot/app-working-tree.patch": {
+        "original_sha256": "ebe622a680571ff53a53f8244379960bbb74779ad14b9b55b7994196c0c41dce",
+        "delivered_sha256": "ebe622a680571ff53a53f8244379960bbb74779ad14b9b55b7994196c0c41dce",
+        "bytes_original": 5955,
+        "bytes_delivered": 5955,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R20/source-snapshot/README.md": {
+        "original_sha256": "a4d0f8f4aa144318242daccace8f34e9939fd3c31146ed570434db78868e37e0",
+        "delivered_sha256": "a4d0f8f4aa144318242daccace8f34e9939fd3c31146ed570434db78868e37e0",
+        "bytes_original": 1541,
+        "bytes_delivered": 1541,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R20/source-snapshot/simulator-working-tree.patch": {
+        "original_sha256": "b8b3a933490700a39ae8b4839904d1603aa3139501b88f122b5d0a5ea978c9e1",
+        "delivered_sha256": "b8b3a933490700a39ae8b4839904d1603aa3139501b88f122b5d0a5ea978c9e1",
+        "bytes_original": 4487,
+        "bytes_delivered": 4487,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R20/source-snapshot/source-manifest.json": {
+        "original_sha256": "4b698064c402e03cc66a1fa03f40c2c0245f57b5d70481b9bd228f599c7fc57d",
+        "delivered_sha256": "9b9020cad204ead1b18c7349302aefad67e3f5cc06b17987b86c1c5f8b3b710e",
+        "bytes_original": 1714,
+        "bytes_delivered": 1675,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R20/source-snapshot/dependency-files/app-pnpm-lock.yaml": {
+        "original_sha256": "a700582071a884225f47d11450ebcdee7fc3fa7a488fc4f35c0f5641d640af9e",
+        "delivered_sha256": "a700582071a884225f47d11450ebcdee7fc3fa7a488fc4f35c0f5641d640af9e",
+        "bytes_original": 534195,
+        "bytes_delivered": 534195,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R20/source-snapshot/dependency-files/simulator-package-lock.json": {
+        "original_sha256": "bdd14b62fb0041aef776f2a851e6871856f9025d2b91a5ba497b3ec115d9f37b",
+        "delivered_sha256": "c4825faa1a50f08bf92788250f03da71697a758112c9542dcd5cffc41a802875",
+        "bytes_original": 169936,
+        "bytes_delivered": 165465,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R20/source-snapshot/prompts/aml-mission-default.md": {
+        "original_sha256": "679a88bc3cc23fcf2730be98df28c9a11ca2a0d82e97805207bc856d889d6e16",
+        "delivered_sha256": "679a88bc3cc23fcf2730be98df28c9a11ca2a0d82e97805207bc856d889d6e16",
+        "bytes_original": 1682,
+        "bytes_delivered": 1682,
+        "transformed": false,
+        "rule": "runtime prompt asset preserved byte-for-byte; checked by package privacy scan"
+      },
+      "revision-2026-10-25/R20/source-snapshot/prompts/aml-playbook.md": {
+        "original_sha256": "35de8977d7004b7f0706506b68a7456606b6eea6827bd91775550134901b68fb",
+        "delivered_sha256": "35de8977d7004b7f0706506b68a7456606b6eea6827bd91775550134901b68fb",
+        "bytes_original": 3467,
+        "bytes_delivered": 3467,
+        "transformed": false,
+        "rule": "runtime prompt asset preserved byte-for-byte; checked by package privacy scan"
+      },
+      "revision-2026-10-25/R20/source-snapshot/prompts/compaction-hints.md": {
+        "original_sha256": "627e236f5713b235f23f8419d11368f105499b2d1b99e0d3e3008f0ee70ca15a",
+        "delivered_sha256": "627e236f5713b235f23f8419d11368f105499b2d1b99e0d3e3008f0ee70ca15a",
+        "bytes_original": 905,
+        "bytes_delivered": 905,
+        "transformed": false,
+        "rule": "runtime prompt asset preserved byte-for-byte; checked by package privacy scan"
+      },
+      "revision-2026-10-25/R20/source-snapshot/prompts/host-tools.json": {
+        "original_sha256": "01c88fa38b6a712db37190a478ad03cbbb715cd9f54b671ca6c25cb4f599c2c1",
+        "delivered_sha256": "01c88fa38b6a712db37190a478ad03cbbb715cd9f54b671ca6c25cb4f599c2c1",
+        "bytes_original": 144648,
+        "bytes_delivered": 144648,
+        "transformed": false,
+        "rule": "runtime prompt asset preserved byte-for-byte; checked by package privacy scan"
+      },
+      "revision-2026-10-25/R20/source-snapshot/prompts/lead-supervise.md": {
+        "original_sha256": "4f392b8e7c8be07c79002557e77958047d8243e951a43c851dfb0acc7b626206",
+        "delivered_sha256": "4f392b8e7c8be07c79002557e77958047d8243e951a43c851dfb0acc7b626206",
+        "bytes_original": 6707,
+        "bytes_delivered": 6707,
+        "transformed": false,
+        "rule": "runtime prompt asset preserved byte-for-byte; checked by package privacy scan"
+      },
+      "revision-2026-10-25/R20/source-snapshot/prompts/mode-goal.md": {
+        "original_sha256": "817a20c0c9ccd169a2d41060e109624cfc3c312f3016eb334b468f9e04522329",
+        "delivered_sha256": "817a20c0c9ccd169a2d41060e109624cfc3c312f3016eb334b468f9e04522329",
+        "bytes_original": 1731,
+        "bytes_delivered": 1731,
+        "transformed": false,
+        "rule": "runtime prompt asset preserved byte-for-byte; checked by package privacy scan"
+      },
+      "revision-2026-10-25/R20/source-snapshot/prompts/mode-loop.md": {
+        "original_sha256": "b8424ba383235bff76e0c7ae9bdd073635d2310c87b43cdf4681f61b6cdbdd37",
+        "delivered_sha256": "b8424ba383235bff76e0c7ae9bdd073635d2310c87b43cdf4681f61b6cdbdd37",
+        "bytes_original": 337,
+        "bytes_delivered": 337,
+        "transformed": false,
+        "rule": "runtime prompt asset preserved byte-for-byte; checked by package privacy scan"
+      },
+      "revision-2026-10-25/R20/source-snapshot/prompts/mode-pipeline.md": {
+        "original_sha256": "6f9e1ab46b87705ed14286110fffc255aae1366f05a8e3af7f3f0a458f22cb5c",
+        "delivered_sha256": "6f9e1ab46b87705ed14286110fffc255aae1366f05a8e3af7f3f0a458f22cb5c",
+        "bytes_original": 463,
+        "bytes_delivered": 463,
+        "transformed": false,
+        "rule": "runtime prompt asset preserved byte-for-byte; checked by package privacy scan"
+      },
+      "revision-2026-10-25/R20/source-snapshot/prompts/peer-lead-roster.md": {
+        "original_sha256": "ccc1b91d1014b4967271f38bb3fa97e884988a99cf7b308073d0fdc93f892e73",
+        "delivered_sha256": "ccc1b91d1014b4967271f38bb3fa97e884988a99cf7b308073d0fdc93f892e73",
+        "bytes_original": 298,
+        "bytes_delivered": 298,
+        "transformed": false,
+        "rule": "runtime prompt asset preserved byte-for-byte; checked by package privacy scan"
+      },
+      "revision-2026-10-25/R20/source-snapshot/prompts/peer-message.md": {
+        "original_sha256": "77aaeb32f4c9702a62cb26b002f9195536f77219fa6811c7029196183a0ad342",
+        "delivered_sha256": "77aaeb32f4c9702a62cb26b002f9195536f77219fa6811c7029196183a0ad342",
+        "bytes_original": 187,
+        "bytes_delivered": 187,
+        "transformed": false,
+        "rule": "runtime prompt asset preserved byte-for-byte; checked by package privacy scan"
+      },
+      "revision-2026-10-25/R20/source-snapshot/prompts/peer-reply-cross-channel.md": {
+        "original_sha256": "d789cd742a218d0f8c5a32febf802fc428b5b52adf8c2fb19efe0c623e654ab9",
+        "delivered_sha256": "d789cd742a218d0f8c5a32febf802fc428b5b52adf8c2fb19efe0c623e654ab9",
+        "bytes_original": 767,
+        "bytes_delivered": 767,
+        "transformed": false,
+        "rule": "runtime prompt asset preserved byte-for-byte; checked by package privacy scan"
+      },
+      "revision-2026-10-25/R20/source-snapshot/prompts/peer-reply-optional.md": {
+        "original_sha256": "32604d24228bfbbc035bac82b5c737e7f8f2ef70f5dc0c753cdf4df20be9cdfd",
+        "delivered_sha256": "32604d24228bfbbc035bac82b5c737e7f8f2ef70f5dc0c753cdf4df20be9cdfd",
+        "bytes_original": 495,
+        "bytes_delivered": 495,
+        "transformed": false,
+        "rule": "runtime prompt asset preserved byte-for-byte; checked by package privacy scan"
+      },
+      "revision-2026-10-25/R20/source-snapshot/prompts/peer-reply-required.md": {
+        "original_sha256": "7728923b6bfb9356161b5dae8882d90b3d99d73a77f494f5a18f1cd00d292270",
+        "delivered_sha256": "7728923b6bfb9356161b5dae8882d90b3d99d73a77f494f5a18f1cd00d292270",
+        "bytes_original": 764,
+        "bytes_delivered": 764,
+        "transformed": false,
+        "rule": "runtime prompt asset preserved byte-for-byte; checked by package privacy scan"
+      },
+      "revision-2026-10-25/R20/source-snapshot/prompts/scenario-default.md": {
+        "original_sha256": "0f8d9b8fb8563a5aa3a0c287eadd8b2515af11e8f3eeb66e9e26b21a2f3c96e2",
+        "delivered_sha256": "0f8d9b8fb8563a5aa3a0c287eadd8b2515af11e8f3eeb66e9e26b21a2f3c96e2",
+        "bytes_original": 836,
+        "bytes_delivered": 836,
+        "transformed": false,
+        "rule": "runtime prompt asset preserved byte-for-byte; checked by package privacy scan"
+      },
+      "revision-2026-10-25/R20/source-snapshot/prompts/system-manual.md": {
+        "original_sha256": "9c96bbb103711bc1ee59b7b369eee7cb94f7e49df402ef0cbf808f22418de600",
+        "delivered_sha256": "9c96bbb103711bc1ee59b7b369eee7cb94f7e49df402ef0cbf808f22418de600",
+        "bytes_original": 3171,
+        "bytes_delivered": 3171,
+        "transformed": false,
+        "rule": "runtime prompt asset preserved byte-for-byte; checked by package privacy scan"
+      },
+      "revision-2026-10-25/R20/source-snapshot/prompts/team-roster.md": {
+        "original_sha256": "2a77371e5b2e78fae2c0e066f6f4089fa5ac56388bb25e140b8760ffd24f133c",
+        "delivered_sha256": "2a77371e5b2e78fae2c0e066f6f4089fa5ac56388bb25e140b8760ffd24f133c",
+        "bytes_original": 992,
+        "bytes_delivered": 992,
+        "transformed": false,
+        "rule": "runtime prompt asset preserved byte-for-byte; checked by package privacy scan"
+      },
+      "revision-2026-10-25/R20/source-snapshot/prompts/worker-workflow.md": {
+        "original_sha256": "37b85b49c2873c85fcb920ba4e04df11104bfa56a2e40f84c9577031a5914021",
+        "delivered_sha256": "37b85b49c2873c85fcb920ba4e04df11104bfa56a2e40f84c9577031a5914021",
+        "bytes_original": 3011,
+        "bytes_delivered": 3011,
+        "transformed": false,
+        "rule": "runtime prompt asset preserved byte-for-byte; checked by package privacy scan"
+      },
+      "revision-2026-10-25/R20/source-snapshot/app-untracked/server/services/workshop/agents/omp-agent/supervision-history.ts": {
+        "original_sha256": "af047fac23a10db48cccbab37ff3a726cc51a78ea3609abc111a1a82f5a0bb0b",
+        "delivered_sha256": "af047fac23a10db48cccbab37ff3a726cc51a78ea3609abc111a1a82f5a0bb0b",
+        "bytes_original": 1440,
+        "bytes_delivered": 1440,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R21/agentworkshop.log": {
+        "original_sha256": "eabcde9a0959fab0c7ad3eb6fc174e882f9a3bff11ab4d85a60c53d9a140d860",
+        "delivered_sha256": "c144b2a1539d16141e3a6a13d5c8039b72c604039a365a8efb8ceae8a06231c7",
+        "bytes_original": 10509,
+        "bytes_delivered": 9952,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R21/evidence.json": {
+        "original_sha256": "c614957032cb8fd283e9b25638c0734a897bad06d50250f1e4f4fe24b5671fde",
+        "delivered_sha256": "82c134c3e684c9ac428f01d17e1bb542c9f274e4c0ddf172cd2a2799ac67686c",
+        "bytes_original": 33969,
+        "bytes_delivered": 33822,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R21/fixture-annealing.json": {
+        "original_sha256": "1f80f1c28c85099ba3718d3558c063267f9f76b260626f74aa2667c328e6efe2",
+        "delivered_sha256": "1f80f1c28c85099ba3718d3558c063267f9f76b260626f74aa2667c328e6efe2",
+        "bytes_original": 1669,
+        "bytes_delivered": 1669,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R21/fixture-cast-film.json": {
+        "original_sha256": "dec6ab437abfd5f5783a1e6732026dacb6d4db1f349870e98c91bb1b710d3986",
+        "delivered_sha256": "dec6ab437abfd5f5783a1e6732026dacb6d4db1f349870e98c91bb1b710d3986",
+        "bytes_original": 1669,
+        "bytes_delivered": 1669,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R21/simulator.log": {
+        "original_sha256": "9f62e317b78996d3f0f663ba8fd90a53a07436ff5678923b2705d28dbde3feb4",
+        "delivered_sha256": "9f62e317b78996d3f0f663ba8fd90a53a07436ff5678923b2705d28dbde3feb4",
+        "bytes_original": 980,
+        "bytes_delivered": 980,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R22/agentworkshop.log": {
+        "original_sha256": "f052fa34de7f56ae8924f8912a515d2cb8068c7ef7554a68807ebad3937cd1c4",
+        "delivered_sha256": "42677dc49608d53506459a7ae9fd3a4cb7aaf7e4aa52054a1d193b8a0e20a36b",
+        "bytes_original": 9562,
+        "bytes_delivered": 9040,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R22/evidence.json": {
+        "original_sha256": "77ccf73fac015f5c29e8ecd742a569620bd409a371256d8caa080b7645dca136",
+        "delivered_sha256": "77ccf73fac015f5c29e8ecd742a569620bd409a371256d8caa080b7645dca136",
+        "bytes_original": 17338,
+        "bytes_delivered": 17338,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R22/README.md": {
+        "original_sha256": "148c4f38a797b9cf350deb4510676a75b8ebee0b8353dcfd286dbbb7fa11a069",
+        "delivered_sha256": "148c4f38a797b9cf350deb4510676a75b8ebee0b8353dcfd286dbbb7fa11a069",
+        "bytes_original": 1295,
+        "bytes_delivered": 1295,
+        "transformed": false,
+        "rule": "derived from current experiment evidence.json; task/approval/receipt/sample joins validated where asserted; delivery-copy privacy scan applied"
+      },
+      "revision-2026-10-25/R22/simulator.log": {
+        "original_sha256": "29c387121ec0da2e8b041926740daba9f95cd66fee7040fbe655285df9f1d031",
+        "delivered_sha256": "29c387121ec0da2e8b041926740daba9f95cd66fee7040fbe655285df9f1d031",
+        "bytes_original": 987,
+        "bytes_delivered": 987,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R23/agentworkshop.log": {
+        "original_sha256": "0f59a6c2835885a535c79848355deb3a4258fabfa6a92f55a22f278f80008eff",
+        "delivered_sha256": "0f59a6c2835885a535c79848355deb3a4258fabfa6a92f55a22f278f80008eff",
+        "bytes_original": 12908,
+        "bytes_delivered": 12908,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R23/e2e-pi-simulator-paper.mjs": {
+        "original_sha256": "3db7d47d9b753ac54eeedc36ca94ee454b62f8303ffa287025ee3e813a25d7e4",
+        "delivered_sha256": "3db7d47d9b753ac54eeedc36ca94ee454b62f8303ffa287025ee3e813a25d7e4",
+        "bytes_original": 121109,
+        "bytes_delivered": 121109,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R23/evidence.json": {
+        "original_sha256": "596f3bfdf3f7fbd831c6822f40a370583d6aba4419c5e409fe89ee1e4cc50116",
+        "delivered_sha256": "78f98c9a97ec937720e9f9f36624e0f49955ac0bc7552aa52d7cc29e4489d6ea",
+        "bytes_original": 83676,
+        "bytes_delivered": 81101,
+        "transformed": true,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R23/pi-model-api-trace.json": {
+        "original_sha256": "850435309cbae82d771c0277bec60eb1c1ce7ffb94b7fbb3fe073de2afca2ae6",
+        "delivered_sha256": "850435309cbae82d771c0277bec60eb1c1ce7ffb94b7fbb3fe073de2afca2ae6",
+        "bytes_original": 16161,
+        "bytes_delivered": 16161,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R23/README.md": {
+        "original_sha256": "9bb03bacf8849e81e7f1b20f6ae899cdfd0ec61fbf8cc4cfbe42385ab0f09d20",
+        "delivered_sha256": "9bb03bacf8849e81e7f1b20f6ae899cdfd0ec61fbf8cc4cfbe42385ab0f09d20",
+        "bytes_original": 1248,
+        "bytes_delivered": 1248,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R23/simulator.log": {
+        "original_sha256": "996b308de16e193f0a3093f65261939d65181b6a619f17a1759b4cac3136eed0",
+        "delivered_sha256": "996b308de16e193f0a3093f65261939d65181b6a619f17a1759b4cac3136eed0",
+        "bytes_original": 978,
+        "bytes_delivered": 978,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/source-snapshot/tests/high-risk-tool-scope.test.ts": {
+        "original_sha256": "ae2f10241f2965048f82d01994350ac307a6e90a98bf017c8df077abb7fd050f",
+        "delivered_sha256": "ae2f10241f2965048f82d01994350ac307a6e90a98bf017c8df077abb7fd050f",
+        "bytes_original": 1990,
+        "bytes_delivered": 1990,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/source-snapshot/tests/tool-profile-observer.test.ts": {
+        "original_sha256": "90768335ca9c4469b5c0846ad164b2ac2f9b1e72ea9c2b99eaf12534465b21b5",
+        "delivered_sha256": "90768335ca9c4469b5c0846ad164b2ac2f9b1e72ea9c2b99eaf12534465b21b5",
+        "bytes_original": 10866,
+        "bytes_delivered": 10866,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/source-snapshot/tests/recipe-propose.test.ts": {
+        "original_sha256": "0f4289c5c11dc477451b333fce900ba56b22faa8f93e3e7aee8c1843793974f9",
+        "delivered_sha256": "0f4289c5c11dc477451b333fce900ba56b22faa8f93e3e7aee8c1843793974f9",
+        "bytes_original": 14882,
+        "bytes_delivered": 14882,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/source-snapshot/tests/manual-approval-optimization.test.ts": {
+        "original_sha256": "6f2d6db202956d07f28a32fabb30de7d8d0c182b8a1e371b473aec243a25ba9e",
+        "delivered_sha256": "6f2d6db202956d07f28a32fabb30de7d8d0c182b8a1e371b473aec243a25ba9e",
+        "bytes_original": 8131,
+        "bytes_delivered": 8131,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/source-snapshot/tests/recipe-approval-snapshot.test.ts": {
+        "original_sha256": "3326e638e39fe71689a487694c49bb92bd10bd16584518946a4f34e35a31718e",
+        "delivered_sha256": "3326e638e39fe71689a487694c49bb92bd10bd16584518946a4f34e35a31718e",
+        "bytes_original": 18417,
+        "bytes_delivered": 18417,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/source-snapshot/tests/manual-approval.test.ts": {
+        "original_sha256": "5de1f835020899b6374b68854ea980c68c351bc5eaec76163ea26d3f6aeff327",
+        "delivered_sha256": "5de1f835020899b6374b68854ea980c68c351bc5eaec76163ea26d3f6aeff327",
+        "bytes_original": 4754,
+        "bytes_delivered": 4754,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/source-snapshot/tests/tool-approvals-choice.test.ts": {
+        "original_sha256": "73256185c56fdfac655c2f25463bc242a21ceb6dea59cf0c4c007b5ae39a983b",
+        "delivered_sha256": "73256185c56fdfac655c2f25463bc242a21ceb6dea59cf0c4c007b5ae39a983b",
+        "bytes_original": 11163,
+        "bytes_delivered": 11163,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/source-snapshot/tests/recipe-op-interval.test.ts": {
+        "original_sha256": "f545dff6ee5d75b8b9a7516973e858e7c1228ea5e2668561361139d415c88848",
+        "delivered_sha256": "f545dff6ee5d75b8b9a7516973e858e7c1228ea5e2668561361139d415c88848",
+        "bytes_original": 11497,
+        "bytes_delivered": 11497,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/source-snapshot/tests/recipe-approval-context-ablation.test.ts": {
+        "original_sha256": "a5f5f1805ec659b9117e2c7c3a6d932c8d5a179791fc8db73cad2ecc72c9c417",
+        "delivered_sha256": "a5f5f1805ec659b9117e2c7c3a6d932c8d5a179791fc8db73cad2ecc72c9c417",
+        "bytes_original": 7751,
+        "bytes_delivered": 7751,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/source-snapshot/server/services/workshop/agents/host-tool-bridge/dispatch.ts": {
+        "original_sha256": "9cb25da4a22bf4ee1a485b386aeb67125a69702eb7269135c476f978c88f2736",
+        "delivered_sha256": "9cb25da4a22bf4ee1a485b386aeb67125a69702eb7269135c476f978c88f2736",
+        "bytes_original": 19689,
+        "bytes_delivered": 19689,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/source-snapshot/server/services/workshop/agents/industrial/ops-tools.ts": {
+        "original_sha256": "71d5fb8b3f21aa176faf1fc0dbfbe19cbddf8a6b7f6aa4665306fce79aa691d9",
+        "delivered_sha256": "71d5fb8b3f21aa176faf1fc0dbfbe19cbddf8a6b7f6aa4665306fce79aa691d9",
+        "bytes_original": 80195,
+        "bytes_delivered": 80195,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/source-snapshot/server/services/workshop/agents/industrial/recipe-gate.ts": {
+        "original_sha256": "0c34720704516544f565e71980f06b6a3ff3a38f76b4d53afa02af7a54da66e8",
+        "delivered_sha256": "0c34720704516544f565e71980f06b6a3ff3a38f76b4d53afa02af7a54da66e8",
+        "bytes_original": 7718,
+        "bytes_delivered": 7718,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/source-snapshot/server/services/workshop/agents/industrial/optimization-tools.ts": {
+        "original_sha256": "9fc200b8831b1f6811bf45ef99b897be51b74f91d1d83285f8ae425f3ab8a69c",
+        "delivered_sha256": "9fc200b8831b1f6811bf45ef99b897be51b74f91d1d83285f8ae425f3ab8a69c",
+        "bytes_original": 10106,
+        "bytes_delivered": 10106,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/source-snapshot/server/services/workshop/agents/industrial/optimizer-tools.ts": {
+        "original_sha256": "45bd116c2cb560248cf05d1fc97ca7a827465d1ab169284f5af7f8ec99f48a67",
+        "delivered_sha256": "45bd116c2cb560248cf05d1fc97ca7a827465d1ab169284f5af7f8ec99f48a67",
+        "bytes_original": 12368,
+        "bytes_delivered": 12368,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/source-snapshot/server/services/workshop/agents/host-tool-bridge/optimizer-gate.ts": {
+        "original_sha256": "52216d394e17f00127c3571f4b4684adc34e9ecb1bf4627d0030d58ed088a8a9",
+        "delivered_sha256": "52216d394e17f00127c3571f4b4684adc34e9ecb1bf4627d0030d58ed088a8a9",
+        "bytes_original": 3381,
+        "bytes_delivered": 3381,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/source-snapshot/server/services/workshop/aml/twin/channel-profile.ts": {
+        "original_sha256": "9d9fb60c564f01fc8a2201c54ffdb72a8534f3718e5ca143cb4b4c0ba0c35046",
+        "delivered_sha256": "9d9fb60c564f01fc8a2201c54ffdb72a8534f3718e5ca143cb4b4c0ba0c35046",
+        "bytes_original": 9010,
+        "bytes_delivered": 9010,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/source-snapshot/server/services/workshop/dcw/dcw-controller/write.ts": {
+        "original_sha256": "d3dc38617401ad3f79122382dfbd2a5d49b1813e6717f0251d967fb7a0c7025f",
+        "delivered_sha256": "d3dc38617401ad3f79122382dfbd2a5d49b1813e6717f0251d967fb7a0c7025f",
+        "bytes_original": 12336,
+        "bytes_delivered": 12336,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/source-snapshot/server/services/workshop/dcw/dcw-controller/recipes.ts": {
+        "original_sha256": "88e26a538defa0debf7c7f7109c9e73b8320ff5637625499b90662ec8f81ae90",
+        "delivered_sha256": "88e26a538defa0debf7c7f7109c9e73b8320ff5637625499b90662ec8f81ae90",
+        "bytes_original": 16963,
+        "bytes_delivered": 16963,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/source-snapshot/server/services/workshop/dcw/dcw-controller/actuation.ts": {
+        "original_sha256": "186a8ecf5f64deaf7c2cb74e929aed9d84609843d1346d421743ae777b33a173",
+        "delivered_sha256": "186a8ecf5f64deaf7c2cb74e929aed9d84609843d1346d421743ae777b33a173",
+        "bytes_original": 6933,
+        "bytes_delivered": 6933,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/source-snapshot/server/services/workshop/dcw/dcw-controller/write-verify.ts": {
+        "original_sha256": "96fb55acb70e519d20517de4c19d70d6fcccc445d19563510f5b1465db638c75",
+        "delivered_sha256": "96fb55acb70e519d20517de4c19d70d6fcccc445d19563510f5b1465db638c75",
+        "bytes_original": 4946,
+        "bytes_delivered": 4946,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/source-snapshot/server/services/workshop/dcw/param-limits.ts": {
+        "original_sha256": "59110a3b3e644874378dfc2722f0d5d8e6cb742bd6a497c6eb40684240aac1d6",
+        "delivered_sha256": "59110a3b3e644874378dfc2722f0d5d8e6cb742bd6a497c6eb40684240aac1d6",
+        "bytes_original": 9382,
+        "bytes_delivered": 9382,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "revision-2026-10-25/R20/R20-TRACE-MATRIX.csv": {
+        "original_sha256": "3d083be05b49da8cabecb3142be17b41786cef3c4b125233d1e81fa22ebb4dc7",
+        "delivered_sha256": "3d083be05b49da8cabecb3142be17b41786cef3c4b125233d1e81fa22ebb4dc7",
+        "bytes_original": 1026,
+        "bytes_delivered": 1026,
+        "transformed": false,
+        "rule": "derived from current experiment evidence.json; task/approval/receipt/sample joins validated where asserted; delivery-copy privacy scan applied"
+      },
+      "revision-2026-10-25/R21/R21-TRACE-MATRIX.csv": {
+        "original_sha256": "21988f4805cb1a7cc352acaff6ad04c7247be2158b42e0eff65d60a59e92d3dd",
+        "delivered_sha256": "21988f4805cb1a7cc352acaff6ad04c7247be2158b42e0eff65d60a59e92d3dd",
+        "bytes_original": 430,
+        "bytes_delivered": 430,
+        "transformed": false,
+        "rule": "derived from current experiment evidence.json; task/approval/receipt/sample joins validated where asserted; delivery-copy privacy scan applied"
+      },
+      "revision-2026-10-25/R23/R23-TRACE-MATRIX.csv": {
+        "original_sha256": "81124ef067ac5549fce414b9cae073b7cda223be718a9ee91c67d54079a523d5",
+        "delivered_sha256": "81124ef067ac5549fce414b9cae073b7cda223be718a9ee91c67d54079a523d5",
+        "bytes_original": 474,
+        "bytes_delivered": 474,
+        "transformed": false,
+        "rule": "derived from current experiment evidence.json; task/approval/receipt/sample joins validated where asserted; delivery-copy privacy scan applied"
+      },
+      "revision-2026-10-25/R21/README.md": {
+        "original_sha256": "808036cc33c153c2cf4385916c44f728794295da106c398e151709b84a31cf7a",
+        "delivered_sha256": "808036cc33c153c2cf4385916c44f728794295da106c398e151709b84a31cf7a",
+        "bytes_original": 1363,
+        "bytes_delivered": 1363,
+        "transformed": false,
+        "rule": "derived from current experiment evidence.json; task/approval/receipt/sample joins validated where asserted; delivery-copy privacy scan applied"
+      }
+    },
+    "preservation_checks": {
+      "base_entries": 187,
+      "byte_identical_base_entries": 182,
+      "base_delivery_copy_changes": {
+        "README.md": {
+          "original_sha256": "a16d56ef964ef6eaefddace968b0aed5ec4c5aa32610bb4188eb49475ec2af35",
+          "delivered_sha256": "be2afd8fb89fb74d3bbc01a6b5f82c962a2186735b1b6ea425fbe4f550845eb3",
+          "reason": "Updated delivered root index for the October 25 manuscript and R11-R23, corrected R20 sampling order, and located route-specific evidence; historical source ZIP unchanged"
+        },
+        "CLAIM-MAP.json": {
+          "original_sha256": "39865ff83d2522f1f394b69a253aca76f8ae8e1b5bcf8368ce0664fabc1f39b3",
+          "delivered_sha256": "a5adf2373323e305700ceac96d4403dc810320c5fe553b4aece946671e885624",
+          "reason": "Appended claim-to-artifact mappings for current manuscript evidence R20-R23 and supplemental historical units; added verified execution trace matrices; historical mappings preserved"
+        },
+        "derived-figures/source-data-manifest.json": {
+          "original_sha256": "110a1cc4a062c782aef44e0ef45657c897af00037ac29a2a9f7b1a37773b631f",
+          "delivered_sha256": "d8323a9b5e339f11b7428eb3d9d8e31909a59f8bea4bf490ac4dee43de61aca9",
+          "reason": "Generic local runtime path replaced by [local-runtime] in execution metadata; dependent delivered hashes/byte counts updated"
+        },
+        "MANIFEST.json": {
+          "original_sha256": "3d4816eb6ef3bef6703003d8d0375b507854e483140eb65b82c829d5f6a5a4ea",
+          "delivered_sha256": "a5e21ad31ffa5a7f69d68323ca55d116c5451a119b4698d9e122d86f7016b28d",
+          "reason": "Dependent delivered hash/byte-count chain updated for the documented delivery-copy edits"
+        },
+        "FILES.json": {
+          "original_sha256": "76bb85cf5eab3065b15584b6502245706e49aef778319daf73de2c7d514debd6",
+          "delivered_sha256": "b5e77ecac64337236f74a40c6260e1a2cffac3e93ed5362438bfd98b6fbf28d0",
+          "reason": "Dependent delivered hash/byte-count chain updated for the documented delivery-copy edits"
+        }
+      },
+      "historical_metadata_privacy_changes": {
+        "derived-figures/source-data-manifest.json": {
+          "original_sha256": "110a1cc4a062c782aef44e0ef45657c897af00037ac29a2a9f7b1a37773b631f",
+          "delivered_sha256": "d8323a9b5e339f11b7428eb3d9d8e31909a59f8bea4bf490ac4dee43de61aca9",
+          "reason": "Generic local runtime path replaced by [local-runtime] in execution metadata; dependent delivered hashes/byte counts updated"
+        },
+        "MANIFEST.json": {
+          "original_sha256": "3d4816eb6ef3bef6703003d8d0375b507854e483140eb65b82c829d5f6a5a4ea",
+          "delivered_sha256": "a5e21ad31ffa5a7f69d68323ca55d116c5451a119b4698d9e122d86f7016b28d",
+          "reason": "Dependent delivered hash/byte-count chain updated for the documented delivery-copy edits"
+        },
+        "FILES.json": {
+          "original_sha256": "76bb85cf5eab3065b15584b6502245706e49aef778319daf73de2c7d514debd6",
+          "delivered_sha256": "b5e77ecac64337236f74a40c6260e1a2cffac3e93ed5362438bfd98b6fbf28d0",
+          "reason": "Dependent delivered hash/byte-count chain updated for the documented delivery-copy edits"
+        }
+      },
+      "historical_experimental_entries_byte_identical": true,
+      "Q7_R13": {
+        "daq_points": {
+          "cast_film": 697,
+          "annealing": 696
+        },
+        "dataset_rows": {
+          "cast_film": 658,
+          "annealing": 655
+        },
+        "held_out_test_rows": {
+          "cast_film": 220,
+          "annealing": 218
+        },
+        "passed_checks": 50,
+        "failed_checks": 0,
+        "gate_blocked_outcomes": 2,
+        "optimization_eligible_scenes": 0,
+        "recommendations": 0,
+        "dispatches": 0
+      },
+      "Q7_pilot_R14": {
+        "daq_points_per_scene": 582,
+        "dataset_rows": {
+          "cast_film": 539,
+          "annealing": 538
+        },
+        "passed_checks": 51,
+        "failed_checks": 0,
+        "gate_blocked_outcomes": 2
+      },
+      "Q8_R20_trace_rows": 6,
+      "Q9_R21_trace_rows": 2,
+      "Q10_R22": {
+        "scenes": [
+          "cast-film",
+          "annealing"
+        ],
+        "direct_calls": 2,
+        "verified_receipts": 2,
+        "run_tagged_snapshots": 2,
+        "runner_checks_passed": 19,
+        "target_attainment": false,
+        "cross_harness_portability": false
+      },
+      "Q11_R23": {
+        "task_executions": 2,
+        "scenes": [
+          "cast-film",
+          "annealing"
+        ],
+        "completed_tasks": 2,
+        "synthetic_approvals": 2,
+        "verified_receipts": 2,
+        "readback_verified": 2,
+        "run_tagged_samples": 2,
+        "runner_checks_passed": 37,
+        "runner_checks_failed": 0,
+        "isolation_checks_passed": 28,
+        "post_trial_wait_seconds": 20,
+        "model_provider": "agentworkshop-local",
+        "model_fixture": "aw-deterministic-paper-fixture",
+        "external_model_decisions": 0,
+        "sample_values": {
+          "cast-film": 46.38,
+          "annealing": 674.4000244140625
+        },
+        "candidates": {
+          "cast-film": 125.0,
+          "annealing": 735.0
+        },
+        "target_bands": {
+          "cast-film": [
+            48,
+            52
+          ],
+          "annealing": [
+            700,
+            760
+          ]
+        },
+        "target_attainment": false,
+        "general_harness_interchangeability": false,
+        "trace_rows": 2
+      },
+      "added_evidence_entries": 152,
+      "selected_test_sources": 9,
+      "selected_core_sources": 12,
+      "historical_R3_assertions": 782,
+      "boundary_checks": {
+        "R11": {
+          "attempts": 8,
+          "writes": 0,
+          "attained": false,
+          "final_weight_g": 31.25
+        },
+        "R12": {
+          "verified_pressure_trials": 1,
+          "finalOk": false,
+          "update": null,
+          "restoration_assertion_passed": false,
+          "passing_assertions": 4,
+          "total_assertions": 8,
+          "final_weight_g": 31.46,
+          "final_sink_percent": 1.837
+        }
+      }
+    },
+    "privacy_scan": {
+      "passed": true,
+      "entries": 341,
+      "scope": "explicit identities, local drive/user paths, identifying repository URLs; PDF text/metadata and PNG metadata"
+    }
+  },
+  "zip_integrity": "PASS: testzip and exact entry/hash comparison for both archives",
+  "scope": "Technical packaging and bounded anonymity checks; not scientific approval or journal acceptance"
+}

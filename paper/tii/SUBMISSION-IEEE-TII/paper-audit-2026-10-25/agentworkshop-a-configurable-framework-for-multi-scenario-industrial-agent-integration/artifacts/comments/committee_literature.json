@@ -1,0 +1,35 @@
+[
+  {
+    "title": "相关工作表的代表性选择标准及功能维度尚未说明",
+    "quote": "the research gap is limited to these",
+    "explanation": "研究缺口被谨慎限定为 Table I 的对照对象，没有把结论扩写到整个领域，这是优点。但表中只比较 MADE、Köhle et al. 和 Waseem et al.，正文还介绍了其他工业 agent 研究；为何选这三项作为代表，以及它们与 AgentWorkShop 在场景配置、共享运行时、生产上下文、语义 I/O、工作流和证据记录上的差异，目前不够清楚。建议写明选择准则，或用一段紧凑的同维度综合比较补足缺口推导；避免扩大“尚无此类系统”的范围。",
+    "comment_type": "missing_information",
+    "severity": "moderate",
+    "confidence": "medium",
+    "source_kind": "llm",
+    "source_section": "related",
+    "related_sections": [
+      "introduction",
+      "related"
+    ],
+    "root_cause_key": "related-work-comparator-selection-and-dimensions",
+    "review_lane": "prior_art_and_novelty_grounding",
+    "gate_blocker": false,
+    "quote_verified": null,
+    "evidence_anchor": [
+      {
+        "type": "figure_or_table",
+        "text": "Table I compares three selected plant-facing agent systems."
+      }
+    ],
+    "claim_strength": "supported",
+    "missing_evidence": [
+      "Selection rationale for Table I and a direct synthesis across the framework dimensions claimed in this paper."
+    ],
+    "allowed_wording": "Within the selected comparators, the paper identifies a bounded integration and evaluation gap.",
+    "forbidden_wording": [
+      "The wider industrial-agent literature lacks these capabilities."
+    ]
+  }
+]
+

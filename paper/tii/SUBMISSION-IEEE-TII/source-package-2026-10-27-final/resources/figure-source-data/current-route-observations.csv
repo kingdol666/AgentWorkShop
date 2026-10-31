@@ -1,0 +1,13 @@
+evidence_group,route_key,scene,sample_sequence,sample_value,unit,target_min,target_max,post_trial_delay_seconds,source_archive_path
+R20,model-mediated,cast-film,1,45.69,µm,48,52,20,revision-2026-10-25/R20/R20-TRACE-MATRIX.csv
+R20,model-mediated,cast-film,2,46.69,µm,48,52,20,revision-2026-10-25/R20/R20-TRACE-MATRIX.csv
+R20,model-mediated,cast-film,3,45.69,µm,48,52,20,revision-2026-10-25/R20/R20-TRACE-MATRIX.csv
+R20,model-mediated,annealing,1,679.5999755859375,°C,700,760,20,revision-2026-10-25/R20/R20-TRACE-MATRIX.csv
+R20,model-mediated,annealing,2,677.7000122070312,°C,700,760,20,revision-2026-10-25/R20/R20-TRACE-MATRIX.csv
+R20,model-mediated,annealing,3,678.0999755859375,°C,700,760,20,revision-2026-10-25/R20/R20-TRACE-MATRIX.csv
+R21,fixed-call,cast-film,1,46.37,µm,48.0,52.0,20,revision-2026-10-25/R21/R21-TRACE-MATRIX.csv
+R21,fixed-call,annealing,1,674.7999877929688,°C,700.0,760.0,20,revision-2026-10-25/R21/R21-TRACE-MATRIX.csv
+R22,direct-rest,cast-film,1,46.37,µm,48,52,20,revision-2026-10-25/R22/evidence.json
+R22,direct-rest,annealing,1,675.2000122070312,°C,700,760,20,revision-2026-10-25/R22/evidence.json
+R23,cli-adapter,cast-film,1,46.38,µm,48.0,52.0,20,revision-2026-10-25/R23/R23-TRACE-MATRIX.csv
+R23,cli-adapter,annealing,1,674.4000244140625,°C,700.0,760.0,20,revision-2026-10-25/R23/R23-TRACE-MATRIX.csv

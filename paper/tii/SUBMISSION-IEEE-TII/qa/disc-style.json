@@ -1,0 +1,39 @@
+{
+  "summary": {
+    "lines": 83,
+    "sentences": 28,
+    "tokens_approx": 705
+  },
+  "counts": {
+    "overclaim": 0,
+    "stock_phrase": 0,
+    "booster": 0,
+    "significance": 0,
+    "transition_density": 0
+  },
+  "findings": [],
+  "long_sentences": [
+    {
+      "tokens": 48,
+      "text": "A route study across four entry paths preserved entry-specific records and used\nscene-bound DAQ and DCW nodes; an approval-context test blocked stale changes\nbefore dispatch; a blueprint replay onboarded one documented coating line; and\nfou"
+    }
+  ],
+  "repeated_openers": [
+    {
+      "sentence": 9,
+      "opener": "the",
+      "run": 3
+    },
+    {
+      "sentence": 18,
+      "opener": "the",
+      "run": 3
+    },
+    {
+      "sentence": 19,
+      "opener": "the",
+      "run": 3
+    }
+  ],
+  "note": "Findings require human review; this tool never performs automatic replacement."
+}

@@ -1,0 +1,17 @@
+{
+  "duplicate_pairs": [
+    {
+      "primary": "R6/summary.json",
+      "duplicate": "R6/companion/closedloop-summary.json",
+      "original_sha256": "f706f513b043d035dead3c82c5c900cd65e5ae730b8d06780e03f6891428a7d5",
+      "adds_replication": false
+    },
+    {
+      "primary": "R3/benchmark-20261009033810/timeline.jsonl",
+      "duplicate": "R4/timeline.jsonl",
+      "adds_replication": false
+    }
+  ],
+  "R9_tests_are_subset_of_R10": true,
+  "R8_is_distinct_initial_state_not_matched_replicate": true
+}

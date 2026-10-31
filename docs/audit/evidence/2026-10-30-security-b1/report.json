@@ -1,0 +1,55 @@
+{
+  "at": "2026-10-29T11:11:04.734Z",
+  "total": 8,
+  "passed": 8,
+  "results": [
+    {
+      "id": "T1",
+      "name": "构造 父→孙 进程链",
+      "pass": true,
+      "detail": "parent=107656 grand=103180"
+    },
+    {
+      "id": "T2",
+      "name": "树杀后父进程消失",
+      "pass": true,
+      "detail": "parent alive=false"
+    },
+    {
+      "id": "T3",
+      "name": "树杀后孙进程一并消失(无孤儿)",
+      "pass": true,
+      "detail": "grand alive=false"
+    },
+    {
+      "id": "L1",
+      "name": "预置崩溃残留数据锁(死 PID)",
+      "pass": true,
+      "detail": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-b1-e2e-oActSK\\.runtime\\data.lock"
+    },
+    {
+      "id": "L2",
+      "name": "残留锁下实例仍可启动(不被永久锁死)",
+      "pass": true,
+      "detail": "port=37269"
+    },
+    {
+      "id": "L3",
+      "name": "锁文件改写为新实例 PID(接管生效)",
+      "pass": true,
+      "detail": "lockPid=87896"
+    },
+    {
+      "id": "L4",
+      "name": "接管留痕(日志可追溯)",
+      "pass": true,
+      "detail": "log"
+    },
+    {
+      "id": "N1",
+      "name": "优雅停机链(close 钩子执行)在 Windows 无法外部验证 — 需 POSIX 部署验证",
+      "pass": true,
+      "detail": "OS 无信号语义;已由 P0-3 源码不变量单测 + close 钩子清理项存在性单测覆盖"
+    }
+  ]
+}

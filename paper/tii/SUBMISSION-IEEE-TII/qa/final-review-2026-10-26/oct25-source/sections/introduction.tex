@@ -1,0 +1,102 @@
+\section{Introduction}
+\IEEEPARstart{I}{ndustrial-agent} deployments must connect each task to its
+production context, process signals, and equipment interfaces. Existing work
+addresses end-to-end automation control, operator-reviewed control-sequence
+generation, modular factory skills, and production scheduling
+\cite{xia2025control,huang2026made,koehle2026llmdriven,waseem2026pretrained}.
+Other studies target PLC code generation, context-aware control, resource
+capability discovery, shop-floor coordination, digital-twin fault handling,
+natural-language machine access, and robotic-line control
+\cite{liu2026agents4plc,wu2025instructmpc,lim2025llmenabled,zhao2026shopfloor,gill2025llmdt,hofmann2025nlc}.
+Across production lines, agent roles, signal maps, protocols, objectives, and
+product/run context vary. An integration architecture must accommodate these
+differences around shared task and operation services while keeping each
+action tied to its active production context. Recent industrial-agent
+architectures add AAS-grounded OPC UA actions with signed approval,
+P\&ID-grounded proposal checks, and governed sensor--MES--ERP evidence
+streams \cite{graul2026aas,schall2026safe,lin2026agentic}. These works address
+asset-specific execution, process validation, or closed-loop analytics. At
+their software-integration boundary, this paper examines a specific
+implementation requirement: distinct task adapters and direct tool callers
+should invoke one shared named operation handler while retaining evidence
+appropriate to each route. Task routes can link task, approval, command
+receipt, and process observation; a direct call has operation records but no
+task edge. This is a scoped implementation contract, not an assumption that
+prior platforms lack equivalent behavior.
+
+Consider two production scenes with different process signals and interfaces:
+cast-film thickness control and annealing-zone temperature control. An agent
+task in either scene needs production context, typed signal access, and a
+route from a named operation to the configured device protocol. The framework
+must also distinguish a command receipt from a subsequent process
+observation. The shared task and operation services can therefore be
+configured with scene-specific signal maps, protocols, and limits while
+retaining a common execution path. The evaluation instantiates this path in
+two simulator scenes.
+
+This paper presents AgentWorkShop as a modular framework for task-to-device
+integration in industrial agents. It connects collaborative tasks through a
+registered harness interface to production context, manufacturing execution
+system (MES) data, analysis and modeling services, data-acquisition (DAQ) and
+write-control (DCW) nodes, and protocol-specific drivers. Its interfaces include
+command-line, web, software development kit (SDK), Representational State
+Transfer (REST), Model Context Protocol (MCP), and Agent-to-Agent
+(A2A) surfaces. Task and chat routes enter the
+collaboration runtime, whereas a direct REST tool-invocation route can call
+the shared operation dispatcher without creating a task.
+Scene blueprints define signal maps, objectives, and guards; channel profiles,
+tool policies, and agent bindings scope operations. Agents and callers invoke
+named operations through shared runtime checks; the framework does not choose
+routes autonomously and retains proposals, command confirmation, and process
+observations as distinct records. Fig.~\ref{fig:arch} presents the system
+architecture, and Fig.~\ref{fig:runtime} shows the cross-module task flow.
+Section~IV details the node-exploration and recipe lifecycles.
+
+This paper tests an execution-and-evidence contract by asking whether distinct
+task adapters and a direct-call surface reach the same named industrial
+operation handler and retain route-specific records linking command and
+observation.
+In the evaluated paths, the \texttt{recipe\_trial} operation key resolves
+through the shared dispatcher to \texttt{toolRecipeTrial}; Table~\ref{tab:routes}
+lists this terminal handler for each route. Tests use registered
+\texttt{omp} and Pi adapters and direct REST in two simulator scenes; broader
+adapter interchangeability remains untested. A separate mock-state experiment
+tests pre-dispatch refusal after an approved context changes; a deterministic
+fixture replays OMP without external model decisions. The suite injects line,
+product, recipe, and run changes during approval for \texttt{recipe\_apply},
+\texttt{recipe\_trial}, and dispatching \texttt{recipe\_rollback}; all stale
+actions are refused before mock-driver writes. A post-recheck fault injection
+also tests a context change queued before the dispatch continuation. In a
+focused test-only ablation that omits only the tuple-equality check, six
+stale product/run changes reach mock actuation, while independent checks still
+refuse the other six cases.
+
+The paper makes two contributions:
+\begin{enumerate}
+\item It specifies and implements a modular execution-and-evidence contract
+  that routes registered-harness tasks and direct calls to the same named
+  operation handler through common checks, semantic I/O, configured protocol
+  drivers, and
+  service-owned records. Task routes retain task-to-approval-to-receipt-to-
+  observation links where available; direct calls retain operation records
+  without creating a task. For approved recipe actions, the
+  implementation binds approval to a line--product--recipe--run tuple and
+  rechecks it after asynchronous authorization validation, immediately before
+  entering software dispatch. This is a software-state guard, not an atomic
+  lock across device I/O. It
+  separates prompt grounding, dispatch authority, device receipt, and later
+  process observation; it is an implementation contribution, not a new
+  protocol, safety-verification method, or process-control algorithm.
+\item It evaluates route-specific record continuity for the OMP and Pi task
+  adapters and direct REST calls across cast-film and annealing simulator
+  mappings, with each route reported separately. It also reports a
+  deterministic OMP replay and a mock-state ablation of the context check.
+  These measurements test selected route compositions, not process
+  attainment, general adapter portability, or comparative platform value.
+\end{enumerate}
+
+Section~II reviews related industrial-agent and integration work.
+Section~III presents the design rationale, architecture, and cross-module
+execution flow; Section~IV explains module responsibilities and their
+integrated operation. Section~V describes the experiments and results, and
+Sections~VI and~VII discuss the evidence limits and conclude the paper.

@@ -1,0 +1,53 @@
+{
+  "summary": {
+    "lines": 223,
+    "sentences": 94,
+    "tokens_approx": 1806
+  },
+  "counts": {
+    "overclaim": 1,
+    "stock_phrase": 0,
+    "booster": 0,
+    "significance": 0,
+    "transition_density": 0
+  },
+  "findings": [
+    {
+      "check": "overclaim",
+      "line": 67,
+      "matches": [
+        "completely"
+      ],
+      "context": "was not completely pinned, and the MES image used a local storage fallback.",
+      "advice": "Check whether the evidence supports this strength of claim."
+    }
+  ],
+  "long_sentences": [
+    {
+      "tokens": 102,
+      "text": "The protocol exercise and onboarding\nreplay used simulators; the approval test used mock drivers and simulated decisions.}\n\\label{tab:integration-checks}\n\\footnotesize\n\\setlength{\\tabcolsep}{3pt}\n\\begin{tabularx}{\\columnwidth}{@{}>{\\raggedr"
+    },
+    {
+      "tokens": 89,
+      "text": "Each row is\none trajectory; the final value is the mission-reported value.}\n\\label{tab:missions}\n\\footnotesize\n\\setlength{\\tabcolsep}{3pt}\n\\begin{tabularx}{\\columnwidth}{@{}>{\\raggedright\\arraybackslash}p{1.30cm}>{\\raggedright\\arraybackslas"
+    }
+  ],
+  "repeated_openers": [
+    {
+      "sentence": 7,
+      "opener": "the",
+      "run": 3
+    },
+    {
+      "sentence": 77,
+      "opener": "the",
+      "run": 3
+    },
+    {
+      "sentence": 78,
+      "opener": "the",
+      "run": 3
+    }
+  ],
+  "note": "Findings require human review; this tool never performs automatic replacement."
+}

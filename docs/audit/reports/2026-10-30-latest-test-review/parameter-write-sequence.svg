@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1120" height="760" viewBox="0 0 1120 760" role="img" aria-labelledby="title desc">
+  <title id="title">Latest real-channel test: setpoint writes and process observations</title>
+  <desc id="desc">The Modbus TCP simulator setpoint remains 195 during pending human approval, then is automatically approved to 198, and later automatically explored to 200.5. Separate observed process values are shown as points and one within-window pair, not a continuous trajectory.</desc>
+  <defs>
+    <style>
+      text{font-family:Arial,'Microsoft YaHei',sans-serif;fill:#263746}
+      .title{font-size:25px;font-weight:700}.sub{font-size:14px;fill:#536879}.panel{fill:#fff;stroke:#d8e1e8;stroke-width:1.5}.axis{stroke:#8093a1;stroke-width:1.2}.grid{stroke:#e7edf1;stroke-width:1}.label{font-size:14px}.small{font-size:12px;fill:#536879}.value{font-size:15px;font-weight:700}.sp{stroke:#147d92;fill:none;stroke-width:3}.pv{fill:#e28a35;stroke:#fff;stroke-width:2}.pending{fill:#fff;stroke:#c47a20;stroke-width:3}.dash{stroke:#e28a35;stroke-width:2;stroke-dasharray:5 5}.callout{fill:#f2f8f9;stroke:#bad8dc}.warn{fill:#fff7e8;stroke:#edcf98}
+    </style>
+  </defs>
+  <rect width="1120" height="760" fill="#f5f8fa"/>
+  <text x="48" y="48" class="title">Latest real-channel test: parameter write and observation record</text>
+  <text x="48" y="75" class="sub">One simulated cast-film line · one OMP Agent · Modbus-TCP setpoint · evidence snapshot, not a physical-plant result</text>
+
+  <rect x="45" y="100" width="1030" height="260" rx="12" class="panel"/>
+  <text x="75" y="137" class="value">A. Setpoint (SP) sequence</text>
+  <text x="1040" y="137" text-anchor="end" class="small">°C</text>
+  <line x1="120" y1="177" x2="1025" y2="177" class="grid"/><line x1="120" y1="222" x2="1025" y2="222" class="grid"/><line x1="120" y1="267" x2="1025" y2="267" class="grid"/><line x1="120" y1="312" x2="1025" y2="312" class="axis"/>
+  <text x="105" y="182" text-anchor="end" class="small">201</text><text x="105" y="227" text-anchor="end" class="small">198</text><text x="105" y="272" text-anchor="end" class="small">195</text><text x="105" y="317" text-anchor="end" class="small">192</text>
+  <path d="M220 267 H500 V267 H610 V222 H870 V184.5" class="sp"/>
+  <circle cx="220" cy="267" r="7" fill="#147d92"/><circle cx="500" cy="267" r="7" class="pending"/><circle cx="610" cy="222" r="7" fill="#147d92"/><circle cx="870" cy="184.5" r="7" fill="#147d92"/>
+  <text x="220" y="248" text-anchor="middle" class="value">195</text><text x="500" y="248" text-anchor="middle" class="value">195</text><text x="610" y="203" text-anchor="middle" class="value">198</text><text x="870" y="166" text-anchor="middle" class="value">200.5</text>
+  <text x="220" y="338" text-anchor="middle" class="label">Baseline</text><text x="500" y="338" text-anchor="middle" class="label">Approval pending</text><text x="610" y="338" text-anchor="middle" class="label">After approval</text><text x="870" y="338" text-anchor="middle" class="label">Explore write</text>
+  <rect x="404" y="147" width="188" height="35" rx="8" class="warn"/><text x="498" y="170" text-anchor="middle" class="small">script auto-approved · no human action</text>
+
+  <rect x="45" y="382" width="1030" height="282" rx="12" class="panel"/>
+  <text x="75" y="419" class="value">B. Available PV observations</text>
+  <text x="1040" y="419" text-anchor="end" class="small">°C · isolated points/windows; no continuous trajectory</text>
+  <line x1="120" y1="456" x2="1025" y2="456" class="grid"/><line x1="120" y1="501" x2="1025" y2="501" class="grid"/><line x1="120" y1="546" x2="1025" y2="546" class="grid"/><line x1="120" y1="591" x2="1025" y2="591" class="grid"/><line x1="120" y1="621" x2="1025" y2="621" class="axis"/>
+  <text x="105" y="461" text-anchor="end" class="small">212</text><text x="105" y="506" text-anchor="end" class="small">208</text><text x="105" y="551" text-anchor="end" class="small">204</text><text x="105" y="596" text-anchor="end" class="small">200</text><text x="105" y="626" text-anchor="end" class="small">197</text>
+  <circle cx="204" cy="485.8" r="7" class="pv"/><text x="204" y="472" text-anchor="middle" class="small">209.36 initial</text>
+  <circle cx="246" cy="504.7" r="7" class="pv"/><text x="246" y="529" text-anchor="middle" class="small">207.67 latest query</text>
+  <circle cx="576" cy="548.0" r="7" class="pv"/><circle cx="632" cy="554.9" r="7" class="pv"/><line x1="576" y1="548" x2="632" y2="554.9" class="dash"/><text x="600" y="535" text-anchor="middle" class="small">R3: 203.822 → 203.212 (10 s, Δ−0.610)</text>
+  <circle cx="870" cy="581.6" r="7" class="pv"/><text x="870" y="568" text-anchor="middle" class="small">R4 final 200.84</text>
+  <rect x="790" y="445" width="230" height="48" rx="8" class="callout"/><text x="905" y="465" text-anchor="middle" class="small">R4 tool reports ΔPV = −0.095°C / 10 s</text><text x="905" y="482" text-anchor="middle" class="small">record remains open / unjudged</text>
+  <text x="220" y="646" text-anchor="middle" class="label">Before writes</text><text x="610" y="646" text-anchor="middle" class="label">First governed write</text><text x="870" y="646" text-anchor="middle" class="label">Second explore write</text>
+
+  <rect x="45" y="682" width="1030" height="52" rx="10" class="warn"/>
+  <text x="65" y="705" class="small">Interpretation: readback verifies commanded SP values. Sparse simulator observations and two separate 10-s summaries do not establish causality, sustained convergence,</text>
+  <text x="65" y="722" class="small">or product-quality improvement. The orange R3 segment alone represents a reported within-window pair; there is no inferred line between episodes.</text>
+</svg>

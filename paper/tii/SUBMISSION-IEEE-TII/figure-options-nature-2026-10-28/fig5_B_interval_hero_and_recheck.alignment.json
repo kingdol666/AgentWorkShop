@@ -1,0 +1,88 @@
+{
+  "schema_version": 1,
+  "applicable": true,
+  "auditable": true,
+  "verdict": "PASS",
+  "backend": "python-matplotlib",
+  "summary": {
+    "fail": 0,
+    "warn": 0,
+    "comparisons": 1,
+    "exemptions": 1
+  },
+  "tolerances": {
+    "alignment_pt": 1.5,
+    "gutter_pt": 1.5
+  },
+  "layout": {
+    "schema_version": 1,
+    "backend": "python-matplotlib",
+    "figure": {
+      "width_pt": 515.52,
+      "height_pt": 212.4
+    },
+    "panels": [
+      {
+        "id": "a",
+        "bbox_pt": [
+          23.1984,
+          14.86799999999999,
+          278.0362533557481,
+          189.036
+        ],
+        "grid_id": "matplotlib-grid-1",
+        "row_start": 0,
+        "row_stop": 1,
+        "col_start": 0,
+        "col_stop": 1,
+        "panel_label": "a",
+        "panel_label_anchor_pt": [
+          29.569346333893705,
+          193.39020000000002
+        ]
+      },
+      {
+        "id": "b",
+        "bbox_pt": [
+          298.9037136428295,
+          14.86799999999999,
+          507.7872000000001,
+          189.036
+        ],
+        "grid_id": "matplotlib-grid-1",
+        "row_start": 0,
+        "row_stop": 1,
+        "col_start": 1,
+        "col_stop": 2,
+        "panel_label": "b",
+        "panel_label_anchor_pt": [
+          304.12580080175877,
+          193.39020000000002
+        ]
+      }
+    ],
+    "row_groups": [
+      {
+        "id": "row-1",
+        "panels": [
+          "a",
+          "b"
+        ]
+      }
+    ],
+    "column_groups": [],
+    "boundary_groups": [],
+    "exemptions": [
+      {
+        "panels": [
+          "b"
+        ],
+        "checks": [
+          "panel-width"
+        ],
+        "reason": "Panel a is the quantitative interval hero; panel b is a subordinate symbolic approval-path schematic."
+      }
+    ]
+  },
+  "findings": []
+}

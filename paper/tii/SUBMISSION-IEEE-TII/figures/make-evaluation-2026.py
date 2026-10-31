@@ -86,7 +86,7 @@ def source_receipt(paths):
     return [{"path": p, "sha256": hashlib.sha256((ROOT / p).read_bytes()).hexdigest()} for p in paths]
 
 
-def export(fig, name, skill_root, axes=None):
+def export(fig, name, skill_root, axes=None, preview_name=None):
     sys.path.insert(0, str(skill_root / "scripts"))
     from audit_panel_alignment import require_matplotlib_panel_alignment
     fig.canvas.draw()
@@ -97,7 +97,7 @@ def export(fig, name, skill_root, axes=None):
     )
     for ext in ("pdf", "svg"):
         fig.savefig(OUT / (name + "." + ext))
-    fig.savefig(OUT / (name + ".png"), dpi=600)
+    fig.savefig(OUT / ((preview_name or name) + ".png"), dpi=600)
     plt.close(fig)
 
 
@@ -246,7 +246,7 @@ def mission_data():
     csv_out("source-data-missions-outcomes.csv",outcomes)
     write_json("source-data-missions.json",{"sources":source_receipt([rel]),"seed":src["seed"],"n_per_mission":1,
         "raw_results":src["results"],"controls":all_events,
-        "scope":"historical direct-node path; normalized u is request intent, not raw device readback"})
+        "scope":"seed-42 scripted platform tool-API operation path; normalized u is request intent, not raw device readback"})
     return missions,all_events
 
 
@@ -255,6 +255,7 @@ def missions(skill_root):
     ids=["injection","wwtp","anneal","biax"]
     names=["Injection molding","Wastewater","Annealing","BOPET film"]
     qty=["Weight (g)","DO (mg/L)","Hardness (HV)","Thickness (µm)"]
+    pv_units={"injection":"g","wwtp":"mg/L","anneal":"HV","biax":"µm"}
     controls={
         "injection":[("hold-pressure-sp","Pressure",BLUE,"o"),("hold-time-sp","Hold time",ORANGE,"s")],
         "wwtp":[("blower-hz-sp","Blower",BLUE,"o"),("naoh-dose-sp","NaOH",ORANGE,"s"),("pac-dose-sp","PAC",GREEN,"^")],
@@ -265,23 +266,35 @@ def missions(skill_root):
     fig.subplots_adjust(left=.075,right=.99,bottom=.26,top=.84,wspace=.65,hspace=.95)
     for c,mid in enumerate(ids):
         m=ms[mid];t=m["mission"]["traj"];ee=[e for e in events if e["mission"]==mid]
-        ax=axs[0,c];tag(ax,chr(97+c));band(ax,m["pv"]["target"],m["pv"]["tol"])
         if mid=="wwtp":
-            yy=[r["pv"] for r in t if r["phase"] in ("baseline","blower")];xx=list(range(len(yy)));xf=max(e["event"] for e in ee)
+            yy=[r["pv"] for r in t if r["phase"] in ("baseline","blower")]
+            xx=list(range(len(yy)));xf=max(e["event"] for e in ee)
         else:
-            yy=[r["pv"] for r in t];xx=list(range(len(yy)));xf=max(e["event"] for e in ee)
+            yy=[r["pv"] for r in t]
+            xx=list(range(len(yy)));xf=max(e["event"] for e in ee)
+        ax=axs[0,c];tag(ax,chr(97+c))
+        if mid=="wwtp":
+            # The DO series ends after the blower phase. Later controls target
+            # pH and total phosphorus, so retain the event-index gap visibly.
+            ax.axvspan(5.5,xf,color="#F4F6F5",zorder=-1)
+            ax.axvline(5.5,color="#89938E",linewidth=.6,linestyle=":",zorder=2)
+        band(ax,m["pv"]["target"],m["pv"]["tol"])
         ax.plot(xx,yy,"o-",color=BLUE,ms=3,mfc="white")
         if mid=="anneal":
             ax.plot([5],[101.3],marker="x",color=ORANGE,ms=4,linestyle="none")
             ax.plot([1],[yy[1]],marker="^",color=DARK,mfc="white",ms=5,linestyle="none")
-        ax.plot([xf],[m["mission"]["final"]],marker="s",color=DARK,ms=3.5,linestyle="none")
-        all_y=yy+[m["mission"]["final"],m["pv"]["target"]-m["pv"]["tol"],m["pv"]["target"]+m["pv"]["tol"]]
+        terminal=float(m["mission"]["final"])
+        ax.plot([xf],[terminal],marker="s",color=DARK,ms=3.5,linestyle="none",zorder=5)
+        all_y=yy+[terminal,m["pv"]["target"]-m["pv"]["tol"],m["pv"]["target"]+m["pv"]["tol"]]
         lo,hi=min(all_y),max(all_y);span=hi-lo
         ax.set_ylim(lo-.10*span,hi+.18*span)
         ax.set_xlim(-.4,xf+.6);ax.set_ylabel(qty[c],labelpad=1)
-        ax.set_title(names[c],pad=20)
+        ax.set_title(f"{names[c]}\nFinal: {terminal:.2f} {pv_units[mid]}",pad=20,linespacing=1.05)
         ax.set_xlabel("")
         ax=axs[1,c];tag(ax,chr(101+c));ax.axhline(0,color="#888888",lw=.5,ls=":")
+        if mid=="wwtp":
+            ax.axvspan(5.5,xf,color="#F4F6F5",zorder=-1)
+            ax.axvline(5.5,color="#89938E",linewidth=.6,linestyle=":",zorder=2)
         for knob,label,color,marker in controls[mid]:
             es=[e for e in ee if e["knob"]==knob];base=es[0]["from"];cur=base
             xs=[0];ys=[0.]
@@ -294,7 +307,7 @@ def missions(skill_root):
                         ms=3.2,mfc="white",mec=color,color=color,linestyle="none")
         ax.set_xlim(-.4,xf+.6)
         y0,y1=ax.get_ylim();ax.set_ylim(min(-2,y0),y1+(y1-y0)*.55)
-        ax.set_ylabel("Request change (%)",labelpad=1)
+        ax.set_ylabel("Requested change (%)",labelpad=1)
         ax.set_xlabel("Control event index",labelpad=1)
         ax.legend(loc="lower left",bbox_to_anchor=(.14,.95),fontsize=9,handlelength=.8,borderpad=.1,labelspacing=.15,handletextpad=.3)
     native_units = {"hold-pressure-sp":"bar", "hold-time-sp":"s", "blower-hz-sp":"Hz", "naoh-dose-sp":"L/h", "pac-dose-sp":"L/h", "zone3-sp":"°C", "zone2-sp":"°C", "line-speed-sp":"m/min", "cast-spd-sp":"m/min", "fast-roll-sp":"m/min", "rail-out-sp":"mm"}
@@ -307,7 +320,7 @@ def missions(skill_root):
         pos=axs[1,c].get_position()
         fig.text(.98 if c == 3 else (pos.x0+pos.x1)/2,.015,"\n".join(native),
                  ha="right" if c == 3 else "center",va="bottom",fontsize=9,linespacing=1.12)
-    export(fig,"fig-missions-controls",skill_root)
+    export(fig,"fig-missions-controls",skill_root,preview_name="fig-missions-controls-preview")
 
 
 def quality_audits(skill_root):

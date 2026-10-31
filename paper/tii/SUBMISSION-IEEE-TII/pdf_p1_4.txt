@@ -1,0 +1,452 @@
+====================== PAGE 1 ======================
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT
+1
+AgentWorkShop: A Modular Task-to-Device
+Integration Framework for Industrial Agents
+Abstract—Deploying industrial agents across production scenes
+requires scene-specific signal and protocol mappings while keep-
+ing task context, device dispatch, and resulting evidence aligned.
+This paper presents AgentWorkShop, a modular task-to-device
+integration framework that composes task adapters, produc-
+tion context, named operations, semantic input/output, runtime
+checks, protocol drivers, and service-owned records. Registered
+task routes pass through the collaboration runtime; direct oper-
+ation calls enter the shared dispatcher without creating a task
+record. The design keeps approval, command readback, and
+subsequent process observations distinct while linking them to the
+active production context. We evaluated registered task paths and
+direct operation calls in cast-film and annealing simulators with
+different signal and protocol mappings. Six sequential model-
+mediated task executions and two fixture-backed command-line
+tasks preserved their route-specific record links; direct calls
+retained operation, readback, and run-tagged sample records.
+Every current-route sample remained below its target band. A
+mock-state approval-context test refused 12 stale changes before
+writes, whereas an ablation allowed six product/run changes
+through. A separate v0.8.3 replay of one documented coating-
+line blueprint passed 23 functional verification checks and con-
+firmed one simulator write. Together, these results demonstrate
+integration behavior for selected preconfigured paths, one simu-
+lated onboarding configuration, and a software dispatch guard.
+They do not establish process improvement, configuration reuse,
+general portability, or comparative platform benefit.
+Index Terms—Industrial agents, industrial communication,
+industrial informatics, production systems, semantic data inte-
+gration.
+I. INTRODUCTION
+I
+NDUSTRIAL-AGENT deployments must connect each
+task to its production context, process signals, and equip-
+ment interfaces. Existing work addresses end-to-end automa-
+tion control, operator-reviewed control-sequence generation,
+modular factory skills, and production scheduling [1]–[4].
+Other studies target programmable logic controller (PLC)
+code generation, context-aware control, resource capability
+discovery, shop-floor coordination, digital-twin fault handling,
+natural-language machine access, and robotic-line control [5]–
+[10]. Across production lines, agent roles, signal maps, pro-
+tocols, objectives, and product/run context vary. An integra-
+tion architecture must accommodate these differences around
+shared task and operation services while keeping each action
+tied to its active production context. Recent industrial-agent
+architectures add Asset Administration Shell (AAS)-grounded
+OPC Unified Architecture (OPC UA) actions with signed
+approval, P&ID-grounded proposal checks, and governed
+sensor–manufacturing execution system (MES)–enterprise re-
+source planning (ERP) evidence streams [11]–[13]. These
+works address asset-specific execution, process validation, or
+closed-loop analytics. At their software-integration boundary,
+this paper examines a specific implementation requirement:
+task routes and direct tool callers should invoke one shared
+named operation handler while retaining evidence appropriate
+to each route. Task routes can link task, approval, command
+receipt, and process observation; a direct call has operation
+records but no task edge. The contribution concerns the imple-
+mentation and evaluation of this contract; equivalent behavior
+may also exist in prior platforms.
+Consider two production scenes with different process sig-
+nals and interfaces: cast-film thickness control and annealing-
+zone temperature control. An agent task in either scene needs
+production context, typed signal access, and a route from
+a named operation to the configured device protocol. The
+framework must also distinguish a command receipt from a
+subsequent process observation. The shared task and operation
+services can therefore be configured with scene-specific signal
+maps, protocols, and limits while retaining a common execu-
+tion path. The evaluation examines this path in two simulator
+scenes and replays a documented coating-line onboarding
+workflow.
+This paper presents AgentWorkShop as a modular frame-
+work for task-to-device integration in industrial agents. It con-
+nects collaborative tasks through a registered harness interface
+to production context, MES data, analysis and modeling ser-
+vices, data-acquisition (DAQ) and write-control (DCW) nodes,
+and protocol-specific drivers. Its interfaces include command-
+line, web, software development kit (SDK), Representational
+State Transfer (REST), Model Context Protocol (MCP), and
+Agent-to-Agent (A2A) surfaces. Task and chat routes enter the
+collaboration runtime, whereas a direct REST tool-invocation
+route can call the shared operation dispatcher without creating
+a task.
+Scene blueprints define signal maps, objectives, and guards;
+channel profiles, tool policies, and agent bindings scope op-
+erations. Agents and callers invoke named operations through
+shared runtime checks; the framework does not choose routes
+autonomously and retains proposals, command confirmation,
+and process observations as distinct records. Fig. 1 presents the
+system architecture, and Fig. 2 shows the cross-module task
+flow. Section IV follows task context through shared dispatch,
+device admission, approval, and route-specific evidence.
+The evaluation asks whether the registered-harness task
+route, a fixture-backed command-line task route, and direct
+REST calls reach the same named operation across two
+configured simulator mappings while preserving the records
+applicable to each route. A fixed-call replay separates task-
+path behavior from an external model decision, and a mock-
+state experiment examines the approval-bound context check
+before software dispatch. A separate v0.8.3 replay onboards
+a documented coating-line blueprint with Modbus TCP and
+MES REST interfaces in a fresh isolated instance. These ex-
+
+====================== PAGE 2 ======================
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT
+2
+periments cover selected route contracts and one configuration-
+driven onboarding workflow; they do not establish arbitrary
+adapter interchangeability or process improvement. Section V
+reports the protocols, results, and evidence limits.
+The paper makes two contributions:
+1) It implements a modular execution path that brings
+production context, semantic I/O, operation checks,
+configured protocol drivers, and service-owned records
+to one named-operation boundary. Task routes retain
+linked task, approval, receipt, and observation records
+where available; direct calls retain operation records
+without creating a task. For approved recipe actions,
+the system binds approval to the active line–product–
+recipe–run tuple and checks it again after asynchronous
+authorization, just before software dispatch. This soft-
+ware check is not an atomic lock across device I/O, a
+new protocol, a safety-verification method, or a process-
+control algorithm.
+2) It reports route-specific record continuity for registered-
+harness and command-line task routes and direct REST
+calls across cast-film and annealing simulator mappings,
+a documented coating-line onboarding replay, and a
+mock-state test and ablation of the context check. The
+onboarding replay checks protocol access, heteroge-
+neous MES data, channel configuration, acquisition,
+and an approved simulator write; process readings are
+reported separately from these integration outcomes.
+Section II reviews related industrial-agent and integration
+work. Section III presents the design rationale, architecture,
+and cross-module execution flow; Section IV explains module
+responsibilities and their integrated operation. Section V de-
+scribes the experiments and results, and Sections VI and VII
+discuss the evidence limits and conclude the paper.
+II. RELATED WORK
+This section relates AgentWorkShop to plant-facing indus-
+trial agents and to production abstractions for context, tool ac-
+cess, and operational constraints. Table I compares two aspects
+of the integration contract: whether task and direct-operation
+entries share a named handler, and how operational evidence
+is associated. Entries describe features reported in the cited
+sources. “Not reported” does not imply absence; evaluation
+descriptions retain each source’s metrics and success criteria.
+A. Industrial Agents and Plant Integration
+Industrial-agent systems, including large language model
+(LLM)-based systems, span end-to-end automation control,
+supervisory services, programmable logic controller (PLC)
+interfaces, manufacturing coordination, and operator-facing
+machine access. Xia et al. present an LLM agent framework
+for end-to-end industrial automation control, using structured
+prompts and event-driven context for production planning and
+operation [1]. Huang et al. present a multimodal architecture
+whose stated focus is automated control generation for indus-
+trial cyber-physical systems [2]. Biskupovic et al. study agent-
+based supervision for service-oriented industrial systems [14];
+Agents4PLC and InstructMPC address PLC code generation
+and human–LLM context-aware control, respectively [5], [6].
+Manufacturing studies consider dynamic resource-capability
+exploration [7], multi-agent shop-floor coordination [8], and
+digital-twin-supported fault handling [9]. Natural-language
+machine access [10] and real-time LLM control of a robot-
+operated serial line [4] extend this work to operator inter-
+faces and robotic-line control. Together, these studies address
+different operational contexts, interfaces, and allocations of
+responsibility between agents, operators, and controllers.
+The closest architecture-level comparison is Xia et al., who
+connect cognitive, digital-twin, and physical-automation layers
+and organize twin information as state snapshots, event mes-
+sages, and plan sequences [15]. Other nearby designs expose
+factory-module operations through MCP with state-based tool
+filtering, constrain manufacturing plans, or compose semantic
+recipes from OPC UA skills [3], [16], [17]. Several recent
+systems also combine agent execution with approval, industrial
+data, or audit records. Graul et al. ground proposals in the
+Asset Administration Shell (AAS) and route approved actions
+through OPC UA Methods, with signed approvals and audit
+logging [11]. Schall separates advisory language-model agents
+from process and instrumentation diagram (P&ID)-grounded
+verification and execution, and evaluates structural checks
+across five simulated process scenarios [12]; its context in-
+cludes supervisory control and data acquisition (SCADA) and
+standard operating procedure (SOP) information. Lin and Chen
+build a governed sensor–MES–ERP digital thread for closed-
+loop monitoring and control on real manufacturing records
+[13]. These works address asset-specific approval, process val-
+idation, or closed-loop analytics. The complementary question
+here is whether a modular task-to-device implementation can
+route registered-harness and command-line task paths and a
+direct caller through a shared named handler while preserving
+the records applicable to each route; its approved recipe path
+also rechecks the line–product–recipe–run tuple before soft-
+ware dispatch. The route study examines two preconfigured
+simulator mappings, and a separate blueprint replay checks
+one documented coating-line onboarding workflow through
+the existing interfaces. Table I positions these mechanisms by
+reported features rather than comparative performance.
+The operation checks complement safety-aware decision
+support [18] but do not replace independent process protection.
+B. Production Context, Agent Interfaces, and Automation
+Industrial integration also depends on abstractions that
+are not specific to agent architectures. The Model Context
+Protocol (MCP) specifies interoperable tool discovery and
+call mechanisms [19]; the operation-level scope, policy, grant,
+and binding checks discussed here are AgentWorkShop’s own
+dispatcher rules, distinct from MCP transport authorization.
+In parallel, ISA-88 and ISA-95 describe recipes and pro-
+duction operations [20], [21]. Run-to-run methods connect
+process observations to successive production runs [22]. At the
+agent level, AgentSpec and CaMeL address tool behavior and
+capability-based information flow [23], [24]. Together, these
+works provide complementary abstractions for production con-
+text, tool interaction, and information flow. AgentWorkShop
+
+====================== PAGE 3 ======================
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT
+3
+TABLE I
+REPORTED SHARED-ENTRY HANDLING AND EVIDENCE STRUCTURE IN SELECTED PLANT-FACING STUDIES. SHARED HANDLING MEANS THAT TASK AND
+DIRECT-OPERATION ENTRIES RESOLVE TO THE SAME NAMED HANDLER; “NOT REPORTED” IS NOT A CLAIM THAT A SYSTEM LACKS THE FEATURE.
+EVALUATIONS RETAIN SOURCE-SPECIFIC SCOPE AND CRITERIA.
+System
+Shared handler for
+task and direct
+entries
+Reported operation and evidence
+structure
+Reported evaluation
+Xia et al.
+[15]
+Not reported
+Cognitive, twin, and physical layers;
+twin snapshots, event messages, and
+plan sequences
+Robotic automation and process-simulation cases
+K¨ohle et
+al. [3]
+Not reported
+Injected live state and state-based
+filtering; MCP-to-OPC UA operations
+and MQTT coordination
+Nine simulated production challenges
+Vieira da
+Silva et al.
+[16]
+Not reported
+Constrained multi-step plans over
+MCP manufacturing functions
+Laboratory multi-step process
+K¨ohle et
+al. [17]
+Not reported
+Semantic recipes composed from OPC
+UA skills; virtual commissioning
+Unity assembly-workstation proof of concept
+Graul et
+al. [11]
+Not reported
+AAS-grounded proposals, signed
+human approval, PLC-validated OPC
+UA Methods, and immutable audit log
+Two laboratory PoCs; single scripted runs
+Schall [12] Not reported
+P&ID-, SCADA-, and SOP-grounded
+proposal verification with gated
+execution
+Five simulated scenarios; 43 proposals and 50 LLM runs
+Lin and
+Chen [13]
+Not reported
+Governed sensor–MES–ERP digital
+thread with SOP-, risk-, and
+capability-aware action gating
+25,275 real records; operational metrics
+This work
+Implemented;
+selected routes
+tested
+Shared named dispatcher; task,
+approval, receipt, and sample links on
+task routes; receipts, readbacks, and
+run-tagged samples for direct calls
+Two simulator mappings; one coating-line blueprint onboarding
+replay; context-guard test and ablation
+composes such abstractions with its task runtime, operation
+checks, semantic I/O, and route-specific records; this paper
+evaluates selected paths through that composition rather than
+proposing a replacement for the underlying standards.
+III. SYSTEM DESIGN
+AgentWorkShop is designed for industrial tasks whose
+agents, production contexts, interfaces, and process signals
+vary between deployments. Its architecture organizes these
+variations around shared task and operation services, checks
+each proposed operation against the active production context
+before device routing, and retains route-specific evidence that
+distinguishes a command receipt from a measured process
+response.
+A. Design Rationale and Requirements
+Five requirements—scene variability, harness variability,
+operation authority, outcome observability, and extensibility—
+organize six design rules (D1–D6). These are deployment
+constraints drawn from the target workflows. D1 stores scene
+settings as versioned data; D2 provides registered harness, tool,
+and driver interfaces; D3 separates proposal from execution;
+D4 treats the tool catalog as discovery rather than permission;
+D5 routes actuator writes through the common DCW admis-
+sion point; and D6 retains evidence by operation.
+The requirements trace to implementation as follows. Scene
+variability maps to D1, scene blueprints, and context resolu-
+tion; harness variability and extensibility map to D2, the reg-
+istered harness and driver interfaces; operation authority maps
+to D3–D5, the shared dispatcher, grants, bindings, and write
+admission; outcome observability maps to D6, route-specific
+receipts, and observations. These interfaces are design exten-
+sion points; Section V tests selected task and direct-operation
+routes and one documented blueprint-onboarding workflow.
+AgentWorkShop supplies task and operation services; agent
+strategy and independent process protection remain outside
+this design.
+B. Layered Architecture
+Fig. 1 summarizes the access routes, shared dispatch path,
+production services, semantic I/O, configured drivers, and
+service ownership of records. Task and chat routes enter
+the collaboration band, which contains workspaces, channels,
+task queues, shared memory, mailboxes, task templates, and
+harness adapters. A task route is an execution path through
+this runtime; a harness adapter connects an agent engine to its
+task execution interface. Direct REST tool calls and the stdio
+MCP operation bridge bypass task execution in that band (the
+gold-bordered direct-operation entry in Fig. 1) and enter the
+shared governance block without creating a task or starting a
+harness turn; MCP management and task methods remain on
+their service routes. Direct calls resolve current route state at
+invocation, without an agent-turn prompt or a task record. The
+governance block projects the operation catalog and applies
+the per-call checks; write routes add the approval card and
+the admission interval. The context block supplies the active
+line–product–recipe–run tuple to the gate and scene maps, ob-
+jectives, and guards to the handlers; its links are configuration,
+
+====================== PAGE 4 ======================
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT
+4
+Production context + scene blueprint
+line / product / recipe / run · signals · objectives · guards
+Task / chat route
+CLI · web · SDK · A2A · MCP tasks
+Direct operation route
+REST · selected stdio MCP operations
+Shared per-call dispatcher
+S/P always · G/B only when declared
+Read / analysis services
+DAQ · MES · retrieval · models
+Write / recipe services
+live context · approval · DCW
+Semantic DAQ / DCW nodes
+typed sensing · bounded writes
+Configured protocol drivers
+e.g., OPC UA · MQTT · Modbus
+plant / simulator
+Independent PLC / safety-instrumented system (SIS) protection is external
+Service-owned evidence
+separate record types
+Task: task / approval
+DCW: ACK / readback
+DAQ: observations
+Analysis: summaries
+Recipe: versions
+Joined by actor / context IDs
+when available
+Command and process
+remain separate
+Fig. 1. Architecture and record ownership. Task/chat routes enter the collaboration runtime; direct REST and stdio-MCP calls enter shared dispatch checks
+without creating a task. Dashed arrows denote configuration. Write routes add approval and four-layer admission; the shared dispatcher always checks scope
+and channel policy, with grant and resource-binding checks applied when required by the operation. Owning services retain distinct records. Only REST was
+evaluated; stdio-MCP is shown but untested. Independent PLC and safety-instrumented protection is external.
+not execution, and the runtime assembles prompt-time context
+from the same records. The service band provides acquisition,
+write control, analysis, retrieval, and optional model services
+behind a route-handler interface that selects a service adapter.
+The field-I/O band resolves semantic nodes to built-in or
+plugin drivers for a plant or simulator.
+Each band has a distinct responsibility. Task/chat routes
+enter the task runtime; direct operation routes enter the dis-
+patcher; and both use shared operation checks where appli-
+cable. A harness adapter supplies agent-specific interaction
+on task paths, semantic nodes hide protocol details from
+operations, and the driver registry provides the device-facing
+extension point. Owning services retain task, command, obser-
+vation, and version records separately and link them to avail-
+able actor and production context. No single status conflates
+these outcomes.
+C. Cross-Module Execution Flow
+Fig. 2 summarizes a task turn from entry through operation
+execution, with route-specific evidence retained by owning
+services. Registered harness adapters receive a scoped tool
+catalog during setup and supported registry refreshes; the
+runtime assembles prompt-time production context for each
+agent turn. This context is grounding information, not a task-
+pinned transaction. For each returned tool call, the shared
+dispatcher rechecks invocation scope and channel policy and,
+for industrial operations, current grant and binding conditions
+before handler selection. The selected handler then applies
+route-specific guards, active-run checks, approval revalidation,
+and device-I/O steps as applicable. Command receipts and
+later process observations remain distinct records.
+For an industrial operation u by agent a in channel c, define
+the shared dispatch condition as
+A(a, c, u) =
+^
+X∈C(u)
+X(a, c, u),
+(1)
+where S, P, G, and B denote invocation scope, current
+channel policy, runtime grant, and the agent’s binding to
+referenced resources, respectively. C(u) ⊆{S, P, G, B} is
+the set of predicates declared for operation u; it always
+contains S and P. The grant predicate G is omitted only for
+an explicitly grant-exempt industrial tool, and B is included
+when the operation declares resource references. A declared
+no-reference operation omits B. Each included check must
+pass before handler selection. The policy predicate includes
+channel tool selection, profile, and duty-separation checks
+where configured. This condition is necessary for handler
+selection, not sufficient for actuation: the selected route applies
+its own guards and approval, then rechecks authority, context,
+and applicable limits before dispatch.
+For direct REST invocation, the API establishes a and c
+before applying these checks. An agent token must match
+the requested agent identifier; otherwise, an authenticated user
+must be the channel owner or an administrator. The manager
+loads the channel-agent record to obtain the agent identity,
+role, and channel, then rechecks invocation scope and channel
+tool policy. Industrial operations continue through the declared
+shared grant and binding checks. Handlers resolve live pro-
+duction state from request identifiers and owning services,
+supplying the authorization and production context for direct
+dispatch.
+Fig. 3 gives reference pseudocode for the registered-harness
+task path, not one literal orchestrator function. Direct REST
+

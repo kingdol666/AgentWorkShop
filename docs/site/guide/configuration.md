@@ -22,7 +22,7 @@ config.yml(默认值)  <  .AgentWorkShop/runtime-settings.json(运行时)  <  �
 ## CLI 操作
 
 ```bash
-aw config list                       # 128 个设置项(19 组):44 live / 84 restart · 有效值 + 来源 + 生效方式
+aw config list                       # 138 个设置项(19 组):45 live / 93 restart · 有效值 + 来源 + 生效方式
 aw config get server.prod.port       # 单键(值 + 来源)
 aw config set server.prod.port 8080  # schema 校验 + 原子写盘
 aw config set theme.primaryColor '#41c8f4'

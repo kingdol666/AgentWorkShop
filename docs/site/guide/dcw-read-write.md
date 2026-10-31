@@ -63,6 +63,30 @@ dcw_control(node_id, value)    # 下发设定(量程 ∩ 配方窗联锁;manual 
 | mock | ✅ | ✅ | 模拟 PLC 掉电保持,验收链路用 |
 | MQTT / HTTP | — | ✅ | 单向发布型通道;读请改用同址的数采节点 |
 
+### MQTT 下发报文模板(jsonTemplate)
+
+设备要求单条命令里带**嵌套/多字段**时,用 `jsonTemplate` 取代 `jsonKey`:
+
+```json
+{
+  "driver": "mqtt",
+  "driverConfig": {
+    "host": "127.0.0.1", "port": 1883, "topic": "factory/line1/cmd", "qos": 1,
+    "jsonTemplate": "{"cmd":"set","params":{"temp":{{value}},"hold":8}}",
+    "readTopic": "factory/line1/state", "readJsonPath": "setpoint"
+  }
+}
+```
+
+- `{{value}}` 会被替换为本次下发的**有限数字**,可出现多次;静态字段原样保留。
+- 载荷三档优先级:`jsonTemplate` > `jsonKey`(`{"键":值}`)> 裸数值;**`jsonTemplate` 与 `jsonKey` 互斥**。
+- 模板在**创建/PATCH 时**即校验:缺占位符、渲染后不是合法 JSON、超过 4KB 一律 400 ——
+  坏模板不会留到写入期,更不会把畸形报文发给设备。
+- 渲染结果会 `JSON.parse` 后规范化再 publish;真实设备端按自己的字段解析(示例中的
+  `params.temp`/`hold`)即可正常收到。
+- 回读仍走 `readTopic` + `readJsonPath`;手动单点写回执为 `transport-ack`(如实分级),
+  批次/配方写由写后验证器 `readNow` 提升为 `readback-verified`。
+
 真实链路验收:`scripts/dev-modbus-simulator.mjs`(1502 端口从站,40021+ 为写入即保持的
 设定值组)配合 `scripts/_dbg-dcw-read-rest.mjs` 与 `scripts/_dbg-agent-dcw-rw.ts`,
 对真实 Modbus TCP 做写→读 roundtrip,不依赖任何 mock。

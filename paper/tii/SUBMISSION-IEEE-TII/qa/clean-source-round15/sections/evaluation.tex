@@ -1,0 +1,143 @@
+\section{Experimental Evaluation}
+\label{sec:eval}
+The evaluation asks whether one registered-harness path can execute bounded
+tasks across two simulator scenes with different signal and protocol mappings
+while retaining a checkable task-to-approval-to-receipt-to-sample trace. R20 is
+the primary result: six sequential tasks through one registered harness, three
+per scene on one simulator instance per scene. It demonstrates this configured
+software path, not configuration-reuse benefit or process attainment. R21 is a
+separate deterministic fixture replay on an isolated current-version
+application and simulator; it checks the same task-to-device path without an
+LLM decision. R13 is secondary exploratory protocol and data-path evidence
+whose exact runtime source was not pinned. All runs use repository simulators.
+Supplementary File~S1 contains the R20 trace matrix and records, plus the R21
+fixture evidence.
+
+\subsection{Evidence Units and Experimental Procedure}
+\label{sec:testbed}
+\label{sec:procedure}
+R20 uses the registered harness adapter named \texttt{omp} in cast-film and annealing scenes
+(\texttt{omp} is the project adapter key, not a network protocol),
+with three sequential task executions per scene on one simulator instance per
+scene. Each execution creates a new logical line, product, recipe, active run,
+channel, agent, and task on that shared scene simulator. Line start reapplies the recipe baseline
+(120~rpm or 730~$^{\circ}$C), so the control read returns to baseline while
+the simulated process state carries forward. These are sequential software
+runs, not independent process replications. R13 uses configured protocol and
+data paths in the same two simulator scenes. Earlier experiments are retained
+separately in Supplementary File~S1 and are not pooled with these results.
+
+\subsection{Registered-Harness Process Path (R20)}
+\label{sec:harness-e2e}
+R20 ran the local v0.8.0 working-tree application with the registered
+\texttt{omp} adapter and GLM-5.3-Flash. Supplementary File~S1 contains the
+recorded base revisions, working-tree patches, dependency lockfiles, prompt
+assets, and run logs. This is a source-reconstruction kit rather than an
+immutable release, and the external model service does not guarantee
+deterministic replay. Cast film used OPC UA for screw-speed
+control and MQTT for thickness; annealing used Modbus TCP for both the zone-3
+setpoint and strip-temperature probe. The model received a live control read,
+process measurement, and target band, then selected one value from the
+scenario-defined prevalidated set (125/130/135 rpm or 735/740/745~$^{\circ}$C)
+for a bounded \texttt{recipe\_trial}; this was a constrained choice, not an
+unrestricted optimization search. A synthetic administrator approved each
+proposal. Each route log contains one trial and a 1/1 verified device receipt.
+
+After verifying the route ACK and returned trial result, the runner initiated
+a 20-s delay, then probed, ingested, and queried one value per task under the
+active-run tag through the isolated SQLite time-series fallback. The runner
+checked task state after the sample query; all six task records were then
+\texttt{COMPLETED}. The runner reported 76 passing assertions and no failures, and
+the separate trace audit found a complete task-to-sample record in all six
+executions: each had a matching approval ID, one readback-verified trial
+receipt, and one query result whose run ID and value matched the active run and
+explicit probe. The task-completion timestamp was not retained, so no
+task-completion-to-sample interval can be computed. Table~\ref{tab:q8} labels
+Film-1--3 map to \texttt{cast-film-r1--r3}, and Anneal-1--3 to
+\texttt{annealing-r1--r3}; full identifiers and per-record checks are listed
+in \texttt{R20-TRACE-MATRIX.csv} in S1.
+
+The trace matrix distinguishes two run identifiers. The trial run ID denotes
+the \texttt{recipe\_trial} operation record; the active run ID denotes the
+production run used to tag and query the probe. Both are linked to the same
+task and approval record, and they are not expected to be equal.
+
+Table~\ref{tab:q8} reports the pre-task process value, selected setting, and
+run-tagged sample for each execution; all six remained outside target. The
+results verify a bounded harness-to-simulator path, not process attainment or
+convergence. One probe is not a response trajectory, the SQLite fallback does
+not test normal online DAQ, and R20 does not test profile/binding reuse or
+cross-harness portability.
+
+\begin{table}[!t]
+\centering
+\caption{Constrained model selections and simulator measurements. The control
+is screw speed for cast film and the zone-3 furnace setpoint for annealing.
+Each row reports one run-tagged probe after a 20-s delay from verified route
+readback. All six samples are outside target; executions are sequential within
+each scene.}
+\label{tab:q8}
+\footnotesize
+\setlength{\tabcolsep}{2.5pt}
+\begin{tabularx}{\columnwidth}{@{}lXcX@{}}
+\toprule
+Case & Pre-task value / target band & Control: start$\to$trial & Sample \\
+\midrule
+Film-1 & $55.82/48$--$52~\mu$m & $120\to125$~rpm & $45.69~\mu$m \\
+Film-2 & $45.69/48$--$52~\mu$m & $120\to130$~rpm & $46.69~\mu$m \\
+Film-3 & $46.69/48$--$52~\mu$m & $120\to125$~rpm & $45.69~\mu$m \\
+Anneal-1 & $675.40/700$--$760~^{\circ}$C & $730\to745$~$^{\circ}$C & $679.60~^{\circ}$C \\
+Anneal-2 & $678.30/700$--$760~^{\circ}$C & $730\to745$~$^{\circ}$C & $677.70~^{\circ}$C \\
+Anneal-3 & $676.90/700$--$760~^{\circ}$C & $730\to745$~$^{\circ}$C & $678.10~^{\circ}$C \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\subsection{Deterministic Fixture Replay (R21)}
+R21 ran the local v0.8.0 application with a deterministic transport fixture
+for the registered \texttt{omp} harness,
+which returned a fixed tool call without invoking an LLM or autonomous harness
+decision. In one fresh isolated application/simulator environment, one fixture
+task per scene invoked the recipe-trial path in cast-film and annealing. The
+runner checked dispatch, synthetic approval, verified receipt, matching device
+readback, run-tagged DAQ probe, and route log; all 31 runner assertions,
+including process and port cleanup checks, passed. This replay shows that the
+configured software route can be exercised with deterministic harness input.
+It is not an independent real-agent run, a process replication, or evidence of
+target attainment. The two fixture tasks are not pooled with R20.
+
+\subsection{Software Contract Checks}
+The local unit suite passed 554/554 tests across seven suites. Relevant
+contract checks refuse denied or expired approvals, changed recipe or limit
+state, and invalid node values before driver actuation; unchanged approved
+state dispatches through the mock driver and readback. The approval-snapshot
+suite passed 20/20 cases. Twelve deterministic fault injections changed one
+approval-time field at a time (line, product, recipe, or active run) on
+\texttt{recipe\_apply}, \texttt{recipe\_trial}, and
+\texttt{recipe\_rollback(dispatch=true)}. Every stale action was refused
+before a mock-driver write or new execution record. The handler compares the
+saved line--product--recipe--run tuple after the approval wait. These checks
+use temporary or mock state and are separate from R20's 76 runner checks;
+they do not represent process trials or test missing/mismatched DAQ run tags
+in the end-to-end path.
+
+\subsection{Exploratory Protocol and Data Path (R13)}
+\label{sec:crossscene}
+The R13 application report describes five protocol-family read probes (OPC UA,
+MQTT, Modbus TCP, Modbus RTU over TCP, and HTTP/REST) and bounded writes with
+matching readbacks in two simulator scenes. Six sequential 120-s windows per
+scene at 1-s sampling produced lineage-verified datasets with 658 cast-film
+rows and 655 annealing rows. The rows are overlapping time-window samples, not
+independent process replications. The exact runtime source was not recorded. R13 is
+used only as exploratory protocol and data-lineage evidence; its archived gate
+outputs and run-boundary audit are documented in the reproducibility
+supplement and do not support the primary registered-harness result.
+R14 is an earlier exploratory pilot with alternative signal pairs; both pilot
+model gates failed, and those outcomes informed the subsequent R13 pair
+selection. R13 also produced no eligible model, recommendation, or dispatch.
+The two runs remain separate and are not model-performance evidence.
+
+Earlier protocol, admission-ablation, controller, deployment, and scripted
+recipe records in S1 use older versions or interfaces. They are not pooled
+with R13 or R20, used as matched strategy comparisons, or relied on for the
+current integration claims.

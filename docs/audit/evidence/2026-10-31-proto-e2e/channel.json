@@ -1,0 +1,43 @@
+{
+  "scenario": "diagnose",
+  "name": "PROTO-注塑虚拟诊断频道-1031",
+  "lineId": "ln-cf47d3b6",
+  "plugins": {},
+  "bindings": [
+    {
+      "agentRole": "lead",
+      "kind": "daq",
+      "nodeId": "dn-069d794a",
+      "mode": "auto"
+    },
+    {
+      "agentRole": "lead",
+      "kind": "daq",
+      "nodeId": "dn-56b38198",
+      "mode": "auto"
+    },
+    {
+      "agentRole": "lead",
+      "kind": "daq",
+      "nodeId": "dn-bbf1a2ff",
+      "mode": "auto"
+    },
+    {
+      "agentRole": "lead",
+      "kind": "daq",
+      "nodeId": "dn-ac4f1fa4",
+      "mode": "auto"
+    },
+    {
+      "agentRole": "lead",
+      "kind": "daq",
+      "nodeId": "dn-45bdebba",
+      "mode": "auto"
+    }
+  ],
+  "seedTask": {
+    "title": "PROTO 启动自检:读取四路 PV 与壁厚剖面",
+    "description": "只读任务:用 daq_query 读取熔体温度、熔体压力、模具温度、制品克重最近10分钟样本,以及壁厚轮廓最近5帧;报告均值/范围/是否越预警带,并明确声明未执行任何写操作。",
+    "budget_minutes": 10
+  }
+}

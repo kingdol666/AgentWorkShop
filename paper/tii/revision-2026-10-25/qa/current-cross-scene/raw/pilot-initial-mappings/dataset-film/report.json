@@ -1,0 +1,117 @@
+{
+  "builtAt": "2026-10-25T02:19:43.665+08:00",
+  "nodeSummaries": [
+    {
+      "nodeId": "dn-996ff7d1",
+      "role": "control",
+      "count": 101,
+      "mean": 149.9009900990099,
+      "std": 12.287802855266715,
+      "min": 140,
+      "max": 165,
+      "p05": 140,
+      "p50": 140,
+      "p95": 165,
+      "missingRatio": 0,
+      "cleanedRatio": 0
+    },
+    {
+      "nodeId": "dn-3114fcf3",
+      "role": "target",
+      "count": 101,
+      "mean": 18.14653465346535,
+      "std": 1.2331110539149053,
+      "min": 16.8,
+      "max": 20,
+      "p05": 16.8,
+      "p50": 17.7,
+      "p95": 19.9,
+      "missingRatio": 0,
+      "cleanedRatio": 0
+    }
+  ],
+  "lagEstimates": [
+    {
+      "controlId": "dn-996ff7d1",
+      "targetId": "dn-3114fcf3",
+      "lagSteps": 7,
+      "corr": 0.948
+    }
+  ],
+  "runProfiles": [
+    {
+      "runId": "rr-b4d26b2d",
+      "steps": 101,
+      "targetMeans": {
+        "dn-3114fcf3": 18.288613861386136
+      }
+    },
+    {
+      "runId": "rr-de68521f",
+      "steps": 101,
+      "targetMeans": {
+        "dn-3114fcf3": 18.27920792079208
+      }
+    },
+    {
+      "runId": "rr-4f6db4d6",
+      "steps": 101,
+      "targetMeans": {
+        "dn-3114fcf3": 18.14653465346535
+      }
+    },
+    {
+      "runId": "rr-3929f1aa",
+      "steps": 101,
+      "targetMeans": {
+        "dn-3114fcf3": 18.093069306930687
+      }
+    },
+    {
+      "runId": "rr-5df33b7d",
+      "steps": 101,
+      "targetMeans": {
+        "dn-3114fcf3": 18.121287128712872
+      }
+    },
+    {
+      "runId": "rr-82d4a871",
+      "steps": 100,
+      "targetMeans": {
+        "dn-3114fcf3": 18.075999999999986
+      }
+    }
+  ],
+  "cleaning": {
+    "dn-996ff7d1": {
+      "total": 97,
+      "droppedState": 0,
+      "droppedRange": 0,
+      "droppedHampel": 0,
+      "interpolated": 0,
+      "missingRatio": 0
+    },
+    "dn-3114fcf3": {
+      "total": 97,
+      "droppedState": 0,
+      "droppedRange": 0,
+      "droppedHampel": 0,
+      "interpolated": 0,
+      "missingRatio": 0
+    }
+  },
+  "runsUsed": [
+    "rr-b4d26b2d",
+    "rr-de68521f",
+    "rr-4f6db4d6",
+    "rr-3929f1aa",
+    "rr-5df33b7d",
+    "rr-82d4a871"
+  ],
+  "runsDropped": [],
+  "windowCount": {
+    "train": 180,
+    "val": 179,
+    "test": 180
+  }
+}

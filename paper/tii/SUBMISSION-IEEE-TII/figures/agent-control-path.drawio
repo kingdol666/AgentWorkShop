@@ -1,0 +1,38 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" modified="2026-10-26T00:00:00.000Z" agent="Codex" type="device">
+  <diagram name="Agent control path" id="agent-control-path">
+    <mxGraphModel dx="1000" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="step-1" value="&lt;b&gt;Goal + production context&lt;/b&gt;&lt;br&gt;active line · product · recipe · run" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2E5E8C;strokeWidth=2;align=left;verticalAlign=middle;spacingLeft=14;spacingRight=10;fontSize=15;fontColor=#262626;" vertex="1" parent="1">
+          <mxGeometry x="130" y="36" width="570" height="68" as="geometry" />
+        </mxCell>
+        <mxCell id="step-2" value="&lt;b&gt;Agent control&lt;/b&gt;&lt;br&gt;reads DAQ/MES; proposes a named operation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#2E5E8C;strokeWidth=2;align=left;verticalAlign=middle;spacingLeft=14;spacingRight=10;fontSize=15;fontColor=#262626;" vertex="1" parent="1">
+          <mxGeometry x="130" y="134" width="570" height="68" as="geometry" />
+        </mxCell>
+        <mxCell id="step-3" value="&lt;b&gt;Shared operation dispatcher&lt;/b&gt;&lt;br&gt;scope + channel policy; applicable grant/binding checks" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#3E8E55;strokeWidth=2;align=left;verticalAlign=middle;spacingLeft=14;spacingRight=10;fontSize=15;fontColor=#262626;" vertex="1" parent="1">
+          <mxGeometry x="130" y="232" width="570" height="68" as="geometry" />
+        </mxCell>
+        <mxCell id="step-4" value="&lt;b&gt;Write guards + approval&lt;/b&gt;&lt;br&gt;process limits; approval as required; context rechecked" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#3E8E55;strokeWidth=2;align=left;verticalAlign=middle;spacingLeft=14;spacingRight=10;fontSize=15;fontColor=#262626;" vertex="1" parent="1">
+          <mxGeometry x="130" y="330" width="570" height="68" as="geometry" />
+        </mxCell>
+        <mxCell id="step-5" value="&lt;b&gt;DCW → driver → PLC / simulator&lt;/b&gt;&lt;br&gt;command receipt and later PV observation remain distinct" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#FFFFFF;strokeColor=#20706B;strokeWidth=2;align=left;verticalAlign=middle;spacingLeft=14;spacingRight=10;fontSize=15;fontColor=#262626;" vertex="1" parent="1">
+          <mxGeometry x="130" y="428" width="570" height="68" as="geometry" />
+        </mxCell>
+        <mxCell id="flow-1" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#737B83;strokeWidth=1.4;" edge="1" parent="1" source="step-1" target="step-2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="flow-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#737B83;strokeWidth=1.4;" edge="1" parent="1" source="step-2" target="step-3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="flow-3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#737B83;strokeWidth=1.4;" edge="1" parent="1" source="step-3" target="step-4">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="flow-4" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;endArrow=block;endFill=1;strokeColor=#737B83;strokeWidth=1.4;" edge="1" parent="1" source="step-4" target="step-5">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

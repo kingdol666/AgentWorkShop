@@ -1,0 +1,31 @@
+{
+  "backend": "python-matplotlib",
+  "auditor": "portable-grid-check",
+  "verdict": "PASS",
+  "tolerance_pt": 1.5,
+  "panels": [
+    {
+      "id": "a",
+      "row": 0,
+      "col": 0,
+      "bbox_pt": [
+        46.3968,
+        56.448,
+        245.2719724137931,
+        179.424
+      ]
+    },
+    {
+      "id": "b",
+      "row": 0,
+      "col": 1,
+      "bbox_pt": [
+        308.9120275862069,
+        56.448,
+        507.7872,
+        179.424
+      ]
+    }
+  ],
+  "failures": []
+}

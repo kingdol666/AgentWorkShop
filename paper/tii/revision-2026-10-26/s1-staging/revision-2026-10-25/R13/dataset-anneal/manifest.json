@@ -1,0 +1,228 @@
+{
+  "version": 2,
+  "spec": {
+    "lineId": "ln-f0dc5ff4",
+    "productId": "pd-214d17e1",
+    "recipeId": "rc-65b50241",
+    "runIds": [
+      "rr-c602c1a2",
+      "rr-3cb13d5e",
+      "rr-97c589b6",
+      "rr-d6384d1c",
+      "rr-77698bb2",
+      "rr-a27a226c"
+    ],
+    "nodes": [
+      {
+        "nodeId": "dn-34f21505",
+        "role": "control"
+      },
+      {
+        "nodeId": "dn-6e008bf8",
+        "role": "target"
+      }
+    ],
+    "beatMs": 1000,
+    "window": {
+      "historySteps": 8,
+      "horizonSteps": 4
+    },
+    "cleaning": {
+      "hampelK": 0,
+      "maxInterpMs": 1000
+    },
+    "split": {
+      "valRatio": 0.4,
+      "testRatio": 0.4,
+      "seed": 42
+    },
+    "purpose": "mpc_surrogate",
+    "note": ""
+  },
+  "allNodes": [
+    "dn-34f21505",
+    "dn-6e008bf8"
+  ],
+  "controlNodes": [
+    "dn-34f21505"
+  ],
+  "targetNodes": [
+    "dn-6e008bf8"
+  ],
+  "featureNodes": [],
+  "shapes": {
+    "x": [
+      655,
+      8,
+      2
+    ],
+    "u": [
+      655,
+      4,
+      1
+    ],
+    "y": [
+      655,
+      4,
+      1
+    ]
+  },
+  "split": {
+    "train": 218,
+    "val": 219,
+    "test": 218,
+    "trainRunIds": [
+      "rr-97c589b6",
+      "rr-d6384d1c"
+    ],
+    "valRunIds": [
+      "rr-77698bb2",
+      "rr-a27a226c"
+    ],
+    "testRunIds": [
+      "rr-3cb13d5e",
+      "rr-c602c1a2"
+    ],
+    "blocks": [
+      {
+        "blockId": "rr-97c589b6#0",
+        "runId": "rr-97c589b6",
+        "split": "train",
+        "purgeBeforeSteps": 0,
+        "purgeAfterSteps": 0,
+        "uniqueSteps": 109
+      },
+      {
+        "blockId": "rr-d6384d1c#0",
+        "runId": "rr-d6384d1c",
+        "split": "train",
+        "purgeBeforeSteps": 0,
+        "purgeAfterSteps": 0,
+        "uniqueSteps": 109
+      },
+      {
+        "blockId": "rr-77698bb2#0",
+        "runId": "rr-77698bb2",
+        "split": "val",
+        "purgeBeforeSteps": 0,
+        "purgeAfterSteps": 0,
+        "uniqueSteps": 109
+      },
+      {
+        "blockId": "rr-a27a226c#0",
+        "runId": "rr-a27a226c",
+        "split": "val",
+        "purgeBeforeSteps": 0,
+        "purgeAfterSteps": 0,
+        "uniqueSteps": 110
+      },
+      {
+        "blockId": "rr-3cb13d5e#0",
+        "runId": "rr-3cb13d5e",
+        "split": "test",
+        "purgeBeforeSteps": 0,
+        "purgeAfterSteps": 0,
+        "uniqueSteps": 109
+      },
+      {
+        "blockId": "rr-c602c1a2#0",
+        "runId": "rr-c602c1a2",
+        "split": "test",
+        "purgeBeforeSteps": 0,
+        "purgeAfterSteps": 0,
+        "uniqueSteps": 109
+      }
+    ]
+  },
+  "norm": {
+    "x": {
+      "mean": [
+        730.0688073394496,
+        674.1795307824372
+      ],
+      "std": [
+        10.363218396618496,
+        2.844492822092921
+      ]
+    },
+    "u": {
+      "mean": [
+        730.0688073394496
+      ],
+      "std": [
+        10.947944438994138
+      ]
+    },
+    "y": {
+      "mean": [
+        674.2097485743532
+      ],
+      "std": [
+        2.7969350070410033
+      ]
+    }
+  },
+  "beatMs": 1000,
+  "dataKind": "dynamic",
+  "specHash": "phymvmqa0bv-anneal",
+  "specVersion": 1,
+  "recipeVersion": 1,
+  "variables": [
+    {
+      "id": "mv",
+      "nodeId": "dn-34f21505",
+      "role": "mv",
+      "unit": "℃",
+      "scale": 1,
+      "offset": 0,
+      "delayMs": 0
+    },
+    {
+      "id": "cv",
+      "nodeId": "dn-6e008bf8",
+      "role": "cv",
+      "unit": "℃",
+      "scale": 1,
+      "offset": 0
+    }
+  ],
+  "artifacts": {
+    "x": "arrays/x.f32",
+    "u": "arrays/u.f32",
+    "y": "arrays/y.f32",
+    "timestamps": "arrays/timestamps.f64",
+    "mask": "arrays/mask.f32",
+    "sidecar": "arrays/sidecar.json"
+  },
+  "provenance": {
+    "lineId": "ln-f0dc5ff4",
+    "productId": "pd-214d17e1",
+    "recipeId": "rc-65b50241",
+    "recipeVersion": 1,
+    "runIds": [
+      "rr-c602c1a2",
+      "rr-3cb13d5e",
+      "rr-97c589b6",
+      "rr-d6384d1c",
+      "rr-77698bb2",
+      "rr-a27a226c"
+    ],
+    "recipeContentHash": "352f68c36f559efa011eb824865328ddfb1ce6b9ec54cb522ebe843b0b6b7204",
+    "evidenceSource": "simulation",
+    "availabilityWatermark": null,
+    "capturedAt": "2026-10-25T02:36:28.824+08:00",
+    "lineageVerified": 1,
+    "runLineage": {
+      "verified": [
+        "rr-c602c1a2",
+        "rr-3cb13d5e",
+        "rr-97c589b6",
+        "rr-d6384d1c",
+        "rr-77698bb2",
+        "rr-a27a226c"
+      ],
+      "unknown": [],
+      "excluded": []
+    }
+  }
+}

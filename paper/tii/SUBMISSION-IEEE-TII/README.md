@@ -1,80 +1,75 @@
-# IEEE TII manuscript package
+# IEEE TII Manuscript Package
 
-Current revision: 2026-10-24, narrative, evidence-boundary and figure revision.
-The compiled anonymous manuscript has **10 pages**, including six vector
-figures and **30 references**, within the at-most-ten-page requirement.
-The delivery manifest records the actual page count. IEEEtran journal body/bibliography
-type and margins are unchanged.
+Use the root `main.tex` as the active anonymous review source. The editor's
+preview reflects the saved source; `main.pdf` may be an earlier export. The
+paper presents AgentWorkShop as a modular task-to-device framework that
+connects task adapters, production context, named operations, semantic I/O,
+runtime checks, configured protocol drivers, and service-owned records. Its
+central execution contract lets registered tasks and direct operation calls
+share a dispatcher while retaining the evidence appropriate to each route.
+Command receipts and later process observations are recorded as distinct
+outcomes.
 
-The story follows task intent and production context through acquisition,
-diagnostics, knowledge retrieval, model training, bounded proposals, governed
-execution, response observation and retained recipes. The current system is
-described through its operating contracts; repaired development defects are
-not part of the main narrative. The injection case shows pressure requests,
-platform snapshots and quality outputs together. The process evidence uses
-repository simulators, with its actual scope stated in Engineering Interpretation
-and the self-contained figure captions.
+## Evaluation scope
 
-## Files
+The paper reports distinct evidence units rather than one pooled benchmark.
+The latest deterministic protocol check uses five local simulator endpoints,
+52 acquisition samples, and four write-capable protocol families; its
+out-of-window probes were rejected. A separate model-backed OMP channel test
+queried data and completed two bounded Modbus TCP writes on a cast-film twin.
+Approval was issued by the test script, and process samples do not establish
+optimization benefit. The paper also retains the September 28, 2026 simulator
+missions for injection molding, A2O wastewater treatment, continuous annealing,
+and BOPET film. Each is one deterministic, non-LLM trajectory; the BOPET line
+was provisioned in a separate sub-run. These trajectories are not pooled into
+a shared score. A separate October 26 onboarding replay checks one configured
+simulated line, and an independent mock-driver test exercises stale
+approval-context rejection.
+Two further isolated simulator checks exercise a registered task and a direct
+operation entry in two scenes, with synthetic approvals and single explicit
+post-trial probes. Their records do not establish route equivalence or directly
+trace both calls to the same handler.
 
-- `main.tex` / `main.pdf`: source and compiled anonymous manuscript.
-- `sections/`: six chapter sources.
-- `resources/`: active vector figures, editable SVG/PNG companions, verified
-  active bibliography, and result macros.
-- `figures/make-system-2026.py`: three implementation schematics.
-- `figures/make-evaluation-2026.py`: three data-driven experimental figures.
-- `REPRODUCIBILITY.md`: R1-R12 evidence units, objective definitions, protocol
-  and interpretation of the archived process measurements.
-- `FILE-MANIFEST.json`: hashes of the active manuscript and resources.
+All process readings are from configured local simulators, not physical plant
+measurements. Each scenario has one trajectory; sequential observations are
+not independent replications. The figure-data manifest records hashes of the
+available logs and code, but a complete frozen run configuration is unavailable,
+so exact replay is not established. Terminal tensile-strength and surface-defect
+readings were not archived for annealing, and the complete terminal effluent
+vector is unavailable for wastewater. The reported terminal hardness and
+dissolved-oxygen values are separate from the last structured trajectory points.
+The onboarding replay used a working-tree build that was not fully pinned.
+The approval tests use simulated decisions and mock drivers; neither they nor
+the four-scene logs measure human-review effectiveness. Other route checks are
+retained only in the internal audit record.
 
-The manuscript-source ZIP and `IEEE-TII-anonymous-evidence-2026-10-24.zip` are separate
-deliverables. The latter contains available raw/derived archives, original
-engine logs, replay source snapshots, redaction/hash manifests, and a
-claim-to-artifact map. Available scripts are labelled by interface era; the
-supplement does not claim a standalone runtime or an exact historical source
-snapshot when only an archived commit marker is available. The October 24
-evidence package extends the historical anonymous bundle with the October 23
-failed boundary checks and new original/delivered hashes; those checks are
-not represented as successful process replications.
+- `sections/`: introduction, related work, system design, module functions,
+  experimental evaluation, and discussion/conclusion.
+- `resources/`: figures, figure data, and bibliography used by the paper.
+- `figures/`: editable figure sources and generation scripts.
+- `resources/figure-source-data/four-scenario-2026-09-28.json`: audited
+  trajectory data and evidence boundaries; the companion CSV and manifest
+  record plotted data and source hashes.
+- `bench/results/20260928020612-1juc/` at the repository root: source
+  mission logs. The contemporaneous consolidated report is at
+  `bench/reports-archive/20260928-extended-final/benchmark-report.md`.
+- `qa/onboarding-repro-2026-10-26-v083-online/`: the separate onboarding
+  replay logs and service status. `tests/recipe-approval-snapshot.test.ts` and
+  `tests/recipe-approval-context-ablation.test.ts` at the repository root
+  provide the mock approval tests.
+- `paper/tii/revision-2026-10-26/s1-staging/revision-2026-10-25/R21/` and
+  `R22/` at the repository root: the separate registered-task and direct-entry
+  logs, respectively; these use different isolated environments.
+- `bench/results/20261029180436-1lo0/`: deterministic protocol and integrated
+  simulator report used only for the protocol-provisioning and write-admission
+  results in the paper.
+- `docs/audit/evidence/2026-10-30-real-channel-mission/report.json` and
+  `scripts/e2e-real-channel-mission.mjs`: assertion-level record and runner for
+  the model-backed channel test; the runner scripted the approval decision.
+- `Supplementary-File-S1.zip`: a separate historical evidence archive. It has
+  not been updated to contain the September 28 mission logs and should not be
+  treated as the evidence package for the current manuscript.
 
-## Compile
-
-From this folder, with TeX Live and IEEEtran installed:
-
-```text
-latexmk -pdf -interaction=nonstopmode -halt-on-error main.tex
-```
-
-The agent's checks use the latex-paper-en `compile.py` wrapper with shell
-escape disabled. Use a Python environment with PyMuPDF for PDF preflight.
-Current official requirements, evidence/prose audits, figure QA, page renders,
-evidence packaging and final verification are in `../revision-2026-10-24/`.
-The October 20 checks and five-seat review remain historical records.
-Unchanged primary-source citation audits
-remain in `../revision-2026-10-20-tenpage/`; original experimental figure
-source-data mappings remain in `../revision-2026-10-20/`.
-
-The current `../revision-2026-10-24/requirements/IEEE-TII-REQUIREMENTS.md`
-distinguishes official rules from project choices. TII sets a ten-page
-ceiling; exactly ten pages is unnecessary. Thirty references results from separating two standards,
-not a journal reference ceiling. Earlier review/build records are historical
-artifacts and do not describe the current PDF.
-
-## Editorial and citation scope
-
-The current bibliography contains the actually cited works; the previous
-background library and nine-page draft are preserved separately. AgentSpec
-uses its ICSE 2026 publication; the R2R book lists editors; MCP is versioned;
-ISA-88 and ISA-95 have distinct references. DOI links are printed where available.
-The primary-source reports distinguish full-text, author-abstract, catalog and
-same-day prior-metadata checks rather than claiming every source was read fully.
-
-Formatting and citation verification are distinct from journal peer review.
-The paper reports the mechanisms and process observations its archives support,
-and states the simulator/sample scope. The prior five-seat review is preserved
-as a historical editorial input; this pass has its own read-only verification.
-AI assistance is disclosed, including image-generation composition drafts
-for Figures 1 and 2 and their final editable vector reconstruction. The
-official requirements record the AI-disclosure placement issue for anonymous
-review; the final portal instructions still govern submission placement.
-No external journal submission is performed.
+The active manuscript uses the two-column IEEEtran format.
+Other historical software-integration records remain available for audit
+traceability and are not additional findings in the manuscript.

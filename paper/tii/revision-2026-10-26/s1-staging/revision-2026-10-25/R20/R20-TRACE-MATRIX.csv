@@ -1,0 +1,7 @@
+execution_key,task_id,active_run_id,approval_id,recipe_trial_id,verified_count,unverified_count,failed_count,expected_sample_run_id,returned_sample_run_id,sample_value,task_state_after_sample_query
+cast-film-r1,1987fc20-4301-4198-bedc-90fac3a54057,rr-5f1c6e35,ap-fdbd80c0,rr-8a109c51,1,0,0,rr-5f1c6e35,rr-5f1c6e35,45.69,COMPLETED
+cast-film-r2,abd1676e-71a2-410d-bfc4-6616cebe7067,rr-bf378f69,ap-67708457,rr-124d359f,1,0,0,rr-bf378f69,rr-bf378f69,46.69,COMPLETED
+cast-film-r3,4b9857d4-dc13-4d5f-8fe4-caba084e888a,rr-2b5f445e,ap-9737ad2f,rr-1edfa835,1,0,0,rr-2b5f445e,rr-2b5f445e,45.69,COMPLETED
+annealing-r1,5041b79c-2fba-4983-8b81-1f018ec93958,rr-013b2f6a,ap-3a920263,rr-8b8e5899,1,0,0,rr-013b2f6a,rr-013b2f6a,679.5999755859375,COMPLETED
+annealing-r2,be80ec5a-7caa-404d-8b91-ab4f03e4a1c1,rr-0809199c,ap-d357e4b4,rr-66301240,1,0,0,rr-0809199c,rr-0809199c,677.7000122070312,COMPLETED
+annealing-r3,e46a4eec-c2f5-4eab-b4f5-e7fd1fcc88e5,rr-52743484,ap-adb4eb67,rr-34ba1848,1,0,0,rr-52743484,rr-52743484,678.0999755859375,COMPLETED

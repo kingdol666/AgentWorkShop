@@ -1,0 +1,45 @@
+{
+  "delays": {
+    "mv": 0,
+    "cv": 0
+  },
+  "units": [
+    {
+      "id": "mv",
+      "unit": "℃",
+      "modelUnit": "℃",
+      "scale": 1,
+      "offset": 0
+    },
+    {
+      "id": "cv",
+      "unit": "℃",
+      "modelUnit": "℃",
+      "scale": 1,
+      "offset": 0
+    }
+  ],
+  "variableOrder": [
+    "mv",
+    "cv"
+  ],
+  "trainerRef": "linear_arx@1",
+  "conditionId": "simulator",
+  "recipeContentHash": "352f68c36f559efa011eb824865328ddfb1ce6b9ec54cb522ebe843b0b6b7204",
+  "evidenceSource": "simulation",
+  "availabilityWatermark": null,
+  "splitRunIds": {
+    "train": [
+      "rr-97c589b6",
+      "rr-d6384d1c"
+    ],
+    "val": [
+      "rr-77698bb2",
+      "rr-a27a226c"
+    ],
+    "test": [
+      "rr-3cb13d5e",
+      "rr-c602c1a2"
+    ]
+  }
+}

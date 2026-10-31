@@ -1,0 +1,33 @@
+diff --git a/server/services/workshop/daq/bus/index.ts b/server/services/workshop/daq/bus/index.ts
+index 840b41fd..fd734901 100644
+--- a/server/services/workshop/daq/bus/index.ts
++++ b/server/services/workshop/daq/bus/index.ts
+@@ -22,16 +22,23 @@ export async function getDaqQueue(): Promise<DaqQueuePort> {
+ 
+ /** 重连/初始装配:按 infra 判定结果(重新)构建 MQTT 或进程内队列 */
+ export async function rebuildDaqQueue(online: boolean, url?: string | null): Promise<DaqQueuePort> {
+-  // 换装前释放旧 adapter(mqtt 连接 / inproc 泵),防重建泄漏
+-  await g.__daqQueue?.close?.()
+   if (!online || !url) {
+-    if (g.__daqQueue?.backend !== 'inproc') {
+-      g.__daqQueue = new InProcQueueAdapter()
++    // Reuse an in-process adapter without closing it. close() clears consumers and
++    // stops its pump; getDaqQueue() will not initialize an existing instance again.
++    if (g.__daqQueue?.backend === 'inproc') {
+       await g.__daqQueue.init()
+-      log.warn('[daq-queue] 降级进程内队列')
++      return g.__daqQueue
+     }
++    // When falling back from MQTT, install a fresh adapter; the controller reattaches
++    // its consumer after this replacement.
++    await g.__daqQueue?.close?.()
++    g.__daqQueue = new InProcQueueAdapter()
++    await g.__daqQueue.init()
++    log.warn('[daq-queue] 降级进程内队列')
+     return g.__daqQueue
+   }
++  // Release the previous adapter before a transition to MQTT.
++  await g.__daqQueue?.close?.()
+   try {
+     const adapter = new MqttQueueAdapter(url)
+     await adapter.init()

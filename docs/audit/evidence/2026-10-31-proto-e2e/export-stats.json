@@ -1,0 +1,120 @@
+{
+  "exportId": "daqexp-20261031011337-f42c6d",
+  "dir": "D:/tmp/aw-idd-rag-e2e-20261030/data/daq-exports/daqexp-20261031011337-f42c6d",
+  "window": {
+    "from_ms": 1793379817228,
+    "to_ms": 1793380417228,
+    "from": "2026-10-31T01:03:37.228+08:00",
+    "to": "2026-10-31T01:13:37.228+08:00"
+  },
+  "totals": {
+    "files": 4,
+    "rows": 978
+  },
+  "checks": [
+    {
+      "name": "熔体温度PV CSV 表头",
+      "pass": true,
+      "detail": "ts_iso,ts_ms,value,state"
+    },
+    {
+      "name": "熔体温度PV 行数=manifest",
+      "pass": true,
+      "detail": "287 vs 287"
+    },
+    {
+      "name": "熔体温度PV 值域=manifest",
+      "pass": true,
+      "detail": "241.4~243.1 vs 241.4~243.1"
+    },
+    {
+      "name": "熔体压力PV CSV 表头",
+      "pass": true,
+      "detail": "ts_iso,ts_ms,value,state"
+    },
+    {
+      "name": "熔体压力PV 行数=manifest",
+      "pass": true,
+      "detail": "287 vs 287"
+    },
+    {
+      "name": "熔体压力PV 值域=manifest",
+      "pass": true,
+      "detail": "50.8~55.4 vs 50.8~55.4"
+    },
+    {
+      "name": "模具温度PV CSV 表头",
+      "pass": true,
+      "detail": "ts_iso,ts_ms,value,state"
+    },
+    {
+      "name": "模具温度PV 行数=manifest",
+      "pass": true,
+      "detail": "288 vs 288"
+    },
+    {
+      "name": "模具温度PV 值域=manifest",
+      "pass": true,
+      "detail": "46.3~48.5 vs 46.3~48.5"
+    },
+    {
+      "name": "制品克重 CSV 表头",
+      "pass": true,
+      "detail": "ts_iso,ts_ms,value,state"
+    },
+    {
+      "name": "制品克重 行数=manifest",
+      "pass": true,
+      "detail": "116 vs 116"
+    },
+    {
+      "name": "制品克重 值域=manifest",
+      "pass": true,
+      "detail": "32.44~32.71 vs 32.44~32.71"
+    },
+    {
+      "name": "vector CSV 表头",
+      "pass": true,
+      "detail": "ts_iso,ts_ms,point_index,value"
+    },
+    {
+      "name": "vector 总行数=manifest.points",
+      "pass": true,
+      "detail": "3776 vs 3776"
+    },
+    {
+      "name": "vector 点数=帧数×每帧点数",
+      "pass": true,
+      "detail": "3776 vs 59×64"
+    },
+    {
+      "name": "vector 每帧点数一致",
+      "pass": true,
+      "detail": "[64]"
+    },
+    {
+      "name": "vector 时间戳数=帧数",
+      "pass": true,
+      "detail": "59 vs 59"
+    },
+    {
+      "name": "manifest 不含 sha256(按设计)",
+      "pass": true,
+      "detail": "sha256 需自行计算"
+    },
+    {
+      "name": "manifest 不含列名(按设计)",
+      "pass": true,
+      "detail": "CSV 表头即列名"
+    },
+    {
+      "name": "totals 只统计标量",
+      "pass": true,
+      "detail": "{\"files\":4,\"rows\":978}"
+    }
+  ],
+  "verdict": "PASS",
+  "pass": 20,
+  "total": 20,
+  "generatedAt": "2026-10-30T17:15:57.136Z"
+}

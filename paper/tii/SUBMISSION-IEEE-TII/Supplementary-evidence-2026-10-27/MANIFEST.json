@@ -1,0 +1,260 @@
+{
+  "schema": "supplementary-evidence-manifest-v1",
+  "records": [
+    {
+      "delivered": "four-missions/scenarios-mission-injection.log",
+      "sha256": "3f409d252508a065d3bd5f9430dc22f490cefac3eb4f1157cec5c573707250af",
+      "source": "bench/results/20260928020612-1juc/scenarios-mission-injection.log",
+      "source_sha256": "6ec2797065c1cedd3578098c9bce8fc50891b5325225119678450dc2630b5a2a",
+      "transformation": "UTF-8 text; replace UUIDs with consistent pseudonyms; all other content preserved"
+    },
+    {
+      "delivered": "four-missions/scenarios-mission-biax.log",
+      "sha256": "1f75cccae18b27b3e08b54549aae8f892bde57251751708bacfac27529d02c55",
+      "source": "bench/results/20260928020612-1juc/scenarios-mission-biax.log",
+      "source_sha256": "c6381d6eaf29d4130791ab088c39c15d2952059a8f2c6764f49848ca5dcc5657",
+      "transformation": "UTF-8 text; replace UUIDs with consistent pseudonyms; all other content preserved"
+    },
+    {
+      "delivered": "four-missions/scenarios-mission-anneal.log",
+      "sha256": "bb05a109148642bc788c5b6451fbfc9246e0db27c04b29261cb3b9b6f0024593",
+      "source": "bench/results/20260928020612-1juc/scenarios-mission-anneal.log",
+      "source_sha256": "2c0953b6deb83901d597050b95cee5a64b408d9f2b5afbff7136ab9cfa9be05c",
+      "transformation": "UTF-8 text; replace UUIDs with consistent pseudonyms; all other content preserved"
+    },
+    {
+      "delivered": "four-missions/scenarios-mission-wwtp.log",
+      "sha256": "6865d23af64c8d14caf7042499c2b27abd02e5da104c5f212f086df502478178",
+      "source": "bench/results/20260928020612-1juc/scenarios-mission-wwtp.log",
+      "source_sha256": "2d02b978b2f95be83ebf34a5831a3ddf2ce074493e846fabaca6c5041826028d",
+      "transformation": "UTF-8 text; replace UUIDs with consistent pseudonyms; all other content preserved"
+    },
+    {
+      "delivered": "four-missions/agentteam-biax.log",
+      "sha256": "c29ff21075f8677aa3ba8028a53ea4e677b3ed3005137667ddeae72344e018af",
+      "source": "bench/results/20260928020612-1juc/agentteam-biax.log",
+      "source_sha256": "a92b18a3ad9f533dd4da0ac80bd8a78c47e78cb5ad3f1d2559c7b0741243e889",
+      "transformation": "UTF-8 text; replace UUIDs with consistent pseudonyms; all other content preserved"
+    },
+    {
+      "delivered": "four-missions/figure-data/four-scenario-2026-09-28.json",
+      "sha256": "65c3bba99824326b5f596118dae1d6611b154194dfd9b41718f89eec3081a36e",
+      "source": "paper/tii/SUBMISSION-IEEE-TII/resources/figure-source-data/four-scenario-2026-09-28.json",
+      "source_sha256": "65c3bba99824326b5f596118dae1d6611b154194dfd9b41718f89eec3081a36e",
+      "transformation": "byte-identical"
+    },
+    {
+      "delivered": "four-missions/figure-data/four-scenario-2026-09-28.csv",
+      "sha256": "7a2c57bb38b089ca807a8f0d9c6f8ec9cad405b0d300f9c68f1e70a176f48c9f",
+      "source": "paper/tii/SUBMISSION-IEEE-TII/resources/figure-source-data/four-scenario-2026-09-28.csv",
+      "source_sha256": "7a2c57bb38b089ca807a8f0d9c6f8ec9cad405b0d300f9c68f1e70a176f48c9f",
+      "transformation": "byte-identical"
+    },
+    {
+      "delivered": "four-missions/figure-data/four-scenario-2026-09-28-manifest.json",
+      "sha256": "397318a3fd20715b8e547e0b0b0507a475c550856941140bb875cd7a721e002c",
+      "source": "paper/tii/SUBMISSION-IEEE-TII/resources/figure-source-data/four-scenario-2026-09-28-manifest.json",
+      "source_sha256": "397318a3fd20715b8e547e0b0b0507a475c550856941140bb875cd7a721e002c",
+      "transformation": "byte-identical"
+    },
+    {
+      "delivered": "real-harness/R20-SUMMARY.md",
+      "sha256": "d86a8478efa357df71f5e8a899b6595f96af1ab0a4f162140e13965dfdfc3476",
+      "source": "paper/tii/revision-2026-10-26/s1-staging/revision-2026-10-25/R20/R20-SUMMARY.md",
+      "source_sha256": "efdf0798e5208777b256b9c4db6181f8484771f735b9ff385e2e818568691a90",
+      "transformation": "Original archive description prefixed with an editorial note listing artifacts not present in this bundle; original content otherwise preserved"
+    },
+    {
+      "delivered": "real-harness/R20-TRACE-SUMMARY.csv",
+      "sha256": "040e642df52179cd04073c7b0bb681d53e0128af25dde4702a540902cf77ee5a",
+      "source": "paper/tii/revision-2026-10-26/s1-staging/revision-2026-10-25/R20/R20-TRACE-MATRIX.csv",
+      "source_sha256": "3d083be05b49da8cabecb3142be17b41786cef3c4b125233d1e81fa22ebb4dc7",
+      "transformation": "selected columns only; removed task, run, approval and trial IDs, including ID equality fields"
+    },
+    {
+      "delivered": "real-harness/R20-EVIDENCE-PROJECTION.json",
+      "sha256": "045e3f564b6c7a7f5644bb9d341bb3e38add351239d1ee608a641cdb6ea98938",
+      "source": "paper/tii/revision-2026-10-26/s1-staging/revision-2026-10-25/R20/evidence.json",
+      "source_sha256": "62ff3d5fb7789c6749ca736b9c0747618ddccedcf5e74536249cdc40e36cbf01",
+      "transformation": "selected outcome and assertion fields; identifiers, internal paths, logs, decision text and check details omitted; full source also contains userNames, authSource, evidencePath and runtimeLogPaths fields; complete contextual privacy review not established"
+    },
+    {
+      "delivered": "integration/R21-README.md",
+      "sha256": "711b9dc09e574693d0e99862369146a87d3fc4c844559be4e67e2d19e214a06a",
+      "source": "paper/tii/revision-2026-10-26/s1-staging/revision-2026-10-25/R21/README.md",
+      "source_sha256": "808036cc33c153c2cf4385916c44f728794295da106c398e151709b84a31cf7a",
+      "transformation": "Original archive description prefixed with an editorial note listing artifacts not present in this bundle; original content otherwise preserved"
+    },
+    {
+      "delivered": "integration/R22-README.md",
+      "sha256": "f21328545af5fcd4b6031f43f7ecffbfc2d2ff9afed10a78a34b1227dad3d310",
+      "source": "paper/tii/revision-2026-10-26/s1-staging/revision-2026-10-25/R22/README.md",
+      "source_sha256": "148c4f38a797b9cf350deb4510676a75b8ebee0b8353dcfd286dbbb7fa11a069",
+      "transformation": "Original archive description prefixed with an editorial note listing artifacts not present in this bundle; original content otherwise preserved"
+    },
+    {
+      "delivered": null,
+      "source": "paper/tii/revision-2026-10-26/s1-staging/revision-2026-10-25/R20/agentworkshop.log",
+      "source_sha256": "fcb16c6a49b25f8ef31efbac23c36286c4afc519bc6cbf63d054e6e35866bf7b",
+      "transformation": "not distributed: operational application trace includes 2314 UUID occurrences and local endpoint URLs; full cross-file pseudonymization and contextual privacy review not established"
+    },
+    {
+      "delivered": null,
+      "source": "paper/tii/revision-2026-10-26/s1-staging/revision-2026-10-25/R20/simulator.log",
+      "source_sha256": "7d17cab36b4ee448c210e1f296e853dab79ff838ada2afced9ae862ea01a194b",
+      "transformation": "not distributed: identity and runtime environment review not established"
+    },
+    {
+      "delivered": null,
+      "source": "bench/results/20260921184204-10lc/agent-loop-omp.log",
+      "source_sha256": "c0b6d134de9ce63a6a528dce758b269e0f6644d92dd33a6c4815e3a53c03252b",
+      "transformation": "original byte-for-byte file not distributed; UUID-pseudonymized staging copy is provided under historical-model-runs; full historical runtime snapshot unavailable"
+    },
+    {
+      "delivered": null,
+      "source": "bench/results/20260921184204-10lc/agent-goal-loop-omp.log",
+      "source_sha256": "8f0472aef1d33f16bec4d9382b5f1e15028b54ff8d476f653339bdd06fb2e934",
+      "transformation": "original byte-for-byte file not distributed; UUID-pseudonymized staging copy is provided under historical-model-runs; full historical runtime snapshot unavailable"
+    },
+    {
+      "delivered": null,
+      "source": "bench/reports-archive/20260928-extended-final/benchmark-report.md",
+      "source_sha256": "49d0aac83f8b8280c04bae85ab1ffbbed71c92aa971f0c098e75b226a3c80af4",
+      "transformation": "not distributed: summary includes local deployment details and overbroad automated verdicts"
+    },
+    {
+      "delivered": null,
+      "source": "tests/recipe-approval-snapshot.test.ts",
+      "source_sha256": "9e43811542d03ebd475033b8e11d83f2d19eb4e2404096ee2217f7bd44554701",
+      "transformation": "not distributed: component-test source; independent source artifact indexed by hash"
+    },
+    {
+      "delivered": null,
+      "source": "tests/recipe-approval-context-ablation.test.ts",
+      "source_sha256": "a5f5f1805ec659b9117e2c7c3a6d932c8d5a179791fc8db73cad2ecc72c9c417",
+      "transformation": "not distributed: component-test source; independent source artifact indexed by hash"
+    },
+    {
+      "delivered": null,
+      "source": "paper/tii/SUBMISSION-IEEE-TII/qa/onboarding-repro-2026-10-26-v083-online/onboarding.log",
+      "source_sha256": "c3d8a8aba329a96a77cff8b142391f2cd9d4c5e92bdcb94f719708dd8e27476a",
+      "transformation": "not distributed: local deployment log not completely privacy reviewed"
+    },
+    {
+      "delivered": "README.md",
+      "sha256": "8e7ccbec58fbf8d46d0c5f445cf210f374802352609e163a505237f73f04d949",
+      "source": null,
+      "source_sha256": null,
+      "transformation": "generated"
+    },
+    {
+      "delivered": "historical-model-runs/agent-loop-omp.log",
+      "source": "paper/tii/revision-2026-10-26/s1-staging/R1/agent-loop-omp.log",
+      "source_sha256": "c0b6d134de9ce63a6a528dce758b269e0f6644d92dd33a6c4815e3a53c03252b",
+      "sha256": "4a8b0984f05c04ed57d704d295a2e839c7c7b3947829c226e57df5159cf6a70d",
+      "transformation": "UTF-8 text; UUIDs consistently pseudonymized across both historical transcripts; other text unchanged",
+      "same_as_source": "bench/results/20260921184204-10lc/agent-loop-omp.log",
+      "same_as_source_sha256": "c0b6d134de9ce63a6a528dce758b269e0f6644d92dd33a6c4815e3a53c03252b"
+    },
+    {
+      "delivered": "historical-model-runs/agent-goal-loop-omp.log",
+      "source": "paper/tii/revision-2026-10-26/s1-staging/R1/agent-goal-loop-omp.log",
+      "source_sha256": "8f0472aef1d33f16bec4d9382b5f1e15028b54ff8d476f653339bdd06fb2e934",
+      "sha256": "b7f69931c77321e4bd2fc1e5bde25adeb0ba95c7ee65e069f15931cc4b0fdc96",
+      "transformation": "UTF-8 text; UUIDs consistently pseudonymized across both historical transcripts; other text unchanged",
+      "same_as_source": "bench/results/20260921184204-10lc/agent-goal-loop-omp.log",
+      "same_as_source_sha256": "8f0472aef1d33f16bec4d9382b5f1e15028b54ff8d476f653339bdd06fb2e934"
+    },
+    {
+      "delivered": null,
+      "source": "docs/audit/2026-10-20-harness-acceptance-report.md",
+      "source_sha256": "bf78bf3023890d442f8c1ac0949fe9b133227c9988d6976c831f26b922c5c9a4",
+      "transformation": "indexed only: internal report or operational evidence may contain identities, endpoints and environment details; complete disclosure and anonymity review pending"
+    },
+    {
+      "delivered": null,
+      "source": "docs/audit/2026-10-20-harness-acceptance-evidence/team-line-e2e-final.json",
+      "source_sha256": "6c54f097ec4c280482b408d851c61c30150b12459c86fa36a28418b562c9bfa5",
+      "transformation": "indexed only: internal report or operational evidence may contain identities, endpoints and environment details; complete disclosure and anonymity review pending"
+    },
+    {
+      "delivered": "EVIDENCE-OVERVIEW.md",
+      "sha256": "840dc1b7e415a336285c89cff8abaf5be291835e4c9f4363ef4a9b157173de3c",
+      "source": null,
+      "source_sha256": null,
+      "transformation": "generated evidence synthesis; source anchors and limitations described inside"
+    },
+    {
+      "delivered": "real-harness/R20-TRACE-JOINS.csv",
+      "sha256": "239adb2cec47ce951ad546a527886ecedbee3ca3b00da9138bf40c77b5d0ec2c",
+      "source": "paper/tii/revision-2026-10-26/s1-staging/revision-2026-10-25/R20/R20-TRACE-MATRIX.csv",
+      "source_sha256": "3d083be05b49da8cabecb3142be17b41786cef3c4b125233d1e81fa22ebb4dc7",
+      "transformation": "task, approval, trial and run identifiers replaced by sequential pseudonyms; sample run equality and values preserved; task/run/trial cross-checked against R20 evidence.json"
+    },
+    {
+      "delivered": "figures/fig-r20-origin.pdf",
+      "sha256": "916538763b2c99ab1f267e1f647f89b0145982c802671c38e0f6ba42e40da58e",
+      "source": "paper/tii/SUBMISSION-IEEE-TII/resources/fig-r20-origin.pdf",
+      "source_sha256": "916538763b2c99ab1f267e1f647f89b0145982c802671c38e0f6ba42e40da58e",
+      "transformation": "byte-identical figure output"
+    },
+    {
+      "delivered": "figures/fig-r20-origin.png",
+      "sha256": "282f68a375390805734d601dd6cae1ae3fe8a564609153647a8460cbfcb9d53d",
+      "source": "paper/tii/SUBMISSION-IEEE-TII/resources/fig-r20-origin.png",
+      "source_sha256": "282f68a375390805734d601dd6cae1ae3fe8a564609153647a8460cbfcb9d53d",
+      "transformation": "byte-identical figure output"
+    },
+    {
+      "delivered": "figures/fig-r20-origin.svg",
+      "sha256": "19c1df29b484e17c12a57b944b357ffa65ceca07f08a579d8a4aa4b8c8ab11ab",
+      "source": "paper/tii/SUBMISSION-IEEE-TII/resources/fig-r20-origin.svg",
+      "source_sha256": "19c1df29b484e17c12a57b944b357ffa65ceca07f08a579d8a4aa4b8c8ab11ab",
+      "transformation": "byte-identical figure output"
+    },
+    {
+      "delivered": "figures/fig-missions-origin.pdf",
+      "sha256": "293d62975fb0390af8786acb987395af910b603eda669ed6eb1140ed9f5e7233",
+      "source": "paper/tii/SUBMISSION-IEEE-TII/resources/fig-missions-origin.pdf",
+      "source_sha256": "293d62975fb0390af8786acb987395af910b603eda669ed6eb1140ed9f5e7233",
+      "transformation": "byte-identical figure output"
+    },
+    {
+      "delivered": "figures/fig-missions-origin.png",
+      "sha256": "e9c135531692388b1179357765e3b59f2a16182d2e53e86095b89c1ad3f1a8d7",
+      "source": "paper/tii/SUBMISSION-IEEE-TII/resources/fig-missions-origin.png",
+      "source_sha256": "e9c135531692388b1179357765e3b59f2a16182d2e53e86095b89c1ad3f1a8d7",
+      "transformation": "byte-identical figure output"
+    },
+    {
+      "delivered": "figures/fig-missions-origin.svg",
+      "sha256": "9c7c7e1c4fb2eb66e311dd7a5061a1c6fe9aa6bdf9728ce59826d16aa6b9ddd6",
+      "source": "paper/tii/SUBMISSION-IEEE-TII/resources/fig-missions-origin.svg",
+      "source_sha256": "9c7c7e1c4fb2eb66e311dd7a5061a1c6fe9aa6bdf9728ce59826d16aa6b9ddd6",
+      "transformation": "byte-identical figure output"
+    },
+    {
+      "delivered": "plotting/plot-r20-origin.py",
+      "sha256": "4d0ef3e1dd9dd3e5f85c2428078a32edd28bae78f4ad0d00f3ae74ebc2a8057b",
+      "source": "paper/tii/SUBMISSION-IEEE-TII/figures/plot-r20-origin.py",
+      "source_sha256": "4d0ef3e1dd9dd3e5f85c2428078a32edd28bae78f4ad0d00f3ae74ebc2a8057b",
+      "transformation": "byte-identical portable plotting script or basic layout helper"
+    },
+    {
+      "delivered": "plotting/plot-missions-origin.py",
+      "sha256": "37f0c7805d5e64148cdad213457076e2dd8f01af4b4fd22202e6ad645a51ecfb",
+      "source": "paper/tii/SUBMISSION-IEEE-TII/figures/plot-missions-origin.py",
+      "source_sha256": "37f0c7805d5e64148cdad213457076e2dd8f01af4b4fd22202e6ad645a51ecfb",
+      "transformation": "byte-identical portable plotting script or basic layout helper"
+    },
+    {
+      "delivered": "plotting/figure_layout.py",
+      "sha256": "de9d11b19d6d76b04cdaa3c5e3e5174d2d22f499551ba34dbb37f9cf1c2d52fb",
+      "source": "paper/tii/SUBMISSION-IEEE-TII/figures/figure_layout.py",
+      "source_sha256": "de9d11b19d6d76b04cdaa3c5e3e5174d2d22f499551ba34dbb37f9cf1c2d52fb",
+      "transformation": "byte-identical portable plotting script or basic layout helper"
+    }
+  ],
+  "privacy": "Heuristic scan and curated projections only; transcripts may contain unidentified sensitive context and require human review prior to external sharing.",
+  "uuid_mapping": "pseudonyms consistent across four delivered mission logs; mapping withheld"
+}

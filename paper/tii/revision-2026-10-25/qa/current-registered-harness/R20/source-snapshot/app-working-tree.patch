@@ -1,0 +1,120 @@
+diff --git a/server/services/workshop/agents/adapters/omp-rpc-client/frames.ts b/server/services/workshop/agents/adapters/omp-rpc-client/frames.ts
+index 979ba37c..df3b3353 100644
+--- a/server/services/workshop/agents/adapters/omp-rpc-client/frames.ts
++++ b/server/services/workshop/agents/adapters/omp-rpc-client/frames.ts
+@@ -13,6 +13,15 @@ export abstract class OmpRpcClientFrames extends OmpRpcClientStdout {
+     const { id, toolCallId, toolName, arguments: args } = req
+     let result: { text: string, isError?: boolean }
+ 
++    for (const fn of this.eventListeners) {
++      try {
++        fn({ type: 'tool_execution_start', toolCallId, toolName, args: args ?? {} })
++      }
++      catch {
++        // 事件 listener 异常不影响工具执行
++      }
++    }
++
+     if (this.hostToolHandler) {
+       try {
+         result = await this.hostToolHandler({ id, toolCallId, toolName, arguments: args ?? {} })
+@@ -25,6 +34,15 @@ export abstract class OmpRpcClientFrames extends OmpRpcClientStdout {
+       result = { text: `无 host tool handler 注册(toolName=${toolName})`, isError: true }
+     }
+ 
++    for (const fn of this.eventListeners) {
++      try {
++        fn({ type: 'tool_execution_end', toolCallId, toolName, isError: result.isError === true, result: result.text })
++      }
++      catch {
++        // 事件 listener 异常不影响工具结果
++      }
++    }
++
+     // 发送 host_tool_result
+     const resultFrame = {
+       type: 'host_tool_result' as const,
+diff --git a/server/services/workshop/agents/omp-agent/tools-steer.ts b/server/services/workshop/agents/omp-agent/tools-steer.ts
+index 6a12feca..33effd12 100644
+--- a/server/services/workshop/agents/omp-agent/tools-steer.ts
++++ b/server/services/workshop/agents/omp-agent/tools-steer.ts
+@@ -7,6 +7,7 @@ import type { AgentEvent, AgentRunContext, AgentRunRequest, SupervisionDecision,
+ import type { HostToolCallRequest } from '../adapters/omp-rpc-client'
+ import { extractJsonArray, parseSteerBanner, peerPrompt, supervisePrompt, systemManual, workerPrompt } from '../prompt-builder'
+ import { log } from './helpers'
++import { recordSupervisionToolHistory } from './supervision-history'
+ 
+ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle {
+   /** 引擎无关工具面:REST/MCP 桥直调与 omp 内部 host_tool_call 共用同一实现 */
+@@ -97,6 +98,12 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
+     return new Promise<SupervisionDecision[]>((resolve) => {
+       let assistantText = ''
+       let resolved = false
++      const activeRootTask = snapshot.tasks.find(task =>
++        task.id === snapshot.activeRootId
++        && task.assigneeId === this.selfAgentId
++        && ['SUBMITTED', 'ASSIGNED', 'WORKING', 'WAITING'].includes(task.state),
++      )
++      let taskHistoryWrites = Promise.resolve()
+ 
+       const finish = (decisions: SupervisionDecision[]) => {
+         if (resolved) return
+@@ -107,7 +114,7 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
+         unsub()
+         if (hardTimer) clearTimeout(hardTimer)
+         signalUnsub?.()
+-        resolve(decisions)
++        void taskHistoryWrites.then(() => resolve(decisions), () => resolve(decisions))
+       }
+ 
+       const abortTurn = (reason: string): void => {
+@@ -118,6 +125,16 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
+       }
+ 
+       const unsub = this.client!.onEvent((event) => {
++        if (activeRootTask && (event.type === 'tool_execution_start' || event.type === 'tool_execution_end')) {
++          // Lead supervision is not a workerTurn, so its host-tool events do not
++          // pass through promptAndStream's task event mapper. Persist them on the
++          // active root while it is open, preserving tool-call/result chronology.
++          taskHistoryWrites = taskHistoryWrites.then(async () => {
++            await recordSupervisionToolHistory(ctx.workspace, activeRootTask.id, event)
++          }).catch((err) => {
++            log.error(`[OmpRpcAgent:${this.selfAgentId}] supervise task-history write failed:`, err)
++          })
++        }
+         if (event.type === 'message_update' && event.assistantMessageEvent?.type === 'text_delta') {
+           this.streaming = true
+           assistantText += event.assistantMessageEvent.delta ?? ''
+diff --git a/server/services/workshop/daq/bus/index.ts b/server/services/workshop/daq/bus/index.ts
+index 840b41fd..fd734901 100644
+--- a/server/services/workshop/daq/bus/index.ts
++++ b/server/services/workshop/daq/bus/index.ts
+@@ -22,16 +22,23 @@ export async function getDaqQueue(): Promise<DaqQueuePort> {
+ 
+ /** 重连/初始装配:按 infra 判定结果(重新)构建 MQTT 或进程内队列 */
+ export async function rebuildDaqQueue(online: boolean, url?: string | null): Promise<DaqQueuePort> {
+-  // 换装前释放旧 adapter(mqtt 连接 / inproc 泵),防重建泄漏
+-  await g.__daqQueue?.close?.()
+   if (!online || !url) {
+-    if (g.__daqQueue?.backend !== 'inproc') {
+-      g.__daqQueue = new InProcQueueAdapter()
++    // Reuse an in-process adapter without closing it. close() clears consumers and
++    // stops its pump; getDaqQueue() will not initialize an existing instance again.
++    if (g.__daqQueue?.backend === 'inproc') {
+       await g.__daqQueue.init()
+-      log.warn('[daq-queue] 降级进程内队列')
++      return g.__daqQueue
+     }
++    // When falling back from MQTT, install a fresh adapter; the controller reattaches
++    // its consumer after this replacement.
++    await g.__daqQueue?.close?.()
++    g.__daqQueue = new InProcQueueAdapter()
++    await g.__daqQueue.init()
++    log.warn('[daq-queue] 降级进程内队列')
+     return g.__daqQueue
+   }
++  // Release the previous adapter before a transition to MQTT.
++  await g.__daqQueue?.close?.()
+   try {
+     const adapter = new MqttQueueAdapter(url)
+     await adapter.init()

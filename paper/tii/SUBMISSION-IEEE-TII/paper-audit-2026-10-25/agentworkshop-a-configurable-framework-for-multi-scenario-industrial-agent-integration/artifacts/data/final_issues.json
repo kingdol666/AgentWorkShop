@@ -1,0 +1,125 @@
+[
+  {
+    "title": "核心的当前版本跨场景配置能力缺少直接验证",
+    "quote": "Matched current-version cross-scene trials are still needed",
+    "explanation": "这不是措辞过强的问题，稿件已主动限定结论；问题在于该限制正落在题目、引言和系统设计所强调的核心能力上。Q4 的四条场景轨迹来自历史 direct-node 路径；现有 profile/composition 的 65 项检查使用临时存储和 mock I/O。另有 Q5 的 782 项部署断言：九份归档 JSON 均记录 v0.7.57，而当前项目 package.json 为 v0.8.0，正文没有标明此版本差异。当前稿件因此没有展示同一当前版本如何通过配置和 binding 在不同场景之间完成任务。建议补做同一当前版本的匹配跨场景试验，并注明每个场景的 profile、binding、信号映射、成功/拒绝结果及代码版本；若暂不补做，应把多场景配置能力明确定位为架构设计目标，把 Q5 标为历史版本回归证据。",
+    "comment_type": "methodology",
+    "severity": "major",
+    "confidence": "high",
+    "source_kind": "llm",
+    "source_section": "abstract",
+    "related_sections": [
+      "abstract",
+      "introduction",
+      "system",
+      "modules",
+      "evaluation",
+      "discussion",
+      "conclusion"
+    ],
+    "root_cause_key": "current-version-cross-scene-adaptation-evidence",
+    "review_lane": "evaluation_fairness_and_reproducibility, claims_vs_evidence",
+    "gate_blocker": false,
+    "quote_verified": true,
+    "source_file": "claims_vs_evidence.json"
+  },
+  {
+    "title": "工业相关性目前由模拟器和软件夹具支撑",
+    "quote": "All process experiments use repository",
+    "explanation": "论文准确声明所有过程实验均在仓库模拟器中，且没有将其写成实厂验证。对 IEEE TII 的工业读者而言，当前证据仍未展示真实控制器、现场通信链路或生产线上的互操作和运行边界；协议及写入测试也主要是模拟/测试工作流。因此论文可以支持所测软件路径的可行性，但产业部署意义仍有限。建议补充至少一个硬件在环、实验设备或现场只读接入案例，报告连接稳定性、延迟和故障响应；若本稿维持模拟器范围，应在摘要、贡献和结论中继续把结论严格限定为软件/模拟器集成证据。",
+    "comment_type": "methodology",
+    "severity": "moderate",
+    "confidence": "medium",
+    "source_kind": "llm",
+    "source_section": "evaluation",
+    "related_sections": [
+      "abstract",
+      "evaluation",
+      "discussion",
+      "conclusion"
+    ],
+    "root_cause_key": "simulator-only-industrial-validation",
+    "review_lane": "evaluation_fairness_and_reproducibility",
+    "gate_blocker": false,
+    "quote_verified": true,
+    "source_file": "committee_editor.json"
+  },
+  {
+    "title": "相关工作表的代表性选择标准及功能维度尚未说明",
+    "quote": "the research gap is limited to these",
+    "explanation": "研究缺口被谨慎限定为 Table I 的对照对象，没有把结论扩写到整个领域，这是优点。但表中只比较 MADE、Köhle et al. 和 Waseem et al.，正文还介绍了其他工业 agent 研究；为何选这三项作为代表，以及它们与 AgentWorkShop 在场景配置、共享运行时、生产上下文、语义 I/O、工作流和证据记录上的差异，目前不够清楚。建议写明选择准则，或用一段紧凑的同维度综合比较补足缺口推导；避免扩大“尚无此类系统”的范围。",
+    "comment_type": "missing_information",
+    "severity": "moderate",
+    "confidence": "medium",
+    "source_kind": "llm",
+    "source_section": "related",
+    "related_sections": [
+      "introduction",
+      "related"
+    ],
+    "root_cause_key": "related-work-comparator-selection-and-dimensions",
+    "review_lane": "prior_art_and_novelty_grounding",
+    "gate_blocker": false,
+    "quote_verified": true,
+    "source_file": "committee_literature.json"
+  },
+  {
+    "title": "需求、设计规则、模块实现与实验之间缺少可追踪映射",
+    "quote": "These requirements lead to six design rules",
+    "explanation": "Introduction item 1 presents deriving five requirements and six principles as a contribution; Section III lists both sets, then Sections III–V describe modules and separate experiments. The manuscript does not show how each requirement motivates a rule, which module enforces it, or which evidence group tests it. As written, this reads as a useful design inventory but not yet a reproducible design argument. Add a compact mapping in prose or a space-neutral matrix: requirement → rule → module/invariant → evidence and uncovered boundary. Keep the contribution framed as an integration architecture and implementation, not as a new control algorithm.",
+    "comment_type": "presentation",
+    "severity": "moderate",
+    "confidence": "high",
+    "source_kind": "llm",
+    "source_section": "system",
+    "related_sections": [
+      "introduction",
+      "system",
+      "modules",
+      "evaluation"
+    ],
+    "root_cause_key": "design-requirements-principles-evidence-traceability",
+    "review_lane": "section_methods, claims_vs_evidence",
+    "gate_blocker": false,
+    "quote_verified": true,
+    "source_file": "committee_logic.json"
+  },
+  {
+    "title": "证据组编号与叙述顺序不一致",
+    "quote": "Q4 first presents the historical four-scene campaign to establish",
+    "explanation": "Section V 明确说明 Q1–Q6 是证据组而非研究问题，且给出先展示 Q4 的理由；不过后续仍以 Q1、Q2–Q3、Q5、Q6 命名，读者需要在编号和呈现顺序间来回转换。建议按证据组编号排列，或统一改为 E1–E6/描述性小节名称，并在摘要、图表和正文保持相同标签。此项属于可读性优化，不影响结果本身。",
+    "comment_type": "presentation",
+    "severity": "minor",
+    "confidence": "high",
+    "source_kind": "llm",
+    "source_section": "evaluation",
+    "related_sections": [
+      "abstract",
+      "evaluation"
+    ],
+    "root_cause_key": "evidence-group-order-and-labels",
+    "review_lane": "section_results",
+    "gate_blocker": false,
+    "quote_verified": true,
+    "source_file": "committee_logic.json"
+  },
+  {
+    "title": "说明 65 项 profile/composition 检查是否为同一套重复运行",
+    "quote": "65 channel/profile and composition checks passed in an October",
+    "explanation": "复现台账说明这是同一组 65 项检查在两个日期各运行一次，并非 130 个不同断言；正文这句话仍可能被读成累计数量或两次独立套件。建议直接写成“同一套 65 项检查于两个日期各运行一次”，并在摘要保持 65 个独立断言的口径。",
+    "comment_type": "presentation",
+    "severity": "minor",
+    "confidence": "high",
+    "source_kind": "llm",
+    "source_section": "evaluation",
+    "related_sections": [
+      "abstract",
+      "evaluation"
+    ],
+    "root_cause_key": "profile-suite-repeated-count-clarity",
+    "review_lane": "notation_and_numeric_consistency, evaluation_fairness_and_reproducibility",
+    "gate_blocker": false,
+    "quote_verified": true,
+    "source_file": "committee_logic.json"
+  }
+]

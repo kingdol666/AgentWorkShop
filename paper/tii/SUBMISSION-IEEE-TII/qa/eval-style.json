@@ -1,0 +1,55 @@
+{
+  "summary": {
+    "lines": 258,
+    "sentences": 99,
+    "tokens_approx": 2190
+  },
+  "counts": {
+    "overclaim": 0,
+    "stock_phrase": 0,
+    "booster": 0,
+    "significance": 0,
+    "transition_density": 0
+  },
+  "findings": [],
+  "long_sentences": [
+    {
+      "tokens": 73,
+      "text": "\\section{Experimental Evaluation}\n\\label{sec:eval}\nThe experiments examine four questions: (Q1) whether the tested execution\nroutes retain task, approval, receipt, and sample records across two configured\nsimulator scenes and whether each r"
+    },
+    {
+      "tokens": 49,
+      "text": "The application's MQTT queue and Timescale service were unreachable in all\nroute-study runs, so each sample was a single explicit driver probe stored and\nqueried through the local SQLite fallback with online DAQ collection disabled;\nthe rou"
+    },
+    {
+      "tokens": 55,
+      "text": "All entries are software-level checks, not\nindependent process replications.}\n\\label{tab:routes}\n\\footnotesize\n\\setlength{\\tabcolsep}{3pt}\n\\begin{tabularx}{\\columnwidth}{@{}>{\\raggedright\\arraybackslash}p{1.55cm}X@{}}\n\\toprule\nStudy & Desig"
+    },
+    {
+      "tokens": 50,
+      "text": "\\subsection{Approval (HITL) and Stale-Context Rejection}\n\\label{sec:guard-results}\nFor a recipe write, the handler checks the bound recipe, active run, candidate\nparameters, and route timing; if approval is required, it creates a card\nbindi"
+    },
+    {
+      "tokens": 75,
+      "text": "These\nhistorical direct-node missions are separate from the route study and do not\nshow current route performance or a common optimizer score.}\n\\label{fig:missions}\n\\end{figure*}\n\n\\subsection{Blueprint Onboarding and DAQ/DCW Binding}\n\\label"
+    }
+  ],
+  "repeated_openers": [
+    {
+      "sentence": 45,
+      "opener": "the",
+      "run": 3
+    },
+    {
+      "sentence": 46,
+      "opener": "the",
+      "run": 3
+    },
+    {
+      "sentence": 47,
+      "opener": "the",
+      "run": 3
+    }
+  ],
+  "note": "Findings require human review; this tool never performs automatic replacement."
+}

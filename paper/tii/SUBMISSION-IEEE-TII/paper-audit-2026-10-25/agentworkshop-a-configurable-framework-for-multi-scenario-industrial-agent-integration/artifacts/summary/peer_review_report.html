@@ -1,0 +1,97 @@
+<!doctype html><html lang="zh-CN"><meta charset="utf-8"><title>IEEE TII 同行评审报告</title><style>body{font:16px/1.65 system-ui,sans-serif;max-width:1000px;margin:2rem auto;padding:0 1.25rem;color:#17212b}h1,h2,h3{line-height:1.25;color:#12345a}table{border-collapse:collapse;width:100%;font-size:.92rem}th,td{border:1px solid #cbd5e1;padding:.55rem;text-align:left;vertical-align:top}th{background:#f1f5f9}blockquote{border-left:3px solid #64748b;padding-left:1rem}</style><h1>IEEE TII 同行评审报告</h1>
+<h2>评审结论</h2>
+<p><strong>建议：大修（Major Revision）；当前稿件不建议接收。评审评分：5.0/10。</strong></p>
+<p>论文的问题并非系统讲不清楚，也不是把主题写成单一的 Governed 机制。当前稿件的主要风险是：题目和系统设计突出可配置的多场景集成，但实验尚未在当前版本上验证跨场景 profile/binding 适配；此外，Q5 的 782 项部署回归来自旧版本 v0.7.57，而当前代码版本为 v0.8.0。论文诚实披露了多数实验边界，但透明披露本身不能代替对核心能力的验证。</p>
+<p>评分按 paper-audit 规则计算：9.0 − 1.5×1 项主要问题 − 0.7×3 项中等问题 − 0.2×2 项次要问题 = <strong>5.0/10</strong>。本审查没有依据自动 fallback 报告的“Desk Reject”结论；该自动条目没有准确引文，且把英文摘要误判为缺少结果和结论。</p>
+<h2>论文贡献与总体评价</h2>
+<p>稿件介绍 AgentWorkShop：将多 agent 协作与 harness、line–product–recipe–run 生产上下文、scene blueprint、分析/建模服务、语义化 DAQ/DCW 节点、协议驱动和路线专属执行证据组合为一个可配置软件框架。文章的叙事顺序清楚：工业场景差异引出设计需求，随后介绍系统架构与执行流、模块集成、分组实验、证据边界与总结。</p>
+<p>系统设计章节能让读者理解模块职责和执行顺序。Fig. 1 总体架构图位于第 3 页，Fig. 2 执行流程位于第 4 页，分处不同页面；伪代码把入口、上下文解析、tool catalog、per-call dispatch、handler 和证据记录连接起来。模块章节进一步区分命令回执、过程观测、探索摘要和配方版本。Governed/dispatch 是系统的一层，而非文章的全部主题。</p>
+<p>实验报告的边界整体较严谨：没有把单条模拟器轨迹称为独立重复，没有把命令确认等同于过程收敛，也把默认 cadence 下的失败轨迹纳入讨论。当前的不足集中在证据与核心贡献的对应，而不是将正面结果夸大为现场性能或控制优势。</p>
+<h2>主要问题</h2>
+<h3>1. 当前版本的跨场景配置适配没有直接验证</h3>
+<p><strong>位置：</strong>摘要第 1 页；引言第 1 页；实验第 6–9 页；讨论第 9 页。</p>
+<p>摘要指出：“Matched current-version cross-scene trials are still needed”。这是稿件自己准确承认的边界，也是目前最核心的实验缺口。Q4 的四个过程场景各只有一条 seed-42 历史模拟轨迹，使用旧的 direct-node 路径；profile/composition 的 65 项检查使用临时存储和 mock I/O，不能证明当前版本在不同场景之间切换 profile、binding 和信号映射后仍能完成任务。</p>
+<p>另外，我核查了 Q5 的全部 9 份 benchmark JSON：它们均记录 env.version = 0.7.57；当前项目 package.json 为 0.8.0。正文只报告“九次顺序运行、782 项断言通过”，没有说明版本差异。因而这组数据只能支持旧版本的软件回归表现，不能自然代表 v0.8.0 的部署回归。</p>
+<p><strong>建议：</strong>在当前版本上做同一试验协议下的匹配跨场景测试，公开每个场景的 profile、binding、信号映射、任务目标、工具可用性/拒绝结果、过程指标和代码版本；同时在正文将 Q5 标为 v0.7.57 历史回归，若要将其作为当前版本证据则在 v0.8.0 重跑。若暂不补做，应把多场景配置能力明确称为架构能力/设计目标，将实验结论限定在已测历史模拟器和独立软件流程。</p>
+<h3>2. 工业可行性目前仅由模拟器和软件夹具支持</h3>
+<p><strong>位置：</strong>实验第 6 页及后续各组实验；讨论第 9 页。</p>
+<p>稿件明确写明所有过程实验使用 repository simulators。Q1、Q5 和 Q6 的协议、控制和流程结果仍属于模拟器或软件测试证据；没有真实 PLC、硬件在环或现场产线运行证据。作者没有把这些结果说成实厂验证，这是恰当的；但对 IEEE TII 读者而言，现场通信边界、设备兼容性、长时间运行稳定性和故障恢复能力仍未得到经验验证。</p>
+<p><strong>建议：</strong>补充至少一个真实设备只读接入、硬件在环或受控试验台案例，并报告链路、延迟和故障情况。若当前阶段无法获得此类证据，摘要、贡献和结论应继续限定为“所测模拟器与软件测试流程中的集成可行性”，不应暗示已验证部署适用性。</p>
+<h3>3. 五项需求和六条设计规则没有映射到模块与证据</h3>
+<p><strong>位置：</strong>引言第 1 页贡献 1；系统设计第 2 页；模块功能第 3–6 页；实验第 6–9 页。</p>
+<p>引言把“derive five integration requirements and six design principles”作为贡献。第三节列出了要求与规则，后续再分别描述模块及实验，但没有明确说明每条规则如何由需求导出、由哪个模块/不变量实现、由哪组实验检查。当前文本已经说明系统如何工作，但“设计理念可复用”的论证尚未闭合。</p>
+<p><strong>建议：</strong>无需新增算法。用简短文字或紧凑映射连接“需求 → 设计规则 → 模块/运行不变量 → 证据组 → 未覆盖边界”，并区分已实现机制与已被实验验证的性质。</p>
+<h3>4. Related Work 的代表性选择和对比维度不够具体</h3>
+<p><strong>位置：</strong>Related Work 第 2 页及 Table I。</p>
+<p>稿件谨慎地把研究缺口限定在 Table I 的比较对象内，没有把结论推广为“整个领域没有此类工作”。但正文讨论了多项工业 agent 研究，表格只比较 MADE、Köhle et al. 和 Waseem et al.，没有解释三者的选择标准，也没有沿论文自己的核心维度逐项综合：场景配置、共享运行时/harness、生产上下文、语义 I/O、配方工作流、运行时授权与证据记录。</p>
+<p><strong>建议：</strong>交代 comparator 的选择理由，或补一段同维度综合比较，说明 AgentWorkShop 在“组合实现与验证覆盖”上具体增加了什么。保留当前有限范围的研究缺口表述，不要扩成未经支持的全领域结论。该审查未联网核验新颖性或外部文献准确性。</p>
+<h2>次要问题</h2>
+<ol>
+<li>
+<p><strong>实验组标签的阅读顺序。</strong>第 V 节称这些是 Q1–Q6 证据组，但叙述顺序为 Q4、Q1、Q2–Q3、Q5、Q6。作者说明先呈现 Q4 是为了建立工艺背景，因此不是逻辑错误；仍建议按组号排序，或改用 E1–E6/描述性标签，免得读者误以为 Q2、Q3 缺失。</p>
+</li>
+<li>
+<p><strong>65 项 profile/composition 检查的计数口径。</strong>复现台账说明同一组 65 项检查在 10 月 20 日与 10 月 24 日各跑一次，并非 130 个独立断言。正文可直接写明“同一套 65 项检查重复运行两次”，避免累计数量歧义。</p>
+</li>
+</ol>
+<h2>实验组与证据解释核对</h2>
+<table>
+<thead>
+<tr>
+<th>证据组</th>
+<th>稿件报告的证据</th>
+<th>可以支持的判断</th>
+<th>不支持的判断</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Q4 四场景</td>
+<td>每个场景一条 seed-42 轨迹；四个终态检查通过，两项接近边界</td>
+<td>历史模拟器场景中的任务轨迹与终态检查</td>
+<td>当前版本跨场景适配、重复性或稳健性</td>
+</tr>
+<tr>
+<td>Q1 协议与准入</td>
+<td>五类采集协议、四类可写映射、55 个样本；边界拒绝测试及 mock-driver 消融</td>
+<td>所测映射和夹具条件下的协议/写入路径行为</td>
+<td>真实现场设备时延与物理系统可靠性</td>
+</tr>
+<tr>
+<td>Q2 live-engine</td>
+<td>两次任务，使用相同 harness、provider、model</td>
+<td>单一配置下的任务—工具—观测链集成</td>
+<td>agent 策略比较、跨 harness 可移植性</td>
+</tr>
+<tr>
+<td>Q3 确定性 controller</td>
+<td>三个 seed；有限网格参考 J*=89.894；能耗/吞吐是速度代理量</td>
+<td>控制策略通过执行服务完成受约束写入</td>
+<td>全局最优、真实能耗、AgentWorkShop 优化器优势</td>
+</tr>
+<tr>
+<td>Q5 部署套件</td>
+<td>九次顺序执行，共 782 项确定性断言</td>
+<td>v0.7.57 上相应软件回归断言通过</td>
+<td>v0.8.0 的部署行为或 782 个工业样本</td>
+</tr>
+<tr>
+<td>Q6 配方轨迹</td>
+<td>n=1；四次压力步进；cadence 被关闭并设置 emergency；保存版本但未 apply</td>
+<td>一次受特定 pacing 配置影响的 recipe 工作流</td>
+<td>默认 cadence 完成、默认恢复成功、实厂过程响应</td>
+</tr>
+</tbody>
+</table>
+<p>整体而言，数据呈现并未把软件断言当作工厂样本，也将 R11/R12 失败与 R6 成功轨迹分开。最需修正的是版本和研究主张之间的对应关系。</p>
+<h2>格式、图表和自动检查</h2>
+<ul>
+<li>当前 main.pdf 为 10 页 Letter，使用 IEEEtran[journal]；摘要约 203–207 词，关键词为 5 个。</li>
+<li>Fig. 1 在第 3 页，Fig. 2 在第 4 页；第 2–9 页已目视检查，未见此前指出的大片留白。图 1 架构、图 2 流程、图 4 准入/审批图和图 5 八面板任务图均能对应正文；图 5 信息密度较高，但仍能辨读。</li>
+<li>表格使用 booktabs、表题置上；图题置下。伪代码以 figure 中的 algorithmic 呈现，有 caption/label，正文先引用；IEEE 专用检查器报告图像、表格、伪代码检查通过。</li>
+<li>PDF 构建日志未见 Overfull hbox；存在一些 Underfull hbox/vbox 警告，目视未造成明显版面异常。PDF SHA-256 与 FILE-MANIFEST.json 中记录一致。</li>
+<li>自动审计共有 388 条低层信号，绝大多数来自风格/LaTeX 解析启发式。摘要结构、methods section、Fig. 1 未引用等检查出现误报；英文稿摘要实际含背景、系统设计、量化结果与结论。spec 检查因本机缺少检查器预期的 IEEEtran.md 文件而失败，属于检查器环境限制，不是论文缺陷。</li>
+<li>参考文献 DOI、卷页和在线状态没有联网核验；此报告也未核验 IEEE TII 当前投稿政策或全领域新颖性。</li>
+</ul>
+<h2>最终建议</h2>
+<p><strong>大修后再审。</strong>优先处理当前版本的跨场景实验/主张边界和 Q5 版本披露；随后补齐设计原则映射、相关工作对比依据与工业验证边界。稿件的系统故事、模块说明和图文编排已经有良好基础，但目前证据尚不足以证明其最重要的当前版本多场景适配主张。</p></html>

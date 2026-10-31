@@ -1,0 +1,82 @@
+\section{Discussion}
+\label{sec:discussion}
+\subsection{Interpretation}
+The route study supplies the current-version evidence. Registered tasks retain
+task, approval, receipt, and sample associations; direct REST retains
+operation, readback, and sample records without a task edge. Each route used
+the scene's bound DAQ and DCW nodes, so binding is observed as the precondition
+under which the recorded reads and writes succeeded. The two simulator scenes
+use different signal and protocol mappings, and the fixed-call and CLI routes
+separate task-path behavior from an external model decision. Similar
+post-trial samples are consistent with a shared handler; the annealing
+difference is consistent with the 735 versus 745\,$^{\circ}$C setpoints. But
+separate environments and one sample per task or call do not establish route
+equivalence.
+
+The approval-context test isolates the tuple comparison under mock state:
+removing that comparison admitted product/run changes that the retained checks
+alone did not reject, while line and recipe changes remained blocked. The
+blueprint replay shows that one documented coating line can be instantiated
+from configuration objects with four DCW setpoints, seven DAQ nodes, and four
+MES forms, and that the verifier can check sample availability and write
+behavior without altering the protected demonstration line.
+
+The four archived missions apply one operation--response--judgment workflow to
+distinct objectives: paired holding adjustments for molding, three-control
+thickness correction for BOPET, throughput under a hardness constraint for
+annealing, and staged aeration and dosing for wastewater. Most requested
+changes are followed by a recorded process observation; reverted candidates and
+the 101.3-HV event-text value are marked in the figure. The missions show how a
+common operation path accommodates different actuator structures and target
+types. They are historical scripted direct-node records, not current-route
+trials, and each is a single trajectory.
+
+The process results bound the interpretation. Cast-film samples were
+1.31--2.31\,$\mu$m below the 48\,$\mu$m lower bound, and annealing samples were
+20.40--25.60\,$^{\circ}$C below 700\,$^{\circ}$C. Because five of six tasks
+started below their band, the post-trial shortfall is not evidence that the
+selected setpoints caused it; the one above-band start cannot be resolved with
+a single 20-s probe. The archived missions end inside their bands, but they
+measure different process variables and are not a controlled comparison with
+the route study.
+
+Taken together, the evidence supports a software separation between task
+reasoning, operation resolution, scene mapping, and process observation; the
+archived missions show that this sequence survives changes in actuator
+structure and target type.
+
+\subsection{Scope and Limitations}
+Only the reported adapters and scenes were exercised. The route runs and the
+C01 replay used working-tree builds rather than pinned releases; the route
+study used the SQLite fallback because the production MQTT/Timescale backends
+were not used; and the approval evidence is mock state with synthetic
+approvals. The four archived missions are one seed-42 trajectory per
+scenario, generated through an earlier scripted direct-node interface, and are
+not current-route, repeatability, or physical-plant evidence. The study also
+does not establish adapter interchangeability, configuration reuse, normal
+online DAQ behavior, or a platform baseline.
+The feature comparison positions the implementation question; it does not show
+that AgentWorkShop is more efficient or more capable than another platform. A
+comparative study would need a shared task set, explicit integration-effort or
+record-completeness measures, and matched deployments. Operation restrictions
+do not establish security
+\cite{greshake2023injection,liu2024pinjection,iec62443-3-3} or replace
+independent PLC/safety-instrumented system (SIS) safeguards \cite{iec61511}.
+Synthetic approval also does not measure human-review performance
+\cite{parasuramanmanzey2010complacency,bainbridge1983ironies}.
+Scope and channel-policy refusals are not uniformly persisted; auditability is
+limited to the records and denial classes described in Section~IV.
+
+\section{Conclusion}
+\label{sec:conclusion}
+AgentWorkShop connects industrial task workflows to scene-specific operations
+through shared dispatch, configured drivers, and service-owned process records.
+A route study across four entry paths preserved entry-specific records and used
+scene-bound DAQ and DCW nodes; a mock-state approval-context test rejected
+stale approval tuples before dispatch; a blueprint replay instantiated one
+documented coating-line configuration in simulation; and four archived
+simulator missions illustrated the operation--response--judgment sequence
+across distinct process objectives. The study establishes record linkage
+across the tested entry paths, stale-context rejection in mock state, and one
+simulated onboarding instance; it does not establish process improvement,
+configuration reuse, general portability, or comparative platform benefit.

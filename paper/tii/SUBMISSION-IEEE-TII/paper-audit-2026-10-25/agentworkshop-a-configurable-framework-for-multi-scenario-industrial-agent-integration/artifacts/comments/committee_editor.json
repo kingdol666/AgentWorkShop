@@ -1,0 +1,82 @@
+[
+  {
+    "title": "核心的当前版本跨场景配置能力缺少直接验证",
+    "quote": "Matched current-version cross-scene trials are still needed",
+    "explanation": "这不是措辞过强的问题，稿件已主动限定结论；问题在于该限制正落在题目、引言和系统设计所强调的核心能力上。Q4 的四条场景轨迹来自历史 direct-node 路径；现有 profile/composition 的 65 项检查使用临时存储和 mock I/O。另有 Q5 的 782 项部署断言：九份归档 JSON 均记录 v0.7.57，而当前项目 package.json 为 v0.8.0，正文没有标明此版本差异。当前稿件因此没有展示同一当前版本如何通过配置和 binding 在不同场景之间完成任务。建议补做同一当前版本的匹配跨场景试验，并注明每个场景的 profile、binding、信号映射、成功/拒绝结果及代码版本；若暂不补做，应把多场景配置能力明确定位为架构设计目标，把 Q5 标为历史版本回归证据。",
+    "comment_type": "methodology",
+    "severity": "major",
+    "confidence": "high",
+    "source_kind": "llm",
+    "source_section": "abstract",
+    "related_sections": [
+      "introduction",
+      "system",
+      "modules",
+      "evaluation",
+      "discussion",
+      "conclusion"
+    ],
+    "root_cause_key": "current-version-cross-scene-adaptation-evidence",
+    "review_lane": "evaluation_fairness_and_reproducibility, claims_vs_evidence",
+    "gate_blocker": false,
+    "quote_verified": null,
+    "evidence_anchor": [
+      {
+        "type": "analysis_artifact",
+        "text": "Q4 uses the historical direct-node interface; current profile/composition checks use temporary storage and mock I/O."
+      },
+      {
+        "type": "analysis_artifact",
+        "text": "All nine Q5 benchmark JSON files report env.version 0.7.57; current package.json reports 0.8.0."
+      },
+      {
+        "type": "metric",
+        "text": "Q5 reports nine sequential runs and 782 deterministic assertions."
+      }
+    ],
+    "claim_strength": "observed",
+    "missing_evidence": [
+      "A matched current-version task that changes profile/binding across at least two configured scenes."
+    ],
+    "allowed_wording": "The reported archives exercise historical simulator workflows and separate profile/composition checks; current-version cross-scene adaptation remains unvalidated.",
+    "forbidden_wording": [
+      "The evaluation validates current-version multi-scenario profile/binding adaptation."
+    ]
+  },
+  {
+    "title": "工业相关性目前由模拟器和软件夹具支撑",
+    "quote": "All process experiments use repository",
+    "explanation": "论文准确声明所有过程实验均在仓库模拟器中，且没有将其写成实厂验证。对 IEEE TII 的工业读者而言，当前证据仍未展示真实控制器、现场通信链路或生产线上的互操作和运行边界；协议及写入测试也主要是模拟/测试工作流。因此论文可以支持所测软件路径的可行性，但产业部署意义仍有限。建议补充至少一个硬件在环、实验设备或现场只读接入案例，报告连接稳定性、延迟和故障响应；若本稿维持模拟器范围，应在摘要、贡献和结论中继续把结论严格限定为软件/模拟器集成证据。",
+    "comment_type": "methodology",
+    "severity": "moderate",
+    "confidence": "medium",
+    "source_kind": "llm",
+    "source_section": "evaluation",
+    "related_sections": [
+      "abstract",
+      "evaluation",
+      "discussion",
+      "conclusion"
+    ],
+    "root_cause_key": "simulator-only-industrial-validation",
+    "review_lane": "evaluation_fairness_and_reproducibility",
+    "gate_blocker": false,
+    "quote_verified": null,
+    "evidence_anchor": [
+      {
+        "type": "section",
+        "text": "Evaluation, Evidence Units and Experimental Procedure."
+      }
+    ],
+    "claim_strength": "observed",
+    "missing_evidence": [
+      "An industrial device, hardware-in-the-loop, or production-line integration run."
+    ],
+    "allowed_wording": "The results support integration in the tested repository simulators and software fixtures.",
+    "forbidden_wording": [
+      "The platform is validated for industrial deployment."
+    ]
+  }
+]
+
+

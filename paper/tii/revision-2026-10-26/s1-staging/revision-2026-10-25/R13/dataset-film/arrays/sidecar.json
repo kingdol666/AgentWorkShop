@@ -1,0 +1,45 @@
+{
+  "delays": {
+    "mv": 0,
+    "cv": 0
+  },
+  "units": [
+    {
+      "id": "mv",
+      "unit": "rpm",
+      "modelUnit": "rpm",
+      "scale": 1,
+      "offset": 0
+    },
+    {
+      "id": "cv",
+      "unit": "μm",
+      "modelUnit": "μm",
+      "scale": 1,
+      "offset": 0
+    }
+  ],
+  "variableOrder": [
+    "mv",
+    "cv"
+  ],
+  "trainerRef": "linear_arx@1",
+  "conditionId": "simulator",
+  "recipeContentHash": "935448f957f521fc691eb97c2011a92e638361532a8fa05826a5e89a2d4fa68e",
+  "evidenceSource": "simulation",
+  "availabilityWatermark": null,
+  "splitRunIds": {
+    "train": [
+      "rr-08eb45f8",
+      "rr-65efe570"
+    ],
+    "val": [
+      "rr-751a5286",
+      "rr-afbb5fbb"
+    ],
+    "test": [
+      "rr-7cdee430",
+      "rr-50b17b58"
+    ]
+  }
+}

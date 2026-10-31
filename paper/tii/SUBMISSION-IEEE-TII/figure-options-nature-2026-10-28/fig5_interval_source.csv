@@ -1,0 +1,6 @@
+range,lower,upper,unit,source_note
+hard,50.0,200.0,rpm,hard engineering limit
+baseline,143.7,156.3,rpm,separate archived admission drill
+product,146.22,153.78,rpm,separate archived admission drill
+recipe,141.0,159.0,rpm,separate archived admission drill
+common_intersection,146.22,153.78,rpm,computed intersection of displayed limits

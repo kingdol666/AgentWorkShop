@@ -1,8 +1,8 @@
 {
   "script": "scripts/e2e-idd-results-ui.mjs",
-  "generatedAt": "2026-10-29T07:06:45.761Z",
-  "pass": 9,
-  "total": 9,
+  "generatedAt": "2026-10-30T09:48:48.566Z",
+  "pass": 3,
+  "total": 4,
   "results": [
     {
       "id": "A11.1",
@@ -19,38 +19,8 @@
     {
       "id": "A11.3",
       "name": "列表渲染数据行",
-      "pass": true,
-      "detail": "{\"rows\":20,\"first\":\"e36ef651aws-owner-probe_e36ef651quick-screen96ENDORSED2026-10-29 06:36:59\",\"total\":\"100\"}"
-    },
-    {
-      "id": "A11.4",
-      "name": "点击结果行进入详情",
-      "pass": true,
-      "detail": ""
-    },
-    {
-      "id": "A11.5",
-      "name": "详情区渲染(关键数字/HTML)",
-      "pass": true,
-      "detail": ""
-    },
-    {
-      "id": "A11.6",
-      "name": "编辑区按服务端能力显示(admin+已开启→可编辑)",
-      "pass": true,
-      "detail": "{\"hasEdit\":true,\"hasReadonly\":false,\"hasSave\":true}"
-    },
-    {
-      "id": "A11.7",
-      "name": "点击保存提交编辑",
-      "pass": true,
-      "detail": "{\"ok\":true}"
-    },
-    {
-      "id": "A11.8",
-      "name": "保存成功回显(已保存)",
-      "pass": true,
-      "detail": ""
+      "pass": false,
+      "detail": "{\"rows\":0,\"first\":\"\",\"total\":\"-\"}"
     },
     {
       "id": "A11.9",

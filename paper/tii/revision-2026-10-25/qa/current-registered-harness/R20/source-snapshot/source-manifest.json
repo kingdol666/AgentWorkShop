@@ -1,0 +1,39 @@
+{
+  "app": {
+    "baseCommit": "e6bcb16fb5ac1a38f3e3ddb3cc05e200b58453c7",
+    "sourceTree": {
+      "sha256": "0d5b8f337408693fab3686568ba7df5b7878fc1f8784291bfb7d0aff13a0ed32",
+      "fileCount": 1614
+    },
+    "workingTreePatch": "app-working-tree.patch",
+    "untrackedFiles": [
+      "app-untracked/server/services/workshop/agents/omp-agent/supervision-history.ts"
+    ],
+    "packageManifestSha256": "5cfdac29b6a5b5b375a3184bc075a72eb19f03416882fec9ac22e3771de80091",
+    "lockfileSha256": "a700582071a884225f47d11450ebcdee7fc3fa7a488fc4f35c0f5641d640af9e",
+    "packageManifestSource": "package.json at app baseCommit"
+  },
+  "simulator": {
+    "baseCommit": "0db5f403f9fa9db97e5485b72867f459fcb93eff",
+    "sourceTree": {
+      "sha256": "c14a601d6550fee49fabf0855b384229ce9d29e0897d515eee96c3e8b3ee2143",
+      "fileCount": 27
+    },
+    "workingTreePatch": "simulator-working-tree.patch",
+    "packageManifestSha256": "fea8c1172cf18d51f31acdbfdabbe67aa6c88e292961ecd19be0e7103be520fd",
+    "lockfileSha256": "bdd14b62fb0041aef776f2a851e6871856f9025d2b91a5ba497b3ec115d9f37b",
+    "packageManifestSource": "package.json at simulator baseCommit"
+  },
+  "runnerSha256": "eec35018b9260cc667a881dd5dd45e0c8f71ef8e11627807fa92f3800bde060f",
+  "model": "GLM-5.3-Flash via registered OMP adapter; external model response is not deterministic",
+  "prompts": {
+    "sourceDirectory": "repository/.AgentWorkShop/prompts",
+    "runtimeCopy": "AW_HOME/prompts",
+    "sourceTree": {
+      "sha256": "01c87bde3a9adf55f34a7f3cff8c3a111ebad5f4acb43781402dd92e7d41013e",
+      "fileCount": 17,
+      "bytes": 170461
+    },
+    "status": "exact runtime prompt assets included"
+  }
+}

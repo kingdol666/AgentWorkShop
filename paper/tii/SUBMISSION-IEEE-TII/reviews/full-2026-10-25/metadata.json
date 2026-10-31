@@ -1,0 +1,12 @@
+{
+  "source_sha256": "E9BF8F356FF2304D5B5E238FC1E9B4A7476994AF2E97738DFDB1D23125B6B537",
+  "review_date": "2026-10-25",
+  "word_count": 7645,
+  "field": "Industrial informatics: industrial-agent integration and software architecture",
+  "source": "../../main.tex",
+  "manuscript_sha256": "195DBCDCFF6758811BB48FD30E8D1282D8866E854B0B1EAA306A3CF0C433AE11",
+  "title": "AgentWorkShop: A Modular Task-to-Device Integration Framework for Industrial Agents",
+  "pages": 10,
+  "criteria_binding": "unavailable",
+  "manuscript": "../../main.pdf"
+}

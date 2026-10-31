@@ -1,0 +1,60 @@
+{
+ "lineId": "ln-f1870b2c",
+ "recipeId": "rc-c4ccb815",
+ "channelId": "43aa5433-c75e-4fc1-bd88-f2369bd56ca9",
+ "dcw": [
+  {
+   "id": "dw-92df8392",
+   "name": "涂布间隙SP",
+   "min": 100,
+   "max": 400,
+   "stepLimit": 5
+  },
+  {
+   "id": "dw-3c4ef389",
+   "name": "烘干温度SP",
+   "min": 60,
+   "max": 150,
+   "stepLimit": 2
+  },
+  {
+   "id": "dw-da78b15b",
+   "name": "走带速度SP",
+   "min": 5,
+   "max": 40,
+   "stepLimit": 1
+  }
+ ],
+ "daq": [
+  "dn-82c72aeb",
+  "dn-07d3c97e",
+  "dn-3ad0e65a"
+ ],
+ "recipeParams": [
+  {
+   "nodeId": "dw-92df8392",
+   "value": 180,
+   "min": 150,
+   "max": 240,
+   "stepLimit": 5
+  },
+  {
+   "nodeId": "dw-3c4ef389",
+   "value": 110,
+   "min": 95,
+   "max": 135,
+   "stepLimit": 2
+  },
+  {
+   "nodeId": "dw-da78b15b",
+   "value": 20,
+   "min": 12,
+   "max": 30,
+   "stepLimit": 1
+  }
+ ],
+ "plugins": [
+  "idd-closedloop-bridge",
+  "rag-bridge"
+ ]
+}

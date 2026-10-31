@@ -1,0 +1,85 @@
+{
+  "fig1-A-layered": {
+    "width_in": 7.16,
+    "height_in": 3.93,
+    "minimum_font_pt": 8.0,
+    "runs_below_8pt": 0,
+    "collision_fail": 0,
+    "collision_warn": 0,
+    "raster_images": 0,
+    "fonts": [
+      "BMQQDV+DejaVuSans",
+      "ELUGPM+Arial-BoldMT",
+      "ELUGPM+ArialMT"
+    ]
+  },
+  "fig1-B-pipeline": {
+    "width_in": 7.16,
+    "height_in": 3.64,
+    "minimum_font_pt": 8.0,
+    "runs_below_8pt": 0,
+    "collision_fail": 0,
+    "collision_warn": 0,
+    "raster_images": 0,
+    "fonts": [
+      "ELUGPM+Arial-BoldMT",
+      "ELUGPM+ArialMT"
+    ]
+  },
+  "fig1-C-routes": {
+    "width_in": 7.16,
+    "height_in": 3.6,
+    "minimum_font_pt": 8.0,
+    "runs_below_8pt": 0,
+    "collision_fail": 0,
+    "collision_warn": 0,
+    "raster_images": 0,
+    "fonts": [
+      "BMQQDV+DejaVuSans",
+      "ELUGPM+Arial-BoldMT",
+      "ELUGPM+ArialMT"
+    ]
+  },
+  "fig2-A-flow": {
+    "width_in": 7.16,
+    "height_in": 4.08,
+    "minimum_font_pt": 8.0,
+    "runs_below_8pt": 0,
+    "collision_fail": 0,
+    "collision_warn": 0,
+    "raster_images": 0,
+    "fonts": [
+      "BMQQDV+DejaVuSans",
+      "ELUGPM+Arial-BoldMT",
+      "ELUGPM+ArialMT"
+    ]
+  },
+  "fig2-B-pipeline": {
+    "width_in": 7.16,
+    "height_in": 3.62,
+    "minimum_font_pt": 8.0,
+    "runs_below_8pt": 0,
+    "collision_fail": 0,
+    "collision_warn": 0,
+    "raster_images": 0,
+    "fonts": [
+      "BMQQDV+DejaVuSans",
+      "ELUGPM+Arial-BoldMT",
+      "ELUGPM+ArialMT"
+    ]
+  },
+  "fig2-C-gates": {
+    "width_in": 7.16,
+    "height_in": 3.86,
+    "minimum_font_pt": 8.0,
+    "runs_below_8pt": 0,
+    "collision_fail": 0,
+    "collision_warn": 0,
+    "raster_images": 0,
+    "fonts": [
+      "BMQQDV+DejaVuSans",
+      "ELUGPM+Arial-BoldMT",
+      "ELUGPM+ArialMT"
+    ]
+  }
+}

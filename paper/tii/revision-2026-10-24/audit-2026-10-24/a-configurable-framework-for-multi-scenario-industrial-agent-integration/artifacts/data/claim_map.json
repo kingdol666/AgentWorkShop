@@ -1,0 +1,45 @@
+{
+  "headline_claims": [
+    "This paper presents a configurable framework that combines agent teams and configurable agent-engine adapters with production context, analysis and modeling services, semantic acquisition and write control, and route-specific workflows."
+  ],
+  "closure_targets": [],
+  "section_claims": {
+    "abstract": [
+      "This paper presents a configurable framework that combines agent teams and configurable agent-engine adapters with production context, analysis and modeling services, semantic acquisition and write control, and route-specific workflows."
+    ]
+  },
+  "claim_candidates": [
+    {
+      "id": "abstract:1",
+      "section_key": "abstract",
+      "claim": "This paper presents a configurable framework that combines agent teams and configurable agent-engine adapters with production context, analysis and modeling services, semantic acquisition and write control, and route-specific workflows.",
+      "evidence_anchor": [],
+      "claim_strength": "unsupported",
+      "missing_evidence": [
+        "add an evidence anchor or soften the claim boundary"
+      ],
+      "allowed_wording": "This paper presents a configurable framework that combines agent teams and configurable agent-engine adapters with production context, analysis and modeling services, semantic acquisition and write control, and route-specific workflows.",
+      "forbidden_wording": [
+        "unqualified conclusion without visible evidence"
+      ]
+    }
+  ],
+  "section_claim_candidates": {
+    "abstract": [
+      {
+        "id": "abstract:1",
+        "section_key": "abstract",
+        "claim": "This paper presents a configurable framework that combines agent teams and configurable agent-engine adapters with production context, analysis and modeling services, semantic acquisition and write control, and route-specific workflows.",
+        "evidence_anchor": [],
+        "claim_strength": "unsupported",
+        "missing_evidence": [
+          "add an evidence anchor or soften the claim boundary"
+        ],
+        "allowed_wording": "This paper presents a configurable framework that combines agent teams and configurable agent-engine adapters with production context, analysis and modeling services, semantic acquisition and write control, and route-specific workflows.",
+        "forbidden_wording": [
+          "unqualified conclusion without visible evidence"
+        ]
+      }
+    ]
+  }
+}

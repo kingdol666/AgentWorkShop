@@ -1,0 +1,330 @@
+/**
+ * DcwControllerRecipes —— 配方 CRUD / 版本回退 / 应用
+ * (拆分层,承 DcwControllerParams;方法体与原文件逐行一致)
+ */
+import { DcwControllerParams } from './params'
+import type { DcwWriteHistoryEntry } from '../dcw-recipe.repo'
+import type { RecipeInput, RecipeRunView, RecipeView, WriteVerifyOutcome } from '../../../../../shared/dcw-protocol'
+import { AppError, ErrorCodes } from '../../../../utils/errors'
+import { getDcwRecipeRepo } from '../dcw-recipe.repo'
+import { assertRecipeOpIntervalForExecution, recordRecipeOpAnchor } from '../recipe-op-anchor'
+import { hydrateTrialLastAt, setTrialLastAt } from './gate-persist'
+import { recordOps } from '../../ops/ops'
+import { summarizeAck, verifyRecipeWrite } from './write-verify'
+import { writeTolerance } from '../dcw-runtime'
+import { notifyLineOperators } from '../../runtime/line-notify'
+
+/**
+ * 试验节拍 env 解析(显式 0 = 关闭;空/非法 = 默认 5 分钟)。
+ * 独立导出供单测锁定「0 不能被 falsy 默认值翻回 5 分钟」。
+ */
+export function resolveTrialIntervalMs(raw: string | undefined): number {
+  if (raw == null || String(raw).trim() === '') return 5 * 60_000
+  const n = Number(raw)
+  if (!Number.isFinite(n)) return 5 * 60_000
+  if (n === 0) {
+    // 显式关闭防震荡节拍:允许测试/基准,但生产误设 0 必须留下启动告警
+    console.warn('[dcw] AW_TRIAL_INTERVAL_MS=0:试验防震荡节拍已关闭(仅用于测试/基准;生产环境请勿设置)')
+    return 0
+  }
+  return Math.max(0, n)
+}
+
+export abstract class DcwControllerRecipes extends DcwControllerParams {
+  listRecipes() {
+    return getDcwRecipeRepo().list()
+  }
+
+  createRecipe(input: RecipeInput) {
+    return getDcwRecipeRepo().create(input)
+  }
+
+  updateRecipe(id: string, patch: Partial<RecipeInput>, meta?: { by: 'user' | 'agent' | 'system', actorName: string, actor: string, description: string }) {
+    const recipe = getDcwRecipeRepo().update(id, patch, meta)
+    // 配方参数版本变更 → 运维日志(版本号 + 归因;与版本历史同点入册)
+    if (patch.params !== undefined) {
+      try {
+        recordOps({
+          actor: meta?.actor ?? 'user',
+          actorName: meta?.actorName ?? meta?.actor ?? 'user',
+          actorKind: meta?.by ?? 'user',
+          action: meta?.by === 'agent' ? 'recipe.update.agent' : 'recipe.update',
+          kind: 'recipe',
+          targetKind: 'recipe',
+          targetId: id,
+          summary: `更新配方「${recipe.name}」→ v${recipe.version ?? 1}${meta?.description ? `:${meta.description.slice(0, 80)}` : ''}`,
+          lineId: recipe.lineId ?? '',
+          productId: recipe.productId ?? '',
+          recipeId: id,
+          detail: { version: recipe.version ?? 1, description: meta?.description ?? '' },
+        })
+      }
+      catch { /* 日志失败不影响更新 */ }
+    }
+    return recipe
+  }
+
+  /** 回退配方参数到历史版本/lastGood(生成新版本;非破坏)。allowNoop:定义已在目标态时原样返回(统一回退的 PLC 恢复腿仍要执行) */
+  revertRecipe(id: string, target: { version?: number, toLastGood?: boolean }, meta: { by: 'user' | 'agent' | 'system', actorName: string, actor: string, description: string }, opts?: { allowNoop?: boolean }) {
+    const recipe = getDcwRecipeRepo().revertToVersion(id, target, meta, opts)
+    try {
+      recordOps({
+        actor: meta.actor,
+        actorName: meta.actorName,
+        actorKind: meta.by,
+        action: 'recipe.revert',
+        kind: 'recipe',
+        targetKind: 'recipe',
+        targetId: id,
+        summary: `回退配方「${recipe.name}」→ v${recipe.version ?? 1}${meta.description ? `:${meta.description.slice(0, 80)}` : ''}`,
+        lineId: recipe.lineId ?? '',
+        productId: recipe.productId ?? '',
+        recipeId: id,
+        detail: { version: recipe.version ?? 1, description: meta.description },
+      })
+    }
+    catch { /* 日志失败不影响回退 */ }
+    return recipe
+  }
+
+  recipeVersions(id: string) {
+    return getDcwRecipeRepo().versions(id)
+  }
+
+  removeRecipe(id: string): void {
+    if (!getDcwRecipeRepo().remove(id)) throw new AppError(404, ErrorCodes.NOT_FOUND, `Recipe 不存在: ${id}`)
+  }
+
+  listRuns() {
+    return getDcwRecipeRepo().listRuns()
+  }
+
+  listHistory(limit = 100): DcwWriteHistoryEntry[] {
+    return getDcwRecipeRepo().historyList(limit)
+  }
+
+  /**
+   * 逐参数写核心(apply 与产线开跑共用):**节点级寻址** —— 每个参数显式指向
+   * 控制节点(节点才是真实控制 PLC 工艺参数的执行体)→ 逐参数写命令
+   * (runId 入写历史)→ 结果快照。节点不存在 → 该参数记失败不阻塞其余。
+   * v19 trial:传入 merged params(候选覆盖集),批次与写命令按候选值落账。
+   * 2026-10-08 ACK 鉴定:每参数写后经 verifyRecipeWrite 补验(链路受理→独立回读
+   * 证实),结果行携带 ack/verify —— 「ok」不再被当成「设备已生效」。
+   */
+  protected async writeRecipeParams(recipe: RecipeView, run: RecipeRunView): Promise<void> {
+    const results: RecipeRunView['results'] = []
+    for (const param of recipe.params) {
+      const node = param.nodeId ? this.repo.byId(param.nodeId) : undefined
+      if (!node) {
+        results.push({ templateRef: param.templateRef ?? param.nodeId, nodeId: null, ok: false, message: `已跳过:节点 ${param.nodeId} 已删除,参数未下发`, value: param.value })
+        continue
+      }
+      // 停用/解绑守卫:节点已停用或已不在配方所属产线(被解绑/改挂)→ 不下发,
+      // 明确记因(run.results 可见),其余参数照常
+      if (!node.enabled) {
+        results.push({ templateRef: node.templateRef, nodeId: node.id, ok: false, message: `已跳过:节点「${node.name}」已停用,参数未下发`, value: param.value })
+        continue
+      }
+      if (node.lineId !== recipe.lineId) {
+        results.push({ templateRef: node.templateRef, nodeId: node.id, ok: false, message: `已跳过:节点「${node.name}」已取消绑定(${node.lineId ? '已改挂其他产线' : '已从产线移除'}),参数未下发`, value: param.value })
+        continue
+      }
+      try {
+        const outcome = await this.write(node.id, param.value, run.id, { source: 'recipe', actor: 'recipe' })
+        // ACK 鉴定:命令 ok 但仅链路受理(mqtt/http-no-echo/mock)→ 独立回读补验
+        const v: WriteVerifyOutcome = await verifyRecipeWrite(this, node, param.value, outcome, { tolerance: writeTolerance(node) })
+        const ackTag = v.verdict === 'verified' ? '' : v.verdict === 'failed' ? '' : ` · ${v.message}`
+        results.push({
+          templateRef: node.templateRef,
+          nodeId: node.id,
+          ok: outcome.ok,
+          message: outcome.ok ? `${outcome.message}${ackTag}` : outcome.message,
+          value: param.value,
+          ack: v.ack,
+          verify: { verdict: v.verdict, attempts: v.attempts },
+        })
+      }
+      catch (err) {
+        results.push({ templateRef: node.templateRef, nodeId: node.id, ok: false, message: err instanceof Error ? err.message : String(err), value: param.value })
+      }
+    }
+    run.results = results
+    run.ackSummary = summarizeAck(results)
+    getDcwRecipeRepo().updateRun(run)
+  }
+
+  /** v19 试验节拍:同产线两次 trial 的最小间隔(防连发震荡;env 可调)。
+   *  P1-5 落盘:重启读盘续算(防"重启即绕试验节拍")。 */
+  private static readonly TRIAL_INTERVAL_MS = resolveTrialIntervalMs(process.env.AW_TRIAL_INTERVAL_MS)
+  private trialLastAt = new Map<string, number>(
+    Object.entries(hydrateTrialLastAt()).map(([k, v]) => [k, Number(v)]),
+  )
+
+  private assertTrialCadence(lineId: string): void {
+    if (DcwControllerRecipes.TRIAL_INTERVAL_MS <= 0) return
+    const last = this.trialLastAt.get(lineId) ?? 0
+    const elapsed = Date.now() - last
+    if (elapsed < DcwControllerRecipes.TRIAL_INTERVAL_MS) {
+      throw new AppError(429, ErrorCodes.WRITE_FREQUENT, `本产线上一次配方试验距今仅 ${Math.floor(elapsed / 1000)}s,试验节拍为 ≥${Math.round(DcwControllerRecipes.TRIAL_INTERVAL_MS / 1000)}s(防连发震荡),请等待 ${Math.ceil((DcwControllerRecipes.TRIAL_INTERVAL_MS - elapsed) / 1000)}s 后再试`)
+    }
+  }
+
+  /**
+   * Recipe 手动应用 / Agent 试验(一键下发工艺参数集;不激活产线窗口)。
+   * v19 trial 语义:**声明式覆盖集** —— 提供 overrides 时只写 overrides 列出的节点
+   * (实测教训 2026-10-04 场景C:两参试验曾把配方内未提及的 zone1 一并写向旧值,
+   * 覆盖 lastGood 200.6 → 190);不提供 overrides = 整批(全部配方参数)。
+   * trial 不写配方版本(复测有进步才由 Agent recipe_update 固化);受同线节拍卡控;
+   * 四层限界在 write() 咽喉点照常拦截(量程∩参数∩产品)。
+   */
+  async applyRecipe(recipeId: string, opts: {
+    overrides?: Array<{ nodeId: string, value: number }>
+    trial?: boolean
+    /** Agent 下发族标记:置真才受 recipe 级下发间隔卡控(人工 REST/系统路径豁免) */
+    agentDispatch?: boolean
+    /** 本次下发的审批单 id(锚自豁免:自己刚获批的那次不卡自己;不同 id 且锚新鲜 = 竞态拦截) */
+    agentApprovalId?: string
+    /** 应急豁免:仅跳过 recipe 级频控(审批/四层限界/试验节拍照常) */
+    emergency?: boolean
+  } = {}) {
+    this.ensureLoop()
+    const repo = getDcwRecipeRepo()
+    const recipe = repo.byId(recipeId)
+    if (!recipe) throw new AppError(404, ErrorCodes.NOT_FOUND, `Recipe 不存在: ${recipeId}`)
+    if (recipe.params.length === 0) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, 'Recipe 无工艺参数,无可下发内容')
+    const overrides = opts.overrides ?? []
+    const unknown = overrides.filter(o => !recipe.params.some(p => p.nodeId === o.nodeId))
+    if (unknown.length) {
+      throw new AppError(400, ErrorCodes.VALIDATION_ERROR, `覆盖参数不在配方内: ${unknown.map(o => o.nodeId).join(', ')}(试验只能修改配方已有参数的值;新增参数请先 recipe_update)`)
+    }
+    if (opts.trial) this.assertTrialCadence(recipe.lineId)
+    // Recipe 级下发间隔卡控(执行时兜底):仅 Agent 路径;approvalId 自豁免防审批竞态
+    if (opts.agentDispatch) assertRecipeOpIntervalForExecution(recipe, { approvalId: opts.agentApprovalId, emergency: opts.emergency })
+    // 声明式覆盖集:有 overrides 只写声明的节点(未声明参数保持现状,绝不顺带整批);
+    // 无 overrides(手动应用/统一回退重下发)= 整批语义
+    const effective = overrides.length > 0
+      ? overrides.map((o) => {
+          const p = recipe.params.find(x => x.nodeId === o.nodeId)!
+          return { ...p, value: o.value }
+        })
+      : recipe.params
+    const run = repo.createRun(recipe, effective)
+    await this.writeRecipeParams({ ...recipe, params: effective }, run)
+    // 运行中应用新配方版本 → 谱系拆段(A13):旧段在 now 闭合,新段记录新版本/内容 hash。
+    try {
+      const { getActiveLineRun, setActiveLineRun } = await import('../line-run')
+      const active = getActiveLineRun(recipe.lineId)
+      if (active) {
+        const switchedAt = Date.now()
+        const { closeContextSegment, openContextSegment } = await import('../../process-model/context')
+        closeContextSegment(active.runId, switchedAt)
+        // 活动窗口的配方身份同步切换:DAQ 入库打标、配方数采窗口都从活动窗口取值,
+        // 只拆段不换身份会让切换后的样本仍带旧 recipeId(段与数据标签互相矛盾)。
+        const { getDcwProductRepo } = await import('../dcw-product.repo')
+        const product = getDcwProductRepo().byId(recipe.productId)
+        setActiveLineRun({
+          ...active,
+          recipeId: recipe.id,
+          recipeVersion: recipe.version ?? 0,
+          recipeName: recipe.name,
+          productId: product?.id ?? active.productId,
+          productName: product?.name ?? active.productName,
+        })
+        openContextSegment({
+          id: active.runId, lineId: recipe.lineId, recipeId: recipe.id,
+          startedAt: new Date(switchedAt).toISOString(), recipeVersion: recipe.version ?? 0, paramsSnapshot: effective,
+        })
+      }
+    }
+    catch { /* 谱系不可用只降级,不阻断下发 */ }
+    // ACK 鉴定判定落账(单一咽喉点:REST 手动/Agent 工具/回退/系统路径全覆盖):
+    // failed≥1 → error;仅 unverified(链路受理未证实)→ warn;全部设备证实 → info。
+    // error/warn 同时向该线 operate 授权用户定向告警(生产化:假成功必须有人看到)。
+    const acks = run.ackSummary ?? summarizeAck(run.results)
+    const level: 'info' | 'warn' | 'error' = acks.failed > 0 ? 'error' : acks.unverified > 0 ? 'warn' : 'info'
+    try {
+      recordOps({
+        actor: opts.agentDispatch ? 'agent-dispatch' : 'system',
+        actorName: opts.agentDispatch ? 'Agent 整批下发' : '产线系统',
+        actorKind: 'system',
+        action: 'recipe.dispatch.ack',
+        kind: 'write',
+        targetKind: 'recipe',
+        targetId: recipeId,
+        recipeId,
+        lineId: recipe.lineId ?? '',
+        productId: recipe.productId ?? '',
+        level,
+        summary: `批次 ${run.id.slice(0, 8)} ACK 鉴定:证实 ${acks.verified}/${acks.total},未证实 ${acks.unverified},失败 ${acks.failed}${level === 'error' ? '(存在写入失败)' : level === 'warn' ? '(部分参数仅链路受理,设备侧未证实)' : ''}`,
+        detail: { runId: run.id, ackSummary: acks, trial: opts.trial === true, agentDispatch: opts.agentDispatch === true },
+      })
+      if (level !== 'info' && recipe.lineId) {
+        notifyLineOperators(recipe.lineId, {
+          eventId: `recipe_dispatch_ack:${run.id}`,
+          title: level === 'error' ? `⛔ 下发存在写入失败(${recipe.name})` : `⚠️ 下发部分参数未获设备证实(${recipe.name})`,
+          body: `批次 ${run.id.slice(0, 8)}:证实 ${acks.verified}/${acks.total},未证实 ${acks.unverified},失败 ${acks.failed}。请核查产线侧执行情况。`,
+          payload: { runId: run.id, ackSummary: acks, lineId: recipe.lineId, level },
+        })
+      }
+    }
+    catch { /* 判定留痕失败不影响下发结果 */ }
+    if (opts.trial) {
+      this.trialLastAt.set(recipe.lineId, Date.now())
+      setTrialLastAt(recipe.lineId, Date.now()) // P1-5 落盘
+    }
+    // Agent 下发成功即前移锚(封 auto 绑定无审批连发:两次已生效下发也须 ≥ opIntervalMs)
+    if (opts.agentDispatch) {
+      recordRecipeOpAnchor({
+        recipeId,
+        at: Date.now(),
+        approvalId: opts.agentApprovalId ?? '',
+        agentId: '',
+        op: opts.trial ? 'trial' : 'apply',
+        source: 'agent-executed',
+      })
+    }
+    return run
+  }
+
+  closeRun(id: string) {
+    return getDcwRecipeRepo().closeRun(id)
+  }
+
+  /**
+   * v19 统一回退:定义回退到目标版本(非破坏,生成新版本)+ **该版本参数整批重下发到 PLC**
+   * (与 recipe_rollback 仅改定义的区别:本方法把恢复值真正写回产线,批次级恢复)。
+   * 下发走 write() 咽喉点,四层限界照常(回退值是历史已固化参数,量程/参数/产品层兜底)。
+   */
+  async rollbackRecipeAndDispatch(recipeId: string, opts: {
+    version?: number
+    toLastGood?: boolean
+    by?: 'user' | 'agent' | 'system'
+    actorName?: string
+    actor?: string
+    description?: string
+    agentDispatch?: boolean
+    agentApprovalId?: string
+    emergency?: boolean
+  }): Promise<{ recipe: RecipeView, run: RecipeRunView, definitionNoop?: boolean }> {
+    const versionBefore = getDcwRecipeRepo().byId(recipeId)?.version ?? 1
+    const updated = this.revertRecipe(recipeId, {
+      version: opts.toLastGood ? undefined : opts.version,
+      toLastGood: opts.toLastGood === true,
+    }, {
+      by: opts.by ?? 'agent',
+      actorName: opts.actorName ?? 'Agent',
+      actor: opts.actor ?? 'system',
+      description: opts.description ?? '统一回退(定义回退+PLC 整批恢复)',
+    }, { allowNoop: true })
+    // 定义已在目标态(allowNoop)≠PLC 已在目标态:整批恢复照常执行
+    const definitionNoop = (updated.version ?? 1) === versionBefore
+    const run = await this.applyRecipe(recipeId, {
+      agentDispatch: opts.agentDispatch,
+      agentApprovalId: opts.agentApprovalId,
+      emergency: opts.emergency,
+    })
+    return { recipe: updated, run, definitionNoop }
+  }
+
+  // ---------- 产线(实体 CRUD;节点/产品/配方挂载其下实现隔离) ----------
+}

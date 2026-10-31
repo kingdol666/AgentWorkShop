@@ -1,0 +1,3 @@
+scene,task_id,approval_id,active_run_id,trial_run_id,verified_count,unverified_count,failed_count,expected_sample_run_id,returned_sample_run_id,sample_value,fixture_tool_calls
+cast-film,67fd3e3b-f99c-49b2-8640-ef7759dd153c,ap-175f5f86,rr-529e6e11,rr-8622a711,1,0,0,rr-529e6e11,rr-529e6e11,46.37,1
+annealing,d09b8984-78d0-465d-b372-ddb05b0d5b62,ap-1aa8d5bb,rr-fdb58cfc,rr-55fb1fd6,1,0,0,rr-fdb58cfc,rr-fdb58cfc,674.7999877929688,1

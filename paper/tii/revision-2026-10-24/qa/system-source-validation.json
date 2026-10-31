@@ -5,8 +5,8 @@
     "ready": true,
     "strict": false,
     "counts": {
-      "PASS": 19,
-      "WARN": 2,
+      "PASS": 18,
+      "WARN": 3,
       "FAIL": 0
     }
   },
@@ -121,9 +121,17 @@
     },
     {
       "check_id": "ROTATION-ANCHOR",
-      "level": "PASS",
-      "message": "No rotated Matplotlib text detected",
-      "evidence": []
+      "level": "WARN",
+      "message": "Some rotated text calls lack rotation_mode='anchor' and may cross their intended anchors after rotation",
+      "evidence": [
+        "line 172: rotation=...",
+        "line 182: rotation=...",
+        "line 197: rotation=...",
+        "line 207: rotation=...",
+        "line 219: rotation=...",
+        "line 225: rotation=...",
+        "line 139: rotation=..."
+      ]
     },
     {
       "check_id": "ANNOTATION-WORKAROUND",

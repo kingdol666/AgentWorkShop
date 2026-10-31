@@ -1,0 +1,55 @@
+{
+  "at": "2026-10-30T17:31:51.287Z",
+  "health": "ok",
+  "daq": {
+    "total": 13,
+    "online": 13
+  },
+  "channel": {
+    "id": "1a5c55b5-03e7-4e26-83e7-d7feb22dba11",
+    "lineId": "ln-cf47d3b6",
+    "lead": "07ea9178-a0bd-4da1-915b-9ed9f489399c",
+    "enabled": 1,
+    "members": 1
+  },
+  "task": {
+    "state": "COMPLETED",
+    "progress": 100,
+    "artifacts": [
+      "PROTO 启动自检报告"
+    ]
+  },
+  "dcw": [
+    {
+      "name": "机筒温度区3SP",
+      "value": 248,
+      "readValue": 248,
+      "state": "ok"
+    },
+    {
+      "name": "机筒温度区4SP",
+      "value": 246,
+      "readValue": 246,
+      "state": "ok"
+    },
+    {
+      "name": "锁模力SP",
+      "value": 1500,
+      "readValue": 1500,
+      "state": "ok"
+    }
+  ],
+  "export": {
+    "status": "ready",
+    "totalRows": 978
+  },
+  "simListeners": [
+    "TCP    0.0.0.0:5843           0.0.0.0:0              LISTENING       106944",
+    "TCP    0.0.0.0:15052          0.0.0.0:0              LISTENING       106944",
+    "TCP    0.0.0.0:16052          0.0.0.0:0              LISTENING       106944",
+    "TCP    127.0.0.1:4010         0.0.0.0:0              LISTENING       106944",
+    "TCP    127.0.0.1:18830        0.0.0.0:0              LISTENING       106944",
+    "TCP    [::]:5843              [::]:0                 LISTENING       106944"
+  ],
+  "verdict": "PASS(受控,复审 APPROVED)"
+}

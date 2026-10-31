@@ -1,0 +1,719 @@
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT                                                                   1
+
+
+
+
+  AgentWorkShop: A Reference Implementation for
+   Task-to-Device Integration in Industrial Agents
+
+   Abstract—Industrial agents need a software path that connects     production context, typed signal access, and a route from
+a task to production context, semantic operations, and configured    a named operation to the configured device protocol. The
+device interfaces. AgentWorkShop is a modular reference imple-       framework must also distinguish a command receipt from a
+mentation that composes task services, registered harnesses, line–
+product–recipe–run context, per-call operation checks, semantic      subsequent process observation. The shared task and opera-
+data access, protocol drivers, and service-owned records. It         tion services can therefore be configured with scene-specific
+resolves context for each agent turn and checks applicable           signal maps, protocols, and limits while retaining a common
+authority at dispatch; prompt context grounds a proposal but         execution path. The evaluation instantiates this path in two
+is not a task-pinned authorization token. We evaluated one           simulator scenes.
+registered harness in cast-film and annealing simulators with
+different signal and protocol mappings. Six sequential tasks            This paper presents AgentWorkShop as a reference imple-
+received synthetic approval and readback-verified receipts. After    mentation of task-to-device integration for industrial agents.
+each receipt, a 20-s delay preceded an explicit probe that was       It connects collaborative tasks and registered harnesses to
+ingested and queried through an isolated SQLite time-series          production context, manufacturing execution system (MES)
+fallback; task state was checked after the query. Each probe         data, analysis and modeling services, data-acquisition (DAQ)
+was linked to its task and approval records and tagged with its
+active production run. All six samples remained outside their        and write-control (DCW) nodes, and protocol-specific drivers.
+target bands. A separate deterministic fixture exercised one task    Its interfaces include command-line, web, SDK, REST, Model
+per scene without an external language model; all 31 runner          Context Protocol (MCP), and Agent-to-Agent (A2A) surfaces.
+assertions passed. These results establish the tested software       Task and chat routes enter the collaboration runtime, whereas a
+paths, not process attainment, normal online data acquisition        direct REST tool-invocation route can call the shared operation
+operation, cross-harness portability, or comparative benefit.
+                                                                     dispatcher without creating a task. This direct entry path is
+  Index Terms—Industrial agents, industrial communication,           described from the implementation but was not exercised in
+industrial informatics, production systems, semantic data inte-      R20 or R21 (Table II). Scene blueprints define signal maps, ob-
+gration.
+                                                                     jectives, and guards; channel profiles, tool policies, and agent
+                                                                     bindings scope operations. Agents and callers invoke named
+                      I. I NTRODUCTION                               operations through shared runtime checks; the framework
+
+I   NDUSTRIAL-AGENT deployments must connect each
+    task to its production context, process signals, and equip-
+ment interfaces. Existing work addresses end-to-end automa-
+                                                                     does not choose routes autonomously and retains proposals,
+                                                                     command confirmation, and process observations as distinct
+                                                                     records. Fig. 1 presents the system architecture, and Fig. 2
+tion control, operator-reviewed control-sequence generation,         shows the cross-module task flow. Section IV details the node-
+modular factory skills, and production scheduling [1]–[4].           exploration and recipe lifecycles.
+Other studies target PLC code generation, context-aware con-            This paper asks whether a configured registered-harness
+trol, resource capability discovery, shop-floor coordination,        path can execute bounded tasks in two simulator scenes
+digital-twin fault handling, natural-language machine access,        with different signal and protocol mappings while retaining
+and robotic-line control [5]–[10]. Across production lines,          a checkable relation from task through approval and verified
+agent roles, signal maps, protocols, objectives, and product/run     route receipt to a subsequent run-tagged measurement. A
+context vary. An integration architecture must accommodate           deterministic fixture separately replays the software route
+these differences around shared task and operation services          without external model decisions. A 20-case mock-state suite
+while keeping each action tied to its active production context.     injects line, product, recipe, and run changes during ap-
+Recent industrial-agent architectures add AAS-grounded OPC           proval for recipe_apply, recipe_trial, and dispatch-
+UA actions with signed approval, P&ID-grounded proposal              ing recipe_rollback; all stale actions are refused before
+checks, and governed sensor–MES–ERP evidence streams                 mock-driver writes. The experiments do not test configuration
+[11]–[13]. These works address asset-specific execution, pro-        reuse, cross-harness portability, or comparative integration
+cess validation, or closed-loop analytics. This paper addresses      benefit.
+the complementary software-integration question of compos-              The paper makes two contributions:
+ing task and harness routes, production context, semantic               1) It specifies and implements a modular task-to-device
+protocol I/O, and route-owned records. Its simulator evaluation             reference path that joins collaborative tasks and reg-
+tests configured paths rather than process-control performance              istered harnesses to turn-time production context, per-
+or portability.                                                             call operation checks, semantic I/O, configured proto-
+   Consider two production scenes with different process sig-               col drivers, and service-owned records. For approved
+nals and interfaces: cast-film thickness control and annealing-             recipe actions, the implementation binds the approval
+zone temperature control. An agent task in either scene needs               to a line–product–recipe–run tuple and refuses execu-
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT                                                                   2
+
+
+
+      tion if that tuple changes while approval is pending.         and human–LLM context-aware control, respectively [5], [6].
+      This distinguishes prompt grounding, dispatch authority,      Manufacturing studies consider dynamic resource-capability
+      device receipt, and later process observation; it is an       exploration [7], multi-agent shop-floor coordination [8], and
+      implementation contribution, not a new protocol, safety-      digital-twin-supported fault handling [9]. Natural-language
+      verification method, or process-control algorithm.            machine access [10] and real-time LLM control of a robot-
+   2) It evaluates selected paths in cast-film and annealing        operated serial line [4] extend this work to operator inter-
+      simulator scenes. In R20, six sequential tasks through        faces and robotic-line control. Together, these studies address
+      one registered harness passed the task-to-approval-to-        different operational contexts, interfaces, and allocations of
+      receipt-to-sample linkage checks; none of the six sam-        responsibility between agents, operators, and controllers.
+      ples reached its target band. In R21, a deterministic            The closest architecture-level comparison is Xia et al.,
+      fixture executed one task per scene with no exter-            who connect cognitive, digital-twin, and physical-automation
+      nal model and passed 31 runner assertions, including          layers and organize twin information as state snapshots, event
+      cleanup checks. A separate mock-state suite refused           messages, and plan sequences; their case studies address
+      stale line–product–recipe–run contexts on three recipe        robotic automation and process simulation [15]. Other nearby
+      actuation routes before mock-driver writes. These checks      designs expose factory-module operations through MCP with
+      characterize selected software paths; they do not estab-      state-based tool filtering, plan constrained manufacturing steps,
+      lish process attainment, portability, or superiority.         or compose semantic recipes from OPC UA skills [3], [16],
+   Section II reviews related industrial-agent and integration      [17]. These studies describe important parts of plant-facing
+work. Section III presents the design rationale, architecture,      integration. The recent systems in Table I also combine agent
+and cross-module execution flow; Section IV explains module         execution with approval, industrial data, or audit records.
+responsibilities and their integrated operation. Section V de-      Graul et al. ground proposals in the Asset Administration
+scribes the experiments and results, and Sections VI and VII        Shell and route approved actions through OPC UA Methods,
+discuss the evidence limits and conclude the paper.                 with signed approvals and audit logging [11]. Schall separates
+                                                                    advisory language-model agents from process and instrumen-
+                     II. R ELATED W ORK                             tation diagram (P&ID)-grounded verification and execution,
+                                                                    and evaluates structural checks across five simulated process
+   This section relates AgentWorkShop to plant-facing indus-
+                                                                    scenarios [12]; its context includes supervisory control and
+trial agents and to production and automation abstractions for
+                                                                    data acquisition (SCADA) and standard operating procedure
+context, tool access, and operational constraints. Table I com-
+                                                                    (SOP) information. Lin and Chen build a governed sensor–
+pares integration and execution features described in selected
+                                                                    MES–ERP digital thread for closed-loop monitoring and con-
+industrial-agent architectures, including systems with adjacent
+                                                                    trol, evaluated on real manufacturing records [13]. These
+but distinct process-control objectives. The comparison is fo-
+                                                                    works address asset-specific approval, process validation, or
+cused rather than exhaustive; a feature marked as not specified
+                                                                    closed-loop analytics. This study examines a narrower im-
+was not described in the cited study and is not inferred to be
+                                                                    plementation contract: a recipe action awaiting human ap-
+absent. Studies were included in this comparison when they
+                                                                    proval carries its line–product–recipe–run context, rechecks
+describe an industrial agent’s production context, plant-facing
+                                                                    that same tuple before actuation, and retains command receipt
+operations, or an action, approval, or evidence pathway. This
+                                                                    separately from a later process observation. The deterministic
+criterion defines the table’s scope; it is not a comprehensive
+                                                                    tests check refusal after line, product, recipe, or run changes
+survey or a performance ranking. Feature entries were coded
+                                                                    during pending approval on three recipe actuation routes;
+from the cited study’s full text only when the feature was ex-
+                                                                    R20 and R21 trace selected registered-harness paths across
+plicitly described; otherwise the cell is marked “Not specified.”
+                                                                    two simulator mappings. Table I situates this contract among
+Evaluation descriptions are transcribed at the level reported
+                                                                    selected designs but does not establish that other systems lack
+by each source, without normalizing sample units, success
+                                                                    equivalent mechanisms or that this composition is superior.
+criteria, or metrics across studies.
+                                                                    Direct operation calls and comparative utility remain untested.
+
+A. Industrial Agents and Plant Integration                             The feature comparison is descriptive rather than a perfor-
+   Industrial-agent systems, including large language model         mance ranking. AgentWorkShop adds no process-control or
+(LLM)-based systems, span end-to-end automation control,            safety-verification method; its operation checks complement
+supervisory services, programmable logic controller (PLC)           safety-aware decision support [18] but do not replace inde-
+interfaces, manufacturing coordination, and operator-facing         pendent process protection.
+machine access. Xia et al. present an LLM agent framework
+for end-to-end industrial automation control, using structured
+prompts and event-driven context for production planning and        B. Production Context, Agent Interfaces, and Automation
+operation [1]. Huang et al. present a multimodal architecture          Industrial integration also depends on abstractions that
+whose stated focus is automated control generation for indus-       are not specific to agent architectures. The Model Context
+trial cyber-physical systems [2]. Biskupovic et al. study agent-    Protocol (MCP) specifies interoperable tool discovery and
+based supervision for service-oriented industrial systems [14];     call mechanisms [19]; the operation-level scope, policy, grant,
+Agents4PLC and InstructMPC address PLC code generation              and binding checks discussed here are AgentWorkShop’s own
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT                                                                      3
+
+
+
+                                                                 TABLE I
+  F EATURE - LEVEL COMPARISON OF SELECTED PLANT- FACING INTEGRATION STUDIES . “N OT SPECIFIED ” MEANS THAT THE CITED STUDY DOES NOT
+DESCRIBE THE FEATURE ; IT IS NOT EVIDENCE OF ABSENCE . T HE TABLE COMPARES STATED DESIGNS AND EVALUATION EVIDENCE , NOT PERFORMANCE .
+
+
+System         Task and production Per-call operation Device-facing route        Reported evaluation and record link
+               context             checks
+Xia et al. [15] Cognitive, twin, and Not specified        Digital-twin/physical- Robotic automation and process-simulation case studies
+                physical layers; snap-                    automation
+                shots, events, and plans                  integration
+Köhle et al. Factory-module agents State-based tool Per-module MCP ex- Nine simulated production challenges
+[3]             with injected live state filtering        poses OPC UA meth-
+                                                          ods; MQTT coordina-
+                                                          tion
+Vieira       da LLM plans manufac- Not specified          MCP-exposed             Laboratory multi-step process with constraint handling
+Silva et al. turing steps under con-                      manufacturing
+[16]            straints                                  resource functions
+Köhle et al. AI-assisted        recipes Not specified    OPC       UA     skills Unity assembly-workstation proof of concept
+[17]            composed from OPC                         and            virtual
+                UA skills                                 commissioning
+Graul et al. AAS-grounded asset Signed HITL ap- PLC-validated OPC Two laboratory PoCs; single scripted runs
+[11]            and production context proval; immutable UA Methods
+                                         audit log
+Schall [12]     P&ID, SCADA, time- Deterministic          Advisory proposal, Five simulated scenarios; 43 injected proposals and 50
+                series, and SOP context topology and rule gated execution         LLM runs
+                                         checks
+Lin and Chen Sensor–MES–ERP dig- SOP-, risk-, and Edge monitoring and 25,275 real records; monitoring and operational metrics
+[13]            ital thread              capability-aware closed-loop actions
+                                         gating
+This work      Collaborative tasks and Scope,     policy, Semantic       node R20: 6/6 live-agent traces; R21: 2/2 deterministic fixture
+               direct calls; per-turn grant/binding at resolves to configured traces across two mappings; no process attainment claim
+               line–product–recipe–    dispatch;   route- DAQ/DCW driver
+               run context             specific     state
+                                       rechecked before
+                                       write
+
+dispatcher rules, distinct from MCP transport authorization.         constraints drawn from the target workflows. D1 stores scene
+In parallel, ISA-88 and ISA-95 describe recipes and pro-             settings as versioned data; D2 provides registered harness, tool,
+duction operations [20], [21]. Run-to-run methods connect            and driver interfaces; D3 separates proposal from execution;
+process observations to successive production runs [22]. At the      D4 treats the tool catalog as discovery rather than permission;
+agent level, AgentSpec and CaMeL address tool behavior and           D5 routes actuator writes through the common DCW admis-
+capability-based information flow [23], [24]. Together, these        sion point; and D6 retains evidence by operation.
+works provide complementary abstractions for production con-            The requirements trace to implementation as follows. Scene
+text, tool interaction, and information flow. AgentWorkShop          variability maps to D1, scene blueprints, and context reso-
+composes such abstractions with its task runtime, operation          lution; harness variability and extensibility map to D2, the
+checks, semantic I/O, and route-specific records; this paper         registered harness and driver interfaces; operation authority
+evaluates selected paths through that composition rather than        maps to D3–D5, the shared dispatcher, grants, bindings, and
+proposing a replacement for the underlying standards.                write admission; outcome observability maps to D6, route-
+                                                                     specific receipts, and observations. R13 exercises two scene-
+                     III. S YSTEM D ESIGN                            specific protocol and data paths; R20 exercises the configured
+   AgentWorkShop is designed for industrial tasks whose              task-to-device path through one registered harness, synthetic
+agents, production contexts, interfaces, and process signals         approvals, and route-specific records. Section V reports the
+vary between deployments. Its architecture organizes these           experimental scope and evidence limits. AgentWorkShop sup-
+variations around shared task and operation services, checks         plies task and operation services; agent strategy and indepen-
+each proposed operation against the active production context        dent process protection remain outside this design.
+before device routing, and retains route-specific evidence that
+distinguishes a command receipt from a measured process              B. Layered Architecture
+response.
+                                                                       Fig. 1 maps the reference implementation onto six bands
+                                                                     and their route-specific evidence records. The access band ex-
+A. Design Rationale and Requirements                                 poses command-line, web, SDK, REST, MCP, and A2A entry
+  Five requirements—scene variability, harness variability,          surfaces. Task and chat routes enter the collaboration band,
+operation authority, outcome observability, and extensibility—       which contains workspaces, channels, task queues, shared
+organize six design rules (D1–D6). These are deployment              memory, mailboxes, task templates, and harness adapters.
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT                                                                                         4
+
+
+
+
+                                     Production context + scene blueprint                                                Service-owned evidence
+                           line / product / recipe / run · signals · objectives · guards
+                                                                                                                           separate record types
+
+                    Task / chat route                                  Direct operation route                                task and approval
+              task engine · harness adapter                         REST / selected MCP operations
+                                                                                                                             write ACK / readback
+                                         Shared per-call dispatcher
+                                                                                                                             DAQ observations
+                                    scope · policy · applicable grant / binding
+                                                                                                                             exploration summaries
+               Read / analysis services                                   Write / recipe services
+             DAQ · MES · retrieval · models                           live context · approval · DCW                          recipe versions
+
+
+                                                                    Configured protocol drivers                         Joined by actor / context IDs
+           Semantic DAQ / DCW nodes
+          typed sensing · bounded writes                           e.g., OPC UA · MQTT · Modbus
+                                                                                                                              when available
+                                                                           plant / simulator
+                                                                                                                           Command and process
+                             Independent PLC / SIS protection remains external                                               remain separate
+
+
+Fig. 1. AgentWorkShop architecture and record ownership. Task/chat calls pass through collaboration and a registered harness; direct REST tool calls and
+selected stdio-MCP operation calls enter the shared dispatcher, while MCP management/task methods remain on their service routes. Direct handlers resolve
+current route context, and recipe writes recheck the approved line–product–recipe–run tuple. Direct-entry execution was not evaluated. Semantic I/O resolves
+through configured drivers, while each service retains its own records. Independent PLC/SIS protection remains external.
+
+Direct REST tool calls and the stdio MCP operation bridge can                  pinned transaction. For each returned tool call, the shared
+call the shared dispatcher without creating a task or invoking                 dispatcher rechecks invocation scope and channel policy and,
+a harness; MCP management and task methods remain on                           for industrial operations, current grant and binding conditions
+their service routes. Direct calls have no agent-turn prompt                   before handler selection. The selected handler then applies
+context, so handlers resolve current route state from the request              route-specific guards, active-run checks, approval revalidation,
+and services at invocation. The governance band projects an                    and device-I/O steps as applicable. Command receipts and
+operation catalog and checks each invocation. The context                      later process observations remain distinct records.
+band assembles bound-line and active-run information for                          For an industrial operation u by agent a in channel c, define
+prompt grounding, while operation handlers resolve the live                    the shared dispatch condition as
+state relevant to their route. The service band provides ac-                                                   ^
+quisition, write control, analysis, retrieval, and optional model                              A(a, c, u) =          X(a, c, u),            (1)
+services. The field-I/O band resolves semantic nodes to built-in                                                  X∈C(u)
+or plugin drivers for a plant or simulator.
+   Each band has a distinct responsibility. Task/chat routes                   where S, P , G, and B denote invocation scope, current chan-
+enter the task runtime; direct operation routes enter the dis-                 nel policy, runtime grant, and agent binding/resource owner-
+patcher; and both use shared operation checks where appli-                     ship, respectively. C(u) ⊆ {S, P, G, B} is the set of predicates
+cable. A harness adapter supplies agent-specific interaction                   declared for operation u; it always contains S and P . The grant
+on task paths, semantic nodes hide protocol details from                       predicate G is omitted only for an explicitly grant-exempt
+operations, and the driver registry provides the device-facing                 industrial tool, and B is included when the operation declares
+extension point. Owning services retain task, command, obser-                  resource references. A declared no-reference operation omits
+vation, and version records separately and link them to avail-                 B. Each included check must pass before handler selection.
+able actor and production context. No single status conflates                  The policy predicate includes channel tool selection, profile,
+these outcomes.                                                                and duty-separation checks where configured. This condition
+                                                                               is necessary for handler selection, not sufficient for actuation:
+                                                                               the selected route applies its own guards and approval, then
+C. Cross-Module Execution Flow                                                 rechecks authority, context, and applicable limits before dis-
+   Fig. 2 summarizes a task turn from entry through operation                  patch.
+execution, with route-specific evidence retained by owning                        Fig. 3 gives reference pseudocode for the registered-harness
+services. Registered harness adapters receive a scoped tool                    task path, not one literal orchestrator function. Direct REST
+catalog during setup and supported registry refreshes; the                     tool invocation bypasses the task runtime and harness but
+runtime assembles prompt-time production context for each                      enters the same shared dispatcher. Route-specific timing, ap-
+agent turn. This context is grounding information, not a task-                 proval, and evidence rules are detailed in Section IV.
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT                                                                                              5
+
+
+
+
+                Task / chat entry                           Per-turn context + tool catalog                           Harness + agent turn
+          channel task · chat message                           catalog on setup / refresh                    registered adapter · named request
+
+
+                                                               Per-call dispatch gate
+                                                       scope · policy · applicable grant/binding
+
+
+                                                                           Route?
+
+
+                       Read / analysis route                                                            Write / recipe route
+                DAQ · MES · retrieval · model services                                         approval context recheck · DCW driver
+
+
+
+                                                                   Task / tool result
+                                                              host text · optional error flag
+
+
+
+
+Fig. 2. Registered-harness task execution in AgentWorkShop. The direct REST tool-invocation route is outside this flow and enters the shared dispatcher
+without a task or harness. The registered harness uses a scoped catalog provisioned at setup and supported registry refreshes; the runtime assembles prompt
+context per agent turn. The dispatcher checks each returned call for scope, channel policy, and applicable grant and binding conditions before handler selection.
+For an approved recipe action, the handler compares the current line–product–recipe–run tuple with the approval-time tuple before actuation. The shared tool
+result contains host text and an optional error flag; route records remain with owning services. Prompt context is not a transactional authorization token.
+Dispatch-gate errors return before handler execution, whereas route handlers may read state before refusing a write. Durable denial auditing is selective.
+Receipts and later observations remain distinct.
+
+         IV. M ODULE F UNCTIONS AND I NTEGRATION                                  required: task ID, approval ID, recipe-trial run ID, active-
+                                                                                  run ID, and the run ID returned with the sample must
+   The architecture in Fig. 1 is implemented as cooperating                       agree with the corresponding route records. R21 checks the
+modules rather than a single monolithic agent. Shared in-                         corresponding IDs on its deterministic fixture path. Thus the
+terfaces connect task execution to configuration, industrial                      reported complete joins are requirements of those evaluated
+services, protocol drivers, and route-specific evidence. This                     records, not a guarantee that every general record contains
+section describes those responsibilities and the checks that                      every identifier.
+preserve their boundaries.
+   The implementation scope is broader than the evaluated
+scope. Table II separates implemented interfaces from the                         A. Task Runtime and Harness Adapters
+evidence collected here. An interface intended for extension                         Task and chat access surfaces create or join a workspace
+does not by itself establish interchangeability or portability.                   channel, where the task engine manages members, task queues,
+   The extension contracts expose the data passed                                 shared memory, and execution templates. Direct REST tool
+at each boundary. A harness call is normalized as                                 calls and selected stdio MCP operation calls can enter the
+HostToolCall(toolName, arguments) and returns                                     shared dispatcher without creating a task or invoking a harness;
+HostToolResult(text, isError). A DCW driver                                       MCP management and task methods use their corresponding
+accepts an engineering value, tolerance, range, and driver                        services. A direct call has no agent-turn prompt context:
+configuration; its result separates write status, raw value,                      its operation handler resolves live route state from request
+readback, and acknowledgment grade (readback-verified,                            identifiers and service data at invocation. The harness registry
+transport-ack, or unverified). Each DAQ sample stores its                         instantiates an adapter behind a common agent interface; the
+node, timestamp, value, and state, with optional line, product,                   prompt builder combines the task with the active scene brief,
+recipe, and run IDs. A write anchor records line/node,                            industrial context, channel profile, agent binding, and retrieved
+prior and requested values, source, actor, time, and optional                     memory. Tool calls return to the shared dispatcher regardless
+run/task/approval IDs; recipe definitions retain separate                         of which registered harness produced them. The registry is an
+versions. These fields keep tool errors, device receipts,                         extension point; the experiments do not establish portability
+observations, and production lineage inspectable as separate                      across harnesses. Industrial context is assembled for each agent
+records.                                                                          turn rather than pinned for the task lifetime, so prompt context
+   DAQ and write-anchor records may omit line, product,                           is grounding information rather than write authorization. An
+recipe, run, task, or approval identifiers when a route does                      approved recipe action separately captures the current line–
+not supply them. For the R20 trace audit, the join keys are                       product–recipe–run tuple when approval is requested and com-
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT                                                                                  6
+
+
+
+Require: task q, channel c, bound agent a, registered scoped                       C. Acquisition, Analysis, and Modeling Services
+    catalog T
+                                                                                     Semantic DAQ nodes expose typed values, engineering
+Ensure: task result; any retained evidence remains with its
+                                                                                   units, ranges, and sampling settings while hiding protocol-
+    owning service
+                                                                                   specific reads. A per-node DAQ runtime schedules acquisition
+ 1: xt ← R ESOLVE P ROMPT C ONTEXT(c, q)
+                                                                                   and stores timestamped observations; the gateway aggregates
+ 2: m ← R ETRIEVE M EMORY(q)
+                                                                                   node pipelines. MES-facing operations provide the configured
+ 3: p ← A SSEMBLE P ROMPT(q, xt , m)
+                                                                                   production-data path. Analysis and retrieval services consume
+ 4: h ← I NVOKE R EGISTERED H ARNESS(a, p, T )
+                                                                                   these records, while optional model, training, optimization,
+ 5: for all tool request u returned by h do
+                                                                                   and digital-twin services are invoked through their registered
+ 6:     g ← C HECK S COPE A ND C HANNEL P OLICY(a, c, u)
+                                                                                   operation handlers. These services complement the agent
+ 7:     if not g then
+                                                                                   workflow; AgentWorkShop does not prescribe a single opti-
+ 8:         E MIT T OOL E RRORT O H ARNESS(h,u); continue
+                                                                                   mization strategy.
+ 9:     end if
+10:     if u is an industrial operation then
+11:         v ← C HECK G RANT B INDING OWNERSHIP(a, u)                             D. Semantic I/O and Actuation
+12:         if not v then                                                             The driver registry resolves a semantic node to a built-in
+13:             E MIT T OOL E RRORT O H ARNESS(h,u);                               or plugin driver. DAQ handlers use the node’s acquisition
+    continue                                                                       interface; DCW handlers route a write or readback through the
+14:         end if                                                                 controller and the configured protocol driver. This separation
+15:     end if                                                                     lets recipes and agents refer to semantic controls without
+16:     k ← S ELECT H ANDLER(u)                                                    embedding Modbus, OPC UA, MQTT, HTTP, or MES trans-
+17:     r ← E XECUTE ROUTE H ANDLER(k, a, c, u) ▷ handler                          port details in their operation arguments. The supported driver
+    resolves live state and may persist route-specific records                     mappings are implementation interfaces; only the mappings
+18:     E MIT D ECLARED T OOL R ESULT T O H ARNESS(h,r)                            and workflows enumerated in Section V are experimentally
+19: end for                                                                        exercised.
+20: return task state and tool results
+
+Fig. 3. Reference pseudocode for the registered-harness task path. Direct          E. Shared Dispatch and Write Admission
+operation invocation is not shown. Evidence persistence is route-specific and
+remains with the owning service; the shared tool result does not carry a generic      Every named operation passes the dispatcher. Its ordered
+evidence envelope.                                                                 checks validate invocation scope and current channel policy
+                                                                                   (tool selection, profile, and applicable duty separation), then
+pares it again before dispatch. This approval-time check does                      the agent’s binding and runtime grant and ownership of refer-
+not imply that the earlier prompt context remained unchanged.                      enced resources. A refusal returns the excluding condition.
+                                                                                   Denial persistence is selective: grant denials and selected
+                                                                                   resource-reference denials have explicit audit paths, whereas
+                                                                                   scope and channel-policy denials are not uniformly retained
+B. Production Context and Configuration
+                                                                                   as durable audit events. A catalog entry therefore describes
+    Scene blueprints describe devices, signal maps, objectives,                    availability but does not authorize execution. Handlers for
+and process guards. A task resolves these definitions against                      operations that require manual approval suspend for a decision,
+its active line–product–recipe–run context. The channel profile                    then revalidate authority and active limits before dispatch.
+selects the available capability family, the tool policy narrows                   For manual recipe operations, the handler checks the active
+the operation catalog, and the agent binding scopes the nodes,                     run, candidate parameters, and route timing before approval;
+controls, and recipe operations available to that member. These                    after the wait it rechecks current authority and active limits.
+filters can restrict one another but cannot broaden the underly-                   For recipe_apply, a changed definition requires a new
+ing device range. The dispatcher re-reads policy at execution,                     proposal. These route-specific checks complement, but do not
+so a cached catalog does not retain authority after a grant                        replace, the per-call dispatcher checks.
+or policy change. The prompt builder assembles the agent’s                            All actuator writes converge on the DCW admission point.
+available bound-line and active-run context on each turn; it                       For an online node write, the admissible interval is
+does not pin the complete context tuple to the task. Approved                                 Inonline (t) = Hn ∩ Bn ∩ Pn (t) ∩ Rn (t),         (2)
+recipe actions capture the active tuple at request time and
+refuse dispatch if its line, product, recipe, or run field changes                 where Hn is the hard engineering range and Bn , Pn , and Rn
+during the approval wait. Specific production snapshot, trial,                     are the baseline, active-product, and active-recipe limits. Miss-
+and MPC routes, together with Hybrid Twin training submis-                         ing optional limits impose no restriction, whereas an empty
+sions, resolve and validate a versioned SceneContract at                           intersection rejects the request and identifies the excluding
+operation time. The Twin physics-specification draft route can                     layer. Recipe dispatch applies the hard, baseline, and product
+instead accept a caller-supplied scene description; SceneCon-                      limits to the replacement recipe rather than intersecting with
+tract enforcement is therefore route-specific and does not                         the previous recipe window. The actuator path also enforces
+validate or pin all prompt context.                                                step, interval, and hold-window checks. These admission rules
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT                                                                                        7
+
+
+
+                                                            TABLE II
+ I MPLEMENTED INTERFACES AND EVIDENCE COVERAGE . “N OT EVALUATED ” MARKS FEATURES OUTSIDE THE REPORTED EXPERIMENTS ; IT DOES NOT
+                                     IMPLY THAT THEY ARE ABSENT FROM THE IMPLEMENTATION .
+
+Path              Implemented interface and checks                                     Evidence in this study
+Task and harness Registered harness adapters and task/chat services; direct REST R20 exercises six registered-harness tasks; R21 exercises one deter-
+                 operation calls share the dispatcher but bypass the task runtime.     ministic fixture task per scene. Alternate harnesses and direct REST
+                                                                                       calls are not evaluated.
+Dispatch     and Every call checks scope, policy, grant, binding, and resource owner- R20/R21 exercise approved recipe trials and verified readback. Mock
+write            ship as applicable. Recipe operations capture line/product/recipe/run tests inject four stale-context mutations on each of recipe apply,
+                 context at approval and recheck it before execution; changed context recipe trial, and dispatching rollback. Online node writes are not
+                 refuses the action. Candidate bounds, timing, recipe definition, and evaluated end to end.
+                 active limits are also checked.
+Semantic I/O     DAQ/DCW nodes resolve configured semantic signals to built-in or R20/R21 exercise two scene mappings; R13 provides exploratory
+                 plugin drivers.                                                       protocol probes. The normal online DAQ backend and physical
+                                                                                       equipment are not evaluated.
+Records          Owning services retain task, approval, receipt, observation, and R20 reports six complete task-to-sample joins; R21 reports two
+                 recipe-version records separately; production identifiers are route- fixture-path joins. Neither result establishes universal record com-
+                 dependent.                                                            pleteness across untested routes.
+
+
+constrain commands; process objectives and coupled variable                    tuple; a changed tuple is refused before actuation. A focused
+guards are assessed from later observations. The framework                     mock-state suite changes line, product, recipe, or run during
+does not replace independent PLC or safety-instrumented                        approval for recipe apply, trial, and dispatching rollback; each
+protection.                                                                    mutation is refused before a driver write or new execution
+                                                                               record. For recipe_apply, a changed recipe definition also
+F. Integrated Operation and Route-Specific Evidence                            requires a new proposal; an unchanged approval dispatches a
+                                                                               copy of the approved parameter snapshot. A line-level recipe
+   A recipe trial illustrates how the modules cooperate. The
+                                                                               mode defaults to manual; changing it to automatic requires
+task runtime delivers a named recipe_trial call from the
+                                                                               administrator confirmation. The approval record authorizes a
+agent harness; the dispatcher checks the agent’s recipe binding
+                                                                               workflow action and does not replace process protection.
+and execution scope; the recipe handler checks the active run,
+                                                                                  Fig. 4(a) illustrates the four-layer interval in Eq. (2) with
+candidate parameters, and route timing; and a manual binding
+                                                                               an archived RPM configuration; panel (b) shows a symbolic
+requests approval before the DCW controller sends the batch
+                                                                               approval followed by context and authority rechecks. The
+through its driver. The handler returns a per-parameter receipt.
+                                                                               plotted values are illustrative and are not R20 measurements.
+The caller then obtains DAQ observations and can request a
+                                                                                    b) Node             probe:           The           bounded
+separate update, apply, or rollback operation. A trial receipt
+                                                                               optimization_explore route is exposed to the
+confirms command handling; it does not by itself establish
+                                                                               AML optimization profile. It validates a bound control and
+process attainment or persist a new recipe version.
+                                                                               DAQ scope, captures a baseline, routes a bounded write
+   The routes retain different records because they answer dif-
+                                                                               through DCW, and stores a later target window as a separate
+ferent questions. A driver acknowledgment reports command
+                                                                               exploration summary. Its timing and approval behavior is
+evidence; DAQ reports a process observation; an exploration
+                                                                               route-specific; R20 does not exercise this route.
+summary records a bounded probe; and a recipe version
+                                                                                    c) Recipe operations: recipe_trial checks the
+records a saved definition. Their relation through actor and
+                                                                               bound recipe and active run, then dispatches candidate over-
+production context allows an execution to be inspected without
+                                                                               rides as a batch with per-parameter verification. The caller
+treating these outcomes as interchangeable.
+                                                                               subsequently queries DAQ and may save a definition with
+                                                                               recipe_update, restore one with recipe_rollback,
+G. Route-Specific Lifecycles and Evidence                                      or apply a version with recipe_apply. A trial does not save
+     a) Timing and approval: Timing guards are route-                          or apply a version, and endpoint verification is not a process-
+specific. Online node writes enforce an effective minimum                      response measurement. Public direct-node control is closed;
+spacing of 60 s. Recipe dispatch uses a per-recipe interval                    bounded probes and recipe operations are the configured write
+anchored to approval, while trials also use a configurable per-                surfaces.
+line cadence (default 300 s). The recipe interval can refuse                        d) Command verification: Command confirmation and
+a proposal before an approval request is created. Checks                       process response answer different questions. A driver ACK
+occur at proposal or execution according to the operation,                     is graded as readback-verified, transport-ack, or
+and experiment-specific pacing overrides are reported with the                 unverified; a matching endpoint read supports the first
+corresponding results.                                                         grade, whereas transport or MES application confirmation
+   Manual bindings create an approval request containing                       supports the second. Recipe-batch verification is verified,
+the actor, operation, candidate values, applicable limits, ex-                 unverified, or failed. If readback is absent or mis-
+piry, parameter bases, and the active line–product–recipe–                     matched, up to three reads are attempted 2 s apart. Initial
+run context. The default wait expires after 180 s and refuses                  ACKs, final ACKs, and per-parameter verdicts are retained
+execution. After approval, the executor rechecks authorization                 separately. A readback-verified setpoint does not establish
+and compares the current context tuple with the approved                       target attainment.
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT                                                                                         8
+
+
+
+
+ a    Source-aware admission                                                    b    Approval and recheck
+ I = H ∩ B ∩ P ∩ R = [146.22,153.78] rpm                                        Symbolic schematic; no measured values
+
+ H hard                                                                             Line / recipe binding + active run
+                      50                                       200 rpm
+                                                                                    Parameter                        Current           Proposed
+                       Detail scale: 140–160 rpm
+                                                                                    Control u                        u(now)            u(next)
+ B baseline
+ 143.7–156.3                                                                        Reason / hypothesis + execution context
+ P product
+ 146.22–153.78                                                                              Approve                            Decline
+ R recipe
+ 141–159                                                                        Approve → recheck grants, binding and context
+                                                                                Then admission → dispatch; failure → no dispatch
+                     140                      150                     160
+                                                                                Decline → no dispatch; decision is recorded
+
+Fig. 4. Admission and approval boundaries. (a) Illustrative archived RPM configuration (not part of R20): online node interventions use the four-layer value
+interval of Eq. (2), whereas recipe dispatch omits the prior recipe window. (b) Symbolic human approval binds a proposed action and its context tuple;
+execution rechecks the active line–product–recipe–run context, authority, and applicable limits after approval. Approval does not reserve equipment state.
+
+     e) Observation, verdict, and compensation: Recipe-path                    B. Registered-Harness Process Path (R20)
+observation follows batch dispatch, and saving a definition,                      R20 ran the local v0.8.0 working-tree application with the
+applying it, and observing process response remain separate                    registered omp adapter and GLM-5.3-Flash. Supplementary
+operations. An open node record can request rollback after                     File S1 contains the recorded base revisions, working-tree
+repeated breaches; missing samples do not count as breaches.                   patches, dependency lockfiles, prompt assets, and run logs.
+Caller verdicts and compensation remain separate from the                      This is a source-reconstruction kit rather than an immutable
+observation and subject to admission checks.                                   release, and the external model service does not guarantee
+                                                                               deterministic replay. Cast film used OPC UA for screw-speed
+               V. E XPERIMENTAL E VALUATION
+                                                                               control and MQTT for thickness; annealing used Modbus TCP
+   The evaluation asks whether one registered-harness path                     for both the zone-3 setpoint and strip-temperature probe. The
+can execute bounded tasks across two simulator scenes with                     model received a live control read, process measurement, and
+different signal and protocol mappings while retaining a                       target band, then selected one value from the scenario-defined
+checkable task-to-approval-to-receipt-to-sample trace. R20 is                  prevalidated set (125/130/135 rpm or 735/740/745 ◦ C) for a
+the primary result: six sequential tasks through one registered                bounded recipe_trial; this was a constrained choice, not
+harness, three per scene on one simulator instance per scene. It               an unrestricted optimization search. A synthetic administrator
+demonstrates this configured software path, not configuration-                 approved each proposal. Each route log contains one trial and
+reuse benefit or process attainment. R21 is a separate determin-               a 1/1 verified device receipt.
+istic fixture replay on an isolated current-version application                   After verifying the route ACK and returned trial result,
+and simulator; it checks the same task-to-device path without                  the runner initiated a 20-s delay, then probed, ingested, and
+an LLM decision. R13 is secondary exploratory protocol                         queried one value per task under the active-run tag through
+and data-path evidence whose exact runtime source was not                      the isolated SQLite time-series fallback. The runner checked
+pinned. All runs use repository simulators. Supplementary                      task state after the sample query; all six task records were then
+File S1 contains the R20 trace matrix and records, plus the                    COMPLETED. The runner reported 76 passing assertions and
+R21 fixture evidence.                                                          no failures, and the separate trace audit found a complete task-
+                                                                               to-sample record in all six executions: each had a matching
+A. Evidence Units and Experimental Procedure                                   approval ID, one readback-verified trial receipt, and one query
+   R20 uses the registered harness adapter named omp in cast-                  result whose run ID and value matched the active run and ex-
+film and annealing scenes (omp is the project adapter key,                     plicit probe. The task-completion timestamp was not retained,
+not a network protocol), with three sequential task executions                 so no task-completion-to-sample interval can be computed.
+per scene on one simulator instance per scene. Each execution                  Table III labels Film-1–3 map to cast-film-r1--r3, and
+creates a new logical line, product, recipe, active run, channel,              Anneal-1–3 to annealing-r1--r3; full identifiers and per-
+agent, and task on that shared scene simulator. Line start                     record checks are listed in R20-TRACE-MATRIX.csv in S1.
+reapplies the recipe baseline (120 rpm or 730 ◦ C), so the                        The trace matrix distinguishes two run identifiers. The trial
+control read returns to baseline while the simulated process                   run ID denotes the recipe_trial operation record; the
+state carries forward. These are sequential software runs, not                 active run ID denotes the production run used to tag and
+independent process replications. R13 uses configured protocol                 query the probe. Both are linked to the same task and approval
+and data paths in the same two simulator scenes. Earlier                       record, and they are not expected to be equal.
+experiments are retained separately in Supplementary File S1                      Table III reports the pre-task process value, selected set-
+and are not pooled with these results.                                         ting, and run-tagged sample for each execution; all six re-
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT                                                                  9
+
+
+
+                           TABLE III                                windows per scene at 1-s sampling produced lineage-verified
+C ONSTRAINED MODEL SELECTIONS AND SIMULATOR MEASUREMENTS .          datasets with 658 cast-film rows and 655 annealing rows.
+   T HE CONTROL IS SCREW SPEED FOR CAST FILM AND THE ZONE -3
+    FURNACE SETPOINT FOR ANNEALING . E ACH ROW REPORTS ONE          The rows are overlapping time-window samples, not indepen-
+   RUN - TAGGED PROBE AFTER A 20- S DELAY FROM VERIFIED ROUTE       dent process replications. The exact runtime source was not
+READBACK . A LL SIX SAMPLES ARE OUTSIDE TARGET; EXECUTIONS ARE      recorded. R13 is used only as exploratory protocol and data-
+                 SEQUENTIAL WITHIN EACH SCENE .
+                                                                    lineage evidence; its archived gate outputs and run-boundary
+Case    Pre-task value / target Control: start→trial Sample         audit are documented in the reproducibility supplement and
+        band                                                        do not support the primary registered-harness result. R14 is
+Film-1   55.82/48–52 µm         120 → 125 rpm      45.69 µm         an earlier exploratory pilot with alternative signal pairs; both
+Film-2   45.69/48–52 µm         120 → 130 rpm      46.69 µm         pilot model gates failed, and those outcomes informed the
+Film-3   46.69/48–52 µm         120 → 125 rpm      45.69 µm
+Anneal-1 675.40/700–760 ◦ C     730 → 745 ◦ C      679.60 ◦ C       subsequent R13 pair selection. R13 also produced no eligible
+Anneal-2 678.30/700–760 ◦ C     730 → 745 ◦ C      677.70 ◦ C       model, recommendation, or dispatch. The two runs remain
+Anneal-3 676.90/700–760 ◦ C     730 → 745 ◦ C      678.10 ◦ C       separate and are not model-performance evidence.
+                                                                       Earlier protocol, admission-ablation, controller, deployment,
+mained outside target. The results verify a bounded harness-        and scripted recipe records in S1 use older versions or inter-
+to-simulator path, not process attainment or convergence. One       faces. They are not pooled with R13 or R20, used as matched
+probe is not a response trajectory, the SQLite fallback does not    strategy comparisons, or relied on for the current integration
+test normal online DAQ, and R20 does not test profile/binding       claims.
+reuse or cross-harness portability.
+                                                                                          VI. D ISCUSSION
+C. Deterministic Fixture Replay (R21)                                  R20 produced six complete task-to-approval-to-receipt-to-
+   R21 ran the local v0.8.0 application with a deterministic        sample traces across two simulator scenes; none of its single
+transport fixture for the registered omp harness, which returned    post-readback samples reached target. R21 passed 31 asser-
+a fixed tool call without invoking an LLM or autonomous             tions on the same configured route, and a 20-case mock
+harness decision. In one fresh isolated application/simulator       suite refused twelve stale approval-context mutations across
+environment, one fixture task per scene invoked the recipe-trial    three recipe actuation routes before actuation. Together, these
+path in cast-film and annealing. The runner checked dispatch,       results verify selected software behavior, not manufacturing
+synthetic approval, verified receipt, matching device readback,     performance.
+run-tagged DAQ probe, and route log; all 31 runner assertions,         The runs do not establish independent replication, process
+including process and port cleanup checks, passed. This replay      convergence, or quality improvement. Each scene used one
+shows that the configured software route can be exercised with      simulator instance, and its single probe is not a response
+deterministic harness input. It is not an independent real-agent    trajectory. Configuration reuse, alternate harnesses or direct
+run, a process replication, or evidence of target attainment. The   REST entry, online DAQ, operator effectiveness, physical
+two fixture tasks are not pooled with R20.                          transfer, and comparative architecture value remain untested.
+                                                                    Synthetic approvals do not assess operator effectiveness [25]–
+D. Software Contract Checks                                         [27]; restricted tool access does not establish deployment se-
+   The local unit suite passed 554/554 tests across seven suites.   curity [28]–[30] or replace independently engineered PLC/SIS
+Relevant contract checks refuse denied or expired approvals,        protection [31]. The context-mutation suite does not compare
+changed recipe or limit state, and invalid node values be-          architectures or quantify integration effort. Future work should
+fore driver actuation; unchanged approved state dispatches          use a defined baseline, exercise alternate routes and online
+through the mock driver and readback. The approval-snapshot         DAQ, and include independent simulator and physical-plant
+suite passed 20/20 cases. Twelve deterministic fault injections     trials.
+changed one approval-time field at a time (line, product,
+recipe, or active run) on recipe_apply, recipe_trial,                                    VII. C ONCLUSION
+and recipe_rollback(dispatch=true). Every stale                        AgentWorkShop connects collaborative tasks to produc-
+action was refused before a mock-driver write or new execu-         tion context, checked operations, semantic I/O, and service-
+tion record. The handler compares the saved line–product–           owned records. R20 and R21 verify selected paths across
+recipe–run tuple after the approval wait. These checks use          two simulator mappings; a mock-state suite confirms refusal
+temporary or mock state and are separate from R20’s 76              when an approved line–product–recipe–run tuple changes on
+runner checks; they do not represent process trials or test         three actuation routes. The evidence supports the implemented
+missing/mismatched DAQ run tags in the end-to-end path.             software contract, not process-control efficacy, comparative
+                                                                    advantage, or portability.
+E. Exploratory Protocol and Data Path (R13)
+   The R13 application report describes five protocol-family                        AI A SSISTANCE D ISCLOSURE
+read probes (OPC UA, MQTT, Modbus TCP, Modbus RTU                      OpenAI ChatGPT revised Sections I–VI and drafted Python
+over TCP, and HTTP/REST) and bounded writes with match-             for Figs. 1, 2, and 4. OpenAI image generation produced
+ing readbacks in two simulator scenes. Six sequential 120-s         early concepts for Figs. 1 and 2; final vectors were redrawn
+IEEE TRANSACTIONS ON INDUSTRIAL INFORMATICS, SUBMITTED MANUSCRIPT                                                                                            10
+
+
+
+and implementation-checked. AI generated no experimental                          [17] K. Köhle, D. Anicic, T. A. Runkler, K. Dorofeev, A. S. Thuluva, and
+records or measurements. The authors verified all submitted                            R. Graf, “Virtually commissioned semantic recipes based on OPC UA
+                                                                                       skills,” in 2025 IEEE 8th International Conference on Industrial Cyber-
+content.                                                                               Physical Systems (ICPS), 2025, pp. 1–6, doi: 10.1109/ICPS65515.2025.
+                                                                                       11087832.
+                              R EFERENCES                                         [18] X. Jiang et al., “Agentic AI for safety-aware process monitoring and
+                                                                                       fault diagnosis: A review,” Processes, vol. 14, no. 13, 2026, art. no.
+ [1] Y. Xia, N. Jazdi, J. Zhang, C. Shah, and M. Weyrich, “Control industrial          2112; doi: 10.3390/pr14132112.
+     automation system with large language model agents,” in Proc. IEEE           [19] Model Context Protocol contributors, “Model Context Protocol:
+     30th Int. Conf. on Emerging Technologies and Factory Automation                   Tools,” Specification, version 2026-07-28, 2026, accessed: Oct. 20,
+     (ETFA), 2025, pp. 1–8, doi: 10.1109/ETFA65518.2025.11205539.                      2026. [Online]. Available: https://modelcontextprotocol.io/specification/
+ [2] K.-C. Huang, H.-T. Lin, C.-H. Lin, and M.-T. Huang, “Large language               2026-07-28/server/tools
+     model integration in industrial cyber-physical systems: A multi-modal        [20] ISA, “ISA-88.00.01-2010: Batch control—part 1: Models and terminol-
+     architecture for automated control generation,” in Proc. Int. Conf. on            ogy,” International Standard, 2010.
+     Control, Automation and Diagnosis (ICCAD), 2026, pp. 1–6, doi: 10.           [21] ——, “ANSI/ISA-95.00.01-2025 (IEC 62264-1 mod): Enterprise-control
+     1109/ICCAD69956.2026.11643124.                                                    system integration—part 1: Models and terminology,” International
+ [3] K. Köhle, D. Anicic, T. A. Runkler, and R. Graf, “LLM-driven multi-              Standard, 2025.
+     agent control for skill-based smart manufacturing,” in Proc. IEEE 31st       [22] J. Moyne, E. del Castillo, and A. M. Hurwitz, Eds., Run-to-Run Control
+     Int. Conf. on Emerging Technologies and Factory Automation (ETFA),                in Semiconductor Manufacturing, 1st ed. Boca Raton, FL: CRC Press,
+     2026, pp. 1–8, doi: 10.1109/ETFA68377.2026.11725257.                              2000.
+ [4] M. Waseem, K. Bhatta, C. Li, and Q. Chang, “Pretrained LLMs as real-         [23] H. Wang, C. M. Poskitt, and J. Sun, “AgentSpec: Customizable runtime
+     time controllers for robot operated serial production line,” Mach. Learn.:        enforcement for safe and reliable LLM agents,” in Proc. IEEE/ACM
+     Eng., vol. 2, no. 1, 2026, art. no. 015006; doi: 10.1088/3049-4761/               48th Int. Conf. on Software Engineering (ICSE), 2026, pp. 2938–2950,
+     ae4ee8.                                                                           doi: 10.1145/3744916.3764546.
+ [5] Z. Liu et al., “Agents4PLC: Automating closed-loop PLC code gen-             [24] E. Debenedetti et al., “Defeating prompt injections by design,”
+     eration and verification in industrial control systems using LLM-based            2025, arXiv preprint arXiv:2503.18813. [Online]. Available: https:
+     agents,” IEEE Trans. Softw. Eng., vol. 52, no. 5, pp. 1672–1687, 2026,            //arxiv.org/abs/2503.18813
+     doi: 10.1109/TSE.2026.3667895.                                               [25] R. Parasuraman and D. H. Manzey, “Complacency and bias in human
+ [6] R. Wu, J. Ai, and T. Li, “InstructMPC: A human-LLM-in-the-loop                    use of automation: An attentional integration,” Hum. Factors, vol. 52,
+     framework for context-aware control,” in Proc. 2025 IEEE 64th Con-                no. 3, pp. 381–410, 2010, doi: 10.1177/0018720810376055.
+     ference on Decision and Control (CDC), 2025, pp. 172–179, doi:               [26] R. Parasuraman, T. B. Sheridan, and C. D. Wickens, “A model for types
+     10.1109/CDC57313.2025.11312156.                                                   and levels of human interaction with automation,” IEEE Trans. Syst.,
+ [7] J. Lim and I. Kovalenko, “A large language model-enabled control                  Man, Cybern., Part A, vol. 30, no. 3, pp. 286–297, 2000, doi: 10.1109/
+     architecture for dynamic resource capability exploration in multi-agent           3468.844354.
+     manufacturing systems,” in Proc. IEEE 21st Int. Conf. on Automation          [27] L. Bainbridge, “Ironies of automation,” Automatica, vol. 19, no. 6, pp.
+     Science and Engineering (CASE), 2025, pp. 2088–2095, doi: 10.1109/                775–779, 1983, doi: 10.1016/0005-1098(83)90046-8.
+     CASE58245.2025.11163802.                                                     [28] K. Greshake, S. Abdelnabi, S. Mishra, C. Endres, T. Holz, and M. Fritz,
+ [8] Z. Zhao et al., “A large language model-based multi-agent manufacturing           “Not what you’ve signed up for: Compromising real-world LLM-
+     system for intelligent shopfloors,” Adv. Eng. Inform., vol. 69, 2026, art.        integrated applications with indirect prompt injection,” in Proc. 16th
+     no. 103888; doi: 10.1016/j.aei.2025.103888.                                       ACM Workshop on Artificial Intelligence and Security, 2023, pp. 79–90,
+ [9] M. S. Gill, J. Vyas, A. Markaj, F. Gehlhoff, and M. Mercangöz,                   doi: 10.1145/3605764.3623985.
+     “Leveraging LLM agents and digital twins for fault handling in process       [29] Y. Liu, Y. Jia, R. Geng, J. Jia, and N. Z. Gong, “Formalizing
+     plants,” in Proc. IEEE ETFA, 2025, pp. 1–8, doi: 10.1109/ETFA65518.               and benchmarking prompt injection attacks and defenses,” in Proc.
+     2025.11205597.                                                                    33rd USENIX Security Symposium (USENIX Security 24), 2024,
+[10] B. Hofmann, N. Piechulek, S. Kreitlein, J. Franke, and P. Bruendl,                pp. 1831–1847. [Online]. Available: https://www.usenix.org/conference/
+     “Beyond touch-based human-machine interface: Control your machines                usenixsecurity24/presentation/liu-yupei
+     in natural language by utilizing large language models and OPC               [30] IEC, “IEC 62443-3-3:2013: Industrial communication networks—
+     UA,” arXiv preprint arXiv:2510.11300, 2025. [Online]. Available:                  network and system security—part 3-3: System security requirements
+     https://arxiv.org/abs/2510.11300v2                                                and security levels,” Standard, 2013.
+[11] C. Graul, W. Żarski, D. Mikołajewski, and I. Rojek, “Ai agents in           [31] ——, “IEC 61511-1:2016: Functional safety—safety instrumented sys-
+     industry 4.0: AAS–OPC UA–LLM architecture as the foundation of                    tems for the process industry sector—part 1: Framework, definitions,
+     intelligent manufacturing systems in the context of industrial enterprise         system, hardware and application programming requirements,” Interna-
+     implementation,” Applied Sciences, vol. 16, no. 11, p. 5428, 2026, doi:           tional Standard, 2016.
+     10.3390/app16115428.
+[12] D. Schall, “Safe integration of large language models into industrial
+     process control: A multi-agent architecture with P&ID-grounded vali-
+     dation,” Autonomous Intelligent Systems, vol. 6, 2026, article no. 14;
+     doi: 10.1007/s43684-026-00136-1.
+[13] S.-C. Lin and C.-Y. Chen, “An integrated framework featuring policy-
+     governed agentic AI for closed-loop manufacturing control with multi-
+     source sensor–MES–ERP,” The International Journal of Advanced Man-
+     ufacturing Technology, vol. 143, pp. 6405–6428, 2026, doi: 10.1007/
+     s00170-026-17806-2.
+[14] A. Biskupovic, A. Villalonga, F. Castaño, R. E. Haber, and F. Núñez,
+     “Agent-based supervision for service-oriented industrial cyber–physical
+     systems,” IEEE Trans. Ind. Inform., vol. 21, no. 3, pp. 2719–2728, 2025,
+     doi: 10.1109/TII.2024.3514178.
+[15] Y. Xia, N. Jazdi, and M. Weyrich, “An architecture for integrating large
+     language models with digital twins and automation systems,” in 2025
+     IEEE 30th International Conference on Emerging Technologies and
+     Factory Automation (ETFA), 2025, pp. 1–8, doi: 10.1109/ETFA65518.
+     2025.11205636.
+[16] L. M. Vieira da Silva, A. Köcher, and F. Gehlhoff, “Beyond formal
+     semantics for capabilities and skills: Model context protocol in manu-
+     facturing,” in 2025 IEEE 30th International Conference on Emerging
+     Technologies and Factory Automation (ETFA), 2025, pp. 1–4, doi:
+     10.1109/ETFA65518.2025.11205601.
+

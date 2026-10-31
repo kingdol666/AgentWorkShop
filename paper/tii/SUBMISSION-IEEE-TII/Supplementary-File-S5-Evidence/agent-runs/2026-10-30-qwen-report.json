@@ -1,0 +1,186 @@
+{
+  "at": "2026-10-30T09:24:53.673Z",
+  "model": "qwen3.5-9b-64k",
+  "scenario": {
+    "line": "ln-a3f4b5b6",
+    "daq": "dn-032967df",
+    "zone": "dw-5b37e2e5",
+    "channelId": "1e011dbd-a507-40c8-bfe1-d0d51cdbde7b",
+    "agentId": "e85cffad-65e8-4a4e-933e-82a61cda2067",
+    "trainChId": "b573e492-c42b-4557-a863-2848508eaa37",
+    "spTrace": {
+      "r3": {
+        "before": 195,
+        "atCard": 195
+      },
+      "r4": {
+        "before": 198
+      }
+    }
+  },
+  "assertions": [
+    {
+      "id": "R0.1",
+      "name": "隔离模拟器在线(4038)",
+      "pass": true,
+      "detail": "{\"started\":false,\"dir\":\"D:\\\\codes\\\\ABO\\\\AgentWorkShop\\\\plc-node-simulator\",\"reason\":\"already-up\"}"
+    },
+    {
+      "id": "R0.2",
+      "name": "四协议设备端点在线(cast-film-physics)",
+      "pass": true,
+      "detail": "dev-extruder-mbtcp:modbus-tcp, dev-gels-rtu:modbus-rtu, dev-extruder-opcua:opcua, dev-gauge-mqtt:mqtt, dev-inspect-http:http"
+    },
+    {
+      "id": "R0.3",
+      "name": "生产构建隔离实例就绪(3423,全新 home)",
+      "pass": true,
+      "detail": "port=3423 version=0.8.7"
+    },
+    {
+      "id": "R0.4",
+      "name": "admin 鉴权(隔离新库首注册即 admin)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R0.5",
+      "name": "开线且基线落设备(modbus SP + DAQ 首采)",
+      "pass": true,
+      "detail": "SP=195 daqLast=210.31"
+    },
+    {
+      "id": "R1.1",
+      "name": "aml_optimization 工艺优化频道(模板实例化)",
+      "pass": true,
+      "detail": "ch=1e011dbd-a507-40c8-bfe1-d0d51cdbde7b lead=—"
+    },
+    {
+      "id": "R1.2",
+      "name": "omp Agent(rpc+overlay,lm-studio 64k)入队且令牌可读",
+      "pass": true,
+      "detail": "agent=e85cffad-65e8-4a4e-933e-82a61cda2067 token=***64dc"
+    },
+    {
+      "id": "R1.3",
+      "name": "绑定面建立:dcw=manual(HITL 缺省)+daq=auto",
+      "pass": true,
+      "detail": "dcw mode=manual daq=200"
+    },
+    {
+      "id": "R1.4",
+      "name": "五能力工具面在册且已收窄(数采/数控治理/求解器)",
+      "pass": true,
+      "detail": "missing=无; face=10 项"
+    },
+    {
+      "id": "R2.1",
+      "name": "LLM 任务中 daq_query 真实抓数(数值=设备真值±3℃)",
+      "pass": true,
+      "detail": "state=CANCELED truth=204.35 交付数值=[37,120,260,120,260,195,53,195]"
+    },
+    {
+      "id": "R3.1",
+      "name": "HITL 挂起出现且批准前设备值不变(写被真实拦截)",
+      "pass": true,
+      "detail": "card=ap-bd7a14e3 tool= 批准前SP=195 基线=195"
+    },
+    {
+      "id": "R3.2",
+      "name": "批准后真实下发:设备寄存器值=基线+3(±0.5)",
+      "pass": true,
+      "detail": "批准后SP=198 期望=198"
+    },
+    {
+      "id": "R3.3",
+      "name": "LLM 任务收口(COMPLETED/收口 cancel)",
+      "pass": true,
+      "detail": "state=COMPLETED calls=4"
+    },
+    {
+      "id": "R4.1",
+      "name": "调优真实下发:设备 SP=基线+2.5(±0.75)",
+      "pass": true,
+      "detail": "SP=200.5 期望=200.5 state=CANCELED calls=🔧 optimization_explore(control_node_id=dw-5b37e2e5, target_ | 🔧 optimization_explore(control_node_id=dw-5b37e2e5, target_ | 🔧 optimization_explore ✅ 完成: 探索步完成(已真实写入产线并记录): 记录: opt-exp | 🔧 optimization_explore ✅ 完成: {\"content\":[{\"type\":\"text\",\"te | 🔧 repor"
+    },
+    {
+      "id": "R4.2",
+      "name": "PV 随动:熔体温度样本向新 SP 收敛(±4℃)",
+      "pass": true,
+      "detail": "pv=199.45 sp=200.5"
+    },
+    {
+      "id": "R4.3",
+      "name": "参数账本 Agent 归因(dcw_journal 含 Agent 来源)",
+      "pass": true,
+      "detail": "优化记录(2 条,含参数/判定/窗口): - opt-2ae47bc1 [open] 加热区1设定: 198 → 200.5,设定 17:31:36,判定 未判定,进行中 假设: 探索激励(up 2.500;goal=(Channel 未设置 goal —— 建议先在 Channel 设置中定义优化目标)) - opt-0f1a4a44 [superseded] 加热区1设定: 195 → 198,设定 17:29:12,判定 未判定,关闭于 17:31:36(superseded) 假设: 探索激励(up 3.000;goal=(Channel 未设置 goal —— 建议先在 Channe"
+    },
+    {
+      "id": "R4.4",
+      "name": "优化记录链存在(本阶段治理写新开窗)",
+      "pass": true,
+      "detail": "R4 前本节点记录=1 · R4 后=2"
+    },
+    {
+      "id": "R4.5",
+      "name": "LLM 调优任务收口(COMPLETED/收口 cancel)",
+      "pass": true,
+      "detail": "state=CANCELED"
+    },
+    {
+      "id": "R4.6",
+      "name": "交付文本含调优前后数值(≥2 个温度读数)",
+      "pass": true,
+      "detail": " ## Scenario Brief (channel-wide, highest priority — user-defined operating rules) 你是工艺优化团队,围绕 goal 对产线做参数寻优。未绑定模型时处于探索模式:用 optimization_explore 对真实产线做小步激励(尊重每步调试跨度与调试范围),积累「参数波动↔目标响应」数据;绑定 AML 模型后进入 AML 模式:孪生验证先行,贝叶斯寻优收敛,推荐经治理审批后写入并复测。 ## Your Profile (agent-specific) ## 你是工艺优化 Channel 的探索执行者(探索模式:"
+    },
+    {
+      "id": "R5.1",
+      "name": "AML 训练面:aml_model_find 可查询(模型清单可为空)",
+      "pass": true,
+      "detail": "过滤条件下(产线∈{ln-a3f4b5b6})没有匹配模型。 新建路径:aml_node_catalog → aml_dataset_build(绑定产线的配方批次组数据集)→ aml_job_submit 提交训练(建议带 model_name/model_description 打标)。 注意:模型按 (产品, 配方, purpose) 隔离 —— 换配方必须为该配方另建模型,不可跨配方复用。"
+    },
+    {
+      "id": "R5.2",
+      "name": "求解器:optimizer_capabilities 在优化频道可用",
+      "pass": true,
+      "detail": "{ \"agentId\": \"e85cffad-65e8-4a4e-933e-82a61cda2067\", \"bindings\": [], \"solver\": { \"size\": 1, \"ready\": 0, \"busy\": 0, \"degraded\": false, \"pythonPath\": null }, \"environment\": { \"pythonPath\": \"D:\\\\tmp\\\\aw-rhacc-20261030\\\\aml\\\\.venv\\\\Scripts\\\\pyt"
+    },
+    {
+      "id": "R5.3",
+      "name": "求解器:optimizer_solve 无合格 Profile 时被拒绝(负向断言,不放行执行)",
+      "pass": true,
+      "detail": "本 Channel 已在「设置 → 工具」中停用「optimizer_solve」。请让 Channel 属主在工具管理中启用后重试;硬规则排除的工具不能通过开关绕过。"
+    },
+    {
+      "id": "R6.1",
+      "name": "本体语义:my_industrial_nodes 含工艺描述与量纲",
+      "pass": true,
+      "detail": "### ⚙ 频道执行模式:auto(默认,频道不加额外约束)—— 是否人工批准由产线总闸与你的绑定模式决定;自动执行的下发必须附带 hypothesis 依据,四层限界/单步上限/运行门照常生效 #### ◆ 加热区1设定 [id=dw-5b37e2e5] - 物理量: 烘箱温度设定,单位 C,精度 2 位小数 - 工艺语义: 烘箱/熔体温度设定:升高使热塑温度上升(成膜更均匀但能耗高、过热降解风险),降低则偏冷易厚度不均。调整后需等待热惯性(数十秒级)再评估效果。(来自模板) - 安全量程: [120, 260] C(硬联锁,越界即拒) - 活动配方「验收基线配方」工艺窗口: [120, 2"
+    },
+    {
+      "id": "R6.2",
+      "name": "line_context 产线语义可读(绑定谱系扩权)",
+      "pass": true,
+      "detail": "你控制的产线全景(1 条): ■ 产线 真实harness验收线(ln-a3f4b5b6) · 状态:运行中 场景说明: 五能力 Channel 任务验收 活动批次 rr-25a53 · 产品「验收产品」(pd-f6401ea6) · 开跑 17:25:06 · 已打标 482 样本 我绑定的节点:数控 [加热区1设定];数采 [熔体温度] 配方「验收基线配方」(rc-bd33ad3c) v1 · 加热区1设定 = 195C(窗口 120~260) | PLC 当前 200.5C [我负责] | 参数键 temp-sp | 烘箱温度设定:烘箱/熔体温度设定:升高使热塑温度上升(成膜更均匀但能耗"
+    }
+  ],
+  "texts": {
+    "r2": "\n## Scenario Brief (channel-wide, highest priority — user-defined operating rules)\n你是工艺优化团队,围绕 goal 对产线做参数寻优。未绑定模型时处于探索模式:用 optimization_explore 对真实产线做小步激励(尊重每步调试跨度与调试范围),积累「参数波动↔目标响应」数据;绑定 AML 模型后进入 AML 模式:孪生验证先行,贝叶斯寻优收敛,推荐经治理审批后写入并复测。\n\n## Your Profile (agent-specific)\n## 你是工艺优化 Channel 的探索执行者(探索模式:尚未绑定 AML 模型)\n你的职责是围绕优化目标(goal)在真实产线上做受治理的激励探索,为 AML 建模积累高质量数据:\n1. 探索纪律:用 optimization_explore 下发激励步 —— 每步严格尊重节点的「每步调试跨度」(maxStep/tuning.step),在「调试范围」内往复激励;方向依据节点的物理意义与 goal 偏差判断,并在 hypothesis 里写明本次假设。\n2. 写治理边界:所有写入都经过平台的绑定鉴权、HITL 审批与写限界;被拒绝时不要绕行,调整幅度或等待后重试。\n3. 数据积累目标:让控制输入覆盖调试范围内多个水平(而不仅是单调单向);每 3~5 步后用 daq_query 复盘目标响应趋势,形成「参数波动 ↔ 目标响应」的记录。\n4. 何时建议训练:探索记录覆盖主要工况后,建议用户在 AML 界面创建建模任务(或由训练 Channel 走 aml_training_plan_create),用探索数据+历史批次做修正训练。\n5. 明确边界:探索模式下孪生验证(twin_trial_run)、MPC(mpc_optimize)、贝叶斯寻优(twin_bayes_optimize)均不可用 —— 这是解耦设计:模型未验证前不做模型驱动寻优。\n\n## 目标与谱系\n- goal:(未设置 —— 请让用户在 Channel 设置中定义优化目",
+    "r3": "🔧 optimization_explore(control_node_id=dw-5b37e2e5, target_node_id=dn-032967df) | 🔧 optimization_explore(control_node_id=dw-5b37e2e5, target_node_id=dn-032967df) | 🔧 optimization_explore ✅ 完成: 探索步完成(已真实写入产线并记录): 记录: opt-exploration-mvurt944-ewvvv3 控制: 加热区1设定(dw-5b37e2e5) 195 → 198(步长 3.000,方向 up) 响应: dn-032967df 201.038 → 200.822(Δ=-0.216,窗口 10s) goal: (Channel 未设置 goal —— 建议先在 Channel 设置中定义优化目标) 学习: 该方向目标响应 下降 0.216;继续探索请按此符号外推,或反向验证。 探索记录已归档,可在 AML 界面与训练数据回 | 🔧 optimization_explore ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"探索步完成(已真实写入产线并记录):\\n 记录: opt-exploration-mvurt944-ewvvv3\\n 控制: 加热区1设定(dw-5b37e2e5) 195 → 198(步长 3.000,方向 up)\\n 响应: dn-032967df 201.038 → 200.822(Δ=-0.216,窗口 10s)\\n goal: (Channel 未设置 goal —— 建议先在 Channel 设置中定义优化目标)\\n 学习: 该方向目标响应 下降 0.2",
+    "r4": "\n## Scenario Brief (channel-wide, highest priority — user-defined operating rules)\n你是工艺优化团队,围绕 goal 对产线做参数寻优。未绑定模型时处于探索模式:用 optimization_explore 对真实产线做小步激励(尊重每步调试跨度与调试范围),积累「参数波动↔目标响应」数据;绑定 AML 模型后进入 AML 模式:孪生验证先行,贝叶斯寻优收敛,推荐经治理审批后写入并复测。\n\n## Your Profile (agent-specific)\n## 你是工艺优化 Channel 的探索执行者(探索模式:尚未绑定 AML 模型)\n你的职责是围绕优化目标(goal)在真实产线上做受治理的激励探索,为 AML 建模积累高质量数据:\n1. 探索纪律:用 optimization_explore 下发激励步 —— 每步严格尊重节点的「每步调试跨度」(maxStep/tuning.step),在「调试范围」内往复激励;方向依据节点的物理意义与 goal 偏差判断,并在 hypothesis 里写明本次假设。\n2. 写治理边界:所有写入都经过平台的绑定鉴权、HITL 审批与写限界;被拒绝时不要绕行,调整幅度或等待后重试。\n3. 数据积累目标:让控制输入覆盖调试范围内多个水平(而不仅是单调单向);每 3~5 步后用 daq_query 复盘目标响应趋势,形成「参数波动 ↔ 目标响应」的记录。\n4. 何时建议训练:探索记录覆盖主要工况后,建议用户在 AML 界面创建建模任务(或由训练 Channel 走 aml_training_plan_create),用探索数据+历史批次做修正训练。\n5. 明确边界:探索模式下孪生验证(twin_trial_run)、MPC(mpc_optimize)、贝叶斯寻优(twin_bayes_optimize)均不可用 —— 这是解耦设计:模型未验证前不做模型驱动寻优。\n\n## 目标与谱系\n- goal:(未设置 —— 请让用户在 Channel 设置中定义优化目",
+    "r5": {
+      "caps": "{\n  \"agentId\": \"e85cffad-65e8-4a4e-933e-82a61cda2067\",\n  \"bindings\": [],\n  \"solver\": {\n    \"size\": 1,\n    \"ready\": 0,\n    \"busy\": 0,\n    \"degraded\": false,\n    \"pythonPath\": null\n  },\n  \"environment\": {\n    \"pythonPath\": \"D:\\\\tmp\\\\aw-rhacc-20261030\\\\aml\\\\.venv\\\\Scripts\\\\python.exe\",\n    \"requirementsHash\": \"b71cbec98e15\",\n    \"ready\": true,\n    \"platform\": \"win32-x64\"\n  },\n  \"note\": \"优化器仅产出建议(reco",
+      "solve": "本 Channel 已在「设置 → 工具」中停用「optimizer_solve」。请让 Channel 属主在工具管理中启用后重试;硬规则排除的工具不能通过开关绕过。"
+    },
+    "r6": {
+      "nodes": "### ⚙ 频道执行模式:auto(默认,频道不加额外约束)—— 是否人工批准由产线总闸与你的绑定模式决定;自动执行的下发必须附带 hypothesis 依据,四层限界/单步上限/运行门照常生效\n\n#### ◆ 加热区1设定 [id=dw-5b37e2e5]\n- 物理量: 烘箱温度设定,单位 C,精度 2 位小数\n- 工艺语义: 烘箱/熔体温度设定:升高使热塑温度上升(成膜更均匀但能耗高、过热降解风险),降低则偏冷易厚度不均。调整后需等待热惯性(数十秒级)再评估效果。(来自模板)\n- 安全量程: [120, 260] C(硬联锁,越界即拒)\n- 活动配方「验收基线配方」工艺窗口: [120, 260] C(软联锁,配方目标值 195C)\n- 当前设定: 200.5C,状态 ok,所属产线「真实harness验收线」\n- 下发链路: 写入经驱动 modbus-tcp 下发 PLC(寄存器/换算封装在驱动配置内,你只面对工程量);参数写入与下发一律走你绑定的配方(recipe_update 保存版本 / recipe_apply 整批下发 / recipe_trial 候选试验),四层限界(量程∩参数∩产品∩配方)与单步上限在配方面照常生效\n- 操作守则: 单次调幅硬上限 ≤5C(来源:recipe);下发后等待工艺响应再评估;目标值必须落在窗口内;自动模式,直接执行\n\n#### ◇ ",
+      "line": "你控制的产线全景(1 条):\n\n■ 产线 真实harness验收线(ln-a3f4b5b6) · 状态:运行中\n  场景说明: 五能力 Channel 任务验收\n  活动批次 rr-25a53 · 产品「验收产品」(pd-f6401ea6) · 开跑 17:25:06 · 已打标 482 样本\n  我绑定的节点:数控 [加热区1设定];数采 [熔体温度]\n  配方「验收基线配方」(rc-bd33ad3c) v1\n    · 加热区1设定 = 195C(窗口 120~260) | PLC 当前 200.5C [我负责] | 参数键 temp-sp | 烘箱温度设定:烘箱/熔体温度设定:升高使热塑温度上升(成膜更均匀但能耗高、过热降解风险),降低则偏冷易厚度不均(执行点:加热区1设定)\n  已知良好批次:未标记;当前参数版本 v1\n\n说明:配方目标=开跑批次冻结的工艺窗口;PLC 当前值=实时"
+    }
+  },
+  "summary": {
+    "total": 24,
+    "passed": 24,
+    "failed": 0,
+    "verdict": "PASS"
+  }
+}

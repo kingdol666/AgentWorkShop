@@ -26,7 +26,7 @@
 [![Docs](https://img.shields.io/badge/docs-VitePress%20%C2%B7%20%E4%B8%AD%2FEN-ffd75e?logo=vitepress&logoColor=black)](https://kingdol666.github.io/AgentWorkShop)
 **[简体中文](./README-zh.md)** · **[Documentation](https://kingdol666.github.io/AgentWorkShop)** · **[Releases](https://github.com/kingdol666/AgentWorkShop/releases)** · **[Changelog](./changelog.md)** · **[Plugin API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.8.7</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST integration (mirror & live) · data-analysis ledger with line-scoped permissions · process optimizer (process model → AML → OSQP solver → governed dispatch) · **ontology service + AI-first model loop** (ontology · twin · solver · AML adoption) · 104 host tools · 128 runtime settings · bilingual docs (简体中文 / English)</sub>
+<sub><b>v0.8.8</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST integration (mirror & live) · data-analysis ledger with line-scoped permissions · process optimizer (process model → AML → OSQP solver → governed dispatch) · **ontology service + AI-first model loop** (ontology · twin · solver · AML adoption) · 104 host tools · 128 runtime settings · bilingual docs (简体中文 / English)</sub>
 
 <br />
 
@@ -58,7 +58,7 @@ A configuration-driven platform where **AI agent teams** and an **industrial pro
 </p>
 
 > [!NOTE]
-> Every image in this README is a screenshot of a **running instance** (v0.8.7 production build) — none are mock-ups.
+> Every image in this README is a screenshot of a **running instance** (v0.8.8 production build) — none are mock-ups.
 
 <p align="center">
   <a href="https://kingdol666.github.io/AgentWorkShop/demo/player.html">
@@ -211,11 +211,13 @@ Plugins are a first-class extension surface: a directory + `index.mjs` gives you
 
 Every claim above has a re-runnable suite behind it. Acceptance follows the **aw-system-acceptance five-layer flow** (static gates → unit & contract → live core loops → regression → plugin/tool surface). The 2026-10-29 full round: **24 suites/checks, ~1100+ assertions, all green**; the real-device integration matrix (`e2e-golive-matrix`) **21/21** — five real protocol stacks connected, platform samples equal device-side values, four-protocol write-through, agent-token batch dispatch, honest disconnect failure and self-healing; security hardening **29/29**; adversarial error handling **26/26**.
 
+**2026-10-31 executable test-card round** (`bench/PIPELINE.md` execution contract, ralplan-consensus planning): static paper-code consistency **100%** (20 anchors) · real five-protocol tier **13/13 (100 points, incl. F5 interception rate = 1 and disconnect recovery)** · **E1a four-arm governance ablation** matches theory exactly (window-breaching writes execute 6/6 without interlock/authorization gate, false blocks stay 0 — mechanism-attribution evidence) · api-live **75/75** · unit 913/913 · **bit-exact reproduction against the 20260914 frozen baseline ×2 (REPRODUCIBLE, across 12 days)** · IDD/RAG plugin integration chain live end-to-end (real PLC scenario + omp/ustc-deepseek-flash: export → IDD deep diagnosis → knowledge ingest (HITL) → retrieval hit) · P12 real-harness transparent closed loop episode (all qualification gates passed; an out-of-surface tool call by a weak model was cancelled on the spot by the event monitor and 153 events frozen as evidence).
+
 | Layer | Representative suites (this round) |
 |---|---|
-| Live core loops | line governance 44/44 · ontology 87/87 · model loop 53/53 · optimizer 105/105 · injection closed loop 6/6 · device matrix 21/21 |
-| Regression | api-live 61/61 · auth matrix 29/29 · template isolation 38/38 · robustness ALL · agent-team 25/25 · error handling 26/26 |
-| Special | security S1–S16 29/29 · production gates 8/8 · node authority 52/52 · three-mode live 42/42 |
+| Live core loops | line governance 44/44 · ontology 87/87 · model loop 53/53 · optimizer 105/105 · injection closed loop 6/6 · device matrix 21/21 · five-protocol tier 13/13 |
+| Regression | api-live 75/75 · auth matrix 29/29 · template isolation 38/38 · robustness ALL · agent-team 25/25 · error handling 26/26 · E1a ablation 4 arms × 3 rounds |
+| Special | security S1–S16 29/29 · production gates 8/8 · node authority 52/52 · three-mode live 42/42 · frozen-baseline reproduction ×2 |
 
 Evidence and reproduction commands: [`docs/audit/evidence/`](./docs/audit/evidence) and [`docs/full-test-plan.md`](./docs/full-test-plan.md); the historical baseline (~1100+ assertions, 2026-09-24) is archived in [this coverage report](./docs/audit/e2e-2026-09-24-full-coverage.md).
 
@@ -247,6 +249,6 @@ Please **do not** open public issues for vulnerabilities — report privately vi
 
 **If this project is useful to you, a ⭐ helps others find it.**
 
-Current version: **v0.8.7** — [Releases](https://github.com/kingdol666/AgentWorkShop/releases) · [Changelog](./changelog.md) · [Documentation](https://kingdol666.github.io/AgentWorkShop)
+Current version: **v0.8.8** — [Releases](https://github.com/kingdol666/AgentWorkShop/releases) · [Changelog](./changelog.md) · [Documentation](https://kingdol666.github.io/AgentWorkShop)
 
 </div>

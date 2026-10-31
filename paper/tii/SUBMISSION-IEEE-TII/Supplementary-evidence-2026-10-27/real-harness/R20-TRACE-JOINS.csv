@@ -1,0 +1,7 @@
+execution_key,task_pseudonym,active_run_pseudonym,approval_pseudonym,recipe_trial_pseudonym,expected_sample_run_pseudonym,returned_sample_run_pseudonym,verified_count,unverified_count,failed_count,sample_value,task_state_after_sample_query
+cast-film-r1,task-01,run-01,approval-01,trial-01,run-01,run-01,1,0,0,45.69,COMPLETED
+cast-film-r2,task-02,run-02,approval-02,trial-02,run-02,run-02,1,0,0,46.69,COMPLETED
+cast-film-r3,task-03,run-03,approval-03,trial-03,run-03,run-03,1,0,0,45.69,COMPLETED
+annealing-r1,task-04,run-04,approval-04,trial-04,run-04,run-04,1,0,0,679.5999755859375,COMPLETED
+annealing-r2,task-05,run-05,approval-05,trial-05,run-05,run-05,1,0,0,677.7000122070312,COMPLETED
+annealing-r3,task-06,run-06,approval-06,trial-06,run-06,run-06,1,0,0,678.0999755859375,COMPLETED

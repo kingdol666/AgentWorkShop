@@ -1,0 +1,7 @@
+# R20 source reconstruction kit
+
+R20 ran against modified AgentWorkShop and simulator working trees. This kit includes the source diffs from the recorded base commits, the app's untracked source file, both dependency lockfiles, and all 17 runtime prompt assets copied by the runner. The prompt assets are retained byte-for-byte in the anonymous evidence copy after passing its privacy scan. The original application, simulator, and prompt-tree hashes are recorded in source-manifest.json and were recomputed against the R20 evidence before packaging.
+
+To reconstruct the source state, check out the app repository at the recorded app baseCommit, apply app-working-tree.patch, and copy the listed untracked file to its recorded relative path. Check out plc-node-simulator at simulator baseCommit and apply simulator-working-tree.patch. The package manifests are available at those base commits; use the included lockfiles to restore dependencies. Copy prompts/ into .AgentWorkShop/prompts before running the included R20 runner. Verify the app, simulator, and prompt-tree hashes before execution.
+
+This is a conditional reconstruction kit, not a standalone runtime image: the base repositories must be available, and the OMP CLI, local model-service credentials, Node.js toolchain, and simulator runtime must be supplied separately. Credentials are not included. The evidence preserves the observed GLM-5.3-Flash proposals and outcomes; external model calls are nondeterministic and are not expected to reproduce identical selections.

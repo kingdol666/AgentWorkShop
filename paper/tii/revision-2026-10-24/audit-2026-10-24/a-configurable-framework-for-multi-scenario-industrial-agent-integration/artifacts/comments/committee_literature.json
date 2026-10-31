@@ -1,0 +1,69 @@
+[
+  {
+    "title": "The comparison set does not establish the gap across the cited industrial-agent work",
+    "quote": "The selected systems in Table~\\ref{tab:nearest} report complementary integration settings: reviewed control sequences, module-scoped skills, and scheduling. Their reported evaluations do not address the combined configuration of agent harnesses, production context, semantic process I/O, and distinct node/recipe workflows considered here. This gap statement is limited to the selected studies, not the wider literature.",
+    "explanation": "The authors correctly scope the conclusion to the selected studies, and the table supports that narrow comparison. However, the subsection cites other relevant industrial-agent examples (including agent-based supervision, resource-capability exploration, shop-floor multi-agent systems, and digital-twin fault handling) without explaining why they are outside the nearest-work set or how they relate to the claimed combination. As written, the evidence establishes a gap against the three tabulated systems, but not against the wider relevant work cited in the same subsection. This is an unresolved selection/evidence boundary, not a demonstrated mischaracterization.",
+    "comment_type": "claim_accuracy",
+    "severity": "moderate",
+    "confidence": "high",
+    "source_kind": "llm",
+    "source_section": "related_work",
+    "context_sides": [
+      "current"
+    ],
+    "related_sections": [
+      "introduction"
+    ],
+    "root_cause_key": "literature_nearest_work_selection_boundary",
+    "review_lane": "committee_literature",
+    "evidence_anchor": [
+      {
+        "type": "figure_or_table",
+        "text": "Table~\\ref{tab:nearest}: three selected prior systems and the proposed framework"
+      },
+      {
+        "type": "citation",
+        "text": "sections/related.tex:4–6 cites biskupovic2025supervision, lim2025llmenabled, zhao2026shopfloor, and gill2025llmdt outside the table"
+      }
+    ],
+    "claim_strength": "observed",
+    "missing_evidence": [
+      "A stated selection criterion for the three tabulated studies and a brief positioning of the other relevant industrial-agent studies already cited in this subsection."
+    ],
+    "allowed_wording": "The compared studies report different integration settings; within the three selected studies, the paper identifies a framework-level combination not evaluated by those sources.",
+    "forbidden_wording": [
+      "No prior industrial-agent system combines these capabilities.",
+      "The proposed framework is the first to integrate these functions."
+    ],
+    "gate_blocker": false,
+    "quote_verified": true
+  },
+  {
+    "title": "The opening survey lists domains without mapping citations to themes",
+    "quote": "Industrial-agent research spans natural-language control, PLC programming, factory skills, shop-floor coordination, digital-twin support, and production scheduling \\cite{biskupovic2025supervision,liu2026agents4plc,wu2025instructmpc,gill2025llmdt,hofmann2025nlc,lim2025llmenabled,zhao2026shopfloor,waseem2026pretrained}.",
+    "explanation": "This sentence introduces a thematic subsection but groups six application areas with eight citations without showing which works exemplify which area or how their integration settings differ. The next paragraph develops only three examples for the comparison table, leaving the broader survey disconnected from the gap derivation. A short grouping sentence would make the section read as a synthesis rather than a citation inventory.",
+    "comment_type": "presentation",
+    "severity": "minor",
+    "confidence": "high",
+    "source_kind": "llm",
+    "source_section": "related_work",
+    "context_sides": [
+      "current"
+    ],
+    "related_sections": [],
+    "root_cause_key": "literature_opening_citation_mapping",
+    "review_lane": "committee_literature",
+    "evidence_anchor": [
+      {
+        "type": "citation",
+        "text": "sections/related.tex:4–6, six areas followed by eight citations"
+      },
+      {
+        "type": "section",
+        "text": "sections/related.tex:7–12 narrows to three systems in the next paragraph"
+      }
+    ],
+    "gate_blocker": false,
+    "quote_verified": true
+  }
+]

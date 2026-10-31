@@ -1,0 +1,5 @@
+step,stage,mode,sp_before_c,sp_after_c,pv_observation_c,pv_delta_c,observation_window_s,approval,source,interpretation
+0,baseline,manual,195,195,209.36,,,"Not applicable",R0.5 in report.json,"Initial DAQ sample; simulator"
+1,LLM DAQ query,manual,195,195,"latest 207.67; mean 209.279",,,"Not applicable",R2.1 in report.json,"31 returned samples; simulator truth 205.83 C"
+2,governed write R3,manual,195,198,"203.822 to 203.212",-0.610,10,"Pending held at 195; runner auto-approved",R3 tool trace in report.json,"Write/readback verified; no human approval"
+3,optimization explore R4,auto,198,200.5,"final sample 200.84; SP gap 0.34",-0.095,10,"Automatic mode",R4.1/R4.2/R4.6 in report.json,"Two optimization records remain open/unjudged; not proof of causal improvement or convergence"

@@ -1,0 +1,132 @@
+\documentclass[journal]{IEEEtran}
+% IEEE Transactions on Industrial Informatics -- anonymous regular-paper draft
+% Compile: latexmk -pdf main.tex
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algpseudocode}
+% Local XeTeX/Tectonic builds: route IEEEtran's ptm (Times) family requests to
+% the legacy Times Type1 faces so metrics match the pdfLaTeX reference build;
+% the latexmk -pdf (pdfLaTeX) path is unaffected.
+\usepackage{iftex}
+\ifxetex
+  \DeclareFontFamily{TU}{ptm}{}
+  \DeclareFontShape{TU}{ptm}{m}{n}{<->ptmr8t}{}
+  \DeclareFontShape{TU}{ptm}{b}{n}{<->ptmb8t}{}
+  \DeclareFontShape{TU}{ptm}{m}{it}{<->ptmri8t}{}
+  \DeclareFontShape{TU}{ptm}{b}{it}{<->ptmbi8t}{}
+  \DeclareFontShape{TU}{ptm}{m}{sl}{<->ptmro8t}{}
+  \DeclareFontShape{TU}{ptm}{m}{sc}{<->ptmr8t}{}
+\fi
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{tabularx}
+\usepackage{array}
+\usepackage[table]{xcolor}
+\usepackage{stfloats}
+\usepackage{placeins}
+\usepackage{url}
+\urlstyle{same}
+% Cross-references and citations. The cite package renders IEEE-style citation
+% groups ([14]--[16], [20], [21]) with hyperref support.
+\usepackage{cite}
+\usepackage[colorlinks=true,linkcolor=black,citecolor=black,urlcolor=black]{hyperref}
+\hypersetup{bookmarksnumbered=true,
+  pdftitle={AgentWorkShop: A Reference Implementation for Task-to-Device Integration in Industrial Agents},
+  pdfauthor={},
+  pdfsubject={IEEE Transactions on Industrial Informatics},
+  pdfkeywords={industrial informatics, industrial agents, multi-agent systems, production system integration, semantic data integration}}
+
+% Float placement only; IEEEtran margins and body type remain unchanged.
+\setcounter{topnumber}{4}
+\setcounter{bottomnumber}{3}
+\setcounter{totalnumber}{7}
+\setcounter{dbltopnumber}{2}
+\renewcommand{\topfraction}{0.95}
+\renewcommand{\bottomfraction}{0.80}
+\renewcommand{\textfraction}{0.03}
+\renewcommand{\floatpagefraction}{0.72}
+\renewcommand{\dbltopfraction}{0.95}
+\renewcommand{\dblfloatpagefraction}{0.72}
+
+% Tight but conventional float separation; body type and margins are unchanged.
+\setlength{\textfloatsep}{8pt plus 2pt minus 3pt}
+\setlength{\dbltextfloatsep}{8pt plus 2pt minus 3pt}
+\setlength{\intextsep}{7pt plus 2pt minus 3pt}
+\setlength{\abovecaptionskip}{3pt plus 1pt minus 1pt}
+\setlength{\belowcaptionskip}{2pt plus 1pt minus 1pt}
+
+\input{resources/results-macros}
+
+\newcommand{\system}{the platform}
+
+\begin{document}
+\bstctlcite{IEEEbstctl}
+
+\title{AgentWorkShop: A Reference Implementation for Task-to-Device Integration in Industrial Agents}
+
+\author{}
+\markboth{IEEE Transactions on Industrial Informatics, Submitted Manuscript}{AgentWorkShop: Task-to-Device Integration}
+
+\maketitle
+
+\begin{abstract}
+Industrial agents need a software path that connects a task to production
+context, semantic operations, and configured device interfaces. AgentWorkShop
+is a modular reference implementation that composes task services, registered
+harnesses, line--product--recipe--run context, per-call operation checks,
+semantic data access, protocol drivers, and service-owned records. It resolves
+context for each agent turn and checks applicable authority at dispatch; prompt
+context grounds a proposal but is not a task-pinned authorization token. We
+evaluated one registered harness in cast-film and annealing simulators with
+different signal and protocol mappings. Six sequential tasks received
+synthetic approval and readback-verified receipts, each linked to a subsequent
+run-tagged probe; all six measurements remained outside their target bands. A
+deterministic fixture replay passed 31 assertions without an external language
+model. A focused mock-state ablation found that omitting only the
+post-approval context comparison allowed six stale product or run changes
+across three recipe routes to trigger mock-driver writes; other checks blocked
+the remaining six cases. These results validate the tested software paths and
+one check's incremental coverage, not process attainment, normal online data
+acquisition, cross-harness portability, or platform-level comparative
+benefit.
+\end{abstract}
+
+\begin{IEEEkeywords}
+Industrial agents, industrial communication, industrial informatics,
+production systems, semantic data integration.
+\end{IEEEkeywords}
+
+\IEEEpeerreviewmaketitle
+
+\input{sections/introduction}
+\input{sections/related}
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=\textwidth]{resources/fig-architecture-2026-9pt.pdf}
+\caption{AgentWorkShop architecture and record ownership. Task/chat calls pass
+through the listed access surfaces and a registered harness; direct REST and
+selected stdio-MCP operation calls enter the shared dispatcher, while MCP
+management/task methods use their service routes. Recipe writes recheck the
+approved line--product--recipe--run tuple; each service retains its own
+records. Independent programmable logic controller and safety-instrumented
+system protection remains external.}
+\label{fig:arch}
+\end{figure*}
+\input{sections/system}
+\input{sections/modules}
+\FloatBarrier
+\input{sections/evaluation}
+\input{sections/discussion}
+
+% Identity-neutral AI disclosure: avoids author-identifying acknowledgments while
+% documenting AI-generated content for the anonymous review manuscript.
+\section*{AI Assistance Disclosure}
+OpenAI ChatGPT revised Sections~I--VI and drafted Python for Figs.~1, 2, and
+4. OpenAI image generation produced early concepts for Figs.~1 and 2; final
+vectors were redrawn and implementation-checked. AI generated no experimental
+records or measurements. The authors verified all submitted content.
+
+\bibliographystyle{IEEEtran}
+% Keep IEEEtran's default bibliography size and leading.
+\bibliography{resources/refs}
+
+\end{document}

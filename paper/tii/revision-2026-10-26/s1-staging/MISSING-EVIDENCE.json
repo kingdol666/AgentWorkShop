@@ -1,0 +1,58 @@
+{
+  "missing": [
+    {
+      "evidence_unit": "R1/R2",
+      "field": "proven exact runtime working-tree harness",
+      "value": null,
+      "reason": "Run records 11-file hash; recorded commit contains a 9-file harness. Inspection copies are supplied separately."
+    },
+    {
+      "evidence_unit": "R1",
+      "field": "independent verification of original log capture origin",
+      "value": null,
+      "reason": "Origin is explicitly author-confirmed; hashes attest the observed files only."
+    },
+    {
+      "evidence_unit": "R3/R5",
+      "field": "exact run-time source commits and complete historical lockfiles",
+      "value": null,
+      "reason": "Version labels/configuration are archived but do not identify a complete source tree."
+    },
+    {
+      "evidence_unit": "R5",
+      "field": "October 8 full 34-check console log",
+      "value": null,
+      "reason": "Not located; dated report, October 17 original 22-check baseline console log, and current suite source supplied."
+    },
+    {
+      "evidence_unit": "R6/R8",
+      "field": "exact commit, simulator seed, per-sensor timestamp series",
+      "value": null,
+      "reason": "Summary does not record these fields; maximum aggregate timestamp is not a per-sensor freshness trace."
+    },
+    {
+      "evidence_unit": "R6",
+      "field": "melt temperature, raw physical PLC waveform",
+      "value": null,
+      "reason": "Melt temperature is null; controls are platform snapshots/receipts and all plants are simulators."
+    },
+    {
+      "evidence_unit": "R9",
+      "field": "standalone 26-test original console output",
+      "value": null,
+      "reason": "Not located; test sources and encompassing 65-test output are supplied, not counted as another test execution."
+    },
+    {
+      "evidence_unit": "R10",
+      "field": "current optimization_explore request-to-control-to-response process trial",
+      "value": null,
+      "reason": "Only isolated composition regressions are archived."
+    },
+    {
+      "evidence_unit": "ALL",
+      "field": "self-contained executable runtime/source installation",
+      "value": null,
+      "reason": "This anonymous supplement intentionally contains bounded source snapshots and data, not the full application, model assets, provider account or deployment database."
+    }
+  ]
+}

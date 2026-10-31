@@ -48,6 +48,9 @@ description: AgentWorkShop PLC 模拟器孪生生成 skill。当需要根据平�
   `ns=2;s=<设备>.<信号>` 与可写变量,http 自动生成 `/sim-http/<设备>/api/<信号>` 端点;
   `format:'vector'|'image'` + `code` hook(返回 `{points}` / `{png,width,height}`)可模拟数组/图像多源异构数据。
   `config` 可覆盖协议细节(端口/映射/path);真实值仍以 export 的 driverConfig 为准。
+  Modbus 寄存器映射由模拟器**按信号序自动分配**(`40001+i×2` 保持寄存器,SP/PV 同区连续编址;
+  2026-10-28 全流程实测),文档寄存器址不进孪生——平台 driverConfig 一律取 export;
+  割接真实设备时以真实寄存器表逐点 PATCH driverConfig(量程/stepLimit/绑定等治理配置零改动)。
 - 文档提炼纪律与 aw-line-onboarding 阶段 1 相同:量程/单位/精度只来自文档或用户确认,
   缺失停下来问,禁止猜测;SP/PV 判定不明必问。
 

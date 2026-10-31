@@ -1,6 +1,11 @@
 {
   "revision": "2026-10-24",
-  "pages": 10,
+  "pages": 9,
+  "manuscript_pdf": {
+    "name": "IEEE-TII-manuscript-2026-10-24.pdf",
+    "sha256": "f11be740b8b6dc4388592ec8d204e3ed1106c4e0b63455f9990f3619fb44976c",
+    "bytes": 451846
+  },
   "base_evidence_package": {
     "name": "IEEE-TII-anonymous-evidence.zip",
     "sha256": "578a14539c6ca8e17226106f93fed302d43a83ff5eb81ea01c2a560e1f394ae3",
@@ -8,15 +13,15 @@
   },
   "source": {
     "name": "IEEE-TII-manuscript-source-2026-10-24.zip",
-    "sha256": "b99752bb6a848e52f805322e832d581fffaa05a0feadd2f5829a5f26c2ae08f8",
-    "bytes": 3366009,
-    "entries": 46,
+    "sha256": "a4450529a018d2fb7ace27fe4ea618cba49210339b555ad8d1c80259cfa1168c",
+    "bytes": 3298542,
+    "entries": 44,
     "files": {
       "CLAIM-EVIDENCE-LEDGER.md": "be891f045fb44fa33bf234398f7fe07dfb107b9d73cad4e86945293689ebe761",
       "EVIDENCE-PACKAGE.txt": "d1ed2f5846be3d608f64204a632971499742d3c19670cfb7dc60ee742d9be0f4",
-      "FILE-MANIFEST.json": "422a3c7a52e606ad60993b0b599400f33763dcc6f3c6b42e357a993310bf35f1",
-      "README.md": "d7adca77fc8bb701cb739baaa96ffabdbe4f65ec37c2ce0a1fb040c136e5a510",
-      "REPRODUCIBILITY.md": "4919ae97b3ca16b8e0f60c8e62e6b3d0689630668961356652a4751c93adfb01",
+      "FILE-MANIFEST.json": "75f434d97871a7ad233ef0d2c4c36a4c587c0c9f561442c1f24fc03ceff710f3",
+      "README.md": "966ceda8b7c758ddb7bcbdf68494e7e3ff44ced0e39634d9316edd122ca35a81",
+      "REPRODUCIBILITY.md": "0a5a69dca86637d61b51b9e454450bb7435e93d0e93b29a443694a4bebdea0f4",
       "figure-design/README.md": "1c1953eeb9f121fa14816fcfc0a53d32741142c502ecb7b09444ee20e57dcb2b",
       "figure-design/fig1-generated-concept.png": "14824282a0234e332f132534fc3d2d6343bf034775724da17a830410ee426812",
       "figure-design/fig1-prompt.txt": "9abf3b177428a2cefb5b70fbfb5ac1c13057ecccbef830ef624f9143b40d30ca",
@@ -31,102 +36,100 @@
       "figure-source-data/source-data-missions-outcomes.csv": "cada5f27e281e7b858dd6fa4f872335d214e44b594d5534e05409db9e73ee2c4",
       "figure-source-data/source-data-missions.json": "4d22b75630f1b871b21bbaca3038a26f63ae9deb01c16279a5ee8a38a31bc621",
       "figures/make-evaluation-2026.py": "beb69dd350e3dcc6a4e7c4febbdbe001eee662bb292f5d6625ddd2ca7d6b0427",
-      "figures/make-system-2026.py": "f8df0eaba0abf4eafa85a331554d6f02e1fee03cff3fef645be778021b2f54a7",
-      "main.bbl": "738e0385201bb21e565a063c859130998d8740c63574fbe251d97ee2d3dcadb5",
-      "main.pdf": "51118c0e71c486665117cd2ceb2e6622c57995a443b3c8a59cab5d60dc659028",
-      "main.tex": "d33cf45691fc1f76c49add60884384c356a26256d094f67c5f0ddc5bb3b9c104",
+      "figures/make-system-2026.py": "5125c5e1df99445530582f1287918cbf23a31d72c5ca4c65d35c5ea8ca66c802",
+      "main.bbl": "119f7ef7bd2b6faf7840c56502c05e70809263d1f2a4ccc880e3416b5423018b",
+      "main.pdf": "f11be740b8b6dc4388592ec8d204e3ed1106c4e0b63455f9990f3619fb44976c",
+      "main.tex": "2c276b5fdf5f0f88937b862f3c30be35f46f77f3d3cbf39896470d66e1ff13a0",
       "requirements/IEEE-TII-REQUIREMENTS.md": "d613bf380da6bd8085e6484cc78dfc11ee1652eab451eedd8181197f07652ced",
       "resources/fig-admission-hitl-2026.pdf": "3be2c9e2f400769f67b86c864c1299ab8338499bf51fc6788fa9b0bb7a65e63c",
       "resources/fig-admission-hitl-2026.svg": "0627dc4b82d8c20e1c69d75726ff3a9bdbafa11c8ce6cc5f5b937e31cccf5ea3",
-      "resources/fig-architecture-2026.eps": "8798a48c2d356746cb2ad5ea79ffda6d0bf43d0fb43e68aadbac0b925f737e14",
-      "resources/fig-architecture-2026.pdf": "d2f7f3a9b4283559ac1899194c07e4769de82e620d633b2ad434361860876de4",
-      "resources/fig-architecture-2026.svg": "1340e9e233ceb992c48c938aecc412f5bb0cd9886da85664d23c7f4cf7edf1d4",
-      "resources/fig-governance-timeline.pdf": "1147f2d1deac1fd66852d44256dfb7ba2af4d964b2ddf603bbf66d3c2ab7a4cf",
-      "resources/fig-governance-timeline.svg": "b8158e3f270305d83fed36e1ff6bb331f1925489fce09a77557ecc37443ad8f9",
+      "resources/fig-architecture-2026.eps": "a88bbf64734b3fdf39c7bc8f3fdc18f8a6694a54f5cfa12bf4cf79bb28c29a43",
+      "resources/fig-architecture-2026.pdf": "7cc76c7b7e3faa459f18ff50d6ec456a3027dc7d4746bfa2aaed2c77fbf6908d",
+      "resources/fig-architecture-2026.svg": "4549e2c6fe2ac895fa969718d285d5d886276b64fc0e67b5a61e64fe438bd1ec",
       "resources/fig-injection-controls.pdf": "b3f818a5b0a77cf7917a1c103d1e219a1bd5c81c31685cc4e8861b0d930b2913",
       "resources/fig-injection-controls.svg": "892654370bdeba1a1e1651a63c8f0528b7ecc7bae289a961aedd79470fee2bbd",
       "resources/fig-missions-controls.pdf": "71015341734842f0c0d44759d83a22aeaabab75f000e006ebee986c2430e5ff4",
       "resources/fig-missions-controls.svg": "eeef504620f1b5779f23982276788ba6713e31a560a74a0e98a031fcf57358e5",
-      "resources/fig-runtime-2026.eps": "babbc412fa12736bcc275c629ad9ae4ab8886e106fdac445da48b18ae960d541",
-      "resources/fig-runtime-2026.pdf": "0f28fd9b29224adc542b4cd1797b42293df4b436ba3a546ae47ac546646d670d",
-      "resources/fig-runtime-2026.svg": "4e4cce1ce32fda9e957cea25c8e2b2532569fbb23d60f982e255439174b9ddad",
+      "resources/fig-runtime-2026.eps": "db593a034620bf5b977fffc7f1d4c3fb917f0ab028f97a992b8b799dcf1c1256",
+      "resources/fig-runtime-2026.pdf": "55c00d39ea901a34cd36d87ca9d516ad939a1d3c075b2594ab9bc9fb9ce5fef1",
+      "resources/fig-runtime-2026.svg": "6331f1fb6a60daaea1660aa9ace6946d82f6a7c9a303257944cbb6de2e3447ee",
       "resources/refs.bib": "78b5cea7192492302beb84daa7b67ec59ba93d9e908224a057a5aca017a2b810",
       "resources/results-macros.tex": "ea537a79f5ad245e950daf2bb468ee2dcd92b76dfdbe19d5d334fb8f96c5b4b5",
-      "sections/discussion.tex": "06c9c2d44bae5a2727e3fb8f366bf3c3a6e9a8db494e921205e18cec731344ea",
-      "sections/evaluation.tex": "48a38d65dbf6d84cf63ec087ef11db1f25e488fbc225d879e1de9b749f0afe98",
-      "sections/introduction.tex": "5ea0005a61f828761042dbc67ab5432176953959df026c0501b023fdd63edc30",
-      "sections/mechanisms.tex": "66c6579a5e05b0af927bc04354ed7c5519f4e20030b6b0e7f5267477d342ddac",
-      "sections/related.tex": "00b6714afd0fd92ab86aa34b4ef5068a491985341d6ab4e058a456a5d4a43ba7",
-      "sections/system.tex": "a3b91ed949743c7a13d8420d785c9dbb7483e2a3f1c7449291d90202334345f5"
+      "sections/discussion.tex": "3ed8e3a879d17ec3cb96c1f75bf9229b31a6cdc6f43466722015b1d7b5bb86f9",
+      "sections/evaluation.tex": "378881922a927a6f18ba3a165ed1d5aea1f91063f757cb3e05d4598d3006d50c",
+      "sections/introduction.tex": "6ebf87baef386d89a411774b8427c6c1fe58e698a64b28ce88bf6cf5f465ce00",
+      "sections/mechanisms.tex": "972e4260eb94a889c526e5dbd07b321157da17ac5a0f09a0773356101a268713",
+      "sections/related.tex": "a37be8f7e68d9a4ace2768e11e6d3fe9e37680a282870e42406e27a26fb7f9fc",
+      "sections/system.tex": "31696447a3a56edbf096daa126a8303ebc2c87d355bfe60e6a612c8dd54e535c"
     },
     "original_and_delivered": {
       "main.tex": {
-        "original_sha256": "d33cf45691fc1f76c49add60884384c356a26256d094f67c5f0ddc5bb3b9c104",
-        "delivered_sha256": "d33cf45691fc1f76c49add60884384c356a26256d094f67c5f0ddc5bb3b9c104",
-        "bytes_original": 4918,
-        "bytes_delivered": 4918,
+        "original_sha256": "2c276b5fdf5f0f88937b862f3c30be35f46f77f3d3cbf39896470d66e1ff13a0",
+        "delivered_sha256": "2c276b5fdf5f0f88937b862f3c30be35f46f77f3d3cbf39896470d66e1ff13a0",
+        "bytes_original": 4667,
+        "bytes_delivered": 4667,
         "transformed": false,
         "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
       },
       "sections/discussion.tex": {
-        "original_sha256": "06c9c2d44bae5a2727e3fb8f366bf3c3a6e9a8db494e921205e18cec731344ea",
-        "delivered_sha256": "06c9c2d44bae5a2727e3fb8f366bf3c3a6e9a8db494e921205e18cec731344ea",
-        "bytes_original": 4097,
-        "bytes_delivered": 4097,
+        "original_sha256": "3ed8e3a879d17ec3cb96c1f75bf9229b31a6cdc6f43466722015b1d7b5bb86f9",
+        "delivered_sha256": "3ed8e3a879d17ec3cb96c1f75bf9229b31a6cdc6f43466722015b1d7b5bb86f9",
+        "bytes_original": 3640,
+        "bytes_delivered": 3640,
         "transformed": false,
         "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
       },
       "sections/evaluation.tex": {
-        "original_sha256": "48a38d65dbf6d84cf63ec087ef11db1f25e488fbc225d879e1de9b749f0afe98",
-        "delivered_sha256": "48a38d65dbf6d84cf63ec087ef11db1f25e488fbc225d879e1de9b749f0afe98",
-        "bytes_original": 19182,
-        "bytes_delivered": 19182,
+        "original_sha256": "378881922a927a6f18ba3a165ed1d5aea1f91063f757cb3e05d4598d3006d50c",
+        "delivered_sha256": "378881922a927a6f18ba3a165ed1d5aea1f91063f757cb3e05d4598d3006d50c",
+        "bytes_original": 17546,
+        "bytes_delivered": 17546,
         "transformed": false,
         "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
       },
       "sections/introduction.tex": {
-        "original_sha256": "5ea0005a61f828761042dbc67ab5432176953959df026c0501b023fdd63edc30",
-        "delivered_sha256": "5ea0005a61f828761042dbc67ab5432176953959df026c0501b023fdd63edc30",
-        "bytes_original": 3260,
-        "bytes_delivered": 3260,
+        "original_sha256": "6ebf87baef386d89a411774b8427c6c1fe58e698a64b28ce88bf6cf5f465ce00",
+        "delivered_sha256": "6ebf87baef386d89a411774b8427c6c1fe58e698a64b28ce88bf6cf5f465ce00",
+        "bytes_original": 3164,
+        "bytes_delivered": 3164,
         "transformed": false,
         "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
       },
       "sections/mechanisms.tex": {
-        "original_sha256": "66c6579a5e05b0af927bc04354ed7c5519f4e20030b6b0e7f5267477d342ddac",
-        "delivered_sha256": "66c6579a5e05b0af927bc04354ed7c5519f4e20030b6b0e7f5267477d342ddac",
-        "bytes_original": 9216,
-        "bytes_delivered": 9216,
+        "original_sha256": "972e4260eb94a889c526e5dbd07b321157da17ac5a0f09a0773356101a268713",
+        "delivered_sha256": "972e4260eb94a889c526e5dbd07b321157da17ac5a0f09a0773356101a268713",
+        "bytes_original": 5373,
+        "bytes_delivered": 5373,
         "transformed": false,
         "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
       },
       "sections/related.tex": {
-        "original_sha256": "00b6714afd0fd92ab86aa34b4ef5068a491985341d6ab4e058a456a5d4a43ba7",
-        "delivered_sha256": "00b6714afd0fd92ab86aa34b4ef5068a491985341d6ab4e058a456a5d4a43ba7",
-        "bytes_original": 4838,
-        "bytes_delivered": 4838,
+        "original_sha256": "a37be8f7e68d9a4ace2768e11e6d3fe9e37680a282870e42406e27a26fb7f9fc",
+        "delivered_sha256": "a37be8f7e68d9a4ace2768e11e6d3fe9e37680a282870e42406e27a26fb7f9fc",
+        "bytes_original": 4526,
+        "bytes_delivered": 4526,
         "transformed": false,
         "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
       },
       "sections/system.tex": {
-        "original_sha256": "a3b91ed949743c7a13d8420d785c9dbb7483e2a3f1c7449291d90202334345f5",
-        "delivered_sha256": "a3b91ed949743c7a13d8420d785c9dbb7483e2a3f1c7449291d90202334345f5",
-        "bytes_original": 8395,
-        "bytes_delivered": 8395,
+        "original_sha256": "31696447a3a56edbf096daa126a8303ebc2c87d355bfe60e6a612c8dd54e535c",
+        "delivered_sha256": "31696447a3a56edbf096daa126a8303ebc2c87d355bfe60e6a612c8dd54e535c",
+        "bytes_original": 6251,
+        "bytes_delivered": 6251,
         "transformed": false,
         "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
       },
       "main.pdf": {
-        "original_sha256": "51118c0e71c486665117cd2ceb2e6622c57995a443b3c8a59cab5d60dc659028",
-        "delivered_sha256": "51118c0e71c486665117cd2ceb2e6622c57995a443b3c8a59cab5d60dc659028",
-        "bytes_original": 498484,
-        "bytes_delivered": 498484,
+        "original_sha256": "f11be740b8b6dc4388592ec8d204e3ed1106c4e0b63455f9990f3619fb44976c",
+        "delivered_sha256": "f11be740b8b6dc4388592ec8d204e3ed1106c4e0b63455f9990f3619fb44976c",
+        "bytes_original": 451846,
+        "bytes_delivered": 451846,
         "transformed": false,
         "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
       },
       "main.bbl": {
-        "original_sha256": "738e0385201bb21e565a063c859130998d8740c63574fbe251d97ee2d3dcadb5",
-        "delivered_sha256": "738e0385201bb21e565a063c859130998d8740c63574fbe251d97ee2d3dcadb5",
+        "original_sha256": "119f7ef7bd2b6faf7840c56502c05e70809263d1f2a4ccc880e3416b5423018b",
+        "delivered_sha256": "119f7ef7bd2b6faf7840c56502c05e70809263d1f2a4ccc880e3416b5423018b",
         "bytes_original": 9950,
         "bytes_delivered": 9950,
         "transformed": false,
@@ -140,27 +143,11 @@
         "transformed": false,
         "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
       },
-      "resources/fig-governance-timeline.pdf": {
-        "original_sha256": "1147f2d1deac1fd66852d44256dfb7ba2af4d964b2ddf603bbf66d3c2ab7a4cf",
-        "delivered_sha256": "1147f2d1deac1fd66852d44256dfb7ba2af4d964b2ddf603bbf66d3c2ab7a4cf",
-        "bytes_original": 41337,
-        "bytes_delivered": 41337,
-        "transformed": false,
-        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
-      },
       "resources/fig-injection-controls.pdf": {
         "original_sha256": "b3f818a5b0a77cf7917a1c103d1e219a1bd5c81c31685cc4e8861b0d930b2913",
         "delivered_sha256": "b3f818a5b0a77cf7917a1c103d1e219a1bd5c81c31685cc4e8861b0d930b2913",
         "bytes_original": 44441,
         "bytes_delivered": 44441,
-        "transformed": false,
-        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
-      },
-      "resources/fig-runtime-2026.pdf": {
-        "original_sha256": "0f28fd9b29224adc542b4cd1797b42293df4b436ba3a546ae47ac546646d670d",
-        "delivered_sha256": "0f28fd9b29224adc542b4cd1797b42293df4b436ba3a546ae47ac546646d670d",
-        "bytes_original": 44907,
-        "bytes_delivered": 44907,
         "transformed": false,
         "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
       },
@@ -173,10 +160,18 @@
         "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
       },
       "resources/fig-architecture-2026.pdf": {
-        "original_sha256": "d2f7f3a9b4283559ac1899194c07e4769de82e620d633b2ad434361860876de4",
-        "delivered_sha256": "d2f7f3a9b4283559ac1899194c07e4769de82e620d633b2ad434361860876de4",
-        "bytes_original": 42039,
-        "bytes_delivered": 42039,
+        "original_sha256": "7cc76c7b7e3faa459f18ff50d6ec456a3027dc7d4746bfa2aaed2c77fbf6908d",
+        "delivered_sha256": "7cc76c7b7e3faa459f18ff50d6ec456a3027dc7d4746bfa2aaed2c77fbf6908d",
+        "bytes_original": 49571,
+        "bytes_delivered": 49571,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "resources/fig-runtime-2026.pdf": {
+        "original_sha256": "55c00d39ea901a34cd36d87ca9d516ad939a1d3c075b2594ab9bc9fb9ce5fef1",
+        "delivered_sha256": "55c00d39ea901a34cd36d87ca9d516ad939a1d3c075b2594ab9bc9fb9ce5fef1",
+        "bytes_original": 48418,
+        "bytes_delivered": 48418,
         "transformed": false,
         "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
       },
@@ -188,27 +183,11 @@
         "transformed": false,
         "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
       },
-      "resources/fig-governance-timeline.svg": {
-        "original_sha256": "b8158e3f270305d83fed36e1ff6bb331f1925489fce09a77557ecc37443ad8f9",
-        "delivered_sha256": "b8158e3f270305d83fed36e1ff6bb331f1925489fce09a77557ecc37443ad8f9",
-        "bytes_original": 13778,
-        "bytes_delivered": 13778,
-        "transformed": false,
-        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
-      },
       "resources/fig-injection-controls.svg": {
         "original_sha256": "892654370bdeba1a1e1651a63c8f0528b7ecc7bae289a961aedd79470fee2bbd",
         "delivered_sha256": "892654370bdeba1a1e1651a63c8f0528b7ecc7bae289a961aedd79470fee2bbd",
         "bytes_original": 27781,
         "bytes_delivered": 27781,
-        "transformed": false,
-        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
-      },
-      "resources/fig-runtime-2026.svg": {
-        "original_sha256": "4e4cce1ce32fda9e957cea25c8e2b2532569fbb23d60f982e255439174b9ddad",
-        "delivered_sha256": "4e4cce1ce32fda9e957cea25c8e2b2532569fbb23d60f982e255439174b9ddad",
-        "bytes_original": 13169,
-        "bytes_delivered": 13169,
         "transformed": false,
         "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
       },
@@ -221,26 +200,34 @@
         "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
       },
       "resources/fig-architecture-2026.svg": {
-        "original_sha256": "1340e9e233ceb992c48c938aecc412f5bb0cd9886da85664d23c7f4cf7edf1d4",
-        "delivered_sha256": "1340e9e233ceb992c48c938aecc412f5bb0cd9886da85664d23c7f4cf7edf1d4",
-        "bytes_original": 12838,
-        "bytes_delivered": 12838,
+        "original_sha256": "4549e2c6fe2ac895fa969718d285d5d886276b64fc0e67b5a61e64fe438bd1ec",
+        "delivered_sha256": "4549e2c6fe2ac895fa969718d285d5d886276b64fc0e67b5a61e64fe438bd1ec",
+        "bytes_original": 15076,
+        "bytes_delivered": 15076,
+        "transformed": false,
+        "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
+      },
+      "resources/fig-runtime-2026.svg": {
+        "original_sha256": "6331f1fb6a60daaea1660aa9ace6946d82f6a7c9a303257944cbb6de2e3447ee",
+        "delivered_sha256": "6331f1fb6a60daaea1660aa9ace6946d82f6a7c9a303257944cbb6de2e3447ee",
+        "bytes_original": 14479,
+        "bytes_delivered": 14479,
         "transformed": false,
         "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
       },
       "resources/fig-architecture-2026.eps": {
-        "original_sha256": "8798a48c2d356746cb2ad5ea79ffda6d0bf43d0fb43e68aadbac0b925f737e14",
-        "delivered_sha256": "8798a48c2d356746cb2ad5ea79ffda6d0bf43d0fb43e68aadbac0b925f737e14",
-        "bytes_original": 145585,
-        "bytes_delivered": 145585,
+        "original_sha256": "a88bbf64734b3fdf39c7bc8f3fdc18f8a6694a54f5cfa12bf4cf79bb28c29a43",
+        "delivered_sha256": "a88bbf64734b3fdf39c7bc8f3fdc18f8a6694a54f5cfa12bf4cf79bb28c29a43",
+        "bytes_original": 178119,
+        "bytes_delivered": 178119,
         "transformed": false,
         "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
       },
       "resources/fig-runtime-2026.eps": {
-        "original_sha256": "babbc412fa12736bcc275c629ad9ae4ab8886e106fdac445da48b18ae960d541",
-        "delivered_sha256": "babbc412fa12736bcc275c629ad9ae4ab8886e106fdac445da48b18ae960d541",
-        "bytes_original": 161665,
-        "bytes_delivered": 161665,
+        "original_sha256": "db593a034620bf5b977fffc7f1d4c3fb917f0ab028f97a992b8b799dcf1c1256",
+        "delivered_sha256": "db593a034620bf5b977fffc7f1d4c3fb917f0ab028f97a992b8b799dcf1c1256",
+        "bytes_original": 172591,
+        "bytes_delivered": 172591,
         "transformed": false,
         "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
       },
@@ -261,10 +248,10 @@
         "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
       },
       "figures/make-system-2026.py": {
-        "original_sha256": "f8df0eaba0abf4eafa85a331554d6f02e1fee03cff3fef645be778021b2f54a7",
-        "delivered_sha256": "f8df0eaba0abf4eafa85a331554d6f02e1fee03cff3fef645be778021b2f54a7",
-        "bytes_original": 17468,
-        "bytes_delivered": 17468,
+        "original_sha256": "5125c5e1df99445530582f1287918cbf23a31d72c5ca4c65d35c5ea8ca66c802",
+        "delivered_sha256": "5125c5e1df99445530582f1287918cbf23a31d72c5ca4c65d35c5ea8ca66c802",
+        "bytes_original": 20808,
+        "bytes_delivered": 20808,
         "transformed": false,
         "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
       },
@@ -277,18 +264,18 @@
         "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
       },
       "README.md": {
-        "original_sha256": "d7adca77fc8bb701cb739baaa96ffabdbe4f65ec37c2ce0a1fb040c136e5a510",
-        "delivered_sha256": "d7adca77fc8bb701cb739baaa96ffabdbe4f65ec37c2ce0a1fb040c136e5a510",
-        "bytes_original": 4507,
-        "bytes_delivered": 4507,
+        "original_sha256": "966ceda8b7c758ddb7bcbdf68494e7e3ff44ced0e39634d9316edd122ca35a81",
+        "delivered_sha256": "966ceda8b7c758ddb7bcbdf68494e7e3ff44ced0e39634d9316edd122ca35a81",
+        "bytes_original": 5183,
+        "bytes_delivered": 5183,
         "transformed": false,
         "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
       },
       "REPRODUCIBILITY.md": {
-        "original_sha256": "4919ae97b3ca16b8e0f60c8e62e6b3d0689630668961356652a4751c93adfb01",
-        "delivered_sha256": "4919ae97b3ca16b8e0f60c8e62e6b3d0689630668961356652a4751c93adfb01",
-        "bytes_original": 16823,
-        "bytes_delivered": 16823,
+        "original_sha256": "0a5a69dca86637d61b51b9e454450bb7435e93d0e93b29a443694a4bebdea0f4",
+        "delivered_sha256": "0a5a69dca86637d61b51b9e454450bb7435e93d0e93b29a443694a4bebdea0f4",
+        "bytes_original": 17310,
+        "bytes_delivered": 17310,
         "transformed": false,
         "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
       },
@@ -407,29 +394,29 @@
     },
     "privacy_scan": {
       "passed": true,
-      "entries": 46,
+      "entries": 44,
       "scope": "explicit identities, local drive/user paths, identifying repository URLs; PDF text/metadata and PNG metadata"
     }
   },
   "evidence": {
     "name": "IEEE-TII-anonymous-evidence-2026-10-24.zip",
-    "sha256": "0689da60439882328baaa7e196983e485aff1f602a3c19577d2d924d7c3cebd3",
-    "bytes": 1075198,
+    "sha256": "f408049e60e974c8efe6dcba6b80f886d70adb817bf91c0f53b3d1611d958199",
+    "bytes": 1076883,
     "entries": 213,
     "extension_original_and_delivered": {
       "revision-2026-10-24/R11/scenarios.json": {
-        "original_sha256": "d0af4931cf36a78455af81f993170326394a8636493c2ac5e282a5dd01584048",
+        "original_sha256": "2f0c13551e909ea30d502c19b351024ed918ec5ea8bb25d9a4184b8855c7aafc",
         "delivered_sha256": "88835e77d8e8e1a0b6e44cb3a5a954dd42800cdf0b6bb3da9c4f2f52be48bb45",
-        "bytes_original": 25859,
+        "bytes_original": 26587,
         "bytes_delivered": 25860,
         "transformed": true,
         "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
       },
       "revision-2026-10-24/R11/scenarios-benchmark.md": {
-        "original_sha256": "c94b7a7045fe1ec8a9da814e12c0034299f9579f85a9f29f6038fb0e80824123",
-        "delivered_sha256": "c94b7a7045fe1ec8a9da814e12c0034299f9579f85a9f29f6038fb0e80824123",
-        "bytes_original": 5150,
-        "bytes_delivered": 5150,
+        "original_sha256": "c8a46c68e7cc0792cbb84c5ea46385a231acafc217d3709c5fe19220fd54865a",
+        "delivered_sha256": "c8a46c68e7cc0792cbb84c5ea46385a231acafc217d3709c5fe19220fd54865a",
+        "bytes_original": 5203,
+        "bytes_delivered": 5203,
         "transformed": false,
         "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
       },
@@ -442,9 +429,9 @@
         "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
       },
       "revision-2026-10-24/R12/summary.json": {
-        "original_sha256": "fb64db8359e5651794146ff2c716e91b5e95e3797e3afc9bde934cdc81b59bc8",
+        "original_sha256": "d9162a4215abdcf201d42da68316da3716909209c76103d306a979c1dec45f12",
         "delivered_sha256": "7b6f4836e7f97d35f0832b0d8cbd93d186e9a3d83b7bcb075c728652f45de202",
-        "bytes_original": 5068,
+        "bytes_original": 5148,
         "bytes_delivered": 5069,
         "transformed": true,
         "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
@@ -458,10 +445,10 @@
         "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
       },
       "revision-2026-10-24/REPRODUCIBILITY.md": {
-        "original_sha256": "4919ae97b3ca16b8e0f60c8e62e6b3d0689630668961356652a4751c93adfb01",
-        "delivered_sha256": "4919ae97b3ca16b8e0f60c8e62e6b3d0689630668961356652a4751c93adfb01",
-        "bytes_original": 16823,
-        "bytes_delivered": 16823,
+        "original_sha256": "0a5a69dca86637d61b51b9e454450bb7435e93d0e93b29a443694a4bebdea0f4",
+        "delivered_sha256": "0a5a69dca86637d61b51b9e454450bb7435e93d0e93b29a443694a4bebdea0f4",
+        "bytes_original": 17310,
+        "bytes_delivered": 17310,
         "transformed": false,
         "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
       },
@@ -490,10 +477,10 @@
         "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
       },
       "revision-2026-10-24/source-snapshot/tests/recipe-propose.test.ts": {
-        "original_sha256": "5f594fac95cc33c76f925cba8424c986ef4d719aa3ceb8ceef9673346c1be73b",
-        "delivered_sha256": "5f594fac95cc33c76f925cba8424c986ef4d719aa3ceb8ceef9673346c1be73b",
-        "bytes_original": 14618,
-        "bytes_delivered": 14618,
+        "original_sha256": "0f4289c5c11dc477451b333fce900ba56b22faa8f93e3e7aee8c1843793974f9",
+        "delivered_sha256": "0f4289c5c11dc477451b333fce900ba56b22faa8f93e3e7aee8c1843793974f9",
+        "bytes_original": 14882,
+        "bytes_delivered": 14882,
         "transformed": false,
         "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
       },
@@ -546,18 +533,18 @@
         "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
       },
       "revision-2026-10-24/source-snapshot/server/services/workshop/agents/industrial/optimizer-tools.ts": {
-        "original_sha256": "073eedf0cb8e83f6f7b3973fd66f669bf5f06f4d63478f2486afdcc23c85d8f0",
-        "delivered_sha256": "073eedf0cb8e83f6f7b3973fd66f669bf5f06f4d63478f2486afdcc23c85d8f0",
-        "bytes_original": 8013,
-        "bytes_delivered": 8013,
+        "original_sha256": "a6a7722f1a597499a360cb318f1188d018c9ef5ab54e526811918f50206ce7d2",
+        "delivered_sha256": "a6a7722f1a597499a360cb318f1188d018c9ef5ab54e526811918f50206ce7d2",
+        "bytes_original": 12266,
+        "bytes_delivered": 12266,
         "transformed": false,
         "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
       },
       "revision-2026-10-24/source-snapshot/server/services/workshop/agents/host-tool-bridge/optimizer-gate.ts": {
-        "original_sha256": "302c106439357c5a80a548390bc1ef7a37a65072bed1205b6cdab52aadc45f61",
-        "delivered_sha256": "302c106439357c5a80a548390bc1ef7a37a65072bed1205b6cdab52aadc45f61",
-        "bytes_original": 3309,
-        "bytes_delivered": 3309,
+        "original_sha256": "52216d394e17f00127c3571f4b4684adc34e9ecb1bf4627d0030d58ed088a8a9",
+        "delivered_sha256": "52216d394e17f00127c3571f4b4684adc34e9ecb1bf4627d0030d58ed088a8a9",
+        "bytes_original": 3381,
+        "bytes_delivered": 3381,
         "transformed": false,
         "rule": "identity/local-path redaction in copy; JSON UTF-8 normalization; observations retained"
       },

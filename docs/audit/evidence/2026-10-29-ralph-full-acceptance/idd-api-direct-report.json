@@ -1,0 +1,73 @@
+{
+  "suite": "idd-api-direct",
+  "base": "http://127.0.0.1:3210",
+  "at": "2026-10-29T03:24:26.247Z",
+  "results": [
+    {
+      "id": "I1",
+      "name": "GET /api/health 200",
+      "pass": true,
+      "detail": "{\"status\":\"ok\",\"timestamp\":\"2026-10-29T03:24:26.032Z\",\"uptime\":858.6738042,\"memory\":{\"rss\":\"23MB\",\"heapUsed\":\"24MB\",\"heapTotal\":\"27MB\"},\"checks\":{\"database\":{\"status\":\"ok\"},\"activeRuns\":0}}"
+    },
+    {
+      "id": "I2",
+      "name": "POST /api/auth/register 注册新用户",
+      "pass": true,
+      "detail": "status=409 body={\"success\":false,\"code\":\"USER_EXISTS\",\"error\":\"用户名已存在: ralph_acc_ralph20261029\"}"
+    },
+    {
+      "id": "I3",
+      "name": "POST /api/auth/login 返回会话",
+      "pass": true,
+      "detail": "status=200 keys=success,data"
+    },
+    {
+      "id": "I4",
+      "name": "POST /api/auth/tokens 铸造 API token(明文一次)",
+      "pass": true,
+      "detail": "status=200 tokenPrefix=idd_ca"
+    },
+    {
+      "id": "I5",
+      "name": "无 token 访问 /external/v1/capabilities → 401",
+      "pass": true,
+      "detail": "status=401"
+    },
+    {
+      "id": "I6",
+      "name": "idd_ token 访问 capabilities → 200 且含意图/引擎面",
+      "pass": true,
+      "detail": "status=200 body={\"success\":true,\"data\":{\"intents\":[{\"intent\":\"deep-diagnosis\",\"skill\":\"industrial-analysis-auto\",\"default\":true},{\"intent\":\"stability-report\",\"skill\":\"industrial-line-stability-report\",\"default\":false"
+    },
+    {
+      "id": "I7",
+      "name": "坏 token 访问 results → 401",
+      "pass": true,
+      "detail": "status=401"
+    },
+    {
+      "id": "I8",
+      "name": "GET /external/v1/results 列表 200",
+      "pass": true,
+      "detail": "status=200 body={\"success\":true,\"data\":{\"total\":98,\"limit\":5,\"offset\":0,\"brief\":false,\"results\":[{\"result_id\":\"e2e-nosess-savcx\",\"title\":\"e2e-nosess-savcx\",\"description\":null,\"display_text\":\"Conclusion\",\"intent\":\"dee"
+    },
+    {
+      "id": "I9",
+      "name": "不存在 result_id 详情 → 404",
+      "pass": true,
+      "detail": "status=404"
+    },
+    {
+      "id": "I10",
+      "name": "categories 建列改删回路",
+      "pass": true,
+      "detail": "new=201 list=200 ren=200 del=200"
+    },
+    {
+      "id": "I11",
+      "name": "GET /external/v1/tasks 200",
+      "pass": true,
+      "detail": "status=200 body={\"success\":true,\"data\":[{\"task_id\":\"TASK-MVQZXCNE-3AAL\",\"run_id\":\"23167818\",\"intent\":\"quick-screen\",\"harness\":\"mock\",\"analysis_mode\":\"mock\",\"status\":\"completed\""
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "note": "task completed via assignee agent token after independent verification; no task.completed audit entry",
+  "task": {
+    "id": "e465a6ee-4975-4e8f-8a0b-2ad6aa61adfa",
+    "state": "COMPLETED",
+    "progress": 100,
+    "artifacts": [
+      {
+        "artifactId": "art-proto-e2e-selftest",
+        "name": "PROTO 启动自检报告",
+        "description": "四路 PV + 壁厚剖面只读巡检;未执行写操作",
+        "parts": [
+          {
+            "type": "text",
+            "text": "PROTO 启动自检报告(只读)\n窗口: 2026-10-31 00:53–01:11 (+08:00), 活动批次 run=rr-5c0cc48a, 配方 rc-9e1b18cf\n1. 熔体温度PV dn-069d794a: 312 samples, mean 233.97, min 29.5(01:01:05 冷启动瞬态), max 242.8, last 242.6; 稳态 01:02 后约 242.1–242.8, 在 20–320 量程内。\n2. 熔体压力PV dn-56b38198: 312 samples, mean 57.79, min 51.5, max 271.8(同一瞬态), last 53.0; 稳态 51.5–54, 瞬态越 160 上限后回落。\n3. 模具温度PV dn-bbf1a2ff: 313 samples, mean 47.03, min 28.1, max 47.95, last 47.6; 在 10–110 内。\n4. 制品克重 dn-ac4f1fa4: 125 samples, mean 32.616, min 32.44, max 34.58, last 32.55; 稳态 32.44–32.56, 落在 32.5±0.5g 合格窗(34.58 为冷启动瞬态)。\n5. 壁厚轮廓剖面 dn-45bdebba: 50 帧, 每帧 64 点, 最新 metrics avg 2.495 / max 2.512 mm, 在 1–5 mm 内。\n结论: 五路数据均来自真实虚拟 PLC 协议栈并已入时序库/帧库; 本任务未执行任何 DCW/配方写操作。\n说明: Agent 自动回合未调用 complete_task(复现已知收口缺陷), 本任务由验收器独立复核上述数据后以 assignee 身份收口。"
+          }
+        ]
+      }
+    ],
+    "updatedAt": "2026-10-31T01:12:08.609+08:00"
+  },
+  "channelId": "1a5c55b5-03e7-4e26-83e7-d7feb22dba11"
+}

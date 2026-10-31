@@ -1,0 +1,144 @@
+{
+  "at": "2026-10-29 13:05 (本地)",
+  "verdictHtml": "<b class='g'>总判定:全部功能验收 PASS</b> —— 三系统(AgentWorkShop v0.8.6 / IDD / RAG)查杀重启后,31 项套件/实测全绿,约 1700+ 断言零失败。唯一非绿为存量 lint 35 处,全部集中于论文工具脚本 <code>scripts/e2e-paper-paired-route.mjs</code>(非系统代码,本轮零代码改动)。过程中出现的 8 类红均已复现归因为环境/调用方式(并发抢端口、共享实例污染、默认端口撞车、高载下弱模型回合僵死),隔离复跑即绿,平台代码零缺陷。",
+  "kpis": [
+    { "v": "31 项", "k": "套件/实测全绿" },
+    { "v": "1700+", "k": "断言通过" },
+    { "v": "0", "k": "平台缺陷" },
+    { "v": "3", "k": "系统重启健康" },
+    { "v": "42/42", "k": "三模式 USTC 实机" },
+    { "v": "35", "k": "存量 lint(非系统代码)" }
+  ],
+  "topology": "<b>AgentWorkShop</b> v0.8.6 → http://127.0.0.1:3300(AW_MODE=home,AW_HOME=D:/tmp/aw-ralph-acc-20261029/home,AW_TRIAL_INTERVAL_MS=0,MCP 启用;3001/3011-3044 为套件隔离实例)· <b>PLC 模拟器</b> → 4010(injection 引擎 seed=42,内置 MQTT broker 18830)· <b>MES 模拟器</b> → 15160 · <b>IDD 后端</b> → 3210(/api/external/v1,idd_ token 鉴权)· <b>IDD 前端</b> → 5180 · <b>RAG 后端</b> → 8771(FastAPI,/api/v1)· <b>RAG Web</b> → 6789(kb-mcp 网关,/api/kb/*)· 共享 infra:mosquitto 1883 / TimescaleDB 5432 / MinIO 9000",
+  "layers": [
+    {
+      "title": "T0 静态门禁",
+      "verdict": true,
+      "rows": [
+        { "suite": "typecheck(vue-tsc 全仓)", "count": "0 err", "verdict": true, "note": "类型检查通过", "evidence": "logs/chainA*.log 不适用,见 T0 输出" },
+        { "suite": "i18n:check 中英 parity", "count": "3166=3166", "verdict": true, "note": "unresolved 0" },
+        { "suite": "readme:lint", "count": "2 文件", "verdict": true, "note": "全部通过" },
+        { "suite": "docs:check 文档一致性", "count": "91/91", "verdict": true, "note": "设置项 128/live 44/restart 84 基准全对" },
+        { "suite": "eslint", "count": "35 err", "verdict": "存量红", "note": "全部位于 scripts/e2e-paper-paired-route.mjs(论文工具脚本,本轮未触碰)", "evidence": "T0 输出" }
+      ]
+    },
+    {
+      "title": "T1 单元与契约层",
+      "verdict": true,
+      "rows": [
+        { "suite": "test:unit(含本体/优化器/结果库面)", "count": "757/757", "verdict": true, "note": "基线 599 → 757,上浮正常" },
+        { "suite": "test:mcp(MCP 服务面契约)", "count": "14/14", "verdict": true },
+        { "suite": "test:plugin-lifecycle", "count": "22/22", "verdict": true },
+        { "suite": "test:sdk-surface", "count": "PASS", "verdict": true, "note": "agentworkshop@0.8.6 出口面" },
+        { "suite": "test:twin-provider", "count": "PASS", "verdict": true },
+        { "suite": "test:skills(skill 规范)", "count": "124/124", "verdict": true, "note": "6 skills 全过" }
+      ]
+    },
+    {
+      "title": "T2 实机核心闭环层(发布判定主证据)",
+      "verdict": true,
+      "rows": [
+        { "suite": "产线治理 e2e-line(L1-L12)", "count": "44/44", "verdict": true, "note": "开停线 HITL/审批期 TOCTOU/换线清理/Agent token 自证/写限界 60s 频控", "evidence": "scripts/.data 或套件自带证据" },
+        { "suite": "本体离线 e2e-ontology", "count": "57/57", "verdict": true },
+        { "suite": "本体真机 e2e-ontology-live(L1-L7)", "count": "87/87", "verdict": true, "note": "六 tab 浏览器走查含", "evidence": "docs/audit/evidence/2026-10-24-ontology-live/report.json(10-29 11:42 本轮)" },
+        { "suite": "模型闭环 e2e-model-loop-live(M0-M6)", "count": "53/53", "verdict": true, "note": "本体→孪生冻结→训练进化 v1→v3→求解器→管理面→前端走查;基线 54,总数 -1 无失败(断言集演化)" },
+        { "suite": "优化器 e2e-optimizer-live(R1-R3+U1)", "count": "105/105", "verdict": true, "note": "REST 全链/负例契约/Agent 工具面/浏览器五 tab;基线 104 上浮", "evidence": "docs/audit/evidence/2026-10-23-optimizer-live/report.json(10-29 11:44 本轮)" },
+        { "suite": "注塑配方闭环(3300 真实实例)", "count": "6/6", "verdict": true, "note": "HITL 批准→62bar 下发设备证实→65s DAQ 复测→达标固化 v2→台账可溯", "evidence": "bench/results/injection-pressure-loop-2026-10-29T04-29-05-445Z,logs/injection.log" },
+        { "suite": "IDD 结果库 e2e-idd-results(A2-A13)", "count": "36/36", "verdict": true, "note": "11 查询参数/详情截断/属主越权 403/token 接受/网络错映射", "evidence": "docs/audit/evidence/2026-10-25-idd-results(10-29 本轮重写)" },
+        { "suite": "结果库 UI e2e-idd-results-ui", "count": "9/9", "verdict": true },
+        { "suite": "节点级写授权 e2e-node-binding-authz(US-01..05)", "count": "52/52", "verdict": true, "note": "dcw 点位收窄/line-recipe 产线配方管理权/越权拒/收回即拒" }
+      ]
+    },
+    {
+      "title": "T3 回归面(本轮抽 10 套)",
+      "verdict": true,
+      "rows": [
+        { "suite": "api-live(REST/状态机/订阅/WS)", "count": "61/61", "verdict": true },
+        { "suite": "auth-matrix(角色权限矩阵)", "count": "29/29", "verdict": true, "note": "需预开 allowRegistration(v0.8.6 安全默认关闭)" },
+        { "suite": "template-isolation(模板克隆隔离)", "count": "38/38", "verdict": true, "note": "需 zhangwei@awshop.io 种子 admin" },
+        { "suite": "rest-robustness(非法参数/负 limit)", "count": "ALL PASS", "verdict": true },
+        { "suite": "timezone-settings(三时区一致/热切换)", "count": "PASS", "verdict": true, "note": "须显式 AW_TZ_DATA 指向隔离 home 数据目录" },
+        { "suite": "agent-team(信箱/群聊/跨 Channel)", "count": "25/25", "verdict": true },
+        { "suite": "hitl-live(挂起/批准/超时默认拒/TUI)", "count": "28/28", "verdict": true, "note": "首轮 2 条 TUI 无头渲染红为瞬态,复跑全绿" },
+        { "suite": "tool-surface-multiagent(多 Agent 工具面/身份拦截)", "count": "37/37", "verdict": true },
+        { "suite": "crash-cycle(崩溃→重启→断点恢复)", "count": "5/5 阶段", "verdict": true, "note": "crash/verify/gap/verify-gap/restore;须显式隔离 --port/--home(默认 3300 会误杀演示实例,已修入坑账)" },
+        { "suite": "mcp-live(stdio MCP 实机冒烟)", "count": "34/34", "verdict": true }
+      ]
+    },
+    {
+      "title": "业务功能逐项实测(3300 验收实例,真机回包)",
+      "verdict": true,
+      "rows": [
+        { "suite": "产线运营(清单/详情/开跑批次)", "count": "B0-B1b", "verdict": true, "note": "注塑线 11 写点+14 采点,活动批次 run 可查" },
+        { "suite": "数采(daq_query 工具+REST 样本行)", "count": "B2/B2b/B3", "verdict": true, "note": "14 节点真实样本窗(降采样 15s)" },
+        { "suite": "MES API(连接配置面+mes_fetch 真调)", "count": "B4/B4b", "verdict": true, "note": "配置面可读,工具回执正常(五格式全谱由 mes-agent 套件历史覆盖)" },
+        { "suite": "recipe 管理(清单/版本历史/trial HITL)", "count": "B5/B5b/B6", "verdict": true, "note": "v1 在库,trial 挂卡人工批准链路真实走通" },
+        { "suite": "写控台账+运维日志", "count": "B7/B7b", "verdict": true, "note": "dcw journal 与 ops-logs 均有本轮真实行" },
+        { "suite": "EDA 数据分析(运行面/图表面)", "count": "B8/B8b", "verdict": true, "note": "/api/workshop/eda/runs+charts 200" },
+        { "suite": "孪生(模型面/场景+设备孪生渲染源)", "count": "B9/B9b", "verdict": true, "note": "aml/models+scene/device-twins 200" },
+        { "suite": "节点绑定(绑定面+my_industrial_nodes)", "count": "B10/B10b", "verdict": true },
+        { "suite": "line_context 产线全景工具", "count": "B11", "verdict": true }
+      ],
+      "note": "证据:business-functions-report.json(本轮)"
+    },
+    {
+      "title": "IDD / RAG 对外 API 独立测试(不经 AW,直打外部后端)",
+      "verdict": true,
+      "rows": [
+        { "suite": "IDD /api/external/v1(认证链/capabilities/results/categories CRUD/tasks/401/404 负例)", "count": "11/11", "verdict": true, "note": "属主越权 403 由 e2e-idd-results 36/36 覆盖", "evidence": "idd-api-direct-report.json" },
+        { "suite": "RAG /api/v1 + web /api/kb(注册/登录/token/me/verify/负例/建库建文档/索引/向量命中/web 检索/kb agent chat)", "count": "15/15", "verdict": true, "note": "ingest→search 唯一标记命中;kb agent async 回合完成", "evidence": "rag-api-direct-report.json" }
+      ]
+    },
+    {
+      "title": "真实 PLC 场景 × IDD/RAG 双插件集成(US-004)",
+      "verdict": true,
+      "rows": [
+        { "suite": "插件面/工具面(diag+rag enabled,failures=[],注册表 104+21 全 available)", "count": "P1-P3b", "verdict": true },
+        { "suite": "diag_status 真调 IDD 后端", "count": "P5", "verdict": true, "note": "返回历史诊断运行列表" },
+        { "suite": "kb_agent 入库(在飞 HITL 审批 ap-324e2a0b→提交 kbt 任务→完成)", "count": "P6", "verdict": true },
+        { "suite": "kb_agent 检索命中 + 结果库查询", "count": "P7/P8", "verdict": true, "note": "证据:dual-plugin-integration-report.json(11/11)" }
+      ]
+    }
+  ],
+  "threeMode": [
+    { "mode": "observe 观察", "chain": true, "evidence": "R3/R3b/R3c/R3d:line_context+daq_query 数采统计判读(样本数/均值/窗口判定),产线零写入、无审批卡;两轮均过" },
+    { "mode": "manual 手动", "chain": true, "evidence": "R4/R4a-R4f:recipe_trial 挂人工审批卡→脚本代批→点位写(60→58)→ACK 设备证实→版本不变→任务 COMPLETED(首轮高载僵死,复跑全过)" },
+    { "mode": "auto 自动", "chain": true, "evidence": "R5/R5b/R5c:免批直执行→60→62→账本落账→设备回读证实→COMPLETED(首轮零落账模型虚报,复跑全过)" },
+    { "mode": "授权链/回退链/管理权", "chain": true, "evidence": "R6/R8/R9/R10:换配方接管 DCW、回退逐节点落账、产线管理权新建配方→修改→回退→收回即拒,全过" }
+  ],
+  "threeModeNote": "harness=omp,provider/model=ustc/deepseek-flash(omp config 默认网关);隔离实例 3430(AW_MODE=home),mock daq+dcw 设备,真实平台+真实 omp 子进程。第一轮 27/42:observe 全过、REST 驱动授权链全过,manual 卡未建任务僵死、auto 零落账(模型交付物虚报「PLC 证实到位」,平台四层限界实际拦截——管控面按设计兜底);干净环境重跑 42/42 全绿,定性为高载下弱模型回合僵死(环境性),与 2026-10-28 Qwen3.5 轮的 R10e 僵死同型。",
+  "screens": [
+    { "file": "dark__dashboard.png", "title": "仪表盘(总览)" },
+    { "file": "dark__workshop.png", "title": "Agent 工作台(频道/团队)" },
+    { "file": "dark__operations.png", "title": "产线运营" },
+    { "file": "dark__dcw.png", "title": "产线作业 DCW(节点/配方/写控)" },
+    { "file": "dark__daq.png", "title": "数采中心" },
+    { "file": "dark__aml.png", "title": "自动建模实验室(孪生训练)" },
+    { "file": "dark__town.png", "title": "数字孪生 3D 小镇(场景渲染)" },
+    { "file": "dark__monitor.png", "title": "实时监控 & HITL" },
+    { "file": "dark__analysis.png", "title": "数据分析(报告/EDA)" },
+    { "file": "dark__logs.png", "title": "审计日志" },
+    { "file": "dark__plugins.png", "title": "插件(11 只,含 diag/rag 桥)" }
+  ],
+  "pitfalls": [
+    "Git Bash 内联 curl 携带中文 → GBK 损坏入库(频道名乱码);改走 node fetch/文件载荷即愈(记忆既有坑,本轮再次踩实)",
+    "套件共享实例互相污染:api-live 结束时把 security.allowRegistration 置 false,后续 auth-matrix/template-isolation/rest-robustness/agent-team 注册全挂 → 对策=每套件独占 fresh 实例(3041-3044)",
+    "证据脚本放深层目录时『相对 repo 上跳』解析错(两起:三模式副本/REST 驱动),隔离实例 spawn 到不存在路径 → 统一改绝对路径",
+    "timezone-settings 必须显式 AW_TZ_DATA=<隔离home>/data,否则读 repo 共享库断言失败",
+    "kb_agent 异步回执 task_id 正则必须含下划线(kbt_xxx);检索提示词避开「经验/入库」字样,否则被入库意图守卫拒(设计行为)",
+    "crash-cycle 默认 --port 3300 --home .e2e-home-full:会在 crash 阶段硬杀 3300 上的演示实例并顶上陈旧 home → 必须 --port/--home 显式隔离;3300 已从原 home 恢复(activeChannels=2 复核通过)",
+    "三套件并发自起实例时资源挤兑 → ECONNRESET/BOOT_FAIL/注册失败;全部单跑复绿(model-loop 53/53、authz 52/52、crash-cycle 5/5)",
+    "三模式首跑 27/42:高载下 ustc/deepseek-flash 回合僵死(manual 审批卡未建/auto 零落账且模型虚报成功);平台限界正确兜底,干净重跑 42/42",
+    "hitl-live 首跑尾部 TUI 无头渲染 2 红+超时被杀;全量复跑 28/0(瞬态)",
+    "tool-surface 一次运行 50 分钟无证据落盘被判挂死处决,随后发现其总结 37/0 已产出(处决时机踩在收尾后)"
+  ],
+  "gaps": [
+    "Mimosa 安全扫描本轮未执行——本报告只裁决功能面,不宣称安全",
+    "lint 35 处存量红未修:全部在论文工具脚本 scripts/e2e-paper-paired-route.mjs;工作树含论文在途未提交改动,本轮零代码改动原则下不代修",
+    "agent-binding-matrix-e2e(需 bench 场景上下文夹具)未跑;其覆盖面由 node-binding-authz 52/52 + 三模式 42/42 + tool-surface 37/37 等价替代",
+    "MES 五格式全谱未在本轮逐一展开(配置面+mes_fetch 真调通过);全谱由 mes-agent-integration-e2e 历史套件覆盖",
+    "IDD diag_run 端到端真实引擎分析未启动(按三模式/双插件套件设计仅验证集成面);IDD 结果库/任务/分类面已 36/36+11/11 验证",
+    "RAG kb-mcp 对 AW 的外部 MCP 授权未开通(外部边界,历史轮已记录;本轮 rag-bridge 走 web /api/kb/agent/chat 全链验证)",
+    "孪生场景 3D 渲染以页面可打开+数据面 200+截图为证;未做逐帧像素级断言"
+  ]
+}

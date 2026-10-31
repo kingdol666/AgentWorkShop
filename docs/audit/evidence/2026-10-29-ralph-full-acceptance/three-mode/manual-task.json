@@ -1,0 +1,82 @@
+{
+  "id": "44a0a8c2-8afd-4b91-b59d-2edbd096e6d0",
+  "state": "CANCELED",
+  "cancelledByOperator": true,
+  "elapsedSec": 241,
+  "deliverable": "",
+  "toolCalls": [
+    "🔧 my_industrial_nodes",
+    "🔧 my_industrial_nodes",
+    "🔧 my_industrial_nodes ✅ 完成: ### ⚙ 频道执行模式:manual(手动)—— 本频道所有下发/配方/回退动作都会挂起等人工批准:下发前必须说明依据(数采/MES 证据),审批卡会向人类展示你的理由 #### ◆ 温度设定A(写入线) [id=dw-415f8afe] - 物理量: 烘箱温度设定,单位 C,精度 2 位小数 - 工艺语义: 手动频道 Agent 的点位",
+    "🔧 my_industrial_nodes ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"### ⚙ 频道执行模式:manual(手动)—— 本频道所有下发/配方/回退动作都会挂起等人工批准:下发前必须说明依据(数采/MES 证据),审批卡会向人类展示你的理由\\n\\n#### ◆ 温度设定A(写入线) [id=dw-415f8afe]\\n- 物理量: 烘箱温度",
+    "🔧 mcp__kb_mcp_experience_search_global(验收-手动模式-点位试验 温度设定A 写入线 单步4C)",
+    "🔧 mcp__kb_mcp_kb_search(验收-手动模式-点位试验 温度设定A 写入线)",
+    "🔧 mcp__kb_mcp_experience_search_global ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"{\\\"success\\\": true, \\\"query\\\": \\\"验收-手动模式-点位试验 温度设定A 写入线 单步4C\\\", \\\"count\\\": 4, \\\"experiences\\\": [{\\\"id\\\": \\\"exp-df67441a",
+    "🔧 mcp__kb_mcp_kb_search ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"{\\\"success\\\": true, \\\"query\\\": \\\"验收-手动模式-点位试验 温度设定A 写入线\\\", \\\"count\\\": 10, \\\"hits\\\": [{\\\"kbId\\\": \\\"3aea5973-1d8a-4db6-b415-6d4432f514bb",
+    "🔧 mcp__kb_mcp_kb_search_vector(写入线 ln-09ceb7e0 温度设定A 手动模式 点位试验 审批 验收目标值)",
+    "🔧 mcp__kb_mcp_kb_search(写入线 ln-09ceb7e0 温度设定A 验收)",
+    "🔧 mcp__kb_mcp_kb_search ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"{\\\"success\\\": true, \\\"query\\\": \\\"写入线 ln-09ceb7e0 温度设定A 验收\\\", \\\"count\\\": 10, \\\"hits\\\": [{\\\"kbId\\\": \\\"3aea5973-1d8a-4db6-b415-6d4432f514",
+    "🔧 mcp__kb_mcp_kb_search_vector ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"{\\\"success\\\": true, \\\"results\\\": [{\\\"content\\\": \\\"# 产线 ln-850e6edf 烘干温度回路运行稳定性报告\\\\n\\\\n- 报告契约：`line-stability-report/1.0`（机器可读件：",
+    "🔧 recipe_trial(line_id=ln-09ceb7e0, hypothesis=手动模式点位试验验收(单点、不固化):绑定产线「验收-写入线」l…)",
+    "🔧 recipe_trial(line_id=ln-09ceb7e0, hypothesis=手动模式点位试验验收(单点、不固化):绑定产线「验收-写入线」l…)",
+    "🔧 recipe_trial ✅ 完成: 试验已整批下发并全部设备证实(1/1,批次 rr-d83fc):温度设定A(写入线)→64C [证实✓]。假设:手动模式点位试验验收(单点、不固化):绑定产线「验收-写入线」ln-09ceb7e0 运行中(批次 rr-9b506,已运行约 6 min,339 打标样本),活动配方「验收配方-写入线」目标 60C、工艺窗口 [50,70]C;节点 温度设定",
+    "🔧 recipe_trial ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"试验已整批下发并全部设备证实(1/1,批次 rr-d83fc):温度设定A(写入线)→64C [证实✓]。假设:手动模式点位试验验收(单点、不固化):绑定产线「验收-写入线」ln-09ceb7e0 运行中(批次 rr-9b506,已运行约 6 min,339 打标样本),活动配方「验收",
+    "🔧 my_industrial_nodes",
+    "🔧 my_industrial_nodes ✅ 完成: ### ⚙ 频道执行模式:manual(手动)—— 本频道所有下发/配方/回退动作都会挂起等人工批准:下发前必须说明依据(数采/MES 证据),审批卡会向人类展示你的理由 #### ◆ 温度设定A(写入线) [id=dw-415f8afe] - 物理量: 烘箱温度设定,单位 C,精度 2 位小数 - 工艺语义: 手动频道 Agent 的点位",
+    "🔧 my_industrial_nodes",
+    "🔧 my_industrial_nodes ✅ 完成: {\"content\":[{\"type\":\"text\",\"text\":\"### ⚙ 频道执行模式:manual(手动)—— 本频道所有下发/配方/回退动作都会挂起等人工批准:下发前必须说明依据(数采/MES 证据),审批卡会向人类展示你的理由\\n\\n#### ◆ 温度设定A(写入线) [id=dw-415f8afe]\\n- 物理量: 烘箱温度"
+  ],
+  "hitl": [
+    {
+      "id": "ap-9e9240b9",
+      "status": "pending",
+      "detail": "配方试验候选(整批 1 参数):温度设定A(写入线) 60→64C | 假设:手动模式点位试验验收(单点、不固化):绑定产线「验收-写入线」ln-09ceb7e0 运行中(批次 rr-9b506,已运行约 6 min,339 打标样本),活动配方「验收配方-写入线」目标 60C、工艺窗口 [50,70]C;节点 温度设定A(dw-415f8afe)当前设定 60.00C。候选 64.00C = +4.0C,恰在节点单步硬上限 ≤4C 内,落在窗口 [50,70]C 内(距上沿 6C),安全量程 [0,100]C 内;仅提交被授权的单一点位,不写配方版本(recipe_trial 不固化),按验收口径不复测、不等待。试验目的:验证手动频道 HITL 审批门与单点写链路。 | 批准=整批下发试验(不写版本);拒绝可附指导",
+      "payload": {
+        "schemaVersion": 1,
+        "kind": "recipe-gate",
+        "op": "trial",
+        "recipeId": "rc-28b42668",
+        "recipeName": "验收配方-写入线",
+        "reason": "手动模式点位试验验收(单点、不固化):绑定产线「验收-写入线」ln-09ceb7e0 运行中(批次 rr-9b506,已运行约 6 min,339 打标样本),活动配方「验收配方-写入线」目标 60C、工艺窗口 [50,70]C;节点 温度设定A(dw-415f8afe)当前设定 60.00C。候选 64.00C = +4.0C,恰在节点单步硬上限 ≤4C 内,落在窗口 [50,70]C 内(距上沿 6C),安全量程 [0,100]C 内;仅提交被授权的单一点位,不写配方版本(recipe_trial 不固化),按验收口径不复测、不等待。试验目的:验证手动频道 HITL 审批门与单点写链路。",
+        "params": [
+          {
+            "nodeId": "dw-415f8afe",
+            "name": "温度设定A(写入线)",
+            "from": 60,
+            "to": 64,
+            "unit": "C"
+          }
+        ],
+        "context": {
+          "lineId": "ln-09ceb7e0",
+          "runId": "rr-9b506b74",
+          "recipeId": "rc-28b42668",
+          "productId": "pd-4a7f1090"
+        },
+        "runId": "rr-9b506b74"
+      }
+    }
+  ],
+  "hitlHistory": [
+    {
+      "id": "ap-9e9240b9",
+      "status": "approved",
+      "comment": "验收:批准手动模式点位试验",
+      "decidedBy": "49723e36-ba05-4dcd-ad93-1d30ee1b0e38"
+    }
+  ],
+  "journal": [
+    {
+      "lineId": "ln-09ceb7e0",
+      "nodeId": "dw-415f8afe",
+      "prevValue": 60,
+      "newValue": 64,
+      "source": "recipe",
+      "actor": "recipe",
+      "recipeRunId": "rr-d83fc63d",
+      "id": "anc-eb049be4",
+      "at": "2026-10-29T12:43:45.647+08:00"
+    }
+  ],
+  "approvals": "ap-9e9240b9"
+}

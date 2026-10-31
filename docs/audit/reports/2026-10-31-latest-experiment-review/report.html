@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>最新实验结果复核与论文证据报告</title>
+<style>
+:root{--ink:#203440;--muted:#5e707a;--line:#d5dfe3;--paper:#fff;--bg:#eef3f5;--teal:#176f80;--green:#347658;--amber:#9b6a20;--red:#a34a45;--pale:#edf5f5;--shadow:0 8px 26px #1b3a4a0c}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 "Segoe UI","Microsoft YaHei",sans-serif}
+main{max-width:1240px;margin:0 auto;padding:32px 26px 56px}header,.panel,.card{background:var(--paper);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)}
+header{padding:30px 34px;background:linear-gradient(120deg,#fff 10%,#eaf4f5 100%)}.eyebrow{font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--teal);font-weight:800}
+h1{font-size:30px;line-height:1.22;margin:9px 0}h2{font-size:21px;margin:0 0 12px}h3{font-size:16px;margin:18px 0 7px}
+p{margin:8px 0}.lead{font-size:17px;color:#314c59;max-width:990px}.pill{display:inline-block;padding:5px 10px;border-radius:99px;font-size:12px;font-weight:800;margin:3px 5px 3px 0}
+.pass{background:#e8f4ed;color:var(--green)}.warn{background:#fff4e1;color:var(--amber)}.fail{background:#f9e9e7;color:var(--red)}.neutral{background:#eef1f3;color:#596a73}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:13px;margin:16px 0}.card{padding:17px 19px}.num{font-size:27px;font-weight:800;line-height:1.2}.label{font-size:12px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:700}.note{font-size:13px;color:var(--muted);margin-top:5px}
+.panel{padding:22px 25px;margin-top:15px}table{border-collapse:collapse;width:100%;font-size:13.5px;margin:10px 0 4px}th,td{text-align:left;vertical-align:top;border-bottom:1px solid var(--line);padding:9px 10px}th{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:#435a66;background:#f5f8f9}tbody tr:last-child td{border-bottom:0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}.callout{padding:14px 16px;background:#f5f9fa;border-left:4px solid var(--teal);border-radius:8px}.callout.red{border-color:var(--red);background:#fff4f2}.callout.amber{border-color:var(--amber);background:#fff9ed}
+img{display:block;width:100%;height:auto;margin:12px auto 5px;border:1px solid var(--line);border-radius:10px;background:#fff}code{font-family:Consolas,monospace;font-size:12px;overflow-wrap:anywhere}.small{font-size:12px;color:var(--muted)}a{color:#126b7d;text-decoration:none}a:hover{text-decoration:underline}ul{padding-left:22px}li{margin:6px 0}details{background:#fbfcfd;border:1px solid var(--line);border-radius:8px;margin:8px 0;padding:10px 13px}summary{cursor:pointer;font-weight:700}
+@media(max-width:900px){.cards{grid-template-columns:1fr 1fr}.grid2{grid-template-columns:1fr}main{padding:15px}}
+@media(max-width:560px){.cards{grid-template-columns:1fr}header{padding:22px}h1{font-size:24px}.panel{padding:17px 14px}table{font-size:12px}th,td{padding:7px 5px}}
+@media print{body{background:#fff;font-size:11pt}main{max-width:none;padding:0}header,.panel,.card{box-shadow:none;break-inside:avoid}a{color:inherit}}
+</style></head><body><main>
+<header><div class="eyebrow">Evidence review · 2026-10-31 · local time UTC+08</div>
+<h1>最新实验结果复核与论文证据报告</h1>
+<p class="lead">最新的真实 Harness 任务是 03:37 的 OMP Channel 运行，配置记录为 USTC/DeepSeek Flash；它调用了四类工具，但总体验收 10/13，任务仍为 WORKING。较早的文档驱动模拟线运行完成了配置、读取和导出验证，但其写入是独立管理员验收，不是 Agent 写入。</p>
+<span class="pill warn">最新任务未收口</span><span class="pill pass">文档驱动接入：限定范围通过</span><span class="pill fail">P12：工作流/证据完整性失败</span><span class="pill neutral">A1/A2：未运行</span></header>
+<section class="cards">
+<div class="card"><div class="label">Latest Harness episode</div><div class="num" style="color:var(--red)">10 / 13</div><div class="note">4 类真实工具调用；任务 WORKING；没有已记录审批或写入</div></div>
+<div class="card"><div class="label">Latest completed integration</div><div class="num" style="color:var(--green)">11 / 11</div><div class="note">新建虚拟线供给；5 DAQ + 1 DCW；1 个只读 lead task 完成</div></div>
+<div class="card"><div class="label">Export verification</div><div class="num" style="color:var(--green)">19 / 19</div><div class="note">818 标量行 + 54 × 64 向量点；原始 CSV 已纳入 S5 包</div></div>
+<div class="card"><div class="label">PIPELINE A1/A2</div><div class="num" style="color:var(--amber)">未执行</div><div class="note">当前没有审批门消融或完整 Harness × 模型 2 × 2 结果</div></div></section>
+
+<section class="panel"><h2>审阅结论</h2><div class="grid2">
+<div class="callout"><b>可以作为论文的有限工程证据</b><br>文档到场景配置、HTTP/MQTT 接入、标量与 64 点向量读取、Channel lead 查询任务、CSV/向量导出一致性，以及独立虚拟 DCW 写后 DAQ 读回。</div>
+<div class="callout red"><b>不能据此写成的结论</b><br>四 Agent 协作完成控制、Agent 发起的 27→25 写入、审批门消融、模型/Harness 因果比较、工艺优化收益、实体工厂安全或上线性能。</div></div>
+<p>一项更晚的 OMP 配置任务被记录为 USTC/DeepSeek Flash，但包中没有运行时 Provider/Model 回读；因此只称为“配置/记录为”，不视为已完成模型身份核验。不同批次的任务、写入和测试计数不合并。</p></section>
+
+<section class="panel"><h2>最新系统回归测试结果（按阶段）</h2><p>以下是 10/31 报告留存的 T0–T4 结果；软件契约测试与模拟工艺运行分开统计。通过项仅代表所列检查，不外推到未运行的完整功能矩阵。</p>
+<table><thead><tr><th>阶段</th><th>执行与结果</th><th>判读</th></tr></thead><tbody>
+<tr><td>T0 · 静态门禁</td><td>lint 修复后通过；typecheck、docs:check、i18n:check、readme:lint 均通过。首轮曾发现 5 个 lint 错误，已修复并复跑。</td><td><span class="pill pass">完成</span></td></tr>
+<tr><td>T1 · 单元与接口契约</td><td>915 tests：913 pass、0 fail、2 skipped；MCP 14/14；plugin lifecycle 22/22；SDK surface PASS；twin-provider 5/5；skills 147/147。</td><td><span class="pill pass">完成</span></td></tr>
+<tr><td>T2 · 核心闭环</td><td>隔离线治理 44/44；文档驱动虚拟验证完成供给、只读任务、独立写读回和导出核验。其他高负载本体/优化器/UI/模型套件本轮未运行。</td><td><span class="pill pass">限定覆盖</span></td></tr>
+<tr><td>T3 · API 回归</td><td>api-live 未获合格运行：脚本要求 fresh-instance 注册，既有 3300 服务注册已关闭；其他 T3 本轮未跑。</td><td><span class="pill warn">前置不满足</span></td></tr>
+<tr><td>T4 · 插件与工具面</td><td>11 个插件，0 个 reported failures；126 个工具均 available。</td><td><span class="pill pass">完成</span></td></tr>
+</tbody></table><p class="small">该矩阵说明本轮静态、契约、治理和插件工具面检查的状态；不等于完整系统回归全部通过，也不是统计性能实验。</p></section>
+
+<section class="panel"><h2>实验步骤与观测</h2><img src="integration-evidence.png" alt="文档驱动模拟场景的流程、查询采样与设定值独立读回">
+<table><thead><tr><th>阶段</th><th>执行情况</th><th>结果和证据边界</th></tr></thead><tbody>
+<tr><td>1 · 接口契约</td><td>六个点位：HTTP 箱体温度 PV/SP/SP 回读/64 点壁厚向量；MQTT 环境温度/湿度。</td><td>本地虚拟设备，仅 loopback；不是厂家 PLC 文档。</td></tr>
+<tr><td>2 · 生成配置</td><td>从接口说明生成 blueprint 与 provision；创建新 line、5 DAQ、1 DCW、产品和配方；11/11 供给检查通过、跨线冲突 0。</td><td>不等同任意工业场景自动零配置；原报告修正了两个 MQTT 节点的采样周期偏差。</td></tr>
+<tr><td>3 · 建立协作面</td><td>Channel 配置 lead + 3 workers，四个成员的适配器字段均为 OMP；激活记录只证明 lead 已 wired。</td><td>模型身份未留存；没有 worker 子任务派发证据。</td></tr>
+<tr><td>4 · 执行 Agent 任务</td><td>一个 lead 的只读任务 COMPLETED/100；历史含工具调用和最终交付，覆盖 4 个 scalar 查询及 64 点向量读取。</td><td>没有通过该任务执行写入。工作流有一次参数校验错误后按要求参数重试；不作为调用成功率估计。</td></tr>
+<tr><td>5 · 独立写读回</td><td>管理员/验收控制器独立发起 SP=27 与恢复 25；独立 DAQ 分别观测到 27 与 25。较早一次请求被 60 s 冷却拦截。</td><td>HTTP POST 的回显不算设备回读；两次 DAQ 值是 readback evidence。没有 approvalId/taskId/Agent driver 事件关联。</td></tr>
+<tr><td>6 · 导出验证</td><td>19/19 manifest/表头/行数/向量形状/值域检查通过。</td><td>4 个 scalar CSV 共 818 行，向量 CSV 为 54 帧 × 64 点 = 3,456 行；启动期有状态为 offline 的数据行，完整性检查不等于全行有效。</td></tr>
+</tbody></table></section>
+
+<section class="panel"><h2>导出 CSV 核验</h2><p>原始 CSV 从导出任务的运行目录复制到 Supplementary File S5 Evidence；下表由这些文件重新计数。标量导出行数与平台查询使用的降采样 bucket 数不同，两者不可相加。</p>
+<table><thead><tr><th>文件</th><th>导出行数</th><th>最小</th><th>最大</th><th>行状态</th></tr></thead><tbody><tr><td>nodes/dn-2441bc04.csv</td><td>134</td><td>24.5000</td><td>25.5000</td><td>offline=2, ok=132</td></tr><tr><td>nodes/dn-2a0acb1f.csv</td><td>275</td><td>50.0000</td><td>60.0000</td><td>offline=2, ok=273</td></tr><tr><td>nodes/dn-970e00ea.csv</td><td>275</td><td>20.5000</td><td>23.5000</td><td>offline=2, ok=273</td></tr><tr><td>nodes/dn-ae545180.csv</td><td>134</td><td>25.0000</td><td>27.0000</td><td>offline=2, ok=132</td></tr><tr><td>frames/dn-e4934f70.csv</td><td>3456</td><td>2.4750</td><td>2.5250</td><td>vector data</td></tr></tbody></table>
+<p class="small">共计：818 标量行，3456 向量点；在 scalar CSV 中计得 8 行标为 offline。19/19 检查核验的是导出契约，不把 offline 行自动解释成有效观测。</p></section>
+
+<section class="panel"><h2>不同批次的证据矩阵</h2><table><thead><tr><th>运行</th><th>实测结果</th><th>审计分类</th><th>可支持的结论</th></tr></thead><tbody>
+<tr><td>10/31 03:37 · OMP / USTC-DeepSeek Flash 配置任务</td><td>10/13；daq_query、daq_export、diag_run、kb_agent 被真实调用；50 个 DAQ 点；任务 WORKING；0 审批卡。</td><td><span class="pill fail">未完成</span></td><td>支持一次工具面/后端调用探索；不支持任务完成、治理写入或 A2 模型比较。</td></tr>
+<tr><td>10/31 01:41 · 文档驱动 HTTP/MQTT 模拟线</td><td>11/11 供给；5/5 acquisition streams；只读 lead task COMPLETED；19/19 导出；独立管理员写读回 27/25。</td><td><span class="pill pass">限定范围通过</span></td><td>接口映射、读取、导出与独立模拟写读回。不是四 Agent 控制闭环。</td></tr>
+<tr><td>10/30 · OMP/Qwen 真实模型记录</td><td>R3 pending 时 SP=195；脚本批准后 SP=198。R4 写入 SP=200.5；JSON 的 PV=199.45。R2 任务取消且返回数字不匹配。</td><td><span class="pill warn">部分有效</span></td><td>R3/R4 支持一次模型参与的模拟器写入路径；R2 原 PASS 判据不可靠，查询结果排除。</td></tr>
+<tr><td>10/30 · PIPELINE P12 AgentTeam</td><td>资格 PASS；workflow FAIL；evidence integrity FAIL；CANCELED；0 个 verified approvals、0 个 accepted DCW writes；run ended on stale/future DAQ sample.</td><td><span class="pill fail">不构成完整 episode</span></td><td>说明完整 AgentTeam 任务和证据关联尚未通过。</td></tr>
+<tr><td>10/29 · 五协议确定性矩阵</td><td>Modbus TCP/RTU、OPC UA、MQTT、HTTP；52 个 acquisition samples；24/24 越界探针被拒绝。LLM 关闭。</td><td><span class="pill neutral">独立组件证据</span></td><td>只支持该次仿真协议/护栏覆盖；不能与最新 Channel run 合并。</td></tr>
+<tr><td>路由状态读回 fixture</td><td>注册任务 route 与 direct REST 两场景共 4 个设定值转换均有独立状态读回；使用合成管理员批准。</td><td><span class="pill neutral">独立路由检查</span></td><td>支持状态转换记录，不支持 Agent 决策或写后工艺响应。</td></tr>
+<tr><td>9/28 四场景脚本任务</td><td>注塑 31.296→32.36 g；BOPET 28.03→25.30 μm；退火 134.9→99.5 HV；污水 DO 0.194→3.54 mg/L，均落入各自报告窗口。</td><td><span class="pill neutral">单次轨迹</span></td><td>每场景一个脚本控制轨迹；不作基线比较或重复试验统计。</td></tr>
+<tr><td>A1/A2 预注册实验</td><td>runner 未实现；approval-only bypass 未资格化；四个 harness × model 组合未全部通过预检。</td><td><span class="pill warn">NOT-RUN</span></td><td>无审批门差异或 Harness/模型效应可以报告。</td></tr>
+</tbody></table></section>
+
+<section class="panel"><h2>模型运行证据纠偏</h2><div class="callout amber"><b>10/30 Qwen run 的 R2.1 虽标 PASS，但不能算查询成功。</b> 原始 JSON 记录任务状态 CANCELED，交付数字为 37、120、260、120、260、195、53、195；runner 用整个对话历史里的任意数字与 simulator truth 比较，未要求准确解析 DAQ 结果。报告中 207.67/205.83 °C 与 200.84 °C 也无法由该 JSON 支持；R4.2 原始值为 PV=199.45 °C、SP=200.5 °C。修订稿将 R2 降为未验证，仅保留 R3/R4 可对账的设备写证。</div>
+<p>最新 DeepSeek-configured episode 的插件面检查和复用产线启动检查失败，任务没有到终态。P12 的资格门通过，但 actor/task/tool 关联和团队派发/工作流门未通过。完整记录均保留在报告和 S5 证据包中，不将失败项从总体状态中隐藏。</p></section>
+
+<section class="panel"><h2>论文证据是否充足</h2><table><thead><tr><th>论文主张</th><th>当前证据</th><th>判定</th><th>措辞建议</th></tr></thead><tbody>
+<tr><td>配置异构场景并统一采集</td><td>两种协议的最新文档驱动线；另有五协议确定性矩阵及多场景历史模拟。</td><td>有限支持</td><td>“在所测模拟配置中完成映射和数据访问”。</td></tr>
+<tr><td>真实 Agent 任务使用数据工具</td><td>一次 Channel lead 只读任务完成；较晚 DeepSeek-configured task 调用了四类工具但未收口。</td><td>有限支持</td><td>明确单次配置、身份留存缺口和任务未完成记录。</td></tr>
+<tr><td>Agent 受治理参数写入</td><td>单次 OMP/Qwen 的 pending→scripted approval→SP=198；后续探索写 SP=200.5。</td><td>有限支持</td><td>模拟器集成演示；不是人工审批有效性或实体安全验证。</td></tr>
+<tr><td>多 Agent/Harness 可替换、优化改善或上线效果</td><td>P12 workflow/integrity fail；A1/A2 未运行；没有重复/基线比较。</td><td>不支持</td><td>不能作出因果、优越性、等效性或现场就绪结论。</td></tr>
+</tbody></table></section>
+
+<section class="panel"><h2>复现材料</h2><p>结构化证据与 CSV 已打包在 <a href="../../../../paper/tii/SUBMISSION-IEEE-TII/Supplementary-File-S5-Evidence.zip">Supplementary-File-S5-Evidence.zip</a>；格式化补充说明见 <a href="../../../../paper/tii/SUBMISSION-IEEE-TII/Supplementary-File-S5.pdf">Supplementary-File-S5.pdf</a>。图表源代码为本目录的 <code>build_report.py</code>，输出图表为 PDF/SVG/PNG。</p>
+<table><thead><tr><th>归档源</th><th>SHA-256</th></tr></thead><tbody><tr><td>doc_task</td><td><code>38e993a8568fdc5d0e11e738c0b2d7de6b86da9726bb8b4976a0d293bfc5c446</code></td></tr><tr><td>doc_summary</td><td><code>f3a005a873495915e88567bb1525bb7af16747e55badbcc671642bc3bdacd390</code></td></tr><tr><td>independent_write</td><td><code>365ac9dc2b1124932c2b79f81c44d0fc7d867304b6b9ae40ddad8dbb9535e628</code></td></tr><tr><td>export_stats</td><td><code>88c7253b45bf10dcb4091846dbe82866e977e7dd5b6d10753136daeebc996aea</code></td></tr><tr><td>latest_iddrag</td><td><code>fbafab1f8d9b486a7e381332aa48b398b9c8ac44450f5c83c7e5f600ab4a4471</code></td></tr><tr><td>qwen_run</td><td><code>462b392c167b44f9ed322cad8414015e98138a1721b22d6ad7a901c313b41d45</code></td></tr><tr><td>p12_report</td><td><code>65246c85fa15fd62787bfa5f53085546ade4517ff8fdae2743d8ad20a7744239</code></td></tr><tr><td>p12_checks</td><td><code>aa7ac755125a16525c2238d7a943df6eef5ab84d63f7f203d766d88fab63dc64</code></td></tr></tbody></table>
+<p class="small">校验列表位于 S5 Evidence 包的 SOURCE-MANIFEST.json 和 SHA256SUMS。文档驱动证据的原始归档当初没有 hash 清单；此报告在归档副本上生成新的、可核验的文件清单，不把它冒充成实验当时生成的 run manifest。</p></section>
+<p class="small" style="text-align:center;margin-top:18px">所有性能数值均为本地模拟器、单次工程运行记录；图中顺序轴不表示连续时间，且不表示因果效果。</p>
+</main></body></html>

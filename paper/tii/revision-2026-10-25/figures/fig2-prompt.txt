@@ -1,0 +1,16 @@
+Use case: scientific-educational. Asset type: original conceptual execution-lifecycle diagram for Figure 2 of an IEEE Transactions on Industrial Informatics article. Generate polished and minimal scientific line art on pure white, portrait-ish near-square aspect ratio 0.99:1, highest available resolution. A coherent companion to a navy-and-teal industrial architecture schematic. Use precise flat vector-like rectangular geometry, substantial clean Arial-like typography, very thin light gray borders, no gradients, shadows, pictures, clipart or decorative icons. This diagram compares two distinct operational routes, not optimization performance.
+
+At top a slim shared band says exactly "Production context + channel profile". Under it place two equal-width aligned vertical lanes separated by generous white space. The left heading is "(a) Bounded exploration" in dark navy #294F6B; the right heading is "(b) Recipe trial / apply" in deep teal #26756F. Use four evenly aligned large cards per lane, with arrows pointing downward between cards.
+LEFT cards, in order, exact heading and short subordinate line:
+1 "Capture baseline" / "Starting u and DAQ output"
+2 "Governed node write" / "Approval + execution checks"
+3 "Platform observes" / "Wait, then query DAQ"
+4 "Exploration summary" / "Save controls and outputs"
+A small separate two-line note below left lane says "Node journal opens after" / "a successful value change".
+RIGHT cards:
+1 "Candidate / recipe version" / "Trial override or saved definition"
+2 "Governed recipe dispatch" / "Approval + execution checks"
+3 "Graded batch receipt" / "Per-parameter confirmation"
+4 "Caller observes" / "Wait, query, and decide"
+Below right lane, a fine dashed arrow leads to a distinct outlined box labelled "Separate recipe update" / "Save the accepted version".
+Keep the baseline snapshot separate from the later observation; keep the node journal distinct from the exploration summary; distinguish a trial or apply receipt from saving a recipe version. Saving is a separate caller action and must not be implied automatic. Do not add universal ordering of checks, rollback stages, approval duration numbers or experimental outcomes. Keep all text horizontal and short, ensure ample padding, align row and lane edges rigorously. Colors only dark navy, teal and neutral gray with very pale fills. Thin but visible arrows, no overlaps, no redundant legends. No figure caption inside image. The diagram must remain readable when printed at single-column width 3.5 inches, so prioritize large typography over extra detail.
