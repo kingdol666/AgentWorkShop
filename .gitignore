@@ -145,3 +145,6 @@ __pycache__/
 tmp-e2e/
 .ui-review/
 .ui-*.log
+
+# 论文参考资料(第三方 PDF,本地研究材料不入库)
+paper/tii/reference-papers-*/
