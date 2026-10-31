@@ -1,0 +1,46 @@
+{
+    "status":  "recorded",
+    "note":  "Post-run closure record; not a control-performance endpoint.",
+    "fields":  {
+                   "pre_reset_state_reference":  "simulator-state.json",
+                   "post_reset_readbacks":  [
+                                                {
+                                                    "node_id":  "inj-inject-opcua",
+                                                    "signal_id":  "hold-pressure-sp",
+                                                    "value":  45,
+                                                    "unit":  "bar"
+                                                },
+                                                {
+                                                    "node_id":  "inj-inject-opcua",
+                                                    "signal_id":  "hold-time-sp",
+                                                    "value":  6,
+                                                    "unit":  "s"
+                                                },
+                                                {
+                                                    "node_id":  "inj-inspect-http",
+                                                    "signal_id":  "part-weight",
+                                                    "value":  31.29,
+                                                    "unit":  "g"
+                                                },
+                                                {
+                                                    "node_id":  "inj-inspect-http",
+                                                    "signal_id":  "flash-rate",
+                                                    "value":  0.006,
+                                                    "unit":  "%"
+                                                },
+                                                {
+                                                    "node_id":  "inj-inspect-http",
+                                                    "signal_id":  "sink-mark",
+                                                    "value":  2.26,
+                                                    "unit":  "%"
+                                                }
+                                            ],
+                   "residual_tasks_or_approvals":  "Root task canceled; all three AgentWorkShop stop requests returned stopped=true; pending approval queue empty before isolated AW shutdown.",
+                   "reset_procedure_reference":  "bench/PIPELINE/run-agentteam.mjs injection reset contract; isolated simulator POST /api/plant/reset",
+                   "reset_started_at_utc":  "2026-10-29T11:12:29.1074246Z",
+                   "notes":  "Run failed before delegation or control writes because fresh DAQ samples stopped arriving. Reset was confined to this run-scoped simulator.",
+                   "operator_id_or_role":  "experiment operator",
+                   "reset_completed_at_utc":  "2026-10-29T11:12:49.1505693Z"
+               },
+    "required_for_post_run_local_closure_only":  true
+}

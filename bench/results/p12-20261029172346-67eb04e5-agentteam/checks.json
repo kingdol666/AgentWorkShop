@@ -1,0 +1,15 @@
+{
+  "qualification": {
+    "status": "NOT-QUALIFIED",
+    "reason": "pre-goal DAQ readiness failed: DAQ pre-goal samples became stale before goal submission"
+  },
+  "workflow_outcome": {
+    "status": "NOT-RUN",
+    "task_id": null
+  },
+  "evidence_integrity": {
+    "status": "NOT-RUN",
+    "reason": "pre-goal DAQ readiness failed: DAQ pre-goal samples became stale before goal submission",
+    "event_log_stability": null
+  }
+}

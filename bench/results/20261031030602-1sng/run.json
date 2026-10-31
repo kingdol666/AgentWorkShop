@@ -1,0 +1,5453 @@
+{
+  "env": {
+    "runId": "20261031030602-1sng",
+    "profile": "integrated",
+    "seed": 42,
+    "base": "http://127.0.0.1:3005",
+    "simBase": "http://127.0.0.1:4011",
+    "simDir": "D:\\codes\\ABO\\AgentWorkShop\\plc-node-simulator",
+    "lines": 5,
+    "awHome": "D:/codes/ABO/AgentWorkShop/../aw-bench-home",
+    "awMode": "home",
+    "ownLines": 4,
+    "satelliteDaq": 1,
+    "protocols": "modbus-tcp/opcua/mqtt/http/modbus-rtu",
+    "preset": "cast-film-physics",
+    "agentHarness": "(none)",
+    "toolHarness": "opencode",
+    "startedAt": "2026-10-31T03:21:54.127Z",
+    "node": "v24.19.0",
+    "platform": "win32 x64",
+    "harnessHash": "f1b50e757e309bc6",
+    "gitCommit": "60fa983e",
+    "harnessFiles": 13,
+    "closedloop": {
+      "writeMode": "governed",
+      "n": 3,
+      "ratioMin": 0.957,
+      "ratioMean": 0.975,
+      "ratioMax": 0.988,
+      "J0mean": 78.515,
+      "JendMean": 87.641,
+      "Jstar": 89.894,
+      "itersMean": 1.667,
+      "writesTotal": 5,
+      "rejectedTotal": 0,
+      "convergedN": 3,
+      "wallSMean": 49.008
+    },
+    "portability": {
+      "preset": "film-line",
+      "devices": 5,
+      "lines": 5,
+      "ownLines": 3,
+      "sampling": 5,
+      "f5Rejected": 9,
+      "f5Total": 9,
+      "falseBlocks": 0,
+      "codeChanges": 0
+    },
+    "biax": {
+      "devices": 9,
+      "signals": 49,
+      "sp": 30,
+      "created": 9,
+      "platformDcw": 30,
+      "platformDaq": 19,
+      "missionWrites": 3,
+      "missionKnobs": 3,
+      "missionFinalUm": 24.8,
+      "missionAttained": true,
+      "missionTraj": [
+        {
+          "iter": 0,
+          "knob": null,
+          "node": null,
+          "from": null,
+          "to": null,
+          "record": null,
+          "thickness": 28.05
+        },
+        {
+          "iter": 1,
+          "knob": "cast-spd-sp",
+          "node": "dw-51806bbf",
+          "from": 32,
+          "to": 33.7,
+          "record": null,
+          "thickness": 28,
+          "meltTemp": 291.625
+        },
+        {
+          "iter": 2,
+          "knob": "fast-roll-sp",
+          "node": "dw-e33500d3",
+          "from": 118,
+          "to": 122.4,
+          "record": null,
+          "thickness": 27.98,
+          "meltTemp": 291.625
+        },
+        {
+          "iter": 3,
+          "knob": "rail-out-sp",
+          "node": "dw-43eafe70",
+          "from": 3000,
+          "to": 3096,
+          "record": null,
+          "thickness": 24.8,
+          "meltTemp": 291.975
+        }
+      ]
+    },
+    "backstop": {
+      "fired": true,
+      "restored": true,
+      "latencyS": 120.213,
+      "recordId": "opt-exploration-mvvtyx4w-gi4rjm",
+      "from": 186.1999969482422,
+      "to": 176.88
+    },
+    "aml": null,
+    "surfaces": null,
+    "verdict": {
+      "pass": 73,
+      "warn": 4,
+      "fail": 0,
+      "phaseFails": 0,
+      "ok": true
+    },
+    "reproCmd": "node bench/pipeline.mjs --profile integrated --seed 42 --cl-seeds 3"
+  },
+  "phases": [
+    {
+      "id": "P0·preflight",
+      "phase": "P0",
+      "title": "Bootstrap simulator & platform",
+      "status": "pass",
+      "note": "自动启动 pid=18232",
+      "durationMs": 248914
+    },
+    {
+      "id": "P1·plant-model",
+      "phase": "P1",
+      "title": "plant model preset + offline optimum W*",
+      "status": "pass",
+      "note": "",
+      "durationMs": 2833
+    },
+    {
+      "id": "P2·provision",
+      "phase": "P2",
+      "title": "multi-protocol multi-line provisioning（≤5 ）",
+      "status": "pass",
+      "note": "5/5 devices ready · 4  lines",
+      "durationMs": 2808
+    },
+    {
+      "id": "P3·integration",
+      "phase": "P3",
+      "title": "multi-protocol DAQ + governed write/read + F5 interception",
+      "status": "pass",
+      "note": "5/5 Linesampling",
+      "durationMs": 14188
+    },
+    {
+      "id": "P4·tool-loop",
+      "phase": "P4",
+      "title": "数采→数控→判定 工具级闭环（harness=opencode，不经 LLM）",
+      "status": "warn",
+      "note": "3  loops",
+      "durationMs": 139416
+    },
+    {
+      "id": "P4m·team-mission",
+      "phase": "P4m",
+      "title": "AgentTeam 优化任务：目标下达 → 时段读数 → 治理写 → 达标收口",
+      "status": "pass",
+      "note": "writes=1 PV=204.6999969482422/204.704",
+      "durationMs": 15562
+    },
+    {
+      "id": "P4b·rollback-records",
+      "phase": "P4b",
+      "title": "Rollback & optimization records (node rollback · verdict/execution separation · param ledger)",
+      "status": "pass",
+      "note": "rollback & ledger passed",
+      "durationMs": 20577
+    },
+    {
+      "id": "P4c·hitl",
+      "phase": "P4c",
+      "title": "HITL 审批闭环（挂起→面板可见→批准→真实写生效）",
+      "status": "warn",
+      "note": "failed",
+      "durationMs": 62711
+    },
+    {
+      "id": "P4d·audit-surfaces",
+      "phase": "P4d",
+      "title": "治理只读面（参数账本·审计·运维日志·报警）",
+      "status": "pass",
+      "note": "11 锚 / 200 审计",
+      "durationMs": 113
+    },
+    {
+      "id": "P4e·recipe-lifecycle",
+      "phase": "P4e",
+      "title": "配方管理全生命周期（版本·已知良好·回退·基准恢复·一键下发）",
+      "status": "pass",
+      "note": "2/2 Line配方全链通过",
+      "durationMs": 362
+    },
+    {
+      "id": "P4f·param-map",
+      "phase": "P4f",
+      "title": "工艺参数映射层：参数面读写 · 标准转换模式 · 分层限界联锁 · Agent param_control",
+      "status": "pass",
+      "note": "4/4 param-layer checks",
+      "durationMs": 439
+    },
+    {
+      "id": "P6·closedloop",
+      "phase": "P6",
+      "title": "闭环优化参数 benchmark（3 seed · 写路径=governed · ≤8 迭代/seed）",
+      "status": "pass",
+      "note": "J/J* ∈ [0.957, 0.988]",
+      "durationMs": 148589
+    },
+    {
+      "id": "P7·frames",
+      "phase": "P7",
+      "title": "多形态数采：向量轮廓与图像帧落库",
+      "status": "pass",
+      "note": "vector 2 / image 2",
+      "durationMs": 3274
+    },
+    {
+      "id": "P8·portability",
+      "phase": "P8",
+      "title": "Cross-scenario portability (re-commission on a second plant preset, config-only)",
+      "status": "pass",
+      "note": "film-line: 3 lines + 2 satellite · F5 9/9 · false blocks 0 · 0 code changes",
+      "durationMs": 19221
+    },
+    {
+      "id": "P8b·backstop",
+      "phase": "P8b",
+      "title": "System backstop drill (PV frozen out of window → system-judged bounded rollback)",
+      "status": "pass",
+      "note": "fired in 120.213s · restored true",
+      "durationMs": 135708
+    },
+    {
+      "id": "P10·biax-line",
+      "phase": "P10",
+      "title": "双拉产线:节点探测补建 → 五协议多节点建线 → AgentTeam 多节点闭环",
+      "status": "pass",
+      "note": "nodes 9/9 · knobs 3 · 24.80μm ✔",
+      "durationMs": 130972
+    },
+    {
+      "id": "P9·subsystems",
+      "phase": "P9",
+      "title": "Platform subsystems (team dispatch · team memory idempotency · harness registry)",
+      "status": "pass",
+      "note": "team COMPLETED · mem ✔ · engines 14(14 avail)",
+      "durationMs": 3282
+    }
+  ],
+  "checks": [
+    {
+      "phase": "P0",
+      "id": "platform-reachable",
+      "title": "platform reachable & authenticated",
+      "status": "pass",
+      "evidence": [
+        "平台 http://127.0.0.1:3005：自动分离启动 pid=78540（日志 D:\\codes\\ABO\\aw-bench-platform.log）",
+        "鉴权 OK (login)",
+        "simulator http://127.0.0.1:4011：自动启动 pid=18232",
+        "隔离配置根 D:/codes/ABO/AgentWorkShop/../aw-bench-home"
+      ]
+    },
+    {
+      "phase": "P0",
+      "id": "daq-sampling-ready",
+      "title": "数采采样恢复(produced 增长)",
+      "status": "warn",
+      "evidence": [
+        "150s 内未观察到采样增长(数采基础设施降级?后续数采类检查可能如实失败)"
+      ]
+    },
+    {
+      "phase": "P1",
+      "id": "preset-applied",
+      "title": "预设 cast-film-physics 已应用",
+      "status": "pass",
+      "evidence": [
+        "devices 5 ",
+        "协议 modbus-tcp, modbus-rtu, opcua, mqtt, http"
+      ]
+    },
+    {
+      "phase": "P1",
+      "id": "field-defaults",
+      "title": "现场=蓝图默认值（6 信号核对）",
+      "status": "pass",
+      "evidence": [
+        "全部信号初始值=蓝图默认值"
+      ]
+    },
+    {
+      "phase": "P1",
+      "id": "offline-optimum",
+      "title": "offline optimum W* (ground truth) available",
+      "status": "pass",
+      "evidence": [
+        "W* = {\"zoneTemp\":212.5,\"screw\":55,\"lineSpeed\":40,\"meltTemp\":212.5,\"pressure\":6.961,\"thickness\":49.18,\"defect\":0.055,\"score\":89.894,\"computedAt\":\"2026-10-31T03:10:13.754Z\"}"
+      ]
+    },
+    {
+      "phase": "P2",
+      "id": "gateway",
+      "title": "gateway controller start (idempotent)",
+      "status": "pass",
+      "evidence": [
+        "POST /api/workshop/daq/controller {action:start}",
+        "采样仍受「活动Line批」门控，故每台有 SP 的devices自成一可开跑Line"
+      ]
+    },
+    {
+      "phase": "P2",
+      "id": "line-1-modbus-tcp",
+      "title": "Line1 [modbus-tcp] 供给",
+      "status": "pass",
+      "evidence": [
+        "line=ln-a0cfb80e daq=dn-4ff6862f dcw=dw-e0125def recipe=rc-a550cd32",
+        "DAQ driver test ✔ 信号「熔体温度」：连接成功,读取 40001 = 209.24000549316406",
+        "SP 中心 200 窗口 [191.6, 208.4]"
+      ]
+    },
+    {
+      "phase": "P2",
+      "id": "line-2-opcua",
+      "title": "Line2 [opcua] 供给",
+      "status": "pass",
+      "evidence": [
+        "line=ln-441966d3 daq=dn-4fe909d9 dcw=dw-90f32f6f recipe=rc-d2198a53",
+        "DAQ driver test ✔ 信号「MeltPressure」：会话建立成功,读取 ns=2;s=AW.P = 16.28",
+        "SP 中心 150 窗口 [141, 159]"
+      ]
+    },
+    {
+      "phase": "P2",
+      "id": "line-3-mqtt",
+      "title": "Line3 [mqtt] 供给",
+      "status": "pass",
+      "evidence": [
+        "line=ln-b5599e19 daq=dn-c638bc19 dcw=dw-4722d1c7 recipe=rc-e1fe076c",
+        "DAQ driver test ✔ 信号「thick」：Broker 连接成功,aw/sim/thick → scalar 49.51(jsonPath=data.thick)(被动订阅:收到报文即入库)",
+        "SP 中心 95 窗口 [89, 101]"
+      ]
+    },
+    {
+      "phase": "P2",
+      "id": "line-4-http",
+      "title": "Line4 [http] 供给",
+      "status": "pass",
+      "evidence": [
+        "line=ln-662c0028 daq=dn-ee2cc952 dcw=dw-3476a700 recipe=rc-684d1c35",
+        "DAQ driver test ✔ 信号「defect」：接口可达,取值 = 0.654",
+        "SP 中心 1 窗口 [0.91, 1.09]"
+      ]
+    },
+    {
+      "phase": "P2",
+      "id": "line-5-modbus-rtu",
+      "title": "Line5 [modbus-rtu] 供给（satellite DAQ）",
+      "status": "pass",
+      "evidence": [
+        "line=ln-662c0028 daq=dn-ec895752 dcw=✘ recipe=rc-684d1c35 ↪hosted by line4",
+        "DAQ driver test ✔ 信号「晶点计数」：网关连接成功,读取 40001 = 3",
+        "（该devices无可用 DCW 导出，作为satellite DAQ随宿主批采样）"
+      ]
+    },
+    {
+      "phase": "P3",
+      "id": "line-1-io",
+      "title": "Line1 [modbus-tcp] integration check",
+      "status": "pass",
+      "evidence": [
+        "✔ DAQ samples stored 10  points (modbus-tcp real driver）",
+        "✔ 约6写 p50=38.316ms p95=48.687ms，readback deviation 0.04",
+        "✔ Governance F5: 6/6 rejected (modbus-tcp 真实链路），legal write受理"
+      ]
+    },
+    {
+      "phase": "P3",
+      "id": "line-2-io",
+      "title": "Line2 [opcua] integration check",
+      "status": "pass",
+      "evidence": [
+        "✔ DAQ samples stored 10  points (opcua real driver）",
+        "✔ 约6写 p50=21.519ms p95=21.744ms，readback deviation 0",
+        "✔ Governance F5: 6/6 rejected (opcua 真实链路），legal write受理"
+      ]
+    },
+    {
+      "phase": "P3",
+      "id": "line-3-io",
+      "title": "Line3 [mqtt] integration check",
+      "status": "pass",
+      "evidence": [
+        "✔ DAQ samples stored 5  points (mqtt real driver）",
+        "✔ 约6写 p50=24.044ms p95=27.682ms，readback deviation 0",
+        "✔ Governance F5: 6/6 rejected (mqtt 真实链路），legal write受理"
+      ]
+    },
+    {
+      "phase": "P3",
+      "id": "line-4-io",
+      "title": "Line4 [http] integration check",
+      "status": "pass",
+      "evidence": [
+        "✔ DAQ samples stored 13  points (http real driver）",
+        "✔ 约6写 p50=34.884ms p95=39.837ms，readback deviation null",
+        "✔ Governance F5: 6/6 rejected (http 真实链路），legal write受理"
+      ]
+    },
+    {
+      "phase": "P3",
+      "id": "line-5-io",
+      "title": "Line5 [modbus-rtu] integration check",
+      "status": "pass",
+      "evidence": [
+        "✔ DAQ samples stored 14  points (modbus-rtu real driver）",
+        "no SP write point; write/governance sub-checks skipped"
+      ]
+    },
+    {
+      "phase": "P4",
+      "id": "tool-loop-setup",
+      "title": "闭环夹具（channel+agent）",
+      "status": "pass",
+      "evidence": [
+        "channel=1290202d-cc15-474e-87ab-d498fa77efd1",
+        "agent=fb153e62-fe23-403f-81d1-bd37ddcf77bc",
+        "harness=opencode"
+      ]
+    },
+    {
+      "phase": "P4",
+      "id": "tool-bridge",
+      "title": "opencode 的 host 工具直调面可用",
+      "status": "pass",
+      "evidence": [
+        "探测 my_industrial_nodes → 你尚未绑定任何工业对象。请让用户或 lead 为你绑定:数控/数采节点(kind=daq 观察)或配方(kind=recipe,参数写入与下发)。"
+      ]
+    },
+    {
+      "phase": "P4",
+      "id": "line-1-loop",
+      "title": "Line1 [modbus-tcp] Agent 闭环收敛（3/3 轮）",
+      "status": "pass",
+      "evidence": [
+        "iter1: SP→194.96 ✔ · 回读 195 ✔ · daq ✔",
+        "iter2: SP→197.48 ✔ · 回读 197.5 ✔ · daq ✔",
+        "iter3: SP→200 ✔ · 回读 200 ✔ · daq ✔",
+        "向窗口中心收敛 ✔ · 耗时 35.327s"
+      ]
+    },
+    {
+      "phase": "P4",
+      "id": "line-2-loop",
+      "title": "Line2 [opcua] Agent 闭环收敛（3/3 轮）",
+      "status": "pass",
+      "evidence": [
+        "iter1: SP→144.6 ✔ · 回读 145 ✔ · daq ✔",
+        "iter2: SP→147.3 ✔ · 回读 147 ✔ · daq ✔",
+        "iter3: SP→150 ✔ · 回读 150 ✔ · daq ✔",
+        "向窗口中心收敛 ✔ · 耗时 34.576s"
+      ]
+    },
+    {
+      "phase": "P4",
+      "id": "line-3-loop",
+      "title": "Line3 [mqtt] Agent 闭环收敛（0/3 轮）",
+      "status": "warn",
+      "evidence": [
+        "iter1: SP→91.4 ✔ · 回读 98 ✘ · daq ✔",
+        "iter2: SP→93.2 ✔ · 回读 97.4 ✘ · daq ✔",
+        "iter3: SP→95 ✔ · 回读 98 ✘ · daq ✔",
+        "向窗口中心收敛 ✘ · 耗时 34.627s"
+      ]
+    },
+    {
+      "phase": "P4",
+      "id": "line-4-loop",
+      "title": "Line4 [http] Agent 闭环收敛（3/3 轮）",
+      "status": "pass",
+      "evidence": [
+        "iter1: SP→0.946 ✔ · 回读 n/a(该驱动不回读) ✔ · daq ✔",
+        "iter2: SP→0.973 ✔ · 回读 n/a(该驱动不回读) ✔ · daq ✔",
+        "iter3: SP→1 ✔ · 回读 n/a(该驱动不回读) ✔ · daq ✔",
+        "向窗口中心收敛 ✔ · 耗时 34.611s"
+      ]
+    },
+    {
+      "phase": "P4",
+      "id": "plant-response",
+      "title": "工艺模型响应（SP→plant truth 随动）",
+      "status": "pass",
+      "evidence": [
+        "真值样本 6 → 201",
+        "plant state: {\"enabled\":true,\"running\":true,\"kind\":\"castfilm\",\"phase\":\"steady\",\"disturbances\":{\"heaterDecay\":1,\"feedDriftPerMin\":0.15},\"seed\":42,\"timeScale\":1,\"configuredTimeScale\":6,\"elapsedS\""
+      ]
+    },
+    {
+      "phase": "P4m",
+      "id": "mission-board",
+      "title": "任务板：优化任务下达并由 lead 派发",
+      "status": "pass",
+      "evidence": [
+        "channel=9fe5ab77-6750-4ded-b9f5-7e30cb6ac60c parent=fb77d189-6d11-491d-9f7d-a1faaff47171 leadChild=36495721-dc61-42d8-b38b-c6285bffca33 assignee=ee40b746-8829-4ed7-ba3f-03ad7fc8d95d"
+      ]
+    },
+    {
+      "phase": "P4m",
+      "id": "mission-timescale-read",
+      "title": "时段数据读取（daq_query from/to/bucket）",
+      "status": "pass",
+      "evidence": [
+        "window 300s · isError=false",
+        "sample: 数采数据查询结果(1 个节点):\n\n■ L1-DAQ-modbus-tcp ip16pix2[id=dn-4ff6862f](熔体/箱体温度)单位 ℃,正常量程 0~400℃,当前状态 ok,时间窗 2026-10-31T11:07 ~ 2026-10-31T11:12(降采样 "
+      ]
+    },
+    {
+      "phase": "P4m",
+      "id": "mission-governed-write",
+      "title": "受治理参数下发（1 写全开记录+判定）",
+      "status": "pass",
+      "evidence": [
+        "iter1: SP→204.704 ✔ · record=opened+judged · PV≈204.7 ✘"
+      ]
+    },
+    {
+      "phase": "P4m",
+      "id": "mission-journal",
+      "title": "参数账本归因（Agent source 可追溯）",
+      "status": "pass",
+      "evidence": [
+        "journal sample: 优化记录(4 条,含参数/判定/窗口):\n- opt-0397fb6e [open] L1-DCW-modbus-tcp ip16pix2: 200 → 204.704,设定 11:12:50,判定 未判定,进行中\n  假设: mission iter 1: reach 204.704±0.75\n-"
+      ]
+    },
+    {
+      "phase": "P4m",
+      "id": "mission-attained",
+      "title": "优化目标达成（|PV−204.704|≤0.75）",
+      "status": "pass",
+      "evidence": [
+        "writes=1/3 · finalPV=204.6999969482422 · target=204.704 · tol=0.75"
+      ]
+    },
+    {
+      "phase": "P4m",
+      "id": "mission-closed",
+      "title": "任务收口（lead 派发→worker 剧本完成→父任务聚合）",
+      "status": "pass",
+      "evidence": [
+        "terminalState=COMPLETED · writes=1 · reached=true"
+      ]
+    },
+    {
+      "phase": "P4b",
+      "id": "line-1-optrecord",
+      "title": "Line1 优化记录生命周期",
+      "status": "pass",
+      "evidence": [
+        "current 204.6999969482422 → record A writes 208.06 (up)，记录 B writes 201.34 (down); opposite directions to dodge the rollback cooldown",
+        "✔ (keep path) record opt-26b0a9c2 verdict keep → status 200",
+        "✔ (rollback path) record opt-3d052886 verdict rollback (recorded only; PLC still 201.3000030517578)",
+        "✔ rollback executed (status 200) → readback 208.10000610351562 (expected record B from=208.06)",
+        "✔ 优化记录查询面可见本节点记录 7  (judged=6）"
+      ]
+    },
+    {
+      "phase": "P4b",
+      "id": "line-1-rbjudge",
+      "title": "Line1 撤销记录 opt-79e17c17 判定关闭",
+      "status": "pass",
+      "evidence": [
+        "REST judge keep → status 200"
+      ]
+    },
+    {
+      "phase": "P4b",
+      "id": "line-1-rollback",
+      "title": "Line1 node-level single-step rollback (undo stack)",
+      "status": "pass",
+      "evidence": [
+        "✔ write 205.04 effective (readback 205, before 208.10000610351562)",
+        "✔ journal rollback 受理（status 200，记录 opt-79e17c17）",
+        "✔ readback after rollback 208.10000610351562 (expected back to 208.10000610351562, tolerance 0.75)"
+      ]
+    },
+    {
+      "phase": "P4b",
+      "id": "param-ledger",
+      "title": "参数台账（三值对照 + 在册历史）",
+      "status": "pass",
+      "evidence": [
+        "✔ 参数台账可用（字段：nodeId, nodeName, current, recipeTarget, lastGood, journal, records）"
+      ]
+    },
+    {
+      "phase": "P4c",
+      "id": "line-2-hitl",
+      "title": "Line2 HITL 审批闭环",
+      "status": "warn",
+      "evidence": [
+        "✔ 下发在人工确认模式下**挂起**，审批面板出现待审项 ap-dcee612a（detail: L2-DCW-opcua ip16pix2(烘箱温度设定)设定 148.2rpm,有效写入区间 141~159rpm(节点安全量程 ∩ 配方）",
+        "✔ verdict approved (status 200) → pending write **unblocked**: 探索步被拒绝(未写入产线,已记录 rejected):\n下发被拒绝:回退冷却中:节点「L2-DCW-opcua ip16pix2」242s 内禁止同向重写(刚从 150 回退到 1",
+        "✘ post-approval PLC effect: readback 147 (expected 148.2)",
+        "审批裁决时延 464 ms（挂起→批准，含轮询周期）"
+      ]
+    },
+    {
+      "phase": "P4d",
+      "id": "audit-surfaces",
+      "title": "治理只读面",
+      "status": "pass",
+      "evidence": [
+        "✔ 参数变更账本 journal：本产线 11  anchors (source coverage  rollback/manual/agent/recipe）",
+        "✔ audit: 200 entries",
+        "✔ ops-logs: 200 entries",
+        "✔ 报警记录：全局 24 （含历史）"
+      ]
+    },
+    {
+      "phase": "P4e",
+      "id": "line-1-recipe",
+      "title": "Line1 [modbus-tcp] recipe lifecycle",
+      "status": "pass",
+      "evidence": [
+        "(1) initial versions 1, current param value 200",
+        "✔ (2) versions after edit 2 (+1), param value 201.68 (expected 201.68)",
+        "✔ (3) 标记已知良好批次 runId=rr-1b5335a5 → lastGood=rr-1b5335a5",
+        "✔ (4) versions after revert-to-v1 3 (+1, non-destructive), param value 200 (expected back to 200)",
+        "✔ (5) baseline restore rollback-good → applied 1 params (status 200)",
+        "✔ (6) 一键下发 apply → 新批次 rr-4f9e2db6 (status 200)"
+      ]
+    },
+    {
+      "phase": "P4e",
+      "id": "line-2-recipe",
+      "title": "Line2 [opcua] recipe lifecycle",
+      "status": "pass",
+      "evidence": [
+        "(1) initial versions 1, current param value 150",
+        "✔ (2) versions after edit 2 (+1), param value 151.8 (expected 151.8)",
+        "✔ (3) 标记已知良好批次 runId=rr-78515642 → lastGood=rr-78515642",
+        "✔ (4) versions after revert-to-v1 3 (+1, non-destructive), param value 150 (expected back to 150)",
+        "✔ (5) baseline restore rollback-good → applied 1 params (status 200)",
+        "✔ (6) 一键下发 apply → 新批次 rr-0865b199 (status 200)"
+      ]
+    },
+    {
+      "phase": "P4f",
+      "id": "param-facade",
+      "title": "Line2 [opcua] 参数面自动生成且无寄存器泄漏",
+      "status": "pass",
+      "evidence": [
+        "param=pp-fd4d92df key=temp-sp unit=rpm",
+        "含 register/dataType/driverConfig? 无 ✔"
+      ]
+    },
+    {
+      "phase": "P4f",
+      "id": "param-limits",
+      "title": "Line2 基准限界 [143.7,156.3] + 产品限界 [146.22,153.78] 设定",
+      "status": "pass",
+      "evidence": [
+        "有效交集(含配方窗) 141~159 → param 143.7~156.3 → product 146.22~153.78 · node 层 50~200（四层收窄：node ∩ param ∩ product ∩ recipe）"
+      ]
+    },
+    {
+      "phase": "P4f",
+      "id": "param-write-governed",
+      "title": "Line2 参数面写入联锁（交集内写入 · 越产品层拦截 · 越基准层拦截 · 参数读回）",
+      "status": "pass",
+      "evidence": [
+        "148.866 → ✔ 写入+回读",
+        "155.04 → ✔ 产品层拦截",
+        "157.65 → ✔ 基准限界层拦截",
+        "param read → ✔ 148.866rpm"
+      ]
+    },
+    {
+      "phase": "P4f",
+      "id": "agent-param-tools",
+      "title": "Line2 Agent 参数写面 v2 契约（直写拒 · 摘除 param_read · 未绑定拒）",
+      "status": "pass",
+      "evidence": [
+        "bound param_control → ✔ v2 拒绝+指引配方面",
+        "param_read → ✔ 已随 v2 摘除",
+        "unbound agent → ✔ v2 拒绝(不泄露授权面)"
+      ]
+    },
+    {
+      "phase": "P6",
+      "id": "twin-nodes",
+      "title": "cast-film twin node provisioning（执行器 + 传感器）",
+      "status": "pass",
+      "evidence": [
+        "✔ actuator nodes 6/6：zone1-sp, zone2-sp, zone3-sp, screw-sp, linespeed-sp, diegap-sp",
+        "✔ sensor nodes 5/5：melt-temp, melt-pressure, film-thickness, defect-rate, gels-count"
+      ]
+    },
+    {
+      "phase": "P6",
+      "id": "w-star",
+      "title": "离线最优 W*（ground truth）",
+      "status": "pass",
+      "evidence": [
+        "W* = {\"zoneTemp\":212.5,\"screw\":55,\"lineSpeed\":40,\"meltTemp\":212.5,\"pressure\":6.961,\"thickness\":49.18,\"defect\":0.055,\"score\":89.894,\"computedAt\":\"2026-10-31T03:10:13.754Z\"}",
+        "起始工况 {\"zone\":200,\"screw\":150,\"lineSpeed\":95,\"dieGap\":1}（J 显著低于 W*）"
+      ]
+    },
+    {
+      "phase": "P6",
+      "id": "seed-42",
+      "title": "seed=42 闭环优化（J/J*=0.988）",
+      "status": "pass",
+      "evidence": [
+        "预热 0.126s（熔体温度 200.6℃，达工艺窗 [195,225]）",
+        "iter0 起点：h=56.18μm defect=0.517% P=17.48MPa T=209.9℃ N=150 v=95.0 → J=63.59",
+        "iter1 下发 N=133 v=95 z=200 → h=51.43μm defect=0.100% P=16.83MPa T=208.6℃ → J=88.80 ",
+        "iter2 下发 N=129 v=95 z=200 → h=49.58μm defect=0.183% P=16.08MPa T=207.2℃ → J=88.76 ",
+        "✔ 连续两次评估满足收敛判据，第 3 轮前终止",
+        "收敛=true · 迭代=2 · 写=2 · rejected=0 · J0=63.585 → Jend=88.779 · J*=89.894 · 比值=0.988"
+      ]
+    },
+    {
+      "phase": "P6",
+      "id": "seed-43",
+      "title": "seed=43 闭环优化（J/J*=0.98）",
+      "status": "pass",
+      "evidence": [
+        "预热 0.023s（熔体温度 207.06℃，达工艺窗 [195,225]）",
+        "iter0 起点：h=52.10μm defect=0.567% P=17.57MPa T=209.9℃ N=150 v=95.0 → J=85.89",
+        "iter1 下发 N=144 v=95 z=200 → h=53.98μm defect=0.033% P=18.07MPa T=208.8℃ → J=77.52 ",
+        "iter2 下发 N=133 v=95 z=200 → h=49.20μm defect=0.333% P=16.67MPa T=207.0℃ → J=88.07 ",
+        "iter3 下发 N=135 v=95 z=200 → h=49.62μm defect=0.300% P=16.62MPa T=205.3℃ → J=88.07 ",
+        "✔ 连续两次评估满足收敛判据，第 4 轮前终止",
+        "收敛=true · 迭代=3 · 写=3 · rejected=0 · J0=85.888 → Jend=88.072 · J*=89.894 · 比值=0.98"
+      ]
+    },
+    {
+      "phase": "P6",
+      "id": "seed-44",
+      "title": "seed=44 闭环优化（J/J*=0.957）",
+      "status": "pass",
+      "evidence": [
+        "预热 0.024s（熔体温度 205.28℃，达工艺窗 [195,225]）",
+        "iter0 起点：h=51.63μm defect=0.683% P=17.43MPa T=210.0℃ N=150 v=95.0 → J=86.07",
+        "✔ 连续两次评估满足收敛判据，第 1 轮前终止",
+        "收敛=true · 迭代=0 · 写=0 · rejected=0 · J0=86.073 → Jend=86.073 · J*=89.894 · 比值=0.957"
+      ]
+    },
+    {
+      "phase": "P6",
+      "id": "closedloop-aggregate",
+      "title": "闭环优化聚合（n=3）",
+      "status": "pass",
+      "evidence": [
+        "J/J*：min 0.957 · mean 0.975 · max 0.988（J* = 89.894）",
+        "J start均值 78.515 → end均值 87.641",
+        "平均迭代 1.667  · 总写 5 · 越界rejected 0 · 收敛 3/3 · 平均墙钟 49.008s/seed"
+      ]
+    },
+    {
+      "phase": "P7",
+      "id": "frames",
+      "title": "多形态数采（向量/图像帧）",
+      "status": "pass",
+      "evidence": [
+        "✔ 向量轮廓帧 2 （52.405,52.571,52.693,53.459,53.587,53.67,53.598,54.035,54.517,54.506,55.171,54.569,54.917,53.678,55.146,55.298,55.187,54.606,55.533,54.75,56.378,55.091,56.077,56.141,55.941,55.005,55.849,55.276,56.016,56.114,54.865,56.16,55.478,56.118,55.767,56.177,56.604,55.89,56.004,56.328,54.37,56.058,55.09,56.235,55.94,55.602,55.164,55.752,54.465,55.169,54.873,54.73,54.492,53.676,54.484,53.886,53.455,53.514,53.4,54.342,53.119,53.112,52.748,51.802 points）",
+        "✔ 图像帧 2 （96×32 image/png）"
+      ]
+    },
+    {
+      "phase": "P8",
+      "id": "scenario-switch",
+      "title": "second plant scenario applied: film-line",
+      "status": "pass",
+      "evidence": [
+        "devices 5 · protocols modbus-tcp, modbus-rtu, opcua, mqtt, http",
+        "信号域/动力学与第一场景（cast-film-physics）完全不同 —— 框架代码零改动"
+      ]
+    },
+    {
+      "phase": "P8",
+      "id": "commission-1-modbus-tcp",
+      "title": "scenario[film-line] line 1 [modbus-tcp] provisioned",
+      "status": "pass",
+      "evidence": [
+        "line=ln-e847fc9e daq=dn-92b0973a dcw=dw-672bb237",
+        "SP window [164.4, 195.6]"
+      ]
+    },
+    {
+      "phase": "P8",
+      "id": "commission-2-opcua",
+      "title": "scenario[film-line] line 2 [opcua] provisioned",
+      "status": "pass",
+      "evidence": [
+        "line=ln-c67ce90e daq=dn-1a8d41af dcw=dw-14e62008",
+        "SP window [164.4, 195.6]"
+      ]
+    },
+    {
+      "phase": "P8",
+      "id": "commission-3-mqtt",
+      "title": "scenario[film-line] line 3 [mqtt] provisioned",
+      "status": "pass",
+      "evidence": [
+        "line=ln-41770dff daq=dn-b0191615 dcw=dw-66dd8654",
+        "SP window [54, 66]"
+      ]
+    },
+    {
+      "phase": "P8",
+      "id": "commission-4-modbus-rtu",
+      "title": "scenario[film-line] line 4 [modbus-rtu] provisioned (satellite DAQ)",
+      "status": "pass",
+      "evidence": [
+        "line=ln-41770dff daq=dn-06089870 dcw=✘",
+        "(no SP export → satellite DAQ)"
+      ]
+    },
+    {
+      "phase": "P8",
+      "id": "commission-5-http",
+      "title": "scenario[film-line] line 5 [http] provisioned (satellite DAQ)",
+      "status": "pass",
+      "evidence": [
+        "line=ln-41770dff daq=dn-d3f00dc4 dcw=✘",
+        "(no SP export → satellite DAQ)"
+      ]
+    },
+    {
+      "phase": "P8",
+      "id": "port-1-modbus-tcp",
+      "title": "scenario[film-line] line 1 [modbus-tcp] integration",
+      "status": "pass",
+      "evidence": [
+        "✔ DAQ samples 12 pts (modbus-tcp real driver)",
+        "✔ governed write 186.24 → HTTP 200",
+        "readback deviation 0.04",
+        "✔ F5 out-of-window 3/3 rejected · legal write accepted (0 false block)"
+      ]
+    },
+    {
+      "phase": "P8",
+      "id": "port-2-opcua",
+      "title": "scenario[film-line] line 2 [opcua] integration",
+      "status": "pass",
+      "evidence": [
+        "✔ DAQ samples 12 pts (opcua real driver)",
+        "✔ governed write 186.24 → HTTP 200",
+        "readback deviation 0",
+        "✔ F5 out-of-window 3/3 rejected · legal write accepted (0 false block)"
+      ]
+    },
+    {
+      "phase": "P8",
+      "id": "port-3-mqtt",
+      "title": "scenario[film-line] line 3 [mqtt] integration",
+      "status": "pass",
+      "evidence": [
+        "✔ DAQ samples 6 pts (mqtt real driver)",
+        "✔ governed write 62.4 → HTTP 200",
+        "readback deviation 0",
+        "✔ F5 out-of-window 3/3 rejected · legal write accepted (0 false block)"
+      ]
+    },
+    {
+      "phase": "P8",
+      "id": "port-4-modbus-rtu",
+      "title": "scenario[film-line] line 4 [modbus-rtu] integration",
+      "status": "pass",
+      "evidence": [
+        "✔ DAQ samples 11 pts (modbus-rtu real driver)",
+        "no SP write point; write/governance sub-checks skipped (satellite DAQ)"
+      ]
+    },
+    {
+      "phase": "P8",
+      "id": "port-5-http",
+      "title": "scenario[film-line] line 5 [http] integration",
+      "status": "pass",
+      "evidence": [
+        "✔ DAQ samples 10 pts (http real driver)",
+        "no SP write point; write/governance sub-checks skipped (satellite DAQ)"
+      ]
+    },
+    {
+      "phase": "P8b",
+      "id": "cleanup",
+      "title": "遗留 open 记录清场（关闭 8/8 条）",
+      "status": "pass",
+      "evidence": [
+        "records closed: 8/8"
+      ]
+    },
+    {
+      "phase": "P8b",
+      "id": "open-record",
+      "title": "探索记录 opt-exploration-mvvtyx4w-gi4rjm 已开（基线 186.1999969482422 → 176.88，auto 策略）",
+      "status": "pass",
+      "evidence": [
+        "探索步完成(已真实写入产线并记录):\n  记录: opt-exploration-mvvtyx4w-gi4rjm\n  控制: L1-DCW-modbus-tcp ip16pix2p8(dw-672bb237) 186.2 → 176.88(步长 9.320,方向 down)\n  "
+      ]
+    },
+    {
+      "phase": "P8b",
+      "id": "freeze",
+      "title": "DAQ temp-pv 已冻结至 312（窗外，窗 [164.4, 195.6]）",
+      "status": "pass",
+      "evidence": [
+        "device=dev-2eb75b06 signal=temp-pv"
+      ]
+    },
+    {
+      "phase": "P8b",
+      "id": "backstop-verdict",
+      "title": "系统兜底判定回退 + 自动恢复基线",
+      "status": "pass",
+      "evidence": [
+        "判定 by=system verdict=rollback · 时延 120.213s（环境类，节拍决定）",
+        "PLC 值 186.1999969482422 → 期望基线 186.1999969482422（±0.75） ✔"
+      ]
+    },
+    {
+      "phase": "P8b",
+      "id": "restore",
+      "title": "过程量解冻 + 第一场景恢复: cast-film-physics",
+      "status": "pass",
+      "evidence": [
+        "rig left as found"
+      ]
+    },
+    {
+      "phase": "P10",
+      "id": "biax-ensure",
+      "title": "节点探测补建(9 建缺失 / 0 修复 / 0 原样)",
+      "status": "pass",
+      "evidence": [
+        "devices 9/9 · signals 49(SP 30 + PV 19) · 协议 opcua/modbus-tcp/modbus-rtu/mqtt/http",
+        "描述缺失 0 · 物理引擎 kind=biax thickness=28.02 μm",
+        "缺失设备: biax-dryer-opcua, biax-extruder-mbtcp, biax-pump-rtu, biax-casting-mbtcp, biax-mdo-mbtcp, biax-tdo-opcua, biax-gauge-mqtt, biax-inspect-http, biax-winder-mbtcp · 漂移修复: (无)"
+      ]
+    },
+    {
+      "phase": "P10",
+      "id": "biax-provision",
+      "title": "五协议多节点建线(DCW 30 + DAQ 19,驱动实测 9/9)",
+      "status": "pass",
+      "evidence": [
+        "line=ln-1b30343d recipe=rc-3ec0b31e started=true",
+        "driver tests: dryer✔ extruder✔ pump✔ casting✔ mdo✔ tdo✔ gauge✔ inspect✔ winder✔"
+      ]
+    },
+    {
+      "phase": "P10",
+      "id": "biax-sampling",
+      "title": "测厚仪真实链路采样(1 点)",
+      "status": "pass",
+      "evidence": [
+        "daq=dn-9c35071b · samples=1"
+      ]
+    },
+    {
+      "phase": "P10",
+      "id": "biax-agent-cards",
+      "title": "Agent 语义卡含双拉工艺描述(semantics 贯通)",
+      "status": "warn",
+      "evidence": [
+        "语义卡长度 16048 · 关键词命中 铸片辊速度",
+        "sample: ### ⚙ 频道执行模式:auto(默认,频道不加额外约束)—— 是否人工批准由产线总闸与你的绑定模式决定;自动执行的下发必须附带 hypothesis 依据,四层限界/单步上限/运行门照常生效\n\n#### ◆ L1-DCW-modbus-tcp ip16pix2 [id=dw-e0125def]\n- 物理量: 烘箱温"
+      ]
+    },
+    {
+      "phase": "P10",
+      "id": "biax-mission-board",
+      "title": "任务板:双拉优化任务下达并由 lead 派发",
+      "status": "pass",
+      "evidence": [
+        "parent task + lead child: ✔"
+      ]
+    },
+    {
+      "phase": "P10",
+      "id": "biax-mission-multinode",
+      "title": "多节点受治理写(3 个执行节点 / 3 写)",
+      "status": "pass",
+      "evidence": [
+        "1. task board: channel=7c84a6fd-7e30-4f18-aeb8-d2674463a078 parent=9ece2e7d-91c7-4b0e-9ae6-4b314c136b10 leadChild=d1511907-44bc-4436-9713-9e917453980d",
+        "2. daq_query(测厚仪, from/to/bucket): isError=false · tail=[28.1,3.5,1.6]",
+        "3. initial thickness=28.05 μm(目标 25±0.7)",
+        "iter1: cast-spd-sp 32→33.7 ✔ batch=(未回传) · thickness→28.00μm · 复测待判读",
+        "        meltTemp=291.6℃(安全窗 268~300)",
+        "iter2: fast-roll-sp 118→122.4 ✔ batch=(未回传) · thickness→27.98μm · 复测待判读",
+        "        meltTemp=291.6℃(安全窗 268~300)",
+        "iter3: rail-out-sp 3000→3096 ✔ batch=(未回传) · thickness→24.80μm · 复测待判读"
+      ]
+    },
+    {
+      "phase": "P10",
+      "id": "biax-mission-attained",
+      "title": "厚度目标达成(|PV−25.0|≤0.7μm,final=24.80)",
+      "status": "pass",
+      "evidence": [
+        "writes=3/6 · distinctKnobs=3 · final=24.80μm",
+        "        meltTemp=292.0℃(安全窗 268~300)",
+        "4. journal(铸速节点)归因 Agent: ✔ · 优化记录(1 条,含参数/判定/窗口):\n- opt-a70915b6 [open] 铸片辊速度SP·ip16pix2: 32 → 33.7,设定 11:19:44,判定 未判定,进行中\n  假设: biax mission iter 1:",
+        "5. outcome: writes=3 distinctKnobs=3 final=24.80μm attained=true",
+        "6. task terminal=COMPLETED"
+      ]
+    },
+    {
+      "phase": "P10",
+      "id": "biax-mission-journal",
+      "title": "参数账本 Agent 归因(铸速节点)",
+      "status": "pass",
+      "evidence": []
+    },
+    {
+      "phase": "P10",
+      "id": "biax-mission-closed",
+      "title": "任务收口(父任务 COMPLETED)",
+      "status": "pass",
+      "evidence": [
+        "terminal=COMPLETED"
+      ]
+    },
+    {
+      "phase": "P10",
+      "id": "biax-restore",
+      "title": "双拉线停止 + 第一场景恢复: cast-film-physics",
+      "status": "pass",
+      "evidence": [
+        "rig left as found"
+      ]
+    },
+    {
+      "phase": "P9",
+      "id": "team-dispatch",
+      "title": "团队调度（lead 派发 → worker 完成）",
+      "status": "pass",
+      "evidence": [
+        "终态 COMPLETED · assignee=7351ba49-8434-4124-af98-6556abc05c73（lead 认领父任务） · 子任务派发给 worker: ✔"
+      ]
+    },
+    {
+      "phase": "P9",
+      "id": "team-memory",
+      "title": "团队记忆写入 + dedupKey 幂等",
+      "status": "pass",
+      "evidence": [
+        "POST×2 status 200/200 → 列表中匹配 1 条（期望 1）"
+      ]
+    },
+    {
+      "phase": "P9",
+      "id": "harness-registry",
+      "title": "引擎注册表枚举 + 可用性探测",
+      "status": "pass",
+      "evidence": [
+        "注册 14 引擎（期望 ≥14） · 环境可用 14 · 覆盖 mock/RPC/SDK/CLI 族"
+      ]
+    }
+  ],
+  "lines": [
+    {
+      "index": 1,
+      "protocol": "modbus-tcp",
+      "simDeviceId": "dev-extruder-mbtcp",
+      "simDeviceName": "挤出主机PLC(Modbus TCP)",
+      "dcwSignal": "zone1-sp",
+      "daqSignal": "熔体温度",
+      "satellite": false,
+      "hostLineIndex": null,
+      "driverTest": {
+        "ok": true,
+        "message": "连接成功,读取 40001 = 209.24000549316406"
+      },
+      "exports": {
+        "daq": {
+          "host": "127.0.0.1",
+          "port": 17040,
+          "unitId": 1,
+          "register": 40001,
+          "registerType": "holding",
+          "dataType": "float32",
+          "byteOrder": "big"
+        },
+        "dcw": {
+          "host": "127.0.0.1",
+          "port": 17040,
+          "unitId": 1,
+          "register": 40021,
+          "registerType": "holding",
+          "dataType": "float32",
+          "byteOrder": "big"
+        }
+      },
+      "node": {},
+      "ids": {
+        "line": "ln-a0cfb80e",
+        "product": "pd-3e14ab6e",
+        "daq": "dn-4ff6862f",
+        "dcw": "dw-e0125def",
+        "recipe": "rc-a550cd32"
+      },
+      "window": {
+        "min": 191.6,
+        "max": 208.4
+      },
+      "errors": [],
+      "setpoint": {
+        "lo": 120,
+        "hi": 260,
+        "center": 200,
+        "decimals": 1
+      },
+      "started": true,
+      "daqSamples": 10,
+      "writeP50": 38.316,
+      "writeP95": 48.687,
+      "writeMean": 39.77,
+      "readbackDelta": 0.04,
+      "f5Rejected": 6,
+      "f5Total": 6,
+      "falseBlock": 0,
+      "loopIterations": 3,
+      "convergenceS": 35.327,
+      "recordLifecycle": true,
+      "nodeRollback": true,
+      "recipeLifecycle": {
+        "ok": true,
+        "steps": {
+          "v0": 1,
+          "v1": 2,
+          "v1val": 201.68,
+          "lastGoodRunId": "rr-1b5335a5",
+          "v2": 3,
+          "v2val": 200,
+          "rollbackGood": 1,
+          "appliedRunId": "rr-4f9e2db6"
+        }
+      }
+    },
+    {
+      "index": 2,
+      "protocol": "opcua",
+      "simDeviceId": "dev-extruder-opcua",
+      "simDeviceName": "熔体泵送单元(OPC UA)",
+      "dcwSignal": "screw-sp",
+      "daqSignal": "MeltPressure",
+      "satellite": false,
+      "hostLineIndex": null,
+      "driverTest": {
+        "ok": true,
+        "message": "会话建立成功,读取 ns=2;s=AW.P = 16.28"
+      },
+      "exports": {
+        "daq": {
+          "endpoint": "opc.tcp://127.0.0.1:6840",
+          "nodeId": "ns=2;s=AW.P"
+        },
+        "dcw": {
+          "endpoint": "opc.tcp://127.0.0.1:6840",
+          "nodeId": "ns=2;s=AW.N.Sp"
+        }
+      },
+      "node": {},
+      "ids": {
+        "line": "ln-441966d3",
+        "product": "pd-caf1c8af",
+        "daq": "dn-4fe909d9",
+        "dcw": "dw-90f32f6f",
+        "recipe": "rc-d2198a53"
+      },
+      "window": {
+        "min": 141,
+        "max": 159
+      },
+      "errors": [],
+      "setpoint": {
+        "lo": 50,
+        "hi": 200,
+        "center": 150,
+        "decimals": 0
+      },
+      "started": true,
+      "daqSamples": 10,
+      "writeP50": 21.519,
+      "writeP95": 21.744,
+      "writeMean": 16.179,
+      "readbackDelta": 0,
+      "f5Rejected": 6,
+      "f5Total": 6,
+      "falseBlock": 0,
+      "loopIterations": 3,
+      "convergenceS": 34.576,
+      "hitl": {
+        "ok": false,
+        "latencyMs": 464
+      },
+      "recipeLifecycle": {
+        "ok": true,
+        "steps": {
+          "v0": 1,
+          "v1": 2,
+          "v1val": 151.8,
+          "lastGoodRunId": "rr-78515642",
+          "v2": 3,
+          "v2val": 150,
+          "rollbackGood": 1,
+          "appliedRunId": "rr-0865b199"
+        }
+      }
+    },
+    {
+      "index": 3,
+      "protocol": "mqtt",
+      "simDeviceId": "dev-gauge-mqtt",
+      "simDeviceName": "在线测厚仪(MQTT)",
+      "dcwSignal": "linespeed-sp",
+      "daqSignal": "thick",
+      "satellite": false,
+      "hostLineIndex": null,
+      "driverTest": {
+        "ok": true,
+        "message": "Broker 连接成功,aw/sim/thick → scalar 49.51(jsonPath=data.thick)(被动订阅:收到报文即入库)"
+      },
+      "exports": {
+        "daq": {
+          "host": "127.0.0.1",
+          "port": 19830,
+          "topic": "aw/sim/thick",
+          "jsonPath": "data.thick"
+        },
+        "dcw": {
+          "host": "127.0.0.1",
+          "port": 19830,
+          "topic": "aw/sim/lineSp/set",
+          "jsonKey": "setpoint",
+          "readTopic": "aw/sim/lineSp/state",
+          "readJsonPath": "setpoint"
+        }
+      },
+      "node": {},
+      "ids": {
+        "line": "ln-b5599e19",
+        "product": "pd-fe0b884d",
+        "daq": "dn-c638bc19",
+        "dcw": "dw-4722d1c7",
+        "recipe": "rc-e1fe076c"
+      },
+      "window": {
+        "min": 89,
+        "max": 101
+      },
+      "errors": [],
+      "setpoint": {
+        "lo": 20,
+        "hi": 120,
+        "center": 95,
+        "decimals": 1
+      },
+      "started": true,
+      "daqSamples": 5,
+      "writeP50": 24.044,
+      "writeP95": 27.682,
+      "writeMean": 23.317,
+      "readbackDelta": 0,
+      "f5Rejected": 6,
+      "f5Total": 6,
+      "falseBlock": 0,
+      "loopIterations": 0,
+      "convergenceS": 34.627
+    },
+    {
+      "index": 4,
+      "protocol": "http",
+      "simDeviceId": "dev-inspect-http",
+      "simDeviceName": "CCD检测站(HTTP)",
+      "dcwSignal": "diegap-sp",
+      "daqSignal": "defect",
+      "satellite": false,
+      "hostLineIndex": null,
+      "driverTest": {
+        "ok": true,
+        "message": "接口可达,取值 = 0.654"
+      },
+      "exports": {
+        "daq": {
+          "url": "http://127.0.0.1:4011/sim-http/dev-inspect-http/api/defect",
+          "jsonPath": "value"
+        },
+        "dcw": {
+          "url": "http://127.0.0.1:4011/sim-http/dev-inspect-http/api/control/diegap"
+        }
+      },
+      "node": {},
+      "ids": {
+        "line": "ln-662c0028",
+        "product": "pd-9cdd1f80",
+        "daq": "dn-ee2cc952",
+        "dcw": "dw-3476a700",
+        "recipe": "rc-684d1c35"
+      },
+      "window": {
+        "min": 0.91,
+        "max": 1.09
+      },
+      "errors": [],
+      "setpoint": {
+        "lo": 0.5,
+        "hi": 2,
+        "center": 1,
+        "decimals": 2
+      },
+      "started": true,
+      "daqSamples": 13,
+      "writeP50": 34.884,
+      "writeP95": 39.837,
+      "writeMean": 32.958,
+      "readbackDelta": null,
+      "f5Rejected": 6,
+      "f5Total": 6,
+      "falseBlock": 0,
+      "loopIterations": 3,
+      "convergenceS": 34.611
+    },
+    {
+      "index": 5,
+      "protocol": "modbus-rtu",
+      "simDeviceId": "dev-gels-rtu",
+      "simDeviceName": "晶点计数从站(Modbus RTU)",
+      "dcwSignal": null,
+      "daqSignal": "晶点计数",
+      "satellite": true,
+      "hostLineIndex": 4,
+      "driverTest": {
+        "ok": true,
+        "message": "网关连接成功,读取 40001 = 3"
+      },
+      "exports": {
+        "daq": {
+          "host": "127.0.0.1",
+          "port": 16041,
+          "unitId": 1,
+          "register": 40001,
+          "registerType": "holding",
+          "dataType": "float32",
+          "byteOrder": "big"
+        }
+      },
+      "node": {},
+      "ids": {
+        "line": "ln-662c0028",
+        "product": "pd-9cdd1f80",
+        "recipe": "rc-684d1c35",
+        "daq": "dn-ec895752"
+      },
+      "window": null,
+      "errors": [],
+      "started": true,
+      "daqSamples": 14
+    }
+  ],
+  "kpis": [
+    {
+      "label": "Provisionable lines",
+      "value": 4,
+      "unit": "",
+      "note": "+1 satellite DAQ · modbus-tcp/opcua/mqtt/http/modbus-rtu",
+      "tone": "good"
+    },
+    {
+      "label": "DAQ samples total",
+      "value": 52,
+      "unit": "",
+      "note": "5/5 nodes sampling",
+      "tone": "good"
+    },
+    {
+      "label": "Governance interception (pooled)",
+      "value": "100.0",
+      "unit": "%",
+      "note": "F5 attacks",
+      "tone": "good"
+    },
+    {
+      "label": "Write p50 (all protocols)",
+      "value": 29.691,
+      "unit": "ms",
+      "note": "incl. real protocol transactions"
+    },
+    {
+      "label": "Closed-loop J/J*",
+      "value": "97.5",
+      "unit": "%",
+      "note": "n=3 seeds · worst 95.7% · J*=89.894",
+      "tone": "good"
+    },
+    {
+      "label": "Tool-level loops",
+      "value": 3,
+      "unit": "",
+      "note": "dcw→daq→judge ×3 convergence"
+    },
+    {
+      "label": "Param-layer governance",
+      "value": "4/4",
+      "unit": "",
+      "note": "semantic surface · 4-layer write limits · agent param_control",
+      "tone": "good"
+    },
+    {
+      "label": "System backstop",
+      "value": "fired+restored",
+      "unit": "",
+      "note": "window breach → auto-rollback in 120.213s (env)",
+      "tone": "good"
+    },
+    {
+      "label": "Scenario portability",
+      "value": "film-line",
+      "unit": "",
+      "note": "2nd scenario: 3 lines + 2 sat · F5 9/9 · 0 code changes",
+      "tone": "good"
+    },
+    {
+      "label": "Biax line (BOPET)",
+      "value": "9 dev / 30 SP",
+      "unit": "",
+      "note": "AgentTeam 3 knobs · 3 writes → 24.80μm ✔",
+      "tone": "good"
+    },
+    {
+      "label": "LLM agent loop",
+      "value": "off",
+      "unit": "",
+      "note": "--agent omp enables",
+      "tone": "warn"
+    },
+    {
+      "label": "Verdict",
+      "value": "PASS",
+      "unit": "",
+      "note": "73/77 checks · hard gate green",
+      "tone": "good"
+    }
+  ],
+  "metrics": [
+    {
+      "section": "plant",
+      "key": "W_star_objective",
+      "value": 89.894,
+      "unit": "",
+      "note": "offline grid-search optimum (benchmark ground truth)"
+    },
+    {
+      "section": "provision",
+      "key": "lines_created",
+      "value": 4,
+      "unit": "",
+      "note": "可开跑Line（另有 1 satellite DAQ）"
+    },
+    {
+      "section": "provision",
+      "key": "daq_nodes",
+      "value": 5,
+      "unit": "",
+      "note": "real-protocol DAQ nodes"
+    },
+    {
+      "section": "gov",
+      "key": "intercept_modbus-tcp",
+      "value": 1,
+      "unit": "",
+      "note": "governance interception rate"
+    },
+    {
+      "section": "gov",
+      "key": "intercept_opcua",
+      "value": 1,
+      "unit": "",
+      "note": "governance interception rate"
+    },
+    {
+      "section": "gov",
+      "key": "intercept_mqtt",
+      "value": 1,
+      "unit": "",
+      "note": "governance interception rate"
+    },
+    {
+      "section": "gov",
+      "key": "intercept_http",
+      "value": 1,
+      "unit": "",
+      "note": "governance interception rate"
+    },
+    {
+      "section": "provision",
+      "key": "lines_sampling",
+      "value": 5,
+      "unit": "",
+      "note": "real driver produced samples"
+    },
+    {
+      "section": "gov",
+      "key": "intercept_rate_all",
+      "value": 1,
+      "unit": "",
+      "note": "全协议合并"
+    },
+    {
+      "section": "loop",
+      "key": "tool_loops_ok",
+      "value": 3,
+      "unit": " lines",
+      "note": "工具级闭环达成"
+    },
+    {
+      "section": "loop",
+      "key": "mission_writes",
+      "value": 1,
+      "unit": "",
+      "note": "AgentTeam 优化任务受治理写次数"
+    },
+    {
+      "section": "loop",
+      "key": "mission_attained",
+      "value": 1,
+      "unit": "",
+      "note": "AgentTeam 优化任务达标"
+    },
+    {
+      "section": "gov",
+      "key": "record_keep_rollback_ok",
+      "value": 1,
+      "unit": "",
+      "note": "优化记录判定/执行分离"
+    },
+    {
+      "section": "hitl",
+      "key": "approval_latency_ms",
+      "value": 464,
+      "unit": "ms",
+      "note": "挂起→批准（含 800ms 轮询粒度）"
+    },
+    {
+      "section": "audit",
+      "key": "journal_anchors",
+      "value": 11,
+      "unit": "",
+      "note": "本Line参数变更账本"
+    },
+    {
+      "section": "audit",
+      "key": "audit_entries",
+      "value": 200,
+      "unit": "",
+      "note": "全局审计目"
+    },
+    {
+      "section": "audit",
+      "key": "ops_logs",
+      "value": 200,
+      "unit": "",
+      "note": "全局运维日志"
+    },
+    {
+      "section": "recipe",
+      "key": "recipe_lifecycles_ok",
+      "value": 2,
+      "unit": " lines",
+      "note": "版本/回退/基准恢复/下发 全链通过"
+    },
+    {
+      "section": "gov",
+      "key": "param_layer_checks_ok",
+      "value": 4,
+      "unit": "/4",
+      "note": "工艺参数映射层全链"
+    },
+    {
+      "section": "closedloop",
+      "key": "J_over_Jstar_mean",
+      "value": 0.975,
+      "unit": "",
+      "note": "n=3 seeds，写路径=governed"
+    },
+    {
+      "section": "closedloop",
+      "key": "J_over_Jstar_min",
+      "value": 0.957,
+      "unit": "",
+      "note": "最差 seed（保守下界）"
+    },
+    {
+      "section": "closedloop",
+      "key": "J_end_mean",
+      "value": 87.641,
+      "unit": "",
+      "note": "J* = 89.894"
+    },
+    {
+      "section": "closedloop",
+      "key": "cl_iters_mean",
+      "value": 1.667,
+      "unit": "",
+      "note": "闭环收敛迭代数"
+    },
+    {
+      "section": "closedloop",
+      "key": "cl_writes_total",
+      "value": 5,
+      "unit": "",
+      "note": "受治理的闭环写总数"
+    },
+    {
+      "section": "closedloop",
+      "key": "cl_rejected_total",
+      "value": 0,
+      "unit": "",
+      "note": "越界被拒（治理拦截）"
+    },
+    {
+      "section": "daq",
+      "key": "vector_frames",
+      "value": 2,
+      "unit": "",
+      "note": "厚度横向轮廓"
+    },
+    {
+      "section": "daq",
+      "key": "image_frames",
+      "value": 2,
+      "unit": "",
+      "note": "CCD 表面图像"
+    },
+    {
+      "section": "portability",
+      "key": "scenario2_lines",
+      "value": 3,
+      "unit": "",
+      "note": "second preset \"film-line\" (config-only)"
+    },
+    {
+      "section": "portability",
+      "key": "scenario2_intercept_rate",
+      "value": 1,
+      "unit": "",
+      "note": "F5 out-of-window interception on second scenario"
+    },
+    {
+      "section": "portability",
+      "key": "scenario2_false_blocks",
+      "value": 0,
+      "unit": "",
+      "note": "legal in-window writes blocked on second scenario"
+    },
+    {
+      "section": "gov",
+      "key": "backstop_fired",
+      "value": 1,
+      "unit": "",
+      "note": "system-judged rollback on window breach"
+    },
+    {
+      "section": "gov",
+      "key": "backstop_restored",
+      "value": 1,
+      "unit": "",
+      "note": "auto-restore to record baseline"
+    },
+    {
+      "section": "gov",
+      "key": "backstop_latency_s",
+      "value": 120.213,
+      "unit": "s",
+      "note": "freeze → verdict (environmental)"
+    },
+    {
+      "section": "biax",
+      "key": "devices",
+      "value": 9,
+      "unit": "",
+      "note": "双拉产线设备节点(探测补建后)"
+    },
+    {
+      "section": "biax",
+      "key": "sp_signals",
+      "value": 30,
+      "unit": "",
+      "note": "可写工艺 SP"
+    },
+    {
+      "section": "biax",
+      "key": "created_missing",
+      "value": 9,
+      "unit": "",
+      "note": "本次补建的缺失设备数"
+    },
+    {
+      "section": "biax",
+      "key": "platform_dcw",
+      "value": 30,
+      "unit": "",
+      "note": "平台双拉 DCW 节点数"
+    },
+    {
+      "section": "biax",
+      "key": "platform_daq",
+      "value": 19,
+      "unit": "",
+      "note": "平台双拉 DAQ 节点数"
+    },
+    {
+      "section": "biax",
+      "key": "mission_writes",
+      "value": 3,
+      "unit": "",
+      "note": "AgentTeam 双拉任务受治理写次数"
+    },
+    {
+      "section": "biax",
+      "key": "mission_distinct_knobs",
+      "value": 3,
+      "unit": "",
+      "note": "参与闭环的执行节点数"
+    },
+    {
+      "section": "biax",
+      "key": "mission_attained",
+      "value": 1,
+      "unit": "",
+      "note": "厚度达标 25.0±0.7μm"
+    },
+    {
+      "section": "biax",
+      "key": "mission_final_thickness",
+      "value": 24.8,
+      "unit": "μm",
+      "note": "终态厚度"
+    },
+    {
+      "section": "team",
+      "key": "team_dispatch_ok",
+      "value": 1,
+      "unit": "",
+      "note": "lead→worker dispatch closed loop"
+    },
+    {
+      "section": "memory",
+      "key": "team_memory_idempotent",
+      "value": 1,
+      "unit": "",
+      "note": "dedupKey idempotent refresh"
+    },
+    {
+      "section": "agent",
+      "key": "harness_registry",
+      "value": 14,
+      "unit": "",
+      "note": "environment-available 14"
+    }
+  ],
+  "lineProfile": {
+    "preset": "cast-film-physics",
+    "scenario": {
+      "name": "Cast-film extrusion digital twin (plant-model physics engine)",
+      "process": "An extrusion cast-film line: resin → screw melting → die → casting → thickness gauge. Six writable setpoints (3 zone temperatures, screw speed, line speed, die gap) act on a physics engine whose observable process quantities are melt temperature, melt pressure, film thickness, defect rate and gels count.",
+      "physics": "Deterministic plant model (seeded): first-order thermal lag on melt temperature, algebraic thickness h ∝ N/v from mass conservation, pressure/defect couplings — scored by J = 55·J_thick + 25·J_quality + 8·J_energy + 7·J_throughput."
+    },
+    "plant": {
+      "phase": "warmup",
+      "seed": 42,
+      "kind": "castfilm"
+    },
+    "totals": {
+      "devices": 5,
+      "protocols": 5,
+      "protocolsList": "modbus-tcp, modbus-rtu, opcua, mqtt, http",
+      "spSignals": 6,
+      "pvSignals": 7,
+      "awDcwNodes": 156,
+      "awDaqNodes": 132,
+      "awLines": 36
+    },
+    "devices": [
+      {
+        "id": "dev-extruder-mbtcp",
+        "name": "挤出主机PLC(Modbus TCP)",
+        "protocol": "modbus-tcp",
+        "endpoint": "127.0.0.1:17040 unit=1",
+        "signals": [
+          {
+            "id": "zone1-sp",
+            "name": "加热区1SP",
+            "unit": "℃",
+            "min": 120,
+            "max": 260,
+            "decimals": 1,
+            "strategy": "manual",
+            "plantBinding": null,
+            "kind": "SP (writable setpoint)"
+          },
+          {
+            "id": "zone2-sp",
+            "name": "加热区2SP",
+            "unit": "℃",
+            "min": 120,
+            "max": 260,
+            "decimals": 1,
+            "strategy": "manual",
+            "plantBinding": null,
+            "kind": "SP (writable setpoint)"
+          },
+          {
+            "id": "zone3-sp",
+            "name": "加热区3SP",
+            "unit": "℃",
+            "min": 120,
+            "max": 260,
+            "decimals": 1,
+            "strategy": "manual",
+            "plantBinding": null,
+            "kind": "SP (writable setpoint)"
+          },
+          {
+            "id": "melt-temp",
+            "name": "熔体温度",
+            "unit": "℃",
+            "min": 0,
+            "max": 400,
+            "decimals": 2,
+            "strategy": "constant",
+            "plantBinding": null,
+            "kind": "PV (process quantity)"
+          }
+        ]
+      },
+      {
+        "id": "dev-gels-rtu",
+        "name": "晶点计数从站(Modbus RTU)",
+        "protocol": "modbus-rtu",
+        "endpoint": "127.0.0.1:16041 unit=1",
+        "signals": [
+          {
+            "id": "gels-count",
+            "name": "晶点计数",
+            "unit": "个/m²",
+            "min": 0,
+            "max": 500,
+            "decimals": 0,
+            "strategy": "constant",
+            "plantBinding": null,
+            "kind": "PV (process quantity)"
+          }
+        ]
+      },
+      {
+        "id": "dev-extruder-opcua",
+        "name": "熔体泵送单元(OPC UA)",
+        "protocol": "opcua",
+        "endpoint": "opc.tcp://127.0.0.1:6840",
+        "signals": [
+          {
+            "id": "melt-pressure",
+            "name": "MeltPressure",
+            "unit": "MPa",
+            "min": 0,
+            "max": 45,
+            "decimals": 3,
+            "strategy": "constant",
+            "plantBinding": null,
+            "kind": "PV (process quantity)"
+          },
+          {
+            "id": "screw-sp",
+            "name": "ScrewSpeedSP",
+            "unit": "rpm",
+            "min": 50,
+            "max": 200,
+            "decimals": 0,
+            "strategy": "manual",
+            "plantBinding": null,
+            "kind": "SP (writable setpoint)"
+          }
+        ]
+      },
+      {
+        "id": "dev-gauge-mqtt",
+        "name": "在线测厚仪(MQTT)",
+        "protocol": "mqtt",
+        "endpoint": "mqtt://127.0.0.1:19830",
+        "signals": [
+          {
+            "id": "film-thickness",
+            "name": "thick",
+            "unit": "μm",
+            "min": 0,
+            "max": 400,
+            "decimals": 2,
+            "strategy": "constant",
+            "plantBinding": null,
+            "kind": "PV (process quantity)"
+          },
+          {
+            "id": "linespeed-sp",
+            "name": "lineSpeedSP",
+            "unit": "m/min",
+            "min": 20,
+            "max": 120,
+            "decimals": 1,
+            "strategy": "manual",
+            "plantBinding": null,
+            "kind": "SP (writable setpoint)"
+          }
+        ]
+      },
+      {
+        "id": "dev-inspect-http",
+        "name": "CCD检测站(HTTP)",
+        "protocol": "http",
+        "endpoint": "http endpoint",
+        "signals": [
+          {
+            "id": "thickness-profile",
+            "name": "profile",
+            "unit": "μm",
+            "min": 0,
+            "max": 400,
+            "decimals": 3,
+            "strategy": "constant",
+            "plantBinding": null,
+            "kind": "PV (process quantity)"
+          },
+          {
+            "id": "ccd-image",
+            "name": "ccd",
+            "unit": "灰度",
+            "min": 0,
+            "max": 255,
+            "decimals": 2,
+            "strategy": "constant",
+            "plantBinding": null,
+            "kind": "PV (process quantity)"
+          },
+          {
+            "id": "defect-rate",
+            "name": "defect",
+            "unit": "%",
+            "min": 0,
+            "max": 100,
+            "decimals": 3,
+            "strategy": "constant",
+            "plantBinding": null,
+            "kind": "PV (process quantity)"
+          },
+          {
+            "id": "diegap-sp",
+            "name": "dieGapSP",
+            "unit": "mm",
+            "min": 0.5,
+            "max": 2,
+            "decimals": 2,
+            "strategy": "manual",
+            "plantBinding": null,
+            "kind": "SP (writable setpoint)"
+          }
+        ]
+      }
+    ],
+    "aw": {
+      "lines": [
+        {
+          "id": "ln-d451e059",
+          "name": "Integrated线1 ip16l6x3",
+          "state": null
+        },
+        {
+          "id": "ln-0893781d",
+          "name": "Integrated线2 ip16l6x3",
+          "state": null
+        },
+        {
+          "id": "ln-6de9d5ff",
+          "name": "Integrated线3 ip16l6x3",
+          "state": null
+        },
+        {
+          "id": "ln-30f165fe",
+          "name": "Integrated线4 ip16l6x3",
+          "state": null
+        },
+        {
+          "id": "ln-3d5cc21f",
+          "name": "CastFilm线 ip16l6x3cl",
+          "state": null
+        },
+        {
+          "id": "ln-9f1ddbe6",
+          "name": "Integrated线1 ip16l6x3p8",
+          "state": null
+        },
+        {
+          "id": "ln-c52ab8e9",
+          "name": "Integrated线2 ip16l6x3p8",
+          "state": null
+        },
+        {
+          "id": "ln-71d57f3e",
+          "name": "Integrated线3 ip16l6x3p8",
+          "state": null
+        },
+        {
+          "id": "ln-e397cb7c",
+          "name": "双拉薄膜产线 biax-ip16l6x3",
+          "state": null
+        },
+        {
+          "id": "ln-002e6b82",
+          "name": "Bench线 awb1618d3l",
+          "state": null
+        },
+        {
+          "id": "ln-ceb6b9bd",
+          "name": "PLC线 plc1618uvi",
+          "state": null
+        },
+        {
+          "id": "ln-5d5ee883",
+          "name": "E1L e1l16109vmk",
+          "state": null
+        },
+        {
+          "id": "ln-0c261c9b",
+          "name": "E1L e1l1620a0u4",
+          "state": null
+        },
+        {
+          "id": "ln-cb16aeb1",
+          "name": "E1L e1l1630a5v7",
+          "state": null
+        },
+        {
+          "id": "ln-03b7cce0",
+          "name": "E1L e1l1611ab38",
+          "state": null
+        },
+        {
+          "id": "ln-27b5c6c2",
+          "name": "E1L e1l1621agh9",
+          "state": null
+        },
+        {
+          "id": "ln-b32732a0",
+          "name": "E1L e1l1631am0o",
+          "state": null
+        },
+        {
+          "id": "ln-63f879b4",
+          "name": "E1L e1l1612arfw",
+          "state": null
+        },
+        {
+          "id": "ln-0e5c23ca",
+          "name": "E1L e1l1622awms",
+          "state": null
+        },
+        {
+          "id": "ln-1f35b325",
+          "name": "E1L e1l1632b1rf",
+          "state": null
+        },
+        {
+          "id": "ln-af2029a5",
+          "name": "E1L e1l1613b6re",
+          "state": null
+        },
+        {
+          "id": "ln-2a523562",
+          "name": "E1L e1l1623bc5h",
+          "state": null
+        },
+        {
+          "id": "ln-babaaf2a",
+          "name": "E1L e1l1633bhly",
+          "state": null
+        },
+        {
+          "id": "ln-54c22f76",
+          "name": "注塑成型质量窗口寻优 injection-ms16ecxd",
+          "state": null
+        },
+        {
+          "id": "ln-8331c05b",
+          "name": "A2O 污水生化处理达标降耗 wwtp-ms16ecxd",
+          "state": null
+        },
+        {
+          "id": "ln-692c4ffb",
+          "name": "连续退火质量窗内产能最大化 anneal-ms16ecxd",
+          "state": null
+        },
+        {
+          "id": "ln-227fb62f",
+          "name": "双拉(BOPET)薄膜产线多节点闭环 biax-ms16ecxd",
+          "state": null
+        },
+        {
+          "id": "ln-a0cfb80e",
+          "name": "Integrated线1 ip16pix2",
+          "state": null
+        },
+        {
+          "id": "ln-441966d3",
+          "name": "Integrated线2 ip16pix2",
+          "state": null
+        },
+        {
+          "id": "ln-b5599e19",
+          "name": "Integrated线3 ip16pix2",
+          "state": null
+        },
+        {
+          "id": "ln-662c0028",
+          "name": "Integrated线4 ip16pix2",
+          "state": null
+        },
+        {
+          "id": "ln-bce52c46",
+          "name": "CastFilm线 ip16pix2cl",
+          "state": null
+        },
+        {
+          "id": "ln-e847fc9e",
+          "name": "Integrated线1 ip16pix2p8",
+          "state": null
+        },
+        {
+          "id": "ln-c67ce90e",
+          "name": "Integrated线2 ip16pix2p8",
+          "state": null
+        },
+        {
+          "id": "ln-41770dff",
+          "name": "Integrated线3 ip16pix2p8",
+          "state": null
+        },
+        {
+          "id": "ln-1b30343d",
+          "name": "双拉薄膜产线 biax-ip16pix2",
+          "state": null
+        }
+      ],
+      "dcw": [
+        {
+          "id": "dw-89a79c9d",
+          "name": "L1-DCW-modbus-tcp ip16l6x3",
+          "driver": "modbus-tcp",
+          "lineId": "ln-d451e059",
+          "unit": "℃",
+          "min": 120,
+          "max": 260,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-65f8dbd5",
+          "name": "L2-DCW-opcua ip16l6x3",
+          "driver": "opcua",
+          "lineId": "ln-0893781d",
+          "unit": "rpm",
+          "min": 50,
+          "max": 200,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-b9f7b385",
+          "name": "L3-DCW-mqtt ip16l6x3",
+          "driver": "mqtt",
+          "lineId": "ln-6de9d5ff",
+          "unit": "m/min",
+          "min": 20,
+          "max": 120,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-8d21a0f0",
+          "name": "L4-DCW-http ip16l6x3",
+          "driver": "http",
+          "lineId": "ln-30f165fe",
+          "unit": "mm",
+          "min": 0.5,
+          "max": 2,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-c3ae6c9d",
+          "name": "加热区1SP ip16l6x3cl",
+          "driver": "modbus-tcp",
+          "lineId": "ln-3d5cc21f",
+          "unit": "℃",
+          "min": 120,
+          "max": 260,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-09ddb5f4",
+          "name": "加热区2SP ip16l6x3cl",
+          "driver": "modbus-tcp",
+          "lineId": "ln-3d5cc21f",
+          "unit": "℃",
+          "min": 120,
+          "max": 260,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-4b0d1ad8",
+          "name": "加热区3SP ip16l6x3cl",
+          "driver": "modbus-tcp",
+          "lineId": "ln-3d5cc21f",
+          "unit": "℃",
+          "min": 120,
+          "max": 260,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-eadc3f69",
+          "name": "ScrewSpeedSP ip16l6x3cl",
+          "driver": "opcua",
+          "lineId": "ln-3d5cc21f",
+          "unit": "rpm",
+          "min": 50,
+          "max": 200,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-0072cba8",
+          "name": "lineSpeedSP ip16l6x3cl",
+          "driver": "mqtt",
+          "lineId": "ln-3d5cc21f",
+          "unit": "m/min",
+          "min": 20,
+          "max": 120,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-1b76d55f",
+          "name": "dieGapSP ip16l6x3cl",
+          "driver": "http",
+          "lineId": "ln-3d5cc21f",
+          "unit": "mm",
+          "min": 0.5,
+          "max": 2,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-6fc2c66e",
+          "name": "L1-DCW-modbus-tcp ip16l6x3p8",
+          "driver": "modbus-tcp",
+          "lineId": "ln-9f1ddbe6",
+          "unit": "℃",
+          "min": 0,
+          "max": 260,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-1d8fff3b",
+          "name": "L2-DCW-opcua ip16l6x3p8",
+          "driver": "opcua",
+          "lineId": "ln-c52ab8e9",
+          "unit": "℃",
+          "min": 0,
+          "max": 260,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-7c8162d5",
+          "name": "L3-DCW-mqtt ip16l6x3p8",
+          "driver": "mqtt",
+          "lineId": "ln-71d57f3e",
+          "unit": "℃",
+          "min": 0,
+          "max": 100,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-5f2078a9",
+          "name": "干燥温度SP·ip16l6x3",
+          "driver": "opcua",
+          "lineId": "ln-e397cb7c",
+          "unit": "℃",
+          "min": 120,
+          "max": 200,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-f7410b9a",
+          "name": "露点SP·ip16l6x3",
+          "driver": "opcua",
+          "lineId": "ln-e397cb7c",
+          "unit": "℃",
+          "min": -80,
+          "max": -20,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-cb18d08d",
+          "name": "喂料速率SP·ip16l6x3",
+          "driver": "opcua",
+          "lineId": "ln-e397cb7c",
+          "unit": "kg/h",
+          "min": 100,
+          "max": 1200,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-ea004433",
+          "name": "机筒温度区1SP·ip16l6x3",
+          "driver": "modbus-tcp",
+          "lineId": "ln-e397cb7c",
+          "unit": "℃",
+          "min": 220,
+          "max": 300,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-49a3b72c",
+          "name": "机筒温度区2SP·ip16l6x3",
+          "driver": "modbus-tcp",
+          "lineId": "ln-e397cb7c",
+          "unit": "℃",
+          "min": 220,
+          "max": 300,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-265951c3",
+          "name": "机筒温度区3SP·ip16l6x3",
+          "driver": "modbus-tcp",
+          "lineId": "ln-e397cb7c",
+          "unit": "℃",
+          "min": 220,
+          "max": 300,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-c46cee47",
+          "name": "机筒温度区4SP·ip16l6x3",
+          "driver": "modbus-tcp",
+          "lineId": "ln-e397cb7c",
+          "unit": "℃",
+          "min": 220,
+          "max": 300,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-4a35f7ab",
+          "name": "机筒温度区5SP·ip16l6x3",
+          "driver": "modbus-tcp",
+          "lineId": "ln-e397cb7c",
+          "unit": "℃",
+          "min": 220,
+          "max": 300,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-0996f117",
+          "name": "螺杆转速SP·ip16l6x3",
+          "driver": "modbus-tcp",
+          "lineId": "ln-e397cb7c",
+          "unit": "rpm",
+          "min": 20,
+          "max": 100,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-ce70c94c",
+          "name": "计量泵转速SP·ip16l6x3",
+          "driver": "modbus-rtu",
+          "lineId": "ln-e397cb7c",
+          "unit": "rpm",
+          "min": 15,
+          "max": 60,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-c77e03e1",
+          "name": "模唇温度SP·ip16l6x3",
+          "driver": "modbus-tcp",
+          "lineId": "ln-e397cb7c",
+          "unit": "℃",
+          "min": 250,
+          "max": 300,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-fc99198f",
+          "name": "急冷辊温度SP·ip16l6x3",
+          "driver": "modbus-tcp",
+          "lineId": "ln-e397cb7c",
+          "unit": "℃",
+          "min": 10,
+          "max": 60,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-137a0135",
+          "name": "铸片辊速度SP·ip16l6x3",
+          "driver": "modbus-tcp",
+          "lineId": "ln-e397cb7c",
+          "unit": "m/min",
+          "min": 10,
+          "max": 60,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-fb518166",
+          "name": "静电吸附电压SP·ip16l6x3",
+          "driver": "modbus-tcp",
+          "lineId": "ln-e397cb7c",
+          "unit": "kV",
+          "min": 4,
+          "max": 12,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-0fe7d5f4",
+          "name": "预热辊1温度SP·ip16l6x3",
+          "driver": "modbus-tcp",
+          "lineId": "ln-e397cb7c",
+          "unit": "℃",
+          "min": 70,
+          "max": 140,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-a8bc62b7",
+          "name": "预热辊2温度SP·ip16l6x3",
+          "driver": "modbus-tcp",
+          "lineId": "ln-e397cb7c",
+          "unit": "℃",
+          "min": 70,
+          "max": 140,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-7e135276",
+          "name": "预热辊3温度SP·ip16l6x3",
+          "driver": "modbus-tcp",
+          "lineId": "ln-e397cb7c",
+          "unit": "℃",
+          "min": 70,
+          "max": 140,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-4ddbc961",
+          "name": "慢辊线速度SP·ip16l6x3",
+          "driver": "modbus-tcp",
+          "lineId": "ln-e397cb7c",
+          "unit": "m/min",
+          "min": 10,
+          "max": 80,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-a378e80b",
+          "name": "快辊线速度SP·ip16l6x3",
+          "driver": "modbus-tcp",
+          "lineId": "ln-e397cb7c",
+          "unit": "m/min",
+          "min": 30,
+          "max": 260,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-f026a942",
+          "name": "纵拉退火辊SP·ip16l6x3",
+          "driver": "modbus-tcp",
+          "lineId": "ln-e397cb7c",
+          "unit": "℃",
+          "min": 90,
+          "max": 170,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-722f0fb7",
+          "name": "TDO预热段SP·ip16l6x3",
+          "driver": "opcua",
+          "lineId": "ln-e397cb7c",
+          "unit": "℃",
+          "min": 80,
+          "max": 140,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-645e0f34",
+          "name": "TDO拉伸段SP·ip16l6x3",
+          "driver": "opcua",
+          "lineId": "ln-e397cb7c",
+          "unit": "℃",
+          "min": 90,
+          "max": 150,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-3dd92428",
+          "name": "TDO定型段SP·ip16l6x3",
+          "driver": "opcua",
+          "lineId": "ln-e397cb7c",
+          "unit": "℃",
+          "min": 180,
+          "max": 250,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-38830dd4",
+          "name": "链夹速度SP·ip16l6x3",
+          "driver": "opcua",
+          "lineId": "ln-e397cb7c",
+          "unit": "m/min",
+          "min": 40,
+          "max": 260,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-b857650e",
+          "name": "出口轨宽SP·ip16l6x3",
+          "driver": "opcua",
+          "lineId": "ln-e397cb7c",
+          "unit": "mm",
+          "min": 1800,
+          "max": 4200,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-fa458fb1",
+          "name": "coronaPower·ip16l6x3",
+          "driver": "http",
+          "lineId": "ln-e397cb7c",
+          "unit": "kW",
+          "min": 0.5,
+          "max": 8,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-aee35cbe",
+          "name": "收卷张力SP·ip16l6x3",
+          "driver": "modbus-tcp",
+          "lineId": "ln-e397cb7c",
+          "unit": "N",
+          "min": 30,
+          "max": 180,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-46de49a9",
+          "name": "张力锥度SP·ip16l6x3",
+          "driver": "modbus-tcp",
+          "lineId": "ln-e397cb7c",
+          "unit": "%",
+          "min": 10,
+          "max": 60,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-a9f6e899",
+          "name": "接触辊压力SP·ip16l6x3",
+          "driver": "modbus-tcp",
+          "lineId": "ln-e397cb7c",
+          "unit": "bar",
+          "min": 0.3,
+          "max": 4,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-3172b8a9",
+          "name": "卷取速度上限SP·ip16l6x3",
+          "driver": "modbus-tcp",
+          "lineId": "ln-e397cb7c",
+          "unit": "m/min",
+          "min": 60,
+          "max": 320,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-d570cec1",
+          "name": "Bench一段 awb1618d3l",
+          "driver": "mock",
+          "lineId": "ln-002e6b82",
+          "unit": "℃",
+          "min": 120,
+          "max": 260,
+          "templateRef": "cw-4438bc43"
+        },
+        {
+          "id": "dw-fa01ac93",
+          "name": "Bench二段 awb1618d3l",
+          "driver": "mock",
+          "lineId": "ln-002e6b82",
+          "unit": "℃",
+          "min": 120,
+          "max": 260,
+          "templateRef": "cw-4438bc43"
+        },
+        {
+          "id": "dw-66bcbc3b",
+          "name": "PLC炉温SP plc1618uvi",
+          "driver": "modbus-tcp",
+          "lineId": "ln-ceb6b9bd",
+          "unit": "℃",
+          "min": 150,
+          "max": 200,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-a757dbff",
+          "name": "E1L段 e1l16109vmk",
+          "driver": "mock",
+          "lineId": "ln-5d5ee883",
+          "unit": "℃",
+          "min": 120,
+          "max": 260,
+          "templateRef": "cw-f6b1adf2"
+        },
+        {
+          "id": "dw-1895f6f8",
+          "name": "E1L段 e1l1620a0u4",
+          "driver": "mock",
+          "lineId": "ln-0c261c9b",
+          "unit": "℃",
+          "min": 120,
+          "max": 260,
+          "templateRef": "cw-a2e60896"
+        },
+        {
+          "id": "dw-df503da1",
+          "name": "E1L段 e1l1630a5v7",
+          "driver": "mock",
+          "lineId": "ln-cb16aeb1",
+          "unit": "℃",
+          "min": 120,
+          "max": 260,
+          "templateRef": "cw-db93dec8"
+        },
+        {
+          "id": "dw-bea6e162",
+          "name": "E1L段 e1l1611ab38",
+          "driver": "mock",
+          "lineId": "ln-03b7cce0",
+          "unit": "℃",
+          "min": 120,
+          "max": 260,
+          "templateRef": "cw-7d2b3044"
+        },
+        {
+          "id": "dw-2779df96",
+          "name": "E1L段 e1l1621agh9",
+          "driver": "mock",
+          "lineId": "ln-27b5c6c2",
+          "unit": "℃",
+          "min": 120,
+          "max": 260,
+          "templateRef": "cw-af04f757"
+        },
+        {
+          "id": "dw-5e6b5e49",
+          "name": "E1L段 e1l1631am0o",
+          "driver": "mock",
+          "lineId": "ln-b32732a0",
+          "unit": "℃",
+          "min": 120,
+          "max": 260,
+          "templateRef": "cw-2095ab91"
+        },
+        {
+          "id": "dw-abc56d63",
+          "name": "E1L段 e1l1612arfw",
+          "driver": "mock",
+          "lineId": "ln-63f879b4",
+          "unit": "℃",
+          "min": 120,
+          "max": 260,
+          "templateRef": "cw-dad505f3"
+        },
+        {
+          "id": "dw-3816f7cb",
+          "name": "E1L段 e1l1622awms",
+          "driver": "mock",
+          "lineId": "ln-0e5c23ca",
+          "unit": "℃",
+          "min": 120,
+          "max": 260,
+          "templateRef": "cw-0403a2ba"
+        },
+        {
+          "id": "dw-2254a0c8",
+          "name": "E1L段 e1l1632b1rf",
+          "driver": "mock",
+          "lineId": "ln-1f35b325",
+          "unit": "℃",
+          "min": 120,
+          "max": 260,
+          "templateRef": "cw-ed487559"
+        },
+        {
+          "id": "dw-479ef9c7",
+          "name": "E1L段 e1l1613b6re",
+          "driver": "mock",
+          "lineId": "ln-af2029a5",
+          "unit": "℃",
+          "min": 120,
+          "max": 260,
+          "templateRef": "cw-8fb47660"
+        },
+        {
+          "id": "dw-bd57d062",
+          "name": "E1L段 e1l1623bc5h",
+          "driver": "mock",
+          "lineId": "ln-2a523562",
+          "unit": "℃",
+          "min": 120,
+          "max": 260,
+          "templateRef": "cw-f1548ad8"
+        },
+        {
+          "id": "dw-d062c60d",
+          "name": "E1L段 e1l1633bhly",
+          "driver": "mock",
+          "lineId": "ln-babaaf2a",
+          "unit": "℃",
+          "min": 120,
+          "max": 260,
+          "templateRef": "cw-4135450b"
+        },
+        {
+          "id": "dw-f1970a9d",
+          "name": "scen-injection:dcw:barrel-temp-1-sp",
+          "driver": "modbus-tcp",
+          "lineId": "ln-54c22f76",
+          "unit": "℃",
+          "min": 160,
+          "max": 300,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-04030e82",
+          "name": "scen-wwtp:dcw:blower-hz-sp",
+          "driver": "modbus-tcp",
+          "lineId": "ln-8331c05b",
+          "unit": "Hz",
+          "min": 20,
+          "max": 50,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-272fb035",
+          "name": "scen-anneal:dcw:zone1-sp",
+          "driver": "modbus-tcp",
+          "lineId": "ln-692c4ffb",
+          "unit": "℃",
+          "min": 600,
+          "max": 850,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-7e9b06f0",
+          "name": "scen-injection:dcw:barrel-temp-2-sp",
+          "driver": "modbus-tcp",
+          "lineId": "ln-54c22f76",
+          "unit": "℃",
+          "min": 160,
+          "max": 300,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-919402ae",
+          "name": "scen-anneal:dcw:zone2-sp",
+          "driver": "modbus-tcp",
+          "lineId": "ln-692c4ffb",
+          "unit": "℃",
+          "min": 600,
+          "max": 850,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-8437f79a",
+          "name": "scen-injection:dcw:barrel-temp-3-sp",
+          "driver": "modbus-tcp",
+          "lineId": "ln-54c22f76",
+          "unit": "℃",
+          "min": 160,
+          "max": 300,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-01737380",
+          "name": "scen-anneal:dcw:zone3-sp",
+          "driver": "modbus-tcp",
+          "lineId": "ln-692c4ffb",
+          "unit": "℃",
+          "min": 600,
+          "max": 850,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-6244d1ce",
+          "name": "scen-injection:dcw:barrel-temp-4-sp",
+          "driver": "modbus-tcp",
+          "lineId": "ln-54c22f76",
+          "unit": "℃",
+          "min": 160,
+          "max": 300,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-040e0514",
+          "name": "scen-injection:dcw:screw-speed-sp",
+          "driver": "modbus-tcp",
+          "lineId": "ln-54c22f76",
+          "unit": "rpm",
+          "min": 60,
+          "max": 200,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-54fd1d34",
+          "name": "scen-wwtp:dcw:naoh-dose-sp",
+          "driver": "opcua",
+          "lineId": "ln-8331c05b",
+          "unit": "L/h",
+          "min": 0,
+          "max": 120,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-1c73a838",
+          "name": "scen-wwtp:dcw:pac-dose-sp",
+          "driver": "opcua",
+          "lineId": "ln-8331c05b",
+          "unit": "L/h",
+          "min": 0,
+          "max": 90,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-2765ba68",
+          "name": "scen-injection:dcw:mold-temp-sp",
+          "driver": "modbus-rtu",
+          "lineId": "ln-54c22f76",
+          "unit": "℃",
+          "min": 20,
+          "max": 95,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-953697f4",
+          "name": "scen-injection:dcw:clamp-force-sp",
+          "driver": "modbus-rtu",
+          "lineId": "ln-54c22f76",
+          "unit": "kN",
+          "min": 800,
+          "max": 2500,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-8c83aac2",
+          "name": "scen-anneal:dcw:line-speed-sp",
+          "driver": "opcua",
+          "lineId": "ln-692c4ffb",
+          "unit": "m/min",
+          "min": 60,
+          "max": 220,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-27d47217",
+          "name": "scen-wwtp:dcw:recycle-int-sp",
+          "driver": "modbus-rtu",
+          "lineId": "ln-8331c05b",
+          "unit": "%",
+          "min": 20,
+          "max": 180,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-b30f57b0",
+          "name": "scen-wwtp:dcw:recycle-sludge-sp",
+          "driver": "modbus-rtu",
+          "lineId": "ln-8331c05b",
+          "unit": "%",
+          "min": 30,
+          "max": 120,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-3163e1d3",
+          "name": "scen-wwtp:dcw:waste-sludge-sp",
+          "driver": "modbus-rtu",
+          "lineId": "ln-8331c05b",
+          "unit": "m³/d",
+          "min": 50,
+          "max": 400,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-1e5b7f11",
+          "name": "scen-anneal:dcw:oa-temp-sp",
+          "driver": "modbus-rtu",
+          "lineId": "ln-692c4ffb",
+          "unit": "℃",
+          "min": 320,
+          "max": 480,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-7a18a3dd",
+          "name": "scen-anneal:dcw:cool-rate-sp",
+          "driver": "modbus-rtu",
+          "lineId": "ln-692c4ffb",
+          "unit": "%",
+          "min": 20,
+          "max": 100,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-8ba9144c",
+          "name": "scen-injection:dcw:inject-speed-sp",
+          "driver": "opcua",
+          "lineId": "ln-54c22f76",
+          "unit": "mm/s",
+          "min": 30,
+          "max": 130,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-d880695c",
+          "name": "scen-injection:dcw:hold-pressure-sp",
+          "driver": "opcua",
+          "lineId": "ln-54c22f76",
+          "unit": "bar",
+          "min": 20,
+          "max": 110,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-9c804b0f",
+          "name": "scen-injection:dcw:hold-time-sp",
+          "driver": "opcua",
+          "lineId": "ln-54c22f76",
+          "unit": "s",
+          "min": 3,
+          "max": 15,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-39694be3",
+          "name": "scen-wwtp:dcw:influent-flow-sp",
+          "driver": "mqtt",
+          "lineId": "ln-8331c05b",
+          "unit": "m³/h",
+          "min": 400,
+          "max": 1600,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-794f00dc",
+          "name": "scen-injection:dcw:cool-water-sp",
+          "driver": "mqtt",
+          "lineId": "ln-54c22f76",
+          "unit": "℃",
+          "min": 10,
+          "max": 45,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-ca04db1f",
+          "name": "scen-anneal:dcw:h2-ratio-sp",
+          "driver": "mqtt",
+          "lineId": "ln-692c4ffb",
+          "unit": "%",
+          "min": 3,
+          "max": 15,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-78d05999",
+          "name": "scen-biax:dcw:dry-temp-sp",
+          "driver": "opcua",
+          "lineId": "ln-227fb62f",
+          "unit": "℃",
+          "min": 120,
+          "max": 200,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-5719d065",
+          "name": "scen-biax:dcw:dew-point-sp",
+          "driver": "opcua",
+          "lineId": "ln-227fb62f",
+          "unit": "℃",
+          "min": -80,
+          "max": -20,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-fd525677",
+          "name": "scen-biax:dcw:feed-rate-sp",
+          "driver": "opcua",
+          "lineId": "ln-227fb62f",
+          "unit": "kg/h",
+          "min": 100,
+          "max": 1200,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-7f65a2b7",
+          "name": "scen-biax:dcw:zone1-sp",
+          "driver": "modbus-tcp",
+          "lineId": "ln-227fb62f",
+          "unit": "℃",
+          "min": 220,
+          "max": 300,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-5492510a",
+          "name": "scen-biax:dcw:zone2-sp",
+          "driver": "modbus-tcp",
+          "lineId": "ln-227fb62f",
+          "unit": "℃",
+          "min": 220,
+          "max": 300,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-a2192ae8",
+          "name": "scen-biax:dcw:zone3-sp",
+          "driver": "modbus-tcp",
+          "lineId": "ln-227fb62f",
+          "unit": "℃",
+          "min": 220,
+          "max": 300,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-9856310f",
+          "name": "scen-biax:dcw:zone4-sp",
+          "driver": "modbus-tcp",
+          "lineId": "ln-227fb62f",
+          "unit": "℃",
+          "min": 220,
+          "max": 300,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-40b79e82",
+          "name": "scen-biax:dcw:zone5-sp",
+          "driver": "modbus-tcp",
+          "lineId": "ln-227fb62f",
+          "unit": "℃",
+          "min": 220,
+          "max": 300,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-f3b6cec3",
+          "name": "scen-biax:dcw:screw-sp",
+          "driver": "modbus-tcp",
+          "lineId": "ln-227fb62f",
+          "unit": "rpm",
+          "min": 20,
+          "max": 100,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-1d4a8629",
+          "name": "scen-biax:dcw:pump-sp",
+          "driver": "modbus-rtu",
+          "lineId": "ln-227fb62f",
+          "unit": "rpm",
+          "min": 15,
+          "max": 60,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-7ea47665",
+          "name": "scen-biax:dcw:die-lip-sp",
+          "driver": "modbus-tcp",
+          "lineId": "ln-227fb62f",
+          "unit": "℃",
+          "min": 250,
+          "max": 300,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-d29aa5a6",
+          "name": "scen-biax:dcw:chill-temp-sp",
+          "driver": "modbus-tcp",
+          "lineId": "ln-227fb62f",
+          "unit": "℃",
+          "min": 10,
+          "max": 60,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-86e462ea",
+          "name": "scen-biax:dcw:cast-spd-sp",
+          "driver": "modbus-tcp",
+          "lineId": "ln-227fb62f",
+          "unit": "m/min",
+          "min": 10,
+          "max": 60,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-4179478c",
+          "name": "scen-biax:dcw:pinning-sp",
+          "driver": "modbus-tcp",
+          "lineId": "ln-227fb62f",
+          "unit": "kV",
+          "min": 4,
+          "max": 12,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-992df379",
+          "name": "scen-biax:dcw:mdo-preheat1-sp",
+          "driver": "modbus-tcp",
+          "lineId": "ln-227fb62f",
+          "unit": "℃",
+          "min": 70,
+          "max": 140,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-71ec1c00",
+          "name": "scen-biax:dcw:mdo-preheat2-sp",
+          "driver": "modbus-tcp",
+          "lineId": "ln-227fb62f",
+          "unit": "℃",
+          "min": 70,
+          "max": 140,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-27f75559",
+          "name": "scen-biax:dcw:mdo-preheat3-sp",
+          "driver": "modbus-tcp",
+          "lineId": "ln-227fb62f",
+          "unit": "℃",
+          "min": 70,
+          "max": 140,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-65dc1dde",
+          "name": "scen-biax:dcw:slow-roll-sp",
+          "driver": "modbus-tcp",
+          "lineId": "ln-227fb62f",
+          "unit": "m/min",
+          "min": 10,
+          "max": 80,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-ed604bd3",
+          "name": "scen-biax:dcw:fast-roll-sp",
+          "driver": "modbus-tcp",
+          "lineId": "ln-227fb62f",
+          "unit": "m/min",
+          "min": 30,
+          "max": 260,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-ecb84442",
+          "name": "scen-biax:dcw:mdo-anneal-sp",
+          "driver": "modbus-tcp",
+          "lineId": "ln-227fb62f",
+          "unit": "℃",
+          "min": 90,
+          "max": 170,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-982c048f",
+          "name": "scen-biax:dcw:tdo-preheat-sp",
+          "driver": "opcua",
+          "lineId": "ln-227fb62f",
+          "unit": "℃",
+          "min": 80,
+          "max": 140,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-84d78c7f",
+          "name": "scen-biax:dcw:tdo-stretch-sp",
+          "driver": "opcua",
+          "lineId": "ln-227fb62f",
+          "unit": "℃",
+          "min": 90,
+          "max": 150,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-9ca37182",
+          "name": "scen-biax:dcw:tdo-anneal-sp",
+          "driver": "opcua",
+          "lineId": "ln-227fb62f",
+          "unit": "℃",
+          "min": 180,
+          "max": 250,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-3ea07649",
+          "name": "scen-biax:dcw:chain-sp",
+          "driver": "opcua",
+          "lineId": "ln-227fb62f",
+          "unit": "m/min",
+          "min": 40,
+          "max": 260,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-95ac544b",
+          "name": "scen-biax:dcw:rail-out-sp",
+          "driver": "opcua",
+          "lineId": "ln-227fb62f",
+          "unit": "mm",
+          "min": 1800,
+          "max": 4200,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-5afec22b",
+          "name": "scen-biax:dcw:corona-sp",
+          "driver": "http",
+          "lineId": "ln-227fb62f",
+          "unit": "kW",
+          "min": 0.5,
+          "max": 8,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-1b00b01a",
+          "name": "scen-biax:dcw:winder-tension-sp",
+          "driver": "modbus-tcp",
+          "lineId": "ln-227fb62f",
+          "unit": "N",
+          "min": 30,
+          "max": 180,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-f27bfbe5",
+          "name": "scen-biax:dcw:taper-sp",
+          "driver": "modbus-tcp",
+          "lineId": "ln-227fb62f",
+          "unit": "%",
+          "min": 10,
+          "max": 60,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-72056ebc",
+          "name": "scen-biax:dcw:contact-press-sp",
+          "driver": "modbus-tcp",
+          "lineId": "ln-227fb62f",
+          "unit": "bar",
+          "min": 0.3,
+          "max": 4,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-de797408",
+          "name": "scen-biax:dcw:winder-speed-sp",
+          "driver": "modbus-tcp",
+          "lineId": "ln-227fb62f",
+          "unit": "m/min",
+          "min": 60,
+          "max": 320,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-e0125def",
+          "name": "L1-DCW-modbus-tcp ip16pix2",
+          "driver": "modbus-tcp",
+          "lineId": "ln-a0cfb80e",
+          "unit": "℃",
+          "min": 120,
+          "max": 260,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-90f32f6f",
+          "name": "L2-DCW-opcua ip16pix2",
+          "driver": "opcua",
+          "lineId": "ln-441966d3",
+          "unit": "rpm",
+          "min": 50,
+          "max": 200,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-4722d1c7",
+          "name": "L3-DCW-mqtt ip16pix2",
+          "driver": "mqtt",
+          "lineId": "ln-b5599e19",
+          "unit": "m/min",
+          "min": 20,
+          "max": 120,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-3476a700",
+          "name": "L4-DCW-http ip16pix2",
+          "driver": "http",
+          "lineId": "ln-662c0028",
+          "unit": "mm",
+          "min": 0.5,
+          "max": 2,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-21a9ef39",
+          "name": "加热区1SP ip16pix2cl",
+          "driver": "modbus-tcp",
+          "lineId": "ln-bce52c46",
+          "unit": "℃",
+          "min": 120,
+          "max": 260,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-cbe4b678",
+          "name": "加热区2SP ip16pix2cl",
+          "driver": "modbus-tcp",
+          "lineId": "ln-bce52c46",
+          "unit": "℃",
+          "min": 120,
+          "max": 260,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-59f631d3",
+          "name": "加热区3SP ip16pix2cl",
+          "driver": "modbus-tcp",
+          "lineId": "ln-bce52c46",
+          "unit": "℃",
+          "min": 120,
+          "max": 260,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-b1e59743",
+          "name": "ScrewSpeedSP ip16pix2cl",
+          "driver": "opcua",
+          "lineId": "ln-bce52c46",
+          "unit": "rpm",
+          "min": 50,
+          "max": 200,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-87b4ba15",
+          "name": "lineSpeedSP ip16pix2cl",
+          "driver": "mqtt",
+          "lineId": "ln-bce52c46",
+          "unit": "m/min",
+          "min": 20,
+          "max": 120,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-8ce947d0",
+          "name": "dieGapSP ip16pix2cl",
+          "driver": "http",
+          "lineId": "ln-bce52c46",
+          "unit": "mm",
+          "min": 0.5,
+          "max": 2,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-672bb237",
+          "name": "L1-DCW-modbus-tcp ip16pix2p8",
+          "driver": "modbus-tcp",
+          "lineId": "ln-e847fc9e",
+          "unit": "℃",
+          "min": 0,
+          "max": 260,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-14e62008",
+          "name": "L2-DCW-opcua ip16pix2p8",
+          "driver": "opcua",
+          "lineId": "ln-c67ce90e",
+          "unit": "℃",
+          "min": 0,
+          "max": 260,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-66dd8654",
+          "name": "L3-DCW-mqtt ip16pix2p8",
+          "driver": "mqtt",
+          "lineId": "ln-41770dff",
+          "unit": "℃",
+          "min": 0,
+          "max": 100,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-e4ff72fd",
+          "name": "干燥温度SP·ip16pix2",
+          "driver": "opcua",
+          "lineId": "ln-1b30343d",
+          "unit": "℃",
+          "min": 120,
+          "max": 200,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-bf9103ab",
+          "name": "露点SP·ip16pix2",
+          "driver": "opcua",
+          "lineId": "ln-1b30343d",
+          "unit": "℃",
+          "min": -80,
+          "max": -20,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-eb6f4363",
+          "name": "喂料速率SP·ip16pix2",
+          "driver": "opcua",
+          "lineId": "ln-1b30343d",
+          "unit": "kg/h",
+          "min": 100,
+          "max": 1200,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-ee40dca4",
+          "name": "机筒温度区1SP·ip16pix2",
+          "driver": "modbus-tcp",
+          "lineId": "ln-1b30343d",
+          "unit": "℃",
+          "min": 220,
+          "max": 300,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-609a7653",
+          "name": "机筒温度区2SP·ip16pix2",
+          "driver": "modbus-tcp",
+          "lineId": "ln-1b30343d",
+          "unit": "℃",
+          "min": 220,
+          "max": 300,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-65dad257",
+          "name": "机筒温度区3SP·ip16pix2",
+          "driver": "modbus-tcp",
+          "lineId": "ln-1b30343d",
+          "unit": "℃",
+          "min": 220,
+          "max": 300,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-6c00f9cf",
+          "name": "机筒温度区4SP·ip16pix2",
+          "driver": "modbus-tcp",
+          "lineId": "ln-1b30343d",
+          "unit": "℃",
+          "min": 220,
+          "max": 300,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-af44311b",
+          "name": "机筒温度区5SP·ip16pix2",
+          "driver": "modbus-tcp",
+          "lineId": "ln-1b30343d",
+          "unit": "℃",
+          "min": 220,
+          "max": 300,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-cd52c95e",
+          "name": "螺杆转速SP·ip16pix2",
+          "driver": "modbus-tcp",
+          "lineId": "ln-1b30343d",
+          "unit": "rpm",
+          "min": 20,
+          "max": 100,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-d25c9881",
+          "name": "计量泵转速SP·ip16pix2",
+          "driver": "modbus-rtu",
+          "lineId": "ln-1b30343d",
+          "unit": "rpm",
+          "min": 15,
+          "max": 60,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-8a710575",
+          "name": "模唇温度SP·ip16pix2",
+          "driver": "modbus-tcp",
+          "lineId": "ln-1b30343d",
+          "unit": "℃",
+          "min": 250,
+          "max": 300,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-220a39ed",
+          "name": "急冷辊温度SP·ip16pix2",
+          "driver": "modbus-tcp",
+          "lineId": "ln-1b30343d",
+          "unit": "℃",
+          "min": 10,
+          "max": 60,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-51806bbf",
+          "name": "铸片辊速度SP·ip16pix2",
+          "driver": "modbus-tcp",
+          "lineId": "ln-1b30343d",
+          "unit": "m/min",
+          "min": 10,
+          "max": 60,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-3c7a8f60",
+          "name": "静电吸附电压SP·ip16pix2",
+          "driver": "modbus-tcp",
+          "lineId": "ln-1b30343d",
+          "unit": "kV",
+          "min": 4,
+          "max": 12,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-486950cd",
+          "name": "预热辊1温度SP·ip16pix2",
+          "driver": "modbus-tcp",
+          "lineId": "ln-1b30343d",
+          "unit": "℃",
+          "min": 70,
+          "max": 140,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-aa3a3684",
+          "name": "预热辊2温度SP·ip16pix2",
+          "driver": "modbus-tcp",
+          "lineId": "ln-1b30343d",
+          "unit": "℃",
+          "min": 70,
+          "max": 140,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-b0c8ad41",
+          "name": "预热辊3温度SP·ip16pix2",
+          "driver": "modbus-tcp",
+          "lineId": "ln-1b30343d",
+          "unit": "℃",
+          "min": 70,
+          "max": 140,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-cf44fff3",
+          "name": "慢辊线速度SP·ip16pix2",
+          "driver": "modbus-tcp",
+          "lineId": "ln-1b30343d",
+          "unit": "m/min",
+          "min": 10,
+          "max": 80,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-e33500d3",
+          "name": "快辊线速度SP·ip16pix2",
+          "driver": "modbus-tcp",
+          "lineId": "ln-1b30343d",
+          "unit": "m/min",
+          "min": 30,
+          "max": 260,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-8ba11c0c",
+          "name": "纵拉退火辊SP·ip16pix2",
+          "driver": "modbus-tcp",
+          "lineId": "ln-1b30343d",
+          "unit": "℃",
+          "min": 90,
+          "max": 170,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-1b2ca9a2",
+          "name": "TDO预热段SP·ip16pix2",
+          "driver": "opcua",
+          "lineId": "ln-1b30343d",
+          "unit": "℃",
+          "min": 80,
+          "max": 140,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-7094905d",
+          "name": "TDO拉伸段SP·ip16pix2",
+          "driver": "opcua",
+          "lineId": "ln-1b30343d",
+          "unit": "℃",
+          "min": 90,
+          "max": 150,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-3d07adf8",
+          "name": "TDO定型段SP·ip16pix2",
+          "driver": "opcua",
+          "lineId": "ln-1b30343d",
+          "unit": "℃",
+          "min": 180,
+          "max": 250,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-c2bce819",
+          "name": "链夹速度SP·ip16pix2",
+          "driver": "opcua",
+          "lineId": "ln-1b30343d",
+          "unit": "m/min",
+          "min": 40,
+          "max": 260,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-43eafe70",
+          "name": "出口轨宽SP·ip16pix2",
+          "driver": "opcua",
+          "lineId": "ln-1b30343d",
+          "unit": "mm",
+          "min": 1800,
+          "max": 4200,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-529effd5",
+          "name": "coronaPower·ip16pix2",
+          "driver": "http",
+          "lineId": "ln-1b30343d",
+          "unit": "kW",
+          "min": 0.5,
+          "max": 8,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-9b8c2464",
+          "name": "收卷张力SP·ip16pix2",
+          "driver": "modbus-tcp",
+          "lineId": "ln-1b30343d",
+          "unit": "N",
+          "min": 30,
+          "max": 180,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-d62d753a",
+          "name": "张力锥度SP·ip16pix2",
+          "driver": "modbus-tcp",
+          "lineId": "ln-1b30343d",
+          "unit": "%",
+          "min": 10,
+          "max": 60,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-0a3ac591",
+          "name": "接触辊压力SP·ip16pix2",
+          "driver": "modbus-tcp",
+          "lineId": "ln-1b30343d",
+          "unit": "bar",
+          "min": 0.3,
+          "max": 4,
+          "templateRef": "dcw-temp-sp"
+        },
+        {
+          "id": "dw-2dd81677",
+          "name": "卷取速度上限SP·ip16pix2",
+          "driver": "modbus-tcp",
+          "lineId": "ln-1b30343d",
+          "unit": "m/min",
+          "min": 60,
+          "max": 320,
+          "templateRef": "dcw-temp-sp"
+        }
+      ],
+      "daq": [
+        {
+          "id": "dn-97590a51",
+          "name": "L1-DAQ-modbus-tcp ip16l6x3",
+          "driver": "modbus-tcp",
+          "lineId": "ln-d451e059",
+          "unit": "℃",
+          "min": 0,
+          "max": 400,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-bc564b20",
+          "name": "L2-DAQ-opcua ip16l6x3",
+          "driver": "opcua",
+          "lineId": "ln-0893781d",
+          "unit": "MPa",
+          "min": 0,
+          "max": 45,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-c58bb959",
+          "name": "L3-DAQ-mqtt ip16l6x3",
+          "driver": "mqtt",
+          "lineId": "ln-6de9d5ff",
+          "unit": "μm",
+          "min": 0,
+          "max": 400,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-d8b1f727",
+          "name": "L4-DAQ-http ip16l6x3",
+          "driver": "http",
+          "lineId": "ln-30f165fe",
+          "unit": "μm",
+          "min": 0,
+          "max": 400,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-95a36092",
+          "name": "L5-DAQ-modbus-rtu ip16l6x3(sat)",
+          "driver": "modbus-rtu",
+          "lineId": "ln-30f165fe",
+          "unit": "个/m²",
+          "min": 0,
+          "max": 500,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-06236be3",
+          "name": "熔体温度 ip16l6x3cl",
+          "driver": "modbus-tcp",
+          "lineId": "ln-3d5cc21f",
+          "unit": "℃",
+          "min": 0,
+          "max": 400,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-edce5dd3",
+          "name": "晶点计数 ip16l6x3cl",
+          "driver": "modbus-rtu",
+          "lineId": "ln-3d5cc21f",
+          "unit": "个/m²",
+          "min": 0,
+          "max": 500,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-af87470d",
+          "name": "MeltPressure ip16l6x3cl",
+          "driver": "opcua",
+          "lineId": "ln-3d5cc21f",
+          "unit": "MPa",
+          "min": 0,
+          "max": 45,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-41259552",
+          "name": "thick ip16l6x3cl",
+          "driver": "mqtt",
+          "lineId": "ln-3d5cc21f",
+          "unit": "μm",
+          "min": 0,
+          "max": 400,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-253f1ea8",
+          "name": "defect ip16l6x3cl",
+          "driver": "http",
+          "lineId": "ln-3d5cc21f",
+          "unit": "%",
+          "min": 0,
+          "max": 100,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-d0dbd49e",
+          "name": "profile ip16l6x3",
+          "driver": "http",
+          "lineId": "ln-d451e059",
+          "unit": "mm",
+          "min": 0.4,
+          "max": 0.65,
+          "templateRef": "thickness-scan"
+        },
+        {
+          "id": "dn-adea72a3",
+          "name": "ccd ip16l6x3",
+          "driver": "http",
+          "lineId": "ln-d451e059",
+          "unit": "灰度",
+          "min": 0,
+          "max": 255,
+          "templateRef": "ccd-image"
+        },
+        {
+          "id": "dn-d7f85844",
+          "name": "L1-DAQ-modbus-tcp ip16l6x3p8",
+          "driver": "modbus-tcp",
+          "lineId": "ln-9f1ddbe6",
+          "unit": "℃",
+          "min": 0,
+          "max": 260,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-4815f921",
+          "name": "L2-DAQ-opcua ip16l6x3p8",
+          "driver": "opcua",
+          "lineId": "ln-c52ab8e9",
+          "unit": "℃",
+          "min": 0,
+          "max": 260,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-6316520a",
+          "name": "L3-DAQ-mqtt ip16l6x3p8",
+          "driver": "mqtt",
+          "lineId": "ln-71d57f3e",
+          "unit": "℃",
+          "min": 0,
+          "max": 100,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-0d70b47a",
+          "name": "L4-DAQ-modbus-rtu ip16l6x3p8(sat)",
+          "driver": "modbus-rtu",
+          "lineId": "ln-71d57f3e",
+          "unit": "℃",
+          "min": 0,
+          "max": 100,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-9761bd06",
+          "name": "L5-DAQ-http ip16l6x3p8(sat)",
+          "driver": "http",
+          "lineId": "ln-71d57f3e",
+          "unit": "L/min",
+          "min": 0,
+          "max": 100,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-bdfb1711",
+          "name": "干燥塔温度·ip16l6x3",
+          "driver": "opcua",
+          "lineId": "ln-e397cb7c",
+          "unit": "℃",
+          "min": 20,
+          "max": 220,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-bc6bdb24",
+          "name": "切片残水·ip16l6x3",
+          "driver": "opcua",
+          "lineId": "ln-e397cb7c",
+          "unit": "ppm",
+          "min": 0,
+          "max": 120,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-c123d21c",
+          "name": "熔体温度·ip16l6x3",
+          "driver": "modbus-tcp",
+          "lineId": "ln-e397cb7c",
+          "unit": "℃",
+          "min": 200,
+          "max": 330,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-e84a04e5",
+          "name": "泵前熔压·ip16l6x3",
+          "driver": "modbus-tcp",
+          "lineId": "ln-e397cb7c",
+          "unit": "MPa",
+          "min": 0,
+          "max": 35,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-32830ca0",
+          "name": "泵出口压力·ip16l6x3",
+          "driver": "modbus-rtu",
+          "lineId": "ln-e397cb7c",
+          "unit": "MPa",
+          "min": 0,
+          "max": 35,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-07ac421a",
+          "name": "铸片辊面温度·ip16l6x3",
+          "driver": "modbus-tcp",
+          "lineId": "ln-e397cb7c",
+          "unit": "℃",
+          "min": 0,
+          "max": 80,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-3527c35b",
+          "name": "纵拉膜温·ip16l6x3",
+          "driver": "modbus-tcp",
+          "lineId": "ln-e397cb7c",
+          "unit": "℃",
+          "min": 40,
+          "max": 160,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-91321917",
+          "name": "纵拉实际拉伸比·ip16l6x3",
+          "driver": "modbus-tcp",
+          "lineId": "ln-e397cb7c",
+          "unit": "",
+          "min": 1,
+          "max": 5,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-a5a87918",
+          "name": "烘箱膜温·ip16l6x3",
+          "driver": "opcua",
+          "lineId": "ln-e397cb7c",
+          "unit": "℃",
+          "min": 60,
+          "max": 260,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-24e24a1a",
+          "name": "横拉实际拉伸比·ip16l6x3",
+          "driver": "opcua",
+          "lineId": "ln-e397cb7c",
+          "unit": "",
+          "min": 1,
+          "max": 5.5,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-471afe14",
+          "name": "轨道实测宽度·ip16l6x3",
+          "driver": "opcua",
+          "lineId": "ln-e397cb7c",
+          "unit": "mm",
+          "min": 1500,
+          "max": 4500,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-8c15e1dd",
+          "name": "biaxThick·ip16l6x3",
+          "driver": "mqtt",
+          "lineId": "ln-e397cb7c",
+          "unit": "μm",
+          "min": 0,
+          "max": 80,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-c8836fea",
+          "name": "biaxSigma·ip16l6x3",
+          "driver": "mqtt",
+          "lineId": "ln-e397cb7c",
+          "unit": "μm",
+          "min": 0,
+          "max": 10,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-d088d63e",
+          "name": "biaxProfile·ip16l6x3",
+          "driver": "http",
+          "lineId": "ln-e397cb7c",
+          "unit": "μm",
+          "min": 0,
+          "max": 80,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-157716ad",
+          "name": "biaxDefect·ip16l6x3",
+          "driver": "http",
+          "lineId": "ln-e397cb7c",
+          "unit": "%",
+          "min": 0,
+          "max": 10,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-8c6f52a9",
+          "name": "biaxHaze·ip16l6x3",
+          "driver": "http",
+          "lineId": "ln-e397cb7c",
+          "unit": "%",
+          "min": 0,
+          "max": 10,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-b95eba16",
+          "name": "biaxDyne·ip16l6x3",
+          "driver": "http",
+          "lineId": "ln-e397cb7c",
+          "unit": "dyn/cm",
+          "min": 30,
+          "max": 60,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-707842c4",
+          "name": "实际收卷张力·ip16l6x3",
+          "driver": "modbus-tcp",
+          "lineId": "ln-e397cb7c",
+          "unit": "N",
+          "min": 0,
+          "max": 220,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-fd6cd264",
+          "name": "卷径·ip16l6x3",
+          "driver": "modbus-tcp",
+          "lineId": "ln-e397cb7c",
+          "unit": "m",
+          "min": 0.05,
+          "max": 1.5,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-fe329bac",
+          "name": "Bench测温 awb1618d3l",
+          "driver": "mock",
+          "lineId": "ln-002e6b82",
+          "unit": "℃",
+          "min": 150,
+          "max": 185,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-290d87e6",
+          "name": "PLC熔温PV plc1618uvi",
+          "driver": "modbus-tcp",
+          "lineId": "ln-ceb6b9bd",
+          "unit": "℃",
+          "min": 150,
+          "max": 185,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-0d4c011c",
+          "name": "scen-wwtp:daq:air-pressure-pv",
+          "driver": "modbus-tcp",
+          "lineId": "ln-8331c05b",
+          "unit": "kPa",
+          "min": 20,
+          "max": 90,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-69812149",
+          "name": "scen-wwtp:daq:do-pv",
+          "driver": "modbus-tcp",
+          "lineId": "ln-8331c05b",
+          "unit": "mg/L",
+          "min": 0,
+          "max": 10,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-e84cdecc",
+          "name": "scen-anneal:daq:furnace-temp-pv",
+          "driver": "modbus-tcp",
+          "lineId": "ln-692c4ffb",
+          "unit": "℃",
+          "min": 20,
+          "max": 900,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-28dbdf54",
+          "name": "scen-anneal:daq:strip-temp-pv",
+          "driver": "modbus-tcp",
+          "lineId": "ln-692c4ffb",
+          "unit": "℃",
+          "min": 20,
+          "max": 900,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-bec44bdf",
+          "name": "scen-injection:daq:melt-temp-pv",
+          "driver": "modbus-tcp",
+          "lineId": "ln-54c22f76",
+          "unit": "℃",
+          "min": 20,
+          "max": 320,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-5be700aa",
+          "name": "scen-injection:daq:melt-pressure-pv",
+          "driver": "modbus-tcp",
+          "lineId": "ln-54c22f76",
+          "unit": "bar",
+          "min": 0,
+          "max": 160,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-21c1c3db",
+          "name": "scen-wwtp:daq:naoh-flow-pv",
+          "driver": "opcua",
+          "lineId": "ln-8331c05b",
+          "unit": "L/h",
+          "min": 0,
+          "max": 130,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-881f0a91",
+          "name": "scen-wwtp:daq:pac-flow-pv",
+          "driver": "opcua",
+          "lineId": "ln-8331c05b",
+          "unit": "L/h",
+          "min": 0,
+          "max": 100,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-92fac300",
+          "name": "scen-injection:daq:mold-temp-pv",
+          "driver": "modbus-rtu",
+          "lineId": "ln-54c22f76",
+          "unit": "℃",
+          "min": 10,
+          "max": 110,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-ee030fbb",
+          "name": "scen-injection:daq:clamp-force-pv",
+          "driver": "modbus-rtu",
+          "lineId": "ln-54c22f76",
+          "unit": "kN",
+          "min": 0,
+          "max": 2600,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-d9edfd89",
+          "name": "scen-anneal:daq:act-speed-pv",
+          "driver": "opcua",
+          "lineId": "ln-692c4ffb",
+          "unit": "m/min",
+          "min": 0,
+          "max": 240,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-eb908fbb",
+          "name": "scen-wwtp:daq:mlss-pv",
+          "driver": "modbus-rtu",
+          "lineId": "ln-8331c05b",
+          "unit": "mg/L",
+          "min": 1000,
+          "max": 8000,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-8ff712f0",
+          "name": "scen-anneal:daq:oa-temp-pv",
+          "driver": "modbus-rtu",
+          "lineId": "ln-692c4ffb",
+          "unit": "℃",
+          "min": 20,
+          "max": 520,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-433aa412",
+          "name": "scen-injection:daq:inj-pressure-pv",
+          "driver": "opcua",
+          "lineId": "ln-54c22f76",
+          "unit": "bar",
+          "min": 0,
+          "max": 180,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-6f51196d",
+          "name": "scen-wwtp:daq:cod-in-pv",
+          "driver": "mqtt",
+          "lineId": "ln-8331c05b",
+          "unit": "mg/L",
+          "min": 100,
+          "max": 900,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-15b157be",
+          "name": "scen-injection:daq:water-temp-pv",
+          "driver": "mqtt",
+          "lineId": "ln-54c22f76",
+          "unit": "℃",
+          "min": 5,
+          "max": 60,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-b1994cdd",
+          "name": "scen-wwtp:daq:nh3-in-pv",
+          "driver": "mqtt",
+          "lineId": "ln-8331c05b",
+          "unit": "mg/L",
+          "min": 10,
+          "max": 80,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-8503936c",
+          "name": "scen-injection:daq:cool-flow-pv",
+          "driver": "mqtt",
+          "lineId": "ln-54c22f76",
+          "unit": "L/min",
+          "min": 0,
+          "max": 80,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-05873812",
+          "name": "scen-wwtp:daq:eff-cod",
+          "driver": "http",
+          "lineId": "ln-8331c05b",
+          "unit": "mg/L",
+          "min": 0,
+          "max": 300,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-6d1cdec1",
+          "name": "scen-injection:daq:part-weight",
+          "driver": "http",
+          "lineId": "ln-54c22f76",
+          "unit": "g",
+          "min": 25,
+          "max": 40,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-d4140d20",
+          "name": "scen-wwtp:daq:eff-nh3",
+          "driver": "http",
+          "lineId": "ln-8331c05b",
+          "unit": "mg/L",
+          "min": 0,
+          "max": 60,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-4f15dd23",
+          "name": "scen-injection:daq:flash-rate",
+          "driver": "http",
+          "lineId": "ln-54c22f76",
+          "unit": "%",
+          "min": 0,
+          "max": 5,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-80c12a4a",
+          "name": "scen-wwtp:daq:eff-tp",
+          "driver": "http",
+          "lineId": "ln-8331c05b",
+          "unit": "mg/L",
+          "min": 0,
+          "max": 8,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-f58493fa",
+          "name": "scen-injection:daq:sink-mark",
+          "driver": "http",
+          "lineId": "ln-54c22f76",
+          "unit": "%",
+          "min": 0,
+          "max": 10,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-87867bdf",
+          "name": "scen-wwtp:daq:eff-ph",
+          "driver": "http",
+          "lineId": "ln-8331c05b",
+          "unit": "pH",
+          "min": 4,
+          "max": 11,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-6b21a6c4",
+          "name": "scen-injection:daq:dim-dev",
+          "driver": "http",
+          "lineId": "ln-54c22f76",
+          "unit": "mm",
+          "min": -0.5,
+          "max": 0.5,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-60186879",
+          "name": "scen-wwtp:daq:eff-turbidity",
+          "driver": "http",
+          "lineId": "ln-8331c05b",
+          "unit": "NTU",
+          "min": 0,
+          "max": 60,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-6eb9168f",
+          "name": "scen-injection:daq:cycle-time",
+          "driver": "http",
+          "lineId": "ln-54c22f76",
+          "unit": "s",
+          "min": 5,
+          "max": 60,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-d79ac671",
+          "name": "scen-wwtp:daq:do-profile",
+          "driver": "http",
+          "lineId": "ln-8331c05b",
+          "unit": "mg/L",
+          "min": 0,
+          "max": 10,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-99501349",
+          "name": "scen-injection:daq:wall-profile",
+          "driver": "http",
+          "lineId": "ln-54c22f76",
+          "unit": "mm",
+          "min": 1,
+          "max": 5,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-9b3650be",
+          "name": "scen-injection:daq:surface-image",
+          "driver": "http",
+          "lineId": "ln-54c22f76",
+          "unit": "灰度",
+          "min": 0,
+          "max": 255,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-bba78c74",
+          "name": "scen-anneal:daq:dew-point-pv",
+          "driver": "mqtt",
+          "lineId": "ln-692c4ffb",
+          "unit": "℃",
+          "min": -70,
+          "max": 0,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-6248dd73",
+          "name": "scen-anneal:daq:h2-act-pv",
+          "driver": "mqtt",
+          "lineId": "ln-692c4ffb",
+          "unit": "%",
+          "min": 0,
+          "max": 20,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-2f8b1057",
+          "name": "scen-anneal:daq:hardness",
+          "driver": "http",
+          "lineId": "ln-692c4ffb",
+          "unit": "HV",
+          "min": 60,
+          "max": 200,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-f1ae5563",
+          "name": "scen-anneal:daq:tensile",
+          "driver": "http",
+          "lineId": "ln-692c4ffb",
+          "unit": "MPa",
+          "min": 200,
+          "max": 500,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-6f6aedff",
+          "name": "scen-anneal:daq:yield-str",
+          "driver": "http",
+          "lineId": "ln-692c4ffb",
+          "unit": "MPa",
+          "min": 100,
+          "max": 400,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-1cfdaba2",
+          "name": "scen-anneal:daq:grain-size",
+          "driver": "http",
+          "lineId": "ln-692c4ffb",
+          "unit": "μm",
+          "min": 2,
+          "max": 30,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-dc20d0fc",
+          "name": "scen-anneal:daq:surface-defect",
+          "driver": "http",
+          "lineId": "ln-692c4ffb",
+          "unit": "%",
+          "min": 0,
+          "max": 5,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-1d9a1681",
+          "name": "scen-anneal:daq:flatness",
+          "driver": "http",
+          "lineId": "ln-692c4ffb",
+          "unit": "I",
+          "min": 0,
+          "max": 100,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-0d001c2b",
+          "name": "scen-biax:daq:dry-temp-pv",
+          "driver": "opcua",
+          "lineId": "ln-227fb62f",
+          "unit": "℃",
+          "min": 20,
+          "max": 220,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-bcc52689",
+          "name": "scen-biax:daq:moisture-pv",
+          "driver": "opcua",
+          "lineId": "ln-227fb62f",
+          "unit": "ppm",
+          "min": 0,
+          "max": 120,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-4d3b91d9",
+          "name": "scen-biax:daq:melt-temp",
+          "driver": "modbus-tcp",
+          "lineId": "ln-227fb62f",
+          "unit": "℃",
+          "min": 200,
+          "max": 330,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-e8be4f60",
+          "name": "scen-biax:daq:melt-pressure",
+          "driver": "modbus-tcp",
+          "lineId": "ln-227fb62f",
+          "unit": "MPa",
+          "min": 0,
+          "max": 35,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-c9bd3338",
+          "name": "scen-biax:daq:pump-outlet",
+          "driver": "modbus-rtu",
+          "lineId": "ln-227fb62f",
+          "unit": "MPa",
+          "min": 0,
+          "max": 35,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-f19b38fc",
+          "name": "scen-biax:daq:cast-temp-pv",
+          "driver": "modbus-tcp",
+          "lineId": "ln-227fb62f",
+          "unit": "℃",
+          "min": 0,
+          "max": 80,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-e09a5e61",
+          "name": "scen-biax:daq:mdo-film-temp",
+          "driver": "modbus-tcp",
+          "lineId": "ln-227fb62f",
+          "unit": "℃",
+          "min": 40,
+          "max": 160,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-f2f39181",
+          "name": "scen-biax:daq:mdo-ratio-pv",
+          "driver": "modbus-tcp",
+          "lineId": "ln-227fb62f",
+          "unit": "",
+          "min": 1,
+          "max": 5,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-44dca43d",
+          "name": "scen-biax:daq:tdo-temp-pv",
+          "driver": "opcua",
+          "lineId": "ln-227fb62f",
+          "unit": "℃",
+          "min": 60,
+          "max": 260,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-104dcb86",
+          "name": "scen-biax:daq:td-ratio-pv",
+          "driver": "opcua",
+          "lineId": "ln-227fb62f",
+          "unit": "",
+          "min": 1,
+          "max": 5.5,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-2fb3cb68",
+          "name": "scen-biax:daq:rail-width-pv",
+          "driver": "opcua",
+          "lineId": "ln-227fb62f",
+          "unit": "mm",
+          "min": 1500,
+          "max": 4500,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-c6fc8b16",
+          "name": "scen-biax:daq:biax-thickness",
+          "driver": "mqtt",
+          "lineId": "ln-227fb62f",
+          "unit": "μm",
+          "min": 0,
+          "max": 80,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-352f7902",
+          "name": "scen-biax:daq:thickness-sigma",
+          "driver": "mqtt",
+          "lineId": "ln-227fb62f",
+          "unit": "μm",
+          "min": 0,
+          "max": 10,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-76edc9d5",
+          "name": "scen-biax:daq:biax-profile",
+          "driver": "http",
+          "lineId": "ln-227fb62f",
+          "unit": "μm",
+          "min": 0,
+          "max": 80,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-68bfd2ed",
+          "name": "scen-biax:daq:biax-defect",
+          "driver": "http",
+          "lineId": "ln-227fb62f",
+          "unit": "%",
+          "min": 0,
+          "max": 10,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-c7755b0c",
+          "name": "scen-biax:daq:biax-haze",
+          "driver": "http",
+          "lineId": "ln-227fb62f",
+          "unit": "%",
+          "min": 0,
+          "max": 10,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-6f409401",
+          "name": "scen-biax:daq:dyne-level",
+          "driver": "http",
+          "lineId": "ln-227fb62f",
+          "unit": "dyn/cm",
+          "min": 30,
+          "max": 60,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-ff5706c3",
+          "name": "scen-biax:daq:winder-tension-pv",
+          "driver": "modbus-tcp",
+          "lineId": "ln-227fb62f",
+          "unit": "N",
+          "min": 0,
+          "max": 220,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-f3db87b5",
+          "name": "scen-biax:daq:roll-diameter",
+          "driver": "modbus-tcp",
+          "lineId": "ln-227fb62f",
+          "unit": "m",
+          "min": 0.05,
+          "max": 1.5,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-4ff6862f",
+          "name": "L1-DAQ-modbus-tcp ip16pix2",
+          "driver": "modbus-tcp",
+          "lineId": "ln-a0cfb80e",
+          "unit": "℃",
+          "min": 0,
+          "max": 400,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-4fe909d9",
+          "name": "L2-DAQ-opcua ip16pix2",
+          "driver": "opcua",
+          "lineId": "ln-441966d3",
+          "unit": "MPa",
+          "min": 0,
+          "max": 45,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-c638bc19",
+          "name": "L3-DAQ-mqtt ip16pix2",
+          "driver": "mqtt",
+          "lineId": "ln-b5599e19",
+          "unit": "μm",
+          "min": 0,
+          "max": 400,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-ee2cc952",
+          "name": "L4-DAQ-http ip16pix2",
+          "driver": "http",
+          "lineId": "ln-662c0028",
+          "unit": "μm",
+          "min": 0,
+          "max": 400,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-ec895752",
+          "name": "L5-DAQ-modbus-rtu ip16pix2(sat)",
+          "driver": "modbus-rtu",
+          "lineId": "ln-662c0028",
+          "unit": "个/m²",
+          "min": 0,
+          "max": 500,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-b5a3beec",
+          "name": "熔体温度 ip16pix2cl",
+          "driver": "modbus-tcp",
+          "lineId": "ln-bce52c46",
+          "unit": "℃",
+          "min": 0,
+          "max": 400,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-18edf98f",
+          "name": "晶点计数 ip16pix2cl",
+          "driver": "modbus-rtu",
+          "lineId": "ln-bce52c46",
+          "unit": "个/m²",
+          "min": 0,
+          "max": 500,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-75b7a9eb",
+          "name": "MeltPressure ip16pix2cl",
+          "driver": "opcua",
+          "lineId": "ln-bce52c46",
+          "unit": "MPa",
+          "min": 0,
+          "max": 45,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-0e4df753",
+          "name": "thick ip16pix2cl",
+          "driver": "mqtt",
+          "lineId": "ln-bce52c46",
+          "unit": "μm",
+          "min": 0,
+          "max": 400,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-c6ee5d96",
+          "name": "defect ip16pix2cl",
+          "driver": "http",
+          "lineId": "ln-bce52c46",
+          "unit": "%",
+          "min": 0,
+          "max": 100,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-85476c97",
+          "name": "profile ip16pix2",
+          "driver": "http",
+          "lineId": "ln-a0cfb80e",
+          "unit": "mm",
+          "min": 0.4,
+          "max": 0.65,
+          "templateRef": "thickness-scan"
+        },
+        {
+          "id": "dn-6846051c",
+          "name": "ccd ip16pix2",
+          "driver": "http",
+          "lineId": "ln-a0cfb80e",
+          "unit": "灰度",
+          "min": 0,
+          "max": 255,
+          "templateRef": "ccd-image"
+        },
+        {
+          "id": "dn-92b0973a",
+          "name": "L1-DAQ-modbus-tcp ip16pix2p8",
+          "driver": "modbus-tcp",
+          "lineId": "ln-e847fc9e",
+          "unit": "℃",
+          "min": 0,
+          "max": 260,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-1a8d41af",
+          "name": "L2-DAQ-opcua ip16pix2p8",
+          "driver": "opcua",
+          "lineId": "ln-c67ce90e",
+          "unit": "℃",
+          "min": 0,
+          "max": 260,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-b0191615",
+          "name": "L3-DAQ-mqtt ip16pix2p8",
+          "driver": "mqtt",
+          "lineId": "ln-41770dff",
+          "unit": "℃",
+          "min": 0,
+          "max": 100,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-06089870",
+          "name": "L4-DAQ-modbus-rtu ip16pix2p8(sat)",
+          "driver": "modbus-rtu",
+          "lineId": "ln-41770dff",
+          "unit": "℃",
+          "min": 0,
+          "max": 100,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-d3f00dc4",
+          "name": "L5-DAQ-http ip16pix2p8(sat)",
+          "driver": "http",
+          "lineId": "ln-41770dff",
+          "unit": "L/min",
+          "min": 0,
+          "max": 100,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-7ff8f9b7",
+          "name": "干燥塔温度·ip16pix2",
+          "driver": "opcua",
+          "lineId": "ln-1b30343d",
+          "unit": "℃",
+          "min": 20,
+          "max": 220,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-a1d61239",
+          "name": "切片残水·ip16pix2",
+          "driver": "opcua",
+          "lineId": "ln-1b30343d",
+          "unit": "ppm",
+          "min": 0,
+          "max": 120,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-abe057e5",
+          "name": "熔体温度·ip16pix2",
+          "driver": "modbus-tcp",
+          "lineId": "ln-1b30343d",
+          "unit": "℃",
+          "min": 200,
+          "max": 330,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-0db2b9ad",
+          "name": "泵前熔压·ip16pix2",
+          "driver": "modbus-tcp",
+          "lineId": "ln-1b30343d",
+          "unit": "MPa",
+          "min": 0,
+          "max": 35,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-8c4c40cb",
+          "name": "泵出口压力·ip16pix2",
+          "driver": "modbus-rtu",
+          "lineId": "ln-1b30343d",
+          "unit": "MPa",
+          "min": 0,
+          "max": 35,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-2ac930e1",
+          "name": "铸片辊面温度·ip16pix2",
+          "driver": "modbus-tcp",
+          "lineId": "ln-1b30343d",
+          "unit": "℃",
+          "min": 0,
+          "max": 80,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-203cd10e",
+          "name": "纵拉膜温·ip16pix2",
+          "driver": "modbus-tcp",
+          "lineId": "ln-1b30343d",
+          "unit": "℃",
+          "min": 40,
+          "max": 160,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-4aaab483",
+          "name": "纵拉实际拉伸比·ip16pix2",
+          "driver": "modbus-tcp",
+          "lineId": "ln-1b30343d",
+          "unit": "",
+          "min": 1,
+          "max": 5,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-378e3d85",
+          "name": "烘箱膜温·ip16pix2",
+          "driver": "opcua",
+          "lineId": "ln-1b30343d",
+          "unit": "℃",
+          "min": 60,
+          "max": 260,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-aee22eb8",
+          "name": "横拉实际拉伸比·ip16pix2",
+          "driver": "opcua",
+          "lineId": "ln-1b30343d",
+          "unit": "",
+          "min": 1,
+          "max": 5.5,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-48a7ba34",
+          "name": "轨道实测宽度·ip16pix2",
+          "driver": "opcua",
+          "lineId": "ln-1b30343d",
+          "unit": "mm",
+          "min": 1500,
+          "max": 4500,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-9c35071b",
+          "name": "biaxThick·ip16pix2",
+          "driver": "mqtt",
+          "lineId": "ln-1b30343d",
+          "unit": "μm",
+          "min": 0,
+          "max": 80,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-8fadde1e",
+          "name": "biaxSigma·ip16pix2",
+          "driver": "mqtt",
+          "lineId": "ln-1b30343d",
+          "unit": "μm",
+          "min": 0,
+          "max": 10,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-8e2f3a70",
+          "name": "biaxProfile·ip16pix2",
+          "driver": "http",
+          "lineId": "ln-1b30343d",
+          "unit": "μm",
+          "min": 0,
+          "max": 80,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-e30e021a",
+          "name": "biaxDefect·ip16pix2",
+          "driver": "http",
+          "lineId": "ln-1b30343d",
+          "unit": "%",
+          "min": 0,
+          "max": 10,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-cd3afe0b",
+          "name": "biaxHaze·ip16pix2",
+          "driver": "http",
+          "lineId": "ln-1b30343d",
+          "unit": "%",
+          "min": 0,
+          "max": 10,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-08350747",
+          "name": "biaxDyne·ip16pix2",
+          "driver": "http",
+          "lineId": "ln-1b30343d",
+          "unit": "dyn/cm",
+          "min": 30,
+          "max": 60,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-af6bc08d",
+          "name": "实际收卷张力·ip16pix2",
+          "driver": "modbus-tcp",
+          "lineId": "ln-1b30343d",
+          "unit": "N",
+          "min": 0,
+          "max": 220,
+          "templateRef": "daq-temp-tc"
+        },
+        {
+          "id": "dn-a473aefd",
+          "name": "卷径·ip16pix2",
+          "driver": "modbus-tcp",
+          "lineId": "ln-1b30343d",
+          "unit": "m",
+          "min": 0.05,
+          "max": 1.5,
+          "templateRef": "daq-temp-tc"
+        }
+      ]
+    }
+  },
+  "agentteam": {
+    "biax": {
+      "traj": [
+        {
+          "iter": 0,
+          "knob": null,
+          "node": null,
+          "from": null,
+          "to": null,
+          "record": null,
+          "thickness": 28.05
+        },
+        {
+          "iter": 1,
+          "knob": "cast-spd-sp",
+          "node": "dw-51806bbf",
+          "from": 32,
+          "to": 33.7,
+          "record": null,
+          "thickness": 28,
+          "meltTemp": 291.625
+        },
+        {
+          "iter": 2,
+          "knob": "fast-roll-sp",
+          "node": "dw-e33500d3",
+          "from": 118,
+          "to": 122.4,
+          "record": null,
+          "thickness": 27.98,
+          "meltTemp": 291.625
+        },
+        {
+          "iter": 3,
+          "knob": "rail-out-sp",
+          "node": "dw-43eafe70",
+          "from": 3000,
+          "to": 3096,
+          "record": null,
+          "thickness": 24.8,
+          "meltTemp": 291.975
+        }
+      ],
+      "writes": 3,
+      "distinctKnobs": 3,
+      "records": 0,
+      "final": 0.2,
+      "attained": true,
+      "finalUm": 24.8,
+      "targetUm": 25,
+      "toleranceUm": 0.7
+    },
+    "cl": {
+      "seeds": [
+        {
+          "seed": 42,
+          "traj": [
+            {
+              "iter": 0,
+              "thickness": 56.18333333333333,
+              "defect": 0.5166666666666666,
+              "pressure": 17.483333333333334,
+              "meltTemp": 209.9333333333333,
+              "screw": 150,
+              "lineSpeed": 95,
+              "zone": 200,
+              "J": 63.58541666666668,
+              "wallS": 0
+            },
+            {
+              "iter": 1,
+              "thickness": 51.43333333333333,
+              "defect": 0.10000000000000002,
+              "pressure": 16.833333333333332,
+              "meltTemp": 208.60000000000002,
+              "screw": 133,
+              "lineSpeed": 95,
+              "zone": 200,
+              "J": 88.80250000000001,
+              "wallS": 34.179
+            },
+            {
+              "iter": 2,
+              "thickness": 49.583333333333336,
+              "defect": 0.18333333333333335,
+              "pressure": 16.083333333333332,
+              "meltTemp": 207.21666666666667,
+              "screw": 129,
+              "lineSpeed": 95,
+              "zone": 200,
+              "J": 88.75541666666666,
+              "wallS": 56.292
+            }
+          ],
+          "stats": {
+            "writes": 2,
+            "rejected": 0,
+            "records": 2,
+            "iters": 2,
+            "converged": true,
+            "worstViolation": null
+          },
+          "ratio": 0.988
+        },
+        {
+          "seed": 43,
+          "traj": [
+            {
+              "iter": 0,
+              "thickness": 52.1,
+              "defect": 0.5666666666666667,
+              "pressure": 17.566666666666666,
+              "meltTemp": 209.86666666666667,
+              "screw": 150,
+              "lineSpeed": 95,
+              "zone": 200,
+              "J": 85.8875,
+              "wallS": 0
+            },
+            {
+              "iter": 1,
+              "thickness": 53.98333333333333,
+              "defect": 0.03333333333333333,
+              "pressure": 18.066666666666666,
+              "meltTemp": 208.78333333333333,
+              "screw": 144,
+              "lineSpeed": 95,
+              "zone": 200,
+              "J": 77.51583333333338,
+              "wallS": 34.258
+            },
+            {
+              "iter": 2,
+              "thickness": 49.199999999999996,
+              "defect": 0.3333333333333333,
+              "pressure": 16.666666666666668,
+              "meltTemp": 206.98333333333332,
+              "screw": 133,
+              "lineSpeed": 95,
+              "zone": 200,
+              "J": 88.07333333333335,
+              "wallS": 56.408
+            },
+            {
+              "iter": 3,
+              "thickness": 49.616666666666674,
+              "defect": 0.3,
+              "pressure": 16.616666666666664,
+              "meltTemp": 205.26666666666665,
+              "screw": 135,
+              "lineSpeed": 95,
+              "zone": 200,
+              "J": 88.07083333333334,
+              "wallS": 78.584
+            }
+          ],
+          "stats": {
+            "writes": 3,
+            "rejected": 0,
+            "records": 3,
+            "iters": 3,
+            "converged": true,
+            "worstViolation": null
+          },
+          "ratio": 0.98
+        },
+        {
+          "seed": 44,
+          "traj": [
+            {
+              "iter": 0,
+              "thickness": 51.63333333333333,
+              "defect": 0.6833333333333332,
+              "pressure": 17.433333333333334,
+              "meltTemp": 210.03333333333333,
+              "screw": 150,
+              "lineSpeed": 95,
+              "zone": 200,
+              "J": 86.07291666666667,
+              "wallS": 0
+            }
+          ],
+          "stats": {
+            "writes": 0,
+            "rejected": 0,
+            "records": 0,
+            "iters": 0,
+            "converged": true,
+            "worstViolation": null
+          },
+          "ratio": 0.957
+        }
+      ]
+    }
+  },
+  "closedloop": {
+    "writeMode": "governed",
+    "agg": {
+      "n": 3,
+      "ratioMin": 0.957,
+      "ratioMean": 0.975,
+      "ratioMax": 0.988,
+      "J0mean": 78.515,
+      "JendMean": 87.641,
+      "Jstar": 89.894,
+      "itersMean": 1.667,
+      "writesTotal": 5,
+      "rejectedTotal": 0,
+      "convergedN": 3,
+      "wallSMean": 49.008
+    },
+    "seeds": [
+      {
+        "seed": 42,
+        "warmed": true,
+        "warmupS": 0.126,
+        "J0": 63.585,
+        "Jend": 88.779,
+        "Jstar": 89.894,
+        "ratio": 0.988,
+        "iters": 2,
+        "writes": 2,
+        "rejected": 0,
+        "converged": true,
+        "wallS": 56.292,
+        "traj": [
+          {
+            "iter": 0,
+            "thickness": 56.18333333333333,
+            "defect": 0.5166666666666666,
+            "pressure": 17.483333333333334,
+            "meltTemp": 209.9333333333333,
+            "screw": 150,
+            "lineSpeed": 95,
+            "J": 63.58541666666668
+          },
+          {
+            "iter": 1,
+            "thickness": 51.43333333333333,
+            "defect": 0.10000000000000002,
+            "pressure": 16.833333333333332,
+            "meltTemp": 208.60000000000002,
+            "screw": 133,
+            "lineSpeed": 95,
+            "J": 88.80250000000001
+          },
+          {
+            "iter": 2,
+            "thickness": 49.583333333333336,
+            "defect": 0.18333333333333335,
+            "pressure": 16.083333333333332,
+            "meltTemp": 207.21666666666667,
+            "screw": 129,
+            "lineSpeed": 95,
+            "J": 88.75541666666666
+          }
+        ]
+      },
+      {
+        "seed": 43,
+        "warmed": true,
+        "warmupS": 0.023,
+        "J0": 85.888,
+        "Jend": 88.072,
+        "Jstar": 89.894,
+        "ratio": 0.98,
+        "iters": 3,
+        "writes": 3,
+        "rejected": 0,
+        "converged": true,
+        "wallS": 78.584,
+        "traj": [
+          {
+            "iter": 0,
+            "thickness": 52.1,
+            "defect": 0.5666666666666667,
+            "pressure": 17.566666666666666,
+            "meltTemp": 209.86666666666667,
+            "screw": 150,
+            "lineSpeed": 95,
+            "J": 85.8875
+          },
+          {
+            "iter": 1,
+            "thickness": 53.98333333333333,
+            "defect": 0.03333333333333333,
+            "pressure": 18.066666666666666,
+            "meltTemp": 208.78333333333333,
+            "screw": 144,
+            "lineSpeed": 95,
+            "J": 77.51583333333338
+          },
+          {
+            "iter": 2,
+            "thickness": 49.199999999999996,
+            "defect": 0.3333333333333333,
+            "pressure": 16.666666666666668,
+            "meltTemp": 206.98333333333332,
+            "screw": 133,
+            "lineSpeed": 95,
+            "J": 88.07333333333335
+          },
+          {
+            "iter": 3,
+            "thickness": 49.616666666666674,
+            "defect": 0.3,
+            "pressure": 16.616666666666664,
+            "meltTemp": 205.26666666666665,
+            "screw": 135,
+            "lineSpeed": 95,
+            "J": 88.07083333333334
+          }
+        ]
+      },
+      {
+        "seed": 44,
+        "warmed": true,
+        "warmupS": 0.024,
+        "J0": 86.073,
+        "Jend": 86.073,
+        "Jstar": 89.894,
+        "ratio": 0.957,
+        "iters": 0,
+        "writes": 0,
+        "rejected": 0,
+        "converged": true,
+        "wallS": 12.147,
+        "traj": [
+          {
+            "iter": 0,
+            "thickness": 51.63333333333333,
+            "defect": 0.6833333333333332,
+            "pressure": 17.433333333333334,
+            "meltTemp": 210.03333333333333,
+            "screw": 150,
+            "lineSpeed": 95,
+            "J": 86.07291666666667
+          }
+        ]
+      }
+    ]
+  },
+  "portability": {
+    "agg": {
+      "preset": "film-line",
+      "devices": 5,
+      "lines": 5,
+      "ownLines": 3,
+      "sampling": 5,
+      "f5Rejected": 9,
+      "f5Total": 9,
+      "falseBlocks": 0,
+      "codeChanges": 0
+    },
+    "lines": [
+      {
+        "index": 1,
+        "protocol": "modbus-tcp",
+        "satellite": false,
+        "daqSamples": 12,
+        "f5": "3/3",
+        "falseBlock": 0,
+        "readbackDelta": 0.04
+      },
+      {
+        "index": 2,
+        "protocol": "opcua",
+        "satellite": false,
+        "daqSamples": 12,
+        "f5": "3/3",
+        "falseBlock": 0,
+        "readbackDelta": 0
+      },
+      {
+        "index": 3,
+        "protocol": "mqtt",
+        "satellite": false,
+        "daqSamples": 6,
+        "f5": "3/3",
+        "falseBlock": 0,
+        "readbackDelta": 0
+      },
+      {
+        "index": 4,
+        "protocol": "modbus-rtu",
+        "satellite": true,
+        "daqSamples": 11,
+        "f5": null,
+        "falseBlock": null,
+        "readbackDelta": null
+      },
+      {
+        "index": 5,
+        "protocol": "http",
+        "satellite": true,
+        "daqSamples": 10,
+        "f5": null,
+        "falseBlock": null,
+        "readbackDelta": null
+      }
+    ]
+  }
+}

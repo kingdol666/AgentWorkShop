@@ -1,0 +1,213 @@
+{
+  "preset": "cast-film-physics",
+  "scenario": {
+    "name": "Cast-film extrusion digital twin (plant-model physics engine)",
+    "process": "An extrusion cast-film line: resin → screw melting → die → casting → thickness gauge. Six writable setpoints (3 zone temperatures, screw speed, line speed, die gap) act on a physics engine whose observable process quantities are melt temperature, melt pressure, film thickness, defect rate and gels count.",
+    "physics": "Deterministic plant model (seeded): first-order thermal lag on melt temperature, algebraic thickness h ∝ N/v from mass conservation, pressure/defect couplings — scored by J = 55·J_thick + 25·J_quality + 8·J_energy + 7·J_throughput."
+  },
+  "plant": {
+    "phase": "warmup",
+    "seed": 42,
+    "kind": "castfilm"
+  },
+  "totals": {
+    "devices": 5,
+    "protocols": 5,
+    "protocolsList": "modbus-tcp, modbus-rtu, opcua, mqtt, http",
+    "spSignals": 6,
+    "pvSignals": 7,
+    "awDcwNodes": 0,
+    "awDaqNodes": 0,
+    "awLines": 0
+  },
+  "devices": [
+    {
+      "id": "dev-extruder-mbtcp",
+      "name": "挤出主机PLC(Modbus TCP)",
+      "protocol": "modbus-tcp",
+      "endpoint": "127.0.0.1:18040 unit=1",
+      "signals": [
+        {
+          "id": "zone1-sp",
+          "name": "加热区1SP",
+          "unit": "℃",
+          "min": 120,
+          "max": 260,
+          "decimals": 1,
+          "strategy": "manual",
+          "plantBinding": null,
+          "kind": "SP (writable setpoint)"
+        },
+        {
+          "id": "zone2-sp",
+          "name": "加热区2SP",
+          "unit": "℃",
+          "min": 120,
+          "max": 260,
+          "decimals": 1,
+          "strategy": "manual",
+          "plantBinding": null,
+          "kind": "SP (writable setpoint)"
+        },
+        {
+          "id": "zone3-sp",
+          "name": "加热区3SP",
+          "unit": "℃",
+          "min": 120,
+          "max": 260,
+          "decimals": 1,
+          "strategy": "manual",
+          "plantBinding": null,
+          "kind": "SP (writable setpoint)"
+        },
+        {
+          "id": "melt-temp",
+          "name": "熔体温度",
+          "unit": "℃",
+          "min": 0,
+          "max": 400,
+          "decimals": 2,
+          "strategy": "constant",
+          "plantBinding": null,
+          "kind": "PV (process quantity)"
+        }
+      ]
+    },
+    {
+      "id": "dev-gels-rtu",
+      "name": "晶点计数从站(Modbus RTU)",
+      "protocol": "modbus-rtu",
+      "endpoint": "127.0.0.1:17041 unit=1",
+      "signals": [
+        {
+          "id": "gels-count",
+          "name": "晶点计数",
+          "unit": "个/m²",
+          "min": 0,
+          "max": 500,
+          "decimals": 0,
+          "strategy": "constant",
+          "plantBinding": null,
+          "kind": "PV (process quantity)"
+        }
+      ]
+    },
+    {
+      "id": "dev-extruder-opcua",
+      "name": "熔体泵送单元(OPC UA)",
+      "protocol": "opcua",
+      "endpoint": "opc.tcp://127.0.0.1:7840",
+      "signals": [
+        {
+          "id": "melt-pressure",
+          "name": "MeltPressure",
+          "unit": "MPa",
+          "min": 0,
+          "max": 45,
+          "decimals": 3,
+          "strategy": "constant",
+          "plantBinding": null,
+          "kind": "PV (process quantity)"
+        },
+        {
+          "id": "screw-sp",
+          "name": "ScrewSpeedSP",
+          "unit": "rpm",
+          "min": 50,
+          "max": 200,
+          "decimals": 0,
+          "strategy": "manual",
+          "plantBinding": null,
+          "kind": "SP (writable setpoint)"
+        }
+      ]
+    },
+    {
+      "id": "dev-gauge-mqtt",
+      "name": "在线测厚仪(MQTT)",
+      "protocol": "mqtt",
+      "endpoint": "mqtt://127.0.0.1:20830",
+      "signals": [
+        {
+          "id": "film-thickness",
+          "name": "thick",
+          "unit": "μm",
+          "min": 0,
+          "max": 400,
+          "decimals": 2,
+          "strategy": "constant",
+          "plantBinding": null,
+          "kind": "PV (process quantity)"
+        },
+        {
+          "id": "linespeed-sp",
+          "name": "lineSpeedSP",
+          "unit": "m/min",
+          "min": 20,
+          "max": 120,
+          "decimals": 1,
+          "strategy": "manual",
+          "plantBinding": null,
+          "kind": "SP (writable setpoint)"
+        }
+      ]
+    },
+    {
+      "id": "dev-inspect-http",
+      "name": "CCD检测站(HTTP)",
+      "protocol": "http",
+      "endpoint": "http endpoint",
+      "signals": [
+        {
+          "id": "thickness-profile",
+          "name": "profile",
+          "unit": "μm",
+          "min": 0,
+          "max": 400,
+          "decimals": 3,
+          "strategy": "constant",
+          "plantBinding": null,
+          "kind": "PV (process quantity)"
+        },
+        {
+          "id": "ccd-image",
+          "name": "ccd",
+          "unit": "灰度",
+          "min": 0,
+          "max": 255,
+          "decimals": 2,
+          "strategy": "constant",
+          "plantBinding": null,
+          "kind": "PV (process quantity)"
+        },
+        {
+          "id": "defect-rate",
+          "name": "defect",
+          "unit": "%",
+          "min": 0,
+          "max": 100,
+          "decimals": 3,
+          "strategy": "constant",
+          "plantBinding": null,
+          "kind": "PV (process quantity)"
+        },
+        {
+          "id": "diegap-sp",
+          "name": "dieGapSP",
+          "unit": "mm",
+          "min": 0.5,
+          "max": 2,
+          "decimals": 2,
+          "strategy": "manual",
+          "plantBinding": null,
+          "kind": "SP (writable setpoint)"
+        }
+      ]
+    }
+  ],
+  "aw": {
+    "lines": [],
+    "dcw": [],
+    "daq": []
+  }
+}

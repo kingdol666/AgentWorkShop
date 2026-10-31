@@ -1,0 +1,353 @@
+{
+  "approvals": [],
+  "polls": [
+    {
+      "at_utc": "2026-10-29T12:03:16.914Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:03:21.030Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:03:25.129Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:03:29.247Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:03:33.342Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:03:37.454Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:03:41.567Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:03:45.669Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:03:49.769Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:03:53.881Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:03:58.011Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:04:02.111Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:04:06.241Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:04:10.346Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:04:14.440Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:04:18.538Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:04:22.671Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:04:26.777Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:04:30.891Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:04:35.012Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:04:39.096Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:04:43.197Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:04:47.311Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:04:51.420Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:04:55.509Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:04:59.594Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:05:03.741Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:05:07.871Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:05:11.994Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:05:16.104Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:05:20.225Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:05:24.352Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:05:28.469Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:05:32.592Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:05:36.700Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:05:40.801Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:05:44.914Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:05:49.011Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:05:53.109Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:05:57.276Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:06:01.404Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:06:05.547Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:06:09.660Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:06:13.759Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:06:17.880Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:06:22.001Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:06:26.111Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:06:30.225Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:06:34.335Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:06:38.439Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:06:42.546Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:06:46.658Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T12:06:50.775Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    }
+  ],
+  "final_fetches": [
+    {
+      "agent_id": "d04f676e-6174-4d10-9247-db282ab9ddb1",
+      "status": 200,
+      "data": {
+        "approvals": []
+      },
+      "code": 0,
+      "message": "ok"
+    },
+    {
+      "agent_id": "d1730288-c213-4f62-a159-f49d93c87d92",
+      "status": 200,
+      "data": {
+        "approvals": []
+      },
+      "code": 0,
+      "message": "ok"
+    },
+    {
+      "agent_id": "9c95f542-7240-478f-a2e4-3b08a68034b4",
+      "status": 200,
+      "data": {
+        "approvals": []
+      },
+      "code": 0,
+      "message": "ok"
+    }
+  ],
+  "capped_agents": []
+}

@@ -1,0 +1,255 @@
+{
+  "qualification": {
+    "status": "PASS",
+    "isolated_preflight": true,
+    "team_size": 3,
+    "exact_one_lead_two_workers": true,
+    "all_harness_omp": true,
+    "omp_builtin_tools_disabled": true,
+    "platform_dispatch_tools_available": true,
+    "dcw_control_absent_from_all_members": true,
+    "lead_dcw_write_bindings": 0,
+    "disjoint_worker_write_sets": true,
+    "initial_guard_recovery": {
+      "policy": {
+        "recoverable_quality_signals": [
+          "sink-mark"
+        ],
+        "minimum_baseline_samples": 5,
+        "minimum_baseline_span_ms": 4000,
+        "baseline_freshness_ms": 15000,
+        "baseline_worsening_tolerance": "max(5 sensor quantization steps, 3 x 1.4826 x baseline MAD, 3 x registered observation-noise sigma)",
+        "observation_noise_sigma_floors": {
+          "sink-mark": 0.09
+        },
+        "observation_noise_source": "injection sink-mark exposed noise sigma = noiseQuality * 3 = 0.03 * 3 = 0.09% from the pinned simulator model; floors are pre-registered, not estimated from outcome data",
+        "hard_stop_limits": {
+          "sink-mark": {
+            "max": 2.5
+          }
+        },
+        "non_hard_stop_worsening_persistence": {
+          "consecutive_fresh_samples": 3,
+          "minimum_span_ms": 2000,
+          "maximum_gap_ms": 5000
+        },
+        "monitoring": "An initially in-spec guard breach and any registered hard-stop limit stop immediately. For an initially out-of-spec registered recovery quality guard, a non-hard-stop worsening beyond baseline+tolerance stops only after 3 distinct fresh samples are consecutively above threshold, spanning at least 2 s with no gap over 5 s; compliant/recovering samples reset the streak. Opposite-bound breaches stop immediately.",
+        "final_acceptance": "Every guard must be fresh and within its registered quality limits.",
+        "scope": "injection simulator quality recovery; not a physical safety envelope or physical PLC validation"
+      },
+      "baseline": {
+        "flash-rate": {
+          "value": 0,
+          "at_ms": 1793268382000,
+          "unit": "%",
+          "min": null,
+          "max": 0.4,
+          "sensor_min": 0,
+          "sensor_max": 5,
+          "baseline_sample_count": 5,
+          "baseline_start_at_ms": 1793268378000,
+          "baseline_span_ms": 4000,
+          "baseline_median": 0.008,
+          "baseline_mad": 0.008,
+          "quantization_step": 0.001,
+          "observation_noise_sigma_floor": 0,
+          "worsening_tolerance": 0.0355824,
+          "hard_stop_min": null,
+          "hard_stop_max": null,
+          "violated_at_baseline": false,
+          "violation_direction": null,
+          "recoverable_quality_violation": false,
+          "within_sensor_range": true
+        },
+        "sink-mark": {
+          "value": 2.121,
+          "at_ms": 1793268382000,
+          "unit": "%",
+          "min": null,
+          "max": 1.5,
+          "sensor_min": 0,
+          "sensor_max": 10,
+          "baseline_sample_count": 5,
+          "baseline_start_at_ms": 1793268378000,
+          "baseline_span_ms": 4000,
+          "baseline_median": 2.121,
+          "baseline_mad": 0.051000000000000156,
+          "quantization_step": 0.001,
+          "observation_noise_sigma_floor": 0.09,
+          "worsening_tolerance": 0.27,
+          "hard_stop_min": null,
+          "hard_stop_max": 2.5,
+          "violated_at_baseline": true,
+          "violation_direction": "high",
+          "recoverable_quality_violation": true,
+          "within_sensor_range": true
+        }
+      }
+    }
+  },
+  "workflow_outcome": {
+    "status": "FAIL",
+    "task_state": "CANCELED",
+    "all_tasks_terminal": true,
+    "pending_approvals": 0,
+    "designated_worker_tasks_completed": false,
+    "platform_dispatch_to_each_worker": false,
+    "platform_delegation": [
+      {
+        "worker_agent_id": "21b50d4e-8ea6-4bde-ab05-3d93111cb190",
+        "successful_roster_tool_call_ids": [],
+        "dispatch_tool_call_ids": [],
+        "child_task_ids": [],
+        "verified": false
+      },
+      {
+        "worker_agent_id": "3d29507a-64ab-4945-8925-9d2ef2513352",
+        "successful_roster_tool_call_ids": [],
+        "dispatch_tool_call_ids": [],
+        "child_task_ids": [],
+        "verified": false
+      }
+    ],
+    "delegation_gate_failure": "platform dispatch deadline elapsed without a child task for worker(s): 21b50d4e-8ea6-4bde-ab05-3d93111cb190, 3d29507a-64ab-4945-8925-9d2ef2513352",
+    "unapproved_tool_events": [],
+    "pv_initial": 31.28,
+    "pv_final": 31.23,
+    "target": {
+      "sig": "part-weight",
+      "target": 32.5,
+      "tol": 0.35,
+      "unit": "g",
+      "label": "制品克重"
+    },
+    "in_band": false,
+    "guards_ok": false,
+    "guards_fresh": true,
+    "guard_checks": [
+      {
+        "signal": "flash-rate",
+        "latest": {
+          "at_ms": 1793268748000,
+          "value": 0
+        },
+        "min": null,
+        "max": 0.4,
+        "fresh": true,
+        "within": true
+      },
+      {
+        "signal": "sink-mark",
+        "latest": {
+          "at_ms": 1793268748000,
+          "value": 2.266
+        },
+        "min": null,
+        "max": 1.5,
+        "fresh": true,
+        "within": false
+      }
+    ],
+    "fresh_pv_sample_after_goal": true,
+    "changed_goal_anchors": 0,
+    "stop_reason": "platform dispatch deadline elapsed without a child task for worker(s): 21b50d4e-8ea6-4bde-ab05-3d93111cb190, 3d29507a-64ab-4945-8925-9d2ef2513352",
+    "actor_role_mismatches": []
+  },
+  "evidence_integrity": {
+    "status": "FAIL",
+    "complete_actor_task_tool_pairs": false,
+    "event_log_stability": {
+      "interval_ms": 1000,
+      "minimum_wait_ms": 10000,
+      "required_stable_intervals": 5,
+      "maximum_wait_ms": 30000,
+      "stable": true,
+      "timed_out": false,
+      "wait_ms": 10079,
+      "initial_size_bytes": 391,
+      "final_size_bytes": 391,
+      "initial_sha256": "bfe4d5a695bab93c1cff9a614f3a04ed502ae2e5ec0674897b15304508a2d827",
+      "final_sha256": "bfe4d5a695bab93c1cff9a614f3a04ed502ae2e5ec0674897b15304508a2d827",
+      "observations": [
+        {
+          "elapsed_ms": 0,
+          "size_bytes": 391,
+          "sha256": "bfe4d5a695bab93c1cff9a614f3a04ed502ae2e5ec0674897b15304508a2d827"
+        },
+        {
+          "elapsed_ms": 1012,
+          "size_bytes": 391,
+          "sha256": "bfe4d5a695bab93c1cff9a614f3a04ed502ae2e5ec0674897b15304508a2d827"
+        },
+        {
+          "elapsed_ms": 2017,
+          "size_bytes": 391,
+          "sha256": "bfe4d5a695bab93c1cff9a614f3a04ed502ae2e5ec0674897b15304508a2d827"
+        },
+        {
+          "elapsed_ms": 3029,
+          "size_bytes": 391,
+          "sha256": "bfe4d5a695bab93c1cff9a614f3a04ed502ae2e5ec0674897b15304508a2d827"
+        },
+        {
+          "elapsed_ms": 4043,
+          "size_bytes": 391,
+          "sha256": "bfe4d5a695bab93c1cff9a614f3a04ed502ae2e5ec0674897b15304508a2d827"
+        },
+        {
+          "elapsed_ms": 5044,
+          "size_bytes": 391,
+          "sha256": "bfe4d5a695bab93c1cff9a614f3a04ed502ae2e5ec0674897b15304508a2d827"
+        },
+        {
+          "elapsed_ms": 6050,
+          "size_bytes": 391,
+          "sha256": "bfe4d5a695bab93c1cff9a614f3a04ed502ae2e5ec0674897b15304508a2d827"
+        },
+        {
+          "elapsed_ms": 7058,
+          "size_bytes": 391,
+          "sha256": "bfe4d5a695bab93c1cff9a614f3a04ed502ae2e5ec0674897b15304508a2d827"
+        },
+        {
+          "elapsed_ms": 8065,
+          "size_bytes": 391,
+          "sha256": "bfe4d5a695bab93c1cff9a614f3a04ed502ae2e5ec0674897b15304508a2d827"
+        },
+        {
+          "elapsed_ms": 9075,
+          "size_bytes": 391,
+          "sha256": "bfe4d5a695bab93c1cff9a614f3a04ed502ae2e5ec0674897b15304508a2d827"
+        },
+        {
+          "elapsed_ms": 10079,
+          "size_bytes": 391,
+          "sha256": "bfe4d5a695bab93c1cff9a614f3a04ed502ae2e5ec0674897b15304508a2d827"
+        }
+      ],
+      "aw_listener_closed": true,
+      "raw_sha256": "bfe4d5a695bab93c1cff9a614f3a04ed502ae2e5ec0674897b15304508a2d827",
+      "finalized_at_utc": "2026-10-29T10:31:44.851Z"
+    },
+    "evidence_finalization_required": true,
+    "source_records": 1,
+    "tool_call_pairs": 0,
+    "run_scoped_source": true,
+    "run_scoped_source_reason": null,
+    "unapproved_tool_events": [],
+    "actor_role_mismatches": [],
+    "platform_dispatch_to_each_worker": false,
+    "accepted_dcw_writes": 0,
+    "changed_goal_anchors": 0,
+    "device_readbacks": 0,
+    "missing_device_readbacks": 0,
+    "approvals_verified": 0,
+    "missing_or_invalid_approvals": 0,
+    "pending_approvals": 0,
+    "all_tasks_terminal": true,
+    "agents_stopped": true,
+    "taskless_tool_events": 0,
+    "late_event_records_after_prior_finalization": 0,
+    "late_event_growth_detected": false,
+    "prior_raw_event_sha256": "bfe4d5a695bab93c1cff9a614f3a04ed502ae2e5ec0674897b15304508a2d827",
+    "prior_raw_event_hash_matches_final": true
+  }
+}

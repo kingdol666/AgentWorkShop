@@ -1,0 +1,66 @@
+{
+  "source": "administrator-visible template creation responses",
+  "member_summary_note": "Channel-member summaries intentionally redact launch arguments; they are not used to verify config.args.",
+  "templates": [
+    {
+      "role": "lead",
+      "template_id": "3f94966a-3e56-416a-8ea0-1519261ce7cc",
+      "harness": "omp",
+      "harness_verified": true,
+      "command_verified": true,
+      "command_sha256": "e1b771ff6831269c53a658057c68d3177b45f47cc5aec706fdd961fbdb2505df",
+      "provider": "lm-studio",
+      "model": "qwen3.5-9b-64k",
+      "args": [
+        "--profile",
+        "p12-b1ac8d2124372578",
+        "--no-tools",
+        "--no-extensions"
+      ],
+      "omp_profile": "p12-b1ac8d2124372578",
+      "omp_profile_verified": true,
+      "no_tools_verified": true,
+      "no_extensions_verified": true
+    },
+    {
+      "role": "a",
+      "template_id": "24a742d5-84f4-422d-aca5-cf18a348c0d8",
+      "harness": "omp",
+      "harness_verified": true,
+      "command_verified": true,
+      "command_sha256": "e1b771ff6831269c53a658057c68d3177b45f47cc5aec706fdd961fbdb2505df",
+      "provider": "lm-studio",
+      "model": "qwen3.5-9b-64k",
+      "args": [
+        "--profile",
+        "p12-6cb78f6c7cfb6076",
+        "--no-tools",
+        "--no-extensions"
+      ],
+      "omp_profile": "p12-6cb78f6c7cfb6076",
+      "omp_profile_verified": true,
+      "no_tools_verified": true,
+      "no_extensions_verified": true
+    },
+    {
+      "role": "b",
+      "template_id": "139272b7-401c-4c9b-a1e7-4e5f29a63bc9",
+      "harness": "omp",
+      "harness_verified": true,
+      "command_verified": true,
+      "command_sha256": "e1b771ff6831269c53a658057c68d3177b45f47cc5aec706fdd961fbdb2505df",
+      "provider": "lm-studio",
+      "model": "qwen3.5-9b-64k",
+      "args": [
+        "--profile",
+        "p12-ed7538c2d4b2d875",
+        "--no-tools",
+        "--no-extensions"
+      ],
+      "omp_profile": "p12-ed7538c2d4b2d875",
+      "omp_profile_verified": true,
+      "no_tools_verified": true,
+      "no_extensions_verified": true
+    }
+  ]
+}

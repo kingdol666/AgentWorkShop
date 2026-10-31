@@ -1,0 +1,12 @@
+{
+  "plant": {
+    "status": 0,
+    "message": "fetch failed",
+    "data": null
+  },
+  "nodes": [
+    {
+      "error": "fetch failed"
+    }
+  ]
+}

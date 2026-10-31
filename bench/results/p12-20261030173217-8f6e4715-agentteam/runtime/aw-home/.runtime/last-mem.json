@@ -1,0 +1,285 @@
+{
+  "limitMb": 4288,
+  "samples": [
+    {
+      "at": "2026-10-31T01:33:09.220+08:00",
+      "heapUsedMb": 18,
+      "rssMb": 88,
+      "externalMb": 11,
+      "ratio": 0.0041
+    },
+    {
+      "at": "2026-10-31T01:33:39.237+08:00",
+      "heapUsedMb": 33,
+      "rssMb": 109,
+      "externalMb": 12,
+      "ratio": 0.0076
+    },
+    {
+      "at": "2026-10-31T01:34:09.239+08:00",
+      "heapUsedMb": 65,
+      "rssMb": 153,
+      "externalMb": 12,
+      "ratio": 0.0152
+    },
+    {
+      "at": "2026-10-31T01:34:39.259+08:00",
+      "heapUsedMb": 82,
+      "rssMb": 182,
+      "externalMb": 15,
+      "ratio": 0.0192
+    },
+    {
+      "at": "2026-10-31T01:35:09.267+08:00",
+      "heapUsedMb": 87,
+      "rssMb": 220,
+      "externalMb": 14,
+      "ratio": 0.0203
+    },
+    {
+      "at": "2026-10-31T01:35:39.274+08:00",
+      "heapUsedMb": 99,
+      "rssMb": 228,
+      "externalMb": 14,
+      "ratio": 0.0231
+    },
+    {
+      "at": "2026-10-31T01:36:09.274+08:00",
+      "heapUsedMb": 94,
+      "rssMb": 254,
+      "externalMb": 13,
+      "ratio": 0.0219
+    },
+    {
+      "at": "2026-10-31T01:36:39.277+08:00",
+      "heapUsedMb": 100,
+      "rssMb": 240,
+      "externalMb": 14,
+      "ratio": 0.0233
+    },
+    {
+      "at": "2026-10-31T01:37:09.279+08:00",
+      "heapUsedMb": 107,
+      "rssMb": 241,
+      "externalMb": 17,
+      "ratio": 0.0249
+    },
+    {
+      "at": "2026-10-31T01:37:39.281+08:00",
+      "heapUsedMb": 109,
+      "rssMb": 232,
+      "externalMb": 17,
+      "ratio": 0.0253
+    },
+    {
+      "at": "2026-10-31T01:38:09.283+08:00",
+      "heapUsedMb": 94,
+      "rssMb": 160,
+      "externalMb": 13,
+      "ratio": 0.022
+    },
+    {
+      "at": "2026-10-31T01:38:39.298+08:00",
+      "heapUsedMb": 102,
+      "rssMb": 215,
+      "externalMb": 16,
+      "ratio": 0.0237
+    },
+    {
+      "at": "2026-10-31T01:39:09.306+08:00",
+      "heapUsedMb": 125,
+      "rssMb": 217,
+      "externalMb": 19,
+      "ratio": 0.0293
+    },
+    {
+      "at": "2026-10-31T01:39:39.314+08:00",
+      "heapUsedMb": 100,
+      "rssMb": 219,
+      "externalMb": 15,
+      "ratio": 0.0232
+    },
+    {
+      "at": "2026-10-31T01:40:09.327+08:00",
+      "heapUsedMb": 131,
+      "rssMb": 215,
+      "externalMb": 18,
+      "ratio": 0.0305
+    },
+    {
+      "at": "2026-10-31T01:40:39.331+08:00",
+      "heapUsedMb": 103,
+      "rssMb": 216,
+      "externalMb": 14,
+      "ratio": 0.0241
+    },
+    {
+      "at": "2026-10-31T01:41:09.350+08:00",
+      "heapUsedMb": 113,
+      "rssMb": 216,
+      "externalMb": 17,
+      "ratio": 0.0265
+    },
+    {
+      "at": "2026-10-31T01:41:39.351+08:00",
+      "heapUsedMb": 126,
+      "rssMb": 217,
+      "externalMb": 18,
+      "ratio": 0.0294
+    },
+    {
+      "at": "2026-10-31T01:42:09.361+08:00",
+      "heapUsedMb": 99,
+      "rssMb": 217,
+      "externalMb": 14,
+      "ratio": 0.0231
+    },
+    {
+      "at": "2026-10-31T01:42:39.369+08:00",
+      "heapUsedMb": 118,
+      "rssMb": 218,
+      "externalMb": 17,
+      "ratio": 0.0274
+    },
+    {
+      "at": "2026-10-31T01:43:09.374+08:00",
+      "heapUsedMb": 91,
+      "rssMb": 218,
+      "externalMb": 13,
+      "ratio": 0.0213
+    },
+    {
+      "at": "2026-10-31T01:43:39.382+08:00",
+      "heapUsedMb": 90,
+      "rssMb": 218,
+      "externalMb": 14,
+      "ratio": 0.0209
+    },
+    {
+      "at": "2026-10-31T01:44:09.397+08:00",
+      "heapUsedMb": 110,
+      "rssMb": 220,
+      "externalMb": 16,
+      "ratio": 0.0257
+    },
+    {
+      "at": "2026-10-31T01:44:39.406+08:00",
+      "heapUsedMb": 109,
+      "rssMb": 221,
+      "externalMb": 15,
+      "ratio": 0.0255
+    },
+    {
+      "at": "2026-10-31T01:45:09.405+08:00",
+      "heapUsedMb": 101,
+      "rssMb": 220,
+      "externalMb": 13,
+      "ratio": 0.0235
+    },
+    {
+      "at": "2026-10-31T01:45:39.408+08:00",
+      "heapUsedMb": 128,
+      "rssMb": 222,
+      "externalMb": 17,
+      "ratio": 0.0299
+    },
+    {
+      "at": "2026-10-31T01:46:09.414+08:00",
+      "heapUsedMb": 113,
+      "rssMb": 224,
+      "externalMb": 15,
+      "ratio": 0.0264
+    },
+    {
+      "at": "2026-10-31T01:46:39.416+08:00",
+      "heapUsedMb": 118,
+      "rssMb": 227,
+      "externalMb": 16,
+      "ratio": 0.0275
+    },
+    {
+      "at": "2026-10-31T01:47:09.423+08:00",
+      "heapUsedMb": 110,
+      "rssMb": 226,
+      "externalMb": 16,
+      "ratio": 0.0257
+    },
+    {
+      "at": "2026-10-31T01:47:39.438+08:00",
+      "heapUsedMb": 116,
+      "rssMb": 227,
+      "externalMb": 16,
+      "ratio": 0.027
+    },
+    {
+      "at": "2026-10-31T01:48:09.451+08:00",
+      "heapUsedMb": 121,
+      "rssMb": 228,
+      "externalMb": 16,
+      "ratio": 0.0282
+    },
+    {
+      "at": "2026-10-31T01:48:39.453+08:00",
+      "heapUsedMb": 121,
+      "rssMb": 228,
+      "externalMb": 17,
+      "ratio": 0.0282
+    },
+    {
+      "at": "2026-10-31T01:49:09.459+08:00",
+      "heapUsedMb": 130,
+      "rssMb": 231,
+      "externalMb": 16,
+      "ratio": 0.0302
+    },
+    {
+      "at": "2026-10-31T01:49:39.468+08:00",
+      "heapUsedMb": 125,
+      "rssMb": 230,
+      "externalMb": 17,
+      "ratio": 0.0291
+    },
+    {
+      "at": "2026-10-31T01:50:09.470+08:00",
+      "heapUsedMb": 128,
+      "rssMb": 231,
+      "externalMb": 17,
+      "ratio": 0.0297
+    },
+    {
+      "at": "2026-10-31T01:50:39.478+08:00",
+      "heapUsedMb": 132,
+      "rssMb": 231,
+      "externalMb": 17,
+      "ratio": 0.0307
+    },
+    {
+      "at": "2026-10-31T01:51:09.491+08:00",
+      "heapUsedMb": 100,
+      "rssMb": 235,
+      "externalMb": 12,
+      "ratio": 0.0233
+    },
+    {
+      "at": "2026-10-31T01:51:39.491+08:00",
+      "heapUsedMb": 111,
+      "rssMb": 235,
+      "externalMb": 13,
+      "ratio": 0.0259
+    },
+    {
+      "at": "2026-10-31T01:52:09.503+08:00",
+      "heapUsedMb": 111,
+      "rssMb": 237,
+      "externalMb": 13,
+      "ratio": 0.0258
+    },
+    {
+      "at": "2026-10-31T01:52:39.504+08:00",
+      "heapUsedMb": 125,
+      "rssMb": 261,
+      "externalMb": 13,
+      "ratio": 0.029
+    }
+  ]
+}

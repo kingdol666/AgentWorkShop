@@ -1,0 +1,29 @@
+{
+  "preset": "cast-film-physics",
+  "scenario": {
+    "name": "Cast-film extrusion digital twin (plant-model physics engine)",
+    "process": "An extrusion cast-film line: resin → screw melting → die → casting → thickness gauge. Six writable setpoints (3 zone temperatures, screw speed, line speed, die gap) act on a physics engine whose observable process quantities are melt temperature, melt pressure, film thickness, defect rate and gels count.",
+    "physics": "Deterministic plant model (seeded): first-order thermal lag on melt temperature, algebraic thickness h ∝ N/v from mass conservation, pressure/defect couplings — scored by J = 55·J_thick + 25·J_quality + 8·J_energy + 7·J_throughput."
+  },
+  "plant": {
+    "phase": "steady",
+    "seed": null,
+    "kind": "injection"
+  },
+  "totals": {
+    "devices": 0,
+    "protocols": 0,
+    "protocolsList": "",
+    "spSignals": 0,
+    "pvSignals": 0,
+    "awDcwNodes": 0,
+    "awDaqNodes": 0,
+    "awLines": 0
+  },
+  "devices": [],
+  "aw": {
+    "lines": [],
+    "dcw": [],
+    "daq": []
+  }
+}

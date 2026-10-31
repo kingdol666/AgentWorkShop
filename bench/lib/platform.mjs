@@ -50,7 +50,14 @@ export async function ensurePlatform({ base = 'http://127.0.0.1:3001', timeoutMs
       cwd: REPO,
       detached: true,
       stdio: ['ignore', out, out],
-      env: { ...process.env, NO_PROXY: '127.0.0.1,localhost', no_proxy: '127.0.0.1,localhost' },
+      env: {
+        ...process.env,
+        NO_PROXY: '127.0.0.1,localhost', no_proxy: '127.0.0.1,localhost',
+        // 2026-10-31 节拍适配(bench 专属):试验防震荡节拍 300s 会把 P11 多场景并行闭环的
+        // 逐轮 recipe_trial 全拒(「距上次试验仅 8s」),场景层恒红。基准=确定性测试环境,
+        // 显式关 0(与 AW_TRIAL_INTERVAL_MS 文档语义一致;生产环境严禁设置,平台启动会告警)。
+        AW_TRIAL_INTERVAL_MS: '0',
+      },
       windowsHide: true,
     })
     child.unref()

@@ -302,15 +302,24 @@ try {
   await api('POST', `/api/workshop/dcw/lines/${line}/start`, { recipeId: recipe.id })
   await sleep(20_000)
 
-  // 频道 + omp(Qwen 32k)
+  // 频道 + omp(模型与上下文由 AW_DEMO_MODEL 指定,默认 64k 实例)
   const overlay = join(HOME, 'omp-overlay.yml')
-  writeFileSync(overlay, ['modelRoles:', '  default: lm-studio/qwen3.5-9b-32k', '  task: lm-studio/qwen3.5-9b-32k', '  advisor: lm-studio/qwen3.5-9b-32k', '  slow: lm-studio/qwen3.5-9b-32k', '  designer: lm-studio/qwen3.5-9b-32k', 'tools:', '  format: qwen3', 'compaction:', '  enabled: true', ''].join('\n'))
+  const roleModel = `lm-studio/${process.env.AW_DEMO_MODEL ?? 'qwen3.5-9b-64k'}`
+  writeFileSync(overlay, [
+    'modelRoles:',
+    ...['default', 'task', 'advisor', 'slow', 'designer'].map(r => `  ${r}: ${roleModel}`),
+    'tools:',
+    '  format: qwen3',
+    'compaction:',
+    '  enabled: true',
+    '',
+  ].join('\n'))
   const ch = (await api('POST', '/api/workshop/channels', {
     name: '验收-镜像数采', lineId: line,
     scenarioPrompt: '你是数据工程师:只读不写;严格按任务步骤抓数并汇报。',
     leadAgent: { name: '镜像数采-线长', harness: 'omp', config: { rpcMode: 'rpc', args: ['--no-tools', '--thinking=off', '--config', overlay] } },
   })).data
-  await api('PATCH', `/api/workshop/channels/${ch.channelId}`, { llm: { provider: 'lm-studio', model: 'qwen3.5-9b-32k' } })
+  await api('PATCH', `/api/workshop/channels/${ch.channelId}`, { llm: { provider: 'lm-studio', model: process.env.AW_DEMO_MODEL ?? 'qwen3.5-9b-64k', contextTokens: 65536 } })
   await api('PATCH', `/api/workshop/channels/${ch.channelId}/execution-mode`, { mode: 'manual' })
   await api('PUT', `/api/workshop/channels/${ch.channelId}/tools`, {
     mode: 'selected',

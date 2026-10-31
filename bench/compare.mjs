@@ -53,7 +53,7 @@ const TOLERATED = {
 // 增长合法型指标（键格式 checkId:key）：判定语义 = B ≥ A。能力清单类计数（路由/工具/表）
 // 随框架演进而**合法增长**（如工艺参数映射层新增 6 条 params 路由），缩水才是治理回归；
 // 这类键不再逐位判定，其余 s1 指标（子检查数/ok 数/引擎数）仍逐位。
-const GROWABLE = new Set(['s1-inventory:routes', 's1-inventory:mcpTools', 's1-inventory:tools', 's1-inventory:tables'])
+const GROWABLE = new Set(['s1-inventory:routes', 's1-inventory:mcpTools', 's1-inventory:tools', 's1-inventory:tables', 's3-governance-pipeline:chainsOk', 's3-governance-pipeline:chainTotal'])
 
 function resolveRun(ref) {
   const candidates = isAbsolute(ref)

@@ -1,0 +1,202 @@
+{
+  "team": {
+    "id": "a3f1c257-ddba-49e0-bbd2-bdb153ed1668",
+    "name": "P12 team ection-recovery-10",
+    "description": "Run p12-20261029-injection-recovery-10; lead and two omp workers",
+    "visibility": "private",
+    "isBuiltin": false,
+    "ownerUserId": "0895ed8a-0dcc-4933-956c-02371cb04d9a",
+    "members": [
+      {
+        "templateId": "54472dc7-b195-4ca0-a03a-3541906676ca",
+        "name": "P12 lead ection-recovery-10",
+        "harness": "omp",
+        "role": "lead",
+        "addedAt": "2026-10-29T19:07:20.850+08:00"
+      },
+      {
+        "templateId": "60af6a7e-0a06-4a27-b56b-2b7b9983089a",
+        "name": "P12 worker a ection-recovery-10",
+        "harness": "omp",
+        "role": "worker",
+        "addedAt": "2026-10-29T19:07:20.858+08:00"
+      },
+      {
+        "templateId": "a482bc52-d554-4113-bf79-6d02873b531f",
+        "name": "P12 worker b ection-recovery-10",
+        "harness": "omp",
+        "role": "worker",
+        "addedAt": "2026-10-29T19:07:20.873+08:00"
+      }
+    ],
+    "createdAt": "2026-10-29T19:07:20.829+08:00",
+    "updatedAt": "2026-10-29T19:07:20.829+08:00"
+  },
+  "members": [
+    {
+      "id": "3cd2435e-9902-461e-b947-5f54ad9e9803",
+      "channelId": "4af5d9c5-c007-4781-8360-841635fafe34",
+      "name": "P12 lead ection-recovery-10",
+      "harness": "omp",
+      "role": "lead",
+      "enabled": 1,
+      "templateId": "54472dc7-b195-4ca0-a03a-3541906676ca",
+      "config": {
+        "provider": "lm-studio",
+        "model": "qwen3.5-9b-32k",
+        "systemPromptPrefix": "你是负责现场的工业团队 lead。OMP 内置工具和扩展发现分别由 --no-tools、--no-extensions 禁用；只使用 AgentWorkShop set_host_tools 提供的 Channel 工具。显式允许并优先使用只读工业工具 line_context、daq_query、my_industrial_nodes 获取现场上下文。你必须调用 list_team_agents 核实本 Channel 的真实成员，然后用平台 dispatch_task 分别向两个预配置 worker ID 委派职责明确的子任务；不得调用 Harness 原生 task/scout/background agent。你没有控制写入权限，不得调用工艺控制写入工具，也不得使用任何文件/命令工具替代现场工具。核对子任务、审批、回执和独立读回，再依据可观察证据收口，绝不声称未观测结果。"
+      }
+    },
+    {
+      "id": "d717cde8-e86d-4422-92f2-113faf1131dd",
+      "channelId": "4af5d9c5-c007-4781-8360-841635fafe34",
+      "name": "P12 worker a ection-recovery-10",
+      "harness": "omp",
+      "role": "worker",
+      "enabled": 1,
+      "templateId": "60af6a7e-0a06-4a27-b56b-2b7b9983089a",
+      "config": {
+        "provider": "lm-studio",
+        "model": "qwen3.5-9b-32k",
+        "systemPromptPrefix": "P12 role: Analyze and tune only the hold-pressure setpoint. OMP built-in tools and extension discovery are disabled with --no-tools and --no-extensions; use only AgentWorkShop Channel tools supplied through set_host_tools. Your only control path is optimization_explore with control_node_id=dw-7121e768, target_node_id=dn-846841a9, step no larger than the scene contract maxStep, and settle_seconds at least 10. Access only your bound DCW set. Do not use dcw_control, native task/read/write/edit/glob/grep/bash tools, simulator/API/shell, or another worker's controls. Report evidence and stop on safety violations."
+      }
+    },
+    {
+      "id": "92e600d4-c09f-4f38-bd6f-981c82033484",
+      "channelId": "4af5d9c5-c007-4781-8360-841635fafe34",
+      "name": "P12 worker b ection-recovery-10",
+      "harness": "omp",
+      "role": "worker",
+      "enabled": 1,
+      "templateId": "a482bc52-d554-4113-bf79-6d02873b531f",
+      "config": {
+        "provider": "lm-studio",
+        "model": "qwen3.5-9b-32k",
+        "systemPromptPrefix": "P12 role: Analyze and tune only the hold-time setpoint. OMP built-in tools and extension discovery are disabled with --no-tools and --no-extensions; use only AgentWorkShop Channel tools supplied through set_host_tools. Your only control path is optimization_explore with control_node_id=dw-849b4c4e, target_node_id=dn-846841a9, step no larger than the scene contract maxStep, and settle_seconds at least 10. Access only your bound DCW set. Do not use dcw_control, native task/read/write/edit/glob/grep/bash tools, simulator/API/shell, or another worker's controls. Report evidence and stop on safety violations."
+      }
+    }
+  ],
+  "bindings": [
+    {
+      "agent_id": "3cd2435e-9902-461e-b947-5f54ad9e9803",
+      "status": 200,
+      "data": {
+        "bindings": [
+          {
+            "id": "nb-dd0c2663",
+            "agentId": "3cd2435e-9902-461e-b947-5f54ad9e9803",
+            "nodeId": "dn-846841a9",
+            "kind": "daq",
+            "mode": "auto",
+            "createdAt": "2026-10-29T19:07:20.921+08:00"
+          },
+          {
+            "id": "nb-efb89501",
+            "agentId": "3cd2435e-9902-461e-b947-5f54ad9e9803",
+            "nodeId": "dn-92669498",
+            "kind": "daq",
+            "mode": "auto",
+            "createdAt": "2026-10-29T19:07:20.934+08:00"
+          },
+          {
+            "id": "nb-9e20f90e",
+            "agentId": "3cd2435e-9902-461e-b947-5f54ad9e9803",
+            "nodeId": "dn-5de70c5c",
+            "kind": "daq",
+            "mode": "auto",
+            "createdAt": "2026-10-29T19:07:20.950+08:00"
+          }
+        ],
+        "filtered": false
+      },
+      "code": 0,
+      "message": "ok"
+    },
+    {
+      "agent_id": "d717cde8-e86d-4422-92f2-113faf1131dd",
+      "status": 200,
+      "data": {
+        "bindings": [
+          {
+            "id": "nb-a3347196",
+            "agentId": "d717cde8-e86d-4422-92f2-113faf1131dd",
+            "nodeId": "dn-846841a9",
+            "kind": "daq",
+            "mode": "auto",
+            "createdAt": "2026-10-29T19:07:20.965+08:00"
+          },
+          {
+            "id": "nb-d7fd1d22",
+            "agentId": "d717cde8-e86d-4422-92f2-113faf1131dd",
+            "nodeId": "dn-92669498",
+            "kind": "daq",
+            "mode": "auto",
+            "createdAt": "2026-10-29T19:07:20.981+08:00"
+          },
+          {
+            "id": "nb-785fbb19",
+            "agentId": "d717cde8-e86d-4422-92f2-113faf1131dd",
+            "nodeId": "dn-5de70c5c",
+            "kind": "daq",
+            "mode": "auto",
+            "createdAt": "2026-10-29T19:07:20.996+08:00"
+          },
+          {
+            "id": "nb-1d2dd5f9",
+            "agentId": "d717cde8-e86d-4422-92f2-113faf1131dd",
+            "nodeId": "dw-7121e768",
+            "kind": "dcw",
+            "mode": "manual",
+            "createdAt": "2026-10-29T19:07:21.012+08:00"
+          }
+        ],
+        "filtered": false
+      },
+      "code": 0,
+      "message": "ok"
+    },
+    {
+      "agent_id": "92e600d4-c09f-4f38-bd6f-981c82033484",
+      "status": 200,
+      "data": {
+        "bindings": [
+          {
+            "id": "nb-34290aee",
+            "agentId": "92e600d4-c09f-4f38-bd6f-981c82033484",
+            "nodeId": "dn-846841a9",
+            "kind": "daq",
+            "mode": "auto",
+            "createdAt": "2026-10-29T19:07:21.015+08:00"
+          },
+          {
+            "id": "nb-b8b445c6",
+            "agentId": "92e600d4-c09f-4f38-bd6f-981c82033484",
+            "nodeId": "dn-92669498",
+            "kind": "daq",
+            "mode": "auto",
+            "createdAt": "2026-10-29T19:07:21.027+08:00"
+          },
+          {
+            "id": "nb-9fc43edf",
+            "agentId": "92e600d4-c09f-4f38-bd6f-981c82033484",
+            "nodeId": "dn-5de70c5c",
+            "kind": "daq",
+            "mode": "auto",
+            "createdAt": "2026-10-29T19:07:21.043+08:00"
+          },
+          {
+            "id": "nb-3e90bddb",
+            "agentId": "92e600d4-c09f-4f38-bd6f-981c82033484",
+            "nodeId": "dw-849b4c4e",
+            "kind": "dcw",
+            "mode": "manual",
+            "createdAt": "2026-10-29T19:07:21.058+08:00"
+          }
+        ],
+        "filtered": false
+      },
+      "code": 0,
+      "message": "ok"
+    }
+  ]
+}

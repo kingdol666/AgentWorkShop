@@ -1,0 +1,18 @@
+{
+  "run_id": "p12-20261029-injection-recovery-08",
+  "status": "NOT-QUALIFIED",
+  "phase": "startup",
+  "started_simulator_pid": 13624,
+  "started_aw_pid": 47412,
+  "aw_health": "not reached",
+  "root_goal_created": false,
+  "agent_tasks_created": 0,
+  "control_writes": 0,
+  "approvals": 0,
+  "reason": "Local PowerShell 5.1 lacks Convert.ToHexString; temporary isolated admin/session secrets were not populated before AW launch. AW wrote capture_ready but exited before health readiness. This is an execution-environment setup failure; no scenario task, HITL item, or control action was created.",
+  "closed_ports": [
+    3120,
+    4020
+  ],
+  "recorded_at_utc": "2026-10-29T10:38:08.3490285Z"
+}

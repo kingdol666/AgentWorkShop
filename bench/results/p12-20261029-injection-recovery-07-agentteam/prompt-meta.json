@@ -1,0 +1,6 @@
+{
+  "prompt_sha256": "75a3b3967f9f1e3cb9d55f47dde0b0f73981f0da0e72278cb43e69334f3f93c4",
+  "criteria": "制品克重 in [32.15, 32.85] g over two fresh samples; all guards within scene limits; lead reports verified tool/approval/readback evidence.",
+  "criteria_sha256": "46df7ff4b4d4c0b23d153f65687f7f0c3f97269a2a5626b4ab14548b46c5a34e",
+  "created_at_utc": "2026-10-29T10:06:23.161Z"
+}

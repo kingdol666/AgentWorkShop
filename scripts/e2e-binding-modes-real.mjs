@@ -276,7 +276,7 @@ try {
       scenarioPrompt: '你是工艺操作员:只操作你被授权的对象;未收到任务时禁止自主下发;严格按任务执行。',
       leadAgent: { name: `${name}-lead`, harness },
     })).data
-    await api('PATCH', `/api/workshop/channels/${ch.channelId}`, { llm: { provider: 'lm-studio', model: 'qwen3.5-9b-32k' } })
+    await api('PATCH', `/api/workshop/channels/${ch.channelId}`, { llm: { provider: 'lm-studio', model: process.env.AW_DEMO_MODEL ?? 'qwen3.5-9b-64k' } })
     await api('PATCH', `/api/workshop/channels/${ch.channelId}/execution-mode`, { mode: 'manual' })
     await api('PUT', `/api/workshop/channels/${ch.channelId}/tools`, { mode: 'selected', tools })
     return { channelId: ch.channelId, agentId: ch.leadAgentId, token: agentTokenOf(ch.leadAgentId) }

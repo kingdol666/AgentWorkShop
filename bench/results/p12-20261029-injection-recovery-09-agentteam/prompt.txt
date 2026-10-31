@@ -1,0 +1,17 @@
+你们在 PLC 节点模拟器上的生产型注塑场景执行有治理的质量恢复任务；不是实体工厂。产线 ID=ln-78ed044f，配方 ID=rc-fa1e05a4。
+
+主目标：制品克重 在 32.15–32.85 g 内连续两次取得新鲜有效样本。终态质量验收限：飞边率 ≤0.4; 缩痕指数 ≤1.5。
+
+初始质量恢复条件：sink-mark 的新鲜基线中位数为 2.121 %，质量验收限为 1.5 %。这是本次模拟质量恢复任务的预注册初始缺陷；它可在恢复过程中暂时仍高于验收限，不要仅因这个起点取消任务。应将其降至最终验收限内。若新鲜测量高于基线中位数 + 0.27 %，但尚未触及严重缺陷硬停止值，应继续只读复测；只有 3 个不同的新鲜样本连续越界且首末跨度至少 2 s 才按持续恶化停止。2.5 % 是模拟器严重缺陷停止上限；达到或超过该值时立即停止，不等待复测。
+
+平台委派硬要求：本轮 OMP 内置工具已禁用。先调用 AgentWorkShop 的 list_team_agents 核对本 Channel 名册，然后必须调用平台 dispatch_task，将两个不同子任务分别派给预注册 worker（a=10d609ff-9630-4e78-9ed1-b75344ceda5a, b=2569178b-e602-47ab-ad57-4321cc5b0bf4），parent_task_id 使用当前 goal 根任务 ID。只允许平台任务树中的这两名真实 worker 承担工艺工作；不得以 Harness 原生 task/scout/background agent 代替，也不得使用 read/write/edit/glob/grep/bash 等通用文件或命令工具。若平台调度工具或指定 worker 不可用，停止并如实报告，不得自行处理工艺操作。
+
+Lead：必须使用只读工业工具 line_context、daq_query 和 my_industrial_nodes 核对现场场景、产线、采样新鲜度和角色授权；不得用通用文件 read 工具读取工艺上下文或臆造 MES 路径。不得调用任何控制写入工具；将 Worker A 的保压压力工作与 Worker B 的保压时间工作分别派成平台子任务；强耦合写入需串行；检查全部审批/回执，独立读取目标、guards 和 SP，只有有完整证据才完成根任务。Worker 的唯一工艺写入工具是 optimization_explore。
+
+Worker A：Analyze and tune only the hold-pressure setpoint. Worker B：Analyze and tune only the hold-time setpoint.
+
+可读 DAQ：part-weight, flash-rate, sink-mark。Worker A 唯一可写 DCW：hold-pressure-sp。Worker B 唯一可写 DCW：hold-time-sp。只使用已绑定的 AgentWorkShop 工业工具。
+
+本 Channel 的 Agent 写路径是 aml_optimization exploration：Worker 只能调用 optimization_explore，并传入自己绑定的 control_node_id、目标 DAQ 的 target_node_id、direction、符合回读 maxStep 的 step、settle_seconds≥10 和可核查 hypothesis。dcw_control 在 Agent 工具面不可用。每次动作前读取目标、全部 guard 和相关当前设定，说明测量/假设/风险；遵守实时读回的范围、单位与 step limit。每次写入须等人类按平台 HITL 审批；不得绕过审批，不得直连模拟器/API/数据库/命令行改工艺值。下发后等待物理过程响应再复测。
+
+初始已合规的 guard 若新越界、恢复 guard 连续 3 个不同的新鲜样本持续超过预注册恶化容差、数据失新/冲突、模拟器故障、ACK/readback 不一致或治理拒绝时，停止后续操作并报告。恢复 guard 达到 2.5 的场景硬停止值时立即停止，不等待复测。不要假称达标；若预算内未达标，明确报告失败原因并让 lead 将任务收口为失败/未达标。

@@ -1,0 +1,244 @@
+{
+  "audit_marker": true,
+  "audit_marker_reason": null,
+  "source_records": 3,
+  "tool_events": 2,
+  "completed_pairs": 1,
+  "actors_observed": [
+    "3cd2435e-9902-461e-b947-5f54ad9e9803"
+  ],
+  "expected_actors": [
+    "3cd2435e-9902-461e-b947-5f54ad9e9803",
+    "d717cde8-e86d-4422-92f2-113faf1131dd",
+    "92e600d4-c09f-4f38-bd6f-981c82033484"
+  ],
+  "all_members_observed": false,
+  "raw_event_parse_errors": [],
+  "actor_role_mismatches": [],
+  "unapproved_tool_event_count": 0,
+  "platform_dispatch_to_each_worker": false,
+  "channel_event_total": 0,
+  "channel_events_collected": 0,
+  "channel_events_complete": true,
+  "journal_status": 200,
+  "journal_anchors": 0,
+  "journal_capped": false,
+  "ops_complete": true,
+  "ops_capped_windows": [],
+  "ops_errors": [],
+  "daq_samples_complete": true,
+  "daq_capped_windows": [],
+  "approval_history_complete": true,
+  "approval_history_capped_agents": [],
+  "goal_period_changed_anchors": 0,
+  "event_log_stability": {
+    "interval_ms": 1000,
+    "minimum_wait_ms": 10000,
+    "required_stable_intervals": 5,
+    "maximum_wait_ms": 30000,
+    "stable": true,
+    "timed_out": false,
+    "wait_ms": 10071,
+    "initial_size_bytes": 21836,
+    "final_size_bytes": 21836,
+    "initial_sha256": "04f89a1300aa4fb7ac726d63afea40a755b83116062a7c1ec23930047f96c858",
+    "final_sha256": "04f89a1300aa4fb7ac726d63afea40a755b83116062a7c1ec23930047f96c858",
+    "observations": [
+      {
+        "elapsed_ms": 0,
+        "size_bytes": 21836,
+        "sha256": "04f89a1300aa4fb7ac726d63afea40a755b83116062a7c1ec23930047f96c858"
+      },
+      {
+        "elapsed_ms": 1002,
+        "size_bytes": 21836,
+        "sha256": "04f89a1300aa4fb7ac726d63afea40a755b83116062a7c1ec23930047f96c858"
+      },
+      {
+        "elapsed_ms": 2013,
+        "size_bytes": 21836,
+        "sha256": "04f89a1300aa4fb7ac726d63afea40a755b83116062a7c1ec23930047f96c858"
+      },
+      {
+        "elapsed_ms": 3020,
+        "size_bytes": 21836,
+        "sha256": "04f89a1300aa4fb7ac726d63afea40a755b83116062a7c1ec23930047f96c858"
+      },
+      {
+        "elapsed_ms": 4028,
+        "size_bytes": 21836,
+        "sha256": "04f89a1300aa4fb7ac726d63afea40a755b83116062a7c1ec23930047f96c858"
+      },
+      {
+        "elapsed_ms": 5033,
+        "size_bytes": 21836,
+        "sha256": "04f89a1300aa4fb7ac726d63afea40a755b83116062a7c1ec23930047f96c858"
+      },
+      {
+        "elapsed_ms": 6043,
+        "size_bytes": 21836,
+        "sha256": "04f89a1300aa4fb7ac726d63afea40a755b83116062a7c1ec23930047f96c858"
+      },
+      {
+        "elapsed_ms": 7052,
+        "size_bytes": 21836,
+        "sha256": "04f89a1300aa4fb7ac726d63afea40a755b83116062a7c1ec23930047f96c858"
+      },
+      {
+        "elapsed_ms": 8058,
+        "size_bytes": 21836,
+        "sha256": "04f89a1300aa4fb7ac726d63afea40a755b83116062a7c1ec23930047f96c858"
+      },
+      {
+        "elapsed_ms": 9065,
+        "size_bytes": 21836,
+        "sha256": "04f89a1300aa4fb7ac726d63afea40a755b83116062a7c1ec23930047f96c858"
+      },
+      {
+        "elapsed_ms": 10071,
+        "size_bytes": 21836,
+        "sha256": "04f89a1300aa4fb7ac726d63afea40a755b83116062a7c1ec23930047f96c858"
+      }
+    ],
+    "aw_listener_closed": true,
+    "raw_sha256": "04f89a1300aa4fb7ac726d63afea40a755b83116062a7c1ec23930047f96c858",
+    "finalized_at_utc": "2026-10-29T11:13:26.413Z"
+  },
+  "event_coverage": {
+    "audit_marker": true,
+    "audit_marker_reason": null,
+    "source_records": 19,
+    "tool_events": 18,
+    "completed_pairs": 9,
+    "actors_observed": [
+      "3cd2435e-9902-461e-b947-5f54ad9e9803"
+    ],
+    "expected_actors": [
+      "3cd2435e-9902-461e-b947-5f54ad9e9803",
+      "d717cde8-e86d-4422-92f2-113faf1131dd",
+      "92e600d4-c09f-4f38-bd6f-981c82033484"
+    ],
+    "all_members_observed": false,
+    "raw_event_parse_errors": [],
+    "actor_role_mismatches": [],
+    "unapproved_tool_event_count": 0,
+    "platform_dispatch_to_each_worker": false,
+    "channel_event_total": 0,
+    "channel_events_collected": 0,
+    "channel_events_complete": true,
+    "journal_status": 200,
+    "journal_anchors": 0,
+    "journal_capped": false,
+    "ops_complete": true,
+    "ops_capped_windows": [],
+    "ops_errors": [],
+    "daq_samples_complete": true,
+    "daq_capped_windows": [],
+    "approval_history_complete": true,
+    "approval_history_capped_agents": [],
+    "goal_period_changed_anchors": 0,
+    "event_log_stability": {
+      "interval_ms": 1000,
+      "minimum_wait_ms": 60000,
+      "required_stable_intervals": 5,
+      "maximum_wait_ms": 120000,
+      "stable": true,
+      "timed_out": false,
+      "wait_ms": 60453,
+      "initial_size_bytes": 1773,
+      "final_size_bytes": 1773,
+      "initial_sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8",
+      "final_sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8",
+      "observations": [
+        {
+          "elapsed_ms": 0,
+          "size_bytes": 1773,
+          "sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8"
+        },
+        {
+          "elapsed_ms": 1004,
+          "size_bytes": 1773,
+          "sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8"
+        },
+        {
+          "elapsed_ms": 2008,
+          "size_bytes": 1773,
+          "sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8"
+        },
+        {
+          "elapsed_ms": 3012,
+          "size_bytes": 1773,
+          "sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8"
+        },
+        {
+          "elapsed_ms": 4019,
+          "size_bytes": 1773,
+          "sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8"
+        },
+        {
+          "elapsed_ms": 5028,
+          "size_bytes": 1773,
+          "sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8"
+        },
+        {
+          "elapsed_ms": 6033,
+          "size_bytes": 1773,
+          "sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8"
+        },
+        {
+          "elapsed_ms": 7046,
+          "size_bytes": 1773,
+          "sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8"
+        },
+        {
+          "elapsed_ms": 8052,
+          "size_bytes": 1773,
+          "sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8"
+        },
+        {
+          "elapsed_ms": 9054,
+          "size_bytes": 1773,
+          "sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8"
+        },
+        {
+          "elapsed_ms": 10069,
+          "size_bytes": 1773,
+          "sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8"
+        },
+        {
+          "elapsed_ms": 11072,
+          "size_bytes": 1773,
+          "sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8"
+        },
+        {
+          "elapsed_ms": 12079,
+          "size_bytes": 1773,
+          "sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8"
+        },
+        {
+          "elapsed_ms": 13086,
+          "size_bytes": 1773,
+          "sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8"
+        },
+        {
+          "elapsed_ms": 14094,
+          "size_bytes": 1773,
+          "sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8"
+        },
+        {
+          "elapsed_ms": 15097,
+          "size_bytes": 1773,
+          "sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8"
+        }
+      ],
+      "aw_listener_closed": false,
+      "aw_listener_check_error": null
+    },
+    "late_event_records_after_prior_finalization": 16,
+    "late_event_growth_detected": true,
+    "prior_raw_event_sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8",
+    "prior_raw_event_hash_matches_final": false,
+    "taskless_tool_event_records": 16,
+    "unapproved_tool_event_records": 0
+  }
+}

@@ -1,0 +1,213 @@
+{
+  "audit_marker": true,
+  "audit_marker_reason": null,
+  "source_records": 3,
+  "tool_events": 2,
+  "completed_pairs": 1,
+  "actors_observed": [
+    "6b668c7f-af98-48cc-8945-1836da6fdb99"
+  ],
+  "expected_actors": [
+    "6b668c7f-af98-48cc-8945-1836da6fdb99",
+    "01022195-eaa1-4c50-a4b9-85526df960a3",
+    "d52d1831-ebbf-4b60-ad95-d9958b4072b4"
+  ],
+  "all_members_observed": false,
+  "raw_event_parse_errors": [],
+  "channel_event_total": 0,
+  "channel_events_collected": 0,
+  "channel_events_complete": true,
+  "journal_status": 200,
+  "journal_anchors": 0,
+  "journal_capped": false,
+  "ops_complete": true,
+  "ops_capped_windows": [],
+  "ops_errors": [],
+  "daq_samples_complete": true,
+  "daq_capped_windows": [],
+  "approval_history_complete": true,
+  "approval_history_capped_agents": [],
+  "goal_period_changed_anchors": 0,
+  "event_log_stability": {
+    "interval_ms": 1000,
+    "minimum_wait_ms": 10000,
+    "required_stable_intervals": 5,
+    "maximum_wait_ms": 30000,
+    "stable": true,
+    "timed_out": false,
+    "wait_ms": 10064,
+    "initial_size_bytes": 52310,
+    "final_size_bytes": 52310,
+    "initial_sha256": "b77611eb435fdd82df52d1020bf19401e960ee473b58dfd751001c4437168d1d",
+    "final_sha256": "b77611eb435fdd82df52d1020bf19401e960ee473b58dfd751001c4437168d1d",
+    "observations": [
+      {
+        "elapsed_ms": 0,
+        "size_bytes": 52310,
+        "sha256": "b77611eb435fdd82df52d1020bf19401e960ee473b58dfd751001c4437168d1d"
+      },
+      {
+        "elapsed_ms": 1005,
+        "size_bytes": 52310,
+        "sha256": "b77611eb435fdd82df52d1020bf19401e960ee473b58dfd751001c4437168d1d"
+      },
+      {
+        "elapsed_ms": 2010,
+        "size_bytes": 52310,
+        "sha256": "b77611eb435fdd82df52d1020bf19401e960ee473b58dfd751001c4437168d1d"
+      },
+      {
+        "elapsed_ms": 3019,
+        "size_bytes": 52310,
+        "sha256": "b77611eb435fdd82df52d1020bf19401e960ee473b58dfd751001c4437168d1d"
+      },
+      {
+        "elapsed_ms": 4027,
+        "size_bytes": 52310,
+        "sha256": "b77611eb435fdd82df52d1020bf19401e960ee473b58dfd751001c4437168d1d"
+      },
+      {
+        "elapsed_ms": 5030,
+        "size_bytes": 52310,
+        "sha256": "b77611eb435fdd82df52d1020bf19401e960ee473b58dfd751001c4437168d1d"
+      },
+      {
+        "elapsed_ms": 6033,
+        "size_bytes": 52310,
+        "sha256": "b77611eb435fdd82df52d1020bf19401e960ee473b58dfd751001c4437168d1d"
+      },
+      {
+        "elapsed_ms": 7036,
+        "size_bytes": 52310,
+        "sha256": "b77611eb435fdd82df52d1020bf19401e960ee473b58dfd751001c4437168d1d"
+      },
+      {
+        "elapsed_ms": 8045,
+        "size_bytes": 52310,
+        "sha256": "b77611eb435fdd82df52d1020bf19401e960ee473b58dfd751001c4437168d1d"
+      },
+      {
+        "elapsed_ms": 9060,
+        "size_bytes": 52310,
+        "sha256": "b77611eb435fdd82df52d1020bf19401e960ee473b58dfd751001c4437168d1d"
+      },
+      {
+        "elapsed_ms": 10064,
+        "size_bytes": 52310,
+        "sha256": "b77611eb435fdd82df52d1020bf19401e960ee473b58dfd751001c4437168d1d"
+      }
+    ],
+    "aw_listener_closed": true,
+    "raw_sha256": "b77611eb435fdd82df52d1020bf19401e960ee473b58dfd751001c4437168d1d",
+    "finalized_at_utc": "2026-10-29T08:59:19.844Z"
+  },
+  "event_coverage": {
+    "audit_marker": true,
+    "audit_marker_reason": null,
+    "source_records": 51,
+    "tool_events": 50,
+    "completed_pairs": 21,
+    "actors_observed": [
+      "6b668c7f-af98-48cc-8945-1836da6fdb99"
+    ],
+    "expected_actors": [
+      "6b668c7f-af98-48cc-8945-1836da6fdb99",
+      "01022195-eaa1-4c50-a4b9-85526df960a3",
+      "d52d1831-ebbf-4b60-ad95-d9958b4072b4"
+    ],
+    "all_members_observed": false,
+    "raw_event_parse_errors": [],
+    "channel_event_total": 0,
+    "channel_events_collected": 0,
+    "channel_events_complete": true,
+    "journal_status": 200,
+    "journal_anchors": 0,
+    "journal_capped": false,
+    "ops_complete": true,
+    "ops_capped_windows": [],
+    "ops_errors": [],
+    "daq_samples_complete": true,
+    "daq_capped_windows": [],
+    "approval_history_complete": true,
+    "approval_history_capped_agents": [],
+    "goal_period_changed_anchors": 0,
+    "event_log_stability": {
+      "interval_ms": 1000,
+      "minimum_wait_ms": 60000,
+      "required_stable_intervals": 5,
+      "maximum_wait_ms": 120000,
+      "stable": true,
+      "timed_out": false,
+      "wait_ms": 60284,
+      "initial_size_bytes": 1534,
+      "final_size_bytes": 1534,
+      "observations": [
+        {
+          "elapsed_ms": 0,
+          "size_bytes": 1534
+        },
+        {
+          "elapsed_ms": 1004,
+          "size_bytes": 1534
+        },
+        {
+          "elapsed_ms": 2013,
+          "size_bytes": 1534
+        },
+        {
+          "elapsed_ms": 3015,
+          "size_bytes": 1534
+        },
+        {
+          "elapsed_ms": 4016,
+          "size_bytes": 1534
+        },
+        {
+          "elapsed_ms": 5019,
+          "size_bytes": 1534
+        },
+        {
+          "elapsed_ms": 6022,
+          "size_bytes": 1534
+        },
+        {
+          "elapsed_ms": 7030,
+          "size_bytes": 1534
+        },
+        {
+          "elapsed_ms": 8034,
+          "size_bytes": 1534
+        },
+        {
+          "elapsed_ms": 9038,
+          "size_bytes": 1534
+        },
+        {
+          "elapsed_ms": 10039,
+          "size_bytes": 1534
+        },
+        {
+          "elapsed_ms": 11051,
+          "size_bytes": 1534
+        },
+        {
+          "elapsed_ms": 12053,
+          "size_bytes": 1534
+        },
+        {
+          "elapsed_ms": 13062,
+          "size_bytes": 1534
+        },
+        {
+          "elapsed_ms": 14071,
+          "size_bytes": 1534
+        },
+        {
+          "elapsed_ms": 15079,
+          "size_bytes": 1534
+        }
+      ]
+    },
+    "late_event_records_after_prior_finalization": 48
+  }
+}

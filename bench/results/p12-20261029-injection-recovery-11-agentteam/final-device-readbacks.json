@@ -1,0 +1,20 @@
+[
+  {
+    "signal": "hold-pressure-sp",
+    "node_id": "dw-378b1992",
+    "status": 200,
+    "value": 45,
+    "unit": "bar",
+    "state": null,
+    "at_utc": "2026-10-29T12:07:56.972Z"
+  },
+  {
+    "signal": "hold-time-sp",
+    "node_id": "dw-9be46cc4",
+    "status": 200,
+    "value": 6,
+    "unit": "s",
+    "state": null,
+    "at_utc": "2026-10-29T12:07:56.987Z"
+  }
+]

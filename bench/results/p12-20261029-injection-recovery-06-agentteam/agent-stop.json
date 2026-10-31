@@ -1,0 +1,25 @@
+{
+  "child_cancel_results": [],
+  "agent_stops": [
+    {
+      "agent_id": "47dcf720-649f-44dd-aac7-c09c0fd19316",
+      "status": 200,
+      "stopped": true,
+      "message": "ok"
+    },
+    {
+      "agent_id": "d7c76ade-0e43-49cd-91ae-4554bd4d0df7",
+      "status": 200,
+      "stopped": true,
+      "message": "ok"
+    },
+    {
+      "agent_id": "55543044-f190-40ef-8658-fed763d3d9b9",
+      "status": 200,
+      "stopped": true,
+      "message": "ok"
+    }
+  ],
+  "event_log_stability": null,
+  "reason": "runner error"
+}

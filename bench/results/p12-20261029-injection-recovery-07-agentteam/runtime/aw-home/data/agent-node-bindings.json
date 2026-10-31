@@ -1,0 +1,90 @@
+[
+  {
+    "id": "nb-981f52ac",
+    "agentId": "363a0984-1059-45df-b565-c6e71c5dc123",
+    "nodeId": "dn-fe8227b3",
+    "kind": "daq",
+    "mode": "auto",
+    "createdAt": "2026-10-29T18:06:22.972+08:00"
+  },
+  {
+    "id": "nb-15c72cb0",
+    "agentId": "363a0984-1059-45df-b565-c6e71c5dc123",
+    "nodeId": "dn-b476df07",
+    "kind": "daq",
+    "mode": "auto",
+    "createdAt": "2026-10-29T18:06:22.986+08:00"
+  },
+  {
+    "id": "nb-a99fb7f1",
+    "agentId": "363a0984-1059-45df-b565-c6e71c5dc123",
+    "nodeId": "dn-abe7b6c3",
+    "kind": "daq",
+    "mode": "auto",
+    "createdAt": "2026-10-29T18:06:23.001+08:00"
+  },
+  {
+    "id": "nb-49b9dec4",
+    "agentId": "21b50d4e-8ea6-4bde-ab05-3d93111cb190",
+    "nodeId": "dn-fe8227b3",
+    "kind": "daq",
+    "mode": "auto",
+    "createdAt": "2026-10-29T18:06:23.017+08:00"
+  },
+  {
+    "id": "nb-4899e0d7",
+    "agentId": "21b50d4e-8ea6-4bde-ab05-3d93111cb190",
+    "nodeId": "dn-b476df07",
+    "kind": "daq",
+    "mode": "auto",
+    "createdAt": "2026-10-29T18:06:23.044+08:00"
+  },
+  {
+    "id": "nb-1a96c2f2",
+    "agentId": "21b50d4e-8ea6-4bde-ab05-3d93111cb190",
+    "nodeId": "dn-abe7b6c3",
+    "kind": "daq",
+    "mode": "auto",
+    "createdAt": "2026-10-29T18:06:23.063+08:00"
+  },
+  {
+    "id": "nb-bb1d7ef7",
+    "agentId": "21b50d4e-8ea6-4bde-ab05-3d93111cb190",
+    "nodeId": "dw-22872533",
+    "kind": "dcw",
+    "mode": "manual",
+    "createdAt": "2026-10-29T18:06:23.079+08:00"
+  },
+  {
+    "id": "nb-dda3599f",
+    "agentId": "3d29507a-64ab-4945-8925-9d2ef2513352",
+    "nodeId": "dn-fe8227b3",
+    "kind": "daq",
+    "mode": "auto",
+    "createdAt": "2026-10-29T18:06:23.095+08:00"
+  },
+  {
+    "id": "nb-f8270e73",
+    "agentId": "3d29507a-64ab-4945-8925-9d2ef2513352",
+    "nodeId": "dn-b476df07",
+    "kind": "daq",
+    "mode": "auto",
+    "createdAt": "2026-10-29T18:06:23.110+08:00"
+  },
+  {
+    "id": "nb-22e12ce6",
+    "agentId": "3d29507a-64ab-4945-8925-9d2ef2513352",
+    "nodeId": "dn-abe7b6c3",
+    "kind": "daq",
+    "mode": "auto",
+    "createdAt": "2026-10-29T18:06:23.126+08:00"
+  },
+  {
+    "id": "nb-f1d08796",
+    "agentId": "3d29507a-64ab-4945-8925-9d2ef2513352",
+    "nodeId": "dw-69681f6c",
+    "kind": "dcw",
+    "mode": "manual",
+    "createdAt": "2026-10-29T18:06:23.129+08:00"
+  }
+]

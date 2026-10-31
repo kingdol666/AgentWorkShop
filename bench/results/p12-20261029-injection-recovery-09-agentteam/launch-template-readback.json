@@ -1,0 +1,39 @@
+{
+  "source": "administrator-visible template creation responses",
+  "member_summary_note": "Channel-member summaries intentionally redact launch arguments; they are not used to verify config.args.",
+  "templates": [
+    {
+      "role": "lead",
+      "template_id": "88d69a0d-4793-49b3-a0c3-feede1acf828",
+      "harness": "omp",
+      "provider": "lm-studio",
+      "model": "qwen3.5-9b-32k",
+      "args": [
+        "--no-tools"
+      ],
+      "no_tools_verified": true
+    },
+    {
+      "role": "a",
+      "template_id": "ff5a386c-9d2d-4c19-a079-140e3af4e256",
+      "harness": "omp",
+      "provider": "lm-studio",
+      "model": "qwen3.5-9b-32k",
+      "args": [
+        "--no-tools"
+      ],
+      "no_tools_verified": true
+    },
+    {
+      "role": "b",
+      "template_id": "4a0916f6-f92f-4b80-a1fc-6f181a1ebcd9",
+      "harness": "omp",
+      "provider": "lm-studio",
+      "model": "qwen3.5-9b-32k",
+      "args": [
+        "--no-tools"
+      ],
+      "no_tools_verified": true
+    }
+  ]
+}

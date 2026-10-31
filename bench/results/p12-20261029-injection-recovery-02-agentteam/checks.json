@@ -1,0 +1,14 @@
+{
+  "qualification": {
+    "status": "NOT-QUALIFIED",
+    "reason": "Cannot read properties of undefined (reading 'bindings')"
+  },
+  "workflow_outcome": {
+    "status": "NOT-RUN",
+    "task_id": null
+  },
+  "evidence_integrity": {
+    "status": "NOT-RUN",
+    "reason": "Cannot read properties of undefined (reading 'bindings')"
+  }
+}

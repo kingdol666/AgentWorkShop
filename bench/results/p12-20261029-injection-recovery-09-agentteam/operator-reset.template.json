@@ -1,0 +1,89 @@
+﻿{
+    "status":  "completed",
+    "operator_id_or_role":  "authorized experiment operator",
+    "reset_procedure_reference":  "bench/PIPELINE/run-agentteam.mjs injection reset contract; isolated simulator POST /api/plant/reset",
+    "reset_request":  {
+                          "disturbances":  {
+                                               "heaterDecay":  1,
+                                               "feedDriftPerMin":  0
+                                           },
+                          "seed":  12026,
+                          "id":  "injection",
+                          "warm":  true
+                      },
+    "reset_response_code":  0,
+    "reset_started_at_utc":  "2026-10-29T10:48:29.6930901Z",
+    "reset_completed_at_utc":  "2026-10-29T10:48:31.9714295Z",
+    "pre_reset_state_reference":  {
+                                      "sha256":  "fca7020d50b4efd675a0be8be760710c8230035e002eae13761d25e78d932282",
+                                      "captured_before_reset":  true,
+                                      "file":  "simulator-state.json"
+                                  },
+    "post_reset_readbacks":  [
+                                 {
+                                     "node_id":  "inj-machine-mbtcp",
+                                     "signal_id":  "melt-temp-pv",
+                                     "unit":  "â",
+                                     "value":  246.8
+                                 },
+                                 {
+                                     "node_id":  "inj-mold-rtu",
+                                     "signal_id":  "mold-temp-pv",
+                                     "unit":  "â",
+                                     "value":  39.7
+                                 },
+                                 {
+                                     "node_id":  "inj-inject-opcua",
+                                     "signal_id":  "hold-pressure-sp",
+                                     "unit":  "bar",
+                                     "value":  45
+                                 },
+                                 {
+                                     "node_id":  "inj-inject-opcua",
+                                     "signal_id":  "hold-time-sp",
+                                     "unit":  "s",
+                                     "value":  6
+                                 },
+                                 {
+                                     "node_id":  "inj-inject-opcua",
+                                     "signal_id":  "inj-pressure-pv",
+                                     "unit":  "bar",
+                                     "value":  50.6
+                                 },
+                                 {
+                                     "node_id":  "inj-inspect-http",
+                                     "signal_id":  "part-weight",
+                                     "unit":  "g",
+                                     "value":  31.24
+                                 },
+                                 {
+                                     "node_id":  "inj-inspect-http",
+                                     "signal_id":  "flash-rate",
+                                     "unit":  "%",
+                                     "value":  0.04
+                                 },
+                                 {
+                                     "node_id":  "inj-inspect-http",
+                                     "signal_id":  "sink-mark",
+                                     "unit":  "%",
+                                     "value":  2.272
+                                 }
+                             ],
+    "post_reset_plant_state":  {
+                                   "phase":  "steady",
+                                   "running":  true,
+                                   "engines":  [
+                                                   {
+                                                       "id":  "injection",
+                                                       "kind":  "injection",
+                                                       "phase":  "warmup",
+                                                       "running":  true,
+                                                       "seed":  12026
+                                                   }
+                                               ],
+                                   "timeScale":  1,
+                                   "kind":  "injection"
+                               },
+    "residual_tasks_or_approvals":  "Root canceled and runner stopped all run agents; approval history had zero entries. No setpoint changed during this episode.",
+    "notes":  "This reset is run-private cleanup, not a performance endpoint."
+}

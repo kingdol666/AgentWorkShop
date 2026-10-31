@@ -99,7 +99,7 @@ scenario = (workload, faults, governance, scheduler, memory, harness)
 
 ## 5. 治理消融开关（bench 专用，默认不可用）
 
-`AW_BENCH_MODE=1` 时激活，生产模式硬编码拒绝：
+`AW_BENCH_MODE=1` + `AW_BENCH_ACK=1` 双 env 确认时激活(单 env 不生效,2026-10-30 起)，生产模式硬编码拒绝：
 
 | flag | 旁路点（源码锚点） | 关掉后语义 |
 |---|---|---|

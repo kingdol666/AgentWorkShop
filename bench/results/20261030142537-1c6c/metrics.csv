@@ -1,0 +1,7 @@
+phase,line,protocol,preset,daq_samples,f5_rejected,f5_total,false_block,readback_delta,team_state,team_dispatched,memory_idempotent,harnesses,harnesses_available
+P8,1,modbus-tcp,film-line,0,,,,,,,,,
+P8,2,opcua,film-line,0,,,,,,,,,
+P8,3,mqtt,film-line,0,,,,,,,,,
+P8,4,modbus-rtu,film-line,0,,,,,,,,,
+P8,5,http,film-line,0,,,,,,,,,
+P9,,,,,,,,,,false,false,0,0

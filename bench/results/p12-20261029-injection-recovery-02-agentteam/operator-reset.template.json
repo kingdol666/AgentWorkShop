@@ -1,0 +1,15 @@
+{
+  "status": "not-recorded-by-runner",
+  "required_for_post_run_local_closure_only": true,
+  "fields": {
+    "operator_id_or_role": "",
+    "reset_procedure_reference": "",
+    "reset_started_at_utc": "",
+    "reset_completed_at_utc": "",
+    "pre_reset_state_reference": "",
+    "post_reset_readbacks": [],
+    "residual_tasks_or_approvals": "",
+    "notes": ""
+  },
+  "note": "Complete manually after the episode under the approved isolated-simulator reset procedure. This post-run closure record is not a P12 control-performance endpoint and is not automatically verified by the runner."
+}

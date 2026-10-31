@@ -1,0 +1,231 @@
+[
+  {
+    "id": "rr-a9b6e3d1",
+    "recipeId": "rc-6e10fa70",
+    "recipeName": "scen-injection-recipe-p12-20261030173217-8f6e4715",
+    "productId": "pd-90e133b8",
+    "lineId": "ln-1572335e",
+    "recipeVersion": 1,
+    "startedAt": "2026-10-31T01:33:55.228+08:00",
+    "endedAt": null,
+    "results": [
+      {
+        "templateRef": "dcw-temp-sp",
+        "nodeId": "dw-d740dd20",
+        "ok": true,
+        "message": "写入并回读一致:240 → raw 240,回读 240(标定后物理值 240)",
+        "value": 240,
+        "ack": "readback-verified",
+        "verify": {
+          "verdict": "verified",
+          "attempts": 0
+        }
+      },
+      {
+        "templateRef": "dcw-temp-sp",
+        "nodeId": "dw-d320b9f1",
+        "ok": true,
+        "message": "写入并回读一致:246 → raw 246,回读 246(标定后物理值 246)",
+        "value": 246,
+        "ack": "readback-verified",
+        "verify": {
+          "verdict": "verified",
+          "attempts": 0
+        }
+      },
+      {
+        "templateRef": "dcw-temp-sp",
+        "nodeId": "dw-db280dd2",
+        "ok": true,
+        "message": "写入并回读一致:252 → raw 252,回读 252(标定后物理值 252)",
+        "value": 252,
+        "ack": "readback-verified",
+        "verify": {
+          "verdict": "verified",
+          "attempts": 0
+        }
+      },
+      {
+        "templateRef": "dcw-temp-sp",
+        "nodeId": "dw-52837df7",
+        "ok": true,
+        "message": "写入并回读一致:258 → raw 258,回读 258(标定后物理值 258)",
+        "value": 258,
+        "ack": "readback-verified",
+        "verify": {
+          "verdict": "verified",
+          "attempts": 0
+        }
+      },
+      {
+        "templateRef": "dcw-temp-sp",
+        "nodeId": "dw-343169bc",
+        "ok": true,
+        "message": "写入并回读一致:120 → raw 120,回读 120(标定后物理值 120)",
+        "value": 120,
+        "ack": "readback-verified",
+        "verify": {
+          "verdict": "verified",
+          "attempts": 0
+        }
+      },
+      {
+        "templateRef": "dcw-temp-sp",
+        "nodeId": "dw-d92e7ac7",
+        "ok": true,
+        "message": "写入并回读一致:40 → raw 40,回读 40(标定后物理值 40)",
+        "value": 40,
+        "ack": "readback-verified",
+        "verify": {
+          "verdict": "verified",
+          "attempts": 0
+        }
+      },
+      {
+        "templateRef": "dcw-temp-sp",
+        "nodeId": "dw-de50b642",
+        "ok": true,
+        "message": "写入并回读一致:1600 → raw 1600,回读 1600(标定后物理值 1600)",
+        "value": 1600,
+        "ack": "readback-verified",
+        "verify": {
+          "verdict": "verified",
+          "attempts": 0
+        }
+      },
+      {
+        "templateRef": "dcw-temp-sp",
+        "nodeId": "dw-b7d2debd",
+        "ok": true,
+        "message": "写入并回读一致:85,回读 85(标定后物理值 85)",
+        "value": 85,
+        "ack": "readback-verified",
+        "verify": {
+          "verdict": "verified",
+          "attempts": 0
+        }
+      },
+      {
+        "templateRef": "dcw-temp-sp",
+        "nodeId": "dw-f8bbdb7a",
+        "ok": true,
+        "message": "写入并回读一致:45,回读 45(标定后物理值 45)",
+        "value": 45,
+        "ack": "readback-verified",
+        "verify": {
+          "verdict": "verified",
+          "attempts": 0
+        }
+      },
+      {
+        "templateRef": "dcw-temp-sp",
+        "nodeId": "dw-a648ccdc",
+        "ok": true,
+        "message": "写入并回读一致:6,回读 6(标定后物理值 6)",
+        "value": 6,
+        "ack": "readback-verified",
+        "verify": {
+          "verdict": "verified",
+          "attempts": 0
+        }
+      },
+      {
+        "templateRef": "dcw-temp-sp",
+        "nodeId": "dw-948b5316",
+        "ok": true,
+        "message": "已发布 24 → aw/inj/coolwater/set(QoS 1;broker 已受理,设备侧待验证)(标定后物理值 24)",
+        "value": 24,
+        "ack": "readback-verified",
+        "verify": {
+          "verdict": "verified",
+          "attempts": 1
+        }
+      }
+    ],
+    "paramsSnapshot": [
+      {
+        "nodeId": "dw-d740dd20",
+        "templateRef": "dcw-temp-sp",
+        "value": 240,
+        "min": 160,
+        "max": 300
+      },
+      {
+        "nodeId": "dw-d320b9f1",
+        "templateRef": "dcw-temp-sp",
+        "value": 246,
+        "min": 160,
+        "max": 300
+      },
+      {
+        "nodeId": "dw-db280dd2",
+        "templateRef": "dcw-temp-sp",
+        "value": 252,
+        "min": 160,
+        "max": 300
+      },
+      {
+        "nodeId": "dw-52837df7",
+        "templateRef": "dcw-temp-sp",
+        "value": 258,
+        "min": 160,
+        "max": 300
+      },
+      {
+        "nodeId": "dw-343169bc",
+        "templateRef": "dcw-temp-sp",
+        "value": 120,
+        "min": 60,
+        "max": 200
+      },
+      {
+        "nodeId": "dw-d92e7ac7",
+        "templateRef": "dcw-temp-sp",
+        "value": 40,
+        "min": 20,
+        "max": 95
+      },
+      {
+        "nodeId": "dw-de50b642",
+        "templateRef": "dcw-temp-sp",
+        "value": 1600,
+        "min": 800,
+        "max": 2500
+      },
+      {
+        "nodeId": "dw-b7d2debd",
+        "templateRef": "dcw-temp-sp",
+        "value": 85,
+        "min": 30,
+        "max": 130
+      },
+      {
+        "nodeId": "dw-f8bbdb7a",
+        "templateRef": "dcw-temp-sp",
+        "value": 45,
+        "min": 20,
+        "max": 110
+      },
+      {
+        "nodeId": "dw-a648ccdc",
+        "templateRef": "dcw-temp-sp",
+        "value": 6,
+        "min": 3,
+        "max": 15
+      },
+      {
+        "nodeId": "dw-948b5316",
+        "templateRef": "dcw-temp-sp",
+        "value": 24,
+        "min": 10,
+        "max": 45
+      }
+    ],
+    "ackSummary": {
+      "verified": 11,
+      "unverified": 0,
+      "failed": 0,
+      "total": 11
+    }
+  }
+]

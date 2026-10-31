@@ -1,0 +1,214 @@
+{
+  "team_id": "b5235694-ec69-4e74-9362-5156f3df8adf",
+  "channel_id": "6a0d6603-70bb-4488-9997-993f214ccdfb",
+  "lead": {
+    "id": "8d1b50d6-b891-4eaf-9a3b-4f30638cdfc1",
+    "channelId": "6a0d6603-70bb-4488-9997-993f214ccdfb",
+    "name": "P12 lead ection-recovery-03",
+    "harness": "omp",
+    "role": "lead",
+    "enabled": 1,
+    "templateId": "fdad5ae0-ea53-4b2b-98e6-7716708bd267",
+    "config": {
+      "provider": "lm-studio",
+      "model": "qwen3.5-9b-32k",
+      "systemPromptPrefix": "You are the accountable industrial team lead. Delegate distinct tasks to both workers, independently verify evidence, and never claim unobserved results."
+    }
+  },
+  "workers": [
+    {
+      "key": "a",
+      "name": "Injection pressure worker",
+      "signals": [
+        "hold-pressure-sp"
+      ],
+      "purpose": "Analyze and tune only the hold-pressure setpoint.",
+      "templateId": "fb1fab82-dca9-47ca-9e73-a62365403a3e",
+      "agentId": "df1e22bf-bce5-48aa-95df-782bbe0aaa78"
+    },
+    {
+      "key": "b",
+      "name": "Injection hold-time worker",
+      "signals": [
+        "hold-time-sp"
+      ],
+      "purpose": "Analyze and tune only the hold-time setpoint.",
+      "templateId": "390a6e29-4198-4e22-9669-96dad4b498f1",
+      "agentId": "242ce203-1266-4f50-a37d-d706aef94ade"
+    }
+  ],
+  "bindings": [
+    {
+      "agent_id": "8d1b50d6-b891-4eaf-9a3b-4f30638cdfc1",
+      "node_id": "dn-5dadf7bc",
+      "kind": "daq",
+      "mode": "auto"
+    },
+    {
+      "agent_id": "8d1b50d6-b891-4eaf-9a3b-4f30638cdfc1",
+      "node_id": "dn-7481a797",
+      "kind": "daq",
+      "mode": "auto"
+    },
+    {
+      "agent_id": "8d1b50d6-b891-4eaf-9a3b-4f30638cdfc1",
+      "node_id": "dn-67e5edf2",
+      "kind": "daq",
+      "mode": "auto"
+    },
+    {
+      "agent_id": "df1e22bf-bce5-48aa-95df-782bbe0aaa78",
+      "node_id": "dn-5dadf7bc",
+      "kind": "daq",
+      "mode": "auto"
+    },
+    {
+      "agent_id": "df1e22bf-bce5-48aa-95df-782bbe0aaa78",
+      "node_id": "dn-7481a797",
+      "kind": "daq",
+      "mode": "auto"
+    },
+    {
+      "agent_id": "df1e22bf-bce5-48aa-95df-782bbe0aaa78",
+      "node_id": "dn-67e5edf2",
+      "kind": "daq",
+      "mode": "auto"
+    },
+    {
+      "agent_id": "df1e22bf-bce5-48aa-95df-782bbe0aaa78",
+      "node_id": "dw-8adf2129",
+      "kind": "dcw",
+      "mode": "manual"
+    },
+    {
+      "agent_id": "242ce203-1266-4f50-a37d-d706aef94ade",
+      "node_id": "dn-5dadf7bc",
+      "kind": "daq",
+      "mode": "auto"
+    },
+    {
+      "agent_id": "242ce203-1266-4f50-a37d-d706aef94ade",
+      "node_id": "dn-7481a797",
+      "kind": "daq",
+      "mode": "auto"
+    },
+    {
+      "agent_id": "242ce203-1266-4f50-a37d-d706aef94ade",
+      "node_id": "dn-67e5edf2",
+      "kind": "daq",
+      "mode": "auto"
+    },
+    {
+      "agent_id": "242ce203-1266-4f50-a37d-d706aef94ade",
+      "node_id": "dw-3e9e1079",
+      "kind": "dcw",
+      "mode": "manual"
+    }
+  ],
+  "service_bindings": [
+    {
+      "agent_id": "8d1b50d6-b891-4eaf-9a3b-4f30638cdfc1",
+      "bindings": [
+        {
+          "id": "nb-860bc10c",
+          "agentId": "8d1b50d6-b891-4eaf-9a3b-4f30638cdfc1",
+          "nodeId": "dn-5dadf7bc",
+          "kind": "daq",
+          "mode": "auto",
+          "createdAt": "2026-10-29T16:23:35.452+08:00"
+        },
+        {
+          "id": "nb-e3153f9f",
+          "agentId": "8d1b50d6-b891-4eaf-9a3b-4f30638cdfc1",
+          "nodeId": "dn-7481a797",
+          "kind": "daq",
+          "mode": "auto",
+          "createdAt": "2026-10-29T16:23:35.463+08:00"
+        },
+        {
+          "id": "nb-244b6942",
+          "agentId": "8d1b50d6-b891-4eaf-9a3b-4f30638cdfc1",
+          "nodeId": "dn-67e5edf2",
+          "kind": "daq",
+          "mode": "auto",
+          "createdAt": "2026-10-29T16:23:35.479+08:00"
+        }
+      ]
+    },
+    {
+      "agent_id": "df1e22bf-bce5-48aa-95df-782bbe0aaa78",
+      "bindings": [
+        {
+          "id": "nb-32a9ca71",
+          "agentId": "df1e22bf-bce5-48aa-95df-782bbe0aaa78",
+          "nodeId": "dn-5dadf7bc",
+          "kind": "daq",
+          "mode": "auto",
+          "createdAt": "2026-10-29T16:23:35.494+08:00"
+        },
+        {
+          "id": "nb-20a0ce4c",
+          "agentId": "df1e22bf-bce5-48aa-95df-782bbe0aaa78",
+          "nodeId": "dn-7481a797",
+          "kind": "daq",
+          "mode": "auto",
+          "createdAt": "2026-10-29T16:23:35.509+08:00"
+        },
+        {
+          "id": "nb-05caa3c3",
+          "agentId": "df1e22bf-bce5-48aa-95df-782bbe0aaa78",
+          "nodeId": "dn-67e5edf2",
+          "kind": "daq",
+          "mode": "auto",
+          "createdAt": "2026-10-29T16:23:35.525+08:00"
+        },
+        {
+          "id": "nb-067526d3",
+          "agentId": "df1e22bf-bce5-48aa-95df-782bbe0aaa78",
+          "nodeId": "dw-8adf2129",
+          "kind": "dcw",
+          "mode": "manual",
+          "createdAt": "2026-10-29T16:23:35.541+08:00"
+        }
+      ]
+    },
+    {
+      "agent_id": "242ce203-1266-4f50-a37d-d706aef94ade",
+      "bindings": [
+        {
+          "id": "nb-33de8570",
+          "agentId": "242ce203-1266-4f50-a37d-d706aef94ade",
+          "nodeId": "dn-5dadf7bc",
+          "kind": "daq",
+          "mode": "auto",
+          "createdAt": "2026-10-29T16:23:35.556+08:00"
+        },
+        {
+          "id": "nb-e4d4f3eb",
+          "agentId": "242ce203-1266-4f50-a37d-d706aef94ade",
+          "nodeId": "dn-7481a797",
+          "kind": "daq",
+          "mode": "auto",
+          "createdAt": "2026-10-29T16:23:35.571+08:00"
+        },
+        {
+          "id": "nb-95eb1e2c",
+          "agentId": "242ce203-1266-4f50-a37d-d706aef94ade",
+          "nodeId": "dn-67e5edf2",
+          "kind": "daq",
+          "mode": "auto",
+          "createdAt": "2026-10-29T16:23:35.587+08:00"
+        },
+        {
+          "id": "nb-d33c3971",
+          "agentId": "242ce203-1266-4f50-a37d-d706aef94ade",
+          "nodeId": "dw-3e9e1079",
+          "kind": "dcw",
+          "mode": "manual",
+          "createdAt": "2026-10-29T16:23:35.603+08:00"
+        }
+      ]
+    }
+  ],
+  "condition": "real_omp_agentteam"
+}

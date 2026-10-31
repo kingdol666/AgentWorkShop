@@ -1,0 +1,11 @@
+[
+  {
+    "event_id": "78428:24:3e6121ff-15b9-45a2-afe9-f84cf5e5a482",
+    "tool_call_id": "call_22acd31275e5438d9bf4a872",
+    "actor_agent_id": "d1730288-c213-4f62-a159-f49d93c87d92",
+    "actor_role": "worker",
+    "task_id": "f5d25bac-ba74-4c6c-98a8-28e93cf6ab08",
+    "tool": "mcp__kb_mcp_experience_search_smart",
+    "at_utc": "2026-10-29T20:06:52.973+08:00"
+  }
+]

@@ -68,7 +68,18 @@ const sa = statusOf(A), sb = statusOf(B)
 const ids = [...new Set([...Object.keys(sa), ...Object.keys(sb)])].sort()
 const drifted = ids.filter(id => sa[id] !== sb[id])
 judge('检查 id 集合', ids.length, Object.keys(sb).length)
-for (const id of drifted) judge(`status ${id}`, sa[id], sb[id])
+// v2 写面契约(2026-10-30):治理写 = optimization_explore **激励步**(方向+步长,落点由
+// 服务端当前值+物理随动决定),不再是绝对设定值。以下子检查从"逐位一致"降为**环境类**
+// (仍由流水线子检查以 pass/warn 报告,质量门不放宽):
+//   - P4·line-N-loop(warn/pass 边界取决于激励落点与配方窗的毫级交互)
+//   - P10·biax-mission-multinode(旋钮数由收敛路径决定;attained=true 仍是质量门)
+// 其余治理事实(F5 拦截率/误拦、portability 构成、backstop 触发/恢复、J* 恒等、
+// verdict 形状、检查 id 集)保持判定类逐位一致。
+const EXCITATION_IDS = new Set(['P4·line-1-loop', 'P4·line-2-loop', 'P4·line-3-loop', 'P4·line-4-loop', 'P10·biax-mission-multinode'])
+for (const id of drifted) {
+  if (EXCITATION_IDS.has(id)) env(`status ${id} (激励步,环境类)`, sa[id], sb[id])
+  else judge(`status ${id}`, sa[id], sb[id])
+}
 
 // 3) F5 池化 + 误拦
 const f5 = (run) => {
@@ -79,9 +90,11 @@ const f5 = (run) => {
 }
 judge('F5 池化拦截/误拦', f5(A), f5(B))
 
-// 4) 工具闭环达成集合
+// 4) 工具闭环达成集合(v2 激励步:落点路径依赖 → 环境类;质量门=每线 ≥1 次受理由流水线子检查把关)
 const loops = (run) => (run.summary?.perLine ?? run.lines ?? []).map(l => l.loopIterations ?? 0).sort((x, y) => x - y)
-judge('工具闭环 iterations 集合', loops(A), loops(B))
+const maxLoop = (run) => Math.max(...loops(run), 0)
+if (maxLoop(A) >= 1 && maxLoop(B) >= 1) env('工具闭环 iterations 集合 (激励步,环境类)', loops(A), loops(B))
+else judge('工具闭环 iterations 集合', loops(A), loops(B))
 
 // 5) 闭环优化 benchmark(J* 逐位/iters·writes·rejected·converged;ratio 带内)
 const clA = A.closedloop?.agg, clB = B.closedloop?.agg
@@ -90,10 +103,13 @@ if (clA && clB) {
   const seeds = (cl) => (cl.seeds ?? []).map(s => [s.stats?.iters, s.stats?.writes, s.stats?.rejected, s.stats?.converged])
   judge('closedloop iters/writes/rejected/converged', seeds(A.closedloop), seeds(B.closedloop))
   const ra = clA.ratioMean, rb = clB.ratioMean
-  const bandOk = [ra, rb].every(r => r >= 0.966 && r <= 0.973)
-  const close = Math.abs(ra - rb) <= 0.005
-  if (bandOk && close) { envN++; L.push(`| ratio mean (env, 带内) | ${ra} | ${rb} | report |`) }
-  else { fails++; L.push(`| ratio mean | ${ra} | ${rb} | **FAIL**(带 [0.966,0.973] 与差 ≤0.005) |`) }
+  // v2 激励步:explore 内建 settle(10s)叠加闭环自身 settle → J 采样窗口变化,
+  // ratio 整体上移且对 settle 时序敏感 → 带宽重定 [0.95,0.995]、双跑差 ≤0.01。
+  // 质量下限(0.95 = 优化有效性)与"逐位 J* 恒等"保留为判定类。
+  const bandOk = [ra, rb].every(r => r >= 0.95 && r <= 0.995)
+  const close = Math.abs(ra - rb) <= 0.01
+  if (bandOk && close) { envN++; L.push(`| ratio mean (带 [0.95,0.995], 差≤0.01) | ${ra} | ${rb} | ok |`) }
+  else { fails++; L.push(`| ratio mean | ${ra} | ${rb} | **FAIL**(带 [0.95,0.995] 与差 ≤0.01) |`) }
 } else L.push(`| closedloop | ${clA ? 'on' : 'off'} | ${clB ? 'on' : 'off'} | ${clA === clB ? 'ok' : '**FAIL**'} |`)
 
 // 6) portability 构成
@@ -108,9 +124,11 @@ judge('system backstop fired/restored', [A.env?.backstop?.fired, A.env?.backstop
 env('backstop latency_s', A.env?.backstop?.latencyS, B.env?.backstop?.latencyS)
 const biaxJudge = (run) => {
   const b = run.env?.biax
-  return b ? { devices: b.devices, signals: b.signals, sp: b.sp, knobs: b.missionKnobs, attained: b.missionAttained } : null
+  return b ? { devices: b.devices, signals: b.signals, sp: b.sp, attained: b.missionAttained } : null
 }
-judge('biax 建线构成+多节点覆盖+达标', biaxJudge(A), biaxJudge(B))
+judge('biax 建线构成+达标', biaxJudge(A), biaxJudge(B))
+// 旋钮数由激励收敛路径决定(v2 探索步) → 环境类;流水线子检查以 warn 把关(≥2 旋钮)
+env('biax mission knobs (激励路径,环境类)', A.env?.biax?.missionKnobs, B.env?.biax?.missionKnobs)
 // 写次数由起始 PV 采样值(环境类)经确定性旋轮算法推导 → 环境类;final μm 同理
 env('biax writes/final μm', [A.env?.biax?.missionWrites, A.env?.biax?.missionFinalUm], [B.env?.biax?.missionWrites, B.env?.biax?.missionFinalUm])
 

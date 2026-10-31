@@ -1,0 +1,15 @@
+﻿{
+    "qualification":  {
+                          "status":  "NOT-QUALIFIED",
+                          "reason":  "Invalid launch-argument verification surface: member summary redacts args; administrator-visible template readback confirms --no-tools."
+                      },
+    "workflow_outcome":  {
+                             "status":  "NOT-RUN",
+                             "task_id":  null
+                         },
+    "evidence_integrity":  {
+                               "status":  "NOT-RUN",
+                               "reason":  "No goal task was created; this is a pre-goal setup record, not an experimental evidence package.",
+                               "event_log_stability":  null
+                           }
+}

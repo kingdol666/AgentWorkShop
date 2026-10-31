@@ -1,0 +1,408 @@
+[
+    {
+        "pid":  82740,
+        "init":  {
+                     "meta":  {
+                                  "pid":  82740,
+                                  "harness":  "omp",
+                                  "agentId":  "363a0984-1059-45df-b565-c6e71c5dc123",
+                                  "channelId":  "6721bd3c-9c68-409a-aac9-49ed78b3f6b6",
+                                  "name":  "P12 lead ection-recovery-07",
+                                  "role":  "lead",
+                                  "startedAt":  1793268386260
+                              },
+                     "alive":  false,
+                     "running":  false,
+                     "streaming":  false,
+                     "lastSeq":  306
+                 },
+        "typeCounts":  {
+                           "__terminal_notice":  2,
+                           "extension_ui_request":  15,
+                           "advisor_cost_changed":  1,
+                           "available_commands_update":  2,
+                           "model_changed":  1,
+                           "thinking_level_changed":  1,
+                           "response":  25,
+                           "auto_compaction_start":  46,
+                           "auto_compaction_end":  46,
+                           "notice":  37,
+                           "agent_start":  13,
+                           "turn_start":  13,
+                           "message_start":  26,
+                           "message_end":  26,
+                           "turn_end":  13,
+                           "agent_end":  13,
+                           "prompt_result":  13,
+                           "session_settled":  13
+                       },
+        "responses":  [
+                          {
+                              "seq":  7,
+                              "command":  "set_model",
+                              "success":  true
+                          },
+                          {
+                              "seq":  8,
+                              "command":  "set_host_tools",
+                              "success":  true
+                          },
+                          {
+                              "seq":  9,
+                              "command":  "get_state",
+                              "success":  true
+                          },
+                          {
+                              "seq":  10,
+                              "command":  "set_auto_compaction",
+                              "success":  true
+                          },
+                          {
+                              "seq":  11,
+                              "command":  "get_session_stats",
+                              "success":  true
+                          },
+                          {
+                              "seq":  12,
+                              "command":  "prompt",
+                              "success":  true
+                          },
+                          {
+                              "seq":  31,
+                              "command":  "get_session_stats",
+                              "success":  true
+                          },
+                          {
+                              "seq":  32,
+                              "command":  "get_session_stats",
+                              "success":  true
+                          },
+                          {
+                              "seq":  33,
+                              "command":  "get_state",
+                              "success":  true
+                          },
+                          {
+                              "seq":  34,
+                              "command":  "get_state",
+                              "success":  true
+                          },
+                          {
+                              "seq":  35,
+                              "command":  "compact",
+                              "success":  false,
+                              "error":  "Nothing to compact (session too small)"
+                          },
+                          {
+                              "seq":  36,
+                              "command":  "compact",
+                              "success":  false,
+                              "error":  "Nothing to compact (session too small)"
+                          },
+                          {
+                              "seq":  37,
+                              "command":  "prompt",
+                              "success":  true
+                          },
+                          {
+                              "seq":  58,
+                              "command":  "prompt",
+                              "success":  true
+                          },
+                          {
+                              "seq":  79,
+                              "command":  "prompt",
+                              "success":  true
+                          },
+                          {
+                              "seq":  105,
+                              "command":  "prompt",
+                              "success":  true
+                          },
+                          {
+                              "seq":  128,
+                              "command":  "prompt",
+                              "success":  true
+                          },
+                          {
+                              "seq":  151,
+                              "command":  "prompt",
+                              "success":  true
+                          },
+                          {
+                              "seq":  174,
+                              "command":  "prompt",
+                              "success":  true
+                          },
+                          {
+                              "seq":  197,
+                              "command":  "prompt",
+                              "success":  true
+                          },
+                          {
+                              "seq":  220,
+                              "command":  "prompt",
+                              "success":  true
+                          },
+                          {
+                              "seq":  243,
+                              "command":  "prompt",
+                              "success":  true
+                          },
+                          {
+                              "seq":  266,
+                              "command":  "prompt",
+                              "success":  true
+                          },
+                          {
+                              "seq":  289,
+                              "command":  "prompt",
+                              "success":  true
+                          },
+                          {
+                              "seq":  302,
+                              "command":  "abort",
+                              "success":  true
+                          }
+                      ],
+        "errors":  [
+                       {
+                           "seq":  29,
+                           "type":  "prompt_result",
+                           "error":  {
+                                         "message":  "The number of tokens to keep from the initial prompt is greater than the context length (n_keep: 62320\u003e= n_ctx: 32768). Try to load the model with a larger context length, or provide a shorter input.",
+                                         "provider":  "lm-studio",
+                                         "model":  "qwen3.5-9b-32k",
+                                         "retryable":  false
+                                     }
+                       },
+                       {
+                           "seq":  56,
+                           "type":  "prompt_result",
+                           "error":  {
+                                         "message":  "The number of tokens to keep from the initial prompt is greater than the context length (n_keep: 62320\u003e= n_ctx: 32768). Try to load the model with a larger context length, or provide a shorter input.",
+                                         "provider":  "lm-studio",
+                                         "model":  "qwen3.5-9b-32k",
+                                         "retryable":  false
+                                     }
+                       },
+                       {
+                           "seq":  77,
+                           "type":  "prompt_result",
+                           "error":  {
+                                         "message":  "The number of tokens to keep from the initial prompt is greater than the context length (n_keep: 62320\u003e= n_ctx: 32768). Try to load the model with a larger context length, or provide a shorter input.",
+                                         "provider":  "lm-studio",
+                                         "model":  "qwen3.5-9b-32k",
+                                         "retryable":  false
+                                     }
+                       },
+                       {
+                           "seq":  103,
+                           "type":  "prompt_result",
+                           "error":  {
+                                         "message":  "The number of tokens to keep from the initial prompt is greater than the context length (n_keep: 62320\u003e= n_ctx: 32768). Try to load the model with a larger context length, or provide a shorter input.",
+                                         "provider":  "lm-studio",
+                                         "model":  "qwen3.5-9b-32k",
+                                         "retryable":  false
+                                     }
+                       },
+                       {
+                           "seq":  126,
+                           "type":  "prompt_result",
+                           "error":  {
+                                         "message":  "The number of tokens to keep from the initial prompt is greater than the context length (n_keep: 56823\u003e= n_ctx: 32768). Try to load the model with a larger context length, or provide a shorter input.",
+                                         "provider":  "lm-studio",
+                                         "model":  "qwen3.5-9b-32k",
+                                         "retryable":  false
+                                     }
+                       },
+                       {
+                           "seq":  149,
+                           "type":  "prompt_result",
+                           "error":  {
+                                         "message":  "The number of tokens to keep from the initial prompt is greater than the context length (n_keep: 56862\u003e= n_ctx: 32768). Try to load the model with a larger context length, or provide a shorter input.",
+                                         "provider":  "lm-studio",
+                                         "model":  "qwen3.5-9b-32k",
+                                         "retryable":  false
+                                     }
+                       },
+                       {
+                           "seq":  172,
+                           "type":  "prompt_result",
+                           "error":  {
+                                         "message":  "The number of tokens to keep from the initial prompt is greater than the context length (n_keep: 56862\u003e= n_ctx: 32768). Try to load the model with a larger context length, or provide a shorter input.",
+                                         "provider":  "lm-studio",
+                                         "model":  "qwen3.5-9b-32k",
+                                         "retryable":  false
+                                     }
+                       },
+                       {
+                           "seq":  195,
+                           "type":  "prompt_result",
+                           "error":  {
+                                         "message":  "The number of tokens to keep from the initial prompt is greater than the context length (n_keep: 56862\u003e= n_ctx: 32768). Try to load the model with a larger context length, or provide a shorter input.",
+                                         "provider":  "lm-studio",
+                                         "model":  "qwen3.5-9b-32k",
+                                         "retryable":  false
+                                     }
+                       },
+                       {
+                           "seq":  218,
+                           "type":  "prompt_result",
+                           "error":  {
+                                         "message":  "The number of tokens to keep from the initial prompt is greater than the context length (n_keep: 56919\u003e= n_ctx: 32768). Try to load the model with a larger context length, or provide a shorter input.",
+                                         "provider":  "lm-studio",
+                                         "model":  "qwen3.5-9b-32k",
+                                         "retryable":  false
+                                     }
+                       },
+                       {
+                           "seq":  241,
+                           "type":  "prompt_result",
+                           "error":  {
+                                         "message":  "The number of tokens to keep from the initial prompt is greater than the context length (n_keep: 56225\u003e= n_ctx: 32768). Try to load the model with a larger context length, or provide a shorter input.",
+                                         "provider":  "lm-studio",
+                                         "model":  "qwen3.5-9b-32k",
+                                         "retryable":  false
+                                     }
+                       },
+                       {
+                           "seq":  264,
+                           "type":  "prompt_result",
+                           "error":  {
+                                         "message":  "The number of tokens to keep from the initial prompt is greater than the context length (n_keep: 56699\u003e= n_ctx: 32768). Try to load the model with a larger context length, or provide a shorter input.",
+                                         "provider":  "lm-studio",
+                                         "model":  "qwen3.5-9b-32k",
+                                         "retryable":  false
+                                     }
+                       },
+                       {
+                           "seq":  287,
+                           "type":  "prompt_result",
+                           "error":  {
+                                         "message":  "The number of tokens to keep from the initial prompt is greater than the context length (n_keep: 56699\u003e= n_ctx: 32768). Try to load the model with a larger context length, or provide a shorter input.",
+                                         "provider":  "lm-studio",
+                                         "model":  "qwen3.5-9b-32k",
+                                         "retryable":  false
+                                     }
+                       },
+                       {
+                           "seq":  303,
+                           "type":  "prompt_result",
+                           "error":  {
+                                         "type":  "prompt_result",
+                                         "id":  "req_24",
+                                         "agentInvoked":  true,
+                                         "status":  "aborted",
+                                         "sessionSettled":  true
+                                     }
+                       }
+                   ],
+        "hostToolCalls":  [
+
+                          ],
+        "uiRequestCount":  15
+    },
+    {
+        "pid":  31892,
+        "init":  {
+                     "meta":  {
+                                  "pid":  31892,
+                                  "harness":  "omp",
+                                  "agentId":  "363a0984-1059-45df-b565-c6e71c5dc123",
+                                  "channelId":  "6721bd3c-9c68-409a-aac9-49ed78b3f6b6",
+                                  "name":  "P12 lead ection-recovery-07",
+                                  "role":  "lead",
+                                  "startedAt":  1793268753008
+                              },
+                     "alive":  false,
+                     "running":  false,
+                     "streaming":  false,
+                     "lastSeq":  35
+                 },
+        "typeCounts":  {
+                           "__terminal_notice":  2,
+                           "extension_ui_request":  3,
+                           "advisor_cost_changed":  1,
+                           "available_commands_update":  2,
+                           "model_changed":  1,
+                           "thinking_level_changed":  1,
+                           "response":  9,
+                           "auto_compaction_start":  2,
+                           "auto_compaction_end":  2,
+                           "notice":  2,
+                           "agent_start":  1,
+                           "turn_start":  1,
+                           "message_start":  2,
+                           "message_end":  2,
+                           "turn_end":  1,
+                           "agent_end":  1,
+                           "prompt_result":  1,
+                           "session_settled":  1
+                       },
+        "responses":  [
+                          {
+                              "seq":  7,
+                              "command":  "set_model",
+                              "success":  true
+                          },
+                          {
+                              "seq":  8,
+                              "command":  "set_host_tools",
+                              "success":  true
+                          },
+                          {
+                              "seq":  9,
+                              "command":  "get_state",
+                              "success":  true
+                          },
+                          {
+                              "seq":  10,
+                              "command":  "set_auto_compaction",
+                              "success":  true
+                          },
+                          {
+                              "seq":  11,
+                              "command":  "get_session_stats",
+                              "success":  true
+                          },
+                          {
+                              "seq":  12,
+                              "command":  "prompt",
+                              "success":  true
+                          },
+                          {
+                              "seq":  31,
+                              "command":  "get_session_stats",
+                              "success":  true
+                          },
+                          {
+                              "seq":  32,
+                              "command":  "get_state",
+                              "success":  true
+                          },
+                          {
+                              "seq":  33,
+                              "command":  "compact",
+                              "success":  false,
+                              "error":  "Nothing to compact (session too small)"
+                          }
+                      ],
+        "errors":  [
+                       {
+                           "seq":  28,
+                           "type":  "prompt_result",
+                           "error":  {
+                                         "message":  "The number of tokens to keep from the initial prompt is greater than the context length (n_keep: 61827\u003e= n_ctx: 32768). Try to load the model with a larger context length, or provide a shorter input.",
+                                         "provider":  "lm-studio",
+                                         "model":  "qwen3.5-9b-32k",
+                                         "retryable":  false
+                                     }
+                       }
+                   ],
+        "hostToolCalls":  [
+
+                          ],
+        "uiRequestCount":  3
+    }
+]

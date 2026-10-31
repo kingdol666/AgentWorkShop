@@ -1,0 +1,929 @@
+{
+  "env": {
+    "runId": "20261030142537-1c6c",
+    "profile": "integrated",
+    "seed": 42,
+    "base": "http://127.0.0.1:3010",
+    "simBase": "http://127.0.0.1:4012",
+    "simDir": "D:\\codes\\ABO\\AgentWorkShop\\plc-node-simulator",
+    "lines": 0,
+    "awHome": "",
+    "awMode": "home",
+    "ownLines": 0,
+    "satelliteDaq": 0,
+    "protocols": "",
+    "preset": "cast-film-physics",
+    "agentHarness": "(none)",
+    "toolHarness": "opencode",
+    "startedAt": "2026-10-30T14:34:26.676Z",
+    "node": "v24.19.0",
+    "platform": "win32 x64",
+    "harnessHash": "cbac812a4c09f527",
+    "gitCommit": "60fa983e",
+    "harnessFiles": 13,
+    "closedloop": null,
+    "portability": {
+      "preset": "film-line",
+      "devices": 5,
+      "lines": 5,
+      "ownLines": 5,
+      "sampling": 0,
+      "f5Rejected": 0,
+      "f5Total": 0,
+      "falseBlocks": 0,
+      "codeChanges": 0
+    },
+    "biax": null,
+    "backstop": {
+      "fired": false,
+      "restored": false,
+      "latencyS": null,
+      "recordId": null,
+      "from": null,
+      "to": null
+    },
+    "aml": null,
+    "surfaces": null,
+    "verdict": {
+      "pass": 4,
+      "warn": 14,
+      "fail": 2,
+      "phaseFails": 5,
+      "ok": false
+    },
+    "reproCmd": "node bench/pipeline.mjs --profile integrated --seed 42 --cl-seeds 3"
+  },
+  "phases": [
+    {
+      "id": "P0·preflight",
+      "phase": "P0",
+      "title": "Bootstrap simulator & platform",
+      "status": "fail",
+      "note": "platform bootstrap failed: 两次启动后仍未就绪（查看 D:\\codes\\ABO\\aw-bench-platform-zcode.log）",
+      "durationMs": 390593
+    },
+    {
+      "id": "P1·plant-model",
+      "phase": "P1",
+      "title": "plant model preset + offline optimum W*",
+      "status": "pass",
+      "note": "",
+      "durationMs": 7593
+    },
+    {
+      "id": "P2·provision",
+      "phase": "P2",
+      "title": "multi-protocol multi-line provisioning（≤5 ）",
+      "status": "fail",
+      "note": "fetch failed",
+      "durationMs": 36090
+    },
+    {
+      "id": "P3·integration",
+      "phase": "P3",
+      "title": "multi-protocol DAQ + governed write/read + F5 interception",
+      "status": "pass",
+      "note": "0/0 Linesampling",
+      "durationMs": 7013
+    },
+    {
+      "id": "P4·tool-loop",
+      "phase": "P4",
+      "title": "数采→数控→判定 工具级闭环（harness=opencode，不经 LLM）",
+      "status": "fail",
+      "note": "fetch failed",
+      "durationMs": 36060
+    },
+    {
+      "id": "P4m·team-mission",
+      "phase": "P4m",
+      "title": "AgentTeam 优化任务：目标下达 → 时段读数 → 治理写 → 达标收口",
+      "status": "skip",
+      "note": "",
+      "durationMs": 0
+    },
+    {
+      "id": "P4b·rollback-records",
+      "phase": "P4b",
+      "title": "Rollback & optimization records (node rollback · verdict/execution separation · param ledger)",
+      "status": "skip",
+      "note": "",
+      "durationMs": 0
+    },
+    {
+      "id": "P4c·hitl",
+      "phase": "P4c",
+      "title": "HITL 审批闭环（挂起→面板可见→批准→真实写生效）",
+      "status": "skip",
+      "note": "",
+      "durationMs": 0
+    },
+    {
+      "id": "P4d·audit-surfaces",
+      "phase": "P4d",
+      "title": "治理只读面（参数账本·审计·运维日志·报警）",
+      "status": "warn",
+      "note": "0 锚 / 0 审计",
+      "durationMs": 36631
+    },
+    {
+      "id": "P4e·recipe-lifecycle",
+      "phase": "P4e",
+      "title": "配方管理全生命周期（版本·已知良好·回退·基准恢复·一键下发）",
+      "status": "skip",
+      "note": "",
+      "durationMs": 0
+    },
+    {
+      "id": "P4f·param-map",
+      "phase": "P4f",
+      "title": "工艺参数映射层：参数面读写 · 标准转换模式 · 分层限界联锁 · Agent param_control",
+      "status": "skip",
+      "note": "",
+      "durationMs": 1
+    },
+    {
+      "id": "P6·closedloop",
+      "phase": "P6",
+      "title": "闭环优化参数 benchmark（3 seed · 写路径=governed · ≤8 迭代/seed）",
+      "status": "fail",
+      "note": "twin node provisioning failed",
+      "durationMs": 20
+    },
+    {
+      "id": "P7·frames",
+      "phase": "P7",
+      "title": "多形态数采：向量轮廓与图像帧落库",
+      "status": "skip",
+      "note": "",
+      "durationMs": 11
+    },
+    {
+      "id": "P8·portability",
+      "phase": "P8",
+      "title": "Cross-scenario portability (re-commission on a second plant preset, config-only)",
+      "status": "fail",
+      "note": "film-line: 5 lines + 0 satellite · F5 0/0 · false blocks 0 · 0 code changes",
+      "durationMs": 12422
+    },
+    {
+      "id": "P8b·backstop",
+      "phase": "P8b",
+      "title": "System backstop drill (PV frozen out of window → system-judged bounded rollback)",
+      "status": "skip",
+      "note": "",
+      "durationMs": 0
+    },
+    {
+      "id": "P10·biax-line",
+      "phase": "P10",
+      "title": "双拉产线:节点探测补建 → 五协议多节点建线 → AgentTeam 多节点闭环",
+      "status": "skip",
+      "note": "",
+      "durationMs": 1
+    },
+    {
+      "id": "P9·subsystems",
+      "phase": "P9",
+      "title": "Platform subsystems (team dispatch · team memory idempotency · harness registry)",
+      "status": "warn",
+      "note": "team — · mem ✘ · engines 0(0 avail)",
+      "durationMs": 133
+    }
+  ],
+  "checks": [
+    {
+      "phase": "P0",
+      "id": "platform-reachable",
+      "title": "platform reachable & authenticated",
+      "status": "fail",
+      "evidence": [
+        "平台 http://127.0.0.1:3010 自举失败: 两次启动后仍未就绪（查看 D:\\codes\\ABO\\aw-bench-platform-zcode.log）"
+      ]
+    },
+    {
+      "phase": "P1",
+      "id": "preset-applied",
+      "title": "预设 cast-film-physics 已应用",
+      "status": "pass",
+      "evidence": [
+        "devices 5 ",
+        "协议 modbus-tcp, modbus-rtu, opcua, mqtt, http"
+      ]
+    },
+    {
+      "phase": "P1",
+      "id": "field-defaults",
+      "title": "现场=蓝图默认值（6 信号核对）",
+      "status": "pass",
+      "evidence": [
+        "全部信号初始值=蓝图默认值"
+      ]
+    },
+    {
+      "phase": "P1",
+      "id": "offline-optimum",
+      "title": "offline optimum W* (ground truth) available",
+      "status": "pass",
+      "evidence": [
+        "W* = {\"zoneTemp\":212.5,\"screw\":55,\"lineSpeed\":40,\"meltTemp\":212.5,\"pressure\":6.961,\"thickness\":49.18,\"defect\":0.055,\"score\":89.894,\"computedAt\":\"2026-10-30T14:32:15.426Z\"}"
+      ]
+    },
+    {
+      "phase": "P4m",
+      "id": "mission-board",
+      "title": "AgentTeam 优化任务",
+      "status": "skip",
+      "evidence": [
+        "P4 夹具未就绪"
+      ]
+    },
+    {
+      "phase": "P4b",
+      "id": "rollback-records",
+      "title": "回退与优化记录",
+      "status": "skip",
+      "evidence": [
+        "P4 夹具未就绪"
+      ]
+    },
+    {
+      "phase": "P4c",
+      "id": "hitl",
+      "title": "HITL 审批",
+      "status": "skip",
+      "evidence": [
+        "P4 夹具未就绪"
+      ]
+    },
+    {
+      "phase": "P4d",
+      "id": "audit-surfaces",
+      "title": "治理只读面",
+      "status": "warn",
+      "evidence": [
+        "✘ 参数变更账本 journal：本产线 0  anchors (source coverage  —）",
+        "✘ audit: 0 entries",
+        "✘ ops-logs: 0 entries",
+        "— 报警记录：全局 0 （含历史）"
+      ]
+    },
+    {
+      "phase": "P4e",
+      "id": "recipe-lifecycle",
+      "title": "recipe lifecycle",
+      "status": "skip",
+      "evidence": [
+        "无可开跑Line"
+      ]
+    },
+    {
+      "phase": "P4f",
+      "id": "param-facade",
+      "title": "工艺参数映射层",
+      "status": "skip",
+      "evidence": [
+        "无可开跑Line或P4夹具未就绪"
+      ]
+    },
+    {
+      "phase": "P6",
+      "id": "twin-nodes",
+      "title": "cast-film twin node provisioning（执行器 + 传感器）",
+      "status": "fail",
+      "evidence": [
+        "line creation failed"
+      ]
+    },
+    {
+      "phase": "P7",
+      "id": "frames",
+      "title": "多形态数采",
+      "status": "skip",
+      "evidence": [
+        "无 http devices或Line"
+      ]
+    },
+    {
+      "phase": "P8",
+      "id": "scenario-switch",
+      "title": "second plant scenario applied: film-line",
+      "status": "pass",
+      "evidence": [
+        "devices 5 · protocols modbus-tcp, modbus-rtu, opcua, mqtt, http",
+        "信号域/动力学与第一场景（cast-film-physics）完全不同 —— 框架代码零改动"
+      ]
+    },
+    {
+      "phase": "P8",
+      "id": "commission-1-modbus-tcp",
+      "title": "scenario[film-line] line 1 [modbus-tcp] provisioned",
+      "status": "warn",
+      "evidence": [
+        "line=✘ daq=✘ dcw=✘",
+        "(no SP export → satellite DAQ)",
+        "建线失败: 需要有效的用户 token(Authorization: Bearer <用户token>;经 /api/users/register 或 /api/users/login 获取)"
+      ]
+    },
+    {
+      "phase": "P8",
+      "id": "commission-2-opcua",
+      "title": "scenario[film-line] line 2 [opcua] provisioned",
+      "status": "warn",
+      "evidence": [
+        "line=✘ daq=✘ dcw=✘",
+        "(no SP export → satellite DAQ)",
+        "建线失败: 需要有效的用户 token(Authorization: Bearer <用户token>;经 /api/users/register 或 /api/users/login 获取)"
+      ]
+    },
+    {
+      "phase": "P8",
+      "id": "commission-3-mqtt",
+      "title": "scenario[film-line] line 3 [mqtt] provisioned",
+      "status": "warn",
+      "evidence": [
+        "line=✘ daq=✘ dcw=✘",
+        "(no SP export → satellite DAQ)",
+        "建线失败: 需要有效的用户 token(Authorization: Bearer <用户token>;经 /api/users/register 或 /api/users/login 获取)"
+      ]
+    },
+    {
+      "phase": "P8",
+      "id": "commission-4-modbus-rtu",
+      "title": "scenario[film-line] line 4 [modbus-rtu] provisioned",
+      "status": "warn",
+      "evidence": [
+        "line=✘ daq=✘ dcw=✘",
+        "(no SP export → satellite DAQ)",
+        "建线失败: 需要有效的用户 token(Authorization: Bearer <用户token>;经 /api/users/register 或 /api/users/login 获取)"
+      ]
+    },
+    {
+      "phase": "P8",
+      "id": "commission-5-http",
+      "title": "scenario[film-line] line 5 [http] provisioned",
+      "status": "warn",
+      "evidence": [
+        "line=✘ daq=✘ dcw=✘",
+        "(no SP export → satellite DAQ)",
+        "建线失败: 需要有效的用户 token(Authorization: Bearer <用户token>;经 /api/users/register 或 /api/users/login 获取)"
+      ]
+    },
+    {
+      "phase": "P8",
+      "id": "port-1-modbus-tcp",
+      "title": "scenario[film-line] line 1 [modbus-tcp] integration",
+      "status": "warn",
+      "evidence": [
+        "✘ DAQ samples 0 pts (modbus-tcp real driver)",
+        "no SP write point; write/governance sub-checks skipped (satellite DAQ)"
+      ]
+    },
+    {
+      "phase": "P8",
+      "id": "port-2-opcua",
+      "title": "scenario[film-line] line 2 [opcua] integration",
+      "status": "warn",
+      "evidence": [
+        "✘ DAQ samples 0 pts (opcua real driver)",
+        "no SP write point; write/governance sub-checks skipped (satellite DAQ)"
+      ]
+    },
+    {
+      "phase": "P8",
+      "id": "port-3-mqtt",
+      "title": "scenario[film-line] line 3 [mqtt] integration",
+      "status": "warn",
+      "evidence": [
+        "✘ DAQ samples 0 pts (mqtt real driver)",
+        "no SP write point; write/governance sub-checks skipped (satellite DAQ)"
+      ]
+    },
+    {
+      "phase": "P8",
+      "id": "port-4-modbus-rtu",
+      "title": "scenario[film-line] line 4 [modbus-rtu] integration",
+      "status": "warn",
+      "evidence": [
+        "✘ DAQ samples 0 pts (modbus-rtu real driver)",
+        "no SP write point; write/governance sub-checks skipped (satellite DAQ)"
+      ]
+    },
+    {
+      "phase": "P8",
+      "id": "port-5-http",
+      "title": "scenario[film-line] line 5 [http] integration",
+      "status": "warn",
+      "evidence": [
+        "✘ DAQ samples 0 pts (http real driver)",
+        "no SP write point; write/governance sub-checks skipped (satellite DAQ)"
+      ]
+    },
+    {
+      "phase": "P8b",
+      "id": "backstop",
+      "title": "系统兜底 drilling",
+      "status": "skip",
+      "evidence": [
+        "P8 场景或 P4 夹具未就绪"
+      ]
+    },
+    {
+      "phase": "P10",
+      "id": "biax-ensure",
+      "title": "双拉产线全节点",
+      "status": "skip",
+      "evidence": [
+        "P4 夹具未就绪"
+      ]
+    },
+    {
+      "phase": "P9",
+      "id": "team-dispatch",
+      "title": "团队调度（lead 派发 → worker 完成）",
+      "status": "warn",
+      "evidence": [
+        "终态 (超时) · assignee=—（lead 认领父任务） · 子任务派发给 worker: 未观察到"
+      ]
+    },
+    {
+      "phase": "P9",
+      "id": "team-memory",
+      "title": "团队记忆写入 + dedupKey 幂等",
+      "status": "warn",
+      "evidence": [
+        "POST×2 status 401/401 → 列表中匹配 0 条（期望 1）"
+      ]
+    },
+    {
+      "phase": "P9",
+      "id": "harness-registry",
+      "title": "引擎注册表枚举 + 可用性探测",
+      "status": "warn",
+      "evidence": [
+        "注册 0 引擎（期望 ≥14） · 环境可用 0 · 覆盖 mock/RPC/SDK/CLI 族"
+      ]
+    }
+  ],
+  "lines": [],
+  "kpis": [
+    {
+      "label": "Provisionable lines",
+      "value": 0,
+      "unit": "",
+      "note": "+0 satellite DAQ · ",
+      "tone": "good"
+    },
+    {
+      "label": "DAQ samples total",
+      "value": 0,
+      "unit": "",
+      "note": "0/0 nodes sampling",
+      "tone": "good"
+    },
+    {
+      "label": "Governance interception (pooled)",
+      "value": "—",
+      "unit": "%",
+      "note": "F5 attacks",
+      "tone": "good"
+    },
+    {
+      "label": "Write p50 (all protocols)",
+      "value": null,
+      "unit": "ms",
+      "note": "incl. real protocol transactions"
+    },
+    {
+      "label": "Closed-loop J/J*",
+      "value": "off",
+      "unit": "",
+      "note": "--cl-seeds 3 enables",
+      "tone": "warn"
+    },
+    {
+      "label": "Tool-level loops",
+      "value": 0,
+      "unit": "",
+      "note": "dcw→daq→judge ×3 convergence"
+    },
+    {
+      "label": "Param-layer governance",
+      "value": "—/4",
+      "unit": "",
+      "note": "semantic surface · 4-layer write limits · agent param_control",
+      "tone": "good"
+    },
+    {
+      "label": "System backstop",
+      "value": "not fired",
+      "unit": "",
+      "note": "P8b drill requires scenario 2",
+      "tone": "warn"
+    },
+    {
+      "label": "Scenario portability",
+      "value": "film-line",
+      "unit": "",
+      "note": "2nd scenario: 5 lines + 0 sat · F5 0/0 · 0 code changes",
+      "tone": "good"
+    },
+    {
+      "label": "Biax line (BOPET)",
+      "value": "off",
+      "unit": "",
+      "note": "P10 requires P4 fixture",
+      "tone": "warn"
+    },
+    {
+      "label": "LLM agent loop",
+      "value": "off",
+      "unit": "",
+      "note": "--agent omp enables",
+      "tone": "warn"
+    },
+    {
+      "label": "Verdict",
+      "value": "FAIL",
+      "unit": "",
+      "note": "4/20 checks · hard gate tripped",
+      "tone": "bad"
+    }
+  ],
+  "metrics": [
+    {
+      "section": "plant",
+      "key": "W_star_objective",
+      "value": 89.894,
+      "unit": "",
+      "note": "offline grid-search optimum (benchmark ground truth)"
+    },
+    {
+      "section": "provision",
+      "key": "lines_sampling",
+      "value": 0,
+      "unit": "",
+      "note": "real driver produced samples"
+    },
+    {
+      "section": "gov",
+      "key": "intercept_rate_all",
+      "value": null,
+      "unit": "",
+      "note": "全协议合并"
+    },
+    {
+      "section": "audit",
+      "key": "journal_anchors",
+      "value": 0,
+      "unit": "",
+      "note": "本Line参数变更账本"
+    },
+    {
+      "section": "audit",
+      "key": "audit_entries",
+      "value": 0,
+      "unit": "",
+      "note": "全局审计目"
+    },
+    {
+      "section": "audit",
+      "key": "ops_logs",
+      "value": 0,
+      "unit": "",
+      "note": "全局运维日志"
+    },
+    {
+      "section": "portability",
+      "key": "scenario2_lines",
+      "value": 5,
+      "unit": "",
+      "note": "second preset \"film-line\" (config-only)"
+    },
+    {
+      "section": "portability",
+      "key": "scenario2_intercept_rate",
+      "value": null,
+      "unit": "",
+      "note": "F5 out-of-window interception on second scenario"
+    },
+    {
+      "section": "portability",
+      "key": "scenario2_false_blocks",
+      "value": 0,
+      "unit": "",
+      "note": "legal in-window writes blocked on second scenario"
+    },
+    {
+      "section": "team",
+      "key": "team_dispatch_ok",
+      "value": 0,
+      "unit": "",
+      "note": "lead→worker dispatch closed loop"
+    },
+    {
+      "section": "memory",
+      "key": "team_memory_idempotent",
+      "value": 0,
+      "unit": "",
+      "note": "dedupKey idempotent refresh"
+    },
+    {
+      "section": "agent",
+      "key": "harness_registry",
+      "value": 0,
+      "unit": "",
+      "note": "environment-available 0"
+    }
+  ],
+  "lineProfile": {
+    "preset": "cast-film-physics",
+    "scenario": {
+      "name": "Cast-film extrusion digital twin (plant-model physics engine)",
+      "process": "An extrusion cast-film line: resin → screw melting → die → casting → thickness gauge. Six writable setpoints (3 zone temperatures, screw speed, line speed, die gap) act on a physics engine whose observable process quantities are melt temperature, melt pressure, film thickness, defect rate and gels count.",
+      "physics": "Deterministic plant model (seeded): first-order thermal lag on melt temperature, algebraic thickness h ∝ N/v from mass conservation, pressure/defect couplings — scored by J = 55·J_thick + 25·J_quality + 8·J_energy + 7·J_throughput."
+    },
+    "plant": {
+      "phase": "warmup",
+      "seed": 42,
+      "kind": "castfilm"
+    },
+    "totals": {
+      "devices": 5,
+      "protocols": 5,
+      "protocolsList": "modbus-tcp, modbus-rtu, opcua, mqtt, http",
+      "spSignals": 6,
+      "pvSignals": 7,
+      "awDcwNodes": 0,
+      "awDaqNodes": 0,
+      "awLines": 0
+    },
+    "devices": [
+      {
+        "id": "dev-extruder-mbtcp",
+        "name": "挤出主机PLC(Modbus TCP)",
+        "protocol": "modbus-tcp",
+        "endpoint": "127.0.0.1:18040 unit=1",
+        "signals": [
+          {
+            "id": "zone1-sp",
+            "name": "加热区1SP",
+            "unit": "℃",
+            "min": 120,
+            "max": 260,
+            "decimals": 1,
+            "strategy": "manual",
+            "plantBinding": null,
+            "kind": "SP (writable setpoint)"
+          },
+          {
+            "id": "zone2-sp",
+            "name": "加热区2SP",
+            "unit": "℃",
+            "min": 120,
+            "max": 260,
+            "decimals": 1,
+            "strategy": "manual",
+            "plantBinding": null,
+            "kind": "SP (writable setpoint)"
+          },
+          {
+            "id": "zone3-sp",
+            "name": "加热区3SP",
+            "unit": "℃",
+            "min": 120,
+            "max": 260,
+            "decimals": 1,
+            "strategy": "manual",
+            "plantBinding": null,
+            "kind": "SP (writable setpoint)"
+          },
+          {
+            "id": "melt-temp",
+            "name": "熔体温度",
+            "unit": "℃",
+            "min": 0,
+            "max": 400,
+            "decimals": 2,
+            "strategy": "constant",
+            "plantBinding": null,
+            "kind": "PV (process quantity)"
+          }
+        ]
+      },
+      {
+        "id": "dev-gels-rtu",
+        "name": "晶点计数从站(Modbus RTU)",
+        "protocol": "modbus-rtu",
+        "endpoint": "127.0.0.1:17041 unit=1",
+        "signals": [
+          {
+            "id": "gels-count",
+            "name": "晶点计数",
+            "unit": "个/m²",
+            "min": 0,
+            "max": 500,
+            "decimals": 0,
+            "strategy": "constant",
+            "plantBinding": null,
+            "kind": "PV (process quantity)"
+          }
+        ]
+      },
+      {
+        "id": "dev-extruder-opcua",
+        "name": "熔体泵送单元(OPC UA)",
+        "protocol": "opcua",
+        "endpoint": "opc.tcp://127.0.0.1:7840",
+        "signals": [
+          {
+            "id": "melt-pressure",
+            "name": "MeltPressure",
+            "unit": "MPa",
+            "min": 0,
+            "max": 45,
+            "decimals": 3,
+            "strategy": "constant",
+            "plantBinding": null,
+            "kind": "PV (process quantity)"
+          },
+          {
+            "id": "screw-sp",
+            "name": "ScrewSpeedSP",
+            "unit": "rpm",
+            "min": 50,
+            "max": 200,
+            "decimals": 0,
+            "strategy": "manual",
+            "plantBinding": null,
+            "kind": "SP (writable setpoint)"
+          }
+        ]
+      },
+      {
+        "id": "dev-gauge-mqtt",
+        "name": "在线测厚仪(MQTT)",
+        "protocol": "mqtt",
+        "endpoint": "mqtt://127.0.0.1:20830",
+        "signals": [
+          {
+            "id": "film-thickness",
+            "name": "thick",
+            "unit": "μm",
+            "min": 0,
+            "max": 400,
+            "decimals": 2,
+            "strategy": "constant",
+            "plantBinding": null,
+            "kind": "PV (process quantity)"
+          },
+          {
+            "id": "linespeed-sp",
+            "name": "lineSpeedSP",
+            "unit": "m/min",
+            "min": 20,
+            "max": 120,
+            "decimals": 1,
+            "strategy": "manual",
+            "plantBinding": null,
+            "kind": "SP (writable setpoint)"
+          }
+        ]
+      },
+      {
+        "id": "dev-inspect-http",
+        "name": "CCD检测站(HTTP)",
+        "protocol": "http",
+        "endpoint": "http endpoint",
+        "signals": [
+          {
+            "id": "thickness-profile",
+            "name": "profile",
+            "unit": "μm",
+            "min": 0,
+            "max": 400,
+            "decimals": 3,
+            "strategy": "constant",
+            "plantBinding": null,
+            "kind": "PV (process quantity)"
+          },
+          {
+            "id": "ccd-image",
+            "name": "ccd",
+            "unit": "灰度",
+            "min": 0,
+            "max": 255,
+            "decimals": 2,
+            "strategy": "constant",
+            "plantBinding": null,
+            "kind": "PV (process quantity)"
+          },
+          {
+            "id": "defect-rate",
+            "name": "defect",
+            "unit": "%",
+            "min": 0,
+            "max": 100,
+            "decimals": 3,
+            "strategy": "constant",
+            "plantBinding": null,
+            "kind": "PV (process quantity)"
+          },
+          {
+            "id": "diegap-sp",
+            "name": "dieGapSP",
+            "unit": "mm",
+            "min": 0.5,
+            "max": 2,
+            "decimals": 2,
+            "strategy": "manual",
+            "plantBinding": null,
+            "kind": "SP (writable setpoint)"
+          }
+        ]
+      }
+    ],
+    "aw": {
+      "lines": [],
+      "dcw": [],
+      "daq": []
+    }
+  },
+  "agentteam": {
+    "biax": {
+      "traj": [],
+      "writes": null,
+      "distinctKnobs": null,
+      "records": null,
+      "final": null,
+      "attained": null,
+      "finalUm": null,
+      "targetUm": 25,
+      "toleranceUm": 0.7
+    },
+    "cl": {
+      "seeds": []
+    }
+  },
+  "closedloop": null,
+  "portability": {
+    "agg": {
+      "preset": "film-line",
+      "devices": 5,
+      "lines": 5,
+      "ownLines": 5,
+      "sampling": 0,
+      "f5Rejected": 0,
+      "f5Total": 0,
+      "falseBlocks": 0,
+      "codeChanges": 0
+    },
+    "lines": [
+      {
+        "index": 1,
+        "protocol": "modbus-tcp",
+        "satellite": false,
+        "daqSamples": 0,
+        "f5": null,
+        "falseBlock": null,
+        "readbackDelta": null
+      },
+      {
+        "index": 2,
+        "protocol": "opcua",
+        "satellite": false,
+        "daqSamples": 0,
+        "f5": null,
+        "falseBlock": null,
+        "readbackDelta": null
+      },
+      {
+        "index": 3,
+        "protocol": "mqtt",
+        "satellite": false,
+        "daqSamples": 0,
+        "f5": null,
+        "falseBlock": null,
+        "readbackDelta": null
+      },
+      {
+        "index": 4,
+        "protocol": "modbus-rtu",
+        "satellite": false,
+        "daqSamples": 0,
+        "f5": null,
+        "falseBlock": null,
+        "readbackDelta": null
+      },
+      {
+        "index": 5,
+        "protocol": "http",
+        "satellite": false,
+        "daqSamples": 0,
+        "f5": null,
+        "falseBlock": null,
+        "readbackDelta": null
+      }
+    ]
+  }
+}

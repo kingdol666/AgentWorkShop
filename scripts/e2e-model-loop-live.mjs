@@ -207,41 +207,23 @@ saveSettings({
   'daq.startInfrastructure': 'never',
 }, join(HOME, 'runtime-settings.json'))
 let port = 0
-for (const p of [3997, 3996, 3995, 3994, 3993]) {
-  let occupied = false
-  try {
-    await fetch(`http://127.0.0.1:${p}/api/health`, { signal: AbortSignal.timeout(800) })
-    occupied = true
-  }
-  catch { /* 空闲 */ }
-  if (!occupied) {
-    const { execSync } = await import('node:child_process')
-    try {
-      const out = execSync(`netstat -ano | findstr :${p} | findstr LISTENING`, { shell: 'cmd.exe' }).toString()
-      const pidMatch = out.match(/\s(\d+)\s*$/m)
-      if (pidMatch) { spawn('taskkill', ['/PID', pidMatch[1], '/T', '/F'], { stdio: 'ignore' }); await sleep(1500) }
-    }
-    catch { /* 无监听 */ }
-    port = p
-    break
-  }
-  await sleep(300)
-}
-if (!port) throw new Error('无空闲端口')
-const BASE = `http://127.0.0.1:${port}`
-console.log(`\n=== boot ${BASE} ===`)
-const logFd = openSync(join(ROOT, 'dev.log'), 'a')
-const child = spawn(process.execPath, [join(REPO, 'bin', 'aw.mjs'), 'dev', '--port', String(port)], {
-  cwd: REPO,
-  env: { ...process.env, AW_RATE_LIMIT_OFF: '1', NUXT_SESSION_PASSWORD: 'ModelLoopLive#2026-e2e-session', NO_PROXY: '127.0.0.1,localhost' },
-  stdio: ['ignore', logFd, logFd],
-  windowsHide: true,
-})
+let BASE = ''
+let child = null
+let token = ''
+// 2026-10-29:固定低段(3993-3997)与并行会话/遗留实例撞车(实测:boot 打到别人实例 →
+// 注册 403/needsSetup=false)。改随机高端口 + boot 自愈重试:注册/fresh 校验不过就
+// 杀自己子进程换端口重来(最多 3 次),绝不与不明监听者抢端口。
+const candidates = Array.from({ length: 8 }, () => 34000 + Math.floor(Math.random() * 5900))
+const data = r => r?.data
+const errCode = r => r?.code ?? r?.data?.code ?? ''
+const email = `mlp-${TAG}@awshop.local`
+/** 本轮已试过的端口不再复用(失败后同端口重试只会撞自己正在拆除的旧实例) */
+const usedPorts = new Set()
 
-async function api(method, path, body, token, timeoutMs = 180_000) {
+async function api(method, path, body, tok, timeoutMs = 180_000) {
   const res = await fetch(BASE + path, {
     method,
-    headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
+    headers: { 'content-type': 'application/json', ...(tok ? { authorization: `Bearer ${tok}` } : {}) },
     body: body === undefined ? undefined : JSON.stringify(body),
     signal: AbortSignal.timeout(timeoutMs),
   })
@@ -252,35 +234,86 @@ async function api(method, path, body, token, timeoutMs = 180_000) {
   catch { /* 非 JSON */ }
   return { status: res.status, ...(json ?? {}) }
 }
-const data = r => r?.data
-const errCode = r => r?.code ?? r?.data?.code ?? ''
 
-let healthy = false
-for (let i = 0; i < 120; i++) {
-  await sleep(1500)
-  try {
-    const h = await api('GET', '/api/health', undefined, undefined, 3000)
-    if (h?.data?.status === 'ok' && h?.data?.workshop === 'ready') { healthy = true; break }
+async function pickPort() {
+  const { execSync } = await import('node:child_process')
+  for (const p of candidates) {
+    if (usedPorts.has(p)) continue
+    let occupied = false
+    try {
+      await fetch(`http://127.0.0.1:${p}/api/health`, { signal: AbortSignal.timeout(800) })
+      occupied = true
+    }
+    catch { /* 健康探测失败不代表空闲 */ }
+    if (!occupied) {
+      // 健康探测失败但 netstat 有 LISTENING = 归属不明的活实例,跳过该端口
+      let listening = false
+      try {
+        const out = execSync(`netstat -ano | findstr :${p} | findstr LISTENING`, { shell: 'cmd.exe' }).toString()
+        listening = /\s\d+\s*$/m.test(out)
+      }
+      catch { /* 无监听 */ }
+      if (listening) { occupied = true; await sleep(300) }
+    }
+    if (!occupied) { usedPorts.add(p); return p }
+    await sleep(300)
   }
-  catch { /* 未就绪 */ }
+  return 0
 }
-check('BOOT', '隔离实例启动 + workshop ready', healthy, `port=${port}`)
-if (!healthy) { killTree(child.pid); throw new Error('实例未就绪:' + join(ROOT, 'dev.log')) }
 
-const email = `mlp-${TAG}@awshop.local`
-let reg = null
-for (let attempt = 0; attempt < 3 && !data(reg ?? {})?.token; attempt++) {
-  try {
-    reg = await api('POST', '/api/users/register', { name: `模型闭环验收-${TAG}`, email, password: 'ModelLoop#2026' })
+/** 单次 boot:选端口→spawn→health→注册→fresh 校验;返回 {ok, stage, detail};失败已杀自己的子进程 */
+async function bootInstance() {
+  port = await pickPort()
+  if (!port) return { ok: false, stage: 'port', detail: '无空闲端口' }
+  BASE = `http://127.0.0.1:${port}`
+  console.log(`\n=== boot ${BASE} ===`)
+  const logFd = openSync(join(ROOT, 'dev.log'), 'a')
+  child = spawn(process.execPath, [join(REPO, 'bin', 'aw.mjs'), 'dev', '--port', String(port)], {
+    cwd: REPO,
+    env: { ...process.env, AW_RATE_LIMIT_OFF: '1', NUXT_SESSION_PASSWORD: 'ModelLoopLive#2026-e2e-session', NO_PROXY: '127.0.0.1,localhost' },
+    stdio: ['ignore', logFd, logFd],
+    windowsHide: true,
+  })
+  let healthy = false
+  for (let i = 0; i < 120; i++) {
+    await sleep(1500)
+    try {
+      const h = await api('GET', '/api/health', undefined, undefined, 3000)
+      if (h?.data?.status === 'ok' && h?.data?.workshop === 'ready') { healthy = true; break }
+    }
+    catch { /* 未就绪 */ }
   }
-  catch (err) {
-    console.log(`register attempt ${attempt + 1} failed: ${String(err).slice(0, 120)}`)
-    await sleep(3000)
+  if (!healthy) { killTree(child.pid); return { ok: false, stage: 'health', detail: '实例未就绪:' + join(ROOT, 'dev.log') } }
+  // 上面模块级 email = 管理员账号(冻结审批 approvedBy 同源)
+  let reg = null
+  for (let attempt = 0; attempt < 3 && !data(reg ?? {})?.token; attempt++) {
+    try {
+      reg = await api('POST', '/api/users/register', { name: `模型闭环验收-${TAG}`, email, password: 'ModelLoop#2026' })
+    }
+    catch (err) {
+      console.log(`register attempt ${attempt + 1} failed: ${String(err).slice(0, 120)}`)
+      await sleep(3000)
+    }
   }
+  token = data(reg ?? {})?.token ?? ''
+  if (!token) { killTree(child.pid); return { ok: false, stage: 'register', detail: `注册失败 status=${reg?.status}` } }
+  // fresh 绑定断言(2026-10-29 修正语义):首注册必须拿到 role=admin(bootstrap)。
+  // 若端口被别会话实例抢答,要么 403(其注册闸已关),要么拿到 role=user —— 都在此拦截。
+  const role = data(reg ?? {})?.user?.role
+  if (role !== 'admin') {
+    killTree(child.pid)
+    return { ok: false, stage: 'fresh', detail: `首注册 role=${role ?? '?'}(非 admin=打到别会话实例)` }
+  }
+  return { ok: true, stage: 'ready', detail: `port=${port}` }
 }
-const token = data(reg ?? {})?.token
-check('BOOT', '管理员注册(首注册=admin)', Boolean(token), `status=${reg.status}`)
-if (!token) { killTree(child.pid); throw new Error('注册失败') }
+
+let boot = { ok: false, stage: 'not-run', detail: '' }
+for (let attempt = 1; attempt <= 3 && !boot.ok; attempt++) {
+  boot = await bootInstance()
+  if (!boot.ok && attempt < 3) { console.log(`    · boot attempt ${attempt} 未独占(${boot.stage}),换端口重试`); await sleep(3000) }
+}
+check('BOOT', '隔离实例独占启动 + 注册首管理员 + fresh 校验', boot.ok, `${boot.stage}: ${boot.detail}`)
+if (!boot.ok) throw new Error(`隔离实例连续 3 次未能独占启动(${boot.stage})`)
 
 // ════ M0 hybrid_twin 全功能频道 + 绑定三面 ════
 console.log('\n=== M0 频道与三面绑定 ===')
@@ -512,6 +545,9 @@ const artifactPathOf = (text) => {
     providerId: 'injection-greybox-v1',
     providerVersion: undefined,
     providerHash: undefined,
+    // 显式清空代次:意图是「解析当前已注册的 injection-greybox」(见上注释);
+    // 沿用模板实例化时的旧 generation,dev(watch) 重启使注册代前进后解析会落空(fail-closed)
+    providerGeneration: undefined,
     createdBy: 'e2e',
   })
   const profAfter = data(await api('GET', `/api/workshop/channels/${encodeURIComponent(channelIdOuter)}/twin-profile`, undefined, token))

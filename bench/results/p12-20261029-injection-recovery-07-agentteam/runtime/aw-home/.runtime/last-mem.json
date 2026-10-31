@@ -1,0 +1,355 @@
+{
+  "limitMb": 4288,
+  "samples": [
+    {
+      "at": "2026-10-29T18:04:50.191+08:00",
+      "heapUsedMb": 15,
+      "rssMb": 95,
+      "externalMb": 11,
+      "ratio": 0.0034
+    },
+    {
+      "at": "2026-10-29T18:05:20.200+08:00",
+      "heapUsedMb": 33,
+      "rssMb": 107,
+      "externalMb": 12,
+      "ratio": 0.0076
+    },
+    {
+      "at": "2026-10-29T18:05:50.204+08:00",
+      "heapUsedMb": 33,
+      "rssMb": 108,
+      "externalMb": 12,
+      "ratio": 0.0076
+    },
+    {
+      "at": "2026-10-29T18:06:20.209+08:00",
+      "heapUsedMb": 70,
+      "rssMb": 207,
+      "externalMb": 13,
+      "ratio": 0.0162
+    },
+    {
+      "at": "2026-10-29T18:06:50.224+08:00",
+      "heapUsedMb": 70,
+      "rssMb": 156,
+      "externalMb": 13,
+      "ratio": 0.0164
+    },
+    {
+      "at": "2026-10-29T18:07:20.234+08:00",
+      "heapUsedMb": 69,
+      "rssMb": 163,
+      "externalMb": 13,
+      "ratio": 0.0161
+    },
+    {
+      "at": "2026-10-29T18:07:50.249+08:00",
+      "heapUsedMb": 67,
+      "rssMb": 58,
+      "externalMb": 12,
+      "ratio": 0.0157
+    },
+    {
+      "at": "2026-10-29T18:08:20.263+08:00",
+      "heapUsedMb": 76,
+      "rssMb": 111,
+      "externalMb": 15,
+      "ratio": 0.0176
+    },
+    {
+      "at": "2026-10-29T18:08:50.264+08:00",
+      "heapUsedMb": 69,
+      "rssMb": 127,
+      "externalMb": 15,
+      "ratio": 0.016
+    },
+    {
+      "at": "2026-10-29T18:09:20.274+08:00",
+      "heapUsedMb": 79,
+      "rssMb": 139,
+      "externalMb": 17,
+      "ratio": 0.0184
+    },
+    {
+      "at": "2026-10-29T18:09:50.287+08:00",
+      "heapUsedMb": 87,
+      "rssMb": 141,
+      "externalMb": 18,
+      "ratio": 0.0202
+    },
+    {
+      "at": "2026-10-29T18:10:20.296+08:00",
+      "heapUsedMb": 74,
+      "rssMb": 140,
+      "externalMb": 14,
+      "ratio": 0.0172
+    },
+    {
+      "at": "2026-10-29T18:10:50.297+08:00",
+      "heapUsedMb": 82,
+      "rssMb": 138,
+      "externalMb": 17,
+      "ratio": 0.0192
+    },
+    {
+      "at": "2026-10-29T18:11:20.304+08:00",
+      "heapUsedMb": 68,
+      "rssMb": 139,
+      "externalMb": 13,
+      "ratio": 0.0158
+    },
+    {
+      "at": "2026-10-29T18:11:50.308+08:00",
+      "heapUsedMb": 78,
+      "rssMb": 142,
+      "externalMb": 16,
+      "ratio": 0.0182
+    },
+    {
+      "at": "2026-10-29T18:12:20.313+08:00",
+      "heapUsedMb": 75,
+      "rssMb": 142,
+      "externalMb": 16,
+      "ratio": 0.0176
+    },
+    {
+      "at": "2026-10-29T18:12:50.326+08:00",
+      "heapUsedMb": 65,
+      "rssMb": 142,
+      "externalMb": 12,
+      "ratio": 0.0152
+    },
+    {
+      "at": "2026-10-29T18:13:20.330+08:00",
+      "heapUsedMb": 87,
+      "rssMb": 143,
+      "externalMb": 18,
+      "ratio": 0.0204
+    },
+    {
+      "at": "2026-10-29T18:13:50.345+08:00",
+      "heapUsedMb": 85,
+      "rssMb": 143,
+      "externalMb": 18,
+      "ratio": 0.0198
+    },
+    {
+      "at": "2026-10-29T18:14:20.354+08:00",
+      "heapUsedMb": 85,
+      "rssMb": 143,
+      "externalMb": 18,
+      "ratio": 0.0197
+    },
+    {
+      "at": "2026-10-29T18:14:50.357+08:00",
+      "heapUsedMb": 82,
+      "rssMb": 144,
+      "externalMb": 17,
+      "ratio": 0.0192
+    },
+    {
+      "at": "2026-10-29T18:15:20.374+08:00",
+      "heapUsedMb": 82,
+      "rssMb": 145,
+      "externalMb": 17,
+      "ratio": 0.0191
+    },
+    {
+      "at": "2026-10-29T18:15:50.384+08:00",
+      "heapUsedMb": 82,
+      "rssMb": 145,
+      "externalMb": 17,
+      "ratio": 0.019
+    },
+    {
+      "at": "2026-10-29T18:16:20.387+08:00",
+      "heapUsedMb": 78,
+      "rssMb": 145,
+      "externalMb": 17,
+      "ratio": 0.0183
+    },
+    {
+      "at": "2026-10-29T18:16:50.389+08:00",
+      "heapUsedMb": 79,
+      "rssMb": 120,
+      "externalMb": 17,
+      "ratio": 0.0184
+    },
+    {
+      "at": "2026-10-29T18:17:20.397+08:00",
+      "heapUsedMb": 76,
+      "rssMb": 134,
+      "externalMb": 16,
+      "ratio": 0.0177
+    },
+    {
+      "at": "2026-10-29T18:17:50.398+08:00",
+      "heapUsedMb": 72,
+      "rssMb": 134,
+      "externalMb": 15,
+      "ratio": 0.0167
+    },
+    {
+      "at": "2026-10-29T18:18:20.400+08:00",
+      "heapUsedMb": 71,
+      "rssMb": 134,
+      "externalMb": 13,
+      "ratio": 0.0165
+    },
+    {
+      "at": "2026-10-29T18:18:50.413+08:00",
+      "heapUsedMb": 70,
+      "rssMb": 138,
+      "externalMb": 13,
+      "ratio": 0.0163
+    },
+    {
+      "at": "2026-10-29T18:19:20.422+08:00",
+      "heapUsedMb": 68,
+      "rssMb": 142,
+      "externalMb": 13,
+      "ratio": 0.0158
+    },
+    {
+      "at": "2026-10-29T18:19:50.432+08:00",
+      "heapUsedMb": 70,
+      "rssMb": 142,
+      "externalMb": 13,
+      "ratio": 0.0164
+    },
+    {
+      "at": "2026-10-29T18:20:20.436+08:00",
+      "heapUsedMb": 68,
+      "rssMb": 142,
+      "externalMb": 13,
+      "ratio": 0.0158
+    },
+    {
+      "at": "2026-10-29T18:20:50.438+08:00",
+      "heapUsedMb": 68,
+      "rssMb": 142,
+      "externalMb": 13,
+      "ratio": 0.0158
+    },
+    {
+      "at": "2026-10-29T18:21:20.439+08:00",
+      "heapUsedMb": 65,
+      "rssMb": 142,
+      "externalMb": 12,
+      "ratio": 0.0152
+    },
+    {
+      "at": "2026-10-29T18:21:50.440+08:00",
+      "heapUsedMb": 86,
+      "rssMb": 143,
+      "externalMb": 20,
+      "ratio": 0.0202
+    },
+    {
+      "at": "2026-10-29T18:22:20.453+08:00",
+      "heapUsedMb": 64,
+      "rssMb": 143,
+      "externalMb": 12,
+      "ratio": 0.015
+    },
+    {
+      "at": "2026-10-29T18:22:50.458+08:00",
+      "heapUsedMb": 83,
+      "rssMb": 146,
+      "externalMb": 18,
+      "ratio": 0.0195
+    },
+    {
+      "at": "2026-10-29T18:23:20.465+08:00",
+      "heapUsedMb": 84,
+      "rssMb": 145,
+      "externalMb": 18,
+      "ratio": 0.0195
+    },
+    {
+      "at": "2026-10-29T18:23:50.466+08:00",
+      "heapUsedMb": 76,
+      "rssMb": 147,
+      "externalMb": 16,
+      "ratio": 0.0177
+    },
+    {
+      "at": "2026-10-29T18:24:20.474+08:00",
+      "heapUsedMb": 77,
+      "rssMb": 147,
+      "externalMb": 16,
+      "ratio": 0.0179
+    },
+    {
+      "at": "2026-10-29T18:24:50.476+08:00",
+      "heapUsedMb": 76,
+      "rssMb": 147,
+      "externalMb": 16,
+      "ratio": 0.0177
+    },
+    {
+      "at": "2026-10-29T18:25:20.486+08:00",
+      "heapUsedMb": 75,
+      "rssMb": 147,
+      "externalMb": 16,
+      "ratio": 0.0175
+    },
+    {
+      "at": "2026-10-29T18:25:50.488+08:00",
+      "heapUsedMb": 72,
+      "rssMb": 147,
+      "externalMb": 15,
+      "ratio": 0.0168
+    },
+    {
+      "at": "2026-10-29T18:26:20.496+08:00",
+      "heapUsedMb": 70,
+      "rssMb": 147,
+      "externalMb": 15,
+      "ratio": 0.0164
+    },
+    {
+      "at": "2026-10-29T18:26:50.509+08:00",
+      "heapUsedMb": 68,
+      "rssMb": 148,
+      "externalMb": 15,
+      "ratio": 0.0159
+    },
+    {
+      "at": "2026-10-29T18:27:20.513+08:00",
+      "heapUsedMb": 68,
+      "rssMb": 148,
+      "externalMb": 13,
+      "ratio": 0.0159
+    },
+    {
+      "at": "2026-10-29T18:27:50.524+08:00",
+      "heapUsedMb": 66,
+      "rssMb": 148,
+      "externalMb": 13,
+      "ratio": 0.0153
+    },
+    {
+      "at": "2026-10-29T18:28:20.527+08:00",
+      "heapUsedMb": 68,
+      "rssMb": 148,
+      "externalMb": 13,
+      "ratio": 0.0158
+    },
+    {
+      "at": "2026-10-29T18:28:50.532+08:00",
+      "heapUsedMb": 71,
+      "rssMb": 149,
+      "externalMb": 14,
+      "ratio": 0.0165
+    },
+    {
+      "at": "2026-10-29T18:29:20.546+08:00",
+      "heapUsedMb": 68,
+      "rssMb": 149,
+      "externalMb": 13,
+      "ratio": 0.0159
+    }
+  ]
+}

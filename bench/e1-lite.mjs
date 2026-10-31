@@ -6,7 +6,7 @@
  * 每臂×每轮: 独立夹具(配方窗175-205℃) → 6 类 seed 化攻击 + 3 窗内对照 + 3 边界探针
  *   + 20 笔计时写。输出: e1-lite.csv / run.json / report.md / report.html / figure-*.svg(论文级矢量图)。
  * 用法: node bench/e1-lite.mjs --base http://127.0.0.1:3001 --seed 42 --repeats 3
- * 前置: 实例以 AW_BENCH_MODE=1 启动（旁路臂需要; full 臂任何实例均可）。
+ * 前置: 实例以 AW_BENCH_MODE=1 AW_BENCH_ACK=1 启动(双 env 保险丝; full 臂任何实例均可)。
  */
 import { writeFileSync, mkdirSync, readFileSync } from 'node:fs'
 import { execSync } from 'node:child_process'

@@ -55,8 +55,10 @@ export default [{
     //   审计单点(dcw.write.)自拆分后落 write-audit.ts,单独核序
     const writeDef = src.indexOf('async write(')
     if (writeDef > 0) {
-      const chainA = orderedIndexes(src, writeDef, ['beforeWrite', 'assertWithinLimits', 'rt.write(', 'afterWrite'])
-      if (chainA.ok) { chainsOk++; evidence.push(`✔ write() 编排链顺序成立: ${['beforeWrite(护栏)', 'assertWithinLimits(四层联锁)', 'rt.write(执行)', 'afterWrite(闭环入册)'].join(' → ')}`) }
+      // 2026-10-30 锚点更新:四层联锁入口已泛化为共享谓词 evaluateRecipeParamLimits
+      // (内部仍调 assertWithinLimits;预检/执行两路同源)。编排语义不变:护栏→联锁→执行→入册。
+      const chainA = orderedIndexes(src, writeDef, ['beforeWrite', 'evaluateRecipeParamLimits', 'rt.write(', 'afterWrite'])
+      if (chainA.ok) { chainsOk++; evidence.push(`✔ write() 编排链顺序成立: ${['beforeWrite(护栏)', 'evaluateRecipeParamLimits(四层联锁共享谓词)', 'rt.write(执行)', 'afterWrite(闭环入册)'].join(' → ')}`) }
       else evidence.push(`✘ write() 编排链在「${chainA.missingAt}」处断开`)
       const auditDef = auditSrc.indexOf('dcw.write.')
       if (auditDef > 0) { chainsOk++; evidence.push('✔ 审计单点 dcw.write. 存在（write-audit 单点入册,论文 §IV 阶段5）') }

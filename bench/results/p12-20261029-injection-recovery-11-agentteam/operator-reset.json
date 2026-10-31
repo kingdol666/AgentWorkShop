@@ -1,0 +1,776 @@
+{
+  "status": "completed_and_verified",
+  "operator_id_or_role": "Automated operator acting under the user instruction",
+  "reset_procedure_reference": "bench/PIPELINE/EXPERIMENT-PLAN.md, post-run local closure; isolated simulator POST /api/plant/reset",
+  "reset_started_at_utc": "2026-10-29T12:11:03.8911428+00:00",
+  "reset_completed_at_utc": "2026-10-29T12:11:06.9291986+00:00",
+  "pre_reset_state_reference": "simulator-state.json and scenario-final.json",
+  "pre_reset_simulator_truth": [
+    {
+      "t": "2026-10-29T12:11:00.916Z",
+      "tSim": 465500,
+      "phase": "warmup",
+      "sp": {
+        "barrelTemp1": 240,
+        "barrelTemp2": 246,
+        "barrelTemp3": 252,
+        "barrelTemp4": 258,
+        "screw": 120,
+        "injectSpeed": 85,
+        "holdPressure": 45,
+        "holdTime": 6,
+        "moldTemp": 40,
+        "clampForce": 1600,
+        "coolWater": 24
+      },
+      "truth": {
+        "meltTemp": 246.69599999999994,
+        "meltPressure": 51.86054479293015,
+        "moldTemp": 40,
+        "clampForce": 1600,
+        "injPressure": 51.86054479293015,
+        "waterTemp": 24,
+        "coolFlow": 44.8,
+        "partWeight": 31.251344000000003,
+        "flash": 0,
+        "sink": 2.15,
+        "dimDev": 0.008606799999999953,
+        "cycleTime": 15.253919999999999
+      },
+      "exposed": {
+        "meltTemp": 246.27100096487067,
+        "meltPressure": 52.661375641763044,
+        "moldTemp": 39.28874972368366,
+        "clampForce": 1599.5518164973976,
+        "injPressure": 50.74537201523573,
+        "waterTemp": 23.593507983518943,
+        "coolFlow": 44.549442558804664,
+        "partWeight": 31.265546488155533,
+        "flash": 0,
+        "sink": 2.0373784018397743,
+        "dimDev": 0.010616140206967727,
+        "cycleTime": 15.253919999999999,
+        "image": 0
+      }
+    },
+    {
+      "t": "2026-10-29T12:11:01.418Z",
+      "tSim": 466000,
+      "phase": "warmup",
+      "sp": {
+        "barrelTemp1": 240,
+        "barrelTemp2": 246,
+        "barrelTemp3": 252,
+        "barrelTemp4": 258,
+        "screw": 120,
+        "injectSpeed": 85,
+        "holdPressure": 45,
+        "holdTime": 6,
+        "moldTemp": 40,
+        "clampForce": 1600,
+        "coolWater": 24
+      },
+      "truth": {
+        "meltTemp": 246.69599999999994,
+        "meltPressure": 51.86054479293015,
+        "moldTemp": 40,
+        "clampForce": 1600,
+        "injPressure": 51.86054479293015,
+        "waterTemp": 24,
+        "coolFlow": 44.8,
+        "partWeight": 31.251344000000003,
+        "flash": 0,
+        "sink": 2.15,
+        "dimDev": 0.008606799999999953,
+        "cycleTime": 15.253919999999999
+      },
+      "exposed": {
+        "meltTemp": 246.27763147713225,
+        "meltPressure": 52.36526720887727,
+        "moldTemp": 40.224187948039756,
+        "clampForce": 1598.5132118421566,
+        "injPressure": 51.255228900536984,
+        "waterTemp": 23.910509607027834,
+        "coolFlow": 44.744610180255286,
+        "partWeight": 31.330984230866306,
+        "flash": 0.031229329796599068,
+        "sink": 2.1426780021886556,
+        "dimDev": 0.00990028216515404,
+        "cycleTime": 15.253919999999999,
+        "image": 0
+      }
+    },
+    {
+      "t": "2026-10-29T12:11:01.93Z",
+      "tSim": 466500,
+      "phase": "warmup",
+      "sp": {
+        "barrelTemp1": 240,
+        "barrelTemp2": 246,
+        "barrelTemp3": 252,
+        "barrelTemp4": 258,
+        "screw": 120,
+        "injectSpeed": 85,
+        "holdPressure": 45,
+        "holdTime": 6,
+        "moldTemp": 40,
+        "clampForce": 1600,
+        "coolWater": 24
+      },
+      "truth": {
+        "meltTemp": 246.69599999999994,
+        "meltPressure": 51.86054479293015,
+        "moldTemp": 40,
+        "clampForce": 1600,
+        "injPressure": 51.86054479293015,
+        "waterTemp": 24,
+        "coolFlow": 44.8,
+        "partWeight": 31.251344000000003,
+        "flash": 0,
+        "sink": 2.15,
+        "dimDev": 0.008606799999999953,
+        "cycleTime": 15.253919999999999
+      },
+      "exposed": {
+        "meltTemp": 246.4484154758028,
+        "meltPressure": 51.528260342395555,
+        "moldTemp": 39.948308618724944,
+        "clampForce": 1605.7645416734629,
+        "injPressure": 52.61443024739771,
+        "waterTemp": 23.97941054203633,
+        "coolFlow": 45.046477600200184,
+        "partWeight": 31.294979864072136,
+        "flash": 0,
+        "sink": 2.146962765466283,
+        "dimDev": 0.0061515151724236845,
+        "cycleTime": 15.253919999999999,
+        "image": 0
+      }
+    },
+    {
+      "t": "2026-10-29T12:11:02.442Z",
+      "tSim": 467000,
+      "phase": "warmup",
+      "sp": {
+        "barrelTemp1": 240,
+        "barrelTemp2": 246,
+        "barrelTemp3": 252,
+        "barrelTemp4": 258,
+        "screw": 120,
+        "injectSpeed": 85,
+        "holdPressure": 45,
+        "holdTime": 6,
+        "moldTemp": 40,
+        "clampForce": 1600,
+        "coolWater": 24
+      },
+      "truth": {
+        "meltTemp": 246.69599999999994,
+        "meltPressure": 51.86054479293015,
+        "moldTemp": 40,
+        "clampForce": 1600,
+        "injPressure": 51.86054479293015,
+        "waterTemp": 24,
+        "coolFlow": 44.8,
+        "partWeight": 31.251344000000003,
+        "flash": 0,
+        "sink": 2.15,
+        "dimDev": 0.008606799999999953,
+        "cycleTime": 15.253919999999999
+      },
+      "exposed": {
+        "meltTemp": 246.56087003045775,
+        "meltPressure": 52.04842170904851,
+        "moldTemp": 39.45544458926892,
+        "clampForce": 1601.8406569486606,
+        "injPressure": 51.72271103029458,
+        "waterTemp": 24.277986329427193,
+        "coolFlow": 44.98635138000951,
+        "partWeight": 31.183914282931088,
+        "flash": 0.018910006376259572,
+        "sink": 2.09020499532622,
+        "dimDev": 0.014644473829106669,
+        "cycleTime": 15.253919999999999,
+        "image": 0
+      }
+    },
+    {
+      "t": "2026-10-29T12:11:02.954Z",
+      "tSim": 467500,
+      "phase": "warmup",
+      "sp": {
+        "barrelTemp1": 240,
+        "barrelTemp2": 246,
+        "barrelTemp3": 252,
+        "barrelTemp4": 258,
+        "screw": 120,
+        "injectSpeed": 85,
+        "holdPressure": 45,
+        "holdTime": 6,
+        "moldTemp": 40,
+        "clampForce": 1600,
+        "coolWater": 24
+      },
+      "truth": {
+        "meltTemp": 246.69599999999994,
+        "meltPressure": 51.86054479293015,
+        "moldTemp": 40,
+        "clampForce": 1600,
+        "injPressure": 51.86054479293015,
+        "waterTemp": 24,
+        "coolFlow": 44.8,
+        "partWeight": 31.251344000000003,
+        "flash": 0,
+        "sink": 2.15,
+        "dimDev": 0.008606799999999953,
+        "cycleTime": 15.253919999999999
+      },
+      "exposed": {
+        "meltTemp": 246.55442914253965,
+        "meltPressure": 52.654739162530056,
+        "moldTemp": 40.1326790910508,
+        "clampForce": 1596.1862593242129,
+        "injPressure": 53.026042048829716,
+        "waterTemp": 23.75984954069943,
+        "coolFlow": 44.378614687554176,
+        "partWeight": 31.23971070276202,
+        "flash": 0,
+        "sink": 2.261047210111788,
+        "dimDev": 0.01981871755093321,
+        "cycleTime": 15.253919999999999,
+        "image": 0
+      }
+    },
+    {
+      "t": "2026-10-29T12:11:03.466Z",
+      "tSim": 468000,
+      "phase": "warmup",
+      "sp": {
+        "barrelTemp1": 240,
+        "barrelTemp2": 246,
+        "barrelTemp3": 252,
+        "barrelTemp4": 258,
+        "screw": 120,
+        "injectSpeed": 85,
+        "holdPressure": 45,
+        "holdTime": 6,
+        "moldTemp": 40,
+        "clampForce": 1600,
+        "coolWater": 24
+      },
+      "truth": {
+        "meltTemp": 246.69599999999994,
+        "meltPressure": 51.86054479293015,
+        "moldTemp": 40,
+        "clampForce": 1600,
+        "injPressure": 51.86054479293015,
+        "waterTemp": 24,
+        "coolFlow": 44.8,
+        "partWeight": 31.251344000000003,
+        "flash": 0,
+        "sink": 2.15,
+        "dimDev": 0.008606799999999953,
+        "cycleTime": 15.253919999999999
+      },
+      "exposed": {
+        "meltTemp": 246.90735804411324,
+        "meltPressure": 52.76643920126755,
+        "moldTemp": 39.87956295312895,
+        "clampForce": 1596.9083699580983,
+        "injPressure": 52.22980422712699,
+        "waterTemp": 24.333767096145994,
+        "coolFlow": 45.47874663783116,
+        "partWeight": 31.23832842999731,
+        "flash": 0.022779194401542073,
+        "sink": 2.030642712225008,
+        "dimDev": 0.011145972880543871,
+        "cycleTime": 15.253919999999999,
+        "image": 0
+      }
+    }
+  ],
+  "pre_reset_setpoint_readbacks": [
+    {
+      "device_id": "inj-machine-mbtcp",
+      "signal_id": "barrel-temp-1-sp",
+      "value": 240.0,
+      "unit": "℃",
+      "blueprint_value": 240.0
+    },
+    {
+      "device_id": "inj-machine-mbtcp",
+      "signal_id": "barrel-temp-2-sp",
+      "value": 246.0,
+      "unit": "℃",
+      "blueprint_value": 246.0
+    },
+    {
+      "device_id": "inj-machine-mbtcp",
+      "signal_id": "barrel-temp-3-sp",
+      "value": 252.0,
+      "unit": "℃",
+      "blueprint_value": 252.0
+    },
+    {
+      "device_id": "inj-machine-mbtcp",
+      "signal_id": "barrel-temp-4-sp",
+      "value": 258.0,
+      "unit": "℃",
+      "blueprint_value": 258.0
+    },
+    {
+      "device_id": "inj-machine-mbtcp",
+      "signal_id": "screw-speed-sp",
+      "value": 120.0,
+      "unit": "rpm",
+      "blueprint_value": 120.0
+    },
+    {
+      "device_id": "inj-mold-rtu",
+      "signal_id": "mold-temp-sp",
+      "value": 40.0,
+      "unit": "℃",
+      "blueprint_value": 40.0
+    },
+    {
+      "device_id": "inj-mold-rtu",
+      "signal_id": "clamp-force-sp",
+      "value": 1600.0,
+      "unit": "kN",
+      "blueprint_value": 1600.0
+    },
+    {
+      "device_id": "inj-inject-opcua",
+      "signal_id": "inject-speed-sp",
+      "value": 85.0,
+      "unit": "mm/s",
+      "blueprint_value": 85.0
+    },
+    {
+      "device_id": "inj-inject-opcua",
+      "signal_id": "hold-pressure-sp",
+      "value": 45.0,
+      "unit": "bar",
+      "blueprint_value": 45.0
+    },
+    {
+      "device_id": "inj-inject-opcua",
+      "signal_id": "hold-time-sp",
+      "value": 6.0,
+      "unit": "s",
+      "blueprint_value": 6.0
+    },
+    {
+      "device_id": "inj-cool-mqtt",
+      "signal_id": "cool-water-sp",
+      "value": 24.0,
+      "unit": "℃",
+      "blueprint_value": 24.0
+    }
+  ],
+  "reset_request": {
+    "seed": 12026,
+    "id": "injection",
+    "disturbances": {
+      "heaterDecay": 1,
+      "feedDriftPerMin": 0
+    },
+    "warm": true
+  },
+  "reset_response": {
+    "enabled": true,
+    "running": true,
+    "kind": "injection",
+    "phase": "steady",
+    "disturbances": {},
+    "timeScale": 1,
+    "configuredTimeScale": 1,
+    "engines": [
+      {
+        "id": "injection",
+        "kind": "injection",
+        "phase": "warmup",
+        "running": true,
+        "elapsedS": 0.5,
+        "seed": 12026
+      }
+    ]
+  },
+  "post_reset_simulator_truth": [
+    {
+      "t": "2026-10-29T12:11:03.91Z",
+      "tSim": 500,
+      "phase": "warmup",
+      "sp": {
+        "barrelTemp1": 240,
+        "barrelTemp2": 246,
+        "barrelTemp3": 252,
+        "barrelTemp4": 258,
+        "screw": 120,
+        "injectSpeed": 85,
+        "holdPressure": 45,
+        "holdTime": 6,
+        "moldTemp": 40,
+        "clampForce": 1600,
+        "coolWater": 24
+      },
+      "truth": {
+        "meltTemp": 246.69599999999994,
+        "meltPressure": 51.86054479293015,
+        "moldTemp": 40,
+        "clampForce": 1600,
+        "injPressure": 51.86054479293015,
+        "waterTemp": 24,
+        "coolFlow": 44.8,
+        "partWeight": 31.251344000000003,
+        "flash": 0,
+        "sink": 2.15,
+        "dimDev": 0.008606799999999953,
+        "cycleTime": 15.253919999999999
+      },
+      "exposed": {
+        "meltTemp": 246.46968440044697,
+        "meltPressure": 52.00790237926472,
+        "moldTemp": 40.23244946188213,
+        "clampForce": 1593.7106081898391,
+        "injPressure": 51.60644921591017,
+        "waterTemp": 24.019830933834733,
+        "coolFlow": 44.50053584539635,
+        "partWeight": 31.287318134642078,
+        "flash": 0.006325689238899456,
+        "sink": 2.2600423647669623,
+        "dimDev": 0.012544601494802549,
+        "cycleTime": 15.253919999999999,
+        "image": 0
+      }
+    },
+    {
+      "t": "2026-10-29T12:11:04.413Z",
+      "tSim": 1000,
+      "phase": "warmup",
+      "sp": {
+        "barrelTemp1": 240,
+        "barrelTemp2": 246,
+        "barrelTemp3": 252,
+        "barrelTemp4": 258,
+        "screw": 120,
+        "injectSpeed": 85,
+        "holdPressure": 45,
+        "holdTime": 6,
+        "moldTemp": 40,
+        "clampForce": 1600,
+        "coolWater": 24
+      },
+      "truth": {
+        "meltTemp": 246.69599999999994,
+        "meltPressure": 51.86054479293015,
+        "moldTemp": 40,
+        "clampForce": 1600,
+        "injPressure": 51.86054479293015,
+        "waterTemp": 24,
+        "coolFlow": 44.8,
+        "partWeight": 31.251344000000003,
+        "flash": 0,
+        "sink": 2.15,
+        "dimDev": 0.008606799999999953,
+        "cycleTime": 15.253919999999999
+      },
+      "exposed": {
+        "meltTemp": 246.38568925524066,
+        "meltPressure": 51.7336239958414,
+        "moldTemp": 39.96382013919949,
+        "clampForce": 1597.3186041040562,
+        "injPressure": 52.26932823248552,
+        "waterTemp": 24.08820166856163,
+        "coolFlow": 43.90849109720827,
+        "partWeight": 31.295671747865338,
+        "flash": 0.01806907147238521,
+        "sink": 2.070421967003934,
+        "dimDev": 0.005090007737156995,
+        "cycleTime": 15.253919999999999,
+        "image": 0
+      }
+    },
+    {
+      "t": "2026-10-29T12:11:04.924Z",
+      "tSim": 1500,
+      "phase": "warmup",
+      "sp": {
+        "barrelTemp1": 240,
+        "barrelTemp2": 246,
+        "barrelTemp3": 252,
+        "barrelTemp4": 258,
+        "screw": 120,
+        "injectSpeed": 85,
+        "holdPressure": 45,
+        "holdTime": 6,
+        "moldTemp": 40,
+        "clampForce": 1600,
+        "coolWater": 24
+      },
+      "truth": {
+        "meltTemp": 246.69599999999994,
+        "meltPressure": 51.86054479293015,
+        "moldTemp": 40,
+        "clampForce": 1600,
+        "injPressure": 51.86054479293015,
+        "waterTemp": 24,
+        "coolFlow": 44.8,
+        "partWeight": 31.251344000000003,
+        "flash": 0,
+        "sink": 2.15,
+        "dimDev": 0.008606799999999953,
+        "cycleTime": 15.253919999999999
+      },
+      "exposed": {
+        "meltTemp": 246.7010277388105,
+        "meltPressure": 51.681200414441605,
+        "moldTemp": 40.20598679506898,
+        "clampForce": 1589.590827180787,
+        "injPressure": 50.55606911083429,
+        "waterTemp": 24.280274933294304,
+        "coolFlow": 43.71636392307521,
+        "partWeight": 31.244010945081374,
+        "flash": 0.008801747863900802,
+        "sink": 2.3194913808553035,
+        "dimDev": 0.005974326462780384,
+        "cycleTime": 15.253919999999999,
+        "image": 0
+      }
+    },
+    {
+      "t": "2026-10-29T12:11:05.436Z",
+      "tSim": 2000,
+      "phase": "warmup",
+      "sp": {
+        "barrelTemp1": 240,
+        "barrelTemp2": 246,
+        "barrelTemp3": 252,
+        "barrelTemp4": 258,
+        "screw": 120,
+        "injectSpeed": 85,
+        "holdPressure": 45,
+        "holdTime": 6,
+        "moldTemp": 40,
+        "clampForce": 1600,
+        "coolWater": 24
+      },
+      "truth": {
+        "meltTemp": 246.69599999999994,
+        "meltPressure": 51.86054479293015,
+        "moldTemp": 40,
+        "clampForce": 1600,
+        "injPressure": 51.86054479293015,
+        "waterTemp": 24,
+        "coolFlow": 44.8,
+        "partWeight": 31.251344000000003,
+        "flash": 0,
+        "sink": 2.15,
+        "dimDev": 0.008606799999999953,
+        "cycleTime": 15.253919999999999
+      },
+      "exposed": {
+        "meltTemp": 246.9292866738941,
+        "meltPressure": 51.63238695077675,
+        "moldTemp": 39.431762443756625,
+        "clampForce": 1611.5415707393443,
+        "injPressure": 51.71400943899411,
+        "waterTemp": 23.77041885153589,
+        "coolFlow": 44.15530406251359,
+        "partWeight": 31.173237100669553,
+        "flash": 0.02157038026179145,
+        "sink": 2.1675772736509007,
+        "dimDev": 0.006399347705804127,
+        "cycleTime": 15.253919999999999,
+        "image": 0
+      }
+    },
+    {
+      "t": "2026-10-29T12:11:05.949Z",
+      "tSim": 2500,
+      "phase": "warmup",
+      "sp": {
+        "barrelTemp1": 240,
+        "barrelTemp2": 246,
+        "barrelTemp3": 252,
+        "barrelTemp4": 258,
+        "screw": 120,
+        "injectSpeed": 85,
+        "holdPressure": 45,
+        "holdTime": 6,
+        "moldTemp": 40,
+        "clampForce": 1600,
+        "coolWater": 24
+      },
+      "truth": {
+        "meltTemp": 246.69599999999994,
+        "meltPressure": 51.86054479293015,
+        "moldTemp": 40,
+        "clampForce": 1600,
+        "injPressure": 51.86054479293015,
+        "waterTemp": 24,
+        "coolFlow": 44.8,
+        "partWeight": 31.251344000000003,
+        "flash": 0,
+        "sink": 2.15,
+        "dimDev": 0.008606799999999953,
+        "cycleTime": 15.253919999999999
+      },
+      "exposed": {
+        "meltTemp": 246.75517175707412,
+        "meltPressure": 49.97279752342375,
+        "moldTemp": 39.70925611948616,
+        "clampForce": 1598.1803122889805,
+        "injPressure": 50.640449669676784,
+        "waterTemp": 23.968168637347485,
+        "coolFlow": 44.21494366025578,
+        "partWeight": 31.23826770022704,
+        "flash": 0.04018874462703781,
+        "sink": 2.271820584345168,
+        "dimDev": 0.008284997932171058,
+        "cycleTime": 15.253919999999999,
+        "image": 0
+      }
+    },
+    {
+      "t": "2026-10-29T12:11:06.46Z",
+      "tSim": 3000,
+      "phase": "warmup",
+      "sp": {
+        "barrelTemp1": 240,
+        "barrelTemp2": 246,
+        "barrelTemp3": 252,
+        "barrelTemp4": 258,
+        "screw": 120,
+        "injectSpeed": 85,
+        "holdPressure": 45,
+        "holdTime": 6,
+        "moldTemp": 40,
+        "clampForce": 1600,
+        "coolWater": 24
+      },
+      "truth": {
+        "meltTemp": 246.69599999999994,
+        "meltPressure": 51.86054479293015,
+        "moldTemp": 40,
+        "clampForce": 1600,
+        "injPressure": 51.86054479293015,
+        "waterTemp": 24,
+        "coolFlow": 44.8,
+        "partWeight": 31.251344000000003,
+        "flash": 0,
+        "sink": 2.15,
+        "dimDev": 0.008606799999999953,
+        "cycleTime": 15.253919999999999
+      },
+      "exposed": {
+        "meltTemp": 246.80498666920093,
+        "meltPressure": 52.21846689717423,
+        "moldTemp": 40.26317228396209,
+        "clampForce": 1597.38004592082,
+        "injPressure": 51.83931897577484,
+        "waterTemp": 24.08229410290479,
+        "coolFlow": 44.77369100749593,
+        "partWeight": 31.227329686034256,
+        "flash": 0.0022431979749678397,
+        "sink": 2.191333959889894,
+        "dimDev": 0.007130751573425431,
+        "cycleTime": 15.253919999999999,
+        "image": 0
+      }
+    }
+  ],
+  "post_reset_readbacks": [
+    {
+      "device_id": "inj-machine-mbtcp",
+      "signal_id": "barrel-temp-1-sp",
+      "value": 240.0,
+      "unit": "℃",
+      "blueprint_value": 240.0,
+      "matches_blueprint": true
+    },
+    {
+      "device_id": "inj-machine-mbtcp",
+      "signal_id": "barrel-temp-2-sp",
+      "value": 246.0,
+      "unit": "℃",
+      "blueprint_value": 246.0,
+      "matches_blueprint": true
+    },
+    {
+      "device_id": "inj-machine-mbtcp",
+      "signal_id": "barrel-temp-3-sp",
+      "value": 252.0,
+      "unit": "℃",
+      "blueprint_value": 252.0,
+      "matches_blueprint": true
+    },
+    {
+      "device_id": "inj-machine-mbtcp",
+      "signal_id": "barrel-temp-4-sp",
+      "value": 258.0,
+      "unit": "℃",
+      "blueprint_value": 258.0,
+      "matches_blueprint": true
+    },
+    {
+      "device_id": "inj-machine-mbtcp",
+      "signal_id": "screw-speed-sp",
+      "value": 120.0,
+      "unit": "rpm",
+      "blueprint_value": 120.0,
+      "matches_blueprint": true
+    },
+    {
+      "device_id": "inj-mold-rtu",
+      "signal_id": "mold-temp-sp",
+      "value": 40.0,
+      "unit": "℃",
+      "blueprint_value": 40.0,
+      "matches_blueprint": true
+    },
+    {
+      "device_id": "inj-mold-rtu",
+      "signal_id": "clamp-force-sp",
+      "value": 1600.0,
+      "unit": "kN",
+      "blueprint_value": 1600.0,
+      "matches_blueprint": true
+    },
+    {
+      "device_id": "inj-inject-opcua",
+      "signal_id": "inject-speed-sp",
+      "value": 85.0,
+      "unit": "mm/s",
+      "blueprint_value": 85.0,
+      "matches_blueprint": true
+    },
+    {
+      "device_id": "inj-inject-opcua",
+      "signal_id": "hold-pressure-sp",
+      "value": 45.0,
+      "unit": "bar",
+      "blueprint_value": 45.0,
+      "matches_blueprint": true
+    },
+    {
+      "device_id": "inj-inject-opcua",
+      "signal_id": "hold-time-sp",
+      "value": 6.0,
+      "unit": "s",
+      "blueprint_value": 6.0,
+      "matches_blueprint": true
+    },
+    {
+      "device_id": "inj-cool-mqtt",
+      "signal_id": "cool-water-sp",
+      "value": 24.0,
+      "unit": "℃",
+      "blueprint_value": 24.0,
+      "matches_blueprint": true
+    }
+  ],
+  "post_reset_readbacks_match_blueprint": true,
+  "residual_tasks_or_approvals": "Root and child task were verified CANCELED; approval queue was empty; DCW journal had zero anchors and final control readbacks remained at blueprint values.",
+  "notes": "Loopback PLC simulator only. No physical PLC/plant was contacted. This is local closure, not a control-performance result."
+}

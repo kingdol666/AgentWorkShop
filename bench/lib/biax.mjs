@@ -363,17 +363,29 @@ export async function runBiaxMission(api, { instId, line, simDevices, sfx, maxRo
     const dec = sig.decimals ?? 2
     const next = Number(clamp(cur * (1 + err * knob.share), sig.min, sig.max).toFixed(dec))
     if (Math.abs(next - cur) < Math.max(10 ** -dec, (sig.max - sig.min) * 0.002)) { ev.push(`iter${i + 1}: ${knob.sig} 变更量过小(cur=${cur}),换下一旋钮`); continue }
-    const recipeId = line.ids?.recipeId ?? line.ids?.recipe
+    // v2 写面:guest 频道是 aml_optimization 档位,只认 optimization_explore。
+    // 其语义是「探索步」:direction+step(settle_seconds 缺省 45s,压到 10s;
+    // biax 自己在写后等运输滞后与稳定窗)。目标观测点 = 测厚仪。
+    const delta = next - cur
+    if (Math.abs(delta) < 1e-9) { ev.push(`iter${i + 1}: ${knob.sig} 同值跳过`); continue }
     const c = await api.call('POST', '/api/workshop/agent-tools/invoke', {
       agentId: instId,
-      tool: 'recipe_trial',
-      args: { recipe_id: recipeId, params: [{ node_id: nodeId, value: next }], hypothesis: `biax mission iter ${i + 1}: 厚度 ${thickness.toFixed(2)}μm 偏${err > 0 ? '厚' : '薄'},经 ${knob.sig} 校正 ${cur}→${next}` },
-    })
+      tool: 'optimization_explore',
+      args: {
+        control_node_id: nodeId,
+        target_node_id: thickDaq,
+        direction: delta >= 0 ? 'up' : 'down',
+        step: Number(Math.abs(delta).toFixed(3)),
+        settle_seconds: 10,
+        hypothesis: `biax mission iter ${i + 1}: 厚度 ${thickness.toFixed(2)}μm 偏${err > 0 ? '厚' : '薄'},经 ${knob.sig} 校正 ${cur}→${next}`,
+      },
+    }, 120_000)
     const cText = String(c.data?.result?.text ?? '')
     if (c.data?.result?.isError === true) { ev.push(`iter${i + 1}: ${knob.sig} 试验被拒 → ${cText.slice(0, 140)}`); continue }
     out.writes++
     out.distinctNodes.add(knob.sig)
-    const recordId = (cText.match(/批次\s+([A-Za-z0-9-]+)/) ?? [])[1] ?? null
+    // optimization_explore 回包:优化记录 <id> 已开窗(原 recipe_trial 是「批次 <id>」)
+    const recordId = (cText.match(/优化记录\s+([A-Za-z0-9._:-]+)\s+已开窗/) ?? [])[1] ?? null
     if (recordId) out.records.push(recordId)
     // 物理随动:运输滞后(铸片→测厚 ≈8s 实际)+ 一阶收敛;先等最小窗,再等稳定(有界 60s)
     const tw = Date.now()

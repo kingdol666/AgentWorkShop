@@ -1,0 +1,131 @@
+{
+  "audit_marker": true,
+  "audit_marker_reason": null,
+  "source_records": 9,
+  "tool_events": 8,
+  "completed_pairs": 4,
+  "actors_observed": [
+    "d92ba496-2129-462f-9fab-4a3e3d4bd599"
+  ],
+  "expected_actors": [
+    "d92ba496-2129-462f-9fab-4a3e3d4bd599",
+    "3b0a359f-ed8e-4707-931a-0fd008c35133",
+    "0e18fb99-70eb-4a33-af61-fdebe46920c9"
+  ],
+  "all_members_observed": false,
+  "raw_event_parse_errors": [],
+  "actor_role_mismatches": [],
+  "unapproved_tool_event_count": 2,
+  "platform_dispatch_to_each_worker": false,
+  "channel_event_total": 0,
+  "channel_events_collected": 0,
+  "channel_events_complete": true,
+  "journal_status": 200,
+  "journal_anchors": 0,
+  "journal_capped": false,
+  "ops_complete": true,
+  "ops_capped_windows": [],
+  "ops_errors": [],
+  "daq_samples_complete": true,
+  "daq_capped_windows": [],
+  "approval_history_complete": true,
+  "approval_history_capped_agents": [],
+  "goal_period_changed_anchors": 0,
+  "event_log_stability": {
+    "interval_ms": 1000,
+    "minimum_wait_ms": 60000,
+    "required_stable_intervals": 5,
+    "maximum_wait_ms": 120000,
+    "stable": true,
+    "timed_out": false,
+    "wait_ms": 60308,
+    "initial_size_bytes": 7422,
+    "final_size_bytes": 7422,
+    "initial_sha256": "1769c9cb88dd78f3faf5b18306b4221d11459e50e7102c1a4f0d2d002752fff7",
+    "final_sha256": "1769c9cb88dd78f3faf5b18306b4221d11459e50e7102c1a4f0d2d002752fff7",
+    "observations": [
+      {
+        "elapsed_ms": 0,
+        "size_bytes": 7422,
+        "sha256": "1769c9cb88dd78f3faf5b18306b4221d11459e50e7102c1a4f0d2d002752fff7"
+      },
+      {
+        "elapsed_ms": 1002,
+        "size_bytes": 7422,
+        "sha256": "1769c9cb88dd78f3faf5b18306b4221d11459e50e7102c1a4f0d2d002752fff7"
+      },
+      {
+        "elapsed_ms": 2005,
+        "size_bytes": 7422,
+        "sha256": "1769c9cb88dd78f3faf5b18306b4221d11459e50e7102c1a4f0d2d002752fff7"
+      },
+      {
+        "elapsed_ms": 3010,
+        "size_bytes": 7422,
+        "sha256": "1769c9cb88dd78f3faf5b18306b4221d11459e50e7102c1a4f0d2d002752fff7"
+      },
+      {
+        "elapsed_ms": 4014,
+        "size_bytes": 7422,
+        "sha256": "1769c9cb88dd78f3faf5b18306b4221d11459e50e7102c1a4f0d2d002752fff7"
+      },
+      {
+        "elapsed_ms": 5025,
+        "size_bytes": 7422,
+        "sha256": "1769c9cb88dd78f3faf5b18306b4221d11459e50e7102c1a4f0d2d002752fff7"
+      },
+      {
+        "elapsed_ms": 6026,
+        "size_bytes": 7422,
+        "sha256": "1769c9cb88dd78f3faf5b18306b4221d11459e50e7102c1a4f0d2d002752fff7"
+      },
+      {
+        "elapsed_ms": 7032,
+        "size_bytes": 7422,
+        "sha256": "1769c9cb88dd78f3faf5b18306b4221d11459e50e7102c1a4f0d2d002752fff7"
+      },
+      {
+        "elapsed_ms": 8035,
+        "size_bytes": 7422,
+        "sha256": "1769c9cb88dd78f3faf5b18306b4221d11459e50e7102c1a4f0d2d002752fff7"
+      },
+      {
+        "elapsed_ms": 9044,
+        "size_bytes": 7422,
+        "sha256": "1769c9cb88dd78f3faf5b18306b4221d11459e50e7102c1a4f0d2d002752fff7"
+      },
+      {
+        "elapsed_ms": 10057,
+        "size_bytes": 7422,
+        "sha256": "1769c9cb88dd78f3faf5b18306b4221d11459e50e7102c1a4f0d2d002752fff7"
+      },
+      {
+        "elapsed_ms": 11067,
+        "size_bytes": 7422,
+        "sha256": "1769c9cb88dd78f3faf5b18306b4221d11459e50e7102c1a4f0d2d002752fff7"
+      },
+      {
+        "elapsed_ms": 12075,
+        "size_bytes": 7422,
+        "sha256": "1769c9cb88dd78f3faf5b18306b4221d11459e50e7102c1a4f0d2d002752fff7"
+      },
+      {
+        "elapsed_ms": 13082,
+        "size_bytes": 7422,
+        "sha256": "1769c9cb88dd78f3faf5b18306b4221d11459e50e7102c1a4f0d2d002752fff7"
+      },
+      {
+        "elapsed_ms": 14087,
+        "size_bytes": 7422,
+        "sha256": "1769c9cb88dd78f3faf5b18306b4221d11459e50e7102c1a4f0d2d002752fff7"
+      },
+      {
+        "elapsed_ms": 15089,
+        "size_bytes": 7422,
+        "sha256": "1769c9cb88dd78f3faf5b18306b4221d11459e50e7102c1a4f0d2d002752fff7"
+      }
+    ],
+    "aw_listener_closed": false,
+    "aw_listener_check_error": null
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "qualification": {
+    "status": "NOT-QUALIFIED",
+    "reason": "初始 guard 已越界，拒绝启动任务: sink-mark=2.069"
+  },
+  "workflow_outcome": {
+    "status": "NOT-RUN",
+    "task_id": null
+  },
+  "evidence_integrity": {
+    "status": "NOT-RUN",
+    "reason": "初始 guard 已越界，拒绝启动任务: sink-mark=2.069"
+  }
+}

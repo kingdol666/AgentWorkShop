@@ -1,0 +1,368 @@
+{
+  "schema_version": "p12-run-manifest-v1",
+  "run_id": "p12-20261029-injection-recovery-11",
+  "started_at_utc": "2026-10-29T12:02:54.301Z",
+  "environment": {
+    "aw_base": "http://127.0.0.1:3123",
+    "sim_base": "http://127.0.0.1:4023",
+    "nitro_host": "127.0.0.1",
+    "simulator_bind": "127.0.0.1",
+    "aw_home_label": "dedicated isolated AW_HOME (path omitted)",
+    "aw_mode": "home",
+    "node": "v24.19.0"
+  },
+  "source": {
+    "commit": "356b576406d16e8abe7e42c312737d76e29f57fa",
+    "dirty_hash": "024d8b525cd7512cb567564ac4ef327a4ee25c17e2bec4db1993b72bb700ab73",
+    "tracked_diff_sha256": "2d726626fbadf28a1aa3e73d925327614850290795d5854532217e23d78d9f3a",
+    "source_file_hashes": {
+      "bench/PIPELINE/run-agentteam.mjs": "0ceaa4727b1483c50fe6377c62303f1662658698aec393b0f17324e3d36f9345",
+      "server/services/workshop/agents/omp-agent/agentteam-audit.ts": "0a5cc1889b532b55a7d2a2618a4f92a1cf7477ac7ed4c7f1435245195ae4af1f",
+      "server/services/workshop/agents/omp-agent/event-mapping.ts": "0041a2ee9778db621d4886e9c263ce1e9a3880dd1b03342f809eb72e396de8df",
+      "server/services/workshop/agents/omp-agent/tools-steer.ts": "42c248610af63c8349485920653271c0efc4e8fe9d8ab61940f5536d5ecb79aa",
+      ".output/server/index.mjs": "7b8fde3cd0fca353a685b596d92dc1f03ca90ad13487f041e49884f28252e6f3"
+    },
+    "lockfile_sha256": "a700582071a884225f47d11450ebcdee7fc3fa7a488fc4f35c0f5641d640af9e",
+    "simulator": {
+      "source_root_label": "plc-node-simulator",
+      "source_commit": "d47eb7c0a7ae5e84d306a332d64844e4ea2499ac",
+      "source_dirty_diff_sha256": "acc96aab9ca229dd78e8a1f94b186e1b6a095091dba40827cfe831bba412e219",
+      "source_status_sha256": "263ff1efa095ee9a0f40f277547fb064273c58cd0472f9b32db998457b3a322b",
+      "source_tree_sha256": "bced5ada2b4ac768a14dba37a218c01690b1da4aaeaceb580f7645b161981c5e",
+      "source_file_count": 28,
+      "source_file_sha256": {
+        "package-lock.json": "bdd14b62fb0041aef776f2a851e6871856f9025d2b91a5ba497b3ec115d9f37b",
+        "package.json": "fea8c1172cf18d51f31acdbfdabbe67aa6c88e292961ecd19be0e7103be520fd",
+        "src/server/api.ts": "3b78688e580b5dacfeac325ad6aaa714d928a938b8d8d7da3a4375ac31922b40",
+        "src/server/bus.ts": "2065a8c7ecd7e343ade094dca5eaf0a77763eac60388ffe8baa4355bcd94913c",
+        "src/server/engine/anneal-model.ts": "06d682bf7e0f802d7a12fe24653e22d97fc91df4c4243ac7eecdb9252cd235ed",
+        "src/server/engine/biax-model.ts": "d855688d0ac26cb7d30c23d4fcdaa681f0a5ae095b4740d246062d7d1e46e052",
+        "src/server/engine/faults.ts": "999613e78ced911986b5802af48f2100839842ec08ef9c307398411e108bfc95",
+        "src/server/engine/injection-model.ts": "c9ed4c65cec4cf83013b7cb4123786edebaf32d89bf6e813ceed0e951088630a",
+        "src/server/engine/plant-model.ts": "ba953234b839271822216beeb404ebf39727d266be13a3e4f148fdac9695e108",
+        "src/server/engine/plant-runtime.ts": "9125e195b866d838a9aa7e37749f0242c8c7457a6b4732ee20a5e5a493d903c6",
+        "src/server/engine/png-enc.ts": "c6803ddcfdda1d8cdc5bc2e1f6922a52030b86cd417449d60fdb67b0857b0e1e",
+        "src/server/engine/registers.ts": "ed0deb9c831ba8ec92ea961fd3b5d27e77581569ceef36186b3160193d43b943",
+        "src/server/engine/signals.ts": "badf71f0c6bbec1bf28cd784fdf5f0806da40bbbdbc1a44a5bce6829dd94fd1b",
+        "src/server/engine/wwtp-model.ts": "121b63563ec3783c2146b357fbd38520ee2f1eb479f9ca8d56a9c30121a82f1b",
+        "src/server/index.ts": "38a0babb8453afcc4e532432f61cb88a7eaea63b8bbbc99a6b7ff58e6012a98c",
+        "src/server/presets.ts": "de93537a9bf89d34693b5db06ed6885349aa560ca83c10326b9d13a235d48ad3",
+        "src/server/protocols/http-endpoint.ts": "7f2b5bf30bf2c740ce9840a901eb4aa0252049ee840b2cc61843b526c7bff5c7",
+        "src/server/protocols/modbus-core.ts": "9a1b45cb588f8f5405e0b32de28b659a105e9d1380422c0534c488ac9a90db06",
+        "src/server/protocols/modbus-rtu.ts": "4dc252aebaba307fff26c3f8ea3dd68ac4b67d23523ef295148a505c9613fb96",
+        "src/server/protocols/modbus-tcp.ts": "f56f3e90e238c287d3ec54ced771aadcc4464a931e67c335c64c35400d67bcaf",
+        "src/server/protocols/mqtt-broker.ts": "e4444df49837f700a0ba6bd7db1f0393f9e8237e4f16eadb522d1e49bde58dc4",
+        "src/server/protocols/mqtt.ts": "2ec197cb8e0c18c69cf4ddfb0c66a136d0f3dd4e5b4c1a6e9a33891454dde1ca",
+        "src/server/protocols/opcua.ts": "6f2a1c30bb0ebd39cc2379423c0dec92750b281a763cb97021ccac6ee98ab66e",
+        "src/server/protocols/registry.ts": "9cc963fdcca916b63f7cd9dbd2997387956365e9c86933525a2d5213745c85e5",
+        "src/server/runtime.ts": "88fbfe775951d883e49c955af2fe3aecc83d707489d1d46361fc2c17cf1d3632",
+        "src/server/store.ts": "db4441046060e40eac02a31297d5530be16800702ff3185900f26e0e16c4e486",
+        "src/shared/types.ts": "8521b1de2f4d92fdb6a10526721949b814981369db94b0ff9fd90ea159001170",
+        "tsconfig.json": "8876a947ebc50a157b5054d227e32211461aeea86f6801be3dc00375f2fc18aa"
+      },
+      "shadow_root_label": "runtime/simulator (SIM_SHADOW_DIR)",
+      "shadow_tree_sha256": "52ea07512277ce94fae2c4fd921d61b3ef41d8ec6a599e01b0dec8cc6067312c",
+      "shadow_file_count": 28,
+      "shadow_file_sha256": {
+        "package-lock.json": "bdd14b62fb0041aef776f2a851e6871856f9025d2b91a5ba497b3ec115d9f37b",
+        "package.json": "fea8c1172cf18d51f31acdbfdabbe67aa6c88e292961ecd19be0e7103be520fd",
+        "src/server/api.ts": "bd5fb7b137382b2c6ba33d9851e6e885b4611f85a2a1fc83a9249bd62c122682",
+        "src/server/bus.ts": "2065a8c7ecd7e343ade094dca5eaf0a77763eac60388ffe8baa4355bcd94913c",
+        "src/server/engine/anneal-model.ts": "06d682bf7e0f802d7a12fe24653e22d97fc91df4c4243ac7eecdb9252cd235ed",
+        "src/server/engine/biax-model.ts": "d855688d0ac26cb7d30c23d4fcdaa681f0a5ae095b4740d246062d7d1e46e052",
+        "src/server/engine/faults.ts": "999613e78ced911986b5802af48f2100839842ec08ef9c307398411e108bfc95",
+        "src/server/engine/injection-model.ts": "c9ed4c65cec4cf83013b7cb4123786edebaf32d89bf6e813ceed0e951088630a",
+        "src/server/engine/plant-model.ts": "ba953234b839271822216beeb404ebf39727d266be13a3e4f148fdac9695e108",
+        "src/server/engine/plant-runtime.ts": "9125e195b866d838a9aa7e37749f0242c8c7457a6b4732ee20a5e5a493d903c6",
+        "src/server/engine/png-enc.ts": "c6803ddcfdda1d8cdc5bc2e1f6922a52030b86cd417449d60fdb67b0857b0e1e",
+        "src/server/engine/registers.ts": "ed0deb9c831ba8ec92ea961fd3b5d27e77581569ceef36186b3160193d43b943",
+        "src/server/engine/signals.ts": "badf71f0c6bbec1bf28cd784fdf5f0806da40bbbdbc1a44a5bce6829dd94fd1b",
+        "src/server/engine/wwtp-model.ts": "121b63563ec3783c2146b357fbd38520ee2f1eb479f9ca8d56a9c30121a82f1b",
+        "src/server/index.ts": "38a0babb8453afcc4e532432f61cb88a7eaea63b8bbbc99a6b7ff58e6012a98c",
+        "src/server/presets.ts": "5ee392b5e6a19c03f7517ed7c06eda5fe5323a409d69a9736c1c445e9dd16dab",
+        "src/server/protocols/http-endpoint.ts": "7f2b5bf30bf2c740ce9840a901eb4aa0252049ee840b2cc61843b526c7bff5c7",
+        "src/server/protocols/modbus-core.ts": "9a1b45cb588f8f5405e0b32de28b659a105e9d1380422c0534c488ac9a90db06",
+        "src/server/protocols/modbus-rtu.ts": "4dc252aebaba307fff26c3f8ea3dd68ac4b67d23523ef295148a505c9613fb96",
+        "src/server/protocols/modbus-tcp.ts": "f56f3e90e238c287d3ec54ced771aadcc4464a931e67c335c64c35400d67bcaf",
+        "src/server/protocols/mqtt-broker.ts": "e4444df49837f700a0ba6bd7db1f0393f9e8237e4f16eadb522d1e49bde58dc4",
+        "src/server/protocols/mqtt.ts": "11c5133faf17678646699f60ba10905fcd7f95e98dafd5503bd290c35ee7a5ea",
+        "src/server/protocols/opcua.ts": "6f2a1c30bb0ebd39cc2379423c0dec92750b281a763cb97021ccac6ee98ab66e",
+        "src/server/protocols/registry.ts": "9cc963fdcca916b63f7cd9dbd2997387956365e9c86933525a2d5213745c85e5",
+        "src/server/runtime.ts": "88fbfe775951d883e49c955af2fe3aecc83d707489d1d46361fc2c17cf1d3632",
+        "src/server/store.ts": "db4441046060e40eac02a31297d5530be16800702ff3185900f26e0e16c4e486",
+        "src/shared/types.ts": "8521b1de2f4d92fdb6a10526721949b814981369db94b0ff9fd90ea159001170",
+        "tsconfig.json": "8876a947ebc50a157b5054d227e32211461aeea86f6801be3dc00375f2fc18aa"
+      },
+      "shadow_matches_source_and_port_transform": true,
+      "excluded_from_tree_hashes": [
+        "**/.git/**",
+        "**/node_modules/**",
+        "**/data/**"
+      ],
+      "dirty_hash": "de494b2b3aef65a4cb27b0a396d364218168b175dc6d84013dccd166a40247dd"
+    }
+  },
+  "scenario_id": "injection",
+  "seed": 12026,
+  "harness": "omp",
+  "provider": "lm-studio",
+  "model": "qwen3.5-9b-64k",
+  "harness_runtime": {
+    "built_in_tools_disabled": true,
+    "extension_discovery_disabled": true,
+    "launch_args": [
+      "--no-tools",
+      "--no-extensions"
+    ],
+    "platform_host_tools_registered_separately": true
+  },
+  "auth_reference": "none:a303533a834bfdf12558be7142e6fcd2a8082c963d8ccf67796aa1ab36772902",
+  "results_scope": "single true AgentTeam episode; simulator only; no physical PLC validation",
+  "budget_minutes": 90,
+  "timing": {
+    "daq_sample_time_basis": "platform DAQ API point.at as Unix epoch milliseconds",
+    "freshness_rule": "0 <= runner UTC now - sample point.at <= 15000 ms",
+    "goal_t0_source": "runner UTC timestamp immediately before goal submission",
+    "watermark_source": "bounded DAQ API from/to windows and returned point.at values; no server cursor exposed",
+    "pre_goal_daq_readiness": {
+      "status": "PASS",
+      "completed_at_utc": "2026-10-29T12:03:12.827Z",
+      "timeout_ms": 30000,
+      "signal_sample_times_ms": {
+        "part-weight": [
+          1793275390000,
+          1793275391000
+        ],
+        "flash-rate": [
+          1793275390000,
+          1793275391000
+        ],
+        "sink-mark": [
+          1793275390000,
+          1793275391000
+        ]
+      },
+      "controller": {
+        "running": true,
+        "defaultIntervalMs": 5000,
+        "minIntervalMs": 1000,
+        "defaultPublishIntervalMs": 1000,
+        "minPublishIntervalMs": 0,
+        "queryDisplayIntervalMs": 5000,
+        "minQueryDisplayIntervalMs": 500,
+        "nodesTotal": 14,
+        "nodesOnline": 14,
+        "produced": 88,
+        "consumed": 20736,
+        "dropped": 0,
+        "samplesStored": 78,
+        "tsdbDropped": 0,
+        "alarmsRaised": 2,
+        "framesStored": 0
+      }
+    },
+    "goal_t0_utc": "2026-10-29T12:03:12.827Z"
+  },
+  "event_log_file": "events.raw.jsonl",
+  "initial_guards": {
+    "flash-rate": {
+      "value": 0,
+      "at_ms": 1793275389000,
+      "unit": "%",
+      "min": null,
+      "max": 0.4,
+      "sensor_min": 0,
+      "sensor_max": 5,
+      "baseline_sample_count": 5,
+      "baseline_start_at_ms": 1793275385000,
+      "baseline_span_ms": 4000,
+      "baseline_median": 0.008,
+      "baseline_mad": 0.008,
+      "quantization_step": 0.001,
+      "observation_noise_sigma_floor": 0,
+      "worsening_tolerance": 0.0355824,
+      "hard_stop_min": null,
+      "hard_stop_max": null,
+      "violated_at_baseline": false,
+      "violation_direction": null,
+      "recoverable_quality_violation": false,
+      "within_sensor_range": true
+    },
+    "sink-mark": {
+      "value": 2.121,
+      "at_ms": 1793275389000,
+      "unit": "%",
+      "min": null,
+      "max": 1.5,
+      "sensor_min": 0,
+      "sensor_max": 10,
+      "baseline_sample_count": 5,
+      "baseline_start_at_ms": 1793275385000,
+      "baseline_span_ms": 4000,
+      "baseline_median": 2.121,
+      "baseline_mad": 0.051000000000000156,
+      "quantization_step": 0.001,
+      "observation_noise_sigma_floor": 0.09,
+      "worsening_tolerance": 0.27,
+      "hard_stop_min": null,
+      "hard_stop_max": 2.5,
+      "violated_at_baseline": true,
+      "violation_direction": "high",
+      "recoverable_quality_violation": true,
+      "within_sensor_range": true
+    }
+  },
+  "guard_recovery_policy": {
+    "recoverable_quality_signals": [
+      "sink-mark"
+    ],
+    "minimum_baseline_samples": 5,
+    "minimum_baseline_span_ms": 4000,
+    "baseline_freshness_ms": 15000,
+    "baseline_worsening_tolerance": "max(5 sensor quantization steps, 3 x 1.4826 x baseline MAD, 3 x registered observation-noise sigma)",
+    "observation_noise_sigma_floors": {
+      "sink-mark": 0.09
+    },
+    "observation_noise_source": "injection sink-mark exposed noise sigma = noiseQuality * 3 = 0.03 * 3 = 0.09% from the pinned simulator model; floors are pre-registered, not estimated from outcome data",
+    "hard_stop_limits": {
+      "sink-mark": {
+        "max": 2.5
+      }
+    },
+    "non_hard_stop_worsening_persistence": {
+      "consecutive_fresh_samples": 3,
+      "minimum_span_ms": 2000,
+      "maximum_gap_ms": 5000
+    },
+    "monitoring": "An initially in-spec guard breach and any registered hard-stop limit stop immediately. For an initially out-of-spec registered recovery quality guard, a non-hard-stop worsening beyond baseline+tolerance stops only after 3 distinct fresh samples are consecutively above threshold, spanning at least 2 s with no gap over 5 s; compliant/recovering samples reset the streak. Opposite-bound breaches stop immediately.",
+    "final_acceptance": "Every guard must be fresh and within its registered quality limits.",
+    "scope": "injection simulator quality recovery; not a physical safety envelope or physical PLC validation"
+  },
+  "initial_pv": {
+    "signal": "part-weight",
+    "value": 31.28,
+    "at_ms": 1793275389000,
+    "unit": "g"
+  },
+  "initial_setpoints": {
+    "hold-pressure-sp": {
+      "node_id": "dw-378b1992",
+      "cached_value": 45,
+      "value": 45,
+      "unit": "bar",
+      "min": 20,
+      "max": 110,
+      "decimals": 1,
+      "state": "ok"
+    },
+    "hold-time-sp": {
+      "node_id": "dw-9be46cc4",
+      "cached_value": 6,
+      "value": 6,
+      "unit": "s",
+      "min": 3,
+      "max": 15,
+      "decimals": 1,
+      "state": "ok"
+    }
+  },
+  "simulator_reset": {
+    "seed": 12026,
+    "sp_reset": [
+      {
+        "device_id": "inj-machine-mbtcp",
+        "signal_id": "barrel-temp-1-sp",
+        "value": 240
+      },
+      {
+        "device_id": "inj-machine-mbtcp",
+        "signal_id": "barrel-temp-2-sp",
+        "value": 246
+      },
+      {
+        "device_id": "inj-machine-mbtcp",
+        "signal_id": "barrel-temp-3-sp",
+        "value": 252
+      },
+      {
+        "device_id": "inj-machine-mbtcp",
+        "signal_id": "barrel-temp-4-sp",
+        "value": 258
+      },
+      {
+        "device_id": "inj-machine-mbtcp",
+        "signal_id": "screw-speed-sp",
+        "value": 120
+      },
+      {
+        "device_id": "inj-mold-rtu",
+        "signal_id": "mold-temp-sp",
+        "value": 40
+      },
+      {
+        "device_id": "inj-mold-rtu",
+        "signal_id": "clamp-force-sp",
+        "value": 1600
+      },
+      {
+        "device_id": "inj-inject-opcua",
+        "signal_id": "inject-speed-sp",
+        "value": 85
+      },
+      {
+        "device_id": "inj-inject-opcua",
+        "signal_id": "hold-pressure-sp",
+        "value": 45
+      },
+      {
+        "device_id": "inj-inject-opcua",
+        "signal_id": "hold-time-sp",
+        "value": 6
+      },
+      {
+        "device_id": "inj-cool-mqtt",
+        "signal_id": "cool-water-sp",
+        "value": 24
+      }
+    ],
+    "plant_reset": {
+      "enabled": true,
+      "running": true,
+      "kind": "injection",
+      "phase": "steady",
+      "disturbances": {},
+      "timeScale": 1,
+      "configuredTimeScale": 1,
+      "engines": [
+        {
+          "id": "injection",
+          "kind": "injection",
+          "phase": "warmup",
+          "running": true,
+          "elapsedS": 0.5,
+          "seed": 12026
+        }
+      ]
+    }
+  },
+  "channel_id": "a387d5fb-f70c-4380-8b49-bb25185188cc",
+  "team_id": "2a9d0fb8-ed3c-49b8-bf6c-f5756f7d9ff9",
+  "lead_agent_id": "d04f676e-6174-4d10-9247-db282ab9ddb1",
+  "worker_agent_ids": [
+    "d1730288-c213-4f62-a159-f49d93c87d92",
+    "9c95f542-7240-478f-a2e4-3b08a68034b4"
+  ],
+  "root_task_id": "cb919218-46d3-489e-b59c-063797273c38",
+  "line_id": "ln-7b136aeb",
+  "product_id": "pd-f9795a7f",
+  "recipe_id": "rc-ec4c0c9f",
+  "goal_created_at_utc": "2026-10-29T12:03:12.827Z",
+  "simulator_devices": [
+    "inj-machine-mbtcp",
+    "inj-mold-rtu",
+    "inj-inject-opcua",
+    "inj-cool-mqtt",
+    "inj-inspect-http"
+  ],
+  "team_condition": "real_omp_agentteam"
+}

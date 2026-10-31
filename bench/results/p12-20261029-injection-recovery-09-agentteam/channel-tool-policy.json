@@ -1,0 +1,48 @@
+{
+  "channel_id": "a6313fbc-565f-49df-98e2-3cc57c61b0e2",
+  "mode": "selected",
+  "source": "explicit",
+  "selected_tools": [
+    "complete_task",
+    "daq_query",
+    "dcw_journal",
+    "dcw_judge",
+    "dispatch_task",
+    "get_task_details",
+    "line_context",
+    "list_team_agents",
+    "my_industrial_nodes",
+    "optimization_explore",
+    "report_progress"
+  ],
+  "catalog_tool_count": 125,
+  "disabled_tool_count": 87,
+  "effective_by_role": {
+    "lead": [
+      "complete_task",
+      "daq_query",
+      "dcw_journal",
+      "dcw_judge",
+      "dispatch_task",
+      "get_task_details",
+      "line_context",
+      "list_team_agents",
+      "my_industrial_nodes",
+      "optimization_explore",
+      "report_progress"
+    ],
+    "worker": [
+      "complete_task",
+      "daq_query",
+      "dcw_journal",
+      "dcw_judge",
+      "get_task_details",
+      "line_context",
+      "list_team_agents",
+      "my_industrial_nodes",
+      "optimization_explore",
+      "report_progress"
+    ]
+  },
+  "readback_verified": true
+}

@@ -1,0 +1,223 @@
+{
+  "qualification": {
+    "status": "PASS",
+    "isolated_preflight": true,
+    "team_size": 3,
+    "exact_one_lead_two_workers": true,
+    "all_harness_omp": true,
+    "dcw_control_absent_from_all_members": true,
+    "lead_dcw_write_bindings": 0,
+    "disjoint_worker_write_sets": true,
+    "initial_guard_recovery": {
+      "policy": {
+        "recoverable_quality_signals": [
+          "sink-mark"
+        ],
+        "minimum_baseline_samples": 5,
+        "minimum_baseline_span_ms": 4000,
+        "baseline_freshness_ms": 15000,
+        "baseline_worsening_tolerance": "max(5 sensor quantization steps, 3 x 1.4826 x baseline MAD, 3 x registered observation-noise sigma)",
+        "observation_noise_sigma_floors": {
+          "sink-mark": 0.09
+        },
+        "observation_noise_source": "injection sink-mark exposed noise sigma = noiseQuality * 3 = 0.03 * 3 = 0.09% from the pinned simulator model; floors are pre-registered, not estimated from outcome data",
+        "hard_stop_limits": {
+          "sink-mark": {
+            "max": 2.5
+          }
+        },
+        "monitoring": "An initially in-spec guard breach stops immediately. An initially out-of-spec registered quality guard may only remain within its initial violation direction and within baseline+tolerance; opposite-bound breaches, registered hard-stop limits, or material worsening stop.",
+        "final_acceptance": "Every guard must be fresh and within its registered quality limits.",
+        "scope": "injection simulator quality recovery; not a physical safety envelope or physical PLC validation"
+      },
+      "baseline": {
+        "flash-rate": {
+          "value": 0,
+          "at_ms": 1793263139000,
+          "unit": "%",
+          "min": null,
+          "max": 0.4,
+          "sensor_min": 0,
+          "sensor_max": 5,
+          "baseline_sample_count": 5,
+          "baseline_start_at_ms": 1793263135000,
+          "baseline_span_ms": 4000,
+          "baseline_median": 0.008,
+          "baseline_mad": 0.008,
+          "quantization_step": 0.001,
+          "observation_noise_sigma_floor": 0,
+          "worsening_tolerance": 0.0355824,
+          "hard_stop_min": null,
+          "hard_stop_max": null,
+          "violated_at_baseline": false,
+          "violation_direction": null,
+          "recoverable_quality_violation": false,
+          "within_sensor_range": true
+        },
+        "sink-mark": {
+          "value": 2.121,
+          "at_ms": 1793263139000,
+          "unit": "%",
+          "min": null,
+          "max": 1.5,
+          "sensor_min": 0,
+          "sensor_max": 10,
+          "baseline_sample_count": 5,
+          "baseline_start_at_ms": 1793263135000,
+          "baseline_span_ms": 4000,
+          "baseline_median": 2.121,
+          "baseline_mad": 0.051000000000000156,
+          "quantization_step": 0.001,
+          "observation_noise_sigma_floor": 0.09,
+          "worsening_tolerance": 0.27,
+          "hard_stop_min": null,
+          "hard_stop_max": 2.5,
+          "violated_at_baseline": true,
+          "violation_direction": "high",
+          "recoverable_quality_violation": true,
+          "within_sensor_range": true
+        }
+      }
+    }
+  },
+  "workflow_outcome": {
+    "status": "FAIL",
+    "task_state": "CANCELED",
+    "all_tasks_terminal": true,
+    "pending_approvals": 0,
+    "designated_worker_tasks_completed": false,
+    "pv_initial": 31.28,
+    "pv_final": 31.32,
+    "target": {
+      "sig": "part-weight",
+      "target": 32.5,
+      "tol": 0.35,
+      "unit": "g",
+      "label": "制品克重"
+    },
+    "in_band": false,
+    "guards_ok": false,
+    "guards_fresh": true,
+    "guard_checks": [
+      {
+        "signal": "flash-rate",
+        "latest": {
+          "at_ms": 1793263244000,
+          "value": 0.014
+        },
+        "min": null,
+        "max": 0.4,
+        "fresh": true,
+        "within": true
+      },
+      {
+        "signal": "sink-mark",
+        "latest": {
+          "at_ms": 1793263244000,
+          "value": 2.135
+        },
+        "min": null,
+        "max": 1.5,
+        "fresh": true,
+        "within": false
+      }
+    ],
+    "fresh_pv_sample_after_goal": true,
+    "changed_goal_anchors": 0,
+    "stop_reason": "guard worsened/breached: sink-mark=2.4"
+  },
+  "evidence_integrity": {
+    "status": "FAIL",
+    "complete_actor_task_tool_pairs": false,
+    "event_log_stability": {
+      "interval_ms": 1000,
+      "minimum_wait_ms": 60000,
+      "required_stable_intervals": 5,
+      "maximum_wait_ms": 120000,
+      "stable": true,
+      "timed_out": false,
+      "wait_ms": 60284,
+      "initial_size_bytes": 1534,
+      "final_size_bytes": 1534,
+      "observations": [
+        {
+          "elapsed_ms": 0,
+          "size_bytes": 1534
+        },
+        {
+          "elapsed_ms": 1004,
+          "size_bytes": 1534
+        },
+        {
+          "elapsed_ms": 2013,
+          "size_bytes": 1534
+        },
+        {
+          "elapsed_ms": 3015,
+          "size_bytes": 1534
+        },
+        {
+          "elapsed_ms": 4016,
+          "size_bytes": 1534
+        },
+        {
+          "elapsed_ms": 5019,
+          "size_bytes": 1534
+        },
+        {
+          "elapsed_ms": 6022,
+          "size_bytes": 1534
+        },
+        {
+          "elapsed_ms": 7030,
+          "size_bytes": 1534
+        },
+        {
+          "elapsed_ms": 8034,
+          "size_bytes": 1534
+        },
+        {
+          "elapsed_ms": 9038,
+          "size_bytes": 1534
+        },
+        {
+          "elapsed_ms": 10039,
+          "size_bytes": 1534
+        },
+        {
+          "elapsed_ms": 11051,
+          "size_bytes": 1534
+        },
+        {
+          "elapsed_ms": 12053,
+          "size_bytes": 1534
+        },
+        {
+          "elapsed_ms": 13062,
+          "size_bytes": 1534
+        },
+        {
+          "elapsed_ms": 14071,
+          "size_bytes": 1534
+        },
+        {
+          "elapsed_ms": 15079,
+          "size_bytes": 1534
+        }
+      ]
+    },
+    "source_records": 3,
+    "tool_call_pairs": 1,
+    "run_scoped_source": true,
+    "run_scoped_source_reason": null,
+    "accepted_dcw_writes": 0,
+    "changed_goal_anchors": 0,
+    "device_readbacks": 0,
+    "missing_device_readbacks": 0,
+    "approvals_verified": 0,
+    "missing_or_invalid_approvals": 0,
+    "pending_approvals": 0,
+    "all_tasks_terminal": true,
+    "agents_stopped": true
+  }
+}

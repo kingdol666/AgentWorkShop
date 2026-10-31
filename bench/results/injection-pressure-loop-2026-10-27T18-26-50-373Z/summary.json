@@ -1,0 +1,105 @@
+{
+  "at": "2026-10-27T18:26:50.373Z",
+  "base": "http://127.0.0.1:3470",
+  "line": "ln-e27a1867",
+  "recipe": "rc-b09a45f6",
+  "optimizer": "2081ad04-5be2-448c-80f4-7bed7a923a8d",
+  "baseline": {
+    "p": 55,
+    "t": 8,
+    "q": {
+      "weight": 31.85,
+      "flash": 0.031,
+      "sink": 1.502,
+      "melt": 246.1,
+      "lastAt": 1793125080124,
+      "offline": false
+    }
+  },
+  "final": {
+    "weight": 31.8,
+    "flash": 0.007,
+    "sink": 1.646,
+    "melt": 247,
+    "lastAt": 1793125544064,
+    "offline": false
+  },
+  "finalOk": false,
+  "update": null,
+  "journal": "窗口内无优化记录(该节点/配方尚无 Agent 调控历史)。",
+  "recipeLog": "Recipe 变更史(产线 注塑成型质量窗口寻优 injection-mission1[ln-e27a1867]; 配方 scen-injection-recipe-mission1[rc-b09a45f6], 近 60 分钟, 30 条, 新→旧):\n- [10-28 02:25:45] 配方试验 scope=line 产线=注塑成型质量窗口寻优 injection-mission1[ln-e27a1867] 配方=scen-injection-recipe-mission1[rc-b09a45f6] 产品=scen-injection-product-mission1[pd-a4ccfc08] | 来源=Agent 操作者=注塑配方闭环验证-suite/工艺优化 | 【应急】配方试验整批下发(证实 2/2,未证实 0,失败 0,批次 rr-dd079):dw-05bba→55;dw-1bf2f→8 | 假设:真实闭环 P6:最终 weight=31.8g flash=0.007% sink=1.646% melt=247℃ 未入窗,恢复基线保压 55bar/时间 8s 保护现场。\n- [10-28 02:25:45] 下发回执 scope=line 产线=注塑成型质量窗口寻优 injection-mission1[ln-e27a1867] 配方=scen-injection-recipe-mission1[rc-b09a45f6] 产品=scen-injection-product-mission1[pd-a4ccfc08] | 来源=系统 操作者=Agent 整批下发 | 批次 rr-dd079 ACK 鉴定:证实 2/2,未证实 0,失败 0\n- [10-28 02:24:39] 配方试验 scope=line 产线=注塑成型质量窗口寻优 injection-mission1[ln-e27a1867] 配方=scen-injection-recipe-mission1[rc-b09a45f6] 产品=scen-injection-product-mission1[pd-a4ccfc08] | 来源=Agent 操作者=注塑配方闭环验证-suite/工艺优化 | 【应急】配方试验整批下发(证实 1/1,未证实 0,失败 0,批次 rr-896a6):dw-1bf2f→9 | 假设:真实闭环 P4:保压寻优后 weight=31.88g flash=0.03% sink=1.412% melt=246.8℃ 仍未全窗,单变量保压时间 8→9s。\n- [10-28 02:24:39] 下发回执 scope=line 产线=注塑成型质量窗口寻优 injection-mission1[ln-e27a1867] 配方=scen-injection-recipe-mission1[rc-b09a45f6] 产品=scen-injection-product-mission1[pd-a4ccfc08] | 来源=系统 操作者=Agent 整批下发 | 批次 rr-896a6 ACK 鉴定:证实 1/1,未证实 0,失败 0\n- [10-28 02:23:33] 配方试验 scope=line 产线=注塑成型质量窗口寻优 injection-mission1[ln-e27a1867] 配方=scen-injection-recipe-mission1[rc-b09a45f6] 产品=scen-injection-product-mission1[pd-a4ccfc08] | 来源=Agent 操作者=注塑配方闭环验证-suite/工艺优化 | 【应急】配方试验整批下发(证实 1/1,未证实 0,失败 0,批次 rr-8f6eb):dw-05bba→85 | 假设:真实闭环 P3-6:克重 31.85g、缩痕 1.654%,保压 80→85bar(单变量);65s 后 DAQ 复测。\n- [10-28 02:23:33] 下发回执 scope=line 产线=注塑成型质量窗口寻优 injection-mission1[ln-e27a1867] 配方=scen-injection-recipe-mission1[rc-b09a45f6] 产品=scen-injection-product-mission1[pd-a4ccfc08] | 来源=系统 操作者=Agent 整批下发 | 批次 rr-8f6eb ACK 鉴定:证实 1/1,未证实 0,失败 0\n- [10-28 02:22:27] 配方试验 scope=line 产线=注塑成型质量窗口寻优 injection-mission1[ln-e27a1867] 配方=scen-injection-recipe-mission1[rc-b09a45f6] 产品=scen-injection-product-mission1[pd-a4ccfc08] | 来源=Agent 操作者=注塑配方闭环验证-suite/工艺优化 | 【应急】配方试验整批下发(证实 1/1,未证实 0,失败 0,批次 rr-3ca4e):dw-05bba→80 | 假设:真实闭环 P3-5:克重 31.89g、缩痕 1.448%,保压 75→80bar(单变量);65s 后 DAQ 复测。\n- [10-28 02:22:27] 下发回执 scope=line 产线=注塑成型质量窗口寻优 injection-mission1[ln-e27a1867] 配方=scen-injection-recipe-mission1[rc-b09a45f6] 产品=scen-injection-product-mission1[pd-a4ccfc08] | 来源=系统 操作者=Agent 整批下发 | 批次 rr-3ca4e ACK 鉴定:证实 1/1,未证实 0,失败 0\n- [10-28 02:21:20] 配方试验 scope=line 产线=注塑成型质量窗口寻优 injection-mission1[ln-e27a1867] 配方=scen-injection-recipe-mission1[rc-b09a45f6] 产品=scen-injection-product-mission1[pd-a4ccfc08] | 来源=Agent 操作者=注塑配方闭环验证-suite/工艺优化 | 【应急】配方试验整批下发(证实 1/1,未证实 0,失败 0,批次 rr-dda9c):dw-05bba→75 | 假设:真实闭环 P3-4:克重 31.92g、缩痕 1.481%,保压 70→75bar(单变量);65s 后 DAQ 复测。\n- [10-28 02:21:20] 下发回执 scope=line 产线=注塑成型质量窗口寻优 injection-mission1[ln-e27a1867] 配方=scen-injection-recipe-mission1[rc-b09a45f6] 产品=scen-injection-product-mission1[pd-a4ccfc08] | 来源=系统 操作者=Agent 整批下发 | 批次 rr-dda9c ACK 鉴定:证实 1/1,未证实 0,失败 0\n- [10-28 02:20:14] 配方试验 scope=line 产线=注塑成型质量窗口寻优 injection-mission1[ln-e27a1867] 配方=scen-injection-recipe-mission1[rc-b09a45f6] 产品=scen-injection-product-mission1[pd-a4ccfc08] | 来源=Agent 操作者=注塑配方闭环验证-suite/工艺优化 | 【应急】配方试验整批下发(证实 1/1,未证实 0,失败 0,批次 rr-cc367):dw-05bba→70 | 假设:真实闭环 P3-3:克重 31.86g、缩痕 1.364%,保压 65→70bar(单变量);65s 后 DAQ 复测。\n- [10-28 02:20:14] 下发回执 scope=line 产线=注塑成型质量窗口寻优 injection-mission1[ln-e27a1867] 配方=scen-injection-recipe-mission1[rc-b09a45f6] 产品=scen-injection-product-mission1[pd-a4ccfc08] | 来源=系统 操作者=Agent 整批下发 | 批次 rr-cc367 ACK 鉴定:证实 1/1,未证实 0,失败 0\n- [10-28 02:19:07] 配方试验 scope=line 产线=注塑成型质量窗口寻优 injection-mission1[ln-e27a1867] 配方=scen-injection-recipe-mission1[rc-b09a45f6] 产品=scen-injection-product-mission1[pd-a4ccfc08] | 来源=Agent 操作者=注塑配方闭环验证-suite/工艺优化 | 【应急】配方试验整批下发(证实 1/1,未证实 0,失败 0,批次 rr-4c27a):dw-05bba→65 | 假设:真实闭环 P3-2:克重 31.89g、缩痕 1.611%,保压 60→65bar(单变量);65s 后 DAQ 复测。\n- [10-28 02:19:07] 下发回执 scope=line 产线=注塑成型质量窗口寻优 injection-mission1[ln-e27a1867] 配方=scen-injection-recipe-mission1[rc-b09a45f6] 产品=scen-injection-product-mission1[pd-a4ccfc08] | 来源=系统 操作者=Agent 整批下发 | 批次 rr-4c27a ACK 鉴定:证实 1/1,未证实 0,失败 0\n- [10-28 02:18:01] 配方试验 scope=line 产线=注塑成型质量窗口寻优 injection-mission1[ln-e27a1867] 配方=scen-injection-recipe-mission1[rc-b09a45f6] 产品=scen-injection-product-mission1[pd-a4ccfc08] | 来源=Agent 操作者=注塑配方闭环验证-suite/工艺优化 | 【应急】配方试验整批下发(证实 1/1,未证实 0,失败 0,批次 rr-32301):dw-05bba→60 | 假设:真实闭环 P3-1:克重 31.85g、缩痕 1.502%,保压 55→60bar(单变量);65s 后 DAQ 复测。\n- [10-28 02:18:01] 下发回执 scope=line 产线=注塑成型质量窗口寻优 injection-mission1[ln-e27a1867] 配方=scen-injection-recipe-mission1[rc-b09a45f6] 产品=scen-injection-product-mission1[pd-a4ccfc08] | 来源=系统 操作者=Agent 整批下发 | 批次 rr-32301 ACK 鉴定:证实 1/1,未证实 0,失败 0\n- [10-28 02:14:49] 配方试验 scope=line 产线=注塑成型质量窗口寻优 injection-mission1[ln-e27a1867] 配方=scen-injection-recipe-mission1[rc-b09a45f6] 产品=scen-injection-product-mission1[pd-a4ccfc08] | 来源=Agent 操作者=注塑配方闭环验证-suite/工艺优化 | 【应急】配方试验整批下发(证实 2/2,未证实 0,失败 0,批次 rr-d9b9f):dw-05bba→55;dw-1bf2f→8 | 假设:真实闭环 P6:最终 weight=31.85g flash=0.009% sink=1.565% melt=246.9℃ 未入窗,恢复基线保压 55bar/时间 8s 保护现场。\n- [10-28 02:14:49] 下发回执 scope=line 产线=注塑成型质量窗口寻优 injection-mission1[ln-e27a1867] 配方=scen-injection-recipe-mission1[rc-b09a45f6] 产品=scen-injection-product-mission1[pd-a4ccfc08] | 来源=系统 操作者=Agent 整批下发 | 批次 rr-d9b9f ACK 鉴定:证实 2/2,未证实 0,失败 0\n- [10-28 02:13:43] 配方试验 scope=line 产线=注塑成型质量窗口寻优 injection-mission1[ln-e27a1867] 配方=scen-injection-recipe-mission1[rc-b09a45f6] 产品=scen-injection-product-mission1[pd-a4ccfc08] | 来源=Agent 操作者=注塑配方闭环验证-suite/工艺优化 | 【应急】配方试验整批下发(证实 1/1,未证实 0,失败 0,批次 rr-4aaef):dw-1bf2f→9 | 假设:真实闭环 P4:保压寻优后 weight=31.91g flash=0% sink=1.43% melt=246.4℃ 仍未全窗,单变量保压时间 8→9s。\n- [10-28 02:13:43] 下发回执 scope=line 产线=注塑成型质量窗口寻优 injection-mission1[ln-e27a1867] 配方=scen-injection-recipe-mission1[rc-b09a45f6] 产品=scen-injection-product-mission1[pd-a4ccfc08] | 来源=系统 操作者=Agent 整批下发 | 批次 rr-4aaef ACK 鉴定:证实 1/1,未证实 0,失败 0\n- [10-28 02:12:37] 配方试验 scope=line 产线=注塑成型质量窗口寻优 injection-mission1[ln-e27a1867] 配方=scen-injection-recipe-mission1[rc-b09a45f6] 产品=scen-injection-product-mission1[pd-a4ccfc08] | 来源=Agent 操作者=注塑配方闭环验证-suite/工艺优化 | 【应急】配方试验整批下发(证实 1/1,未证实 0,失败 0,批次 rr-e9d29):dw-05bba→85 | 假设:真实闭环 P3-6:克重 31.9g、缩痕 1.617%,保压 80→85bar(单变量);65s 后 DAQ 复测。\n- [10-28 02:12:37] 下发回执 scope=line 产线=注塑成型质量窗口寻优 injection-mission1[ln-e27a1867] 配方=scen-injection-recipe-mission1[rc-b09a45f6] 产品=scen-injection-product-mission1[pd-a4ccfc08] | 来源=系统 操作者=Agent 整批下发 | 批次 rr-e9d29 ACK 鉴定:证实 1/1,未证实 0,失败 0\n- [10-28 02:11:31] 配方试验 scope=line 产线=注塑成型质量窗口寻优 injection-mission1[ln-e27a1867] 配方=scen-injection-recipe-mission1[rc-b09a45f6] 产品=scen-injection-product-mission1[pd-a4ccfc08] | 来源=Agent 操作者=注塑配方闭环验证-suite/工艺优化 | 【应急】配方试验整批下发(证实 1/1,未证实 0,失败 0,批次 rr-e199b):dw-05bba→80 | 假设:真实闭环 P3-5:克重 31.83g、缩痕 1.41%,保压 75→80bar(单变量);65s 后 DAQ 复测。\n- [10-28 02:11:31] 下发回执 scope=line 产线=注塑成型质量窗口寻优 injection-mission1[ln-e27a1867] 配方=scen-injection-recipe-mission1[rc-b09a45f6] 产品=scen-injection-product-mission1[pd-a4ccfc08] | 来源=系统 操作者=Agent 整批下发 | 批次 rr-e199b ACK 鉴定:证实 1/1,未证实 0,失败 0\n- [10-28 02:10:25] 配方试验 scope=line 产线=注塑成型质量窗口寻优 injection-mission1[ln-e27a1867] 配方=scen-injection-recipe-mission1[rc-b09a45f6] 产品=scen-injection-product-mission1[pd-a4ccfc08] | 来源=Agent 操作者=注塑配方闭环验证-suite/工艺优化 | 【应急】配方试验整批下发(证实 1/1,未证实 0,失败 0,批次 rr-b8a8b):dw-05bba→75 | 假设:真实闭环 P3-4:克重 31.89g、缩痕 1.585%,保压 70→75bar(单变量);65s 后 DAQ 复测。\n- [10-28 02:10:25] 下发回执 scope=line 产线=注塑成型质量窗口寻优 injection-mission1[ln-e27a1867] 配方=scen-injection-recipe-mission1[rc-b09a45f6] 产品=scen-injection-product-mission1[pd-a4ccfc08] | 来源=系统 操作者=Agent 整批下发 | 批次 rr-b8a8b ACK 鉴定:证实 1/1,未证实 0,失败 0\n- [10-28 02:09:19] 配方试验 scope=line 产线=注塑成型质量窗口寻优 injection-mission1[ln-e27a1867] 配方=scen-injection-recipe-mission1[rc-b09a45f6] 产品=scen-injection-product-mission1[pd-a4ccfc08] | 来源=Agent 操作者=注塑配方闭环验证-suite/工艺优化 | 【应急】配方试验整批下发(证实 1/1,未证实 0,失败 0,批次 rr-d187f):dw-05bba→70 | 假设:真实闭环 P3-3:克重 31.83g、缩痕 1.45%,保压 65→70bar(单变量);65s 后 DAQ 复测。\n- [10-28 02:09:19] 下发回执 scope=line 产线=注塑成型质量窗口寻优 injection-mission1[ln-e27a1867] 配方=scen-injection-recipe-mission1[rc-b09a45f6] 产品=scen-injection-product-mission1[pd-a4ccfc08] | 来源=系统 操作者=Agent 整批下发 | 批次 rr-d187f ACK 鉴定:证实 1/1,未证实 0,失败 0\n- [10-28 02:08:13] 配方试验 scope=line 产线=注塑成型质量窗口寻优 injection-mission1[ln-e27a1867] 配方=scen-injection-recipe-mission1[rc-b09a45f6] 产品=scen-injection-product-mission1[pd-a4ccfc08] | 来源=Agent 操作者=注塑配方闭环验证-suite/工艺优化 | 【应急】配方试验整批下发(证实 1/1,未证实 0,失败 0,批次 rr-943db):dw-05bba→65 | 假设:真实闭环 P3-2:克重 31.91g、缩痕 1.47%,保压 60→65bar(单变量);65s 后 DAQ 复测。\n- [10-28 02:08:13] 下发回执 scope=line 产线=注塑成型质量窗口寻优 injection-mission1[ln-e27a1867] 配方=scen-injection-recipe-mission1[rc-b09a45f6] 产品=scen-injection-product-mission1[pd-a4ccfc08] | 来源=系统 操作者=Agent 整批下发 | 批次 rr-943db ACK 鉴定:证实 1/1,未证实 0,失败 0\n\n说明:只含产线域记录;配方下发=整批参数写命令;下发回执=逐参数 ACK 鉴定;配方试验=候选整批下发(不写版本);优化开窗/判定/回退=单次设定变更与恢复。节点级参数值逐笔历史用 dcw_journal(node_id)。",
+  "results": [
+    {
+      "id": "P1",
+      "name": "场景/配方/worker 就绪",
+      "pass": true,
+      "detail": "line=ln-e27a1867 recipe=rc-b09a45f6 optimizer=2081ad04-5be2-448c-80f4-7bed7a923a8d weight=31.85g flash=0.031% sink=1.502% melt=246.1℃"
+    },
+    {
+      "id": "P2",
+      "name": "当前已在配方基线",
+      "pass": true,
+      "detail": "weight=31.85g flash=0.031% sink=1.502% melt=246.1℃ p=55 t=8"
+    },
+    {
+      "id": "P3-1",
+      "name": "保压 60bar 试验经 HITL 并设备证实",
+      "pass": true,
+      "detail": "weight=31.89g flash=0% sink=1.611% melt=247℃ p=60 lastAt=2026-10-27T18:19:06.254Z 试验已整批下发并全部设备证实(1/1,批次 rr-32301):scen-injection:dcw:hold-pressure-sp→60bar [证实✓]。假设:真实闭环 P3-1:克重 31.85g、缩痕 1.502%,保压 55→60bar(单变量);65s 后 DAQ 复测。。\n人工附言:注塑真实闭环 E2E"
+    },
+    {
+      "id": "P3-2",
+      "name": "保压 65bar 试验经 HITL 并设备证实",
+      "pass": true,
+      "detail": "weight=31.86g flash=0% sink=1.364% melt=246.1℃ p=65 lastAt=2026-10-27T18:20:12.599Z 试验已整批下发并全部设备证实(1/1,批次 rr-4c27a):scen-injection:dcw:hold-pressure-sp→65bar [证实✓]。假设:真实闭环 P3-2:克重 31.89g、缩痕 1.611%,保压 60→65bar(单变量);65s 后 DAQ 复测。。\n人工附言:注塑真实闭环 E2E"
+    },
+    {
+      "id": "P3-3",
+      "name": "保压 70bar 试验经 HITL 并设备证实",
+      "pass": true,
+      "detail": "weight=31.92g flash=0% sink=1.481% melt=247.5℃ p=70 lastAt=2026-10-27T18:21:19.329Z 试验已整批下发并全部设备证实(1/1,批次 rr-cc367):scen-injection:dcw:hold-pressure-sp→70bar [证实✓]。假设:真实闭环 P3-3:克重 31.86g、缩痕 1.364%,保压 65→70bar(单变量);65s 后 DAQ 复测。。\n人工附言:注塑真实闭环 E2E"
+    },
+    {
+      "id": "P3-4",
+      "name": "保压 75bar 试验经 HITL 并设备证实",
+      "pass": true,
+      "detail": "weight=31.89g flash=0.033% sink=1.448% melt=246.2℃ p=75 lastAt=2026-10-27T18:22:25.261Z 试验已整批下发并全部设备证实(1/1,批次 rr-dda9c):scen-injection:dcw:hold-pressure-sp→75bar [证实✓]。假设:真实闭环 P3-4:克重 31.92g、缩痕 1.481%,保压 70→75bar(单变量);65s 后 DAQ 复测。。\n人工附言:注塑真实闭环 E2E"
+    },
+    {
+      "id": "P3-5",
+      "name": "保压 80bar 试验经 HITL 并设备证实",
+      "pass": true,
+      "detail": "weight=31.85g flash=0.027% sink=1.654% melt=246.4℃ p=80 lastAt=2026-10-27T18:23:32.038Z 试验已整批下发并全部设备证实(1/1,批次 rr-3ca4e):scen-injection:dcw:hold-pressure-sp→80bar [证实✓]。假设:真实闭环 P3-5:克重 31.89g、缩痕 1.448%,保压 75→80bar(单变量);65s 后 DAQ 复测。。\n人工附言:注塑真实闭环 E2E"
+    },
+    {
+      "id": "P3-6",
+      "name": "保压 85bar 试验经 HITL 并设备证实",
+      "pass": true,
+      "detail": "weight=31.88g flash=0.03% sink=1.412% melt=246.8℃ p=85 lastAt=2026-10-27T18:24:37.863Z 试验已整批下发并全部设备证实(1/1,批次 rr-8f6eb):scen-injection:dcw:hold-pressure-sp→85bar [证实✓]。假设:真实闭环 P3-6:克重 31.85g、缩痕 1.654%,保压 80→85bar(单变量);65s 后 DAQ 复测。。\n人工附言:注塑真实闭环 E2E"
+    },
+    {
+      "id": "P4",
+      "name": "保压时间补偿试验经 HITL 并复测",
+      "pass": true,
+      "detail": "weight=31.8g flash=0.007% sink=1.646% melt=247℃ t=9 lastAt=2026-10-27T18:25:44.064Z 试验已整批下发并全部设备证实(1/1,批次 rr-896a6):scen-injection:dcw:hold-time-sp→9s [证实✓]。假设:真实闭环 P4:保压寻优后 weight=31.88g flash=0.03% sink=1.412% melt=246.8℃ 仍未全窗,单变量保压时间 8→9s。。\n"
+    },
+    {
+      "id": "P5",
+      "name": "最终质量入窗(克重/飞边/缩痕/熔温,DAQ 新鲜)",
+      "pass": false,
+      "detail": "weight=31.8g flash=0.007% sink=1.646% melt=247℃ lastAt=2026-10-27T18:25:44.064Z offline=false"
+    },
+    {
+      "id": "P6",
+      "name": "未达标时恢复基线并复测",
+      "pass": true,
+      "detail": "weight=31.92g flash=0.015% sink=1.483% melt=246.9℃ p=55 t=8"
+    },
+    {
+      "id": "P7",
+      "name": "写控/配方日志可追溯",
+      "pass": true,
+      "detail": "窗口内无优化记录(该节点/配方尚无 Agent 调控历史)。 | Recipe 变更史(产线 注塑成型质量窗口寻优 injection-mission1[ln-e27a1867]; 配方 scen-injection-recipe-mission1[rc-b09a45f6], 近 60 分钟, 30 条, 新→旧):\n- [10-28 02:25:45] 配方试验 scope=lin"
+    }
+  ]
+}

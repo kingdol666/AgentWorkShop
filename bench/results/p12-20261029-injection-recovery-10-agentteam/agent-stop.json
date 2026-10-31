@@ -1,0 +1,195 @@
+{
+  "child_cancel_results": [],
+  "agent_stops": [
+    {
+      "agent_id": "3cd2435e-9902-461e-b947-5f54ad9e9803",
+      "status": 200,
+      "stopped": true,
+      "message": "ok"
+    },
+    {
+      "agent_id": "d717cde8-e86d-4422-92f2-113faf1131dd",
+      "status": 200,
+      "stopped": true,
+      "message": "ok"
+    },
+    {
+      "agent_id": "92e600d4-c09f-4f38-bd6f-981c82033484",
+      "status": 200,
+      "stopped": true,
+      "message": "ok"
+    }
+  ],
+  "event_log_stability": {
+    "interval_ms": 1000,
+    "minimum_wait_ms": 60000,
+    "required_stable_intervals": 5,
+    "maximum_wait_ms": 120000,
+    "stable": true,
+    "timed_out": false,
+    "wait_ms": 60453,
+    "initial_size_bytes": 1773,
+    "final_size_bytes": 1773,
+    "initial_sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8",
+    "final_sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8",
+    "observations": [
+      {
+        "elapsed_ms": 0,
+        "size_bytes": 1773,
+        "sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8"
+      },
+      {
+        "elapsed_ms": 1004,
+        "size_bytes": 1773,
+        "sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8"
+      },
+      {
+        "elapsed_ms": 2008,
+        "size_bytes": 1773,
+        "sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8"
+      },
+      {
+        "elapsed_ms": 3012,
+        "size_bytes": 1773,
+        "sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8"
+      },
+      {
+        "elapsed_ms": 4019,
+        "size_bytes": 1773,
+        "sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8"
+      },
+      {
+        "elapsed_ms": 5028,
+        "size_bytes": 1773,
+        "sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8"
+      },
+      {
+        "elapsed_ms": 6033,
+        "size_bytes": 1773,
+        "sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8"
+      },
+      {
+        "elapsed_ms": 7046,
+        "size_bytes": 1773,
+        "sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8"
+      },
+      {
+        "elapsed_ms": 8052,
+        "size_bytes": 1773,
+        "sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8"
+      },
+      {
+        "elapsed_ms": 9054,
+        "size_bytes": 1773,
+        "sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8"
+      },
+      {
+        "elapsed_ms": 10069,
+        "size_bytes": 1773,
+        "sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8"
+      },
+      {
+        "elapsed_ms": 11072,
+        "size_bytes": 1773,
+        "sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8"
+      },
+      {
+        "elapsed_ms": 12079,
+        "size_bytes": 1773,
+        "sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8"
+      },
+      {
+        "elapsed_ms": 13086,
+        "size_bytes": 1773,
+        "sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8"
+      },
+      {
+        "elapsed_ms": 14094,
+        "size_bytes": 1773,
+        "sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8"
+      },
+      {
+        "elapsed_ms": 15097,
+        "size_bytes": 1773,
+        "sha256": "e9959a31c03552ab42b789c5c81cfc285c90e5c6dbf54c56d35c2e13e0bb87f8"
+      }
+    ],
+    "aw_listener_closed": false,
+    "aw_listener_check_error": null
+  },
+  "evidence_finalization_required": true,
+  "final_event_log_stability": {
+    "interval_ms": 1000,
+    "minimum_wait_ms": 10000,
+    "required_stable_intervals": 5,
+    "maximum_wait_ms": 30000,
+    "stable": true,
+    "timed_out": false,
+    "wait_ms": 10071,
+    "initial_size_bytes": 21836,
+    "final_size_bytes": 21836,
+    "initial_sha256": "04f89a1300aa4fb7ac726d63afea40a755b83116062a7c1ec23930047f96c858",
+    "final_sha256": "04f89a1300aa4fb7ac726d63afea40a755b83116062a7c1ec23930047f96c858",
+    "observations": [
+      {
+        "elapsed_ms": 0,
+        "size_bytes": 21836,
+        "sha256": "04f89a1300aa4fb7ac726d63afea40a755b83116062a7c1ec23930047f96c858"
+      },
+      {
+        "elapsed_ms": 1002,
+        "size_bytes": 21836,
+        "sha256": "04f89a1300aa4fb7ac726d63afea40a755b83116062a7c1ec23930047f96c858"
+      },
+      {
+        "elapsed_ms": 2013,
+        "size_bytes": 21836,
+        "sha256": "04f89a1300aa4fb7ac726d63afea40a755b83116062a7c1ec23930047f96c858"
+      },
+      {
+        "elapsed_ms": 3020,
+        "size_bytes": 21836,
+        "sha256": "04f89a1300aa4fb7ac726d63afea40a755b83116062a7c1ec23930047f96c858"
+      },
+      {
+        "elapsed_ms": 4028,
+        "size_bytes": 21836,
+        "sha256": "04f89a1300aa4fb7ac726d63afea40a755b83116062a7c1ec23930047f96c858"
+      },
+      {
+        "elapsed_ms": 5033,
+        "size_bytes": 21836,
+        "sha256": "04f89a1300aa4fb7ac726d63afea40a755b83116062a7c1ec23930047f96c858"
+      },
+      {
+        "elapsed_ms": 6043,
+        "size_bytes": 21836,
+        "sha256": "04f89a1300aa4fb7ac726d63afea40a755b83116062a7c1ec23930047f96c858"
+      },
+      {
+        "elapsed_ms": 7052,
+        "size_bytes": 21836,
+        "sha256": "04f89a1300aa4fb7ac726d63afea40a755b83116062a7c1ec23930047f96c858"
+      },
+      {
+        "elapsed_ms": 8058,
+        "size_bytes": 21836,
+        "sha256": "04f89a1300aa4fb7ac726d63afea40a755b83116062a7c1ec23930047f96c858"
+      },
+      {
+        "elapsed_ms": 9065,
+        "size_bytes": 21836,
+        "sha256": "04f89a1300aa4fb7ac726d63afea40a755b83116062a7c1ec23930047f96c858"
+      },
+      {
+        "elapsed_ms": 10071,
+        "size_bytes": 21836,
+        "sha256": "04f89a1300aa4fb7ac726d63afea40a755b83116062a7c1ec23930047f96c858"
+      }
+    ],
+    "aw_listener_closed": true,
+    "raw_sha256": "04f89a1300aa4fb7ac726d63afea40a755b83116062a7c1ec23930047f96c858",
+    "finalized_at_utc": "2026-10-29T11:13:26.413Z"
+  },
+  "evidence_finalized_after_aw_shutdown": true
+}

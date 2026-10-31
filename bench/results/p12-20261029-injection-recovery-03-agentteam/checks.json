@@ -1,0 +1,122 @@
+{
+  "qualification": {
+    "status": "PASS",
+    "isolated_preflight": true,
+    "team_size": 3,
+    "exact_one_lead_two_workers": true,
+    "all_harness_omp": true,
+    "dcw_control_absent_from_all_members": true,
+    "lead_dcw_write_bindings": 0,
+    "disjoint_worker_write_sets": true,
+    "initial_guard_recovery": {
+      "policy": {
+        "recoverable_quality_signals": [
+          "sink-mark"
+        ],
+        "baseline_worsening_tolerance": "max(5 sensor quantization steps, 3 x 1.4826 x baseline MAD)",
+        "monitoring": "An initially in-spec guard breach stops immediately. An initially out-of-spec registered quality guard may only remain within its initial violation direction and within baseline+tolerance; opposite-bound breaches or material worsening stop.",
+        "final_acceptance": "Every guard must be fresh and within its registered quality limits.",
+        "scope": "injection simulator quality recovery; not a physical safety envelope or physical PLC validation"
+      },
+      "baseline": {
+        "flash-rate": {
+          "value": 0.008,
+          "at_ms": 1793262213000,
+          "unit": "%",
+          "min": null,
+          "max": 0.4,
+          "sensor_min": 0,
+          "sensor_max": 5,
+          "baseline_median": 0.008,
+          "baseline_mad": 0,
+          "quantization_step": 0.001,
+          "worsening_tolerance": 0.005,
+          "violated_at_baseline": false,
+          "violation_direction": null,
+          "recoverable_quality_violation": false,
+          "within_sensor_range": true
+        },
+        "sink-mark": {
+          "value": 2.069,
+          "at_ms": 1793262213000,
+          "unit": "%",
+          "min": null,
+          "max": 1.5,
+          "sensor_min": 0,
+          "sensor_max": 10,
+          "baseline_median": 2.069,
+          "baseline_mad": 0,
+          "quantization_step": 0.001,
+          "worsening_tolerance": 0.005,
+          "violated_at_baseline": true,
+          "violation_direction": "high",
+          "recoverable_quality_violation": true,
+          "within_sensor_range": true
+        }
+      }
+    }
+  },
+  "workflow_outcome": {
+    "status": "FAIL",
+    "task_state": "CANCELED",
+    "all_tasks_terminal": true,
+    "pending_approvals": 0,
+    "designated_worker_tasks_completed": false,
+    "pv_initial": 31.27,
+    "pv_final": 31.23,
+    "target": {
+      "sig": "part-weight",
+      "target": 32.5,
+      "tol": 0.35,
+      "unit": "g",
+      "label": "制品克重"
+    },
+    "in_band": false,
+    "guards_ok": false,
+    "guards_fresh": true,
+    "guard_checks": [
+      {
+        "signal": "flash-rate",
+        "latest": {
+          "at_ms": 1793262220000,
+          "value": 0
+        },
+        "min": null,
+        "max": 0.4,
+        "fresh": true,
+        "within": true
+      },
+      {
+        "signal": "sink-mark",
+        "latest": {
+          "at_ms": 1793262220000,
+          "value": 2.1
+        },
+        "min": null,
+        "max": 1.5,
+        "fresh": true,
+        "within": false
+      }
+    ],
+    "fresh_pv_sample_after_goal": true,
+    "changed_goal_anchors": 0,
+    "stop_reason": "guard worsened/breached: sink-mark=2.092"
+  },
+  "evidence_integrity": {
+    "status": "FAIL",
+    "complete_actor_task_tool_pairs": false,
+    "source_records": 1,
+    "tool_call_pairs": 0,
+    "run_scoped_source": true,
+    "run_scoped_source_reason": null,
+    "accepted_dcw_writes": 0,
+    "changed_goal_anchors": 0,
+    "device_readbacks": 0,
+    "missing_device_readbacks": 0,
+    "approvals_verified": 0,
+    "missing_or_invalid_approvals": 0,
+    "pending_approvals": 0,
+    "all_tasks_terminal": true,
+    "agents_stopped": true
+  }
+}

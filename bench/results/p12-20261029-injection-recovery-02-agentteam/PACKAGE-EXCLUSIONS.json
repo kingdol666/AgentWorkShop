@@ -1,0 +1,6 @@
+{
+  "excluded_paths": [
+    "runtime/"
+  ],
+  "reason": "Contains isolated AW database/settings and private simulator runtime/data; retain locally for replay, do not include in supplementary archive."
+}

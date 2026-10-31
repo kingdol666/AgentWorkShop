@@ -1,0 +1,100 @@
+{
+  "child_cancel_results": [],
+  "agent_stops": [
+    {
+      "agent_id": "6b668c7f-af98-48cc-8945-1836da6fdb99",
+      "status": 200,
+      "stopped": true,
+      "message": "ok"
+    },
+    {
+      "agent_id": "01022195-eaa1-4c50-a4b9-85526df960a3",
+      "status": 200,
+      "stopped": true,
+      "message": "ok"
+    },
+    {
+      "agent_id": "d52d1831-ebbf-4b60-ad95-d9958b4072b4",
+      "status": 200,
+      "stopped": true,
+      "message": "ok"
+    }
+  ],
+  "event_log_stability": {
+    "interval_ms": 1000,
+    "minimum_wait_ms": 60000,
+    "required_stable_intervals": 5,
+    "maximum_wait_ms": 120000,
+    "stable": true,
+    "timed_out": false,
+    "wait_ms": 60284,
+    "initial_size_bytes": 1534,
+    "final_size_bytes": 1534,
+    "observations": [
+      {
+        "elapsed_ms": 0,
+        "size_bytes": 1534
+      },
+      {
+        "elapsed_ms": 1004,
+        "size_bytes": 1534
+      },
+      {
+        "elapsed_ms": 2013,
+        "size_bytes": 1534
+      },
+      {
+        "elapsed_ms": 3015,
+        "size_bytes": 1534
+      },
+      {
+        "elapsed_ms": 4016,
+        "size_bytes": 1534
+      },
+      {
+        "elapsed_ms": 5019,
+        "size_bytes": 1534
+      },
+      {
+        "elapsed_ms": 6022,
+        "size_bytes": 1534
+      },
+      {
+        "elapsed_ms": 7030,
+        "size_bytes": 1534
+      },
+      {
+        "elapsed_ms": 8034,
+        "size_bytes": 1534
+      },
+      {
+        "elapsed_ms": 9038,
+        "size_bytes": 1534
+      },
+      {
+        "elapsed_ms": 10039,
+        "size_bytes": 1534
+      },
+      {
+        "elapsed_ms": 11051,
+        "size_bytes": 1534
+      },
+      {
+        "elapsed_ms": 12053,
+        "size_bytes": 1534
+      },
+      {
+        "elapsed_ms": 13062,
+        "size_bytes": 1534
+      },
+      {
+        "elapsed_ms": 14071,
+        "size_bytes": 1534
+      },
+      {
+        "elapsed_ms": 15079,
+        "size_bytes": 1534
+      }
+    ]
+  }
+}

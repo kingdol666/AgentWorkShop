@@ -145,41 +145,66 @@ export async function optimizationLifecycle(api, { instId, nodeId, window: win, 
   ev.push(`current ${cur} → record A writes ${up} (up)，记录 B writes ${down} (down); opposite directions to dodge the rollback cooldown`)
 
   // (1) 开记录 A → judge keep
-  const cA = await call('dcw_control', { node_id: nodeId, value: up, hypothesis: 'bench: 优化记录 keep 路径' })
-  const tA = String(cA.data?.result?.text ?? '')
-  const recA = parseRecord(tA)
-  if (recA) {
-    const j = await call('dcw_judge', { record_id: recA, verdict: 'keep', reason: 'bench: 回读一致，判定 keep' })
-    const keepOk = j.data?.result?.isError !== true
-    out.keepRecord = recA
-    ev.push(`${keepOk ? '✔' : '✘'} (keep path) record ${recA} verdict keep → ${String(j.data?.result?.text).slice(0, 70)}`)
-    if (!keepOk) out.errors.push('judge keep 失败')
+  // v2 写面(2026-10-30):dcw_control 已是拒绝桩;治理写 = optimization_explore(探索步:
+  // direction+step,内层优化记录 id 不回传)→ 记录 id 经 /dcw/optimizations 列表反查
+  // (nodeId+open 取最新),judge/rollback 仍走原 REST 面(判定与执行分离不变)。
+  const explore = async (toValue, why) => {
+    const cur2 = (await read()) ?? (win.min + win.max) / 2
+    const delta = toValue - cur2
+    if (Math.abs(delta) < 1e-9) return { ok: true, text: 'same-value skip' }
+    const r = await call('optimization_explore', {
+      control_node_id: nodeId,
+      direction: delta >= 0 ? 'up' : 'down',
+      step: Number(Math.abs(delta).toFixed(3)),
+      settle_seconds: 10,
+      hypothesis: why,
+    })
+    return { ok: r.data?.result?.isError !== true, text: String(r.data?.result?.text ?? '') }
   }
-  else {
-    ev.push(`✘ (keep path) no record_id; receipt: ${tA.slice(0, 130).replace(/\n/g, ' ')}`)
-    out.errors.push('dcw_control 未返回记录 id')
+  const findOpenRecord = async () => {
+    const list2 = await api.call('GET', '/api/workshop/dcw/optimizations?limit=50')
+    const mineOpen = (list2.data?.records ?? []).filter(r2 => r2.nodeId === nodeId && (!r2.status || r2.status === 'open'))
+    mineOpen.sort((a, b) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? '')))
+    return mineOpen[0]?.id ?? null
+  }
+
+  {
+    const wA = await explore(up, 'bench: 优化记录 keep 路径')
+    const recA = wA.ok ? await findOpenRecord() : null
+    if (recA) {
+      const j = await api.call('POST', `/api/workshop/dcw/optimizations/${recA}/judge`, { verdict: 'keep', reason: 'bench: 回读一致，判定 keep' })
+      const keepOk = j.status === 200
+      out.keepRecord = recA
+      ev.push(`${keepOk ? '✔' : '✘'} (keep path) record ${recA} verdict keep → status ${j.status}`)
+      if (!keepOk) out.errors.push('judge keep 失败')
+    }
+    else {
+      ev.push(`✘ (keep path) no record_id; receipt: ${wA.text.slice(0, 130).replace(/[\n\r]/g, ' ')}`)
+      out.errors.push('optimization_explore 未产生 open 记录')
+    }
   }
 
   // (2) 开记录 B → judge rollback → 执行回退（判定与执行分离）
-  const cB = await call('dcw_control', { node_id: nodeId, value: down, hypothesis: 'bench: 优化记录 rollback 路径' })
-  const tB = String(cB.data?.result?.text ?? '')
-  const recB = parseRecord(tB)
-  if (recB) {
-    out.rollbackRecord = recB
-    const jB = await call('dcw_judge', { record_id: recB, verdict: 'rollback', reason: 'bench: 判定回退（判定与执行分离验证）' })
-    const judgeOk = jB.data?.result?.isError !== true
-    const beforeRollback = await read()
-    const ex = await api.call('POST', `/api/workshop/dcw/optimizations/${recB}/rollback`, {})
-    const afterRollback = await read()
-    // 回退目标 = 记录 B 的 from 值（即 A 写后的 up）
-    const backToA = afterRollback != null && Math.abs(afterRollback - up) <= 0.75
-    ev.push(`${judgeOk ? '✔' : '✘'} (rollback path) record ${recB} verdict rollback (recorded only; PLC still ${beforeRollback})`)
-    ev.push(`${backToA ? '✔' : '✘'} rollback executed (status ${ex.status}) → readback ${afterRollback} (expected record B from=${up})`)
-    if (!judgeOk || !backToA) out.errors.push('rollback 判定或执行未达预期')
-  }
-  else {
-    ev.push(`✘ (rollback path) no record_id; receipt: ${tB.slice(0, 130).replace(/\n/g, ' ')}`)
-    out.errors.push('dcw_control 未返回记录 id（第二次）')
+  {
+    const wB = await explore(down, 'bench: 优化记录 rollback 路径')
+    const recB = wB.ok ? await findOpenRecord() : null
+    if (recB) {
+      out.rollbackRecord = recB
+      const jB = await api.call('POST', `/api/workshop/dcw/optimizations/${recB}/judge`, { verdict: 'rollback', reason: 'bench: 判定回退（判定与执行分离验证）' })
+      const judgeOk = jB.status === 200
+      const beforeRollback = await read()
+      const ex = await api.call('POST', `/api/workshop/dcw/optimizations/${recB}/rollback`, {})
+      const afterRollback = await read()
+      // 回退目标 = 记录 B 的 from 值（即 A 写后的 up）
+      const backToA = afterRollback != null && Math.abs(afterRollback - up) <= 0.75
+      ev.push(`${judgeOk ? '✔' : '✘'} (rollback path) record ${recB} verdict rollback (recorded only; PLC still ${beforeRollback})`)
+      ev.push(`${backToA ? '✔' : '✘'} rollback executed (status ${ex.status}) → readback ${afterRollback} (expected record B from=${up})`)
+      if (!judgeOk || !backToA) out.errors.push('rollback 判定或执行未达预期')
+    }
+    else {
+      ev.push(`✘ (rollback path) no record_id; receipt: ${wB.text.slice(0, 130).replace(/[\n\r]/g, ' ')}`)
+      out.errors.push('optimization_explore 未产生 open 记录（第二次）')
+    }
   }
 
   // (3) 优化记录查询面
@@ -195,21 +220,46 @@ export async function optimizationLifecycle(api, { instId, nodeId, window: win, 
 /**
  * HITL 审批闭环：manual 绑定 → Agent 下发挂起 → 审批面板可见 → 批准 → 真实写生效 + 时延。
  */
-export async function hitlApproval(api, { instId, nodeId, window: win }) {
+export async function hitlApproval(api, { instId, nodeId, window: win, daqId }) {
   const ev = []
   const out = { ok: false, pendingId: null, latencyMs: null, errors: [] }
   // 绑定为 manual（人工确认模式）
   await api.call('POST', '/api/workshop/agent-tools/bindings', { agentId: instId, nodeId, kind: 'dcw', mode: 'manual' })
-  const target = Number((win.min + (win.max - win.min) * 0.4).toFixed(3))
+  // 2026-10-31(bench v2 收尾):方向选向避开「回退冷却」——回退护栏对「重试最近一次真实写」
+  // 的方向有 300s 冷却(实测:「242s 内禁止同向重写(刚从 150 回退到 147)」:最近真实写 up 被回退,
+  // 之后 up 仍被锁)。规则:取最近一条**非 rollback** anchor 的写方向并取反;只有 rollback 锚时
+  // 顺其回退方向(继续远离被回退值);journal 不可读/无锚 → 沿用窗口 0.4 位缺省。
+  let side = 0.4
+  try {
+    const jr = await api.call('GET', `/api/workshop/dcw/journal?nodeId=${nodeId}&limit=20`)
+    const anchors = jr.data?.anchors ?? []
+    const lastWrite = anchors.find(a => a.source !== 'rollback' && a.prevValue != null && a.newValue != null && Number(a.newValue) !== Number(a.prevValue))
+    const lastRollback = anchors.find(a => a.source === 'rollback' && a.prevValue != null && a.newValue != null)
+    if (lastWrite) side = Number(lastWrite.newValue) >= Number(lastWrite.prevValue) ? 0.25 : 0.75
+    else if (lastRollback) side = Number(lastRollback.newValue) >= Number(lastRollback.prevValue) ? 0.75 : 0.25
+  } catch { /* journal 不可读:沿用缺省 */ }
+  const target = Number((win.min + (win.max - win.min) * side).toFixed(3))
 
-  // ⚠️ manual 模式下 dcw_control 在服务端 **await approvals.request()** 阻塞等待裁决。
+  // v2 写面:manual 绑定下的治理写 = optimization_explore(方向+步长;观测点必填)。
+  const rd0 = await api.call('POST', `/api/workshop/dcw/${nodeId}/read`, {})
+  const cur0 = num(rd0.data?.read?.value ?? rd0.data?.value) ?? (win.min + win.max) / 2
+  const delta0 = target - cur0
+
+  // ⚠️ manual 模式下治理写在服务端 **await approvals.request()** 阻塞等待裁决。
   // 若按"先 await invoke、再轮询审批面板"的顺序写，必然死锁到请求超时（实测踩过）。
   // 正确顺序：**并发发起 invoke（不 await）→ 轮询面板 → 裁决 → 最后 await 回执**。
   const t0 = Date.now()
   const invPromise = api.call('POST', '/api/workshop/agent-tools/invoke', {
-    agentId: instId, tool: 'dcw_control',
-    args: { node_id: nodeId, value: target, hypothesis: 'bench: HITL 审批路径' },
-  }).then(r => ({ ok: true, r })).catch(e => ({ ok: false, err: String(e?.message ?? e) }))
+    agentId: instId, tool: 'optimization_explore',
+    args: {
+      control_node_id: nodeId,
+      ...(daqId ? { target_node_id: daqId } : {}),
+      direction: delta0 >= 0 ? 'up' : 'down',
+      step: Number(Math.abs(delta0).toFixed(3)),
+      settle_seconds: 10,
+      hypothesis: 'bench: HITL 审批路径',
+    },
+  }, 120_000).then(r => ({ ok: true, r })).catch(e => ({ ok: false, err: String(e?.message ?? e) }))
 
   let pending = null
   const deadline = Date.now() + 12_000

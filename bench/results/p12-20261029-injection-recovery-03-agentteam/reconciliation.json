@@ -1,0 +1,78 @@
+{
+  "tool_calls": {
+    "tool_event_count": 0,
+    "paired": [],
+    "unmatched_starts": [],
+    "unmatched_ends": [],
+    "duplicates": [],
+    "missing_identity": []
+  },
+  "unknown_task_references": [],
+  "unknown_actors": [],
+  "line_write_audit_count": 0,
+  "line_write_audits": [],
+  "accepted_dcw_writes": 0,
+  "wrong_write_actors": [],
+  "dcw_journal_anchors": [],
+  "changed_goal_anchors": [],
+  "duplicate_anchor_ids": [],
+  "malformed_anchors": [],
+  "unexplained_anchors": [],
+  "source_caps": {
+    "journal_capped": false,
+    "ops_capped_windows": [],
+    "ops_errors": [],
+    "daq_capped_windows": [],
+    "daq_errors": [],
+    "approval_history_capped_agents": []
+  },
+  "verified_device_readbacks": 0,
+  "missing_device_readbacks": [],
+  "anchor_approval_checks": [],
+  "missing_or_invalid_approvals": [],
+  "unmatched_ops_writes": [],
+  "orphan_dcw_changes": [],
+  "mismatched_final_device_readbacks": [],
+  "delegated_worker_tasks": [
+    {
+      "agent_id": "df1e22bf-bce5-48aa-95df-782bbe0aaa78",
+      "child_tasks": [],
+      "child_task_states": []
+    },
+    {
+      "agent_id": "242ce203-1266-4f50-a37d-d706aef94ade",
+      "child_tasks": [],
+      "child_task_states": []
+    }
+  ],
+  "lead_delegated_to_both": false,
+  "event_coverage": {
+    "audit_marker": true,
+    "audit_marker_reason": null,
+    "source_records": 1,
+    "tool_events": 0,
+    "completed_pairs": 0,
+    "actors_observed": [],
+    "expected_actors": [
+      "8d1b50d6-b891-4eaf-9a3b-4f30638cdfc1",
+      "df1e22bf-bce5-48aa-95df-782bbe0aaa78",
+      "242ce203-1266-4f50-a37d-d706aef94ade"
+    ],
+    "all_members_observed": false,
+    "raw_event_parse_errors": [],
+    "channel_event_total": 0,
+    "channel_events_collected": 0,
+    "channel_events_complete": true,
+    "journal_status": 200,
+    "journal_anchors": 0,
+    "journal_capped": false,
+    "ops_complete": true,
+    "ops_capped_windows": [],
+    "ops_errors": [],
+    "daq_samples_complete": true,
+    "daq_capped_windows": [],
+    "approval_history_complete": true,
+    "approval_history_capped_agents": [],
+    "goal_period_changed_anchors": 0
+  }
+}

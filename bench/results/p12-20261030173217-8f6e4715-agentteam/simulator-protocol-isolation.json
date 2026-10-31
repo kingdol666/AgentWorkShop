@@ -1,0 +1,76 @@
+{
+  "ok": true,
+  "captured_at_utc": "2026-10-30T17:33:51.220Z",
+  "endpoints": [
+    {
+      "kind": "api",
+      "port": 4011
+    },
+    {
+      "kind": "mqtt-broker",
+      "port": 19830
+    },
+    {
+      "kind": "modbus-tcp",
+      "node_id": "inj-machine-mbtcp",
+      "port": 17052
+    },
+    {
+      "kind": "modbus-rtu",
+      "node_id": "inj-mold-rtu",
+      "port": 16052
+    },
+    {
+      "kind": "opcua",
+      "node_id": "inj-inject-opcua",
+      "port": 6843
+    }
+  ],
+  "listeners": [
+    {
+      "port": 4011,
+      "ok": true,
+      "pid": 46984,
+      "local_addresses": [
+        "127.0.0.1"
+      ],
+      "command_line_sha256": "0fa16a56ffe284595f047335f806be9abd129ee7b7cd386d0965e36b119c76ab"
+    },
+    {
+      "port": 19830,
+      "ok": true,
+      "pid": 46984,
+      "local_addresses": [
+        "127.0.0.1"
+      ],
+      "command_line_sha256": "0fa16a56ffe284595f047335f806be9abd129ee7b7cd386d0965e36b119c76ab"
+    },
+    {
+      "port": 17052,
+      "ok": true,
+      "pid": 46984,
+      "local_addresses": [
+        "127.0.0.1"
+      ],
+      "command_line_sha256": "0fa16a56ffe284595f047335f806be9abd129ee7b7cd386d0965e36b119c76ab"
+    },
+    {
+      "port": 16052,
+      "ok": true,
+      "pid": 46984,
+      "local_addresses": [
+        "127.0.0.1"
+      ],
+      "command_line_sha256": "0fa16a56ffe284595f047335f806be9abd129ee7b7cd386d0965e36b119c76ab"
+    },
+    {
+      "port": 6843,
+      "ok": true,
+      "pid": 46984,
+      "local_addresses": [
+        "127.0.0.1"
+      ],
+      "command_line_sha256": "0fa16a56ffe284595f047335f806be9abd129ee7b7cd386d0965e36b119c76ab"
+    }
+  ]
+}

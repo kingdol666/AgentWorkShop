@@ -7,7 +7,7 @@
  * 能做的事：探测 → 不在则 spawn（cwd=../plc-node-simulator, npm run dev）→
  * 轮询 /api/nodes 就绪 → 应用预设 → 设备/信号/工艺模型操作。
  */
-import { spawn, execSync } from 'node:child_process'
+import { spawn, execSync, execFileSync } from 'node:child_process'
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, symlinkSync, writeFileSync } from 'node:fs'
 import { join, relative, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -36,6 +36,79 @@ export const SIM_SHADOW = SIM_PORT !== 4010
   ? process.env.SIM_SHADOW_DIR ?? resolve(REPO, '..', 'plc-node-simulator-bench')
   : null
 
+/** The private copy's deterministic transformation is also used by provenance checks. */
+export function transformShadowSource(source, sourcePath, simPort) {
+  const offset = (simPort - 4010) * 1000
+  let result = source
+    .replace(/(port:\s*)(5[89]\d{2}|1[56]\d{3}|18830)\b/g, (_, a, n) => a + (Number(n) + offset))
+    .replace(/(mqtt:\/\/127\.0\.0\.1:)(18830)\b/g, (_, a, n) => a + (Number(n) + offset))
+    .replace(/(['"])0\.0\.0\.0\1/g, (_, quote) => `${quote}127.0.0.1${quote}`)
+  const normalizedPath = sourcePath.replaceAll('\\', '/')
+  if (/\/protocols\/modbus-(tcp|rtu)\.ts$/.test(normalizedPath)) {
+    const marker = /const host = node\.config\.host \?\? '127\.0\.0\.1'/
+    if (!marker.test(result)) throw new Error('private Modbus source transform could not locate explicit listener host')
+    result = result.replace(marker, 'const host = \'127.0.0.1\'')
+  }
+  if (normalizedPath.endsWith('/protocols/opcua.ts')) {
+    const hostMarker = /const hostname = node\.config\.host \?\? '127\.0\.0\.1'/
+    if (!hostMarker.test(result)) throw new Error('private OPC UA source transform could not locate advertised hostname')
+    result = result.replace(hostMarker, 'const hostname = \'127.0.0.1\'')
+    const marker = /const server = new OPCUAServer\(\{\r?\n\s*port,\r?\n\s*hostname,/
+    if (!marker.test(result)) throw new Error('private OPC UA source transform could not locate explicit server listen options')
+    result = result.replace(marker, match => `${match}\n    host: hostname,`)
+  }
+  return result
+}
+
+/** Every built-in protocol port is reserved before a private process is spawned. */
+export function simulatorDeclaredPorts(root, simPort) {
+  const offset = (simPort - 4010) * 1000
+  const ports = new Set([simPort, 18830 + offset])
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = join(dir, entry.name)
+      if (entry.isDirectory()) walk(path)
+      else if (entry.isFile() && entry.name.endsWith('.ts')) {
+        for (const match of readFileSync(path, 'utf8').matchAll(/port:\s*(5[89]\d{2}|1[56]\d{3}|18830)\b/g)) ports.add(Number(match[1]) + offset)
+      }
+    }
+  }
+  walk(join(root, 'src'))
+  if ([...ports].some(port => !Number.isInteger(port) || port < 1 || port > 65535)) throw new Error('private simulator port mapping exceeds the TCP port range')
+  return [...ports].sort((a, b) => a - b)
+}
+
+/** Active node endpoints must match the private loopback API and embedded broker. */
+export function simulatorEndpointPlan(nodes, simPort) {
+  const brokerPort = 18830 + (simPort - 4010) * 1000
+  const endpoints = [{ kind: 'api', port: simPort }, { kind: 'mqtt-broker', port: brokerPort }]
+  if (!Array.isArray(nodes)) throw new Error('simulator node snapshot is not an array')
+  for (const node of nodes.filter(node => node.enabled)) {
+    if (['modbus-tcp', 'modbus-rtu', 'opcua'].includes(node.protocol)) {
+      if (node.config?.host !== '127.0.0.1') throw new Error(`simulator node ${node.id} does not use the private IPv4 loopback protocol host`)
+      endpoints.push({ kind: node.protocol, node_id: node.id, port: Number(node.config?.port) })
+    }
+    else if (node.protocol === 'mqtt') {
+      const url = new URL(node.config?.brokerUrl ?? '')
+      if (url.protocol !== 'mqtt:' || url.hostname !== '127.0.0.1' || Number(url.port) !== brokerPort) throw new Error(`simulator node ${node.id} does not use the private embedded broker`)
+    }
+    else if (node.protocol !== 'http') throw new Error(`simulator node ${node.id} has an unsupported protocol`)
+  }
+  if (endpoints.some(endpoint => !Number.isInteger(endpoint.port) || endpoint.port < 1 || endpoint.port > 65535)) throw new Error('simulator endpoint has an invalid TCP port')
+  const nodePorts = endpoints.filter(endpoint => endpoint.node_id).map(endpoint => endpoint.port)
+  if (new Set(nodePorts).size !== nodePorts.length || nodePorts.some(port => port === simPort || port === brokerPort)) throw new Error('enabled simulator nodes have conflicting protocol listener ports')
+  return endpoints
+}
+
+function privateTcpListeners(ports) {
+  if (process.platform !== 'win32') throw new Error('private simulator listener ownership checks currently require Windows')
+  const script = `$ErrorActionPreference='Stop'; $ports=@(${ports.join(',')}); $all=@(Get-NetTCPConnection -State Listen -ErrorAction Stop); $listeners=@($all | Where-Object { $_.LocalPort -in $ports } | ForEach-Object { [pscustomobject]@{pid=[int]$_.OwningProcess;port=[int]$_.LocalPort;address=[string]$_.LocalAddress} }); [pscustomobject]@{listeners=$listeners} | ConvertTo-Json -Compress -Depth 3`
+  const raw = execFileSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], { encoding: 'utf8', timeout: 15_000 }).trim()
+  const result = JSON.parse(raw)
+  if (!Array.isArray(result?.listeners) || result.listeners.some(row => !Number.isSafeInteger(row.pid) || row.pid < 1 || !Number.isInteger(row.port) || typeof row.address !== 'string')) throw new Error('private simulator listener snapshot is unverifiable')
+  return result.listeners
+}
+
 /** 源码树(src/**)最新 mtime——影子副本过期判定 */
 function simSrcStamp(dir) {
   let latest = 0
@@ -56,16 +129,15 @@ function simSrcStamp(dir) {
  *  拷贝后做**传输端口重映射**:预设里的 modbus/rtu/opcua 端口是硬编码(16040/15041/5840…),
  *  与 4010 共享实例并行时会互相抢占端口(opcua 5840 被占 → 该协议全部读写落到别的进程,
  *  2026-09-20 R2-R4「port-2-opcua 0 采样」根因)。偏移 = (SIM_PORT-4010)×1000:
- *  5840→6840、16040→17040、15041→16041;MQTT broker(18830,外部 docker)不映射。 */
+ *  5840→6840、16040→17040、15041→16041;内置 MQTT broker 同步映射。 */
 function ensureShadowSim() {
   if (!SIM_SHADOW) return SIM_DIR
   const stampFile = join(SIM_SHADOW, '.bench-stamp')
-  const stamp = String(simSrcStamp(SIM_DIR)) + ':' + SIM_PORT
+  const stamp = String(simSrcStamp(SIM_DIR)) + ':' + SIM_PORT + ':loopback-v1'
   const fresh = existsSync(stampFile)
     && existsSync(join(SIM_SHADOW, 'node_modules'))
     && readFileSync(stampFile, 'utf8') === stamp
   if (!fresh) {
-    const offset = (SIM_PORT - 4010) * 1000
     mkdirSync(SIM_SHADOW, { recursive: true })
     cpSync(SIM_DIR, SIM_SHADOW, {
       recursive: true,
@@ -88,9 +160,7 @@ function ensureShadowSim() {
           const src = readFileSync(p, 'utf8')
           // 两处都要改:设备配置的 port: 18830 与 brokerUrl: 'mqtt://127.0.0.1:18830'
           // (brokerUrl 是 MQTT 设备的实际发布/订阅目标,漏改 = 仪表静默 0 采样)
-          const out = src
-            .replace(/(port:\s*)(5[89]\d{2}|1[56]\d{3}|18830)\b/g, (_, a, n) => a + (Number(n) + offset))
-            .replace(/(mqtt:\/\/127\.0\.0\.1:)(18830)\b/g, (_, a, n) => a + (Number(n) + offset))
+          const out = transformShadowSource(src, relative(SIM_SHADOW, p), SIM_PORT)
           if (out !== src) writeFileSync(p, out)
         }
       }
@@ -147,7 +217,7 @@ function brokerGuard(brokerPort, log) {
   const brokerPid = listenerPid(brokerPort)
   if (brokerPid == null) return null // 端口空闲 → 本实例将拉起,spawn 后二次校验
   if (apiPid != null && brokerPid === apiPid) return null // 同进程 = 本实例自己的 broker
-  const msg = `内置 MQTT broker :${brokerPort} 被僵尸实例占用(broker pid=${brokerPid}, api pid=${apiPid ?? '无'}) —— 仪表数据将落到僵尸进程。处置: taskkill //PID ${brokerPid} //T //F 杀掉旧模拟器进程树后重跑`
+  const msg = `内置 MQTT broker :${brokerPort} 已由其他实例占用(broker pid=${brokerPid}, api pid=${apiPid ?? '无'})；本轮拒绝启动，请选择全套无冲突的新端口`
   log(`  ⚠ ${msg}`)
   return msg
 }
@@ -176,18 +246,35 @@ export async function ensureSimulator({ timeoutMs = 90_000, log = console.log } 
   }
 
   const cwd = ensureShadowSim()
+  if (SIM_SHADOW) {
+    try {
+      const ports = simulatorDeclaredPorts(SIM_DIR, SIM_PORT)
+      const configPath = join(cwd, 'data', 'config.json')
+      if (existsSync(configPath)) ports.push(...simulatorEndpointPlan(JSON.parse(readFileSync(configPath, 'utf8')).nodes, SIM_PORT).map(endpoint => endpoint.port))
+      const occupied = privateTcpListeners([...new Set(ports)])
+      if (occupied.length) return { started: false, dir: cwd, reason: `private simulator port collision; no process was started: ${occupied.map(row => `${row.address}:${row.port} pid=${row.pid}`).join(', ')}` }
+    }
+    catch (err) { return { started: false, dir: cwd, reason: `private simulator prelaunch isolation check failed: ${err.message}` } }
+  }
   log(`  · 模拟器未在线 → 自动启动 (cwd=${cwd}, port=${SIM_PORT}${cwd !== SIM_DIR ? ', 影子私有数据目录' : ''}, 无 watch 常驻)`)
   // ⚠️ 严禁用 `npm run dev`(= tsx watch):watch 进程会因文件事件自动重启,
   // 而预设装置只存内存不落盘 → 重启即丢整条产线 → 表现为「 biax 每写必断膜 /
   // DAQ 0 采样 / 真值 0」(2026-09-20 R2-R5 全部假象的共同根因)。直跑 tsx 常驻。
   // 影子实例的内置 MQTT broker 跟随端口偏移(与协议端口同一 offset),避免多实例抢占 18830。
   // (brokerPort 已在函数头部经 brokerGuard 校验归属)
-  const child = spawn('npx', ['tsx', 'src/server/index.ts'], {
+  const tsxPackage = join(cwd, 'node_modules', 'tsx', 'package.json')
+  const simEntry = join(cwd, 'src', 'server', 'index.ts')
+  if (!existsSync(tsxPackage) || !existsSync(simEntry)) {
+    return { started: false, dir: cwd, reason: `tsx 启动依赖缺失: ${tsxPackage} 或 ${simEntry}` }
+  }
+  // Load tsx in-process with absolute paths. This avoids the Windows npx/cmd
+  // wrapper and makes the listener PID/source path auditable.
+  const child = spawn(process.execPath, ['--import', 'tsx', simEntry], {
     cwd,
-    shell: true,
-    env: { ...process.env, NO_PROXY: '127.0.0.1,localhost', no_proxy: '127.0.0.1,localhost', SIM_PORT: String(SIM_PORT), MQTT_BROKER_PORT: String(brokerPort) },
+    shell: false,
+    env: { ...process.env, NO_PROXY: '127.0.0.1,localhost', no_proxy: '127.0.0.1,localhost', SIM_PORT: String(SIM_PORT), SIM_HOST: SIM_SHADOW ? '127.0.0.1' : process.env.SIM_HOST ?? '127.0.0.1', MQTT_BROKER_PORT: String(brokerPort) },
     stdio: 'ignore',
-    detached: false,
+    detached: true,
   })
   child.unref?.()
   const t0 = Date.now()
@@ -201,6 +288,27 @@ export async function ensureSimulator({ timeoutMs = 90_000, log = console.log } 
   // spawn 后二次守卫:broker 必须已由本实例拉起(归属同进程),否则仪表 MQTT 数据会落到僵尸 broker
   const post = await brokerGuard(brokerPort, log)
   if (post) return { started: false, pid: child.pid, dir: cwd, reason: post }
+  if (SIM_SHADOW) {
+    let isolationError = ''
+    const deadline = Date.now() + 30_000
+    do {
+      try {
+        const nodes = (await simApi('GET', '/api/nodes')).data
+        const endpoints = simulatorEndpointPlan(nodes, SIM_PORT)
+        if (nodes.some(node => node.enabled && (!node.runtime?.running || node.runtime?.lastError || !node.runtime?.protocol))) throw new Error('an enabled simulator protocol has not booted successfully')
+        const listeners = privateTcpListeners([...new Set(endpoints.map(endpoint => endpoint.port))])
+        for (const endpoint of endpoints) {
+          const rows = listeners.filter(row => row.port === endpoint.port)
+          if (!rows.length || rows.some(row => row.pid !== child.pid || !['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(row.address.toLowerCase()))) throw new Error(`${endpoint.kind}:${endpoint.port} is not a loopback listener owned by private PID ${child.pid}`)
+        }
+        isolationError = ''
+        break
+      }
+      catch (err) { isolationError = err.message }
+      await sleep(500)
+    } while (Date.now() < deadline)
+    if (isolationError) return { started: false, pid: child.pid, dir: cwd, reason: `private simulator postlaunch isolation check failed; process preserved: ${isolationError}` }
+  }
   // 空库冷启会播种 5 台默认演示设备(dev-*):其中默认 opcua 与 cast 预设的 opcua
   // 同端口(重映射后同为 6840)→ 预设 opcua 服务端 EADDRINUSE 绑不上 → screw 写全落空
   // (2026-09-20 R6「P6 不收敛/port-2 无采样」根因)。拉起后立即清场,产线由预设重建。

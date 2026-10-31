@@ -1,0 +1,29 @@
+{
+  "audit_marker": true,
+  "audit_marker_reason": null,
+  "source_records": 1,
+  "tool_events": 0,
+  "completed_pairs": 0,
+  "actors_observed": [],
+  "expected_actors": [
+    "8d1b50d6-b891-4eaf-9a3b-4f30638cdfc1",
+    "df1e22bf-bce5-48aa-95df-782bbe0aaa78",
+    "242ce203-1266-4f50-a37d-d706aef94ade"
+  ],
+  "all_members_observed": false,
+  "raw_event_parse_errors": [],
+  "channel_event_total": 0,
+  "channel_events_collected": 0,
+  "channel_events_complete": true,
+  "journal_status": 200,
+  "journal_anchors": 0,
+  "journal_capped": false,
+  "ops_complete": true,
+  "ops_capped_windows": [],
+  "ops_errors": [],
+  "daq_samples_complete": true,
+  "daq_capped_windows": [],
+  "approval_history_complete": true,
+  "approval_history_capped_agents": [],
+  "goal_period_changed_anchors": 0
+}

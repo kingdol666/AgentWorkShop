@@ -1,0 +1,129 @@
+{
+  "audit_marker": true,
+  "audit_marker_reason": null,
+  "source_records": 1,
+  "tool_events": 0,
+  "completed_pairs": 0,
+  "actors_observed": [],
+  "expected_actors": [
+    "995b471e-bf6b-4660-abc3-d2e64d7e6b71",
+    "10d609ff-9630-4e78-9ed1-b75344ceda5a",
+    "2569178b-e602-47ab-ad57-4321cc5b0bf4"
+  ],
+  "all_members_observed": false,
+  "raw_event_parse_errors": [],
+  "actor_role_mismatches": [],
+  "unapproved_tool_event_count": 0,
+  "platform_dispatch_to_each_worker": false,
+  "channel_event_total": 0,
+  "channel_events_collected": 0,
+  "channel_events_complete": true,
+  "journal_status": 200,
+  "journal_anchors": 0,
+  "journal_capped": false,
+  "ops_complete": true,
+  "ops_capped_windows": [],
+  "ops_errors": [],
+  "daq_samples_complete": true,
+  "daq_capped_windows": [],
+  "approval_history_complete": true,
+  "approval_history_capped_agents": [],
+  "goal_period_changed_anchors": 0,
+  "event_log_stability": {
+    "interval_ms": 1000,
+    "minimum_wait_ms": 60000,
+    "required_stable_intervals": 5,
+    "maximum_wait_ms": 120000,
+    "stable": true,
+    "timed_out": false,
+    "wait_ms": 60457,
+    "initial_size_bytes": 391,
+    "final_size_bytes": 391,
+    "initial_sha256": "9aa7a6de0a72b6e9aa0471444b59aea2cf4d031787006ab1ed32ce4b06adc7b2",
+    "final_sha256": "9aa7a6de0a72b6e9aa0471444b59aea2cf4d031787006ab1ed32ce4b06adc7b2",
+    "observations": [
+      {
+        "elapsed_ms": 0,
+        "size_bytes": 391,
+        "sha256": "9aa7a6de0a72b6e9aa0471444b59aea2cf4d031787006ab1ed32ce4b06adc7b2"
+      },
+      {
+        "elapsed_ms": 1004,
+        "size_bytes": 391,
+        "sha256": "9aa7a6de0a72b6e9aa0471444b59aea2cf4d031787006ab1ed32ce4b06adc7b2"
+      },
+      {
+        "elapsed_ms": 2013,
+        "size_bytes": 391,
+        "sha256": "9aa7a6de0a72b6e9aa0471444b59aea2cf4d031787006ab1ed32ce4b06adc7b2"
+      },
+      {
+        "elapsed_ms": 3028,
+        "size_bytes": 391,
+        "sha256": "9aa7a6de0a72b6e9aa0471444b59aea2cf4d031787006ab1ed32ce4b06adc7b2"
+      },
+      {
+        "elapsed_ms": 4033,
+        "size_bytes": 391,
+        "sha256": "9aa7a6de0a72b6e9aa0471444b59aea2cf4d031787006ab1ed32ce4b06adc7b2"
+      },
+      {
+        "elapsed_ms": 5047,
+        "size_bytes": 391,
+        "sha256": "9aa7a6de0a72b6e9aa0471444b59aea2cf4d031787006ab1ed32ce4b06adc7b2"
+      },
+      {
+        "elapsed_ms": 6057,
+        "size_bytes": 391,
+        "sha256": "9aa7a6de0a72b6e9aa0471444b59aea2cf4d031787006ab1ed32ce4b06adc7b2"
+      },
+      {
+        "elapsed_ms": 7063,
+        "size_bytes": 391,
+        "sha256": "9aa7a6de0a72b6e9aa0471444b59aea2cf4d031787006ab1ed32ce4b06adc7b2"
+      },
+      {
+        "elapsed_ms": 8067,
+        "size_bytes": 391,
+        "sha256": "9aa7a6de0a72b6e9aa0471444b59aea2cf4d031787006ab1ed32ce4b06adc7b2"
+      },
+      {
+        "elapsed_ms": 9072,
+        "size_bytes": 391,
+        "sha256": "9aa7a6de0a72b6e9aa0471444b59aea2cf4d031787006ab1ed32ce4b06adc7b2"
+      },
+      {
+        "elapsed_ms": 10095,
+        "size_bytes": 391,
+        "sha256": "9aa7a6de0a72b6e9aa0471444b59aea2cf4d031787006ab1ed32ce4b06adc7b2"
+      },
+      {
+        "elapsed_ms": 11095,
+        "size_bytes": 391,
+        "sha256": "9aa7a6de0a72b6e9aa0471444b59aea2cf4d031787006ab1ed32ce4b06adc7b2"
+      },
+      {
+        "elapsed_ms": 12103,
+        "size_bytes": 391,
+        "sha256": "9aa7a6de0a72b6e9aa0471444b59aea2cf4d031787006ab1ed32ce4b06adc7b2"
+      },
+      {
+        "elapsed_ms": 13118,
+        "size_bytes": 391,
+        "sha256": "9aa7a6de0a72b6e9aa0471444b59aea2cf4d031787006ab1ed32ce4b06adc7b2"
+      },
+      {
+        "elapsed_ms": 14132,
+        "size_bytes": 391,
+        "sha256": "9aa7a6de0a72b6e9aa0471444b59aea2cf4d031787006ab1ed32ce4b06adc7b2"
+      },
+      {
+        "elapsed_ms": 15134,
+        "size_bytes": 391,
+        "sha256": "9aa7a6de0a72b6e9aa0471444b59aea2cf4d031787006ab1ed32ce4b06adc7b2"
+      }
+    ],
+    "aw_listener_closed": false,
+    "aw_listener_check_error": null
+  }
+}

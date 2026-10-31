@@ -1,0 +1,51 @@
+[
+  {
+    "agent_id": "36910c06-5e1a-41fe-871a-1cf76ada61f9",
+    "role": "lead",
+    "tools": [
+      "report_progress",
+      "complete_task",
+      "dispatch_task",
+      "list_team_agents",
+      "get_task_details",
+      "my_industrial_nodes",
+      "daq_query",
+      "dcw_judge",
+      "dcw_journal",
+      "line_context",
+      "optimization_explore"
+    ]
+  },
+  {
+    "agent_id": "99969438-bf5d-4f52-a121-18c1a5c697b9",
+    "role": "worker",
+    "tools": [
+      "report_progress",
+      "complete_task",
+      "list_team_agents",
+      "get_task_details",
+      "my_industrial_nodes",
+      "daq_query",
+      "dcw_judge",
+      "dcw_journal",
+      "line_context",
+      "optimization_explore"
+    ]
+  },
+  {
+    "agent_id": "025a82ac-4844-4ed0-a198-4897ef519829",
+    "role": "worker",
+    "tools": [
+      "report_progress",
+      "complete_task",
+      "list_team_agents",
+      "get_task_details",
+      "my_industrial_nodes",
+      "daq_query",
+      "dcw_judge",
+      "dcw_journal",
+      "line_context",
+      "optimization_explore"
+    ]
+  }
+]

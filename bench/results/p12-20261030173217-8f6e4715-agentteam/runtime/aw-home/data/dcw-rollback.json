@@ -1,0 +1,1225 @@
+{
+  "anchors": [
+    {
+      "lineId": "ln-1572335e",
+      "nodeId": "dw-d740dd20",
+      "prevValue": null,
+      "newValue": 240,
+      "source": "recipe",
+      "actor": "recipe",
+      "recipeRunId": "rr-a9b6e3d1",
+      "id": "anc-436caa20",
+      "at": "2026-10-31T01:33:55.314+08:00"
+    },
+    {
+      "lineId": "ln-1572335e",
+      "nodeId": "dw-d320b9f1",
+      "prevValue": null,
+      "newValue": 246,
+      "source": "recipe",
+      "actor": "recipe",
+      "recipeRunId": "rr-a9b6e3d1",
+      "id": "anc-140b92ac",
+      "at": "2026-10-31T01:33:55.335+08:00"
+    },
+    {
+      "lineId": "ln-1572335e",
+      "nodeId": "dw-db280dd2",
+      "prevValue": null,
+      "newValue": 252,
+      "source": "recipe",
+      "actor": "recipe",
+      "recipeRunId": "rr-a9b6e3d1",
+      "id": "anc-f6c4c1db",
+      "at": "2026-10-31T01:33:55.363+08:00"
+    },
+    {
+      "lineId": "ln-1572335e",
+      "nodeId": "dw-52837df7",
+      "prevValue": null,
+      "newValue": 258,
+      "source": "recipe",
+      "actor": "recipe",
+      "recipeRunId": "rr-a9b6e3d1",
+      "id": "anc-1a4cc489",
+      "at": "2026-10-31T01:33:55.400+08:00"
+    },
+    {
+      "lineId": "ln-1572335e",
+      "nodeId": "dw-343169bc",
+      "prevValue": null,
+      "newValue": 120,
+      "source": "recipe",
+      "actor": "recipe",
+      "recipeRunId": "rr-a9b6e3d1",
+      "id": "anc-66f62256",
+      "at": "2026-10-31T01:33:55.441+08:00"
+    },
+    {
+      "lineId": "ln-1572335e",
+      "nodeId": "dw-d92e7ac7",
+      "prevValue": null,
+      "newValue": 40,
+      "source": "recipe",
+      "actor": "recipe",
+      "recipeRunId": "rr-a9b6e3d1",
+      "id": "anc-6ce7fc7f",
+      "at": "2026-10-31T01:33:55.444+08:00"
+    },
+    {
+      "lineId": "ln-1572335e",
+      "nodeId": "dw-de50b642",
+      "prevValue": null,
+      "newValue": 1600,
+      "source": "recipe",
+      "actor": "recipe",
+      "recipeRunId": "rr-a9b6e3d1",
+      "id": "anc-cec0242b",
+      "at": "2026-10-31T01:33:55.445+08:00"
+    },
+    {
+      "lineId": "ln-1572335e",
+      "nodeId": "dw-b7d2debd",
+      "prevValue": null,
+      "newValue": 85,
+      "source": "recipe",
+      "actor": "recipe",
+      "recipeRunId": "rr-a9b6e3d1",
+      "id": "anc-ff086b44",
+      "at": "2026-10-31T01:33:55.450+08:00"
+    },
+    {
+      "lineId": "ln-1572335e",
+      "nodeId": "dw-f8bbdb7a",
+      "prevValue": null,
+      "newValue": 45,
+      "source": "recipe",
+      "actor": "recipe",
+      "recipeRunId": "rr-a9b6e3d1",
+      "id": "anc-c52b5ede",
+      "at": "2026-10-31T01:33:55.452+08:00"
+    },
+    {
+      "lineId": "ln-1572335e",
+      "nodeId": "dw-a648ccdc",
+      "prevValue": null,
+      "newValue": 6,
+      "source": "recipe",
+      "actor": "recipe",
+      "recipeRunId": "rr-a9b6e3d1",
+      "id": "anc-2ad6cfab",
+      "at": "2026-10-31T01:33:55.454+08:00"
+    },
+    {
+      "lineId": "ln-1572335e",
+      "nodeId": "dw-948b5316",
+      "prevValue": null,
+      "newValue": 24,
+      "source": "recipe",
+      "actor": "recipe",
+      "recipeRunId": "rr-a9b6e3d1",
+      "id": "anc-6c401c7f",
+      "at": "2026-10-31T01:33:55.461+08:00"
+    },
+    {
+      "lineId": "ln-1572335e",
+      "nodeId": "dw-f8bbdb7a",
+      "prevValue": 45,
+      "newValue": 46.8,
+      "source": "agent",
+      "actor": "af6b62fa-e2b0-40e1-9ed3-4f69b0dea384",
+      "approvalId": "ap-7c150313",
+      "recipeRunId": null,
+      "id": "anc-061c27ac",
+      "at": "2026-10-31T01:44:26.852+08:00",
+      "recordId": "opt-5a656a0e"
+    },
+    {
+      "lineId": "ln-1572335e",
+      "nodeId": "dw-a648ccdc",
+      "prevValue": 6,
+      "newValue": 6.2,
+      "source": "agent",
+      "actor": "4492d395-a240-4e83-9aa2-a28620148f75",
+      "approvalId": "ap-2e047f8d",
+      "recipeRunId": null,
+      "id": "anc-fd57111c",
+      "at": "2026-10-31T01:44:26.944+08:00",
+      "recordId": "opt-4ef8e3a4"
+    },
+    {
+      "lineId": "ln-1572335e",
+      "nodeId": "dw-a648ccdc",
+      "prevValue": 6.2,
+      "newValue": 6.4,
+      "source": "agent",
+      "actor": "4492d395-a240-4e83-9aa2-a28620148f75",
+      "approvalId": "ap-d336bda7",
+      "recipeRunId": null,
+      "id": "anc-3bd2bf7f",
+      "at": "2026-10-31T01:47:47.921+08:00",
+      "recordId": "opt-83fab14e"
+    }
+  ],
+  "records": [
+    {
+      "lineId": "ln-1572335e",
+      "nodeId": "dw-f8bbdb7a",
+      "nodeName": "scen-injection:dcw:hold-pressure-sp",
+      "recipeId": "rc-6e10fa70",
+      "agentId": "af6b62fa-e2b0-40e1-9ed3-4f69b0dea384",
+      "hypothesis": "+1.8bar 保压压力可补偿约 +0.3~0.4g 克重，同时缓解缩痕超标问题",
+      "params": [
+        {
+          "nodeId": "dw-f8bbdb7a",
+          "templateRef": "dcw-temp-sp",
+          "from": 45,
+          "to": 46.8
+        }
+      ],
+      "setAt": "2026-10-31T01:44:26.852+08:00",
+      "status": "open",
+      "judge": {
+        "by": "system",
+        "actor": "system",
+        "verdict": "rollback",
+        "reason": "观察窗内数采越配方监控窗累计 130 采样(阈值 3),系统兜底判定回退;等待人工确认",
+        "at": "2026-10-31T01:46:27.357+08:00"
+      },
+      "anchorId": "anc-061c27ac",
+      "policy": "approve_rollback",
+      "id": "opt-5a656a0e",
+      "createdAt": "2026-10-31T01:44:26.853+08:00",
+      "baseline": {
+        "at": "2026-10-31T01:44:26.864+08:00",
+        "fromMs": 1793381666852,
+        "toMs": 1793382266852,
+        "channels": [
+          {
+            "daqNodeId": "dn-442d27b5",
+            "ch": "temp-tc",
+            "unit": "℃",
+            "latest": 246.63333333333335,
+            "avg": 246.74,
+            "min": 246.15,
+            "max": 247.3,
+            "cnt": 67,
+            "breaches": 0
+          },
+          {
+            "daqNodeId": "dn-c28dd39f",
+            "ch": "temp-tc",
+            "unit": "bar",
+            "latest": 52,
+            "avg": 51.86,
+            "min": 50.8,
+            "max": 52.77,
+            "cnt": 66,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-2d76ebf6",
+            "ch": "temp-tc",
+            "unit": "℃",
+            "latest": 39.699999999999996,
+            "avg": 40,
+            "min": 39.63,
+            "max": 40.53,
+            "cnt": 67,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-d594f75f",
+            "ch": "temp-tc",
+            "unit": "kN",
+            "latest": 1599.3333333333333,
+            "avg": 1599.62,
+            "min": 1594,
+            "max": 1605.33,
+            "cnt": 66,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-9b66be11",
+            "ch": "temp-tc",
+            "unit": "bar",
+            "latest": 51.699999999999996,
+            "avg": 51.89,
+            "min": 50.67,
+            "max": 53.07,
+            "cnt": 66,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-d2fd61aa",
+            "ch": "temp-tc",
+            "unit": "℃",
+            "latest": 24,
+            "avg": 24.02,
+            "min": 23.65,
+            "max": 24.4,
+            "cnt": 66,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-15356e39",
+            "ch": "temp-tc",
+            "unit": "L/min",
+            "latest": 44.3,
+            "avg": 44.76,
+            "min": 43.9,
+            "max": 45.8,
+            "cnt": 67,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-6b1e7c51",
+            "ch": "temp-tc",
+            "unit": "g",
+            "latest": 31.28,
+            "avg": 31.25,
+            "min": 31.18,
+            "max": 31.32,
+            "cnt": 67,
+            "breaches": 67
+          },
+          {
+            "daqNodeId": "dn-0cce290f",
+            "ch": "temp-tc",
+            "unit": "%",
+            "latest": 0.001,
+            "avg": 0.01,
+            "min": 0,
+            "max": 0.04,
+            "cnt": 67,
+            "breaches": 0
+          },
+          {
+            "daqNodeId": "dn-3c3ee77c",
+            "ch": "temp-tc",
+            "unit": "%",
+            "latest": 2.199,
+            "avg": 2.16,
+            "min": 2.03,
+            "max": 2.34,
+            "cnt": 67,
+            "breaches": 67
+          },
+          {
+            "daqNodeId": "dn-4dcdcb62",
+            "ch": "temp-tc",
+            "unit": "mm",
+            "latest": 0.006666666666666667,
+            "avg": 0.01,
+            "min": 0,
+            "max": 0.01,
+            "cnt": 67,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-073e90e2",
+            "ch": "temp-tc",
+            "unit": "s",
+            "latest": 15.300000000000002,
+            "avg": 15.3,
+            "min": 15.3,
+            "max": 15.3,
+            "cnt": 67,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-7811b983",
+            "ch": "temp-tc",
+            "unit": "mm",
+            "latest": null,
+            "avg": null,
+            "min": null,
+            "max": null,
+            "cnt": 0,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-f386bfb2",
+            "ch": "temp-tc",
+            "unit": "灰度",
+            "latest": null,
+            "avg": null,
+            "min": null,
+            "max": null,
+            "cnt": 0,
+            "breaches": -1
+          }
+        ]
+      },
+      "evaluatedAt": "2026-10-31T01:57:01.038+08:00",
+      "windowAgg": {
+        "at": "2026-10-31T01:46:57.853+08:00",
+        "fromMs": 1793382266852,
+        "toMs": 1793382417848,
+        "channels": [
+          {
+            "daqNodeId": "dn-442d27b5",
+            "ch": "temp-tc",
+            "unit": "℃",
+            "latest": 247.2,
+            "avg": 246.75,
+            "min": 245.8,
+            "max": 247.6,
+            "cnt": 72,
+            "breaches": 0
+          },
+          {
+            "daqNodeId": "dn-c28dd39f",
+            "ch": "temp-tc",
+            "unit": "bar",
+            "latest": 53.1,
+            "avg": 51.84,
+            "min": 50.4,
+            "max": 53.4,
+            "cnt": 72,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-2d76ebf6",
+            "ch": "temp-tc",
+            "unit": "℃",
+            "latest": 39.8,
+            "avg": 40.03,
+            "min": 39.1,
+            "max": 41,
+            "cnt": 73,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-d594f75f",
+            "ch": "temp-tc",
+            "unit": "kN",
+            "latest": 1599,
+            "avg": 1599.42,
+            "min": 1592,
+            "max": 1611,
+            "cnt": 72,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-9b66be11",
+            "ch": "temp-tc",
+            "unit": "bar",
+            "latest": 51.2,
+            "avg": 51.85,
+            "min": 49.8,
+            "max": 53.7,
+            "cnt": 72,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-d2fd61aa",
+            "ch": "temp-tc",
+            "unit": "℃",
+            "latest": 23.9,
+            "avg": 24.02,
+            "min": 23.7,
+            "max": 24.4,
+            "cnt": 38,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-15356e39",
+            "ch": "temp-tc",
+            "unit": "L/min",
+            "latest": 44.6,
+            "avg": 44.85,
+            "min": 43.9,
+            "max": 46,
+            "cnt": 38,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-6b1e7c51",
+            "ch": "temp-tc",
+            "unit": "g",
+            "latest": 31.31,
+            "avg": 31.36,
+            "min": 31.28,
+            "max": 31.5,
+            "cnt": 72,
+            "breaches": 72
+          },
+          {
+            "daqNodeId": "dn-0cce290f",
+            "ch": "temp-tc",
+            "unit": "%",
+            "latest": 0.022,
+            "avg": 0.01,
+            "min": 0,
+            "max": 0.07,
+            "cnt": 73,
+            "breaches": 0
+          },
+          {
+            "daqNodeId": "dn-3c3ee77c",
+            "ch": "temp-tc",
+            "unit": "%",
+            "latest": 2.101,
+            "avg": 2.05,
+            "min": 1.79,
+            "max": 2.21,
+            "cnt": 73,
+            "breaches": 58
+          },
+          {
+            "daqNodeId": "dn-4dcdcb62",
+            "ch": "temp-tc",
+            "unit": "mm",
+            "latest": 0.008,
+            "avg": 0.01,
+            "min": 0,
+            "max": 0.02,
+            "cnt": 72,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-073e90e2",
+            "ch": "temp-tc",
+            "unit": "s",
+            "latest": 15.3,
+            "avg": 15.3,
+            "min": 15.3,
+            "max": 15.3,
+            "cnt": 73,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-7811b983",
+            "ch": "temp-tc",
+            "unit": "mm",
+            "latest": null,
+            "avg": null,
+            "min": null,
+            "max": null,
+            "cnt": 0,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-f386bfb2",
+            "ch": "temp-tc",
+            "unit": "灰度",
+            "latest": null,
+            "avg": null,
+            "min": null,
+            "max": null,
+            "cnt": 0,
+            "breaches": -1
+          }
+        ]
+      }
+    },
+    {
+      "lineId": "ln-1572335e",
+      "nodeId": "dw-a648ccdc",
+      "nodeName": "scen-injection:dcw:hold-time-sp",
+      "recipeId": "rc-6e10fa70",
+      "agentId": "4492d395-a240-4e83-9aa2-a28620148f75",
+      "hypothesis": "延长保压时间可增强补缩效果，预期克重提升约 0.3~0.5g，缩痕下降约 0.2~0.4%",
+      "params": [
+        {
+          "nodeId": "dw-a648ccdc",
+          "templateRef": "dcw-temp-sp",
+          "from": 6,
+          "to": 6.2
+        }
+      ],
+      "setAt": "2026-10-31T01:44:26.944+08:00",
+      "status": "superseded",
+      "judge": {
+        "by": "system",
+        "actor": "system",
+        "verdict": "rollback",
+        "reason": "观察窗内数采越配方监控窗累计 130 采样(阈值 3),系统兜底判定回退;等待人工确认",
+        "at": "2026-10-31T01:46:27.373+08:00"
+      },
+      "anchorId": "anc-fd57111c",
+      "policy": "approve_rollback",
+      "id": "opt-4ef8e3a4",
+      "createdAt": "2026-10-31T01:44:26.944+08:00",
+      "baseline": {
+        "at": "2026-10-31T01:44:26.954+08:00",
+        "fromMs": 1793381666944,
+        "toMs": 1793382266944,
+        "channels": [
+          {
+            "daqNodeId": "dn-442d27b5",
+            "ch": "temp-tc",
+            "unit": "℃",
+            "latest": 246.63333333333335,
+            "avg": 246.74,
+            "min": 246.15,
+            "max": 247.3,
+            "cnt": 67,
+            "breaches": 0
+          },
+          {
+            "daqNodeId": "dn-c28dd39f",
+            "ch": "temp-tc",
+            "unit": "bar",
+            "latest": 52,
+            "avg": 51.86,
+            "min": 50.8,
+            "max": 52.77,
+            "cnt": 66,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-2d76ebf6",
+            "ch": "temp-tc",
+            "unit": "℃",
+            "latest": 39.699999999999996,
+            "avg": 40,
+            "min": 39.63,
+            "max": 40.53,
+            "cnt": 67,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-d594f75f",
+            "ch": "temp-tc",
+            "unit": "kN",
+            "latest": 1599.3333333333333,
+            "avg": 1599.62,
+            "min": 1594,
+            "max": 1605.33,
+            "cnt": 66,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-9b66be11",
+            "ch": "temp-tc",
+            "unit": "bar",
+            "latest": 51.699999999999996,
+            "avg": 51.89,
+            "min": 50.67,
+            "max": 53.07,
+            "cnt": 66,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-d2fd61aa",
+            "ch": "temp-tc",
+            "unit": "℃",
+            "latest": 24,
+            "avg": 24.02,
+            "min": 23.65,
+            "max": 24.4,
+            "cnt": 66,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-15356e39",
+            "ch": "temp-tc",
+            "unit": "L/min",
+            "latest": 44.3,
+            "avg": 44.76,
+            "min": 43.9,
+            "max": 45.8,
+            "cnt": 67,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-6b1e7c51",
+            "ch": "temp-tc",
+            "unit": "g",
+            "latest": 31.28,
+            "avg": 31.25,
+            "min": 31.18,
+            "max": 31.32,
+            "cnt": 67,
+            "breaches": 67
+          },
+          {
+            "daqNodeId": "dn-0cce290f",
+            "ch": "temp-tc",
+            "unit": "%",
+            "latest": 0.001,
+            "avg": 0.01,
+            "min": 0,
+            "max": 0.04,
+            "cnt": 67,
+            "breaches": 0
+          },
+          {
+            "daqNodeId": "dn-3c3ee77c",
+            "ch": "temp-tc",
+            "unit": "%",
+            "latest": 2.199,
+            "avg": 2.16,
+            "min": 2.03,
+            "max": 2.34,
+            "cnt": 67,
+            "breaches": 67
+          },
+          {
+            "daqNodeId": "dn-4dcdcb62",
+            "ch": "temp-tc",
+            "unit": "mm",
+            "latest": 0.006666666666666667,
+            "avg": 0.01,
+            "min": 0,
+            "max": 0.01,
+            "cnt": 67,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-073e90e2",
+            "ch": "temp-tc",
+            "unit": "s",
+            "latest": 15.300000000000002,
+            "avg": 15.3,
+            "min": 15.3,
+            "max": 15.3,
+            "cnt": 67,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-7811b983",
+            "ch": "temp-tc",
+            "unit": "mm",
+            "latest": null,
+            "avg": null,
+            "min": null,
+            "max": null,
+            "cnt": 0,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-f386bfb2",
+            "ch": "temp-tc",
+            "unit": "灰度",
+            "latest": null,
+            "avg": null,
+            "min": null,
+            "max": null,
+            "cnt": 0,
+            "breaches": -1
+          }
+        ]
+      },
+      "evaluatedAt": "2026-10-31T01:47:27.908+08:00",
+      "windowAgg": {
+        "at": "2026-10-31T01:47:47.930+08:00",
+        "fromMs": 1793382266944,
+        "toMs": 1793382467921,
+        "channels": [
+          {
+            "daqNodeId": "dn-442d27b5",
+            "ch": "temp-tc",
+            "unit": "℃",
+            "latest": 247.2,
+            "avg": 246.75,
+            "min": 245.8,
+            "max": 247.6,
+            "cnt": 72,
+            "breaches": 0
+          },
+          {
+            "daqNodeId": "dn-c28dd39f",
+            "ch": "temp-tc",
+            "unit": "bar",
+            "latest": 53.1,
+            "avg": 51.84,
+            "min": 50.4,
+            "max": 53.4,
+            "cnt": 72,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-2d76ebf6",
+            "ch": "temp-tc",
+            "unit": "℃",
+            "latest": 39.8,
+            "avg": 40.03,
+            "min": 39.1,
+            "max": 41,
+            "cnt": 73,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-d594f75f",
+            "ch": "temp-tc",
+            "unit": "kN",
+            "latest": 1599,
+            "avg": 1599.42,
+            "min": 1592,
+            "max": 1611,
+            "cnt": 72,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-9b66be11",
+            "ch": "temp-tc",
+            "unit": "bar",
+            "latest": 51.2,
+            "avg": 51.85,
+            "min": 49.8,
+            "max": 53.7,
+            "cnt": 72,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-d2fd61aa",
+            "ch": "temp-tc",
+            "unit": "℃",
+            "latest": 23.9,
+            "avg": 24.02,
+            "min": 23.7,
+            "max": 24.4,
+            "cnt": 38,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-15356e39",
+            "ch": "temp-tc",
+            "unit": "L/min",
+            "latest": 44.6,
+            "avg": 44.85,
+            "min": 43.9,
+            "max": 46,
+            "cnt": 38,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-6b1e7c51",
+            "ch": "temp-tc",
+            "unit": "g",
+            "latest": 31.31,
+            "avg": 31.36,
+            "min": 31.28,
+            "max": 31.5,
+            "cnt": 72,
+            "breaches": 72
+          },
+          {
+            "daqNodeId": "dn-0cce290f",
+            "ch": "temp-tc",
+            "unit": "%",
+            "latest": 0.022,
+            "avg": 0.01,
+            "min": 0,
+            "max": 0.07,
+            "cnt": 73,
+            "breaches": 0
+          },
+          {
+            "daqNodeId": "dn-3c3ee77c",
+            "ch": "temp-tc",
+            "unit": "%",
+            "latest": 2.101,
+            "avg": 2.05,
+            "min": 1.79,
+            "max": 2.21,
+            "cnt": 73,
+            "breaches": 58
+          },
+          {
+            "daqNodeId": "dn-4dcdcb62",
+            "ch": "temp-tc",
+            "unit": "mm",
+            "latest": 0.008,
+            "avg": 0.01,
+            "min": 0,
+            "max": 0.02,
+            "cnt": 72,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-073e90e2",
+            "ch": "temp-tc",
+            "unit": "s",
+            "latest": 15.3,
+            "avg": 15.3,
+            "min": 15.3,
+            "max": 15.3,
+            "cnt": 73,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-7811b983",
+            "ch": "temp-tc",
+            "unit": "mm",
+            "latest": null,
+            "avg": null,
+            "min": null,
+            "max": null,
+            "cnt": 0,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-f386bfb2",
+            "ch": "temp-tc",
+            "unit": "灰度",
+            "latest": null,
+            "avg": null,
+            "min": null,
+            "max": null,
+            "cnt": 0,
+            "breaches": -1
+          }
+        ]
+      },
+      "closedAt": "2026-10-31T01:47:47.921+08:00",
+      "closedBy": "superseded",
+      "aggPending": false
+    },
+    {
+      "lineId": "ln-1572335e",
+      "nodeId": "dw-a648ccdc",
+      "nodeName": "scen-injection:dcw:hold-time-sp",
+      "recipeId": "rc-6e10fa70",
+      "agentId": "4492d395-a240-4e83-9aa2-a28620148f75",
+      "hypothesis": "延长保压时间至 6.4s，预期克重再提升约 0.3~0.5g，缩痕下降约 0.2~0.4%",
+      "params": [
+        {
+          "nodeId": "dw-a648ccdc",
+          "templateRef": "dcw-temp-sp",
+          "from": 6.2,
+          "to": 6.4
+        }
+      ],
+      "setAt": "2026-10-31T01:47:47.921+08:00",
+      "status": "open",
+      "judge": {
+        "by": "system",
+        "actor": "system",
+        "verdict": "rollback",
+        "reason": "观察窗内数采越配方监控窗累计 120 采样(阈值 3),系统兜底判定回退;等待人工确认",
+        "at": "2026-10-31T01:49:48.413+08:00"
+      },
+      "anchorId": "anc-3bd2bf7f",
+      "policy": "approve_rollback",
+      "id": "opt-83fab14e",
+      "createdAt": "2026-10-31T01:47:47.921+08:00",
+      "baseline": {
+        "at": "2026-10-31T01:47:47.953+08:00",
+        "fromMs": 1793381867921,
+        "toMs": 1793382467921,
+        "channels": [
+          {
+            "daqNodeId": "dn-442d27b5",
+            "ch": "temp-tc",
+            "unit": "℃",
+            "latest": 246.76666666666668,
+            "avg": 246.69,
+            "min": 246.1,
+            "max": 247.3,
+            "cnt": 67,
+            "breaches": 0
+          },
+          {
+            "daqNodeId": "dn-c28dd39f",
+            "ch": "temp-tc",
+            "unit": "bar",
+            "latest": 51.13333333333333,
+            "avg": 51.71,
+            "min": 50.4,
+            "max": 52.93,
+            "cnt": 66,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-2d76ebf6",
+            "ch": "temp-tc",
+            "unit": "℃",
+            "latest": 39.96666666666666,
+            "avg": 40.01,
+            "min": 39.6,
+            "max": 40.45,
+            "cnt": 67,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-d594f75f",
+            "ch": "temp-tc",
+            "unit": "kN",
+            "latest": 1601,
+            "avg": 1600.05,
+            "min": 1596,
+            "max": 1605,
+            "cnt": 66,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-9b66be11",
+            "ch": "temp-tc",
+            "unit": "bar",
+            "latest": 52.6,
+            "avg": 51.86,
+            "min": 50.83,
+            "max": 54,
+            "cnt": 66,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-d2fd61aa",
+            "ch": "temp-tc",
+            "unit": "℃",
+            "latest": 24.1,
+            "avg": 24.01,
+            "min": 23.6,
+            "max": 24.35,
+            "cnt": 66,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-15356e39",
+            "ch": "temp-tc",
+            "unit": "L/min",
+            "latest": 44.75,
+            "avg": 44.76,
+            "min": 43.8,
+            "max": 45.5,
+            "cnt": 67,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-6b1e7c51",
+            "ch": "temp-tc",
+            "unit": "g",
+            "latest": 31.209999999999997,
+            "avg": 31.25,
+            "min": 31.2,
+            "max": 31.31,
+            "cnt": 67,
+            "breaches": 67
+          },
+          {
+            "daqNodeId": "dn-0cce290f",
+            "ch": "temp-tc",
+            "unit": "%",
+            "latest": 0.02566666666666667,
+            "avg": 0.01,
+            "min": 0,
+            "max": 0.03,
+            "cnt": 67,
+            "breaches": 0
+          },
+          {
+            "daqNodeId": "dn-3c3ee77c",
+            "ch": "temp-tc",
+            "unit": "%",
+            "latest": 2.135666666666667,
+            "avg": 2.14,
+            "min": 2.03,
+            "max": 2.26,
+            "cnt": 67,
+            "breaches": 67
+          },
+          {
+            "daqNodeId": "dn-4dcdcb62",
+            "ch": "temp-tc",
+            "unit": "mm",
+            "latest": 0.008,
+            "avg": 0.01,
+            "min": 0,
+            "max": 0.01,
+            "cnt": 67,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-073e90e2",
+            "ch": "temp-tc",
+            "unit": "s",
+            "latest": 15.300000000000002,
+            "avg": 15.3,
+            "min": 15.3,
+            "max": 15.3,
+            "cnt": 67,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-7811b983",
+            "ch": "temp-tc",
+            "unit": "mm",
+            "latest": null,
+            "avg": null,
+            "min": null,
+            "max": null,
+            "cnt": 0,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-f386bfb2",
+            "ch": "temp-tc",
+            "unit": "灰度",
+            "latest": null,
+            "avg": null,
+            "min": null,
+            "max": null,
+            "cnt": 0,
+            "breaches": -1
+          }
+        ]
+      },
+      "evaluatedAt": "2026-10-31T01:57:20.393+08:00",
+      "windowAgg": {
+        "at": "2026-10-31T01:50:18.480+08:00",
+        "fromMs": 1793382467921,
+        "toMs": 1793382618475,
+        "channels": [
+          {
+            "daqNodeId": "dn-442d27b5",
+            "ch": "temp-tc",
+            "unit": "℃",
+            "latest": 246.9,
+            "avg": 246.69,
+            "min": 245.9,
+            "max": 247.5,
+            "cnt": 72,
+            "breaches": 0
+          },
+          {
+            "daqNodeId": "dn-c28dd39f",
+            "ch": "temp-tc",
+            "unit": "bar",
+            "latest": 52.5,
+            "avg": 51.79,
+            "min": 49.7,
+            "max": 53.8,
+            "cnt": 72,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-2d76ebf6",
+            "ch": "temp-tc",
+            "unit": "℃",
+            "latest": 40,
+            "avg": 40,
+            "min": 39.3,
+            "max": 41,
+            "cnt": 73,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-d594f75f",
+            "ch": "temp-tc",
+            "unit": "kN",
+            "latest": 1603,
+            "avg": 1598.97,
+            "min": 1588,
+            "max": 1607,
+            "cnt": 72,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-9b66be11",
+            "ch": "temp-tc",
+            "unit": "bar",
+            "latest": 51.9,
+            "avg": 51.95,
+            "min": 50.1,
+            "max": 54.3,
+            "cnt": 72,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-d2fd61aa",
+            "ch": "temp-tc",
+            "unit": "℃",
+            "latest": 23.9,
+            "avg": 24.08,
+            "min": 23.8,
+            "max": 24.6,
+            "cnt": 37,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-15356e39",
+            "ch": "temp-tc",
+            "unit": "L/min",
+            "latest": 44.7,
+            "avg": 44.77,
+            "min": 43.6,
+            "max": 45.8,
+            "cnt": 37,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-6b1e7c51",
+            "ch": "temp-tc",
+            "unit": "g",
+            "latest": 31.41,
+            "avg": 31.36,
+            "min": 31.26,
+            "max": 31.47,
+            "cnt": 73,
+            "breaches": 73
+          },
+          {
+            "daqNodeId": "dn-0cce290f",
+            "ch": "temp-tc",
+            "unit": "%",
+            "latest": 0.008,
+            "avg": 0.01,
+            "min": 0,
+            "max": 0.08,
+            "cnt": 73,
+            "breaches": 0
+          },
+          {
+            "daqNodeId": "dn-3c3ee77c",
+            "ch": "temp-tc",
+            "unit": "%",
+            "latest": 1.885,
+            "avg": 2.02,
+            "min": 1.79,
+            "max": 2.22,
+            "cnt": 73,
+            "breaches": 47
+          },
+          {
+            "daqNodeId": "dn-4dcdcb62",
+            "ch": "temp-tc",
+            "unit": "mm",
+            "latest": 0.007,
+            "avg": 0.01,
+            "min": 0,
+            "max": 0.01,
+            "cnt": 73,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-073e90e2",
+            "ch": "temp-tc",
+            "unit": "s",
+            "latest": 15.4,
+            "avg": 15.4,
+            "min": 15.3,
+            "max": 15.4,
+            "cnt": 73,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-7811b983",
+            "ch": "temp-tc",
+            "unit": "mm",
+            "latest": null,
+            "avg": null,
+            "min": null,
+            "max": null,
+            "cnt": 0,
+            "breaches": -1
+          },
+          {
+            "daqNodeId": "dn-f386bfb2",
+            "ch": "temp-tc",
+            "unit": "灰度",
+            "latest": null,
+            "avg": null,
+            "min": null,
+            "max": null,
+            "cnt": 0,
+            "breaches": -1
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,172 @@
+{
+  "channel_id": "6a9f4c4d-848f-4c28-9b23-1b345d0f4668",
+  "profile": {
+    "channelId": "6a9f4c4d-848f-4c28-9b23-1b345d0f4668",
+    "profile": "aml_optimization",
+    "capability": {
+      "exploration": true,
+      "modelBinding": false,
+      "trial": false,
+      "mpcRecommendation": false,
+      "bayes": false,
+      "phase": "exploration"
+    },
+    "sceneId": "injection-hold-control",
+    "sceneVersion": "1.0.0",
+    "sceneContract": {
+      "schemaVersion": 1,
+      "createdAt": "2026-10-29T17:21:05.440Z",
+      "createdBy": "P12-p12-20261029171555-ba13fcfd",
+      "sceneId": "injection-hold-control",
+      "sceneVersion": "1.0.0",
+      "lineId": "ln-da08fbcb",
+      "productId": "pd-a1f67ce5",
+      "recipeId": "rc-cb44ebf0",
+      "scenarioPrompt": "家用电器面板(PP)注塑:规格克重 32.5±0.35 g、飞边 ≤0.4%、缩痕 ≤1.5%、尺寸偏差 ±0.05 mm。起始保压偏低 → 克重 ≈31.3 g 偏轻 + 缩痕超标;闭环把保压/保压时间/模温调回窗口,同时守住飞边上限。",
+      "phases": [
+        "startup",
+        "filling",
+        "holding",
+        "cooling",
+        "completed"
+      ],
+      "controls": [
+        {
+          "id": "hold_pressure",
+          "nodeId": "dw-b3c7b36c",
+          "role": "control",
+          "physicalMeaning": "保压压力设定",
+          "unit": "bar",
+          "min": 20,
+          "max": 110,
+          "maxStep": 2
+        },
+        {
+          "id": "hold_time",
+          "nodeId": "dw-95c7db32",
+          "role": "control",
+          "physicalMeaning": "保压时间设定",
+          "unit": "s",
+          "min": 3,
+          "max": 15,
+          "maxStep": 0.5
+        }
+      ],
+      "states": [],
+      "disturbances": [],
+      "observations": [
+        {
+          "id": "part-weight",
+          "nodeId": "dn-a9ca6261",
+          "role": "target",
+          "physicalMeaning": "制品克重",
+          "unit": "g",
+          "min": 32.15,
+          "max": 32.85
+        },
+        {
+          "id": "flash-rate",
+          "nodeId": "dn-17bb1cce",
+          "role": "guard",
+          "physicalMeaning": "飞边率",
+          "unit": "",
+          "max": 0.4
+        },
+        {
+          "id": "sink-mark",
+          "nodeId": "dn-dd40ceff",
+          "role": "guard",
+          "physicalMeaning": "缩痕指数",
+          "unit": "",
+          "max": 1.5
+        }
+      ],
+      "guards": [
+        {
+          "id": "flash-rate",
+          "nodeId": "dn-17bb1cce",
+          "role": "guard",
+          "physicalMeaning": "飞边率",
+          "unit": "",
+          "max": 0.4
+        },
+        {
+          "id": "sink-mark",
+          "nodeId": "dn-dd40ceff",
+          "role": "guard",
+          "physicalMeaning": "缩痕指数",
+          "unit": "",
+          "max": 1.5
+        }
+      ],
+      "constraints": [
+        {
+          "id": "part-weight",
+          "kind": "hard_range",
+          "min": 32.15,
+          "max": 32.85
+        },
+        {
+          "id": "flash-rate",
+          "kind": "hard_range",
+          "max": 0.4
+        },
+        {
+          "id": "sink-mark",
+          "kind": "hard_range",
+          "max": 1.5
+        }
+      ],
+      "physicsProfileId": "injection-greybox-v1",
+      "objectiveProfileIds": [
+        "p12-weight-quality"
+      ],
+      "writePolicy": {
+        "minNodeIntervalSec": 60,
+        "minLineActionIntervalSec": 60,
+        "maxActionsPerRun": 20,
+        "maxDeltaPerAction": {
+          "hold_pressure": 2,
+          "hold_time": 0.5
+        }
+      }
+    },
+    "objective": {
+      "schemaVersion": 1,
+      "objectiveId": "p12-injection-weight-recovery",
+      "targets": {
+        "dn-a9ca6261": 32.5
+      },
+      "weights": {
+        "dn-a9ca6261": 1
+      },
+      "controlCosts": {},
+      "horizonSteps": 1,
+      "trustRegion": {
+        "dw-b3c7b36c": {
+          "min": 20,
+          "max": 110,
+          "maxDelta": 2
+        },
+        "dw-95c7db32": {
+          "min": 3,
+          "max": 15,
+          "maxDelta": 0.5
+        }
+      }
+    },
+    "controlPolicy": "hitl_governed",
+    "providerId": "injection-greybox-v1",
+    "providerVersion": "1.0.0",
+    "scenePackId": "injection-hold-control",
+    "optimizationMode": "exploration",
+    "executionMode": "manual"
+  },
+  "derived": {
+    "mode": "exploration",
+    "boundModel": null,
+    "promptPreview": null
+  },
+  "blank_template_id": "eed2d1c6-f2cd-4780-a8f7-64dc6635d7c4",
+  "blank_template_removed": true
+}

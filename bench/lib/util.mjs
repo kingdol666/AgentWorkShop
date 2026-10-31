@@ -41,10 +41,12 @@ export function makeApi(base) {
   let token = ''
   return {
     get token() { return token },
-    async raw(method, path, body) {
+    async raw(method, path, body, timeoutMs = 30_000) {
       // 网络层瞬断（dev server GC/备份序列化造成的秒级停顿 → ECONNRESET/timeout）
       // 用退避重试吸收；HTTP 语义错误不重试。重试读取的仍是服务端真实状态，
       // 且治理层对同值重写/同向冷却天然幂等，不会伪造结果。
+      // timeoutMs 可调：recipe_trial / optimization_explore 等整批治理调用服务端
+      // 处理远超 30s（实测 P10 biax 因此 8×30s 重试全超时 → 假 FAIL）。
       let lastErr
       for (let attempt = 1; attempt <= 8; attempt++) {
         try {
@@ -58,7 +60,7 @@ export function makeApi(base) {
               ...(token ? { authorization: `Bearer ${token}` } : {}),
             },
             body: body === undefined ? undefined : JSON.stringify(body),
-            signal: AbortSignal.timeout(30_000),
+            signal: AbortSignal.timeout(timeoutMs),
           })
           const json = await res.json().catch(() => null)
           return { status: res.status, data: json?.data, code: json?.code, message: json?.message ?? '' }
@@ -80,7 +82,7 @@ export function makeApi(base) {
       token = lg.data?.token ?? ''
       return { ok: Boolean(token), how: 'login', role: lg.data?.user?.role ?? '' }
     },
-    call(method, path, body) { return this.raw(method, path, body) },
+    call(method, path, body, timeoutMs) { return this.raw(method, path, body, timeoutMs) },
   }
 }
 

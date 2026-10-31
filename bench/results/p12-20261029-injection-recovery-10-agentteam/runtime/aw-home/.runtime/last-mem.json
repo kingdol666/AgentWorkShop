@@ -1,0 +1,75 @@
+{
+  "limitMb": 4288,
+  "samples": [
+    {
+      "at": "2026-10-29T19:05:57.812+08:00",
+      "heapUsedMb": 16,
+      "rssMb": 87,
+      "externalMb": 11,
+      "ratio": 0.0038
+    },
+    {
+      "at": "2026-10-29T19:06:27.831+08:00",
+      "heapUsedMb": 20,
+      "rssMb": 95,
+      "externalMb": 11,
+      "ratio": 0.0046
+    },
+    {
+      "at": "2026-10-29T19:06:57.840+08:00",
+      "heapUsedMb": 20,
+      "rssMb": 97,
+      "externalMb": 11,
+      "ratio": 0.0046
+    },
+    {
+      "at": "2026-10-29T19:07:27.842+08:00",
+      "heapUsedMb": 59,
+      "rssMb": 146,
+      "externalMb": 13,
+      "ratio": 0.0138
+    },
+    {
+      "at": "2026-10-29T19:07:57.846+08:00",
+      "heapUsedMb": 60,
+      "rssMb": 147,
+      "externalMb": 12,
+      "ratio": 0.014
+    },
+    {
+      "at": "2026-10-29T19:08:27.854+08:00",
+      "heapUsedMb": 61,
+      "rssMb": 147,
+      "externalMb": 13,
+      "ratio": 0.0142
+    },
+    {
+      "at": "2026-10-29T19:08:57.865+08:00",
+      "heapUsedMb": 62,
+      "rssMb": 155,
+      "externalMb": 12,
+      "ratio": 0.0144
+    },
+    {
+      "at": "2026-10-29T19:09:27.872+08:00",
+      "heapUsedMb": 65,
+      "rssMb": 156,
+      "externalMb": 14,
+      "ratio": 0.0151
+    },
+    {
+      "at": "2026-10-29T19:09:57.887+08:00",
+      "heapUsedMb": 58,
+      "rssMb": 155,
+      "externalMb": 12,
+      "ratio": 0.0135
+    },
+    {
+      "at": "2026-10-29T19:10:27.898+08:00",
+      "heapUsedMb": 60,
+      "rssMb": 106,
+      "externalMb": 14,
+      "ratio": 0.0141
+    }
+  ]
+}

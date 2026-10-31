@@ -1,0 +1,116 @@
+[
+  {
+    "id": "rc-64fd2da4",
+    "productId": "pd-fa54b687",
+    "lineId": "ln-99d565d8",
+    "name": "scen-injection-recipe-p12-20261029-injection-recovery-07",
+    "description": "注塑成型质量窗口寻优 标准工况(11 参数全窗纳管)",
+    "params": [
+      {
+        "nodeId": "dw-7f41bc0c",
+        "templateRef": "dcw-temp-sp",
+        "value": 240,
+        "min": 160,
+        "max": 300
+      },
+      {
+        "nodeId": "dw-bad6a4be",
+        "templateRef": "dcw-temp-sp",
+        "value": 246,
+        "min": 160,
+        "max": 300
+      },
+      {
+        "nodeId": "dw-3e521e52",
+        "templateRef": "dcw-temp-sp",
+        "value": 252,
+        "min": 160,
+        "max": 300
+      },
+      {
+        "nodeId": "dw-91d7748d",
+        "templateRef": "dcw-temp-sp",
+        "value": 258,
+        "min": 160,
+        "max": 300
+      },
+      {
+        "nodeId": "dw-137eaab9",
+        "templateRef": "dcw-temp-sp",
+        "value": 120,
+        "min": 60,
+        "max": 200
+      },
+      {
+        "nodeId": "dw-aec2b3f9",
+        "templateRef": "dcw-temp-sp",
+        "value": 40,
+        "min": 20,
+        "max": 95
+      },
+      {
+        "nodeId": "dw-83530cc7",
+        "templateRef": "dcw-temp-sp",
+        "value": 1600,
+        "min": 800,
+        "max": 2500
+      },
+      {
+        "nodeId": "dw-19161b15",
+        "templateRef": "dcw-temp-sp",
+        "value": 85,
+        "min": 30,
+        "max": 130
+      },
+      {
+        "nodeId": "dw-22872533",
+        "templateRef": "dcw-temp-sp",
+        "value": 45,
+        "min": 20,
+        "max": 110
+      },
+      {
+        "nodeId": "dw-69681f6c",
+        "templateRef": "dcw-temp-sp",
+        "value": 6,
+        "min": 3,
+        "max": 15
+      },
+      {
+        "nodeId": "dw-60cdf1b3",
+        "templateRef": "dcw-temp-sp",
+        "value": 24,
+        "min": 10,
+        "max": 45
+      }
+    ],
+    "daqWindows": [
+      {
+        "nodeId": "dn-e069eeb8",
+        "min": 235,
+        "max": 262
+      },
+      {
+        "nodeId": "dn-fe8227b3",
+        "min": 32.15,
+        "max": 32.85
+      },
+      {
+        "nodeId": "dn-b476df07",
+        "min": 0,
+        "max": 0.8
+      },
+      {
+        "nodeId": "dn-abe7b6c3",
+        "min": 0,
+        "max": 2
+      }
+    ],
+    "version": 1,
+    "paramsHistory": [],
+    "lastGoodRunId": null,
+    "opIntervalMs": 0,
+    "createdAt": "2026-10-29T18:06:17.972+08:00",
+    "updatedAt": "2026-10-29T18:06:17.972+08:00"
+  }
+]

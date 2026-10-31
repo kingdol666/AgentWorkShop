@@ -1,0 +1,801 @@
+{
+  "ids": {
+    "lineId": "ln-7aa4d39d",
+    "productId": "pd-124dbe87",
+    "recipeId": "rc-9388c213",
+    "started": true
+  },
+  "line_name": "注塑成型质量窗口寻优 injection-p12-20261029-injection-recovery-06",
+  "dcw": {
+    "barrel-temp-1-sp": "dw-4530279c",
+    "barrel-temp-2-sp": "dw-c01062fa",
+    "barrel-temp-3-sp": "dw-e8ef611b",
+    "barrel-temp-4-sp": "dw-551b9148",
+    "screw-speed-sp": "dw-519544fd",
+    "mold-temp-sp": "dw-c87c6aa1",
+    "clamp-force-sp": "dw-a5472f7b",
+    "inject-speed-sp": "dw-d8031457",
+    "hold-pressure-sp": "dw-07143ecb",
+    "hold-time-sp": "dw-a0ede035",
+    "cool-water-sp": "dw-5ee4e03f"
+  },
+  "daq": {
+    "melt-temp-pv": "dn-5b917d07",
+    "melt-pressure-pv": "dn-f102cf7e",
+    "mold-temp-pv": "dn-2173017a",
+    "clamp-force-pv": "dn-3d51d67d",
+    "inj-pressure-pv": "dn-2eb4184f",
+    "water-temp-pv": "dn-dcbf781f",
+    "cool-flow-pv": "dn-6f52652b",
+    "part-weight": "dn-22104ed6",
+    "flash-rate": "dn-e85c9069",
+    "sink-mark": "dn-f864691b",
+    "dim-dev": "dn-4be12cf2",
+    "cycle-time": "dn-795bf1fb",
+    "wall-profile": "dn-6a402795",
+    "surface-image": "dn-0e02a1d5"
+  },
+  "devices": [
+    {
+      "id": "inj-machine-mbtcp",
+      "protocol": "modbus-tcp"
+    },
+    {
+      "id": "inj-mold-rtu",
+      "protocol": "modbus-rtu"
+    },
+    {
+      "id": "inj-inject-opcua",
+      "protocol": "opcua"
+    },
+    {
+      "id": "inj-cool-mqtt",
+      "protocol": "mqtt"
+    },
+    {
+      "id": "inj-inspect-http",
+      "protocol": "http"
+    }
+  ],
+  "driver_tests": [
+    {
+      "device": "inj-machine-mbtcp",
+      "signal": "机筒温度区1SP",
+      "ok": true,
+      "message": "连接成功,读取 40021 = 240"
+    },
+    {
+      "device": "inj-mold-rtu",
+      "signal": "模具温度SP",
+      "ok": true,
+      "message": "网关连接成功,读取 40021 = 40"
+    },
+    {
+      "device": "inj-inject-opcua",
+      "signal": "InjectSpeedSP",
+      "ok": true,
+      "message": "会话建立成功,读取 ns=2;s=Inj.Inj.Speed.Sp = 85"
+    },
+    {
+      "device": "inj-cool-mqtt",
+      "signal": "WaterTempPV",
+      "ok": true,
+      "message": "Broker 连接成功,aw/inj/wtemp → scalar 23.9(jsonPath=data.temp)(被动订阅:收到报文即入库)"
+    },
+    {
+      "device": "inj-inspect-http",
+      "signal": "PartWeight",
+      "ok": true,
+      "message": "接口可达,取值 = 31.29"
+    }
+  ],
+  "errors": [],
+  "verified": {
+    "devices": 5,
+    "expectDevices": 5,
+    "signals": 25,
+    "sp": 11,
+    "pv": 14,
+    "descMissing": 0,
+    "protocols": [
+      "modbus-tcp",
+      "modbus-rtu",
+      "opcua",
+      "mqtt",
+      "http"
+    ]
+  },
+  "blueprint": {
+    "key": "injection-line",
+    "nodes": [
+      {
+        "id": "inj-machine-mbtcp",
+        "name": "注塑主机PLC(Modbus TCP)",
+        "description": "注塑机主机:机筒四区加热 + 螺杆塑化传动。塑化段,决定熔体温度与计量精度。",
+        "protocol": "modbus-tcp",
+        "enabled": true,
+        "tickMs": 800,
+        "signals": [
+          {
+            "id": "barrel-temp-1-sp",
+            "name": "机筒温度区1SP",
+            "description": "进料段机筒温度(水冷进料口防架桥),四区最低",
+            "unit": "℃",
+            "min": 160,
+            "max": 300,
+            "decimals": 1,
+            "strategy": {
+              "kind": "manual",
+              "value": 240
+            }
+          },
+          {
+            "id": "barrel-temp-2-sp",
+            "name": "机筒温度区2SP",
+            "description": "压缩段机筒温度,物料开始熔融",
+            "unit": "℃",
+            "min": 160,
+            "max": 300,
+            "decimals": 1,
+            "strategy": {
+              "kind": "manual",
+              "value": 246
+            }
+          },
+          {
+            "id": "barrel-temp-3-sp",
+            "name": "机筒温度区3SP",
+            "description": "计量段中段机筒温度",
+            "unit": "℃",
+            "min": 160,
+            "max": 300,
+            "decimals": 1,
+            "strategy": {
+              "kind": "manual",
+              "value": 252
+            }
+          },
+          {
+            "id": "barrel-temp-4-sp",
+            "name": "机筒温度区4SP",
+            "description": "喷嘴段机筒温度,四区最高;与熔体温度强相关",
+            "unit": "℃",
+            "min": 160,
+            "max": 300,
+            "decimals": 1,
+            "strategy": {
+              "kind": "manual",
+              "value": 258
+            }
+          },
+          {
+            "id": "screw-speed-sp",
+            "name": "螺杆转速SP",
+            "description": "塑化螺杆转速(rpm);剪切热叠加进熔体温度(约 +0.11℃/rpm)",
+            "unit": "rpm",
+            "min": 60,
+            "max": 200,
+            "decimals": 0,
+            "strategy": {
+              "kind": "manual",
+              "value": 120
+            }
+          },
+          {
+            "id": "melt-temp-pv",
+            "name": "MeltTemp",
+            "description": "喷嘴前熔体实测温度(采集);工艺窗 235~262℃,超窗劣化飞边/缩痕",
+            "unit": "℃",
+            "min": 20,
+            "max": 320,
+            "decimals": 1,
+            "plantBinding": "meltTemp",
+            "strategy": {
+              "kind": "constant",
+              "value": 25
+            }
+          },
+          {
+            "id": "melt-pressure-pv",
+            "name": "MeltPress",
+            "description": "塑化背压(采集,bar)",
+            "unit": "bar",
+            "min": 0,
+            "max": 160,
+            "decimals": 1,
+            "plantBinding": "meltPressure",
+            "strategy": {
+              "kind": "constant",
+              "value": 50
+            }
+          }
+        ],
+        "config": {
+          "host": "0.0.0.0",
+          "port": 24052,
+          "unitId": 1,
+          "registerMaps": [
+            {
+              "address": 40001,
+              "area": "holding",
+              "signalId": "melt-temp-pv",
+              "dataType": "float32",
+              "byteOrder": "big"
+            },
+            {
+              "address": 40003,
+              "area": "holding",
+              "signalId": "melt-pressure-pv",
+              "dataType": "float32",
+              "byteOrder": "big"
+            },
+            {
+              "address": 40021,
+              "area": "holding",
+              "signalId": "barrel-temp-1-sp",
+              "dataType": "float32",
+              "byteOrder": "big"
+            },
+            {
+              "address": 40023,
+              "area": "holding",
+              "signalId": "barrel-temp-2-sp",
+              "dataType": "float32",
+              "byteOrder": "big"
+            },
+            {
+              "address": 40025,
+              "area": "holding",
+              "signalId": "barrel-temp-3-sp",
+              "dataType": "float32",
+              "byteOrder": "big"
+            },
+            {
+              "address": 40027,
+              "area": "holding",
+              "signalId": "barrel-temp-4-sp",
+              "dataType": "float32",
+              "byteOrder": "big"
+            },
+            {
+              "address": 40029,
+              "area": "holding",
+              "signalId": "screw-speed-sp",
+              "dataType": "float32",
+              "byteOrder": "big"
+            }
+          ]
+        }
+      },
+      {
+        "id": "inj-mold-rtu",
+        "name": "模温机与锁模单元(Modbus RTU)",
+        "description": "模温控制机 + 锁模单元。模具温度决定表面复制/缩痕/飞边阈值,锁模力是飞边的物理上限。",
+        "protocol": "modbus-rtu",
+        "enabled": true,
+        "tickMs": 1000,
+        "signals": [
+          {
+            "id": "mold-temp-sp",
+            "name": "模具温度SP",
+            "description": "模温机设定(℃);过低→缩痕/表面无光,过高→飞边与节拍变长",
+            "unit": "℃",
+            "min": 20,
+            "max": 95,
+            "decimals": 1,
+            "strategy": {
+              "kind": "manual",
+              "value": 40
+            }
+          },
+          {
+            "id": "clamp-force-sp",
+            "name": "锁模力SP",
+            "description": "锁模力设定(kN);保压+注射压力的飞边阈值由此决定",
+            "unit": "kN",
+            "min": 800,
+            "max": 2500,
+            "decimals": 0,
+            "strategy": {
+              "kind": "manual",
+              "value": 1600
+            }
+          },
+          {
+            "id": "mold-temp-pv",
+            "name": "MoldTempPV",
+            "description": "模具实测温度(采集)",
+            "unit": "℃",
+            "min": 10,
+            "max": 110,
+            "decimals": 1,
+            "plantBinding": "moldTemp",
+            "strategy": {
+              "kind": "constant",
+              "value": 25
+            }
+          },
+          {
+            "id": "clamp-force-pv",
+            "name": "ClampPV",
+            "description": "锁模力实测(采集)",
+            "unit": "kN",
+            "min": 0,
+            "max": 2600,
+            "decimals": 0,
+            "plantBinding": "clampForce",
+            "strategy": {
+              "kind": "constant",
+              "value": 1600
+            }
+          }
+        ],
+        "config": {
+          "host": "0.0.0.0",
+          "port": 23052,
+          "unitId": 1,
+          "registerMaps": [
+            {
+              "address": 40001,
+              "area": "holding",
+              "signalId": "mold-temp-pv",
+              "dataType": "float32",
+              "byteOrder": "big"
+            },
+            {
+              "address": 40003,
+              "area": "holding",
+              "signalId": "clamp-force-pv",
+              "dataType": "float32",
+              "byteOrder": "big"
+            },
+            {
+              "address": 40021,
+              "area": "holding",
+              "signalId": "mold-temp-sp",
+              "dataType": "float32",
+              "byteOrder": "big"
+            },
+            {
+              "address": 40023,
+              "area": "holding",
+              "signalId": "clamp-force-sp",
+              "dataType": "float32",
+              "byteOrder": "big"
+            }
+          ]
+        }
+      },
+      {
+        "id": "inj-inject-opcua",
+        "name": "注射/保压单元(OPC UA)",
+        "description": "注射与保压执行单元:注射速度、保压压力与保压时间是克重的第一控制组。",
+        "protocol": "opcua",
+        "enabled": true,
+        "tickMs": 1000,
+        "signals": [
+          {
+            "id": "inject-speed-sp",
+            "name": "InjectSpeedSP",
+            "description": "注射速度(mm/s);影响充模与注射压力,克重次要项",
+            "unit": "mm/s",
+            "min": 30,
+            "max": 130,
+            "decimals": 0,
+            "strategy": {
+              "kind": "manual",
+              "value": 85
+            }
+          },
+          {
+            "id": "hold-pressure-sp",
+            "name": "HoldPressSP",
+            "description": "保压压力(bar)——克重/缩痕/飞边的第一控制量;低了缩痕重、高了飞边出",
+            "unit": "bar",
+            "min": 20,
+            "max": 110,
+            "decimals": 1,
+            "strategy": {
+              "kind": "manual",
+              "value": 45
+            }
+          },
+          {
+            "id": "hold-time-sp",
+            "name": "HoldTimeSP",
+            "description": "保压时间(s);浇口冻结前持续补缩,与保压压力同向",
+            "unit": "s",
+            "min": 3,
+            "max": 15,
+            "decimals": 1,
+            "strategy": {
+              "kind": "manual",
+              "value": 6
+            }
+          },
+          {
+            "id": "inj-pressure-pv",
+            "name": "InjPressPV",
+            "description": "注射压力实测(采集,bar);超 95 bar 起飞边贡献",
+            "unit": "bar",
+            "min": 0,
+            "max": 180,
+            "decimals": 1,
+            "plantBinding": "injPressure",
+            "strategy": {
+              "kind": "constant",
+              "value": 50
+            }
+          }
+        ],
+        "config": {
+          "host": "127.0.0.1",
+          "port": 13843,
+          "namespaceUri": "PLC-Simulator-Injection",
+          "opcVars": [
+            {
+              "nodeId": "ns=2;s=Inj.Inj.Speed.Sp",
+              "signalId": "inject-speed-sp",
+              "dataType": "Double",
+              "writable": true
+            },
+            {
+              "nodeId": "ns=2;s=Inj.Hold.P.Sp",
+              "signalId": "hold-pressure-sp",
+              "dataType": "Double",
+              "writable": true
+            },
+            {
+              "nodeId": "ns=2;s=Inj.Hold.T.Sp",
+              "signalId": "hold-time-sp",
+              "dataType": "Double",
+              "writable": true
+            },
+            {
+              "nodeId": "ns=2;s=Inj.Inj.P.Pv",
+              "signalId": "inj-pressure-pv",
+              "dataType": "Double"
+            }
+          ]
+        }
+      },
+      {
+        "id": "inj-cool-mqtt",
+        "name": "冷却水单元(MQTT)",
+        "description": "模温机冷却水回路:水温设定经 MQTT 命令主题下发;水温偏高顶高模具实际温度。",
+        "protocol": "mqtt",
+        "enabled": true,
+        "tickMs": 2000,
+        "signals": [
+          {
+            "id": "water-temp-pv",
+            "name": "WaterTempPV",
+            "description": "冷却水实测温度(采集,℃)",
+            "unit": "℃",
+            "min": 5,
+            "max": 60,
+            "decimals": 1,
+            "plantBinding": "waterTemp",
+            "strategy": {
+              "kind": "constant",
+              "value": 24
+            }
+          },
+          {
+            "id": "cool-flow-pv",
+            "name": "CoolFlowPV",
+            "description": "冷却水流量(采集,L/min)",
+            "unit": "L/min",
+            "min": 0,
+            "max": 80,
+            "decimals": 1,
+            "plantBinding": "coolFlow",
+            "strategy": {
+              "kind": "constant",
+              "value": 42
+            }
+          },
+          {
+            "id": "cool-water-sp",
+            "name": "CoolWaterSP",
+            "description": "冷却水温设定(℃,MQTT 命令主题下发);>32℃ 开始顶高模具温度",
+            "unit": "℃",
+            "min": 10,
+            "max": 45,
+            "decimals": 1,
+            "strategy": {
+              "kind": "manual",
+              "value": 24
+            }
+          }
+        ],
+        "config": {
+          "brokerUrl": "mqtt://127.0.0.1:26830",
+          "topics": [
+            {
+              "topic": "aw/inj/wtemp",
+              "signalId": "water-temp-pv",
+              "payloadTemplate": "{\"data\":{\"temp\":${value}}}",
+              "qos": 0
+            },
+            {
+              "topic": "aw/inj/flow",
+              "signalId": "cool-flow-pv",
+              "payloadTemplate": "{\"data\":{\"flow\":${value}}}",
+              "qos": 0
+            }
+          ],
+          "commandTopic": "aw/inj/coolwater/set",
+          "commandSignalId": "cool-water-sp",
+          "stateTopic": "aw/inj/coolwater/state"
+        }
+      },
+      {
+        "id": "inj-inspect-http",
+        "name": "制品质量检测站(HTTP)",
+        "description": "在线称重与外观检测站:克重/飞边/缩痕/尺寸/节拍 + 壁厚轮廓与外观图像帧。",
+        "protocol": "http",
+        "enabled": true,
+        "tickMs": 1000,
+        "signals": [
+          {
+            "id": "part-weight",
+            "name": "PartWeight",
+            "description": "制品克重(采集,g)——闭环寻优的被控量,规格 32.5±0.35 g",
+            "unit": "g",
+            "min": 25,
+            "max": 40,
+            "decimals": 2,
+            "plantBinding": "partWeight",
+            "strategy": {
+              "kind": "constant",
+              "value": 31
+            }
+          },
+          {
+            "id": "flash-rate",
+            "name": "FlashRate",
+            "description": "飞边率(采集,%);>0.4% 需退保压,模具损伤风险",
+            "unit": "%",
+            "min": 0,
+            "max": 5,
+            "decimals": 3,
+            "plantBinding": "flash",
+            "strategy": {
+              "kind": "constant",
+              "value": 0.02
+            }
+          },
+          {
+            "id": "sink-mark",
+            "name": "SinkMark",
+            "description": "缩痕指数(采集,%);>1.5% 外观不良,保压不足信号",
+            "unit": "%",
+            "min": 0,
+            "max": 10,
+            "decimals": 3,
+            "plantBinding": "sink",
+            "strategy": {
+              "kind": "constant",
+              "value": 3
+            }
+          },
+          {
+            "id": "dim-dev",
+            "name": "DimDev",
+            "description": "关键尺寸偏差(采集,mm);规格 ±0.05 mm",
+            "unit": "mm",
+            "min": -0.5,
+            "max": 0.5,
+            "decimals": 3,
+            "plantBinding": "dimDev",
+            "strategy": {
+              "kind": "constant",
+              "value": 0
+            }
+          },
+          {
+            "id": "cycle-time",
+            "name": "CycleTime",
+            "description": "生产节拍(采集,s/模)——质量与产能的权衡记录量",
+            "unit": "s",
+            "min": 5,
+            "max": 60,
+            "decimals": 1,
+            "plantBinding": "cycleTime",
+            "strategy": {
+              "kind": "constant",
+              "value": 15
+            }
+          },
+          {
+            "id": "wall-profile",
+            "name": "WallProfile",
+            "description": "制品壁厚轮廓 48 点向量帧(采集,mm)",
+            "unit": "mm",
+            "min": 1,
+            "max": 5,
+            "decimals": 4,
+            "format": "vector",
+            "plantBinding": "profile",
+            "strategy": {
+              "kind": "constant",
+              "value": 2.5
+            }
+          },
+          {
+            "id": "surface-image",
+            "name": "SurfaceImg",
+            "description": "制品外观灰度图像帧(采集;亮点 ∝ 飞边缺陷)",
+            "unit": "灰度",
+            "min": 0,
+            "max": 255,
+            "format": "image",
+            "plantBinding": "image",
+            "strategy": {
+              "kind": "constant",
+              "value": 0
+            }
+          }
+        ],
+        "config": {
+          "paths": [
+            {
+              "path": "/api/weight",
+              "signalId": "part-weight",
+              "responseTemplate": "{\"value\":${value}}"
+            },
+            {
+              "path": "/api/flash",
+              "signalId": "flash-rate",
+              "responseTemplate": "{\"value\":${value}}"
+            },
+            {
+              "path": "/api/sink",
+              "signalId": "sink-mark",
+              "responseTemplate": "{\"value\":${value}}"
+            },
+            {
+              "path": "/api/dim",
+              "signalId": "dim-dev",
+              "responseTemplate": "{\"value\":${value}}"
+            },
+            {
+              "path": "/api/cycle",
+              "signalId": "cycle-time",
+              "responseTemplate": "{\"value\":${value}}"
+            },
+            {
+              "path": "/api/profile",
+              "signalId": "wall-profile",
+              "responseTemplate": "{\"points\":${points},\"value\":${value}}"
+            },
+            {
+              "path": "/api/ccd",
+              "signalId": "surface-image"
+            }
+          ]
+        }
+      }
+    ],
+    "plantModel": {
+      "kind": "injection",
+      "id": "injection",
+      "enabled": true,
+      "seed": 42,
+      "dtMs": 500,
+      "timeScale": 6,
+      "phase": "warmup",
+      "disturbances": {
+        "heaterDecay": 1,
+        "feedDriftPerMin": 0.05
+      },
+      "truthExport": true,
+      "optimum": null,
+      "controls": {
+        "barrelTemp1": {
+          "nodeId": "inj-machine-mbtcp",
+          "signalId": "barrel-temp-1-sp"
+        },
+        "barrelTemp2": {
+          "nodeId": "inj-machine-mbtcp",
+          "signalId": "barrel-temp-2-sp"
+        },
+        "barrelTemp3": {
+          "nodeId": "inj-machine-mbtcp",
+          "signalId": "barrel-temp-3-sp"
+        },
+        "barrelTemp4": {
+          "nodeId": "inj-machine-mbtcp",
+          "signalId": "barrel-temp-4-sp"
+        },
+        "screw": {
+          "nodeId": "inj-machine-mbtcp",
+          "signalId": "screw-speed-sp"
+        },
+        "injectSpeed": {
+          "nodeId": "inj-inject-opcua",
+          "signalId": "inject-speed-sp"
+        },
+        "holdPressure": {
+          "nodeId": "inj-inject-opcua",
+          "signalId": "hold-pressure-sp"
+        },
+        "holdTime": {
+          "nodeId": "inj-inject-opcua",
+          "signalId": "hold-time-sp"
+        },
+        "moldTemp": {
+          "nodeId": "inj-mold-rtu",
+          "signalId": "mold-temp-sp"
+        },
+        "clampForce": {
+          "nodeId": "inj-mold-rtu",
+          "signalId": "clamp-force-sp"
+        },
+        "coolWater": {
+          "nodeId": "inj-cool-mqtt",
+          "signalId": "cool-water-sp"
+        }
+      },
+      "outputs": {
+        "meltTemp": {
+          "nodeId": "inj-machine-mbtcp",
+          "signalId": "melt-temp-pv"
+        },
+        "meltPressure": {
+          "nodeId": "inj-machine-mbtcp",
+          "signalId": "melt-pressure-pv"
+        },
+        "moldTemp": {
+          "nodeId": "inj-mold-rtu",
+          "signalId": "mold-temp-pv"
+        },
+        "clampForce": {
+          "nodeId": "inj-mold-rtu",
+          "signalId": "clamp-force-pv"
+        },
+        "injPressure": {
+          "nodeId": "inj-inject-opcua",
+          "signalId": "inj-pressure-pv"
+        },
+        "waterTemp": {
+          "nodeId": "inj-cool-mqtt",
+          "signalId": "water-temp-pv"
+        },
+        "coolFlow": {
+          "nodeId": "inj-cool-mqtt",
+          "signalId": "cool-flow-pv"
+        },
+        "partWeight": {
+          "nodeId": "inj-inspect-http",
+          "signalId": "part-weight"
+        },
+        "flash": {
+          "nodeId": "inj-inspect-http",
+          "signalId": "flash-rate"
+        },
+        "sink": {
+          "nodeId": "inj-inspect-http",
+          "signalId": "sink-mark"
+        },
+        "dimDev": {
+          "nodeId": "inj-inspect-http",
+          "signalId": "dim-dev"
+        },
+        "cycleTime": {
+          "nodeId": "inj-inspect-http",
+          "signalId": "cycle-time"
+        },
+        "profile": {
+          "nodeId": "inj-inspect-http",
+          "signalId": "wall-profile"
+        },
+        "image": {
+          "nodeId": "inj-inspect-http",
+          "signalId": "surface-image"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,11 @@
+[
+  {
+    "id": "ln-81a42295",
+    "name": "注塑成型质量窗口寻优 injection-p12-20261029-injection-recovery-05",
+    "color": "#3aa0ff",
+    "description": "家用电器面板(PP)注塑:规格克重 32.5±0.35 g、飞边 ≤0.4%、缩痕 ≤1.5%、尺寸偏差 ±0.05 mm。起始保压偏低 → 克重 ≈31.3 g 偏轻 + 缩痕超标;闭环把保压/保压时间/模温调回窗口,同时守住飞边上限。 [AWB-SCEN:injection 重复接入自动复用本线]",
+    "controlMode": "manual",
+    "simulated": false,
+    "createdAt": "2026-10-29T17:21:50.830+08:00"
+  }
+]

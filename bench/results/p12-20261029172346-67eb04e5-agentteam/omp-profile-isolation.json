@@ -1,0 +1,72 @@
+{
+  "schema_version": 1,
+  "verified_at_utc": "2026-10-29T17:31:28.050Z",
+  "run_id": "p12-20261029172346-67eb04e5",
+  "omp_command_configured": false,
+  "omp_command_sha256": "e1b771ff6831269c53a658057c68d3177b45f47cc5aec706fdd961fbdb2505df",
+  "default_config_dir_label": "user-default OMP profile (absolute path omitted)",
+  "default_mcp_config_present": true,
+  "verification_basis": "OMP --profile config path readback; each fresh run-scoped profile resolves under .omp/profiles/<profile>/agent and contains no profile-root or agent/mcp.json. No credential-bearing config contents are read or recorded.",
+  "runtime_event_audit_still_required": true,
+  "profiles": [
+    {
+      "role": "lead",
+      "profile": "p12-280e52cc48ed2e8c",
+      "effective_config_dir_relative": "profiles/p12-280e52cc48ed2e8c/agent",
+      "distinct_from_default_config_dir": true,
+      "profile_mcp_config_present": false,
+      "configured_mcp_server_count": 0
+    },
+    {
+      "role": "worker-a",
+      "profile": "p12-d5a323d72bdc1c2e",
+      "effective_config_dir_relative": "profiles/p12-d5a323d72bdc1c2e/agent",
+      "distinct_from_default_config_dir": true,
+      "profile_mcp_config_present": false,
+      "configured_mcp_server_count": 0
+    },
+    {
+      "role": "worker-b",
+      "profile": "p12-4c30c8261412cdab",
+      "effective_config_dir_relative": "profiles/p12-4c30c8261412cdab/agent",
+      "distinct_from_default_config_dir": true,
+      "profile_mcp_config_present": false,
+      "configured_mcp_server_count": 0
+    }
+  ],
+  "result": "PASS",
+  "template_args_verified": true,
+  "template_profiles": [
+    {
+      "role": "lead",
+      "profile": "p12-280e52cc48ed2e8c",
+      "harness_verified": true,
+      "command_verified": true,
+      "command_sha256": "e1b771ff6831269c53a658057c68d3177b45f47cc5aec706fdd961fbdb2505df",
+      "launch_arg_verified": true
+    },
+    {
+      "role": "a",
+      "profile": "p12-d5a323d72bdc1c2e",
+      "harness_verified": true,
+      "command_verified": true,
+      "command_sha256": "e1b771ff6831269c53a658057c68d3177b45f47cc5aec706fdd961fbdb2505df",
+      "launch_arg_verified": true
+    },
+    {
+      "role": "b",
+      "profile": "p12-4c30c8261412cdab",
+      "harness_verified": true,
+      "command_verified": true,
+      "command_sha256": "e1b771ff6831269c53a658057c68d3177b45f47cc5aec706fdd961fbdb2505df",
+      "launch_arg_verified": true
+    }
+  ],
+  "pre_goal_recheck": {
+    "verified_at_utc": "2026-10-29T17:31:45.231Z",
+    "result": "PASS",
+    "effective_config_paths_unchanged": true,
+    "profile_mcp_config_absent": true,
+    "omp_command_hash_matches": true
+  }
+}

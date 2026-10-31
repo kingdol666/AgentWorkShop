@@ -1,0 +1,46 @@
+{
+  "baseline_anchor_ids": [],
+  "anchors": [
+    {
+      "lineId": "ln-1572335e",
+      "nodeId": "dw-f8bbdb7a",
+      "prevValue": 45,
+      "newValue": 46.8,
+      "source": "agent",
+      "actor": "af6b62fa-e2b0-40e1-9ed3-4f69b0dea384",
+      "approvalId": "ap-7c150313",
+      "recipeRunId": null,
+      "id": "anc-061c27ac",
+      "at": "2026-10-31T01:44:26.852+08:00",
+      "recordId": "opt-5a656a0e"
+    },
+    {
+      "lineId": "ln-1572335e",
+      "nodeId": "dw-a648ccdc",
+      "prevValue": 6,
+      "newValue": 6.2,
+      "source": "agent",
+      "actor": "4492d395-a240-4e83-9aa2-a28620148f75",
+      "approvalId": "ap-2e047f8d",
+      "recipeRunId": null,
+      "id": "anc-fd57111c",
+      "at": "2026-10-31T01:44:26.944+08:00",
+      "recordId": "opt-4ef8e3a4"
+    },
+    {
+      "lineId": "ln-1572335e",
+      "nodeId": "dw-a648ccdc",
+      "prevValue": 6.2,
+      "newValue": 6.4,
+      "source": "agent",
+      "actor": "4492d395-a240-4e83-9aa2-a28620148f75",
+      "approvalId": "ap-d336bda7",
+      "recipeRunId": null,
+      "id": "anc-3bd2bf7f",
+      "at": "2026-10-31T01:47:47.921+08:00",
+      "recordId": "opt-83fab14e"
+    }
+  ],
+  "journal_status": 200,
+  "capped": false
+}

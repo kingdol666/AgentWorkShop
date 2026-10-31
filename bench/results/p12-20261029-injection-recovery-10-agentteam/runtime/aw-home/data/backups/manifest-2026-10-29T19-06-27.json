@@ -1,0 +1,14 @@
+{
+  "stamp": "2026-10-29T19-06-27",
+  "dbs": [
+    "workshop.sqlite",
+    "users.sqlite",
+    "daq-timeseries.sqlite"
+  ],
+  "infraNote": "TimescaleDB/MinIO 卷不在文件备份范围(docker 部署用 pg_dump/mc mirror 或卷快照)",
+  "objects": {
+    "bundle": "objects-2026-10-29T19-06-27",
+    "included": [],
+    "skipped": []
+  }
+}

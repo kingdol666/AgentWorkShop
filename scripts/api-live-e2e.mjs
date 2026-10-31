@@ -7,8 +7,10 @@
  *  - CHANNEL CRUD + activate + 成员管理
  *  - TASK 提交与生命周期:goal / loop(maxIterations 限次)/ pipeline 三模式
  *    SUBMITTED → ASSIGNED → WORKING → 进度上报 → COMPLETED,parent/child 聚合
+ *    (goal 收口按 2026-10-30 证据闸:lead 经 REST complete 显式附真实交付物)
  *  - dispatch / report / complete / cancel 状态机
- *  - Bearer token 作用域:同 channel 可见,跨 channel → 403 SCOPE_VIOLATION
+ *  - Bearer token 作用域:现建一次性 B 频道取其 lead 有效 token —— 同 channel 列表可见,
+ *    异频道列表不含本频道任务、读详情 → 精确 403 SCOPE_VIOLATION
  *  - a2a 点对点 + mailbox 拉取 + channel 消息历史
  *  - agents/subscribe 订阅
  *  - WebSocket Hub 增量广播(agent.status / task.status / task.progress)
@@ -102,7 +104,13 @@ async function waitUntil(name, cond, timeoutMs = 20_000, intervalMs = 250) {
 }
 
 const tag = Date.now().toString(36)
-const ids = { channel: null, template: null, lead: null, worker: null, leadToken: null, workerToken: null }
+const ids = {
+  channel: null, template: null, lead: null, worker: null, leadToken: null, workerToken: null,
+  channelB: null, leadB: null, leadBToken: null,
+}
+
+/** 日志脱敏:token 只露前 4 位,全量 token 严禁出现在输出里 */
+const maskToken = t => (typeof t === 'string' && t.length > 0 ? `${t.slice(0, 4)}***` : '(empty)')
 
 async function main() {
   console.log(`目标: ${BASE} (生产构建 .output + scripts/start.mjs)\n`)
@@ -193,6 +201,39 @@ async function main() {
   ids.channel = ch.data.channelId
   ids.lead = ch.data.leadAgentId
 
+  // lead token 轮换提前到 worker 装配前:下方 goal 用例要以 lead 身份经 REST complete
+  // 显式收口(2026-10-30 证据闸,见下)。轮换端点一次性返回,整个生命周期只轮换这一次。
+  const rotLead = await api('POST', `/api/workshop/channels/${ids.channel}/agents/${ids.lead}/rotate-token`)
+  ids.leadToken = rotLead?.data?.token
+  check('lead token 经轮换端点一次性获取', Boolean(ids.leadToken), `rot=${rotLead.status} token=${maskToken(ids.leadToken)}`)
+
+  // ── goal 模式提交与显式收口(2026-10-30 证据闸:完成必须附真实交付物,平台合成的
+  //    goal-summary 只是记录、不再算证据)──
+  // 刻意安排在 worker 克隆【之前】:频道此时尚无 worker,mock lead 的 goal 剧本找不到
+  // 可派发的空闲 worker,只能原地等待 —— 由此确定性消除「脚本 REST complete vs mock lead
+  // 自动派发+收口」的竞态(自动收口只会附 goal-summary,新契约下不算证据)。任务一旦
+  // COMPLETED 即终态,后续 worker 装配不会再触发对该 goal 的任何派发。
+  const gtask = await api('POST', `/api/workshop/channels/${ids.channel}/tasks`, {
+    body: { title: `goal-${tag}`, description: '验证 goal 模式全链路', mode: 'goal', modeConfig: { goalCriteria: '全部完成' } },
+  })
+  check('POST /channels/:id/tasks 提交(goal)', gtask.code === 0 && gtask.data?.id && gtask.data?.state === 'SUBMITTED', `state=${gtask.data?.state}`)
+  ids.goalTask = gtask.data.id
+  check('任务路由到 lead', gtask.data?.assigneeId === ids.lead)
+
+  // 真实交付物(evidence):name 非 input、非 goal-summary、parts 带非空文本 —— 新证据闸唯一认账的形态
+  const goalDeliverable = {
+    artifactId: 'e2e-evidence-1',
+    name: 'report',
+    parts: [{ text: `跨频道验收实测结论(goal-${tag}):主频道 lead 任务列表可见本 goal;异频道 lead 列表不含本 goal;异频道 lead 读本 goal 详情 → 403 SCOPE_VIOLATION。` }],
+  }
+  const goalComplete = await api('POST', `/api/workshop/tasks/${ids.goalTask}/complete`, {
+    token: ids.leadToken,
+    body: { artifacts: [goalDeliverable] },
+  })
+  check('goal REST complete 附真实交付物 → COMPLETED(新证据闸)', goalComplete.code === 0 && goalComplete.data?.state === 'COMPLETED',
+    `code=${goalComplete.code} state=${goalComplete.data?.state}`)
+  check('goal 提交的真实 artifact 已落库', (goalComplete.data?.artifacts ?? []).some(a => a.artifactId === goalDeliverable.artifactId && a.name === goalDeliverable.name))
+
   const w = await api('POST', `/api/workshop/channels/${ids.channel}/agents`, { body: { agentId: ids.template, role: 'worker' } })
   check('POST /channels/:id/agents 克隆模板为 worker', w.code === 0 && w.data?.id && w.data?.role === 'worker', `id=${w.data?.id?.slice(0, 8)}`)
   ids.worker = w.data.id
@@ -207,12 +248,10 @@ async function main() {
   const leadInfo = members.data.find(a => a.id === ids.lead)
   const workerInfo = members.data.find(a => a.id === ids.worker)
   check('成员列表不回显 token(防冒充)', Boolean(leadInfo) && !('token' in leadInfo) && !('token' in workerInfo))
-  const rotLead = await api('POST', `/api/workshop/channels/${ids.channel}/agents/${ids.lead}/rotate-token`)
   const rotWorker = await api('POST', `/api/workshop/channels/${ids.channel}/agents/${ids.worker}/rotate-token`)
-  ids.leadToken = rotLead?.data?.token
   ids.workerToken = rotWorker?.data?.token
-  check('成员实例 token 经轮换端点一次性获取(auth 基础)', Boolean(ids.leadToken && ids.workerToken),
-    `leadRot=${rotLead.status} workerRot=${rotWorker.status}`)
+  check('worker token 经轮换端点一次性获取(auth 基础)', Boolean(ids.workerToken),
+    `workerRot=${rotWorker.status} token=${maskToken(ids.workerToken)}`)
 
   const dupLead = await api('POST', `/api/workshop/channels/${ids.channel}/agents`, { body: { agentId: tpl2.data.id, role: 'lead' } })
   check('第二个 lead → 409 LEAD_EXISTS', dupLead.status === 409 || dupLead.code === 'LEAD_EXISTS', `code=${dupLead.code}`)
@@ -226,26 +265,17 @@ async function main() {
   const activate = await api('POST', `/api/workshop/channels/${ids.channel}/activate`)
   check('POST /channels/:id/activate 显式激活', activate.code === 0)
 
-  // ═══════════ 4. TASK 生命周期(goal 模式) ═══════════
-  section('TASK 提交与执行 — goal 模式')
-  const gtask = await api('POST', `/api/workshop/channels/${ids.channel}/tasks`, {
-    body: { title: `goal-${tag}`, description: '验证 goal 模式全链路', mode: 'goal', modeConfig: { goalCriteria: '全部完成' } },
-  })
-  check('POST /channels/:id/tasks 提交(goal)', gtask.code === 0 && gtask.data?.id && gtask.data?.state === 'SUBMITTED', `state=${gtask.data?.state}`)
-  ids.goalTask = gtask.data.id
-  check('任务路由到 lead', gtask.data?.assigneeId === ids.lead)
-
-  const goalDone = await waitUntil('goal 任务 COMPLETED', async () => {
-    const t = await api('GET', `/api/workshop/channels/${ids.channel}/tasks`)
-    const mine = (t.data ?? []).find(x => x.id === ids.goalTask)
-    return mine && (mine.state === 'COMPLETED' || mine.state === 'FAILED') ? mine : null
-  }, 20_000)
-  check('goal 任务自动执行至终态', goalDone.state === 'COMPLETED', `state=${goalDone.state} progress=${goalDone.progress}`)
-  check('goal 任务含成果 artifacts', Array.isArray(goalDone.artifacts) && goalDone.artifacts.length > 0, `artifacts=${goalDone.artifacts?.length}`)
-
-  const gDetail = await api('GET', `/api/workshop/tasks/${ids.goalTask}`)
-  check('GET /tasks/:id 详情(管理面,无 token)', gDetail.code === 0 && gDetail.data?.id === ids.goalTask)
-  check('详情含 history 数组', Array.isArray(gDetail.data?.history), `history=${gDetail.data?.history?.length}`)
+  // ═══════════ 4. TASK goal 收口复核(新证据闸) ═══════════
+  section('TASK goal 收口复核 — 真实交付物才算证据')
+  // goal 的提交与显式收口发生在第 3 节(worker 装配前,规避 mock lead 自动收口竞态)。
+  // 2026-10-30 证据闸后不再有「自动执行至终态」可等:mock lead 自动收口只会附平台同构的
+  // goal-summary,新契约下不算证据 —— 断言改为复核显式收口结果与提交的真实 artifact 在场。
+  const goalDone = await api('GET', `/api/workshop/tasks/${ids.goalTask}`)
+  check('GET /tasks/:id 详情(管理面,无 token)', goalDone.code === 0 && goalDone.data?.id === ids.goalTask)
+  check('goal 任务终态 COMPLETED(lead 显式收口)', goalDone.data?.state === 'COMPLETED', `state=${goalDone.data?.state} progress=${goalDone.data?.progress}`)
+  check('goal 任务含成果 artifacts', Array.isArray(goalDone.data?.artifacts) && goalDone.data.artifacts.length > 0, `artifacts=${goalDone.data?.artifacts?.length}`)
+  check('goal 真实交付物在 artifacts(平台 goal-summary 只是记录)', goalDone.data?.artifacts?.some(a => a.artifactId === 'e2e-evidence-1' && a.name === 'report'))
+  check('详情含 history 数组', Array.isArray(goalDone.data?.history), `history=${goalDone.data?.history?.length}`)
 
   // ═══════════ 5. TASK 作用域 + dispatch/report/complete ═══════════
   section('TASK 作用域校验 + dispatch/report/complete 状态机')
@@ -255,12 +285,38 @@ async function main() {
   const badToken = await api('GET', '/api/workshop/tasks', { token: 'deadbeef' })
   check('无效 token → 401', badToken.status === 401, `status=${badToken.status}`)
 
-  // 跨 channel 作用域:用旧 channel(probeId)的 lead token 查新 channel 任务
-  const probeAgents = await api('GET', `/api/workshop/channels/${probeId}/agents`)
-  const otherToken = probeAgents.data?.find(a => a.role === 'lead')?.token
-  const crossScope = await api('GET', `/api/workshop/tasks`, { token: otherToken })
-  const crossed = await api('GET', `/api/workshop/tasks/${ids.goalTask}`, { token: otherToken })
-  check('跨 channel 访问任务 → 403 SCOPE_VIOLATION', crossScope.code !== 0 || crossed.status === 403 || crossed.code === 'SCOPE_VIOLATION', `code=${crossed.code} status=${crossed.status}`)
+  // 跨 channel 作用域(2026-10-28 安全修复后 member 列表不再回显 token —— 旧实现经
+  // probeId 成员列表取 lead token 恒为 undefined,api() 静默回落用户 token → 401 也能
+  // 满足旧 OR 断言,空转假阳性)。正道:现建一次性 B 频道(独立于 probeId/持久化数据,
+  // 不依赖跨重启遗留状态),经轮换端点取 B lead 的有效 Agent token,做三条正/负断言。
+  const chB = await api('POST', '/api/workshop/channels', {
+    body: {
+      name: `api-e2e-b-${tag}`,
+      description: '跨频道作用域负例专用(一次性)',
+      leadAgent: { name: 'api-lead-b', harness: 'mock', config: { delayMs: 80 } },
+    },
+  })
+  check('创建一次性 B 频道(跨频道负例)', chB.code === 0 && chB.data?.leadAgentId, `channel=${chB.data?.channelId?.slice(0, 8)}`)
+  ids.channelB = chB.data.channelId
+  ids.leadB = chB.data.leadAgentId
+  const rotLeadB = await api('POST', `/api/workshop/channels/${ids.channelB}/agents/${ids.leadB}/rotate-token`)
+  ids.leadBToken = rotLeadB?.data?.token
+  check('B lead token 经轮换端点一次性获取', Boolean(ids.leadBToken), `rot=${rotLeadB.status} token=${maskToken(ids.leadBToken)}`)
+
+  // ① A(主频道)lead token 列表 → 200 且包含 A 自己的 goal task id(同 channel 可见)
+  const scopeA = await api('GET', '/api/workshop/tasks', { token: ids.leadToken })
+  check('A lead token 列表 → 200 且含本频道 goal 任务', scopeA.status === 200 && scopeA.code === 0
+  && Array.isArray(scopeA.data) && scopeA.data.some(t => t.id === ids.goalTask),
+  `status=${scopeA.status} tasks=${scopeA.data?.length}`)
+  // ② B lead token 列表 → 200(code=0)但不含 A 的 goal task id(列表按 caller channel 过滤)
+  const scopeB = await api('GET', '/api/workshop/tasks', { token: ids.leadBToken })
+  check('B lead token 列表 → 200 且不含 A 的 goal 任务', scopeB.status === 200 && scopeB.code === 0
+  && Array.isArray(scopeB.data) && !scopeB.data.some(t => t.id === ids.goalTask),
+  `status=${scopeB.status} tasks=${scopeB.data?.length}`)
+  // ③ B lead token 读 A 的 goal task 详情 → 精确 403 + SCOPE_VIOLATION(401/其它码不算过)
+  const crossed = await api('GET', `/api/workshop/tasks/${ids.goalTask}`, { token: ids.leadBToken })
+  check('跨 channel 读任务详情 → 精确 403 SCOPE_VIOLATION', crossed.status === 403 && crossed.code === 'SCOPE_VIOLATION',
+    `status=${crossed.status} code=${crossed.code}`)
 
   // dispatch 状态机:提交新父任务 → 等 lead 自动派发第 1 个子任务(父转 WAITING)
   // → API 手工 dispatch 第 2 个子任务(WAITING 父上允许) → 全部完成后父汇总
@@ -513,11 +569,14 @@ async function main() {
   section('清理与级联删除')
   const delCh = await api('DELETE', `/api/workshop/channels/${ids.channel}`)
   check('DELETE /channels/:id 级联删除', delCh.code === 0 && delCh.data?.ok === true)
+  const delChB = await api('DELETE', `/api/workshop/channels/${ids.channelB}`)
+  check('DELETE B 频道(一次性跨频道负例清理)', delChB.code === 0 && delChB.data?.ok === true, `code=${delChB.code}`)
   const delTpl = await api('DELETE', `/api/workshop/agents/${ids.template}`)
   check('DELETE /agents/:id', delTpl.code === 0)
   await api('DELETE', `/api/workshop/agents/${tpl2.data.id}`)
   const afterCh = await api('GET', '/api/workshop/channels')
   check('删除后 channel 列表回退(旧数据保留)', afterCh.code === 0 && !afterCh.data.some(c => c.id === ids.channel), `count=${afterCh.data?.length}`)
+  check('B 频道已从列表移除', afterCh.code === 0 && !afterCh.data.some(c => c.id === ids.channelB))
 
   // ═══════════ 结果 ═══════════
   console.log(`\n${failures === 0 ? '★ ALL PASS' : `✗ ${failures} FAILED`}  (${passed} passed)`)

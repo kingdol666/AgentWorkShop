@@ -1,0 +1,69 @@
+{
+  "at": "2026-10-29T06:39:30.376Z",
+  "base": "http://127.0.0.1:3350",
+  "line": "ln-9526150d",
+  "recipe": "rc-de9630fd",
+  "optimizer": "0d2e678c-fe86-4dce-8bc6-1b76a1a3d4fa",
+  "baseline": {
+    "p": 62,
+    "t": 8,
+    "q": {
+      "weight": 32.2,
+      "flash": 0.035,
+      "sink": 0.928,
+      "melt": 245.7,
+      "lastAt": 1793255902556,
+      "offline": false
+    }
+  },
+  "final": {
+    "weight": 32.57,
+    "flash": 0.038,
+    "sink": 0.98,
+    "melt": 245.7,
+    "lastAt": 1793255969120,
+    "offline": false
+  },
+  "finalOk": true,
+  "update": "已保存为 v2:「scen-injection-recipe-prod1」参数 scen-injection:dcw:hold-pressure-sp 62→67;scen-injection:dcw:hold-time-sp 8→8;原因:真实闭环复测达标(weight=32.57g flash=0.038% sink=0.98% melt=245.7℃),固化保压 67bar/保压时间 8s;依据多轮 HITL 批准的 recipe_trial 与 65s DAQ 复测。。\n人工附言:注塑真实闭环 E2E 批准\n注意:配方定义已更新,运行中批次仍按开跑时冻结的参数生产;要把新参数推到运行中的产线(经治理联锁整批下发),用 recipe_apply。回退用 recipe_rollback。",
+  "journal": "窗口内无优化记录(该节点/配方尚无 Agent 调控历史)。",
+  "recipeLog": "Recipe 变更史(产线 注塑成型质量窗口寻优 injection-prod1[ln-9526150d]; 配方 scen-injection-recipe-prod1[rc-de9630fd], 近 60 分钟, 5 条, 新→旧):\n- [10-29 14:39:30] Agent 配方更新 scope=line 产线=注塑成型质量窗口寻优 injection-prod1[ln-9526150d] 配方=scen-injection-recipe-prod1[rc-de9630fd] 产品=scen-injection-product-prod1[pd-1e3b3f27] | 来源=Agent 操作者=注塑产线作业-demo/注塑工艺优化-worker | 更新配方「scen-injection-recipe-prod1」→ v2:真实闭环复测达标(weight=32.57g flash=0.038% sink=0.98% melt=245.7℃),固化保压 67bar/保压时间 8s;依\n- [10-29 14:38:24] 配方试验 scope=line 产线=注塑成型质量窗口寻优 injection-prod1[ln-9526150d] 配方=scen-injection-recipe-prod1[rc-de9630fd] 产品=scen-injection-product-prod1[pd-1e3b3f27] | 来源=Agent 操作者=注塑产线作业-demo/注塑工艺优化-worker | 【应急】配方试验整批下发(证实 1/1,未证实 0,失败 0,批次 rr-14be6):dw-ae957→67 | 假设:真实闭环 P3-1:克重 32.2g、缩痕 0.928%,保压 62→67bar(单变量);65s 后 DAQ 复测。\n- [10-29 14:38:24] 下发回执 scope=line 产线=注塑成型质量窗口寻优 injection-prod1[ln-9526150d] 配方=scen-injection-recipe-prod1[rc-de9630fd] 产品=scen-injection-product-prod1[pd-1e3b3f27] | 来源=系统 操作者=Agent 整批下发 | 批次 rr-14be6 ACK 鉴定:证实 1/1,未证实 0,失败 0\n- [10-29 14:36:28] 开跑整批下发 scope=line 产线=注塑成型质量窗口寻优 injection-prod1[ln-9526150d] 配方=scen-injection-recipe-prod1[rc-de9630fd] 产品=scen-injection-product-prod1[pd-1e3b3f27] | 来源=用户 操作者=prod-admin | 产线开跑:批次 rr-bf33f661 · 配方「scen-injection-recipe-prod1」已下发\n- [10-29 14:36:28] 配方创建 scope=line 产线=注塑成型质量窗口寻优 injection-prod1[ln-9526150d] 配方=scen-injection-recipe-prod1[rc-de9630fd] 产品=scen-injection-product-prod1[pd-1e3b3f27] | 来源=用户 操作者=prod-admin | 创建配方「scen-injection-recipe-prod1」(产线 ln-9526150d)\n\n说明:只含产线域记录;配方下发=整批参数写命令;下发回执=逐参数 ACK 鉴定;配方试验=候选整批下发(不写版本);优化开窗/判定/回退=单次设定变更与恢复。节点级参数值逐笔历史用 dcw_journal(node_id)。",
+  "results": [
+    {
+      "id": "P1",
+      "name": "场景/配方/worker 就绪",
+      "pass": true,
+      "detail": "line=ln-9526150d recipe=rc-de9630fd optimizer=0d2e678c-fe86-4dce-8bc6-1b76a1a3d4fa weight=32.2g flash=0.035% sink=0.928% melt=245.7℃"
+    },
+    {
+      "id": "P2",
+      "name": "当前已在配方基线",
+      "pass": true,
+      "detail": "weight=32.2g flash=0.035% sink=0.928% melt=245.7℃ p=62 t=8"
+    },
+    {
+      "id": "P3-1",
+      "name": "保压 67bar 试验经 HITL 并设备证实",
+      "pass": true,
+      "detail": "weight=32.57g flash=0.038% sink=0.98% melt=245.7℃ p=67 lastAt=2026-10-29T06:39:29.120Z 试验已整批下发并全部设备证实(1/1,批次 rr-14be6):scen-injection:dcw:hold-pressure-sp→67bar [证实✓]。假设:真实闭环 P3-1:克重 32.2g、缩痕 0.928%,保压 62→67bar(单变量);65s 后 DAQ 复测。。\n人工附言:注塑真实闭环 E2E "
+    },
+    {
+      "id": "P5",
+      "name": "最终质量入窗(克重/飞边/缩痕/熔温,DAQ 新鲜)",
+      "pass": true,
+      "detail": "weight=32.57g flash=0.038% sink=0.98% melt=245.7℃ lastAt=2026-10-29T06:39:29.120Z offline=false"
+    },
+    {
+      "id": "P6",
+      "name": "达标配方固化(v2 且参数独立回读)",
+      "pass": true,
+      "detail": "v=2 p=67 t=8 已保存为 v2:「scen-injection-recipe-prod1」参数 scen-injection:dcw:hold-pressure-sp 62→67;scen-injection:dcw:hold-time-sp 8→8;原因:真实闭环复测达标(weight=32.57g flash=0.038% sink=0.98% melt=245.7℃),固化保压 67bar/保压时间 8s;"
+    },
+    {
+      "id": "P7",
+      "name": "写控/配方日志可追溯",
+      "pass": true,
+      "detail": "窗口内无优化记录(该节点/配方尚无 Agent 调控历史)。 | Recipe 变更史(产线 注塑成型质量窗口寻优 injection-prod1[ln-9526150d]; 配方 scen-injection-recipe-prod1[rc-de9630fd], 近 60 分钟, 5 条, 新→旧):\n- [10-29 14:39:30] Agent 配方更新 scope=line"
+    }
+  ]
+}

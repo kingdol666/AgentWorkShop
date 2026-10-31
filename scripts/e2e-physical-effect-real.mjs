@@ -231,7 +231,7 @@ const evidence = {
   at: nowIso(),
   env: {
     base: BASE, simBase: SIM_BASE, home: HOME, simShadow: SIM_SHADOW, devicePort: DEV_PORT,
-    model: { provider: 'lm-studio', model: 'qwen3.5-9b-32k', contextTokens: 32768 },
+    model: { provider: 'lm-studio', model: process.env.AW_DEMO_MODEL ?? 'qwen3.5-9b-64k', contextTokens: 65536 },
     harness: 'omp', devices: 'real-protocol(modbus-tcp → 物理孪生模拟器)', instance: '④-physical-effect',
   },
   scenario: {},
@@ -355,7 +355,7 @@ try {
     leadAgent: { name: '物理生效-线长', harness: 'omp', config: { rpcMode: 'rpc', args: ['--no-tools', '--thinking=off', '--config', ompOverlay] } },
   })).data
   const channelId = ch?.channelId
-  await api('PATCH', `/api/workshop/channels/${channelId}`, { llm: { provider: 'lm-studio', model: 'qwen3.5-9b-32k' } })
+  await api('PATCH', `/api/workshop/channels/${channelId}`, { llm: { provider: 'lm-studio', model: process.env.AW_DEMO_MODEL ?? 'qwen3.5-9b-64k', contextTokens: 65536 } })
   await api('PATCH', `/api/workshop/channels/${channelId}/execution-mode`, { mode: 'manual' })
   const toolsPut = await api('PUT', `/api/workshop/channels/${channelId}/tools`, {
     mode: 'selected',
@@ -395,7 +395,9 @@ try {
   if (!taskMain?.id) throw new Error('Agent 主任务创建失败')
   let runMain = { task: null, cancelled: false }
   let mainWriteAt = 0
-  while (Date.now() - tAgent < 8 * 60_000) {
+  // 窗口可按模型时延调整(64k 推理模型单轮远慢于 flash;可用 AW_PHYS_AGENT_WINDOW_MS 放宽)
+  const AGENT_WINDOW_MS = Number(process.env.AW_PHYS_AGENT_WINDOW_MS ?? 8 * 60_000)
+  while (Date.now() - tAgent < AGENT_WINDOW_MS) {
     const task = taskOf(await api('GET', `/api/workshop/tasks/${taskMain.id}`))
     runMain.task = task
     for (const card of await pendingOf(lead.id)) {

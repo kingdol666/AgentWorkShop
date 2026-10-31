@@ -1,0 +1,47 @@
+{
+  "approvals": [],
+  "polls": [
+    {
+      "at_utc": "2026-10-29T17:21:14.570Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T17:21:18.702Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    }
+  ],
+  "final_fetches": [
+    {
+      "agent_id": "d92ba496-2129-462f-9fab-4a3e3d4bd599",
+      "status": 200,
+      "data": {
+        "approvals": []
+      },
+      "code": 0,
+      "message": "ok"
+    },
+    {
+      "agent_id": "3b0a359f-ed8e-4707-931a-0fd008c35133",
+      "status": 200,
+      "data": {
+        "approvals": []
+      },
+      "code": 0,
+      "message": "ok"
+    },
+    {
+      "agent_id": "0e18fb99-70eb-4a33-af61-fdebe46920c9",
+      "status": 200,
+      "data": {
+        "approvals": []
+      },
+      "code": 0,
+      "message": "ok"
+    }
+  ],
+  "capped_agents": []
+}

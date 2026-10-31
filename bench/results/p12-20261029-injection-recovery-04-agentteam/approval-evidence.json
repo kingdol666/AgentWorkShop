@@ -1,0 +1,95 @@
+{
+  "approvals": [],
+  "polls": [
+    {
+      "at_utc": "2026-10-29T08:39:05.716Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T08:39:09.829Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T08:39:13.918Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T08:39:17.997Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T08:39:22.111Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T08:39:26.208Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T08:39:30.292Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T08:39:34.392Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T08:39:38.496Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-29T08:39:42.601Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    }
+  ],
+  "final_fetches": [
+    {
+      "agent_id": "6b668c7f-af98-48cc-8945-1836da6fdb99",
+      "status": 200,
+      "data": {
+        "approvals": []
+      },
+      "code": 0,
+      "message": "ok"
+    },
+    {
+      "agent_id": "01022195-eaa1-4c50-a4b9-85526df960a3",
+      "status": 200,
+      "data": {
+        "approvals": []
+      },
+      "code": 0,
+      "message": "ok"
+    },
+    {
+      "agent_id": "d52d1831-ebbf-4b60-ad95-d9958b4072b4",
+      "status": 200,
+      "data": {
+        "approvals": []
+      },
+      "code": 0,
+      "message": "ok"
+    }
+  ],
+  "capped_agents": []
+}

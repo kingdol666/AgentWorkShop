@@ -1,0 +1,1 @@
+{"schema_version":1,"run_id":"p12-20261029172346-67eb04e5","event_id":"2212:1:0170e2f0-9930-46fe-9596-bbc721c75e14","source":"aw-omp-agent-adapter","source_seq":1,"at_utc":"2026-10-29T17:30:39.783Z","monotonic_ns":"1182692251994200","process_id":2212,"aw_mode":"home","aw_home_sha256":"be6c5462bd4824afffc08388ed00a7cfaa5e9cf5620c4ae27c7877c94edf856a","event_type":"capture_ready"}

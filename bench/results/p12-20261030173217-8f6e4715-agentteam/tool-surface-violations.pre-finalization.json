@@ -1,0 +1,83 @@
+[
+  {
+    "event_id": "3932:74:f36145fc-d8a0-48a5-906e-c3c76812f407",
+    "tool_call_id": "246962738",
+    "actor_agent_id": "c0135543-4c0b-460e-8124-0aafed6ffcbf",
+    "actor_role": "lead",
+    "task_id": null,
+    "tool": "dcw_rollback",
+    "at_utc": "2026-10-31T01:52:17.925+08:00"
+  },
+  {
+    "event_id": "3932:80:09271987-46b7-45d9-bbb5-89d762edbcfc",
+    "tool_call_id": "292521388",
+    "actor_agent_id": "c0135543-4c0b-460e-8124-0aafed6ffcbf",
+    "actor_role": "lead",
+    "task_id": null,
+    "tool": "team_grant_nodes",
+    "at_utc": "2026-10-31T01:52:24.267+08:00"
+  },
+  {
+    "event_id": "3932:86:bca2d6ca-a8e9-4072-9c2f-60fafa12281d",
+    "tool_call_id": "169819550",
+    "actor_agent_id": "c0135543-4c0b-460e-8124-0aafed6ffcbf",
+    "actor_role": "lead",
+    "task_id": null,
+    "tool": "team_grant_nodes",
+    "at_utc": "2026-10-31T01:52:30.407+08:00"
+  },
+  {
+    "event_id": "3932:92:5c35ffce-773d-4796-995b-248ec2c35d18",
+    "tool_call_id": "991506426",
+    "actor_agent_id": "c0135543-4c0b-460e-8124-0aafed6ffcbf",
+    "actor_role": "lead",
+    "task_id": null,
+    "tool": "team_grant_nodes",
+    "at_utc": "2026-10-31T01:52:36.473+08:00"
+  },
+  {
+    "event_id": "3932:98:1a814a54-9444-4113-8ea6-124d3e1f1338",
+    "tool_call_id": "434209540",
+    "actor_agent_id": "c0135543-4c0b-460e-8124-0aafed6ffcbf",
+    "actor_role": "lead",
+    "task_id": null,
+    "tool": "team_grant_nodes",
+    "at_utc": "2026-10-31T01:52:42.581+08:00"
+  },
+  {
+    "event_id": "3932:104:cbbd2f5b-48f0-4639-8509-8e2f93e22349",
+    "tool_call_id": "453059544",
+    "actor_agent_id": "c0135543-4c0b-460e-8124-0aafed6ffcbf",
+    "actor_role": "lead",
+    "task_id": null,
+    "tool": "team_grant_nodes",
+    "at_utc": "2026-10-31T01:52:48.885+08:00"
+  },
+  {
+    "event_id": "3932:110:1c8bc5f1-b586-4bb4-8c3b-34b95b0c13d0",
+    "tool_call_id": "705994975",
+    "actor_agent_id": "c0135543-4c0b-460e-8124-0aafed6ffcbf",
+    "actor_role": "lead",
+    "task_id": null,
+    "tool": "team_grant_nodes",
+    "at_utc": "2026-10-31T01:52:55.126+08:00"
+  },
+  {
+    "event_id": "3932:116:5573be6a-49b0-4083-82c3-42e7980fe0e1",
+    "tool_call_id": "671055037",
+    "actor_agent_id": "c0135543-4c0b-460e-8124-0aafed6ffcbf",
+    "actor_role": "lead",
+    "task_id": null,
+    "tool": "team_grant_nodes",
+    "at_utc": "2026-10-31T01:53:01.480+08:00"
+  },
+  {
+    "event_id": "3932:122:47b6308c-4e25-4ee6-bc9f-e4ca9f6637c4",
+    "tool_call_id": "815066960",
+    "actor_agent_id": "c0135543-4c0b-460e-8124-0aafed6ffcbf",
+    "actor_role": "lead",
+    "task_id": null,
+    "tool": "team_grant_nodes",
+    "at_utc": "2026-10-31T01:53:07.863+08:00"
+  }
+]

@@ -1,5 +1,5 @@
 /**
- * scripts/onboarding/provision-line.mjs —— 产线供给(skill 阶段3):建线+DCW/DAQ 节点+量程+配方。
+ * scripts/onboarding/provision-line.mjs —— 产线供给(skill 阶段3):建线+DCW/DAQ 节点+量程+配方+采集总控。
  * 幂等:以指纹标签(AW-LINE:<hash>)写入线 description,重跑复用既有线并按"线+节点名"匹配节点;
  *      量程/步长与配置不一致时 PATCH 对齐(配置为权威)。
  * 红线:受保护演示线(ln-d7e0a2a2)绝不可命中;配方参数的 node 用名字引用,脚本负责解析。
@@ -196,6 +196,16 @@ if (cfg.startLine && recipeId) {
   if (j.code === 0) ok('开跑批次', true, j.data?.run?.id ?? '')
   else if (j.code === 'CONFLICT') ok('开跑批次(已运行复用)', true, `批次保持运行:${String(j.message ?? '').slice(0, 100)}`)
   else ok('开跑批次', false, j.message ?? String(j.code ?? ''))
+}
+
+// ---------- 5. 数采采集总控(全局 running 门;2026-10-28 全流程实测补) ----------
+// fresh 实例不开总控则节点建完也不采样,verify-line V1 数采落库必红(每节点空转 120s)。
+// startAll 幂等(重复调用返回 running:true);基础设施降级(S10 启动屏障)必须如实报红。
+if ((cfg.nodes ?? []).some(n => n.kind === 'daq')) {
+  const j = await api('POST', '/api/workshop/daq/controller', { action: 'start' }, tok)
+  const running = j.code === 0 && j.data?.controller?.running === true
+  ok('采集总控启动', running,
+    running ? `running=true interval=${j.data?.controller?.defaultIntervalMs ?? '?'}ms` : String(j.message ?? j.code ?? '').slice(0, 120))
 }
 
 console.log('\n' + JSON.stringify({ lineId, dcw: dcwMap, daq: daqMap, recipeId, reused }))

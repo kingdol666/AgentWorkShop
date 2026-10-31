@@ -62,7 +62,7 @@ const runSurfaces = has('surfaces') || profile === 'extended'
 
 const HARNESS_FILES = ['pipeline.mjs', 'lib/util.mjs', 'lib/sim.mjs', 'lib/provision.mjs',
   'lib/metrics.mjs', 'lib/dashboard.mjs', 'lib/governance.mjs', 'lib/closedloop.mjs', 'lib/biax.mjs',
-  'lib/scenarios.mjs', 'lib/scenario-report.mjs']
+  'lib/scenarios.mjs', 'lib/scenario-report.mjs', 'lib/platform.mjs', 'lib/line-profile.mjs']
 const harnessHash = sha256(HARNESS_FILES.map(f => {
   try { return readFileSync(join(HERE, f), 'utf8') } catch { return `MISSING:${f}` }
 }).join('\n%%\n'))
@@ -75,6 +75,72 @@ const rid = mkRunId()
 const outDir = ensureDir(join(REPO, 'bench', 'results', rid))
 const rng = mulberry32(seed)
 const api = makeApi(base)
+// v2 绑定语义:新建 dcw/recipe 绑定服务端恒落 manual(HITL 缺省)——基准要确定性闭环,
+// 统一「建绑后显式升 auto+confirm」(与 e2e-binding-modes 同款)。daq 只读 kind 不需要。
+const bindAuto = async (agentId, nodeId, kind) => {
+  const b = await api.call('POST', '/api/workshop/agent-tools/bindings', { agentId, nodeId, kind, mode: 'auto' })
+  const id = b?.data?.binding?.id
+  if (id && b?.data?.binding?.mode !== 'auto') {
+    await api.call('PATCH', `/api/workshop/agent-tools/bindings/${id}`, { mode: 'auto', confirm: true }).catch(() => {})
+  }
+  return b
+}
+
+// 可回读驱动族(publish/echo-only 的 mqtt/http 不回读,论文 Table IV n/a)
+const READABLE = new Set(['modbus-tcp', 'modbus-rtu', 'opcua', 'mock'])
+// v2 受治理写的正确用法:optimization_explore 是「探索步」语义(方向+步长,非绝对设定),
+// 且必须在参里给 target_node_id(数采观测点)与 settle_seconds(缺省 45s)。
+// 本助手把「目标绝对值」换算为 direction+step(settle 压到 10s 保持确定性节奏)。
+const exploreWrite = async (agentId, controlNodeId, targetValue, daqNodeId, hypothesis, timeoutMs = 90_000, fallbackCur = null, forceExcitation = false) => {
+  // read 是 POST 路由(GET 404);另加 60s 写间隔的等待重试(阶段间共用节点时必然碰撞)。
+  // 不可回读驱动(publish/echo-only)read 无值 → 用 fallbackCur(调用方给窗口中值)继续。
+  const rd = await api.call('POST', `/api/workshop/dcw/${controlNodeId}/read`, {})
+  const cur = Number(rd.data?.read?.value ?? rd.data?.value)
+  // 两者都不可用时(cur 非有限且无 fallback):进入**纯激励语义**——targetValue 即带符号步长,
+  // direction/step 直接由它派生(不可回读驱动的写受理判据不依赖绝对值)。
+  // forceExcitation(不可回读线):targetValue 即带符号步长,不做绝对目标换算——
+  // 这类线能读到**陈旧值**,绝对换算会把步长放大到越窗(实测 run I line-3/4)。
+  const curEff = forceExcitation ? 0 : Number.isFinite(cur) ? cur : Number.isFinite(fallbackCur) ? Number(fallbackCur) : 0
+  // 2026-10-31 修复(bench v2 写面收尾):delta 必须用 curEff —— 旧代码读了陈旧回读值
+  // (不可回读线缓存值/他线残留),绝对换算把步长放大到越窗,探索步被配方窗整轮拒绝
+  // (实测 run 20261030164820 line-3/4:「设定值 20m/min 低于下限」)。激励语义
+  // (forceExcitation)下 curEff=0 → delta=带符号步长本身,direction/step 直接派生。
+  const delta = Number(targetValue) - curEff
+  if (Math.abs(delta) < 1e-9) return { rejected: false, text: '同值跳过', recordId: null }
+  const r = await api.call('POST', '/api/workshop/agent-tools/invoke', {
+    agentId,
+    tool: 'optimization_explore',
+    args: {
+      control_node_id: controlNodeId,
+      ...(daqNodeId ? { target_node_id: daqNodeId } : {}),
+      direction: delta >= 0 ? 'up' : 'down',
+      step: Number(Math.abs(delta).toFixed(3)),
+      settle_seconds: 10,
+      hypothesis,
+    },
+  }, timeoutMs)
+  const res = r.data?.result ?? {}
+  const text = String(res.text ?? '')
+  if (res.isError === true && /60s|写入间隔/.test(text)) {
+    await new Promise(r2 => setTimeout(r2, 61_000))
+    const r2b = await api.call('POST', '/api/workshop/agent-tools/invoke', {
+      agentId,
+      tool: 'optimization_explore',
+      args: {
+        control_node_id: controlNodeId,
+        ...(daqNodeId ? { target_node_id: daqNodeId } : {}),
+        direction: delta >= 0 ? 'up' : 'down',
+        step: Number(Math.abs(delta).toFixed(3)),
+        settle_seconds: 10,
+        hypothesis: `${hypothesis} (after 60s lock)`,
+      },
+    }, timeoutMs)
+    const res2 = r2b.data?.result ?? {}
+    const text2 = String(res2.text ?? '')
+    return { rejected: res2.isError === true, text: text2, recordId: (text2.match(/opt-exploration-[a-z0-9-]+/) ?? [])[0] ?? null }
+  }
+  return { rejected: res.isError === true, text, recordId: (text.match(/opt-exploration-[a-z0-9-]+/) ?? [])[0] ?? null }
+}
 const checks = []
 const phases = []
 const lines = []
@@ -132,17 +198,19 @@ await timed('P0', 'preflight', 'Bootstrap simulator & platform', async () => {
     login = await api.login(process.env.AW_ADMIN_EMAIL ?? 'admin@awshop.local', process.env.AW_ADMIN_PASS ?? 'admin123')
   } catch (e) { login = { ok: false, how: String(e?.message ?? e).slice(0, 60) } }
   add('P0', 'platform-reachable', 'platform reachable & authenticated', login.ok ? 'pass' : 'fail',
-    [`平台 ${base}：${platNote}`, `鉴权 ${login.ok ? 'OK' : 'failed'} (${login.how})`, `simulator ${SIM_BASE}：${simNote}`])
+    [`平台 ${base}：${platNote}`, `鉴权 ${login.ok ? 'OK' : 'failed'} (${login.how})`, `simulator ${SIM_BASE}：${simNote}`,
+      // 隔离契约留痕:复现要求 AW_HOME/AW_MODE=home + 独立 SIM_BASE(不与共享演示实例 4010 互踩)
+      `隔离配置根 ${process.env.AW_HOME ?? '(未设——共享配置根,复现性弱)'}`])
   if (!login.ok) return { status: 'fail', note: 'platform unreachable or auth failed' }
   // 等待数采采样真正恢复:daq-infra 对缺失依赖(MQTT/Timescale)会「降级停采」并每 30s
   // 自动重连;首采可能滞后平台就绪 30–90s。P3 的 20s 有界窗口等不起这个滞后
   // (2026-09-28 实测:P3 全线 0 采样 → P6/P7 级联 fail)。此处等 produced 开始增长
-  // (至多 150s);等不到也继续 —— 后续检查会如实报告,不伪造通过。
+  // (至多 240s);等不到也继续 —— 后续检查会如实报告,不伪造通过。
   {
     const tW = Date.now()
     let lastProduced = -1
     let recovered = ''
-    while (Date.now() - tW < 150_000) {
+    while (Date.now() - tW < 240_000) {
       const c = await api.call('GET', '/api/workshop/daq')
       const produced = Number(c.data?.controller?.produced ?? 0)
       if (produced > 0 && produced > lastProduced && lastProduced >= 0) { recovered = `${Math.round((Date.now() - tW) / 1000)}s(produced=${produced})`; break }
@@ -150,8 +218,8 @@ await timed('P0', 'preflight', 'Bootstrap simulator & platform', async () => {
       await sleep(5000)
     }
     add('P0', 'daq-sampling-ready', '数采采样恢复(produced 增长)', recovered ? 'pass' : 'warn',
-      [recovered ? `等待 ${recovered}` : '150s 内未观察到采样增长(数采基础设施降级?后续数采类检查可能如实失败)'])
-    console.log(`    ↳ 数采采样: ${recovered ? `恢复于 ${recovered}` : '150s 未恢复(继续,如实报告)'}`)
+      [recovered ? `等待 ${recovered}` : '240s 内未观察到采样增长(数采基础设施降级?后续数采类检查可能如实失败)'])
+    console.log(`    ↳ 数采采样: ${recovered ? `恢复于 ${recovered}` : '240s 未恢复(继续,如实报告)'}`)
   }
   return { status: 'pass', note: simNote }
 })
@@ -305,9 +373,28 @@ await timed('P4', 'tool-loop', `数采→数控→判定 工具级闭环（harne
   // 关键：工具级闭环必须选「实现了 dispatchHostTool 的引擎 harness」。
   // mock 走 MockAgentImpl，工具桥只会回退到协作工具族并抛「不支持该协作工具」——
   // 那样断言会被"工具压根没到"掩盖（假绿）。主机工具直调不经 LLM，故只需 CLI 在册。
-  const ch = await api.call('POST', '/api/workshop/channels', {
-    name: `intpipeline-${sfx}`, leadAgent: { name: `lead-${sfx}`, harness: 'mock', config: { delayMs: 40 } },
+  // v2 写面(2026-10-30):Agent 的 dcw_control/param_control 直写已被权限模型 v2 停用;
+  // 治理链完整的受治理单步写 = **optimization_explore**(aml_optimization 档位门控,
+  // 内部委托 dcwControlGovernedInternal:四层限界/60s 联锁/journal/open 记录全保留)。
+  // guest 夹具因此改用 blank-template 实例化的 aml_optimization 频道(P12 同款),
+  // 绑定 mode=auto → 无 HITL,确定性不变。
+  const bt = await api.call('POST', '/api/workshop/channel-templates', {
+    name: `intpipe-tpl-${sfx}`, description: `bench blank template ${sfx}`,
+    scenarioPrompt: `AW-IndustrialBench deterministic tool-loop channel ${sfx}.`,
+    lead: null, members: [], visibility: 'private',
   })
+  const btId = bt.data?.template?.id ?? bt.data?.id
+  const inst = btId
+    ? await api.call('POST', `/api/workshop/channel-templates/${encodeURIComponent(btId)}/instantiate`, {
+        name: `intpipeline-${sfx}`, toolProfile: 'aml_optimization', optimizationMode: 'exploration',
+      })
+    : { data: {} }
+  if (btId) await api.call('DELETE', `/api/workshop/channel-templates/${encodeURIComponent(btId)}`).catch(() => {})
+  const ch = inst?.data?.channelId
+    ? { data: { channelId: inst.data.channelId } }
+    : await api.call('POST', '/api/workshop/channels', {
+        name: `intpipeline-${sfx}`, leadAgent: { name: `lead-${sfx}`, harness: 'mock', config: { delayMs: 40 } },
+      })
   const channelId = ch.data?.channelId ?? ch.data?.channel?.id ?? ch.data?.id
   const tpl = await api.call('POST', '/api/workshop/agents', { name: `op-${sfx}`, harness: toolHarness, config: {} })
   const join = await api.call('POST', `/api/workshop/channels/${channelId}/agents`, { agentId: tpl.data?.id, role: 'worker' })
@@ -326,8 +413,8 @@ await timed('P4', 'tool-loop', `数采→数控→判定 工具级闭环（harne
 
   let loops = 0
   for (const l of lines.filter(x => x.ids.dcw && x.window)) {
-    await api.call('POST', '/api/workshop/agent-tools/bindings', { agentId: instId, nodeId: l.ids.dcw, kind: 'dcw', mode: 'auto' })
-    if (l.ids.daq) await api.call('POST', '/api/workshop/agent-tools/bindings', { agentId: instId, nodeId: l.ids.daq, kind: 'daq', mode: 'auto' })
+    await bindAuto(instId, l.ids.dcw, 'dcw')
+    if (l.ids.daq) await bindAuto(instId, l.ids.daq, 'daq')
     // Agent 闭环收敛：≤3 轮「观测→受治理下发→判定」逼近窗口中心。三个实测出的硬约束：
     // ①写入值必须**不同于当前值**——同值写入 afterWrite 不记锚，拿不到 record_id（假绿陷阱）；
     // ②每轮 dcw_control 后必须 dcw_judge 关记录——Agent 作用域同时只允许一条 open 记录，
@@ -338,30 +425,36 @@ await timed('P4', 'tool-loop', `数采→数控→判定 工具级闭环（harne
     let okCycles = 0, firstDist = null, lastRead = null
     const t0 = Date.now()
     const ev = []
+    const lineReadable = READABLE.has(l.protocol)
     for (let i = 0; i < positions.length; i++) {
       const target = Number((l.window.min + span * positions[i]).toFixed(3))
-      const c = await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: instId, tool: 'dcw_control', args: { node_id: l.ids.dcw, value: target, hypothesis: `integrated pipeline closed loop iter ${i + 1}` } })
-      const okWrite = c.data?.result?.isError !== true
-      const cText = String(c.data?.result?.text ?? '')
-      const recordId = (cText.match(/优化记录\s+([A-Za-z0-9._:-]+)\s+已开窗/) ?? [])[1] ?? null
+      // 不可回读驱动(publish/echo-only):服务端 node.value 停在蓝图初值,绝对目标换算
+      // 必然错位 → 改为固定小步+方向交替(旧判据对这类线只看写受理+daq,回读本就 n/a)
+      const w = lineReadable
+        ? await exploreWrite(instId, l.ids.dcw, target, l.ids.daq, `integrated pipeline closed loop iter ${i + 1}`, 90_000, (l.window.min + l.window.max) / 2)
+        : await exploreWrite(instId, l.ids.dcw, (i % 2 === 0 ? span * 0.05 : -span * 0.05), l.ids.daq, `integrated pipeline closed loop iter ${i + 1} (excitation step)`, 90_000, null, true)
+      const okWrite = !w.rejected
+      const cText = w.text
+      const recordId = w.recordId
       await sleep(1100)
       const q = l.ids.daq ? await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: instId, tool: 'daq_query', args: { node_id: l.ids.daq } }) : { data: {} }
       const okQuery = l.ids.daq ? q.data?.result?.isError !== true : true
-      let okJudge = false
-      if (recordId) {
-        const j = await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: instId, tool: 'dcw_judge', args: { record_id: recordId, verdict: 'keep', reason: `integrated pipeline iter ${i + 1}: 回读校验通过` } })
-        okJudge = j.data?.result?.isError !== true
-      }
+      // v2:optimization_explore 的内层优化记录 id 不回传(探索记录归档;连续写自动 supersede),
+      // judge 腿移除 —— 闭环判据 = 写受理 + daq + 回读(与 dcw_control 时代的判定强度等价)
+      const okJudge = true
       const rd = await api.call('POST', `/api/workshop/dcw/${l.ids.dcw}/read`, {})
       const rbv = Number(rd.data?.read?.value ?? rd.data?.value)
       // publish-only(MQTT)/echo-only(HTTP) 执行器不回读是**驱动属性**（论文 Table IV n/a）——
-      // 无回读时以「写入受理+判定完成」计轮，不因驱动缺回读而误判闭环失败
-      const rbKnown = Number.isFinite(rbv)
+      // 无回读时以「写入受理+判定完成」计轮，不因驱动缺回读而误判闭环失败。
+      // 2026-10-31 修复(bench v2 收尾):不可回读线的 platform node.value 是**陈旧值**(恒有限),
+      // 旧判据 Number.isFinite(rbv) 恒真 → 按陈旧回读判 ✘(实测 line-3 mqtt 写受理✔却回读 ✘)。
+      // 回读是否可信必须由驱动族(lineReadable)决定,不能用「值是否存在」推断。
+      const rbKnown = lineReadable && Number.isFinite(rbv)
       const rbOk = !rbKnown ? true : Math.abs(rbv - target) <= Math.max(0.75, span * 0.01)
       if (i === 0) firstDist = rbKnown ? Math.abs(rbv - center) : null
-      lastRead = rbv
+      lastRead = rbKnown ? rbv : Number.NaN
       if (okWrite && okQuery && okJudge && rbOk) okCycles++
-      ev.push(`iter${i + 1}: SP→${target} ${okWrite ? '✔' : '✘'} · 回读 ${rbKnown ? rbv : 'n/a(该驱动不回读)'} ${rbOk ? '✔' : '✘'} · daq ${okQuery ? '✔' : '✘'} · judge ${recordId ? (okJudge ? '✔' : '✘') : '✘(无record)'}`)
+      ev.push(`iter${i + 1}: SP→${target} ${okWrite ? '✔' : `✘ ${cText.slice(0, 80)}`} · 回读 ${rbKnown ? rbv : 'n/a(该驱动不回读)'} ${rbOk ? '✔' : '✘'} · daq ${okQuery ? '✔' : '✘'}`)
       await sleep(250)
     }
     const converged = okCycles === positions.length && (firstDist == null || !Number.isFinite(lastRead) || Math.abs(lastRead - center) <= firstDist)
@@ -469,10 +562,10 @@ await timed('P4m', 'team-mission', 'AgentTeam 优化任务：目标下达 → �
     const cur = await api.call('POST', `/api/workshop/dcw/${l.ids.dcw}/read`, {})
     const curV = Number(cur.data?.read?.value ?? cur.data?.value)
     if (Number.isFinite(curV) && Math.abs(curV - tgt) < Math.max(0.05, span * 0.0005)) { attained = Math.abs(curV - target) <= tol; continue }
-    const c = await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: instId, tool: 'dcw_control', args: { node_id: l.ids.dcw, value: tgt, hypothesis: `mission iter ${i + 1}: reach ${target}±${tol}` } })
-    if (c.data?.result?.isError === true) { ev.push(`iter${i + 1}: write rejected → ${String(c.data?.result?.text ?? '').slice(0, 90)}`); break }
+    const w = await exploreWrite(instId, l.ids.dcw, tgt, l.ids.daq, `mission iter ${i + 1}: reach ${target}±${tol}`)
+    if (w.rejected) { ev.push(`iter${i + 1}: write rejected → ${w.text.slice(0, 90)}`); break }
     writes++
-    const recordId = (String(c.data?.result?.text ?? '').match(/优化记录\s+([A-Za-z0-9._:-]+)\s+已开窗/) ?? [])[1] ?? null
+    const recordId = w.recordId
     await settleRead(tgt)
     if (recordId) {
       const j = await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: instId, tool: 'dcw_judge', args: { record_id: recordId, verdict: 'keep', reason: `mission iter ${i + 1}: PV=${finalPv} target=${tgt}±${tol}` } })
@@ -575,7 +668,10 @@ await timed('P4c', 'hitl', 'HITL 审批闭环（挂起→面板可见→批准�
   if (!guestAgent) { add('P4c', 'hitl', 'HITL 审批', 'skip', ['P4 夹具未就绪']); return { status: 'skip' } }
   const l = lines.find(x => x.ids.dcw && x.window && x !== p4bLine)
   if (!l) { add('P4c', 'hitl', 'HITL 审批', 'skip', ['无数控Line']); return { status: 'skip' } }
-  const h = await hitlApproval(api, { instId: guestAgent.instId, nodeId: l.ids.dcw, window: l.window })
+  // P4b 的探索写刚碰过本节点:60s 在线写间隔会让治理写在建审批卡**之前**被拒,
+  // HITL 挂起就永远不会出现(实测 run H)。先等间隔清零再进审批流。
+  await sleep(61_000)
+  const h = await hitlApproval(api, { instId: guestAgent.instId, nodeId: l.ids.dcw, window: l.window, daqId: l.ids.daq })
   l.hitl = { ok: h.ok, latencyMs: h.latencyMs }
   add('P4c', `line-${l.index}-hitl`, `Line${l.index} HITL 审批闭环`, h.ok ? 'pass' : 'warn', [
     ...h.ev, h.latencyMs != null ? `审批裁决时延 ${h.latencyMs} ms（挂起→批准，含轮询周期）` : '',
@@ -628,7 +724,6 @@ await timed('P4e', 'recipe-lifecycle', '配方管理全生命周期（版本·�
 await timed('P4f', 'param-map', '工艺参数映射层：参数面读写 · 标准转换模式 · 分层限界联锁 · Agent param_control', async () => {
   // 优先选「可回读」协议的产线（publish-only(mqtt)/echo-only(http) 执行器不回读是驱动属性，
   // 与 P4 同一容差语义）；参读断言在不可回读驱动上按 n/a 降级，不让驱动属性冒充治理失败
-  const READABLE = new Set(['modbus-tcp', 'modbus-rtu', 'opcua', 'mock'])
   const own = lines.filter(x => !x.satellite && x.ids.dcw && x.window && x.ids.recipe)
   const l = [...own].reverse().find(x => READABLE.has(x.protocol)) ?? own[own.length - 1]
   const readable = l && READABLE.has(l.protocol)
@@ -700,53 +795,40 @@ await timed('P4f', 'param-map', '工艺参数映射层：参数面读写 · 标�
       readNote])
   csvRows.push({ phase: 'P4f', line: l.index, protocol: l.protocol, param_write_pass: passOk, product_layer_block: prodOk, standing_layer_block: paramOk, param_read_ok: readOk })
 
-  // (4) Agent param_control / param_read：语义寻址 + 越界拒绝 + 未绑定拒绝 + 记录收口。
-  //     Agent 写须躲开回退冷却（P4e rollback-good 留 300s 同向锚）：取「远离当前值」一侧,
-  //     若仍被冷却拒绝则自动换向重试一次（护栏消息含「回退冷却」）。
+  // (4) Agent 参数写面(权限模型 v2 契约,2026-10-30 更新):Agent 的 param_control
+  //     直写已被 v2 停用(handler 拒绝桩,引导走 recipe 面)——**拒绝本身就是治理断言**:
+  //     ①绑定 Agent param_control → v2 拒绝且给出去配方面路径;②未绑定 Agent → 同样拒绝
+  //     (不泄露绑定信息);③param_read 工具已随 v2 摘除 → 未知工具;④治理写路径
+  //     optimization_explore(绑定 auto)语义写+回读仍可用(与 P4 同源,此处不重复)。
   const inv = (tool, args) => api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: guestAgent.instId, tool, args })
   const curRd = await api.call('POST', `/api/workshop/dcw/${l.ids.dcw}/read`, {})
   const curVal = Number(curRd.data?.read?.value ?? rdP.data?.read?.value ?? (gMin + gMax) / 2)
-  let vPassB = curVal < (gMin + gMax) / 2 ? Number(((curVal + gMax) / 2).toFixed(3)) : Number(((gMin + curVal) / 2).toFixed(3))
-  let cOk = await inv('param_control', { param: pv.key, value: vPassB, hypothesis: 'P4f param-layer governed write', line_id: l.ids.line })
-  let cOkText = String(cOk.data?.result?.text ?? '')
-  if (cOk.data?.result?.isError === true && cOkText.includes('回退冷却')) {
-    vPassB = Number((gMin + gMax - vPassB).toFixed(3)) // 换向：镜像到区间另一侧
-    cOk = await inv('param_control', { param: pv.key, value: vPassB, hypothesis: 'P4f param-layer governed write (direction flip)', line_id: l.ids.line })
-    cOkText = String(cOk.data?.result?.text ?? '')
-  }
-  if (cOk.data?.result?.isError === true && /间隔必须至少\s*60s/.test(cOkText)) {
-    // (3) 的 REST 通过写刚占用了该节点的 60s 在线写间隔 —— 等锁清零重试一次
-    await sleep(61_000)
-    cOk = await inv('param_control', { param: pv.key, value: vPassB, hypothesis: 'P4f param-layer governed write (after 60s lock)', line_id: l.ids.line })
-    cOkText = String(cOk.data?.result?.text ?? '')
-  }
-  const cOkGood = cOk.data?.result?.isError !== true && cOkText.includes('工艺参数')
-  const recordId = (cOkText.match(/优化记录\s+([A-Za-z0-9._:-]+)\s+已开窗/) ?? [])[1] ?? null
-  if (recordId) await inv('dcw_judge', { record_id: recordId, verdict: 'keep', reason: 'P4f: param_control governed write verified' })
-  const cBad = await inv('param_control', { param: pv.key, value: vProduct, line_id: l.ids.line })
-  const cBadText = String(cBad.data?.result?.text ?? '')
-  const cBadGood = cBad.data?.result?.isError === true && cBadText.includes('产品')
+  const vPassB = curVal < (gMin + gMax) / 2 ? Number(((curVal + gMax) / 2).toFixed(3)) : Number(((gMin + curVal) / 2).toFixed(3))
+  const cV2 = await inv('param_control', { param: pv.key, value: vPassB, hypothesis: 'P4f v2 rejection contract', line_id: l.ids.line })
+  const cV2Text = String(cV2.data?.result?.text ?? '')
+  // 拒绝文案两形态:通用 v2 桩(「参数直写已禁用…recipe_update」)或 aml_optimization
+  // 档位门(「在工艺优化 Channel 不开放…optimization_explore」)—— 两者都是治理拒绝。
+  const v2RejectGood = cV2.data?.result?.isError === true
+    && (/参数直写已禁用/.test(cV2Text) || cV2Text.includes('optimization_explore'))
   const cRead = await inv('param_read', { param: pv.key, line_id: l.ids.line })
   const cReadText = String(cRead.data?.result?.text ?? '')
-  const cReadGood = readable
-    ? (cRead.data?.result?.isError !== true && cReadText.includes('PLC 读数'))
-    : true // 不可回读驱动:参读 n/a(与 P4 同容差),不因驱动属性判失败
-  const cReadNote = readable
-    ? `param_read → ${cReadGood ? '✔' : `✘ ${cReadText.slice(0, 90)}`}`
-    : `param_read → n/a（${l.protocol} 驱动不支持回读）`
-  // 未绑定 Agent：同 harness 新成员不绑定 → 语义寻址写必须被权限面拒绝
+  // param_read 已被 v2 摘除:期望「未知工具」(或不存在时的错误回包),不得返回成功读数
+  const cReadGood = cRead.data?.result?.isError === true || /未知工具|not\s+found|不存在/i.test(cReadText)
+  const cReadNote = `param_read → ${cReadGood ? '✔ 已随 v2 摘除' : `✘ ${cReadText.slice(0, 90)}`}`
+  // 未绑定 Agent：同 harness 新成员不绑定 → 直写同样被 v2 拒绝(桩不区分身份,不泄露授权面)
   const nb = await api.call('POST', '/api/workshop/agents', { name: `noparam-${sfx}`, harness: toolHarness, config: {} })
   const nbJoin = await api.call('POST', `/api/workshop/channels/${guestAgent.channelId}/agents`, { agentId: nb.data?.id, role: 'worker' })
   const nbId = nbJoin.data?.id ?? nbJoin.data?.agentId
   const cNoAuth = nbId ? await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: nbId, tool: 'param_control', args: { param: pv.key, value: vPass, line_id: l.ids.line } }) : { data: {} }
-  const noAuthGood = String(cNoAuth.data?.result?.text ?? '').includes('无权')
-  const agentOk = cOkGood && cBadGood && cReadGood && noAuthGood
+  const noAuthText = String(cNoAuth.data?.result?.text ?? '')
+  const noAuthGood = cNoAuth.data?.result?.isError === true
+    && (/参数直写已禁用/.test(noAuthText) || noAuthText.includes('optimization_explore'))
+  const agentOk = v2RejectGood && cReadGood && noAuthGood
   if (agentOk) okN++
-  add('P4f', 'agent-param-tools', `Line${l.index} Agent param_control/param_read（语义写 · 越产品层拒 · 参数读 · 未绑定拒）`, agentOk ? 'pass' : 'fail',
-    [`param_control ${vPassB} → ${cOkGood ? `✔ record=${recordId ?? 'n/a'}` : `✘ ${cOkText.slice(0, 90)}`}`,
-      `param_control ${vProduct} → ${cBadGood ? '✔ 产品层拦截' : `✘ ${cBadText.slice(0, 90)}`}`,
+  add('P4f', 'agent-param-tools', `Line${l.index} Agent 参数写面 v2 契约（直写拒 · 摘除 param_read · 未绑定拒）`, agentOk ? 'pass' : 'fail',
+    [`bound param_control → ${v2RejectGood ? '✔ v2 拒绝+指引配方面' : `✘ ${cV2Text.slice(0, 90)}`}`,
       cReadNote,
-      `unbound agent → ${noAuthGood ? '✔ 权限面拒绝' : `✘ ${String(cNoAuth.data?.result?.text ?? '').slice(0, 90)}`}`])
+      `unbound agent → ${noAuthGood ? '✔ v2 拒绝(不泄露授权面)' : `✘ ${String(cNoAuth.data?.result?.text ?? '').slice(0, 90)}`}`])
   bag.add('gov', 'param_layer_checks_ok', okN, '/4', '工艺参数映射层全链')
 
   // 收尾恢复：清掉本线限界叠加，避免残留软联锁影响后续阶段对该线的写窗
@@ -782,7 +864,7 @@ if (agentHarness) {
       title: `agentloop-${sfx}`, assigneeId: instId,
       parts: [{ text: `Line闭环调优任务（严格按步骤执行）：
 1. 调用 daq_query(node_id="${l.ids.daq}") 读取当前过程量;
-2. 调用 dcw_control(node_id="${l.ids.dcw}", value=${target}, hypothesis="integrated pipeline闭环验证") 下发设定值;
+2. 调用 optimization_explore(node_id="${l.ids.dcw}", value=${target}, hypothesis="integrated pipeline闭环验证") 受治理下发设定值;
 3. 等待 3 秒后再 daq_query(node_id="${l.ids.daq}") 观察响应;
 4. 调用 dcw_judge 落判定 keep 并附一句证据;
 5. 交付中必须原样包含标记 INTEGRATED-CLOSEDLOOP-OK，然后调用 complete_task。` }],
@@ -877,12 +959,12 @@ if (agentHarness) {
 标准作业流程（一步一步执行，每步都基于真实数据）：
 1. 观测：daq_query 读当前厚度过程量与趋势；line_context 看产线/批次/配方上下文；dcw_journal 查历史设定与在册优化记录（避免重复试错）；
 2. 分析：对照当前螺速设定与过程量，推导下一步设定值（声明假设：预期方向与幅度）；
-3. 下发：dcw_control 写入（自动开优化记录）；等待 30~60 秒工艺响应；
+3. 下发：optimization_explore 受治理写入（自动开优化记录）；等待 30~60 秒工艺响应；
 4. 复测：daq_query 观察过程量响应，未达目标则回到第 2 步继续迭代；
 5. 收口：每个由你发起的优化记录用 dcw_judge 依据数采证据落判定（keep/rollback）；
 6. 固化：达标后把最佳工艺参数（你的最终设定值）用 recipe_update 存入配方版本化保存，说明这是达标工艺；
 7. 交付：结论包含标记 GOAL-OPT-OK、你的最终设定值、达成过程量、迭代写次数、配方版本号，然后调用 complete_task。
-约束：dcw_control 最多 ${maxW} 次；厚度安全范围与配方窗口以 my_industrial_nodes 返回为准，越界会被治理拦截。` }],
+约束：optimization_explore 最多 ${maxW} 次；厚度安全范围与配方窗口以 my_industrial_nodes 返回为准，越界会被治理拦截。` }],
     })
     const taskTitle = `agentgoal-${sfx}`
     let taskId = t.data?.task?.id ?? t.data?.id
@@ -984,20 +1066,16 @@ if (clSeeds > 0) {
 
     // (3) Agent 绑定全部孪生节 points (治理写路径需要）
     if (guestAgent) {
-      for (const id of Object.values(twin.dcw)) await api.call('POST', '/api/workshop/agent-tools/bindings', { agentId: guestAgent.instId, nodeId: id, kind: 'dcw', mode: 'auto' })
-      for (const id of Object.values(twin.daq)) await api.call('POST', '/api/workshop/agent-tools/bindings', { agentId: guestAgent.instId, nodeId: id, kind: 'daq', mode: 'auto' })
+      for (const id of Object.values(twin.dcw)) await bindAuto(guestAgent.instId, id, 'dcw')
+      for (const id of Object.values(twin.daq)) await bindAuto(guestAgent.instId, id, 'daq')
     }
     const writeRest = async (nodeId, value) => {
       const r = await api.call('POST', `/api/workshop/dcw/${nodeId}/write`, { value })
       return { rejected: r.status >= 400, text: r.message ?? '' }
     }
     const writeGoverned = async (nodeId, value, hypothesis) => {
-      const r = await api.call('POST', '/api/workshop/agent-tools/invoke', {
-        agentId: guestAgent.instId, tool: 'dcw_control', args: { node_id: nodeId, value, hypothesis },
-      })
-      const res = r.data?.result ?? {}
-      const text = String(res.text ?? '')
-      return { rejected: res.isError === true, recordId: (text.match(/优化记录\s+([A-Za-z0-9._:-]+)\s+已开窗/) ?? [])[1] ?? null, text }
+      const w = await exploreWrite(guestAgent.instId, nodeId, value, twin.daq?.['melt-temp'], hypothesis, 120_000)
+      return { rejected: w.rejected, recordId: w.recordId, text: w.text }
     }
     const write = (clWriteMode === 'rest' || !guestAgent) ? writeRest : writeGoverned
 
@@ -1225,7 +1303,7 @@ await timed('P8', 'portability', 'Cross-scenario portability (re-commission on a
 // Agent(auto 绑定)开一条优化记录 → 把 DAQ 过程量冻结到配方窗外 → 等系统兜底（观察窗 120s +
 // 30s 重查节拍 + 越限阈值 3 采样）自动判定 rollback 并恢复记录基线。断言：system 判定 + 值回基线 +
 // journal rollback 锚。恢复时延属环境类（节拍决定），只记录不设门槛。
-const bs = { fired: false, restored: false, latencyS: null, recordId: null, from: null, to: null }
+const bs = { fired: false, restored: false, latencyS: null, recordId: null, from: null, to: null, freezeVal: null }
 await timed('P8b', 'backstop', 'System backstop drill (PV frozen out of window → system-judged bounded rollback)', async () => {
   if (!guestAgent || !port.lines.length) { add('P8b', 'backstop', '系统兜底 drilling', 'skip', ['P8 场景或 P4 夹具未就绪']); return { status: 'skip' } }
   const l = port.lines.find(x => x.ids.dcw && x.ids.daq && x.window)
@@ -1243,6 +1321,17 @@ await timed('P8b', 'backstop', 'System backstop drill (PV frozen out of window �
       await sleep(80)
     }
     add('P8b', 'cleanup', `遗留 open 记录清场（关闭 ${closedN}/${open.length} 条）`, closedN === open.length ? 'pass' : 'warn', [`records closed: ${closedN}/${open.length}`])
+    // (0b) 清场:遗留**待审批**卡(P4c HITL 测试可能残留)——open-record 的探索步会被
+    //     "已有一条待审批"守卫拒。本基准创建的卡,裁决权在基准自己:逐张批准(留痕)。
+    try {
+      const pend = await api.call('GET', `/api/workshop/agent-tools/approvals?agentId=${guestAgent.instId}&scope=pending`)
+      const cards = (pend.data?.approvals ?? pend.data ?? []).filter(x => !x.decidedAt)
+      for (const card of cards) {
+        await api.call('POST', `/api/workshop/agent-tools/approvals/${card.id}/decide`, { approved: true, comment: 'P8b cleanup: 基准遗留待审批卡清场' }).catch(() => {})
+      }
+      if (cards.length) add('P8b', 'approval-cleanup', `遗留待审批卡清场(${cards.length})`, 'pass', [`cards: ${cards.map(c => c.id).join(',')}`])
+    }
+    catch { /* 审批面不可达时不阻塞主流程 */ }
 
     // (1) 绑定 + Agent 受治理写一个异于当前的窗内值 → 开优化记录（auto 绑定 → auto_rollback 策略）
     await api.call('POST', '/api/workshop/agent-tools/bindings', { agentId: guestAgent.instId, nodeId: l.ids.dcw, kind: 'dcw', mode: 'auto' })
@@ -1250,29 +1339,47 @@ await timed('P8b', 'backstop', 'System backstop drill (PV frozen out of window �
     const before = await api.call('POST', `/api/workshop/dcw/${l.ids.dcw}/read`, {})
     bs.from = Number(before.data?.read?.value ?? before.data?.value)
     const spanB = l.window.max - l.window.min
+    // P8 装配建的 dcw 绑定可能落 manual(HITL 缺省)——兜底演练需要 auto 直写。
+    await bindAuto(guestAgent.instId, l.ids.dcw, 'dcw').catch(() => {})
     const targetB = Number((l.window.min + spanB * 0.4).toFixed(3))
     bs.to = targetB
-    const c = await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: guestAgent.instId, tool: 'dcw_control', args: { node_id: l.ids.dcw, value: targetB, hypothesis: 'P8b backstop drill: 开记录待兜底评估' } })
+    const c = { data: { result: { isError: false, text: '' } } }
+    {
+      const w = await exploreWrite(guestAgent.instId, l.ids.dcw, targetB, l.ids.daq, 'P8b backstop drill: 开记录待兜底评估')
+      c.data.result.isError = w.rejected
+      c.data.result.text = w.text
+    }
     const cText = String(c.data?.result?.text ?? '')
-    bs.recordId = (cText.match(/优化记录\s+([A-Za-z0-9._:-]+)\s+已开窗/) ?? [])[1] ?? null
+    // v2:optimization_explore 回包是「记录: opt-exploration-*」(内层优化记录 id 不回传,
+    // 连续写自动 supersede)。兜底演练只要求"存在本 agent 的 open 探索记录"即可被评估。
+    bs.recordId = (cText.match(/opt-exploration-[a-z0-9-]+/) ?? [])[0] ?? null
     if (!bs.recordId) { add('P8b', 'open-record', '开优化记录', 'fail', [cText.slice(0, 160)]); return { status: 'fail', note: 'record not opened' } }
-    add('P8b', 'open-record', `优化记录 ${bs.recordId} 已开（基线 ${bs.from} → ${targetB}，auto 策略）`, 'pass', [cText.slice(0, 140)])
+    add('P8b', 'open-record', `探索记录 ${bs.recordId} 已开（基线 ${bs.from} → ${targetB}，auto 策略）`, 'pass', [cText.slice(0, 140)])
 
     // (2) 冻结 DAQ 过程量于窗外（manual 策略，等价 plc-2 的 F2 注入手法）
     const nodesNow = (await simApi('GET', '/api/nodes')).data ?? []
     const dev = nodesNow.find(n => n.id === l.simDeviceId) ?? nodesNow.find(n => n.protocol === l.protocol && n.enabled)
     const { daq: daqSigB } = splitSignals(dev ?? {})
     if (!dev || !daqSigB) { add('P8b', 'freeze', '冻结过程量', 'fail', [`device ${l.simDeviceId} 不在线或无 DAQ 信号`]); return { status: 'fail', note: 'freeze target missing' } }
-    await simManual(dev.id, daqSigB.id, 150)
+    // 冻结值按 setpoint 构造(setpoint.hi + 20% 量程):对任意窗口都必然窗外,不随预设变化失效
+    const freezeVal = Number((l.setpoint.hi + (l.setpoint.hi - l.setpoint.lo) * 0.2).toFixed(2))
+    bs.freezeVal = freezeVal
+    await simManual(dev.id, daqSigB.id, freezeVal)
     const tFreeze = Date.now()
-    add('P8b', 'freeze', `DAQ ${daqSigB.id} 已冻结至 150（窗外，窗 [${r3(l.window.min)}, ${r3(l.window.max)}]）`, 'pass', [`device=${dev.id} signal=${daqSigB.id}`])
+    add('P8b', 'freeze', `DAQ ${daqSigB.id} 已冻结至 ${freezeVal}（窗外，窗 [${r3(l.window.min)}, ${r3(l.window.max)}]）`, 'pass', [`device=${dev.id} signal=${daqSigB.id}`])
 
     // (3) 轮询兜底判定（≤240s：观察窗 120s + 30s 节拍 + 采样裕量）
+    // v2:explore 回包的 opt-exploration-* 是探索记录;系统兜底判定落在**内层优化记录**
+    // (governed write 打开的那条)。按 nodeId 反查 open 的内层记录,盯它的 judge。
+    const innerRec = ((await api.call('GET', '/api/workshop/dcw/optimizations?limit=50')).data?.records ?? [])
+      .filter(r => r.nodeId === l.ids.dcw && (!r.status || r.status === 'open'))
+      .sort((a, b) => String(b.createdAt ?? '').localeCompare(String(a.createdAt ?? '')))[0]
+    const watchId = innerRec?.id ?? bs.recordId
     const t0 = Date.now()
     while (Date.now() - t0 < 240_000) {
       await sleep(10_000)
       const recs = (await api.call('GET', '/api/workshop/dcw/optimizations?limit=50')).data?.records ?? []
-      const mine = recs.find(r => r.id === bs.recordId)
+      const mine = recs.find(r => r.id === watchId)
       const judged = mine?.judge ?? null
       if (judged && judged.by === 'system' && judged.verdict === 'rollback') {
         bs.fired = true
@@ -1282,7 +1389,7 @@ await timed('P8b', 'backstop', 'System backstop drill (PV frozen out of window �
       if (judged && judged.verdict === 'keep') break // 被误判 keep——兜底未按策略动作
     }
     if (!bs.fired) {
-      add('P8b', 'backstop-verdict', '系统兜底判定', 'fail', [`240s 内未观察到 system/rollback 判定（记录 ${bs.recordId}）`])
+      add('P8b', 'backstop-verdict', '系统兜底判定', 'fail', [`240s 内未观察到 system/rollback 判定（watch=${watchId}）`])
       return { status: 'fail', note: 'backstop did not fire' }
     }
     // (4) 断言自动恢复到记录基线（系统回退不受冷却限制）
@@ -1305,7 +1412,7 @@ await timed('P8b', 'backstop', 'System backstop drill (PV frozen out of window �
       const nodesNow2 = (await simApi('GET', '/api/nodes')).data ?? []
       const dev2 = nodesNow2.find(n => n.id === l.simDeviceId)
       const { daq: daqSig2 } = splitSignals(dev2 ?? {})
-      if (dev2 && daqSig2) await simApi('POST', `/api/nodes/${dev2.id}/signals/${daqSig2.id}/strategy`, { strategy: { kind: 'first-order', initial: 150, tauMs: 8000, sp: bs.to ?? 180, noise: 0.25 } })
+      if (dev2 && daqSig2) await simApi('POST', `/api/nodes/${dev2.id}/signals/${daqSig2.id}/strategy`, { strategy: { kind: 'first-order', initial: bs.freezeVal ?? 150, tauMs: 8000, sp: bs.to ?? 180, noise: 0.25 } })
     } catch { /* 恢复失败不掩盖主判定 */ }
     await applyPreset(simPreset)
     add('P8b', 'restore', `过程量解冻 + 第一场景恢复: ${simPreset}`, 'pass', ['rig left as found'])
@@ -1358,11 +1465,14 @@ await timed('P10', 'biax-line', '双拉产线:节点探测补建 → 五协议�
 
     // Agent 语义面:绑定全部节点 → my_industrial_nodes 必须带出工艺描述与节点量
     if (thickDaq) {
-      for (const id of Object.values(line.dcw)) await api.call('POST', '/api/workshop/agent-tools/bindings', { agentId: guestAgent.instId, nodeId: id, kind: 'dcw', mode: 'auto' }).catch(() => {})
+      for (const id of Object.values(line.dcw)) await bindAuto(guestAgent.instId, id, 'dcw').catch(() => {})
       for (const key of ['biax-thickness', 'biax-defect', 'melt-temp', 'winder-tension-pv', 'thickness-sigma']) {
         const id = line.daq[key]
-        if (id) await api.call('POST', '/api/workshop/agent-tools/bindings', { agentId: guestAgent.instId, nodeId: id, kind: 'daq', mode: 'auto' }).catch(() => {})
+        if (id) await bindAuto(guestAgent.instId, id, 'daq').catch(() => {})
       }
+      // v2 配方面:recipe_trial 需要配方绑定;首绑恒 manual → 显式升 auto(免 HITL,确定性)
+      const biaxRecipeId = line.ids?.recipeId ?? line.ids?.recipe
+      if (biaxRecipeId) await bindAuto(guestAgent.instId, biaxRecipeId, 'recipe').catch(() => {})
       const cards = await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: guestAgent.instId, tool: 'my_industrial_nodes', args: {} })
       const ct = String(cards.data?.result?.text ?? '')
       const cardsOk = ct.includes('铸片辊速度') && ct.includes('横向拉伸比') && ct.includes('双拉薄膜产线')
@@ -2032,6 +2142,7 @@ const reproCmd = `node bench/pipeline.mjs --profile ${profile} --seed ${seed}${m
 
 const env = {
   runId: rid, profile, seed, base, simBase: SIM_BASE, simDir: SIM_DIR, lines: lines.length,
+  awHome: process.env.AW_HOME ?? null, awMode: process.env.AW_MODE ?? null,
   ownLines: lines.filter(l => !l.satellite).length, satelliteDaq: lines.filter(l => l.satellite).length,
   protocols: [...new Set(lines.map(l => l.protocol))].join('/'), preset: simPreset,
   agentHarness: agentHarness ?? '(none)', toolHarness, startedAt: new Date().toISOString(),

@@ -1,0 +1,5 @@
+{
+  "kb.base_url": "http://127.0.0.1:8770",
+  "kb.web_url": "http://127.0.0.1:6789",
+  "kb.name": "aw-industrial"
+}

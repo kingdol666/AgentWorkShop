@@ -65,14 +65,22 @@ export default [{
     const drivers = ['modbus', 'rtu', 'opcua', 'mqtt', 'http'].filter(k => drvSrc.includes(k))
     add('协议驱动 = 5 族 (modbus-tcp/rtu/opcua/mqtt/http)', drivers.length === 5, `找到 ${drivers.join(', ')}`)
 
-    // 6. 工业/智能体工具面（工具名外置于 .AgentWorkShop/prompts/host-tools.json）
-    const tools = ['dcw_control', 'dcw_read', 'daq_query', 'daq_frames', 'dcw_judge', 'dcw_rollback', 'dcw_journal', 'ops_log', 'recipe_log', 'line_context']
+    // 6. 工业/智能体工具面（工具名外置于 .AgentWorkShop/prompts/host-tools.json;
+    //    桥实现自拆分为 host-tool-bridge/ 目录——候选兼容旧单文件与拆分布局)
+    //    2026-10-30 v2 更新:dcw_control 直写已按权限模型 v2 摘除(拒绝桩在 handler 侧),
+    //    工具面以 recipe_apply/param_control 等配方面工具替代 —— 清单随契约更新,
+    //    并新增"dcw_control 不得在注入面"的反向断言(v2 契约本身)。
+    const tools = ['daq_query', 'daq_frames', 'dcw_judge', 'dcw_journal', 'ops_log', 'recipe_log', 'line_context', 'recipe_apply', 'recipe_rollback', 'recipe_versions']
     let hostTools = ''
     try { hostTools = readFileSync(join(R, '.AgentWorkShop', 'prompts', 'host-tools.json'), 'utf8') } catch {}
     let bridgeSrc = ''
     try { bridgeSrc = readFileSync(join(R, 'server', 'services', 'workshop', 'agents', 'host-tool-bridge.ts'), 'utf8') } catch {}
-    const toolsFound = tools.filter(t => hostTools.includes(`"${t}"`) || bridgeSrc.includes(`'${t}'`))
-    add('治理工具面 ≥ 10', toolsFound.length >= 10, `${toolsFound.length}/10`)
+    let bridgeDirSrc = ''
+    try { bridgeDirSrc = readFileSync(join(R, 'server', 'services', 'workshop', 'agents', 'host-tool-bridge', 'catalog.ts'), 'utf8') } catch {}
+    const toolHaystack = `${hostTools}\n${bridgeSrc}\n${bridgeDirSrc}`
+    const toolsFound = tools.filter(t => toolHaystack.includes(`"${t}"`) || toolHaystack.includes(`'${t}'`))
+    const v2DirectWriteRemoved = !toolHaystack.includes('"dcw_control"')
+    add('治理工具面 ≥ 10', toolsFound.length >= 10 && v2DirectWriteRemoved, `${toolsFound.length}/10${v2DirectWriteRemoved ? ' · dcw_control 已随 v2 摘除 ✔' : ' · ✘ dcw_control 仍在注入面'}`)
 
     // 7. 审计面（论文 §III-D）
     const opsSrc = readFileSync(join(R, 'server', 'services', 'workshop', 'db', 'ops.repo.ts'), 'utf8')

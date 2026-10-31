@@ -1,0 +1,3283 @@
+{
+  "approvals": [
+    {
+      "id": "ap-55e643ec",
+      "agentId": "af6b62fa-e2b0-40e1-9ed3-4f69b0dea384",
+      "nodeId": "dw-f8bbdb7a",
+      "kind": "dcw",
+      "detail": "scen-injection:dcw:hold-pressure-sp(烘箱温度设定)设定 46.8bar,有效写入区间 20~110bar(节点安全量程 ∩ 配方「scen-injection-recipe-p12-20261030173217-8f6e4715」工艺窗口) (频道手动模式);Agent 依据:+1.8bar 保压压力可补偿约 +0.3~0.4g 克重，同时缓解缩痕超标问题",
+      "status": "expired",
+      "comment": "审批超时未处理,默认拒绝,指令未执行",
+      "choice": null,
+      "decidedAt": "2026-10-31T01:39:02.803+08:00",
+      "decidedBy": "",
+      "decidedName": "",
+      "createdAt": "2026-10-31T01:36:02.792+08:00",
+      "expiresAt": "2026-10-31T01:39:02.792+08:00"
+    },
+    {
+      "id": "ap-351becd2",
+      "agentId": "4492d395-a240-4e83-9aa2-a28620148f75",
+      "nodeId": "dw-a648ccdc",
+      "kind": "dcw",
+      "detail": "scen-injection:dcw:hold-time-sp(烘箱温度设定)设定 6.2s,有效写入区间 3~15s(节点安全量程 ∩ 配方「scen-injection-recipe-p12-20261030173217-8f6e4715」工艺窗口) (频道手动模式);Agent 依据:延长保压时间可增强补缩效果，预期克重提升约 0.3~0.5g，缩痕下降约 0.2~0.4%",
+      "status": "expired",
+      "comment": "审批超时未处理,默认拒绝,指令未执行",
+      "choice": null,
+      "decidedAt": "2026-10-31T01:39:28.628+08:00",
+      "decidedBy": "",
+      "decidedName": "",
+      "createdAt": "2026-10-31T01:36:28.626+08:00",
+      "expiresAt": "2026-10-31T01:39:28.626+08:00"
+    },
+    {
+      "id": "ap-ee8b6b68",
+      "agentId": "af6b62fa-e2b0-40e1-9ed3-4f69b0dea384",
+      "nodeId": "dw-f8bbdb7a",
+      "kind": "dcw",
+      "detail": "scen-injection:dcw:hold-pressure-sp(烘箱温度设定)设定 46.8bar,有效写入区间 20~110bar(节点安全量程 ∩ 配方「scen-injection-recipe-p12-20261030173217-8f6e4715」工艺窗口) (频道手动模式);Agent 依据:+1.8bar 保压压力可补偿约 +0.3~0.4g 克重，同时缓解缩痕超标问题",
+      "status": "expired",
+      "comment": "审批超时未处理,默认拒绝,指令未执行",
+      "choice": null,
+      "decidedAt": "2026-10-31T01:42:28.103+08:00",
+      "decidedBy": "",
+      "decidedName": "",
+      "createdAt": "2026-10-31T01:39:28.099+08:00",
+      "expiresAt": "2026-10-31T01:42:28.099+08:00"
+    },
+    {
+      "id": "ap-926d1ff0",
+      "agentId": "4492d395-a240-4e83-9aa2-a28620148f75",
+      "nodeId": "dw-a648ccdc",
+      "kind": "dcw",
+      "detail": "scen-injection:dcw:hold-time-sp(烘箱温度设定)设定 6.2s,有效写入区间 3~15s(节点安全量程 ∩ 配方「scen-injection-recipe-p12-20261030173217-8f6e4715」工艺窗口) (频道手动模式);Agent 依据:延长保压时间可增强补缩效果，预期克重提升约 0.3~0.5g，缩痕下降约 0.2~0.4%",
+      "status": "expired",
+      "comment": "审批超时未处理,默认拒绝,指令未执行",
+      "choice": null,
+      "decidedAt": "2026-10-31T01:42:42.518+08:00",
+      "decidedBy": "",
+      "decidedName": "",
+      "createdAt": "2026-10-31T01:39:42.514+08:00",
+      "expiresAt": "2026-10-31T01:42:42.514+08:00"
+    },
+    {
+      "id": "ap-7c150313",
+      "agentId": "af6b62fa-e2b0-40e1-9ed3-4f69b0dea384",
+      "nodeId": "dw-f8bbdb7a",
+      "kind": "dcw",
+      "detail": "scen-injection:dcw:hold-pressure-sp(烘箱温度设定)设定 46.8bar,有效写入区间 20~110bar(节点安全量程 ∩ 配方「scen-injection-recipe-p12-20261030173217-8f6e4715」工艺窗口) (频道手动模式);Agent 依据:+1.8bar 保压压力可补偿约 +0.3~0.4g 克重，同时缓解缩痕超标问题",
+      "status": "approved",
+      "comment": "P12 operator: hold-pressure-sp 46.8bar ��ע�ᴰ 20~110bar ��,����+1.8 �뱣ѹ-���ػ���һ��,�ڵ���� worker-a ����,��׼",
+      "choice": null,
+      "decidedAt": "2026-10-31T01:44:26.828+08:00",
+      "decidedBy": "26acc011-2f37-405e-85dc-74b9fbb24fbc",
+      "decidedName": "awbench",
+      "createdAt": "2026-10-31T01:42:32.804+08:00",
+      "expiresAt": "2026-10-31T01:45:32.804+08:00"
+    },
+    {
+      "id": "ap-2e047f8d",
+      "agentId": "4492d395-a240-4e83-9aa2-a28620148f75",
+      "nodeId": "dw-a648ccdc",
+      "kind": "dcw",
+      "detail": "scen-injection:dcw:hold-time-sp(烘箱温度设定)设定 6.2s,有效写入区间 3~15s(节点安全量程 ∩ 配方「scen-injection-recipe-p12-20261030173217-8f6e4715」工艺窗口) (频道手动模式);Agent 依据:延长保压时间可增强补缩效果，预期克重提升约 0.3~0.5g，缩痕下降约 0.2~0.4%",
+      "status": "approved",
+      "comment": "P12 operator: hold-time-sp 6.2s ��ע�ᴰ 3~15s ��,�����������ݳ���,�ڵ���� worker-b ����,��׼",
+      "choice": null,
+      "decidedAt": "2026-10-31T01:44:26.937+08:00",
+      "decidedBy": "26acc011-2f37-405e-85dc-74b9fbb24fbc",
+      "decidedName": "awbench",
+      "createdAt": "2026-10-31T01:42:47.144+08:00",
+      "expiresAt": "2026-10-31T01:45:47.144+08:00"
+    },
+    {
+      "id": "ap-19070c24",
+      "agentId": "af6b62fa-e2b0-40e1-9ed3-4f69b0dea384",
+      "nodeId": "dw-f8bbdb7a",
+      "kind": "dcw",
+      "detail": "scen-injection:dcw:hold-pressure-sp(烘箱温度设定)设定 48.8bar,有效写入区间 20~110bar(节点安全量程 ∩ 配方「scen-injection-recipe-p12-20261030173217-8f6e4715」工艺窗口) (频道手动模式);Agent 依据:+2.0bar 保压压力可提升克重约 +0.15~0.2g，验证线性响应关系",
+      "status": "approved",
+      "comment": "P12 operator: 48.8bar ����,������Ӧ��֤�������,��׼",
+      "choice": null,
+      "decidedAt": "2026-10-31T01:47:47.781+08:00",
+      "decidedBy": "26acc011-2f37-405e-85dc-74b9fbb24fbc",
+      "decidedName": "awbench",
+      "createdAt": "2026-10-31T01:45:41.187+08:00",
+      "expiresAt": "2026-10-31T01:48:41.187+08:00"
+    },
+    {
+      "id": "ap-d336bda7",
+      "agentId": "4492d395-a240-4e83-9aa2-a28620148f75",
+      "nodeId": "dw-a648ccdc",
+      "kind": "dcw",
+      "detail": "scen-injection:dcw:hold-time-sp(烘箱温度设定)设定 6.4s,有效写入区间 3~15s(节点安全量程 ∩ 配方「scen-injection-recipe-p12-20261030173217-8f6e4715」工艺窗口) (频道手动模式);Agent 依据:延长保压时间至 6.4s，预期克重再提升约 0.3~0.5g，缩痕下降约 0.2~0.4%",
+      "status": "approved",
+      "comment": "P12 operator: 6.4s ����,С��������,��׼",
+      "choice": null,
+      "decidedAt": "2026-10-31T01:47:47.914+08:00",
+      "decidedBy": "26acc011-2f37-405e-85dc-74b9fbb24fbc",
+      "decidedName": "awbench",
+      "createdAt": "2026-10-31T01:45:58.626+08:00",
+      "expiresAt": "2026-10-31T01:48:58.626+08:00"
+    },
+    {
+      "id": "ap-9bfaa26c",
+      "agentId": "af6b62fa-e2b0-40e1-9ed3-4f69b0dea384",
+      "nodeId": "dw-f8bbdb7a",
+      "kind": "dcw",
+      "detail": "scen-injection:dcw:hold-pressure-sp(烘箱温度设定)设定 48.599999999999994bar,有效写入区间 20~110bar(节点安全量程 ∩ 配方「scen-injection-recipe-p12-20261030173217-8f6e4715」工艺窗口) (频道手动模式);Agent 依据:+1.8bar 保压压力可提升克重约 +0.15~0.2g，验证线性响应关系",
+      "status": "expired",
+      "comment": "审批超时未处理,默认拒绝,指令未执行",
+      "choice": null,
+      "decidedAt": "2026-10-31T01:50:52.032+08:00",
+      "decidedBy": "",
+      "decidedName": "",
+      "createdAt": "2026-10-31T01:47:52.030+08:00",
+      "expiresAt": "2026-10-31T01:50:52.030+08:00"
+    },
+    {
+      "id": "ap-9dd33d22",
+      "agentId": "4492d395-a240-4e83-9aa2-a28620148f75",
+      "nodeId": "dw-a648ccdc",
+      "kind": "dcw",
+      "detail": "scen-injection:dcw:hold-time-sp(烘箱温度设定)设定 6.2s,有效写入区间 3~15s(节点安全量程 ∩ 配方「scen-injection-recipe-p12-20261030173217-8f6e4715」工艺窗口) (频道手动模式);Agent 依据:反向验证 hold-time 与克重的非线性关系，寻找最优值范围",
+      "status": "denied",
+      "comment": "回合已被中止(运行时停止),审批失效,指令未执行",
+      "choice": null,
+      "decidedAt": "2026-10-31T01:50:56.978+08:00",
+      "decidedBy": "",
+      "decidedName": "",
+      "createdAt": "2026-10-31T01:48:45.561+08:00",
+      "expiresAt": "2026-10-31T01:51:45.561+08:00"
+    },
+    {
+      "id": "ap-d377931c",
+      "agentId": "af6b62fa-e2b0-40e1-9ed3-4f69b0dea384",
+      "nodeId": "dw-f8bbdb7a",
+      "kind": "dcw",
+      "detail": "scen-injection:dcw:hold-pressure-sp(烘箱温度设定)设定 48.599999999999994bar,有效写入区间 20~110bar(节点安全量程 ∩ 配方「scen-injection-recipe-p12-20261030173217-8f6e4715」工艺窗口) (频道手动模式);Agent 依据:+1.8bar 保压压力可提升克重约 +0.15~0.2g，验证线性响应关系",
+      "status": "denied",
+      "comment": "回合已被中止(运行时停止),审批失效,指令未执行",
+      "choice": null,
+      "decidedAt": "2026-10-31T01:50:56.811+08:00",
+      "decidedBy": "",
+      "decidedName": "",
+      "createdAt": "2026-10-31T01:50:55.602+08:00",
+      "expiresAt": "2026-10-31T01:53:55.602+08:00"
+    }
+  ],
+  "polls": [
+    {
+      "at_utc": "2026-10-30T17:34:09.815Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:34:13.928Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:34:18.039Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:34:22.152Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:34:26.248Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:34:30.374Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:34:34.507Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:34:38.606Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:34:42.735Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:34:46.834Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:34:50.958Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:34:55.073Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:34:59.186Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:35:03.298Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:35:07.394Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:35:11.518Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:35:15.636Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:35:19.743Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:35:23.861Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:35:27.972Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:35:32.103Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:35:36.209Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:35:40.350Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:35:44.490Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:35:48.630Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:35:52.733Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:35:56.831Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:36:00.918Z",
+      "approval_count": 0,
+      "approval_ids": [],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:36:05.023Z",
+      "approval_count": 1,
+      "approval_ids": [
+        "ap-55e643ec"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:36:09.108Z",
+      "approval_count": 1,
+      "approval_ids": [
+        "ap-55e643ec"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:36:13.225Z",
+      "approval_count": 1,
+      "approval_ids": [
+        "ap-55e643ec"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:36:17.337Z",
+      "approval_count": 1,
+      "approval_ids": [
+        "ap-55e643ec"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:36:21.455Z",
+      "approval_count": 1,
+      "approval_ids": [
+        "ap-55e643ec"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:36:25.585Z",
+      "approval_count": 1,
+      "approval_ids": [
+        "ap-55e643ec"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:36:29.742Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:36:33.852Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:36:37.964Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:36:42.066Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:36:46.170Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:36:50.285Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:36:54.380Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:36:58.495Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:37:02.589Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:37:06.721Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:37:10.858Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:37:14.976Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:37:19.089Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:37:23.215Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:37:27.345Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:37:31.479Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:37:35.618Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:37:39.748Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:37:43.854Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:37:47.968Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:37:52.073Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:37:56.182Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:38:00.322Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:38:04.434Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:38:08.540Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:38:12.639Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:38:16.723Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:38:20.825Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:38:24.938Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:38:29.075Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:38:33.189Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:38:37.287Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:38:41.432Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:38:45.569Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:38:49.702Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:38:53.818Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:38:57.940Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:39:02.060Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:39:06.198Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:39:10.318Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:39:14.467Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:39:18.631Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:39:22.745Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:39:26.827Z",
+      "approval_count": 2,
+      "approval_ids": [
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:39:30.932Z",
+      "approval_count": 3,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:39:35.029Z",
+      "approval_count": 3,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:39:39.136Z",
+      "approval_count": 3,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:39:43.250Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:39:47.365Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:39:51.491Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:39:55.600Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:39:59.712Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:40:03.830Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:40:07.929Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:40:12.049Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:40:16.158Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:40:20.286Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:40:24.398Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:40:28.508Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:40:32.625Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:40:36.739Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:40:40.841Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:40:44.938Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:40:49.043Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:40:53.125Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:40:57.239Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:41:01.365Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:41:05.488Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:41:09.604Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:41:13.713Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:41:17.805Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:41:21.903Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:41:26.042Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:41:30.139Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:41:34.222Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:41:38.360Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:41:42.528Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:41:46.663Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:41:50.787Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:41:54.914Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:41:59.044Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:42:03.183Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:42:07.299Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:42:11.413Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:42:15.519Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:42:19.630Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:42:23.752Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:42:27.858Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:42:31.975Z",
+      "approval_count": 4,
+      "approval_ids": [
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:42:36.098Z",
+      "approval_count": 5,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:42:40.209Z",
+      "approval_count": 5,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:42:44.351Z",
+      "approval_count": 5,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:42:48.459Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:42:52.587Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:42:56.733Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:43:00.868Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:43:04.992Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:43:09.116Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:43:13.205Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:43:17.312Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:43:21.421Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:43:25.528Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:43:29.668Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:43:33.786Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:43:37.915Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:43:42.022Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:43:46.142Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:43:50.261Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:43:54.385Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:43:58.500Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:44:02.633Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:44:06.741Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:44:10.853Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:44:14.965Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:44:19.082Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:44:23.211Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:44:27.377Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:44:31.488Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:44:35.579Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:44:39.688Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:44:43.810Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:44:47.942Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:44:52.075Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:44:56.175Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:45:00.310Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:45:04.441Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:45:08.592Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:45:12.715Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:45:16.830Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:45:20.935Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:45:25.060Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:45:29.174Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:45:34.874Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:45:38.997Z",
+      "approval_count": 6,
+      "approval_ids": [
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:45:43.114Z",
+      "approval_count": 7,
+      "approval_ids": [
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:45:47.224Z",
+      "approval_count": 7,
+      "approval_ids": [
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:45:51.331Z",
+      "approval_count": 7,
+      "approval_ids": [
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:45:55.438Z",
+      "approval_count": 7,
+      "approval_ids": [
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:45:59.538Z",
+      "approval_count": 8,
+      "approval_ids": [
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:46:03.663Z",
+      "approval_count": 8,
+      "approval_ids": [
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:46:07.783Z",
+      "approval_count": 8,
+      "approval_ids": [
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:46:11.898Z",
+      "approval_count": 8,
+      "approval_ids": [
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:46:16.020Z",
+      "approval_count": 8,
+      "approval_ids": [
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:46:20.125Z",
+      "approval_count": 8,
+      "approval_ids": [
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:46:24.227Z",
+      "approval_count": 8,
+      "approval_ids": [
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:46:28.344Z",
+      "approval_count": 8,
+      "approval_ids": [
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:46:32.466Z",
+      "approval_count": 8,
+      "approval_ids": [
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:46:36.571Z",
+      "approval_count": 8,
+      "approval_ids": [
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:46:40.697Z",
+      "approval_count": 8,
+      "approval_ids": [
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:46:44.819Z",
+      "approval_count": 8,
+      "approval_ids": [
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:46:48.944Z",
+      "approval_count": 8,
+      "approval_ids": [
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:46:53.082Z",
+      "approval_count": 8,
+      "approval_ids": [
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:46:57.212Z",
+      "approval_count": 8,
+      "approval_ids": [
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:47:01.355Z",
+      "approval_count": 8,
+      "approval_ids": [
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:47:05.474Z",
+      "approval_count": 8,
+      "approval_ids": [
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:47:09.598Z",
+      "approval_count": 8,
+      "approval_ids": [
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:47:13.695Z",
+      "approval_count": 8,
+      "approval_ids": [
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:47:17.783Z",
+      "approval_count": 8,
+      "approval_ids": [
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:47:21.912Z",
+      "approval_count": 8,
+      "approval_ids": [
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:47:26.040Z",
+      "approval_count": 8,
+      "approval_ids": [
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:47:30.166Z",
+      "approval_count": 8,
+      "approval_ids": [
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:47:34.293Z",
+      "approval_count": 8,
+      "approval_ids": [
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:47:38.416Z",
+      "approval_count": 8,
+      "approval_ids": [
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:47:42.531Z",
+      "approval_count": 8,
+      "approval_ids": [
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:47:46.637Z",
+      "approval_count": 8,
+      "approval_ids": [
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:47:50.749Z",
+      "approval_count": 8,
+      "approval_ids": [
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:47:54.850Z",
+      "approval_count": 9,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:47:58.975Z",
+      "approval_count": 9,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:48:03.104Z",
+      "approval_count": 9,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:48:07.216Z",
+      "approval_count": 9,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:48:11.321Z",
+      "approval_count": 9,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:48:15.422Z",
+      "approval_count": 9,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:48:19.560Z",
+      "approval_count": 9,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:48:23.653Z",
+      "approval_count": 9,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:48:27.767Z",
+      "approval_count": 9,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:48:31.885Z",
+      "approval_count": 9,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:48:36.011Z",
+      "approval_count": 9,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:48:40.140Z",
+      "approval_count": 9,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:48:44.268Z",
+      "approval_count": 9,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:48:48.400Z",
+      "approval_count": 10,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-9dd33d22",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:48:52.523Z",
+      "approval_count": 10,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-9dd33d22",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:48:56.659Z",
+      "approval_count": 10,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-9dd33d22",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:49:00.785Z",
+      "approval_count": 10,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-9dd33d22",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:49:04.939Z",
+      "approval_count": 10,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-9dd33d22",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:49:09.151Z",
+      "approval_count": 10,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-9dd33d22",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:49:13.331Z",
+      "approval_count": 10,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-9dd33d22",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:49:17.451Z",
+      "approval_count": 10,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-9dd33d22",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:49:21.598Z",
+      "approval_count": 10,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-9dd33d22",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:49:25.725Z",
+      "approval_count": 10,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-9dd33d22",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:49:29.847Z",
+      "approval_count": 10,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-9dd33d22",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:49:33.968Z",
+      "approval_count": 10,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-9dd33d22",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:49:38.081Z",
+      "approval_count": 10,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-9dd33d22",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:49:42.308Z",
+      "approval_count": 10,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-9dd33d22",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:49:46.434Z",
+      "approval_count": 10,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-9dd33d22",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:49:50.575Z",
+      "approval_count": 10,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-9dd33d22",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:49:54.705Z",
+      "approval_count": 10,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-9dd33d22",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:49:58.820Z",
+      "approval_count": 10,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-9dd33d22",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:50:02.947Z",
+      "approval_count": 10,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-9dd33d22",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:50:07.038Z",
+      "approval_count": 10,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-9dd33d22",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:50:11.168Z",
+      "approval_count": 10,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-9dd33d22",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:50:15.266Z",
+      "approval_count": 10,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-9dd33d22",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:50:19.382Z",
+      "approval_count": 10,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-9dd33d22",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:50:23.502Z",
+      "approval_count": 10,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-9dd33d22",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:50:27.607Z",
+      "approval_count": 10,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-9dd33d22",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:50:31.687Z",
+      "approval_count": 10,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-9dd33d22",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:50:35.820Z",
+      "approval_count": 10,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-9dd33d22",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:50:39.946Z",
+      "approval_count": 10,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-9dd33d22",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:50:44.044Z",
+      "approval_count": 10,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-9dd33d22",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:50:48.150Z",
+      "approval_count": 10,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-9dd33d22",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:50:52.269Z",
+      "approval_count": 10,
+      "approval_ids": [
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-9dd33d22",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    },
+    {
+      "at_utc": "2026-10-30T17:50:56.391Z",
+      "approval_count": 11,
+      "approval_ids": [
+        "ap-d377931c",
+        "ap-9bfaa26c",
+        "ap-19070c24",
+        "ap-7c150313",
+        "ap-ee8b6b68",
+        "ap-55e643ec",
+        "ap-9dd33d22",
+        "ap-d336bda7",
+        "ap-2e047f8d",
+        "ap-926d1ff0",
+        "ap-351becd2"
+      ],
+      "capped_agents": []
+    }
+  ],
+  "final_fetches": [
+    {
+      "agent_id": "c0135543-4c0b-460e-8124-0aafed6ffcbf",
+      "status": 200,
+      "data": {
+        "approvals": []
+      },
+      "code": 0,
+      "message": "ok"
+    },
+    {
+      "agent_id": "af6b62fa-e2b0-40e1-9ed3-4f69b0dea384",
+      "status": 200,
+      "data": {
+        "approvals": [
+          {
+            "id": "ap-d377931c",
+            "agentId": "af6b62fa-e2b0-40e1-9ed3-4f69b0dea384",
+            "nodeId": "dw-f8bbdb7a",
+            "kind": "dcw",
+            "detail": "scen-injection:dcw:hold-pressure-sp(烘箱温度设定)设定 48.599999999999994bar,有效写入区间 20~110bar(节点安全量程 ∩ 配方「scen-injection-recipe-p12-20261030173217-8f6e4715」工艺窗口) (频道手动模式);Agent 依据:+1.8bar 保压压力可提升克重约 +0.15~0.2g，验证线性响应关系",
+            "status": "denied",
+            "comment": "回合已被中止(运行时停止),审批失效,指令未执行",
+            "choice": null,
+            "decidedAt": "2026-10-31T01:50:56.811+08:00",
+            "decidedBy": "",
+            "decidedName": "",
+            "createdAt": "2026-10-31T01:50:55.602+08:00",
+            "expiresAt": "2026-10-31T01:53:55.602+08:00"
+          },
+          {
+            "id": "ap-9bfaa26c",
+            "agentId": "af6b62fa-e2b0-40e1-9ed3-4f69b0dea384",
+            "nodeId": "dw-f8bbdb7a",
+            "kind": "dcw",
+            "detail": "scen-injection:dcw:hold-pressure-sp(烘箱温度设定)设定 48.599999999999994bar,有效写入区间 20~110bar(节点安全量程 ∩ 配方「scen-injection-recipe-p12-20261030173217-8f6e4715」工艺窗口) (频道手动模式);Agent 依据:+1.8bar 保压压力可提升克重约 +0.15~0.2g，验证线性响应关系",
+            "status": "expired",
+            "comment": "审批超时未处理,默认拒绝,指令未执行",
+            "choice": null,
+            "decidedAt": "2026-10-31T01:50:52.032+08:00",
+            "decidedBy": "",
+            "decidedName": "",
+            "createdAt": "2026-10-31T01:47:52.030+08:00",
+            "expiresAt": "2026-10-31T01:50:52.030+08:00"
+          },
+          {
+            "id": "ap-19070c24",
+            "agentId": "af6b62fa-e2b0-40e1-9ed3-4f69b0dea384",
+            "nodeId": "dw-f8bbdb7a",
+            "kind": "dcw",
+            "detail": "scen-injection:dcw:hold-pressure-sp(烘箱温度设定)设定 48.8bar,有效写入区间 20~110bar(节点安全量程 ∩ 配方「scen-injection-recipe-p12-20261030173217-8f6e4715」工艺窗口) (频道手动模式);Agent 依据:+2.0bar 保压压力可提升克重约 +0.15~0.2g，验证线性响应关系",
+            "status": "approved",
+            "comment": "P12 operator: 48.8bar ����,������Ӧ��֤�������,��׼",
+            "choice": null,
+            "decidedAt": "2026-10-31T01:47:47.781+08:00",
+            "decidedBy": "26acc011-2f37-405e-85dc-74b9fbb24fbc",
+            "decidedName": "awbench",
+            "createdAt": "2026-10-31T01:45:41.187+08:00",
+            "expiresAt": "2026-10-31T01:48:41.187+08:00"
+          },
+          {
+            "id": "ap-7c150313",
+            "agentId": "af6b62fa-e2b0-40e1-9ed3-4f69b0dea384",
+            "nodeId": "dw-f8bbdb7a",
+            "kind": "dcw",
+            "detail": "scen-injection:dcw:hold-pressure-sp(烘箱温度设定)设定 46.8bar,有效写入区间 20~110bar(节点安全量程 ∩ 配方「scen-injection-recipe-p12-20261030173217-8f6e4715」工艺窗口) (频道手动模式);Agent 依据:+1.8bar 保压压力可补偿约 +0.3~0.4g 克重，同时缓解缩痕超标问题",
+            "status": "approved",
+            "comment": "P12 operator: hold-pressure-sp 46.8bar ��ע�ᴰ 20~110bar ��,����+1.8 �뱣ѹ-���ػ���һ��,�ڵ���� worker-a ����,��׼",
+            "choice": null,
+            "decidedAt": "2026-10-31T01:44:26.828+08:00",
+            "decidedBy": "26acc011-2f37-405e-85dc-74b9fbb24fbc",
+            "decidedName": "awbench",
+            "createdAt": "2026-10-31T01:42:32.804+08:00",
+            "expiresAt": "2026-10-31T01:45:32.804+08:00"
+          },
+          {
+            "id": "ap-ee8b6b68",
+            "agentId": "af6b62fa-e2b0-40e1-9ed3-4f69b0dea384",
+            "nodeId": "dw-f8bbdb7a",
+            "kind": "dcw",
+            "detail": "scen-injection:dcw:hold-pressure-sp(烘箱温度设定)设定 46.8bar,有效写入区间 20~110bar(节点安全量程 ∩ 配方「scen-injection-recipe-p12-20261030173217-8f6e4715」工艺窗口) (频道手动模式);Agent 依据:+1.8bar 保压压力可补偿约 +0.3~0.4g 克重，同时缓解缩痕超标问题",
+            "status": "expired",
+            "comment": "审批超时未处理,默认拒绝,指令未执行",
+            "choice": null,
+            "decidedAt": "2026-10-31T01:42:28.103+08:00",
+            "decidedBy": "",
+            "decidedName": "",
+            "createdAt": "2026-10-31T01:39:28.099+08:00",
+            "expiresAt": "2026-10-31T01:42:28.099+08:00"
+          },
+          {
+            "id": "ap-55e643ec",
+            "agentId": "af6b62fa-e2b0-40e1-9ed3-4f69b0dea384",
+            "nodeId": "dw-f8bbdb7a",
+            "kind": "dcw",
+            "detail": "scen-injection:dcw:hold-pressure-sp(烘箱温度设定)设定 46.8bar,有效写入区间 20~110bar(节点安全量程 ∩ 配方「scen-injection-recipe-p12-20261030173217-8f6e4715」工艺窗口) (频道手动模式);Agent 依据:+1.8bar 保压压力可补偿约 +0.3~0.4g 克重，同时缓解缩痕超标问题",
+            "status": "expired",
+            "comment": "审批超时未处理,默认拒绝,指令未执行",
+            "choice": null,
+            "decidedAt": "2026-10-31T01:39:02.803+08:00",
+            "decidedBy": "",
+            "decidedName": "",
+            "createdAt": "2026-10-31T01:36:02.792+08:00",
+            "expiresAt": "2026-10-31T01:39:02.792+08:00"
+          }
+        ]
+      },
+      "code": 0,
+      "message": "ok"
+    },
+    {
+      "agent_id": "4492d395-a240-4e83-9aa2-a28620148f75",
+      "status": 200,
+      "data": {
+        "approvals": [
+          {
+            "id": "ap-9dd33d22",
+            "agentId": "4492d395-a240-4e83-9aa2-a28620148f75",
+            "nodeId": "dw-a648ccdc",
+            "kind": "dcw",
+            "detail": "scen-injection:dcw:hold-time-sp(烘箱温度设定)设定 6.2s,有效写入区间 3~15s(节点安全量程 ∩ 配方「scen-injection-recipe-p12-20261030173217-8f6e4715」工艺窗口) (频道手动模式);Agent 依据:反向验证 hold-time 与克重的非线性关系，寻找最优值范围",
+            "status": "denied",
+            "comment": "回合已被中止(运行时停止),审批失效,指令未执行",
+            "choice": null,
+            "decidedAt": "2026-10-31T01:50:56.978+08:00",
+            "decidedBy": "",
+            "decidedName": "",
+            "createdAt": "2026-10-31T01:48:45.561+08:00",
+            "expiresAt": "2026-10-31T01:51:45.561+08:00"
+          },
+          {
+            "id": "ap-d336bda7",
+            "agentId": "4492d395-a240-4e83-9aa2-a28620148f75",
+            "nodeId": "dw-a648ccdc",
+            "kind": "dcw",
+            "detail": "scen-injection:dcw:hold-time-sp(烘箱温度设定)设定 6.4s,有效写入区间 3~15s(节点安全量程 ∩ 配方「scen-injection-recipe-p12-20261030173217-8f6e4715」工艺窗口) (频道手动模式);Agent 依据:延长保压时间至 6.4s，预期克重再提升约 0.3~0.5g，缩痕下降约 0.2~0.4%",
+            "status": "approved",
+            "comment": "P12 operator: 6.4s ����,С��������,��׼",
+            "choice": null,
+            "decidedAt": "2026-10-31T01:47:47.914+08:00",
+            "decidedBy": "26acc011-2f37-405e-85dc-74b9fbb24fbc",
+            "decidedName": "awbench",
+            "createdAt": "2026-10-31T01:45:58.626+08:00",
+            "expiresAt": "2026-10-31T01:48:58.626+08:00"
+          },
+          {
+            "id": "ap-2e047f8d",
+            "agentId": "4492d395-a240-4e83-9aa2-a28620148f75",
+            "nodeId": "dw-a648ccdc",
+            "kind": "dcw",
+            "detail": "scen-injection:dcw:hold-time-sp(烘箱温度设定)设定 6.2s,有效写入区间 3~15s(节点安全量程 ∩ 配方「scen-injection-recipe-p12-20261030173217-8f6e4715」工艺窗口) (频道手动模式);Agent 依据:延长保压时间可增强补缩效果，预期克重提升约 0.3~0.5g，缩痕下降约 0.2~0.4%",
+            "status": "approved",
+            "comment": "P12 operator: hold-time-sp 6.2s ��ע�ᴰ 3~15s ��,�����������ݳ���,�ڵ���� worker-b ����,��׼",
+            "choice": null,
+            "decidedAt": "2026-10-31T01:44:26.937+08:00",
+            "decidedBy": "26acc011-2f37-405e-85dc-74b9fbb24fbc",
+            "decidedName": "awbench",
+            "createdAt": "2026-10-31T01:42:47.144+08:00",
+            "expiresAt": "2026-10-31T01:45:47.144+08:00"
+          },
+          {
+            "id": "ap-926d1ff0",
+            "agentId": "4492d395-a240-4e83-9aa2-a28620148f75",
+            "nodeId": "dw-a648ccdc",
+            "kind": "dcw",
+            "detail": "scen-injection:dcw:hold-time-sp(烘箱温度设定)设定 6.2s,有效写入区间 3~15s(节点安全量程 ∩ 配方「scen-injection-recipe-p12-20261030173217-8f6e4715」工艺窗口) (频道手动模式);Agent 依据:延长保压时间可增强补缩效果，预期克重提升约 0.3~0.5g，缩痕下降约 0.2~0.4%",
+            "status": "expired",
+            "comment": "审批超时未处理,默认拒绝,指令未执行",
+            "choice": null,
+            "decidedAt": "2026-10-31T01:42:42.518+08:00",
+            "decidedBy": "",
+            "decidedName": "",
+            "createdAt": "2026-10-31T01:39:42.514+08:00",
+            "expiresAt": "2026-10-31T01:42:42.514+08:00"
+          },
+          {
+            "id": "ap-351becd2",
+            "agentId": "4492d395-a240-4e83-9aa2-a28620148f75",
+            "nodeId": "dw-a648ccdc",
+            "kind": "dcw",
+            "detail": "scen-injection:dcw:hold-time-sp(烘箱温度设定)设定 6.2s,有效写入区间 3~15s(节点安全量程 ∩ 配方「scen-injection-recipe-p12-20261030173217-8f6e4715」工艺窗口) (频道手动模式);Agent 依据:延长保压时间可增强补缩效果，预期克重提升约 0.3~0.5g，缩痕下降约 0.2~0.4%",
+            "status": "expired",
+            "comment": "审批超时未处理,默认拒绝,指令未执行",
+            "choice": null,
+            "decidedAt": "2026-10-31T01:39:28.628+08:00",
+            "decidedBy": "",
+            "decidedName": "",
+            "createdAt": "2026-10-31T01:36:28.626+08:00",
+            "expiresAt": "2026-10-31T01:39:28.626+08:00"
+          }
+        ]
+      },
+      "code": 0,
+      "message": "ok"
+    }
+  ],
+  "capped_agents": []
+}

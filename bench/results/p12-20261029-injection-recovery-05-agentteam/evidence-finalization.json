@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "run_id": "p12-20261029-injection-recovery-05",
+  "finalized_at_utc": "2026-10-29T09:28:32.190Z",
+  "aw_base": "http://127.0.0.1:3117",
+  "aw_listener_count_at_freeze": 0,
+  "aw_shutdown_boundary_verified": true,
+  "raw_event_file": "events.raw.jsonl",
+  "raw_event_sha256": "73f1fb706eecc0053bbc0356d1a499fcad64a54a910a9313c32530989ca1538d",
+  "raw_event_records": 35,
+  "prior_raw_event_sha256": "5fa2584b7c718f099a74cced9eadbf01dc894345c8e48bfb8f0e02a1cc7aa5e8",
+  "prior_raw_event_hash_matched_final": false,
+  "prior_normalized_event_records": 27,
+  "late_event_records_after_prior_finalization": 8,
+  "late_event_growth_detected": true,
+  "taskless_tool_events": 8,
+  "marker_ready": true,
+  "tool_event_count": 34,
+  "tool_call_pairs": 11,
+  "taskless_event_ids": [
+    "98532:28:c446f1aa-7d04-4be1-a208-1e152010996a",
+    "98532:29:cf56f39b-7e0d-4f26-ba2b-ff9a71613992",
+    "98532:30:f49f6979-bcd1-4a27-9aeb-c74f5206e580",
+    "98532:31:10205a10-27ff-4d2b-9ba4-a51f4b7989c9",
+    "98532:32:d61fcf7a-2527-45a3-803a-1b0fd6b02746",
+    "98532:33:232008f1-0e90-4710-a806-f20255022f24",
+    "98532:34:207705a0-f5c0-42ce-b0fa-933dcb408a80",
+    "98532:35:9e9b84d9-82e6-4bea-a24a-bcfb153f4614"
+  ],
+  "evidence_integrity": "FAIL"
+}

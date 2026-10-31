@@ -1,0 +1,7 @@
+# AML 运行时资产:体积大且与机器绑定,不入库
+.venv/
+tools/
+runtime/
+datasets/
+jobs/
+models/

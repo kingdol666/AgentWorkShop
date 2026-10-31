@@ -1,0 +1,32 @@
+﻿[
+    {
+        "id":  "2c47a01c-2bca-4381-a4db-4414b0886e18",
+        "name":  "P12 lead ection-recovery-06",
+        "harness":  "omp",
+        "provider":  "lm-studio",
+        "model":  "qwen3.5-9b-32k",
+        "args":  [
+                     "--no-tools"
+                 ]
+    },
+    {
+        "id":  "d9d11238-f6d9-4ab0-a1cc-994896dfe8c2",
+        "name":  "P12 worker a ection-recovery-06",
+        "harness":  "omp",
+        "provider":  "lm-studio",
+        "model":  "qwen3.5-9b-32k",
+        "args":  [
+                     "--no-tools"
+                 ]
+    },
+    {
+        "id":  "1505d497-5c59-4ad4-9857-6d4e3e8de36a",
+        "name":  "P12 worker b ection-recovery-06",
+        "harness":  "omp",
+        "provider":  "lm-studio",
+        "model":  "qwen3.5-9b-32k",
+        "args":  [
+                     "--no-tools"
+                 ]
+    }
+]

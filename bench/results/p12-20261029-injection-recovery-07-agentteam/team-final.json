@@ -1,0 +1,202 @@
+{
+  "team": {
+    "id": "a7ceb776-b012-4039-a3d9-c613f24e19aa",
+    "name": "P12 team ection-recovery-07",
+    "description": "Run p12-20261029-injection-recovery-07; lead and two omp workers",
+    "visibility": "private",
+    "isBuiltin": false,
+    "ownerUserId": "78ae589d-7596-417f-b429-0ac639b1b9c5",
+    "members": [
+      {
+        "templateId": "6daef0c1-fbdc-4640-a3e4-cd2d428885a2",
+        "name": "P12 lead ection-recovery-07",
+        "harness": "omp",
+        "role": "lead",
+        "addedAt": "2026-10-29T18:06:22.895+08:00"
+      },
+      {
+        "templateId": "93cfaa42-aab5-43a5-b903-c1509822decc",
+        "name": "P12 worker a ection-recovery-07",
+        "harness": "omp",
+        "role": "worker",
+        "addedAt": "2026-10-29T18:06:22.908+08:00"
+      },
+      {
+        "templateId": "603c0add-eeb4-4448-9c85-ae06de5fd5d3",
+        "name": "P12 worker b ection-recovery-07",
+        "harness": "omp",
+        "role": "worker",
+        "addedAt": "2026-10-29T18:06:22.924+08:00"
+      }
+    ],
+    "createdAt": "2026-10-29T18:06:22.879+08:00",
+    "updatedAt": "2026-10-29T18:06:22.879+08:00"
+  },
+  "members": [
+    {
+      "id": "363a0984-1059-45df-b565-c6e71c5dc123",
+      "channelId": "6721bd3c-9c68-409a-aac9-49ed78b3f6b6",
+      "name": "P12 lead ection-recovery-07",
+      "harness": "omp",
+      "role": "lead",
+      "enabled": 1,
+      "templateId": "6daef0c1-fbdc-4640-a3e4-cd2d428885a2",
+      "config": {
+        "provider": "lm-studio",
+        "model": "qwen3.5-9b-32k",
+        "systemPromptPrefix": "你是负责现场的工业团队 lead。OMP 内置工具由 --no-tools 禁用；只使用 AgentWorkShop set_host_tools 提供的 Channel 工具。显式允许并优先使用只读工业工具 line_context、daq_query、my_industrial_nodes 获取现场上下文。你必须调用 list_team_agents 核实本 Channel 的真实成员，然后用平台 dispatch_task 分别向两个预配置 worker ID 委派职责明确的子任务；不得调用 Harness 原生 task/scout/background agent。你没有控制写入权限，不得调用工艺控制写入工具，也不得使用任何文件/命令工具替代现场工具。核对子任务、审批、回执和独立读回，再依据可观察证据收口，绝不声称未观测结果。"
+      }
+    },
+    {
+      "id": "21b50d4e-8ea6-4bde-ab05-3d93111cb190",
+      "channelId": "6721bd3c-9c68-409a-aac9-49ed78b3f6b6",
+      "name": "P12 worker a ection-recovery-07",
+      "harness": "omp",
+      "role": "worker",
+      "enabled": 1,
+      "templateId": "93cfaa42-aab5-43a5-b903-c1509822decc",
+      "config": {
+        "provider": "lm-studio",
+        "model": "qwen3.5-9b-32k",
+        "systemPromptPrefix": "P12 role: Analyze and tune only the hold-pressure setpoint. OMP built-in tools are disabled with --no-tools; use only AgentWorkShop Channel tools supplied through set_host_tools. Your only control path is optimization_explore with control_node_id=dw-22872533, target_node_id=dn-fe8227b3, step no larger than the scene contract maxStep, and settle_seconds at least 10. Access only your bound DCW set. Do not use dcw_control, native task/read/write/edit/glob/grep/bash tools, simulator/API/shell, or another worker's controls. Report evidence and stop on safety violations."
+      }
+    },
+    {
+      "id": "3d29507a-64ab-4945-8925-9d2ef2513352",
+      "channelId": "6721bd3c-9c68-409a-aac9-49ed78b3f6b6",
+      "name": "P12 worker b ection-recovery-07",
+      "harness": "omp",
+      "role": "worker",
+      "enabled": 1,
+      "templateId": "603c0add-eeb4-4448-9c85-ae06de5fd5d3",
+      "config": {
+        "provider": "lm-studio",
+        "model": "qwen3.5-9b-32k",
+        "systemPromptPrefix": "P12 role: Analyze and tune only the hold-time setpoint. OMP built-in tools are disabled with --no-tools; use only AgentWorkShop Channel tools supplied through set_host_tools. Your only control path is optimization_explore with control_node_id=dw-69681f6c, target_node_id=dn-fe8227b3, step no larger than the scene contract maxStep, and settle_seconds at least 10. Access only your bound DCW set. Do not use dcw_control, native task/read/write/edit/glob/grep/bash tools, simulator/API/shell, or another worker's controls. Report evidence and stop on safety violations."
+      }
+    }
+  ],
+  "bindings": [
+    {
+      "agent_id": "363a0984-1059-45df-b565-c6e71c5dc123",
+      "status": 200,
+      "data": {
+        "bindings": [
+          {
+            "id": "nb-981f52ac",
+            "agentId": "363a0984-1059-45df-b565-c6e71c5dc123",
+            "nodeId": "dn-fe8227b3",
+            "kind": "daq",
+            "mode": "auto",
+            "createdAt": "2026-10-29T18:06:22.972+08:00"
+          },
+          {
+            "id": "nb-15c72cb0",
+            "agentId": "363a0984-1059-45df-b565-c6e71c5dc123",
+            "nodeId": "dn-b476df07",
+            "kind": "daq",
+            "mode": "auto",
+            "createdAt": "2026-10-29T18:06:22.986+08:00"
+          },
+          {
+            "id": "nb-a99fb7f1",
+            "agentId": "363a0984-1059-45df-b565-c6e71c5dc123",
+            "nodeId": "dn-abe7b6c3",
+            "kind": "daq",
+            "mode": "auto",
+            "createdAt": "2026-10-29T18:06:23.001+08:00"
+          }
+        ],
+        "filtered": false
+      },
+      "code": 0,
+      "message": "ok"
+    },
+    {
+      "agent_id": "21b50d4e-8ea6-4bde-ab05-3d93111cb190",
+      "status": 200,
+      "data": {
+        "bindings": [
+          {
+            "id": "nb-49b9dec4",
+            "agentId": "21b50d4e-8ea6-4bde-ab05-3d93111cb190",
+            "nodeId": "dn-fe8227b3",
+            "kind": "daq",
+            "mode": "auto",
+            "createdAt": "2026-10-29T18:06:23.017+08:00"
+          },
+          {
+            "id": "nb-4899e0d7",
+            "agentId": "21b50d4e-8ea6-4bde-ab05-3d93111cb190",
+            "nodeId": "dn-b476df07",
+            "kind": "daq",
+            "mode": "auto",
+            "createdAt": "2026-10-29T18:06:23.044+08:00"
+          },
+          {
+            "id": "nb-1a96c2f2",
+            "agentId": "21b50d4e-8ea6-4bde-ab05-3d93111cb190",
+            "nodeId": "dn-abe7b6c3",
+            "kind": "daq",
+            "mode": "auto",
+            "createdAt": "2026-10-29T18:06:23.063+08:00"
+          },
+          {
+            "id": "nb-bb1d7ef7",
+            "agentId": "21b50d4e-8ea6-4bde-ab05-3d93111cb190",
+            "nodeId": "dw-22872533",
+            "kind": "dcw",
+            "mode": "manual",
+            "createdAt": "2026-10-29T18:06:23.079+08:00"
+          }
+        ],
+        "filtered": false
+      },
+      "code": 0,
+      "message": "ok"
+    },
+    {
+      "agent_id": "3d29507a-64ab-4945-8925-9d2ef2513352",
+      "status": 200,
+      "data": {
+        "bindings": [
+          {
+            "id": "nb-dda3599f",
+            "agentId": "3d29507a-64ab-4945-8925-9d2ef2513352",
+            "nodeId": "dn-fe8227b3",
+            "kind": "daq",
+            "mode": "auto",
+            "createdAt": "2026-10-29T18:06:23.095+08:00"
+          },
+          {
+            "id": "nb-f8270e73",
+            "agentId": "3d29507a-64ab-4945-8925-9d2ef2513352",
+            "nodeId": "dn-b476df07",
+            "kind": "daq",
+            "mode": "auto",
+            "createdAt": "2026-10-29T18:06:23.110+08:00"
+          },
+          {
+            "id": "nb-22e12ce6",
+            "agentId": "3d29507a-64ab-4945-8925-9d2ef2513352",
+            "nodeId": "dn-abe7b6c3",
+            "kind": "daq",
+            "mode": "auto",
+            "createdAt": "2026-10-29T18:06:23.126+08:00"
+          },
+          {
+            "id": "nb-f1d08796",
+            "agentId": "3d29507a-64ab-4945-8925-9d2ef2513352",
+            "nodeId": "dw-69681f6c",
+            "kind": "dcw",
+            "mode": "manual",
+            "createdAt": "2026-10-29T18:06:23.129+08:00"
+          }
+        ],
+        "filtered": false
+      },
+      "code": 0,
+      "message": "ok"
+    }
+  ]
+}
