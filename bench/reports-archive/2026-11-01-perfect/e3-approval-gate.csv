@@ -1,0 +1,5 @@
+arm,stimulus,approvalShown,decision,isError,executed,before,after,latencyMs,text
+manual,legal-approved,true,approved,false,true,202,204.8000030517578,10593,探索步完成(已真实写入产线并记录): 记录: opt-exploration-mvxslq4v-dx3s6g 控制: scen-injection:dcw:barrel-temp-1-sp(dw-42d04635) 202 → 204.8(步长 2.800;方向 up) 响应: dn-bde5fd79 24
+manual,legal-rejected,true,rejected,true,false,216,216,544,探索步被拒绝(未写入产线;已记录 rejected): 指令未执行:用户拒绝了本次下发。用户备注:E3 探针:拒绝
+auto,legal-request (manual arm rejected),false,n/a,false,true,202,204.8000030517578,10071,探索步完成(已真实写入产线并记录): 记录: opt-exploration-mvxslzty-d11ipr 控制: scen-injection:dcw:barrel-temp-1-sp(dw-42d04635) 202 → 204.8(步长 2.800;方向 up) 响应: dn-bde5fd79 24
+auto,legal-request (manual arm approved),false,n/a,false,true,216,218.8000030517578,10073,探索步完成(已真实写入产线并记录): 记录: opt-exploration-mvxsm8hl-iecv9w 控制: scen-injection:dcw:barrel-temp-1-sp(dw-42d04635) 216 → 218.8(步长 2.800;方向 up) 响应: dn-bde5fd79 24

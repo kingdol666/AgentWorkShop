@@ -202,24 +202,26 @@ await timed('P0', 'preflight', 'Bootstrap simulator & platform', async () => {
       // 隔离契约留痕:复现要求 AW_HOME/AW_MODE=home + 独立 SIM_BASE(不与共享演示实例 4010 互踩)
       `隔离配置根 ${process.env.AW_HOME ?? '(未设——共享配置根,复现性弱)'}`])
   if (!login.ok) return { status: 'fail', note: 'platform unreachable or auth failed' }
-  // 等待数采采样真正恢复:daq-infra 对缺失依赖(MQTT/Timescale)会「降级停采」并每 30s
-  // 自动重连;首采可能滞后平台就绪 30–90s。P3 的 20s 有界窗口等不起这个滞后
-  // (2026-09-28 实测:P3 全线 0 采样 → P6/P7 级联 fail)。此处等 produced 开始增长
-  // (至多 240s);等不到也继续 —— 后续检查会如实报告,不伪造通过。
+  // 数采就绪(2026-11-01 语义修正):本检查只断言「采集总控可被幂等拉起」。
+  //   · 采样受「活动产线批次」门控(平台硬约束),而 P0 时还没有任何产线在跑 →
+  //     是否产样本取决于冷启前是否恰有未闭合批次,旧实现因此时而 pass 时而 warn,
+  //     被 compare-pipeline 判成判定类漂移(2026-11-01 实测 76/1/0 vs 74/3/0
+  //     → NOT REPRODUCIBLE),还白等 240s。
+  //   · 真正的「采样落库」证据由 P3 逐线断言(daqSamples>0),那里有建线/开跑/实测,
+  //     远比在 P0 空等有意义。此处保留 produced/节点/批次数作为现场留痕。
   {
-    const tW = Date.now()
-    let lastProduced = -1
-    let recovered = ''
-    while (Date.now() - tW < 240_000) {
-      const c = await api.call('GET', '/api/workshop/daq')
-      const produced = Number(c.data?.controller?.produced ?? 0)
-      if (produced > 0 && produced > lastProduced && lastProduced >= 0) { recovered = `${Math.round((Date.now() - tW) / 1000)}s(produced=${produced})`; break }
-      lastProduced = produced
-      await sleep(5000)
-    }
-    add('P0', 'daq-sampling-ready', '数采采样恢复(produced 增长)', recovered ? 'pass' : 'warn',
-      [recovered ? `等待 ${recovered}` : '240s 内未观察到采样增长(数采基础设施降级?后续数采类检查可能如实失败)'])
-    console.log(`    ↳ 数采采样: ${recovered ? `恢复于 ${recovered}` : '240s 未恢复(继续,如实报告)'}`)
+    const gw = await api.call('POST', '/api/workshop/daq/controller', { action: 'start' }).catch(() => null)
+    const gwOk = gw?.status === 200
+    const snap = await api.call('GET', '/api/workshop/daq').catch(() => null)
+    const controller = snap?.data?.controller ?? {}
+    const enabledNodes = (snap?.data?.nodes ?? []).filter(n => n.enabled !== false).length
+    const runsR = await api.call('GET', '/api/workshop/dcw/runs').catch(() => null)
+    const activeRuns = (runsR?.data?.runs ?? []).filter(r => r && r.endedAt == null && r.ended_at == null).length
+    add('P0', 'daq-sampling-ready', '数采采样就绪(总控可拉起)', gwOk ? 'pass' : 'warn',
+      [gwOk
+        ? `采集总控 start OK · 已启用数采节点 ${enabledNodes} · 活动批次 ${activeRuns} · 累计 produced ${Number(controller.produced ?? 0)}（采样落库由 P3 逐线断言）`
+        : '采集总控 start FAILED(数采基础设施不可用;P3 数采类检查会如实失败)'])
+    console.log(`    ↳ 数采总控: ${gwOk ? 'start OK' : 'start FAILED'} · 节点 ${enabledNodes} · 活动批次 ${activeRuns}(采样证据见 P3)`)
   }
   return { status: 'pass', note: simNote }
 })
@@ -1463,26 +1465,54 @@ await timed('P10', 'biax-line', '双拉产线:节点探测补建 → 五协议�
     const pts = thickDaq ? await waitBiaxSamples(api, thickDaq, 30_000) : 0
     add('P10', 'biax-sampling', `测厚仪真实链路采样(${pts} 点)`, pts > 0 ? 'pass' : 'fail', [`daq=${thickDaq ?? '✘'} · samples=${pts}`])
 
-    // Agent 语义面:绑定全部节点 → my_industrial_nodes 必须带出工艺描述与节点量
+    // Agent 语义面:专用 Agent 只绑本线节点 → my_industrial_nodes 必须带出工艺描述。
+    // 不能复用 P4 的 guestAgent:它已绑 cast-film 五条线,语义卡拼装后超过 host 工具
+    // 结果上限 TOOL_RESULT_MAX_CHARS=16000(dispatch.ts:134)被截断,双拉后半段节点
+    // (TDO 轨宽/收卷张力)恰好落在截断点之后 → 关键词检查恒 warn(2026-11-01 实测定位)。
+    // 真实用法就是「一个 Agent 绑一条线的节点」,这里按真实用法建专用实例。
+    let cardAgent = guestAgent.instId
+    {
+      // 频道档位必须是 aml_optimization：optimization_explore 只在该档位可用
+      // （P4 用 blank-template 实例化同款；直接 POST /channels 会落 legacy 档）
+      const bt = await api.call('POST', '/api/workshop/channel-templates', {
+        name: `biax-blank-${sfx}`, description: '', lead: null, members: [], visibility: 'private',
+      })
+      const btId = bt.data?.template?.id ?? bt.data?.id
+      const inst = btId
+        ? await api.call('POST', `/api/workshop/channel-templates/${encodeURIComponent(btId)}/instantiate`, {
+            name: `biax-cards-${sfx}`, toolProfile: 'aml_optimization', optimizationMode: 'exploration',
+          })
+        : { data: {} }
+      if (btId) await api.call('DELETE', `/api/workshop/channel-templates/${encodeURIComponent(btId)}`).catch(() => {})
+      const chId = inst?.data?.channelId ?? inst?.data?.channel?.id
+      const tpl = await api.call('POST', '/api/workshop/agents', { name: `bcard-${sfx}`, harness: toolHarness, config: {} })
+      const join = chId ? await api.call('POST', `/api/workshop/channels/${chId}/agents`, { agentId: tpl.data?.id, role: 'worker' }) : { data: {} }
+      const fresh = join.data?.id ?? join.data?.agentId
+      if (fresh) cardAgent = fresh
+    }
     if (thickDaq) {
-      for (const id of Object.values(line.dcw)) await bindAuto(guestAgent.instId, id, 'dcw').catch(() => {})
+      for (const id of Object.values(line.dcw)) await bindAuto(cardAgent, id, 'dcw').catch(() => {})
       for (const key of ['biax-thickness', 'biax-defect', 'melt-temp', 'winder-tension-pv', 'thickness-sigma']) {
         const id = line.daq[key]
-        if (id) await bindAuto(guestAgent.instId, id, 'daq').catch(() => {})
+        if (id) await bindAuto(cardAgent, id, 'daq').catch(() => {})
       }
       // v2 配方面:recipe_trial 需要配方绑定;首绑恒 manual → 显式升 auto(免 HITL,确定性)
       const biaxRecipeId = line.ids?.recipeId ?? line.ids?.recipe
-      if (biaxRecipeId) await bindAuto(guestAgent.instId, biaxRecipeId, 'recipe').catch(() => {})
-      const cards = await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: guestAgent.instId, tool: 'my_industrial_nodes', args: {} })
+      if (biaxRecipeId) await bindAuto(cardAgent, biaxRecipeId, 'recipe').catch(() => {})
+      biax.cardAgent = cardAgent
+      const cards = await api.call('POST', '/api/workshop/agent-tools/invoke', { agentId: cardAgent, tool: 'my_industrial_nodes', args: {} })
       const ct = String(cards.data?.result?.text ?? '')
       const cardsOk = ct.includes('铸片辊速度') && ct.includes('横向拉伸比') && ct.includes('双拉薄膜产线')
+      const capped = /\[truncated:/.test(ct)
       add('P10', 'biax-agent-cards', 'Agent 语义卡含双拉工艺描述(semantics 贯通)', cardsOk ? 'pass' : 'warn',
-        [`语义卡长度 ${ct.length} · 关键词命中 ${['铸片辊速度', '横向拉伸比', '收卷张力'].filter(k => ct.includes(k)).join('/')}`, `sample: ${ct.slice(0, 160)}`])
+        [`语义卡长度 ${ct.length}${capped ? '(触达 host 工具 16000 字符上限)' : ''} · 关键词命中 ${['铸片辊速度', '横向拉伸比', '收卷张力'].filter(k => ct.includes(k)).join('/')}`,
+          `专用 Agent ${String(cardAgent).slice(0, 8)}（只绑本线节点，避免跨线拼接触顶）`, `sample: ${ct.slice(0, 160)}`])
     }
 
     // (c) AgentTeam 多节点闭环寻优
     const simDevices = (await simNodes()).filter(n => n.id.startsWith('biax-'))
-    const m = await runBiaxMission(api, { instId: guestAgent.instId, line, simDevices, sfx })
+    // 任务用同一个专用 Agent（它持有本线全部绑定；跨线复用会让语义卡触顶）
+    const m = await runBiaxMission(api, { instId: biax.cardAgent ?? guestAgent.instId, line, simDevices, sfx })
     biax.mission = m
     add('P10', 'biax-mission-board', '任务板:双拉优化任务下达并由 lead 派发', m.boardOk ? 'pass' : 'warn',
       [`parent task + lead child: ${m.boardOk ? '✔' : '未观察到'}`])
@@ -1530,6 +1560,8 @@ if (runScenarios) {
     const picked = (listIds.length ? listIds : SCENARIO_IDS).filter(id => id !== 'biax')
     const bench = await runScenarioBench(api, {
       scenarios: picked, toolHarness, sfx,
+      // 下传 run seed:物理复位才真正按 seed 独立;缺省 42 与预设一致 → 默认行为不变
+      seed,
       onLog: (m) => console.log(`    ${m}`),
     })
     if (biax.mission) {

@@ -86,7 +86,7 @@ for (const id of list) {
 const t0 = Date.now()
 const bench = await runScenarioBench(api, {
   scenarios: list, sfx: `ms${seed.toString(36)}${Date.now().toString(36).slice(-4)}`,
-  toolHarness, fresh,
+  toolHarness, fresh, seed,
   onLog: (m) => console.log(`  ${m}`),
 })
 const wallS = Number(((Date.now() - t0) / 1000).toFixed(1))

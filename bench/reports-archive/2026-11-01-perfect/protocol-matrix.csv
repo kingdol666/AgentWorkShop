@@ -1,0 +1,11 @@
+scene,protocol,role,daqSamples,probesRejected,probesTotal,probeClasses,falseBlockCount,falseBlockCorpus,readbackDelta,source
+cast-film-physics,modbus-tcp,writable,10,6,6,structural+soft-window,0,absent,,20261101103641-9j8
+cast-film-physics,opcua,writable,10,6,6,structural+soft-window,0,absent,0,20261101103641-9j8
+cast-film-physics,mqtt,writable,6,6,6,structural+soft-window,0,absent,0,20261101103641-9j8
+cast-film-physics,http,writable,13,6,6,structural+soft-window,0,absent,,20261101103641-9j8
+cast-film-physics,modbus-rtu,acquisition-only,14,,,unknown,,absent,,20261101103641-9j8
+film-line,modbus-tcp,writable,12,3,3,structural,0,absent,0.04,20261101103641-9j8
+film-line,opcua,writable,11,3,3,structural,0,absent,0,20261101103641-9j8
+film-line,mqtt,writable,6,3,3,structural,0,absent,0,20261101103641-9j8
+film-line,modbus-rtu,acquisition-only,11,,,unknown,,absent,,20261101103641-9j8
+film-line,http,acquisition-only,10,,,unknown,,absent,,20261101103641-9j8

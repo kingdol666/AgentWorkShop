@@ -15,7 +15,7 @@
 > 全过程落 `aml-transparency.jsonl`）与 **P14 · 平台新增能力面**（MCP stdio 自动发现/工具面/
 > 系统设置开关门控、two-mode 优化通道模板、配方描述元字段、产线操作透明化数据面
 > ops-logs/优化记录/参数台账、孪生 Provider SDK）。
-> `--profile extended` 一键打开 P11+P13+P14（默认 integrated 保持 **77/0/0 基线契约**不变(P0 新增 daq-sampling-ready 就绪检查)，
+> `--profile extended` 一键打开 P11+P13+P14（默认 integrated 的稳定形态是 **76/1/0**：fail=0、77 检查、唯一 warn 为 P10 biax-agent-cards；P0 daq-sampling-ready 自 2026-11-01 改为「采集总控可拉起」判定，采样落库由 P3 逐线断言，
 > extended 契约 = **111 项 0 fail 0 warn**，以当轮 verdict 行为准）。
 > 验证对象是**生产型流程的数字孪生/PLC 模拟场景**，不是物理工厂投产，
 > 也不是安全认证。P4m/P10 的脚本化任务、P9 的 mock 调度及 P5b 单 worker 场景不能单独证明标准多 Agent team 的自主决策；
@@ -30,8 +30,17 @@
 > 完整 AgentTeam 透明闭环 PASS，也不得据此声称跨场景 AgentTeam 已验证。步骤、环境变量和复现实验设计见
 > [`bench/PIPELINE/EXPERIMENT-PLAN.md`](PIPELINE/EXPERIMENT-PLAN.md) 与 §12。
 >
-> **新增论文实验方案 A1/A2（尚未执行，执行器尚未实现）**：审批门 ON/OFF 的单机制消融，以及 OMP/OpenCode × 本机 Qwen3.5 64k/USTC DeepSeek Flash 的 Harness/模型对照。只在独立模拟器中执行；不得将现有 OMP-only P12 runner 或低层 `e1-lite` API 测试当作这些结果。现有 `AW_BENCH_MODE` 会连带改变其他控制，不能作为审批单点消融；Agent 写入路径的上下文新鲜度拒绝门亦须先资格化。完整条件、指标、随机化、资格门和证据包见
+> **新增论文实验方案 A1/A2**：审批门 ON/OFF 的单机制消融，以及 OMP/OpenCode × 本机 Qwen3.5 64k/USTC DeepSeek Flash 的 Harness/模型对照。A1 目标路径是论文已记录正向审批的单节点 `optimization_explore`，描述性 pilot 设计为五类刺激各 5 对（合法批准、合法拒绝、待决超时、范围内超最大步长、成功写入后最小间隔内重复请求），但当前 A1 prototype 仍调用 `recipe_trial`，尚未适配或通过安全复核。最近准备记录在镜像构建阶段中断，`experiment_started=false`；没有 A1 结果。A2 runner 尚未实现且为 `NOT-RUN`。不得将 P12、低层 `e1-lite` 或此准备记录当作 A1/A2 实验结果。旧 `AW_BENCH_MODE` 会连带改变其他控制，不能作为审批单点消融。完整条件、指标、随机化、资格门和证据包见
 > [`bench/PIPELINE/EXPERIMENT-PLAN-GOVERNANCE-HARNESS.md`](PIPELINE/EXPERIMENT-PLAN-GOVERNANCE-HARNESS.md) 与 §13。
+>
+> **论文实验的唯一执行合同 = [`bench/PIPELINE/EXPERIMENT-PIPELINE.md`](PIPELINE/EXPERIMENT-PIPELINE.md)；
+> 按顺序执行的命令清单 = [`bench/PIPELINE/EXPERIMENT-RUNBOOK.md`](PIPELINE/EXPERIMENT-RUNBOOK.md)。**
+> 本文件（PIPELINE.md）证明「系统能跑通」，不证明论文结论。论文要写的多场景×多协议矩阵、闭环优化对照组、
+> 审批门消融、防御纵深消融，其因子/分母/判据/产物/论文位置一律以 EXPERIMENT-PIPELINE.md 为准。
+> 该文档 §1 列了 8 条已核实的既有测量缺陷，其中两条直接改变结论口径：
+> `AW_BENCH_MODE=1` 会**全局**关闭单步限/60s 间隔/写入保持窗（`dcw-controller/write.ts:113-171`），
+> 所以 E1a 的 `full` 臂不是生产 full；`ungated` 臂只改软限界与回读容差（`write.ts:103,174`），
+> 不含授权门。实验状态表由产物派生，用 `node bench/tools/experiment-status.mjs` 生成，禁止手抄。
 >
 > **核心原则（先读）**
 > 1. 一切结论必须来自**真实启动的服务与真实执行的命令**；任何一步不满足判据 → **停止并如实报告原因**，禁止伪造通过、禁止"平均一下还行"、禁止用脚本绕过本卡的检查点。
@@ -872,15 +881,15 @@ Ops logs 和 DAQ samples 按连续 5 分钟窗口读取；单个 ops 窗口达�
 
 ## 13. A1/A2 · 审批门消融与 Harness/模型可替换性（预注册方案）
 
-**执行状态：`NOT-RUN`；runner 状态：`NOT-IMPLEMENTED`。** 此节加入新的实验方案，不表示已经取得结果或现有脚本已支持运行。
+**A1 执行状态：`NOT-RUN`；现有 runner 为 `recipe_trial` prototype，论文对齐的 `optimization_explore` runner：待适配并经独立安全复核；A2 执行状态：`NOT-RUN`，A2 runner：`NOT-IMPLEMENTED`。** A1 方案为五类刺激各 5 个 ON/OFF 配对 block（25 对/50 个 arm episode）：合法批准正向控制、合法拒绝、待决后超时、范围内超最大步长、成功写入后最小间隔内重复请求。间隔类每臂含 priming 写入和被测的第二请求。最近准备记录 `a1-hitl-20261101-11` 在 Docker 镜像构建前置阶段中断，`experiment_started=false`，未产生 preflight、arm 或结果文件；因此没有 A1/A2 实验结果。方法和预期方向不能代替实测证据。
 
 **截至 2026-10-31 的证据对账：**文档驱动 Channel 任务是单 lead 只读任务，独立 27→25 写入由验收操作发起；10/31 OMP/USTC-DeepSeek-configured 任务为 10/13 且停留在 `WORKING`；P12 AgentTeam 的 workflow 与 evidence-integrity 均失败。三者都不满足 A1 的单因素审批门消融或 A2 的匹配 Harness×模型实验条件。不得将它们解释为 A1/A2 的部分成功或替代结果。复核报告见 `docs/audit/reports/2026-10-31-latest-experiment-review/report.md`。
 
 | 实验 | 对照条件 | 固定内容 | 核心判据 |
 |---|---|---|---|
-| A1 审批门消融 | `manual` 审批门 ON vs 仅审批门 OFF | 同一场景/任务/输入/Agent 配置；上下文 freshness/授权复核经资格验证后，连同共享分发、范围/步长、回读和审计始终启用 | 以配对 ON fixture 标记“拒绝/待决”和“批准”刺激；报告两臂驱动到达率、合法写入误拦率、越界/过期上下文拒绝率、事件完整率及额外审批延迟 |
+| A1 审批门消融 | `manual` 审批门 ON vs 只跳过审批等待的 OFF | 同一模拟场景与 `optimization_explore` 输入、合成 actor、control/target node、初始快照及其他守卫；共享 DCW 分发、设备写入/读回、事件记录保持启用 | 五类刺激各 5 对：合法批准、合法拒绝、待决后超时、范围内超最大步长、成功写入后最小间隔内重复请求；逐 case 报审批/超时状态、dispatch/driver 到达、设备状态、readback 和事件完整率，所有分母及未运行项明示 |
 | A2 Harness/模型矩阵 | 两种真实 Harness：OMP、OpenCode；两种模型：LM Studio `qwen3.5-9b-64k`、USTC `deepseek-flash` | 同一任务契约、场景快照、绑定、输入、工具 schema、审批 ON；随机顺序、独立复位 | 查询成功率、工具调用有效率、完整写入链比例、分阶段延迟及错误类型 |
 
 A1 的 OFF 只允许在隔离 AW_HOME、loopback PLC 模拟器和许可 mock/simulator driver 上启用，双 bench 确认与模拟器进程归属检查均为硬门禁。A2 必须先通过四个 Harness×模型组合的预检；若只能运行两个对角组合，只能报告组合可行性，不能将差异归因于 Harness 或模型。USTC `deepseek-flash` 不得在失败后静默切换 Provider/模型。
 
-当前 `run-agentteam.mjs` 固定使用 OMP；`e1-lite.mjs` 是低层 DCW API 四臂测试，其 `ungated` 会改变多项治理约束，不是完整 Agent 工具链中的“仅关闭审批门”。Agent 的 `optimization_explore` 路径尚未证明会在写入时拒绝过期上下文；P12 的运行审计也为 OMP 专用。新的统一事件 runner、上下文新鲜度守卫、审批单点旁路与跨 Harness 审计均经独立审查和资格化前，**不执行正式消融，不把预期方向写成实测结果**。样本/随机化、指标分母、失败保留、证据清单和拟定 runner 接口见上述详细方案。
+当前 `run-agentteam.mjs` 固定使用 OMP；`e1-lite.mjs` 是低层 DCW API 四臂测试，其 `ungated` 会改变多项治理约束，不是 Agent 工具链中“仅关闭审批门”的证据。A1 prototype 当前调用 `recipe_trial`，还没有在论文所用 `optimization_explore` 路径上运行 ON/OFF；其 OFF hook 与 runner 须先适配并通过独立安全审阅。`optimization_explore` 写入路径尚无已验证的 DAQ freshness 拒写结论；P12 审计为 OMP 专用。A2 跨 Harness 审计 runner 尚未实现；资格门通过前，**不运行 OFF 臂，不把预期方向写成实测结果**。样本、随机化、指标、失败保留和证据清单见上述详细方案。

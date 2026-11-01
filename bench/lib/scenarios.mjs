@@ -865,7 +865,7 @@ async function readDaqNodeSimValue(scen, sigId) {
 }
 
 export async function runScenario(api, scen, ctx) {
-  const { sfx, toolHarness, onLog, fresh = true } = ctx
+  const { sfx, toolHarness, onLog, fresh = true, seed } = ctx
   const t0 = Date.now()
   const res = { id: scen.id, zh: scen.zh, story: scen.story, ev: [], errors: [] }
   try {
@@ -998,12 +998,15 @@ export async function runScenario(api, scen, ctx) {
 }
 
 /** 三场景并行闭环基准(核心入口) */
-export async function runScenarioBench(api, { scenarios = SCENARIO_IDS, sfx, toolHarness = 'opencode', fresh = true, onLog = () => {} } = {}) {
+export async function runScenarioBench(api, { scenarios = SCENARIO_IDS, sfx, toolHarness = 'opencode', fresh = true, seed, onLog = () => {} } = {}) {
   // sfx 兜底:调用方漏传时避免线名渲染成 `${id}-undefined`(pipeline P11 已显式传)
   sfx = sfx || `sc${Date.now().toString(36).slice(-6)}`
   const t0 = Date.now()
   const list = scenarios.map(id => SCENARIOS[id]).filter(Boolean)
-  onLog?.(`并行启动 ${list.length} 个场景闭环:${list.map(s => s.id).join(', ')}${fresh ? '(fresh 起点复位)' : ''}`)
+  // seed 必须下传到 runScenario → /api/plant/reset:此前只用于夹具 tag,
+  // 物理引擎沿用配置里的 seed(预设恒 42),所谓「多 seed 重复」实际是同一轨迹
+  // (2026-11-01 复核)。传 undefined 时行为与旧版逐字一致(不覆盖引擎 seed)。
+  onLog?.(`并行启动 ${list.length} 个场景闭环:${list.map(s => s.id).join(', ')}${fresh ? '(fresh 起点复位)' : ''}${seed != null ? ` seed=${seed}` : ''}`)
   // DAQ 采样总控必须在 mission 之前显式启动:冷启平台不会自动起采样器,
   // 而 mission 的 PV 反馈读的是 /samples(TSDB)。采样断流时 readPvMean 返回 null、
   // `w = pvAfter ?? w` 会把初值永远携带 —— 2026-10-26 四工况"PV 冻结/达标全红"的根因
@@ -1011,7 +1014,7 @@ export async function runScenarioBench(api, { scenarios = SCENARIO_IDS, sfx, too
   const gw = await ensureGateway(api)
   if (!gw) throw new Error('DAQ 采样总控启动失败(/api/workshop/daq/controller start 非 200)')
   onLog?.('DAQ 采样总控已启动(显式 ensureGateway)')
-  const results = await Promise.all(list.map(s => runScenario(api, s, { sfx, toolHarness, fresh, onLog })))
+  const results = await Promise.all(list.map(s => runScenario(api, s, { sfx, toolHarness, fresh, seed, onLog })))
   const wallS = r2((Date.now() - t0) / 1000)
   const ok = results.every(r => !r.errors.length && r.mission?.attained)
   return { results, wallS, ok }

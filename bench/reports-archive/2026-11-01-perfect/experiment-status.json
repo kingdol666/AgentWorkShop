@@ -1,0 +1,59 @@
+{
+  "generatedAt": "2026-11-01T14:47:39.802Z",
+  "results": "D:\\codes\\ABO\\AgentWorkShop\\bench\\results",
+  "counts": {
+    "pipeline": 2,
+    "scenarios": 0,
+    "e1lite": 1,
+    "optloop": 0,
+    "agentteam": 0,
+    "approvalEvidence": 0,
+    "approvalPrepareFailure": 0,
+    "approvalAborted": 0,
+    "tierRuns": 2
+  },
+  "blocks": [
+    {
+      "id": "E1 场景×协议矩阵",
+      "status": "PARTIAL",
+      "evidence": [
+        "reports-archive/2026-11-01-perfect",
+        "20261101121700-scenario-probes",
+        "20261101104849-xu0"
+      ],
+      "gap": "合起来覆盖 5/6 场景（矩阵=2，写探针=5）；缺的格见各产物 NOT-COLLECTED"
+    },
+    {
+      "id": "E2 闭环优化控制",
+      "status": "EVIDENCE",
+      "evidence": [
+        "20261101112947-optcontrol-c0"
+      ],
+      "gap": ""
+    },
+    {
+      "id": "E3 审批门消融",
+      "status": "PARTIAL",
+      "evidence": [
+        "20261101121436-approval-gate"
+      ],
+      "gap": "已有 manual vs auto 配置级对照；缺「只跳过审批等待」的单机制 OFF 臂（需 bench-only 旁路 + 安全审阅）"
+    },
+    {
+      "id": "E4 防御纵深",
+      "status": "EVIDENCE",
+      "evidence": [
+        "20261101113644-production-guards",
+        "20261101103356-e1lite",
+        "20261101121415-authorization"
+      ],
+      "gap": ""
+    },
+    {
+      "id": "E5 Harness×模型",
+      "status": "NOT-IMPLEMENTED",
+      "evidence": [],
+      "gap": "A2 runner 未实现"
+    }
+  ]
+}

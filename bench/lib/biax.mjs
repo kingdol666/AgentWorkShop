@@ -345,7 +345,11 @@ export async function runBiaxMission(api, { instId, line, simDevices, sfx, maxRo
     out.traj.push({ iter: 0, knob: null, node: null, from: null, to: null, record: null, thickness, note: `post-rebase#${rebases}` })
     ev.push(`2.5 恢复后基线: ${thickness != null ? thickness.toFixed(2) : '?'} μm`)
   }
-  for (let i = 0; i < maxRounds && !(thickness != null && Math.abs(thickness - THICKNESS_TARGET) <= THICKNESS_TOL); i++) {
+  // 任务书明写「governing ≥3 actuators」:达标即停会在 2 笔就收工,导致多节点覆盖不足
+  // (检查 biax-mission-multinode 要求 ≥3 个执行节点,实测因此约半数 run 落 warn)。
+  // 因此把「≥3 个不同执行节点」并入循环条件:先覆盖 3 个旋钮,再在带内收口。
+  const inBand = () => thickness != null && Math.abs(thickness - THICKNESS_TARGET) <= THICKNESS_TOL
+  for (let i = 0; i < maxRounds && (out.distinctNodes.size < 3 || !inBand()); i++) {
     const knob = KNOBS[i % KNOBS.length]
     const nodeId = line.dcw[knob.sig]
     const sig = sigInfo.get(knob.sig)
