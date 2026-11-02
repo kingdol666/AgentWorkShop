@@ -1,6 +1,8 @@
 # 科学探索与可辨识下发系统优化计划(Scientific Exploration & Identifiable Dispatch)
 
-> 状态:P0+P1+P2 已于 2026-11-02 实施并通过验收(943/943 单测 + lint 0);P3–P6 **pending approval**
+> 状态:**P0–P6 全部实施并验收通过(2026-11-02,v0.9.0)**:单测 986 项 984 通过 / 0 失败 · lint 0 ·
+> 全链路验收 19/19(`scripts/acceptance-scientific-loop.ts`)· docs:check 89/0 · docs:build 通过。
+> 验收规范见 [2026-11-02-scientific-exploration-acceptance.md](./2026-11-02-scientific-exploration-acceptance.md)。
 > 日期:2026-11-02
 > 分支基线:experiment/final-round-20261101
 > 作者:ZCode(基于 2026-11-02 会话内对仓库的逐行核验,核验锚点全部在本文引用)
