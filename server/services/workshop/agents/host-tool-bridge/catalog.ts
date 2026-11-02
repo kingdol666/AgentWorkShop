@@ -73,6 +73,8 @@ export const OBSERVER_READ_TOOL_NAMES = new Set([
   'line_context',
   'dcw_journal',
   'daq_query',
+  'daq_identifiability',
+  'intervention_history',
   'exp_collect',
   'analysis_save',
   'analysis_query',

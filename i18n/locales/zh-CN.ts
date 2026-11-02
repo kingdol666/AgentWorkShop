@@ -318,6 +318,8 @@ export default {
         gateValTestGap: '门禁:泛化差',
         gateMinRows: '门禁:最少样本行',
         gateMinRuns: '门禁:最少批次数',
+        gateMinControlLevels: '门禁 G6:控制量最少水平数',
+        gateMaxCollinearity: '门禁 G6:控制量与时间最大共线',
         uqFreshDays: 'UQ 证据保鲜天数',
       },
       security: {

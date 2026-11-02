@@ -13,26 +13,15 @@ import { createId } from '../../aml/twin/contracts'
 import { getAmlRuntime } from '../../aml/runtime'
 import { getChannelTwinProfile } from '../../aml/twin/channel-profile'
 import { getAgentNodeBindingRepo } from '../node-bindings.repo'
-import { getDaqController } from '../../daq/daq-controller'
 import { getDcwController } from '../../dcw/dcw-controller'
 import type { HostToolResult } from '../host-tool-bridge/types'
 import { dcwControlGovernedInternal } from './dcw-tools'
 import { resolveRefFaces } from './tool-verify'
+// P1/P2(科学探索计划):可辨识性前置门 + 引擎判读 + 台账回填
+import { assessIdentifiability } from '../../aml/identifiability'
+import { attachExplorationVerdict, explorationIdentifiabilityPreflight, identGateEnabled, identifiabilityLearningText, periodHintFromSeries, readTargetWindow } from './identifiability-tools'
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
-
-async function readTargetMean(nodeId: string, windowMs = 45_000): Promise<number | null> {
-  const now = Date.now()
-  try {
-    const pts = await getDaqController().samples(nodeId, { fromMs: now - windowMs, toMs: now, bucketMs: 1000, limit: 60 }) as Array<{ at?: number, value?: number, avg?: number }>
-    const vals = pts.map(p => Number(p.value ?? p.avg)).filter(Number.isFinite)
-    if (vals.length === 0) return null
-    return vals.reduce((a, b) => a + b, 0) / vals.length
-  }
-  catch {
-    return null
-  }
-}
 
 export async function toolOptimizationExplore(agentId: string, args: {
   control_node_id?: string
@@ -93,10 +82,17 @@ export async function toolOptimizationExplore(agentId: string, args: {
       }
     }
 
-    const targetBefore = await readTargetMean(targetNodeId)
+    // P1 可辨识性前置门:上次干预未收口(判读窗未满)或欠功效/混杂建议窗未过期 → 拒发新激励
+    // (两次激励响应叠加必致判读失真;门禁零取数只查台账;AW_IDENT_GATE=0 为逃生开关)
+    const gate = await explorationIdentifiabilityPreflight(controlNodeId)
+    if (gate.blocked) return { text: gate.text, isError: true }
 
     // 真实写入:复用 dcw_control 全治理链(手动绑定会挂 HITL,auto+bounded 走限界直写)
     const settleSec = Math.min(300, Math.max(10, Number(args.settle_seconds ?? 45)))
+    const writeAtMs = Date.now()
+    // 写前窗(=settle 窗):均值走旧台账链,序列留给引擎判读 —— 同一次取数,不增读
+    const preWindow = await readTargetWindow(targetNodeId, writeAtMs - settleSec * 1000, writeAtMs)
+    const targetBefore = preWindow.mean
     const write = await dcwControlGovernedInternal(agentId, {
       node_id: controlNodeId,
       value: target,
@@ -105,9 +101,20 @@ export async function toolOptimizationExplore(agentId: string, args: {
     const writeOk = !write.isError
 
     let targetAfter: number | null = null
+    let verdictText = ''
     if (writeOk) {
       await sleep(settleSec * 1000)
-      targetAfter = await readTargetMean(targetNodeId)
+      // 写后窗(=settle 窗):一次取数同时取均值与序列(与写前窗对称)
+      const postWindow = await readTargetWindow(targetNodeId, writeAtMs, Date.now())
+      targetAfter = postWindow.mean
+      // P1 判读:前后窗完整序列交给可辨识性引擎(不再以单点差分作因果依据),
+      // 判定回填干预台账(intervention_events);序列不足时 verdictText 空 → 中性文案,不外推。
+      if (identGateEnabled() && preWindow.values.length >= 8 && postWindow.values.length >= 8) {
+        const v = assessIdentifiability({ pre: preWindow.values, post: postWindow.values, beatMs: 1000 })
+        attachExplorationVerdict(controlNodeId, targetNodeId, v)
+        verdictText = identifiabilityLearningText(v)
+        if (!gate.hint) gate.hint = periodHintFromSeries(preWindow.values)
+      }
     }
 
     const record = {
@@ -146,11 +153,18 @@ export async function toolOptimizationExplore(agentId: string, args: {
       `  控制: ${node.name}(${controlNodeId}) ${record.controlBefore} → ${record.controlAfter}(步长 ${Number(step).toFixed(3)},方向 ${record.direction}${clamped ? ',触调试边界截断' : ''})`,
       `  响应: ${targetNodeId} ${targetBefore != null ? targetBefore.toFixed(3) : 'n/a'} → ${targetAfter != null ? targetAfter.toFixed(3) : 'n/a'}(Δ=${deltaTarget != null ? deltaTarget.toFixed(3) : 'n/a'},窗口 ${settleSec}s)`,
       `  goal: ${goalText}`,
-      deltaTarget != null
-        ? `  学习: 该方向目标响应 ${deltaTarget > 0 ? '上升' : '下降'} ${Math.abs(deltaTarget).toFixed(3)};继续探索请按此符号外推,或反向验证。`
-        : '  学习: 响应窗口内未读到稳定差分;建议增大 settle_seconds 或检查目标节点采样。',
+      // P1 门禁挂钩:方向性外推措辞只在引擎判"效应可分辨"时出现(verdictText);
+      // 判读欠功效/混杂/负结论时如实转述;拍数不足时中性提示,不外推。
+      verdictText
+        ? `  ${verdictText}`
+        : deltaTarget != null
+          ? (identGateEnabled()
+              ? `  学习: 响应窗拍数不足以做可辨识性判读(前后各需 ≥8 拍);单点差分 Δ=${deltaTarget > 0 ? '+' : ''}${deltaTarget.toFixed(3)} 仅供参考,不要据此直接外推方向。建议增大 settle_seconds 或检查目标节点采样。`
+              : `  学习: 该方向目标响应 ${deltaTarget > 0 ? '上升' : '下降'} ${Math.abs(deltaTarget).toFixed(3)};继续探索请按此符号外推,或反向验证。`)
+          : '  学习: 响应窗口内未读到稳定差分;建议增大 settle_seconds 或检查目标节点采样。',
       `探索记录已归档,可在 AML 界面与训练数据回流中使用。`,
     ]
+    if (gate.hint) lines.push(`  提示: ${gate.hint}`)
     return { text: lines.join('\n') }
   }
   catch (err) {

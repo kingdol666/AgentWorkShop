@@ -332,7 +332,7 @@ export interface AmlSettings {
   job: { timeoutMs: number, maxConcurrent: number, diskQuotaMb: number, stallMs: number, logTailLines: number }
   dataset: { maxRows: number, retentionDays: number, allowCrossRecipe: boolean }
   model: { retiredKeepDays: number }
-  gates: { nrmse: number, rolloutNrmse: number, valTestGap: number, minRows: number, minRuns: number }
+  gates: { nrmse: number, rolloutNrmse: number, valTestGap: number, minRows: number, minRuns: number, minControlLevels: number, maxCollinearity: number }
 }
 /** AML 自动建模平台运行语义(live 键热生效;logTailLines 非描述符键,固定缺省) */
 export function amlSettings(): AmlSettings {
@@ -363,6 +363,9 @@ export function amlSettings(): AmlSettings {
       valTestGap: Number(get('gates.valTestGap', 0.20)),
       minRows: Number(get('gates.minRows', 500)),
       minRuns: Number(get('gates.minRuns', 3)),
+      // P3/G6 动作覆盖门:控制量至少 3 个水平(可区分线性/二次),与时间序号 |r| ≤ 0.9
+      minControlLevels: Number(get('gates.minControlLevels', 3)),
+      maxCollinearity: Number(get('gates.maxCollinearity', 0.9)),
     },
   }
 }

@@ -4105,5 +4105,73 @@
       ]
     },
     "riskClass": "write"
+  },
+  {
+    "name": "daq_identifiability",
+    "label": "DAQ Identifiability",
+    "description": "对你可访问的数采节点做干预可辨识性预检(只读):检出主导扰动周期(自相关峰)、给出建议试验响应窗(≥3×周期)与水平数建议,并对前/后半窗做漂移判读。设计探索或试验前先调用本工具,可避免把 45s 级单步差分误当因果结论;节点可见性与 daq_query 同源(绑定数采节点或频道绑线只读)。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "node_id": {
+          "type": "string",
+          "description": "数采节点 id(须在数采可见面内)"
+        },
+        "minutes": {
+          "type": "number",
+          "description": "回看窗长(分钟,5–240,缺省 30)"
+        }
+      },
+      "required": [
+        "node_id"
+      ]
+    },
+    "references": {
+      "refs": [
+        {
+          "param": "node_id",
+          "kind": "node",
+          "mode": "read"
+        }
+      ],
+      "readableLineNodes": true
+    }
+  },
+  {
+    "name": "intervention_history",
+    "label": "Intervention History",
+    "description": "查询干预台账(只读):每一次已受理的参数下发(手动/Agent/配方/回退)一行,含意图值/实写值/回读证实/下发路径/HITL 审批关联,以及可辨识性引擎回填的判定(效应量、95% CI、MDE、欠功效/混杂/负结论)。复盘与下一步探索设计请以本台账为事实源,而不是单点差分;可见性=可读产线 ∪ 绑定节点,越界记录按 fail-closed 隐藏。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "node_id": {
+          "type": "string",
+          "description": "按控制节点 id 过滤"
+        },
+        "line_id": {
+          "type": "string",
+          "description": "按产线 id 过滤(可先用 line_context 取 id)"
+        },
+        "limit": {
+          "type": "number",
+          "description": "返回条数(1–50,缺省 10)"
+        }
+      }
+    },
+    "references": {
+      "refs": [
+        {
+          "param": "node_id",
+          "kind": "node",
+          "mode": "read"
+        },
+        {
+          "param": "line_id",
+          "kind": "line",
+          "mode": "read"
+        }
+      ],
+      "readableLineNodes": true
+    }
   }
 ]

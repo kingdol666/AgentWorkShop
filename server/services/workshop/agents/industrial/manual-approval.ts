@@ -21,6 +21,8 @@ export async function requestManualApproval(args: {
    * 配方授权路径传「绑定配方仍存在且仍包含该参数节点」——否则批准时绑定已解除仍会执行。
    */
   verify?: () => boolean
+  /** P5 科学载荷(效应/CI/MDE/证据边/可证伪方式):随审批卡结构化落库,前端直接渲染 */
+  payload?: unknown
 }): Promise<{ ok: true, comment: string, approvalId: string } | { ok: false, text: string, isError: true }> {
   const action = args.action ?? '下发'
   const pendingText = action === '回退'
@@ -31,7 +33,7 @@ export async function requestManualApproval(args: {
   if (approvals.hasPendingFor(args.agentId, args.nodeId)) {
     return { ok: false, text: pendingText, isError: true }
   }
-  const ap = await approvals.request(args.agentId, args.nodeId, 'dcw', args.detail)
+  const ap = await approvals.request(args.agentId, args.nodeId, 'dcw', args.detail, args.payload !== undefined ? { payload: args.payload } : undefined)
   if (!ap.approved) {
     return {
       ok: false,

@@ -1,13 +1,16 @@
 /**
- * 模拟参数试验计划(G2.11 / C9 / A9):
- *  - 只有 simulated=true 的产线可发起;真实线 → SIM_ONLY_VIOLATION;
- *  - 计划只落 process_model_experiments;动作明细仍走既有 optimization_explorations/DCW 记录
+ * 参数试验计划(G2.11 / C9 / A9;P4 治理分档 2026-11-02):
+ *  - simulated=true → tier=sim_auto,建计划即可执行(既有行为不变);
+ *  - 真实线 → tier=real_hitl,创建后落 awaiting_approval,须 approveExperimentPlan
+ *    单卡 HITL 批准(卡上带成本核算)后才能由 runExperimentPlan 执行;
+ *  - 计划只落 process_model_experiments;动作明细仍走既有 DCW 写咽喉/台账
  *    (不制造第二套写设备账本)。
  */
 import type { DatabaseSync } from 'node:sqlite'
 import { AppError } from '../../../utils/errors'
 import { getAmlRuntime } from '../aml/runtime'
 import { getDcwLineRepo } from '../dcw/dcw-line.repo'
+import { estimateExperimentCost, resolveExperimentTier, type ExperimentPlanBody, type ExperimentCost } from './experiment-runner'
 
 export interface ExperimentPlanInput {
   lineId: string
@@ -21,6 +24,10 @@ export interface ExperimentPlanInput {
   abortOnAlarm?: boolean
   budget?: { maxRuns?: number, maxDurationMs?: number }
   createdBy?: string
+  /** MV → 观测目标节点(执行时读回;缺省不读) */
+  targets?: Record<string, string>
+  /** 已知主导扰动周期(ms;来自可辨识性引擎):成本核算按 3×周期给建议窗 */
+  dominantPeriodMs?: number
 }
 
 export interface ExperimentPlanRow {
@@ -44,7 +51,7 @@ export function assertSimulatedLine(lineId: string): { id: string, simSceneId?: 
 }
 
 export function createExperimentPlan(input: ExperimentPlanInput): ExperimentPlanRow {
-  const line = assertSimulatedLine(input.lineId)
+  const tierInfo = resolveExperimentTier(input.lineId)
   if (!Object.keys(input.levels).length) throw new AppError(422, 'EXPERIMENT_PLAN_INVALID', '至少需要 1 个 MV 的水平序列')
   for (const [id, levels] of Object.entries(input.levels)) {
     if (!Array.isArray(levels) || levels.length < 2) throw new AppError(422, 'EXPERIMENT_PLAN_INVALID', `MV ${id} 至少需要 2 个水平(阶跃/多水平)`)
@@ -57,10 +64,15 @@ export function createExperimentPlan(input: ExperimentPlanInput): ExperimentPlan
   const db = getAmlRuntime().db
   const id = `pexp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
   const now = new Date().toISOString()
-  const plan = {
+  // P4 成本前置:创建时就核算(真实线含 60s 写间隔下限;已知主导周期时按 3×周期建议窗)
+  const cost: ExperimentCost = estimateExperimentCost(
+    { levels: input.levels, repeats, settleMs, observeMs, tier: tierInfo.tier },
+    { dominantPeriodMs: input.dominantPeriodMs ?? null },
+  )
+  const plan: ExperimentPlanBody = {
     version: 1,
     lineId: input.lineId,
-    simSceneId: line.simSceneId ?? null,
+    simSceneId: tierInfo.simSceneId ?? null,
     specId: input.specId ?? null,
     levels: input.levels,
     repeats,
@@ -69,12 +81,15 @@ export function createExperimentPlan(input: ExperimentPlanInput): ExperimentPlan
     randomizedOrder: input.randomizedOrder !== false,
     abortOnAlarm: input.abortOnAlarm !== false,
     design: 'stepped_multi_level',
-    note: '动作明细写入既有 optimization_explorations/DCW 账本;本台账只保存计划与状态',
+    tier: tierInfo.tier,
+    ...(input.targets ? { targets: input.targets } : {}),
+    cost,
+    note: '动作明细经 DCW 写咽喉落 intervention_events([pexp:<id>] 前缀关联);本台账只保存计划与状态',
   }
-  const budget = { maxRuns: input.budget?.maxRuns ?? 20, maxDurationMs: input.budget?.maxDurationMs ?? 4 * 3600_000 }
+  const budget = { maxRuns: input.budget?.maxRuns ?? Math.max(20, cost.steps), maxDurationMs: input.budget?.maxDurationMs ?? 4 * 3600_000 }
   db.prepare(`INSERT INTO process_model_experiments (id, line_id, plan_json, status, budget_json, created_by, created_at, updated_at)
-    VALUES (?, ?, ?, 'planned', ?, ?, ?, ?)`)
-    .run(id, input.lineId, JSON.stringify(plan), JSON.stringify(budget), input.createdBy ?? '', now, now)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+    .run(id, input.lineId, JSON.stringify(plan), tierInfo.tier === 'real_hitl' ? 'awaiting_approval' : 'planned', JSON.stringify(budget), input.createdBy ?? '', now, now)
   return this_get(db, id)!
 }
 

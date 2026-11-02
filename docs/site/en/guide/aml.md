@@ -46,7 +46,7 @@ aml/
 `GET /api/workshop/aml/env` returns the effective path and its source, which the "Runtime
 environment" panel in the UI displays directly.
 
-## Settings (the `aml` group, 16 keys)
+## Settings (the `aml` group, 19 keys)
 
 The `aml` group on the settings page ("Runtime config") holds **16 descriptors**: thresholds
 and quotas are `live` (effective as soon as saved), Python path keys are `restart`.
@@ -244,7 +244,7 @@ Without Python a job reports `AML_PYTHON_MISSING` with guidance; starting with `
 runs the whole chain through a stub runner (a stub model is unpredictable, so promotion is
 blocked by the deep check).
 
-## Gates G1–G5
+## Gates G1–G6
 
 | Gate | Criterion | Default threshold | Setting key |
 |---|---|---|---|
@@ -253,9 +253,37 @@ blocked by the deep check).
 | G3 | generalization gap `\|test−val\|/val` | ≤ 20% | `aml.gates.valTestGap` |
 | G4 | training rows / batches | ≥ 500 rows, ≥ 3 batches | `aml.gates.minRows` / `aml.gates.minRuns` |
 | G5 | artifact completeness | ONNX + io_spec present | — |
+| G6 | action coverage (control levels / time collinearity) | ≥ 3 levels, \|r\| ≤ 0.9 | `aml.gates.minControlLevels` / `aml.gates.maxCollinearity` |
+
+G6 answers "does this data carry action-dimension information at all": fewer than 3 control
+levels cannot separate linear from quadratic, and a control collinear with time (pure ladder /
+monotone ramp) makes any learned "effect" indistinguishable from drift. **For a two-level
+control the \|r\| upper bound is only 0.866**, so G6 also applies a *contiguous-block* rule:
+if every level appears in exactly one block the design is unattributable and at least two
+round trips (ABAB) are required. Legacy v1 datasets without the field are marked unknown and
+pass (no retroactive rejection).
 
 Authoritative metrics are recomputed by the platform evaluator — never taken from the
 agent's own report — and every threshold is `live` tunable.
+
+## Scientific exploration loop (identifiability / intervention ledger / DoE / ontology evidence)
+
+Prediction accuracy is not causal identifiability. On top of AML the platform provides a
+falsifiable exploration loop:
+
+| Stage | Mechanism | Where |
+|---|---|---|
+| Identifiability pre-check | dominant disturbance period (autocorrelation), suggested window = 3×period, bootstrap CI, MDE, collinearity; verdicts `IDENTIFIABLE / UNDERPOWERED / CONFOUNDED / INSUFFICIENT_DATA` | `aml/identifiability.ts`; tool `daq_identifiability` |
+| Intervention ledger | **every accepted write** (manual / agent / recipe / rollback) recorded once at the DCW write throat: intent, actual, readback, path, hypothesis + verdict | table `intervention_events`; tool `intervention_history` |
+| Orthogonal DoE | tiered experiment plans: simulated lines run directly; real lines require a single HITL approval card (with cost estimate), seeded randomized step order across MVs, alarm abort and budget caps | `process_model_experiments` + `experiment-runner.ts` |
+| Dual-channel cross-check | model channel (ARX step-response gain) vs ontology channel (actuator→target coupling edge); confirmed conflict → auto reject / human justification; unknown never blocks | `aml/twin/cross-check.ts` |
+| Ontology evidence backfill | verdicts (effect / CI / MDE / negative result) appended to `ontology_evidence`, traceable and idempotent; negative results counted as refutation | `aml/ontology-learning.ts` |
+| KB anti-contamination | ingest approval card flags unsupported causal claims as *anecdotal* and records an audit entry | `agents/plugin-governance.ts` |
+
+Key semantics: **a zero result from an adequately powered window is an identifiable negative
+conclusion** (storable and falsifiable), not a failure; only insufficient window/coverage is
+`UNDERPOWERED`, and in that state the platform **must not** claim an effect. Escape hatch:
+`AW_IDENT_GATE=0` disables the identifiability gate (old behavior, at your own risk).
 
 ## Governance and safety boundaries
 

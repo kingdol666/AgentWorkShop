@@ -3,6 +3,10 @@
 > 完整发布产物与逐版本说明见 [GitHub Releases](https://github.com/kingdol666/AgentWorkShop/releases)。
 > 以下为核心版本节点——每个节点对应一轮可验收的能力跃迁,验收证据收录于 `docs/audit/`。
 
+## v0.9.x — 科学探索闭环(2026-11)
+
+- **v0.9.0(2026-11-02)** — **可证伪的探索闭环:可辨识性门禁 · 干预台账 · 正交 DoE · 本体证据回灌**。新增 `aml/identifiability.ts`(主导扰动周期 / 建议窗 3×周期 / bootstrap CI / MDE / 共线诊断;窗口充分的无效应 = 可辨识负结论,欠功效时禁止声称有效应)并接入探索前置门与判读文案(`AW_IDENT_GATE=0` 逃生);新增全路径**干预台账** `intervention_events`(手动/Agent/配方/回退在 DCW 写咽喉单点入行,判定回填);新增 **G6 动作覆盖门**(控制水平数 ≥3、与时间 \|r\| ≤0.9,另用连续段判据抓 2 水平纯阶梯)+ ARX 阶跃仿真动作敏感度;`process_model_experiments` **真实线分级解锁**(仿真线直跑;真实线 HITL 单卡 + 成本核算;随机化步序种子 = 计划 id、跨控制量打散、告警中止、预算上限、逐步关闭记录并判读);新增**双通道互审**(模型增益 vs 本体耦合边;确证冲突自动拒,unknown 不拦)与**审批卡科学载荷**(效应/CI/MDE/覆盖/证据边/可证伪方式);判定回灌 `ontology_evidence`(幂等,support/refute 计数);KB 入库审批卡标注无证据锚因果断言(anecdotal)并留审计。新工具 `daq_identifiability` / `intervention_history`(宿主工具 105→107),设置 138→140(aml 组 19)。验收:单测 986 项 / 984 通过 / 0 失败 · lint 0 · 全链路验收 19/19(`scripts/acceptance-scientific-loop.ts`)· 文档一致性 89/0。详见 `docs/plans/2026-11-02-scientific-exploration-acceptance.md`。
+
 ## v0.8.x — 知识与闭环(2026-10 下旬)
 
 - **v0.8.8(2026-10-31)** — **时序存储治理与生命周期健壮性收口 + bench v2 写面**:压缩 chunk 上 `ctid` 批删必炸(TimescaleDB 2.29 实证)改为时间分片普通 DELETE;rollup SQL 三层修复使 1m/1h 聚合首次真正落行(运行期新线免重启);历史截断保最新段;逐线保留期 PUT 部分更新不再抹覆写;裁剪上界受聚合水位钳制。任务生命周期四修(停滞误杀/救援竞争/HITL 顺延/孤儿派发);Agent 工具面六修(终态诚实回执/进度钳位/授权回滚/消息校验);插件宿主 home 模式路径回归修复;MQTT 多字段(fields/jsonTemplate);bench v2 写面收尾复绿。验收:单测 913/913 · PIPELINE 执行卡全层(静态 100% · plc 13/13 · E1a 消融 · api-live 75/75 · 冻结基线逐位复现 ×2)· IDD/RAG 集成链真机全通 · P12 真实 harness episode。

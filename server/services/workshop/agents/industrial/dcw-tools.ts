@@ -7,6 +7,7 @@ import { agentBadgeLabel } from '../agent-badge'
 import { findDcwTemplate } from '../../dcw/dcw-templates'
 import { getActiveLineRun } from '../../dcw/line-run'
 import { getAgentNodeBindingRepo } from '../node-bindings.repo'
+import { scientificPayloadForWrite } from './identifiability-tools'
 import { getDaqNodeRepo } from '../../daq/daq-node.repo'
 import { getDcwController } from '../../dcw/dcw-controller'
 import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
@@ -204,11 +205,14 @@ async function dcwControlGovernedLegacy(agentId: string, args: { node_id?: strin
     const via = recipeBinding && authorizedRecipe
       ? `经配方授权「${authorizedRecipe.name}」${lineManual ? '(产线手动模式)' : ''}${channelManual ? '(频道手动模式)' : ''}`
       : (channelManual ? '(频道手动模式)' : '')
+    // P5 审批卡科学载荷:上次可辨识性判定 + 可证伪方式(卡片自动填,不再只有散文)
+    const sci = scientificPayloadForWrite(nodeId, node.name, value)
     const ap = await requestManualApproval({
       agentId,
       nodeId,
+      payload: sci.payload,
       // 审批卡可见"为什么":Agent 依据(hypothesis)随卡展示,人工批准时有判断材料
-      detail: `${node.name}(${tpl?.ch ?? node.templateKey})设定 ${value}${node.unit},有效写入区间 ${bd.effective.min}~${bd.effective.max}${node.unit}(${bd.layers.map(l => l.label).join(' ∩ ')})${via ? ` ${via}` : ''}${hypothesisText ? `;Agent 依据:${hypothesisText.slice(0, 200)}` : ''}`,
+      detail: `${node.name}(${tpl?.ch ?? node.templateKey})设定 ${value}${node.unit},有效写入区间 ${bd.effective.min}~${bd.effective.max}${node.unit}(${bd.layers.map(l => l.label).join(' ∩ ')})${via ? ` ${via}` : ''}${hypothesisText ? `;Agent 依据:${hypothesisText.slice(0, 200)}` : ''}\n${sci.lines.join('\n')}`,
       // 批准后复核同一条授权路径:直绑看 dcw 绑定,配方授权看配方绑定与参数仍存在
       verify: recipeBinding
         ? () => {
@@ -245,6 +249,8 @@ async function dcwControlGovernedLegacy(agentId: string, args: { node_id?: strin
       taskId: args.task_id ? String(args.task_id) : undefined,
       hypothesis: args.hypothesis ? String(args.hypothesis) : '',
       approvalId: approvalId || undefined,
+      // v34 干预台账归因:写入发生时所在 Channel(台账 path/channel 维度)
+      channelId: channelId ?? undefined,
       // 台账口径(三模式):该次写入发生时的频道生效执行模式(事后审计"这条写入当时是什么模式")
       executionMode: execMode,
     }

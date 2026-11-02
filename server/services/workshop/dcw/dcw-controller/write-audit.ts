@@ -9,6 +9,7 @@ import { emitDcwWrite } from '@/server/services/workshop/plugins/host.mjs'
 import { getActiveLineRun } from '../line-run'
 import { opsActorKindOf } from './helpers'
 import { recordOps } from '../../ops/ops'
+import { recordIntervention } from '../../aml/intervention-ledger'
 
 /** 同节点写入去重节流表(eng+10s 窗内视为同一次下发的重试回执) */
 export const opsWriteMemo = new Map<string, { eng: number, at: number }>()
@@ -18,7 +19,7 @@ export function recordDcwWriteOps(args: {
   node: { name: string, unit?: string, lineId: string }
   eng: number
   prevValue: number | null
-  outcome: { ok: boolean, message: string }
+  outcome: { ok: boolean, message: string, ack?: string, readback?: number | null }
   src: DcwWriteSource
   meta?: DcwWriteMeta
   recipeRunId: string | null
@@ -46,4 +47,23 @@ export function recordDcwWriteOps(args: {
   })
   // 插件钩子:写控 ACK 观察(与运维入册同点同去重节流)
   emitDcwWrite({ nodeId: args.id, name: args.node.name, eng: args.eng, prevValue: args.prevValue, ok: args.outcome.ok, source: args.src, lineId: args.node.lineId ?? '', at: new Date().toISOString() })
+  // v34 干预台账(科学探索计划 P2):全路径单点入册(与运维日志同点同去重节流)。
+  // 只记已受理下发;拒绝路径沿上方 recordOps 的 dcw.write.rejected 审计,不入台账。
+  // recordIntervention 内部自吞异常(台账失败绝不改变写结果语义)。
+  recordIntervention({
+    nodeId: args.id,
+    nodeName: args.node.name,
+    lineId: args.node.lineId ?? '',
+    fromValue: args.prevValue,
+    toValue: args.eng,
+    actualValue: args.outcome.readback != null && Number.isFinite(Number(args.outcome.readback)) ? Number(args.outcome.readback) : null,
+    ack: args.outcome.ack ?? '',
+    path: args.src,
+    actor: args.meta?.actor ?? 'user',
+    actorName: args.meta?.actorName ?? '',
+    channelId: args.meta?.channelId ?? '',
+    approvalId: args.meta?.approvalId ?? null,
+    recipeRunId: args.recipeRunId,
+    hypothesis: args.meta?.hypothesis ?? '',
+  })
 }
