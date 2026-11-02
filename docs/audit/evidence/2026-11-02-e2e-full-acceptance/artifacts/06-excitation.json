@@ -1,0 +1,87 @@
+{
+  "at": "2026-11-02T12:17:51.809Z",
+  "mvId": "dn-55a36f9f",
+  "results": [
+    {
+      "node": "dw-95d41b71",
+      "value": 3,
+      "status": 200,
+      "ack": "readback-verified",
+      "ok": true
+    },
+    {
+      "node": "dw-da17b9db",
+      "value": 38,
+      "status": 200,
+      "ack": "readback-verified",
+      "ok": true
+    },
+    {
+      "node": "dw-95d41b71",
+      "value": 3.2,
+      "status": 200,
+      "ack": "readback-verified",
+      "ok": true
+    },
+    {
+      "node": "dw-da17b9db",
+      "value": 36.5,
+      "status": 200,
+      "ack": "readback-verified",
+      "ok": true
+    },
+    {
+      "node": "dw-95d41b71",
+      "value": 2.8,
+      "status": 409
+    },
+    {
+      "node": "dw-da17b9db",
+      "value": 36,
+      "status": 200,
+      "ack": "readback-verified",
+      "ok": true
+    }
+  ],
+  "mvSamples": [
+    {
+      "at": 1793621835000,
+      "avg": 3.1999999999999997,
+      "min": 3.2,
+      "max": 3.2,
+      "cnt": 7
+    },
+    {
+      "at": 1793621850000,
+      "avg": 3.1999999999999997,
+      "min": 3.2,
+      "max": 3.2,
+      "cnt": 7
+    },
+    {
+      "at": 1793621865000,
+      "avg": 3.2000000000000006,
+      "min": 3.2,
+      "max": 3.2,
+      "cnt": 3
+    }
+  ],
+  "recovery": {
+    "steps": [
+      {
+        "v": 3,
+        "ack": "readback-verified",
+        "ok": true,
+        "msg": "ok"
+      },
+      {
+        "v": 2.8,
+        "ack": "readback-verified",
+        "ok": true,
+        "msg": "ok"
+      }
+    ],
+    "mvId": "dn-55a36f9f",
+    "mvLast": 2.8
+  }
+}

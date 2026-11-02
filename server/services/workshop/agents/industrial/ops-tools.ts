@@ -3,6 +3,7 @@
  * (由 server/services/workshop/agents/industrial-tools.ts 按职责拆出;内容逐行原文搬运)
  */
 import type { RecipeView } from '../../../../../shared/dcw-protocol'
+import { randomUUID } from 'node:crypto'
 import { agentBadgeLabel } from '../agent-badge'
 import { getActiveLineRun } from '../../dcw/line-run'
 import { getAgentNodeBindingRepo } from '../node-bindings.repo'
@@ -18,7 +19,7 @@ import { settingOf } from '../../settings'
 import { fanoutQuery, windowOf } from './audit-query'
 import { assertRecipeCreate, assertRecipeOperation, recipeApprovalPayload, type ActiveRecipeContext } from './recipe-gate'
 import { RECOVERY_RETRY_HINT, RECOVERY_TRACE_HINT, RECOVERY_VERIFY_HINT } from './fallback-hints'
-import { approvalOnlyTrialReceipt } from './bench-approval-only'
+import { approvalOnlyTrialReceipt, sameApprovalOnlyTrialReceipt, type ApprovalOnlyTrialReceipt } from './bench-approval-only'
 import { currentToolInvocation } from '../governance-harness-audit'
 import { executionModeOfAgent } from '../execution-mode'
 
@@ -1007,18 +1008,30 @@ async function hitlDispatchGate(agentId: string, recipeId: string, detail: strin
   payload?: unknown
   trialTargets?: Array<{ id: string, driver: string, driverConfig: Record<string, unknown> }>
   lineId?: string
-}): Promise<{ approved: boolean, comment: string, id: string, approval_bypassed?: true }> {
+  trialParams?: Array<{ node_id: string, value: number }>
+  hypothesis?: string
+  invocationId?: string
+}): Promise<{ approved: boolean, comment: string, id: string, approval_bypassed?: true, approval_receipt?: ApprovalOnlyTrialReceipt }> {
   if (opts?.trialTargets) {
-    const receipt = approvalOnlyTrialReceipt({ recipeId, line: getDcwLineRepo().byId(opts.lineId ?? ''), nodes: opts.trialTargets })
+    const receipt = approvalOnlyTrialReceipt({
+      stage: 'approval',
+      invocationId: opts.invocationId ?? '',
+      actorId: agentId,
+      recipeId,
+      line: getDcwLineRepo().byId(opts.lineId ?? ''),
+      nodes: opts.trialTargets,
+      hypothesis: opts.hypothesis ?? '',
+      params: opts.trialParams ?? [],
+    })
     if (receipt) {
       recordOps({
         actor: agentId, actorName: agentBadgeLabel(agentId), actorKind: 'agent',
         action: 'recipe.approval.bypassed', kind: 'recipe', targetKind: 'recipe', targetId: recipeId,
         lineId: opts.lineId ?? '', recipeId,
         summary: '隔离模拟器审批消融:仅跳过人工审批等待,无人工批准记录',
-        detail: receipt,
+        detail: { ...receipt, stage: 'approval-gate' },
       })
-      return { approved: true, comment: '', id: '', approval_bypassed: true }
+      return { approved: true, comment: '', id: '', approval_bypassed: true, approval_receipt: receipt }
     }
   }
   const { getToolApprovals } = await import('../tool-approvals')
@@ -1148,6 +1161,7 @@ export async function toolRecipeTrial(agentId: string, args: {
   if (!target.ok) return { text: target.text, isError: true }
   const recipe = target.recipe
   const recipeId = recipe.id
+  const toolInvocationId = currentToolInvocation()?.invocationId ?? randomUUID()
   // 权限模型 v2 + 2026-10-28 双轨:recipe 绑定 ∨ 本次候选覆盖集 ⊆ dcw 节点绑定面
   const gate = assertRecipeOperation(agentId, recipe, 'trial', list.map(p => p.nodeId))
   if (!gate.ok) return { text: gate.text, isError: true }
@@ -1171,6 +1185,7 @@ export async function toolRecipeTrial(agentId: string, args: {
     let hitlNote = ''
     let gateApprovalId = ''
     let approvalBypassed = false
+    let approvalReceipt: ApprovalOnlyTrialReceipt | null = null
     if (gate.hitlRequired) {
       const gateDecision = await hitlDispatchGate(
         agentId,
@@ -1181,18 +1196,32 @@ export async function toolRecipeTrial(agentId: string, args: {
           return `${node?.name ?? p.nodeId} ${old ?? '?'}→${p.value}${node?.unit ?? ''}`
         }).join(';')} | 假设:${hypothesis} | 批准=整批下发试验(不写版本);拒绝可附指导`,
         `${emergency ? '【应急】' : ''}配方试验(整批候选)下发审批`,
-        { lineId: recipe.lineId, trialTargets: list.map(p => getDcwController().byId(p.nodeId)!), payload: { ...recipeApprovalPayload('trial', recipe.id, recipe.name, {
-          reason: hypothesis,
-          params: list.map((p) => {
-            const node = getDcwController().byId(p.nodeId)
-            const old = recipe.params.find(x => x.nodeId === p.nodeId)?.value
-            return { nodeId: p.nodeId, name: node?.name ?? p.nodeId, from: old ?? null, to: p.value, unit: node?.unit }
-          }),
-          context: gate.activeContext,
-        }), ...(emergency ? { emergency: true } : {}) } },
+        {
+          lineId: recipe.lineId,
+          trialTargets: list.map(p => getDcwController().byId(p.nodeId)!),
+          trialParams: list.map(p => ({ node_id: p.nodeId, value: p.value })),
+          hypothesis,
+          invocationId: toolInvocationId,
+          payload: {
+            ...recipeApprovalPayload('trial', recipe.id, recipe.name, {
+              reason: hypothesis,
+              params: list.map((p) => {
+                const node = getDcwController().byId(p.nodeId)
+                const old = recipe.params.find(x => x.nodeId === p.nodeId)?.value
+                return { nodeId: p.nodeId, name: node?.name ?? p.nodeId, from: old ?? null, to: p.value, unit: node?.unit }
+              }),
+              context: gate.activeContext,
+            }),
+            ...(emergency ? { emergency: true } : {}),
+          },
+        },
       )
       gateApprovalId = gateDecision.id
       approvalBypassed = gateDecision.approval_bypassed === true
+      approvalReceipt = gateDecision.approval_receipt ?? null
+      if (approvalBypassed && !approvalReceipt) {
+        return { text: 'Approval-only qualification receipt is missing; dispatch was refused.', isError: true, approval_bypassed: true }
+      }
       if (!gateDecision.approved) {
         return {
           text: `人工未批准本次试验下发。人工指导:${gateDecision.comment || '(无附言,仅不同意候选)'}。请按人工指导修订候选参数(必要时先 recipe_update 调整基线),然后重新提交 recipe_trial。`,
@@ -1211,7 +1240,21 @@ export async function toolRecipeTrial(agentId: string, args: {
     const execGate = assertRecipeOperation(agentId, recipe, 'trial', list.map(p => p.nodeId))
     if (!execGate.ok) return { text: `下发前授权复核未通过,本次未执行:${execGate.text}`, isError: true }
     // Recheck the qualified driver/PID after the asynchronous grant revalidation.
-    if (approvalBypassed) approvalOnlyTrialReceipt({ recipeId, line: getDcwLineRepo().byId(recipe.lineId), nodes: list.map(p => getDcwController().byId(p.nodeId)!) })
+    if (approvalBypassed) {
+      const dispatchReceipt = approvalOnlyTrialReceipt({
+        stage: 'dispatch',
+        invocationId: toolInvocationId,
+        actorId: agentId,
+        recipeId,
+        line: getDcwLineRepo().byId(recipe.lineId),
+        nodes: list.map(p => getDcwController().byId(p.nodeId)!),
+        hypothesis,
+        params: list.map(p => ({ node_id: p.nodeId, value: p.value })),
+      })
+      if (!sameApprovalOnlyTrialReceipt(approvalReceipt, dispatchReceipt)) {
+        return { text: 'Approval-only qualification changed or was consumed before dispatch; write was refused.', isError: true, approval_bypassed: true }
+      }
+    }
     const invocation = currentToolInvocation()
     const run = await getDcwController().applyRecipe(recipeId, {
       overrides: list, trial: true, agentDispatch: true, agentApprovalId: gateApprovalId, emergency,

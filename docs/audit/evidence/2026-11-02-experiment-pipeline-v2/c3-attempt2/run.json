@@ -1,0 +1,20 @@
+{
+  "rid": "20261102104327-agent-multiround",
+  "at": "2026-11-02T10:50:38.038Z",
+  "base": "http://127.0.0.1:3005",
+  "scenarios": [
+    "injection"
+  ],
+  "runs": 1,
+  "budgetMin": 15,
+  "rows": [],
+  "runLogs": [
+    {
+      "episode": 1,
+      "tag": "c3-s2rz-r1",
+      "wallS": 430.91,
+      "exit": 1,
+      "error": "summary-missing"
+    }
+  ]
+}

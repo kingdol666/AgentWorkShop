@@ -13,7 +13,7 @@ const DEFAULT_WEB = 'http://127.0.0.1:6789' // Nuxt web(文档写盘)
 
 export default {
   name: 'rag-bridge',
-  version: '2.1.0',
+  version: '2.2.0',
   description: 'rag-knowledge 知识库桥接 v2.1:kb_agent 对话工具(功能解耦,sync/async 双模式)+ kb_agent_status 异步结果查询',
   auth: 'user', // 平台转发层按此声明统一校验(缺省 'none' 开放)
   client: './client.mjs', // 前端面板(插件页注入;i18n 见 i18n.json)
@@ -284,7 +284,9 @@ export default {
         type: 'object',
         properties: {
           prompt: { type: 'string', description: '给知识库 Agent 的完整任务原话。检索:要查的问题;入库:目标知识库名(缺省 aw-industrial)+文档标题+完整 markdown 正文;经验:标题/类别/问题/解决方案' },
-          mode: { type: 'string', enum: ['sync', 'async'], description: '执行方式(按场景自选):sync 同步等待知识库执行完并返回结果(检索问答用,需要立刻拿到答案);async 异步——立即返回 task_id,知识库在后台完成任务,完成后可用 kb_agent_status 查询该 task 的结果(入库/经验沉淀类用,无需等待)' },
+          mode: { type: 'string', enum: ['sync', 'async'], description: '执行方式(旧口径,建议改用 wait/wait_seconds):sync 同步等待;async 立即返回 task_id 后台跑' },
+          wait: { type: 'boolean', description: '是否等待结果(推荐口径):true=本次调用挂起直到知识库任务终态——成功/失败都返回完整结果,任务未完不返回;false/缺省=提交即返 task_id 后台跑(结果存后台任务台账,kb_agent_status(task_id) 随时可查)' },
+          wait_seconds: { type: 'number', description: 'wait=true 的等待上限秒(缺省 600,上限 1800);窗口内未完则如实返回 running 态与 task_id,任务后台继续并仍会自动回执' },
           action: { type: 'string', enum: ['query', 'ingest'], description: '动作类别:query=只读检索问答(缺省);ingest=写知识库(文档入库/经验沉淀),平台会挂 HITL 审批单,批准前不提交后端。入库务必显式声明 action=ingest。' },
         },
         required: ['prompt'],
@@ -298,10 +300,14 @@ export default {
         }
         const prompt = String(args.prompt ?? '').trim()
         if (!prompt) return { text: 'prompt 必填(把要做的任务完整描述给知识库 Agent)。', isError: true }
-        const mode = String(args.mode ?? '').trim().toLowerCase() === 'async' ? 'async' : 'sync'
+        // 等待语义:wait=true 显式挂起到终态(成功/失败都给完整结果);wait=false/缺省=提交即返。
+        // 挂起期间 Agent 的回合被本工具调用占住——结构上保证"任务未完不能标记完成"。
+        const legacyAsync = args.wait === undefined && String(args.mode ?? '').trim().toLowerCase() === 'async'
+        const mode = (args.wait === false || legacyAsync) ? 'async' : 'sync'
+        const waitSec = Math.min(Math.max(Math.round(Number(args.wait_seconds ?? 600) || 600), 10), 1800)
         // 权限档由服务端固定(不再接受调用方透传):历史参数 permission/harness 一律忽略。
         // 缺省 'default' 标准审批档;此前缺省传递 bypassPermissions 允许 Agent 自行提权。
-        const body = { prompt, timeout_ms: 540000, mode, permission: 'default' }
+        const body = { prompt, timeout_ms: mode === 'sync' ? waitSec * 1000 : 540000, mode, permission: 'default' }
 
         if (mode === 'async') {
           // 异步:立即返回 task_id,知识库后台完成;结果稍后用 kb_agent_status 查询
@@ -324,12 +330,12 @@ export default {
         }
 
         // 同步请求禁止网络重试:POST 可能已在知识库侧启动回合,重试会重复入库/重复生成
-        const r = await ragCall('POST', web() + '/api/kb/agent/chat', body, { timeoutMs: 580000, retries: 0 })
+        const r = await ragCall('POST', web() + '/api/kb/agent/chat', body, { timeoutMs: waitSec * 1000 + 30000, retries: 0 })
         if (!r.ok) {
-          return { text: '知识库 Agent 调用失败:' + String(r.error ?? '').slice(0, 200) + '。请确认 rag-knowledge web(' + web() + ') 已启动后重试。', isError: true }
+          return { text: '知识库 Agent 调用失败(本次调用即终态,失败结果已如实返回):' + String(r.error ?? '').slice(0, 300) + '。请确认 rag-knowledge web(' + web() + ') 已启动后重试。', isError: true }
         }
         const reply = String(r.body?.reply ?? '').trim()
-        return { text: reply || '(知识库 Agent 返回空回复)' }
+        return { text: '✅ 知识库任务完成(等待到终态)。\n\n' + (reply || '(知识库 Agent 返回空回复)') }
       },
     })
 
@@ -341,7 +347,7 @@ export default {
         type: 'object',
         properties: {
           task_id: { type: 'string', description: 'kb_agent 异步提交时返回的 task_id' },
-          wait_seconds: { type: 'number', description: '长轮询等待秒数(0=立即返回,默认 0,上限 120);入库类任务建议 90~120' },
+          wait_seconds: { type: 'number', description: '长轮询等待秒数(0=立即返回,默认 0,上限 1800);任务在窗口内完成则直接返回结果' },
         },
         required: ['task_id'],
       },
@@ -352,7 +358,7 @@ export default {
         }
         const taskId = String(args.task_id ?? '').trim()
         if (!taskId) return { text: 'task_id 必填(kb_agent 异步提交时返回的 id)。', isError: true }
-        const waitSec = Math.min(Math.max(Math.round(Number(args.wait_seconds ?? 0) || 0), 0), 120)
+        const waitSec = Math.min(Math.max(Math.round(Number(args.wait_seconds ?? 0) || 0), 0), 1800)
         const finish = async (reply, ok) => {
           // 终态由轮询面亲自看到 → 认领回执所有权,取消后台补送(先到先得)
           try {

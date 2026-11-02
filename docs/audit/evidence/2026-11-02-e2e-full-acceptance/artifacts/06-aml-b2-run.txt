@@ -1,0 +1,8 @@
+=== 批次 1:双步激励采集(目标 ≥360s 批) ===
+✔ [C0] 开线(新批) — http=200 ok
+✔ [C-写 dw-95d41b71→3] false
+✔ [C-写 dw-da17b9db→38] false
+保持采样 240s…
+✔ [C1] 停线收批 — http=200
+=== 第 1 轮训练 A ===
+✘ [R1] 第 1 轮训练 done + 资格 + 工件哈希 — status=undefined rows=0 elig=undefined hash= err=没有可用的批次(共 2 个候选,全部被丢弃):rr-8dabd(网格缺失率 50.0% 超过上限 30%); rr-9cc60(有效网格 7 步不足一个窗口)

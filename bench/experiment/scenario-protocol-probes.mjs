@@ -48,7 +48,15 @@ const autostart = !has('no-autostart')
 const maxNodes = Number(arg('max-nodes', 0))
 const lineIdArg = arg('line-id', '')
 const only = (arg('scenarios', '') || process.env.AW_SCENARIOS || '').split(',').map(s => s.trim()).filter(Boolean)
+// fail-closed(2026-11-02):显式请求的场景若不在 SCENARIOS 映射里,必须报错退出。
+// 旧实现静默过滤 → 零探针仍打印「PASS」,是典型的假绿(cast-film 实测踩中)。
+const unknown = only.filter(id => !SCENARIOS[id])
+if (unknown.length) {
+  console.error(`✘ 未知场景: ${unknown.join(', ')}(可用: ${SCENARIO_IDS.join(', ')})`)
+  process.exit(1)
+}
 const list = (only.length ? only : SCENARIO_IDS).filter(id => SCENARIOS[id])
+if (!list.length) { console.error('✘ 零场景:拒绝执行(空探针不得判 PASS)'); process.exit(1) }
 
 const rid = `${new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14)}-scenario-probes`
 const outDir = resolve(arg('out', join(REPO, 'bench', 'results', rid)))
@@ -242,6 +250,10 @@ const main = async () => {
     readback: [a.readback[0] + r.readback[0], a.readback[1] + r.readback[1]],
   }), { legal: [0, 0], structural: [0, 0], readback: [0, 0] })
 
+  // fail-closed:零探针/零分母不得判 PASS(旧实现空场景也打印 PASS,实测假绿)。
+  if (rows.length === 0 || totals.legal[1] === 0) {
+    throw new Error(`零探针分母: scenes=${list.join(',')} rows=${rows.length} legalDen=${totals.legal[1]} —— 拒绝空跑 PASS`)
+  }
   const pass = totals.legal[0] === totals.legal[1] && totals.structural[0] === totals.structural[1] && totals.readback[0] === totals.readback[1]
   const header = 'scene,protocol,signal,nodeId,probeClass,value,expect,got,status,code,ms,readback,delta,tolerance,withinTolerance,note'
   const csv = [header, ...rows.map(r => [

@@ -8,6 +8,7 @@ import { join } from 'node:path'
 import { amlSettings } from '../settings'
 import type { AmlManifest } from './dataset-builder'
 import type { AmlDatasetRow } from './aml.repo'
+import { assessDatasetActionCoverage } from './action-coverage'
 
 export interface PlatformMetrics {
   oneStepVal?: { windows: number, nrmse: number } | null
@@ -38,7 +39,7 @@ export interface GateReport {
 export function evaluateGates(
   purpose: string,
   dataset: Pick<AmlDatasetRow, 'rowCount' | 'runIds'>,
-  manifest: Pick<AmlManifest, 'split'>,
+  manifest: Pick<AmlManifest, 'split' | 'actionCoverage'>,
   metrics: PlatformMetrics | undefined,
   artifactsDir: string,
 ): GateReport {
@@ -154,6 +155,49 @@ export function evaluateGates(
     g5detail = 'artifacts/model.onnx 缺失'
   }
   checks.push({ id: 'G5', name: '工件完整(按工件类型)', value: null, threshold: null, pass: g5pass, detail: g5detail })
+
+  // G6:动作覆盖度(科学探索计划 P3)。回答"这份数据在动作维度有没有信息量":
+  // 水平数不足 → 模型学不到动作;与时间共线 → 学到的"效应"可能只是漂移。
+  // v1 数据集无 actionCoverage 字段 = unknown(不追溯误杀,detail 如实说明)。
+  const coverage = manifest.actionCoverage
+  if (coverage === undefined) {
+    checks.push({
+      id: 'G6',
+      name: '动作覆盖(控制水平数/时间共线)',
+      value: null,
+      threshold: null,
+      pass: true,
+      detail: '数据集未携带动作覆盖度(v1 数据集/unknown):门禁不追溯,重建数据集(v2)后强制校验',
+    })
+  }
+  else if (coverage.length === 0) {
+    checks.push({
+      id: 'G6',
+      name: '动作覆盖(控制水平数/时间共线)',
+      value: null,
+      threshold: null,
+      pass: true,
+      detail: '数据集未声明 role=control 节点:动作覆盖门不适用(纯预测器,不可用于控制决策)',
+    })
+  }
+  else {
+    const assessment = assessDatasetActionCoverage(coverage, {
+      minControlLevels: g.minControlLevels,
+      maxCollinearity: g.maxCollinearity,
+    })
+    const minLevels = Math.min(...coverage.map(c => c.distinctLevels))
+    const maxR = Math.max(...coverage.map(c => c.collinearityWithTime))
+    checks.push({
+      id: 'G6',
+      name: '动作覆盖(控制水平数/时间共线)',
+      value: minLevels,
+      threshold: g.minControlLevels,
+      pass: assessment.pass,
+      detail: assessment.pass
+        ? `${coverage.length} 个控制节点,最少 ${minLevels} 个水平(≥${g.minControlLevels}),时间共线 max |r|=${maxR.toFixed(3)}(≤${g.maxCollinearity})`
+        : assessment.reasons.join(';'),
+    })
+  }
 
   return { passed: checks.every(c => c.pass), checks }
 }

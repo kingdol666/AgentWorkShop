@@ -89,4 +89,10 @@ export interface DaqDriver {
    * 避免改密码/换主题后仍挂在旧连接上。缺省由控制器按常见字段拼一个保守指纹。
    */
   fingerprint?(driverConfig: Record<string, unknown>): string
+  /**
+   * 可选:按 driverConfig 驱逐池内死连接(R-2)。控制器在 driverConfig 变更后调用,
+   * 让"broker 长期死亡后修好配置"立即全新建连,不必重建节点。实现应只驱逐未连接的
+   * 僵尸条目(健康连接绝不碰),无池化驱动的实现可不提供。
+   */
+  evictPoolConn?(driverConfig: Record<string, unknown>): boolean
 }

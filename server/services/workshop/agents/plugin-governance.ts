@@ -14,6 +14,7 @@ import { checkToolAgainstScope } from '../runtime/permission-scope'
 import { getToolApprovals } from './tool-approvals'
 import { verifyToolReferences } from './industrial/tool-verify'
 import { recordOps } from '../ops/ops'
+import { assessCausalClaim, causalClaimLines } from '../aml/causal-claim'
 import type { HostToolResult } from './host-tool-bridge/types'
 
 export interface PluginGovernanceIdentity {
@@ -66,11 +67,30 @@ async function governKbAgent(identity: PluginGovernanceIdentity, toolName: strin
     }
     return null
   }
+  // P6 因果断言质量门:识别无证据锚的因果叙述(事故:无锚叙述污染 KB),
+  // 在审批卡标注 anecdotal 并留 ops 告警;不禁止写入(人审可见即可)。
+  const claim = assessCausalClaim(prompt)
+  if (claim.anecdotal) {
+    recordOps({
+      actor: identity.agentId, actorName: identity.name, actorKind: 'agent',
+      action: 'plugin.kb.anecdotal_causal_claim', kind: 'system', level: 'warn',
+      targetKind: 'tool', targetId: toolName,
+      summary: '知识库入库含无证据锚的因果断言(anecdotal),已在审批卡标注',
+      detail: { reasons: claim.reasons, prompt: prompt.slice(0, 300) },
+    })
+  }
   // 写入知识库:显式人工审批(与配方/产线写同源审批服务;缺省超时=拒绝)
-  const detail = `知识库入库审批(kb_agent):\n${prompt.slice(0, 1200)}`
+  const qualityLines = causalClaimLines(claim)
+  const detail = `知识库入库审批(kb_agent):\n${prompt.slice(0, 1200)}${qualityLines.length ? `\n${qualityLines.join('\n')}` : ''}`
   const decision = await getToolApprovals().request(identity.agentId, '', 'kb', detail, {
     title: '知识库入库审批',
-    payload: { tool: 'kb_agent', action: 'ingest', prompt: prompt.slice(0, 2000), mode: String(args.mode ?? 'sync') },
+    payload: {
+      tool: 'kb_agent',
+      action: 'ingest',
+      prompt: prompt.slice(0, 2000),
+      mode: String(args.mode ?? 'sync'),
+      causalClaim: { isCausal: claim.isCausal, hasEvidenceRef: claim.hasEvidenceRef, anecdotal: claim.anecdotal, refs: claim.refs },
+    },
   })
   if (!decision.approved) {
     recordOps({

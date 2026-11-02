@@ -138,5 +138,6 @@ test('kb_agent sync 失败文案与 success 断言', async () => {
   await plugin.setup(h.ctx)
   const kbAgent = h.tools.get('kb_agent')!
   const ok = await kbAgent.handler({ prompt: '检索膜厚', mode: 'sync' })
-  assert.equal(ok.text, '同步答复')
+  // R-2 等待语义(2026-11-01):sync 成功返回带 ✅ 前缀(等待到终态的显式标记)
+  assert.equal(ok.text, '✅ 知识库任务完成(等待到终态)。\n\n同步答复')
 })

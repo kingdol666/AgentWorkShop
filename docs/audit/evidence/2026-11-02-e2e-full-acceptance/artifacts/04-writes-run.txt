@@ -1,0 +1,33 @@
+✅ G1 越量程被拒(S3=8>max6) — "设定值 8bar 超出上限 节点工艺安全量程 的 6bar —— 约束层:节点安全量程(当前有效写入区间 0~6bar;各层限界按安全规约取交集,越界写入已拒绝)"
+✅ G2 超步长被拒(S2 Δ3>2.0) — "节点「PROTO4-FL7-SP-传送带速度」本次变化 3瓶/min 超过单步限制 2瓶/min（来源:param）"
+✅ W1 S3 写穿受理 — {"ok":true,"message":"写入并回读一致:2.8 → raw 2.8,回读 2.8(标定后物理值 2.8)","raw":2.8,"readback":2.799999952316284,"ack":"readback-verified"}
+✅ W1a S3 ACK=readback-verified(modbus 回读通道) — ack=readback-verified applied=2.799999952316284
+✅ W1b S3 平台回读=2.8 — read=2.799999952316284
+✅ G3 60s 写间隔被拒(S3 二连写) — "DCW 节点「PROTO4-FL7-SP-灌装头压力」两次在线写入间隔必须至少 60s，当前还需 60s"
+❌ W1c 设备侧镜像回读 SP≈2.8(孪生寄存器) — device=undefined
+✅ W2 S1 MQTT 写受理 — {"ok":true,"ack":"transport-ack","message":"已发布 2 → aw/twin/f7-backpressure/set(QoS 1;broker 已受理,设备侧待验证)(标定后物理值 2)","raw":2,"readback":null,"anchorId":"anc-3b0d
+✅ W2a S1 ACK=transport-ack(发布受理) — ack=transport-ack
+✅ W2b P9 确认主题入样=2.0(合同级证实) — {"at":1793620530000,"avg":1.99,"min":1.98,"max":2,"cnt":3}
+✅ W2c S1 平台回读(readTopic)=2.0 — read=2
+✅ W3 S4 OPC UA 写受理 — {"ok":true,"message":"写入并回读一致:29,回读 29(标定后物理值 29)","raw":29,"readback":29,"ack":"readback-verified","anchorId":"anc-770ae37b"}
+✅ W3a S4 ACK 等级如实 — ack=readback-verified
+✅ W3b S4 平台回读=29 — read=29
+✅ W4 灌装量 PV 因果响应(→495.2±1.2) — avg=494.905 at=11:55:45
+❌ J1 journal 有本线写控锚点(prev/new/actor) — rows=7
+
+=== US-004 写控链: 14 通过 / 2 失败 ===
+
+=== US-004 汇总(2026-11-02) ===
+守卫 ×3:G1 越量程拒 / G2 超步长拒 / G3 60s 写间隔拒 —— 全部结构化拒绝原文存档
+写穿 ×3 协议:
+  S3 modbus-tcp 2.6→2.8 ack=readback-verified(anc-998efb95)
+  S1 mqtt 1.8→2.0 ack=transport-ack + P9 确认主题入样 1.99≈2.0(合同级证实)+ readTopic 回读=2.0(anc-3b0d3ec6)
+  S4 opcua 28→29 ack=readback-verified(anc-770ae37b)
+三方一致:平台回读 / 设备侧独立佐证 / PV 因果响应(P1 494.9→495.2 带)
+  - S3:平台回读=2.8;设备侧佐证=孪生镜像跟随(MV 镜像=2.8,06-excitation-run.txt)
+  - S1:平台 readTopic 回读=2.0;设备侧佐证=P9 合同级确认主题入样 1.99≈2.0(W2b)
+  - S4:平台回读=29;设备侧佐证=OPC UA 驱动写后读回即设备侧值(outcome.readback=29)
+  - 注:04-writes-run.txt 首跑的 W1c(device=undefined)系孪生单设备路由非 JSON 的取数失败,补验脚本(04-journal-anchor.json 同批)已用 /api/nodes 列表修正并实测 W1c/W2d/W3c=2.8/2.0/29
+journal:7 锚点(4 recipe + 3 manual),prevValue/newValue/actor/anc-id 齐;approvalId 锚的实际落点=本体规则批准链(oap-mvz7qzcn,05-ontology-run.txt L2.6)与优化器采纳链(M3.7/M4.2 两次 HITL 批准,09-model-loop-live.log);US-007 微调链 journal 为空(D6 复现)
+导出五项:值/量/时间/清单/标识 6/6(job edajob-7fe8202b,3511 行,truncated=[])
+补验记录:04-journal-anchor.json、04-export-check.txt

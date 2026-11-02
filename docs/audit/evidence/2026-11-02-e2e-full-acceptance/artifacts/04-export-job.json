@@ -1,0 +1,66 @@
+{
+  "id": "edajob-7fe8202b",
+  "kind": "daq-export",
+  "status": "ready",
+  "spec": {
+    "nodeIds": [
+      "dn-9ec79037",
+      "dn-ab4bb8fb",
+      "dn-6088b7a9",
+      "dn-65ce4e7e",
+      "dn-6b28bddc",
+      "dn-ad14d077",
+      "dn-7e35d94d",
+      "dn-46f3fc41",
+      "dn-316f1c3c"
+    ],
+    "fromMs": 1793619712529,
+    "toMs": 1793620612529,
+    "title": "E2E-FL7 导出五项核对",
+    "note": "2026-11-02 e2e 验收",
+    "merge": false
+  },
+  "result": {
+    "exportId": "daqexp-20261102195652-0a3c7d",
+    "dir": "D:\\tmp\\aw-prod-1031\\data\\daq-exports\\daqexp-20261102195652-0a3c7d",
+    "files": [
+      {
+        "nodeId": "dn-9ec79037",
+        "rows": 345
+      },
+      {
+        "nodeId": "dn-ab4bb8fb",
+        "rows": 231
+      },
+      {
+        "nodeId": "dn-6088b7a9",
+        "rows": 709
+      },
+      {
+        "nodeId": "dn-65ce4e7e",
+        "rows": 709
+      },
+      {
+        "nodeId": "dn-ad14d077",
+        "rows": 345
+      },
+      {
+        "nodeId": "dn-7e35d94d",
+        "rows": 231
+      },
+      {
+        "nodeId": "dn-46f3fc41",
+        "rows": 231
+      },
+      {
+        "nodeId": "dn-316f1c3c",
+        "rows": 710
+      }
+    ],
+    "totalRows": 3511,
+    "truncated": []
+  },
+  "createdBy": "08bb6963-10fe-493c-8a07-0de4a86e356e",
+  "createdAt": "2026-11-02T19:56:52.552+08:00",
+  "updatedAt": "2026-11-02T19:56:52.657+08:00"
+}

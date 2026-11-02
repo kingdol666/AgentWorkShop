@@ -42,19 +42,42 @@ export abstract class AgentRuntimeLifecycle extends AgentRuntimeState {
     this.deps.mailbox.close()
     // 状态广播:前端经 WS agent.status 实时反映 stopped
     this.deps.bus.notifyAgent({ agentId: this.agentId, state: 'stopped', ...this.queueContext() })
-    // 宽限等待消费循环退出,但**不无限等**:impl 若不响应 abort(如长 sleep 的
-    // mock/外部进程卡死),HTTP stop 请求会无限悬挂(实测 30s×8 全超时)。
-    // 超过宽限即放行 —— loop 自身的 finally 稍后自行收尾,dispose 照常执行。
-    await Promise.race([
-      this.loopPromise?.catch(() => { }),
-      new Promise(r => setTimeout(r, 10_000)),
-    ])
-    // 清理 impl 持有的资源(omp 子进程等);容错:impl.dispose 可能不存在
+    // R-1(2026-11-01):dispose 从 stop() 的同步链路下放后台。
+    // 旧行为:await 宽限(≤10s)+ await impl.dispose(omp client 内含 ≤3s SIGKILL
+    // 等待)——调用方(HTTP 管理动作/D1 兜底/实例删除)在卸载窗口内被同步占住;
+    // 该窗口叠加事件循环繁忙时,健康探针连续 3 次失联 → 守护判僵死 SIGKILL 整个
+    // 服务进程(实测:"卸载一个 agent"演化为"全站活性风险")。
+    // 新语义:墓碑已立(索引已摘/信箱已关/广播已发),剩余收尾(宽限循环退出 +
+    // 子进程终止)不阻塞任何调用方;收尾全程容错并在完成后二次广播 stopped。
+    // stop() 的 await 语义保留给**同步可完成的部分**;后台收尾失败仅记日志,
+    // 不影响系统活性 —— 卸载与全站活性从此解耦。
+    void this.disposeInBackground()
+  }
+
+  /** R-1:后台收尾(宽限消费循环退出 → dispose impl)。失败只记日志,不反压调用方。 */
+  private async disposeInBackground(): Promise<void> {
     try {
-      await this.impl.dispose?.()
+      // 宽限等待消费循环退出,但**不无限等**:impl 若不响应 abort(如长 sleep 的
+      // mock/外部进程卡死),超过宽限即放行 —— loop 自身的 finally 稍后自行收尾。
+      await Promise.race([
+        this.loopPromise?.catch(() => { }),
+        new Promise(r => setTimeout(r, 10_000)),
+      ])
+      // 清理 impl 持有的资源(omp 子进程等);容错:impl.dispose 可能不存在
+      try {
+        await this.impl.dispose?.()
+      }
+      catch (err) {
+        log.error(`[AgentRuntime:${this.agentId}] dispose 失败:`, err)
+      }
     }
-    catch (err) {
-      log.error(`[AgentRuntime:${this.agentId}] dispose 失败:`, err)
+    finally {
+      // 收尾完成(或放行)后补一次状态广播:消费循环若在宽限后才退出,
+      // 其 finally 内的状态广播可能晚于本条;此处保证 stopped 是最后一条。
+      try {
+        this.deps.bus.notifyAgent({ agentId: this.agentId, state: 'stopped', ...this.queueContext() })
+      }
+      catch { /* 广播失败不影响收尾 */ }
     }
   }
 

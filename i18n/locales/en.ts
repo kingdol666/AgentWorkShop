@@ -318,6 +318,8 @@ export default {
         gateValTestGap: 'Gate: val/test gap',
         gateMinRows: 'Gate: min sample rows',
         gateMinRuns: 'Gate: min batch runs',
+        gateMinControlLevels: 'Gate G6: min control levels',
+        gateMaxCollinearity: 'Gate G6: max control/time collinearity',
         uqFreshDays: 'UQ evidence freshness (days)',
       },
       security: {

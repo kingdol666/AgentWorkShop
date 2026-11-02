@@ -1,0 +1,36 @@
+{
+  "checked_at_utc": "2026-10-31T18:18:58.576Z",
+  "platform": "linux",
+  "interfaces": {
+    "lo": [
+      {
+        "address": "127.0.0.1",
+        "netmask": "255.0.0.0",
+        "family": "IPv4",
+        "mac": "00:00:00:00:00:00",
+        "internal": true,
+        "cidr": "127.0.0.1/8"
+      },
+      {
+        "address": "::1",
+        "netmask": "ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff",
+        "family": "IPv6",
+        "mac": "00:00:00:00:00:00",
+        "internal": true,
+        "cidr": "::1/128",
+        "scopeid": 0
+      }
+    ]
+  },
+  "ipv4_routes_raw": [
+    "Iface\tDestination\tGateway \tFlags\tRefCnt\tUse\tMetric\tMask\t\tMTU\tWindow\tIRTT"
+  ],
+  "ipv6_routes_raw": [
+    "00000000000000000000000000000000 00 00000000000000000000000000000000 00 00000000000000000000000000000000 ffffffff 00000001 00000000 00200200       lo",
+    "00000000000000000000000000000001 80 00000000000000000000000000000000 00 00000000000000000000000000000000 00000000 00000002 00000000 80200001       lo",
+    "00000000000000000000000000000000 00 00000000000000000000000000000000 00 00000000000000000000000000000000 ffffffff 00000001 00000000 00200200       lo"
+  ],
+  "ipv4_non_loopback_default_routes": [],
+  "ipv6_non_loopback_default_routes": [],
+  "status": "PASS"
+}

@@ -21,6 +21,7 @@ import { amlSettings } from '../settings'
 import type { AmlDatasetSpec } from './spec'
 import { cleanPoints, alignToGrid } from './clean'
 import { summarize, lagCrossCorr, type SeriesSummary, type LagEstimate, type RunProfile } from './stats'
+import { computeActionCoverage, type ActionCoverage } from './action-coverage'
 import { getAmlRuntime } from './runtime'
 import type { AmlDatasetRow } from './aml.repo'
 
@@ -48,6 +49,8 @@ export interface AmlManifest {
   specVersion?: number
   recipeVersion?: number
   variables?: ProcessDatasetExtras['variables']
+  /** P3 动作覆盖度(v2 才写;v1 数据集读取方按缺失处理 = unknown,不追溯误杀) */
+  actionCoverage?: ActionCoverage[]
   artifacts?: { x: string, u: string, y: string, timestamps: string, mask: string, sidecar: string }
   provenance?: {
     lineId: string, productId: string, recipeId: string, recipeVersion: number, runIds: string[]
@@ -64,6 +67,8 @@ export interface AmlDatasetReport {
   runsUsed: string[]
   runsDropped: { runId: string, reason: string }[]
   windowCount: { train: number, val: number, test: number }
+  /** P3:每个 role=control 节点的动作覆盖度(无控制列时为空数组) */
+  actionCoverage?: ActionCoverage[]
 }
 
 export interface BuildDatasetResult {
@@ -486,6 +491,18 @@ export async function buildDataset(spec: AmlDatasetSpec, by: { id: string, kind:
     }
   }
 
+  // P3 动作覆盖度:按控制节点聚合跨 run 序列(水平聚类用全序列;切换次数按 run 内计,
+  // 避免批次边界的复位被当成阶跃激励)。v2 数据集写进 manifest(actionCoverage)供 G6 门,
+  // 也进 report 供 aml_dataset_stats 人读;v1 数据集不写 = unknown,G6 不追溯误杀。
+  const actionCoverage: ActionCoverage[] = ctrlIds.map((cid) => {
+    const perRun = [...runMatrices.values()]
+      .map(m => (m.rows.get(cid) ?? []).filter(v => typeof v === 'number' && Number.isFinite(v)))
+      .filter(v => v.length > 0)
+    const merged = computeActionCoverage(cid, perRun.flat())
+    const stepsWithinRuns = perRun.reduce((acc, series) => acc + computeActionCoverage(cid, series).stepCount, 0)
+    return { ...merged, stepCount: stepsWithinRuns }
+  })
+
   // 6. 落盘快照
   const dsId = `ds-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
   const dir = join(rt.datasetsDir, dsId)
@@ -551,6 +568,7 @@ export async function buildDataset(spec: AmlDatasetSpec, by: { id: string, kind:
     const v2 = {
       ...manifest,
       version: 2,
+      actionCoverage,
       dataKind: extras.trainerRef === 'static_response@1' ? 'static' : 'dynamic',
       specHash: extras.specRef,
       specVersion: extras.specVersion,
@@ -610,6 +628,7 @@ export async function buildDataset(spec: AmlDatasetSpec, by: { id: string, kind:
     runsUsed: [...runMatrices.keys()],
     runsDropped,
     windowCount: { train: split.train, val: split.val, test: split.test },
+    actionCoverage,
   }
   writeFileSync(join(dir, 'report.json'), JSON.stringify(report, null, 2))
 

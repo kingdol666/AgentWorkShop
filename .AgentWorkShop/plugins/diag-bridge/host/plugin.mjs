@@ -12,7 +12,7 @@ import { intentLabel } from './intents.mjs'
 
 export default {
   name: 'diag-bridge',
-  version: '2.2.0',
+  version: '2.3.0',
   description: '深度诊断桥接 v2.2:异步任务式深度诊断(提交即返 task_id)+ daq-export 数据集多文件分析(diag_run export_id= 全量时序+manifest)+ 同步等待模式(mode=sync)+ 完成自动回执 Channel(修复发起者身份丢失)+ 报告在线查看。完成后经 rag-bridge kb_agent 入库知识库。',
   auth: 'user',
   client: './client.mjs', // 前端面板(插件页注入;i18n 见 i18n.json)
@@ -118,8 +118,10 @@ export default {
             description: '分析模式(缺省 deep-diagnosis)。按业务情景选择:要根因→deep-diagnosis;要运行健康度评分/等级→stability-report;要快速异常清单→quick-screen;要多因子试验数据→doe-analysis;要沉淀调参经验→experience-mining;要寻优推荐工况→optimizer-campaign',
           },
           scene: { type: 'string', description: '场景名(缺省 <line>_diag);场景为自由标签,分析管线按数据特征自适应' },
-          mode: { type: 'string', enum: ['async', 'sync'], description: 'async(缺省)=提交即返后台跑;sync=同步等待完成(最长 sync_timeout_s,超时自动转后台继续)' },
+          mode: { type: 'string', enum: ['async', 'sync'], description: 'async(缺省)=提交即返后台跑;sync=同步等待完成(最长 sync_timeout_s,超时自动转后台继续)。建议改用 wait/wait_seconds(语义更直白)' },
           sync_timeout_s: { type: 'number', description: 'sync 模式等待上限秒(缺省 240,上限 540)' },
+          wait: { type: 'boolean', description: '是否等待结果(推荐):true=本次调用挂起直到任务终态——成功/失败都返回完整结果,任务未完不返回;false=提交即返 task_id 后台跑(等价 mode=async)' },
+          wait_seconds: { type: 'number', description: 'wait=true 的等待上限秒(缺省 600,上限 1800);窗口内未完则如实返回 running 态与 task_id,任务转后台继续并仍会自动回执' },
           harness: { type: 'string', description: '分析引擎按次覆盖(omp/claude/mock;缺省用插件设置)' },
           model: { type: 'string', description: '可选:引擎模型按次覆盖(合法性由 IDD 校验,不合法返回 400 说明)' },
           permission_mode: { type: 'string', description: '可选:引擎权限模式按次覆盖(合法性由 IDD 校验)' },
@@ -200,10 +202,14 @@ export default {
           if (!r.ok) return { text: r.error, isError: true }
           if (!via) via = dataPathDirect ? `离线数据 ${r.csvPath}` : `产线 ${line} 窗口 ${new Date(fromMs).toISOString()} ~ ${new Date(toMs).toISOString()} 快照 ${r.rows} 行 × ${r.nodes} 节点`
 
-          // 同步模式:轮询到终态或超时(超时自动转后台,sweep 完成仍会回执)
-          if (String(args.mode ?? '').toLowerCase() === 'sync') {
+          // 等待语义:wait=true 显式挂起到终态(成功/失败都给完整结果);兼容旧 mode=sync。
+          // 挂起期间 Agent 的回合被本工具调用占住——结构上保证"任务未完不能标记完成"。
+          const wantWait = args.wait === true || (args.wait === undefined && args.wait_seconds === undefined && String(args.mode ?? '').toLowerCase() === 'sync')
+          if (wantWait) {
             const base = baseOf(ctx)
-            const timeoutS = Math.min(Math.max(Number(args.sync_timeout_s) || 240, 10), 540)
+            const timeoutS = args.wait === true
+              ? Math.min(Math.max(Number(args.wait_seconds) || 600, 10), 1800)
+              : Math.min(Math.max(Number(args.sync_timeout_s) || 240, 10), 540)
             if (base) {
               const deadline = Date.now() + timeoutS * 1000
               let lastPollError = ''
@@ -230,13 +236,13 @@ export default {
                   }
                   catch { /* 未接线时忽略 */ }
                   const rep = st?.result?.report_md_path ?? '-'
-                  return { text: `✅ 同步诊断完成 task_id=${r.runId}(${via})\n评分=${st?.result?.score ?? '-'} 结论=${st?.result?.verdict ?? '-'}\nreport_md_path=${rep}\n总结:${String(st?.result?.summary ?? '').slice(0, 800)}\n\n入库知识库:调用 rag-bridge 的 kb_agent(mode=async,prompt=「请把这份深度诊断报告入库到 aw-industrial 知识库:读取文件 ${rep} 的全文内容并入库,完成后报告 doc_path 与分块数。标签:诊断、深度诊断。」),完成后 kb_agent_status(task_id) 查询。` }
+                  return { text: `✅ 同步诊断完成 task_id=${r.runId}(${via})\n评分=${st?.result?.score ?? '-'} 结论=${st?.result?.verdict ?? '-'}\nreport_md_path=${rep}\n总结:${String(st?.result?.summary ?? '').slice(0, 800)}\n结果已存分析结果台账(diag_results / diag_result_get 可随时复查)。\n\n入库知识库:调用 rag-bridge 的 kb_agent(wait=true,wait_seconds=600,prompt=「请把这份深度诊断报告入库到 aw-industrial 知识库:读取文件 ${rep} 的全文内容并入库,完成后报告 doc_path 与分块数。标签:诊断、深度诊断。」),完成后 kb_agent_status(task_id) 查询。` }
                 }
                 if (status === 'failed' || status === 'stopped') {
                   return { text: `分析任务 ${r.runId} 以 ${status} 结束:${st?.result?.error ?? '详见 diag_status'}`, isError: true }
                 }
               }
-              return { text: `已发起${intentLabel(r.intent)}任务 task_id=${r.runId}(${via})。同步等待 ${timeoutS}s 超时,分析仍在后台运行${lastPollError ? `(最近一次轮询失败:${lastPollError})` : ''}——完成后平台会自动把结果回执到你的信箱并唤醒你;也可 diag_status(run_id=${r.runId}) 主动查询。注入的分析问题:${r.question}` }
+              return { text: `已发起${intentLabel(r.intent)}任务 task_id=${r.runId}(${via})。等待 ${timeoutS}s 窗口内未完(仍在后台运行${lastPollError ? `(最近一次轮询失败:${lastPollError})` : ''})——任务结果会存入分析结果台账;完成后平台会自动把结果回执到你的信箱并唤醒你;也可 diag_status(run_id=${r.runId}) 主动查询。注入的分析问题:${r.question}` }
             }
           }
           return {

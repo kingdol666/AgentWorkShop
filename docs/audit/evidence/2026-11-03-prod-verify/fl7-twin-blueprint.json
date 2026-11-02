@@ -1,0 +1,111 @@
+{
+  "simPort": 4055,
+  "mqttPort": 56830,
+  "note": "FL-7 灌装线孪生蓝图 — 由 docs/protocol/2026-11-02-filling-line-FL7-protocol-manual.md §2/§3/§5 与 2026-11-02 实跑导出(02-twin-export.json)复原;动力学严格取手册 §5 公式。",
+  "devices": [
+    {
+      "id": "f7-filler",
+      "name": "灌装主机 FX7-PLC",
+      "protocol": "modbus-tcp",
+      "port": 37686,
+      "unitId": 2,
+      "signals": [
+        { "id": "conveyor-speed-sp", "name": "传送带速度SP", "unit": "瓶/min", "min": 0, "max": 80, "decimals": 1, "kind": "sp", "initial": 36 },
+        { "id": "fill-head-pressure-sp", "name": "灌装头压力SP", "unit": "bar", "min": 0, "max": 6, "decimals": 2, "kind": "sp", "initial": 2.6 },
+        {
+          "id": "fill-volume-pv",
+          "name": "灌装量PV",
+          "unit": "mL",
+          "min": 0,
+          "max": 1000,
+          "decimals": 2,
+          "kind": "pv",
+          "dynamics": {
+            "base": 494.0,
+            "tau": 6,
+            "noise": 0.5,
+            "follows": [
+              { "sp": "灌装头压力SP", "gain": 6.0, "at": 2.6 },
+              { "sp": "传送带速度SP", "gain": 0.35, "at": 36 }
+            ]
+          }
+        },
+        {
+          "id": "line-beat-pv",
+          "name": "产线节拍PV",
+          "unit": "瓶/min",
+          "min": 0,
+          "max": 80,
+          "decimals": 2,
+          "kind": "pv",
+          "dynamics": { "base": 34.6, "tau": 3, "noise": 0.05, "follows": [{ "sp": "传送带速度SP", "gain": 0.48, "at": 36 }] }
+        }
+      ]
+    },
+    {
+      "id": "f7-checkweigher",
+      "name": "检旋机(485 总线)",
+      "protocol": "modbus-rtu",
+      "port": 37688,
+      "unitId": 5,
+      "signals": [
+        { "id": "torque-pv", "name": "瓶盖扭矩PV", "unit": "N·m", "min": 0, "max": 5, "decimals": 2, "kind": "pv" }
+      ]
+    },
+    {
+      "id": "f7-cip",
+      "name": "CIP 就地清洗撬块",
+      "protocol": "opcua",
+      "port": 4862,
+      "signals": [
+        { "id": "cip-flow-sp", "name": "CIP冲洗流量SP", "unit": "L/min", "min": 0, "max": 50, "decimals": 1, "kind": "sp", "initial": 28 },
+        {
+          "id": "cip-level-pv",
+          "name": "CIP液位PV",
+          "unit": "%",
+          "min": 0,
+          "max": 100,
+          "decimals": 2,
+          "kind": "pv",
+          "dynamics": { "base": 61.5, "tau": 10, "noise": 0.2, "follows": [{ "sp": "CIP冲洗流量SP", "gain": 0.5, "at": 28 }] }
+        },
+        { "id": "cip-temp-pv", "name": "洗液温度PV", "unit": "℃", "min": 0, "max": 100, "decimals": 2, "kind": "pv", "dynamics": { "base": 64.5, "tau": 20, "noise": 0.6 } }
+      ]
+    },
+    {
+      "id": "f7-env",
+      "name": "环境遥测",
+      "protocol": "mqtt",
+      "signals": [
+        { "id": "env-temp-pv", "name": "环境温度PV", "unit": "℃", "min": 0, "max": 60, "decimals": 2, "kind": "pv", "dynamics": { "base": 24, "tau": 30, "noise": 0.5 } },
+        { "id": "env-humidity-pv", "name": "环境湿度PV", "unit": "%RH", "min": 0, "max": 100, "decimals": 2, "kind": "pv", "dynamics": { "base": 55, "tau": 30, "noise": 1.2 } }
+      ]
+    },
+    {
+      "id": "f7-backpressure",
+      "name": "灌装背压远程设定",
+      "protocol": "mqtt",
+      "signals": [
+        { "id": "bp-set", "name": "灌装背压SP", "unit": "bar", "min": 0, "max": 6, "decimals": 2, "kind": "sp", "initial": 1.8 },
+        {
+          "id": "bp-confirm-pv",
+          "name": "背压确认",
+          "unit": "bar",
+          "min": 0,
+          "max": 6,
+          "decimals": 3,
+          "kind": "pv",
+          "dynamics": { "base": 1.8, "tau": 1, "noise": 0.006, "follows": [{ "sp": "灌装背压SP", "gain": 1.0, "at": 1.8 }] }
+        }
+      ]
+    },
+    {
+      "id": "f7-gw",
+      "name": "灌装主机网关 GW-F7",
+      "protocol": "http",
+      "signals": [
+        { "id": "accuracy-profile-pv", "name": "灌装精度截面向量", "unit": "mm", "min": 0, "max": 10, "decimals": 3, "kind": "pv", "format": "vector", "initial": 1.0 }
+      ]
+    }
+  ]
+}

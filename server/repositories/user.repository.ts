@@ -1,7 +1,8 @@
 import { existsSync } from 'node:fs'
 import { backupRegistry } from '../services/workshop/db/backup-registry'
 import { join, resolve } from 'node:path'
-import { randomBytes, randomUUID, scryptSync, createHash, timingSafeEqual } from 'node:crypto'
+import { randomBytes, randomUUID, scryptSync, createHash, timingSafeEqual, scrypt as scryptAsync } from 'node:crypto'
+import { promisify } from 'node:util'
 import { DatabaseSync } from 'node:sqlite'
 import { ensureDataDir } from '@/shared/config/home.mjs'
 import type { Paginated, User, UserListQuery, UserToken } from '../types/user'
@@ -179,6 +180,28 @@ export function verifyPassword(password: string, stored: string): boolean {
   const expected = Buffer.from(hex, 'hex')
   const actual = scryptSync(password, salt, expected.length)
   return expected.length === actual.length && timingSafeEqual(expected, actual)
+}
+
+// ===== P2-9(2026-11-01):异步 scrypt 变体 =====
+// 热路径(登录/改密校验)走 worker 线程池(scrypt 回调),不再阻塞事件循环 ——
+// 单次 ~50-100ms 的 CPU 阻塞在并发登录时会排队放大为秒级卡顿(验收计划 P2-9)。
+// 管理面低频路径(创建/改密写入)保留同步版:调用点在同步 SQLite 事务链上,
+// 异步化会外溢到仓库 API 形状(18+ 点),收益/风险比不划算 —— 显式记录为设计取舍。
+
+const scryptP = promisify(scryptAsync) as (p: string, s: string, l: number) => Promise<Buffer>
+
+/** 异步校验密码(登录/改密热路径专用;语义与 verifyPassword 完全一致) */
+export async function verifyPasswordAsync(password: string, stored: string): Promise<boolean> {
+  const [salt, hex] = stored.split(':')
+  if (!salt || !hex) return false
+  const expected = Buffer.from(hex, 'hex')
+  try {
+    const actual = await scryptP(password, salt, expected.length)
+    return expected.length === actual.length && timingSafeEqual(expected, actual)
+  }
+  catch {
+    return false
+  }
 }
 
 // ===== Token 哈希 =====

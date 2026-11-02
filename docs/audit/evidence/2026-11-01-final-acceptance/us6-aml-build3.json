@@ -1,0 +1,1 @@
+{"code":0,"message":"ok","data":{"result":{"text":"history_steps 必须为 1~2048 的整数(历史窗口步数)。","isError":true}}}

@@ -39,9 +39,24 @@ export interface ChannelMail {
   parts: Part[]
   metadata: Record<string, unknown>
   /** 投递状态:pending=未消费 / consuming=消费中 / consumed=已消费 */
-  state: 'pending' | 'consuming' | 'consumed'
+  state: 'pending' | 'consuming' | 'consumed' | 'dead'
   createdAt: string
   consumedAt: string | null
+}
+
+/**
+ * 人类群聊投递消息(平台盖章 x-aw-source-chat-message-id;非 Agent 间协作)。
+ *
+ * 这类消息必须走消息回合(processMessage)收尾的 platformReply 才能把答复回写群聊;
+ * poll_messages 的「读即取」一旦认领,poll 轮次内的文本不会触发 platformReply,
+ * 用户就永远收不到回答(实测:15:15 提问被 lead 的 poll 取走,15:50 群聊仍无回复)。
+ */
+export function isHumanChatDelivery(m: { metadata?: Record<string, unknown> }): boolean {
+  const meta = m.metadata ?? {}
+  const from = meta['x-aw-from-agent']
+  if (typeof from === 'string' && from.length > 0) return false
+  const sourceChatId = meta['x-aw-source-chat-message-id']
+  return typeof sourceChatId === 'string' && sourceChatId.length > 0
 }
 
 /** A2A 成果:任务作业产出的内容集合 */

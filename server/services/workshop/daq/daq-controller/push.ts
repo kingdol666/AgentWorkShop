@@ -196,6 +196,28 @@ export abstract class DaqControllerPush extends DaqControllerState {
     catch { /* 已停 */ }
   }
 
+  /** R-2(2026-11-01):driverConfig 变更 → 清退避 + 回收订阅,下一拍按新指纹重建。
+   *  与轮询路径 PATCH→rearm 语义对齐:改配置 = 立即放弃旧退避,绝不"修好配置还要
+   *  等满退避窗"(实测 broker 长期死亡后修正 endpoint,热修被迫重建节点)。 */
+  protected daqPushRearm(nodeId: string): void {
+    this.pushRetryAt.delete(nodeId)
+    void this.stopPushBinding(nodeId)
+    // 死连接驱逐:broker 长期死亡后池内条目可能处于僵尸态(mqtt.js 重连循环不再推进
+    // 且永不自愈,实测"重建节点才恢复"的真实根因)。这里按节点当前 broker 键驱逐,
+    // 下一次订阅(本拍 syncPushBindings)全新建连,彻底摆脱僵尸条目。
+    try {
+      const node = this.repo.byId(nodeId)
+      const drv = node ? resolveDaqDriver(node.driver) : null
+      if (node && drv && typeof drv.evictPoolConn === 'function') drv.evictPoolConn(node.driverConfig ?? {})
+    }
+    catch { /* 驱逐失败不阻断对账:退避已清,退避窗后自然重试 */ }
+    // 立即对账一次(不等 250ms 扫描):改配置即刻生效的最后一环。
+    try {
+      this.syncPushBindings()
+    }
+    catch { /* 对账异常由 sweep 的 guardStep 兜底 */ }
+  }
+
   /** 停止全部订阅(网关停止/进程退出) */
   async stopAllPushBindings(): Promise<void> {
     const ids = [...this.pushBindings.keys()]

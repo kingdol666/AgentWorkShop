@@ -1,0 +1,39 @@
+{
+  "rid": "20261102105040-agent-multiround",
+  "at": "2026-11-02T11:05:43.096Z",
+  "base": "http://127.0.0.1:3005",
+  "scenarios": [
+    "injection"
+  ],
+  "runs": 1,
+  "budgetMin": 15,
+  "rows": [
+    {
+      "condition": "C3",
+      "scene": "injection",
+      "run": 1,
+      "seed": "",
+      "pv": 31.23,
+      "target": 32.5,
+      "tol": 0.35,
+      "inBand": false,
+      "guardsOk": false,
+      "finalState": "BUDGET_TIMEOUT",
+      "writes": 0,
+      "rounds": 0,
+      "wallS": 902.84,
+      "budgetMin": 15,
+      "channel": "ea2c7e8d-6f11-4f6f-8e92-a44eb0b8d6df",
+      "taskId": "82ce0eef-5f55-4491-a4f5-028b35fc2f73"
+    }
+  ],
+  "runLogs": [
+    {
+      "episode": 1,
+      "tag": "c3-1czc-r1",
+      "wallS": 902.84,
+      "exit": 1,
+      "optloopDir": "D:\\codes\\ABO\\AgentWorkShop\\bench\\results\\20261102105040-1c9c-optloop"
+    }
+  ]
+}

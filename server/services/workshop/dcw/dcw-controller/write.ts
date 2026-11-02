@@ -135,8 +135,10 @@ export abstract class DcwControllerWrite extends DcwControllerBindings {
           }
         }
       }
-      // 60s 成功间隔:只认最近一次**成功**下发(失败尝试不占用窗口)
-      const previousAt = node.lastWriteAt ? Date.parse(node.lastWriteAt) : NaN
+      // 60s 成功间隔:只认最近一次**改变设定值**的成功下发。
+      // 保写心跳按 holdIntervalMs 同值重发不推进基准,否则心跳与 Agent 写会互相饿死
+      // (2026-11-02 端到端演示实测活锁:每 60s 心跳刷新,Agent 永远"还需 60s")。
+      const previousAt = node.lastChangeAt ? Date.parse(node.lastChangeAt) : NaN
       if (Number.isFinite(previousAt)) {
         const elapsed = Date.now() - previousAt
         if (elapsed < 60_000) {

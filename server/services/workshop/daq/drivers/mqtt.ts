@@ -128,6 +128,29 @@ function brokerUrl(cfg: Record<string, unknown>): string {
   return `mqtt${secure ? 's' : ''}://${String(cfg.host)}:${Number(cfg.port ?? 1883)}`
 }
 
+/** R-2(2026-11-01):按配置驱逐池内连接(尽力而为)。
+ *  broker 长期死亡后,池内条目可能处于僵尸态:mqtt.js 重连循环不再推进、connected 恒
+ *  false、节点侧每次订阅快速失败 —— 此前唯一的恢复手段是重建节点(整条订阅随新节点
+ *  全新建连)。这里主动 end(true) 并从池移除,下一次订阅全新建连,热修 endpoint 即刻生效。
+ *  仅驱逐"当前未连接"的条目:连接健康的条目绝不碰(不影响其他共享该 broker 的节点)。 */
+export function evictMqttPoolConn(cfg: Record<string, unknown>): boolean {
+  try {
+    const key = safeMqttKey(cfg)
+    const conn = mqttPool.get(key)
+    if (!conn) return false
+    if (conn.connected) return false // 健康连接不驱逐
+    mqttPool.delete(key)
+    try {
+      conn.client.end(true)
+    }
+    catch { /* 已死 */ }
+    return true
+  }
+  catch {
+    return false
+  }
+}
+
 /** 订阅单 topic(SUBACK 等待;5s 超时;重连时由 connect 事件重放) */
 async function subscribeTopic(conn: MqttConn, topic: string, qos: number): Promise<void> {
   await new Promise<void>((resolve, reject) => {
@@ -455,6 +478,11 @@ export const mqttDaqDriver: DaqDriver = {
     const decodeKeys = ['jsonPath', 'valuePath', 'pointsPath', 'metricsPath', 'imageFormat', 'payloadFormat', 'imagePath', 'imageMime', 'mimePath', 'imageWidthPath', 'imageHeightPath', 'width', 'height', 'decoder', 'imageMaxBytes']
     const decode = decodeKeys.map(k => `${k}=${String(c[k] ?? '')}`).join('|')
     return `${safeMqttKey(c)}|topic=${String(c.topic ?? '')}|qos=${Number(c.qos ?? 1)}|${decode}`
+  },
+
+  /** R-2:驱逐未连接的僵尸池条目(健康连接绝不碰);修复配置后下次订阅全新建连 */
+  evictPoolConn(driverConfig) {
+    return evictMqttPoolConn(driverConfig)
   },
 
   async sample({ driverConfig, signalKind, ctx }) {

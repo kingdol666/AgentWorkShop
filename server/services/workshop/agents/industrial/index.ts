@@ -25,6 +25,7 @@ export { toolAmlNodeCatalog, toolAmlDatasetBuild, toolAmlDatasetStats } from './
 export { toolAmlJobSubmit, toolAmlJobStatus, toolAmlJobLogs, toolAmlJobCancel, toolAmlLeaderboard, toolAmlModelFind, toolAmlModelPromote, toolAmlModelReference, toolAmlModelAnnotate, toolAmlTrainingPlanList, toolAmlTrainingPlanTrain, toolAmlTrainingPlanCreate } from './aml-job-tools'
 
 export { toolOptimizationExplore } from './optimization-tools'
+export { toolDaqIdentifiability, toolInterventionHistory } from './identifiability-tools'
 export { toolTwinProviderCatalog, toolTwinSceneDiscover, toolTwinSceneCompile, toolTwinSceneFreeze, toolTwinSceneRead, toolTwinPhysicsSpecDraft, toolTwinPhysicsSpecValidate, toolTwinPhysicsSpecCompile, toolTwinSnapshotCreate, toolTwinTrialRun, toolMpcOptimize, toolTwinGateEvaluate, toolTwinCalibrationRequest, toolTwinBayesOptimize } from './twin-tools'
 export { toolAmlActivity } from './aml-activity'
 export { toolRecipePropose } from './recipe-propose-tools'

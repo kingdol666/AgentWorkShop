@@ -1,6 +1,0 @@
-range,lower,upper,unit,source_note
-hard,0.06,0.94,normalized sketch position,conceptual layout coordinate; not experimental data
-baseline,0.16,0.84,normalized sketch position,conceptual layout coordinate; not experimental data
-product,0.12,0.88,normalized sketch position,conceptual layout coordinate; not experimental data
-recipe,0.3,0.7,normalized sketch position,conceptual layout coordinate; not experimental data
-admissible_intersection,0.3,0.7,normalized sketch position,conceptual intersection only; not experimental data

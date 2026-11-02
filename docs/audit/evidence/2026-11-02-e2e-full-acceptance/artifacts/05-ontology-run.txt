@@ -1,0 +1,16 @@
+✔ [L2.1] 创建/复用草稿 — reused=true id=ontd-mvz7incc-okxzud
+✔ [L2.2] PATCH 草稿文档(整份保存) — status=200 {"code":0,"message":"ok","data":{"draft":{"id":"ontd-mvz7incc-okxzud","rev":12,"ontologyId":"ont-fl7-1102"},"validation":{"ok":true,"issues":[],"stats":{"entities":9,"relations":5,"rules":3
+✔ [L2.2a] rev 过期写被拒(乐观锁) — saved=200 stale=409
+✔ [L2.3] validate 校验(实体/规则/绑定齐) — {"entities":9,"relations":5,"rules":3,"bindings":10,"byState":{"proposed":3,"reviewed":0,"validated":0,"approved_for_control":0,"deprecated":0},"byEvidence":{"candidate_influence":2,"observed_correlat
+✔ [L2.4] compile 编译(四产物) — status=200 artifacts={"processModel":{"featureCandidates":[{"entityKey":"pv.fill_pressure","role":"feature","relation":"influences→cv.fill_volume","evidenceLevel":"validated_control
+✔ [L2.5] 无批准不得 approved_for_control(守卫) — status=403
+✔ [L2.6] R-BOUND 批准链(approval→decision) — approvalId=oap-mvz7qzcn-b5pmkw status=200
+✔ [L2.7] R-BOUND → approved_for_control — status=200
+✔ [L2.8] R-GUARD reviewed ✓ 且 candidate 证据不得 validated(证据档纪律) — reviewed=200 validatedBlocked=422
+✔ [L2.9] publish 发布 — status=200 version=5
+✔ [L2.10] versions 有记录 — count=5
+✔ [L2.11] RuleTrace 可查 — count=3
+✔ [L2.12] scene 语义卡(三层合并) — bytes=163
+✔ [L2.13] ontology export bundle — bytes=15300
+
+=== US-005 本体: 14 通过 / 0 失败 ===

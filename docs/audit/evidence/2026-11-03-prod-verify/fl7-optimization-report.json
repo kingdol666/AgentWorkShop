@@ -1,0 +1,184 @@
+{
+  "at": "2026-11-02T17:32:33.099Z",
+  "scope": {
+    "platform": "isolated-instance:3970",
+    "simulator": "plc-node-simulator(modbus-tcp/rtu/opcua/mqtt/http)",
+    "deviceLayer": "simulated-twin",
+    "realPlant": false
+  },
+  "lineId": "ln-73d9e4b2",
+  "doc": "docs/protocol/2026-11-02-filling-line-FL7-protocol-manual.md",
+  "doe": {
+    "planId": "pexp-mvzj987k-1mot",
+    "levels": [
+      2.6,
+      2.7,
+      2.8
+    ],
+    "control": "dw-e12e28de",
+    "target": "dn-969587e0",
+    "cost": {
+      "levelsPerControl": 3,
+      "levelsTotal": 3,
+      "controls": 1,
+      "repeats": 1,
+      "steps": 3,
+      "perStepMs": 61000,
+      "totalDurationMs": 183000,
+      "suggestedWindowMs": null,
+      "dominantPeriodMs": null,
+      "summary": "1 个控制量共 3 个水平 × 1 轮 = 3 步;每步 61s(驻留 60s,真实线 60s 写间隔下限 + 观测 1s);预计总时长 ≈ 0.05 小时"
+    }
+  },
+  "baseline": {
+    "fillVolume": 495.61325446428566,
+    "sp": 2.6,
+    "band": {
+      "lo": 496,
+      "hi": 504,
+      "target": 500
+    }
+  },
+  "ledger": [
+    {
+      "id": "intv-mvzj9lxs-91kmcy",
+      "from": 2.6,
+      "to": 2.7,
+      "effect": -0.032413793103387434,
+      "verdict": "underpowered",
+      "ciLow": -0.43620689655170963,
+      "ciHigh": 0.2958620689653344,
+      "mde": 2.000282189421942,
+      "ts": "2026-11-03T01:28:59.728+08:00"
+    },
+    {
+      "id": "intv-mvzjax1a-cmyvnk",
+      "from": 2.7,
+      "to": 2.6,
+      "effect": -0.39827586206899923,
+      "verdict": "identifiable_effect",
+      "ciLow": -0.5462068965515527,
+      "ciHigh": -0.2455172413791047,
+      "mde": 0.38676624919751473,
+      "ts": "2026-11-03T01:30:00.766+08:00"
+    },
+    {
+      "id": "intv-mvzjc84z-fy3b8y",
+      "from": 2.6,
+      "to": 2.8,
+      "effect": 1.095431034482715,
+      "verdict": "identifiable_effect",
+      "ciLow": 0.9407881773400391,
+      "ciHigh": 1.2344827586205724,
+      "mde": 0.5638916559088408,
+      "ts": "2026-11-03T01:31:01.811+08:00"
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev-intv-intv-mvzjc84z-fy3b8y",
+      "target_key": "dw-e12e28de->dn-969587e0",
+      "level": "observed",
+      "source_type": "intervention",
+      "source_ref": "intv-mvzjc84z-fy3b8y"
+    },
+    {
+      "id": "ev-intv-intv-mvzjax1a-cmyvnk",
+      "target_key": "dw-e12e28de->dn-969587e0",
+      "level": "observed",
+      "source_type": "intervention",
+      "source_ref": "intv-mvzjax1a-cmyvnk"
+    },
+    {
+      "id": "ev-intv-intv-mvzj9lxs-91kmcy",
+      "target_key": "dw-e12e28de->dn-969587e0",
+      "level": "observed_weak",
+      "source_type": "intervention",
+      "source_ref": "intv-mvzj9lxs-91kmcy"
+    }
+  ],
+  "estimatedGain": 3.9827586206899888,
+  "dispatch": {
+    "lastLevel": 2.8,
+    "targetSp": 4.14,
+    "recipeVersion": 4
+  },
+  "final": {
+    "fillVolume": 497.48794642857143
+  },
+  "pass": 14,
+  "fail": 0,
+  "failures": [],
+  "checks": [
+    {
+      "id": "O1",
+      "name": "基线灌装量可观测且低于目标带",
+      "detail": "mean=495.613 mL SP=2.6 band=[496,504]"
+    },
+    {
+      "id": "O2a",
+      "name": "真实线计划创建即待批准",
+      "detail": "status=awaiting_approval"
+    },
+    {
+      "id": "O2b",
+      "name": "成本前置核算(3 步 × 61s,含 60s 写间隔下限)",
+      "detail": "1 个控制量共 3 个水平 × 1 轮 = 3 步;每步 61s(驻留 60s,真实线 60s 写间隔下限 + 观测 1s);预计总时长 ≈ 0.05 小时"
+    },
+    {
+      "id": "O3",
+      "name": "未批准执行被拒",
+      "detail": "{\"code\":\"EXPERIMENT_APPROVAL_REQUIRED\",\"message\":\"计划 pexp-mvzj987k-1mot 为真实产线计划且尚未批准:须先 HITL 批准(appr"
+    },
+    {
+      "id": "O4a",
+      "name": "批准后 planned",
+      "detail": "planned"
+    },
+    {
+      "id": "O4b",
+      "name": "随机化执行完成 3/3",
+      "detail": "done 3/3 201s "
+    },
+    {
+      "id": "O5a",
+      "name": "台账 3 行且判定已收口",
+      "detail": "underpowered,identifiable_effect,identifiable_effect"
+    },
+    {
+      "id": "O5b",
+      "name": "判定回灌本体证据(逐干预可追溯)",
+      "detail": "3 条 source_ref=intervention"
+    },
+    {
+      "id": "O6a",
+      "name": "可从实验数据估出增益",
+      "detail": "gain=3.9828 mL/bar(样本 3;手册真值 6.0)"
+    },
+    {
+      "id": "O6b",
+      "name": "增益方向正确且量级合理",
+      "detail": "gain=3.9828"
+    },
+    {
+      "id": "O7a",
+      "name": "目标 SP 在工艺窗内(≤4.2bar)",
+      "detail": "propose=4.145 → SP=4.14(当前 2.8 494.644mL)"
+    },
+    {
+      "id": "O7b",
+      "name": "配方版本化更新受理",
+      "detail": "v=4 params=36/4.14/28/1.8"
+    },
+    {
+      "id": "O7c",
+      "name": "配方整包下发且逐点回读一致",
+      "detail": "ok=4/4"
+    },
+    {
+      "id": "O8",
+      "name": "灌装量进入 J1 目标带(控得好)",
+      "detail": "after=497.488 mL band=[496,504] Δ=1.875"
+    }
+  ]
+}

@@ -1,53 +1,63 @@
 \subsection{Approval, Execution, and Evidence}
 \label{sec:mech}
-Routes add timing checks and request approval when the operation and its
-configuration require it. Outside benchmark mode, online agent and manual
-node writes must be at least 60\,s apart. Recipe trials follow a per-line
-cadence of 300\,s by default; their intervals start at approval.
-Manual approval binds an actor and proposed operation to candidate values,
-applicable limits, expiry, and the active line--product--recipe--run tuple.
-After approval, the handler rechecks authority and compares the current tuple
-with the approved tuple before device-write dispatch. Single-parameter waits
-expire after 180\,s by default. Recipe-dispatch approvals have a 30-minute
-window. A changed recipe definition requires a new
-\texttt{recipe\_apply} proposal.
+Approval behavior depends on the operation route. For a single-node
+\texttt{optimization\_explore} request in manual mode, the handler sends the
+node, requested value, current effective interval, and stated rationale to the
+approval service, then waits before calling the governed write operation. A
+decline or timeout returns without reaching the controller write. While the
+request is pending, the handler does not dispatch. After approval, it rechecks
+the applicable node binding and channel grant. The shared write controller
+then evaluates the current engineering, parameter, product, and recipe limits,
+along with the step and write-interval rules, before dispatching to the
+configured driver. This single-node path does not use the recipe-operation
+context snapshot described below.
 
-Fig.~\ref{fig:hitl}(a) illustrates the four-layer interval in
-Eq.~(\ref{eq:admission}) as a conceptual intersection of configured bounds;
-its horizontal positions do not represent measured or run-derived values.
-Panel (b) shows the decision and rechecks when approval is required.
+Recipe operations use a separate approval path. For \texttt{recipe\_trial}
+and \texttt{recipe\_apply}, the approval is bound to the recipe operation and
+active line--product--recipe--run context. After approval, the handler checks
+the authority and context again and verifies the recipe definition and
+candidate scope before dispatch. A changed context, revoked binding, or
+changed recipe definition prevents that proposal from proceeding. Recipe
+trial approvals use a 30-minute window by default; single-node approval waits
+expire after 180\,s by default. Online agent and manual node writes are
+separated by at least 60\,s outside benchmark mode, while recipe trials use a
+per-line cadence of 300\,s by default.
 
-\begin{figure*}[!t]
+Fig.~\ref{fig:hitl}(a) shows the configured bound intersection in
+Eq.~(\ref{eq:admission}); its horizontal positions are schematic and are not
+run-derived values. Panel (b) abstracts the conditional approval branch. The
+post-approval checks are route-specific: the single-node path rechecks its
+binding, channel grant, and current write guards, whereas recipe operations
+also revalidate the active context and recipe state.
+
+\begin{figure*}[t]
 \centering
-\includegraphics[width=\textwidth]{resources/fig5-nature-A.pdf}
-\caption{Admission and approval boundaries. (a) Conceptual intersection of
-the hard, baseline, product, and recipe bounds in Eq.~(\ref{eq:admission});
-horizontal positions are schematic and encode no experimental values.
-(b) When approval is required, a decline prevents dispatch; approval is
-followed by authority, context, and limit rechecks.}
+\includegraphics[width=\textwidth]{resources/fig-governance-approval-rev20261102.pdf}
+\caption{Configured limits define the admissible write interval, while approval controls dispatch. (a) Conceptual intersection of hard engineering, baseline, product, and recipe limits; horizontal positions are illustrative, not experimental values. (b) Pending requests are held, and decline or timeout prevents dispatch. Approved or non-gated requests pass route-specific rechecks before the shared write controller checks current limits, step, and write interval; node requests recheck the binding and channel grant, whereas recipe requests also recheck context, authority, definition, and scope.}
 \label{fig:hitl}
 \end{figure*}
 
-A \texttt{recipe\_trial} illustrates this sequence. The handler checks the
-bound recipe, active run, candidate parameters, and route timing. If approval
-is required, it requests approval and revalidates the request before submitting
-a bounded batch through the configured driver. It returns a receipt for each
-parameter. A trial does not save or apply a recipe version; the caller can
-retrieve later DAQ observations separately before updating, applying, or
-rolling back the recipe. The driver registry maps semantic controls to
-configured protocol drivers, so operation arguments do not contain
-protocol-specific details.
+A \texttt{recipe\_trial} illustrates the recipe-operation path. The handler
+checks the bound recipe, active run, candidate parameters, and route timing.
+If approval is required, it requests approval and then revalidates authority
+and context before submitting a bounded batch through the configured driver.
+It returns a receipt for each parameter. A trial does not save or apply a
+recipe version; the caller can retrieve later DAQ observations separately
+before updating, applying, or rolling back the recipe. The driver registry
+maps semantic controls to configured protocol drivers, so operation arguments
+do not contain protocol-specific details.
 
-Receipts record what happened to a command; observations record what followed
-in the process. Command results are graded as readback-verified,
+Receipts record what happened to a command; observations record what
+followed in the process. Command results are graded as readback-verified,
 transport-acknowledged, or unverified. A readback mismatch can trigger up to
-three reads at 2\,s intervals, and recipe batches retain verification outcomes
-for each parameter. A readback-verified result means the returned value
-matched the request. A transport acknowledgement alone does not establish that
-the device applied the value, and an unverified result does not establish a
-matching readback. DAQ stores later timestamped process observations, while
-recipe history, approvals, and task records remain with their owning services.
-Identifiers and timestamps can link these records when available, but a later
-observation alone does not prove that the command caused the measured change.
-Section~\ref{sec:eval} evaluates selected parts of this evidence chain under
-the stated test conditions.
+three reads at 2\,s intervals, and recipe batches retain verification
+outcomes for each parameter. A readback-verified result means the returned
+value matched the request. A transport acknowledgement alone does not
+establish that the device applied the value, and an unverified result does
+not establish a matching readback. DAQ stores later timestamped process
+observations, while recipe history, approvals, and task records remain with
+their owning services. Identifiers and timestamps can link these records
+when available, but a later observation alone does not prove that the command
+caused the measured change. Section~\ref{sec:eval} evaluates selected parts
+of this evidence chain under the stated test conditions.
+

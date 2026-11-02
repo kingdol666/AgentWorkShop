@@ -84,6 +84,12 @@ export class DcwNode {
   lastAckAt: string | null = null
   /** 最近一次**成功**下发(设备已证实/受理)的时刻;失败写不更新 */
   lastWriteAt: string | null = null
+  /**
+   * 最近一次**值发生变化**的成功下发时刻。
+   * 60s 在线写间隔以此为准:保写心跳(holdIntervalMs)按周期重发同一设定值,
+   * 若它刷新间隔基准,会让 Agent/试验计划的写入永远差 60s(实测活锁)。
+   */
+  lastChangeAt: string | null = null
   /** 最近一次写**尝试**的时刻(含失败);仅用于诊断/失败冷却,不参与 60s 成功间隔 */
   lastAttemptAt: string | null = null
   state: DcwNodeState = 'idle'
@@ -145,8 +151,11 @@ export class DcwNode {
     // write.ts 用 lastAttemptAt 做 5s 防轰炸。
     this.lastAttemptAt = at
     if (ok) {
+      const prev = this.value
       this.lastWriteAt = at
       this.value = Number(eng.toFixed(this.decimals))
+      // 只有真正改变设定值才推进 60s 间隔基准(同值保活写不算)
+      if (prev == null || Math.abs(Number(prev) - this.value) > 1e-9) this.lastChangeAt = at
       this.lastAckAt = at
       this.state = 'ok'
       this.lastError = null
@@ -198,6 +207,7 @@ export class DcwNode {
       lastReadError: this.lastReadError,
       lastAckAt: this.lastAckAt,
       lastWriteAt: this.lastWriteAt,
+      lastChangeAt: this.lastChangeAt,
       lastAttemptAt: this.lastAttemptAt,
       state: this.state,
       lastError: this.lastError,
@@ -236,6 +246,7 @@ export class DcwNode {
     if (row.lastReadError != null) node.lastReadError = String(row.lastReadError)
     if (row.lastAckAt != null) node.lastAckAt = String(row.lastAckAt)
     if (row.lastWriteAt != null) node.lastWriteAt = String(row.lastWriteAt)
+    if (row.lastChangeAt != null) node.lastChangeAt = String(row.lastChangeAt)
     if (row.lastAttemptAt != null) node.lastAttemptAt = String(row.lastAttemptAt)
     // 旧快照兼容:历史 lastWriteAt 是「尝试时间」语义,补一份到 lastAttemptAt
     else if (row.lastWriteAt != null) node.lastAttemptAt = String(row.lastWriteAt)
@@ -286,6 +297,7 @@ export class DcwNode {
       stepLimit: this.stepLimit,
       lastAckAt: this.lastAckAt,
       lastWriteAt: this.lastWriteAt,
+      lastChangeAt: this.lastChangeAt,
       lastAttemptAt: this.lastAttemptAt,
       state: this.state,
       lastError: this.lastError,

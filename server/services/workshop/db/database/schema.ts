@@ -53,7 +53,8 @@ CREATE TABLE IF NOT EXISTS messages (
   role          TEXT NOT NULL,                -- 'ROLE_USER' | 'ROLE_AGENT'
   parts_json    TEXT NOT NULL,
   metadata_json TEXT NOT NULL DEFAULT '{}',   -- x-aw-target-agent / x-aw-task-kind
-  state         TEXT NOT NULL DEFAULT 'pending',  -- pending|consuming|consumed
+  state         TEXT NOT NULL DEFAULT 'pending',  -- pending|consuming|consumed|dead(P3-4:重投达上限)
+  attempts      INTEGER NOT NULL DEFAULT 0,       -- P3-4:steer 失败重投计数(requeue +1)
   created_at    TEXT NOT NULL,
   consumed_at   TEXT
 );
@@ -1183,7 +1184,42 @@ CREATE TABLE IF NOT EXISTS ontology_rule_traces (
   row_hash         TEXT NOT NULL DEFAULT '',
   created_at       TEXT NOT NULL
 );
-CREATE INDEX IF NOT EXISTS idx_ontology_traces_version ON ontology_rule_traces(ontology_id, version, created_at DESC);`
+CREATE INDEX IF NOT EXISTS idx_ontology_traces_version ON ontology_rule_traces(ontology_id, version, created_at DESC);
+
+-- v34(科学探索计划 P2,2026-11-02):干预台账 —— 所有治理下发(manual/agent/recipe/rollback)
+-- 在 dcw write() 唯一咽喉单点入册,一行一次真实下发;verdict 由 aml/identifiability 引擎回填。
+-- 拒绝路径沿 recordOps 审计(dcw.write.rejected),不入本表(只记已受理下发)。
+CREATE TABLE IF NOT EXISTS intervention_events (
+  id               TEXT PRIMARY KEY,
+  ts               TEXT NOT NULL,                   -- 下发受理时刻(ISO)
+  line_id          TEXT NOT NULL DEFAULT '',
+  node_id          TEXT NOT NULL,
+  node_name        TEXT NOT NULL DEFAULT '',
+  from_value       REAL,
+  to_value         REAL,
+  actual_value     REAL,                            -- 回读证实值(readback-verified 时)
+  ack              TEXT NOT NULL DEFAULT '',        -- readback-verified|transport-ack|unverified
+  path             TEXT NOT NULL DEFAULT '',        -- manual|agent|recipe|rollback
+  actor            TEXT NOT NULL DEFAULT '',
+  actor_name       TEXT NOT NULL DEFAULT '',
+  channel_id       TEXT NOT NULL DEFAULT '',
+  approval_id      TEXT,
+  recipe_run_id    TEXT,
+  hypothesis       TEXT NOT NULL DEFAULT '',
+  target_node_id   TEXT,                            -- 判读目标(带判读上下文的路径写入)
+  criterion_json   TEXT,                            -- {metric, op, threshold, mde} 机器可读判据
+  settle_ms        INTEGER,                         -- 判读窗长
+  verdict          TEXT NOT NULL DEFAULT 'pending', -- pending|unassessed|identifiable_effect|no_resolvable_effect|underpowered|confounded
+  effect           REAL,
+  ci_low           REAL,
+  ci_high          REAL,
+  mde              REAL,
+  verdict_json     TEXT,
+  created_at       TEXT NOT NULL,
+  updated_at       TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_intervention_events_node ON intervention_events(node_id, ts DESC);
+CREATE INDEX IF NOT EXISTS idx_intervention_events_line ON intervention_events(line_id, ts DESC);`
 
 // ===== 默认种子数据(首轮初始化注入;owner NULL = 公共资源,所有登录用户只读共享) =====
 

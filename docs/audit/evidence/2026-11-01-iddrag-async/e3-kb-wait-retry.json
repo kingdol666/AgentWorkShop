@@ -1,0 +1,1 @@
+{"code":0,"message":"ok","data":{"result":{"text":"知识库 Agent 调用失败(本次调用即终态,失败结果已如实返回):fetch failed。请确认 rag-knowledge web(http://127.0.0.1:6789) 已启动后重试。","isError":true}}}

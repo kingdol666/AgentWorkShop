@@ -6,6 +6,7 @@
  *
  * 契约成员:
  *   drainFrames  → 由 frames.ts 实现
+ *   daqPushRearm  → 由 push.ts 实现(R-2:driverConfig 变更清退避+重建订阅)
  *   emitController  → 由 views.ts 实现
  *   emitNodeChanged  → 由 views.ts 实现
  *   evictFrames  → 由 frames.ts 实现
@@ -25,6 +26,8 @@ import type { DaqNode } from '../daq-node'
 
 export abstract class DaqControllerContracts {
   protected abstract drainFrames(): DaqFrameRow[]
+  /** R-2:driverConfig 变更后调用 —— 清该节点推送重试退避并立即对账订阅(对齐轮询路径 rearm 语义) */
+  protected abstract daqPushRearm(nodeId: string): void
   protected abstract emitController(): void
   protected abstract emitNodeChanged(op: AepDaqNodeChange['op'], node: DaqNode | null): void
   protected abstract evictFrames(keepLast: number): number

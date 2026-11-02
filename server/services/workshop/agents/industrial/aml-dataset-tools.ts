@@ -302,6 +302,9 @@ export async function toolAmlDatasetStats(_agentId: string, args: { dataset_id?:
       `  三元组: ${dataset.lineId} / ${dataset.productId} / ${dataset.recipeId} | 行数 ${dataset.rowCount} | 批次 ${dataset.runIds.length}(${report.runsUsed.length} 参与构建)| 创建 ${dataset.createdAt.slice(0, 19).replace('T', ' ')}`,
       statLines.length ? `\n逐节点统计(train 切分):\n${statLines.join('\n')}` : null,
       lagLines.length ? `\n控制→目标滞后(互相关峰值,正 = 控制领先):\n${lagLines.join('\n')}` : null,
+      (report.actionCoverage ?? []).length
+        ? `\n动作覆盖(role=control;G6 门依据 —— 水平<3 或与时间共线则模型学不到动作):\n${(report.actionCoverage ?? []).map(c => `- ${amlNodeName(c.controlId)}(${c.controlId}):水平 ${c.distinctLevels} 个,切换 ${c.stepCount} 次,时间共线 |r|=${c.collinearityWithTime.toFixed(3)},贴边 ${(c.saturationRatio * 100).toFixed(0)}%${c.levelPhaseMatrix.length ? `;水平×时间 {${c.levelPhaseMatrix.map(l => `${l.level}@${(l.meanPhase * 100).toFixed(0)}%`).join(', ')}}` : ''}`).join('\n')}`
+        : null,
       profileLines.length ? `\nrun 轮廓(逐批次目标均值,漂移检测):\n${profileLines.join('\n')}` : null,
       `\n窗口计数:train ${report.windowCount.train} / val ${report.windowCount.val} / test ${report.windowCount.test}(byRun 分层切分,防同批泄漏)`,
       report.runsDropped.length > 0 ? `丢弃批次:\n${report.runsDropped.map(d => `- ${d.runId}: ${d.reason}`).join('\n')}` : null,

@@ -1,0 +1,1 @@
+{"code":0,"message":"ok","data":{"result":{"text":"已提交知识库异步任务(后台执行中,无需等待):\ntask_id=kbt_mvxbn9us_e3dca7c1\n完成后平台会自动回执到你的信箱并唤醒你;空闲时也可调用 kb_agent_status(task_id, wait_seconds=120) 等待并获取结果。"}}}

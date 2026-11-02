@@ -38,9 +38,9 @@ aml/
 
 `GET /api/workshop/aml/env` 返回实际生效路径与来源,UI「运行环境」面板直接展示。
 
-## 设置(aml 组,16 项)
+## 设置(aml 组,19 项)
 
-设置页「运行配置」的 `aml` 组共 **16 个描述符**:阈值与配额类键为 `live`(保存即生效),
+设置页「运行配置」的 `aml` 组共 **19 个描述符**:阈值与配额类键为 `live`(保存即生效),
 Python 路径类键为 `restart`。
 
 | config 键 | 默认 | 生效 | 说明 |
@@ -101,7 +101,7 @@ CLI 例:`aw config set aml.gates.nrmse 0.12`、`aw config get aml.job.maxConcurr
 | `aml_training_plan_create` | 创建建模任务(场景 + 配方 + 目标 + 自动策略) |
 | `aml_training_plan_train` | 立即触发一次建模任务的训练 |
 
-这 14 个是**宿主工具**,定义在 `.AgentWorkShop/prompts/host-tools.json`(宿主工具面共 82 条),
+这 14 个是**宿主工具**,定义在 `.AgentWorkShop/prompts/host-tools.json`(宿主工具面共 107 条),
 与 MCP 面(`server/mcp/workshop-server.ts`,25 个进程内工具)是两套不同的表面。
 模型带人读身份:`label`(产线 · 配方 · 目标)+ `description` + `line_id`/`objective_id`。
 
@@ -209,7 +209,7 @@ worker(数据工程师 / 训练工程师 / 评测工程师),默认 harness `omp`
 无 Python 时作业报 `AML_PYTHON_MISSING` 指引;`AML_STUB=1` 启动可用存根运行器走通全链路
 (存根模型不可预测,晋升被深检拦截)。
 
-## 门禁 G1–G5
+## 门禁 G1–G6
 
 | 门禁 | 判据 | 默认阈值 | 设置键 |
 |---|---|---|---|
@@ -218,8 +218,38 @@ worker(数据工程师 / 训练工程师 / 评测工程师),默认 harness `omp`
 | G3 | 泛化差 `\|test−val\|/val` | ≤ 20% | `aml.gates.valTestGap` |
 | G4 | 训练行数 / 批次数 | ≥ 500 行、≥ 3 批次 | `aml.gates.minRows` / `aml.gates.minRuns` |
 | G5 | 工件完整性 | ONNX + io_spec 齐备 | — |
+| G6 | 动作覆盖(控制水平数 / 时间共线) | ≥ 3 水平、\|r\| ≤ 0.9 | `aml.gates.minControlLevels` / `aml.gates.maxCollinearity` |
+
+G6 回答"这份数据在动作维度有没有信息量":水平数 <3 无法区分线性/二次;控制量与时间推进
+共线(纯阶梯/单调斜坡)则"效应"可能只是漂移。**2 水平的 \|r\| 理论上限仅 0.866**,因此
+G6 另用"水平连续段"判据:每档只出现一段即判不可归因,要求 ≥2 个来回(ABAB)。
+v1 旧数据集无该字段时标 unknown 放行(不追溯误杀)。
 
 权威指标由平台评估器复算,不采信 Agent 自报;全部阈值 `live` 可调。
+
+## 科学探索闭环(可辨识性 / 干预台账 / DoE / 本体证据)
+
+预测精度 ≠ 因果可辨识。平台在 AML 之上提供一条**可证伪的探索闭环**:
+
+| 环节 | 机制 | 落点 |
+|---|---|---|
+| 可辨识性预检 | 主导扰动周期(自相关)、建议试验窗 = 3×周期、bootstrap CI、MDE、共线诊断;输出 `IDENTIFIABLE / UNDERPOWERED / CONFOUNDED / INSUFFICIENT_DATA` | `aml/identifiability.ts`;工具 `daq_identifiability` |
+| 干预台账 | **每一次已受理下发**(手动/Agent/配方/回退)在 DCW 写咽喉单点入行:意图值/实写值/回读证实/路径/依据 + 判定 | 表 `intervention_events`;工具 `intervention_history` |
+| 正交 DoE | 试验计划分级:仿真线直接执行;真实线需 HITL 单卡批准(卡上含成本核算),步序默认随机化(种子=计划 id)、跨控制量打散,支持告警中止与预算上限 | `process_model_experiments` + `experiment-runner.ts` |
+| 双通道互审 | 模型通道(ARX 阶跃仿真增益)vs 本体通道(actuator→target 耦合边);确证冲突 → `optimization_explore` 在 auto 模式直接拒(带可证伪说明),manual 交审批卡;unknown 不拦 | `aml/twin/cross-check.ts` + `cross-check-service.ts`(逃生门 `AW_CROSSCHECK_GATE=0`) |
+| 本体证据回灌 | 判定(效应/CI/MDE/负结论)追加到 `ontology_evidence`,可追溯、幂等;负结论计 refute | `aml/ontology-learning.ts` |
+| KB 防污染 | 入库审批卡标注"无证据锚的因果断言(anecdotal)"并留审计 | `agents/plugin-governance.ts` |
+
+关键语义:**窗口充分的零结果 = 可辨识的负结论**(可入库、可证伪),不是失败;只有窗长/覆盖
+不足才判 `UNDERPOWERED`,且此时**不得**声称有效应。
+
+上线安全约束(计划批准后执行器以平台身份直写,故全部前移):
+
+- 真实线计划**创建与执行双重校验**节点归属:跨线、节点不存在、targets 非 DAQ、水平越安全量程 → 422;
+- 运行中**可取消**(每步前感知),已执行步的台账与证据保留;
+- 真实线每步驻留 **≥60s**(与写联锁同口径),避免第 2 步被 429 打回白跑产线时间;
+- 僵死 `running` 超预算 +5min 自动置 failed,可重建计划;
+- 逃生门:`AW_IDENT_GATE=0`(可辨识性门禁)、`AW_CROSSCHECK_GATE=0`(互审强制);关闭即回到旧行为,风险自负。
 
 ## 治理与安全边界
 

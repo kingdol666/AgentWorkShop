@@ -1,0 +1,2 @@
+condition,scene,run,seed,pv,target,tol,inBand,guardsOk,finalState,writes,rounds,wallS,budgetMin
+C3,injection,1,,31.28,32.5,0.35,false,false,COMPLETED,0,0,301.48,20

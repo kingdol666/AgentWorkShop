@@ -1,0 +1,1 @@
+{"code":0,"message":"ok","data":{"result":{"text":"line_id / product_id / recipe_id 必填(隔离三元组,防配方串味;line_context 可查看当前批次的三个 id)。","isError":true}}}

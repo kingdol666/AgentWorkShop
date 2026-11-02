@@ -1,0 +1,35 @@
+✅ MV 镜像节点创建 — "ok"
+✅ 写 dw-95d41b71 → 3 — ack=readback-verified ok
+✅ 写 dw-da17b9db → 38 — ack=readback-verified ok
+✅ 写 dw-95d41b71 → 3.2 — ack=readback-verified ok
+✅ 写 dw-da17b9db → 36.5 — ack=readback-verified ok
+❌ 写 dw-95d41b71 → 2.8 — ack=undefined 节点「PROTO4-FL7-SP-灌装头压力」本次变化 0.40000000000000036bar 超过单步限制 0.2bar（来源:param）
+✅ 写 dw-da17b9db → 36 — ack=readback-verified ok
+激励完成,等待 40s 使 PV 稳定…
+❌ MV 镜像样本=2.8(跟随 S3) — last=3.2000000000000006 n=6
+
+Phase A: 6 通过 / 2 失败
+file:///D:/codes/ABO/AgentWorkShop/[eval1]:20
+j.recovery = [{ v: 3.0 }, { v: 2.8 }, mvLast: pts.at(-1)?.avg ]
+                                            ^
+
+Expected ',', got ':'
+
+SyntaxError: Unexpected token ':'
+    at compileSourceTextModule (node:internal/modules/esm/utils:318:16)
+    at ModuleLoader.createModuleWrap (node:internal/modules/esm/loader:210:12)
+    at node:internal/process/execution:321:29
+    at asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:101:11)
+    at Object.runEntryPointWithESMLoader (node:internal/modules/run_main:123:19)
+    at evalTypeScriptModuleEntryPoint (node:internal/process/execution:315:47)
+    at evalTypeScript (node:internal/process/execution:253:12)
+    at node:internal/main/eval_stdin:51:5
+    at Socket.<anonymous> (node:internal/process/execution:205:5)
+    at Socket.emit (node:events:521:24)
+
+Node.js v24.19.0
+✅ S3 → 3 ack=readback-verified ok
+✅ S3 → 2.8 ack=readback-verified ok
+等待 40s 稳定…
+✅ MV 镜像=2.8(跟随 S3=2.8)
+evidence updated

@@ -1,0 +1,1 @@
+{"code":0,"message":"ok","data":{"outcome":{"ok":true,"message":"写入并回读一致:240.5 → raw 240.5,回读 240.5(标定后物理值 240.5)","raw":240.5,"readback":240.5,"ack":"readback-verified","anchorId":"anc-c345bb7f"}}}

@@ -1,0 +1,14 @@
+{
+  "planId": "pexp-mvzk0vvb-8fko",
+  "created": "awaiting_approval",
+  "run": {
+    "planId": "pexp-mvzk0vvb-8fko",
+    "status": "failed",
+    "executedSteps": 0,
+    "totalSteps": 3,
+    "failedReason": "第 1 步写入被拒:节点「PROTO4-FL7-SP-灌装头压力」本次变化 1.3399999999999999bar 超过单步限制 0.2bar（来源:param）",
+    "verdicts": {},
+    "startedAt": "2026-11-03T01:50:12.328+08:00",
+    "finishedAt": "2026-11-03T01:50:12.337+08:00"
+  }
+}

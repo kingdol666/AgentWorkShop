@@ -1,96 +1,38 @@
 \section{Related Work}
 \label{sec:related}
-The closest work connects agent runtimes to industrial processes, assets, or
-plant-facing services. These studies differ in the operation boundary they
-implement and the evidence they report; Table~\ref{tab:nearest} summarizes
-representative examples.
+Work relevant to this system spans industrial-agent supervision, agent-facing manufacturing interfaces, and operation governance. The systems differ in their goals and evaluation methods. Table~\ref{tab:nearest} summarizes their mechanisms and reported evidence without ranking their results.
 
 \subsection{Industrial Agents and Plant Integration}
-Industrial-agent studies span production supervision, control generation,
-PLC programming, human-guided control, and equipment-facing assistance
-\cite{xia2025control,huang2026made,liu2026agents4plc,wu2025instructmpc,
-lim2025llmenabled,zhao2026shopfloor,gill2025llmdt,hofmann2025nlc,
-waseem2026pretrained}. Biskupovic et al. focus on service-oriented industrial
-cyber-physical systems: agents select services using performance and
-computational-load measures, monitor them online, and reconfigure selection
-when performance degrades \cite{biskupovic2025supervision}. This line of work
-studies agent decisions and service adaptation within industrial applications.
+Industrial agents have been used to supervise production services, generate control actions, program programmable logic controllers (PLCs), and coordinate manufacturing tasks. Biskupovic et al. study online selection and reselection of services in service-oriented industrial cyber--physical systems \cite{biskupovic2025supervision}. Xia et al. describe an architecture connecting language-model agents, digital twins, and automation systems \cite{xia2025architecture}; other work examines agent-generated control and PLC programs \cite{xia2025control,liu2026agents4plc,wu2025instructmpc}. Recent multi-agent work also evaluates module-level agents and skill execution in simulated manufacturing settings \cite{koehle2026llmdriven,zhao2026shopfloor}. These studies focus primarily on agent organization, control generation, or production coordination.
 
-Xia et al. organize cognitive, digital-twin, and physical-automation layers,
-representing twin information through snapshots, event messages, and plans
-\cite{xia2025architecture}. Other systems expose factory-module operations
-through MCP with state-based tool filtering, constrain manufacturing plans,
-or compose semantic recipes from OPC UA skills
-\cite{koehle2026llmdriven,silva2025mcpmanufacturing,
-koehle2025semanticrecipes}.
-Safety and audit mechanisms are also being integrated with agent execution.
-Graul et al. ground proposals in the AAS and route approved actions through
-OPC UA Methods with signed approvals and audit logging \cite{graul2026aas}.
-Schall separates advisory language-model agents from P\&ID-grounded
-verification and execution, evaluating structural checks across five
-simulated process scenarios \cite{schall2026safe}. Lin and Chen build a
-governed digital thread across sensors, MES, and ERP and evaluate closed-loop
-monitoring and control on manufacturing records \cite{lin2026agentic}.
+Agent-facing interfaces provide a second point of comparison. Vieira da Silva et al. examine MCP for exposing manufacturing capabilities as tools, while K{\"o}hle et al. compose semantic recipes from OPC Unified Architecture (OPC UA) skills \cite{silva2025mcpmanufacturing,koehle2025semanticrecipes}. Xavier et al. present IndustriConnect, a recent arXiv preprint on MCP adapters for Modbus, MQTT/Sparkplug B, and OPC UA, evaluated with a mock-first workflow and deterministic protocol tests \cite{xavier2026industriConnect}. A closely related study at the 2026 IEEE International Conference on Automation Science and Engineering (CASE) uses agents and MCP to commission a cognitive digital twin by extracting specifications and binding live telemetry; it reports robotic-cell validation and commissioning-time results \cite{liu2026semanticcommissioning}. Its focus is digital-twin commissioning, whereas the runtime studied here governs named operations after scene configuration and separates command evidence from process observations. The 2026 IEEE International Conference on Emerging Technologies and Factory Automation (ETFA) paper by K{\"o}hle et al. combines module-specific agents, MCP-wrapped OPC UA skills, MQTT coordination, and injected factory state, and reports nine simulated production challenges \cite{koehle2026llmdriven}. These results make tool interoperability and simulated manufacturing execution close comparators. IndustriConnect focuses on protocol adapters, whereas the ETFA study evaluates agent coordination and module skills. Here, we focus on binding a configured production tuple to semantic signal nodes and a shared operation path with route-specific governance. The experiments assess these integration paths; they do not compare system performance.
 
-The present work focuses on the boundary between an agent runtime and a
-configured production scene: scene-specific context and signal mappings
-remain explicit, while task-mediated and direct operations enter one shared
-dispatch path. Route handlers apply configured limits and approval
-requirements. Command receipts and subsequent process observations remain
-separate records. The studies in Table~\ref{tab:nearest} report different
-mechanisms and evaluation settings, so their outcomes are not compared as
-though they came from a common benchmark.
+\subsection{Governed Agent Operations}
+Safety and audit mechanisms have been integrated with agent execution in several forms. Graul et al. ground proposals in the Asset Administration Shell (AAS) and use signed approval, PLC-validated OPC UA Methods, and audit logging \cite{graul2026aas}. Schall separates large language model (LLM) proposals from verification grounded in piping and instrumentation diagrams (P\&IDs), supervisory control and data acquisition (SCADA), and standard operating procedures (SOPs), while Lin and Chen report a policy-governed sensor--manufacturing execution system (MES)--enterprise resource planning (ERP) digital thread \cite{schall2026safe,lin2026agentic}. The runtime studied here applies admission and approval between a named operation and its configured driver. PLCs, safety instrumented systems (SIS), and other plant-protection functions remain separate safeguards.
+
+Table~\ref{tab:nearest} compares the operation boundary and evaluation type reported in representative work. Published simulation and laboratory results are not directly comparable because the systems, tasks, and denominators differ.
 \begin{table*}[!t]
 \centering
-\caption{Reported operation mechanisms and evaluations in selected
-plant-facing studies. Evaluation settings and outcomes are source-specific;
-this table does not compare performance across studies.}
+\caption{Representative plant-facing agent systems and the scope of their reported evaluations.}
 \label{tab:nearest}
 \small
 \setlength{\tabcolsep}{3pt}
-\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{1.8cm}>{\raggedright\arraybackslash}p{7.0cm}>{\raggedright\arraybackslash}X@{}}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{1.75cm}>{\raggedright\arraybackslash}p{7.0cm}X@{}}
 \toprule
 System & Reported operation or integration mechanism & Reported evaluation \\
 \midrule
-Xia et al. \cite{xia2025architecture} & Cognitive, twin, and physical layers; twin snapshots, event messages, and plan sequences & Robotic automation and process-simulation cases \\
-Biskupovic et al. \cite{biskupovic2025supervision} & Agent-based selection and online reselection of services using performance and computational-load metrics & Reported adaptability and performance improvement in service-oriented industrial cyber-physical systems \\
-K{\"o}hle et al. \cite{koehle2026llmdriven} & Injected live state and state-based filtering; MCP-to-OPC UA operations and Message Queuing Telemetry Transport (MQTT) coordination & Nine simulated production challenges \\
-Vieira da Silva et al. \cite{silva2025mcpmanufacturing} & Constrained multi-step plans over MCP manufacturing functions & Laboratory multi-step process \\
-K{\"o}hle et al. \cite{koehle2025semanticrecipes} & Semantic recipes composed from OPC UA skills; virtual commissioning & Unity assembly-workstation proof of concept \\
-Graul et al. \cite{graul2026aas} & AAS-grounded proposals, signed human approval, PLC-validated OPC UA Methods, and immutable audit log & Two laboratory PoCs; single scripted runs \\
-Lin and Chen \cite{lin2026agentic} & Governed sensor--MES--ERP digital thread with SOP-, risk-, and capability-aware action gating & 25,275 real records; operational metrics \\
-Schall \cite{schall2026safe} & P\&ID-, SCADA-, and SOP-grounded proposal verification with gated execution & Five simulated scenarios; 43 proposals and 50 LLM runs \\
-\midrule
-This work & Common task-operation interface with registered harness adapters; scene-bound context and acquisition/write-node mappings; bounded named operations; separate command and observation records & One deterministic integrated simulator run; distinct protocol and guard checks, fixed-seed objective cases, and a scripted BOPET integration trace \\
+Biskupovic et al. \cite{biskupovic2025supervision} & Agent-based service selection and online reselection using performance and computational-load metrics & Industrial cyber--physical system study; service adaptability and performance \\
+Xia et al. \cite{xia2025architecture} & Cognitive, digital-twin, and physical-automation layers with twin snapshots, events, and plans & Robotic automation and process-simulation cases \\
+K{\"o}hle et al. \cite{koehle2026llmdriven} & Module-specific agents, MCP-to-OPC-UA skills, MQTT coordination, and injected factory state & Nine simulated production challenges; accepted ETFA 2026 paper \\
+Xavier et al. \cite{xavier2026industriConnect} & MCP adapters for industrial protocols with a common response envelope and mock-first testing & arXiv preprint: 870 benchmark runs and 2,820 tool calls \\
+Liu et al. \cite{liu2026semanticcommissioning} & Agentic semantic commissioning of a cognitive digital twin with MCP-based telemetry binding & Robotic machining cell; reported 97.2\% perception mean average precision (mAP) and commissioning in about 2 h \\
+Graul et al. \cite{graul2026aas} & AAS-grounded proposals, signed approval, PLC-validated OPC UA Methods, and audit log & Two laboratory proof-of-concept settings \\
+Schall \cite{schall2026safe} & P\&ID-, SCADA-, and SOP-grounded proposal verification with gated execution & Five simulated scenarios, 43 proposals, and 50 LLM runs \\
+Lin and Chen \cite{lin2026agentic} & Policy-governed sensor--MES--ERP digital thread & Manufacturing-record evaluation with operational metrics \\
+This work & Scene-bound production context and signal mappings; shared dispatch with route-specific write governance and separate command receipts and process-observation evidence & Two integrated pipeline executions (77 assertions each), a four-scene probe subset, five-seed scripted missions, and a three-repeat mock-driver process-window ablation \\
 \bottomrule
 \end{tabularx}
 \end{table*}
 
-Industrial-informatics architectures provide related foundations for
-communication and control boundaries. Gehrmann and Gunnarsson describe trust
-boundaries and synchronization requirements for digital-twin-based control
-and evaluate a protected-update proof of concept
-\cite{gehrmann2020dtiacs}. Mahmood et al. organize industrial-IoT functions
-around network requirements; Sengupta et al. distribute security services
-across fog and device layers and report simulation and testbed evidence
-\cite{mahmood2023functional,sengupta2021securefog}. These architectures
-address system decomposition and protection at different layers. The
-operation checks in this paper complement safety-aware decision support
-\cite{jiang2026agentic}; equipment interlocks and plant protection remain
-outside the application-level dispatch path.
-
-\subsection{Production Context, Agent Interfaces, and Automation}
-Several standards and methods define parts of this integration problem.
-MCP specifies interoperable tool discovery and calls \cite{mcp2024}; its
-transport-level authorization is separate from the platform's operation-level
-scope, policy, grant, and binding checks. ISA-88 and ISA-95 describe recipes
-and production operations \cite{isa88_2010,isa95_2025}, while run-to-run
-control connects process observations to successive production runs
-\cite{moyne2000r2r}. Human--automation research formalizes the allocation of
-information acquisition, analysis, decisions, and actions between people and
-automation \cite{parasuraman2000model}. AgentSpec and CaMeL address tool
-behavior and capability-based information flow
-\cite{wang2025agentspec,debenedetti2025camel}. These standards and methods
-inform the production context, tool interface, approval, and information-flow
-boundaries considered here. This system places the corresponding checks along
-a common task-to-device operation path.
+\subsection{Industrial Context and Operation Semantics}
+MCP standardizes tool discovery and invocation, while operation-level scope, policy, grant, and resource-binding checks remain application concerns \cite{mcp2024}. ISA-88 and ISA-95 define recipe and production-operation concepts \cite{isa88_2010,isa95_2025}; run-to-run control relates process observations to later production decisions \cite{moyne2000r2r}. Human--automation research analyzes how information acquisition, decision, and action responsibilities are allocated \cite{parasuraman2000model}. These standards and studies define the production entities and human--automation responsibilities an industrial runtime must preserve. Section~\ref{sec:design} shows how the system carries them into configured operations; the evaluation tests selected paths in simulation.
