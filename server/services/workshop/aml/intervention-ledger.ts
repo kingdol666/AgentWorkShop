@@ -24,6 +24,14 @@ export interface InterventionCriterion {
   mde?: number
 }
 
+/** 台账判定态(DB 里是 TEXT;读取时收敛到该联合类型) */
+export type InterventionVerdict = 'pending'
+  | 'unassessed'
+  | 'identifiable_effect'
+  | 'no_resolvable_effect'
+  | 'underpowered'
+  | 'confounded'
+
 export interface InterventionRecordInput {
   nodeId: string
   nodeName?: string
@@ -69,7 +77,7 @@ export interface InterventionEventRow {
   targetNodeId: string | null
   criterion: InterventionCriterion | null
   settleMs: number | null
-  verdict: string
+  verdict: InterventionVerdict
   effect: number | null
   ciLow: number | null
   ciHigh: number | null
@@ -111,7 +119,7 @@ function mapRow(r: Record<string, unknown>): InterventionEventRow {
     targetNodeId: (r.target_node_id as string | null) ?? null,
     criterion: (parse(r.criterion_json) as InterventionCriterion | null) ?? null,
     settleMs: num(r.settle_ms),
-    verdict: String(r.verdict ?? 'pending'),
+    verdict: String(r.verdict ?? 'pending') as InterventionVerdict,
     effect: num(r.effect),
     ciLow: num(r.ci_low),
     ciHigh: num(r.ci_high),
@@ -148,7 +156,7 @@ export function recordIntervention(input: InterventionRecordInput): string | nul
 export function attachAssessment(
   id: string,
   assessment: {
-    verdict: 'identifiable_effect' | 'no_resolvable_effect' | 'underpowered' | 'confounded' | 'unassessed'
+    verdict: Exclude<InterventionVerdict, 'pending'>
     effect?: number | null
     ciLow?: number | null
     ciHigh?: number | null
@@ -175,7 +183,7 @@ export function attachAssessment(
 }
 
 /** 引擎 verdict → 台账 verdict 映射(INSUFFICIENT_DATA 归 unassessed,如实"未判") */
-export function verdictCodeOf(engine: IdentifiabilityVerdict): InterventionEventRow['verdict'] {
+export function verdictCodeOf(engine: IdentifiabilityVerdict): Exclude<InterventionVerdict, 'pending'> {
   switch (engine.verdict) {
     case 'IDENTIFIABLE':
       return engine.significant ? 'identifiable_effect' : 'no_resolvable_effect'

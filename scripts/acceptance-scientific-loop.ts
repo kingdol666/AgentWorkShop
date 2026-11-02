@@ -85,6 +85,10 @@ function series(beats: number): number[] {
   return out
 }
 const targetId = 'daq-sci-thickness'
+// 计划安全校验要求观测目标是同线 DAQ 节点:登记一个 mock 数采节点(判读走注入序列)
+const { DaqNode } = await import('../server/services/workshop/daq/daq-node')
+const { getDaqNodeRepo } = await import('../server/services/workshop/daq/daq-node.repo')
+getDaqNodeRepo().insert(new DaqNode({ id: targetId, templateRef: 'temp-tc', driver: 'mock', intervalMs: 1000, lineId: line.id } as ConstructorParameters<typeof DaqNode>[0]))
 /** 按请求窗长生成拍数(生产语义:读多长窗就得多少拍) */
 const beatsOf = (from: number, to: number): number => Math.max(60, Math.ceil((to - from) / 1000))
 /** Leg A(事故形态):按窗长生成 282 拍周期振荡 —— 长历史能估出周期,短窗只能判欠功效 */
@@ -116,6 +120,18 @@ catch (err) {
   rejected = /批准/.test(err instanceof Error ? err.message : String(err))
 }
 check('E2E-1d', '未批准执行被拒(HITL 是硬门)', rejected)
+
+// 跨线注入负例:计划属 A 线却点名 B 线节点 → 创建即拒(批准后执行器平台身份直写,必须前移)
+const otherLine = getDcwLineRepo().create({ name: '科学闭环他线', simulated: false })
+const otherSp = getDcwController().create({ name: '他线压力SP', templateRef: 'pressure-sp', driver: 'mock', driverConfig: { key: 'sci-other' }, min: 0.6, max: 1.2, lineId: otherLine.id, maxStep: 0.2 } as Parameters<ReturnType<typeof getDcwController>['create']>[0])
+let crossLineRejected = false
+try {
+  createExperimentPlan({ lineId: line.id, levels: { [otherSp.id]: [1.2, 1.1] }, repeats: 1 })
+}
+catch (err) {
+  crossLineRejected = /禁止跨线试验/.test(err instanceof Error ? err.message : String(err))
+}
+check('E2E-1h', '跨线计划创建即拒(禁止写别的产线)', crossLineRejected)
 
 const approved = approveExperimentPlan(plan.id, 'rest:u-accept:1', 'u-accept')
 check('E2E-1e', '人工批准后转 planned 并留痕', approved.status === 'planned' && parsePlan(approved).approvalId === 'rest:u-accept:1')

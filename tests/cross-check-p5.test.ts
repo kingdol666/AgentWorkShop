@@ -144,6 +144,64 @@ describe('A5-3 科学载荷与审批卡人读行', () => {
   })
 })
 
+describe('A5-5 下发前强制互审(服务态)', () => {
+  it('模型有效应 + 本体明确无路径 → auto 拒绝;无模型/无本体 → 不拦', async () => {
+    const { mkdtempSync, mkdirSync, writeFileSync } = await import('node:fs')
+    const { join } = await import('node:path')
+    const { tmpdir } = await import('node:os')
+    const { openWorkshopDb } = await import('../server/services/workshop/db/database/open')
+    const { configureAmlRuntime, getAmlRuntime } = await import('../server/services/workshop/aml/runtime')
+    const { setHybridChannelProfile } = await import('../server/services/workshop/aml/twin/channel-profile')
+    const { preDispatchCrossCheck } = await import('../server/services/workshop/aml/twin/cross-check-service')
+    const { getOntologyRepo } = await import('../server/services/workshop/ontology/repo')
+
+    const home = mkdtempSync(join(tmpdir(), 'aw-p5b-'))
+    const db = openWorkshopDb(join(home, 'p5b.sqlite'))
+    configureAmlRuntime(db)
+    const now = new Date().toISOString()
+    // 已发布本体(无 coupling 边 = 明确无路径)
+    db.prepare(`INSERT INTO ontology_versions (id, version, name, line_id, parent_version, content_hash, compiled_json, changelog_json, status, owner_user_id, published_by, created_at, updated_at)
+      VALUES ('ont-p5b', 1, 'p5b', 'ln-p5b', NULL, '', '{}', '{}', 'published', 'u1', 'u1', ?, ?)`).run(now, now)
+    // ARX 工件:y=0.5y+0.3u → 增益 0.6(有效应)
+    const dir = join(home, 'model')
+    mkdirSync(dir, { recursive: true })
+    writeFileSync(join(dir, 'model.json'), JSON.stringify({
+      kind: 'linear_state_space@1', stateDim: 2,
+      A: [[0.5, 0.3], [0, 0]], B: [[0], [1]], C: [[1, 0]], D: [[0]],
+      mvOrder: ['dw-p5b-sp'], cvOrder: ['daq-p5b-th'],
+    }))
+    // 模型行有 dataset→job→experiment 外键链:按真实谱系插最小行(不绕过约束)
+    const rt = getAmlRuntime()
+    rt.repo.dataset.insert({
+      id: 'ds-p5b', lineId: 'ln-p5b', productId: 'pd', recipeId: 'rc', runIds: [], specJson: '{}', sha256: 'x',
+      rowCount: 100, fromMs: 0, toMs: 1, path: join(home, 'ds'), createdBy: 't', createdByKind: 'user', note: '', createdAt: now,
+    })
+    rt.repo.job.insert({ id: 'job-p5b', datasetId: 'ds-p5b', purpose: 'mpc_surrogate', budget: {}, createdAt: now })
+    rt.repo.experiment.insert({ id: 'exp-p5b', jobId: 'job-p5b', datasetId: 'ds-p5b', changeNote: '', configJson: '{}', createdAt: now })
+    rt.repo.model.insert({
+      id: 'mdl-p5b', experimentId: 'exp-p5b', datasetId: 'ds-p5b', productId: 'pd', recipeId: 'rc',
+      purpose: 'mpc_surrogate',
+      ioSpecJson: JSON.stringify({ mvOrder: ['dw-p5b-sp'], cvOrder: ['daq-p5b-th'], norm: { u: { mean: [0], std: [1] }, y: { mean: [0], std: [1] } } }),
+      metricsJson: '{}', path: dir, createdBy: 't', note: '', lineId: 'ln-p5b', artifactKind: 'linear_state_space@1', createdAt: now,
+    })
+    // 频道 profile 对 channels(id) 有外键:先插频道行
+    db.prepare(`INSERT INTO channels (id, name, description, enabled, created_at, updated_at) VALUES ('ch-p5b', 'p5b', '', 1, ?, ?)`).run(now, now)
+    setHybridChannelProfile({ channelId: 'ch-p5b', profile: 'aml_optimization', capability: {}, controlPolicy: 'bounded_auto', boundModelId: 'mdl-p5b' })
+
+    const blocked = preDispatchCrossCheck({ lineId: 'ln-p5b', controlNodeId: 'dw-p5b-sp', targetNodeId: 'daq-p5b-th', proposedDelta: -0.2, channelId: 'ch-p5b', auto: true })
+    assert.equal(blocked.blocked, true, blocked.text)
+    assert.match(blocked.text, /模型预测有效应/)
+    assert.match(blocked.text, /无耦合路径/)
+    assert.match(blocked.text, /可证伪/)
+    assert.equal(getOntologyRepo().listEvidence('ont-p5b', { limit: 5 }).length, 0, '互审不写证据')
+
+    // 无模型无本体 → unknown 不拦(缺证据不是反证)
+    const pass = preDispatchCrossCheck({ lineId: 'ln-unknown', controlNodeId: 'a', targetNodeId: 'b', proposedDelta: -0.2, channelId: 'ch-none', auto: true })
+    assert.equal(pass.blocked, false, pass.text)
+    assert.match(pass.text, /unknown/)
+  })
+})
+
 describe('A5-4 审批载荷透传', () => {
   it('requestManualApproval 把 payload 传进 approvals.request', async () => {
     const { openWorkshopDb } = await import('../server/services/workshop/db/database/open')

@@ -236,13 +236,20 @@ v1 旧数据集无该字段时标 unknown 放行(不追溯误杀)。
 | 可辨识性预检 | 主导扰动周期(自相关)、建议试验窗 = 3×周期、bootstrap CI、MDE、共线诊断;输出 `IDENTIFIABLE / UNDERPOWERED / CONFOUNDED / INSUFFICIENT_DATA` | `aml/identifiability.ts`;工具 `daq_identifiability` |
 | 干预台账 | **每一次已受理下发**(手动/Agent/配方/回退)在 DCW 写咽喉单点入行:意图值/实写值/回读证实/路径/依据 + 判定 | 表 `intervention_events`;工具 `intervention_history` |
 | 正交 DoE | 试验计划分级:仿真线直接执行;真实线需 HITL 单卡批准(卡上含成本核算),步序默认随机化(种子=计划 id)、跨控制量打散,支持告警中止与预算上限 | `process_model_experiments` + `experiment-runner.ts` |
-| 双通道互审 | 模型通道(ARX 阶跃仿真增益)vs 本体通道(actuator→target 耦合边);确证冲突 → 自动拒/人工须理由;unknown 不拦 | `aml/twin/cross-check.ts` |
+| 双通道互审 | 模型通道(ARX 阶跃仿真增益)vs 本体通道(actuator→target 耦合边);确证冲突 → `optimization_explore` 在 auto 模式直接拒(带可证伪说明),manual 交审批卡;unknown 不拦 | `aml/twin/cross-check.ts` + `cross-check-service.ts`(逃生门 `AW_CROSSCHECK_GATE=0`) |
 | 本体证据回灌 | 判定(效应/CI/MDE/负结论)追加到 `ontology_evidence`,可追溯、幂等;负结论计 refute | `aml/ontology-learning.ts` |
 | KB 防污染 | 入库审批卡标注"无证据锚的因果断言(anecdotal)"并留审计 | `agents/plugin-governance.ts` |
 
 关键语义:**窗口充分的零结果 = 可辨识的负结论**(可入库、可证伪),不是失败;只有窗长/覆盖
-不足才判 `UNDERPOWERED`,且此时**不得**声称有效应。运维逃生门 `AW_IDENT_GATE=0` 关闭可辨识性
-门禁(回到旧行为,风险自负)。
+不足才判 `UNDERPOWERED`,且此时**不得**声称有效应。
+
+上线安全约束(计划批准后执行器以平台身份直写,故全部前移):
+
+- 真实线计划**创建与执行双重校验**节点归属:跨线、节点不存在、targets 非 DAQ、水平越安全量程 → 422;
+- 运行中**可取消**(每步前感知),已执行步的台账与证据保留;
+- 真实线每步驻留 **≥60s**(与写联锁同口径),避免第 2 步被 429 打回白跑产线时间;
+- 僵死 `running` 超预算 +5min 自动置 failed,可重建计划;
+- 逃生门:`AW_IDENT_GATE=0`(可辨识性门禁)、`AW_CROSSCHECK_GATE=0`(互审强制);关闭即回到旧行为,风险自负。
 
 ## 治理与安全边界
 

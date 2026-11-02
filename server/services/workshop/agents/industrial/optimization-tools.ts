@@ -20,6 +20,7 @@ import { resolveRefFaces } from './tool-verify'
 // P1/P2(科学探索计划):可辨识性前置门 + 引擎判读 + 台账回填
 import { assessIdentifiability } from '../../aml/identifiability'
 import { attachExplorationVerdict, explorationIdentifiabilityPreflight, identGateEnabled, identifiabilityLearningText, periodHintFromSeries, readTargetWindow } from './identifiability-tools'
+import { preDispatchCrossCheck } from '../../aml/twin/cross-check-service'
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 
@@ -86,6 +87,20 @@ export async function toolOptimizationExplore(agentId: string, args: {
     // (两次激励响应叠加必致判读失真;门禁零取数只查台账;AW_IDENT_GATE=0 为逃生开关)
     const gate = await explorationIdentifiabilityPreflight(controlNodeId)
     if (gate.blocked) return { text: gate.text, isError: true }
+
+    // P5 双通道互审(强制):模型通道(ARX 增益)vs 本体通道(耦合边)。
+    // 只有确证冲突才拒;未绑模型/无已发布本体 = unknown 不拦(缺证据不是反证)。
+    // manual 模式下冲突交审批卡(卡上带科学载荷),auto 模式下直接拒。
+    const channelAuto = (profile.executionMode ?? 'auto') !== 'manual' && profile.controlPolicy !== 'hitl_governed'
+    const crossCheck = preDispatchCrossCheck({
+      lineId: node.lineId ?? '',
+      controlNodeId,
+      targetNodeId,
+      proposedDelta: target - controlBefore,
+      channelId,
+      auto: channelAuto,
+    })
+    if (crossCheck.blocked) return { text: crossCheck.text, isError: true }
 
     // 真实写入:复用 dcw_control 全治理链(手动绑定会挂 HITL,auto+bounded 走限界直写)
     const settleSec = Math.min(300, Math.max(10, Number(args.settle_seconds ?? 45)))
@@ -165,6 +180,7 @@ export async function toolOptimizationExplore(agentId: string, args: {
       `探索记录已归档,可在 AML 界面与训练数据回流中使用。`,
     ]
     if (gate.hint) lines.push(`  提示: ${gate.hint}`)
+    for (const w of crossCheck.warnings) lines.push(`  ⚠ ${w}`)
     return { text: lines.join('\n') }
   }
   catch (err) {

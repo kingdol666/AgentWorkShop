@@ -57,6 +57,10 @@
 | A4-3 | 步序按 repeats×levels 展开,随机化种子由计划 id 派生(可复现),跨控制量打散;`randomizedOrder=false` 按原序;每步 hypothesis 带 `[pexp:<id>]` | 同上 |
 | A4-4 | 告警中止/步数预算/时长预算/写入被拒 → failed 且原因如实,剩余步不执行 | 同上 |
 | A4-5 | 每步执行后跑引擎判读并回填台账;有已发布本体时回灌证据(端到端) | `scripts/acceptance-scientific-loop.ts` |
+| A4-6 | **跨线注入**:真实线计划点名他线节点 → 创建即 422「禁止跨线试验」 | `tests/experiment-plan-p4.test.ts` + E2E-1h |
+| A4-7 | **类型/量程**:控制节点不存在、targets 指向数控节点、水平越安全量程 → 创建即拒 | 同上 |
+| A4-8 | **运行中可取消**:每步前感知 cancelled,只执行到取消点,状态 `cancelled`,剩余步不执行 | 同上 |
+| A4-9 | **真实线节拍**:每步驻留 ≥60s(与写联锁同口径),避免第 2 步被 429 打回;僵死 `running` 超预算+5min 自动置 failed | 同上 |
 
 ### P5 双通道互审(本次实施)
 
@@ -66,6 +70,7 @@
 | A5-2 | UQ 拒收 → auto 拒 / manual 需人审;欠功效/混杂仅告警 | 同上 |
 | A5-3 | 科学载荷字段齐全(模型效应/本体路径/可辨识性/MDE/动作覆盖/证据边/可证伪方式)且与审批卡人读行同源 | 同上 |
 | A5-4 | 审批载荷经 `requestManualApproval → approvals.request(payload)` 透传 | 同上 |
+| A5-5 | **服务态强制互审**:渠道绑定 ARX 模型增益 vs 已发布本体耦合边;确证冲突时 auto 路径 `optimization_explore` 直接拒(文本含模型效应/无路径/可证伪方式);无模型无本体 = unknown 不拦;`AW_CROSSCHECK_GATE=0` 逃生 | `tests/cross-check-p5.test.ts` |
 
 ### P6 本体学习闭环(本次实施)
 
@@ -79,7 +84,7 @@
 
 | ID | 断言 | 执行 |
 |---|---|---|
-| E2E-1 | 真实线计划:创建→成本→批准→执行,步序正交且台账逐步落行 | `scripts/acceptance-scientific-loop.ts` |
+| E2E-1 | 真实线计划:创建→成本→批准→执行,步序正交且台账逐步落行;**跨线计划创建即拒** | `scripts/acceptance-scientific-loop.ts` |
 | E2E-2 | 每步判定回填;负结论步骤在本体证据账本计 refute | 同上 |
 | E2E-3 | 通道 B 用回灌后的证据得出"明确无耦合"(false),与模型"有效应"冲突 → 自动模式拒绝 | 同上 |
 | E2E-4 | 生成正交数据集的 G6 判定通过;事故型数据集 G6 失败 | 同上 |

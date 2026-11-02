@@ -282,8 +282,19 @@ falsifiable exploration loop:
 
 Key semantics: **a zero result from an adequately powered window is an identifiable negative
 conclusion** (storable and falsifiable), not a failure; only insufficient window/coverage is
-`UNDERPOWERED`, and in that state the platform **must not** claim an effect. Escape hatch:
-`AW_IDENT_GATE=0` disables the identifiability gate (old behavior, at your own risk).
+`UNDERPOWERED`, and in that state the platform **must not** claim an effect.
+
+Pre-production safety constraints (after one approval the executor writes as the platform, so
+every check is moved forward):
+
+- real-line plans are node-ownership-checked at **creation and execution** (cross-line, unknown
+  node, non-DAQ target, out-of-range level → 422);
+- a running plan **can be cancelled** (checked before every step); ledger rows and evidence of
+  executed steps are preserved;
+- real-line steps hold **≥60 s** (same as the write interlock) so step 2 is not rejected with 429;
+- a stale `running` plan is auto-failed after budget + 5 min and can be recreated;
+- escape hatches: `AW_IDENT_GATE=0` (identifiability gate) and `AW_CROSSCHECK_GATE=0`
+  (enforced cross-check); disabling them restores the old behavior at your own risk.
 
 ## Governance and safety boundaries
 

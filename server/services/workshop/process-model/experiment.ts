@@ -11,6 +11,7 @@ import { AppError } from '../../../utils/errors'
 import { getAmlRuntime } from '../aml/runtime'
 import { getDcwLineRepo } from '../dcw/dcw-line.repo'
 import { estimateExperimentCost, resolveExperimentTier, type ExperimentPlanBody, type ExperimentCost } from './experiment-runner'
+import { assertPlanNodesSafe } from './plan-safety'
 
 export interface ExperimentPlanInput {
   lineId: string
@@ -61,6 +62,11 @@ export function createExperimentPlan(input: ExperimentPlanInput): ExperimentPlan
   const repeats = Math.max(1, Math.min(input.repeats ?? 1, 20))
   const settleMs = Math.max(1000, input.settleMs ?? 60_000)
   const observeMs = Math.max(1000, input.observeMs ?? 120_000)
+  // 上线前加固:真实线计划在**创建时**即校验节点归属(须属本线/启用/量程内,targets 须同线 DAQ)。
+  // 仿真线计划允许用过程模型 MV 逻辑名(不落设备),创建不校验;执行时一律强校验(见 runner)。
+  if (tierInfo.tier === 'real_hitl') {
+    assertPlanNodesSafe({ lineId: input.lineId, levels: input.levels, targets: input.targets })
+  }
   const db = getAmlRuntime().db
   const id = `pexp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`
   const now = new Date().toISOString()

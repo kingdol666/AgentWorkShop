@@ -25,6 +25,7 @@ import { getExperimentPlan, updateExperimentStatus, type ExperimentPlanRow } fro
 import { assessIdentifiability, dominantPeriod } from '../aml/identifiability'
 import { attachAssessment, listInterventions, verdictCodeOf, verdictDetailOf } from '../aml/intervention-ledger'
 import { backfillInterventionEvidence } from '../aml/ontology-learning'
+import { assertPlanNodesSafe } from './plan-safety'
 
 export interface ExperimentPlanBody {
   version: 1
@@ -47,6 +48,9 @@ export interface ExperimentPlanBody {
   approvalId?: string
   approvedBy?: string
   approvedAt?: string
+  /** 人工取消凭据(运行中每步前被感知) */
+  cancelledBy?: string
+  cancelledAt?: string
   note?: string
 }
 
@@ -146,6 +150,23 @@ export function parsePlan(row: ExperimentPlanRow): ExperimentPlanBody {
   return JSON.parse(row.planJson) as ExperimentPlanBody
 }
 
+/**
+ * 人工取消计划(运行中/待批准/已计划均可)。
+ * 执行器每步前读状态,感知到 cancelled 即停;已执行步的台账/证据保留。
+ */
+export function cancelExperimentPlan(id: string, actor: string): ExperimentPlanRow {
+  const row = getExperimentPlan(id)
+  if (!row) throw new AppError(404, 'EXPERIMENT_PLAN_NOT_FOUND', `试验计划 ${id} 不存在`)
+  if (row.status === 'done' || row.status === 'failed' || row.status === 'cancelled') {
+    throw new AppError(409, 'EXPERIMENT_STATUS_INVALID', `计划 ${id} 已是终态 ${row.status},无需取消`)
+  }
+  const plan = parsePlan(row)
+  const next: ExperimentPlanBody = { ...plan, cancelledBy: actor, cancelledAt: new Date().toISOString() }
+  getAmlRuntime().db.prepare('UPDATE process_model_experiments SET plan_json = ?, status = \'cancelled\', updated_at = ? WHERE id = ?')
+    .run(JSON.stringify(next), new Date().toISOString(), id)
+  return getExperimentPlan(id)!
+}
+
 /** 真实线批准:awaiting_approval → planned(记录批准凭据;幂等) */
 export function approveExperimentPlan(id: string, approvalId: string, approvedBy: string): ExperimentPlanRow {
   const row = getExperimentPlan(id)
@@ -230,7 +251,18 @@ export async function runExperimentPlan(id: string, deps: ExperimentRunnerDeps =
   if (!row) throw new AppError(404, 'EXPERIMENT_PLAN_NOT_FOUND', `试验计划 ${id} 不存在`)
   const plan = parsePlan(row)
   const tier = plan.tier ?? (resolveExperimentTier(plan.lineId).tier)
-  if (row.status === 'running') throw new AppError(409, 'EXPERIMENT_ALREADY_RUNNING', `计划 ${id} 正在执行`)
+  if (row.status === 'running') {
+    // 僵死 running 恢复:进程崩溃/重启会把状态永久停在 running(不可重跑也不可取消)。
+    // 超过预算上限 + 5min 无更新即判僵死 → 置 failed 并提示可重新创建计划。
+    const budgetRaw = JSON.parse(row.budgetJson || '{}') as { maxDurationMs?: number }
+    const staleMs = (budgetRaw.maxDurationMs ?? 4 * 3600_000) + 5 * 60_000
+    const age = Date.now() - Date.parse(row.updatedAt)
+    if (Number.isFinite(age) && age > staleMs) {
+      updateExperimentStatus(id, 'failed')
+      throw new AppError(409, 'EXPERIMENT_RUN_STALE', `计划 ${id} 上一次执行僵死(超过 ${Math.round(staleMs / 60000)} min 无更新),已置 failed;请重新创建计划(旧计划的台账行仍可查)`)
+    }
+    throw new AppError(409, 'EXPERIMENT_ALREADY_RUNNING', `计划 ${id} 正在执行`)
+  }
   if (row.status !== 'planned') {
     throw new AppError(409, 'EXPERIMENT_STATUS_INVALID', `计划 ${id} 当前状态 ${row.status},只有 planned 可执行${tier === 'real_hitl' ? '(真实线须先 HITL 批准)' : ''}`)
   }
@@ -238,6 +270,9 @@ export async function runExperimentPlan(id: string, deps: ExperimentRunnerDeps =
   if (tier === 'real_hitl' && !plan.approvalId) {
     throw new AppError(409, 'EXPERIMENT_APPROVAL_REQUIRED', `计划 ${id} 为真实产线计划,缺少 HITL 批准凭据,拒绝执行`)
   }
+  // 执行前复核(防御深度):批准到执行之间产线/节点可能变更(换线、停用、量程调整)。
+  // 只对真实线强校验;仿真线计划允许过程模型 MV 逻辑名(不落设备,写入时由 write() 兜底)。
+  if (tier === 'real_hitl') assertPlanNodesSafe(plan)
   const budget = JSON.parse(row.budgetJson) as { maxRuns?: number, maxDurationMs?: number }
   const steps = buildExperimentSteps(plan, id)
   if (budget.maxRuns && steps.length > budget.maxRuns) {
@@ -305,7 +340,15 @@ export async function runExperimentPlan(id: string, deps: ExperimentRunnerDeps =
   let executed = 0
   let failedReason: string | undefined
 
+  // 真实线每步驻留不得低于写联锁的 60s 节点间隔(否则第 2 步必被 429 打回,白跑)
+  const holdMs = tier === 'real_hitl' ? Math.max(plan.settleMs, REAL_MIN_STEP_MS) : plan.settleMs
   for (const step of steps) {
+    // 取消:每步前读一次计划状态(REST cancel 是异步人工操作,必须能被及时感知)
+    const live = getExperimentPlan(id)
+    if (live?.status === 'cancelled') {
+      failedReason = `计划被人工取消(已执行 ${executed}/${steps.length} 步)`
+      break
+    }
     // 预算:总时长超限即停(不静默续跑)
     if (budget.maxDurationMs && now() - started > budget.maxDurationMs) {
       failedReason = `超出预算 maxDurationMs=${budget.maxDurationMs}ms(已执行 ${executed}/${steps.length} 步)`
@@ -323,12 +366,12 @@ export async function runExperimentPlan(id: string, deps: ExperimentRunnerDeps =
     }
     executed++
     const writeAt = now()
-    await sleep(plan.settleMs)
+    await sleep(holdMs)
     // 观测窗 + 引擎判读:有目标映射时,写前窗/写后窗各取一次序列交给可辨识性引擎,
     // 判定回填本步干预台账(与 optimization_explore 同口径);无目标则只驻留。
     const target = plan.targets?.[step.controlId]
     if (target) {
-      const pre = await readSeries(target, writeAt - plan.settleMs, writeAt)
+      const pre = await readSeries(target, writeAt - holdMs, writeAt)
       await sleep(plan.observeMs)
       const post = await readSeries(target, writeAt, now())
       await readTarget(target, writeAt, now())
@@ -378,7 +421,8 @@ export async function runExperimentPlan(id: string, deps: ExperimentRunnerDeps =
   }
   catch { /* 台账不可读不影响执行结果 */ }
 
-  const status: ExperimentRunResult['status'] = failedReason ? 'failed' : 'done'
+  const cancelled = failedReason?.includes('人工取消') ?? false
+  const status: ExperimentRunResult['status'] = cancelled ? 'cancelled' : (failedReason ? 'failed' : 'done')
   updateExperimentStatus(id, status)
   return {
     planId: id,
