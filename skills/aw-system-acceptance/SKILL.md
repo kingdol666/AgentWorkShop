@@ -55,6 +55,7 @@ npx tsx --tsconfig .nuxt/tsconfig.server.json --test tests/ontology-learning-p6.
 | --- | --- | --- | --- |
 | **科学探索全链** | `npm run test:e2e-scientific` | 采集(TSDB 分页/打标)→真实 buildDataset(v2/G6)→ARX 训练作业→注册模型→动作敏感度→真实线 DoE(HITL/执行)→判读回填→本体证据→互审阻断(设备层 mock/响应注入,如实标注);证据落 docs/audit/evidence/2026-11-02-scientific-fullchain | **21/21** |
 | **科学探索闭环** | `npx tsx --tsconfig .nuxt/tsconfig.server.json scripts/acceptance-scientific-loop.ts` | 真实线 DoE 分级→HITL 批准→随机化执行→逐步判读→本体证据回灌→双通道互审→G6;含跨线注入负例 | 20/20 |
+| **端到端作业演示** | `node scripts/demo/e2e-optimization-demo.mjs --base .. --line .. --dcw .. --daq ..`(需模拟器孪生 + 已供给实例) | 观测→DoE(HITL)→判读→证据→按实测增益下发→重量入窗;设备层为模拟孪生 | **15/15** |
 | 产线治理 | `npm run test:e2e-line` | L1-L12:开停线 HITL/审批期 TOCTOU/换线清理/Agent token 自证/写限界与 60s 频控 | 44/44 |
 | 本体离线 | `npx tsx --tsconfig .nuxt/tsconfig.server.json scripts/e2e-ontology.mjs` | ON 全流程服务层:草稿→校验→编译→批准→发布→守卫→diff→退役 | 尾行 0 失败 |
 | 本体真机 | `npx tsx --tsconfig .nuxt/tsconfig.server.json scripts/e2e-ontology-live.mjs` | L1-L7:本体全生命周期+运行守卫+AML 先验/求解器集成+邻接子图+前端六 tab | 87/87 |

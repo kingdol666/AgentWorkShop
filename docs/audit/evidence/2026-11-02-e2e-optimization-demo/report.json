@@ -1,0 +1,147 @@
+{
+  "at": "2026-11-02T16:45:36.250Z",
+  "scope": {
+    "platform": "isolated-instance",
+    "simulator": "plc-node-simulator(modbus-tcp)",
+    "deviceLayer": "simulated-twin",
+    "realPlant": false
+  },
+  "lineId": "ln-d709c3ab",
+  "dof": {
+    "levels": [
+      50,
+      55,
+      60
+    ],
+    "planId": "pexp-mvzhlbkn-9mgb",
+    "controller": "dw-3a762689",
+    "target": "dn-fa0af206"
+  },
+  "baseline": {
+    "weight": 31.735866910866914,
+    "sp": 50
+  },
+  "ledger": [
+    {
+      "id": "intv-mvzhlbmv-wk23q7",
+      "from": null,
+      "to": 60,
+      "effect": 0.5030248033877243,
+      "verdict": "identifiable_effect",
+      "mde": 0.07854465777568863,
+      "ts": "2026-11-03T00:42:07.015+08:00"
+    },
+    {
+      "id": "intv-mvzhmmr0-di7juy",
+      "from": 60,
+      "to": 50,
+      "effect": -0.40689655172412387,
+      "verdict": "underpowered",
+      "mde": 0.3441935166970892,
+      "ts": "2026-11-03T00:43:08.076+08:00"
+    },
+    {
+      "id": "intv-mvzhnxup-asud54",
+      "from": 50,
+      "to": 55,
+      "effect": 0.15133091349064287,
+      "verdict": "underpowered",
+      "mde": 0.2336626339414905,
+      "ts": "2026-11-03T00:44:09.121+08:00"
+    }
+  ],
+  "estimatedGain": 0.04068965517241239,
+  "dispatch": {
+    "targetSp": 60.6,
+    "readback": 60.6,
+    "targetWeight": 32.15
+  },
+  "final": {
+    "weight": 32.08753968253968,
+    "window": {
+      "lo": 32,
+      "hi": 32.3
+    },
+    "delta": 0.3516727716727637
+  },
+  "pass": 15,
+  "fail": 0,
+  "failures": [],
+  "checks": [
+    {
+      "id": "D1a",
+      "name": "基线重量可观测",
+      "detail": "mean=31.736g"
+    },
+    {
+      "id": "D1b",
+      "name": "基线低于目标窗下界(需要优化)",
+      "detail": "baseline=31.736 < 32"
+    },
+    {
+      "id": "D2a",
+      "name": "计划创建成功且待批准",
+      "detail": "status=awaiting_approval"
+    },
+    {
+      "id": "D2b",
+      "name": "成本核算前置(3 步,真实线 60s 下限)",
+      "detail": "1 个控制量共 3 个水平 × 1 轮 = 3 步;每步 61s(驻留 60s,真实线 60s 写间隔下限 + 观测 1s);预计总时长 ≈ 0.05 小时"
+    },
+    {
+      "id": "D3",
+      "name": "未批准执行被拒(APPROVAL_REQUIRED)",
+      "detail": "{\"code\":\"EXPERIMENT_APPROVAL_REQUIRED\",\"message\":\"计划 pexp-mvzhlbkn-9mgb 为真实产线计划且尚未批准:须先 HITL 批准(approve)后才能执行\",\"data\":nu"
+    },
+    {
+      "id": "D4a",
+      "name": "批准后转 planned",
+      "detail": "planned"
+    },
+    {
+      "id": "D4b",
+      "name": "计划执行完成 3/3",
+      "detail": "done 3/3 用时 183s "
+    },
+    {
+      "id": "D5a",
+      "name": "台账 3 行且全部判定(非 pending)",
+      "detail": "identifiable_effect,underpowered,underpowered"
+    },
+    {
+      "id": "D5b",
+      "name": "判定回灌本体证据(逐干预可追溯)",
+      "detail": "3 条"
+    },
+    {
+      "id": "D6a",
+      "name": "可从台账效应量估出增益",
+      "detail": "gain=0.04069 g/bar(样本 2)"
+    },
+    {
+      "id": "D6b",
+      "name": "增益方向正确(压力↑→重量↑)",
+      "detail": "gain=0.04069"
+    },
+    {
+      "id": "D7a",
+      "name": "目标 SP 在安全量程内",
+      "detail": "SP=60.6bar(当前 55,重量 31.922g)"
+    },
+    {
+      "id": "D7b",
+      "name": "参数下发受理",
+      "detail": "{\"outcome\":{\"ok\":true,\"message\":\"写入并回读一致:60.6 → raw 60.6,回读 60.6(标定后物理值 60.6)\",\"raw\":60.6,\"readback\":60.599998474121094,\"ack\":\"readback-verified\",\"anchorId\":\"an"
+    },
+    {
+      "id": "D7c",
+      "name": "回读一致",
+      "detail": "readback=60.6 target=60.6"
+    },
+    {
+      "id": "D8",
+      "name": "制品重量进入目标窗",
+      "detail": "after=32.088g window=[32,32.3] Δ=0.352g"
+    }
+  ]
+}

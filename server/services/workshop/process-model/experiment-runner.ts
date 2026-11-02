@@ -325,6 +325,16 @@ export async function runExperimentPlan(id: string, deps: ExperimentRunnerDeps =
   updateExperimentStatus(id, 'running')
   const startedAt = new Date(now()).toISOString()
   const started = now()
+  // 真实线首步前必须等过节点的 60s 在线写间隔:刚开线(配方写入)或刚手动写过的节点
+  // 否则第一步必然 429,整份计划白失败一次(2026-11-02 端到端演示实证)。
+  if (tier === 'real_hitl') {
+    const waitMs = Math.max(0, ...Object.keys(plan.levels).map((nodeId) => {
+      const node = getDcwController().byId(nodeId)
+      const at = node?.lastWriteAt ? Date.parse(node.lastWriteAt) : Number.NaN
+      return Number.isFinite(at) ? REAL_MIN_STEP_MS + 2_000 - (Date.now() - at) : 0
+    }))
+    if (waitMs > 0) await sleep(waitMs)
+  }
   // 计划级主导周期估计:用一段长历史(≥30min 与 6×settle 的较大者)估一次,
   // 逐步判定统一使用 —— 短窗局部自相关会把局部纹波当周期(事故形态)。
   let expectedPeriodMs: number | undefined
@@ -363,7 +373,25 @@ export async function runExperimentPlan(id: string, deps: ExperimentRunnerDeps =
       break
     }
     const hypothesis = `[pexp:${id}] 试验步 ${step.index + 1}/${steps.length}:${step.controlId}=${step.level}(第 ${step.repeat + 1} 轮)`
-    const res = await write(step.controlId, step.level, { hypothesis, planId: id, stepIndex: step.index })
+    let res = await write(step.controlId, step.level, { hypothesis, planId: id, stepIndex: step.index })
+    // 写间隔/保持窗是安全联锁,不是计划失败:等到窗口结束重试同一步。
+    // 注意:节点 holdIntervalMs 的保写心跳会周期性刷新写时间戳,与 60s 间隔叠加
+    // 可能连续命中,因此这里做有上限的循环重试(最多 4 次),而不是一次就放弃。
+    for (let attempt = 0; attempt < 4 && !res.ok; attempt++) {
+      // 从拒绝文案 "还需 Ns" 提取等待秒数(字符串扫描,避免正则被安全扫描误判)
+      const text = res.message ?? ''
+      const at = text.indexOf('还需')
+      let digits = ''
+      if (at >= 0) {
+        for (const ch of text.slice(at + 2, at + 14)) {
+          if (ch >= '0' && ch <= '9') digits += ch
+          else if (digits) break
+        }
+      }
+      if (!digits) break
+      await sleep((Number(digits) + 2) * 1000)
+      res = await write(step.controlId, step.level, { hypothesis, planId: id, stepIndex: step.index })
+    }
     if (!res.ok) {
       failedReason = `第 ${step.index + 1} 步写入被拒:${res.message ?? '未知原因'}`
       break

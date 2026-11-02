@@ -50,3 +50,27 @@ test('持久化往返保留 lastAttemptAt;旧快照(仅有 lastWriteAt)自动补
   assert.equal(legacy.lastWriteAt, '2026-10-29T00:01:00.000+08:00')
   assert.equal(legacy.lastAttemptAt, '2026-10-29T00:01:00.000+08:00')
 })
+
+// 2026-11-02 端到端演示实证:保写心跳(holdIntervalMs)按周期同值重发会刷新 lastWriteAt,
+// 若 60s 在线写间隔以 lastWriteAt 为准,Agent/试验计划的写入会被永久饿死(每次恰好差 60s)。
+// 现在间隔基准改为 lastChangeAt:只有真正改变设定值才推进。
+test('同值保活写不推进 60s 间隔基准(只推进 lastWriteAt)', () => {
+  const n = make()
+  n.applyWriteResult(50, true, 'ok', '2026-11-02T10:00:02.000+08:00')
+  const firstChange = n.lastChangeAt
+  assert.equal(firstChange, '2026-11-02T10:00:02.000+08:00')
+  // 心跳:同值重发
+  n.applyWriteResult(50, true, 'heartbeat', '2026-11-02T10:01:02.000+08:00')
+  assert.equal(n.lastWriteAt, '2026-11-02T10:01:02.000+08:00')
+  assert.equal(n.lastChangeAt, firstChange, '心跳不得推进间隔基准')
+  // 真正改值 → 推进
+  n.applyWriteResult(55, true, 'ok', '2026-11-02T10:02:02.000+08:00')
+  assert.equal(n.lastChangeAt, '2026-11-02T10:02:02.000+08:00')
+})
+
+test('持久化往返保留 lastChangeAt', () => {
+  const n = make()
+  n.applyWriteResult(50, true, 'ok', '2026-11-02T10:00:02.000+08:00')
+  const restored = DcwNode.fromRow(JSON.parse(JSON.stringify(n.toRow())))
+  assert.equal(restored.lastChangeAt, '2026-11-02T10:00:02.000+08:00')
+})

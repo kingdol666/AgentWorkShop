@@ -37,6 +37,11 @@ export function validatePlanNodes(plan: Pick<ExperimentPlanBody, 'lineId' | 'lev
     if (!node.enabled) {
       issues.push({ kind: 'control', nodeId: controlId, message: `控制节点 ${controlId} 已停用(控制已暂停),不能用于试验` })
     }
+    // 保写心跳会按 holdIntervalMs 周期重下发当前值并与试验步争夺 60s 写间隔,
+    // 实测会造成"永远还需 60s"的活锁(2026-11-02 端到端演示)。试验节点必须关闭心跳。
+    if (node.holdIntervalMs && node.holdIntervalMs > 0) {
+      issues.push({ kind: 'control', nodeId: controlId, message: `控制节点 ${controlId} 启用了保写心跳(holdIntervalMs=${node.holdIntervalMs}ms):心跳会与试验步竞争写入间隔,请在节点配置中置 0 后再发起试验` })
+    }
     for (const level of levels) {
       if (!Number.isFinite(level)) continue
       if (level < node.min || level > node.max) {

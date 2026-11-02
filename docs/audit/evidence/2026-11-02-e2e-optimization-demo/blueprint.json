@@ -1,0 +1,62 @@
+{
+  "devices": [
+    {
+      "id": "demo-injection",
+      "name": "演示注塑机",
+      "protocol": "modbus-tcp",
+      "port": 5055,
+      "signals": [
+        {
+          "id": "hold-pressure-sp",
+          "name": "保压压力SP",
+          "unit": "bar",
+          "min": 50,
+          "max": 90,
+          "decimals": 1,
+          "kind": "sp",
+          "initial": 50
+        },
+        {
+          "id": "hold-time-sp",
+          "name": "保压时间SP",
+          "unit": "s",
+          "min": 4,
+          "max": 14,
+          "decimals": 1,
+          "kind": "sp",
+          "initial": 8
+        },
+        {
+          "id": "cavity-pressure-pv",
+          "name": "模腔压力PV",
+          "unit": "bar",
+          "min": 0,
+          "max": 120,
+          "decimals": 2,
+          "kind": "pv",
+          "dynamics": {
+            "base": 20,
+            "tau": 3,
+            "noise": 0.25,
+            "follows": [{ "sp": "保压压力SP", "gain": 1.0 }]
+          }
+        },
+        {
+          "id": "weight-pv",
+          "name": "制品重量PV",
+          "unit": "g",
+          "min": 28,
+          "max": 36,
+          "decimals": 3,
+          "kind": "pv",
+          "dynamics": {
+            "base": 29.0,
+            "tau": 8,
+            "noise": 0.02,
+            "follows": [{ "sp": "保压压力SP", "gain": 0.055 }]
+          }
+        }
+      ]
+    }
+  ]
+}
