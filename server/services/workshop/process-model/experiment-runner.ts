@@ -263,6 +263,10 @@ export async function runExperimentPlan(id: string, deps: ExperimentRunnerDeps =
     }
     throw new AppError(409, 'EXPERIMENT_ALREADY_RUNNING', `计划 ${id} 正在执行`)
   }
+  // 语义优先:待批准的真实线计划报"缺批准"而不是泛化的"状态非法"
+  if (row.status === 'awaiting_approval' && tier === 'real_hitl') {
+    throw new AppError(409, 'EXPERIMENT_APPROVAL_REQUIRED', `计划 ${id} 为真实产线计划且尚未批准:须先 HITL 批准(approve)后才能执行`)
+  }
   if (row.status !== 'planned') {
     throw new AppError(409, 'EXPERIMENT_STATUS_INVALID', `计划 ${id} 当前状态 ${row.status},只有 planned 可执行${tier === 'real_hitl' ? '(真实线须先 HITL 批准)' : ''}`)
   }

@@ -9,8 +9,12 @@
  *   ⑥ 下发:真实线 DoE(未批准拒 → 批准 → 随机化执行 → 判读回填 → 本体证据回灌)
  *   ⑦ 互审:频道绑定模型 + 已发布本体无耦合边 → preDispatchCrossCheck 阻断
  *
- * 隔离:临时 AW_HOME;AW_BENCH_MODE=1+AW_BENCH_ACK=1 仅用于旁路 60s 在线写间隔
- * (联锁本身由 test:e2e-line 44/44 覆盖,本脚本只验全链数据流)。
+ * 诚实边界(审查后明确):
+ *  - 设备层是 **mock 驱动**,被控对象的响应由夹具序列注入(不是物理产线);
+ *    本脚本证明的是**平台链路的接线与治理**,不是真实工艺响应;
+ *  - F6 的 `no_resolvable_effect` 是对"注入的恒定响应序列"的引擎判定,
+ *    用来说明"负结论可被判读并回灌",**不等于**证明该产线无耦合;
+ *  - AW_BENCH_MODE=1+AW_BENCH_ACK=1 仅旁路 60s/步长限频(联锁由 test:e2e-line 44/44 覆盖)。
  * 运行:npx tsx --tsconfig .nuxt/tsconfig.server.json scripts/acceptance-scientific-fullchain.ts
  */
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
@@ -25,6 +29,8 @@ process.env.AW_BENCH_MODE = '1'
 process.env.AW_BENCH_ACK = '1'
 delete process.env.AW_IDENT_GATE
 delete process.env.AW_CROSSCHECK_GATE
+// 必须走真实内置训练器:stub 会伪造工件,本脚本的证据将失去意义
+delete process.env.AML_STUB
 
 let pass = 0
 const failures: string[] = []
@@ -61,12 +67,12 @@ const { createProcessModelSpecRepo } = await import('../server/services/workshop
 const { recipeContentHash } = await import('../server/services/workshop/process-model/context-segments.repo')
 const { arxStepResponseGain, hasResolvableCoupling, computeActionCoverage } = await import('../server/services/workshop/aml/action-coverage')
 const { createExperimentPlan } = await import('../server/services/workshop/process-model/experiment')
-const { approveExperimentPlan, runExperimentPlan } = await import('../server/services/workshop/process-model/experiment-runner')
+const { approveExperimentPlan, runExperimentPlan, buildExperimentSteps, parsePlan } = await import('../server/services/workshop/process-model/experiment-runner')
 const ledger = await import('../server/services/workshop/aml/intervention-ledger')
 const { getOntologyRepo } = await import('../server/services/workshop/ontology/repo')
 const { preDispatchCrossCheck } = await import('../server/services/workshop/aml/twin/cross-check-service')
 const { setHybridChannelProfile } = await import('../server/services/workshop/aml/twin/channel-profile')
-const { readFileSync } = await import('node:fs')
+const { readFileSync, existsSync } = await import('node:fs')
 
 console.log(`\n[科学探索全链验收] AW_HOME=${home}`)
 const db = openWorkshopDb(join(home, 'fullchain.sqlite'))
@@ -195,11 +201,15 @@ catch (err) {
 }
 const manifest = JSON.parse(readFileSync(join(dataset.dataset.path, 'manifest.json'), 'utf8')) as Record<string, unknown>
 const coverage = (dataset.report.actionCoverage ?? [])[0]
-check('F2a', 'v2 manifest 携带 actionCoverage', manifest.version === 2 && Array.isArray(manifest.actionCoverage), `version=${String(manifest.version)}`)
-check('F2b', 'ABAB 激励:≥3 水平且非纯阶梯', !!coverage && coverage.distinctLevels >= 3 && coverage.monolithicSequence === false, coverage ? `levels=${coverage.distinctLevels} blocks=${coverage.levelBlocks.join('/')}` : '无')
+const manifestCoverage = (manifest.actionCoverage as Array<{ distinctLevels: number }> | undefined) ?? []
+check('F2a', 'v2 manifest 携带非空 actionCoverage', manifest.version === 2 && manifestCoverage.length === 1, `version=${String(manifest.version)} n=${manifestCoverage.length}`)
+check('F2b', 'ABAB 激励:恰好 3 水平且非纯阶梯', !!coverage && coverage.distinctLevels === 3 && coverage.monolithicSequence === false, coverage ? `levels=${coverage.distinctLevels} blocks=${coverage.levelBlocks.join('/')}` : '无')
 {
-  const sp = manifest.split as { train: number, val: number, test: number }
-  check('F2c', 'split 三段非空(byRun 分层)', sp.train > 0 && sp.val > 0 && sp.test > 0, JSON.stringify(sp))
+  const sp = manifest.split as { train: number, val: number, test: number, trainRunIds: string[], valRunIds: string[], testRunIds: string[] }
+  const sets = [sp.trainRunIds, sp.valRunIds, sp.testRunIds]
+  const disjoint = sets[0]!.length === 1 && sets[1]!.length === 1 && sets[2]!.length === 1
+    && new Set([...sets[0]!, ...sets[1]!, ...sets[2]!]).size === 3
+  check('F2c', 'byRun 三段各 211 窗口且 run 互斥', sp.train === 211 && sp.val === 211 && sp.test === 211 && disjoint, JSON.stringify({ train: sp.train, val: sp.val, test: sp.test, runs: sets.map(s => s.length) }))
 }
 
 // ============ F3 G6 门(真实工件) ============
@@ -208,12 +218,14 @@ console.log('\nF3 G6 门')
   const datasetRow = { rowCount: dataset.dataset.rowCount, runIds: dataset.dataset.runIds }
   const passReport = evaluateGates('mpc_surrogate', datasetRow, manifest as never, undefined, dataset.dataset.path)
   const g6pass = passReport.checks.find(c => c.id === 'G6')
-  check('F3a', '真实 manifest 的 G6 通过', g6pass?.pass === true, g6pass?.detail ?? '')
+  check('F3a', '真实 manifest 的 G6 通过(非"不适用"分支)', g6pass?.pass === true && /3 个水平/.test(g6pass.detail) && /\|r\|=0\.0/.test(g6pass.detail), g6pass?.detail ?? '')
+  // 负例:用真实 computeActionCoverage 生成单调斜坡,替换**manifest 副本**后送同一条真实 gate 链
+  // (不是 builder 产出的 ramp 数据集 —— 该路径由 tests/action-coverage-g6.test.ts 覆盖)
   const ramp = computeActionCoverage(mvNode, [40, 50, 60].flatMap(v => new Array<number>(120).fill(v)))
   const badManifest = { ...manifest, actionCoverage: [ramp] }
   const badReport = evaluateGates('mpc_surrogate', datasetRow, badManifest as never, undefined, dataset.dataset.path)
   const g6bad = badReport.checks.find(c => c.id === 'G6')
-  check('F3b', '单调斜坡数据 → G6 失败(纯阶梯不可归因)', g6bad?.pass === false && /纯阶梯/.test(g6bad.detail), g6bad?.detail ?? '')
+  check('F3b', '单调斜坡 → G6 失败(共线+纯阶梯双理由)', g6bad?.pass === false && /共线/.test(g6bad.detail) && /纯阶梯/.test(g6bad.detail), g6bad?.detail ?? '')
 }
 
 // ============ F4 学习:训练作业 → 注册模型 ============
@@ -248,23 +260,27 @@ for (let i = 0; i < 240 && !(jobRow && terminal.has(jobRow.status)); i++) {
 check('F4a', '训练作业到终态 done', jobRow?.status === 'done', `${jobRow?.status ?? '?'} ${jobRow?.message ?? ''}`)
 const modelId = jobRow?.modelId ?? ''
 const model = modelId ? getAmlRuntime().repo.model.get(modelId) : undefined
-check('F4b', '模型已注册(linear_state_space)', !!model && model.artifactKind === 'linear_state_space@1', modelId)
+check('F4b', '模型已注册(linear_state_space,非 stub)', !!model && model.artifactKind === 'linear_state_space@1' && !existsSync(join(model.path, 'STUB')), modelId)
 const metrics = JSON.parse(model?.metricsJson ?? '{}') as { oneStepTest?: { nrmse: number }, rolloutImprovement?: number }
 check('F4c', '平台指标可读:G1 单步 NRMSE < 0.1', (metrics.oneStepTest?.nrmse ?? 1) < 0.1, `nrmse=${metrics.oneStepTest?.nrmse}`)
 
 // ============ F5 推理:动作敏感度 ============
 console.log('\nF5 推理与动作敏感度')
+const trueGain = B / (1 - A)
+let measuredGain: number | undefined
 {
   const artifact = JSON.parse(readFileSync(join(model!.path, 'model.json'), 'utf8')) as Parameters<typeof arxStepResponseGain>[0]
   const sens = arxStepResponseGain({ ...artifact, mvOrder: (artifact as unknown as { mvOrder: string[] }).mvOrder ?? ['mv1'], cvOrder: (artifact as unknown as { cvOrder: string[] }).cvOrder ?? ['cv1'] }, 'mv1')
-  const trueGain = B / (1 - A)
-  check('F5a', 'ARX 阶跃增益≈真值(误差<20%)', !!sens && sens.converged && Math.abs((sens.gains.cv1 ?? 0) - trueGain) / trueGain < 0.2, `gain=${sens?.gains.cv1?.toFixed(3)} true=${trueGain}`)
-  check('F5b', '耦合可分辨(可用于互审模型通道)', hasResolvableCoupling(sens, 'cv1'), '')
+  measuredGain = sens?.gains.cv1 ?? Number.NaN
+  check('F5a', 'ARX 阶跃增益≈真值(误差<20%)', !!sens && sens.converged && Math.abs(measuredGain - trueGain) / trueGain < 0.2, `gain=${measuredGain.toFixed(3)} true=${trueGain}`)
+  check('F5b', '耦合可分辨(模型通道有非零增益)', hasResolvableCoupling(sens, 'cv1'), `gain=${measuredGain.toFixed(3)}`)
 }
 
 // ============ F6 下发:DoE → 判读 → 台账 → 证据 ============
-console.log('\nF6 下发与学习回路')
+console.log('\nF6 下发与学习回路(mock 设备;目标响应由夹具注入)')
 const nowIso = new Date().toISOString()
+// 夹具说明:直接插一条已发布本体(无 coupling 边)。draft→approve→publish 全链由
+// e2e-ontology / e2e-ontology-live 套件覆盖;此处只需要"已发布且无该边"这个输入状态。
 db.prepare(`INSERT INTO ontology_versions (id, version, name, line_id, parent_version, content_hash, compiled_json, changelog_json, status, owner_user_id, published_by, created_at, updated_at)
   VALUES ('ont-fc', 1, '全链本体', ?, NULL, '', '{}', '{}', 'published', 'u1', 'u1', ?, ?)`).run(line.id, nowIso, nowIso)
 const plan = createExperimentPlan({
@@ -281,9 +297,10 @@ try {
   await runExperimentPlan(plan.id)
 }
 catch (err) {
-  unapproved = /批准/.test(err instanceof Error ? err.message : String(err))
+  const e = err as { code?: string, message?: string }
+  unapproved = e.code === 'EXPERIMENT_APPROVAL_REQUIRED'
 }
-check('F6b', '未批准执行被拒', unapproved)
+check('F6b', '未批准执行被拒(错误码 EXPERIMENT_APPROVAL_REQUIRED)', unapproved, unapproved ? 'EXPERIMENT_APPROVAL_REQUIRED' : '未命中错误码')
 approveExperimentPlan(plan.id, 'rest:u-fc:1', 'u-fc')
 const runResult = await runExperimentPlan(plan.id, {
   // 不注入 write:走真实 DcwController.write 咽喉,台账(intervention_events)才会逐步落行;
@@ -293,10 +310,15 @@ const runResult = await runExperimentPlan(plan.id, {
   sleep: async () => {},
 })
 check('F6c', '计划执行完成(2/2)', runResult.status === 'done' && runResult.executedSteps === 2, `${runResult.status} ${runResult.executedSteps}/${runResult.totalSteps}`)
+// 设备层回读:随机化步序的**最后一步设定**必须真实写到节点(证明不是只落了台账)
+const lastStep = buildExperimentSteps(parsePlan(plan), plan.id).at(-1)!
+const nodeValue = Number(getDcwController().byId(dwSp.id)?.value ?? Number.NaN)
+check('F6c2', '末步设定真实落到节点(随机序回读)', Math.abs(nodeValue - lastStep.level) < 1e-9, `value=${nodeValue} lastLevel=${lastStep.level}`)
 const rows = ledger.listInterventions({ nodeId: dwSp.id, limit: 20 }).filter(r => r.hypothesis.startsWith(`[pexp:${plan.id}]`))
-check('F6d', '台账逐步落行且判定已回填', rows.length === 2 && rows.every(r => r.verdict !== 'pending'), rows.map(r => r.verdict).join(','))
+const verdicts = rows.map(r => r.verdict).sort()
+check('F6d', '台账 2 行且判定精确为 no_resolvable_effect×2', verdicts.length === 2 && verdicts[0] === 'no_resolvable_effect' && verdicts[1] === 'no_resolvable_effect', verdicts.join(','))
 const evidence = getOntologyRepo().listEvidence('ont-fc', { targetKind: 'relation', limit: 100 })
-check('F6e', '判定回灌本体证据(sourceType=intervention)', evidence.length >= 1 && evidence.every(e => e.sourceType === 'intervention'), `${evidence.length} 条`)
+check('F6e', '判定回灌本体证据恰 2 条(sourceType=intervention)', evidence.length === 2 && evidence.every(e => e.sourceType === 'intervention'), `${evidence.length} 条`)
 const refute = evidence.filter((e) => {
   try {
     return (JSON.parse(e.detailJson) as { verdict?: string }).verdict === 'no_resolvable_effect'
@@ -305,7 +327,9 @@ const refute = evidence.filter((e) => {
     return false
   }
 }).length
-check('F6f', '充分窗负结论计 refute(无耦合可断言)', refute >= 1, `refute=${refute}`)
+// 诚实口径:响应是夹具注入的恒定序列 → 引擎判"无可分辨效应"并计 refute。
+// 证明的是"负结论能被判读并回灌",不等于证明该产线无耦合。
+check('F6f', '注入恒定响应下的负结论按 refute 回灌(refute=2)', refute === 2, `refute=${refute}`)
 
 // ============ F7 互审:绑定模型 + 本体无路径 → 阻断 ============
 console.log('\nF7 下发前双通道互审')
@@ -313,23 +337,38 @@ console.log('\nF7 下发前双通道互审')
   db.prepare(`INSERT INTO channels (id, name, description, enabled, created_at, updated_at) VALUES ('ch-fc', 'fc', '', 1, ?, ?)`).run(nowIso, nowIso)
   setHybridChannelProfile({ channelId: 'ch-fc', profile: 'aml_optimization', capability: {}, controlPolicy: 'bounded_auto', boundModelId: modelId })
   const cc = preDispatchCrossCheck({ lineId: line.id, controlNodeId: 'mv1', targetNodeId: 'cv1', proposedDelta: -0.1, channelId: 'ch-fc', auto: true })
-  check('F7a', '模型有效应 + 本体无耦合 → 阻断', cc.blocked === true, cc.result.conflicts[0] ?? cc.text)
-  check('F7b', '载荷含可证伪方式', cc.result.payload.falsificationMethod.length > 20, '')
+  check('F7a', '模型有效应 + 本体无耦合 → 阻断(冲突含双方证据)', cc.blocked === true && cc.result.conflicts.some(c => /模型预测有效应/.test(c) && /无耦合路径/.test(c)), cc.result.conflicts[0] ?? cc.text)
+  const fm = cc.result.payload.falsificationMethod
+  check('F7b', '可证伪方式点名控制量/目标量', fm.includes('mv1') && fm.includes('cv1') && /MDE/.test(fm), fm.slice(0, 80))
 }
 
 // ============ 汇总(证据落仓库 docs/audit/evidence,不随临时 home 删除) ============
+// 作业预算在 repo 层可能已是对象、也可能是 JSON 串(不同调用路径),两种都吃
+function budgetTrainerRef(budget: unknown): string | null {
+  try {
+    const obj = typeof budget === 'string' ? JSON.parse(budget) as Record<string, unknown> : budget as Record<string, unknown> | undefined
+    const ref = obj?.trainerRef
+    return typeof ref === 'string' ? ref : null
+  }
+  catch {
+    return null
+  }
+}
 const report = {
   at: new Date().toISOString(),
   suite: 'scientific-fullchain',
+  // 诚实边界:设备层 mock;F6 的目标响应为夹具注入,负结论证明"可判读+可回灌",
+  // 不构成"该产线无耦合"的证据。
+  scope: { deviceLayer: 'mock', dofResponse: 'injected-fixture', realPlantRun: false, tsdbBackend: 'sqlite-emulated' },
   pass,
   fail: failures.length,
   failures,
   checks: passLines,
-  job: { id: job.id, status: jobRow?.status, modelId },
+  job: { id: job.id, status: jobRow?.status, modelId, trainerRef: budgetTrainerRef(jobRow?.budget) },
   model: { id: modelId, artifactKind: model?.artifactKind, metrics },
-  sensitivity: { gain: 0.976, trueGain: B / (1 - A) },
+  sensitivity: { gain: measuredGain, trueGain },
   dataset: { id: dataset.dataset.id, rows: dataset.dataset.rowCount, runs: dataset.dataset.runIds.length, actionCoverage: coverage },
-  experiment: { planId: plan.id, status: runResult.status, executed: runResult.executedSteps, ledgerRows: rows.length, verdicts: rows.map(r => r.verdict), evidenceRows: evidence.length, refute },
+  experiment: { planId: plan.id, status: runResult.status, executed: runResult.executedSteps, ledgerRows: rows.length, verdicts: rows.map(r => r.verdict), evidenceRows: evidence.length, refute, nodeReadback: getDcwController().byId(dwSp.id)?.value },
 }
 mkdirSync(EVIDENCE_DIR, { recursive: true })
 writeFileSync(join(EVIDENCE_DIR, 'report.json'), JSON.stringify(report, null, 2))

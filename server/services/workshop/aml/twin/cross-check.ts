@@ -155,7 +155,7 @@ export function evaluateCrossCheck(input: CrossCheckInput): CrossCheckResult {
 export function buildFalsificationMethod(input: CrossCheckInput, modelHasEffect: boolean | null): string {
   const delta = input.proposedDelta
   const parts = [
-    `若响应窗(≥3 个主导扰动周期)内 ${input.targetNodeId} 的变化量在 95% CI 内不含 0 且方向与模型预测(${modelHasEffect === true ? '有' : modelHasEffect === false ? '无' : '未知'}效应)不一致,则本次因果断言被否证`,
+    `对 ${input.controlNodeId} 的干预若在响应窗(≥3 个主导扰动周期)内使 ${input.targetNodeId} 的变化量 95% CI 不含 0 且方向与模型预测(${modelHasEffect === true ? '有' : modelHasEffect === false ? '无' : '未知'}效应)不一致,则本次因果断言被否证`,
     `比较基准 = 干预前同长窗口;置信区间用 bootstrap(种子固定可复现)`,
     `Δ控制=${delta} 的效应若小于 MDE,结论只能记为"不可辨识",不得外推`,
   ]
