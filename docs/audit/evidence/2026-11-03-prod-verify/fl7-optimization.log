@@ -1,0 +1,20 @@
+
+[FL-7 实机优化] line=ln-73d9e4b2 control=dw-e12e28de target=dn-969587e0
+  PASS O1 基线灌装量可观测且低于目标带 — mean=495.613 mL SP=2.6 band=[496,504]
+  PASS O2a 真实线计划创建即待批准 — status=awaiting_approval
+  PASS O2b 成本前置核算(3 步 × 61s,含 60s 写间隔下限) — 1 个控制量共 3 个水平 × 1 轮 = 3 步;每步 61s(驻留 60s,真实线 60s 写间隔下限 + 观测 1s);预计总时长 ≈ 0.05 小时
+  PASS O3 未批准执行被拒 — {"code":"EXPERIMENT_APPROVAL_REQUIRED","message":"计划 pexp-mvzj987k-1mot 为真实产线计划且尚未批准:须先 HITL 批准(appr
+  PASS O4a 批准后 planned — planned
+  PASS O4b 随机化执行完成 3/3 — done 3/3 201s 
+  PASS O5a 台账 3 行且判定已收口 — underpowered,identifiable_effect,identifiable_effect
+  PASS O5b 判定回灌本体证据(逐干预可追溯) — 3 条 source_ref=intervention
+  PASS O6a 可从实验数据估出增益 — gain=3.9828 mL/bar(样本 3;手册真值 6.0)
+  PASS O6b 增益方向正确且量级合理 — gain=3.9828
+  PASS O7a 目标 SP 在工艺窗内(≤4.2bar) — propose=4.145 → SP=4.14(当前 2.8 494.644mL)
+  PASS O7b 配方版本化更新受理 — v=4 params=36/4.14/28/1.8
+  PASS O7c 配方整包下发且逐点回读一致 — ok=4/4
+  PASS O8 灌装量进入 J1 目标带(控得好) — after=497.488 mL band=[496,504] Δ=1.875
+
+[结果] PASS=14 FAIL=0
+[FL-7 实机优化] ALL PASS
+

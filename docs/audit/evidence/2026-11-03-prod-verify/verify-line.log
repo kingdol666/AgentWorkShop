@@ -1,0 +1,23 @@
+✅ V1 数采落库[dn-969587e0]
+✅ V1 数采落库[dn-6c9437c0]
+✅ V1 数采落库[dn-6de97ebb]
+✅ V1 数采落库[dn-079364b6]
+✅ V1 数采落库[dn-07f1cfef]
+✅ V1 数采落库[dn-d154dacd]
+✅ V1 数采落库[dn-8dbe571d]
+✅ V1 数采落库[dn-14157b28]
+✅ V1 数采落库[dn-a3379354]
+✅ V2 越界拒[PROTO4-FL7-SP-灌装背压] — value=7 → 设定值 7bar 超出上限 节点工艺安全量程 的 6bar —— 约束层:节点安全量程(当前有效写入区间 0~6bar;
+✅ V3 合法写生效(transport-ack)[PROTO4-FL7-SP-灌装背压] — cur=1.797 probe=2 ack=transport-ack DAQ观测=1.8 
+✅ V2 越界拒[PROTO4-FL7-SP-传送带速度] — value=88 → 设定值 88瓶/min 超出上限 节点工艺安全量程 的 80瓶/min —— 约束层:节点安全量程(当前有效写入区间 0
+✅ V3 合法写回环[PROTO4-FL7-SP-传送带速度] — cur=36 probe=38 readback=38 一致
+✅ V2 越界拒[PROTO4-FL7-SP-灌装头压力] — value=7 → 设定值 7bar 超出上限 节点工艺安全量程 的 6bar —— 约束层:节点安全量程(当前有效写入区间 0~6bar;
+✅ V3 合法写回环[PROTO4-FL7-SP-灌装头压力] — cur=4.139999866485596 probe=4.3 readback=4.300000190734863 一致
+✅ V2 越界拒[PROTO4-FL7-SP-CIP冲洗流量] — value=55 → 设定值 55L/min 超出上限 节点工艺安全量程 的 50L/min —— 约束层:节点安全量程(当前有效写入区间 0
+✅ V3 合法写回环[PROTO4-FL7-SP-CIP冲洗流量] — cur=28 probe=29 readback=29 一致
+✅ V4 配方在册 — FL7-BASE-v1 灌装基线配方 v4 params=4
+✅ V5 频道绑线 — ln-73d9e4b2 vs ln-73d9e4b2
+✅ V5 频道成员≥2 — members=4
+✅ V6 受保护线零扰动(写锚点全落新线) — 本线锚点=20 溢出到受保护线=0
+
+=== 接入验收: 21 通过 / 0 失败 ===

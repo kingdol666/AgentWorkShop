@@ -1,0 +1,36 @@
+✅ 产线已存在(指纹复用) — ln-73d9e4b2 4#灌装产线(FL-7)-1103验证
+✅ 跨线写点冲突预检 — 既有他线写控 0 节点,冲突 0
+✅ 节点复用[PROTO4-FL7-SP-灌装背压] — dw-945f0530
+✅ 节点配置对齐[PROTO4-FL7-SP-灌装背压] — driverConfig ok
+✅ 节点复用[PROTO4-FL7-SP-传送带速度] — dw-d2f00a99
+✅ 节点配置对齐[PROTO4-FL7-SP-传送带速度] — driverConfig ok
+✅ 节点复用[PROTO4-FL7-SP-灌装头压力] — dw-e12e28de
+✅ 节点配置对齐[PROTO4-FL7-SP-灌装头压力] — driverConfig ok
+✅ 节点复用[PROTO4-FL7-SP-CIP冲洗流量] — dw-4a97a49e
+✅ 节点配置对齐[PROTO4-FL7-SP-CIP冲洗流量] — driverConfig ok
+✅ 节点复用[PROTO4-FL7-PV-灌装量] — dn-969587e0
+✅ 节点配置对齐[PROTO4-FL7-PV-灌装量] — driverConfig ok
+✅ 节点复用[PROTO4-FL7-PV-瓶盖扭矩] — dn-6c9437c0
+✅ 节点配置对齐[PROTO4-FL7-PV-瓶盖扭矩] — driverConfig ok
+✅ 节点复用[PROTO4-FL7-PV-环境温度] — dn-6de97ebb
+✅ 节点配置对齐[PROTO4-FL7-PV-环境温度] — driverConfig ok
+✅ 节点复用[PROTO4-FL7-PV-环境湿度] — dn-079364b6
+✅ 节点配置对齐[PROTO4-FL7-PV-环境湿度] — driverConfig ok
+✅ 节点复用[PROTO4-FL7-PV-灌装精度截面] — dn-07f1cfef
+✅ 节点配置对齐[PROTO4-FL7-PV-灌装精度截面] — driverConfig ok
+✅ 节点复用[PROTO4-FL7-PV-产线节拍] — dn-d154dacd
+✅ 节点配置对齐[PROTO4-FL7-PV-产线节拍] — driverConfig ok
+✅ 节点复用[PROTO4-FL7-PV-CIP液位] — dn-8dbe571d
+✅ 节点配置对齐[PROTO4-FL7-PV-CIP液位] — driverConfig ok
+✅ 节点复用[PROTO4-FL7-PV-洗液温度] — dn-14157b28
+✅ 节点配置对齐[PROTO4-FL7-PV-洗液温度] — driverConfig ok
+✅ 节点复用[PROTO4-FL7-PV-背压确认] — dn-a3379354
+✅ 节点配置对齐[PROTO4-FL7-PV-背压确认] — driverConfig ok
+✅ 配方复用 — rc-32f18402 v4
+✅ 配方参数对齐 — ok
+✅ 开跑批次(已运行复用) — 批次保持运行:产线「4#灌装产线(FL-7)-1103验证」已在运行(批次 rr-1bbf3dda),请先停止当前数据采集
+✅ 采集总控启动 — running=true interval=5000ms
+
+{"lineId":"ln-73d9e4b2","dcw":{"PROTO4-FL7-SP-灌装背压":"dw-945f0530","PROTO4-FL7-SP-传送带速度":"dw-d2f00a99","PROTO4-FL7-SP-灌装头压力":"dw-e12e28de","PROTO4-FL7-SP-CIP冲洗流量":"dw-4a97a49e"},"daq":{"PROTO4-FL7-PV-灌装量":"dn-969587e0","PROTO4-FL7-PV-瓶盖扭矩":"dn-6c9437c0","PROTO4-FL7-PV-环境温度":"dn-6de97ebb","PROTO4-FL7-PV-环境湿度":"dn-079364b6","PROTO4-FL7-PV-灌装精度截面":"dn-07f1cfef","PROTO4-FL7-PV-产线节拍":"dn-d154dacd","PROTO4-FL7-PV-CIP液位":"dn-8dbe571d","PROTO4-FL7-PV-洗液温度":"dn-14157b28","PROTO4-FL7-PV-背压确认":"dn-a3379354"},"recipeId":"rc-32f18402","reused":true}
+
+=== 产线供给: 32 通过 / 0 失败 ===
