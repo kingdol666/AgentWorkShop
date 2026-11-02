@@ -89,6 +89,38 @@
 | E2E-3 | 通道 B 用回灌后的证据得出"明确无耦合"(false),与模型"有效应"冲突 → 自动模式拒绝 | 同上 |
 | E2E-4 | 生成正交数据集的 G6 判定通过;事故型数据集 G6 失败 | 同上 |
 
+### F 系列:全链实验验收(采集→分析→DoE→学习→训练→推理→下发→判读→台账→证据)
+
+> 执行:`npm run test:e2e-scientific`(`scripts/acceptance-scientific-fullchain.ts`)
+> 隔离 AW_HOME;真实写 TSDB + 真实 `buildDataset` + 真实训练作业 + 真实写咽喉;
+> `AW_BENCH_MODE=1` 仅旁路 60s/步长限频(联锁由 `test:e2e-line` 44/44 覆盖)。
+> 证据:`docs/audit/evidence/2026-11-02-scientific-fullchain/report.json`。
+
+| ID | 断言 | 数值/判据 |
+|---|---|---|
+| F1a | 逐节点分页无漏无重且升序 | 720 点 / 唯一 720 |
+| F1b | 按批次过滤只命中该批 | 240 点 |
+| F2a | v2 manifest 携带 `actionCoverage` | version=2 |
+| F2b | ABAB 激励:≥3 水平且非纯阶梯 | 3 水平、`monolithicSequence=false` |
+| F2c | byRun 三段切分非空 | train/val/test 各 211 窗口 |
+| F3a | 真实工件 manifest 的 G6 通过 | 3 水平、\|r\|=0.079 |
+| F3b | 单调斜坡 → G6 失败(纯阶梯+共线双理由) | \|r\|=0.943 |
+| F4a | 训练作业到终态 done | `linear_arx@1` |
+| F4b | 模型注册(linear_state_space) | modelId 非空 |
+| F4c | 平台指标 G1 单步 NRMSE < 0.10 | 0.0017 |
+| F5a | ARX 阶跃增益≈解析真值(误差<20%) | 0.976 vs 1.000 |
+| F5b | 耦合可分辨(模型通道可用) | — |
+| F6a | 真实线计划待批准(单卡 HITL) | `awaiting_approval` |
+| F6b | 未批准执行被拒 | — |
+| F6c | 批准后执行完成 | 2/2 步 |
+| F6d | 台账逐步落行且判定已回填 | `no_resolvable_effect`×2 |
+| F6e | 判定回灌 `ontology_evidence` | 2 条(intervention) |
+| F6f | 充分窗负结论计 refute | refute=2 |
+| F7a | 模型有效应 + 本体无耦合 → 互审阻断 | 冲突文本含双方证据 |
+| F7b | 载荷含可证伪方式 | — |
+
+**基线:PASS 20 / FAIL 0**。任一项红即阻断发布:它代表"看到→控制→学得好"某一环断链。
+
 ## 2. 回归红线(不得破坏)
 
 1. 既有单测 943 条 0 失败(允许因新功能新增断言而更新计数,不允许放松语义);

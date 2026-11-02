@@ -1,0 +1,213 @@
+{
+  "at": "2026-11-02T15:05:08.367Z",
+  "suite": "scientific-fullchain",
+  "pass": 20,
+  "fail": 0,
+  "failures": [],
+  "checks": [
+    {
+      "id": "F1a",
+      "name": "逐节点分页:续读无漏无重且升序",
+      "detail": "720 点/唯一 720"
+    },
+    {
+      "id": "F1b",
+      "name": "按批次过滤:仅命中第 2 批的 240 点",
+      "detail": "240 点"
+    },
+    {
+      "id": "F2a",
+      "name": "v2 manifest 携带 actionCoverage",
+      "detail": "version=2"
+    },
+    {
+      "id": "F2b",
+      "name": "ABAB 激励:≥3 水平且非纯阶梯",
+      "detail": "levels=3 blocks=12/12/12"
+    },
+    {
+      "id": "F2c",
+      "name": "split 三段非空(byRun 分层)",
+      "detail": "{\"train\":211,\"val\":211,\"test\":211,\"trainRunIds\":[\"rr-59866b81\"],\"valRunIds\":[\"rr-eb63f86a\"],\"testRunIds\":[\"rr-11d7071c\"],\"blocks\":[{\"blockId\":\"rr-59866b81#0\",\"runId\":\"rr-59866b81\",\"split\":\"train\",\"purgeBeforeSteps\":0,\"purgeAfterSteps\":0,\"uniqueSteps\":211},{\"blockId\":\"rr-eb63f86a#0\",\"runId\":\"rr-eb63f86a\",\"split\":\"val\",\"purgeBeforeSteps\":0,\"purgeAfterSteps\":0,\"uniqueSteps\":211},{\"blockId\":\"rr-11d7071c#0\",\"runId\":\"rr-11d7071c\",\"split\":\"test\",\"purgeBeforeSteps\":0,\"purgeAfterSteps\":0,\"uniqueSteps\":211}]}"
+    },
+    {
+      "id": "F3a",
+      "name": "真实 manifest 的 G6 通过",
+      "detail": "1 个控制节点,最少 3 个水平(≥3),时间共线 max |r|=0.079(≤0.9)"
+    },
+    {
+      "id": "F3b",
+      "name": "单调斜坡数据 → G6 失败(纯阶梯不可归因)",
+      "detail": "fc-mv: 与时间序号 |r|=0.943(>0.9);档位与时间推进共线,效应不可归因;fc-mv: 3 个水平各仅单一连续段(纯阶梯),档位与时间推进不可分;正交设计需 ≥2 个来回阶梯(ABAB/A→B→A)"
+    },
+    {
+      "id": "F4a",
+      "name": "训练作业到终态 done",
+      "detail": "done "
+    },
+    {
+      "id": "F4b",
+      "name": "模型已注册(linear_state_space)",
+      "detail": "mdl-mvze4kwy-rsx2pj"
+    },
+    {
+      "id": "F4c",
+      "name": "平台指标可读:G1 单步 NRMSE < 0.1",
+      "detail": "nrmse=0.001722"
+    },
+    {
+      "id": "F5a",
+      "name": "ARX 阶跃增益≈真值(误差<20%)",
+      "detail": "gain=0.976 true=1"
+    },
+    {
+      "id": "F5b",
+      "name": "耦合可分辨(可用于互审模型通道)",
+      "detail": ""
+    },
+    {
+      "id": "F6a",
+      "name": "真实线计划待批准(单卡 HITL)",
+      "detail": "awaiting_approval"
+    },
+    {
+      "id": "F6b",
+      "name": "未批准执行被拒",
+      "detail": ""
+    },
+    {
+      "id": "F6c",
+      "name": "计划执行完成(2/2)",
+      "detail": "done 2/2"
+    },
+    {
+      "id": "F6d",
+      "name": "台账逐步落行且判定已回填",
+      "detail": "no_resolvable_effect,no_resolvable_effect"
+    },
+    {
+      "id": "F6e",
+      "name": "判定回灌本体证据(sourceType=intervention)",
+      "detail": "2 条"
+    },
+    {
+      "id": "F6f",
+      "name": "充分窗负结论计 refute(无耦合可断言)",
+      "detail": "refute=2"
+    },
+    {
+      "id": "F7a",
+      "name": "模型有效应 + 本体无耦合 → 阻断",
+      "detail": "模型预测有效应(Δy≈-0.09763)但本体明确断言 mv1→cv1 无耦合路径"
+    },
+    {
+      "id": "F7b",
+      "name": "载荷含可证伪方式",
+      "detail": ""
+    }
+  ],
+  "job": {
+    "id": "job-mvze4kwy-rsx2pj",
+    "status": "done",
+    "modelId": "mdl-mvze4kwy-rsx2pj"
+  },
+  "model": {
+    "id": "mdl-mvze4kwy-rsx2pj",
+    "artifactKind": "linear_state_space@1",
+    "metrics": {
+      "platform": {
+        "modelType": "linear_state_space@1",
+        "modelKind": "linear_state_space",
+        "oneStepVal": {
+          "windows": 211,
+          "nrmse": 0.001738
+        },
+        "oneStepTest": {
+          "windows": 211,
+          "nrmse": 0.001722
+        },
+        "rolloutTest": {
+          "windows": 211,
+          "horizon": 6,
+          "nrmse": 0.002256
+        },
+        "rolloutImprovement": 0.996536,
+        "persistenceNrmse": 0.651105
+      },
+      "artifactKind": "linear_state_space@1",
+      "residual": {
+        "mean": 2e-9,
+        "std": 0.013535456
+      },
+      "modelType": "linear_state_space@1",
+      "modelKind": "linear_state_space",
+      "oneStepVal": {
+        "windows": 211,
+        "nrmse": 0.001738
+      },
+      "oneStepTest": {
+        "windows": 211,
+        "nrmse": 0.001722
+      },
+      "rolloutTest": {
+        "windows": 211,
+        "horizon": 6,
+        "nrmse": 0.002256
+      },
+      "rolloutImprovement": 0.996536,
+      "persistenceNrmse": 0.651105
+    }
+  },
+  "sensitivity": {
+    "gain": 0.976,
+    "trueGain": 1
+  },
+  "dataset": {
+    "id": "ds-mvze4kwh-4g1bxd",
+    "rows": 633,
+    "runs": 3,
+    "actionCoverage": {
+      "controlId": "fc-mv",
+      "distinctLevels": 3,
+      "stepCount": 33,
+      "collinearityWithTime": 0.07856749591070995,
+      "saturationRatio": 0.3333333333333333,
+      "levelPhaseMatrix": [
+        {
+          "level": 40,
+          "count": 240,
+          "meanPhase": 0.527816411682893
+        },
+        {
+          "level": 50,
+          "count": 240,
+          "meanPhase": 0.5000000000000001
+        },
+        {
+          "level": 60,
+          "count": 240,
+          "meanPhase": 0.472183588317107
+        }
+      ],
+      "levelBlocks": [
+        12,
+        12,
+        12
+      ],
+      "monolithicSequence": false,
+      "samples": 720
+    }
+  },
+  "experiment": {
+    "planId": "pexp-mvze4lq5-5nt9",
+    "status": "done",
+    "executed": 2,
+    "ledgerRows": 2,
+    "verdicts": [
+      "no_resolvable_effect",
+      "no_resolvable_effect"
+    ],
+    "evidenceRows": 2,
+    "refute": 2
+  }
+}

@@ -86,6 +86,7 @@
     "prepare": "husky",
     "test:api-live": "node scripts/api-live-e2e.mjs",
     "test:e2e-line": "node scripts/e2e-line-governance.mjs",
+    "test:e2e-scientific": "tsx --tsconfig .nuxt/tsconfig.server.json scripts/acceptance-scientific-fullchain.ts",
     "test:p12": "node bench/PIPELINE/run-agentteam.mjs",
     "test:e2e-optimizer": "tsx --tsconfig .nuxt/tsconfig.server.json scripts/e2e-optimizer-live.mjs",
     "test:line-log": "node scripts/line-log-smoke.mjs",
