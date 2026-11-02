@@ -1,0 +1,178 @@
+{
+  "at": "2026-11-02T11:55:48.420Z",
+  "pass": 14,
+  "fail": 2,
+  "out": [
+    {
+      "guard": "range",
+      "status": 400,
+      "body": {
+        "code": "NODE_RANGE_EXCEEDED",
+        "message": "设定值 8bar 超出上限 节点工艺安全量程 的 6bar —— 约束层:节点安全量程(当前有效写入区间 0~6bar;各层限界按安全规约取交集,越界写入已拒绝)",
+        "data": null
+      }
+    },
+    {
+      "guard": "step",
+      "status": 409,
+      "body": {
+        "code": "STEP_LIMIT_EXCEEDED",
+        "message": "节点「PROTO4-FL7-SP-传送带速度」本次变化 3瓶/min 超过单步限制 2瓶/min（来源:param）",
+        "data": null
+      }
+    },
+    {
+      "legal": "S3",
+      "status": 200,
+      "body": {
+        "code": 0,
+        "message": "ok",
+        "data": {
+          "outcome": {
+            "ok": true,
+            "message": "写入并回读一致:2.8 → raw 2.8,回读 2.8(标定后物理值 2.8)",
+            "raw": 2.8,
+            "readback": 2.799999952316284,
+            "ack": "readback-verified"
+          }
+        }
+      }
+    },
+    {
+      "guard": "interval",
+      "status": 429,
+      "body": {
+        "code": "WRITE_INTERVAL_NOT_ELAPSED",
+        "message": "DCW 节点「PROTO4-FL7-SP-灌装头压力」两次在线写入间隔必须至少 60s，当前还需 60s",
+        "data": null
+      }
+    },
+    {
+      "legal": "S1",
+      "status": 200,
+      "body": {
+        "code": 0,
+        "message": "ok",
+        "data": {
+          "outcome": {
+            "ok": true,
+            "ack": "transport-ack",
+            "message": "已发布 2 → aw/twin/f7-backpressure/set(QoS 1;broker 已受理,设备侧待验证)(标定后物理值 2)",
+            "raw": 2,
+            "readback": null,
+            "anchorId": "anc-3b0d3ec6"
+          }
+        }
+      }
+    },
+    {
+      "legal": "S4",
+      "status": 200,
+      "body": {
+        "code": 0,
+        "message": "ok",
+        "data": {
+          "outcome": {
+            "ok": true,
+            "message": "写入并回读一致:29,回读 29(标定后物理值 29)",
+            "raw": 29,
+            "readback": 29,
+            "ack": "readback-verified",
+            "anchorId": "anc-770ae37b"
+          }
+        }
+      }
+    },
+    {
+      "pv": "P1",
+      "last": {
+        "at": 1793620545000,
+        "avg": 494.905,
+        "min": 494.89,
+        "max": 494.92,
+        "cnt": 2
+      }
+    },
+    {
+      "journal": [
+        {
+          "lineId": "ln-d8366708",
+          "nodeId": "dw-d32e7185",
+          "prevValue": 28,
+          "newValue": 29,
+          "source": "manual",
+          "actor": "08bb6963-10fe-493c-8a07-0de4a86e356e",
+          "recipeRunId": null,
+          "id": "anc-770ae37b",
+          "at": "2026-11-02T19:55:33.374+08:00"
+        },
+        {
+          "lineId": "ln-d8366708",
+          "nodeId": "dw-47e1ba08",
+          "prevValue": 1.8,
+          "newValue": 2,
+          "source": "manual",
+          "actor": "08bb6963-10fe-493c-8a07-0de4a86e356e",
+          "recipeRunId": null,
+          "id": "anc-3b0d3ec6",
+          "at": "2026-11-02T19:55:28.349+08:00"
+        },
+        {
+          "lineId": "ln-d8366708",
+          "nodeId": "dw-95d41b71",
+          "prevValue": 2.6,
+          "newValue": 2.8,
+          "source": "manual",
+          "actor": "08bb6963-10fe-493c-8a07-0de4a86e356e",
+          "recipeRunId": null,
+          "id": "anc-998efb95",
+          "at": "2026-11-02T19:54:02.705+08:00"
+        },
+        {
+          "lineId": "ln-d8366708",
+          "nodeId": "dw-47e1ba08",
+          "prevValue": null,
+          "newValue": 1.8,
+          "source": "recipe",
+          "actor": "recipe",
+          "recipeRunId": "rr-8dabd697",
+          "id": "anc-06ea380a",
+          "at": "2026-11-02T19:44:57.294+08:00"
+        },
+        {
+          "lineId": "ln-d8366708",
+          "nodeId": "dw-d32e7185",
+          "prevValue": null,
+          "newValue": 28,
+          "source": "recipe",
+          "actor": "recipe",
+          "recipeRunId": "rr-8dabd697",
+          "id": "anc-95c7382a",
+          "at": "2026-11-02T19:44:57.287+08:00"
+        },
+        {
+          "lineId": "ln-d8366708",
+          "nodeId": "dw-95d41b71",
+          "prevValue": null,
+          "newValue": 2.6,
+          "source": "recipe",
+          "actor": "recipe",
+          "recipeRunId": "rr-8dabd697",
+          "id": "anc-493fa54d",
+          "at": "2026-11-02T19:44:57.281+08:00"
+        },
+        {
+          "lineId": "ln-d8366708",
+          "nodeId": "dw-da17b9db",
+          "prevValue": null,
+          "newValue": 36,
+          "source": "recipe",
+          "actor": "recipe",
+          "recipeRunId": "rr-8dabd697",
+          "id": "anc-9aa3aeb3",
+          "at": "2026-11-02T19:44:57.250+08:00"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+✅ 连通[PROTO4-FL7-PV-灌装量(modbus-tcp)](modbus-tcp) — latency=2ms 连接成功,读取 40005 = 493.8500061035156
+✅ 连通[PROTO4-FL7-PV-瓶盖扭矩(modbus-rtu)](modbus-rtu) — latency=2ms 网关连接成功,读取 40001 = 1.25
+✅ 连通[PROTO4-FL7-PV-环境温度(mqtt)](mqtt) — latency=753ms Broker 连接成功,aw/twin/f7-env/env-temp-pv → scalar 23.1(jsonPath=data.env-temp-pv)(被动订阅:收到报文即入库)
+✅ 连通[PROTO4-FL7-PV-环境湿度(mqtt)](mqtt) — latency=974ms Broker 连接成功,aw/twin/f7-env/env-humidity-pv → scalar 55(jsonPath=data.env-humidity-pv)(被动订阅:收到报文即入库)
+✅ 连通[PROTO4-FL7-PV-产线节拍(modbus-tcp)](modbus-tcp) — latency=11ms 连接成功,读取 40007 = 34.5
+✅ 连通[PROTO4-FL7-PV-CIP液位(opcua)](opcua) — latency=75ms 会话建立成功,读取 ns=2;s=f7-cip.cip-level-pv = 61.5
+✅ 连通[PROTO4-FL7-PV-洗液温度(opcua)](opcua) — latency=2ms 会话建立成功,读取 ns=2;s=f7-cip.cip-temp-pv = 64.6
+✅ 连通[PROTO4-FL7-PV-背压确认(mqtt)](mqtt) — latency=867ms Broker 连接成功,aw/twin/f7-backpressure/bp-confirm-pv → scalar 1.81(jsonPath=data.bp-confirm-pv)(被动订阅:收到报文即入库)
+✅ 连通[PROTO4-FL7-SP-灌装背压回读(mqtt=P9确认主题)](mqtt) — latency=0ms Broker 连接成功,aw/twin/f7-backpressure/bp-confirm-pv → scalar 1.81(jsonPath=data.bp-confirm-pv)(被动订阅:收到报文即入库)
+✅ 连通[PROTO4-FL7-SP-传送带速度回读(modbus-tcp HR40003)](modbus-tcp) — latency=10ms 连接成功,读取 40001 = 36
+✅ 连通[PROTO4-FL7-SP-灌装头压力回读(modbus-tcp HR40007)](modbus-tcp) — latency=15ms 连接成功,读取 40003 = 2.5999999046325684
+✅ 连通[PROTO4-FL7-SP-CIP冲洗流量回读(opcua)](opcua) — latency=1ms 会话建立成功,读取 ns=2;s=f7-cip.cip-flow-sp = 28
+
+=== 连接性预检: 12 通过 / 0 失败 ===

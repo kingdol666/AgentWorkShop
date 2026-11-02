@@ -148,8 +148,14 @@ for (let r = 0; r < N_RUNS; r++) {
   segRepo.insert({ lineId: line.id, runId: run.id, fromTs: start, toTs: end, recipeId: recipe.id, recipeVersion: recipe.version ?? 1, recipeContentHash: seedHash, conditionId: 'c-live', source: 'line_run', confirmed: true })
   let y = 52
   const uq = []
+  // G6 动作覆盖门(2026-11 新增):控制序列需离散水平 + 与时间低共线 → 阶跃保持式激励(每 20 拍换水平,拟随机游走)
+  let level = 50
   for (let k = 0; k < N_STEPS; k++) {
-    const u = 50 + 20 * Math.sin((k + r * 11) / 9) + 6 * Math.sin((k + r * 3) / 4)
+    if (k % 20 === 19) {
+      const jump = ((k + r * 7) % 3) - 1 // {-1,0,1} × 5 → 水平集 {45,50,55}
+      level = Math.min(55, Math.max(45, level + jump * 5))
+    }
+    const u = level + 0.15 * Math.sin((k + r * 11) / 9)
     uq.push(u)
     const delayed = uq[Math.max(0, uq.length - 1 - DELAY_STEPS)]
     y = 0.3 * y + 0.7 * delayed + 8 + 0.02 * Math.sin((k + r) / 3)

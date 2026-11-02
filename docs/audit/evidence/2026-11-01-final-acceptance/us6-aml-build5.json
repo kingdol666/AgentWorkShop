@@ -1,0 +1,1 @@
+{"code":0,"message":"ok","data":{"result":{"text":"nodes 至少 2 项({node_id, role}),且必须含 1 个 target(预测目标)。","isError":true}}}

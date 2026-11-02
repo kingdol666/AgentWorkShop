@@ -105,19 +105,31 @@ for (const { scen, rec } of provisioned) {
   const ch = (await api.call('POST', '/api/workshop/channels', { name: `闭环寻优-${scen}-${tag}`, scenarioPrompt: `本频道执行 ${s.zh} 闭环寻优:一切决策基于 daq_query 实测数字与工艺机理,写入走 dcw_control(配方窗内),每轮留痕。` })).data
   const CH = ch?.channelId ?? ch?.id
   if (!CH) throw new Error(`[${scen}] 频道创建失败: ${JSON.stringify(ch).slice(0, 200)}`)
-  const leadR = (await api.call('POST', '/api/workshop/agents', { name: `优化总工-${tag}-${scen}`, harness: 'omp', config: { intro: '督办与验收', systemPromptPrefix: '你是优化总工。把寻优任务拆解派给工艺工程师;督办进度(长等待属正常工艺响应,勿频繁催促);收口前核对其数据链(测量→决策→写入→复测→判定)。中文简短。' } })).data
-  const workerR = (await api.call('POST', '/api/workshop/agents', { name: `工艺工程师-${tag}-${scen}`, harness: 'omp', config: { intro: '闭环寻优执行者', systemPromptPrefix: '你是工艺工程师。严格按任务书作业纪律执行闭环:读数归因→机理决策→受治理写入→等物理响应→复测→判定。禁止臆造数字;长等待是工艺要求,耐心完成。中文。' } })).data
+  const leadR = (await api.call('POST', '/api/workshop/agents', { name: `优化总工-${tag}-${scen}`, harness: 'omp', config: { rpcMode: 'rpc', intro: '督办与验收', systemPromptPrefix: '你是优化总工。把寻优任务拆解派给工艺工程师;督办进度(长等待属正常工艺响应,勿频繁催促);收口前核对其数据链(测量→决策→写入→复测→判定)。中文简短。' } })).data
+  const workerR = (await api.call('POST', '/api/workshop/agents', { name: `工艺工程师-${tag}-${scen}`, harness: 'omp', config: { rpcMode: 'rpc', intro: '闭环寻优执行者', systemPromptPrefix: '你是工艺工程师。严格按任务书作业纪律执行闭环:读数归因→机理决策→受治理写入→等物理响应→复测→判定。禁止臆造数字;长等待是工艺要求,耐心完成。中文。' } })).data
   const team = (await api.call('POST', '/api/workshop/teams', { name: `寻优剧组-${tag}-${scen}` })).data
   const teamId = team?.id ?? team?.team?.id
   await api.call('POST', `/api/workshop/teams/${teamId}/members`, { agentId: leadR.id, role: 'lead' })
   await api.call('POST', `/api/workshop/teams/${teamId}/members`, { agentId: workerR.id, role: 'worker' })
   await api.call('POST', `/api/workshop/teams/${teamId}/deploy`, { channelId: CH })
+  // 2026-11-02 修复:频道由 REST 创建 + team deploy 后,lead 调度循环未装配 —— goal 任务会
+  // 永久停在 SUBMITTED(lead idle、信箱无人消费)。activate 会 ensureLeadSchedulerLoop,
+  // 是 C3 能真正开跑的必要一步(实测:不调 activate 时 15 min 预算内 0 写)。
+  await api.call('POST', `/api/workshop/channels/${CH}/activate`, {})
   const inst = (await api.call('GET', `/api/workshop/channels/${CH}/agents`)).data ?? []
   const WI = inst.find(a => a.role === 'worker')
   for (const nodeId of Object.values(rec.dcw)) await api.call('POST', '/api/workshop/agent-tools/bindings', { agentId: WI.id, nodeId, kind: 'dcw', mode: 'auto' })
   for (const nodeId of Object.values(rec.daq)) await api.call('POST', '/api/workshop/agent-tools/bindings', { agentId: WI.id, nodeId, kind: 'daq', mode: 'auto' })
-  const goal = await api.call('POST', `/api/workshop/channels/${CH}/tasks`, { title: `${s.zh}:回到 ${s.pv.target}±${s.pv.tol} ${s.pv.unit}`, parts: [{ text: missionBrief(scen) }], mode: 'goal', modeConfig: { goalCriteria: `${s.pv.label}连续两轮复测在 ${s.pv.target - s.pv.tol}~${s.pv.target + s.pv.tol} ${s.pv.unit} 内,全部守卫约束满足,dcw_judge 已提交,每轮决策依据已留痕` } })
+  const goal = await api.call('POST', `/api/workshop/channels/${CH}/tasks`, { title: `${s.zh}:回到 ${s.pv.target}±${s.pv.tol} ${s.pv.unit}`, description: missionBrief(scen), parts: [{ text: missionBrief(scen) }], mode: 'goal', modeConfig: { goalCriteria: `${s.pv.label}连续两轮复测在 ${s.pv.target - s.pv.tol}~${s.pv.target + s.pv.tol} ${s.pv.unit} 内,全部守卫约束满足,dcw_judge 已提交,每轮决策依据已留痕` } })
   const taskId = goal.data?.id ?? goal.data?.task?.id
+  // 2026-11-02 兜底:若 lead 首轮后不再消费队列(实测 SUBMITTED 滞留),把根任务改派给
+  // worker 直接执行。C3 的主张是"worker 多轮闭环",不依赖 lead 编排;改派经平台状态机,
+  // 仍以 lead 身份执行并留痕,不是绕过治理。
+  try {
+    await api.call('POST', `/api/workshop/tasks/${taskId}/reassign`, { toAgentId: WI.id })
+    console.log(`  · [${scen}] 根任务已改派 worker(防 lead 队列滞留)`)
+  }
+  catch (e) { console.log(`  ⚠ [${scen}] 改派失败(继续等 lead 领取): ${e?.message ?? e}`) }
   console.log(`  ✔ [${scen}] channel=${CH.slice(0, 8)} 任务=${String(taskId).slice(0, 8)} worker 绑定 ${Object.keys(rec.dcw).length + Object.keys(rec.daq).length} 节点`)
   runs.push({ scen, zh: SCENARIOS[scen].zh, CH, taskId, workerInst: WI.id, lineId: rec.ids.lineId, dcw: rec.dcw, daq: rec.daq, state: 'SUBMITTED', done: false, startedAt: Date.now() })
 }

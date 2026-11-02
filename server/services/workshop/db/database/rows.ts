@@ -289,7 +289,10 @@ export interface MessageRow {
   role: string
   partsJson: string
   metadataJson: string
-  state: 'pending' | 'consuming' | 'consumed'
+  /** P3-4:'dead' = 重投次数达上限(3),永不再投递(审计可见) */
+  state: 'pending' | 'consuming' | 'consumed' | 'dead'
+  /** P3-4:steer 失败重投计数(requeue 时 +1) */
+  attempts: number
   createdAt: string
   consumedAt: string | null
 }

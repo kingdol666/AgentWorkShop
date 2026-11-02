@@ -6,6 +6,7 @@
 import type { AgentWorkspace } from '../../agent-interface'
 import type { HostToolBridgeContext, HostToolResult, HostToolSessionState } from '../types'
 import { partsToText } from '../session'
+import { isHumanChatDelivery } from '../../../types/a2a'
 
 export async function handleSendMessageToAgent(
   args: Record<string, unknown>,
@@ -119,7 +120,10 @@ export async function handlePollMessages(
 ): Promise<HostToolResult> {
   const limit = (args.limit as number | undefined) ?? 10
   const waitSec = Math.min(180, Math.max(0, Number(args.wait_seconds ?? 0) || 0))
-  const msgs = await ws.waitMailbox(limit, waitSec * 1000)
+  // 双保险:运行时 waitPending 已排除人类群聊投递;此处再滤一次,防止旧元数据/回退路径
+  // 把需要 platformReply 回写群聊的消息读走(读即取后用户将收不到答复)。
+  const msgs = (await ws.waitMailbox(limit, waitSec * 1000))
+    .filter(m => !isHumanChatDelivery(m))
   if (msgs.length === 0) {
     return {
       text: waitSec > 0

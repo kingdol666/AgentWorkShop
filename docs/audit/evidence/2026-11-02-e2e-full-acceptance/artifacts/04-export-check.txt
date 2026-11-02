@@ -1,0 +1,5 @@
+job=edajob-7fe8202b
+head=ts_iso,ts_ms,value,state
+rows=345
+mean=494.250
+mono=true

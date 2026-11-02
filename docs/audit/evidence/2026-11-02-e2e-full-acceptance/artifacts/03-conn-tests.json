@@ -1,0 +1,134 @@
+{
+  "tests": [
+    {
+      "label": "PROTO4-FL7-PV-灌装量(modbus-tcp)",
+      "driver": "modbus-tcp",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 37686,
+        "unitId": 2,
+        "register": 40005,
+        "registerType": "holding",
+        "dataType": "float32",
+        "byteOrder": "big"
+      }
+    },
+    {
+      "label": "PROTO4-FL7-PV-瓶盖扭矩(modbus-rtu)",
+      "driver": "modbus-rtu",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 37688,
+        "unitId": 5,
+        "register": 40001,
+        "registerType": "holding",
+        "dataType": "float32",
+        "byteOrder": "big"
+      }
+    },
+    {
+      "label": "PROTO4-FL7-PV-环境温度(mqtt)",
+      "driver": "mqtt",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 56830,
+        "topic": "aw/twin/f7-env/env-temp-pv",
+        "jsonPath": "data.env-temp-pv"
+      }
+    },
+    {
+      "label": "PROTO4-FL7-PV-环境湿度(mqtt)",
+      "driver": "mqtt",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 56830,
+        "topic": "aw/twin/f7-env/env-humidity-pv",
+        "jsonPath": "data.env-humidity-pv"
+      }
+    },
+    {
+      "label": "PROTO4-FL7-PV-产线节拍(modbus-tcp)",
+      "driver": "modbus-tcp",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 37686,
+        "unitId": 2,
+        "register": 40007,
+        "registerType": "holding",
+        "dataType": "float32",
+        "byteOrder": "big"
+      }
+    },
+    {
+      "label": "PROTO4-FL7-PV-CIP液位(opcua)",
+      "driver": "opcua",
+      "driverConfig": {
+        "endpoint": "opc.tcp://127.0.0.1:4862",
+        "nodeId": "ns=2;s=f7-cip.cip-level-pv"
+      }
+    },
+    {
+      "label": "PROTO4-FL7-PV-洗液温度(opcua)",
+      "driver": "opcua",
+      "driverConfig": {
+        "endpoint": "opc.tcp://127.0.0.1:4862",
+        "nodeId": "ns=2;s=f7-cip.cip-temp-pv"
+      }
+    },
+    {
+      "label": "PROTO4-FL7-PV-背压确认(mqtt)",
+      "driver": "mqtt",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 56830,
+        "topic": "aw/twin/f7-backpressure/bp-confirm-pv",
+        "jsonPath": "data.bp-confirm-pv"
+      }
+    },
+    {
+      "label": "PROTO4-FL7-SP-灌装背压回读(mqtt=P9确认主题)",
+      "driver": "mqtt",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 56830,
+        "topic": "aw/twin/f7-backpressure/bp-confirm-pv",
+        "jsonPath": "data.bp-confirm-pv"
+      }
+    },
+    {
+      "label": "PROTO4-FL7-SP-传送带速度回读(modbus-tcp HR40003)",
+      "driver": "modbus-tcp",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 37686,
+        "unitId": 2,
+        "register": 40001,
+        "registerType": "holding",
+        "dataType": "float32",
+        "byteOrder": "big"
+      }
+    },
+    {
+      "label": "PROTO4-FL7-SP-灌装头压力回读(modbus-tcp HR40007)",
+      "driver": "modbus-tcp",
+      "driverConfig": {
+        "host": "127.0.0.1",
+        "port": 37686,
+        "unitId": 2,
+        "register": 40003,
+        "registerType": "holding",
+        "dataType": "float32",
+        "byteOrder": "big"
+      }
+    },
+    {
+      "label": "PROTO4-FL7-SP-CIP冲洗流量回读(opcua)",
+      "driver": "opcua",
+      "driverConfig": {
+        "endpoint": "opc.tcp://127.0.0.1:4862",
+        "nodeId": "ns=2;s=f7-cip.cip-flow-sp"
+      }
+    }
+  ],
+  "note": "P5 vector 按 skill 规定不经 test-driver,由 verify-mirror 帧验证覆盖"
+}

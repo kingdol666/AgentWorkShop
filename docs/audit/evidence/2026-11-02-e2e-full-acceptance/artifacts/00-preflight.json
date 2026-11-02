@@ -1,0 +1,60 @@
+{
+  "at": "2026-11-02T11:25:10.591Z",
+  "repo": "D:\\codes\\ABO\\AgentWorkShop",
+  "homes": [
+    "D:\\codes\\ABO\\AgentWorkShop\\.AgentWorkShop",
+    "C:\\Users\\87287\\.AgentWorkShop",
+    "D:\\codes\\ABO\\AgentWorkShop"
+  ],
+  "ports": [
+    3300,
+    3001
+  ],
+  "running": true,
+  "liveInstances": [
+    {
+      "home": null,
+      "mode": null,
+      "port": 3300,
+      "pid": null,
+      "startedAt": null,
+      "pidAlive": false,
+      "portListening": true,
+      "stale": false,
+      "note": "端口有监听但未找到对应 aw.lock;可能是其它 home 或容器"
+    }
+  ],
+  "instances": [
+    {
+      "home": null,
+      "mode": null,
+      "port": 3300,
+      "pid": null,
+      "startedAt": null,
+      "pidAlive": false,
+      "portListening": true,
+      "stale": false,
+      "note": "端口有监听但未找到对应 aw.lock;可能是其它 home 或容器"
+    }
+  ],
+  "treatAsProduction": true,
+  "testInstance": false,
+  "safeToStart": false,
+  "forbiddenActions": [
+    "aw start / node bin/aw.mjs start(会读 aw.lock 并自动停止既有实例,不是“启动失败”)",
+    "aw stop / node bin/aw.mjs stop",
+    "taskkill / Stop-Process / kill / pkill",
+    "docker compose down / docker stop awshop-*",
+    "在同一个 AW_HOME 或同一端口再启动一个实例(直接启动会被 data.lock 拒绝)",
+    "停止/重启 DAQ 采集总控(POST /api/workshop/daq/controller action=stop)",
+    "修改或删除既有的线/节点/配方/频道",
+    "重启进程来让插件生效(builtin 除外,需先验证 helper 缓存)"
+  ],
+  "next": [
+    "附加到已运行实例:export AW_BASE=http://127.0.0.1:<port>;然后 aw_status / aw_login",
+    "不要运行 aw start(它会自动停止既有实例)",
+    "只创建本次作业资源(PROTO/E2E 前缀 + 专用测试线),不改不删既有资源",
+    "插件优先 project/user 级热加载;需要重启的改动移交维护窗口",
+    "收尾只清理本次创建的 id"
+  ]
+}

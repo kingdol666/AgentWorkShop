@@ -43,7 +43,10 @@ const durationS = Math.max(30, Number(arg('duration', 180)))
 const base = arg('base', process.env.AW_BASE ?? 'http://127.0.0.1:3001')
 const autostart = !has('no-autostart')
 const only = (arg('scenarios', '') || process.env.AW_SCENARIOS || '').split(',').map(s => s.trim()).filter(Boolean)
+const unknown = only.filter(id => !SCENARIOS[id])
+if (unknown.length) { console.error(`✘ 未知场景: ${unknown.join(', ')}(可用: ${SCENARIO_IDS.join(', ')})`); process.exit(1) }
 const list = (only.length ? only : SCENARIO_IDS.filter(id => id !== 'biax')).filter(id => SCENARIOS[id])
+if (!list.length) { console.error('✘ 零场景:拒绝空跑'); process.exit(1) }
 
 const rid = `${new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14)}-optcontrol-${condition.toLowerCase()}`
 const outDir = resolve(arg('out', join(REPO, 'bench', 'results', rid)))

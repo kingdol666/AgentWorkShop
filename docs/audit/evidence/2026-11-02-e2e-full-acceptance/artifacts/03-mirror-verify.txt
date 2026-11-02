@@ -1,0 +1,23 @@
+=== dn-9ec79037 灌装量 ===
+=== P5 vector (模板 resample 64 点网格) ===
+✅ vector:窗口内有帧 — frames=24
+✅ vector:点数符合期望 — expect=64 actual=64
+✅ vector:指标 avg — expect=1 actual=1.027073
+
+=== verify-mirror: 3/3 PASS ===
+
+=== verify-mirror 汇总(2026-11-02) ===
+9/9 DAQ 节点 PASS:
+  P1 dn-9ec79037 灌装量      scalar 3/3 (494±2)
+  P2 dn-ab4bb8fb 瓶盖扭矩    scalar 3/3 (1.25±0.4)
+  P3 dn-6088b7a9 环境温度    scalar 3/3 (23.5±2.5)
+  P4 dn-65ce4e7e 环境湿度    scalar 3/3 (55±4)
+  P5 dn-6b28bddc 灌装精度截面 vector 3/3 (64 点网格, avg≈1.03, 模板 resample n=64)
+  P6 dn-ad14d077 产线节拍    scalar 3/3 (34.6±0.8)
+  P7 dn-7e35d94d CIP液位     scalar 3/3 (61.5±1.5)
+  P8 dn-46f3fc41 洗液温度    scalar 3/3 (64.5±2)
+  P9 dn-316f1c3c 背压确认    scalar 3/3 (1.8±0.15)
+过程记录:
+  - 孪生向量信号初版 hook 返回标量→points 空数组,经 /strategy PATCH 改为返回 {points:[16]},镜像恢复
+  - 平台帧点数=64:thickness-scan 模板 sink 处理器链(resample n=64 + derive-metric avg/max)按模板语义重采样,
+    非缺陷;文档 §2.4 已补注。verify-mirror 期望值改按模板网格(64 点)验收。

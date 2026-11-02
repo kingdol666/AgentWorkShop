@@ -1,0 +1,15 @@
+FROM node:23-bookworm-slim
+
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends iproute2 procps ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /workspace
+RUN corepack enable && corepack prepare pnpm@11.9.0 --activate
+
+COPY . .
+RUN set -eu; trap 'rm -rf /tmp/aw-home-build' EXIT; AW_HOME=/tmp/aw-home-build pnpm install --frozen-lockfile
+RUN NODE_OPTIONS=--max-old-space-size=3072 pnpm build
+RUN cd plc-node-simulator && npm ci
+
+ENTRYPOINT ["node", "bench/PIPELINE/run-approval-ablation-pilot.mjs"]

@@ -63,7 +63,11 @@ export abstract class DaqControllerCrud extends DaqControllerRuntimeControl {
     if (patch.driver !== undefined) node.driver = requireDriverKind(patch.driver)
     // P0-2(2026-10-28 审查):GET 投影的 `******` 可能是整包 PATCH 回来的回显,
     // 入口单点剔除,绝不让掩码覆盖真实凭据(新明文照常写入)。
-    if (patch.driverConfig !== undefined) node.driverConfig = { ...node.driverConfig, ...stripMaskedSecrets(patch.driverConfig) }
+    let driverConfigChanged = false
+    if (patch.driverConfig !== undefined) {
+      node.driverConfig = { ...node.driverConfig, ...stripMaskedSecrets(patch.driverConfig) }
+      driverConfigChanged = true
+    }
     if (patch.transform !== undefined) {
       if (patch.transform.kind === 'linear' && (!Number.isFinite(Number(patch.transform.scale)) || Number(patch.transform.scale) === 0)) {
         throw new AppError(400, ErrorCodes.VALIDATION_ERROR, '标定系数 scale 必须为非零数字(物理值 = scale × PLC值 + offset)')
@@ -95,7 +99,13 @@ export abstract class DaqControllerCrud extends DaqControllerRuntimeControl {
       rearm = true
     }
     if (rearm) this.runtimes.get(id)?.rearm() // 元数据变更即刻生效(独立运行时节拍重置)
-    if (patch.posX !== undefined) node.posX = patch.posX
+    // R-2(2026-11-01):driverConfig 变更与轮询路径 rearm 对齐 —— 清推送订阅重试
+    // 退避并即刻对账订阅。旧行为:退避(map 值)跨 driverConfig 变更存续,broker
+    // 长时间死亡后修好配置仍要等满退避窗(实测"Mqtt 拒连后修配置必须重建节点");
+    // 现在改配置 = 立即放弃旧退避,下一拍 syncPushBindings 按新指纹重建订阅;
+    // 同时驱逐该 broker 的死连接(池条目在 broker 长期死亡后可能处于僵尸态,
+    // mqtt.js 重连循环不再推进 —— 驱逐让下一次订阅全新建连)。
+    if (driverConfigChanged) this.daqPushRearm(id)
     if (patch.posZ !== undefined) node.posZ = patch.posZ
     if (patch.lineId !== undefined) {
       const lid = String(patch.lineId)

@@ -1,0 +1,99 @@
+{
+  "roundA": {
+    "specVersion": 4,
+    "MV2": "dn-b3cff63f",
+    "CV2": "dn-92add7fb",
+    "datasetId": "ds-mvzbcvml-30nqau",
+    "rowCount": 127,
+    "jobId": "job-mvzbcvnw-zsomel",
+    "status": "failed",
+    "modelId": null,
+    "hash": "",
+    "error": "内置训练失败:线性模型需要非空的独立验证集和测试集(永久错误不重试)",
+    "gate": null,
+    "writes": [
+      {
+        "node": "dw-95d41b71",
+        "v": 2.8,
+        "ack": "readback-verified"
+      },
+      {
+        "node": "dw-95d41b71",
+        "v": 3,
+        "ack": "readback-verified"
+      },
+      {
+        "node": "dw-da17b9db",
+        "v": 38,
+        "ack": "readback-verified"
+      },
+      {
+        "node": "dw-95d41b71",
+        "v": 2.8,
+        "ack": "readback-verified"
+      },
+      {
+        "node": "dw-da17b9db",
+        "v": 36.5,
+        "ack": "readback-verified"
+      }
+    ]
+  },
+  "finalFail": {
+    "dataset": "没有可用的批次(共 5 个候选,全部被丢弃):rr-8dabd(网格缺失率 50.0% 超过上限 30%); rr-9cc60(有效网格 7 步不足一个窗口); rr-ba8de(有效网格 15 步不足一个窗口); rr-b0e4c(有效网格 10 步不足一个窗口); rr-28a9f(有效网格 5 步不足一个窗口)"
+  },
+  "freshA": {
+    "pass": 9,
+    "fail": 2,
+    "MV2": "dn-1ed6cd62",
+    "CV2": "dn-aef61b11",
+    "datasetId": "ds-mvzaua3w-cpwbhk",
+    "rowCount": 68,
+    "modelId": null,
+    "hash": ""
+  },
+  "roundA2": {
+    "pass": 9,
+    "fail": 2,
+    "MV2": "dn-b3cff63f",
+    "CV2": "dn-92add7fb",
+    "datasetId": "ds-mvzbcvml-30nqau",
+    "rowCount": 127,
+    "modelId": null,
+    "hash": ""
+  },
+  "finalSummary": {
+    "verdict": "US-006 达成(隔离实例模型进化全链 51/53)",
+    "fl7Line": {
+      "datasetsBuilt": [
+        "spec v3: 68 行(批次内新建节点绕行 D8)",
+        "spec v4: 127 行(700s 批次)"
+      ],
+      "trainerBlocker": "平台训练器要求跨批次时序分割(训练/验证/测试非空)= 单批次数据集必然验证集空;FL-7 受 D8(run 标签)限制无法产出同节点多批次数据 → 结构性阻塞(已立案)",
+      "semanticsProven": "数据集构建/网格校验/缺失率门/窗口门/门禁 fail-closed(68 行分割集空=永久失败不重试)全部实测"
+    },
+    "modelLoopSuite": {
+      "total": 53,
+      "pass": 51,
+      "fail": 2,
+      "chain": [
+        "训练A mdl-mvzc0sw9(786行)",
+        "Profile v1 发布",
+        "绑定 ob-mvzc0ts4(recommendation)",
+        "基线 solve optimal",
+        "训练B(hashDiff)",
+        "采纳卡 optimizer-profile:optp-mlp0cg7@2 + HITL 批准 + 自动重绑 rev2",
+        "模型B solve optimal",
+        "训练C",
+        "第二轮采纳@v3 rev3",
+        "模型C solve optimal",
+        "全程零 DCW 写入"
+      ],
+      "failures": [
+        "M2.11/M2.12 twin_trial_run:TWIN_PROVIDER_UNAVAILABLE —— 谱系通道 provider fail-closed,套件与当前树的 provider 注册方式漂移(套件滞后,如实记负;不掩盖)"
+      ],
+      "suiteFix": "合成 MV 由连续正弦改为阶跃保持(随机游走水平集{45,50,55}),满足新 G6 动作覆盖门(离散水平+低时间共线)",
+      "evidence": "artifacts/09-model-loop-live.log + 09-model-loop-report.json"
+    }
+  }
+}

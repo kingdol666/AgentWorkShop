@@ -88,6 +88,8 @@ export function initWorkshopDb(db: DatabaseSync): void {
   migrateAgentTokenGraceColumns(db)
   // v33(2026-10-28):频道执行模式列(observe/manual/auto;NULL 按 auto 中性生效,零行为变化)
   migrateChannelExecutionModeColumn(db)
+  // P3-4(2026-11-01):steer 失败重投上限 —— messages.attempts 列(重投 +1,≥3 → dead)
+  migrateAddColumn(db, 'messages', 'attempts', 'INTEGER NOT NULL DEFAULT 0')
   // v32(ONT):Profile 冻结本体引用摘要(缺省 [] = 无本体约束域;只前滚,不回填)
   migrateAddColumn(db, 'optimizer_profiles', 'ontology_refs_json', 'TEXT NOT NULL DEFAULT \'[]\'')
   seedDefaultWorkshopData(db)

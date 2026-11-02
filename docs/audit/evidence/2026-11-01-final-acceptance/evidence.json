@@ -1,0 +1,33 @@
+{
+  "round": "final-acceptance",
+  "date": "2026-11-01",
+  "platform": "v0.8.8 @3300 (aw-prod-1031 home)",
+  "layers": {
+    "T0": { "lint": 0, "typecheck": "pass", "docs": "89/0", "i18n": "parity 3173/3173", "readme": "pass" },
+    "T1": { "unit": "915 tests/913 pass/0 fail/2 skip", "mcp": "14/0", "pluginLifecycle": "22/0", "sdkSurface": "pass", "twinProvider": "5/0", "skills": "147/0" },
+    "T2": {
+      "e2eLine": "44/44", "ontologyOffline": "57/57", "ontologyLive": "87/87",
+      "optimizer": "105/105 (MCP optimizer_solve status=optimal)",
+      "modelLoop": "51/53 — 2 fail = M2.11/M2.12 TWIN_PROVIDER_UNAVAILABLE:injection-greybox-v1 (E-3 real regression, filed)",
+      "iddResults": "36/36 (first-run red = E-2 env drift, corrected)",
+      "injection": "not rerun (needs AW_TRIAL_INTERVAL_MS=0 instance env; recipe_trial HITL proven live on PROTO3 twice)"
+    },
+    "T3": { "apiLive": "71 PASS", "hitlLive": "28/28", "toolSurface": "37/0" },
+    "T4": { "plugins": "11 enabled/0 failures", "tools": "126/126 available (builtin 105 + plugin 21)", "liveInvoke": "diag_status correctly refused for plugin-disabled team (governance); daq_query/analysis/line_context real payloads" }
+  },
+  "crownChain": {
+    "liveFetch": "melt 22.1bar / preform 103.8C / env 22.15C all in doc bands",
+    "analysisLedger": "ar-21b71aa2 saved+queried",
+    "agentHITLWrite": "task fa72bf96 COMPLETED 100; anchor anc-0843c5e3 source=agent 2.65->2.6 at 02:31:25; approval ap-692019b6 with full hypothesis text",
+    "amlAttempt": "honest negative at 3 gates: authorization (dcw node not bound) / batch-completion (run open) / data-quality (grid missing 35.2%->33.8%->31.3% > 30% cap; outage hole + device restarts)"
+  },
+  "findings": {
+    "E-1": "P1 production crash loop under combined load: 11 child exits in 1h -> supervisor gave up by design (log line 11791); memory exhaustion (31GB total, ~0.7GB free during 4 parallel unit suites + dev instances); fix=dedicated memory budget for production instance",
+    "E-2": "P2 revival env drift: missing AW_ALLOW_PRIVATE_OUTBOUND=1 -> SSRF guard refused IDD; corrected with full-env restart; runbook required",
+    "E-3": "P2 REAL REGRESSION: twin_trial_run tool-face provider lookup broken (TWIN_PROVIDER_UNAVAILABLE) while plugin registers fine (unit 5/5); filed, unfixed — blocks unattended GO",
+    "E-4": "self-heal chain #5->#7 observed, then cap reached; manual revival via scripts/_audit/detached-start.mjs with AW_MODE=home AW_HOME=... AW_ALLOW_PRIVATE_OUTBOUND=1 AW_MCP_ENABLED=true",
+    "E-5": "batch-close side effect: dcw-temp-sp hold rewrite during close returned HTTP 404 ack=failed (device was mid-restart); disclosed"
+  },
+  "verdict": { "controlledPilot": "GO", "unattended": "NO-GO (E-1 resource isolation + E-3 regression)" },
+  "reviewer": "APPROVED (architect tier, 2026-11-01, with conditions all applied)"
+}

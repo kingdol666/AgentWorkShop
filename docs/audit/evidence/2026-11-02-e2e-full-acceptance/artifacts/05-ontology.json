@@ -1,0 +1,142 @@
+{
+  "at": "2026-11-02T12:06:34.715Z",
+  "ontologyId": "ont-fl7-1102",
+  "draftId": "ontd-mvz7incc-okxzud",
+  "publishedVersion": 5,
+  "pass": 14,
+  "fail": 0,
+  "validate": {
+    "entities": 9,
+    "relations": 5,
+    "rules": 3,
+    "bindings": 10,
+    "byState": {
+      "proposed": 3,
+      "reviewed": 0,
+      "validated": 0,
+      "approved_for_control": 0,
+      "deprecated": 0
+    },
+    "byEvidence": {
+      "candidate_influence": 2,
+      "observed_correlation": 0,
+      "validated_control": 1
+    }
+  },
+  "compiled": {
+    "status": "warning",
+    "contentHash": "1aacbe9e810bd89a66d2838c53be58a1e2c29dbc00c8eaa97085571413894a34",
+    "rulePackHash": "e4cd7d4243aad472ee0c3f74a2fb2e220e1799f85d00d8fca7f98381a5911542",
+    "counts": {
+      "compiled": 1,
+      "guard": 1,
+      "explained": 1,
+      "rejected": 0
+    }
+  },
+  "traces": [
+    {
+      "id": "ort-ont-fl7-1102@5:R-BOUND",
+      "ontologyId": "ont-fl7-1102",
+      "version": 5,
+      "rulePackHash": "e4cd7d4243aad472ee0c3f74a2fb2e220e1799f85d00d8fca7f98381a5911542",
+      "ruleId": "R-BOUND",
+      "ruleKey": "R-BOUND",
+      "ruleRevision": "d269e567af6153a4b18743422b0902ccd46fec39958bd6c5fe16a316430884ab",
+      "ruleKind": "bound",
+      "evidenceLevel": "validated_control",
+      "constraintLevel": "hard",
+      "decision": "compiled",
+      "decisionCode": "",
+      "message": "规则 R-BOUND 收紧 cv.fill_volume 的目标界",
+      "bindings": [],
+      "artifacts": [
+        {
+          "kind": "problem_ir",
+          "ref": "problem-ir:cv.fill_volume"
+        }
+      ],
+      "scope": {
+        "lineId": "ln-d8366708",
+        "recipeId": "rc-db837818",
+        "conditionId": ""
+      },
+      "rowHash": "fb0313300aa55ff662a787667a12ff1089e0244084ed873c5952b2c02bc10f40",
+      "createdAt": "2026-11-02T20:06:34.948+08:00"
+    },
+    {
+      "id": "ort-ont-fl7-1102@5:R-GUARD",
+      "ontologyId": "ont-fl7-1102",
+      "version": 5,
+      "rulePackHash": "e4cd7d4243aad472ee0c3f74a2fb2e220e1799f85d00d8fca7f98381a5911542",
+      "ruleId": "R-GUARD",
+      "ruleKey": "R-GUARD",
+      "ruleRevision": "065a1e8df55ef334312851773f0ee7046ff7a40ecf0c0864c788731a8b8ca195",
+      "ruleKind": "state_condition",
+      "evidenceLevel": "candidate_influence",
+      "constraintLevel": "hard",
+      "decision": "guard",
+      "decisionCode": "",
+      "message": "规则 R-GUARD 编译为运行时守卫(条件未满足时禁止增量)",
+      "bindings": [],
+      "artifacts": [
+        {
+          "kind": "control_guard",
+          "ref": "guard-R-GUARD",
+          "artifactHash": "3e871f227241f2c9936b544f41b403c7467b05feca8b10ac9dc62b08f234dfac"
+        }
+      ],
+      "scope": {
+        "lineId": "ln-d8366708",
+        "recipeId": "rc-db837818",
+        "conditionId": ""
+      },
+      "rowHash": "bddd75f41d56e3ffc915bd05d6c771b6c2e85e1376676f2a1b10c329ca163383",
+      "createdAt": "2026-11-02T20:06:34.948+08:00"
+    },
+    {
+      "id": "ort-ont-fl7-1102@5:R-INTERLOCK",
+      "ontologyId": "ont-fl7-1102",
+      "version": 5,
+      "rulePackHash": "e4cd7d4243aad472ee0c3f74a2fb2e220e1799f85d00d8fca7f98381a5911542",
+      "ruleId": "R-INTERLOCK",
+      "ruleKey": "R-INTERLOCK",
+      "ruleRevision": "448a254298d05600cee151eef95802aa453336963176a69f497ad84e09d6f9a9",
+      "ruleKind": "interlock",
+      "evidenceLevel": "candidate_influence",
+      "constraintLevel": "hard",
+      "decision": "explained",
+      "decisionCode": "PLC_LAYER_REQUIRED",
+      "message": "规则 R-INTERLOCK 属于安全联锁,归 PLC/DCW 配置层(急停回路动作时禁止任何写控)。建议:请在 DCW 节点限界或 PLC 联锁逻辑中落实;本体不会替代现场安全回路",
+      "bindings": [],
+      "artifacts": [],
+      "scope": {
+        "lineId": "ln-d8366708",
+        "recipeId": "",
+        "conditionId": ""
+      },
+      "rowHash": "b7862c8500c1a0f45fb23533641ccd2cdbcaa8b43ca07a14c0f0ab3a4a65741d",
+      "createdAt": "2026-11-02T20:06:34.948+08:00"
+    }
+  ],
+  "toolRegistry": {
+    "total": 126,
+    "ontologyTools": [
+      "ontology_compile_preview",
+      "ontology_draft_autofix",
+      "ontology_draft_create",
+      "ontology_draft_update",
+      "ontology_draft_validate",
+      "ontology_node_neighbors",
+      "ontology_publish_propose",
+      "ontology_rule_explain",
+      "ontology_scene_inspect",
+      "ontology_version_compare"
+    ]
+  },
+  "honestyNotes": [
+    "publishedVersion=5;v1-v3 为修复期空文档发布(保存失败即终止的守卫是后加的),v4/v5 为完整内容版本",
+    "R-GUARD 保持 candidate 证据:平台证据档纪律拒绝其进入 validated(设计行为,422 原文存档)",
+    "ont-fl7-probe 为最小复现用探针草稿(无 delete 路由,保留;实体 1 绑定 1,无规则)"
+  ]
+}

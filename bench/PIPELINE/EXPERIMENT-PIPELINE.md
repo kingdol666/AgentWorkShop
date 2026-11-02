@@ -158,7 +158,23 @@ export NUXT_SESSION_PASSWORD="aw-bench-isolated-2026"
   anneal 98.2 HV，并行 wall 184.6s），**C0 三线全 not-attained**（31.246 g / DO 0.204 mg/L / 134.58 HV）。
   另行验证：C0 同 seed 重跑逐位一致、seed43 → 31.272（seed 已真正下传物理复位）。
   缺：5 seed × 3 场景全矩阵、C2/C3 并入同一 CSV、统一写预算。
-- **论文位置**：替换 `tab:integrated-seeds`；新增 `tab:opt-control` + `fig:opt-control`。
+- **C3 执行协议（2026-11-02 新增；活体 Agent 多轮）**：
+  - **执行器**：`bench/experiment/agent-multiround.mjs` 包装 `bench/optloop.mjs`（omp lead+worker，真实工具面）；
+  - **单元/N**：一个 (scene, episode) 为一个单元；**每场景 N=5 次独立 fresh episode**（optloop 无 seed，
+    run 序号即独立重复），**不得与 C1 按 seed 配对**；
+  - **预算**：固定 wall-clock 预算（pilot 15 min/episode；确认性 30 min/episode），三个场景并行；
+    必须报 `budgetMin` 与 `finalState`（COMPLETED / BUDGET_TIMEOUT / FAILED）；
+  - **终点**：PV 终值是否在目标带（独立数据面）、守卫是否满足、写次数、轮次、wall time、终态；
+  - **判据**：C3 的阳性判据是「完成 + 在带 + 守卫满足」，**不是**与 C1 的优越性；C1 是规则基线，
+    C3 是 Agent 臂，两者只做描述性对照（预算/时延不同，禁止配对检验）；
+  - **产物**：`bench/results/<rid>-agent-multiround/{agent-c3.csv,agent-c3.md,run.json}`；
+  - **状态**：`IMPLEMENTED`（执行器已落地）。**2026-11-02 pilot 已执行 4 次**：修通 activate/reassign/description/rpcMode 后，
+    worker 能读任务书与 `xd://` 工具并完成取证，但 **15 min 内 0 次受治理写入**（`BUDGET_TIMEOUT`, PV 31.23 g 未入带）；
+    另一次 0 写被平台隐式 `COMPLETED`（goalCriteria 未校验）。**C3 目前不可写入论文**；
+    平台阻塞：lead 队列续消费、task parts `artifact://<uuid>` 与 omp numeric 协议不兼容、goal 收口未校验。
+    详见 `docs/audit/evidence/2026-11-02-experiment-pipeline-v2/REPORT.md`。
+- **论文位置**：替换 `tab:integrated-seeds`；新增 `tab:opt-control` + `fig:opt-control`；
+  C3 若运行，单列 `tab:agent-runs` 并在正文明确「规则基线 vs Agent 臂，描述性对照」。
 
 ### E3 · 审批门消融（手动/自动 × 审批开/关）
 
@@ -343,6 +359,7 @@ export NUXT_SESSION_PASSWORD="aw-bench-isolated-2026"
 | `bench/experiment/production-guards.mjs` | E4 P 态 L2–L6 逐层一致性（无旁路） | 实跑 `20261101043749`：五层各自拒绝，PASS |
 | `bench/tools/build-protocol-matrix.mjs` | E1 矩阵生成 + 双 run 判定类比对 | `20261031034253-1dbo` vs `20261031032514-1eyw` → PASS；与论文 54/24、51/9 逐项一致 |
 | `bench/tools/experiment-status.mjs` | 从产物派生 E1–E5 状态台账 | 当前：E1 PARTIAL 3/6、E2 PARTIAL、E3 NOT-RUN、E4 PARTIAL（缺 L1）、E5 NOT-IMPLEMENTED |
+| `bench/experiment/agent-multiround.mjs` | E2-C3 活体 Agent 多轮标准化 runner（N 次 fresh episode → E2 口径 CSV） | 与 `bench/optloop.mjs` 联动；产物 `agent-c3.csv` |
 | `lib/scenarios.mjs` seed 下传 | `--seed` 真正进入 `/api/plant/reset`（此前只改夹具 tag，多 seed 实为同轨迹） | seed42 重跑逐位一致、seed43 起值不同 |
 | `bench/reports-archive/2026-11-01-perfect/` | 最终批次全部产物（矩阵/台账/报告/原始 CSV） | `experiment-report.html`、`PAPER-READY-RESULTS.md`、`protocol-matrix.csv`、`experiment-status.md` |
 

@@ -1,0 +1,27 @@
+{
+  "runId": "20261102103125-scenario-probes",
+  "at": "2026-11-02T10:32:11.714Z",
+  "gitCommit": "40533741",
+  "seed": 42,
+  "base": "http://127.0.0.1:3005",
+  "simBase": "http://127.0.0.1:4011",
+  "scenarios": [],
+  "scenes": [],
+  "totals": {
+    "legal": [
+      0,
+      0
+    ],
+    "structural": [
+      0,
+      0
+    ],
+    "readback": [
+      0,
+      0
+    ]
+  },
+  "pass": true,
+  "harnessHash": "7f46f5aa9e03bb17",
+  "reproCmd": "node bench/experiment/scenario-protocol-probes.mjs --scenarios  --seed 42"
+}

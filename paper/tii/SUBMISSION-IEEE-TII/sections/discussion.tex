@@ -1,62 +1,15 @@
 \section{Discussion}
 \label{sec:discussion}
-\subsection{Interpretation}
-In the integrated run, both scene configurations used the shared operation
-boundary while retaining their own signal and route mappings. Five protocol
-endpoints returned acquisition samples, and the tested negative probes were
-rejected in both scenes. The result supports integration for these
-configurations; it does not show that an arbitrary plant can be connected
-without commissioning or route-specific setup.
+The scene--protocol probes and simulator missions address different parts of the integration claim. The probes show that the selected configurations resolved to the intended node and driver paths. The missions show that a deterministic policy issued governed writes and returned process endpoints in the tested simulator scenes. The target-band contrast does not isolate the effect of the write path or establish control performance: the no-write and scripted conditions differed in duration, mission logic, and endpoint summaries. The planned scene--protocol matrix remains incomplete, and the film-line configuration check reused a running platform rather than testing a cold deployment.
 
-The deterministic OpenCode task route completed three-step sequences on four
-writable cast-film routes with the model loop disabled. Modbus TCP and OPC UA
-returned actuator readbacks; MQTT and HTTP recorded accepted operations and
-DAQ checks without readback. The second scene was exercised for acquisition
-and guard checks only, so this run does not establish harness portability or
-a cross-scene write-response chain.
+The process-window ablation supports a narrower causal conclusion. Removing the check allowed all six targeted excursions to reach the mock driver while structural-range checks remained active. This isolates the process-window predicate in the tested fixture. The ablation ran in benchmark mode and included no readback-mismatch stimulus, so it does not assess the full production guard stack or readback-check effectiveness. Separate production-mode examples exercised the interval, step, node-range, recipe-window, and hold-window branches. These are route checks, not estimates of rejection rates under load.
 
-The objective cases and BOPET task are separate simulator activities from the
-same run. The former were compared with an offline simulator reference; the
-latter ended inside its configured thickness band, while its associated
-parameter-change record remained open and unjudged. Neither activity provides
-a matched controller comparison or shows that a write caused a process change.
+The approval and harness claims are also bounded by the tests. The approval pilot used scripted decisions, included no operator interaction, and lacked matched approval-on/off conditions; it therefore cannot establish a human-in-the-loop interception effect. The runtime exposes a common operation contract to registered harness adapters, but no active Agent harness was used in these runs. Harness replacement and agent decision quality remain untested.
 
-Prior work grounds industrial actions in digital-twin state, asset models,
-process diagrams, or supervisory checks
-\cite{gehrmann2020dtiacs,graul2026aas,schall2026safe}. This paper focuses on
-the interface between task or harness execution, scene-specific signal and
-driver mappings, and the shared device-operation path. The run tested selected
-links across that interface. It did not measure whether configuration reduces
-integration time, maintenance effort, or operational risk; those questions
-require matched deployments and workload measurements.
+The evidence model also constrains how future deployments should be evaluated. A command receipt records the write outcome; an actuator readback reports the returned control value when available; and a DAQ sample records a later process measurement. The optimization path checks that its target DAQ binding is visible, but these tests do not verify that every configured observation is the commissioned response to the selected control point. The DAQ query uses a trailing 45-s window, so a shorter settling delay may leave pre-write samples in the result. Before using these measurements to assess a write, each scene needs a verified control--measurement pairing and observation delay.
 
-\subsection{Scope and Limitations}
-The evidence comes from one deterministic simulator run, with the platform
-and simulators already running. There was no active language-model loop,
-cold-start commissioning, matched comparison of task and direct calls,
-multi-harness test, approval ablation, controller baseline, or physical
-equipment. The three seeds are cases within that run, not independent system
-repetitions; seed 43 stopped before any update, so they do not establish
-convergence across initial conditions.
-
-The negative probes exercise recorded software guards only. They do not
-measure approval effectiveness or establish plant safety, and the missing
-denominator of legal-write attempts prevents an estimate of false blocks.
-Supplementary File~S6 retains latency summaries as diagnostics because the run
-did not preserve event-level timings. Its delivery manifest was created after
-execution and does not establish that the runtime configuration was frozen.
-
-To test effectiveness, a follow-up should repeat the run with a frozen
-configuration, record complete request-to-readback traces, and compare matched
-controller and approval-policy conditions. Hardware-in-the-loop evaluation
-can then test whether the software results transfer to equipment.
+The integrated-pipeline manifests identify the reported commit and show that the platform and simulator were already running. They do not capture a hermetic snapshot of all active service source. Supplementary File~S7 retains the runner inputs and records needed to audit the reported runs. Application-level checks supplement PLC, SIS, and equipment protection; the simulator and mock-driver tests do not establish physical-plant safety.
 
 \section{Conclusion}
 \label{sec:conclusion}
-We presented a configuration-driven architecture that connects task-level
-industrial agents to scene context, signal mappings, and device routes through
-a shared governed interface. In one deterministic simulator run, configured
-acquisition and write-guard paths operated in two scenes; 76 of 77 workflow
-checks passed, with one warning. These results document the integration in
-simulation; portability across harnesses and control effectiveness remain open
-questions.
+This work presents a configuration-driven runtime that binds production context and semantic signals to named operations, registered protocol drivers, and shared write governance. Across the collected four-scene simulator probes, 220/220 admissible requests were accepted, 219/219 collected structural-range requests were rejected, and 216/216 available actuator readbacks matched. In the three-scene mission comparison, 15/15 scripted-policy endpoints fell within their target bands, compared with 0/15 no-write endpoints; this descriptive contrast used different exposure times and mission logic. In the mock-driver ablation, the process-window check blocked all six targeted violations, whereas removing it forwarded all six while structural checks remained active. In the tested simulation and mock-driver settings, the results demonstrate the selected scene mappings, scripted-write path, and process-window guard. Live-Agent and harness behavior, human approval effects, and physical-plant protection remain unevaluated.

@@ -4,6 +4,7 @@
  */
 import { AgentRuntimeContracts } from './contracts'
 import type { A2AMessage } from '../../types/a2a'
+import { isHumanChatDelivery } from '../../types/a2a'
 import type { AgentEvent, AgentInfo, AgentInterface, AgentWorkspace } from '../../agents/agent-interface'
 import type { AgentMemory } from '../memory'
 import type { AgentStatusView, AgentTaskQueueView, HarnessContinuityView, SupervisionAttemptView } from '../../types/task'
@@ -370,7 +371,11 @@ export abstract class AgentRuntimeState extends AgentRuntimeContracts {
     try {
       const deadline = Date.now() + Math.max(0, waitMs)
       for (;;) {
-        const msgs = await this.deps.mailbox.peek(limit)
+        // 人类群聊投递不交给 poll 认领:必须留给消息回合收尾的 platformReply 回写群聊。
+        // (poll 取走后文本只留在 Agent 会话里,用户永远收不到答复——实测故障。)
+        const msgs = (await this.deps.mailbox.peek(Math.max(limit, 10)))
+          .filter(m => !isHumanChatDelivery(m))
+          .slice(0, limit)
         if (msgs.length > 0 || Date.now() >= deadline) return msgs
         const { promise, resolve } = Promise.withResolvers<unknown>()
         const off = this.deps.mailbox.onArrival(() => resolve(undefined))

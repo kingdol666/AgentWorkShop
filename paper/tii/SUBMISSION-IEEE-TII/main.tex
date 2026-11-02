@@ -25,7 +25,6 @@
 \usepackage{placeins}
 \usepackage{url}
 \usepackage{etoolbox}
-\usepackage{balance}
 \urlstyle{same}
 % Cross-references and citations. The cite package renders IEEE-style citation
 % groups ([14]--[16], [20], [21]) with hyperref support.
@@ -41,7 +40,7 @@
 \setcounter{topnumber}{4}
 \setcounter{bottomnumber}{3}
 \setcounter{totalnumber}{7}
-\setcounter{dbltopnumber}{2}
+\setcounter{dbltopnumber}{1}
 \renewcommand{\topfraction}{0.95}
 \renewcommand{\bottomfraction}{0.80}
 \renewcommand{\textfraction}{0.03}
@@ -73,25 +72,7 @@
 \maketitle
 
 \begin{abstract}
-Industrial production scenes expose different process contexts, signal
-meanings, and communication protocols, yet task-level agents need a consistent
-way to read measurements and issue bounded commands. This paper presents a
-configuration-driven architecture that maps line--product--recipe--run
-context, acquisition and write-control nodes, protocol drivers, and named
-operations. Harness adapters connect agent turns to those operations; a
-shared dispatcher checks authority, while route handlers apply scene-specific
-limits and approval requirements. Command receipts remain separate from
-later process observations. We assessed the configured paths in one integrated
-run using deterministic simulators. Five endpoints in the primary cast-film
-scene returned 54 samples, and
-the write-admission checks rejected all 24 negative probes across four
-writable paths. A second scene returned 51 samples and rejected all nine
-probes across three writable paths. The 77 workflow checks comprised 76
-passes, one warning, and no failures. Three fixed-seed objective cases ended
-at 96.3\%--98.8\% of the simulator's offline reference; one case stopped
-without an update. The run documents the configured mappings and guarded
-operations in simulation. It used no active language-model loop or physical
-equipment and did not compare agent harnesses or control baselines.
+Industrial agents can propose setpoint changes, but executing a proposal requires preserving its production context, signal meaning, write authority, and process limits. We present a configuration-driven runtime that binds production context and signal semantics to named operations and registered protocol drivers. Registered Agent harness adapters and direct clients submit operations to a shared dispatcher. Write handlers resolve live context at execution and apply authorization and configured value limits. Routes that require approval hold the request pending and repeat their route-specific checks after approval. Command receipts, actuator readbacks, and later process observations remain separate records. Probes across four simulator scenes exercised selected node-to-driver mappings: 220 admissible writes were accepted, 219 collected structural-range requests were rejected, and 216 available readbacks matched. In deterministic missions across three scenes, a scripted policy reached the target band in all 15 seed--scene runs; no-write conditions reached it in none. This contrast is descriptive because the conditions differed in exposure time and mission logic. With the process-window interlock enabled, none of six targeted violations reached the mock driver. Removing the interlock sent all six to the driver while structural checks remained active. These results provide evidence for the tested integration and interlock paths in simulation; they do not establish live-Agent performance or physical-plant safety.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -104,13 +85,14 @@ production systems, system integration.
 \input{sections/introduction}
 \input{sections/related}
 \input{sections/system}
+\input{sections/closedloop}
 \input{sections/modules}
 \input{sections/evaluation}
 \input{sections/discussion}
 
 \raggedbottom
 \section*{Acknowledgment}
-The authors used AI-assisted tools for language editing and take responsibility
+The authors used artificial-intelligence tools for language editing and take responsibility
 for the manuscript. Funding and author identities are withheld in this review
 copy.
 
@@ -123,13 +105,11 @@ The authors declare no known competing financial interests or personal
 relationships that could have appeared to influence this work.
 
 \section*{Data Availability}
-Supplementary File~S6 contains selected run records, source data, and figure
-inputs. Its checksums are delivery-time hashes, not runtime signatures; it
-contains no physical-plant data.
+Supplementary File~S7 contains the selected current-run manifests and CSVs, the per-seed optimization outcomes, ablation records, and a self-contained visual report. The reported commit and harness hashes are provenance fields rather than runtime signatures; the package contains no physical-plant data.
 
-\balance
 \bibliographystyle{IEEEtran}
 % Keep IEEEtran's default bibliography size and leading.
 \bibliography{resources/refs}
 
 \end{document}
+

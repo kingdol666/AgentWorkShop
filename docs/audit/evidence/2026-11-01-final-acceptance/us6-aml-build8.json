@@ -1,0 +1,1 @@
+{"code":0,"message":"ok","data":{"result":{"text":"数据集构建失败:该配方没有已完结的批次(run):先在产线开一批并跑完,或检查 recipeId(常见原因:窗口内无批次打标数据/节点数据缺失率过高;可先 daq_query 确认目标时段数据)。","isError":true}}}

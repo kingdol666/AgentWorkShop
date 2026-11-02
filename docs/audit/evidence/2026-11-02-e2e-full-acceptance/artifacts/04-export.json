@@ -1,0 +1,60 @@
+{
+  "code": 0,
+  "message": "ok",
+  "data": {
+    "job": {
+      "id": "edajob-77a5ae00",
+      "kind": "daq-export",
+      "status": "running",
+      "spec": {
+        "nodeIds": [
+          "dn-a1f4f3d7",
+          "dn-e4788840",
+          "dn-f82b3d2f",
+          "dn-4db21acb",
+          "dn-6acb7171",
+          "dn-7fefa235",
+          "dn-1e1ab0ce",
+          "dn-660d644e",
+          "dn-b13051e0",
+          "dn-27ab5a36",
+          "dn-9a4d3f80",
+          "dn-cffe01cb",
+          "dn-628b3018",
+          "dn-842d8407",
+          "dn-46f0c0dd",
+          "dn-bc3cf349",
+          "dn-e18a9d93",
+          "dn-f86a5c83",
+          "dn-f9306351",
+          "dn-66c740e2",
+          "dn-812822ad",
+          "dn-0f7c8b75",
+          "dn-767e0a6c",
+          "dn-f9ea1045",
+          "dn-df726c9e",
+          "dn-3d2dd37e",
+          "dn-4ce0d6a1",
+          "dn-9ec79037",
+          "dn-ab4bb8fb",
+          "dn-6088b7a9",
+          "dn-65ce4e7e",
+          "dn-6b28bddc",
+          "dn-ad14d077",
+          "dn-7e35d94d",
+          "dn-46f3fc41",
+          "dn-316f1c3c"
+        ],
+        "fromMs": 1793619396037,
+        "toMs": 1793620596037,
+        "title": "",
+        "note": "",
+        "merge": false
+      },
+      "result": {},
+      "createdBy": "08bb6963-10fe-493c-8a07-0de4a86e356e",
+      "createdAt": "2026-11-02T19:56:36.067+08:00",
+      "updatedAt": "2026-11-02T19:56:36.067+08:00"
+    }
+  }
+}

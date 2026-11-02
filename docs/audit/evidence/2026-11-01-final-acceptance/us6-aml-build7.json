@@ -1,0 +1,1 @@
+{"code":0,"message":"ok","data":{"result":{"text":"无权使用节点 dn-812822ad(无你的 daq 绑定;绑定只缩不放)。你有权访问的数采节点:(无),可先 aml_node_catalog 查看语义。","isError":true}}}

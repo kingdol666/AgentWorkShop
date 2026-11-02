@@ -1,0 +1,7 @@
+✔ [R0] 过程 spec 登记+发布 — reg=200 pub=200 ok
+=== 第 1 轮训练 A ===
+✘ [R1] 第 1 轮训练 done + 资格 + 工件哈希 — status=undefined rows=0 elig=undefined hash=
+✘ [R2] Profile v1 创建(模型A 工件)+发布 — create=422 pub=404 Profile prof-fl7-1102 不存在
+✘ [R3] Agent↔Profile 绑定(recommendation) — id=undefined Channel 768feef6-dfad-428d-8488-ff3f8535c1e4 不属于 workspace 
+✘ [R4] 基线模型 A solve — status=undefined http=409 该 Agent 未绑定任何优化器 Profile;先在 Channel 设置里绑定
+=== 第 2 轮训练 B(HITL 采纳) ===

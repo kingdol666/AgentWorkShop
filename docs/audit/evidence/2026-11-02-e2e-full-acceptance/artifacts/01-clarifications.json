@@ -1,0 +1,20 @@
+{
+  "clarifyGate": {
+    "doc": "docs/protocol/2026-11-02-filling-line-FL7-protocol-manual.md (v1.0)",
+    "askedAt": "2026-11-02",
+    "mode": "文档为本轮按用户任务自编的完整厂家合同(A 类缺口 0);B/C 类答复来源=用户任务原文+本实例既有已批准惯例(PROTO2/PROTO3 轮记录),每条注明来源",
+    "userTaskOriginalText": "请你给我对这个系统做好完整的端到端测试!…给我设计一个产线文档,然后使用配套skill连接,然后确保能够跑通,实现数据抓取和下发控制,并作几轮AML和本体模型的训练和投入使用,可以设计不同的Channel做不同任务",
+    "items": [
+      { "no": 1, "category": "C-意图", "question": "一期接入范围?", "options": ["全部 13 点(9 DAQ+4 DCW,含向量)", "仅核心 6 点"], "answer": "全部 13 点一期接入", "mapsTo": "blueprint.json 全部 P1-P9/S1-S4", "source": "任务原文:测试全部的系统功能以及节点连接数据采集下发控制" },
+      { "no": 2, "category": "C-意图", "question": "验收判据以哪份为准?", "options": ["文档 §5 J1+verify-line V1-V6", "仅连通性"], "answer": "J1 灌装量 500±4 mL 窗口均值 + verify-line V1-V6 全绿", "mapsTo": "US-004 写穿判据与 US-006 优化目标函数", "source": "任务原文:确保能够跑通,实现数据抓取和下发控制" },
+      { "no": 3, "category": "C-意图", "question": "后续作业面?", "options": ["本体+AML 训练投用+多频道", "仅数采写控"], "answer": "本体建模编译+AML 两轮训练投用+≥3 频道分工", "mapsTo": "US-005/US-006/US-007", "source": "任务原文:作几轮AML和本体模型的训练和投入使用,可以设计不同的Channel做不同任务" },
+      { "no": 4, "category": "B-系统必需(命名空间)", "question": "测试线与节点命名空间?", "options": ["PROTO4-FL7 前缀", "复用 PROTO3 线"], "answer": "新线 PROTO4-FL7-灌装线-1102,节点名 PROTO4-FL7-*,不动既有资源", "mapsTo": "provision-line config line.name / nodes[].name", "source": "preflight forbiddenActions:不修改既有线/节点/频道;实例既有 PROTO2/PROTO3 同前缀惯例" },
+      { "no": 5, "category": "B-系统必需(执行模式)", "question": "新频道执行模式?", "options": ["manual(写需 HITL 批准)", "auto", "observe"], "answer": "优化/执行频道 manual;分析频道 observe", "mapsTo": "forge-channel bindings 执行模式", "source": "实例 PROD/PROTO 频道 manual 惯例+平台首绑恒 manual 铁律" },
+      { "no": 6, "category": "B-系统必需(作业模型)", "question": "频道 Agent harness/模型?", "options": ["实例标准 omp(deepseek-flash)", "本地小模型", "mock"], "answer": "omp + deepseek-flash(与既有 PROD 频道同款)", "mapsTo": "agent config provider=harness omp", "source": "基线 wiredAgents=8(omp 系);AW_ALLOW_PRIVATE_OUTBOUND=1 已开" },
+      { "no": 7, "category": "B-系统必需(保写语义)", "question": "设备侧『两次设定间隔≥60s』如何映射?", "options": ["holdIntervalMs=0(平台写闸满足间隔)", "holdIntervalMs=60000(保写心跳)"], "answer": "holdIntervalMs=0;间隔由平台 60s 在线写闸天然满足,保写心跳不引入", "mapsTo": "S1-S4 dcw.holdIntervalMs=0", "source": "aw-protocol-onboarding 红线:holdIntervalMs 是保写心跳语义,<60s 会饿死在线写闸" },
+      { "no": 8, "category": "B-系统必需(HITL 策略)", "question": "写控审批策略?", "options": ["首绑 manual+人工/脚本批准卡", "直接 auto"], "answer": "首绑 manual;验收写入走 HITL 批准卡(脚本代批=测试语义,正式投用人工)", "mapsTo": "US-004 写穿链 approvalId 锚点", "source": "平台契约:首绑恒 manual;onboard 冒烟红线(自动裁决=测试语义)" },
+      { "no": 9, "category": "B-系统必需(步长)", "question": "stepLimit 缺省推导是否接受?", "options": ["显式按文档 §3 表配置", "用默认推导"], "answer": "显式配置:S1/S3=0.20,S2=2.0,S4=1.0", "mapsTo": "S1-S4 dcw.stepLimit", "source": "skill 红线:缺省时 stepLimit 推导为 max(10^-decimals,2% 量程),不是 fail-closed" },
+      { "no": 10, "category": "A-文档缺口", "question": "文档 v1.0 是否存在未注明字段?", "options": ["无(自编完整合同)", "有→列出"], "answer": "0 缺口:量程/单位/采样周期/stepLimit/端点/判据/协议参数齐全(§1-§6)", "mapsTo": "blueprint.json 每点 source 字段指向文档章节", "source": "本轮文档为按 skill 蓝图必问项预先补齐的自编合同" }
+    ]
+  }
+}

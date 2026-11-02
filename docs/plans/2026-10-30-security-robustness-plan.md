@@ -4,7 +4,8 @@
 - 核查结论:**33 CONFIRMED / 5 PARTIAL(表述已修正) / 3 REFUTED(已移出修复范围)**。所有"修复方向"均指明可照抄的仓内现成 helper(file:line),验收均为可执行的负向断言。
 - 审计证据源:Mimosa 深度扫描(scanId `scan-2026-10-29T09-53-14.219Z-029139366c3f`,seal `sha256:e52169b3…b701`,45 findings,coverage=inconclusive)+ 两路人工深审 + 本轮逐项实证。
 - 状态(2026-10-30 实施轮):**B0–B5 六批已实施并验收**,4 项显式延期(P2-4/P2-9/P2-10/P3-4,原因见验收报告 §4)。
-  验收报告:`docs/audit/2026-10-30-security-hardening-acceptance.md`(全量单测 835/835;安全批 57 新单测 + 3 套真机 e2e 52 断言全绿;T2 产线治理 44/44、四绑定 19/19、镜像数采 17/17 含真实 Qwen3.5 64k)。
+- 状态(2026-11-01 补齐轮):**P2-9 / P3-4 两项延期已实施并验收**——P2-9=登录/改密热路径切异步 scrypt(worker 线程池,`verifyPasswordAsync`;管理面写入保留同步版并注明取舍);P3-4=`messages.attempts` 列 + requeue 三次上限(→`dead`,崩溃恢复不复活)。P2-10 复核=json-store 已原子(tmp+rename+退避重试),其余 writeFileSync 均为内容产物/一次性 config(非状态库)——按 v2 修正维持"代表 repo 已达标"。P2-4(WS URL token)维持单独立项。全量单测 920/920(918 pass+2 skip 口径:pass 918 / fail 0)。
+  验收报告:`docs/audit/2026-10-30-security-hardening-acceptance.md`(全量单测 835/835;安全批 57 新单测 + 3 套真机 e2e 52 断言全绿;T2 产线治理 44/44、四绑定 19/19、镜像数采 17/17 含真实 Qwen3.5 64k);补齐轮证据:`docs/audit/evidence/2026-11-01-plan-optimization.md`(新增单测:message-requeue-cap 2/2 + lifecycle-r1-r2 3/3)。
   Mimosa 纪律:静态证据,不据此宣称"系统完全安全"。
 
 ---

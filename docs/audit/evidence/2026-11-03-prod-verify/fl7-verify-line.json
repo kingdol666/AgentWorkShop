@@ -1,0 +1,53 @@
+{
+  "lineId": "ln-73d9e4b2",
+  "recipeId": "rc-32f18402",
+  "channelId": "25c8edcf-78f5-4bab-bad2-baba8290b4b6",
+  "dcw": [
+    {
+      "id": "dw-945f0530",
+      "name": "PROTO4-FL7-SP-灌装背压",
+      "min": 0,
+      "max": 6,
+      "stepLimit": 0.2,
+      "probeValue": 1.8,
+      "ackMode": "transport-ack",
+      "observeDaqId": "dn-a3379354"
+    },
+    {
+      "id": "dw-d2f00a99",
+      "name": "PROTO4-FL7-SP-传送带速度",
+      "min": 0,
+      "max": 80,
+      "stepLimit": 2,
+      "probeValue": 36
+    },
+    {
+      "id": "dw-e12e28de",
+      "name": "PROTO4-FL7-SP-灌装头压力",
+      "min": 0,
+      "max": 6,
+      "stepLimit": 0.2,
+      "probeValue": 4.14
+    },
+    {
+      "id": "dw-4a97a49e",
+      "name": "PROTO4-FL7-SP-CIP冲洗流量",
+      "min": 0,
+      "max": 50,
+      "stepLimit": 1,
+      "probeValue": 28
+    }
+  ],
+  "daq": [
+    "dn-969587e0",
+    "dn-6c9437c0",
+    "dn-6de97ebb",
+    "dn-079364b6",
+    "dn-07f1cfef",
+    "dn-d154dacd",
+    "dn-8dbe571d",
+    "dn-14157b28",
+    "dn-a3379354"
+  ],
+  "plugins": []
+}

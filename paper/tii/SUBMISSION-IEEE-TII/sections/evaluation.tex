@@ -1,202 +1,106 @@
 \section{Experimental Evaluation}
 \label{sec:eval}
-We evaluated the configured integration path in one integrated pipeline run.
-The run comprised workflow checks, protocol acquisition and guarded writes,
-an approval-enabled operation, fixed-seed simulator cases, and a scripted
-BOPET task. The results below are grouped by the capability exercised; each
-group is a distinct check from the same run.
+The evaluation covers three parts of the runtime path: whether selected scene--protocol mappings accept admissible writes, reject collected structural-range requests, and return matching readbacks where available; whether the governed-write path supports deterministic simulator missions; and whether the process-window check blocks selected excursions before they reach a mock driver. Approval and authorization receive separate route checks. Because the blocks use different units and fixtures, we report their counts separately rather than pooling pipeline assertions, node probes, seed outcomes, and guard injections.
 
-\subsection{Run Design and Conditions}
+\subsection{Test Conditions and Counting Units}
 \label{sec:eval-protocol}
-The run exercised configured task-to-device paths in local deterministic
-simulators. A deterministic OpenCode tool adapter invoked platform operations;
-no language-model loop or physical equipment was used. The platform and
-simulator were already running, and the run reused shared platform data. The
-run identifier was
-\texttt{20261031034253-1dbo}; Supplementary File~S6 records its reproduction
-command, source commit, and selected evidence.
+Two integrated pipeline executions, documented in Supplementary File~S7, each reported 77 passing assertions, zero warnings, and zero failed assertions. The runner reused a platform and simulator that were already running. The manifests identify commit \texttt{da627d21} and record \texttt{agentHarness=(none)}; these executions therefore exercised configured service paths without an active language model or live harness. The 77 checks are assertions within each execution, not 77 independent trials. Supplementary File~S7 contains the run records and archived source summaries.
 
-All 17 phase gates passed. Of the 77 checks, 76 passed and one raised a
-warning; none failed. The warning came from the BOPET semantic-card check in
-P10, while its phase gate passed. Table~\ref{tab:workflow-coverage} summarizes
-the checks by workflow block.
+The scene--protocol probe records each requested value, expected decision, actual outcome, and available readback; its unit is one configured node request. For the optimization comparison, the unit is a seed--scene pair. C0 held each simulator for 60~s without writes, whereas C1 used a deterministic scripted policy through the governed-write path. Each C1 seed ran for 150.41--172.90~s. Because exposure time and mission logic differed, the comparison describes the tested conditions but does not isolate the effect of the write policy. The process-window ablation used three repetitions per arm. Each repetition included six negative probes, three nominal legal requests, and three boundary requests. The ablation ran in benchmark mode against a mock driver, so its outcomes assess the software interlock in that fixture rather than plant-level protection. Supplementary File~S7 preserves the source CSVs and per-run records.
 
 \begin{table*}[!t]
 \centering
-\caption{Workflow checks from the integrated pipeline run. Counts are
-pass/warn/fail; all 17 phase gates passed.}
-\label{tab:workflow-coverage}
+\caption{Experimental blocks, counting units, and supported claims. Results remain separated by block because their denominators and test fixtures differ.}
+\label{tab:eval-blocks}
 \footnotesize
-\setlength{\tabcolsep}{5pt}
-\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{0.36\textwidth}r r X@{}}
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{1.55cm} X X >{\raggedright\arraybackslash}p{3.05cm}@{}}
 \toprule
-Workflow block & Gates & Checks (P/W/F) & Evidence exercised\\
+Block & Intervention and unit & Recorded outcome & Evidence boundary \\
 \midrule
-Bootstrap, model setup, and scene provisioning & 3 & 11/0/0 & Runtime checks and five-protocol node configuration\\
-Acquisition, governed operations, and service records & 8 & 30/0/0 & Sampling, negative probes, approval, recipe, and task routes\\
-Seeded objective and multimodal acquisition checks & 2 & 7/0/0 & Three fixed seeds and vector/image acquisition\\
-Second-scene configuration and backstop checks & 2 & 16/0/0 & Configuration-only remapping and bounded recovery\\
-Platform subsystem checks & 1 & 3/0/0 & Service and registry checks\\
-BOPET scene and scripted task & 1 & 9/1/0 & Scene provisioning and three setpoint writes; one semantic-card warning\\
-\midrule
-Total & 17 & 76/1/0 & No failed checks\\
+Scene--protocol probes & Configured node requests across four scenes; admissible values include three interior points and the tested upper boundary, with structural-range probes in a separate set. & 220/220 admissible requests accepted; 219/219 collected structural probes rejected; 216/216 available readbacks matched. & Selected mappings only; the planned scene--protocol matrix is partial. \\
+Policy comparison & Five matched simulator seeds across three scenes. C0 held for 60~s without writes; C1 ran a deterministic scenario mission through the governed-write service. & The designated process variable ended in band for 0/15 C0 and 15/15 C1 endpoints. & Simulator evidence; no live Agent or competing controller. Runner mission flags are not compared across conditions. \\
+Process-window ablation & Four guard configurations, three repetitions each; per repetition: six negative, three nominal legal, and three boundary requests. & 0/6 targeted window violations reached the mock driver with the interlock; 6/6 reached it without the interlock. Legal false blocks were 0/9 in each arm. & Mock driver and benchmark mode; no readback-mismatch stimulus. \\
+Route checks & Separate approval pilot (four calls), production-mode guards (one example per named guard), and authorization probe (three calls). & Expected approval, rejection, range, and authorization branches were observed for the configured examples. & Path demonstrations only; no human decision study or rate estimate. \\
 \bottomrule
 \end{tabularx}
 \end{table*}
 
-\subsection{Protocol Acquisition and Guarded Operations}
-\label{sec:eval-protocol-results}
-The primary cast-film scene used five simulated endpoints: Modbus TCP,
-Modbus RTU, OPC Unified Architecture (OPC UA), Message Queuing Telemetry
-Transport (MQTT), and HTTP. The five acquisition nodes returned 54 samples.
-Four endpoints also had write-control paths; each received six negative
-probes, and the configured write-admission checks rejected all 24. Each
-writable path also recorded an accepted legal write. Modbus RTU provided
-acquisition only and is excluded from the write-probe count. On the MQTT endpoint,
-\texttt{linespeed-sp} maps to the write node and \texttt{thick} to acquisition.
-That endpoint returned six thickness samples and recorded one accepted write.
-This acquisition/write mapping exercises distinct signals on the same
-protocol endpoint.
-
-The run also exercised the human-in-the-loop approval path (P4c). A Line 2
-request for 145.5 remained pending until approval returned status 200; the
-pending write was then released. The simulated PLC readback was 146, and the
-recorded pending-to-approval interval was 452 ms, including polling.
-
-In the same run, the second-scene (\texttt{film-line}) configuration used the
-same five protocols and returned 51 acquisition samples. Its three writable
-routes each recorded one accepted legal write and rejected three negative
-probes. The run report recorded no false block or code change. Table
-\ref{tab:protocol-results} compares acquisition and negative-probe counts
-across the two scene configurations.
+\subsection{Configured Scene and Protocol Paths}
+\label{sec:eval-mapping}
+The valid raw probe run covers 55 configured writable nodes across four simulator scenes and five protocol families: Modbus over Transmission Control Protocol (TCP), Modbus remote terminal unit (RTU), OPC UA, MQTT, and Hypertext Transfer Protocol (HTTP). Each scene used four of the five families. Table~\ref{tab:scene-probe-results} reports the node allocation by scene and separates accepted in-range and upper-boundary requests from structural negative probes. These counts describe configured mappings, not throughput or complete scene--protocol matrix coverage. Readback consistency is reported only for accepted requests on routes that returned an actuator value. One biaxial-line structural case was not collected, and HTTP routes did not expose actuator readback. The intended complete scene--protocol matrix remains partial; these results describe the tested mappings rather than universal protocol or scene portability.
 
 \begin{table*}[!t]
 \centering
-\caption{Acquisition and rejected negative probes in the cast-film and
-\texttt{film-line} configurations from one run. ``--'' marks an
-acquisition-only endpoint.}
-\label{tab:protocol-results}
+\caption{Observed scene--protocol probe outcomes. The table reports the collected subset; readback denominators include only accepted requests with an available actuator value.}
+\label{tab:scene-probe-results}
 \footnotesize
-\setlength{\tabcolsep}{7pt}
-\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}X r r r r@{}}
+\setlength{\tabcolsep}{4.5pt}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{1.65cm}r X r r r@{}}
 \toprule
-Protocol & Cast-film samples & Rejected probes & \texttt{film-line} samples & Rejected probes\\
+Scene & Writable nodes & Writable nodes by protocol & Admissible accepted & Structural rejected & Readback matched \\
 \midrule
-Modbus TCP & 9 & 6/6 & 12 & 3/3\\
-OPC UA & 11 & 6/6 & 12 & 3/3\\
-MQTT & 6 & 6/6 & 5 & 3/3\\
-HTTP & 13 & 6/6 & 11 & --\\
-Modbus RTU & 15 & -- & 11 & --\\
-\midrule
-Total & 54 & 24/24 & 51 & 9/9\\
+Injection & 11 & TCP 5; RTU 2; OPC UA 3; MQTT 1 & 44/44 & 44/44 & 44/44 \\
+Wastewater & 7 & TCP 1; RTU 3; OPC UA 2; MQTT 1 & 28/28 & 28/28 & 28/28 \\
+Annealing & 7 & TCP 3; RTU 2; OPC UA 1; MQTT 1 & 28/28 & 28/28 & 28/28 \\
+Biaxial line & 30 & TCP 20; RTU 1; OPC UA 8; HTTP 1 & 120/120 & 119/119 & 116/116 \\
 \bottomrule
 \end{tabularx}
 \end{table*}
 
-\subsection{Deterministic Tool-Route Execution}
-\label{sec:eval-harness-loop}
-The deterministic tool adapter executed the task route on four writable
-cast-film paths. Each path completed three setpoint steps toward the midpoint
-of its configured window. Modbus TCP and OPC UA returned actuator readbacks
-after each step; MQTT and HTTP recorded accepted writes and DAQ checks but
-did not expose actuator readback. Table~\ref{tab:harness-loop} lists the
-commanded values and checks. Together, these traces document task-to-driver
-execution across the four configured write protocols.
+For each writable node, the expected-acceptance set comprised three interior values and the tested upper boundary; the structural set comprised four values outside the configured engineering range. Across the collected subset, all 220 admissible requests were accepted, all 219 collected structural probes were rejected, and all 216 available actuator readbacks matched their requests. These counts characterize the configured examples; they do not estimate false-block rates or establish complete matrix coverage. In a separate configuration check, the integrated pipeline loaded a film-line preset with five endpoint types and rejected nine of nine selected negative probes without code changes. Because the runtime was reused, this was not an independent cold-start deployment.
 
-\begin{table}[!t]
+\subsection{Target-Band Comparison}
+\label{sec:eval-optimization}
+The same five seeds, 42--46, were used in the injection, wastewater, and
+annealing scenes. Both conditions began from their scenario blueprint and
+seeded simulator state. C0 made no writes for 60~s; its endpoint was the mean
+of the final five process samples. C1 ran a deterministic scenario mission
+through the shared governed-write service, queried DAQ after configured
+settling intervals, and applied scenario-specific guard or recovery logic.
+The policy was scripted, not Agent-generated. C1 took 150.41--172.90~s per
+seed, so the conditions differed in exposure time and mission logic.
+
+The comparison asks whether each recorded terminal process-variable
+statistic fell within its configured target band. For C0, that statistic is
+the mean of the final five samples; for C1, it is the mission-terminal
+reading. The runner's \texttt{attained} field is not comparable across
+conditions because C0 combines the process-variable band with configured
+guards, whereas C1 uses scenario-specific mission criteria. We therefore
+recomputed band membership from the raw \texttt{pv}, \texttt{target}, and
+\texttt{tol} columns.
+
+For injection mass, the target was $32.5\pm0.35$~g. C0's terminal means were
+31.206--31.272~g and C1's mission-terminal readings were 32.173--32.340~g,
+placing 0/5 and 5/5 recorded statistics, respectively, inside the band. For
+wastewater dissolved oxygen (DO), the target was $3.4\pm0.6$~mg/L; C0
+terminal means were 0.198--0.268~mg/L and C1 readings were 3.576--3.864~mg/L,
+again giving 0/5 versus 5/5 in-band statistics. In annealing, the target was $95\pm6$ on the Vickers hardness scale (HV); C0 terminal means were 134.36--134.90~HV and C1
+readings were 97.44--99.90~HV. Across the 15 designated process-variable
+outcomes, all 15 C1 readings and none of the 15 C0 terminal means were within
+their respective bands. Across the five C1 seeds, the scripted missions
+issued 12 writes in 17 rounds for injection, 56 in 59 for wastewater, and 41
+in 50 for annealing. These counts describe workload, not efficiency. Because
+the endpoint conditions were not time-matched and used different mission
+logic, the contrast is descriptive and does not compare the runtime with an
+established controller. Fig.~\ref{fig:latest-evaluation} shows each endpoint
+and its configured band.
+
+\begin{figure*}[!t]
 \centering
-\caption{Deterministic OpenCode task-route trace from the integrated run.
-Each sequence approaches the center of its route window; values use the
-route's configured units. Readback and DAQ columns count successful checks
-among three steps; ``not exposed'' means the driver did not return an actuator
-readback.}
-\label{tab:harness-loop}
-\footnotesize
-\setlength{\tabcolsep}{2.5pt}
-\begin{tabularx}{\columnwidth}{@{}>{\raggedright\arraybackslash}p{1.5cm}X c c@{}}
-\toprule
-Protocol & Setpoint sequence & Readback & DAQ\\
-\midrule
-Modbus TCP & 194.96 $\rightarrow$ 197.48 $\rightarrow$ 200.00 & 3/3 & 3/3\\
-OPC UA & 144.6 $\rightarrow$ 147.3 $\rightarrow$ 150.0 & 3/3 & 3/3\\
-MQTT & 91.4 $\rightarrow$ 93.2 $\rightarrow$ 95.0 & Not exposed & 3/3\\
-HTTP & 0.946 $\rightarrow$ 0.973 $\rightarrow$ 1.000 & Not exposed & 3/3\\
-\bottomrule
-\end{tabularx}
-\end{table}
+\includegraphics[width=\textwidth]{resources/fig-latest-evaluation-20261102.pdf}
+\caption{The scripted policy reached its configured target band in all 15 seed--scene endpoints, whereas none of the 15 no-write endpoints did; removing the process-window interlock sent all six targeted violations to the mock driver. Top: individual terminal process-variable statistics for seeds 42--46 in the injection, wastewater dissolved-oxygen, and annealing scenes. C0 is the 60-s no-write condition and C1 the deterministic scripted policy; each C0 value is the mean of the final five samples, whereas each C1 value is the mission-terminal reading. Shaded regions and dashed lines mark the target bands and their centers. Bottom: targeted process-window violations reaching the mock driver under each guard configuration (six probes per arm, three repetitions). The window check is removed in the second and fourth arms; the readback check is removed in the third and fourth arms. Structural checks remain active in all arms.}
+\label{fig:latest-evaluation}
+\end{figure*}
 
-\subsection{Fixed-Seed Simulator Objective Cases}
-\label{sec:eval-objective}
-The run included three fixed-seed objective cases evaluated against the simulator's
-offline reference, $J^*=89.894$. The runner defines $J_{end}$ as the mean of
-the last two valid trajectory scores. If a case stops before a second score
-is available, $J_{end}$ is the sole valid score. Table~\ref{tab:integrated-seeds}
-also lists $J_{last}$, the final individual trajectory score. The $J_{end}/J^*$
-ratios ranged from 96.3\% to 98.8\%, with a mean of 97.8\%.
+\subsection{Process-Window Interlock Ablation}
+\label{sec:eval-ablation}
+The primary contrast was the full guard against the same configuration with only the process-window interlock removed. With the guard enabled, 18/18 negative probes were rejected before the mock driver and 0/6 targeted window violations reached it. Removing that interlock reduced the negative-probe rejections to 12/18: all six targeted window violations reached the driver, while the 12 out-of-range structural probes remained blocked. Each arm also accepted 9/9 nominal legal requests without a false block and met its configured boundary expectations in 9/9 checks.
 
-The simulator score is
-$J=55J_{\mathrm{thick}}+25J_{\mathrm{quality}}+8J_{\mathrm{energy}}+7J_{\mathrm{throughput}}$.
-The thickness term scores deviation from $50\pm2\,\mu\mathrm{m}$ with soft
-degradation outside that band; the quality term reflects defect rate, the
-energy term screw speed, and the throughput term line speed. The score is
-defined only for melt temperature in $195$--$225\,^{\circ}\mathrm{C}$ and
-pressure no greater than $22\,\mathrm{MPa}$.
+The no-readback arm retained the process-window interlock and produced the same 18/18 rejection result. The combined no-window/no-readback arm matched the no-interlock arm on these stimuli. No readback-mismatch stimulus was included, so the experiment isolates the observed process-window effect but says nothing about readback-check effectiveness or interaction between the two checks. The implementation has separate production-mode tests for the interval, step, node-range, recipe-window, and hold-window guards; each configured case returned its expected rejection code, while the legal baseline was accepted. Those single-case checks are route demonstrations, not rate estimates.
 
-Seed 43 began inside the configured stopping region and therefore required no
-iterations or writes; seeds 42 and 44 each used two writes. The offline
-reference is a simulator-defined target.
-Fig.~\ref{fig:objective-ratios} shows the three case-level ratios; it does not
-imply a distribution estimate.
+\subsection{Approval and Authorization Path Checks}
+\label{sec:eval-approval}
+A separate four-call simulator pilot exercised the approval route. In manual mode, the scripted approval case changed the control value from 202 to 204.8, while the scripted rejection left it at 216. The auto-mode calls also executed, but their starting values do not match the manual cases named in the runner's pairing labels. Because the decisions came from a test fixture, no operator made the decisions, and the requests do not form a clean matched approval-on/off comparison, we treat these records as a path check rather than an approval-effect estimate. The full values and decision trace are retained in S7.
 
-\begin{table}[!t]
-\centering
-\caption{Fixed-seed objective observations from the integrated simulator
-run. $J_0$ is the initial score; $J_{end}$ is the mean of the last two valid observations, or the sole
-valid observation for an early stop; $J_{last}$ is the final individual
-trajectory score.}
-\label{tab:integrated-seeds}
-\footnotesize
-\setlength{\tabcolsep}{2pt}
-\begin{tabular}{@{}r r r r r r r r@{}}
-\toprule
-Seed & $J_0$ & $J_{end}$ & $J_{last}$ & $J^*$ & Ratio & Iter. & Writes\\
-\midrule
-42 & 66.271 & 88.775 & 88.853 & 89.894 & 98.8\% & 2 & 2\\
-43 & 86.542 & 86.542 & 86.542 & 89.894 & 96.3\% & 0 & 0\\
-44 & 63.981 & 88.384 & 88.540 & 89.894 & 98.3\% & 2 & 2\\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{figure}[!t]
-\centering
-\includegraphics[width=0.96\columnwidth]{resources/fig-objective-ratios-current-run.pdf}
-\caption{The three fixed-seed runner-defined end-score ratios ($J_{end}/J^*$)
-were 96.3\%--98.8\% of the simulator's offline objective reference. Here
-$J_{end}$ is the mean of the last two valid scores, or the sole valid score
-when a case stops earlier; $J_{last}$ is the final individual trajectory
-score. The dashed line marks 100\%; the vertical axis begins at 90\% to show
-the case-level spread. Seed 43 stopped before any update.}
-\label{fig:objective-ratios}
-\end{figure}
-
-\subsection{Scripted BOPET Integration Trace}
-\label{sec:eval-bopet}
-One scripted task in the run issued three setpoint writes to three
-controls on a biaxially oriented polyethylene terephthalate (BOPET) simulator
-scene. The thickness readings were 28.05, 27.98, 27.98, and
-$24.84\,\mu\mathrm{m}$; the final reading was inside the configured
-$25.0\pm0.7\,\mu\mathrm{m}$ band. The task board marked the task COMPLETED;
-its associated parameter-change record remained open and unjudged. The BOPET
-phase also raised the single semantic-card warning. Fig.~\ref{fig:bopet-trace}
-shows this task separately from the fixed-seed objective cases.
-
-\begin{figure}[!t]
-\centering
-\includegraphics[width=0.96\columnwidth]{resources/fig-bopet-integration-trace.pdf}
-\caption{One scripted BOPET task recorded an in-band terminal thickness of
- $24.84\,\mu\mathrm{m}$ after three writes. The shaded area marks the configured
-$24.3$--$25.7\,\mu\mathrm{m}$ target band. The task-board task completed; its
-associated parameter-change/optimization record remained open and unjudged.}
-\label{fig:bopet-trace}
-\end{figure}
+A separate authorization check rejected one unbound write and one cross-node write, while accepting one write to a bound control node. Together, these examples showed that the configured checks returned their expected outcomes in the tested simulator routes. They do not establish a general safety rate, physical-equipment behavior, or live-Agent decision quality.

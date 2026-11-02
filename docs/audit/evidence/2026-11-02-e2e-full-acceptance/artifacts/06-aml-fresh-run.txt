@@ -1,0 +1,14 @@
+✔ [F0] 开线 — ok
+✔ [F1] 批次内新建镜像节点 ×2 — mv=dn-1ed6cd62 cv=dn-aef61b11
+✔ [F-写→2.8] true
+✔ [F-写→3] true
+✔ [F-写→38] true
+✔ [F-写→2.8] true
+✔ [F-写→36.5] true
+保持至 t+400s…
+✔ [F2] 停线收批
+✔ [F3] 数据集构建(spec v3 新节点) — rows=68 ok
+✘ [F4] 优化资格 — {}
+✘ [F5] 第 1 轮训练 done — status=failed rows=68 hash= err=内置训练失败:线性模型需要非空的独立验证集和测试集(永久错误不重试)
+
+=== fresh-A: 9 通过 / 2 失败 ===

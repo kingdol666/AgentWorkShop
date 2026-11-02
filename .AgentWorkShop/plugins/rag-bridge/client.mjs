@@ -25,6 +25,8 @@ export function setup(ctx) {
       .aw-rb-hit-head { font-size:11px; opacity:.85; }
       .aw-rb-hit-brief { opacity:.7; margin-top:2px; }
       .aw-rb-check { padding:8px 10px; border:1px dashed color-mix(in srgb, currentColor 20%, transparent); border-radius:8px; display:flex; flex-direction:column; gap:5px; }
+      /* 未检测前不渲染空虚线框(此前是一条 18px 的“未完成”横条) */
+      .aw-rb-check:has(> .aw-rb-check-rows:empty) { display:none; }
       .aw-rb-check-rows { display:flex; flex-direction:column; gap:3px; }
       .aw-rb-check-row { display:flex; gap:6px; align-items:baseline; flex-wrap:wrap; }
       .aw-rb-check-k { opacity:.65; min-width:86px; }

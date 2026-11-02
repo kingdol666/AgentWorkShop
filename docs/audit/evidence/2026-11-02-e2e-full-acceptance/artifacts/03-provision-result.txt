@@ -1,0 +1,23 @@
+✅ 建产线 — ok
+✅ 跨线写点冲突预检 — 既有他线写控 14 节点,冲突 0
+✅ 建写控节点[PROTO4-FL7-SP-灌装背压] — dw-47e1ba08
+✅ 建写控节点[PROTO4-FL7-SP-传送带速度] — dw-da17b9db
+✅ 建写控节点[PROTO4-FL7-SP-灌装头压力] — dw-95d41b71
+✅ 建写控节点[PROTO4-FL7-SP-CIP冲洗流量] — dw-d32e7185
+✅ 建数采节点[PROTO4-FL7-PV-灌装量] — dn-9ec79037
+✅ 建数采节点[PROTO4-FL7-PV-瓶盖扭矩] — dn-ab4bb8fb
+✅ 建数采节点[PROTO4-FL7-PV-环境温度] — dn-6088b7a9
+✅ 建数采节点[PROTO4-FL7-PV-环境湿度] — dn-65ce4e7e
+✅ 建数采节点[PROTO4-FL7-PV-灌装精度截面] — dn-6b28bddc
+✅ 建数采节点[PROTO4-FL7-PV-产线节拍] — dn-ad14d077
+✅ 建数采节点[PROTO4-FL7-PV-CIP液位] — dn-7e35d94d
+✅ 建数采节点[PROTO4-FL7-PV-洗液温度] — dn-46f3fc41
+✅ 建数采节点[PROTO4-FL7-PV-背压确认] — dn-316f1c3c
+✅ 建产品 — pd-0cf74b39
+✅ 建配方 — rc-db837818
+✅ 开跑批次 — rr-8dabd697
+✅ 采集总控启动 — running=true interval=5000ms
+
+{"lineId":"ln-d8366708","dcw":{"PROTO4-FL7-SP-灌装背压":"dw-47e1ba08","PROTO4-FL7-SP-传送带速度":"dw-da17b9db","PROTO4-FL7-SP-灌装头压力":"dw-95d41b71","PROTO4-FL7-SP-CIP冲洗流量":"dw-d32e7185"},"daq":{"PROTO4-FL7-PV-灌装量":"dn-9ec79037","PROTO4-FL7-PV-瓶盖扭矩":"dn-ab4bb8fb","PROTO4-FL7-PV-环境温度":"dn-6088b7a9","PROTO4-FL7-PV-环境湿度":"dn-65ce4e7e","PROTO4-FL7-PV-灌装精度截面":"dn-6b28bddc","PROTO4-FL7-PV-产线节拍":"dn-ad14d077","PROTO4-FL7-PV-CIP液位":"dn-7e35d94d","PROTO4-FL7-PV-洗液温度":"dn-46f3fc41","PROTO4-FL7-PV-背压确认":"dn-316f1c3c"},"recipeId":"rc-db837818","reused":false}
+
+=== 产线供给: 19 通过 / 0 失败 ===

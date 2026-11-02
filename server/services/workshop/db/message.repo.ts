@@ -7,7 +7,7 @@ import type { DatabaseSync } from 'node:sqlite'
 import type { MessageRow } from './database'
 
 const COLS
-  = 'id, channel_id AS channelId, task_id AS taskId, from_agent_id AS fromAgentId, to_agent_id AS toAgentId, role, parts_json AS partsJson, metadata_json AS metadataJson, state, created_at AS createdAt, consumed_at AS consumedAt'
+  = 'id, channel_id AS channelId, task_id AS taskId, from_agent_id AS fromAgentId, to_agent_id AS toAgentId, role, parts_json AS partsJson, metadata_json AS metadataJson, state, attempts, created_at AS createdAt, consumed_at AS consumedAt'
 
 export interface MessageCreateInput {
   /** 落库 id;缺省生成。A2A 入队时传发送方 messageId,保证 API 返回 id 与历史 id 一致 */
@@ -43,10 +43,16 @@ export function createMessageRepo(db: DatabaseSync) {
     `UPDATE messages SET state = 'consumed', consumed_at = ? WHERE id = ?`,
   )
   const resetConsumingStmt = db.prepare(
-    `UPDATE messages SET state = 'pending' WHERE state = 'consuming'`,
+    // P3-4:崩溃恢复重投不复活 dead(重投上限是持久判定,重启不洗白)
+    `UPDATE messages SET state = 'pending' WHERE state = 'consuming' AND attempts < 3`,
   )
   const requeueStmt = db.prepare(
-    `UPDATE messages SET state = 'pending' WHERE id = ? AND state = 'consuming'`,
+    // P3-4(2026-11-01):重投计数上限 —— attempts+1,达 3 次不再回 pending(→ dead)。
+    // steer 对忙碌 Agent 的重投之前无上限:坏消息(解析必炸/超长)会在
+    // "认领→steer 失败→回 pending"里无限循环,每 250ms 吃掉一个调度拍。
+    `UPDATE messages SET attempts = attempts + 1,
+       state = CASE WHEN attempts + 1 >= 3 THEN 'dead' ELSE 'pending' END
+     WHERE id = ? AND state = 'consuming'`,
   )
   const consumePendingByTaskStmt = db.prepare(
     `UPDATE messages SET state = 'consumed', consumed_at = ? WHERE task_id = ? AND state = 'pending'`,
@@ -78,6 +84,7 @@ export function createMessageRepo(db: DatabaseSync) {
         partsJson: JSON.stringify(input.parts),
         metadataJson: JSON.stringify(input.metadata ?? {}),
         state: 'pending',
+        attempts: 0,
         createdAt: now,
         consumedAt: null,
       }

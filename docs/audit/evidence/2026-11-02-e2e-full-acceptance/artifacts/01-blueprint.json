@@ -1,0 +1,37 @@
+{
+  "sourceDoc": "docs/protocol/2026-11-02-filling-line-FL7-protocol-manual.md",
+  "docVersion": "v1.0",
+  "extractedAt": "2026-11-02",
+  "blueprints": [
+    { "id": "P1", "name": "PROTO4-FL7-PV-灌装量", "direction": "read", "protocol": "modbus-tcp", "address": "<plc>:502 unit=2 HR40001 float32 big;验收=孪生 f7-filler:37686", "dataType": "scalar", "unit": "mL", "decimals": 2, "min": 0, "max": 1000, "intervalMs": 2000, "templateRef": "pressure-tx", "expectedValue": "J1: 窗口均值 |PV-500|<=4(基线 494 偏低,经优化入带)", "source": "doc §2.1 P1", "gaps": [] },
+    { "id": "P2", "name": "PROTO4-FL7-PV-瓶盖扭矩", "direction": "read", "protocol": "modbus-rtu", "address": "检旋机 unit=5 HR40001;验收=孪生 f7-checkweigher:37688", "dataType": "scalar", "unit": "N·m", "decimals": 2, "min": 0, "max": 5, "intervalMs": 3000, "templateRef": "power-meter", "expectedValue": "1.0-1.5", "source": "doc §2.2 P2", "gaps": [] },
+    { "id": "P3", "name": "PROTO4-FL7-PV-环境温度", "direction": "read", "protocol": "mqtt", "address": "aw/fill/fl7/env/temp;验收=孪生 broker 41836 aw/twin/f7-env/env-temp-pv", "jsonPath": "data.env-temp-pv", "dataType": "scalar", "unit": "℃", "decimals": 1, "min": 0, "max": 60, "intervalMs": 2000, "templateRef": "temp-tc", "expectedValue": "20-28", "source": "doc §2.3 P3", "gaps": [] },
+    { "id": "P4", "name": "PROTO4-FL7-PV-环境湿度", "direction": "read", "protocol": "mqtt", "address": "aw/fill/fl7/env/humidity;验收=孪生 broker 41836 aw/twin/f7-env/env-humidity-pv", "jsonPath": "data.env-humidity-pv", "dataType": "scalar", "unit": "%RH", "decimals": 1, "min": 0, "max": 100, "intervalMs": 2000, "templateRef": "pressure-tx", "expectedValue": "45-65", "source": "doc §2.3 P4", "gaps": [] },
+    { "id": "P5", "name": "PROTO4-FL7-PV-灌装精度截面", "direction": "read", "protocol": "http", "address": "GET /api/v1/accuracy/profile → points;验收=孪生 http 4048 /sim-http/f7-gw/api/accuracy-profile-pv", "jsonPath": "points", "dataType": "vector(16点)", "unit": "mm", "decimals": 3, "min": 0, "max": 10, "intervalMs": 5000, "templateRef": "thickness-scan", "expectedValue": "均值 0.9-1.1", "source": "doc §2.4 P5", "gaps": ["REST 不透传 signalKind,vector 点不经 test-driver 预检,由 verify-mirror 按帧覆盖(skill 明文)"] },
+    { "id": "P6", "name": "PROTO4-FL7-PV-产线节拍", "direction": "read", "protocol": "modbus-tcp", "address": "HR40005;验收=孪生 f7-filler:37686", "dataType": "scalar", "unit": "瓶/min", "decimals": 1, "min": 0, "max": 80, "intervalMs": 2000, "templateRef": "line-encoder", "expectedValue": "34.6+0.48×(S2-36)", "source": "doc §2.1 P6", "gaps": [] },
+    { "id": "P7", "name": "PROTO4-FL7-PV-CIP液位", "direction": "read", "protocol": "opcua", "address": "ns=2;s=f7.cip.level;验收=孪生 f7-cip:4862 ns=2;s=f7-cip.cip-level-pv", "dataType": "scalar", "unit": "%", "decimals": 1, "min": 0, "max": 100, "intervalMs": 3000, "templateRef": "pressure-tx", "expectedValue": "61.5+0.5×(S4-28)", "source": "doc §2.5 P7", "gaps": [] },
+    { "id": "P8", "name": "PROTO4-FL7-PV-洗液温度", "direction": "read", "protocol": "opcua", "address": "ns=2;s=f7.cip.temp;验收=孪生 f7-cip:4862", "dataType": "scalar", "unit": "℃", "decimals": 1, "min": 0, "max": 100, "intervalMs": 3000, "templateRef": "temp-tc", "expectedValue": "62-67", "source": "doc §2.5 P8", "gaps": [] },
+    { "id": "P9", "name": "PROTO4-FL7-PV-背压确认", "direction": "read", "protocol": "mqtt", "address": "aw/fill/fl7/sp/backpressure/confirm;验收=孪生 broker 41836 aw/twin/f7-backpressure/bp-confirm-pv", "jsonPath": "data.bp-confirm-pv", "dataType": "scalar", "unit": "bar", "decimals": 2, "min": 0, "max": 6, "intervalMs": 2000, "templateRef": "pressure-tx", "expectedValue": "=S1 写值(合同级确认面)", "source": "doc §2.3 P9", "gaps": [] },
+    { "id": "S1", "name": "PROTO4-FL7-SP-灌装背压", "direction": "write", "protocol": "mqtt", "address": "cmd aw/fill/fl7/set/backpressure;验收=孪生 aw/twin/f7-backpressure/set", "jsonKey": "sp", "readback": "P9 确认主题独立订阅", "dataType": "scalar", "unit": "bar", "decimals": 2, "min": 0, "max": 6, "stepLimit": 0.2, "holdIntervalMs": 0, "templateRef": "pressure-sp", "expectedValue": "发布受理=transport-ack;P9 确认值=写值才算合同级证实", "source": "doc §3.1 S1", "gaps": [] },
+    { "id": "S2", "name": "PROTO4-FL7-SP-传送带速度", "direction": "write", "protocol": "modbus-tcp", "address": "HR40003;验收=孪生 f7-filler:37686", "dataType": "scalar", "unit": "瓶/min", "decimals": 1, "min": 0, "max": 80, "stepLimit": 2.0, "holdIntervalMs": 0, "templateRef": "speed-sp", "expectedValue": "写后寄存器回读=写值", "source": "doc §3.2 S2", "gaps": [] },
+    { "id": "S3", "name": "PROTO4-FL7-SP-灌装头压力", "direction": "write", "protocol": "modbus-tcp", "address": "HR40007;验收=孪生 f7-filler:37686", "dataType": "scalar", "unit": "bar", "decimals": 2, "min": 0, "max": 6, "stepLimit": 0.2, "holdIntervalMs": 0, "templateRef": "pressure-sp", "expectedValue": "写后寄存器回读=写值;工艺窗建议≤4.2", "source": "doc §3.2 S3", "gaps": [] },
+    { "id": "S4", "name": "PROTO4-FL7-SP-CIP冲洗流量", "direction": "write", "protocol": "opcua", "address": "ns=2;s=f7.cip.flow;验收=孪生 f7-cip:4862 ns=2;s=f7-cip.cip-flow-sp", "dataType": "scalar", "unit": "L/min", "decimals": 1, "min": 0, "max": 50, "stepLimit": 1.0, "holdIntervalMs": 0, "templateRef": "speed-sp", "expectedValue": "UA 写后读回=写值", "source": "doc §3.3 S4", "gaps": [] }
+  ],
+  "capabilityMatch": [
+    { "point": "P1/P6", "builtin": "modbus-tcp 驱动(HR float32 big)+scalar", "verdict": "内置" },
+    { "point": "P2", "builtin": "modbus-rtu 驱动(RTU-over-TCP 替代端点)+scalar", "verdict": "内置" },
+    { "point": "P3/P4/P9", "builtin": "mqtt 驱动订阅池+jsonPath;P9=S1 确认主题兄弟节点(平台契约)", "verdict": "内置" },
+    { "point": "P5", "builtin": "http 轮询驱动+vector pointsPath(thickness-scan 模板)", "verdict": "内置(REST 不透传 signalKind→预检不覆盖,镜像按帧验证)" },
+    { "point": "P7/P8", "builtin": "opcua 驱动+nodeId 订阅", "verdict": "内置" },
+    { "point": "S1", "builtin": "mqtt 写驱动 jsonKey 单字段+readTopic 确认回读", "verdict": "内置" },
+    { "point": "S2/S3", "builtin": "modbus-tcp 写驱动(HR float32)+寄存器回读", "verdict": "内置" },
+    { "point": "S4", "builtin": "opcua 写驱动(UA Write+读回)", "verdict": "内置" },
+    { "point": "汇总", "builtin": "13/13 内置;0 插件需求;数据类型 scalar×12+vector×1,未超出 scalar/vector/image 闭合面", "verdict": "全部内置" }
+  ],
+  "knownPlatformSemantics": [
+    "http 写驱动仅发 POST;本合同 S1-S4 均非 http 写,不受影响",
+    "holdIntervalMs=保写心跳语义,按澄清门第 7 条映射为 0",
+    "DCW 服务端强制 templateRef;量程/步长显式覆盖(澄清门第 9 条)",
+    "MQTT 发布受理=transport-ack,合同级证实看 P9 确认报文"
+  ]
+}

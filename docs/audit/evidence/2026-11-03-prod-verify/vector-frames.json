@@ -1,0 +1,13 @@
+{
+  "node": {
+    "id": "dn-07f1cfef",
+    "state": "warn",
+    "lastError": "vector 帧点列非法(1~4096 个有限数值,实际 0)",
+    "lastAt": "2026-11-03T01:50:15.380+08:00",
+    "value": 0.999
+  },
+  "frameCount": 100,
+  "firstPoints": 64,
+  "lastPoints": 64,
+  "lastAt": 1793641299754
+}

@@ -1,4 +1,4 @@
-import { userRepository, findByToken, verifyPassword } from '../repositories/user.repository'
+import { userRepository, findByToken, verifyPasswordAsync } from '../repositories/user.repository'
 import type { UserListInput, UserListQuery, UserToken, AuthResult } from '../types/user'
 import type { UserCreate, UserUpdate, UserLogin, UserRegister } from '../schemas/user.schema'
 import { AppError, ErrorCodes } from '../utils/errors'
@@ -100,14 +100,15 @@ export const userService = {
     return { id, revokedSessions: revoked, mustChangePassword: true }
   },
 
-  /** 本人修改密码(首登强制改密同一入口):当前密码验证 → 更新哈希并清除强制标记 */
-  changePassword(userId: string, currentPassword: string, newPassword: string) {
+  /** 本人修改密码(首登强制改密同一入口):当前密码验证 → 更新哈希并清除强制标记。
+   *  P2-9(2026-11-01):校验走异步 scrypt(worker 线程池),不再阻塞事件循环。 */
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
     const user = userRepository.findById(userId)
     if (!user) {
       throw new AppError(404, ErrorCodes.NOT_FOUND, '用户不存在')
     }
     const { hash } = userRepository.getPasswordHash(user.email) ?? {}
-    if (!hash || !verifyPassword(currentPassword, hash)) {
+    if (!hash || !(await verifyPasswordAsync(currentPassword, hash))) {
       throw new AppError(401, 'UNAUTHORIZED', '当前密码不正确')
     }
     userRepository.update(userId, { password: newPassword, mustChangePassword: false })
@@ -150,7 +151,7 @@ export const userService = {
    *  - 密码错误时累计,达阈值返回 429 统一文案(不泄露"账号是否存在");
    *  - IP 只入审计(来源可追溯),不参与判定。
    */
-  login(input: UserLogin, opts: { ip?: string } = {}): AuthResult {
+  async login(input: UserLogin, opts: { ip?: string } = {}): Promise<AuthResult> {
     const FAIL_WINDOW_MS = 15 * 60_000
     const LOCK_THRESHOLD = 5
     const accountKey = input.email.trim().toLowerCase()
@@ -163,7 +164,8 @@ export const userService = {
     const locked = Boolean(rec && rec.count >= LOCK_THRESHOLD && Date.now() - rec.firstAt < FAIL_WINDOW_MS)
 
     const { id, hash } = userRepository.getPasswordHash(input.email) ?? {}
-    const passwordOk = Boolean(id && hash && verifyPassword(input.password, hash))
+    // P2-9(2026-11-01):登录校验走异步 scrypt —— 并发登录不再排队阻塞事件循环
+    const passwordOk = Boolean(id && hash && await verifyPasswordAsync(input.password, hash))
     if (!passwordOk) {
       if (!rec || Date.now() - rec.firstAt >= FAIL_WINDOW_MS) fails.set(accountKey, { count: 1, firstAt: Date.now() })
       else rec.count += 1
