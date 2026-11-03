@@ -98,9 +98,15 @@ test('P1-5 行为:活 PID 锁 → 子进程启动失败;死 PID 残留 → 接�
     await dead.stop()
   }
   // Windows 上 kill() = TerminateProcess,exit 处理器不执行 → 锁会残留。
-  // 这正是崩溃残留的真实形态:下次启动必须能自愈接管(而不是永久锁死)。
+  // Linux 上 SIGTERM 走优雅退出,guard 会主动清锁 —— 为跨平台验证"崩溃残留自愈",
+  // 非 Windows 时显式写入一个死 PID 残留锁(与硬杀残留同形态)。
   await new Promise(r => setTimeout(r, 900))
-  assert.equal(existsSync(lockFile), true, '硬杀后应留下残留锁(用于验证自愈)')
+  if (process.platform === 'win32') {
+    assert.equal(existsSync(lockFile), true, '硬杀后应留下残留锁(用于验证自愈)')
+  }
+  else {
+    writeFileSync(lockFile, JSON.stringify({ pid: 999999, at: new Date().toISOString() }))
+  }
   const again = await runGuard(guardPath, home, { hold: true })
   try {
     assert.match(again.out, /接管崩溃残留/, '硬杀残留的锁必须被下一实例自愈接管')
