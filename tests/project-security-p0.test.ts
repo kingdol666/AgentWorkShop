@@ -9,6 +9,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
+import { resolve } from 'node:path'
 import {
   assertChannelWorkspaceAllowed,
   assertSpawnConfigAllowed,
@@ -18,6 +19,9 @@ import {
 } from '../server/services/workshop/agents/harness-spawn-policy'
 import { channelAgentSummary } from '../server/services/workshop/agents/agent-dto'
 import { AppError } from '../server/utils/errors'
+
+/** 平台工作根之外；用相对当前工作目录的父目录，避免 Windows/Linux 路径语义差异。 */
+const OUTSIDE_CWD = resolve(process.cwd(), '..', '__aw_outside_cwd__')
 
 function isAppErrorCode(code: string) {
   return (err: unknown) => err instanceof AppError && err.code === code
@@ -53,7 +57,7 @@ test('spawn policy: admin 只允许引擎自身命令，拒绝通用解释器', 
 
 test('spawn policy: admin 也不得把 cwd 指到平台根之外', () => {
   assert.throws(
-    () => assertSpawnConfigAllowed('omp', { cwd: 'C:\\Windows' }, { role: 'admin' }),
+    () => assertSpawnConfigAllowed('omp', { cwd: OUTSIDE_CWD }, { role: 'admin' }),
     isAppErrorCode('HARNESS_CWD_DENIED'),
   )
 })
@@ -90,7 +94,7 @@ test('channel workspace: 普通用户只能在 data/workspaces 或 data/projects
 test('channel workspace: admin 仍受平台根限制', () => {
   assert.doesNotThrow(() => assertChannelWorkspaceAllowed('data/workspaces/ch-1', { role: 'admin' }))
   assert.throws(
-    () => assertChannelWorkspaceAllowed('C:\\Windows', { role: 'admin' }),
+    () => assertChannelWorkspaceAllowed(OUTSIDE_CWD, { role: 'admin' }),
     isAppErrorCode('CHANNEL_WORKSPACE_DENIED'),
   )
 })
