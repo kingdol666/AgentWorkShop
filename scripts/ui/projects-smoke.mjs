@@ -55,7 +55,9 @@ async function api(method, path, body, token) {
     body: body === undefined ? undefined : JSON.stringify(body),
   })
   let json = null
-  try { json = await res.json() }
+  try {
+    json = await res.json()
+  }
   catch { /* ignore */ }
   return { status: res.status, ...json }
 }
@@ -73,7 +75,10 @@ try {
     await sleep(1000)
     try {
       const h = await api('GET', '/api/health')
-      if (h.data?.status === 'ok' && h.data?.workshop === 'ready') { healthy = true; break }
+      if (h.data?.status === 'ok' && h.data?.workshop === 'ready') {
+        healthy = true
+        break
+      }
     }
     catch { /* wait */ }
   }
