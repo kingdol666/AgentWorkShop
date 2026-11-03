@@ -4,10 +4,13 @@ This is a private preparation note and is excluded from the anonymous manuscript
 and public source package. The review PDF keeps `\\blindreviewtrue` and contains
 no author-identifying acknowledgments.
 
-Status 2026-10-26: the compiled Acknowledgment block was removed from `main.tex`
-at the authors' request, so the review PDF contains no AI statement. The text
-below is retained for the disclosure channel the authors confirm with the
-journal; no statement is claimed as submitted until that channel is used.
+Status 2026-11-03: the compiled review copy includes a short, non-identifying
+Acknowledgment stating that AI-assisted tools were used for language editing,
+code drafting, and figure preparation. Author identities and funding remain
+withheld. The fuller system/section-level statement below is retained for the
+submission-system disclosure channel. If the current TII checklist forbids any
+acknowledgment in the blinded PDF, remove the block from `main.tex` and submit
+the full statement through that channel; do not silently drop the disclosure.
 
 ## Disclosure text to retain for the appropriate channel
 

@@ -6,19 +6,42 @@
 \usepackage{url}
 \usepackage{enumitem}
 \setlist{nosep,leftmargin=*}
-\title{Supplementary File S7: November 1 Simulator Evaluation Evidence}
+\title{Supplementary File S7: November 1--3 Simulator Evaluation Evidence}
 \author{}
-\date{November 1, 2026}
+\date{November 3, 2026}
 \begin{document}
 \maketitle
 
 \section*{Scope and evidence selection}
-This file documents the simulator evidence cited in the revised evaluation. It keeps the integrated pipeline, scene--protocol probes, five-seed policy comparison, process-window ablation, approval pilot, and production-mode checks separate because they use different test units and denominators. The raw CSVs, run manifests, reports, and the self-contained visual report are in \texttt{Supplementary-File-S7-data-2026-11-02.zip}. No physical-plant result is included.
+This file documents the simulator evidence cited in the revised evaluation. It keeps the integrated pipeline, scene--protocol probes, five-seed policy comparison, process-window ablation, approval pilot, production-mode checks, and the negative live-Agent pilot separate because they use different test units and denominators. The raw CSVs, run manifests, reports, and the self-contained visual report are in \texttt{Supplementary-File-S7-data-2026-11-02.zip}. No physical-plant result is included.
 
-\section*{Consolidation update (November 2, 2026)}
-The data package is organized into three folders. \texttt{01-paper-evidence/} is the frozen November 1 batch used for every number in the manuscript. \texttt{02-c3-pilot-negative/} contains a November 2 live-Agent multi-round pilot that is \emph{not} used for any claim: after pipeline fixes, the best episode completed with zero governed writes and a process variable outside its band, and a second episode ended at its time budget with zero writes. The pilot exposed platform integration defects (task-artifact addressing, lead queue draining, and goal completion without checking the goal criterion) that remain outside the paper's claims. \texttt{03-system-validation-not-used/} contains integration and demonstration reports that validate the platform but are not part of the controlled experiment blocks. No C3 number appears in the manuscript.
+\section*{Consolidation update (November 2--3, 2026)}
+The data package is organized into three folders. \texttt{01-paper-evidence/} is the frozen November 1 batch used for every positive number in the manuscript. \texttt{02-c3-pilot-negative/} contains a November 2 live-Agent multi-round pilot. The manuscript reports this pilot as a negative result in Section VI-G; no C3 number is used for a positive claim. After pipeline fixes, the best episode completed with zero governed writes and a process variable outside its band, and a second episode ended at its time budget with zero writes. The pilot exposed platform integration defects (task-artifact addressing, lead queue draining, and goal completion without checking the goal criterion) that remain outside the paper's positive claims. \texttt{03-system-validation-not-used/} contains integration and demonstration reports that validate the platform but are not part of the controlled experiment blocks.
 
 A cast-film probe record from run \texttt{20261101121700-scenario-probes} was excluded. Its manifest declared four scenes but recorded only cast-film, and its simulator endpoint did not match the endpoint in the reproduction command. None of its 24 admissible requests, 24 structural probes, or 20 readbacks are included in the manuscript totals or the data package. The reported scene--protocol counts below use only run \texttt{20261101121221-scenario-probes}.
+
+\section*{Representative systems}
+Table S7-I summarizes the operation boundary and evaluation scope of representative plant-facing agent systems cited in the manuscript. It does not rank their performance, and the reported evaluations are not directly comparable because the systems, tasks, and denominators differ.
+
+\begin{table}[h]
+\centering
+\caption{Table S7-I. Representative plant-facing agent systems and the scope of their reported evaluations.}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{1.9cm}>{\raggedright\arraybackslash}p{6.2cm}X@{}}
+\toprule
+System & Reported operation or integration mechanism & Reported evaluation \\
+\midrule
+Biskupovic et al. & Agent-based service selection and online reselection using performance and computational-load metrics & Industrial cyber--physical system study; service adaptability and performance \\
+K{\"o}hle et al. & Module-specific agents, MCP-to-OPC-UA skills, MQTT coordination, and injected factory state & Nine simulated production challenges \\
+Xavier et al. & MCP adapters for industrial protocols with a common response envelope and mock-first testing & 870 benchmark runs and 2,820 tool calls \\
+Graul et al. & AAS-grounded proposals, signed approval, PLC-validated OPC UA Methods, and audit log & Two laboratory proof-of-concept settings \\
+Schall & P\&ID-, SCADA-, and SOP-grounded proposal verification with gated execution & Five simulated scenarios, 43 proposals, and 50 LLM runs \\
+Lin and Chen & Policy-governed sensor--MES--ERP digital thread & Manufacturing-record evaluation with operational metrics \\
+This work & Scene-bound production context and named signal mappings; shared dispatch with route-specific write governance and separate command receipts and process-observation evidence & Two pipeline runs (77 assertions each), a four-scene probe subset, five-seed scripted missions, a three-repeat mock-driver ablation, and a negative live-Agent pilot \\
+\bottomrule
+\end{tabularx}
+\end{table}
 
 \section*{Integrated pipeline and scene--protocol probes}
 The integrated executions \texttt{20261101103641-9j8} and \texttt{20261101104849-xu0} used seed 42 and reported commit \texttt{da627d21}. Both manifests record that the platform and simulator were already running and that no Agent harness was active. Each run returned 77 passing assertions, zero warnings, and zero failures. Assertions are within-run checks, not independent trial observations.
@@ -45,10 +68,10 @@ TCP and RTU in the table denote Modbus TCP and Modbus RTU. For each writable nod
 The integrated film-line preset check is a separate pipeline result: five endpoint types were configured and nine selected negative probes were rejected (9/9), with no code edits. It reused the same runtime and is not an independent cold-start deployment. The pipeline run manifests and summaries are included in the data archive.
 
 \section*{Five-seed target-band comparison}
-C0 is a 60-s no-write condition; its terminal process-variable statistic is the mean of the final five samples. C1 is a deterministic scripted policy that calls the shared governed-write service and uses scenario-specific mission logic; its statistic is the mission-terminal reading. Each seed appears in both conditions for injection mass, wastewater dissolved oxygen (DO), and annealing hardness. The common decision rule checks each recorded statistic against its stated band. C1 per-seed wall time was 150.41--172.90~s, compared with C0's fixed 60~s, so this is a descriptive endpoint contrast rather than a time-matched test. Counts are recomputed from raw \texttt{pv}, \texttt{target}, and \texttt{tol} fields. The runner's \texttt{attained} flag has different condition-specific semantics (C0 combines the PV band with configured guards; C1 records its scenario mission result), so it is retained as source data but not compared across conditions.
+C0 is a 60-s no-write condition; its terminal process-variable statistic is the mean of the final five samples. C1 is a deterministic scripted policy that calls the \texttt{recipe\_trial} batch route of the shared governed-write service and uses scenario-specific mission logic; its statistic is the first in-band reading at which the mission stopped, not a fixed-horizon endpoint. Each seed appears in both conditions for injection mass, wastewater dissolved oxygen (DO), and annealing hardness. C1 per-seed wall time was 150.41--172.90~s, compared with C0's fixed 60~s, so this is a descriptive contrast rather than a time-matched test. One C0 control, seed 42, began from residual state (injection 32.378~g and DO 2.894~mg/L, both inside their bands) rather than the blueprint state used by C1; seeds 43--46 began from the blueprint. Counts are reported for the 12 blueprint-matched pairs and separately for all 15 runs. Counts are recomputed from raw \texttt{pv}, \texttt{target}, and \texttt{tol} fields. The runner's \texttt{attained} flag has different condition-specific semantics (C0 combines the PV band with configured guards; C1 records its scenario mission result), so it is retained as source data but not compared across conditions.
 
 \begin{longtable}{@{}p{2.2cm}p{2.5cm}r r r >{\centering\arraybackslash}p{1.8cm}@{}}
-\caption{Raw endpoints with a common target-band check recomputed from each process variable, target, and tolerance: 0/15 C0 endpoints and 15/15 C1 endpoints were in band. The condition-specific runner flags are not used for this count.}\label{tab:s7-opt}\\
+\caption{Raw endpoints with a common target-band check recomputed from each process variable, target, and tolerance: 0/15 C0 and 15/15 C1 endpoints were in band overall, and 0/12 C0 and 12/12 C1 for the blueprint-matched seeds 43--46. The condition-specific runner flags are not used for this count.}\label{tab:s7-opt}\\
 \toprule
 Scene & Target band & Seed & C0 endpoint & C1 endpoint & PV band C0/C1 \\
 \midrule
@@ -75,9 +98,9 @@ Annealing & $95\pm6$ HV & 46 & 134.36 & 98.20 & No / Yes \\
 \bottomrule
 \end{longtable}
 
-The individual values above are copied from the ten per-seed CSV result files. Across the five C1 seeds, the scripted missions issued 12 writes in 17 rounds for injection, 56 writes in 59 rounds for wastewater, and 41 writes in 50 rounds for annealing; these are workload counts, not an efficiency comparison. Seed values are simulator initializations, not independent production lines. C1 is not an active-LLM policy and C0 is not an industrial-controller baseline.
+The individual values above are copied from the ten per-seed CSV result files. Across the 12 blueprint-matched pairs, 0/12 C0 and 12/12 C1 endpoints were in band; including the warm-started seed-42 control gives 0/15 and 15/15. Across the five C1 seeds, the scripted missions issued 12 writes in 17 rounds for injection, 56 writes in 59 rounds for wastewater, and 41 writes in 50 rounds for annealing; these are workload counts, not an efficiency comparison. Seed values are simulator initializations, not independent production lines. C1 is not an active-LLM policy and C0 is not an industrial-controller baseline.
 
-\section*{Process-window interlock ablation}
+\section*{Process-window guard ablation}
 The process-window study used seed 42, three repetitions in each arm, a direct DCW API call, a mock driver, and benchmark mode. The configuration hash was \texttt{3a57e722d4764b98}. Each repetition submitted six negative probes: four hard structural probes and two process-window probes; it also submitted three nominal legal requests and three boundary requests. The additional 20 timed writes per repetition were used for latency summaries and were excluded from these denominators. No readback-mismatch stimulus was included.
 
 \begin{table}[h]
@@ -90,14 +113,14 @@ The process-window study used seed 42, three repetitions in each arm, a direct D
 Arm & Negative probes rejected & Window violations reaching driver & Legal false blocks & Boundary expectations met \\
 \midrule
 Full guard & 18/18 & 0/6 & 0/9 & 9/9 \\
-No process-window interlock & 12/18 & 6/6 & 0/9 & 9/9 \\
+No process-window guard (\texttt{no-interlock} arm) & 12/18 & 6/6 & 0/9 & 9/9 \\
 No-readback check & 18/18 & 0/6 & 0/9 & 9/9 \\
 No window + no-readback & 12/18 & 6/6 & 0/9 & 9/9 \\
 \bottomrule
 \end{tabularx}
 \end{table}
 
-The four hard structural probe types were blocked in every arm (12/12 per arm). With the process-window guard active, the two targeted window violations in each repetition did not reach the driver; removing that guard allowed all six across three repetitions to reach the mock driver. The no-readback arm does not test readback-mismatch rejection because that stimulus was absent. Benchmark mode relaxes normal timing and hold-window controls, so these results concern the tested interlock path only.
+The four hard structural probe types were blocked in every arm (12/12 per arm). With the process-window guard active, the two targeted window violations in each repetition did not reach the driver; removing that guard allowed all six across three repetitions to reach the mock driver. The no-readback arm does not test readback-mismatch rejection because that stimulus was absent. Benchmark mode relaxes normal timing and hold-window controls, so these results concern the tested guard path only.
 
 \section*{Approval, production-mode, and authorization checks}
 The approval pilot used one injection scene and a scripted decision fixture. The full CSV and timing records are in the data archive.
@@ -122,7 +145,7 @@ The manual reject did not change the simulated control value. The auto-mode labe
 In the separate production-mode guard run, the baseline value 190 was accepted. One example each was rejected for interval, step, node-range, recipe-window, and hold-window constraints. The exact API rejection codes are preserved in the source report and CSV. These one-case checks confirm expected branches for their configured inputs; they are not estimates of general rejection rates. A separate three-case authorization probe rejected an unbound write and a cross-node write while accepting one bound control write.
 
 \section*{Reproduction and provenance}
-The raw source records in the archive preserve runner outputs and exact run identifiers. Representative commands recorded by the runners are:
+The platform manifests record source commit \texttt{da627d21}. The experiment runners were uncommitted at execution time and were later committed as \texttt{40533741}; the recorded commit therefore identifies the platform source, not a hermetic tree. The raw source records in the archive preserve runner outputs and exact run identifiers. Representative commands recorded by the runners are:
 \begin{quote}
 \footnotesize\ttfamily\raggedright
 node bench/pipeline.mjs --profile integrated --seed 42 --cl-seeds 3\par\smallskip

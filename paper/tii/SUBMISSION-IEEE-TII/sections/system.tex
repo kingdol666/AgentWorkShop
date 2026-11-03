@@ -16,8 +16,7 @@ provide a stable operation contract for registered harness adapters, and check
 current authority and process limits before each write. It must also distinguish
 command acceptance from later process observations. Scene configuration,
 registered adapters, shared dispatch, route handlers, and service-owned
-records enforce these boundaries. Section~\ref{sec:eval} evaluates selected
-configured simulator paths.
+records enforce these boundaries.
 
 At task start, the context builder assembles the active production tuple and
 relevant process summaries. This context informs a proposal but does not grant
@@ -51,7 +50,10 @@ agent task begins. The active line identifies the production context; product
 and recipe records supply applicable targets and limits; the run record
 provides the current operating state. Semantic nodes bind process variables
 to direction-specific acquisition or control mappings, and the driver
-registry resolves each mapping to a supported protocol implementation. The
+registry resolves each mapping to a supported protocol implementation. Here
+\emph{semantic} denotes a named process variable with a direction, unit, and
+configured mapping; it is not an OPC UA or Asset Administration Shell
+information model. The
 agent-facing operation remains named and typed, so a harness does not need to
 construct protocol-specific messages. A scene using an already registered
 driver can supply different context and node mappings behind the same
