@@ -18,6 +18,7 @@ import { harnessContinuityMode } from '../../agents/registry'
 export abstract class AgentRuntimeState extends AgentRuntimeContracts {
   readonly agentId: string
   readonly role: 'lead' | 'worker'
+  readonly agentKind: string
   readonly channelId: string
   readonly name: string
   protected state: 'idle' | 'busy' | 'stopped' = 'idle'
@@ -130,6 +131,7 @@ export abstract class AgentRuntimeState extends AgentRuntimeContracts {
     super()
     this.agentId = agent.id
     this.role = agent.role
+    this.agentKind = agent.agentKind ?? 'channel_agent'
     this.channelId = agent.channelId
     this.name = agent.name
     this.continuity.agentId = agent.id

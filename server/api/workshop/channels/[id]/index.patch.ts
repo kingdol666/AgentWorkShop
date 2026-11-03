@@ -51,6 +51,11 @@ export default defineApiHandler(async (event) => {
   const manager = getWorkshopManager()
   // v17:管理守卫显式化 —— owner / admin / 遗留 403 语义与旧 getChannelForUser + requireWritable 一致
   const channel = manager.requireChannelOwner(channelId, user, 'channel')
+  if (body.enabled === 0) {
+    // active 项目的办公室频道不可禁用：先 pause/archive 项目。
+    const { getProjectService } = await import('../../../../services/workshop/projects/service')
+    getProjectService().assertOfficeChannelMutable(channelId)
+  }
 
   if (body.version !== undefined && body.version !== channel.version) {
     throw new AppError(409, 'VERSION_CONFLICT', `Channel 设置已被他处修改(当前版本 ${channel.version},提交 ${body.version}),请刷新后重试`)

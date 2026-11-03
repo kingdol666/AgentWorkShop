@@ -164,6 +164,7 @@ export interface TaskEngine {
 export interface AgentRuntimeLike {
   readonly agentId: string
   readonly role: 'lead' | 'worker'
+  readonly agentKind?: string
   readonly channelId: string
   readonly name: string
   /** 投递消息;返回 false = 信箱已关闭(停机窗口),调用方必须如实上报未送达 */

@@ -35,6 +35,7 @@ import { createChatMessageRepo } from '../services/workshop/db/chat-message.repo
 import { createNotificationRepo } from '../services/workshop/db/notification.repo'
 import { createOutboxRepo } from '../services/workshop/db/outbox.repo'
 import { createHitlRequestRepo } from '../services/workshop/db/hitl-request.repo'
+import { initProjectService } from '../services/workshop/projects/service'
 import { createApprovalHistoryRepo, createAlarmEventRepo, createAuditRepo, createApprovalRequestRepo } from '../services/workshop/db/ops.repo'
 import { bindOpsRepos } from '../services/workshop/ops/ops'
 import { configureHitlResolver } from '../services/workshop/agents/hitl-registry'
@@ -197,6 +198,8 @@ export default function workshopPlugin(nitroApp: {
   // 创建 manager → 挂全局单例(后续 REST/A2A/WS 经 getWorkshopManager() 读取)
   const manager = createAgentChannelManager(deps)
   globalThis.__workshopManager = manager
+  // Project 层 V1：项目办公室/生命周期/成员绑定（独立 service，项目状态唯一写者）
+  initProjectService(manager, db)
 
   // HITL 全局待办:agentId → channelId/agentName 解析器(避免 registry 反向依赖 manager)
   configureHitlResolver((agentId) => {

@@ -67,7 +67,7 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
     description?: string
     scenarioPrompt?: string
     workspace?: string
-    leadAgent?: { name: string, harness: string, config?: Record<string, unknown> }
+    leadAgent?: { name: string, harness: string, config?: Record<string, unknown>, agentKind?: 'channel_agent' | 'project_leader' }
     ownerUserId?: string | null
     /** 操作者（用于 spawn/workspace 授权；缺省按普通用户处理） */
     actor?: SpawnActor
@@ -105,6 +105,7 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
         harness: tpl.harness,
         config: parseJson<Record<string, unknown>>(tpl.configJson, {}),
         role: 'lead',
+        agentKind: input.leadAgent.agentKind,
       })
       this.deps.repos.channels.update(channel.id, { leadAgentId: inst.id })
       leadAgentId = inst.id
@@ -119,7 +120,7 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
     return { ...channel, agents }
   }
 
-  async updateChannel(channelId: string, patch: { name?: string, description?: string, scenarioPrompt?: string, workspace?: string, enabled?: number, llm?: { provider?: string, model?: string, effort?: string } | null }, actor: SpawnActor = { role: 'user' }): Promise<ChannelRow> {
+  async updateChannel(channelId: string, patch: { name?: string, description?: string, scenarioPrompt?: string, workspace?: string, enabled?: number, llm?: { provider?: string, model?: string, effort?: string } | null, chatEnabled?: number }, actor: SpawnActor = { role: 'user' }): Promise<ChannelRow> {
     const channel = this.requireChannelRow(channelId)
     if (patch.workspace !== undefined && patch.workspace !== channel.workspace) {
       assertChannelWorkspaceAllowed(patch.workspace, actor, channelId)
