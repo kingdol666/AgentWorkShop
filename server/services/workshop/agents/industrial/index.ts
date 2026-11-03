@@ -12,7 +12,7 @@
  *   ops-tools.ts           运维日志与配方变更史(ops_log / recipe_* / line_context)
  *   aml-dataset-tools.ts   AML 数据集与节点目录(aml_node_catalog / aml_dataset_*)
  *   aml-job-tools.ts       AML 作业与模型(aml_job_* / aml_leaderboard / aml_model_*)
- *   mes-tools.ts           MES 数据集面(mes_catalog / mes_fetch / mes_export / mes_dataset_read / mes_datasets)
+ *   mes-tools.ts           MES 数据集面(mes_catalog / mes_fetch / mes_export / mes_bridge / mes_dataset_read / mes_datasets)
  */
 export { toolMyIndustrialNodes, toolDcwControl } from './dcw-tools'
 export { toolParamControl } from './param-tools'
@@ -20,7 +20,7 @@ export { toolDaqQuery, toolDaqFrames } from './daq-tools'
 export { toolDaqExport } from './daq-export'
 export { toolDcwJudge, toolDcwRollback, toolDcwJournal } from './dcw-judge-tools'
 export { toolOpsLog, toolRecipeLog, toolRecipeCatalog, toolRecipeCreate, toolLineContext, toolRecipeVersions, toolRecipeUpdate, toolRecipeRollback, toolRecipeTrial, toolRecipeApply } from './ops-tools'
-export { toolMesCatalog, toolMesFetch, toolMesExport, toolMesDatasetRead, toolMesDatasets } from './mes-tools'
+export { toolMesCatalog, toolMesFetch, toolMesExport, toolMesBridge, toolMesDatasetRead, toolMesDatasets } from './mes-tools'
 export { toolAmlNodeCatalog, toolAmlDatasetBuild, toolAmlDatasetStats } from './aml-dataset-tools'
 export { toolAmlJobSubmit, toolAmlJobStatus, toolAmlJobLogs, toolAmlJobCancel, toolAmlLeaderboard, toolAmlModelFind, toolAmlModelPromote, toolAmlModelReference, toolAmlModelAnnotate, toolAmlTrainingPlanList, toolAmlTrainingPlanTrain, toolAmlTrainingPlanCreate } from './aml-job-tools'
 

@@ -231,3 +231,121 @@ export function runSinkPipeline(frame: DaqFrameWorking, steps: DaqSinkStep[] | u
   }
   return cur
 }
+
+// ============================================================
+// H2(2026-11-03):节点级 sink 覆盖(向量网格按点位可配)
+// ============================================================
+
+/**
+ * 节点 driverConfig.sinkOverrides 的形态:
+ *   { "resample": { "n": 32 }, "thumbnail": { "width": 512 }, "zones": 12 }
+ * 数值简写只对单参数处理器有意义(resample.n / zones.n / thumbnail.width);
+ * 也接受 driverConfig.resamplePoints 作为 {resample:{n}} 的便捷写法。
+ *
+ * 运行时容错:坏 JSON / 非对象 → 原样返回模板步骤(采集不因配置笔误中断);
+ * 创建/修改节点时经 validateSinkOverrides 前置拒绝(见 daq-controller/crud.ts)。
+ */
+export type SinkOverrides = Record<string, Record<string, unknown>>
+
+const overrideCache = new Map<string, SinkOverrides | null>()
+const OVERRIDE_CACHE_MAX = 200
+
+const NUMERIC_KEY: Record<string, string> = {
+  resample: 'n',
+  zones: 'n',
+  thumbnail: 'width',
+}
+
+function normalizeOverrides(raw: unknown): SinkOverrides | null {
+  if (raw === null || raw === undefined) return null
+  let parsed: unknown = raw
+  if (typeof raw === 'string') {
+    const text = raw.trim()
+    if (text === '') return null
+    try {
+      parsed = JSON.parse(text)
+    }
+    catch {
+      return null
+    }
+  }
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) return null
+  const out: SinkOverrides = {}
+  for (const [name, value] of Object.entries(parsed as Record<string, unknown>)) {
+    const key = String(name).trim()
+    if (!key) continue
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      out[key] = { [NUMERIC_KEY[key] ?? 'n']: value }
+      continue
+    }
+    if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+      out[key] = { ...(value as Record<string, unknown>) }
+    }
+  }
+  return Object.keys(out).length > 0 ? out : null
+}
+
+/** 解析并缓存节点级覆盖(同字符串只 parse 一次;采集热路径无 JSON 开销) */
+export function sinkOverridesOf(driverConfig: Record<string, unknown> | undefined): SinkOverrides | null {
+  if (!driverConfig) return null
+  const raw = driverConfig.sinkOverrides
+  const resamplePoints = driverConfig.resamplePoints
+  const cacheKey = `${typeof raw === 'string' ? raw : JSON.stringify(raw ?? null)}|${String(resamplePoints ?? '')}`
+  if (overrideCache.has(cacheKey)) return overrideCache.get(cacheKey) ?? null
+  let parsed = normalizeOverrides(raw)
+  if (parsed === null && resamplePoints !== undefined && resamplePoints !== null && String(resamplePoints).trim() !== '') {
+    parsed = normalizeOverrides({ resample: Number(resamplePoints) })
+  }
+  overrideCache.set(cacheKey, parsed)
+  while (overrideCache.size > OVERRIDE_CACHE_MAX) {
+    const oldest = overrideCache.keys().next().value
+    if (oldest === undefined) break
+    overrideCache.delete(oldest)
+  }
+  return parsed
+}
+
+/** 把节点级覆盖合并进模板步骤(同名处理器 args 浅合并;未覆盖的步骤原样保留) */
+export function applySinkOverrides(steps: DaqSinkStep[] | undefined, driverConfig: Record<string, unknown> | undefined): DaqSinkStep[] | undefined {
+  if (!steps || steps.length === 0) return steps
+  const overrides = sinkOverridesOf(driverConfig)
+  if (!overrides) return steps
+  return steps.map((step) => {
+    const extra = overrides[step.name]
+    return extra ? { ...step, args: { ...(step.args ?? {}), ...extra } } : step
+  })
+}
+
+/** 配置期校验:返回错误文案或 null(合法)。供节点 create/patch 使用。 */
+export function validateSinkOverrides(driverConfig: Record<string, unknown> | undefined): string | null {
+  const raw = driverConfig?.sinkOverrides
+  if (raw !== undefined && raw !== null && String(raw).trim() !== '') {
+    if (typeof raw !== 'string') return 'driverConfig.sinkOverrides 必须是 JSON 字符串,如 {"resample":{"n":32}}'
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(raw)
+    }
+    catch (err) {
+      return `driverConfig.sinkOverrides 不是合法 JSON:${err instanceof Error ? err.message : String(err)}`
+    }
+    if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return 'driverConfig.sinkOverrides 必须是 JSON 对象,如 {"resample":{"n":32}}'
+    }
+    for (const [name, value] of Object.entries(parsed as Record<string, unknown>)) {
+      if (typeof value === 'number') {
+        if (!NUMERIC_KEY[name]) return `sinkOverrides.${name} 不支持数值简写(仅 ${Object.keys(NUMERIC_KEY).join('/')} 可写数字)`
+        if (!Number.isFinite(value) || value <= 0) return `sinkOverrides.${name} 必须为正数`
+        continue
+      }
+      if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+        return `sinkOverrides.${name} 必须是对象或正数`
+      }
+    }
+  }
+  const points = driverConfig?.resamplePoints
+  if (points !== undefined && points !== null && String(points).trim() !== '') {
+    const n = Number(points)
+    if (!Number.isFinite(n) || n < 2 || n > 4096) return 'driverConfig.resamplePoints 必须为 2~4096 的整数'
+  }
+  return null
+}

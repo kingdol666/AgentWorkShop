@@ -95,9 +95,11 @@ getDaqNodeRepo().insert(new DaqNode({ id: mvNode, templateRef: 'temp-tc', driver
 getDaqNodeRepo().insert(new DaqNode({ id: cvNode, templateRef: 'temp-tc', driver: 'mock', intervalMs: 1000, lineId: line.id, min: 0, max: 200 } as ConstructorParameters<typeof DaqNode>[0]))
 const recipe = getDcwRecipeRepo().create({ name: '全链配方', productId: product.id, params: [], daqWindows: [{ nodeId: mvNode, min: 0, max: 100 }, { nodeId: cvNode, min: 0, max: 200 }] })
 const controller = getDcwController()
-const dwSp = controller.create({ name: '全链压力SP', templateRef: 'pressure-sp', driver: 'mock', driverConfig: { key: 'fc-sp' }, min: 0.6, max: 1.2, lineId: line.id, maxStep: 0.2 } as Parameters<typeof controller.create>[0])
+// P2(2026-11-03):DcwNode 只认 stepLimit;maxStep 是无效字段(会落到 range×2% 兜底,
+// 导致 [1.2,1.1] 水平间隔被 0.01 级步限拒绝)。夹具改用真实字段。
+const dwSp = controller.create({ name: '全链压力SP', templateRef: 'pressure-sp', driver: 'mock', driverConfig: { key: 'fc-sp' }, min: 0.6, max: 1.2, lineId: line.id, stepLimit: 0.2 } as Parameters<typeof controller.create>[0])
 dwSp.value = 1.15
-const dwTemp = controller.create({ name: '全链温度SP', templateRef: 'temp-sp', driver: 'mock', driverConfig: { key: 'fc-temp' }, min: 150, max: 200, lineId: line.id, maxStep: 10 } as Parameters<typeof controller.create>[0])
+const dwTemp = controller.create({ name: '全链温度SP', templateRef: 'temp-sp', driver: 'mock', driverConfig: { key: 'fc-temp' }, min: 150, max: 200, lineId: line.id, stepLimit: 10 } as Parameters<typeof controller.create>[0])
 dwTemp.value = 170
 
 const BEAT = 5000

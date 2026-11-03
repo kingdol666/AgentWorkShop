@@ -15,6 +15,7 @@ import { broadcastSceneEvent } from '../scene-events'
 import { getTsdb } from '../daq/storage'
 import type { TsdbPoint, TsdbPort } from '../daq/storage/tsdb-port'
 import { getDaqNodeRepo } from '../daq/daq-node.repo'
+import { getDcwNodeRepo } from '../dcw/dcw-node.repo'
 import { findDaqTemplate } from '../daq/daq-templates'
 import { getDcwRecipeRepo } from '../dcw/dcw-recipe.repo'
 import { amlSettings } from '../settings'
@@ -225,18 +226,33 @@ export async function buildDataset(spec: AmlDatasetSpec, by: { id: string, kind:
   }
 
   // 2. 节点校验:存在 + 产线一致 + 量程解析(跨产线即拒绝,数据隔离硬约束)
+  //    H1(2026-11-03):mes-rest 数控点位经 MES→TSDB 桥接后同样是合法数据源 ——
+  //    桥接数据与数采同表同打标,这里按"DAQ 节点优先,mes-rest 兜底"解析。
   const nodeRepo = getDaqNodeRepo()
+  const dcwRepo = getDcwNodeRepo()
   const ranges = new Map<string, { min: number, max: number } | undefined>()
   for (const n of spec.nodes) {
     const node = nodeRepo.byId(n.nodeId)
-    if (!node) throw new AppError(404, 'AML_NODE_MISSING', `数采节点 ${n.nodeId} 不存在`)
-    if (node.lineId !== spec.lineId) {
-      throw new AppError(403, 'AML_NODE_LINE_MISMATCH', `节点 ${n.nodeId} 属于产线 ${node.lineId},与规格产线 ${spec.lineId} 不一致(防跨产线取数)`)
+    const mesNode = node ? undefined : dcwRepo.byId(n.nodeId)
+    if (!node && (!mesNode || mesNode.driver !== 'mes-rest')) {
+      throw new AppError(404, 'AML_NODE_MISSING', `数采节点 ${n.nodeId} 不存在(也不是可桥接的 mes-rest 点位)`)
     }
-    const tpl = node.templateRef ? findDaqTemplate(node.templateRef) : undefined
-    const min = node.min ?? tpl?.min
-    const max = node.max ?? tpl?.max
-    ranges.set(n.nodeId, min !== undefined && max !== undefined ? { min, max } : undefined)
+    const nodeLine = node?.lineId ?? mesNode?.lineId ?? ''
+    if (nodeLine !== spec.lineId) {
+      throw new AppError(403, 'AML_NODE_LINE_MISMATCH', `节点 ${n.nodeId} 属于产线 ${nodeLine || '未分配'},与规格产线 ${spec.lineId} 不一致(防跨产线取数)`)
+    }
+    if (node) {
+      const tpl = node.templateRef ? findDaqTemplate(node.templateRef) : undefined
+      const min = node.min ?? tpl?.min
+      const max = node.max ?? tpl?.max
+      ranges.set(n.nodeId, min !== undefined && max !== undefined ? { min, max } : undefined)
+    }
+    else {
+      // MES 点位量程来自节点自身配置(dcw 节点 min/max 必填)
+      const min = Number(mesNode!.min)
+      const max = Number(mesNode!.max)
+      ranges.set(n.nodeId, Number.isFinite(min) && Number.isFinite(max) && min < max ? { min, max } : undefined)
+    }
   }
 
   // 3. 逐 run 拉数 + 清洗 + 对齐到公共网格

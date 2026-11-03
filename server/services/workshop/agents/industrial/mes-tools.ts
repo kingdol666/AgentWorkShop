@@ -85,6 +85,8 @@ export async function toolMesExport(agentId: string, args: {
   title?: string
   note?: string
   merge?: boolean | string
+  /** H3:CSV 追加行级环境/工况列(line_id,run_id,product_id,recipe_id) */
+  with_context?: boolean | string
 } = {}): Promise<{ text: string, isError?: boolean }> {
   try {
     const r = await mesController().exportData(agentId, args)
@@ -92,6 +94,36 @@ export async function toolMesExport(agentId: string, args: {
   }
   catch (err) {
     return { text: `MES 数据导出失败:${err instanceof Error ? err.message : String(err)}`, isError: true }
+  }
+}
+
+/** 工具:mes_bridge —— 把 MES 历史按批次打标桥接进平台 TSDB(H1),供 AML 数据集/
+ *  训练/EDA 直接消费。与 mes_fetch 的分工:fetch 只读摘要/落 CSV;bridge 写 TSDB。
+ *  护栏:绑线授权(同 mes_fetch)、窗口 ≤7 天、单次 ≤5000 行、60s ≤6 次;幂等
+ *  ((node,ts) 主键,重复桥接不产生重复行);批次缺省取产线活动批次,可用 run_id 指定。
+ *  图像帧同步归档到对象存储 + daq_frames(帧检索面,与 DAQ CCD 同路径)。 */
+export async function toolMesBridge(agentId: string, args: {
+  ids?: unknown
+  from?: string
+  to?: string
+  max_rows?: number | string
+  /** 目标批次 id(须与点位同线;缺省 = 该产线活动批次) */
+  run_id?: string
+  /** 只桥接指定形态:scalar/vector/image(缺省全部;table/event 无 TSDB 列模型) */
+  include?: string[] | string
+  /** 向量重采样目标点数(2–4096;缺省保留原维度) */
+  resample_to?: number | string
+  /** requestHook 透传参数 */
+  param?: unknown
+  /** 试运行:统计取数结果但不写库 */
+  dry_run?: boolean | string
+} = {}): Promise<{ text: string, isError?: boolean }> {
+  try {
+    const r = await mesController().bridge(agentId, args)
+    return { text: r.text, ...(r.isError ? { isError: true } : {}) }
+  }
+  catch (err) {
+    return { text: `MES 桥接失败:${err instanceof Error ? err.message : String(err)}(先确认点位已配置 historyMap、批次同线、TSDB 可用)。`, isError: true }
   }
 }
 

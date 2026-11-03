@@ -29,7 +29,7 @@ export interface EdaExportJobView {
   id: string
   kind: string
   status: 'running' | 'ready' | 'failed'
-  spec: { nodeIds: string[], fromMs: number, toMs: number, title: string, note: string, merge: boolean, runId?: string }
+  spec: { nodeIds: string[], fromMs: number, toMs: number, title: string, note: string, merge: boolean, runId?: string, withContext?: boolean }
   result: { exportId?: string, dir?: string, files?: Array<{ nodeId: string, rows: number }>, totalRows?: number, truncated?: string[], mergedFile?: string, missing?: boolean }
   error?: string
   createdBy: string
@@ -97,7 +97,7 @@ async function runExportJob(jobId: string): Promise<void> {
   const job = jobById(jobId)
   if (!job || job.status !== 'running') return
   try {
-    const { exportDaqDataset } = await import('../agents/industrial/daq-export')
+    const { exportDaqDataset, createRunContextResolver } = await import('../agents/industrial/daq-export')
     const { getTsdb, tsdbReady } = await import('../daq/storage')
     await tsdbReady
     const { findDaqTemplate } = await import('../daq/daq-templates')
@@ -137,6 +137,16 @@ async function runExportJob(jobId: string): Promise<void> {
       lines,
       rootDir: join(ensureDataDir(), 'daq-exports'),
       merge: job.spec.merge,
+      // H3:用户面导出同样支持环境/工况列(默认关闭,保持列契约)
+      withContext: job.spec.withContext === true,
+      ...(job.spec.withContext === true
+        ? {
+            contextOf: (() => {
+              const r = createRunContextResolver()
+              return (nodeId: string, lineId: string, tsMs: number) => r.of(lineId, nodeId, tsMs)
+            })(),
+          }
+        : {}),
       readFrames: (nodeId, win) => getTsdb().queryFrames(nodeId, win),
       readFrameContent: async (nodeId, at) => {
         const { getDaqController } = await import('../daq/daq-controller')
@@ -176,6 +186,8 @@ export function startDaqExport(user: ResolvedUser, args: {
   merge?: boolean
   /** E1:批次切片导出(带 runId 时 readPoints 走打标查询,只含该批次样本) */
   runId?: string
+  /** H3:CSV 追加环境/工况列(默认关闭) */
+  withContext?: boolean
 }): EdaExportJobView {
   sweepStaleOnce()
   const allowed = new Set(readableNodeIds(user))
@@ -213,7 +225,7 @@ export function startDaqExport(user: ResolvedUser, args: {
   }
   const id = `edajob-${randomUUID().slice(0, 8)}`
   const now = new Date().toISOString()
-  const spec = { nodeIds: targets, fromMs, toMs, title: String(args.title ?? '').slice(0, 200), note: String(args.note ?? '').slice(0, 500), merge: args.merge === true, ...(args.runId ? { runId: args.runId } : {}) }
+  const spec = { nodeIds: targets, fromMs, toMs, title: String(args.title ?? '').slice(0, 200), note: String(args.note ?? '').slice(0, 500), merge: args.merge === true, ...(args.runId ? { runId: args.runId } : {}), ...(args.withContext === true ? { withContext: true } : {}) }
   edaDb().prepare(`INSERT INTO eda_export_jobs (id, kind, spec_json, status, result_json, created_by, created_at, updated_at)
     VALUES (?, 'daq-export', ?, 'running', '{}', ?, ?, ?)`).run(id, JSON.stringify(spec), user.id, now, now)
   recordOps({

@@ -20,7 +20,7 @@ import { getObjectStore } from '../objectstore'
 import { log } from './helpers'
 import { normalizeSignalKind } from '../../../../../shared/daq-protocol'
 import { resolveDaqDriver } from '../drivers'
-import { runSinkPipeline } from '../frames'
+import { applySinkOverrides, runSinkPipeline } from '../frames'
 
 export abstract class DaqControllerState extends DaqControllerContracts {
   protected repo = getDaqNodeRepo()
@@ -177,7 +177,9 @@ export abstract class DaqControllerState extends DaqControllerContracts {
     let wf: DaqFrameWorking = raw.kind === 'vector'
       ? { kind: 'vector', points: raw.points, metrics: raw.metrics }
       : { kind: 'image', blob: raw.blob, mime: raw.mime, width: raw.width, height: raw.height, metrics: raw.metrics }
-    wf = runSinkPipeline(wf, tpl?.sink?.processors, node.id)
+    // H2(2026-11-03):节点级 sink 覆盖(如 resamplePoints=32)在模板步骤上浅合并,
+    // 缺省行为与模板声明完全一致;坏配置在节点 create/patch 期拒绝,运行期容错。
+    wf = runSinkPipeline(wf, applySinkOverrides(tpl?.sink?.processors, node.driverConfig), node.id)
     if (wf.kind === 'vector') {
       return { frame: { kind: 'vector', points: (wf.points ?? []).slice(0, 4096), metrics: wf.metrics } }
     }

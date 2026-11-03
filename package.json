@@ -1,6 +1,6 @@
 {
   "name": "agentworkshop",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "type": "module",
   "description": "AgentWorkShop 软件开发系统 - 基于 Nuxt 4 的配置驱动运行范式",
   "license": "Apache-2.0",
@@ -87,6 +87,7 @@
     "test:api-live": "node scripts/api-live-e2e.mjs",
     "test:e2e-line": "node scripts/e2e-line-governance.mjs",
     "test:e2e-scientific": "tsx --tsconfig .nuxt/tsconfig.server.json scripts/acceptance-scientific-fullchain.ts",
+    "test:e2e-heterogeneous": "tsx --tsconfig .nuxt/tsconfig.server.json scripts/acceptance-heterogeneous-mes.ts",
     "test:p12": "node bench/PIPELINE/run-agentteam.mjs",
     "test:e2e-optimizer": "tsx --tsconfig .nuxt/tsconfig.server.json scripts/e2e-optimizer-live.mjs",
     "test:line-log": "node scripts/line-log-smoke.mjs",

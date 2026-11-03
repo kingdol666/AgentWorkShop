@@ -3,7 +3,10 @@
 > 背景:用户问——系统如何处理多源异构数据(向量/图片)?MES API 怎么接入?能否实现 MES API
 > 数据 export?API 的 req/res 格式有什么要求?是否真正"配置驱动自定义配置 API,让 Agent
 > 调用外部 API 获取数据"?本文逐面给出**代码级核查结论**(每条带文件锚点)与**优化计划**。
-> 状态:计划待批准(编号 H1–H8);结论部分为当前事实。
+> 状态:**H1–H8 已全部实施并通过验收(2026-11-03)**;验收脚本
+> `scripts/acceptance-heterogeneous-mes.ts`(23/23)+ 单测
+> `tests/heterogeneous-mes-h1h8.test.ts`、`tests/supervision-decision.test.ts`、
+> `tests/mes-rest-driver.test.ts`(H6)、`tests/daq-export.test.ts`(H7)。结论部分为实施前事实核查。
 
 ---
 
@@ -50,12 +53,21 @@
 - MQTT:fields 多子字段展开 + jsonKey 下发 + readTopic 回读(10-31 实测 15/15);
 - Agent 还可经 `code-exec`/插件 MCP 桥接外部 API,但**平台面**的标准路径就是上述驱动配置。
 
-### A4. 本轮顺带核实的已知边界(非新缺陷)
+### A4. 核查时发现的边界(其中 1–3 已在本轮关闭)
 
-1. **MES 历史不进平台 TSDB**:mes_fetch/数据集独立落 CSV;AML 数据集构建(`aml/datasets`)只吃 TSDB(`fetchNodeSeries`),MES 数据**不能直接进模型训练/EDA 数据面**——需先经 mes_export → 平台外/再导入,或走 E2 批次。这是设计边界(原文不进 prompt/库),但阻断了"MES 数据 → 闭环优化"的直达链。
-2. **向量 resample 网格固定**:模板 thickness-scan 按 `resample n=64` 归一;上游点数≠配置点数时报"向量帧点列非法"(P3 修复的正是其错误残留)。网格尺寸不可按点位配置。
-3. **export 无 environment 列**(历史审计已记):导出 CSV 列不含产线环境元数据;对比分析需靠 manifest。
-4. **图像质量门**:quality-gate 只算亮度/对比度进 metrics,无缺陷检测语义(由 Agent/EDA 侧消费)。
+1. **MES 历史不进平台 TSDB** → **已关闭(H1)**:新增 `mes/mes-bridge.ts` 的
+   `bridgeMesHistory` + Agent 工具 `mes_bridge` + `POST /api/workshop/mes/bridge`。
+   scalar 入 `daq_samples`,vector/image 入 `daq_frames`(图像像素入对象存储),
+   按 run 批次窗口打标、`(node,ts)` 幂等、批次窗外只打 line 标;
+   `dataset-builder` 与 `aml_node_catalog`/`aml_dataset_build` 已接受 mes-rest 点位。
+2. **向量 resample 网格固定** → **已关闭(H2)**:节点
+   `driverConfig.resamplePoints`(或 `sinkOverrides`)覆盖模板 `resample n`,
+   创建/修改节点时校验坏配置(400);缺省行为不变。
+3. **export 无 environment 列** → **已关闭(H3)**:MES 导出与 DAQ 导出支持
+   `with_context=true` 追加 `line_id,run_id,product_id,recipe_id` 行级列
+   (默认关闭保持既有列契约);manifest/README 始终带批次/环境摘要。
+4. **图像质量门**:quality-gate 只算亮度/对比度进 metrics,无缺陷检测语义
+   (由 Agent/EDA 侧消费)。维持现状(设计边界,非缺陷)。
 
 ---
 
@@ -71,18 +83,30 @@
 
 ---
 
-## C. 优化计划(H1–H8,按价值排序;待批准后实施)
+## C. 优化计划(H1–H8)—— 已全部实施(2026-11-03)
 
-| ID | 项 | 动机(现状→目标) | 建议工作量 |
+| ID | 项 | 实施落点 | 验收 |
 |---|---|---|---|
-| **H1** | **MES 历史 → 平台 TSDB 桥**(可配置开关) | MES 数据现在到不了 AML/EDA 数据面;桥接后"MES 数据 → 数据集 → 训练 → 优化闭环"直达。做法:mes-rest historyMap 拉取 → 经既有 ingest 管线按 scalar/vector 打标入 TSDB(image 仍走对象存储);限速/窗口护栏复用 mes-controller | 2–3 天 |
-| **H2** | **向量网格按点位可配** | resample n 固定 64,上游 16 点需模板级适配;把 resample 目标尺寸下沉到节点/模板配置(缺省不变) | 0.5 天 |
-| **H3** | **export 增 environment/工况列** | 导出 CSV 增加产线/批次/工况上下文列(或 manifest 增强),免人工对表 | 0.5 天 |
-| **H4** | **abortTurn 决策补单测** | P4 修复目前靠类型/审查;把 tools-steer 的 abort→cancel 决策抽成纯函数并测(中止原因 → 决策映射) | 0.5 天 |
-| **H5** | **MES 图像历史落对象存储统一面** | mes_fetch 的 image 帧已自动落盘但与 daq_frames 元数据面分离;统一到 frames 检索面后,图像类分析(CCD)可与 DAQ CCD 同路径复用 | 1–2 天 |
-| **H6** | **mes-rest 限速/并发配置化** | 5 req/s 写死在驱动实例;按点位/目标主机可配(生产 MES 吞吐差异大) | 0.5 天 |
-| **H7** | **export 流式分页** | 大窗口导出一次性 query(limit 50 万);改分页游标流式写,降低内存峰值 | 1 天 |
-| **H8** | **plugin 化 mes-rest 映射模板** | 常见 MES(如 Siemens Opcenter/自研)做成映射模板库,接入从"写三段 JSON"降为"选模板+填端点" | 1–2 天 |
+| **H1** | **MES 历史 → 平台 TSDB 桥**(可配置开关) | `mes/mes-bridge.ts`(`bridgeMesHistory`/`archiveMesImageRows`);`agents/industrial/mes-tools.ts`(`mes_bridge`);`POST /api/workshop/mes/bridge`;`dataset-builder` 接受 mes-rest 点位;`aml_node_catalog`/`aml_dataset_build` 支持 dcw 绑定。开关:全局 `AW_MES_BRIDGE=0` / 节点 `driverConfig.bridge='false'`。打标:显式 `run_id` 或活动批次;批次窗外只打 line 标;`(node,ts)` 幂等;窗口 ≤7 天、单次 ≤5000 行 | 验收 H1-1..H1-7(标量 121 行→AML 数据集 `rowCount>0`、幂等 duplicates=121、向量/图像桥接、跨源 manifest) |
+| **H2** | **向量网格按点位可配** | `daq/frames.ts`(`applySinkOverrides`/`validateSinkOverrides`)+ `daq-controller/state.ts` 采样管线合并;节点 `driverConfig.resamplePoints` 或 `sinkOverrides`;create/patch 期 400 拒绝坏配置 | 单测 + 验收 H2-1/2(模板 64→节点 16 点) |
+| **H3** | **export 增 environment/工况列** | DAQ 导出 `with_context=true` 追加 `line_id,run_id,product_id,recipe_id`(行级由批次窗口回填);MES 导出同名参数;manifest/README 始终带环境摘要;默认关闭保持列契约 | 单测 + 验收 H3-1..H3-5(MES/DAQ 表头与行值) |
+| **H4** | **abortTurn 决策补单测** | `omp-agent/supervision-decision.ts`(纯函数 `abortToCancelDecision`)+ `tools-steer.ts` 接线 | `tests/supervision-decision.test.ts` 5/5 |
+| **H5** | **MES 图像历史统一帧检索面** | `mes-bridge.archiveMesImageRows`;`daq-controller/frames.ts` 的 `nodeOfFrames`/`lineIdOf` 接受 mes-rest 点位;`mes_fetch` 内联图像自动归档;frames API 权限按真实产线、无缩略图回退主图 | 单测 + 验收 H5-1..H5-6(frames/frameContent/thumb 回退/lineIdOf) |
+| **H6** | **mes-rest 限速/并发配置化** | `dcw/drivers/mes-rest.ts`:按目标 origin 的令牌桶 + 并发闸;节点 `rateLimitPerSec`/`rateLimit`(0.05–100)与 `maxConcurrent`(1–32)覆盖,同主机多节点共享 | `tests/mes-rest-driver.test.ts`(2 req/s 第 3 次 ≥450ms) |
+| **H7** | **export 流式分页** | `agents/industrial/daq-export.ts` 标量导出改为逐页解出即写盘(内存只留一页),保留 4M 总行/页数护栏与旧字节契约(行间 `\r\n`、无尾空行) | `tests/daq-export.test.ts` 12k 点 3 页不丢不重 + 验收 H3-5 |
+| **H8** | **MES 映射模板库** | `mes/mes-templates.ts` 6 个模板(通用标量/包装响应/游标分页/向量断面/图像帧/Opcenter 风格);`GET/POST /api/workshop/mes/templates`;`validateMesMappingConfig` 形状校验(不联网) | 单测 + 验收 H8-1..H8-3(模板生成→真实试读 42.5) |
+
+### 验收规范(本轮定义)
+
+1. **整链验收**:`npx tsx --tsconfig .nuxt/tsconfig.server.json scripts/acceptance-heterogeneous-mes.ts`
+   —— 真实 SQLite TSDB + 对象存储 + 本地 MES HTTP 模拟器,23 项断言全绿;
+   核心断言 = MES 标量 121 行桥接 → 与 DAQ 控制量共同构建 AML 数据集(window>0)。
+2. **单测**:`tests/heterogeneous-mes-h1h8.test.ts`(13)+ `tests/supervision-decision.test.ts`(5)
+   + `tests/mes-rest-driver.test.ts`(H6)+ `tests/daq-export.test.ts`(H7 流式)。
+3. **回归基线**:全量单测 1017/1015 通过/0 失败(2 跳过)、lint 0、typecheck 通过、
+   科学全链 21/21(本文件外)。
+4. **安全边界**:`mes_bridge` 为数据面写(riskClass=write),不写设备;Agent 面要求
+   dcw 绑定;REST 面要求 operate 产线权限 + 每用户 60s ≤10 次;原文不进 prompt。
 
 ## D. 明确不做(记录原因)
 
