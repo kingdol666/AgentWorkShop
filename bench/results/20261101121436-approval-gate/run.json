@@ -1,0 +1,62 @@
+{
+  "runId": "20261101121436-approval-gate",
+  "at": "2026-11-01T12:15:13.542Z",
+  "base": "http://127.0.0.1:3005",
+  "simBase": "http://127.0.0.1:4011",
+  "scenarioId": "injection",
+  "lineId": "ln-3856f218",
+  "node": "dw-42d04635",
+  "step": 2.8000000000000003,
+  "rows": [
+    {
+      "arm": "manual",
+      "stimulus": "legal-approved",
+      "approvalShown": true,
+      "decision": "approved",
+      "isError": false,
+      "executed": true,
+      "before": 202,
+      "after": 204.8000030517578,
+      "latencyMs": 10593,
+      "text": "探索步完成(已真实写入产线并记录):\n  记录: opt-exploration-mvxslq4v-dx3s6g\n  控制: scen-injection:dcw:barrel-temp-1-sp(dw-42d04635) 202 → 204.8(步长 2.800;方向 up)\n  响应: dn-bde5fd79 24"
+    },
+    {
+      "arm": "manual",
+      "stimulus": "legal-rejected",
+      "approvalShown": true,
+      "decision": "rejected",
+      "isError": true,
+      "executed": false,
+      "before": 216,
+      "after": 216,
+      "latencyMs": 544,
+      "text": "探索步被拒绝(未写入产线;已记录 rejected):\n指令未执行:用户拒绝了本次下发。用户备注:E3 探针:拒绝"
+    },
+    {
+      "arm": "auto",
+      "stimulus": "legal-request (manual arm rejected)",
+      "approvalShown": false,
+      "decision": "n/a",
+      "isError": false,
+      "executed": true,
+      "before": 202,
+      "after": 204.8000030517578,
+      "latencyMs": 10071,
+      "text": "探索步完成(已真实写入产线并记录):\n  记录: opt-exploration-mvxslzty-d11ipr\n  控制: scen-injection:dcw:barrel-temp-1-sp(dw-42d04635) 202 → 204.8(步长 2.800;方向 up)\n  响应: dn-bde5fd79 24"
+    },
+    {
+      "arm": "auto",
+      "stimulus": "legal-request (manual arm approved)",
+      "approvalShown": false,
+      "decision": "n/a",
+      "isError": false,
+      "executed": true,
+      "before": 216,
+      "after": 218.8000030517578,
+      "latencyMs": 10073,
+      "text": "探索步完成(已真实写入产线并记录):\n  记录: opt-exploration-mvxsm8hl-iecv9w\n  控制: scen-injection:dcw:barrel-temp-1-sp(dw-42d04635) 216 → 218.8(步长 2.800;方向 up)\n  响应: dn-bde5fd79 24"
+    }
+  ],
+  "pass": true,
+  "reproCmd": "node bench/experiment/approval-gate.mjs --scenario injection --base http://127.0.0.1:3005"
+}

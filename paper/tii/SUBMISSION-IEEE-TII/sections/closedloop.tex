@@ -1,0 +1,28 @@
+\section{Agent-Coordinated Task-Level Operation}
+\label{sec:closed-loop-operation}
+
+A task supplies a process objective and the active production context, including line, product, and run. Fig.~\ref{fig:agent-loop} presents the system-level task, agent-team, runtime, and governance view. Its \emph{BINGO/REACH THE GOAL} panel denotes the application objective; it does not guarantee that one optimization call autonomously reaches the target. The task context alone does not authorize a device write. The control node is resolved from an explicit \texttt{control\_node\_id} or the Agent's DCW/recipe binding. The DAQ target is resolved from an explicit target ID or the Agent's DAQ binding; a read-only node visible through the channel line is also eligible.
+
+In goal-mode execution, a Lead Agent may decompose the objective, dispatch subtasks to worker agents, and judge completion. This optional coordination structures task work but does not define a control policy. For each control step, the responsible Agent invokes \texttt{optimization\_explore}; that operation performs the checks before device I/O.
+
+The operation resolves the optimization profile and control-node binding, then uses the node's stored value as the current setpoint $u_0$. This value is not necessarily a fresh device readback. If direction is omitted, the operation defaults to an upward adjustment; otherwise, the supplied direction determines $s\in\{-1,+1\}$. For a step $\Delta u$, it forms
+\begin{equation}
+ u^{*}=\operatorname{clip}\!\left(u_0+s\Delta u,\,u_{\min},\,u_{\max}\right),
+ \label{eq:optimization-candidate}
+\end{equation}
+where configured tuning bounds take precedence; node bounds are used otherwise. The effective step is selected in this order: an explicit argument, the binding's tuning step, the scene's maximum step, or one twentieth of the node range.
+
+The operation then resolves and verifies the DAQ target and its visibility, and runs the intervention-identifiability preflight, which is enabled by default but can be explicitly disabled. It also checks available model and ontology evidence: a confirmed conflict blocks dispatch, while missing evidence is treated as unknown. If these checks pass, the operation attempts to collect a pre-write DAQ window; its mean may be unavailable. Profile, binding, DAQ-visibility, identifiability, and blocking cross-check failures return before an exploration record is created.
+
+A valid candidate enters the shared write-control path, which resolves the applicable binding and authority and determines whether the route requires approval. Only a gated route waits for approval. After approval, the path rechecks authorization and binding; the common controller then applies the effective range, step, timing, and hold constraints before calling the configured driver. A route without an approval gate skips the wait but still passes through the common controller checks. A write denial or approval decline is recorded as rejected without driver dispatch. A driver-stage error may also be recorded as rejected after dispatch has begun, so status alone cannot establish whether the device changed; the caller must read and reconcile device state before retrying.
+
+After a successful write, the operation waits for the configured settling interval (10--300 s; 45 s by default) and attempts a post-write DAQ read. Let $t_0$ be the timestamp taken before the pre-write DAQ read and governed write call. The pre-write window is queried over $[t_0-\tau,t_0]$, and the post-write window over $[t_0,t_1]$ after the settling wait $\tau$. Because approval may delay dispatch, the latter window can include pre-dispatch samples; its mean alone is therefore not a causal estimate of the write's effect.
+
+The exploration record retains the control value (the proposed target after a successful write), step, available DAQ means, and write status/message. For a rejected attempt, it retains the status/message but no separate attempted-target field. The shared write path separately records the command outcome and any device readback. On a later task turn, the Agent reviews the returned result and chooses another direction and step or stops. This is a discrete, Agent-mediated feedback process; the runtime does not iterate autonomously to convergence. Fig.~\ref{fig:agent-loop} provides the broader system context for this operation; the ordered execution sequence is described above.
+
+\begin{figure*}[!t]
+\centering
+\includegraphics[width=\textwidth]{resources/fig3-user-supplied.png}
+\caption{System-level runtime schematic linking task formulation, agent-team roles, runtime interfaces, governance, and parameter writing. It is an architectural overview, not a strict execution sequence: the HITL panel denotes an approval function used only on configured routes. The \emph{BINGO/REACH THE GOAL} panel denotes the application objective, not an experimental result or a guarantee of autonomous convergence. Section IV describes the code-grounded optimization path: one bounded \texttt{optimization\_explore} invocation, pre-dispatch checks, route-dependent approval, post-approval revalidation, shared write guards, and separately recorded command and process evidence.}
+\label{fig:agent-loop}
+\end{figure*}

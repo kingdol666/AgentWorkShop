@@ -1,0 +1,185 @@
+{
+  "runId": "20261102103639-tkc-optloop",
+  "at": "2026-11-02T10:41:40.261Z",
+  "budgetMin": 20,
+  "base": "http://127.0.0.1:3005",
+  "scenarios": [
+    "injection"
+  ],
+  "lines": [
+    {
+      "scen": "injection",
+      "zh": "注塑成型质量窗口寻优",
+      "channel": "10bc4f52-0067-4ffb-8216-23d98872871e",
+      "taskId": "bab96cf8-9686-474f-b921-e26ab6ab9fca",
+      "lineId": "ln-3856f218",
+      "finalState": "COMPLETED",
+      "pvFinal": 31.28,
+      "pvTarget": "32.5±0.35",
+      "inBand": false,
+      "guardsOk": false,
+      "knobs": [
+        {
+          "sig": "barrel-temp-1-sp",
+          "value": 218.8,
+          "unit": "℃",
+          "state": "error"
+        },
+        {
+          "sig": "barrel-temp-2-sp",
+          "value": 246,
+          "unit": "℃",
+          "state": "ok"
+        },
+        {
+          "sig": "barrel-temp-3-sp",
+          "value": 252,
+          "unit": "℃",
+          "state": "ok"
+        },
+        {
+          "sig": "barrel-temp-4-sp",
+          "value": 258,
+          "unit": "℃",
+          "state": "ok"
+        },
+        {
+          "sig": "screw-speed-sp",
+          "value": 120,
+          "unit": "rpm",
+          "state": "ok"
+        },
+        {
+          "sig": "mold-temp-sp",
+          "value": 40,
+          "unit": "℃",
+          "state": "ok"
+        },
+        {
+          "sig": "clamp-force-sp",
+          "value": 1600,
+          "unit": "kN",
+          "state": "ok"
+        },
+        {
+          "sig": "inject-speed-sp",
+          "value": 85,
+          "unit": "mm/s",
+          "state": "ok"
+        },
+        {
+          "sig": "hold-pressure-sp",
+          "value": 61.8,
+          "unit": "bar",
+          "state": "ok"
+        },
+        {
+          "sig": "hold-time-sp",
+          "value": 10.5,
+          "unit": "s",
+          "state": "ok"
+        },
+        {
+          "sig": "cool-water-sp",
+          "value": 24,
+          "unit": "℃",
+          "state": "ok"
+        }
+      ],
+      "quality": [
+        {
+          "sig": "melt-temp-pv",
+          "value": 246.3,
+          "unit": "℃",
+          "state": "ok"
+        },
+        {
+          "sig": "melt-pressure-pv",
+          "value": 51.7,
+          "unit": "bar",
+          "state": "ok"
+        },
+        {
+          "sig": "mold-temp-pv",
+          "value": 40,
+          "unit": "℃",
+          "state": "ok"
+        },
+        {
+          "sig": "clamp-force-pv",
+          "value": 1586,
+          "unit": "kN",
+          "state": "ok"
+        },
+        {
+          "sig": "inj-pressure-pv",
+          "value": 53.3,
+          "unit": "bar",
+          "state": "ok"
+        },
+        {
+          "sig": "water-temp-pv",
+          "value": 24.2,
+          "unit": "℃",
+          "state": "ok"
+        },
+        {
+          "sig": "cool-flow-pv",
+          "value": 44.5,
+          "unit": "L/min",
+          "state": "ok"
+        },
+        {
+          "sig": "part-weight",
+          "value": 31.28,
+          "unit": "g",
+          "state": "alarm"
+        },
+        {
+          "sig": "flash-rate",
+          "value": 0,
+          "unit": "%",
+          "state": "warn"
+        },
+        {
+          "sig": "sink-mark",
+          "value": 2.204,
+          "unit": "%",
+          "state": "alarm"
+        },
+        {
+          "sig": "dim-dev",
+          "value": 0.007,
+          "unit": "mm",
+          "state": "ok"
+        },
+        {
+          "sig": "cycle-time",
+          "value": 15.3,
+          "unit": "s",
+          "state": "ok"
+        },
+        {
+          "sig": "wall-profile",
+          "value": null,
+          "unit": "mm",
+          "state": "offline"
+        },
+        {
+          "sig": "surface-image",
+          "value": null,
+          "unit": "灰度",
+          "state": "offline"
+        }
+      ],
+      "recorder": {
+        "timelineRows": 3,
+        "wsFrames": 965,
+        "setpointSamples": 396,
+        "qualitySamples": 504,
+        "tappedPid": 59792
+      }
+    }
+  ],
+  "ok": false
+}

@@ -1,0 +1,55 @@
+scene,protocol,signal,nodeId,probeClass,value,expect,got,status,code,ms,readback,delta,tolerance,withinTolerance,note
+cast-film-physics,modbus-tcp,加热区1SP ip16i1qqcl,dw-c14add02,legal,169,accept,accept,200,0,14,169,0,0.7,true,ok
+cast-film-physics,modbus-tcp,加热区1SP ip16i1qqcl,dw-c14add02,legal,190,accept,accept,200,0,47,190,0,0.7,true,ok
+cast-film-physics,modbus-tcp,加热区1SP ip16i1qqcl,dw-c14add02,legal,211,accept,accept,200,0,41,211,0,0.7,true,ok
+cast-film-physics,modbus-tcp,加热区1SP ip16i1qqcl,dw-c14add02,boundary,260,accept,accept,200,0,48,260,0,0.7,true,ok
+cast-film-physics,modbus-tcp,加热区1SP ip16i1qqcl,dw-c14add02,structural,113,reject,reject,400,NODE_RANGE_EXCEEDED,19,,,0.7,,设定值 113℃ 低于下限 节点工艺安全量程 的 120℃ —— 约束层:节点安全量程(当前有效写入区间 120~260℃;各层限界按安全规约取交集;越界写入已拒绝)
+cast-film-physics,modbus-tcp,加热区1SP ip16i1qqcl,dw-c14add02,structural,267,reject,reject,400,NODE_RANGE_EXCEEDED,22,,,0.7,,设定值 267℃ 超出上限 节点工艺安全量程 的 260℃ —— 约束层:节点安全量程(当前有效写入区间 120~260℃;各层限界按安全规约取交集;越界写入已拒绝)
+cast-film-physics,modbus-tcp,加热区1SP ip16i1qqcl,dw-c14add02,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,20,,,0.7,,设定值 1000000℃ 超出上限 节点工艺安全量程 的 260℃ —— 约束层:节点安全量程(当前有效写入区间 120~260℃;各层限界按安全规约取交集;越界写入已拒绝)
+cast-film-physics,modbus-tcp,加热区1SP ip16i1qqcl,dw-c14add02,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.7,,设定值 -50℃ 低于下限 节点工艺安全量程 的 120℃ —— 约束层:节点安全量程(当前有效写入区间 120~260℃;各层限界按安全规约取交集;越界写入已拒绝)
+cast-film-physics,modbus-tcp,加热区1SP ip16i1qqcl,dw-c14add02,restore,200,accept,accept,200,0,48,,,0.7,,ok
+cast-film-physics,modbus-tcp,加热区2SP ip16i1qqcl,dw-288a3ca8,legal,169,accept,accept,200,0,63,169,0,0.7,true,ok
+cast-film-physics,modbus-tcp,加热区2SP ip16i1qqcl,dw-288a3ca8,legal,190,accept,accept,200,0,48,190,0,0.7,true,ok
+cast-film-physics,modbus-tcp,加热区2SP ip16i1qqcl,dw-288a3ca8,legal,211,accept,accept,200,0,48,211,0,0.7,true,ok
+cast-film-physics,modbus-tcp,加热区2SP ip16i1qqcl,dw-288a3ca8,boundary,260,accept,accept,200,0,48,260,0,0.7,true,ok
+cast-film-physics,modbus-tcp,加热区2SP ip16i1qqcl,dw-288a3ca8,structural,113,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.7,,设定值 113℃ 低于下限 节点工艺安全量程 的 120℃ —— 约束层:节点安全量程(当前有效写入区间 120~260℃;各层限界按安全规约取交集;越界写入已拒绝)
+cast-film-physics,modbus-tcp,加热区2SP ip16i1qqcl,dw-288a3ca8,structural,267,reject,reject,400,NODE_RANGE_EXCEEDED,3,,,0.7,,设定值 267℃ 超出上限 节点工艺安全量程 的 260℃ —— 约束层:节点安全量程(当前有效写入区间 120~260℃;各层限界按安全规约取交集;越界写入已拒绝)
+cast-film-physics,modbus-tcp,加热区2SP ip16i1qqcl,dw-288a3ca8,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.7,,设定值 1000000℃ 超出上限 节点工艺安全量程 的 260℃ —— 约束层:节点安全量程(当前有效写入区间 120~260℃;各层限界按安全规约取交集;越界写入已拒绝)
+cast-film-physics,modbus-tcp,加热区2SP ip16i1qqcl,dw-288a3ca8,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,2,,,0.7,,设定值 -50℃ 低于下限 节点工艺安全量程 的 120℃ —— 约束层:节点安全量程(当前有效写入区间 120~260℃;各层限界按安全规约取交集;越界写入已拒绝)
+cast-film-physics,modbus-tcp,加热区2SP ip16i1qqcl,dw-288a3ca8,restore,200,accept,accept,200,0,48,,,0.7,,ok
+cast-film-physics,modbus-tcp,加热区3SP ip16i1qqcl,dw-9f74ce86,legal,169,accept,accept,200,0,48,169,0,0.7,true,ok
+cast-film-physics,modbus-tcp,加热区3SP ip16i1qqcl,dw-9f74ce86,legal,190,accept,accept,200,0,48,190,0,0.7,true,ok
+cast-film-physics,modbus-tcp,加热区3SP ip16i1qqcl,dw-9f74ce86,legal,211,accept,accept,200,0,48,211,0,0.7,true,ok
+cast-film-physics,modbus-tcp,加热区3SP ip16i1qqcl,dw-9f74ce86,boundary,260,accept,accept,200,0,32,260,0,0.7,true,ok
+cast-film-physics,modbus-tcp,加热区3SP ip16i1qqcl,dw-9f74ce86,structural,113,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.7,,设定值 113℃ 低于下限 节点工艺安全量程 的 120℃ —— 约束层:节点安全量程(当前有效写入区间 120~260℃;各层限界按安全规约取交集;越界写入已拒绝)
+cast-film-physics,modbus-tcp,加热区3SP ip16i1qqcl,dw-9f74ce86,structural,267,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.7,,设定值 267℃ 超出上限 节点工艺安全量程 的 260℃ —— 约束层:节点安全量程(当前有效写入区间 120~260℃;各层限界按安全规约取交集;越界写入已拒绝)
+cast-film-physics,modbus-tcp,加热区3SP ip16i1qqcl,dw-9f74ce86,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.7,,设定值 1000000℃ 超出上限 节点工艺安全量程 的 260℃ —— 约束层:节点安全量程(当前有效写入区间 120~260℃;各层限界按安全规约取交集;越界写入已拒绝)
+cast-film-physics,modbus-tcp,加热区3SP ip16i1qqcl,dw-9f74ce86,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.7,,设定值 -50℃ 低于下限 节点工艺安全量程 的 120℃ —— 约束层:节点安全量程(当前有效写入区间 120~260℃;各层限界按安全规约取交集;越界写入已拒绝)
+cast-film-physics,modbus-tcp,加热区3SP ip16i1qqcl,dw-9f74ce86,restore,200,accept,accept,200,0,48,,,0.7,,ok
+cast-film-physics,opcua,ScrewSpeedSP ip16i1qqcl,dw-85efbe07,legal,103,accept,accept,200,0,20,103,0,0.75,true,ok
+cast-film-physics,opcua,ScrewSpeedSP ip16i1qqcl,dw-85efbe07,legal,125,accept,accept,200,0,21,125,0,0.75,true,ok
+cast-film-physics,opcua,ScrewSpeedSP ip16i1qqcl,dw-85efbe07,legal,148,accept,accept,200,0,21,148,0,0.75,true,ok
+cast-film-physics,opcua,ScrewSpeedSP ip16i1qqcl,dw-85efbe07,boundary,200,accept,accept,200,0,22,200,0,0.75,true,ok
+cast-film-physics,opcua,ScrewSpeedSP ip16i1qqcl,dw-85efbe07,structural,43,reject,reject,400,NODE_RANGE_EXCEEDED,24,,,0.75,,设定值 43rpm 低于下限 节点工艺安全量程 的 50rpm —— 约束层:节点安全量程(当前有效写入区间 50~200rpm;各层限界按安全规约取交集;越界写入已拒绝)
+cast-film-physics,opcua,ScrewSpeedSP ip16i1qqcl,dw-85efbe07,structural,208,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.75,,设定值 208rpm 超出上限 节点工艺安全量程 的 200rpm —— 约束层:节点安全量程(当前有效写入区间 50~200rpm;各层限界按安全规约取交集;越界写入已拒绝)
+cast-film-physics,opcua,ScrewSpeedSP ip16i1qqcl,dw-85efbe07,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.75,,设定值 1000000rpm 超出上限 节点工艺安全量程 的 200rpm —— 约束层:节点安全量程(当前有效写入区间 50~200rpm;各层限界按安全规约取交集;越界写入已拒绝)
+cast-film-physics,opcua,ScrewSpeedSP ip16i1qqcl,dw-85efbe07,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,19,,,0.75,,设定值 -50rpm 低于下限 节点工艺安全量程 的 50rpm —— 约束层:节点安全量程(当前有效写入区间 50~200rpm;各层限界按安全规约取交集;越界写入已拒绝)
+cast-film-physics,opcua,ScrewSpeedSP ip16i1qqcl,dw-85efbe07,restore,150,accept,accept,200,0,21,,,0.75,,ok
+cast-film-physics,mqtt,lineSpeedSP ip16i1qqcl,dw-d4ff43f9,legal,55,accept,accept,200,0,22,55,0,0.5,true,ok
+cast-film-physics,mqtt,lineSpeedSP ip16i1qqcl,dw-d4ff43f9,legal,70,accept,accept,200,0,19,70,0,0.5,true,ok
+cast-film-physics,mqtt,lineSpeedSP ip16i1qqcl,dw-d4ff43f9,legal,85,accept,accept,200,0,20,85,0,0.5,true,ok
+cast-film-physics,mqtt,lineSpeedSP ip16i1qqcl,dw-d4ff43f9,boundary,120,accept,accept,200,0,19,120,0,0.5,true,ok
+cast-film-physics,mqtt,lineSpeedSP ip16i1qqcl,dw-d4ff43f9,structural,15,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.5,,设定值 15m/min 低于下限 节点工艺安全量程 的 20m/min —— 约束层:节点安全量程(当前有效写入区间 20~120m/min;各层限界按安全规约取交集;越界写入已拒绝)
+cast-film-physics,mqtt,lineSpeedSP ip16i1qqcl,dw-d4ff43f9,structural,125,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.5,,设定值 125m/min 超出上限 节点工艺安全量程 的 120m/min —— 约束层:节点安全量程(当前有效写入区间 20~120m/min;各层限界按安全规约取交集;越界写入已拒绝)
+cast-film-physics,mqtt,lineSpeedSP ip16i1qqcl,dw-d4ff43f9,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.5,,设定值 1000000m/min 超出上限 节点工艺安全量程 的 120m/min —— 约束层:节点安全量程(当前有效写入区间 20~120m/min;各层限界按安全规约取交集;越界写入已拒绝)
+cast-film-physics,mqtt,lineSpeedSP ip16i1qqcl,dw-d4ff43f9,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.5,,设定值 -50m/min 低于下限 节点工艺安全量程 的 20m/min —— 约束层:节点安全量程(当前有效写入区间 20~120m/min;各层限界按安全规约取交集;越界写入已拒绝)
+cast-film-physics,mqtt,lineSpeedSP ip16i1qqcl,dw-d4ff43f9,restore,95,accept,accept,200,0,21,,,0.5,,ok
+cast-film-physics,http,dieGapSP ip16i1qqcl,dw-68e3f8cb,legal,1.02,accept,accept,200,0,37,,,0.0075,,ok
+cast-film-physics,http,dieGapSP ip16i1qqcl,dw-68e3f8cb,legal,1.25,accept,accept,200,0,35,,,0.0075,,ok
+cast-film-physics,http,dieGapSP ip16i1qqcl,dw-68e3f8cb,legal,1.48,accept,accept,200,0,34,,,0.0075,,ok
+cast-film-physics,http,dieGapSP ip16i1qqcl,dw-68e3f8cb,boundary,2,accept,accept,200,0,37,,,0.0075,,ok
+cast-film-physics,http,dieGapSP ip16i1qqcl,dw-68e3f8cb,structural,0.42,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.0075,,设定值 0.42mm 低于下限 节点工艺安全量程 的 0.5mm —— 约束层:节点安全量程(当前有效写入区间 0.5~2mm;各层限界按安全规约取交集;越界写入已拒绝)
+cast-film-physics,http,dieGapSP ip16i1qqcl,dw-68e3f8cb,structural,2.08,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.0075,,设定值 2.08mm 超出上限 节点工艺安全量程 的 2mm —— 约束层:节点安全量程(当前有效写入区间 0.5~2mm;各层限界按安全规约取交集;越界写入已拒绝)
+cast-film-physics,http,dieGapSP ip16i1qqcl,dw-68e3f8cb,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.0075,,设定值 1000000mm 超出上限 节点工艺安全量程 的 2mm —— 约束层:节点安全量程(当前有效写入区间 0.5~2mm;各层限界按安全规约取交集;越界写入已拒绝)
+cast-film-physics,http,dieGapSP ip16i1qqcl,dw-68e3f8cb,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.0075,,设定值 -50mm 低于下限 节点工艺安全量程 的 0.5mm —— 约束层:节点安全量程(当前有效写入区间 0.5~2mm;各层限界按安全规约取交集;越界写入已拒绝)
+cast-film-physics,http,dieGapSP ip16i1qqcl,dw-68e3f8cb,restore,1,accept,accept,200,0,34,,,0.0075,,ok

@@ -1,0 +1,52 @@
+{
+  "runId": "20261101121700-scenario-probes",
+  "at": "2026-11-01T12:17:48.803Z",
+  "gitCommit": "da627d21",
+  "seed": 42,
+  "base": "http://127.0.0.1:3005",
+  "simBase": "http://127.0.0.1:4010",
+  "scenarios": [
+    "injection",
+    "wwtp",
+    "anneal",
+    "biax"
+  ],
+  "scenes": [
+    {
+      "scene": "cast-film-physics",
+      "lineId": "ln-bbc0d86f",
+      "blueprintDevices": null,
+      "nodes": 6,
+      "legal": [
+        24,
+        24
+      ],
+      "structural": [
+        24,
+        24
+      ],
+      "readback": [
+        20,
+        20
+      ],
+      "lastLegalValue": 2
+    }
+  ],
+  "totals": {
+    "legal": [
+      24,
+      24
+    ],
+    "structural": [
+      24,
+      24
+    ],
+    "readback": [
+      20,
+      20
+    ]
+  },
+  "pass": true,
+  "harnessHash": "7f46f5aa9e03bb17",
+  "reproCmd": "node bench/experiment/scenario-protocol-probes.mjs --scenarios injection,wwtp,anneal,biax --seed 42"
+}

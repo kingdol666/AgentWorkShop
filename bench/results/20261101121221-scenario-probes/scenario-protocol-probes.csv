@@ -1,0 +1,494 @@
+scene,protocol,signal,nodeId,probeClass,value,expect,got,status,code,ms,readback,delta,tolerance,withinTolerance,note
+injection,modbus-tcp,barrel-temp-1-sp,dw-42d04635,legal,209,accept,accept,200,0,44,209,0,0.7,true,ok
+injection,modbus-tcp,barrel-temp-1-sp,dw-42d04635,legal,230,accept,accept,200,0,53,230,0,0.7,true,ok
+injection,modbus-tcp,barrel-temp-1-sp,dw-42d04635,legal,251,accept,accept,200,0,48,251,0,0.7,true,ok
+injection,modbus-tcp,barrel-temp-1-sp,dw-42d04635,boundary,300,accept,accept,200,0,35,300,0,0.7,true,ok
+injection,modbus-tcp,barrel-temp-1-sp,dw-42d04635,structural,153,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.7,,设定值 153℃ 低于下限 节点工艺安全量程 的 160℃ —— 约束层:节点安全量程(当前有效写入区间 160~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+injection,modbus-tcp,barrel-temp-1-sp,dw-42d04635,structural,307,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.7,,设定值 307℃ 超出上限 节点工艺安全量程 的 300℃ —— 约束层:节点安全量程(当前有效写入区间 160~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+injection,modbus-tcp,barrel-temp-1-sp,dw-42d04635,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.7,,设定值 1000000℃ 超出上限 节点工艺安全量程 的 300℃ —— 约束层:节点安全量程(当前有效写入区间 160~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+injection,modbus-tcp,barrel-temp-1-sp,dw-42d04635,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,3,,,0.7,,设定值 -50℃ 低于下限 节点工艺安全量程 的 160℃ —— 约束层:节点安全量程(当前有效写入区间 160~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+injection,modbus-tcp,barrel-temp-1-sp,dw-42d04635,restore,240,accept,accept,200,0,32,,,0.7,,ok
+injection,modbus-tcp,barrel-temp-2-sp,dw-edadfee6,legal,209,accept,accept,200,0,48,209,0,0.7,true,ok
+injection,modbus-tcp,barrel-temp-2-sp,dw-edadfee6,legal,230,accept,accept,200,0,48,230,0,0.7,true,ok
+injection,modbus-tcp,barrel-temp-2-sp,dw-edadfee6,legal,251,accept,accept,200,0,48,251,0,0.7,true,ok
+injection,modbus-tcp,barrel-temp-2-sp,dw-edadfee6,boundary,300,accept,accept,200,0,48,300,0,0.7,true,ok
+injection,modbus-tcp,barrel-temp-2-sp,dw-edadfee6,structural,153,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.7,,设定值 153℃ 低于下限 节点工艺安全量程 的 160℃ —— 约束层:节点安全量程(当前有效写入区间 160~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+injection,modbus-tcp,barrel-temp-2-sp,dw-edadfee6,structural,307,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.7,,设定值 307℃ 超出上限 节点工艺安全量程 的 300℃ —— 约束层:节点安全量程(当前有效写入区间 160~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+injection,modbus-tcp,barrel-temp-2-sp,dw-edadfee6,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.7,,设定值 1000000℃ 超出上限 节点工艺安全量程 的 300℃ —— 约束层:节点安全量程(当前有效写入区间 160~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+injection,modbus-tcp,barrel-temp-2-sp,dw-edadfee6,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.7,,设定值 -50℃ 低于下限 节点工艺安全量程 的 160℃ —— 约束层:节点安全量程(当前有效写入区间 160~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+injection,modbus-tcp,barrel-temp-2-sp,dw-edadfee6,restore,246,accept,accept,200,0,48,,,0.7,,ok
+injection,modbus-tcp,barrel-temp-3-sp,dw-545899c4,legal,209,accept,accept,200,0,35,209,0,0.7,true,ok
+injection,modbus-tcp,barrel-temp-3-sp,dw-545899c4,legal,230,accept,accept,200,0,49,230,0,0.7,true,ok
+injection,modbus-tcp,barrel-temp-3-sp,dw-545899c4,legal,251,accept,accept,200,0,48,251,0,0.7,true,ok
+injection,modbus-tcp,barrel-temp-3-sp,dw-545899c4,boundary,300,accept,accept,200,0,32,300,0,0.7,true,ok
+injection,modbus-tcp,barrel-temp-3-sp,dw-545899c4,structural,153,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.7,,设定值 153℃ 低于下限 节点工艺安全量程 的 160℃ —— 约束层:节点安全量程(当前有效写入区间 160~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+injection,modbus-tcp,barrel-temp-3-sp,dw-545899c4,structural,307,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.7,,设定值 307℃ 超出上限 节点工艺安全量程 的 300℃ —— 约束层:节点安全量程(当前有效写入区间 160~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+injection,modbus-tcp,barrel-temp-3-sp,dw-545899c4,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.7,,设定值 1000000℃ 超出上限 节点工艺安全量程 的 300℃ —— 约束层:节点安全量程(当前有效写入区间 160~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+injection,modbus-tcp,barrel-temp-3-sp,dw-545899c4,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.7,,设定值 -50℃ 低于下限 节点工艺安全量程 的 160℃ —— 约束层:节点安全量程(当前有效写入区间 160~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+injection,modbus-tcp,barrel-temp-3-sp,dw-545899c4,restore,252,accept,accept,200,0,62,,,0.7,,ok
+injection,modbus-tcp,barrel-temp-4-sp,dw-46e0efd3,legal,209,accept,accept,200,0,48,209,0,0.7,true,ok
+injection,modbus-tcp,barrel-temp-4-sp,dw-46e0efd3,legal,230,accept,accept,200,0,48,230,0,0.7,true,ok
+injection,modbus-tcp,barrel-temp-4-sp,dw-46e0efd3,legal,251,accept,accept,200,0,47,251,0,0.7,true,ok
+injection,modbus-tcp,barrel-temp-4-sp,dw-46e0efd3,boundary,300,accept,accept,200,0,57,300,0,0.7,true,ok
+injection,modbus-tcp,barrel-temp-4-sp,dw-46e0efd3,structural,153,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.7,,设定值 153℃ 低于下限 节点工艺安全量程 的 160℃ —— 约束层:节点安全量程(当前有效写入区间 160~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+injection,modbus-tcp,barrel-temp-4-sp,dw-46e0efd3,structural,307,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.7,,设定值 307℃ 超出上限 节点工艺安全量程 的 300℃ —— 约束层:节点安全量程(当前有效写入区间 160~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+injection,modbus-tcp,barrel-temp-4-sp,dw-46e0efd3,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.7,,设定值 1000000℃ 超出上限 节点工艺安全量程 的 300℃ —— 约束层:节点安全量程(当前有效写入区间 160~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+injection,modbus-tcp,barrel-temp-4-sp,dw-46e0efd3,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.7,,设定值 -50℃ 低于下限 节点工艺安全量程 的 160℃ —— 约束层:节点安全量程(当前有效写入区间 160~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+injection,modbus-tcp,barrel-temp-4-sp,dw-46e0efd3,restore,258,accept,accept,200,0,38,,,0.7,,ok
+injection,modbus-tcp,screw-speed-sp,dw-17e0ca56,legal,109,accept,accept,200,0,33,109,0,0.7,true,ok
+injection,modbus-tcp,screw-speed-sp,dw-17e0ca56,legal,130,accept,accept,200,0,48,130,0,0.7,true,ok
+injection,modbus-tcp,screw-speed-sp,dw-17e0ca56,legal,151,accept,accept,200,0,48,151,0,0.7,true,ok
+injection,modbus-tcp,screw-speed-sp,dw-17e0ca56,boundary,200,accept,accept,200,0,48,200,0,0.7,true,ok
+injection,modbus-tcp,screw-speed-sp,dw-17e0ca56,structural,53,reject,reject,400,NODE_RANGE_EXCEEDED,20,,,0.7,,设定值 53rpm 低于下限 节点工艺安全量程 的 60rpm —— 约束层:节点安全量程(当前有效写入区间 60~200rpm;各层限界按安全规约取交集;越界写入已拒绝)
+injection,modbus-tcp,screw-speed-sp,dw-17e0ca56,structural,207,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.7,,设定值 207rpm 超出上限 节点工艺安全量程 的 200rpm —— 约束层:节点安全量程(当前有效写入区间 60~200rpm;各层限界按安全规约取交集;越界写入已拒绝)
+injection,modbus-tcp,screw-speed-sp,dw-17e0ca56,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.7,,设定值 1000000rpm 超出上限 节点工艺安全量程 的 200rpm —— 约束层:节点安全量程(当前有效写入区间 60~200rpm;各层限界按安全规约取交集;越界写入已拒绝)
+injection,modbus-tcp,screw-speed-sp,dw-17e0ca56,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.7,,设定值 -50rpm 低于下限 节点工艺安全量程 的 60rpm —— 约束层:节点安全量程(当前有效写入区间 60~200rpm;各层限界按安全规约取交集;越界写入已拒绝)
+injection,modbus-tcp,screw-speed-sp,dw-17e0ca56,restore,120,accept,accept,200,0,48,,,0.7,,ok
+injection,modbus-rtu,mold-temp-sp,dw-3a257b5a,legal,46.3,accept,accept,200,0,29,46.29999923706055,0,0.375,true,ok
+injection,modbus-rtu,mold-temp-sp,dw-3a257b5a,legal,57.5,accept,accept,200,0,19,57.5,0,0.375,true,ok
+injection,modbus-rtu,mold-temp-sp,dw-3a257b5a,legal,68.8,accept,accept,200,0,19,68.80000305175781,0,0.375,true,ok
+injection,modbus-rtu,mold-temp-sp,dw-3a257b5a,boundary,95,accept,accept,200,0,19,95,0,0.375,true,ok
+injection,modbus-rtu,mold-temp-sp,dw-3a257b5a,structural,16.3,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.375,,设定值 16.3℃ 低于下限 节点工艺安全量程 的 20℃ —— 约束层:节点安全量程(当前有效写入区间 20~95℃;各层限界按安全规约取交集;越界写入已拒绝)
+injection,modbus-rtu,mold-temp-sp,dw-3a257b5a,structural,98.8,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.375,,设定值 98.8℃ 超出上限 节点工艺安全量程 的 95℃ —— 约束层:节点安全量程(当前有效写入区间 20~95℃;各层限界按安全规约取交集;越界写入已拒绝)
+injection,modbus-rtu,mold-temp-sp,dw-3a257b5a,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.375,,设定值 1000000℃ 超出上限 节点工艺安全量程 的 95℃ —— 约束层:节点安全量程(当前有效写入区间 20~95℃;各层限界按安全规约取交集;越界写入已拒绝)
+injection,modbus-rtu,mold-temp-sp,dw-3a257b5a,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.375,,设定值 -50℃ 低于下限 节点工艺安全量程 的 20℃ —— 约束层:节点安全量程(当前有效写入区间 20~95℃;各层限界按安全规约取交集;越界写入已拒绝)
+injection,modbus-rtu,mold-temp-sp,dw-3a257b5a,restore,40,accept,accept,200,0,20,,,0.375,,ok
+injection,modbus-rtu,clamp-force-sp,dw-db0dd078,legal,1395,accept,accept,200,0,19,1395,0,8.5,true,ok
+injection,modbus-rtu,clamp-force-sp,dw-db0dd078,legal,1650,accept,accept,200,0,20,1650,0,8.5,true,ok
+injection,modbus-rtu,clamp-force-sp,dw-db0dd078,legal,1905,accept,accept,200,0,20,1905,0,8.5,true,ok
+injection,modbus-rtu,clamp-force-sp,dw-db0dd078,boundary,2500,accept,accept,200,0,20,2500,0,8.5,true,ok
+injection,modbus-rtu,clamp-force-sp,dw-db0dd078,structural,715,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,8.5,,设定值 715kN 低于下限 节点工艺安全量程 的 800kN —— 约束层:节点安全量程(当前有效写入区间 800~2500kN;各层限界按安全规约取交集;越界写入已拒绝)
+injection,modbus-rtu,clamp-force-sp,dw-db0dd078,structural,2585,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,8.5,,设定值 2585kN 超出上限 节点工艺安全量程 的 2500kN —— 约束层:节点安全量程(当前有效写入区间 800~2500kN;各层限界按安全规约取交集;越界写入已拒绝)
+injection,modbus-rtu,clamp-force-sp,dw-db0dd078,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,8.5,,设定值 1000000kN 超出上限 节点工艺安全量程 的 2500kN —— 约束层:节点安全量程(当前有效写入区间 800~2500kN;各层限界按安全规约取交集;越界写入已拒绝)
+injection,modbus-rtu,clamp-force-sp,dw-db0dd078,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,8.5,,设定值 -50kN 低于下限 节点工艺安全量程 的 800kN —— 约束层:节点安全量程(当前有效写入区间 800~2500kN;各层限界按安全规约取交集;越界写入已拒绝)
+injection,modbus-rtu,clamp-force-sp,dw-db0dd078,restore,1600,accept,accept,200,0,19,,,8.5,,ok
+injection,opcua,inject-speed-sp,dw-9c977951,legal,65,accept,accept,200,0,23,65,0,0.5,true,ok
+injection,opcua,inject-speed-sp,dw-9c977951,legal,80,accept,accept,200,0,21,80,0,0.5,true,ok
+injection,opcua,inject-speed-sp,dw-9c977951,legal,95,accept,accept,200,0,22,95,0,0.5,true,ok
+injection,opcua,inject-speed-sp,dw-9c977951,boundary,130,accept,accept,200,0,21,130,0,0.5,true,ok
+injection,opcua,inject-speed-sp,dw-9c977951,structural,25,reject,reject,400,NODE_RANGE_EXCEEDED,25,,,0.5,,设定值 25mm/s 低于下限 节点工艺安全量程 的 30mm/s —— 约束层:节点安全量程(当前有效写入区间 30~130mm/s;各层限界按安全规约取交集;越界写入已拒绝)
+injection,opcua,inject-speed-sp,dw-9c977951,structural,135,reject,reject,400,NODE_RANGE_EXCEEDED,19,,,0.5,,设定值 135mm/s 超出上限 节点工艺安全量程 的 130mm/s —— 约束层:节点安全量程(当前有效写入区间 30~130mm/s;各层限界按安全规约取交集;越界写入已拒绝)
+injection,opcua,inject-speed-sp,dw-9c977951,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.5,,设定值 1000000mm/s 超出上限 节点工艺安全量程 的 130mm/s —— 约束层:节点安全量程(当前有效写入区间 30~130mm/s;各层限界按安全规约取交集;越界写入已拒绝)
+injection,opcua,inject-speed-sp,dw-9c977951,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.5,,设定值 -50mm/s 低于下限 节点工艺安全量程 的 30mm/s —— 约束层:节点安全量程(当前有效写入区间 30~130mm/s;各层限界按安全规约取交集;越界写入已拒绝)
+injection,opcua,inject-speed-sp,dw-9c977951,restore,85,accept,accept,200,0,27,,,0.5,,ok
+injection,opcua,hold-pressure-sp,dw-b32cd27a,legal,51.5,accept,accept,200,0,22,51.5,0,0.45,true,ok
+injection,opcua,hold-pressure-sp,dw-b32cd27a,legal,65,accept,accept,200,0,23,65,0,0.45,true,ok
+injection,opcua,hold-pressure-sp,dw-b32cd27a,legal,78.5,accept,accept,200,0,21,78.5,0,0.45,true,ok
+injection,opcua,hold-pressure-sp,dw-b32cd27a,boundary,110,accept,accept,200,0,22,110,0,0.45,true,ok
+injection,opcua,hold-pressure-sp,dw-b32cd27a,structural,15.5,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.45,,设定值 15.5bar 低于下限 节点工艺安全量程 的 20bar —— 约束层:节点安全量程(当前有效写入区间 20~110bar;各层限界按安全规约取交集;越界写入已拒绝)
+injection,opcua,hold-pressure-sp,dw-b32cd27a,structural,114.5,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.45,,设定值 114.5bar 超出上限 节点工艺安全量程 的 110bar —— 约束层:节点安全量程(当前有效写入区间 20~110bar;各层限界按安全规约取交集;越界写入已拒绝)
+injection,opcua,hold-pressure-sp,dw-b32cd27a,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.45,,设定值 1000000bar 超出上限 节点工艺安全量程 的 110bar —— 约束层:节点安全量程(当前有效写入区间 20~110bar;各层限界按安全规约取交集;越界写入已拒绝)
+injection,opcua,hold-pressure-sp,dw-b32cd27a,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.45,,设定值 -50bar 低于下限 节点工艺安全量程 的 20bar —— 约束层:节点安全量程(当前有效写入区间 20~110bar;各层限界按安全规约取交集;越界写入已拒绝)
+injection,opcua,hold-pressure-sp,dw-b32cd27a,restore,61.8,accept,accept,200,0,22,,,0.45,,ok
+injection,opcua,hold-time-sp,dw-486f2a70,legal,7.2,accept,accept,200,0,21,7.2,0,0.06,true,ok
+injection,opcua,hold-time-sp,dw-486f2a70,legal,9,accept,accept,200,0,20,9,0,0.06,true,ok
+injection,opcua,hold-time-sp,dw-486f2a70,legal,10.8,accept,accept,200,0,20,10.8,0,0.06,true,ok
+injection,opcua,hold-time-sp,dw-486f2a70,boundary,15,accept,accept,200,0,21,15,0,0.06,true,ok
+injection,opcua,hold-time-sp,dw-486f2a70,structural,2.4,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.06,,设定值 2.4s 低于下限 节点工艺安全量程 的 3s —— 约束层:节点安全量程(当前有效写入区间 3~15s;各层限界按安全规约取交集;越界写入已拒绝)
+injection,opcua,hold-time-sp,dw-486f2a70,structural,15.6,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.06,,设定值 15.6s 超出上限 节点工艺安全量程 的 15s —— 约束层:节点安全量程(当前有效写入区间 3~15s;各层限界按安全规约取交集;越界写入已拒绝)
+injection,opcua,hold-time-sp,dw-486f2a70,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.06,,设定值 1000000s 超出上限 节点工艺安全量程 的 15s —— 约束层:节点安全量程(当前有效写入区间 3~15s;各层限界按安全规约取交集;越界写入已拒绝)
+injection,opcua,hold-time-sp,dw-486f2a70,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.06,,设定值 -50s 低于下限 节点工艺安全量程 的 3s —— 约束层:节点安全量程(当前有效写入区间 3~15s;各层限界按安全规约取交集;越界写入已拒绝)
+injection,opcua,hold-time-sp,dw-486f2a70,restore,10.5,accept,accept,200,0,22,,,0.06,,ok
+injection,mqtt,cool-water-sp,dw-87737062,legal,22.3,accept,accept,200,0,25,22.3,0,0.175,true,ok
+injection,mqtt,cool-water-sp,dw-87737062,legal,27.5,accept,accept,200,0,22,27.5,0,0.175,true,ok
+injection,mqtt,cool-water-sp,dw-87737062,legal,32.8,accept,accept,200,0,21,32.8,0,0.175,true,ok
+injection,mqtt,cool-water-sp,dw-87737062,boundary,45,accept,accept,200,0,22,45,0,0.175,true,ok
+injection,mqtt,cool-water-sp,dw-87737062,structural,8.3,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.175,,设定值 8.3℃ 低于下限 节点工艺安全量程 的 10℃ —— 约束层:节点安全量程(当前有效写入区间 10~45℃;各层限界按安全规约取交集;越界写入已拒绝)
+injection,mqtt,cool-water-sp,dw-87737062,structural,46.8,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.175,,设定值 46.8℃ 超出上限 节点工艺安全量程 的 45℃ —— 约束层:节点安全量程(当前有效写入区间 10~45℃;各层限界按安全规约取交集;越界写入已拒绝)
+injection,mqtt,cool-water-sp,dw-87737062,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.175,,设定值 1000000℃ 超出上限 节点工艺安全量程 的 45℃ —— 约束层:节点安全量程(当前有效写入区间 10~45℃;各层限界按安全规约取交集;越界写入已拒绝)
+injection,mqtt,cool-water-sp,dw-87737062,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.175,,设定值 -50℃ 低于下限 节点工艺安全量程 的 10℃ —— 约束层:节点安全量程(当前有效写入区间 10~45℃;各层限界按安全规约取交集;越界写入已拒绝)
+injection,mqtt,cool-water-sp,dw-87737062,restore,24,accept,accept,200,0,22,,,0.175,,ok
+wwtp,modbus-tcp,blower-hz-sp,dw-bdc8fbd7,legal,30.5,accept,accept,200,0,22,30.5,0,0.15,true,ok
+wwtp,modbus-tcp,blower-hz-sp,dw-bdc8fbd7,legal,35,accept,accept,200,0,50,35,0,0.15,true,ok
+wwtp,modbus-tcp,blower-hz-sp,dw-bdc8fbd7,legal,39.5,accept,accept,200,0,38,39.5,0,0.15,true,ok
+wwtp,modbus-tcp,blower-hz-sp,dw-bdc8fbd7,boundary,50,accept,accept,200,0,63,50,0,0.15,true,ok
+wwtp,modbus-tcp,blower-hz-sp,dw-bdc8fbd7,structural,18.5,reject,reject,400,NODE_RANGE_EXCEEDED,23,,,0.15,,设定值 18.5Hz 低于下限 节点工艺安全量程 的 20Hz —— 约束层:节点安全量程(当前有效写入区间 20~50Hz;各层限界按安全规约取交集;越界写入已拒绝)
+wwtp,modbus-tcp,blower-hz-sp,dw-bdc8fbd7,structural,51.5,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.15,,设定值 51.5Hz 超出上限 节点工艺安全量程 的 50Hz —— 约束层:节点安全量程(当前有效写入区间 20~50Hz;各层限界按安全规约取交集;越界写入已拒绝)
+wwtp,modbus-tcp,blower-hz-sp,dw-bdc8fbd7,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.15,,设定值 1000000Hz 超出上限 节点工艺安全量程 的 50Hz —— 约束层:节点安全量程(当前有效写入区间 20~50Hz;各层限界按安全规约取交集;越界写入已拒绝)
+wwtp,modbus-tcp,blower-hz-sp,dw-bdc8fbd7,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.15,,设定值 -50Hz 低于下限 节点工艺安全量程 的 20Hz —— 约束层:节点安全量程(当前有效写入区间 20~50Hz;各层限界按安全规约取交集;越界写入已拒绝)
+wwtp,modbus-tcp,blower-hz-sp,dw-bdc8fbd7,restore,34,accept,accept,200,0,33,,,0.15,,ok
+wwtp,opcua,naoh-dose-sp,dw-90e1c977,legal,42,accept,accept,200,0,21,42,0,0.6,true,ok
+wwtp,opcua,naoh-dose-sp,dw-90e1c977,legal,60,accept,accept,200,0,21,60,0,0.6,true,ok
+wwtp,opcua,naoh-dose-sp,dw-90e1c977,legal,78,accept,accept,200,0,21,78,0,0.6,true,ok
+wwtp,opcua,naoh-dose-sp,dw-90e1c977,boundary,120,accept,accept,200,0,20,120,0,0.6,true,ok
+wwtp,opcua,naoh-dose-sp,dw-90e1c977,structural,-6,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.6,,设定值 -6L/h 低于下限 节点工艺安全量程 的 0L/h —— 约束层:节点安全量程(当前有效写入区间 0~120L/h;各层限界按安全规约取交集;越界写入已拒绝)
+wwtp,opcua,naoh-dose-sp,dw-90e1c977,structural,126,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.6,,设定值 126L/h 超出上限 节点工艺安全量程 的 120L/h —— 约束层:节点安全量程(当前有效写入区间 0~120L/h;各层限界按安全规约取交集;越界写入已拒绝)
+wwtp,opcua,naoh-dose-sp,dw-90e1c977,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,24,,,0.6,,设定值 1000000L/h 超出上限 节点工艺安全量程 的 120L/h —— 约束层:节点安全量程(当前有效写入区间 0~120L/h;各层限界按安全规约取交集;越界写入已拒绝)
+wwtp,opcua,naoh-dose-sp,dw-90e1c977,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.6,,设定值 -50L/h 低于下限 节点工艺安全量程 的 0L/h —— 约束层:节点安全量程(当前有效写入区间 0~120L/h;各层限界按安全规约取交集;越界写入已拒绝)
+wwtp,opcua,naoh-dose-sp,dw-90e1c977,restore,27,accept,accept,200,0,21,,,0.6,,ok
+wwtp,opcua,pac-dose-sp,dw-69ca51c1,legal,31,accept,accept,200,0,21,31,0,0.5,true,ok
+wwtp,opcua,pac-dose-sp,dw-69ca51c1,legal,45,accept,accept,200,0,21,45,0,0.5,true,ok
+wwtp,opcua,pac-dose-sp,dw-69ca51c1,legal,59,accept,accept,200,0,21,59,0,0.5,true,ok
+wwtp,opcua,pac-dose-sp,dw-69ca51c1,boundary,90,accept,accept,200,0,21,90,0,0.5,true,ok
+wwtp,opcua,pac-dose-sp,dw-69ca51c1,structural,-5,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.5,,设定值 -5L/h 低于下限 节点工艺安全量程 的 0L/h —— 约束层:节点安全量程(当前有效写入区间 0~90L/h;各层限界按安全规约取交集;越界写入已拒绝)
+wwtp,opcua,pac-dose-sp,dw-69ca51c1,structural,95,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.5,,设定值 95L/h 超出上限 节点工艺安全量程 的 90L/h —— 约束层:节点安全量程(当前有效写入区间 0~90L/h;各层限界按安全规约取交集;越界写入已拒绝)
+wwtp,opcua,pac-dose-sp,dw-69ca51c1,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.5,,设定值 1000000L/h 超出上限 节点工艺安全量程 的 90L/h —— 约束层:节点安全量程(当前有效写入区间 0~90L/h;各层限界按安全规约取交集;越界写入已拒绝)
+wwtp,opcua,pac-dose-sp,dw-69ca51c1,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.5,,设定值 -50L/h 低于下限 节点工艺安全量程 的 0L/h —— 约束层:节点安全量程(当前有效写入区间 0~90L/h;各层限界按安全规约取交集;越界写入已拒绝)
+wwtp,opcua,pac-dose-sp,dw-69ca51c1,restore,75,accept,accept,200,0,11,,,0.5,,ok
+wwtp,modbus-rtu,recycle-int-sp,dw-b09523f2,legal,76,accept,accept,200,0,6,76,0,0.8,true,ok
+wwtp,modbus-rtu,recycle-int-sp,dw-b09523f2,legal,100,accept,accept,200,0,19,100,0,0.8,true,ok
+wwtp,modbus-rtu,recycle-int-sp,dw-b09523f2,legal,124,accept,accept,200,0,25,124,0,0.8,true,ok
+wwtp,modbus-rtu,recycle-int-sp,dw-b09523f2,boundary,180,accept,accept,200,0,19,180,0,0.8,true,ok
+wwtp,modbus-rtu,recycle-int-sp,dw-b09523f2,structural,12,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.8,,设定值 12% 低于下限 节点工艺安全量程 的 20% —— 约束层:节点安全量程(当前有效写入区间 20~180%;各层限界按安全规约取交集;越界写入已拒绝)
+wwtp,modbus-rtu,recycle-int-sp,dw-b09523f2,structural,188,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.8,,设定值 188% 超出上限 节点工艺安全量程 的 180% —— 约束层:节点安全量程(当前有效写入区间 20~180%;各层限界按安全规约取交集;越界写入已拒绝)
+wwtp,modbus-rtu,recycle-int-sp,dw-b09523f2,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.8,,设定值 1000000% 超出上限 节点工艺安全量程 的 180% —— 约束层:节点安全量程(当前有效写入区间 20~180%;各层限界按安全规约取交集;越界写入已拒绝)
+wwtp,modbus-rtu,recycle-int-sp,dw-b09523f2,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,26,,,0.8,,设定值 -50% 低于下限 节点工艺安全量程 的 20% —— 约束层:节点安全量程(当前有效写入区间 20~180%;各层限界按安全规约取交集;越界写入已拒绝)
+wwtp,modbus-rtu,recycle-int-sp,dw-b09523f2,restore,90,accept,accept,200,0,24,,,0.8,,ok
+wwtp,modbus-rtu,recycle-sludge-sp,dw-70ceea7f,legal,62,accept,accept,200,0,20,62,0,0.5,true,ok
+wwtp,modbus-rtu,recycle-sludge-sp,dw-70ceea7f,legal,75,accept,accept,200,0,18,75,0,0.5,true,ok
+wwtp,modbus-rtu,recycle-sludge-sp,dw-70ceea7f,legal,89,accept,accept,200,0,20,89,0,0.5,true,ok
+wwtp,modbus-rtu,recycle-sludge-sp,dw-70ceea7f,boundary,120,accept,accept,200,0,19,120,0,0.5,true,ok
+wwtp,modbus-rtu,recycle-sludge-sp,dw-70ceea7f,structural,26,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.5,,设定值 26% 低于下限 节点工艺安全量程 的 30% —— 约束层:节点安全量程(当前有效写入区间 30~120%;各层限界按安全规约取交集;越界写入已拒绝)
+wwtp,modbus-rtu,recycle-sludge-sp,dw-70ceea7f,structural,125,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.5,,设定值 125% 超出上限 节点工艺安全量程 的 120% —— 约束层:节点安全量程(当前有效写入区间 30~120%;各层限界按安全规约取交集;越界写入已拒绝)
+wwtp,modbus-rtu,recycle-sludge-sp,dw-70ceea7f,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.5,,设定值 1000000% 超出上限 节点工艺安全量程 的 120% —— 约束层:节点安全量程(当前有效写入区间 30~120%;各层限界按安全规约取交集;越界写入已拒绝)
+wwtp,modbus-rtu,recycle-sludge-sp,dw-70ceea7f,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.5,,设定值 -50% 低于下限 节点工艺安全量程 的 30% —— 约束层:节点安全量程(当前有效写入区间 30~120%;各层限界按安全规约取交集;越界写入已拒绝)
+wwtp,modbus-rtu,recycle-sludge-sp,dw-70ceea7f,restore,70,accept,accept,200,0,19,,,0.5,,ok
+wwtp,modbus-rtu,waste-sludge-sp,dw-2a0e333c,legal,173,accept,accept,200,0,20,173,0,1.75,true,ok
+wwtp,modbus-rtu,waste-sludge-sp,dw-2a0e333c,legal,225,accept,accept,200,0,22,225,0,1.75,true,ok
+wwtp,modbus-rtu,waste-sludge-sp,dw-2a0e333c,legal,278,accept,accept,200,0,19,278,0,1.75,true,ok
+wwtp,modbus-rtu,waste-sludge-sp,dw-2a0e333c,boundary,400,accept,accept,200,0,20,400,0,1.75,true,ok
+wwtp,modbus-rtu,waste-sludge-sp,dw-2a0e333c,structural,33,reject,reject,400,NODE_RANGE_EXCEEDED,33,,,1.75,,设定值 33m³/d 低于下限 节点工艺安全量程 的 50m³/d —— 约束层:节点安全量程(当前有效写入区间 50~400m³/d;各层限界按安全规约取交集;越界写入已拒绝)
+wwtp,modbus-rtu,waste-sludge-sp,dw-2a0e333c,structural,418,reject,reject,400,NODE_RANGE_EXCEEDED,20,,,1.75,,设定值 418m³/d 超出上限 节点工艺安全量程 的 400m³/d —— 约束层:节点安全量程(当前有效写入区间 50~400m³/d;各层限界按安全规约取交集;越界写入已拒绝)
+wwtp,modbus-rtu,waste-sludge-sp,dw-2a0e333c,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,1.75,,设定值 1000000m³/d 超出上限 节点工艺安全量程 的 400m³/d —— 约束层:节点安全量程(当前有效写入区间 50~400m³/d;各层限界按安全规约取交集;越界写入已拒绝)
+wwtp,modbus-rtu,waste-sludge-sp,dw-2a0e333c,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,1.75,,设定值 -50m³/d 低于下限 节点工艺安全量程 的 50m³/d —— 约束层:节点安全量程(当前有效写入区间 50~400m³/d;各层限界按安全规约取交集;越界写入已拒绝)
+wwtp,modbus-rtu,waste-sludge-sp,dw-2a0e333c,restore,150,accept,accept,200,0,19,,,1.75,,ok
+wwtp,mqtt,influent-flow-sp,dw-99611a8c,legal,820,accept,accept,200,0,22,820,0,6,true,ok
+wwtp,mqtt,influent-flow-sp,dw-99611a8c,legal,1000,accept,accept,200,0,20,1000,0,6,true,ok
+wwtp,mqtt,influent-flow-sp,dw-99611a8c,legal,1180,accept,accept,200,0,23,1180,0,6,true,ok
+wwtp,mqtt,influent-flow-sp,dw-99611a8c,boundary,1600,accept,accept,200,0,24,1600,0,6,true,ok
+wwtp,mqtt,influent-flow-sp,dw-99611a8c,structural,340,reject,reject,400,NODE_RANGE_EXCEEDED,19,,,6,,设定值 340m³/h 低于下限 节点工艺安全量程 的 400m³/h —— 约束层:节点安全量程(当前有效写入区间 400~1600m³/h;各层限界按安全规约取交集;越界写入已拒绝)
+wwtp,mqtt,influent-flow-sp,dw-99611a8c,structural,1660,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,6,,设定值 1660m³/h 超出上限 节点工艺安全量程 的 1600m³/h —— 约束层:节点安全量程(当前有效写入区间 400~1600m³/h;各层限界按安全规约取交集;越界写入已拒绝)
+wwtp,mqtt,influent-flow-sp,dw-99611a8c,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,6,,设定值 1000000m³/h 超出上限 节点工艺安全量程 的 1600m³/h —— 约束层:节点安全量程(当前有效写入区间 400~1600m³/h;各层限界按安全规约取交集;越界写入已拒绝)
+wwtp,mqtt,influent-flow-sp,dw-99611a8c,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,6,,设定值 -50m³/h 低于下限 节点工艺安全量程 的 400m³/h —— 约束层:节点安全量程(当前有效写入区间 400~1600m³/h;各层限界按安全规约取交集;越界写入已拒绝)
+wwtp,mqtt,influent-flow-sp,dw-99611a8c,restore,1000,accept,accept,200,0,27,,,6,,ok
+anneal,modbus-tcp,zone1-sp,dw-cd458598,legal,687.5,accept,accept,200,0,48,687.5,0,1.25,true,ok
+anneal,modbus-tcp,zone1-sp,dw-cd458598,legal,725,accept,accept,200,0,49,725,0,1.25,true,ok
+anneal,modbus-tcp,zone1-sp,dw-cd458598,legal,762.5,accept,accept,200,0,47,762.5,0,1.25,true,ok
+anneal,modbus-tcp,zone1-sp,dw-cd458598,boundary,850,accept,accept,200,0,48,850,0,1.25,true,ok
+anneal,modbus-tcp,zone1-sp,dw-cd458598,structural,587.5,reject,reject,400,NODE_RANGE_EXCEEDED,23,,,1.25,,设定值 587.5℃ 低于下限 节点工艺安全量程 的 600℃ —— 约束层:节点安全量程(当前有效写入区间 600~850℃;各层限界按安全规约取交集;越界写入已拒绝)
+anneal,modbus-tcp,zone1-sp,dw-cd458598,structural,862.5,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,1.25,,设定值 862.5℃ 超出上限 节点工艺安全量程 的 850℃ —— 约束层:节点安全量程(当前有效写入区间 600~850℃;各层限界按安全规约取交集;越界写入已拒绝)
+anneal,modbus-tcp,zone1-sp,dw-cd458598,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,1.25,,设定值 1000000℃ 超出上限 节点工艺安全量程 的 850℃ —— 约束层:节点安全量程(当前有效写入区间 600~850℃;各层限界按安全规约取交集;越界写入已拒绝)
+anneal,modbus-tcp,zone1-sp,dw-cd458598,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,1.25,,设定值 -50℃ 低于下限 节点工艺安全量程 的 600℃ —— 约束层:节点安全量程(当前有效写入区间 600~850℃;各层限界按安全规约取交集;越界写入已拒绝)
+anneal,modbus-tcp,zone1-sp,dw-cd458598,restore,690,accept,accept,200,0,48,,,1.25,,ok
+anneal,modbus-tcp,zone2-sp,dw-48e8ae89,legal,687.5,accept,accept,200,0,37,687.5,0,1.25,true,ok
+anneal,modbus-tcp,zone2-sp,dw-48e8ae89,legal,725,accept,accept,200,0,48,725,0,1.25,true,ok
+anneal,modbus-tcp,zone2-sp,dw-48e8ae89,legal,762.5,accept,accept,200,0,49,762.5,0,1.25,true,ok
+anneal,modbus-tcp,zone2-sp,dw-48e8ae89,boundary,850,accept,accept,200,0,47,850,0,1.25,true,ok
+anneal,modbus-tcp,zone2-sp,dw-48e8ae89,structural,587.5,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,1.25,,设定值 587.5℃ 低于下限 节点工艺安全量程 的 600℃ —— 约束层:节点安全量程(当前有效写入区间 600~850℃;各层限界按安全规约取交集;越界写入已拒绝)
+anneal,modbus-tcp,zone2-sp,dw-48e8ae89,structural,862.5,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,1.25,,设定值 862.5℃ 超出上限 节点工艺安全量程 的 850℃ —— 约束层:节点安全量程(当前有效写入区间 600~850℃;各层限界按安全规约取交集;越界写入已拒绝)
+anneal,modbus-tcp,zone2-sp,dw-48e8ae89,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,1.25,,设定值 1000000℃ 超出上限 节点工艺安全量程 的 850℃ —— 约束层:节点安全量程(当前有效写入区间 600~850℃;各层限界按安全规约取交集;越界写入已拒绝)
+anneal,modbus-tcp,zone2-sp,dw-48e8ae89,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,2,,,1.25,,设定值 -50℃ 低于下限 节点工艺安全量程 的 600℃ —— 约束层:节点安全量程(当前有效写入区间 600~850℃;各层限界按安全规约取交集;越界写入已拒绝)
+anneal,modbus-tcp,zone2-sp,dw-48e8ae89,restore,807,accept,accept,200,0,32,,,1.25,,ok
+anneal,modbus-tcp,zone3-sp,dw-d219a4e9,legal,687.5,accept,accept,200,0,48,687.5,0,1.25,true,ok
+anneal,modbus-tcp,zone3-sp,dw-d219a4e9,legal,725,accept,accept,200,0,47,725,0,1.25,true,ok
+anneal,modbus-tcp,zone3-sp,dw-d219a4e9,legal,762.5,accept,accept,200,0,47,762.5,0,1.25,true,ok
+anneal,modbus-tcp,zone3-sp,dw-d219a4e9,boundary,850,accept,accept,200,0,47,850,0,1.25,true,ok
+anneal,modbus-tcp,zone3-sp,dw-d219a4e9,structural,587.5,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,1.25,,设定值 587.5℃ 低于下限 节点工艺安全量程 的 600℃ —— 约束层:节点安全量程(当前有效写入区间 600~850℃;各层限界按安全规约取交集;越界写入已拒绝)
+anneal,modbus-tcp,zone3-sp,dw-d219a4e9,structural,862.5,reject,reject,400,NODE_RANGE_EXCEEDED,21,,,1.25,,设定值 862.5℃ 超出上限 节点工艺安全量程 的 850℃ —— 约束层:节点安全量程(当前有效写入区间 600~850℃;各层限界按安全规约取交集;越界写入已拒绝)
+anneal,modbus-tcp,zone3-sp,dw-d219a4e9,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,1.25,,设定值 1000000℃ 超出上限 节点工艺安全量程 的 850℃ —— 约束层:节点安全量程(当前有效写入区间 600~850℃;各层限界按安全规约取交集;越界写入已拒绝)
+anneal,modbus-tcp,zone3-sp,dw-d219a4e9,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,1.25,,设定值 -50℃ 低于下限 节点工艺安全量程 的 600℃ —— 约束层:节点安全量程(当前有效写入区间 600~850℃;各层限界按安全规约取交集;越界写入已拒绝)
+anneal,opcua,line-speed-sp,dw-33b4219f,legal,116,accept,accept,200,0,22,116,0,0.8,true,ok
+anneal,opcua,line-speed-sp,dw-33b4219f,legal,140,accept,accept,200,0,22,140,0,0.8,true,ok
+anneal,opcua,line-speed-sp,dw-33b4219f,legal,164,accept,accept,200,0,21,164,0,0.8,true,ok
+anneal,opcua,line-speed-sp,dw-33b4219f,boundary,220,accept,accept,200,0,21,220,0,0.8,true,ok
+anneal,opcua,line-speed-sp,dw-33b4219f,structural,52,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.8,,设定值 52m/min 低于下限 节点工艺安全量程 的 60m/min —— 约束层:节点安全量程(当前有效写入区间 60~220m/min;各层限界按安全规约取交集;越界写入已拒绝)
+anneal,opcua,line-speed-sp,dw-33b4219f,structural,228,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.8,,设定值 228m/min 超出上限 节点工艺安全量程 的 220m/min —— 约束层:节点安全量程(当前有效写入区间 60~220m/min;各层限界按安全规约取交集;越界写入已拒绝)
+anneal,opcua,line-speed-sp,dw-33b4219f,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.8,,设定值 1000000m/min 超出上限 节点工艺安全量程 的 220m/min —— 约束层:节点安全量程(当前有效写入区间 60~220m/min;各层限界按安全规约取交集;越界写入已拒绝)
+anneal,opcua,line-speed-sp,dw-33b4219f,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.8,,设定值 -50m/min 低于下限 节点工艺安全量程 的 60m/min —— 约束层:节点安全量程(当前有效写入区间 60~220m/min;各层限界按安全规约取交集;越界写入已拒绝)
+anneal,opcua,line-speed-sp,dw-33b4219f,restore,188,accept,accept,200,0,24,,,0.8,,ok
+anneal,modbus-rtu,oa-temp-sp,dw-1cb3fc34,legal,376,accept,accept,200,0,19,376,0,0.8,true,ok
+anneal,modbus-rtu,oa-temp-sp,dw-1cb3fc34,legal,400,accept,accept,200,0,20,400,0,0.8,true,ok
+anneal,modbus-rtu,oa-temp-sp,dw-1cb3fc34,legal,424,accept,accept,200,0,19,424,0,0.8,true,ok
+anneal,modbus-rtu,oa-temp-sp,dw-1cb3fc34,boundary,480,accept,accept,200,0,20,480,0,0.8,true,ok
+anneal,modbus-rtu,oa-temp-sp,dw-1cb3fc34,structural,312,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.8,,设定值 312℃ 低于下限 节点工艺安全量程 的 320℃ —— 约束层:节点安全量程(当前有效写入区间 320~480℃;各层限界按安全规约取交集;越界写入已拒绝)
+anneal,modbus-rtu,oa-temp-sp,dw-1cb3fc34,structural,488,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.8,,设定值 488℃ 超出上限 节点工艺安全量程 的 480℃ —— 约束层:节点安全量程(当前有效写入区间 320~480℃;各层限界按安全规约取交集;越界写入已拒绝)
+anneal,modbus-rtu,oa-temp-sp,dw-1cb3fc34,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.8,,设定值 1000000℃ 超出上限 节点工艺安全量程 的 480℃ —— 约束层:节点安全量程(当前有效写入区间 320~480℃;各层限界按安全规约取交集;越界写入已拒绝)
+anneal,modbus-rtu,oa-temp-sp,dw-1cb3fc34,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.8,,设定值 -50℃ 低于下限 节点工艺安全量程 的 320℃ —— 约束层:节点安全量程(当前有效写入区间 320~480℃;各层限界按安全规约取交集;越界写入已拒绝)
+anneal,modbus-rtu,oa-temp-sp,dw-1cb3fc34,restore,400,accept,accept,200,0,24,,,0.8,,ok
+anneal,modbus-rtu,cool-rate-sp,dw-9f677996,legal,48,accept,accept,200,0,19,48,0,0.5,true,ok
+anneal,modbus-rtu,cool-rate-sp,dw-9f677996,legal,60,accept,accept,200,0,20,60,0,0.5,true,ok
+anneal,modbus-rtu,cool-rate-sp,dw-9f677996,legal,72,accept,accept,200,0,20,72,0,0.5,true,ok
+anneal,modbus-rtu,cool-rate-sp,dw-9f677996,boundary,100,accept,accept,200,0,21,100,0,0.5,true,ok
+anneal,modbus-rtu,cool-rate-sp,dw-9f677996,structural,16,reject,reject,400,NODE_RANGE_EXCEEDED,242,,,0.5,,设定值 16% 低于下限 节点工艺安全量程 的 20% —— 约束层:节点安全量程(当前有效写入区间 20~100%;各层限界按安全规约取交集;越界写入已拒绝)
+anneal,modbus-rtu,cool-rate-sp,dw-9f677996,structural,104,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.5,,设定值 104% 超出上限 节点工艺安全量程 的 100% —— 约束层:节点安全量程(当前有效写入区间 20~100%;各层限界按安全规约取交集;越界写入已拒绝)
+anneal,modbus-rtu,cool-rate-sp,dw-9f677996,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.5,,设定值 1000000% 超出上限 节点工艺安全量程 的 100% —— 约束层:节点安全量程(当前有效写入区间 20~100%;各层限界按安全规约取交集;越界写入已拒绝)
+anneal,modbus-rtu,cool-rate-sp,dw-9f677996,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.5,,设定值 -50% 低于下限 节点工艺安全量程 的 20% —— 约束层:节点安全量程(当前有效写入区间 20~100%;各层限界按安全规约取交集;越界写入已拒绝)
+anneal,modbus-rtu,cool-rate-sp,dw-9f677996,restore,50,accept,accept,200,0,20,,,0.5,,ok
+anneal,mqtt,h2-ratio-sp,dw-6f446ac7,legal,7.2,accept,accept,200,0,20,7.2,0,0.06,true,ok
+anneal,mqtt,h2-ratio-sp,dw-6f446ac7,legal,9,accept,accept,200,0,22,9,0,0.06,true,ok
+anneal,mqtt,h2-ratio-sp,dw-6f446ac7,legal,10.8,accept,accept,200,0,22,10.8,0,0.06,true,ok
+anneal,mqtt,h2-ratio-sp,dw-6f446ac7,boundary,15,accept,accept,200,0,22,15,0,0.06,true,ok
+anneal,mqtt,h2-ratio-sp,dw-6f446ac7,structural,2.4,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.06,,设定值 2.4% 低于下限 节点工艺安全量程 的 3% —— 约束层:节点安全量程(当前有效写入区间 3~15%;各层限界按安全规约取交集;越界写入已拒绝)
+anneal,mqtt,h2-ratio-sp,dw-6f446ac7,structural,15.6,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.06,,设定值 15.6% 超出上限 节点工艺安全量程 的 15% —— 约束层:节点安全量程(当前有效写入区间 3~15%;各层限界按安全规约取交集;越界写入已拒绝)
+anneal,mqtt,h2-ratio-sp,dw-6f446ac7,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.06,,设定值 1000000% 超出上限 节点工艺安全量程 的 15% —— 约束层:节点安全量程(当前有效写入区间 3~15%;各层限界按安全规约取交集;越界写入已拒绝)
+anneal,mqtt,h2-ratio-sp,dw-6f446ac7,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.06,,设定值 -50% 低于下限 节点工艺安全量程 的 3% —— 约束层:节点安全量程(当前有效写入区间 3~15%;各层限界按安全规约取交集;越界写入已拒绝)
+anneal,mqtt,h2-ratio-sp,dw-6f446ac7,restore,10,accept,accept,200,0,19,,,0.06,,ok
+biax,opcua,干燥温度SP·pb16k5ur,dw-a4199380,legal,148,accept,accept,200,0,30,148,0,0.4,true,ok
+biax,opcua,干燥温度SP·pb16k5ur,dw-a4199380,legal,160,accept,accept,200,0,22,160,0,0.4,true,ok
+biax,opcua,干燥温度SP·pb16k5ur,dw-a4199380,legal,172,accept,accept,200,0,27,172,0,0.4,true,ok
+biax,opcua,干燥温度SP·pb16k5ur,dw-a4199380,boundary,200,accept,accept,200,0,23,200,0,0.4,true,ok
+biax,opcua,干燥温度SP·pb16k5ur,dw-a4199380,structural,116,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.4,,设定值 116℃ 低于下限 节点工艺安全量程 的 120℃ —— 约束层:节点安全量程(当前有效写入区间 120~200℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,opcua,干燥温度SP·pb16k5ur,dw-a4199380,structural,204,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.4,,设定值 204℃ 超出上限 节点工艺安全量程 的 200℃ —— 约束层:节点安全量程(当前有效写入区间 120~200℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,opcua,干燥温度SP·pb16k5ur,dw-a4199380,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.4,,设定值 1000000℃ 超出上限 节点工艺安全量程 的 200℃ —— 约束层:节点安全量程(当前有效写入区间 120~200℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,opcua,干燥温度SP·pb16k5ur,dw-a4199380,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,19,,,0.4,,设定值 -50℃ 低于下限 节点工艺安全量程 的 120℃ —— 约束层:节点安全量程(当前有效写入区间 120~200℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,opcua,干燥温度SP·pb16k5ur,dw-a4199380,restore,172,accept,accept,200,0,22,,,0.4,,ok
+biax,opcua,露点SP·pb16k5ur,dw-055ad651,legal,-59,accept,accept,200,0,22,-59,0,0.5,true,ok
+biax,opcua,露点SP·pb16k5ur,dw-055ad651,legal,-50,accept,accept,200,0,23,-50,0,0.5,true,ok
+biax,opcua,露点SP·pb16k5ur,dw-055ad651,legal,-41,accept,accept,200,0,22,-41,0,0.5,true,ok
+biax,opcua,露点SP·pb16k5ur,dw-055ad651,boundary,-20,accept,accept,200,0,31,-20,0,0.5,true,ok
+biax,opcua,露点SP·pb16k5ur,dw-055ad651,structural,-83,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.5,,设定值 -83℃ 低于下限 节点工艺安全量程 的 -80℃ —— 约束层:节点安全量程(当前有效写入区间 -80~-20℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,opcua,露点SP·pb16k5ur,dw-055ad651,structural,-17,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.5,,设定值 -17℃ 超出上限 节点工艺安全量程 的 -20℃ —— 约束层:节点安全量程(当前有效写入区间 -80~-20℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,opcua,露点SP·pb16k5ur,dw-055ad651,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.5,,设定值 1000000℃ 超出上限 节点工艺安全量程 的 -20℃ —— 约束层:节点安全量程(当前有效写入区间 -80~-20℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,opcua,露点SP·pb16k5ur,dw-055ad651,restore,-40,accept,accept,200,0,22,,,0.5,,ok
+biax,opcua,喂料速率SP·pb16k5ur,dw-57d52c07,legal,485,accept,accept,200,0,21,485,0,5.5,true,ok
+biax,opcua,喂料速率SP·pb16k5ur,dw-57d52c07,legal,650,accept,accept,200,0,22,650,0,5.5,true,ok
+biax,opcua,喂料速率SP·pb16k5ur,dw-57d52c07,legal,815,accept,accept,200,0,21,815,0,5.5,true,ok
+biax,opcua,喂料速率SP·pb16k5ur,dw-57d52c07,boundary,1200,accept,accept,200,0,22,1200,0,5.5,true,ok
+biax,opcua,喂料速率SP·pb16k5ur,dw-57d52c07,structural,45,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,5.5,,设定值 45kg/h 低于下限 节点工艺安全量程 的 100kg/h —— 约束层:节点安全量程(当前有效写入区间 100~1200kg/h;各层限界按安全规约取交集;越界写入已拒绝)
+biax,opcua,喂料速率SP·pb16k5ur,dw-57d52c07,structural,1255,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,5.5,,设定值 1255kg/h 超出上限 节点工艺安全量程 的 1200kg/h —— 约束层:节点安全量程(当前有效写入区间 100~1200kg/h;各层限界按安全规约取交集;越界写入已拒绝)
+biax,opcua,喂料速率SP·pb16k5ur,dw-57d52c07,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,5.5,,设定值 1000000kg/h 超出上限 节点工艺安全量程 的 1200kg/h —— 约束层:节点安全量程(当前有效写入区间 100~1200kg/h;各层限界按安全规约取交集;越界写入已拒绝)
+biax,opcua,喂料速率SP·pb16k5ur,dw-57d52c07,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,5.5,,设定值 -50kg/h 低于下限 节点工艺安全量程 的 100kg/h —— 约束层:节点安全量程(当前有效写入区间 100~1200kg/h;各层限界按安全规约取交集;越界写入已拒绝)
+biax,opcua,喂料速率SP·pb16k5ur,dw-57d52c07,restore,650,accept,accept,200,0,21,,,5.5,,ok
+biax,modbus-tcp,机筒温度区1SP·pb16k5ur,dw-65a52a51,legal,248,accept,accept,200,0,36,248,0,0.4,true,ok
+biax,modbus-tcp,机筒温度区1SP·pb16k5ur,dw-65a52a51,legal,260,accept,accept,200,0,48,260,0,0.4,true,ok
+biax,modbus-tcp,机筒温度区1SP·pb16k5ur,dw-65a52a51,legal,272,accept,accept,200,0,47,272,0,0.4,true,ok
+biax,modbus-tcp,机筒温度区1SP·pb16k5ur,dw-65a52a51,boundary,300,accept,accept,200,0,48,300,0,0.4,true,ok
+biax,modbus-tcp,机筒温度区1SP·pb16k5ur,dw-65a52a51,structural,216,reject,reject,400,NODE_RANGE_EXCEEDED,2,,,0.4,,设定值 216℃ 低于下限 节点工艺安全量程 的 220℃ —— 约束层:节点安全量程(当前有效写入区间 220~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,机筒温度区1SP·pb16k5ur,dw-65a52a51,structural,304,reject,reject,400,NODE_RANGE_EXCEEDED,2,,,0.4,,设定值 304℃ 超出上限 节点工艺安全量程 的 300℃ —— 约束层:节点安全量程(当前有效写入区间 220~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,机筒温度区1SP·pb16k5ur,dw-65a52a51,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.4,,设定值 1000000℃ 超出上限 节点工艺安全量程 的 300℃ —— 约束层:节点安全量程(当前有效写入区间 220~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,机筒温度区1SP·pb16k5ur,dw-65a52a51,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.4,,设定值 -50℃ 低于下限 节点工艺安全量程 的 220℃ —— 约束层:节点安全量程(当前有效写入区间 220~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,机筒温度区1SP·pb16k5ur,dw-65a52a51,restore,272,accept,accept,200,0,48,,,0.4,,ok
+biax,modbus-tcp,机筒温度区2SP·pb16k5ur,dw-f385a31a,legal,248,accept,accept,200,0,33,248,0,0.4,true,ok
+biax,modbus-tcp,机筒温度区2SP·pb16k5ur,dw-f385a31a,legal,260,accept,accept,200,0,48,260,0,0.4,true,ok
+biax,modbus-tcp,机筒温度区2SP·pb16k5ur,dw-f385a31a,legal,272,accept,accept,200,0,37,272,0,0.4,true,ok
+biax,modbus-tcp,机筒温度区2SP·pb16k5ur,dw-f385a31a,boundary,300,accept,accept,200,0,47,300,0,0.4,true,ok
+biax,modbus-tcp,机筒温度区2SP·pb16k5ur,dw-f385a31a,structural,216,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.4,,设定值 216℃ 低于下限 节点工艺安全量程 的 220℃ —— 约束层:节点安全量程(当前有效写入区间 220~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,机筒温度区2SP·pb16k5ur,dw-f385a31a,structural,304,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.4,,设定值 304℃ 超出上限 节点工艺安全量程 的 300℃ —— 约束层:节点安全量程(当前有效写入区间 220~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,机筒温度区2SP·pb16k5ur,dw-f385a31a,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.4,,设定值 1000000℃ 超出上限 节点工艺安全量程 的 300℃ —— 约束层:节点安全量程(当前有效写入区间 220~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,机筒温度区2SP·pb16k5ur,dw-f385a31a,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,19,,,0.4,,设定值 -50℃ 低于下限 节点工艺安全量程 的 220℃ —— 约束层:节点安全量程(当前有效写入区间 220~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,机筒温度区2SP·pb16k5ur,dw-f385a31a,restore,278,accept,accept,200,0,31,,,0.4,,ok
+biax,modbus-tcp,机筒温度区3SP·pb16k5ur,dw-058ebd38,legal,248,accept,accept,200,0,47,248,0,0.4,true,ok
+biax,modbus-tcp,机筒温度区3SP·pb16k5ur,dw-058ebd38,legal,260,accept,accept,200,0,47,260,0,0.4,true,ok
+biax,modbus-tcp,机筒温度区3SP·pb16k5ur,dw-058ebd38,legal,272,accept,accept,200,0,41,272,0,0.4,true,ok
+biax,modbus-tcp,机筒温度区3SP·pb16k5ur,dw-058ebd38,boundary,300,accept,accept,200,0,48,300,0,0.4,true,ok
+biax,modbus-tcp,机筒温度区3SP·pb16k5ur,dw-058ebd38,structural,216,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.4,,设定值 216℃ 低于下限 节点工艺安全量程 的 220℃ —— 约束层:节点安全量程(当前有效写入区间 220~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,机筒温度区3SP·pb16k5ur,dw-058ebd38,structural,304,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.4,,设定值 304℃ 超出上限 节点工艺安全量程 的 300℃ —— 约束层:节点安全量程(当前有效写入区间 220~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,机筒温度区3SP·pb16k5ur,dw-058ebd38,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.4,,设定值 1000000℃ 超出上限 节点工艺安全量程 的 300℃ —— 约束层:节点安全量程(当前有效写入区间 220~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,机筒温度区3SP·pb16k5ur,dw-058ebd38,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.4,,设定值 -50℃ 低于下限 节点工艺安全量程 的 220℃ —— 约束层:节点安全量程(当前有效写入区间 220~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,机筒温度区3SP·pb16k5ur,dw-058ebd38,restore,284,accept,accept,200,0,47,,,0.4,,ok
+biax,modbus-tcp,机筒温度区4SP·pb16k5ur,dw-5ba3b231,legal,248,accept,accept,200,0,48,248,0,0.4,true,ok
+biax,modbus-tcp,机筒温度区4SP·pb16k5ur,dw-5ba3b231,legal,260,accept,accept,200,0,47,260,0,0.4,true,ok
+biax,modbus-tcp,机筒温度区4SP·pb16k5ur,dw-5ba3b231,legal,272,accept,accept,200,0,48,272,0,0.4,true,ok
+biax,modbus-tcp,机筒温度区4SP·pb16k5ur,dw-5ba3b231,boundary,300,accept,accept,200,0,36,300,0,0.4,true,ok
+biax,modbus-tcp,机筒温度区4SP·pb16k5ur,dw-5ba3b231,structural,216,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.4,,设定值 216℃ 低于下限 节点工艺安全量程 的 220℃ —— 约束层:节点安全量程(当前有效写入区间 220~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,机筒温度区4SP·pb16k5ur,dw-5ba3b231,structural,304,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.4,,设定值 304℃ 超出上限 节点工艺安全量程 的 300℃ —— 约束层:节点安全量程(当前有效写入区间 220~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,机筒温度区4SP·pb16k5ur,dw-5ba3b231,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.4,,设定值 1000000℃ 超出上限 节点工艺安全量程 的 300℃ —— 约束层:节点安全量程(当前有效写入区间 220~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,机筒温度区4SP·pb16k5ur,dw-5ba3b231,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.4,,设定值 -50℃ 低于下限 节点工艺安全量程 的 220℃ —— 约束层:节点安全量程(当前有效写入区间 220~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,机筒温度区4SP·pb16k5ur,dw-5ba3b231,restore,288,accept,accept,200,0,48,,,0.4,,ok
+biax,modbus-tcp,机筒温度区5SP·pb16k5ur,dw-dd6fcde6,legal,248,accept,accept,200,0,47,248,0,0.4,true,ok
+biax,modbus-tcp,机筒温度区5SP·pb16k5ur,dw-dd6fcde6,legal,260,accept,accept,200,0,48,260,0,0.4,true,ok
+biax,modbus-tcp,机筒温度区5SP·pb16k5ur,dw-dd6fcde6,legal,272,accept,accept,200,0,56,272,0,0.4,true,ok
+biax,modbus-tcp,机筒温度区5SP·pb16k5ur,dw-dd6fcde6,boundary,300,accept,accept,200,0,48,300,0,0.4,true,ok
+biax,modbus-tcp,机筒温度区5SP·pb16k5ur,dw-dd6fcde6,structural,216,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.4,,设定值 216℃ 低于下限 节点工艺安全量程 的 220℃ —— 约束层:节点安全量程(当前有效写入区间 220~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,机筒温度区5SP·pb16k5ur,dw-dd6fcde6,structural,304,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.4,,设定值 304℃ 超出上限 节点工艺安全量程 的 300℃ —— 约束层:节点安全量程(当前有效写入区间 220~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,机筒温度区5SP·pb16k5ur,dw-dd6fcde6,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,22,,,0.4,,设定值 1000000℃ 超出上限 节点工艺安全量程 的 300℃ —— 约束层:节点安全量程(当前有效写入区间 220~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,机筒温度区5SP·pb16k5ur,dw-dd6fcde6,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.4,,设定值 -50℃ 低于下限 节点工艺安全量程 的 220℃ —— 约束层:节点安全量程(当前有效写入区间 220~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,机筒温度区5SP·pb16k5ur,dw-dd6fcde6,restore,292,accept,accept,200,0,48,,,0.4,,ok
+biax,modbus-tcp,螺杆转速SP·pb16k5ur,dw-b42ea819,legal,48,accept,accept,200,0,47,48,0,0.5,true,ok
+biax,modbus-tcp,螺杆转速SP·pb16k5ur,dw-b42ea819,legal,60,accept,accept,200,0,48,60,0,0.5,true,ok
+biax,modbus-tcp,螺杆转速SP·pb16k5ur,dw-b42ea819,legal,72,accept,accept,200,0,47,72,0,0.5,true,ok
+biax,modbus-tcp,螺杆转速SP·pb16k5ur,dw-b42ea819,boundary,100,accept,accept,200,0,47,100,0,0.5,true,ok
+biax,modbus-tcp,螺杆转速SP·pb16k5ur,dw-b42ea819,structural,16,reject,reject,400,NODE_RANGE_EXCEEDED,2,,,0.5,,设定值 16rpm 低于下限 节点工艺安全量程 的 20rpm —— 约束层:节点安全量程(当前有效写入区间 20~100rpm;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,螺杆转速SP·pb16k5ur,dw-b42ea819,structural,104,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.5,,设定值 104rpm 超出上限 节点工艺安全量程 的 100rpm —— 约束层:节点安全量程(当前有效写入区间 20~100rpm;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,螺杆转速SP·pb16k5ur,dw-b42ea819,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.5,,设定值 1000000rpm 超出上限 节点工艺安全量程 的 100rpm —— 约束层:节点安全量程(当前有效写入区间 20~100rpm;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,螺杆转速SP·pb16k5ur,dw-b42ea819,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,24,,,0.5,,设定值 -50rpm 低于下限 节点工艺安全量程 的 20rpm —— 约束层:节点安全量程(当前有效写入区间 20~100rpm;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,螺杆转速SP·pb16k5ur,dw-b42ea819,restore,58,accept,accept,200,0,50,,,0.5,,ok
+biax,modbus-rtu,计量泵转速SP·pb16k5ur,dw-a6d3f067,legal,30.8,accept,accept,200,0,23,30.799999237060547,0,0.225,true,ok
+biax,modbus-rtu,计量泵转速SP·pb16k5ur,dw-a6d3f067,legal,37.5,accept,accept,200,0,20,37.5,0,0.225,true,ok
+biax,modbus-rtu,计量泵转速SP·pb16k5ur,dw-a6d3f067,legal,44.3,accept,accept,200,0,21,44.29999923706055,0,0.225,true,ok
+biax,modbus-rtu,计量泵转速SP·pb16k5ur,dw-a6d3f067,boundary,60,accept,accept,200,0,21,60,0,0.225,true,ok
+biax,modbus-rtu,计量泵转速SP·pb16k5ur,dw-a6d3f067,structural,12.8,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.225,,设定值 12.8rpm 低于下限 节点工艺安全量程 的 15rpm —— 约束层:节点安全量程(当前有效写入区间 15~60rpm;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-rtu,计量泵转速SP·pb16k5ur,dw-a6d3f067,structural,62.3,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.225,,设定值 62.3rpm 超出上限 节点工艺安全量程 的 60rpm —— 约束层:节点安全量程(当前有效写入区间 15~60rpm;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-rtu,计量泵转速SP·pb16k5ur,dw-a6d3f067,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.225,,设定值 1000000rpm 超出上限 节点工艺安全量程 的 60rpm —— 约束层:节点安全量程(当前有效写入区间 15~60rpm;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-rtu,计量泵转速SP·pb16k5ur,dw-a6d3f067,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.225,,设定值 -50rpm 低于下限 节点工艺安全量程 的 15rpm —— 约束层:节点安全量程(当前有效写入区间 15~60rpm;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-rtu,计量泵转速SP·pb16k5ur,dw-a6d3f067,restore,32,accept,accept,200,0,20,,,0.225,,ok
+biax,modbus-tcp,模唇温度SP·pb16k5ur,dw-5db75038,legal,267.5,accept,accept,200,0,48,267.5,0,0.25,true,ok
+biax,modbus-tcp,模唇温度SP·pb16k5ur,dw-5db75038,legal,275,accept,accept,200,0,37,275,0,0.25,true,ok
+biax,modbus-tcp,模唇温度SP·pb16k5ur,dw-5db75038,legal,282.5,accept,accept,200,0,48,282.5,0,0.25,true,ok
+biax,modbus-tcp,模唇温度SP·pb16k5ur,dw-5db75038,boundary,300,accept,accept,200,0,33,300,0,0.25,true,ok
+biax,modbus-tcp,模唇温度SP·pb16k5ur,dw-5db75038,structural,247.5,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.25,,设定值 247.5℃ 低于下限 节点工艺安全量程 的 250℃ —— 约束层:节点安全量程(当前有效写入区间 250~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,模唇温度SP·pb16k5ur,dw-5db75038,structural,302.5,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.25,,设定值 302.5℃ 超出上限 节点工艺安全量程 的 300℃ —— 约束层:节点安全量程(当前有效写入区间 250~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,模唇温度SP·pb16k5ur,dw-5db75038,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.25,,设定值 1000000℃ 超出上限 节点工艺安全量程 的 300℃ —— 约束层:节点安全量程(当前有效写入区间 250~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,模唇温度SP·pb16k5ur,dw-5db75038,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.25,,设定值 -50℃ 低于下限 节点工艺安全量程 的 250℃ —— 约束层:节点安全量程(当前有效写入区间 250~300℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,模唇温度SP·pb16k5ur,dw-5db75038,restore,285,accept,accept,200,0,48,,,0.25,,ok
+biax,modbus-tcp,急冷辊温度SP·pb16k5ur,dw-829132fe,legal,27.5,accept,accept,200,0,47,27.5,0,0.25,true,ok
+biax,modbus-tcp,急冷辊温度SP·pb16k5ur,dw-829132fe,legal,35,accept,accept,200,0,48,35,0,0.25,true,ok
+biax,modbus-tcp,急冷辊温度SP·pb16k5ur,dw-829132fe,legal,42.5,accept,accept,200,0,49,42.5,0,0.25,true,ok
+biax,modbus-tcp,急冷辊温度SP·pb16k5ur,dw-829132fe,boundary,60,accept,accept,200,0,48,60,0,0.25,true,ok
+biax,modbus-tcp,急冷辊温度SP·pb16k5ur,dw-829132fe,structural,7.5,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.25,,设定值 7.5℃ 低于下限 节点工艺安全量程 的 10℃ —— 约束层:节点安全量程(当前有效写入区间 10~60℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,急冷辊温度SP·pb16k5ur,dw-829132fe,structural,62.5,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.25,,设定值 62.5℃ 超出上限 节点工艺安全量程 的 60℃ —— 约束层:节点安全量程(当前有效写入区间 10~60℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,急冷辊温度SP·pb16k5ur,dw-829132fe,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.25,,设定值 1000000℃ 超出上限 节点工艺安全量程 的 60℃ —— 约束层:节点安全量程(当前有效写入区间 10~60℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,急冷辊温度SP·pb16k5ur,dw-829132fe,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.25,,设定值 -50℃ 低于下限 节点工艺安全量程 的 10℃ —— 约束层:节点安全量程(当前有效写入区间 10~60℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,急冷辊温度SP·pb16k5ur,dw-829132fe,restore,28,accept,accept,200,0,48,,,0.25,,ok
+biax,modbus-tcp,铸片辊速度SP·pb16k5ur,dw-f3983f79,legal,27.5,accept,accept,200,0,48,27.5,0,0.25,true,ok
+biax,modbus-tcp,铸片辊速度SP·pb16k5ur,dw-f3983f79,legal,35,accept,accept,200,0,48,35,0,0.25,true,ok
+biax,modbus-tcp,铸片辊速度SP·pb16k5ur,dw-f3983f79,legal,42.5,accept,accept,200,0,48,42.5,0,0.25,true,ok
+biax,modbus-tcp,铸片辊速度SP·pb16k5ur,dw-f3983f79,boundary,60,accept,accept,200,0,59,60,0,0.25,true,ok
+biax,modbus-tcp,铸片辊速度SP·pb16k5ur,dw-f3983f79,structural,7.5,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.25,,设定值 7.5m/min 低于下限 节点工艺安全量程 的 10m/min —— 约束层:节点安全量程(当前有效写入区间 10~60m/min;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,铸片辊速度SP·pb16k5ur,dw-f3983f79,structural,62.5,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.25,,设定值 62.5m/min 超出上限 节点工艺安全量程 的 60m/min —— 约束层:节点安全量程(当前有效写入区间 10~60m/min;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,铸片辊速度SP·pb16k5ur,dw-f3983f79,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.25,,设定值 1000000m/min 超出上限 节点工艺安全量程 的 60m/min —— 约束层:节点安全量程(当前有效写入区间 10~60m/min;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,铸片辊速度SP·pb16k5ur,dw-f3983f79,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.25,,设定值 -50m/min 低于下限 节点工艺安全量程 的 10m/min —— 约束层:节点安全量程(当前有效写入区间 10~60m/min;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,铸片辊速度SP·pb16k5ur,dw-f3983f79,restore,32,accept,accept,200,0,32,,,0.25,,ok
+biax,modbus-tcp,静电吸附电压SP·pb16k5ur,dw-ebc47cf4,legal,6.8,accept,accept,200,0,47,6.800000190734863,0,0.05,true,ok
+biax,modbus-tcp,静电吸附电压SP·pb16k5ur,dw-ebc47cf4,legal,8,accept,accept,200,0,48,8,0,0.05,true,ok
+biax,modbus-tcp,静电吸附电压SP·pb16k5ur,dw-ebc47cf4,legal,9.2,accept,accept,200,0,48,9.199999809265137,0,0.05,true,ok
+biax,modbus-tcp,静电吸附电压SP·pb16k5ur,dw-ebc47cf4,boundary,12,accept,accept,200,0,48,12,0,0.05,true,ok
+biax,modbus-tcp,静电吸附电压SP·pb16k5ur,dw-ebc47cf4,structural,3.6,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.05,,设定值 3.6kV 低于下限 节点工艺安全量程 的 4kV —— 约束层:节点安全量程(当前有效写入区间 4~12kV;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,静电吸附电压SP·pb16k5ur,dw-ebc47cf4,structural,12.4,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.05,,设定值 12.4kV 超出上限 节点工艺安全量程 的 12kV —— 约束层:节点安全量程(当前有效写入区间 4~12kV;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,静电吸附电压SP·pb16k5ur,dw-ebc47cf4,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.05,,设定值 1000000kV 超出上限 节点工艺安全量程 的 12kV —— 约束层:节点安全量程(当前有效写入区间 4~12kV;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,静电吸附电压SP·pb16k5ur,dw-ebc47cf4,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.05,,设定值 -50kV 低于下限 节点工艺安全量程 的 4kV —— 约束层:节点安全量程(当前有效写入区间 4~12kV;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,静电吸附电压SP·pb16k5ur,dw-ebc47cf4,restore,7,accept,accept,200,0,37,,,0.05,,ok
+biax,modbus-tcp,预热辊1温度SP·pb16k5ur,dw-fdd6becc,legal,94.5,accept,accept,200,0,59,94.5,0,0.35,true,ok
+biax,modbus-tcp,预热辊1温度SP·pb16k5ur,dw-fdd6becc,legal,105,accept,accept,200,0,48,105,0,0.35,true,ok
+biax,modbus-tcp,预热辊1温度SP·pb16k5ur,dw-fdd6becc,legal,115.5,accept,accept,200,0,51,115.5,0,0.35,true,ok
+biax,modbus-tcp,预热辊1温度SP·pb16k5ur,dw-fdd6becc,boundary,140,accept,accept,200,0,48,140,0,0.35,true,ok
+biax,modbus-tcp,预热辊1温度SP·pb16k5ur,dw-fdd6becc,structural,66.5,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.35,,设定值 66.5℃ 低于下限 节点工艺安全量程 的 70℃ —— 约束层:节点安全量程(当前有效写入区间 70~140℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,预热辊1温度SP·pb16k5ur,dw-fdd6becc,structural,143.5,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.35,,设定值 143.5℃ 超出上限 节点工艺安全量程 的 140℃ —— 约束层:节点安全量程(当前有效写入区间 70~140℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,预热辊1温度SP·pb16k5ur,dw-fdd6becc,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.35,,设定值 1000000℃ 超出上限 节点工艺安全量程 的 140℃ —— 约束层:节点安全量程(当前有效写入区间 70~140℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,预热辊1温度SP·pb16k5ur,dw-fdd6becc,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.35,,设定值 -50℃ 低于下限 节点工艺安全量程 的 70℃ —— 约束层:节点安全量程(当前有效写入区间 70~140℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,预热辊1温度SP·pb16k5ur,dw-fdd6becc,restore,95,accept,accept,200,0,49,,,0.35,,ok
+biax,modbus-tcp,预热辊2温度SP·pb16k5ur,dw-ff21c1d6,legal,94.5,accept,accept,200,0,48,94.5,0,0.35,true,ok
+biax,modbus-tcp,预热辊2温度SP·pb16k5ur,dw-ff21c1d6,legal,105,accept,accept,200,0,47,105,0,0.35,true,ok
+biax,modbus-tcp,预热辊2温度SP·pb16k5ur,dw-ff21c1d6,legal,115.5,accept,accept,200,0,47,115.5,0,0.35,true,ok
+biax,modbus-tcp,预热辊2温度SP·pb16k5ur,dw-ff21c1d6,boundary,140,accept,accept,200,0,47,140,0,0.35,true,ok
+biax,modbus-tcp,预热辊2温度SP·pb16k5ur,dw-ff21c1d6,structural,66.5,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.35,,设定值 66.5℃ 低于下限 节点工艺安全量程 的 70℃ —— 约束层:节点安全量程(当前有效写入区间 70~140℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,预热辊2温度SP·pb16k5ur,dw-ff21c1d6,structural,143.5,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.35,,设定值 143.5℃ 超出上限 节点工艺安全量程 的 140℃ —— 约束层:节点安全量程(当前有效写入区间 70~140℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,预热辊2温度SP·pb16k5ur,dw-ff21c1d6,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.35,,设定值 1000000℃ 超出上限 节点工艺安全量程 的 140℃ —— 约束层:节点安全量程(当前有效写入区间 70~140℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,预热辊2温度SP·pb16k5ur,dw-ff21c1d6,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.35,,设定值 -50℃ 低于下限 节点工艺安全量程 的 70℃ —— 约束层:节点安全量程(当前有效写入区间 70~140℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,预热辊2温度SP·pb16k5ur,dw-ff21c1d6,restore,100,accept,accept,200,0,48,,,0.35,,ok
+biax,modbus-tcp,预热辊3温度SP·pb16k5ur,dw-9c37b935,legal,94.5,accept,accept,200,0,47,94.5,0,0.35,true,ok
+biax,modbus-tcp,预热辊3温度SP·pb16k5ur,dw-9c37b935,legal,105,accept,accept,200,0,48,105,0,0.35,true,ok
+biax,modbus-tcp,预热辊3温度SP·pb16k5ur,dw-9c37b935,legal,115.5,accept,accept,200,0,35,115.5,0,0.35,true,ok
+biax,modbus-tcp,预热辊3温度SP·pb16k5ur,dw-9c37b935,boundary,140,accept,accept,200,0,47,140,0,0.35,true,ok
+biax,modbus-tcp,预热辊3温度SP·pb16k5ur,dw-9c37b935,structural,66.5,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.35,,设定值 66.5℃ 低于下限 节点工艺安全量程 的 70℃ —— 约束层:节点安全量程(当前有效写入区间 70~140℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,预热辊3温度SP·pb16k5ur,dw-9c37b935,structural,143.5,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.35,,设定值 143.5℃ 超出上限 节点工艺安全量程 的 140℃ —— 约束层:节点安全量程(当前有效写入区间 70~140℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,预热辊3温度SP·pb16k5ur,dw-9c37b935,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.35,,设定值 1000000℃ 超出上限 节点工艺安全量程 的 140℃ —— 约束层:节点安全量程(当前有效写入区间 70~140℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,预热辊3温度SP·pb16k5ur,dw-9c37b935,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.35,,设定值 -50℃ 低于下限 节点工艺安全量程 的 70℃ —— 约束层:节点安全量程(当前有效写入区间 70~140℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,预热辊3温度SP·pb16k5ur,dw-9c37b935,restore,105,accept,accept,200,0,48,,,0.35,,ok
+biax,modbus-tcp,慢辊线速度SP·pb16k5ur,dw-f21766c8,legal,34.5,accept,accept,200,0,23,34.5,0,0.35,true,ok
+biax,modbus-tcp,慢辊线速度SP·pb16k5ur,dw-f21766c8,legal,45,accept,accept,200,0,47,45,0,0.35,true,ok
+biax,modbus-tcp,慢辊线速度SP·pb16k5ur,dw-f21766c8,legal,55.5,accept,accept,200,0,47,55.5,0,0.35,true,ok
+biax,modbus-tcp,慢辊线速度SP·pb16k5ur,dw-f21766c8,boundary,80,accept,accept,200,0,47,80,0,0.35,true,ok
+biax,modbus-tcp,慢辊线速度SP·pb16k5ur,dw-f21766c8,structural,6.5,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.35,,设定值 6.5m/min 低于下限 节点工艺安全量程 的 10m/min —— 约束层:节点安全量程(当前有效写入区间 10~80m/min;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,慢辊线速度SP·pb16k5ur,dw-f21766c8,structural,83.5,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.35,,设定值 83.5m/min 超出上限 节点工艺安全量程 的 80m/min —— 约束层:节点安全量程(当前有效写入区间 10~80m/min;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,慢辊线速度SP·pb16k5ur,dw-f21766c8,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.35,,设定值 1000000m/min 超出上限 节点工艺安全量程 的 80m/min —— 约束层:节点安全量程(当前有效写入区间 10~80m/min;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,慢辊线速度SP·pb16k5ur,dw-f21766c8,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.35,,设定值 -50m/min 低于下限 节点工艺安全量程 的 10m/min —— 约束层:节点安全量程(当前有效写入区间 10~80m/min;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,慢辊线速度SP·pb16k5ur,dw-f21766c8,restore,42,accept,accept,200,0,47,,,0.35,,ok
+biax,modbus-tcp,快辊线速度SP·pb16k5ur,dw-ff37defc,legal,110.5,accept,accept,200,0,47,110.5,0,1.15,true,ok
+biax,modbus-tcp,快辊线速度SP·pb16k5ur,dw-ff37defc,legal,145,accept,accept,200,0,48,145,0,1.15,true,ok
+biax,modbus-tcp,快辊线速度SP·pb16k5ur,dw-ff37defc,legal,179.5,accept,accept,200,0,48,179.5,0,1.15,true,ok
+biax,modbus-tcp,快辊线速度SP·pb16k5ur,dw-ff37defc,boundary,260,accept,accept,200,0,48,260,0,1.15,true,ok
+biax,modbus-tcp,快辊线速度SP·pb16k5ur,dw-ff37defc,structural,18.5,reject,reject,400,NODE_RANGE_EXCEEDED,21,,,1.15,,设定值 18.5m/min 低于下限 节点工艺安全量程 的 30m/min —— 约束层:节点安全量程(当前有效写入区间 30~260m/min;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,快辊线速度SP·pb16k5ur,dw-ff37defc,structural,271.5,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,1.15,,设定值 271.5m/min 超出上限 节点工艺安全量程 的 260m/min —— 约束层:节点安全量程(当前有效写入区间 30~260m/min;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,快辊线速度SP·pb16k5ur,dw-ff37defc,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,1.15,,设定值 1000000m/min 超出上限 节点工艺安全量程 的 260m/min —— 约束层:节点安全量程(当前有效写入区间 30~260m/min;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,快辊线速度SP·pb16k5ur,dw-ff37defc,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,1.15,,设定值 -50m/min 低于下限 节点工艺安全量程 的 30m/min —— 约束层:节点安全量程(当前有效写入区间 30~260m/min;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,快辊线速度SP·pb16k5ur,dw-ff37defc,restore,118,accept,accept,200,0,54,,,1.15,,ok
+biax,modbus-tcp,纵拉退火辊SP·pb16k5ur,dw-2a593315,legal,118,accept,accept,200,0,48,118,0,0.4,true,ok
+biax,modbus-tcp,纵拉退火辊SP·pb16k5ur,dw-2a593315,legal,130,accept,accept,200,0,48,130,0,0.4,true,ok
+biax,modbus-tcp,纵拉退火辊SP·pb16k5ur,dw-2a593315,legal,142,accept,accept,200,0,48,142,0,0.4,true,ok
+biax,modbus-tcp,纵拉退火辊SP·pb16k5ur,dw-2a593315,boundary,170,accept,accept,200,0,48,170,0,0.4,true,ok
+biax,modbus-tcp,纵拉退火辊SP·pb16k5ur,dw-2a593315,structural,86,reject,reject,400,NODE_RANGE_EXCEEDED,21,,,0.4,,设定值 86℃ 低于下限 节点工艺安全量程 的 90℃ —— 约束层:节点安全量程(当前有效写入区间 90~170℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,纵拉退火辊SP·pb16k5ur,dw-2a593315,structural,174,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.4,,设定值 174℃ 超出上限 节点工艺安全量程 的 170℃ —— 约束层:节点安全量程(当前有效写入区间 90~170℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,纵拉退火辊SP·pb16k5ur,dw-2a593315,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.4,,设定值 1000000℃ 超出上限 节点工艺安全量程 的 170℃ —— 约束层:节点安全量程(当前有效写入区间 90~170℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,纵拉退火辊SP·pb16k5ur,dw-2a593315,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.4,,设定值 -50℃ 低于下限 节点工艺安全量程 的 90℃ —— 约束层:节点安全量程(当前有效写入区间 90~170℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,纵拉退火辊SP·pb16k5ur,dw-2a593315,restore,135,accept,accept,200,0,48,,,0.4,,ok
+biax,opcua,TDO预热段SP·pb16k5ur,dw-76847746,legal,101,accept,accept,200,0,23,101,0,0.3,true,ok
+biax,opcua,TDO预热段SP·pb16k5ur,dw-76847746,legal,110,accept,accept,200,0,20,110,0,0.3,true,ok
+biax,opcua,TDO预热段SP·pb16k5ur,dw-76847746,legal,119,accept,accept,200,0,21,119,0,0.3,true,ok
+biax,opcua,TDO预热段SP·pb16k5ur,dw-76847746,boundary,140,accept,accept,200,0,21,140,0,0.3,true,ok
+biax,opcua,TDO预热段SP·pb16k5ur,dw-76847746,structural,77,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.3,,设定值 77℃ 低于下限 节点工艺安全量程 的 80℃ —— 约束层:节点安全量程(当前有效写入区间 80~140℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,opcua,TDO预热段SP·pb16k5ur,dw-76847746,structural,143,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.3,,设定值 143℃ 超出上限 节点工艺安全量程 的 140℃ —— 约束层:节点安全量程(当前有效写入区间 80~140℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,opcua,TDO预热段SP·pb16k5ur,dw-76847746,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.3,,设定值 1000000℃ 超出上限 节点工艺安全量程 的 140℃ —— 约束层:节点安全量程(当前有效写入区间 80~140℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,opcua,TDO预热段SP·pb16k5ur,dw-76847746,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.3,,设定值 -50℃ 低于下限 节点工艺安全量程 的 80℃ —— 约束层:节点安全量程(当前有效写入区间 80~140℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,opcua,TDO预热段SP·pb16k5ur,dw-76847746,restore,110,accept,accept,200,0,20,,,0.3,,ok
+biax,opcua,TDO拉伸段SP·pb16k5ur,dw-c0a4836c,legal,111,accept,accept,200,0,21,111,0,0.3,true,ok
+biax,opcua,TDO拉伸段SP·pb16k5ur,dw-c0a4836c,legal,120,accept,accept,200,0,23,120,0,0.3,true,ok
+biax,opcua,TDO拉伸段SP·pb16k5ur,dw-c0a4836c,legal,129,accept,accept,200,0,21,129,0,0.3,true,ok
+biax,opcua,TDO拉伸段SP·pb16k5ur,dw-c0a4836c,boundary,150,accept,accept,200,0,22,150,0,0.3,true,ok
+biax,opcua,TDO拉伸段SP·pb16k5ur,dw-c0a4836c,structural,87,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.3,,设定值 87℃ 低于下限 节点工艺安全量程 的 90℃ —— 约束层:节点安全量程(当前有效写入区间 90~150℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,opcua,TDO拉伸段SP·pb16k5ur,dw-c0a4836c,structural,153,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.3,,设定值 153℃ 超出上限 节点工艺安全量程 的 150℃ —— 约束层:节点安全量程(当前有效写入区间 90~150℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,opcua,TDO拉伸段SP·pb16k5ur,dw-c0a4836c,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.3,,设定值 1000000℃ 超出上限 节点工艺安全量程 的 150℃ —— 约束层:节点安全量程(当前有效写入区间 90~150℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,opcua,TDO拉伸段SP·pb16k5ur,dw-c0a4836c,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.3,,设定值 -50℃ 低于下限 节点工艺安全量程 的 90℃ —— 约束层:节点安全量程(当前有效写入区间 90~150℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,opcua,TDO拉伸段SP·pb16k5ur,dw-c0a4836c,restore,118,accept,accept,200,0,21,,,0.3,,ok
+biax,opcua,TDO定型段SP·pb16k5ur,dw-3a99d02c,legal,204.5,accept,accept,200,0,21,204.5,0,0.35,true,ok
+biax,opcua,TDO定型段SP·pb16k5ur,dw-3a99d02c,legal,215,accept,accept,200,0,21,215,0,0.35,true,ok
+biax,opcua,TDO定型段SP·pb16k5ur,dw-3a99d02c,legal,225.5,accept,accept,200,0,21,225.5,0,0.35,true,ok
+biax,opcua,TDO定型段SP·pb16k5ur,dw-3a99d02c,boundary,250,accept,accept,200,0,22,250,0,0.35,true,ok
+biax,opcua,TDO定型段SP·pb16k5ur,dw-3a99d02c,structural,176.5,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.35,,设定值 176.5℃ 低于下限 节点工艺安全量程 的 180℃ —— 约束层:节点安全量程(当前有效写入区间 180~250℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,opcua,TDO定型段SP·pb16k5ur,dw-3a99d02c,structural,253.5,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.35,,设定值 253.5℃ 超出上限 节点工艺安全量程 的 250℃ —— 约束层:节点安全量程(当前有效写入区间 180~250℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,opcua,TDO定型段SP·pb16k5ur,dw-3a99d02c,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.35,,设定值 1000000℃ 超出上限 节点工艺安全量程 的 250℃ —— 约束层:节点安全量程(当前有效写入区间 180~250℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,opcua,TDO定型段SP·pb16k5ur,dw-3a99d02c,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.35,,设定值 -50℃ 低于下限 节点工艺安全量程 的 180℃ —— 约束层:节点安全量程(当前有效写入区间 180~250℃;各层限界按安全规约取交集;越界写入已拒绝)
+biax,opcua,TDO定型段SP·pb16k5ur,dw-3a99d02c,restore,215,accept,accept,200,0,20,,,0.35,,ok
+biax,opcua,链夹速度SP·pb16k5ur,dw-04a811ad,legal,117,accept,accept,200,0,21,117,0,1.1,true,ok
+biax,opcua,链夹速度SP·pb16k5ur,dw-04a811ad,legal,150,accept,accept,200,0,16,150,0,1.1,true,ok
+biax,opcua,链夹速度SP·pb16k5ur,dw-04a811ad,legal,183,accept,accept,200,0,21,183,0,1.1,true,ok
+biax,opcua,链夹速度SP·pb16k5ur,dw-04a811ad,boundary,260,accept,accept,200,0,22,260,0,1.1,true,ok
+biax,opcua,链夹速度SP·pb16k5ur,dw-04a811ad,structural,29,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,1.1,,设定值 29m/min 低于下限 节点工艺安全量程 的 40m/min —— 约束层:节点安全量程(当前有效写入区间 40~260m/min;各层限界按安全规约取交集;越界写入已拒绝)
+biax,opcua,链夹速度SP·pb16k5ur,dw-04a811ad,structural,271,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,1.1,,设定值 271m/min 超出上限 节点工艺安全量程 的 260m/min —— 约束层:节点安全量程(当前有效写入区间 40~260m/min;各层限界按安全规约取交集;越界写入已拒绝)
+biax,opcua,链夹速度SP·pb16k5ur,dw-04a811ad,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,23,,,1.1,,设定值 1000000m/min 超出上限 节点工艺安全量程 的 260m/min —— 约束层:节点安全量程(当前有效写入区间 40~260m/min;各层限界按安全规约取交集;越界写入已拒绝)
+biax,opcua,链夹速度SP·pb16k5ur,dw-04a811ad,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,1.1,,设定值 -50m/min 低于下限 节点工艺安全量程 的 40m/min —— 约束层:节点安全量程(当前有效写入区间 40~260m/min;各层限界按安全规约取交集;越界写入已拒绝)
+biax,opcua,链夹速度SP·pb16k5ur,dw-04a811ad,restore,130,accept,accept,200,0,22,,,1.1,,ok
+biax,opcua,出口轨宽SP·pb16k5ur,dw-908f18b7,legal,2640,accept,accept,200,0,25,2640,0,12,true,ok
+biax,opcua,出口轨宽SP·pb16k5ur,dw-908f18b7,legal,3000,accept,accept,200,0,20,3000,0,12,true,ok
+biax,opcua,出口轨宽SP·pb16k5ur,dw-908f18b7,legal,3360,accept,accept,200,0,21,3360,0,12,true,ok
+biax,opcua,出口轨宽SP·pb16k5ur,dw-908f18b7,boundary,4200,accept,accept,200,0,20,4200,0,12,true,ok
+biax,opcua,出口轨宽SP·pb16k5ur,dw-908f18b7,structural,1680,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,12,,设定值 1680mm 低于下限 节点工艺安全量程 的 1800mm —— 约束层:节点安全量程(当前有效写入区间 1800~4200mm;各层限界按安全规约取交集;越界写入已拒绝)
+biax,opcua,出口轨宽SP·pb16k5ur,dw-908f18b7,structural,4320,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,12,,设定值 4320mm 超出上限 节点工艺安全量程 的 4200mm —— 约束层:节点安全量程(当前有效写入区间 1800~4200mm;各层限界按安全规约取交集;越界写入已拒绝)
+biax,opcua,出口轨宽SP·pb16k5ur,dw-908f18b7,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,21,,,12,,设定值 1000000mm 超出上限 节点工艺安全量程 的 4200mm —— 约束层:节点安全量程(当前有效写入区间 1800~4200mm;各层限界按安全规约取交集;越界写入已拒绝)
+biax,opcua,出口轨宽SP·pb16k5ur,dw-908f18b7,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,12,,设定值 -50mm 低于下限 节点工艺安全量程 的 1800mm —— 约束层:节点安全量程(当前有效写入区间 1800~4200mm;各层限界按安全规约取交集;越界写入已拒绝)
+biax,opcua,出口轨宽SP·pb16k5ur,dw-908f18b7,restore,3000,accept,accept,200,0,21,,,12,,ok
+biax,http,coronaPower·pb16k5ur,dw-a2e5693c,legal,3.1,accept,accept,200,0,52,,,0.05,,ok
+biax,http,coronaPower·pb16k5ur,dw-a2e5693c,legal,4.3,accept,accept,200,0,22,,,0.05,,ok
+biax,http,coronaPower·pb16k5ur,dw-a2e5693c,legal,5.4,accept,accept,200,0,34,,,0.05,,ok
+biax,http,coronaPower·pb16k5ur,dw-a2e5693c,boundary,8,accept,accept,200,0,35,,,0.05,,ok
+biax,http,coronaPower·pb16k5ur,dw-a2e5693c,structural,0.1,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.05,,设定值 0.1kW 低于下限 节点工艺安全量程 的 0.5kW —— 约束层:节点安全量程(当前有效写入区间 0.5~8kW;各层限界按安全规约取交集;越界写入已拒绝)
+biax,http,coronaPower·pb16k5ur,dw-a2e5693c,structural,8.4,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.05,,设定值 8.4kW 超出上限 节点工艺安全量程 的 8kW —— 约束层:节点安全量程(当前有效写入区间 0.5~8kW;各层限界按安全规约取交集;越界写入已拒绝)
+biax,http,coronaPower·pb16k5ur,dw-a2e5693c,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,20,,,0.05,,设定值 1000000kW 超出上限 节点工艺安全量程 的 8kW —— 约束层:节点安全量程(当前有效写入区间 0.5~8kW;各层限界按安全规约取交集;越界写入已拒绝)
+biax,http,coronaPower·pb16k5ur,dw-a2e5693c,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.05,,设定值 -50kW 低于下限 节点工艺安全量程 的 0.5kW —— 约束层:节点安全量程(当前有效写入区间 0.5~8kW;各层限界按安全规约取交集;越界写入已拒绝)
+biax,http,coronaPower·pb16k5ur,dw-a2e5693c,restore,3.5,accept,accept,200,0,35,,,0.05,,ok
+biax,modbus-tcp,收卷张力SP·pb16k5ur,dw-7ca97f59,legal,82.5,accept,accept,200,0,48,82.5,0,0.75,true,ok
+biax,modbus-tcp,收卷张力SP·pb16k5ur,dw-7ca97f59,legal,105,accept,accept,200,0,48,105,0,0.75,true,ok
+biax,modbus-tcp,收卷张力SP·pb16k5ur,dw-7ca97f59,legal,127.5,accept,accept,200,0,48,127.5,0,0.75,true,ok
+biax,modbus-tcp,收卷张力SP·pb16k5ur,dw-7ca97f59,boundary,180,accept,accept,200,0,47,180,0,0.75,true,ok
+biax,modbus-tcp,收卷张力SP·pb16k5ur,dw-7ca97f59,structural,22.5,reject,reject,400,NODE_RANGE_EXCEEDED,22,,,0.75,,设定值 22.5N 低于下限 节点工艺安全量程 的 30N —— 约束层:节点安全量程(当前有效写入区间 30~180N;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,收卷张力SP·pb16k5ur,dw-7ca97f59,structural,187.5,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.75,,设定值 187.5N 超出上限 节点工艺安全量程 的 180N —— 约束层:节点安全量程(当前有效写入区间 30~180N;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,收卷张力SP·pb16k5ur,dw-7ca97f59,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.75,,设定值 1000000N 超出上限 节点工艺安全量程 的 180N —— 约束层:节点安全量程(当前有效写入区间 30~180N;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,收卷张力SP·pb16k5ur,dw-7ca97f59,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.75,,设定值 -50N 低于下限 节点工艺安全量程 的 30N —— 约束层:节点安全量程(当前有效写入区间 30~180N;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,收卷张力SP·pb16k5ur,dw-7ca97f59,restore,88,accept,accept,200,0,47,,,0.75,,ok
+biax,modbus-tcp,张力锥度SP·pb16k5ur,dw-c5aa182c,legal,28,accept,accept,200,0,48,28,0,0.5,true,ok
+biax,modbus-tcp,张力锥度SP·pb16k5ur,dw-c5aa182c,legal,35,accept,accept,200,0,27,35,0,0.5,true,ok
+biax,modbus-tcp,张力锥度SP·pb16k5ur,dw-c5aa182c,legal,43,accept,accept,200,0,47,43,0,0.5,true,ok
+biax,modbus-tcp,张力锥度SP·pb16k5ur,dw-c5aa182c,boundary,60,accept,accept,200,0,48,60,0,0.5,true,ok
+biax,modbus-tcp,张力锥度SP·pb16k5ur,dw-c5aa182c,structural,8,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.5,,设定值 8% 低于下限 节点工艺安全量程 的 10% —— 约束层:节点安全量程(当前有效写入区间 10~60%;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,张力锥度SP·pb16k5ur,dw-c5aa182c,structural,63,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.5,,设定值 63% 超出上限 节点工艺安全量程 的 60% —— 约束层:节点安全量程(当前有效写入区间 10~60%;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,张力锥度SP·pb16k5ur,dw-c5aa182c,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,16,,,0.5,,设定值 1000000% 超出上限 节点工艺安全量程 的 60% —— 约束层:节点安全量程(当前有效写入区间 10~60%;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,张力锥度SP·pb16k5ur,dw-c5aa182c,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.5,,设定值 -50% 低于下限 节点工艺安全量程 的 10% —— 约束层:节点安全量程(当前有效写入区间 10~60%;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,张力锥度SP·pb16k5ur,dw-c5aa182c,restore,28,accept,accept,200,0,32,,,0.5,,ok
+biax,modbus-tcp,接触辊压力SP·pb16k5ur,dw-db2b759b,legal,1.59,accept,accept,200,0,47,1.590000033378601,0,0.0185,true,ok
+biax,modbus-tcp,接触辊压力SP·pb16k5ur,dw-db2b759b,legal,2.15,accept,accept,200,0,50,2.1500000953674316,0,0.0185,true,ok
+biax,modbus-tcp,接触辊压力SP·pb16k5ur,dw-db2b759b,legal,2.71,accept,accept,200,0,48,2.7100000381469727,0,0.0185,true,ok
+biax,modbus-tcp,接触辊压力SP·pb16k5ur,dw-db2b759b,boundary,4,accept,accept,200,0,38,4,0,0.0185,true,ok
+biax,modbus-tcp,接触辊压力SP·pb16k5ur,dw-db2b759b,structural,0.11,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.0185,,设定值 0.11bar 低于下限 节点工艺安全量程 的 0.3bar —— 约束层:节点安全量程(当前有效写入区间 0.3~4bar;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,接触辊压力SP·pb16k5ur,dw-db2b759b,structural,4.18,reject,reject,400,NODE_RANGE_EXCEEDED,18,,,0.0185,,设定值 4.18bar 超出上限 节点工艺安全量程 的 4bar —— 约束层:节点安全量程(当前有效写入区间 0.3~4bar;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,接触辊压力SP·pb16k5ur,dw-db2b759b,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.0185,,设定值 1000000bar 超出上限 节点工艺安全量程 的 4bar —— 约束层:节点安全量程(当前有效写入区间 0.3~4bar;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,接触辊压力SP·pb16k5ur,dw-db2b759b,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,0.0185,,设定值 -50bar 低于下限 节点工艺安全量程 的 0.3bar —— 约束层:节点安全量程(当前有效写入区间 0.3~4bar;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,接触辊压力SP·pb16k5ur,dw-db2b759b,restore,1.6,accept,accept,200,0,48,,,0.0185,,ok
+biax,modbus-tcp,卷取速度上限SP·pb16k5ur,dw-449594e1,legal,151,accept,accept,200,0,48,151,0,1.3,true,ok
+biax,modbus-tcp,卷取速度上限SP·pb16k5ur,dw-449594e1,legal,190,accept,accept,200,0,48,190,0,1.3,true,ok
+biax,modbus-tcp,卷取速度上限SP·pb16k5ur,dw-449594e1,legal,229,accept,accept,200,0,47,229,0,1.3,true,ok
+biax,modbus-tcp,卷取速度上限SP·pb16k5ur,dw-449594e1,boundary,320,accept,accept,200,0,47,320,0,1.3,true,ok
+biax,modbus-tcp,卷取速度上限SP·pb16k5ur,dw-449594e1,structural,47,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,1.3,,设定值 47m/min 低于下限 节点工艺安全量程 的 60m/min —— 约束层:节点安全量程(当前有效写入区间 60~320m/min;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,卷取速度上限SP·pb16k5ur,dw-449594e1,structural,333,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,1.3,,设定值 333m/min 超出上限 节点工艺安全量程 的 320m/min —— 约束层:节点安全量程(当前有效写入区间 60~320m/min;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,卷取速度上限SP·pb16k5ur,dw-449594e1,structural,1000000,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,1.3,,设定值 1000000m/min 超出上限 节点工艺安全量程 的 320m/min —— 约束层:节点安全量程(当前有效写入区间 60~320m/min;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,卷取速度上限SP·pb16k5ur,dw-449594e1,structural,-50,reject,reject,400,NODE_RANGE_EXCEEDED,17,,,1.3,,设定值 -50m/min 低于下限 节点工艺安全量程 的 60m/min —— 约束层:节点安全量程(当前有效写入区间 60~320m/min;各层限界按安全规约取交集;越界写入已拒绝)
+biax,modbus-tcp,卷取速度上限SP·pb16k5ur,dw-449594e1,restore,160,accept,accept,200,0,47,,,1.3,,ok

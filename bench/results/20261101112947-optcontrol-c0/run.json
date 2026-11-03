@@ -1,0 +1,83 @@
+{
+  "runId": "20261101112947-optcontrol-c0",
+  "at": "2026-11-01T11:32:52.455Z",
+  "gitCommit": "da627d21",
+  "seed": 46,
+  "base": "http://127.0.0.1:3005",
+  "simBase": "http://127.0.0.1:4011",
+  "condition": "C0",
+  "durationS": 60,
+  "scenarios": [
+    "injection",
+    "wwtp",
+    "anneal"
+  ],
+  "rows": [
+    {
+      "condition": "C0",
+      "scene": "injection",
+      "seed": 46,
+      "attained": false,
+      "writes": 0,
+      "rounds": 0,
+      "pv": 31.206,
+      "target": 32.5,
+      "tol": 0.35,
+      "guards": {
+        "飞边率": 0.005,
+        "缩痕指数": 2.242
+      },
+      "errors": [],
+      "before": 31.234,
+      "pvOk": false,
+      "guardsOk": false,
+      "wallS": 60
+    },
+    {
+      "condition": "C0",
+      "scene": "wwtp",
+      "seed": 46,
+      "attained": false,
+      "writes": 0,
+      "rounds": 0,
+      "pv": 0.226,
+      "target": 3.4,
+      "tol": 0.6,
+      "guards": {
+        "出水COD": 359.68,
+        "出水氨氮": 34.472,
+        "出水总磷": 0.655,
+        "出水pH": 6.572,
+        "出水浊度": 4.47
+      },
+      "errors": [],
+      "before": 0.196,
+      "pvOk": false,
+      "guardsOk": false,
+      "wallS": 60
+    },
+    {
+      "condition": "C0",
+      "scene": "anneal",
+      "seed": 46,
+      "attained": false,
+      "writes": 0,
+      "rounds": 0,
+      "pv": 134.36,
+      "target": 95,
+      "tol": 6,
+      "guards": {
+        "抗拉强度": 310.44,
+        "表面缺陷率": 0.144
+      },
+      "errors": [],
+      "before": 134.22,
+      "pvOk": false,
+      "guardsOk": true,
+      "wallS": 60
+    }
+  ],
+  "errors": [],
+  "harnessHash": "c1a7be7f279732fa",
+  "reproCmd": "node bench/experiment/optimization-control.mjs --condition C0 --seed 46 --scenarios injection,wwtp,anneal"
+}

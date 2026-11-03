@@ -1,0 +1,109 @@
+{
+  "runId": "20261101121221-scenario-probes",
+  "at": "2026-11-01T12:14:11.583Z",
+  "gitCommit": "da627d21",
+  "seed": 42,
+  "base": "http://127.0.0.1:3005",
+  "simBase": "http://127.0.0.1:4011",
+  "scenarios": [
+    "injection",
+    "wwtp",
+    "anneal",
+    "biax"
+  ],
+  "scenes": [
+    {
+      "scene": "injection",
+      "lineId": "ln-3856f218",
+      "blueprintDevices": 5,
+      "nodes": 11,
+      "legal": [
+        44,
+        44
+      ],
+      "structural": [
+        44,
+        44
+      ],
+      "readback": [
+        44,
+        44
+      ],
+      "lastLegalValue": 45
+    },
+    {
+      "scene": "wwtp",
+      "lineId": "ln-91d4cfd6",
+      "blueprintDevices": 5,
+      "nodes": 7,
+      "legal": [
+        28,
+        28
+      ],
+      "structural": [
+        28,
+        28
+      ],
+      "readback": [
+        28,
+        28
+      ],
+      "lastLegalValue": 1600
+    },
+    {
+      "scene": "anneal",
+      "lineId": "ln-56897b0d",
+      "blueprintDevices": 5,
+      "nodes": 7,
+      "legal": [
+        28,
+        28
+      ],
+      "structural": [
+        28,
+        28
+      ],
+      "readback": [
+        28,
+        28
+      ],
+      "lastLegalValue": 15
+    },
+    {
+      "scene": "biax",
+      "lineId": "ln-58c05fca",
+      "blueprintDevices": 9,
+      "nodes": 30,
+      "legal": [
+        120,
+        120
+      ],
+      "structural": [
+        119,
+        119
+      ],
+      "readback": [
+        116,
+        116
+      ],
+      "lastLegalValue": 320
+    }
+  ],
+  "totals": {
+    "legal": [
+      220,
+      220
+    ],
+    "structural": [
+      219,
+      219
+    ],
+    "readback": [
+      216,
+      216
+    ]
+  },
+  "pass": true,
+  "harnessHash": "a66769851fa03de5",
+  "reproCmd": "node bench/experiment/scenario-protocol-probes.mjs --scenarios injection,wwtp,anneal,biax --seed 42"
+}

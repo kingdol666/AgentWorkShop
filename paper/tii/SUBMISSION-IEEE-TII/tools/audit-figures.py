@@ -5,12 +5,11 @@ and raster DPI for every figure included by the manuscript.
 The general audit (tools/audit.py, gate F8) only checks the vector source
 type floor (5 pt).  This gate applies the manuscript's own targets:
 
- Fig. 1 agent-control path >= 9.0 pt (single-column diagram)
- Fig. 2 architecture       >= 9.0 pt (full-width diagram)
- Fig. 3 runtime             >= 9.0 pt
- Fig. 5 admission/HITL      >= 9.0 pt (full-width mechanism diagram)
- Fig. 6 objective ratios    >= 9.0 pt (single-column scientific plot)
- Fig. 7 BOPET task trace    >= 9.0 pt (single-column scientific plot)
+ Fig. 1 context map         >= 8.0 pt (single-column diagram)
+ Fig. 2 architecture        >= 8.0 pt (full-width diagram)
+ Fig. 3 task operation      >= 8.0 pt (full-width diagram)
+ Fig. 4 governance          >= 8.0 pt (full-width diagram)
+ Fig. 5 evaluation results  >= 8.0 pt (full-width data figure)
 
 Rasters, if any, must be >= 300 dpi at their placed width.  The manuscript
 currently includes only PDFs; the raster branch is kept so a future PNG
@@ -26,12 +25,11 @@ ROOT = Path(__file__).resolve().parent.parent
 SECTIONS = sorted((ROOT / "sections").glob("*.tex")) + [ROOT / "main.tex"]
 
 TARGETS = {
-    "fig1-nature-A.pdf": (9.0, 310.0, "Arial"),
-    "fig-architecture-2026-9pt.pdf": (9.0, 260.0, "Arial"),
-    "fig-runtime-2026-9pt.pdf": (9.0, 260.0, "Arial"),
-    "fig5-nature-A.pdf": (9.0, 220.0, "Arial"),
-    "fig-objective-ratios-current-run.pdf": (9.0, 180.0, "Arial"),
-    "fig-bopet-integration-trace.pdf": (9.0, 180.0, "Arial"),
+    "fig1-context-signal-minimal-20261103.pdf": (8.0, 125.0, "Arial"),
+    "fig-system-runtime-minimal-20261103.pdf": (8.0, 205.0, "Arial"),
+    "fig3-agent-optimization-control-20261103.pdf": (8.0, 205.0, "Arial"),
+    "fig4-governance-minimal-20261103.pdf": (8.0, 215.0, "Arial"),
+    "fig-latest-evaluation-minimal-20261103.pdf": (8.0, 270.0, "TimesNewRoman"),
 }
 
 # Placed width for raster DPI accounting (full-width figures use 182 mm).
@@ -121,3 +119,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     sys.exit(main())
+

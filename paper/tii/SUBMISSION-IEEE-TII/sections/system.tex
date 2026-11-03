@@ -1,10 +1,10 @@
 \section{System Design}
 \label{sec:design}
-The runtime has two entry paths to a shared set of named services. Task-mediated calls pass through the collaboration runtime and a registered Agent harness. Direct calls through the Representational State Transfer (REST) API or the standard input/output (stdio) transport for the Model Context Protocol (MCP) enter the shared dispatcher without creating a task turn. Both paths use the same scene configuration for production context, semantic-node mappings, protocol endpoints, objectives, and write limits.
+The runtime exposes named services through two entry paths. Task-mediated calls pass through the collaboration runtime and a registered Agent harness. Direct calls through the Representational State Transfer (REST) API or the standard input/output (stdio) transport for the Model Context Protocol (MCP) enter the shared dispatcher without creating a task turn. Both paths use the same scene configuration for production context, semantic-node mappings, protocol endpoints, objectives, and write limits.
 
 \begin{figure*}[!t]
 \centering
-\includegraphics[width=\textwidth]{resources/fig-system-runtime-merged-rev20261102.pdf}
+\includegraphics[width=\textwidth]{resources/fig-system-runtime-minimal-20261103.pdf}
 \caption{The system routes task-mediated and direct operation calls through shared dispatch and service handlers. Solid arrows show operation flow and configured field mappings; dashed connectors associate the scene configuration with the services that consume it. Named write operations use the shared write controller, while service-owned records keep approvals, command receipts, optional readbacks, and later observations distinct.}
 \label{fig:arch}
 \end{figure*}
@@ -16,15 +16,12 @@ provide a stable operation contract for registered harness adapters, and check
 current authority and process limits before each write. It must also distinguish
 command acceptance from later process observations. Scene configuration,
 registered adapters, shared dispatch, route handlers, and service-owned
-records enforce these boundaries. Existing named operations can use any
-registered driver that satisfies their interface; a new protocol still
-requires a driver adapter. Section~\ref{sec:eval} evaluates selected
+records enforce these boundaries. Section~\ref{sec:eval} evaluates selected
 configured simulator paths.
 
 At task start, the context builder assembles the active production tuple and
-relevant process summaries. This context informs a proposal but does not confer
-write authority. Every write resolves live state again, including direct calls
-at invocation.
+relevant process summaries. This context informs a proposal but does not grant
+write authority; each operation resolves live state again at invocation.
 
 \subsection{Layered Architecture}
 \label{sec:layers}
@@ -113,12 +110,10 @@ require it; explicit exemptions omit it. The binding predicate $B$ is included
 when the operation declares resource references. A declared no-reference
 operation omits $B$. Each included check must pass before
 handler selection. The policy predicate includes channel tool selection,
-profile, and duty-separation checks where configured. After these predicates
-pass, the selected route applies its guards, active-run checks, admission
-limits, and any required approval. If approval is required, the handler
-applies the post-approval checks defined for that route before device
-dispatch. Recipe operations revalidate the active context; the single-node
-path rechecks binding, channel grant, and current write guards.
+profile, and duty-separation checks where configured. After these predicates pass, the selected route applies its operational
+guards and any required approval. The checks performed after approval depend
+on the route; Section~\ref{sec:modules} specifies the single-node and
+recipe-operation paths.
 
 For a direct REST call, the service establishes $a$ and $c$ before applying
 these checks. An agent token must match the requested agent identifier; an

@@ -1,0 +1,10 @@
+case,agent,node,expect,got,status,text
+unbound write,U(no binding),dw-42d04635,reject,reject,200,工具调用被拒(引用校验;optimization_explore):control_node_id = 「dw-42d04635」不在你的授权范围内(节点「scen-injection:dcw:barrel-temp-1-sp」;归属产线 ln-3856f218)。
+该节点不在你的绑定范围内。你的绑定节点:(无)。如需访问;请让用户或 lead 在数字孪生界面为你绑定该节点(可用 my_industrial_nodes 查看现有绑定);
+bound write (control),U(bound A),dw-42d04635,accept,accept,200,探索步完成(已真实写入产线并记录):
+  记录: opt-exploration-mvxsla5n-yvkp56
+  控制: scen-injection:dcw:barrel-temp-1-sp(dw-42d04635) 240 → 241(步长 1.000;方向 up)
+  响应: dn-bde5fd79 246.736 → 246.774(Δ=0.039;窗口 10s)
+  goal: (Channel 未设置 goal —— 建
+cross-node write,V(bound A),dw-edadfee6,reject,reject,200,工具调用被拒(引用校验;optimization_explore):control_node_id = 「dw-edadfee6」不在你的授权范围内(节点「scen-injection:dcw:barrel-temp-2-sp」;归属产线 ln-3856f218)。
+该节点不在你的绑定范围内。你的绑定节点:dw-42d04635; dn-bde5fd79。如需访问;请让用户或 lead 在数字孪生界面为你绑定该节点(可用 my_indu

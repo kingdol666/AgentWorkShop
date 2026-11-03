@@ -23,17 +23,12 @@ expire after 180\,s by default. Online agent and manual node writes are
 separated by at least 60\,s outside benchmark mode, while recipe trials use a
 per-line cadence of 300\,s by default.
 
-Fig.~\ref{fig:hitl}(a) shows the configured bound intersection in
-Eq.~(\ref{eq:admission}); its horizontal positions are schematic and are not
-run-derived values. Panel (b) abstracts the conditional approval branch. The
-post-approval checks are route-specific: the single-node path rechecks its
-binding, channel grant, and current write guards, whereas recipe operations
-also revalidate the active context and recipe state.
+Fig.~\ref{fig:hitl} places the admissible interval in Eq.~(\ref{eq:admission}) alongside the route-dependent approval and shared-dispatch paths.
 
 \begin{figure*}[t]
 \centering
-\includegraphics[width=\textwidth]{resources/fig-governance-approval-rev20261102.pdf}
-\caption{Configured limits define the admissible write interval, while approval controls dispatch. (a) Conceptual intersection of hard engineering, baseline, product, and recipe limits; horizontal positions are illustrative, not experimental values. (b) Pending requests are held, and decline or timeout prevents dispatch. Approved or non-gated requests pass route-specific rechecks before the shared write controller checks current limits, step, and write interval; node requests recheck the binding and channel grant, whereas recipe requests also recheck context, authority, definition, and scope.}
+\includegraphics[width=\textwidth]{resources/fig4-governance-swimlane-20261103.pdf}
+\caption{Configured hard, baseline, product, and recipe bounds are intersected to define the admissible interval; the diagram is categorical and does not encode measured values. Approval is route-dependent: node writes recheck the binding and grant, while recipe operations recheck authority, active context, and recipe scope. Approved and ungated requests pass through the shared range, step, timing, and hold guard before driver dispatch. A decline, timeout, or pre-dispatch denial ends without a driver call.}
 \label{fig:hitl}
 \end{figure*}
 

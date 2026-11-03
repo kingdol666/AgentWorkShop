@@ -1,0 +1,69 @@
+{
+  "at": "2026-11-02T18:54:21.445Z",
+  "base": "http://127.0.0.1:3975",
+  "line": "ln-efa7bb46",
+  "recipe": "rc-b554e013",
+  "optimizer": "3125a8e6-2e9a-4f08-bced-9686c992e3f9",
+  "baseline": {
+    "p": 64.8,
+    "t": 6,
+    "q": {
+      "weight": 32.31,
+      "flash": 0.042,
+      "sink": 1.126,
+      "melt": 246.3,
+      "lastAt": 1793645593066,
+      "offline": false
+    }
+  },
+  "final": {
+    "weight": 32.56,
+    "flash": 0.031,
+    "sink": 1.043,
+    "melt": 246.6,
+    "lastAt": 1793645660060,
+    "offline": false
+  },
+  "finalOk": true,
+  "update": "已保存为 v2:「scen-injection-recipe-d1103」参数 scen-injection:dcw:hold-pressure-sp 64.8→69.8;scen-injection:dcw:hold-time-sp 6→6;原因:真实闭环复测达标(weight=32.56g flash=0.031% sink=1.043% melt=246.6℃),固化保压 69.8bar/保压时间 6s;依据多轮 HITL 批准的 recipe_trial 与 65s DAQ 复测。。\n人工附言:注塑真实闭环 E2E 批准\n注意:配方定义已更新,运行中批次仍按开跑时冻结的参数生产;要把新参数推到运行中的产线(经治理联锁整批下发),用 recipe_apply。回退用 recipe_rollback。",
+  "journal": "优化记录(1 条,含参数/判定/窗口):\n- opt-f44f94be [open] scen-injection:dcw:hold-pressure-sp: 64.8 → 69.8,设定 02:53:15,判定 未判定,进行中\n  假设: 真实闭环 P3-1:克重 32.31g、缩痕 1.126%,保压 64.8→69.8bar(单变量);65s 后 DAQ 复测。\n\n判定与执行分离:rollback 判定后需 dcw_rollback 执行;回退同样入册可审计。",
+  "recipeLog": "Recipe 变更史(产线 注塑成型质量窗口寻优 injection-d1103[ln-efa7bb46]; 配方 scen-injection-recipe-d1103[rc-b554e013], 近 60 分钟, 16 条, 新→旧):\n- [11-03 02:54:21] Agent 配方更新 scope=line 产线=注塑成型质量窗口寻优 injection-d1103[ln-efa7bb46] 配方=scen-injection-recipe-d1103[rc-b554e013] 产品=scen-injection-product-d1103[pd-0bc1cf84] | 来源=Agent 操作者=注塑真实场景闭环 Channel demo1103/注塑工艺优化 worker demo1103 | 更新配方「scen-injection-recipe-d1103」→ v2:真实闭环复测达标(weight=32.56g flash=0.031% sink=1.043% melt=246.6℃),固化保压 69.8bar/保压时间 6\n- [11-03 02:53:15] 配方试验 scope=line 产线=注塑成型质量窗口寻优 injection-d1103[ln-efa7bb46] 配方=scen-injection-recipe-d1103[rc-b554e013] 产品=scen-injection-product-d1103[pd-0bc1cf84] | 来源=Agent 操作者=注塑真实场景闭环 Channel demo1103/注塑工艺优化 worker demo1103 | 【应急】配方试验整批下发(证实 1/1,未证实 0,失败 0,批次 rr-213cb):dw-eb63a→69.8 | 假设:真实闭环 P3-1:克重 32.31g、缩痕 1.126%,保压 64.8→69.8bar(单变量);65s 后 DAQ 复测。\n- [11-03 02:53:15] 下发回执 scope=line 产线=注塑成型质量窗口寻优 injection-d1103[ln-efa7bb46] 配方=scen-injection-recipe-d1103[rc-b554e013] 产品=scen-injection-product-d1103[pd-0bc1cf84] | 来源=Agent 操作者=注塑真实场景闭环 Channel demo1103/注塑工艺优化 worker demo1103 | 批次 rr-213cb ACK 鉴定:证实 1/1,未证实 0,失败 0\n- [11-03 02:53:15] 优化开窗 scope=line 产线=注塑成型质量窗口寻优 injection-d1103[ln-efa7bb46] 配方=scen-injection-recipe-d1103[rc-b554e013] 产品=scen-injection-product-d1103[pd-0bc1cf84] | 来源=Agent 操作者=注塑真实场景闭环 Channel demo1103/注塑工艺优化 worker demo1103 | Agent 开优化记录:「scen-injection:dcw:hold-pressure-sp」→ 69.8bar(假设:真实闭环 P3-1:克重 32.31g、缩痕 1.126%,保压 64.8→69.8bar(单变量);65s 后 DAQ 复测。)\n- [11-03 02:49:46] Agent 配方更新 scope=line 产线=注塑成型质量窗口寻优 injection-d1103[ln-efa7bb46] 配方=scen-injection-recipe-d1103[rc-b554e013] 产品=scen-injection-product-d1103[pd-0bc1cf84] | 来源=Agent 操作者=注塑真实场景闭环 Channel demo1103/注塑工艺优化 worker demo1103 | 更新配方「scen-injection-recipe-d1103」→ v1:真实闭环复测达标(weight=32.34g flash=0.006% sink=1.339% melt=247.1℃),固化保压 64.8bar/保压时间 6\n- [11-03 02:48:40] 配方试验 scope=line 产线=注塑成型质量窗口寻优 injection-d1103[ln-efa7bb46] 配方=scen-injection-recipe-d1103[rc-b554e013] 产品=scen-injection-product-d1103[pd-0bc1cf84] | 来源=Agent 操作者=注塑真实场景闭环 Channel demo1103/注塑工艺优化 worker demo1103 | 【应急】配方试验整批下发(证实 0/1,未证实 0,失败 1,批次 rr-ca0ad):dw-997e9→7 | 假设:真实闭环 P4:保压寻优后 weight=32.26g flash=0% sink=1.156% melt=246.8℃ 仍未全窗,单变量保压时间 6→7s。\n- [11-03 02:48:40] 下发回执 scope=line 产线=注塑成型质量窗口寻优 injection-d1103[ln-efa7bb46] 配方=scen-injection-recipe-d1103[rc-b554e013] 产品=scen-injection-product-d1103[pd-0bc1cf84] | 来源=Agent 操作者=注塑真实场景闭环 Channel demo1103/注塑工艺优化 worker demo1103 | 批次 rr-ca0ad ACK 鉴定:证实 0/1,未证实 0,失败 1(存在写入失败)\n- [11-03 02:47:34] 配方试验 scope=line 产线=注塑成型质量窗口寻优 injection-d1103[ln-efa7bb46] 配方=scen-injection-recipe-d1103[rc-b554e013] 产品=scen-injection-product-d1103[pd-0bc1cf84] | 来源=Agent 操作者=注塑真实场景闭环 Channel demo1103/注塑工艺优化 worker demo1103 | 【应急】配方试验整批下发(证实 0/1,未证实 0,失败 1,批次 rr-38ddb):dw-eb63a→69.8 | 假设:真实闭环 P3-1:克重 32.26g、缩痕 1.156%,保压 64.8→69.8bar(单变量);65s 后 DAQ 复测。\n- [11-03 02:47:34] 下发回执 scope=line 产线=注塑成型质量窗口寻优 injection-d1103[ln-efa7bb46] 配方=scen-injection-recipe-d1103[rc-b554e013] 产品=scen-injection-product-d1103[pd-0bc1cf84] | 来源=Agent 操作者=注塑真实场景闭环 Channel demo1103/注塑工艺优化 worker demo1103 | 批次 rr-38ddb ACK 鉴定:证实 0/1,未证实 0,失败 1(存在写入失败)\n- [11-03 02:45:38] Agent 配方更新 scope=line 产线=注塑成型质量窗口寻优 injection-d1103[ln-efa7bb46] 配方=scen-injection-recipe-d1103[rc-b554e013] 产品=scen-injection-product-d1103[pd-0bc1cf84] | 来源=Agent 操作者=注塑真实场景闭环 Channel demo1103/注塑工艺优化 worker demo1103 | 更新配方「scen-injection-recipe-d1103」→ v1:真实闭环复测达标(weight=32.3g flash=0% sink=1.192% melt=247℃),固化保压 64.8bar/保压时间 6s;依据多轮 \n- [11-03 02:44:32] 配方试验 scope=line 产线=注塑成型质量窗口寻优 injection-d1103[ln-efa7bb46] 配方=scen-injection-recipe-d1103[rc-b554e013] 产品=scen-injection-product-d1103[pd-0bc1cf84] | 来源=Agent 操作者=注塑真实场景闭环 Channel demo1103/注塑工艺优化 worker demo1103 | 【应急】配方试验整批下发(证实 0/1,未证实 0,失败 1,批次 rr-35731):dw-997e9→7 | 假设:真实闭环 P4:保压寻优后 weight=32.3g flash=0.033% sink=1.167% melt=246.3℃ 仍未全窗,单变量保压时间 6→7s。\n- [11-03 02:44:32] 下发回执 scope=line 产线=注塑成型质量窗口寻优 injection-d1103[ln-efa7bb46] 配方=scen-injection-recipe-d1103[rc-b554e013] 产品=scen-injection-product-d1103[pd-0bc1cf84] | 来源=Agent 操作者=注塑真实场景闭环 Channel demo1103/注塑工艺优化 worker demo1103 | 批次 rr-35731 ACK 鉴定:证实 0/1,未证实 0,失败 1(存在写入失败)\n- [11-03 02:43:26] 配方试验 scope=line 产线=注塑成型质量窗口寻优 injection-d1103[ln-efa7bb46] 配方=scen-injection-recipe-d1103[rc-b554e013] 产品=scen-injection-product-d1103[pd-0bc1cf84] | 来源=Agent 操作者=注塑真实场景闭环 Channel demo1103/注塑工艺优化 worker demo1103 | 【应急】配方试验整批下发(证实 0/1,未证实 0,失败 1,批次 rr-f53b6):dw-eb63a→69.8 | 假设:真实闭环 P3-1:克重 32.3g、缩痕 1.167%,保压 64.8→69.8bar(单变量);65s 后 DAQ 复测。\n- [11-03 02:43:26] 下发回执 scope=line 产线=注塑成型质量窗口寻优 injection-d1103[ln-efa7bb46] 配方=scen-injection-recipe-d1103[rc-b554e013] 产品=scen-injection-product-d1103[pd-0bc1cf84] | 来源=Agent 操作者=注塑真实场景闭环 Channel demo1103/注塑工艺优化 worker demo1103 | 批次 rr-f53b6 ACK 鉴定:证实 0/1,未证实 0,失败 1(存在写入失败)\n- [11-03 02:38:53] 开跑整批下发 scope=line 产线=注塑成型质量窗口寻优 injection-d1103[ln-efa7bb46] 配方=scen-injection-recipe-d1103[rc-b554e013] 产品=scen-injection-product-d1103[pd-0bc1cf84] | 来源=用户 操作者=demo-admin | 产线开跑:批次 rr-d1d1b76d · 配方「scen-injection-recipe-d1103」已下发\n- [11-03 02:38:53] 配方创建 scope=line 产线=注塑成型质量窗口寻优 injection-d1103[ln-efa7bb46] 配方=scen-injection-recipe-d1103[rc-b554e013] 产品=scen-injection-product-d1103[pd-0bc1cf84] | 来源=用户 操作者=demo-admin | 创建配方「scen-injection-recipe-d1103」(产线 ln-efa7bb46)\n\n说明:只含产线域记录;配方下发=整批参数写命令;下发回执=逐参数 ACK 鉴定;配方试验=候选整批下发(不写版本);优化开窗/判定/回退=单次设定变更与恢复。节点级参数值逐笔历史用 dcw_journal(node_id)。",
+  "results": [
+    {
+      "id": "P1",
+      "name": "场景/配方/worker 就绪",
+      "pass": true,
+      "detail": "line=ln-efa7bb46 recipe=rc-b554e013 optimizer=3125a8e6-2e9a-4f08-bced-9686c992e3f9 weight=32.31g flash=0.042% sink=1.126% melt=246.3℃"
+    },
+    {
+      "id": "P2",
+      "name": "当前已在配方基线",
+      "pass": true,
+      "detail": "weight=32.31g flash=0.042% sink=1.126% melt=246.3℃ p=64.8 t=6"
+    },
+    {
+      "id": "P3-1",
+      "name": "保压 69.8bar 试验经 HITL 并设备证实",
+      "pass": true,
+      "detail": "weight=32.56g flash=0.031% sink=1.043% melt=246.6℃ p=69.8 lastAt=2026-11-02T18:54:20.060Z 试验已整批下发并全部设备证实(1/1,批次 rr-213cb):scen-injection:dcw:hold-pressure-sp→69.8bar [证实✓]。假设:真实闭环 P3-1:克重 32.31g、缩痕 1.126%,保压 64.8→69.8bar(单变量);65s 后 DAQ 复测。。\n人工附言:注塑真实"
+    },
+    {
+      "id": "P5",
+      "name": "最终质量入窗(克重/飞边/缩痕/熔温,DAQ 新鲜)",
+      "pass": true,
+      "detail": "weight=32.56g flash=0.031% sink=1.043% melt=246.6℃ lastAt=2026-11-02T18:54:20.060Z offline=false"
+    },
+    {
+      "id": "P6",
+      "name": "达标配方固化(v2 且参数独立回读)",
+      "pass": true,
+      "detail": "v=2 p=69.8 t=6 已保存为 v2:「scen-injection-recipe-d1103」参数 scen-injection:dcw:hold-pressure-sp 64.8→69.8;scen-injection:dcw:hold-time-sp 6→6;原因:真实闭环复测达标(weight=32.56g flash=0.031% sink=1.043% melt=246.6℃),固化保压 69.8bar/保"
+    },
+    {
+      "id": "P7",
+      "name": "写控/配方日志可追溯",
+      "pass": true,
+      "detail": "优化记录(1 条,含参数/判定/窗口):\n- opt-f44f94be [open] scen-injection:dcw:hold-pressure-sp: 64.8 → 69.8,设定 02:53:15,判定 未判定,进行中\n  假设: 真实闭环 P3-1:克重 32.31g、缩痕 1.126%,保压 64.8→6 | Recipe 变更史(产线 注塑成型质量窗口寻优 injection-d1103[ln-efa7bb46]; 配方 scen-injection-recipe-d1103[rc-b554e013], 近 60 分钟, 16 条, 新→旧):\n- [11-03 02:54:21] Agent 配方更新 scope=lin"
+    }
+  ]
+}

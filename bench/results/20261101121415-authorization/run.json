@@ -1,0 +1,39 @@
+{
+  "runId": "20261101121415-authorization",
+  "at": "2026-11-01T12:14:28.943Z",
+  "base": "http://127.0.0.1:3005",
+  "simBase": "http://127.0.0.1:4011",
+  "scenarioId": "injection",
+  "lineId": "ln-3856f218",
+  "rows": [
+    {
+      "case": "unbound write",
+      "agent": "U(no binding)",
+      "node": "dw-42d04635",
+      "expect": "reject",
+      "got": "reject",
+      "status": 200,
+      "text": "工具调用被拒(引用校验,optimization_explore):control_node_id = 「dw-42d04635」不在你的授权范围内(节点「scen-injection:dcw:barrel-temp-1-sp」,归属产线 ln-3856f218)。\n该节点不在你的绑定范围内。你的绑定节点:(无)。如需访问,请让用户或 lead 在数字孪生界面为你绑定该节点(可用 my_industrial_nodes 查看现有绑定);"
+    },
+    {
+      "case": "bound write (control)",
+      "agent": "U(bound A)",
+      "node": "dw-42d04635",
+      "expect": "accept",
+      "got": "accept",
+      "status": 200,
+      "text": "探索步完成(已真实写入产线并记录):\n  记录: opt-exploration-mvxsla5n-yvkp56\n  控制: scen-injection:dcw:barrel-temp-1-sp(dw-42d04635) 240 → 241(步长 1.000,方向 up)\n  响应: dn-bde5fd79 246.736 → 246.774(Δ=0.039,窗口 10s)\n  goal: (Channel 未设置 goal —— 建"
+    },
+    {
+      "case": "cross-node write",
+      "agent": "V(bound A)",
+      "node": "dw-edadfee6",
+      "expect": "reject",
+      "got": "reject",
+      "status": 200,
+      "text": "工具调用被拒(引用校验,optimization_explore):control_node_id = 「dw-edadfee6」不在你的授权范围内(节点「scen-injection:dcw:barrel-temp-2-sp」,归属产线 ln-3856f218)。\n该节点不在你的绑定范围内。你的绑定节点:dw-42d04635, dn-bde5fd79。如需访问,请让用户或 lead 在数字孪生界面为你绑定该节点(可用 my_indu"
+    }
+  ],
+  "pass": true,
+  "reproCmd": "node bench/experiment/authorization-probe.mjs --scenario injection --base http://127.0.0.1:3005"
+}

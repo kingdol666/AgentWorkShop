@@ -1,0 +1,130 @@
+{
+  "runId": "20261101110755-optcontrol-c1",
+  "at": "2026-11-01T11:10:53.675Z",
+  "gitCommit": "da627d21",
+  "seed": 44,
+  "base": "http://127.0.0.1:3005",
+  "simBase": "http://127.0.0.1:4011",
+  "condition": "C1",
+  "durationS": null,
+  "scenarios": [
+    "injection",
+    "wwtp",
+    "anneal"
+  ],
+  "rows": [
+    {
+      "condition": "C1",
+      "scene": "injection",
+      "seed": 44,
+      "attained": true,
+      "writes": 2,
+      "rounds": 3,
+      "pv": 32.173,
+      "target": 32.5,
+      "tol": 0.35,
+      "guards": {
+        "飞边率": 0.014600000000000002,
+        "缩痕指数": 1.0884
+      },
+      "wallS": 172.9,
+      "errors": [],
+      "ev": [
+        "baseline 克重=31.25g(目标 32.5±0.35)",
+        "iter1: hold-pressure-sp 45→58.2 ✔ batch=yes · 克重→32.00g",
+        "iter2: hold-time-sp 6→9.97 ✔ batch=yes · 克重→32.17g",
+        "outcome: writes=2 final=32.17g attained=true guards={\"飞边率\":0.014600000000000002,\"缩痕指数\":1.0884}"
+      ],
+      "cleanup": {
+        "scene": "injection",
+        "lineId": "ln-3856f218",
+        "closed": 2,
+        "blueprintDevices": 5
+      }
+    },
+    {
+      "condition": "C1",
+      "scene": "wwtp",
+      "seed": 44,
+      "attained": true,
+      "writes": 11,
+      "rounds": 12,
+      "pv": 3.686,
+      "target": 3.4,
+      "tol": 0.6,
+      "guards": {
+        "出水COD": 38.620000000000005,
+        "出水氨氮": 2.258,
+        "出水总磷": 0.426,
+        "出水pH": 6.492,
+        "出水浊度": 0.662,
+        "DO": 3.686
+      },
+      "wallS": 172.9,
+      "errors": [],
+      "ev": [
+        "baseline DO=0.23 COD=360 NH3=34.5 TP=0.67 pH=6.55 → 不达标",
+        "iter1(曝气): 风机 26→30.03 ✔",
+        "iter2(曝气): 风机 30→32.33 ✔",
+        "iter3(曝气): 风机 32.29999923706055→33.48 ✔",
+        "iter4(曝气): 风机 33.5→34.48 ✔",
+        "iter5(曝气): 风机 34.5→35.3 ✔",
+        "iter5(中和): NaOH 12→31.29 ✔",
+        "iter8(除磷): PAC 30→45 ✔",
+        "iter9(除磷): PAC 45→60 ✔",
+        "iter10(除磷): PAC 60→75 ✔",
+        "达标确认 ✔ 首个达标运行成本 ≈195.7(风机 35.29999923706055/NaOH 31/PAC 75)",
+        "iter11(降耗): 风机 35.29999923706055→34.1 ✔ 带裕度复测达标,保留",
+        "iter11(降耗): NaOH 31→27 ✔ 带裕度复测达标,保留",
+        "outcome: writes=11 DO=3.69 compliant=true cost 195.7→181.4(省 14.33) attained=true"
+      ],
+      "cleanup": {
+        "scene": "wwtp",
+        "lineId": "ln-91d4cfd6",
+        "closed": 3,
+        "blueprintDevices": 5
+      }
+    },
+    {
+      "condition": "C1",
+      "scene": "anneal",
+      "seed": 44,
+      "attained": true,
+      "writes": 9,
+      "rounds": 11,
+      "pv": 97.8,
+      "target": 95,
+      "tol": 6,
+      "guards": {
+        "抗拉强度": 295.64,
+        "表面缺陷率": 0.16759999999999997
+      },
+      "wallS": 172.9,
+      "errors": [],
+      "ev": [
+        "baseline 硬度=133.8HV 抗拉=311MPa 线速=143m/min → 窗外",
+        "iter1: zone3-sp 730→850 ✔",
+        "iter2: zone2-sp 710→749 ✔",
+        "iter3: zone3-sp 校正量过小(850)",
+        "iter4: zone2-sp 749→779 ✔",
+        "trim1: zone2-sp 779→791 硬度→98.1HV(修剪线 ≤98)",
+        "trim2: zone2-sp 791→803 硬度→98.0HV(修剪线 ≤98)",
+        "iter6(产能): 线速 140→152 ✔ 硬度 97.6HV 留裕度窗内",
+        "iter7(产能): 线速 152→164 ✔ 硬度 97.5HV 留裕度窗内",
+        "iter8(产能): 线速 164→176 ✔ 硬度 98.0HV 留裕度窗内",
+        "iter9(产能): 线速 176→188 ✔ 硬度 98.0HV 留裕度窗内",
+        "产能推进: 线速 140→188(+34.29%),pushed=4",
+        "outcome: writes=9 final=97.8HV attained=true(窗内+产能≥5%)"
+      ],
+      "cleanup": {
+        "scene": "anneal",
+        "lineId": "ln-56897b0d",
+        "closed": 2,
+        "blueprintDevices": 5
+      }
+    }
+  ],
+  "errors": [],
+  "harnessHash": "c1a7be7f279732fa",
+  "reproCmd": "node bench/experiment/optimization-control.mjs --condition C1 --seed 44 --scenarios injection,wwtp,anneal"
+}
