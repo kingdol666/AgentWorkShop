@@ -23,7 +23,9 @@ delete process.env.DAQ_TSDB_URL
 
 const { getTsdb, tsdbQueryHistory, tsdbRetentionInfo, tsdbLayoutInfo } = await import('../server/services/workshop/daq/storage')
 
-const NOW = Date.now()
+// 锚定到 60s 桶中点:NOW-3s 与 NOW-2s 必落同一 60s 桶(否则跨分钟边界时
+// "1 个降采样点"断言会随墙钟抖动 —— 2026-11-03 CI 实测)。
+const NOW = Math.floor(Date.now() / 60_000) * 60_000 + 30_000
 const ROWS = [
   { nodeId: 'dn-a', lineId: 'ln-1', tsMs: NOW - 3000, value: 10, state: 'ok', productId: 'p1', recipeId: 'r1', runId: 'run1' },
   { nodeId: 'dn-a', lineId: 'ln-1', tsMs: NOW - 2000, value: 11, state: 'ok', productId: 'p1', recipeId: 'r1', runId: 'run1' },
