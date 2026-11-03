@@ -232,8 +232,10 @@ check('D7c', '回读一致', Math.abs(rb - targetSp) < 0.11, `readback=${rb} tar
 
 // ---------- D8 控得好:重量进入目标窗 ----------
 console.log('\nD8 效果验证(等待工艺跟随)')
-await sleep(25000)
-const after = await weightMean(6)
+// 量测窗 = 最近 3 个 15s 桶(45s);必须等满一个窗口再取样,否则 pre-change 桶
+// 会把均值稀释(2026-11-03 实景复验:25s 后 last-6 均值 31.73,last-3 已 32.08)
+await sleep(60000)
+const after = await weightMean(3)
 const inWindow = after != null && after >= WINDOW.lo && after <= WINDOW.hi
 check('D8', '制品重量进入目标窗', inWindow, `after=${after?.toFixed(3)}g window=[${WINDOW.lo},${WINDOW.hi}] Δ=${((after ?? 0) - (baseline ?? 0)).toFixed(3)}g`)
 
