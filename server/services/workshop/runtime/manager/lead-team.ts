@@ -8,6 +8,7 @@ import { AppError } from '../../../../utils/errors'
 import { KNOWN_HARNESSES, rowToTask } from './helpers'
 import { TERMINAL_TASK_STATES } from '../../types/task'
 import { assertHarnessUsable } from '../../agents/harness-availability'
+import { assertSpawnConfigAllowed } from '../../agents/harness-spawn-policy'
 import { workshopSettings } from '../../settings'
 
 export abstract class ManagerLeadTeam extends ManagerAdminAgents {
@@ -41,6 +42,7 @@ export abstract class ManagerLeadTeam extends ManagerAdminAgents {
         throw new AppError(400, 'UNKNOWN_HARNESS', `未知 harness: ${harness}(可选 ${[...KNOWN_HARNESSES].join('/')})`)
       }
       // 先校验引擎可用再落模板,防断言失败遗留孤儿模板行
+      assertSpawnConfigAllowed(harness, input.config, { role: 'agent', id: callerAgentId })
       assertHarnessUsable(harness, input.config)
       const tpl = this.deps.repos.agents.create({
         name,
@@ -58,6 +60,7 @@ export abstract class ManagerLeadTeam extends ManagerAdminAgents {
       role: 'worker',
       by: `lead:${callerAgentId}`,
       reason: input.reason,
+      actor: { role: 'agent', id: callerAgentId },
     })
     this.ensureAgentRuntime(channelId, member.id)
     return member
@@ -77,7 +80,7 @@ export abstract class ManagerLeadTeam extends ManagerAdminAgents {
     }
     const target = this.deps.repos.channelAgents.findByChannelAgent(channelId, agentId)
     if (!target) throw new AppError(404, 'NOT_FOUND', `团队成员不存在: ${agentId}`)
-    return this.updateChannelAgent(agentId, patch, { channelId, by: `lead:${callerAgentId}`, reason: patch.reason })
+    return this.updateChannelAgent(agentId, patch, { channelId, by: `lead:${callerAgentId}`, reason: patch.reason, actor: { role: 'agent', id: callerAgentId } })
   }
 
   /**

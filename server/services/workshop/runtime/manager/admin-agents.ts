@@ -10,6 +10,7 @@ import { AgentMemory, runMemoryMaintenance, segmentCJK, unsegmentCJK, vectorizeM
 import { AppError } from '../../../../utils/errors'
 import { TEAM_AGENT_ID } from '../../db/memory.repo'
 import { assertHarnessUsable } from '../../agents/harness-availability'
+import { assertSpawnConfigAllowed, assertSpawnConfigPatchAllowed, type SpawnActor } from '../../agents/harness-spawn-policy'
 import { instanceToAgentInfo } from './helpers'
 import { parseJson } from '../../db/database'
 import { randomUUID } from 'node:crypto'
@@ -25,10 +26,14 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
     /** 操作发起方(AEP agent.member 的 by;缺省 'user') */
     by?: string
     reason?: string
+    /** 操作者（spawn 授权；缺省按普通用户处理） */
+    actor?: SpawnActor
   }): Promise<AgentInfo> {
     const tpl = this.deps.repos.agents.findById(input.agentId)
     if (!tpl) throw new AppError(404, 'NOT_FOUND', `Agent 模板不存在: ${input.agentId}`)
     const instConfig = { ...parseJson<Record<string, unknown>>(tpl.configJson, {}), ...input.configOverride }
+    // 服务层收权：不能只在 REST 入口校验，lead/MCP/模板/调度路径也必须过同一门。
+    assertSpawnConfigAllowed(tpl.harness, instConfig, input.actor ?? { role: 'user' })
     // 绑定即执行入口:引擎未安装的模板不许入 channel(deploy/加成员在此失败,不产生半成品实例)
     assertHarnessUsable(tpl.harness, instConfig)
     if (input.role === 'lead') {
@@ -220,11 +225,13 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
   async updateChannelAgent(
     instanceId: string,
     patch: { name?: string, harness?: string, config?: Record<string, unknown>, enabled?: number },
-    meta?: { channelId?: string, by?: string, reason?: string },
+    meta?: { channelId?: string, by?: string, reason?: string, actor?: SpawnActor },
   ): Promise<AgentInfo> {
     const m = this.deps.repos.channelAgents.findById(instanceId)
     if (!m) throw new AppError(404, 'NOT_FOUND', `实例不存在: ${instanceId}`)
-    if (patch.harness) assertHarnessUsable(patch.harness, patch.config ?? parseJson<Record<string, unknown>>(m.configJson, {}))
+    const nextConfig = patch.config ?? parseJson<Record<string, unknown>>(m.configJson, {})
+    assertSpawnConfigPatchAllowed(patch.harness ?? m.harness, parseJson<Record<string, unknown>>(m.configJson, {}), nextConfig, meta?.actor ?? { role: 'user' })
+    if (patch.harness) assertHarnessUsable(patch.harness, nextConfig)
     const updated = this.deps.repos.channelAgents.update(instanceId, patch)
     if (!updated) throw new AppError(404, 'NOT_FOUND', `实例不存在: ${instanceId}`)
     await this.unloadAgent(updated.channelId, instanceId)

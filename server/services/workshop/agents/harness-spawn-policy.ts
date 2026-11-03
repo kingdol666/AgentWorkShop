@@ -42,7 +42,7 @@ export const SPAWN_CONFIG_KEYS = ['command', 'args', 'cwd', 'env'] as const
 
 export interface SpawnActor {
   id?: string
-  role: string
+  role?: string
 }
 
 /** 覆盖了哪些启动键（空数组 = 使用平台默认，任何角色都允许） */
@@ -53,8 +53,45 @@ export function spawnOverridesOf(config: Record<string, unknown> | undefined | n
     if (v === undefined || v === null) return false
     if (typeof v === 'string') return v.trim() !== ''
     if (Array.isArray(v)) return v.length > 0
+    if (v && typeof v === 'object') return Object.keys(v as Record<string, unknown>).length > 0
     return true
   })
+}
+
+/** 更新实例时只检查"真正变化的"启动键，避免存量 config 触发误报 */
+export function changedSpawnOverridesOf(
+  current: Record<string, unknown> | undefined | null,
+  next: Record<string, unknown> | undefined | null,
+): string[] {
+  if (!next || typeof next !== 'object') return []
+  return SPAWN_CONFIG_KEYS.filter((k) => {
+    if (next[k] === undefined) return false
+    try {
+      return JSON.stringify(current?.[k]) !== JSON.stringify(next[k])
+    }
+    catch {
+      return true
+    }
+  })
+}
+
+/** 更新路径：只对变化的启动键做授权；admin 仍走完整校验 */
+export function assertSpawnConfigPatchAllowed(
+  harness: string,
+  current: Record<string, unknown> | undefined | null,
+  next: Record<string, unknown> | undefined | null,
+  actor: SpawnActor,
+): void {
+  const changed = changedSpawnOverridesOf(current, next)
+  if (changed.length === 0) return
+  if (actor.role !== 'admin') {
+    throw new AppError(
+      403,
+      'HARNESS_SPAWN_FORBIDDEN',
+      `自定义 harness 启动参数（${changed.join('/')}）仅管理员可修改。`,
+    )
+  }
+  assertSpawnConfigAllowed(harness, next, actor)
 }
 
 function baseNameOf(command: string): string {
@@ -69,6 +106,45 @@ function cwdAllowed(cwd: string): boolean {
   const configRoot = process.env.AW_HOME
   if (configRoot) roots.push(resolve(configRoot))
   return roots.some(root => target === root || target.startsWith(root + '\\') || target.startsWith(root + '/'))
+}
+
+/**
+ * Channel workspace 收权：非 admin 只能使用平台工作根下的 `data/workspaces/*`
+ * 或 `data/projects/*`；避免 `workspace` 经 runtime-wiring 变成 harness cwd 后
+ * 获得任意目录执行/读写能力（2026-11-03 P0 审计）。
+ */
+export function assertChannelWorkspaceAllowed(
+  workspace: string | undefined | null,
+  actor: SpawnActor,
+  channelId?: string,
+): void {
+  const value = typeof workspace === 'string' ? workspace.trim() : ''
+  if (!value) return
+  if (actor.role === 'admin') {
+    if (!cwdAllowed(value)) {
+      throw new AppError(403, 'CHANNEL_WORKSPACE_DENIED',
+        `workspace「${value}」不在允许范围内（需位于平台工作根或配置根之下）`)
+    }
+    return
+  }
+  const target = resolve(value)
+  const roots = [
+    resolve(process.cwd(), 'data', 'workspaces'),
+    resolve(process.cwd(), 'data', 'projects'),
+  ]
+  const under = roots.some(root => target === root || target.startsWith(root + '\\') || target.startsWith(root + '/'))
+  if (!under) {
+    throw new AppError(403, 'CHANNEL_WORKSPACE_DENIED',
+      `workspace「${value}」不允许：普通用户只能使用 data/workspaces 或 data/projects 下的目录`)
+  }
+  // 更新既有 channel 时，普通用户不得把 workspace 指向其他 channel 的目录。
+  if (channelId) {
+    const expected = resolve(process.cwd(), 'data', 'workspaces', channelId)
+    if (target !== expected) {
+      throw new AppError(403, 'CHANNEL_WORKSPACE_DENIED',
+        `workspace 只能使用本 Channel 的默认目录：${expected}`)
+    }
+  }
 }
 
 /**

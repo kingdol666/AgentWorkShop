@@ -8,7 +8,7 @@
  *   1. `Authorization: Bearer <token>` 头(extra.requestInfo.headers)
  *   2. auth 中间件注入的 token(extra.authInfo.token)
  * 无 token 或无效 token → throw new Error('UNAUTHORIZED')(SDK 转为工具错误)。
- * 管理面工具(channel.create/remove、agent.create/add/remove、channel.list、task.submit)不要求 token。
+ * 管理面/设备面工具只允许人类 REST 路径；MCP agent token 一律拒绝（P0-3）。
  */
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
@@ -16,6 +16,7 @@ import type { AgentChannelManager } from '../services/workshop/runtime/manager'
 import type { AgentInfo } from '../services/workshop/agents/agent-interface'
 import type { A2AArtifact, Part } from '../services/workshop/types/a2a'
 import { getDeviceTwinRepo } from '../services/workshop/assets/device-twin.repo'
+import { channelAgentSummaries } from '../services/workshop/agents/agent-dto'
 
 /** A2A 消息片段(Part):四种变体(text/data/url/raw)。运行时校验与契约一致;zod union 推断形状与契约存在无害差异,as 收窄 */
 const partSchema = z.union([
@@ -79,6 +80,11 @@ function requireCaller(manager: AgentChannelManager, extra: TokenSource): AgentI
   return caller
 }
 
+/** 管理/设备面：MCP 只有 agent token，因此一律拒绝；人类走 REST。 */
+function denyAgentManagement(tool: string): never {
+  throw new Error(`FORBIDDEN: ${tool} 仅人类 owner/admin 可调用；MCP agent token 不允许管理/设备面操作`)
+}
+
 /** 构造工具成功结果(JSON 文本内容) */
 function jsonResult(data: unknown) {
   return { content: [{ type: 'text' as const, text: JSON.stringify(data) }] }
@@ -114,6 +120,7 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
     },
     async (args, extra) => {
       requireCaller(manager, extra)
+      denyAgentManagement('workshop.channel.create')
       const result = await manager.createChannel({
         name: args.name,
         description: args.description,
@@ -145,6 +152,7 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
     },
     async (args, extra) => {
       const caller = requireCaller(manager, extra)
+      denyAgentManagement('workshop.channel.remove')
       if (args.channelId !== caller.channelId) throw new Error('FORBIDDEN: 只能删除自己所在 channel')
       await manager.removeChannel(args.channelId)
       return jsonResult({ ok: true })
@@ -165,6 +173,7 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
     },
     async (args, extra) => {
       requireCaller(manager, extra)
+      denyAgentManagement('workshop.agent.create')
       const result = await manager.createAgent({
         name: args.name,
         harness: args.harness,
@@ -186,6 +195,7 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
     },
     async (args, extra) => {
       const caller = requireCaller(manager, extra)
+      denyAgentManagement('workshop.agent.add')
       if (args.channelId !== caller.channelId) throw new Error('FORBIDDEN: 只能向自己所在 channel 添加 Agent')
       const result = await manager.addAgentToChannel({
         channelId: args.channelId,
@@ -204,7 +214,15 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
     },
     async (_args, extra) => {
       requireCaller(manager, extra)
-      return jsonResult(await manager.listAgents())
+      const templates = await manager.listAgents()
+      return jsonResult(templates.map(t => ({
+        id: t.id,
+        name: t.name,
+        harness: t.harness,
+        enabled: t.enabled,
+        visibility: t.visibility,
+        isBuiltin: t.isBuiltin,
+      })))
     },
   )
 
@@ -216,7 +234,7 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
     },
     async (_args, extra) => {
       const caller = requireCaller(manager, extra)
-      return jsonResult(await manager.listChannelAgents(caller.channelId))
+      return jsonResult(channelAgentSummaries(await manager.listChannelAgents(caller.channelId), { includeConfig: false }))
     },
   )
 
@@ -228,6 +246,7 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
     },
     async (args, extra) => {
       requireCaller(manager, extra)
+      denyAgentManagement('workshop.agent.remove')
       await manager.removeAgent(args.agentId)
       return jsonResult({ ok: true })
     },
@@ -485,13 +504,8 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
       },
     },
     async (args, extra) => {
-      const caller = requireCaller(manager, extra)
-      const bound = getDeviceTwinRepo().findById(args.deviceId)
-      if (!bound) throw new Error(`NOT_FOUND: 设备不存在 ${args.deviceId}`)
-      if (bound.boundAgentId && bound.boundAgentId !== caller.id) throw new Error('FORBIDDEN: 设备已被其他 Agent 绑定')
-      const twin = getDeviceTwinRepo().applyControl(args.deviceId, args.command, args.args ?? {})
-      if (!twin) throw new Error(`NOT_FOUND: 设备不存在 ${args.deviceId}`)
-      return jsonResult(twin)
+      requireCaller(manager, extra)
+      return denyAgentManagement('device.control')
     },
   )
 
@@ -505,13 +519,8 @@ export function createWorkshopMcpServer(manager: AgentChannelManager): McpServer
       },
     },
     async (args, extra) => {
-      const caller = requireCaller(manager, extra)
-      const bound = getDeviceTwinRepo().findById(args.deviceId)
-      if (!bound) throw new Error(`NOT_FOUND: 设备不存在 ${args.deviceId}`)
-      if (bound.boundAgentId && bound.boundAgentId !== caller.id) throw new Error('FORBIDDEN: 设备已被其他 Agent 绑定')
-      const twin = getDeviceTwinRepo().applyTelemetry(args.deviceId, args.telemetry)
-      if (!twin) throw new Error(`NOT_FOUND: 设备不存在 ${args.deviceId}`)
-      return jsonResult({ state: twin.state, telemetry: twin.telemetry })
+      requireCaller(manager, extra)
+      return denyAgentManagement('device.push_telemetry')
     },
   )
 

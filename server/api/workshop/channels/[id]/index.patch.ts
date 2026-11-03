@@ -57,7 +57,7 @@ export default defineApiHandler(async (event) => {
   }
 
   const { version: _version, ...patch } = body
-  const updated = await manager.updateChannel(channelId, patch)
+  const updated = await manager.updateChannel(channelId, patch, user)
   // 群聊设置变更 → 广播(成员/前端即时收敛)
   manager.publishChatSettings(channelId)
   return updated

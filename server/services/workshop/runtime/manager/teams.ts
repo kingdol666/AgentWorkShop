@@ -6,6 +6,7 @@ import { ManagerLeadTeam } from './lead-team'
 import type { ActingUser, AgentTeamDetail } from './types'
 import type { AgentInfo } from '../../agents/agent-interface'
 import type { ChannelPluginToggle } from '../../db/channel-plugins.repo'
+import type { SpawnActor } from '../../agents/harness-spawn-policy'
 import type { TeamRow } from '../../db/database'
 import { AppError } from '../../../../utils/errors'
 import { getChannelPluginsRepo } from '../../db/channel-plugins.repo'
@@ -93,6 +94,7 @@ export abstract class ManagerTeams extends ManagerLeadTeam {
   async deployTeamToChannel(input: {
     channelId: string
     teamId: string
+    actor?: SpawnActor
   }): Promise<{ channelId: string, teamId: string, agents: AgentInfo[] }> {
     const channel = this.deps.repos.channels.findById(input.channelId)
     if (!channel) throw new AppError(404, 'NOT_FOUND', `channel 不存在: ${input.channelId}`)
@@ -108,6 +110,7 @@ export abstract class ManagerTeams extends ManagerLeadTeam {
         channelId: input.channelId,
         agentId: m.templateId,
         role: m.role === 'lead' ? 'lead' : 'worker',
+        actor: input.actor ?? { role: 'user' },
       })
       agents.push(inst)
     }
