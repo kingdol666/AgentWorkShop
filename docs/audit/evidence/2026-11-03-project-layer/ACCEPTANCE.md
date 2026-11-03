@@ -1,7 +1,7 @@
-# Project 层 V1 分阶段验收报告（PR1–PR4）
+# Project 层 V1 分阶段验收报告（PR1–PR5）
 
-日期：2026-11-03。状态：**分阶段验收，未完成 V1 全量**。
-被测分支：`pr/04-project-dispatch`（已 rebase 到 `main` + PR26 修复）。
+日期：2026-11-04。状态：**分阶段验收，未完成 V1 全量**。
+被测分支：`pr/05-results-approvals-audit`（stacked on PR4）。
 证据：`docs/audit/evidence/2026-11-03-project-layer/project-line-acceptance.json`。
 
 ---
@@ -14,15 +14,14 @@
 - 数据底座（PR2）：9 张项目表、tasks/channel_agents/audit_log 新列、迁移顺序、旧库 rebuild 保留列与索引。
 - Project 核心（PR3）：项目办公室频道、`agent_kind='project_leader'`、生命周期、成员 Channel 绑定、办公室频道保护。
 - 派发（PR4）：交付物/工作项、`submitProjectRoot`、项目上下文传播到子任务、项目预算、重复派发拒绝。
+- 成果/审批/审计/Reconciler（PR5）：root COMPLETED 自动 draft、submit、review、owner acceptance、审批 CAS/过期/自批拒绝、decisions/events 审计、工作项终态对账。
 
 ### 未实现，明确 BLOCKED（不得算通过）
 
-- 成果自动 draft / submit / review / approve。
-- `project_approvals`（plan/acceptance/complete/write_intent）。
-- `ProjectReconciler`（root 终态同步/逾期/阻塞）。
-- 审计 fail-closed（decisions/events 同事务）。
 - 项目页 UI / 周报 / 审批历史。
 - MAST L1–L14 / Live 全量 / G0–G6 证据。
+- Project Leader 的 proposal tools/prompt 接入（当前 leader 尚未调用项目工具）。
+- M5 leader 自建/删除 Channel；独立安全扫描/红队待补。
 
 ---
 
@@ -50,7 +49,7 @@ AW_PROJECT_ACCEPTANCE_OUT=docs/audit/evidence/2026-11-03-project-layer/project-l
 
 ### 2.2 生产业务 E2E（真实产线对象）
 
-结果：**23 PASS / 0 FAIL / 6 BLOCKED**。
+结果：**35 PASS / 0 FAIL / 2 BLOCKED**。
 
 | ID | 验收项 | 结果 | 证据 |
 |---|---|---|---|
@@ -77,10 +76,18 @@ AW_PROJECT_ACCEPTANCE_OUT=docs/audit/evidence/2026-11-03-project-layer/project-l
 | P12 | 非 owner 读取 Project → 403 | ✅ | 第二用户 |
 | P12b | 非 owner 绑定 Channel → 403 | ✅ | 第二用户 |
 | P12c | 无产线 grant 用户创建绑线 Channel → 403 | ✅ | 第二用户 |
-| P13 | 成果 draft/submit/review/approve | ⏸ BLOCKED | PR5 未实现 |
-| P14 | project_approvals | ⏸ BLOCKED | PR5 未实现 |
-| P15 | ProjectReconciler | ⏸ BLOCKED | PR5 未实现 |
-| P16 | 审计 fail-closed | ⏸ BLOCKED | PR5 未实现 |
+| P13a | 成员 lead token 轮换（完成任务用） | ✅ | `/rotate-token` |
+| P13b | 成员 lead 完成任务 | ✅ | `/tasks/:id/complete`（agent token） |
+| P15 | Reconciler：root COMPLETED → 工作项 COMPLETED | ✅ | `/projects/:id/reconcile` |
+| P13c | root COMPLETED 自动生成成果 draft（真实 artifact 证据） | ✅ | `GET /projects/:id/results` |
+| P13d | 成果 submit（owner） | ✅ | `/results/:rid/submit` |
+| P13e | 成果 review（owner/leader） | ✅ | `/results/:rid/review` |
+| P14 | 成果验收审批 pending | ✅ | `/results/:rid/request-acceptance` |
+| P14b | owner 批准成果验收 | ✅ | `/approvals/:aid/decide` |
+| P13f | 成果 approved | ✅ | results |
+| P14c | 交付物 approved | ✅ | deliverables |
+| P14d | 审批重复决策 → 409 | ✅ | 负例 |
+| P16 | 审计 decisions/events 落库且带 trace | ✅ | decisions/events |
 | P17 | 项目页 UI/周报 | ⏸ BLOCKED | PR6 未实现 |
 | P18 | MAST/Live/G0–G6 | ⏸ BLOCKED | PR7 未执行 |
 
@@ -92,7 +99,7 @@ AW_PROJECT_ACCEPTANCE_OUT=docs/audit/evidence/2026-11-03-project-layer/project-l
 | G1 Schema/迁移 | ✅ | 新库/旧库/双 init/rebuild/索引均有测试 |
 | G2 安全 P0 | ✅（本地） | P0 单测 + 安全负例；**Mimosa 独立扫描未完成，不宣称安全审计通过** |
 | G3 Project 核心 + 派发 | ✅（已测范围） | 办公室/leader/生命周期/绑定/派发/上下文/预算；**scheduler-skip 直接断言未单独做** |
-| G4 成果 + 审批 | ⏸ BLOCKED | PR5 |
+| G4 成果 + 审批 | ✅（已测范围） | 成果 draft/submit/review/approve、审批 CAS/过期/自批、Reconciler、decisions/events；**plan_approval/write_intent 未接入** |
 | G5 API/UI | ⏸ BLOCKED | PR6 |
 | G6 Live + 审计 + 回滚 | ⏸ BLOCKED | PR7 |
 
@@ -100,9 +107,9 @@ AW_PROJECT_ACCEPTANCE_OUT=docs/audit/evidence/2026-11-03-project-layer/project-l
 
 ## 3. 已知限制与风险
 
-1. **成果/审批未实现**：当前项目只能"建、绑、派发"，不能完成"成果提交→复核→owner 验收"闭环。
-2. **Reconciler 未实现**：Channel root task 终态不会自动同步到工作项；工作项会停留 `DISPATCHED`。
-3. **审计未闭环**：`project_decisions`/`project_events` repo 已有，但服务层未写入；破坏性动作尚未 fail-closed 审计。
+1. **plan_approval / write_intent 未接入**：当前只实现 deliverable_acceptance 的审批闭环；计划审批与工业写意图审批仍待 PR5.1/PR6。
+2. **Reconciler 不是自主定时器**：当前通过 `/projects/:id/reconcile` 触发；插件级 30s 定时器未接，频道禁用/lead 移除的自动对账仍不完整。
+3. **审计 fail-closed 不完整**：decisions/events 已落库并带 trace，但成果/交付物状态更新与审计写入尚未统一到同一事务；破坏性动作回滚测试待补。
 4. **UI 未实现**：项目页/周报/审批历史不可用。
 5. **Project Leader 未真正参与**：V1 的 proposal tools / prompt / 复核尚未实现；当前 leader 只是办公室 lead，未接项目提案。
 6. **Scheduler-skip 直接验证缺失**：代码已对 `agent_kind='project_leader'` 跳过 SchedulerLoop，但 E2E 未直接断言 `cr.scheduler===null`。
@@ -111,15 +118,9 @@ AW_PROJECT_ACCEPTANCE_OUT=docs/audit/evidence/2026-11-03-project-layer/project-l
 
 ---
 
-## 4. 下一步验收（PR5–PR7）
+## 4. 下一步验收（PR6–PR7）
 
-PR5 完成后必须新增：
-
-- 成果自动 draft → submit → review → owner approve 的 E2E（含证据/版本/越权负例）。
-- 审批 CAS/过期/一次性消费/跨项目隔离。
-- Reconciler：root 终态同步、逾期、频道禁用、lead 移除。
-- 审计 fail-closed：破坏性动作回滚。
-- MAST L1–L14：Given/When/Then + 正向控制。
+PR5 已完成项见 2.2；剩余：
 
 PR6 完成后必须新增：
 
@@ -129,13 +130,14 @@ PR6 完成后必须新增：
 
 PR7 完成后：
 
-- G0–G6 全量证据、回滚演练、Live 薄版/完整版、四/两方签署。
+- G0–G6 全量证据、回滚演练、Live 薄版/完整版、两方签署。
+- MAST L1–L14 从"设计表"变为可执行回归。
 
 ---
 
 ## 5. 结论
 
-**PR1–PR4 的已实现范围通过验收：23/23 生产业务 E2E 通过，0 失败。**
-**V1 全量未通过：6 项 BLOCKED。** 当前不能对外宣称"Project 层功能完成"，只能宣称"项目办公室/生命周期/派发/项目上下文与预算"这一层已可工作。
+**PR1–PR5 的已实现范围通过验收：35/35 生产业务 E2E 通过，0 失败。**
+**V1 全量未通过：2 项 BLOCKED（项目页 UI、MAST/Live 全量）。** 当前可宣称"项目办公室/生命周期/派发/成果/验收/审计"这一层已可工作，但不能宣称完整 V1 或"安全验收通过"。
 
 独立安全审计（Mimosa）仍未完成，不能宣称"安全验收通过"。

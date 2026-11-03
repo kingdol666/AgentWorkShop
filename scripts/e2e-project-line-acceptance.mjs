@@ -220,11 +220,73 @@ try {
   const bLine = await api('POST', '/api/workshop/channels', { name: `B越权线频道-${TAG}`, lineId: line, leadAgent: { name: 'B Lead', harness: 'mock' } }, bToken)
   ok('P12c', '无产线 grant 的用户不能创建绑线 Channel', bLine.status === 403, `status=${bLine.status} code=${bLine.code}`)
 
+  // ── PR5：成果/审批/审计/Reconciler（真实 HTTP）──
+  const rotate = await api('POST', `/api/workshop/channels/${member.channelId}/agents/${member.leadAgentId}/rotate-token`, {}, H())
+  const agentToken = rotate.data?.token
+  ok('P13a', '成员 lead token 轮换（完成任务用）', Boolean(agentToken), `status=${rotate.status}`)
+
+  const complete = await api('POST', `/api/workshop/tasks/${root.id}/complete`, {
+    artifacts: [{
+      artifactId: `art-${TAG}`,
+      name: 'baseline.md',
+      parts: [{ text: `产线 ${line} 基线良率 97.9%，窗口 10-30 08:00-12:00` }],
+    }],
+  }, agentToken)
+  ok('P13b', '成员 lead 完成任务', complete.status === 200 && complete.data?.state === 'COMPLETED', `status=${complete.status} state=${complete.data?.state}`)
+
+  const rec = await api('POST', `/api/workshop/projects/${project.id}/reconcile`, {}, H())
+  const recItem = (rec.data?.workItems ?? []).find(x => x.id === workItem.id)
+  ok('P15', 'Reconciler：root 终态同步工作项 COMPLETED', rec.status === 200 && recItem?.state === 'COMPLETED', `status=${rec.status} state=${recItem?.state}`)
+
+  const results1 = await api('GET', `/api/workshop/projects/${project.id}/results`, undefined, H())
+  const draft = (results1.data ?? [])[0]
+  let draftEvidence = []
+  try {
+    draftEvidence = JSON.parse(draft?.evidenceJson ?? '[]')
+  }
+  catch { /* ignore */ }
+  ok('P13c', 'root COMPLETED 自动生成成果 draft（带真实 artifact 证据）',
+    results1.status === 200 && draft?.status === 'draft' && Array.isArray(draftEvidence) && draftEvidence.length > 0,
+    `status=${results1.status} result=${draft?.status} evidence=${String(draft?.evidenceJson).slice(0, 300)}`)
+
+  const submitted = await api('POST', `/api/workshop/projects/${project.id}/results/${draft.id}/submit`, {
+    summary: '基线良率 97.9%，数据窗口完整',
+    method: '按产线/产品/配方取数',
+    evidence: [{ artifactId: `art-${TAG}`, name: 'baseline.md' }],
+  }, H())
+  ok('P13d', '成果 submit（owner）', submitted.status === 200 && submitted.data?.status === 'submitted', `status=${submitted.status}`)
+
+  const reviewed = await api('POST', `/api/workshop/projects/${project.id}/results/${draft.id}/review`, { decision: 'reviewed' }, H())
+  ok('P13e', '成果 review（owner/leader）', reviewed.status === 200 && reviewed.data?.status === 'reviewed', `status=${reviewed.status}`)
+
+  const acceptanceReq = await api('POST', `/api/workshop/projects/${project.id}/results/${draft.id}/request-acceptance`, {}, H())
+  const approval = acceptanceReq.data
+  ok('P14', '成果验收审批已创建 pending', acceptanceReq.status === 200 && approval?.status === 'pending', `status=${acceptanceReq.status}`)
+
+  const decided = await api('POST', `/api/workshop/projects/${project.id}/approvals/${approval.id}/decide`, { approve: true, reason: '证据完整' }, H())
+  ok('P14b', 'owner 批准成果验收', decided.status === 200 && decided.data?.status === 'approved', `status=${decided.status}`)
+
+  const results2 = await api('GET', `/api/workshop/projects/${project.id}/results`, undefined, H())
+  const approvedResult = (results2.data ?? []).find(x => x.id === draft.id)
+  ok('P13f', '成果 approved', approvedResult?.status === 'approved', `state=${approvedResult?.status}`)
+
+  const deliverables2 = await api('GET', `/api/workshop/projects/${project.id}/deliverables`, undefined, H())
+  const approvedDeliverable = (deliverables2.data ?? []).find(x => x.id === deliverable.id)
+  ok('P14c', '交付物 approved', approvedDeliverable?.status === 'approved', `state=${approvedDeliverable?.status}`)
+
+  const decisions = await api('GET', `/api/workshop/projects/${project.id}/decisions`, undefined, H())
+  const events = await api('GET', `/api/workshop/projects/${project.id}/events`, undefined, H())
+  const decisionsData = decisions.data ?? []
+  const eventsData = events.data ?? []
+  ok('P16', '审计 decisions/events 落库且带 trace',
+    decisions.status === 200 && events.status === 200 && decisionsData.length > 0 && eventsData.length > 0
+    && decisionsData.every(d => d.argsSha256?.length === 64) && eventsData.every(e => Boolean(e.eventKey)),
+    `decisions=${decisionsData.length} events=${eventsData.length}`)
+
+  const repeatDecide = await api('POST', `/api/workshop/projects/${project.id}/approvals/${approval.id}/decide`, { approve: true }, H())
+  ok('P14d', '审批重复决策 → 409', repeatDecide.status === 409, `status=${repeatDecide.status} code=${repeatDecide.code}`)
+
   // 未实现能力：必须 BLOCKED，不得算通过
-  blocked('P13', '成果自动 draft / submit / review / approve', 'PR5 未实现')
-  blocked('P14', 'project_approvals（plan/acceptance/complete/write_intent）', 'PR5 未实现')
-  blocked('P15', 'ProjectReconciler（root 终态同步/逾期/阻塞）', 'PR5 未实现')
-  blocked('P16', '审计 fail-closed（decisions/events 同事务）', 'PR5 未实现')
   blocked('P17', '项目页 UI / 周报 / 审批历史', 'PR6 未实现')
   blocked('P18', 'MAST L1–L14 / Live 全量 / G0–G6 证据', 'PR7 未执行')
 
