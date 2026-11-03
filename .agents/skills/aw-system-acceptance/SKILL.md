@@ -98,7 +98,7 @@ node scripts/e2e-crash-cycle.mjs               # 崩溃→重启→断点恢复
 ### 5. 插件装载与工具注册面(T4)
 
 1. `aw_plugin_list`(或 GET /api/workshop/plugins):全部 enabled 且 `failures=[]`。
-2. 工具注册表 GET /api/workshop/tools:builtin **107** + plugin 全部 available(`available=false` 多因陈旧 dev 进程反向同步污染共享库——杀树重启即恢复)。
+2. 工具注册表 GET /api/workshop/tools:builtin **108**(v0.9.4 含 mes_bridge)+ plugin 全部 available(`available=false` 多因陈旧 dev 进程反向同步污染共享库——杀树重启即恢复)。
 3. 工具面抽真:`aw_agent_tool_invoke` 实调 `diag_results`/`diag_status`/`aw_dcw_snapshot`/`aw_task_list`;科学探索面抽 `daq_identifiability`(只读预检)与 `intervention_history`(台账回读)回包形状。
 
 ### 6. 发布产物冒烟(T5)
@@ -124,7 +124,7 @@ npm pack --dry-run     # 清单含 .output/.AgentWorkShop/prompts 等;核对 fil
 - [ ] T0-T5 六层各 0 FAIL,本轮证据目录已生成
 - [ ] T2 九套件全绿;外部依赖缺项如实标注(不静默跳过)
 - [ ] 三段式(看到/控制/学得好)各有本轮命令输出,失败即证据负例全绿
-- [ ] 插件 failures=[] 且工具注册表 builtin 107 全 available
+- [ ] 插件 failures=[] 且工具注册表 builtin 108 全 available
 - [ ] 发布产物冒烟通过(`/` 200、鉴权 401、密钥屏障生效、pack 清单正确)
 - [ ] UI 走查截图存档(本体六 tab/优化器五 tab/结果库三屏/AML 探索面)
 - [ ] 结论一句话:套件矩阵 × 外部依赖状态 × 未覆盖面声明

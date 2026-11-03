@@ -79,7 +79,7 @@ npx -p agentworkshop aw doctor     # use -p when you want the name aw
 | Package manager | `pnpm@11.9.0` (`packageManager`, needed only for source development) |
 | Module format | ESM (`type: module`) |
 | License | `Apache-2.0` |
-| Current version | `0.9.4` (`package.json`) |
+| Current version | `0.9.5` (`package.json`) |
 
 ## 2. First start (the Claude Code experience)
 

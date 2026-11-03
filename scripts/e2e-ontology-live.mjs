@@ -34,6 +34,14 @@ const H = 24
 const F = 6
 const N_STEPS = 160
 const N_RUNS = 6
+/**
+ * 控制量激励必须是**离散档位的来回阶梯**(G6 动作覆盖门:≥3 水平、非纯阶梯)。
+ * 2026-11-03 前这里用连续正弦(50+20sin…),每个采样点都是独立水平 → G6 判
+ * "960 个水平各仅单一连续段(纯阶梯)"并拒绝训练数据集。改为 6 档 ABAB 循环,
+ * 每档 20 拍驻留,跨 run 轮换起点。
+ */
+const MV_LEVELS = [60, 48, 72, 54, 66, 57]
+const MV_BLOCK = 20
 const DELAY_STEPS = 2
 
 process.env.AW_MODE = 'home'
@@ -147,7 +155,8 @@ for (let r = 0; r < N_RUNS; r++) {
   let y = 52
   const uq = []
   for (let k = 0; k < N_STEPS; k++) {
-    const u = 50 + 20 * Math.sin((k + r * 11) / 9) + 6 * Math.sin((k + r * 3) / 4)
+    // 离散档位 ABAB:水平覆盖 ≥3、与时间不共线、每档多次往返(G6 通过)
+    const u = MV_LEVELS[(Math.floor(k / MV_BLOCK) + r) % MV_LEVELS.length]
     uq.push(u)
     const delayed = uq[Math.max(0, uq.length - 1 - DELAY_STEPS)]
     y = 0.3 * y + 0.7 * delayed + 8 + 0.02 * Math.sin((k + r) / 3)

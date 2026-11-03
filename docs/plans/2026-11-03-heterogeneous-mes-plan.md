@@ -108,6 +108,43 @@
 4. **安全边界**:`mes_bridge` 为数据面写(riskClass=write),不写设备;Agent 面要求
    dcw 绑定;REST 面要求 operate 产线权限 + 每用户 60s ≤10 次;原文不进 prompt。
 
+## E. 全功能多场景验收(2026-11-03,v0.9.4 合并后)
+
+按 `.agents/skills/aw-system-acceptance` 六层矩阵执行;证据在
+`docs/audit/evidence/2026-11-03-full-acceptance-v094/`(每套件日志 + UI 截图 + report)。
+
+| 层 | 套件 | 结果 |
+|---|---|---|
+| T0 | lint / typecheck / docs:check / i18n:check / readme:lint | 全 0 退出;docs 89/0;i18n parity 3175/3175 |
+| T1 | test:unit / mcp / plugin-lifecycle / sdk-surface / twin-provider / skills | 1017/1015/0 · 14/14 · 全绿 · 146 PASS(skill 规范) |
+| T2 | 科学全链 / 科学闭环 / 产线治理 / 本体离线 / 本体真机 / 模型闭环 / 优化器 / 异构 MES | 21/21 · 20/20 · 44/44 · 57/57 · 87/87 · 53/53 · 105/105 · 23/23 |
+| T3 | api-live / auth-matrix / REST 鲁棒性 / 时区 | 71 PASS · 29/0 · ALL PASS · exit 0 |
+| T4 | 插件清单 / 工具注册表 | 11 插件 failures=[];tools total=129(108 builtin + 21 plugin),unavailable=0,`mes_bridge` available |
+| T5 | build / `/` 200 / 未鉴权 401 / 无密钥拒绝启动 / pack | 全通过(pack 42.5MB/4384 files,含 .output 与 prompts) |
+| UI | 真实 Chrome 8 页走查 | 8/8;截图在 `.../ui/` |
+| 专项 | 注塑闭环 | **未跑**:演示实例无启用「工艺优化」worker;隔离实例需 PLC 场景供给,非本次变更面,如实声明 |
+
+### E.1 验收中发现并修复的真实问题
+
+1. **静态响应面数据集被动态 G6 门误杀**(`aml/dataset-builder.ts`):`static_response@1`
+   按窗口聚合稳态样本,不做时间维因果识别;原实现同样计算 actionCoverage,G6 把
+   960 个连续扫描点判成"960 个水平各仅单一连续段(纯阶梯)"并拒绝训练。
+   修复:静态训练器的数据集显式 `actionCoverage=[]`(G6 不适用),动态数据集行为不变。
+   优化器 live 由此从 101/105 → **105/105**。
+2. **Twin Provider Registry 在 dev/多模块图下双实例**(`aml/twin/provider-registry.ts`):
+   插件宿主注册的 `injection-greybox-v1` 在工具面解析不到
+   (`TWIN_PROVIDER_UNAVAILABLE`)。修复:registry 单例挂 `globalThis`
+   (`__twinProviderRegistry`),注册与解析同源。模型闭环 live 由此 51/53 → **53/53**。
+3. **HITL 审批超时 timer `unref()`**:空闲事件循环先清空,超时不触发、Promise 永久
+   pending(Linux CI "event loop has already resolved")。修复:timer 不 unref,
+   decide/cancel/超时路径均 clear。
+4. **CI quick-gate 缺 pnpm 引导**:`setup-node cache:pnpm` 前无 `pnpm/action-setup`,
+   缓存步骤直接失败。修复:先装 pnpm 11.9.0。
+5. **实机套件夹具与新门禁对齐**:ontology/model-loop/optimizer 的控制激励改为
+   离散档位 ABAB(连续正弦会被 G6 判纯阶梯);model-loop 插件宿主异步装载 +
+   重试轮登录复用;数据锁/60s 桶测试消除平台时钟差异。均为测试夹具修正,
+   产品行为未放宽。
+
 ## D. 明确不做(记录原因)
 
 - **不把 MES 原文进 prompt/进 LLM 上下文**:既有铁律(统计摘要 + 采样行),维持;

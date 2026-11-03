@@ -510,14 +510,18 @@ export async function buildDataset(spec: AmlDatasetSpec, by: { id: string, kind:
   // P3 动作覆盖度:按控制节点聚合跨 run 序列(水平聚类用全序列;切换次数按 run 内计,
   // 避免批次边界的复位被当成阶跃激励)。v2 数据集写进 manifest(actionCoverage)供 G6 门,
   // 也进 report 供 aml_dataset_stats 人读;v1 数据集不写 = unknown,G6 不追溯误杀。
-  const actionCoverage: ActionCoverage[] = ctrlIds.map((cid) => {
-    const perRun = [...runMatrices.values()]
-      .map(m => (m.rows.get(cid) ?? []).filter(v => typeof v === 'number' && Number.isFinite(v)))
-      .filter(v => v.length > 0)
-    const merged = computeActionCoverage(cid, perRun.flat())
-    const stepsWithinRuns = perRun.reduce((acc, series) => acc + computeActionCoverage(cid, series).stepCount, 0)
-    return { ...merged, stepCount: stepsWithinRuns }
-  })
+  // static_response@1(稳态响应面)按窗口聚合稳态样本,不做时间维因果识别 ——
+  // G6 的动态动作覆盖门不适用(其正交性由留出集 NRMSE 评估),显式置空。
+  const actionCoverage: ActionCoverage[] = extras?.trainerRef === 'static_response@1'
+    ? []
+    : ctrlIds.map((cid) => {
+        const perRun = [...runMatrices.values()]
+          .map(m => (m.rows.get(cid) ?? []).filter(v => typeof v === 'number' && Number.isFinite(v)))
+          .filter(v => v.length > 0)
+        const merged = computeActionCoverage(cid, perRun.flat())
+        const stepsWithinRuns = perRun.reduce((acc, series) => acc + computeActionCoverage(cid, series).stepCount, 0)
+        return { ...merged, stepCount: stepsWithinRuns }
+      })
 
   // 6. 落盘快照
   const dsId = `ds-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`

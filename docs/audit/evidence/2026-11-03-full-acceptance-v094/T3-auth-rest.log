@@ -1,0 +1,27 @@
+=== 公开路由(免 token) ===
+PASS  P1 workshop 遗留注册免 token 可达 — ok
+PASS  P2 login 免 token 进入认证逻辑(凭据错误 401 而非拦截) — 邮箱或密码错误
+PASS  P3 a2a agent card 免 token(404 而非 401) — status=404
+
+=== 业务路由(无 token → 401) ===
+PASS  401 GET /api/system/config — status=401 code=USER_UNAUTHORIZED
+PASS  401 GET /api/system/monitor — status=401 code=USER_UNAUTHORIZED
+PASS  401 GET /api/workshop/agents — status=401 code=USER_UNAUTHORIZED
+PASS  401 POST /api/workshop/agents — status=401 code=USER_UNAUTHORIZED
+PASS  401 GET /api/workshop/teams — status=401 code=USER_UNAUTHORIZED
+PASS  401 GET /api/workshop/channel-templates — status=401 code=USER_UNAUTHORIZED
+PASS  401 GET /api/workshop/channels — status=401 code=USER_UNAUTHORIZED
+PASS  401 POST /api/workshop/channels — status=401 code=USER_UNAUTHORIZED
+PASS  401 GET /api/workshop/workspaces — status=401 code=USER_UNAUTHORIZED
+PASS  401 GET /api/workshop/runtime — status=401 code=USER_UNAUTHORIZED
+PASS  401 GET /api/workshop/fs/dirs — status=401 code=USER_UNAUTHORIZED
+PASS  401 GET /api/users — status=401 code=USER_UNAUTHORIZED
+
+=== 有效 token 行为抽检 ===
+E2E 崩溃: Error: 注册失败: 自助注册已关闭(security.allowRegistration=false),请联系管理员开通账号
+    at main (file:///D:/codes/ABO/AgentWorkShop/scripts/e2e-auth-matrix.mjs:91:21)
+    at process.processTicksAndRejections (node:internal/process/task_queues:104:5)
+AUTH_EXIT=1
+用户注册失败(服务器未启动或缺少用户端点)
+Assertion failed: !(handle->flags & UV_HANDLE_CLOSING), file src\win\async.c, line 94
+REST_EXIT=127

@@ -155,7 +155,9 @@ for (let r = 0; r < N_RUNS; r++) {
       const jump = ((k + r * 7) % 3) - 1 // {-1,0,1} × 5 → 水平集 {45,50,55}
       level = Math.min(55, Math.max(45, level + jump * 5))
     }
-    const u = level + 0.15 * Math.sin((k + r * 11) / 9)
+    // 设定值是离散档位(真实 SP 不会叠加正弦抖动);抖动会让每个采样点变成
+    // 独立"水平",G6 连续段判据误判为纯阶梯。
+    const u = level
     uq.push(u)
     const delayed = uq[Math.max(0, uq.length - 1 - DELAY_STEPS)]
     y = 0.3 * y + 0.7 * delayed + 8 + 0.02 * Math.sin((k + r) / 3)
@@ -302,6 +304,16 @@ async function bootInstance() {
     }
   }
   token = data(reg ?? {})?.token ?? ''
+  // 重试轮会复用同一个 HOME(种子数据已在里面):首轮已注册过 admin 时,
+  // 再次 register 返回 403(注册闸已关),改用登录拿到同一管理员会话。
+  if (!token) {
+    try {
+      const login = await api('POST', '/api/users/login', { email, password: 'ModelLoop#2026' })
+      reg = login
+      token = data(login ?? {})?.token ?? ''
+    }
+    catch { /* 下方统一报错 */ }
+  }
   if (!token) { killTree(child.pid); return { ok: false, stage: 'register', detail: `注册失败 status=${reg?.status}` } }
   // fresh 绑定断言(2026-10-29 修正语义):首注册必须拿到 role=admin(bootstrap)。
   // 若端口被别会话实例抢答,要么 403(其注册闸已关),要么拿到 role=user —— 都在此拦截。
@@ -310,6 +322,21 @@ async function bootInstance() {
     killTree(child.pid)
     return { ok: false, stage: 'fresh', detail: `首注册 role=${role ?? '?'}(非 admin=打到别会话实例)` }
   }
+  // 插件宿主是异步装载的:/api/health 报 ready 时 builtin 双 provider 可能尚未注册。
+  // 尽力等待插件清单出现(40s);dev 下清单面可能不可见(独立 realm),此时继续,
+  // 由 M2.11 的 twin_trial_run 如实暴露 TWIN_PROVIDER_UNAVAILABLE。
+  let providerReady = false
+  for (let i = 0; i < 80; i++) {
+    try {
+      const pl = data(await api('GET', '/api/workshop/plugins', undefined, token, 3000))
+      const list = Array.isArray(pl?.plugins) ? pl.plugins : (Array.isArray(pl) ? pl : [])
+      const inj = list.find(p => p && p.name === 'twin-injection-default')
+      if (inj?.enabled && !inj.error) { providerReady = true; break }
+    }
+    catch { /* 插件面未就绪 */ }
+    await sleep(500)
+  }
+  if (!providerReady) console.log('  · twin-injection-default 未出现在插件清单(dev realm 隔离);继续,由 M2 断言暴露')
   return { ok: true, stage: 'ready', detail: `port=${port}` }
 }
 
