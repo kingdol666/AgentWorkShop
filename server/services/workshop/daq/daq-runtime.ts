@@ -174,6 +174,11 @@ export class DaqNodeRuntime {
       // (metricStates)与节点态直接矛盾。warn/alarm 的进入与恢复由网关
       // evaluateMetricAlarms 的边沿语义独占,此处不得改写。
       if (node.state === 'offline') node.state = 'ok'
+      // P3(2026-11-03):成功解析的帧 = 链路已恢复 —— 清掉陈旧 lastError(如一次
+      // "向量帧点列非法"解析失败)。标量路径 applyReading 有同样自愈语义;帧路径此前缺失,
+      // 导致节点带着已失效的错误长期显示异常(FL-7 实测)。state(warn/alarm)不在此处改写 ——
+      // 那是模板警告带/指标规则的正确判定,不是错误残留。
+      if (node.lastError) node.lastError = null
       node.touchReading(env.value, env.at)
       const pubMs = Math.max(0, Math.min(PUBLISH_INTERVAL_MAX, node.publishIntervalMs ?? this.host.defaults().publishIntervalMs))
       const now = Date.now()

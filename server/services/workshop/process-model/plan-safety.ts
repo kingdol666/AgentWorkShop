@@ -4,16 +4,20 @@
  * 因此**创建时与执行前都必须复核节点归属**,防止:
  *  - 跨线写:计划 lineId=A,levels 却点名 B 线的节点(越权写别的产线);
  *  - 类型错配:targets 写成数控节点(读不到真值)或控制量其实是数采节点;
- *  - 量程外水平:创建时就拒绝,避免批准后逐步被 write() 打回、白花产线时间。
+ *  - 量程外水平:创建时就拒绝,避免批准后逐步被 write() 打回、白花产线时间;
+ *  - 步限不可达(P2,2026-11-03):水平间隔或当前值到最近水平的距离超过有效单步限制
+ *    (节点/参数/配方三层取最小,与 write() 同口径)时,执行首步必被写联锁拒绝 ——
+ *    与其浪费一次 HITL 批准和产线窗口,不如创建时就拒绝并告知如何修正。
  * 纯校验函数,直接读控制器/节点仓(无副作用,不写库)。
  */
 import { AppError } from '../../../utils/errors'
 import { getDcwController } from '../dcw/dcw-controller'
+import { stepLimitOf } from '../dcw/param-limits'
 import { getDaqNodeRepo } from '../daq/daq-node.repo'
 import type { ExperimentPlanBody } from './experiment-runner'
 
 export interface PlanNodeIssue {
-  kind: 'control' | 'target' | 'level'
+  kind: 'control' | 'target' | 'level' | 'step'
   nodeId: string
   message: string
 }
@@ -46,6 +50,39 @@ export function validatePlanNodes(plan: Pick<ExperimentPlanBody, 'lineId' | 'lev
       if (!Number.isFinite(level)) continue
       if (level < node.min || level > node.max) {
         issues.push({ kind: 'level', nodeId: controlId, message: `水平 ${level} 超出节点安全量程 ${node.min}~${node.max}${node.unit ?? ''}` })
+      }
+    }
+    // P2 步限可达性:执行器每步都过 write() 的单步联锁(节点/参数/配方三层取最小)。
+    // 这里用同一口径预检,把"首步必被拒"的计划挡在批准前。
+    const stepProfile = stepLimitOf(node)
+    const finiteLevels = levels.filter(Number.isFinite)
+    if (stepProfile.value != null && finiteLevels.length > 0) {
+      const unit = node.unit ?? ''
+      // (1) 相邻水平间隔:排序后任意相邻两级之差 ≤ 有效步限(保证存在可行遍历;
+      //     执行器据此生成同向单调的可行随机序,见 buildExperimentSteps)。
+      const sorted = [...finiteLevels].sort((a, b) => a - b)
+      for (let i = 1; i < sorted.length; i++) {
+        const gap = sorted[i]! - sorted[i - 1]!
+        if (gap > stepProfile.value + 1e-9) {
+          issues.push({
+            kind: 'step',
+            nodeId: controlId,
+            message: `水平间隔 ${gap}${unit}(水平 ${sorted[i - 1]}→${sorted[i]})超过单步限制 ${stepProfile.value}${unit}(来源:${stepProfile.source}):执行时会被写联锁拒绝;请收窄水平跨度或调大单步限制`,
+          })
+        }
+      }
+      // (2) 首步可达:当前值(实写值优先,读回值兜底)到最近水平 ≤ 有效步限。
+      //     当前值未知(未写过/未读回)时跳过 —— write() 对首写同样豁免步限。
+      const cur = typeof node.value === 'number' ? node.value : (typeof node.readValue === 'number' ? node.readValue : null)
+      if (cur != null) {
+        const nearest = Math.min(...finiteLevels.map(l => Math.abs(l - cur)))
+        if (nearest > stepProfile.value + 1e-9) {
+          issues.push({
+            kind: 'step',
+            nodeId: controlId,
+            message: `当前值 ${cur}${unit} 到最近水平的距离 ${Number(nearest.toFixed(6))}${unit} 超过单步限制 ${stepProfile.value}${unit}(来源:${stepProfile.source}):随机化首步必被拒;请先把节点调至任一水平附近或调大单步限制`,
+          })
+        }
       }
     }
   }

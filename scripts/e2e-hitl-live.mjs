@@ -18,7 +18,7 @@ import puppeteer from 'puppeteer-core'
 
 const BASE = (() => {
   const i = process.argv.indexOf('--base')
-  return i > 0 ? process.argv[i + 1] : 'http://127.0.0.1:3000'
+  return i > 0 ? process.argv[i + 1] : (process.env.AW_BASE ?? 'http://127.0.0.1:3000')
 })()
 const WS_BASE = BASE.replace(/^http/, 'ws')
 const SHOT_DIR = 'gui-test-screenshots'

@@ -1,0 +1,181 @@
+{
+  "at": "2026-11-02T18:29:33.340Z",
+  "e1": {
+    "scenes": {
+      "injection": {
+        "accepted": 44,
+        "rejected": 44,
+        "readback": 44,
+        "restore": 11,
+        "protocols": [
+          "modbus-rtu",
+          "modbus-tcp",
+          "mqtt",
+          "opcua"
+        ],
+        "sources": [
+          "20261101121221-scenario-probes"
+        ]
+      },
+      "wwtp": {
+        "accepted": 28,
+        "rejected": 28,
+        "readback": 28,
+        "restore": 7,
+        "protocols": [
+          "modbus-rtu",
+          "modbus-tcp",
+          "mqtt",
+          "opcua"
+        ],
+        "sources": [
+          "20261101121221-scenario-probes"
+        ]
+      },
+      "anneal": {
+        "accepted": 28,
+        "rejected": 28,
+        "readback": 28,
+        "restore": 6,
+        "protocols": [
+          "modbus-rtu",
+          "modbus-tcp",
+          "mqtt",
+          "opcua"
+        ],
+        "sources": [
+          "20261101121221-scenario-probes"
+        ]
+      },
+      "biax": {
+        "accepted": 120,
+        "rejected": 119,
+        "readback": 116,
+        "restore": 30,
+        "protocols": [
+          "http",
+          "modbus-rtu",
+          "modbus-tcp",
+          "opcua"
+        ],
+        "sources": [
+          "20261101121221-scenario-probes"
+        ]
+      },
+      "cast-film-physics": {
+        "accepted": 24,
+        "rejected": 24,
+        "readback": 20,
+        "restore": 6,
+        "protocols": [
+          "http",
+          "modbus-tcp",
+          "mqtt",
+          "opcua"
+        ],
+        "sources": [
+          "20261101121700-scenario-probes"
+        ]
+      }
+    },
+    "totals": {
+      "accepted": 244,
+      "rejected": 243,
+      "readback": 236,
+      "restore": 60
+    },
+    "filmLine": {
+      "rejected": 9,
+      "total": 9
+    }
+  },
+  "e2": {
+    "c0": {
+      "total": 15,
+      "attained": 0,
+      "perScene": {
+        "injection": {
+          "total": 5,
+          "attained": 0
+        },
+        "wwtp": {
+          "total": 5,
+          "attained": 0
+        },
+        "anneal": {
+          "total": 5,
+          "attained": 0
+        }
+      }
+    },
+    "c1": {
+      "total": 15,
+      "attained": 15,
+      "perScene": {
+        "injection": {
+          "total": 5,
+          "attained": 5
+        },
+        "wwtp": {
+          "total": 5,
+          "attained": 5
+        },
+        "anneal": {
+          "total": 5,
+          "attained": 5
+        }
+      }
+    }
+  },
+  "e4": {
+    "rows": 6,
+    "mismatch": [],
+    "layers": [
+      "baseline",
+      "L5",
+      "L4",
+      "L2",
+      "L3",
+      "L6"
+    ],
+    "arms": {
+      "full": {
+        "attack": 18,
+        "attackRejected": 18,
+        "attackExecuted": 0,
+        "legal": 9,
+        "legalOk": 9,
+        "boundaryAccept": 3,
+        "boundaryReject": 6
+      },
+      "no-interlock": {
+        "attack": 18,
+        "attackRejected": 12,
+        "attackExecuted": 6,
+        "legal": 9,
+        "legalOk": 9,
+        "boundaryAccept": 9,
+        "boundaryReject": 0
+      },
+      "no-readback": {
+        "attack": 18,
+        "attackRejected": 18,
+        "attackExecuted": 0,
+        "legal": 9,
+        "legalOk": 9,
+        "boundaryAccept": 3,
+        "boundaryReject": 6
+      },
+      "ungated": {
+        "attack": 18,
+        "attackRejected": 12,
+        "attackExecuted": 6,
+        "legal": 9,
+        "legalOk": 9,
+        "boundaryAccept": 9,
+        "boundaryReject": 0
+      }
+    }
+  },
+  "problems": []
+}

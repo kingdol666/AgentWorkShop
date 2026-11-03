@@ -12,7 +12,7 @@
  *     - users: 管理面(admin 门,无 token 同样 401)
  *  3. 有效 token 下抽检关键路由返回 200/预期
  */
-const BASE = process.env.BASE_URL ?? 'http://localhost:3001'
+const BASE = process.env.AW_BASE ?? process.env.BASE_URL ?? 'http://127.0.0.1:3000'
 
 let pass = 0
 let fail = 0

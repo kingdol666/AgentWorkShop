@@ -23,7 +23,7 @@ import { getDaqController } from '../daq/daq-controller'
 import { getAmlRuntime } from '../aml/runtime'
 import { getExperimentPlan, updateExperimentStatus, type ExperimentPlanRow } from './experiment'
 import { assessIdentifiability, dominantPeriod } from '../aml/identifiability'
-import { attachAssessment, listInterventions, verdictCodeOf, verdictDetailOf } from '../aml/intervention-ledger'
+import { attachAssessment, estimateGainFromRows, listInterventions, verdictCodeOf, verdictDetailOf } from '../aml/intervention-ledger'
 import { backfillInterventionEvidence } from '../aml/ontology-learning'
 import { assertPlanNodesSafe } from './plan-safety'
 
@@ -131,18 +131,54 @@ function seededShuffle<T>(items: T[], seed: number): T[] {
 }
 
 /**
- * 生成执行步序:按 repeats × (control,level) 展开,randomizedOrder 时用计划 id 派生种子洗牌
- * (同一计划可复现;跨控制量也打散,避免"先把一个 MV 走完再走另一个"带来的时间混杂)。
+ * 生成执行步序(P2 可行随机序,2026-11-03):
+ *  - 控制量内部:按排序水平做单调遍历(方向由种子随机)—— 相邻步差 = 排序相邻间隔,
+ *    必 ≤ 单步限制(创建期 plan-safety 已把关),随机化不再产生"首步/中途步必被步限拒"的不可行序;
+ *  - 跨控制量:种子随机交织(保持各控制量内部相对顺序),避免"先把一个 MV 走完再走另一个"的时间混杂;
+ *  - 同一计划可复现(种子来自计划 id)。
  */
 export function buildExperimentSteps(plan: ExperimentPlanBody, planId: string): ExperimentStep[] {
+  const seed = createHash('sha256').update(planId).digest().readUInt32BE(0)
   const base: Array<{ controlId: string, level: number, repeat: number }> = []
   for (let r = 0; r < plan.repeats; r++) {
     for (const [controlId, levels] of Object.entries(plan.levels)) {
-      for (const level of levels) base.push({ controlId, level, repeat: r })
+      // randomizedOrder=false → 严格按声明顺序(契约不变);randomize 时才做可行蛇形遍历
+      if (!plan.randomizedOrder) {
+        for (const level of levels) base.push({ controlId, level, repeat: r })
+        continue
+      }
+      const sorted = [...levels].sort((a, b) => a - b)
+      // 方向:首 repeat 由种子随机,之后蛇形交替(serpentine)—— 上一轮结束在某一端,
+      // 下一轮同端起步,repeat 边界的设定变化 = 0,全序列每一步都在排序相邻间隔内(可行);
+      // 蛇形来回同时天然满足 G6 的"≥2 个来回阶梯"正交要求。
+      const dir0 = seededShuffle([0, 1], seed)[0]!
+      const walk = (dir0 ^ (r & 1)) === 0 ? sorted : [...sorted].reverse()
+      for (const level of walk) base.push({ controlId, level, repeat: r })
     }
   }
-  const seed = createHash('sha256').update(planId).digest().readUInt32BE(0)
-  const ordered = plan.randomizedOrder ? seededShuffle(base, seed) : base
+  if (!plan.randomizedOrder) return base.map((s, index) => ({ index, ...s }))
+  const byControl = new Map<string, Array<{ controlId: string, level: number, repeat: number }>>()
+  for (const s of base) {
+    const list = byControl.get(s.controlId) ?? []
+    list.push(s)
+    byControl.set(s.controlId, list)
+  }
+  const ordered: Array<{ controlId: string, level: number, repeat: number }> = []
+  const pools = [...byControl.values()].filter(l => l.length > 0)
+  let a = seed >>> 0
+  const rnd = () => {
+    a |= 0
+    a = (a + 0x6D2B79F5) | 0
+    let t = Math.imul(a ^ (a >>> 15), 1 | a)
+    t = ((t ^ (t >>> 14)) >>> 0) / 4294967296
+    return t
+  }
+  while (pools.length > 0) {
+    const pick = Math.min(pools.length - 1, Math.floor(rnd() * pools.length))
+    const pool = pools[pick]!
+    ordered.push(pool.shift()!)
+    if (pool.length === 0) pools.splice(pick, 1)
+  }
   return ordered.map((s, index) => ({ index, ...s }))
 }
 
@@ -208,6 +244,12 @@ export interface ExperimentRunResult {
   totalSteps: number
   failedReason?: string
   verdicts: Record<string, number>
+  /** P5:仅用 identifiable_effect 步估计的增益中位数(effect/Δlevel);无可辨识步时缺省 */
+  estimatedGain?: number
+  /** 参与增益估计的可辨识步数 */
+  gainSamples?: number
+  /** 因欠功效/混杂被排除的步数(诚实分母) */
+  gainExcludedSteps?: number
   startedAt: string
   finishedAt: string
 }
@@ -445,11 +487,20 @@ export async function runExperimentPlan(id: string, deps: ExperimentRunnerDeps =
 
   // 台账汇总:按 hypothesis 前缀 [pexp:<id>] 找本次计划的干预行
   const verdicts: Record<string, number> = {}
+  // P5(2026-11-03):增益只从可辨识步估计(estimateGainFromRows)—— underpowered/
+  // confounded 步的效应量不可归因,混入会拉偏中位数(FL-7 实测 3.98 vs 仅可辨识 4.73)。
+  let estimatedGain: number | null = null
+  let gainSamples = 0
+  let gainExcluded = 0
   try {
     const involved = new Set(Object.keys(plan.levels))
     const rows = listInterventions({ lineId: plan.lineId, limit: 200 })
       .filter(r => involved.has(r.nodeId) && r.hypothesis.startsWith(`[pexp:${id}]`))
     for (const r of rows) verdicts[r.verdict] = (verdicts[r.verdict] ?? 0) + 1
+    const est = estimateGainFromRows(rows)
+    estimatedGain = est.estimatedGain
+    gainSamples = est.gainSamples
+    gainExcluded = est.gainExcludedSteps
   }
   catch { /* 台账不可读不影响执行结果 */ }
 
@@ -463,6 +514,9 @@ export async function runExperimentPlan(id: string, deps: ExperimentRunnerDeps =
     totalSteps: steps.length,
     ...(failedReason ? { failedReason } : {}),
     verdicts,
+    ...(estimatedGain != null
+      ? { estimatedGain, gainSamples, ...(gainExcluded > 0 ? { gainExcludedSteps: gainExcluded } : {}) }
+      : {}),
     startedAt,
     finishedAt: new Date(now()).toISOString(),
   }

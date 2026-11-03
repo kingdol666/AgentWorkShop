@@ -197,14 +197,19 @@ check('D5b', '判定回灌本体证据(逐干预可追溯)', linked.length >= 1,
 
 // ---------- D6 学习:由实测响应估增益 ----------
 console.log('\nD6 从实验数据估计动作增益')
+// P5:优先用执行器只按可辨识步估计的增益(run.estimatedGain);旧结果回退到全步中位数
 const gains = []
 for (const r of rows) {
   if (r.effect == null || r.from == null || r.to == null) continue
   const dsp = Number(r.to) - Number(r.from)
   if (Math.abs(dsp) > 1e-9) gains.push(Number(r.effect) / dsp)
 }
-const gain = gains.length ? gains.sort((a, b) => a - b)[Math.floor(gains.length / 2)] : null
-check('D6a', '可从台账效应量估出增益', gain != null && Number.isFinite(gain), `gain=${gain?.toFixed(5)} g/bar(样本 ${gains.length})`)
+const runnerGain = run?.estimatedGain
+const gain = runnerGain != null && Number.isFinite(runnerGain)
+  ? runnerGain
+  : (gains.length ? gains.sort((a, b) => a - b)[Math.floor(gains.length / 2)] : null)
+const gainSrc = runnerGain != null && Number.isFinite(runnerGain) ? `执行器可辨识步估计(排除 ${run?.gainExcludedSteps ?? 0} 步欠功效)` : '全步中位数(旧口径)'
+check('D6a', '可从台账效应量估出增益', gain != null && Number.isFinite(gain), `gain=${gain?.toFixed(5)} g/bar(${gainSrc};样本 ${runnerGain != null ? run?.gainSamples : gains.length})`)
 check('D6b', '增益方向正确(压力↑→重量↑)', gain != null && gain > 0, `gain=${gain?.toFixed(5)}`)
 
 // ---------- D7 计算并下发目标 SP ----------
