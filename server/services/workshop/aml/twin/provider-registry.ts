@@ -772,10 +772,19 @@ export class TwinProviderRegistry {
   }
 }
 
-const twinProviderRegistry = new TwinProviderRegistry()
+// 单例必须挂在 globalThis:dev(Nuxt watch / Nitro 外部化)下同一模块可能被装载成
+// 两份实例,插件宿主经 __twinPluginExt 注册到实例 A,而工具面 getTwinProviderRegistry()
+// 从实例 B 读取 → 已注册 Provider 解析不到(TWIN_PROVIDER_UNAVAILABLE,2026-11-03
+// model-loop live 实测)。共享一个 registry 后,注册与解析始终同源。
+const registryGlobal = globalThis as typeof globalThis & { __twinProviderRegistry?: TwinProviderRegistry }
+function sharedRegistry(): TwinProviderRegistry {
+  return registryGlobal.__twinProviderRegistry ??= new TwinProviderRegistry()
+}
+
+const twinProviderRegistry = sharedRegistry()
 
 export function getTwinProviderRegistry(): TwinProviderRegistry {
-  return twinProviderRegistry
+  return sharedRegistry()
 }
 export function registerTwinPluginContribution(pluginName: string, contribution: TwinPluginContribution, generation?: number): TwinProviderRegistrationResult {
   return twinProviderRegistry.registerTwinPluginContribution(pluginName, contribution, generation)

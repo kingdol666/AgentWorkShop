@@ -1,0 +1,48 @@
+npm warn Unknown project config "auto-install-peers". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown project config "strict-peer-dependencies". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> agentworkshop@0.9.4 test:e2e-heterogeneous
+> tsx --tsconfig .nuxt/tsconfig.server.json scripts/acceptance-heterogeneous-mes.ts
+
+
+[异构/MES 验收] AW_HOME=C:\Users\87287\AppData\Local\Temp\aw-h1h8-e2e-g4RRNG MES=http://127.0.0.1:60170
+
+H1 MES 历史 → TSDB → AML 数据集
+  PASS H1-1 标量历史桥接成功 — MES 历史桥接完成:1/1 个点位成功,取 121 行,写入 121 行。
+  PASS H1-2 写入行数与窗口内数据一致(121) — inserted=121
+  PASS H1-3 重复桥接幂等(duplicates=121, inserted=0) — {"nodes":1,"nodesOk":1,"fetched":121,"inserted":0,"duplicates":121,"skipped":0}
+  PASS H1-4 AML 数据集构建成功(MES 点位作 target) — dataset=ds-mw0ccned-qvrafn windows=114
+  PASS H1-5 manifest 同时含 DAQ 控制量与 MES 目标 — dn-hetero-ctrl,dw-4909f004
+
+H1/H5 向量与图像 → 帧检索面
+  PASS H1-6 向量桥接成功(25 帧) — {"nodes":1,"nodesOk":1,"fetched":25,"inserted":25,"duplicates":0,"skipped":0}
+{"t":"2026-11-03T07:03:10.586Z","level":"info","scope":"daq.queue","msg":"[daq-queue] 进程内 mock 队列就绪(启动插件将按 infra 状态装配 MQTT)"}
+  PASS H5-1 MES 向量帧可从 DAQ frames 面检索 — frames=25
+  PASS H5-2 resample_to=8 生效(meta.points 8 点) — first=8
+{"t":"2026-11-03T07:03:10.595Z","level":"info","scope":"daq.objectstore","msg":"[daq-objectstore] 本地磁盘对象存储就绪(data/daq-objects/)"}
+  PASS H1-7 图像桥接成功(6 帧) — {"nodes":1,"nodesOk":1,"fetched":6,"inserted":6,"duplicates":0,"skipped":0}
+  PASS H5-3 MES 图像帧可从 DAQ frames 面检索 — frames=6
+  PASS H5-4 frameContent 取回图像字节(对象存储) — 70B
+  PASS H5-5 无缩略图时 thumb=1 回退主图(不 404) — 70B
+  PASS H5-6 MES 点位产线归属可解析(lineIdOf)
+
+H2 节点级向量网格覆盖
+  PASS H2-1 模板 64 点被节点覆盖为 16 点 — points=16
+  PASS H2-2 坏 sinkOverrides 创建即拒(400 级)
+
+H3 导出环境/工况列
+  PASS H3-1 MES 导出表头含环境列 — ts,value,line_id,run_id,product_id,recipe_id
+  PASS H3-2 MES 导出行级批次打标正确 — 2026-11-03T07:00:08.630Z,35,ln-85e8baab,rr-3030c98b,pd-1c27d33f,rc-0df6cac0
+  PASS H3-3 DAQ 导出表头含环境列 — ts_iso,ts_ms,value,state,line_id,run_id,product_id,recipe_id
+  PASS H3-4 DAQ 导出行级批次打标正确 — 2026-11-03T07:00:08.630Z,1793689208630,168,ok,ln-85e8baab,rr-3030c98b,pd-1c27d33f,rc-0df6cac0
+  PASS H3-5 DAQ 导出流式分页行数完整(121) — rows=121
+
+H8 MES 映射模板库
+  PASS H8-1 模板目录 6 个 — rest-scalar,rest-scalar-wrapped,rest-cursor-paged,rest-vector-profile,rest-image-frame,opcenter-style
+  PASS H8-2 模板生成配置通过形状校验 — 映射形状校验通过(未联网;连通性请用驱动 test/试读验证)
+  PASS H8-3 模板配置真实试读成功(42.5) — 试读 42.5 (16ms)
+
+[结果] pass=23 fail=0
+[提示] 临时目录未清理:C:\Users\87287\AppData\Local\Temp\aw-h1h8-e2e-g4RRNG
+[异构/MES 验收] ALL PASS
+

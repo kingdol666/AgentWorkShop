@@ -1,0 +1,80 @@
+{
+  "at": "2026-11-03T07:06:08.008Z",
+  "base": "http://127.0.0.1:3980",
+  "pass": 8,
+  "total": 8,
+  "results": [
+    {
+      "path": "/daq",
+      "title": "数采中心",
+      "ok": true,
+      "len": 800,
+      "errors": [],
+      "screenshot": "D:\\codes\\ABO\\AgentWorkShop\\docs\\audit\\evidence\\2026-11-03-full-acceptance-v094\\ui\\daq.png",
+      "text": "AGENTWORKSHOP\nDIGITAL TWIN\n控制台\n仪表盘\nAgent 工作台\n数字孪生\n数采中心\n产线运营\n数据管理\nEDA 工坊\n建模\n优化器\n本体模型\n运维\n产线操作\n数据分析\n运行时监控\n产线日志\n系统\nAPI Token"
+    },
+    {
+      "path": "/dcw",
+      "title": "产线作业",
+      "ok": true,
+      "len": 463,
+      "errors": [],
+      "screenshot": "D:\\codes\\ABO\\AgentWorkShop\\docs\\audit\\evidence\\2026-11-03-full-acceptance-v094\\ui\\dcw.png",
+      "text": "AGENTWORKSHOP\nDIGITAL TWIN\n控制台\n仪表盘\nAgent 工作台\n数字孪生\n数采中心\n产线运营\n数据管理\nEDA 工坊\n建模\n优化器\n本体模型\n运维\n产线操作\n数据分析\n运行时监控\n产线日志\n系统\nAPI Token"
+    },
+    {
+      "path": "/ontology",
+      "title": "本体",
+      "ok": true,
+      "len": 473,
+      "errors": [],
+      "screenshot": "D:\\codes\\ABO\\AgentWorkShop\\docs\\audit\\evidence\\2026-11-03-full-acceptance-v094\\ui\\ontology.png",
+      "text": "AGENTWORKSHOP\nDIGITAL TWIN\n控制台\n仪表盘\nAgent 工作台\n数字孪生\n数采中心\n产线运营\n数据管理\nEDA 工坊\n建模\n优化器\n本体模型\n运维\n产线操作\n数据分析\n运行时监控\n产线日志\n系统\nAPI Token"
+    },
+    {
+      "path": "/aml",
+      "title": "自动建模",
+      "ok": true,
+      "len": 746,
+      "errors": [],
+      "screenshot": "D:\\codes\\ABO\\AgentWorkShop\\docs\\audit\\evidence\\2026-11-03-full-acceptance-v094\\ui\\aml.png",
+      "text": "AGENTWORKSHOP\nDIGITAL TWIN\n控制台\n仪表盘\nAgent 工作台\n数字孪生\n数采中心\n产线运营\n数据管理\nEDA 工坊\n建模\n优化器\n本体模型\n运维\n产线操作\n数据分析\n运行时监控\n产线日志\n系统\nAPI Token"
+    },
+    {
+      "path": "/optimizer",
+      "title": "优化器",
+      "ok": true,
+      "len": 700,
+      "errors": [],
+      "screenshot": "D:\\codes\\ABO\\AgentWorkShop\\docs\\audit\\evidence\\2026-11-03-full-acceptance-v094\\ui\\optimizer.png",
+      "text": "AGENTWORKSHOP\nDIGITAL TWIN\n控制台\n仪表盘\nAgent 工作台\n数字孪生\n数采中心\n产线运营\n数据管理\nEDA 工坊\n建模\n优化器\n本体模型\n运维\n产线操作\n数据分析\n运行时监控\n产线日志\n系统\nAPI Token"
+    },
+    {
+      "path": "/data",
+      "title": "数据管理台",
+      "ok": true,
+      "len": 417,
+      "errors": [],
+      "screenshot": "D:\\codes\\ABO\\AgentWorkShop\\docs\\audit\\evidence\\2026-11-03-full-acceptance-v094\\ui\\data.png",
+      "text": "AGENTWORKSHOP\nDIGITAL TWIN\n控制台\n仪表盘\nAgent 工作台\n数字孪生\n数采中心\n产线运营\n数据管理\nEDA 工坊\n建模\n优化器\n本体模型\n运维\n产线操作\n数据分析\n运行时监控\n产线日志\n系统\nAPI Token"
+    },
+    {
+      "path": "/plugins",
+      "title": "插件",
+      "ok": true,
+      "len": 2110,
+      "errors": [],
+      "screenshot": "D:\\codes\\ABO\\AgentWorkShop\\docs\\audit\\evidence\\2026-11-03-full-acceptance-v094\\ui\\plugins.png",
+      "text": "AGENTWORKSHOP\nDIGITAL TWIN\n控制台\n仪表盘\nAgent 工作台\n数字孪生\n数采中心\n产线运营\n数据管理\nEDA 工坊\n建模\n优化器\n本体模型\n运维\n产线操作\n数据分析\n运行时监控\n产线日志\n系统\nAPI Token"
+    },
+    {
+      "path": "/settings",
+      "title": "设置",
+      "ok": true,
+      "len": 496,
+      "errors": [],
+      "screenshot": "D:\\codes\\ABO\\AgentWorkShop\\docs\\audit\\evidence\\2026-11-03-full-acceptance-v094\\ui\\settings.png",
+      "text": "AGENTWORKSHOP\nDIGITAL TWIN\n控制台\n仪表盘\nAgent 工作台\n数字孪生\n数采中心\n产线运营\n数据管理\nEDA 工坊\n建模\n优化器\n本体模型\n运维\n产线操作\n数据分析\n运行时监控\n产线日志\n系统\nAPI Token"
+    }
+  ]
+}

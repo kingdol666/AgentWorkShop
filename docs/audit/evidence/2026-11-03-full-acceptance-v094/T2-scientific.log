@@ -1,0 +1,91 @@
+npm warn Unknown project config "auto-install-peers". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown project config "strict-peer-dependencies". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+
+> agentworkshop@0.9.4 test:e2e-scientific
+> tsx --tsconfig .nuxt/tsconfig.server.json scripts/acceptance-scientific-fullchain.ts
+
+[dcw] AW_BENCH_MODE=1:在线探索限频(单步上限/60s 间隔/写入保持窗)已整体豁免 —— 仅限基准/审计环境使用!
+
+[科学探索全链验收] AW_HOME=C:\Users\87287\AppData\Local\Temp\aw-fullchain-CVo85O
+
+F1 采集
+  PASS F1a 逐节点分页:续读无漏无重且升序 — 720 点/唯一 720
+  PASS F1b 按批次过滤:仅命中第 2 批的 240 点 — 240 点
+
+F2 数据集与动作覆盖
+  PASS F2a v2 manifest 携带非空 actionCoverage — version=2 n=1
+  PASS F2b ABAB 激励:恰好 3 水平且非纯阶梯 — levels=3 blocks=12/12/12
+  PASS F2c byRun 三段各 211 窗口且 run 互斥 — {"train":211,"val":211,"test":211,"runs":[1,1,1]}
+
+F3 G6 门
+  PASS F3a 真实 manifest 的 G6 通过(非"不适用"分支) — 1 个控制节点,最少 3 个水平(≥3),时间共线 max |r|=0.079(≤0.9)
+  PASS F3b 单调斜坡 → G6 失败(共线+纯阶梯双理由) — fc-mv: 与时间序号 |r|=0.943(>0.9);档位与时间推进共线,效应不可归因;fc-mv: 3 个水平各仅单一连续段(纯阶梯),档位与时间推进不可分;正交设计需 ≥2 个来回阶梯(ABAB/A→B→A)
+
+F4 学习与训练
+{"t":"2026-11-03T06:06:55.984Z","level":"info","scope":"aml.job","msg":"[aml-job] job-mw0acau8-pjw4sn 内置训练器 linear_arx@1 完成(linear_state_space@1),进入平台评估"}
+  PASS F4a 训练作业到终态 done — done 
+  PASS F4b 模型已注册(linear_state_space,非 stub) — mdl-mw0acau8-pjw4sn
+  PASS F4c 平台指标可读:G1 单步 NRMSE < 0.1 — nrmse=0.001722
+
+F5 推理与动作敏感度
+  PASS F5a ARX 阶跃增益≈真值(误差<20%) — gain=0.976 true=1
+  PASS F5b 耦合可分辨(模型通道有非零增益) — gain=0.976
+
+F6 下发与学习回路(mock 设备;目标响应由夹具注入)
+  PASS F6a 真实线计划待批准(单卡 HITL) — awaiting_approval
+  PASS F6b 未批准执行被拒(错误码 EXPERIMENT_APPROVAL_REQUIRED) — EXPERIMENT_APPROVAL_REQUIRED
+  PASS F6c 计划执行完成(2/2) — done 2/2
+  PASS F6c2 末步设定真实落到节点(随机序回读) — value=1.1 lastLevel=1.1
+  PASS F6d 台账 2 行且判定精确为 no_resolvable_effect×2 — no_resolvable_effect,no_resolvable_effect
+  PASS F6e 判定回灌本体证据恰 2 条(sourceType=intervention) — 2 条
+  PASS F6f 注入恒定响应下的负结论按 refute 回灌(refute=2) — refute=2
+
+F7 下发前双通道互审
+  PASS F7a 模型有效应 + 本体无耦合 → 阻断(冲突含双方证据) — 模型预测有效应(Δy≈-0.09763)但本体明确断言 mv1→cv1 无耦合路径
+  PASS F7b 可证伪方式点名控制量/目标量 — 对 mv1 的干预若在响应窗(≥3 个主导扰动周期)内使 cv1 的变化量 95% CI 不含 0 且方向与模型预测(有效应)不一致,则本次因果断言被否证;比较
+[证据] D:\codes\ABO\AgentWorkShop\docs\audit\evidence\2026-11-02-scientific-fullchain\report.json
+
+[结果] PASS=21 FAIL=0
+[科学探索全链] ALL PASS
+
+SCI_FULL_EXIT=0
+npm warn Unknown project config "auto-install-peers". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown project config "strict-peer-dependencies". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+[dcw] AW_BENCH_MODE=1:在线探索限频(单步上限/60s 间隔/写入保持窗)已整体豁免 —— 仅限基准/审计环境使用!
+
+[科学探索闭环验收] AW_HOME=C:\Users\87287\AppData\Local\Temp\aw-sci-e2e-fB9HLr
+
+E2E-1 真实线 DoE 分级与执行
+  PASS E2E-1a 真实线计划创建即待批准 — status=awaiting_approval
+  PASS E2E-1b 成本核算含 3×主导周期与预计总时长 — 2 个控制量共 5 个水平 × 2 轮 = 10 步;每步 849s(驻留 848s,含 3×主导周期 847.8s,真实线 60s 写间隔下限 + 观测 1s);预计总时长 ≈ 2.36 小时
+  PASS E2E-1c 步数 = (3+2)×2 = 10 — steps=10
+  PASS E2E-1d 未批准执行被拒(HITL 是硬门)
+  PASS E2E-1h 跨线计划创建即拒(禁止写别的产线)
+  PASS E2E-1e 人工批准后转 planned 并留痕
+  PASS E2E-1f 计划执行完成(10/10 步) — done 10/10 
+  PASS E2E-1g 充分窗计划执行完成 — done 2/2 
+
+E2E-2 台账 → 判定 → 本体证据
+  PASS E2E-2a dw-25052a76 台账逐步落行 — 5 行
+  PASS E2E-2b dw-25052a76 判定已回填(非 pending) — underpowered,underpowered,underpowered,underpowered,underpowered
+  PASS E2E-2a dw-a19cea74 台账逐步落行 — 3 行
+  PASS E2E-2b dw-a19cea74 判定已回填(非 pending) — underpowered,underpowered,underpowered
+  PASS E2E-2c 判定回灌 ontology_evidence(sourceType=intervention) — 10 条
+  PASS E2E-2d 短窗步骤不得声称有效应(假阳性=0) — identifiable_effect=0, underpowered=8
+  PASS E2E-2e 充分窗负结论计 refute(无耦合可断言) — refute=2
+
+E2E-3 互审:本体明确无耦合 vs 模型有效应
+  PASS E2E-3a 本体无该耦合边 → 明确无路径(false) — {"has":false,"refute":2}
+  PASS E2E-3b 自动模式拒绝且理由含"模型有效应"+"无耦合路径" — 模型预测有效应(Δy≈-0.1200)但本体明确断言 dw-25052a76→daq-sci-thickness 无耦合路径
+  PASS E2E-3c 科学载荷带 MDE 与可证伪方式
+
+E2E-4 G6:事故型数据集 vs 正交数据集
+  PASS E2E-4a 事故型(2 水平纯阶梯)G6 不通过 — monolithic
+  PASS E2E-4b 正交 ABAB(3 档往返)G6 通过 — levels=3 blocks=2/3/2
+
+[结果] pass=20 fail=0
+[证据] C:\Users\87287\AppData\Local\Temp\aw-sci-e2e-fB9HLr\evidence\scientific-loop-report.json
+[提示] 临时目录未清理:C:\Users\87287\AppData\Local\Temp\aw-sci-e2e-fB9HLr
+[科学探索闭环] ALL PASS
+
+SCI_LOOP_EXIT=0

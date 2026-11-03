@@ -1,0 +1,61 @@
+npm warn Unknown project config "auto-install-peers". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+npm warn Unknown project config "strict-peer-dependencies". This will stop working in the next major version of npm. See `npm help npmrc` for supported config options.
+✔ ON1.1 创建草稿(rev=1, 单活跃)
+✔ ON1.2 同本体同属主二次起草被拒(409) — DRAFT_ALREADY_ACTIVE
+✔ ON1.3 整份文档写入并通过结构校验
+✔ ON1.4 过期 rev 写入被拒(乐观锁 409) — DRAFT_CONCURRENT_MODIFY
+✔ ON1.5 非属主编辑被拒(403) — DRAFT_SCOPE_VIOLATION
+✔ ON2.1 编译预览:状态 warning(含 PLC 解释项)且四类产物齐备 — status=warning
+✔ ON2.2 每条规则都有 trace(fail-closed 不静默丢弃) — traces=3/rules=3
+✔ ON2.3 膜厚窗落入 cvBounds(只收紧前的预览)
+✔ ON2.4 联锁规则归 PLC 解释层(不产数值约束)
+✔ ON2.5 关系派生训练先验:特征候选≥2、时滞含 τ=D/v — features=2
+✔ ON2.6 语义绑定活体校验:目标不存在 → 拒绝落库 — ONTOLOGY_BINDING_INVALID
+✔ ON3.1 证据登记写回草稿(1→2)并留账本
+✔ ON4.1 跳级迁移被拒(409) — RULE_LIFECYCLE_CONFLICT
+✔ ON4.2 起草人自审被拒(403) — SELF_REVIEW_FORBIDDEN
+✔ ON4.3 第二人完成 reviewed → validated
+✔ ON4.4 无批准单不能进入控制级(403) — APPROVAL_REQUIRED
+✔ ON4.5 申请人不能自我裁决(403) — SELF_REVIEW_FORBIDDEN
+✔ ON4.6 第二人批准后可进入 approved_for_control
+✔ ON5.1 editor 不能发布(403) — ADMIN_REQUIRED
+✔ ON5.2 admin 发布 v1(published + contentHash/packHash)
+✔ ON5.3 发布快照冻结:cvBounds 与 control_guard 进 compiled_json
+✔ ON5.4 Rule Trace 落库(每规则一行) — n=3
+✔ ON5.5 同 (本体,版本) 不可二次写入(不可变) — ERR_SQLITE_ERROR
+✔ ON6.1 按产线解析到生效版本 v1
+✔ ON6.2 温度 150℃(<180)+ 提速 → 阻断(block_recommendation) — 温区未达 180℃,禁止提速
+✔ ON6.3 温度 200℃(≥180)+ 提速 → 放行
+✔ ON6.4 低温下降速 → 放行(只禁正向增量)
+✔ ON6.5 状态未知 + 提速 → fail-closed 阻断
+✔ ON6.6 跨配方不触发该守卫(作用域隔离)
+✔ ON6.7 下发意图面:绑定映射成功 + 状态未知提速 → fail-closed 阻断 — unmapped=, blocked=true
+✔ ON6.8 下发意图面:降速意图不阻断(只禁正向)
+✔ ON7.1 发布 v2(parent=1)
+✔ ON7.2 版本 diff 精确到规则 id — {"added":[],"removed":[],"changed":["R-BOUND"]}
+✔ ON7.3 运行时解析自动切到 v2 且界已收紧
+✔ ON8.1 Profile 引用的本体内容一致 → 放行
+✔ ON8.2 内容被篡改 → 409 ONTOLOGY_PACK_DRIFTED — ONTOLOGY_PACK_DRIFTED
+✔ ON9.1 退役版本被引用 → 漂移拒绝 — ONTOLOGY_PACK_DRIFTED
+✔ ON9.2 退役 v2 后运行时回退到 v1(仍 published)
+✔ ON9.3 重复退役被拒(409) — VERSION_NOT_PUBLISHED
+✔ ON10.1 全链审计动作齐备 — retire,publish,draft.update,rule.approve,rule.approve_request,rule.transition,evidence.append,draft.create
+✔ ON10.2 publish_log 预留 actor_kind(可区分 agent/user/system)
+✔ ON11.1 未获控制级批准的硬约束拒绝发布(422) — ONTOLOGY_NOT_APPROVED
+✔ ON12.1 场景子图含实体/规则决策/守卫
+✔ ON12.2 无本体的产线返回 null(零注入)
+✔ ON14.1 hops=1:中心+直接邻居与直接边 — {"nodes":[["pv.melt_pressure",0],["cv.thickness",1]],"edges":[["rel-1",1,"out"]]}
+✔ ON14.2 hops=2:出现间接邻居 st.line_speed@2 且 rel-2 标注 hop2/in — {"speedNode":{"key":"st.line_speed","kind":"process_variable","name":"线速度","description":"","unit":"m","role":"control","hop":2},"rel2Edge":{"id":"rel-2","kind":"influences","srcKey":"st.line_speed","dstKey":"cv.thickness","evidenceTier":"candidate_influence","hop":2,"direction":"in"}}
+✔ ON14.3 direction=out 只保留正向跨跳边(rel-2 不出现) — [{"id":"rel-1","kind":"influences","srcKey":"pv.melt_pressure","dstKey":"cv.thickness","evidenceTier":"validated_control","hop":1,"direction":"out"}]
+✔ ON14.4 未知实体 → 404 ONTOLOGY_SUBGRAPH_ENTITY_NOT_FOUND — {"ok":true,"code":"ONTOLOGY_SUBGRAPH_ENTITY_NOT_FOUND","status":404}
+✔ ON14.5 hops 越界 → 422 ONTOLOGY_SUBGRAPH_HOPS_INVALID — {"ok":true,"code":"ONTOLOGY_SUBGRAPH_HOPS_INVALID","status":422}
+✔ ON14.6 无已发布本体的产线 → null(与 scene active:false 同语义)
+✔ ON14.7 kinds 过滤同时作用于遍历与输出(无该类型 → 仅中心) — [{"key":"pv.melt_pressure","kind":"process_variable","name":"熔体压力","description":"","unit":"bar","role":"control","hop":0}]
+✔ ON13.1 自动修复:补描述(文档/实体/规则) — fixes=18
+✔ ON13.2 自动修复:复合单位量纲清空(mm/s 不主张相容性)
+✔ ON13.3 自动修复:作用域回填 + 悬空绑定移除 + 单位回填/scale 归一
+✔ ON13.4 自动修复后文档校验通过且描述已落库
+✔ ON13.5 自动修复幂等:第二次零修复 — second=0
+✔ ON13.6 证据不足的控制级规则回退 validated,且证据不被伪造(仍报错) — 规则「R-BOUND」证据级别 candidate_influence 不足控制级,状态回退为 validated(证据不可自动伪造)
+
+ONTOLOGY E2E: 57/57 passed, 0 failed

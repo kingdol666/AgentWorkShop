@@ -131,8 +131,11 @@ for (let r = 0; r < N_RUNS; r++) {
   segRepo.insert({ lineId: line.id, runId: run.id, fromTs: start, toTs: end, recipeId: recipe.id, recipeVersion: recipe.version ?? 1, recipeContentHash: seedHash, conditionId: 'c-live', source: 'line_run', confirmed: true })
   let y = 52
   const uq = []
+  // G6 动作覆盖门(2026-11 新增):离散档位 ABAB(每档驻留 20 拍),≥3 水平且非纯阶梯。
+  // 连续正弦会让每个采样点都成为独立水平 → G6 误判纯阶梯并拒绝训练。
+  const runLevels = [60, 45, 75, 50, 70, 55]
   for (let k = 0; k < N_STEPS; k++) {
-    const u = 50 + 20 * Math.sin((k + r * 11) / 9) + 6 * Math.sin((k + r * 3) / 4)
+    const u = runLevels[(Math.floor(k / 20) + r) % runLevels.length]
     uq.push(u)
     const delayed = uq[Math.max(0, uq.length - 1 - DELAY_STEPS)]
     y = 0.3 * y + 0.7 * delayed + 8 + 0.02 * Math.sin((k + r) / 3)
@@ -181,8 +184,9 @@ for (let r = 0; r < N_RUNS; r++) {
   const u1q = []
   const u2q = []
   for (let k = 0; k < N_STEPS; k++) {
-    const u1 = 60 + 20 * Math.sin((k + r * 7) / 11) + 5 * Math.sin((k + r) / 5)
-    const u2 = 40 + 15 * Math.sin((k + r * 5) / 8) + 4 * Math.cos((k + r) / 4)
+    // 双变量:各自独立离散档位(错位块序,避免与时间共线)
+    const u1 = [60, 45, 75, 50][(Math.floor(k / 20) + r) % 4]
+    const u2 = [30, 55, 40, 65][(Math.floor(k / 20) + r + 1) % 4]
     u1q.push(u1)
     u2q.push(u2)
     const d1 = u1q[Math.max(0, u1q.length - 1 - DELAY_STEPS)]
@@ -229,7 +233,9 @@ for (let r = 0; r < N_RUNS; r++) {
   seededRuns3.push({ id: run.id, start, end })
   segRepo.insert({ lineId: line3.id, runId: run.id, fromTs: start, toTs: end, recipeId: recipe3.id, recipeVersion: recipe3.version ?? 1, recipeContentHash: recipeContentHash(recipe3), conditionId: 'c-live', source: 'line_run', confirmed: true })
   for (let k = 0; k < N_STEPS; k++) {
-    // 慢变 MV:静态响应面按"未来时域均值"拟合,F=1 时相邻拍差异≈0.5(量程 20 的 2.5%)
+    // 稳态响应面:控制量做慢速扫描。static_response@1 数据集不参与 G6 动态动作
+    // 覆盖门(dataset-builder 对静态训练器显式置空 actionCoverage),因此可保留
+    // 连续扫描 —— 这是静态面训练器原始基线,改为离散档位反而破坏留出集拟合。
     const u = 60 + 20 * Math.sin((k + r * 30) / 40) + 0.5 * Math.sin(k / 5)
     const y = 50 + 0.45 * (u - 50) - 0.005 * (u - 50) ** 2 + 0.02 * Math.sin((k + r) * 1.7)
     const ts = start + k * BEAT
