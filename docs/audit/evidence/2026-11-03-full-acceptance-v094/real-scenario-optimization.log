@@ -1,0 +1,39 @@
+
+[端到端优化作业演示] base=http://127.0.0.1:3985 line=ln-00e0726d
+  · 已在基线 SP=50
+
+D1 基线观测(SP=50,目标窗 32.00–32.30g)
+  PASS D1a 基线重量可观测 — mean=31.503g
+  PASS D1b 基线低于目标窗下界(需要优化) — baseline=31.503 < 32
+
+D2 DoE 计划(真实线 → 单卡 HITL)
+  PASS D2a 计划创建成功且待批准 — status=awaiting_approval
+  PASS D2b 成本核算前置(3 步,真实线 60s 下限) — 1 个控制量共 3 个水平 × 1 轮 = 3 步;每步 61s(驻留 60s,真实线 60s 写间隔下限 + 观测 1s);预计总时长 ≈ 0.05 小时
+
+D3 未批准执行必须被拒
+  PASS D3 未批准执行被拒(APPROVAL_REQUIRED) — {"code":"EXPERIMENT_APPROVAL_REQUIRED","message":"计划 pexp-mw0dmt4v-na04 为真实产线计划且尚未批准:须先 HITL 批准(approve)后才能执行","data":nu
+
+D4 人工批准 + 随机化执行(3 步 × 60s)
+  PASS D4a 批准后转 planned — planned
+  PASS D4b 计划执行完成 3/3 — done 3/3 用时 183s 
+
+D5 台账判定与本体证据
+  PASS D5a 台账 3 行且全部判定(非 pending) — no_resolvable_effect,underpowered,identifiable_effect
+  PASS D5b 判定回灌本体证据(逐干预可追溯) — 3 条
+
+D6 从实验数据估计动作增益
+  PASS D6a 可从台账效应量估出增益 — gain=0.05035 g/bar(执行器可辨识步估计(排除 2 步欠功效);样本 1)
+  PASS D6b 增益方向正确(压力↑→重量↑) — gain=0.05035
+
+D7 计算目标 SP 并下发
+  PASS D7a 目标 SP 在安全量程内 — SP=63.7bar(当前 60,重量 31.962g)
+  PASS D7b 参数下发受理 — {"outcome":{"ok":true,"message":"写入并回读一致:63.7,回读 63.7(标定后物理值 63.7)","raw":63.7,"readback":63.7,"ack":"readback-verified","anchorId":"anc-6ae0dc45"}}
+  PASS D7c 回读一致 — readback=63.7 target=63.7
+
+D8 效果验证(等待工艺跟随)
+  PASS D8 制品重量进入目标窗 — after=32.224g window=[32,32.3] Δ=0.722g
+
+[结果] PASS=15 FAIL=0
+[证据] docs/audit/evidence/2026-11-03-full-acceptance-v094/real-scenario-optimization.json
+[端到端优化作业] ALL PASS
+
