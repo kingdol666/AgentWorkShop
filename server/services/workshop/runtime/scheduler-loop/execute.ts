@@ -76,7 +76,9 @@ export abstract class SchedulerLoopExecute extends SchedulerLoopRules {
           // 能力探测:极简 TaskEngine 替身可能缺方法,缺失时按旧语义跳过。
           if (!parent.parentId) {
             const engine = this.lead.taskEngine as { refreshDeadline?: (id: string, iso: string) => unknown }
-            const budgetMs = Math.max(10_000, Number(workshopSettings().root_timeout_ms ?? 900_000))
+            const budgetMs = parent.source === 'project' && parent.deadlineAt
+              ? Math.max(10_000, new Date(parent.deadlineAt).getTime() - new Date(parent.createdAt).getTime())
+              : Math.max(10_000, Number(workshopSettings().root_timeout_ms ?? 900_000))
             engine.refreshDeadline?.(parent.id, new Date(Date.now() + budgetMs).toISOString())
           }
         }

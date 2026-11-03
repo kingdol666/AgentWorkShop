@@ -410,7 +410,9 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
         // 早已耗尽,不刷新则 tick 的过期收口会在 WORKING 后立即处决它。
         try {
           const engine = this.getTaskEngine() as { refreshDeadline?: (id: string, iso: string) => unknown }
-          const budgetMs = Math.max(10_000, Number(workshopSettings().root_timeout_ms ?? 900_000))
+          const budgetMs = head.source === 'project' && head.deadlineAt
+            ? Math.max(10_000, new Date(head.deadlineAt).getTime() - new Date(head.createdAt).getTime())
+            : Math.max(10_000, Number(workshopSettings().root_timeout_ms ?? 900_000))
           engine.refreshDeadline?.(head.id, new Date(Date.now() + budgetMs).toISOString())
         }
         catch { /* 极简引擎替身缺方法:跳过,入场后由既有预算语义接管 */ }

@@ -26,6 +26,11 @@ export abstract class TaskEngineCreate extends TaskEngineUpdate {
     sourceChatDeliveryId?: string
     closeReason?: string
     deadlineAt?: string
+    source?: string
+    projectId?: string | null
+    projectWorkItemId?: string | null
+    projectAttemptNo?: number | null
+    traceId?: string
   }): WorkspaceTask {
     const row = this.repos.tasks.create({
       channelId: input.channelId,
@@ -42,6 +47,11 @@ export abstract class TaskEngineCreate extends TaskEngineUpdate {
       sourceChatDeliveryId: input.sourceChatDeliveryId ?? null,
       closeReason: input.closeReason ?? '',
       deadlineAt: input.deadlineAt ?? null,
+      source: input.source ?? 'channel',
+      projectId: input.projectId ?? null,
+      projectWorkItemId: input.projectWorkItemId ?? null,
+      projectAttemptNo: input.projectAttemptNo ?? null,
+      traceId: input.traceId ?? '',
       // §5.1 每次新分配产生新代次 + 新租约(创建即首个 assignment)
       ...issueLeaseFields(0, input.assigneeId),
     })
@@ -67,6 +77,11 @@ export abstract class TaskEngineCreate extends TaskEngineUpdate {
     sourceChatMessageId: string
     sourceChatDeliveryId?: string
     deadlineAt?: string
+    source?: string
+    projectId?: string | null
+    projectWorkItemId?: string | null
+    projectAttemptNo?: number | null
+    traceId?: string
   }): { task: WorkspaceTask, created: boolean } {
     const result = this.repos.tasks.createOrGetRoot({
       channelId: input.channelId,
@@ -78,6 +93,11 @@ export abstract class TaskEngineCreate extends TaskEngineUpdate {
       sourceChatMessageId: input.sourceChatMessageId,
       sourceChatDeliveryId: input.sourceChatDeliveryId,
       deadlineAt: input.deadlineAt,
+      source: input.source ?? 'channel',
+      projectId: input.projectId ?? null,
+      projectWorkItemId: input.projectWorkItemId ?? null,
+      projectAttemptNo: input.projectAttemptNo ?? null,
+      traceId: input.traceId ?? '',
       ...issueLeaseFields(0, input.assigneeId),
     })
     const task = rowToTask(result.row)
@@ -136,6 +156,12 @@ export abstract class TaskEngineCreate extends TaskEngineUpdate {
       artifacts: this.initialArtifacts(input.parts),
       history: [],
       routeReason: input.routeReason ?? '',
+      // Project 上下文必须传播到所有子任务：project-origin 写策略/审计/回溯都依赖它。
+      source: parent.source ?? 'channel',
+      projectId: parent.projectId ?? null,
+      projectWorkItemId: parent.projectWorkItemId ?? null,
+      projectAttemptNo: parent.projectAttemptNo ?? null,
+      traceId: parent.traceId ?? '',
       ...issueLeaseFields(0, input.assigneeId),
     })
     this.deliverTaskMessage({

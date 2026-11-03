@@ -483,6 +483,7 @@ export function createProjectAttemptRepo(db: DatabaseSync) {
   const selectById = db.prepare(`SELECT ${ATTEMPT_COLS} FROM project_work_item_attempts WHERE id = ?`)
   const selectLive = db.prepare(`SELECT ${ATTEMPT_COLS} FROM project_work_item_attempts WHERE work_item_id = ? AND closed_at IS NULL LIMIT 1`)
   const selectByTask = db.prepare(`SELECT ${ATTEMPT_COLS} FROM project_work_item_attempts WHERE channel_task_id = ? LIMIT 1`)
+  const selectByWorkItem = db.prepare(`SELECT ${ATTEMPT_COLS} FROM project_work_item_attempts WHERE work_item_id = ? ORDER BY attempt_no ASC`)
   const updateDispatch = db.prepare(`UPDATE project_work_item_attempts SET channel_task_id = ?, state = ? WHERE id = ?`)
   const closeStmt = db.prepare(`UPDATE project_work_item_attempts SET state = ?, blocked_reason = ?, closed_at = ? WHERE id = ? AND closed_at IS NULL`)
   return {
@@ -525,6 +526,9 @@ export function createProjectAttemptRepo(db: DatabaseSync) {
     },
     findByTask(taskId: string): ProjectAttemptRow | undefined {
       return selectByTask.get(taskId) as unknown as ProjectAttemptRow | undefined
+    },
+    listByWorkItem(workItemId: string): ProjectAttemptRow[] {
+      return selectByWorkItem.all(workItemId) as unknown as ProjectAttemptRow[]
     },
     setDispatched(id: string, channelTaskId: string): void {
       updateDispatch.run(channelTaskId, 'DISPATCHED', id)
