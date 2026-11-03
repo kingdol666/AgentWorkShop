@@ -13,8 +13,8 @@ import { getDaqController } from '@/server/services/workshop/daq/daq-controller'
 export default defineEventHandler(async (event) => {
   const user = resolveUser(event)
   const id = getRouterParam(event, 'id') ?? ''
-  // 产线权限:帧内容需「仅查看」及以上
-  requireLineMode(user, getDaqController().byId(id)?.lineId, 'readonly')
+  // 产线权限:帧内容需「仅查看」及以上(H5:含 MES 桥接点位的帧命名空间)
+  requireLineMode(user, await getDaqController().lineIdOf(id), 'readonly')
   const q = getQuery(event)
   const ts = Number(q.ts)
   if (!Number.isFinite(ts) || ts <= 0) {

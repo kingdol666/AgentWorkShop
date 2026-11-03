@@ -22,6 +22,8 @@ import type { MesHistoryDriver, MesDatasetStatsView, MesDatasetStore } from './m
 import { getMesDatasets } from './mes-datasets'
 import { mesDataHookCode, mesRequestHookCode, runMesDataHook, runMesRequestHook, saveMesImageArtifact } from './mes-hook'
 import type { MesHookArtifact, MesHookData } from './mes-hook'
+import { archiveMesImageRows, bridgeMesHistory } from './mes-bridge'
+import type { MesBridgeOutcome } from './mes-bridge'
 
 /** mes-rest 驱动 kind(并行工作流收编进 DcwDriverKind 联合;此处按字符串经注册表解析,不 import 驱动实现) */
 export const MES_REST_DRIVER_KIND = 'mes-rest'
@@ -45,6 +47,16 @@ export const MES_DEFAULT_MAX_ROWS = 500
 export const MES_EXPORT_MAX_ROWS = 200_000
 /** 离线导出图像帧上限(单次) */
 export const MES_EXPORT_MAX_FRAMES = 500
+
+/** 导出环境/工况列(H3):行级批次窗口(与入库打标同一时间轴) */
+interface MesExportRunWin {
+  from: number
+  to: number
+  runId: string
+  productId: string
+  recipeId: string
+}
+const MES_EXPORT_CONTEXT_COLUMNS = ['line_id', 'run_id', 'product_id', 'recipe_id'] as const
 
 // ============================================================
 // 频次限流(进程内内存计数;Map<agentId, 时间戳[]>)
@@ -292,6 +304,11 @@ export interface MesExportArgs {
   note?: string
   /** 标量节点是否生成按时间对齐的 merged.csv(缺省 true) */
   merge?: boolean | string
+  /**
+   * H3(2026-11-03):CSV 追加行级环境/工况列(line_id,run_id,product_id,recipe_id)。
+   * 默认关闭以保持 `ts,value` / `ts,v0..vN` 列契约;manifest/README 始终带环境摘要。
+   */
+  with_context?: boolean | string
 }
 
 export function createMesController(deps: Partial<MesControllerDeps> = {}) {
@@ -573,6 +590,7 @@ export function createMesController(deps: Partial<MesControllerDeps> = {}) {
     // 统计与采样(按格式)
     let stats: GenStats
     let autosaved: MesHookArtifact[] = []
+    let archivedNote = ''
     const sample: string[] = []
     let tableFieldStats = ''
     if (format === 'vector') {
@@ -612,6 +630,32 @@ export function createMesController(deps: Partial<MesControllerDeps> = {}) {
         sample.push(`${shortTs(r.ts)},${r.mime ?? 'image/png'},~${kb}KB${f ? ` → ${f.name}` : ''}`)
       }
       autosaved = saved
+      // H5(2026-11-03):图像帧除落 mes-artifacts(inline 预览)外,同步归档到
+      // **帧检索面**(对象存储 + daq_frames,键与 DAQ 图像帧同构)。之后可用
+      // GET /api/workshop/daq/<nodeId>/frames 统一检索,CCD/表检与 DAQ 视觉同路径。
+      // 幂等:(nodeId,tsMs) 已存在即跳过;归档失败不击穿取数(只回包说明)。
+      try {
+        const rowsToArchive = buf
+          .filter(r => typeof r.data === 'string')
+          .slice(0, IMAGE_AUTOSAVE_MAX)
+          .map(r => ({ ts: r.ts, data: r.data!, mime: r.mime, record: r.record }))
+        const arch = await archiveMesImageRows({
+          id: node.id,
+          name: node.name,
+          driver: node.driver,
+          lineId: node.lineId,
+          unit: node.unit,
+          min: node.min,
+          max: node.max,
+          driverConfig: cfg,
+        }, rowsToArchive)
+        if (arch.archived > 0 || arch.failed > 0) {
+          archivedNote = `  帧归档(检索面):新增 ${arch.archived} 帧${arch.skipped > 0 ? `,已存在跳过 ${arch.skipped}` : ''}${arch.failed > 0 ? `,失败 ${arch.failed}` : ''} → /api/workshop/daq/${node.id}/frames`
+        }
+      }
+      catch (err) {
+        archivedNote = `  帧归档失败(不影响本次取数):${err instanceof Error ? err.message : String(err)}`
+      }
     }
     else if (format === 'table' || format === 'event') {
       stats = { count: buf.length, min: null, max: null, mean: null, stddev: null, firstTs: buf[0]?.ts ?? null, lastTs: buf[buf.length - 1]?.ts ?? null }
@@ -671,6 +715,7 @@ export function createMesController(deps: Partial<MesControllerDeps> = {}) {
       statLine,
       sample.length > 0 ? `  采样(≤3 行): ${sample.join(' | ')}` : '  采样:无有效行',
       ...(tableFieldStats ? [tableFieldStats] : []),
+      ...(archivedNote ? [archivedNote] : []),
       ...(dictText ? [dictText] : []),
     ].join('\n')
 
@@ -918,10 +963,54 @@ export function createMesController(deps: Partial<MesControllerDeps> = {}) {
     const scalarFiles: Array<{ nodeName: string, nodeId: string, file: string }> = []
     let totalRows = 0
 
+    // H3:行级环境/工况列。批次窗口取自平台 run 台账(+活动批次),
+    // 与数据入库打标同一时间轴;窗口外只给 line_id,不冒充批次。
+    const withContext = args.with_context === true || args.with_context === 'true'
+    const runsByLine = new Map<string, MesExportRunWin[]>()
+    try {
+      const { getDcwRecipeRepo } = await import('../dcw/dcw-recipe.repo')
+      for (const r of getDcwRecipeRepo().listRuns()) {
+        const winFrom = Date.parse(r.startedAt)
+        const winTo = r.endedAt ? Date.parse(r.endedAt) : d.nowMs()
+        if (!Number.isFinite(winFrom) || !Number.isFinite(winTo) || winTo < winFrom) continue
+        const arr = runsByLine.get(r.lineId) ?? []
+        arr.push({ from: winFrom, to: winTo, runId: r.id, productId: r.productId, recipeId: r.recipeId })
+        runsByLine.set(r.lineId, arr)
+      }
+    }
+    catch { /* 批次仓不可用 → 只有 line_id 列 */ }
+    const runsOf = (lineId: string): MesExportRunWin[] => {
+      const arr = [...(runsByLine.get(lineId) ?? [])]
+      const active = lineId ? getActiveLineRun(lineId) : null
+      if (active && !arr.some(w => w.runId === active.runId)) {
+        const aFrom = Date.parse(active.startedAt)
+        if (Number.isFinite(aFrom)) arr.push({ from: aFrom, to: d.nowMs(), runId: active.runId, productId: active.productId, recipeId: active.recipeId })
+      }
+      return arr.sort((a, b) => a.from - b.from)
+    }
+
     for (const node of vis.nodes) {
       const cfg = node.driverConfig as Record<string, unknown>
       const format = historyFormatOf(cfg)
       const nodeDir = join(dir, safeSeg(node.id))
+      // 行级工况游标(行按时间升序;单节点 O(rows + runs))
+      const runWins = runsOf(node.lineId)
+      let winIdx = 0
+      const ctxOf = (tsIso: string): { lineId: string, runId: string, productId: string, recipeId: string } | null => {
+        if (!withContext) return null
+        const lineId = node.lineId ?? ''
+        const tsMs = Date.parse(tsIso)
+        if (!Number.isFinite(tsMs)) return { lineId, runId: '', productId: '', recipeId: '' }
+        while (winIdx + 1 < runWins.length && runWins[winIdx + 1]!.from <= tsMs) winIdx++
+        const w = runWins[winIdx]
+        return w && tsMs >= w.from && tsMs <= w.to
+          ? { lineId, runId: w.runId, productId: w.productId, recipeId: w.recipeId }
+          : { lineId, runId: '', productId: '', recipeId: '' }
+      }
+      const ctxCells = (tsIso: string): string[] => {
+        const c = ctxOf(tsIso)
+        return c ? [c.lineId, c.runId, c.productId, c.recipeId] : []
+      }
       try {
         mkdirSync(nodeDir, { recursive: true })
         const driver = d.resolveDriver(node.driver)
@@ -972,7 +1061,7 @@ export function createMesController(deps: Partial<MesControllerDeps> = {}) {
                 }
                 if (!headerWritten) {
                   dim = r.values.length
-                  columns = ['ts', ...Array.from({ length: dim }, (_, i) => `v${i}`)]
+                  columns = ['ts', ...Array.from({ length: dim }, (_, i) => `v${i}`), ...(withContext ? [...MES_EXPORT_CONTEXT_COLUMNS] : [])]
                   writeChunk(fd!, `${columns.join(',')}\r\n`)
                   headerWritten = true
                 }
@@ -982,6 +1071,7 @@ export function createMesController(deps: Partial<MesControllerDeps> = {}) {
                   const v = r.values[i]
                   cells.push(Number.isFinite(v) ? String(v) : '')
                 }
+                if (withContext) cells.push(...ctxCells(ts))
                 writeChunk(fd!, `${cells.join(',')}\r\n`)
                 rows++
                 continue
@@ -1001,7 +1091,14 @@ export function createMesController(deps: Partial<MesControllerDeps> = {}) {
                 const name = `frames/${String(frameSaved).padStart(5, '0')}-${ts.replace(/[:.]/g, '-')}.${ext}`
                 try {
                   writeFileSync(join(nodeDir, name), Buffer.from(r.data, 'base64'))
-                  jsonl.push(JSON.stringify({ ts, mime, file: name, ...(r.record !== null && typeof r.record === 'object' ? { record: r.record } : {}) }))
+                  const ctx = ctxOf(ts)
+                  jsonl.push(JSON.stringify({
+                    ts,
+                    mime,
+                    file: name,
+                    ...(r.record !== null && typeof r.record === 'object' ? { record: r.record } : {}),
+                    ...(ctx ? { context: { line_id: ctx.lineId, run_id: ctx.runId, product_id: ctx.productId, recipe_id: ctx.recipeId } } : {}),
+                  }))
                   frameSaved++
                   rows++
                 }
@@ -1016,7 +1113,12 @@ export function createMesController(deps: Partial<MesControllerDeps> = {}) {
                   skipped++
                   continue
                 }
-                jsonl.push(JSON.stringify({ ts, record: r.record }))
+                const ctx = ctxOf(ts)
+                jsonl.push(JSON.stringify({
+                  ts,
+                  record: r.record,
+                  ...(ctx ? { context: { line_id: ctx.lineId, run_id: ctx.runId, product_id: ctx.productId, recipe_id: ctx.recipeId } } : {}),
+                }))
                 rows++
                 continue
               }
@@ -1025,11 +1127,11 @@ export function createMesController(deps: Partial<MesControllerDeps> = {}) {
                 continue
               }
               if (!headerWritten) {
-                columns = ['ts', 'value']
+                columns = ['ts', 'value', ...(withContext ? [...MES_EXPORT_CONTEXT_COLUMNS] : [])]
                 writeChunk(fd!, `${columns.join(',')}\r\n`)
                 headerWritten = true
               }
-              writeChunk(fd!, `${ts},${r.value}\r\n`)
+              writeChunk(fd!, `${ts},${r.value}${withContext ? `,${ctxCells(ts).join(',')}` : ''}\r\n`)
               rows++
             }
           },
@@ -1045,7 +1147,7 @@ export function createMesController(deps: Partial<MesControllerDeps> = {}) {
         }
         else {
           if (!headerWritten) {
-            columns = format === 'vector' ? ['ts'] : ['ts', 'value']
+            columns = format === 'vector' ? ['ts', ...(withContext ? [...MES_EXPORT_CONTEXT_COLUMNS] : [])] : ['ts', 'value', ...(withContext ? [...MES_EXPORT_CONTEXT_COLUMNS] : [])]
             writeChunk(fd!, `${columns.join(',')}\r\n`)
             headerWritten = true
           }
@@ -1075,6 +1177,14 @@ export function createMesController(deps: Partial<MesControllerDeps> = {}) {
           truncated,
           fields: dictionary,
           context: run ? { line_id: run.lineId, product_id: run.productId, recipe_id: run.recipeId, run_id: run.runId } : { line_id: node.lineId },
+          // H3:环境/工况摘要(manifest 默认增强;CSV 列按 with_context 开关)
+          environment: {
+            line_id: node.lineId,
+            runs: runWins
+              .filter(w => w.to >= fromMs && w.from <= toMs)
+              .map(w => ({ run_id: w.runId, product_id: w.productId, recipe_id: w.recipeId, from_ms: w.from, to_ms: w.to })),
+          },
+          ...(withContext ? { context_columns: [...MES_EXPORT_CONTEXT_COLUMNS] } : {}),
         })
       }
       catch (err) {
@@ -1116,6 +1226,13 @@ export function createMesController(deps: Partial<MesControllerDeps> = {}) {
       directory: dir,
       nodes: manifestNodes,
       merged_file: mergedFile,
+      context: {
+        enabled: withContext,
+        columns: withContext ? [...MES_EXPORT_CONTEXT_COLUMNS] : [],
+        note: withContext
+          ? '行级工况列由批次窗口回填(与入库打标同一时间轴);窗口外只给 line_id。'
+          : '未开启 context 列(保持 ts,value / ts,v0..vN 契约);需要行级批次归属时传 with_context=true。',
+      },
       totals: { nodes: manifestNodes.length, rows: totalRows, failed_nodes: failures.length },
       usage: 'data.csv 首行为列名(ts=时间,v0..vN=向量点位);records.jsonl 每行一条记录;image 格式的像素在 frames/ 下,records.jsonl 是对应元数据。字段含义/单位/量程见 nodes[].fields(向量逐点语义在 fields[].points);批次归属见 nodes[].context。',
     }
@@ -1144,6 +1261,7 @@ export function createMesController(deps: Partial<MesControllerDeps> = {}) {
       readme.push('')
     }
     if (mergedFile) readme.push(`多参数对齐宽表: ${mergedFile}(列名=节点名(节点id);仅对齐相同时间戳,不插值)`, '')
+    if (withContext) readme.push(`环境/工况列: data.csv 与 records.jsonl 附带 line_id,run_id,product_id,recipe_id(批次窗口外只给 line_id)。`, '')
     if (failures.length > 0) readme.push('## 失败节点', '', ...failures.map(f => `- ${f}`), '')
     writeFileSync(join(dir, 'README.md'), `${readme.join('\n')}\n`, 'utf8')
 
@@ -1158,7 +1276,60 @@ export function createMesController(deps: Partial<MesControllerDeps> = {}) {
     }
   }
 
-  return { catalog, fetch, exportData }
+  // ---------- MES 历史 → TSDB 桥接(H1) ----------
+
+  /**
+   * 桥接入口(Agent 工具面):授权与 mes_fetch 同口径(绑线过滤),护栏复用
+   * normalizeWindow / mesFetchRateCheck;实际写库由 mes-bridge 完成。
+   */
+  async function bridge(agentId: string, args: {
+    ids?: unknown
+    from?: string
+    to?: string
+    max_rows?: number | string
+    run_id?: string
+    include?: string[] | string
+    resample_to?: number | string
+    param?: unknown
+    dry_run?: boolean | string
+  }): Promise<MesToolResult & { result?: MesBridgeOutcome }> {
+    const vis = await resolveVisibleIds(agentId, args.ids)
+    if (!vis.ok) return { text: vis.text, isError: true }
+    // 桥接默认取满单次配额(5000),与 mes_fetch 的"摘要默认 500"不同 ——
+    // 桥接的产出是 TSDB 行,少量多批没有意义;上限仍由 normalizeWindow 钳制。
+    const win = normalizeWindow({
+      from: args.from,
+      to: args.to,
+      max_rows: args.max_rows == null || args.max_rows === '' ? MES_MAX_ROWS_CAP : args.max_rows,
+    })
+    if (!win.ok) return { text: win.text, isError: true }
+    if (!win.from || !win.to) {
+      return { text: '桥接需要 from/to(ISO 历史窗口):当前值快照不产生时序数据,请用 mes_fetch。', isError: true }
+    }
+    if (!mesFetchRateCheck(agentId, d.nowMs())) {
+      return { text: `桥接过于频繁:每 60 秒最多 ${MES_RATE_MAX_CALLS} 次。请先消化已有结果,稍后再试。`, isError: true }
+    }
+    const includeRaw = args.include
+    const include = (Array.isArray(includeRaw) ? includeRaw : String(includeRaw ?? '').split(/[,;\s]+/))
+      .map(x => String(x).trim())
+      .filter(Boolean) as Array<'scalar' | 'vector' | 'image'>
+    const dryRun = args.dry_run === true || args.dry_run === 'true'
+    const resampleTo = Number(args.resample_to)
+    const result = await bridgeMesHistory({
+      nodeIds: vis.nodes.map(n => n.id),
+      fromIso: win.from,
+      toIso: win.to,
+      maxRows: win.maxRows,
+      ...(String(args.run_id ?? '').trim() ? { runId: String(args.run_id).trim() } : {}),
+      ...(include.length > 0 ? { include } : {}),
+      ...(Number.isFinite(resampleTo) && resampleTo > 0 ? { resampleTo } : {}),
+      ...(args.param !== undefined ? { param: args.param } : {}),
+      ...(dryRun ? { dryRun } : {}),
+    })
+    return { text: result.text, ...(result.isError ? { isError: true as const } : {}), result }
+  }
+
+  return { catalog, fetch, exportData, bridge }
 }
 
 export type MesController = ReturnType<typeof createMesController>

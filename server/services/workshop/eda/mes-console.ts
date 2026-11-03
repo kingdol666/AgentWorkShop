@@ -30,9 +30,14 @@ export function mesUserRateReset(): void {
 }
 
 function rateCheck(userId: string): boolean {
+  return mesUserRateCheck(userId, 30)
+}
+
+/** 用户面 MES 频控(默认 30 次/60s;桥接等重操作可传入更小上限) */
+export function mesUserRateCheck(userId: string, maxCalls = 30): boolean {
   const now = Date.now()
   const stamps = (rateStamps.get(userId) ?? []).filter(t => now - t < 60_000)
-  if (stamps.length >= 30) {
+  if (stamps.length >= maxCalls) {
     rateStamps.set(userId, stamps)
     return false
   }

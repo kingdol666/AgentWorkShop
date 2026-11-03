@@ -26,7 +26,7 @@
 [![Docs](https://img.shields.io/badge/docs-VitePress%20%C2%B7%20%E4%B8%AD%2FEN-ffd75e?logo=vitepress&logoColor=black)](https://kingdol666.github.io/AgentWorkShop)
 **[简体中文](./README-zh.md)** · **[Documentation](https://kingdol666.github.io/AgentWorkShop)** · **[Releases](https://github.com/kingdol666/AgentWorkShop/releases)** · **[Changelog](./changelog.md)** · **[Plugin API](./docs/plugins.md)** · **[SDK](./docs/sdk.md)**
 
-<sub><b>v0.9.3</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST integration (mirror & live) · data-analysis ledger with line-scoped permissions · process optimizer (process model → AML → OSQP solver → governed dispatch) · **ontology service + AI-first model loop** (ontology · twin · solver · AML adoption) · 107 host tools · 140 runtime settings · bilingual docs (简体中文 / English)</sub>
+<sub><b>v0.9.4</b> · 14 engines · 6 field protocols (5 built-in + serial plugin) + MES REST integration (mirror & live) · data-analysis ledger with line-scoped permissions · process optimizer (process model → AML → OSQP solver → governed dispatch) · **ontology service + AI-first model loop** (ontology · twin · solver · AML adoption) · **MES history → TSDB bridge + unified heterogeneous frames** · 108 host tools · 140 runtime settings · bilingual docs (简体中文 / English)</sub>
 
 <br />
 
@@ -58,7 +58,7 @@ A configuration-driven platform where **AI agent teams** and an **industrial pro
 </p>
 
 > [!NOTE]
-> Every image in this README is a screenshot of a **running instance** (v0.9.3 production build) — none are mock-ups.
+> Every image in this README is a screenshot of a **running instance** (v0.9.4 production build) — none are mock-ups.
 
 <p align="center">
   <a href="https://kingdol666.github.io/AgentWorkShop/demo/player.html">
@@ -249,6 +249,6 @@ Please **do not** open public issues for vulnerabilities — report privately vi
 
 **If this project is useful to you, a ⭐ helps others find it.**
 
-Current version: **v0.9.3** — [Releases](https://github.com/kingdol666/AgentWorkShop/releases) · [Changelog](./changelog.md) · [Documentation](https://kingdol666.github.io/AgentWorkShop)
+Current version: **v0.9.4** — [Releases](https://github.com/kingdol666/AgentWorkShop/releases) · [Changelog](./changelog.md) · [Documentation](https://kingdol666.github.io/AgentWorkShop)
 
 </div>

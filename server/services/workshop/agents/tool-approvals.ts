@@ -191,7 +191,10 @@ class ToolApprovalService {
         getHitlRegistry().resolve('dcw-approval', approval.id, 'expired')
         resolve({ approved: false, comment: approval.comment, id: approval.id })
       }, timeoutMs)
-      timer.unref?.()
+      // 不 unref:审批 Promise 的完成依赖此计时器。调用方(Agent 回合/插件/测试)
+      // 在等待期间可能没有其它活跃句柄;unref 会让事件循环提前清空 → 超时不触发、
+      // Promise 永久 pending(Node 报 "event loop has already resolved")。
+      // 计时器在 decide/cancelPendingFor/超时路径均 clearTimeout,不会泄漏。
       const prevEntry = this.pending.get(approval.id)
       if (prevEntry) {
         // 幂等重复 request:清掉旧提醒(原实现同样覆盖 timer)

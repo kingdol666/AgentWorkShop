@@ -7,6 +7,7 @@ import type { AgentEvent, AgentRunContext, AgentRunRequest, SupervisionDecision,
 import type { HostToolCallRequest, OmpRpcClient } from '../adapters/omp-rpc-client'
 import { extractJsonArray, parseSteerBanner, peerPrompt, supervisePrompt, systemManual, workerPrompt } from '../prompt-builder'
 import { log } from './helpers'
+import { abortToCancelDecision } from './supervision-decision'
 import { recordSupervisionToolHistory } from './supervision-history'
 import { ompAgentTeamAuditFailure, recordOmpAgentTeamToolEvent } from './agentteam-audit'
 import { TERMINAL_TASK_STATES } from '../../types/task'
@@ -206,18 +207,11 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
           this.retireSupervisionClient(client)
         }
         // P4(2026-11-03):回合被中止时不得让在办任务滞留 WORKING —— 空决策会让
-        // 任务停在"租约已撤但状态未收口"(FL-7 实测:只能人工取消)。此处把中止转为
-        // 一条显式 cancel 决策,由 SchedulerLoop 经 TaskEngine 收口为 CANCELED(带原因,
-        // 可 retry 重新派发)。仅对中止路径生效;正常完成路径仍返回真实决策。
-        if (activeRootTask && (reason === 'external cancel' || reason.startsWith('hard timeout'))) {
-          finish([{
-            kind: 'cancel',
-            taskId: activeRootTask.id,
-            reason: `调度回合被中止(${reason}),任务自动收口;需要继续时请重新派发`,
-          }])
-          return
-        }
-        finish([])
+        // 任务停在"租约已撤但状态未收口"(FL-7 实测:只能人工取消)。映射规则抽到
+        // supervision-decision.ts(纯函数,单测覆盖):仅硬中止(external cancel /
+        // hard timeout)且存在在办任务时产生 cancel 决策;其他原因仍返回空决策。
+        const decision = abortToCancelDecision({ reason, activeTaskId: activeRootTask?.id })
+        finish(decision ? [decision] : [])
       }
 
       const unsub = client.onEvent((event) => {

@@ -11,7 +11,7 @@
  * 导出核心 exportDaqDataset 不依赖仓储单例(readPoints/nodeOf 注入),单测可全内存构造。
  */
 import { randomBytes } from 'node:crypto'
-import { mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { closeSync, mkdirSync, openSync, readdirSync, readFileSync, rmSync, writeFileSync, writeSync } from 'node:fs'
 import { join } from 'node:path'
 import { ensureDataDir } from '@/shared/config/home.mjs'
 import { getTsdb } from '../../daq/storage/index'
@@ -21,6 +21,7 @@ import { getDaqNodeRepo } from '../../daq/daq-node.repo'
 import { getActiveLineRun } from '../../dcw/line-run'
 import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
 import { getDcwController } from '../../dcw/dcw-controller'
+import { getDcwRecipeRepo } from '../../dcw/dcw-recipe.repo'
 import { channelBoundLineId } from './ops-tools'
 import { settingOf } from '../../settings'
 import { PAGE_LIMIT, exportPagesPerNode, exportWindowMaxH, exportWindowMaxMs } from '../../daq/export-limits'
@@ -127,6 +128,63 @@ export interface ExportFrameRow {
   points?: number[]
   meta?: Record<string, unknown>
   metrics?: Record<string, number>
+  lineId?: string | null
+  productId?: string | null
+  recipeId?: string | null
+  runId?: string | null
+}
+
+/** H3:导出 CSV 的环境/工况列(行级批次归属,免人工对表) */
+export interface ExportContextCols {
+  lineId: string
+  runId: string
+  productId: string
+  recipeId: string
+}
+
+export interface ExportContextResolver {
+  /** 按 (line,node,ts) 解析行级工况;窗口/程序性空值返回 null */
+  of(lineId: string, nodeId: string, tsMs: number): ExportContextCols | null
+}
+
+/**
+ * 行级工况解析器(H3):用配方批次的 [startedAt, endedAt] 窗口给每个样本定位
+ * run/product/recipe。TSDB 原始点不带打标列,而批次窗口是平台内唯一权威时间轴
+ * (数据入库时的打标也按同一窗口),因此用窗口回填与直接读打标列语义一致。
+ *
+ * 性能:导出按节点顺序、时间升序推进;每 (line,node) 一个游标只前进不回退,
+ * 单节点 O(rows + runs),不会退化成 O(rows × runs)。
+ */
+export function createRunContextResolver(now = Date.now()): ExportContextResolver {
+  const byLine = new Map<string, Array<{ from: number, to: number, runId: string, productId: string, recipeId: string }>>()
+  try {
+    for (const r of getDcwRecipeRepo().listRuns()) {
+      const from = Date.parse(r.startedAt)
+      if (!Number.isFinite(from)) continue
+      const to = r.endedAt ? Date.parse(r.endedAt) : now
+      if (!Number.isFinite(to) || to < from) continue
+      const arr = byLine.get(r.lineId) ?? []
+      arr.push({ from, to, runId: r.id, productId: r.productId, recipeId: r.recipeId })
+      byLine.set(r.lineId, arr)
+    }
+    for (const arr of byLine.values()) arr.sort((a, b) => a.from - b.from)
+  }
+  catch { /* 批次仓不可用 → 全部空列 */ }
+  const cursor = new Map<string, number>()
+  return {
+    of(lineId, nodeId, tsMs) {
+      if (!lineId) return null
+      const arr = byLine.get(lineId)
+      if (!arr || arr.length === 0) return null
+      const key = `${lineId}\u0000${nodeId}`
+      let i = cursor.get(key) ?? 0
+      while (i + 1 < arr.length && arr[i + 1]!.from <= tsMs) i++
+      cursor.set(key, i)
+      const w = arr[i]
+      if (!w || tsMs < w.from || tsMs > w.to) return null
+      return { lineId, runId: w.runId, productId: w.productId, recipeId: w.recipeId }
+    },
+  }
 }
 
 /** mime → 文件扩展名(未知 mime 兜底 bin) */
@@ -150,15 +208,21 @@ async function exportFrames(
   frames: ExportFrameRow[],
   readFrameContent: (nodeId: string, at: number) => Promise<{ data: Buffer, mime: string } | null>,
   truncated: boolean,
+  withContext = false,
 ): Promise<Record<string, unknown>> {
   const id = meta.id
   if (meta.signalKind === 'vector') {
-    const rows: string[] = ['ts_iso,ts_ms,point_index,value']
+    const rows: string[] = [withContext
+      ? 'ts_iso,ts_ms,point_index,value,line_id,run_id,product_id,recipe_id'
+      : 'ts_iso,ts_ms,point_index,value']
     let n = 0
     for (const f of frames) {
       const pts = f.points ?? []
+      const ctx = withContext
+        ? [csvCell(f.lineId ?? meta.lineId), csvCell(f.runId ?? ''), csvCell(f.productId ?? ''), csvCell(f.recipeId ?? '')]
+        : []
       for (let i = 0; i < pts.length; i++) {
-        rows.push([new Date(f.at).toISOString(), f.at, i, fmtNum(pts[i])].map(csvCell).join(','))
+        rows.push([new Date(f.at).toISOString(), f.at, i, fmtNum(pts[i]), ...ctx].map(csvCell).join(','))
       }
       n += 1
     }
@@ -174,6 +238,7 @@ async function exportFrames(
       value_range_observed: null, state_summary: {},
       ...(meta.vector ? { vector: meta.vector } : {}),
       metrics_summary: metricSummary,
+      ...(withContext ? { context_columns: ['line_id', 'run_id', 'product_id', 'recipe_id'] } : {}),
       ...(truncated ? { truncated: true } : {}),
     }
   }
@@ -233,8 +298,24 @@ export async function exportDaqDataset(opts: {
   readFrameContent?: (nodeId: string, at: number) => Promise<{ data: Buffer, mime: string } | null>
   /** 上限覆盖(单测用;缺省 400 页/节点、400 万行总量) */
   caps?: { pagesPerNode?: number, totalRows?: number, framesPerNode?: number }
+  /**
+   * H3(2026-11-03):CSV 追加环境/工况列(line_id,run_id,product_id,recipe_id)。
+   * 默认 **false**,保持既有 `ts_iso,ts_ms,value,state` 列契约(离线分析/IDD 管线
+   * 按列名消费,默认改列序是破坏性变更);需要行级批次归属时显式开启。
+   */
+  withContext?: boolean
+  /** 行级工况解析(caller 用 createRunContextResolver() 构造;缺省=空列) */
+  contextOf?: (nodeId: string, lineId: string, tsMs: number) => ExportContextCols | null
 }): Promise<DaqExportResult> {
   const { targets, nodeOf, readPoints, fromMs, toMs, title, note, lines, rootDir } = opts
+  const withContext = opts.withContext === true
+  const contextHeader = 'line_id,run_id,product_id,recipe_id'
+  const contextCellsOf = (nodeId: string, lineId: string, tsMs: number): string[] => {
+    if (!withContext) return []
+    const c = opts.contextOf?.(nodeId, lineId, tsMs) ?? null
+    // 批次窗口外仍给 line_id(节点归属是配置事实,不是批次推断)
+    return [c?.lineId || lineId, c?.runId ?? '', c?.productId ?? '', c?.recipeId ?? '']
+  }
   const maxPages = opts.caps?.pagesPerNode ?? exportPagesPerNode()
   const maxTotal = opts.caps?.totalRows ?? MAX_TOTAL_ROWS
   const maxFrames = opts.caps?.framesPerNode ?? MAX_FRAMES_PER_NODE
@@ -265,56 +346,81 @@ export async function exportDaqDataset(opts: {
       frames.sort((a, b) => a.at - b.at)
       const hitFrameCap = frames.length >= maxFrames
       if (hitFrameCap) truncated.push(id)
-      const entry = await exportFrames(dir, meta, frames, opts.readFrameContent ?? (async () => null), hitFrameCap)
+      const entry = await exportFrames(dir, meta, frames, opts.readFrameContent ?? (async () => null), hitFrameCap, withContext)
       nodeMetas.push(entry)
       totalRows += meta.signalKind === 'vector' ? (entry.points as number ?? 0) : (entry.saved as number ?? 0)
       continue
     }
-    // 分页拉全:单查上限 PAGE_LIMIT,满页则以本页最大 ts+1 续拉(适配器无游标)
-    const byAt = new Map<number, { at: number, value?: number, state?: string }>()
+    // 分页拉全 + **流式写盘**(H7,2026-11-03):旧实现把整节点点列攒进 Map 再一次性
+    // 写文件,大窗口(数百万行)内存峰值 = 全量点;现在每页解出即写,内存只有一页。
+    // 单查上限 PAGE_LIMIT,满页则以本页最大 ts+1 续拉(适配器无游标)。
+    const fileRel = `nodes/${safeFileId(id)}.csv`
     const nodeBaseRows = totalRows
+    const header = withContext ? `ts_iso,ts_ms,value,state,${contextHeader}` : 'ts_iso,ts_ms,value,state'
     let cursor = fromMs
     let pages = 0
     let hitCap = false
-    while (cursor <= toMs) {
-      if (++pages > maxPages || totalRows >= maxTotal) {
-        hitCap = true
-        break
-      }
-      const page = await readPoints(id, { fromMs: cursor, toMs, limit: PAGE_LIMIT })
-      if (!Array.isArray(page) || page.length === 0) break
-      let lastAt = cursor - 1
-      for (const p of page) {
-        if (!p || typeof p.at !== 'number' || p.at < cursor || p.at > toMs) continue
-        if (typeof p.value === 'number' || p.state) byAt.set(p.at, { at: p.at, value: p.value, state: p.state })
-        if (p.at > lastAt) lastAt = p.at
-      }
-      // 以「本节点累计 + 既有总量」赋值,而非逐页累加(逐页累加会把已计入的前页重复计数,
-      // 导致 4M 总行护栏实际在 ~20 万行就触发 —— 评审 P1-8)
-      totalRows = nodeBaseRows + byAt.size
-      if (page.length < PAGE_LIMIT || lastAt >= toMs) break
-      if (lastAt < cursor) break // 适配器未按 fromMs 过滤的防御:避免死循环
-      cursor = lastAt + 1
-    }
-    const points = [...byAt.values()].sort((a, b) => a.at - b.at)
-    if (hitCap) truncated.push(id)
-
-    const fileRel = `nodes/${safeFileId(id)}.csv`
-    const rowsCsv = ['ts_iso,ts_ms,value,state']
+    let rows = 0
+    let headerWritten = false
+    let lastRowAt = -Infinity
     const stateCount: Record<string, number> = {}
     let minV = Number.POSITIVE_INFINITY
     let maxV = Number.NEGATIVE_INFINITY
-    for (const p of points) {
-      const state = p.state || 'ok'
-      stateCount[state] = (stateCount[state] ?? 0) + 1
-      if (typeof p.value === 'number' && Number.isFinite(p.value)) {
-        if (p.value < minV) minV = p.value
-        if (p.value > maxV) maxV = p.value
-      }
-      rowsCsv.push([new Date(p.at).toISOString(), p.at, fmtNum(p.value), state].map(csvCell).join(','))
+    const fd = openSync(join(dir, fileRel), 'w')
+    let wroteAny = false
+    const writeLine = (line: string): void => {
+      // 行间分隔(首行前不写,末行后不留空行):与旧 join('\r\n') 的字节契约一致
+      const buf = Buffer.from(`${wroteAny ? '\r\n' : ''}${line}`, 'utf8')
+      wroteAny = true
+      let off = 0
+      while (off < buf.length) off += writeSync(fd, buf, off, buf.length - off)
     }
-    writeFileSync(join(dir, fileRel), rowsCsv.join('\r\n'), 'utf8')
-    files.push({ nodeId: id, file: fileRel, rows: points.length })
+    try {
+      while (cursor <= toMs) {
+        if (++pages > maxPages || totalRows >= maxTotal) {
+          hitCap = true
+          break
+        }
+        const page = await readPoints(id, { fromMs: cursor, toMs, limit: PAGE_LIMIT })
+        if (!Array.isArray(page) || page.length === 0) break
+        let lastAt = cursor - 1
+        for (const p of page) {
+          if (!p || typeof p.at !== 'number' || p.at < cursor || p.at > toMs) continue
+          if (p.at > lastAt) lastAt = p.at
+          // 升序契约 + 去重:同页重复/迟到点不再写(旧 Map 实现是"后者覆盖",
+          // 但适配器按 ts ASC 返回,重复只可能来自异常适配器,保留先出现者更诚实)
+          if (p.at <= lastRowAt) continue
+          if (typeof p.value !== 'number' && !p.state) continue
+          const state = p.state || 'ok'
+          if (typeof p.value === 'number' && Number.isFinite(p.value)) {
+            if (p.value < minV) minV = p.value
+            if (p.value > maxV) maxV = p.value
+          }
+          stateCount[state] = (stateCount[state] ?? 0) + 1
+          if (!headerWritten) {
+            writeLine(header)
+            headerWritten = true
+          }
+          const ctx = contextCellsOf(id, meta.lineId, p.at)
+          writeLine([new Date(p.at).toISOString(), p.at, fmtNum(p.value), state, ...ctx].map(csvCell).join(','))
+          lastRowAt = p.at
+          rows++
+        }
+        // 以「本节点累计 + 既有总量」赋值(逐页累加会把已计入的前页重复计数,
+        // 导致 4M 总行护栏实际在 ~20 万行就触发 —— 评审 P1-8)
+        totalRows = nodeBaseRows + rows
+        if (page.length < PAGE_LIMIT || lastAt >= toMs) break
+        if (lastAt < cursor) break // 适配器未按 fromMs 过滤的防御:避免死循环
+        cursor = lastAt + 1
+      }
+      if (!headerWritten) writeLine(header) // 空结果也保留表头(下游按列名解析)
+    }
+    finally {
+      closeSync(fd)
+    }
+    if (hitCap) truncated.push(id)
+
+    files.push({ nodeId: id, file: fileRel, rows })
     nodeMetas.push({
       id: meta.id,
       name: meta.name,
@@ -326,9 +432,10 @@ export async function exportDaqDataset(opts: {
       decimals: meta.decimals ?? null,
       semantics: meta.semantics || '',
       file: fileRel,
-      rows: points.length,
-      value_range_observed: points.length ? { min: Number(minV.toFixed(4)), max: Number(maxV.toFixed(4)) } : null,
+      rows,
+      value_range_observed: rows ? { min: Number(minV.toFixed(4)), max: Number(maxV.toFixed(4)) } : null,
       state_summary: stateCount,
+      ...(withContext ? { context_columns: ['line_id', 'run_id', 'product_id', 'recipe_id'] } : {}),
     })
   }
 
@@ -345,7 +452,14 @@ export async function exportDaqDataset(opts: {
     nodes: nodeMetas,
     totals: { files: files.length, rows: exactRows },
     truncated_nodes: truncated,
-    usage: 'nodes/ 下每标量节点一份全量原始时序 CSV(ts_iso,ts_ms,value,state;无降采样);帧节点(vector/image)在 frames/ 下:向量=单 CSV 长表(ts_iso,ts_ms,point_index,value),图像=逐帧原文件 frames/<node_id>/<ts>.<ext>。请结合本清单的节点语义/量程/产线-配方上下文做分析;深度根因诊断请用 diag-bridge 的 diag_run(export_id=本 export_id)。',
+    context: {
+      enabled: withContext,
+      columns: withContext ? ['line_id', 'run_id', 'product_id', 'recipe_id'] : [],
+      note: withContext
+        ? '行级工况列由批次窗口回填(与入库打标同一时间轴);批次窗口外为空。'
+        : '未开启 context 列(保持 ts_iso,ts_ms,value,state 契约);需要行级批次归属时导出参数传 with_context=true。',
+    },
+    usage: 'nodes/ 下每标量节点一份全量原始时序 CSV(ts_iso,ts_ms,value,state[+可选环境列];无降采样);帧节点(vector/image)在 frames/ 下:向量=单 CSV 长表(ts_iso,ts_ms,point_index,value[+可选环境列]),图像=逐帧原文件 frames/<node_id>/<ts>.<ext>。请结合本清单的节点语义/量程/产线-配方上下文做分析;深度根因诊断请用 diag-bridge 的 diag_run(export_id=本 export_id)。',
   }
   manifest.readme = 'README.md'
   writeFileSync(join(dir, 'manifest.json'), JSON.stringify(manifest, null, 2), 'utf8')
@@ -381,6 +495,7 @@ export async function exportDaqDataset(opts: {
       md.push('')
     }
     if (mergedFile) md.push(`多参数对齐宽表: ${mergedFile}`, '')
+    if (withContext) md.push('环境/工况列: nodes/*.csv 与 frames/*.csv 末尾附加 line_id,run_id,product_id,recipe_id(批次窗口外为空;由批次窗口回填)。', '')
     md.push('## 用法', '', 'CSV 首行为列名,可直接用 Python/pandas、Excel 或任何分析工具读取。产线/产品/配方/批次归属与配方监控窗口见 manifest.json 的 lines[];节点语义与逐点含义见 nodes[]。')
     writeFileSync(join(dir, 'README.md'), `${md.join('\n')}\n`, 'utf8')
   }
@@ -413,6 +528,8 @@ export async function toolDaqExport(agentId: string, args: {
   note?: string
   /** merge 模式:额外产出多节点按秒对齐的宽表 merged.csv(IDD 等 CSV 分析服务可直接消费) */
   merge?: boolean | string
+  /** H3:CSV 追加环境/工况列(line_id,run_id,product_id,recipe_id;默认关闭保持列契约) */
+  with_context?: boolean | string
 }): Promise<{ text: string, isError?: boolean }> {
   const bindings = getAgentNodeBindingRepo().byAgent(agentId).filter(b => b.kind === 'daq')
   // 与 daq_query/daq_frames 同源:v28 频道绑线只读扩权同样覆盖全量导出
@@ -514,6 +631,8 @@ export async function toolDaqExport(agentId: string, args: {
 
   let result: DaqExportResult
   try {
+    const withContext = args.with_context === true || args.with_context === 'true'
+    const ctxResolver = withContext ? createRunContextResolver() : null
     result = await exportDaqDataset({
       targets,
       nodeOf,
@@ -525,6 +644,8 @@ export async function toolDaqExport(agentId: string, args: {
       lines,
       rootDir: join(ensureDataDir(), 'daq-exports'),
       merge: args.merge === true || args.merge === 'true',
+      withContext,
+      ...(ctxResolver ? { contextOf: (nodeId: string, lineId: string, tsMs: number) => ctxResolver.of(lineId, nodeId, tsMs) } : {}),
       // 帧节点(vector/image):元数据经 tsdb.queryFrames,图像原文件经对象存储(frameContent)
       readFrames: (nodeId, win) => getTsdb().queryFrames(nodeId, win),
       readFrameContent: async (nodeId, at) => {

@@ -8,6 +8,7 @@ import { AppError, ErrorCodes } from '../../../../utils/errors'
 import { DaqNode } from '../daq-node'
 import { daqKeyFromRef, normalizeDataTransform, stripMaskedSecrets } from '../../../../../shared/daq-protocol'
 import { findDaqTemplate } from '../daq-templates'
+import { validateSinkOverrides } from '../frames'
 import { getDaqHostPorts } from '../host-ports'
 import { requireDriverKind } from '../drivers'
 import { getObjectStore } from '../objectstore'
@@ -25,6 +26,10 @@ export abstract class DaqControllerCrud extends DaqControllerRuntimeControl {
     if (!tpl) {
       throw new AppError(404, ErrorCodes.NOT_FOUND, `未知数采模板: ${input.templateRef}`)
     }
+    // H2(2026-11-03):节点级 sink 覆盖(如向量 resample 网格)配置期校验;
+    // 坏 JSON / 非法参数直接 400,不让错误配置等到采样时才静默回退。
+    const sinkErr = validateSinkOverrides(input.driverConfig as Record<string, unknown> | undefined)
+    if (sinkErr) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, sinkErr)
     const seq = this.repo.all().filter(n => n.templateKey === daqKeyFromRef(input.templateRef!)).length + 1
     const node = new DaqNode({
       id: `dn-${randomUUID().slice(0, 8)}`,
@@ -65,7 +70,10 @@ export abstract class DaqControllerCrud extends DaqControllerRuntimeControl {
     // 入口单点剔除,绝不让掩码覆盖真实凭据(新明文照常写入)。
     let driverConfigChanged = false
     if (patch.driverConfig !== undefined) {
-      node.driverConfig = { ...node.driverConfig, ...stripMaskedSecrets(patch.driverConfig) }
+      const merged = { ...node.driverConfig, ...stripMaskedSecrets(patch.driverConfig) }
+      const sinkErr = validateSinkOverrides(merged as Record<string, unknown>)
+      if (sinkErr) throw new AppError(400, ErrorCodes.VALIDATION_ERROR, sinkErr)
+      node.driverConfig = merged
       driverConfigChanged = true
     }
     if (patch.transform !== undefined) {

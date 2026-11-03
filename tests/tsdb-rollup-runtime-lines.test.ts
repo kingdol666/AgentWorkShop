@@ -17,11 +17,25 @@ import { execFileSync } from 'node:child_process'
 const DB = `aw_rollup_regress_${Date.now().toString(36)}`
 const C = 'awshop-daq-timescale'
 
+/**
+ * 真 Timescale 契约测试的前置:CI（ubuntu-latest）没有本地容器时跳过，
+ * 而不是把"环境缺失"记成代码失败。本地起过 awshop-daq-timescale 才执行。
+ */
+const hasTimescale = (() => {
+  try {
+    execFileSync('docker', ['exec', C, 'true'], { stdio: 'ignore' })
+    return true
+  }
+  catch {
+    return false
+  }
+})()
+
 function sh(sql: string, db = DB): string {
   return execFileSync('docker', ['exec', C, 'psql', '-U', 'postgres', '-d', db, '-tAc', sql], { encoding: 'utf8' }).trim()
 }
 
-test('运行期新建产线:无需重启即进入聚合与逐线裁剪', async () => {
+test('运行期新建产线:无需重启即进入聚合与逐线裁剪', { skip: hasTimescale ? false : `需要本地 Timescale 容器 ${C}(Docker);环境缺失时跳过` }, async () => {
   const pw = execFileSync('docker', ['exec', C, 'printenv', 'POSTGRES_PASSWORD'], { encoding: 'utf8' }).trim()
   execFileSync('docker', ['exec', C, 'psql', '-U', 'postgres', '-d', 'postgres', '-tAc', `CREATE DATABASE ${DB}`], { encoding: 'utf8' })
   const url = `postgres://postgres:${encodeURIComponent(pw)}@127.0.0.1:5432/${DB}`

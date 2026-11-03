@@ -8,7 +8,7 @@ import { mkdtempSync, rmSync } from 'node:fs'
 import type { AddressInfo } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { mesRestDcwDriver } from '../server/services/workshop/dcw/drivers/mes-rest'
+import { mesRestDcwDriver, resetMesTransportLimitsForTest } from '../server/services/workshop/dcw/drivers/mes-rest'
 import { configureMesHooks } from '../server/services/workshop/mes/mes-hook'
 
 // ── mock MES(读 /current、写 /params/{name}/setpoint、历史 /history cursor 分页) ──
@@ -437,4 +437,24 @@ test('mes-rest writeHook 错误代码: hook 抛错 → ok=false 且消息透传(
   const r = await mesRestDcwDriver.write({ eng: 60, tolerance: 0.5, domain: { min: 0, max: 100 }, driverConfig: dcfg })
   assert.equal(r.ok, false)
   assert.match(r.message, /hook-boom|writeHook/)
+})
+
+test('H6 节点级限速:rateLimitPerSec=2 时突发 2 次后第 3 次读需等 ~500ms', async () => {
+  resetMesTransportLimitsForTest()
+  try {
+    const dcfg = cfg({ readMap: READ_MAP, rateLimitPerSec: 2 })
+    const t0 = Date.now()
+    const r1 = await mesRestDcwDriver.read!({ domain: { min: 0, max: 100 }, driverConfig: dcfg })
+    const r2 = await mesRestDcwDriver.read!({ domain: { min: 0, max: 100 }, driverConfig: dcfg })
+    const r3 = await mesRestDcwDriver.read!({ domain: { min: 0, max: 100 }, driverConfig: dcfg })
+    const dt = Date.now() - t0
+    assert.equal(r1.ok, true, r1.message)
+    assert.equal(r2.ok, true, r2.message)
+    assert.equal(r3.ok, true, r3.message)
+    // 桶容 = 速率(2 的短突发);第 3 次需补 1 个令牌 → 1/2s;留 50ms 调度容差
+    assert.ok(dt >= 450, `三次读耗时 ${dt}ms,应 ≥450ms(rateLimitPerSec=2)`)
+  }
+  finally {
+    resetMesTransportLimitsForTest()
+  }
 })

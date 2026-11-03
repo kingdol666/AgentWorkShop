@@ -6,6 +6,7 @@ import { DaqControllerViews } from './views'
 import type { DaqFrameRecord, DaqFrameRow } from '../storage/tsdb-port'
 import { getObjectStore } from '../objectstore'
 import { getTsdb, tsdbReady } from '../storage'
+import { getDcwNodeRepo } from '../../dcw/dcw-node.repo'
 import { AppError } from '../../../../utils/errors'
 
 export abstract class DaqControllerFrames extends DaqControllerViews {
@@ -95,11 +96,36 @@ export abstract class DaqControllerFrames extends DaqControllerViews {
     return p.every(x => Number.isFinite(Number(x))) ? p.map(Number) : undefined
   }
 
+  /**
+   * 帧数据面的节点解析(H5,2026-11-03):
+   * DAQ 节点优先;mes-rest 数控节点同样可用 —— MES 图像/向量帧经
+   * mes_bridge / archiveMesImageRows 以**源点位 id** 写入 daq_frames,
+   * 图像检索面(frames API / frameContent)与 DAQ CCD 完全同一路径。
+   * 返回 null = 未知节点(404),不把任意 id 当合法命名空间。
+   */
+  protected nodeOfFrames(id: string): { lineId: string } | null {
+    const n = this.repo.byId(id)
+    if (n) return { lineId: n.lineId ?? '' }
+    const dcw = getDcwNodeRepo().byId(id)
+    if (dcw && dcw.driver === 'mes-rest') return { lineId: dcw.lineId ?? '' }
+    return null
+  }
+
+  /**
+   * 节点/帧命名空间的产线归属(API 权限面前移用):
+   * DAQ 节点 → 节点产线;MES 点位(桥接帧)→ 所属产线;未知 → null。
+   * 权限判定必须拿真实产线,不能因"不是 DAQ 节点"退化成无产线口径。
+   */
+  async lineIdOf(id: string): Promise<string | null> {
+    const n = this.nodeOfFrames(id)
+    return n ? n.lineId : null
+  }
+
   /** 节点帧历史(v2:向量/图像元数据;像素按需经 frameContent 从对象存储取) */
   async frames(id: string, opts: { fromMs?: number, toMs?: number, kind?: 'vector' | 'image', limit?: number }) {
     this.ensureLoop()
     await tsdbReady
-    const node = this.repo.byId(id)
+    const node = this.nodeOfFrames(id)
     if (!node) throw new AppError(404, 'NOT_FOUND', `数采节点不存在: ${id}`)
     const rows = await getTsdb().queryFrames(id, opts)
     // 未刷盘的帧补进结果集:同 (nodeId, tsMs) 以落库行为准(去重),按 at 降序
@@ -120,7 +146,7 @@ export abstract class DaqControllerFrames extends DaqControllerViews {
   async frameContent(id: string, tsMs: number, thumb: boolean): Promise<{ data: Buffer, mime: string }> {
     this.ensureLoop()
     await tsdbReady
-    const node = this.repo.byId(id)
+    const node = this.nodeOfFrames(id)
     if (!node) throw new AppError(404, 'NOT_FOUND', `数采节点不存在: ${id}`)
     // 读穿透:先查内存攒批缓冲(帧刚 ingest、尚未刷盘时命中),未命中再查 TSDB
     const buffered = this.bufferedFrameAt(id, tsMs)
@@ -130,7 +156,9 @@ export abstract class DaqControllerFrames extends DaqControllerViews {
     if (rows.length === 0) rows.push(...await getTsdb().queryFrames(id, { fromMs: tsMs - 1, toMs: tsMs + 1, limit: 5 }))
     const row = rows.find(r => r.at === tsMs)
     if (!row || row.kind !== 'image') throw new AppError(404, 'NOT_FOUND', `帧不存在: ${id}@${tsMs}`)
-    const key = (thumb ? row.meta.thumbKey : row.meta.objectKey) as string | undefined
+    // H5:外部归档帧(MES 图像)没有缩略图 —— thumb=1 时回退主图,
+    // 不让"缩略图缺失"把可用的主图变成 404。
+    const key = (thumb ? (row.meta.thumbKey ?? row.meta.objectKey) : row.meta.objectKey) as string | undefined
     if (!key) throw new AppError(404, 'NOT_FOUND', `帧对象缺失: ${id}@${tsMs}`)
     const data = await getObjectStore().get(String(key))
     return { data, mime: typeof row.meta.mime === 'string' ? row.meta.mime : 'image/png' }

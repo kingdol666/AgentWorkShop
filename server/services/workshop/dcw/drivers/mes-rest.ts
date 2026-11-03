@@ -8,7 +8,9 @@
  *     运行时设置 mes.secret.<ref> 解析;401 文案直接指向该链路。
  *   - SSRF 防护:baseUrl 强制 http/https;DNS 解析后任一 IP 落私有/环回段且未
  *     显式 allowPrivateHost='true' 一律拒绝(生产 MES 在内网属预期,白名单须显式)。
- *   - 限速:同驱动实例令牌桶(默认 5 req/s),防把 MES 打挂。
+ *   - 限速/并发(H6,2026-11-03):按**目标 origin** 令牌桶 + 并发闸,默认 5 req/s、
+ *     4 并发;节点 driverConfig 可用 rateLimitPerSec / rateLimit(0.05–100)与
+ *     maxConcurrent(1–32)覆盖,同主机多节点共享一套闸(保护 MES 侧配额)。
  */
 import { AppError } from '../../../../utils/errors'
 import { assertSafeHttpUrl } from '../../net/ssrf'
@@ -288,14 +290,14 @@ async function applyDefaultHeaders(headers: Record<string, string>, cfg: Record<
 }
 
 // ============================================================
-// 令牌桶限速(同驱动实例;默认 5 req/s,桶容 = 速率 的短突发)
+// 限速/并发(H6:按目标 origin 可配;同主机共享)
 // ============================================================
 
 class TokenBucket {
   private tokens: number
   private last: number
 
-  constructor(private readonly ratePerSec = 5) {
+  constructor(readonly ratePerSec = 5) {
     this.tokens = ratePerSec
     this.last = Date.now()
   }
@@ -314,7 +316,75 @@ class TokenBucket {
   }
 }
 
-const limiter = new TokenBucket(5)
+/** 信号量(同 origin 并发上限;槽位在 waiter 之间直接转交,active 不抖动) */
+class ConcurrencyGate {
+  private active = 0
+  private readonly waiters: Array<() => void> = []
+
+  constructor(readonly max: number) {}
+
+  async acquire(): Promise<void> {
+    if (this.active < this.max) {
+      this.active++
+      return
+    }
+    await new Promise<void>(resolve => this.waiters.push(resolve))
+  }
+
+  release(): void {
+    const next = this.waiters.shift()
+    if (next) next()
+    else this.active = Math.max(0, this.active - 1)
+  }
+}
+
+interface BucketSlot { bucket: TokenBucket, rate: number }
+interface GateSlot { gate: ConcurrencyGate, max: number }
+
+const buckets = new Map<string, BucketSlot>()
+const gates = new Map<string, GateSlot>()
+
+const clampNum = (v: unknown, min: number, max: number, fallback: number): number => {
+  const n = Number(v)
+  return Number.isFinite(n) ? Math.max(min, Math.min(max, n)) : fallback
+}
+
+/** 节点级限速配置(rateLimitPerSec > rateLimit > 5;0.05–100 req/s) */
+function rateOf(cfg: Record<string, unknown>): number {
+  const raw = cfg.rateLimitPerSec ?? cfg.rateLimit
+  return clampNum(raw, 0.05, 100, 5)
+}
+
+/** 节点级并发配置(1–32;缺省 4) */
+function concurrencyOf(cfg: Record<string, unknown>): number {
+  return Math.round(clampNum(cfg.maxConcurrent, 1, 32, 4))
+}
+
+/** origin → 令牌桶(配置变更时就地换桶,避免旧速率长期生效) */
+function limiterFor(origin: string, cfg: Record<string, unknown>): TokenBucket {
+  const rate = rateOf(cfg)
+  const slot = buckets.get(origin)
+  if (slot && slot.rate === rate) return slot.bucket
+  const bucket = new TokenBucket(rate)
+  buckets.set(origin, { bucket, rate })
+  return bucket
+}
+
+/** origin → 并发闸(配置变更时就地换闸) */
+function gateFor(origin: string, cfg: Record<string, unknown>): ConcurrencyGate {
+  const max = concurrencyOf(cfg)
+  const slot = gates.get(origin)
+  if (slot && slot.max === max) return slot.gate
+  const gate = new ConcurrencyGate(max)
+  gates.set(origin, { gate, max })
+  return gate
+}
+
+/** 清空限速/并发账(单测用;生产不调用) */
+export function resetMesTransportLimitsForTest(): void {
+  buckets.clear()
+  gates.clear()
+}
 
 // ============================================================
 // 请求核心(fetch + 超时 + 限速 + 认证注入)与 HTTP 状态分类
@@ -331,31 +401,39 @@ async function mesRequest(
   req: { method?: string, path: string, query?: Record<string, string>, headers?: Record<string, string>, body?: unknown },
 ): Promise<MesReply> {
   const origin = await assertPublicOrigin(cfg)
-  await limiter.take()
-  const path = req.path.startsWith('/') ? req.path : `/${req.path}`
-  const url = new URL(origin + path)
-  for (const [k, v] of Object.entries(req.query ?? {})) url.searchParams.set(k, v)
-  const headers: Record<string, string> = { accept: 'application/json' }
-  await applyDefaultHeaders(headers, cfg)
-  for (const [k, v] of Object.entries(req.headers ?? {})) {
-    const interpolated = await interpolateHeaderValue(v)
-    if (interpolated !== null) headers[k] = interpolated
-  }
-  if (req.body !== undefined) headers['content-type'] = 'application/json'
-  applyAuth(headers, cfg, await resolveMesSecret(cfg.secretRef))
-  const res = await fetch(url, {
-    method: (req.method ?? 'GET').toUpperCase(),
-    headers,
-    body: req.body === undefined ? undefined : JSON.stringify(req.body),
-    // 表单值是字符串,num 归一;缺省 10s
-    signal: AbortSignal.timeout(num(cfg.requestTimeoutMs) ?? 10_000),
-  })
-  let json: unknown = null
+  await limiterFor(origin, cfg).take()
+  const gate = gateFor(origin, cfg)
+  await gate.acquire()
   try {
-    json = await res.json() as unknown
+    const path = req.path.startsWith('/') ? req.path : `/${req.path}`
+    const url = new URL(origin + path)
+    for (const [k, v] of Object.entries(req.query ?? {})) url.searchParams.set(k, v)
+    const headers: Record<string, string> = { accept: 'application/json' }
+    await applyDefaultHeaders(headers, cfg)
+    for (const [k, v] of Object.entries(req.headers ?? {})) {
+      const interpolated = await interpolateHeaderValue(v)
+      if (interpolated !== null) headers[k] = interpolated
+    }
+    if (req.body !== undefined) headers['content-type'] = 'application/json'
+    applyAuth(headers, cfg, await resolveMesSecret(cfg.secretRef))
+    const res = await fetch(url, {
+      method: (req.method ?? 'GET').toUpperCase(),
+      headers,
+      body: req.body === undefined ? undefined : JSON.stringify(req.body),
+      // 表单值是字符串,num 归一;缺省 10s
+      signal: AbortSignal.timeout(num(cfg.requestTimeoutMs) ?? 10_000),
+    })
+    let json: unknown = null
+    try {
+      json = await res.json() as unknown
+    }
+    catch { /* 非 JSON 响应忽略,由状态码判定 */ }
+    return { status: res.status, json }
   }
-  catch { /* 非 JSON 响应忽略,由状态码判定 */ }
-  return { status: res.status, json }
+  finally {
+    // 槽位必须释放(含 fetch 超时/网络错误路径,否则并发闸永久饱和)
+    gate.release()
+  }
 }
 
 /** HTTP 状态 → 分类错误文案(401 指向凭据链路;429/5xx 各自语义) */
@@ -608,6 +686,18 @@ export function historyFormatOf(cfg: Record<string, unknown>): DcwHistoryFormat 
   }
 }
 
+/**
+ * 映射形状校验(不联网):H8 模板库/配置向导在落盘前调用。
+ * 任一已配置映射非法即抛 AppError(400),错误文案直接指出字段。
+ */
+export function validateMesMappingConfig(cfg: Record<string, unknown>): void {
+  parseReadMap(cfg)
+  parseWriteMap(cfg)
+  parseHistoryMap(cfg)
+  mesWriteHookCode(cfg)
+  mesWriteCheckHookCode(cfg)
+}
+
 export const mesRestDcwDriver: DcwWriteDriver = {
   kind: 'mes-rest',
   async available() {
@@ -797,10 +887,8 @@ export const mesRestDcwDriver: DcwWriteDriver = {
     try {
       const cfg = driverConfig
       const readMap = parseReadMap(cfg)
-      parseWriteMap(cfg)
-      parseHistoryMap(cfg) // 已配置的映射全部过一遍形状校验(可选映射缺省跳过)
-      mesWriteHookCode(cfg) // 已配置的钩子代码过长度校验(语法在执行期诚实报错)
-      mesWriteCheckHookCode(cfg)
+      // 已配置的映射/钩子全部过一遍形状校验(可选映射缺省跳过)
+      validateMesMappingConfig(cfg)
       if (readMap) {
         const t0 = Date.now()
         const { value } = await readOnce(cfg, readMap)

@@ -933,6 +933,10 @@
         "merge": {
           "type": "boolean",
           "description": "合并导出:额外在导出目录生成 merged.csv(多节点按时间秒级对齐的多参数宽表,列名=节点名),可直接交给 IDD 哨兵/experience 等按 CSV 文件分析的服务"
+        },
+        "with_context": {
+          "type": "boolean",
+          "description": "CSV 追加行级环境/工况列(line_id,run_id,product_id,recipe_id;缺省 false 保持 ts_iso,ts_ms,value,state 契约;manifest/README 始终带批次上下文)"
         }
       },
       "required": [],
@@ -1488,6 +1492,75 @@
       ]
     },
     "riskClass": "read"
+  },
+  {
+    "name": "mes_bridge",
+    "label": "MES Bridge",
+    "description": "把 MES REST 点位的历史数据按批次打标桥接进平台时序库(H1),供 AML 数据集构建/训练/EDA 直接消费(与数采数据同表同语义)。与 mes_fetch 分工:fetch 只读摘要/落 CSV;bridge 写 TSDB。护栏(代码级):仅限你绑定的数控点位;时间窗 ≤7 天;单次 ≤5000 行;每 60 秒最多 6 次。打标语义:显式 run_id 或该产线活动批次;批次窗口外的行只打 line 标(不冒充批次数据)。幂等:(点位,时间戳) 为主键,重复桥接不产生重复行(回包给 duplicates 计数)。形态:scalar→daq_samples;vector→daq_frames(meta.points 存全点列,可 resample_to 统一网格);image→对象存储 + daq_frames(与 DAQ CCD 同一帧检索面);table/event 无 TSDB 列模型,请用 mes_export。先用 dry_run=true 核对行数与打标,再正式写入。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "ids": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "目标点位 id 数组(mes_catalog 输出的 id;须为你绑定的数控点位,且已配置 historyMap)"
+        },
+        "from": {
+          "type": "string",
+          "description": "窗口起点 ISO 时间(必填;与 to 成对,窗口 ≤7 天)"
+        },
+        "to": {
+          "type": "string",
+          "description": "窗口终点 ISO 时间(必填;与 from 成对)"
+        },
+        "max_rows": {
+          "type": "number",
+          "description": "单次桥接行数上限(缺省/硬上限 5000;更大窗口请分段)"
+        },
+        "run_id": {
+          "type": "string",
+          "description": "目标批次 id(须与点位同线;缺省=该产线活动批次;无批次上下文时只打 line 标,AML 数据集按 runId 取数不会命中)"
+        },
+        "include": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "scalar",
+              "vector",
+              "image"
+            ]
+          },
+          "description": "只桥接指定形态(缺省 scalar/vector/image;table/event 不支持)"
+        },
+        "resample_to": {
+          "type": "number",
+          "description": "向量重采样目标点数(2–4096;缺省保留原维度;用于统一不同点位的检测网格)"
+        },
+        "param": {
+          "type": "object",
+          "description": "透传给点位 requestHook 的参数对象(请求构造由点位配置决定)"
+        },
+        "dry_run": {
+          "type": "boolean",
+          "description": "试运行:完整取数并统计,但不写 TSDB/对象存储(默认 false)"
+        }
+      },
+      "required": [
+        "ids",
+        "from",
+        "to"
+      ],
+      "additionalProperties": false
+    },
+    "references": {
+      "nodeLists": [
+        "ids"
+      ]
+    },
+    "riskClass": "write"
   },
   {
     "name": "mes_dataset_read",
@@ -3372,6 +3445,10 @@
         "merge": {
           "type": "boolean",
           "description": "多个标量点位是否生成按时间对齐的 merged.csv(缺省 true)"
+        },
+        "with_context": {
+          "type": "boolean",
+          "description": "CSV 追加行级环境/工况列(line_id,run_id,product_id,recipe_id;缺省 false 保持 ts,value 列契约;manifest/README 始终带环境摘要)"
         }
       },
       "required": [

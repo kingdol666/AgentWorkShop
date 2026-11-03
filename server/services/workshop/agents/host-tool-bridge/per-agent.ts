@@ -20,7 +20,7 @@ import { promptLocaleOf, tr, type PromptLocale } from '../prompt-i18n'
 /** 需要追加“可见资源”描述的工具族 */
 const DAQ_TOOLS = new Set(['daq_query', 'daq_frames', 'daq_export'])
 const RECIPE_TOOLS = new Set(['recipe_catalog', 'recipe_log', 'recipe_versions', 'recipe_update', 'recipe_rollback', 'recipe_trial', 'recipe_apply', 'recipe_propose'])
-const MES_TOOLS = new Set(['mes_catalog', 'mes_fetch', 'mes_export', 'mes_dataset_read', 'mes_datasets'])
+const MES_TOOLS = new Set(['mes_catalog', 'mes_fetch', 'mes_bridge', 'mes_export', 'mes_dataset_read', 'mes_datasets'])
 
 export interface AgentToolResourceView {
   /** Agent 显式绑定的数采节点(kind=daq) */

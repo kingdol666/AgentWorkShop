@@ -1,0 +1,48 @@
+{
+  "at": "2026-11-03T05:29:01.209Z",
+  "pass": 23,
+  "fail": 0,
+  "failures": [],
+  "bridge": {
+    "scalar": {
+      "nodes": 1,
+      "nodesOk": 1,
+      "fetched": 121,
+      "inserted": 121,
+      "duplicates": 0,
+      "skipped": 0
+    },
+    "vector": {
+      "nodes": 1,
+      "nodesOk": 1,
+      "fetched": 25,
+      "inserted": 25,
+      "duplicates": 0,
+      "skipped": 0
+    },
+    "image": {
+      "nodes": 1,
+      "nodesOk": 1,
+      "fetched": 6,
+      "inserted": 6,
+      "duplicates": 0,
+      "skipped": 0
+    }
+  },
+  "dataset": {
+    "id": "ds-mw08zkbs-jvs03f",
+    "rowCount": 114,
+    "nodes": [
+      "dn-hetero-ctrl",
+      "dw-e202f1c9"
+    ]
+  },
+  "frames": {
+    "vector": 25,
+    "image": 6
+  },
+  "export": {
+    "mes": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-h1h8-e2e-vbGJzd\\mes-exports\\h3",
+    "daq": "C:\\Users\\87287\\AppData\\Local\\Temp\\aw-h1h8-e2e-vbGJzd\\daq-exports\\daqexp-20261103052901-8cc68e"
+  }
+}

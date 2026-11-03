@@ -63,6 +63,7 @@ export const LEGACY_VERIFY_SPECS: Record<string, ToolVerifySpec> = {
   aml_training_plan_train: { chained: [{ param: 'plan_id', kind: 'plan', mode: 'write' }] },
   // MES 面(ids 为 MES 数控节点,归属判定与 mes-controller 可见面同源)
   mes_fetch: { nodeLists: ['ids'] },
+  mes_bridge: { nodeLists: ['ids'] },
   mes_export: { nodeLists: ['ids'] },
   // Optimizer(G4.5):binding/run/recommendation 都必须属于当前 Agent 实例
   optimizer_capabilities: {},

@@ -10,6 +10,8 @@ import { findDaqTemplate } from '../../daq/daq-templates'
 import { getAgentNodeBindingRepo } from '../node-bindings.repo'
 import { getAmlRuntime } from '../../aml/runtime'
 import { getDaqNodeRepo } from '../../daq/daq-node.repo'
+import { getDcwNodeRepo } from '../../dcw/dcw-node.repo'
+import { historyFormatOf } from '../../dcw/drivers/mes-rest'
 import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
 import { getDcwProductRepo } from '../../dcw/dcw-product.repo'
 import { getDcwRecipeRepo } from '../../dcw/dcw-recipe.repo'
@@ -38,12 +40,14 @@ export function fmtAmlNum(v: number | null | undefined, digits = 4): string {
 }
 
 export function amlNodeName(nodeId: string): string {
-  return getDaqNodeRepo().byId(nodeId)?.name ?? nodeId
+  return getDaqNodeRepo().byId(nodeId)?.name ?? getDcwNodeRepo().byId(nodeId)?.name ?? nodeId
 }
 
 export function amlNodeUnit(nodeId: string): string {
   const n = getDaqNodeRepo().byId(nodeId)
-  return n?.unit ?? findDaqTemplate(n?.templateKey ?? '')?.unit ?? ''
+  if (n) return n.unit ?? findDaqTemplate(n.templateKey ?? '')?.unit ?? ''
+  const mes = getDcwNodeRepo().byId(nodeId)
+  return mes?.unit ?? ''
 }
 
 /** 数据集构建报告惰性读(report.json 与 manifest 同目录) */
@@ -95,18 +99,25 @@ export function amlJobCard(job: AmlJobRow): string {
   ].filter(x => x !== null).join('\n')
 }
 
-/** 工具:aml_node_catalog —— 我可用的 AML 建模节点(daq 绑定面;物理语义 + 近 24h 批次数据可用性) */
+/** 工具:aml_node_catalog —— 我可用的 AML 建模节点(daq 绑定面 + MES 桥接点位;
+ *  物理语义 + 近 24h 批次数据可用性) */
 export async function toolAmlNodeCatalog(agentId: string): Promise<{ text: string }> {
-  const bindings = getAgentNodeBindingRepo().byAgent(agentId).filter(b => b.kind === 'daq')
-  if (bindings.length === 0) {
-    return { text: '你尚未绑定任何数采节点,AML 自动建模工具不可用(数据集构建要求所用节点均有你的 daq 绑定,绑定只缩不放)。请在数字孪生界面绑定数采节点后重试。' }
+  const bindings = getAgentNodeBindingRepo().byAgent(agentId)
+  const daqBindings = bindings.filter(b => b.kind === 'daq')
+  // H1:MES 点位(dcw 绑定中 driver=mes-rest)经桥接后可作为数据集节点
+  const mesNodes = bindings
+    .filter(b => b.kind === 'dcw')
+    .map(b => getDcwNodeRepo().byId(b.nodeId))
+    .filter((n): n is NonNullable<typeof n> => !!n && n.driver === 'mes-rest')
+  if (daqBindings.length === 0 && mesNodes.length === 0) {
+    return { text: '你尚未绑定任何数采节点,AML 自动建模工具不可用(数据集构建要求所用节点均有你的 daq 绑定;mes-rest 点位用 dcw 绑定;绑定只缩不放)。请在数字孪生界面绑定数采节点后重试。' }
   }
   const { getTsdb, tsdbReady } = await import('../../daq/storage')
   await tsdbReady
   const tsdb = getTsdb()
   const from24h = Date.now() - 24 * 3_600_000
   const cards: string[] = []
-  for (const b of bindings) {
+  for (const b of daqBindings) {
     const node = getDaqNodeRepo().byId(b.nodeId)
     if (!node) continue
     const tpl = findDaqTemplate(node.templateKey)
@@ -120,13 +131,31 @@ export async function toolAmlNodeCatalog(agentId: string): Promise<{ text: strin
       ? `${getDcwLineRepo().byId(node.lineId)?.name ?? node.lineId}(${node.lineId})`
       : '未分配产线(无批次打标,不能参与建模)'
     cards.push(
-      `■ ${node.name} · node_id=${node.id}\n`
+      `■ ${node.name} · node_id=${node.id} · 来源 DAQ\n`
       + `  物理量 ${tpl?.ch ?? node.templateKey} | 单位 ${node.unit} | 正常量程 ${node.min}~${node.max}${node.unit}\n`
       + `  产线: ${lineTxt} | 数据: ${dataTag}${tpl?.semantics ? `\n  语义: ${tpl.semantics.slice(0, 160)}` : ''}`,
     )
   }
+  for (const node of mesNodes) {
+    const cfg = node.driverConfig as Record<string, unknown>
+    let dataTag = '近 24h 无桥接数据(先 mes_bridge 把 MES 历史写入 TSDB)'
+    try {
+      const pts = await tsdb.query(node.id, { fromMs: from24h, toMs: Date.now(), limit: 1 })
+      if (pts.length > 0) dataTag = '近 24h 有桥接数据(可建模)'
+    }
+    catch { /* 时序库异常按无数据处理 */ }
+    const lineTxt = node.lineId
+      ? `${getDcwLineRepo().byId(node.lineId)?.name ?? node.lineId}(${node.lineId})`
+      : '未分配产线(不能参与建模)'
+    cards.push(
+      `■ ${node.name} · node_id=${node.id} · 来源 MES(桥接)\n`
+      + `  单位 ${node.unit} | 量程 ${node.min}~${node.max}${node.unit} | 历史格式 ${historyFormatOf(cfg)}\n`
+      + `  产线: ${lineTxt} | 数据: ${dataTag}\n`
+      + `  说明: 先用 mes_bridge(ids=[${node.id}], from, to) 把 MES 历史按批次打标入 TSDB;桥接后与数采节点同权参与训练。`,
+    )
+  }
   return {
-    text: `你可用的 AML 建模节点(${cards.length} 个 daq 绑定):\n\n${cards.join('\n\n')}\n\n---\n建模路径:aml_model_find(先查是否已有匹配 产线·配方·目标 的模型,可复用不重训)→ 无则 aml_dataset_build(选 control/target 节点组数据集)→ aml_job_submit(提交训练代码,带 model_name/model_description 打标)→ aml_job_status / aml_job_logs 轮询 → aml_leaderboard 看实验谱系 → aml_model_promote(lead 专属,人工审批)→ aml_model_reference(调参前查影子参考)。\n模型身份:每个模型 label 强制携带 产线·配方·优化目标;模型按 (产品, 配方, purpose) 隔离,不同 recipe 不可跨用。\nrole 语义:control=可控输入(未来轨迹已知)/ target=预测目标(必选 ≥1)/ feature=仅历史特征。`,
+    text: `你可用的 AML 建模节点(${cards.length} 个:${daqBindings.length} 个数采绑定 + ${mesNodes.length} 个 MES 桥接点位):\n\n${cards.join('\n\n')}\n\n---\n建模路径:aml_model_find(先查是否已有匹配 产线·配方·目标 的模型,可复用不重训)→ 无则 aml_dataset_build(选 control/target 节点组数据集)→ aml_job_submit(提交训练代码,带 model_name/model_description 打标)→ aml_job_status / aml_job_logs 轮询 → aml_leaderboard 看实验谱系 → aml_model_promote(lead 专属,人工审批)→ aml_model_reference(调参前查影子参考)。\n模型身份:每个模型 label 强制携带 产线·配方·优化目标;模型按 (产品, 配方, purpose) 隔离,不同 recipe 不可跨用。\nrole 语义:control=可控输入(未来轨迹已知)/ target=预测目标(必选 ≥1)/ feature=仅历史特征。\nMES 数据:mes_bridge 桥接 → aml_node_catalog 确认可用 → 数据集节点直接填 MES 点位 id。`,
   }
 }
 
@@ -168,14 +197,20 @@ export async function toolAmlDatasetBuild(agentId: string, args: {
   if (nodes.length < 2) return amlErr('nodes 至少 2 项({node_id, role}),且必须含 1 个 target(预测目标)。')
   if (nodes.some(n => !['control', 'feature', 'target'].includes(n.role))) return amlErr('nodes 的 role 必须为 control / feature / target。')
   if (!nodes.some(n => n.role === 'target')) return amlErr('nodes 必须含至少 1 个 target 节点(预测目标)。')
-  // 鉴权:每个节点都要有该 Agent 的 daq 绑定,且归属参数给定的产线(绑定只缩不放)
+  // 鉴权:每个节点都要有该 Agent 的 daq 绑定(普通数采)或 dcw 绑定(MES 桥接点位),
+  // 且归属参数给定的产线(绑定只缩不放)。H1:mes-rest 点位经桥接后是合法数据源。
   const repo = getAgentNodeBindingRepo()
-  const daqBound = repo.byAgent(agentId).filter(b => b.kind === 'daq')
+  const agentBindings = repo.byAgent(agentId)
+  const daqBound = agentBindings.filter(b => b.kind === 'daq')
+  const dcwBound = new Set(agentBindings.filter(b => b.kind === 'dcw').map(b => b.nodeId))
+  const mesSourceBound = (id: string): boolean => dcwBound.has(id) && getDcwNodeRepo().byId(id)?.driver === 'mes-rest'
   for (const n of nodes) {
-    if (!daqBound.some(b => b.nodeId === n.nodeId)) {
-      return amlErr(`无权使用节点 ${n.nodeId}(无你的 daq 绑定;绑定只缩不放)。你有权访问的数采节点:${daqBound.map(b => b.nodeId).join(', ') || '(无)'},可先 aml_node_catalog 查看语义。`)
+    if (!daqBound.some(b => b.nodeId === n.nodeId) && !mesSourceBound(n.nodeId)) {
+      return amlErr(`无权使用节点 ${n.nodeId}(无你的 daq 绑定;mes-rest 点位需 dcw 绑定;绑定只缩不放)。你有权访问的数采节点:${daqBound.map(b => b.nodeId).join(', ') || '(无)'},可先 aml_node_catalog 查看语义。`)
     }
-    const nodeLine = getDaqNodeRepo().byId(n.nodeId)?.lineId ?? ''
+    const daqNode = getDaqNodeRepo().byId(n.nodeId)
+    const mesNode = daqNode ? undefined : getDcwNodeRepo().byId(n.nodeId)
+    const nodeLine = daqNode?.lineId ?? (mesNode?.driver === 'mes-rest' ? mesNode.lineId : '') ?? ''
     if (nodeLine !== lineId) {
       return amlErr(`节点 ${amlNodeName(n.nodeId)}(${n.nodeId})归属产线 ${nodeLine || '未分配'},与 line_id=${lineId} 不一致;数据集节点必须全部归属同一条产线(绑定只缩不放)。`)
     }
