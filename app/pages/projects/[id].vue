@@ -99,6 +99,13 @@ async function lifecycle(action: 'activate' | 'pause' | 'resume' | 'archive' | '
   })
 }
 
+async function completeProject(): Promise<void> {
+  await run(async () => {
+    await http.post(`/workshop/projects/${id}/complete`, {})
+    await load()
+  })
+}
+
 async function bindChannel(): Promise<void> {
   if (!bindForm.channelId.trim()) return
   await run(async () => {
@@ -231,6 +238,14 @@ onMounted(load)
           @click="lifecycle('resume')"
         >
           恢复
+        </button>
+        <button
+          v-if="project?.status === 'active'"
+          class="btn green"
+          :disabled="loading"
+          @click="completeProject"
+        >
+          完成
         </button>
         <button
           v-if="project && project.status !== 'active' && project.status !== 'archived'"

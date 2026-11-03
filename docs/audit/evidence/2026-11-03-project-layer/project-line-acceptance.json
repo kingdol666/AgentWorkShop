@@ -1,9 +1,9 @@
 {
-  "generatedAt": "2026-11-03T16:03:11.326Z",
-  "pass": 35,
+  "generatedAt": "2026-11-03T16:39:05.415Z",
+  "pass": 37,
   "fail": 0,
   "blocked": 2,
-  "total": 37,
+  "total": 39,
   "results": [
     {
       "id": "P0",
@@ -21,7 +21,7 @@
       "id": "P2",
       "name": "真实产线/节点/产品/配方创建",
       "pass": true,
-      "detail": "{\"line\":\"ln-c063d2af\",\"node\":\"dw-db4a5fdb\",\"product\":\"pd-2eb26187\",\"recipe\":\"rc-4718f233\"}"
+      "detail": "{\"line\":\"ln-4419293a\",\"node\":\"dw-fa9b9677\",\"product\":\"pd-d615e35b\",\"recipe\":\"rc-bc11f0ec\"}"
     },
     {
       "id": "P2b",
@@ -33,19 +33,19 @@
       "id": "P3",
       "name": "绑线 Channel 创建",
       "pass": true,
-      "detail": "{\"channelId\":\"572534ef-89d4-4a6b-8b99-368de7ff3d49\",\"leadAgentId\":\"f7a01726-085a-4c68-95d8-43d694dff079\",\"workspace\":\"D:\\\\codes\\\\ABO\\\\AgentWorkShop-project\\\\data\\\\workspaces\\\\572534ef-89d4-4a6b-8b99-368de7ff3d49\"}"
+      "detail": "{\"channelId\":\"d00a5169-c97c-4635-9cfd-ece1e815cf9d\",\"leadAgentId\":\"66758183-45fd-4519-a4cc-89cd45008e38\",\"workspace\":\"D:\\\\codes\\\\ABO\\\\AgentWorkShop-project\\\\data\\\\workspaces\\\\d00a5169-c97c-4635-9cfd-ece1e815cf9d\"}"
     },
     {
       "id": "P3b",
       "name": "Channel 产线绑定落库",
       "pass": true,
-      "detail": "lineId=ln-c063d2af"
+      "detail": "lineId=ln-4419293a"
     },
     {
       "id": "P4",
       "name": "Project 创建（办公室 + leader 指针）",
       "pass": true,
-      "detail": "{\"id\":\"dc7c4a54-717a-4de3-80a4-ad53ebe39993\",\"name\":\"良率项目-plmpn7\",\"description\":\"\",\"objective\":\"将产线 ln-c063d2af 的良率提升到 98%\",\"successCriteriaJson\":\"[\\\"良率 >= 98%\\\",\\\"基线可复现\\\"]\",\"status\":\"draft\",\"mode\":\"supervised\",\"ownerUserId\":\"0c99c16c-8fa0-415d-9f04-376ee0d8d154\",\"officeChannelId\":\"3d13730d-fcc6-403b-9ea8-780fb471a23d\",\"leadAgentId\":\"aef05e37-6018-425c-869f-faadb6813bc0\",\"planVersion\":0,\"planJson\""
+      "detail": "{\"id\":\"5023c3c5-e346-494a-aa1b-ff81aae4a5fb\",\"name\":\"良率项目-plwug3\",\"description\":\"\",\"objective\":\"将产线 ln-4419293a 的良率提升到 98%\",\"successCriteriaJson\":\"[\\\"良率 >= 98%\\\",\\\"基线可复现\\\"]\",\"status\":\"draft\",\"mode\":\"supervised\",\"ownerUserId\":\"6958ecda-cebe-40bf-82ba-c6ded2343aab\",\"officeChannelId\":\"949547cf-9a0b-4f35-8057-f64fc7f7dbcd\",\"leadAgentId\":\"757f2e5d-6666-49ea-b4d2-eb4a64c80bfe\",\"planVersion\":0,\"planJson\""
     },
     {
       "id": "P4b",
@@ -63,13 +63,13 @@
       "id": "P5b",
       "name": "交付物创建",
       "pass": true,
-      "detail": "{\"id\":\"c4c2fbdd-f368-4318-abdb-cccc5fff588f\",\"projectId\":\"dc7c4a54-717a-4de3-80a4-ad53ebe39993\",\"name\":\"产线基线报告-plmpn7\",\"description\":\"\",\"ownerChannelId\":\"572534ef-89d4-4a6b-8b99-368de7ff3d49\",\"required\":1,\"acceptanceCriteriaJson\":\"[\\\"覆盖产线/产品/配方\\\",\\\"数据窗口明确\\\"]\",\"dueAt\":null,\"dependsOnJson\":\"[]\",\"status\":\"planned\",\"waiverReason\":null,\"createdBy\":\"0c99c16c-8fa0-415d-9f04-376ee0d8d154\",\"createdAt\":\"202"
+      "detail": "{\"id\":\"17a38718-3ee6-48f2-b64b-e30ddace5318\",\"projectId\":\"5023c3c5-e346-494a-aa1b-ff81aae4a5fb\",\"name\":\"产线基线报告-plwug3\",\"description\":\"\",\"ownerChannelId\":\"d00a5169-c97c-4635-9cfd-ece1e815cf9d\",\"required\":1,\"acceptanceCriteriaJson\":\"[\\\"覆盖产线/产品/配方\\\",\\\"数据窗口明确\\\"]\",\"dueAt\":null,\"dependsOnJson\":\"[]\",\"status\":\"planned\",\"waiverReason\":null,\"createdBy\":\"6958ecda-cebe-40bf-82ba-c6ded2343aab\",\"createdAt\":\"202"
     },
     {
       "id": "P6",
       "name": "项目工作项创建（交付物必填）",
       "pass": true,
-      "detail": "{\"id\":\"19f78f85-a68b-4784-9bb4-5285292b0a33\",\"projectId\":\"dc7c4a54-717a-4de3-80a4-ad53ebe39993\",\"deliverableId\":\"c4c2fbdd-f368-4318-abdb-cccc5fff588f\",\"channelId\":\"572534ef-89d4-4a6b-8b99-368de7ff3d49\",\"title\":\"建立产线基线-plmpn7\",\"brief\":\"读取产线 ln-c063d2af 的节点/配方/历史，输出基线报告\",\"state\":\"DRAFT\",\"stateReason\":null,\"priority\":0,\"weight\":1,\"dependsOnJson\":\"[]\",\"acceptanceJson\":\"[]\",\"resultKey\":\"main\",\"currentA"
+      "detail": "{\"id\":\"1b20dc02-4a3e-427d-8b7a-55877913d237\",\"projectId\":\"5023c3c5-e346-494a-aa1b-ff81aae4a5fb\",\"deliverableId\":\"17a38718-3ee6-48f2-b64b-e30ddace5318\",\"channelId\":\"d00a5169-c97c-4635-9cfd-ece1e815cf9d\",\"title\":\"建立产线基线-plwug3\",\"brief\":\"读取产线 ln-4419293a 的节点/配方/历史，输出基线报告\",\"state\":\"DRAFT\",\"stateReason\":null,\"priority\":0,\"weight\":1,\"dependsOnJson\":\"[]\",\"acceptanceJson\":\"[]\",\"resultKey\":\"main\",\"currentA"
     },
     {
       "id": "P6b",
@@ -81,7 +81,7 @@
       "id": "P7",
       "name": "Project 激活（Channel + 必选交付物）",
       "pass": true,
-      "detail": "status=200 body={\"status\":200,\"code\":0,\"message\":\"ok\",\"data\":{\"id\":\"dc7c4a54-717a-4de3-80a4-ad53ebe39993\",\"name\":\"良率项目-plmpn7\",\"description\":\"\",\"objective\":\"将产线 ln-c063d2af 的良率提升到 98%\",\"successCriteriaJson\":\"[\\\"良率 >="
+      "detail": "status=200 body={\"status\":200,\"code\":0,\"message\":\"ok\",\"data\":{\"id\":\"5023c3c5-e346-494a-aa1b-ff81aae4a5fb\",\"name\":\"良率项目-plwug3\",\"description\":\"\",\"objective\":\"将产线 ln-4419293a 的良率提升到 98%\",\"successCriteriaJson\":\"[\\\"良率 >="
     },
     {
       "id": "P8",
@@ -93,13 +93,13 @@
       "id": "P8b",
       "name": "root task 带项目上下文",
       "pass": true,
-      "detail": "{\"id\":\"d23fcfaf-2572-41e6-90d6-2d63e6eeb41b\",\"channelId\":\"572534ef-89d4-4a6b-8b99-368de7ff3d49\",\"rootQueueSeq\":1,\"assigneeId\":\"f7a01726-085a-4c68-95d8-43d694dff079\",\"creatorId\":\"project:dc7c4a54-717a-4de3-80a4-ad53ebe39993\",\"title\":\"建立产线基线-plmpn7\",\"description\":\"读取产线 ln-c063d2af 的节点/配方/历史，输出基线报告\",\"state\":\"COMPLETED\",\"progress\":100,\"retryCount\":0,\"artifacts\":[{\"artifactId\":\"99cac060-e8cc-49ef-a68d-"
+      "detail": "{\"id\":\"73d2d79e-271f-4e3e-8025-a22091bad154\",\"channelId\":\"d00a5169-c97c-4635-9cfd-ece1e815cf9d\",\"rootQueueSeq\":1,\"assigneeId\":\"66758183-45fd-4519-a4cc-89cd45008e38\",\"creatorId\":\"project:5023c3c5-e346-494a-aa1b-ff81aae4a5fb\",\"title\":\"建立产线基线-plwug3\",\"description\":\"读取产线 ln-4419293a 的节点/配方/历史，输出基线报告\",\"state\":\"COMPLETED\",\"progress\":100,\"retryCount\":0,\"artifacts\":[{\"artifactId\":\"3b103d2f-d93c-4230-99c7-"
     },
     {
       "id": "P8c",
       "name": "项目预算（60min）未被 900s 覆盖",
       "pass": true,
-      "detail": "remainingMs=3599967"
+      "detail": "remainingMs=3599962"
     },
     {
       "id": "P9",
@@ -165,7 +165,7 @@
       "id": "P13c",
       "name": "root COMPLETED 自动生成成果 draft（带真实 artifact 证据）",
       "pass": true,
-      "detail": "status=200 result=draft evidence=[{\"artifactId\":\"99cac060-e8cc-49ef-a68d-a812a1b6672d\",\"name\":\"lead-direct-answer\",\"kind\":\"artifact\"}]"
+      "detail": "status=200 result=draft evidence=[{\"artifactId\":\"3b103d2f-d93c-4230-99c7-b74ffb9cc3e8\",\"name\":\"lead-direct-answer\",\"kind\":\"artifact\"}]"
     },
     {
       "id": "P13d",
@@ -216,18 +216,30 @@
       "detail": "status=409 code=APPROVAL_STATE_INVALID"
     },
     {
-      "id": "P17",
-      "name": "项目页 UI / 周报 / 审批历史",
-      "pass": false,
-      "blocked": true,
-      "detail": "PR6 未实现"
+      "id": "P14e",
+      "name": "plan_approval 批准 → planVersion=1",
+      "pass": true,
+      "detail": "planReq=200 planDec=200 version=1"
     },
     {
-      "id": "P18",
-      "name": "MAST L1–L14 / Live 全量 / G0–G6 证据",
+      "id": "P14f",
+      "name": "项目完成门禁 + owner 批准 → completed",
+      "pass": true,
+      "detail": "completeReq=200 completeDec=200 status=completed"
+    },
+    {
+      "id": "P17",
+      "name": "项目页完整 Playwright 交互矩阵 / 周报导出",
       "pass": false,
       "blocked": true,
-      "detail": "PR7 未执行"
+      "detail": "UI smoke 已过；完整交互矩阵待补"
+    },
+    {
+      "id": "P18b",
+      "name": "Live 全量 / G0–G6 / 回滚演练",
+      "pass": false,
+      "blocked": true,
+      "detail": "PR7 收尾未执行"
     }
   ]
 }

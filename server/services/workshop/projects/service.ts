@@ -286,6 +286,13 @@ export class ProjectService {
     if (p.planVersion > 0 && wi.planVersion !== p.planVersion) {
       throw new AppError(409, 'PLAN_VERSION_STALE', `工作项计划版本 ${wi.planVersion} != 当前 ${p.planVersion}`)
     }
+    const deps = parseJson<string[]>(wi.dependsOnJson, [])
+    for (const depId of deps) {
+      const dep = this.workItems.findById(depId)
+      if (!dep || !['COMPLETED', 'CANCELED', 'SUPERSEDED'].includes(dep.state)) {
+        throw new AppError(409, 'DEPENDENCY_NOT_READY', `依赖工作项 ${depId} 未完成`)
+      }
+    }
     const d = this.deliverables.listByProject(id).find(x => x.id === wi.deliverableId)
     if (!d) throw new AppError(404, 'NOT_FOUND', '工作项交付物不存在')
     const bound = this.bindings.listByProject(id).find(b => b.channelId === wi.channelId && b.status === 'active')
@@ -358,6 +365,19 @@ export class ProjectService {
    */
   reconcile(id: string, actor: ProjectActor): { workItems: ProjectWorkItemRow[], expiredApprovals: number } {
     this.get(id, actor)
+    return this.reconcileWith(id, actor)
+  }
+
+  /** 插件定时器用：跳过 owner 校验，actor=system。 */
+  reconcileInternal(id: string): { workItems: ProjectWorkItemRow[], expiredApprovals: number } {
+    return this.reconcileWith(id, { id: 'system', role: 'system' })
+  }
+
+  listActiveProjects(): ProjectRow[] {
+    return this.projects.listAll().filter(p => p.status === 'active')
+  }
+
+  private reconcileWith(id: string, actor: ProjectActor): { workItems: ProjectWorkItemRow[], expiredApprovals: number } {
     for (const wi of this.workItems.listByProject(id)) {
       if (['COMPLETED', 'FAILED', 'CANCELED', 'SUPERSEDED'].includes(wi.state)) continue
       if (wi.deadlineAt && Date.parse(wi.deadlineAt) < Date.now()) {
@@ -497,11 +517,69 @@ export class ProjectService {
     return this.results.findById(resultId)!
   }
 
+  requestProjectComplete(id: string, actor: ProjectActor): ProjectApprovalRow {
+    this.get(id, actor)
+    const deliverables = this.deliverables.listByProject(id).filter(d => d.required === 1)
+    const missing = deliverables.filter(d => !['approved', 'waived'].includes(d.status))
+    if (missing.length > 0) {
+      throw new AppError(409, 'DELIVERABLES_INCOMPLETE', `必选交付物未验收: ${missing.map(d => d.name).join(', ')}`)
+    }
+    const items = this.workItems.listByProject(id)
+    const open = items.filter(w => !['COMPLETED', 'CANCELED', 'SUPERSEDED'].includes(w.state))
+    if (open.length > 0) {
+      throw new AppError(409, 'WORK_ITEMS_INCOMPLETE', `工作项未终态: ${open.map(w => w.title).join(', ')}`)
+    }
+    const pending = this.approvals.listPending(id).find(a => a.kind === 'project_complete' && a.subjectId === id)
+    if (pending) return pending
+    const approval = this.approvals.create({
+      projectId: id,
+      kind: 'project_complete',
+      subjectType: 'project',
+      subjectId: id,
+      requestedByAgentId: actor.agentId ?? null,
+      requestedByUserId: actor.agentId ? null : actor.id,
+      payloadJson: JSON.stringify({ deliverables: deliverables.map(d => ({ id: d.id, status: d.status })), workItems: items.length }),
+      reason: 'project completion acceptance',
+      traceId: `project:${id}:complete`,
+      expiresAt: new Date(Date.now() + 24 * 3600_000).toISOString(),
+    })
+    this.record(id, 'project.complete_requested', actor, { approvalId: approval.id }, approval.traceId, 'project.complete_requested', `project:${id}:complete:requested`, { approvalId: approval.id })
+    return approval
+  }
+
+  requestPlanApproval(id: string, actor: ProjectActor, input: { version: number, plan: Record<string, unknown> }): ProjectApprovalRow {
+    const p = this.get(id, actor)
+    if (!Number.isInteger(input.version) || input.version <= 0) throw new AppError(400, 'BAD_REQUEST', 'plan version 必须为正整数')
+    if (input.version <= p.planVersion) throw new AppError(409, 'PLAN_VERSION_STALE', `plan version ${input.version} <= 当前 ${p.planVersion}`)
+    const subjectId = `plan:${id}:${input.version}`
+    const pending = this.approvals.listPending(id).find(a => a.kind === 'plan_approval' && a.subjectId === subjectId)
+    if (pending) return pending
+    const approval = this.approvals.create({
+      projectId: id,
+      kind: 'plan_approval',
+      subjectType: 'plan',
+      subjectId,
+      subjectVersion: input.version,
+      requestedByAgentId: actor.agentId ?? null,
+      requestedByUserId: actor.agentId ? null : actor.id,
+      payloadJson: JSON.stringify(input.plan),
+      reason: 'project plan approval',
+      traceId: `plan:${id}:${input.version}`,
+      expiresAt: new Date(Date.now() + 24 * 3600_000).toISOString(),
+    })
+    this.record(id, 'plan.requested', actor, { approvalId: approval.id, version: input.version }, approval.traceId, 'plan.requested', `plan:${id}:${input.version}:requested`, { approvalId: approval.id, version: input.version })
+    return approval
+  }
+
   requestAcceptance(id: string, resultId: string, actor: ProjectActor): ProjectApprovalRow {
     const p = this.get(id, actor)
     const result = this.results.findById(resultId)
     if (!result || result.projectId !== id) throw new AppError(404, 'NOT_FOUND', '成果不存在或不属于该项目')
     if (result.status !== 'reviewed') throw new AppError(409, 'RESULT_STATE_INVALID', `成果状态 ${result.status} 不能申请验收`)
+    const evidence = parseJson<unknown[]>(result.evidenceJson, [])
+    if (!Array.isArray(evidence) || evidence.length === 0) {
+      throw new AppError(400, 'EVIDENCE_REQUIRED', '成果没有证据，不能申请验收')
+    }
     const pending = this.approvals.listPending(id).find(a => a.kind === 'deliverable_acceptance' && a.subjectId === resultId)
     if (pending) return pending
     const approval = this.approvals.create({

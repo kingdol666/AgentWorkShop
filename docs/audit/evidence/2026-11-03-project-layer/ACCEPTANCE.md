@@ -1,7 +1,7 @@
-# Project 层 V1 分阶段验收报告（PR1–PR6）
+# Project 层 V1 分阶段验收报告（PR1–PR7）
 
 日期：2026-11-04。状态：**分阶段验收，未完成 V1 全量**。
-被测分支：`pr/06-project-ui`（stacked on PR5）。
+被测分支：`pr/07-mast-hardening`（stacked on PR6）。
 证据：`docs/audit/evidence/2026-11-03-project-layer/project-line-acceptance.json`、`projects-list.png`、`project-detail.png`。
 
 ---
@@ -19,7 +19,7 @@
 ### 未实现，明确 BLOCKED（不得算通过）
 
 - 项目页 UI / 周报 / 审批历史。
-- MAST L1–L14 / Live 全量 / G0–G6 证据。
+- MAST L1–L14 / Live 全量 / G0–G6 证据（MAST 已通过；Live 全量/G0–G6 未执行）。
 - Project Leader 的 proposal tools/prompt 接入（当前 leader 尚未调用项目工具）。
 - M5 leader 自建/删除 Channel；独立安全扫描/红队待补。
 
@@ -49,7 +49,7 @@ AW_PROJECT_ACCEPTANCE_OUT=docs/audit/evidence/2026-11-03-project-layer/project-l
 
 ### 2.2 生产业务 E2E（真实产线对象）
 
-结果：**35 PASS / 0 FAIL / 2 BLOCKED**。
+结果：**37 PASS / 0 FAIL / 2 BLOCKED**。
 
 | ID | 验收项 | 结果 | 证据 |
 |---|---|---|---|
@@ -87,9 +87,12 @@ AW_PROJECT_ACCEPTANCE_OUT=docs/audit/evidence/2026-11-03-project-layer/project-l
 | P13f | 成果 approved | ✅ | results |
 | P14c | 交付物 approved | ✅ | deliverables |
 | P14d | 审批重复决策 → 409 | ✅ | 负例 |
+| P14e | plan_approval 批准 → planVersion=1 | ✅ | `/plan/request-approval` + decide |
+| P14f | 项目完成门禁 + owner 批准 → completed | ✅ | `/complete` + decide |
 | P16 | 审计 decisions/events 落库且带 trace | ✅ | decisions/events |
-| P17 | 项目页 UI/周报 | ✅（页面渲染/数据绑定） | UI smoke 5/5 + `projects-list.png` / `project-detail.png`；完整 Playwright 交互矩阵待 PR7 |
-| P18 | MAST/Live/G0–G6 | ⏸ BLOCKED | PR7 未执行 |
+| P17 | 项目页 UI/周报 | ✅（页面渲染/数据绑定） | UI smoke 6/6 + `projects-list.png` / `project-detail.png`；完整 Playwright 交互矩阵待补 |
+| P18a | MAST L1–L14 | ✅ | `tests/project-mast.test.ts` 14/14 |
+| P18b | Live 全量 / G0–G6 / 回滚演练 | ⏸ BLOCKED | PR7 收尾未执行 |
 
 ### 2.3 Gate 状态
 
@@ -99,16 +102,16 @@ AW_PROJECT_ACCEPTANCE_OUT=docs/audit/evidence/2026-11-03-project-layer/project-l
 | G1 Schema/迁移 | ✅ | 新库/旧库/双 init/rebuild/索引均有测试 |
 | G2 安全 P0 | ✅（本地） | P0 单测 + 安全负例；**Mimosa 独立扫描未完成，不宣称安全审计通过** |
 | G3 Project 核心 + 派发 | ✅（已测范围） | 办公室/leader/生命周期/绑定/派发/上下文/预算；**scheduler-skip 直接断言未单独做** |
-| G4 成果 + 审批 | ✅（已测范围） | 成果 draft/submit/review/approve、审批 CAS/过期/自批、Reconciler、decisions/events；**plan_approval/write_intent 未接入** |
+| G4 成果 + 审批 | ✅（已测范围） | 成果 draft/submit/review/approve、审批 CAS/过期/自批、plan_approval、Reconciler、decisions/events；**write_intent 未接入** |
 | G5 API/UI | ✅（已测范围） | 项目列表/详情渲染、数据绑定、成果/审批操作；完整 Playwright 交互矩阵待 PR7 |
-| G6 Live + 审计 + 回滚 | ⏸ BLOCKED | PR7 |
+| G6 Live + 审计 + 回滚 | 🟡 PARTIAL | MAST 14/14 + 审计决策/事件通过；Live 全量/G0–G6/回滚演练未执行 |
 
 ---
 
 ## 3. 已知限制与风险
 
-1. **plan_approval / write_intent 未接入**：当前只实现 deliverable_acceptance 的审批闭环；计划审批与工业写意图审批仍待 PR5.1/PR6。
-2. **Reconciler 不是自主定时器**：当前通过 `/projects/:id/reconcile` 触发；插件级 30s 定时器未接，频道禁用/lead 移除的自动对账仍不完整。
+1. **write_intent 未接入**：plan_approval 已实现；工业写意图审批 + 执行层 project-origin 写门仍未接入。
+2. **Reconciler 定时器已接**：插件 30s 对 active 项目跑确定性对账；频道禁用/lead 移除的即时事件对账仍不完整。
 3. **审计 fail-closed 不完整**：decisions/events 已落库并带 trace，但成果/交付物状态更新与审计写入尚未统一到同一事务；破坏性动作回滚测试待补。
 4. **UI 仅 smoke 级**：项目列表/详情渲染与数据绑定已验；计划编辑/diff、周报导出、完整 Playwright 交互矩阵未做。
 5. **Project Leader 未真正参与**：V1 的 proposal tools / prompt / 复核尚未实现；当前 leader 只是办公室 lead，未接项目提案。
@@ -137,7 +140,7 @@ PR7 完成后：
 
 ## 5. 结论
 
-**PR1–PR6 的已实现范围通过验收：生产业务 E2E 35/35 + UI smoke 5/5，0 失败。**
-**V1 全量未通过：仅 P18（MAST/Live 全量/G0–G6）BLOCKED；另有 Project Leader proposal tools、plan_approval/write_intent、自主 Reconciler 定时器未接入。** 当前可宣称"项目办公室/派发/成果/验收/审计/项目页"这一层已可工作，但不能宣称完整 V1 或"安全验收通过"。
+**PR1–PR7 的已实现范围通过验收：生产业务 E2E 37/37 + UI smoke 6/6 + MAST 14/14，0 失败。**
+**V1 全量未通过：仅 P18b（Live 全量/G0–G6/回滚）BLOCKED；另有 Project Leader proposal tools、write_intent、完整 Playwright 交互矩阵未接入。** 当前可宣称"项目办公室/派发/成果/验收/审计/项目页/MAST/计划审批/项目完成"这一层已可工作，但不能宣称完整 V1 或"安全验收通过"。
 
 独立安全审计（Mimosa）仍未完成，不能宣称"安全验收通过"。
