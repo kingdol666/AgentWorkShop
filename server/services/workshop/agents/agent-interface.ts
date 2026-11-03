@@ -14,6 +14,8 @@ export interface AgentInfo {
   name: string
   harness: string
   role: 'lead' | 'worker'
+  /** 'channel_agent' | 'project_leader'（Project 层标识；不改变 role 语义） */
+  agentKind?: string
   config: Record<string, unknown>
   token?: string
   /** 实例启停(1 启用 / 0 禁用;模板视图无此字段) */
