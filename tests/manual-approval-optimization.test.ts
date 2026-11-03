@@ -48,15 +48,23 @@ for (const action of ['下发', '回退'] as const) {
 }
 
 test('manual approval: an actual timeout is an error and retains expired history', async (t) => {
-  const approvals = getToolApprovals()
-  const request = approvals.request.bind(approvals)
-  t.mock.method(approvals, 'request', (agentId, nodeId, kind, detail) => request(agentId, nodeId, kind, detail, { timeoutMs: 20 }))
-  const result = await requestManualApproval({ agentId: 'ag-expired', nodeId: 'dw-expired', detail: 'local timeout', verify: () => assert.fail('expired approval must not reauthorize') })
-  assert.equal(result.ok, false)
-  if (result.ok) assert.fail('approval must expire')
-  assert.equal(result.isError, true)
-  assert.match(result.text, /未在时限内批准\(超时\)/)
-  assert.equal(approvals.historyList().find(a => a.agentId === 'ag-expired')?.status, 'expired')
+  // 审批超时 timer 是 unref 的(生产常驻进程由其它句柄保活)。测试进程在等待
+  // 20ms 超时期间没有其它句柄,Linux 上事件循环会先清空 → 显式 keep-alive。
+  const keepAlive = setTimeout(() => {}, 2_000)
+  try {
+    const approvals = getToolApprovals()
+    const request = approvals.request.bind(approvals)
+    t.mock.method(approvals, 'request', (agentId, nodeId, kind, detail) => request(agentId, nodeId, kind, detail, { timeoutMs: 20 }))
+    const result = await requestManualApproval({ agentId: 'ag-expired', nodeId: 'dw-expired', detail: 'local timeout', verify: () => assert.fail('expired approval must not reauthorize') })
+    assert.equal(result.ok, false)
+    if (result.ok) assert.fail('approval must expire')
+    assert.equal(result.isError, true)
+    assert.match(result.text, /未在时限内批准\(超时\)/)
+    assert.equal(approvals.historyList().find(a => a.agentId === 'ag-expired')?.status, 'expired')
+  }
+  finally {
+    clearTimeout(keepAlive)
+  }
 })
 
 test('manual approval: duplicate pending and revoked authorization remain errors', async (t) => {
