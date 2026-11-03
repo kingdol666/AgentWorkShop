@@ -49,6 +49,7 @@ export default defineApiHandler(async (event) => {
     workspace: body.workspace,
     leadAgent: body.leadAgent,
     ownerUserId: user.id,
+    actor: user,
   })
   // 团队级插件开关:创建时即写入(未选中的插件其工具不注入该团队 Agent)
   if (Array.isArray(body.plugins) && body.plugins.length) {
