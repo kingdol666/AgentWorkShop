@@ -32,6 +32,7 @@ export interface ChannelAgentCreateInput {
   harness: string
   config?: Record<string, unknown>
   role: 'lead' | 'worker'
+  agentKind?: 'channel_agent' | 'project_leader'
   token?: string
 }
 
@@ -46,12 +47,12 @@ export interface ChannelAgentPatch {
 export type ChannelAgentRepo = ReturnType<typeof createChannelAgentRepo>
 
 const COLS
-  = 'id, channel_id AS channelId, template_id AS templateId, name, harness, config_json AS configJson, role, token, enabled, created_at AS createdAt, updated_at AS updatedAt'
+  = 'id, channel_id AS channelId, template_id AS templateId, name, harness, config_json AS configJson, role, agent_kind AS agentKind, token, enabled, created_at AS createdAt, updated_at AS updatedAt'
 
 export function createChannelAgentRepo(db: DatabaseSync) {
   const insert = db.prepare(
-    `INSERT INTO channel_agents (id, channel_id, template_id, name, harness, config_json, role, token, enabled, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO channel_agents (id, channel_id, template_id, name, harness, config_json, role, agent_kind, token, enabled, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   const selectByChannel = db.prepare(`SELECT ${COLS} FROM channel_agents WHERE channel_id = ? ORDER BY created_at ASC`)
   const selectById = db.prepare(`SELECT ${COLS} FROM channel_agents WHERE id = ?`)
@@ -79,13 +80,14 @@ export function createChannelAgentRepo(db: DatabaseSync) {
         harness: input.harness,
         configJson: JSON.stringify(input.config ?? {}),
         role: input.role,
+        agentKind: input.agentKind ?? 'channel_agent',
         token: input.token ?? randomUUID(),
         enabled: 1,
         createdAt: now,
         updatedAt: now,
       }
       insert.run(
-        row.id, row.channelId, row.templateId, row.name, row.harness, row.configJson, row.role, row.token, row.enabled, row.createdAt, row.updatedAt,
+        row.id, row.channelId, row.templateId, row.name, row.harness, row.configJson, row.role, row.agentKind, row.token, row.enabled, row.createdAt, row.updatedAt,
       )
       return row
     },

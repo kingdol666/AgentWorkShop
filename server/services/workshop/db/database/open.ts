@@ -7,6 +7,7 @@ import { DatabaseSync } from 'node:sqlite'
 import { SCHEMA_SQL } from './schema'
 import { createRequire } from 'node:module'
 import { migrateAddColumn, migrateAgentTeamExecutionLeaseColumns, migrateAgentTeamTaskGuardrailColumns, migrateAgentTeamTaskGuardrails, migrateAgentTeamTaskQueueColumns, migrateAmlChannelOptimizationColumns, migrateAmlModelIdentityColumns, migrateAnalysisEditColumns, migrateApprovalPayloadColumns, migrateAuditQueryIndexes, migrateAuditScopeColumn, migrateChannelExecutionModeColumn, migrateDropOwnerFks, migrateDualDriveColumns, migrateGroupChatV17, migrateLegacySchema, migrateMissingForeignKeys, migrateAmlTwinProviderColumns, migrateOptimizerFoundationColumns, migrateAgentTokenGraceColumns } from './migrations'
+import { migrateProjectColumns, ensureProjectIndexes } from './migrations-project'
 import { seedDefaultWorkshopData } from './seed'
 
 export const require = createRequire(import.meta.url)
@@ -36,6 +37,8 @@ export function initWorkshopDb(db: DatabaseSync): void {
   // Add guardrail metadata before any legacy tasks-table rebuild so values can be copied safely.
   migrateAgentTeamTaskGuardrailColumns(db)
   migrateAgentTeamTaskQueueColumns(db)
+  // Project 层新列必须先于 tasks legacy rebuild，否则 rebuild 的 INSERT SELECT 会丢列。
+  migrateProjectColumns(db)
   migrateLegacySchema(db)
   migrateAddColumn(db, 'channels', 'scenario_prompt', 'TEXT NOT NULL DEFAULT \'\'')
   // v11:channel 级默认 LLM(四引擎统一注入面;成员 config 显式指定时优先)
@@ -72,6 +75,8 @@ export function initWorkshopDb(db: DatabaseSync): void {
   migrateAgentTeamExecutionLeaseColumns(db)
   migrateAgentTeamTaskGuardrails(db)
   migrateDropOwnerFks(db)
+  // tasks rebuild 会丢索引；重建后再补一次项目索引（幂等）。
+  ensureProjectIndexes(db)
   migrateGroupChatV17(db)
   migrateAmlTwinProviderColumns(db)
   migrateAmlModelIdentityColumns(db)
