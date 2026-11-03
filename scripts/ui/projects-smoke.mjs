@@ -145,9 +145,13 @@ catch (err) {
   process.exitCode = 1
 }
 finally {
-  try { await browser?.close() }
+  try {
+    await browser?.close()
+  }
   catch { /* ignore */ }
-  try { child.kill() }
+  try {
+    child.kill()
+  }
   catch { /* ignore */ }
   await sleep(300)
 }
