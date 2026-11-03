@@ -1,0 +1,19 @@
+{
+  "at": "2026-11-02T20:44:34.729Z",
+  "line": "注塑成型质量窗口寻优 injection-d1103",
+  "sp": 68.6,
+  "weightMean": 32.479,
+  "models": [
+    {
+      "id": "mdl-mvzpzx3p-56up7k",
+      "label": "保压-克重 ARX demo1103 v9C(scen-injection-product-d110",
+      "nrmseTest": 0.03185235348661485
+    },
+    {
+      "id": "mdl-mvzoku1n-fdk01l",
+      "label": "保压-克重 ARX demo1103(scen-injection-product-d1103/sc",
+      "nrmseTest": 0.027320487118266557
+    }
+  ],
+  "jobsTotal": 12
+}

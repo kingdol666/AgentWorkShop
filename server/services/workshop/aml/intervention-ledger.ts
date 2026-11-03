@@ -287,3 +287,36 @@ export function interventionLines(rows: InterventionEventRow[]): string[] {
     return `${r.ts} ${r.nodeName || r.nodeId} ${r.fromValue ?? '?'}→${r.toValue}${delta != null ? `(Δ${delta > 0 ? '+' : ''}${Number(delta.toFixed(6))})` : ''} [${r.path}] 判定:${verdictLabel(r.verdict)}${effect}${ci}${mde}${r.ack && r.ack !== 'readback-verified' ? ` 回读:${r.ack}` : ''}`
   })
 }
+
+/** P5 增益估计口径(2026-11-03):只信可辨识步 */
+export interface LedgerGainEstimate {
+  /** identifiable_effect 步的 effect/Δlevel 中位数;无可辨识步时 null */
+  estimatedGain: number | null
+  /** 参与估计的可辨识步数 */
+  gainSamples: number
+  /** 因欠功效/混杂/负结论被排除的步数(诚实分母) */
+  gainExcludedSteps: number
+}
+
+/**
+ * 从台账行估计动作增益(P5,2026-11-03):
+ * 只用 verdict=identifiable_effect 且 effect/from/to 齐备的行 —— underpowered/confounded
+ * 步的效应量不可归因,混入估计会把增益拉偏(FL-7 实测:全步中位数 3.98 vs 仅可辨识 4.73,
+ * 真值 6.0)。方向语义:Δlevel≈0 的行(同值重写)不参与;增益取中位数抗单步离群。
+ */
+export function estimateGainFromRows(
+  rows: Array<Pick<InterventionEventRow, 'verdict' | 'effect' | 'fromValue' | 'toValue'>>,
+): LedgerGainEstimate {
+  const gains = rows
+    .filter(r => r.verdict === 'identifiable_effect'
+      && r.effect != null && r.fromValue != null && r.toValue != null
+      && Math.abs(Number(r.toValue) - Number(r.fromValue)) > 1e-9)
+    .map(r => Number(r.effect) / (Number(r.toValue) - Number(r.fromValue)))
+    .filter(Number.isFinite)
+    .sort((a, b) => a - b)
+  return {
+    estimatedGain: gains.length > 0 ? gains[Math.floor(gains.length / 2)]! : null,
+    gainSamples: gains.length,
+    gainExcludedSteps: rows.length - gains.length,
+  }
+}

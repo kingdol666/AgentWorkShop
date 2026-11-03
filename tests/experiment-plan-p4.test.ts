@@ -33,13 +33,13 @@ const simLine = getDcwLineRepo().create({ name: 'P4 仿真线', simulated: true 
 const realLine = getDcwLineRepo().create({ name: 'P4 真实线', simulated: false } as { name: string, simulated?: boolean })
 // 真实线计划在校验通过前必须先有真实节点(创建即校验归属/量程)
 const controller = getDcwController()
-const realSp = controller.create({ name: 'P4 压力SP', templateRef: 'pressure-sp', driver: 'mock', driverConfig: { key: 'p4-sp' }, min: 0.6, max: 1.2, lineId: realLine.id, maxStep: 0.2 } as Parameters<typeof controller.create>[0])
-const realSp2 = controller.create({ name: 'P4 温度SP', templateRef: 'temp-sp', driver: 'mock', driverConfig: { key: 'p4-temp' }, min: 150, max: 200, lineId: realLine.id, maxStep: 10 } as Parameters<typeof controller.create>[0])
+const realSp = controller.create({ name: 'P4 压力SP', templateRef: 'pressure-sp', driver: 'mock', driverConfig: { key: 'p4-sp' }, min: 0.6, max: 1.2, lineId: realLine.id, stepLimit: 0.2 } as Parameters<typeof controller.create>[0])
+const realSp2 = controller.create({ name: 'P4 温度SP', templateRef: 'temp-sp', driver: 'mock', driverConfig: { key: 'p4-temp' }, min: 150, max: 200, lineId: realLine.id, stepLimit: 10 } as Parameters<typeof controller.create>[0])
 const realDaq = new DaqNode({ id: 'p4-daq-th', templateRef: 'temp-tc', driver: 'mock', intervalMs: 1000, lineId: realLine.id } as ConstructorParameters<typeof DaqNode>[0])
 getDaqNodeRepo().insert(realDaq)
 // 另一条线的节点(用于跨线注入负例)
 const otherLine = getDcwLineRepo().create({ name: 'P4 他线', simulated: false } as { name: string, simulated?: boolean })
-const otherSp = controller.create({ name: 'P4 他线压力SP', templateRef: 'pressure-sp', driver: 'mock', driverConfig: { key: 'p4-other' }, min: 0.6, max: 1.2, lineId: otherLine.id, maxStep: 0.2 } as Parameters<typeof controller.create>[0])
+const otherSp = controller.create({ name: 'P4 他线压力SP', templateRef: 'pressure-sp', driver: 'mock', driverConfig: { key: 'p4-other' }, min: 0.6, max: 1.2, lineId: otherLine.id, stepLimit: 0.2 } as Parameters<typeof controller.create>[0])
 
 describe('A4-1 仿真线行为不变', () => {
   it('仿真线建计划 → 直接 planned(无审批)', () => {
@@ -203,6 +203,48 @@ describe('上线前加固:计划节点归属与取消', () => {
     )
   })
 
+  it('P2 步限不可达:水平间隔超单步限制 → 创建即拒(不再浪费批准与产线窗口)', () => {
+    // realSp stepLimit=0.2;相邻水平差 0.4 > 0.2 → 任何执行序都会撞写联锁
+    assert.throws(
+      () => createExperimentPlan({ lineId: realLine.id, levels: { [realSp.id]: [0.7, 1.1] }, repeats: 1 }),
+      (err: unknown) => {
+        const msg = String((err as Error)?.message ?? err)
+        return /超过单步限制/.test(msg) && /水平间隔/.test(msg)
+      },
+      '应拒绝步限不可达计划',
+    )
+    // 收窄到步限内 → 创建放行
+    const plan = createExperimentPlan({ lineId: realLine.id, levels: { [realSp.id]: [0.7, 0.9] }, repeats: 1 })
+    assert.equal(plan.status, 'awaiting_approval')
+  })
+
+  it('P2 步内可行随机序:控制量内部单调(相邻差 ≤ stepLimit)且跨控制量仍打散', () => {
+    const plan = createExperimentPlan({
+      lineId: simLine.id,
+      levels: { mv1: [10, 20, 30], mv2: [1, 2, 3] },
+      repeats: 2,
+      randomizedOrder: true,
+      settleMs: 1,
+      observeMs: 1,
+    })
+    const steps = buildExperimentSteps(parsePlan(plan), plan.id)
+    // 每个控制量的子序列:相邻步差必须 ≤ 其水平间隔最大值(单调遍历保证可行)
+    for (const [cid, maxGap] of [['mv1', 10], ['mv2', 1]] as const) {
+      const seq = steps.filter(s => s.controlId === cid).map(s => s.level)
+      for (let i = 1; i < seq.length; i++) {
+        assert.ok(
+          Math.abs(seq[i]! - seq[i - 1]!) <= maxGap + 1e-9,
+          `${cid} 步序不可行:${seq[i - 1]}→${seq[i]}(maxGap ${maxGap});full=${seq.join(',')}`,
+        )
+      }
+    }
+    // 跨控制量仍打散:mv2 不全部堆在末尾
+    const ids = steps.map(s => s.controlId)
+    assert.ok(ids.indexOf('mv2') < ids.length - 2, ids.join(','))
+    // 同计划可复现
+    assert.deepEqual(buildExperimentSteps(parsePlan(plan), plan.id), steps)
+  })
+
   it('运行中取消 → 只执行到取消点,状态 cancelled,剩余步不执行', async () => {
     const plan = createExperimentPlan({ lineId: realLine.id, levels: { [realSp.id]: [1.2, 1.1, 1.0] }, repeats: 1, settleMs: 1, observeMs: 1 })
     approveExperimentPlan(plan.id, 'rest:u-cancel:1', 'u-cancel')
@@ -234,6 +276,76 @@ describe('上线前加固:计划节点归属与取消', () => {
     assert.ok(sleeps.length >= 2)
     // 每步至少一次 60s 驻留(观测窗 1s 另计)
     assert.ok(sleeps.filter(ms => ms >= 60_000).length >= 2, `sleeps=${sleeps.join(',')}`)
+  })
+})
+
+describe('P5 增益估计口径(estimateGainFromRows)', () => {
+  it('只取 identifiable_effect 步:欠功效/混杂/负结论步被排除且分母如实', async () => {
+    const { estimateGainFromRows } = await import('../server/services/workshop/aml/intervention-ledger')
+    const rows = [
+      { verdict: 'underpowered', effect: 999, fromValue: 1.0, toValue: 1.1 }, // 欠功效:效应不可归因,必须排除
+      { verdict: 'identifiable_effect', effect: 0.05, fromValue: 1.0, toValue: 1.1 }, // 可辨识:增益 0.5
+      { verdict: 'identifiable_effect', effect: 0.04, fromValue: 1.0, toValue: 1.1 }, // 可辨识:增益 0.4
+      { verdict: 'no_resolvable_effect', effect: 0.001, fromValue: 1.0, toValue: 1.1 }, // 负结论:排除
+      { verdict: 'identifiable_effect', effect: 0.03, fromValue: 1.0, toValue: 1.0 }, // Δ=0(同值重写):排除
+    ]
+    const est = estimateGainFromRows(rows)
+    assert.equal(est.gainSamples, 2)
+    assert.equal(est.gainExcludedSteps, 3)
+    assert.ok(Math.abs(est.estimatedGain - 0.5) < 1e-6, `median=${est.estimatedGain}`) // 偶数样本取上中位
+    // 全欠功效 → 无增益(null),不伪造
+    const none = estimateGainFromRows([{ verdict: 'underpowered', effect: 9, fromValue: 1, toValue: 2 }])
+    assert.equal(none.estimatedGain, null)
+    assert.equal(none.gainSamples, 0)
+    assert.equal(none.gainExcludedSteps, 1)
+  })
+
+  it('runner 结果透出 estimatedGain/gainSamples/gainExcludedSteps(有台账时)', async () => {
+    // 走真实写咽喉(mock 驱动,写挂钩落台账);bench 模式只旁路 60s 间隔/步长
+    // (真实线计划创建照常 HITL;判读由注入序列给 pre→post 阶跃 → identifiable)
+    process.env.AW_BENCH_MODE = '1'
+    process.env.AW_BENCH_ACK = '1'
+    // 基线写入:让首次试验步也有 fromValue(首写前 value=null,台账行无 Δ 可言,估计器正确排除)
+    await getDcwController().write(realSp.id, 1.1)
+    const plan = createExperimentPlan({
+      lineId: realLine.id,
+      levels: { [realSp.id]: [1.0, 1.2] },
+      repeats: 1,
+      settleMs: 1,
+      observeMs: 1,
+      targets: { [realSp.id]: realDaq.id },
+    })
+    approveExperimentPlan(plan.id, 'rest:u-gain:2', 'u-gain')
+    let step = 0
+    try {
+      const result = await runExperimentPlan(plan.id, {
+        readTargetSeries: async () => {
+          step++
+          const base = 0.5 + 0.05 * step
+          // 确定性白噪声(避免零方差判负;正弦会因强自相关把有效样本量压到欠功效)
+          return Array.from({ length: 60 }, (_, i) => {
+            const h = Math.sin(i * 12.9898 + step * 78.233) * 43758.5453
+            return base + (h - Math.floor(h) - 0.5) * 0.004
+          })
+        },
+        readTargetMean: async () => 0.6,
+        sleep: async () => {},
+      })
+      assert.equal(result.status, 'done', result.failedReason)
+      assert.ok(result.estimatedGain != null && Number.isFinite(result.estimatedGain), `estimatedGain=${result.estimatedGain} verdicts=${JSON.stringify(result.verdicts)}`)
+      assert.equal(result.gainSamples, 2, `verdicts=${JSON.stringify(result.verdicts)}`)
+      // 期望增益由实际转移链导出(基线 1.1 → 各水平):注入序列每步效应恒 +0.05,
+      // 增益_i = 0.05/Δ_i;台账行含基线→首水平的转移,取上中位。
+      const seq = buildExperimentSteps(parsePlan(getExperimentPlan(plan.id)!), plan.id).map(s2 => s2.level)
+      const chain = [1.1, ...seq]
+      const expGains = chain.slice(1).map((v, i) => 0.05 / (v - chain[i]!)).sort((a, b) => a - b)
+      const expected = expGains[expGains.length - 1]!
+      assert.ok(Math.abs(result.estimatedGain - expected) < 0.05, `gain=${result.estimatedGain} expected≈${expected} seq=${seq.join(',')}`)
+    }
+    finally {
+      delete process.env.AW_BENCH_MODE
+      delete process.env.AW_BENCH_ACK
+    }
   })
 })
 

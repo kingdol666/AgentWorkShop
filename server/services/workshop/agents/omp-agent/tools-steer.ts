@@ -205,6 +205,18 @@ export abstract class OmpRpcAgentImplToolsSteer extends OmpRpcAgentImplLifecycle
           // 后续 ensureClient 会重建,handleHostTool 依据客户端身份拒绝旧帧。
           this.retireSupervisionClient(client)
         }
+        // P4(2026-11-03):回合被中止时不得让在办任务滞留 WORKING —— 空决策会让
+        // 任务停在"租约已撤但状态未收口"(FL-7 实测:只能人工取消)。此处把中止转为
+        // 一条显式 cancel 决策,由 SchedulerLoop 经 TaskEngine 收口为 CANCELED(带原因,
+        // 可 retry 重新派发)。仅对中止路径生效;正常完成路径仍返回真实决策。
+        if (activeRootTask && (reason === 'external cancel' || reason.startsWith('hard timeout'))) {
+          finish([{
+            kind: 'cancel',
+            taskId: activeRootTask.id,
+            reason: `调度回合被中止(${reason}),任务自动收口;需要继续时请重新派发`,
+          }])
+          return
+        }
         finish([])
       }
 

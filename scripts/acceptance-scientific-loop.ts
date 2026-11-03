@@ -66,8 +66,8 @@ bindOpsRepos({
 // ---------- 夹具:真实线 + 两个 mock 数控节点 + 已发布本体 ----------
 const line = getDcwLineRepo().create({ name: '科学闭环验收线', simulated: false })
 const controller = getDcwController()
-const sp = controller.create({ name: '验收·熔体压力SP', templateRef: 'pressure-sp', driver: 'mock', driverConfig: { key: 'sci-sp' }, min: 0.6, max: 1.2, unit: 'MPa', decimals: 2, lineId: line.id, maxStep: 0.2 } as Parameters<typeof controller.create>[0])
-const sp2 = controller.create({ name: '验收·熔体温度SP', templateRef: 'temp-sp', driver: 'mock', driverConfig: { key: 'sci-hold' }, min: 150, max: 200, unit: '℃', decimals: 1, lineId: line.id, maxStep: 10 } as Parameters<typeof controller.create>[0])
+const sp = controller.create({ name: '验收·熔体压力SP', templateRef: 'pressure-sp', driver: 'mock', driverConfig: { key: 'sci-sp' }, min: 0.6, max: 1.2, unit: 'MPa', decimals: 2, lineId: line.id, stepLimit: 0.2 } as Parameters<typeof controller.create>[0])
+const sp2 = controller.create({ name: '验收·熔体温度SP', templateRef: 'temp-sp', driver: 'mock', driverConfig: { key: 'sci-hold' }, min: 150, max: 200, unit: '℃', decimals: 1, lineId: line.id, stepLimit: 10 } as Parameters<typeof controller.create>[0])
 const nowIso = new Date().toISOString()
 db.prepare(`INSERT INTO ontology_versions (id, version, name, line_id, parent_version, content_hash, compiled_json, changelog_json, status, owner_user_id, published_by, created_at, updated_at)
   VALUES ('ont-sci', 1, '科学闭环本体', ?, NULL, '', '{}', '{}', 'published', 'u1', 'u1', ?, ?)`).run(line.id, nowIso, nowIso)
@@ -123,7 +123,7 @@ check('E2E-1d', '未批准执行被拒(HITL 是硬门)', rejected)
 
 // 跨线注入负例:计划属 A 线却点名 B 线节点 → 创建即拒(批准后执行器平台身份直写,必须前移)
 const otherLine = getDcwLineRepo().create({ name: '科学闭环他线', simulated: false })
-const otherSp = getDcwController().create({ name: '他线压力SP', templateRef: 'pressure-sp', driver: 'mock', driverConfig: { key: 'sci-other' }, min: 0.6, max: 1.2, lineId: otherLine.id, maxStep: 0.2 } as Parameters<ReturnType<typeof getDcwController>['create']>[0])
+const otherSp = getDcwController().create({ name: '他线压力SP', templateRef: 'pressure-sp', driver: 'mock', driverConfig: { key: 'sci-other' }, min: 0.6, max: 1.2, lineId: otherLine.id, stepLimit: 0.2 } as Parameters<ReturnType<typeof getDcwController>['create']>[0])
 let crossLineRejected = false
 try {
   createExperimentPlan({ lineId: line.id, levels: { [otherSp.id]: [1.2, 1.1] }, repeats: 1 })

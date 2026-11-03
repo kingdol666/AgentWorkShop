@@ -1,0 +1,40 @@
+{
+  "at": "2026-11-02T20:02:49.848Z",
+  "model": {
+    "id": "mdl-mvzoku1n-fdk01l",
+    "label": "保压-克重 ARX demo1103(scen-injection-product-d1103/scen-injection-recipe-d1103·MPC调参代理) #fdk01l",
+    "nrmseTest": 0.027320487118266557,
+    "nrmseVal": 0.027899160731846628
+  },
+  "inference": {
+    "stepResponses": {},
+    "gainPerBar": 0
+  },
+  "dispatch": {
+    "from": 69.8,
+    "to": 20,
+    "readback": 69.8,
+    "weightBefore": 32.54606547619048,
+    "weightAfter": 32.54606547619048,
+    "band": [
+      32.15,
+      32.85
+    ]
+  },
+  "pass": 1,
+  "fail": 5,
+  "failures": [
+    "I1 ONNX 模型真实推理(阶跃仿真): Error: Command failed: python -c \nimport json, sys\nimport numpy as np\nimport onnxruntime as ort\nsess = ort.InferenceSession(\"D:\\\\\\\\tmp\\\\\\\\aw-inj-demo-1103\\\\\\\\aml\\\\\\\\models\\\\\\\\mdl-mvzoku1n-fdk01l\\\\\\\\mo",
+    "I2 模型增益可提取(方向正确): gain=0.0000 g/bar",
+    "I3 模型推理反算目标 SP: SP 69.8 → 20(Δ=-49.8,当前克重 32.546)",
+    "I4 按模型推理下发受理: {\"code\":\"STEP_LIMIT_EXCEEDED\",\"message\":\"节点「scen-injection:dcw:hold-pressure-sp」本次变化 49.8bar 超过单步限制 6bar（来源:param）\",\"data\":null}",
+    "I5 回读一致: readback=69.8 target=20"
+  ],
+  "checks": [
+    {
+      "id": "I6",
+      "name": "复测克重入窗(模型驱动控得好)",
+      "detail": "after=32.546g band=[32.15,32.85] Δ=0.000"
+    }
+  ]
+}

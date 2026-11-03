@@ -1,0 +1,99 @@
+{
+  "at": "2026-11-02T19:07:32.278Z",
+  "scope": {
+    "platform": "isolated:3975(生产治理档,AW_TRIAL_INTERVAL_MS=0)",
+    "simulator": "plc-node-simulator:4010",
+    "deviceLayer": "simulated-twin",
+    "realPlant": false
+  },
+  "line": "ln-efa7bb46",
+  "controller": "dw-eb63adc1",
+  "targetDaq": "dn-65c068ce",
+  "phases": {
+    "explore": {
+      "planId": "pexp-mvzmldev-bshc",
+      "levels": [
+        62.8,
+        64.8,
+        66.8
+      ],
+      "verdicts": [],
+      "effects": []
+    },
+    "learn": {},
+    "reason": {
+      "gain": null,
+      "targetSp": 69,
+      "readback": 69
+    }
+  },
+  "baseline": {
+    "sp": 69.8,
+    "weight": 32.5453511904762
+  },
+  "final": {
+    "sp": 69,
+    "weight": 32.51393452380952,
+    "band": [
+      32.15,
+      32.85
+    ]
+  },
+  "ledger": [],
+  "evidenceCount": 0,
+  "pass": 8,
+  "fail": 9,
+  "failures": [
+    "E4 随机化执行完成 3/3: failed 0/3 0s",
+    "E5 台账 3 行且判定收口: ",
+    "E6 判定回灌本体证据: 0 条(source_ref=干预 id)",
+    "L1 数据集构建(v2): rows=undefined runs=0 version=?",
+    "L2 G6 动作覆盖进入 manifest: {}",
+    "L3 训练作业受理: {\"code\":\"AML_SPEC_INVALID\",\"message\":\"缺少 datasetId\",\"data\":null}",
+    "L4 训练作业到终态 done: undefined ",
+    "L5 模型已注册: {\"code\":0,\"message\":\"ok\",\"data\":{\"models\":[]}} gates={}",
+    "R1 可从 DoE 台账估出增益(模型通道): gain=undefined g/bar(样本 0)"
+  ],
+  "checks": [
+    {
+      "id": "D1",
+      "name": "基线可观测",
+      "detail": "weight=32.545g SP=69.8bar"
+    },
+    {
+      "id": "E1",
+      "name": "DoE 计划创建且待批准",
+      "detail": "status=awaiting_approval cost=1 个控制量共 3 个水平 × 1 轮 = 3 步;每步 61s(驻留 60s,真实线 60s 写间隔下限 + 观测 1s);预计总时长 ≈ 0.05 小时"
+    },
+    {
+      "id": "E2",
+      "name": "未批准执行被拒",
+      "detail": "{\"code\":\"EXPERIMENT_APPROVAL_REQUIRED\",\"message\":\"计划 pexp-mvzmldev-bshc 为真实产线计划且"
+    },
+    {
+      "id": "E3",
+      "name": "HITL 批准转 planned",
+      "detail": "planned"
+    },
+    {
+      "id": "R2",
+      "name": "目标 SP 在安全量程且单步可达",
+      "detail": "propose=69.01 → SP=69(当前 69.8,Δ=-0.8)"
+    },
+    {
+      "id": "R3",
+      "name": "参数下发受理(写咽喉)",
+      "detail": "{\"outcome\":{\"ok\":true,\"message\":\"写入并回读一致:69,回读 69(标定后物理值 69)\",\"raw\":69,\"readback\":69,\"ack\":\"readback-verified\",\"anchorId\":\"anc-910eafc3\"}}"
+    },
+    {
+      "id": "R4",
+      "name": "回读一致",
+      "detail": "readback=69 target=69"
+    },
+    {
+      "id": "R5",
+      "name": "克重入窗(控得好)",
+      "detail": "after=32.514g band=[32.15,32.85] Δ=-0.031"
+    }
+  ]
+}
