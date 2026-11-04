@@ -47,17 +47,8 @@ function run(cmd, timeoutMs = 3_600_000) {
     const started = Date.now()
     console.log(`\n===== ${cmd} =====`)
     const parts = cmd.split(' ')
-    let file
-    let args
-    if (parts[0] === 'npm') {
-      file = process.execPath
-      args = [join(REPO, 'node_modules/npm/bin/npx-cli.js'), ...parts.slice(1)]
-    }
-    else {
-      file = parts[0] === 'node' ? process.execPath : parts[0]
-      args = parts.slice(1)
-    }
-    const child = spawn(file, args, { cwd: REPO, windowsHide: true, env: process.env, stdio: ['ignore', 'pipe', 'pipe'] })
+    // Windows 下 npm 是 .cmd，必须 shell 解析；脚本命令 node xxx 直接 spawn
+    const child = spawn(parts[0], parts.slice(1), { cwd: REPO, windowsHide: true, env: process.env, stdio: ['ignore', 'pipe', 'pipe'], shell: process.platform === 'win32' })
     let tail = ''
     const capture = (chunk) => {
       const text = chunk.toString()

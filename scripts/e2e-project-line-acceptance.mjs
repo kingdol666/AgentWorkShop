@@ -27,10 +27,6 @@ const ok = (id, name, cond, detail = '') => {
   results.push({ id, name, pass: Boolean(cond), detail: String(detail).slice(0, 400) })
   console.log(`${cond ? '✔' : '✖'} [${id}] ${name}${cond ? '' : ` — ${String(detail).slice(0, 400)}`}`)
 }
-const blocked = (id, name, reason) => {
-  results.push({ id, name, pass: false, blocked: true, detail: reason })
-  console.log(`⏸ [${id}] BLOCKED — ${name}: ${reason}`)
-}
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 
 let port = 0

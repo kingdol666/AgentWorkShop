@@ -14,7 +14,7 @@
 
 ## 明确豁免/未完成（不因签署而变绿）
 
-1. **独立安全扫描（Mimosa）持续 `scanner_enobufs`，安全验收未通过**——本包不含任何"安全审计通过"宣称。
+1. **独立安全扫描（Mimosa）**：2026-11-04 `scan-2026-11-04T06-55-56.203Z-dc53a4c61c32`（normal 深度，seal sha256:20894c73…）**已完成但覆盖不完整**（coverage=partial，runStatus=inconclusive，verdictEffect=none）。共 11 条 findings（4 硬编码凭据/i18n 示例与测试脚本、6 疑似跨文件污点/存量脚本与 paper 快照、1 路径穿越/bench 论文绘图 py），**全部位于存量面，无一命中 Project 层新增代码**（focus 复核清单 service/tools/gate/repo/api 全部未命中）。因覆盖不完整，仍**不宣称"安全审计通过"**；可陈述的事实=Project 层新增面在本次扫描中零 findings。
 2. Track B（纯开发任务 × 真实 LLM 自主构建）未执行：隔离验收 home 无 LLM provider 配置；生产实例按隔离规则不得触碰。
 3. 团队协作为 V1.1 提前实现的最小面（viewer/approver）；共享频道/多项目成员治理仍在计划排期。
 4. 周报为数字一页纸（JSON/页面卡片）；PDF/邮件分发未做。
