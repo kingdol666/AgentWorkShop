@@ -1,0 +1,141 @@
+{
+  "generatedAt": "2026-11-04T20:13:37.564Z",
+  "port": 3956,
+  "scenario": "Track D: 多 Channel 协同（W1 前端A → W2 后端B → W3 前端A，零手动派发跨频道接力）",
+  "projectId": "238a16d4-f899-4a93-9f52-2a39a7b77e91",
+  "pass": 10,
+  "fail": 0,
+  "results": [
+    {
+      "id": "D0",
+      "name": "隔离实例启动",
+      "pass": true,
+      "detail": "port=3956"
+    },
+    {
+      "id": "D1",
+      "name": "项目就绪：办公室 leader + 双频道绑定 + 双交付物 + 计划批准",
+      "pass": true,
+      "detail": "office=true status=active planV=1"
+    },
+    {
+      "id": "D2",
+      "name": "跨频道链就绪：W1(A)→W2(B,dep W1)→W3(A,dep W2)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "D3",
+      "name": "内核自动派发 W1 → 落在频道 A（频道 B 无项目任务）",
+      "pass": true,
+      "detail": "w1=DISPATCHED rootA=true bTasks=0"
+    },
+    {
+      "id": "D4",
+      "name": "完成回调 → W2 跨频道接力派发进频道 B（A 中无 W2 任务）",
+      "pass": true,
+      "detail": "w2=DISPATCHED rootB=true w2InA=false"
+    },
+    {
+      "id": "D5",
+      "name": "完成回调 → W3 二次跨频道派发回频道 A（B 中无 W3 任务）",
+      "pass": true,
+      "detail": "w3=DISPATCHED rootA=true w3InB=false"
+    },
+    {
+      "id": "D6",
+      "name": "跨频道链全闭环（W1/W2/W3 全 COMPLETED）",
+      "pass": true,
+      "detail": "states=COMPLETED,COMPLETED,COMPLETED"
+    },
+    {
+      "id": "D7",
+      "name": "Route 审计：恰好 3 次 dispatch_auto（W1→W2→W3 跨频道接力）+ 任务内容正确落频道",
+      "pass": true,
+      "detail": "autos=[\"f436db40-9d94-4fa7-b839-78dae483f70c\",\"5e91548f-ca97-4270-ae70-deff2947166a\",\"65322b8b-435a-4105-9c8b-0b70a46c37d6\"]"
+    },
+    {
+      "id": "D8",
+      "name": "全交付物成果链 + owner 完成门禁 → completed（门禁要求每个必选交付物过验收）",
+      "pass": true,
+      "detail": "drafts=3 chained=3 status=completed"
+    },
+    {
+      "id": "D9",
+      "name": "项目页截图：计划 tab 呈现双频道工作项 + 事件 tab 呈现 dispatch_auto 审计链",
+      "pass": true,
+      "detail": "plan 双频道=true events 审计=true"
+    }
+  ],
+  "timeline": [
+    {
+      "type": "plan.requested",
+      "eventKey": "plan:238a16d4-f899-4a93-9f52-2a39a7b77e91:1:requested",
+      "createdAt": "2026-11-05T04:13:28.553+08:00",
+      "payload": {
+        "approvalId": "ed479cb4-9cf4-41e6-953e-ad7d4c46ba68",
+        "version": 1
+      }
+    },
+    {
+      "type": "work.dispatch_auto",
+      "eventKey": "work:f436db40-9d94-4fa7-b839-78dae483f70c:auto:a1",
+      "createdAt": "2026-11-05T04:13:28.666+08:00",
+      "payload": {
+        "workItemId": "f436db40-9d94-4fa7-b839-78dae483f70c",
+        "taskId": "fcdf21cb-38a9-476b-9ab4-99d6c15385fe",
+        "attemptNo": 1,
+        "auto": true
+      }
+    },
+    {
+      "type": "work.completed",
+      "eventKey": "work:f436db40-9d94-4fa7-b839-78dae483f70c:completed",
+      "createdAt": "2026-11-05T04:13:28.753+08:00",
+      "payload": {
+        "workItemId": "f436db40-9d94-4fa7-b839-78dae483f70c",
+        "taskId": "fcdf21cb-38a9-476b-9ab4-99d6c15385fe"
+      }
+    },
+    {
+      "type": "work.dispatch_auto",
+      "eventKey": "work:5e91548f-ca97-4270-ae70-deff2947166a:auto:a1",
+      "createdAt": "2026-11-05T04:13:28.756+08:00",
+      "payload": {
+        "workItemId": "5e91548f-ca97-4270-ae70-deff2947166a",
+        "taskId": "c3b7995c-a9b7-43bf-8dd5-c72819af1cfc",
+        "attemptNo": 1,
+        "auto": true
+      }
+    },
+    {
+      "type": "work.completed",
+      "eventKey": "work:5e91548f-ca97-4270-ae70-deff2947166a:completed",
+      "createdAt": "2026-11-05T04:13:28.830+08:00",
+      "payload": {
+        "workItemId": "5e91548f-ca97-4270-ae70-deff2947166a",
+        "taskId": "c3b7995c-a9b7-43bf-8dd5-c72819af1cfc"
+      }
+    },
+    {
+      "type": "work.dispatch_auto",
+      "eventKey": "work:65322b8b-435a-4105-9c8b-0b70a46c37d6:auto:a1",
+      "createdAt": "2026-11-05T04:13:28.833+08:00",
+      "payload": {
+        "workItemId": "65322b8b-435a-4105-9c8b-0b70a46c37d6",
+        "taskId": "aa0bfe70-9e49-46ba-843f-203c160767fa",
+        "attemptNo": 1,
+        "auto": true
+      }
+    },
+    {
+      "type": "work.completed",
+      "eventKey": "work:65322b8b-435a-4105-9c8b-0b70a46c37d6:completed",
+      "createdAt": "2026-11-05T04:13:28.924+08:00",
+      "payload": {
+        "workItemId": "65322b8b-435a-4105-9c8b-0b70a46c37d6",
+        "taskId": "aa0bfe70-9e49-46ba-843f-203c160767fa"
+      }
+    }
+  ]
+}

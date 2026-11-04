@@ -29,6 +29,21 @@
 
 R2 结论：**三轨全部复现通过**；唯一失败项为脚本断言缺陷并已修复入库；安全边界声明不变。
 
+## Track D 多 Channel 协同验证（2026-11-05，track-d-multi-channel-coordination.mjs）
+
+专项回答「Project 是否调用 Channel 协调调配、leader 能否协调**多个** Channel」：双成员频道（前端 A/后端 B）
++ 办公室频道 leader，跨频道链 W1(A 设计契约)→W2(B 依 W1 实现)→W3(A 依 W2 集成)，零手动派发，**10/10 通过**。
+
+- 调用链（代码锚点）：`dispatchWorkItemAs`（service.ts:520）依赖门 :550 → 绑定校验 :564 →
+  `getChannelForUser(wi.channelId)` :567 → `attempts.create` :574 → **`manager.submitProjectRoot({channelId})` :577**
+  —— Project 把根任务真实提交进目标 Channel；完成后 EventIngress→对账→`selectReadyWorkItems` 依赖解除派发下一项。
+- 执行过程审计（track-d-coordination.json timeline）：`plan.requested → dispatch_auto(W1) → work.completed(W1) →
+  dispatch_auto(W2) → work.completed(W2) → dispatch_auto(W3) → work.completed(W3)` —— 派发/完成严格交错接力，
+  3 次 dispatch_auto 顺序正确，任务各自落对频道（UI 截图计划 tab 两个不同频道 ID 可见）。
+- 跨频道隔离断言：派发 W2 时频道 A 无 W2 任务、派发 W3 时频道 B 无 W3 任务（D4/D5）。
+- 门禁正确性副产物：多交付物场景漏验收后端成果时完成门禁拒绝（初跑发现），补全成果链后 completed——**门禁按设计工作**。
+- 边界：本轨=mock harness 机制面；真 LLM leader 提案/执行已由 Track B（单频道）证明；真 LLM 提跨频道计划属 V1.1（9B 连单频道依赖都会漏）。
+
 ## Track A — 产线集成业务（全部真实 HTTP + 真实服务端）
 
 | 验收项 | 脚本 | 结果 |
