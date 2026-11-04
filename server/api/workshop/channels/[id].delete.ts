@@ -6,6 +6,7 @@ import { getRouterParam } from 'h3'
 import { resolveUser } from '../caller'
 import { defineApiHandler } from '../../../utils/response'
 import { getWorkshopManager } from '../../../plugins/workshop'
+import { getProjectService } from '../../../services/workshop/projects/service'
 
 export default defineApiHandler(async (event) => {
   const channelId = getRouterParam(event, 'id')!
@@ -13,6 +14,8 @@ export default defineApiHandler(async (event) => {
   const user = resolveUser(event)
   const channel = manager.getChannelForUser(channelId, user.id)
   manager.requireWritable(channel.ownerUserId, user, 'channel')
+  // active 项目的办公室频道不可删：先 pause/archive 项目。
+  getProjectService().assertOfficeChannelMutable(channelId)
   await manager.removeChannel(channelId)
   return { ok: true }
 })

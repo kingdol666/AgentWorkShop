@@ -131,7 +131,7 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     // cr.scheduler 置 null)后,若无人重建调度循环,频道进入"worker 活着、lead 不派活"
     // 的僵尸态 —— 后续任务只写进 lead 信箱却永远无人消费派发(实测 task 积压 600s+)。
     // lead 一旦重新装配,立即补齐 SchedulerLoop(幂等;与 ensureChannelActive 同源语义)。
-    if (agent.role === 'lead' && !cr.scheduler) this.reviveScheduler(m.channelId)
+    if (agent.role === 'lead' && agent.agentKind !== 'project_leader' && !cr.scheduler) this.reviveScheduler(m.channelId)
     return runtime
   }
 
@@ -160,6 +160,8 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     if (cr.scheduler) return
     const lead = this.ensureAgentRuntime(channelId, channel.leadAgentId)
     if (!lead) return
+    // 项目办公室：Project Leader 只由 mailbox 驱动，不挂 Channel SchedulerLoop。
+    if (lead.agentKind === 'project_leader') return
     // 必须再查一次:`ensureAgentRuntime → wireMember` 在装配 lead 时会经
     // `reviveScheduler` 挂上**第一个** SchedulerLoop;此处若不再判空就会挂上第二个,
     // 把第一个变成无人持有的孤儿循环 —— 重复监督/重复派单,且 shutdown 只停
@@ -189,7 +191,7 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     if (cr.schedulerStoppingInProgress) return
     if (cr.scheduler) return
     const lead = this.runtimeOf(channelId, channel.leadAgentId)
-    if (!lead || lead.role !== 'lead') return
+    if (!lead || lead.role !== 'lead' || lead.agentKind === 'project_leader') return
     this.attachScheduler(cr, channelId, lead, options)
   }
 
@@ -213,6 +215,7 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     // 经 wireMember → reviveScheduler 重新挂载。
     if (this.shutdownStarted || cr.schedulerStoppingInProgress) return
     if (cr.scheduler) return
+    if (lead.agentKind === 'project_leader') return
     const loop = new SchedulerLoop(cr, lead, {
       // 停滞窗口默认取 workshop.stall_ms(默认 5 分钟,可经设置调整):
       // 它决定"多久算停滞"以及"多久之后收口",是运维最需要按现场调的一个值;
@@ -278,6 +281,8 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
   async unloadAgent(channelId: string, agentId: string): Promise<void> {
     const runtime = this.runtimeOf(channelId, agentId)
     if (!runtime) return
+    // 项目办公室 leader 常驻：项目 active 期间不参与 idle 卸载（pause/archive 走显式停止）。
+    if (runtime.agentKind === 'project_leader') return
     if (runtime.getState() !== 'idle') return
     if (this.deps.repos.messages.listPendingByChannelAgent(channelId, agentId).length > 0) return
     // 生产化(2026-10-09):挂起中的 HITL 审批卡视为活跃 —— 真人审批常超空闲宽限
