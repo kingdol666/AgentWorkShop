@@ -416,9 +416,23 @@ try {
   const afterComplete = await api('GET', `/api/workshop/projects/${project.id}`, undefined, H())
   ok('P14f', '项目完成门禁 + owner 批准 → completed', completeDec?.status === 200 && afterComplete.data?.status === 'completed', `completeReq=${completeReq.status} completeDec=${completeDec?.status} status=${afterComplete.data?.status}`)
 
+  // PR11：周报 API 数字与库同源（completed 项目快照）
+  const report = await api('GET', `/api/workshop/projects/${project.id}/report`, undefined, H())
+  const repD = report.data ?? {}
+  const deliverablesFinal = await api('GET', `/api/workshop/projects/${project.id}/deliverables`, undefined, H())
+  const resultsFinal = await api('GET', `/api/workshop/projects/${project.id}/results`, undefined, H())
+  ok('P17a', '周报 API 数字与库一致（交付物/成果/工作项/进度）',
+    report.status === 200
+    && repD.deliverables?.total === (deliverablesFinal.data ?? []).length
+    && repD.results?.total === (resultsFinal.data ?? []).length
+    && repD.workItems?.total > 0
+    && typeof repD.progress?.ratio === 'number'
+    && Boolean(repD.generatedAt),
+    `status=${report.status} d=${repD.deliverables?.total} r=${repD.results?.total} w=${repD.workItems?.total} ratio=${repD.progress?.ratio}`)
+
   // 未实现能力：必须 BLOCKED，不得算通过
-  blocked('P17', '项目页完整 Playwright 交互矩阵 / 周报导出', 'UI smoke 已过；完整交互矩阵待补')
-  blocked('P18b', 'Live 全量 / G0–G6 / 回滚演练', 'PR7 收尾未执行')
+  blocked('P17b', 'UI 交互矩阵证据归档', 'scripts/ui/projects-interactions.mjs 由最终验收执行归档')
+  blocked('P18b', 'Live 全量 / G0–G6 / 回滚演练', 'PR12 执行')
 
   finish()
 }
