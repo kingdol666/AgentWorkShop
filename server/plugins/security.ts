@@ -33,8 +33,18 @@ export default async function securityPlugin() {
     console.warn('[security] 管理员状态检查失败(放行):', String((err as Error)?.message ?? err))
   }
 
-  if (process.env.NODE_ENV !== 'production') return
   const password = (useRuntimeConfig() as { session?: { password?: string } }).session?.password ?? ''
+  // dev/home 告警（Track B run5 实证缺陷）：iron-webcrypto 会话封装要求密钥 ≥32 字符，
+  // 过短密钥在 dev 模式不拦截启动，但会让 agent-token 路由全部 500（Password string
+  // too short）——隔离/演示实例表现为 agent 工具面整体失效、LLM「盲执行」。
+  if (process.env.NODE_ENV !== 'production' && password && password.length < 32) {
+    console.warn(
+      '[security] sessionPassword 短于 32 位:agent-token 路由将 500(iron-webcrypto minPasswordlength=32)。'
+      + '请为隔离/演示实例设置 ≥32 字符密钥(如 NUXT_SESSION_PASSWORD)。',
+    )
+  }
+
+  if (process.env.NODE_ENV !== 'production') return
   // 空串同样拒绝:NUXT_SESSION_PASSWORD="" 会把烘焙配置覆盖为空值,不能放行
   if (!password || KNOWN_DEFAULT_PASSWORDS.has(password)) {
     throw new Error(
