@@ -380,9 +380,16 @@ try {
     ok('B12a', '项目列表页渲染本项目', listText.includes('落地页'), listText.slice(0, 160))
     await uiPage.screenshot({ path: join(EVID, 'ui-projects-list.png'), fullPage: true })
     await gotoReady(uiPage, `/projects/${project.id}`, { wait: 3000 })
-    const detailText = await uiPage.evaluate(() => document.body.innerText)
-    ok('B12b', '项目详情页概览渲染（名称/频道/工作项状态）',
-      detailText.includes('落地页') && detailText.includes('COMPLETED'), detailText.slice(0, 200))
+    // 概览徽标是小写 completed（大写工作项状态在「计划与工作」tab）；数据异步加载，
+    // 轮询至出现项目名（R2 教训：一次性读取撞上 shell 未挂载完 → 假失败）。
+    let detailText = ''
+    for (let i = 0; i < 10; i++) {
+      detailText = await uiPage.evaluate(() => document.body.innerText)
+      if (detailText.includes('落地页') && detailText.includes('completed')) break
+      await sleep(1000)
+    }
+    ok('B12b', '项目详情页概览渲染（名称/频道/完成徽标）',
+      detailText.includes('落地页') && detailText.includes('completed') && detailText.includes('频道'), detailText.slice(0, 200))
     await uiPage.screenshot({ path: join(EVID, 'ui-project-overview.png'), fullPage: true })
     for (const tid of ['plan', 'deliverables', 'approvals']) {
       await uiPage.evaluate((t) => {

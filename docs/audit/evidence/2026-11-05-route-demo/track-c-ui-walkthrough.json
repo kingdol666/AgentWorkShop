@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-04T18:38:38.230Z",
+  "generatedAt": "2026-11-04T19:51:49.002Z",
   "port": 3959,
   "scenario": "Track B 配套 UI 走查（B12）：产品设计落地页项目页五 tab 渲染/交互",
   "pass": 14,
@@ -51,7 +51,7 @@
       "id": "W4b",
       "name": "详情页概览：项目名/状态/频道/周报",
       "pass": true,
-      "detail": "AGENTWORKSHOP\nDIGITAL TWIN\n控制台\n仪表盘\nAgent 工作台\n数字孪生\n数采中心\n产线运营\n数据管理\nEDA 工坊\n建模\n优化器\n本体模型\n运维\n产线操作\n数据分析\n运行时监控\n产线日志\n系统\nAPI Token\n用户管理\n权限管理\n插件管理\n工具管理\n系统设置\nv0.9.5\n/\ndev\nProjects\nFc93a65b-43b7-4a6a-831f-c5e866b38abf\n简体中文\nT\ntrackc-u"
+      "detail": "AGENTWORKSHOP\nDIGITAL TWIN\n控制台\n仪表盘\nAgent 工作台\n数字孪生\n数采中心\n产线运营\n数据管理\nEDA 工坊\n建模\n优化器\n本体模型\n运维\n产线操作\n数据分析\n运行时监控\n产线日志\n系统\nAPI Token\n用户管理\n权限管理\n插件管理\n工具管理\n系统设置\nv0.9.5\n/\ndev\nProjects\n85bbaa52-69cc-4ba4-83f9-f384e320af7a\n简体中文\nT\ntrackc-u"
     },
     {
       "id": "W4c",
