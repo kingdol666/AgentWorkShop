@@ -286,9 +286,24 @@ try {
   const repeatDecide = await api('POST', `/api/workshop/projects/${project.id}/approvals/${approval.id}/decide`, { approve: true }, H())
   ok('P14d', '审批重复决策 → 409', repeatDecide.status === 409, `status=${repeatDecide.status} code=${repeatDecide.code}`)
 
+  const planReq = await api('POST', `/api/workshop/projects/${project.id}/plan/request-approval`, {
+    version: 1,
+    plan: { facts: [`产线 ${line} 已确认`], deliverables: [deliverable.id], workItems: [workItem.id] },
+  }, H())
+  const planAp = planReq.data
+  const planDec = planAp ? await api('POST', `/api/workshop/projects/${project.id}/approvals/${planAp.id}/decide`, { approve: true, reason: '计划可执行' }, H()) : null
+  const afterPlan = await api('GET', `/api/workshop/projects/${project.id}`, undefined, H())
+  ok('P14e', 'plan_approval 批准 → planVersion=1', planDec?.status === 200 && afterPlan.data?.planVersion === 1, `planReq=${planReq.status} planDec=${planDec?.status} version=${afterPlan.data?.planVersion}`)
+
+  const completeReq = await api('POST', `/api/workshop/projects/${project.id}/complete`, {}, H())
+  const completeAp = completeReq.data
+  const completeDec = completeAp ? await api('POST', `/api/workshop/projects/${project.id}/approvals/${completeAp.id}/decide`, { approve: true, reason: '交付物已验收' }, H()) : null
+  const afterComplete = await api('GET', `/api/workshop/projects/${project.id}`, undefined, H())
+  ok('P14f', '项目完成门禁 + owner 批准 → completed', completeDec?.status === 200 && afterComplete.data?.status === 'completed', `completeReq=${completeReq.status} completeDec=${completeDec?.status} status=${afterComplete.data?.status}`)
+
   // 未实现能力：必须 BLOCKED，不得算通过
-  blocked('P17', '项目页 UI / 周报 / 审批历史', 'PR6 未实现')
-  blocked('P18', 'MAST L1–L14 / Live 全量 / G0–G6 证据', 'PR7 未执行')
+  blocked('P17', '项目页完整 Playwright 交互矩阵 / 周报导出', 'UI smoke 已过；完整交互矩阵待补')
+  blocked('P18b', 'Live 全量 / G0–G6 / 回滚演练', 'PR7 收尾未执行')
 
   finish()
 }

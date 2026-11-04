@@ -13,6 +13,7 @@ import {
   createProjectApprovalRepo,
 } from '../server/services/workshop/db/project.repo'
 import { ProjectService } from '../server/services/workshop/projects/service'
+import { startProjectReconciler } from '../server/services/workshop/projects/reconciler'
 import type { AgentChannelManager } from '../server/services/workshop/runtime/manager'
 
 function fixture() {
@@ -234,4 +235,43 @@ test('supersede：approved 成果可被 owner 取代且保留审批字段', asyn
     assert.equal(superseded.approvedBy, s.owner.id)
   }
   finally { s.db.close() }
+})
+
+test('plan_approval：请求 → owner 批准 → planVersion/planJson 落库', async () => {
+  const s = await setupDispatched()
+  try {
+    const approval = s.svc.requestPlanApproval(s.project.id, s.owner, {
+      version: 1,
+      plan: { facts: ['产线/配方已确认'], deliverables: ['基线报告'], workItems: ['建立基线'] },
+    })
+    assert.equal(approval.kind, 'plan_approval')
+    assert.equal(approval.status, 'pending')
+    const decided = s.svc.decideApproval(s.project.id, approval.id, s.owner, true, '计划可执行')
+    assert.equal(decided.status, 'approved')
+    const p = s.svc.get(s.project.id, s.owner)
+    assert.equal(p.planVersion, 1)
+    assert.ok(p.planJson.includes('基线报告'))
+  }
+  finally { s.db.close() }
+})
+
+test('自主 Reconciler 定时器：stop 后不再 tick', async () => {
+  let ticks = 0
+  const fake = {
+    listActiveProjects: () => [{ id: 'p-timer' }],
+    reconcileInternal: () => {
+      ticks += 1
+      return { workItems: [], expiredApprovals: 0 }
+    },
+  } as never
+  const handle = startProjectReconciler(fake, { intervalMs: 1000 })
+  await new Promise(r => setTimeout(r, 1150))
+  handle.stop()
+  const afterStop = ticks
+  await new Promise(r => setTimeout(r, 100))
+  assert.ok(afterStop > 0)
+  assert.equal(ticks, afterStop)
+  const manual = handle.tick()
+  assert.equal(manual.projects, 1)
+  assert.equal(manual.errors.length, 0)
 })
