@@ -1,46 +1,42 @@
-# AI-use disclosure and submission decision — 2026-10-26
+# AI-use disclosure: author confirmation and submission gate
 
-This is a private preparation note and is excluded from the anonymous manuscript
-and public source package. The review PDF keeps `\\blindreviewtrue` and contains
-no author-identifying acknowledgments.
+**Status as of 2026-11-04:** the blinded review manuscript omits an
+Acknowledgment section. The detailed disclosure below is a draft for the
+authors to verify and submit through the channel confirmed by the TII/IEEE
+submission instructions. This question is not resolved by removing the
+Acknowledgment from the blinded PDF.
 
-Status 2026-11-03: the compiled review copy includes a short, non-identifying
-Acknowledgment stating that AI-assisted tools were used for language editing,
-code drafting, and figure preparation. Author identities and funding remain
-withheld. The fuller system/section-level statement below is retained for the
-submission-system disclosure channel. If the current TII checklist forbids any
-acknowledgment in the blinded PDF, remove the block from `main.tex` and submit
-the full statement through that channel; do not silently drop the disclosure.
+## Draft disclosure for author confirmation
 
-## Disclosure text to retain for the appropriate channel
+> OpenAI ChatGPT and Codex assisted with restructuring, drafting, and language revision
+> across Sections I--VII, and with Python code used to prepare Figures 1, 2,
+> 4, and 5. An OpenAI image-generation system was used to create initial
+> concepts for Figures 1 and 2; the manuscript figures were subsequently
+> redrawn. Figure 3 was supplied by the authors and was not generated or
+> edited by an AI system. No AI system generated experimental data. The
+> authors should verify the final manuscript, figures, code, and claims and
+> confirm this description before submission.
 
-> OpenAI ChatGPT assisted with restructuring, drafting, and language revision
-> throughout Sections I--VII and with Python code used to draw Figs. 1, 2, 4,
-> and 5. OpenAI image generation was used for initial concepts for Figs. 1 and
-> 2; the published vector figures were redrawn and checked against the software
-> implementation. No AI system generated experimental data. The authors are
-> responsible for and verified the final manuscript, figures, code, and claims.
+The authors must adjust the wording to match the actual tools and assistance
+used. IEEE's public guideline calls for disclosure of AI-generated content,
+including text, figures, images, and code, with the system, affected sections,
+and extent of use identified. It treats grammar and language editing alone
+separately and recommends disclosure for that use.
 
-The statement must be adjusted by the authors to match the final contribution
-and journal instructions. IEEE's public AI-generated-text guideline says that
-AI-generated content (including text, figures, images, and code) is to be
-identified in the Acknowledgment, with the system, affected sections, and level
-of use described. It treats grammar and editing assistance separately and
-recommends disclosure for that use.
+## Blinding and unresolved channel
 
-## TII channel to confirm before submission
+TII's public submission information requires double-blind review and its
+published editorial guidance says review manuscripts omit acknowledgments.
+The public sources located in this audit do not specify how to provide a
+mandatory AI acknowledgment without unblinding the review copy, nor do they
+confirm a separate upload field or an allowed deferral. Keep this draft out of
+the blinded PDF unless the current portal or editorial office instructs
+otherwise. Confirm the required channel before submission; this file is not
+evidence that the requirement has been satisfied.
 
-The publicly accessible TII checklist says the blinded manuscript must omit
-acknowledgments and other identity-revealing material. That creates a channel
-question for this paper: no publicly accessible TII instruction located in
-this audit confirms that an acknowledgment may be uploaded separately or placed
-in a non-reviewer-facing submission field. Keep the blind PDF anonymous and
-confirm with the current IEEE submission portal or TII editorial office where
-to provide the IEEE AI disclosure. Do not claim that this conflict is resolved
-until that instruction is obtained.
-
-Sources checked 2026-10-26:
+## Sources checked 2026-11-04
 
 - IEEE AI-generated text guideline: <https://open.ieee.org/author-guidelines-for-artificial-intelligence-ai-generated-text/>
 - IEEE Author Center submission and peer-review policies: <https://journals.ieeeauthorcenter.ieee.org/become-an-ieee-journal-author/publishing-ethics/guidelines-and-policies/submission-and-peer-review-policies/>
-- TII checklist: <https://www.ieee-ies.org/pubs/transactions-on-industrial-informatics>
+- TII author and submission information: <https://www.ieee-ies.org/pubs/transactions-on-industrial-informatics>
+- TII editorial presentation on double-blind submission: <https://www.ieee-ies.org/images/files/home/AEs_Meeting-_Florence_EiC__TII_presentation.pdf>

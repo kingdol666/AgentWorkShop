@@ -4,19 +4,21 @@
 \usepackage[T1]{fontenc}
 \usepackage{lmodern}
 \usepackage{url}
+\usepackage{cite}
+\usepackage[hidelinks]{hyperref}
 \usepackage{enumitem}
 \setlist{nosep,leftmargin=*}
 \title{Supplementary File S7: November 1--3 Simulator Evaluation Evidence}
 \author{}
-\date{November 3, 2026}
+\date{November 4, 2026}
 \begin{document}
 \maketitle
 
 \section*{Scope and evidence selection}
-This file documents the simulator evidence cited in the revised evaluation. It keeps the integrated pipeline, scene--protocol probes, five-seed policy comparison, process-window ablation, approval pilot, production-mode checks, and the negative live-Agent pilot separate because they use different test units and denominators. The raw CSVs, run manifests, reports, and the self-contained visual report are in \texttt{Supplementary-File-S7-data-2026-11-02.zip}. No physical-plant result is included.
+This file documents the simulator evidence cited in the revised evaluation. It keeps the integrated pipeline, scene--protocol probes, five-seed policy comparison, process-window ablation, approval pilot, production-mode checks, and the negative live-Agent pilot separate because they use different test units and denominators. The raw CSVs, run manifests, reports, and the self-contained visual report are in \texttt{Supplementary-File-S7-data-2026-11-04.zip}. No physical-plant result is included.
 
 \section*{Consolidation update (November 2--3, 2026)}
-The data package is organized into three folders. \texttt{01-paper-evidence/} is the frozen November 1 batch used for every positive number in the manuscript. \texttt{02-c3-pilot-negative/} contains a November 2 live-Agent multi-round pilot. The manuscript reports this pilot as a negative result in Section VI-G; no C3 number is used for a positive claim. After pipeline fixes, the best episode completed with zero governed writes and a process variable outside its band, and a second episode ended at its time budget with zero writes. The pilot exposed platform integration defects (task-artifact addressing, lead queue draining, and goal completion without checking the goal criterion) that remain outside the paper's positive claims. \texttt{03-system-validation-not-used/} contains integration and demonstration reports that validate the platform but are not part of the controlled experiment blocks.
+The data package is organized into four folders. \texttt{01-paper-evidence/} is the frozen November 1 batch used for the six principal experiment blocks. \texttt{02-c3-pilot-negative/} contains a November 2 live-Agent multi-round pilot. The archive retains its original folder name; here it is referred to as the negative live-Agent pilot. After pipeline fixes, the best episode completed with zero governed writes while the process variable remained outside its band, and a second episode timed out without a write. The pilot exposed platform integration defects in task-artifact addressing, lead-queue draining, and goal completion without checking the process criterion. These defects are outside the positive claims in this paper. \texttt{03-system-validation-not-used/} contains other integration and demonstration reports that are not pooled with the controlled experiment blocks. \texttt{04-followup-scenario-pilot/} contains the November 3 single-run injection-twin pilot reported separately in Section VI; it is not a replication of the frozen batch.
 
 A cast-film probe record from run \texttt{20261101121700-scenario-probes} was excluded. Its manifest declared four scenes but recorded only cast-film, and its simulator endpoint did not match the endpoint in the reproduction command. None of its 24 admissible requests, 24 structural probes, or 20 readbacks are included in the manuscript totals or the data package. The reported scene--protocol counts below use only run \texttt{20261101121221-scenario-probes}.
 
@@ -25,20 +27,22 @@ Table S7-I summarizes the operation boundary and evaluation scope of representat
 
 \begin{table}[h]
 \centering
-\caption{Table S7-I. Representative plant-facing agent systems and the scope of their reported evaluations.}
+\caption{Representative plant-facing agent systems and the scope of their reported evaluations.}
 \footnotesize
 \setlength{\tabcolsep}{3pt}
 \begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{1.9cm}>{\raggedright\arraybackslash}p{6.2cm}X@{}}
 \toprule
 System & Reported operation or integration mechanism & Reported evaluation \\
 \midrule
-Biskupovic et al. & Agent-based service selection and online reselection using performance and computational-load metrics & Industrial cyber--physical system study; service adaptability and performance \\
-K{\"o}hle et al. & Module-specific agents, MCP-to-OPC-UA skills, MQTT coordination, and injected factory state & Nine simulated production challenges \\
-Xavier et al. & MCP adapters for industrial protocols with a common response envelope and mock-first testing & 870 benchmark runs and 2,820 tool calls \\
-Graul et al. & AAS-grounded proposals, signed approval, PLC-validated OPC UA Methods, and audit log & Two laboratory proof-of-concept settings \\
-Schall & P\&ID-, SCADA-, and SOP-grounded proposal verification with gated execution & Five simulated scenarios, 43 proposals, and 50 LLM runs \\
-Lin and Chen & Policy-governed sensor--MES--ERP digital thread & Manufacturing-record evaluation with operational metrics \\
-This work & Scene-bound production context and named signal mappings; shared dispatch with route-specific write governance and separate command receipts and process-observation evidence & Two pipeline runs (77 assertions each), a four-scene probe subset, five-seed scripted missions, a three-repeat mock-driver ablation, and a negative live-Agent pilot \\
+Biskupovic et al.~\cite{biskupovic2025supervision} & Agent-based service selection and online reselection using performance and computational-load metrics & Industrial cyber--physical system study; service adaptability and performance \\
+K{\"o}hle et al.~\cite{koehle2026llmdriven} & Module-specific agents, MCP-to-OPC-UA skills, MQTT coordination, and injected factory state & Nine simulated production challenges \\
+Xavier et al.~\cite{xavier2026industriConnect} & MCP adapters for industrial protocols with a common response envelope and mock-first testing & 870 benchmark runs and 2,820 tool calls \\
+Graul et al.~\cite{graul2026aas} & AAS-grounded proposals, signed approval, PLC-validated OPC UA Methods, and audit log & Two laboratory proof-of-concept settings \\
+Schall~\cite{schall2026safe} & P\&ID-, SCADA-, and SOP-grounded proposal verification with gated execution & Five simulated scenarios, 43 proposals, and 50 LLM runs \\
+Lin and Chen~\cite{lin2026agentic} & Policy-governed sensor--MES--ERP digital thread & Manufacturing-record evaluation with operational metrics \\
+Vyas et al.~\cite{vyas2026detection} & Multi-agent fault-recovery planning with Digital Process Plant Twin validation before actuation & Mixing and continuous stirred-tank reactor studies \\
+PLCBench~\cite{zhou2026plcbench} & Hardware-in-the-loop PLC security benchmark with closed-loop process simulation & Security evaluation; complementary to operation-governance tests \\
+This work & Scene-bound production context and named signal mappings; shared dispatch with route-specific write governance and separate command receipts and process-observation evidence & Two pipeline runs (77 assertions each), a four-scene probe subset, five-seed scripted missions, a three-repeat mock-driver ablation, one exploratory injection-twin pilot, and a negative live-Agent pilot \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -68,16 +72,16 @@ TCP and RTU in the table denote Modbus TCP and Modbus RTU. For each writable nod
 The integrated film-line preset check is a separate pipeline result: five endpoint types were configured and nine selected negative probes were rejected (9/9), with no code edits. It reused the same runtime and is not an independent cold-start deployment. The pipeline run manifests and summaries are included in the data archive.
 
 \section*{Five-seed target-band comparison}
-C0 is a 60-s no-write condition; its terminal process-variable statistic is the mean of the final five samples. C1 is a deterministic scripted policy that calls the \texttt{recipe\_trial} batch route of the shared governed-write service and uses scenario-specific mission logic; its statistic is the first in-band reading at which the mission stopped, not a fixed-horizon endpoint. Each seed appears in both conditions for injection mass, wastewater dissolved oxygen (DO), and annealing hardness. C1 per-seed wall time was 150.41--172.90~s, compared with C0's fixed 60~s, so this is a descriptive contrast rather than a time-matched test. One C0 control, seed 42, began from residual state (injection 32.378~g and DO 2.894~mg/L, both inside their bands) rather than the blueprint state used by C1; seeds 43--46 began from the blueprint. Counts are reported for the 12 blueprint-matched pairs and separately for all 15 runs. Counts are recomputed from raw \texttt{pv}, \texttt{target}, and \texttt{tol} fields. The runner's \texttt{attained} flag has different condition-specific semantics (C0 combines the PV band with configured guards; C1 records its scenario mission result), so it is retained as source data but not compared across conditions.
+The no-write control ran for 60~s; its endpoint is the mean of the final five process-variable samples. The scripted setpoint policy used the \texttt{recipe\_trial} batch route of the shared governed-write service with scenario-specific mission logic; its endpoint is the first in-band reading, not a fixed-horizon measurement. Each seed appears in both conditions for injection mass, wastewater dissolved oxygen (DO), and annealing hardness. The scripted runs took 150.41--172.90~s, so this is a descriptive contrast rather than a time-matched test. The seed-42 no-write runs began from residual state (injection 32.378~g and DO 2.894~mg/L, both inside their bands), whereas the scripted runs and seeds 43--46 began from the scenario blueprint. Counts are reported for 12 blueprint-matched pairs and for all 15 runs. We recomputed band membership from the raw \texttt{pv}, \texttt{target}, and \texttt{tol} fields. The runner's \texttt{attained} field combines condition-specific checks and is not compared across conditions.
 
-\begin{longtable}{@{}p{2.2cm}p{2.5cm}r r r >{\centering\arraybackslash}p{1.8cm}@{}}
-\caption{Raw endpoints with a common target-band check recomputed from each process variable, target, and tolerance: 0/15 C0 and 15/15 C1 endpoints were in band overall, and 0/12 C0 and 12/12 C1 for the blueprint-matched seeds 43--46. The condition-specific runner flags are not used for this count.}\label{tab:s7-opt}\\
+\begin{longtable}{@{}p{2.7cm}p{2.3cm}r r r >{\centering\arraybackslash}p{1.5cm}@{}}
+\caption{Raw endpoints with band membership recomputed from each process variable, target, and tolerance. The final column lists no-write/scripted outcomes: the no-write control was in band in 0/15 runs and the scripted policy in 15/15; for the 12 blueprint-matched pairs, the counts were 0/12 and 12/12.}\label{tab:s7-opt}\\
 \toprule
-Scene & Target band & Seed & C0 endpoint & C1 endpoint & PV band C0/C1 \\
+Scene & Target band & Seed & No-write endpoint & Scripted endpoint & In band \\
 \midrule
 \endfirsthead
 \toprule
-Scene & Target band & Seed & C0 endpoint & C1 endpoint & PV band C0/C1 \\
+Scene & Target band & Seed & No-write endpoint & Scripted endpoint & In band \\
 \midrule
 \endhead
 Injection & $32.5\pm0.35$ g & 42 & 31.226 & 32.320 & No / Yes \\
@@ -98,7 +102,7 @@ Annealing & $95\pm6$ HV & 46 & 134.36 & 98.20 & No / Yes \\
 \bottomrule
 \end{longtable}
 
-The individual values above are copied from the ten per-seed CSV result files. Across the 12 blueprint-matched pairs, 0/12 C0 and 12/12 C1 endpoints were in band; including the warm-started seed-42 control gives 0/15 and 15/15. Across the five C1 seeds, the scripted missions issued 12 writes in 17 rounds for injection, 56 writes in 59 rounds for wastewater, and 41 writes in 50 rounds for annealing; these are workload counts, not an efficiency comparison. Seed values are simulator initializations, not independent production lines. C1 is not an active-LLM policy and C0 is not an industrial-controller baseline.
+The individual values above are copied from the ten per-seed CSV result files. Across the 12 blueprint-matched pairs, 0/12 no-write endpoints and 12/12 scripted-policy endpoints were in band; including the residual-state seed-42 control gives 0/15 and 15/15. Across the five scripted-policy seeds, the missions issued 12 writes in 17 rounds for injection, 56 writes in 59 rounds for wastewater, and 41 writes in 50 rounds for annealing. These are workload counts, not an efficiency comparison. Seeds are simulator initializations, not independent production lines. The scripted policy is not an active-LLM policy, and the no-write control is not an industrial-controller baseline.
 
 \section*{Process-window guard ablation}
 The process-window study used seed 42, three repetitions in each arm, a direct DCW API call, a mock driver, and benchmark mode. The configuration hash was \texttt{3a57e722d4764b98}. Each repetition submitted six negative probes: four hard structural probes and two process-window probes; it also submitted three nominal legal requests and three boundary requests. The additional 20 timed writes per repetition were used for latency summaries and were excluded from these denominators. No readback-mismatch stimulus was included.
@@ -113,9 +117,9 @@ The process-window study used seed 42, three repetitions in each arm, a direct D
 Arm & Negative probes rejected & Window violations reaching driver & Legal false blocks & Boundary expectations met \\
 \midrule
 Full guard & 18/18 & 0/6 & 0/9 & 9/9 \\
-No process-window guard (\texttt{no-interlock} arm) & 12/18 & 6/6 & 0/9 & 9/9 \\
+No process-window guard & 12/18 & 6/6 & 0/9 & 9/9 \\
 No-readback check & 18/18 & 0/6 & 0/9 & 9/9 \\
-No window + no-readback & 12/18 & 6/6 & 0/9 & 9/9 \\
+No process-window or readback guard & 12/18 & 6/6 & 0/9 & 9/9 \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -144,8 +148,78 @@ The manual reject did not change the simulated control value. The auto-mode labe
 
 In the separate production-mode guard run, the baseline value 190 was accepted. One example each was rejected for interval, step, node-range, recipe-window, and hold-window constraints. The exact API rejection codes are preserved in the source report and CSV. These one-case checks confirm expected branches for their configured inputs; they are not estimates of general rejection rates. A separate three-case authorization probe rejected an unbound write and a cross-node write while accepting one bound control write.
 
+\section*{Follow-up exploratory injection scenario pilot}
+The run was recorded at 2026-11-03 07:43:08 UTC under plan identifier
+\texttt{pexp-mw0dmt4v-na04} for line \texttt{ln-00e0726d}. The isolated
+platform used a PLC-based simulated twin; the run manifest sets
+\texttt{realPlant=false}. An acceptance script executed the workflow. This
+pilot is separate from the frozen November 1 experiment batch, is not a
+replication of the five-seed comparison, and does not represent an active-Agent
+or physical-plant run.
+The acceptance report identifies a v0.9.4 starting point with same-PR fixes
+and a resulting v0.9.5 version. The individual run record contains no platform
+commit, simulator snapshot/configuration hash, or runner-source hash, so this
+pilot has less complete provenance than the frozen batch and is not a
+hermetic source snapshot.
+
+At setpoint 50 bar, the structured record gives a baseline product-weight
+observation of 31.503 g, below the 32.00--32.30 g band. The accompanying
+report gives 31.508 g; the discrepancy has not been resolved. The experiment plan probed setpoints 50, 55,
+and 60 bar.
+The stored ledger fields are:
+
+\begin{table}[h]
+\centering
+\caption{Aggregate values and classifications saved by the single-run experiment ledger.}
+\footnotesize
+\begin{tabular}{@{}l r r l@{}}
+\toprule
+Setpoint contrast & Stored effect (g) & Stored MDE (g) & Stored verdict \\
+\midrule
+50 to 50 & 0.00452 & 0.02214 & \texttt{no\_resolvable\_effect} \\
+50 to 55 & 0.26638 & 0.02007 & \texttt{underpowered} \\
+55 to 60 & 0.25173 & 0.02999 & \texttt{identifiable\_effect} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+MDE denotes minimum detectable effect. These are the aggregate fields stored
+by the acceptance script; the archive contains neither the underlying sample
+series nor the rule used to calculate the MDE and assign the verdicts. The
+reported gain of 0.05035 g/bar is the last stored effect divided by the
+5-bar step (0.2517336/5); it is a source-reported ratio, not an independently
+verified or replicated process model. After the design steps,
+the governed write changed the setpoint from 60 to 63.7; the returned device
+readback was 63.7. Following a 60-s wait, the runner averaged the three latest
+15-s DAQ buckets and measured 32.224 g, within the configured band. The
+reported 15/15 count refers to script assertions over this single execution,
+not to 15 independent trials.
+
+\begin{table}[h]
+\centering
+\caption{Summary of the single follow-up injection-twin execution.}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabularx}{\textwidth}{@{}p{3.3cm}X p{4.8cm}@{}}
+\toprule
+Stage & Recorded result & Interpretation limit \\
+\midrule
+Baseline & 31.503 g at setpoint 50 bar & One simulated-twin observation \\
+Design of experiments & Levels 50, 55, and 60 bar; one ledger verdict marked identifiable & Sample series and verdict rule are not in the archive \\
+Gain and final write & Reported ratio of 0.05035 g/bar; write from 60 to 63.7 with matching readback & Single-run ratio; not a replicated process estimate \\
+Process observation & 32.224 g after the specified wait and sampling window; target band 32.00--32.30 g & One in-band endpoint, no replication or physical-plant result \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The source report, machine-readable result, and execution log are in
+\texttt{04-followup-scenario-pilot/}. The local checksum manifest identifies
+the included files. Later platform acceptance suites use other fixtures and
+assertion outcomes and are not pooled with this pilot or the six principal
+experiment blocks.
+
 \section*{Reproduction and provenance}
-The platform manifests record source commit \texttt{da627d21}. The experiment runners were uncommitted at execution time and were later committed as \texttt{40533741}; the recorded commit therefore identifies the platform source, not a hermetic tree. The raw source records in the archive preserve runner outputs and exact run identifiers. Representative commands recorded by the runners are:
+The platform manifests record source commit \texttt{da627d21}. The experiment runners were uncommitted at execution time and were later committed as \texttt{40533741}; the recorded commit therefore identifies the platform source, not a hermetic tree. The raw source records in the archive preserve runner outputs and exact run identifiers. The two raw condition keys below are retained because the runner requires them: \texttt{C0} denotes the no-write control, and \texttt{C1} denotes the scripted setpoint policy. Representative commands recorded by the runners are:
 \begin{quote}
 \footnotesize\ttfamily\raggedright
 node bench/pipeline.mjs --profile integrated --seed 42 --cl-seeds 3\par\smallskip
@@ -158,5 +232,8 @@ node bench/experiment/production-guards.mjs --base http://127.0.0.1:3010\par\sma
 node bench/experiment/authorization-probe.mjs --scenario injection --base http://127.0.0.1:3005
 \end{quote}
 The optimization commands were run for seeds 42--46 in both conditions. Re-running them creates new result identifiers and can produce different simulator trajectories if the environment or service state changes. The integrated pipeline reported a commit and harness hash, but the active service source tree was not captured as a hermetic snapshot. The archive includes the run manifests, selected reports, raw CSVs, a machine-readable validation summary, checksum manifest, and self-contained HTML dashboard; it does not include the excluded cast-film run.
+
+\bibliographystyle{IEEEtran}
+\bibliography{resources/refs}
 
 \end{document}

@@ -56,10 +56,8 @@
 \setlength{\belowcaptionskip}{2pt plus 1pt minus 1pt}
 
 \newcommand{\system}{the platform}
-% This review copy includes the AI-assisted writing disclosure in the
-% acknowledgment; author identities and funding details remain withheld.
-\newif\ifblindreview
-\blindreviewtrue
+% Acknowledgment is omitted from this blinded review copy. See the separate
+% submission-only disclosure draft and confirm its destination with TII.
 
 \begin{document}
 \bstctlcite{IEEEbstctl}
@@ -72,7 +70,7 @@
 \maketitle
 
 \begin{abstract}
-An industrial agent can propose a setpoint change, but executing it requires the runtime to preserve production context, signal meaning, write authority, and process limits. We address this integration problem with a configuration-driven runtime that binds production context and named signals to operations and registered protocol drivers, and routes agent-proposed and direct calls through a shared dispatcher. Write handlers resolve live context, apply authorization and configured limits, and pass approved requests through a common guard before driver dispatch. Command receipts, actuator readbacks, and later process observations are recorded separately. In benchmark-mode simulated production scenes, probes checked selected node-to-driver mappings: all 220 admissible requests were accepted, 219 collected structural-range requests were rejected, and 216 available readbacks matched. A scripted mission reached its target band in all 15 seed--scene runs, whereas 0/15 no-write endpoints were in the band; because exposure time and mission logic differed, this is a descriptive demonstration, not a control-performance comparison. Removing the process-window guard allowed all six targeted violations to reach a mock driver, while structural checks remained active. A live-agent pilot issued no governed writes. The results support the tested configuration and guard paths in simulation. The architecture provides a configuration boundary for scene-specific operations, but the experiments do not establish live-agent performance, human-approval effects, or physical-plant safety.
+Industrial agents can propose process changes, but each write must remain tied to the active production context, intended control point, and current limits. This paper presents a configuration-driven runtime that binds line, product, recipe, and run context to direction-specific signal mappings and routes task-mediated and direct calls through shared dispatch with route-specific revalidation and common write guards. Command outcomes and optional device readbacks are stored separately from later process observations. Across four simulated scenes, 220/220 admissible mapping probes were accepted, 219/219 collected structural-range probes were rejected, and 216/216 available simulated readbacks matched. In a mock-driver ablation, the enabled process-window guard stopped all six targeted violations before dispatch; removing it allowed all six to reach the driver. A separate single-run PLC-based simulated-twin pilot recorded a matching setpoint readback and a later process observation of 32.224~g within a 32.00--32.30~g band. In a three-scene comparison, 15/15 scripted endpoints and 0/15 no-write endpoints were in band; the scripted routine stopped on first entry into the band, whereas no-write used a fixed 60-s endpoint. This comparison cannot estimate efficacy. The live-Agent pilot issued no governed writes. The evidence supports selected simulator and mock-driver paths, not process-control efficacy or physical-plant safety.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -90,9 +88,6 @@ simulation-based evaluation, system integration.
 \input{sections/evaluation}
 \input{sections/discussion}
 
-\section*{Acknowledgment}
-The authors used AI-assisted tools for language editing, code drafting, and figure preparation, and take responsibility for the manuscript. Identities and funding are withheld in this review copy.
-
 \section*{Author Contributions}
 Individual CRediT contributions are declared in the submission system and
 withheld in this review copy.
@@ -102,10 +97,11 @@ The authors declare no known competing financial interests or personal
 relationships that could have appeared to influence this work.
 
 \section*{Data Availability}
-Supplementary File~S7 contains the run manifests, raw CSVs, per-seed outcomes, ablation records, and a visual report. The reported commit and harness hashes are provenance fields; the package contains no physical-plant data.
+Supplementary File~S7 contains the run manifests, raw CSVs, per-seed outcomes, ablation records, a visual report, and the follow-up scenario-pilot records. The reported commit and harness hashes are provenance fields; the package contains no physical-plant data.
 
 \bibliographystyle{IEEEtran}
-% Keep IEEEtran's default bibliography size and leading.
+% Balance the final reference columns without changing IEEEtran's font or leading.
+\IEEEtriggeratref{13}
 \bibliography{resources/refs}
 
 \end{document}
