@@ -1,5 +1,10 @@
 # Author-Side Simulated Review — 2026-11-03
 
+> **2026-11-05 correction:** Statements in this historical review that
+> describe all scripted endpoints as first in-band readings or interpret batch
+> wall time as per-scene time to target have been superseded. See
+> `REVISION-NOTES-2026-11-05.md` for the runner-based correction.
+
 > **Status:** simulated peer review run by the authors to test the manuscript
 > against IEEE TII expectations. It is **not** an IEEE decision, not a real
 > reviewer report, and not calibrated against adjudicated outcomes. The five

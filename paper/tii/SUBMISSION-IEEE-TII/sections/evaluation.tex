@@ -2,7 +2,7 @@
 \label{sec:eval}
 The frozen core blocks ran against already-running platform and simulator services; most used benchmark mode, which relaxes normal timing and hold-window controls. Separate production-mode guard checks are reported on their own. No cold-start deployment or physical-plant run was performed. Results are presented in the order an operation crosses the runtime: configured mapping, authorization and write admission, process observations, and Agent-level execution. The blocks use different units—mapping requests, fixed stimuli, per-seed endpoints, a single simulated-twin execution, and Agent episodes—so counts are not pooled.
 
-Table~\ref{tab:evidence-scope} connects each evaluation block to the question it can answer. A matching readback tests the returned actuator value in the simulator; it does not establish a process response. Conversely, an in-band process observation does not by itself establish which write caused it. The route and guard checks address pre-dispatch behavior, whereas the live-Agent episodes address whether a task reached a governed write. These distinctions determine the scope of the conclusions below.
+Table~\ref{tab:evidence-scope} connects each evaluation block to the question it can answer. A matching readback checks the actuator value returned by the simulator; it does not establish a process response. Conversely, an in-band process observation does not by itself establish which write caused it. The route and guard checks address pre-dispatch behavior, whereas the live-Agent episodes address whether a task reached a governed write. These distinctions determine the scope of the conclusions below.
 
 \begin{table*}[!t]
 \centering
@@ -16,7 +16,7 @@ Block & Unit & Observation & Interpretation boundary \\
 \midrule
 Mapping probes & Configured request & Acceptance, rejection, and available simulated readback & Same configured limits supply inputs and checks; no physical actuation \\
 Guard ablation & Fixed stimulus and technical repetition & Whether the mock driver was reached & One scene; benchmark mode; no readback-mismatch stimulus \\
-Scripted missions & Seed-level endpoint & Process value relative to its target band & Different exposure times and endpoint rules; no controller baseline \\
+Scripted missions & Seed-level endpoint & Process value relative to its target band & Unmatched horizons and endpoint rules; no controller baseline \\
 Injection-twin pilot & One scripted execution & Write receipt, readback, and later process observation & No replication; incomplete raw series and version provenance \\
 Live-Agent pilot & Recorded episode & Governed writes and reported task status & Two episodes; neither issued a governed write \\
 \bottomrule
@@ -59,7 +59,7 @@ In a separate production-mode check, one legal baseline was accepted and one cas
 
 \subsection{Process-Target Outcomes}
 \label{sec:eval-optimization}
-In the no-write control, each simulator ran for 60~s and the endpoint was the mean of its final five samples. The scripted setpoint policy ran until its first in-band observation; runs took 150.41--172.90~s. Because duration and endpoint rules differ, the comparison describes these tested routines and does not isolate a control-policy effect. There was no PID or model-predictive-control baseline.
+In the no-write control, each simulator ran for 60~s and the endpoint was the mean of its final five samples. The scripted setpoint policy recorded a final process value after scenario-specific steps. The recorded 150.41--172.90~s range is the wall time of each three-scene parallel batch, including setup, rather than a per-scene time to target. Because the horizons and endpoint rules were not matched, the comparison describes these tested routines and does not isolate a control-policy effect. There was no PID or model-predictive-control baseline.
 
 Across the injection, wastewater, and annealing scenes, the scripted policy ended in the target band in 15/15 runs; the no-write control ended in the band in 0/15. The no-write seed-42 injection and wastewater runs began from residual states (32.378~g and 2.894~mg/L, respectively), both already within their target bands; the scripted runs began from blueprint states. The 12 blueprint-matched pairs therefore use seeds 43--46 across the three scenes, with 12/12 scripted endpoints and 0/12 no-write endpoints in band. The 15-run totals include the seed-42 records. We report counts rather than a significance test because the runs share three scenes and the routines have different stopping rules. Fig.~\ref{fig:latest-evaluation} shows the seed-level endpoints and the guard-ablation stimuli; neither panel estimates a population-level effect.
 
@@ -98,8 +98,8 @@ Annealing & $95\pm6$ HV & 42 & 134.66 & 97.74 \\
 
 \begin{figure*}[!t]
 \centering
-\includegraphics[width=\textwidth]{resources/fig5-evaluation-matrix-20261104.pdf}
-\caption{Descriptive endpoint comparison, not a time-matched test: the no-write control ended after 60~s, whereas the scripted routine stopped at its first in-band reading. Top: seed-level endpoints for seeds 42--46 in the injection, wastewater, and annealing scenes; the no-write seed-42 injection and wastewater runs began from residual states, and the matched subset uses seeds 43--46. The no-write control was in band in 0/15 runs and the scripted policy in 15/15. Shading marks each target band and the dashed line its center. Bottom: individual requests below or above the process window under four guard settings; numbers 1--3 denote technical repetitions. Circles indicate rejection and squares indicate that a request reached the mock driver. Structural checks remained enabled in all settings; the rightmost fractions count requests reaching the driver.}
+\includegraphics[width=\textwidth]{resources/fig5-endpoints-guard-20261105.pdf}
+\caption{Descriptive simulator endpoints and targeted guard-ablation results. (a) No-write endpoints are final-five-sample means at 60~s; scripted endpoints were recorded after scenario-specific steps. The three-scene scripted batches, including setup, took 150.41--172.90~s; these are not per-scene times to target. The no-write seed-42 injection and wastewater runs began from residual states ($\dagger$); the matched subset uses seeds 43--46. Hatched regions show target bands and dashed lines their centers. The no-write control was in band in 0/15 runs and the scripted policy in 15/15; the comparison is not time-matched. (b) Each marker represents one below- or above-window request in three technical repetitions. Open circles denote rejection, filled squares denote requests reaching the mock driver, and the rightmost fractions count requests reaching the driver. Structural checks remained enabled.}
 \label{fig:latest-evaluation}
 \end{figure*}
 

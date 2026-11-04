@@ -27,7 +27,7 @@ single-run note that referred to Supplementary File S6 and commit `60fa983e`.
 | Integrated pipeline | `20261101103641-9j8`, `20261101104849-xu0` | 77 passing assertions per run, no warnings or failures, 17 phases |
 | Scene--protocol probes | `20261101121221-scenario-probes` | 220/220 admissible requests accepted, 219/219 collected structural probes rejected, 216/216 available readbacks matched |
 | No-write control | `20261101111725`, `20261101112030`, `20261101112336`, `20261101112641`, `20261101112947` | 0/15 endpoints in band; seed-42 injection and wastewater runs began from residual states |
-| Scripted setpoint policy | `20261101110211`, `20261101110502`, `20261101110755`, `20261101111053`, `20261101111330` | 15/15 first in-band readings; 12 blueprint-matched pairs |
+| Scripted setpoint policy | `20261101110211`, `20261101110502`, `20261101110755`, `20261101111053`, `20261101111330` | 15/15 final recorded endpoints in band; 12 blueprint-matched pairs |
 | Process-window guard ablation | `20261101103356-e1lite` | 18/18 versus 12/18 negative probes rejected; 0/6 versus 6/6 targeted violations reached the driver |
 | Production-mode guard checks | `20261101113644-production-guards` | The five configured negative cases were rejected as expected; the legal baseline was accepted |
 | Approval-route pilot | `20261101121436-approval-gate` | Four scripted calls; approved request changed 202 to 204.8, rejected request remained at 216 |
@@ -88,10 +88,12 @@ The frozen evidence package is
 ## Inference limits
 
 - The no-write control and scripted setpoint policy were not time-matched.
-  The policy used the `recipe_trial` batch route and stopped at its first
-  in-band reading; the control used a fixed 60-s interval and a final-five
-  sample mean. The contrast is descriptive; no p-values or population-level
+  The policy used the `recipe_trial` batch route and recorded the final
+  process value after scenario-specific steps; the control used a fixed 60-s
+  interval and a final-five sample mean. The contrast is descriptive; no p-values or population-level
   intervals are reported.
+- The reported 150.41–172.90 s values are the wall times of the three-scene
+  parallel batches, including setup, not individual scene times to target.
 - The no-write seed-42 injection and wastewater runs began from residual
   states (32.378 g and 2.894 mg/L, respectively), both inside the target band.
   The 12 blueprint-matched pairs use seeds 43--46 across the three scenes; the

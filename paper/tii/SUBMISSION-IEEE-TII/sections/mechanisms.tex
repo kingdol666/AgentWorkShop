@@ -42,8 +42,8 @@ before updating, applying, or rolling back the recipe. The driver registry
 maps semantic controls to configured protocol drivers, so operation arguments
 do not contain protocol-specific details.
 
-Receipts record what happened to a command; observations record what
-followed in the process. Command results are graded as readback-verified,
+Receipts record the command outcome; observations record what followed in
+the process. Command results are graded as readback-verified,
 transport-acknowledged, or unverified. A readback mismatch can trigger up to
 three reads at 2\,s intervals, and recipe batches retain verification
 outcomes for each parameter. A readback-verified result means the returned

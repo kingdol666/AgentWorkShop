@@ -21,8 +21,8 @@ claim of physical-plant safety or positive live-Agent performance.
 
 Figure 3 uses the author-supplied workflow image unchanged. Figure 4 is a
 vector flowchart of the two write routes. Figure 5 shows individual endpoints
-and guard-ablation requests; `tools/redraw_figures_20261104.py` regenerates
-both figures using the frozen records in the S7 archive.
+and guard-ablation requests; `tools/redraw_fig5_endpoints_20261105.py`
+regenerates it using the frozen records in the S7 archive.
 
 ## Files
 
@@ -34,6 +34,10 @@ both figures using the frozen records in the S7 archive.
 - `Supplementary-File-S7-data-2026-11-04.zip`: November 1--2 source records
   plus the November 3 follow-up scenario-pilot report, JSON, log, and checksums.
 - `REPRODUCIBILITY.md`: run identifiers, provenance, and inference limits.
+- `CITATION-VERIFICATION-2026-11-05.md`: source-by-source citation checks
+  and remaining verification limits.
+- `REVISION-NOTES-2026-11-05.md`: corrections to the scripted endpoint and
+  batch timing descriptions, plus remaining research limits.
 - `PAPER-LOGIC-AND-EXPERIMENT-PLAN-2026-11-04.md`: paper-type positioning,
   logic chain, and evidence-bounded experimental plan.
 - `POST-EDIT-TII-VERIFICATION-2026-11-04.md`: independent post-edit review,

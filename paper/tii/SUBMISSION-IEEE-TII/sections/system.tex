@@ -54,7 +54,7 @@ supported.
 
 \subsection{Scene Configuration as the Integration Boundary}
 \label{sec:scene-config}
-Scene-specific process semantics are represented in configuration before an
+Scene-specific process semantics are configured before an
 agent task begins. The active line identifies the production context; product
 and recipe records supply applicable targets and limits; the run record
 provides the current operating state. Semantic nodes bind process variables
@@ -62,15 +62,14 @@ to direction-specific acquisition or control mappings, and the driver
 registry resolves each mapping to a supported protocol implementation. Here
 \emph{semantic} denotes a named process variable with a direction, unit, and
 configured mapping; it is not an OPC UA or Asset Administration Shell
-information model. The
-agent-facing operation remains named and typed, so a harness does not need to
+information model. Each agent-facing operation is named and typed, so a harness does not need to
 construct protocol-specific messages. A scene using an already registered
 driver can supply different context and node mappings behind the same
 operation contract. A protocol not present in the registry still requires a
 driver adapter; configuration alone does not implement a new protocol.
 
-Table~\ref{tab:scene-config} summarizes how the scene description is consumed
-along the execution path. It distinguishes configuration-time bindings from
+Table~\ref{tab:scene-config} summarizes how the execution path uses the scene
+description. It distinguishes configuration-time bindings from
 checks against live state. The context assembled for an agent turn is
 descriptive: before a write, the handler resolves the active context again
 and applies the current limits. Approval is bound to the proposal and to the

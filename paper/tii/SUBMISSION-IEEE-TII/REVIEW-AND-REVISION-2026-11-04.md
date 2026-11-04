@@ -12,8 +12,8 @@ for TII reviewers to judge. Scientific readiness and formatting are separate.
 ## Findings and actions
 
 1. **Process comparison — major.** The no-write endpoint is a fixed 60-second
-   mean, while the scripted policy stops at its first in-band reading after a
-   longer exposure. Two no-write seed-42 runs also start from residual states.
+   mean, while the scripted policy reports final values after scenario-specific
+   steps under a different horizon. Two no-write seed-42 runs also start from residual states.
    The abstract, Section VI and Fig. 5 state these limitations. A causal
    efficacy claim requires matched initial states, a common horizon,
    prespecified trajectory metrics, and an appropriate controller baseline.

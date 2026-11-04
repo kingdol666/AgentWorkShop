@@ -28,7 +28,7 @@ TARGETS = {
     "fig-system-runtime-merged-rev20261102.pdf": (8.0, 250.0, "TimesNewRoman"),
     "fig3-user-supplied.png": (0.0, 10000.0, ""),
     "fig4-governance-flowchart-20261104.pdf": (8.0, 245.0, "TimesNewRoman"),
-    "fig5-evaluation-matrix-20261104.pdf": (8.0, 275.0, "TimesNewRoman"),
+    "fig5-endpoints-guard-20261105.pdf": (8.0, 350.0, "TimesNewRoman"),
 }
 
 # Figure 3 is placed at 0.98\textwidth (about 182 mm).
