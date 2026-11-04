@@ -56,4 +56,3 @@ test('父任务自报与派生并列：自报 100 而子任务未完成 → 派�
   const m = deriveProgressMap(tasks)
   assert.equal(m.get('p'), 0)
 })
-
