@@ -135,6 +135,56 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
     return task
   }
 
+  /**
+   * 项目派发：只创建 Channel root task（assignee=Channel lead），不投 assign 消息，
+   * 由 Channel SchedulerLoop 按 FIFO 接取；source key 幂等，deadline 用项目预算。
+   */
+  async submitProjectRoot(input: {
+    projectId: string
+    workItemId: string
+    attemptNo: number
+    sourceKey: string
+    traceId?: string
+    channelId: string
+    title: string
+    description?: string
+    parts?: Part[]
+    execBudgetMinutes?: number
+  }): Promise<{ task: WorkspaceTask, created: boolean }> {
+    const channel = this.deps.repos.channels.findById(input.channelId)
+    if (!channel || !channel.leadAgentId) {
+      throw new AppError(400, 'NO_LEAD_AGENT', `channel ${input.channelId} 无 lead,请先创建 lead`)
+    }
+    if (channel.enabled !== 1) throw new AppError(403, 'CHANNEL_DISABLED', `channel ${input.channelId} 已禁用`)
+    this.ensureChannelActive(input.channelId)
+    const assigneeRow = this.deps.repos.channelAgents.findByChannelAgent(input.channelId, channel.leadAgentId)
+    if (!assigneeRow) throw new AppError(400, 'NO_LEAD_AGENT', `channel ${input.channelId} lead 实例不存在`)
+    assertHarnessUsable(assigneeRow.harness, parseJson<Record<string, unknown>>(assigneeRow.configJson, {}))
+    const budgetMs = Math.max(10_000, Number(input.execBudgetMinutes ?? 60) * 60_000)
+    const deadlineAt = new Date(Date.now() + budgetMs).toISOString()
+    const { task, created } = this.getTaskEngine().createOrGetRoot({
+      channelId: input.channelId,
+      creatorId: `project:${input.projectId}`,
+      assigneeId: channel.leadAgentId,
+      title: input.title,
+      description: input.description,
+      parts: input.parts,
+      sourceChatMessageId: input.sourceKey,
+      deadlineAt,
+      source: 'project',
+      projectId: input.projectId,
+      projectWorkItemId: input.workItemId,
+      projectAttemptNo: input.attemptNo,
+      traceId: input.traceId ?? '',
+    })
+    // 幂等命中时不能把别的项目/工作项 root 当成自己的。
+    if (task.projectId !== input.projectId || task.projectWorkItemId !== input.workItemId) {
+      throw new AppError(409, 'PROJECT_SOURCE_CONFLICT', 'source key 已对应其他项目/工作项，拒绝复用')
+    }
+    this.ensureChannelRuntime(input.channelId).wakeScheduler()
+    return { task, created }
+  }
+
   async dispatchTask(
     channelId: string,
     callerAgentId: string,

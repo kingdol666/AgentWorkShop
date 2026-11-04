@@ -108,6 +108,11 @@ export interface TaskEngine {
     sourceChatDeliveryId?: string
     closeReason?: string
     deadlineAt?: string
+    source?: string
+    projectId?: string | null
+    projectWorkItemId?: string | null
+    projectAttemptNo?: number | null
+    traceId?: string
   }): WorkspaceTask
   createOrGetRoot(input: {
     channelId: string
@@ -119,6 +124,11 @@ export interface TaskEngine {
     sourceChatMessageId: string
     sourceChatDeliveryId?: string
     deadlineAt?: string
+    source?: string
+    projectId?: string | null
+    projectWorkItemId?: string | null
+    projectAttemptNo?: number | null
+    traceId?: string
   }): { task: WorkspaceTask, created: boolean }
   rootQueue(channelId: string): { activeRoot: WorkspaceTask | null, queuedRoots: WorkspaceTask[], completedRoots: WorkspaceTask[] }
   activeRootOf(channelId: string): WorkspaceTask | null

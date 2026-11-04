@@ -9,11 +9,13 @@
  */
 import type { DatabaseSync } from 'node:sqlite'
 import type { AgentChannelManager } from '../runtime/manager'
-import type { ProjectChannelRow, ProjectRow } from '../db/project.repo'
+import type { ProjectChannelRow, ProjectDeliverableRow, ProjectRow, ProjectWorkItemRow } from '../db/project.repo'
 import {
   createProjectRepo,
   createProjectChannelRepo,
   createProjectDeliverableRepo,
+  createProjectWorkItemRepo,
+  createProjectAttemptRepo,
 } from '../db/project.repo'
 import { AppError } from '../../../utils/errors'
 
@@ -36,6 +38,8 @@ export class ProjectService {
   private readonly projects
   private readonly bindings
   private readonly deliverables
+  private readonly workItems
+  private readonly attempts
 
   constructor(
     private readonly manager: AgentChannelManager,
@@ -44,6 +48,8 @@ export class ProjectService {
     this.projects = createProjectRepo(db)
     this.bindings = createProjectChannelRepo(db)
     this.deliverables = createProjectDeliverableRepo(db)
+    this.workItems = createProjectWorkItemRepo(db)
+    this.attempts = createProjectAttemptRepo(db)
   }
 
   list(actor: ProjectActor): ProjectRow[] {
@@ -159,6 +165,151 @@ export class ProjectService {
   listChannels(id: string, actor: ProjectActor): ProjectChannelRow[] {
     this.get(id, actor)
     return this.bindings.listByProject(id)
+  }
+
+  listDeliverables(id: string, actor: ProjectActor): ProjectDeliverableRow[] {
+    this.get(id, actor)
+    return this.deliverables.listByProject(id)
+  }
+
+  createDeliverable(id: string, actor: ProjectActor, input: {
+    name: string
+    description?: string
+    ownerChannelId?: string
+    required?: boolean
+    acceptanceCriteria?: string[]
+    dueAt?: string
+    dependsOn?: string[]
+  }): ProjectDeliverableRow {
+    const p = this.get(id, actor)
+    if (p.status === 'archived' || p.status === 'completed') {
+      throw new AppError(409, 'PROJECT_STATE_INVALID', `Project 状态 ${p.status} 不能新增交付物`)
+    }
+    if (!input.name?.trim()) throw new AppError(400, 'BAD_REQUEST', '交付物名称不能为空')
+    if (input.ownerChannelId) {
+      const bound = this.bindings.listByProject(id).find(b => b.channelId === input.ownerChannelId && b.status === 'active')
+      if (!bound) throw new AppError(409, 'CHANNEL_NOT_IN_PROJECT', '交付物所属 Channel 未绑定到该项目')
+    }
+    return this.deliverables.create({
+      projectId: id,
+      name: input.name.trim(),
+      description: input.description,
+      ownerChannelId: input.ownerChannelId,
+      required: input.required === false ? 0 : 1,
+      acceptanceCriteriaJson: JSON.stringify(input.acceptanceCriteria ?? []),
+      dueAt: input.dueAt ?? null,
+      dependsOnJson: JSON.stringify(input.dependsOn ?? []),
+      createdBy: actor.id,
+    })
+  }
+
+  listWorkItems(id: string, actor: ProjectActor): ProjectWorkItemRow[] {
+    this.get(id, actor)
+    return this.workItems.listByProject(id)
+  }
+
+  createWorkItem(id: string, actor: ProjectActor, input: {
+    deliverableId: string
+    channelId: string
+    title: string
+    brief?: string
+    priority?: number
+    weight?: number
+    dependsOn?: string[]
+    acceptanceCriteria?: string[]
+    resultKey?: string
+    execBudgetMinutes?: number
+    dedupeKey?: string
+  }): ProjectWorkItemRow {
+    const p = this.get(id, actor)
+    if (p.status === 'archived' || p.status === 'completed') {
+      throw new AppError(409, 'PROJECT_STATE_INVALID', `Project 状态 ${p.status} 不能新增工作项`)
+    }
+    const d = this.deliverables.listByProject(id).find(x => x.id === input.deliverableId)
+    if (!d) throw new AppError(404, 'NOT_FOUND', '交付物不存在或不属于该项目')
+    const bound = this.bindings.listByProject(id).find(b => b.channelId === input.channelId && b.status === 'active')
+    if (!bound) throw new AppError(409, 'CHANNEL_NOT_IN_PROJECT', '工作项目标 Channel 未绑定到该项目')
+    if (!input.title?.trim()) throw new AppError(400, 'BAD_REQUEST', '工作项标题不能为空')
+    return this.workItems.create({
+      projectId: id,
+      deliverableId: d.id,
+      channelId: input.channelId,
+      title: input.title.trim(),
+      brief: input.brief,
+      priority: input.priority,
+      weight: input.weight,
+      dependsOnJson: JSON.stringify(input.dependsOn ?? []),
+      acceptanceJson: JSON.stringify(input.acceptanceCriteria ?? []),
+      resultKey: input.resultKey,
+      planVersion: p.planVersion,
+      execBudgetMinutes: input.execBudgetMinutes,
+      traceId: input.dedupeKey ?? `work:${d.id}:${input.title.trim()}`,
+      dedupeKey: input.dedupeKey ?? `${d.id}:${input.title.trim()}`,
+      createdBy: actor.id,
+    })
+  }
+
+  /**
+   * 派发工作项到成员 Channel root task。
+   * V1 只允许 project active；同一 work item 只允许一个 live attempt；
+   * planVersion 在项目已有 approved plan 时必须匹配。
+   */
+  async dispatchWorkItem(id: string, workItemId: string, actor: ProjectActor): Promise<ProjectWorkItemRow> {
+    const p = this.get(id, actor)
+    if (p.status !== 'active') throw new AppError(409, 'PROJECT_NOT_ACTIVE', `Project 状态 ${p.status} 不能派发`)
+    const wi = this.workItems.findById(workItemId)
+    if (!wi || wi.projectId !== id) throw new AppError(404, 'NOT_FOUND', '工作项不存在或不属于该项目')
+    if (wi.currentAttemptId) {
+      const live = this.attempts.findLiveByWorkItem(wi.id)
+      if (live) throw new AppError(409, 'WORK_ITEM_IN_FLIGHT', '工作项已有在飞 attempt')
+    }
+    if (p.planVersion > 0 && wi.planVersion !== p.planVersion) {
+      throw new AppError(409, 'PLAN_VERSION_STALE', `工作项计划版本 ${wi.planVersion} != 当前 ${p.planVersion}`)
+    }
+    const d = this.deliverables.listByProject(id).find(x => x.id === wi.deliverableId)
+    if (!d) throw new AppError(404, 'NOT_FOUND', '工作项交付物不存在')
+    const bound = this.bindings.listByProject(id).find(b => b.channelId === wi.channelId && b.status === 'active')
+    if (!bound) throw new AppError(409, 'CHANNEL_NOT_IN_PROJECT', '目标 Channel 未绑定到该项目')
+    const channel = this.manager.getChannelForUser(wi.channelId, actor.id)
+    if (!channel || channel.enabled !== 1) throw new AppError(409, 'CHANNEL_DISABLED', '目标 Channel 不存在或已禁用')
+    if (!channel.leadAgentId) throw new AppError(409, 'CHANNEL_NO_LEAD', '目标 Channel 没有 lead')
+
+    const attemptNo = this.attempts.listByWorkItem(wi.id).reduce((max, a) => Math.max(max, a.attemptNo), 0) + 1
+    const sourceKey = `pw:${wi.id}:${attemptNo}`
+    const traceId = wi.traceId || `trace:${wi.id}`
+    const attempt = this.attempts.create({
+      projectId: id, workItemId: wi.id, attemptNo, channelId: wi.channelId, sourceKey, traceId,
+    })
+    try {
+      const { task } = await this.manager.submitProjectRoot({
+        projectId: id,
+        workItemId: wi.id,
+        attemptNo,
+        sourceKey,
+        traceId,
+        channelId: wi.channelId,
+        title: wi.title,
+        description: wi.brief,
+        execBudgetMinutes: wi.execBudgetMinutes,
+      })
+      this.attempts.setDispatched(attempt.id, task.id)
+      return this.workItems.update(wi.id, {
+        state: 'DISPATCHED',
+        stateReason: null,
+        currentAttemptId: attempt.id,
+        traceId,
+        planVersion: p.planVersion,
+      })!
+    }
+    catch (err) {
+      this.attempts.close(attempt.id, 'CLOSED', err instanceof Error ? err.message : String(err))
+      this.workItems.update(wi.id, {
+        state: 'BLOCKED',
+        stateReason: err instanceof Error ? err.message : String(err),
+        currentAttemptId: null,
+      })
+      throw err
+    }
   }
 
   bindChannel(id: string, channelId: string, actor: ProjectActor, charter = ''): ProjectChannelRow {

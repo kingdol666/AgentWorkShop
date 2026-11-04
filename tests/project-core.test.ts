@@ -8,6 +8,9 @@ import { openWorkshopDb } from '../server/services/workshop/db/database'
 import { createChannelRepo } from '../server/services/workshop/db/channel.repo'
 import { createChannelAgentRepo } from '../server/services/workshop/db/channel-agent.repo'
 import { createProjectDeliverableRepo } from '../server/services/workshop/db/project.repo'
+import { createTaskRepo } from '../server/services/workshop/db/task.repo'
+import { createMessageRepo } from '../server/services/workshop/db/message.repo'
+import { TaskEngine } from '../server/services/workshop/runtime/task-engine'
 import { ProjectService } from '../server/services/workshop/projects/service'
 import { capabilitiesFor, isProjectLeaderIdentity } from '../server/services/workshop/agents/role-capabilities'
 import type { AgentChannelManager } from '../server/services/workshop/runtime/manager'
@@ -16,6 +19,7 @@ function fixture() {
   const db = openWorkshopDb(':memory:')
   const channels = createChannelRepo(db)
   const agents = createChannelAgentRepo(db)
+  const tasks = createTaskRepo(db)
   const manager = {
     async createChannel(input: {
       name: string
@@ -50,8 +54,36 @@ function fixture() {
       const ch = channels.findById(id)
       return ch ? { ...ch, agents: [] } : null
     },
+    async submitProjectRoot(input: {
+      projectId: string
+      workItemId: string
+      attemptNo: number
+      sourceKey: string
+      traceId?: string
+      channelId: string
+      title: string
+      description?: string
+      execBudgetMinutes?: number
+    }) {
+      const ch = channels.findById(input.channelId)!
+      const row = tasks.create({
+        channelId: input.channelId,
+        creatorId: `project:${input.projectId}`,
+        assigneeId: ch.leadAgentId!,
+        title: input.title,
+        description: input.description,
+        sourceChatMessageId: input.sourceKey,
+        deadlineAt: new Date(Date.now() + (input.execBudgetMinutes ?? 60) * 60_000).toISOString(),
+        source: 'project',
+        projectId: input.projectId,
+        projectWorkItemId: input.workItemId,
+        projectAttemptNo: input.attemptNo,
+        traceId: input.traceId,
+      })
+      return { task: { id: row.id } as never, created: true }
+    },
   } as unknown as AgentChannelManager
-  return { db, channels, agents, manager }
+  return { db, channels, agents, tasks, manager }
 }
 
 test('role capabilities: project_leader 只拿项目读/提案，不拿 Channel lead 工具', () => {
@@ -145,6 +177,53 @@ test('ProjectService: 非 owner 不可读/改；同一 Channel 不能同时属�
     )
     svc.unbindChannel(p1.id, member.channelId, owner)
     assert.equal(svc.bindChannel(p2.id, member.channelId, owner).status, 'active')
+  }
+  finally { db.close() }
+})
+
+test('ProjectService: 派发 root task + 项目上下文传播到子任务', async () => {
+  const { db, manager, tasks } = fixture()
+  try {
+    const svc = new ProjectService(manager, db)
+    const owner = { id: 'u-1', role: 'user' }
+    const p = await svc.create({ name: '派发项目', objective: '验证派发' }, owner)
+    const member = await manager.createChannel({
+      name: '执行频道', ownerUserId: 'u-1', actor: owner,
+      leadAgent: { name: 'Lead', harness: 'mock', agentKind: 'channel_agent' },
+    })
+    svc.bindChannel(p.id, member.channelId, owner)
+    const d = svc.createDeliverable(p.id, owner, { name: '基线', ownerChannelId: member.channelId })
+    const w = svc.createWorkItem(p.id, owner, {
+      deliverableId: d.id, channelId: member.channelId, title: '建立基线',
+      brief: '按验收标准输出', execBudgetMinutes: 60, dedupeKey: 'baseline',
+    })
+    svc.activate(p.id, owner)
+    const dispatched = await svc.dispatchWorkItem(p.id, w.id, owner)
+    assert.equal(dispatched.state, 'DISPATCHED')
+    assert.ok(dispatched.currentAttemptId)
+
+    const root = tasks.listRoots(member.channelId)[0]!
+    assert.equal(root.source, 'project')
+    assert.equal(root.projectId, p.id)
+    assert.equal(root.projectWorkItemId, w.id)
+    assert.equal(root.projectAttemptNo, 1)
+    assert.ok(root.traceId)
+    const budgetMs = new Date(root.deadlineAt!).getTime() - Date.now()
+    assert.ok(budgetMs > 30 * 60_000, `deadline should use project budget, got ${budgetMs}ms`)
+
+    await assert.rejects(
+      () => svc.dispatchWorkItem(p.id, w.id, owner),
+      (e: unknown) => (e as { code?: string }).code === 'WORK_ITEM_IN_FLIGHT',
+    )
+
+    // 子任务继承 project 上下文（project-origin 写策略/审计依赖）
+    const engine = new TaskEngine({ tasks, messages: createMessageRepo(db) }, { onTaskChange: () => {} })
+    const parent = engine.get(root.id)!
+    const child = engine.dispatch(parent, { assigneeId: parent.assigneeId, title: '子任务' })
+    assert.equal(child.source, 'project')
+    assert.equal(child.projectId, p.id)
+    assert.equal(child.projectWorkItemId, w.id)
+    assert.equal(child.traceId, root.traceId)
   }
   finally { db.close() }
 })
