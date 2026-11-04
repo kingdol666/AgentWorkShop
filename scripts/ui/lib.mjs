@@ -34,6 +34,7 @@ export const sleep = ms => new Promise(r => setTimeout(r, ms))
 export const ROUTES = [
   { path: '/', name: 'dashboard', title: '仪表盘' },
   { path: '/workshop', name: 'workshop', title: 'Agent 工作台' },
+  { path: '/projects', name: 'projects', title: '项目' },
   { path: '/workshop/agents', name: 'agents', title: 'Agent 管理' },
   { path: '/workshop/teams', name: 'teams', title: '团队/频道' },
   { path: '/workshop/channel-templates', name: 'templates', title: '频道模板' },

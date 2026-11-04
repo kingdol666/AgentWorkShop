@@ -1,8 +1,8 @@
-# Project 层 V1 分阶段验收报告（PR1–PR5）
+# Project 层 V1 分阶段验收报告（PR1–PR6）
 
 日期：2026-11-04。状态：**分阶段验收，未完成 V1 全量**。
-被测分支：`pr/05-results-approvals-audit`（stacked on PR4）。
-证据：`docs/audit/evidence/2026-11-03-project-layer/project-line-acceptance.json`。
+被测分支：`pr/06-project-ui`（stacked on PR5）。
+证据：`docs/audit/evidence/2026-11-03-project-layer/project-line-acceptance.json`、`projects-list.png`、`project-detail.png`。
 
 ---
 
@@ -88,7 +88,7 @@ AW_PROJECT_ACCEPTANCE_OUT=docs/audit/evidence/2026-11-03-project-layer/project-l
 | P14c | 交付物 approved | ✅ | deliverables |
 | P14d | 审批重复决策 → 409 | ✅ | 负例 |
 | P16 | 审计 decisions/events 落库且带 trace | ✅ | decisions/events |
-| P17 | 项目页 UI/周报 | ⏸ BLOCKED | PR6 未实现 |
+| P17 | 项目页 UI/周报 | ✅（页面渲染/数据绑定） | UI smoke 5/5 + `projects-list.png` / `project-detail.png`；完整 Playwright 交互矩阵待 PR7 |
 | P18 | MAST/Live/G0–G6 | ⏸ BLOCKED | PR7 未执行 |
 
 ### 2.3 Gate 状态
@@ -100,7 +100,7 @@ AW_PROJECT_ACCEPTANCE_OUT=docs/audit/evidence/2026-11-03-project-layer/project-l
 | G2 安全 P0 | ✅（本地） | P0 单测 + 安全负例；**Mimosa 独立扫描未完成，不宣称安全审计通过** |
 | G3 Project 核心 + 派发 | ✅（已测范围） | 办公室/leader/生命周期/绑定/派发/上下文/预算；**scheduler-skip 直接断言未单独做** |
 | G4 成果 + 审批 | ✅（已测范围） | 成果 draft/submit/review/approve、审批 CAS/过期/自批、Reconciler、decisions/events；**plan_approval/write_intent 未接入** |
-| G5 API/UI | ⏸ BLOCKED | PR6 |
+| G5 API/UI | ✅（已测范围） | 项目列表/详情渲染、数据绑定、成果/审批操作；完整 Playwright 交互矩阵待 PR7 |
 | G6 Live + 审计 + 回滚 | ⏸ BLOCKED | PR7 |
 
 ---
@@ -110,7 +110,7 @@ AW_PROJECT_ACCEPTANCE_OUT=docs/audit/evidence/2026-11-03-project-layer/project-l
 1. **plan_approval / write_intent 未接入**：当前只实现 deliverable_acceptance 的审批闭环；计划审批与工业写意图审批仍待 PR5.1/PR6。
 2. **Reconciler 不是自主定时器**：当前通过 `/projects/:id/reconcile` 触发；插件级 30s 定时器未接，频道禁用/lead 移除的自动对账仍不完整。
 3. **审计 fail-closed 不完整**：decisions/events 已落库并带 trace，但成果/交付物状态更新与审计写入尚未统一到同一事务；破坏性动作回滚测试待补。
-4. **UI 未实现**：项目页/周报/审批历史不可用。
+4. **UI 仅 smoke 级**：项目列表/详情渲染与数据绑定已验；计划编辑/diff、周报导出、完整 Playwright 交互矩阵未做。
 5. **Project Leader 未真正参与**：V1 的 proposal tools / prompt / 复核尚未实现；当前 leader 只是办公室 lead，未接项目提案。
 6. **Scheduler-skip 直接验证缺失**：代码已对 `agent_kind='project_leader'` 跳过 SchedulerLoop，但 E2E 未直接断言 `cr.scheduler===null`。
 7. **M5 未做**：leader 自建/删除 Channel 未实现；独立安全扫描/红队待补。
@@ -137,7 +137,7 @@ PR7 完成后：
 
 ## 5. 结论
 
-**PR1–PR5 的已实现范围通过验收：35/35 生产业务 E2E 通过，0 失败。**
-**V1 全量未通过：2 项 BLOCKED（项目页 UI、MAST/Live 全量）。** 当前可宣称"项目办公室/生命周期/派发/成果/验收/审计"这一层已可工作，但不能宣称完整 V1 或"安全验收通过"。
+**PR1–PR6 的已实现范围通过验收：生产业务 E2E 35/35 + UI smoke 5/5，0 失败。**
+**V1 全量未通过：仅 P18（MAST/Live 全量/G0–G6）BLOCKED；另有 Project Leader proposal tools、plan_approval/write_intent、自主 Reconciler 定时器未接入。** 当前可宣称"项目办公室/派发/成果/验收/审计/项目页"这一层已可工作，但不能宣称完整 V1 或"安全验收通过"。
 
 独立安全审计（Mimosa）仍未完成，不能宣称"安全验收通过"。
