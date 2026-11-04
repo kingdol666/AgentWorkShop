@@ -513,7 +513,7 @@ try {
   const ledger = await api('GET', `/api/workshop/projects/${project.id}/ledger?limit=50`, undefined, H())
   ok('P24b', 'Progress Ledger API（里程碑条目 + 确定性 assessment）',
     ledger.status === 200 && (ledger.data?.items ?? []).length > 0
-      && (ledger.data.items).every(i => typeof i.assessment === 'object'),
+    && (ledger.data.items).every(i => typeof i.assessment === 'object'),
     `count=${ledger.data?.count} items=${(ledger.data?.items ?? []).length} first=${ledger.data?.items?.[0]?.summary ?? ''}`)
 
   const tick = await api('POST', `/api/workshop/projects/${project.id}/kernel/tick`, {}, H())
