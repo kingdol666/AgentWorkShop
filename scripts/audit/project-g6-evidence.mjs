@@ -66,7 +66,9 @@ function run(cmd, timeoutMs = 3_600_000) {
 }
 
 const results = []
-for (const cmd of Object.keys(GATE_OF)) {
+const onlyCmd = process.argv.includes('--only') ? process.argv[process.argv.indexOf('--only') + 1] : null
+const selected = onlyCmd ? Object.keys(GATE_OF).filter(c => c.includes(onlyCmd)) : Object.keys(GATE_OF)
+for (const cmd of selected) {
   const r = await run(cmd)
   results.push(r)
   appendFileSync(runLog, `\n===== ${cmd}\nexit=${r.code} ms=${r.ms}\n`)
@@ -76,7 +78,7 @@ for (const cmd of Object.keys(GATE_OF)) {
     const status = r.code === 0 ? 'PASS' : 'FAIL'
     appendFileSync(
       join(dir, 'evidence.md'),
-      `\n## \`${cmd}\` — ${status} (${Math.round(r.ms / 1000)}s, exit=${r.code})\n\n\`\`\`\n${r.tail.trim().slice(-4000)}\n\`\`\`\n`,
+      `\n## \`${cmd}\` — ${status} (${Math.round(r.ms / 1000)}s, exit=${r.code})${onlyCmd ? ' [retry]' : ''}\n\n\`\`\`\n${r.tail.trim().slice(-4000)}\n\`\`\`\n`,
     )
   }
 }
@@ -88,10 +90,18 @@ for (const [gate, desc] of Object.entries(GATE_DESC)) {
   writeFileSync(p, `# ${gate} — ${desc}\n\n> 生成时间：${new Date().toISOString()}\n${body}`)
 }
 
+const previous = existsSync(join(GATES, 'index.json'))
+  ? JSON.parse(readFileSync(join(GATES, 'index.json'), 'utf8'))
+  : { commands: [] }
+const merged = onlyCmd
+  ? previous.commands.map(prev => results.find(r => r.cmd === prev.cmd) ?? prev)
+  : results
+const exitOf = r => r.code ?? (r.pass ? 0 : 1)
 const index = {
   generatedAt: new Date().toISOString(),
-  commands: results.map(r => ({ cmd: r.cmd, exit: r.code, ms: r.ms, pass: r.code === 0 })),
-  totalFail: results.filter(r => r.code !== 0).length,
+  commands: merged.map(r => ({ cmd: r.cmd, exit: exitOf(r), ms: r.ms, pass: exitOf(r) === 0 })),
+  totalFail: merged.filter(r => exitOf(r) !== 0).length,
+  note: onlyCmd ? `--only ${onlyCmd} retry merged into previous run` : undefined,
 }
 writeFileSync(join(GATES, 'index.json'), `${JSON.stringify(index, null, 2)}\n`)
 console.log(`\n=== GATES evidence: fail=${index.totalFail}/${results.length} → ${GATES} ===`)

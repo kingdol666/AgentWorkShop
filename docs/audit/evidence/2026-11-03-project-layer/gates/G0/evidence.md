@@ -1,5 +1,11 @@
 # G0 — 基线：typecheck / lint
 
+> 生成时间：2026-11-04T08:28:01.317Z
+# G0 — 基线：typecheck / lint
+
+> 生成时间：2026-11-04T08:20:42.036Z
+# G0 — 基线：typecheck / lint
+
 > 生成时间：2026-11-04T07:14:11.473Z
 # G0 — 基线：typecheck / lint
 
@@ -100,6 +106,29 @@ D:\codes\ABO\AgentWorkShop-project\scripts\e2e-project-line-acceptance.mjs
 ```
 
 ## `npm run lint` — PASS (37s, exit=0)
+
+```
+> agentworkshop@0.9.5 lint
+> eslint .
+```
+
+## `npm run typecheck` — PASS (36s, exit=0)
+
+```
+> agentworkshop@0.9.5 typecheck
+> node scripts/typecheck.mjs
+
+[typecheck] ① nuxi prepare(重新生成 .nuxt 类型)
+│
+◆  Types generated in [36m.nuxt[39m.
+[typecheck] ② 剔除生成配置里已不存在的 volar 插件条目:vue-router/volar/sfc-route-blocks
+           · tsconfig.app.json: plugins 1 → 0
+           · tsconfig.json: plugins 1 → 0
+[typecheck] ③ vue-tsc -b --noEmit
+[typecheck] ✔ 类型检查通过
+```
+
+## `npm run lint` — PASS (46s, exit=0)
 
 ```
 > agentworkshop@0.9.5 lint

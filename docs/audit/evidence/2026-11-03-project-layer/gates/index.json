@@ -1,58 +1,58 @@
 {
-  "generatedAt": "2026-11-04T07:14:11.478Z",
+  "generatedAt": "2026-11-04T08:28:01.323Z",
   "commands": [
     {
       "cmd": "npm run typecheck",
       "exit": 0,
-      "ms": 23189,
+      "ms": 36296,
       "pass": true
     },
     {
       "cmd": "npm run lint",
       "exit": 0,
-      "ms": 37113,
+      "ms": 45926,
       "pass": true
     },
     {
       "cmd": "npm run test:unit",
       "exit": 0,
-      "ms": 29822,
+      "ms": 35676,
       "pass": true
     },
     {
       "cmd": "npm run build",
       "exit": 0,
-      "ms": 85043,
+      "ms": 115185,
       "pass": true
     },
     {
       "cmd": "node scripts/ui/projects-smoke.mjs",
       "exit": 0,
-      "ms": 25246,
+      "ms": 24658,
       "pass": true
     },
     {
       "cmd": "node scripts/ui/projects-interactions.mjs",
       "exit": 0,
-      "ms": 20189,
+      "ms": 29349,
       "pass": true
     },
     {
       "cmd": "node scripts/e2e-line-governance.mjs",
       "exit": 0,
-      "ms": 39902,
+      "ms": 46808,
       "pass": true
     },
     {
       "cmd": "node scripts/e2e-project-line-acceptance.mjs",
       "exit": 0,
-      "ms": 17130,
+      "ms": 22964,
       "pass": true
     },
     {
       "cmd": "node scripts/e2e-project-rollback.mjs",
       "exit": 0,
-      "ms": 52067,
+      "ms": 60952,
       "pass": true
     }
   ],
