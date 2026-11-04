@@ -37,6 +37,7 @@ import { createOutboxRepo } from '../services/workshop/db/outbox.repo'
 import { createHitlRequestRepo } from '../services/workshop/db/hitl-request.repo'
 import { initProjectService } from '../services/workshop/projects/service'
 import { startProjectReconciler } from '../services/workshop/projects/reconciler'
+import { userRepository } from '@/server/repositories/user.repository'
 import { createApprovalHistoryRepo, createAlarmEventRepo, createAuditRepo, createApprovalRequestRepo } from '../services/workshop/db/ops.repo'
 import { bindOpsRepos } from '../services/workshop/ops/ops'
 import { configureHitlResolver } from '../services/workshop/agents/hitl-registry'
@@ -200,7 +201,13 @@ export default function workshopPlugin(nitroApp: {
   const manager = createAgentChannelManager(deps)
   globalThis.__workshopManager = manager
   // Project 层 V1：项目办公室/生命周期/成员绑定（独立 service，项目状态唯一写者）
-  const projectService = initProjectService(manager, db)
+  // C11 line grant：人类 actor 的成果读取/操作按产线授权过滤（admin/agent 直通；service 内裁决）。
+  const projectService = initProjectService(manager, db, {
+    lineAccessOf: (userId) => {
+      const grants = userRepository.lineAccessMap(userId)
+      return new Set(grants.keys())
+    },
+  })
   const projectReconciler = startProjectReconciler(projectService)
 
   // HITL 全局待办:agentId → channelId/agentName 解析器(避免 registry 反向依赖 manager)
