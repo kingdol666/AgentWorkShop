@@ -1,5 +1,8 @@
 # G3 — Project 核心/派发/leader 工具/建频道提案（unit 全量）
 
+> 生成时间：2026-11-04T09:41:34.008Z
+# G3 — Project 核心/派发/leader 工具/建频道提案（unit 全量）
+
 > 生成时间：2026-11-04T08:28:01.320Z
 # G3 — Project 核心/派发/leader 工具/建频道提案（unit 全量）
 
@@ -355,4 +358,84 @@ plugin=1 unavailable=0 total=122 (test-idempotent)"}
 ℹ skipped 2
 ℹ todo 0
 ℹ duration_ms 35058.4961
+```
+
+## `npm run test:unit` — PASS (53s, exit=0)
+
+```
+n=1 unavailable=0 total=122 (test-idempotent)"}
+{"t":"2026-11-04T09:34:08.174Z","level":"info","scope":"workshop.tool-registry","msg":"synced builtin=121 plugin=1 unavailable=1 total=122 (test-unregister)"}
+{"t":"2026-11-04T09:34:08.175Z","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「trp_plugin_echo」(trp-test-plugin)"}
+{"t":"2026-11-04T09:34:08.218Z","level":"info","scope":"workshop.tool-registry","msg":"synced builtin=121 plugin=1 unavailable=0 total=122 (test-reregister)"}
+{"t":"2026-11-04T09:34:08.554Z","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「report_progress」(trp-test-plugin)"}
+{"t":"2026-11-04T09:34:08.559Z","level":"info","scope":"workshop.plugin-tools","msg":"[omp-tools] 插件工具注册:「trp_plugin_echo」(trp-test-plugin)"}
+{"t":"2026-11-04T09:34:08.582Z","level":"info","scope":"workshop.tool-registry","msg":"synced builtin=121 plugin=1 unavailable=0 total=122 (test-cleanup)"}
+✔ registry sync:幂等且 hash 未变不推进 updated_at (70.7924ms)
+✔ registry sync:插件卸载后 available=0,重新注册恢复 (103.4276ms)
+✔ all 模式:停用 daq_query 后注入面/执行闸门同时生效,重置恢复 (221.671ms)
+✔ selected 模式:仅勾选工具注入,缺省即停用 (55.7448ms)
+✔ 硬规则:observer 档位不能通过 Channel 选择打开写工具 (50.353ms)
+✔ 硬规则:worker 的 lead-only 工具记录 ROLE_DENIED,lead 正常 (3.4913ms)
+✔ 透明化视图:全局目录含内置与插件工具,统计一致 (3.2371ms)
+✔ 快照构建:插件同名内置时内置优先 (28.8336ms)
+✔ 策略仓储:removeForChannel 清理策略与行 (41.7223ms)
+✔ 折叠确定性:同一输入两次输出逐字节相同(乱序输入排序后一致) (1.1993ms)
+✔ 预算:小绑定面不折叠;超预算折叠为前 N 项 + 总数 + 查询引导 (0.4209ms)
+✔ 折叠回滚开关:AW_DESC_BUDGET=0 → 全量输出 (0.2941ms)
+✔ 单条超预算:首项必须保留(不得产出空「等 N 项」折叠) (0.2231ms)
+✔ 分页:确定性排序(kind→id)、query 过滤、limit 钳制、offset 越界 (1.0327ms)
+✔ user scenario: worker 绑 1 号节点、传 2 号节点(他线)→ 拒绝且文案列出绑定面 (3.1313ms)
+✔ user scenario: 同线但未绑定的 2 号节点、且频道未绑线 → 同样拒绝(未绑定不等于可见) (0.4872ms)
+✔ 绑定面内节点放行(node/line 引用均通过) (0.2986ms)
+✔ 不存在的节点:拒绝文案与「未授权」区分(提示核对 id) (0.3022ms)
+✔ 频道绑线只读扩权:绑线数采节点(未绑定)可读;他线节点仍拒 (0.5658ms)
+✔ nodes[] 深路径与 arrays:aml_dataset_build 逐节点校验 (0.4784ms)
+✔ 配方面:绑定配方可操作;他线配方(未绑定/不可读)拒 (0.4551ms)
+✔ dcw_journal:无参(此前返回全量记录)与越界 node_id 均拒,越界文案列可查对象 (0.5403ms)
+✔ 形状:引用参数非字符串 → 拒绝并说明应为字符串 ID (0.3028ms)
+✔ 授权性拒绝写入 audit_log(tool.call.denied),形状类拒绝不入册 (0.4274ms)
+✔ 链式:跨线数据集拒(谱系回溯到产线),本人数据集放行 (4.0613ms)
+✔ 无引用参数的工具不受预检影响(my_industrial_nodes 原样进入 handler) (6.3147ms)
+✔ resolveRefFaces:绑定面/可读线/配方面/频道绑线面一致 (0.2181ms)
+✔ 契约:query() raw 路径时间正序(ASC),窗口超 limit 截取最旧段 (21.3374ms)
+✔ 契约:query() bucket 路径时间正序(ASC) (12.5975ms)
+✔ 导出:>5000 样本窗口游标续页取全(CSV 行数 == 样本数,不静默截断) (70.4291ms)
+✔ 契约:limit<=0 不得变成 SQL 无上限(适配器夹到 1) (12.0832ms)
+{"t":"2026-11-04T09:34:09.071Z","level":"info","scope":"daq.tsdb.sqlite","msg":"[daq-tsdb] 保留期清理 1 行(>720h)"}
+✔ A15:queryTagged raw 返回真实 state;cleanPoints 实际剔除坏点 (2.7483ms)
+✔ A16:同键不同值 → 首值保留且 correctionDropped+1(不静默) (0.8672ms)
+✔ A1:逐节点分页稳定 ASC、游标续读、无漏无重 (1.5068ms)
+✔ A16 ④:旧数据 ingestedAt 缺失 → 分页点不伪造到达时间 (0.4356ms)
+✔ A16 ③:迟到但新鲜的样本不被事件时间误删 (26.5957ms)
+✔ 保留期归一:非法值回退、raw 最小 1h、hour 允许 0(永久) (2.2147ms)
+✔ 窗口在原始保留期内 → raw(即使桶宽 ≥1h) (0.3515ms)
+✔ 窗口早于原始保留期 → 1 分钟聚合;跨边界 → mixed (1.3138ms)
+✔ 完全落在旧窗口 + 桶宽 ≥1h → 1 小时聚合(且不 mixed) (0.2062ms)
+✔ 桶宽 <1 分钟或聚合未启用 → 绝不用聚合冒充历史 (0.16ms)
+✔ 混合合并:按桶起点升序、同点 raw 优先、超限保留最新段 (0.4346ms)
+✔ 运行期新建产线:无需重启即进入聚合与逐线裁剪 (9598.1589ms)
+✔ 契约:按 productId 等值过滤,未打标行与异产品行都不出现 (63.6953ms)
+✔ 契约:按 runId / recipeId 过滤各自只中目标批次 (19.7709ms)
+✔ 契约:lineId 过滤含两个批次但排除未打标段 (3.7428ms)
+✔ 契约:全留空 = 原始时间窗(含未打标行),分页/游标语义不变 (2.0886ms)
+✔ 契约:过滤 + 分页组合 = 只取目标批次的全部点(游标续读不串批) (2.7048ms)
+✔ fetchNodeSeries(AML 训练取数)必须把三元组透传给分页接口 (335.6553ms)
+✔ tail:桶窗口超 limit 时返回末尾 limit 个桶(升序) (78.0648ms)
+✔ tail:桶数 ≤ limit 时原样全量返回(稀疏窗口不丢历史段) (22.4955ms)
+✔ tail:桶间有空洞时仍取末尾 limit 个非空桶 (9.5394ms)
+✔ tail:limit=1 返回窗口内最后一个桶(不是最旧) (12.0499ms)
+✔ tail:多节点每节点各取末尾 limit 个(queryTaggedLatest) (15.2949ms)
+✔ 旧契约不变:query() 默认仍取窗口最旧段(导出/训练集依赖) (12.4069ms)
+✔ freshnessOf:返回最后一点的时间与滞后 (0.4813ms)
+✔ tail:from 缺省(UI 趋势路径)也必须取最新段,不能退化为 epoch 级旧段 (213.8563ms)
+✔ tail:limit=5000(适配器单次行数上限)仍能取到最新桶 (217.1456ms)
+✔ tail:from 缺省 + 稀疏数据仍取末尾 limit 个非空桶 (36.4179ms)
+ℹ tests 1087
+ℹ suites 40
+ℹ pass 1085
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 2
+ℹ todo 0
+ℹ duration_ms 52255.8433
 ```
