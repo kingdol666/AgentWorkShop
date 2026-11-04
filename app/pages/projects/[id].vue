@@ -193,6 +193,39 @@ async function applyProposal(decision: DecisionDto): Promise<void> {
 }
 
 onMounted(load)
+
+/** PR11 周报：拉取 + JSON 导出（与库同源的数字）。 */
+interface ReportDto {
+  projectId: string
+  name: string
+  status: string
+  planVersion: number
+  generatedAt: string
+  deliverables?: { total?: number, requiredTotal?: number, requiredApproved?: number }
+  workItems?: { total?: number, blocked?: number }
+  results?: { total?: number }
+  approvals?: { pending?: number }
+  progress?: { ratio?: number, completedWorkItems?: number, scoreableWorkItems?: number }
+  recentEvents?: { count?: number }
+}
+const report = ref<ReportDto | null>(null)
+async function loadReport(): Promise<void> {
+  await run(async () => {
+    const r = await http.get<{ data: ReportDto }>(`/workshop/projects/${id}/report`)
+    report.value = r.data ?? null
+  })
+}
+function exportReport(): void {
+  if (!report.value) return
+  const blob = new Blob([JSON.stringify(report.value, null, 2)], { type: 'application/json' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = `weekly-report-${id}.json`
+  a.click()
+  URL.revokeObjectURL(url)
+}
+onMounted(loadReport)
 </script>
 
 <template>
@@ -298,6 +331,7 @@ onMounted(load)
         <div class="form">
           <input
             v-model="bindForm.channelId"
+            data-testid="bind-channel-id"
             placeholder="Channel ID（owner 自己的、已有 lead）"
           >
           <input
@@ -338,6 +372,7 @@ onMounted(load)
         <div class="form">
           <input
             v-model="deliverableForm.name"
+            data-testid="deliverable-name"
             placeholder="交付物名称"
           >
           <select v-model="deliverableForm.ownerChannelId">
@@ -406,7 +441,10 @@ onMounted(load)
         </tbody>
       </table>
       <div class="form inline">
-        <select v-model="workForm.deliverableId">
+        <select
+          v-model="workForm.deliverableId"
+          data-testid="select-work-deliverable"
+        >
           <option value="">
             选择交付物
           </option>
@@ -418,7 +456,10 @@ onMounted(load)
             {{ d.name }}
           </option>
         </select>
-        <select v-model="workForm.channelId">
+        <select
+          v-model="workForm.channelId"
+          data-testid="select-work-channel"
+        >
           <option value="">
             选择频道
           </option>
@@ -432,10 +473,12 @@ onMounted(load)
         </select>
         <input
           v-model="workForm.title"
+          data-testid="input-work-title"
           placeholder="工作项标题"
         >
         <input
           v-model="workForm.brief"
+          data-testid="input-work-brief"
           placeholder="给 Channel lead 的 brief"
         >
         <input
@@ -516,6 +559,44 @@ onMounted(load)
           </button>
         </div>
       </article>
+    </section>
+
+    <section class="card">
+      <h2>周报</h2>
+      <p
+        v-if="!report"
+        class="muted"
+      >
+        周报未加载。
+      </p>
+      <template v-else>
+        <p class="sub">
+          进度 {{ report.progress?.ratio ?? 0 }}（{{ report.progress?.completedWorkItems ?? 0 }}/{{ report.progress?.scoreableWorkItems ?? 0 }} 工作项） ·
+          交付物 {{ report.deliverables?.total ?? 0 }}（必选验收 {{ report.deliverables?.requiredApproved ?? 0 }}/{{ report.deliverables?.requiredTotal ?? 0 }}） ·
+          成果 {{ report.results?.total ?? 0 }} · 阻塞 {{ report.workItems?.blocked ?? 0 }} · 近 7 天事件 {{ report.recentEvents?.count ?? 0 }}
+        </p>
+        <p class="muted">
+          generatedAt: {{ report.generatedAt }}
+        </p>
+      </template>
+      <div class="row actions">
+        <button
+          class="btn small ghost"
+          data-testid="btn-report-refresh"
+          :disabled="loading"
+          @click="loadReport"
+        >
+          刷新周报
+        </button>
+        <button
+          class="btn small"
+          data-testid="btn-report-export"
+          :disabled="loading || !report"
+          @click="exportReport"
+        >
+          导出周报
+        </button>
+      </div>
     </section>
 
     <section class="card">

@@ -561,6 +561,59 @@ export class ProjectService {
     return this.events.listByProject(id)
   }
 
+  /** PR11 周报：一页纸数字（交付物/工作项/成果/审批/进度/阻塞/近 7 天事件），与库严格同源。 */
+  projectWeeklyReport(id: string, actor: ProjectActor) {
+    const p = this.get(id, actor)
+    const nowIso = new Date().toISOString()
+    const weekAgo = new Date(Date.now() - 7 * 86_400_000).toISOString()
+    const countBy = <T>(rows: T[], key: (row: T) => string): Record<string, number> => {
+      const out: Record<string, number> = {}
+      for (const r of rows) {
+        const k = key(r) || '-'
+        out[k] = (out[k] ?? 0) + 1
+      }
+      return out
+    }
+    const deliverables = this.deliverables.listByProject(id)
+    const items = this.workItems.listByProject(id)
+    const results = this.filterResultsByGrant(this.results.listByProject(id), actor)
+    const pendingApprovals = this.approvals.listPending(id)
+    const weekEvents = this.events.listByProject(id).filter(e => e.createdAt >= weekAgo)
+    const required = deliverables.filter(d => d.required === 1)
+    const scoreable = items.filter(w => !['CANCELED', 'SUPERSEDED'].includes(w.state))
+    const completed = scoreable.filter(w => w.state === 'COMPLETED')
+    const blocked = items.filter(w => w.state === 'BLOCKED')
+    return {
+      projectId: p.id,
+      name: p.name,
+      status: p.status,
+      planVersion: p.planVersion,
+      generatedAt: nowIso,
+      week: { from: weekAgo, to: nowIso },
+      deliverables: {
+        total: deliverables.length,
+        requiredTotal: required.length,
+        requiredApproved: required.filter(d => ['approved', 'waived'].includes(d.status)).length,
+        byStatus: countBy(deliverables, d => d.status),
+      },
+      workItems: {
+        total: items.length,
+        completed: completed.length,
+        blocked: blocked.length,
+        byState: countBy(items, w => w.state),
+      },
+      results: { total: results.length, byStatus: countBy(results, r => r.status) },
+      approvals: { pending: pendingApprovals.length, items: pendingApprovals.map(a => ({ id: a.id, kind: a.kind, subjectId: a.subjectId })) },
+      progress: {
+        ratio: scoreable.length > 0 ? Math.round((completed.length / scoreable.length) * 100) / 100 : 0,
+        completedWorkItems: completed.length,
+        scoreableWorkItems: scoreable.length,
+      },
+      blockedItems: blocked.map(w => ({ id: w.id, title: w.title, reason: w.stateReason })),
+      recentEvents: { count: weekEvents.length, items: weekEvents.slice(-20).map(e => ({ seq: e.seq, type: e.type, at: e.createdAt, traceId: e.traceId })) },
+    }
+  }
+
   /**
    * 确定性对账：root task 终态 → 工作项状态；COMPLETED 自动生成成果 draft；
    * 逾期/缺失 attempt → BLOCKED；过期审批收敛。V1 不做 LLM 决策。
