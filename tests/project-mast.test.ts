@@ -78,7 +78,7 @@ async function setup(opts: { dispatch?: boolean } = {}) {
   const f = fixture()
   const svc = new ProjectService(f.manager, f.db)
   const owner = { id: 'u-1', role: 'user' }
-  const p = await svc.create({ name: 'MAST 项目', objective: '验证失败模式控制' }, owner)
+  const p = await svc.create({ name: 'MAST 项目', objective: '验证失败模式控制', planApprovalRequired: 0 }, owner)
   const member = await f.manager.createChannel({
     name: '执行频道', ownerUserId: 'u-1', actor: owner,
     leadAgent: { name: 'Lead', harness: 'mock', agentKind: 'channel_agent' },
@@ -189,11 +189,16 @@ test('L7 澄清：未绑定 Channel 不能建工作项/派发', async () => {
   finally { s.db.close() }
 })
 
-test('L8 任务漂移：plan 版本升级后旧工作项不能派发', async () => {
+test('L8 任务漂移：DRAFT 自动对齐新计划；已执行旧版本（COMPLETED rework）拒绝', async () => {
   const s = await setup({ dispatch: false })
   try {
     const ap = s.svc.requestPlanApproval(s.p.id, s.owner, { version: 1, plan: { plan: ['p'] } })
     s.svc.decideApproval(s.p.id, ap.id, s.owner, true)
+    // 未执行过的 DRAFT：派发时自动对齐 v1
+    const aligned = await s.svc.dispatchWorkItem(s.p.id, s.w.id, s.owner)
+    assert.equal(aligned.planVersion, 1)
+    // 已按旧版本执行过（rework 场景）：不得悄然按新计划重派
+    s.db.prepare('UPDATE project_work_items SET plan_version = 0, state = \'COMPLETED\', current_attempt_id = NULL WHERE id = ?').run(s.w.id)
     await assert.rejects(
       () => s.svc.dispatchWorkItem(s.p.id, s.w.id, s.owner),
       (e: unknown) => (e as { code?: string }).code === 'PLAN_VERSION_STALE',

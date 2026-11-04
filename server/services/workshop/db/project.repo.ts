@@ -550,7 +550,7 @@ export function createProjectResultRepo(db: DatabaseSync) {
   const selectByWorkItemAttempt = db.prepare(`SELECT ${RESULT_COLS} FROM project_results WHERE work_item_id = ? AND attempt_no = ? AND result_key = ? LIMIT 1`)
   const selectNextVersion = db.prepare(`SELECT COALESCE(MAX(version), 0) + 1 AS next FROM project_results WHERE project_id = ? AND deliverable_id = ? AND channel_id = ? AND result_key = ?`)
   const updateStatus = db.prepare(`UPDATE project_results SET status = ?, reviewed_by = ?, reviewed_at = ?, approved_by = ?, approved_at = ?, reject_reason = ? WHERE id = ?`)
-  const submitStmt = db.prepare(`UPDATE project_results SET title = ?, summary = ?, method = ?, data_window_json = ?, sample_count = ?, confidence = ?, validity_scope = ?, payload_json = ?, evidence_json = ?, change_summary = ?, open_questions = ?, status = ? WHERE id = ?`)
+  const submitStmt = db.prepare(`UPDATE project_results SET title = ?, summary = ?, method = ?, data_window_json = ?, sample_count = ?, confidence = ?, validity_scope = ?, payload_json = ?, evidence_json = ?, change_summary = ?, open_questions = ?, status = ?, author_user_id = COALESCE(author_user_id, ?) WHERE id = ?`)
   return {
     nextVersion(projectId: string, deliverableId: string, channelId: string, resultKey: string): number {
       return Number((selectNextVersion.get(projectId, deliverableId, channelId, resultKey) as { next?: number } | undefined)?.next ?? 1)
@@ -646,10 +646,11 @@ export function createProjectResultRepo(db: DatabaseSync) {
       changeSummary: string
       openQuestions: string
       status: string
+      authorUserId?: string | null
     }): void {
       submitStmt.run(input.title, input.summary, input.method, input.dataWindowJson, input.sampleCount,
         input.confidence, input.validityScope, input.payloadJson, input.evidenceJson,
-        input.changeSummary, input.openQuestions, input.status, id)
+        input.changeSummary, input.openQuestions, input.status, input.authorUserId ?? null, id)
     },
     setStatus(id: string, status: string, meta: { reviewedBy?: string | null, reviewedAt?: string | null, approvedBy?: string | null, approvedAt?: string | null, rejectReason?: string | null } = {}): void {
       updateStatus.run(status, meta.reviewedBy ?? null, meta.reviewedAt ?? null, meta.approvedBy ?? null,
@@ -671,6 +672,11 @@ export function createProjectDecisionRepo(db: DatabaseSync) {
   return {
     findById(projectId: string, id: string): ProjectDecisionRow | undefined {
       return selectByDecisionId.get(projectId, id) as unknown as ProjectDecisionRow | undefined
+    },
+    /** 幂等护栏：同项目+同类型+同 args 摘要的 decision 已存在（Reconciler 周期性 record 防膨胀）。 */
+    hasDuplicate(projectId: string, decisionType: string, argsSha256: string): boolean {
+      const row = db.prepare(`SELECT 1 FROM project_decisions WHERE project_id = ? AND decision_type = ? AND args_sha256 = ? LIMIT 1`).get(projectId, decisionType, argsSha256)
+      return row !== undefined
     },
     /** 提案 → 已应用（仅 proposed 可迁移，CAS 防重复应用）。 */
     markApplied(id: string, outcome: string, reason = ''): boolean {

@@ -78,7 +78,7 @@ async function setupDispatched() {
   const f = fixture()
   const svc = new ProjectService(f.manager, f.db)
   const owner = { id: 'u-1', role: 'user' }
-  const p = await svc.create({ name: '成果验收项目', objective: '验证成果闭环' }, owner)
+  const p = await svc.create({ name: '成果验收项目', objective: '验证成果闭环', planApprovalRequired: 0 }, owner)
   const member = await f.manager.createChannel({
     name: '执行频道', ownerUserId: 'u-1', actor: owner,
     leadAgent: { name: 'Lead', harness: 'mock', agentKind: 'channel_agent' },
@@ -92,7 +92,7 @@ async function setupDispatched() {
   svc.activate(p.id, owner)
   await svc.dispatchWorkItem(p.id, w.id, owner)
   const root = f.tasks.listRoots(member.channelId)[0]!
-  return { ...f, svc, owner, project: p, member, deliverable: d, workItem: w, root }
+  return { ...f, svc, owner, project: p, member, deliverable: d, workItem: w, root, leadId: member.leadAgentId! }
 }
 
 function completeRoot(tasks: ReturnType<typeof createTaskRepo>, rootId: string, state: 'COMPLETED' | 'FAILED' = 'COMPLETED') {
@@ -124,7 +124,7 @@ test('成果闭环：root COMPLETED → draft → submit → review → owner ap
     s.svc.reconcile(s.project.id, s.owner)
     assert.equal(s.svc.listResults(s.project.id, s.owner).length, 1)
 
-    const submitted = s.svc.submitResult(s.project.id, draft.id, s.owner, {
+    const submitted = s.svc.agentSubmitResult(s.leadId, { resultId: draft.id,
       summary: '基线良率 97.9%，数据窗口完整',
       method: '按产线/产品/配方取数',
       evidence: [{ artifactId: 'art-1', name: 'baseline.md' }],
@@ -155,7 +155,7 @@ test('审批：重复决策 409；过期 409；自批 403', async () => {
     completeRoot(s.tasks, s.root.id)
     s.svc.reconcile(s.project.id, s.owner)
     const result = s.svc.listResults(s.project.id, s.owner)[0]!
-    s.svc.submitResult(s.project.id, result.id, s.owner, { summary: 's' })
+    s.svc.agentSubmitResult(s.leadId, { resultId: result.id, summary: 's' })
     const leaderActor = { id: 'agent-leader', role: 'lead', agentId: s.project.leadAgentId! }
     s.svc.reviewResult(s.project.id, result.id, leaderActor, 'reviewed')
     const approval = s.svc.requestAcceptance(s.project.id, result.id, s.owner)
@@ -225,7 +225,7 @@ test('supersede：approved 成果可被 owner 取代且保留审批字段', asyn
     completeRoot(s.tasks, s.root.id)
     s.svc.reconcile(s.project.id, s.owner)
     const result = s.svc.listResults(s.project.id, s.owner)[0]!
-    s.svc.submitResult(s.project.id, result.id, s.owner, { summary: 's' })
+    s.svc.agentSubmitResult(s.leadId, { resultId: result.id, summary: 's' })
     const leaderActor = { id: 'agent-leader', role: 'lead', agentId: s.project.leadAgentId! }
     s.svc.reviewResult(s.project.id, result.id, leaderActor, 'reviewed')
     const approval = s.svc.requestAcceptance(s.project.id, result.id, s.owner)

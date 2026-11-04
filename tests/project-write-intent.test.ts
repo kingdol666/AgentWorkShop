@@ -101,7 +101,7 @@ function fixture() {
 async function setup() {
   const f = fixture()
   const owner = { id: 'u-1', role: 'user' }
-  const p = await f.svc.create({ name: '写意图项目', objective: '验证 write_intent 闸门' }, owner)
+  const p = await f.svc.create({ name: '写意图项目', objective: '验证 write_intent 闸门', planApprovalRequired: 0 }, owner)
   const member = await f.manager.createChannel({
     name: '写频道',
     ownerUserId: 'u-1',

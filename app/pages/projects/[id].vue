@@ -25,7 +25,7 @@ interface ChannelBindingDto { projectId: string, channelId: string, bindingType:
 interface DeliverableDto { id: string, name: string, ownerChannelId: string | null, required: number, status: string, acceptanceCriteriaJson: string }
 interface WorkItemDto { id: string, deliverableId: string, channelId: string, title: string, state: string, stateReason: string | null, currentAttemptId: string | null, execBudgetMinutes: number }
 interface ResultDto { id: string, deliverableId: string, channelId: string, title: string, summary: string, status: string, version: number, evidenceJson: string, reviewedBy: string | null, approvedBy: string | null }
-interface ApprovalDto { id: string, kind: string, subjectId: string, status: string, expiresAt: string | null }
+interface ApprovalDto { id: string, kind: string, subjectId: string, status: string, expiresAt: string | null, payloadJson?: string, reason?: string, argsDigest?: string }
 interface DecisionDto { id: string, seq: number, decisionType: string, state: string, outcome: string, traceId: string, createdAt: string }
 interface EventDto { id: string, seq: number, type: string, eventKey: string, traceId: string, createdAt: string }
 
@@ -613,6 +613,18 @@ onMounted(loadReport)
           :key="a.id"
         >
           <span>{{ a.kind }} · {{ a.subjectId }}</span>
+          <span
+            v-if="a.payloadJson && a.payloadJson !== '{}'"
+            class="muted"
+          >
+            payload: {{ a.payloadJson.slice(0, 180) }}{{ a.payloadJson.length > 180 ? '…' : '' }}
+          </span>
+          <span
+            v-else-if="a.reason"
+            class="muted"
+          >
+            {{ a.reason }}
+          </span>
           <button
             class="btn small green"
             :disabled="loading"

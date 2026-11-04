@@ -26,7 +26,7 @@ const http = useHttp()
 const projects = ref<ProjectDto[]>([])
 const loading = ref(false)
 const error = ref('')
-const form = reactive({ name: '', objective: '', description: '' })
+const form = reactive({ name: '', objective: '', description: '', leaderHarness: 'mock' })
 
 async function load(): Promise<void> {
   loading.value = true
@@ -52,10 +52,12 @@ async function create(): Promise<void> {
       name: form.name.trim(),
       objective: form.objective.trim(),
       description: form.description.trim() || undefined,
+      leaderHarness: form.leaderHarness,
     })
     form.name = ''
     form.objective = ''
     form.description = ''
+    form.leaderHarness = 'mock'
     await navigateTo(`/projects/${res.data.id}`)
   }
   catch (e) {
@@ -109,6 +111,22 @@ onMounted(load)
           v-model="form.description"
           placeholder="可选"
         ></label>
+        <label>Leader 引擎<select
+          v-model="form.leaderHarness"
+        >
+          <option value="mock">
+            mock（验证用）
+          </option>
+          <option value="omp">
+            omp（真实 LLM）
+          </option>
+          <option value="opencode">
+            opencode（真实 LLM）
+          </option>
+          <option value="claude">
+            claude（真实 LLM）
+          </option>
+        </select></label>
       </div>
       <button
         class="btn"

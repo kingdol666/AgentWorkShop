@@ -213,6 +213,19 @@ try {
   const activate = await api('POST', `/api/workshop/projects/${project.id}/activate`, {}, H())
   ok('P7', 'Project 激活（Channel + 必选交付物）', activate.status === 200 && activate.data?.status === 'active', `status=${activate.status} body=${JSON.stringify(activate).slice(0, 200)}`)
 
+  // PR13 计划门：plan 未批不能派发；owner 批准 v1 后放行
+  const earlyDispatch = await api('POST', `/api/workshop/projects/${project.id}/work-items/${workItem.id}/dispatch`, {}, H())
+  ok('P7b', '计划门：未批计划派发 → 409 PLAN_NOT_APPROVED',
+    earlyDispatch.status === 409 && earlyDispatch.code === 'PLAN_NOT_APPROVED', `status=${earlyDispatch.status} code=${earlyDispatch.code}`)
+  const planV1Req = await api('POST', `/api/workshop/projects/${project.id}/plan/request-approval`, {
+    version: 1, plan: { facts: [`产线 ${line} 基线目标`] },
+  }, H())
+  const planV1Dec = planV1Req.data ? await api('POST', `/api/workshop/projects/${project.id}/approvals/${planV1Req.data.id}/decide`, { approve: true, reason: '初始计划' }, H()) : null
+  const afterPlanV1 = await api('GET', `/api/workshop/projects/${project.id}`, undefined, H())
+  ok('P7c', 'owner 批准初始计划 → planVersion=1',
+    planV1Req.status === 200 && planV1Dec?.status === 200 && afterPlanV1.data?.planVersion === 1,
+    `req=${planV1Req.status} dec=${planV1Dec?.status} version=${afterPlanV1.data?.planVersion}`)
+
   // 派发
   const dispatched = await api('POST', `/api/workshop/projects/${project.id}/work-items/${workItem.id}/dispatch`, {}, H())
   ok('P8', '工作项派发（root task）', dispatched.status === 200 && dispatched.data?.state === 'DISPATCHED', `status=${dispatched.status} state=${dispatched.data?.state}`)
@@ -367,12 +380,12 @@ try {
     },
   }, token)
   const proposedPlan = parseToolJson(proposePlan)
-  ok('P14e1', 'project_leader 计划提案（proposal + plan_approval）',
-    proposePlan.status === 200 && proposePlan.data?.result?.isError !== true && Boolean(proposedPlan?.approvalId) && proposedPlan?.planVersion === 1,
+  ok('P14e1', 'project_leader 计划提案（proposal + plan_approval，v2）',
+    proposePlan.status === 200 && proposePlan.data?.result?.isError !== true && Boolean(proposedPlan?.approvalId) && proposedPlan?.planVersion === 2,
     `status=${proposePlan.status} text=${toolText(proposePlan).slice(0, 300)}`)
 
   const planReq = await api('POST', `/api/workshop/projects/${project.id}/plan/request-approval`, {
-    version: 1,
+    version: 2,
     plan: { facts: [`产线 ${line} 已确认`], deliverables: [deliverable.id], workItems: [workItem.id] },
   }, H())
   ok('P14e2', '同版本计划审批幂等（leader 提案复用同一 approval）',
@@ -384,8 +397,8 @@ try {
   const planDec = planAp ? await api('POST', `/api/workshop/projects/${project.id}/approvals/${planAp.id}/decide`, { approve: true, reason: 'approver 成员批准' }, bToken) : null
   const afterPlan = await api('GET', `/api/workshop/projects/${project.id}`, undefined, H())
   const afterPlanDeliverables = await api('GET', `/api/workshop/projects/${project.id}/deliverables`, undefined, H())
-  ok('P14e3', 'approver 成员批准 plan → planVersion=1 + leader 交付物物化',
-    memUp.status === 200 && planDec?.status === 200 && planDec.data?.status === 'approved' && afterPlan.data?.planVersion === 1
+  ok('P14e3', 'approver 成员批准 plan → planVersion=2 + leader 交付物物化',
+    memUp.status === 200 && planDec?.status === 200 && planDec.data?.status === 'approved' && afterPlan.data?.planVersion === 2
     && (afterPlanDeliverables.data ?? []).some(d => d.name === leaderPlanName),
     `memUp=${memUp.status} planDec=${planDec?.status} version=${afterPlan.data?.planVersion} deliverables=${(afterPlanDeliverables.data ?? []).length}`)
 
