@@ -170,6 +170,9 @@ try {
   const w = wResp.data
   const actResp = await api('POST', `/api/workshop/projects/${project.id}/activate`, {}, token)
   if (actResp.status !== 200) console.error('[diag] activate resp:', JSON.stringify(actResp).slice(0, 300))
+  // PR13 计划门：派发前 owner 批准 v1
+  const planReq = await api('POST', `/api/workshop/projects/${project.id}/plan/request-approval`, { version: 1, plan: { facts: ['rb'] } }, token)
+  if (planReq.data) await api('POST', `/api/workshop/projects/${project.id}/approvals/${planReq.data.id}/decide`, { approve: true }, token)
   const disp = await api('POST', `/api/workshop/projects/${project.id}/work-items/${w.id}/dispatch`, {}, token)
   const rotate = await api('POST', `/api/workshop/channels/${member.channelId}/agents/${member.leadAgentId}/rotate-token`, {}, token)
   const tasks = await api('GET', `/api/workshop/channels/${member.channelId}/tasks`, undefined, token)

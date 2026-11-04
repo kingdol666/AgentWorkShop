@@ -117,7 +117,7 @@ test('ProjectService: create → 办公室 + project_leader；绑定/激活/暂�
   try {
     const svc = new ProjectService(manager, db)
     const owner = { id: 'u-1', role: 'user' }
-    const p = await svc.create({ name: '良率提升', objective: '把 A 线良率提升到 98%' }, owner)
+    const p = await svc.create({ name: '良率提升', objective: '把 A 线良率提升到 98%', planApprovalRequired: 0 }, owner)
     assert.equal(p.status, 'draft')
     assert.ok(p.officeChannelId)
     assert.ok(p.leadAgentId)
@@ -186,7 +186,7 @@ test('ProjectService: 派发 root task + 项目上下文传播到子任务', asy
   try {
     const svc = new ProjectService(manager, db)
     const owner = { id: 'u-1', role: 'user' }
-    const p = await svc.create({ name: '派发项目', objective: '验证派发' }, owner)
+    const p = await svc.create({ name: '派发项目', objective: '验证派发', planApprovalRequired: 0 }, owner)
     const member = await manager.createChannel({
       name: '执行频道', ownerUserId: 'u-1', actor: owner,
       leadAgent: { name: 'Lead', harness: 'mock', agentKind: 'channel_agent' },

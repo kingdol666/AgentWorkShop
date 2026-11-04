@@ -123,7 +123,7 @@ function fixture(db: DatabaseSync, deps?: ConstructorParameters<ProjectServiceCt
 async function setupWithResult(db: DatabaseSync, deps?: ConstructorParameters<ProjectServiceCtor>[2]) {
   const f = fixture(db, deps)
   const owner = { id: 'u-owner', role: 'user' }
-  const p = await f.svc.create({ name: '审计项目', objective: 'B8/C11 验证' }, owner)
+  const p = await f.svc.create({ name: '审计项目', objective: 'B8/C11 验证', planApprovalRequired: 0 }, owner)
   const member = await f.manager.createChannel({
     name: '成员频道', ownerUserId: owner.id, leadAgent: { name: 'Lead', harness: 'mock' },
   })
@@ -145,7 +145,8 @@ async function setupWithResult(db: DatabaseSync, deps?: ConstructorParameters<Pr
   // fixture 直写成果产线快照（channel.repo.update 不含 line_id 列，绕开绑线管线）
   db.prepare(`UPDATE project_results SET line_id = 'L1' WHERE id = ?`).run(draft.id)
   const submitAndReview = () => {
-    f.svc.submitResult(p.id, draft.id, owner, { summary: 's', evidence: [{ artifactId: 'a1' }] })
+    // 自批规则生效：成果由 channel lead（agent 路径）提交，owner 复核——owner 不得自提自批
+    f.svc.agentSubmitResult(member.leadAgentId!, { resultId: draft.id, summary: 's', evidence: [{ artifactId: 'a1' }] })
     f.svc.reviewResult(p.id, draft.id, owner, 'reviewed')
   }
   return { ...f, owner, p, member, d, w, root, draft, submitAndReview }

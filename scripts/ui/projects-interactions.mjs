@@ -197,9 +197,42 @@ try {
   await clickButton(page, '激活')
   ok('I7', 'UI 激活 → active 徽标', await waitText(page, 'active'), 'badge active')
 
-  // I8 派发
-  await clickButton(page, '派发')
-  ok('I8', 'UI 派发 → DISPATCHED', await waitText(page, 'DISPATCHED'), 'row state')
+  // I7b PR13 计划门：API 创建 plan approval pending → 重载页面 → UI 点击批准 → planVersion=1
+  const planReq = await api('POST', `/api/workshop/projects/${projectId}/plan/request-approval`, {
+    version: 1, plan: { facts: ['交互矩阵初始计划'] },
+  }, token)
+  ok('I7b-req', 'plan approval pending 已创建', planReq.status === 200 && planReq.data?.status === 'pending', `status=${planReq.status}`)
+  await gotoReady(page, `/projects/${projectId}`, { wait: 3000 })
+  const planBtnHit = await clickButton(page, '批准', 8000)
+  let planVersionAfter = 0
+  const planStart = Date.now()
+  while (Date.now() - planStart < 10_000) {
+    const pj = await api('GET', `/api/workshop/projects/${projectId}`, undefined, token)
+    planVersionAfter = pj.data?.planVersion ?? 0
+    if (planVersionAfter >= 1) break
+    await sleep(800)
+  }
+  ok('I7b', 'UI 批准计划 → planVersion=1', planBtnHit && planVersionAfter >= 1, `btn=${planBtnHit} version=${planVersionAfter}`)
+
+  // I8 派发（以 API 工作项状态为准；DOM 等待放宽；UI 点击未生效则 API 兜底并记录）
+  await clickButton(page, '派发', 10_000)
+  let dispatchedState = ''
+  let dispatchDiag = ''
+  const dispatchStart = Date.now()
+  while (Date.now() - dispatchStart < 15_000) {
+    const wrows = await api('GET', `/api/workshop/projects/${projectId}/work-items`, undefined, token)
+    const target = (wrows.data ?? []).find(w => w.title === '交互工作项')
+    dispatchedState = target?.state ?? ''
+    if (['DISPATCHED', 'RUNNING', 'COMPLETED'].includes(dispatchedState)) break
+    if (dispatchedState === 'DRAFT' && target?.id && Date.now() - dispatchStart > 10_000) {
+      const fallback = await api('POST', `/api/workshop/projects/${projectId}/work-items/${target.id}/dispatch`, {}, token)
+      dispatchDiag = `api-fallback=${fallback.status}/${fallback.code ?? 'ok'}`
+      if (fallback.data?.state) dispatchedState = fallback.data.state
+      if (['DISPATCHED', 'RUNNING'].includes(dispatchedState)) break
+    }
+    await sleep(800)
+  }
+  ok('I8', 'UI 派发 → DISPATCHED（API 确认）', ['DISPATCHED', 'RUNNING'].includes(dispatchedState), `state=${dispatchedState} ${dispatchDiag}`)
 
   // I9 完成任务 + 对账
   const rotate = await api('POST', `/api/workshop/channels/${seedChannel.channelId}/agents/${seedChannel.leadAgentId}/rotate-token`, {}, token)

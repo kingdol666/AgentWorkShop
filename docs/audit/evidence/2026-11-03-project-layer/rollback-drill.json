@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-04T07:14:09.926Z",
+  "generatedAt": "2026-11-04T07:58:08.575Z",
   "port": 3979,
   "pass": 12,
   "fail": 0,
@@ -14,7 +14,7 @@
       "id": "R1",
       "name": "基线对象（产线+绑线频道）",
       "pass": true,
-      "detail": "line=ln-9fc03f9e ch=521fc037-3000-4796-a0f4-c3e70b5a1615"
+      "detail": "line=ln-9ee86378 ch=4ac74848-c2fb-4352-b639-9bf675c252b6"
     },
     {
       "id": "R2a",
@@ -38,7 +38,7 @@
       "id": "R3b",
       "name": "完整项目流（派发/完成/对账）",
       "pass": true,
-      "detail": "project=fbd0746f-dc40-404a-8334-059a893da025 disp=200"
+      "detail": "project=78472b3e-3a27-4dab-83d0-7bf9eabb8dbd disp=200"
     },
     {
       "id": "R4a",

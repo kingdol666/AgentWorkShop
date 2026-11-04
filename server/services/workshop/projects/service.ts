@@ -186,6 +186,8 @@ export interface CreateProjectInput {
   mode?: 'observe' | 'supervised' | 'auto'
   leaderHarness?: string
   leaderConfig?: Record<string, unknown>
+  /** 审查修复：计划门开关（缺省 1=派发必须先批计划；0=关闭，测试/无计划场景用） */
+  planApprovalRequired?: number
 }
 
 export class ProjectService {
@@ -268,7 +270,7 @@ export class ProjectService {
       successCriteriaJson: JSON.stringify(input.successCriteria ?? []),
       mode: input.mode ?? 'supervised',
       ownerUserId: actor.id,
-      planApprovalRequired: 1,
+      planApprovalRequired: input.planApprovalRequired === 0 ? 0 : 1,
       configJson: JSON.stringify({ leaderHarness: input.leaderHarness ?? 'mock' }),
     })
 
@@ -401,6 +403,43 @@ export class ProjectService {
     })
   }
 
+  /** 审查修复（完成门豁免入口）：owner 可豁免交付物（waived），使项目完成门可达。 */
+  waiveDeliverable(id: string, deliverableId: string, actor: ProjectActor, reason: string): ProjectDeliverableRow {
+    const p = this.get(id, actor)
+    this.requireOwner(p, actor)
+    const d = this.deliverables.findById(deliverableId)
+    if (!d || d.projectId !== id) throw new AppError(404, 'NOT_FOUND', '交付物不存在或不属于该项目')
+    if (d.status === 'approved') throw new AppError(409, 'DELIVERABLE_STATE_INVALID', '已验收交付物不能豁免')
+    if (!reason.trim()) throw new AppError(400, 'BAD_REQUEST', '豁免必须给出理由')
+    this.deliverables.setStatus(deliverableId, 'waived', reason)
+    this.record(id, 'deliverable.waived', actor, { deliverableId, reason }, '', 'deliverable.waived', `deliverable:${deliverableId}:waived`, { deliverableId, reason })
+    return this.deliverables.findById(deliverableId)!
+  }
+
+  /** 审查修复（完成门豁免入口）：owner 可取消工作项（含 FAILED 卡死场景），attempt 一并闭合。 */
+  cancelWorkItem(id: string, workItemId: string, actor: ProjectActor, reason: string): ProjectWorkItemRow {
+    const p = this.get(id, actor)
+    this.requireOwner(p, actor)
+    const wi = this.workItems.findById(workItemId)
+    if (!wi || wi.projectId !== id) throw new AppError(404, 'NOT_FOUND', '工作项不存在或不属于该项目')
+    if (['COMPLETED', 'CANCELED', 'SUPERSEDED'].includes(wi.state)) return wi
+    if (!reason.trim()) throw new AppError(400, 'BAD_REQUEST', '取消必须给出理由')
+    withTransaction(this.db, () => {
+      this.workItems.update(workItemId, {
+        state: 'CANCELED',
+        stateReason: reason,
+        closedAt: new Date().toISOString(),
+        closeReason: 'OWNER_CANCELED',
+      })
+      if (wi.currentAttemptId) {
+        const attempt = this.attempts.findById(wi.currentAttemptId)
+        if (attempt && !attempt.closedAt) this.attempts.close(attempt.id, 'CLOSED', reason)
+      }
+      this.record(id, 'work.canceled', actor, { workItemId, reason }, wi.traceId, 'work.canceled', `work:${workItemId}:canceled`, { workItemId, reason })
+    })
+    return this.workItems.findById(workItemId)!
+  }
+
   listWorkItems(id: string, actor: ProjectActor): ProjectWorkItemRow[] {
     this.get(id, actor)
     return this.workItems.listByProject(id)
@@ -457,6 +496,10 @@ export class ProjectService {
     const p = this.get(id, actor)
     this.requireOwner(p, actor)
     if (p.status !== 'active') throw new AppError(409, 'PROJECT_NOT_ACTIVE', `Project 状态 ${p.status} 不能派发`)
+    // 审查修复（计划门）：要求批准计划的项目，plan 未批前不得派发任何工作项。
+    if (p.planApprovalRequired === 1 && p.planVersion === 0) {
+      throw new AppError(409, 'PLAN_NOT_APPROVED', '项目要求先批准计划（plan_approval）才能派发工作项')
+    }
     const wi = this.workItems.findById(workItemId)
     if (!wi || wi.projectId !== id) throw new AppError(404, 'NOT_FOUND', '工作项不存在或不属于该项目')
     if (wi.currentAttemptId) {
@@ -464,7 +507,16 @@ export class ProjectService {
       if (live) throw new AppError(409, 'WORK_ITEM_IN_FLIGHT', '工作项已有在飞 attempt')
     }
     if (p.planVersion > 0 && wi.planVersion !== p.planVersion) {
-      throw new AppError(409, 'PLAN_VERSION_STALE', `工作项计划版本 ${wi.planVersion} != 当前 ${p.planVersion}`)
+      if (wi.state === 'DRAFT') {
+        // 审查修复：批准前手建的 DRAFT 工作项派发时自动对齐当前批准版本（避免死锁）；
+        // 非 DRAFT（已执行过旧版本）的重派仍拒绝，防止悄然按新计划重跑。
+        this.workItems.update(wi.id, { planVersion: p.planVersion })
+        this.record(id, 'work.plan_aligned', actor, { workItemId: wi.id, from: wi.planVersion, to: p.planVersion }, wi.traceId, 'work.plan_aligned', `work:${wi.id}:aligned:v${p.planVersion}`, { workItemId: wi.id, planVersion: p.planVersion })
+        wi.planVersion = p.planVersion
+      }
+      else {
+        throw new AppError(409, 'PLAN_VERSION_STALE', `工作项计划版本 ${wi.planVersion} != 当前 ${p.planVersion}`)
+      }
     }
     const deps = parseJson<string[]>(wi.dependsOnJson, [])
     for (const depId of deps) {
@@ -636,6 +688,8 @@ export class ProjectService {
     // B8 审计 fail-closed：每个工作项的状态迁移与 decisions/events 同事务，逐项隔离。
     for (const wi of this.workItems.listByProject(id)) {
       if (['COMPLETED', 'FAILED', 'CANCELED', 'SUPERSEDED'].includes(wi.state)) continue
+      // 审查修复：DRAFT（从未派发）不是异常，Reconciler 不得将其 BLOCKED（此前每 30s 死循环写审计）。
+      if (wi.state === 'DRAFT' && !wi.currentAttemptId) continue
       if (wi.deadlineAt && Date.parse(wi.deadlineAt) < Date.now()) {
         withTransaction(this.db, () => {
           this.workItems.update(wi.id, { state: 'BLOCKED', stateReason: 'OVERDUE' })
@@ -662,6 +716,8 @@ export class ProjectService {
       if (task.state === 'COMPLETED') {
         withTransaction(this.db, () => {
           this.workItems.update(wi.id, { state: 'COMPLETED', stateReason: null, closedAt: new Date().toISOString(), closeReason: 'ROOT_COMPLETED' })
+          // 审查修复：attempt 必须闭合，否则 live 唯一索引让 FAILED/COMPLETED 工作项永久 IN_FLIGHT。
+          if (attempt) this.attempts.close(attempt.id, 'CLOSED')
           this.ensureDraftFromTask(task.id)
           this.record(id, 'work.completed', actor, { workItemId: wi.id, taskId: task.id }, wi.traceId, 'work.completed', `work:${wi.id}:completed`, { workItemId: wi.id, taskId: task.id })
         })
@@ -670,6 +726,7 @@ export class ProjectService {
       if (task.state === 'FAILED' || task.state === 'CANCELED') {
         withTransaction(this.db, () => {
           this.workItems.update(wi.id, { state: task.state, stateReason: task.closeReason ?? task.state, closedAt: new Date().toISOString(), closeReason: task.closeReason ?? task.state })
+          if (attempt) this.attempts.close(attempt.id, 'CLOSED', task.closeReason ?? task.state)
           this.record(id, 'work.failed', actor, { workItemId: wi.id, taskId: task.id, state: task.state }, wi.traceId, 'work.failed', `work:${wi.id}:${task.state.toLowerCase()}`, { workItemId: wi.id, taskId: task.id, state: task.state })
         })
         continue
@@ -770,6 +827,8 @@ export class ProjectService {
         changeSummary: input.changeSummary ?? result.changeSummary,
         openQuestions: input.openQuestions ?? result.openQuestions,
         status: 'submitted',
+        // 审查修复（自批可达）：人类提交者落 authorUserId，使「不能批准自己提交的成果」在生产可达。
+        authorUserId: actor.agentId ? null : actor.id,
       })
       this.record(id, 'result.submit', actor, { resultId }, result.traceId, 'result.submitted', `result:${resultId}:submitted`, { resultId })
       updated = this.results.findById(resultId)!
@@ -1517,6 +1576,12 @@ export class ProjectService {
    */
   authorizeProjectWrite(agentId: string, toolName: string, args: Record<string, unknown>, activeRootTaskId?: string | null): ProjectWriteVerdict {
     if (!PROJECT_GATED_WRITE_TOOL_NAMES.has(toolName)) return { allowed: true }
+    // 审查修复（堵 submit_task 绕道）：判定主体从「任务来源」改为「Agent 项目上下文」——
+    // 项目成员（leader/lead/worker）的高风险写一律 gate，无论其用 project 任务还是普通任务发起。
+    const ctx = this.agentProjectContext(agentId)
+    if (!ctx) return { allowed: true }
+    const config = parseJson<Record<string, unknown>>(ctx.project.configJson, {})
+    if (config.mayWrite === true) return { allowed: true }
     let origin: { task: TaskRow, project: ProjectRow } | null
     try {
       origin = this.projectOriginOf(agentId, activeRootTaskId)
@@ -1524,11 +1589,12 @@ export class ProjectService {
     catch (err) {
       return { allowed: false, code: 'PROJECT_WRITE_CONTEXT_INVALID', message: err instanceof Error ? err.message : String(err) }
     }
-    if (!origin) return { allowed: true }
-    const config = parseJson<Record<string, unknown>>(origin.project.configJson, {})
-    if (config.mayWrite === true) return { allowed: true }
-    if (!origin.task.projectWorkItemId) {
-      return { allowed: false, code: 'PROJECT_WRITE_CONTEXT_INVALID', message: '项目来源任务缺少工作项上下文，写入被拒绝' }
+    if (!origin || !origin.task.projectWorkItemId) {
+      return {
+        allowed: false,
+        code: 'PROJECT_WRITE_INTENT_REQUIRED',
+        message: '项目成员的高风险写必须经项目来源任务 + owner 批准的 write_intent（不得用普通任务绕过）',
+      }
     }
     const digest = argsDigest(args)
     const row = this.db.prepare(
@@ -1782,18 +1848,21 @@ export class ProjectService {
     const argsJson = JSON.stringify(args)
     const argsSha256 = createHash('sha256').update(argsJson).digest('hex')
     withTransaction(this.db, () => {
-      this.decisions.append({
-        projectId,
-        source: actor.agentId ? 'leader' : actor.role === 'system' ? 'service' : 'owner',
-        decisionType,
-        actorAgentId: actor.agentId ?? null,
-        actorUserId: actor.agentId ? null : actor.id === 'system' ? null : actor.id,
-        argsJson,
-        argsSha256,
-        state: 'applied',
-        outcome: 'applied',
-        traceId,
-      })
+      // 审查修复：decisions 幂等（同项目+类型+args 摘要不重复追加）——周期性 Reconciler 不再膨胀审计。
+      if (!this.decisions.hasDuplicate(projectId, decisionType, argsSha256)) {
+        this.decisions.append({
+          projectId,
+          source: actor.agentId ? 'leader' : actor.role === 'system' ? 'service' : 'owner',
+          decisionType,
+          actorAgentId: actor.agentId ?? null,
+          actorUserId: actor.agentId ? null : actor.id === 'system' ? null : actor.id,
+          argsJson,
+          argsSha256,
+          state: 'applied',
+          outcome: 'applied',
+          traceId,
+        })
+      }
       this.events.append({ projectId, type: eventType, eventKey, payloadJson: JSON.stringify(payload), traceId })
     })
   }
