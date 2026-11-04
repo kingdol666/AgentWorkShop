@@ -10,6 +10,7 @@ import type { ExecutionMode } from '../../agents/agent-interface'
 import type { ModeConfig } from '../execution-mode'
 import type { TaskPatch } from '../../db/task.repo'
 import { AppError } from '../../../../utils/errors'
+import { assertProjectRootCancelAllowed } from '../../projects/root-cancel-guard'
 
 import { assertHarnessUsable } from '../../agents/harness-availability'
 import { buildMessage, rowToTask } from './helpers'
@@ -481,6 +482,11 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
     if (task.state === 'COMPLETED' || task.state === 'FAILED') {
       throw new AppError(409, 'TASK_TERMINAL', `任务 ${input.taskId.slice(0, 8)} 已处于终态 ${task.state},不能取消`)
     }
+    // PR16 治理护栏（纯函数共用）：lead 对项目来源 root 的取消一律拒绝（owner 豁免入口另走 REST）。
+    assertProjectRootCancelAllowed(
+      task as { source?: string | null, parentId?: string | null, creatorId?: string | null },
+      { role: caller.role, agentId: callerAgentId },
+    )
     const canceledTasks = this.getTaskEngine().cancelTree(input.taskId, callerAgentId, isLead ? 'LEAD_CANCEL' : 'USER_CANCEL')
     for (const canceled of canceledTasks) {
       this.runtimeOf(channelId, canceled.assigneeId)?.abortTask(canceled.id)
