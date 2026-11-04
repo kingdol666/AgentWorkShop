@@ -547,8 +547,10 @@ export function createProjectResultRepo(db: DatabaseSync) {
   )
   const selectById = db.prepare(`SELECT ${RESULT_COLS} FROM project_results WHERE id = ?`)
   const selectByProject = db.prepare(`SELECT ${RESULT_COLS} FROM project_results WHERE project_id = ? ORDER BY created_at DESC`)
+  const selectByWorkItemAttempt = db.prepare(`SELECT ${RESULT_COLS} FROM project_results WHERE work_item_id = ? AND attempt_no = ? AND result_key = ? LIMIT 1`)
   const selectNextVersion = db.prepare(`SELECT COALESCE(MAX(version), 0) + 1 AS next FROM project_results WHERE project_id = ? AND deliverable_id = ? AND channel_id = ? AND result_key = ?`)
   const updateStatus = db.prepare(`UPDATE project_results SET status = ?, reviewed_by = ?, reviewed_at = ?, approved_by = ?, approved_at = ?, reject_reason = ? WHERE id = ?`)
+  const submitStmt = db.prepare(`UPDATE project_results SET title = ?, summary = ?, method = ?, data_window_json = ?, sample_count = ?, confidence = ?, validity_scope = ?, payload_json = ?, evidence_json = ?, change_summary = ?, open_questions = ?, status = ? WHERE id = ?`)
   return {
     nextVersion(projectId: string, deliverableId: string, channelId: string, resultKey: string): number {
       return Number((selectNextVersion.get(projectId, deliverableId, channelId, resultKey) as { next?: number } | undefined)?.next ?? 1)
@@ -625,8 +627,29 @@ export function createProjectResultRepo(db: DatabaseSync) {
     findById(id: string): ProjectResultRow | undefined {
       return selectById.get(id) as unknown as ProjectResultRow | undefined
     },
+    findByWorkItemAttempt(workItemId: string, attemptNo: number, resultKey: string): ProjectResultRow | undefined {
+      return selectByWorkItemAttempt.get(workItemId, attemptNo, resultKey) as unknown as ProjectResultRow | undefined
+    },
     listByProject(projectId: string): ProjectResultRow[] {
       return selectByProject.all(projectId) as unknown as ProjectResultRow[]
+    },
+    submit(id: string, input: {
+      title: string
+      summary: string
+      method: string
+      dataWindowJson: string
+      sampleCount: number | null
+      confidence: number | null
+      validityScope: string
+      payloadJson: string
+      evidenceJson: string
+      changeSummary: string
+      openQuestions: string
+      status: string
+    }): void {
+      submitStmt.run(input.title, input.summary, input.method, input.dataWindowJson, input.sampleCount,
+        input.confidence, input.validityScope, input.payloadJson, input.evidenceJson,
+        input.changeSummary, input.openQuestions, input.status, id)
     },
     setStatus(id: string, status: string, meta: { reviewedBy?: string | null, reviewedAt?: string | null, approvedBy?: string | null, approvedAt?: string | null, rejectReason?: string | null } = {}): void {
       updateStatus.run(status, meta.reviewedBy ?? null, meta.reviewedAt ?? null, meta.approvedBy ?? null,
