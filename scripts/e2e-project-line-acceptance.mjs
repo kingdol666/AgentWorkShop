@@ -245,10 +245,37 @@ try {
   // 非 owner 隔离（首个 admin 已就位 → 自助注册关闭；由 admin 建用户后登录取 token）
   const bEmail = `pl-b-${TAG}@awshop.local`
   const bPassword = 'PlB#2026'
-  await api('POST', '/api/users', { name: `pl-b-${TAG}`, email: bEmail, password: bPassword, role: 'user' }, H())
+  const bUserResp0 = await api('POST', '/api/users', { name: `pl-b-${TAG}`, email: bEmail, password: bPassword, role: 'user' }, H())
+  const bUserId = bUserResp0.data?.id
   const bToken = (await api('POST', '/api/users/login', { email: bEmail, password: bPassword })).data?.token
   const bGet = await api('GET', `/api/workshop/projects/${project.id}`, undefined, bToken)
   ok('P12', '非 owner 读取 Project → 403', bGet.status === 403, `status=${bGet.status}`)
+  // PR10：leader 建频道提案（M5，proposal-only）
+  const propChan = await invokeAgentTool(project.leadAgentId, 'project_propose_channel', {
+    name: `质检频道-${TAG}`,
+    charter: '负责质量抽检与复核',
+  }, token)
+  const propChanBody = parseToolJson(propChan)
+  ok('P21a', 'project_leader 建频道提案（proposal only，不直建）',
+    propChan.status === 200 && propChan.data?.result?.isError !== true && propChanBody?.status === 'proposed' && Boolean(propChanBody?.proposalId),
+    `status=${propChan.status} text=${toolText(propChan).slice(0, 300)}`)
+  const chanApply = propChanBody?.proposalId
+    ? await api('POST', `/api/workshop/projects/${project.id}/proposals/${propChanBody.proposalId}/apply`, {}, H())
+    : null
+  ok('P21b', 'owner 应用建频道提案 → 频道创建并绑定',
+    chanApply?.status === 200 && Boolean(chanApply.data?.channelId),
+    `status=${chanApply?.status} body=${JSON.stringify(chanApply?.data ?? chanApply?.code).slice(0, 200)}`)
+  const chanList2 = await api('GET', `/api/workshop/projects/${project.id}/channels`, undefined, H())
+  ok('P21c', '提案频道出现在项目绑定列表',
+    (chanList2.data ?? []).some(c => c.channelId === chanApply?.data?.channelId),
+    `bound=${(chanList2.data ?? []).length} want=${chanApply?.data?.channelId}`)
+
+  // PR10：项目成员（viewer/approver 团队协作）—— B 用户已在上方创建（bUserId）
+  const memAdd = await api('POST', `/api/workshop/projects/${project.id}/members`, { userId: bUserId, role: 'viewer' }, H())
+  const bGet2 = await api('GET', `/api/workshop/projects/${project.id}`, undefined, bToken)
+  ok('P22a', 'owner 添加 B 为 viewer → B 可读项目（成员面）',
+    memAdd.status === 200 && bGet2.status === 200 && bGet2.data?.id === project.id,
+    `add=${memAdd.status} get=${bGet2.status} userId=${bUserId}`)
   const bBind = await api('POST', `/api/workshop/projects/${project.id}/channels`, { channelId: member.channelId }, bToken)
   ok('P12b', '非 owner 绑定 Channel → 403', bBind.status === 403, `status=${bBind.status}`)
   const bLine = await api('POST', '/api/workshop/channels', { name: `B越权线频道-${TAG}`, lineId: line, leadAgent: { name: 'B Lead', harness: 'mock' } }, bToken)
@@ -288,6 +315,13 @@ try {
   ok('P13c2', 'channel lead read_results 可见本频道 draft',
     Array.isArray(leadResultsBody) && leadResultsBody.some(r => r.id === draft.id && r.status === 'draft'),
     `text=${toolText(leadResults).slice(0, 300)}`)
+
+  // PR10：viewer 成果按 line grant 过滤（B 无产线授权 → 空；owner(admin) 全量）
+  const bResultsView = await api('GET', `/api/workshop/projects/${project.id}/results`, undefined, bToken)
+  const ownerResultsView = await api('GET', `/api/workshop/projects/${project.id}/results`, undefined, H())
+  ok('P22b', 'viewer 成果按 line grant 过滤（无授权=空，owner 可见）',
+    bResultsView.status === 200 && (bResultsView.data ?? []).length === 0 && (ownerResultsView.data ?? []).length >= 1,
+    `viewerRows=${(bResultsView.data ?? []).length} ownerRows=${(ownerResultsView.data ?? []).length}`)
 
   const submitted = await invokeAgentTool(member.leadAgentId, 'project_submit_result', {
     result_id: draft.id,
@@ -349,13 +383,15 @@ try {
     planReq.status === 200 && planReq.data?.id === proposedPlan?.approvalId,
     `planReq=${planReq.status} id=${planReq.data?.id} proposed=${proposedPlan?.approvalId}`)
   const planAp = planReq.data
-  const planDec = planAp ? await api('POST', `/api/workshop/projects/${project.id}/approvals/${planAp.id}/decide`, { approve: true, reason: '计划可执行' }, H()) : null
+  // PR10：B 升级为 approver 并代 owner 决策计划审批（团队协作决策权）
+  const memUp = await api('POST', `/api/workshop/projects/${project.id}/members`, { userId: bUserId, role: 'approver' }, H())
+  const planDec = planAp ? await api('POST', `/api/workshop/projects/${project.id}/approvals/${planAp.id}/decide`, { approve: true, reason: 'approver 成员批准' }, bToken) : null
   const afterPlan = await api('GET', `/api/workshop/projects/${project.id}`, undefined, H())
   const afterPlanDeliverables = await api('GET', `/api/workshop/projects/${project.id}/deliverables`, undefined, H())
-  ok('P14e3', 'plan_approval 批准 → planVersion=1 + leader 交付物物化',
-    planDec?.status === 200 && afterPlan.data?.planVersion === 1
+  ok('P14e3', 'approver 成员批准 plan → planVersion=1 + leader 交付物物化',
+    memUp.status === 200 && planDec?.status === 200 && planDec.data?.status === 'approved' && afterPlan.data?.planVersion === 1
     && (afterPlanDeliverables.data ?? []).some(d => d.name === leaderPlanName),
-    `planDec=${planDec?.status} version=${afterPlan.data?.planVersion} deliverables=${(afterPlanDeliverables.data ?? []).length}`)
+    `memUp=${memUp.status} planDec=${planDec?.status} version=${afterPlan.data?.planVersion} deliverables=${(afterPlanDeliverables.data ?? []).length}`)
 
   // PR8：write_intent 审批链（项目来源任务默认不可直写）
   const writeIntent = await invokeAgentTool(member.leadAgentId, 'project_request_write_intent', {

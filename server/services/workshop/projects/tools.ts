@@ -133,6 +133,19 @@ export async function dispatchProjectTool(
         })
       }
 
+      case 'project_propose_channel': {
+        const decision = svc.agentProposeChannel(identity.agentId, {
+          name: asString(args.name),
+          charter: asString(args.charter),
+        })
+        return out({
+          ok: true,
+          proposalId: decision.id,
+          status: decision.state,
+          next: 'owner 在项目页应用提案后创建并绑定成员频道（leader 不能自建/删除频道）',
+        })
+      }
+
       case 'project_propose_dispatch': {
         const decision = svc.agentProposeDispatch(identity.agentId, {
           deliverableId: asString(args.deliverable_id ?? args.deliverableId),

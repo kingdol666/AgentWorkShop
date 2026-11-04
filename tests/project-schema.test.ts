@@ -49,7 +49,7 @@ test('project schema: 9 张表与新列存在', () => {
   const { db } = fixture()
   try {
     const tables = (db.prepare('SELECT name FROM sqlite_master WHERE type=\'table\'').all() as Array<{ name: string }>).map(r => r.name)
-    for (const t of ['projects', 'project_channels', 'project_deliverables', 'project_work_items',
+    for (const t of ['projects', 'project_channels', 'project_members', 'project_deliverables', 'project_work_items',
       'project_work_item_attempts', 'project_results', 'project_decisions', 'project_events', 'project_approvals']) {
       assert.ok(tables.includes(t), `missing table ${t}`)
     }

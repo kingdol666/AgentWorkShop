@@ -1265,6 +1265,16 @@ CREATE TABLE IF NOT EXISTS project_channels (
 CREATE UNIQUE INDEX IF NOT EXISTS uq_project_channels_active
   ON project_channels(channel_id) WHERE status='active';
 
+-- PR10 团队协作（V1.1 提前）：项目成员 viewer/approver（owner-only 写；approver 可代 owner 决策审批）
+CREATE TABLE IF NOT EXISTS project_members (
+  project_id        TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  user_id           TEXT NOT NULL,
+  role              TEXT NOT NULL DEFAULT 'viewer', -- viewer|approver
+  added_by          TEXT NOT NULL,
+  added_at          TEXT NOT NULL,
+  PRIMARY KEY (project_id, user_id)
+);
+
 CREATE TABLE IF NOT EXISTS project_deliverables (
   id                       TEXT PRIMARY KEY,
   project_id               TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
