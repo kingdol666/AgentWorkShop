@@ -184,6 +184,14 @@ async function decide(approval: ApprovalDto, approve: boolean): Promise<void> {
   })
 }
 
+/** owner 应用 project leader 的派发提案（decision.state='proposed'）。 */
+async function applyProposal(decision: DecisionDto): Promise<void> {
+  await run(async () => {
+    await http.post(`/workshop/projects/${id}/proposals/${decision.id}/apply`, {})
+    await load()
+  })
+}
+
 onMounted(load)
 </script>
 
@@ -200,6 +208,9 @@ onMounted(load)
         <h1>{{ project?.name ?? '项目' }}</h1>
         <p class="sub">
           {{ project?.objective }}
+        </p>
+        <p class="sub">
+          plan v{{ project?.planVersion ?? 0 }} · 待审批 {{ pendingApprovals.length }} 项 · leader {{ project?.leadAgentId ?? '-' }}
         </p>
       </div>
       <div class="actions">
@@ -549,6 +560,14 @@ onMounted(load)
           >
             <span>#{{ d.seq }} {{ d.decisionType }}</span>
             <span class="badge">{{ d.state }}</span>
+            <button
+              v-if="d.decisionType === 'dispatch.proposed' && d.state === 'proposed'"
+              class="btn small green"
+              :disabled="loading"
+              @click="applyProposal(d)"
+            >
+              应用提案
+            </button>
             <code>{{ d.traceId }}</code>
           </li>
         </ul>

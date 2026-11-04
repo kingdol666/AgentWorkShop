@@ -13,6 +13,7 @@ import type {
 } from './agent-interface'
 import { renderPrompt } from '../prompts/loader'
 import { buildIndustrialContext, industrialLoopGuide } from './industrial-context'
+import { projectPromptSection } from '../projects/prompt-context'
 
 /** 工具参数预览(Codex 式紧凑工具行):`name(path)` / `name(a=1, b=2)` */
 export function toolArgsPreview(args: unknown): string {
@@ -87,6 +88,12 @@ export function contextPrefix(opts: {
       `## Your Profile (agent-specific)\n${identity}`,
       ``,
     )
+  }
+  // Project 层上下文（leader 提案职责 / member 成果与 write_intent 契约）。
+  // 仅项目成员命中；非项目 Agent 返回空串，既有 prompt 组装零变化。
+  const projectSection = projectPromptSection(opts.agentId)
+  if (projectSection) {
+    parts.push(projectSection, ``)
   }
   // 工业工况简报(实时):本 Agent 绑定节点所在的产线运行状态/活动配方窗口/关联设备
   // 孪生遥测 —— 让 Agent 每次回合开头就知道自己在哪条产线、生产什么、窗口多少、

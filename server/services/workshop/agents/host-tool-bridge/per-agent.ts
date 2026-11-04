@@ -16,6 +16,18 @@ import { getDcwController } from '../../dcw/dcw-controller'
 import { listBindingsForAgent } from '../../optimization/binding.service'
 import { foldList as foldListImpl, sortedById } from './description-budget'
 import { promptLocaleOf, tr, type PromptLocale } from '../prompt-i18n'
+import { getProjectService } from '../../projects/service'
+import { filterLeaderToolSurface, filterProjectToolSurface, type ProjectToolMode } from '../../projects/tool-surface'
+
+function projectToolModeOfAgent(agentId: string): ProjectToolMode {
+  try {
+    return getProjectService().agentToolMode(agentId)
+  }
+  catch {
+    // 单测/启动早期 ProjectService 未装配：非项目面（project 工具全部不注入）。
+    return 'none'
+  }
+}
 
 /** 需要追加“可见资源”描述的工具族 */
 const DAQ_TOOLS = new Set(['daq_query', 'daq_frames', 'daq_export'])
@@ -111,12 +123,18 @@ const foldList = (prefix: string, items: string[]): string => foldListImpl(prefi
 export function hostToolsForAgent(agentId: string, role: 'lead' | 'worker', channelId?: string, localeInput?: PromptLocale) {
   const locale = localeInput ?? promptLocaleOf(agentId, channelId)
   const tools = hostToolsForRole(role, channelId, locale)
+  // Project 层（PR8）：leader 走项目工具白名单；成员按 channel lead/worker 裁剪；
+  // 非项目 Channel 的 project 工具为 0。执行层 dispatch 同源再判一次。
+  const projectMode = projectToolModeOfAgent(agentId)
+  const scoped = projectMode === 'leader'
+    ? filterLeaderToolSurface(tools)
+    : filterProjectToolSurface(tools, projectMode)
   // G4.3 #10:无有效绑定时移除 solve/status/cancel/plan_get(保留 capabilities 作解释入口);
   // 多绑定时在描述中列出 bindingId(solve 需显式选择)。过滤不改变返回类型。
   const bindings = listOptimizerBindings(agentId)
   const filtered = bindings.length
-    ? tools
-    : tools.filter(t => !OPTIMIZER_REQUIRES_BINDING.has(t.name))
+    ? scoped
+    : scoped.filter(t => !OPTIMIZER_REQUIRES_BINDING.has(t.name))
   const optimizerLine = bindings.length
     ? `${tr(locale, '\n\n本 Agent 的优化器绑定:', '\n\nOptimizer bindings of this agent:')}${bindings.map(b => `${b.id}(profile ${b.profileVersion},${b.mode};${tr(locale, '能力:', 'capabilities:')}${b.capabilities.join('/')})`).join('; ')}${bindings.length > 1 ? tr(locale, '\n多绑定:调用 optimizer_solve 必须显式传 binding_id。', '\nMultiple bindings: optimizer_solve requires an explicit binding_id.') : ''}`
     : ''

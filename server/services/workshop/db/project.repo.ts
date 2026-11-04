@@ -666,7 +666,17 @@ export function createProjectDecisionRepo(db: DatabaseSync) {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   const selectByProject = db.prepare(`SELECT ${DECISION_COLS} FROM project_decisions WHERE project_id = ? ORDER BY seq ASC`)
+  const selectByDecisionId = db.prepare(`SELECT ${DECISION_COLS} FROM project_decisions WHERE project_id = ? AND id = ?`)
+  const markAppliedStmt = db.prepare(`UPDATE project_decisions SET state = ?, outcome = ?, reason = ? WHERE id = ? AND state = 'proposed'`)
   return {
+    findById(projectId: string, id: string): ProjectDecisionRow | undefined {
+      return selectByDecisionId.get(projectId, id) as unknown as ProjectDecisionRow | undefined
+    },
+    /** 提案 → 已应用（仅 proposed 可迁移，CAS 防重复应用）。 */
+    markApplied(id: string, outcome: string, reason = ''): boolean {
+      const result = markAppliedStmt.run('applied', outcome, reason, id)
+      return Number(result.changes ?? 0) > 0
+    },
     append(input: {
       projectId: string
       source: string

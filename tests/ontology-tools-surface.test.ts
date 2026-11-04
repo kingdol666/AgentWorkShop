@@ -14,13 +14,13 @@ const EXPECTED = [
   'ontology_publish_propose', 'ontology_version_compare',
 ]
 
-test('host-tools.json 含 10 条本体工具(全名唯一)且总数为 108', () => {
+test('host-tools.json 含 10 条本体工具(全名唯一)且总数为 120', () => {
   const names = TOOLS.map(t => String(t.name))
   for (const name of EXPECTED) assert.ok(names.includes(name), `缺少工具 ${name}`)
   assert.equal(new Set(names).size, names.length, '工具名必须唯一')
   assert.deepEqual(names.filter(n => n.startsWith('ontology_')).sort(), [...EXPECTED].sort(), '本体工具集合必须精确等于预期')
-  // 108 = 107 + mes_bridge(2026-11-03 H1 MES 历史→TSDB 桥;107 = 105 + daq_identifiability/intervention_history)
-  assert.equal(TOOLS.length, 108, '宿主工具总数应为 108')
+  // 120 = 108 + 12 条 Project 工具(2026-11-04 PR8：leader 提案/成员成果/write_intent)
+  assert.equal(TOOLS.length, 120, '宿主工具总数应为 120')
   assert.ok(names.includes('supersede_task'), '缺少 supersede_task(分支替代)')
   assert.ok(names.includes('mes_bridge'), '缺少 mes_bridge(MES 历史桥接)')
 })
