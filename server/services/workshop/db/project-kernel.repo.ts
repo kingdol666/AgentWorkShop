@@ -150,7 +150,7 @@ export function createProjectKernelRepo(db: DatabaseSync) {
       },
       list(projectId: string, limit = 20) {
         return db.prepare(`SELECT ${PLANV_COLS} FROM project_plan_versions WHERE project_id = ? ORDER BY version DESC LIMIT ?`)
-          .all(projectId, Math.max(1, Math.min(100, limit))) as PlanVersionRow[]
+          .all(projectId, Math.max(1, Math.min(100, limit))) as unknown as PlanVersionRow[]
       },
       markApproved(projectId: string, version: number, approvedBy: string): boolean {
         return db.prepare(`UPDATE project_plan_versions SET status='approved', approved_by=?, approved_at=? WHERE project_id=? AND version=? AND status='draft'`)
@@ -191,7 +191,7 @@ export function createProjectKernelRepo(db: DatabaseSync) {
       due(nowIso: string, limit = 20): ProjectEffectRow[] {
         return db.prepare(
           `SELECT ${EFFECT_COLS} FROM project_effects WHERE status = 'pending' AND (next_retry_at IS NULL OR next_retry_at <= ?) ORDER BY created_at ASC LIMIT ?`,
-        ).all(nowIso, limit) as ProjectEffectRow[]
+        ).all(nowIso, limit) as unknown as ProjectEffectRow[]
       },
       claim(id: string): boolean {
         return db.prepare(`UPDATE project_effects SET status='running', attempts = attempts + 1, updated_at = ? WHERE id = ? AND status = 'pending'`)
@@ -225,7 +225,7 @@ export function createProjectKernelRepo(db: DatabaseSync) {
       listByStatus(projectId: string, statuses: string[], limit = 100): ProjectEffectRow[] {
         const ph = statuses.map(() => '?').join(',')
         return db.prepare(`SELECT ${EFFECT_COLS} FROM project_effects WHERE project_id = ? AND status IN (${ph}) ORDER BY created_at ASC LIMIT ?`)
-          .all(projectId, ...statuses, limit) as ProjectEffectRow[]
+          .all(projectId, ...statuses, limit) as unknown as ProjectEffectRow[]
       },
       countByStatus(projectId: string): Record<string, number> {
         const rows = db.prepare('SELECT status, COUNT(*) AS n FROM project_effects WHERE project_id = ? GROUP BY status').all(projectId) as Array<{ status: string, n: number }>
@@ -253,7 +253,7 @@ export function createProjectKernelRepo(db: DatabaseSync) {
         return db.prepare(`SELECT ${HEALTH_COLS} FROM project_health WHERE project_id = ? AND component = ?`).get(projectId, component) as ProjectHealthRow | undefined
       },
       list(projectId: string) {
-        return db.prepare(`SELECT ${HEALTH_COLS} FROM project_health WHERE project_id = ? ORDER BY component ASC`).all(projectId) as ProjectHealthRow[]
+        return db.prepare(`SELECT ${HEALTH_COLS} FROM project_health WHERE project_id = ? ORDER BY component ASC`).all(projectId) as unknown as ProjectHealthRow[]
       },
       /** Watchdog dead-man：启动时把上次运行遗留的非 ok 行标记 stale。 */
       markAllStale(projectId: string): void {
