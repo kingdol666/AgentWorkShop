@@ -835,3 +835,49 @@ export function createProjectApprovalRepo(db: DatabaseSync) {
     },
   }
 }
+
+// ===== PR10：项目成员（viewer/approver）=====
+export interface ProjectMemberRow {
+  projectId: string
+  userId: string
+  role: string
+  addedBy: string
+  addedAt: string
+}
+
+export type ProjectMemberRepo = ReturnType<typeof createProjectMemberRepo>
+export function createProjectMemberRepo(db: DatabaseSync) {
+  const insert = db.prepare(
+    `INSERT INTO project_members (project_id, user_id, role, added_by, added_at)
+     VALUES (?, ?, ?, ?, ?)`,
+  )
+  const selectByProject = db.prepare(`SELECT project_id AS projectId, user_id AS userId, role, added_by AS addedBy, added_at AS addedAt FROM project_members WHERE project_id = ? ORDER BY added_at ASC`)
+  const selectOne = db.prepare(`SELECT project_id AS projectId, user_id AS userId, role, added_by AS addedBy, added_at AS addedAt FROM project_members WHERE project_id = ? AND user_id = ?`)
+  const updateRole = db.prepare(`UPDATE project_members SET role = ? WHERE project_id = ? AND user_id = ?`)
+  const removeStmt = db.prepare(`DELETE FROM project_members WHERE project_id = ? AND user_id = ?`)
+  return {
+    add(input: { projectId: string, userId: string, role: string, addedBy: string }): ProjectMemberRow {
+      const row: ProjectMemberRow = {
+        projectId: input.projectId,
+        userId: input.userId,
+        role: input.role === 'approver' ? 'approver' : 'viewer',
+        addedBy: input.addedBy,
+        addedAt: now(),
+      }
+      insert.run(row.projectId, row.userId, row.role, row.addedBy, row.addedAt)
+      return row
+    },
+    listByProject(projectId: string): ProjectMemberRow[] {
+      return selectByProject.all(projectId) as unknown as ProjectMemberRow[]
+    },
+    findOne(projectId: string, userId: string): ProjectMemberRow | undefined {
+      return selectOne.get(projectId, userId) as unknown as ProjectMemberRow | undefined
+    },
+    setRole(projectId: string, userId: string, role: string): void {
+      updateRole.run(role === 'approver' ? 'approver' : 'viewer', projectId, userId)
+    },
+    remove(projectId: string, userId: string): void {
+      removeStmt.run(projectId, userId)
+    },
+  }
+}

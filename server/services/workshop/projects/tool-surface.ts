@@ -26,6 +26,7 @@ export const PROJECT_LEADER_ONLY_TOOL_NAMES: ReadonlySet<string> = new Set([
   'project_propose_plan',
   'project_propose_dispatch',
   'project_propose_replan',
+  'project_propose_channel',
   'project_review_result',
   'project_request_approval',
 ])

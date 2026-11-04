@@ -9,6 +9,7 @@
 
 - 把项目目标拆成交付物与工作项，用 `project_propose_plan` / `project_propose_replan` 提交计划提案（只写 proposal，不直接改项目）。
 - 需要新增单项任务时用 `project_propose_dispatch` 提案；owner 应用后才成为工作项。
+- 需要新成员频道承担职责时用 `project_propose_channel` 提案；owner 应用后由平台创建并绑定（你不能自建/删除频道）。
 - 用 `project_get_status` / `project_list_channels` / `project_read_*` 读取项目现状（先读后写）。
 - 用 `project_review_result` 复核 `submitted` 成果，只能给出 `reviewed` 或 `rejected`，不能批准。
 - 需要验收或项目完成时用 `project_request_approval` 发起审批；最终决定权在 owner。

@@ -10,7 +10,7 @@
 import type { DatabaseSync } from 'node:sqlite'
 import { createHash } from 'node:crypto'
 import type { AgentChannelManager } from '../runtime/manager'
-import type { ProjectApprovalRow, ProjectChannelRow, ProjectDeliverableRow, ProjectDecisionRow, ProjectEventRow, ProjectResultRow, ProjectRow, ProjectWorkItemRow } from '../db/project.repo'
+import type { ProjectApprovalRow, ProjectChannelRow, ProjectDeliverableRow, ProjectDecisionRow, ProjectEventRow, ProjectMemberRow, ProjectResultRow, ProjectRow, ProjectWorkItemRow } from '../db/project.repo'
 import {
   createProjectRepo,
   createProjectChannelRepo,
@@ -21,6 +21,7 @@ import {
   createProjectApprovalRepo,
   createProjectDecisionRepo,
   createProjectEventRepo,
+  createProjectMemberRepo,
 } from '../db/project.repo'
 import { createTaskRepo } from '../db/task.repo'
 import type { TaskRow } from '../db/database'
@@ -197,6 +198,7 @@ export class ProjectService {
   private readonly approvals
   private readonly decisions
   private readonly events
+  private readonly members
   private readonly tasks
 
   constructor(
@@ -213,6 +215,7 @@ export class ProjectService {
     this.approvals = createProjectApprovalRepo(db)
     this.decisions = createProjectDecisionRepo(db)
     this.events = createProjectEventRepo(db)
+    this.members = createProjectMemberRepo(db)
     this.tasks = createTaskRepo(db)
   }
 
@@ -223,8 +226,34 @@ export class ProjectService {
   get(id: string, actor: ProjectActor): ProjectRow {
     const p = this.projects.findById(id)
     if (!p) throw new AppError(404, 'NOT_FOUND', `Project 不存在: ${id}`)
-    this.requireOwner(p, actor)
+    this.requireRead(p, actor)
     return p
+  }
+
+  /** PR10 团队协作：成员（viewer/approver）可读项目；写操作仍要求 owner（requireOwner）。 */
+  listMembers(id: string, actor: ProjectActor): ProjectMemberRow[] {
+    this.get(id, actor)
+    return this.members.listByProject(id)
+  }
+
+  addMember(id: string, actor: ProjectActor, input: { userId: string, role?: string }): ProjectMemberRow {
+    const p = this.get(id, actor)
+    this.requireOwner(p, actor)
+    const userId = input.userId?.trim()
+    if (!userId) throw new AppError(400, 'BAD_REQUEST', 'userId 不能为空')
+    if (userId === p.ownerUserId) throw new AppError(409, 'MEMBER_CONFLICT', 'owner 已隐式具有全部权限，不能重复添加')
+    const existing = this.members.findOne(id, userId)
+    if (existing) {
+      if (input.role && existing.role !== input.role) this.members.setRole(id, userId, input.role)
+      return this.members.findOne(id, userId)!
+    }
+    return this.members.add({ projectId: id, userId, role: input.role ?? 'viewer', addedBy: actor.id })
+  }
+
+  removeMember(id: string, userId: string, actor: ProjectActor): void {
+    const p = this.get(id, actor)
+    this.requireOwner(p, actor)
+    this.members.remove(id, userId)
   }
 
   async create(input: CreateProjectInput, actor: ProjectActor): Promise<ProjectRow> {
@@ -281,6 +310,7 @@ export class ProjectService {
 
   activate(id: string, actor: ProjectActor): ProjectRow {
     const p = this.get(id, actor)
+    this.requireOwner(p, actor)
     if (p.status === 'active') return p
     if (p.status !== 'draft' && p.status !== 'paused') {
       throw new AppError(409, 'PROJECT_STATE_INVALID', `Project 状态 ${p.status} 不能激活`)
@@ -305,18 +335,21 @@ export class ProjectService {
 
   pause(id: string, actor: ProjectActor): ProjectRow {
     const p = this.get(id, actor)
+    this.requireOwner(p, actor)
     if (p.status !== 'active') throw new AppError(409, 'PROJECT_STATE_INVALID', `Project 状态 ${p.status} 不能暂停`)
     return this.projects.update(id, { status: 'paused' })!
   }
 
   resume(id: string, actor: ProjectActor): ProjectRow {
     const p = this.get(id, actor)
+    this.requireOwner(p, actor)
     if (p.status !== 'paused') throw new AppError(409, 'PROJECT_STATE_INVALID', `Project 状态 ${p.status} 不能恢复`)
     return this.projects.update(id, { status: 'active' })!
   }
 
   archive(id: string, actor: ProjectActor): ProjectRow {
     const p = this.get(id, actor)
+    this.requireOwner(p, actor)
     if (p.status === 'archived') return p
     // V1：只允许从非 active 状态归档；active 先 pause/complete。
     if (p.status === 'active') throw new AppError(409, 'PROJECT_STATE_INVALID', 'active 项目先暂停或完成再归档')
@@ -346,6 +379,7 @@ export class ProjectService {
     dependsOn?: string[]
   }): ProjectDeliverableRow {
     const p = this.get(id, actor)
+    this.requireOwner(p, actor)
     if (p.status === 'archived' || p.status === 'completed') {
       throw new AppError(409, 'PROJECT_STATE_INVALID', `Project 状态 ${p.status} 不能新增交付物`)
     }
@@ -386,6 +420,7 @@ export class ProjectService {
     dedupeKey?: string
   }): ProjectWorkItemRow {
     const p = this.get(id, actor)
+    this.requireOwner(p, actor)
     if (p.status === 'archived' || p.status === 'completed') {
       throw new AppError(409, 'PROJECT_STATE_INVALID', `Project 状态 ${p.status} 不能新增工作项`)
     }
@@ -420,6 +455,7 @@ export class ProjectService {
    */
   async dispatchWorkItem(id: string, workItemId: string, actor: ProjectActor): Promise<ProjectWorkItemRow> {
     const p = this.get(id, actor)
+    this.requireOwner(p, actor)
     if (p.status !== 'active') throw new AppError(409, 'PROJECT_NOT_ACTIVE', `Project 状态 ${p.status} 不能派发`)
     const wi = this.workItems.findById(workItemId)
     if (!wi || wi.projectId !== id) throw new AppError(404, 'NOT_FOUND', '工作项不存在或不属于该项目')
@@ -663,6 +699,8 @@ export class ProjectService {
     if (!['draft', 'rejected'].includes(result.status)) {
       throw new AppError(409, 'RESULT_STATE_INVALID', `成果状态 ${result.status} 不能提交`)
     }
+    const p = this.projects.findById(id)!
+    this.requireOwner(p, actor)
     // B8：状态迁移 + 审计同事务，审计失败整体回滚。
     let updated!: ProjectResultRow
     withTransaction(this.db, () => {
@@ -711,6 +749,7 @@ export class ProjectService {
 
   requestProjectComplete(id: string, actor: ProjectActor): ProjectApprovalRow {
     this.get(id, actor)
+    this.requireOwner(this.projects.findById(id)!, actor)
     this.assertCompletionGates(id)
     const deliverables = this.deliverables.listByProject(id).filter(d => d.required === 1)
     const items = this.workItems.listByProject(id)
@@ -734,6 +773,7 @@ export class ProjectService {
 
   requestPlanApproval(id: string, actor: ProjectActor, input: { version: number, plan: Record<string, unknown> }): ProjectApprovalRow {
     const p = this.get(id, actor)
+    this.requireOwner(p, actor)
     if (!Number.isInteger(input.version) || input.version <= 0) throw new AppError(400, 'BAD_REQUEST', 'plan version 必须为正整数')
     if (input.version <= p.planVersion) throw new AppError(409, 'PLAN_VERSION_STALE', `plan version ${input.version} <= 当前 ${p.planVersion}`)
     const subjectId = `plan:${id}:${input.version}`
@@ -758,6 +798,7 @@ export class ProjectService {
 
   requestAcceptance(id: string, resultId: string, actor: ProjectActor): ProjectApprovalRow {
     const p = this.get(id, actor)
+    this.requireOwner(p, actor)
     const result = this.assertAcceptanceGates(id, resultId)
     this.assertResultLineVisible(result, actor)
     const pending = this.approvals.listPending(id).find(a => a.kind === 'deliverable_acceptance' && a.subjectId === resultId)
@@ -781,6 +822,7 @@ export class ProjectService {
 
   decideApproval(id: string, approvalId: string, actor: ProjectActor, approve: boolean, reason = ''): ProjectApprovalRow {
     const p = this.get(id, actor)
+    this.requireDecider(p, actor)
     const approval = this.approvals.findById(approvalId)
     if (!approval || approval.projectId !== id) throw new AppError(404, 'NOT_FOUND', '审批不存在或不属于该项目')
     if (approval.status !== 'pending') throw new AppError(409, 'APPROVAL_STATE_INVALID', `审批状态 ${approval.status} 不能决策`)
@@ -838,6 +880,7 @@ export class ProjectService {
 
   supersedeResult(id: string, resultId: string, actor: ProjectActor, reason = ''): ProjectResultRow {
     this.get(id, actor)
+    this.requireOwner(this.projects.findById(id)!, actor)
     const result = this.results.findById(resultId)
     if (!result || result.projectId !== id) throw new AppError(404, 'NOT_FOUND', '成果不存在或不属于该项目')
     this.assertResultLineVisible(result, actor)
@@ -1302,11 +1345,49 @@ export class ProjectService {
    * Owner 应用 leader 提案（dispatch.proposed）。
    * CAS：decision.state='proposed' → applied；工作项创建与状态迁移同事务失败回滚。
    */
-  async applyProposal(projectId: string, decisionId: string, actor: ProjectActor): Promise<{ workItem?: ProjectWorkItemRow, dispatched: boolean }> {
+  async applyProposal(projectId: string, decisionId: string, actor: ProjectActor): Promise<{ workItem?: ProjectWorkItemRow, dispatched: boolean, channelId?: string }> {
     const p = this.get(projectId, actor)
+    this.requireOwner(p, actor)
     const decision = this.decisions.findById(projectId, decisionId)
     if (!decision) throw new AppError(404, 'NOT_FOUND', '提案不存在或不属于该项目')
     if (decision.state !== 'proposed') throw new AppError(409, 'PROPOSAL_STATE_INVALID', `提案状态 ${decision.state} 不能应用`)
+    // M5：channel.proposed —— owner 应用后创建成员频道并绑定（leader 只能提案）。
+    if (decision.decisionType === 'channel.proposed') {
+      const args = parseJson<Record<string, unknown>>(decision.argsJson, {})
+      const name = String(args.name ?? '').trim()
+      if (!name) throw new AppError(400, 'BAD_REQUEST', '提案缺频道名')
+      this.assertChannelNameAvailable(p, name)
+      if (!this.decisions.markApplied(decisionId, 'applied', 'owner applied channel proposal')) {
+        throw new AppError(409, 'PROPOSAL_STATE_INVALID', '提案已被处理')
+      }
+      const config = parseJson<Record<string, unknown>>(p.configJson, {})
+      try {
+        const created = await this.manager.createChannel({
+          name,
+          description: `Project channel (leader proposal ${decisionId})`,
+          scenarioPrompt: String(args.charter ?? ''),
+          ownerUserId: p.ownerUserId,
+          actor,
+          leadAgent: {
+            name: `${name}·Lead`,
+            harness: typeof config.leaderHarness === 'string' ? config.leaderHarness : 'mock',
+          },
+        })
+        this.bindChannel(projectId, created.channelId, actor, String(args.charter ?? ''))
+        this.record(projectId, 'proposal.applied', actor, { decisionId, channelId: created.channelId }, decision.traceId, 'proposal.applied', `proposal:${decisionId}:applied`, { decisionId, channelId: created.channelId })
+        return { channelId: created.channelId, dispatched: false }
+      }
+      catch (err) {
+        this.events.append({
+          projectId,
+          type: 'channel.apply_failed',
+          eventKey: `proposal:${decisionId}:channel_failed:${Date.now()}`,
+          payloadJson: JSON.stringify({ decisionId, error: err instanceof Error ? err.message : String(err) }),
+          traceId: decision.traceId,
+        })
+        throw err
+      }
+    }
     if (decision.decisionType !== 'dispatch.proposed') {
       throw new AppError(409, 'PROPOSAL_NOT_APPLICABLE', `提案类型 ${decision.decisionType} 不支持直接应用`)
     }
@@ -1345,6 +1426,36 @@ export class ProjectService {
       dispatched = true
     }
     return { workItem: this.workItems.findById(workItem.id), dispatched }
+  }
+
+  /** Leader 建频道提案（M5）：只写 proposed decision；owner 应用后由服务层创建并绑定。 */
+  agentProposeChannel(agentId: string, input: { name: string, charter?: string }): ProjectDecisionRow {
+    const ctx = this.requireAgentContext(agentId, 'leader')
+    this.assertLeaderProjectMutable(ctx.project)
+    const name = input.name?.trim()
+    if (!name) throw new AppError(400, 'BAD_REQUEST', '频道名不能为空')
+    this.assertChannelNameAvailable(ctx.project, name)
+    const args = { name, charter: input.charter ?? '', proposedBy: agentId }
+    const argsJson = JSON.stringify(args)
+    return this.decisions.append({
+      projectId: ctx.project.id,
+      source: 'leader',
+      decisionType: 'channel.proposed',
+      actorAgentId: agentId,
+      argsJson,
+      argsSha256: createHash('sha256').update(argsJson).digest('hex'),
+      state: 'proposed',
+      outcome: 'pending',
+      traceId: `proposal:channel:${name}`,
+    })
+  }
+
+  /** 频道名唯一性（提案/应用两端口径一致）：不得与成员频道或办公室频道重名。 */
+  private assertChannelNameAvailable(p: ProjectRow, name: string): void {
+    const taken = new Set(this.listBoundChannels(p).map(c => c.name))
+    const office = p.officeChannelId ? this.manager.getChannelForUser(p.officeChannelId, p.ownerUserId) : null
+    if (office) taken.add(office.name)
+    if (taken.has(name)) throw new AppError(409, 'CHANNEL_NAME_EXISTS', `频道名已存在: ${name}`)
   }
 
   /**
@@ -1636,6 +1747,7 @@ export class ProjectService {
 
   bindChannel(id: string, channelId: string, actor: ProjectActor, charter = ''): ProjectChannelRow {
     const p = this.get(id, actor)
+    this.requireOwner(p, actor)
     if (p.officeChannelId === channelId) throw new AppError(400, 'PROJECT_OFFICE_NOT_MEMBER', '项目办公室不能作为成员 Channel')
     const channel = this.manager.getChannelForUser(channelId, actor.id)
     if (!channel) throw new AppError(404, 'NOT_FOUND', `Channel 不存在: ${channelId}`)
@@ -1658,6 +1770,7 @@ export class ProjectService {
 
   unbindChannel(id: string, channelId: string, actor: ProjectActor): void {
     const p = this.get(id, actor)
+    this.requireOwner(p, actor)
     if (p.officeChannelId === channelId) throw new AppError(400, 'PROJECT_OFFICE_NOT_MEMBER', '不能解绑项目办公室')
     const b = this.bindings.findOne(id, channelId)
     if (!b || b.status !== 'active') throw new AppError(404, 'NOT_FOUND', 'Channel 未绑定到该项目')
@@ -1681,6 +1794,23 @@ export class ProjectService {
   private requireOwner(p: ProjectRow, actor: ProjectActor): void {
     if (actor.role === 'admin') return
     if (p.ownerUserId !== actor.id) throw new AppError(403, 'FORBIDDEN', '仅项目 owner/admin 可操作')
+  }
+
+  /** PR10：读可见面 = owner/admin/项目成员（viewer/approver 均可读）。 */
+  private requireRead(p: ProjectRow, actor: ProjectActor): void {
+    if (actor.role === 'admin') return
+    if (p.ownerUserId === actor.id) return
+    if (this.members.findOne(p.id, actor.id)) return
+    throw new AppError(403, 'FORBIDDEN', '仅项目 owner/admin/成员可访问')
+  }
+
+  /** PR10：审批决策权 = owner/admin 或成员中的 approver（viewer 不可决策）。 */
+  private requireDecider(p: ProjectRow, actor: ProjectActor): void {
+    if (actor.role === 'admin') return
+    if (p.ownerUserId === actor.id) return
+    const m = this.members.findOne(p.id, actor.id)
+    if (m && m.role === 'approver') return
+    throw new AppError(403, 'FORBIDDEN', '仅项目 owner/admin/approver 可决策审批')
   }
 }
 

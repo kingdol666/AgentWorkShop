@@ -4432,5 +4432,20 @@
     },
     "noRefs": true,
     "riskClass": "read"
+  },
+  {
+    "name": "project_propose_channel",
+    "label": "Project Propose Channel",
+    "description": "(Project leader only) 提出新建成员频道提案：只写 proposed decision，owner 应用后才由平台创建频道并绑定项目（用户绑定的频道不可删除/解绑）。频道名不得与现有成员频道或办公室重名。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "description": "新频道名称（项目内唯一）" },
+        "charter": { "type": "string", "description": "频道职责/章程（成为频道场景提示词）" }
+      },
+      "required": ["name"]
+    },
+    "noRefs": true,
+    "riskClass": "read"
   }
 ]
