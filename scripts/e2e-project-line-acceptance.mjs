@@ -79,6 +79,24 @@ async function api(method, path, body, token, timeoutMs = 120_000) {
   return { status: res.status, ...json }
 }
 
+/** owner 用户路径调用 Agent 工具（/agent-tools/invoke 会校验 agent 所属频道归属）。 */
+function invokeAgentTool(agentId, tool, args, token) {
+  return api('POST', '/api/workshop/agent-tools/invoke', { agentId, tool, args }, token)
+}
+
+function toolText(resp) {
+  return String(resp?.data?.result?.text ?? '')
+}
+
+function parseToolJson(resp) {
+  try {
+    return JSON.parse(toolText(resp))
+  }
+  catch {
+    return null
+  }
+}
+
 function finish() {
   try {
     child.kill()
@@ -157,6 +175,17 @@ try {
   const officeLeader = (office?.agents ?? []).find(a => a.id === project.leadAgentId)
   ok('P4b', '办公室频道存在且 leader agent_kind=project_leader', officeLeader?.agentKind === 'project_leader' && office?.chatEnabled === 1, JSON.stringify({ agentKind: officeLeader?.agentKind, chatEnabled: office?.chatEnabled }))
 
+  // ── PR8：project_leader 工具面（只读 + 提案；执行层拒绝 Channel 工具）──
+  const leaderStatus = await invokeAgentTool(project.leadAgentId, 'project_get_status', {}, token)
+  const leaderStatusBody = parseToolJson(leaderStatus)
+  ok('P4c', 'project_leader get_status 返回本项目',
+    leaderStatus.status === 200 && leaderStatus.data?.result?.isError !== true && leaderStatusBody?.project?.id === project.id,
+    `status=${leaderStatus.status} text=${toolText(leaderStatus).slice(0, 300)}`)
+  const leaderDeny = await invokeAgentTool(project.leadAgentId, 'dispatch_task', { title: 'x', description: 'y' }, token)
+  ok('P4d', 'project_leader 执行层拒绝 dispatch_task',
+    leaderDeny.status === 200 && leaderDeny.data?.result?.isError === true && /PROJECT_TOOL_DENIED/.test(toolText(leaderDeny)),
+    `status=${leaderDeny.status} text=${toolText(leaderDeny).slice(0, 300)}`)
+
   // 绑定成员 Channel + 交付物 + 工作项
   const bind = await api('POST', `/api/workshop/projects/${project.id}/channels`, { channelId: member.channelId, charter: `对产线 ${line} 做基线/质量` }, H())
   ok('P5', '用户绑定成员 Channel', bind.status === 200 && bind.data?.status === 'active', `status=${bind.status}`)
@@ -166,6 +195,11 @@ try {
     acceptanceCriteria: ['覆盖产线/产品/配方', '数据窗口明确'],
   }, H())).data
   ok('P5b', '交付物创建', Boolean(deliverable?.id), JSON.stringify(deliverable))
+  const leaderChannels = await invokeAgentTool(project.leadAgentId, 'project_list_channels', {}, token)
+  const leaderChannelsBody = parseToolJson(leaderChannels)
+  ok('P5c', 'project_leader list_channels 返回已绑定成员频道',
+    Array.isArray(leaderChannelsBody) && leaderChannelsBody.some(c => c.channelId === member.channelId),
+    `text=${toolText(leaderChannels).slice(0, 300)}`)
   const workItem = (await api('POST', `/api/workshop/projects/${project.id}/work-items`, {
     deliverableId: deliverable.id,
     channelId: member.channelId,
@@ -249,12 +283,21 @@ try {
     results1.status === 200 && draft?.status === 'draft' && Array.isArray(draftEvidence) && draftEvidence.length > 0,
     `status=${results1.status} result=${draft?.status} evidence=${String(draft?.evidenceJson).slice(0, 300)}`)
 
-  const submitted = await api('POST', `/api/workshop/projects/${project.id}/results/${draft.id}/submit`, {
+  const leadResults = await invokeAgentTool(member.leadAgentId, 'project_read_results', {}, token)
+  const leadResultsBody = parseToolJson(leadResults)
+  ok('P13c2', 'channel lead read_results 可见本频道 draft',
+    Array.isArray(leadResultsBody) && leadResultsBody.some(r => r.id === draft.id && r.status === 'draft'),
+    `text=${toolText(leadResults).slice(0, 300)}`)
+
+  const submitted = await invokeAgentTool(member.leadAgentId, 'project_submit_result', {
+    result_id: draft.id,
     summary: '基线良率 97.9%，数据窗口完整',
     method: '按产线/产品/配方取数',
-    evidence: [{ artifactId: `art-${TAG}`, name: 'baseline.md' }],
-  }, H())
-  ok('P13d', '成果 submit（owner）', submitted.status === 200 && submitted.data?.status === 'submitted', `status=${submitted.status}`)
+  }, token)
+  const submittedBody = parseToolJson(submitted)
+  ok('P13d', '成果 submit（channel lead 工具）',
+    submitted.status === 200 && submitted.data?.result?.isError !== true && submittedBody?.result?.status === 'submitted',
+    `status=${submitted.status} text=${toolText(submitted).slice(0, 300)}`)
 
   const reviewed = await api('POST', `/api/workshop/projects/${project.id}/results/${draft.id}/review`, { decision: 'reviewed' }, H())
   ok('P13e', '成果 review（owner/leader）', reviewed.status === 200 && reviewed.data?.status === 'reviewed', `status=${reviewed.status}`)
@@ -286,14 +329,50 @@ try {
   const repeatDecide = await api('POST', `/api/workshop/projects/${project.id}/approvals/${approval.id}/decide`, { approve: true }, H())
   ok('P14d', '审批重复决策 → 409', repeatDecide.status === 409, `status=${repeatDecide.status} code=${repeatDecide.code}`)
 
+  const leaderPlanName = `Leader计划交付物-${TAG}`
+  const proposePlan = await invokeAgentTool(project.leadAgentId, 'project_propose_plan', {
+    plan: {
+      deliverables: [{ key: 'd-leader', name: leaderPlanName, required: false, channelId: member.channelId }],
+      work_items: [],
+    },
+  }, token)
+  const proposedPlan = parseToolJson(proposePlan)
+  ok('P14e1', 'project_leader 计划提案（proposal + plan_approval）',
+    proposePlan.status === 200 && proposePlan.data?.result?.isError !== true && Boolean(proposedPlan?.approvalId) && proposedPlan?.planVersion === 1,
+    `status=${proposePlan.status} text=${toolText(proposePlan).slice(0, 300)}`)
+
   const planReq = await api('POST', `/api/workshop/projects/${project.id}/plan/request-approval`, {
     version: 1,
     plan: { facts: [`产线 ${line} 已确认`], deliverables: [deliverable.id], workItems: [workItem.id] },
   }, H())
+  ok('P14e2', '同版本计划审批幂等（leader 提案复用同一 approval）',
+    planReq.status === 200 && planReq.data?.id === proposedPlan?.approvalId,
+    `planReq=${planReq.status} id=${planReq.data?.id} proposed=${proposedPlan?.approvalId}`)
   const planAp = planReq.data
   const planDec = planAp ? await api('POST', `/api/workshop/projects/${project.id}/approvals/${planAp.id}/decide`, { approve: true, reason: '计划可执行' }, H()) : null
   const afterPlan = await api('GET', `/api/workshop/projects/${project.id}`, undefined, H())
-  ok('P14e', 'plan_approval 批准 → planVersion=1', planDec?.status === 200 && afterPlan.data?.planVersion === 1, `planReq=${planReq.status} planDec=${planDec?.status} version=${afterPlan.data?.planVersion}`)
+  const afterPlanDeliverables = await api('GET', `/api/workshop/projects/${project.id}/deliverables`, undefined, H())
+  ok('P14e3', 'plan_approval 批准 → planVersion=1 + leader 交付物物化',
+    planDec?.status === 200 && afterPlan.data?.planVersion === 1
+    && (afterPlanDeliverables.data ?? []).some(d => d.name === leaderPlanName),
+    `planDec=${planDec?.status} version=${afterPlan.data?.planVersion} deliverables=${(afterPlanDeliverables.data ?? []).length}`)
+
+  // PR8：write_intent 审批链（项目来源任务默认不可直写）
+  const writeIntent = await invokeAgentTool(member.leadAgentId, 'project_request_write_intent', {
+    tool: 'recipe_update',
+    args: { nodeId: node, value: 121 },
+    reason: 'E2E 验证 write_intent',
+    task_id: root.id,
+  }, token)
+  const writeIntentBody = parseToolJson(writeIntent)
+  ok('P20a', 'channel lead 申请 write_intent（pending + args digest）',
+    writeIntent.status === 200 && writeIntent.data?.result?.isError !== true
+    && writeIntentBody?.status === 'pending' && String(writeIntentBody?.digest ?? '').length === 64,
+    `status=${writeIntent.status} text=${toolText(writeIntent).slice(0, 300)}`)
+  const writeIntentDec = writeIntentBody?.approvalId
+    ? await api('POST', `/api/workshop/projects/${project.id}/approvals/${writeIntentBody.approvalId}/decide`, { approve: true, reason: '参数与计划一致' }, H())
+    : null
+  ok('P20b', 'owner 批准 write_intent', writeIntentDec?.status === 200 && writeIntentDec.data?.status === 'approved', `status=${writeIntentDec?.status}`)
 
   const completeReq = await api('POST', `/api/workshop/projects/${project.id}/complete`, {}, H())
   const completeAp = completeReq.data

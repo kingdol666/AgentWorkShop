@@ -4250,5 +4250,187 @@
       ],
       "readableLineNodes": true
     }
+  },
+  {
+    "name": "project_get_status",
+    "label": "Project Get Status",
+    "description": "(Project leader only) 读取项目全景：目标/成功标准/状态/plan 版本/交付物/工作项/待审批。只读；用于提案前的先读后写。非项目总工调用会被执行层拒绝。",
+    "parameters": {
+      "type": "object",
+      "properties": {}
+    },
+    "noRefs": true,
+    "riskClass": "read"
+  },
+  {
+    "name": "project_list_channels",
+    "label": "Project List Channels",
+    "description": "(Project leader only) 列出项目绑定的成员 Channel（channelId/名称/启用状态/leadAgentId）。计划与派发提案必须使用这里返回的真实 channelId。",
+    "parameters": {
+      "type": "object",
+      "properties": {}
+    },
+    "noRefs": true,
+    "riskClass": "read"
+  },
+  {
+    "name": "project_read_deliverables",
+    "label": "Project Read Deliverables",
+    "description": "(Project leader / channel lead) 读取本项目交付物台账：名称、状态、是否必选、所属频道、验收标准。只读，不跨项目。",
+    "parameters": {
+      "type": "object",
+      "properties": {}
+    },
+    "noRefs": true,
+    "riskClass": "read"
+  },
+  {
+    "name": "project_read_results",
+    "label": "Project Read Results",
+    "description": "(Project 成员) 读取项目成果映射：project leader 全量（含 draft）；channel lead 本频道全状态+他频道 approved；worker 仅本频道 approved。项目外调用 403。",
+    "parameters": {
+      "type": "object",
+      "properties": {}
+    },
+    "noRefs": true,
+    "riskClass": "read"
+  },
+  {
+    "name": "project_read_work_items",
+    "label": "Project Read Work Items",
+    "description": "(Project leader / channel lead) 读取工作项：状态、目标频道、依赖、预算、plan 版本。leader 看全项目，channel lead 只看本频道。",
+    "parameters": {
+      "type": "object",
+      "properties": {}
+    },
+    "noRefs": true,
+    "riskClass": "read"
+  },
+  {
+    "name": "project_submit_result",
+    "label": "Project Submit Result",
+    "description": "(Channel lead only) 提交本频道工作项成果：绑定本频道/本工作项/本 attempt 的自动 draft，补 summary/method/data window/confidence/evidence。只能提交 draft/rejected；证据与大小有上限；不能跨频道或跨项目。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "result_id": { "type": "string", "description": "成果 id（缺省用当前 attempt 的 draft）" },
+        "task_id": { "type": "string", "description": "项目 root 任务 id（缺省取本 Agent 最近的项目任务）" },
+        "title": { "type": "string", "description": "成果标题" },
+        "summary": { "type": "string", "description": "结果摘要（<=8KB）" },
+        "method": { "type": "string", "description": "方法/数据窗口/参数" },
+        "data_window": { "type": "object", "description": "数据窗口 {from,to} 等" },
+        "sample_count": { "type": "number", "description": "样本数" },
+        "confidence": { "type": "number", "description": "置信度 0-1" },
+        "validity_scope": { "type": "string", "description": "有效范围/适用条件" },
+        "payload": { "type": "object", "description": "结构化结果（<=64KB）" },
+        "evidence": {
+          "type": "array",
+          "description": "证据数组（<=50 条，必须引用真实 task/artifact）",
+          "items": { "type": "object" }
+        },
+        "change_summary": { "type": "string", "description": "相对上一版的改动" },
+        "open_questions": { "type": "string", "description": "未决问题" }
+      }
+    },
+    "noRefs": true,
+    "riskClass": "read"
+  },
+  {
+    "name": "project_request_write_intent",
+    "label": "Project Request Write Intent",
+    "description": "(Channel lead only) 为项目来源任务申请高风险工业写的一次性 write_intent：绑定工作项/attempt/tool/args digest，owner 批准后执行器只放行完全一致的一次调用。重试或改参必须重新申请。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "tool": { "type": "string", "description": "要高危执行的工具名（dcw_control/recipe_update/line_start 等）" },
+        "args": { "type": "object", "description": "与真实调用完全一致的参数对象（参与 digest）" },
+        "reason": { "type": "string", "description": "写意图依据/理由" },
+        "task_id": { "type": "string", "description": "项目 root 任务 id（缺省取本 Agent 最近的项目任务）" }
+      },
+      "required": ["tool", "args"]
+    },
+    "noRefs": true,
+    "riskClass": "read"
+  },
+  {
+    "name": "project_propose_plan",
+    "label": "Project Propose Plan",
+    "description": "(Project leader only) 提交项目计划提案（只写 proposal + plan_approval，不直接改项目）。必须含非空 deliverables 与合法 work_items；owner 批准后 ProjectService 幂等物化交付物与工作项。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "plan": { "type": "object", "description": "计划对象：{deliverables:[...], work_items:[...]}（见 project-leader 提示词的 schema）" }
+      },
+      "required": ["plan"]
+    },
+    "noRefs": true,
+    "riskClass": "read"
+  },
+  {
+    "name": "project_propose_dispatch",
+    "label": "Project Propose Dispatch",
+    "description": "(Project leader only) 对既有交付物提出单项工作项派发提案（只写 proposed decision）。owner 应用后才创建/派发工作项；不能直接派发或绕过 plan 授权。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "deliverable_id": { "type": "string", "description": "目标交付物 id（用 project_read_deliverables 获取）" },
+        "channel_id": { "type": "string", "description": "目标成员 Channel id（必须已绑定项目）" },
+        "title": { "type": "string", "description": "工作项标题" },
+        "brief": { "type": "string", "description": "brief 与验收标准" },
+        "dedupe_key": { "type": "string", "description": "幂等键（缺省由交付物/频道/标题派生）" },
+        "depends_on": { "type": "array", "items": { "type": "string" }, "description": "依赖的工作项 id" },
+        "exec_budget_minutes": { "type": "number", "description": "执行预算分钟" },
+        "dispatch": { "type": "boolean", "description": "owner 应用提案后是否立即派发" }
+      },
+      "required": ["deliverable_id", "channel_id", "title"]
+    },
+    "noRefs": true,
+    "riskClass": "read"
+  },
+  {
+    "name": "project_propose_replan",
+    "label": "Project Propose Replan",
+    "description": "(Project leader only) 提交新版本计划提案（replan）：schema 同 project_propose_plan；版本号自动递增，旧版本工作项需重新对齐后才能派发。只写 proposal，不直接改项目。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "plan": { "type": "object", "description": "新版本计划对象" }
+      },
+      "required": ["plan"]
+    },
+    "noRefs": true,
+    "riskClass": "read"
+  },
+  {
+    "name": "project_review_result",
+    "label": "Project Review Result",
+    "description": "(Project leader only) 复核 submitted 成果：只能 reviewed 或 rejected，并写 review 决策与审计；不能 approve、不能越权验收。驳回必须给出 reason。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "result_id": { "type": "string", "description": "成果 id" },
+        "decision": { "type": "string", "enum": ["reviewed", "rejected"], "description": "复核结论" },
+        "reason": { "type": "string", "description": "依据/驳回原因" }
+      },
+      "required": ["result_id", "decision"]
+    },
+    "noRefs": true,
+    "riskClass": "read"
+  },
+  {
+    "name": "project_request_approval",
+    "label": "Project Request Approval",
+    "description": "(Project leader only) 发起 owner 审批：kind=project_complete（交付物/工作项门禁通过后）或 kind=deliverable_acceptance（成果已 reviewed 且有证据）。leader 只能发起，不能批准。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "kind": { "type": "string", "enum": ["project_complete", "deliverable_acceptance"], "description": "审批类型" },
+        "result_id": { "type": "string", "description": "deliverable_acceptance 时的成果 id" },
+        "reason": { "type": "string", "description": "申请依据" }
+      },
+      "required": ["kind"]
+    },
+    "noRefs": true,
+    "riskClass": "read"
   }
 ]

@@ -35,6 +35,10 @@ import { handleSaveMemory, handleSearchMemory } from './tools/memory'
 import { handleCreateTeamAgent, handleGetQueueOverview, handleListTeamAgents, handleRemoveTeamAgent, handleUpdateTeamAgent } from './tools/team'
 import { HYBRID_TWIN_DIRECT_WRITE_TOOL_NAMES, OBSERVE_BLOCKED_TOOL_NAMES } from '../tool-classes'
 import { GovernanceHarnessAuditError, withGovernanceHarnessToolAudit } from '../governance-harness-audit'
+import { PROJECT_GATED_WRITE_TOOL_NAMES, PROJECT_TOOL_NAMES } from '../../projects/tool-surface'
+import { dispatchProjectTool } from '../../projects/tools'
+import { getProjectService } from '../../projects/service'
+import { projectExecutionGate } from '../../projects/execution-gate'
 
 /**
  * 分发一次 host tool 调用(全引擎唯一入口):
@@ -79,6 +83,16 @@ export async function dispatchHostTool(ctx: HostToolBridgeContext, req: HostTool
 
 /** 内置工具名(插件同名注册不参与分发:注入面已显示内置定义,执行面必须同源) */
 const BUILTIN_TOOL_NAMES = new Set(HOST_TOOLS.map(t => t.name))
+
+/** ProjectService 未装配（单测/启动早期）时返回 null，非项目面行为不变。 */
+function projectServiceOrNull(): ReturnType<typeof getProjectService> | null {
+  try {
+    return getProjectService()
+  }
+  catch {
+    return null
+  }
+}
 
 /** 优化器绑定 id 列表(不存在/表未建 → 空,fail-closed 由调用方处理)。 */
 function listBindingIds(agentId: string): string[] {
@@ -159,11 +173,32 @@ async function dispatchHostToolInner(ctx: HostToolBridgeContext, req: HostToolCa
     const verdict = checkToolAgainstScope(scope, req.toolName)
     if (!verdict.allowed) return { text: verdict.message, isError: true }
   }
+  // Project 层执行硬门（plan §4.2/§8.1 B6）：注入面过滤不是安全边界。
+  //  - project_leader：只允许项目工具（无 Channel lead/工业写/插件管理）；
+  //  - channel lead / worker：按矩阵拒绝 propose/submit/write_intent；
+  //  - 非项目 Agent 调 project 工具 → 403。
+  {
+    const gate = projectExecutionGate(identity.agentId, req.toolName)
+    if (gate) return gate
+  }
+  // Project 工具不依赖 workspace，先于 Channel 工具策略/插件面执行（项目层自己校验归属）。
+  if (PROJECT_TOOL_NAMES.has(req.toolName)) {
+    return await dispatchProjectTool(identity, req.toolName, req.arguments ?? {}, activeRootTaskId)
+  }
   // Channel 逐工具选择:执行面复核(目录可能被引擎缓存;不能只靠注入面隐藏)。
   // 未知工具不在此拦截,保持既有“未知工具”错误语义。
   {
     const gate = channelToolGate(identity.channelId, req.toolName)
     if (gate.blocked) return { text: gate.message ?? `工具 ${req.toolName} 不可用`, isError: true }
+  }
+  // Project-origin 工业写闸门（plan §6.2 write_intent）：项目来源任务默认 project_may_write=false;
+  // 高风险写必须匹配 owner 已批准、未消费、tool/args digest/attempt 完全一致的审批。
+  if (PROJECT_GATED_WRITE_TOOL_NAMES.has(req.toolName)) {
+    const svc = projectServiceOrNull()
+    if (svc) {
+      const verdict = svc.authorizeProjectWrite(identity.agentId, req.toolName, req.arguments ?? {}, activeRootTaskId)
+      if (!verdict.allowed) return { text: `${verdict.code}: ${verdict.message}`, isError: true }
+    }
   }
   // 插件工具分发(ctx.omp.registerTool 注册的自定义工具;不依赖 workspace,优先于内置面)。
   // 同名遮蔽内置工具不生效:否则插件 handler 会绕过 grant/verify/HITL 全部门控,
