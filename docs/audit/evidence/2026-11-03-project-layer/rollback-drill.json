@@ -1,0 +1,80 @@
+{
+  "generatedAt": "2026-11-04T06:44:50.560Z",
+  "port": 3979,
+  "pass": 12,
+  "fail": 0,
+  "results": [
+    {
+      "id": "R0",
+      "name": "隔离实例启动（boot1）",
+      "pass": true,
+      "detail": "port=3979"
+    },
+    {
+      "id": "R1",
+      "name": "基线对象（产线+绑线频道）",
+      "pass": true,
+      "detail": "line=ln-4146ebf6 ch=3d71ca19-0ce5-4454-b8bb-67e3c9ac41e7"
+    },
+    {
+      "id": "R2a",
+      "name": "停服",
+      "pass": true,
+      "detail": "graceful kill"
+    },
+    {
+      "id": "R2b",
+      "name": "DB 文件备份",
+      "pass": true,
+      "detail": "1486848 bytes"
+    },
+    {
+      "id": "R3a",
+      "name": "重启（boot2）",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R3b",
+      "name": "完整项目流（派发/完成/对账）",
+      "pass": true,
+      "detail": "project=6003c21e-caf6-4aa6-80b5-2b27387914b3 disp=200"
+    },
+    {
+      "id": "R4a",
+      "name": "停服",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R4b",
+      "name": "DB 恢复到基线备份",
+      "pass": true,
+      "detail": "file restored"
+    },
+    {
+      "id": "R5a",
+      "name": "重启（boot3）",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "R5b",
+      "name": "回滚生效：项目消失",
+      "pass": true,
+      "detail": "projects=0"
+    },
+    {
+      "id": "R5c",
+      "name": "基线保留：频道仍在",
+      "pass": true,
+      "detail": "channels=1"
+    },
+    {
+      "id": "R5d",
+      "name": "产线业务面正常",
+      "pass": true,
+      "detail": "lines=1"
+    }
+  ]
+}
