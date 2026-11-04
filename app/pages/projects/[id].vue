@@ -18,6 +18,7 @@ interface ProjectDto {
   officeChannelId: string | null
   leadAgentId: string | null
   planVersion: number
+  planJson?: string
   createdAt: string
   updatedAt: string
 }
@@ -226,6 +227,74 @@ function exportReport(): void {
   URL.revokeObjectURL(url)
 }
 onMounted(loadReport)
+
+/** PR15 五 tab（plan §7.2）：概览/计划与工作/交付物/审批/决策与事件。 */
+type TabKey = 'overview' | 'plan' | 'deliverables' | 'approvals' | 'events'
+const activeTab = ref<TabKey>('overview')
+const tabs: Array<{ key: TabKey, label: string }> = [
+  { key: 'overview', label: '概览' },
+  { key: 'plan', label: '计划与工作' },
+  { key: 'deliverables', label: '交付物' },
+  { key: 'approvals', label: '审批' },
+  { key: 'events', label: '决策与事件' },
+]
+
+/** 审批历史（scope=all）。 */
+const approvalHistory = ref<ApprovalDto[]>([])
+async function loadHistory(): Promise<void> {
+  await run(async () => {
+    const r = await http.get<{ data: ApprovalDto[] }>(`/workshop/projects/${id}/approvals?scope=all`)
+    approvalHistory.value = r.data ?? []
+  })
+}
+onMounted(loadHistory)
+
+/** 成果按交付物分组（成果 Map）。 */
+const resultsByDeliverable = computed(() => deliverables.value.map(d => ({
+  deliverable: d,
+  results: results.value.filter(r => r.deliverableId === d.id),
+})))
+
+/** PR15：当前计划 JSON 美化 + 计划类决策快照（plan §7.2 diff 源）。 */
+const planJsonPretty = computed(() => {
+  if (!project.value) return ''
+  try {
+    const parsed = JSON.parse((project.value as unknown as { planJson?: string }).planJson ?? '{}')
+    return JSON.stringify(parsed, null, 2)
+  }
+  catch {
+    return '{}'
+  }
+})
+const planDecisions = computed(() => decisions.value.filter(d => d.decisionType.includes('plan')).slice(-10))
+
+/** 重派工作项（FAILED/CANCELED 后新 attempt）。 */
+async function retryWorkItem(workItemId: string): Promise<void> {
+  await run(async () => {
+    await http.post(`/workshop/projects/${id}/work-items/${workItemId}/retry`, {})
+    await load()
+  })
+}
+
+/** owner 取消工作项（完成门豁免入口）。 */
+async function cancelWorkItem(workItemId: string): Promise<void> {
+  const reason = window.prompt('取消工作项的理由：') ?? ''
+  if (!reason.trim()) return
+  await run(async () => {
+    await http.post(`/workshop/projects/${id}/work-items/${workItemId}/cancel`, { reason })
+    await load()
+  })
+}
+
+/** owner 豁免交付物（完成门豁免入口）。 */
+async function waiveDeliverable(deliverableId: string): Promise<void> {
+  const reason = window.prompt('豁免交付物的理由：') ?? ''
+  if (!reason.trim()) return
+  await run(async () => {
+    await http.post(`/workshop/projects/${id}/deliverables/${deliverableId}/waive`, { reason })
+    await load()
+  })
+}
 </script>
 
 <template>
@@ -309,101 +378,152 @@ onMounted(loadReport)
       {{ error }}
     </p>
 
-    <section class="grid2">
-      <div class="card">
+    <section
+      v-show="activeTab === 'overview'"
+      class="card"
+    >
+      <div class="row actions">
         <h2>频道</h2>
-        <p
-          v-if="!channels.length"
-          class="muted"
+        <a
+          v-if="project?.officeChannelId"
+          class="link"
+          :href="`/workshop`"
+          data-testid="open-office"
         >
-          尚未绑定成员 Channel。
-        </p>
-        <ul class="list">
-          <li
-            v-for="c in channels"
-            :key="c.channelId"
-          >
-            <code>{{ c.channelId }}</code>
-            <span class="badge">{{ c.bindingType }}</span>
-            <span class="muted">{{ c.charter || '无 charter' }}</span>
-          </li>
-        </ul>
-        <div class="form">
-          <input
-            v-model="bindForm.channelId"
-            data-testid="bind-channel-id"
-            placeholder="Channel ID（owner 自己的、已有 lead）"
-          >
-          <input
-            v-model="bindForm.charter"
-            placeholder="该频道在项目中的使命（可选）"
-          >
-          <button
-            class="btn"
-            :disabled="loading"
-            @click="bindChannel"
-          >
-            绑定
-          </button>
-        </div>
+          在 Agent 工作台打开办公室频道（{{ project.officeChannelId.slice(0, 8) }}…）
+        </a>
       </div>
-
-      <div class="card">
-        <h2>交付物</h2>
-        <p
-          v-if="!deliverables.length"
-          class="muted"
+      <p
+        v-if="!channels.length"
+        class="muted"
+      >
+        尚未绑定成员 Channel。
+      </p>
+      <ul class="list">
+        <li
+          v-for="c in channels"
+          :key="c.channelId"
         >
-          至少一个必选交付物才能激活。
-        </p>
-        <ul class="list">
-          <li
-            v-for="d in deliverables"
-            :key="d.id"
+          <code>{{ c.channelId }}</code>
+          <span
+            class="badge"
+            :class="{ protected: c.bindingType === 'user_bound' }"
+            data-testid="protected-badge"
           >
-            <strong>{{ d.name }}</strong>
-            <span
-              class="badge"
-              :class="d.status"
-            >{{ d.status }}</span>
-            <span class="muted">{{ d.required ? '必选' : '可选' }}</span>
-          </li>
-        </ul>
-        <div class="form">
-          <input
-            v-model="deliverableForm.name"
-            data-testid="deliverable-name"
-            placeholder="交付物名称"
-          >
-          <select v-model="deliverableForm.ownerChannelId">
-            <option value="">
-              选择所属频道
-            </option>
-            <option
-              v-for="c in channels"
-              :key="c.channelId"
-              :value="c.channelId"
-            >
-              {{ c.channelId }}
-            </option>
-          </select>
-          <textarea
-            v-model="deliverableForm.acceptance"
-            rows="2"
-            placeholder="验收标准（每行一条）"
-          />
-          <button
-            class="btn"
-            :disabled="loading"
-            @click="createDeliverable"
-          >
-            新增交付物
-          </button>
-        </div>
+            {{ c.bindingType === 'user_bound' ? '用户绑定 · 受保护' : c.bindingType }}
+          </span>
+          <span class="muted">{{ c.charter || '无 charter' }}</span>
+        </li>
+      </ul>
+      <div class="form">
+        <input
+          v-model="bindForm.channelId"
+          data-testid="bind-channel-id"
+          placeholder="Channel ID（owner 自己的、已有 lead）"
+        >
+        <input
+          v-model="bindForm.charter"
+          placeholder="该频道在项目中的使命（可选）"
+        >
+        <button
+          class="btn"
+          :disabled="loading"
+          @click="bindChannel"
+        >
+          绑定
+        </button>
       </div>
     </section>
 
-    <section class="card">
+    <section
+      v-show="activeTab === 'deliverables'"
+      class="card"
+    >
+      <h2>交付物</h2>
+      <p
+        v-if="!deliverables.length"
+        class="muted"
+      >
+        至少一个必选交付物才能激活。
+      </p>
+      <ul class="list">
+        <li
+          v-for="d in deliverables"
+          :key="d.id"
+        >
+          <strong>{{ d.name }}</strong>
+          <span
+            class="badge"
+            :class="d.status"
+          >{{ d.status }}</span>
+          <span class="muted">{{ d.required ? '必选' : '可选' }}</span>
+        </li>
+      </ul>
+      <div class="form">
+        <input
+          v-model="deliverableForm.name"
+          data-testid="deliverable-name"
+          placeholder="交付物名称"
+        >
+        <select v-model="deliverableForm.ownerChannelId">
+          <option value="">
+            选择所属频道
+          </option>
+          <option
+            v-for="c in channels"
+            :key="c.channelId"
+            :value="c.channelId"
+          >
+            {{ c.channelId }}
+          </option>
+        </select>
+        <textarea
+          v-model="deliverableForm.acceptance"
+          rows="2"
+          placeholder="验收标准（每行一条）"
+        />
+        <button
+          class="btn"
+          :disabled="loading"
+          @click="createDeliverable"
+        >
+          新增交付物
+        </button>
+      </div>
+    </section>
+
+    <section
+      v-show="activeTab === 'plan'"
+      class="card"
+    >
+      <h2>计划快照（当前 v{{ project?.planVersion ?? 0 }}）</h2>
+      <pre
+        v-if="project"
+        class="plan-json"
+      >{{ planJsonPretty }}</pre>
+      <p
+        v-else
+        class="muted"
+      >
+        加载中。
+      </p>
+      <h3>计划决策快照（decisions.args_json）</h3>
+      <ul class="list">
+        <li
+          v-for="pd in planDecisions"
+          :key="pd.id"
+        >
+          <span>{{ pd.decisionType }}</span>
+          <span class="badge">{{ pd.state }}</span>
+          <code class="muted">{{ pd.traceId }}</code>
+        </li>
+      </ul>
+    </section>
+
+    <section
+      v-show="activeTab === 'plan'"
+      class="card"
+    >
       <h2>工作项 / 派发</h2>
       <table>
         <thead><tr><th>标题</th><th>频道</th><th>状态</th><th>预算</th><th /></tr></thead>
@@ -435,6 +555,23 @@ onMounted(loadReport)
                 @click="dispatch(w.id)"
               >
                 派发
+              </button>
+              <button
+                v-if="['FAILED', 'CANCELED', 'COMPLETED'].includes(w.state)"
+                class="btn small ghost"
+                data-testid="btn-retry"
+                :disabled="loading"
+                @click="retryWorkItem(w.id)"
+              >
+                重试
+              </button>
+              <button
+                v-if="!['COMPLETED', 'CANCELED', 'SUPERSEDED'].includes(w.state)"
+                class="btn small danger"
+                :disabled="loading"
+                @click="cancelWorkItem(w.id)"
+              >
+                取消
               </button>
             </td>
           </tr>
@@ -497,71 +634,100 @@ onMounted(loadReport)
       </div>
     </section>
 
-    <section class="card">
-      <h2>成果</h2>
+    <section
+      v-show="activeTab === 'deliverables'"
+      class="card"
+    >
+      <h2>成果（按交付物分组）</h2>
       <p
         v-if="!currentResults.length"
         class="muted"
       >
         Channel root task COMPLETED 后，点“对账”会自动生成 draft。
       </p>
-      <article
-        v-for="r in currentResults"
-        :key="r.id"
-        class="result"
+      <template
+        v-for="group in resultsByDeliverable"
+        :key="group.deliverable.id"
       >
-        <div class="row">
-          <strong>{{ r.title }}</strong>
+        <div
+          v-if="group.results.length"
+          class="group-head"
+        >
+          <strong>{{ group.deliverable.name }}</strong>
           <span
             class="badge"
-            :class="r.status"
-          >{{ r.status }}</span>
-          <span class="muted">v{{ r.version }}</span>
-        </div>
-        <p class="summary">
-          {{ r.summary }}
-        </p>
-        <div class="muted">
-          evidence: {{ r.evidenceJson }}
-        </div>
-        <div class="row actions">
+            :class="group.deliverable.status"
+          >{{ group.deliverable.status }}</span>
           <button
-            v-if="r.status === 'draft' || r.status === 'rejected'"
-            class="btn small"
-            :disabled="loading"
-            @click="submitResult(r)"
-          >
-            提交
-          </button>
-          <button
-            v-if="r.status === 'submitted'"
+            v-if="group.deliverable.status === 'planned'"
             class="btn small ghost"
             :disabled="loading"
-            @click="review(r, 'reviewed')"
+            @click="waiveDeliverable(group.deliverable.id)"
           >
-            复核通过
-          </button>
-          <button
-            v-if="r.status === 'submitted'"
-            class="btn small danger"
-            :disabled="loading"
-            @click="review(r, 'rejected')"
-          >
-            驳回
-          </button>
-          <button
-            v-if="r.status === 'reviewed'"
-            class="btn small"
-            :disabled="loading"
-            @click="requestAcceptance(r)"
-          >
-            申请验收
+            豁免
           </button>
         </div>
-      </article>
+        <article
+          v-for="r in group.results"
+          :key="r.id"
+          class="result"
+        >
+          <div class="row">
+            <strong>{{ r.title }}</strong>
+            <span
+              class="badge"
+              :class="r.status"
+            >{{ r.status }}</span>
+            <span class="muted">v{{ r.version }}</span>
+          </div>
+          <p class="summary">
+            {{ r.summary }}
+          </p>
+          <div class="muted">
+            evidence: {{ r.evidenceJson }}
+          </div>
+          <div class="row actions">
+            <button
+              v-if="r.status === 'draft' || r.status === 'rejected'"
+              class="btn small"
+              :disabled="loading"
+              @click="submitResult(r)"
+            >
+              提交
+            </button>
+            <button
+              v-if="r.status === 'submitted'"
+              class="btn small ghost"
+              :disabled="loading"
+              @click="review(r, 'reviewed')"
+            >
+              复核通过
+            </button>
+            <button
+              v-if="r.status === 'submitted'"
+              class="btn small danger"
+              :disabled="loading"
+              @click="review(r, 'rejected')"
+            >
+              驳回
+            </button>
+            <button
+              v-if="r.status === 'reviewed'"
+              class="btn small"
+              :disabled="loading"
+              @click="requestAcceptance(r)"
+            >
+              申请验收
+            </button>
+          </div>
+        </article>
+      </template>
     </section>
 
-    <section class="card">
+    <section
+      v-show="activeTab === 'overview'"
+      class="card"
+    >
       <h2>周报</h2>
       <p
         v-if="!report"
@@ -599,7 +765,10 @@ onMounted(loadReport)
       </div>
     </section>
 
-    <section class="card">
+    <section
+      v-show="activeTab === 'approvals'"
+      class="card"
+    >
       <h2>待审批</h2>
       <p
         v-if="!pendingApprovals.length"
@@ -643,7 +812,58 @@ onMounted(loadReport)
       </ul>
     </section>
 
-    <section class="grid2">
+    <section
+      v-show="activeTab === 'approvals'"
+      class="card"
+    >
+      <h2>审批历史</h2>
+      <p
+        v-if="!approvalHistory.length"
+        class="muted"
+      >
+        暂无审批记录。
+      </p>
+      <ul class="list">
+        <li
+          v-for="h in approvalHistory.slice(0, 50)"
+          :key="h.id"
+        >
+          <span>{{ h.kind }} · {{ h.subjectId }}</span>
+          <span
+            class="badge"
+            :class="h.status"
+          >{{ h.status }}</span>
+          <span
+            v-if="h.payloadJson && h.payloadJson !== '{}'"
+            class="muted"
+          >
+            payload: {{ h.payloadJson.slice(0, 140) }}{{ h.payloadJson.length > 140 ? '…' : '' }}
+          </span>
+          <code class="muted">{{ h.expiresAt ?? '' }}</code>
+        </li>
+      </ul>
+    </section>
+
+    <nav
+      class="tabs"
+      data-testid="project-tabs"
+    >
+      <button
+        v-for="t in tabs"
+        :key="t.key"
+        class="tab"
+        :class="{ active: activeTab === t.key }"
+        :data-testid="`tab-${t.key}`"
+        @click="activeTab = t.key"
+      >
+        {{ t.label }}
+      </button>
+    </nav>
+
+    <section
+      v-show="activeTab === 'events'"
+      class="grid2"
+    >
       <div class="card">
         <h2>决策（最近 50）</h2>
         <ul class="list">
@@ -691,6 +911,12 @@ h2 { font-size: 15px; margin: 0 0 12px; }
 .actions, .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .card { background: #161a22; border: 1px solid #2a3140; border-radius: 10px; padding: 16px; margin-bottom: 16px; }
 .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.tabs { display: flex; gap: 6px; margin-bottom: 14px; border-bottom: 1px solid #2a3140; padding-bottom: 0; flex-wrap: wrap; }
+.tab { background: none; border: 1px solid transparent; border-bottom: 0; color: #9aa4b2; padding: 8px 14px; cursor: pointer; font-size: 13px; border-radius: 8px 8px 0 0; }
+.tab.active { color: #e6e8ee; background: #161a22; border-color: #2a3140; }
+.group-head { display: flex; gap: 8px; align-items: center; margin: 14px 0 6px; padding-top: 8px; border-top: 1px dashed #2a3140; }
+.plan-json { background: #0d1117; border: 1px solid #2a3140; border-radius: 8px; padding: 10px; font-size: 12px; max-height: 320px; overflow: auto; white-space: pre-wrap; }
+.badge.protected { border-color: #b45309; color: #fbbf24; }
 .list { list-style: none; padding: 0; margin: 0 0 10px; display: flex; flex-direction: column; gap: 8px; }
 .list li { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; }
 .form { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
