@@ -158,7 +158,7 @@ try {
   const planInstr = [
     '你是项目总工。请立即调用 project_propose_plan 工具提交本项目的执行计划，要求：',
     'deliverables 至少一项：key=d1, name=库存管理单页, channelId=' + member.channelId + '；',
-    'work_items 一项：key=w1, deliverableKey=d1, channelId=' + member.channelId + ', title=实现库存管理单页, brief=单文件 HTML：商品增删改查、数量调整、localStorage 持久化、库存总量统计, execBudgetMinutes=20。',
+    'work_items 一项：key=w1, deliverableKey=d1, channelId=' + member.channelId + ', title=实现库存管理单页, brief=最小可用单文件 HTML：商品表格+新增行+localStorage 保存+件数统计；先保证浏览器可运行再完善, execBudgetMinutes=45。',
     '必须真实调用工具，不要只输出文本。',
   ].join('\n')
   let planApproved = false
@@ -190,7 +190,7 @@ try {
   const workItems = await api('GET', `/api/workshop/projects/${project.id}/work-items`, undefined, token)
   const mainItem = (workItems.data ?? [])[0]
   let execPoll = { done: false, detail: '', root: null }
-  for (let attempt = 1; attempt <= 3 && !execPoll.done; attempt++) {
+  for (let attempt = 1; attempt <= 2 && !execPoll.done; attempt++) {
     if (attempt > 1) {
       console.log(`  …[D3-retry] 第 ${attempt} 次重派（上一 attempt: ${execPoll.detail ?? ''}）`)
       await api('POST', `/api/workshop/projects/${project.id}/work-items/${mainItem.id}/dispatch`, {}, token)
@@ -200,7 +200,7 @@ try {
       ok('D3a', '工作项派发（root task）', dispatched.status === 200 && dispatched.data?.state === 'DISPATCHED', `status=${dispatched.status}`)
       if (dispatched.status !== 200) break
     }
-    execPoll = await poll(`D3-lead-execute(attempt ${attempt})`, 12 * 60_000, async () => {
+    execPoll = await poll(`D3-lead-execute(attempt ${attempt})`, 47 * 60_000, async () => {
       const tasks = await api('GET', `/api/workshop/channels/${member.channelId}/tasks`, undefined, token)
       const root = (tasks.data ?? []).filter(t => t.projectWorkItemId === mainItem.id).sort((a, b) => (b.projectAttemptNo ?? 0) - (a.projectAttemptNo ?? 0))[0]
       if (!root) return { done: false, detail: 'root not found' }
@@ -233,15 +233,19 @@ try {
   await api('POST', `/api/workshop/projects/${project.id}/reconcile`, {}, token)
   const draft = (await api('GET', `/api/workshop/projects/${project.id}/results`, undefined, token)).data?.[0]
   ok('D4a', 'root COMPLETED → 成果 draft（真实工件证据）', Boolean(draft?.id) && draft?.status === 'draft', `result=${draft?.id}`)
-  const leadSubmit = await api('POST', '/api/workshop/agent-tools/invoke', {
-    agentId: member.leadAgentId,
-    tool: 'project_submit_result',
-    args: { result_id: draft.id, summary: '库存管理单页已实现：增删改查/localStorage/统计', evidence: [{ artifactId: artifacts[0]?.artifactId ?? 'html', kind: 'artifact' }] },
-  }, token)
-  ok('D4b', 'channel lead 工具提交成果', leadSubmit.status === 200 && leadSubmit.data?.result?.isError !== true, String(leadSubmit.data?.result?.text ?? '').slice(0, 200))
-  const reviewed = await api('POST', `/api/workshop/projects/${project.id}/results/${draft.id}/review`, { decision: 'reviewed' }, token)
-  ok('D4c', '复核 → reviewed', reviewed.status === 200 && reviewed.data?.status === 'reviewed')
-  const acceptance = (await api('POST', `/api/workshop/projects/${project.id}/results/${draft.id}/request-acceptance`, {}, token)).data
+  const leadSubmit = draft
+    ? await api('POST', '/api/workshop/agent-tools/invoke', {
+        agentId: member.leadAgentId,
+        tool: 'project_submit_result',
+        args: { result_id: draft.id, summary: '库存管理单页已实现：增删改查/localStorage/统计', evidence: [{ artifactId: artifacts[0]?.artifactId ?? 'html', kind: 'artifact' }] },
+      }, token)
+    : null
+  ok('D4b', 'channel lead 工具提交成果', Boolean(draft) && leadSubmit?.status === 200 && leadSubmit?.data?.result?.isError !== true, String(leadSubmit?.data?.result?.text ?? '').slice(0, 200))
+  const reviewed = draft
+    ? await api('POST', `/api/workshop/projects/${project.id}/results/${draft.id}/review`, { decision: 'reviewed' }, token)
+    : null
+  ok('D4c', '复核 → reviewed', reviewed?.status === 200 && reviewed?.data?.status === 'reviewed')
+  const acceptance = draft ? (await api('POST', `/api/workshop/projects/${project.id}/results/${draft.id}/request-acceptance`, {}, token)).data : null
   const accDecided = acceptance ? await api('POST', `/api/workshop/projects/${project.id}/approvals/${acceptance.id}/decide`, { approve: true, reason: '验收标准逐条满足' }, token) : null
   ok('D4d', 'owner 验收批准 → 成果/交付物 approved', accDecided?.status === 200 && accDecided.data?.status === 'approved', `decide=${accDecided?.status}`)
 

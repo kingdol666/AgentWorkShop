@@ -37,6 +37,9 @@ import { createOutboxRepo } from '../services/workshop/db/outbox.repo'
 import { createHitlRequestRepo } from '../services/workshop/db/hitl-request.repo'
 import { initProjectService } from '../services/workshop/projects/service'
 import { startProjectReconciler } from '../services/workshop/projects/reconciler'
+import { initProjectKernel } from '../services/workshop/projects/kernel'
+import { createProjectKernelRepo } from '../services/workshop/db/project-kernel.repo'
+
 import { userRepository } from '@/server/repositories/user.repository'
 import { createApprovalHistoryRepo, createAlarmEventRepo, createAuditRepo, createApprovalRequestRepo } from '../services/workshop/db/ops.repo'
 import { bindOpsRepos } from '../services/workshop/ops/ops'
@@ -209,6 +212,38 @@ export default function workshopPlugin(nitroApp: {
     },
   })
   const projectReconciler = startProjectReconciler(projectService)
+  // PR17 M4 调度内核：事件分级消费 + effects outbox + watchdog（10s tick，watchdog 每 3 tick）。
+  const projectKernel = initProjectKernel(
+    {
+      db,
+      service: projectService,
+      kernelRepo: createProjectKernelRepo(db),
+      sendMailbox: (projectId, text) => {
+        const p = db.prepare('SELECT owner_user_id AS ownerUserId, office_channel_id AS officeChannelId, lead_agent_id AS leadAgentId FROM projects WHERE id = ?').get(projectId) as { ownerUserId: string, officeChannelId: string | null, leadAgentId: string | null } | undefined
+        if (!p?.officeChannelId || !p.leadAgentId) return
+        void manager.sendImmediateMessage({
+          channelId: p.officeChannelId,
+          toAgentId: p.leadAgentId,
+          parts: [{ text }],
+          requireReply: true,
+          fromLabel: '项目内核',
+        })
+      },
+      notifyOwner: (projectId, title, body, eventId) => {
+        const p = db.prepare('SELECT owner_user_id AS ownerUserId, office_channel_id AS officeChannelId FROM projects WHERE id = ?').get(projectId) as { ownerUserId: string, officeChannelId: string | null } | undefined
+        if (!p) return
+        createNotificationRepo(db).create({
+          recipientUserId: p.ownerUserId,
+          channelId: p.officeChannelId ?? undefined,
+          eventId,
+          type: 'project',
+          title,
+          body,
+        })
+      },
+    },
+  )
+  projectKernel.start()
 
   // HITL 全局待办:agentId → channelId/agentName 解析器(避免 registry 反向依赖 manager)
   configureHitlResolver((agentId) => {
@@ -305,6 +340,7 @@ export default function workshopPlugin(nitroApp: {
     shutdownOrchestrator()
     stopSweeper()
     projectReconciler.stop()
+    projectKernel.stop()
     await manager.shutdown()
     db.close()
   })

@@ -12,7 +12,7 @@ import type { UserNotificationRow } from './database'
 
 const COLS = 'id, recipient_user_id AS recipientUserId, channel_id AS channelId, chat_message_id AS chatMessageId, hitl_kind AS hitlKind, hitl_id AS hitlId, event_id AS eventId, type, title, body, payload_json AS payloadJson, created_at AS createdAt, read_at AS readAt'
 
-export type NotificationType = 'mention' | 'agent_reply' | 'hitl_request' | 'hitl_resolved' | 'member'
+export type NotificationType = 'mention' | 'agent_reply' | 'hitl_request' | 'hitl_resolved' | 'member' | 'project'
 
 export interface NotificationCreateInput {
   recipientUserId: string
