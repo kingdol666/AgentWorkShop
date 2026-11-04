@@ -528,6 +528,121 @@ try {
     && snap24.data.kernel.planApprovedVersion >= 1,
     `planApprovedV=${snap24.data?.kernel?.planApprovedVersion} ledger=${snap24.data?.kernel?.ledger?.count}`)
 
+  // ── PR20 Route 派发闭环：Project 作为上层 route，链式「完成 → 回调 → 派发下一项」直到全部终态 ──
+  const rChannel = (await api('POST', '/api/workshop/channels', {
+    name: `Route执行频道-${TAG}`,
+    lineId: line,
+    leadAgent: { name: `RouteLead-${TAG}`, harness: 'mock' },
+  }, H())).data
+  const rProject = (await api('POST', '/api/workshop/projects', {
+    name: `Route闭环项目-${TAG}`, objective: 'route 自动派发闭环验收', leaderHarness: 'mock', autoDispatch: true,
+  }, H())).data
+  const rBind = await api('POST', `/api/workshop/projects/${rProject.id}/channels`, { channelId: rChannel.channelId }, H())
+  const rDeliverable = (await api('POST', `/api/workshop/projects/${rProject.id}/deliverables`, {
+    name: `Route交付物-${TAG}`, ownerChannelId: rChannel.channelId,
+  }, H())).data
+  const mkW = (title, dependsOn = []) => api('POST', `/api/workshop/projects/${rProject.id}/work-items`, {
+    deliverableId: rDeliverable.id, channelId: rChannel.channelId, title, dependsOn,
+  }, H()).then(r => r.data)
+  const rw1 = await mkW(`R1-基线-${TAG}`)
+  const rw2 = await mkW(`R2-分析-${TAG}`, [rw1.id])
+  const rw3 = await mkW(`R3-报告-${TAG}`, [rw2.id])
+  await api('POST', `/api/workshop/projects/${rProject.id}/activate`, {}, H())
+  const rPlan = await api('POST', `/api/workshop/projects/${rProject.id}/plan/request-approval`, { version: 1, plan: { facts: ['route 闭环'] } }, H())
+  await api('POST', `/api/workshop/projects/${rProject.id}/approvals/${rPlan.data.id}/decide`, { approve: true, reason: 'route 闭环' }, H())
+  const rSnap = await api('GET', `/api/workshop/projects/${rProject.id}/snapshot`, undefined, H())
+  ok('P25a', 'Route 项目创建（autoDispatch=true 落库）+ 计划批准',
+    rBind.status === 200 && rSnap.status === 200 && rSnap.data?.project?.autoDispatch === true && rSnap.data?.project?.planVersion === 1,
+    `bind=${rBind.status} autoDispatch=${rSnap.data?.project?.autoDispatch} planV=${rSnap.data?.project?.planVersion}`)
+
+  const rRotate = await api('POST', `/api/workshop/channels/${rChannel.channelId}/agents/${rChannel.leadAgentId}/rotate-token`, {}, H())
+  const rAgentToken = rRotate.data?.token
+  const rItems = async () => (await api('GET', `/api/workshop/projects/${rProject.id}/work-items`, undefined, H())).data ?? []
+  const rRoot = async wiId => ((await api('GET', `/api/workshop/channels/${rChannel.channelId}/tasks`, undefined, H())).data ?? []).find(t => t.projectWorkItemId === wiId)
+  const rComplete = async (wiId, name) => api('POST', `/api/workshop/tasks/${(await rRoot(wiId)).id}/complete`, {
+    artifacts: [{ artifactId: `ra-${String(wiId).slice(0, 6)}`, name, parts: [{ text: `${name} 完成` }] }],
+  }, rAgentToken)
+  const rAutoEvents = async () => ((await api('GET', `/api/workshop/projects/${rProject.id}/events`, undefined, H())).data ?? [])
+    .filter(e => e.type === 'work.dispatch_auto')
+
+  const d1 = await api('POST', `/api/workshop/projects/${rProject.id}/work-items/${rw1.id}/dispatch`, {}, H())
+  const ev1 = (await api('GET', `/api/workshop/projects/${rProject.id}/events`, undefined, H())).data ?? []
+  ok('P25b', '手动派发 W1 落 work.dispatched（审计闭环）',
+    d1.status === 200 && d1.data?.state === 'DISPATCHED' && ev1.some(e => e.type === 'work.dispatched'),
+    `status=${d1.status} dispatchedEvt=${ev1.some(e => e.type === 'work.dispatched')}`)
+
+  // mock lead 回合即root 兜底收口（可能先于断言到达），各环节断言「终态进行中 ∪ 已终态」；
+  // 「自动」的唯一证据 = 脚本从未对 W2/W3 调用 dispatch，而 work.dispatch_auto 事件出现。
+  const rTick = () => api('POST', `/api/workshop/projects/${rProject.id}/kernel/tick`, {}, H())
+  const rAutoTargets = async () => (await rAutoEvents()).map((e) => {
+    try {
+      return JSON.parse(e.payloadJson)?.workItemId ?? ''
+    }
+    catch {
+      return ''
+    }
+  })
+
+  // W1 完成回调（模拟 channel lead 完成或兜底收口，两者等价）→ W2 必须自动派发
+  await rComplete(rw1.id, 'baseline.md').catch(() => {})
+  let w2State = ''
+  let w2AutoSeen = false
+  for (let i = 0; i < 10; i++) {
+    await rTick()
+    w2State = (await rItems()).find(w => w.id === rw2.id)?.state ?? ''
+    w2AutoSeen = (await rAutoTargets()).includes(rw2.id)
+    if (['DISPATCHED', 'COMPLETED'].includes(w2State) && w2AutoSeen) break
+    await sleep(1000)
+  }
+  ok('P25c', '回调闭环：W1 终态 → W2 未经人工派发自动派发（work.dispatch_auto 落账）',
+    ['DISPATCHED', 'COMPLETED'].includes(w2State) && w2AutoSeen, `w2=${w2State} autoSeen=${w2AutoSeen}`)
+
+  await rComplete(rw2.id, 'analysis.md').catch(() => {})
+  let w3State = ''
+  let w3AutoSeen = false
+  for (let i = 0; i < 10; i++) {
+    await rTick()
+    w3State = (await rItems()).find(w => w.id === rw3.id)?.state ?? ''
+    w3AutoSeen = (await rAutoTargets()).includes(rw3.id)
+    if (['DISPATCHED', 'COMPLETED'].includes(w3State) && w3AutoSeen) break
+    await sleep(1000)
+  }
+  ok('P25d', '回调闭环：W2 终态 → W3 自动派发',
+    ['DISPATCHED', 'COMPLETED'].includes(w3State) && w3AutoSeen, `w3=${w3State} autoSeen=${w3AutoSeen}`)
+
+  await rComplete(rw3.id, 'report.md').catch(() => {})
+  let chainStates = []
+  for (let i = 0; i < 15; i++) {
+    await rTick()
+    chainStates = (await rItems()).filter(w => [rw1.id, rw2.id, rw3.id].includes(w.id)).map(w => w.state)
+    if (chainStates.length === 3 && chainStates.every(s => s === 'COMPLETED')) break
+    await sleep(1000)
+  }
+  const autoTargetsFinal = await rAutoTargets()
+  ok('P25e', '链式全闭环：R1→R2→R3 全部 COMPLETED + 恰好 2 次 work.dispatch_auto（W2/W3）',
+    chainStates.length === 3 && chainStates.every(s => s === 'COMPLETED')
+    && autoTargetsFinal.length === 2 && autoTargetsFinal.includes(rw2.id) && autoTargetsFinal.includes(rw3.id),
+    `states=${chainStates.join(',')} autoTargets=${autoTargetsFinal.length}`)
+
+  // R3 开关面：autoDispatch=0 → 不派发；owner 切回 1 → 下一轮派发
+  const rw4 = await mkW(`R4-收尾-${TAG}`, [rw3.id])
+  await api('PATCH', `/api/workshop/projects/${rProject.id}`, { autoDispatch: false }, H())
+  await rTick()
+  const off4 = (await rItems()).find(w => w.id === rw4.id)
+  await api('PATCH', `/api/workshop/projects/${rProject.id}`, { autoDispatch: true }, H())
+  let on4State = ''
+  let on4AutoSeen = false
+  for (let i = 0; i < 10; i++) {
+    await rTick()
+    on4State = (await rItems()).find(w => w.id === rw4.id)?.state ?? ''
+    on4AutoSeen = (await rAutoTargets()).includes(rw4.id)
+    if (['DISPATCHED', 'COMPLETED'].includes(on4State) && on4AutoSeen) break
+    await sleep(1000)
+  }
+  ok('P25f', 'autoDispatch 开关生效（0=保持 DRAFT 不派 / 1=自动派发）',
+    off4?.state === 'DRAFT' && ['DISPATCHED', 'COMPLETED'].includes(on4State) && on4AutoSeen,
+    `off=${off4?.state} on=${on4State} autoSeen=${on4AutoSeen}`)
+
   // P17b（UI 交互矩阵）与 P18b（Live 全量/回滚）由 scripts/audit/project-g6-evidence.mjs
   // 在最终验收轮统一执行并归档至 gates/G5、gates/G6（本脚本不重复输出 blocked 占位）。
 

@@ -24,6 +24,8 @@ export interface ProjectRow {
   planVersion: number
   planJson: string
   planApprovalRequired: number
+  /** PR20 Route 派发闭环：1 = 计划批准后按 dependsOn 就绪顺序自动派发（默认 0） */
+  autoDispatch: number
   configJson: string
   deadlineAt: string | null
   createdAt: string
@@ -196,7 +198,7 @@ export interface ProjectApprovalRow {
   decidedAt: string | null
 }
 
-const PROJECT_COLS = 'id, name, description, objective, success_criteria_json AS successCriteriaJson, status, mode, owner_user_id AS ownerUserId, office_channel_id AS officeChannelId, lead_agent_id AS leadAgentId, plan_version AS planVersion, plan_json AS planJson, plan_approval_required AS planApprovalRequired, config_json AS configJson, deadline_at AS deadlineAt, created_at AS createdAt, updated_at AS updatedAt'
+const PROJECT_COLS = 'id, name, description, objective, success_criteria_json AS successCriteriaJson, status, mode, owner_user_id AS ownerUserId, office_channel_id AS officeChannelId, lead_agent_id AS leadAgentId, plan_version AS planVersion, plan_json AS planJson, plan_approval_required AS planApprovalRequired, auto_dispatch AS autoDispatch, config_json AS configJson, deadline_at AS deadlineAt, created_at AS createdAt, updated_at AS updatedAt'
 const PROJECT_CHANNEL_COLS = 'project_id AS projectId, channel_id AS channelId, binding_type AS bindingType, charter, status, added_by AS addedBy, added_at AS addedAt, detached_at AS detachedAt'
 const DELIVERABLE_COLS = 'id, project_id AS projectId, name, description, owner_channel_id AS ownerChannelId, required, acceptance_criteria_json AS acceptanceCriteriaJson, due_at AS dueAt, depends_on_json AS dependsOnJson, status, waiver_reason AS waiverReason, created_by AS createdBy, created_at AS createdAt, updated_at AS updatedAt'
 const WORK_ITEM_COLS = 'id, project_id AS projectId, deliverable_id AS deliverableId, channel_id AS channelId, title, brief, state, state_reason AS stateReason, priority, weight, depends_on_json AS dependsOnJson, acceptance_json AS acceptanceJson, result_key AS resultKey, current_attempt_id AS currentAttemptId, plan_version AS planVersion, contract_json AS contractJson, exec_budget_minutes AS execBudgetMinutes, trace_id AS traceId, dedupe_key AS dedupeKey, deadline_at AS deadlineAt, rework_count AS reworkCount, created_by AS createdBy, created_at AS createdAt, updated_at AS updatedAt, closed_at AS closedAt, close_reason AS closeReason'
@@ -211,14 +213,14 @@ const now = () => new Date().toISOString()
 export type ProjectRepo = ReturnType<typeof createProjectRepo>
 export function createProjectRepo(db: DatabaseSync) {
   const insert = db.prepare(
-    `INSERT INTO projects (id, name, description, objective, success_criteria_json, status, mode, owner_user_id, office_channel_id, lead_agent_id, plan_version, plan_json, plan_approval_required, config_json, deadline_at, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO projects (id, name, description, objective, success_criteria_json, status, mode, owner_user_id, office_channel_id, lead_agent_id, plan_version, plan_json, plan_approval_required, auto_dispatch, config_json, deadline_at, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   const selectById = db.prepare(`SELECT ${PROJECT_COLS} FROM projects WHERE id = ?`)
   const selectByOwner = db.prepare(`SELECT ${PROJECT_COLS} FROM projects WHERE owner_user_id = ? ORDER BY created_at DESC`)
   const selectAll = db.prepare(`SELECT ${PROJECT_COLS} FROM projects ORDER BY created_at DESC`)
   const updateStmt = db.prepare(
-    `UPDATE projects SET name = ?, description = ?, objective = ?, success_criteria_json = ?, status = ?, mode = ?, owner_user_id = ?, office_channel_id = ?, lead_agent_id = ?, plan_version = ?, plan_json = ?, plan_approval_required = ?, config_json = ?, deadline_at = ?, updated_at = ? WHERE id = ?`,
+    `UPDATE projects SET name = ?, description = ?, objective = ?, success_criteria_json = ?, status = ?, mode = ?, owner_user_id = ?, office_channel_id = ?, lead_agent_id = ?, plan_version = ?, plan_json = ?, plan_approval_required = ?, auto_dispatch = ?, config_json = ?, deadline_at = ?, updated_at = ? WHERE id = ?`,
   )
 
   return {
@@ -234,6 +236,7 @@ export function createProjectRepo(db: DatabaseSync) {
       leadAgentId?: string | null
       planJson?: string
       planApprovalRequired?: number
+      autoDispatch?: number
       configJson?: string
       deadlineAt?: string | null
     }): ProjectRow {
@@ -253,13 +256,14 @@ export function createProjectRepo(db: DatabaseSync) {
         planVersion: 0,
         planJson: input.planJson ?? '{}',
         planApprovalRequired: input.planApprovalRequired ?? 1,
+        autoDispatch: input.autoDispatch ?? 0,
         configJson: input.configJson ?? '{}',
         deadlineAt: input.deadlineAt ?? null,
         createdAt: ts,
         updatedAt: ts,
       }
       insert.run(row.id, row.name, row.description, row.objective, row.successCriteriaJson, row.status, row.mode, row.ownerUserId,
-        row.officeChannelId, row.leadAgentId, row.planVersion, row.planJson, row.planApprovalRequired, row.configJson,
+        row.officeChannelId, row.leadAgentId, row.planVersion, row.planJson, row.planApprovalRequired, row.autoDispatch, row.configJson,
         row.deadlineAt, row.createdAt, row.updatedAt)
       return row
     },
@@ -284,7 +288,7 @@ export function createProjectRepo(db: DatabaseSync) {
       }
       updateStmt.run(next.name, next.description, next.objective, next.successCriteriaJson, next.status, next.mode,
         next.ownerUserId, next.officeChannelId, next.leadAgentId, next.planVersion, next.planJson,
-        next.planApprovalRequired, next.configJson, next.deadlineAt, next.updatedAt, id)
+        next.planApprovalRequired, next.autoDispatch, next.configJson, next.deadlineAt, next.updatedAt, id)
       return next
     },
   }

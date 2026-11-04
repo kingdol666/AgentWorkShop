@@ -1245,6 +1245,8 @@ CREATE TABLE IF NOT EXISTS projects (
   plan_version          INTEGER NOT NULL DEFAULT 0,
   plan_json             TEXT NOT NULL DEFAULT '{}',
   plan_approval_required INTEGER NOT NULL DEFAULT 1,
+  -- PR20 Route 派发闭环：1 = 计划批准后由确定性派发器按 dependsOn 就绪顺序自动派发（默认关，渐进启用）
+  auto_dispatch         INTEGER NOT NULL DEFAULT 0,
   config_json           TEXT NOT NULL DEFAULT '{}',
   deadline_at           TEXT,
   created_at            TEXT NOT NULL,
