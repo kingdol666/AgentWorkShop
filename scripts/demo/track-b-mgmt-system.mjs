@@ -54,7 +54,9 @@ const child = spawn(process.execPath, [join(REPO, '.output/server/index.mjs')], 
     NITRO_PORT: String(port),
     AW_MODE: 'home',
     AW_HOME: join(ROOT, 'home'),
-    NUXT_SESSION_PASSWORD: 'TrackB#2026-demo-key',
+    // ≥32 字符：iron-webcrypto 会话封装硬性要求；过短会使 agent-token 路由全部
+    // 500（run5 实证：lead 工具桥 tasks/approvals/decisions 161×500 → 盲执行）。
+    NUXT_SESSION_PASSWORD: 'TrackB#2026-demo-key-with-32-chars-min-padding!!',
     AW_RATE_LIMIT_OFF: '1',
     NO_PROXY: '127.0.0.1,localhost',
   },
