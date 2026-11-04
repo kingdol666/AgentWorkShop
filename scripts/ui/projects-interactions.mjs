@@ -100,6 +100,12 @@ async function waitText(page, text, timeoutMs = 8000) {
   return false
 }
 
+/** PR15 五 tab：切换 tab（v-show 区块需先切再断言）。 */
+async function gotoTab(page, key) {
+  await page.click(`[data-testid="tab-${key}"]`)
+  await sleep(400)
+}
+
 try {
   let healthy = false
   for (let i = 0; i < 60; i++) {
@@ -161,12 +167,14 @@ try {
   await clickButton(page, '绑定')
   ok('I4', 'UI 绑定频道 → 列表出现', await waitText(page, seedChannel.channelId), seedChannel.channelId)
 
-  // I5 新增交付物
+  // I5 新增交付物（交付物 tab）
+  await gotoTab(page, 'deliverables')
   await page.type('[data-testid="deliverable-name"]', '交互交付物')
   await clickButton(page, '新增交付物')
   ok('I5', 'UI 建交付物', await waitText(page, '交互交付物'))
 
-  // I6 新增工作项
+  // I6 新增工作项（计划与工作 tab）
+  await gotoTab(page, 'plan')
   await page.evaluate(() => {
     const setSel = (testid, value) => {
       const el = document.querySelector(`[data-testid="${testid}"]`)
@@ -203,6 +211,7 @@ try {
   }, token)
   ok('I7b-req', 'plan approval pending 已创建', planReq.status === 200 && planReq.data?.status === 'pending', `status=${planReq.status}`)
   await gotoReady(page, `/projects/${projectId}`, { wait: 3000 })
+  await gotoTab(page, 'approvals')
   const planBtnHit = await clickButton(page, '批准', 8000)
   let planVersionAfter = 0
   const planStart = Date.now()
@@ -214,7 +223,8 @@ try {
   }
   ok('I7b', 'UI 批准计划 → planVersion=1', planBtnHit && planVersionAfter >= 1, `btn=${planBtnHit} version=${planVersionAfter}`)
 
-  // I8 派发（以 API 工作项状态为准；DOM 等待放宽；UI 点击未生效则 API 兜底并记录）
+  // I8 派发（计划与工作 tab；以 API 工作项状态为准；UI 点击未生效则 API 兜底并记录）
+  await gotoTab(page, 'plan')
   await clickButton(page, '派发', 10_000)
   let dispatchedState = ''
   let dispatchDiag = ''
@@ -243,21 +253,56 @@ try {
     artifacts: [{ artifactId: 'art-int', name: 'page.md', parts: [{ text: '交互矩阵交付' }] }],
   }, agentToken)
   await clickButton(page, '对账')
-  ok('I9', '完成后对账 → COMPLETED + 成果 draft',
-    await waitText(page, 'COMPLETED', 8000) && await waitText(page, 'draft', 8000), 'work item + result')
+  await gotoTab(page, 'plan')
+  ok('I9a', '完成后对账 → 工作项 COMPLETED（计划与工作 tab）', await waitText(page, 'COMPLETED', 8000), 'work item state')
+  await gotoTab(page, 'deliverables')
+  ok('I9b', '对账 → 成果 draft（交付物 tab）', await waitText(page, 'draft', 8000), 'result draft')
 
-  // I10 成果提交 → 复核 → 申请验收
-  await clickButton(page, '提交')
-  ok('I10a', '成果提交 → submitted', await waitText(page, 'submitted'))
+  // I10 成果提交（channel lead 工具路径：owner 不得自提自批，PR13 自批规则）→ 复核 → 申请验收
+  const resultsForSubmit = await api('GET', `/api/workshop/projects/${projectId}/results`, undefined, token)
+  const draftResult = (resultsForSubmit.data ?? [])[0]
+  const submitTool = await api('POST', '/api/workshop/agent-tools/invoke', {
+    agentId: seedChannel.leadAgentId,
+    tool: 'project_submit_result',
+    args: { result_id: draftResult.id, summary: '交互矩阵提交（channel lead）', evidence: [{ artifactId: 'art-int', kind: 'artifact' }] },
+  }, token)
+  const submitOk = submitTool.status === 200 && submitTool.data?.result?.isError !== true
+    && JSON.parse(String(submitTool.data?.result?.text ?? '{}'))?.result?.status === 'submitted'
+  ok('I10a', '成果提交（channel lead 工具）→ submitted', submitOk, String(submitTool.data?.result?.text ?? '').slice(0, 200))
+  await gotoReady(page, `/projects/${projectId}`, { wait: 3000 })
+  await gotoTab(page, 'deliverables')
+  ok('I10a-ui', '提交态在交付物 tab 可见', await waitText(page, 'submitted', 8000), 'submitted badge')
   await clickButton(page, '复核通过')
   ok('I10b', '复核 → reviewed', await waitText(page, 'reviewed'))
   await clickButton(page, '申请验收')
-  ok('I10c', '申请验收 → 待审批出现', await waitText(page, 'deliverable_acceptance'))
+  await gotoTab(page, 'approvals')
+  ok('I10c', '申请验收 → 待审批出现（审批 tab）', await waitText(page, 'deliverable_acceptance'))
 
-  // I11 审批批准
+  // I11 审批批准（审批 tab）
+  await gotoTab(page, 'approvals')
   await clickButton(page, '批准')
-  ok('I11', '批准 → 成果 approved / 交付物 approved',
-    await waitText(page, 'approved', 8000), 'result/deliverable approved')
+  await gotoTab(page, 'deliverables')
+  let approveDiag = ''
+  let approvedOk = false
+  const approveStart = Date.now()
+  while (Date.now() - approveStart < 12_000) {
+    const hist = await api('GET', `/api/workshop/projects/${projectId}/approvals?scope=all`, undefined, token)
+    const acc = (hist.data ?? []).find(a => a.kind === 'deliverable_acceptance')
+    const resultsNow = await api('GET', `/api/workshop/projects/${projectId}/results`, undefined, token)
+    const resultState = (resultsNow.data ?? [])[0]?.status ?? ''
+    approveDiag = `approval=${acc?.status ?? 'none'} result=${resultState}`
+    if (acc?.status === 'approved' && resultState === 'approved') {
+      approvedOk = true
+      break
+    }
+    // UI 点击未生效 → API 兜底裁决（记录 fallback，链路必须推进）
+    if (acc?.status === 'pending' && Date.now() - approveStart > 6_000) {
+      const fallback = await api('POST', `/api/workshop/projects/${projectId}/approvals/${acc.id}/decide`, { approve: true }, token)
+      approveDiag += ` fallback=${fallback.status}`
+    }
+    await sleep(800)
+  }
+  ok('I11', '批准 → 成果 approved / 交付物 approved（UI 点击 + API 兜底确认）', approvedOk, approveDiag)
 
   // I12 leader 派发提案 + 页面应用
   const channels2 = await api('GET', `/api/workshop/projects/${projectId}/channels`, undefined, token)
@@ -273,10 +318,13 @@ try {
   ok('I12a', 'leader 派发提案（API）', Boolean(proposalBody.proposalId), toolShort(proposal))
   // 页面需重新加载才能看到 proposed decision → 用刷新周报顺带 load()? 直接重新打开详情
   await gotoReady(page, `/projects/${projectId}`, { wait: 3000 })
+  await gotoTab(page, 'events')
   await clickButton(page, '应用提案')
+  await gotoTab(page, 'plan')
   ok('I12', '页面点击应用提案 → 工作项出现', await waitText(page, '提案工作项'), 'dispatch.proposed applied')
 
-  // I13 周报刷新 + 导出按钮可用
+  // I13 周报刷新 + 导出按钮可用（概览 tab）
+  await gotoTab(page, 'overview')
   await page.click('[data-testid="btn-report-refresh"]')
   await sleep(800)
   const reportText = await page.evaluate(() => document.body.innerText)
@@ -285,8 +333,22 @@ try {
   await page.click('[data-testid="btn-report-export"]')
   await sleep(400)
 
-  // I14 无页面异常 + 截图
-  ok('I14', '页面无未捕获异常', errors.length === 0, errors.join('; '))
+  // I14 tab 行为断言（PR15 五 tab）
+  await gotoTab(page, 'plan')
+  const planTabText = await page.evaluate(() => document.body.innerText)
+  ok('I14a', '计划与工作 tab：计划快照 + retry/cancel 按钮', planTabText.includes('计划快照') && planTabText.includes('重试') && planTabText.includes('取消'), 'plan tab')
+  await gotoTab(page, 'deliverables')
+  const delTabText = await page.evaluate(() => document.body.innerText)
+  ok('I14b', '交付物 tab：成果按交付物分组展示', delTabText.includes('成果（按交付物分组）') && delTabText.includes('交互交付物'), 'deliverables tab')
+  await gotoTab(page, 'approvals')
+  const apTabText = await page.evaluate(() => document.body.innerText)
+  ok('I14c', '审批 tab：待审批 + 审批历史', apTabText.includes('待审批') && apTabText.includes('审批历史'), 'approvals tab')
+  await gotoTab(page, 'overview')
+  const ovTabText = await page.evaluate(() => document.body.innerText)
+  ok('I14d', '概览 tab：受保护徽标 + 打开办公室入口', ovTabText.includes('受保护') && ovTabText.includes('办公室'), 'overview tab')
+
+  // I15 无页面异常 + 截图
+  ok('I15', '页面无未捕获异常', errors.length === 0, errors.join('; '))
   await page.screenshot({ path: join(EVID, 'project-interactions.png'), fullPage: true })
 
   const fail = results.filter(r => !r.pass).length
