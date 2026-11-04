@@ -339,7 +339,16 @@ export function createProjectDeliverableRepo(db: DatabaseSync) {
   const selectById = db.prepare(`SELECT ${DELIVERABLE_COLS} FROM project_deliverables WHERE id = ?`)
   const selectByProject = db.prepare(`SELECT ${DELIVERABLE_COLS} FROM project_deliverables WHERE project_id = ? ORDER BY created_at ASC`)
   const updateStatus = db.prepare(`UPDATE project_deliverables SET status = ?, waiver_reason = ?, updated_at = ? WHERE id = ?`)
+  const updateFull = db.prepare(`UPDATE project_deliverables SET name = ?, description = ?, owner_channel_id = ?, required = ?, acceptance_criteria_json = ?, due_at = ?, updated_at = ? WHERE id = ?`)
   return {
+    /** PR14：planned 态交付物的字段编辑（计划与工作 tab 保存）。 */
+    update(id: string, patch: Partial<Pick<ProjectDeliverableRow, 'name' | 'description' | 'ownerChannelId' | 'required' | 'acceptanceCriteriaJson' | 'dueAt'>>): ProjectDeliverableRow | undefined {
+      const cur = selectById.get(id) as unknown as ProjectDeliverableRow | undefined
+      if (!cur) return undefined
+      const next: ProjectDeliverableRow = { ...cur, ...patch, id: cur.id, projectId: cur.projectId, status: cur.status, waiverReason: cur.waiverReason, createdBy: cur.createdBy, createdAt: cur.createdAt, updatedAt: now() }
+      updateFull.run(next.name, next.description, next.ownerChannelId, next.required, next.acceptanceCriteriaJson, next.dueAt, next.updatedAt, id)
+      return next
+    },
     create(input: {
       projectId: string
       name: string
@@ -773,6 +782,7 @@ export function createProjectApprovalRepo(db: DatabaseSync) {
   )
   const selectById = db.prepare(`SELECT ${APPROVAL_COLS} FROM project_approvals WHERE id = ?`)
   const selectPending = db.prepare(`SELECT ${APPROVAL_COLS} FROM project_approvals WHERE project_id = ? AND status = 'pending' ORDER BY created_at ASC`)
+  const selectByProject = db.prepare(`SELECT ${APPROVAL_COLS} FROM project_approvals WHERE project_id = ? ORDER BY created_at DESC`)
   const decideStmt = db.prepare(`UPDATE project_approvals SET status = ?, decision_reason = ?, decided_by_user_id = ?, decided_at = ? WHERE id = ? AND project_id = ? AND status = 'pending' AND (expires_at IS NULL OR expires_at > ?)`)
   const consumeStmt = db.prepare(`UPDATE project_approvals SET status = 'consumed', consumed_at = ? WHERE id = ? AND status = 'approved' AND consumed_at IS NULL`)
   const expireStmt = db.prepare(`UPDATE project_approvals SET status = 'expired', decided_at = ? WHERE project_id = ? AND status = 'pending' AND expires_at IS NOT NULL AND expires_at <= ?`)
@@ -825,6 +835,10 @@ export function createProjectApprovalRepo(db: DatabaseSync) {
     },
     listPending(projectId: string): ProjectApprovalRow[] {
       return selectPending.all(projectId) as unknown as ProjectApprovalRow[]
+    },
+    /** PR14：审批历史（含已决策/过期/消费，倒序）。 */
+    listByProject(projectId: string): ProjectApprovalRow[] {
+      return selectByProject.all(projectId) as unknown as ProjectApprovalRow[]
     },
     /** 原子决策：pending + 未过期；返回是否抢到 */
     decide(id: string, projectId: string, status: 'approved' | 'rejected', byUserId: string, reason = ''): boolean {

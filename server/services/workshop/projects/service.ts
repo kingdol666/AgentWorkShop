@@ -1012,6 +1012,141 @@ export class ProjectService {
     return updated
   }
 
+  // ===== PR14：plan §7.1 API 补全（update/snapshot/trace/审批历史） =====
+
+  /** PATCH 项目基本信息（owner-only）。 */
+  updateProject(id: string, actor: ProjectActor, patch: {
+    name?: string
+    description?: string
+    objective?: string
+    mode?: 'observe' | 'supervised' | 'auto'
+  }): ProjectRow {
+    const p = this.get(id, actor)
+    this.requireOwner(p, actor)
+    const name = patch.name?.trim()
+    if (name !== undefined && !name) throw new AppError(400, 'BAD_REQUEST', '名称不能为空')
+    const objective = patch.objective?.trim()
+    if (objective !== undefined && !objective) throw new AppError(400, 'BAD_REQUEST', '目标不能为空')
+    const next = this.projects.update(id, {
+      ...(name !== undefined ? { name } : {}),
+      ...(patch.description !== undefined ? { description: patch.description } : {}),
+      ...(objective !== undefined ? { objective } : {}),
+      ...(patch.mode !== undefined ? { mode: patch.mode } : {}),
+    })
+    if (!next) throw new AppError(404, 'NOT_FOUND', `Project 不存在: ${id}`)
+    this.record(id, 'project.updated', actor, { patch }, '', 'project.updated', `project:${id}:updated:${Date.now()}`, { fields: Object.keys(patch) })
+    return next
+  }
+
+  /** PATCH 交付物（owner-only；planned/rejected 态可编辑）。 */
+  updateDeliverableItem(id: string, deliverableId: string, actor: ProjectActor, patch: {
+    name?: string
+    description?: string
+    required?: boolean
+    acceptanceCriteria?: string[]
+    dueAt?: string | null
+  }): ProjectDeliverableRow {
+    const p = this.get(id, actor)
+    this.requireOwner(p, actor)
+    const d = this.deliverables.findById(deliverableId)
+    if (!d || d.projectId !== id) throw new AppError(404, 'NOT_FOUND', '交付物不存在或不属于该项目')
+    if (!['planned', 'rejected'].includes(d.status)) {
+      throw new AppError(409, 'DELIVERABLE_STATE_INVALID', `交付物状态 ${d.status} 不能编辑`)
+    }
+    const name = patch.name?.trim()
+    if (name !== undefined && !name) throw new AppError(400, 'BAD_REQUEST', '名称不能为空')
+    const next = this.deliverables.update(deliverableId, {
+      ...(name !== undefined ? { name } : {}),
+      ...(patch.description !== undefined ? { description: patch.description } : {}),
+      ...(patch.required !== undefined ? { required: patch.required ? 1 : 0 } : {}),
+      ...(patch.acceptanceCriteria !== undefined ? { acceptanceCriteriaJson: JSON.stringify(patch.acceptanceCriteria) } : {}),
+      ...(patch.dueAt !== undefined ? { dueAt: patch.dueAt } : {}),
+    })
+    if (!next) throw new AppError(404, 'NOT_FOUND', '交付物不存在')
+    this.record(id, 'deliverable.updated', actor, { deliverableId, patch }, '', 'deliverable.updated', `deliverable:${deliverableId}:updated:${Date.now()}`, { fields: Object.keys(patch) })
+    return next
+  }
+
+  /** PATCH 工作项（owner-only；DRAFT 态可编辑——派发后锁定契约）。 */
+  updateWorkItem(id: string, workItemId: string, actor: ProjectActor, patch: {
+    title?: string
+    brief?: string
+    execBudgetMinutes?: number
+    dependsOn?: string[]
+    priority?: number
+  }): ProjectWorkItemRow {
+    const p = this.get(id, actor)
+    this.requireOwner(p, actor)
+    const wi = this.workItems.findById(workItemId)
+    if (!wi || wi.projectId !== id) throw new AppError(404, 'NOT_FOUND', '工作项不存在或不属于该项目')
+    if (wi.state !== 'DRAFT') {
+      throw new AppError(409, 'WORK_ITEM_STATE_INVALID', `工作项状态 ${wi.state} 不能编辑（派发后契约锁定）`)
+    }
+    const title = patch.title?.trim()
+    if (title !== undefined && !title) throw new AppError(400, 'BAD_REQUEST', '标题不能为空')
+    const budget = patch.execBudgetMinutes
+    if (budget !== undefined && (!Number.isFinite(budget) || budget < 1 || budget > 24 * 60)) {
+      throw new AppError(400, 'BAD_REQUEST', 'execBudgetMinutes 必须在 1–1440')
+    }
+    const next = this.workItems.update(workItemId, {
+      ...(title !== undefined ? { title } : {}),
+      ...(patch.brief !== undefined ? { brief: patch.brief } : {}),
+      ...(budget !== undefined ? { execBudgetMinutes: Math.floor(budget) } : {}),
+      ...(patch.dependsOn !== undefined ? { dependsOnJson: JSON.stringify(patch.dependsOn) } : {}),
+      ...(patch.priority !== undefined ? { priority: patch.priority } : {}),
+    })
+    if (!next) throw new AppError(404, 'NOT_FOUND', '工作项不存在')
+    this.record(id, 'work.updated', actor, { workItemId, patch }, wi.traceId, 'work.updated', `work:${workItemId}:updated:${Date.now()}`, { fields: Object.keys(patch) })
+    return next
+  }
+
+  /** plan §7.1 snapshot：项目只读聚合（详情页单请求加载）。 */
+  projectSnapshot(id: string, actor: ProjectActor) {
+    const p = this.get(id, actor)
+    const report = this.projectWeeklyReport(id, actor)
+    return {
+      project: {
+        id: p.id, name: p.name, description: p.description, objective: p.objective,
+        successCriteria: parseJson(p.successCriteriaJson, []), status: p.status, mode: p.mode,
+        ownerUserId: p.ownerUserId, officeChannelId: p.officeChannelId, leadAgentId: p.leadAgentId,
+        planVersion: p.planVersion, plan: parseJson(p.planJson, {}), createdAt: p.createdAt,
+      },
+      channels: this.bindings.listByProject(id),
+      members: this.members.listByProject(id),
+      deliverables: this.deliverables.listByProject(id),
+      workItems: this.workItems.listByProject(id),
+      results: this.filterResultsByGrant(this.results.listByProject(id), actor),
+      approvals: { pending: this.approvals.listPending(id), history: this.approvals.listByProject(id) },
+      report,
+    }
+  }
+
+  /** plan §7.1 trace：按 traceId 聚合 decisions/events/tasks（为什么可读）。 */
+  traceLookup(id: string, traceId: string, actor: ProjectActor) {
+    this.get(id, actor)
+    const trimmed = traceId.trim()
+    if (!trimmed) throw new AppError(400, 'BAD_REQUEST', 'traceId 不能为空')
+    const decisions = this.decisions.listByProject(id).filter(d => d.traceId === trimmed)
+    const events = this.events.listByProject(id).filter(e => e.traceId === trimmed)
+    const tasks = this.db.prepare(
+      `SELECT id, channel_id AS channelId, title, state, progress, source, project_work_item_id AS workItemId, project_attempt_no AS attemptNo, created_at AS createdAt
+       FROM tasks WHERE trace_id = ? ORDER BY created_at ASC`,
+    ).all(trimmed) as Array<Record<string, unknown>>
+    return {
+      traceId: trimmed,
+      decisions,
+      events,
+      tasks,
+      summary: { decisions: decisions.length, events: events.length, tasks: tasks.length },
+    }
+  }
+
+  /** PR14：审批历史（scope=all 含已决策/过期，倒序）。 */
+  listApprovalHistory(id: string, actor: ProjectActor): ProjectApprovalRow[] {
+    this.get(id, actor)
+    return this.approvals.listByProject(id)
+  }
+
   // ===== Agent-facing surface（PR8：leader 提案 / member 提交 / write_intent） =====
 
   /** channel_agents 身份：agent_kind 是 Project 层标识，role 仍为 lead|worker。 */

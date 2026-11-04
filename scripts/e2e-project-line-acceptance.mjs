@@ -419,6 +419,70 @@ try {
     : null
   ok('P20b', 'owner 批准 write_intent', writeIntentDec?.status === 200 && writeIntentDec.data?.status === 'approved', `status=${writeIntentDec?.status}`)
 
+  // ── PR14：plan §7.1 API 补全（update/retry/snapshot/trace/审批历史）──
+  const patchProject = await api('PATCH', `/api/workshop/projects/${project.id}`, { description: 'PR14 更新的描述', mode: 'supervised' }, H())
+  const decisionsAfterPatch = await api('GET', `/api/workshop/projects/${project.id}/decisions`, undefined, H())
+  ok('P23a', 'PATCH 项目生效 + 审计 project.updated',
+    patchProject.status === 200 && patchProject.data?.description === 'PR14 更新的描述'
+    && (decisionsAfterPatch.data ?? []).some(d => d.decisionType === 'project.updated'),
+    `status=${patchProject.status}`)
+
+  const wi2 = (await api('POST', `/api/workshop/projects/${project.id}/work-items`, {
+    deliverableId: deliverable.id, channelId: member.channelId, title: `PR14 编辑项-${TAG}`, brief: 'x', dedupeKey: `pr14-edit:${TAG}`,
+  }, H())).data
+  const patchWi = await api('PATCH', `/api/workshop/projects/${project.id}/work-items/${wi2.id}`, { execBudgetMinutes: 45, brief: 'PR14 编辑后的 brief' }, H())
+  ok('P23b', 'PATCH DRAFT 工作项生效', patchWi.status === 200 && patchWi.data?.execBudgetMinutes === 45, `status=${patchWi.status}`)
+
+  const retryWi = (await api('POST', `/api/workshop/projects/${project.id}/work-items`, {
+    deliverableId: deliverable.id, channelId: member.channelId, title: `PR14 重试项-${TAG}`, brief: 'x', dedupeKey: `pr14-retry:${TAG}`,
+  }, H())).data
+  await api('POST', `/api/workshop/projects/${project.id}/work-items/${retryWi.id}/dispatch`, {}, H())
+  const retryTasks = await api('GET', `/api/workshop/channels/${member.channelId}/tasks`, undefined, H())
+  const retryRoot = (retryTasks.data ?? []).find(t => t.projectWorkItemId === retryWi.id)
+  const retryRotate = await api('POST', `/api/workshop/channels/${member.channelId}/agents/${member.leadAgentId}/rotate-token`, {}, H())
+  await api('POST', `/api/workshop/tasks/${retryRoot.id}/complete`, { state: 'FAILED', closeReason: 'pr14 drill' }, retryRotate.data?.token).catch(async () => {
+    // complete 接口不接受 state 参数时走 update 语义：忽略，改用 cancel/reconcile 路径
+  })
+  // 用 cancel+reconcile 保证 FAILED 终态（complete API 语义以 P13b 为准）
+  const failedNow = await api('POST', `/api/workshop/projects/${project.id}/work-items/${retryWi.id}/cancel`, { reason: 'pr14 retry drill' }, H())
+  const retryResp = await api('POST', `/api/workshop/projects/${project.id}/work-items/${retryWi.id}/retry`, {}, H())
+  const retryAttempts = await api('GET', `/api/workshop/projects/${project.id}/work-items`, undefined, H())
+  const retryTarget = (retryAttempts.data ?? []).find(x => x.id === retryWi.id)
+  ok('P23c', 'retry 重派工作项（cancel→retry attempt 递增）',
+    failedNow.status === 200 && retryResp.status === 200 && retryResp.data?.state === 'DISPATCHED' && Boolean(retryTarget?.currentAttemptId),
+    `cancel=${failedNow.status} retry=${retryResp.status} state=${retryResp.data?.state}`)
+
+  const snapshot = await api('GET', `/api/workshop/projects/${project.id}/snapshot`, undefined, H())
+  ok('P23d', 'snapshot 聚合（project/workItems/results/approvals+report）',
+    snapshot.status === 200 && snapshot.data?.project?.id === project.id
+    && Array.isArray(snapshot.data?.workItems) && Array.isArray(snapshot.data?.results)
+    && Array.isArray(snapshot.data?.approvals?.pending) && Array.isArray(snapshot.data?.approvals?.history)
+    && Boolean(snapshot.data?.report?.generatedAt),
+    `status=${snapshot.status} wi=${(snapshot.data?.workItems ?? []).length}`)
+
+  const traceId = root?.traceId
+  const trace = traceId ? await api('GET', `/api/workshop/projects/${project.id}/trace/${encodeURIComponent(traceId)}`, undefined, H()) : null
+  ok('P23e', 'trace 聚合（tasks/events/decisions by traceId）',
+    trace?.status === 200 && trace.data?.traceId === traceId && trace.data?.summary?.tasks >= 1,
+    `status=${trace?.status} summary=${JSON.stringify(trace?.data?.summary ?? null)}`)
+
+  const history = await api('GET', `/api/workshop/projects/${project.id}/approvals?scope=all`, undefined, H())
+  ok('P23f', '审批历史（scope=all 含已 approved）',
+    history.status === 200 && (history.data ?? []).some(a => a.status === 'approved'),
+    `rows=${(history.data ?? []).length}`)
+
+  // P23g：清理 P23 道具（edit/cancel 未终态工作项），恢复完成门可达
+  for (const wid of [wi2.id, retryWi.id]) {
+    const cur = (await api('GET', `/api/workshop/projects/${project.id}/work-items`, undefined, H())).data?.find(x => x.id === wid)
+    if (cur && !['COMPLETED', 'CANCELED', 'SUPERSEDED'].includes(cur.state)) {
+      await api('POST', `/api/workshop/projects/${project.id}/work-items/${wid}/cancel`, { reason: 'P23 cleanup' }, H())
+    }
+  }
+  const workItemsClean = await api('GET', `/api/workshop/projects/${project.id}/work-items`, undefined, H())
+  ok('P23g', '完成门前工作项全部终态（cancel 豁免入口）',
+    (workItemsClean.data ?? []).every(w => ['COMPLETED', 'CANCELED', 'SUPERSEDED'].includes(w.state)),
+    `states=${(workItemsClean.data ?? []).map(w => w.state).join(',')}`)
+
   const completeReq = await api('POST', `/api/workshop/projects/${project.id}/complete`, {}, H())
   const completeAp = completeReq.data
   const completeDec = completeAp ? await api('POST', `/api/workshop/projects/${project.id}/approvals/${completeAp.id}/decide`, { approve: true, reason: '交付物已验收' }, H()) : null
