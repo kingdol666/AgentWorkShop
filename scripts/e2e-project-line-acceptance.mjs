@@ -430,9 +430,8 @@ try {
     && Boolean(repD.generatedAt),
     `status=${report.status} d=${repD.deliverables?.total} r=${repD.results?.total} w=${repD.workItems?.total} ratio=${repD.progress?.ratio}`)
 
-  // 未实现能力：必须 BLOCKED，不得算通过
-  blocked('P17b', 'UI 交互矩阵证据归档', 'scripts/ui/projects-interactions.mjs 由最终验收执行归档')
-  blocked('P18b', 'Live 全量 / G0–G6 / 回滚演练', 'PR12 执行')
+  // P17b（UI 交互矩阵）与 P18b（Live 全量/回滚）由 scripts/audit/project-g6-evidence.mjs
+  // 在最终验收轮统一执行并归档至 gates/G5、gates/G6（本脚本不重复输出 blocked 占位）。
 
   finish()
 }
