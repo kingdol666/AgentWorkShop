@@ -1,11 +1,14 @@
-# Project 层 V1 最终验收报告（PR1–PR13，全部合入 main）
+# Project 层 V1 最终验收报告（PR1–PR15，全部合入 main）
 
-日期：2026-11-04。状态：**plan v3.0 已实现范围全量验收通过；并行审查 P0 全部闭环；剩余边界见 §5 明确豁免**。
-main HEAD：`3dd260d4`（PR#35 合并）+ 最终证据包提交。证据根目录：`docs/audit/evidence/2026-11-03-project-layer/`。
+日期：2026-11-04。状态：**plan v3.0 全部里程碑（含 §7.1 API 面、§7.2 五 tab UI）验收通过；并行审查 P0 全部闭环**。
+main HEAD：`4d09817f`（PR#36/#37 合并 + 证据包）。证据根目录：`docs/audit/evidence/2026-11-03-project-layer/`。
 
 ---
 
 ## 1. 交付追溯（plan v3.0 → PR → 合并状态）
+
+| #36 | **API 面补全（plan §7.1）**：PATCH project/deliverable/work-item + retry/snapshot/trace/审批历史，全 zod | ✅ merged |
+| #37 | **UI 五 tab 重构（plan §7.2）**：概览/计划与工作/交付物/审批/决策与事件 + retry/cancel/waive + 受保护徽标 + 成果分组 | ✅ merged |
 
 | PR | 内容 | 状态 |
 |---|---|---|
@@ -45,12 +48,12 @@ main HEAD：`3dd260d4`（PR#35 合并）+ 最终证据包提交。证据根目�
 | Gate | 命令 | 结果 |
 |---|---|---|
 | G0 | typecheck / lint | ✅ PASS |
-| G1–G4 | `npm run test:unit` | ✅ **1084 tests / 1082 pass / 0 fail / 2 skipped**（含 MAST 14/14、B8 回滚注入、C11 grant、成员/建频道提案、PR13 计划门/豁免/绕道/自批 8 项新回归） |
+| G1–G4 | `npm run test:unit` | ✅ **1087 tests / 1085 pass / 0 fail / 2 skipped**（含 MAST 14/14、B8 回滚注入、C11 grant、成员/建频道提案、PR13 八项、**PR14 API 补全 3 项**回归） |
 | G5 | `npm run build` | ✅ PASS（host-tools 121） |
-| G5 | UI smoke | ✅ 6/6 |
-| G5 | UI 交互矩阵 | ✅ **22/22**（新增 I7b UI 批准计划） |
+| G5 | UI smoke | ✅ **7/7**（U4a 概览 + U4 五 tab 逐区） |
+| G5 | UI 交互矩阵 | ✅ **28/28**（新增五 tab 断言 I14a–d、UI 批准计划 I7b、lead 工具提交 I10a） |
 | G6 | 产线治理 E2E | ✅ PASS |
-| G6 | 项目生产业务 E2E | ✅ **53 PASS / 0 FAIL / 0 BLOCKED**（新增 P7b 计划门负例、P7c 批准） |
+| G6 | 项目生产业务 E2E | ✅ **60 PASS / 0 FAIL / 0 BLOCKED**（新增 P23a–g：update/retry/snapshot/trace/审批历史/完成门前终态清理） |
 | G6 | 回滚演练 | ✅ **12/12** |
 
 ---
