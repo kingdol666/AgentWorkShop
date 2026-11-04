@@ -148,6 +148,26 @@ test('retry：FAILED 工作项重派 attempt 递增；snapshot/trace/审批历�
   try {
     await s.svc.dispatchWorkItem(s.p.id, s.w.id, s.owner)
     const root = s.tasks.listRoots(s.member.channelId)[0]!
+
+    // PR16 护栏（纯函数直测）：lead 不得自行取消项目来源 root；非 project 任务不受影响
+    const { assertProjectRootCancelAllowed } = await import('../server/services/workshop/projects/root-cancel-guard')
+    assert.throws(
+      () => assertProjectRootCancelAllowed(
+        { source: 'project', parentId: null, creatorId: `project:${s.p.id}` },
+        { role: 'lead', agentId: s.member.leadAgentId! },
+      ),
+      (e: unknown) => (e as { code?: string }).code === 'PROJECT_ROOT_CANCEL_FORBIDDEN',
+    )
+    assert.doesNotThrow(() => assertProjectRootCancelAllowed(
+      { source: 'channel', parentId: null, creatorId: s.member.leadAgentId },
+      { role: 'lead', agentId: s.member.leadAgentId! },
+    ))
+    // project root（creator 恒为 project:<id>）即使被 lead「创建」语义也不放行
+    assert.throws(() => assertProjectRootCancelAllowed(
+      { source: 'project', parentId: null, creatorId: `project:${s.p.id}` },
+      { role: 'lead', agentId: s.p.leadAgentId! },
+    ), (e: unknown) => (e as { code?: string }).code === 'PROJECT_ROOT_CANCEL_FORBIDDEN')
+
     s.tasks.update(root.id, { state: 'FAILED', closeReason: 'boom' })
     s.svc.reconcile(s.p.id, s.owner)
     const retried = await s.svc.dispatchWorkItem(s.p.id, s.w.id, s.owner)
