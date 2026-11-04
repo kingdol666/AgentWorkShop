@@ -1,16 +1,19 @@
-# Project 层 V1 最终验收报告（PR1–PR17，全部合入 main）
+# Project 层 V1 最终验收报告（PR1–PR20，全部合入 main）
 
-日期：2026-11-04。状态：**plan v3.0 全部里程碑（含 §7.1 API 面、§7.2 五 tab UI）+ SuperAgent 规范核查 5 个 ❌ 缺口（M4 调度内核）验收通过；并行审查 P0 全部闭环**。
-main HEAD：`48f5a50d`（PR#38 取消护栏 + PR#39 M4 调度内核 + 证据包）。证据根目录：`docs/audit/evidence/2026-11-03-project-layer/`。
+日期：2026-11-04（PR16/17）/ 2026-11-05（PR19/PR20 增量）。状态：**plan v3.0 全部里程碑（含 §7.1 API 面、§7.2 五 tab UI）+ SuperAgent 规范核查 5 个 ❌ 缺口（M4 调度内核）+ Route 派发闭环（PR20）验收通过；并行审查 P0 全部闭环**。
+main HEAD：`d452e3b9`（PR#42 Route 派发闭环；此前 994c45ca=PR#19 派生进度、48f5a50d=PR#16/#17、f008756e=PR#18）。证据根目录：`docs/audit/evidence/2026-11-03-project-layer/`。
 
 ---
 
-## 0. 增量交付（2026-11-04 第二轮：PR16/PR17）
+## 0. 增量交付（2026-11-04 第二轮：PR16/PR17；2026-11-05 第三轮：PR19/PR20）
 
 | PR | 内容 | 状态 |
 |---|---|---|
 | **#38 (PR16)** | **项目来源 root 取消护栏**：lead 不可自取消项目 root（manager.cancelTask + scheduler-loop execute.ts 双点接线；Track B run4 实证护栏有效——lead 三轮监督均未能再自取消 root） | ✅ merged (980ca604) |
 | **#39 (PR17)** | **M4 调度内核（SuperAgent S2/S3/S5/S6/S7/S11）**：4 表（progress_ledger/plan_versions/effects/health）+ EventIngress（FAST→确定性 reconcile 零 LLM；SLOW→单飞合并批投递 leader，最小间隔退避）+ Effects outbox（5s→300s 退避、3 败 dead+升级）+ Watchdog（budget_burn/no_progress/repeated_decision + HealthBoard + 通知小时桶去重 + dead-man）+ 10s tick 内核；里程碑事件同事务入账本；plan_versions 不可变快照 | ✅ merged (48f5a50d) |
+| **#40 (PR18)** | **dev/home 模式短会话密钥 fail-loud 告警**（Track B run5 根因：iron-webcrypto min 32 字符 → 207× server.error 500 风暴 → lead 盲执行） | ✅ merged (f008756e) |
+| **#41 (PR19)** | **派生进度（外部评价 P1）+ 演示脚本度量修复（P0）**：deriveProgressMap 纯函数（叶子 null/父任务等权终态锚定聚合）接 engine list()/get()，progressDerived 与自报口径并列展示 | ✅ merged (994c45ca) |
+| **#42 (PR20)** | **Route 派发闭环（plan v3.0 §2.2 落地）**：Project 作为对 Channel 的上层 route —— selectReadyWorkItems 确定性依赖解析（DRAFT+无在飞+deps 让路终态，priority DESC/createdAt ASC）+ runRouteLoop（对账 + await 自动派发，按项目 promise 链串行防双派）；内核 tick(10s)/Reconciler(30s) 双路，回调延迟上界 ≈1 对账周期；手动/自动派发事件落账（work.dispatched / work.dispatch_auto）；环境类前置失败 → BLOCKED + work.blocked（SLOW 邮箱）；projects.auto_dispatch 默认 0（存量零突变，owner 显式启用）；验收 R1–R12：单测 7/7 + 单测全量 1104/0 + E2E P25 链式全闭环 **70 PASS/0 FAIL**（证据 gates/G7-route-dispatch-e2e.json） | ✅ merged (d452e3b9) |
 
 ## 1. 交付追溯（plan v3.0 → PR → 合并状态）
 
@@ -55,7 +58,7 @@ main HEAD：`48f5a50d`（PR#38 取消护栏 + PR#39 M4 调度内核 + 证据包�
 | Gate | 命令 | 结果 |
 |---|---|---|
 | G0 | typecheck / lint | ✅ PASS |
-| G1–G4 | `npm run test:unit` | ✅ **1094 tests / 1092 pass / 0 fail / 2 skipped**（含 MAST 14/14、B8 回滚注入、C11 grant、成员/建频道提案、PR13 八项、PR14 API 补全 3 项、**PR17 内核 7 项**回归） |
+| G1–G4 | `npm run test:unit` | ✅ **1106 tests / 1104 pass / 0 fail / 2 skipped**（含 MAST 14/14、B8 回滚注入、C11 grant、成员/建频道提案、PR13 八项、PR14 API 补全 3 项、PR17 内核 7 项、**PR20 Route 闭环 7 项**回归；2026-11-05 增量） |
 | G5 | `npm run build` | ✅ PASS（host-tools 121） |
 | G5 | UI smoke | ✅ **7/7** |
 | G5 | UI 交互矩阵 | ✅ **28/28** |
