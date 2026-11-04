@@ -263,6 +263,11 @@ test('自主 Reconciler 定时器：stop 后不再 tick', async () => {
       ticks += 1
       return { workItems: [], expiredApprovals: 0 }
     },
+    // PR20：Reconciler 走 runRouteLoop（对账 + Route 自动派发）
+    runRouteLoop: async () => ({
+      reconcile: (fake as { reconcileInternal: () => { workItems: [], expiredApprovals: number } }).reconcileInternal(),
+      autoDispatch: { dispatched: [], failed: 0, skippedByGate: true },
+    }),
   } as never
   const handle = startProjectReconciler(fake, { intervalMs: 1000 })
   await new Promise(r => setTimeout(r, 1150))
@@ -271,7 +276,7 @@ test('自主 Reconciler 定时器：stop 后不再 tick', async () => {
   await new Promise(r => setTimeout(r, 100))
   assert.ok(afterStop > 0)
   assert.equal(ticks, afterStop)
-  const manual = handle.tick()
+  const manual = await handle.tick()
   assert.equal(manual.projects, 1)
   assert.equal(manual.errors.length, 0)
 })

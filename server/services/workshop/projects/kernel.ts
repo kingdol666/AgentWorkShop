@@ -3,8 +3,9 @@
  *
  * tick（默认 10s，S3）：
  *   1) 逐 active 项目消费事件（fast → reconcile；slow → 合并批投递 leader）；
- *   2) 执行到期 effects（5s→300s 退避，3 次失败 dead+升级）；
- *   3) 每 N tick 独立 watchdog 扫描（预算/无进展/重复决策）。
+ *   2) PR20 route 回调闭环：无条件对账 + 自动派发下一批就绪工作项（延迟上界 ≈ 1 tick）；
+ *   3) 执行到期 effects（5s→300s 退避，3 次失败 dead+升级）；
+ *   4) 每 N tick 独立 watchdog 扫描（预算/无进展/重复决策）。
  * 异常单项目隔离；各组件写 HealthBoard 心跳。
  */
 import type { DatabaseSync } from 'node:sqlite'
@@ -38,6 +39,8 @@ export interface KernelTickResult {
   ingress: Array<IngressProcessResult & { projectId: string }>
   effects: DrainResult
   watchdog: Array<{ projectId: string, findings: WatchdogFinding[] }>
+  /** PR20 route 自动派发结果（每项目一项；skippedByGate=true 表示未开启/未批准/单飞占用） */
+  autoDispatch: Array<{ projectId: string, dispatched: Array<{ workItemId: string, taskId: string | null }>, failed: number, skippedByGate: boolean }>
   errors: Array<{ projectId: string, error: string }>
 }
 
@@ -99,17 +102,18 @@ export function initProjectKernel(deps: ProjectKernelDeps, options: ProjectKerne
   let tickCount = 0
   const tick = async (): Promise<KernelTickResult> => {
     tickCount += 1
-    const result: KernelTickResult = { projects: 0, reconciles: 0, ingress: [], effects: { done: 0, retried: 0, dead: 0, escalated: [] }, watchdog: [], errors: [] }
+    const result: KernelTickResult = { projects: 0, reconciles: 0, ingress: [], effects: { done: 0, retried: 0, dead: 0, escalated: [] }, watchdog: [], autoDispatch: [], errors: [] }
     const projects = activeProjects()
     result.projects = projects.length
     for (const p of projects) {
       try {
         const r = ingress.process(p.id)
         result.ingress.push({ projectId: p.id, ...r })
-        if (r.needsReconcile) {
-          service.reconcileInternal(p.id)
-          result.reconciles += 1
-        }
+        // PR20 route 回调主路径：无条件 reconcile（幂等且便宜）+ 立即派发下一批就绪项 ——
+        // 「Channel root 终态 → 工作项收敛 → 下游 DISPATCHED」延迟上界 ≈ 1 tick。
+        const route = await service.runRouteLoop(p.id)
+        result.reconciles += 1
+        result.autoDispatch.push({ projectId: p.id, ...route.autoDispatch })
         kernelRepo.health.heartbeat(p.id, 'ingress', true)
       }
       catch (err) {
@@ -145,10 +149,11 @@ export function initProjectKernel(deps: ProjectKernelDeps, options: ProjectKerne
 
   const processProject = async (projectId: string) => {
     const r = ingress.process(projectId)
-    if (r.needsReconcile) service.reconcileInternal(projectId)
+    // PR20：无条件 route 闭环（对账 + 自动派发），与 tick 同口径（API 手动触发即可验收）。
+    const route = await service.runRouteLoop(projectId)
     const effects = await outbox.drain()
     const findings = watchdog.scanProject(projectId, service.listActiveProjects().find(p => p.id === projectId)?.planVersion ?? 0)
-    return { ingress: r, effects, watchdog: findings }
+    return { ingress: r, reconcile: route.reconcile, autoDispatch: route.autoDispatch, effects, watchdog: findings }
   }
 
   const handle: ProjectKernelHandle = {

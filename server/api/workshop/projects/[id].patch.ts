@@ -1,6 +1,6 @@
 /**
  * PATCH /api/workshop/projects/:id —— 更新项目基本信息（owner-only）。
- * body: { name?, description?, objective?, mode? }
+ * body: { name?, description?, objective?, mode?, autoDispatch? }
  */
 import { z } from 'zod'
 import { getRouterParam, readValidatedBody } from 'h3'
@@ -14,6 +14,8 @@ const schema = z.object({
   description: z.string().optional(),
   objective: z.string().min(1).optional(),
   mode: z.enum(['observe', 'supervised', 'auto']).optional(),
+  // PR20 Route 派发闭环：项目级自动派发开关（owner-only，切换落 project.updated 审计）
+  autoDispatch: z.boolean().optional(),
 })
 
 export default defineApiHandler(async (event) => {

@@ -26,6 +26,11 @@ function hasAuditColumn(db: DatabaseSync, column: string): boolean {
   return cols.some(c => c.name === column)
 }
 
+function hasProjectsColumn(db: DatabaseSync, column: string): boolean {
+  const cols = db.prepare('PRAGMA table_info(projects)').all() as Array<{ name: string }>
+  return cols.some(c => c.name === column)
+}
+
 export function migrateProjectColumns(db: DatabaseSync): void {
   if (!hasChannelAgentColumn(db, 'agent_kind')) {
     db.exec('ALTER TABLE channel_agents ADD COLUMN agent_kind TEXT NOT NULL DEFAULT \'channel_agent\'')
@@ -50,6 +55,10 @@ export function migrateProjectColumns(db: DatabaseSync): void {
   }
   if (!hasAuditColumn(db, 'trace_id')) {
     db.exec('ALTER TABLE audit_log ADD COLUMN trace_id TEXT NOT NULL DEFAULT \'\'')
+  }
+  // PR20 Route 派发闭环：项目级自动派发开关（存量项目默认 0 = 行为零突变，owner 显式启用）
+  if (!hasProjectsColumn(db, 'auto_dispatch')) {
+    db.exec('ALTER TABLE projects ADD COLUMN auto_dispatch INTEGER NOT NULL DEFAULT 0')
   }
   ensureProjectIndexes(db)
 }

@@ -12,6 +12,7 @@ import type { ProjectKernelRepo } from '../db/project-kernel.repo'
 /** 确定性事件：状态迁移事实，reconcile 即可收敛，无需语义判断。 */
 const FAST_TYPES = new Set([
   'work.completed', 'work.failed', 'work.canceled', 'work.updated', 'work.plan_aligned',
+  'work.dispatched', 'work.dispatch_auto',
   'result.draft', 'result.reviewed', 'result.submitted', 'result.superseded', 'result.rejected',
   'approval.approved', 'approval.rejected', 'approval.expired', 'approval.requested',
   'deliverable.updated', 'deliverable.waived', 'plan.applied', 'plan.requested', 'project.updated',

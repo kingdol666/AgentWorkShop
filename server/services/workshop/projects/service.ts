@@ -31,6 +31,7 @@ import { parseJson } from '../db/database'
 import { AppError } from '../../../utils/errors'
 import { argsDigest } from './digest'
 import { PROJECT_GATED_WRITE_TOOL_NAMES } from './tool-surface'
+import { selectReadyWorkItems } from './route-dispatcher'
 
 export interface ProjectActor {
   id: string
@@ -189,6 +190,15 @@ export interface CreateProjectInput {
   leaderConfig?: Record<string, unknown>
   /** 审查修复：计划门开关（缺省 1=派发必须先批计划；0=关闭，测试/无计划场景用） */
   planApprovalRequired?: number
+  /** PR20 Route 派发闭环：true=计划批准后按 dependsOn 就绪顺序自动派发（缺省 false，行为零突变） */
+  autoDispatch?: boolean
+}
+
+/** PR20 自动派发结果（route 回调闭环的可观测面）。 */
+export interface AutoDispatchResult {
+  dispatched: Array<{ workItemId: string, taskId: string | null }>
+  failed: number
+  skippedByGate: boolean
 }
 
 export class ProjectService {
@@ -275,6 +285,7 @@ export class ProjectService {
       mode: input.mode ?? 'supervised',
       ownerUserId: actor.id,
       planApprovalRequired: input.planApprovalRequired === 0 ? 0 : 1,
+      autoDispatch: input.autoDispatch ? 1 : 0,
       configJson: JSON.stringify({ leaderHarness: input.leaderHarness ?? 'mock' }),
     })
 
@@ -492,13 +503,27 @@ export class ProjectService {
   }
 
   /**
-   * 派发工作项到成员 Channel root task。
+   * 派发工作项到成员 Channel root task（owner 手动入口）。
    * V1 只允许 project active；同一 work item 只允许一个 live attempt；
    * planVersion 在项目已有 approved plan 时必须匹配。
    */
   async dispatchWorkItem(id: string, workItemId: string, actor: ProjectActor): Promise<ProjectWorkItemRow> {
     const p = this.get(id, actor)
     this.requireOwner(p, actor)
+    return this.dispatchWorkItemAs(id, workItemId, actor, p, { auto: false })
+  }
+
+  /**
+   * 派发内部路径（手动/自动共用；授权校验由入口完成）。
+   * PR20：手动派发落 `work.dispatched`、自动派发落 `work.dispatch_auto`（此前两者均无事件）。
+   */
+  private async dispatchWorkItemAs(
+    id: string,
+    workItemId: string,
+    actor: ProjectActor,
+    p: ProjectRow,
+    opts: { auto: boolean },
+  ): Promise<ProjectWorkItemRow> {
     if (p.status !== 'active') throw new AppError(409, 'PROJECT_NOT_ACTIVE', `Project 状态 ${p.status} 不能派发`)
     // 审查修复（计划门）：要求批准计划的项目，plan 未批前不得派发任何工作项。
     if (p.planApprovalRequired === 1 && p.planVersion === 0) {
@@ -529,21 +554,26 @@ export class ProjectService {
         throw new AppError(409, 'DEPENDENCY_NOT_READY', `依赖工作项 ${depId} 未完成`)
       }
     }
-    const d = this.deliverables.listByProject(id).find(x => x.id === wi.deliverableId)
-    if (!d) throw new AppError(404, 'NOT_FOUND', '工作项交付物不存在')
-    const bound = this.bindings.listByProject(id).find(b => b.channelId === wi.channelId && b.status === 'active')
-    if (!bound) throw new AppError(409, 'CHANNEL_NOT_IN_PROJECT', '目标 Channel 未绑定到该项目')
-    const channel = this.manager.getChannelForUser(wi.channelId, actor.id)
-    if (!channel || channel.enabled !== 1) throw new AppError(409, 'CHANNEL_DISABLED', '目标 Channel 不存在或已禁用')
-    if (!channel.leadAgentId) throw new AppError(409, 'CHANNEL_NO_LEAD', '目标 Channel 没有 lead')
-
-    const attemptNo = this.attempts.listByWorkItem(wi.id).reduce((max, a) => Math.max(max, a.attemptNo), 0) + 1
-    const sourceKey = `pw:${wi.id}:${attemptNo}`
-    const traceId = wi.traceId || `trace:${wi.id}`
-    const attempt = this.attempts.create({
-      projectId: id, workItemId: wi.id, attemptNo, channelId: wi.channelId, sourceKey, traceId,
-    })
+    // PR20 语义分界：上方校验 = 「当前不可派」（保持 DRAFT，自动派发下轮重选）；
+    // 下方环境类失败（交付物/绑定/频道/lead/submitProjectRoot）= 永久前置失败 →
+    // BLOCKED + work.blocked（SLOW 邮箱评估，plan v3.0 §5.1 DISPATCHING→BLOCKED 行）。
+    let attempt: ReturnType<ProjectService['attempts']['create']> | undefined
     try {
+      const d = this.deliverables.listByProject(id).find(x => x.id === wi.deliverableId)
+      if (!d) throw new AppError(404, 'NOT_FOUND', '工作项交付物不存在')
+      const bound = this.bindings.listByProject(id).find(b => b.channelId === wi.channelId && b.status === 'active')
+      if (!bound) throw new AppError(409, 'CHANNEL_NOT_IN_PROJECT', '目标 Channel 未绑定到该项目')
+      // PR20：按项目 owner 视角取 Channel（system actor 无 Channel 所有权，不能传 actor.id）。
+      const channel = this.manager.getChannelForUser(wi.channelId, p.ownerUserId)
+      if (!channel || channel.enabled !== 1) throw new AppError(409, 'CHANNEL_DISABLED', '目标 Channel 不存在或已禁用')
+      if (!channel.leadAgentId) throw new AppError(409, 'CHANNEL_NO_LEAD', '目标 Channel 没有 lead')
+
+      const attemptNo = this.attempts.listByWorkItem(wi.id).reduce((max, a) => Math.max(max, a.attemptNo), 0) + 1
+      const sourceKey = `pw:${wi.id}:${attemptNo}`
+      const traceId = wi.traceId || `trace:${wi.id}`
+      attempt = this.attempts.create({
+        projectId: id, workItemId: wi.id, attemptNo, channelId: wi.channelId, sourceKey, traceId,
+      })
       const { task } = await this.manager.submitProjectRoot({
         projectId: id,
         workItemId: wi.id,
@@ -556,6 +586,8 @@ export class ProjectService {
         execBudgetMinutes: wi.execBudgetMinutes,
       })
       this.attempts.setDispatched(attempt.id, task.id)
+      const evtType = opts.auto ? 'work.dispatch_auto' : 'work.dispatched'
+      this.record(id, evtType, actor, { workItemId: wi.id, taskId: task.id, attemptNo }, traceId, evtType, `work:${wi.id}:${opts.auto ? 'auto' : 'dispatched'}:a${attemptNo}`, { workItemId: wi.id, taskId: task.id, attemptNo, auto: opts.auto })
       return this.workItems.update(wi.id, {
         state: 'DISPATCHED',
         stateReason: null,
@@ -565,12 +597,14 @@ export class ProjectService {
       })!
     }
     catch (err) {
-      this.attempts.close(attempt.id, 'CLOSED', err instanceof Error ? err.message : String(err))
+      const message = err instanceof Error ? err.message : String(err)
+      if (attempt) this.attempts.close(attempt.id, 'CLOSED', message)
       this.workItems.update(wi.id, {
         state: 'BLOCKED',
-        stateReason: err instanceof Error ? err.message : String(err),
+        stateReason: message,
         currentAttemptId: null,
       })
+      this.record(id, 'work.blocked', actor, { workItemId: wi.id, reason: message }, wi.traceId || `trace:${wi.id}`, 'work.blocked', `work:${wi.id}:blocked:${Date.now()}`, { workItemId: wi.id, reason: message, stage: attempt ? 'submit' : 'precheck' })
       throw err
     }
   }
@@ -684,6 +718,73 @@ export class ProjectService {
     return this.reconcileWith(id, { id: 'system', role: 'system' })
   }
 
+  /** PR20：按项目串行化的自动派发链（submitProjectRoot 非事务窗口的防双派闸；后到调用排队等前序完成）。 */
+  private readonly autoDispatchChains = new Map<string, Promise<AutoDispatchResult>>()
+
+  /**
+   * PR20 Route 自动派发入口（幂等可并发调用）：同项目调用经 promise 链串行，
+   * 后到调用在前序完成后**重新选择**就绪项再跑（不跳过 —— 内核 tick 与 30s
+   * Reconciler 双路触发不会互吞派发窗口）。
+   */
+  autoDispatchProject(id: string): Promise<AutoDispatchResult> {
+    const prev = this.autoDispatchChains.get(id) ?? Promise.resolve()
+    const next = prev.catch(() => { /* 前序失败不阻断本轮 */ }).then(() => this.doAutoDispatch(id))
+    this.autoDispatchChains.set(id, next)
+    void next.then(() => {
+      if (this.autoDispatchChains.get(id) === next) this.autoDispatchChains.delete(id)
+    }, () => {
+      if (this.autoDispatchChains.get(id) === next) this.autoDispatchChains.delete(id)
+    })
+    return next
+  }
+
+  /**
+   * 实际派发体：计划已批 + auto_dispatch=1 的 active 项目，对 selectReadyWorkItems
+   * 选出的就绪项按序调用内部派发路径（system actor）。单项失败已由派发路径置
+   * BLOCKED 并落 work.blocked（SLOW 邮箱评估），隔离继续。
+   * 项目完成仍走 owner 审批门 —— 自动派发永不自动完成项目。
+   */
+  private async doAutoDispatch(id: string): Promise<AutoDispatchResult> {
+    const out: AutoDispatchResult = { dispatched: [], failed: 0, skippedByGate: false }
+    const p = this.projects.findById(id)
+    if (!p || p.status !== 'active' || p.autoDispatch !== 1) {
+      out.skippedByGate = true
+      return out
+    }
+    if (p.planApprovalRequired === 1 && p.planVersion === 0) {
+      out.skippedByGate = true
+      return out
+    }
+    const ready = selectReadyWorkItems(this.workItems.listByProject(id))
+    const systemActor = { id: 'system', role: 'system' } as const
+    for (const wi of ready) {
+      try {
+        const row = await this.dispatchWorkItemAs(id, wi.id, systemActor, p, { auto: true })
+        const attempt = row.currentAttemptId ? this.attempts.findById(row.currentAttemptId) : undefined
+        out.dispatched.push({ workItemId: wi.id, taskId: attempt?.channelTaskId ?? null })
+      }
+      catch {
+        // 派发失败路径已落 BLOCKED + work.blocked 事件；继续其余就绪项（R5）。
+        out.failed += 1
+      }
+    }
+    return out
+  }
+
+  /**
+   * PR20 route 回调闭环：对账收敛（root 终态 → 工作项状态 → 成果 draft）后立即
+   * 尝试派发下一批就绪项。内核 tick（10s）与 30s Reconciler 双路调用本方法，
+   * 「Channel 完成回调 → 派发下一项」延迟上界 ≈ 1 个对账周期。
+   */
+  async runRouteLoop(id: string): Promise<{
+    reconcile: { workItems: ProjectWorkItemRow[], expiredApprovals: number }
+    autoDispatch: Awaited<ReturnType<ProjectService['autoDispatchProject']>>
+  }> {
+    const reconcile = this.reconcileInternal(id)
+    const autoDispatch = await this.autoDispatchProject(id)
+    return { reconcile, autoDispatch }
+  }
+
   listActiveProjects(): ProjectRow[] {
     return this.projects.listAll().filter(p => p.status === 'active')
   }
@@ -747,6 +848,8 @@ export class ProjectService {
         this.record(id, 'approval.expired', actor, { expiredApprovals }, '', 'approval.expired', `approval:expired:${Date.now()}`, { expiredApprovals })
       }
     })
+    // PR20：派发由 runRouteLoop（reconcile 之后的 await 步骤）统一执行；
+    // 本方法保持纯对账，fire-and-forget 派发会让「谁派发」不可观测且吞掉结果。
     return { workItems: this.workItems.listByProject(id), expiredApprovals }
   }
 
@@ -1037,6 +1140,8 @@ export class ProjectService {
     description?: string
     objective?: string
     mode?: 'observe' | 'supervised' | 'auto'
+    /** PR20：route 自动派发开关（owner-only；切换落 project.updated 审计） */
+    autoDispatch?: boolean
   }): ProjectRow {
     const p = this.get(id, actor)
     this.requireOwner(p, actor)
@@ -1049,6 +1154,7 @@ export class ProjectService {
       ...(patch.description !== undefined ? { description: patch.description } : {}),
       ...(objective !== undefined ? { objective } : {}),
       ...(patch.mode !== undefined ? { mode: patch.mode } : {}),
+      ...(patch.autoDispatch !== undefined ? { autoDispatch: patch.autoDispatch ? 1 : 0 } : {}),
     })
     if (!next) throw new AppError(404, 'NOT_FOUND', `Project 不存在: ${id}`)
     this.record(id, 'project.updated', actor, { patch }, '', 'project.updated', `project:${id}:updated:${Date.now()}`, { fields: Object.keys(patch) })
@@ -1127,6 +1233,7 @@ export class ProjectService {
         successCriteria: parseJson(p.successCriteriaJson, []), status: p.status, mode: p.mode,
         ownerUserId: p.ownerUserId, officeChannelId: p.officeChannelId, leadAgentId: p.leadAgentId,
         planVersion: p.planVersion, plan: parseJson(p.planJson, {}), createdAt: p.createdAt,
+        autoDispatch: p.autoDispatch === 1,
       },
       channels: this.bindings.listByProject(id),
       members: this.members.listByProject(id),

@@ -16,6 +16,8 @@ const schema = z.object({
   mode: z.enum(['observe', 'supervised', 'auto']).optional(),
   leaderHarness: z.string().min(1).optional(),
   leaderConfig: z.record(z.string(), z.unknown()).optional(),
+  // PR20 Route 派发闭环：计划批准后按 dependsOn 就绪顺序自动派发（缺省 false）
+  autoDispatch: z.boolean().optional(),
 })
 
 export default defineApiHandler(async (event) => {
