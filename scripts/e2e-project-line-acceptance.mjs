@@ -503,6 +503,31 @@ try {
     && Boolean(repD.generatedAt),
     `status=${report.status} d=${repD.deliverables?.total} r=${repD.results?.total} w=${repD.workItems?.total} ratio=${repD.progress?.ratio}`)
 
+  // ── PR17 M4 调度内核面（S2/S5/S7/S11：HealthBoard + Ledger + 手动 tick + 快照摘要） ──
+  const health = await api('GET', `/api/workshop/projects/${project.id}/health`, undefined, H())
+  ok('P24a', 'HealthBoard API（组件健康+effects 计数+计划版本+账本概览）',
+    health.status === 200 && Array.isArray(health.data?.health) && typeof health.data?.effects === 'object'
+    && typeof health.data?.ledger?.count === 'number' && health.data?.project?.planVersion >= 1,
+    `status=${health.status} planV=${health.data?.project?.planVersion} ledger=${health.data?.ledger?.count} effects=${JSON.stringify(health.data?.effects ?? {})}`)
+
+  const ledger = await api('GET', `/api/workshop/projects/${project.id}/ledger?limit=50`, undefined, H())
+  ok('P24b', 'Progress Ledger API（里程碑条目 + 确定性 assessment）',
+    ledger.status === 200 && (ledger.data?.items ?? []).length > 0
+      && (ledger.data.items).every(i => typeof i.assessment === 'object'),
+    `count=${ledger.data?.count} items=${(ledger.data?.items ?? []).length} first=${ledger.data?.items?.[0]?.summary ?? ''}`)
+
+  const tick = await api('POST', `/api/workshop/projects/${project.id}/kernel/tick`, {}, H())
+  ok('P24c', '内核手动 tick（owner 入口：事件消费/reconcile/effects/watchdog）',
+    tick.status === 200 && tick.data?.ok === true && typeof tick.data?.ingress === 'object',
+    `status=${tick.status} ok=${tick.data?.ok} ingress=${JSON.stringify(tick.data?.ingress ?? null)}`)
+
+  const snap24 = await api('GET', `/api/workshop/projects/${project.id}/snapshot`, undefined, H())
+  ok('P24d', 'snapshot.kernel 内核摘要（additive：health/effects/ledger/planApprovedVersion）',
+    snap24.status === 200 && typeof snap24.data?.kernel === 'object'
+    && Array.isArray(snap24.data.kernel.health) && typeof snap24.data.kernel.effects === 'object'
+    && snap24.data.kernel.planApprovedVersion >= 1,
+    `planApprovedV=${snap24.data?.kernel?.planApprovedVersion} ledger=${snap24.data?.kernel?.ledger?.count}`)
+
   // P17b（UI 交互矩阵）与 P18b（Live 全量/回滚）由 scripts/audit/project-g6-evidence.mjs
   // 在最终验收轮统一执行并归档至 gates/G5、gates/G6（本脚本不重复输出 blocked 占位）。
 

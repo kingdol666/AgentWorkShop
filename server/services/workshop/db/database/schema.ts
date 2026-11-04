@@ -1458,7 +1458,84 @@ CREATE TABLE IF NOT EXISTS project_approvals (
   decided_at             TEXT
 );
 CREATE UNIQUE INDEX IF NOT EXISTS uq_project_approval_pending
-  ON project_approvals(project_id, kind, subject_id) WHERE status='pending';`
+  ON project_approvals(project_id, kind, subject_id) WHERE status='pending';
+
+-- ===== PR17 M4 调度内核（plan §2.3 S2/S3/S5/S6/S7/S11；§3.1 DDL 落地） =====
+
+-- 项目进度账本（append-only；Magentic-One Progress Ledger，plan D13）
+CREATE TABLE IF NOT EXISTS project_progress_ledger (
+  id              TEXT PRIMARY KEY,
+  project_id      TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  seq             INTEGER NOT NULL,
+  plan_version    INTEGER NOT NULL,
+  step_no         INTEGER NOT NULL,
+  trigger_type    TEXT NOT NULL,
+                    -- tick|event|owner|watchdog
+  summary         TEXT NOT NULL DEFAULT '',
+  facts_json      TEXT NOT NULL DEFAULT '[]',
+  assessment_json TEXT NOT NULL DEFAULT '{}',
+                    -- plan_valid|stuck|complete|termination_condition_met|confidence|reason
+  next_action     TEXT NOT NULL DEFAULT '',
+  evidence_json   TEXT NOT NULL DEFAULT '[]',
+  decision_id     TEXT,
+  trace_id        TEXT NOT NULL DEFAULT '',
+  created_at      TEXT NOT NULL,
+  UNIQUE(project_id, seq)
+);
+CREATE INDEX IF NOT EXISTS idx_project_ledger_project
+  ON project_progress_ledger(project_id, seq DESC);
+
+-- 计划版本（Task Ledger 不可变快照，plan D13/不变量 12）
+CREATE TABLE IF NOT EXISTS project_plan_versions (
+  project_id    TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  version       INTEGER NOT NULL,
+  plan_json     TEXT NOT NULL,
+  sha256        TEXT NOT NULL,
+  status        TEXT NOT NULL DEFAULT 'draft',
+                    -- draft|approved|superseded|rejected
+  approved_by   TEXT,
+  approved_at   TEXT,
+  supersedes    INTEGER,
+  created_at    TEXT NOT NULL,
+  PRIMARY KEY (project_id, version)
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uq_project_plan_approved
+  ON project_plan_versions(project_id) WHERE status='approved';
+
+-- 副作用队列（outbox/afterCommit；DeepSeek effects 模式，plan S11/D17）
+CREATE TABLE IF NOT EXISTS project_effects (
+  id            TEXT PRIMARY KEY,
+  project_id    TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  dedupe_key    TEXT NOT NULL,
+  kind          TEXT NOT NULL,
+                    -- notify|mailbox|reconcile
+  payload_json  TEXT NOT NULL DEFAULT '{}',
+  status        TEXT NOT NULL DEFAULT 'pending',
+                    -- pending|running|done|failed|dead
+  attempts      INTEGER NOT NULL DEFAULT 0,
+  next_retry_at TEXT,
+  last_error    TEXT NOT NULL DEFAULT '',
+  trace_id      TEXT NOT NULL DEFAULT '',
+  created_at    TEXT NOT NULL,
+  updated_at    TEXT NOT NULL,
+  UNIQUE(project_id, dedupe_key)
+);
+CREATE INDEX IF NOT EXISTS idx_project_effects_due
+  ON project_effects(status, next_retry_at);
+
+-- 组件健康（Watchdog HealthBoard，plan S7/§7.5）
+CREATE TABLE IF NOT EXISTS project_health (
+  project_id        TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  component         TEXT NOT NULL,
+                    -- scheduler|watchdog|leader|executor|ingress|effects
+  status            TEXT NOT NULL DEFAULT 'ok',
+                    -- ok|degraded|failed|stale
+  last_error        TEXT NOT NULL DEFAULT '',
+  consecutive_failures INTEGER NOT NULL DEFAULT 0,
+  last_heartbeat_at TEXT NOT NULL DEFAULT '',
+  updated_at        TEXT NOT NULL,
+  PRIMARY KEY (project_id, component)
+);`
 
 // ===== 默认种子数据(首轮初始化注入;owner NULL = 公共资源,所有登录用户只读共享) =====
 

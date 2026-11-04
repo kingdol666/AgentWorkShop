@@ -24,6 +24,7 @@ import {
   createProjectMemberRepo,
 } from '../db/project.repo'
 import { createTaskRepo } from '../db/task.repo'
+import { createProjectKernelRepo } from '../db/project-kernel.repo'
 import type { TaskRow } from '../db/database'
 import { withTransaction } from '../db/transaction'
 import { parseJson } from '../db/database'
@@ -202,6 +203,8 @@ export class ProjectService {
   private readonly events
   private readonly members
   private readonly tasks
+  /** PR17 M4 内核仓储：ledger / plan_versions / effects / health。 */
+  private readonly kernelRepo
 
   constructor(
     private readonly manager: AgentChannelManager,
@@ -219,6 +222,7 @@ export class ProjectService {
     this.events = createProjectEventRepo(db)
     this.members = createProjectMemberRepo(db)
     this.tasks = createTaskRepo(db)
+    this.kernelRepo = createProjectKernelRepo(db)
   }
 
   list(actor: ProjectActor): ProjectRow[] {
@@ -904,6 +908,13 @@ export class ProjectService {
       traceId: `plan:${id}:${input.version}`,
       expiresAt: new Date(Date.now() + 24 * 3600_000).toISOString(),
     })
+    // PR17 不变量 12：计划版本不可变快照（draft，待审批）。
+    this.kernelRepo.planVersions.upsert(
+      id,
+      input.version,
+      JSON.stringify(input.plan),
+      createHash('sha256').update(JSON.stringify(input.plan)).digest('hex'),
+    )
     this.record(id, 'plan.requested', actor, { approvalId: approval.id, version: input.version }, approval.traceId, 'plan.requested', `plan:${id}:${input.version}:requested`, { approvalId: approval.id, version: input.version })
     return approval
   }
@@ -978,11 +989,17 @@ export class ProjectService {
       else if (approval.kind === 'plan_approval' && approve) {
         const version = approval.subjectVersion ?? p.planVersion
         const updated = this.projects.update(id, { planVersion: version, planJson: approval.payloadJson })
+        // PR17 不变量 12：先收编旧 approved，再批准新版本（部分唯一索引要求单 approved）。
+        this.kernelRepo.planVersions.supersedeOthers(id, version)
+        this.kernelRepo.planVersions.markApproved(id, version, actor.id)
         // leader 提案的 proposal decision 与审批联动收口（CAS）。
         for (const d of this.decisions.listByProject(id)) {
           if (d.approvalId === approvalId && d.state === 'proposed') this.decisions.markApplied(d.id, 'applied', 'approved plan')
         }
         this.materializeApprovedPlan(updated ?? { ...p, planVersion: version, planJson: approval.payloadJson }, version, approval.payloadJson)
+      }
+      else if (approval.kind === 'plan_approval' && !approve) {
+        this.kernelRepo.planVersions.markRejected(id, approval.subjectVersion ?? p.planVersion)
       }
       this.record(id, approve ? 'approval.approved' : 'approval.rejected', actor, { approvalId, kind: approval.kind, reason }, approval.traceId, approve ? 'approval.approved' : 'approval.rejected', `approval:${approvalId}:${approve ? 'approved' : 'rejected'}`, { approvalId, kind: approval.kind, reason })
       updated = this.approvals.findById(approvalId)!
@@ -1118,6 +1135,13 @@ export class ProjectService {
       results: this.filterResultsByGrant(this.results.listByProject(id), actor),
       approvals: { pending: this.approvals.listPending(id), history: this.approvals.listByProject(id) },
       report,
+      // PR17 M4 内核摘要（additive；HealthBoard + effects + ledger 概览）
+      kernel: {
+        health: this.kernelRepo.health.list(id),
+        effects: this.kernelRepo.effects.countByStatus(id),
+        ledger: { count: this.kernelRepo.ledger.count(id), lastAt: this.kernelRepo.ledger.lastAt(id) },
+        planApprovedVersion: this.kernelRepo.planVersions.getApproved(id)?.version ?? null,
+      },
     }
   }
 
@@ -1419,6 +1443,14 @@ export class ProjectService {
         expiresAt: new Date(Date.now() + 24 * 3600_000).toISOString(),
       })
       const argsJson = JSON.stringify(normalized.raw)
+      // PR17 不变量 12：leader 提案的版本同样落不可变快照（draft，待 owner 批准）。
+      this.kernelRepo.planVersions.upsert(
+        ctx.project.id,
+        version,
+        argsJson,
+        createHash('sha256').update(argsJson).digest('hex'),
+        ctx.project.planVersion > 0 ? ctx.project.planVersion : null,
+      )
       proposal = this.decisions.append({
         projectId: ctx.project.id,
         source: 'leader',
@@ -1999,6 +2031,22 @@ export class ProjectService {
         })
       }
       this.events.append({ projectId, type: eventType, eventKey, payloadJson: JSON.stringify(payload), traceId })
+      // PR17 S5：里程碑事件同步进 Progress Ledger（append-only；与决策/事件同事务）。
+      const milestone = ledgerAssessmentOf(eventType, payload)
+      if (milestone) {
+        const pv = this.projects.findById(projectId)?.planVersion ?? 0
+        this.kernelRepo.ledger.append({
+          projectId,
+          planVersion: pv,
+          stepNo: 0,
+          triggerType: actor.agentId ? 'event' : actor.role === 'system' ? 'tick' : 'owner',
+          summary: eventType,
+          facts: [{ eventType, ...payload }],
+          assessment: milestone.assessment,
+          nextAction: milestone.nextAction,
+          traceId,
+        })
+      }
     })
   }
 
@@ -2068,6 +2116,78 @@ export class ProjectService {
     const m = this.members.findOne(p.id, actor.id)
     if (m && m.role === 'approver') return
     throw new AppError(403, 'FORBIDDEN', '仅项目 owner/admin/approver 可决策审批')
+  }
+
+  // ===== PR17 M4 内核读面 =====
+
+  /** S5 账本读面（owner/admin/成员可读）。 */
+  ledgerTail(id: string, actor: ProjectActor, limit = 50) {
+    const p = this.get(id, actor)
+    return {
+      project: { id: p.id, planVersion: p.planVersion, status: p.status },
+      count: this.kernelRepo.ledger.count(id),
+      items: this.kernelRepo.ledger.list(id, limit).map(r => ({
+        ...r,
+        facts: parseJson(r.factsJson, []) as unknown,
+        assessment: parseJson(r.assessmentJson, {}) as Record<string, unknown>,
+        evidence: parseJson(r.evidenceJson, []) as unknown,
+      })),
+    }
+  }
+
+  /** S7 HealthBoard 读面（owner/admin/成员可读）：组件健康 + effects 计数 + 计划版本。 */
+  kernelStatus(id: string, actor: ProjectActor) {
+    const p = this.get(id, actor)
+    const approved = this.kernelRepo.planVersions.getApproved(id)
+    return {
+      project: { id: p.id, planVersion: p.planVersion, status: p.status },
+      health: this.kernelRepo.health.list(id),
+      effects: this.kernelRepo.effects.countByStatus(id),
+      planVersions: {
+        count: this.kernelRepo.planVersions.list(id, 100).length,
+        approvedVersion: approved?.version ?? null,
+      },
+      ledger: { count: this.kernelRepo.ledger.count(id), lastAt: this.kernelRepo.ledger.lastAt(id) },
+    }
+  }
+
+  /** PR17：owner 断言（内核手动 tick 等运维入口用）。 */
+  assertProjectOwner(id: string, actor: ProjectActor): void {
+    this.requireOwner(this.get(id, actor), actor)
+  }
+}
+
+/**
+ * PR17 S5/S6：里程碑事件 → Progress Ledger 的确定性评估（Magentic-One 进步账本，
+ * 评估由规则产生；LLM 评估走 slow path 提案，仍需 owner 批准）。
+ * 非里程碑事件返回 null（不写账本，避免账本膨胀）。
+ */
+export function ledgerAssessmentOf(
+  eventType: string,
+  payload: Record<string, unknown>,
+): { assessment: Record<string, unknown>, nextAction: string } | null {
+  switch (eventType) {
+    case 'work.completed':
+      return { assessment: { plan_valid: true, stuck: false, reason: '工作项完成' }, nextAction: '继续推进其余工作项' }
+    case 'work.failed':
+      return { assessment: { plan_valid: null, stuck: true, reason: `工作项失败:${payload.reason ?? ''}` }, nextAction: '复核失败原因，必要时重试或重规划' }
+    case 'work.blocked':
+      return { assessment: { plan_valid: null, stuck: true, reason: `工作项阻塞:${payload.reason ?? ''}` }, nextAction: '解除阻塞或调整依赖' }
+    case 'work.overdue':
+      return { assessment: { plan_valid: null, stuck: true, reason: '工作项超期' }, nextAction: '评估预算与重试' }
+    case 'work.canceled':
+      return { assessment: { plan_valid: null, stuck: false, reason: 'owner 取消工作项' }, nextAction: '确认计划是否需要调整' }
+    case 'result.submitted':
+    case 'result.reviewed':
+      return { assessment: { plan_valid: true, stuck: false, reason: '成果进入评审流' }, nextAction: '等待 owner 验收' }
+    case 'approval.approved':
+      return { assessment: { plan_valid: true, stuck: false, reason: `审批通过:${payload.kind ?? ''}` }, nextAction: '按批准内容推进' }
+    case 'approval.rejected':
+      return { assessment: { plan_valid: null, stuck: true, reason: `审批拒绝:${payload.kind ?? ''}` }, nextAction: '按拒绝原因修订后重新提案' }
+    case 'plan.applied':
+      return { assessment: { plan_valid: true, stuck: false, reason: `计划 v${payload.version ?? ''} 物化完成` }, nextAction: '派发就绪工作项' }
+    default:
+      return null
   }
 }
 
