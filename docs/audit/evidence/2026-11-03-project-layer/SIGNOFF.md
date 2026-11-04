@@ -28,3 +28,8 @@ G0 typecheck/lint · G1 schema/迁移 · G2 安全 P0（本地） · G3 核心/�
 - **PR16 (#38)**：lead 不可自取消项目 root 取消护栏（Track B run4 实证有效）。
 - **PR17 (#39)**：M4 调度内核 = SuperAgent S2/S3/S5/S6/S7/S11 落地（EventIngress 快慢路径 + 双账本 + Watchdog/HealthBoard + Effects outbox；单测 7/7、全量 1092/0、E2E 64/0）。
 - **PR18 (#40)**：dev 模式短会话密钥 fail-loud 告警（run5 真因防御）。
+
+## 2026-11-05 增量（PR19/PR20，均 CI 绿合并 main）
+
+- **PR19 (#41)**：派生进度（外部评价 P1）+ 演示脚本度量修复（P0）；单测全量 1099/0。
+- **PR20 (#42)**：**Route 派发闭环**（plan v3.0 §2.2「计划批准后 ProjectService 按批准版本派发工作项」的确定性落地）—— selectReadyWorkItems 依赖解析 + runRouteLoop（对账 + await 自动派发，按项目 promise 链串行）；内核 tick(10s)/Reconciler(30s) 双路，完成回调→派发下一就绪项延迟上界 ≈1 对账周期；手动/自动派发事件审计（work.dispatched / work.dispatch_auto）；环境类前置失败 → BLOCKED + work.blocked（SLOW 邮箱）；projects.auto_dispatch 默认 0（owner 显式启用）。验收 R1–R12：单测 7/7、全量 **1104 pass/0 fail**、E2E P25 链式全闭环 **70 PASS/0 FAIL**（gates/G7-route-dispatch-e2e.json）、计划文档 docs/plans/2026-11-05-project-route-dispatch-plan.md（v3.0 两份计划同轮入库）。**边界不变**：无 LLM 调度/自动 replan/自动完成项目；TaskEngine.onTaskChange 亚秒回调留 V1.1。
