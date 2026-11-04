@@ -4,8 +4,16 @@ The runtime exposes named services through two entry paths. Task-mediated calls 
 
 \begin{figure*}[!t]
 \centering
-\includegraphics[width=\textwidth]{resources/fig-system-runtime-minimal-20261103.pdf}
-\caption{The system routes task-mediated and direct operation calls through shared dispatch and service handlers. Solid arrows show operation flow and configured field mappings; dashed connectors associate the scene configuration with the services that consume it. Named write operations use the shared write controller, while service-owned records keep approvals, command receipts, optional readbacks, and later observations distinct.}
+\includegraphics[width=\textwidth]{resources/fig-system-runtime-merged-rev20261102.pdf}
+\caption{The system routes task-mediated and direct operation calls through shared
+dispatch and service handlers. The service boxes show functional groupings
+rather than exclusive driver assignments: a configured MES-REST adapter can
+also implement a write mapping. Solid arrows show operation flow and configured
+field mappings; dashed connectors associate the scene configuration with the
+services that consume it. Named write operations use the shared write
+controller, while service-owned records keep approvals, command receipts,
+optional readbacks, and later observations distinct. The driver box abstracts protocol adapters; the evaluated scene mappings
+also included HTTP.}
 \label{fig:arch}
 \end{figure*}
 
@@ -35,10 +43,11 @@ and enter the shared dispatcher. They create neither a task nor a harness
 turn; MCP management and task methods remain on their service routes. The
 scene configuration has two consumers: the task route receives active context
 and objectives, while operation services resolve node mappings and guards
-when an operation executes. The service band provides data acquisition (DAQ), write
-control, analysis, retrieval, and optional model services. At the field layer,
-input/output (I/O) mappings connect semantic nodes to built-in or plugin
-drivers for a plant or simulator. Each
+when an operation executes. The service band groups read and analysis services (DAQ, MES data access,
+retrieval, and optional model services) separately from write and recipe
+services. The driver registry can also select a configured MES-REST adapter
+for a write mapping. At the field layer, input/output (I/O) mappings connect
+semantic nodes to built-in or plugin drivers for a plant or simulator. Each
 owning service retains its task, command, observation, or configuration
 records and associates them with the actor and production context where
 supported.
@@ -110,9 +119,11 @@ declared for operation $u$; it always contains $S$ and $P$. The grant predicate
 $G$ is included when the resolved channel, target line, and owner/grant policy
 require it; explicit exemptions omit it. The binding predicate $B$ is included
 when the operation declares resource references. A declared no-reference
-operation omits $B$. Each included check must pass before
-handler selection. The policy predicate includes channel tool selection,
-profile, and duty-separation checks where configured. After these predicates pass, the selected route applies its operational
+operation omits $B$. Each included check must pass before handler selection. The policy predicate
+includes channel tool selection, profile, and duty-separation checks where
+configured.
+
+After these predicates pass, the selected route applies its operational
 guards and any required approval. The checks performed after approval depend
 on the route; Section~\ref{sec:modules} specifies the single-node and
 recipe-operation paths.
