@@ -206,12 +206,16 @@ try {
       const tasks = await api('GET', `/api/workshop/channels/${member.channelId}/tasks`, undefined, token)
       const root = (tasks.data ?? []).filter(t => t.projectWorkItemId === mainItem.id).sort((a, b) => (b.projectAttemptNo ?? 0) - (a.projectAttemptNo ?? 0))[0]
       if (!root) return { done: false, detail: 'root not found' }
-      const artifactLen = JSON.stringify(root.artifactsJson ?? '').length
+      // PR19-P0 度量修复：旧脚本读 root.artifactsJson（REST 域对象无此字段）→
+      // JSON.stringify('') 恒 2B 常量，纯属误导。工件正源=任务详情接口（D3c 取）；
+      // 轮询行改为 双进度（自报/派生，PR19-P1 起列表接口带 progressDerived）。
+      const derived = root.progressDerived
+      const derivedText = derived === null || derived === undefined ? 'n/a' : `${derived}%`
       if (['COMPLETED', 'FAILED', 'CANCELED'].includes(root.state)) {
         if (root.state === 'CANCELED') return { done: false, canceled: true, detail: `attempt${attempt} CANCELED(${root.closeReason ?? ''})` }
-        return { done: true, detail: `root=${root.state} artifacts=${artifactLen}B`, root }
+        return { done: true, detail: `root=${root.state} artifacts=${(root.artifacts ?? []).length}个`, root }
       }
-      return { done: false, detail: `root=${root.state} progress=${root.progress}% artifacts=${artifactLen}B` }
+      return { done: false, detail: `root=${root.state} progress=${root.progress}%(自报) derived=${derivedText}(派生)` }
     }, 20_000)
     if (execPoll.canceled) {
       console.log(`  …[D3-retry] attempt ${attempt} 被 lead 取消，准备重派`)
@@ -220,7 +224,7 @@ try {
   }
   const rootTask = execPoll.root
   ok('D3b', 'lead 真 LLM 自主执行完成任务（含 CANCELED 自动重派）', execPoll.done && rootTask?.state === 'COMPLETED', execPoll.detail)
-  const artifacts = JSON.parse(rootTask?.artifactsJson ?? '[]')
+  const artifacts = Array.isArray(rootTask?.artifacts) ? rootTask.artifacts : []
   // 任务列表 API 按设计置空 artifacts（元数据行视图）；工件正源=任务详情接口。
   const rootDetail = rootTask?.id
     ? (await api('GET', `/api/workshop/tasks/${rootTask.id}?channelId=${member.channelId}`, undefined, token)).data

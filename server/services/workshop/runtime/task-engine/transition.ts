@@ -7,8 +7,9 @@ import { TaskEngineCreate } from './create'
 import type { AgentEvent } from '../../agents/agent-interface'
 import type { TaskState, WorkspaceTask } from '../../types/task'
 import { AppError } from '../../../../utils/errors'
-import { TASK_HISTORY_CAP, TRANSITIONS, log, rowToTask } from './helpers'
+import { TASK_HISTORY_CAP, TRANSITIONS, log, rowToTask, rowToTaskLite } from './helpers'
 import { TERMINAL_TASK_STATES } from '../../types/task'
+import { deriveProgressMap } from './derived-progress'
 import type { ExecutionFence } from './lease'
 import { fenceMatches } from './lease'
 
@@ -150,11 +151,19 @@ export abstract class TaskEngineTransition extends TaskEngineCreate {
   }
 
   list(channelId: string): WorkspaceTask[] {
-    return this.repos.tasks.listByChannel(channelId).map(rowToTask)
+    const tasks = this.repos.tasks.listByChannel(channelId).map(rowToTask)
+    // PR19-P1：派生进度（只增不改）——父任务给自报进度的参照系，叶子为 null。
+    const derived = deriveProgressMap(tasks)
+    return tasks.map(t => ({ ...t, progressDerived: derived.get(t.id) ?? null }))
   }
 
   get(taskId: string): WorkspaceTask | undefined {
     const row = this.repos.tasks.findById(taskId)
-    return row ? rowToTask(row) : undefined
+    if (!row) return undefined
+    const task = rowToTask(row)
+    // PR19-P1：详情面同口径派生（元数据投影，免 artifacts/history 大列解析——get 是热路径）。
+    const siblings = this.repos.tasks.listByChannelMeta(row.channelId).map(rowToTaskLite)
+    const derived = deriveProgressMap(siblings)
+    return { ...task, progressDerived: derived.get(task.id) ?? null }
   }
 }

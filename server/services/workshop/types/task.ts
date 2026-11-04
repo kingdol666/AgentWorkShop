@@ -33,6 +33,8 @@ export interface WorkspaceTask {
   state: TaskState
   /** 0-100,由 Agent 事件驱动 */
   progress: number
+  /** PR19-P1 派生进度（只读面附加，不入库）：叶子 null；父任务=子任务等权终态锚定聚合。 */
+  progressDerived?: number | null
   retryCount: number
   /** 作业成果 */
   artifacts: A2AArtifact[]
