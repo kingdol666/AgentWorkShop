@@ -37,6 +37,15 @@ export interface ProjectActor {
   agentId?: string
 }
 
+export interface ProjectServiceDeps {
+  /**
+   * C11 line grant：人类 actor 的可见产线集。
+   * null=不限（特权）；Set=按集过滤（空 line_id 对非 admin 隐藏，S4 同口径）；
+   * undefined=未启用 grant 过滤（单测/兼容路径保持原行为）。
+   */
+  lineAccessOf?: (userId: string) => Set<string> | null
+}
+
 export interface AgentProjectIdentity {
   agentId: string
   channelId: string
@@ -193,6 +202,7 @@ export class ProjectService {
   constructor(
     private readonly manager: AgentChannelManager,
     private readonly db: DatabaseSync,
+    private readonly deps: ProjectServiceDeps = {},
   ) {
     this.projects = createProjectRepo(db)
     this.bindings = createProjectChannelRepo(db)
@@ -475,7 +485,29 @@ export class ProjectService {
 
   listResults(id: string, actor: ProjectActor): ProjectResultRow[] {
     this.get(id, actor)
-    return this.results.listByProject(id)
+    return this.filterResultsByGrant(this.results.listByProject(id), actor)
+  }
+
+  /** C11 line grant：成果列表按人类 actor 可见产线集过滤（agents 走 agentReadResults，不受此影响）。 */
+  private filterResultsByGrant(rows: ProjectResultRow[], actor: ProjectActor): ProjectResultRow[] {
+    const visible = this.lineVisibleOf(actor)
+    if (visible === undefined || visible === null) return rows
+    return rows.filter(r => r.lineId !== '' && visible.has(r.lineId))
+  }
+
+  /** undefined=未启用过滤（兼容/单测）；null=不限（admin/agent）；Set=授权产线集。 */
+  private lineVisibleOf(actor: ProjectActor): Set<string> | null | undefined {
+    if (actor.role === 'admin' || actor.agentId) return null
+    return this.deps.lineAccessOf?.(actor.id)
+  }
+
+  /** 单成果操作门（C11）：无该产线授权 → 403；未启用过滤或特权路径直通。 */
+  private assertResultLineVisible(result: ProjectResultRow, actor: ProjectActor): void {
+    const visible = this.lineVisibleOf(actor)
+    if (visible === undefined || visible === null) return
+    if (result.lineId === '' || !visible.has(result.lineId)) {
+      throw new AppError(403, 'LINE_FORBIDDEN', `无该成果产线授权（line ${result.lineId || '-'}）`)
+    }
   }
 
   listApprovals(id: string, actor: ProjectActor): ProjectApprovalRow[] {
@@ -512,34 +544,45 @@ export class ProjectService {
   }
 
   private reconcileWith(id: string, actor: ProjectActor): { workItems: ProjectWorkItemRow[], expiredApprovals: number } {
+    // B8 审计 fail-closed：每个工作项的状态迁移与 decisions/events 同事务，逐项隔离。
     for (const wi of this.workItems.listByProject(id)) {
       if (['COMPLETED', 'FAILED', 'CANCELED', 'SUPERSEDED'].includes(wi.state)) continue
       if (wi.deadlineAt && Date.parse(wi.deadlineAt) < Date.now()) {
-        this.workItems.update(wi.id, { state: 'BLOCKED', stateReason: 'OVERDUE' })
-        this.record(id, 'work.overdue', actor, { workItemId: wi.id }, wi.traceId, 'work.overdue', `work:${wi.id}:overdue`, { workItemId: wi.id })
+        withTransaction(this.db, () => {
+          this.workItems.update(wi.id, { state: 'BLOCKED', stateReason: 'OVERDUE' })
+          this.record(id, 'work.overdue', actor, { workItemId: wi.id }, wi.traceId, 'work.overdue', `work:${wi.id}:overdue`, { workItemId: wi.id })
+        })
         continue
       }
       const attempt = wi.currentAttemptId ? this.attempts.findById(wi.currentAttemptId) : undefined
       if (!attempt || !attempt.channelTaskId) {
-        this.workItems.update(wi.id, { state: 'BLOCKED', stateReason: 'ATTEMPT_MISSING' })
-        this.record(id, 'work.blocked', actor, { workItemId: wi.id, reason: 'ATTEMPT_MISSING' }, wi.traceId, 'work.blocked', `work:${wi.id}:attempt-missing`, { workItemId: wi.id, reason: 'ATTEMPT_MISSING' })
+        withTransaction(this.db, () => {
+          this.workItems.update(wi.id, { state: 'BLOCKED', stateReason: 'ATTEMPT_MISSING' })
+          this.record(id, 'work.blocked', actor, { workItemId: wi.id, reason: 'ATTEMPT_MISSING' }, wi.traceId, 'work.blocked', `work:${wi.id}:attempt-missing`, { workItemId: wi.id, reason: 'ATTEMPT_MISSING' })
+        })
         continue
       }
       const task = this.tasks.findById(attempt.channelTaskId)
       if (!task) {
-        this.workItems.update(wi.id, { state: 'BLOCKED', stateReason: 'TASK_MISSING' })
-        this.record(id, 'work.blocked', actor, { workItemId: wi.id, reason: 'TASK_MISSING' }, wi.traceId, 'work.blocked', `work:${wi.id}:task-missing`, { workItemId: wi.id, reason: 'TASK_MISSING' })
+        withTransaction(this.db, () => {
+          this.workItems.update(wi.id, { state: 'BLOCKED', stateReason: 'TASK_MISSING' })
+          this.record(id, 'work.blocked', actor, { workItemId: wi.id, reason: 'TASK_MISSING' }, wi.traceId, 'work.blocked', `work:${wi.id}:task-missing`, { workItemId: wi.id, reason: 'TASK_MISSING' })
+        })
         continue
       }
       if (task.state === 'COMPLETED') {
-        this.workItems.update(wi.id, { state: 'COMPLETED', stateReason: null, closedAt: new Date().toISOString(), closeReason: 'ROOT_COMPLETED' })
-        this.ensureDraftFromTask(task.id)
-        this.record(id, 'work.completed', actor, { workItemId: wi.id, taskId: task.id }, wi.traceId, 'work.completed', `work:${wi.id}:completed`, { workItemId: wi.id, taskId: task.id })
+        withTransaction(this.db, () => {
+          this.workItems.update(wi.id, { state: 'COMPLETED', stateReason: null, closedAt: new Date().toISOString(), closeReason: 'ROOT_COMPLETED' })
+          this.ensureDraftFromTask(task.id)
+          this.record(id, 'work.completed', actor, { workItemId: wi.id, taskId: task.id }, wi.traceId, 'work.completed', `work:${wi.id}:completed`, { workItemId: wi.id, taskId: task.id })
+        })
         continue
       }
       if (task.state === 'FAILED' || task.state === 'CANCELED') {
-        this.workItems.update(wi.id, { state: task.state, stateReason: task.closeReason ?? task.state, closedAt: new Date().toISOString(), closeReason: task.closeReason ?? task.state })
-        this.record(id, 'work.failed', actor, { workItemId: wi.id, taskId: task.id, state: task.state }, wi.traceId, 'work.failed', `work:${wi.id}:${task.state.toLowerCase()}`, { workItemId: wi.id, taskId: task.id, state: task.state })
+        withTransaction(this.db, () => {
+          this.workItems.update(wi.id, { state: task.state, stateReason: task.closeReason ?? task.state, closedAt: new Date().toISOString(), closeReason: task.closeReason ?? task.state })
+          this.record(id, 'work.failed', actor, { workItemId: wi.id, taskId: task.id, state: task.state }, wi.traceId, 'work.failed', `work:${wi.id}:${task.state.toLowerCase()}`, { workItemId: wi.id, taskId: task.id, state: task.state })
+        })
         continue
       }
       if (task.state === 'WORKING' || task.state === 'WAITING' || task.state === 'ASSIGNED') {
@@ -547,10 +590,13 @@ export class ProjectService {
         continue
       }
     }
-    const expiredApprovals = this.approvals.expire(id)
-    if (expiredApprovals > 0) {
-      this.record(id, 'approval.expired', actor, { expiredApprovals }, '', 'approval.expired', `approval:expired:${Date.now()}`, { expiredApprovals })
-    }
+    let expiredApprovals = 0
+    withTransaction(this.db, () => {
+      expiredApprovals = this.approvals.expire(id)
+      if (expiredApprovals > 0) {
+        this.record(id, 'approval.expired', actor, { expiredApprovals }, '', 'approval.expired', `approval:expired:${Date.now()}`, { expiredApprovals })
+      }
+    })
     return { workItems: this.workItems.listByProject(id), expiredApprovals }
   }
 
@@ -613,25 +659,31 @@ export class ProjectService {
     this.get(id, actor)
     const result = this.results.findById(resultId)
     if (!result || result.projectId !== id) throw new AppError(404, 'NOT_FOUND', '成果不存在或不属于该项目')
+    this.assertResultLineVisible(result, actor)
     if (!['draft', 'rejected'].includes(result.status)) {
       throw new AppError(409, 'RESULT_STATE_INVALID', `成果状态 ${result.status} 不能提交`)
     }
-    this.results.submit(resultId, {
-      title: input.title ?? result.title,
-      summary: input.summary ?? result.summary,
-      method: input.method ?? result.method,
-      dataWindowJson: JSON.stringify(input.dataWindow ?? parseJson(result.dataWindowJson, {})),
-      sampleCount: input.sampleCount ?? result.sampleCount,
-      confidence: input.confidence ?? result.confidence,
-      validityScope: input.validityScope ?? result.validityScope,
-      payloadJson: JSON.stringify(input.payload ?? parseJson(result.payloadJson, {})),
-      evidenceJson: JSON.stringify(input.evidence ?? parseJson(result.evidenceJson, [])),
-      changeSummary: input.changeSummary ?? result.changeSummary,
-      openQuestions: input.openQuestions ?? result.openQuestions,
-      status: 'submitted',
+    // B8：状态迁移 + 审计同事务，审计失败整体回滚。
+    let updated!: ProjectResultRow
+    withTransaction(this.db, () => {
+      this.results.submit(resultId, {
+        title: input.title ?? result.title,
+        summary: input.summary ?? result.summary,
+        method: input.method ?? result.method,
+        dataWindowJson: JSON.stringify(input.dataWindow ?? parseJson(result.dataWindowJson, {})),
+        sampleCount: input.sampleCount ?? result.sampleCount,
+        confidence: input.confidence ?? result.confidence,
+        validityScope: input.validityScope ?? result.validityScope,
+        payloadJson: JSON.stringify(input.payload ?? parseJson(result.payloadJson, {})),
+        evidenceJson: JSON.stringify(input.evidence ?? parseJson(result.evidenceJson, [])),
+        changeSummary: input.changeSummary ?? result.changeSummary,
+        openQuestions: input.openQuestions ?? result.openQuestions,
+        status: 'submitted',
+      })
+      this.record(id, 'result.submit', actor, { resultId }, result.traceId, 'result.submitted', `result:${resultId}:submitted`, { resultId })
+      updated = this.results.findById(resultId)!
     })
-    this.record(id, 'result.submit', actor, { resultId }, result.traceId, 'result.submitted', `result:${resultId}:submitted`, { resultId })
-    return this.results.findById(resultId)!
+    return updated
   }
 
   reviewResult(id: string, resultId: string, actor: ProjectActor, decision: 'reviewed' | 'rejected', reason = ''): ProjectResultRow {
@@ -641,14 +693,20 @@ export class ProjectService {
     if (!allowed) throw new AppError(403, 'FORBIDDEN', '仅项目 owner/admin 或 project leader 可复核')
     const result = this.results.findById(resultId)
     if (!result || result.projectId !== id) throw new AppError(404, 'NOT_FOUND', '成果不存在或不属于该项目')
+    this.assertResultLineVisible(result, actor)
     if (result.status !== 'submitted') throw new AppError(409, 'RESULT_STATE_INVALID', `成果状态 ${result.status} 不能复核`)
-    this.results.setStatus(resultId, decision, {
-      reviewedBy: actor.agentId ?? actor.id,
-      reviewedAt: new Date().toISOString(),
-      rejectReason: decision === 'rejected' ? reason : null,
+    // B8：复核迁移 + 审计同事务。
+    let updated!: ProjectResultRow
+    withTransaction(this.db, () => {
+      this.results.setStatus(resultId, decision, {
+        reviewedBy: actor.agentId ?? actor.id,
+        reviewedAt: new Date().toISOString(),
+        rejectReason: decision === 'rejected' ? reason : null,
+      })
+      this.record(id, decision === 'reviewed' ? 'result.reviewed' : 'result.rejected', actor, { resultId, reason }, result.traceId, decision === 'reviewed' ? 'result.reviewed' : 'result.rejected', `result:${resultId}:${decision}`, { resultId, reason })
+      updated = this.results.findById(resultId)!
     })
-    this.record(id, decision === 'reviewed' ? 'result.reviewed' : 'result.rejected', actor, { resultId, reason }, result.traceId, decision === 'reviewed' ? 'result.reviewed' : 'result.rejected', `result:${resultId}:${decision}`, { resultId, reason })
-    return this.results.findById(resultId)!
+    return updated
   }
 
   requestProjectComplete(id: string, actor: ProjectActor): ProjectApprovalRow {
@@ -701,6 +759,7 @@ export class ProjectService {
   requestAcceptance(id: string, resultId: string, actor: ProjectActor): ProjectApprovalRow {
     const p = this.get(id, actor)
     const result = this.assertAcceptanceGates(id, resultId)
+    this.assertResultLineVisible(result, actor)
     const pending = this.approvals.listPending(id).find(a => a.kind === 'deliverable_acceptance' && a.subjectId === resultId)
     if (pending) return pending
     const approval = this.approvals.create({
@@ -731,60 +790,71 @@ export class ProjectService {
         throw new AppError(403, 'SELF_APPROVAL_FORBIDDEN', '不能批准自己提交的成果')
       }
     }
-    const won = this.approvals.decide(approvalId, id, approve ? 'approved' : 'rejected', actor.id, reason)
-    if (!won) throw new AppError(409, 'APPROVAL_STATE_INVALID', '审批已被处理或已过期')
-    if (approval.kind === 'deliverable_acceptance') {
-      const result = this.results.findById(approval.subjectId)
-      if (result) {
-        if (approve) {
-          this.results.setStatus(result.id, 'approved', {
-            approvedBy: actor.id,
-            approvedAt: new Date().toISOString(),
-            reviewedBy: result.reviewedBy,
-            reviewedAt: result.reviewedAt,
-          })
-          this.deliverables.setStatus(result.deliverableId, 'approved')
-        }
-        else {
-          this.results.setStatus(result.id, 'rejected', {
-            reviewedBy: result.reviewedBy,
-            reviewedAt: result.reviewedAt,
-            rejectReason: reason || 'owner rejected',
-          })
-          this.deliverables.setStatus(result.deliverableId, 'rejected')
+    // B8：审批决策（CAS）+ 全部副作用 + 审计同一事务；任一失败整体回滚（审批回到 pending）。
+    let updated!: ProjectApprovalRow
+    withTransaction(this.db, () => {
+      const won = this.approvals.decide(approvalId, id, approve ? 'approved' : 'rejected', actor.id, reason)
+      if (!won) throw new AppError(409, 'APPROVAL_STATE_INVALID', '审批已被处理或已过期')
+      if (approval.kind === 'deliverable_acceptance') {
+        const result = this.results.findById(approval.subjectId)
+        if (result) {
+          this.assertResultLineVisible(result, actor)
+          if (approve) {
+            this.results.setStatus(result.id, 'approved', {
+              approvedBy: actor.id,
+              approvedAt: new Date().toISOString(),
+              reviewedBy: result.reviewedBy,
+              reviewedAt: result.reviewedAt,
+            })
+            this.deliverables.setStatus(result.deliverableId, 'approved')
+          }
+          else {
+            this.results.setStatus(result.id, 'rejected', {
+              reviewedBy: result.reviewedBy,
+              reviewedAt: result.reviewedAt,
+              rejectReason: reason || 'owner rejected',
+            })
+            this.deliverables.setStatus(result.deliverableId, 'rejected')
+          }
         }
       }
-    }
-    else if (approval.kind === 'project_complete' && approve) {
-      this.projects.update(id, { status: 'completed' })
-    }
-    else if (approval.kind === 'plan_approval' && approve) {
-      const version = approval.subjectVersion ?? p.planVersion
-      const updated = this.projects.update(id, { planVersion: version, planJson: approval.payloadJson })
-      // leader 提案的 proposal decision 与审批联动收口（CAS）。
-      for (const d of this.decisions.listByProject(id)) {
-        if (d.approvalId === approvalId && d.state === 'proposed') this.decisions.markApplied(d.id, 'applied', 'approved plan')
+      else if (approval.kind === 'project_complete' && approve) {
+        this.projects.update(id, { status: 'completed' })
       }
-      this.materializeApprovedPlan(updated ?? { ...p, planVersion: version, planJson: approval.payloadJson }, version, approval.payloadJson)
-    }
-    this.record(id, approve ? 'approval.approved' : 'approval.rejected', actor, { approvalId, kind: approval.kind, reason }, approval.traceId, approve ? 'approval.approved' : 'approval.rejected', `approval:${approvalId}:${approve ? 'approved' : 'rejected'}`, { approvalId, kind: approval.kind, reason })
-    return this.approvals.findById(approvalId)!
+      else if (approval.kind === 'plan_approval' && approve) {
+        const version = approval.subjectVersion ?? p.planVersion
+        const updated = this.projects.update(id, { planVersion: version, planJson: approval.payloadJson })
+        // leader 提案的 proposal decision 与审批联动收口（CAS）。
+        for (const d of this.decisions.listByProject(id)) {
+          if (d.approvalId === approvalId && d.state === 'proposed') this.decisions.markApplied(d.id, 'applied', 'approved plan')
+        }
+        this.materializeApprovedPlan(updated ?? { ...p, planVersion: version, planJson: approval.payloadJson }, version, approval.payloadJson)
+      }
+      this.record(id, approve ? 'approval.approved' : 'approval.rejected', actor, { approvalId, kind: approval.kind, reason }, approval.traceId, approve ? 'approval.approved' : 'approval.rejected', `approval:${approvalId}:${approve ? 'approved' : 'rejected'}`, { approvalId, kind: approval.kind, reason })
+      updated = this.approvals.findById(approvalId)!
+    })
+    return updated
   }
 
   supersedeResult(id: string, resultId: string, actor: ProjectActor, reason = ''): ProjectResultRow {
     this.get(id, actor)
     const result = this.results.findById(resultId)
     if (!result || result.projectId !== id) throw new AppError(404, 'NOT_FOUND', '成果不存在或不属于该项目')
+    this.assertResultLineVisible(result, actor)
     if (result.status === 'superseded') return result
-    this.results.setStatus(resultId, 'superseded', {
-      reviewedBy: result.reviewedBy,
-      reviewedAt: result.reviewedAt,
-      approvedBy: result.approvedBy,
-      approvedAt: result.approvedAt,
-      rejectReason: reason || 'superseded',
+    let updated!: ProjectResultRow
+    withTransaction(this.db, () => {
+      this.results.setStatus(resultId, 'superseded', {
+        reviewedBy: result.reviewedBy,
+        reviewedAt: result.reviewedAt,
+        approvedBy: result.approvedBy,
+        approvedAt: result.approvedAt,
+        rejectReason: reason || 'superseded',
+      })
+      this.record(id, 'result.superseded', actor, { resultId, reason }, result.traceId, 'result.superseded', `result:${resultId}:superseded`, { resultId, reason })
+      updated = this.results.findById(resultId)!
     })
-    this.record(id, 'result.superseded', actor, { resultId, reason }, result.traceId, 'result.superseded', `result:${resultId}:superseded`, { resultId, reason })
-    return this.results.findById(resultId)!
+    return updated
   }
 
   // ===== Agent-facing surface（PR8：leader 提案 / member 提交 / write_intent） =====
@@ -1616,8 +1686,8 @@ export class ProjectService {
 
 let projectService: ProjectService | null = null
 
-export function initProjectService(manager: AgentChannelManager, db: DatabaseSync): ProjectService {
-  projectService = new ProjectService(manager, db)
+export function initProjectService(manager: AgentChannelManager, db: DatabaseSync, deps: ProjectServiceDeps = {}): ProjectService {
+  projectService = new ProjectService(manager, db, deps)
   return projectService
 }
 
