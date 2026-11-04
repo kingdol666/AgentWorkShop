@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>库存管理</title>
+<style>
+body{font:15px/1.6 system-ui,sans-serif;margin:0;padding:16px;background:#f5f6f8;color:#222}
+h1{font-size:20px;margin:0 0 12px}
+form{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+input,button{font:inherit;padding:6px 9px;border:1px solid #ccd;border-radius:6px;background:#fff}
+button{cursor:pointer}
+button:hover{border-color:#88a}
+table{border-collapse:collapse;width:100%;background:#fff;border-radius:8px;overflow:hidden;margin-top:10px}
+th,td{padding:8px;border-bottom:1px solid #eef;text-align:left}
+th{background:#eef1f6;font-size:13px;font-weight:600}
+td b{display:inline-block;min-width:26px;text-align:center;margin:0 4px}
+.low{color:#c00}
+#c{margin:12px 0 0;font-size:13px;color:#456}
+#tb td:last-child button{margin-right:4px}
+</style>
+</head>
+<body>
+<h1>简易库存管理</h1>
+<form id="f">
+<input id="n" placeholder="商品名称" required>
+<input id="q" type="number" min="0" value="0" placeholder="数量" style="width:88px">
+<input id="p" type="number" min="0" step="0.01" value="0" placeholder="单价" style="width:96px">
+<button>添加</button>
+</form>
+<input id="s" placeholder="按名称搜索" oninput="draw()" style="width:200px">
+<table><thead><tr><th>商品</th><th>数量</th><th>单价</th><th>金额</th><th>操作</th></tr></thead><tbody id="tb"></tbody></table>
+<p id="c"></p>
+<script>
+var K='inv.v1',d=JSON.parse(localStorage.getItem(K)||'[]'),$=function(s){return document.querySelector(s)},LOW=5;
+function save(){localStorage.setItem(K,JSON.stringify(d))}
+function esc(s){return s.replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function money(v){return '¥'+v.toFixed(2)}
+function addQ(i,v){d[i].q=Math.max(0,d[i].q+v);save();draw()}
+function del(i){if(confirm('确认删除「'+d[i].n+'」？')){d.splice(i,1);save();draw()}}
+function edit(i){var o=d[i],n=prompt('商品名称',o.n);if(n===null)return;var p=prompt('单价',o.p);if(p===null)return;
+ n=n.trim();if(n)o.n=n;var v=parseFloat(p);if(!isNaN(v)&&v>=0)o.p=v;save();draw()}
+function draw(){
+ var kw=$('#s').value.trim().toLowerCase(),rows=[],qty=0,val=0,low=0;
+ d.forEach(function(o,i){rows.push({o:o,i:i})});
+ rows=rows.filter(function(x){return x.o.n.toLowerCase().indexOf(kw)>-1});
+ $('#tb').innerHTML=rows.map(function(x){var o=x.o,i=x.i;
+  qty+=o.q;val+=o.q*o.p;if(o.q<LOW)low++;
+  return '<tr><td>'+esc(o.n)+'</td><td><button onclick="addQ('+i+',-1)">-</button><b'+(o.q<LOW?' class="low"':'')+'>'+o.q+'</b><button onclick="addQ('+i+',1)">+</button></td><td>'+money(o.p)+'</td><td>'+money(o.q*o.p)+'</td><td><button onclick="edit('+i+')">编辑</button><button onclick="del('+i+')">删除</button></td></tr>'}).join('')
+  ||'<tr><td colspan="5" style="color:#889">暂无商品，请在上方添加</td></tr>';
+ $('#c').textContent='品种 '+rows.length+' 种 · 总件数 '+qty+' 件 · 总价值 '+money(val)+' · 低库存(＜'+LOW+') '+low+' 种';
+}
+$('#f').onsubmit=function(e){e.preventDefault();
+ var n=$('#n').value.trim();if(!n){alert('请填写商品名称');return}
+ d.push({n:n,q:Math.max(0,+$('#q').value||0),p:Math.max(0,+$('#p').value||0)});
+ save();draw();this.reset();
+}
+draw();
+</script>
+</body>
+</html>

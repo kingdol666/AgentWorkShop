@@ -160,7 +160,7 @@ try {
   const planInstr = [
     '你是项目总工。请立即调用 project_propose_plan 工具提交本项目的执行计划，要求：',
     'deliverables 至少一项：key=d1, name=库存管理单页, channelId=' + member.channelId + '；',
-    'work_items 一项：key=w1, deliverableKey=d1, channelId=' + member.channelId + ', title=实现库存管理单页, brief=最小可用单文件 HTML：商品表格+新增行+localStorage 保存+件数统计；先保证浏览器可运行再完善, execBudgetMinutes=45。',
+    'work_items 一项：key=w1, deliverableKey=d1, channelId=' + member.channelId + ', title=实现库存管理单页, brief=最小可用单文件 HTML（≤4KB）：商品表格+新增行+localStorage 保存+件数统计。交付方式=完成任务时把完整 HTML 源码全文放进 complete_task 的 deliverable 参数（不是摘要，是完整可运行的 <html>…</html> 源码；lead 没有文件写工具，deliverable 是唯一交付通道）, execBudgetMinutes=45。',
     '必须真实调用工具，不要只输出文本。',
   ].join('\n')
   let planApproved = false
@@ -221,11 +221,16 @@ try {
   const rootTask = execPoll.root
   ok('D3b', 'lead 真 LLM 自主执行完成任务（含 CANCELED 自动重派）', execPoll.done && rootTask?.state === 'COMPLETED', execPoll.detail)
   const artifacts = JSON.parse(rootTask?.artifactsJson ?? '[]')
-  const htmlPart = artifacts
+  // 任务列表 API 按设计置空 artifacts（元数据行视图）；工件正源=任务详情接口。
+  const rootDetail = rootTask?.id
+    ? (await api('GET', `/api/workshop/tasks/${rootTask.id}?channelId=${member.channelId}`, undefined, token)).data
+    : null
+  const detailArtifacts = Array.isArray(rootDetail?.artifacts) ? rootDetail.artifacts : []
+  const htmlPart = detailArtifacts
     .flatMap(a => (a.parts ?? []))
     .map(p => p.text ?? '')
     .find(t => t.includes('<html') || t.includes('<!DOCTYPE'))
-    ?? artifacts.flatMap(a => (a.parts ?? [])).map(p => p.text ?? '').sort((a, b) => b.length - a.length)[0]
+    ?? artifacts.flatMap(a => (a.parts ?? [])).map(p => p.text ?? '').find(t => t.includes('<html') || t.includes('<!DOCTYPE'))
     ?? ''
   ok('D3c', '产出真实 HTML 工件（含库存/表格/localStorage 关键特征）',
     htmlPart.length > 400 && /库存/.test(htmlPart) && /localStorage/.test(htmlPart) && /<table|<div/i.test(htmlPart),

@@ -1,9 +1,16 @@
-# Project 层 V1 最终验收报告（PR1–PR15，全部合入 main）
+# Project 层 V1 最终验收报告（PR1–PR17，全部合入 main）
 
-日期：2026-11-04。状态：**plan v3.0 全部里程碑（含 §7.1 API 面、§7.2 五 tab UI）验收通过；并行审查 P0 全部闭环**。
-main HEAD：`4d09817f`（PR#36/#37 合并 + 证据包）。证据根目录：`docs/audit/evidence/2026-11-03-project-layer/`。
+日期：2026-11-04。状态：**plan v3.0 全部里程碑（含 §7.1 API 面、§7.2 五 tab UI）+ SuperAgent 规范核查 5 个 ❌ 缺口（M4 调度内核）验收通过；并行审查 P0 全部闭环**。
+main HEAD：`48f5a50d`（PR#38 取消护栏 + PR#39 M4 调度内核 + 证据包）。证据根目录：`docs/audit/evidence/2026-11-03-project-layer/`。
 
 ---
+
+## 0. 增量交付（2026-11-04 第二轮：PR16/PR17）
+
+| PR | 内容 | 状态 |
+|---|---|---|
+| **#38 (PR16)** | **项目来源 root 取消护栏**：lead 不可自取消项目 root（manager.cancelTask + scheduler-loop execute.ts 双点接线；Track B run4 实证护栏有效——lead 三轮监督均未能再自取消 root） | ✅ merged (980ca604) |
+| **#39 (PR17)** | **M4 调度内核（SuperAgent S2/S3/S5/S6/S7/S11）**：4 表（progress_ledger/plan_versions/effects/health）+ EventIngress（FAST→确定性 reconcile 零 LLM；SLOW→单飞合并批投递 leader，最小间隔退避）+ Effects outbox（5s→300s 退避、3 败 dead+升级）+ Watchdog（budget_burn/no_progress/repeated_decision + HealthBoard + 通知小时桶去重 + dead-man）+ 10s tick 内核；里程碑事件同事务入账本；plan_versions 不可变快照 | ✅ merged (48f5a50d) |
 
 ## 1. 交付追溯（plan v3.0 → PR → 合并状态）
 
@@ -48,12 +55,12 @@ main HEAD：`4d09817f`（PR#36/#37 合并 + 证据包）。证据根目录：`do
 | Gate | 命令 | 结果 |
 |---|---|---|
 | G0 | typecheck / lint | ✅ PASS |
-| G1–G4 | `npm run test:unit` | ✅ **1087 tests / 1085 pass / 0 fail / 2 skipped**（含 MAST 14/14、B8 回滚注入、C11 grant、成员/建频道提案、PR13 八项、**PR14 API 补全 3 项**回归） |
+| G1–G4 | `npm run test:unit` | ✅ **1094 tests / 1092 pass / 0 fail / 2 skipped**（含 MAST 14/14、B8 回滚注入、C11 grant、成员/建频道提案、PR13 八项、PR14 API 补全 3 项、**PR17 内核 7 项**回归） |
 | G5 | `npm run build` | ✅ PASS（host-tools 121） |
-| G5 | UI smoke | ✅ **7/7**（U4a 概览 + U4 五 tab 逐区） |
-| G5 | UI 交互矩阵 | ✅ **28/28**（新增五 tab 断言 I14a–d、UI 批准计划 I7b、lead 工具提交 I10a） |
+| G5 | UI smoke | ✅ **7/7** |
+| G5 | UI 交互矩阵 | ✅ **28/28** |
 | G6 | 产线治理 E2E | ✅ PASS |
-| G6 | 项目生产业务 E2E | ✅ **60 PASS / 0 FAIL / 0 BLOCKED**（新增 P23a–g：update/retry/snapshot/trace/审批历史/完成门前终态清理） |
+| G6 | 项目生产业务 E2E | ✅ **64 PASS / 0 FAIL / 0 BLOCKED**（新增 P24a–d：HealthBoard / Progress Ledger / 内核手动 tick / snapshot.kernel） |
 | G6 | 回滚演练 | ✅ **12/12** |
 
 ---
@@ -68,11 +75,11 @@ main HEAD：`4d09817f`（PR#36/#37 合并 + 证据包）。证据根目录：`do
 
 ## 5. 明确豁免/未完成（不因签署变绿）
 
-1. Mimosa 覆盖不完整 → 不宣称安全验收通过（事实：Project 层新增面本次扫描零 findings）。
-2. Track B（纯开发任务 × 真实 LLM 自主构建）未执行：隔离验收 home 无 LLM provider 配置。
+1. Mimosa 覆盖不完整 → 不宣称安全验收通过（事实：Project 层新增面两次扫描零 findings）。
+2. Track B（纯开发任务 × 真实 LLM 自主构建）：**已执行（run7，2026-11-04）——治理链全通 + 工件真实可用**：leader 真 LLM 提案计划→批准→派发→lead 自主执行 root COMPLETED@100%（工件 3397B）→成果→复核→验收→完成门禁→项目 completed；工件（库存管理单页 3170 字符）经浏览器实测验收标准 5/5（表格/新增/删除/金额/localStorage 持久化/统计）。期间发现并修复两个真实缺陷（PR16 取消护栏、PR18 短会话密钥 500 风暴 fail-loud）。详见 track-b/README.md。
 3. 团队协作为最小面（viewer/approver）；共享频道/多项目成员治理待排期。
 4. 周报为数字一页纸（JSON/卡片）；PDF/邮件分发未做。
-5. V1.1/V2 项（ProjectSchedulerLoop、Mandate、双 Ledger、effects/outbox、push 订阅）按计划有意推迟。
+5. V1.1/V2 项（ProjectSchedulerLoop/LLM 监督循环、Mandate、push 订阅）按计划有意推迟；**双 Ledger / effects/outbox / watchdog / 事件分级已由 PR17 提前交付**。
 
 ## 6. 结论
 
