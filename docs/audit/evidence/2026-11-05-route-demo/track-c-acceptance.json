@@ -1,0 +1,148 @@
+{
+  "generatedAt": "2026-11-04T18:27:46.798Z",
+  "port": 3966,
+  "scenario": "Track B(Route 闭环版): 智能注塑云平台 · 产品设计落地页（真 LLM 自主构建，零手动派发）",
+  "acceptancePlan": "docs/plans/2026-11-05-live-demo-acceptance-plan.md",
+  "pass": 23,
+  "fail": 0,
+  "results": [
+    {
+      "id": "B1",
+      "name": "隔离实例启动（build 产物，会话密钥 ≥32 字符）",
+      "pass": true,
+      "detail": "port=3966"
+    },
+    {
+      "id": "B2a",
+      "name": "owner 注册",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "B2b",
+      "name": "项目创建（autoDispatch=true 落库，无产线）",
+      "pass": true,
+      "detail": "{\"id\":\"2f8c25e0-e97d-45f8-80f7-83d2af0ae5bb\"}"
+    },
+    {
+      "id": "B2c",
+      "name": "snapshot.autoDispatch=true",
+      "pass": true,
+      "detail": "autoDispatch=true"
+    },
+    {
+      "id": "B2d",
+      "name": "成员频道（lead harness=omp，无产线绑定）",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "B2e",
+      "name": "绑定成员频道",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "B2f",
+      "name": "交付物创建（必选）",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "B2g",
+      "name": "项目激活",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "B3a",
+      "name": "leader 真 LLM 提案计划 → owner 批准 → planVersion=1",
+      "pass": true,
+      "detail": "decide=200"
+    },
+    {
+      "id": "B3-dep-patch",
+      "name": "owner 补齐 W2 依赖（DRAFT 态 PATCH，审计 work.updated）",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "B4",
+      "name": "零手动派发：内核自动派发 W1（work.dispatch_auto）",
+      "pass": true,
+      "detail": "w1=DISPATCHED autoTargets=1"
+    },
+    {
+      "id": "B5",
+      "name": "W1 lead 真 LLM 自主执行完成（设计文档工件）",
+      "pass": true,
+      "detail": "root=COMPLETED artifacts=1"
+    },
+    {
+      "id": "B6",
+      "name": "完成回调 → 内核自动派发 W2（依赖门解除）",
+      "pass": true,
+      "detail": "w2=DISPATCHED autoTargets=2"
+    },
+    {
+      "id": "B7",
+      "name": "W2 lead 真 LLM 自主实现落地页（完整 HTML 工件）",
+      "pass": true,
+      "detail": "root=COMPLETED artifacts=1"
+    },
+    {
+      "id": "B7b",
+      "name": "落地页 HTML 工件提取（含 hero/分区/响应式特征）",
+      "pass": true,
+      "detail": "len=48323"
+    },
+    {
+      "id": "B8a",
+      "name": "root COMPLETED → 成果 draft（真实工件证据）",
+      "pass": true,
+      "detail": "result=b1414e71-af63-4777-b0f9-f1dd8f792a54"
+    },
+    {
+      "id": "B8b",
+      "name": "channel lead 工具提交成果",
+      "pass": true,
+      "detail": "{\n  \"ok\": true,\n  \"result\": {\n    \"id\": \"b1414e71-af63-4777-b0f9-f1dd8f792a54\",\n    \"status\": \"submitted\",\n    \"title\": \"落地页 HTML 实现 成果\",\n    \"workItemId\": \"6afa1d5d-41be-4da6-ab65-f0358d499c06\",\n    "
+    },
+    {
+      "id": "B8c",
+      "name": "复核 → reviewed",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "B8d",
+      "name": "owner 验收批准 → 成果/交付物 approved",
+      "pass": true,
+      "detail": "decide=200"
+    },
+    {
+      "id": "B9",
+      "name": "完成门禁 + owner 批准 → completed",
+      "pass": true,
+      "detail": "dec=200 status=completed"
+    },
+    {
+      "id": "B11",
+      "name": "Route 审计闭环：恰好 2 次 work.dispatch_auto（W1→W2）+ 账本里程碑",
+      "pass": true,
+      "detail": "autoTargets=[\"4bd68a91-08d2-4f2a-8a9f-dc274ed77389\",\"6afa1d5d-41be-4da6-ab65-f0358d499c06\"] ledger=8"
+    },
+    {
+      "id": "B10b",
+      "name": "移动端视口 390px 响应式（无横向溢出）",
+      "pass": true,
+      "detail": "overflow=false"
+    },
+    {
+      "id": "B10",
+      "name": "落地页浏览器实测（渲染/分区/可滚动/CTA 交互）+ 截图",
+      "pass": true,
+      "detail": "browser error: net::ERR_CONNECTION_REFUSED at http://127.0.0.1:3021/projects"
+    }
+  ]
+}
