@@ -1,0 +1,24 @@
+# Project 层 V1 验收签署（G6）
+
+日期：2026-11-04。分支：main（PR#31 audit-atomic/line-grant、#32 members/channel-proposals、#33 weekly-report/interactions、#34 g6-close 合并后）。
+
+## 签署栏
+
+| 角色 | 姓名/身份 | 结论 | 日期 | 签署 |
+|---|---|---|---|---|
+| 开发执行（AI） | ZCode（本会话） | 已实现范围全部门禁通过（见 gates/index.json） | 2026-11-04 | 已签（本文件 + 证据包即签署记录） |
+| 独立复核（AI） | reviewer agent | APPROVED（8/8 验收标准新鲜证据复核） | 2026-11-04 | 已签（复核报告存会话档案） |
+| **Project Owner（人）** | 待用户 | **待签署** | — | ⬜ 用户确认后在此签名 |
+
+> Owner 签署说明：请审阅 `docs/audit/evidence/2026-11-03-project-layer/`（ACCEPTANCE.md、project-line-acceptance.json、rollback-drill.json、gates/、project-interactions.png）后签署。签署前本层按"受控试点可用"定位使用，不宣称完整 V1。
+
+## 明确豁免/未完成（不因签署而变绿）
+
+1. **独立安全扫描（Mimosa）持续 `scanner_enobufs`，安全验收未通过**——本包不含任何"安全审计通过"宣称。
+2. Track B（纯开发任务 × 真实 LLM 自主构建）未执行：隔离验收 home 无 LLM provider 配置；生产实例按隔离规则不得触碰。
+3. 团队协作为 V1.1 提前实现的最小面（viewer/approver）；共享频道/多项目成员治理仍在计划排期。
+4. 周报为数字一页纸（JSON/页面卡片）；PDF/邮件分发未做。
+
+## 通过门禁快照（详见 gates/index.json）
+
+G0 typecheck/lint · G1 schema/迁移 · G2 安全 P0（本地） · G3 核心/派发/leader 工具 · G4 成果/审批/审计事务化/write_intent/line grant/MAST14 · G5 构建+UI smoke 6/6+交互矩阵 20/20 · G6 产线治理 E2E + 项目生产业务 E2E（≥51 PASS/0 FAIL）+ 回滚演练 12/12。
