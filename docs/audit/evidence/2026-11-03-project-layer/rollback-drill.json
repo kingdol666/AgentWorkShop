@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-11-04T09:41:32.400Z",
+  "generatedAt": "2026-11-04T19:02:38.684Z",
   "port": 3979,
   "pass": 12,
   "fail": 0,
@@ -14,7 +14,7 @@
       "id": "R1",
       "name": "基线对象（产线+绑线频道）",
       "pass": true,
-      "detail": "line=ln-3ac004c6 ch=8ff6a03c-e2ab-40bf-9371-cb553db3b3ec"
+      "detail": "line=ln-5999eac3 ch=f747ff81-2034-42c5-bdd2-ee55ee1fb986"
     },
     {
       "id": "R2a",
@@ -26,7 +26,7 @@
       "id": "R2b",
       "name": "DB 文件备份",
       "pass": true,
-      "detail": "1486848 bytes"
+      "detail": "1519616 bytes"
     },
     {
       "id": "R3a",
@@ -38,7 +38,7 @@
       "id": "R3b",
       "name": "完整项目流（派发/完成/对账）",
       "pass": true,
-      "detail": "project=c6784235-1493-414b-90e7-22c8864fc2d4 disp=200"
+      "detail": "project=c01e313b-b0a9-41d3-b693-2448b3990cbe disp=200"
     },
     {
       "id": "R4a",
