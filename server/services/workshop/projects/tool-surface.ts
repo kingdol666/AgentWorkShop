@@ -17,6 +17,7 @@ export const PROJECT_READ_TOOL_NAMES: ReadonlySet<string> = new Set([
   'project_read_deliverables',
   'project_read_results',
   'project_read_work_items',
+  'project_read_messages',
 ])
 
 /** 仅 project leader 可用（提案/复核/审批/全局只读） */
@@ -29,12 +30,19 @@ export const PROJECT_LEADER_ONLY_TOOL_NAMES: ReadonlySet<string> = new Set([
   'project_propose_channel',
   'project_review_result',
   'project_request_approval',
+  'project_propose_route',
+  'project_submit_technical_review',
+  'project_send_message',
 ])
 
 /** 仅 channel lead 可用（成果提交与工业写意图） */
 export const PROJECT_CHANNEL_LEAD_ONLY_TOOL_NAMES: ReadonlySet<string> = new Set([
   'project_submit_result',
   'project_request_write_intent',
+  // P2：独立 reviewer Channel 可做 L1 技术验收；项目内消息/升级。
+  'project_submit_technical_review',
+  'project_send_message',
+  'project_escalate',
 ])
 
 export const PROJECT_LEADER_TOOL_NAMES: ReadonlySet<string> = new Set([

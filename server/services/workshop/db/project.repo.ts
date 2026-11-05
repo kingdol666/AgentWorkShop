@@ -618,6 +618,7 @@ export function createProjectResultRepo(db: DatabaseSync) {
   const verifyEvidenceStmt = db.prepare(`UPDATE project_results SET content_sha256 = ?, evidence_verified_at = ?, criteria_check_json = ? WHERE id = ?`)
   const setSupersedesStmt = db.prepare(`UPDATE project_results SET supersedes_id = ? WHERE id = ?`)
   const setReworkStmt = db.prepare(`UPDATE project_results SET rework_required = ? WHERE id = ?`)
+  const setVerdictStmt = db.prepare(`UPDATE project_results SET technical_verdict_json = ? WHERE id = ?`)
   const selectById = db.prepare(`SELECT ${RESULT_COLS} FROM project_results WHERE id = ?`)
   const selectByProject = db.prepare(`SELECT ${RESULT_COLS} FROM project_results WHERE project_id = ? ORDER BY created_at DESC`)
   const selectByWorkItemAttempt = db.prepare(`SELECT ${RESULT_COLS} FROM project_results WHERE work_item_id = ? AND attempt_no = ? AND result_key = ? LIMIT 1`)
@@ -756,6 +757,10 @@ export function createProjectResultRepo(db: DatabaseSync) {
     markReworkRequired(id: string, required: boolean): void {
       setReworkStmt.run(required ? 1 : 0, id)
     },
+    /** P2：L1 技术验收结论（评审人/检查项/时间）。 */
+    setTechnicalVerdict(id: string, verdictJson: string): void {
+      setVerdictStmt.run(verdictJson, id)
+    },
   }
 }
 
@@ -786,6 +791,157 @@ export function createProjectResultInputRepo(db: DatabaseSync) {
     },
     listByInput(inputResultId: string): ProjectResultInputRow[] {
       return selectByInput.all(inputResultId) as unknown as ProjectResultInputRow[]
+    },
+  }
+}
+
+export interface ProjectTechnicalReviewRow {
+  id: string
+  projectId: string
+  resultId: string
+  resultVersion: number
+  reviewerAgentId: string
+  reviewerChannelId: string
+  reviewerKind: string
+  verdict: string
+  checksJson: string
+  note: string
+  traceId: string
+  createdAt: string
+}
+
+export type ProjectTechnicalReviewRepo = ReturnType<typeof createProjectTechnicalReviewRepo>
+export function createProjectTechnicalReviewRepo(db: DatabaseSync) {
+  const insert = db.prepare(
+    `INSERT INTO project_technical_reviews (id, project_id, result_id, result_version, reviewer_agent_id, reviewer_channel_id, reviewer_kind, verdict, checks_json, note, trace_id, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  )
+  const selectByResult = db.prepare('SELECT id, project_id AS projectId, result_id AS resultId, result_version AS resultVersion, reviewer_agent_id AS reviewerAgentId, reviewer_channel_id AS reviewerChannelId, reviewer_kind AS reviewerKind, verdict, checks_json AS checksJson, note, trace_id AS traceId, created_at AS createdAt FROM project_technical_reviews WHERE result_id = ? ORDER BY created_at ASC')
+  return {
+    add(input: {
+      projectId: string
+      resultId: string
+      resultVersion: number
+      reviewerAgentId: string
+      reviewerChannelId: string
+      reviewerKind: string
+      verdict: string
+      checksJson?: string
+      note?: string
+      traceId?: string
+    }): ProjectTechnicalReviewRow {
+      const row: ProjectTechnicalReviewRow = {
+        id: randomUUID(),
+        projectId: input.projectId,
+        resultId: input.resultId,
+        resultVersion: input.resultVersion,
+        reviewerAgentId: input.reviewerAgentId,
+        reviewerChannelId: input.reviewerChannelId,
+        reviewerKind: input.reviewerKind,
+        verdict: input.verdict,
+        checksJson: input.checksJson ?? '[]',
+        note: input.note ?? '',
+        traceId: input.traceId ?? '',
+        createdAt: now(),
+      }
+      insert.run(row.id, row.projectId, row.resultId, row.resultVersion, row.reviewerAgentId, row.reviewerChannelId,
+        row.reviewerKind, row.verdict, row.checksJson, row.note, row.traceId, row.createdAt)
+      return row
+    },
+    listByResult(resultId: string): ProjectTechnicalReviewRow[] {
+      return selectByResult.all(resultId) as unknown as ProjectTechnicalReviewRow[]
+    },
+  }
+}
+
+export interface ProjectMessageRow {
+  id: string
+  projectId: string
+  fromAgentId: string
+  fromChannelId: string
+  toAgentId: string
+  toChannelId: string
+  kind: string
+  workItemId: string | null
+  resultId: string | null
+  correlationId: string
+  body: string
+  requireReply: number
+  status: string
+  error: string
+  traceId: string
+  createdAt: string
+  deliveredAt: string | null
+}
+
+export type ProjectMessageRepo = ReturnType<typeof createProjectMessageRepo>
+export function createProjectMessageRepo(db: DatabaseSync) {
+  const insert = db.prepare(
+    `INSERT OR IGNORE INTO project_messages (id, project_id, from_agent_id, from_channel_id, to_agent_id, to_channel_id, kind, work_item_id, result_id, correlation_id, body, require_reply, status, error, trace_id, created_at, delivered_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  )
+  const selectById = db.prepare('SELECT id, project_id AS projectId, from_agent_id AS fromAgentId, from_channel_id AS fromChannelId, to_agent_id AS toAgentId, to_channel_id AS toChannelId, kind, work_item_id AS workItemId, result_id AS resultId, correlation_id AS correlationId, body, require_reply AS requireReply, status, error, trace_id AS traceId, created_at AS createdAt, delivered_at AS deliveredAt FROM project_messages WHERE id = ?')
+  const selectByCorrelation = db.prepare('SELECT id FROM project_messages WHERE project_id = ? AND correlation_id = ? AND from_agent_id = ? LIMIT 1')
+  const selectByProject = db.prepare('SELECT id, project_id AS projectId, from_agent_id AS fromAgentId, from_channel_id AS fromChannelId, to_agent_id AS toAgentId, to_channel_id AS toChannelId, kind, work_item_id AS workItemId, result_id AS resultId, correlation_id AS correlationId, body, require_reply AS requireReply, status, error, trace_id AS traceId, created_at AS createdAt, delivered_at AS deliveredAt FROM project_messages WHERE project_id = ? ORDER BY created_at DESC')
+  const markDelivered = db.prepare(`UPDATE project_messages SET status = 'delivered', delivered_at = ?, error = '' WHERE id = ?`)
+  const markFailed = db.prepare(`UPDATE project_messages SET status = 'failed', error = ? WHERE id = ?`)
+  return {
+    add(input: {
+      projectId: string
+      fromAgentId: string
+      fromChannelId: string
+      toAgentId: string
+      toChannelId: string
+      kind?: string
+      workItemId?: string | null
+      resultId?: string | null
+      correlationId?: string
+      body: string
+      requireReply?: boolean
+      traceId?: string
+    }): ProjectMessageRow {
+      // 空 correlation 不能进唯一键（否则同一发送者的多条普通消息会被 OR IGNORE 吞掉）；
+      // 未提供时生成内部关联 id，只有调用方显式给幂等键时才去重。
+      const correlationId = input.correlationId?.trim() || randomUUID()
+      const existing = input.correlationId?.trim()
+        ? selectByCorrelation.get(input.projectId, correlationId, input.fromAgentId) as { id?: string } | undefined
+        : undefined
+      if (existing?.id) return selectById.get(existing.id) as unknown as ProjectMessageRow
+      const row: ProjectMessageRow = {
+        id: randomUUID(),
+        projectId: input.projectId,
+        fromAgentId: input.fromAgentId,
+        fromChannelId: input.fromChannelId,
+        toAgentId: input.toAgentId,
+        toChannelId: input.toChannelId,
+        kind: input.kind ?? 'note',
+        workItemId: input.workItemId ?? null,
+        resultId: input.resultId ?? null,
+        correlationId,
+        body: input.body.slice(0, 8_000),
+        requireReply: input.requireReply ? 1 : 0,
+        status: 'pending',
+        error: '',
+        traceId: input.traceId ?? '',
+        createdAt: now(),
+        deliveredAt: null,
+      }
+      insert.run(row.id, row.projectId, row.fromAgentId, row.fromChannelId, row.toAgentId, row.toChannelId,
+        row.kind, row.workItemId, row.resultId, row.correlationId, row.body, row.requireReply, row.status,
+        row.error, row.traceId, row.createdAt, row.deliveredAt)
+      return row
+    },
+    findById(id: string): ProjectMessageRow | undefined {
+      return selectById.get(id) as unknown as ProjectMessageRow | undefined
+    },
+    listByProject(projectId: string): ProjectMessageRow[] {
+      return selectByProject.all(projectId) as unknown as ProjectMessageRow[]
+    },
+    markDelivered(id: string): void {
+      markDelivered.run(now(), id)
+    },
+    markFailed(id: string, error: string): void {
+      markFailed.run(error.slice(0, 2_000), id)
     },
   }
 }

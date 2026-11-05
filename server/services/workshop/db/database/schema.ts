@@ -1454,6 +1454,53 @@ CREATE TABLE IF NOT EXISTS project_decisions (
   UNIQUE(project_id, seq)
 );
 
+-- Router v3 P2：技术验收（L1，可委派给独立 reviewer Channel/agent）
+CREATE TABLE IF NOT EXISTS project_technical_reviews (
+  id                   TEXT PRIMARY KEY,
+  project_id           TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  result_id            TEXT NOT NULL REFERENCES project_results(id) ON DELETE CASCADE,
+  result_version       INTEGER NOT NULL,
+  reviewer_agent_id    TEXT NOT NULL,
+  reviewer_channel_id  TEXT NOT NULL,
+  reviewer_kind        TEXT NOT NULL DEFAULT 'channel_lead',
+                       -- project_leader|channel_lead|owner|admin
+  verdict              TEXT NOT NULL,
+                       -- pass|fail
+  checks_json          TEXT NOT NULL DEFAULT '[]',
+  note                 TEXT NOT NULL DEFAULT '',
+  trace_id             TEXT NOT NULL DEFAULT '',
+  created_at           TEXT NOT NULL,
+  UNIQUE(result_id, result_version, reviewer_agent_id)
+);
+CREATE INDEX IF NOT EXISTS idx_project_technical_reviews_result
+  ON project_technical_reviews(result_id, result_version);
+
+-- Router v3 P2：项目内消息（leader↔Channel / Channel↔Channel；服务端生成 from）
+CREATE TABLE IF NOT EXISTS project_messages (
+  id                TEXT PRIMARY KEY,
+  project_id        TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  from_agent_id     TEXT NOT NULL,
+  from_channel_id   TEXT NOT NULL,
+  to_agent_id       TEXT NOT NULL,
+  to_channel_id     TEXT NOT NULL,
+  kind              TEXT NOT NULL DEFAULT 'note',
+                    -- note|escalate|reply|request_review
+  work_item_id      TEXT,
+  result_id         TEXT,
+  correlation_id    TEXT NOT NULL DEFAULT '',
+  body              TEXT NOT NULL,
+  require_reply     INTEGER NOT NULL DEFAULT 0,
+  status            TEXT NOT NULL DEFAULT 'pending',
+                    -- pending|delivered|failed
+  error             TEXT NOT NULL DEFAULT '',
+  trace_id          TEXT NOT NULL DEFAULT '',
+  created_at        TEXT NOT NULL,
+  delivered_at      TEXT,
+  UNIQUE(project_id, correlation_id, from_agent_id)
+);
+CREATE INDEX IF NOT EXISTS idx_project_messages_to
+  ON project_messages(project_id, to_agent_id, created_at DESC);
+
 CREATE TABLE IF NOT EXISTS project_events (
   id            TEXT PRIMARY KEY,
   project_id    TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,

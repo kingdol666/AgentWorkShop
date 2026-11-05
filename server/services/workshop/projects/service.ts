@@ -10,7 +10,7 @@
 import type { DatabaseSync } from 'node:sqlite'
 import { createHash } from 'node:crypto'
 import type { AgentChannelManager } from '../runtime/manager'
-import type { ProjectApprovalRow, ProjectChannelRow, ProjectDeliverableRow, ProjectDecisionRow, ProjectEventRow, ProjectMemberRow, ProjectResultRow, ProjectRow, ProjectWorkItemRow } from '../db/project.repo'
+import type { ProjectApprovalRow, ProjectChannelRow, ProjectDeliverableRow, ProjectDecisionRow, ProjectEventRow, ProjectMemberRow, ProjectMessageRow, ProjectResultRow, ProjectRow, ProjectTechnicalReviewRow, ProjectWorkItemRow } from '../db/project.repo'
 import {
   createProjectRepo,
   createProjectChannelRepo,
@@ -23,6 +23,8 @@ import {
   createProjectEventRepo,
   createProjectMemberRepo,
   createProjectResultInputRepo,
+  createProjectTechnicalReviewRepo,
+  createProjectMessageRepo,
 } from '../db/project.repo'
 import { createTaskRepo } from '../db/task.repo'
 import { createProjectKernelRepo } from '../db/project-kernel.repo'
@@ -481,6 +483,8 @@ export class ProjectService {
   private readonly events
   private readonly members
   private readonly resultInputs
+  private readonly technicalReviews
+  private readonly messages
   private readonly tasks
   /** PR17 M4 内核仓储：ledger / plan_versions / effects / health。 */
   private readonly kernelRepo
@@ -501,6 +505,8 @@ export class ProjectService {
     this.events = createProjectEventRepo(db)
     this.members = createProjectMemberRepo(db)
     this.resultInputs = createProjectResultInputRepo(db)
+    this.technicalReviews = createProjectTechnicalReviewRepo(db)
+    this.messages = createProjectMessageRepo(db)
     this.tasks = createTaskRepo(db)
     this.kernelRepo = createProjectKernelRepo(db)
   }
@@ -1539,9 +1545,10 @@ export class ProjectService {
 
   decideApproval(id: string, approvalId: string, actor: ProjectActor, approve: boolean, reason = ''): ProjectApprovalRow {
     const p = this.get(id, actor)
-    this.requireDecider(p, actor)
     const approval = this.approvals.findById(approvalId)
     if (!approval || approval.projectId !== id) throw new AppError(404, 'NOT_FOUND', '审批不存在或不属于该项目')
+    // P2 审批分权：plan/acceptance 可授权给 approver；project_complete/write_intent 仅 owner/admin。
+    this.requireDecider(p, actor, approval.kind)
     if (approval.status !== 'pending') throw new AppError(409, 'APPROVAL_STATE_INVALID', `审批状态 ${approval.status} 不能决策`)
     if (approval.kind === 'deliverable_acceptance') {
       const result = this.results.findById(approval.subjectId)
@@ -2075,6 +2082,311 @@ export class ProjectService {
   }
 
   /**
+   * P2 L1 技术验收（可委派）：
+   *  - Project Leader 可验任何成果；
+   *  - 成员 Channel 的 lead 可验**其他 Channel** 的成果（独立 reviewer Channel）；
+   *  - 生产频道自验/成果作者自验一律拒绝；
+   *  - 通过 → result=reviewed（技术验收通过，可放行下游）；失败 → rejected（触发返工）。
+   */
+  agentSubmitTechnicalReview(agentId: string, input: {
+    resultId: string
+    verdict: 'pass' | 'fail'
+    checks?: Array<Record<string, unknown>>
+    note?: string
+  }): { review: ProjectTechnicalReviewRow, result: ProjectResultRow } {
+    const ctx = this.requireAgentContext(agentId, 'any')
+    if (ctx.role === 'worker' && !ctx.isLeader) {
+      throw new AppError(403, 'PROJECT_CHANNEL_LEAD_REQUIRED', '仅项目总工或 Channel lead 可提交技术验收')
+    }
+    if (input.verdict !== 'pass' && input.verdict !== 'fail') {
+      throw new AppError(400, 'BAD_REQUEST', 'verdict 必须是 pass 或 fail')
+    }
+    const result = this.results.findById(input.resultId)
+    if (!result || result.projectId !== ctx.project.id) throw new AppError(404, 'NOT_FOUND', '成果不存在或不属于该项目')
+    if (result.status !== 'submitted') throw new AppError(409, 'RESULT_STATE_INVALID', `成果状态 ${result.status} 不能技术验收`)
+    if (result.authorAgentId === agentId) throw new AppError(403, 'SELF_REVIEW_FORBIDDEN', '不能技术验收自己产出的成果')
+    if (!ctx.isLeader) {
+      if (result.channelId === ctx.channelId) {
+        throw new AppError(403, 'SELF_REVIEW_FORBIDDEN', '生产 Channel 不能自验；请由 Project Leader 或其他成员 Channel 验收')
+      }
+      this.assertChannelBound(ctx.project.id, ctx.channelId)
+    }
+    const deliverable = this.deliverables.findById(result.deliverableId)
+    const wi = this.workItems.findById(result.workItemId)
+    const task = this.tasks.findById(result.sourceTaskId)
+    const criteria = [
+      ...parseJson<string[]>(deliverable?.acceptanceCriteriaJson ?? '[]', []),
+      ...parseJson<string[]>(wi?.acceptanceJson ?? '[]', []),
+    ]
+    const criteriaCheck = evaluateCriteriaChecks({
+      criteria,
+      artifacts: [...artifactDigests(task?.artifactsJson ?? '[]').values()],
+      payloadJson: result.payloadJson,
+      artifactBacked: parseJson<Array<Record<string, unknown>>>(result.evidenceJson, []).filter(e => String(e.artifactId ?? '')).length,
+    })
+    if (input.verdict === 'pass' && !criteriaCheck.ok) {
+      throw new AppError(409, 'ACCEPTANCE_CRITERIA_FAILED', `技术验收不能通过：${criteriaCheck.blockingFailures.join('；')}`)
+    }
+    const checksJson = JSON.stringify([...criteriaCheck.checks, ...(input.checks ?? [])])
+    const reviewerKind = ctx.isLeader ? 'project_leader' : 'channel_lead'
+    let review!: ProjectTechnicalReviewRow
+    let updated!: ProjectResultRow
+    withTransaction(this.db, () => {
+      review = this.technicalReviews.add({
+        projectId: ctx.project.id,
+        resultId: result.id,
+        resultVersion: result.version,
+        reviewerAgentId: agentId,
+        reviewerChannelId: ctx.channelId,
+        reviewerKind,
+        verdict: input.verdict,
+        checksJson,
+        note: input.note ?? '',
+        traceId: result.traceId,
+      })
+      const verdictJson = JSON.stringify({ verdict: input.verdict, reviewerAgentId: agentId, reviewerChannelId: ctx.channelId, reviewerKind, reviewId: review.id, note: input.note ?? '', at: new Date().toISOString() })
+      this.results.setTechnicalVerdict(result.id, verdictJson)
+      if (input.verdict === 'pass') {
+        this.results.setStatus(result.id, 'reviewed', {
+          reviewedBy: agentId,
+          reviewedAt: new Date().toISOString(),
+          rejectReason: null,
+        })
+        this.record(ctx.project.id, 'result.technical_accepted', { id: agentId, role: ctx.role, agentId }, { resultId: result.id, reviewId: review.id, reviewerChannelId: ctx.channelId }, result.traceId, 'result.technical_accepted', `result:${result.id}:technical-accepted:${review.id}`, { resultId: result.id, reviewId: review.id, reviewerKind })
+      }
+      else {
+        this.results.setStatus(result.id, 'rejected', {
+          reviewedBy: agentId,
+          reviewedAt: new Date().toISOString(),
+          rejectReason: input.note || criteriaCheck.blockingFailures.join('；') || 'technical review failed',
+        })
+        this.record(ctx.project.id, 'result.technical_rejected', { id: agentId, role: ctx.role, agentId }, { resultId: result.id, reviewId: review.id, reason: input.note ?? '' }, result.traceId, 'result.technical_rejected', `result:${result.id}:technical-rejected:${review.id}`, { resultId: result.id, reviewId: review.id, reviewerKind })
+      }
+      updated = this.results.findById(result.id)!
+    })
+    return { review, result: updated }
+  }
+
+  /**
+   * P2 Leader Route Gate：对已批准计划内的工作项提出 dispatch/defer/retry/rework/escalate。
+   *  - mode=auto 且 config.routeGate='leader' → 立即应用（仍执行确定性校验）；
+   *  - 其他情况 → proposed decision，owner 在项目页应用。
+   * 不能在此创建新工作项/改验收标准（属于 replan + owner 批准）。
+   */
+  async agentProposeRoute(agentId: string, input: {
+    workItemId: string
+    action: 'dispatch' | 'defer' | 'retry' | 'rework' | 'escalate'
+    reason?: string
+    deferMinutes?: number
+    targetChannelId?: string
+  }): Promise<{ decision: ProjectDecisionRow, applied: boolean, workItem?: ProjectWorkItemRow }> {
+    const ctx = this.requireAgentContext(agentId, 'leader')
+    this.assertLeaderProjectMutable(ctx.project)
+    const wi = this.workItems.findById(input.workItemId)
+    if (!wi || wi.projectId !== ctx.project.id) throw new AppError(404, 'NOT_FOUND', '工作项不存在或不属于该项目')
+    const actions = new Set(['dispatch', 'defer', 'retry', 'rework', 'escalate'])
+    if (!actions.has(input.action)) throw new AppError(400, 'BAD_REQUEST', `未知 route action: ${input.action}`)
+    if (input.action === 'defer') {
+      const minutes = Number(input.deferMinutes ?? 10)
+      if (!Number.isFinite(minutes) || minutes < 1 || minutes > 1_440) throw new AppError(400, 'BAD_REQUEST', 'deferMinutes 必须在 1–1440')
+    }
+    if (input.targetChannelId) this.assertChannelBound(ctx.project.id, input.targetChannelId)
+    const args = {
+      workItemId: wi.id,
+      action: input.action,
+      reason: input.reason ?? '',
+      deferMinutes: input.deferMinutes ?? null,
+      targetChannelId: input.targetChannelId ?? null,
+    }
+    const decision = this.decisions.append({
+      projectId: ctx.project.id,
+      source: 'leader',
+      decisionType: 'route.proposed',
+      actorAgentId: agentId,
+      actorKind: 'project_leader',
+      argsJson: JSON.stringify(args),
+      argsSha256: createHash('sha256').update(JSON.stringify(args)).digest('hex'),
+      state: 'proposed',
+      outcome: 'pending',
+      traceId: `proposal:route:${wi.id}:${input.action}`,
+    })
+    const config = parseJson<Record<string, unknown>>(ctx.project.configJson, {})
+    const autoApply = ctx.project.mode === 'auto' && config.routeGate === 'leader'
+    if (!autoApply) return { decision, applied: false }
+    if (!this.decisions.markApplied(decision.id, 'applied', 'auto route gate')) {
+      throw new AppError(409, 'PROPOSAL_STATE_INVALID', 'route 提案已被处理')
+    }
+    const workItem = await this.applyRouteDecision(ctx.project, decision, { id: 'system', role: 'system' })
+    return { decision: this.decisions.findById(ctx.project.id, decision.id) ?? decision, applied: true, workItem }
+  }
+
+  /** Route 决策的确定性执行（owner apply / leader auto 共用）。 */
+  private async applyRouteDecision(p: ProjectRow, decision: ProjectDecisionRow, actor: ProjectActor): Promise<ProjectWorkItemRow | undefined> {
+    const args = parseJson<Record<string, unknown>>(decision.argsJson, {})
+    const workItemId = String(args.workItemId ?? '')
+    const action = String(args.action ?? '')
+    const wi = this.workItems.findById(workItemId)
+    if (!wi || wi.projectId !== p.id) throw new AppError(404, 'NOT_FOUND', 'route 提案的工作项不存在')
+    const traceId = wi.traceId || decision.traceId
+    const reason = String(args.reason ?? '')
+    if (action === 'defer') {
+      const minutes = Math.max(1, Math.min(1_440, Number(args.deferMinutes ?? 10)))
+      const until = new Date(Date.now() + minutes * 60_000).toISOString()
+      this.workItems.update(wi.id, { deferredUntil: until, stateReason: reason || `deferred ${minutes}m` })
+      this.record(p.id, 'route.deferred', actor, { workItemId: wi.id, until, reason }, traceId, 'route.deferred', `route:${wi.id}:defer:${until}`, { workItemId: wi.id, until, reason })
+      return this.workItems.findById(wi.id)!
+    }
+    if (action === 'escalate') {
+      this.kernelRepo.effects.enqueue({
+        projectId: p.id,
+        dedupeKey: `route-escalate:${wi.id}:${Date.now()}`,
+        kind: 'notify',
+        payload: { title: 'Leader 升级工作项', detail: reason || `工作项 ${wi.title} 需要 owner 决策`, workItemId: wi.id },
+        traceId,
+      })
+      this.record(p.id, 'route.escalated', actor, { workItemId: wi.id, reason }, traceId, 'route.escalated', `route:${wi.id}:escalate:${Date.now()}`, { workItemId: wi.id, reason })
+      return this.workItems.findById(wi.id)!
+    }
+    if (action === 'retry' || action === 'rework') {
+      const rework = action === 'rework'
+      this.workItems.update(wi.id, {
+        state: 'DRAFT',
+        stateReason: reason || null,
+        currentAttemptId: null,
+        deferredUntil: null,
+        closedAt: null,
+        closeReason: null,
+        reworkCount: rework ? wi.reworkCount + 1 : wi.reworkCount,
+        planVersion: p.planVersion,
+      })
+      this.record(p.id, rework ? 'work.rework' : 'work.retried', actor, { workItemId: wi.id, reason }, traceId, rework ? 'work.rework' : 'work.retried', `work:${wi.id}:${rework ? 'rework' : 'retry'}:${Date.now()}`, { workItemId: wi.id, reason })
+      if (p.status === 'active' && p.autoDispatch === 1) {
+        const row = await this.dispatchWorkItemAs(p.id, wi.id, actor, p, { auto: true })
+        return row
+      }
+      return this.workItems.findById(wi.id)!
+    }
+    if (action === 'dispatch') {
+      if (wi.channelId !== String(args.targetChannelId ?? wi.channelId)) {
+        const target = String(args.targetChannelId)
+        this.assertChannelBound(p.id, target)
+        this.workItems.update(wi.id, { channelId: target })
+      }
+      return this.dispatchWorkItemAs(p.id, wi.id, actor, p, { auto: true })
+    }
+    throw new AppError(409, 'ROUTE_ACTION_INVALID', `未知 route action: ${action}`)
+  }
+
+  /**
+   * P2 项目消息：Leader ↔ 成员 Channel / Channel ↔ Channel（同项目）。
+   * 服务端生成 from；先落 project_messages 再投 mailbox；投递失败保留 failed 记录。
+   */
+  async agentSendProjectMessage(agentId: string, input: {
+    toChannelId?: string
+    toLeader?: boolean
+    body: string
+    kind?: 'note' | 'escalate' | 'reply' | 'request_review'
+    requireReply?: boolean
+    workItemId?: string
+    resultId?: string
+    correlationId?: string
+  }): Promise<ProjectMessageRow> {
+    const ctx = this.requireAgentContext(agentId, 'any')
+    if (ctx.role === 'worker' && !ctx.isLeader) throw new AppError(403, 'MESSAGE_FORBIDDEN', '项目消息仅限 Leader/Channel lead')
+    const body = input.body?.trim()
+    if (!body) throw new AppError(400, 'BAD_REQUEST', '消息内容不能为空')
+    if (body.length > 8_000) throw new AppError(400, 'MESSAGE_TOO_LARGE', '消息超过 8KB 上限')
+    let toChannelId = ''
+    let toAgentId = ''
+    if (ctx.isLeader) {
+      if (input.toLeader) throw new AppError(400, 'BAD_REQUEST', 'Leader 不能给自己发消息')
+      toChannelId = String(input.toChannelId ?? '').trim()
+      if (!toChannelId) throw new AppError(400, 'BAD_REQUEST', 'Leader 发消息必须指定 toChannelId')
+      this.assertChannelBound(ctx.project.id, toChannelId)
+      const ch = this.manager.getChannelForUser(toChannelId, ctx.project.ownerUserId)
+      if (!ch?.leadAgentId) throw new AppError(409, 'CHANNEL_NO_LEAD', '目标 Channel 没有 lead')
+      toAgentId = ch.leadAgentId
+    }
+    else if (input.toLeader) {
+      if (!ctx.project.officeChannelId || !ctx.project.leadAgentId) throw new AppError(409, 'PROJECT_OFFICE_MISSING', '项目办公室/Leader 缺失')
+      toChannelId = ctx.project.officeChannelId
+      toAgentId = ctx.project.leadAgentId
+    }
+    else {
+      toChannelId = String(input.toChannelId ?? '').trim()
+      if (!toChannelId || toChannelId === ctx.channelId) throw new AppError(400, 'BAD_REQUEST', 'Channel 间消息必须指定其他成员 Channel')
+      this.assertChannelBound(ctx.project.id, toChannelId)
+      const ch = this.manager.getChannelForUser(toChannelId, ctx.project.ownerUserId)
+      if (!ch?.leadAgentId) throw new AppError(409, 'CHANNEL_NO_LEAD', '目标 Channel 没有 lead')
+      toAgentId = ch.leadAgentId
+    }
+    if (input.workItemId) {
+      const wi = this.workItems.findById(input.workItemId)
+      if (!wi || wi.projectId !== ctx.project.id) throw new AppError(404, 'NOT_FOUND', '关联工作项不存在')
+    }
+    if (input.resultId) {
+      const r = this.results.findById(input.resultId)
+      if (!r || r.projectId !== ctx.project.id) throw new AppError(404, 'NOT_FOUND', '关联成果不存在')
+    }
+    const message = this.messages.add({
+      projectId: ctx.project.id,
+      fromAgentId: agentId,
+      fromChannelId: ctx.channelId,
+      toAgentId,
+      toChannelId,
+      kind: input.kind ?? 'note',
+      workItemId: input.workItemId ?? null,
+      resultId: input.resultId ?? null,
+      correlationId: input.correlationId ?? '',
+      body,
+      requireReply: input.requireReply === true,
+      traceId: input.resultId ? this.results.findById(input.resultId)?.traceId ?? '' : '',
+    })
+    try {
+      await this.manager.sendImmediateMessage({
+        channelId: toChannelId,
+        toAgentId,
+        parts: [{ text: body }],
+        requireReply: input.requireReply === true,
+        fromLabel: ctx.isLeader ? `项目总工:${ctx.project.name}` : `Channel:${this.manager.getChannelForUser(ctx.channelId, ctx.project.ownerUserId)?.name ?? ctx.channelId}`,
+      })
+      this.messages.markDelivered(message.id)
+      this.record(ctx.project.id, 'message.sent', { id: agentId, role: ctx.role, agentId }, { messageId: message.id, toChannelId, toAgentId, kind: message.kind }, message.traceId, 'message.sent', `message:${message.id}:sent`, { messageId: message.id, toChannelId, toAgentId, kind: message.kind })
+    }
+    catch (err) {
+      const error = err instanceof Error ? err.message : String(err)
+      this.messages.markFailed(message.id, error)
+      this.record(ctx.project.id, 'message.failed', { id: agentId, role: ctx.role, agentId }, { messageId: message.id, toChannelId, error }, message.traceId, 'message.failed', `message:${message.id}:failed`, { messageId: message.id, toChannelId, error })
+      throw new AppError(502, 'MESSAGE_DELIVERY_FAILED', `项目消息已落库(${message.id})但投递失败：${error}`)
+    }
+    return this.messages.findById(message.id)!
+  }
+
+  /** P2 项目消息读面：Leader 看全项目；成员看自己收/发的消息。 */
+  agentListProjectMessages(agentId: string, limit = 50): Array<Record<string, unknown>> {
+    const ctx = this.requireAgentContext(agentId, 'any')
+    const rows = this.messages.listByProject(ctx.project.id)
+      .filter(m => ctx.isLeader || m.fromAgentId === agentId || m.toAgentId === agentId)
+      .slice(0, Math.max(1, Math.min(200, limit)))
+    return rows.map(m => ({
+      id: m.id, kind: m.kind, fromAgentId: m.fromAgentId, fromChannelId: m.fromChannelId,
+      toAgentId: m.toAgentId, toChannelId: m.toChannelId, workItemId: m.workItemId, resultId: m.resultId,
+      body: m.body, status: m.status, requireReply: m.requireReply === 1, createdAt: m.createdAt,
+    }))
+  }
+
+  /** P2 技术验收读面。 */
+  listTechnicalReviews(id: string, resultId: string, actor: ProjectActor) {
+    this.get(id, actor)
+    const result = this.results.findById(resultId)
+    if (!result || result.projectId !== id) throw new AppError(404, 'NOT_FOUND', '成果不存在或不属于该项目')
+    return this.technicalReviews.listByResult(resultId).map(r => ({
+      ...r,
+      checks: parseJson<unknown[]>(r.checksJson, []),
+    }))
+  }
+
+  /**
    * Leader 计划提案 → plan_approval（owner 批准后物化交付物/工作项）。
    * 同一 plan version 的 pending 审批幂等返回。
    */
@@ -2294,6 +2606,16 @@ export class ProjectService {
     const decision = this.decisions.findById(projectId, decisionId)
     if (!decision) throw new AppError(404, 'NOT_FOUND', '提案不存在或不属于该项目')
     if (decision.state !== 'proposed') throw new AppError(409, 'PROPOSAL_STATE_INVALID', `提案状态 ${decision.state} 不能应用`)
+    // P2：route.proposed —— owner 应用后由确定性 executor 执行（不能创建新工作项/改契约）。
+    if (decision.decisionType === 'route.proposed') {
+      if (!this.decisions.markApplied(decisionId, 'applied', 'owner applied route proposal')) {
+        throw new AppError(409, 'PROPOSAL_STATE_INVALID', 'route 提案已被处理')
+      }
+      const args = parseJson<Record<string, unknown>>(decision.argsJson, {})
+      const workItem = await this.applyRouteDecision(p, decision, actor)
+      this.record(projectId, 'proposal.applied', actor, { decisionId, workItemId: workItem?.id, action: args.action }, decision.traceId, 'proposal.applied', `proposal:${decisionId}:applied`, { decisionId, workItemId: workItem?.id, action: args.action })
+      return { workItem, dispatched: args.action === 'dispatch' || args.action === 'retry' || args.action === 'rework', channelId: workItem?.channelId }
+    }
     // M5：channel.proposed —— owner 应用后创建成员频道并绑定（leader 只能提案）。
     if (decision.decisionType === 'channel.proposed') {
       const args = parseJson<Record<string, unknown>>(decision.argsJson, {})
@@ -2831,10 +3153,18 @@ export class ProjectService {
     throw new AppError(403, 'FORBIDDEN', '仅项目 owner/admin/成员可访问')
   }
 
-  /** PR10：审批决策权 = owner/admin 或成员中的 approver（viewer 不可决策）。 */
-  private requireDecider(p: ProjectRow, actor: ProjectActor): void {
+  /**
+   * PR10 + P2 审批分权：
+   *  - 所有审批：owner/admin 可决策；
+   *  - plan_approval / deliverable_acceptance：成员中的 approver 可代决策；
+   *  - project_complete / write_intent：仅 owner/admin（高风险/项目收口不外包）。
+   */
+  private requireDecider(p: ProjectRow, actor: ProjectActor, kind = ''): void {
     if (actor.role === 'admin') return
     if (p.ownerUserId === actor.id) return
+    if (kind === 'project_complete' || kind === 'write_intent') {
+      throw new AppError(403, 'FORBIDDEN', `${kind} 仅项目 owner/admin 可决策`)
+    }
     const m = this.members.findOne(p.id, actor.id)
     if (m && m.role === 'approver') return
     throw new AppError(403, 'FORBIDDEN', '仅项目 owner/admin/approver 可决策审批')
