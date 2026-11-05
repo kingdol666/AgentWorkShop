@@ -31,7 +31,8 @@ import { parseJson } from '../db/database'
 import { AppError } from '../../../utils/errors'
 import { argsDigest } from './digest'
 import { PROJECT_GATED_WRITE_TOOL_NAMES } from './tool-surface'
-import { selectReadyWorkItems } from './route-dispatcher'
+import { evaluateWorkItemReadiness } from './readiness'
+import { selectReadyWithContext } from './route-dispatcher'
 
 export interface ProjectActor {
   id: string
@@ -75,6 +76,8 @@ export interface NormalizedPlanDeliverable {
   required: boolean
   channelId?: string
   acceptanceCriteria: string[]
+  /** 契约图边：上游交付物 key（technical 口径下上游验收后才放行下游）。 */
+  dependsOn: string[]
 }
 
 export interface NormalizedPlanWorkItem {
@@ -88,6 +91,8 @@ export interface NormalizedPlanWorkItem {
   execBudgetMinutes: number
   acceptanceCriteria: string[]
   resultKey: string
+  /** P1 handoff 契约（inputs/output/acceptance）；未提供时为 null。 */
+  contract?: Record<string, unknown> | null
 }
 
 export interface NormalizedPlan {
@@ -108,6 +113,110 @@ function asStringArray(value: unknown): string[] {
 
 function asObject(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
+}
+
+interface TaskArtifactLike {
+  artifactId?: string
+  name?: string
+  parts?: Array<{ text?: string }>
+}
+
+interface ArtifactDigest {
+  artifactId: string
+  name: string
+  text: string
+  bytes: number
+  sha256: string
+}
+
+function sha256Hex(text: string): string {
+  return createHash('sha256').update(text).digest('hex')
+}
+
+/** 任务产物索引：只收有真实文本内容的 artifact（input 由 handoff 注入，不作为成果证据）。 */
+function artifactDigests(taskArtifactsJson: string): Map<string, ArtifactDigest> {
+  const rows = parseJson<TaskArtifactLike[]>(taskArtifactsJson, [])
+  const out = new Map<string, ArtifactDigest>()
+  for (const a of rows) {
+    const artifactId = String(a.artifactId ?? '')
+    if (!artifactId) continue
+    const text = (a.parts ?? []).map(p => p.text ?? '').join('')
+    if (!text.trim()) continue
+    out.set(artifactId, {
+      artifactId,
+      name: String(a.name ?? ''),
+      text,
+      bytes: Buffer.byteLength(text, 'utf8'),
+      sha256: sha256Hex(text),
+    })
+  }
+  return out
+}
+
+export interface EvidenceVerification {
+  contentSha256: string
+  checkedAt: string
+  criteriaCheckJson: string
+  artifactBacked: number
+  manual: number
+}
+
+/**
+ * P0 证据核验：证据必须能回溯到同项目/同工作项任务里真实存在的 artifact；
+ * 空 artifactId、空文本、sha256 不匹配一律拒绝。manual attestation 仅在
+ * owner 人工提交路径允许（agent 提交必须 artifact-backed）。
+ */
+export function verifyEvidenceAgainstTask(
+  taskArtifactsJson: string,
+  evidence: Array<Record<string, unknown>>,
+  opts: { requireArtifact: boolean, payloadJson?: string, summary?: string },
+): EvidenceVerification {
+  if (!Array.isArray(evidence) || evidence.length === 0) {
+    throw new AppError(400, 'EVIDENCE_REQUIRED', '成果没有证据，不能提交/验收')
+  }
+  const artifacts = artifactDigests(taskArtifactsJson)
+  let artifactBacked = 0
+  let manual = 0
+  const problems: string[] = []
+  for (const [i, item] of evidence.entries()) {
+    const artifactId = String(item.artifactId ?? '')
+    if (artifactId) {
+      const artifact = artifacts.get(artifactId)
+      if (!artifact) {
+        problems.push(`evidence[${i}] artifact ${artifactId} 不存在或内容为空`)
+        continue
+      }
+      const declared = String(item.sha256 ?? '')
+      if (declared && declared !== artifact.sha256) {
+        problems.push(`evidence[${i}] sha256 不匹配`)
+        continue
+      }
+      artifactBacked += 1
+      continue
+    }
+    if (item.kind === 'manual' && typeof item.note === 'string' && item.note.trim()) {
+      manual += 1
+      continue
+    }
+    problems.push(`evidence[${i}] 既没有可回溯 artifactId，也不是 manual attestation`)
+  }
+  if (problems.length > 0) {
+    throw new AppError(400, 'EVIDENCE_UNVERIFIED', `证据不可回溯：${problems.slice(0, 5).join('；')}`)
+  }
+  if (opts.requireArtifact && artifactBacked === 0) {
+    throw new AppError(400, 'EVIDENCE_UNVERIFIED', 'Agent 提交的成果必须至少有一份真实 artifact 证据')
+  }
+  if (artifactBacked === 0 && manual === 0) {
+    throw new AppError(400, 'EVIDENCE_UNVERIFIED', '证据为空壳（无 artifact、无 manual attestation）')
+  }
+  const checkedAt = new Date().toISOString()
+  return {
+    contentSha256: sha256Hex(`${opts.summary ?? ''}\n${opts.payloadJson ?? ''}\n${JSON.stringify(evidence)}`),
+    checkedAt,
+    criteriaCheckJson: JSON.stringify({ ok: true, artifactBacked, manual, checkedAt }),
+    artifactBacked,
+    manual,
+  }
 }
 
 /**
@@ -140,8 +249,16 @@ export function normalizeProjectPlan(plan: Record<string, unknown>): NormalizedP
       required: d.required !== false,
       channelId: channelId || undefined,
       acceptanceCriteria: asStringArray(d.acceptanceCriteria ?? d.acceptance_criteria),
+      dependsOn: asStringArray(d.dependsOn ?? d.depends_on),
     }
   })
+  for (const d of deliverables) {
+    for (const dep of d.dependsOn) {
+      if (!deliverableKeys.has(dep)) throw new AppError(400, 'PLAN_INVALID', `交付物「${d.name}」依赖未知交付物: ${dep}`)
+      if (dep === d.key) throw new AppError(400, 'PLAN_INVALID', `交付物「${d.name}」不能依赖自己`)
+    }
+  }
+  assertAcyclic(deliverables.map(d => ({ id: d.key, deps: d.dependsOn })), '交付物')
 
   const workKeys = new Set<string>()
   const workItems = rawWorkItems.map((item, index) => {
@@ -170,14 +287,39 @@ export function normalizeProjectPlan(plan: Record<string, unknown>): NormalizedP
       execBudgetMinutes,
       acceptanceCriteria: asStringArray(w.acceptanceCriteria ?? w.acceptance_criteria),
       resultKey: asString(w.resultKey) || asString(w.result_key) || 'main',
+      contract: Object.keys(asObject(w.contract)).length > 0 ? asObject(w.contract) : null,
     }
   })
   for (const w of workItems) {
     for (const dep of w.dependsOn) {
       if (!workKeys.has(dep)) throw new AppError(400, 'PLAN_INVALID', `工作项「${w.title}」依赖未知工作项: ${dep}`)
+      if (dep === w.key) throw new AppError(400, 'PLAN_INVALID', `工作项「${w.title}」不能依赖自己`)
     }
   }
+  assertAcyclic(workItems.map(w => ({ id: w.key, deps: w.dependsOn })), '工作项')
   return { deliverables, workItems, raw: plan }
+}
+
+/** 执行图/契约图统一环检测（DFS 三色）。 */
+export function assertAcyclic(nodes: Array<{ id: string, deps: string[] }>, label: string): void {
+  const byId = new Map(nodes.map(n => [n.id, n]))
+  const state = new Map<string, 0 | 1 | 2>()
+  const visit = (id: string, path: string[]): void => {
+    const mark = state.get(id) ?? 0
+    if (mark === 2) return
+    if (mark === 1) {
+      throw new AppError(400, 'PLAN_INVALID', `${label}依赖成环: ${[...path, id].join(' -> ')}`)
+    }
+    state.set(id, 1)
+    const node = byId.get(id)
+    if (node) {
+      for (const dep of node.deps) {
+        if (byId.has(dep)) visit(dep, [...path, id])
+      }
+    }
+    state.set(id, 2)
+  }
+  for (const n of nodes) visit(n.id, [])
 }
 
 export interface CreateProjectInput {
@@ -192,6 +334,11 @@ export interface CreateProjectInput {
   planApprovalRequired?: number
   /** PR20 Route 派发闭环：true=计划批准后按 dependsOn 就绪顺序自动派发（缺省 false，行为零突变） */
   autoDispatch?: boolean
+  /**
+   * Router v3：legacy=上游工作项终态即放行（兼容旧项目/单测）；
+   * technical=上游成果技术验收后才放行。API 新建项目默认 technical，服务层缺省 legacy。
+   */
+  routingPolicy?: 'legacy' | 'technical'
 }
 
 /** PR20 自动派发结果（route 回调闭环的可观测面）。 */
@@ -286,6 +433,7 @@ export class ProjectService {
       ownerUserId: actor.id,
       planApprovalRequired: input.planApprovalRequired === 0 ? 0 : 1,
       autoDispatch: input.autoDispatch ? 1 : 0,
+      routingPolicy: input.routingPolicy ?? 'legacy',
       configJson: JSON.stringify({ leaderHarness: input.leaderHarness ?? 'mock' }),
     })
 
@@ -531,9 +679,16 @@ export class ProjectService {
     }
     const wi = this.workItems.findById(workItemId)
     if (!wi || wi.projectId !== id) throw new AppError(404, 'NOT_FOUND', '工作项不存在或不属于该项目')
-    if (wi.currentAttemptId) {
-      const live = this.attempts.findLiveByWorkItem(wi.id)
-      if (live) throw new AppError(409, 'WORK_ITEM_IN_FLIGHT', '工作项已有在飞 attempt')
+    const liveAttempt = wi.currentAttemptId ? this.attempts.findLiveByWorkItem(wi.id) : undefined
+    if (liveAttempt) throw new AppError(409, 'WORK_ITEM_IN_FLIGHT', '工作项已有在飞 attempt')
+    // 兼容既有语义：owner 手动重派 FAILED/BLOCKED 工作项视为显式 retry（attempt 已闭合；
+    // current_attempt_id 可能是旧闭合 attempt 的残留指针，必须一并清掉）。
+    if ((wi.state === 'FAILED' || wi.state === 'BLOCKED') && !liveAttempt) {
+      this.workItems.update(wi.id, { state: 'DRAFT', stateReason: null, deferredUntil: null, currentAttemptId: null })
+      wi.state = 'DRAFT'
+      wi.stateReason = null
+      wi.deferredUntil = null
+      wi.currentAttemptId = null
     }
     if (p.planVersion > 0 && wi.planVersion !== p.planVersion) {
       if (wi.state === 'DRAFT') {
@@ -547,17 +702,21 @@ export class ProjectService {
         throw new AppError(409, 'PLAN_VERSION_STALE', `工作项计划版本 ${wi.planVersion} != 当前 ${p.planVersion}`)
       }
     }
-    const deps = parseJson<string[]>(wi.dependsOnJson, [])
-    for (const depId of deps) {
-      const dep = this.workItems.findById(depId)
-      if (!dep || !['COMPLETED', 'CANCELED', 'SUPERSEDED'].includes(dep.state)) {
-        throw new AppError(409, 'DEPENDENCY_NOT_READY', `依赖工作项 ${depId} 未完成`)
-      }
+    // Router v3 P0：手动/自动共用同一就绪谓词（legacy/technical 由项目策略决定）。
+    const readiness = evaluateWorkItemReadiness(wi, {
+      items: this.workItems.listByProject(id),
+      results: this.results.listByProject(id),
+      deliverables: this.deliverables.listByProject(id),
+      routingPolicy: p.routingPolicy,
+    })
+    if (!readiness.ready) {
+      throw new AppError(409, 'DEPENDENCY_NOT_READY', `工作项未就绪(${readiness.waitingOn})：${readiness.reason}`)
     }
     // PR20 语义分界：上方校验 = 「当前不可派」（保持 DRAFT，自动派发下轮重选）；
     // 下方环境类失败（交付物/绑定/频道/lead/submitProjectRoot）= 永久前置失败 →
     // BLOCKED + work.blocked（SLOW 邮箱评估，plan v3.0 §5.1 DISPATCHING→BLOCKED 行）。
     let attempt: ReturnType<ProjectService['attempts']['create']> | undefined
+    let stage: 'precheck' | 'submit' = 'precheck'
     try {
       const d = this.deliverables.listByProject(id).find(x => x.id === wi.deliverableId)
       if (!d) throw new AppError(404, 'NOT_FOUND', '工作项交付物不存在')
@@ -571,9 +730,17 @@ export class ProjectService {
       const attemptNo = this.attempts.listByWorkItem(wi.id).reduce((max, a) => Math.max(max, a.attemptNo), 0) + 1
       const sourceKey = `pw:${wi.id}:${attemptNo}`
       const traceId = wi.traceId || `trace:${wi.id}`
-      attempt = this.attempts.create({
-        projectId: id, workItemId: wi.id, attemptNo, channelId: wi.channelId, sourceKey, traceId,
+      // P0 派发 CAS：attempt 创建 + 工作项 DRAFT→DISPATCHING 同一事务；
+      // 只有赢得 claim 的调用才能继续 submitProjectRoot（并发第二路会唯一索引/claim 失败回滚）。
+      withTransaction(this.db, () => {
+        attempt = this.attempts.create({
+          projectId: id, workItemId: wi.id, attemptNo, channelId: wi.channelId, sourceKey, traceId,
+        })
+        if (!this.workItems.claimForDispatch(wi.id, attempt.id)) {
+          throw new AppError(409, 'WORK_ITEM_IN_FLIGHT', '工作项已被其他派发者领取')
+        }
       })
+      stage = 'submit'
       const { task } = await this.manager.submitProjectRoot({
         projectId: id,
         workItemId: wi.id,
@@ -585,26 +752,55 @@ export class ProjectService {
         description: wi.brief,
         execBudgetMinutes: wi.execBudgetMinutes,
       })
-      this.attempts.setDispatched(attempt.id, task.id)
+      this.attempts.setDispatched(attempt!.id, task.id)
       const evtType = opts.auto ? 'work.dispatch_auto' : 'work.dispatched'
       this.record(id, evtType, actor, { workItemId: wi.id, taskId: task.id, attemptNo }, traceId, evtType, `work:${wi.id}:${opts.auto ? 'auto' : 'dispatched'}:a${attemptNo}`, { workItemId: wi.id, taskId: task.id, attemptNo, auto: opts.auto })
       return this.workItems.update(wi.id, {
         state: 'DISPATCHED',
         stateReason: null,
-        currentAttemptId: attempt.id,
+        currentAttemptId: attempt!.id,
         traceId,
         planVersion: p.planVersion,
+        deferredUntil: null,
       })!
     }
     catch (err) {
       const message = err instanceof Error ? err.message : String(err)
-      if (attempt) this.attempts.close(attempt.id, 'CLOSED', message)
-      this.workItems.update(wi.id, {
-        state: 'BLOCKED',
-        stateReason: message,
-        currentAttemptId: null,
-      })
-      this.record(id, 'work.blocked', actor, { workItemId: wi.id, reason: message }, wi.traceId || `trace:${wi.id}`, 'work.blocked', `work:${wi.id}:blocked:${Date.now()}`, { workItemId: wi.id, reason: message, stage: attempt ? 'submit' : 'precheck' })
+      const code = (err as { code?: string }).code ?? ''
+      const errno = (err as { errno?: number }).errno
+      // claim 未赢（并发/已派发）：不算失败，不动工作项状态，直接向上抛。
+      if (code === 'WORK_ITEM_IN_FLIGHT') throw err
+      const transient = stage === 'submit'
+      const current = this.workItems.findById(wi.id)
+      const ownsClaim = !attempt || current?.currentAttemptId === attempt.id
+      if (attempt) {
+        const retryable = transient && (current?.attemptCount ?? 0) < (current?.maxAttempts ?? 3)
+        const backoffMs = Math.min(10 * 60_000, 30_000 * 2 ** Math.max(0, (current?.attemptCount ?? 1) - 1))
+        this.attempts.closeWithFailure(attempt.id, {
+          reason: message,
+          failureClass: transient ? 'TRANSIENT' : 'CONTRACT',
+          retryable,
+          nextRetryAt: retryable ? new Date(Date.now() + backoffMs).toISOString() : null,
+        })
+        if (!ownsClaim) throw err
+        const nextState = retryable ? 'DRAFT' : 'BLOCKED'
+        this.workItems.update(wi.id, {
+          state: nextState,
+          stateReason: message,
+          currentAttemptId: null,
+          deferredUntil: retryable ? new Date(Date.now() + backoffMs).toISOString() : null,
+        })
+        const evtType = retryable ? 'work.retry_scheduled' : 'work.blocked'
+        this.record(id, evtType, actor, { workItemId: wi.id, reason: message, failureClass: transient ? 'TRANSIENT' : 'CONTRACT', retryable }, wi.traceId || `trace:${wi.id}`, evtType, `work:${wi.id}:${retryable ? 'retry' : 'blocked'}:a${attempt.attemptNo}`, { workItemId: wi.id, reason: message, stage, failureClass: transient ? 'TRANSIENT' : 'CONTRACT', retryable, errno })
+      }
+      else {
+        this.workItems.update(wi.id, {
+          state: 'BLOCKED',
+          stateReason: message,
+          currentAttemptId: null,
+        })
+        this.record(id, 'work.blocked', actor, { workItemId: wi.id, reason: message }, wi.traceId || `trace:${wi.id}`, 'work.blocked', `work:${wi.id}:blocked:${Date.now()}`, { workItemId: wi.id, reason: message, stage, errno })
+      }
       throw err
     }
   }
@@ -755,20 +951,67 @@ export class ProjectService {
       out.skippedByGate = true
       return out
     }
-    const ready = selectReadyWorkItems(this.workItems.listByProject(id))
+    const items = this.workItems.listByProject(id)
+    const ready = selectReadyWithContext({
+      items,
+      results: this.results.listByProject(id),
+      deliverables: this.deliverables.listByProject(id),
+      routingPolicy: p.routingPolicy,
+    })
+    // Router v3 P0 容量：Channel root FIFO 决定每 Channel 并发 1；项目 4；每 tick 2。
+    const limits = { perChannel: 1, perProject: 4, perTick: 2 }
+    const inFlight = items.filter(w => ['DISPATCHING', 'DISPATCHED', 'RUNNING'].includes(w.state))
+    let projectSlots = Math.max(0, limits.perProject - inFlight.length)
+    let tickSlots = limits.perTick
+    const channelInFlight = new Map<string, number>()
+    for (const w of inFlight) channelInFlight.set(w.channelId, (channelInFlight.get(w.channelId) ?? 0) + 1)
     const systemActor = { id: 'system', role: 'system' } as const
     for (const wi of ready) {
+      if (projectSlots <= 0 || tickSlots <= 0) break
+      if ((channelInFlight.get(wi.channelId) ?? 0) >= limits.perChannel) continue
       try {
         const row = await this.dispatchWorkItemAs(id, wi.id, systemActor, p, { auto: true })
         const attempt = row.currentAttemptId ? this.attempts.findById(row.currentAttemptId) : undefined
         out.dispatched.push({ workItemId: wi.id, taskId: attempt?.channelTaskId ?? null })
+        projectSlots -= 1
+        tickSlots -= 1
+        channelInFlight.set(wi.channelId, (channelInFlight.get(wi.channelId) ?? 0) + 1)
       }
       catch {
-        // 派发失败路径已落 BLOCKED + work.blocked 事件；继续其余就绪项（R5）。
+        // 派发失败路径已落 BLOCKED/retry 事件；继续其余就绪项（R5）。
         out.failed += 1
       }
     }
     return out
+  }
+
+  /**
+   * Router v3 P0 任务回调 sink：TaskEngine 状态迁移 → 项目侧（durable outbox + 立即收敛）。
+   * 只处理 source=project 的任务；回调异常不得影响任务状态机（调用方 try/catch + 本方法自吞）。
+   * 语义：at-least-once；reconcile/派发均幂等，重复回调等效一次。
+   */
+  onTaskStateChange(taskId: string, state: string): void {
+    try {
+      const task = this.tasks.findById(taskId)
+      if (!task || task.source !== 'project' || !task.projectId) return
+      const relevant = state === 'WORKING' || state === 'COMPLETED' || state === 'FAILED' || state === 'CANCELED'
+      if (!relevant) return
+      const projectId = task.projectId
+      this.kernelRepo.effects.enqueue({
+        projectId,
+        dedupeKey: `task-callback:${taskId}:${state}`,
+        kind: 'task_callback',
+        payload: { taskId, state },
+        traceId: task.traceId,
+      })
+      // 立即收敛（tick/30s reconciler 仍为兜底；事件丢失由 outbox/tick 收敛）。
+      queueMicrotask(() => {
+        void this.runRouteLoop(projectId).catch(() => { /* 兜底路径在下一 tick */ })
+      })
+    }
+    catch {
+      /* 回调是旁路，不得拖垮任务状态机 */
+    }
   }
 
   /**
@@ -865,14 +1108,28 @@ export class ProjectService {
     const project = this.projects.findById(task.projectId)
     if (!project) return undefined
     const channel = this.manager.getChannelForUser(wi.channelId, project.ownerUserId)
-    const artifacts = parseJson<Array<{ artifactId?: string, name?: string, parts?: Array<{ text?: string }> }>>(task.artifactsJson, [])
-    const usable = artifacts.filter(a => a.name !== 'input')
-    const summary = usable
-      .flatMap(a => (a.parts ?? []).map(p => p.text ?? ''))
-      .filter(Boolean)
-      .join('\n')
-      .slice(0, 8000) || task.title
-    const evidence = usable.map(a => ({ artifactId: a.artifactId ?? '', name: a.name ?? '', kind: 'artifact' }))
+    const rootArtifacts = artifactDigests(task.artifactsJson)
+    const usable = [...rootArtifacts.values()].filter(a => a.name !== 'input')
+    // P2 轻量聚合：root COMPLETED 时把直接子任务的真实 artifact 一并纳入证据（只存引用/摘要）。
+    const childRows = this.db.prepare(
+      `SELECT id, assignee_id AS assigneeId, artifacts_json AS artifactsJson FROM tasks
+       WHERE parent_id = ? AND state = 'COMPLETED' ORDER BY created_at ASC`,
+    ).all(task.id) as Array<{ id: string, assigneeId: string, artifactsJson: string }>
+    const childEvidence: Array<Record<string, unknown>> = []
+    for (const child of childRows) {
+      for (const artifact of artifactDigests(child.artifactsJson).values()) {
+        if (childEvidence.length >= 20) break
+        childEvidence.push({
+          artifactId: artifact.artifactId, name: artifact.name, kind: 'artifact',
+          bytes: artifact.bytes, sha256: artifact.sha256, source: 'child', childTaskId: child.id, workerAgentId: child.assigneeId,
+        })
+      }
+    }
+    const summary = usable.map(a => a.text).join('\n').slice(0, 8000) || task.title
+    const evidence: Array<Record<string, unknown>> = [
+      ...usable.map(a => ({ artifactId: a.artifactId, name: a.name, kind: 'artifact', bytes: a.bytes, sha256: a.sha256, source: 'root' })),
+      ...childEvidence,
+    ]
     const version = this.results.nextVersion(task.projectId, wi.deliverableId, wi.channelId, wi.resultKey)
     const result = this.results.create({
       projectId: task.projectId,
@@ -918,24 +1175,36 @@ export class ProjectService {
     }
     const p = this.projects.findById(id)!
     this.requireOwner(p, actor)
+    const evidence = input.evidence ?? parseJson<Array<Record<string, unknown>>>(result.evidenceJson, [])
+    const payloadJson = JSON.stringify(input.payload ?? parseJson(result.payloadJson, {}))
+    const summary = input.summary ?? result.summary
+    const sourceTask = this.tasks.findById(result.sourceTaskId)
+    const verification = verifyEvidenceAgainstTask(sourceTask?.artifactsJson ?? '[]', evidence, {
+      requireArtifact: false, payloadJson, summary,
+    })
     // B8：状态迁移 + 审计同事务，审计失败整体回滚。
     let updated!: ProjectResultRow
     withTransaction(this.db, () => {
       this.results.submit(resultId, {
         title: input.title ?? result.title,
-        summary: input.summary ?? result.summary,
+        summary,
         method: input.method ?? result.method,
         dataWindowJson: JSON.stringify(input.dataWindow ?? parseJson(result.dataWindowJson, {})),
         sampleCount: input.sampleCount ?? result.sampleCount,
         confidence: input.confidence ?? result.confidence,
         validityScope: input.validityScope ?? result.validityScope,
-        payloadJson: JSON.stringify(input.payload ?? parseJson(result.payloadJson, {})),
-        evidenceJson: JSON.stringify(input.evidence ?? parseJson(result.evidenceJson, [])),
+        payloadJson,
+        evidenceJson: JSON.stringify(evidence),
         changeSummary: input.changeSummary ?? result.changeSummary,
         openQuestions: input.openQuestions ?? result.openQuestions,
         status: 'submitted',
         // 审查修复（自批可达）：人类提交者落 authorUserId，使「不能批准自己提交的成果」在生产可达。
         authorUserId: actor.agentId ? null : actor.id,
+      })
+      this.results.markEvidenceVerified(resultId, {
+        contentSha256: verification.contentSha256,
+        checkedAt: verification.checkedAt,
+        criteriaCheckJson: verification.criteriaCheckJson,
       })
       this.record(id, 'result.submit', actor, { resultId }, result.traceId, 'result.submitted', `result:${resultId}:submitted`, { resultId })
       updated = this.results.findById(resultId)!
@@ -1332,6 +1601,7 @@ export class ProjectService {
           source: 'leader',
           decisionType: 'tool.rejected',
           actorAgentId: agentId,
+          actorKind: this.actorKindOf(projectId, { id: agentId, agentId }),
           argsJson,
           argsSha256,
           state: 'rejected',
@@ -1492,6 +1762,9 @@ export class ProjectService {
     if (evidence.length > 50) throw new AppError(400, 'RESULT_TOO_LARGE', 'evidence 超过 50 条上限')
     const payloadJson = JSON.stringify(input.payload ?? parseJson(result.payloadJson, {}))
     if (payloadJson.length > 65_536) throw new AppError(400, 'RESULT_TOO_LARGE', 'payload 超过 64KB 上限')
+    const verification = verifyEvidenceAgainstTask(task.artifactsJson, evidence, {
+      requireArtifact: true, payloadJson, summary,
+    })
     this.results.submit(result.id, {
       title: input.title ?? result.title,
       summary,
@@ -1505,6 +1778,11 @@ export class ProjectService {
       changeSummary: input.changeSummary ?? result.changeSummary,
       openQuestions: input.openQuestions ?? result.openQuestions,
       status: 'submitted',
+    })
+    this.results.markEvidenceVerified(result.id, {
+      contentSha256: verification.contentSha256,
+      checkedAt: verification.checkedAt,
+      criteriaCheckJson: verification.criteriaCheckJson,
     })
     this.record(ctx.project.id, 'result.submit', { id: agentId, role: 'lead', agentId }, { resultId: result.id, taskId: task.id }, result.traceId, 'result.submitted', `result:${result.id}:submitted`, { resultId: result.id })
     return this.results.findById(result.id)!
@@ -1563,6 +1841,7 @@ export class ProjectService {
         source: 'leader',
         decisionType: kind === 'replan' ? 'replan.proposed' : 'plan.proposed',
         actorAgentId: agentId,
+        actorKind: this.actorKindOf(ctx.project.id, { id: agentId, agentId }),
         argsJson,
         argsSha256: createHash('sha256').update(argsJson).digest('hex'),
         state: 'proposed',
@@ -1719,6 +1998,7 @@ export class ProjectService {
       source: 'leader',
       decisionType: 'dispatch.proposed',
       actorAgentId: agentId,
+      actorKind: this.actorKindOf(ctx.project.id, { id: agentId, agentId }),
       argsJson,
       argsSha256: createHash('sha256').update(argsJson).digest('hex'),
       state: 'proposed',
@@ -1828,6 +2108,7 @@ export class ProjectService {
       source: 'leader',
       decisionType: 'channel.proposed',
       actorAgentId: agentId,
+      actorKind: this.actorKindOf(ctx.project.id, { id: agentId, agentId }),
       argsJson,
       argsSha256: createHash('sha256').update(argsJson).digest('hex'),
       state: 'proposed',
@@ -1897,6 +2178,25 @@ export class ProjectService {
     }
     this.record(origin.project.id, 'write_intent.consumed', { id: agentId, role: 'lead', agentId }, { approvalId: row.id, tool: toolName }, origin.task.traceId ?? '', 'write_intent.consumed', `write_intent:${row.id}:consumed`, { approvalId: row.id, tool: toolName })
     return { allowed: true, approvalId: row.id }
+  }
+
+  /**
+   * P0 审计主体类型：不再把所有 agent 一律记成 leader；按 channel_agents 真实
+   * agent_kind/role 落 project_leader / channel_lead / worker；用户按 owner/approver/admin。
+   */
+  private actorKindOf(projectId: string, actor: ProjectActor): string {
+    if (actor.role === 'system') return 'system'
+    if (actor.role === 'admin') return 'admin'
+    if (actor.agentId) {
+      const ident = this.agentIdentity(actor.agentId)
+      if (ident?.agentKind === 'project_leader') return 'project_leader'
+      return ident?.role === 'lead' ? 'channel_lead' : 'worker'
+    }
+    const p = this.projects.findById(projectId)
+    if (p?.ownerUserId === actor.id) return 'owner'
+    const m = this.members.findOne(projectId, actor.id)
+    if (m?.role === 'approver') return 'approver'
+    return 'user'
   }
 
   private requireAgentContext(agentId: string, mode: 'leader' | 'channel_lead' | 'any'): AgentProjectContext {
@@ -1993,11 +2293,20 @@ export class ProjectService {
     const result = this.results.findById(resultId)
     if (!result || result.projectId !== projectId) throw new AppError(404, 'NOT_FOUND', '成果不存在或不属于该项目')
     if (result.status !== 'reviewed') throw new AppError(409, 'RESULT_STATE_INVALID', `成果状态 ${result.status} 不能申请验收`)
-    const evidence = parseJson<unknown[]>(result.evidenceJson, [])
-    if (!Array.isArray(evidence) || evidence.length === 0) {
-      throw new AppError(400, 'EVIDENCE_REQUIRED', '成果没有证据，不能申请验收')
-    }
-    return result
+    const evidence = parseJson<Array<Record<string, unknown>>>(result.evidenceJson, [])
+    const task = this.tasks.findById(result.sourceTaskId)
+    // P0：验收前重跑证据 provenance（防提交后被篡改/空壳）。
+    const verification = verifyEvidenceAgainstTask(task?.artifactsJson ?? '[]', evidence, {
+      requireArtifact: Boolean(result.authorAgentId),
+      payloadJson: result.payloadJson,
+      summary: result.summary,
+    })
+    this.results.markEvidenceVerified(result.id, {
+      contentSha256: verification.contentSha256,
+      checkedAt: verification.checkedAt,
+      criteriaCheckJson: verification.criteriaCheckJson,
+    })
+    return this.results.findById(resultId)!
   }
 
   /**
@@ -2040,6 +2349,13 @@ export class ProjectService {
         deliverableIdByKey.set(d.key, created.id)
         createdDeliverables += 1
       }
+      // 契约图边：交付物 key → UUID（第二轮回填，支持任意声明顺序）。
+      for (const d of normalized.deliverables) {
+        const id = deliverableIdByKey.get(d.key)
+        if (!id) continue
+        const deps = d.dependsOn.map(k => deliverableIdByKey.get(k)).filter((x): x is string => Boolean(x))
+        this.deliverables.update(id, { dependsOnJson: JSON.stringify(deps) })
+      }
       const existingItems = this.workItems.listByProject(p.id)
       const itemByDedupe = new Map(existingItems.map(w => [w.dedupeKey, w]))
       const workItemIdByKey = new Map<string, string>()
@@ -2069,6 +2385,7 @@ export class ProjectService {
           resultKey: w.resultKey,
           planVersion: version,
           execBudgetMinutes: w.execBudgetMinutes,
+          contractJson: JSON.stringify(w.contract ?? {}),
           traceId: `plan:${p.id}:${version}:${w.key}`,
           dedupeKey,
           createdBy: 'project_leader',
@@ -2109,6 +2426,7 @@ export class ProjectService {
       source: 'leader',
       decisionType,
       actorAgentId: agentId,
+      actorKind: this.actorKindOf(projectId, { id: agentId, agentId }),
       argsJson,
       argsSha256: createHash('sha256').update(argsJson).digest('hex'),
       state: 'applied',
@@ -2130,6 +2448,7 @@ export class ProjectService {
           decisionType,
           actorAgentId: actor.agentId ?? null,
           actorUserId: actor.agentId ? null : actor.id === 'system' ? null : actor.id,
+          actorKind: this.actorKindOf(projectId, actor),
           argsJson,
           argsSha256,
           state: 'applied',

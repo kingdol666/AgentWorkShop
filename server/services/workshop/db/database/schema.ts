@@ -1247,6 +1247,9 @@ CREATE TABLE IF NOT EXISTS projects (
   plan_approval_required INTEGER NOT NULL DEFAULT 1,
   -- PR20 Route 派发闭环：1 = 计划批准后由确定性派发器按 dependsOn 就绪顺序自动派发（默认关，渐进启用）
   auto_dispatch         INTEGER NOT NULL DEFAULT 0,
+  -- Router v3 P0：legacy=旧口径（上游工作项终态即放行）；technical=上游成果技术验收后才放行。
+  -- 存量行迁移为 legacy（零突变）；新项目由 API 显式写 technical。
+  routing_policy        TEXT NOT NULL DEFAULT 'legacy',
   config_json           TEXT NOT NULL DEFAULT '{}',
   deadline_at           TEXT,
   created_at            TEXT NOT NULL,
@@ -1319,6 +1322,12 @@ CREATE TABLE IF NOT EXISTS project_work_items (
   dedupe_key          TEXT NOT NULL,
   deadline_at         TEXT,
   rework_count        INTEGER NOT NULL DEFAULT 0,
+  -- Router v3 P0/P1：最近一次成果验收投影 + 派发/重试/延后状态
+  accepted_result_id  TEXT,
+  last_result_status  TEXT NOT NULL DEFAULT '',
+  attempt_count       INTEGER NOT NULL DEFAULT 0,
+  max_attempts        INTEGER NOT NULL DEFAULT 3,
+  deferred_until      TEXT,
   created_by          TEXT NOT NULL DEFAULT 'project_leader',
   created_at          TEXT NOT NULL,
   updated_at          TEXT NOT NULL,
@@ -1343,6 +1352,10 @@ CREATE TABLE IF NOT EXISTS project_work_item_attempts (
   blocked_reason    TEXT,
   approval_id       TEXT,
   args_digest       TEXT NOT NULL DEFAULT '',
+  -- Router v3 P0：失败分类与可重试退避（TRANSIENT/CONTRACT/CONTENT/POLICY/BUDGET）
+  failure_class     TEXT NOT NULL DEFAULT '',
+  retryable         INTEGER NOT NULL DEFAULT 0,
+  next_retry_at     TEXT,
   trace_id          TEXT NOT NULL DEFAULT '',
   created_at        TEXT NOT NULL,
   closed_at         TEXT,
@@ -1386,6 +1399,12 @@ CREATE TABLE IF NOT EXISTS project_results (
   approved_by       TEXT,
   approved_at       TEXT,
   reject_reason     TEXT,
+  -- Router v3 P0/P1：内容摘要与证据核验时间；criteria_check 为 L0 结构化检查结果
+  content_sha256    TEXT NOT NULL DEFAULT '',
+  evidence_verified_at TEXT,
+  criteria_check_json  TEXT NOT NULL DEFAULT '{}',
+  technical_verdict_json TEXT NOT NULL DEFAULT '{}',
+  rework_required   INTEGER NOT NULL DEFAULT 0,
   trace_id          TEXT NOT NULL DEFAULT '',
   created_at        TEXT NOT NULL,
   UNIQUE(project_id, deliverable_id, channel_id, result_key, version),
@@ -1404,6 +1423,8 @@ CREATE TABLE IF NOT EXISTS project_decisions (
   decision_type     TEXT NOT NULL,
   actor_agent_id    TEXT,
   actor_user_id     TEXT,
+  -- Router v3 P0：真实主体类型（owner|approver|admin|project_leader|channel_lead|worker|system）
+  actor_kind        TEXT NOT NULL DEFAULT '',
   args_json         TEXT NOT NULL DEFAULT '{}',
   args_sha256       TEXT NOT NULL,
   snapshot_sha256   TEXT NOT NULL DEFAULT '',

@@ -27,7 +27,7 @@ export interface ProgressLedgerAppend {
 export interface ProjectEffectEnqueueInput {
   projectId: string
   dedupeKey: string
-  kind: 'notify' | 'mailbox' | 'reconcile'
+  kind: 'notify' | 'mailbox' | 'reconcile' | 'task_callback'
   payload?: Record<string, unknown>
   traceId?: string
 }
