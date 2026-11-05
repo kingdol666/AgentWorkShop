@@ -1,0 +1,31 @@
+{
+  "scenario": "simple",
+  "startedAt": "2026-11-05T15:32:49.528Z",
+  "error": "Error: POST /api/workshop/projects/ef460732-7a99-4592-b094-6bf64d0b52cc/complete -> 409: {\"code\":\"WORK_ITEMS_INCOMPLETE\",\"message\":\"工作项未终态: 官网单文件 HTML 实现\",\"data\":null}",
+  "gates": [
+    {
+      "id": "A3",
+      "name": "项目已激活 + 物化（2 工作项 / 1 交付物）",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "A4",
+      "name": "契约 handoff 已物化（build.dependsOn → ia）",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "A5",
+      "name": "全部工作项完成并验收",
+      "pass": false,
+      "detail": "[\"accepted\",\"running\"]"
+    },
+    {
+      "id": "A6",
+      "name": "成果链完整（2 个 approved）",
+      "pass": false,
+      "detail": "[\"approved\"]"
+    }
+  ]
+}

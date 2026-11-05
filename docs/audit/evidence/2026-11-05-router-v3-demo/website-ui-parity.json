@@ -1,0 +1,12 @@
+{
+  "apiChannels": 1,
+  "domLanes": 1,
+  "apiWorkItems": 2,
+  "domCards": 2,
+  "summary": "0 就绪\n1 执行中\n0 等待\n0 阻塞/返工\n50% 工作项完成\n100% 交付物签核",
+  "laneTexts": [
+    "官网设计开发频道\n启用\n1 执行 · 0 就绪\n官网信息架构与中文文案\n已验收\nattempt 1/3 · 成果 approved\nIN_FLIGHT: 工作项状态 COMPLETED\n官网单文件 HTML 实现\nChannel 执行中\nattempt 1/3 · 成果 —\nIN_FLIGHT: 工作项状态 RUNNING"
+  ],
+  "drawer": "执行链\n2c27bc06…\n关闭\n官网信息架构与中文文案\n已验收\nCOMPLETED · attempt 1/3\n\nIN_FLIGHT · 工作项状态 COMPLETED\n\n尝试链\nAttempt #1\nCLOSED\ndd365ffd\n2026-11-05T19:06:12.942+08:00\nroot COMPLETED · 100% · assignee 09533cca\ninput\n854B · sha dea7388e853a…\ndeliverable\n29532B · sha 7cc42cad6999…\n成果与验收链\nv1 官网信息架构与中文文案 成果\napproved\n\n交付《AgentWorkShop 官网落地页 · 信息架构与中文文案 v1》全文（599 行 / 29532 bytes / sha256 7cc42cad…a2b61，与证据 artifact 逐字节一致）。内容含：0 事实基线（14 引擎 / 108 工具 / 5 类现场协议 / 四层写入限幅 / HITL 180s 超时拒绝 等 13 条能力数字均可回查仓库源码与验收记录，并列出 6 条写作红线）；1 目标用户（数字化负责人 / 工艺工程师 / 集团 IT / 算法团队 4 类画像 + 3 类非目标用户 + 一句话定位「可审批、可回读、可审计的 AI 执行层」）；2 信息架构（5 分区锚点表、导航页脚规格、阅读动线、实现用页面线框）；3 五分区逐区可上线中文文案（首屏主张与实时闭环控制台六步状态机及交互规则、能力矩阵 6 卡、闭环六步叙事与治理 callout、架构与验收证据、部署与试点路径 + FAQ + CTA）；以及配色与字体系统、实现/验收约束。\n\nevidence 2 · sha 5e4b74be934f… · verified 2026-11-05T22:00:22.282+08:00\n事件\nwork.dispatch_auto\n2026-11-05T19:06:12.966+08:00\nwork.completed\n2026-11-05T20:23:44.623+08:00",
+  "pageErrors": []
+}
