@@ -231,7 +231,7 @@ defineProps<{
 .ins-chip-row { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
 .ins-chip {
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   color: var(--hud-dim);
   border: 1px solid #26354a;
   border-radius: 6px;
@@ -242,7 +242,7 @@ defineProps<{
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--hud-faint);
   letter-spacing: 0.16em;
   font-weight: 700;
@@ -282,7 +282,7 @@ defineProps<{
 .bind-svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .bind-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .bind-label { font-size: 11px; font-weight: 600; color: var(--hud-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bind-val { font-family: var(--font-mono); font-size: 10px; color: var(--hud-cyan); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bind-val { font-family: var(--font-mono); font-size: var(--fs-micro); color: var(--hud-cyan); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bind-val b { font-size: 11px; font-weight: 700; }
 .bind-spark { width: 56px; height: 20px; flex: none; }
 .bind-x {
@@ -310,7 +310,7 @@ defineProps<{
   border-radius: 7px;
   transition: border-color 0.15s var(--hud-ease), box-shadow 0.15s var(--hud-ease);
 }
-.dcw-write input::placeholder { color: var(--hud-faint); font-size: 10px; }
+.dcw-write input::placeholder { color: var(--hud-faint); font-size: var(--fs-micro); }
 .dcw-write input:focus {
   outline: none;
   border-color: var(--hud-accent);
@@ -329,7 +329,7 @@ defineProps<{
   flex: 1;
   min-width: 0;
   height: 28px;
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   color: var(--hud-dim);
   background: var(--hud-input);
   border: 1px solid var(--hud-line);
@@ -343,7 +343,7 @@ defineProps<{
   flex: none;
   height: 28px;
   padding: 0 12px;
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: #04120c;
   background: var(--hud-accent-dim);
@@ -387,7 +387,7 @@ defineProps<{
 .approval-ttl {
   margin-top: 5px;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.05em;
   color: var(--hud-amber);
 }

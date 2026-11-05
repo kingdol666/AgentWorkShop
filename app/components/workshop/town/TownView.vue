@@ -98,6 +98,20 @@ const blockCount = ref(0)
 const activity = ref<{ channelId: string, agentName: string, text: string } | null>(null)
 const selected = ref<{ kind: 'agent' | 'device', id: string, scale: number, rotation: number } | null>(null)
 const errorText = ref('')
+// 错误提示 6s 自动清除:错误 chip 与 drop chip 同位重叠,长驻会永久遮挡舞台顶部
+// (交互宪法:瞬时反馈必须有清除契约;2026-11-06)
+let errorClearTimer: ReturnType<typeof setTimeout> | null = null
+watch(errorText, (v) => {
+  if (errorClearTimer) {
+    clearTimeout(errorClearTimer)
+    errorClearTimer = null
+  }
+  if (v) {
+    errorClearTimer = setTimeout(() => {
+      errorText.value = ''
+    }, 6000)
+  }
+})
 const syncing = computed(() => conn.state === 'connecting')
 const activeChannelName = computed(() => entities.channels[props.channelId]?.name ?? '')
 const saveState = ref<{ state: 'idle' | 'dirty' | 'saving' | 'saved' | 'error', at: number } | null>(null)
@@ -459,11 +473,12 @@ const { ticker } = useTownHudTickers({ sceneRef, daq, drawTrend, drawBindSparks 
  *
  * 令牌必须定义在真正带本组件 scope id 的根元素上:scoped 会把选择器编译为
  * .town-view[data-v-<TownView>],只有本文件的根 div 同时具备该 class 与 scope id;
- * 放在子组件(TownTopNav)里的同名规则永远匹配不到,会让全视图 var(--hud-*) 失效。
+ * 放在子组件(TownTopNav)里的同名规则永远匹配不到,会让全视图的 --hud-* 系列令牌失效。
  * 令牌经 CSS 自定义属性继承覆盖整个视图,子组件照常消费。
  * ============================================================ */
 .town-view {
   --hud-bg: #070b13;
+    --hud-shadow-pop: 0 18px 48px rgba(0, 0, 0, .55);
   --hud-panel: #0d1420;
   --hud-panel-2: #111a2b;
   --hud-panel-raised: #152034;
@@ -473,8 +488,10 @@ const { ticker } = useTownHudTickers({ sceneRef, daq, drawTrend, drawBindSparks 
   --hud-line-hi: #2c4568;
   --hud-input: #0a111d;
   --hud-text: #e8eef8;
-  --hud-dim: #8fa0b5;
-  --hud-faint: #5f6e84;
+  /* 次级/微标文字:对齐窄屏对比度先例(≥4.5:1);此前桌面档 3.4-3.8:1,
+   * 字号地板整改后这批文字参与对比度测量,2026-11-06 一并收口 */
+  --hud-dim: #a9b9cd;
+  --hud-faint: #8b9bb0;
   --hud-accent: #35e0a0;
   --hud-accent-dim: #1f9e6e;
   --hud-cyan: #41c8f4;
@@ -499,7 +516,7 @@ const { ticker } = useTownHudTickers({ sceneRef, daq, drawTrend, drawBindSparks 
  * 9px 徽标字在暗底上不可读;桌面档统一抬到 ≥10px,窄屏再抬一档(见媒体查询)。
  * 例外:仅纯装饰性小字保留 9px。 */
 .town-view small {
-  font-size: 10px;
+  font-size: var(--fs-micro);
 }
 /* ===== 三栏应用区 ===== */
 .app {

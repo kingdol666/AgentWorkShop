@@ -73,7 +73,7 @@ const { rows, source, loading, saving, toggle } = useTeamPluginDialog({
   margin-left: 6px;
   padding: 0 6px;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   color: var(--ink-faint);
   border: 1px solid var(--line-strong);
   border-radius: var(--radius-pill, 999px);

@@ -80,7 +80,7 @@ defineProps<{
   text-align: center;
 }
 .donut-center b { font-family: var(--font-mono); font-size: 21px; font-weight: 700; color: var(--hud-accent); }
-.donut-center span { font-size: 9.5px; color: var(--hud-faint); }
+.donut-center span { font-size: var(--fs-micro); color: var(--hud-faint); }
 .health-legend { flex: 1; display: flex; flex-direction: column; gap: 8px; }
 .hl-row { display: flex; align-items: center; gap: 7px; font-size: 11.5px; }
 .hl-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }

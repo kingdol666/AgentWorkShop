@@ -333,7 +333,7 @@ const stateDot: Record<string, string> = {
 .role-chip {
   flex: 0 0 auto;
   padding: 0 7px;
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.04em;
   line-height: 16px;
   color: var(--ink-soft);
@@ -384,7 +384,7 @@ const stateDot: Record<string, string> = {
 .state-chip {
   flex: none;
   padding: 1px 6px;
-  font-size: 10px;
+  font-size: var(--fs-micro);
   line-height: 15px;
   letter-spacing: 0.03em;
   color: var(--ink-soft);

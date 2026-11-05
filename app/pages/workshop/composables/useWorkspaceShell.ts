@@ -92,8 +92,8 @@ export function useWorkspaceShell(
   const viewOptions = computed(() => {
     const base = [
       { value: 'timeline', label: t('wsView.k3otu32010') },
-      { value: 'chat', label: '群聊' },
-      { value: 'lanes', label: 'Agent lanes' },
+      { value: 'chat', label: t('wsView.chat') },
+      { value: 'lanes', label: t('wsView.lanes') },
       { value: 'board', label: t('wsView.k3ko7a8011') },
       { value: 'split', label: t('wsView.k3xbmo012') },
       { value: 'town', label: t('wsView.k1cz0pbw013') },

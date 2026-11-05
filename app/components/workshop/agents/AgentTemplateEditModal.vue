@@ -117,7 +117,7 @@ const { form, save } = useAgentTemplateForm({
   font-size: 11px;
   line-height: 18px;
   padding: 0 6px;
-  border: 1px solid var(--border, #2a3a4a);
+  border: 1px solid var(--line);
   border-radius: 3px;
   opacity: 0.75;
 }
@@ -135,5 +135,5 @@ const { form, save } = useAgentTemplateForm({
   font-size: 11px;
   color: var(--ink-faint);
 }
-.harness-status.off { color: var(--danger, #c25a4e); }
+.harness-status.off { color: var(--tone-danger-dot); }
 </style>

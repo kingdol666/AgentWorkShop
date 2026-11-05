@@ -190,7 +190,7 @@ const emit = defineEmits<{
 .brand-glyph { width: 26px; height: 26px; flex: none; }
 .brand-name { font-weight: 800; font-size: 14.5px; letter-spacing: 0.06em; }
 .brand-name em { font-style: normal; color: var(--hud-accent); }
-.brand-sub { font-size: 10px; color: var(--hud-faint); letter-spacing: 0.18em; margin-top: 2px; }
+.brand-sub { font-size: var(--fs-micro); color: var(--hud-faint); letter-spacing: 0.18em; margin-top: 2px; }
 .nav-tabs {
   position: absolute;
   left: 50%;
@@ -214,7 +214,7 @@ const emit = defineEmits<{
 .nav-action:hover { background: #14203a; border-color: #33507c; }
 .save-chip {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.08em;
   padding: 3px 8px;
   border-radius: 999px;
@@ -254,7 +254,7 @@ const emit = defineEmits<{
   border-radius: 50%;
   display: grid;
   place-items: center;
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   font-weight: 700;
   color: #04120c;
   background: linear-gradient(135deg, var(--hud-accent), var(--hud-cyan));
@@ -312,7 +312,7 @@ const emit = defineEmits<{
   .nav-right { order: 1; flex: none; margin-left: 0; gap: 6px; }
   /* 模式段整行:不再绝对定位居中(那会与品牌/开关互相压字) */
   .nav-tabs { order: 2; flex: 1 1 100%; position: static; transform: none; gap: 8px; }
-  .seg button { padding: 0 14px; font-size: 13px; }
+  .seg button { padding: 10px 14px; font-size: 13px; }
   .nav-action { height: 40px; padding: 0 12px; font-size: 13px; }
   .save-chip { font-size: 11.5px; }
   .nav-chip { font-size: 11.5px; padding: 5px 8px; }

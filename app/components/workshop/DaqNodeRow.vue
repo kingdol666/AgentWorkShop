@@ -523,13 +523,13 @@ tr.row-recipe-alarm td:first-child { box-shadow: inset 3px 0 0 var(--tone-danger
 
 .dev-binds { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .dev-bind-chip { display: inline-flex; gap: 4px; align-items: center; padding: 1px 7px; font-size: 11px; color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); border-radius: var(--radius-chip); }
-.dev-unbind { cursor: pointer; opacity: 0.55; font-size: 10px; }
+.dev-unbind { cursor: pointer; opacity: 0.55; font-size: var(--fs-micro); }
 .dev-unbind:hover { opacity: 1; color: var(--tone-danger-dot); }
 .dev-add { max-width: 130px; font-size: 11px; }
 .line-sel {
   max-width: 120px;
   padding: 3px 6px;
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   color: var(--ink-soft);
   background: var(--paper-deep);
   border: 1px solid var(--line-strong);
@@ -610,7 +610,7 @@ tr.row-recipe-alarm td:first-child { box-shadow: inset 3px 0 0 var(--tone-danger
 .prod-cell small {
   display: block;
   margin-top: 1px;
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--ink-faint);
   overflow: hidden;
   text-overflow: ellipsis;

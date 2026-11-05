@@ -69,7 +69,7 @@ const hasMore = computed(() => lines.value.length > MAX)
   gap: 7px;
   align-items: center;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   line-height: 20px;
 }
 /* 成员变更行:统一中性墨(动词语义已含 新增/移除,不靠颜色重复表意) */
@@ -79,7 +79,7 @@ const hasMore = computed(() => lines.value.length > MAX)
   margin-top: 4px;
   padding: 1px 10px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--ink-faint);
   cursor: pointer;
   background: transparent;

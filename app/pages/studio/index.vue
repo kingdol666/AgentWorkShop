@@ -68,12 +68,22 @@
         >
           <span class="nName">{{ ch.title }}</span>
           <span class="unit">{{ ch.vizType }} v{{ ch.version }}</span>
-          <button
-            class="miniAdd"
-            @click.stop="removeChart(ch.id)"
+          <!-- 删除已保存图表不可逆:二次确认(交互宪法 §2-1) -->
+          <a-popconfirm
+            :title="$t('studio.deleteChartConfirm', { name: ch.title })"
+            :ok-text="$t('common.delete')"
+            :cancel-text="$t('common.cancel')"
+            :ok-button-props="{ danger: true }"
+            placement="left"
+            @confirm.stop="removeChart(ch.id)"
           >
-            ✕
-          </button>
+            <button
+              class="miniAdd danger"
+              @click.stop
+            >
+              ✕
+            </button>
+          </a-popconfirm>
         </button>
         <p
           v-if="!charts.length"
@@ -811,30 +821,31 @@ watch(lineId, (v) => {
 <style scoped>
 .studio { display: grid; grid-template-columns: 250px 1fr 300px; gap: 12px; padding: 16px 20px; height: calc(100vh - 56px); }
 .col { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
-.card { background: var(--panel, #fff); border: 1px solid var(--border, rgba(127,127,127,.25)); border-radius: 10px; padding: 10px 12px; }
+.card { background: var(--surface-card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
 .card.grow { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .sec { font-size: 12px; font-weight: 700; margin: 2px 0 8px; }
 .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
 .lbl { font-size: 12px; color: var(--ink-soft, #666); }
-.input { border: 1px solid var(--border, rgba(127,127,127,.35)); border-radius: 6px; padding: 4px 8px; background: transparent; color: var(--ink, #222); font-size: 12px; }
+.input { border: 1px solid var(--line-strong); border-radius: 6px; padding: 4px 8px; background: transparent; color: var(--ink, #222); font-size: 12px; }
 .input.w { width: 100%; margin-bottom: 6px; }
 .sel { max-width: 140px; }
 .numIn { width: 90px; }
 .nodeList { overflow: auto; flex: 1; min-height: 0; }
 .nodeRow, .chartRow { display: flex; gap: 6px; align-items: center; width: 100%; border: none; background: transparent; padding: 4px 4px; cursor: grab; border-radius: 6px; text-align: left; }
-.nodeRow:hover, .chartRow:hover { background: var(--border, rgba(127,127,127,.12)); }
+.nodeRow:hover, .chartRow:hover { background: var(--hover-tint); }
 .nName { font-size: 12px; color: var(--ink, #222); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .unit { font-size: 11px; color: var(--ink-faint, #999); }
-.miniAdd { border: 1px solid var(--border, rgba(127,127,127,.4)); background: transparent; border-radius: 6px; font-size: 11px; padding: 0 6px; cursor: pointer; }
+.miniAdd { border: 1px solid var(--line-strong); background: transparent; border-radius: 6px; font-size: 11px; padding: 0 6px; cursor: pointer; }
+.miniAdd.danger { color: var(--tone-danger-dot); border-color: color-mix(in srgb, var(--tone-danger-dot) 45%, transparent); }
 .gallery { display: flex; gap: 4px; flex-wrap: wrap; }
-.vizBtn { border: 1px solid var(--border, rgba(127,127,127,.35)); background: transparent; border-radius: 999px; padding: 3px 12px; font-size: 12px; cursor: pointer; color: var(--ink-soft, #555); }
+.vizBtn { border: 1px solid var(--line-strong); background: transparent; border-radius: 999px; padding: 3px 12px; font-size: 12px; cursor: pointer; color: var(--ink-soft, #555); }
 .vizBtn.on { border-color: #4a6b57; color: #4a6b57; font-weight: 600; }
 .vizBtn.dim { opacity: 0.45; }
 .canvasCard { position: relative; }
 .canvasCard > div:first-child { flex: 1; min-height: 220px; }
-.snapBadge { position: absolute; top: 10px; right: 14px; z-index: 2; font-size: 11px; color: var(--ink-soft, #666); border: 1px solid var(--border, rgba(127,127,127,.3)); border-radius: 999px; padding: 2px 9px; background: rgba(255,255,255,.86); }
+.snapBadge { position: absolute; top: 10px; right: 14px; z-index: 2; font-size: 11px; color: var(--ink-soft, #666); border: 1px solid var(--line); border-radius: 999px; padding: 2px 9px; background: rgba(255,255,255,.86); }
 .well { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; min-height: 26px; }
-.chip { display: inline-flex; gap: 4px; align-items: center; border: 1px solid var(--border, rgba(127,127,127,.35)); border-radius: 999px; padding: 2px 8px; font-size: 12px; }
+.chip { display: inline-flex; gap: 4px; align-items: center; border: 1px solid var(--line-strong); border-radius: 999px; padding: 2px 8px; font-size: 12px; }
 .axis { color: #4a6b57; font-weight: 700; }
 .axisBtn { border: none; background: transparent; cursor: pointer; font-size: 11px; color: var(--ink-faint, #777); }
 .empty { color: var(--ink-faint, #999); font-size: 12px; }
@@ -848,13 +859,13 @@ watch(lineId, (v) => {
 .kVal { font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; }
 .tblWrap { max-height: 100%; overflow: auto; }
 .tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
-.tbl th, .tbl td { border-bottom: 1px solid var(--border, rgba(127,127,127,.18)); padding: 3px 8px; text-align: left; }
+.tbl th, .tbl td { border-bottom: 1px solid var(--line); padding: 3px 8px; text-align: left; }
 .mono { font-variant-numeric: tabular-nums; }
 @media (max-width: 1100px) {
   .studio { grid-template-columns: 1fr; height: auto; }
 }
 .boardLink { text-decoration: none; display: inline-flex; align-items: center; }
 .modalMask { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 60; }
-.modal { background: var(--panel, #fff); color: var(--ink, #222); border-radius: 12px; padding: 16px 18px; width: min(640px, 92vw); }
-.promptBox { width: 100%; height: 160px; font-size: 12px; font-family: monospace; border: 1px solid var(--border, rgba(127,127,127,.35)); border-radius: 6px; padding: 8px; background: transparent; color: var(--ink, #222); }
+.modal { background: var(--surface-card); color: var(--ink, #222); border-radius: 12px; padding: 16px 18px; width: min(640px, 92vw); }
+.promptBox { width: 100%; height: 160px; font-size: 12px; font-family: monospace; border: 1px solid var(--line-strong); border-radius: 6px; padding: 8px; background: transparent; color: var(--ink, #222); }
 </style>

@@ -132,7 +132,7 @@ defineProps<{
 .vp-title h2 { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: 0.02em; }
 .vp-id {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.04em;
   color: var(--hud-dim);
   border: 1px solid #223050;

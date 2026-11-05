@@ -253,7 +253,7 @@ async function doRemove(id: string): Promise<void> {
 }
 .head-title {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   letter-spacing: 0.16em;
   color: var(--hud-text, #d9e4ee);
@@ -262,7 +262,7 @@ async function doRemove(id: string): Promise<void> {
 .head-hint {
   margin-left: auto;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--hud-faint, #5b6c7b);
   white-space: nowrap;
 }
@@ -290,7 +290,7 @@ async function doRemove(id: string): Promise<void> {
   align-items: center;
   gap: 5px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--hud-dim, #8496a5);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -302,14 +302,14 @@ async function doRemove(id: string): Promise<void> {
   align-items: center;
   gap: 5px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.08em;
   color: var(--hud-accent, #4da3ff);
   padding: 2px 0 4px;
 }
 .upload-file-tag {
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   color: var(--hud-dim, #8496a5);
   padding: 3px 6px;
   border: 1px solid var(--hud-line, #263340);
@@ -319,7 +319,7 @@ async function doRemove(id: string): Promise<void> {
 .upload-btn {
   padding: 5px 10px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   letter-spacing: 0.06em;
   color: var(--hud-text, #d9e4ee);
@@ -341,8 +341,8 @@ async function doRemove(id: string): Promise<void> {
   border-color: var(--hud-amber, #f5a742);
   color: var(--hud-amber, #f5a742);
 }
-.mini-err { font-family: var(--font-mono); font-size: 9.5px; color: var(--hud-danger, #ff6b5c); }
-.mini-err, .mini-msg { font-size: 10px; }
+.mini-err { font-family: var(--font-mono); font-size: var(--fs-micro); color: var(--hud-danger, #ff6b5c); }
+.mini-err, .mini-msg { font-size: var(--fs-micro); }
 .mini-msg { font-family: var(--font-mono); color: var(--hud-dim, #8496a5); padding: 0 10px; }
 
 /* 模型清单:方角装备行 */
@@ -386,7 +386,7 @@ async function doRemove(id: string): Promise<void> {
   font-family: var(--font-mono);
   /* 8.5px 在这套 HUD 里是"看得见读不了"的下限之外(实测被审计稳定判为不可读);
      10px 是同类铭牌(--hud 微字)在 1440 下的地板。 */
-  font-size: 10px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.08em;
   color: var(--hud-faint, #5b6c7b);
   text-align: left;
@@ -396,7 +396,7 @@ async function doRemove(id: string): Promise<void> {
 .card-btn {
   padding: 2px 8px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   letter-spacing: 0.06em;
   color: var(--hud-text, #d9e4ee);
@@ -436,7 +436,7 @@ async function doRemove(id: string): Promise<void> {
   align-items: center;
   padding: 8px 2px;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   color: var(--hud-faint, #5b6c7b);
 }
 .loading-dot {

@@ -25,6 +25,8 @@ export function useMonitorData(hooks: MonitorDataHooks = {}) {
   const loading = ref(false)
   const autoRefresh = ref(true)
   const lastUpdated = ref('')
+  // 轮询失败去抖:服务宕机时每 5s 一条 toast 刷屏(此前无去抖,2026-11-06 修复)
+  let pollFailStreak = 0
 
   const poll = async (): Promise<void> => {
     if (!userStore.token) return
@@ -35,9 +37,14 @@ export function useMonitorData(hooks: MonitorDataHooks = {}) {
       })
       snapshot.value = res.data
       lastUpdated.value = formatLocalClock(new Date().toISOString())
+      pollFailStreak = 0
     }
     catch (e) {
-      message.error(e instanceof Error ? e.message : t('monitor.loadFailed'))
+      pollFailStreak++
+      // 连续 3 次失败才提示一次,此后每 12 次(≈1 分钟)提醒,避免告警洪水
+      if (pollFailStreak === 3 || pollFailStreak % 12 === 0) {
+        message.error(e instanceof Error ? e.message : t('monitor.loadFailed'))
+      }
     }
     finally {
       loading.value = false

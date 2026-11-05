@@ -4,11 +4,12 @@
  * 行内展开详情(结论明细 + 完整正文 + 支撑指标 + 证据窗),照 LogsEventTable 的
  * 原生 table + 展开行模式(全站惯例:原生表格,antd a-table 才需要显式 columns)。
  */
+import { computed, ref, watch } from 'vue'
 import { formatLocalClock } from '@/app/composables/workshop/useLocalTime'
 import { useLogsScope } from '@/app/pages/logs/composables/useLogsScope'
 import type { AnalysisReportView } from '@/app/pages/analysis/types'
 
-defineProps<{
+const props = defineProps<{
   rows: AnalysisReportView[]
   loading: boolean
   error: string
@@ -56,6 +57,15 @@ const contextText = (r: AnalysisReportView): string => {
     return ''
   }
 }
+
+/* 分页:此前 rows 直出全表,正是 /logs 与 /operations 已修掉的"两万像素长页"(2026-11-06 补齐) */
+const PAGE_SIZE = 25
+const page = ref(1)
+const pagedRows = computed(() => props.rows.slice((page.value - 1) * PAGE_SIZE, page.value * PAGE_SIZE))
+// 重查/删除后页码越界时回 first 页
+watch(() => props.rows.length, (n) => {
+  if ((page.value - 1) * PAGE_SIZE >= n) page.value = 1
+})
 </script>
 
 <template>
@@ -112,7 +122,7 @@ const contextText = (r: AnalysisReportView): string => {
           </td>
         </tr>
         <template
-          v-for="row in rows"
+          v-for="row in pagedRows"
           :key="row.id"
         >
           <tr class="report-row">
@@ -246,16 +256,38 @@ const contextText = (r: AnalysisReportView): string => {
         </template>
       </tbody>
     </table>
+    <div
+      v-if="props.rows.length > PAGE_SIZE"
+      class="tbl-foot"
+    >
+      <span class="count">{{ $t('analysis.count', { p0: props.rows.length }) }}</span>
+      <a-pagination
+        v-model:current="page"
+        :page-size="PAGE_SIZE"
+        :total="props.rows.length"
+        :show-size-changer="false"
+        :show-less-items="true"
+        size="small"
+      />
+    </div>
   </section>
 </template>
 
 <style scoped>
 .table-card {
-  background: var(--surface-glass);
+  background: var(--surface-card);
   border: 1px solid var(--glass-line);
   border-radius: 10px;
-  backdrop-filter: var(--aurora-blur) saturate(1.15);
   overflow: hidden;
+}
+/* 分页页脚(与 /logs、/operations 台账同构) */
+.tbl-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--line);
 }
 .card-meta {
   display: flex; gap: 12px; align-items: center;
@@ -294,7 +326,7 @@ const contextText = (r: AnalysisReportView): string => {
 .cat-chip.optimization { color: var(--tone-success-dot); background: color-mix(in srgb, var(--tone-success-dot) 12%, transparent); }
 .cat-chip.quality { color: var(--tone-info-dot); background: color-mix(in srgb, var(--tone-info-dot) 12%, transparent); }
 .cat-chip.alarm { color: var(--tone-danger-dot); background: color-mix(in srgb, var(--tone-danger-dot) 12%, transparent); }
-.cat-chip.trend { color: var(--tone-warn-dot, var(--tone-info-dot)); background: color-mix(in srgb, var(--tone-warn-dot, var(--tone-info-dot)) 12%, transparent); }
+.cat-chip.trend { color: var(--tone-warning-dot); background: color-mix(in srgb, var(--tone-warning-dot) 12%, transparent); }
 .summary { max-width: 380px; line-height: 1.7; text-wrap: pretty; }
 .src small { display: block; }
 .mono { font-family: var(--font-mono, monospace); font-size: 11.5px; }

@@ -394,7 +394,7 @@ const stateColor: Record<string, string> = {
   align-items: center;
   padding: 4px 8px;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   color: var(--ink-soft);
   background: var(--paper-deep);
   border: 1px solid var(--line);
@@ -442,7 +442,7 @@ const stateColor: Record<string, string> = {
 .route-label {
   flex: 0 0 auto;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--ink-faint);
@@ -457,7 +457,7 @@ const stateColor: Record<string, string> = {
   font-family: var(--font-mono);
 }
 .tl-time { opacity: 0.45; }
-.state { margin-inline-end: 0; font-size: 10px; }
+.state { margin-inline-end: 0; font-size: var(--fs-micro); }
 .tl-progress { opacity: 0.7; }
 .child-row {
   display: flex;

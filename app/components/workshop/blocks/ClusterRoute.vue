@@ -243,7 +243,7 @@ const hasMore = computed(() => rows.value.length > MAX)
 .who-ava {
   width: 18px;
   height: 18px;
-  font-size: 10px;
+  font-size: var(--fs-micro);
 }
 
 .to-arrow {
@@ -273,7 +273,7 @@ const hasMore = computed(() => rows.value.length > MAX)
   gap: 4px;
   align-items: center;
   padding: 0 6px;
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   color: var(--ink-soft);
   background: color-mix(in srgb, var(--ink) 4.5%, transparent);
   border: 1px solid var(--line);
@@ -298,14 +298,14 @@ const hasMore = computed(() => rows.value.length > MAX)
   border-color: transparent;
 }
 .route-badge.reply-link {
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   color: var(--ink-faint);
   background: color-mix(in srgb, var(--ink) 6%, transparent);
 }
 
 .chat-time {
   margin-left: auto;
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   color: var(--ink-faint);
 }
 
@@ -344,7 +344,7 @@ const hasMore = computed(() => rows.value.length > MAX)
   margin-top: 4px;
   padding: 1px 10px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--ink-faint);
   cursor: pointer;
   background: transparent;

@@ -61,7 +61,7 @@ defineProps<{
   transition: background 0.13s var(--hud-ease);
 }
 .event-row:hover { background: rgba(53, 224, 160, 0.05); }
-.ev-time { flex: none; font-family: var(--font-mono); font-size: 10px; font-variant-numeric: tabular-nums; color: var(--hud-faint); }
+.ev-time { flex: none; font-family: var(--font-mono); font-size: var(--fs-micro); font-variant-numeric: tabular-nums; color: var(--hud-faint); }
 .ev-name {
   flex: none;
   max-width: 70px;
@@ -69,7 +69,7 @@ defineProps<{
   text-overflow: ellipsis;
   white-space: nowrap;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--hud-text);
 }
@@ -79,10 +79,10 @@ defineProps<{
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   color: var(--hud-dim);
 }
-.event-empty { padding: 12px; font-family: var(--font-mono); font-size: 9.5px; color: var(--hud-faint); text-align: center; }
+.event-empty { padding: 12px; font-family: var(--font-mono); font-size: var(--fs-micro); color: var(--hud-faint); text-align: center; }
 .rail-empty {
   display: flex;
   flex-direction: column;
@@ -90,7 +90,7 @@ defineProps<{
   align-items: center;
   padding: 16px 10px 13px;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.06em;
   color: var(--hud-faint);
   text-align: center;

@@ -377,7 +377,7 @@ defineProps<TownRightRailProps>()
 }
 .panel-tag {
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   color: var(--hud-cyan);
   background: rgba(65, 200, 244, 0.1);
   border: 1px solid rgba(65, 200, 244, 0.25);
