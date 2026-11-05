@@ -551,9 +551,8 @@ const { ticker } = useTownHudTickers({ sceneRef, daq, drawTrend, drawBindSparks 
  * 断点与 useResponsive(≥1024 桌面)同源;形态全部由 CSS 决定。
  * ═══════════════════════════════════════════════════════════════ */
 @media (max-width: 1023px) {
-  /* 窄屏对比度地板:--hud-faint(#5f6e84)在深面板上只有 3.6:1,
-   * 窄屏(强光/手持)抬到 ≥7:1;桌面配色不动 */
-  .town-view { --hud-faint: #8b9bb0; }
+  /* 窄屏对比度:--hud-faint 已随桌面档收口抬到 #8b9bb0(≥4.5:1),
+   * 窄屏沿用同一值;此前的窄屏专属覆盖在 2026-11-06 对齐后成为 no-op,已删 */
   /* ── 三栏 → 单栏:舞台全宽、吃满高度 ── */
   .app { grid-template-columns: minmax(0, 1fr); }
   /* ── 刻度字号地板:标签 ≥11.5px(窄屏不允许 8.5–10px 徽标字) ── */
