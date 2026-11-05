@@ -116,9 +116,18 @@ watch(page, 'global')
     const stopped = await page.evaluate((card) => {
       const btn = [...card.querySelectorAll('button')].find(b => /停止/.test(b.textContent))
       if (!btn) return 'already-stopped'
-      btn.click(); return 'clicked'
+      btn.click()
+      return 'clicked'
     }, card1)
     await card1.dispose()
+    // 停线带 popconfirm 二次确认(交互宪法 §1):气泡弹出后点确认(OK=最后一个按钮)
+    await sleep(600)
+    await page.evaluate(() => {
+      const okBtn = [...document.querySelectorAll('.ant-popconfirm .ant-popconfirm-buttons button')]
+        .filter(b => getComputedStyle(b.closest('.ant-popconfirm')).display !== 'none')
+        .pop()
+      if (okBtn) okBtn.click()
+    })
     await sleep(2500)
     const states1 = (await apiGet('/api/workshop/dcw')).data?.lineStates ?? []
     const s1 = states1.find(s => s.lineId === target.id)?.active === true

@@ -155,7 +155,7 @@ const { t } = useI18n()
   align-items: center;
   width: fit-content;
   padding: 2px 10px;
-  font-size: 10px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.16em;
   color: var(--tone-success-dot);
   border: 1px solid color-mix(in srgb, var(--tone-success-dot) 45%, transparent);

@@ -378,7 +378,7 @@ watch(() => props.channelId, async () => {
   font-weight: 600;
   color: var(--ink);
 }
-.ct-count { font-family: var(--font-mono); font-size: 10.5px; }
+.ct-count { font-family: var(--font-mono); font-size: var(--fs-micro); }
 .ct-spacer { flex: 1 1 auto; }
 .ct-jump {
   display: inline-flex;
@@ -468,7 +468,7 @@ watch(() => props.channelId, async () => {
   gap: 3px;
   align-items: center;
   padding: 0 5px;
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.06em;
   color: var(--ink-faint);
   text-transform: uppercase;
@@ -479,7 +479,7 @@ watch(() => props.channelId, async () => {
 .ct-role.agent { color: var(--tone-info-dot); border-color: color-mix(in srgb, var(--tone-info-dot) 35%, transparent); }
 .ct-time {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--ink-fainter);
 }
 .ct-reply-btn {
@@ -512,7 +512,7 @@ watch(() => props.channelId, async () => {
 }
 .ct-replyto b { color: var(--ink-soft); }
 
-.ct-operation-badge { display: inline-flex; gap: 5px; align-items: center; margin: 3px 0 4px; padding: 3px 7px; font: 10px var(--font-mono); border-radius: var(--radius-chip); }
+.ct-operation-badge { display: inline-flex; gap: 5px; align-items: center; margin: 3px 0 4px; padding: 3px 7px; font: var(--fs-micro) var(--font-mono); border-radius: var(--radius-chip); }
 .ct-operation-badge.dcw { color: #a56d17; background: color-mix(in srgb, #c98922 11%, transparent); }
 .ct-operation-badge.daq { color: #148681; background: color-mix(in srgb, #159f9a 10%, transparent); }
 .ct-operation-badge.aml { color: #7657ad; background: color-mix(in srgb, #7657ad 10%, transparent); }
@@ -571,7 +571,7 @@ watch(() => props.channelId, async () => {
   gap: 4px;
   align-items: center;
   padding: 1px 7px;
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   border-radius: var(--radius-chip);
   background: var(--paper-deep);
 }
@@ -593,7 +593,7 @@ watch(() => props.channelId, async () => {
   align-items: center;
   margin-top: 3px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--ink-fainter);
 }
 

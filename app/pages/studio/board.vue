@@ -118,7 +118,7 @@
     >
       <div
         v-for="item in detail.charts"
-        :key="item.gridPos?.chartId ?? Math.random()"
+        :key="item.gridPos?.chartId ?? item.chart?.id ?? JSON.stringify(item.gridPos)"
         class="cell"
         :style="{ gridColumn: `${(item.gridPos?.x ?? 0) + 1} / span ${item.gridPos?.w ?? 4}`, gridRow: `${(item.gridPos?.y ?? 0) + 1} / span ${item.gridPos?.h ?? 3}` }"
       >
@@ -390,19 +390,19 @@ watch(windowPreset, () => {
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .row.end { justify-content: flex-end; }
 .grow { flex: 1; }
-.card { background: var(--panel, #fff); border: 1px solid var(--border, rgba(127,127,127,.25)); border-radius: 10px; padding: 10px 12px; }
+.card { background: var(--surface-card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
 .sec { font-size: 12px; font-weight: 700; margin: 0 0 8px; }
 .lbl { font-size: 12px; color: var(--ink-soft, #666); }
-.input { border: 1px solid var(--border, rgba(127,127,127,.35)); border-radius: 6px; padding: 4px 8px; background: transparent; color: var(--ink, #222); font-size: 12px; }
+.input { border: 1px solid var(--line-strong); border-radius: 6px; padding: 4px 8px; background: transparent; color: var(--ink, #222); font-size: 12px; }
 .input.w { min-width: 240px; }
 .sel { max-width: 160px; }
-.chk { display: inline-flex; gap: 4px; align-items: center; font-size: 12px; border: 1px solid var(--border, rgba(127,127,127,.3)); border-radius: 999px; padding: 2px 10px; cursor: pointer; }
+.chk { display: inline-flex; gap: 4px; align-items: center; font-size: 12px; border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; cursor: pointer; }
 .grid { display: grid; grid-template-columns: repeat(12, 1fr); grid-auto-rows: minmax(220px, auto); gap: 8px; }
-.cell { background: var(--panel, #fff); border: 1px solid var(--border, rgba(127,127,127,.25)); border-radius: 10px; padding: 8px; min-height: 200px; display: flex; flex-direction: column; }
+.cell { background: var(--surface-card); border: 1px solid var(--line); border-radius: 10px; padding: 8px; min-height: 200px; display: flex; flex-direction: column; }
 .cellChart { flex: 1; min-height: 120px; }
 .cellHead { display: flex; gap: 4px; align-items: center; margin-bottom: 4px; }
 .cTitle { font-size: 12px; font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.mini { border: 1px solid var(--border, rgba(127,127,127,.35)); background: transparent; border-radius: 4px; font-size: 10px; padding: 0 5px; cursor: pointer; }
+.mini { border: 1px solid var(--line-strong); background: transparent; border-radius: 4px; font-size: 10px; padding: 0 5px; cursor: pointer; }
 .empty { color: var(--ink-faint, #999); font-size: 12px; }
 .hint { font-size: 12px; color: var(--ink-faint, #888); }
 .err { font-size: 12px; color: #b3403a; white-space: pre-wrap; }

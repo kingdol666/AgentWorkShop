@@ -89,7 +89,7 @@ defineProps<{
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
 }
-.statusbar .copy { margin-left: auto; color: var(--hud-faint); font-family: var(--font-mono); font-size: 10px; }
+.statusbar .copy { margin-left: auto; color: var(--hud-faint); font-family: var(--font-mono); font-size: var(--fs-micro); }
 
 /* ── 窄屏(≤1023):留连接态 + 统计,FPS 贴右,版权行收起 ── */
 @media (max-width: 1023px) {

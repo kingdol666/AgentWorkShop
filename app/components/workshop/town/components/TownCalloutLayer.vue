@@ -99,7 +99,7 @@ defineProps<{
   display: flex;
   gap: 6px;
   align-items: center;
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   color: var(--hud-dim);
   white-space: nowrap;
 }
@@ -121,10 +121,10 @@ defineProps<{
   color: var(--hud-text);
   font-variant-numeric: tabular-nums;
 }
-.co-val small { font-size: 10.5px; color: var(--hud-dim); font-weight: 500; margin-left: 3px; }
+.co-val small { font-size: var(--fs-micro); color: var(--hud-dim); font-weight: 500; margin-left: 3px; }
 .co-range {
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   color: var(--hud-faint);
   margin-top: 1px;
 }

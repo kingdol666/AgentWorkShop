@@ -75,7 +75,7 @@ const filter = defineModel<EventFilter>('filter', { required: true })
   margin-left: auto;
   padding: 1px 8px;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   font-variant-numeric: tabular-nums;
   color: var(--ink-faint);
   background: var(--paper-deep);

@@ -160,7 +160,7 @@ defineProps<{
 .kpi-ico.c5 { background: rgba(255, 107, 107, 0.12); color: var(--hud-danger); }
 .kpi-svg { width: 15px; height: 15px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .kpi-meta { line-height: 1.25; }
-.kpi-label { font-size: 10px; color: var(--hud-dim); letter-spacing: 0.08em; text-transform: uppercase; }
+.kpi-label { font-size: var(--fs-micro); color: var(--hud-dim); letter-spacing: 0.08em; text-transform: uppercase; }
 .kpi-val {
   font-family: var(--font-mono);
   font-size: 19px;
@@ -169,7 +169,7 @@ defineProps<{
   font-variant-numeric: tabular-nums;
   letter-spacing: -0.01em;
 }
-.kpi-val small { font-size: 10px; color: var(--hud-faint); font-weight: 500; margin-left: 2px; }
+.kpi-val small { font-size: var(--fs-micro); color: var(--hud-faint); font-weight: 500; margin-left: 2px; }
 /* 键盘可达:焦点环(设计稿 --focus-ring;补回 scoped 属性选择器降低的一档特异性,与 .town-view 规则同效) */
 button:focus-visible,
 input:focus-visible,

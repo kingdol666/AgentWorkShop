@@ -68,7 +68,7 @@ defineProps<{
   align-items: center;
   padding: 16px 10px 13px;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.06em;
   color: var(--hud-faint);
   text-align: center;
@@ -107,9 +107,9 @@ defineProps<{
 .al-svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .al-body { flex: 1; min-width: 0; }
 .al-txt { font-size: 12px; font-weight: 500; line-height: 1.35; color: var(--hud-text); }
-.al-src { font-family: var(--font-mono); font-size: 9.5px; color: var(--hud-faint); margin-top: 2px; }
+.al-src { font-family: var(--font-mono); font-size: var(--fs-micro); color: var(--hud-faint); margin-top: 2px; }
 .al-state {
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   padding: 2px 7px;
   border-radius: 6px;

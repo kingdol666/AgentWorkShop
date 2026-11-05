@@ -240,7 +240,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKey))
   flex: none;
   padding: 2px 8px;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   color: var(--ink-faint);
   background: var(--paper-deep);
   border-radius: var(--radius-pill);
@@ -261,7 +261,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalKey))
 .palette-foot kbd {
   padding: 1px 5px;
   font-family: var(--font-body);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--ink-soft);
   background: var(--paper-deep);
   border: 1px solid var(--line-strong);

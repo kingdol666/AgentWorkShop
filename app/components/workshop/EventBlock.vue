@@ -190,7 +190,7 @@ const operation = computed(() => classifyOperation(props.block.events[props.bloc
   z-index: 2;
   padding: 0 5px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-variant-numeric: tabular-nums;
   color: var(--ink-faint);
   pointer-events: none;

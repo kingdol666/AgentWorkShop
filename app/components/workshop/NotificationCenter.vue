@@ -202,7 +202,7 @@ async function markAll(): Promise<void> {
   height: 16px;
   padding: 0 4px;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   font-weight: 700;
   line-height: 16px;
   color: var(--on-accent, #fff);
@@ -233,7 +233,7 @@ async function markAll(): Promise<void> {
 }
 .nc-unread {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--ink-soft);
 }
 .nc-markall {
@@ -292,13 +292,13 @@ async function markAll(): Promise<void> {
 }
 .nc-item-type {
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.08em;
   color: var(--ink-faint);
 }
 .nc-item-time {
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   color: var(--ink-fainter);
 }
 .nc-item-title {

@@ -122,7 +122,7 @@ provideDeviceTwinDcwWrite()
 }
 .twin-kicker {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   letter-spacing: 0.16em;
   color: var(--hud-text, #d9e4ee);
@@ -130,7 +130,7 @@ provideDeviceTwinDcwWrite()
 .twin-count {
   margin-left: auto;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-variant-numeric: tabular-nums;
   color: var(--hud-dim, #8496a5);
 }
@@ -151,7 +151,7 @@ provideDeviceTwinDcwWrite()
   color: var(--hud-text);
 }
 .twin-empty-sub {
-  font-size: 10px;
+  font-size: var(--fs-micro);
   line-height: 1.6;
   color: var(--hud-dim);
 }
@@ -163,5 +163,5 @@ provideDeviceTwinDcwWrite()
   overflow: hidden auto;
   padding: 4px 0 10px;
 }
-.twin-err { font-size: 9.5px; color: var(--hud-danger); padding: 0 10px 8px; }
+.twin-err { font-size: var(--fs-micro); color: var(--hud-danger); padding: 0 10px 8px; }
 </style>

@@ -96,20 +96,20 @@ const setLayout = (l: 'board' | 'list') => {
         v-if="activeRoot"
         class="root-pill active"
       >
-        Active root · {{ activeRoot.title }}
+        {{ $t('taskBoardView.activeRoot') }} · {{ activeRoot.title }}
       </span>
       <span
         v-if="queuedRoots.length"
         class="root-pill queued"
       >
-        {{ queuedRoots.length }} queued root{{ queuedRoots.length === 1 ? '' : 's' }}
+        {{ $t('taskBoardView.queuedRoots', { n: queuedRoots.length }) }}
         <span class="root-pos">#{{ queuedRoots.map(r => r.position).join(', #') }}</span>
       </span>
       <span
         v-if="completedRootCount > 0"
         class="root-pill done"
       >
-        {{ completedRootCount }} done
+        {{ $t('taskBoardView.doneRoots', { n: completedRootCount }) }}
       </span>
     </div>
 
@@ -209,7 +209,7 @@ const setLayout = (l: 'board' | 'list') => {
   max-width: min(42vw, 360px);
   padding: 4px 8px;
   overflow: hidden;
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -217,7 +217,7 @@ const setLayout = (l: 'board' | 'list') => {
   border-radius: 999px;
 }
 .root-pill.active { color: var(--ink); background: color-mix(in srgb, var(--accent) 12%, transparent); }
-.root-pill.queued { color: var(--ink-faint); background: var(--surface-strong); }
+.root-pill.queued { color: var(--ink-faint); background: var(--paper-raised); }
 .root-pill.done { color: var(--ink-faint); background: transparent; }
 .root-pos { margin-left: 4px; font-weight: 500; opacity: 0.75; }
 

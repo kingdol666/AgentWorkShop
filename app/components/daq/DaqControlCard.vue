@@ -35,14 +35,47 @@ defineProps<{
 }>()
 
 const emit = defineEmits<{
-  'action': [action: 'start' | 'stop' | 'pause' | 'resume', intervalMs?: number]
+  /** 模板实际只发 pause/resume;类型契约与实现对齐(此前声明的 start/stop 是 dead API) */
+  'action': [action: 'pause' | 'resume']
   'config': [intervalMs: number, publishIntervalMs: number]
   'open-add': []
   'open-templates': []
 }>()
 
-/** 控制器状态经 v-model 传入(与页面同一 reactive 对象;周期输入就地编辑) */
+/** 控制器状态经 v-model 传入(与页面同一 reactive 对象) */
 const controller = defineModel<DaqControllerState>('controller', { required: true })
+
+/**
+ * 周期草稿 + 应用(交互宪法:未保存的编辑不得泄漏到全局单例)。
+ * 此前 v-model 就地写 controller.defaultIntervalMs —— 输入中途,/daq/[id] 与
+ * 仪表盘等其它消费方已经读到未保存值。现在编辑只进草稿,点「应用」才 emit config。
+ */
+const intervalDraft = ref('')
+const publishDraft = ref('')
+watch(() => controller.value.defaultIntervalMs, () => {
+  intervalDraft.value = ''
+})
+watch(() => controller.value.defaultPublishIntervalMs, () => {
+  publishDraft.value = ''
+})
+
+const clampInterval = (v: number): number => Math.min(60000, Math.max(200, Math.round(v)))
+const intervalDirty = computed(() => {
+  const n = Number(intervalDraft.value)
+  return intervalDraft.value !== '' && Number.isFinite(n) && clampInterval(n) !== controller.value.defaultIntervalMs
+})
+const publishDirty = computed(() => {
+  const n = Number(publishDraft.value)
+  return publishDraft.value !== '' && Number.isFinite(n) && clampInterval(n) !== controller.value.defaultPublishIntervalMs
+})
+const cyclesDirty = computed(() => intervalDirty.value || publishDirty.value)
+
+function applyCycles(): void {
+  if (!cyclesDirty.value) return
+  const iv = intervalDirty.value ? clampInterval(Number(intervalDraft.value)) : controller.value.defaultIntervalMs
+  const pv = publishDirty.value ? clampInterval(Number(publishDraft.value)) : controller.value.defaultPublishIntervalMs
+  emit('config', iv, pv)
+}
 </script>
 
 <template>
@@ -61,12 +94,14 @@ const controller = defineModel<DaqControllerState>('controller', { required: tru
         <label class="cycle mono">
           {{ $t('daq.k1ifahxj016') }}
           <input
-            v-model.number="controller.defaultIntervalMs"
+            v-model="intervalDraft"
             type="number"
             min="200"
             max="60000"
             step="100"
-            @change="emit('config', controller.defaultIntervalMs, controller.defaultPublishIntervalMs)"
+            :placeholder="String(controller.defaultIntervalMs)"
+            :class="{ dirty: intervalDirty }"
+            @keyup.enter="applyCycles"
           >ms
         </label>
         <label
@@ -75,14 +110,25 @@ const controller = defineModel<DaqControllerState>('controller', { required: tru
         >
           {{ $t('daq.k1if98n0017') }}
           <input
-            v-model.number="controller.defaultPublishIntervalMs"
+            v-model="publishDraft"
             type="number"
             min="0"
             max="60000"
             step="100"
-            @change="emit('config', controller.defaultIntervalMs, controller.defaultPublishIntervalMs)"
+            :placeholder="String(controller.defaultPublishIntervalMs)"
+            :class="{ dirty: publishDirty }"
+            @keyup.enter="applyCycles"
           >ms
         </label>
+        <button
+          v-if="cyclesDirty"
+          class="aw-pill apply-btn"
+          :title="$t('daq.applyCyclesTip')"
+          @click="applyCycles"
+        >
+          <span class="i-tabler-check" />
+          {{ $t('daq.applyCycles') }}
+        </button>
       </div>
       <div class="ctrl-right">
         <span class="ctrl-metrics mono">
@@ -157,3 +203,16 @@ const controller = defineModel<DaqControllerState>('controller', { required: tru
     </div>
   </section>
 </template>
+
+<style scoped>
+/* 草稿态:未保存输入描警示边,与应用按钮成对出现(区别于已生效值) */
+.cycle input.dirty {
+  border-color: var(--tone-warning-dot);
+  color: var(--tone-warning-dot);
+}
+.apply-btn {
+  border: 1px solid var(--tone-warning-dot);
+  color: var(--tone-warning-dot);
+  background: var(--tone-warning-bg);
+}
+</style>

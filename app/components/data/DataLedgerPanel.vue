@@ -1,5 +1,13 @@
 <template>
   <div class="ledger">
+    <!-- 错误条:此前 error 赋值但模板无渲染位,静默失败(2026-11-06 修复) -->
+    <p
+      v-if="error"
+      class="err"
+      role="alert"
+    >
+      {{ error }}
+    </p>
     <!-- 导出任务台账 -->
     <div class="card">
       <div class="row">
@@ -233,20 +241,21 @@ onUnmounted(() => {
 
 <style scoped>
 .ledger { display: flex; flex-direction: column; gap: 12px; }
-.card { background: var(--panel, #fff); border: 1px solid var(--border, rgba(127,127,127,.25)); border-radius: 10px; padding: 12px 14px; }
+.card { background: var(--surface-card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .sec { font-size: 13px; font-weight: 600; margin: 0; }
 .lbl { font-size: 12px; color: var(--ink-soft, #666); }
-.input { border: 1px solid var(--border, rgba(127,127,127,.35)); border-radius: 6px; padding: 4px 8px; background: transparent; color: var(--ink, #222); font-size: 12px; }
+.input { border: 1px solid var(--line-strong); border-radius: 6px; padding: 4px 8px; background: transparent; color: var(--ink, #222); font-size: 12px; }
 .empty { color: var(--ink-faint, #999); font-size: 12px; }
+.err { color: var(--tone-danger-dot); font-size: 12px; margin: 0 0 10px; white-space: pre-wrap; }
 .tblWrap { max-height: 360px; overflow: auto; margin-top: 8px; }
 .tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
-.tbl th, .tbl td { border-bottom: 1px solid var(--border, rgba(127,127,127,.18)); padding: 3px 8px; text-align: left; white-space: nowrap; }
+.tbl th, .tbl td { border-bottom: 1px solid var(--line); padding: 3px 8px; text-align: left; white-space: nowrap; }
 .mono { font-variant-numeric: tabular-nums; }
 .ready { color: #3f7d54; }
 .failed { color: #b3403a; }
 .running { color: #b3714f; }
-.badge { border: 1px solid var(--border, rgba(127,127,127,.3)); border-radius: 999px; padding: 0 8px; font-size: 11px; }
+.badge { border: 1px solid var(--line); border-radius: 999px; padding: 0 8px; font-size: 11px; }
 .badge.good { color: #3f7d54; border-color: #3f7d54; }
 .badge.bad { color: #b3403a; border-color: #b3403a; }
 a { margin-right: 8px; }

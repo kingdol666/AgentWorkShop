@@ -111,7 +111,7 @@ const {
 .role-label {
   overflow: hidden;
   font-family: var(--font-body);
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   color: var(--ink-faint);
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -122,7 +122,7 @@ const {
   gap: 3px;
   align-items: center;
   padding: 0 5px;
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--tone-warning-dot);
   background: color-mix(in srgb, var(--tone-warning-dot) 13%, transparent);
   border-radius: var(--radius-chip);
@@ -135,7 +135,7 @@ const {
   align-items: center;
   padding: 0 2px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.06em;
   line-height: 14px;
   color: var(--ink-faint);
@@ -146,7 +146,7 @@ const {
   gap: 6px;
   align-items: center;
   justify-content: flex-end;
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   font-variant-numeric: tabular-nums;
   color: var(--ink-faint);
 }
@@ -165,7 +165,7 @@ const {
   flex: 0 0 auto;
   width: 60px;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   font-variant-numeric: tabular-nums;
   text-align: right;
 }

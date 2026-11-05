@@ -280,7 +280,7 @@ defineProps<{
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--hud-faint);
   letter-spacing: 0.16em;
   font-weight: 700;
@@ -296,7 +296,7 @@ defineProps<{
   opacity: 0.55;
 }
 .obj-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
-.obj-label { flex: none; width: 52px; font-size: 10.5px; color: var(--hud-dim); }
+.obj-label { flex: none; width: 52px; font-size: var(--fs-micro); color: var(--hud-dim); }
 .obj-input, .obj-select {
   flex: 1;
   min-width: 0;
@@ -310,11 +310,11 @@ defineProps<{
 }
 .obj-input:focus, .obj-select:focus { outline: none; border-color: var(--hud-accent); }
 .obj-sep { height: 1px; background: var(--hud-line-soft); margin: 8px 0; }
-.range-status { flex: 1; min-width: 0; font-size: 10px; color: var(--hud-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.range-status { flex: 1; min-width: 0; font-size: var(--fs-micro); color: var(--hud-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .obj-mini {
   flex: none;
   padding: 4px 10px;
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--hud-dim);
   background: var(--hud-input);
@@ -330,14 +330,14 @@ defineProps<{
   width: 40px;
   text-align: right;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   color: var(--hud-text);
   font-variant-numeric: tabular-nums;
 }
 .bp-seg { display: flex; gap: 4px; }
 .seg-btn {
   padding: 4px 12px;
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--hud-dim);
   background: var(--hud-input);
@@ -390,7 +390,7 @@ defineProps<{
 .chat-meta { display: flex; gap: 6px; align-items: center; }
 .chat-state {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.1em;
   color: var(--hud-dim);
   padding: 1px 6px;
@@ -400,7 +400,7 @@ defineProps<{
 /* 职务章:Leader(琥珀=指挥)/ Worker(青=执行),与 KPI 语义色同源 */
 .chat-role {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 700;
   letter-spacing: 0.12em;
   padding: 1px 7px;
@@ -410,8 +410,8 @@ defineProps<{
 .chat-role.r-worker { color: var(--hud-cyan); background: rgba(65, 200, 244, 0.1); border: 1px solid rgba(65, 200, 244, 0.4); }
 .chat-state.s-busy { color: var(--hud-amber); border-color: rgba(246, 196, 83, 0.5); }
 .chat-state.s-stopped { color: var(--hud-danger); border-color: rgba(255, 107, 107, 0.5); }
-.chat-harness { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.1em; color: var(--hud-faint); }
-.chat-count { font-family: var(--font-mono); font-size: 10px; color: var(--hud-faint); }
+.chat-harness { font-family: var(--font-mono); font-size: var(--fs-micro); letter-spacing: 0.1em; color: var(--hud-faint); }
+.chat-count { font-family: var(--font-mono); font-size: var(--fs-micro); color: var(--hud-faint); }
 .chat-refresh {
   flex: none;
   width: 22px;
@@ -436,7 +436,7 @@ defineProps<{
   padding: 10px 12px 12px;
   overflow: hidden auto;
 }
-.rpg-divider { margin: 4px 0 2px; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.2em; color: var(--hud-faint); }
+.rpg-divider { margin: 4px 0 2px; font-family: var(--font-mono); font-size: var(--fs-micro); letter-spacing: 0.2em; color: var(--hud-faint); }
 .rpg-divider.live { color: var(--hud-amber); }
 .rpg-line { display: flex; gap: 8px; align-items: flex-start; }
 .rpg-time {
@@ -445,7 +445,7 @@ defineProps<{
   text-align: right;
   margin-top: 5px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-variant-numeric: tabular-nums;
   color: var(--hud-faint);
 }
@@ -466,7 +466,7 @@ defineProps<{
   background: #14213a;
   border-color: var(--hud-line-hi);
 }
-.rpg-kind { align-self: flex-start; font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.14em; color: var(--hud-faint); }
+.rpg-kind { align-self: flex-start; font-family: var(--font-mono); font-size: var(--fs-micro); letter-spacing: 0.14em; color: var(--hud-faint); }
 .rpg-kind.k-artifact { color: var(--hud-accent); }
 .rpg-kind.k-error { color: var(--hud-danger); }
 .rpg-text { font-size: 13px; line-height: 1.6; color: var(--hud-text); word-break: break-word; text-wrap: pretty; }
@@ -481,8 +481,8 @@ defineProps<{
 }
 .ty-dot:nth-child(2) { animation-delay: 0.15s; }
 .ty-dot:nth-child(3) { animation-delay: 0.3s; }
-.ty-label { margin-left: 5px; font-family: var(--font-mono); font-size: 10px; color: var(--hud-faint); }
-.rpg-note { font-family: var(--font-mono); font-size: 10px; color: var(--hud-dim); text-align: center; padding: 14px 0; }
+.ty-label { margin-left: 5px; font-family: var(--font-mono); font-size: var(--fs-micro); color: var(--hud-faint); }
+.rpg-note { font-family: var(--font-mono); font-size: var(--fs-micro); color: var(--hud-dim); text-align: center; padding: 14px 0; }
 /* ===== 滑块全自绘:细轨 + 白芯绿环 thumb(场景控制/变换缩放等) ===== */
 .obj-range, .scale-range {
   -webkit-appearance: none;

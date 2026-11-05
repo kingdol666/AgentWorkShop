@@ -81,7 +81,7 @@ const toggle = (): void => {
   min-width: 0;
   padding: 2px 4px 2px 0;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   text-align: left;
   cursor: pointer;
   background: transparent;
@@ -91,7 +91,7 @@ const toggle = (): void => {
 .st-toggle:hover { background: color-mix(in srgb, var(--ink) 4%, transparent); }
 .chev {
   flex: 0 0 auto;
-  font-size: 10px;
+  font-size: var(--fs-micro);
   line-height: 15px;
   color: var(--ink-faint);
   transition: transform 0.12s ease;
@@ -105,7 +105,7 @@ const toggle = (): void => {
 .st-count {
   flex: 0 0 auto;
   padding: 0 4px;
-  font-size: 10px;
+  font-size: var(--fs-micro);
   line-height: 13px;
   color: var(--ink-soft);
   background: color-mix(in srgb, var(--ink) 8%, transparent);
@@ -141,7 +141,7 @@ const toggle = (): void => {
   min-width: 0;
   margin: 0;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   line-height: 1.5;
   white-space: pre-wrap;
   word-break: break-word;

@@ -91,7 +91,7 @@ const dcw = useDeviceTwinDcwWriteContext()
   align-items: baseline;
   gap: 6px;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   color: var(--hud-dim);
 }
 .dcw-head em {
@@ -102,7 +102,7 @@ const dcw = useDeviceTwinDcwWriteContext()
 }
 .dcw-src {
   font-style: normal;
-  font-size: 10px;
+  font-size: var(--fs-micro);
   padding: 0 3px;
   margin-left: 4px;
   color: var(--hud-amber, #f6c453);
@@ -118,7 +118,7 @@ const dcw = useDeviceTwinDcwWriteContext()
 }
 .dcw-set i {
   font-style: normal;
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 500;
   margin-left: 2px;
   opacity: 0.75;
@@ -129,10 +129,10 @@ const dcw = useDeviceTwinDcwWriteContext()
   align-items: baseline;
   gap: 6px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--hud-dim);
 }
-.dcw-act em { font-style: normal; font-size: 10px; letter-spacing: 0.08em; color: var(--hud-faint); }
+.dcw-act em { font-style: normal; font-size: var(--fs-micro); letter-spacing: 0.08em; color: var(--hud-faint); }
 .dcw-act b {
   font-size: 11.5px;
   font-weight: 700;
@@ -140,11 +140,11 @@ const dcw = useDeviceTwinDcwWriteContext()
   color: var(--hud-accent, #35e0a0);
   white-space: nowrap;
 }
-.dcw-act b i { font-style: normal; font-size: 10px; font-weight: 500; margin-left: 2px; opacity: 0.75; }
-.dcw-act-at { font-style: normal; font-size: 10px; color: var(--hud-faint); }
+.dcw-act b i { font-style: normal; font-size: var(--fs-micro); font-weight: 500; margin-left: 2px; opacity: 0.75; }
+.dcw-act-at { font-style: normal; font-size: var(--fs-micro); color: var(--hud-faint); }
 .dcw-win {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-variant-numeric: tabular-nums;
   color: var(--hud-faint);
   letter-spacing: 0.04em;
@@ -167,12 +167,12 @@ const dcw = useDeviceTwinDcwWriteContext()
 }
 .dcw-err {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--hud-danger, #ff6b5c);
 }
 .ctrl-btn {
   padding: 3px 7px;
-  font-size: 10px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.06em;
   font-weight: 600;
   font-family: var(--font-mono);
@@ -191,7 +191,7 @@ const dcw = useDeviceTwinDcwWriteContext()
 .ctrl-input {
   width: 48px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   padding: 3px 6px;
   border: 1px solid var(--hud-line);
   border-radius: 2px;

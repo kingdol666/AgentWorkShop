@@ -13,6 +13,13 @@ const tabs = computed(() => [
   { key: 'runtime', icon: 'i-tabler-settings', label: t('settings.runtimeTab') },
   { key: 'system', icon: 'i-tabler-server-2', label: t('settings.systemTab') },
 ])
+
+/** 懒挂载:隐藏 pane 此前也在跑请求(Runtime 98 项配置/系统参数);首次激活才挂载,挂后保留状态 */
+type SettingsTab = 'appearance' | 'runtime' | 'system'
+const mountedPanes = reactive<Record<SettingsTab, boolean>>({ appearance: true, runtime: false, system: false })
+watch(activeTab, (k) => {
+  if (k === 'appearance' || k === 'runtime' || k === 'system') mountedPanes[k] = true
+})
 </script>
 
 <template>
@@ -33,10 +40,15 @@ const tabs = computed(() => [
     >
       <div class="settings-layout">
         <!-- 左侧 Tab 导航 -->
-        <div class="settings-nav">
+        <div
+          class="settings-nav"
+          role="tablist"
+        >
           <button
             v-for="tab in tabs"
             :key="tab.key"
+            role="tab"
+            :aria-selected="activeTab === tab.key ? 'true' : 'false'"
             class="nav-item"
             :class="{ active: activeTab === tab.key }"
             @click="activeTab = tab.key"
@@ -46,14 +58,23 @@ const tabs = computed(() => [
           </button>
         </div>
 
-        <!-- 右侧内容区 -->
+        <!-- 右侧内容区(懒挂载:首次激活才挂,挂后保留) -->
         <div class="settings-body">
           <!-- 外观:主题色 / 深浅 / 语言(全部实时生效并持久化) -->
-          <AppearancePane :active-tab="activeTab" />
+          <AppearancePane
+            v-if="mountedPanes.appearance"
+            :active-tab="activeTab"
+          />
           <!-- 运行配置:服务端持久化 + live 热重载/restart 重启生效 -->
-          <RuntimePane :active-tab="activeTab" />
+          <RuntimePane
+            v-if="mountedPanes.runtime"
+            :active-tab="activeTab"
+          />
           <!-- 系统:只读运行参数 -->
-          <SystemPane :active-tab="activeTab" />
+          <SystemPane
+            v-if="mountedPanes.system"
+            :active-tab="activeTab"
+          />
         </div>
       </div>
     </a-card>

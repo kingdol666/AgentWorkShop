@@ -255,15 +255,15 @@ onMounted(async () => {
 
 <style scoped>
 .mesp { display: flex; flex-direction: column; gap: 12px; }
-.card { background: var(--panel, #fff); border: 1px solid var(--border, rgba(127,127,127,.25)); border-radius: 10px; padding: 12px 14px; }
+.card { background: var(--surface-card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .sec { font-size: 13px; font-weight: 600; margin: 0; }
 .sub { font-size: 12px; font-weight: 600; margin: 0 0 4px; }
 .lbl { font-size: 12px; color: var(--ink-soft, #666); }
-.input { border: 1px solid var(--border, rgba(127,127,127,.35)); border-radius: 6px; padding: 4px 8px; background: transparent; color: var(--ink, #222); font-size: 12px; }
+.input { border: 1px solid var(--line-strong); border-radius: 6px; padding: 4px 8px; background: transparent; color: var(--ink, #222); font-size: 12px; }
 .numIn { width: 90px; }
 .points { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-.ptCard { border: 1px solid var(--border, rgba(127,127,127,.3)); border-radius: 8px; padding: 6px 10px; background: transparent; cursor: pointer; text-align: left; display: flex; flex-direction: column; gap: 2px; min-width: 180px; }
+.ptCard { border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; background: transparent; cursor: pointer; text-align: left; display: flex; flex-direction: column; gap: 2px; min-width: 180px; }
 .ptCard.on { border-color: #4a6b57; box-shadow: 0 0 0 1px #4a6b57; }
 .ptName { font-size: 12px; font-weight: 600; color: var(--ink, #222); }
 .ptMeta { font-size: 11px; color: var(--ink-faint, #888); }
@@ -273,7 +273,7 @@ onMounted(async () => {
 .empty.big { padding: 40px 0; text-align: center; }
 .hint { font-size: 12px; color: var(--ink-faint, #888); margin: 6px 0 0; }
 .err { font-size: 12px; color: #b3403a; white-space: pre-wrap; }
-.blk { margin-top: 12px; border-top: 1px dashed var(--border, rgba(127,127,127,.25)); padding-top: 8px; }
+.blk { margin-top: 12px; border-top: 1px dashed var(--line); padding-top: 8px; }
 .mono { font-size: 12px; font-variant-numeric: tabular-nums; margin: 2px 0; }
 .req { color: var(--ink-soft, #555); }
 </style>

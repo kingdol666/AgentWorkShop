@@ -224,14 +224,23 @@ async function loadVersions(ontologyId: string): Promise<void> {
   }
 }
 
-async function createDraft(): Promise<void> {
-  const ontologyId = window.prompt(t('ontology.prompt.ontologyId'))
-  if (!ontologyId) return
-  const lineId = window.prompt(t('ontology.prompt.lineId')) ?? ''
+/** 新建草稿:a-modal 表单(此前两连发 window.prompt,无校验无撤销) */
+const draftModalOpen = ref(false)
+const draftForm = reactive({ ontologyId: '', lineId: '' })
+
+function openDraftModal(): void {
+  draftForm.ontologyId = currentOntologyId()
+  draftForm.lineId = ''
+  draftModalOpen.value = true
+}
+
+async function submitDraft(): Promise<void> {
+  if (!draftForm.ontologyId.trim()) return
   busy.value = true
   try {
-    const res = await ontologyApi<{ draft: DraftSummary }>('', { method: 'POST', body: { ontologyId, lineId } })
+    const res = await ontologyApi<{ draft: DraftSummary }>('', { method: 'POST', body: { ontologyId: draftForm.ontologyId.trim(), lineId: draftForm.lineId.trim() } })
     message.success(t('ontology.draftCreated', { id: res.draft.id }))
+    draftModalOpen.value = false
     draftId.value = res.draft.id
     await loadOverview()
     await loadDraft()
@@ -339,20 +348,19 @@ async function transitionRule(ruleId: string, to: string): Promise<void> {
   }
 }
 
+/**
+ * 申请批准 —— 只创建审批单,到此为止。
+ * 此前申请成功后立刻 window.prompt 让**同一操作者**粘贴 id 自批,把服务端的
+ * "自审禁止 + 第二人裁决"(approval-decision.ts 头注)在 UX 上整个击穿;
+ * solo_operator 单管理员豁免由服务层自行处理,UI 不代办(2026-11-06 修复)。
+ */
 async function requestApproval(ruleId: string): Promise<void> {
   if (!draftId.value) return
   busy.value = true
   try {
     const res = await ontologyApi<{ approvalId: string }>(`/drafts/${encodeURIComponent(draftId.value)}/rules/${encodeURIComponent(ruleId)}/approval`, { method: 'POST', body: {} })
     message.success(t('ontology.approvalRequested', { id: res.approvalId }))
-    const approvalId = window.prompt(t('ontology.prompt.approvalId'), res.approvalId)
-    if (approvalId) {
-      await ontologyApi(`/drafts/${encodeURIComponent(draftId.value)}/rules/${encodeURIComponent(ruleId)}/approval-decision`, {
-        method: 'POST', body: { approvalId, approved: true },
-      })
-      message.success(t('ontology.approvalDecided'))
-      await loadDraft()
-    }
+    await loadDraft()
   }
   catch (e) {
     message.error(apiErrorMessage(e, t('ontology.approvalFail')))
@@ -444,12 +452,36 @@ function diffLabel(part: { added: string[], removed: string[], changed: string[]
         <a-button
           type="primary"
           :loading="busy"
-          @click="createDraft"
+          @click="openDraftModal"
         >
           {{ t('ontology.newDraft') }}
         </a-button>
       </div>
     </header>
+
+    <!-- 新建草稿表单(替代两连发 window.prompt:无校验、无撤销、移动端不可用) -->
+    <a-modal
+      v-model:open="draftModalOpen"
+      :title="t('ontology.newDraft')"
+      :ok-text="t('common.create')"
+      :cancel-text="t('common.cancel')"
+      :confirm-loading="busy"
+      :ok-button-props="{ disabled: !draftForm.ontologyId.trim() }"
+      @ok="submitDraft"
+    >
+      <div class="draft-form">
+        <label>{{ t('ontology.prompt.ontologyId') }}<a-input
+          v-model:value="draftForm.ontologyId"
+          size="small"
+          placeholder="onto-..."
+        /></label>
+        <label>{{ t('ontology.prompt.lineId') }}<a-input
+          v-model:value="draftForm.lineId"
+          size="small"
+          placeholder="ln-..."
+        /></label>
+      </div>
+    </a-modal>
 
     <section class="toolbar">
       <a-select
@@ -481,15 +513,23 @@ function diffLabel(part: { added: string[], removed: string[], changed: string[]
       >
         {{ t('ontology.compile') }}
       </a-button>
-      <a-button
-        v-if="isAdmin"
-        :disabled="!draftId || errors.length > 0 || bindingFailures.length > 0"
-        type="primary"
-        :loading="busy"
-        @click="runPublish"
+      <!-- 发布 = 冻结版本进入治理态,不可逆:二次确认(交互宪法 §2-1) -->
+      <a-popconfirm
+        :title="t('ontology.publishConfirm')"
+        :ok-text="t('ontology.publish')"
+        :cancel-text="t('common.cancel')"
+        placement="bottomRight"
+        @confirm="runPublish"
       >
-        {{ t('ontology.publish') }}
-      </a-button>
+        <a-button
+          v-if="isAdmin"
+          :disabled="!draftId || errors.length > 0 || bindingFailures.length > 0"
+          type="primary"
+          :loading="busy"
+        >
+          {{ t('ontology.publish') }}
+        </a-button>
+      </a-popconfirm>
       <span class="hint">{{ t('ontology.publishHint') }}</span>
     </section>
 
@@ -893,16 +933,25 @@ function diffLabel(part: { added: string[], removed: string[], changed: string[]
           </template>
           <template v-else-if="column.key === 'createdAt'">
             <span>{{ record.createdAt }}</span>
-            <a-button
+            <!-- retire 版本退役不可逆:二次确认(交互宪法 §2-1) -->
+            <a-popconfirm
               v-if="isAdmin && record.status === 'published'"
-              size="small"
-              danger
-              class="retire"
-              :loading="busy"
-              @click="retire(record.version)"
+              :title="t('ontology.retireConfirm', { version: record.version })"
+              :ok-text="t('ontology.action.retire')"
+              :cancel-text="t('common.cancel')"
+              :ok-button-props="{ danger: true }"
+              placement="left"
+              @confirm="retire(record.version)"
             >
-              {{ t('ontology.action.retire') }}
-            </a-button>
+              <a-button
+                size="small"
+                danger
+                class="retire"
+                :loading="busy"
+              >
+                {{ t('ontology.action.retire') }}
+              </a-button>
+            </a-popconfirm>
           </template>
         </template>
       </a-table>
@@ -1047,7 +1096,7 @@ function diffLabel(part: { added: string[], removed: string[], changed: string[]
 .failures { border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
 .artifacts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .artifacts h3 { margin: 0 0 6px; font-size: 12px; color: var(--ink-faint); }
-.artifacts pre { margin: 0; background: var(--surface-2, rgba(255,255,255,.03)); border: 1px solid var(--line); border-radius: 8px; padding: 10px; font-size: 11px; max-height: 260px; overflow: auto; }
+.artifacts pre { margin: 0; background: var(--paper-deep); border: 1px solid var(--line); border-radius: 8px; padding: 10px; font-size: 11px; max-height: 260px; overflow: auto; }
 .compare { display: flex; gap: 8px; align-items: center; }
 .diff { border: 1px solid var(--line); border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 4px; }
 .chip { margin-right: 6px; }
@@ -1059,4 +1108,7 @@ function diffLabel(part: { added: string[], removed: string[], changed: string[]
 .node-detail dd { margin: 0; font-size: 13px; }
 .panel h4 { margin: 16px 0 8px; font-size: 13px; color: var(--ink-soft); }
 .plain.edges li { border-color: var(--line); background: transparent; }
+/* 新建草稿表单(a-modal 内) */
+.draft-form { display: grid; gap: 10px; }
+.draft-form label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--ink-soft); }
 </style>

@@ -32,16 +32,37 @@ const emit = defineEmits<{ decide: [id: string, approved: boolean, comment: stri
 
 const { t } = useI18n()
 
-const OP_LABEL: Record<string, string> = {
-  update: '参数写入',
-  dispatch: '下发',
-  trial: '试验下发',
-  rollback: '回退',
+const opOf = (a: { payload?: GatePayload }): string => {
+  const op = a.payload?.op
+  if (!op) return t('dcwDetail.recipeGateOpFallback')
+  const key = `dcwDetail.recipeGateOp${op.charAt(0).toUpperCase()}${op.slice(1)}`
+  const label = t(key)
+  // 未登记的 op 直接展示原值(t() 对缺失 key 会回显 key 名,这里拦住)
+  return label === key ? op : label
 }
-
-const opOf = (a: { payload?: GatePayload }): string => a.payload?.op ? (OP_LABEL[a.payload.op] ?? a.payload.op) : '配方操作'
 const reasonOf = (a: { payload?: GatePayload, detail: string }): string => a.payload?.reason ?? ''
 const paramsOf = (a: { payload?: GatePayload }): GateParam[] => Array.isArray(a.payload?.params) ? a.payload!.params! : []
+
+/** 审批有效期:1s 心跳的剩余时长;过期禁用双侧按钮,不再"提交后才暴露"(2026-11-06) */
+const now = ref(Date.now())
+let expireTick: ReturnType<typeof setInterval> | null = null
+onMounted(() => {
+  expireTick = setInterval(() => {
+    now.value = Date.now()
+  }, 1000)
+})
+onBeforeUnmount(() => {
+  if (expireTick) clearInterval(expireTick)
+})
+const remainMsOf = (a: { expiresAt: string }): number => Date.parse(a.expiresAt) - now.value
+const isExpired = (a: { expiresAt: string }): boolean => remainMsOf(a) <= 0
+const remainLabelOf = (a: { expiresAt: string }): string => {
+  const ms = remainMsOf(a)
+  if (ms <= 0) return t('dcwDetail.recipeGateExpired')
+  const min = Math.floor(ms / 60000)
+  if (min >= 1) return t('dcwDetail.recipeGateRemainMin', { n: min })
+  return t('dcwDetail.recipeGateRemainSec', { n: Math.max(1, Math.floor(ms / 1000)) })
+}
 
 /** 意见输入(就地 v-model:父组件 comments 记录经 provide 传入不可写,这里本地暂存) */
 const localComments = ref<Record<string, string>>({})
@@ -74,28 +95,34 @@ const title = computed(() => t('dcwDetail.recipeGateTitle'))
         <strong>{{ a.payload?.recipeName || a.nodeId }}</strong>
         <span
           v-if="a.payload?.emergency"
-          class="op-pill"
-          style="background:#e5484d;color:#fff;"
-          title="本次审批附带应急豁免频控(仅跳过下发间隔,审批与安全限界照常)"
-        >【应急】</span>
+          class="op-pill emergency"
+          :title="$t('dcwDetail.recipeGateEmergencyTip')"
+        >{{ $t('dcwDetail.recipeGateEmergency') }}</span>
         <small
           v-if="a.payload?.runId"
           class="dim"
-        >批次 {{ a.payload.runId.slice(0, 8) }}</small>
-        <small class="dim">⏱ {{ a.expiresAt.slice(11, 19) }} 前有效</small>
+        >{{ $t('dcwDetail.recipeGateRun') }} {{ a.payload.runId.slice(0, 8) }}</small>
+        <small
+          class="dim expiry"
+          :class="{ expired: isExpired(a) }"
+        >⏱ {{ remainLabelOf(a) }}</small>
       </div>
       <div
         v-if="reasonOf(a)"
         class="gate-reason"
       >
-        <span class="dim">Agent 理由:</span>{{ reasonOf(a) }}
+        <span class="dim">{{ $t('dcwDetail.recipeGateAgentReason') }}</span>{{ reasonOf(a) }}
       </div>
       <table
         v-if="paramsOf(a).length"
         class="gate-params"
       >
         <thead>
-          <tr><th>参数</th><th>原值</th><th>新值</th></tr>
+          <tr>
+            <th>{{ $t('dcwDetail.recipeGateParam') }}</th>
+            <th>{{ $t('dcwDetail.recipeGateFrom') }}</th>
+            <th>{{ $t('dcwDetail.recipeGateTo') }}</th>
+          </tr>
         </thead>
         <tbody>
           <tr
@@ -116,7 +143,7 @@ const title = computed(() => t('dcwDetail.recipeGateTitle'))
         v-if="!paramsOf(a).length"
         class="dim"
       >
-        <summary>原始摘要</summary>
+        <summary>{{ $t('dcwDetail.recipeGateRawSummary') }}</summary>
         <p class="mono">
           {{ a.detail }}
         </p>
@@ -130,14 +157,14 @@ const title = computed(() => t('dcwDetail.recipeGateTitle'))
         >
         <button
           class="mini-btn good"
-          :disabled="decidingId === a.id"
+          :disabled="decidingId === a.id || isExpired(a)"
           @click="emit('decide', a.id, true, commentOf(a.id))"
         >
           {{ $t('dcwDetail.recipeGateApprove') }}
         </button>
         <button
           class="mini-btn danger"
-          :disabled="decidingId === a.id"
+          :disabled="decidingId === a.id || isExpired(a)"
           @click="emit('decide', a.id, false, commentOf(a.id))"
         >
           {{ $t('dcwDetail.recipeGateReject') }}
@@ -148,12 +175,16 @@ const title = computed(() => t('dcwDetail.recipeGateTitle'))
 </template>
 
 <style scoped>
-.gate-card { border: 1px solid var(--line-faint, rgba(255,255,255,.12)); border-radius: 8px; padding: 10px 12px; margin: 8px 0; display: grid; gap: 8px; }
+.gate-card { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: 8px 0; display: grid; gap: 8px; }
 .gate-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .op-pill { border: 1px solid var(--accent); color: var(--accent); border-radius: 999px; padding: 0 8px; font-size: 12px; }
+/* 应急徽标:语义 = 告警,走 tone-danger 而非场外 hex(色彩锁) */
+.op-pill.emergency { border-color: var(--tone-danger-dot); color: var(--tone-danger-dot); background: var(--tone-danger-bg); }
+/* 审批有效期:<60s 转警示色,过期置灰并禁用双侧按钮 */
+.expiry.expired { color: var(--ink-fainter); text-decoration: line-through; }
 .gate-reason { font-size: 13px; line-height: 1.5; }
 .gate-params { width: 100%; font-size: 12px; border-collapse: collapse; }
-.gate-params th, .gate-params td { text-align: left; padding: 3px 8px; border-bottom: 1px dashed var(--line-faint, rgba(255,255,255,.08)); }
+.gate-params th, .gate-params td { text-align: left; padding: 3px 8px; border-bottom: 1px dashed var(--line); }
 .gate-actions { display: flex; gap: 8px; }
 .gate-actions .inp { flex: 1; }
 </style>

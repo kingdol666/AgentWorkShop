@@ -66,6 +66,8 @@ gui-test-screenshots/
 
 # 测试临时产物(workspace / sqlite 等)
 .tmp-*
+# 会话级 scratch(静态设计稿/原型等,tmp 目录不进版本库)
+tmp/
 
 # SDD 工作流草稿(task briefs/reports/ledger/diffs,会话级 scratch)
 .superpowers/

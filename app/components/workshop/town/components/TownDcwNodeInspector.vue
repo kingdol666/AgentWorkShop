@@ -103,7 +103,7 @@ defineProps<{
 .dcw-err {
   display: block;
   padding: 4px 8px;
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--hud-danger);
   background: rgba(255, 107, 107, 0.08);
   border: 1px solid rgba(255, 107, 107, 0.28);
@@ -131,7 +131,7 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
   flex: 1;
   min-width: 0;
   height: 28px;
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   color: var(--hud-dim);
   background: var(--hud-input);
   border: 1px solid var(--hud-line);
@@ -145,7 +145,7 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
   flex: none;
   height: 28px;
   padding: 0 12px;
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: #04120c;
   background: var(--hud-accent-dim);

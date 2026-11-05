@@ -198,9 +198,9 @@ const { t: tt } = useI18n()
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: var(--ok, #4a6b57);
+  background: var(--tone-success-dot);
 }
-.h-cell.off .h-dot { background: var(--danger, #c25a4e); }
+.h-cell.off .h-dot { background: var(--tone-danger-dot); }
 .h-cell.off { opacity: 0.75; }
 .h-miss { color: var(--tone-danger-dot); font-family: var(--font-body); font-size: 11px; }
 .tpl-name {
