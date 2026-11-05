@@ -1,0 +1,43 @@
+{
+  "scenario": "game",
+  "startedAt": "2026-11-05T14:03:37.020Z",
+  "error": "Error: POST /api/workshop/projects/58576fb2-4642-4b65-b636-54c9eb8fa41a/kernel/tick -> 429: {\"error\":true,\"url\":\"http://127.0.0.1:3979/api/workshop/projects/58576fb2-4642-4b65-b636-54c9eb8fa41a/kernel/tick\",\"statusCode\":429,\"statusMessage\":\"Too many requests: slow down\",\"message\":\"Too many requests: slow down\"}",
+  "gates": [
+    {
+      "id": "B1",
+      "name": "项目创建（omp leader）",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "B2",
+      "name": "绑定 4 个成员 Channel（策划/美术/开发/评审，均 omp）",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "PLAN",
+      "name": "真实 leader 提案计划 → owner 批准（v1）",
+      "pass": true,
+      "detail": "approval=47e588e8-c1b8-4537-b7a6-7f1fd01e86eb"
+    },
+    {
+      "id": "B3",
+      "name": "计划物化（3 工作项 / 3 交付物）",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "B4",
+      "name": "双图依赖：art←design，game←design+art；w2/w3 contract inputs 已解析",
+      "pass": true,
+      "detail": "{\"w2deps\":[\"546d4705-0e7c-48a5-85b6-b6ccf27b3688\"],\"w3deps\":[\"546d4705-0e7c-48a5-85b6-b6ccf27b3688\",\"c2b96967-354e-4188-bc58-d888776e47d7\"],\"contract\":{\"inputs\":[{\"workItemId\":\"546d4705-0e7c-48a5-85b6-b6ccf27b3688\",\"required\":true,\"maxBytes\":16384,\"relation\":\"handoff\"},{\"workItemId\":\"c2b96967-354e-4188-bc58-d888776e47d7\",\"required\":true,\"maxBytes\":16384,\"relation\":\"handoff\"}]}}"
+    },
+    {
+      "id": "B5",
+      "name": "Leader 提案 route → owner 应用（leader 仅路由，执行器派发）",
+      "pass": false,
+      "detail": "timeout: no route proposal"
+    }
+  ]
+}
