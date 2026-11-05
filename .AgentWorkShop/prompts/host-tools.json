@@ -4464,7 +4464,7 @@
       "required": ["work_item_id", "action"]
     },
     "noRefs": true,
-    "riskClass": "read"
+    "riskClass": "write"
   },
   {
     "name": "project_submit_technical_review",
@@ -4481,7 +4481,7 @@
       "required": ["result_id", "verdict"]
     },
     "noRefs": true,
-    "riskClass": "read"
+    "riskClass": "write"
   },
   {
     "name": "project_send_message",
@@ -4492,7 +4492,7 @@
       "properties": {
         "to_channel_id": { "type": "string", "description": "目标成员 Channel id（leader/Channel 间消息必填）" },
         "to_leader": { "type": "boolean", "description": "Channel 发往项目办公室 leader 时置 true" },
-        "body": { "type": "string", "description": "消息正文（≤8KB）" },
+        "body": { "type": "string", "description": "消息正文（≤8000 字符）" },
         "kind": { "type": "string", "enum": ["note", "escalate", "reply", "request_review"], "description": "消息类型" },
         "require_reply": { "type": "boolean", "description": "是否要求对方回复" },
         "work_item_id": { "type": "string", "description": "关联工作项 id（可选）" },
@@ -4502,7 +4502,7 @@
       "required": ["body"]
     },
     "noRefs": true,
-    "riskClass": "read"
+    "riskClass": "write"
   },
   {
     "name": "project_escalate",
@@ -4511,7 +4511,7 @@
     "parameters": {
       "type": "object",
       "properties": {
-        "body": { "type": "string", "description": "升级正文（≤8KB）" },
+        "body": { "type": "string", "description": "升级正文（≤8000 字符）" },
         "work_item_id": { "type": "string", "description": "关联工作项 id（可选）" },
         "result_id": { "type": "string", "description": "关联成果 id（可选）" },
         "correlation_id": { "type": "string", "description": "幂等相关键（可选）" },
@@ -4520,7 +4520,7 @@
       "required": ["body"]
     },
     "noRefs": true,
-    "riskClass": "read"
+    "riskClass": "write"
   },
   {
     "name": "project_read_messages",

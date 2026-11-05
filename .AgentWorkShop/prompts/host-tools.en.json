@@ -328,7 +328,7 @@
       "properties": {
         "to_channel_id": { "description": "Target member Channel id" },
         "to_leader": { "description": "Set true when a Channel messages the project office leader" },
-        "body": { "description": "Message body (max 8KB)" },
+        "body": { "description": "Message body (max 8000 characters)" },
         "kind": { "description": "Message kind: note/escalate/reply/request_review" },
         "require_reply": { "description": "Whether a reply is required" },
         "work_item_id": { "description": "Optional related work item id" },
@@ -341,7 +341,7 @@
     "description": "(Member Channel lead only) Escalate a blocker/risk/decision to the Project Leader as an escalate message delivered to the project office and recorded in project_messages. It does not change work-item state; the leader may respond with a route/plan proposal or escalate to the owner.",
     "parameters": {
       "properties": {
-        "body": { "description": "Escalation body (max 8KB)" },
+        "body": { "description": "Escalation body (max 8000 characters)" },
         "work_item_id": { "description": "Optional related work item id" },
         "result_id": { "description": "Optional related result id" },
         "correlation_id": { "description": "Optional idempotency correlation id" },

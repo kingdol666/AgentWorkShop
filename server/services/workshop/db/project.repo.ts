@@ -138,6 +138,7 @@ export interface ProjectResultRow {
   changeSummary: string
   openQuestions: string
   status: string
+  submittedAt: string | null
   sourceTaskId: string
   supersedesId: string | null
   authorAgentId: string | null
@@ -219,7 +220,7 @@ const PROJECT_CHANNEL_COLS = 'project_id AS projectId, channel_id AS channelId, 
 const DELIVERABLE_COLS = 'id, project_id AS projectId, name, description, owner_channel_id AS ownerChannelId, required, acceptance_criteria_json AS acceptanceCriteriaJson, due_at AS dueAt, depends_on_json AS dependsOnJson, status, waiver_reason AS waiverReason, created_by AS createdBy, created_at AS createdAt, updated_at AS updatedAt'
 const WORK_ITEM_COLS = 'id, project_id AS projectId, deliverable_id AS deliverableId, channel_id AS channelId, title, brief, state, state_reason AS stateReason, priority, weight, depends_on_json AS dependsOnJson, acceptance_json AS acceptanceJson, result_key AS resultKey, current_attempt_id AS currentAttemptId, plan_version AS planVersion, contract_json AS contractJson, exec_budget_minutes AS execBudgetMinutes, trace_id AS traceId, dedupe_key AS dedupeKey, deadline_at AS deadlineAt, rework_count AS reworkCount, accepted_result_id AS acceptedResultId, last_result_status AS lastResultStatus, attempt_count AS attemptCount, max_attempts AS maxAttempts, deferred_until AS deferredUntil, created_by AS createdBy, created_at AS createdAt, updated_at AS updatedAt, closed_at AS closedAt, close_reason AS closeReason'
 const ATTEMPT_COLS = 'id, project_id AS projectId, work_item_id AS workItemId, attempt_no AS attemptNo, channel_id AS channelId, channel_task_id AS channelTaskId, source_key AS sourceKey, state, blocked_reason AS blockedReason, approval_id AS approvalId, args_digest AS argsDigest, failure_class AS failureClass, retryable, next_retry_at AS nextRetryAt, trace_id AS traceId, created_at AS createdAt, closed_at AS closedAt'
-const RESULT_COLS = 'id, project_id AS projectId, deliverable_id AS deliverableId, channel_id AS channelId, line_id AS lineId, work_item_id AS workItemId, attempt_no AS attemptNo, result_key AS resultKey, version, title, summary, method, data_window_json AS dataWindowJson, sample_count AS sampleCount, confidence, validity_scope AS validityScope, payload_json AS payloadJson, evidence_json AS evidenceJson, change_summary AS changeSummary, open_questions AS openQuestions, status, source_task_id AS sourceTaskId, supersedes_id AS supersedesId, author_agent_id AS authorAgentId, author_user_id AS authorUserId, reviewed_by AS reviewedBy, reviewed_at AS reviewedAt, approved_by AS approvedBy, approved_at AS approvedAt, reject_reason AS rejectReason, content_sha256 AS contentSha256, evidence_verified_at AS evidenceVerifiedAt, criteria_check_json AS criteriaCheckJson, technical_verdict_json AS technicalVerdictJson, rework_required AS reworkRequired, trace_id AS traceId, created_at AS createdAt'
+const RESULT_COLS = 'id, project_id AS projectId, deliverable_id AS deliverableId, channel_id AS channelId, line_id AS lineId, work_item_id AS workItemId, attempt_no AS attemptNo, result_key AS resultKey, version, title, summary, method, data_window_json AS dataWindowJson, sample_count AS sampleCount, confidence, validity_scope AS validityScope, payload_json AS payloadJson, evidence_json AS evidenceJson, change_summary AS changeSummary, open_questions AS openQuestions, status, submitted_at AS submittedAt, source_task_id AS sourceTaskId, supersedes_id AS supersedesId, author_agent_id AS authorAgentId, author_user_id AS authorUserId, reviewed_by AS reviewedBy, reviewed_at AS reviewedAt, approved_by AS approvedBy, approved_at AS approvedAt, reject_reason AS rejectReason, content_sha256 AS contentSha256, evidence_verified_at AS evidenceVerifiedAt, criteria_check_json AS criteriaCheckJson, technical_verdict_json AS technicalVerdictJson, rework_required AS reworkRequired, trace_id AS traceId, created_at AS createdAt'
 const DECISION_COLS = 'id, project_id AS projectId, seq, source, decision_type AS decisionType, actor_agent_id AS actorAgentId, actor_user_id AS actorUserId, actor_kind AS actorKind, args_json AS argsJson, args_sha256 AS argsSha256, snapshot_sha256 AS snapshotSha256, state, outcome, reason, approval_id AS approvalId, trace_id AS traceId, created_at AS createdAt'
 const EVENT_COLS = 'id, project_id AS projectId, seq, type, event_key AS eventKey, channel_id AS channelId, work_item_id AS workItemId, deliverable_id AS deliverableId, agent_id AS agentId, payload_json AS payloadJson, trace_id AS traceId, consumed_at AS consumedAt, created_at AS createdAt'
 const APPROVAL_COLS = 'id, project_id AS projectId, kind, subject_type AS subjectType, subject_id AS subjectId, subject_version AS subjectVersion, status, requested_by_agent_id AS requestedByAgentId, requested_by_user_id AS requestedByUserId, payload_json AS payloadJson, args_digest AS argsDigest, reason, decision_reason AS decisionReason, decided_by_user_id AS decidedByUserId, consumed_at AS consumedAt, trace_id AS traceId, expires_at AS expiresAt, created_at AS createdAt, decided_at AS decidedAt'
@@ -611,8 +612,8 @@ export function createProjectAttemptRepo(db: DatabaseSync) {
 export type ProjectResultRepo = ReturnType<typeof createProjectResultRepo>
 export function createProjectResultRepo(db: DatabaseSync) {
   const insert = db.prepare(
-    `INSERT INTO project_results (id, project_id, deliverable_id, channel_id, line_id, work_item_id, attempt_no, result_key, version, title, summary, method, data_window_json, sample_count, confidence, validity_scope, payload_json, evidence_json, change_summary, open_questions, status, source_task_id, supersedes_id, author_agent_id, author_user_id, reviewed_by, reviewed_at, approved_by, approved_at, reject_reason, content_sha256, evidence_verified_at, criteria_check_json, technical_verdict_json, rework_required, trace_id, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO project_results (id, project_id, deliverable_id, channel_id, line_id, work_item_id, attempt_no, result_key, version, title, summary, method, data_window_json, sample_count, confidence, validity_scope, payload_json, evidence_json, change_summary, open_questions, status, submitted_at, source_task_id, supersedes_id, author_agent_id, author_user_id, reviewed_by, reviewed_at, approved_by, approved_at, reject_reason, content_sha256, evidence_verified_at, criteria_check_json, technical_verdict_json, rework_required, trace_id, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   const selectApprovedSlot = db.prepare(`SELECT ${RESULT_COLS} FROM project_results WHERE project_id = ? AND deliverable_id = ? AND result_key = ? AND status = 'approved' AND id <> ? LIMIT 1`)
   const verifyEvidenceStmt = db.prepare(`UPDATE project_results SET content_sha256 = ?, evidence_verified_at = ?, criteria_check_json = ? WHERE id = ?`)
@@ -625,7 +626,7 @@ export function createProjectResultRepo(db: DatabaseSync) {
   const selectNextVersion = db.prepare(`SELECT COALESCE(MAX(version), 0) + 1 AS next FROM project_results WHERE project_id = ? AND deliverable_id = ? AND channel_id = ? AND result_key = ?`)
   const selectNextSlotVersion = db.prepare(`SELECT COALESCE(MAX(version), 0) + 1 AS next FROM project_results WHERE project_id = ? AND deliverable_id = ? AND result_key = ?`)
   const updateStatus = db.prepare(`UPDATE project_results SET status = ?, reviewed_by = ?, reviewed_at = ?, approved_by = ?, approved_at = ?, reject_reason = ? WHERE id = ?`)
-  const submitStmt = db.prepare(`UPDATE project_results SET title = ?, summary = ?, method = ?, data_window_json = ?, sample_count = ?, confidence = ?, validity_scope = ?, payload_json = ?, evidence_json = ?, change_summary = ?, open_questions = ?, status = ?, author_user_id = COALESCE(author_user_id, ?) WHERE id = ?`)
+  const submitStmt = db.prepare(`UPDATE project_results SET title = ?, summary = ?, method = ?, data_window_json = ?, sample_count = ?, confidence = ?, validity_scope = ?, payload_json = ?, evidence_json = ?, change_summary = ?, open_questions = ?, status = ?, submitted_at = ?, author_user_id = COALESCE(author_user_id, ?) WHERE id = ?`)
   return {
     nextVersion(projectId: string, deliverableId: string, channelId: string, resultKey: string): number {
       return Number((selectNextVersion.get(projectId, deliverableId, channelId, resultKey) as { next?: number } | undefined)?.next ?? 1)
@@ -683,6 +684,7 @@ export function createProjectResultRepo(db: DatabaseSync) {
         changeSummary: input.changeSummary ?? '',
         openQuestions: input.openQuestions ?? '',
         status: input.status ?? 'draft',
+        submittedAt: null,
         sourceTaskId: input.sourceTaskId,
         supersedesId: null,
         authorAgentId: input.authorAgentId ?? null,
@@ -703,7 +705,7 @@ export function createProjectResultRepo(db: DatabaseSync) {
       insert.run(row.id, row.projectId, row.deliverableId, row.channelId, row.lineId, row.workItemId,
         row.attemptNo, row.resultKey, row.version, row.title, row.summary, row.method, row.dataWindowJson,
         row.sampleCount, row.confidence, row.validityScope, row.payloadJson, row.evidenceJson,
-        row.changeSummary, row.openQuestions, row.status, row.sourceTaskId, row.supersedesId,
+        row.changeSummary, row.openQuestions, row.status, row.submittedAt, row.sourceTaskId, row.supersedesId,
         row.authorAgentId, row.authorUserId, row.reviewedBy, row.reviewedAt, row.approvedBy,
         row.approvedAt, row.rejectReason, row.contentSha256, row.evidenceVerifiedAt,
         row.criteriaCheckJson, row.technicalVerdictJson, row.reworkRequired, row.traceId, row.createdAt)
@@ -735,7 +737,7 @@ export function createProjectResultRepo(db: DatabaseSync) {
     }): void {
       submitStmt.run(input.title, input.summary, input.method, input.dataWindowJson, input.sampleCount,
         input.confidence, input.validityScope, input.payloadJson, input.evidenceJson,
-        input.changeSummary, input.openQuestions, input.status, input.authorUserId ?? null, id)
+        input.changeSummary, input.openQuestions, input.status, now(), input.authorUserId ?? null, id)
     },
     setStatus(id: string, status: string, meta: { reviewedBy?: string | null, reviewedAt?: string | null, approvedBy?: string | null, approvedAt?: string | null, rejectReason?: string | null } = {}): void {
       updateStatus.run(status, meta.reviewedBy ?? null, meta.reviewedAt ?? null, meta.approvedBy ?? null,

@@ -22,6 +22,8 @@ const schema = z.object({
   routingPolicy: z.enum(['legacy', 'technical']).optional(),
   // Router v3：Leader route gate（none=提案待 owner 应用；leader=mode=auto 时即时应用）。
   routeGate: z.enum(['none', 'leader']).optional(),
+  // Router v3：指定独立评审 Channel（L1 请求优先投递）。
+  reviewerChannelId: z.string().optional(),
 })
 
 export default defineApiHandler(async (event) => {

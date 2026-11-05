@@ -228,7 +228,11 @@ test('结构化验收标准：text.contains 未满足 → ACCEPTANCE_CRITERIA_FA
   f.svc.reconcile(p.id, owner)
   const r2 = f.svc.listResults(p.id, owner).find(r => r.workItemId === w2.id)!
   f.svc.submitResult(p.id, r2.id, owner, { evidence: [{ artifactId: `a-${w2.id}` }] })
-  f.svc.reviewResult(p.id, r2.id, owner, 'reviewed')
-  assert.throws(() => f.svc.requestAcceptance(p.id, r2.id, owner), /ACCEPTANCE_CRITERIA_FAILED|验收标准未满足/)
+  // L1 复核本身必须先过结构化 criteria；不再允许先 reviewed 再在 L2 才拒绝。
+  assert.throws(
+    () => f.svc.reviewResult(p.id, r2.id, owner, 'reviewed'),
+    /ACCEPTANCE_CRITERIA_FAILED|复核不能通过|验收标准未满足/,
+  )
+  assert.equal(f.svc.listResults(p.id, owner).find(r => r.id === r2.id)!.status, 'submitted')
   assert.ok(r1.id)
 })

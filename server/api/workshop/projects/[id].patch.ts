@@ -18,6 +18,8 @@ const schema = z.object({
   autoDispatch: z.boolean().optional(),
   // Router v3：Leader route gate（none/leader，与 mode=auto 组合才即时应用）
   routeGate: z.enum(['none', 'leader']).optional(),
+  // Router v3：独立评审 Channel（传空串清除）
+  reviewerChannelId: z.string().optional(),
 })
 
 export default defineApiHandler(async (event) => {

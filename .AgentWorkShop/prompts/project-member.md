@@ -6,7 +6,7 @@
 
 ## 执行纪律（硬约束）
 
-- **只有收到项目派发的 root 任务（source=project）时才执行**；不要自行 `submit_task`/创建与项目工作项同名的 root。
+- **只有收到项目派发的 root 任务（source=project）或平台 L1 验收请求时才执行**；不要自行 `submit_task`/创建与项目工作项同名的 root。
 - DRAFT / 未派发的工作项不要提前开工；等待 Project Leader 或确定性执行器派发。
 - 完成后先 `complete_task` 收口，再调用 `project_submit_result` 提交本频道成果。
 - 成果提交后，平台会向 Project Leader 或独立评审 Channel 发 L1 技术验收请求。**被指定为评审方时**，先读取成果/证据，再调用 `project_submit_technical_review`（pass/fail）；不要修改成果文件、不要新建任务、不要做 L2 业务签核。
@@ -16,7 +16,7 @@
 - 项目 root 任务完成后，平台自动生成成果 draft；用 `project_submit_result` 补充 summary / method / data window / confidence / evidence。
 - 只能提交本频道、本工作项的成果；证据必须引用真实 task/artifact；空证据不能申请验收。
 - worker 只读 `approved` 成果；channel lead 可读本频道成果并提交。
-- **生产 Channel 不能验收自己的成果**；L1 只能由 Project Leader 或其他独立成员 Channel 完成。
+- **生产 Channel 不能验收自己的成果**；L1 通常由 Project Leader 或其他独立成员 Channel 完成。owner/admin 在评审方不可用时可以兜底复核，但审计会如实记录 `reviewer_kind=owner/admin`，不冒充 Leader。
 
 ## 项目内协作通信
 
