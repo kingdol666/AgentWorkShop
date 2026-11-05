@@ -1,0 +1,13 @@
+{
+  "apiChannels": 2,
+  "domLanes": 2,
+  "apiWorkItems": 1,
+  "domCards": 1,
+  "summary": "0 就绪\n0 执行中\n0 等待\n0 阻塞/返工\n100% 工作项完成\n100% 交付物签核",
+  "laneTexts": [
+    "L1验收生产频道\n启用\n0 执行 · 0 就绪\nL1验收页面实现\n已验收\nattempt 1/3 · 成果 approved",
+    "L1验收评审频道\n启用\n0 执行 · 0 就绪\n\n无工作项"
+  ],
+  "drawer": "执行链\na1c25281…\n关闭\nL1验收页面实现\n已验收\nCOMPLETED · attempt 1/3\n尝试链\nAttempt #1\nCLOSED\nb2963517\n2026-11-06T03:06:17.539+08:00\nroot COMPLETED · 100% · assignee e4d4f83b\ninput\n884B · sha 49dba9e70001…\ndeliverable\n2437B · sha ccc2b0bbd5ef…\n成果与验收链\nv1 L1验收页面实现 成果\napproved\n\nL1 验收页面（owner 代生产 Channel 提交，证据来自真实 task artifact）\n\nevidence 1 · sha 6a426c5d2f77… · verified 2026-11-06T03:08:37.881+08:00\nL1 pass · channel_lead · 7ea4bf52-3148-4918-b976-c125071c5fb6 · L1 technical acceptance PASS. Independently read the submitted artifact l1-acceptance.html (2437 bytes, sha256 ccc2b0bbd5ef76af6466449ab2bc9cc5cd3394665abd6bc28cc1981954c085e8). Checks: (1) artifact.present — single-file HTML exists in production channel workspace; (2) text.contains:<!DOCTYPE — line 1 is exactly '<!DOCTYPE html>'; (3) min_bytes:200 — 2437 >= 200. Deliverable description also satisfied: <title>L1 Acceptance</title> at line 6, single file with no external assets or build step. Scope limited to L1 technical acceptance; L2 business sign-off remains with owner/approver.\n事件\nwork.dispatch_auto\n2026-11-06T03:06:17.555+08:00\nproposal.applied\n2026-11-06T03:06:17.555+08:00\nwork.completed\n2026-11-06T03:07:07.238+08:00",
+  "pageErrors": []
+}

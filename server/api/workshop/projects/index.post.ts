@@ -20,6 +20,8 @@ const schema = z.object({
   autoDispatch: z.boolean().optional(),
   // Router v3：新项目默认 technical（上游成果技术验收后才放行下游）；显式 legacy 可回退旧口径。
   routingPolicy: z.enum(['legacy', 'technical']).optional(),
+  // Router v3：Leader route gate（none=提案待 owner 应用；leader=mode=auto 时即时应用）。
+  routeGate: z.enum(['none', 'leader']).optional(),
 })
 
 export default defineApiHandler(async (event) => {

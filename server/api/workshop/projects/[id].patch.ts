@@ -16,6 +16,8 @@ const schema = z.object({
   mode: z.enum(['observe', 'supervised', 'auto']).optional(),
   // PR20 Route 派发闭环：项目级自动派发开关（owner-only，切换落 project.updated 审计）
   autoDispatch: z.boolean().optional(),
+  // Router v3：Leader route gate（none/leader，与 mode=auto 组合才即时应用）
+  routeGate: z.enum(['none', 'leader']).optional(),
 })
 
 export default defineApiHandler(async (event) => {

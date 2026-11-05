@@ -4447,5 +4447,92 @@
     },
     "noRefs": true,
     "riskClass": "read"
+  },
+  {
+    "name": "project_propose_route",
+    "label": "Project Propose Route",
+    "description": "(Project leader only) 在已批准计划内对工作项提出路由决策：dispatch/defer/retry/rework/escalate。只写 route.proposed 提案；supervised/observe 模式需 owner 在项目页应用，mode=auto 且 config.routeGate=leader 时才由确定性执行器立即应用。不能新建工作项、不能改验收标准、不能直接派发。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "work_item_id": { "type": "string", "description": "工作项 id（必须属于本项目）" },
+        "action": { "type": "string", "enum": ["dispatch", "defer", "retry", "rework", "escalate"], "description": "路由动作" },
+        "reason": { "type": "string", "description": "决策依据（写入审计）" },
+        "defer_minutes": { "type": "number", "description": "action=defer 时的延后分钟数（1–1440）" },
+        "target_channel_id": { "type": "string", "description": "action=dispatch 时可指定项目内已绑定的目标 Channel" }
+      },
+      "required": ["work_item_id", "action"]
+    },
+    "noRefs": true,
+    "riskClass": "read"
+  },
+  {
+    "name": "project_submit_technical_review",
+    "label": "Project Submit Technical Review",
+    "description": "(Project leader or independent reviewer Channel lead) 对 status=submitted 的成果做 L1 技术验收：按交付物/工作项的结构化验收标准检查 artifact（present/text.contains/min_bytes/json.field），pass → result=reviewed 并写 project_technical_reviews；fail → rejected 并触发返工。生产 Channel 不能验收自己的成果；L2 业务签核仍由 owner/approver 完成。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "result_id": { "type": "string", "description": "成果 id（状态必须为 submitted）" },
+        "verdict": { "type": "string", "enum": ["pass", "fail"], "description": "技术验收结论" },
+        "checks": { "type": "array", "items": { "type": "object" }, "description": "补充检查项（可选）" },
+        "note": { "type": "string", "description": "验收依据/失败原因" }
+      },
+      "required": ["result_id", "verdict"]
+    },
+    "noRefs": true,
+    "riskClass": "read"
+  },
+  {
+    "name": "project_send_message",
+    "label": "Project Send Message",
+    "description": "(Project leader or member Channel lead) 在项目内发送消息：leader→指定成员 Channel，Channel→leader（to_leader=true），或 Channel→同项目其他 Channel。服务端生成 from 并落 project_messages；用于交接说明、评审请求、升级与回复。不能跨项目发送；消息本身不改变工作项状态。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "to_channel_id": { "type": "string", "description": "目标成员 Channel id（leader/Channel 间消息必填）" },
+        "to_leader": { "type": "boolean", "description": "Channel 发往项目办公室 leader 时置 true" },
+        "body": { "type": "string", "description": "消息正文（≤8KB）" },
+        "kind": { "type": "string", "enum": ["note", "escalate", "reply", "request_review"], "description": "消息类型" },
+        "require_reply": { "type": "boolean", "description": "是否要求对方回复" },
+        "work_item_id": { "type": "string", "description": "关联工作项 id（可选）" },
+        "result_id": { "type": "string", "description": "关联成果 id（可选）" },
+        "correlation_id": { "type": "string", "description": "幂等相关键（可选）" }
+      },
+      "required": ["body"]
+    },
+    "noRefs": true,
+    "riskClass": "read"
+  },
+  {
+    "name": "project_escalate",
+    "label": "Project Escalate",
+    "description": "(Member Channel lead only) 向 Project Leader 升级：把阻塞/风险/需要决策的事项作为 escalate 消息投递到项目办公室，并落 project_messages 审计。不改变工作项状态；leader 可用 route/plan 提案或升级给 owner 处理。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "body": { "type": "string", "description": "升级正文（≤8KB）" },
+        "work_item_id": { "type": "string", "description": "关联工作项 id（可选）" },
+        "result_id": { "type": "string", "description": "关联成果 id（可选）" },
+        "correlation_id": { "type": "string", "description": "幂等相关键（可选）" },
+        "require_reply": { "type": "boolean", "description": "是否要求 leader 回复" }
+      },
+      "required": ["body"]
+    },
+    "noRefs": true,
+    "riskClass": "read"
+  },
+  {
+    "name": "project_read_messages",
+    "label": "Project Read Messages",
+    "description": "(Project member) 读取本项目消息：leader 可见全部；Channel lead 只见自己收/发的消息。返回 kind/from/to/status/body/关联 workItem/result，用于协作与验收上下文。只读，不改变任何状态。",
+    "parameters": {
+      "type": "object",
+      "properties": {
+        "limit": { "type": "number", "description": "最多返回条数（默认 50，最大 200）" }
+      }
+    },
+    "noRefs": true,
+    "riskClass": "read"
   }
 ]

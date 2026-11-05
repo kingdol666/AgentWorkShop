@@ -224,9 +224,13 @@ export function evaluateCriteriaChecks(input: {
     }
     const jsonField = c.match(/^json\.field[:：]([\w.$]+)=(.+)$/)
     if (jsonField) {
-      let payload: unknown = {}
-      try { payload = JSON.parse(input.payloadJson ?? '{}') }
-      catch { payload = {} }
+      let payload: unknown
+      try {
+        payload = JSON.parse(input.payloadJson ?? '{}')
+      }
+      catch {
+        payload = {}
+      }
       const actual = dotGet(payload, jsonField[1]!)
       const pass = String(actual ?? '') === jsonField[2]!.trim()
       checks.push({ criterion: c, pass, detail: `actual=${String(actual ?? '')}` })
@@ -462,6 +466,8 @@ export interface CreateProjectInput {
    * technical=上游成果技术验收后才放行。API 新建项目默认 technical，服务层缺省 legacy。
    */
   routingPolicy?: 'legacy' | 'technical'
+  /** Router v3：Leader route gate（none=只提案；leader=mode=auto 时提案即时应用）。 */
+  routeGate?: 'none' | 'leader'
 }
 
 /** PR20 自动派发结果（route 回调闭环的可观测面）。 */
@@ -563,7 +569,10 @@ export class ProjectService {
       planApprovalRequired: input.planApprovalRequired === 0 ? 0 : 1,
       autoDispatch: input.autoDispatch ? 1 : 0,
       routingPolicy: input.routingPolicy ?? 'legacy',
-      configJson: JSON.stringify({ leaderHarness: input.leaderHarness ?? 'mock' }),
+      configJson: JSON.stringify({
+        leaderHarness: input.leaderHarness ?? 'mock',
+        routeGate: input.routeGate ?? 'none',
+      }),
     })
 
     try {
@@ -1185,7 +1194,8 @@ export class ProjectService {
   private async doAutoDispatch(id: string): Promise<AutoDispatchResult> {
     const out: AutoDispatchResult = { dispatched: [], failed: 0, skippedByGate: false }
     const p = this.projects.findById(id)
-    if (!p || p.status !== 'active' || p.autoDispatch !== 1) {
+    // mode=observe：只读观察，自动派发一律关闭；owner 仍可逐项手动派发。
+    if (!p || p.status !== 'active' || p.autoDispatch !== 1 || p.mode === 'observe') {
       out.skippedByGate = true
       return out
     }
@@ -1266,8 +1276,111 @@ export class ProjectService {
     autoDispatch: Awaited<ReturnType<ProjectService['autoDispatchProject']>>
   }> {
     const reconcile = this.reconcileInternal(id)
+    // Router v3 验收闭环：成果 submitted 后主动向 Leader/独立评审 Channel 发 L1 请求，
+    // 而不是等人工在演示脚本里逐个 @。消息幂等（correlation=review:<resultId>）。
+    await this.ensureTechnicalReviewRequests(id)
     const autoDispatch = await this.autoDispatchProject(id)
     return { reconcile, autoDispatch }
+  }
+
+  /**
+   * 对 technical 项目中所有 submitted 且无技术验收记录的成果，发一条 request_review。
+   * 评审目标优先级：显式 config.reviewerChannelId（已绑定且非生产频道）→ 无工作项的
+   * 独立成员 Channel（“评审 Channel”约定）→ 项目办公室 Leader。
+   * 投递失败落 project_messages.error，不阻塞派发；下一 tick 因已有消息不会重复刷屏。
+   */
+  private async ensureTechnicalReviewRequests(projectId: string): Promise<void> {
+    const p = this.projects.findById(projectId)
+    if (!p || p.status !== 'active' || p.routingPolicy !== 'technical') return
+    if (typeof this.manager.sendImmediateMessage !== 'function') return
+    const submitted = this.results.listByProject(projectId).filter(r => r.status === 'submitted')
+    if (submitted.length === 0) return
+    const config = parseJson<Record<string, unknown>>(p.configJson, {})
+    const configuredReviewer = String(config.reviewerChannelId ?? '').trim()
+    const bindings = this.bindings.listByProject(projectId).filter(b => b.status === 'active')
+    const items = this.workItems.listByProject(projectId)
+    for (const result of submitted) {
+      if (this.hasPassingTechnicalReview(result.id)) continue
+      const correlationId = `review:${result.id}`
+      const existing = this.messages.listByProject(projectId)
+        .find(m => m.correlationId === correlationId && m.kind === 'request_review')
+      if (existing) continue
+      let reviewerChannelId = ''
+      let reviewerAgentId = ''
+      if (configuredReviewer) {
+        const bound = bindings.some(b => b.channelId === configuredReviewer) && configuredReviewer !== result.channelId
+        const ch = bound ? this.manager.getChannelForUser(configuredReviewer, p.ownerUserId) : null
+        if (ch?.leadAgentId) {
+          reviewerChannelId = configuredReviewer
+          reviewerAgentId = ch.leadAgentId
+        }
+      }
+      if (!reviewerAgentId) {
+        // 独立评审 Channel 约定：已绑定、非生产、且没有任何工作项（纯评审角色）。
+        const candidate = bindings.find((b) => {
+          if (b.channelId === result.channelId) return false
+          return !items.some(w => w.channelId === b.channelId && !['CANCELED', 'SUPERSEDED'].includes(w.state))
+        })
+        const ch = candidate ? this.manager.getChannelForUser(candidate.channelId, p.ownerUserId) : null
+        if (candidate && ch?.leadAgentId) {
+          reviewerChannelId = candidate.channelId
+          reviewerAgentId = ch.leadAgentId
+        }
+      }
+      if (!reviewerAgentId && p.officeChannelId && p.leadAgentId) {
+        reviewerChannelId = p.officeChannelId
+        reviewerAgentId = p.leadAgentId
+      }
+      if (!reviewerAgentId) continue
+      const wi = this.workItems.findById(result.workItemId)
+      const deliverable = this.deliverables.findById(result.deliverableId)
+      const criteria = [
+        ...parseJson<string[]>(deliverable?.acceptanceCriteriaJson ?? '[]', []),
+        ...parseJson<string[]>(wi?.acceptanceJson ?? '[]', []),
+      ]
+      const body = [
+        '[项目内核] L1 技术验收请求',
+        `项目：${p.name}（${p.id}）`,
+        `成果：${result.title}（result_id=${result.id}，version=${result.version}）`,
+        `工作项：${wi?.title ?? '-'}（${wi?.id ?? '-'}）`,
+        `交付物：${deliverable?.name ?? '-'}（${deliverable?.id ?? '-'}）`,
+        criteria.length > 0 ? `验收标准：${criteria.join('；')}` : '验收标准：按证据与交付物完整性判断',
+        '请先读取成果与证据，再调用 project_submit_technical_review：verdict=pass 或 fail，note 写明依据。',
+        '你是 L1 技术验收方：不要修改成果、不要新建任务、不要做 L2 业务签核。',
+      ].join('\n')
+      const message = this.messages.add({
+        projectId,
+        fromAgentId: 'system:review',
+        fromChannelId: p.officeChannelId ?? '',
+        toAgentId: reviewerAgentId,
+        toChannelId: reviewerChannelId,
+        kind: 'request_review',
+        workItemId: result.workItemId,
+        resultId: result.id,
+        correlationId,
+        body,
+        requireReply: true,
+        traceId: result.traceId,
+      })
+      try {
+        await this.manager.sendImmediateMessage({
+          channelId: reviewerChannelId,
+          toAgentId: reviewerAgentId,
+          parts: [{ text: body }],
+          requireReply: true,
+          fromLabel: `项目内核:${p.name}`,
+        })
+        this.messages.markDelivered(message.id)
+        this.record(projectId, 'review.requested', { id: 'system', role: 'system' }, {
+          messageId: message.id, resultId: result.id, reviewerChannelId, reviewerAgentId,
+        }, result.traceId, 'review.requested', `review:${result.id}:requested`, {
+          resultId: result.id, reviewerChannelId,
+        })
+      }
+      catch (err) {
+        this.messages.markFailed(message.id, err instanceof Error ? err.message : String(err))
+      }
+    }
   }
 
   listActiveProjects(): ProjectRow[] {
@@ -1477,6 +1590,34 @@ export class ProjectService {
     // B8：复核迁移 + 审计同事务。
     let updated!: ProjectResultRow
     withTransaction(this.db, () => {
+      // Router v3 验收闭环：technical 项目的每一次 L1 复核都必须留技术验收记录。
+      // owner/admin 的兜底复核同样落库，但 reviewer_kind 如实标注，绝不冒充 Leader。
+      if (p.routingPolicy === 'technical') {
+        const reviewerKind = actor.agentId && actor.agentId === p.leadAgentId
+          ? 'project_leader'
+          : (actor.role === 'admin' ? 'admin' : 'owner')
+        const review = this.technicalReviews.add({
+          projectId: id,
+          resultId,
+          resultVersion: result.version,
+          reviewerAgentId: actor.agentId ?? actor.id,
+          reviewerChannelId: actor.agentId === p.leadAgentId ? (p.officeChannelId ?? '') : '',
+          reviewerKind,
+          verdict: decision === 'reviewed' ? 'pass' : 'fail',
+          checksJson: result.criteriaCheckJson || '[]',
+          note: reason,
+          traceId: result.traceId,
+        })
+        this.results.setTechnicalVerdict(resultId, JSON.stringify({
+          verdict: decision === 'reviewed' ? 'pass' : 'fail',
+          reviewerAgentId: actor.agentId ?? actor.id,
+          reviewerChannelId: actor.agentId === p.leadAgentId ? (p.officeChannelId ?? '') : '',
+          reviewerKind,
+          reviewId: review.id,
+          note: reason,
+          at: new Date().toISOString(),
+        }))
+      }
       this.results.setStatus(resultId, decision, {
         reviewedBy: actor.agentId ?? actor.id,
         reviewedAt: new Date().toISOString(),
@@ -1548,6 +1689,11 @@ export class ProjectService {
     const p = this.get(id, actor)
     this.requireOwner(p, actor)
     const result = this.assertAcceptanceGates(id, resultId)
+    // Router v3 三级验收：technical 项目必须先有 L1 pass 记录，才能进入 L2 业务签核。
+    // owner 兜底复核也会写 technical 记录（reviewer_kind=owner/admin），因此不会被误锁。
+    if (p.routingPolicy === 'technical' && !this.hasPassingTechnicalReview(resultId)) {
+      throw new AppError(409, 'TECHNICAL_REVIEW_REQUIRED', 'L1 技术验收未完成：请由 Project Leader 或独立评审 Channel 先提交 project_submit_technical_review(pass)')
+    }
     this.assertResultLineVisible(result, actor)
     const pending = this.approvals.listPending(id).find(a => a.kind === 'deliverable_acceptance' && a.subjectId === resultId)
     if (pending) return pending
@@ -1605,6 +1751,10 @@ export class ProjectService {
               this.approvals.cancelPending(result.projectId, 'deliverable_acceptance', old.id, 'superseded by newer version')
               this.record(result.projectId, 'result.superseded', actor, { resultId: old.id, supersededBy: result.id, reason: 'new version approved' }, old.traceId, 'result.superseded', `result:${old.id}:superseded`, { resultId: old.id, supersededBy: result.id })
               this.markDownstreamRework(old.id, actor, `upstream version superseded by ${result.id}`)
+            }
+            // decide 时复检 L1：审批创建后成果可能被 supersede/返工，不能拿旧签核直接批准。
+            if (p.routingPolicy === 'technical' && !this.hasPassingTechnicalReview(result.id)) {
+              throw new AppError(409, 'TECHNICAL_REVIEW_REQUIRED', 'L2 签核被拒：该成果缺少 L1 技术验收 pass 记录')
             }
             this.results.setStatus(result.id, 'approved', {
               approvedBy: actor.id,
@@ -1695,6 +1845,11 @@ export class ProjectService {
     return items.every(w => results.some(r => r.workItemId === w.id))
   }
 
+  /** L1 技术验收是否已有 pass 记录（Leader / 独立 reviewer Channel / owner 兜底均落库）。 */
+  private hasPassingTechnicalReview(resultId: string): boolean {
+    return this.technicalReviews.listByResult(resultId).some(r => r.verdict === 'pass')
+  }
+
   /**
    * P1 supersede 影响分析：消费了该上游成果的下游成果 → rework_required + 工作项 REWORK，
    * 并取消旧的下游验收待决审批（防止拿过期内容签收）。
@@ -1738,6 +1893,8 @@ export class ProjectService {
     mode?: 'observe' | 'supervised' | 'auto'
     /** PR20：route 自动派发开关（owner-only；切换落 project.updated 审计） */
     autoDispatch?: boolean
+    /** Router v3：Leader route gate（none/leader）；与 mode=auto 组合才即时应用。 */
+    routeGate?: 'none' | 'leader'
   }): ProjectRow {
     const p = this.get(id, actor)
     this.requireOwner(p, actor)
@@ -1745,12 +1902,14 @@ export class ProjectService {
     if (name !== undefined && !name) throw new AppError(400, 'BAD_REQUEST', '名称不能为空')
     const objective = patch.objective?.trim()
     if (objective !== undefined && !objective) throw new AppError(400, 'BAD_REQUEST', '目标不能为空')
+    const config = parseJson<Record<string, unknown>>(p.configJson, {})
     const next = this.projects.update(id, {
       ...(name !== undefined ? { name } : {}),
       ...(patch.description !== undefined ? { description: patch.description } : {}),
       ...(objective !== undefined ? { objective } : {}),
       ...(patch.mode !== undefined ? { mode: patch.mode } : {}),
       ...(patch.autoDispatch !== undefined ? { autoDispatch: patch.autoDispatch ? 1 : 0 } : {}),
+      ...(patch.routeGate !== undefined ? { configJson: JSON.stringify({ ...config, routeGate: patch.routeGate }) } : {}),
     })
     if (!next) throw new AppError(404, 'NOT_FOUND', `Project 不存在: ${id}`)
     this.record(id, 'project.updated', actor, { patch }, '', 'project.updated', `project:${id}:updated:${Date.now()}`, { fields: Object.keys(patch) })
@@ -1931,20 +2090,33 @@ export class ProjectService {
       const readiness = evaluateWorkItemReadiness(w, readinessCtx)
       const result = this.latestResultOf(w.id, allResults)
       const attempt = w.currentAttemptId ? this.attempts.findById(w.currentAttemptId) : undefined
+      // 只有 DRAFT 才存在“等待派发”语义；已派发/终态工作项不显示 IN_FLIGHT 文案。
+      let waitingOn = ''
+      let waitingReason = ''
+      if (w.state === 'DRAFT') {
+        if (readiness.ready) {
+          waitingOn = 'READY'
+        }
+        else {
+          waitingOn = readiness.waitingOn
+          waitingReason = readiness.reason
+        }
+      }
       return {
         id: w.id, title: w.title, brief: w.brief, channelId: w.channelId, deliverableId: w.deliverableId,
         state: w.state, stage: this.stageOf(w, readiness, result),
-        // 只有 DRAFT 才存在“等待派发”语义；已派发/终态工作项不显示 IN_FLIGHT 文案。
-        waitingOn: w.state === 'DRAFT' ? (readiness.ready ? 'READY' : readiness.waitingOn) : '',
-        waitingReason: w.state === 'DRAFT' && !readiness.ready ? readiness.reason : '',
+        waitingOn,
+        waitingReason,
         priority: w.priority, resultKey: w.resultKey, attemptCount: w.attemptCount, maxAttempts: w.maxAttempts,
         reworkCount: w.reworkCount, deferredUntil: w.deferredUntil, stateReason: w.stateReason,
         acceptedResultId: w.acceptedResultId, lastResultStatus: result?.status ?? '',
-        currentAttempt: attempt ? {
-          id: attempt.id, attemptNo: attempt.attemptNo, state: attempt.state,
-          channelTaskId: attempt.channelTaskId, failureClass: attempt.failureClass,
-          retryable: attempt.retryable === 1, nextRetryAt: attempt.nextRetryAt, createdAt: attempt.createdAt,
-        } : null,
+        currentAttempt: attempt
+          ? {
+              id: attempt.id, attemptNo: attempt.attemptNo, state: attempt.state,
+              channelTaskId: attempt.channelTaskId, failureClass: attempt.failureClass,
+              retryable: attempt.retryable === 1, nextRetryAt: attempt.nextRetryAt, createdAt: attempt.createdAt,
+            }
+          : null,
         dependsOn: parseJson<string[]>(w.dependsOnJson, []),
         contract: parseJson<Record<string, unknown>>(w.contractJson, {}),
       }
@@ -2109,11 +2281,12 @@ export class ProjectService {
       },
       deliverable: (() => {
         const d = deliverables.find(x => x.id === wi.deliverableId)
-        return d ? {
+        if (!d) return null
+        return {
           id: d.id, name: d.name, status: d.status, required: d.required === 1,
           acceptanceCriteria: parseJson<string[]>(d.acceptanceCriteriaJson, []),
           dependsOn: parseJson<string[]>(d.dependsOnJson, []),
-        } : null
+        }
       })(),
       attempts,
       results: resultChain,
@@ -2641,8 +2814,8 @@ export class ProjectService {
     const body = input.body?.trim()
     if (!body) throw new AppError(400, 'BAD_REQUEST', '消息内容不能为空')
     if (body.length > 8_000) throw new AppError(400, 'MESSAGE_TOO_LARGE', '消息超过 8KB 上限')
-    let toChannelId = ''
-    let toAgentId = ''
+    let toChannelId: string
+    let toAgentId: string
     if (ctx.isLeader) {
       if (input.toLeader) throw new AppError(400, 'BAD_REQUEST', 'Leader 不能给自己发消息')
       toChannelId = String(input.toChannelId ?? '').trim()

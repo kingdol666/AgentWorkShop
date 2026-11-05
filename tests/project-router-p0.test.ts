@@ -62,8 +62,15 @@ function fixture() {
       return ch ? { ...ch, agents: [] } : null
     },
     async submitProjectRoot(input: {
-      projectId: string, workItemId: string, attemptNo: number, sourceKey: string, channelId: string
-      title: string, description?: string, execBudgetMinutes?: number, parts?: unknown[]
+      projectId: string
+      workItemId: string
+      attemptNo: number
+      sourceKey: string
+      channelId: string
+      title: string
+      description?: string
+      execBudgetMinutes?: number
+      parts?: unknown[]
     }) {
       const ch = channels.findById(input.channelId)!
       const row = tasks.create({
@@ -99,7 +106,7 @@ async function setupChain(f: Fixture, opts: { routingPolicy: 'legacy' | 'technic
   return { owner, p, member, d, w1, w2 }
 }
 
-function completeRoot(f: Fixture, workItemId: string, text = '<html>real artifact</html>') {
+function completeRoot(f: Fixture, workItemId: string) {
   const attempt = f.attempts.findLiveByWorkItem(workItemId)!
   return { attempt, task: f.tasks.findById(attempt.channelTaskId!)! }
 }
