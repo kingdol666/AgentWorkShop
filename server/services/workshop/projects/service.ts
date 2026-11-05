@@ -1805,6 +1805,301 @@ export class ProjectService {
     }
   }
 
+  // ===== Router v3 P3：项目执行可观测（后端派生 stage/waitingOn；前端只渲染） =====
+
+  private latestResultOf(workItemId: string, results: ProjectResultRow[]): ProjectResultRow | undefined {
+    let latest: ProjectResultRow | undefined
+    for (const r of results) {
+      if (r.workItemId !== workItemId) continue
+      if (!latest || r.version >= latest.version) latest = r
+    }
+    return latest
+  }
+
+  private stageOf(wi: ProjectWorkItemRow, readiness: ReturnType<typeof evaluateWorkItemReadiness>, result: ProjectResultRow | undefined): string {
+    if (wi.state === 'DRAFT') {
+      if (readiness.ready) return 'ready'
+      switch (readiness.waitingOn) {
+        case 'DEFERRED': return 'deferred'
+        case 'DEPENDENCY_RUNNING':
+        case 'DEPENDENCY_NOT_STARTED': return 'waiting_dependency'
+        case 'RESULT_SUBMISSION': return 'waiting_upstream_result'
+        case 'TECHNICAL_REVIEW': return 'waiting_technical_review'
+        case 'DELIVERABLE_GATE': return 'waiting_deliverable'
+        case 'UPSTREAM_CANCELED': return 'blocked'
+        default: return 'waiting'
+      }
+    }
+    if (wi.state === 'DISPATCHING') return 'dispatching'
+    if (wi.state === 'DISPATCHED') return 'dispatched'
+    if (wi.state === 'RUNNING') return 'running'
+    if (wi.state === 'BLOCKED') return 'blocked'
+    if (wi.state === 'REWORK') return 'rework'
+    if (wi.state === 'COMPLETED') {
+      if (!result) return 'completed_pending_result'
+      if (result.status === 'draft') return 'result_pending_submit'
+      if (result.status === 'submitted') return 'result_pending_review'
+      if (result.status === 'reviewed') return 'result_pending_acceptance'
+      if (result.status === 'approved') return 'accepted'
+      if (result.status === 'rejected') return 'result_rejected'
+    }
+    return wi.state.toLowerCase()
+  }
+
+  /** 执行工作台快照：项目/权限/摘要/Channel 泳道/交付物门/工作项 stage/route/kernel。 */
+  projectObservability(id: string, actor: ProjectActor) {
+    const p = this.get(id, actor)
+    const items = this.workItems.listByProject(id)
+    const results = this.filterResultsByGrant(this.results.listByProject(id), actor) as ProjectResultRow[]
+    const deliverables = this.deliverables.listByProject(id)
+    const allResults = this.results.listByProject(id)
+    const readinessCtx = { items, results: allResults, deliverables, routingPolicy: p.routingPolicy }
+    const member = this.members.findOne(id, actor.id)
+    const access = {
+      role: actor.role === 'admin' ? 'admin' : p.ownerUserId === actor.id ? 'owner' : member?.role ?? 'viewer',
+      canManage: actor.role === 'admin' || p.ownerUserId === actor.id,
+      canDecide: actor.role === 'admin' || p.ownerUserId === actor.id || member?.role === 'approver',
+    }
+    const channels = this.listBoundChannels(p).map((c) => {
+      const own = items.filter(w => w.channelId === c.channelId)
+      return {
+        ...c,
+        workItems: own.length,
+        inFlight: own.filter(w => ['DISPATCHING', 'DISPATCHED', 'RUNNING'].includes(w.state)).length,
+        ready: own.filter(w => w.state === 'DRAFT' && evaluateWorkItemReadiness(w, readinessCtx).ready).length,
+        blocked: own.filter(w => w.state === 'BLOCKED' || w.state === 'REWORK').length,
+      }
+    })
+    const projectedDeliverables = deliverables.map((d) => {
+      const ds = allResults.filter(r => r.deliverableId === d.id)
+      const approved = ds.some(r => r.status === 'approved')
+      const technical = ds.some(r => ['reviewed', 'approved'].includes(r.status))
+      const content = ds.some(r => !['superseded'].includes(r.status))
+      return {
+        id: d.id, name: d.name, description: d.description, status: d.status,
+        required: d.required === 1, ownerChannelId: d.ownerChannelId,
+        dependsOn: parseJson<string[]>(d.dependsOnJson, []),
+        acceptanceCriteria: parseJson<string[]>(d.acceptanceCriteriaJson, []),
+        contentReady: content, technicalAccepted: technical, businessApproved: approved || d.status === 'waived',
+        resultCount: ds.length, currentResultId: [...ds].sort((a, b) => b.version - a.version)[0]?.id ?? null,
+      }
+    })
+    const projectedItems = items.map((w) => {
+      const readiness = evaluateWorkItemReadiness(w, readinessCtx)
+      const result = this.latestResultOf(w.id, allResults)
+      const attempt = w.currentAttemptId ? this.attempts.findById(w.currentAttemptId) : undefined
+      return {
+        id: w.id, title: w.title, brief: w.brief, channelId: w.channelId, deliverableId: w.deliverableId,
+        state: w.state, stage: this.stageOf(w, readiness, result), waitingOn: readiness.ready ? 'READY' : readiness.waitingOn,
+        waitingReason: readiness.ready ? '' : readiness.reason,
+        priority: w.priority, resultKey: w.resultKey, attemptCount: w.attemptCount, maxAttempts: w.maxAttempts,
+        reworkCount: w.reworkCount, deferredUntil: w.deferredUntil, stateReason: w.stateReason,
+        acceptedResultId: w.acceptedResultId, lastResultStatus: result?.status ?? '',
+        currentAttempt: attempt ? {
+          id: attempt.id, attemptNo: attempt.attemptNo, state: attempt.state,
+          channelTaskId: attempt.channelTaskId, failureClass: attempt.failureClass,
+          retryable: attempt.retryable === 1, nextRetryAt: attempt.nextRetryAt, createdAt: attempt.createdAt,
+        } : null,
+        dependsOn: parseJson<string[]>(w.dependsOnJson, []),
+        contract: parseJson<Record<string, unknown>>(w.contractJson, {}),
+      }
+    })
+    const byState: Record<string, number> = {}
+    for (const w of items) byState[w.state] = (byState[w.state] ?? 0) + 1
+    const readyItems = projectedItems.filter(w => w.stage === 'ready')
+    const waitingItems = projectedItems.filter(w => w.stage.startsWith('waiting'))
+    const blockedItems = projectedItems.filter(w => ['blocked', 'rework'].includes(w.stage))
+    return {
+      project: {
+        id: p.id, name: p.name, description: p.description, objective: p.objective,
+        successCriteria: parseJson<string[]>(p.successCriteriaJson, []), status: p.status, mode: p.mode,
+        ownerUserId: p.ownerUserId, leadAgentId: p.leadAgentId, officeChannelId: p.officeChannelId,
+        planVersion: p.planVersion, autoDispatch: p.autoDispatch === 1, routingPolicy: p.routingPolicy,
+        createdAt: p.createdAt, updatedAt: p.updatedAt,
+      },
+      access,
+      summary: {
+        deliverables: deliverables.length,
+        requiredDeliverables: deliverables.filter(d => d.required === 1).length,
+        approvedDeliverables: projectedDeliverables.filter(d => d.businessApproved).length,
+        workItems: items.length,
+        byState,
+        ready: readyItems.length,
+        inFlight: items.filter(w => ['DISPATCHING', 'DISPATCHED', 'RUNNING'].includes(w.state)).length,
+        waiting: waitingItems.length,
+        blocked: blockedItems.length,
+        results: results.length,
+        pendingApprovals: this.approvals.listPending(id).length,
+        progress: items.length > 0 ? Math.round((items.filter(w => w.state === 'COMPLETED').length / items.length) * 100) / 100 : 0,
+        acceptanceProgress: deliverables.length > 0 ? Math.round((projectedDeliverables.filter(d => d.businessApproved).length / deliverables.length) * 100) / 100 : 0,
+      },
+      channels,
+      deliverables: projectedDeliverables,
+      workItems: projectedItems,
+      route: {
+        autoDispatch: p.autoDispatch === 1,
+        routingPolicy: p.routingPolicy,
+        mode: p.mode,
+        planVersion: p.planVersion,
+        routeGate: String(parseJson<Record<string, unknown>>(p.configJson, {}).routeGate ?? 'none'),
+        ready: readyItems.map(w => ({ id: w.id, title: w.title, channelId: w.channelId })),
+        waiting: waitingItems.map(w => ({ id: w.id, title: w.title, stage: w.stage, waitingOn: w.waitingOn, reason: w.waitingReason })),
+        blocked: blockedItems.map(w => ({ id: w.id, title: w.title, stage: w.stage, reason: w.stateReason })),
+      },
+      kernel: {
+        health: this.kernelRepo.health.list(id),
+        effects: this.kernelRepo.effects.countByStatus(id),
+        planApprovedVersion: this.kernelRepo.planVersions.getApproved(id)?.version ?? null,
+        ledger: { count: this.kernelRepo.ledger.count(id), lastAt: this.kernelRepo.ledger.lastAt(id) },
+      },
+      generatedAt: new Date().toISOString(),
+    }
+  }
+
+  /** 统一 activity 时间线（events + decisions；keyset by createdAt + id）。 */
+  projectActivity(id: string, actor: ProjectActor, opts: { after?: string, limit?: number } = {}) {
+    this.get(id, actor)
+    const limit = Math.max(1, Math.min(200, opts.limit ?? 60))
+    const after = opts.after ? Date.parse(opts.after) : Number.NEGATIVE_INFINITY
+    const items: Array<Record<string, unknown>> = []
+    for (const e of this.events.listByProject(id)) {
+      if (Date.parse(e.createdAt) <= after) continue
+      items.push({
+        id: e.id, kind: 'event', type: e.type, at: e.createdAt, traceId: e.traceId,
+        workItemId: e.workItemId, channelId: e.channelId, deliverableId: e.deliverableId,
+        payload: parseJson<Record<string, unknown>>(e.payloadJson, {}),
+      })
+    }
+    for (const d of this.decisions.listByProject(id)) {
+      if (Date.parse(d.createdAt) <= after) continue
+      items.push({
+        id: d.id, kind: 'decision', type: d.decisionType, at: d.createdAt, traceId: d.traceId,
+        state: d.state, actorKind: d.actorKind, actorAgentId: d.actorAgentId, actorUserId: d.actorUserId,
+        payload: parseJson<Record<string, unknown>>(d.argsJson, {}), reason: d.reason,
+      })
+    }
+    items.sort((a, b) => String(a.at).localeCompare(String(b.at)) || String(a.id).localeCompare(String(b.id)))
+    const page = items.slice(0, limit)
+    return {
+      items: page,
+      cursor: page.length > 0 ? String(page[page.length - 1]!.at) : opts.after ?? null,
+      hasMore: items.length > page.length,
+    }
+  }
+
+  /** 单工作项执行链：attempts → root task → worker 子任务 → artifacts → results → reviews。 */
+  projectWorkItemDetail(id: string, workItemId: string, actor: ProjectActor) {
+    this.get(id, actor)
+    const wi = this.workItems.findById(workItemId)
+    if (!wi || wi.projectId !== id) throw new AppError(404, 'NOT_FOUND', '工作项不存在或不属于该项目')
+    const items = this.workItems.listByProject(id)
+    const results = this.results.listByProject(id)
+    const deliverables = this.deliverables.listByProject(id)
+    const readiness = evaluateWorkItemReadiness(wi, { items, results, deliverables, routingPolicy: this.projects.findById(id)!.routingPolicy })
+    const taskSummary = (task: TaskRow | undefined) => {
+      if (!task) return null
+      const artifacts = [...artifactDigests(task.artifactsJson).values()].map(a => ({
+        artifactId: a.artifactId, name: a.name, bytes: a.bytes, sha256: a.sha256, preview: a.text.slice(0, 400),
+      }))
+      const history = parseJson<Array<Record<string, unknown>>>(task.historyJson, []).slice(-30).map(h => ({
+        at: String(h.createdAt ?? h.at ?? ''),
+        role: String(h.role ?? h.kind ?? ''),
+        text: Array.isArray(h.parts) ? (h.parts as Array<{ text?: string }>).map(x => x.text ?? '').join('').slice(0, 500) : String(h.text ?? h.detail ?? '').slice(0, 500),
+      }))
+      return {
+        id: task.id, title: task.title, state: task.state, progress: task.progress,
+        assigneeId: task.assigneeId, parentId: task.parentId, closeReason: task.closeReason,
+        deadlineAt: task.deadlineAt, createdAt: task.createdAt, updatedAt: task.updatedAt,
+        artifacts, history,
+      }
+    }
+    const attempts = this.attempts.listByWorkItem(wi.id).slice().reverse().map((a) => {
+      const task = a.channelTaskId ? this.tasks.findById(a.channelTaskId) : undefined
+      const children = a.channelTaskId
+        ? (this.db.prepare(
+            `SELECT id, title, state, progress, assignee_id AS assigneeId, artifacts_json AS artifactsJson, close_reason AS closeReason, created_at AS createdAt
+             FROM tasks WHERE parent_id = ? ORDER BY created_at ASC LIMIT 50`,
+          ).all(a.channelTaskId) as Array<{ id: string, title: string, state: string, progress: number, assigneeId: string, artifactsJson: string, closeReason: string | null, createdAt: string }>).map(t => ({
+            id: t.id, title: t.title, state: t.state, progress: t.progress, assigneeId: t.assigneeId,
+            closeReason: t.closeReason, createdAt: t.createdAt,
+            artifacts: [...artifactDigests(t.artifactsJson).values()].map(x => ({ artifactId: x.artifactId, name: x.name, bytes: x.bytes, sha256: x.sha256 })),
+          }))
+        : []
+      return {
+        id: a.id, attemptNo: a.attemptNo, state: a.state, channelId: a.channelId,
+        channelTaskId: a.channelTaskId, sourceKey: a.sourceKey, failureClass: a.failureClass,
+        retryable: a.retryable === 1, nextRetryAt: a.nextRetryAt, createdAt: a.createdAt, closedAt: a.closedAt,
+        task: taskSummary(task),
+        workers: children,
+      }
+    })
+    const resultChain = results.filter(r => r.workItemId === wi.id).sort((a, b) => b.version - a.version).map(r => ({
+      id: r.id, version: r.version, status: r.status, title: r.title, summary: r.summary,
+      contentSha256: r.contentSha256, evidenceVerifiedAt: r.evidenceVerifiedAt,
+      criteriaCheck: parseJson<Record<string, unknown>>(r.criteriaCheckJson, {}),
+      technicalVerdict: parseJson<Record<string, unknown>>(r.technicalVerdictJson, {}),
+      reworkRequired: r.reworkRequired === 1, supersedesId: r.supersedesId,
+      evidence: parseJson<Array<Record<string, unknown>>>(r.evidenceJson, []),
+      reviews: this.technicalReviews.listByResult(r.id).map(x => ({ ...x, checks: parseJson<unknown[]>(x.checksJson, []) })),
+      inputs: this.resultInputs.listByResult(r.id),
+      createdAt: r.createdAt,
+    }))
+    const events = this.events.listByProject(id).filter(e => e.workItemId === wi.id)
+      .map(e => ({ id: e.id, type: e.type, at: e.createdAt, traceId: e.traceId, payload: parseJson<Record<string, unknown>>(e.payloadJson, {}) }))
+    return {
+      workItem: {
+        id: wi.id, title: wi.title, brief: wi.brief, state: wi.state, channelId: wi.channelId,
+        deliverableId: wi.deliverableId, resultKey: wi.resultKey, stage: this.stageOf(wi, readiness, this.latestResultOf(wi.id, results)),
+        readiness: { ready: readiness.ready, waitingOn: readiness.waitingOn, reason: readiness.reason, upstreamResultIds: readiness.upstreamResultIds },
+        attemptCount: wi.attemptCount, maxAttempts: wi.maxAttempts, reworkCount: wi.reworkCount,
+        contract: parseJson<Record<string, unknown>>(wi.contractJson, {}),
+        acceptance: parseJson<string[]>(wi.acceptanceJson, []),
+        dependsOn: parseJson<string[]>(wi.dependsOnJson, []),
+        traceId: wi.traceId,
+      },
+      deliverable: (() => {
+        const d = deliverables.find(x => x.id === wi.deliverableId)
+        return d ? {
+          id: d.id, name: d.name, status: d.status, required: d.required === 1,
+          acceptanceCriteria: parseJson<string[]>(d.acceptanceCriteriaJson, []),
+          dependsOn: parseJson<string[]>(d.dependsOnJson, []),
+        } : null
+      })(),
+      attempts,
+      results: resultChain,
+      events,
+    }
+  }
+
+  /** 路由读面：计划版本 / 派发日志 / ready-waiting-blocked / leader route 决策。 */
+  projectRouteView(id: string, actor: ProjectActor) {
+    this.get(id, actor)
+    const obs = this.projectObservability(id, actor)
+    const events = this.events.listByProject(id)
+    const dispatchLog = events
+      .filter(e => ['work.dispatched', 'work.dispatch_auto', 'work.retry_scheduled', 'work.retried', 'work.rework', 'route.deferred', 'route.escalated'].includes(e.type))
+      .map(e => ({ id: e.id, type: e.type, at: e.createdAt, traceId: e.traceId, payload: parseJson<Record<string, unknown>>(e.payloadJson, {}) }))
+      .sort((a, b) => b.at.localeCompare(a.at))
+      .slice(0, 100)
+    const routeDecisions = this.decisions.listByProject(id)
+      .filter(d => d.decisionType === 'route.proposed')
+      .map(d => ({ id: d.id, state: d.state, at: d.createdAt, actorKind: d.actorKind, args: parseJson<Record<string, unknown>>(d.argsJson, {}), reason: d.reason, traceId: d.traceId }))
+      .sort((a, b) => b.at.localeCompare(a.at))
+      .slice(0, 50)
+    return {
+      project: obs.project,
+      route: obs.route,
+      planVersions: this.kernelRepo.planVersions.list(id, 50).map(v => ({
+        version: v.version, status: v.status, sha256: v.sha256, approvedBy: v.approvedBy, approvedAt: v.approvedAt, createdAt: v.createdAt,
+      })),
+      dispatchLog,
+      routeDecisions,
+      waiting: obs.route.waiting,
+      blocked: obs.route.blocked,
+      ready: obs.route.ready,
+    }
+  }
+
   /** plan §7.1 trace：按 traceId 聚合 decisions/events/tasks（为什么可读）。 */
   traceLookup(id: string, traceId: string, actor: ProjectActor) {
     this.get(id, actor)
@@ -3051,7 +3346,17 @@ export class ProjectService {
       outcome: 'applied',
       traceId,
     })
-    this.events.append({ projectId, type: eventType, eventKey, payloadJson: JSON.stringify(payload), traceId })
+    this.events.append({
+      projectId,
+      type: eventType,
+      eventKey,
+      payloadJson: JSON.stringify(payload),
+      traceId,
+      workItemId: typeof args.workItemId === 'string' ? args.workItemId : null,
+      channelId: typeof args.channelId === 'string' ? args.channelId : null,
+      deliverableId: typeof args.deliverableId === 'string' ? args.deliverableId : null,
+      agentId,
+    })
   }
 
   private record(projectId: string, decisionType: string, actor: ProjectActor, args: Record<string, unknown>, traceId: string, eventType: string, eventKey: string, payload: Record<string, unknown>): void {
@@ -3074,7 +3379,18 @@ export class ProjectService {
           traceId,
         })
       }
-      this.events.append({ projectId, type: eventType, eventKey, payloadJson: JSON.stringify(payload), traceId })
+      this.events.append({
+        projectId,
+        type: eventType,
+        eventKey,
+        payloadJson: JSON.stringify(payload),
+        traceId,
+        // P3 可观测：事件列级归属（工作项/频道/交付物/Agent），支持按执行链过滤。
+        workItemId: typeof args.workItemId === 'string' ? args.workItemId : null,
+        channelId: typeof args.channelId === 'string' ? args.channelId : (typeof payload.channelId === 'string' ? payload.channelId : null),
+        deliverableId: typeof args.deliverableId === 'string' ? args.deliverableId : null,
+        agentId: actor.agentId ?? null,
+      })
       // PR17 S5：里程碑事件同步进 Progress Ledger（append-only；与决策/事件同事务）。
       const milestone = ledgerAssessmentOf(eventType, payload)
       if (milestone) {
