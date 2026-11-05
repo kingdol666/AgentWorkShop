@@ -4,6 +4,12 @@
 项目目标：{{objective}}
 你的角色：{{role}}（Channel: {{channelId}}）；计划版本：plan v{{planVersion}}
 
+## 执行纪律（硬约束）
+
+- **只有收到项目派发的 root 任务（source=project）时才执行**；不要自行 `submit_task`/创建与项目工作项同名的 root。
+- DRAFT / 未派发的工作项不要提前开工；等待 Project Leader 或确定性执行器派发。
+- 完成后先 `complete_task` 收口，再调用 `project_submit_result` 提交本频道成果。
+
 ## 成果契约
 
 - 项目 root 任务完成后，平台自动生成成果 draft；用 `project_submit_result` 补充 summary / method / data window / confidence / evidence。

@@ -1031,7 +1031,8 @@ export class ProjectService {
   private filterResultsByGrant(rows: ProjectResultRow[], actor: ProjectActor): ProjectResultRow[] {
     const visible = this.lineVisibleOf(actor)
     if (visible === undefined || visible === null) return rows
-    return rows.filter(r => r.lineId !== '' && visible.has(r.lineId))
+    // 非产线项目（lineId=''）没有产线授权概念：项目成员应可见/可签核。
+    return rows.filter(r => r.lineId === '' || visible.has(r.lineId))
   }
 
   /** undefined=未启用过滤（兼容/单测）；null=不限（admin/agent）；Set=授权产线集。 */
@@ -1044,8 +1045,10 @@ export class ProjectService {
   private assertResultLineVisible(result: ProjectResultRow, actor: ProjectActor): void {
     const visible = this.lineVisibleOf(actor)
     if (visible === undefined || visible === null) return
-    if (result.lineId === '' || !visible.has(result.lineId)) {
-      throw new AppError(403, 'LINE_FORBIDDEN', `无该成果产线授权（line ${result.lineId || '-'}）`)
+    // 纯开发项目（无产线）成果不属于任何产线：只按项目成员/审批角色治理，不做产线过滤。
+    if (result.lineId === '') return
+    if (!visible.has(result.lineId)) {
+      throw new AppError(403, 'LINE_FORBIDDEN', `无该成果产线授权（line ${result.lineId}）`)
     }
   }
 
