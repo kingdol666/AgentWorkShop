@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1600px; height: 1120px; background: #ffffff; }
+  body { font-family: "Segoe UI", "Inter", "Microsoft YaHei", sans-serif; color: #1e2a35; }
+  #canvas { position: relative; width: 1600px; height: 1120px; }
+  .abs { position: absolute; }
+  .box { position: absolute; border-radius: 8px; border: 1.6px solid; padding: 10px 16px; }
+  .b-title { font-size: 28px; font-weight: 650; white-space: nowrap; }
+  .b-body { font-size: 26px; line-height: 1.28; margin-top: 3px; }
+  .accent { position: absolute; left: 0; top: 0; width: 8px; height: 100%; border-radius: 8px 0 0 8px; }
+  .lg { font-size: 26px; color: #5a6874; }
+  .pn { font-size: 26px; line-height: 1.25; }
+  .pn b { font-size: 26px; }
+  .pd { font-size: 25px; color: #4a5a68; margin-top: 2px; }
+</style>
+</head>
+<body>
+<div id="canvas">
+
+  <!-- boundary -->
+  <div class="abs" style="left:14px; top:14px; width:1572px; height:1092px; border:1.6px solid #c3ccd4; border-radius:10px; background:#fdfeff;"></div>
+  <div class="abs lg" style="left:34px; top:26px; color:#7a8792;">AgentWorkShop — System Design Philosophy &amp; Functional Panorama (all elements code-anchored)</div>
+
+  <!-- left: design principles -->
+  <div class="abs box" style="left:36px; top:64px; width:364px; height:880px; background:#fbeeee; border-color:#a8433f;">
+    <div class="b-title" style="font-size:28px; color:#8c2f2c;">Design Principles</div>
+    <div class="pn" style="color:#8c2f2c; font-size:25px; margin-top:2px;">enforced in code, not slogans</div>
+  </div>
+  <div class="abs pn" style="left:56px; top:186px; width:328px;"><b>1 · Single write throat</b><div class="pd">4-part write gate</div></div>
+  <div class="abs pn" style="left:56px; top:266px; width:328px;"><b>2 · Fail-closed defense</b><div class="pd">uncertain → refuse · S1–S16</div></div>
+  <div class="abs pn" style="left:56px; top:346px; width:328px;"><b>3 · Planning ≠ execution</b><div class="pd">LLM proposes · code acts</div></div>
+  <div class="abs pn" style="left:56px; top:426px; width:328px;"><b>4 · Human authority</b><div class="pd">3 gates · never auto</div></div>
+  <div class="abs pn" style="left:56px; top:506px; width:328px;"><b>5 · Evidence discipline</b><div class="pd">claims ≠ evidence</div></div>
+  <div class="abs pn" style="left:56px; top:586px; width:328px;"><b>6 · Total auditability</b><div class="pd">decisions · events · journal</div></div>
+  <div class="abs pn" style="left:56px; top:666px; width:328px;"><b>7 · Config-driven</b><div class="pd">drivers · templates · MCP</div></div>
+  <div class="abs pn" style="left:56px; top:746px; width:328px;"><b>8 · Twin-first cutover</b><div class="pd">mirror → 6-step cutover</div></div>
+
+  <!-- function grid: F1 -->
+  <div class="abs box" style="left:430px; top:64px; width:556px; height:268px; background:#fff; border-color:#6b6b76;">
+    <div class="accent" style="background:#d2691e;"></div>
+    <div class="b-title ind-h" style="margin-left:8px; color:#a8560e;">Production-Line Operations</div>
+    <div class="b-body" style="margin-left:8px;">lines · templates · nodes · products · recipes · batches<br>start / stop with HITL approval<br>batch &amp; recipe-window TOCTOU guards<br>channel line-binding (read-only escalation)</div>
+  </div>
+  <!-- F2 -->
+  <div class="abs box" style="left:1008px; top:64px; width:556px; height:268px; background:#fff; border-color:#6b6b76;">
+    <div class="accent" style="background:#6b6b76;"></div>
+    <div class="b-title ind-h" style="margin-left:8px;">Acquisition &amp; Control — DAQ / DCW</div>
+    <div class="b-body" style="margin-left:8px;">DAQ: modbus-tcp/rtu · opcua · mqtt · http → TSDB<br>vector / image frames → object store<br>DCW: graded writes · 3-tier ACK · journal anchors<br>S7 = explicit reject stub · serial = plugin</div>
+  </div>
+  <!-- F3 -->
+  <div class="abs box" style="left:430px; top:356px; width:556px; height:268px; background:#fff; border-color:#6b6b76;">
+    <div class="accent" style="background:#117733;"></div>
+    <div class="b-title chan-h" style="margin-left:8px;">Agent Teamwork — Channels</div>
+    <div class="b-body" style="margin-left:8px;">LLM leads (omp / opencode / claude) + workers<br>108 governed host tools (all · selected)<br>execution modes: observe / manual / auto<br>budget · step limits · agent-token auth</div>
+  </div>
+  <!-- F4 -->
+  <div class="abs box" style="left:1008px; top:356px; width:556px; height:268px; background:#fff; border-color:#6b6b76;">
+    <div class="accent" style="background:#4477aa;"></div>
+    <div class="b-title orch-h" style="margin-left:8px;">Project Orchestration — SuperAgent</div>
+    <div class="b-body" style="margin-left:8px;">dual-graph plans (contract + execution)<br>route loop with no-LLM hot path<br>handoff bundles across channels<br>three-level acceptance L0 / L1 / L2</div>
+  </div>
+  <!-- F5 -->
+  <div class="abs box" style="left:430px; top:648px; width:556px; height:268px; background:#fff; border-color:#6b6b76;">
+    <div class="accent" style="background:#944078;"></div>
+    <div class="b-title" style="margin-left:8px; color:#7c3b62;">Optimization &amp; Knowledge</div>
+    <div class="b-body" style="margin-left:8px;">DoE → AML training (ARX / static) → profiles<br>OSQP / SLSQP → governed dispatch<br>ontology 9 tables → 4 compiled artifacts<br>IDD diagnosis · RAG knowledge bridges</div>
+  </div>
+  <!-- F6 -->
+  <div class="abs box" style="left:1008px; top:648px; width:556px; height:268px; background:#fff; border-color:#6b6b76;">
+    <div class="accent" style="background:#2f5a8f;"></div>
+    <div class="b-title" style="margin-left:8px; color:#2f5a8f;">Observability &amp; Analysis</div>
+    <div class="b-body" style="margin-left:8px;">dashboards · EDA / SPC / golden / OCAP<br>execution workbench (5 tabs)<br>HealthBoard · watchdog · error ledger<br>weekly reports · full data export</div>
+  </div>
+
+  <!-- deployment strip -->
+  <div class="abs box" style="left:430px; top:940px; width:1134px; height:104px; background:#f2f2f4; border-color:#6b6b76;">
+    <div class="b-title ind-h" style="font-size:26px;">Deployment truths</div>
+    <div class="b-body" style="font-size:25px;">single process · SQLite · TSDB · object store · MCP stdio 38 / HTTP 16 · LM Studio (local) or cloud</div>
+  </div>
+  <div class="abs lg" style="left:36px; top:972px; width:364px;">left = constitution<br>right = capabilities<br>truth: architecture-truth.md</div>
+</div>
+</body>
+</html>
