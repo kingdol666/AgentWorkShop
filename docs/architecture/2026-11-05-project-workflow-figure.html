@@ -31,91 +31,91 @@
 
   <!-- boundary -->
   <div class="abs" style="left:14px; top:14px; width:1572px; height:1152px; border:1.6px solid #c3ccd4; border-radius:10px; background:#fdfeff;"></div>
-  <div class="abs lg" style="left:34px; top:26px; color:#7a8792; font-size:30px;">AgentWorkShop Project 作业流程 — plan v3.0 + Router v3 目标设计（三级验收 · 回调 · handoff 为 v3 增量）</div>
+  <div class="abs lg" style="left:34px; top:26px; color:#7a8792; font-size:30px;">AgentWorkShop Project Operational Flow — plan v3.0 + Router v3 target design</div>
 
-  <!-- ===== Band 1: 计划阶段 ===== -->
-  <div class="abs box hum" style="left:36px; top:64px; width:396px; height:128px;">
-    <div class="b-title hum-h">Owner 立项</div>
-    <div class="b-body" style="font-size:26px;">目标 · 成功标准 · 交付物<br>绑定频道 · mode · 自动派发</div>
+  <!-- ===== Band 1: Planning ===== -->
+  <div class="abs box hum" style="left:36px; top:64px; width:420px; height:160px;">
+    <div class="b-title hum-h">Owner — Initiation</div>
+    <div class="b-body" style="font-size:26px;">objective · success criteria<br>deliverables · channels<br>mode · auto-dispatch</div>
   </div>
-  <div class="abs box orch" style="left:432px; top:64px; width:378px; height:128px;">
-    <div class="b-title orch-h" style="font-size:27px;">总工 Leader 提案</div>
-    <div class="b-body" style="font-size:26px;">proposal-only · 真 LLM<br>工作项 · 依赖 · 预算 · 契约</div>
+  <div class="abs box orch" style="left:492px; top:64px; width:376px; height:160px;">
+    <div class="b-title orch-h" style="font-size:27px;">Chief Leader Proposal</div>
+    <div class="b-body" style="font-size:26px;">proposal-only · real LLM<br>work items · deps · budgets<br>output contracts</div>
   </div>
-  <div class="abs box gate" style="left:860px; top:64px; width:210px; height:128px;">
-    <div class="b-body" style="font-size:26px;"><b style="color:#a8560e;">Gate ①</b><br>计划批准<br>版本锁定</div>
+  <div class="abs box gate" style="left:908px; top:64px; width:210px; height:160px;">
+    <div class="b-body" style="font-size:26px;"><b style="color:#a8560e;">GATE ①</b><br>Plan Approval<br>locks version</div>
   </div>
-  <div class="abs box ind" style="left:1120px; top:64px; width:444px; height:158px;">
-    <div class="b-title ind-h" style="font-size:27px;">双图物化</div>
-    <div class="b-body" style="font-size:26px;">契约图 = 交付物 DAG<br>执行图 = 工作项 DAG<br>有环 / 缺依赖 → 拒绝计划</div>
+  <div class="abs box ind" style="left:1154px; top:64px; width:410px; height:160px;">
+    <div class="b-title ind-h" style="font-size:27px;">Dual-Graph Materialization</div>
+    <div class="b-body" style="font-size:26px;">contract = deliverable DAG<br>execution = work-item DAG<br>cycle / missing → reject</div>
   </div>
 
-  <!-- ===== Band 2: Route 执行循环 ===== -->
+  <!-- ===== Band 2: Route execution loop ===== -->
   <div class="abs box orch" style="left:36px; top:252px; width:1528px; height:388px;">
     <div style="position:absolute; left:0; top:0; width:8px; height:100%; background:#4477aa; border-radius:8px 0 0 8px;"></div>
-    <div class="b-title orch-h" style="font-size:29px; margin-left:8px;">Route 执行循环 — 确定性执行器<span class="badge">热路径 no-LLM</span></div>
-    <div class="b-body" style="font-size:26px; color:#41546b; margin-left:8px;">runRouteLoop = 对账收敛 + 自动派发 · v3：task_callback 事件推（等效一次）+ 定时兜底</div>
+    <div class="b-title orch-h" style="font-size:29px; margin-left:8px;">Route Execution Loop — Deterministic Executor<span class="badge">no-LLM hot path</span></div>
+    <div class="b-body" style="font-size:26px; color:#41546b; margin-left:8px;">runRouteLoop = reconcile + auto-dispatch · callback events (effectively-once) + periodic fallback</div>
   </div>
   <div class="abs box" style="left:60px; top:336px; width:310px; height:160px; background:#fff; border-color:#4477aa;">
-    <div class="b-title" style="font-size:27px;">触发</div>
-    <div class="b-body" style="font-size:26px;">callback 事件推<br>tick 10s / 30s 兜底</div>
+    <div class="b-title" style="font-size:27px;">Trigger</div>
+    <div class="b-body" style="font-size:26px;">task-callback events<br>tick 10s/30s fallback</div>
   </div>
   <div class="abs box no-llm" style="left:410px; top:336px; width:320px; height:160px;">
-    <div class="b-title nollm-h" style="font-size:27px;">Ready(W) 评估</div>
-    <div class="b-body" style="font-size:26px;">DRAFT ∧ 无在飞<br>上游 TechOK 放行<br>契约 ∩ 容量 ∩ 预算</div>
+    <div class="b-title nollm-h" style="font-size:27px;">Ready(W) Evaluation</div>
+    <div class="b-body" style="font-size:26px;">DRAFT ∧ no attempt<br>upstream TechOK gate<br>capacity ∩ budget</div>
   </div>
   <div class="abs box" style="left:770px; top:336px; width:320px; height:160px; background:#fff; border-color:#4477aa;">
-    <div class="b-title" style="font-size:27px;">原子派发</div>
-    <div class="b-body" style="font-size:26px;">DISPATCHING → CAS<br>handoff 注入下游<br>容量与预算上限</div>
+    <div class="b-title" style="font-size:27px;">Atomic Dispatch</div>
+    <div class="b-body" style="font-size:26px;">DISPATCHING → CAS<br>handoff to downstream<br>capacity/budget caps</div>
   </div>
   <div class="abs box chan" style="left:1130px; top:336px; width:400px; height:160px;">
-    <div class="b-title chan-h" style="font-size:27px;">Channel Lead 执行</div>
-    <div class="b-body" style="font-size:26px;">拆 worker · 聚合 artifacts<br>root COMPLETED · A→B 接力</div>
+    <div class="b-title chan-h" style="font-size:27px;">Channel Lead Execution</div>
+    <div class="b-body" style="font-size:26px;">spawn workers · aggregate<br>artifacts → root COMPLETED<br>A→B handoff relay</div>
   </div>
   <!-- failure chips -->
-  <div class="abs chip" style="left:410px; top:512px; border-color:#6b6b76; color:#45454e;">TRANSIENT → 退避重试 ≤ 3</div>
-  <div class="abs chip" style="left:830px; top:512px; border-color:#6b6b76; color:#45454e;">内容 → REWORK · 环境 → BLOCKED</div>
+  <div class="abs chip" style="left:410px; top:512px; border-color:#6b6b76; color:#45454e;">TRANSIENT → retry ≤3 (backoff)</div>
+  <div class="abs chip" style="left:830px; top:512px; border-color:#6b6b76; color:#45454e;">content → REWORK · env → BLOCKED</div>
   <!-- exit diamond -->
   <div class="abs" style="left:1320px; top:500px;">
     <svg width="230" height="84"><polygon points="115,0 230,42 115,84 0,42" fill="#e2edf9" stroke="#4477aa" stroke-width="1.8"/></svg>
-    <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; font-size:26px; font-weight:650; color:#2f5a8f; line-height:1.2;">全部终态<br>∧ TechOK?</div>
+    <div style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; text-align:center; font-size:26px; font-weight:650; color:#2f5a8f; line-height:1.2;">all terminal<br>∧ TechOK?</div>
   </div>
 
-  <!-- ===== Band 3: 三级验收 ===== -->
+  <!-- ===== Band 3: three-level acceptance ===== -->
   <div class="abs box" style="left:36px; top:664px; width:1528px; height:184px; border-color:#c3ccd4; background:#fbfcfd;">
-    <div class="b-title" style="font-size:28px; color:#333f4c;">三级验收流水线 <span style="font-size:25px; font-weight:500; color:#5a6874;">— 每个交付物成果依次通过（Router v3 核心）· Leader 是总工/技术验收人，不是判卷发证的人</span></div>
+    <div class="b-title" style="font-size:28px; color:#333f4c;">Three-Level Acceptance Pipeline <span style="font-size:24px; font-weight:500; color:#5a6874;">— per deliverable, in order (Router v3 core) · Leader is the technical acceptor, not the grader</span></div>
   </div>
   <div class="abs box ind" style="left:60px; top:706px; width:440px; height:130px;">
-    <div class="b-title ind-h" style="font-size:27px;">L0 内容检查 — 确定性</div>
-    <div class="b-body" style="font-size:26px;">COMPLETED · 真实 artifact<br>sha256 溯源 → content_ready</div>
+    <div class="b-title ind-h" style="font-size:27px;">L0 Content Check — system</div>
+    <div class="b-body" style="font-size:26px;">COMPLETED · real artifact<br>sha256 → content_ready</div>
   </div>
   <div class="abs box orch" style="left:544px; top:706px; width:466px; height:130px;">
-    <div class="b-title orch-h" style="font-size:27px;">L1 技术验收 — Leader / reviewer</div>
-    <div class="b-body" style="font-size:26px;">对照 owner 锁定的验收标准<br>证据支撑 → technical_accepted</div>
+    <div class="b-title orch-h" style="font-size:27px;">L1 Technical Acceptance — Leader</div>
+    <div class="b-body" style="font-size:26px;">vs owner-locked criteria<br>evidence → technical_accepted</div>
   </div>
   <div class="abs box hum" style="left:1054px; top:706px; width:486px; height:130px;">
-    <div class="b-title hum-h" style="font-size:27px;">L2 业务签核 — Owner / acceptor</div>
-    <div class="b-body" style="font-size:26px;">deliverable approved（strict 门）<br>Leader 不可自批 · 不可代签业务</div>
+    <div class="b-title hum-h" style="font-size:27px;">L2 Business Sign-off — Owner</div>
+    <div class="b-body" style="font-size:26px;">deliverable approved (strict)<br>leader cannot self-approve</div>
   </div>
 
-  <!-- ===== Band 4: 完成 + 观测 ===== -->
-  <div class="abs box gate" style="left:36px; top:872px; width:256px; height:140px;">
-    <div class="b-body" style="font-size:26px;"><b style="color:#a8560e;">Gate ③</b><br>完成门禁<br>owner 签核 · 复检</div>
+  <!-- ===== Band 4: completion + observability ===== -->
+  <div class="abs box gate" style="left:36px; top:872px; width:340px; height:150px;">
+    <div class="b-body" style="font-size:26px;"><b style="color:#a8560e;">GATE ③</b> Completion Gate<br>owner signs · rechecks<br>all gates before closing</div>
   </div>
-  <div class="abs box chan" style="left:320px; top:872px; width:336px; height:140px;">
+  <div class="abs box chan" style="left:420px; top:872px; width:270px; height:150px;">
     <div class="b-title chan-h" style="font-size:27px;">project completed</div>
-    <div class="b-body" style="font-size:26px;">永不自动完成<br>→ 交付物 · 周报 · 审计</div>
+    <div class="b-body" style="font-size:26px;">never auto-closes<br>artifacts · audit</div>
   </div>
-  <div class="abs box ind" style="left:684px; top:872px; width:880px; height:140px;">
-    <div class="b-title ind-h" style="font-size:27px;">执行工作台（五 tab · 第二 tab 执行分段）</div>
-    <div class="b-body" style="font-size:26px;">交付物图 · 看板 · Channel 泳道 · 执行链 drawer · route log<br>后端派生 stage · API↔DOM parity · SSE + 轮询兜底</div>
+  <div class="abs box ind" style="left:724px; top:872px; width:840px; height:150px;">
+    <div class="b-title ind-h" style="font-size:27px;">Execution Workbench (5 tabs · execution section)</div>
+    <div class="b-body" style="font-size:26px;">deliverable graph · kanban · swimlanes · trace drawer<br>backend stages · API↔DOM parity · SSE + polling</div>
   </div>
 
   <!-- legend -->
-  <div class="abs lg" style="left:36px; top:1030px; width:1520px;">
-    <div><span class="dot" style="background:#117733;margin-left:0;"></span>派发<span class="dot dotd" style="--c:#4477aa;"></span>回调 / 状态<span class="dot dotd" style="--c:#d2691e;"></span>人工审批门<span class="dot" style="background:#6b6b76;"></span>数据 / 支撑<span class="dot" style="background:#cc3311;"></span>LLM-free 保证</div>
-    <div style="margin-top:6px;">① 派发工作项（契约 + handoff） &nbsp;&nbsp; ② 完成回调 → 对账 → L0 → 依赖门解除（未终态则继续循环）</div>
-    <div style="margin-top:6px;">触发 · 评估 · 派发 = 确定性执行器（无 LLM）· Leader = 提案 + L1 技术验收 · Owner = 三道业务签核</div>
+  <div class="abs lg" style="left:36px; top:1040px; width:1520px;">
+    <div><span class="dot" style="background:#117733;margin-left:0;"></span>dispatch<span class="dot dotd" style="--c:#4477aa;"></span>callback / state<span class="dot dotd" style="--c:#d2691e;"></span>human approval gate<span class="dot" style="background:#6b6b76;"></span>data / support<span class="dot" style="background:#cc3311;"></span>LLM-free guarantee</div>
+    <div style="margin-top:6px;">① dispatch work item (contract + handoff) · ② completion callback → reconcile → L0 → release · loops until all terminal</div>
+    <div style="margin-top:6px;">deterministic executor: trigger / evaluate / dispatch (no LLM) · Owner: three sign-offs · Leader: proposal + L1</div>
   </div>
 
   <svg class="arrows" viewBox="0 0 1600 1180">
@@ -127,17 +127,17 @@
     </defs>
 
     <!-- band1 flow -->
-    <path d="M 400 128 L 432 128" fill="none" stroke="#4477aa" stroke-width="2.6" stroke-dasharray="9 6" marker-end="url(#ab)"/>
-    <path d="M 810 128 L 860 128" fill="none" stroke="#d2691e" stroke-width="2.6" stroke-dasharray="7 5" marker-end="url(#ao)"/>
-    <path d="M 1070 128 L 1120 128" fill="none" stroke="#d2691e" stroke-width="2.6" stroke-dasharray="7 5" marker-end="url(#ao)"/>
+    <path d="M 456 144 L 492 144" fill="none" stroke="#4477aa" stroke-width="2.6" stroke-dasharray="9 6" marker-end="url(#ab)"/>
+    <path d="M 868 144 L 908 144" fill="none" stroke="#d2691e" stroke-width="2.6" stroke-dasharray="7 5" marker-end="url(#ao)"/>
+    <path d="M 1118 144 L 1154 144" fill="none" stroke="#d2691e" stroke-width="2.6" stroke-dasharray="7 5" marker-end="url(#ao)"/>
 
     <!-- band1 -> loop panel -->
-    <path d="M 1342 200 L 1342 252" fill="none" stroke="#4477aa" stroke-width="2.6" stroke-dasharray="9 6" marker-end="url(#ab)"/>
+    <path d="M 1359 224 L 1359 252" fill="none" stroke="#4477aa" stroke-width="2.6" stroke-dasharray="9 6" marker-end="url(#ab)"/>
 
     <!-- loop stages -->
-    <path d="M 370 411 L 410 411" fill="none" stroke="#4477aa" stroke-width="2.6" stroke-dasharray="9 6" marker-end="url(#ab)"/>
-    <path d="M 730 411 L 770 411" fill="none" stroke="#cc3311" stroke-width="2.6" marker-end="url(#ag)"/>
-    <path d="M 1090 411 L 1130 411" fill="none" stroke="#117733" stroke-width="3" marker-end="url(#ag)"/>
+    <path d="M 370 416 L 410 416" fill="none" stroke="#4477aa" stroke-width="2.6" stroke-dasharray="9 6" marker-end="url(#ab)"/>
+    <path d="M 730 416 L 770 416" fill="none" stroke="#cc3311" stroke-width="2.6" marker-end="url(#ag)"/>
+    <path d="M 1090 416 L 1130 416" fill="none" stroke="#117733" stroke-width="3" marker-end="url(#ag)"/>
 
     <!-- loop-back: d bottom -> a bottom (callback) -->
     <path d="M 1330 496 L 1330 600 L 215 600 L 215 496" fill="none" stroke="#4477aa" stroke-width="3" stroke-dasharray="9 6" marker-end="url(#ab)"/>
@@ -150,16 +150,16 @@
     <path d="M 1010 771 L 1054 771" fill="none" stroke="#6b6b76" stroke-width="2.6" marker-end="url(#agrey)"/>
 
     <!-- band3 -> band4: L2 bottom -> gate3 -->
-    <path d="M 1297 836 L 1297 850 L 151 850 L 151 872" fill="none" stroke="#d2691e" stroke-width="2.6" stroke-dasharray="7 5" marker-end="url(#ao)"/>
+    <path d="M 1297 836 L 1297 850 L 206 850 L 206 872" fill="none" stroke="#d2691e" stroke-width="2.6" stroke-dasharray="7 5" marker-end="url(#ao)"/>
     <!-- gate3 -> completed -->
-    <path d="M 293 942 L 317 942" fill="none" stroke="#117733" stroke-width="2.6" marker-end="url(#ag)"/>
+    <path d="M 376 947 L 420 947" fill="none" stroke="#117733" stroke-width="2.6" marker-end="url(#ag)"/>
     <!-- completed -> observability -->
-    <path d="M 656 942 L 684 942" fill="none" stroke="#6b6b76" stroke-width="2.2" stroke-dasharray="7 5" marker-end="url(#agrey)"/>
+    <path d="M 693 947 L 721 947" fill="none" stroke="#6b6b76" stroke-width="2.2" stroke-dasharray="7 5" marker-end="url(#agrey)"/>
   </svg>
 
   <!-- flow labels -->
-  <div class="chip" style="left:382px; top:578px; border-color:#4477aa; color:#2f5a8f;">② 完成回调 → 对账收敛 → L0 内容检查 → 依赖门解除 · 未终态继续循环</div>
-  <div class="chip" style="left:1448px; top:592px; border-color:#117733; color:#0d5c27;">是 ↓</div>
+  <div class="chip" style="left:382px; top:578px; border-color:#4477aa; color:#2f5a8f;">② callback → reconcile → L0 → dependency released · loops until terminal</div>
+  <div class="chip" style="left:1448px; top:592px; border-color:#117733; color:#0d5c27;">yes ↓</div>
   <div class="num" style="left:1104px; top:368px; border-color:#117733; color:#117733;">1</div>
   <div class="num" style="left:330px; top:578px; border-color:#4477aa; color:#4477aa;">2</div>
 </div>
