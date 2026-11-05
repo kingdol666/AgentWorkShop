@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Figure-specific audit: final-size type, font family, CJK, media height,
+"""Figure-specific audit: source type, font family, CJK, media height,
 and raster DPI for every figure included by the manuscript.
 
 The general audit (tools/audit.py, gate F8) only checks the vector source
@@ -11,8 +11,8 @@ type floor (5 pt).  This gate applies the manuscript's own targets:
  Fig. 4 governance          >= 8.0 pt (full-width diagram)
  Fig. 5 evaluation results  >= 8.0 pt (full-width data figure)
 
-Rasters must be >= 300 dpi at their placed width. Figure 3 is the original
-user-supplied raster and is checked at its full-width placement.
+Rasters must be >= 300 dpi at their placed width. Placed vector text size must
+also be checked in the compiled manuscript after scaling.
 """
 from __future__ import annotations
 
@@ -26,13 +26,12 @@ SECTIONS = sorted((ROOT / "sections").glob("*.tex")) + [ROOT / "main.tex"]
 TARGETS = {
     "fig1-context-signal-minimal-20261103.pdf": (8.0, 125.0, "Arial"),
     "fig-system-runtime-merged-rev20261102.pdf": (8.0, 250.0, "TimesNewRoman"),
-    "fig3-user-supplied.png": (0.0, 10000.0, ""),
+    "fig3-governed-agent-runtime-20261105.pdf": (8.0, 270.0, "TimesNewRoman"),
     "fig4-governance-flowchart-20261104.pdf": (8.0, 245.0, "TimesNewRoman"),
     "fig5-endpoints-guard-20261105.pdf": (8.0, 350.0, "TimesNewRoman"),
 }
 
-# Figure 3 is placed at 0.98\textwidth (about 182 mm).
-RASTER_WIDTH_MM: dict[str, float] = {"fig3-user-supplied.png": 182.0}
+RASTER_WIDTH_MM: dict[str, float] = {}
 
 def included_figures() -> set[str]:
     pat = re.compile(r"\\includegraphics(?:\[[^\]]*\])?\{([^}]+)\}")

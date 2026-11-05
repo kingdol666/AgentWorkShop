@@ -65,36 +65,7 @@ Across the injection, wastewater, and annealing scenes, the scripted policy ende
 
 Band membership was recomputed from each recorded process value, target, and tolerance, rather than from the runner's condition-specific \texttt{attained} field. The policy used the \texttt{recipe\_trial} batch route. Across its five seeds it issued 12 writes in 17 rounds for injection, 56 writes in 59 rounds for wastewater, and 41 writes in 50 rounds for annealing. These counts describe the tested missions; they do not compare efficiency with another controller. Seeds are simulator initializations, not independent production lines.
 
-Table~\ref{tab:seed-endpoints} lists the values behind the plotted endpoints. Each row retains the scene's own units and target band; the two columns are observations under different stopping rules rather than measurements taken at a common time. The values are included to make the band classification inspectable without inferring exact readings from the plot.
-
-\begin{table*}[!t]
-\centering
-\caption{Recorded endpoints for the no-write control and scripted setpoint policy. Target bands and units differ by scene; the routines use different endpoint rules.}
-\label{tab:seed-endpoints}
-\footnotesize
-\setlength{\tabcolsep}{7pt}
-\begin{tabular}{@{}llrrr@{}}
-\toprule
-Scene & Target band & Seed & No-write endpoint & Scripted endpoint \\
-\midrule
-Injection & $32.5\pm0.35$ g & 42 & 31.226 & 32.320 \\
- & & 43 & 31.272 & 32.180 \\
- & & 44 & 31.244 & 32.173 \\
- & & 45 & 31.272 & 32.190 \\
- & & 46 & 31.206 & 32.340 \\
-Wastewater & $3.4\pm0.6$ mg/L & 42 & 0.202 & 3.864 \\
- & & 43 & 0.198 & 3.800 \\
- & & 44 & 0.268 & 3.686 \\
- & & 45 & 0.200 & 3.576 \\
- & & 46 & 0.226 & 3.646 \\
-Annealing & $95\pm6$ HV & 42 & 134.66 & 97.74 \\
- & & 43 & 134.60 & 97.44 \\
- & & 44 & 134.66 & 97.80 \\
- & & 45 & 134.90 & 99.90 \\
- & & 46 & 134.36 & 98.20 \\
-\bottomrule
-\end{tabular}
-\end{table*}
+Exact per-seed endpoints and recomputed band membership are listed in Table~3 of Supplementary File~S7.
 
 \begin{figure*}[!t]
 \centering

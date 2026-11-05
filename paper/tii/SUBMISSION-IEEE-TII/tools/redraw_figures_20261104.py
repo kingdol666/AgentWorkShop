@@ -55,13 +55,13 @@ for y, route, check in [(.70,'Single-node\nwrite','Control-node binding\nand cha
     box(ax,.425,y,.22,.14,check,fill='#EFF6F6',edge='#117C83')
     arrow(ax,(.18,y+.07),(.225,y+.07)); arrow(ax,(.385,y+.07),(.425,y+.07))
     arrow(ax,(.645,y+.07),(.695,.68 if y > .6 else .56))
-box(ax,.70,.48,.17,.31,'Shared write guard\n\nRange and step\nWrite interval\nHold time',weight='bold',size=8.2)
+box(ax,.70,.48,.17,.31,'Shared controller\n\nRange checks\nStep and timing\nwhen applicable',weight='bold',size=8.2)
 box(ax,.90,.54,.08,.19,'Driver\nI/O',fill='#F0F6F1',edge='#228833',weight='bold')
 arrow(ax,(.87,.635),(.90,.635))
 box(ax,.02,.15,.625,.16,'Configured bounds: engineering, baseline, product\n+ current recipe for online node writes', fill='#F7F8F9',edge='#687482',size=8.3)
 arrow(ax,(.645,.23),(.735,.48),style='--',color='#687482')
-ax.text(.02,.055,'Replacement recipe dispatch excludes the previous recipe window.',fontsize=8.5,color=INK)
-ax.text(.02,.005,'Decline, timeout or failed checks stop before driver dispatch.',fontsize=8.5,color=ORANGE)
+ax.text(.02,.055,'Trial overrides may also be checked against the active recipe window.',fontsize=8.5,color=INK)
+ax.text(.02,.005,'Failed pre-dispatch checks stop the affected operation or parameter.',fontsize=8.5,color=ORANGE)
 export(fig,'fig4-governance-flowchart-20261104')
 
 # Read the frozen evidence archive directly so the figure can be regenerated

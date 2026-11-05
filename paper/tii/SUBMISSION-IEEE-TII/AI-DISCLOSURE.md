@@ -9,11 +9,11 @@ Acknowledgment from the blinded PDF.
 ## Draft disclosure for author confirmation
 
 > OpenAI ChatGPT and Codex assisted with restructuring, drafting, and language revision
-> across Sections I--VII, and with Python code used to prepare Figures 1, 2,
-> 4, and 5. An OpenAI image-generation system was used to create initial
-> concepts for Figures 1 and 2; the manuscript figures were subsequently
-> redrawn. Figure 3 was supplied by the authors and was not generated or
-> edited by an AI system. No AI system generated experimental data. The
+> across Sections I--VII, and with Python code used to prepare Figures 1--5.
+> An OpenAI image-generation system was used to create initial concepts for
+> Figures 1, 2, and 3; the manuscript figures were subsequently redrawn.
+> Figure 3 replaces an earlier figure supplied by the authors. No AI system
+> generated experimental data. The
 > authors should verify the final manuscript, figures, code, and claims and
 > confirm this description before submission.
 

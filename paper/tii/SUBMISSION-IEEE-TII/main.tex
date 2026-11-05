@@ -70,7 +70,7 @@
 \maketitle
 
 \begin{abstract}
-Industrial agents can propose process changes, but each write must remain tied to the active production context, intended control point, and current limits. This paper presents a configuration-driven runtime that binds line, product, recipe, and run context to direction-specific signal mappings and routes task-mediated and direct calls through shared dispatch with route-specific revalidation and common write guards. Command outcomes and optional device readbacks are stored separately from later process observations. Across four simulated scenes, 220/220 admissible mapping probes were accepted, 219/219 collected structural-range probes were rejected, and 216/216 available simulated readbacks matched. In a mock-driver ablation, the enabled process-window guard stopped all six targeted violations before dispatch; removing it allowed all six to reach the driver. A separate single-run PLC-based simulated-twin pilot recorded a matching setpoint readback and a later process observation of 32.224~g within a 32.00--32.30~g band. In a three-scene comparison, 15/15 scripted endpoints and 0/15 no-write endpoints were in band; the scripted endpoints followed scenario-specific routines, whereas no-write used a fixed 60-s endpoint. This comparison cannot estimate efficacy. The live-Agent pilot issued no governed writes. The evidence supports selected simulator and mock-driver paths, not process-control efficacy or physical-plant safety.
+Industrial agents can propose process changes, but a device write must be resolved against the active production context, control point, and current limits. This paper presents a configuration-driven runtime that binds line, product, recipe, and run context to direction-specific signal mappings. Task-mediated and direct calls share dispatch; route handlers resolve live state, perform applicable revalidation and approval, and pass writes through common guards. This separation makes a task's initial context descriptive rather than a grant of authority. Command outcomes and optional device readbacks are recorded separately from subsequent process observations. Across four simulated scenes, 220/220 admissible mapping probes were accepted, 219/219 collected structural-range probes were rejected, and 216/216 available simulated readbacks matched. In a mock-driver ablation, the enabled process-window guard stopped six targeted violations before dispatch; without it, all six reached the driver. In a separate three-scene comparison, 15/15 scripted and 0/15 no-write endpoints were in band, but their different endpoints and horizons preclude an efficacy estimate. The live-Agent pilot issued no governed writes. The evidence supports selected simulator and mock-driver paths, not process-control efficacy or physical-plant safety.
 \end{abstract}
 
 \begin{IEEEkeywords}
@@ -100,8 +100,8 @@ relationships that could have appeared to influence this work.
 Supplementary File~S7 contains the run manifests, raw CSVs, per-seed outcomes, ablation records, a visual report, and the follow-up scenario-pilot records. The reported commit and harness hashes are provenance fields; the package contains no physical-plant data.
 
 \bibliographystyle{IEEEtran}
-% Balance the final reference columns without changing IEEEtran's font or leading.
-\IEEEtriggeratref{13}
+% Balance the reference columns on the final page.
+\IEEEtriggeratref{11}
 \bibliography{resources/refs}
 
 \end{document}

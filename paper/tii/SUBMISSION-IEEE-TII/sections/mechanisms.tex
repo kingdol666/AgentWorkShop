@@ -7,10 +7,11 @@ approval service, then waits before calling the governed write operation. A
 decline or timeout returns without reaching the controller write. While the
 request is pending, the handler does not dispatch. After approval, it rechecks
 the applicable node binding and channel grant. The shared write controller
-then evaluates the current engineering, parameter, product, and recipe limits,
-along with the step and write-interval rules, before dispatching to the
-configured driver. This single-node path does not use the recipe-operation
-context snapshot described below.
+then evaluates the current engineering, parameter, product, and recipe limits;
+outside benchmark mode, agent or manual writes also face step, interval, and
+hold-window checks before dispatch to the configured driver. This single-node path does not use the recipe-operation
+context snapshot described below. Revalidation does not by itself establish an
+atomic snapshot spanning the external device write.
 
 Recipe operations use a separate approval path. For \texttt{recipe\_trial}
 and \texttt{recipe\_apply}, the approval is bound to the recipe operation and
@@ -19,16 +20,16 @@ the authority and context again and verifies the recipe definition and
 candidate scope before dispatch. A changed context, revoked binding, or
 changed recipe definition prevents that proposal from proceeding. Recipe
 trial approvals use a 30-minute window by default; single-node approval waits
-expire after 180\,s by default. Online agent and manual node writes are
-separated by at least 60\,s outside benchmark mode, while recipe trials use a
-per-line cadence of 300\,s by default.
+expire after 180\,s by default. Outside benchmark mode, agent and manual
+writes are subject to a minimum 60-s interval following a setpoint change;
+recipe trials also use a per-line cadence of 300\,s by default.
 
 Fig.~\ref{fig:hitl} contrasts the bounds used for online node writes in Eq.~(\ref{eq:admission}) with those used for a replacement recipe, alongside the route-dependent approval and shared-dispatch paths.
 
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{resources/fig4-governance-flowchart-20261104.pdf}
-\caption{Write admission and route-dependent approval. An online node write uses the intersection of hard, baseline, product, and active-recipe bounds; a replacement recipe is checked against the hard, baseline, and product bounds, not the previous recipe window. When approval is required, a single-node route rechecks binding and grant, while a recipe operation rechecks authority, context, and recipe scope. The shared controller applies the configured range, step, interval, and hold-window checks before driver dispatch. A decline, timeout, or failed pre-dispatch check ends without a driver call.}
+\caption{Write admission and route-dependent approval. An online node write uses the intersection of hard, baseline, product, and active-recipe bounds; a replacement recipe is checked against hard, baseline, and product bounds, not the previous recipe window. Trial overrides are additionally checked against the applicable recipe window. After required approval, the routes recheck their applicable binding, grant, context, and recipe scope. The shared controller applies range checks; step, interval, and hold-window checks apply to agent or manual sources outside benchmark mode. A failed pre-dispatch check prevents the affected operation or parameter from reaching the driver.}
 \label{fig:hitl}
 \end{figure*}
 
@@ -36,8 +37,10 @@ A \texttt{recipe\_trial} illustrates the recipe-operation path. The handler
 checks the bound recipe, active run, candidate parameters, and route timing.
 If approval is required, it requests approval and then revalidates authority
 and context before submitting a bounded batch through the configured driver.
-It returns a receipt for each parameter. A trial does not save or apply a
-recipe version; the caller can retrieve later DAQ observations separately
+It returns a result for each parameter. In the current implementation,
+parameters are attempted individually, so a batch can be partially applied;
+the per-parameter results and device state must be reconciled before retrying.
+A trial does not save or apply a recipe version; the caller can retrieve later DAQ observations separately
 before updating, applying, or rolling back the recipe. The driver registry
 maps semantic controls to configured protocol drivers, so operation arguments
 do not contain protocol-specific details.
