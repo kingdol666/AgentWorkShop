@@ -3,7 +3,7 @@
  * 用户管理页(仅 admin):真实数据源 GET /api/users(其余角色 → 403 门禁视图)。
  * 角色 admin/editor/user;状态 active/disabled;支持角色调整、启停、删除。
  */
-import { message } from 'ant-design-vue'
+import { message, Modal } from 'ant-design-vue'
 import { useUserStore } from '../stores/workshop/user'
 import { narrowFetch } from '../stores/workshop/narrow-fetch'
 
@@ -65,7 +65,18 @@ function roleLabel(role: UserRecord['role']) {
   return t(`users.role${role.charAt(0).toUpperCase()}${role.slice(1)}`)
 }
 
-const changeRole = async (u: UserRecord, role: UserRecord['role']): Promise<void> => {
+// 角色变更 = 权限面突变:先确认再落盘(交互宪法 §2-1);同值变更不弹窗
+const changeRole = (u: UserRecord, role: UserRecord['role']): void => {
+  if (role === u.role) return
+  Modal.confirm({
+    title: t('users.roleConfirm', { p0: u.name, p1: roleLabel(role) }),
+    okText: t('common.confirm'),
+    cancelText: t('common.cancel'),
+    onOk: () => applyRole(u, role),
+  })
+}
+
+const applyRole = async (u: UserRecord, role: UserRecord['role']): Promise<void> => {
   try {
     await narrowFetch<ApiEnvelope<unknown>>(`/api/users/${u.id}`, {
       method: 'PUT',
@@ -197,14 +208,22 @@ useHead({ title: () => t('titles.users') })
                 ]"
                 @change="(v: unknown) => changeRole(record as UserRecord, v as UserRecord['role'])"
               />
-              <a-button
-                size="small"
-                type="text"
+              <!-- 停用/启用立即影响该用户全部会话:二次确认(交互宪法 §2-1) -->
+              <a-popconfirm
+                :title="$t('users.statusConfirm', { p0: record.name, p1: record.status === 'active' ? $t('users.k3wsi1010') : $t('users.k3xhfg009') })"
+                :ok-text="$t('common.confirm')"
+                :cancel-text="$t('common.cancel')"
                 :disabled="isSelf(record as UserRecord)"
-                @click="toggleStatus(record as UserRecord)"
+                @confirm="toggleStatus(record as UserRecord)"
               >
-                {{ record.status === 'active' ? $t('users.k3wsi1010') : $t('users.k3xhfg009') }}
-              </a-button>
+                <a-button
+                  size="small"
+                  type="text"
+                  :disabled="isSelf(record as UserRecord)"
+                >
+                  {{ record.status === 'active' ? $t('users.k3wsi1010') : $t('users.k3xhfg009') }}
+                </a-button>
+              </a-popconfirm>
               <a-popconfirm
                 :title="$t('users.k1jk2os9001')"
                 :disabled="isSelf(record as UserRecord)"

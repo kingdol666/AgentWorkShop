@@ -39,8 +39,14 @@ use([
   ToolboxComponent,
 ])
 
-/** Warm Editorial 图表色序(替代 ECharts 默认荧光绿/蓝;与 main.css --chart-* 同源) */
-const EDITORIAL_PALETTE = ['#4a6b57', '#8aa07c', '#c9a26a', '#b3714f', '#6f8296', '#4e4e4e']
+/**
+ * 图表默认色序 —— 单一来源 = main.css 令牌(useChartTheme 主题桥):
+ * 亮 = Warm Editorial --chart-1..5,暗 = 控制室 tone 序。
+ * 首帧令牌未就绪时回退亮阶编辑色板(与 --chart-* 同值),挂载后即被桥接色覆盖。
+ */
+const FALLBACK_PALETTE = ['#4a6b57', '#8aa07c', '#c9a26a', '#b3714f', '#6f8296']
+const { chartPalette } = useChartTheme()
+const mergedPalette = computed<string[]>(() => (chartPalette.value.length ? chartPalette.value : FALLBACK_PALETTE))
 
 const props = defineProps({
   option: {
@@ -62,9 +68,9 @@ const chartStyle = computed(() => {
   }
 })
 
-// 未显式给 color 的图表统一走编辑色板;给了的尊重页面意图
+// 未显式给 color 的图表统一走令牌桥接色板;给了的尊重页面意图
 const merged = computed<EChartsOption>(() => ({
-  color: EDITORIAL_PALETTE,
+  color: mergedPalette.value,
   ...props.option,
 }))
 

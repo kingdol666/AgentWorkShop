@@ -127,7 +127,7 @@ const labelOf = (state: string) => STATE_LABEL[state] ?? state
   align-items: center;
   padding: 1px 7px;
   font-family: var(--font-body);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--ink);
   border-radius: var(--radius-pill);
 }
@@ -144,8 +144,8 @@ const labelOf = (state: string) => STATE_LABEL[state] ?? state
   border-radius: 50%;
 }
 .task-tag { margin: 0 !important; }
-.chain-arrow { font-size: 10px; opacity: 0.4; }
+.chain-arrow { font-size: var(--fs-micro); opacity: 0.4; }
 .task-title { font-weight: 600; }
-.task-assignee { font-family: var(--font-mono); font-size: 10.5px; opacity: 0.6; }
+.task-assignee { font-family: var(--font-mono); font-size: var(--fs-micro); opacity: 0.6; }
 .progress { flex: 0 0 180px; margin: 0 !important; }
 </style>

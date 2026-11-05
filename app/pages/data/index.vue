@@ -60,7 +60,7 @@ const tab = ref<'mirror' | 'mes' | 'ledger'>('mirror')
 .head { display: flex; justify-content: space-between; align-items: flex-end; }
 .title { font-size: 18px; font-weight: 700; margin: 0; }
 .sub { font-size: 12px; color: var(--ink-faint, #888); margin: 2px 0 0; }
-.tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--border, rgba(127,127,127,.2)); padding-bottom: 0; }
+.tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--line); padding-bottom: 0; }
 .tab { border: none; background: transparent; padding: 6px 14px; font-size: 13px; cursor: pointer; color: var(--ink-soft, #666); border-bottom: 2px solid transparent; }
 .tab.on { color: var(--ink, #222); font-weight: 600; border-bottom-color: #4a6b57; }
 </style>

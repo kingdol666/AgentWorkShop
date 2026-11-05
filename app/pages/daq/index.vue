@@ -61,6 +61,26 @@ async function ackOne(id: string): Promise<void> {
   }
 }
 
+/** 批量确认(报警风暴时逐条点击成本线性;失败计数汇总提示) */
+const ackingAll = ref(false)
+async function ackAll(): Promise<void> {
+  const ids = daq.alarms.map(a => a.id)
+  if (!ids.length) return
+  ackingAll.value = true
+  let failed = 0
+  for (const id of ids) {
+    try {
+      await daq.ackAlarm(id)
+    }
+    catch {
+      failed++
+    }
+  }
+  ackingAll.value = false
+  if (failed > 0) message.error(tt('daq.ackAllPartialFail', { n: ids.length - failed, f: failed }))
+  else message.success(tt('daq.k1acked144'))
+}
+
 let unsub: (() => void) | null = null
 onMounted(() => {
   // WS 会话建连(连接层即注册 scene peer):daq.reading 实时帧直达,不再等 5s 轮询
@@ -161,7 +181,9 @@ const opt = useDaqOptimizations()
 
     <DaqAlarmBar
       :alarms="daq.alarms"
+      :acking="ackingAll"
       @ack="ackOne"
+      @ack-all="ackAll"
     />
 
     <DaqControlCard
@@ -169,7 +191,7 @@ const opt = useDaqOptimizations()
       :meta="daq.meta"
       :lines="dcw.lines"
       :line-state-of="(id: string) => dcw.lineStateOf(id)"
-      @action="(a: 'start' | 'stop' | 'pause' | 'resume') => daq.controllerAction(a)"
+      @action="(a: 'pause' | 'resume') => daq.controllerAction(a)"
       @config="onControllerConfig"
       @open-add="addNode.open.value = true"
       @open-templates="tpl.tplOpen.value = true; tpl.resetTplForm()"

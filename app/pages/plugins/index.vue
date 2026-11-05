@@ -5,7 +5,7 @@
  * 经 WS plugins.reloaded 事件 + 轮询双通道热注入/卸载客户端增强。
  */
 import { computed, onMounted, ref } from 'vue'
-import { message } from 'ant-design-vue'
+import { message, Modal } from 'ant-design-vue'
 import { useUserStore } from '~/stores/workshop/user'
 import { narrowFetch } from '~/stores/workshop/narrow-fetch'
 
@@ -64,14 +64,40 @@ async function load() {
   }
 }
 
-async function toggle(p: PluginInfo) {
+// 热重载后的延时刷新:连续切换时去重,避免两个 800ms 定时器叠出并发 load(竞态修复)
+let reloadTimer: ReturnType<typeof setTimeout> | null = null
+function scheduleReload(): void {
+  if (reloadTimer) clearTimeout(reloadTimer)
+  reloadTimer = setTimeout(() => {
+    reloadTimer = null
+    void load()
+  }, 800)
+}
+
+function toggle(p: PluginInfo) {
+  // 停用 = 在跑 Agent 立即失去该插件的工具与路由,先确认;启用是恢复方向,直接执行
+  if (p.enabled) {
+    Modal.confirm({
+      title: t('plugins.disableConfirmTitle', { name: p.name }),
+      content: t('plugins.disableConfirmBody'),
+      okText: t('plugins.disabled'),
+      cancelText: t('common.cancel'),
+      okButtonProps: { danger: true },
+      onOk: () => doToggle(p),
+    })
+    return
+  }
+  void doToggle(p)
+}
+
+async function doToggle(p: PluginInfo) {
   busyName.value = p.name
   try {
     const d = await narrowFetch<{ code: number, data?: { enabled: boolean } }>(`/api/workshop/plugins/${p.name}/${p.enabled ? 'disable' : 'enable'}`, { method: 'POST', headers: authHeaders() })
     if (d.code !== 0 || !d.data) throw new Error(t('plugins.enableFail'))
     p.enabled = d.data.enabled
     message.success(`${p.name} · ${d.data.enabled ? t('plugins.enabled') : t('plugins.disabled')}`)
-    setTimeout(load, 800) // 热重载完成后刷新路由/客户端状态
+    scheduleReload() // 热重载完成后刷新路由/客户端状态
   }
   catch (err) {
     // 403 权限不足/404 插件不存在等:信封 message 直出人话,不再渲染码式文本
@@ -286,10 +312,10 @@ onMounted(load)
 .pg-empty-ico { font-size: 30px; color: var(--ink-faint); }
 .pg-empty-t { margin: 0; font-size: 12.5px; color: var(--ink-faint); }
 .pg-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 14px; }
-.pg-card { position: relative; padding: 14px 16px; border: 1px solid var(--aw-border, rgba(128, 152, 199, .25));
-  border-radius: 12px; background: var(--aw-card, rgba(255, 255, 255, .04)); cursor: pointer;
+.pg-card { position: relative; padding: 14px 16px; border: 1px solid var(--line);
+  border-radius: 12px; background: var(--surface-card); cursor: pointer;
   transition: border-color .2s, transform .2s; }
-.pg-card:hover { border-color: var(--aw-accent, #35e0a0); transform: translateY(-1px); }
+.pg-card:hover { border-color: var(--accent); transform: translateY(-1px); }
 .pg-card.is-off { opacity: .55; }
 .card-head { display: flex; align-items: center; gap: 10px; }
 .card-name { font-weight: 700; font-size: 15px; }

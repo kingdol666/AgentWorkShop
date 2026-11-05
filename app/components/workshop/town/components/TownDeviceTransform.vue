@@ -120,7 +120,7 @@ defineProps<{
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--hud-faint);
   letter-spacing: 0.16em;
   font-weight: 700;
@@ -138,7 +138,7 @@ defineProps<{
 .obj-mini {
   flex: none;
   padding: 4px 10px;
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--hud-dim);
   background: var(--hud-input);
@@ -152,7 +152,7 @@ defineProps<{
 .bp-seg { display: flex; gap: 4px; }
 .seg-btn {
   padding: 4px 12px;
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--hud-dim);
   background: var(--hud-input);
@@ -166,7 +166,7 @@ defineProps<{
 .xz-seg { display: flex; gap: 6px; margin-bottom: 8px; }
 .xz-seg .seg-btn { flex: 1; }
 .scale-row { display: flex; gap: 8px; align-items: center; }
-.scale-min, .scale-max { font-family: var(--font-mono); font-size: 10px; color: var(--hud-faint); }
+.scale-min, .scale-max { font-family: var(--font-mono); font-size: var(--fs-micro); color: var(--hud-faint); }
 .scale-range { flex: 1; accent-color: var(--hud-accent); }
 .scale-val {
   text-align: center;

@@ -163,11 +163,11 @@ defineProps<{
 .daq-svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .daq-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .daq-name { font-size: 12px; font-weight: 600; color: var(--hud-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.daq-code { font-family: var(--font-mono); font-size: 10px; letter-spacing: 0.08em; color: var(--hud-faint); }
+.daq-code { font-family: var(--font-mono); font-size: var(--fs-micro); letter-spacing: 0.08em; color: var(--hud-faint); }
 .daq-count {
   flex: none;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--hud-accent);
   background: rgba(53, 224, 160, 0.1);
   border: 1px solid rgba(53, 224, 160, 0.28);
@@ -186,7 +186,7 @@ defineProps<{
 .daq-card.tpl:focus-visible { outline: 1px solid var(--hud-accent); outline-offset: 1px; }
 .daq-caret {
   flex: none;
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--hud-faint);
   transition: transform 0.15s var(--hud-ease);
 }
@@ -274,11 +274,11 @@ defineProps<{
 .daq-node-sub { display: flex; gap: 7px; align-items: baseline; min-width: 0; }
 .node-val {
   flex: none;
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--hud-cyan);
 }
 .node-dev {
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   color: var(--hud-faint);
   white-space: nowrap;
   overflow: hidden;
@@ -287,7 +287,7 @@ defineProps<{
 }
 .daq-empty-hint {
   padding: 4px 8px 6px 10px;
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--hud-faint);
 }
 .obj-input:hover, .obj-select:hover, .bind-select:hover, .daq-num:hover,
@@ -336,7 +336,7 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
   display: inline-flex;
   gap: 5px;
   align-items: center;
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   color: var(--hud-faint);
 }
 .daq-ctl-cycle input,

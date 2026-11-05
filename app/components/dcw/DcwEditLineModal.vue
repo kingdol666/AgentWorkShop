@@ -179,7 +179,7 @@ function submit(): void {
   gap: 8px;
 }
 .mode-opt {
-  border: 1px solid var(--aw-border, #d9d9d9);
+  border: 1px solid var(--line-strong);
   border-radius: 999px;
   padding: 4px 14px;
   background: transparent;
@@ -187,9 +187,9 @@ function submit(): void {
   font-size: 12px;
 }
 .mode-opt.on {
-  border-color: var(--aw-primary, #3aa0ff);
-  color: var(--aw-primary, #3aa0ff);
-  background: color-mix(in srgb, var(--aw-primary, #3aa0ff) 10%, transparent);
+  border-color: var(--accent);
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
 }
 .mode-opt.danger.on {
   border-color: #ff8a5c;

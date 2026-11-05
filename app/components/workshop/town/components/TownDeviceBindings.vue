@@ -195,7 +195,7 @@ defineProps<{
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--hud-faint);
   letter-spacing: 0.16em;
   font-weight: 700;
@@ -211,7 +211,7 @@ defineProps<{
   opacity: 0.55;
 }
 .obj-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
-.obj-label { flex: none; width: 52px; font-size: 10.5px; color: var(--hud-dim); }
+.obj-label { flex: none; width: 52px; font-size: var(--fs-micro); color: var(--hud-dim); }
 .obj-input, .obj-select {
   flex: 1;
   min-width: 0;
@@ -250,7 +250,7 @@ defineProps<{
 .bind-svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 .bind-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .bind-label { font-size: 11px; font-weight: 600; color: var(--hud-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.bind-val { font-family: var(--font-mono); font-size: 10px; color: var(--hud-cyan); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bind-val { font-family: var(--font-mono); font-size: var(--fs-micro); color: var(--hud-cyan); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bind-val b { font-size: 11px; font-weight: 700; }
 .bind-spark { width: 56px; height: 20px; flex: none; }
 .bind-x {
@@ -329,7 +329,7 @@ defineProps<{
 .bp-tpl {
   padding: 6px 10px 3px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--hud-faint);
@@ -337,7 +337,7 @@ defineProps<{
 .bp-cur {
   margin-left: auto;
   font-style: normal;
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   color: var(--hud-faint);
   white-space: nowrap;
   overflow: hidden;
@@ -346,7 +346,7 @@ defineProps<{
 }
 .bp-empty {
   padding: 10px;
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   color: var(--hud-faint);
 }
 /* ===== 控件语汇统一:输入场 focus 柔光环 + number 去原生 spinner ===== */

@@ -130,7 +130,7 @@ const loadLaneEarlier = async (): Promise<void> => {
   margin: 2px auto 8px;
   padding: 2px 12px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--ink-faint);
   cursor: pointer;
   background: transparent;

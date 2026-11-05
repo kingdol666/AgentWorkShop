@@ -29,6 +29,9 @@ const props = defineProps<{
 const open = defineModel<boolean>('open', { default: false })
 
 const { t } = useI18n()
+// 抽屉响应宽度:此前固定 860px,≤900px 视口直接溢出(2026-11-06 修复)
+const { width: vpWidth } = useResponsive()
+const terminalWidth = computed(() => Math.min(860, Math.max(320, vpWidth.value - 24)))
 
 const {
   hostEl,
@@ -49,9 +52,8 @@ const {
   <a-drawer
     v-model:open="open"
     placement="right"
-    :width="860"
-    :body-style="{ padding: '0', display: 'flex', flexDirection: 'column', background: '#10151c' }"
-    :header-style="{ background: '#10151c', borderBottom: '1px solid #1d2733' }"
+    :width="terminalWidth"
+    :styles="{ body: { padding: '0', display: 'flex', flexDirection: 'column', background: '#10151c' }, header: { background: '#10151c', borderBottom: '1px solid #1d2733' } }"
     class="omp-terminal-drawer"
   >
     <template #title>
@@ -157,7 +159,7 @@ const {
   gap: 6px;
   align-items: center;
   padding: 1px 8px;
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.04em;
   color: #a9b1d6;
   background: rgb(65 72 104 / 26%);

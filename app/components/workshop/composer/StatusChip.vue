@@ -134,7 +134,7 @@ defineProps<{
   gap: 5px;
   align-items: center;
   padding: 0 6px;
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   border-radius: var(--radius-chip);
 }
 .reach-chip .reach-dot {

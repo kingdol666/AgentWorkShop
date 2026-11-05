@@ -203,8 +203,8 @@ const open = (a: LiveAgent) => {
   line-height: 0;
 }
 
-.live-avatar { width: 22px; height: 22px; font-size: 10px; }
-.live-avatar-sm { width: 20px; height: 20px; font-size: 9.5px; }
+.live-avatar { width: 22px; height: 22px; font-size: var(--fs-micro); }
+.live-avatar-sm { width: 20px; height: 20px; font-size: var(--fs-micro); }
 
 /* 脉冲点:暖橙呼吸圈(执行中的活动信号) */
 .live-pip {
@@ -292,7 +292,7 @@ const open = (a: LiveAgent) => {
 
 .live-pop-title {
   padding: 4px 8px 6px;
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;

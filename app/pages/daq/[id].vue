@@ -47,6 +47,11 @@ const { frames, loadFrames, vecPath } = useDaqDetailFrames(nodeId, isFrameNode)
       {{ daq.error }}(<NuxtLink to="/workshop">{{ $t('daqDetail.k1bhhheq002') }}</NuxtLink>)
     </p>
 
+    <AwStateBlock
+      v-else-if="!node"
+      state="loading"
+    />
+
     <div
       v-if="node"
       class="grid"

@@ -74,6 +74,7 @@
     "prepublishOnly": "node bin/aw.mjs build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
+    "check:cssvars": "node scripts/check-css-vars.mjs",
     "typecheck": "node scripts/typecheck.mjs",
     "i18n:check": "node scripts/_i18n-verify-keys.mjs",
     "docs:check": "node scripts/check-docs-sync.mjs",

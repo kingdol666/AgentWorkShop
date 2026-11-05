@@ -149,7 +149,7 @@ const stateDot = (s: AgentView['state']): string =>
 
 .mh-hint {
   margin-top: 3px;
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   color: var(--ink-faint);
 }
 </style>
