@@ -1,0 +1,25 @@
+{
+  "rendered": {
+    "file": "D:\\codes\\ABO\\aw-router-v3\\docs\\audit\\evidence\\2026-11-06-acceptance\\l1-acceptance-deliverable.html",
+    "resultId": "ac49ed69-9599-4d1b-9865-116d58d82eac",
+    "version": 1,
+    "metrics": {
+      "title": "L1 Acceptance",
+      "sections": 3,
+      "h1": 1,
+      "buttons": 0,
+      "canvas": 0,
+      "svg": 0,
+      "overflowX": false,
+      "textLength": 490
+    }
+  },
+  "results": [
+    {
+      "id": "ac49ed69-9599-4d1b-9865-116d58d82eac",
+      "title": "L1验收页面实现 成果",
+      "status": "approved",
+      "version": 1
+    }
+  ]
+}

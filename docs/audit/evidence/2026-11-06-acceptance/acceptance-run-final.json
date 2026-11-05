@@ -1,0 +1,81 @@
+{
+  "startedAt": "2026-11-05T19:05:17.100Z",
+  "steps": [
+    {
+      "name": "项目创建（omp leader）",
+      "detail": "835309fb-6035-4978-bff1-5783a9a96d4c office=9ec66996-d3f0-4a2a-937f-4d5b7630ee42 leader=d6bbb42c-8e54-4860-beb7-c590270c38d0",
+      "pass": true,
+      "at": "2026-11-05T19:05:17.221Z"
+    },
+    {
+      "name": "Channel 绑定与预热",
+      "detail": "producer=287727ed reviewer=7ea4bf52",
+      "pass": true,
+      "at": "2026-11-05T19:05:17.308Z"
+    },
+    {
+      "name": "Leader 计划真实提案 → owner 批准 → 物化",
+      "detail": "approval=7b4def43-011c-43b3-9549-c563bfa5e2f5 workItem=a1c25281-f20f-4ba0-9aa8-6f7b7899ff1e",
+      "pass": true,
+      "at": "2026-11-05T19:05:57.461Z"
+    },
+    {
+      "name": "Leader route 提案 → owner 应用 → 执行器派发",
+      "detail": "decision=ff30b743-3739-4684-b5e0-e56ff3783637 state=DISPATCHED stage=dispatched",
+      "pass": true,
+      "at": "2026-11-05T19:06:17.560Z"
+    },
+    {
+      "name": "成果提交（owner 代提交）",
+      "detail": "result=7e58c12e-8bc8-4803-b236-adf0a4ce5409 status=submitted artifact=18637ccf-d4cf-4f62-b9e2-67580fecf773 bytes=2437",
+      "pass": true,
+      "at": "2026-11-05T19:07:07.666Z"
+    },
+    {
+      "name": "平台自动 L1 验收请求",
+      "detail": "message=2862b474-dfa8-47bc-9483-d17a3c62e51b status=delivered to=f9ec7045",
+      "pass": true,
+      "at": "2026-11-05T19:07:12.681Z"
+    },
+    {
+      "name": "独立评审 Channel 写 L1 技术验收",
+      "detail": "review=e9dcdab0-6847-4a13-96c1-83299f578a68 kind=channel_lead verdict=pass",
+      "pass": true,
+      "at": "2026-11-05T19:08:37.876Z"
+    },
+    {
+      "name": "L2 业务签核（L1 之后）",
+      "detail": "approval=2b4eeeab-8680-4d5d-9cb2-10ed867d9bf4 status=approved",
+      "pass": true,
+      "at": "2026-11-05T19:08:37.905Z"
+    },
+    {
+      "name": "项目完成",
+      "detail": "status=completed",
+      "pass": true,
+      "at": "2026-11-05T19:08:37.968Z"
+    }
+  ],
+  "projectId": "835309fb-6035-4978-bff1-5783a9a96d4c",
+  "route": {
+    "decisionId": "ff30b743-3739-4684-b5e0-e56ff3783637",
+    "state": "proposed",
+    "actorKind": "project_leader",
+    "argsJson": "{\"workItemId\":\"a1c25281-f20f-4ba0-9aa8-6f7b7899ff1e\",\"action\":\"dispatch\",\"reason\":\"W1 已就绪，分发给生产 Channel\",\"deferMinutes\":null,\"targetChannelId\":\"287727ed-fbdb-4bac-b02c-a7f1fd2fd145\"}"
+  },
+  "result": {
+    "id": "7e58c12e-8bc8-4803-b236-adf0a4ce5409",
+    "status": "submitted",
+    "version": 1
+  },
+  "technicalReview": {
+    "id": "e9dcdab0-6847-4a13-96c1-83299f578a68",
+    "reviewerKind": "channel_lead",
+    "reviewerChannelId": "7ea4bf52-3148-4918-b976-c125071c5fb6",
+    "verdict": "pass",
+    "note": "L1 technical acceptance PASS. Independently read the submitted artifact l1-acceptance.html (2437 bytes, sha256 ccc2b0bbd5ef76af6466449ab2bc9cc5cd3394665abd6bc28cc1981954c085e8). Checks: (1) artifact.present — single-file HTML exists in production channel workspace; (2) text.contains:<!DOCTYPE — line 1 is exactly '<!DOCTYPE html>'; (3) min_bytes:200 — 2437 >= 200. Deliverable description also satisfied: <title>L1 Acceptance</title> at line 6, single file with no external assets or build step. Scope limited to L1 technical acceptance; L2 business sign-off remains with owner/approver."
+  },
+  "finishedAt": "2026-11-05T19:08:37.968Z",
+  "status": "completed",
+  "pass": true
+}

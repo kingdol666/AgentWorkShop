@@ -1,0 +1,13 @@
+{
+  "apiChannels": 2,
+  "domLanes": 2,
+  "apiWorkItems": 1,
+  "domCards": 1,
+  "summary": "0 就绪\n0 执行中\n0 等待\n0 阻塞/返工\n100% 工作项完成\n100% 交付物签核",
+  "laneTexts": [
+    "L1验收生产频道\n启用\n0 执行 · 0 就绪\nL1验收页面实现\n已验收\nattempt 1/3 · 成果 approved",
+    "L1验收评审频道\n启用\n0 执行 · 0 就绪\n\n无工作项"
+  ],
+  "drawer": "执行链\n206e138c…\n关闭\nL1验收页面实现\n已验收\nCOMPLETED · attempt 1/3\n尝试链\nAttempt #1\nCLOSED\n72765ab8\n2026-11-06T02:51:34.095+08:00\nroot COMPLETED · 100% · assignee e34fb8e5\ninput\n820B · sha bbcb383a7d9c…\ndeliverable\n3004B · sha e10aa4237c1b…\n成果与验收链\nv1 L1验收页面实现 成果\napproved\n\nL1 验收页面（owner 代生产 Channel 提交，证据来自真实 task artifact）\n\nevidence 1 · sha a0f1269c97b0… · verified 2026-11-06T02:53:29.437+08:00\nL1 pass · channel_lead · d20d94a4-1805-407c-a0c2-5667cbd15318 · 独立复核 生产 Channel(5b7d9305) 工作区文件 l1-acceptance.html：1) artifact.present=true，文件存在且可读（3005 字节）；2) 首行字节为 <!DOCTYPE html>，满足 text.contains:<!DOCTYPE；3) 3005 bytes ≥ min_bytes:200；4) 结构完整（html/head/meta charset/UTF-8/title=L1 Acceptance/无外部资源、无 JS），内容与交付物「L1验收页面」及验收契约一致。判定 L1 技术验收通过。\n事件\nwork.dispatch_auto\n2026-11-06T02:51:34.116+08:00\nproposal.applied\n2026-11-06T02:51:34.117+08:00\nwork.completed\n2026-11-06T02:52:26.509+08:00",
+  "pageErrors": []
+}

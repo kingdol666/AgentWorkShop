@@ -1,0 +1,79 @@
+{
+  "date": "2026-11-06",
+  "branch": "fix/project-acceptance-l1",
+  "base": "d3650bfc",
+  "environment": {
+    "build": ".output (npm run build)",
+    "baseUrl": "http://127.0.0.1:3981",
+    "awHome": "D:/codes/ABO/aw-acceptance-home-20261106",
+    "harness": "omp",
+    "modelRoleDefault": "ustc/deepseek-flash:max",
+    "modelOverride": false
+  },
+  "code": {
+    "typecheck": "pass",
+    "lint": "pass",
+    "unit": { "tests": 1130, "pass": 1128, "fail": 0, "skipped": 2 },
+    "build": "pass"
+  },
+  "fixes": [
+    "host-tools.json/.en.json now include 5 P2 tools (route/technical review/send/escalate/read messages); total 126",
+    "reviewResult writes project_technical_reviews with truthful reviewer_kind (project_leader/owner/admin)",
+    "requestAcceptance and decideApproval require a pass L1 technical review for technical projects",
+    "ensureTechnicalReviewRequests auto-sends one idempotent request_review per submitted result (reviewer Channel -> leader fallback)",
+    "mode=observe blocks deterministic auto-dispatch; manual dispatch remains",
+    "routeGate is exposed through POST/PATCH /projects and persists in project config"
+  ],
+  "live": {
+    "projectId": "835309fb-6035-4978-bff1-5783a9a96d4c",
+    "projectStatus": "completed",
+    "mode": "supervised",
+    "autoDispatch": 0,
+    "routingPolicy": "technical",
+    "routeDecisionId": "ff30b743-3739-4684-b5e0-e56ff3783637",
+    "routeActorKind": "project_leader",
+    "routeTargetChannelId": "287727ed-fbdb-4bac-b02c-a7f1fd2fd145",
+    "workItemId": "a1c25281-f20f-4ba0-9aa8-6f7b7899ff1e",
+    "producerTaskId": "b2963517-9f10-44a9-8bd7-3da12980c6bb",
+    "resultId": "7e58c12e-8bc8-4803-b236-adf0a4ce5409",
+    "artifactBytes": 2437,
+    "artifactSha256": "ccc2b0bbd5ef76af6466449ab2bc9cc5cd3394665abd6bc28cc1981954c085e8",
+    "reviewRequestMessageId": "2862b474-dfa8-47bc-9483-d17a3c62e51b",
+    "reviewRequestStatus": "delivered",
+    "technicalReviewId": "e9dcdab0-6847-4a13-96c1-83299f578a68",
+    "technicalReviewerKind": "channel_lead",
+    "technicalReviewerChannelId": "7ea4bf52-3148-4918-b976-c125071c5fb6",
+    "technicalVerdict": "pass",
+    "l2ApprovalId": "2b4eeeab-8680-4d5d-9cb2-10ed867d9bf4",
+    "l2ApprovedAfterL1": true,
+    "projectMessages": [
+      "request_review (system -> reviewer Channel, delivered)",
+      "note (producer Channel -> leader, delivered)",
+      "reply (leader -> producer Channel, delivered)"
+    ],
+    "ui": {
+      "apiChannels": 2,
+      "domLanes": 2,
+      "apiWorkItems": 1,
+      "domCards": 1,
+      "drawerShowsTechnicalReview": "L1 pass · channel_lead",
+      "pageErrors": 0
+    },
+    "verdict": "PASS"
+  },
+  "planCompletion": {
+    "P0": "PASS_WITH_CAVEATS (stale attempt reaper + watchdog extensions not implemented)",
+    "P1": "PASS",
+    "P2": "PASS (worker subtask aggregation implemented but not exercised live)",
+    "P3": "PASS_WITH_CAVEATS (5s polling; SSE/2s cursor polling not implemented)",
+    "P4": "OUT_OF_SCOPE (V2)"
+  },
+  "overall": "PASS_WITH_CAVEATS",
+  "caveats": [
+    "P3 SSE/2s cursor polling is not implemented; the workbench uses 5s polling.",
+    "P0 stale attempt reclamation and watchdog dependency_stuck/review_overdue/circuit-breaker extensions are not implemented.",
+    "No worker subtasks were spawned in the live run; the Channel lead executed directly. Child-artifact aggregation is implemented and unit-tested but not live-exercised.",
+    "The live harness owner submitted the result draft before the producer Channel's own project_submit_result, causing the producer to receive RESULT_STATE_INVALID. This is a harness convenience, not a platform defect; production should let the Channel lead submit first.",
+    "The reviewer Channel read the producer workspace file directly (same OS user); strong cross-Channel read isolation is not enforced by an explicit grant in this run."
+  ]
+}
