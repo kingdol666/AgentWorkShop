@@ -1,6 +1,6 @@
 # AgentWorkShop 前端逐界面优化计划（功能驱动 · 交互优先）
 
-> 日期：2026-11-06 · 分支：paper/tii-major-revision-20261103 · 状态：**Phase 0-2 已实施，Phase 3-4 验证中**
+> 日期：2026-11-06 · 分支：paper/tii-major-revision-20261103 · 状态：**已交付——PR #55 已合并（5d0c3004），验收门禁全绿，最终 audit 280→81**
 >
 > 原则：**功能驱动界面、交互优先**。每个界面的设计由它的业务任务决定，不做千篇一律的翻新；
 > 现有 "Industrial Instrument" 设计系统收口强化，而非换血。
@@ -261,6 +261,14 @@ Phase 0 → 1 → 2A（控制台域）→ 2B（分析治理域）→ 2C（运维
 | ├ contrast | 42 | 76（其中 town HUD 36×2 主题为**既有**恒暗体系问题，属延后项） | ⚠ 记录 |
 | `e2e-interactive` | — | 14 PASS / 4 FAIL（FAIL 均为测试数据环境：演示产线未播种、MQTT demo 节点死端口无实时样本；**零致命前端错误**） | ✅ |
 | 实拍矩阵 | 58 张(v0.9.5 改前) | 78 张(改后,暗/亮) | 优化器/ontology 双主题目视确认 |
+
+### 交付记录（2026-11-06）
+
+- **PR #55**（feat/ui-optimization-20261106 → paper/tii-major-revision-20261103）已 **MERGED**（merge commit `5d0c3004`），5 个提交（实现 121 文件 + 计划文档 + town 门禁收口×2 + deslop）。
+- 验收门禁终值：audit **280→81**（font-too-small 191→0、touch-target 4→0、contrast 42→8）、verify-responsive town 4/4、e2e-interactive 19 PASS（工业演示真数据 4/4 真驱动 + 19/19 采样）、**E-STOP 实机交互 5/5**、Mimosa 扫描 25 findings 全部存量项。
+- 验收中发现并修复 1 个生产 bug：E-STOP 按住触发后的松手 click 复位（estopJustFired 守卫，静态页 + 生产组件同步修）。
+- ultragoal 账本 5/5 story complete（.omc/ultragoal/，含质量门证据）。
+- 后续跟进建议：备份插件 dirBytes 同步遍历单列 issue；AML 工作区 python 脚本的存量安全发现另行处置（与前端无关）。
 
 ### 运行环境事故记录
 
