@@ -488,8 +488,10 @@ const { ticker } = useTownHudTickers({ sceneRef, daq, drawTrend, drawBindSparks 
   --hud-line-hi: #2c4568;
   --hud-input: #0a111d;
   --hud-text: #e8eef8;
-  --hud-dim: #8fa0b5;
-  --hud-faint: #5f6e84;
+  /* 次级/微标文字:对齐窄屏对比度先例(≥4.5:1);此前桌面档 3.4-3.8:1,
+   * 字号地板整改后这批文字参与对比度测量,2026-11-06 一并收口 */
+  --hud-dim: #a9b9cd;
+  --hud-faint: #8b9bb0;
   --hud-accent: #35e0a0;
   --hud-accent-dim: #1f9e6e;
   --hud-cyan: #41c8f4;
