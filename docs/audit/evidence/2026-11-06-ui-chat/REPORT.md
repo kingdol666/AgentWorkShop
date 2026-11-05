@@ -2,7 +2,7 @@
 
 > 范围：`feat/chat-ui-redesign`（基于 main `5e1d8eb6`）
 > 目标：把 Agent 工作台的群聊视图升级为 ChatGPT / DeepSeek Harness 风格的 AI 对话界面；不改变后端 API 契约与治理链路。
-> 门禁：typecheck ✅ · ESLint ✅ · i18n parity 3201/3201 ✅ · `npm run test:unit` **1140/1138/0/2** · build ✅
+> 门禁：typecheck ✅ · ESLint ✅ · i18n parity 3255/3255 ✅ · `npm run test:unit` **1140/1138/0/2** · build ✅
 
 ## 0. 结论
 
@@ -37,16 +37,16 @@
 | `app/components/workshop/console/LeftPane.vue` / `RightPane.vue` / `CenterPane.vue` | chat 画布贯通；chat 视图隐藏“产线作业”面板，右栏专注成员/上下文 |
 | `app/pages/workshop/composables/useWorkspaceShell.ts` | 默认视图改为 `chat`；右栏默认收起（一键展开）；`wsView.chat` i18n |
 | `app/composables/workshop/useComposerBus.ts` | 新增 `draft` 指令：空态建议卡 → Composer（不自动发送） |
-| `i18n/locales/zh-CN.ts` / `en.ts` | 新增 25 个 chat 文案；保持 3201/3201 parity |
+| `i18n/locales/zh-CN.ts` / `en.ts` | 新增 25 个 chat 文案；保持 3255/3255 parity |
 
 ## 3. 视觉效果
 
-- `chat-empty-final-v3-desktop.png`：空态 —— “把目标交给你的 AI 团队” + 三张可点击建议卡 + 底部输入卡。
-- `chat-empty-final-v3-mobile.png`：390px 空态与圆形发送钮。
-- `chat-final-v3-desktop.png`：有消息时的对话（用户气泡 / Agent 全宽阅读块 / 回复锚点 / 投递状态）。
-- `chat-final-v3-mobile.png`：移动端对话与输入区。
-- `project-chat-desktop.png`：**真实 Project Leader** 在项目办公室频道中的两条 LLM 消息（计划提案、route 提案复核），用新 chat 样式渲染。
-- `project-final-*`：Project 页 completed 状态、执行工作台、审批/交付物/事件 tab、执行链 drawer（L1 pass · channel_lead、7128B artifact）。
+- `chat-empty-merged-final-desktop.png`：空态 —— “把目标交给你的 AI 团队” + 三张可点击建议卡 + 底部输入卡。
+- `chat-empty-merged-final-mobile.png`：390px 空态与圆形发送钮。
+- `chat-merged-final-desktop.png`：有消息时的对话（用户气泡 / Agent 全宽阅读块 / 回复锚点 / 投递状态）。
+- `chat-merged-final-mobile.png`：移动端对话与输入区。
+- `project-chat-merged-desktop.png`：**真实 Project Leader** 在项目办公室频道中的两条 LLM 消息（计划提案、route 提案复核），用新 chat 样式渲染。
+- `project-merged-*`：Project 页 completed 状态、执行工作台、审批/交付物/事件 tab、执行链 drawer（L1 pass · channel_lead、7128B artifact）。
 
 ## 4. 交互验证
 
@@ -62,7 +62,7 @@
 - 使用面：`GET /channels/:id/chat/messages`、`POST /channels/:id/chat/messages`、`GET /channels/:id/chat/permissions`、`GET /channels/:id/chat/members`、WS `chat.message` / `chat.delivery.status`、Project observability API。
 - `npm run typecheck` ✅
 - `npm run lint` ✅
-- `npm run i18n:check`：zh/en 3201 keys，used 2799，unresolved 0，PARITY OK
+- `npm run i18n:check`：zh/en 3255 keys，used 2843，unresolved 0，PARITY OK
 - `npm run test:unit`：1140 tests / 1138 pass / 0 fail / 2 skipped
 - `npm run build` ✅
 
