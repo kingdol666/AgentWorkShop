@@ -1,16 +1,16 @@
 \section{System Design}
 \label{sec:design}
-The runtime exposes named services through two entry paths. Task-mediated calls pass through the collaboration runtime and a registered Agent harness. Direct calls through the Representational State Transfer (REST) API or the standard input/output (stdio) transport for the Model Context Protocol (MCP) enter the shared dispatcher without creating a task turn. Both paths use the same scene configuration for production context, semantic-node mappings, protocol endpoints, objectives, and write limits.
+The runtime exposes named services through two entry paths. Task-mediated calls pass through the collaboration runtime and a registered Agent harness. Direct calls through the Representational State Transfer (REST) API or the standard input/output (stdio) transport for the Model Context Protocol (MCP) enter the shared dispatcher without creating a task turn. Both paths use the scene configuration to resolve production context, semantic-node mappings, protocol endpoints, objectives, and write limits where applicable.
 
 \begin{figure*}[!t]
 \centering
-\includegraphics[width=\textwidth]{resources/fig-system-runtime-merged-rev20261102.pdf}
+\includegraphics[width=\textwidth]{resources/redesigned-fig2_runtime_architecture.pdf}
 \caption{The system routes task-mediated and direct operation calls through shared
 dispatch and service handlers. The service boxes show functional groupings
 rather than exclusive driver assignments: a configured MES-REST adapter can
 also implement a write mapping. Solid arrows show operation flow and configured
 field mappings; dashed connectors associate the scene configuration with the
-services that consume it. Named write operations use the shared write
+field mappings it defines; the read/analysis group is a functional grouping, not a claim that every service uses a field driver. Named write operations use the shared write
 controller, while service-owned records keep approvals, command receipts,
 optional readbacks, and later observations distinct. The driver box abstracts protocol adapters; the evaluated scene mappings
 also included HTTP.}
@@ -28,7 +28,7 @@ records enforce these boundaries.
 
 At task start, the context builder assembles the active production tuple and
 relevant process summaries. This context informs a proposal but does not grant
-write authority; each operation resolves live state again at invocation.
+write authority; operation handlers resolve the live state needed by their routes at invocation.
 
 \subsection{Layered Architecture}
 \label{sec:layers}

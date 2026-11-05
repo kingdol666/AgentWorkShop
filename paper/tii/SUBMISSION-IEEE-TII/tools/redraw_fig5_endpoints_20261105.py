@@ -110,7 +110,7 @@ for rep in range(3):
             ha='center',va='top',fontsize=8.5,color=INK)
     for j,label in enumerate(('Below','Above')):
         ax.text(centers[2*rep+j],.78,label,ha='center',va='center',fontsize=8.5,color=INK)
-ax.text(.985,.78,'Reached',ha='right',va='center',fontsize=8.5,color=INK)
+ax.text(.985,.78,'HTTP 200',ha='right',va='center',fontsize=8.5,color=INK)
 labels=['Full guard','Window check removed','Readback check removed','Window + readback removed']
 for y,arm,label in zip([.60,.42,.24,.06],arms,labels):
     ax.text(0,y,label,ha='left',va='center',fontsize=8.5,color=INK)
@@ -121,7 +121,7 @@ for y,arm,label in zip([.60,.42,.24,.06],arms,labels):
                        facecolors=ORANGE if passed else 'white',
                        edgecolors=ORANGE if passed else BLUE,linewidths=1.0)
     ax.text(.985,y,f'{counts[arm]}/6',ha='right',va='center',fontsize=8.5,color=INK)
-fig.text(.025,.035,'Open circle: rejected   |   Filled square: reached mock driver',
+fig.text(.025,.035,'Open circle: HTTP 400 (rejected)   |   Filled square: HTTP 200',
          fontsize=8.5,color=INK,va='center')
 
 for ext in ('pdf','svg','png'):

@@ -24,11 +24,11 @@ ROOT = Path(__file__).resolve().parent.parent
 SECTIONS = sorted((ROOT / "sections").glob("*.tex")) + [ROOT / "main.tex"]
 
 TARGETS = {
-    "fig1-context-signal-minimal-20261103.pdf": (8.0, 125.0, "Arial"),
-    "fig-system-runtime-merged-rev20261102.pdf": (8.0, 250.0, "TimesNewRoman"),
-    "fig3-governed-agent-runtime-20261105.pdf": (8.0, 270.0, "TimesNewRoman"),
-    "fig4-governance-flowchart-20261104.pdf": (8.0, 245.0, "TimesNewRoman"),
-    "fig5-endpoints-guard-20261105.pdf": (8.0, 350.0, "TimesNewRoman"),
+    "redesigned-fig1_cast_film.pdf": (9.0, 150.0, "TimesNewRoman"),
+    "redesigned-fig2_runtime_architecture.pdf": (9.0, 260.0, "TimesNewRoman"),
+    "redesigned-fig3_task_to_write.pdf": (9.0, 270.0, "TimesNewRoman"),
+    "redesigned-fig4_route_governance.pdf": (9.0, 290.0, "TimesNewRoman"),
+    "redesigned-fig5-reproducible.pdf": (9.0, 320.0, "TimesNewRoman"),
 }
 
 RASTER_WIDTH_MM: dict[str, float] = {}

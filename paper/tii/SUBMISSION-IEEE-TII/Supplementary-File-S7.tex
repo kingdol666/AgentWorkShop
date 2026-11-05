@@ -8,9 +8,9 @@
 \usepackage[hidelinks]{hyperref}
 \usepackage{enumitem}
 \setlist{nosep,leftmargin=*}
-\title{Supplementary File S7: November 1--3 Simulator Evaluation Evidence}
+\title{Supplementary File S7: November 1--5 Simulator Evaluation Evidence}
 \author{}
-\date{November 4, 2026}
+\date{November 5, 2026}
 \begin{document}
 \maketitle
 
@@ -21,6 +21,13 @@ This file documents the simulator evidence cited in the revised evaluation. It k
 The data package is organized into four folders. \texttt{01-paper-evidence/} is the frozen November 1 batch used for the six principal experiment blocks. \texttt{02-c3-pilot-negative/} contains a November 2 live-Agent multi-round pilot. The archive retains its original folder name; here it is referred to as the negative live-Agent pilot. After pipeline fixes, the best episode completed with zero governed writes while the process variable remained outside its band, and a second episode timed out without a write. The pilot exposed platform integration defects in task-artifact addressing, lead-queue draining, and goal completion without checking the process criterion. These defects are outside the positive claims in this paper. \texttt{03-system-validation-not-used/} contains other integration and demonstration reports that are not pooled with the controlled experiment blocks. \texttt{04-followup-scenario-pilot/} contains the November 3 single-run injection-twin pilot reported separately in Section VI; it is not a replication of the frozen batch.
 
 A cast-film probe record from run \texttt{20261101121700-scenario-probes} was excluded. Its manifest declared four scenes but recorded only cast-film, and its simulator endpoint did not match the endpoint in the reproduction command. None of its 24 admissible requests, 24 structural probes, or 20 readbacks are included in the manuscript totals or the data package. The reported scene--protocol counts below use only run \texttt{20261101121221-scenario-probes}.
+
+\section*{November 5 follow-up records}
+A corrected archive, \texttt{Supplementary-File-S7-followup-2026-11-05-r1.zip}, preserves the matrix CSV and manifest, the readback-mismatch record and an interpretation erratum, the two Agent outcome records and logs, the environment preflight, and the batch report. Its root manifest covers every other archive member. The four-scene matrix run \texttt{20261105060237-scenario-probes} used a recipe-window fraction of 0.8. All 110 collected requests outside those windows but inside structural limits returned \texttt{RECIPE\_LIMIT\_EXCEEDED}. Its other counts (220/220 accepted, 219/219 structural rejections, and 216/216 matching available readbacks) are separate from, and not added to, the November 1 batch. Input values and checks share configuration limits.
+
+In run \texttt{20261105060514-readback-mismatch}, one simulated injection Modbus TCP node was subject to a calibration-offset injection: the command was 230, the driver readback was 251, and tolerance was 0.7. The outcome was \texttt{ok=false} and \texttt{unverified}; a separate read of the same simulator also returned 251. The 21-unit command-to-readback difference triggered the degraded receipt, while the separate read agreed with the driver's value; it was not independent hardware evidence. One baseline and one recovery returned \texttt{readback-verified}. The two November 5 Agent episodes were canceled after 371.63 and 372.24 seconds with zero rounds and zero writes; their recorded 12 minutes is a budget, not elapsed time. The batch report marks the Agent result unknown and the overall batch not passing.
+
+The matrix manifest records commit \texttt{3f30a146} and harness hash \texttt{047818ab79d61b83}; the available runner and two scenario library files reproduce that hash. The services were already running, so the commit is not proof of their deployed versions or a complete configuration snapshot. The mismatch record has no runner hash. The first November 5 follow-up archive omitted three artifacts named in its original run checksum list: the preflight \texttt{qualify.json} record and two Agent logs. The corrected \texttt{-r1} archive restores them and provides a new root manifest. The separate expanded November 5 archive retains a stale root manifest and should not be used as a complete package inventory. These records support selected simulator paths, not physical actuation or a process-efficacy estimate.
 
 \section*{Representative systems}
 Table S7-I summarizes the operation boundary and evaluation scope of representative plant-facing agent systems cited in the manuscript. It does not rank their performance, and the reported evaluations are not directly comparable because the systems, tasks, and denominators differ.
@@ -114,7 +121,7 @@ The process-window study used seed 42, three repetitions in each arm, a direct D
 \setlength{\tabcolsep}{3pt}
 \begin{tabularx}{\textwidth}{@{}p{3.0cm} >{\centering\arraybackslash}p{2.8cm} >{\centering\arraybackslash}p{4.0cm} >{\centering\arraybackslash}p{2.0cm} >{\centering\arraybackslash}p{2.5cm}@{}}
 \toprule
-Arm & Negative probes rejected & Window violations reaching driver & Legal false blocks & Boundary expectations met \\
+Arm & Negative probes rejected & Window violations returning HTTP 200 & Legal false blocks & Boundary expectations met \\
 \midrule
 Full guard & 18/18 & 0/6 & 0/9 & 9/9 \\
 No process-window guard & 12/18 & 6/6 & 0/9 & 9/9 \\
@@ -124,7 +131,7 @@ No process-window or readback guard & 12/18 & 6/6 & 0/9 & 9/9 \\
 \end{tabularx}
 \end{table}
 
-The four hard structural probe types were blocked in every arm (12/12 per arm). With the process-window guard active, the two targeted window violations in each repetition did not reach the driver; removing that guard allowed all six across three repetitions to reach the mock driver. The no-readback arm does not test readback-mismatch rejection because that stimulus was absent. Benchmark mode relaxes normal timing and hold-window controls, so these results concern the tested guard path only.
+The four hard structural probe types were blocked in every arm (12/12 per arm). With the process-window guard active, all six targeted window violations returned HTTP 400; removing that guard yielded HTTP 200 for all six. The archive lacks response bodies and per-request driver-call logs; status alone does not establish invocation of the mock driver. The no-readback arm does not test readback-mismatch rejection because that stimulus was absent. Benchmark mode relaxes normal timing and hold-window controls, so these results concern the tested guard path only.
 
 \section*{Approval, production-mode, and authorization checks}
 The approval pilot used one injection scene and a scripted decision fixture. The full CSV and timing records are in the data archive.

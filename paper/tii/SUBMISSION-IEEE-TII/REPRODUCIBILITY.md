@@ -28,7 +28,7 @@ single-run note that referred to Supplementary File S6 and commit `60fa983e`.
 | Scene--protocol probes | `20261101121221-scenario-probes` | 220/220 admissible requests accepted, 219/219 collected structural probes rejected, 216/216 available readbacks matched |
 | No-write control | `20261101111725`, `20261101112030`, `20261101112336`, `20261101112641`, `20261101112947` | 0/15 endpoints in band; seed-42 injection and wastewater runs began from residual states |
 | Scripted setpoint policy | `20261101110211`, `20261101110502`, `20261101110755`, `20261101111053`, `20261101111330` | 15/15 final recorded endpoints in band; 12 blueprint-matched pairs |
-| Process-window guard ablation | `20261101103356-e1lite` | 18/18 versus 12/18 negative probes rejected; 0/6 versus 6/6 targeted violations reached the driver |
+| Process-window guard ablation | `20261101103356-e1lite` | 18/18 versus 12/18 negative probes rejected; 0/6 versus 6/6 targeted violations returned HTTP 200; driver calls were not independently logged |
 | Production-mode guard checks | `20261101113644-production-guards` | The five configured negative cases were rejected as expected; the legal baseline was accepted |
 | Approval-route pilot | `20261101121436-approval-gate` | Four scripted calls; approved request changed 202 to 204.8, rejected request remained at 216 |
 | Authorization probe | `20261101121415-authorization` | Unbound and cross-node requests rejected; bound write accepted, 240 to 241 |
@@ -123,3 +123,7 @@ outcomes, guard-ablation records, production-guard log, approval and
 authorization records, negative live-Agent pilot, and the separately
 documented follow-up injection pilot. The earlier November 2 archive is
 preserved separately.
+
+## November 5 follow-up (separate batch)
+
+`Supplementary-File-S7-followup-2026-11-05-r1.zip` is the corrected, self-contained follow-up package. It restores the preflight `qualify.json` record and two Agent logs named by the first package's checksum list, adds an interpretation erratum for the readback-delta label, and includes a root manifest for all other members. The first follow-up archive is preserved unchanged. The expanded `Supplementary-File-S7-data-2026-11-05.zip` still has a stale root manifest and is not used as the package inventory. The batch is not pooled with the frozen November 1 data. The matrix returned 110/110 recipe-window rejections; the one injected simulated readback mismatch was marked unverified; two Agent episodes were canceled with zero writes. The preflight's model check listed available model names but did not execute a completion, and its governed write was scripted, not issued by an Agent. The matrix runner and its two scenario libraries match the recorded harness hash `047818ab79d61b83`. Already-running service versions and the complete configuration were not captured; the mismatch runner has no recorded hash. The batch report marks the Agent result unknown and the overall result not passing.
