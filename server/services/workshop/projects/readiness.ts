@@ -117,13 +117,21 @@ export function evaluateWorkItemReadiness(workItem: ProjectWorkItemRow, ctx: Rea
 
   if (technical) {
     const deliverableById = new Map(ctx.deliverables.map(d => [d.id, d]))
-    // 交付物图（project_deliverables.depends_on_json）：technical 口径要求上游交付物已验收/豁免。
+    // 交付物图（project_deliverables.depends_on_json）：technical 口径 = 上游交付物
+    // 已 approved/waived **或** 至少有一份技术验收通过（reviewed/approved）的成果。
+    // 只有 strict 业务口径才要求 owner 最终签核（V1 未启用）。
+    const gateOk = (deliverableId: string): boolean => {
+      const d = deliverableById.get(deliverableId)
+      if (!d) return true
+      if (['approved', 'waived'].includes(d.status)) return true
+      return ctx.results.some(r => r.deliverableId === d.id && RESULT_TECH_OK.has(r.status))
+    }
     const ownDeliverable = deliverableById.get(workItem.deliverableId)
     for (const depId of parseJson<string[]>(ownDeliverable?.dependsOnJson ?? '[]', [])) {
       const depDeliverable = deliverableById.get(depId)
       if (!depDeliverable) continue
-      if (!['approved', 'waived'].includes(depDeliverable.status)) {
-        return { ready: false, waitingOn: 'DELIVERABLE_GATE', reason: `交付物依赖「${depDeliverable.name}」未验收(${depDeliverable.status})`, upstreamResultIds }
+      if (!gateOk(depDeliverable.id)) {
+        return { ready: false, waitingOn: 'DELIVERABLE_GATE', reason: `交付物依赖「${depDeliverable.name}」未技术验收(${depDeliverable.status})`, upstreamResultIds }
       }
     }
   }
