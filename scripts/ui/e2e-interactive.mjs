@@ -155,7 +155,6 @@ watch(page, 'global')
     const s2 = states2.find(s => s.lineId === target.id)?.active === true
     check('UI 开跑生效(批次激活)', started === 'clicked' && s2, String(started))
     await page.screenshot({ path: `${SHOTS}/e2e-03-dcw-lines.png` })
-    await page.screenshot({ path: `${SHOTS}/e2e-03-dcw-lines.png` })
   }
 }
 
