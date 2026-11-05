@@ -354,7 +354,15 @@ interface DetailDto {
   workItem: WorkItemObs & { readiness: { ready: boolean, waitingOn: string, reason: string, upstreamResultIds: string[] }, acceptance: string[], traceId: string }
   deliverable: { id: string, name: string, status: string, required: boolean, acceptanceCriteria: string[], dependsOn: string[] } | null
   attempts: Array<{
-    id: string, attemptNo: number, state: string, channelTaskId: string | null, failureClass: string, retryable: boolean, nextRetryAt: string | null, createdAt: string, closedAt: string | null
+    id: string
+    attemptNo: number
+    state: string
+    channelTaskId: string | null
+    failureClass: string
+    retryable: boolean
+    nextRetryAt: string | null
+    createdAt: string
+    closedAt: string | null
     task: null | { id: string, title: string, state: string, progress: number, assigneeId: string, parentId: string | null, closeReason: string | null, deadlineAt: string | null, createdAt: string, updatedAt: string, artifacts: Array<{ artifactId: string, name: string, bytes: number, sha256: string, preview: string }>, history: Array<{ at: string, role: string, text: string }> }
     workers: Array<{ id: string, title: string, state: string, progress: number, assigneeId: string, closeReason: string | null, createdAt: string, artifacts: Array<{ artifactId: string, name: string, bytes: number, sha256: string }> }>
   }>
@@ -458,7 +466,9 @@ async function toggleAutoDispatch(): Promise<void> {
 
 onMounted(() => {
   void loadObservability()
-  obsTimer = setInterval(() => { void loadObservability() }, 5000)
+  obsTimer = setInterval(() => {
+    void loadObservability()
+  }, 5000)
 })
 onUnmounted(() => {
   if (obsTimer) clearInterval(obsTimer)
@@ -1326,7 +1336,7 @@ onUnmounted(() => {
             </div>
             <template v-if="a.task">
               <div class="muted">
-                root {{ a.task.state }} · {{ a.task.progress }}% · assignee {{ a.task.assigneeId.slice(0, 8) }}<template v-if="a.task.closeReason"> · {{ a.task.closeReason }}</template>
+                root {{ a.task.state }} · {{ a.task.progress }}% · assignee {{ a.task.assigneeId.slice(0, 8) }}{{ a.task.closeReason ? ` · ${a.task.closeReason}` : '' }}
               </div>
               <ul
                 v-if="a.task.artifacts.length"

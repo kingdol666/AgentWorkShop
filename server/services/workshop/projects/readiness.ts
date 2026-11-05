@@ -11,16 +11,16 @@
 import { parseJson } from '../db/database'
 import type { ProjectDeliverableRow, ProjectResultRow, ProjectWorkItemRow } from '../db/project.repo'
 
-export type WaitingOn =
-  | 'READY'
-  | 'IN_FLIGHT'
-  | 'DEFERRED'
-  | 'DEPENDENCY_NOT_STARTED'
-  | 'DEPENDENCY_RUNNING'
-  | 'RESULT_SUBMISSION'
-  | 'TECHNICAL_REVIEW'
-  | 'UPSTREAM_CANCELED'
-  | 'DELIVERABLE_GATE'
+export type WaitingOn
+  = 'READY'
+    | 'IN_FLIGHT'
+    | 'DEFERRED'
+    | 'DEPENDENCY_NOT_STARTED'
+    | 'DEPENDENCY_RUNNING'
+    | 'RESULT_SUBMISSION'
+    | 'TECHNICAL_REVIEW'
+    | 'UPSTREAM_CANCELED'
+    | 'DELIVERABLE_GATE'
 
 export interface ReadinessVerdict {
   ready: boolean

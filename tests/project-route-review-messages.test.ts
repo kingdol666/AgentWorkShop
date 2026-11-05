@@ -83,10 +83,8 @@ async function setupProject(f: Fixture, opts: { mode?: 'supervised' | 'auto', ro
   const p = await f.svc.create({
     name: `P2-${randomUUID().slice(0, 8)}`, objective: 'route/review/messages',
     planApprovalRequired: 0, autoDispatch: false, routingPolicy: 'technical', mode: opts.mode ?? 'supervised',
+    ...(opts.routeGate ? { routeGate: 'leader' as const } : {}),
   }, owner)
-  if (opts.routeGate) {
-    f.db.prepare(`UPDATE projects SET config_json = ? WHERE id = ?`).run(JSON.stringify({ leaderHarness: 'mock', routeGate: 'leader' }), p.id)
-  }
   const a = await f.manager.createChannel({ name: `生产-${randomUUID().slice(0, 6)}`, ownerUserId: owner.id, leadAgent: { name: 'LeadA', harness: 'mock' } })
   const b = await f.manager.createChannel({ name: `评审-${randomUUID().slice(0, 6)}`, ownerUserId: owner.id, leadAgent: { name: 'LeadB', harness: 'mock' } })
   f.svc.bindChannel(p.id, a.channelId, owner)
@@ -199,4 +197,61 @@ test('审批分权：approver 可决策验收，但不能决策 project_complete
   assert.equal(f.svc.listWorkItems(setup.p.id, setup.owner).find(x => x.id === w.id)!.state, 'COMPLETED')
   const complete = f.svc.requestProjectComplete(setup.p.id, setup.owner)
   assert.throws(() => f.svc.decideApproval(setup.p.id, complete.id, approver, true), /仅项目 owner\/admin/)
+})
+
+test('成果提交后自动向独立评审 Channel 发 L1 请求（幂等）', async () => {
+  const f = fixture()
+  const setup = await setupProject(f)
+  const { result } = await produceSubmitted(f, setup, 'W1')
+  assert.equal(result.status, 'submitted')
+  await f.svc.runRouteLoop(setup.p.id)
+  const msgs = f.svc.agentListProjectMessages(setup.lead).filter(m => m.kind === 'request_review' && m.resultId === result.id)
+  assert.equal(msgs.length, 1, '每个 submitted 成果恰好一条 L1 请求')
+  assert.equal(msgs[0]!.toChannelId, setup.b.channelId, '优先选择无工作项的独立评审 Channel')
+  assert.equal(msgs[0]!.toAgentId, setup.leadB)
+  assert.match(String(msgs[0]!.body), new RegExp(result.id))
+  assert.match(String(msgs[0]!.body), /project_submit_technical_review/)
+  assert.equal(f.sent.filter(s => s.channelId === setup.b.channelId).length, 1)
+  // 重复 tick 不重复投递
+  await f.svc.runRouteLoop(setup.p.id)
+  assert.equal(f.svc.agentListProjectMessages(setup.lead).filter(m => m.kind === 'request_review' && m.resultId === result.id).length, 1)
+  assert.equal(f.sent.filter(s => s.channelId === setup.b.channelId).length, 1)
+})
+
+test('L1 前置：reviewed 但无技术验收记录 → L2 拒绝', async () => {
+  const f = fixture()
+  const setup = await setupProject(f)
+  const { result } = await produceSubmitted(f, setup, 'W1')
+  // 模拟历史/外部把成果置 reviewed，但没有 project_technical_reviews 记录。
+  f.db.prepare(`UPDATE project_results SET status = 'reviewed', reviewed_by = 'u-owner' WHERE id = ?`).run(result.id)
+  assert.throws(
+    () => f.svc.requestAcceptance(setup.p.id, result.id, setup.owner),
+    (err: unknown) => (err as { code?: string }).code === 'TECHNICAL_REVIEW_REQUIRED',
+  )
+})
+
+test('owner 兜底复核写 owner 技术验收并允许 L2', async () => {
+  const f = fixture()
+  const setup = await setupProject(f)
+  const { result } = await produceSubmitted(f, setup, 'W1')
+  const reviewed = f.svc.reviewResult(setup.p.id, result.id, setup.owner, 'reviewed', 'owner fallback: reviewer runtime unavailable')
+  assert.equal(reviewed.status, 'reviewed')
+  const reviews = f.svc.listTechnicalReviews(setup.p.id, result.id, setup.owner)
+  assert.equal(reviews.length, 1)
+  assert.equal(reviews[0]!.reviewerKind, 'owner', 'owner 兜底必须如实记录，不能冒充 leader')
+  assert.equal(reviews[0]!.verdict, 'pass')
+  const acceptance = f.svc.requestAcceptance(setup.p.id, result.id, setup.owner)
+  assert.equal(acceptance.kind, 'deliverable_acceptance')
+})
+
+test('observe 模式：自动派发被门禁挡住，手动派发仍可用', async () => {
+  const f = fixture()
+  const setup = await setupProject(f)
+  f.db.prepare('UPDATE projects SET mode = ?, auto_dispatch = 1 WHERE id = ?').run('observe', setup.p.id)
+  const w = f.svc.createWorkItem(setup.p.id, setup.owner, { deliverableId: setup.d.id, channelId: setup.a.channelId, title: '观察项' })
+  const out = await f.svc.autoDispatchProject(setup.p.id)
+  assert.equal(out.skippedByGate, true)
+  assert.equal(f.svc.listWorkItems(setup.p.id, setup.owner).find(x => x.id === w.id)!.state, 'DRAFT')
+  await f.svc.dispatchWorkItem(setup.p.id, w.id, setup.owner)
+  assert.equal(f.svc.listWorkItems(setup.p.id, setup.owner).find(x => x.id === w.id)!.state, 'DISPATCHED')
 })

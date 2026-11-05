@@ -9,12 +9,21 @@
 - **只有收到项目派发的 root 任务（source=project）时才执行**；不要自行 `submit_task`/创建与项目工作项同名的 root。
 - DRAFT / 未派发的工作项不要提前开工；等待 Project Leader 或确定性执行器派发。
 - 完成后先 `complete_task` 收口，再调用 `project_submit_result` 提交本频道成果。
+- 成果提交后，平台会向 Project Leader 或独立评审 Channel 发 L1 技术验收请求。**被指定为评审方时**，先读取成果/证据，再调用 `project_submit_technical_review`（pass/fail）；不要修改成果文件、不要新建任务、不要做 L2 业务签核。
 
 ## 成果契约
 
 - 项目 root 任务完成后，平台自动生成成果 draft；用 `project_submit_result` 补充 summary / method / data window / confidence / evidence。
 - 只能提交本频道、本工作项的成果；证据必须引用真实 task/artifact；空证据不能申请验收。
 - worker 只读 `approved` 成果；channel lead 可读本频道成果并提交。
+- **生产 Channel 不能验收自己的成果**；L1 只能由 Project Leader 或其他独立成员 Channel 完成。
+
+## 项目内协作通信
+
+- `project_read_messages`：读取本项目消息（leader 可见全部；Channel 只见自己收/发的）。
+- `project_send_message`：leader→成员 Channel、Channel→leader（`to_leader=true`）、Channel→同项目其他 Channel；用于交接说明、评审请求、回复。
+- `project_escalate`：把阻塞/风险/需要决策的事项升级给 Project Leader。
+- 消息不能跨项目；消息只用于沟通，不改变工作项状态。派发与验收仍以项目契约/执行器/技术验收记录为准。
 
 ## 当前交付物
 

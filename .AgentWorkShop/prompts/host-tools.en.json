@@ -298,5 +298,63 @@
         }
       }
     }
+  },
+  "project_propose_route": {
+    "description": "(Project leader only) Propose a routing decision for a work item inside the approved plan: dispatch/defer/retry/rework/escalate. This writes only a route.proposed decision; supervised/observe projects require the owner to apply it, while mode=auto plus config.routeGate=leader lets the deterministic executor apply it immediately. It cannot create work items, change acceptance criteria, or dispatch directly.",
+    "parameters": {
+      "properties": {
+        "work_item_id": { "description": "Work item id (must belong to this project)" },
+        "action": { "description": "Routing action: dispatch/defer/retry/rework/escalate" },
+        "reason": { "description": "Decision rationale (audited)" },
+        "defer_minutes": { "description": "Delay in minutes for action=defer (1-1440)" },
+        "target_channel_id": { "description": "Optional bound target Channel for action=dispatch" }
+      }
+    }
+  },
+  "project_submit_technical_review": {
+    "description": "(Project leader or independent reviewer Channel lead) Perform the L1 technical acceptance of a submitted result against the deliverable/work-item structured criteria (artifact present/text.contains/min_bytes/json.field). pass -> result=reviewed and a project_technical_reviews row; fail -> rejected and rework. A producing Channel cannot review its own result; L2 business sign-off remains with the owner/approver.",
+    "parameters": {
+      "properties": {
+        "result_id": { "description": "Result id (status must be submitted)" },
+        "verdict": { "description": "Technical verdict: pass or fail" },
+        "checks": { "description": "Optional extra checks" },
+        "note": { "description": "Evidence or failure reason" }
+      }
+    }
+  },
+  "project_send_message": {
+    "description": "(Project leader or member Channel lead) Send a project-scoped message: leader to a member Channel, Channel to leader (to_leader=true), or Channel to another Channel in the same project. The server sets the sender and persists project_messages; use it for handoff notes, review requests, escalations and replies. Cross-project messages are rejected; messages do not change work-item state.",
+    "parameters": {
+      "properties": {
+        "to_channel_id": { "description": "Target member Channel id" },
+        "to_leader": { "description": "Set true when a Channel messages the project office leader" },
+        "body": { "description": "Message body (max 8KB)" },
+        "kind": { "description": "Message kind: note/escalate/reply/request_review" },
+        "require_reply": { "description": "Whether a reply is required" },
+        "work_item_id": { "description": "Optional related work item id" },
+        "result_id": { "description": "Optional related result id" },
+        "correlation_id": { "description": "Optional idempotency correlation id" }
+      }
+    }
+  },
+  "project_escalate": {
+    "description": "(Member Channel lead only) Escalate a blocker/risk/decision to the Project Leader as an escalate message delivered to the project office and recorded in project_messages. It does not change work-item state; the leader may respond with a route/plan proposal or escalate to the owner.",
+    "parameters": {
+      "properties": {
+        "body": { "description": "Escalation body (max 8KB)" },
+        "work_item_id": { "description": "Optional related work item id" },
+        "result_id": { "description": "Optional related result id" },
+        "correlation_id": { "description": "Optional idempotency correlation id" },
+        "require_reply": { "description": "Whether the leader must reply" }
+      }
+    }
+  },
+  "project_read_messages": {
+    "description": "(Project member) Read project messages: the leader sees all, a Channel lead sees only messages sent/received by itself. Returns kind/from/to/status/body and related workItem/result for collaboration and acceptance context. Read-only.",
+    "parameters": {
+      "properties": {
+        "limit": { "description": "Maximum rows (default 50, max 200)" }
+      }
+    }
   }
 }
