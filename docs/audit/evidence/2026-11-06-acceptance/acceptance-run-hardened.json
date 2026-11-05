@@ -1,0 +1,81 @@
+{
+  "startedAt": "2026-11-05T19:57:45.356Z",
+  "steps": [
+    {
+      "name": "项目创建（omp leader）",
+      "detail": "596b597e-2407-4409-a3ef-472432345984 office=c177cdb0-22a3-467b-aeb8-9842e161aa2e leader=ba6191ad-a178-4b6a-9a5e-937d364dcd79",
+      "pass": true,
+      "at": "2026-11-05T19:57:45.504Z"
+    },
+    {
+      "name": "Channel 绑定与预热",
+      "detail": "producer=167aceaa reviewer=a41fd365",
+      "pass": true,
+      "at": "2026-11-05T19:57:45.587Z"
+    },
+    {
+      "name": "Leader 计划真实提案 → owner 批准 → 物化",
+      "detail": "approval=21125209-311e-4aec-b729-34472c1d9325 workItem=5ef34ba6-aed3-4ace-a193-c8edee0b9ca6",
+      "pass": true,
+      "at": "2026-11-05T19:58:45.759Z"
+    },
+    {
+      "name": "Leader route 提案 → owner 应用 → 执行器派发",
+      "detail": "decision=1862ed79-5972-4473-baef-e404828410de state=DISPATCHED stage=dispatched",
+      "pass": true,
+      "at": "2026-11-05T19:59:55.908Z"
+    },
+    {
+      "name": "成果提交（owner 代提交）",
+      "detail": "result=6d4e0666-089b-4754-a05c-a91ed273b6c0 status=submitted artifact=7ad3328a-87e0-4b34-95b3-a06ce6de069a bytes=2624",
+      "pass": true,
+      "at": "2026-11-05T20:01:26.116Z"
+    },
+    {
+      "name": "平台自动 L1 验收请求",
+      "detail": "message=d03142d9-19cd-4988-b683-496f1ad6299c status=delivered to=d4f81e30",
+      "pass": true,
+      "at": "2026-11-05T20:01:36.148Z"
+    },
+    {
+      "name": "独立评审 Channel 写 L1 技术验收",
+      "detail": "review=14920462-2354-45f4-b6db-790b1ad570fd kind=channel_lead verdict=pass",
+      "pass": true,
+      "at": "2026-11-05T20:07:27.184Z"
+    },
+    {
+      "name": "L2 业务签核（L1 之后）",
+      "detail": "approval=fac4b188-1d86-4bbf-9c5d-4efc36f24cb6 status=approved",
+      "pass": true,
+      "at": "2026-11-05T20:07:27.213Z"
+    },
+    {
+      "name": "项目完成",
+      "detail": "status=completed",
+      "pass": true,
+      "at": "2026-11-05T20:07:27.264Z"
+    }
+  ],
+  "projectId": "596b597e-2407-4409-a3ef-472432345984",
+  "route": {
+    "decisionId": "1862ed79-5972-4473-baef-e404828410de",
+    "state": "proposed",
+    "actorKind": "project_leader",
+    "argsJson": "{\"workItemId\":\"5ef34ba6-aed3-4ace-a193-c8edee0b9ca6\",\"action\":\"dispatch\",\"reason\":\"W1 已就绪，分发给生产 Channel\",\"deferMinutes\":null,\"targetChannelId\":\"167aceaa-8304-4097-af65-528f86f02172\"}"
+  },
+  "result": {
+    "id": "6d4e0666-089b-4754-a05c-a91ed273b6c0",
+    "status": "submitted",
+    "version": 1
+  },
+  "technicalReview": {
+    "id": "14920462-2354-45f4-b6db-790b1ad570fd",
+    "reviewerKind": "channel_lead",
+    "reviewerChannelId": "a41fd365-64c1-4d66-8f60-e591088810a8",
+    "verdict": "pass",
+    "note": "独立读取生产 Channel（167aceaa）交付文件 data/workspaces/167aceaa-8304-4097-af65-528f86f02172/l1-acceptance.html：2624 bytes，首行 <!DOCTYPE html>，含 <title>L1 Acceptance</title>，结构完整（head/body/main/table），无脚本、无外部资源。三条结构化验收标准（artifact.present / text.contains:<!DOCTYPE / min_bytes:200）全部满足，交付物描述中的 title 要求也满足。结论：L1 技术验收通过；L2 业务签核仍由 owner/approver 完成。"
+  },
+  "finishedAt": "2026-11-05T20:07:27.264Z",
+  "status": "completed",
+  "pass": true
+}

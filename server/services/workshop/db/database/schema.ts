@@ -1390,6 +1390,7 @@ CREATE TABLE IF NOT EXISTS project_results (
   open_questions    TEXT NOT NULL DEFAULT '',
   status            TEXT NOT NULL DEFAULT 'draft',
                     -- draft|submitted|reviewed|approved|rejected|superseded
+  submitted_at      TEXT,
   source_task_id    TEXT NOT NULL,
   supersedes_id     TEXT,
   author_agent_id   TEXT,

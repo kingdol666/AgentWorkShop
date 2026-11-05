@@ -468,6 +468,8 @@ export interface CreateProjectInput {
   routingPolicy?: 'legacy' | 'technical'
   /** Router v3：Leader route gate（none=只提案；leader=mode=auto 时提案即时应用）。 */
   routeGate?: 'none' | 'leader'
+  /** Router v3：指定独立评审 Channel（L1 技术验收请求优先投递给它；未绑定则回退）。 */
+  reviewerChannelId?: string
 }
 
 /** PR20 自动派发结果（route 回调闭环的可观测面）。 */
@@ -572,6 +574,7 @@ export class ProjectService {
       configJson: JSON.stringify({
         leaderHarness: input.leaderHarness ?? 'mock',
         routeGate: input.routeGate ?? 'none',
+        ...(input.reviewerChannelId ? { reviewerChannelId: input.reviewerChannelId } : {}),
       }),
     })
 
@@ -712,6 +715,12 @@ export class ProjectService {
     if (!d || d.projectId !== id) throw new AppError(404, 'NOT_FOUND', '交付物不存在或不属于该项目')
     if (d.status === 'approved') throw new AppError(409, 'DELIVERABLE_STATE_INVALID', '已验收交付物不能豁免')
     if (!reason.trim()) throw new AppError(400, 'BAD_REQUEST', '豁免必须给出理由')
+    // 不能用一个“待 L1/L2”的成果豁免整件交付物；先 reject/supersede 或走完验收。
+    const pending = this.results.listByProject(id)
+      .filter(r => r.deliverableId === deliverableId && ['submitted', 'reviewed'].includes(r.status))
+    if (pending.length > 0) {
+      throw new AppError(409, 'DELIVERABLE_HAS_PENDING_RESULTS', `交付物仍有 ${pending.length} 个待验收成果，不能豁免`)
+    }
     this.deliverables.setStatus(deliverableId, 'waived', reason)
     this.record(id, 'deliverable.waived', actor, { deliverableId, reason }, '', 'deliverable.waived', `deliverable:${deliverableId}:waived`, { deliverableId, reason })
     return this.deliverables.findById(deliverableId)!
@@ -1300,11 +1309,18 @@ export class ProjectService {
     const bindings = this.bindings.listByProject(projectId).filter(b => b.status === 'active')
     const items = this.workItems.listByProject(projectId)
     for (const result of submitted) {
-      if (this.hasPassingTechnicalReview(result.id)) continue
-      const correlationId = `review:${result.id}`
-      const existing = this.messages.listByProject(projectId)
-        .find(m => m.correlationId === correlationId && m.kind === 'request_review')
-      if (existing) continue
+      if (this.hasPassingTechnicalReview(result.id, result.version)) continue
+      // 相关键带 version+updatedAt：同一成果重新提交会生成新的 L1 请求；
+      // 只认平台发出的 system:review，防止成员伪造 request_review 抑制真实请求。
+      const baseCorrelation = `review:${result.id}:v${result.version}:${result.submittedAt ?? result.createdAt}`
+      const prior = this.messages.listByProject(projectId).filter(m =>
+        m.fromAgentId === 'system:review'
+        && m.kind === 'request_review'
+        && (m.correlationId === baseCorrelation || m.correlationId.startsWith(`${baseCorrelation}:retry:`)))
+      if (prior.some(m => m.status !== 'failed')) continue
+      if (prior.length >= 3) continue
+      if (prior.some(m => Date.now() - Date.parse(m.createdAt) < 5 * 60_000)) continue
+      const correlationId = prior.length === 0 ? baseCorrelation : `${baseCorrelation}:retry:${prior.length + 1}`
       let reviewerChannelId = ''
       let reviewerAgentId = ''
       if (configuredReviewer) {
@@ -1586,7 +1602,20 @@ export class ProjectService {
     const result = this.results.findById(resultId)
     if (!result || result.projectId !== id) throw new AppError(404, 'NOT_FOUND', '成果不存在或不属于该项目')
     this.assertResultLineVisible(result, actor)
-    if (result.status !== 'submitted') throw new AppError(409, 'RESULT_STATE_INVALID', `成果状态 ${result.status} 不能复核`)
+    // 兼容窗口：历史 reviewed 成果没有 L1 记录时允许补录；已有记录则拒绝重复复核。
+    const backfill = p.routingPolicy === 'technical'
+      && result.status === 'reviewed'
+      && !this.hasPassingTechnicalReview(result.id, result.version)
+    if (result.status !== 'submitted' && !backfill) {
+      throw new AppError(409, 'RESULT_STATE_INVALID', `成果状态 ${result.status} 不能复核`)
+    }
+    if (backfill && this.technicalReviews.listByResult(result.id).some(r => r.resultVersion === result.version)) {
+      throw new AppError(409, 'TECHNICAL_REVIEW_EXISTS', '该成果版本已有技术验收记录')
+    }
+    const criteriaCheck = p.routingPolicy === 'technical' ? this.evaluateResultCriteria(result) : null
+    if (decision === 'reviewed' && criteriaCheck && !criteriaCheck.ok) {
+      throw new AppError(409, 'ACCEPTANCE_CRITERIA_FAILED', `复核不能通过：${criteriaCheck.blockingFailures.join('；')}`)
+    }
     // B8：复核迁移 + 审计同事务。
     let updated!: ProjectResultRow
     withTransaction(this.db, () => {
@@ -1604,7 +1633,7 @@ export class ProjectService {
           reviewerChannelId: actor.agentId === p.leadAgentId ? (p.officeChannelId ?? '') : '',
           reviewerKind,
           verdict: decision === 'reviewed' ? 'pass' : 'fail',
-          checksJson: result.criteriaCheckJson || '[]',
+          checksJson: JSON.stringify(criteriaCheck?.checks ?? []),
           note: reason,
           traceId: result.traceId,
         })
@@ -1624,6 +1653,9 @@ export class ProjectService {
         rejectReason: decision === 'rejected' ? reason : null,
       })
       this.record(id, decision === 'reviewed' ? 'result.reviewed' : 'result.rejected', actor, { resultId, reason }, result.traceId, decision === 'reviewed' ? 'result.reviewed' : 'result.rejected', `result:${resultId}:${decision}`, { resultId, reason })
+      if (decision === 'rejected' && p.routingPolicy === 'technical') {
+        this.markResultRework(result, actor, reason || 'L1_REVIEW_REJECTED')
+      }
       updated = this.results.findById(resultId)!
     })
     return updated
@@ -1691,7 +1723,7 @@ export class ProjectService {
     const result = this.assertAcceptanceGates(id, resultId)
     // Router v3 三级验收：technical 项目必须先有 L1 pass 记录，才能进入 L2 业务签核。
     // owner 兜底复核也会写 technical 记录（reviewer_kind=owner/admin），因此不会被误锁。
-    if (p.routingPolicy === 'technical' && !this.hasPassingTechnicalReview(resultId)) {
+    if (p.routingPolicy === 'technical' && !this.hasPassingTechnicalReview(resultId, result.version)) {
       throw new AppError(409, 'TECHNICAL_REVIEW_REQUIRED', 'L1 技术验收未完成：请由 Project Leader 或独立评审 Channel 先提交 project_submit_technical_review(pass)')
     }
     this.assertResultLineVisible(result, actor)
@@ -1752,8 +1784,11 @@ export class ProjectService {
               this.record(result.projectId, 'result.superseded', actor, { resultId: old.id, supersededBy: result.id, reason: 'new version approved' }, old.traceId, 'result.superseded', `result:${old.id}:superseded`, { resultId: old.id, supersededBy: result.id })
               this.markDownstreamRework(old.id, actor, `upstream version superseded by ${result.id}`)
             }
-            // decide 时复检 L1：审批创建后成果可能被 supersede/返工，不能拿旧签核直接批准。
-            if (p.routingPolicy === 'technical' && !this.hasPassingTechnicalReview(result.id)) {
+            // decide 时复检 L1：审批创建后成果可能被 supersede/返工/重新提交，不能拿旧签核直接批准。
+            if (result.status !== 'reviewed') {
+              throw new AppError(409, 'RESULT_STATE_INVALID', `成果状态 ${result.status} 不能 L2 签核`)
+            }
+            if (p.routingPolicy === 'technical' && !this.hasPassingTechnicalReview(result.id, result.version)) {
               throw new AppError(409, 'TECHNICAL_REVIEW_REQUIRED', 'L2 签核被拒：该成果缺少 L1 技术验收 pass 记录')
             }
             this.results.setStatus(result.id, 'approved', {
@@ -1845,9 +1880,45 @@ export class ProjectService {
     return items.every(w => results.some(r => r.workItemId === w.id))
   }
 
-  /** L1 技术验收是否已有 pass 记录（Leader / 独立 reviewer Channel / owner 兜底均落库）。 */
-  private hasPassingTechnicalReview(resultId: string): boolean {
-    return this.technicalReviews.listByResult(resultId).some(r => r.verdict === 'pass')
+  /** L1 技术验收是否已有当前成果版本的 pass 记录（旧版本 pass 不能放行新版本）。 */
+  private hasPassingTechnicalReview(resultId: string, version?: number): boolean {
+    return this.technicalReviews.listByResult(resultId)
+      .some(r => r.verdict === 'pass' && (version === undefined || r.resultVersion === version))
+  }
+
+  /** L1 结构化验收标准：交付物 + 工作项 criteria 对真实 task artifact 求值。 */
+  private evaluateResultCriteria(result: ProjectResultRow): ReturnType<typeof evaluateCriteriaChecks> {
+    const deliverable = this.deliverables.findById(result.deliverableId)
+    const wi = this.workItems.findById(result.workItemId)
+    const task = this.tasks.findById(result.sourceTaskId)
+    const criteria = [
+      ...parseJson<string[]>(deliverable?.acceptanceCriteriaJson ?? '[]', []),
+      ...parseJson<string[]>(wi?.acceptanceJson ?? '[]', []),
+    ]
+    return evaluateCriteriaChecks({
+      criteria,
+      artifacts: [...artifactDigests(task?.artifactsJson ?? '[]').values()],
+      payloadJson: result.payloadJson,
+      artifactBacked: parseJson<Array<Record<string, unknown>>>(result.evidenceJson, [])
+        .filter(e => String(e.artifactId ?? '')).length,
+    })
+  }
+
+  /** L1 驳回：成果标记返工，工作项回到 REWORK（可经 route retry/rework 重新派发）。 */
+  private markResultRework(result: ProjectResultRow, actor: ProjectActor, reason: string): void {
+    this.results.markReworkRequired(result.id, true)
+    const wi = this.workItems.findById(result.workItemId)
+    if (wi && wi.state === 'COMPLETED') {
+      this.workItems.update(wi.id, {
+        state: 'REWORK',
+        stateReason: reason,
+        currentAttemptId: null,
+        closedAt: null,
+        closeReason: null,
+      })
+      this.record(result.projectId, 'work.rework', actor, { workItemId: wi.id, resultId: result.id, reason }, result.traceId, 'work.rework', `work:${wi.id}:rework:${result.id}`, { workItemId: wi.id, resultId: result.id, reason })
+    }
+    this.approvals.cancelPending(result.projectId, 'deliverable_acceptance', result.id, reason)
   }
 
   /**
@@ -1895,6 +1966,8 @@ export class ProjectService {
     autoDispatch?: boolean
     /** Router v3：Leader route gate（none/leader）；与 mode=auto 组合才即时应用。 */
     routeGate?: 'none' | 'leader'
+    /** Router v3：独立评审 Channel id；传空串清除。 */
+    reviewerChannelId?: string
   }): ProjectRow {
     const p = this.get(id, actor)
     this.requireOwner(p, actor)
@@ -1909,7 +1982,19 @@ export class ProjectService {
       ...(objective !== undefined ? { objective } : {}),
       ...(patch.mode !== undefined ? { mode: patch.mode } : {}),
       ...(patch.autoDispatch !== undefined ? { autoDispatch: patch.autoDispatch ? 1 : 0 } : {}),
-      ...(patch.routeGate !== undefined ? { configJson: JSON.stringify({ ...config, routeGate: patch.routeGate }) } : {}),
+      ...(patch.routeGate !== undefined || patch.reviewerChannelId !== undefined
+        ? {
+            configJson: JSON.stringify({
+              ...config,
+              ...(patch.routeGate !== undefined ? { routeGate: patch.routeGate } : {}),
+              ...(patch.reviewerChannelId !== undefined
+                ? (patch.reviewerChannelId.trim()
+                    ? { reviewerChannelId: patch.reviewerChannelId.trim() }
+                    : { reviewerChannelId: undefined })
+                : {}),
+            }),
+          }
+        : {}),
     })
     if (!next) throw new AppError(404, 'NOT_FOUND', `Project 不存在: ${id}`)
     this.record(id, 'project.updated', actor, { patch }, '', 'project.updated', `project:${id}:updated:${Date.now()}`, { fields: Object.keys(patch) })
@@ -2511,15 +2596,27 @@ export class ProjectService {
   /** 成果读取：leader 全量；channel lead 本频道全状态+他频道 approved；worker 仅本频道 approved。 */
   agentReadResults(agentId: string): Array<Record<string, unknown>> {
     const ctx = this.requireAgentContext(agentId, 'any')
+    // 显式 reviewer grant：平台 request_review 指向的成果对该评审 Agent 可见（含 submitted）。
+    // 这是“交给其他 Channel 验收”的读取面；生产 Channel 仍不能读其他频道未批准成果。
+    const reviewGrants = new Set(this.messages.listByProject(ctx.project.id)
+      .filter(m => m.kind === 'request_review' && m.fromAgentId === 'system:review' && m.toAgentId === agentId && m.resultId)
+      .map(m => m.resultId!))
     const visible = this.results.listByProject(ctx.project.id).filter((r) => {
       if (ctx.isLeader) return true
-      if (ctx.role === 'lead') return r.channelId === ctx.channelId ? r.status !== 'superseded' : r.status === 'approved'
+      if (ctx.role === 'lead') {
+        if (r.channelId === ctx.channelId) return r.status !== 'superseded'
+        return r.status === 'approved' || reviewGrants.has(r.id)
+      }
       return r.channelId === ctx.channelId && r.status === 'approved'
     })
     return visible.map(r => ({
       id: r.id, title: r.title, status: r.status, channelId: r.channelId,
       deliverableId: r.deliverableId, workItemId: r.workItemId, attemptNo: r.attemptNo,
       version: r.version, summary: r.summary, confidence: r.confidence,
+      sourceTaskId: r.sourceTaskId, contentSha256: r.contentSha256,
+      criteriaCheck: parseJson<Record<string, unknown>>(r.criteriaCheckJson, {}),
+      technicalVerdict: parseJson<Record<string, unknown>>(r.technicalVerdictJson, {}),
+      reworkRequired: r.reworkRequired === 1,
       evidence: parseJson(r.evidenceJson, []), approvedBy: r.approvedBy, approvedAt: r.approvedAt,
     }))
   }
@@ -2621,7 +2718,15 @@ export class ProjectService {
     }
     const result = this.results.findById(input.resultId)
     if (!result || result.projectId !== ctx.project.id) throw new AppError(404, 'NOT_FOUND', '成果不存在或不属于该项目')
-    if (result.status !== 'submitted') throw new AppError(409, 'RESULT_STATE_INVALID', `成果状态 ${result.status} 不能技术验收`)
+    // 兼容窗口：历史 reviewed 成果没有技术验收记录时，允许补一次 L1（不改变 reviewed 语义）。
+    const backfill = result.status === 'reviewed'
+      && !this.hasPassingTechnicalReview(result.id, result.version)
+    if (result.status !== 'submitted' && !backfill) {
+      throw new AppError(409, 'RESULT_STATE_INVALID', `成果状态 ${result.status} 不能技术验收`)
+    }
+    if (backfill && this.technicalReviews.listByResult(result.id).some(r => r.resultVersion === result.version)) {
+      throw new AppError(409, 'TECHNICAL_REVIEW_EXISTS', '该成果版本已有技术验收记录')
+    }
     if (result.authorAgentId === agentId) throw new AppError(403, 'SELF_REVIEW_FORBIDDEN', '不能技术验收自己产出的成果')
     if (!ctx.isLeader) {
       if (result.channelId === ctx.channelId) {
@@ -2629,19 +2734,7 @@ export class ProjectService {
       }
       this.assertChannelBound(ctx.project.id, ctx.channelId)
     }
-    const deliverable = this.deliverables.findById(result.deliverableId)
-    const wi = this.workItems.findById(result.workItemId)
-    const task = this.tasks.findById(result.sourceTaskId)
-    const criteria = [
-      ...parseJson<string[]>(deliverable?.acceptanceCriteriaJson ?? '[]', []),
-      ...parseJson<string[]>(wi?.acceptanceJson ?? '[]', []),
-    ]
-    const criteriaCheck = evaluateCriteriaChecks({
-      criteria,
-      artifacts: [...artifactDigests(task?.artifactsJson ?? '[]').values()],
-      payloadJson: result.payloadJson,
-      artifactBacked: parseJson<Array<Record<string, unknown>>>(result.evidenceJson, []).filter(e => String(e.artifactId ?? '')).length,
-    })
+    const criteriaCheck = this.evaluateResultCriteria(result)
     if (input.verdict === 'pass' && !criteriaCheck.ok) {
       throw new AppError(409, 'ACCEPTANCE_CRITERIA_FAILED', `技术验收不能通过：${criteriaCheck.blockingFailures.join('；')}`)
     }
@@ -2679,6 +2772,7 @@ export class ProjectService {
           rejectReason: input.note || criteriaCheck.blockingFailures.join('；') || 'technical review failed',
         })
         this.record(ctx.project.id, 'result.technical_rejected', { id: agentId, role: ctx.role, agentId }, { resultId: result.id, reviewId: review.id, reason: input.note ?? '' }, result.traceId, 'result.technical_rejected', `result:${result.id}:technical-rejected:${review.id}`, { resultId: result.id, reviewId: review.id, reviewerKind })
+        this.markResultRework(result, { id: agentId, role: ctx.role, agentId }, input.note || 'TECHNICAL_REVIEW_REJECTED')
       }
       updated = this.results.findById(result.id)!
     })
@@ -2778,7 +2872,7 @@ export class ProjectService {
         planVersion: p.planVersion,
       })
       this.record(p.id, rework ? 'work.rework' : 'work.retried', actor, { workItemId: wi.id, reason }, traceId, rework ? 'work.rework' : 'work.retried', `work:${wi.id}:${rework ? 'rework' : 'retry'}:${Date.now()}`, { workItemId: wi.id, reason })
-      if (p.status === 'active' && p.autoDispatch === 1) {
+      if (p.status === 'active' && p.autoDispatch === 1 && p.mode !== 'observe') {
         const row = await this.dispatchWorkItemAs(p.id, wi.id, actor, p, { auto: true })
         return row
       }
@@ -2813,7 +2907,14 @@ export class ProjectService {
     if (ctx.role === 'worker' && !ctx.isLeader) throw new AppError(403, 'MESSAGE_FORBIDDEN', '项目消息仅限 Leader/Channel lead')
     const body = input.body?.trim()
     if (!body) throw new AppError(400, 'BAD_REQUEST', '消息内容不能为空')
-    if (body.length > 8_000) throw new AppError(400, 'MESSAGE_TOO_LARGE', '消息超过 8KB 上限')
+    if (body.length > 8_000) throw new AppError(400, 'MESSAGE_TOO_LARGE', '消息超过 8000 字符上限')
+    // 显式 correlationId 视为幂等键：命中已有消息直接返回，不重复投递。
+    const correlation = input.correlationId?.trim()
+    if (correlation) {
+      const existing = this.messages.listByProject(ctx.project.id)
+        .find(m => m.correlationId === correlation && m.fromAgentId === agentId)
+      if (existing) return existing
+    }
     let toChannelId: string
     let toAgentId: string
     if (ctx.isLeader) {

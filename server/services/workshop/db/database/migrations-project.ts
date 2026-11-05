@@ -123,6 +123,9 @@ export function migrateProjectColumns(db: DatabaseSync): void {
   if (!hasResultColumn(db, 'rework_required')) {
     db.exec('ALTER TABLE project_results ADD COLUMN rework_required INTEGER NOT NULL DEFAULT 0')
   }
+  if (!hasResultColumn(db, 'submitted_at')) {
+    db.exec('ALTER TABLE project_results ADD COLUMN submitted_at TEXT')
+  }
   if (!hasDecisionColumn(db, 'actor_kind')) {
     db.exec('ALTER TABLE project_decisions ADD COLUMN actor_kind TEXT NOT NULL DEFAULT \'\'')
   }

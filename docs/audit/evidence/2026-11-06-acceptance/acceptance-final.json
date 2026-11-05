@@ -3,11 +3,11 @@
   "environment": {
     "base": "http://127.0.0.1:3981",
     "home": "D:/codes/ABO/aw-acceptance-home-20261106",
-    "build": "aw-router-v3 @ fix/project-acceptance-l1"
+    "build": "aw-router-v3 @ fix/l1-review-hardening"
   },
   "project": {
-    "id": "835309fb-6035-4978-bff1-5783a9a96d4c",
-    "name": "L1 验收闭环 19:05",
+    "id": "596b597e-2407-4409-a3ef-472432345984",
+    "name": "L1 验收闭环 19:57",
     "status": "completed",
     "plan_version": 1,
     "auto_dispatch": 0,
@@ -15,83 +15,86 @@
     "routing_policy": "technical"
   },
   "run": {
-    "startedAt": "2026-11-05T19:05:17.100Z",
+    "startedAt": "2026-11-05T19:57:45.356Z",
     "steps": [
       {
         "name": "项目创建（omp leader）",
-        "detail": "835309fb-6035-4978-bff1-5783a9a96d4c office=9ec66996-d3f0-4a2a-937f-4d5b7630ee42 leader=d6bbb42c-8e54-4860-beb7-c590270c38d0",
+        "detail": "596b597e-2407-4409-a3ef-472432345984 office=c177cdb0-22a3-467b-aeb8-9842e161aa2e leader=ba6191ad-a178-4b6a-9a5e-937d364dcd79",
         "pass": true,
-        "at": "2026-11-05T19:05:17.221Z"
+        "at": "2026-11-05T19:57:45.504Z"
       },
       {
         "name": "Channel 绑定与预热",
-        "detail": "producer=287727ed reviewer=7ea4bf52",
+        "detail": "producer=167aceaa reviewer=a41fd365",
         "pass": true,
-        "at": "2026-11-05T19:05:17.308Z"
+        "at": "2026-11-05T19:57:45.587Z"
       },
       {
         "name": "Leader 计划真实提案 → owner 批准 → 物化",
-        "detail": "approval=7b4def43-011c-43b3-9549-c563bfa5e2f5 workItem=a1c25281-f20f-4ba0-9aa8-6f7b7899ff1e",
+        "detail": "approval=21125209-311e-4aec-b729-34472c1d9325 workItem=5ef34ba6-aed3-4ace-a193-c8edee0b9ca6",
         "pass": true,
-        "at": "2026-11-05T19:05:57.461Z"
+        "at": "2026-11-05T19:58:45.759Z"
       },
       {
         "name": "Leader route 提案 → owner 应用 → 执行器派发",
-        "detail": "decision=ff30b743-3739-4684-b5e0-e56ff3783637 state=DISPATCHED stage=dispatched",
+        "detail": "decision=1862ed79-5972-4473-baef-e404828410de state=DISPATCHED stage=dispatched",
         "pass": true,
-        "at": "2026-11-05T19:06:17.560Z"
+        "at": "2026-11-05T19:59:55.908Z"
       },
       {
         "name": "成果提交（owner 代提交）",
-        "detail": "result=7e58c12e-8bc8-4803-b236-adf0a4ce5409 status=submitted artifact=18637ccf-d4cf-4f62-b9e2-67580fecf773 bytes=2437",
+        "detail": "result=6d4e0666-089b-4754-a05c-a91ed273b6c0 status=submitted artifact=7ad3328a-87e0-4b34-95b3-a06ce6de069a bytes=2624",
         "pass": true,
-        "at": "2026-11-05T19:07:07.666Z"
+        "at": "2026-11-05T20:01:26.116Z"
       },
       {
         "name": "平台自动 L1 验收请求",
-        "detail": "message=2862b474-dfa8-47bc-9483-d17a3c62e51b status=delivered to=f9ec7045",
+        "detail": "message=d03142d9-19cd-4988-b683-496f1ad6299c status=delivered to=d4f81e30",
         "pass": true,
-        "at": "2026-11-05T19:07:12.681Z"
+        "at": "2026-11-05T20:01:36.148Z"
       },
       {
         "name": "独立评审 Channel 写 L1 技术验收",
-        "detail": "review=e9dcdab0-6847-4a13-96c1-83299f578a68 kind=channel_lead verdict=pass",
+        "detail": "review=14920462-2354-45f4-b6db-790b1ad570fd kind=channel_lead verdict=pass",
         "pass": true,
-        "at": "2026-11-05T19:08:37.876Z"
+        "at": "2026-11-05T20:07:27.184Z"
       },
       {
         "name": "L2 业务签核（L1 之后）",
-        "detail": "approval=2b4eeeab-8680-4d5d-9cb2-10ed867d9bf4 status=approved",
+        "detail": "approval=fac4b188-1d86-4bbf-9c5d-4efc36f24cb6 status=approved",
         "pass": true,
-        "at": "2026-11-05T19:08:37.905Z"
+        "at": "2026-11-05T20:07:27.213Z"
       },
       {
         "name": "项目完成",
         "detail": "status=completed",
         "pass": true,
-        "at": "2026-11-05T19:08:37.968Z"
+        "at": "2026-11-05T20:07:27.264Z"
       }
     ],
-    "projectId": "835309fb-6035-4978-bff1-5783a9a96d4c",
+    "projectId": "596b597e-2407-4409-a3ef-472432345984",
     "route": {
-      "decisionId": "ff30b743-3739-4684-b5e0-e56ff3783637",
+      "decisionId": "1862ed79-5972-4473-baef-e404828410de",
       "state": "proposed",
       "actorKind": "project_leader",
-      "argsJson": "{\"workItemId\":\"a1c25281-f20f-4ba0-9aa8-6f7b7899ff1e\",\"action\":\"dispatch\",\"reason\":\"W1 已就绪，分发给生产 Channel\",\"deferMinutes\":null,\"targetChannelId\":\"287727ed-fbdb-4bac-b02c-a7f1fd2fd145\"}"
+      "argsJson": "{\"workItemId\":\"5ef34ba6-aed3-4ace-a193-c8edee0b9ca6\",\"action\":\"dispatch\",\"reason\":\"W1 已就绪，分发给生产 Channel\",\"deferMinutes\":null,\"targetChannelId\":\"167aceaa-8304-4097-af65-528f86f02172\"}",
+      "finalState": "applied",
+      "snapshotNote": "state captured at proposal discovery; final state from project_decisions"
     },
     "result": {
-      "id": "7e58c12e-8bc8-4803-b236-adf0a4ce5409",
+      "id": "6d4e0666-089b-4754-a05c-a91ed273b6c0",
       "status": "submitted",
-      "version": 1
+      "version": 1,
+      "finalStatus": "approved"
     },
     "technicalReview": {
-      "id": "e9dcdab0-6847-4a13-96c1-83299f578a68",
+      "id": "14920462-2354-45f4-b6db-790b1ad570fd",
       "reviewerKind": "channel_lead",
-      "reviewerChannelId": "7ea4bf52-3148-4918-b976-c125071c5fb6",
+      "reviewerChannelId": "a41fd365-64c1-4d66-8f60-e591088810a8",
       "verdict": "pass",
-      "note": "L1 technical acceptance PASS. Independently read the submitted artifact l1-acceptance.html (2437 bytes, sha256 ccc2b0bbd5ef76af6466449ab2bc9cc5cd3394665abd6bc28cc1981954c085e8). Checks: (1) artifact.present — single-file HTML exists in production channel workspace; (2) text.contains:<!DOCTYPE — line 1 is exactly '<!DOCTYPE html>'; (3) min_bytes:200 — 2437 >= 200. Deliverable description also satisfied: <title>L1 Acceptance</title> at line 6, single file with no external assets or build step. Scope limited to L1 technical acceptance; L2 business sign-off remains with owner/approver."
+      "note": "独立读取生产 Channel（167aceaa）交付文件 data/workspaces/167aceaa-8304-4097-af65-528f86f02172/l1-acceptance.html：2624 bytes，首行 <!DOCTYPE html>，含 <title>L1 Acceptance</title>，结构完整（head/body/main/table），无脚本、无外部资源。三条结构化验收标准（artifact.present / text.contains:<!DOCTYPE / min_bytes:200）全部满足，交付物描述中的 title 要求也满足。结论：L1 技术验收通过；L2 业务签核仍由 owner/approver 完成。"
     },
-    "finishedAt": "2026-11-05T19:08:37.968Z",
+    "finishedAt": "2026-11-05T20:07:27.264Z",
     "status": "completed",
     "pass": true
   },
@@ -100,140 +103,132 @@
       "decision_type": "plan.proposed",
       "state": "applied",
       "actor_kind": "project_leader",
-      "actor_agent_id": "d6bbb42c-8e54-4860-beb7-c590270c38d0",
-      "args_json": "{\"deliverables\":[{\"key\":\"d1\",\"name\":\"L1验收页面\",\"description\":\"单文件 HTML 页面，含 <!DOCTYPE html> 与 <title>L1 Acceptance</title>，≥200 字节；验收口径：artifact 存在且内容满足结构化 checks。\",\"required\":true,\"channelId\":\"287727ed-fbdb-4bac-b02c-a7f1fd2fd145\",\"acceptanceCriteria\":[\"artifact.present\",\"text.contains:<!DOCTYPE\",\"min_bytes:200\"]}],\"work_items\":[{\"key\":\"w1\",\"deliverableKey\":\"d1\",\"channelId\":\"287727ed-fbdb-4bac-b02c-a7f1fd2fd145\",\"title\":\"L1验收页面实现\",\"resultKey\":\"main\",\"execBudgetMinutes\":20,\"dependsOn\":[],\"brief\":\"写一个单文件 HTML（≥200 字节），含 <!DOCTYPE html> 和 <title>L1 Acceptance</title>；完成后 complete_task 把完整 HTML 全文放 deliverable，并 project_submit_result。不要调研、不要新建任务。\"}]}",
-      "created_at": "2026-11-06T03:05:50.809+08:00"
+      "actor_agent_id": "ba6191ad-a178-4b6a-9a5e-937d364dcd79",
+      "args_json": "{\"deliverables\":[{\"key\":\"d1\",\"name\":\"L1验收页面\",\"description\":\"单文件 HTML 页面：≥200 字节，含 <!DOCTYPE html> 与 <title>L1 Acceptance</title>\",\"required\":true,\"channelId\":\"167aceaa-8304-4097-af65-528f86f02172\",\"acceptanceCriteria\":[\"artifact.present\",\"text.contains:<!DOCTYPE\",\"min_bytes:200\"]}],\"work_items\":[{\"key\":\"w1\",\"deliverableKey\":\"d1\",\"channelId\":\"167aceaa-8304-4097-af65-528f86f02172\",\"title\":\"L1验收页面实现\",\"resultKey\":\"main\",\"execBudgetMinutes\":20,\"brief\":\"写一个单文件 HTML（≥200 字节），含 <!DOCTYPE html> 和 <title>L1 Acceptance</title>；完成后 complete_task 把完整 HTML 全文放 deliverable，并 project_submit_result。不要调研、不要新建任务。\",\"dependsOn\":[]}]}",
+      "created_at": "2026-11-06T03:58:36.273+08:00"
     },
     {
       "decision_type": "approval.approved",
       "state": "applied",
       "actor_kind": "admin",
       "actor_agent_id": null,
-      "args_json": "{\"approvalId\":\"7b4def43-011c-43b3-9549-c563bfa5e2f5\",\"kind\":\"plan_approval\",\"reason\":\"L1 验收：计划批准\"}",
-      "created_at": "2026-11-06T03:05:57.434+08:00"
+      "args_json": "{\"approvalId\":\"21125209-311e-4aec-b729-34472c1d9325\",\"kind\":\"plan_approval\",\"reason\":\"L1 验收：计划批准\"}",
+      "created_at": "2026-11-06T03:58:45.721+08:00"
     },
     {
       "decision_type": "route.proposed",
       "state": "applied",
       "actor_kind": "project_leader",
-      "actor_agent_id": "d6bbb42c-8e54-4860-beb7-c590270c38d0",
-      "args_json": "{\"workItemId\":\"a1c25281-f20f-4ba0-9aa8-6f7b7899ff1e\",\"action\":\"dispatch\",\"reason\":\"W1 已就绪，分发给生产 Channel\",\"deferMinutes\":null,\"targetChannelId\":\"287727ed-fbdb-4bac-b02c-a7f1fd2fd145\"}",
-      "created_at": "2026-11-06T03:06:08.838+08:00"
+      "actor_agent_id": "ba6191ad-a178-4b6a-9a5e-937d364dcd79",
+      "args_json": "{\"workItemId\":\"5ef34ba6-aed3-4ace-a193-c8edee0b9ca6\",\"action\":\"dispatch\",\"reason\":\"W1 已就绪，分发给生产 Channel\",\"deferMinutes\":null,\"targetChannelId\":\"167aceaa-8304-4097-af65-528f86f02172\"}",
+      "created_at": "2026-11-06T03:59:50.319+08:00"
     },
     {
       "decision_type": "work.dispatch_auto",
       "state": "applied",
       "actor_kind": "admin",
       "actor_agent_id": null,
-      "args_json": "{\"workItemId\":\"a1c25281-f20f-4ba0-9aa8-6f7b7899ff1e\",\"taskId\":\"b2963517-9f10-44a9-8bd7-3da12980c6bb\",\"attemptNo\":1,\"inputResultIds\":[]}",
-      "created_at": "2026-11-06T03:06:17.555+08:00"
+      "args_json": "{\"workItemId\":\"5ef34ba6-aed3-4ace-a193-c8edee0b9ca6\",\"taskId\":\"103a857c-898c-4c1c-b8c0-6ae73e877b97\",\"attemptNo\":1,\"inputResultIds\":[]}",
+      "created_at": "2026-11-06T03:59:55.890+08:00"
     },
     {
       "decision_type": "proposal.applied",
       "state": "applied",
       "actor_kind": "admin",
       "actor_agent_id": null,
-      "args_json": "{\"decisionId\":\"ff30b743-3739-4684-b5e0-e56ff3783637\",\"workItemId\":\"a1c25281-f20f-4ba0-9aa8-6f7b7899ff1e\",\"action\":\"dispatch\"}",
-      "created_at": "2026-11-06T03:06:17.555+08:00"
+      "args_json": "{\"decisionId\":\"1862ed79-5972-4473-baef-e404828410de\",\"workItemId\":\"5ef34ba6-aed3-4ace-a193-c8edee0b9ca6\",\"action\":\"dispatch\"}",
+      "created_at": "2026-11-06T03:59:55.890+08:00"
     },
     {
       "decision_type": "result.draft",
       "state": "applied",
       "actor_kind": "system",
       "actor_agent_id": null,
-      "args_json": "{\"resultId\":\"7e58c12e-8bc8-4803-b236-adf0a4ce5409\",\"taskId\":\"b2963517-9f10-44a9-8bd7-3da12980c6bb\",\"inputResultIds\":[]}",
-      "created_at": "2026-11-06T03:07:07.238+08:00"
+      "args_json": "{\"resultId\":\"6d4e0666-089b-4754-a05c-a91ed273b6c0\",\"taskId\":\"103a857c-898c-4c1c-b8c0-6ae73e877b97\",\"inputResultIds\":[]}",
+      "created_at": "2026-11-06T04:01:22.793+08:00"
     },
     {
       "decision_type": "work.completed",
       "state": "applied",
       "actor_kind": "system",
       "actor_agent_id": null,
-      "args_json": "{\"workItemId\":\"a1c25281-f20f-4ba0-9aa8-6f7b7899ff1e\",\"taskId\":\"b2963517-9f10-44a9-8bd7-3da12980c6bb\"}",
-      "created_at": "2026-11-06T03:07:07.238+08:00"
+      "args_json": "{\"workItemId\":\"5ef34ba6-aed3-4ace-a193-c8edee0b9ca6\",\"taskId\":\"103a857c-898c-4c1c-b8c0-6ae73e877b97\"}",
+      "created_at": "2026-11-06T04:01:22.794+08:00"
     },
     {
       "decision_type": "result.submit",
       "state": "applied",
       "actor_kind": "admin",
       "actor_agent_id": null,
-      "args_json": "{\"resultId\":\"7e58c12e-8bc8-4803-b236-adf0a4ce5409\"}",
-      "created_at": "2026-11-06T03:07:07.647+08:00"
+      "args_json": "{\"resultId\":\"6d4e0666-089b-4754-a05c-a91ed273b6c0\"}",
+      "created_at": "2026-11-06T04:01:26.111+08:00"
     },
     {
       "decision_type": "review.requested",
       "state": "applied",
       "actor_kind": "system",
       "actor_agent_id": null,
-      "args_json": "{\"messageId\":\"2862b474-dfa8-47bc-9483-d17a3c62e51b\",\"resultId\":\"7e58c12e-8bc8-4803-b236-adf0a4ce5409\",\"reviewerChannelId\":\"7ea4bf52-3148-4918-b976-c125071c5fb6\",\"reviewerAgentId\":\"f9ec7045-3669-4b6f-a001-37488176ec29\"}",
-      "created_at": "2026-11-06T03:07:12.110+08:00"
-    },
-    {
-      "decision_type": "message.sent",
-      "state": "applied",
-      "actor_kind": "channel_lead",
-      "actor_agent_id": "e4d4f83b-6773-4651-ac5f-c8b83b44dc4a",
-      "args_json": "{\"messageId\":\"4419d41c-1607-4f62-bd08-17a8896cc481\",\"toChannelId\":\"9ec66996-d3f0-4a2a-937f-4d5b7630ee42\",\"toAgentId\":\"d6bbb42c-8e54-4860-beb7-c590270c38d0\",\"kind\":\"note\"}",
-      "created_at": "2026-11-06T03:07:46.168+08:00"
-    },
-    {
-      "decision_type": "message.sent",
-      "state": "applied",
-      "actor_kind": "project_leader",
-      "actor_agent_id": "d6bbb42c-8e54-4860-beb7-c590270c38d0",
-      "args_json": "{\"messageId\":\"19596e4e-b7c2-428a-b557-425ab218bf0c\",\"toChannelId\":\"287727ed-fbdb-4bac-b02c-a7f1fd2fd145\",\"toAgentId\":\"e4d4f83b-6773-4651-ac5f-c8b83b44dc4a\",\"kind\":\"reply\"}",
-      "created_at": "2026-11-06T03:08:26.250+08:00"
+      "args_json": "{\"messageId\":\"d03142d9-19cd-4988-b683-496f1ad6299c\",\"resultId\":\"6d4e0666-089b-4754-a05c-a91ed273b6c0\",\"reviewerChannelId\":\"a41fd365-64c1-4d66-8f60-e591088810a8\",\"reviewerAgentId\":\"d4f81e30-ada5-4de0-b4cb-9fdfd1b63d71\"}",
+      "created_at": "2026-11-06T04:01:32.701+08:00"
     },
     {
       "decision_type": "result.technical_accepted",
       "state": "applied",
       "actor_kind": "channel_lead",
-      "actor_agent_id": "f9ec7045-3669-4b6f-a001-37488176ec29",
-      "args_json": "{\"resultId\":\"7e58c12e-8bc8-4803-b236-adf0a4ce5409\",\"reviewId\":\"e9dcdab0-6847-4a13-96c1-83299f578a68\",\"reviewerChannelId\":\"7ea4bf52-3148-4918-b976-c125071c5fb6\"}",
-      "created_at": "2026-11-06T03:08:37.222+08:00"
+      "actor_agent_id": "d4f81e30-ada5-4de0-b4cb-9fdfd1b63d71",
+      "args_json": "{\"resultId\":\"6d4e0666-089b-4754-a05c-a91ed273b6c0\",\"reviewId\":\"14920462-2354-45f4-b6db-790b1ad570fd\",\"reviewerChannelId\":\"a41fd365-64c1-4d66-8f60-e591088810a8\"}",
+      "created_at": "2026-11-06T04:07:22.803+08:00"
     },
     {
       "decision_type": "approval.requested",
       "state": "applied",
       "actor_kind": "admin",
       "actor_agent_id": null,
-      "args_json": "{\"approvalId\":\"2b4eeeab-8680-4d5d-9cb2-10ed867d9bf4\",\"kind\":\"deliverable_acceptance\",\"resultId\":\"7e58c12e-8bc8-4803-b236-adf0a4ce5409\"}",
-      "created_at": "2026-11-06T03:08:37.881+08:00"
+      "args_json": "{\"approvalId\":\"fac4b188-1d86-4bbf-9c5d-4efc36f24cb6\",\"kind\":\"deliverable_acceptance\",\"resultId\":\"6d4e0666-089b-4754-a05c-a91ed273b6c0\"}",
+      "created_at": "2026-11-06T04:07:27.190+08:00"
     },
     {
       "decision_type": "approval.approved",
       "state": "applied",
       "actor_kind": "admin",
       "actor_agent_id": null,
-      "args_json": "{\"approvalId\":\"2b4eeeab-8680-4d5d-9cb2-10ed867d9bf4\",\"kind\":\"deliverable_acceptance\",\"reason\":\"L1 pass 后 L2 业务签核\"}",
-      "created_at": "2026-11-06T03:08:37.889+08:00"
+      "args_json": "{\"approvalId\":\"fac4b188-1d86-4bbf-9c5d-4efc36f24cb6\",\"kind\":\"deliverable_acceptance\",\"reason\":\"L1 pass 后 L2 业务签核\"}",
+      "created_at": "2026-11-06T04:07:27.197+08:00"
     },
     {
       "decision_type": "project.complete_requested",
       "state": "applied",
       "actor_kind": "admin",
       "actor_agent_id": null,
-      "args_json": "{\"approvalId\":\"3f272ed5-72f2-4ea7-af0d-c066ee9d23f1\"}",
-      "created_at": "2026-11-06T03:08:37.922+08:00"
+      "args_json": "{\"approvalId\":\"61a56aa8-2574-4eb9-9289-0c13dc5619ba\"}",
+      "created_at": "2026-11-06T04:07:27.229+08:00"
     },
     {
       "decision_type": "approval.approved",
       "state": "applied",
       "actor_kind": "admin",
       "actor_agent_id": null,
-      "args_json": "{\"approvalId\":\"3f272ed5-72f2-4ea7-af0d-c066ee9d23f1\",\"kind\":\"project_complete\",\"reason\":\"L1/L2 完成，项目验收\"}",
-      "created_at": "2026-11-06T03:08:37.951+08:00"
+      "args_json": "{\"approvalId\":\"61a56aa8-2574-4eb9-9289-0c13dc5619ba\",\"kind\":\"project_complete\",\"reason\":\"L1/L2 完成，项目验收\"}",
+      "created_at": "2026-11-06T04:07:27.258+08:00"
+    },
+    {
+      "decision_type": "message.sent",
+      "state": "applied",
+      "actor_kind": "channel_lead",
+      "actor_agent_id": "d4f81e30-ada5-4de0-b4cb-9fdfd1b63d71",
+      "args_json": "{\"messageId\":\"8878b36b-c073-491e-a493-79e3ac505755\",\"toChannelId\":\"c177cdb0-22a3-467b-aeb8-9842e161aa2e\",\"toAgentId\":\"ba6191ad-a178-4b6a-9a5e-937d364dcd79\",\"kind\":\"reply\"}",
+      "created_at": "2026-11-06T04:07:33.213+08:00"
     }
   ],
   "technicalReviews": [
     {
-      "id": "e9dcdab0-6847-4a13-96c1-83299f578a68",
-      "result_id": "7e58c12e-8bc8-4803-b236-adf0a4ce5409",
+      "id": "14920462-2354-45f4-b6db-790b1ad570fd",
+      "result_id": "6d4e0666-089b-4754-a05c-a91ed273b6c0",
       "reviewer_kind": "channel_lead",
-      "reviewer_channel_id": "7ea4bf52-3148-4918-b976-c125071c5fb6",
+      "reviewer_channel_id": "a41fd365-64c1-4d66-8f60-e591088810a8",
       "verdict": "pass",
-      "note": "L1 technical acceptance PASS. Independently read the submitted artifact l1-acceptance.html (2437 bytes, sha256 ccc2b0bbd5ef76af6466449ab2bc9cc5cd3394665abd6bc28cc1981954c085e8). Checks: (1) artifact.present — single-file HTML exists in production channel workspace; (2) text.contains:<!DOCTYPE — line 1 is exactly '<!DOCTYPE html>'; (3) min_bytes:200 — 2437 >= 200. Deliverable description also satisfied: <title>L1 Acceptance</title> at line 6, single file with no external assets or build step. Scope limited to L1 technical acceptance; L2 business sign-off remains with owner/approver.",
-      "created_at": "2026-11-06T03:08:37.222+08:00"
+      "note": "独立读取生产 Channel（167aceaa）交付文件 data/workspaces/167aceaa-8304-4097-af65-528f86f02172/l1-acceptance.html：2624 bytes，首行 <!DOCTYPE html>，含 <title>L1 Acceptance</title>，结构完整（head/body/main/table），无脚本、无外部资源。三条结构化验收标准（artifact.present / text.contains:<!DOCTYPE / min_bytes:200）全部满足，交付物描述中的 title 要求也满足。结论：L1 技术验收通过；L2 业务签核仍由 owner/approver 完成。",
+      "created_at": "2026-11-06T04:07:22.803+08:00"
     }
   ],
   "projectMessages": [
@@ -241,45 +236,37 @@
       "kind": "request_review",
       "status": "delivered",
       "from_agent_id": "system:review",
-      "to_agent_id": "f9ec7045-3669-4b6f-a001-37488176ec29",
-      "to_channel_id": "7ea4bf52-3148-4918-b976-c125071c5fb6",
-      "body": "[项目内核] L1 技术验收请求\n项目：L1 验收闭环 19:05（835309fb-6035-4978-bff1-5783a9a96d4c）\n成果：L1验收页面实现 成果（result_id=7e58c12e-8bc8-4803-b236-adf0a4ce5409，version=1）\n工作项：L1验收页面实现（a1c25281-f20f-4ba0-9aa8-6f7b7899ff1e）\n交付物：L1验收页面（b06fb5a8-bcec-4bb2-bf6b-a28afa1fe0d1）\n验收标准：artifact.present；text.contains:<!DOCTYPE；min_bytes:200\n请先读取成果与证据，再调用 project_submit_technical_review：verdict=pass 或 fail，note 写明依据。\n你是 L1 技术验收方：不要修改成果、不要新建任务、不要做 L2 业务签核。",
-      "created_at": "2026-11-06T03:07:12.109+08:00"
-    },
-    {
-      "kind": "note",
-      "status": "delivered",
-      "from_agent_id": "e4d4f83b-6773-4651-ac5f-c8b83b44dc4a",
-      "to_agent_id": "d6bbb42c-8e54-4860-beb7-c590270c38d0",
-      "to_channel_id": "9ec66996-d3f0-4a2a-937f-4d5b7630ee42",
-      "body": "生产 Channel 交付完成：root 任务 b2963517-9f10-44a9-8bd7-3da12980c6bb（L1验收页面实现）已 complete_task，完整 HTML 全文写入 deliverable。\n\n交付物：单文件 l1-acceptance.html（workspace 287727ed-fbdb-4bac-b02c-a7f1fd2fd145 根目录），2437 字节，UTF-8。\n验收自检（直接校验，非声明）：wc -c = 2437（≥200）；grep -F '<!DOCTYPE html>' 命中 1 次且为首行；grep -F '<title>L1 Acceptance</title>' 命中 1 次；file(1) 判定 UTF-8 HTML 文本。零外部资源、无 JS、内联 CSS、light/dark 自适应。\n\n关于成果提交：我调用 project_submit_result 时返回 RESULT_STATE_INVALID（成果 7e58c12e 状态已是 submitted，由 owner 代提交，证据 artifactId 18637ccf）。故本消息作为生产侧交接说明，供 L1 评审方核对；如需我方补充 material，请指派。\n\n边界：仅交付静态页面，无后端/部署/交互运行时；未做调研、未新建任务、未派发子任务。",
-      "created_at": "2026-11-06T03:07:46.168+08:00"
+      "to_agent_id": "d4f81e30-ada5-4de0-b4cb-9fdfd1b63d71",
+      "to_channel_id": "a41fd365-64c1-4d66-8f60-e591088810a8",
+      "body": "[项目内核] L1 技术验收请求\n项目：L1 验收闭环 19:57（596b597e-2407-4409-a3ef-472432345984）\n成果：L1验收页面实现 成果（result_id=6d4e0666-089b-4754-a05c-a91ed273b6c0，version=1）\n工作项：L1验收页面实现（5ef34ba6-aed3-4ace-a193-c8edee0b9ca6）\n交付物：L1验收页面（997fda59-836a-4463-81fc-b74686e2bc43）\n验收标准：artifact.present；text.contains:<!DOCTYPE；min_bytes:200\n请先读取成果与证据，再调用 project_submit_technical_review：verdict=pass 或 fail，note 写明依据。\n你是 L1 技术验收方：不要修改成果、不要新建任务、不要做 L2 业务签核。",
+      "created_at": "2026-11-06T04:01:32.696+08:00"
     },
     {
       "kind": "reply",
       "status": "delivered",
-      "from_agent_id": "d6bbb42c-8e54-4860-beb7-c590270c38d0",
-      "to_agent_id": "e4d4f83b-6773-4651-ac5f-c8b83b44dc4a",
-      "to_channel_id": "287727ed-fbdb-4bac-b02c-a7f1fd2fd145",
-      "body": "[Project Leader 收到交接] 生产交付已登记，无需补充 material。\n\n核对到的项目态（只读）：work item a1c25281 状态 COMPLETED；result 7e58c12e 状态 submitted（evidence artifactId 18637ccf-d4cf-4f62-b9e2-67580fecf773，version=1）。你遇到的 RESULT_STATE_INVALID 属预期：成果已由 owner 代为提交进入 submitted，生产侧无需重复提交。\n\n证据抽检（leader 只读、非 L1 结论）：workspace 287727ed… 根目录 l1-acceptance.html 存在，wc -c=2437（≥200），首行 <!DOCTYPE html>，<title>L1 Acceptance</title> 命中 1 次 —— 与你的自检一致。\n\nL1 已由平台在 2026-11-06T03:07:12 自动路由给评审频道 7ea4bf52-3148-4918-b976-c125071c5fb6（项目消息 2862b474，request_review）。技术验收由评审频道独立出具，leader 不代评。L2 业务签核只在 L1 pass 后由 owner/approver 发起。若 L1 返回 fail，我会按路由提案发起 rework 给你。",
-      "created_at": "2026-11-06T03:08:26.249+08:00"
+      "from_agent_id": "d4f81e30-ada5-4de0-b4cb-9fdfd1b63d71",
+      "to_agent_id": "ba6191ad-a178-4b6a-9a5e-937d364dcd79",
+      "to_channel_id": "c177cdb0-22a3-467b-aeb8-9842e161aa2e",
+      "body": "【L1 技术验收完成】\n成果：L1验收页面实现（result_id=6d4e0666-089b-4754-a05c-a91ed273b6c0，version=1）\n工作项：5ef34ba6-aed3-4ace-a193-c8edee0b9ca6\n结论：PASS（reviewId=14920462-2354-45f4-b6db-790b1ad570fd），成果状态已置 reviewed。\n依据：独立读取生产 Channel 交付文件 l1-acceptance.html —— 2624 bytes（≥200）、首行 <!DOCTYPE html>、含 <title>L1 Acceptance</title>；单文件静态 HTML，无脚本/外部资源。三条结构化标准（artifact.present / text.contains:<!DOCTYPE / min_bytes:200）全部满足。\n范围说明：本次仅 L1 技术验收；L2 业务签核仍待 owner/approver。",
+      "created_at": "2026-11-06T04:07:33.213+08:00"
     }
   ],
   "results": [
     {
-      "id": "7e58c12e-8bc8-4803-b236-adf0a4ce5409",
+      "id": "6d4e0666-089b-4754-a05c-a91ed273b6c0",
       "status": "approved",
       "title": "L1验收页面实现 成果",
       "version": 1,
-      "content_sha256": "6a426c5d2f7783411ce7250889788db3a123c25ce8bef9fe53fec15155560c87"
+      "content_sha256": "21ccc53568dc5870d2bba12b606747ac46ae8ff04b0eb3b1002a74a39b93bf8f",
+      "submitted_at": "2026-11-06T04:01:26.110+08:00"
     }
   ],
   "tasks": [
     {
-      "id": "b2963517-9f10-44a9-8bd7-3da12980c6bb",
+      "id": "103a857c-898c-4c1c-b8c0-6ae73e877b97",
       "title": "L1验收页面实现",
       "state": "COMPLETED",
-      "assignee_id": "e4d4f83b-6773-4651-ac5f-c8b83b44dc4a",
+      "assignee_id": "c0cf0f0b-88d4-466e-b7b3-a622c8513b0b",
       "parent_id": null,
       "source": "project"
     }

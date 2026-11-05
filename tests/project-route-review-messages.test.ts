@@ -78,7 +78,7 @@ function fixture() {
 
 type Fixture = ReturnType<typeof fixture>
 
-async function setupProject(f: Fixture, opts: { mode?: 'supervised' | 'auto', routeGate?: boolean } = {}) {
+async function setupProject(f: Fixture, opts: { mode?: 'supervised' | 'auto', routeGate?: boolean, criteria?: string[] } = {}) {
   const owner = { id: 'u-owner', role: 'user' }
   const p = await f.svc.create({
     name: `P2-${randomUUID().slice(0, 8)}`, objective: 'route/review/messages',
@@ -89,7 +89,7 @@ async function setupProject(f: Fixture, opts: { mode?: 'supervised' | 'auto', ro
   const b = await f.manager.createChannel({ name: `评审-${randomUUID().slice(0, 6)}`, ownerUserId: owner.id, leadAgent: { name: 'LeadB', harness: 'mock' } })
   f.svc.bindChannel(p.id, a.channelId, owner)
   f.svc.bindChannel(p.id, b.channelId, owner)
-  const d = f.svc.createDeliverable(p.id, owner, { name: '交付物', ownerChannelId: a.channelId, acceptanceCriteria: ['artifact.present'] })
+  const d = f.svc.createDeliverable(p.id, owner, { name: '交付物', ownerChannelId: a.channelId, acceptanceCriteria: opts.criteria ?? ['artifact.present'] })
   f.svc.activate(p.id, owner)
   const office = f.channels.findById(p.officeChannelId!)!
   return { owner, p: f.svc.get(p.id, owner), a, b, d, leadA: a.leadAgentId!, leadB: b.leadAgentId!, lead: p.leadAgentId!, officeLead: office.leadAgentId! }
@@ -162,6 +162,23 @@ test('route 提案：auto + routeGate=leader 即时应用', async () => {
   const proposed = await f.svc.agentProposeRoute(setup.lead, { workItemId: w.id, action: 'dispatch', reason: 'auto' })
   assert.equal(proposed.applied, true)
   assert.equal(f.svc.listWorkItems(setup.p.id, setup.owner).find(x => x.id === w.id)!.state, 'DISPATCHED')
+})
+
+test('route rework/escalate：确定性执行与审计', async () => {
+  const f = fixture()
+  const setup = await setupProject(f)
+  const w = f.svc.createWorkItem(setup.p.id, setup.owner, { deliverableId: setup.d.id, channelId: setup.a.channelId, title: '返工项' })
+  const rework = await f.svc.agentProposeRoute(setup.lead, { workItemId: w.id, action: 'rework', reason: 'quality gate' })
+  await f.svc.applyProposal(setup.p.id, rework.decision.id, setup.owner)
+  const reworked = f.svc.listWorkItems(setup.p.id, setup.owner).find(x => x.id === w.id)!
+  assert.equal(reworked.state, 'DRAFT')
+  assert.equal(reworked.reworkCount, 1)
+
+  const e = f.svc.createWorkItem(setup.p.id, setup.owner, { deliverableId: setup.d.id, channelId: setup.a.channelId, title: '升级项' })
+  const escalate = await f.svc.agentProposeRoute(setup.lead, { workItemId: e.id, action: 'escalate', reason: 'owner decision needed' })
+  await f.svc.applyProposal(setup.p.id, escalate.decision.id, setup.owner)
+  assert.equal(f.svc.listWorkItems(setup.p.id, setup.owner).find(x => x.id === e.id)!.state, 'DRAFT')
+  assert.ok(f.svc.listEvents(setup.p.id, setup.owner).some(ev => ev.type === 'route.escalated'))
 })
 
 test('项目消息：Leader→Channel、Channel→Leader、Channel→Channel；跨项目拒绝', async () => {
@@ -254,4 +271,129 @@ test('observe 模式：自动派发被门禁挡住，手动派发仍可用', asy
   assert.equal(f.svc.listWorkItems(setup.p.id, setup.owner).find(x => x.id === w.id)!.state, 'DRAFT')
   await f.svc.dispatchWorkItem(setup.p.id, w.id, setup.owner)
   assert.equal(f.svc.listWorkItems(setup.p.id, setup.owner).find(x => x.id === w.id)!.state, 'DISPATCHED')
+
+  // route retry/rework 在 observe 下也不能触发自动派发
+  const w2 = f.svc.createWorkItem(setup.p.id, setup.owner, { deliverableId: setup.d.id, channelId: setup.a.channelId, title: '观察路由项' })
+  const proposal = await f.svc.agentProposeRoute(setup.lead, { workItemId: w2.id, action: 'retry', reason: 'observe retry' })
+  await f.svc.applyProposal(setup.p.id, proposal.decision.id, setup.owner)
+  assert.equal(f.svc.listWorkItems(setup.p.id, setup.owner).find(x => x.id === w2.id)!.state, 'DRAFT')
+  assert.equal(f.attempts.findLiveByWorkItem(w2.id), undefined)
+})
+
+test('历史 reviewed 无 L1 记录：独立评审 Channel 可补录，L2 可继续', async () => {
+  const f = fixture()
+  const setup = await setupProject(f)
+  const { result } = await produceSubmitted(f, setup, 'W1')
+  f.db.prepare(`UPDATE project_results SET status = 'reviewed' WHERE id = ?`).run(result.id)
+  const { review } = f.svc.agentSubmitTechnicalReview(setup.leadB, {
+    resultId: result.id, verdict: 'pass', note: 'backfill historical reviewed result',
+  })
+  assert.equal(review.reviewerKind, 'channel_lead')
+  const acceptance = f.svc.requestAcceptance(setup.p.id, result.id, setup.owner)
+  assert.equal(acceptance.kind, 'deliverable_acceptance')
+})
+
+test('reviewResult 不能绕过结构化 criteria：不满足时 reviewed 被拒', async () => {
+  const f = fixture()
+  const setup = await setupProject(f, { criteria: ['text.contains:<!DOCTYPE'] })
+  const { result } = await produceSubmitted(f, setup, 'W1', '<div>no doctype</div>')
+  assert.throws(
+    () => f.svc.reviewResult(setup.p.id, result.id, setup.owner, 'reviewed', 'owner bypass attempt'),
+    (err: unknown) => (err as { code?: string }).code === 'ACCEPTANCE_CRITERIA_FAILED',
+  )
+})
+
+test('技术验收 fail：成果 rejected + reworkRequired，工作项回到 REWORK', async () => {
+  const f = fixture()
+  const setup = await setupProject(f)
+  const { w, result } = await produceSubmitted(f, setup, 'W1')
+  const { result: rejected } = f.svc.agentSubmitTechnicalReview(setup.leadB, {
+    resultId: result.id, verdict: 'fail', note: 'artifact is a placeholder',
+  })
+  assert.equal(rejected.status, 'rejected')
+  assert.equal(rejected.reworkRequired, 1)
+  assert.equal(f.svc.listWorkItems(setup.p.id, setup.owner).find(x => x.id === w.id)!.state, 'REWORK')
+})
+
+test('decideApproval 复检：L1 记录被移除后拒绝 L2', async () => {
+  const f = fixture()
+  const setup = await setupProject(f)
+  f.svc.addMember(setup.p.id, setup.owner, { userId: 'u-approver', role: 'approver' })
+  const approver = { id: 'u-approver', role: 'user' }
+  const { result } = await produceSubmitted(f, setup, 'W1')
+  f.svc.agentSubmitTechnicalReview(setup.leadB, { resultId: result.id, verdict: 'pass' })
+  const acceptance = f.svc.requestAcceptance(setup.p.id, result.id, setup.owner)
+  f.db.prepare('DELETE FROM project_technical_reviews WHERE result_id = ?').run(result.id)
+  assert.throws(
+    () => f.svc.decideApproval(setup.p.id, acceptance.id, approver, true),
+    (err: unknown) => (err as { code?: string }).code === 'TECHNICAL_REVIEW_REQUIRED',
+  )
+})
+
+test('成果重新提交：生成新的 L1 请求（submitted_at 区分投递代次）', async () => {
+  const f = fixture()
+  const setup = await setupProject(f)
+  const { result } = await produceSubmitted(f, setup, 'W1')
+  await f.svc.runRouteLoop(setup.p.id)
+  const first = f.svc.agentListProjectMessages(setup.lead).filter(m => m.kind === 'request_review' && m.resultId === result.id)
+  assert.equal(first.length, 1)
+  f.db.prepare(`UPDATE project_results SET status = 'submitted', submitted_at = ? WHERE id = ?`)
+    .run(new Date(Date.now() + 1000).toISOString(), result.id)
+  await f.svc.runRouteLoop(setup.p.id)
+  const all = f.svc.agentListProjectMessages(setup.lead).filter(m => m.kind === 'request_review' && m.resultId === result.id)
+  assert.equal(all.length, 2, '重新提交必须重新请求 L1，而不是被旧 request_review 抑制')
+})
+
+test('项目消息 correlationId 幂等：重复调用不重复投递', async () => {
+  const f = fixture()
+  const setup = await setupProject(f)
+  const m1 = await f.svc.agentSendProjectMessage(setup.lead, {
+    toChannelId: setup.a.channelId, body: '同一件事', correlationId: 'msg-c1',
+  })
+  const m2 = await f.svc.agentSendProjectMessage(setup.lead, {
+    toChannelId: setup.a.channelId, body: '同一件事', correlationId: 'msg-c1',
+  })
+  assert.equal(m2.id, m1.id)
+  assert.equal(f.sent.filter(s => s.text === '同一件事').length, 1)
+})
+
+test('显式 reviewerChannelId 优先于“无工作项 Channel”启发式', async () => {
+  const f = fixture()
+  const setup = await setupProject(f)
+  const c = await f.manager.createChannel({ name: `指定评审-${randomUUID().slice(0, 6)}`, ownerUserId: setup.owner.id, leadAgent: { name: 'LeadC', harness: 'mock' } })
+  f.svc.bindChannel(setup.p.id, c.channelId, setup.owner)
+  f.db.prepare('UPDATE projects SET config_json = ? WHERE id = ?').run(JSON.stringify({
+    leaderHarness: 'mock', reviewerChannelId: c.channelId,
+  }), setup.p.id)
+  const { result } = await produceSubmitted(f, setup, 'W1')
+  await f.svc.runRouteLoop(setup.p.id)
+  const msg = f.svc.agentListProjectMessages(setup.lead).find(m => m.kind === 'request_review' && m.resultId === result.id)
+  assert.equal(msg?.toChannelId, c.channelId)
+})
+
+test('存在待验收成果时不能豁免交付物', async () => {
+  const f = fixture()
+  const setup = await setupProject(f)
+  await produceSubmitted(f, setup, 'W1')
+  assert.throws(
+    () => f.svc.waiveDeliverable(setup.p.id, setup.d.id, setup.owner, 'skip acceptance'),
+    (err: unknown) => (err as { code?: string }).code === 'DELIVERABLE_HAS_PENDING_RESULTS',
+  )
+})
+
+test('reviewer grant：L1 请求后评审 Channel 可读 submitted 成果', async () => {
+  const f = fixture()
+  const setup = await setupProject(f)
+  const { result } = await produceSubmitted(f, setup, 'W1')
+  assert.equal(
+    f.svc.agentReadResults(setup.leadB).some(r => r.id === result.id),
+    false,
+    '无 L1 请求前，评审 Channel 不能读其他频道 submitted 成果',
+  )
+  await f.svc.runRouteLoop(setup.p.id)
+  const visible = f.svc.agentReadResults(setup.leadB)
+  const row = visible.find(r => r.id === result.id)
+  assert.ok(row, '平台 request_review 后评审 Channel 必须能读到成果')
+  assert.equal(row!.sourceTaskId, result.sourceTaskId)
+  assert.ok(Array.isArray(row!.evidence))
 })
