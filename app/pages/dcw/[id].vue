@@ -91,6 +91,16 @@ const { items: rdItems, comments: rdComments, decidingId: rdDecidingId, decideEr
     </NuxtLink>
   </div>
   <div
+    v-else-if="!dcw.loaded"
+    class="page"
+  >
+    <!-- 页面级骨架:此前 line=undefined 时整页裸渲染,各子组件自兜底(交互宪法 §2-3) -->
+    <AwStateBlock
+      state="loading"
+      :compact="false"
+    />
+  </div>
+  <div
     v-else
     class="page"
   >

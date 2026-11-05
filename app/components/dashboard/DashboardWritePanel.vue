@@ -26,7 +26,12 @@ const { t } = useI18n()
         {{ t('home.charts.writeCtl') }}
       </h3>
       <span class="aw-bench-meta">
-        <span><b>{{ writesTotal }}</b> {{ t('home.writesFailed') }} {{ writesFailed }}</span>
+        <span :class="{ 'write-fail': writesFailed > 0 }"><b>{{ writesTotal }}</b> {{ t('home.writesFailed') }} {{ writesFailed }}</span>
+        <!-- 告警徽标:失败>0 时与 gauge 联动变红,一眼可见(此前只藏小字) -->
+        <span
+          v-if="writesFailed > 0"
+          class="write-fail-badge"
+        >{{ t('home.writeFailing') }}</span>
       </span>
     </header>
     <ClientOnly>
@@ -49,4 +54,14 @@ const { t } = useI18n()
 }
 .chart { width: 100%; }
 .h240 { height: 240px; }
+/* 失败>0:数字与徽标同告警色,与 gauge 联动(色锁:danger 只表语义) */
+.write-fail b, .write-fail { color: var(--tone-danger-dot); }
+.write-fail-badge {
+  padding: 0 7px;
+  border: 1px solid var(--tone-danger-dot);
+  border-radius: 999px;
+  color: var(--tone-danger-dot);
+  background: var(--tone-danger-bg);
+  font-size: var(--fs-micro);
+}
 </style>

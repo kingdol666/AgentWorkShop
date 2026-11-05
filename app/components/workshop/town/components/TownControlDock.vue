@@ -11,7 +11,7 @@ const dockOpen = defineModel<boolean>('dockOpen', { required: true })
 const threshPct = defineModel<number>('threshPct', { required: true })
 const calloutNearDist = defineModel<number>('calloutNearDist', { required: true })
 
-defineProps<{
+const props = defineProps<{
   mode: 'browse' | 'edit'
   qualityMode: 'auto' | 'normal' | 'hd' | 'ultra'
   fpsCap: '60' | '120' | '0'
@@ -31,6 +31,56 @@ defineProps<{
   saveLayout: () => void
   toggleEstop: () => void
 }>()
+
+/**
+ * E-STOP 两段式确认(全站最危险控件,交互宪法最高规格):
+ *   触发方向 = 单击武装(呼吸警示)→ 按住 3s 环形进度充满才真正触发;中途松开即解除武装。
+ *   复位方向(急停 → 恢复)是安全方向,保持单击。
+ * 此前单击即触发,误触即全站断写控(实拍核验 2026-11-06)。
+ */
+const ESTOP_HOLD_MS = 3000
+const estopArmed = ref(false)
+const estopHold = ref(0)
+let estopHoldTimer: ReturnType<typeof setInterval> | null = null
+/* 按住触发后的松手会产生一次 click——不能让它立刻复位刚触发的急停 */
+let estopJustFired = false
+
+function onEstopHoldStart(): void {
+  if (props.estop || estopArmed.value)
+    return
+  estopJustFired = false
+  estopArmed.value = true
+  estopHold.value = 0
+  const t0 = Date.now()
+  estopHoldTimer = setInterval(() => {
+    estopHold.value = Math.min(1, (Date.now() - t0) / ESTOP_HOLD_MS)
+    if (estopHold.value >= 1) {
+      onEstopHoldCancel()
+      estopJustFired = true
+      props.toggleEstop()
+    }
+  }, 50)
+}
+
+/** 单击语义:吞掉按住触发后的松手 click,只留"主动单击复位" */
+function onEstopClick(): void {
+  if (estopJustFired) {
+    estopJustFired = false
+    return
+  }
+  if (props.estop) props.toggleEstop()
+}
+
+function onEstopHoldCancel(): void {
+  if (estopHoldTimer) {
+    clearInterval(estopHoldTimer)
+    estopHoldTimer = null
+  }
+  estopArmed.value = false
+  estopHold.value = 0
+}
+
+onBeforeUnmount(onEstopHoldCancel)
 </script>
 
 <template>
@@ -184,10 +234,20 @@ defineProps<{
       </button>
       <button
         class="btn btn-danger"
-        :class="{ armed: estop }"
-        @click="toggleEstop"
+        :class="{ armed: estop, holding: estopArmed }"
+        :style="estopArmed ? ({ '--hold': String(estopHold) } as Record<string, string>) : undefined"
+        :aria-pressed="estop ? 'true' : 'false'"
+        :title="estop ? $t('townView.estopReset') : $t('townView.estopHoldHint')"
+        @click="onEstopClick"
+        @pointerdown.prevent="onEstopHoldStart"
+        @pointerup="onEstopHoldCancel"
+        @pointerleave="onEstopHoldCancel"
+        @pointercancel="onEstopHoldCancel"
+        @keydown.space.prevent="onEstopHoldStart"
+        @keyup.space="onEstopHoldCancel"
+        @contextmenu.prevent
       >
-        {{ $t('townView.k1i046wf066') }}
+        {{ estop ? $t('townView.estopReset') : (estopArmed ? $t('townView.estopHoldHint') : $t('townView.k1i046wf066')) }}
       </button>
     </div>
   </section>
@@ -205,7 +265,7 @@ defineProps<{
 .dock-count {
   flex: none;
   padding: 1px 7px;
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.08em;
   color: var(--hud-dim);
   border: 1px solid var(--hud-line-soft);
@@ -214,7 +274,7 @@ defineProps<{
 .dock-mode {
   margin-left: auto;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.1em;
   color: var(--hud-faint);
   border: 1px solid var(--hud-line);
@@ -227,7 +287,7 @@ defineProps<{
   margin: 2px 0 7px;
   padding-top: 7px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   letter-spacing: 0.16em;
   text-transform: uppercase;
@@ -272,7 +332,7 @@ defineProps<{
 .snap-toggle {
   flex: 1;
   height: 22px;
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--hud-dim);
   background: var(--hud-input);
@@ -287,7 +347,7 @@ defineProps<{
   flex: 1;
   height: 22px;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: var(--hud-dim);
   background: var(--hud-input);
@@ -332,6 +392,12 @@ defineProps<{
 .btn:disabled:hover, .nav-action:disabled:hover { background: inherit; }
 @keyframes estop-pulse { 50% { filter: brightness(1.35); } }
 .btn-danger.armed { animation: estop-pulse 1s ease-in-out infinite; }
+/* 两段式武装态:按住 3s 的进度以红色填充从左向右推进(--hold 0-1,内联注入);
+ * 未按住(已武装未按压)时保持呼吸动画,按压中切换为实底推进,松手即清零 */
+.btn-danger.holding {
+  animation: none;
+  background: linear-gradient(90deg, #d1304a 0%, #d1304a calc(var(--hold, 0) * 100%), #b3273a calc(var(--hold, 0) * 100%));
+}
 /* 按压态:轻微下沉,松手回弹(自 TownView.vue 同源规则搬移) */
 .btn:active, .snap-toggle:active {
   transform: scale(0.96);

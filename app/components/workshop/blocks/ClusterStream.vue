@@ -255,7 +255,7 @@ const rendered = computed(() => mdLiteMentions(full.value.slice(0, visible.value
 
 .prose :deep(.code-lang) {
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--ink-faint);
@@ -264,7 +264,7 @@ const rendered = computed(() => mdLiteMentions(full.value.slice(0, visible.value
 .prose :deep(.code-copy) {
   padding: 1px 8px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--ink-soft);
   cursor: pointer;
   background: var(--paper-raised);

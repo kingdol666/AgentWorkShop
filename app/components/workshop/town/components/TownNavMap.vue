@@ -125,7 +125,7 @@ defineProps<{
 .mm-col .vp-tool { width: 30px; height: 30px; border-radius: 8px; }
 .mm-meta {
   margin-top: 8px;
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   color: var(--hud-faint);
   letter-spacing: 0.08em;
   text-align: center;

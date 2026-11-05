@@ -150,7 +150,7 @@ const fmt = (v: unknown): string => (typeof v === 'number' ? (Math.round(v * 100
   font-family: var(--font-mono);
   /* 9px 的 mono 铭牌在 1440 下也读不动(实测每屏稳定被判为不可读);
      10px 是孪生侧栏这套 HUD 在桌面档的地板。 */
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   letter-spacing: 0.08em;
   color: var(--hud-faint);
@@ -166,7 +166,7 @@ const fmt = (v: unknown): string => (typeof v === 'number' ? (Math.round(v * 100
 }
 .twin-code {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.08em;
   color: var(--hud-dim);
 }
@@ -175,7 +175,7 @@ const fmt = (v: unknown): string => (typeof v === 'number' ? (Math.round(v * 100
   width: 18px;
   height: 18px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   line-height: 1;
   color: var(--hud-dim, #8496a5);
   background: transparent;
@@ -202,7 +202,7 @@ const fmt = (v: unknown): string => (typeof v === 'number' ? (Math.round(v * 100
   gap: 5px;
   align-items: center;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.08em;
   color: var(--hud-dim);
   padding: 2px 5px;
@@ -225,7 +225,7 @@ const fmt = (v: unknown): string => (typeof v === 'number' ? (Math.round(v * 100
   justify-content: space-between;
   gap: 6px;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   font-variant-numeric: tabular-nums;
   color: var(--hud-dim);
   min-width: 0;
@@ -247,7 +247,7 @@ const fmt = (v: unknown): string => (typeof v === 'number' ? (Math.round(v * 100
   align-items: baseline;
   gap: 6px;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   font-variant-numeric: tabular-nums;
   color: var(--hud-accent, #35e0a0);
   min-width: 0;
@@ -259,7 +259,7 @@ const fmt = (v: unknown): string => (typeof v === 'number' ? (Math.round(v * 100
   white-space: nowrap;
   opacity: 0.85;
 }
-.daq-item b { font-weight: 700; font-size: 10.5px; white-space: nowrap; }
-.daq-item b i { font-style: normal; font-size: 10px; font-weight: 500; margin-left: 2px; opacity: 0.75; }
+.daq-item b { font-weight: 700; font-size: var(--fs-micro); white-space: nowrap; }
+.daq-item b i { font-style: normal; font-size: var(--fs-micro); font-weight: 500; margin-left: 2px; opacity: 0.75; }
 .daq-item.alarm { color: var(--hud-amber, #f6c453); }
 </style>

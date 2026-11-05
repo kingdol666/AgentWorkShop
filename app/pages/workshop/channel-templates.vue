@@ -486,7 +486,7 @@ h2 { margin: 0 0 4px; }
   overflow: hidden;
   max-width: 60%;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   color: var(--ink-faint);
   text-overflow: ellipsis;
   white-space: nowrap;

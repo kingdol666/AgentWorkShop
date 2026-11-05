@@ -273,7 +273,7 @@ const continuityBadge = computed(() => {
 .lane-chip {
   flex: 0 0 auto;
   padding: 0 6px;
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.04em;
   line-height: 15px;
   color: var(--ink-faint);
@@ -284,7 +284,7 @@ const continuityBadge = computed(() => {
 .lane-role {
   flex: 0 0 auto;
   padding: 0 7px;
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.05em;
   line-height: 16px;
   text-transform: uppercase;
@@ -305,7 +305,7 @@ const continuityBadge = computed(() => {
   align-items: center;
   padding: 0 6px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   line-height: 15px;
   color: var(--ink-faint);
   border: 1px solid var(--line-strong);
@@ -326,7 +326,7 @@ const continuityBadge = computed(() => {
   padding: 0 6px;
   overflow: hidden;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   line-height: 15px;
   color: var(--ink-faint);
   text-overflow: ellipsis;
@@ -335,7 +335,7 @@ const continuityBadge = computed(() => {
   border-radius: var(--radius-pill);
 }
 .cont-badge.restart { color: var(--tone-danger-dot); border-color: color-mix(in srgb, var(--tone-danger-dot) 40%, transparent); }
-.sup-badge.watchdog { color: var(--tone-warn-dot, var(--tone-info-dot)); border-color: color-mix(in srgb, var(--tone-info-dot) 40%, transparent); }
+.sup-badge.watchdog { color: var(--tone-warning-dot); border-color: color-mix(in srgb, var(--tone-info-dot) 40%, transparent); }
 .sup-badge.decision { color: var(--ink-soft); }
 .sup-badge.running { color: var(--tone-live-dot); border-color: color-mix(in srgb, var(--tone-live-dot) 40%, transparent); }
 .head-sub {
@@ -349,7 +349,7 @@ const continuityBadge = computed(() => {
   flex: 1 1 auto;
   min-width: 0;
   overflow: hidden;
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   font-family: var(--font-mono);
   color: var(--ink-faint);
   text-overflow: ellipsis;

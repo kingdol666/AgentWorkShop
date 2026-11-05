@@ -13,11 +13,12 @@ export function useDashboardCharts(data: DashboardData) {
   const { t } = useI18n()
   const { pal, isDark, trendNodes, trendBuf, linesActive, writeRate, daq, dcw } = data
 
-  // ---------- 主题感知的图表公共色 ----------
-  const inkC = computed(() => (isDark.value ? '#e8eef8' : '#1f2a3a'))
-  const dimC = computed(() => (isDark.value ? 'rgba(143,160,181,0.85)' : 'rgba(80,95,120,0.85)'))
-  const splitC = computed(() => (isDark.value ? 'rgba(143,160,181,0.13)' : 'rgba(80,95,120,0.14)'))
-  const tipBg = computed(() => (isDark.value ? 'rgba(10,16,28,0.94)' : 'rgba(255,255,255,0.97)'))
+  // ---------- 主题感知的图表公共色(单一来源:main.css 令牌,经 useChartTheme) ----------
+  const theme = useChartTheme()
+  const inkC = computed(() => theme.ink.value ?? (isDark.value ? '#e8eef8' : '#1f2a3a'))
+  const dimC = computed(() => theme.dim.value || (isDark.value ? 'rgba(143,160,181,0.85)' : 'rgba(80,95,120,0.85)'))
+  const splitC = computed(() => theme.split.value || (isDark.value ? 'rgba(143,160,181,0.13)' : 'rgba(80,95,120,0.14)'))
+  const tipBg = computed(() => theme.tipBg.value || (isDark.value ? 'rgba(10,16,28,0.94)' : 'rgba(255,255,255,0.97)'))
 
   const baseTooltip = computed(() => ({
     backgroundColor: tipBg.value,
@@ -110,36 +111,39 @@ export function useDashboardCharts(data: DashboardData) {
     }],
   }))
 
-  // ---------- 图 4:写控制成功率(gauge) ----------
-  const writeOpt = computed<EChartsOption>(() => ({
-    backgroundColor: 'transparent',
-    series: [{
-      type: 'gauge',
-      startAngle: 210,
-      endAngle: -30,
-      min: 0,
-      max: 100,
-      radius: '92%',
-      center: ['50%', '58%'],
-      progress: { show: true, width: 12, itemStyle: { color: pal.value.accent } },
-      axisLine: { lineStyle: { width: 12, color: [[1, splitC.value]] } },
-      axisTick: { show: false },
-      splitLine: { show: false },
-      axisLabel: { show: false },
-      pointer: { show: false },
-      anchor: { show: false },
-      title: { show: false },
-      detail: {
-        valueAnimation: true,
-        formatter: '{value}%',
-        color: inkC.value,
-        fontSize: 26,
-        fontFamily: 'monospace',
-        offsetCenter: [0, '4%'],
-      },
-      data: [{ value: writeRate.value }],
-    }],
-  }))
+  // ---------- 图 4:写控制成功率(gauge;失败>0 联动告警色,不再只藏小字) ----------
+  const writeOpt = computed<EChartsOption>(() => {
+    const failing = dcw.controller.writesFailed > 0
+    return {
+      backgroundColor: 'transparent',
+      series: [{
+        type: 'gauge',
+        startAngle: 210,
+        endAngle: -30,
+        min: 0,
+        max: 100,
+        radius: '92%',
+        center: ['50%', '58%'],
+        progress: { show: true, width: 12, itemStyle: { color: failing ? pal.value.danger : pal.value.accent } },
+        axisLine: { lineStyle: { width: 12, color: [[1, failing ? chartColorAlpha(pal.value.danger, 0.25) : splitC.value]] } },
+        axisTick: { show: false },
+        splitLine: { show: false },
+        axisLabel: { show: false },
+        pointer: { show: false },
+        anchor: { show: false },
+        title: { show: false },
+        detail: {
+          valueAnimation: true,
+          formatter: '{value}%',
+          color: failing ? pal.value.danger : inkC.value,
+          fontSize: 26,
+          fontFamily: 'monospace',
+          offsetCenter: [0, '4%'],
+        },
+        data: [{ value: writeRate.value }],
+      }],
+    }
+  })
 
   // ---------- 图 5:节点状态分布(数采/控制 堆叠) ----------
   const nodeStates = computed(() => [
@@ -147,9 +151,10 @@ export function useDashboardCharts(data: DashboardData) {
     { key: 'warn', color: pal.value.amber },
     { key: 'alarm', color: pal.value.danger },
     { key: 'writing', color: pal.value.cyan },
-    { key: 'idle', color: isDark.value ? '#5f6e84' : '#8fa0b5' },
-    { key: 'error', color: '#ff8a5c' },
-    { key: 'offline', color: isDark.value ? 'rgba(95,110,132,0.38)' : 'rgba(143,160,181,0.35)' },
+    // idle/offline/error 走令牌派生:中性灰 = ink-faint 系,error = danger 降透明度(替代场外色 #ff8a5c)
+    { key: 'idle', color: theme.faint.value ?? (isDark.value ? '#5f6e84' : '#8fa0b5') },
+    { key: 'error', color: chartColorAlpha(pal.value.danger, 0.7) },
+    { key: 'offline', color: chartColorAlpha(theme.faint.value ?? (isDark.value ? '#5f6e84' : '#8fa0b5'), 0.4) },
   ])
 
   const nodeStateOpt = computed<EChartsOption>(() => {

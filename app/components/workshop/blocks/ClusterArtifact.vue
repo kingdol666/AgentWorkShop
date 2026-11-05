@@ -52,7 +52,7 @@ const expanded = ref(props.block.dupStream)
   gap: 6px;
   align-items: center;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--ink-faint);
 }
 .artifact-cluster > :deep(.artifact-card) {

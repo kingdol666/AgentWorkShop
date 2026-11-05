@@ -300,6 +300,13 @@
             class="hint"
           >
             {{ t('data.mirror.exportRunning') }}
+            <!-- 取消等待:终止前端轮询(服务端任务继续,可稍后在台账查看) -->
+            <button
+              class="pill-btn"
+              @click="cancelExportWait"
+            >
+              {{ t('data.mirror.exportCancelWait') }}
+            </button>
           </p>
         </div>
       </div>
@@ -314,7 +321,7 @@
  * 预览表 → 自定义导出(异步任务,产物 manifest/nodes/merged 下载)。
  * 护栏在服务端(节点≤8/每节点≤2000 点/窗≤7 天/并发≤2),前端只做引导。
  */
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onUnmounted, ref } from 'vue'
 import type { EChartsOption } from 'echarts'
 import { apiFetch } from '@/app/composables/workshop/apiClient'
 import { apiErrorMessage } from '@/app/utils/api-error'
@@ -326,6 +333,7 @@ interface QueryResp { series: Series[], window: { fromMs: number, toMs: number, 
 interface ExportJob { id: string, status: 'running' | 'ready' | 'failed', error?: string, result?: { totalRows?: number, files?: Array<{ nodeId: string, rows: number }>, mergedFile?: string, dir?: string } }
 
 const { t } = useI18n()
+const { chartPalette } = useChartTheme()
 const lines = ref<LineLite[]>([])
 const allNodes = ref<DaqNodeLite[]>([])
 const lineId = ref('')
@@ -387,7 +395,9 @@ const chartOption = computed(() => {
   const units: string[] = []
   for (const s of series.value) if (s.unit && !units.includes(s.unit)) units.push(s.unit)
   const axisOf = (u: string) => Math.min(units.indexOf(u), 1)
-  const palette = ['#4a6b57', '#8aa07c', '#c9a26a', '#b3714f', '#6f8296', '#4e4e4e', '#7d6b8a', '#5d7d7b']
+  // 系列色单一来源:main.css 令牌(useChartTheme 主题桥),不足 8 笔时循环取色
+  const base = chartPalette.value.length ? chartPalette.value : ['#4a6b57', '#8aa07c', '#c9a26a', '#b3714f', '#6f8296']
+  const palette = Array.from({ length: 8 }, (_, i) => base[i % base.length]!)
   const yAxes = [0, 1].slice(0, Math.max(1, Math.min(units.length, 2))).map(i => ({
     type: 'value' as const,
     name: units[i] ?? '',
@@ -539,10 +549,13 @@ async function doExport(): Promise<void> {
       },
     })
     exportJob.value = r.job
-    // 轮询任务至终态(并发=1 队列,大导出可能排队;上限 5 分钟)
+    // 轮询任务至终态(并发=1 队列,大导出可能排队;上限 5 分钟)。
+    // 代际令牌:组件卸载或用户取消等待后立即终止,不再空转(此前最长空转 5 分钟,2026-11-06 修复)
+    const gen = ++exportPollGen
     let cur = exportJob.value
     for (let i = 0; i < 150 && cur?.status === 'running'; i++) {
       await new Promise(res => setTimeout(res, 2000))
+      if (exportPollAborted || gen !== exportPollGen) return
       cur = (await apiFetch<{ job: ExportJob }>({ base: `/api/workshop/daq/export/${cur.id}` })).job
       exportJob.value = cur
     }
@@ -554,6 +567,16 @@ async function doExport(): Promise<void> {
     exporting.value = false
   }
 }
+
+let exportPollGen = 0
+let exportPollAborted = false
+function cancelExportWait(): void {
+  exportPollGen++
+  exporting.value = false
+}
+onUnmounted(() => {
+  exportPollAborted = true
+})
 
 onMounted(async () => {
   try {
@@ -572,31 +595,31 @@ onMounted(async () => {
 
 <style scoped>
 .mirror { display: flex; flex-direction: column; gap: 12px; }
-.card { background: var(--panel, var(--bg-soft, #fff)); border: 1px solid var(--border, rgba(127, 127, 127, 0.25)); border-radius: 10px; padding: 12px 14px; }
+.card { background: var(--surface-card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .row.end { justify-content: flex-end; margin-top: 10px; }
 .row.nodes { margin-top: 8px; row-gap: 4px; }
 .lbl { font-size: 12px; color: var(--ink-soft, #666); white-space: nowrap; }
 .sel { min-width: 120px; }
-.input { border: 1px solid var(--border, rgba(127,127,127,.35)); border-radius: 6px; padding: 4px 8px; background: transparent; color: var(--ink, #222); font-size: 12px; }
+.input { border: 1px solid var(--line-strong); border-radius: 6px; padding: 4px 8px; background: transparent; color: var(--ink, #222); font-size: 12px; }
 .input.w { width: 100%; margin-bottom: 6px; }
 .chk { display: inline-flex; gap: 4px; align-items: center; font-size: 12px; color: var(--ink, #222); cursor: pointer; }
-.node-chip { border: 1px solid var(--border, rgba(127,127,127,.3)); border-radius: 999px; padding: 2px 10px; }
-.node-chip input { accent-color: #4a6b57; }
+.node-chip { border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; }
+.node-chip input { accent-color: var(--accent); }
 .unit { color: var(--ink-faint, #999); margin-left: 2px; }
 .grp { font-size: 12px; font-weight: 600; color: var(--ink-soft, #555); margin-left: 6px; }
 .empty { color: var(--ink-faint, #999); font-size: 12px; }
 .empty.big { text-align: center; padding: 48px 0; }
 .hint { font-size: 12px; color: var(--ink-faint, #888); margin: 6px 0 0; }
-.err { font-size: 12px; color: #b3403a; margin: 6px 0 0; white-space: pre-wrap; }
+.err { font-size: 12px; color: var(--tone-danger-dot); margin: 6px 0 0; white-space: pre-wrap; }
 .ok { font-size: 12px; color: #3f7d54; }
 .sec { font-size: 13px; font-weight: 600; margin: 0 0 8px; }
 .mono { font-variant-numeric: tabular-nums; font-size: 12px; }
 .tblWrap { max-height: 300px; overflow: auto; }
 .tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
-.tbl th, .tbl td { border-bottom: 1px solid var(--border, rgba(127,127,127,.18)); padding: 3px 8px; text-align: left; white-space: nowrap; }
+.tbl th, .tbl td { border-bottom: 1px solid var(--line); padding: 3px 8px; text-align: left; white-space: nowrap; }
 .modalMask { position: fixed; inset: 0; background: rgba(0,0,0,.35); display: flex; align-items: center; justify-content: center; z-index: 60; }
-.modal { background: var(--panel, #fff); color: var(--ink, #222); border-radius: 12px; padding: 16px 18px; width: min(520px, 92vw); }
-.jobResult { margin-top: 10px; border-top: 1px dashed var(--border, rgba(127,127,127,.3)); padding-top: 8px; }
+.modal { background: var(--surface-card); color: var(--ink, #222); border-radius: 12px; padding: 16px 18px; width: min(520px, 92vw); }
+.jobResult { margin-top: 10px; border-top: 1px dashed var(--line); padding-top: 8px; }
 .jobResult a { margin-right: 10px; font-size: 12px; }
 </style>

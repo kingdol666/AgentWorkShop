@@ -78,10 +78,10 @@ const currentTitle = computed(() => {
 .life-state {
   font-weight: 500;
   text-transform: uppercase;
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.1em;
 }
 .life-task { overflow: hidden; max-width: 280px; text-overflow: ellipsis; white-space: nowrap; }
-.life-meta { font-size: 10px; opacity: 0.6; }
-.life-count { font-size: 9.5px; opacity: 0.45; }
+.life-meta { font-size: var(--fs-micro); opacity: 0.6; }
+.life-count { font-size: var(--fs-micro); opacity: 0.45; }
 </style>

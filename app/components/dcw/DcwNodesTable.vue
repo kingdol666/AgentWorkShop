@@ -204,12 +204,19 @@ function saveStep(n: DcwNodeView): void {
               >
                 {{ $t('dcwDetail.mesArtifactsBtn') }}
               </button>
-              <button
-                class="mini-btn danger"
-                @click="emit('remove', n.id)"
+              <!-- 移除控制节点 = 解绑写控通道,不可逆:二次确认(交互宪法 §2-1) -->
+              <a-popconfirm
+                :title="$t('dcwDetail.removeNodeConfirm', { p0: n.name || n.id })"
+                :ok-text="$t('common.remove')"
+                :cancel-text="$t('common.cancel')"
+                :ok-button-props="{ danger: true }"
+                placement="left"
+                @confirm="emit('remove', n.id)"
               >
-                {{ $t('dcwDetail.k3xakp063') }}
-              </button>
+                <button class="mini-btn danger">
+                  {{ $t('dcwDetail.k3xakp063') }}
+                </button>
+              </a-popconfirm>
             </td>
           </tr>
           <tr v-if="loaded && lineNodes.length === 0">

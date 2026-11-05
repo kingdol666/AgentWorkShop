@@ -146,7 +146,7 @@ function onProductChange(): void {
       </select>
     </label>
     <label class="flt">
-      <span>严重级</span>
+      <span>{{ $t('logs.fLevel') }}</span>
       <select
         v-model="level"
         class="inp-sel"
@@ -159,7 +159,7 @@ function onProductChange(): void {
           :key="lv"
           :value="lv"
         >
-          {{ lv === 'error' ? '⛔ error(失败)' : lv === 'warn' ? '⚠️ warn(未证实)' : 'info' }}
+          {{ $t(`logs.level.${lv}`) }}
         </option>
       </select>
     </label>

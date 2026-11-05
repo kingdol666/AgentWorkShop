@@ -160,7 +160,7 @@ defineProps<{
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--hud-faint);
   letter-spacing: 0.16em;
   font-weight: 700;
@@ -241,7 +241,7 @@ defineProps<{
 .bp-tpl {
   padding: 6px 10px 3px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--hud-faint);
@@ -249,7 +249,7 @@ defineProps<{
 .bp-cur {
   margin-left: auto;
   font-style: normal;
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   color: var(--hud-faint);
   white-space: nowrap;
   overflow: hidden;
@@ -258,7 +258,7 @@ defineProps<{
 }
 .bp-empty {
   padding: 10px;
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   color: var(--hud-faint);
 }
 /* ===== 智控设定 · 三段式仪表卡(身份行 / 工艺窗口带 / 下发行) ===== */
@@ -280,7 +280,7 @@ defineProps<{
 .dcw-top { display: flex; gap: 8px; align-items: center; }
 .dcw-id { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 .dcw-name {
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   color: var(--hud-faint);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -292,7 +292,7 @@ defineProps<{
   padding: 0 5px;
   font-style: normal;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 700;
   letter-spacing: 0.08em;
   color: var(--hud-amber);
@@ -317,7 +317,7 @@ defineProps<{
 }
 .dcw-cur i {
   font-style: normal;
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   color: var(--hud-faint);
 }
 /* 工艺窗口带:标签 + 端点值 + 刻度轨(游标 = 当前设定值位置) */
@@ -333,7 +333,7 @@ defineProps<{
 .dcw-win em {
   flex: none;
   font-style: normal;
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 700;
   letter-spacing: 0.14em;
   color: var(--hud-faint);
@@ -341,7 +341,7 @@ defineProps<{
 .dcw-win-num {
   flex: none;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   color: var(--hud-dim);
   font-variant-numeric: tabular-nums;
 }
@@ -396,7 +396,7 @@ defineProps<{
   border-radius: 7px;
   transition: border-color 0.15s var(--hud-ease), box-shadow 0.15s var(--hud-ease);
 }
-.dcw-write input::placeholder { color: var(--hud-faint); font-size: 10px; }
+.dcw-write input::placeholder { color: var(--hud-faint); font-size: var(--fs-micro); }
 .dcw-write input:focus {
   outline: none;
   border-color: var(--hud-accent);
@@ -407,7 +407,7 @@ defineProps<{
   height: 27px;
   padding: 0 14px;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   font-weight: 700;
   letter-spacing: 0.1em;
   color: #04120c;
@@ -425,7 +425,7 @@ defineProps<{
 .dcw-err {
   display: block;
   padding: 4px 8px;
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--hud-danger);
   background: rgba(255, 107, 107, 0.08);
   border: 1px solid rgba(255, 107, 107, 0.28);

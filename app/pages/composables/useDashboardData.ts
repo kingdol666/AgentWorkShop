@@ -37,25 +37,30 @@ export function useDashboardData() {
   const dcw = useDcwStream()
 
   // 图表色序随主题切换(两套声部,同一语义序):
-  //   亮 = Warm Editorial 编辑色板(main.css --chart-* 同源,墨绿→苔绿→琥珀→陶赭)
+  //   亮 = Warm Editorial 编辑色板(--chart-1..5,墨绿→苔绿→琥珀→陶赭→青灰)
   //   暗 = 控制室 tone 系统(绿=运行/成功 · 青=数据 · 琥珀=需关注 · 紫=重试 · 红=告警)
   // —— 亮阶把品牌绿当"墨"用,暗阶把同一抹绿当"信号"用,各自在自己的画布上才成立。
-  const pal = computed(() => (store.isDark
-    ? { accent: '#3fe4ab', cyan: '#41c8f4', amber: '#f6c453', violet: '#a795ff', danger: '#ff8080' }
-    : { accent: '#4a6b57', cyan: '#6f8296', amber: '#c9a26a', violet: '#b3714f', danger: '#c25a4e' }))
+  // 色值单一来源 = main.css 令牌,经 useChartTheme 读入(2026-11-06 图表主题桥)。
+  const { pal: bridgePal } = useChartTheme()
+  const pal = computed(() => bridgePal.value)
   /** 明暗判据(节点状态分布的 idle/offline 两档灰阶按主题分色) */
   const isDark = computed(() => store.isDark)
 
   // ---------- Harness 可用性(引擎 CLI 环境探测;服务端 30s 探测缓存,随兜底节拍刷新) ----------
   const api = useWorkshopApi()
   const harnesses = ref<HarnessMetaDto[]>([])
+  // "API 挂了"与"没有引擎"必须可区分(交互宪法 §2-3;此前 catch 后留空,二者同貌)
+  const harnessError = ref(false)
 
   const loadHarnesses = async (): Promise<void> => {
     try {
       const res = await api.listHarnesses()
       harnesses.value = (res as unknown as { data?: { harnesses?: HarnessMetaDto[] } })?.data?.harnesses ?? []
+      harnessError.value = false
     }
-    catch { /* 探测不可得时面板留空,不阻塞大屏 */ }
+    catch {
+      harnessError.value = true // 探测不可得时面板显式报错,不阻塞大屏
+    }
   }
   const harnessOk = computed(() => harnesses.value.filter(h => h.available !== false).length)
 
@@ -124,6 +129,7 @@ export function useDashboardData() {
     isDark,
     harnesses,
     harnessOk,
+    harnessError,
     loadHarnesses,
     linesActive,
     daqOnline,

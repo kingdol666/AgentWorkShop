@@ -84,7 +84,7 @@ const hasMore = computed(() => toolLines.value.length > MAX)
   flex: 0 0 34px;
   text-align: right;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   font-variant-numeric: tabular-nums;
   color: var(--ink-faint);
 }
@@ -160,7 +160,7 @@ const hasMore = computed(() => toolLines.value.length > MAX)
   margin-left: 49px;
   padding: 1px 10px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--ink-faint);
   cursor: pointer;
   background: transparent;

@@ -549,5 +549,5 @@ useHead({ title: () => t('titles.schedules') })
 .run-head { display: flex; gap: 6px; align-items: center; }
 .run-time { margin-left: auto; font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); }
 .run-task { margin-top: 6px; font-size: 11.5px; color: var(--ink-soft); }
-.run-error { margin-top: 6px; font-size: 11.5px; color: var(--tone-danger, #e5484d); word-break: break-all; }
+.run-error { margin-top: 6px; font-size: 11.5px; color: var(--tone-danger-dot); word-break: break-all; }
 </style>

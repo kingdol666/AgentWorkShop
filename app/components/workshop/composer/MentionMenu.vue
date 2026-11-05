@@ -79,7 +79,7 @@ const emit = defineEmits<{
 }
 .mention-opt:hover,
 .mention-opt.sel { background: var(--paper-deep); }
-.mention-ava { width: 20px; height: 20px; font-size: 10px; }
+.mention-ava { width: 20px; height: 20px; font-size: var(--fs-micro); }
 .mention-ava.is-user { color: var(--on-accent); background: var(--ink-faint); }
 .mention-name {
   flex: 1;
@@ -91,7 +91,7 @@ const emit = defineEmits<{
 }
 .mention-role {
   flex: none;
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   color: var(--ink-faint);
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -99,7 +99,7 @@ const emit = defineEmits<{
 
 .mention-title {
   padding: 5px 12px 4px;
-  font-size: 10px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;

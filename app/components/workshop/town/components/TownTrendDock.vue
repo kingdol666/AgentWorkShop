@@ -72,7 +72,7 @@ defineProps<{
 .dock-count {
   flex: none;
   padding: 1px 7px;
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.08em;
   color: var(--hud-dim);
   border: 1px solid var(--hud-line-soft);
@@ -81,7 +81,7 @@ defineProps<{
 .dock-mode {
   margin-left: auto;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.1em;
   color: var(--hud-faint);
   border: 1px solid var(--hud-line);
@@ -114,7 +114,7 @@ defineProps<{
   display: flex;
   align-items: center;
   gap: 5px;
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   color: var(--hud-dim);
   border: 1px solid var(--hud-line-soft);
   background: rgba(13, 20, 32, 0.6);
@@ -127,7 +127,7 @@ defineProps<{
 .lg-chip.off { opacity: 0.32; }
 /* 「+N」展开/收起聚合 chip:虚线边界 = 折叠语义 */
 .lg-more {
-  font-size: 10px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.04em;
   color: var(--hud-faint);
   border-style: dashed;
@@ -142,7 +142,7 @@ defineProps<{
   display: grid;
   place-content: center;
   font-family: var(--font-mono);
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   color: var(--hud-faint);
 }
 /* 按压态:轻微下沉,松手回弹(自 TownView.vue 同源规则搬移) */

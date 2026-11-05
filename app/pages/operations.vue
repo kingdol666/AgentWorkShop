@@ -20,6 +20,8 @@
       :rows="feed.rows.value"
       :loading="opsLog.loading.list"
       :error="opsLog.error.list"
+      :active-kind="feed.q.kind"
+      @filter="onStatFilter"
     />
   </div>
 </template>
@@ -50,6 +52,12 @@ onMounted(() => {
   opsLog.ensureLive()
   void feed.doQuery()
 })
+
+/** 统计 chip 点击筛选:同 key 再点 = 取消(与快捷级别筛选交互一致) */
+function onStatFilter(key: string): void {
+  feed.q.kind = feed.q.kind === key ? '' : key
+  void feed.doQuery()
+}
 </script>
 
 <script lang="ts">

@@ -465,7 +465,7 @@ const openSaveTemplate = (): void => {
   justify-content: space-between;
   gap: 12px;
   padding: 4px 8px;
-  border: 1px solid var(--border, rgba(128, 128, 128, 0.25));
+  border: 1px solid var(--line-strong);
   border-radius: 6px;
 }
 .ch-plugin-main {

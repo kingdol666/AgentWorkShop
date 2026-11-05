@@ -74,7 +74,20 @@ function openDetail(tool: GlobalToolDto): void {
 }
 
 function customRow(record: GlobalToolDto): Record<string, unknown> {
-  return { onClick: () => openDetail(record), style: 'cursor: pointer' }
+  // 行点击进详情 + 键盘等价(Enter/Space 可达,此前仅 onClick 无键盘路径)
+  return {
+    'onClick': () => openDetail(record),
+    'onKeydown': (e: KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        openDetail(record)
+      }
+    },
+    'tabindex': 0,
+    'role': 'button',
+    'aria-label': record.name,
+    'style': 'cursor: pointer',
+  }
 }
 
 function fmtTime(value: string | null | undefined): string {
@@ -316,7 +329,7 @@ onMounted(load)
   align-items: center;
 }
 .tp-stat {
-  border: 1px solid var(--border, rgba(128, 128, 128, .2));
+  border: 1px solid var(--line);
   border-radius: 8px;
   padding: 8px 12px;
   display: flex;

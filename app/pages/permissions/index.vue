@@ -5,7 +5,7 @@
  * 用户详情抽屉含:基本信息、该用户创建的 Channel、产线授权矩阵(逐线三态选择,批量保存)。
  */
 import { computed, onMounted, reactive, ref } from 'vue'
-import { message } from 'ant-design-vue'
+import { message, Modal } from 'ant-design-vue'
 import { useUserStore } from '~/stores/workshop/user'
 import { narrowFetch } from '~/stores/workshop/narrow-fetch'
 
@@ -87,26 +87,33 @@ const dirtyCount = computed(() => {
   return n
 })
 
-async function save() {
+type GrantPayload = { lineId: string, mode: string | null }
+
+function buildPayload(): { grants: GrantPayload[], revoked: GrantPayload[] } | null {
+  if (!current.value) return null
+  const grants = lines.value
+    .filter(l => (draft[l.id] ?? 'none') !== 'none')
+    .map(l => ({ lineId: l.id, mode: draft[l.id] ?? 'none' }))
+  const revoked = lines.value
+    .filter(l => (draft[l.id] ?? 'none') === 'none' && current.value!.grants.some(g => g.lineId === l.id))
+    .map(l => ({ lineId: l.id, mode: null }))
+  return { grants, revoked }
+}
+
+async function doSave(payload: { grants: GrantPayload[], revoked: GrantPayload[] }): Promise<void> {
   if (!current.value) return
   saving.value = true
   try {
-    const grants = lines.value
-      .filter(l => (draft[l.id] ?? 'none') !== 'none')
-      .map(l => ({ lineId: l.id, mode: draft[l.id] }))
-    const revoked = lines.value
-      .filter(l => (draft[l.id] ?? 'none') === 'none' && current.value!.grants.some(g => g.lineId === l.id))
-      .map(l => ({ lineId: l.id, mode: null }))
     const d = await narrowFetch<{ code: number, data?: { grants: GrantRow[] } }>('/api/workshop/permissions', {
       method: 'PUT',
       headers: authHeaders(),
-      body: { userId: current.value.id, grants: [...grants, ...revoked] },
+      body: { userId: current.value.id, grants: [...payload.grants, ...payload.revoked] },
     })
     if (d.code !== 0 || !d.data) throw new Error('save fail')
     current.value.grants = d.data.grants
     const u = users.value.find(x => x.id === current.value?.id)
     if (u) u.grants = d.data.grants
-    message.success(t('permissions.saved', { n: grants.length + revoked.length }))
+    message.success(t('permissions.saved', { n: payload.grants.length + payload.revoked.length }))
   }
   catch (err) {
     message.error(apiErrorMessage(err, t('permissions.saveFail')))
@@ -114,6 +121,24 @@ async function save() {
   finally {
     saving.value = false
   }
+}
+
+/** 保存前对"将吊销"的授权做 diff 预览确认(交互宪法 §2-1):纯新增/变更直接落盘 */
+async function save() {
+  const payload = buildPayload()
+  if (!payload) return
+  if (payload.revoked.length > 0) {
+    Modal.confirm({
+      title: t('permissions.revokeConfirmTitle', { n: payload.revoked.length }),
+      content: t('permissions.revokeConfirmBody', { keep: payload.grants.length, revoke: payload.revoked.length }),
+      okText: t('common.confirm'),
+      cancelText: t('common.cancel'),
+      okButtonProps: { danger: true },
+      onOk: () => doSave(payload),
+    })
+    return
+  }
+  await doSave(payload)
 }
 
 function modeTag(mode: string): string {
@@ -330,7 +355,7 @@ onMounted(load)
 .hint { font-size: 11px; opacity: .55; margin: 4px 0 10px; }
 .matrix { display: flex; flex-direction: column; gap: 8px; }
 .matrix .row { display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: 8px 12px; border: 1px solid var(--aw-border, rgba(128, 152, 199, .25)); border-radius: 10px; }
+  padding: 8px 12px; border: 1px solid var(--line); border-radius: 10px; }
 .line-name { font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ══ 窄屏(v9):页面收边 / 搜索框占满行 / 矩阵表横向卷轴 + 首列可读 ═══════ */

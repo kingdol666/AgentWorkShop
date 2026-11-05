@@ -29,7 +29,7 @@ useHead({ title: () => t('titles.dashboard') })
 
 // 全页唯一一份数据源 + 由它展开的图表 option(都只在 setup 里创建一次)
 const data = useDashboardData()
-const { site, daq, dcw, pushTrend, loadHarnesses, linesActive, daqOnline, daqTotal, alarmCount, writeRate, harnesses, harnessOk, trendHasData, lineCards, fleetShown, fleetOverflow } = data
+const { site, daq, dcw, pushTrend, loadHarnesses, linesActive, daqOnline, daqTotal, alarmCount, writeRate, harnesses, harnessOk, harnessError, trendHasData, lineCards, fleetShown, fleetOverflow } = data
 const { trendOpt, lineStateOpt, pipelineOpt, writeOpt, nodeStateOpt } = useDashboardCharts(data)
 
 // ---------- 数据装载(WS 实时 + 5s 兜底;可见性调度:后台降频 30s,回前台立即补拍) ----------
@@ -72,9 +72,25 @@ onMounted(() => {
     />
 
     <!-- 大屏图阵 -->
-    <!-- 执行引擎可用性(Harness CLI 环境探测;未安装不可选,派工前强校验) -->
+    <!-- 执行引擎可用性(Harness CLI 环境探测;未安装不可选,派工前强校验;API 失联显式报错) -->
+    <section
+      v-if="harnessError"
+      class="home-harness-error"
+    >
+      <div class="aw-bench">
+        <header class="aw-bench-hd">
+          <h3 class="aw-bench-title">
+            {{ $t('home.harness.title') }}
+          </h3>
+        </header>
+        <AwStateBlock
+          state="error"
+          :retry="loadHarnesses"
+        />
+      </div>
+    </section>
     <DashboardHarnessPanel
-      v-if="harnesses.length > 0"
+      v-else-if="harnesses.length > 0"
       :harnesses="harnesses"
       :ok-count="harnessOk"
     />
@@ -123,4 +139,6 @@ onMounted(() => {
 }
 /* 列宽(.span8 / .span4)与面板专属样式随各自的 <section> 搬进 components/dashboard/*:
    scoped 样式编译成 .x[data-v-<scopeId>],无法外移成公共 css,只能由拥有该元素的组件持有。 */
+/* Harness 探测失联:与图阵同框的独立错误条(区别于"没有引擎") */
+.home-harness-error { margin-bottom: var(--gap-block); }
 </style>

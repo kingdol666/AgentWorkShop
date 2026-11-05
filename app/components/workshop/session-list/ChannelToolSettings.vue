@@ -387,7 +387,7 @@ watch(() => props.channelId, () => {
 
 <style scoped>
 .ch-tools {
-  border: 1px solid var(--border, rgba(128, 128, 128, .25));
+  border: 1px solid var(--line-strong);
   border-radius: 10px;
   padding: 12px;
   display: flex;
@@ -437,7 +437,7 @@ watch(() => props.channelId, () => {
 .ch-tools-list {
   max-height: 340px;
   overflow: auto;
-  border: 1px solid var(--border, rgba(128, 128, 128, .2));
+  border: 1px solid var(--line);
   border-radius: 8px;
 }
 .ch-tool-row {
@@ -445,7 +445,7 @@ watch(() => props.channelId, () => {
   gap: 10px;
   align-items: flex-start;
   padding: 8px 10px;
-  border-bottom: 1px solid var(--border, rgba(128, 128, 128, .15));
+  border-bottom: 1px solid var(--line);
 }
 .ch-tool-row:last-child {
   border-bottom: 0;
@@ -488,7 +488,7 @@ watch(() => props.channelId, () => {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--ink-faint);
   text-align: right;
 }
