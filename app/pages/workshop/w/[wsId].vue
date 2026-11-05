@@ -136,6 +136,7 @@ useHead({ title: () => `${workspace.value?.name ?? 'Workspace'} · AgentWorkShop
         :channel-id="channelId"
         :right-width="rightWidth"
         :loaded="loaded"
+        :view="view"
         @open-agent="openAgent"
         @open-task="openTask"
       />

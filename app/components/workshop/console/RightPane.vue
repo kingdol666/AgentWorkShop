@@ -14,6 +14,8 @@ defineProps<{
   rightWidth: number
   /** workspace 列表是否已从服务端返回 */
   loaded: boolean
+  /** 当前中部视图:chat 视图隐藏产线作业面,让右栏专注成员/上下文 */
+  view?: string
 }>()
 
 const emit = defineEmits<{
@@ -29,7 +31,7 @@ const emit = defineEmits<{
     :style="{ flexBasis: `${rightWidth}px` }"
   >
     <LineOperationsPanel
-      v-if="channelId"
+      v-if="channelId && view !== 'chat'"
       :channel-id="channelId"
     />
     <div
@@ -66,7 +68,7 @@ const emit = defineEmits<{
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
-  background: var(--paper);
+  background: var(--chat-canvas);
 }
 .right-main {
   flex: 1 1 auto;

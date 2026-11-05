@@ -36,7 +36,7 @@ const emit = defineEmits<{ (e: 'openAgent', target: { channelId: string, agentId
   flex-direction: column;
   min-height: 0;
   overflow: hidden;
-  background: var(--paper);
+  background: var(--chat-canvas);
 }
 .left-scroll {
   flex: 1 1 auto;
