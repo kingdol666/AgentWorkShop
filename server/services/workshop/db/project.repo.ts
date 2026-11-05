@@ -617,15 +617,21 @@ export function createProjectResultRepo(db: DatabaseSync) {
   const selectApprovedSlot = db.prepare(`SELECT ${RESULT_COLS} FROM project_results WHERE project_id = ? AND deliverable_id = ? AND result_key = ? AND status = 'approved' AND id <> ? LIMIT 1`)
   const verifyEvidenceStmt = db.prepare(`UPDATE project_results SET content_sha256 = ?, evidence_verified_at = ?, criteria_check_json = ? WHERE id = ?`)
   const setSupersedesStmt = db.prepare(`UPDATE project_results SET supersedes_id = ? WHERE id = ?`)
+  const setReworkStmt = db.prepare(`UPDATE project_results SET rework_required = ? WHERE id = ?`)
   const selectById = db.prepare(`SELECT ${RESULT_COLS} FROM project_results WHERE id = ?`)
   const selectByProject = db.prepare(`SELECT ${RESULT_COLS} FROM project_results WHERE project_id = ? ORDER BY created_at DESC`)
   const selectByWorkItemAttempt = db.prepare(`SELECT ${RESULT_COLS} FROM project_results WHERE work_item_id = ? AND attempt_no = ? AND result_key = ? LIMIT 1`)
   const selectNextVersion = db.prepare(`SELECT COALESCE(MAX(version), 0) + 1 AS next FROM project_results WHERE project_id = ? AND deliverable_id = ? AND channel_id = ? AND result_key = ?`)
+  const selectNextSlotVersion = db.prepare(`SELECT COALESCE(MAX(version), 0) + 1 AS next FROM project_results WHERE project_id = ? AND deliverable_id = ? AND result_key = ?`)
   const updateStatus = db.prepare(`UPDATE project_results SET status = ?, reviewed_by = ?, reviewed_at = ?, approved_by = ?, approved_at = ?, reject_reason = ? WHERE id = ?`)
   const submitStmt = db.prepare(`UPDATE project_results SET title = ?, summary = ?, method = ?, data_window_json = ?, sample_count = ?, confidence = ?, validity_scope = ?, payload_json = ?, evidence_json = ?, change_summary = ?, open_questions = ?, status = ?, author_user_id = COALESCE(author_user_id, ?) WHERE id = ?`)
   return {
     nextVersion(projectId: string, deliverableId: string, channelId: string, resultKey: string): number {
       return Number((selectNextVersion.get(projectId, deliverableId, channelId, resultKey) as { next?: number } | undefined)?.next ?? 1)
+    },
+    /** P1 槽位版本：同一 (project, deliverable, resultKey) 一个生产者，版本跨频道/attempt 单调。 */
+    nextSlotVersion(projectId: string, deliverableId: string, resultKey: string): number {
+      return Number((selectNextSlotVersion.get(projectId, deliverableId, resultKey) as { next?: number } | undefined)?.next ?? 1)
     },
     create(input: {
       projectId: string
@@ -745,6 +751,41 @@ export function createProjectResultRepo(db: DatabaseSync) {
     /** 新版本记录替代关系（supersedes_id 正式写入）。 */
     setSupersedes(id: string, oldId: string): void {
       setSupersedesStmt.run(oldId, id)
+    },
+    /** P1：标记成果因上游 supersede 需要返工。 */
+    markReworkRequired(id: string, required: boolean): void {
+      setReworkStmt.run(required ? 1 : 0, id)
+    },
+  }
+}
+
+export interface ProjectResultInputRow {
+  id: string
+  projectId: string
+  resultId: string
+  inputResultId: string
+  inputVersion: number
+  relation: string
+  createdAt: string
+}
+
+export type ProjectResultInputRepo = ReturnType<typeof createProjectResultInputRepo>
+export function createProjectResultInputRepo(db: DatabaseSync) {
+  const insert = db.prepare(
+    `INSERT OR IGNORE INTO project_result_inputs (id, project_id, result_id, input_result_id, input_version, relation, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+  )
+  const selectByResult = db.prepare('SELECT id, project_id AS projectId, result_id AS resultId, input_result_id AS inputResultId, input_version AS inputVersion, relation, created_at AS createdAt FROM project_result_inputs WHERE result_id = ? ORDER BY created_at ASC')
+  const selectByInput = db.prepare('SELECT id, project_id AS projectId, result_id AS resultId, input_result_id AS inputResultId, input_version AS inputVersion, relation, created_at AS createdAt FROM project_result_inputs WHERE input_result_id = ? ORDER BY created_at ASC')
+  return {
+    add(input: { projectId: string, resultId: string, inputResultId: string, inputVersion: number, relation?: string }): void {
+      insert.run(randomUUID(), input.projectId, input.resultId, input.inputResultId, input.inputVersion, input.relation ?? 'handoff', now())
+    },
+    listByResult(resultId: string): ProjectResultInputRow[] {
+      return selectByResult.all(resultId) as unknown as ProjectResultInputRow[]
+    },
+    listByInput(inputResultId: string): ProjectResultInputRow[] {
+      return selectByInput.all(inputResultId) as unknown as ProjectResultInputRow[]
     },
   }
 }
@@ -869,6 +910,7 @@ export function createProjectApprovalRepo(db: DatabaseSync) {
   const decideStmt = db.prepare(`UPDATE project_approvals SET status = ?, decision_reason = ?, decided_by_user_id = ?, decided_at = ? WHERE id = ? AND project_id = ? AND status = 'pending' AND (expires_at IS NULL OR expires_at > ?)`)
   const consumeStmt = db.prepare(`UPDATE project_approvals SET status = 'consumed', consumed_at = ? WHERE id = ? AND status = 'approved' AND consumed_at IS NULL`)
   const expireStmt = db.prepare(`UPDATE project_approvals SET status = 'expired', decided_at = ? WHERE project_id = ? AND status = 'pending' AND expires_at IS NOT NULL AND expires_at <= ?`)
+  const cancelPendingStmt = db.prepare(`UPDATE project_approvals SET status = 'canceled', decision_reason = ?, decided_at = ? WHERE project_id = ? AND kind = ? AND subject_id = ? AND status = 'pending'`)
   return {
     create(input: {
       projectId: string
@@ -934,6 +976,11 @@ export function createProjectApprovalRepo(db: DatabaseSync) {
     },
     expire(projectId: string): number {
       const result = expireStmt.run(now(), projectId, now())
+      return Number(result.changes ?? 0)
+    },
+    /** P1 supersede：取消某 subject 的待决审批（防旧版本被误批）。 */
+    cancelPending(projectId: string, kind: string, subjectId: string, reason: string): number {
+      const result = cancelPendingStmt.run(reason, now(), projectId, kind, subjectId)
       return Number(result.changes ?? 0)
     },
   }

@@ -1415,6 +1415,22 @@ CREATE INDEX IF NOT EXISTS idx_project_results_lookup
 CREATE UNIQUE INDEX IF NOT EXISTS uq_project_result_approved
   ON project_results(project_id, deliverable_id, result_key) WHERE status='approved';
 
+-- Router v3 P1：成果血缘（下游成果消费了哪些上游 result/version；supersede 影响分析用）
+CREATE TABLE IF NOT EXISTS project_result_inputs (
+  id               TEXT PRIMARY KEY,
+  project_id       TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  result_id        TEXT NOT NULL REFERENCES project_results(id) ON DELETE CASCADE,
+  input_result_id  TEXT NOT NULL,
+  input_version    INTEGER NOT NULL,
+  relation         TEXT NOT NULL DEFAULT 'handoff',
+  created_at       TEXT NOT NULL,
+  UNIQUE(result_id, input_result_id)
+);
+CREATE INDEX IF NOT EXISTS idx_project_result_inputs_input
+  ON project_result_inputs(input_result_id);
+CREATE INDEX IF NOT EXISTS idx_project_result_inputs_project
+  ON project_result_inputs(project_id);
+
 CREATE TABLE IF NOT EXISTS project_decisions (
   id                TEXT PRIMARY KEY,
   project_id        TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
