@@ -175,6 +175,25 @@ const requireReply = defineModel<boolean>('requireReply', { required: true })
   align-items: center;
 }
 
+/* 模式段控:聊天声部的 pill tabs(不动全局 .aw-seg,避免影响其他表单) */
+.composer-bar .aw-seg {
+  background: var(--chat-surface-raised);
+  border-color: var(--chat-line);
+  border-radius: var(--radius-pill);
+}
+.composer-bar .aw-seg button {
+  padding: 4px 11px;
+  font-size: 11.5px;
+  color: var(--chat-ink-faint);
+  border-radius: var(--radius-pill);
+}
+.composer-bar .aw-seg button + button { box-shadow: none; }
+.composer-bar .aw-seg button.on {
+  color: var(--chat-accent);
+  background: var(--chat-accent-soft);
+}
+.composer-bar .aw-seg button:not(.on):hover { color: var(--chat-ink); }
+
 /* 回执切换 chip */
 .chip-toggle {
   display: inline-flex;
@@ -198,25 +217,34 @@ const requireReply = defineModel<boolean>('requireReply', { required: true })
   border-color: var(--ink);
 }
 
-/* 发送:墨色药丸圆钮 */
+/* 发送:AI 对话的圆形上箭头(比墨色药丸更接近现代 prompt bar) */
 .send-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   padding: 0;
-  font-size: 15px;
+  font-size: 16px;
   color: var(--on-accent);
   cursor: pointer;
-  background: var(--accent);
+  background: var(--chat-accent);
   border: 0;
   border-radius: var(--radius-pill);
-  transition: background var(--transition-fast), transform var(--transition-fast), opacity var(--transition-fast);
+  box-shadow: 0 4px 14px color-mix(in srgb, var(--chat-accent) 28%, transparent);
+  transition: background var(--transition-fast), transform var(--transition-fast), opacity var(--transition-fast), box-shadow var(--transition-fast);
 }
-.send-btn:hover:not(:disabled) { background: var(--accent-strong); }
+.send-btn:hover:not(:disabled) {
+  background: var(--chat-accent-strong);
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--chat-accent) 36%, transparent);
+  transform: translateY(-1px);
+}
 .send-btn:active:not(:disabled) { transform: scale(0.96); }
-.send-btn:disabled { opacity: 0.3; cursor: default; }
+.send-btn:disabled {
+  box-shadow: none;
+  opacity: 0.28;
+  cursor: default;
+}
 
 .loop-number { width: 104px; }
 .loop-number.iterations { width: 104px; }
@@ -237,13 +265,15 @@ const requireReply = defineModel<boolean>('requireReply', { required: true })
 
   .cb-right {
     flex: 1 1 100%;
+    justify-content: flex-end;
   }
 
-  /* 主操作:整行墨色药丸(触摸目标 44px) */
+  /* 主操作:右下圆形发送钮(触摸目标 44px;不再拉成整行横条) */
   .send-btn {
-    width: 100%;
+    width: 44px;
     height: 44px;
     font-size: 18px;
+    border-radius: 50%;
   }
 
   .aw-seg button {

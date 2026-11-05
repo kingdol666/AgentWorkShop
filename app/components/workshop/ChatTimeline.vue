@@ -14,9 +14,11 @@
  * 写入 chat store 的 replyTarget,由 Composer 转成 replyToId 发出。
  */
 import { computed, nextTick, onMounted, ref, watch } from 'vue'
+import { message } from 'ant-design-vue'
 import { useChatStore } from '@/app/stores/workshop/chat'
 import { useEntitiesStore } from '@/app/stores/workshop/entities'
 import { useNotificationsStore } from '@/app/stores/workshop/notifications'
+import { useComposerBus } from '@/app/composables/workshop/useComposerBus'
 import { agentHueColor, mdLiteMentions, type MentionMember } from '@/app/composables/workshop/useEventBlocks'
 import { formatLocalClock } from '@/app/composables/workshop/useLocalTime'
 import type { AepChatDelivery, AepChatMessage, AepEnvelope } from '#shared/workshop-protocol'
@@ -28,11 +30,59 @@ const { t } = useI18n()
 const chat = useChatStore()
 const entities = useEntitiesStore()
 const notifications = useNotificationsStore()
+const { draft } = useComposerBus()
+
+/** SSR/首帧不读 WS 实体:实体由客户端建连后到达,直接渲染会造成 hydration mismatch */
+const hydrated = ref(false)
+const channelName = computed(() =>
+  hydrated.value ? (entities.channels?.[props.channelId]?.name ?? t('chat.title')) : t('chat.title'))
+const agentCount = computed(() => hydrated.value ? (entities.agents?.[props.channelId] ?? []).length : 0)
+const busyAgents = computed(() =>
+  hydrated.value ? (entities.agents?.[props.channelId] ?? []).filter(a => a.state === 'busy').length : 0)
+const pendingDeliveries = computed(() =>
+  hydrated.value ? chat.deliveriesOfChannel(props.channelId).filter(d => d.status === 'pending').length : 0)
+
+/** 空态建议卡:点击把 prompt 带入 Composer(不自动发送,仍由人确认) */
+const suggestions = computed(() => [
+  {
+    key: 'plan',
+    icon: 'i-tabler-route',
+    title: t('chat.suggestionPlanTitle'),
+    desc: t('chat.suggestionPlanDesc'),
+    prompt: t('chat.suggestionPlanPrompt'),
+  },
+  {
+    key: 'analyze',
+    icon: 'i-tabler-chart-dots',
+    title: t('chat.suggestionAnalyzeTitle'),
+    desc: t('chat.suggestionAnalyzeDesc'),
+    prompt: t('chat.suggestionAnalyzePrompt'),
+  },
+  {
+    key: 'review',
+    icon: 'i-tabler-shield-check',
+    title: t('chat.suggestionReviewTitle'),
+    desc: t('chat.suggestionReviewDesc'),
+    prompt: t('chat.suggestionReviewPrompt'),
+  },
+])
+
+const copyMessage = async (m: AepChatMessage): Promise<void> => {
+  try {
+    await navigator.clipboard.writeText(m.text)
+    message.success(t('chat.copied'))
+  }
+  catch {
+    message.error(t('chat.copyFailed'))
+  }
+}
 
 /** @pill 点击 → 打开 Agent 抽屉(w/[wsId] provide;缺省安全兜底) */
 const openAgent = inject<(target: { channelId: string, agentId: string }) => void>('aw:open-agent', () => {})
 
 const messages = computed<AepChatMessage[]>(() => chat.messages[props.channelId] ?? [])
+const visibleMessages = computed(() => hydrated.value ? messages.value : [])
+const displayMessageCount = computed(() => visibleMessages.value.length)
 /** 已加载过更早历史且上一页拉满 → 可能还有(按钮据此显示) */
 const hasMore = computed(() => chat.hasMoreHistory[props.channelId] !== false)
 const loading = computed(() => chat.loadingHistory[props.channelId] === true)
@@ -169,6 +219,7 @@ async function loadEarlier(): Promise<void> {
 }
 
 onMounted(async () => {
+  hydrated.value = true
   try {
     await chat.loadHistory(props.channelId)
   }
@@ -188,165 +239,298 @@ watch(() => props.channelId, async () => {
 
 <template>
   <div class="chat-timeline">
-    <div class="ct-head">
-      <span class="i-tabler-messages ct-icon" />
-      <span class="ct-title">{{ $t('chat.title') }}</span>
-      <span class="ct-count">{{ $t('chat.messageCount', { p0: messages.length }) }}</span>
-      <span class="ct-spacer" />
-      <span
-        v-if="!atBottom"
-        class="ct-jump"
-        role="button"
-        tabindex="0"
-        :title="$t('chat.backToLatest')"
-        @click="scrollToBottom(); atBottom = true"
-        @keydown.enter="scrollToBottom(); atBottom = true"
-      >
-        <span class="i-tabler-arrow-down" /> {{ $t('chat.latest') }}
-      </span>
-    </div>
+    <header class="ct-head">
+      <div class="ct-head-main">
+        <div class="ct-orb">
+          <span class="i-tabler-sparkles" />
+          <span class="ct-orb-pulse" />
+        </div>
+        <div class="ct-head-copy">
+          <div class="ct-title-row">
+            <h1 class="ct-title">
+              {{ channelName }}
+            </h1>
+            <span class="ct-live"><span class="ct-live-dot" />{{ $t('chat.liveNow') }}</span>
+          </div>
+          <p class="ct-subtitle">
+            {{ $t('chat.subtitle', { p0: displayMessageCount, p1: agentCount }) }}
+          </p>
+        </div>
+      </div>
+      <div class="ct-head-actions">
+        <span class="ct-model-chip"><span class="i-tabler-cpu" />{{ $t('chat.aiTeam') }}</span>
+        <span class="ct-count">{{ $t('chat.messageCount', { p0: displayMessageCount }) }}</span>
+      </div>
+    </header>
 
     <div
       ref="scroller"
       class="ct-scroll"
       @scroll.passive="onScroll"
     >
-      <button
-        v-if="hasMore && messages.length > 0"
-        type="button"
-        class="ct-earlier"
-        :disabled="loading"
-        @click="loadEarlier"
-      >
-        {{ loading ? $t('chat.loading') : $t('chat.loadEarlier') }}
-      </button>
+      <div class="ct-thread">
+        <button
+          v-if="hasMore && visibleMessages.length > 0"
+          type="button"
+          class="ct-earlier"
+          :disabled="loading"
+          @click="loadEarlier"
+        >
+          {{ loading ? $t('chat.loading') : $t('chat.loadEarlier') }}
+        </button>
 
-      <div
-        v-if="messages.length === 0"
-        class="ct-empty"
-      >
-        <span class="i-tabler-message-2 ct-empty-icon" />
-        <div>{{ $t('chat.emptyTitle') }}</div>
-        <div class="ct-empty-sub">
-          {{ $t('chat.emptyHint') }}
-        </div>
-      </div>
-
-      <div
-        v-for="m in messages"
-        :key="m.id"
-        class="ct-row"
-        :class="[m.senderType, operationOf(m) ? `op-${operationOf(m)!.kind}` : '']"
-        :data-operation="operationOf(m)?.kind"
-        :data-operation-severity="operationOf(m)?.severity"
-      >
-        <span
-          class="aw-avatar ct-ava"
-          :class="{ 'is-agent': m.senderType === 'agent' }"
-          :style="m.senderType === 'agent' ? { '--av': agentHueColor(m.senderId) } : {}"
-        >{{ avatarText(m) }}</span>
-
-        <div class="ct-body">
-          <div class="ct-meta">
-            <span class="ct-sender">{{ senderNameOf(m) }}</span>
-            <span
-              class="ct-role"
-              :class="m.senderType"
-            >
-              <span
-                v-if="m.senderType === 'user'"
-                class="i-tabler-user"
-              />
-              <span
-                v-else-if="m.senderType === 'agent'"
-                class="i-tabler-robot"
-              />
-              {{ m.senderType === 'agent' ? (entities.agents[channelId]?.find(a => a.agentId === m.senderId)?.role ?? 'agent') : (m.senderType === 'user' ? $t('chat.roleUser') : $t('chat.roleSystem')) }}
-            </span>
-            <span class="ct-time">{{ formatLocalClock(m.createdAt, false) }}</span>
+        <div
+          v-if="visibleMessages.length === 0"
+          class="ct-empty"
+        >
+          <div class="ct-empty-eyebrow">
+            {{ $t('chat.newConversation') }}
+          </div>
+          <h2 class="ct-empty-title">
+            {{ $t('chat.heroTitle') }}
+          </h2>
+          <p class="ct-empty-hint">
+            {{ $t('chat.heroHint') }}
+          </p>
+          <div class="ct-suggestions">
             <button
+              v-for="s in suggestions"
+              :key="s.key"
               type="button"
-              class="ct-reply-btn"
-              :title="$t('chat.replyTitle')"
-              @click="setReply(m)"
+              class="ct-suggestion"
+              @click="draft(s.prompt)"
             >
-              <span class="i-tabler-arrow-back-up" /> {{ $t('chat.reply') }}
+              <span
+                class="ct-suggestion-icon"
+                :class="s.icon"
+              />
+              <span class="ct-suggestion-copy">
+                <strong>{{ s.title }}</strong>
+                <span>{{ s.desc }}</span>
+              </span>
+              <span class="ct-suggestion-arrow i-tabler-arrow-up-right" />
             </button>
           </div>
-
-          <div
-            v-if="m.replyToId"
-            class="ct-replyto"
-          >
-            <span class="i-tabler-corner-down-right" />
-            {{ $t('chat.reply') }} <b>{{ replyAnchorName(m) }}</b>
-          </div>
-
-          <div
-            v-if="operationOf(m)"
-            class="ct-operation-badge"
-            :class="operationOf(m)!.kind"
-          >
-            <span :class="operationOf(m)!.icon" />
-            {{ operationOf(m)!.label }}
-          </div>
-
-          <!-- eslint-disable vue/no-v-html -- mdLite 先 escapeHtml 再注入受控标记,与既有时间线同源 -->
-          <div
-            class="ct-text"
-            @click="onTextClick"
-            v-html="renderText(m)"
-          />
-          <!-- eslint-enable vue/no-v-html -->
-
-          <!-- @提及 chips:agent 可点(开抽屉),用户 chip 不可点(不误跳 Agent) -->
-          <div
-            v-if="m.mentions.length > 0"
-            class="ct-mentions"
-          >
-            <span
-              v-for="mm in m.mentions"
-              :key="`${mm.type}:${mm.id}`"
-              class="ct-mention-chip"
-              :class="mm.type"
-              :data-agent-id="mm.type === 'agent' ? mm.id : undefined"
-              :title="mm.type === 'agent' ? $t('chat.mentionAgentTitle') : $t('chat.mentionMemberTitle')"
-              @click="mm.type === 'agent' && openAgent({ channelId, agentId: mm.id })"
-            >
-              <span :class="mm.type === 'agent' ? 'i-tabler-robot' : 'i-tabler-user'" />
-              @{{ mm.label || (mm.type === 'agent' ? entities.agentName(channelId, mm.id) : mm.id.slice(0, 8)) }}
-            </span>
-          </div>
-
-          <!-- 投递台账:这条消息到每个 Agent 的实际送达状态 -->
-          <div
-            v-if="deliveriesOf(m).length > 0"
-            class="ct-deliveries"
-          >
-            <span
-              v-for="d in deliveriesOf(m)"
-              :key="d.deliveryId"
-              class="ct-delivery"
-              :data-tone="DELIVERY_TONE[d.status] ?? 'pending'"
-              :title="d.error || `deliveryId: ${d.deliveryId}`"
-            >
-              <span class="cd-dot" />@{{ entities.agentName(channelId, d.targetAgentId) }} · {{ deliveryLabels[d.status] ?? d.status }}
-            </span>
-          </div>
-
-          <!-- Agent 回复的来源链:回到被回答的那条提问 -->
-          <div
-            v-if="m.senderType === 'agent' && m.sourceChatMessageId"
-            class="ct-source"
-          >
-            <span class="i-tabler-link" />
-            {{ $t('chat.answeredFrom', { p0: m.sourceChatMessageId.slice(0, 8) }) }}
-            <template v-if="m.requesterUserId">
-              {{ $t('chat.askedBy', { p0: m.requesterUserId.slice(0, 8) }) }}
-            </template>
+          <div class="ct-empty-foot">
+            <span class="i-tabler-at" /> {{ $t('chat.emptyHint') }}
           </div>
         </div>
+
+        <div
+          v-for="m in visibleMessages"
+          :key="m.id"
+          class="ct-row"
+          :class="[m.senderType, operationOf(m) ? 'op-' + operationOf(m)!.kind : '']"
+          :data-operation="operationOf(m)?.kind"
+          :data-operation-severity="operationOf(m)?.severity"
+        >
+          <template v-if="m.senderType === 'system'">
+            <div class="ct-system">
+              {{ m.text }}
+            </div>
+          </template>
+
+          <template v-else-if="m.senderType === 'user'">
+            <div class="ct-user-wrap">
+              <div
+                v-if="m.replyToId"
+                class="ct-replyto"
+              >
+                <span class="i-tabler-corner-down-right" />
+                {{ $t('chat.reply') }} <b>{{ replyAnchorName(m) }}</b>
+              </div>
+              <div
+                v-if="operationOf(m)"
+                class="ct-operation-badge"
+                :class="operationOf(m)!.kind"
+              >
+                <span :class="operationOf(m)!.icon" />
+                {{ operationOf(m)!.label }}
+              </div>
+              <!-- eslint-disable vue/no-v-html -- mdLite escapes first -->
+              <div
+                class="ct-user-bubble"
+                @click="onTextClick"
+                v-html="renderText(m)"
+              />
+              <!-- eslint-enable vue/no-v-html -->
+              <div class="ct-user-meta">
+                <span class="ct-user-label">{{ $t('chat.you') }}</span>
+                <span class="ct-time">{{ formatLocalClock(m.createdAt, false) }}</span>
+                <button
+                  type="button"
+                  class="ct-action"
+                  :title="$t('chat.replyTitle')"
+                  @click="setReply(m)"
+                >
+                  <span class="i-tabler-arrow-back-up" />
+                </button>
+                <button
+                  type="button"
+                  class="ct-action"
+                  :title="$t('chat.copy')"
+                  @click="copyMessage(m)"
+                >
+                  <span class="i-tabler-copy" />
+                </button>
+              </div>
+              <div
+                v-if="m.mentions.length > 0"
+                class="ct-mentions"
+              >
+                <span
+                  v-for="mm in m.mentions"
+                  :key="`${mm.type}:${mm.id}`"
+                  class="ct-mention-chip"
+                  :class="mm.type"
+                  :data-agent-id="mm.type === 'agent' ? mm.id : undefined"
+                  :title="mm.type === 'agent' ? $t('chat.mentionAgentTitle') : $t('chat.mentionMemberTitle')"
+                  @click="mm.type === 'agent' && openAgent({ channelId, agentId: mm.id })"
+                >
+                  <span :class="mm.type === 'agent' ? 'i-tabler-robot' : 'i-tabler-user'" />
+                  @{{ mm.label || (mm.type === 'agent' ? entities.agentName(channelId, mm.id) : mm.id.slice(0, 8)) }}
+                </span>
+              </div>
+              <div
+                v-if="deliveriesOf(m).length > 0"
+                class="ct-deliveries"
+              >
+                <span
+                  v-for="d in deliveriesOf(m)"
+                  :key="d.deliveryId"
+                  class="ct-delivery"
+                  :data-tone="DELIVERY_TONE[d.status] ?? 'pending'"
+                  :title="d.error || `deliveryId: ${d.deliveryId}`"
+                >
+                  <span class="cd-dot" />@{{ entities.agentName(channelId, d.targetAgentId) }} · {{ deliveryLabels[d.status] ?? d.status }}
+                </span>
+              </div>
+            </div>
+            <span class="aw-avatar ct-ava is-user">{{ avatarText(m) }}</span>
+          </template>
+
+          <template v-else>
+            <span
+              class="aw-avatar ct-ava is-agent"
+              :style="{ '--av': agentHueColor(m.senderId) }"
+            >{{ avatarText(m) }}</span>
+            <div class="ct-body">
+              <div class="ct-meta">
+                <span class="ct-sender">{{ senderNameOf(m) }}</span>
+                <span class="ct-role agent">
+                  <span class="i-tabler-robot" />
+                  {{ entities.agents[channelId]?.find(a => a.agentId === m.senderId)?.role ?? 'agent' }}
+                </span>
+                <span class="ct-time">{{ formatLocalClock(m.createdAt, false) }}</span>
+                <span class="ct-actions">
+                  <button
+                    type="button"
+                    class="ct-action"
+                    :title="$t('chat.replyTitle')"
+                    @click="setReply(m)"
+                  >
+                    <span class="i-tabler-arrow-back-up" />
+                  </button>
+                  <button
+                    type="button"
+                    class="ct-action"
+                    :title="$t('chat.copy')"
+                    @click="copyMessage(m)"
+                  >
+                    <span class="i-tabler-copy" />
+                  </button>
+                </span>
+              </div>
+
+              <div
+                v-if="m.replyToId"
+                class="ct-replyto"
+              >
+                <span class="i-tabler-corner-down-right" />
+                {{ $t('chat.reply') }} <b>{{ replyAnchorName(m) }}</b>
+              </div>
+
+              <div
+                v-if="operationOf(m)"
+                class="ct-operation-badge"
+                :class="operationOf(m)!.kind"
+              >
+                <span :class="operationOf(m)!.icon" />
+                {{ operationOf(m)!.label }}
+              </div>
+
+              <!-- eslint-disable vue/no-v-html -- mdLite escapes first -->
+              <div
+                class="ct-text"
+                @click="onTextClick"
+                v-html="renderText(m)"
+              />
+              <!-- eslint-enable vue/no-v-html -->
+
+              <div
+                v-if="m.mentions.length > 0"
+                class="ct-mentions"
+              >
+                <span
+                  v-for="mm in m.mentions"
+                  :key="`${mm.type}:${mm.id}`"
+                  class="ct-mention-chip"
+                  :class="mm.type"
+                  :data-agent-id="mm.type === 'agent' ? mm.id : undefined"
+                  :title="mm.type === 'agent' ? $t('chat.mentionAgentTitle') : $t('chat.mentionMemberTitle')"
+                  @click="mm.type === 'agent' && openAgent({ channelId, agentId: mm.id })"
+                >
+                  <span :class="mm.type === 'agent' ? 'i-tabler-robot' : 'i-tabler-user'" />
+                  @{{ mm.label || (mm.type === 'agent' ? entities.agentName(channelId, mm.id) : mm.id.slice(0, 8)) }}
+                </span>
+              </div>
+
+              <div
+                v-if="deliveriesOf(m).length > 0"
+                class="ct-deliveries"
+              >
+                <span
+                  v-for="d in deliveriesOf(m)"
+                  :key="d.deliveryId"
+                  class="ct-delivery"
+                  :data-tone="DELIVERY_TONE[d.status] ?? 'pending'"
+                  :title="d.error || `deliveryId: ${d.deliveryId}`"
+                >
+                  <span class="cd-dot" />@{{ entities.agentName(channelId, d.targetAgentId) }} · {{ deliveryLabels[d.status] ?? d.status }}
+                </span>
+              </div>
+
+              <div
+                v-if="m.senderType === 'agent' && m.sourceChatMessageId"
+                class="ct-source"
+              >
+                <span class="i-tabler-link" />
+                {{ $t('chat.answeredFrom', { p0: m.sourceChatMessageId.slice(0, 8) }) }}
+                <template v-if="m.requesterUserId">
+                  {{ $t('chat.askedBy', { p0: m.requesterUserId.slice(0, 8) }) }}
+                </template>
+              </div>
+            </div>
+          </template>
+        </div>
+
+        <div
+          v-if="pendingDeliveries > 0 || busyAgents > 0"
+          class="ct-thinking"
+        >
+          <span class="ct-thinking-dots"><i /><i /><i /></span>
+          <span>{{ busyAgents > 0 ? $t('chat.thinkingAgents', { p0: busyAgents }) : $t('chat.thinking') }}</span>
+        </div>
       </div>
+
+      <button
+        v-if="!atBottom"
+        type="button"
+        class="ct-scroll-fab"
+        @click="scrollToBottom(); atBottom = true"
+      >
+        <span class="i-tabler-arrow-down" /> {{ $t('chat.jumpLatest') }}
+      </button>
     </div>
   </div>
 </template>
@@ -358,161 +542,457 @@ watch(() => props.channelId, async () => {
   flex-direction: column;
   min-width: 0;
   min-height: 0;
-  background: var(--paper);
+  color: var(--chat-ink);
+  background: var(--chat-canvas);
 }
 
+/* ── 对话头部:AI 身份 + 实时状态,替代旧的"群聊计数条" ─────────────── */
 .ct-head {
   display: flex;
   flex: none;
-  gap: 8px;
+  gap: 20px;
   align-items: center;
-  padding: 8px 14px;
-  font-size: 12px;
-  color: var(--ink-faint);
-  background: var(--paper-raised);
-  border-bottom: 1px solid var(--line);
+  justify-content: space-between;
+  padding: 18px 28px 14px;
+  background: linear-gradient(180deg, var(--chat-surface-raised), transparent);
+  border-bottom: 1px solid var(--chat-line);
 }
-.ct-icon { font-size: 14px; }
-.ct-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink);
-}
-.ct-count { font-family: var(--font-mono); font-size: 10.5px; }
-.ct-spacer { flex: 1 1 auto; }
-.ct-jump {
-  display: inline-flex;
-  gap: 4px;
+.ct-head-main {
+  display: flex;
+  gap: 14px;
   align-items: center;
-  padding: 2px 8px;
-  color: var(--ink-soft);
-  cursor: pointer;
-  background: var(--paper-deep);
-  border-radius: var(--radius-pill);
+  min-width: 0;
 }
-.ct-jump:hover { color: var(--ink); }
-
-.ct-scroll {
-  flex: 1 1 auto;
-  min-height: 0;
-  padding: 10px 14px 16px;
-  overflow-y: auto;
+.ct-orb {
+  position: relative;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  font-size: 20px;
+  color: var(--chat-accent);
+  background: var(--chat-accent-soft);
+  border: 1px solid color-mix(in srgb, var(--chat-accent) 24%, transparent);
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgb(15 118 110 / 10%);
 }
-
-.ct-earlier {
-  display: block;
-  margin: 0 auto 10px;
-  padding: 4px 12px;
-  font-family: var(--font-body);
-  font-size: 12px;
-  color: var(--ink-faint);
-  cursor: pointer;
-  background: var(--paper-raised);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-pill);
+.ct-orb-pulse {
+  position: absolute;
+  inset: -1px;
+  pointer-events: none;
+  border: 1px solid var(--chat-accent);
+  border-radius: inherit;
+  opacity: 0.28;
+  animation: ct-pulse 3.2s ease-out infinite;
 }
-.ct-earlier:hover { color: var(--ink); border-color: var(--line-strong); }
-.ct-earlier:disabled { opacity: 0.5; cursor: default; }
-
-.ct-empty {
-  padding: 48px 16px;
-  font-size: 13px;
-  color: var(--ink-faint);
-  text-align: center;
-}
-.ct-empty-icon { font-size: 26px; }
-.ct-empty-sub {
-  max-width: 460px;
-  margin: 6px auto 0;
-  font-size: 11.5px;
-  line-height: 1.6;
-  color: var(--ink-fainter);
-}
-
-/* 消息行:头像 + 正文(Slack 声部;人类/Agent 靠头像与角色章区分,不只靠颜色) */
-.ct-row {
+.ct-head-copy { min-width: 0; }
+.ct-title-row {
   display: flex;
   gap: 10px;
-  padding: 6px 6px 7px;
-  border-radius: var(--radius-panel-sm);
-  transition: background var(--transition-fast);
+  align-items: center;
+  min-width: 0;
 }
-.ct-row:hover { background: var(--paper-deep); }
-.ct-row.system { opacity: 0.75; }
+.ct-title {
+  padding: 0;
+  margin: 0;
+  overflow: hidden;
+  font-family: var(--font-body);
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  color: var(--chat-ink);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ct-live {
+  display: inline-flex;
+  flex: 0 0 auto;
+  gap: 5px;
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.08em;
+  color: var(--chat-accent);
+  text-transform: uppercase;
+}
+.ct-live-dot {
+  width: 6px;
+  height: 6px;
+  background: var(--chat-accent);
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px var(--chat-accent-soft);
+}
+.ct-subtitle {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--chat-ink-faint);
+}
+.ct-head-actions {
+  display: flex;
+  flex: none;
+  gap: 10px;
+  align-items: center;
+}
+.ct-model-chip {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 5px 10px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--chat-ink-soft);
+  background: var(--chat-surface);
+  border: 1px solid var(--chat-line);
+  border-radius: var(--radius-pill);
+}
+.ct-count {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--chat-ink-faint);
+}
 
-.ct-ava {
-  width: 26px;
-  height: 26px;
-  margin-top: 1px;
+/* ── 阅读列:暖纸画布 + 顶部微光;内容居中,行宽克制 ─────────────── */
+.ct-scroll {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--chat-glow), var(--chat-canvas);
+  scroll-behavior: smooth;
+}
+.ct-thread {
+  width: min(860px, calc(100% - 48px));
+  padding: 24px 0 120px;
+  margin: 0 auto;
+}
+.ct-earlier {
+  display: block;
+  margin: 0 auto 18px;
+  padding: 5px 14px;
+  font-family: var(--font-body);
+  font-size: 11.5px;
+  color: var(--chat-ink-faint);
+  cursor: pointer;
+  background: var(--chat-surface);
+  border: 1px solid var(--chat-line);
+  border-radius: var(--radius-pill);
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+.ct-earlier:hover { color: var(--chat-ink); border-color: var(--chat-line-strong); }
+.ct-earlier:disabled { opacity: 0.5; cursor: default; }
+
+/* ── 空态:不是"没有消息",而是一个可行动的开始 ────────────────── */
+.ct-empty {
+  padding: 9vh 8px 40px;
+  text-align: center;
+}
+.ct-empty-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.2em;
+  color: var(--chat-ink-faint);
+  text-transform: uppercase;
+}
+.ct-empty-title {
+  max-width: 640px;
+  margin: 14px auto 0;
+  font-family: var(--font-display);
+  font-size: clamp(30px, 4vw, 44px);
+  font-weight: 400;
+  line-height: 1.08;
+  letter-spacing: -0.035em;
+  color: var(--chat-ink);
+}
+.ct-empty-hint {
+  max-width: 540px;
+  margin: 14px auto 0;
+  font-size: 13.5px;
+  line-height: 1.75;
+  color: var(--chat-ink-soft);
+}
+.ct-suggestions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  max-width: 760px;
+  margin: 32px auto 0;
+  text-align: left;
+}
+.ct-suggestion {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 14px;
+  font-family: var(--font-body);
+  text-align: left;
+  cursor: pointer;
+  background: var(--chat-surface);
+  border: 1px solid var(--chat-line);
+  border-radius: 16px;
+  box-shadow: 0 1px 2px rgb(41 37 36 / 3%);
+  transition: transform var(--transition-base), border-color var(--transition-base), box-shadow var(--transition-base);
+}
+.ct-suggestion:hover {
+  border-color: color-mix(in srgb, var(--chat-accent) 38%, var(--chat-line));
+  box-shadow: 0 14px 32px rgb(41 37 36 / 8%);
+  transform: translateY(-2px);
+}
+.ct-suggestion:active { transform: translateY(0); }
+.ct-suggestion-icon {
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  font-size: 15px;
+  color: var(--chat-accent);
+  background: var(--chat-accent-soft);
+  border-radius: 9px;
+}
+.ct-suggestion-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+.ct-suggestion-copy strong {
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--chat-ink);
+}
+.ct-suggestion-copy span {
   font-size: 11px;
+  line-height: 1.5;
+  color: var(--chat-ink-faint);
+}
+.ct-suggestion-arrow {
+  flex: 0 0 auto;
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--chat-ink-faint);
+  opacity: 0;
+  transition: opacity var(--transition-fast), transform var(--transition-fast);
+}
+.ct-suggestion:hover .ct-suggestion-arrow {
+  opacity: 1;
+  transform: translate(2px, -2px);
+}
+.ct-empty-foot {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 24px;
+  font-size: 11px;
+  color: var(--chat-ink-faint);
 }
 
+/* ── 消息:Agent 全宽阅读块;用户右侧暖灰气泡(ChatGPT 声部) ────── */
+.ct-row {
+  display: flex;
+  gap: 14px;
+  padding: 14px 0;
+  animation: ct-rise 0.32s var(--ease-out-quart) both;
+}
+.ct-row.agent { align-items: flex-start; }
+.ct-row.user { align-items: flex-end; justify-content: flex-end; }
+.ct-row.system { justify-content: center; padding: 8px 0; }
+.ct-system {
+  max-width: 82%;
+  padding: 5px 12px;
+  font-size: 10.5px;
+  color: var(--chat-ink-faint);
+  background: var(--chat-surface-raised);
+  border: 1px solid var(--chat-line);
+  border-radius: var(--radius-pill);
+}
+.ct-ava {
+  width: 34px;
+  height: 34px;
+  margin-top: 1px;
+  font-size: 12px;
+  border: 1px solid var(--chat-line);
+  box-shadow: 0 2px 6px rgb(41 37 36 / 5%);
+}
+.ct-ava.is-user {
+  color: var(--chat-user-ink);
+  background: var(--chat-user-bubble);
+}
 .ct-body {
   flex: 1 1 auto;
   min-width: 0;
+  max-width: calc(100% - 48px);
 }
-
 .ct-meta {
   display: flex;
-  gap: 7px;
-  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
   min-width: 0;
 }
 .ct-sender {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--ink);
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--chat-ink);
 }
 .ct-role {
   display: inline-flex;
   gap: 3px;
   align-items: center;
-  padding: 0 5px;
-  font-size: 9.5px;
+  padding: 1px 6px;
+  font-family: var(--font-mono);
+  font-size: 9px;
   letter-spacing: 0.06em;
-  color: var(--ink-faint);
+  color: var(--chat-ink-faint);
   text-transform: uppercase;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-chip);
+  border: 1px solid var(--chat-line);
+  border-radius: var(--radius-pill);
 }
-.ct-role.user { color: var(--ink-soft); }
-.ct-role.agent { color: var(--tone-info-dot); border-color: color-mix(in srgb, var(--tone-info-dot) 35%, transparent); }
+.ct-role.agent {
+  color: var(--chat-accent);
+  border-color: color-mix(in srgb, var(--chat-accent) 30%, transparent);
+}
 .ct-time {
   font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--ink-fainter);
+  font-size: 9.5px;
+  color: var(--chat-ink-faint);
 }
-.ct-reply-btn {
-  margin-left: auto;
-  padding: 1px 6px;
-  font-family: var(--font-body);
-  font-size: 11px;
-  color: var(--ink-faint);
+.ct-actions {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: 2px;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+}
+.ct-row:hover .ct-actions,
+.ct-row:focus-within .ct-actions { opacity: 1; }
+.ct-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  font-size: 13px;
+  color: var(--chat-ink-faint);
   cursor: pointer;
   background: transparent;
   border: 0;
-  border-radius: var(--radius-chip);
-  opacity: 0;
-  transition: opacity var(--transition-fast), color var(--transition-fast);
+  border-radius: 8px;
+  transition: color var(--transition-fast), background var(--transition-fast);
 }
-.ct-row:hover .ct-reply-btn { opacity: 1; }
-.ct-reply-btn:hover { color: var(--ink); background: var(--paper-raised); }
+.ct-action:hover {
+  color: var(--chat-ink);
+  background: var(--chat-surface);
+}
+.ct-text {
+  margin-top: 6px;
+  font-size: 15px;
+  line-height: 1.78;
+  color: var(--chat-ink);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.ct-text :deep(p) { margin: 0 0 8px; }
+.ct-text :deep(p:last-child) { margin-bottom: 0; }
+.ct-text :deep(ul),
+.ct-text :deep(ol) { padding-left: 1.35em; margin: 6px 0 10px; }
+.ct-text :deep(li) { margin: 3px 0; }
+.ct-text :deep(a) {
+  color: var(--chat-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.ct-text :deep(code) {
+  padding: 1px 5px;
+  font-family: var(--font-mono);
+  font-size: 0.86em;
+  background: var(--chat-surface);
+  border: 1px solid var(--chat-line);
+  border-radius: 5px;
+}
+.ct-text :deep(pre) {
+  padding: 12px 14px;
+  margin: 10px 0;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.6;
+  background: var(--chat-surface);
+  border: 1px solid var(--chat-line);
+  border-radius: 12px;
+}
+.ct-text :deep(blockquote) {
+  padding-left: 12px;
+  margin: 8px 0;
+  color: var(--chat-ink-soft);
+  border-left: 2px solid var(--chat-line-strong);
+}
+
+.ct-user-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  max-width: min(74%, 620px);
+  min-width: 0;
+}
+.ct-user-bubble {
+  padding: 11px 15px;
+  font-size: 14.5px;
+  line-height: 1.68;
+  color: var(--chat-user-ink);
+  background: var(--chat-user-bubble);
+  border: 1px solid var(--chat-line);
+  border-radius: 18px 18px 4px;
+  box-shadow: 0 1px 2px rgb(41 37 36 / 4%);
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+.ct-user-bubble :deep(p) { margin: 0 0 6px; }
+.ct-user-bubble :deep(p:last-child) { margin-bottom: 0; }
+.ct-user-bubble :deep(a) { color: var(--chat-accent); }
+.ct-user-meta {
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  justify-content: flex-end;
+  margin-top: 5px;
+  font-size: 10px;
+  color: var(--chat-ink-faint);
+}
+.ct-user-label {
+  font-weight: 650;
+  color: var(--chat-ink-soft);
+}
+.ct-user-wrap .ct-actions { opacity: 0; }
+.ct-row.user:hover .ct-actions { opacity: 1; }
+.ct-user-wrap .ct-mentions,
+.ct-user-wrap .ct-deliveries { justify-content: flex-end; }
 
 .ct-replyto {
   display: inline-flex;
   gap: 5px;
   align-items: center;
-  margin: 3px 0 0;
-  padding: 1px 7px;
-  font-size: 11px;
-  color: var(--ink-faint);
-  background: var(--paper-deep);
-  border-left: 2px solid var(--ink-fainter);
-  border-radius: var(--radius-chip);
+  margin: 3px 0 5px;
+  padding: 3px 8px;
+  font-size: 10.5px;
+  color: var(--chat-ink-faint);
+  background: var(--chat-surface);
+  border-left: 2px solid var(--chat-accent);
+  border-radius: 0 6px 6px 0;
 }
-.ct-replyto b { color: var(--ink-soft); }
-
-.ct-operation-badge { display: inline-flex; gap: 5px; align-items: center; margin: 3px 0 4px; padding: 3px 7px; font: 10px var(--font-mono); border-radius: var(--radius-chip); }
+.ct-replyto b { color: var(--chat-ink-soft); }
+.ct-operation-badge {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  padding: 3px 8px;
+  margin: 4px 0 6px;
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  border-radius: var(--radius-pill);
+}
 .ct-operation-badge.dcw { color: #a56d17; background: color-mix(in srgb, #c98922 11%, transparent); }
 .ct-operation-badge.daq { color: #148681; background: color-mix(in srgb, #159f9a 10%, transparent); }
 .ct-operation-badge.aml { color: #7657ad; background: color-mix(in srgb, #7657ad 10%, transparent); }
@@ -523,83 +1003,171 @@ watch(() => props.channelId, async () => {
 .ct-row[data-operation='aml'] { background: color-mix(in srgb, #7657ad 3%, transparent); }
 .ct-row[data-operation='twin'] { background: color-mix(in srgb, #3978b8 3%, transparent); }
 .ct-row[data-operation='safety'] { background: color-mix(in srgb, var(--tone-danger-dot) 5%, transparent); }
-.ct-text {
-  margin-top: 2px;
-  font-size: 13.5px;
-  line-height: 1.6;
-  color: var(--ink);
-  overflow-wrap: anywhere;
-  word-break: break-word;
-}
 
 .ct-mentions {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
-  margin-top: 4px;
+  margin-top: 7px;
 }
 .ct-mention-chip {
   display: inline-flex;
   gap: 4px;
   align-items: center;
   padding: 1px 7px;
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 600;
-  border-radius: var(--radius-chip);
+  border-radius: var(--radius-pill);
 }
 .ct-mention-chip.agent {
-  color: var(--mention-ink, var(--ink));
+  color: var(--chat-accent);
   cursor: pointer;
-  background: var(--mention, var(--paper-deep));
+  background: var(--chat-accent-soft);
 }
 .ct-mention-chip.user {
-  color: var(--ink-soft);
+  color: var(--chat-ink-soft);
   cursor: default;
-  background: var(--paper-deep);
-  border: 1px solid var(--line);
+  background: var(--chat-surface);
+  border: 1px solid var(--chat-line);
 }
 
-/* 投递台账 chip:待投递/已入信箱/已消费/失败/取消 —— 文字与颜色双通道 */
 .ct-deliveries {
   display: flex;
   flex-wrap: wrap;
   gap: 5px;
-  margin-top: 4px;
+  margin-top: 6px;
 }
 .ct-delivery {
   display: inline-flex;
   gap: 4px;
   align-items: center;
   padding: 1px 7px;
-  font-size: 10.5px;
-  border-radius: var(--radius-chip);
-  background: var(--paper-deep);
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  color: var(--chat-ink-faint);
+  background: var(--chat-surface);
+  border: 1px solid var(--chat-line);
+  border-radius: var(--radius-pill);
 }
 .ct-delivery .cd-dot {
   width: 5px;
   height: 5px;
-  border-radius: 50%;
   background: currentColor;
+  border-radius: 50%;
 }
 .ct-delivery[data-tone='pending'] { color: var(--tone-warning-dot); }
 .ct-delivery[data-tone='delivered'] { color: var(--tone-info-dot); }
 .ct-delivery[data-tone='consumed'] { color: var(--tone-success-dot); }
 .ct-delivery[data-tone='failed'] { color: var(--tone-danger-dot); }
-.ct-delivery[data-tone='cancelled'] { color: var(--ink-faint); }
+.ct-delivery[data-tone='cancelled'] { color: var(--chat-ink-faint); }
 
 .ct-source {
   display: flex;
   gap: 5px;
   align-items: center;
-  margin-top: 3px;
+  margin-top: 6px;
   font-family: var(--font-mono);
-  font-size: 10px;
-  color: var(--ink-fainter);
+  font-size: 9.5px;
+  color: var(--chat-ink-faint);
+}
+
+/* ── 思考中:Agent 运行/投递待处理的实时脉搏 ────────────────────── */
+.ct-thinking {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 20px 0 8px;
+  font-size: 12px;
+  color: var(--chat-ink-faint);
+}
+.ct-thinking-dots {
+  display: inline-flex;
+  gap: 3px;
+  align-items: center;
+}
+.ct-thinking-dots i {
+  width: 5px;
+  height: 5px;
+  background: var(--chat-accent);
+  border-radius: 50%;
+  animation: ct-blink 1.2s ease-in-out infinite;
+}
+.ct-thinking-dots i:nth-child(2) { animation-delay: 0.16s; }
+.ct-thinking-dots i:nth-child(3) { animation-delay: 0.32s; }
+
+.ct-scroll-fab {
+  position: sticky;
+  bottom: 18px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  float: right;
+  padding: 8px 14px;
+  margin-right: 22px;
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--chat-ink-soft);
+  cursor: pointer;
+  background: var(--chat-surface);
+  border: 1px solid var(--chat-line);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--chat-shadow);
+  transition: transform var(--transition-fast), border-color var(--transition-fast);
+}
+.ct-scroll-fab:hover { border-color: var(--chat-line-strong); transform: translateY(-1px); }
+
+@keyframes ct-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes ct-pulse {
+  0% { opacity: 0.3; transform: scale(0.96); }
+  70% { opacity: 0; transform: scale(1.12); }
+  100% { opacity: 0; transform: scale(1.12); }
+}
+@keyframes ct-blink {
+  0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
+  40% { opacity: 1; transform: translateY(-2px); }
 }
 
 @media (max-width: 1023.98px) {
-  .ct-sender { font-size: 13.5px; }
-  .ct-text { font-size: 15px; }
-  .ct-reply-btn { opacity: 1; min-height: 32px; }
+  .ct-head {
+    gap: 12px;
+    padding: 12px 14px 10px;
+  }
+  .ct-orb {
+    width: 36px;
+    height: 36px;
+    font-size: 17px;
+    border-radius: 12px;
+  }
+  .ct-title { font-size: 16px; }
+  .ct-subtitle { font-size: 11px; }
+  .ct-model-chip,
+  .ct-count { display: none; }
+  .ct-thread {
+    width: calc(100% - 24px);
+    padding: 16px 0 100px;
+  }
+  .ct-empty { padding: 6vh 2px 24px; }
+  .ct-suggestions {
+    grid-template-columns: 1fr;
+    margin-top: 24px;
+  }
+  .ct-actions { opacity: 1; }
+  .ct-user-wrap { max-width: 86%; }
+  .ct-text { font-size: 15.5px; }
+  .ct-user-bubble { font-size: 15px; }
+  .ct-row { padding: 12px 0; }
+  .ct-scroll-fab { bottom: 12px; margin-right: 12px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ct-row,
+  .ct-orb-pulse,
+  .ct-thinking-dots i {
+    animation: none;
+  }
+  .ct-scroll { scroll-behavior: auto; }
 }
 </style>

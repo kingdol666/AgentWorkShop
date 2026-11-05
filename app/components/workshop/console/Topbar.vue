@@ -133,10 +133,10 @@ const toggleRight = (): void => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 14px;
+  padding: 9px 18px;
   font-size: 13px;
-  background: var(--paper-raised);
-  border-bottom: 1px solid var(--line);
+  background: var(--chat-surface-raised);
+  border-bottom: 1px solid var(--chat-line);
 }
 .left,
 .right {
@@ -147,38 +147,56 @@ const toggleRight = (): void => {
 }
 .topbar-mark {
   font-size: 15px;
-  color: var(--ink-faint);
+  color: var(--chat-ink-faint);
 }
 .ws-name {
   max-width: 260px;
   overflow: hidden;
   font-family: var(--font-body);
-  font-weight: 600;
-  font-size: 16px;
-  letter-spacing: -0.015em;
+  font-weight: 650;
+  font-size: 15px;
+  letter-spacing: -0.02em;
+  color: var(--chat-ink);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 /* channel 胶囊:hairline chip + serif # */
 .chan-chip {
   display: inline-flex;
-  gap: 3px;
+  gap: 4px;
   align-items: center;
-  max-width: 200px;
-  padding: 1px 10px;
+  max-width: 220px;
+  padding: 3px 10px;
   overflow: hidden;
   font-size: 12px;
-  color: var(--ink-soft);
+  color: var(--chat-ink-soft);
   text-overflow: ellipsis;
   white-space: nowrap;
-  border: 1px solid var(--line-strong);
+  background: var(--chat-surface);
+  border: 1px solid var(--chat-line);
   border-radius: var(--radius-pill);
 }
 .chan-hash {
-  font-family: var(--font-display);
-  color: var(--ink-faint);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--chat-accent);
 }
 .view-switch { margin-left: 8px; }
+.view-switch :deep(.ant-segmented) {
+  padding: 2px;
+  background: var(--chat-surface);
+  border: 1px solid var(--chat-line);
+  border-radius: var(--radius-pill);
+}
+.view-switch :deep(.ant-segmented-item) {
+  border-radius: var(--radius-pill);
+  color: var(--chat-ink-faint);
+}
+.view-switch :deep(.ant-segmented-item-selected) {
+  color: var(--chat-accent);
+  background: var(--chat-accent-soft);
+  box-shadow: none;
+}
 .dot { width: 8px; height: 8px; border-radius: 50%; }
 .ws-state {
   font-family: var(--font-mono);
@@ -257,7 +275,10 @@ const toggleRight = (): void => {
   .view-switch {
     flex: 1 1 100%;
     margin-left: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
   }
+  .view-switch::-webkit-scrollbar { display: none; }
 
   .ws-state,
   .seq {

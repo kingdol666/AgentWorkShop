@@ -52,11 +52,12 @@ export function useWorkspaceShell(
   const narrowUI = computed(() => mounted.value && !isDesktop.value)
 
   const leftOpen = ref(true)
-  const rightOpen = ref(true)
+  const rightOpen = ref(false)
   /** 窄屏:左右侧栏都不再占位(收成覆盖式抽屉 / 并入切换条) */
   const applyTier = (desktop: boolean): void => {
     leftOpen.value = desktop
-    rightOpen.value = desktop
+    // 对话优先:右侧检查器默认收起,把宽度让给阅读列;需要时一键展开
+    rightOpen.value = false
     // 检查器只是窄屏的第 4 区:回桌面后它回到右栏,中部得有自己的区(否则中部空白)
     if (desktop && view.value === 'inspector') view.value = 'timeline'
   }
@@ -87,12 +88,12 @@ export function useWorkspaceShell(
   // 视图切换(见文件头 CenterView):深链初始值 + 切换条选项 + 数字快捷键
   const initView = route.query.view
   const view = ref<CenterView>(
-    typeof initView === 'string' && VIEW_VALUES.has(initView) ? initView as CenterView : 'timeline',
+    typeof initView === 'string' && VIEW_VALUES.has(initView) ? initView as CenterView : 'chat',
   )
   const viewOptions = computed(() => {
     const base = [
       { value: 'timeline', label: t('wsView.k3otu32010') },
-      { value: 'chat', label: '群聊' },
+      { value: 'chat', label: t('wsView.chat') },
       { value: 'lanes', label: 'Agent lanes' },
       { value: 'board', label: t('wsView.k3ko7a8011') },
       { value: 'split', label: t('wsView.k3xbmo012') },
