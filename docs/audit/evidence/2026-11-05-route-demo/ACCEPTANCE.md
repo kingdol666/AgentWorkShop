@@ -44,6 +44,19 @@ R2 结论：**三轨全部复现通过**；唯一失败项为脚本断言缺陷�
 - 门禁正确性副产物：多交付物场景漏验收后端成果时完成门禁拒绝（初跑发现），补全成果链后 completed——**门禁按设计工作**。
 - 边界：本轨=mock harness 机制面；真 LLM leader 提案/执行已由 Track B（单频道）证明；真 LLM 提跨频道计划属 V1.1（9B 连单频道依赖都会漏）。
 
+## Track E 简单 vs 复杂端到端对比（2026-11-05，track-e-simple-vs-complex.mjs，10/10）
+
+- **简单任务（单 Channel）**：1 频道/1 工作项，tick 自动派发→完成回调→成果链→完成门禁 **352ms 全链 completed**；恰好 1 次 dispatch_auto 且落对频道（ES1–ES3）。
+- **复杂任务（3 Channel 菱形 DAG）**：前端 A/后端 B/测试 C 三频道，W1(A)→{W2(B), W3(A)}→W4(C, dependsOn=[W2,W3])。关键新机制断言全过：**EC3 菱形门——仅完成 W2 时 W4 保持 DRAFT（多依赖未齐备不派发）**；EC2 并行就绪集（W1 完成后 W2/W3 同时派发）；EC5 恰好 4 次 dispatch_auto 且 W1 最先 W4 最后；**911ms 全链 completed**（EC1–EC6）。
+- 证据：`track-e-simple-vs-complex.json`（含两场景对比指标与事件 timeline）。
+
+## 同日附加产出（论文/审计轮）
+
+- **系统自产软件盘点**：`system-built-software-inventory.md` —— 真「系统自产软件」2 件（本目录 landing-page.html 与 project-layer track-b inventory-system.html），附过程记录清单。
+- **核心代码设计审计**：`code-audit-report.md` —— 独立代理审计，总评 **B+**：1×P1（派发主链路原子性）+5×P2+6×P3，九维矩阵（职责/状态机/幂等/事务/并发/错误分类/可观测/fail-closed/测试对齐），含修复优先序。
+- **创新性与可发表性评估**：`docs/architecture/2026-11-05-agent-architecture-novelty-assessment.md`。
+- **论文核心架构图**：`docs/architecture/2026-11-05-aw-paper-core-figure.{html,png,pdf}`（figure-designer 规范：solution-overview 范式、色盲安全、矢量 PDF、最小字号按 \textwidth 缩放 ≥8pt）。
+
 ## Track A — 产线集成业务（全部真实 HTTP + 真实服务端）
 
 | 验收项 | 脚本 | 结果 |

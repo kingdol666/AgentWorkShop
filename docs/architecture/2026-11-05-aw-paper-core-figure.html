@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 1600px; height: 1000px; background: #ffffff; }
+  body { font-family: "Segoe UI", "Inter", "Microsoft YaHei", sans-serif; color: #1e2a35; }
+  #canvas { position: relative; width: 1600px; height: 1000px; }
+  .abs { position: absolute; }
+  .box { position: absolute; border-radius: 8px; border: 1.6px solid; padding: 10px 16px; }
+  .b-title { font-size: 28px; font-weight: 650; white-space: nowrap; }
+  .b-body { font-size: 26px; line-height: 1.28; margin-top: 3px; }
+  .badge { display: inline-block; font-size: 24px; font-weight: 700; color: #992c11; background: #fff; border: 1.8px solid #cc3311; border-radius: 999px; padding: 1px 14px; vertical-align: 4px; margin-left: 8px; }
+  .chip { position: absolute; border-radius: 999px; font-size: 26px; font-weight: 600; padding: 3px 16px; border: 1.4px solid; background: #fff; white-space: nowrap; }
+  .num { position: absolute; width: 42px; height: 42px; border-radius: 50%; background: #fff; border: 2.6px solid; font-size: 27px; font-weight: 700; text-align: center; line-height: 39px; }
+  .gate { border: 2.2px dashed #d2691e; background: #fff7ef; border-radius: 10px; }
+  .orch  { background: #eef4fb; border-color: #4477aa; } .orch-h { color: #2f5a8f; }
+  .chan  { background: #eef7f0; border-color: #117733; } .chan-h { color: #0d5c27; }
+  .hum   { background: #fff7ef; border-color: #d2691e; } .hum-h { color: #a8560e; }
+  .ind   { background: #f2f2f4; border-color: #6b6b76; } .ind-h { color: #45454e; }
+  .no-llm{ border: 2.6px solid #cc3311; background: #fdf0ec; }
+  .spine { background: #2e3a46; color: #f4f7fa; border-color: #2e3a46; }
+  .lg { font-size: 28px; color: #333f4c; }
+  .dot { display: inline-block; width: 34px; height: 10px; border-radius: 5px; margin: 0 12px 3px 30px; vertical-align: middle; }
+  .dotd { background: repeating-linear-gradient(90deg, var(--c) 0 7px, transparent 7px 13px); }
+  svg.arrows { position: absolute; inset: 0; width: 1600px; height: 1000px; pointer-events: none; }
+</style>
+</head>
+<body>
+<div id="canvas">
+
+  <!-- system boundary -->
+  <div class="abs" style="left:14px; top:14px; width:1572px; height:980px; border:1.6px solid #c3ccd4; border-radius:10px; background:#fdfeff;"></div>
+  <div class="abs lg" style="left:34px; top:26px; color:#7a8792;">AgentWorkShop platform boundary</div>
+
+  <!-- owner + gates column -->
+  <div class="abs box hum" style="left:36px; top:64px; width:196px; height:124px;">
+    <div class="b-title hum-h" style="font-size:30px;">Owner</div>
+    <div class="b-body" style="font-size:27px;">human, sole<br>authority</div>
+  </div>
+  <div class="abs box hum" style="left:36px; top:212px; width:196px; height:136px;">
+    <div class="b-body" style="font-size:27px;"><b>Objective</b> +<br>success<br>criteria</div>
+  </div>
+  <div class="abs box gate" style="left:36px; top:384px; width:196px; height:120px;">
+    <div class="b-body" style="font-size:27px;"><b style="color:#a8560e;">Gate ①</b><br>plan<br>approval</div>
+  </div>
+  <div class="abs box gate" style="left:36px; top:528px; width:196px; height:120px;">
+    <div class="b-body" style="font-size:27px;"><b style="color:#a8560e;">Gate ②</b><br>result<br>acceptance</div>
+  </div>
+  <div class="abs box gate" style="left:36px; top:672px; width:196px; height:120px;">
+    <div class="b-body" style="font-size:27px;"><b style="color:#a8560e;">Gate ③</b><br>completion<br>gate</div>
+  </div>
+
+  <!-- governed route layer -->
+  <div class="abs box orch" style="left:258px; top:60px; width:564px; height:660px;">
+    <div style="position:absolute; left:0; top:0; width:8px; height:100%; background:#4477aa; border-radius:8px 0 0 8px;"></div>
+    <div class="b-title orch-h" style="font-size:29px; margin-left:8px;">Governed Route Layer — Project</div>
+    <div class="b-body" style="font-size:28px; color:#41546b; margin-left:8px; margin-top:0;">deterministic · LLM-free scheduling</div>
+  </div>
+  <div class="abs box" style="left:282px; top:152px; width:516px; height:124px; background:#fff; border-color:#4477aa;">
+    <div class="b-title" style="font-size:27px;">Office Channel · Leader</div>
+    <div class="b-body" style="font-size:26px;">LLM proposes the plan —<br>never dispatches</div>
+  </div>
+  <div class="abs box no-llm" style="left:282px; top:296px; width:516px; height:124px;">
+    <div class="b-title" style="font-size:27px; color:#992c11;">Deterministic Dispatcher<span class="badge">no-LLM zone</span></div>
+    <div class="b-body" style="font-size:26px;">deps terminal ∧ DRAFT → priority</div>
+  </div>
+  <div class="abs box" style="left:282px; top:432px; width:516px; height:104px; background:#fff; border-color:#4477aa;">
+    <div class="b-title" style="font-size:27px;">Kernel M4 <span style="font-size:24px; font-weight:500; color:#41546b;">route loop 10 s / 30 s</span></div>
+    <div class="b-body" style="font-size:26px;">ingress · ledger · watchdog · outbox</div>
+  </div>
+  <div class="abs box" style="left:282px; top:560px; width:516px; height:96px; background:#fff; border-color:#4477aa;">
+    <div class="b-title" style="font-size:27px;">Results Chain</div>
+    <div class="b-body" style="font-size:26px;">draft → review → acceptance → gate</div>
+  </div>
+  <div class="abs chip" style="left:282px; top:672px; border-color:#4477aa; color:#2f5a8f;">→ artifacts · weekly report</div>
+
+  <!-- channels -->
+  <div class="abs box chan" style="left:900px; top:60px; width:470px; height:240px;">
+    <div style="position:absolute; left:0; top:0; width:8px; height:100%; background:#117733; border-radius:8px 0 0 8px;"></div>
+    <div class="b-title chan-h" style="font-size:27px; margin-left:8px;">Channel A — Frontend</div>
+    <div class="b-body" style="font-size:26px; margin-left:8px;">LLM lead — omp · opencode · claude<br>governed tools · exec modes<br>budget · step limits</div>
+    <div class="chip" style="left:16px; bottom:10px; border-color:#117733; color:#0d5c27;">running W1</div>
+  </div>
+  <div class="abs chip" style="left:946px; top:312px; border-color:#117733; color:#0d5c27;">W1 done → dependency released</div>
+  <div class="abs box chan" style="left:900px; top:352px; width:470px; height:210px;">
+    <div style="position:absolute; left:0; top:0; width:8px; height:100%; background:#117733; border-radius:8px 0 0 8px;"></div>
+    <div class="b-title chan-h" style="font-size:27px; margin-left:8px;">Channel B — Backend</div>
+    <div class="b-body" style="font-size:26px; margin-left:8px;">same governed envelope;<br>N channels — relay order set<br>only by the dispatcher</div>
+    <div class="chip" style="left:16px; bottom:10px; border-color:#117733; color:#0d5c27;">running W2</div>
+  </div>
+  <div class="abs box ind" style="left:900px; top:588px; width:470px; height:84px;">
+    <div class="b-body" style="font-size:26px;"><b>Channels C…N</b> — same envelope</div>
+  </div>
+
+  <!-- audit ledger spine -->
+  <div class="abs box spine" style="left:1400px; top:60px; width:170px; height:618px;">
+    <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) rotate(90deg); white-space:nowrap; font-size:28px; font-weight:650; letter-spacing:.5px;">AUDIT LEDGER — decisions · events · journal</div>
+  </div>
+
+  <!-- industrial strip -->
+  <div class="abs box ind" style="left:258px; top:752px; width:396px; height:112px;">
+    <div class="b-title ind-h" style="font-size:27px;">Data plane</div>
+    <div class="b-body" style="font-size:26px;">SQLite · TSDB · object store</div>
+  </div>
+  <div class="abs box ind" style="left:686px; top:752px; width:396px; height:112px;">
+    <div class="b-title ind-h" style="font-size:27px;">DCW write throat</div>
+    <div class="b-body" style="font-size:26px;">range ∩ steps ∩ 60 s ∩ recipe</div>
+  </div>
+  <div class="abs box ind" style="left:1114px; top:752px; width:256px; height:112px;">
+    <div class="b-title ind-h" style="font-size:27px;">Physical line</div>
+    <div class="b-body" style="font-size:26px;">PLC · sensors · MES</div>
+  </div>
+
+  <!-- legend -->
+  <div class="abs lg" style="left:36px; top:878px; width:1520px;">
+    <div><span class="dot" style="background:#117733;margin-left:0;"></span>dispatch<span class="dot dotd" style="--c:#4477aa;"></span>callback / state<span class="dot dotd" style="--c:#d2691e;"></span>human approval<span class="dot" style="background:#6b6b76;"></span>data · governed writes<span class="dot" style="background:#cc3311;"></span>LLM-free guarantee</div>
+    <div style="margin-top:6px;">① dispatch work item (brief · budget) &nbsp;&nbsp; ② completion callback &nbsp;&nbsp; ③ release next by dependency</div>
+  </div>
+
+  <svg class="arrows" viewBox="0 0 1600 1000">
+    <defs>
+      <marker id="ag" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#117733"/></marker>
+      <marker id="ab" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#4477aa"/></marker>
+      <marker id="ao" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#d2691e"/></marker>
+      <marker id="agrey" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9 z" fill="#6b6b76"/></marker>
+    </defs>
+    <!-- objective -> office channel -->
+    <path d="M 232 280 L 245 280 L 245 214 L 258 214" fill="none" stroke="#d2691e" stroke-width="2.6" marker-end="url(#ao)"/>
+    <!-- gates -> route layer -->
+    <path d="M 232 444 L 245 444 L 245 309 L 258 309" fill="none" stroke="#d2691e" stroke-width="2.6" stroke-dasharray="7 5" marker-end="url(#ao)"/>
+    <path d="M 232 588 L 245 588 L 245 572 L 258 572" fill="none" stroke="#d2691e" stroke-width="2.6" stroke-dasharray="7 5" marker-end="url(#ao)"/>
+    <path d="M 232 732 L 246 732 L 246 700 L 258 700" fill="none" stroke="#d2691e" stroke-width="2.6" stroke-dasharray="7 5" marker-end="url(#ao)"/>
+    <!-- leader -> dispatcher -->
+    <path d="M 540 277 L 540 293" fill="none" stroke="#4477aa" stroke-width="2.6" stroke-dasharray="9 6" marker-end="url(#ab)"/>
+    <!-- dispatcher -> channel A (1) -->
+    <path d="M 798 358 L 848 358 L 848 176 L 900 176" fill="none" stroke="#117733" stroke-width="3" marker-end="url(#ag)"/>
+    <!-- dispatcher -> channel B (3) -->
+    <path d="M 798 392 L 894 392 L 894 484 L 900 484" fill="none" stroke="#117733" stroke-width="3" marker-end="url(#ag)"/>
+    <!-- channel A callback -> kernel (2) -->
+    <path d="<circle cx="868" cy="392" r="8" fill="#fdfeff"/><path d="M 900 268 L 868 268 L 868 484 L 798 484" fill="none" stroke="#4477aa" stroke-width="3" stroke-dasharray="9 6" marker-end="url(#ab)"/>
+    <!-- channel B callback -> kernel (2) -->
+    <path d="M 900 552 L 834 552 L 834 524 L 798 524" fill="none" stroke="#4477aa" stroke-width="3" stroke-dasharray="9 6" marker-end="url(#ab)"/>
+    <!-- kernel -> results -->
+    <path d="M 540 536 L 540 556" fill="none" stroke="#4477aa" stroke-width="2.6" stroke-dasharray="9 6" marker-end="url(#ab)"/>
+    <!-- route layer -> data plane -->
+    <path d="M 456 720 L 456 752" fill="none" stroke="#6b6b76" stroke-width="2.4" marker-end="url(#agrey)"/>
+    <!-- channels C..N -> write throat -->
+    <path d="M 1000 672 L 1000 707 L 884 707 L 884 752" fill="none" stroke="#6b6b76" stroke-width="2.4" marker-end="url(#agrey)"/>
+    <!-- write throat -> physical -->
+    <path d="M 1082 808 L 1114 808" fill="none" stroke="#6b6b76" stroke-width="2.4" marker-end="url(#agrey)"/>
+    <!-- physical -> data plane (DAQ) -->
+    <path d="M 1114 838 L 654 838" fill="none" stroke="#6b6b76" stroke-width="2.4" stroke-dasharray="7 5" marker-end="url(#agrey)"/>
+    <!-- thin feed to ledger spine -->
+    <path d="M 770 624 L 770 700 L 1382 700 L 1382 369 L 1400 369" fill="none" stroke="#6b6b76" stroke-width="1.8" opacity=".5" marker-end="url(#agrey)"/>
+  </svg>
+
+  <!-- numbered arrow chips -->
+  <div class="num" style="left:826px; top:248px; border-color:#117733; color:#117733;">1</div>
+  <div class="num" style="left:873px; top:436px; border-color:#117733; color:#117733;">3</div>
+  <div class="num" style="left:813px; top:528px; border-color:#4477aa; color:#4477aa;">2</div>
+</div>
+</body>
+</html>

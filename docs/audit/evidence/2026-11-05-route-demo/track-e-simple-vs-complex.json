@@ -1,0 +1,128 @@
+{
+  "generatedAt": "2026-11-05T01:51:37.123Z",
+  "port": 3952,
+  "scenario": "Track E: 简单任务(单Channel) vs 复杂任务(3频道菱形DAG) 端到端对比实测",
+  "simple": {
+    "projectId": "83d747a9-e30b-4aeb-942e-b08398cf69e7",
+    "channels": 1,
+    "workItems": 1,
+    "dispatchAuto": 1,
+    "elapsedMs": 352,
+    "status": "completed"
+  },
+  "complex": {
+    "projectId": "8bb28271-63fb-4838-8e01-9cea6725a3ea",
+    "channels": 3,
+    "workItems": 4,
+    "dispatchAuto": 4,
+    "elapsedMs": 911,
+    "status": "completed",
+    "dag": "W1(FE) -> {W2(BE), W3(FE)} -> W4(QA)",
+    "timeline": [
+      {
+        "type": "work.dispatch_auto",
+        "at": "2026-11-05T09:51:36.505+08:00",
+        "workItemId": "2f80007f-1382-4b2e-8844-f6777eb8ada8"
+      },
+      {
+        "type": "work.completed",
+        "at": "2026-11-05T09:51:36.610+08:00",
+        "workItemId": "2f80007f-1382-4b2e-8844-f6777eb8ada8"
+      },
+      {
+        "type": "work.dispatch_auto",
+        "at": "2026-11-05T09:51:36.614+08:00",
+        "workItemId": "99817030-cf4a-4f6c-b176-0c599a47ef2d"
+      },
+      {
+        "type": "work.dispatch_auto",
+        "at": "2026-11-05T09:51:36.616+08:00",
+        "workItemId": "c607fc30-a2e4-486b-8f4c-e1071a5ad8ec"
+      },
+      {
+        "type": "work.completed",
+        "at": "2026-11-05T09:51:36.689+08:00",
+        "workItemId": "99817030-cf4a-4f6c-b176-0c599a47ef2d"
+      },
+      {
+        "type": "work.completed",
+        "at": "2026-11-05T09:51:36.751+08:00",
+        "workItemId": "c607fc30-a2e4-486b-8f4c-e1071a5ad8ec"
+      },
+      {
+        "type": "work.dispatch_auto",
+        "at": "2026-11-05T09:51:36.754+08:00",
+        "workItemId": "d210a04f-cab5-475a-b6da-ae04a3b15a7f"
+      },
+      {
+        "type": "work.completed",
+        "at": "2026-11-05T09:51:36.812+08:00",
+        "workItemId": "d210a04f-cab5-475a-b6da-ae04a3b15a7f"
+      }
+    ]
+  },
+  "pass": 10,
+  "fail": 0,
+  "results": [
+    {
+      "id": "E0",
+      "name": "隔离实例启动",
+      "pass": true,
+      "detail": "port=3952"
+    },
+    {
+      "id": "ES1",
+      "name": "简单任务：单频道 W1 自动派发（无其他频道干扰）",
+      "pass": true,
+      "detail": "state=DISPATCHED"
+    },
+    {
+      "id": "ES2",
+      "name": "简单任务：恰好 1 次 dispatch_auto 且为 W1",
+      "pass": true,
+      "detail": "autos=[\"6cae7130-000f-45fc-8504-c53eff7188dd\"]"
+    },
+    {
+      "id": "ES3",
+      "name": "简单任务：成果链 + 完成门禁 → completed",
+      "pass": true,
+      "detail": "status=completed"
+    },
+    {
+      "id": "EC1",
+      "name": "复杂任务：W1 自动派发进前端频道，W4 未派发（依赖门）",
+      "pass": true,
+      "detail": "w1=DISPATCHED w4=DRAFT"
+    },
+    {
+      "id": "EC2",
+      "name": "W1 完成回调 → W2(后端B) 与 W3(前端A) 同时就绪派发（并行就绪集）",
+      "pass": true,
+      "detail": "w2=DISPATCHED w3=DISPATCHED w4=DRAFT"
+    },
+    {
+      "id": "EC3",
+      "name": "菱形门：仅完成 W2（W3 未完成）→ W4 保持 DRAFT（多依赖未齐备不派发）",
+      "pass": true,
+      "detail": "w4=DRAFT"
+    },
+    {
+      "id": "EC4",
+      "name": "W3 也完成 → 双依赖齐备 → W4 派发进测试频道",
+      "pass": true,
+      "detail": "w4=DISPATCHED"
+    },
+    {
+      "id": "EC5",
+      "name": "复杂任务：恰好 4 次 dispatch_auto，W1 最先 W4 最后（菱形时序正确）",
+      "pass": true,
+      "detail": "autos=[1,2,3,4]"
+    },
+    {
+      "id": "EC6",
+      "name": "复杂任务：三交付物成果链 + 完成门禁 → completed",
+      "pass": true,
+      "detail": "status=completed"
+    }
+  ]
+}
