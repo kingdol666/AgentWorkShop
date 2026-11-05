@@ -325,13 +325,13 @@ const onSaveTemplate = (name: string): void => {
   gap: 2px;
   align-items: center;
   padding: 0 5px;
-  font-size: 10px;
+  font-size: var(--fs-micro);
   line-height: 16px;
   color: var(--accent, var(--ink-soft));
   border: 1px solid color-mix(in srgb, var(--accent, var(--ink-soft)) 45%, transparent);
   border-radius: var(--radius-chip);
 }
-.sched-n { font-family: var(--font-mono); font-size: 9.5px; }
+.sched-n { font-family: var(--font-mono); font-size: var(--fs-micro); }
 .op {
   display: inline-flex;
   flex: 0 0 auto;
@@ -381,7 +381,7 @@ const onSaveTemplate = (name: string): void => {
 .select { width: 100%; }
 .tpl-hint {
   padding: 5px 2px 0;
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   color: var(--ink-faint);
 }
 .ws-hint { font-size: 11px; color: var(--ink-faint); }

@@ -87,16 +87,31 @@ const allChannelIds = computed<string[]>(() => {
   return ids
 })
 
-// 订阅所有挂载 channel(挂载后、快照到达前 TownView 显示加载态)
+// 订阅所有挂载 channel(挂载后、快照到达前 TownView 显示加载态)。
+// 按差集增删:页面存活期间频道被卸载必须退订 —— 此前只增不退,旧频道帧持续推送(泄漏修复 2026-11-06)
+const subscribedIds = new Set<string>()
 watch(
   () => allChannelIds.value.join(','),
   () => {
-    for (const cid of allChannelIds.value) subscribe(cid)
+    const wanted = new Set(allChannelIds.value)
+    for (const cid of wanted) {
+      if (!subscribedIds.has(cid)) {
+        subscribe(cid)
+        subscribedIds.add(cid)
+      }
+    }
+    for (const cid of [...subscribedIds]) {
+      if (!wanted.has(cid)) {
+        unsubscribe(cid)
+        subscribedIds.delete(cid)
+      }
+    }
   },
   { immediate: true },
 )
 onBeforeUnmount(() => {
-  for (const cid of allChannelIds.value) unsubscribe(cid)
+  for (const cid of subscribedIds) unsubscribe(cid)
+  subscribedIds.clear()
 })
 
 // 聚焦频道(供 TownView focusChannel;取第一个已加载频道)

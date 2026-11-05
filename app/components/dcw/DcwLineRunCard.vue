@@ -88,14 +88,23 @@ const lineRecipeId = defineModel<string>('recipeId', { required: true })
       >
         {{ $t('dcwDetail.kfb8vml029') }}
       </button>
-      <button
+      <!-- 停线会中断在跑产线的数采与写控,属高危:二次确认(交互宪法 §2-1) -->
+      <a-popconfirm
         v-else
-        class="pill-btn stop"
-        :disabled="lineBusy"
-        @click="emit('stop')"
+        :title="$t('dcwDetail.stopConfirmTitle')"
+        :ok-text="$t('common.stopLine')"
+        :cancel-text="$t('common.cancel')"
+        :ok-button-props="{ danger: true }"
+        placement="topRight"
+        @confirm="emit('stop')"
       >
-        {{ $t('dcwDetail.k1xyhd2y030') }}
-      </button>
+        <button
+          class="pill-btn stop"
+          :disabled="lineBusy"
+        >
+          {{ $t('dcwDetail.k1xyhd2y030') }}
+        </button>
+      </a-popconfirm>
     </div>
     <p
       v-if="lineErr"

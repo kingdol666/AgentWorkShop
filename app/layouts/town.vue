@@ -33,8 +33,11 @@ const site = useSiteConfig()
   z-index: 10;
   pointer-events: none;
   font-size: 12px;
-  color: #fff;
-  opacity: 0.55;
-  mix-blend-mode: difference;
+  /* 可测量对比度:去掉 blend-mode 水印写法,按主题给墨色(亮)/暗阶墨色(dark) */
+  color: rgba(28, 39, 54, 0.8);
+}
+html.dark .town-version-stamp {
+  color: rgba(233, 239, 248, 0.6);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
 }
 </style>

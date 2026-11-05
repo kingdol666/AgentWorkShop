@@ -85,18 +85,18 @@ defineProps<{
 .scene-row.active .scene-ico { box-shadow: 0 0 10px color-mix(in srgb, var(--ch, var(--hud-accent)) 40%, transparent); }
 .scene-meta-wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .scene-name { font-size: 12px; font-weight: 600; color: var(--hud-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.scene-meta { font-family: var(--font-mono); font-size: 10px; color: var(--hud-faint); }
+.scene-meta { font-family: var(--font-mono); font-size: var(--fs-micro); color: var(--hud-faint); }
 .scene-cur, .scene-add {
   margin-left: auto;
   flex: none;
-  font-size: 10px;
+  font-size: var(--fs-micro);
   border-radius: 6px;
   padding: 1px 7px;
 }
 .scene-cur { color: var(--hud-accent); border: 1px solid rgba(53, 224, 160, 0.4); }
 .scene-add { color: var(--hud-dim); border: 1px solid var(--hud-line); }
 .scene-hint {
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--hud-amber);
   padding: 6px 4px 0;
   line-height: 1.5;

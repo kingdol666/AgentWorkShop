@@ -394,6 +394,6 @@ function toggleAgent(id: string): void {
 }
 
 .access-row { display: flex; align-items: center; gap: 8px; }
-.access-agents { display: flex; flex-wrap: wrap; gap: 6px 14px; max-height: 160px; overflow: auto; border: 1px dashed var(--line-faint, rgba(255,255,255,.12)); border-radius: 8px; padding: 8px 10px; }
+.access-agents { display: flex; flex-wrap: wrap; gap: 6px 14px; max-height: 160px; overflow: auto; border: 1px dashed var(--line); border-radius: 8px; padding: 8px 10px; }
 .access-agent { display: flex; align-items: center; gap: 6px; font-size: 13px; }
 </style>

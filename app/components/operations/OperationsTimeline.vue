@@ -15,6 +15,8 @@ const props = defineProps<{
   rows: OpsLogRow[]
   loading: boolean
   error: string
+  /** 当前激活的分类筛选(统计 chip 高亮;空 = 未筛选) */
+  activeKind?: string
 }>()
 
 const expandedId = ref<number | null>(null)
@@ -54,6 +56,12 @@ function statsPairs(): Array<{ key: OperationCategory, count: number }> {
   }
   return CAT_ORDER.filter(c => out[c]).map(c => ({ key: c, count: out[c] ?? 0 }))
 }
+
+const emit = defineEmits<{ filter: [key: OperationCategory] }>()
+/** 统计 chip 点击 = 按该分类筛选(此前注释自认"留待后续"的死交互,2026-11-06 启用) */
+function onStatClick(key: OperationCategory): void {
+  emit('filter', key)
+}
 </script>
 
 <template>
@@ -63,16 +71,19 @@ function statsPairs(): Array<{ key: OperationCategory, count: number }> {
       v-if="rows.length > 0"
       class="stream-stats"
     >
-      <div
+      <button
         v-for="s in statsPairs()"
         :key="s.key"
+        type="button"
         class="stream-stat"
-        :class="s.key"
+        :class="[{ active: activeKind === s.key }, s.key]"
+        :title="$t('operations.filterByCat', { cat: $t(`operations.cat.${s.key}`) })"
+        @click="onStatClick(s.key)"
       >
         <span :class="CATEGORY_ICONS[s.key]" />
         <b class="mono">{{ s.count }}</b>
         <small>{{ $t(`operations.cat.${s.key}`) }}</small>
-      </div>
+      </button>
     </div>
 
     <div
@@ -181,15 +192,18 @@ function statsPairs(): Array<{ key: OperationCategory, count: number }> {
   padding: 5px 9px; font-size: 11.5px; color: var(--ink-soft);
   background: var(--paper-deep);
   border: 1px solid var(--line); border-radius: var(--radius-chip);
+  cursor: pointer; font-family: inherit;
 }
+.stream-stat:hover { border-color: var(--line-strong); color: var(--ink); }
+.stream-stat.active { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--paper-deep)); }
 .stream-stat b { font-size: 12.5px; color: var(--ink); }
 .stream-stat small { font-size: 11px; color: var(--ink-faint); }
-.stream-stat.write span:first-child { color: #c98922; }
-.stream-stat.daq span:first-child { color: #159f9a; }
-.stream-stat.aml span:first-child { color: #7657ad; }
+.stream-stat.write span:first-child { color: var(--accent-amber); }
+.stream-stat.daq span:first-child { color: var(--accent-moss); }
+.stream-stat.aml span:first-child { color: var(--accent-violet); }
 .stream-stat.alarm span:first-child { color: var(--tone-danger-dot); }
-.stream-stat.rollback span:first-child { color: #d4756b; }
-.stream-stat.recipe span:first-child { color: #3978b8; }
+.stream-stat.rollback span:first-child { color: var(--accent-vermilion); }
+.stream-stat.recipe span:first-child { color: var(--accent-cobalt); }
 
 .stream-state { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 120px; font-size: 12px; color: var(--ink-faint); }
 .stream-state.error { color: var(--tone-danger-dot); }
@@ -198,22 +212,22 @@ function statsPairs(): Array<{ key: OperationCategory, count: number }> {
 
 .stream-list { list-style: none; margin: 0; padding: 0; }
 .op-row { border-left: 2px solid var(--line-strong); margin: 0 0 4px; border-radius: 6px; background: color-mix(in srgb, var(--paper-deep) 40%, transparent); }
-.op-row.write { border-left-color: #c98922; }
-.op-row.daq { border-left-color: #159f9a; }
-.op-row.aml { border-left-color: #7657ad; }
-.op-row.recipe { border-left-color: #3978b8; }
-.op-row.rollback { border-left-color: #d4756b; }
+.op-row.write { border-left-color: var(--accent-amber); }
+.op-row.daq { border-left-color: var(--accent-moss); }
+.op-row.aml { border-left-color: var(--accent-violet); }
+.op-row.recipe { border-left-color: var(--accent-cobalt); }
+.op-row.rollback { border-left-color: var(--accent-vermilion); }
 .op-row.alarm { border-left-color: var(--tone-danger-dot); background: color-mix(in srgb, var(--tone-danger-dot) 7%, transparent); }
 
 .op-main { display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; gap: 8px; align-items: center; width: 100%; padding: 8px 10px; color: inherit; text-align: left; background: transparent; border: 0; cursor: default; }
 .op-main:not(:disabled) { cursor: pointer; }
 .op-main:not(:disabled):hover { background: var(--hover-tint); }
 .op-icon { display: grid; place-items: center; width: 22px; height: 22px; font-size: 14px; color: var(--ink-faint); }
-.op-row.write .op-icon { color: #c98922; }
-.op-row.daq .op-icon { color: #159f9a; }
-.op-row.aml .op-icon { color: #7657ad; }
-.op-row.recipe .op-icon { color: #3978b8; }
-.op-row.rollback .op-icon { color: #d4756b; }
+.op-row.write .op-icon { color: var(--accent-amber); }
+.op-row.daq .op-icon { color: var(--accent-moss); }
+.op-row.aml .op-icon { color: var(--accent-violet); }
+.op-row.recipe .op-icon { color: var(--accent-cobalt); }
+.op-row.rollback .op-icon { color: var(--accent-vermilion); }
 .op-row.alarm .op-icon { color: var(--tone-danger-dot); }
 
 .op-body { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
@@ -245,8 +259,17 @@ function statsPairs(): Array<{ key: OperationCategory, count: number }> {
 .op-detail { overflow: auto; max-height: 220px; margin: 0 10px 10px 44px; padding: 8px 10px; font-size: 11.5px; line-height: 1.5; color: var(--ink-soft); background: var(--paper-deep); border: 1px solid var(--line); border-radius: var(--radius-control); }
 
 @media (max-width: 640px) {
-  .op-main { grid-template-columns: 22px minmax(0, 1fr); }
-  .op-time { display: none; }
+  /* 时间线没有时间 = 审计不可信:窄屏保留时间列,压缩图标列宽度(2026-11-06 修复);
+   * 摘要改两行折行:单行省略号在窄屏会截掉批次号等关键信息 */
+  .op-main { grid-template-columns: 18px minmax(0, 1fr) auto; }
+  .op-icon { width: 18px; }
+  .op-time { font-size: var(--fs-micro); }
+  .op-summary {
+    white-space: normal;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
   .op-detail { margin-left: 10px; }
 }
 </style>

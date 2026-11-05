@@ -161,6 +161,8 @@
    *    工业台面不需要"满屏玻璃":卡片用实心 surface 保证数据对比,
    *    半透 + 模糊只留给侧栏/顶栏这类常驻 chrome。 */
   --surface-card: var(--paper-raised);
+  /* 凹陷面(代码块/日志窗/嵌入面板):从油墨派生,亮暗自动成立 */
+  --surface-sunken: color-mix(in srgb, var(--ink) 4%, transparent);
   --surface-glass: color-mix(in srgb, var(--paper-raised) 94%, transparent);
   --surface-glass-strong: color-mix(in srgb, var(--paper-raised) 98%, transparent);
   --glass-edge: inset 0 1px 0 color-mix(in srgb, white 60%, transparent);
@@ -294,6 +296,7 @@ html.dark {
 
   /* Aurora Glass 暗阶:卡片保持实心,只有壳层透出画布纵深 */
   --surface-card: var(--paper-raised);
+  --surface-sunken: color-mix(in srgb, var(--ink) 5%, transparent);
   --surface-glass: color-mix(in srgb, var(--paper-raised) 90%, transparent);
   --surface-glass-strong: color-mix(in srgb, var(--paper-raised) 96%, transparent);
   --glass-edge: inset 0 1px 0 rgb(255 255 255 / 7%);

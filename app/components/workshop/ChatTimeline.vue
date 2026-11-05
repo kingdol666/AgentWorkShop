@@ -611,7 +611,7 @@ watch(() => props.channelId, async () => {
   gap: 5px;
   align-items: center;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.08em;
   color: var(--chat-accent);
   text-transform: uppercase;
@@ -640,7 +640,7 @@ watch(() => props.channelId, async () => {
   align-items: center;
   padding: 5px 10px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--chat-ink-soft);
   background: var(--chat-surface);
   border: 1px solid var(--chat-line);
@@ -648,7 +648,7 @@ watch(() => props.channelId, async () => {
 }
 .ct-count {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--chat-ink-faint);
 }
 
@@ -689,7 +689,7 @@ watch(() => props.channelId, async () => {
 }
 .ct-empty-eyebrow {
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.2em;
   color: var(--chat-ink-faint);
   text-transform: uppercase;
@@ -801,7 +801,7 @@ watch(() => props.channelId, async () => {
 .ct-system {
   max-width: 82%;
   padding: 5px 12px;
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   color: var(--chat-ink-faint);
   background: var(--chat-surface-raised);
   border: 1px solid var(--chat-line);
@@ -842,7 +842,7 @@ watch(() => props.channelId, async () => {
   align-items: center;
   padding: 1px 6px;
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.06em;
   color: var(--chat-ink-faint);
   text-transform: uppercase;
@@ -855,7 +855,7 @@ watch(() => props.channelId, async () => {
 }
 .ct-time {
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   color: var(--chat-ink-faint);
 }
 .ct-actions {
@@ -958,7 +958,7 @@ watch(() => props.channelId, async () => {
   align-items: center;
   justify-content: flex-end;
   margin-top: 5px;
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--chat-ink-faint);
 }
 .ct-user-label {
@@ -976,7 +976,7 @@ watch(() => props.channelId, async () => {
   align-items: center;
   margin: 3px 0 5px;
   padding: 3px 8px;
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   color: var(--chat-ink-faint);
   background: var(--chat-surface);
   border-left: 2px solid var(--chat-accent);
@@ -990,7 +990,7 @@ watch(() => props.channelId, async () => {
   padding: 3px 8px;
   margin: 4px 0 6px;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   border-radius: var(--radius-pill);
 }
 .ct-operation-badge.dcw { color: #a56d17; background: color-mix(in srgb, #c98922 11%, transparent); }
@@ -1043,7 +1043,7 @@ watch(() => props.channelId, async () => {
   align-items: center;
   padding: 1px 7px;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   color: var(--chat-ink-faint);
   background: var(--chat-surface);
   border: 1px solid var(--chat-line);
@@ -1067,7 +1067,7 @@ watch(() => props.channelId, async () => {
   align-items: center;
   margin-top: 6px;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   color: var(--chat-ink-faint);
 }
 

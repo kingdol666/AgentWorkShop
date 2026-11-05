@@ -339,7 +339,7 @@ const doWrite = async (): Promise<void> => {
   flex: 0 0 auto;
   padding: 0 5px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   border-radius: var(--radius-chip);
   background: color-mix(in srgb, currentColor 8%, transparent);
 }
@@ -383,8 +383,8 @@ const doWrite = async (): Promise<void> => {
 }
 .row { padding: 4px 0; border-bottom: 1px dashed color-mix(in srgb, currentColor 10%, transparent); }
 .row-head { display: flex; gap: 6px; align-items: center; }
-.kind { margin-inline-end: 0; font-size: 10px; }
-.row-importance { font-family: var(--font-mono); font-size: 10px; opacity: 0.5; }
+.kind { margin-inline-end: 0; font-size: var(--fs-micro); }
+.row-importance { font-family: var(--font-mono); font-size: var(--fs-micro); opacity: 0.5; }
 .row-title { font-weight: 600; font-size: 12px; }
 /* §8 过程记忆时间轴元信息:时间/可见性/root/task(memory timeline 的来源标识) */
 .row-meta {
@@ -392,7 +392,7 @@ const doWrite = async (): Promise<void> => {
   gap: 8px;
   margin: 2px 0 1px;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   color: var(--ink-faint);
 }
 .row-vis { text-transform: uppercase; letter-spacing: 0.03em; }

@@ -200,7 +200,7 @@ const toggleRight = (): void => {
 .dot { width: 8px; height: 8px; border-radius: 50%; }
 .ws-state {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.1em;
   text-transform: uppercase;
   padding: 1px 6px;
@@ -213,7 +213,7 @@ const toggleRight = (): void => {
 .seq {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--ink-faint);
 }
 

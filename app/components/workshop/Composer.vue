@@ -63,6 +63,9 @@ watch(() => props.channelId, (cid) => {
  */
 watch(canPost, (ok) => {
   if (userPickedMode.value) return
+  // 输入框已有草稿时不抢模式:权限晚到时静默改写 placeholder 与发送语义,
+  // 用户正在打的字会被"换频道"(2026-11-06 补;userPickedMode 只覆盖手动选择)
+  if (input.value.trim().length > 0) return
   mode.value = ok ? 'chat' : 'task'
 }, { immediate: true })
 

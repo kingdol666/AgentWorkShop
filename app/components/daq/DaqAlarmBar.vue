@@ -5,9 +5,9 @@
  */
 import type { DaqAlarmRow } from '@/app/composables/workshop/useDaqStream'
 
-defineProps<{ alarms: DaqAlarmRow[] }>()
+defineProps<{ alarms: DaqAlarmRow[], acking?: boolean }>()
 
-const emit = defineEmits<{ ack: [id: string] }>()
+const emit = defineEmits<{ ack: [id: string], ackAll: [] }>()
 </script>
 
 <template>
@@ -20,6 +20,16 @@ const emit = defineEmits<{ ack: [id: string] }>()
       {{ $t('daq.k1alarm141') }}
       <b class="mono">{{ alarms.length }}</b>
     </span>
+    <!-- 批量确认:报警风暴时逐条点击成本线性(交互宪法 §2-6) -->
+    <button
+      class="mini-btn ack-all"
+      :disabled="acking"
+      :title="$t('daq.ackAllTip')"
+      @click="emit('ackAll')"
+    >
+      <span class="i-tabler-checks" />
+      {{ $t('daq.ackAll') }}
+    </button>
     <div class="alarm-scroll">
       <span
         v-for="a in alarms"
@@ -44,3 +54,12 @@ const emit = defineEmits<{ ack: [id: string] }>()
     </div>
   </div>
 </template>
+
+<style scoped>
+.ack-all {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+</style>

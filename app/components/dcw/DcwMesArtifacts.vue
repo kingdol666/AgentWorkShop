@@ -135,6 +135,6 @@ const fmtBytes = (b: number): string => b >= 1024 * 1024 ? `${(b / 1024 / 1024).
 .art-list li { display: flex; justify-content: space-between; gap: 10px; padding: 5px 8px; border-radius: 6px; cursor: pointer; }
 .art-list li:hover, .art-list li.on { background: color-mix(in srgb, var(--accent) 12%, transparent); }
 .art-preview { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
-.art-preview img { max-width: 100%; max-height: 46vh; border: 1px solid var(--line-faint, rgba(255,255,255,.1)); border-radius: 6px; background: #0d1b2a; }
+.art-preview img { max-width: 100%; max-height: 46vh; border: 1px solid var(--line); border-radius: 6px; background: #0d1b2a; }
 .art-preview pre { max-width: 100%; max-height: 40vh; overflow: auto; font-size: 12px; }
 </style>

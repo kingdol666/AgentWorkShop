@@ -219,7 +219,7 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
   flex: 1;
   min-width: 0;
   height: 28px;
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   color: var(--hud-dim);
   background: var(--hud-input);
   border: 1px solid var(--hud-line);
@@ -233,7 +233,7 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
   flex: none;
   height: 28px;
   padding: 0 12px;
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   font-weight: 600;
   color: #04120c;
   background: var(--hud-accent-dim);
@@ -289,7 +289,7 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
   display: inline-flex;
   gap: 5px;
   align-items: center;
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   color: var(--hud-faint);
 }
 .daq-ctl-cycle input,
@@ -307,7 +307,7 @@ input[type='number'] { -moz-appearance: textfield; appearance: textfield; }
   display: inline-flex;
   gap: 4px;
   align-items: center;
-  font-size: 10px;
+  font-size: var(--fs-micro);
   color: var(--hud-faint);
 }
 .bind-add-btn.warn:not(:disabled) {

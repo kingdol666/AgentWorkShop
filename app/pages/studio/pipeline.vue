@@ -374,10 +374,20 @@
           @click="applyTemplate(tp)"
         >
           {{ tp.name }}<span class="unit"> · {{ tp.chartType }}</span>
-          <span
-            class="del"
-            @click.stop="removeTemplate(tp.id)"
-          >×</span>
+          <!-- 删除分析模板不可逆:二次确认(交互宪法 §2-1) -->
+          <a-popconfirm
+            :title="$t('studio.deleteTemplateConfirm', { name: tp.name })"
+            :ok-text="$t('common.delete')"
+            :cancel-text="$t('common.cancel')"
+            :ok-button-props="{ danger: true }"
+            placement="left"
+            @confirm.stop="removeTemplate(tp.id)"
+          >
+            <span
+              class="del"
+              @click.stop
+            >×</span>
+          </a-popconfirm>
         </button>
       </div>
     </section>
@@ -647,7 +657,9 @@ function draw(): void {
 function downloadPng(): void {
   const inst = chartInstance.value
   if (!inst) return
-  const url = inst.getDataURL({ pixelRatio: 2, backgroundColor: '#101418' })
+  // 导出底色随主题:此前硬编码深底,亮色主题下导出深底 PNG、深色曲线文字不可读
+  const bg = getComputedStyle(document.documentElement).getPropertyValue('--paper').trim() || '#101418'
+  const url = inst.getDataURL({ pixelRatio: 2, backgroundColor: bg })
   const a = document.createElement('a')
   a.href = url
   a.download = `${cfg.value.title || 'eda-pipeline'}.png`
@@ -767,16 +779,16 @@ onMounted(async () => {
 <style scoped>
 .page { display: flex; flex-direction: column; gap: 14px; padding-bottom: 40px }
 .aw-page-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px }
-.sub { color: var(--text-dim, #8fa0ad); font-size: 12px; margin-top: 4px }
-.cardBlock { background: var(--panel, rgba(255,255,255,.03)); border: 1px solid var(--line, rgba(255,255,255,.08)); border-radius: 12px; padding: 14px 16px }
+.sub { color: var(--ink-soft); font-size: 12px; margin-top: 4px }
+.cardBlock { background: var(--surface-card); border: 1px solid var(--line, rgba(255,255,255,.08)); border-radius: 12px; padding: 14px 16px }
 .cardBlock h2 { font-size: 14px; font-weight: 600; display: flex; align-items: center; gap: 8px; margin-bottom: 10px }
 .stepNo { width: 20px; height: 20px; border-radius: 6px; background: var(--accent, #35e0a0); color: #06121c; font-size: 12px; display: inline-flex; align-items: center; justify-content: center }
 .row { display: flex; gap: 8px; align-items: center; margin: 6px 0 }
 .row.wrap { flex-wrap: wrap }
-.field { background: var(--bg-deep, rgba(0,0,0,.25)); border: 1px solid var(--line, rgba(255,255,255,.1)); border-radius: 8px; color: inherit; padding: 6px 10px; font-size: 12px; min-width: 170px }
+.field { background: var(--paper-deep); border: 1px solid var(--line, rgba(255,255,255,.1)); border-radius: 8px; color: inherit; padding: 6px 10px; font-size: 12px; min-width: 170px }
 .field.narrow { min-width: 110px }
 .field.tiny { min-width: 84px }
-.lbl { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-dim, #8fa0ad) }
+.lbl { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-soft) }
 .chip { border: 1px solid var(--line, rgba(255,255,255,.12)); background: transparent; color: inherit; border-radius: 999px; padding: 3px 12px; font-size: 12px; cursor: pointer }
 .chip.on { border-color: var(--accent, #35e0a0); color: var(--accent, #35e0a0) }
 .chip.tpl .unit { opacity: .6 }
@@ -785,18 +797,18 @@ onMounted(async () => {
 .unit { opacity: .65; font-size: 11px }
 .tableWrap { overflow: auto; max-height: 240px; border: 1px solid var(--line, rgba(255,255,255,.08)); border-radius: 8px }
 .grid { border-collapse: collapse; width: 100%; font-size: 12px }
-.grid th { text-align: left; position: sticky; top: 0; background: var(--bg-deep, rgba(0,0,0,.4)); padding: 6px 10px; border-bottom: 1px solid var(--line, rgba(255,255,255,.1)) }
+.grid th { text-align: left; position: sticky; top: 0; background: var(--paper-deep); padding: 6px 10px; border-bottom: 1px solid var(--line, rgba(255,255,255,.1)) }
 .grid td { padding: 4px 10px; border-bottom: 1px solid var(--line, rgba(255,255,255,.05)); white-space: nowrap }
-.hint { color: var(--text-dim, #8fa0ad); font-size: 12px }
+.hint { color: var(--ink-soft); font-size: 12px }
 .err { color: #e57373; font-size: 12px }
 .codeRow { display: flex; gap: 12px; align-items: flex-start; margin-top: 8px }
 .importRow { display: flex; gap: 8px; align-items: flex-start; margin-top: 8px }
 .importRow .import { flex: 1; max-width: 640px }
-.code { flex: 1; font-family: ui-monospace, Consolas, monospace; font-size: 12px; background: var(--bg-deep, rgba(0,0,0,.3)); border: 1px solid var(--line, rgba(255,255,255,.1)); border-radius: 8px; color: inherit; padding: 8px 10px; resize: vertical }
+.code { flex: 1; font-family: ui-monospace, Consolas, monospace; font-size: 12px; background: var(--paper-deep); border: 1px solid var(--line, rgba(255,255,255,.1)); border-radius: 8px; color: inherit; padding: 8px 10px; resize: vertical }
 .codeSide { display: flex; flex-direction: column; gap: 8px; max-width: 220px }
 .chartHost { margin-top: 10px; border: 1px solid var(--line, rgba(255,255,255,.08)); border-radius: 10px; padding: 8px }
 .viewer { position: fixed; inset: 0; z-index: 90; background: rgba(4,8,12,.78); display: flex; align-items: center; justify-content: center; padding: 4vh 4vw }
-.viewerBody { width: 100%; max-width: 1100px; background: var(--panel, #0e141b); border: 1px solid var(--line, rgba(255,255,255,.12)); border-radius: 14px; overflow: hidden }
+.viewerBody { width: 100%; max-width: 1100px; background: var(--surface-card); border: 1px solid var(--line, rgba(255,255,255,.12)); border-radius: 14px; overflow: hidden }
 .viewerBar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line, rgba(255,255,255,.08)) }
 .viewerBar b { font-size: 13px }
 .viewerBar .unit { flex: 1 }

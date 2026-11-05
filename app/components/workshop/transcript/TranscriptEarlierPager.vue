@@ -59,7 +59,7 @@ const emit = defineEmits<{
 .earlier-done {
   margin-bottom: 8px;
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   text-align: center;
   color: var(--ink-faint);
 }

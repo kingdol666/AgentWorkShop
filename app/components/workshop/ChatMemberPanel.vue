@@ -412,7 +412,7 @@ const avatarText = (m: AepChannelMember): string =>
 .mp-count {
   padding: 0 5px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--fs-micro);
   background: var(--paper-deep);
   border-radius: var(--radius-chip);
 }
@@ -499,7 +499,7 @@ const avatarText = (m: AepChannelMember): string =>
   flex: none;
   padding: 0 5px;
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: var(--fs-micro);
   letter-spacing: 0.08em;
   color: var(--tone-warning-dot);
   border: 1px solid color-mix(in srgb, var(--tone-warning-dot) 40%, transparent);
@@ -509,7 +509,7 @@ const avatarText = (m: AepChannelMember): string =>
   display: flex;
   gap: 6px;
   align-items: center;
-  font-size: 10.5px;
+  font-size: var(--fs-micro);
   color: var(--ink-fainter);
 }
 .mp-status[data-status='active'] { color: var(--tone-success-dot); }
@@ -539,7 +539,7 @@ const avatarText = (m: AepChannelMember): string =>
 }
 .mp-ver {
   font-family: var(--font-mono);
-  font-size: 9.5px;
+  font-size: var(--fs-micro);
   color: var(--ink-fainter);
 }
 .mp-field {
