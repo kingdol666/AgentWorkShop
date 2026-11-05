@@ -375,7 +375,11 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
   protected async rescueStaleRoots(): Promise<void> {
     if (!rootQueueEnabled()) return
     const now = Date.now()
-    const RESCUE_STALE_MS = 90_000
+    // 2026-11-05：90s 固定阈值会在真实 LLM 长回合里误杀忙碌 lead（上一轮产品落地页
+    // 实测：lead 读 skill/生成长 HTML 时被反复卸载）。默认放宽到 5min，并允许
+    // AW_ROOT_RESCUE_STALE_MS 覆盖；忙碌 lead 一律跳过（见下）。
+    const configured = Number(process.env.AW_ROOT_RESCUE_STALE_MS ?? 0)
+    const RESCUE_STALE_MS = Number.isFinite(configured) && configured >= 60_000 ? configured : 300_000
     const RESCUE_COOLDOWN_MS = 10 * 60_000
     if (this.rescueSeen.size > 500) this.rescueSeen.clear()
     for (const channel of this.deps.repos.channels.list()) {
@@ -392,6 +396,13 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
       const head = roots.find(r => !TERMINAL_TASK_STATES[r.state as TaskState])
       if (!head || head.state !== 'SUBMITTED' || head.assigneeId !== channel.leadAgentId) continue
       if (now - Date.parse(head.createdAt) < RESCUE_STALE_MS) continue
+      // 忙碌 lead 不救援：root 仍是 SUBMITTED 可能只是「消息已消费、回合尚未把状态推进」，
+      // 此时卸载会打断正在生成的长任务（D1 反复卸载的直接根因）。
+      const leadRt = this.runtimeOf(channel.id, channel.leadAgentId)
+      if (leadRt?.getState?.() === 'busy') {
+        log.warn(`[AgentChannelManager] D1 兜底跳过:lead 正忙(channel ${channel.id.slice(0, 8)} root ${head.id.slice(0, 8)})`)
+        continue
+      }
       const last = this.rescueSeen.get(head.id) ?? 0
       if (now - last < RESCUE_COOLDOWN_MS) continue
       this.rescueSeen.set(head.id, now)
