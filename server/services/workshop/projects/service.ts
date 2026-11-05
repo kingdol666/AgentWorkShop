@@ -1024,15 +1024,34 @@ export class ProjectService {
 
   listResults(id: string, actor: ProjectActor): ProjectResultRow[] {
     this.get(id, actor)
-    return this.filterResultsByGrant(this.results.listByProject(id), actor)
+    return this.filterResultsByGrant(id, this.results.listByProject(id), actor)
   }
 
-  /** C11 line grant：成果列表按人类 actor 可见产线集过滤（agents 走 agentReadResults，不受此影响）。 */
-  private filterResultsByGrant(rows: ProjectResultRow[], actor: ProjectActor): ProjectResultRow[] {
+  /**
+   * C11 line grant：成果列表按人类 actor 可见产线集过滤（agents 走 agentReadResults，不受此影响）。
+   * 纯开发项目（无任何成员 Channel 绑产线）不做产线过滤 —— 否则空 lineId 成果对 approver 不可见，
+   * 业务签核无法完成；只有线绑定项目才沿用 S4 口径（空 lineId 对非 admin 隐藏）。
+   */
+  private filterResultsByGrant(projectId: string, rows: ProjectResultRow[], actor: ProjectActor): ProjectResultRow[] {
     const visible = this.lineVisibleOf(actor)
     if (visible === undefined || visible === null) return rows
-    // 非产线项目（lineId=''）没有产线授权概念：项目成员应可见/可签核。
-    return rows.filter(r => r.lineId === '' || visible.has(r.lineId))
+    const lineBound = this.projectIsLineBound(projectId)
+    return rows.filter((r) => {
+      // 纯开发项目的空 lineId 成果按项目成员治理；线绑定项目的空 lineId 视为不可见（S4）。
+      if (r.lineId === '') return !lineBound
+      return visible.has(r.lineId)
+    })
+  }
+
+  /** 项目是否有任一 active 成员 Channel 绑定产线（决定是否启用 C11 产线过滤）。 */
+  private projectIsLineBound(projectId: string): boolean {
+    const p = this.projects.findById(projectId)
+    if (!p) return false
+    return this.bindings.listByProject(projectId).some((b) => {
+      if (b.status !== 'active') return false
+      const ch = this.manager.getChannelForUser(b.channelId, p.ownerUserId)
+      return Boolean(ch?.lineId)
+    })
   }
 
   /** undefined=未启用过滤（兼容/单测）；null=不限（admin/agent）；Set=授权产线集。 */
@@ -1045,8 +1064,11 @@ export class ProjectService {
   private assertResultLineVisible(result: ProjectResultRow, actor: ProjectActor): void {
     const visible = this.lineVisibleOf(actor)
     if (visible === undefined || visible === null) return
-    // 纯开发项目（无产线）成果不属于任何产线：只按项目成员/审批角色治理，不做产线过滤。
-    if (result.lineId === '') return
+    if (result.lineId === '') {
+      // 纯开发项目没有产线授权概念；线绑定项目的空 lineId 仍按 S4 隐藏。
+      if (!this.projectIsLineBound(result.projectId)) return
+      throw new AppError(403, 'LINE_FORBIDDEN', '无该成果产线授权（line -）')
+    }
     if (!visible.has(result.lineId)) {
       throw new AppError(403, 'LINE_FORBIDDEN', `无该成果产线授权（line ${result.lineId}）`)
     }
@@ -1082,7 +1104,7 @@ export class ProjectService {
     }
     const deliverables = this.deliverables.listByProject(id)
     const items = this.workItems.listByProject(id)
-    const results = this.filterResultsByGrant(this.results.listByProject(id), actor)
+    const results = this.filterResultsByGrant(id, this.results.listByProject(id), actor)
     const pendingApprovals = this.approvals.listPending(id)
     const weekEvents = this.events.listByProject(id).filter(e => e.createdAt >= weekAgo)
     const required = deliverables.filter(d => d.required === 1)
@@ -1590,7 +1612,11 @@ export class ProjectService {
               reviewedBy: result.reviewedBy,
               reviewedAt: result.reviewedAt,
             })
-            this.deliverables.setStatus(result.deliverableId, 'approved')
+            // Router v3：单个辅助成果（如 design 槽）批准 ≠ 交付物整体验收。
+            // 只有该交付物下全部工作项终态且每个成果都已业务批准，才置 deliverable=approved。
+            if (this.deliverableAcceptanceReady(result.projectId, result.deliverableId)) {
+              this.deliverables.setStatus(result.deliverableId, 'approved')
+            }
           }
           else {
             this.results.setStatus(result.id, 'rejected', {
@@ -1653,6 +1679,20 @@ export class ProjectService {
       updated = this.results.findById(resultId)!
     })
     return updated
+  }
+
+  /**
+   * 交付物级业务验收：所有工作项终态，且每个 COMPLETED 工作项都有 approved 成果。
+   * 辅助槽（design/art）批准不会让交付物提前通过；主交付成果批准且工作项全终态才通过。
+   */
+  private deliverableAcceptanceReady(projectId: string, deliverableId: string): boolean {
+    const items = this.workItems.listByProject(projectId)
+      .filter(w => w.deliverableId === deliverableId && !['CANCELED', 'SUPERSEDED'].includes(w.state))
+    if (items.length === 0) return false
+    if (items.some(w => w.state !== 'COMPLETED')) return false
+    const results = this.results.listByProject(projectId)
+      .filter(r => r.deliverableId === deliverableId && r.status === 'approved')
+    return items.every(w => results.some(r => r.workItemId === w.id))
   }
 
   /**
@@ -1795,7 +1835,7 @@ export class ProjectService {
       members: this.members.listByProject(id),
       deliverables: this.deliverables.listByProject(id),
       workItems: this.workItems.listByProject(id),
-      results: this.filterResultsByGrant(this.results.listByProject(id), actor),
+      results: this.filterResultsByGrant(id, this.results.listByProject(id), actor),
       approvals: { pending: this.approvals.listPending(id), history: this.approvals.listByProject(id) },
       report,
       // PR17 M4 内核摘要（additive；HealthBoard + effects + ledger 概览）
@@ -1853,7 +1893,7 @@ export class ProjectService {
   projectObservability(id: string, actor: ProjectActor) {
     const p = this.get(id, actor)
     const items = this.workItems.listByProject(id)
-    const results = this.filterResultsByGrant(this.results.listByProject(id), actor) as ProjectResultRow[]
+    const results = this.filterResultsByGrant(id, this.results.listByProject(id), actor) as ProjectResultRow[]
     const deliverables = this.deliverables.listByProject(id)
     const allResults = this.results.listByProject(id)
     const readinessCtx = { items, results: allResults, deliverables, routingPolicy: p.routingPolicy }
@@ -1893,8 +1933,10 @@ export class ProjectService {
       const attempt = w.currentAttemptId ? this.attempts.findById(w.currentAttemptId) : undefined
       return {
         id: w.id, title: w.title, brief: w.brief, channelId: w.channelId, deliverableId: w.deliverableId,
-        state: w.state, stage: this.stageOf(w, readiness, result), waitingOn: readiness.ready ? 'READY' : readiness.waitingOn,
-        waitingReason: readiness.ready ? '' : readiness.reason,
+        state: w.state, stage: this.stageOf(w, readiness, result),
+        // 只有 DRAFT 才存在“等待派发”语义；已派发/终态工作项不显示 IN_FLIGHT 文案。
+        waitingOn: w.state === 'DRAFT' ? (readiness.ready ? 'READY' : readiness.waitingOn) : '',
+        waitingReason: w.state === 'DRAFT' && !readiness.ready ? readiness.reason : '',
         priority: w.priority, resultKey: w.resultKey, attemptCount: w.attemptCount, maxAttempts: w.maxAttempts,
         reworkCount: w.reworkCount, deferredUntil: w.deferredUntil, stateReason: w.stateReason,
         acceptedResultId: w.acceptedResultId, lastResultStatus: result?.status ?? '',
@@ -2053,7 +2095,12 @@ export class ProjectService {
       workItem: {
         id: wi.id, title: wi.title, brief: wi.brief, state: wi.state, channelId: wi.channelId,
         deliverableId: wi.deliverableId, resultKey: wi.resultKey, stage: this.stageOf(wi, readiness, this.latestResultOf(wi.id, results)),
-        readiness: { ready: readiness.ready, waitingOn: readiness.waitingOn, reason: readiness.reason, upstreamResultIds: readiness.upstreamResultIds },
+        readiness: {
+          ready: readiness.ready,
+          waitingOn: wi.state === 'DRAFT' ? readiness.waitingOn : 'DONE',
+          reason: wi.state === 'DRAFT' ? readiness.reason : '',
+          upstreamResultIds: readiness.upstreamResultIds,
+        },
         attemptCount: wi.attemptCount, maxAttempts: wi.maxAttempts, reworkCount: wi.reworkCount,
         contract: parseJson<Record<string, unknown>>(wi.contractJson, {}),
         acceptance: parseJson<string[]>(wi.acceptanceJson, []),

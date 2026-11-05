@@ -1288,7 +1288,10 @@ onUnmounted(() => {
             >{{ stageLabel(detail.workItem.stage) }}</span>
             <span class="muted">{{ detail.workItem.state }} · attempt {{ detail.workItem.attemptCount }}/{{ detail.workItem.maxAttempts }}</span>
           </div>
-          <p class="muted">
+          <p
+            v-if="detail.workItem.readiness.reason"
+            class="muted"
+          >
             {{ detail.workItem.readiness.waitingOn }} · {{ detail.workItem.readiness.reason }}
           </p>
           <p
