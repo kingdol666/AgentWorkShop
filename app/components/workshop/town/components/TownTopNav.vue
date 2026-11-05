@@ -312,7 +312,7 @@ const emit = defineEmits<{
   .nav-right { order: 1; flex: none; margin-left: 0; gap: 6px; }
   /* 模式段整行:不再绝对定位居中(那会与品牌/开关互相压字) */
   .nav-tabs { order: 2; flex: 1 1 100%; position: static; transform: none; gap: 8px; }
-  .seg button { padding: 0 14px; font-size: 13px; }
+  .seg button { padding: 10px 14px; font-size: 13px; }
   .nav-action { height: 40px; padding: 0 12px; font-size: 13px; }
   .save-chip { font-size: 11.5px; }
   .nav-chip { font-size: 11.5px; padding: 5px 8px; }
