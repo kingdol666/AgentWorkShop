@@ -183,6 +183,27 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
       throw new AppError(409, 'PROJECT_SOURCE_CONFLICT', 'source key 已对应其他项目/工作项，拒绝复用')
     }
     this.ensureChannelRuntime(input.channelId).wakeScheduler()
+    // Router v3：项目 root 不能只依赖 SchedulerLoop 的隐性 wake（omp 冷启动/lead 重载窗口里
+    // 实测 SUBMITTED 滞留到 D1 10min 兜底）。创建即投递 task-scoped assign 消息，让 lead
+    // 通过 mailbox 消费循环稳健入场；D1 仍保留为兜底。
+    if (created) {
+      const brief = [input.title, input.description ?? ''].filter(Boolean).join('\n')
+      const assign = buildMessage(
+        input.channelId,
+        'ROLE_USER',
+        [{ text: brief || input.title }],
+        {
+          'x-aw-target-agent': channel.leadAgentId,
+          'x-aw-msg-priority': 'immediate',
+          'x-aw-task-kind': 'assign',
+          'x-aw-task-id': task.id,
+          'x-aw-from-label': '项目派发',
+        },
+      )
+      assign.taskId = task.id
+      this.route(input.channelId, assign)
+      this.wakeAgent(input.channelId, channel.leadAgentId)
+    }
     return { task, created }
   }
 

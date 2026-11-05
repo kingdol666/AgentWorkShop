@@ -76,6 +76,10 @@ export function initProjectKernel(deps: ProjectKernelDeps, options: ProjectKerne
     reconcile: async (effect) => {
       service.reconcileInternal(effect.projectId)
     },
+    // Router v3 P0：任务状态回调的 durable 落点（重复回调幂等收敛 + 派发）。
+    task_callback: async (effect) => {
+      await service.runRouteLoop(effect.projectId)
+    },
     mailbox: async (effect, payload) => {
       const ids = Array.isArray(payload.events) ? payload.events as string[] : []
       const rows = ids.map(id => db.prepare('SELECT type, created_at AS createdAt, payload_json AS payloadJson FROM project_events WHERE id = ?').get(id) as { type: string, createdAt: string, payloadJson: string } | undefined).filter(Boolean) as Array<{ type: string, createdAt: string, payloadJson: string }>

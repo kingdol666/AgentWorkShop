@@ -211,6 +211,8 @@ export default function workshopPlugin(nitroApp: {
       return new Set(grants.keys())
     },
   })
+  // Router v3 P0：tasks 状态机 → 项目回调（durable outbox + 立即收敛；tick/30s 兜底）。
+  manager.setProjectTaskChangeSink(e => projectService.onTaskStateChange(e.taskId, e.state))
   const projectReconciler = startProjectReconciler(projectService)
   // PR17 M4 调度内核：事件分级消费 + effects outbox + watchdog（10s tick，watchdog 每 3 tick）。
   const projectKernel = initProjectKernel(

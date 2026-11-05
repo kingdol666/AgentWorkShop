@@ -87,6 +87,18 @@ export abstract class ManagerState extends ManagerContracts {
   protected readonly stoppingAgents = new Set<string>()
   protected buses = new Map<string, ChannelBus>()
   protected taskEngine: TaskEngine | null = null
+  /**
+   * Router v3 P0：Project 层任务回调 sink（插件装配）。
+   * 运行时不得反向依赖 ProjectService —— 只通过本回调把 source=project 的状态迁移
+   * 交给上层；回调异常必须被吞掉，不能影响任务状态机。
+   */
+  protected projectTaskChangeSink?: (e: { taskId: string, channelId: string, state: string }) => void
+
+  /** 装配 Project 任务回调（project service 初始化后调用；传 null 解除）。 */
+  setProjectTaskChangeSink(sink: ((e: { taskId: string, channelId: string, state: string }) => void) | null): void {
+    this.projectTaskChangeSink = sink ?? undefined
+  }
+
   protected idleSweeperTimer: NodeJS.Timeout | null = null
   protected memoryTimer: NodeJS.Timeout | null = null
   /** §7.3 outbox 独立补偿定时器(短周期重试;与记忆维护 6h 周期解耦) */
@@ -404,6 +416,13 @@ export abstract class ManagerState extends ManagerContracts {
             reassignFrom: e.reassignFrom,
             reason: e.reason,
           })
+          // Router v3 P0：Project 来源任务的终态/开工 → 项目侧 durable 回调（try/catch 隔离）。
+          if (e.task?.source === 'project' && e.state) {
+            try {
+              this.projectTaskChangeSink?.({ taskId: e.taskId, channelId: e.channelId, state: e.state })
+            }
+            catch { /* 项目回调失败不得影响任务状态机 */ }
+          }
           // 事件驱动调度:任务状态变化即唤醒该频道调度循环(空闲退避即刻恢复快节奏)。
           //
           // ⚠️ 只 wake 不够:lead 运行时因空闲被清扫卸载后 `cr.scheduler` 会被置空

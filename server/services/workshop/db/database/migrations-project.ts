@@ -31,6 +31,26 @@ function hasProjectsColumn(db: DatabaseSync, column: string): boolean {
   return cols.some(c => c.name === column)
 }
 
+function hasWorkItemColumn(db: DatabaseSync, column: string): boolean {
+  const cols = db.prepare('PRAGMA table_info(project_work_items)').all() as Array<{ name: string }>
+  return cols.some(c => c.name === column)
+}
+
+function hasAttemptColumn(db: DatabaseSync, column: string): boolean {
+  const cols = db.prepare('PRAGMA table_info(project_work_item_attempts)').all() as Array<{ name: string }>
+  return cols.some(c => c.name === column)
+}
+
+function hasResultColumn(db: DatabaseSync, column: string): boolean {
+  const cols = db.prepare('PRAGMA table_info(project_results)').all() as Array<{ name: string }>
+  return cols.some(c => c.name === column)
+}
+
+function hasDecisionColumn(db: DatabaseSync, column: string): boolean {
+  const cols = db.prepare('PRAGMA table_info(project_decisions)').all() as Array<{ name: string }>
+  return cols.some(c => c.name === column)
+}
+
 export function migrateProjectColumns(db: DatabaseSync): void {
   if (!hasChannelAgentColumn(db, 'agent_kind')) {
     db.exec('ALTER TABLE channel_agents ADD COLUMN agent_kind TEXT NOT NULL DEFAULT \'channel_agent\'')
@@ -59,6 +79,52 @@ export function migrateProjectColumns(db: DatabaseSync): void {
   // PR20 Route 派发闭环：项目级自动派发开关（存量项目默认 0 = 行为零突变，owner 显式启用）
   if (!hasProjectsColumn(db, 'auto_dispatch')) {
     db.exec('ALTER TABLE projects ADD COLUMN auto_dispatch INTEGER NOT NULL DEFAULT 0')
+  }
+  // Router v3 P0：存量项目一律 legacy（上游终态即放行）；新项目由 API 写 technical。
+  if (!hasProjectsColumn(db, 'routing_policy')) {
+    db.exec('ALTER TABLE projects ADD COLUMN routing_policy TEXT NOT NULL DEFAULT \'legacy\'')
+  }
+  if (!hasWorkItemColumn(db, 'accepted_result_id')) {
+    db.exec('ALTER TABLE project_work_items ADD COLUMN accepted_result_id TEXT')
+  }
+  if (!hasWorkItemColumn(db, 'last_result_status')) {
+    db.exec('ALTER TABLE project_work_items ADD COLUMN last_result_status TEXT NOT NULL DEFAULT \'\'')
+  }
+  if (!hasWorkItemColumn(db, 'attempt_count')) {
+    db.exec('ALTER TABLE project_work_items ADD COLUMN attempt_count INTEGER NOT NULL DEFAULT 0')
+  }
+  if (!hasWorkItemColumn(db, 'max_attempts')) {
+    db.exec('ALTER TABLE project_work_items ADD COLUMN max_attempts INTEGER NOT NULL DEFAULT 3')
+  }
+  if (!hasWorkItemColumn(db, 'deferred_until')) {
+    db.exec('ALTER TABLE project_work_items ADD COLUMN deferred_until TEXT')
+  }
+  if (!hasAttemptColumn(db, 'failure_class')) {
+    db.exec('ALTER TABLE project_work_item_attempts ADD COLUMN failure_class TEXT NOT NULL DEFAULT \'\'')
+  }
+  if (!hasAttemptColumn(db, 'retryable')) {
+    db.exec('ALTER TABLE project_work_item_attempts ADD COLUMN retryable INTEGER NOT NULL DEFAULT 0')
+  }
+  if (!hasAttemptColumn(db, 'next_retry_at')) {
+    db.exec('ALTER TABLE project_work_item_attempts ADD COLUMN next_retry_at TEXT')
+  }
+  if (!hasResultColumn(db, 'content_sha256')) {
+    db.exec('ALTER TABLE project_results ADD COLUMN content_sha256 TEXT NOT NULL DEFAULT \'\'')
+  }
+  if (!hasResultColumn(db, 'evidence_verified_at')) {
+    db.exec('ALTER TABLE project_results ADD COLUMN evidence_verified_at TEXT')
+  }
+  if (!hasResultColumn(db, 'criteria_check_json')) {
+    db.exec('ALTER TABLE project_results ADD COLUMN criteria_check_json TEXT NOT NULL DEFAULT \'{}\'')
+  }
+  if (!hasResultColumn(db, 'technical_verdict_json')) {
+    db.exec('ALTER TABLE project_results ADD COLUMN technical_verdict_json TEXT NOT NULL DEFAULT \'{}\'')
+  }
+  if (!hasResultColumn(db, 'rework_required')) {
+    db.exec('ALTER TABLE project_results ADD COLUMN rework_required INTEGER NOT NULL DEFAULT 0')
+  }
+  if (!hasDecisionColumn(db, 'actor_kind')) {
+    db.exec('ALTER TABLE project_decisions ADD COLUMN actor_kind TEXT NOT NULL DEFAULT \'\'')
   }
   ensureProjectIndexes(db)
 }

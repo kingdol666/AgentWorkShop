@@ -1247,6 +1247,9 @@ CREATE TABLE IF NOT EXISTS projects (
   plan_approval_required INTEGER NOT NULL DEFAULT 1,
   -- PR20 Route 派发闭环：1 = 计划批准后由确定性派发器按 dependsOn 就绪顺序自动派发（默认关，渐进启用）
   auto_dispatch         INTEGER NOT NULL DEFAULT 0,
+  -- Router v3 P0：legacy=旧口径（上游工作项终态即放行）；technical=上游成果技术验收后才放行。
+  -- 存量行迁移为 legacy（零突变）；新项目由 API 显式写 technical。
+  routing_policy        TEXT NOT NULL DEFAULT 'legacy',
   config_json           TEXT NOT NULL DEFAULT '{}',
   deadline_at           TEXT,
   created_at            TEXT NOT NULL,
@@ -1319,6 +1322,12 @@ CREATE TABLE IF NOT EXISTS project_work_items (
   dedupe_key          TEXT NOT NULL,
   deadline_at         TEXT,
   rework_count        INTEGER NOT NULL DEFAULT 0,
+  -- Router v3 P0/P1：最近一次成果验收投影 + 派发/重试/延后状态
+  accepted_result_id  TEXT,
+  last_result_status  TEXT NOT NULL DEFAULT '',
+  attempt_count       INTEGER NOT NULL DEFAULT 0,
+  max_attempts        INTEGER NOT NULL DEFAULT 3,
+  deferred_until      TEXT,
   created_by          TEXT NOT NULL DEFAULT 'project_leader',
   created_at          TEXT NOT NULL,
   updated_at          TEXT NOT NULL,
@@ -1343,6 +1352,10 @@ CREATE TABLE IF NOT EXISTS project_work_item_attempts (
   blocked_reason    TEXT,
   approval_id       TEXT,
   args_digest       TEXT NOT NULL DEFAULT '',
+  -- Router v3 P0：失败分类与可重试退避（TRANSIENT/CONTRACT/CONTENT/POLICY/BUDGET）
+  failure_class     TEXT NOT NULL DEFAULT '',
+  retryable         INTEGER NOT NULL DEFAULT 0,
+  next_retry_at     TEXT,
   trace_id          TEXT NOT NULL DEFAULT '',
   created_at        TEXT NOT NULL,
   closed_at         TEXT,
@@ -1386,6 +1399,12 @@ CREATE TABLE IF NOT EXISTS project_results (
   approved_by       TEXT,
   approved_at       TEXT,
   reject_reason     TEXT,
+  -- Router v3 P0/P1：内容摘要与证据核验时间；criteria_check 为 L0 结构化检查结果
+  content_sha256    TEXT NOT NULL DEFAULT '',
+  evidence_verified_at TEXT,
+  criteria_check_json  TEXT NOT NULL DEFAULT '{}',
+  technical_verdict_json TEXT NOT NULL DEFAULT '{}',
+  rework_required   INTEGER NOT NULL DEFAULT 0,
   trace_id          TEXT NOT NULL DEFAULT '',
   created_at        TEXT NOT NULL,
   UNIQUE(project_id, deliverable_id, channel_id, result_key, version),
@@ -1396,6 +1415,22 @@ CREATE INDEX IF NOT EXISTS idx_project_results_lookup
 CREATE UNIQUE INDEX IF NOT EXISTS uq_project_result_approved
   ON project_results(project_id, deliverable_id, result_key) WHERE status='approved';
 
+-- Router v3 P1：成果血缘（下游成果消费了哪些上游 result/version；supersede 影响分析用）
+CREATE TABLE IF NOT EXISTS project_result_inputs (
+  id               TEXT PRIMARY KEY,
+  project_id       TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  result_id        TEXT NOT NULL REFERENCES project_results(id) ON DELETE CASCADE,
+  input_result_id  TEXT NOT NULL,
+  input_version    INTEGER NOT NULL,
+  relation         TEXT NOT NULL DEFAULT 'handoff',
+  created_at       TEXT NOT NULL,
+  UNIQUE(result_id, input_result_id)
+);
+CREATE INDEX IF NOT EXISTS idx_project_result_inputs_input
+  ON project_result_inputs(input_result_id);
+CREATE INDEX IF NOT EXISTS idx_project_result_inputs_project
+  ON project_result_inputs(project_id);
+
 CREATE TABLE IF NOT EXISTS project_decisions (
   id                TEXT PRIMARY KEY,
   project_id        TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
@@ -1404,6 +1439,8 @@ CREATE TABLE IF NOT EXISTS project_decisions (
   decision_type     TEXT NOT NULL,
   actor_agent_id    TEXT,
   actor_user_id     TEXT,
+  -- Router v3 P0：真实主体类型（owner|approver|admin|project_leader|channel_lead|worker|system）
+  actor_kind        TEXT NOT NULL DEFAULT '',
   args_json         TEXT NOT NULL DEFAULT '{}',
   args_sha256       TEXT NOT NULL,
   snapshot_sha256   TEXT NOT NULL DEFAULT '',
@@ -1416,6 +1453,53 @@ CREATE TABLE IF NOT EXISTS project_decisions (
   created_at        TEXT NOT NULL,
   UNIQUE(project_id, seq)
 );
+
+-- Router v3 P2：技术验收（L1，可委派给独立 reviewer Channel/agent）
+CREATE TABLE IF NOT EXISTS project_technical_reviews (
+  id                   TEXT PRIMARY KEY,
+  project_id           TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  result_id            TEXT NOT NULL REFERENCES project_results(id) ON DELETE CASCADE,
+  result_version       INTEGER NOT NULL,
+  reviewer_agent_id    TEXT NOT NULL,
+  reviewer_channel_id  TEXT NOT NULL,
+  reviewer_kind        TEXT NOT NULL DEFAULT 'channel_lead',
+                       -- project_leader|channel_lead|owner|admin
+  verdict              TEXT NOT NULL,
+                       -- pass|fail
+  checks_json          TEXT NOT NULL DEFAULT '[]',
+  note                 TEXT NOT NULL DEFAULT '',
+  trace_id             TEXT NOT NULL DEFAULT '',
+  created_at           TEXT NOT NULL,
+  UNIQUE(result_id, result_version, reviewer_agent_id)
+);
+CREATE INDEX IF NOT EXISTS idx_project_technical_reviews_result
+  ON project_technical_reviews(result_id, result_version);
+
+-- Router v3 P2：项目内消息（leader↔Channel / Channel↔Channel；服务端生成 from）
+CREATE TABLE IF NOT EXISTS project_messages (
+  id                TEXT PRIMARY KEY,
+  project_id        TEXT NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+  from_agent_id     TEXT NOT NULL,
+  from_channel_id   TEXT NOT NULL,
+  to_agent_id       TEXT NOT NULL,
+  to_channel_id     TEXT NOT NULL,
+  kind              TEXT NOT NULL DEFAULT 'note',
+                    -- note|escalate|reply|request_review
+  work_item_id      TEXT,
+  result_id         TEXT,
+  correlation_id    TEXT NOT NULL DEFAULT '',
+  body              TEXT NOT NULL,
+  require_reply     INTEGER NOT NULL DEFAULT 0,
+  status            TEXT NOT NULL DEFAULT 'pending',
+                    -- pending|delivered|failed
+  error             TEXT NOT NULL DEFAULT '',
+  trace_id          TEXT NOT NULL DEFAULT '',
+  created_at        TEXT NOT NULL,
+  delivered_at      TEXT,
+  UNIQUE(project_id, correlation_id, from_agent_id)
+);
+CREATE INDEX IF NOT EXISTS idx_project_messages_to
+  ON project_messages(project_id, to_agent_id, created_at DESC);
 
 CREATE TABLE IF NOT EXISTS project_events (
   id            TEXT PRIMARY KEY,

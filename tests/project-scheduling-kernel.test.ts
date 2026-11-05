@@ -163,7 +163,7 @@ test('S3 慢路径：单飞合并 + 最小间隔退避（defer 事件留队列�
     s.kernel.effects.claim(pending[0]!.id)
     s.kernel.effects.markDone(pending[0]!.id)
     clock += 60_000
-    appendEvent(s, s.p.id, 'result.submit', 'b3')
+    appendEvent(s, s.p.id, 'work.blocked', 'b3')
     const r3 = ingress.process(s.p.id)
     assert.equal(r3.deferred, 1)
     assert.equal(r3.consumed, 0)

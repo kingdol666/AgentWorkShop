@@ -229,9 +229,10 @@ test('C11: 列表过滤——owner 仅见授权产线成果；无授权=空；�
     assert.equal(legacy.listResults(s.p.id, s.owner).length, 1)
     // admin 直通
     assert.equal(granted.listResults(s.p.id, { id: 'x', role: 'admin' }).length, 1)
-    // 空 line_id 成果对非 admin 隐藏（S4 同口径）
+    // 非产线项目（无成员 Channel 绑线）：空 line_id 成果按项目成员治理，approver 可见/可签核。
+    // 线绑定项目的空 line_id 仍按 S4 隐藏；单成果操作门测试覆盖非空 line 的 LINE_FORBIDDEN。
     s.db.prepare('UPDATE project_results SET line_id = \'\' WHERE id = ?').run(s.draft.id)
-    assert.equal(granted.listResults(s.p.id, s.owner).length, 0)
+    assert.equal(granted.listResults(s.p.id, s.owner).length, 1)
     assert.equal(granted.listResults(s.p.id, { id: 'x', role: 'admin' }).length, 1)
   }
   finally {

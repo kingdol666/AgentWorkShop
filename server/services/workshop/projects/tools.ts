@@ -181,6 +181,63 @@ export async function dispatchProjectTool(
         return { text: 'BAD_REQUEST: kind 必须是 project_complete 或 deliverable_acceptance', isError: true }
       }
 
+      case 'project_submit_technical_review': {
+        const resultId = asString(args.result_id ?? args.resultId)
+        const verdict = asString(args.verdict) as 'pass' | 'fail'
+        const { review, result } = svc.agentSubmitTechnicalReview(identity.agentId, {
+          resultId,
+          verdict,
+          checks: Array.isArray(args.checks) ? args.checks.map(asObject) : undefined,
+          note: asString(args.note ?? args.reason) || undefined,
+        })
+        return out({
+          ok: true,
+          reviewId: review.id,
+          verdict: review.verdict,
+          result: resultView(result),
+          next: verdict === 'pass' ? '技术验收通过（L1）；下游可放行，业务签核仍需 owner/approver' : '技术验收未通过；生产 Channel 需返工后重新提交',
+        })
+      }
+
+      case 'project_propose_route': {
+        const result = await svc.agentProposeRoute(identity.agentId, {
+          workItemId: asString(args.work_item_id ?? args.workItemId),
+          action: asString(args.action) as 'dispatch' | 'defer' | 'retry' | 'rework' | 'escalate',
+          reason: asString(args.reason) || undefined,
+          deferMinutes: typeof args.defer_minutes === 'number' ? args.defer_minutes : (typeof args.deferMinutes === 'number' ? args.deferMinutes : undefined),
+          targetChannelId: asString(args.target_channel_id ?? args.targetChannelId) || undefined,
+        })
+        return out({
+          ok: true,
+          proposalId: result.decision.id,
+          applied: result.applied,
+          status: result.decision.state,
+          workItem: result.workItem ? { id: result.workItem.id, state: result.workItem.state, channelId: result.workItem.channelId } : null,
+          next: result.applied ? 'route 已由确定性执行器应用' : '等待 owner 在项目页应用（或项目切 auto + routeGate=leader 自动应用）',
+        })
+      }
+
+      case 'project_send_message':
+      case 'project_escalate': {
+        const message = await svc.agentSendProjectMessage(identity.agentId, {
+          toChannelId: asString(args.to_channel_id ?? args.toChannelId) || undefined,
+          toLeader: toolName === 'project_escalate' || args.to_leader === true || args.toLeader === true,
+          body: asString(args.body) || asString(args.message),
+          kind: toolName === 'project_escalate' ? 'escalate' : ((asString(args.kind) as 'note' | 'escalate' | 'reply' | 'request_review') || 'note'),
+          requireReply: args.require_reply === true || args.requireReply === true,
+          workItemId: asString(args.work_item_id ?? args.workItemId) || undefined,
+          resultId: asString(args.result_id ?? args.resultId) || undefined,
+          correlationId: asString(args.correlation_id ?? args.correlationId) || undefined,
+        })
+        return out({ ok: true, messageId: message.id, status: message.status, toChannelId: message.toChannelId, toAgentId: message.toAgentId })
+      }
+
+      case 'project_read_messages':
+        return out(svc.agentListProjectMessages(
+          identity.agentId,
+          typeof args.limit === 'number' ? args.limit : undefined,
+        ))
+
       case 'project_request_write_intent': {
         const tool = asString(args.tool)
         const callArgs = asObject(args.args)

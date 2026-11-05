@@ -18,10 +18,12 @@ const schema = z.object({
   leaderConfig: z.record(z.string(), z.unknown()).optional(),
   // PR20 Route 派发闭环：计划批准后按 dependsOn 就绪顺序自动派发（缺省 false）
   autoDispatch: z.boolean().optional(),
+  // Router v3：新项目默认 technical（上游成果技术验收后才放行下游）；显式 legacy 可回退旧口径。
+  routingPolicy: z.enum(['legacy', 'technical']).optional(),
 })
 
 export default defineApiHandler(async (event) => {
   const user = resolveUser(event)
   const body = await readValidatedBody(event, zValidator(schema))
-  return getProjectService().create(body, user)
+  return getProjectService().create({ ...body, routingPolicy: body.routingPolicy ?? 'technical' }, user)
 })
