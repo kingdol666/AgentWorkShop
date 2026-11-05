@@ -1,7 +1,7 @@
 {
   "date": "2026-11-06",
-  "branch": "fix/project-acceptance-l1",
-  "base": "d3650bfc",
+  "branch": "fix/l1-review-hardening",
+  "base": "8f1f623e",
   "environment": {
     "build": ".output (npm run build)",
     "baseUrl": "http://127.0.0.1:3981",
@@ -13,44 +13,67 @@
   "code": {
     "typecheck": "pass",
     "lint": "pass",
-    "unit": { "tests": 1130, "pass": 1128, "fail": 0, "skipped": 2 },
+    "unit": { "tests": 1140, "pass": 1138, "fail": 0, "skipped": 2 },
     "build": "pass"
   },
   "fixes": [
-    "host-tools.json/.en.json now include 5 P2 tools (route/technical review/send/escalate/read messages); total 126",
-    "reviewResult writes project_technical_reviews with truthful reviewer_kind (project_leader/owner/admin)",
-    "requestAcceptance and decideApproval require a pass L1 technical review for technical projects",
-    "ensureTechnicalReviewRequests auto-sends one idempotent request_review per submitted result (reviewer Channel -> leader fallback)",
-    "mode=observe blocks deterministic auto-dispatch; manual dispatch remains",
-    "routeGate is exposed through POST/PATCH /projects and persists in project config"
+    "host-tools.json/.en.json include 5 P2 tools (route/technical review/send/escalate/read messages); total 126",
+    "reviewResult evaluates structured criteria and records a truthful technical review (project_leader/owner/admin)",
+    "requestAcceptance and decideApproval require a current-version pass L1 review for technical projects",
+    "ensureTechnicalReviewRequests auto-sends one idempotent request_review per submission; version + submitted_at correlation; 5min retry up to 3",
+    "reviewer Channel receives an explicit read grant for the requested submitted result (agentReadResults)",
+    "marked L1 fail sets result reworkRequired and work item REWORK; resubmission re-requests L1",
+    "project_send_message correlation idempotency; system:review sender check prevents request suppression spoofing",
+    "mode=observe blocks deterministic auto-dispatch and route retry/rework auto-dispatch",
+    "routeGate and reviewerChannelId are exposed through POST/PATCH /projects",
+    "waiving a deliverable with submitted/reviewed results is rejected",
+    "4 P2 write tools use riskClass=write"
   ],
   "live": {
-    "projectId": "835309fb-6035-4978-bff1-5783a9a96d4c",
+    "projectId": "596b597e-2407-4409-a3ef-472432345984",
     "projectStatus": "completed",
     "mode": "supervised",
     "autoDispatch": 0,
     "routingPolicy": "technical",
-    "routeDecisionId": "ff30b743-3739-4684-b5e0-e56ff3783637",
+    "routeDecisionId": "1862ed79-5972-4473-baef-e404828410de",
     "routeActorKind": "project_leader",
-    "routeTargetChannelId": "287727ed-fbdb-4bac-b02c-a7f1fd2fd145",
-    "workItemId": "a1c25281-f20f-4ba0-9aa8-6f7b7899ff1e",
-    "producerTaskId": "b2963517-9f10-44a9-8bd7-3da12980c6bb",
-    "resultId": "7e58c12e-8bc8-4803-b236-adf0a4ce5409",
-    "artifactBytes": 2437,
-    "artifactSha256": "ccc2b0bbd5ef76af6466449ab2bc9cc5cd3394665abd6bc28cc1981954c085e8",
-    "reviewRequestMessageId": "2862b474-dfa8-47bc-9483-d17a3c62e51b",
+    "routeTargetChannelId": "167aceaa-8304-4097-af65-528f86f02172",
+    "workItemId": "5ef34ba6-aed3-4ace-a193-c8edee0b9ca6",
+    "producerTaskId": "103a857c-898c-4c1c-b8c0-6ae73e877b97",
+    "resultId": "6d4e0666-089b-4754-a05c-a91ed273b6c0",
+    "artifactBytes": 2624,
+    "resultContentSha256": "21ccc53568dc5870d2bba12b606747ac46ae8ff04b0eb3b1002a74a39b93bf8f",
+    "reviewRequestMessageId": "d03142d9-19cd-4988-b683-496f1ad6299c",
     "reviewRequestStatus": "delivered",
-    "technicalReviewId": "e9dcdab0-6847-4a13-96c1-83299f578a68",
+    "technicalReviewId": "14920462-2354-45f4-b6db-790b1ad570fd",
     "technicalReviewerKind": "channel_lead",
-    "technicalReviewerChannelId": "7ea4bf52-3148-4918-b976-c125071c5fb6",
+    "technicalReviewerChannelId": "a41fd365-64c1-4d66-8f60-e591088810a8",
     "technicalVerdict": "pass",
-    "l2ApprovalId": "2b4eeeab-8680-4d5d-9cb2-10ed867d9bf4",
+    "l2ApprovalId": "fac4b188-1d86-4bbf-9c5d-4efc36f24cb6",
     "l2ApprovedAfterL1": true,
+    "reviewLatencySeconds": 351,
     "projectMessages": [
       "request_review (system -> reviewer Channel, delivered)",
-      "note (producer Channel -> leader, delivered)",
-      "reply (leader -> producer Channel, delivered)"
+      "reply (reviewer Channel -> leader, delivered)"
     ],
+    "crossRunMessages": {
+      "run3ProjectId": "586ca4f5-ba86-49f9-85d4-073acdf266a6",
+      "observed": [
+        "producer Channel -> leader note",
+        "leader -> producer Channel reply",
+        "leader -> reviewer Channel note"
+      ]
+    },
+    "leaderToolSurface": {
+      "file": "leader-tool-surface.json",
+      "totalProjectTools": 15,
+      "includes": [
+        "project_propose_route",
+        "project_submit_technical_review",
+        "project_send_message",
+        "project_read_messages"
+      ]
+    },
     "ui": {
       "apiChannels": 2,
       "domLanes": 2,
@@ -72,8 +95,9 @@
   "caveats": [
     "P3 SSE/2s cursor polling is not implemented; the workbench uses 5s polling.",
     "P0 stale attempt reclamation and watchdog dependency_stuck/review_overdue/circuit-breaker extensions are not implemented.",
-    "No worker subtasks were spawned in the live run; the Channel lead executed directly. Child-artifact aggregation is implemented and unit-tested but not live-exercised.",
+    "No worker subtasks were spawned in the live runs; the Channel lead executed directly. Child-artifact aggregation is implemented and unit-tested but not live-exercised.",
     "The live harness owner submitted the result draft before the producer Channel's own project_submit_result, causing the producer to receive RESULT_STATE_INVALID. This is a harness convenience, not a platform defect; production should let the Channel lead submit first.",
-    "The reviewer Channel read the producer workspace file directly (same OS user); strong cross-Channel read isolation is not enforced by an explicit grant in this run."
+    "The acceptance server exited once during run3 (03:50, harness PROCESS_EXIT) before the reviewer finished; run4 on the hardened build completed. Crash watchdog remains an open runtime hardening item.",
+    "The reviewer Channel read the producer workspace file directly after the explicit read grant; strong filesystem isolation between Channel workspaces is still an assumption."
   ]
 }

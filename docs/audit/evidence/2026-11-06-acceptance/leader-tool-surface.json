@@ -1,0 +1,22 @@
+{
+  "agentId": "ba6191ad-a178-4b6a-9a5e-937d364dcd79",
+  "total": 15,
+  "projectTools": [
+    "project_get_status",
+    "project_list_channels",
+    "project_read_deliverables",
+    "project_read_results",
+    "project_read_work_items",
+    "project_propose_plan",
+    "project_propose_dispatch",
+    "project_propose_replan",
+    "project_review_result",
+    "project_request_approval",
+    "project_propose_channel",
+    "project_propose_route",
+    "project_submit_technical_review",
+    "project_send_message",
+    "project_read_messages"
+  ],
+  "capturedAt": "2026-11-05T20:10:49.470Z"
+}

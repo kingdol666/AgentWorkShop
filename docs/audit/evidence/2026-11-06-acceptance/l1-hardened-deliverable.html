@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>L1 Acceptance</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --line: #262b36;
+    --text: #e6e8ee;
+    --muted: #9aa3b2;
+    --pass: #2f9e63;
+    --wait: #b8873a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 48px 24px;
+    background: var(--bg);
+    color: var(--text);
+    font: 15px/1.6 -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  main { max-width: 720px; margin: 0 auto; }
+  h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: .2px; }
+  .sub { color: var(--muted); margin: 0 0 28px; font-size: 13px; }
+  table { width: 100%; border-collapse: collapse; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  th, td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--line); font-size: 14px; }
+  th { color: var(--muted); font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; }
+  tr:last-child td { border-bottom: 0; }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 12px; border: 1px solid currentColor; }
+  .pass { color: var(--pass); }
+  .wait { color: var(--wait); }
+  footer { margin-top: 24px; color: var(--muted); font-size: 12px; }
+  code { font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 12.5px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>L1 Acceptance</h1>
+  <p class="sub">Project: L1 acceptance closed loop — production channel deliverable (work item <code>L1验收页面实现</code>, attempt 1).</p>
+
+  <table>
+    <thead>
+      <tr><th>Stage</th><th>Owner</th><th>Status</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>Leader proposal &amp; dispatch</td><td>Project Leader</td><td><span class="badge pass">done</span></td></tr>
+      <tr><td>Production channel delivery</td><td>L1验收生产频道</td><td><span class="badge pass">delivered</span></td></tr>
+      <tr><td>L1 technical review</td><td>Independent reviewer channel</td><td><span class="badge wait">pending</span></td></tr>
+      <tr><td>L2 business sign-off</td><td>Business owner</td><td><span class="badge wait">pending</span></td></tr>
+    </tbody>
+  </table>
+
+  <footer>
+    Single-file static HTML. No external assets, no scripts, no network calls.
+    Acceptance contract: artifact present · contains <code>&lt;!DOCTYPE html&gt;</code> · <code>&lt;title&gt;L1 Acceptance&lt;/title&gt;</code> · &ge; 200 bytes.
+  </footer>
+</main>
+</body>
+</html>
