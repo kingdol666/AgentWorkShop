@@ -9,11 +9,30 @@
 import { useCookie } from '#imports'
 import { useUserStore } from '../stores/workshop/user'
 
+/** token 双通道恢复:cookie → localStorage(cookie 罐在部分宿主环境会被驱逐) */
+function readToken(): string | null {
+  const cookie = useCookie<string | null>('token').value
+  if (cookie) return cookie
+  try {
+    return localStorage.getItem('aw.token')
+  }
+  catch {
+    return null
+  }
+}
+
+function clearToken(): void {
+  useCookie<string | null>('token').value = null
+  try {
+    localStorage.removeItem('aw.token')
+  }
+  catch { /* localStorage 不可用 */ }
+}
+
 export default defineNuxtPlugin(async () => {
   const store = useUserStore()
   if (store.isLoggedIn) return
-  const cookie = useCookie<string | null>('token')
-  const token = cookie.value
+  const token = readToken()
   if (!token) return
   try {
     // 超时竞速:慢 auth API 不应阻塞整站首绘
@@ -23,7 +42,7 @@ export default defineNuxtPlugin(async () => {
     ])
   }
   catch {
-    // token 已失效(吊销/用户删除/过期):清死 cookie,避免每次刷新重复必然失败的校验
-    useCookie<string | null>('token').value = null
+    // token 已失效(吊销/用户删除/过期):清死凭据,避免每次刷新重复必然失败的校验
+    clearToken()
   }
 })

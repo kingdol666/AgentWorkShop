@@ -78,6 +78,13 @@ export const useUserStore = defineStore('workshop.user', {
         secure: import.meta.client && window.location.protocol === 'https:',
       })
       cookie.value = this.user?.token ?? null
+      // 双通道兜底:cookie 罐在部分环境会被宿主驱逐(嵌入式浏览器/隐私策略),
+      // localStorage 与 cookie 同步写,http 拦截器按 useCookie→document.cookie→localStorage 顺序读取
+      try {
+        if (this.user?.token) localStorage.setItem('aw.token', this.user.token)
+        else localStorage.removeItem('aw.token')
+      }
+      catch { /* localStorage 不可用(隐私模式) */ }
     },
     /** 以 me 响应补全 tokenId（注册/登录签发的新 token 尚未绑定 id） */
     async _attachTokenId(token: string): Promise<void> {
