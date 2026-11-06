@@ -37,7 +37,14 @@ export function projectPromptSection(agentId: string): string {
       channelId: brief.channelId,
       role: brief.role,
     }
-    return brief.isLeader ? renderPrompt('project-leader', vars) : renderPrompt('project-member', vars)
+    const rendered = brief.isLeader ? renderPrompt('project-leader', vars) : renderPrompt('project-member', vars)
+    // P1-8 Leader 重开对账惯例（代码级单源，避免 home 模板分歧）：状态机侧 reconcile
+    // 由内核 tick 自动补齐，但 leader（LLM）自身的推理上下文不会自动刷新——重开/久隔
+    // 后首回合先 project_get_status 对账，再继续发言。
+    const preamble = brief.isLeader
+      ? '【对账惯例】回合开始时先调用 project_get_status 自对账（离线期间的事件已由内核自动补齐，以状态查询结果为准），再继续决策或发言。\n\n'
+      : ''
+    return preamble + rendered
   }
   catch {
     return ''
