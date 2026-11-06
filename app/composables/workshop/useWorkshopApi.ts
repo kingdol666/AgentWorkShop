@@ -87,6 +87,44 @@ export interface TaskDto {
   updatedAt: string
 }
 
+/** 频道多会话(S1):一条会话 = 从基础成员克隆出的独立 agent 实例组(独立 runtime/记忆域) */
+export interface ChannelSessionDto {
+  id: string
+  /** 仅详情路由返回 */
+  channelId?: string
+  title: string
+  status: 'active' | 'closed'
+  memoryPolicy: string
+  /** 基础成员 id → clone 实例 id */
+  memberMap: Record<string, string>
+  createdBy?: string | null
+  createdAt: string
+  closedAt: string | null
+}
+
+/** 会话创建返回的克隆成员明细(clone 名含 ·session· 标记) */
+export interface SessionCloneMemberDto {
+  baseAgentId: string
+  cloneId: string
+  name: string
+  role: string
+}
+
+/** runtime mailbox 消息(GET /channels/:id/messages;parts 已解析) */
+export interface ChannelMessageDto {
+  id: string
+  channelId: string
+  taskId: string | null
+  fromAgentId: string | null
+  toAgentId: string | null
+  role: string
+  parts: Array<{ text?: string }>
+  metadata: Record<string, unknown>
+  state: string
+  createdAt: string
+  consumedAt?: string | null
+}
+
 export interface MemoryRowDto {
   id: string
   channelId: string
@@ -143,6 +181,17 @@ export function useWorkshopApi() {
       http.request<{ data: { channelId: string, executionMode: 'observe' | 'manual' | 'auto', changed: boolean, effective: { channelMode: string, lineMode: 'auto' | 'manual' | null, bindings: { manual: number, auto: number }, suppressed: boolean } } }>({ method: 'PATCH', url: `/workshop/channels/${id}/execution-mode`, data: body }),
     /** 产线清单(绑线选择器数据源) */
     listDcwLines: () => http.get<{ data: { lines: Array<{ id: string, name: string, state?: string }> } }>('/workshop/dcw/lines?limit=200'),
+    // channel sessions(S1 多会话:Channel=模板,会话=从基础成员克隆的独立实例组)
+    listChannelSessions: (id: string) => http.get<{ data: ChannelSessionDto[] }>(`/workshop/channels/${id}/sessions`),
+    /** 单会话详情(sid 不属于该频道 → 404) */
+    getChannelSession: (id: string, sid: string) => http.get<{ data: ChannelSessionDto }>(`/workshop/channels/${id}/sessions/${sid}`),
+    createChannelSession: (id: string, body: { title?: string }) =>
+      http.post<{ data: { sessionId: string, title: string, members: SessionCloneMemberDto[] } }>(`/workshop/channels/${id}/sessions`, body),
+    /** 关闭会话(级联:在飞任务按树取消 + clone 实例停用;幂等) */
+    closeChannelSession: (id: string, sid: string, body?: { reason?: string }) =>
+      http.post<{ data: { canceledTasks: number, clones: string[] } }>(`/workshop/channels/${id}/sessions/${sid}/close`, body ?? {}),
+    /** runtime mailbox 消息清单(limit≤500;parts 已解析) */
+    listChannelMessages: (id: string, limit = 200) => http.get<{ data: ChannelMessageDto[] }>(`/workshop/channels/${id}/messages`, { limit }),
     // channel agents
     listChannelAgents: (id: string) => http.get<{ data: AgentInfoDto[] }>(`/workshop/channels/${id}/agents`),
     addChannelAgent: (id: string, body: { agentId?: string, name?: string, harness?: string, role?: 'lead' | 'worker', config?: Record<string, unknown> }) =>

@@ -1,24 +1,34 @@
 /**
  * GET /api/workshop/channels/:id/sessions —— 会话清单（含成员映射与状态）。
+ * 只读面：可见性同 messages/queue（getChannelForUser），不要求可写。
  */
 import { getRouterParam } from 'h3'
 import { resolveUser } from '@/server/api/workshop/caller'
 import { defineApiHandler } from '@/server/utils/response'
 import { getWorkshopManager } from '@/server/plugins/workshop'
 
+/** memberMapJson → { baseId: cloneId }（容错：坏 JSON 视为空映射） */
+function parseMemberMap(raw: string | undefined): Record<string, string> {
+  try {
+    return JSON.parse(raw ?? '{}')
+  }
+  catch {
+    return {}
+  }
+}
+
 export default defineApiHandler(async (event) => {
   const user = resolveUser(event)
   const channelId = getRouterParam(event, 'id')!
   const manager = getWorkshopManager()
-  const ch = manager.getChannelForUser(channelId, user.id)
-  manager.requireWritable(ch.ownerUserId, user, 'channel')
+  manager.getChannelForUser(channelId, user.id)
   const sessions = manager.listChannelSessions(channelId)
   return sessions.map(s => ({
     id: s.id,
     title: s.title,
     status: s.status,
     memoryPolicy: s.memoryPolicy,
-    memberMap: (() => { try { return JSON.parse(s.memberMapJson ?? '{}') } catch { return {} } })(),
+    memberMap: parseMemberMap(s.memberMapJson),
     createdAt: s.createdAt,
     closedAt: s.closedAt,
   }))
