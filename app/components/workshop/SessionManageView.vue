@@ -42,6 +42,10 @@ function cloneInfo(cloneId: string) {
 function cloneState(cloneId: string) {
   return queueByAgent.value[cloneId] ?? null
 }
+/** /queue 行 → agentId 索引的运行态面（loadAll 与轮询共用同一映射） */
+function applyQueue(rows: Array<{ agentId: string, state: string, queuedCount: number, completedCount: number }>): void {
+  queueByAgent.value = Object.fromEntries(rows.map(x => [x.agentId, { state: x.state, queuedCount: x.queuedCount, completedCount: x.completedCount }]))
+}
 function sessionClones(s: ChannelSessionDto): string[] {
   return Object.values(s.memberMap ?? {})
 }
@@ -67,7 +71,7 @@ async function loadAll(): Promise<void> {
   }
   // queue 无 lead 频道会 400(NO_LEAD_AGENT)——运行态面降级为空,静态面仍可用
   if (queue.status === 'fulfilled') {
-    queueByAgent.value = Object.fromEntries((queue.value.data ?? []).map(q => [q.agentId, { state: q.state, queuedCount: q.queuedCount, completedCount: q.completedCount }]))
+    applyQueue(queue.value.data ?? [])
   }
   else {
     queueByAgent.value = {}
@@ -136,7 +140,7 @@ onBeforeUnmount(stopPoll)
 async function refreshRuntime(): Promise<void> {
   try {
     const q = await api.queueOverview(props.channelId)
-    queueByAgent.value = Object.fromEntries((q.data ?? []).map(x => [x.agentId, { state: x.state, queuedCount: x.queuedCount, completedCount: x.completedCount }]))
+    applyQueue(q.data ?? [])
   }
   catch (err) {
     queueByAgent.value = {}
