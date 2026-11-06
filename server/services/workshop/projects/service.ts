@@ -570,7 +570,9 @@ export class ProjectService {
       ownerUserId: actor.id,
       planApprovalRequired: input.planApprovalRequired === 0 ? 0 : 1,
       autoDispatch: input.autoDispatch ? 1 : 0,
-      routingPolicy: input.routingPolicy ?? 'legacy',
+      // P0-7：与 REST 入口（index.post.ts 默认 technical）统一——service 层不再默认 legacy，
+      // 消除"REST 创建=technical、工具/服务路径创建=legacy"的双轨不一致。
+      routingPolicy: input.routingPolicy ?? 'technical',
       configJson: JSON.stringify({
         leaderHarness: input.leaderHarness ?? 'mock',
         routeGate: input.routeGate ?? 'none',
@@ -1195,7 +1197,7 @@ export class ProjectService {
   }
 
   /**
-   * 实际派发体：计划已批 + auto_dispatch=1 的 active 项目，对 selectReadyWorkItems
+   * 实际派发体：计划已批 + auto_dispatch=1 的 active 项目，对 selectReadyWithContext
    * 选出的就绪项按序调用内部派发路径（system actor）。单项失败已由派发路径置
    * BLOCKED 并落 work.blocked（SLOW 邮箱评估），隔离继续。
    * 项目完成仍走 owner 审批门 —— 自动派发永不自动完成项目。
@@ -1968,6 +1970,9 @@ export class ProjectService {
     routeGate?: 'none' | 'leader'
     /** Router v3：独立评审 Channel id；传空串清除。 */
     reviewerChannelId?: string
+    /** P0-7：路由口径（legacy/technical）；owner 变更落 project.updated 审计，
+     * 影响后续所有就绪判定（存量在飞项不受影响）。 */
+    routingPolicy?: 'legacy' | 'technical'
   }): ProjectRow {
     const p = this.get(id, actor)
     this.requireOwner(p, actor)
@@ -1975,6 +1980,9 @@ export class ProjectService {
     if (name !== undefined && !name) throw new AppError(400, 'BAD_REQUEST', '名称不能为空')
     const objective = patch.objective?.trim()
     if (objective !== undefined && !objective) throw new AppError(400, 'BAD_REQUEST', '目标不能为空')
+    if (patch.routingPolicy !== undefined && !['legacy', 'technical'].includes(patch.routingPolicy)) {
+      throw new AppError(400, 'BAD_REQUEST', 'routingPolicy 只能是 legacy 或 technical')
+    }
     const config = parseJson<Record<string, unknown>>(p.configJson, {})
     const next = this.projects.update(id, {
       ...(name !== undefined ? { name } : {}),
@@ -1982,6 +1990,7 @@ export class ProjectService {
       ...(objective !== undefined ? { objective } : {}),
       ...(patch.mode !== undefined ? { mode: patch.mode } : {}),
       ...(patch.autoDispatch !== undefined ? { autoDispatch: patch.autoDispatch ? 1 : 0 } : {}),
+      ...(patch.routingPolicy !== undefined ? { routingPolicy: patch.routingPolicy } : {}),
       ...(patch.routeGate !== undefined || patch.reviewerChannelId !== undefined
         ? {
             configJson: JSON.stringify({
@@ -2738,6 +2747,14 @@ export class ProjectService {
     if (input.verdict === 'pass' && !criteriaCheck.ok) {
       throw new AppError(409, 'ACCEPTANCE_CRITERIA_FAILED', `技术验收不能通过：${criteriaCheck.blockingFailures.join('；')}`)
     }
+    // P0-8 决策时证据复验：重算 content_sha256 与提交时落库值比对。哈希不符说明
+    // 提交后 payload/summary/evidence 被改动（submit→review 窗口内的篡改面）。
+    if (!backfill) {
+      const recomputed = sha256Hex(`${result.summary ?? ''}\n${result.payloadJson ?? ''}\n${JSON.stringify(parseJson<Array<Record<string, unknown>>>(result.evidenceJson ?? '[]', []))}`)
+      if (result.contentSha256 && recomputed !== result.contentSha256) {
+        throw new AppError(409, 'RESULT_EVIDENCE_TAMPERED', `成果内容哈希不符(提交后被改动)：拒绝技术验收 result=${result.id}`)
+      }
+    }
     const checksJson = JSON.stringify([...criteriaCheck.checks, ...(input.checks ?? [])])
     const reviewerKind = ctx.isLeader ? 'project_leader' : 'channel_lead'
     let review!: ProjectTechnicalReviewRow
@@ -2763,6 +2780,9 @@ export class ProjectService {
           reviewedAt: new Date().toISOString(),
           rejectReason: null,
         })
+        // P0-8 审计卫生：返工标记随后续验收通过清零。旧缺陷——markReworkRequired(false)
+        // 无调用点，返工-再提交-通过后 approved 成果仍带脏标（下游血缘与报表失真）。
+        if (result.reworkRequired) this.results.markReworkRequired(result.id, false)
         this.record(ctx.project.id, 'result.technical_accepted', { id: agentId, role: ctx.role, agentId }, { resultId: result.id, reviewId: review.id, reviewerChannelId: ctx.channelId }, result.traceId, 'result.technical_accepted', `result:${result.id}:technical-accepted:${review.id}`, { resultId: result.id, reviewId: review.id, reviewerKind })
       }
       else {
@@ -3231,7 +3251,18 @@ export class ProjectService {
         throw new AppError(409, 'PROPOSAL_STATE_INVALID', 'route 提案已被处理')
       }
       const args = parseJson<Record<string, unknown>>(decision.argsJson, {})
-      const workItem = await this.applyRouteDecision(p, decision, actor)
+      // P0-1 提案补偿：markApplied 先于执行体（CAS 防 双应用），执行体失败必须回退
+      // applied→proposed + 落 plan.apply_failed（SLOW 类型，leader 可见），否则动作
+      // 静默丢失且不可重放。
+      let workItem: ProjectWorkItemRow | undefined
+      try {
+        workItem = await this.applyRouteDecision(p, decision, actor)
+      }
+      catch (err) {
+        this.decisions.markApplyFailed(decisionId, `apply_failed: ${err instanceof Error ? err.message : String(err)}`)
+        this.record(projectId, 'plan.apply_failed', actor, { decisionId, error: err instanceof Error ? err.message : String(err) }, decision.traceId, 'plan.apply_failed', `proposal:${decisionId}:apply_failed`, { decisionId })
+        throw err
+      }
       this.record(projectId, 'proposal.applied', actor, { decisionId, workItemId: workItem?.id, action: args.action }, decision.traceId, 'proposal.applied', `proposal:${decisionId}:applied`, { decisionId, workItemId: workItem?.id, action: args.action })
       return { workItem, dispatched: args.action === 'dispatch' || args.action === 'retry' || args.action === 'rework', channelId: workItem?.channelId }
     }
@@ -3289,19 +3320,29 @@ export class ProjectService {
     if (!this.decisions.markApplied(decisionId, 'applied', 'owner applied proposal')) {
       throw new AppError(409, 'PROPOSAL_STATE_INVALID', '提案已被处理')
     }
-    const workItem = this.workItems.create({
-      projectId,
-      deliverableId,
-      channelId,
-      title,
-      brief: String(args.brief ?? ''),
-      dependsOnJson: JSON.stringify(Array.isArray(args.dependsOn) ? args.dependsOn : []),
-      planVersion: p.planVersion,
-      execBudgetMinutes: Number(args.execBudgetMinutes ?? 60),
-      traceId: decision.traceId || `proposal:${decisionId}`,
-      dedupeKey,
-      createdBy: 'project_leader',
-    })
+    // P0-1 提案补偿：工作项创建失败 → applied 回退 proposed（可重放）。创建成功后
+    // dispatchWorkItem 的失败不回退（工作项已存在，走其自身 BLOCKED/work.blocked 路径）。
+    let workItem: ProjectWorkItemRow
+    try {
+      workItem = this.workItems.create({
+        projectId,
+        deliverableId,
+        channelId,
+        title,
+        brief: String(args.brief ?? ''),
+        dependsOnJson: JSON.stringify(Array.isArray(args.dependsOn) ? args.dependsOn : []),
+        planVersion: p.planVersion,
+        execBudgetMinutes: Number(args.execBudgetMinutes ?? 60),
+        traceId: decision.traceId || `proposal:${decisionId}`,
+        dedupeKey,
+        createdBy: 'project_leader',
+      })
+    }
+    catch (err) {
+      this.decisions.markApplyFailed(decisionId, `apply_failed: ${err instanceof Error ? err.message : String(err)}`)
+      this.record(projectId, 'plan.apply_failed', actor, { decisionId, error: err instanceof Error ? err.message : String(err) }, decision.traceId, 'plan.apply_failed', `proposal:${decisionId}:apply_failed`, { decisionId })
+      throw err
+    }
     this.record(projectId, 'proposal.applied', actor, { decisionId, workItemId: workItem.id }, decision.traceId, 'proposal.applied', `proposal:${decisionId}:applied`, { decisionId, workItemId: workItem.id })
     let dispatched = false
     if (args.dispatch === true) {
@@ -3371,16 +3412,24 @@ export class ProjectService {
     }
     const digest = argsDigest(args)
     const row = this.db.prepare(
-      `SELECT id, payload_json AS payloadJson FROM project_approvals
+      `SELECT id, payload_json AS payloadJson, requested_by_agent_id AS requestedByAgentId FROM project_approvals
        WHERE project_id = ? AND kind = 'write_intent' AND subject_id = ? AND status = 'approved'
          AND consumed_at IS NULL AND (expires_at IS NULL OR expires_at > ?)
        ORDER BY created_at DESC LIMIT 1`,
-    ).get(origin.project.id, origin.task.projectWorkItemId, new Date().toISOString()) as { id: string, payloadJson: string } | undefined
+    ).get(origin.project.id, origin.task.projectWorkItemId, new Date().toISOString()) as { id: string, payloadJson: string, requestedByAgentId: string | null } | undefined
     if (!row) {
       return {
         allowed: false,
         code: 'PROJECT_WRITE_INTENT_REQUIRED',
         message: `${toolName} 在项目来源任务中需要 owner 批准的 write_intent；请先调用 project_request_write_intent`,
+      }
+    }
+    // P0-5：意图绑定申请者——同频道其他 lead 不得消费他人获批的写意图。
+    if (row.requestedByAgentId && row.requestedByAgentId !== agentId) {
+      return {
+        allowed: false,
+        code: 'PROJECT_WRITE_INTENT_MISMATCH',
+        message: `write_intent(${row.id}) 属于 ${row.requestedByAgentId.slice(0, 8)}，不能由其他 agent 消费`,
       }
     }
     const payload = parseJson<Record<string, unknown>>(row.payloadJson, {})
@@ -3475,7 +3524,8 @@ export class ProjectService {
     return task
   }
 
-  /** 项目来源解析：显式 root 优先；否则取该 Agent 最近一个项目 root（含终态，fail-closed）。 */
+  /** 项目来源解析：显式 root 优先；否则取该 Agent 最近一个项目 root。P0-5：终态 root
+   * 不再作为写上下文（"含终态"允许任务完成后 24h 内继续消费意图 = 关门时间形同虚设）。 */
   private projectOriginOf(agentId: string, activeRootTaskId?: string | null): { task: TaskRow, project: ProjectRow } | null {
     let task: TaskRow | undefined
     if (activeRootTaskId) {
@@ -3489,6 +3539,7 @@ export class ProjectService {
       task = row?.id ? this.tasks.findById(row.id) : undefined
     }
     if (!task || task.source !== 'project') return null
+    if (['COMPLETED', 'CANCELED', 'FAILED', 'SUPERSEDED'].includes(task.state)) return null
     const project = task.projectId ? this.projects.findById(task.projectId) : undefined
     if (!project) throw new AppError(409, 'PROJECT_WRITE_CONTEXT_INVALID', '项目来源任务缺少有效项目上下文')
     return { task, project }
@@ -3764,6 +3815,27 @@ export class ProjectService {
     const b = this.bindings.findOne(id, channelId)
     if (!b || b.status !== 'active') throw new AppError(404, 'NOT_FOUND', 'Channel 未绑定到该项目')
     this.bindings.setStatus(id, channelId, 'detached')
+    // P0-3 解绑语义：该频道名下的在飞工作项随解绑终结化（CANCELED + attempt 闭合 +
+    // work.canceled 事件）。不终结化的旧行为：worker 因绑定失效 403 永远无法提交 →
+    // 工作项永久悬挂；且 reconcile 终态守卫保证迟到的 root 终态不会复活已终结工作项
+    // （root 进程本身的回收属频道侧生命周期，随资源回收计划处理）。
+    const inFlight = this.workItems.listByProject(id)
+      .filter(w => w.channelId === channelId && !['COMPLETED', 'FAILED', 'CANCELED', 'SUPERSEDED'].includes(w.state))
+    for (const wi of inFlight) {
+      withTransaction(this.db, () => {
+        this.workItems.update(wi.id, {
+          state: 'CANCELED',
+          stateReason: 'CHANNEL_DETACHED',
+          closedAt: new Date().toISOString(),
+          closeReason: 'CHANNEL_DETACHED',
+        })
+        if (wi.currentAttemptId) {
+          const attempt = this.attempts.findById(wi.currentAttemptId)
+          if (attempt && !attempt.closedAt) this.attempts.close(attempt.id, 'CLOSED', 'CHANNEL_DETACHED')
+        }
+        this.record(id, 'work.canceled', actor, { workItemId: wi.id, reason: 'CHANNEL_DETACHED', channelId }, wi.traceId, 'work.canceled', `work:${wi.id}:channel-detached`, { workItemId: wi.id, reason: 'CHANNEL_DETACHED' })
+      })
+    }
   }
 
   /** REST 删除/禁用/替换 lead 前调用：active 项目的办公室频道不可变。 */

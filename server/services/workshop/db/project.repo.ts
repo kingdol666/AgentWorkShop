@@ -972,6 +972,11 @@ export function createProjectDecisionRepo(db: DatabaseSync) {
       const result = markAppliedStmt.run('applied', outcome, reason, id)
       return Number(result.changes ?? 0) > 0
     },
+    /** P0-1 提案补偿：应用体执行失败 → applied 回退 proposed（可重放），CAS 同前。 */
+    markApplyFailed(id: string, reason = ''): boolean {
+      const result = db.prepare(`UPDATE project_decisions SET state = 'proposed', outcome = 'apply_failed', reason = ? WHERE id = ? AND state = 'applied'`).run(reason, id)
+      return Number(result.changes ?? 0) > 0
+    },
     append(input: {
       projectId: string
       source: string
