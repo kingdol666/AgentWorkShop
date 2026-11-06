@@ -155,6 +155,31 @@ async function dispatch(workItemId: string): Promise<void> {
   })
 }
 
+/**
+ * 打开任务会话（2026-11-07 任务实例）：把任务专属 Channel 挂到 workspace 后
+ * 直达控制台的会话视图（?view=sessions&channel=<instanceChannelId>）。
+ * 已挂载的频道直接跳；未挂载时自动挂载（幂等）——这是「任务 → 会话」的可视入口。
+ */
+async function openTaskSession(wi: WorkItemObs): Promise<void> {
+  const channelId = wi.instanceChannelId
+  if (!channelId) return
+  await run(async () => {
+    const res = await http.get<{ data: Array<{ id: string, channelIds: string[] }> }>('/workshop/workspaces')
+    const list = res.data ?? []
+    let target: { id: string, channelIds: string[] } | undefined = list.find(w => w.channelIds.includes(channelId))
+    if (!target && list.length > 0) {
+      const first = list[0]!
+      target = first
+      await http.post(`/workshop/workspaces/${first.id}/channels/${channelId}`, {})
+    }
+    if (!target) {
+      error.value = '还没有 Workspace，请先在「Agent 工作台」创建一个'
+      return
+    }
+    await navigateTo(`/workshop/w/${target.id}?view=sessions&channel=${channelId}`)
+  })
+}
+
 async function submitResult(result: ResultDto): Promise<void> {
   await run(async () => {
     await http.post(`/workshop/projects/${id}/results/${result.id}/submit`, {
@@ -327,8 +352,24 @@ interface WorkItemObs {
   currentAttempt: AttemptObs | null
   dependsOn: string[]
   contract: Record<string, unknown>
+  /** 任务实例（2026-11-07）：专属执行 Channel + 会话行 */
+  instanceChannelId?: string | null
+  sessionId?: string | null
+  sessionStatus?: string | null
 }
-interface ChannelObs { channelId: string, name: string, enabled: number, leadAgentId: string | null, status: string, workItems: number, inFlight: number, ready: number, blocked: number }
+/** 任务会话（项目观测 lanes[].sessions[]；一任务一实例一会话） */
+interface TaskSessionObs {
+  workItemId: string
+  workItemTitle: string
+  workItemState: string
+  sessionId: string | null
+  sessionTitle: string | null
+  sessionStatus: string | null
+  sessionKind: string | null
+  instanceChannelId: string | null
+  instanceEnabled: boolean
+}
+interface ChannelObs { channelId: string, name: string, enabled: number, leadAgentId: string | null, status: string, workItems: number, inFlight: number, ready: number, blocked: number, sessions?: TaskSessionObs[] }
 interface DeliverableObs { id: string, name: string, status: string, required: boolean, dependsOn: string[], acceptanceCriteria: string[], contentReady: boolean, technicalAccepted: boolean, businessApproved: boolean, resultCount: number, currentResultId: string | null }
 interface ObservabilityDto {
   project: ProjectDto & { autoDispatch: boolean, routingPolicy: string }
@@ -737,7 +778,7 @@ onUnmounted(() => {
               class="badge"
               :class="lane.channel.enabled ? 'active' : 'archived'"
             >{{ lane.channel.enabled ? '启用' : '停用' }}</span>
-            <span class="muted">{{ lane.channel.inFlight }} 执行 · {{ lane.channel.ready }} 就绪</span>
+            <span class="muted">{{ lane.channel.inFlight }} 执行 · {{ lane.channel.ready }} 就绪<template v-if="lane.channel.sessions?.length"> · {{ lane.channel.sessions.length }} 任务会话</template></span>
           </div>
           <p
             v-if="!lane.items.length"
@@ -745,12 +786,15 @@ onUnmounted(() => {
           >
             无工作项
           </p>
-          <button
+          <div
             v-for="w in lane.items"
             :key="w.id"
             class="exec-card"
+            role="button"
+            tabindex="0"
             :data-testid="`exec-work-item-${w.id}`"
             @click="openWorkItem(w.id)"
+            @keydown.enter="openWorkItem(w.id)"
           >
             <span class="row">
               <strong>{{ w.title }}</strong>
@@ -760,6 +804,27 @@ onUnmounted(() => {
               >{{ stageLabel(w.stage) }}</span>
             </span>
             <span class="muted">attempt {{ w.attemptCount }}/{{ w.maxAttempts }} · 成果 {{ w.lastResultStatus || '—' }}<template v-if="w.reworkCount"> · rework {{ w.reworkCount }}</template></span>
+            <!-- 任务实例（2026-11-07）：每任务一个专属 Channel + 会话，点击直达会话视图 -->
+            <span
+              v-if="w.sessionId || w.instanceChannelId"
+              class="task-session-row"
+            >
+              <span
+                class="badge"
+                :class="w.sessionStatus === 'active' ? 'active' : 'archived'"
+                :data-testid="`task-session-${w.id}`"
+              >{{ w.sessionStatus === 'active' ? '任务会话 · 进行中' : '任务会话 · 已归档' }}</span>
+              <span class="muted mono">{{ (w.sessionId || '—').slice(0, 14) }}</span>
+              <a-button
+                v-if="w.instanceChannelId"
+                size="small"
+                type="link"
+                :data-testid="`open-task-session-${w.id}`"
+                @click.stop="openTaskSession(w)"
+              >
+                打开会话
+              </a-button>
+            </span>
             <span
               v-if="w.waitingReason"
               class="muted"
@@ -768,7 +833,7 @@ onUnmounted(() => {
               v-else-if="w.stateReason"
               class="muted"
             >{{ w.stateReason }}</span>
-          </button>
+          </div>
         </div>
       </div>
       <p
@@ -1494,6 +1559,10 @@ code { color: #93c5fd; font-size: 11px; }
 .exec-card { width: 100%; text-align: left; background: #171d27; border: 1px solid #2a3140; border-radius: 8px; padding: 10px; margin-bottom: 8px; color: #e6e8ee; cursor: pointer; display: flex; flex-direction: column; gap: 5px; }
 .exec-card:hover { border-color: #3b82f6; }
 .exec-card strong { font-size: 13px; }
+/* 任务实例：任务卡内的会话行（徽标 + 会话 id + 直达入口） */
+.task-session-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; }
+.task-session-row :deep(.ant-btn-link) { padding: 0; height: auto; font-size: 12px; }
+.mono { font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); }
 .route-strip { display: flex; gap: 14px; flex-wrap: wrap; border-top: 1px dashed #2a3140; padding-top: 10px; margin-top: 8px; font-size: 12px; color: #9aa4b2; }
 .route-strip b { color: #cbd5e1; }
 .badge.blue { background: #12283f; color: #93c5fd; }

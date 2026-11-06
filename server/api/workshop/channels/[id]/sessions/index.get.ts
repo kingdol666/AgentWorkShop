@@ -31,5 +31,10 @@ export default defineApiHandler(async (event) => {
     memberMap: parseMemberMap(s.memberMapJson),
     createdAt: s.createdAt,
     closedAt: s.closedAt,
+    // 项目任务实例（2026-11-07）：任务溯源，前端会话卡展示「任务」徽标
+    projectId: s.projectId,
+    projectWorkItemId: s.projectWorkItemId,
+    createdByKind: s.createdByKind,
+    instanceKind: s.instanceKind,
   }))
 })

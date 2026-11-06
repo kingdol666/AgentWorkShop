@@ -38,5 +38,9 @@ export default defineApiHandler(async (event) => {
     createdBy: s.createdBy,
     createdAt: s.createdAt,
     closedAt: s.closedAt,
+    projectId: s.projectId,
+    projectWorkItemId: s.projectWorkItemId,
+    createdByKind: s.createdByKind,
+    instanceKind: s.instanceKind,
   }
 })

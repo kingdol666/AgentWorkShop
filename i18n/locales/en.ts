@@ -1618,6 +1618,7 @@ export default {
     disabled: 'Disabled',
     loadFailed: 'Failed to load sessions: {p0}',
     fromHuman: 'Human',
+    taskBadge: 'Task session',
   },
   meta: {
     agents: 'Agent Templates',

@@ -147,6 +147,8 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
     sourceKey: string
     traceId?: string
     channelId: string
+    /** 任务实例 Channel 的 lead（缺省 = Channel lead；项目任务实例路径显式传入） */
+    assigneeId?: string
     title: string
     description?: string
     parts?: Part[]
@@ -158,15 +160,18 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
     }
     if (channel.enabled !== 1) throw new AppError(403, 'CHANNEL_DISABLED', `channel ${input.channelId} 已禁用`)
     this.ensureChannelActive(input.channelId)
-    const assigneeRow = this.deps.repos.channelAgents.findByChannelAgent(input.channelId, channel.leadAgentId)
-    if (!assigneeRow) throw new AppError(400, 'NO_LEAD_AGENT', `channel ${input.channelId} lead 实例不存在`)
+    const assigneeId = input.assigneeId ?? channel.leadAgentId
+    const assigneeRow = this.deps.repos.channelAgents.findByChannelAgent(input.channelId, assigneeId)
+    if (!assigneeRow || assigneeRow.enabled !== 1) {
+      throw new AppError(400, 'NO_LEAD_AGENT', `channel ${input.channelId} 执行成员不存在或已停用: ${assigneeId}`)
+    }
     assertHarnessUsable(assigneeRow.harness, parseJson<Record<string, unknown>>(assigneeRow.configJson, {}))
     const budgetMs = Math.max(10_000, Number(input.execBudgetMinutes ?? 60) * 60_000)
     const deadlineAt = new Date(Date.now() + budgetMs).toISOString()
     const { task, created } = this.getTaskEngine().createOrGetRoot({
       channelId: input.channelId,
       creatorId: `project:${input.projectId}`,
-      assigneeId: channel.leadAgentId,
+      assigneeId,
       title: input.title,
       description: input.description,
       parts: input.parts,
@@ -193,7 +198,7 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
         'ROLE_USER',
         [{ text: brief || input.title }],
         {
-          'x-aw-target-agent': channel.leadAgentId,
+          'x-aw-target-agent': assigneeId,
           'x-aw-msg-priority': 'immediate',
           'x-aw-task-kind': 'assign',
           'x-aw-task-id': task.id,
@@ -202,7 +207,7 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
       )
       assign.taskId = task.id
       this.route(input.channelId, assign)
-      this.wakeAgent(input.channelId, channel.leadAgentId)
+      this.wakeAgent(input.channelId, assigneeId)
     }
     return { task, created }
   }

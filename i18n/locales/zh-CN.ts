@@ -1618,6 +1618,7 @@ export default {
     disabled: '已停用',
     loadFailed: '会话加载失败:{p0}',
     fromHuman: '人类',
+    taskBadge: '任务会话',
   },
   meta: {
     agents: 'Agent 模板库',

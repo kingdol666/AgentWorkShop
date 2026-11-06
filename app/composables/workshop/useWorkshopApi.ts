@@ -100,6 +100,11 @@ export interface ChannelSessionDto {
   createdBy?: string | null
   createdAt: string
   closedAt: string | null
+  /** 项目任务实例（2026-11-07）：来源项目/工作项与实例类型 */
+  projectId?: string | null
+  projectWorkItemId?: string | null
+  createdByKind?: 'user' | 'project'
+  instanceKind?: 'manual' | 'task'
 }
 
 /** 会话创建返回的克隆成员明细(clone 名含 ·session· 标记) */
