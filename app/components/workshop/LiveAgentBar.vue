@@ -150,8 +150,8 @@ const open = (a: LiveAgent) => {
   align-items: center;
   min-height: 50px;
   padding: 7px 8px;
-  background: var(--paper);
-  border-top: 1px solid var(--line);
+  background: var(--chat-surface-raised);
+  border-top: 1px solid var(--chat-line);
 }
 
 .live-idle {
