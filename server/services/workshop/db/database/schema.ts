@@ -220,6 +220,24 @@ CREATE TABLE IF NOT EXISTS channel_templates (
   updated_at      TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_channel_templates_owner ON channel_templates(owner_user_id);
+
+-- P2 多会话（plan 2026-11-06-channel-multi-session-runtime-plan.md S1）：
+-- Channel 内的一阶会话实体。每个 session = 从频道基础成员克隆出的独立 agent 实例组
+-- （member_map_json: baseMemberId → cloneInstanceId），拥有独立 AgentRuntime/mailbox/
+-- omp 进程与记忆域（session-scoped），同 member 的会话间并行、会话内串行。
+CREATE TABLE IF NOT EXISTS channel_sessions (
+  id              TEXT PRIMARY KEY,
+  channel_id      TEXT NOT NULL,
+  title           TEXT NOT NULL DEFAULT '',
+  status          TEXT NOT NULL DEFAULT 'active',
+  memory_policy   TEXT NOT NULL DEFAULT 'session',
+  member_map_json TEXT NOT NULL DEFAULT '{}',
+  created_by      TEXT,
+  created_at      TEXT NOT NULL,
+  closed_at       TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_channel_sessions_channel
+  ON channel_sessions(channel_id, status);
 -- v11:工具审批历史(S4:HITL 裁决留痕——进程内 pending 之外的持久化,重启可查)
 CREATE TABLE IF NOT EXISTS approval_history (
   id           TEXT PRIMARY KEY,
