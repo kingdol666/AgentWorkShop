@@ -66,15 +66,20 @@ export function createEventIngress(db: DatabaseSync, kernel: ProjectKernelRepo, 
 
       const slowIds: string[] = []
       for (const evt of events) {
-        if (FAST_TYPES.has(evt.type)) {
+        // P0-6：FAST/SLOW **非独占**分类。`result.submitted` 同时在两集合——它既需要
+        // reconcile 收敛（fast），也需要 leader 语义评估（slow）。旧 if/else-if 让 FAST
+        // 独占命中，慢路径对该事件永不触发，leader 对成果提交失聪。
+        const isFast = FAST_TYPES.has(evt.type)
+        const isSlow = SLOW_TYPES.has(evt.type)
+        if (isFast) {
           result.fastCount += 1
           result.needsReconcile = true
         }
-        else if (SLOW_TYPES.has(evt.type)) {
+        if (isSlow) {
           slowIds.push(evt.id)
         }
         // 未知类型按 fast 兜底（reconcile 幂等，安全）
-        else {
+        if (!isFast && !isSlow) {
           result.fastCount += 1
           result.needsReconcile = true
         }
@@ -108,9 +113,10 @@ export function createEventIngress(db: DatabaseSync, kernel: ProjectKernelRepo, 
         result.deferred = slowIds.length
       }
 
-      // 消费：fast + 已入批 slow 全部标记；deferred 的 slow 事件留在队列等下一轮。
+      // 消费：fast + 已入批 slow 全部标记；仅「慢路径启用且本轮 defer」的 slow 事件
+      // 留在队列等下一轮（P0-6 双类事件 defer 时 fast 部分下轮幂等重放，安全）。
       for (const evt of events) {
-        const isDeferredSlow = result.deferred > 0 && slowIds.includes(evt.id)
+        const isDeferredSlow = slowPathEnabled && result.deferred > 0 && slowIds.includes(evt.id)
         if (isDeferredSlow) continue
         consumeStmt.run(new Date(nowMs()).toISOString(), evt.id)
         result.consumed += 1

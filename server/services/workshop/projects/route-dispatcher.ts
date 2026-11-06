@@ -14,14 +14,8 @@
 import type { ProjectDeliverableRow, ProjectResultRow, ProjectWorkItemRow } from '../db/project.repo'
 import { evaluateWorkItemReadiness, selectReadyWorkItemsWithContext, type ReadinessContext } from './readiness'
 
-/**
- * 从项目工作项全集选出本轮可自动派发的就绪项（legacy 口径，兼容旧调用）。
- * 新代码请用 selectReadyWithContext（带成果/交付物/策略）。
- */
-export function selectReadyWorkItems(items: ProjectWorkItemRow[]): ProjectWorkItemRow[] {
-  const ctx: ReadinessContext = { items, results: [], deliverables: [], routingPolicy: 'legacy' }
-  return selectReadyWorkItemsWithContext(ctx)
-}
+// P0-8：已删除 selectReadyWorkItems legacy shim（routingPolicy 硬编码 'legacy'，
+// 误用即绕过 technical 门；全仓无真实调用方）。所有调用走 selectReadyWithContext。
 
 export function selectReadyWithContext(input: {
   items: ProjectWorkItemRow[]

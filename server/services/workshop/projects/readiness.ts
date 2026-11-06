@@ -93,6 +93,15 @@ export function evaluateWorkItemReadiness(workItem: ProjectWorkItemRow, ctx: Rea
       if (!LEGACY_DEP_SATISFIED.has(dep.state)) {
         return { ready: false, waitingOn: 'DEPENDENCY_RUNNING', reason: `依赖工作项「${dep.title}」未完成(${dep.state})`, upstreamResultIds }
       }
+      // P0-2 水密性补丁：CANCELED/SUPERSEDED 上游在 legacy 口径不再无条件放行——
+      // handoff 只携带 reviewed/approved 成果正文，无已验收成果时下游会拿空输入静默盲跑。
+      if (dep.state === 'CANCELED' || dep.state === 'SUPERSEDED') {
+        const tech = technicalResultFor(ctx.results, dep.id)
+        if (!tech) {
+          return { ready: false, waitingOn: 'UPSTREAM_CANCELED', reason: `依赖工作项「${dep.title}」${dep.state === 'CANCELED' ? '被取消' : '被替代'}且无已验收成果`, upstreamResultIds }
+        }
+        upstreamResultIds.push(tech.id)
+      }
       continue
     }
     if (dep.state === 'CANCELED' || dep.state === 'SUPERSEDED') {
@@ -124,7 +133,13 @@ export function evaluateWorkItemReadiness(workItem: ProjectWorkItemRow, ctx: Rea
       const d = deliverableById.get(deliverableId)
       if (!d) return true
       if (['approved', 'waived'].includes(d.status)) return true
-      return ctx.results.some(r => r.deliverableId === d.id && RESULT_TECH_OK.has(r.status))
+      // P0-4 水密性补丁：不再是 `.some` 放行——交付物下必须存在已验收成果，
+      // **且**不存在仍在待审（submitted，非 superseded）的成果。否则辅助槽
+      // reviewed 即放行、主成果仍 submitted 的漏洞会放走未验收的下游。
+      const dResults = ctx.results.filter(r => r.deliverableId === d.id && r.status !== 'superseded')
+      const hasTechOk = dResults.some(r => RESULT_TECH_OK.has(r.status))
+      const hasPending = dResults.some(r => r.status === 'submitted')
+      return hasTechOk && !hasPending
     }
     const ownDeliverable = deliverableById.get(workItem.deliverableId)
     for (const depId of parseJson<string[]>(ownDeliverable?.dependsOnJson ?? '[]', [])) {

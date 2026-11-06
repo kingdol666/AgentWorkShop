@@ -22,7 +22,7 @@ const { createChannelAgentRepo } = await import('../server/services/workshop/db/
 const { createTaskRepo } = await import('../server/services/workshop/db/task.repo')
 const { createProjectEventRepo, createProjectAttemptRepo } = await import('../server/services/workshop/db/project.repo')
 const { initProjectService } = await import('../server/services/workshop/projects/service')
-const { selectReadyWorkItems } = await import('../server/services/workshop/projects/route-dispatcher')
+const { selectReadyWithContext } = await import('../server/services/workshop/projects/route-dispatcher')
 type AgentChannelManager = import('../server/services/workshop/runtime/manager').AgentChannelManager
 
 function fixture() {
@@ -74,6 +74,7 @@ async function routeProject(f: Fixture, chainTitles: string[], opts: { autoDispa
     name: `Route 项目-${randomUUID().slice(0, 8)}`, objective: 'route dispatch loop',
     planApprovalRequired: opts.planApprovalRequired ?? 0,
     autoDispatch: opts.autoDispatch ?? true,
+    routingPolicy: 'legacy', // 本套件测路由链路本身（P0-7 后 service 默认 technical）
   }, owner)
   const member = await f.manager.createChannel({ name: `Route 频道-${randomUUID().slice(0, 8)}`, ownerUserId: owner.id, leadAgent: { name: 'Lead', harness: 'mock' } })
   f.svc.bindChannel(p.id, member.channelId, owner)
@@ -230,7 +231,7 @@ test('R5 失败隔离：目标频道禁用 → 该项 BLOCKED + work.blocked（S
   finally { f.db.close() }
 })
 
-test('R7 排序：selectReadyWorkItems 依赖过滤 + priority DESC / createdAt ASC', () => {
+test('R7 排序：selectReadyWithContext(legacy) 依赖过滤 + priority DESC / createdAt ASC', () => {
   const mk = (id: string, state: string, deps: string[], priority?: number, createdAt = '2026-11-05T00:00:00Z') => ({
     id, state, currentAttemptId: null, dependsOnJson: JSON.stringify(deps), priority, createdAt,
   })
@@ -242,8 +243,9 @@ test('R7 排序：selectReadyWorkItems 依赖过滤 + priority DESC / createdAt 
     mk('e', 'DRAFT', ['b']),
     mk('g', 'DISPATCHED', []),
     mk('h', 'DRAFT', ['missing']),
-  ] as unknown as Parameters<typeof selectReadyWorkItems>[0]
-  assert.deepEqual(selectReadyWorkItems(rows).map(w => w.id), ['d', 'c', 'b'])
+  ] as unknown as Parameters<typeof selectReadyWithContext>['input']['items']
+  // P0-8：legacy shim 已删——改走 selectReadyWithContext（显式 legacy 上下文，等价语义）。
+  assert.deepEqual(selectReadyWithContext({ items: rows, results: [], deliverables: [], routingPolicy: 'legacy' }).map(w => w.id), ['d', 'c', 'b'])
 })
 
 test('R10+R11 完成门与默认值：自动派发不自动完成项目；缺省项目 autoDispatch=false', async () => {
