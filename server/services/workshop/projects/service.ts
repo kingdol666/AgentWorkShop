@@ -458,6 +458,9 @@ export interface CreateProjectInput {
   mode?: 'observe' | 'supervised' | 'auto'
   leaderHarness?: string
   leaderConfig?: Record<string, unknown>
+  /** P1-2 前置：leader 模型直选（蓝图/REST 创建时钉 provider/model） */
+  leaderProvider?: string
+  leaderModel?: string
   /** 审查修复：计划门开关（缺省 1=派发必须先批计划；0=关闭，测试/无计划场景用） */
   planApprovalRequired?: number
   /** PR20 Route 派发闭环：true=计划批准后按 dependsOn 就绪顺序自动派发（缺省 false，行为零突变） */
@@ -595,7 +598,13 @@ export class ProjectService {
         leadAgent: {
           name: 'Project Leader',
           harness: input.leaderHarness ?? 'mock',
-          config: { ...(input.leaderConfig ?? {}), systemPromptPrefix: '你是项目总工（Project Leader），只做项目级规划与复核。' },
+          config: {
+            ...(input.leaderConfig ?? {}),
+            // P1-2 前置：蓝图/创建方可指定 leader 模型（provider/model 直达 omp set_model）
+            ...(input.leaderProvider ? { provider: input.leaderProvider } : {}),
+            ...(input.leaderModel ? { model: input.leaderModel } : {}),
+            systemPromptPrefix: '你是项目总工（Project Leader），只做项目级规划与复核。',
+          },
           agentKind: 'project_leader',
         },
         ownerUserId: actor.id,
@@ -654,6 +663,56 @@ export class ProjectService {
     this.requireOwner(p, actor)
     if (p.status !== 'paused') throw new AppError(409, 'PROJECT_STATE_INVALID', `Project 状态 ${p.status} 不能恢复`)
     return this.projects.update(id, { status: 'active' })!
+  }
+
+  /**
+   * P2 终止运行：owner 终止项目 = 级联终结（与 pause 可恢复相对，终止是终态）。
+   *  - 全部未终结工作项 → CANCELED(PROJECT_TERMINATED) + attempt 闭合；
+   *  - 各自 root 任务树 cancelTree（后代优先）——频道侧正在执行的 omp 回合被取消；
+   *  - 待批审批全部过期；项目状态 → canceled（内核/路由/派发均只认 active）。
+   * manager 未暴露 TaskEngine 时（最小 stub）任务树取消静默跳过——工作项侧已终结。
+   */
+  terminate(id: string, actor: ProjectActor, reason: string): ProjectRow {
+    const p = this.get(id, actor)
+    this.requireOwner(p, actor)
+    if (p.status === 'canceled') return this.projects.findById(id)!
+    if (p.status === 'completed' || p.status === 'archived') {
+      throw new AppError(409, 'PROJECT_STATE_INVALID', `项目 ${p.status} 不可终止`)
+    }
+    if (!reason.trim()) throw new AppError(400, 'BAD_REQUEST', '终止必须给出理由')
+    const engineAccess = (this.manager as unknown as { getTaskEngine?: () => { cancelTree?: (taskId: string, by: string, reason: string) => Array<{ id: string, state: string }> } }).getTaskEngine
+    const engine = typeof engineAccess === 'function' ? engineAccess.call(this.manager) : undefined
+    const items = this.workItems.listByProject(id)
+    const canceledTasks: Array<{ taskId: string, state: string }> = []
+    withTransaction(this.db, () => {
+      for (const wi of items) {
+        if (['COMPLETED', 'FAILED', 'CANCELED', 'SUPERSEDED'].includes(wi.state)) continue
+        this.workItems.update(wi.id, {
+          state: 'CANCELED',
+          stateReason: 'PROJECT_TERMINATED',
+          closedAt: new Date().toISOString(),
+          closeReason: 'PROJECT_TERMINATED',
+        })
+        if (wi.currentAttemptId) {
+          const attempt = this.attempts.findById(wi.currentAttemptId)
+          if (attempt && !attempt.closedAt) this.attempts.close(attempt.id, 'CLOSED', 'PROJECT_TERMINATED')
+          if (attempt?.channelTaskId && engine?.cancelTree) {
+            try {
+              for (const t of engine.cancelTree(attempt.channelTaskId, actor.id, `PROJECT_TERMINATED: ${reason}`)) {
+                canceledTasks.push({ taskId: t.id, state: t.state })
+              }
+            }
+            catch { /* 任务可能已终态——工作项侧已终结，容忍 */ }
+          }
+        }
+        this.record(id, 'work.canceled', actor, { workItemId: wi.id, reason: `PROJECT_TERMINATED: ${reason}` }, wi.traceId, 'work.canceled', `work:${wi.id}:terminated`, { workItemId: wi.id })
+      }
+      this.approvals.expire(id)
+      this.approvals.expireAllPending(id)
+      this.projects.update(id, { status: 'canceled' })
+      this.record(id, 'project.terminated', actor, { reason, canceledWorkItems: items.length, canceledTasks: canceledTasks.length }, '', 'project.terminated', `project:${id}:terminated`, { reason, canceledTasks })
+    })
+    return this.projects.findById(id)!
   }
 
   archive(id: string, actor: ProjectActor): ProjectRow {
@@ -2038,6 +2097,9 @@ export class ProjectService {
       planApprovalRequired: planApprovalRequired ? 1 : 0,
       autoDispatch: bp.autoDispatch ?? false,
       mode: bp.mode,
+      leaderHarness: bp.leaderHarness,
+      leaderProvider: bp.leaderProvider,
+      leaderModel: bp.leaderModel,
     }, actor)
     const pid = project.id
     // 频道：逐个创建 + 绑定（key → id 解析表）
@@ -2147,6 +2209,24 @@ export class ProjectService {
   projectSnapshot(id: string, actor: ProjectActor) {
     const p = this.get(id, actor)
     const report = this.projectWeeklyReport(id, actor)
+    const items = this.workItems.listByProject(id)
+    // P2 Channel 状态可见面：owner 无需逐频道点开——每个下属频道的在飞工作项与 root 任务态
+    const channels = this.bindings.listByProject(id).map((b) => {
+      const own = items.filter(w => w.channelId === b.channelId)
+      const rootTasks = own
+        .filter(w => !['COMPLETED', 'FAILED', 'CANCELED', 'SUPERSEDED'].includes(w.state) && w.currentAttemptId)
+        .map((w) => {
+          const a = this.attempts.findById(w.currentAttemptId!)
+          const t = a?.channelTaskId ? this.tasks.findById(a.channelTaskId) : undefined
+          return { workItemId: w.id, title: w.title, workItemState: w.state, taskId: t?.id ?? null, taskState: t?.state ?? null }
+        })
+      return {
+        ...b,
+        workItems: own.length,
+        inFlight: own.filter(w => ['DISPATCHING', 'DISPATCHED', 'RUNNING'].includes(w.state)).length,
+        rootTasks,
+      }
+    })
     return {
       project: {
         id: p.id, name: p.name, description: p.description, objective: p.objective,
@@ -2155,10 +2235,10 @@ export class ProjectService {
         planVersion: p.planVersion, plan: parseJson(p.planJson, {}), createdAt: p.createdAt,
         autoDispatch: p.autoDispatch === 1,
       },
-      channels: this.bindings.listByProject(id),
+      channels,
       members: this.members.listByProject(id),
       deliverables: this.deliverables.listByProject(id),
-      workItems: this.workItems.listByProject(id),
+      workItems: items,
       results: this.filterResultsByGrant(id, this.results.listByProject(id), actor),
       approvals: { pending: this.approvals.listPending(id), history: this.approvals.listByProject(id) },
       report,
@@ -2229,10 +2309,19 @@ export class ProjectService {
     }
     const channels = this.listBoundChannels(p).map((c) => {
       const own = items.filter(w => w.channelId === c.channelId)
+      // P2 Channel 状态可见面：每个下属频道在飞工作项的 root 任务状态（owner 无需逐频道点开）
+      const rootTasks = own
+        .filter(w => !['COMPLETED', 'FAILED', 'CANCELED', 'SUPERSEDED'].includes(w.state) && w.currentAttemptId)
+        .map((w) => {
+          const a = this.attempts.findById(w.currentAttemptId!)
+          const t = a?.channelTaskId ? this.tasks.findById(a.channelTaskId) : undefined
+          return { workItemId: w.id, title: w.title, workItemState: w.state, taskId: t?.id ?? null, taskState: t?.state ?? null }
+        })
       return {
         ...c,
         workItems: own.length,
         inFlight: own.filter(w => ['DISPATCHING', 'DISPATCHED', 'RUNNING'].includes(w.state)).length,
+        rootTasks,
         ready: own.filter(w => w.state === 'DRAFT' && evaluateWorkItemReadiness(w, readinessCtx).ready).length,
         blocked: own.filter(w => w.state === 'BLOCKED' || w.state === 'REWORK').length,
       }

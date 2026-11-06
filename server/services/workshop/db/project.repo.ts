@@ -1137,6 +1137,11 @@ export function createProjectApprovalRepo(db: DatabaseSync) {
       const result = consumeStmt.run(now(), id)
       return Number(result.changes ?? 0) > 0
     },
+    /** P2 终止语义：全部 pending 决策过期（无论 expires_at——终止不留给未来）。 */
+    expireAllPending(projectId: string, reason = 'PROJECT_TERMINATED'): number {
+      const result = db.prepare(`UPDATE project_approvals SET status = 'expired', decision_reason = ?, decided_at = ? WHERE project_id = ? AND status = 'pending'`).run(reason, now(), projectId)
+      return Number(result.changes ?? 0)
+    },
     expire(projectId: string): number {
       const result = expireStmt.run(now(), projectId, now())
       return Number(result.changes ?? 0)
