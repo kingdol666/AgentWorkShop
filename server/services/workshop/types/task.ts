@@ -33,6 +33,8 @@ export interface WorkspaceTask {
   state: TaskState
   /** 0-100,由 Agent 事件驱动 */
   progress: number
+  /** PR19-P1 派生进度（只读面附加，不入库）：叶子 null；父任务=子任务等权终态锚定聚合。 */
+  progressDerived?: number | null
   retryCount: number
   /** 作业成果 */
   artifacts: A2AArtifact[]
@@ -46,6 +48,12 @@ export interface WorkspaceTask {
   /** 终态/关闭原因与持久化 deadline */
   closeReason?: string
   deadlineAt?: string
+  /** Project 层溯源（root 与子任务继承） */
+  source?: string
+  projectId?: string
+  projectWorkItemId?: string
+  projectAttemptNo?: number
+  traceId?: string
   /** 显式替代关系:本任务(FAILED/CANCELED 分支)被替代任务覆盖,不再阻塞父任务收口 */
   supersededByTaskId?: string
   /** 执行交接代次(§5.1;每次新分配/重分配 +1,用于拒绝旧 worker 迟到事件) */

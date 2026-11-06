@@ -11,6 +11,7 @@ import { getDcwLineRepo } from '../../dcw/dcw-line.repo'
 import { getChannelPluginsRepo } from '../../db/channel-plugins.repo'
 import { getToolRegistryRepo } from '../../db/tool-registry.repo'
 import { assertHarnessUsable } from '../../agents/harness-availability'
+import { assertChannelWorkspaceAllowed, assertSpawnConfigAllowed, type SpawnActor } from '../../agents/harness-spawn-policy'
 import { mkdirSync } from 'node:fs'
 import { parseJson } from '../../db/database'
 import { resolve } from 'node:path'
@@ -66,9 +67,14 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
     description?: string
     scenarioPrompt?: string
     workspace?: string
-    leadAgent?: { name: string, harness: string, config?: Record<string, unknown> }
+    leadAgent?: { name: string, harness: string, config?: Record<string, unknown>, agentKind?: 'channel_agent' | 'project_leader' }
     ownerUserId?: string | null
+    /** 操作者（用于 spawn/workspace 授权；缺省按普通用户处理） */
+    actor?: SpawnActor
   }): Promise<{ channelId: string, leadAgentId?: string, workspace: string }> {
+    const actor = input.actor ?? { role: 'user' }
+    if (input.workspace) assertChannelWorkspaceAllowed(input.workspace, actor)
+    if (input.leadAgent) assertSpawnConfigAllowed(input.leadAgent.harness, input.leadAgent.config, actor)
     const channel = this.deps.repos.channels.create({ name: input.name, description: input.description, scenarioPrompt: input.scenarioPrompt, ownerUserId: input.ownerUserId ?? null })
     // v17:owner 成员记录必须与 Channel 同时落库(不变量:有且只有一条 active owner)。
     // 迁移回填只覆盖**已存在**的 Channel;新建路径若不写,owner 会长期缺席名册 ——
@@ -99,6 +105,7 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
         harness: tpl.harness,
         config: parseJson<Record<string, unknown>>(tpl.configJson, {}),
         role: 'lead',
+        agentKind: input.leadAgent.agentKind,
       })
       this.deps.repos.channels.update(channel.id, { leadAgentId: inst.id })
       leadAgentId = inst.id
@@ -113,9 +120,10 @@ export abstract class ManagerAdminChannel extends ManagerNotifications {
     return { ...channel, agents }
   }
 
-  async updateChannel(channelId: string, patch: { name?: string, description?: string, scenarioPrompt?: string, workspace?: string, enabled?: number, llm?: { provider?: string, model?: string, effort?: string } | null }): Promise<ChannelRow> {
+  async updateChannel(channelId: string, patch: { name?: string, description?: string, scenarioPrompt?: string, workspace?: string, enabled?: number, llm?: { provider?: string, model?: string, effort?: string } | null, chatEnabled?: number }, actor: SpawnActor = { role: 'user' }): Promise<ChannelRow> {
     const channel = this.requireChannelRow(channelId)
     if (patch.workspace !== undefined && patch.workspace !== channel.workspace) {
+      assertChannelWorkspaceAllowed(patch.workspace, actor, channelId)
       this.ensureWorkspaceDir(patch.workspace)
       await this.unloadChannelAgents(channelId)
     }

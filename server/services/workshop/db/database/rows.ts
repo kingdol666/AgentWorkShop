@@ -273,6 +273,8 @@ export interface ChannelAgentRow {
   harness: string
   configJson: string
   role: string
+  /** 'channel_agent' | 'project_leader'（Project 层角色标识；role 仍为 lead/worker） */
+  agentKind: string
   token: string
   enabled: number
   createdAt: string
@@ -325,6 +327,12 @@ export interface TaskRow {
   sourceChatDeliveryId: string | null
   closeReason: string | null
   deadlineAt: string | null
+  /** Project 层溯源：channel|project|chat|schedule */
+  source: string
+  projectId: string | null
+  projectWorkItemId: string | null
+  projectAttemptNo: number | null
+  traceId: string
   /** 显式替代关系:本任务(FAILED/CANCELED)被 replacement 覆盖 */
   supersededByTaskId?: string | null
   /** 执行交接代次(§5.1;每次重分配 +1) */

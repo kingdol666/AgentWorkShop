@@ -1,0 +1,44 @@
+{
+  "scenario": "simple",
+  "startedAt": "2026-11-05T16:33:56.517Z",
+  "finishedAt": "2026-11-05T17:06:54.375Z",
+  "gates": [
+    {
+      "id": "A3",
+      "name": "项目已激活 + 物化（2 工作项 / 1 交付物）",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "A4",
+      "name": "契约 handoff 已物化（build.dependsOn → ia）",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "A-review-1bf9f362-3881-40c5-aaf2-766598867204",
+      "name": "L1 技术验收 + L2 业务签核：AgentWorkShop 官网单文件 HTML 实现",
+      "pass": true,
+      "detail": "result=1bf9f362-3881-40c5-aaf2-766598867204 workItem=c8b2c135-349b-48c3-8096-70d94c243d67"
+    },
+    {
+      "id": "A5",
+      "name": "全部工作项完成并验收",
+      "pass": true,
+      "detail": "[\"accepted\",\"accepted\"]"
+    },
+    {
+      "id": "A6",
+      "name": "成果链完整（2 个 approved）",
+      "pass": true,
+      "detail": "[\"approved\",\"approved\"]"
+    },
+    {
+      "id": "A7",
+      "name": "项目完成（owner 完成审批）",
+      "pass": true,
+      "detail": "status=completed completeReq=3bbd3af0-8fea-4928-a0dc-21f1ce531e20"
+    }
+  ],
+  "projectId": "ef460732-7a99-4592-b094-6bf64d0b52cc"
+}

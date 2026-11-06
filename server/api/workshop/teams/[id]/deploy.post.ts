@@ -34,7 +34,7 @@ export default defineApiHandler(async (event) => {
   const ch = manager.getChannelForUser(body.channelId, user.id)
   manager.requireWritable(ch.ownerUserId, user, 'channel')
   // 部署后:若 channel 尚无调度循环(新 lead 就位)→ 启动
-  const result = await manager.deployTeamToChannel({ teamId, channelId: body.channelId })
+  const result = await manager.deployTeamToChannel({ teamId, channelId: body.channelId, actor: user })
   ensureLeadSchedulerLoop(manager, body.channelId)
   return result
 })

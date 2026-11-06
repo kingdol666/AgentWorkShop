@@ -10,6 +10,7 @@ import type { ExecutionMode } from '../../agents/agent-interface'
 import type { ModeConfig } from '../execution-mode'
 import type { TaskPatch } from '../../db/task.repo'
 import { AppError } from '../../../../utils/errors'
+import { assertProjectRootCancelAllowed } from '../../projects/root-cancel-guard'
 
 import { assertHarnessUsable } from '../../agents/harness-availability'
 import { buildMessage, rowToTask } from './helpers'
@@ -133,6 +134,77 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
     this.wakeAgent(input.channelId, assigneeId)
     this.ensureChannelRuntime(input.channelId).wakeScheduler()
     return task
+  }
+
+  /**
+   * 项目派发：只创建 Channel root task（assignee=Channel lead），不投 assign 消息，
+   * 由 Channel SchedulerLoop 按 FIFO 接取；source key 幂等，deadline 用项目预算。
+   */
+  async submitProjectRoot(input: {
+    projectId: string
+    workItemId: string
+    attemptNo: number
+    sourceKey: string
+    traceId?: string
+    channelId: string
+    title: string
+    description?: string
+    parts?: Part[]
+    execBudgetMinutes?: number
+  }): Promise<{ task: WorkspaceTask, created: boolean }> {
+    const channel = this.deps.repos.channels.findById(input.channelId)
+    if (!channel || !channel.leadAgentId) {
+      throw new AppError(400, 'NO_LEAD_AGENT', `channel ${input.channelId} 无 lead,请先创建 lead`)
+    }
+    if (channel.enabled !== 1) throw new AppError(403, 'CHANNEL_DISABLED', `channel ${input.channelId} 已禁用`)
+    this.ensureChannelActive(input.channelId)
+    const assigneeRow = this.deps.repos.channelAgents.findByChannelAgent(input.channelId, channel.leadAgentId)
+    if (!assigneeRow) throw new AppError(400, 'NO_LEAD_AGENT', `channel ${input.channelId} lead 实例不存在`)
+    assertHarnessUsable(assigneeRow.harness, parseJson<Record<string, unknown>>(assigneeRow.configJson, {}))
+    const budgetMs = Math.max(10_000, Number(input.execBudgetMinutes ?? 60) * 60_000)
+    const deadlineAt = new Date(Date.now() + budgetMs).toISOString()
+    const { task, created } = this.getTaskEngine().createOrGetRoot({
+      channelId: input.channelId,
+      creatorId: `project:${input.projectId}`,
+      assigneeId: channel.leadAgentId,
+      title: input.title,
+      description: input.description,
+      parts: input.parts,
+      sourceChatMessageId: input.sourceKey,
+      deadlineAt,
+      source: 'project',
+      projectId: input.projectId,
+      projectWorkItemId: input.workItemId,
+      projectAttemptNo: input.attemptNo,
+      traceId: input.traceId ?? '',
+    })
+    // 幂等命中时不能把别的项目/工作项 root 当成自己的。
+    if (task.projectId !== input.projectId || task.projectWorkItemId !== input.workItemId) {
+      throw new AppError(409, 'PROJECT_SOURCE_CONFLICT', 'source key 已对应其他项目/工作项，拒绝复用')
+    }
+    this.ensureChannelRuntime(input.channelId).wakeScheduler()
+    // Router v3：项目 root 不能只依赖 SchedulerLoop 的隐性 wake（omp 冷启动/lead 重载窗口里
+    // 实测 SUBMITTED 滞留到 D1 10min 兜底）。创建即投递 task-scoped assign 消息，让 lead
+    // 通过 mailbox 消费循环稳健入场；D1 仍保留为兜底。
+    if (created) {
+      const brief = [input.title, input.description ?? ''].filter(Boolean).join('\n')
+      const assign = buildMessage(
+        input.channelId,
+        'ROLE_USER',
+        [{ text: brief || input.title }],
+        {
+          'x-aw-target-agent': channel.leadAgentId,
+          'x-aw-msg-priority': 'immediate',
+          'x-aw-task-kind': 'assign',
+          'x-aw-task-id': task.id,
+          'x-aw-from-label': '项目派发',
+        },
+      )
+      assign.taskId = task.id
+      this.route(input.channelId, assign)
+      this.wakeAgent(input.channelId, channel.leadAgentId)
+    }
+    return { task, created }
   }
 
   async dispatchTask(
@@ -431,6 +503,11 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
     if (task.state === 'COMPLETED' || task.state === 'FAILED') {
       throw new AppError(409, 'TASK_TERMINAL', `任务 ${input.taskId.slice(0, 8)} 已处于终态 ${task.state},不能取消`)
     }
+    // PR16 治理护栏（纯函数共用）：lead 对项目来源 root 的取消一律拒绝（owner 豁免入口另走 REST）。
+    assertProjectRootCancelAllowed(
+      task as { source?: string | null, parentId?: string | null, creatorId?: string | null },
+      { role: caller.role, agentId: callerAgentId },
+    )
     const canceledTasks = this.getTaskEngine().cancelTree(input.taskId, callerAgentId, isLead ? 'LEAD_CANCEL' : 'USER_CANCEL')
     for (const canceled of canceledTasks) {
       this.runtimeOf(channelId, canceled.assigneeId)?.abortTask(canceled.id)

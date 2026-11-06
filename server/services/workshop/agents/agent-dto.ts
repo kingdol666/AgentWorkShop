@@ -22,6 +22,7 @@ export interface ChannelAgentSummary {
   name: string
   harness: string
   role: string
+  agentKind?: string
   enabled: number
   templateId: string | null
   config?: Record<string, unknown>
@@ -41,6 +42,7 @@ export function channelAgentSummary(agent: AgentInfo, opts: { includeConfig?: bo
     name: agent.name,
     harness: agent.harness,
     role: agent.role,
+    agentKind: agent.agentKind,
     enabled: agent.enabled ?? 1,
     templateId: agent.templateId ?? null,
   }

@@ -28,6 +28,6 @@ export default defineApiHandler(async (event) => {
   if (typeof body?.name === 'string' && body.name.trim()) patch.name = body.name.trim()
   if (body?.config && typeof body.config === 'object') patch.config = body.config
   if (body?.enabled === 0 || body?.enabled === 1) patch.enabled = body.enabled
-  const agent = await manager.updateChannelAgent(agentId, patch, { channelId, by: 'user', reason: body?.reason })
+  const agent = await manager.updateChannelAgent(agentId, patch, { channelId, by: 'user', reason: body?.reason, actor: user })
   return { agentId: agent.id, name: agent.name, harness: agent.harness, role: agent.role }
 })

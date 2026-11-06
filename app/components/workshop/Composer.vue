@@ -76,13 +76,20 @@ const pickMode = (m: ComposerMode): void => {
 }
 
 // ===== 引用总线:块工具条「引用到输入框」→ 以 `> ` 前缀注入并聚焦 =====
-const { quoteText } = useComposerBus()
+const { quoteText, draftText } = useComposerBus()
 const taEl = ref<HTMLTextAreaElement | null>(null)
 watch(quoteText, (t) => {
   if (!t) return
   const quoted = t.trim().split('\n').map(l => `> ${l}`).join('\n')
   input.value = input.value ? `${input.value}\n\n${quoted}\n\n` : `${quoted}\n\n`
   quoteText.value = null
+  nextTick(() => taEl.value?.focus())
+})
+// 空态建议卡:直接带入完整 prompt(不自动发送;人仍可改)
+watch(draftText, (t) => {
+  if (!t) return
+  input.value = t
+  draftText.value = null
   nextTick(() => taEl.value?.focus())
 })
 
@@ -463,34 +470,43 @@ const placeholder = computed(() => {
         @send="send"
       />
     </div>
+    <div class="composer-hint">
+      <span><kbd>Enter</kbd> {{ $t('chat.enterHint') }}</span>
+      <span><kbd>Shift</kbd><span class="hint-plus">+</span><kbd>Enter</kbd> {{ $t('chat.shiftEnterHint') }}</span>
+      <span class="composer-hint-spacer" />
+      <span class="composer-disclaimer">{{ $t('chat.disclaimer') }}</span>
+    </div>
   </div>
 </template>
 
 <style scoped>
+/* 输入区:ChatGPT 式浮动 prompt 卡 + 底部快捷键/边界提示。
+ * 画布来自 chat 视图;本组件只在 workspace dock 内使用,不改全局表单。 */
 .composer {
   position: relative;
-  padding: 10px 16px 12px;
-  overflow: hidden;
-  background: var(--paper-raised);
-  border-top: 1px solid var(--line);
+  padding: 12px 24px 10px;
+  background: linear-gradient(180deg, transparent, var(--chat-canvas) 46%);
 }
 
-/* 输入卡(Slack 声部):纯白面 + 发丝线 + 12px 圆角;聚焦时墨色内缘加深。
- * 去掉了光斑/水印装饰层 — 输入区是作业面,不是品牌海报。 */
 .composer-box {
   position: relative;
-  max-width: 900px;
-  padding: 8px 12px 8px;
+  z-index: 1;
+  max-width: 860px;
+  padding: 12px 14px 8px;
   margin: 0 auto;
-  background: var(--paper-raised);
-  border: 1px solid var(--line);
-  border-radius: var(--radius-panel);
-  box-shadow: inset 0 1px 0 color-mix(in srgb, white 30%, transparent), var(--bubble-shadow);
+  background: var(--chat-surface);
+  border: 1px solid var(--chat-line);
+  border-radius: 24px;
+  box-shadow:
+    0 1px 2px rgb(41 37 36 / 4%),
+    0 16px 44px rgb(41 37 36 / 7%);
   transition: border-color var(--transition-slow), box-shadow var(--transition-slow);
 }
 .composer-box:focus-within {
-  border-color: var(--ink-fainter);
-  box-shadow: inset 0 0 0 0.5px color-mix(in srgb, var(--ink) 18%, transparent), 0 6px 22px rgb(12 10 9 / 5%);
+  border-color: color-mix(in srgb, var(--chat-accent) 45%, var(--chat-line));
+  box-shadow:
+    0 0 0 4px var(--chat-accent-soft),
+    0 18px 50px rgb(41 37 36 / 10%);
 }
 
 /* 群聊不可发言时的诚实提示(不渲染必然失败的发送) */
@@ -498,7 +514,7 @@ const placeholder = computed(() => {
   display: flex;
   gap: 6px;
   align-items: center;
-  margin: 0 0 4px 2px;
+  margin: 0 0 6px 2px;
   font-size: 11.5px;
   color: var(--tone-warning-dot);
 }
@@ -506,38 +522,77 @@ const placeholder = computed(() => {
 .composer-input {
   display: block;
   width: 100%;
-  max-height: 160px;
-  min-height: 26px;
-  padding: 3px 2px;
+  max-height: 200px;
+  min-height: 46px;
+  padding: 4px 3px 7px;
   overflow-y: auto;
   font-family: var(--font-body);
-  font-size: 13.5px;
-  line-height: 1.5;
-  color: var(--ink);
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--chat-ink);
   resize: none;
   background: transparent;
   border: 0;
   outline: none;
 }
-.composer-input::placeholder { color: var(--ink-faint); }
+.composer-input::placeholder { color: var(--chat-ink-faint); }
 
-/* ── 窄屏(≤1023):输入区是手持设备的"主操作面",键盘弹出时它必须还在 ──
-   桌面工具栏是「一行左簇右钮」;390px 下这行会折成一列竖排字,
-   所以窄屏改为「模式行 → 目标行 → 发送行」三段堆叠,发送占满一行且 ≥44px。 */
+.composer-hint {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+  max-width: 860px;
+  padding: 0 10px;
+  margin: 8px auto 0;
+  font-size: 10px;
+  color: var(--chat-ink-faint);
+}
+.composer-hint > span {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+.composer-hint kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--chat-ink-soft);
+  background: var(--chat-surface);
+  border: 1px solid var(--chat-line);
+  border-bottom-color: var(--chat-line-strong);
+  border-radius: 5px;
+}
+.hint-plus { color: var(--chat-ink-faint); }
+.composer-hint-spacer { flex: 1 1 auto; }
+.composer-disclaimer {
+  color: var(--chat-ink-faint);
+  opacity: 0.9;
+}
+
+/* ── 窄屏(≤1023):输入区是手持设备的"主操作面",键盘弹出时它必须还在 ── */
 @media (max-width: 1023.98px) {
   .composer {
-    padding: 8px 10px calc(10px + env(safe-area-inset-bottom));
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
   }
 
   .composer-box {
-    padding: 8px 10px;
+    padding: 10px 10px 7px;
+    border-radius: 20px;
   }
 
   /* 16px 是 iOS 不缩放输入框的下限(小于它聚焦时整页被放大) */
   .composer-input {
-    min-height: 42px;
+    min-height: 44px;
     max-height: 30dvh;
     font-size: 16px;
   }
+
+  .composer-hint { display: none; }
 }
 </style>

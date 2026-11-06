@@ -1,0 +1,56 @@
+{
+  "scenario": "game",
+  "startedAt": "2026-11-05T15:17:30.109Z",
+  "finishedAt": "2026-11-05T15:57:55.323Z",
+  "gates": [
+    {
+      "id": "B3",
+      "name": "计划已物化（3 工作项 / 3 交付物）",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "B4",
+      "name": "双图依赖与 contract inputs 已解析",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "B5",
+      "name": "Leader route 提案（上轮记录；本轮以确定性派发继续）",
+      "pass": true,
+      "detail": "resume after fallback/route"
+    },
+    {
+      "id": "B6",
+      "name": "三工作项全部 accepted",
+      "pass": false,
+      "detail": "[\"running\",\"accepted\",\"waiting_dependency\"]"
+    },
+    {
+      "id": "B7",
+      "name": "成果链完整（3 approved）",
+      "pass": false,
+      "detail": "[\"approved\"]"
+    },
+    {
+      "id": "B8",
+      "name": "handoff 血缘：开发成果消费 upstream ≥2",
+      "pass": false,
+      "detail": ""
+    },
+    {
+      "id": "B9",
+      "name": "L1 技术验收记录 ≥3",
+      "pass": false,
+      "detail": ""
+    },
+    {
+      "id": "B10",
+      "name": "项目完成",
+      "pass": false,
+      "detail": "status=active"
+    }
+  ],
+  "projectId": "58576fb2-4642-4b65-b636-54c9eb8fa41a"
+}

@@ -97,6 +97,25 @@
   --bubble-line: var(--line);
   --bubble-shadow: 0 1px 2px rgb(12 10 9 / 4%);
 
+  /* AI 对话画布(仅 workspace chat 视图消费;工业仪表台其余页面不受影响)
+   * 方向:暖纸阅读面 + 石墨油墨 + 深青信号色;白卡片浮在纸面上,
+   * 不是"通用紫色渐变 AI 落地页"。--chat-* 只在聊天声部使用。 */
+  --chat-canvas: #f7f6f3;
+  --chat-surface: #ffffff;
+  --chat-surface-raised: #fbfaf7;
+  --chat-ink: #1a1a18;
+  --chat-ink-soft: #5f5c55;
+  --chat-ink-faint: #8a857b;
+  --chat-line: #e8e4dc;
+  --chat-line-strong: #d8d2c7;
+  --chat-accent: #0f766e;
+  --chat-accent-strong: #0b5d57;
+  --chat-accent-soft: #e8f4f1;
+  --chat-user-bubble: #efebe4;
+  --chat-user-ink: #24221e;
+  --chat-shadow: 0 18px 50px rgb(41 37 36 / 8%);
+  --chat-glow: radial-gradient(60% 80% at 50% 0%, rgb(15 118 110 / 8%), transparent 70%);
+
   /* 身份色(agentId 哈希 → 稳定色相;组件以 --av 注入,白字首字母可达 AA) */
   --av-fallback: #57534e;
   --on-av: #ffffff;
@@ -245,6 +264,23 @@ html.dark {
   --bubble-bg: var(--paper-raised);
   --bubble-line: var(--line);
   --bubble-shadow: 0 1px 2px rgb(0 0 0 / 32%);
+
+  /* AI 对话画布暗阶:深海军蓝纸面 + 雾白油墨 + 信号绿;与全站暗阶同族 */
+  --chat-canvas: #080c12;
+  --chat-surface: #11161d;
+  --chat-surface-raised: #0d131a;
+  --chat-ink: #e9eef6;
+  --chat-ink-soft: #aeb9c8;
+  --chat-ink-faint: #7c8899;
+  --chat-line: #1d2733;
+  --chat-line-strong: #2b3a4b;
+  --chat-accent: #3fe4ab;
+  --chat-accent-strong: #63ebbc;
+  --chat-accent-soft: rgb(63 228 171 / 12%);
+  --chat-user-bubble: #1a2330;
+  --chat-user-ink: #e9eef6;
+  --chat-shadow: 0 18px 50px rgb(0 0 0 / 40%);
+  --chat-glow: radial-gradient(60% 80% at 50% 0%, rgb(63 228 171 / 7%), transparent 70%);
 
   /* 氛围光斑(暗色收敛为低亮度深色 glow:有纵深、无粉彩 AI 味) */
   --g-mint: #14352c;

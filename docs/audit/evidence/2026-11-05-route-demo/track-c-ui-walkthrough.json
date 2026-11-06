@@ -1,0 +1,93 @@
+{
+  "generatedAt": "2026-11-04T19:51:49.002Z",
+  "port": 3959,
+  "scenario": "Track B 配套 UI 走查（B12）：产品设计落地页项目页五 tab 渲染/交互",
+  "pass": 14,
+  "fail": 0,
+  "results": [
+    {
+      "id": "W0",
+      "name": "走查实例启动",
+      "pass": true,
+      "detail": "port=3959"
+    },
+    {
+      "id": "W1",
+      "name": "同形状数据就绪（项目/频道/交付物/链式工作项）",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "W2a",
+      "name": "内核自动派发 W1（零手动）",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "W2b",
+      "name": "完成回调 → W2 自动派发",
+      "pass": true,
+      "detail": "w2=DISPATCHED"
+    },
+    {
+      "id": "W2c",
+      "name": "链式全闭环（两工作项 COMPLETED）",
+      "pass": true,
+      "detail": "states=COMPLETED,COMPLETED"
+    },
+    {
+      "id": "W3",
+      "name": "成果链 + 完成门禁 → completed（含审批历史）",
+      "pass": true,
+      "detail": "status=completed"
+    },
+    {
+      "id": "W4a",
+      "name": "项目列表页渲染本项目",
+      "pass": true,
+      "detail": "AGENTWORKSHOP\nDIGITAL TWIN\n控制台\n仪表盘\nAgent 工作台\n数字孪生\n数采中心\n产线运营\n数据管理\nEDA 工坊\n建模\n优化器\n本体模型\n运维\n产线操作\n数据分析\n运行时监控\n产线日志\n系统\nAPI Token\n用户管理\n权限管理\n插件管理\n工具管理\n系统设置\nv0.9.5\n/\ndev\nP"
+    },
+    {
+      "id": "W4b",
+      "name": "详情页概览：项目名/状态/频道/周报",
+      "pass": true,
+      "detail": "AGENTWORKSHOP\nDIGITAL TWIN\n控制台\n仪表盘\nAgent 工作台\n数字孪生\n数采中心\n产线运营\n数据管理\nEDA 工坊\n建模\n优化器\n本体模型\n运维\n产线操作\n数据分析\n运行时监控\n产线日志\n系统\nAPI Token\n用户管理\n权限管理\n插件管理\n工具管理\n系统设置\nv0.9.5\n/\ndev\nProjects\n85bbaa52-69cc-4ba4-83f9-f384e320af7a\n简体中文\nT\ntrackc-u"
+    },
+    {
+      "id": "W4c",
+      "name": "计划与工作 tab：链式工作项 + 依赖展示",
+      "pass": true,
+      "detail": "AGENTWORKSHOP\nDIGITAL TWIN\n控制台\n仪表盘\nAgent 工作台\n数字孪生\n数采中心\n产线运营\n数据管理\nEDA 工坊\n建模\n优化器\n本体模型\n运维\n产线操作\n数据分析\n运行时监控\n产线日志\n系统\nAPI Token\n用户管理\n权限管理\n插件管理\n工具管理\n系统设置\nv0.9.5\n/\ndev\nP"
+    },
+    {
+      "id": "W4d",
+      "name": "交付物 tab：交付物与成果分组",
+      "pass": true,
+      "detail": "AGENTWORKSHOP\nDIGITAL TWIN\n控制台\n仪表盘\nAgent 工作台\n数字孪生\n数采中心\n产线运营\n数据管理\nEDA 工坊\n建模\n优化器\n本体模型\n运维\n产线操作\n数据分析\n运行时监控\n产线日志\n系统\nAPI Token\n用户管理\n权限管理\n插件管理\n工具管理\n系统设置\nv0.9.5\n/\ndev\nP"
+    },
+    {
+      "id": "W4e",
+      "name": "审批 tab：审批历史（计划/验收/完成）",
+      "pass": true,
+      "detail": "AGENTWORKSHOP\nDIGITAL TWIN\n控制台\n仪表盘\nAgent 工作台\n数字孪生\n数采中心\n产线运营\n数据管理\nEDA 工坊\n建模\n优化器\n本体模型\n运维\n产线操作\n数据分析\n运行时监控\n产线日志\n系统\nAPI Token\n用户管理\n权限管理\n插件管理\n工具管理\n系统设置\nv0.9.5\n/\ndev\nP"
+    },
+    {
+      "id": "W4f",
+      "name": "决策与事件 tab：派发/完成审计事件",
+      "pass": true,
+      "detail": "AGENTWORKSHOP\nDIGITAL TWIN\n控制台\n仪表盘\nAgent 工作台\n数字孪生\n数采中心\n产线运营\n数据管理\nEDA 工坊\n建模\n优化器\n本体模型\n运维\n产线操作\n数据分析\n运行时监控\n产线日志\n系统\nAPI Token\n用户管理\n权限管理\n插件管理\n工具管理\n系统设置\nv0.9.5\n/\ndev\nP"
+    },
+    {
+      "id": "W4g",
+      "name": "页面无未捕获异常",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "W4",
+      "name": "B12 项目页五 tab 渲染与交互走查 + 截图",
+      "pass": true,
+      "detail": "tabs=plan,deliverables,approvals,events errors=0"
+    }
+  ]
+}

@@ -25,7 +25,10 @@ const emit = defineEmits<{
 </script>
 
 <template>
-  <div class="center-pane">
+  <div
+    class="center-pane"
+    :class="{ 'is-chat': view === 'chat' }"
+  >
     <template v-if="channelId">
       <workshop-transcript-timeline
         v-if="view === 'timeline'"
@@ -91,4 +94,6 @@ const emit = defineEmits<{
   min-width: 0;
   max-width: 100%;
 }
+/* 对话视图:暖纸画布(与 ChatTimeline/Composer 同一套 --chat-* 令牌) */
+.center-pane.is-chat { background: var(--chat-canvas); }
 </style>

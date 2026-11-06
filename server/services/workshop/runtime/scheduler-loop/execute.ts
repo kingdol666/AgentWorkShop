@@ -76,7 +76,9 @@ export abstract class SchedulerLoopExecute extends SchedulerLoopRules {
           // 能力探测:极简 TaskEngine 替身可能缺方法,缺失时按旧语义跳过。
           if (!parent.parentId) {
             const engine = this.lead.taskEngine as { refreshDeadline?: (id: string, iso: string) => unknown }
-            const budgetMs = Math.max(10_000, Number(workshopSettings().root_timeout_ms ?? 900_000))
+            const budgetMs = parent.source === 'project' && parent.deadlineAt
+              ? Math.max(10_000, new Date(parent.deadlineAt).getTime() - new Date(parent.createdAt).getTime())
+              : Math.max(10_000, Number(workshopSettings().root_timeout_ms ?? 900_000))
             engine.refreshDeadline?.(parent.id, new Date(Date.now() + budgetMs).toISOString())
           }
         }
@@ -123,6 +125,12 @@ export abstract class SchedulerLoopExecute extends SchedulerLoopRules {
         // 陈旧取消决策守卫:终态任务(含 FAILED——重试耗尽子任务)不可取消,与 complete
         // 的幂等守卫同构。曾因直接调 TaskEngine.cancel 撞终态 409 每 tick 抛异常空转。
         if (!task || TERMINAL_TASK_STATES[task.state] || task.closeReason === 'ROOT_TIMEOUT') break
+        // PR16 治理护栏（与 manager.cancelTask 同语义）：lead 不可自行取消项目来源 root。
+        // 小模型在长任务上会周期性输出 cancel 决策 —— 项目工作项的放弃属 owner 决定。
+        if (task.source === 'project' && !task.parentId) {
+          this.noteLeadDecision({ decision: 'cancel-blocked', taskId: task.id, reason: `PROJECT_ROOT_CANCEL_FORBIDDEN: ${decision.reason ?? 'LEAD_CANCEL'}` })
+          break
+        }
         this.lead.taskEngine.cancel(decision.taskId, this.lead.agentId, decision.reason ?? 'LEAD_CANCEL')
         // lead 终态同步:经调度器判定取消同样不经 processMessage,重广播队列上下文
         this.lead.refreshStatus()

@@ -66,7 +66,11 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
           if (!task.parentId) {
             const engine = this.deps.taskEngine as { refreshDeadline?: (id: string, iso: string) => unknown }
             const { workshopSettings } = await import('../../settings')
-            const budgetMs = Math.max(10_000, Number(workshopSettings().root_timeout_ms ?? 900_000))
+            // 项目 root 用创建时的显式预算（deadline-createdAt），队列等待不倒扣；
+            // 普通 root 沿用 root_timeout_ms。
+            const budgetMs = task.source === 'project' && task.deadlineAt
+              ? Math.max(10_000, new Date(task.deadlineAt).getTime() - new Date(task.createdAt).getTime())
+              : Math.max(10_000, Number(workshopSettings().root_timeout_ms ?? 900_000))
             engine.refreshDeadline?.(taskId, new Date(Date.now() + budgetMs).toISOString())
           }
         }

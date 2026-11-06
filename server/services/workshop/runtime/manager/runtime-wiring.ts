@@ -131,7 +131,7 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     // cr.scheduler 置 null)后,若无人重建调度循环,频道进入"worker 活着、lead 不派活"
     // 的僵尸态 —— 后续任务只写进 lead 信箱却永远无人消费派发(实测 task 积压 600s+)。
     // lead 一旦重新装配,立即补齐 SchedulerLoop(幂等;与 ensureChannelActive 同源语义)。
-    if (agent.role === 'lead' && !cr.scheduler) this.reviveScheduler(m.channelId)
+    if (agent.role === 'lead' && agent.agentKind !== 'project_leader' && !cr.scheduler) this.reviveScheduler(m.channelId)
     return runtime
   }
 
@@ -160,6 +160,8 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     if (cr.scheduler) return
     const lead = this.ensureAgentRuntime(channelId, channel.leadAgentId)
     if (!lead) return
+    // 项目办公室：Project Leader 只由 mailbox 驱动，不挂 Channel SchedulerLoop。
+    if (lead.agentKind === 'project_leader') return
     // 必须再查一次:`ensureAgentRuntime → wireMember` 在装配 lead 时会经
     // `reviveScheduler` 挂上**第一个** SchedulerLoop;此处若不再判空就会挂上第二个,
     // 把第一个变成无人持有的孤儿循环 —— 重复监督/重复派单,且 shutdown 只停
@@ -189,7 +191,7 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     if (cr.schedulerStoppingInProgress) return
     if (cr.scheduler) return
     const lead = this.runtimeOf(channelId, channel.leadAgentId)
-    if (!lead || lead.role !== 'lead') return
+    if (!lead || lead.role !== 'lead' || lead.agentKind === 'project_leader') return
     this.attachScheduler(cr, channelId, lead, options)
   }
 
@@ -213,6 +215,7 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     // 经 wireMember → reviveScheduler 重新挂载。
     if (this.shutdownStarted || cr.schedulerStoppingInProgress) return
     if (cr.scheduler) return
+    if (lead.agentKind === 'project_leader') return
     const loop = new SchedulerLoop(cr, lead, {
       // 停滞窗口默认取 workshop.stall_ms(默认 5 分钟,可经设置调整):
       // 它决定"多久算停滞"以及"多久之后收口",是运维最需要按现场调的一个值;
@@ -278,6 +281,8 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
   async unloadAgent(channelId: string, agentId: string): Promise<void> {
     const runtime = this.runtimeOf(channelId, agentId)
     if (!runtime) return
+    // 项目办公室 leader 常驻：项目 active 期间不参与 idle 卸载（pause/archive 走显式停止）。
+    if (runtime.agentKind === 'project_leader') return
     if (runtime.getState() !== 'idle') return
     if (this.deps.repos.messages.listPendingByChannelAgent(channelId, agentId).length > 0) return
     // 生产化(2026-10-09):挂起中的 HITL 审批卡视为活跃 —— 真人审批常超空闲宽限
@@ -370,7 +375,11 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
   protected async rescueStaleRoots(): Promise<void> {
     if (!rootQueueEnabled()) return
     const now = Date.now()
-    const RESCUE_STALE_MS = 90_000
+    // 2026-11-05：90s 固定阈值会在真实 LLM 长回合里误杀忙碌 lead（上一轮产品落地页
+    // 实测：lead 读 skill/生成长 HTML 时被反复卸载）。默认放宽到 5min，并允许
+    // AW_ROOT_RESCUE_STALE_MS 覆盖；忙碌 lead 一律跳过（见下）。
+    const configured = Number(process.env.AW_ROOT_RESCUE_STALE_MS ?? 0)
+    const RESCUE_STALE_MS = Number.isFinite(configured) && configured >= 60_000 ? configured : 300_000
     const RESCUE_COOLDOWN_MS = 10 * 60_000
     if (this.rescueSeen.size > 500) this.rescueSeen.clear()
     for (const channel of this.deps.repos.channels.list()) {
@@ -387,6 +396,13 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
       const head = roots.find(r => !TERMINAL_TASK_STATES[r.state as TaskState])
       if (!head || head.state !== 'SUBMITTED' || head.assigneeId !== channel.leadAgentId) continue
       if (now - Date.parse(head.createdAt) < RESCUE_STALE_MS) continue
+      // 忙碌 lead 不救援：root 仍是 SUBMITTED 可能只是「消息已消费、回合尚未把状态推进」，
+      // 此时卸载会打断正在生成的长任务（D1 反复卸载的直接根因）。
+      const leadRt = this.runtimeOf(channel.id, channel.leadAgentId)
+      if (leadRt?.getState?.() === 'busy') {
+        log.warn(`[AgentChannelManager] D1 兜底跳过:lead 正忙(channel ${channel.id.slice(0, 8)} root ${head.id.slice(0, 8)})`)
+        continue
+      }
       const last = this.rescueSeen.get(head.id) ?? 0
       if (now - last < RESCUE_COOLDOWN_MS) continue
       this.rescueSeen.set(head.id, now)
@@ -405,7 +421,9 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
         // 早已耗尽,不刷新则 tick 的过期收口会在 WORKING 后立即处决它。
         try {
           const engine = this.getTaskEngine() as { refreshDeadline?: (id: string, iso: string) => unknown }
-          const budgetMs = Math.max(10_000, Number(workshopSettings().root_timeout_ms ?? 900_000))
+          const budgetMs = head.source === 'project' && head.deadlineAt
+            ? Math.max(10_000, new Date(head.deadlineAt).getTime() - new Date(head.createdAt).getTime())
+            : Math.max(10_000, Number(workshopSettings().root_timeout_ms ?? 900_000))
           engine.refreshDeadline?.(head.id, new Date(Date.now() + budgetMs).toISOString())
         }
         catch { /* 极简引擎替身缺方法:跳过,入场后由既有预算语义接管 */ }

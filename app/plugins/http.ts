@@ -85,6 +85,8 @@ export default defineNuxtPlugin((nuxtApp) => {
           instance.post<unknown, T>(url, data, cfg),
         put: <T = unknown>(url: string, data?: object, cfg?: AxiosRequestConfig) =>
           instance.put<unknown, T>(url, data, cfg),
+        patch: <T = unknown>(url: string, data?: object, cfg?: AxiosRequestConfig) =>
+          instance.patch<unknown, T>(url, data, cfg),
         delete: <T = unknown>(url: string, cfg?: AxiosRequestConfig) =>
           instance.delete<unknown, T>(url, cfg),
         request: <T = unknown>(cfg: AxiosRequestConfig) => instance.request<unknown, T>(cfg),

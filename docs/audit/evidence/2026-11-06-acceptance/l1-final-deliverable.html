@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>L1 Acceptance</title>
+<style>
+  :root { color-scheme: light dark; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh;
+    display: grid; place-items: center;
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: radial-gradient(1200px 600px at 20% -10%, #1e3a8a 0%, #0f172a 55%, #020617 100%);
+    color: #e2e8f0; padding: 32px;
+  }
+  main {
+    width: min(720px, 100%);
+    background: rgba(15, 23, 42, 0.72);
+    border: 1px solid rgba(148, 163, 184, 0.28);
+    border-radius: 16px; padding: 32px 28px;
+    box-shadow: 0 24px 60px rgba(2, 6, 23, 0.55);
+  }
+  h1 { margin: 0 0 4px; font-size: 1.6rem; letter-spacing: -0.02em; }
+  .sub { margin: 0 0 24px; color: #94a3b8; font-size: 0.9rem; }
+  ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+  li {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 14px; border-radius: 10px;
+    background: rgba(30, 41, 59, 0.65);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    font-size: 0.92rem;
+  }
+  .mark { width: 22px; height: 22px; flex: none; display: grid; place-items: center;
+    border-radius: 50%; font-size: 0.75rem; font-weight: 700; }
+  .pass { background: #052e16; color: #4ade80; border: 1px solid #166534; }
+  footer { margin-top: 22px; padding-top: 16px; font-size: 0.78rem; color: #64748b;
+    border-top: 1px solid rgba(148, 163, 184, 0.18); display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; color: #7dd3fc; }
+</style>
+</head>
+<body>
+<main>
+  <h1>L1 Acceptance</h1>
+  <p class="sub">Single-file artifact delivered by the production channel for technical acceptance.</p>
+  <ul>
+    <li><span class="mark pass">✓</span><span>Single file, no external assets or build step</span></li>
+    <li><span class="mark pass">✓</span><span>Valid <code>&lt;!DOCTYPE html&gt;</code> document with matching <code>&lt;title&gt;</code></span></li>
+    <li><span class="mark pass">✓</span><span>Responsive layout, readable in light and dark schemes</span></li>
+  </ul>
+  <footer>
+    <span>artifact: <code>l1-acceptance.html</code></span>
+    <span>scope: L1 technical acceptance only</span>
+  </footer>
+</main>
+</body>
+</html>

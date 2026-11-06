@@ -127,6 +127,7 @@ export abstract class ManagerChannelTemplates extends ManagerTeams {
       workspace: tpl.workspace || undefined,
       leadAgent: lead ? { name: lead.name, harness: lead.harness, config: lead.config } : undefined,
       ownerUserId: user.id,
+      actor: user,
     })
     if (kb !== undefined) {
       getChannelPluginsRepo().setMany(created.channelId, [{ name: 'rag-bridge', enabled: kbOn }])
@@ -140,13 +141,13 @@ export abstract class ManagerChannelTemplates extends ManagerTeams {
         const tplRow = this.deps.repos.agents.findById(m.templateId)
         if (!tplRow) throw new AppError(404, 'NOT_FOUND', `成员 Agent 模板不存在: ${m.templateId}`)
         this.requireTemplateReadable(tplRow, user, '成员 Agent 模板')
-        const inst = await this.addAgentToChannel({ channelId: created.channelId, agentId: m.templateId, role: m.role, by: 'template' })
+        const inst = await this.addAgentToChannel({ channelId: created.channelId, agentId: m.templateId, role: m.role, by: 'template', actor: user })
         agents.push({ id: inst.id, templateId: inst.templateId, name: inst.name, role: inst.role })
       }
       else {
         this.assertHarness(m.inline.harness)
         const inlineTpl = await this.createAgent({ name: m.inline.name, harness: m.inline.harness, config: m.inline.config, ownerUserId: user.id })
-        const inst = await this.addAgentToChannel({ channelId: created.channelId, agentId: inlineTpl.id, role: m.role, by: 'template' })
+        const inst = await this.addAgentToChannel({ channelId: created.channelId, agentId: inlineTpl.id, role: m.role, by: 'template', actor: user })
         agents.push({ id: inst.id, templateId: inst.templateId, name: inst.name, role: inst.role })
       }
       agentCount += 1

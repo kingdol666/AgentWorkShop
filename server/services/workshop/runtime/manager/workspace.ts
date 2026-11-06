@@ -92,6 +92,20 @@ export abstract class ManagerWorkspace extends ManagerRuntimeObserve {
     }
     const title = String(input.title ?? '').trim()
     if (!title) throw new AppError(400, 'BAD_REQUEST', 'submit_task 需要非空 title')
+    // Router v3 P2：项目成员 Channel 存在未派发/未终态工作项时，禁止 lead 自建 root。
+    // 否则 lead 会凭项目上下文提前开工（实测策划/美术/开发都自建过同名 root，
+    // 绕过 Project Leader 路由与 handoff，产生无血缘成果）。项目派发的 root 由
+    // submitProjectRoot 创建，不受此闸门影响。
+    const pendingProjectWork = this.deps.db.prepare(
+      `SELECT w.id, w.title FROM project_work_items w
+       JOIN project_channels pc ON pc.project_id = w.project_id AND pc.channel_id = w.channel_id AND pc.status = 'active'
+       JOIN projects p ON p.id = w.project_id AND p.status = 'active'
+       WHERE w.channel_id = ? AND w.state IN ('DRAFT','BLOCKED','REWORK','DISPATCHING','DISPATCHED','RUNNING')
+       ORDER BY w.created_at ASC LIMIT 1`,
+    ).get(channelId) as { id: string, title: string } | undefined
+    if (pendingProjectWork) {
+      throw new AppError(409, 'PROJECT_ROUTE_PENDING', `项目工作项「${pendingProjectWork.title}」尚未派发/执行；禁止 lead 自建 root，请等待 Project Leader 路由或直接执行项目 root`)
+    }
     // 预算:lead 可显式声明 budgetMinutes —— 长工业链路(如 8 步巡检)在 15min 默认预算下
     // 会被预算处决(实测 2026-10-06);未声明沿用 root_timeout_ms。上限 6h 防滥用。
     const declaredMinutes = Number(input.budgetMinutes)

@@ -1,0 +1,166 @@
+{
+  "generatedAt": "2026-11-04T19:51:34.424Z",
+  "port": 3966,
+  "scenario": "Track B(Route 闭环版): 智能注塑云平台 · 产品设计落地页（真 LLM 自主构建，零手动派发）",
+  "acceptancePlan": "docs/plans/2026-11-05-live-demo-acceptance-plan.md",
+  "pass": 25,
+  "fail": 1,
+  "results": [
+    {
+      "id": "B1",
+      "name": "隔离实例启动（build 产物，会话密钥 ≥32 字符）",
+      "pass": true,
+      "detail": "port=3966"
+    },
+    {
+      "id": "B2a",
+      "name": "owner 注册",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "B2b",
+      "name": "项目创建（autoDispatch=true 落库，无产线）",
+      "pass": true,
+      "detail": "{\"id\":\"3a0ab365-f752-487f-95fa-b0657472ec46\"}"
+    },
+    {
+      "id": "B2c",
+      "name": "snapshot.autoDispatch=true",
+      "pass": true,
+      "detail": "autoDispatch=true"
+    },
+    {
+      "id": "B2d",
+      "name": "成员频道（lead harness=omp，无产线绑定）",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "B2e",
+      "name": "绑定成员频道",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "B2f",
+      "name": "交付物创建（必选）",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "B2g",
+      "name": "项目激活",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "B3a",
+      "name": "leader 真 LLM 提案计划 → owner 批准 → planVersion=1",
+      "pass": true,
+      "detail": "decide=200"
+    },
+    {
+      "id": "B3-dep-patch",
+      "name": "owner 补齐 W2 依赖（DRAFT 态 PATCH，审计 work.updated）",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "B4",
+      "name": "零手动派发：内核自动派发 W1（work.dispatch_auto）",
+      "pass": true,
+      "detail": "w1=DISPATCHED autoTargets=1"
+    },
+    {
+      "id": "B5",
+      "name": "W1 lead 真 LLM 自主执行完成（设计文档工件）",
+      "pass": true,
+      "detail": "root=COMPLETED artifacts=1"
+    },
+    {
+      "id": "B6",
+      "name": "完成回调 → 内核自动派发 W2（依赖门解除）",
+      "pass": true,
+      "detail": "w2=DISPATCHED autoTargets=2"
+    },
+    {
+      "id": "B7",
+      "name": "W2 lead 真 LLM 自主实现落地页（完整 HTML 工件）",
+      "pass": true,
+      "detail": "root=COMPLETED artifacts=1"
+    },
+    {
+      "id": "B7b",
+      "name": "落地页 HTML 工件提取（含 hero/分区/响应式特征）",
+      "pass": true,
+      "detail": "len=9608"
+    },
+    {
+      "id": "B8a",
+      "name": "root COMPLETED → 成果 draft（真实工件证据）",
+      "pass": true,
+      "detail": "result=4ac3bd7c-15ff-4939-ba8e-54ba25fdb6c8"
+    },
+    {
+      "id": "B8b",
+      "name": "channel lead 工具提交成果",
+      "pass": true,
+      "detail": "{\n  \"ok\": true,\n  \"result\": {\n    \"id\": \"4ac3bd7c-15ff-4939-ba8e-54ba25fdb6c8\",\n    \"status\": \"submitted\",\n    \"title\": \"落地页 HTML 实现 成果\",\n    \"workItemId\": \"6a999ede-016e-4843-9d52-3a9d495801e5\",\n    "
+    },
+    {
+      "id": "B8c",
+      "name": "复核 → reviewed",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "B8d",
+      "name": "owner 验收批准 → 成果/交付物 approved",
+      "pass": true,
+      "detail": "decide=200"
+    },
+    {
+      "id": "B9",
+      "name": "完成门禁 + owner 批准 → completed",
+      "pass": true,
+      "detail": "dec=200 status=completed"
+    },
+    {
+      "id": "B11",
+      "name": "Route 审计闭环：恰好 2 次 work.dispatch_auto（W1→W2）+ 账本里程碑",
+      "pass": true,
+      "detail": "autoTargets=[\"ce250c8d-b5ec-4cc0-b400-2670b3a89035\",\"6a999ede-016e-4843-9d52-3a9d495801e5\"] ledger=9"
+    },
+    {
+      "id": "B10b",
+      "name": "移动端视口 390px 响应式（无横向溢出）",
+      "pass": true,
+      "detail": "overflow=false"
+    },
+    {
+      "id": "B12a",
+      "name": "项目列表页渲染本项目",
+      "pass": true,
+      "detail": "AGENTWORKSHOP\nDIGITAL TWIN\n控制台\n仪表盘\nAgent 工作台\n数字孪生\n数采中心\n产线运营\n数据管理\nEDA 工坊\n建模\n优化器\n本体模型\n运维\n产线操作\n数据分析\n运行时监控\n产线日志\n系统\nAPI Token\n用户管理\n权限管理\n插件管理\n工具管理\n系统设置\nv0.9.5\n/\ndev\nP"
+    },
+    {
+      "id": "B12b",
+      "name": "项目详情页概览渲染（名称/频道/工作项状态）",
+      "pass": false,
+      "detail": "AGENTWORKSHOP\nDIGITAL TWIN\n控制台\n仪表盘\nAgent 工作台\n数字孪生\n数采中心\n产线运营\n数据管理\nEDA 工坊\n建模\n优化器\n本体模型\n运维\n产线操作\n数据分析\n运行时监控\n产线日志\n系统\nAPI Token\n用户管理\n权限管理\n插件管理\n工具管理\n系统设置\nv0.9.5\n/\ndev\nProjects\n3a0ab365-f752-487f-95fa-b0657472"
+    },
+    {
+      "id": "B12c",
+      "name": "五 tab 截图走查（plan/deliverables/approvals）",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "B10",
+      "name": "落地页浏览器实测（渲染/分区/可滚动/CTA 交互）+ 截图",
+      "pass": true,
+      "detail": "textLen=1454 sections=7 cta=false scrollable=true mobileOverflow=false"
+    }
+  ]
+}

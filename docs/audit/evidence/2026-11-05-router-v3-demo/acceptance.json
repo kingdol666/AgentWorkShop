@@ -1,0 +1,73 @@
+{
+  "date": "2026-11-05/06",
+  "snapshot": "D:/codes/ABO/aw-router-demo-20261105 @ 9ae1d9f9",
+  "code": {
+    "pr": 51,
+    "mergeCommit": "763e2d92074b7c90745e2bd58b54339f348039a2",
+    "typecheck": "pass",
+    "unit": { "tests": 1126, "pass": 1124, "fail": 0, "skipped": 2 }
+  },
+  "harness": {
+    "projectLeader": "omp",
+    "channelLeads": "omp",
+    "provider": "ustc",
+    "model": "deepseek-flash",
+    "modelRoleDefault": "ustc/deepseek-flash:max",
+    "thinking": "auto",
+    "note": "No per-agent model override; live omp logs show provider=ustc model=deepseek-flash. omp 18.12.2."
+  },
+  "scenarioA": {
+    "projectId": "ef460732-7a99-4592-b094-6bf64d0b52cc",
+    "status": "completed",
+    "gates": "6/6",
+    "workItems": [
+      { "title": "官网信息架构与中文文案", "state": "COMPLETED", "result": "approved", "artifactBytes": 29532 },
+      { "title": "官网单文件 HTML 实现", "state": "COMPLETED", "result": "approved", "artifactBytes": 424268 }
+    ],
+    "deliverable": { "name": "AgentWorkShop 官网落地页", "status": "approved" },
+    "render": { "sections": 6, "h1": 1, "h2": 4, "details": 7, "links": 31, "pageErrors": 0, "mobileOverflow": false },
+    "verdict": "PASS"
+  },
+  "scenarioB": {
+    "projectId": "58576fb2-4642-4b65-b636-54c9eb8fa41a",
+    "status": "completed",
+    "workItems": [
+      { "title": "游戏策划案", "state": "COMPLETED", "result": "approved", "artifactBytes": 1433 },
+      { "title": "美术资源包（内联 SVG/CSS）", "state": "COMPLETED", "result": "approved", "artifactBytes": 8373 },
+      { "title": "游戏 HTML 实现", "state": "COMPLETED", "result": "approved", "artifactBytes": 21649, "attemptNo": 2, "attempt1": "FAILED (demo process exit)" }
+    ],
+    "deliverables": [
+      { "name": "游戏策划案", "status": "approved" },
+      { "name": "美术资源包", "status": "approved" },
+      { "name": "可玩 HTML 游戏", "status": "approved" }
+    ],
+    "w3Artifact": { "file": "game-ark7-final.html", "bytes": 21649, "canvas": "1280x720", "playable": true, "pageErrors": 0, "completeTask": true },
+    "handoffLineage": {
+      "artResultInputs": ["游戏策划案 v1"],
+      "gameResultInputs": ["游戏策划案 v1", "美术资源包 v1"],
+      "w2RootInputBytes": 3661,
+      "w3RootInputBytes": 14462
+    },
+    "collaboration": {
+      "projectMessages": 0,
+      "channelToChannelChat": false,
+      "workerSubtasks": 0,
+      "note": "Collaboration was artifact handoff via project contract/lineage, not free Channel chat. project_messages tools are implemented and unit-tested but were not used in this run."
+    },
+    "verdict": "PASS"
+  },
+  "leadershipTruth": {
+    "leaderPlanProposals": 2,
+    "leaderRouteProposals": 0,
+    "projectLeaderDirectDispatches": 0,
+    "deterministicAutoDispatches": 5,
+    "manualOwnerRetryDispatch": 1,
+    "note": "Leader planned/proposed; actual dispatch was deterministic executor (work.dispatch_auto by system). Leader route gate was attempted in B but the office mailbox did not return route.proposed; owner enabled autoDispatch as fallback."
+  },
+  "overall": "PASS_WITH_CAVEATS",
+  "caveats": [
+    "All L1 technical reviews used owner review fallback because leader/reviewer mailbox did not return in time; L2 business sign-off was independent approver.",
+    "No Channel-to-Channel project messages and no worker subtasks in the live run; multi-Channel collaboration was sequential artifact handoff.",
+    "Demo server exited twice during long runs; B W3 required a manual retry (attempt 2) after process exit."
+  ]
+}

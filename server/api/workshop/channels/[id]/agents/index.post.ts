@@ -52,13 +52,14 @@ export default defineApiHandler(async (event) => {
         role,
         // 克隆模板时允许覆盖 config(如注入/覆盖 systemPromptPrefix 场景提示词)
         configOverride: body.config && Object.keys(body.config).length > 0 ? body.config : undefined,
+        actor: user,
       })
     : await (async () => {
         if (!body.name || !body.harness) {
           throw new AppError(400, 'BAD_REQUEST', '需提供 name+harness(新建模板)或 agentId(克隆已有模板)')
         }
         const tpl = await manager.createAgent({ name: body.name, harness: body.harness, config: body.config, ownerUserId: user.id })
-        return manager.addAgentToChannel({ channelId, agentId: tpl.id, role })
+        return manager.addAgentToChannel({ channelId, agentId: tpl.id, role, actor: user })
       })()
 
   if (role === 'lead') {

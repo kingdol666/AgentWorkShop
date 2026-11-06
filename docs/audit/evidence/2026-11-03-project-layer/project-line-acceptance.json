@@ -1,0 +1,369 @@
+{
+  "generatedAt": "2026-11-04T09:25:24.503Z",
+  "pass": 60,
+  "fail": 0,
+  "blocked": 0,
+  "total": 60,
+  "results": [
+    {
+      "id": "P0",
+      "name": "隔离实例启动 + workshop ready",
+      "pass": true,
+      "detail": "port=3989"
+    },
+    {
+      "id": "P1",
+      "name": "admin 注册/登录",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "P2",
+      "name": "真实产线/节点/产品/配方创建",
+      "pass": true,
+      "detail": "{\"line\":\"ln-6e55b601\",\"node\":\"dw-5274843a\",\"product\":\"pd-9c9344eb\",\"recipe\":\"rc-968cbf17\"}"
+    },
+    {
+      "id": "P2b",
+      "name": "产线业务面可见新线/节点/产品/配方",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "P3",
+      "name": "绑线 Channel 创建",
+      "pass": true,
+      "detail": "{\"channelId\":\"f28bbe4f-0276-4f91-b7bb-57a29a852c07\",\"leadAgentId\":\"ba79bf6a-bb06-44e3-a901-0595377a11d9\",\"workspace\":\"D:\\\\codes\\\\ABO\\\\AgentWorkShop-project\\\\data\\\\workspaces\\\\f28bbe4f-0276-4f91-b7bb-57a29a852c07\"}"
+    },
+    {
+      "id": "P3b",
+      "name": "Channel 产线绑定落库",
+      "pass": true,
+      "detail": "lineId=ln-6e55b601"
+    },
+    {
+      "id": "P4",
+      "name": "Project 创建（办公室 + leader 指针）",
+      "pass": true,
+      "detail": "{\"id\":\"72138c70-d2ae-452b-9391-52a8ca0f734c\",\"name\":\"良率项目-plu7e3\",\"description\":\"\",\"objective\":\"将产线 ln-6e55b601 的良率提升到 98%\",\"successCriteriaJson\":\"[\\\"良率 >= 98%\\\",\\\"基线可复现\\\"]\",\"status\":\"draft\",\"mode\":\"supervised\",\"ownerUserId\":\"1a6d4df5-2a56-4524-bcf7-f328438c07e3\",\"officeChannelId\":\"809d21b7-ec09-4568-9fe2-430439ae2832\",\"leadAgentId\":\"ec3dc982-a5c6-41ed-8395-afcdc3fe741d\",\"planVersion\":0,\"planJson\""
+    },
+    {
+      "id": "P4b",
+      "name": "办公室频道存在且 leader agent_kind=project_leader",
+      "pass": true,
+      "detail": "{\"agentKind\":\"project_leader\",\"chatEnabled\":1}"
+    },
+    {
+      "id": "P4c",
+      "name": "project_leader get_status 返回本项目",
+      "pass": true,
+      "detail": "status=200 text={\n  \"project\": {\n    \"id\": \"72138c70-d2ae-452b-9391-52a8ca0f734c\",\n    \"name\": \"良率项目-plu7e3\",\n    \"objective\": \"将产线 ln-6e55b601 的良率提升到 98%\",\n    \"successCriteria\": [\n      \"良率 >= 98%\",\n      \"基线可复现\"\n    ],\n    \"status\": \"draft\",\n    \"mode\": \"supervised\",\n    \"planVersion\": 0,\n    \"plan\": {}\n  },\n  \""
+    },
+    {
+      "id": "P4d",
+      "name": "project_leader 执行层拒绝 dispatch_task",
+      "pass": true,
+      "detail": "status=200 text=PROJECT_TOOL_DENIED: 项目总工只能使用项目级工具;dispatch_task 不可用"
+    },
+    {
+      "id": "P5",
+      "name": "用户绑定成员 Channel",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "P5b",
+      "name": "交付物创建",
+      "pass": true,
+      "detail": "{\"id\":\"bd784a90-0da9-4767-b4b6-c5ba58ab8d4c\",\"projectId\":\"72138c70-d2ae-452b-9391-52a8ca0f734c\",\"name\":\"产线基线报告-plu7e3\",\"description\":\"\",\"ownerChannelId\":\"f28bbe4f-0276-4f91-b7bb-57a29a852c07\",\"required\":1,\"acceptanceCriteriaJson\":\"[\\\"覆盖产线/产品/配方\\\",\\\"数据窗口明确\\\"]\",\"dueAt\":null,\"dependsOnJson\":\"[]\",\"status\":\"planned\",\"waiverReason\":null,\"createdBy\":\"1a6d4df5-2a56-4524-bcf7-f328438c07e3\",\"createdAt\":\"202"
+    },
+    {
+      "id": "P5c",
+      "name": "project_leader list_channels 返回已绑定成员频道",
+      "pass": true,
+      "detail": "text=[\n  {\n    \"channelId\": \"f28bbe4f-0276-4f91-b7bb-57a29a852c07\",\n    \"name\": \"项目执行频道-plu7e3\",\n    \"enabled\": 1,\n    \"leadAgentId\": \"ba79bf6a-bb06-44e3-a901-0595377a11d9\",\n    \"status\": \"enabled\"\n  }\n]"
+    },
+    {
+      "id": "P6",
+      "name": "项目工作项创建（交付物必填）",
+      "pass": true,
+      "detail": "{\"id\":\"492d1b10-04b5-4dcd-81a0-169c95539978\",\"projectId\":\"72138c70-d2ae-452b-9391-52a8ca0f734c\",\"deliverableId\":\"bd784a90-0da9-4767-b4b6-c5ba58ab8d4c\",\"channelId\":\"f28bbe4f-0276-4f91-b7bb-57a29a852c07\",\"title\":\"建立产线基线-plu7e3\",\"brief\":\"读取产线 ln-6e55b601 的节点/配方/历史，输出基线报告\",\"state\":\"DRAFT\",\"stateReason\":null,\"priority\":0,\"weight\":1,\"dependsOnJson\":\"[]\",\"acceptanceJson\":\"[]\",\"resultKey\":\"main\",\"currentA"
+    },
+    {
+      "id": "P6b",
+      "name": "不存在的交付物 → 工作项拒绝",
+      "pass": true,
+      "detail": "status=404"
+    },
+    {
+      "id": "P7",
+      "name": "Project 激活（Channel + 必选交付物）",
+      "pass": true,
+      "detail": "status=200 body={\"status\":200,\"code\":0,\"message\":\"ok\",\"data\":{\"id\":\"72138c70-d2ae-452b-9391-52a8ca0f734c\",\"name\":\"良率项目-plu7e3\",\"description\":\"\",\"objective\":\"将产线 ln-6e55b601 的良率提升到 98%\",\"successCriteriaJson\":\"[\\\"良率 >="
+    },
+    {
+      "id": "P7b",
+      "name": "计划门：未批计划派发 → 409 PLAN_NOT_APPROVED",
+      "pass": true,
+      "detail": "status=409 code=PLAN_NOT_APPROVED"
+    },
+    {
+      "id": "P7c",
+      "name": "owner 批准初始计划 → planVersion=1",
+      "pass": true,
+      "detail": "req=200 dec=200 version=1"
+    },
+    {
+      "id": "P8",
+      "name": "工作项派发（root task）",
+      "pass": true,
+      "detail": "status=200 state=DISPATCHED"
+    },
+    {
+      "id": "P8b",
+      "name": "root task 带项目上下文",
+      "pass": true,
+      "detail": "{\"id\":\"350cb3b5-cab8-4d5d-be36-992965e4f490\",\"channelId\":\"f28bbe4f-0276-4f91-b7bb-57a29a852c07\",\"rootQueueSeq\":1,\"assigneeId\":\"ba79bf6a-bb06-44e3-a901-0595377a11d9\",\"creatorId\":\"project:72138c70-d2ae-452b-9391-52a8ca0f734c\",\"title\":\"建立产线基线-plu7e3\",\"description\":\"读取产线 ln-6e55b601 的节点/配方/历史，输出基线报告\",\"state\":\"COMPLETED\",\"progress\":100,\"retryCount\":0,\"artifacts\":[{\"artifactId\":\"bb95da6c-303c-463e-a56b-"
+    },
+    {
+      "id": "P8c",
+      "name": "项目预算（60min）未被 900s 覆盖",
+      "pass": true,
+      "detail": "remainingMs=3599917"
+    },
+    {
+      "id": "P9",
+      "name": "重复派发 → WORK_ITEM_IN_FLIGHT",
+      "pass": true,
+      "detail": "status=409 code=WORK_ITEM_IN_FLIGHT"
+    },
+    {
+      "id": "P10",
+      "name": "active 项目办公室删除 → 409",
+      "pass": true,
+      "detail": "status=409 code=PROJECT_OFFICE_PROTECTED"
+    },
+    {
+      "id": "P10b",
+      "name": "active 项目办公室禁用 → 409",
+      "pass": true,
+      "detail": "status=409 code=PROJECT_OFFICE_PROTECTED"
+    },
+    {
+      "id": "P11",
+      "name": "同一 Channel 不能属于两个 active Project",
+      "pass": true,
+      "detail": "status=409 code=CHANNEL_ALREADY_BOUND"
+    },
+    {
+      "id": "P12",
+      "name": "非 owner 读取 Project → 403",
+      "pass": true,
+      "detail": "status=403"
+    },
+    {
+      "id": "P21a",
+      "name": "project_leader 建频道提案（proposal only，不直建）",
+      "pass": true,
+      "detail": "status=200 text={\n  \"ok\": true,\n  \"proposalId\": \"8861fb15-9356-4739-823e-dfbef46cc7ba\",\n  \"status\": \"proposed\",\n  \"next\": \"owner 在项目页应用提案后创建并绑定成员频道（leader 不能自建/删除频道）\"\n}"
+    },
+    {
+      "id": "P21b",
+      "name": "owner 应用建频道提案 → 频道创建并绑定",
+      "pass": true,
+      "detail": "status=200 body={\"channelId\":\"df86d9dc-6f5f-4862-8bc6-428e674bd0a8\",\"dispatched\":false}"
+    },
+    {
+      "id": "P21c",
+      "name": "提案频道出现在项目绑定列表",
+      "pass": true,
+      "detail": "bound=2 want=df86d9dc-6f5f-4862-8bc6-428e674bd0a8"
+    },
+    {
+      "id": "P22a",
+      "name": "owner 添加 B 为 viewer → B 可读项目（成员面）",
+      "pass": true,
+      "detail": "add=200 get=200 userId=10cbab33-9c66-4234-8c1f-9710be4e455b"
+    },
+    {
+      "id": "P12b",
+      "name": "非 owner 绑定 Channel → 403",
+      "pass": true,
+      "detail": "status=403"
+    },
+    {
+      "id": "P12c",
+      "name": "无产线 grant 的用户不能创建绑线 Channel",
+      "pass": true,
+      "detail": "status=403 code=LINE_FORBIDDEN"
+    },
+    {
+      "id": "P13a",
+      "name": "成员 lead token 轮换（完成任务用）",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "P13b",
+      "name": "成员 lead 完成任务",
+      "pass": true,
+      "detail": "status=200 state=COMPLETED"
+    },
+    {
+      "id": "P15",
+      "name": "Reconciler：root 终态同步工作项 COMPLETED",
+      "pass": true,
+      "detail": "status=200 state=COMPLETED"
+    },
+    {
+      "id": "P13c",
+      "name": "root COMPLETED 自动生成成果 draft（带真实 artifact 证据）",
+      "pass": true,
+      "detail": "status=200 result=draft evidence=[{\"artifactId\":\"bb95da6c-303c-463e-a56b-58ca350c9c29\",\"name\":\"lead-direct-answer\",\"kind\":\"artifact\"}]"
+    },
+    {
+      "id": "P13c2",
+      "name": "channel lead read_results 可见本频道 draft",
+      "pass": true,
+      "detail": "text=[\n  {\n    \"id\": \"bcebac5f-b07e-425f-8bcf-f953b08e6741\",\n    \"title\": \"建立产线基线-plu7e3 成果\",\n    \"status\": \"draft\",\n    \"channelId\": \"f28bbe4f-0276-4f91-b7bb-57a29a852c07\",\n    \"deliverableId\": \"bd784a90-0da9-4767-b4b6-c5ba58ab8d4c\",\n    \"workItemId\": \"492d1b10-04b5-4dcd-81a0-169c95539978\",\n    \"attempt"
+    },
+    {
+      "id": "P22b",
+      "name": "viewer 成果按 line grant 过滤（无授权=空，owner 可见）",
+      "pass": true,
+      "detail": "viewerRows=0 ownerRows=1"
+    },
+    {
+      "id": "P13d",
+      "name": "成果 submit（channel lead 工具）",
+      "pass": true,
+      "detail": "status=200 text={\n  \"ok\": true,\n  \"result\": {\n    \"id\": \"bcebac5f-b07e-425f-8bcf-f953b08e6741\",\n    \"status\": \"submitted\",\n    \"title\": \"建立产线基线-plu7e3 成果\",\n    \"workItemId\": \"492d1b10-04b5-4dcd-81a0-169c95539978\",\n    \"attemptNo\": 1,\n    \"version\": 1,\n    \"evidenceCount\": 1\n  }\n}"
+    },
+    {
+      "id": "P13e",
+      "name": "成果 review（owner/leader）",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "P14",
+      "name": "成果验收审批已创建 pending",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "P14b",
+      "name": "owner 批准成果验收",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "P13f",
+      "name": "成果 approved",
+      "pass": true,
+      "detail": "state=approved"
+    },
+    {
+      "id": "P14c",
+      "name": "交付物 approved",
+      "pass": true,
+      "detail": "state=approved"
+    },
+    {
+      "id": "P16",
+      "name": "审计 decisions/events 落库且带 trace",
+      "pass": true,
+      "detail": "decisions=12 events=11"
+    },
+    {
+      "id": "P14d",
+      "name": "审批重复决策 → 409",
+      "pass": true,
+      "detail": "status=409 code=APPROVAL_STATE_INVALID"
+    },
+    {
+      "id": "P14e1",
+      "name": "project_leader 计划提案（proposal + plan_approval，v2）",
+      "pass": true,
+      "detail": "status=200 text={\n  \"ok\": true,\n  \"proposalId\": \"7809a019-a972-45be-af9a-e1ef36f3bda0\",\n  \"approvalId\": \"c1805ad7-c4c8-401c-8b5e-e2f8a356e26e\",\n  \"planVersion\": 2,\n  \"status\": \"pending\",\n  \"next\": \"owner 必须在项目审批页批准计划；批准后 ProjectService 自动物化交付物与工作项（幂等）\"\n}"
+    },
+    {
+      "id": "P14e2",
+      "name": "同版本计划审批幂等（leader 提案复用同一 approval）",
+      "pass": true,
+      "detail": "planReq=200 id=c1805ad7-c4c8-401c-8b5e-e2f8a356e26e proposed=c1805ad7-c4c8-401c-8b5e-e2f8a356e26e"
+    },
+    {
+      "id": "P14e3",
+      "name": "approver 成员批准 plan → planVersion=2 + leader 交付物物化",
+      "pass": true,
+      "detail": "memUp=200 planDec=200 version=2 deliverables=2"
+    },
+    {
+      "id": "P20a",
+      "name": "channel lead 申请 write_intent（pending + args digest）",
+      "pass": true,
+      "detail": "status=200 text={\n  \"ok\": true,\n  \"approvalId\": \"13838283-531a-440f-a0b2-17dbd50fe0f8\",\n  \"digest\": \"91647f26937cfe8e97f7e67fc12e1f4c583cdea8a4f8bcc7615baebc58338019\",\n  \"tool\": \"recipe_update\",\n  \"status\": \"pending\",\n  \"next\": \"owner 批准后，执行器只放行 tool/args digest/attempt 完全一致的这一次调用（一次性）\"\n}"
+    },
+    {
+      "id": "P20b",
+      "name": "owner 批准 write_intent",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "P23a",
+      "name": "PATCH 项目生效 + 审计 project.updated",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "P23b",
+      "name": "PATCH DRAFT 工作项生效",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "P23c",
+      "name": "retry 重派工作项（cancel→retry attempt 递增）",
+      "pass": true,
+      "detail": "cancel=200 retry=200 state=DISPATCHED"
+    },
+    {
+      "id": "P23d",
+      "name": "snapshot 聚合（project/workItems/results/approvals+report）",
+      "pass": true,
+      "detail": "status=200 wi=3"
+    },
+    {
+      "id": "P23e",
+      "name": "trace 聚合（tasks/events/decisions by traceId）",
+      "pass": true,
+      "detail": "status=200 summary={\"decisions\":9,\"events\":9,\"tasks\":1}"
+    },
+    {
+      "id": "P23f",
+      "name": "审批历史（scope=all 含已 approved）",
+      "pass": true,
+      "detail": "rows=4"
+    },
+    {
+      "id": "P23g",
+      "name": "完成门前工作项全部终态（cancel 豁免入口）",
+      "pass": true,
+      "detail": "states=COMPLETED,CANCELED,CANCELED"
+    },
+    {
+      "id": "P14f",
+      "name": "项目完成门禁 + owner 批准 → completed",
+      "pass": true,
+      "detail": "completeReq=200 completeDec=200 status=completed"
+    },
+    {
+      "id": "P17a",
+      "name": "周报 API 数字与库一致（交付物/成果/工作项/进度）",
+      "pass": true,
+      "detail": "status=200 d=2 r=1 w=3 ratio=1"
+    }
+  ]
+}

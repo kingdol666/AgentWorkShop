@@ -1,0 +1,111 @@
+{
+  "generatedAt": "2026-11-04T15:32:22.388Z",
+  "port": 3969,
+  "scenario": "Track B: 简易库存管理系统（真 LLM 开发全链）",
+  "pass": 15,
+  "fail": 2,
+  "results": [
+    {
+      "id": "D0",
+      "name": "隔离实例启动（build 产物）",
+      "pass": true,
+      "detail": "port=3969"
+    },
+    {
+      "id": "D1a",
+      "name": "owner 注册",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "D1b",
+      "name": "项目创建（leader harness=omp）",
+      "pass": true,
+      "detail": "{\"id\":\"11fb6689-21d6-496f-bff5-1a966740ba7e\"}"
+    },
+    {
+      "id": "D1c",
+      "name": "成员频道（lead harness=omp）",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "D1d",
+      "name": "绑定成员频道",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "D1e",
+      "name": "交付物创建",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "D1f",
+      "name": "项目激活",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "D2",
+      "name": "leader 真 LLM 提案计划 → owner 批准 → planVersion=1",
+      "pass": true,
+      "detail": "decide=200"
+    },
+    {
+      "id": "D3a",
+      "name": "工作项派发（root task）",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "D3b",
+      "name": "lead 真 LLM 自主执行完成任务（含 CANCELED 自动重派）",
+      "pass": true,
+      "detail": "root=COMPLETED artifacts=2B"
+    },
+    {
+      "id": "D3c",
+      "name": "产出真实 HTML 工件（含库存/表格/localStorage 关键特征）",
+      "pass": false,
+      "detail": "len=0 keywords=false,false"
+    },
+    {
+      "id": "D4a",
+      "name": "root COMPLETED → 成果 draft（真实工件证据）",
+      "pass": true,
+      "detail": "result=c422fc6d-1955-4b04-86bf-6735e98e371a"
+    },
+    {
+      "id": "D4b",
+      "name": "channel lead 工具提交成果",
+      "pass": true,
+      "detail": "{\n  \"ok\": true,\n  \"result\": {\n    \"id\": \"c422fc6d-1955-4b04-86bf-6735e98e371a\",\n    \"status\": \"submitted\",\n    \"title\": \"实现库存管理单页 成果\",\n    \"workItemId\": \"6d385309-2dc3-4cd2-b2cd-3287abd78d22\",\n    \"at"
+    },
+    {
+      "id": "D4c",
+      "name": "复核 → reviewed",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "D4d",
+      "name": "owner 验收批准 → 成果/交付物 approved",
+      "pass": true,
+      "detail": "decide=200"
+    },
+    {
+      "id": "D5",
+      "name": "页面浏览器验证（渲染/表格/新增交互/localStorage）",
+      "pass": false,
+      "detail": "body 库存=false table=false add=false rows 0→0 persisted=false"
+    },
+    {
+      "id": "D6",
+      "name": "完成门禁 + owner 批准 → completed",
+      "pass": true,
+      "detail": "dec=200 status=completed"
+    }
+  ]
+}

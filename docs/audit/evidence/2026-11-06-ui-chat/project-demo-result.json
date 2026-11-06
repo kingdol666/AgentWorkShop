@@ -1,0 +1,81 @@
+{
+  "startedAt": "2026-11-05T21:05:42.284Z",
+  "steps": [
+    {
+      "name": "项目创建（omp leader）",
+      "detail": "305b8945-bdda-46b2-8180-bd48d84baa48 office=51971b57-b53c-4b04-b59e-e967a12b4c7b leader=2e240848-0754-4827-89f1-b29c190d5daa",
+      "pass": true,
+      "at": "2026-11-05T21:05:42.401Z"
+    },
+    {
+      "name": "Channel 绑定与预热",
+      "detail": "producer=1e8ef49d reviewer=b3f91249",
+      "pass": true,
+      "at": "2026-11-05T21:05:42.472Z"
+    },
+    {
+      "name": "Leader 计划真实提案 → owner 批准 → 物化",
+      "detail": "approval=c610e0d2-cc03-4160-9867-0e703f10db6d workItem=4566e1c8-afa6-4f05-853f-44e8a413c68a",
+      "pass": true,
+      "at": "2026-11-05T21:06:52.692Z"
+    },
+    {
+      "name": "Leader route 提案 → owner 应用 → 执行器派发",
+      "detail": "decision=54628aab-2597-4822-b9cb-fb920afe2f6d state=DISPATCHED stage=dispatched",
+      "pass": true,
+      "at": "2026-11-05T21:07:32.812Z"
+    },
+    {
+      "name": "成果提交（owner 代提交）",
+      "detail": "result=aaa45244-3d5d-49f0-9227-156378e2bf12 status=submitted artifact=5067ca06-19de-44dd-bf6b-d61e1a36de7e bytes=7128",
+      "pass": true,
+      "at": "2026-11-05T21:11:03.161Z"
+    },
+    {
+      "name": "平台自动 L1 验收请求",
+      "detail": "message=b42901fc-c6b0-436c-97cf-4877d25d4f8b status=delivered to=b688cdaa",
+      "pass": true,
+      "at": "2026-11-05T21:11:08.176Z"
+    },
+    {
+      "name": "独立评审 Channel 写 L1 技术验收",
+      "detail": "review=0db6f6ba-7730-46b4-9619-01c882bde86d kind=channel_lead verdict=pass",
+      "pass": true,
+      "at": "2026-11-05T21:21:04.720Z"
+    },
+    {
+      "name": "L2 业务签核（L1 之后）",
+      "detail": "approval=cf7c3538-ba1e-4614-8bff-f255cff3baca status=approved",
+      "pass": true,
+      "at": "2026-11-05T21:21:04.749Z"
+    },
+    {
+      "name": "项目完成",
+      "detail": "status=completed",
+      "pass": true,
+      "at": "2026-11-05T21:21:04.810Z"
+    }
+  ],
+  "projectId": "305b8945-bdda-46b2-8180-bd48d84baa48",
+  "route": {
+    "decisionId": "54628aab-2597-4822-b9cb-fb920afe2f6d",
+    "state": "proposed",
+    "actorKind": "project_leader",
+    "argsJson": "{\"workItemId\":\"4566e1c8-afa6-4f05-853f-44e8a413c68a\",\"action\":\"dispatch\",\"reason\":\"W1 已就绪，分发给生产 Channel\",\"deferMinutes\":null,\"targetChannelId\":\"1e8ef49d-d94e-40ef-ab26-c0664986b716\"}"
+  },
+  "result": {
+    "id": "aaa45244-3d5d-49f0-9227-156378e2bf12",
+    "status": "submitted",
+    "version": 1
+  },
+  "technicalReview": {
+    "id": "0db6f6ba-7730-46b4-9619-01c882bde86d",
+    "reviewerKind": "channel_lead",
+    "reviewerChannelId": "b3f91249-d709-442d-b07c-34947090dbf9",
+    "verdict": "pass",
+    "note": "L1 独立技术验收 PASS。核验路径：平台成果 evidence → source task artifact 5067ca06-19de-44dd-bf6b-d61e1a36de7e，实测 7128 bytes，sha256=01d3691ed0f0c5c4df595e044d714831d847404004a348544720c45036bc76b2；与生产 Channel (1e8ef49d-d94e-40ef-ab26-c0664986b716) workspace 的 l1-acceptance.html 逐字节一致。页面首行 <!DOCTYPE html>，含 <title>L1 Acceptance</title>，样式内联、无外部 src/href 依赖，交付物描述一致。三条结构化验收标准全部满足。评审方为本频道 (b3f91249…)，非成果产出频道，无自验收冲突。"
+  },
+  "finishedAt": "2026-11-05T21:21:04.810Z",
+  "status": "completed",
+  "pass": true
+}
