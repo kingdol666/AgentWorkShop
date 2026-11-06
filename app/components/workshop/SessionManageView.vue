@@ -315,6 +315,14 @@ watch(() => props.channelId, () => {
           <div class="sm-card-meta">
             {{ s.status === 'closed' && s.closedAt ? t('sessionManage.closedAt', { p0: fmtTime(s.closedAt) }) : t('sessionManage.createdAt', { p0: fmtTime(s.createdAt) }) }}
           </div>
+          <!-- 项目任务实例（2026-11-07）：会话行携带任务溯源，标明「任务会话」 -->
+          <div
+            v-if="s.instanceKind === 'task'"
+            class="sm-card-task"
+          >
+            <span class="sm-badge is-task">{{ t('sessionManage.taskBadge') }}</span>
+            <span class="sm-task-wi">{{ (s.projectWorkItemId ?? '').slice(0, 10) }}</span>
+          </div>
           <div
             v-if="sessionClones(s).length"
             class="sm-card-chips"
@@ -625,6 +633,20 @@ watch(() => props.channelId, () => {
   background: var(--ink-faint);
 }
 .sm-card-meta {
+  font-size: var(--fs-micro);
+  color: var(--chat-ink-faint);
+}
+.sm-card-task {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sm-badge.is-task {
+  background: color-mix(in srgb, var(--chat-accent) 14%, transparent);
+  color: var(--chat-ink);
+}
+.sm-task-wi {
+  font-family: var(--font-mono);
   font-size: var(--fs-micro);
   color: var(--chat-ink-faint);
 }

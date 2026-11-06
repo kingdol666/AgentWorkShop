@@ -13,6 +13,8 @@ import { assertHarnessUsable } from '../../agents/harness-availability'
 import { assertSpawnConfigAllowed, assertSpawnConfigPatchAllowed, type SpawnActor } from '../../agents/harness-spawn-policy'
 import { instanceToAgentInfo } from './helpers'
 import { createChannelSession, closeChannelSession } from '../../agents/session-clone'
+import { createTaskInstanceChannel } from '../../agents/task-channel'
+import type { TaskInstanceDeps } from '../../agents/task-channel'
 import { getAgentNodeBindingRepo } from '../../agents/node-bindings.repo'
 import { createChannelSessionRepo, type ChannelSessionRow } from '../../db/channel-session.repo'
 import type { SessionCloneDeps } from '../../agents/session-clone'
@@ -371,5 +373,59 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
   /** 会话详情（不存在 → undefined）。 */
   getChannelSession(sessionId: string): ChannelSessionRow | undefined {
     return createChannelSessionRepo(this.deps.db).findById(sessionId)
+  }
+
+  /**
+   * 项目任务实例（plan 2026-11-07）：为工作项创建专属执行 Channel + 会话行。
+   * 返回实例 Channel 与其 lead（root 任务 assignee）。幂等由调用方（项目派发）负责。
+   */
+  async createTaskInstance(input: {
+    projectId: string
+    workItemId: string
+    templateChannelId: string
+    title: string
+    actor: { id: string, role: string }
+  }): Promise<{
+    sessionId: string
+    channelId: string
+    leadAgentId: string
+    members: Array<{ templateAgentId: string, instanceId: string, name: string, role: string }>
+  }> {
+    const template = this.deps.repos.channels.findById(input.templateChannelId)
+    if (!template) throw new AppError(404, 'NOT_FOUND', `模板 Channel 不存在: ${input.templateChannelId}`)
+    this.requireWritable(template.ownerUserId, input.actor, 'channel')
+    const result = await createTaskInstanceChannel(
+      {
+        channels: { findById: id => this.deps.repos.channels.findById(id) },
+        channelAgents: this.deps.repos.channelAgents as unknown as TaskInstanceDeps['channelAgents'],
+        bindings: getAgentNodeBindingRepo(),
+        sessions: createChannelSessionRepo(this.deps.db) as unknown as TaskInstanceDeps['sessions'],
+        createChannel: ch => this.createChannel({
+          ...ch,
+          actor: { id: input.actor.id, role: input.actor.role },
+        }),
+        notify: (cid, payload) => this.notifyMember(cid, { ...payload, enabled: 1, by: 'project', reason: 'task instance' }),
+      },
+      {
+        projectId: input.projectId,
+        workItemId: input.workItemId,
+        templateChannelId: input.templateChannelId,
+        title: input.title,
+        actorId: input.actor.id,
+      },
+    )
+    const { recordOps } = await import('../../ops/ops')
+    recordOps({
+      actor: input.actor.id,
+      actorName: 'owner',
+      actorKind: 'user',
+      action: 'project.task.instance.create',
+      kind: 'system',
+      targetKind: 'channel',
+      targetId: result.channelId,
+      summary: `任务实例 ${result.channelId.slice(0, 8)}（会话 ${result.sessionId.slice(0, 8)}，克隆 ${result.members.length} 个成员实例）`,
+      detail: { projectId: input.projectId, workItemId: input.workItemId, sessionId: result.sessionId, members: result.members },
+    })
+    return result
   }
 }

@@ -234,7 +234,12 @@ CREATE TABLE IF NOT EXISTS channel_sessions (
   member_map_json TEXT NOT NULL DEFAULT '{}',
   created_by      TEXT,
   created_at      TEXT NOT NULL,
-  closed_at       TEXT
+  closed_at       TEXT,
+  -- 项目任务实例（2026-11-07 project 多会话）：任务专属 Channel 的会话行
+  project_id           TEXT,
+  project_work_item_id TEXT,
+  created_by_kind      TEXT NOT NULL DEFAULT 'user',   -- user|project
+  instance_kind        TEXT NOT NULL DEFAULT 'manual'  -- manual|task
 );
 CREATE INDEX IF NOT EXISTS idx_channel_sessions_channel
   ON channel_sessions(channel_id, status);
@@ -1347,6 +1352,8 @@ CREATE TABLE IF NOT EXISTS project_work_items (
   max_attempts        INTEGER NOT NULL DEFAULT 3,
   deferred_until      TEXT,
   created_by          TEXT NOT NULL DEFAULT 'project_leader',
+  -- 任务专属执行实例（2026-11-07）：派发时创建的 task_instance Channel
+  instance_channel_id TEXT,
   created_at          TEXT NOT NULL,
   updated_at          TEXT NOT NULL,
   closed_at           TEXT,

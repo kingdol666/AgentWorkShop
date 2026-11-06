@@ -27,6 +27,7 @@ import {
   createProjectMessageRepo,
 } from '../db/project.repo'
 import { createTaskRepo } from '../db/task.repo'
+import { createChannelSessionRepo } from '../db/channel-session.repo'
 import { createProjectKernelRepo } from '../db/project-kernel.repo'
 import type { TaskRow } from '../db/database'
 import { withTransaction } from '../db/transaction'
@@ -498,6 +499,8 @@ export class ProjectService {
   private readonly technicalReviews
   private readonly messages
   private readonly tasks
+  /** 任务实例会话（2026-11-07）：project_work_item_id → 任务专属 Channel 的会话行 */
+  private readonly sessions
   /** PR17 M4 内核仓储：ledger / plan_versions / effects / health。 */
   private readonly kernelRepo
 
@@ -520,6 +523,7 @@ export class ProjectService {
     this.technicalReviews = createProjectTechnicalReviewRepo(db)
     this.messages = createProjectMessageRepo(db)
     this.tasks = createTaskRepo(db)
+    this.sessions = createChannelSessionRepo(db)
     this.kernelRepo = createProjectKernelRepo(db)
   }
 
@@ -1023,6 +1027,16 @@ export class ProjectService {
 
       // P1：契约 handoff —— 项目目标/验收标准/输出契约/上游成果正文随 root 一起注入。
       const handoff = this.buildHandoffBundle(p, wi, d)
+      // ===== 任务实例（2026-11-07）：确保本任务有专属执行 Channel =====
+      // 根任务 FIFO 按 Channel 生效 —— 独立 Channel 才能让多个任务真正并行；
+      // 每个实例 Channel 自带 SchedulerLoop/根队列/成员 runtime/workspace（任务特有的实例对象）。
+      const instanceChannelId = await this.ensureTaskInstanceChannel({
+        project: p, workItem: wi, actor,
+      })
+      const instanceChannel = this.manager.getChannelForUser(instanceChannelId, p.ownerUserId)
+      if (!instanceChannel || instanceChannel.enabled !== 1 || !instanceChannel.leadAgentId) {
+        throw new AppError(409, 'TASK_INSTANCE_UNAVAILABLE', `任务实例 Channel 不可用: ${instanceChannelId}`)
+      }
       const attemptNo = this.attempts.listByWorkItem(wi.id).reduce((max, a) => Math.max(max, a.attemptNo), 0) + 1
       const sourceKey = `pw:${wi.id}:${attemptNo}`
       const traceId = wi.traceId || `trace:${wi.id}`
@@ -1030,7 +1044,7 @@ export class ProjectService {
       // 只有赢得 claim 的调用才能继续 submitProjectRoot（并发第二路会唯一索引/claim 失败回滚）。
       withTransaction(this.db, () => {
         attempt = this.attempts.create({
-          projectId: id, workItemId: wi.id, attemptNo, channelId: wi.channelId, sourceKey, traceId,
+          projectId: id, workItemId: wi.id, attemptNo, channelId: instanceChannelId, sourceKey, traceId,
         })
         if (!this.workItems.claimForDispatch(wi.id, attempt.id)) {
           throw new AppError(409, 'WORK_ITEM_IN_FLIGHT', '工作项已被其他派发者领取')
@@ -1043,7 +1057,8 @@ export class ProjectService {
         attemptNo,
         sourceKey,
         traceId,
-        channelId: wi.channelId,
+        channelId: instanceChannelId,
+        assigneeId: instanceChannel.leadAgentId,
         title: wi.title,
         description: wi.brief,
         execBudgetMinutes: wi.execBudgetMinutes,
@@ -1051,7 +1066,7 @@ export class ProjectService {
       })
       this.attempts.setDispatched(attempt!.id, task.id)
       const evtType = opts.auto ? 'work.dispatch_auto' : 'work.dispatched'
-      this.record(id, evtType, actor, { workItemId: wi.id, taskId: task.id, attemptNo, inputResultIds: handoff.upstream.map(r => r.id) }, traceId, evtType, `work:${wi.id}:${opts.auto ? 'auto' : 'dispatched'}:a${attemptNo}`, { workItemId: wi.id, taskId: task.id, attemptNo, auto: opts.auto, inputResultIds: handoff.upstream.map(r => r.id), planVersion: p.planVersion, channelId: wi.channelId })
+      this.record(id, evtType, actor, { workItemId: wi.id, taskId: task.id, attemptNo, instanceChannelId, inputResultIds: handoff.upstream.map(r => r.id) }, traceId, evtType, `work:${wi.id}:${opts.auto ? 'auto' : 'dispatched'}:a${attemptNo}`, { workItemId: wi.id, taskId: task.id, attemptNo, auto: opts.auto, inputResultIds: handoff.upstream.map(r => r.id), planVersion: p.planVersion, channelId: wi.channelId, instanceChannelId })
       return this.workItems.update(wi.id, {
         state: 'DISPATCHED',
         stateReason: null,
@@ -1101,6 +1116,11 @@ export class ProjectService {
         const attemptNo = wi.currentAttemptId ? (this.attempts.findById(wi.currentAttemptId)?.attemptNo ?? 0) : 0
         this.record(id, 'work.blocked', actor, { workItemId: wi.id, reason: message }, wi.traceId || `trace:${wi.id}`, 'work.blocked', `work:${wi.id}:blocked:a${attemptNo}`, { workItemId: wi.id, reason: message, stage, errno })
       }
+      // 派发前（precheck）失败：刚建的任务实例没有承载任何任务，回收避免孤儿 Channel/会话；
+      // submit 阶段的瞬时失败保留实例供退避重试复用（会话记忆连续）。
+      if (stage === 'precheck' && this.workItems.findById(wi.id)?.instanceChannelId) {
+        void this.releaseTaskInstance(this.workItems.findById(wi.id)!, 'DISPATCH_PRECHECK_FAILED', p.ownerUserId).catch(() => {})
+      }
       throw err
     }
   }
@@ -1108,6 +1128,102 @@ export class ProjectService {
   listResults(id: string, actor: ProjectActor): ProjectResultRow[] {
     this.get(id, actor)
     return this.filterResultsByGrant(id, this.results.listByProject(id), actor)
+  }
+
+  // ===== 任务实例（2026-11-07）：任务专属 Channel + 会话行 =====
+
+  /**
+   * 确保工作项有可用的任务实例 Channel（幂等）：
+   *  - 已有 instanceChannelId 且其会话 active、Channel 启用 → 复用（重试保留实例）
+   *  - 否则创建专属 Channel（模板成员克隆）+ 会话行，绑定项目（binding_type='task_instance'）
+   * 返回实例 Channel id（root 任务在其上派发）。
+   */
+  private async ensureTaskInstanceChannel(input: {
+    project: ProjectRow
+    workItem: ProjectWorkItemRow
+    actor: ProjectActor
+  }): Promise<string> {
+    const { project: p, workItem: wi, actor } = input
+    // 兼容降级：测试替身/旧 manager 无任务实例能力时，退回共享 Channel 派发（既有语义）。
+    const mgr = this.manager as unknown as { createTaskInstance?: AgentChannelManager['createTaskInstance'] }
+    if (typeof mgr.createTaskInstance !== 'function') return wi.channelId
+    const activeSession = this.sessions.listByWorkItem(wi.id).find(s => s.status === 'active')
+    if (wi.instanceChannelId && activeSession && activeSession.channelId === wi.instanceChannelId) {
+      const ch = this.manager.getChannelForUser(wi.instanceChannelId, p.ownerUserId)
+      if (ch && ch.enabled === 1 && ch.leadAgentId) return wi.instanceChannelId
+    }
+    // actor 取项目 owner（系统派发无 Channel 所有权，不能传 system）；admin 保留管理员能力
+    const ownerActor = { id: p.ownerUserId, role: actor.role === 'admin' ? 'admin' : 'user' }
+    const created = await this.manager.createTaskInstance({
+      projectId: p.id,
+      workItemId: wi.id,
+      templateChannelId: wi.channelId,
+      title: wi.title,
+      actor: ownerActor,
+    })
+    // 绑定项目：agentProjectContext 依此判定实例成员的 channel_lead 工具面
+    if (!this.bindings.findActiveByChannel(created.channelId)) {
+      this.bindings.add({
+        projectId: p.id,
+        channelId: created.channelId,
+        bindingType: 'task_instance',
+        charter: `任务实例：${wi.title}`,
+        addedBy: p.ownerUserId,
+      })
+    }
+    this.workItems.update(wi.id, { instanceChannelId: created.channelId })
+    this.record(p.id, 'work.instance_created', actor, {
+      workItemId: wi.id, instanceChannelId: created.channelId, sessionId: created.sessionId, members: created.members.length,
+    }, wi.traceId || `trace:${wi.id}`, 'work.instance_created', `work:${wi.id}:instance:${created.channelId}`, {
+      workItemId: wi.id, instanceChannelId: created.channelId, sessionId: created.sessionId, templateChannelId: wi.channelId,
+    })
+    return created.channelId
+  }
+
+  /**
+   * 释放任务实例：会话行 close（在飞子任务按树取消 + 成员 runtime 卸载）+ 停用实例 Channel
+   * （停调度、卸载成员；Channel/会话行保留审计）。幂等：无 active 会话且 Channel 已停用则跳过。
+   * actor 取实例 Channel 属主（manager 的 close/open 走 owner 可写校验；system 身份会被 403）。
+   */
+  private async releaseTaskInstance(workItem: ProjectWorkItemRow, reason: string, ownerUserId = 'system'): Promise<void> {
+    const activeSessions = this.sessions.listByWorkItem(workItem.id).filter(s => s.status === 'active')
+    const instanceChannelId = workItem.instanceChannelId
+    const instanceChannel = instanceChannelId ? await this.manager.getChannel(instanceChannelId) : null
+    const channelEnabled = instanceChannel ? instanceChannel.enabled === 1 : false
+    if (activeSessions.length === 0 && !channelEnabled) return
+    const ownerActor = { id: instanceChannel?.ownerUserId ?? ownerUserId, role: 'user' }
+    for (const s of activeSessions) {
+      try {
+        await this.manager.closeChannelSession({
+          channelId: s.channelId,
+          sessionId: s.id,
+          actor: ownerActor,
+          reason: `TASK_TERMINAL:${reason}`,
+        })
+      }
+      catch { /* 会话已关闭/成员已卸载：释放语义幂等 */ }
+    }
+    if (instanceChannelId && channelEnabled) {
+      const stillActive = this.sessions.listByWorkItem(workItem.id).some(s => s.status === 'active')
+      if (stillActive) return
+      try {
+        await this.manager.updateChannel(instanceChannelId, { enabled: 0 }, ownerActor)
+      }
+      catch { /* Channel 已删除：无需停用 */ }
+    }
+  }
+
+  /** 终态工作项的任务实例回收（runRouteLoop 每轮调用；幂等，只处理仍有 active 会话/启用实例的项）。 */
+  private async releaseTerminalTaskInstances(projectId: string): Promise<void> {
+    const project = this.projects.findById(projectId)
+    const terminal = this.workItems.listByProject(projectId)
+      .filter(w => ['COMPLETED', 'FAILED', 'CANCELED', 'SUPERSEDED'].includes(w.state))
+    for (const wi of terminal) {
+      try {
+        await this.releaseTaskInstance(wi, wi.closeReason ?? wi.state, project?.ownerUserId ?? 'system')
+      }
+      catch { /* 单项失败不影响其它项 */ }
+    }
   }
 
   /**
@@ -1285,23 +1401,29 @@ export class ProjectService {
       routingPolicy: p.routingPolicy,
     })
     // Router v3 P0 容量：Channel root FIFO 决定每 Channel 并发 1；项目 4；每 tick 2。
+    // 2026-11-07 任务实例：每个工作项有自己的实例 Channel（根 FIFO 彼此独立），
+    // 因此按「实例 Channel」计数 —— 同模板 Channel 上多个任务可真正并行。
     const limits = { perChannel: 1, perProject: 4, perTick: 2 }
     const inFlight = items.filter(w => ['DISPATCHING', 'DISPATCHED', 'RUNNING'].includes(w.state))
     let projectSlots = Math.max(0, limits.perProject - inFlight.length)
     let tickSlots = limits.perTick
     const channelInFlight = new Map<string, number>()
-    for (const w of inFlight) channelInFlight.set(w.channelId, (channelInFlight.get(w.channelId) ?? 0) + 1)
+    for (const w of inFlight) {
+      const key = w.instanceChannelId ?? w.channelId
+      channelInFlight.set(key, (channelInFlight.get(key) ?? 0) + 1)
+    }
     const systemActor = { id: 'system', role: 'system' } as const
     for (const wi of ready) {
       if (projectSlots <= 0 || tickSlots <= 0) break
-      if ((channelInFlight.get(wi.channelId) ?? 0) >= limits.perChannel) continue
+      const dispatchKey = wi.instanceChannelId ?? wi.channelId
+      if ((channelInFlight.get(dispatchKey) ?? 0) >= limits.perChannel) continue
       try {
         const row = await this.dispatchWorkItemAs(id, wi.id, systemActor, p, { auto: true })
         const attempt = row.currentAttemptId ? this.attempts.findById(row.currentAttemptId) : undefined
         out.dispatched.push({ workItemId: wi.id, taskId: attempt?.channelTaskId ?? null })
         projectSlots -= 1
         tickSlots -= 1
-        channelInFlight.set(wi.channelId, (channelInFlight.get(wi.channelId) ?? 0) + 1)
+        channelInFlight.set(dispatchKey, (channelInFlight.get(dispatchKey) ?? 0) + 1)
       }
       catch {
         // 派发失败路径已落 BLOCKED/retry 事件；继续其余就绪项（R5）。
@@ -1350,6 +1472,9 @@ export class ProjectService {
     autoDispatch: Awaited<ReturnType<ProjectService['autoDispatchProject']>>
   }> {
     const reconcile = this.reconcileInternal(id)
+    // 任务实例回收：终态工作项的专属 Channel/会话停用（幂等；放在派发前，
+    // 让下一批任务使用干净实例，也避免终态实例继续占用调度槽位）
+    await this.releaseTerminalTaskInstances(id)
     // Router v3 验收闭环：成果 submitted 后主动向 Leader/独立评审 Channel 发 L1 请求，
     // 而不是等人工在演示脚本里逐个 @。消息幂等（correlation=review:<resultId>）。
     await this.ensureTechnicalReviewRequests(id)
@@ -1389,7 +1514,7 @@ export class ProjectService {
       let reviewerChannelId = ''
       let reviewerAgentId = ''
       if (configuredReviewer) {
-        const bound = bindings.some(b => b.channelId === configuredReviewer) && configuredReviewer !== result.channelId
+        const bound = bindings.some(b => b.channelId === configuredReviewer && b.bindingType !== 'task_instance') && configuredReviewer !== result.channelId
         const ch = bound ? this.manager.getChannelForUser(configuredReviewer, p.ownerUserId) : null
         if (ch?.leadAgentId) {
           reviewerChannelId = configuredReviewer
@@ -1399,6 +1524,7 @@ export class ProjectService {
       if (!reviewerAgentId) {
         // 独立评审 Channel 约定：已绑定、非生产、且没有任何工作项（纯评审角色）。
         const candidate = bindings.find((b) => {
+          if (b.bindingType === 'task_instance') return false
           if (b.channelId === result.channelId) return false
           return !items.some(w => w.channelId === b.channelId && !['CANCELED', 'SUPERSEDED'].includes(w.state))
         })
@@ -2320,11 +2446,30 @@ export class ProjectService {
           const t = a?.channelTaskId ? this.tasks.findById(a.channelTaskId) : undefined
           return { workItemId: w.id, title: w.title, workItemState: w.state, taskId: t?.id ?? null, taskState: t?.state ?? null }
         })
+      // 任务实例（2026-11-07）：本 lane 名下工作项的任务专属执行上下文。
+      // 每项一个实例 Channel + 一行会话（instance_kind='task'），前端据此展示
+      // 「任务 → 会话 → 实例频道」并可跳转到控制台会话视图。
+      const laneSessions = own.map((w) => {
+        const s = this.sessions.listByWorkItem(w.id).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))[0]
+        const inst = w.instanceChannelId ? this.manager.getChannelForUser(w.instanceChannelId, p.ownerUserId) : null
+        return {
+          workItemId: w.id,
+          workItemTitle: w.title,
+          workItemState: w.state,
+          sessionId: s?.id ?? null,
+          sessionTitle: s?.title ?? null,
+          sessionStatus: s?.status ?? null,
+          sessionKind: s?.instanceKind ?? null,
+          instanceChannelId: w.instanceChannelId ?? null,
+          instanceEnabled: inst ? inst.enabled === 1 : false,
+        }
+      })
       return {
         ...c,
         workItems: own.length,
         inFlight: own.filter(w => ['DISPATCHING', 'DISPATCHED', 'RUNNING'].includes(w.state)).length,
         rootTasks,
+        sessions: laneSessions,
         ready: own.filter(w => w.state === 'DRAFT' && evaluateWorkItemReadiness(w, readinessCtx).ready).length,
         blocked: own.filter(w => w.state === 'BLOCKED' || w.state === 'REWORK').length,
       }
@@ -2359,9 +2504,14 @@ export class ProjectService {
           waitingReason = readiness.reason
         }
       }
+      const sessionRow = this.sessions.listByWorkItem(w.id).sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))[0]
       return {
         id: w.id, title: w.title, brief: w.brief, channelId: w.channelId, deliverableId: w.deliverableId,
         state: w.state, stage: this.stageOf(w, readiness, result),
+        // 任务实例：专属执行 Channel + 会话（任务 = 独立 session 的可视锚点）
+        instanceChannelId: w.instanceChannelId,
+        sessionId: sessionRow?.id ?? null,
+        sessionStatus: sessionRow?.status ?? null,
         waitingOn,
         waitingReason,
         priority: w.priority, resultKey: w.resultKey, attemptCount: w.attemptCount, maxAttempts: w.maxAttempts,
@@ -2814,14 +2964,17 @@ export class ProjectService {
     const workItemId = task.projectWorkItemId!
     const wi = this.workItems.findById(workItemId)
     if (!wi || wi.projectId !== ctx.project.id) throw new AppError(404, 'NOT_FOUND', '工作项不存在')
-    if (wi.channelId !== ctx.channelId) throw new AppError(403, 'RESULT_SCOPE_VIOLATION', '只能提交本频道工作项的成果')
+    // 任务实例（2026-11-07）：执行发生在工作项专属 Channel —— 该频道成员等价于执行通道，
+    // 结果行仍以模板 channelId 归属（项目级稳定标识），因此两侧都接受。
+    const isInstanceChannel = wi.instanceChannelId != null && wi.instanceChannelId === ctx.channelId
+    if (wi.channelId !== ctx.channelId && !isInstanceChannel) throw new AppError(403, 'RESULT_SCOPE_VIOLATION', '只能提交本频道工作项的成果')
     let result = input.resultId ? this.results.findById(input.resultId) : undefined
     if (!result) result = this.results.findByWorkItemAttempt(wi.id, task.projectAttemptNo ?? 0, wi.resultKey)
     if (!result && task.state === 'COMPLETED') result = this.ensureDraftFromTask(task.id)
     if (!result) {
       throw new AppError(409, 'RESULT_DRAFT_NOT_FOUND', `没有可提交的成果草稿；请先完成任务 ${task.id} 或等待 Reconciler 生成 draft`)
     }
-    if (result.projectId !== ctx.project.id || result.channelId !== ctx.channelId) {
+    if (result.projectId !== ctx.project.id || (result.channelId !== ctx.channelId && result.channelId !== wi.channelId)) {
       throw new AppError(403, 'RESULT_SCOPE_VIOLATION', '成果不属于本项目/本频道')
     }
     if (!['draft', 'rejected'].includes(result.status)) {
@@ -3652,7 +3805,9 @@ export class ProjectService {
 
   private listBoundChannels(p: ProjectRow): Array<{ channelId: string, name: string, enabled: number, leadAgentId: string | null, status: string }> {
     return this.bindings.listByProject(p.id)
-      .filter(b => b.status === 'active')
+      // 任务实例 Channel 不是「成员 Channel」：它们的执行视图由 workItems(instanceChannelId)
+      // 与会话行承载，不应作为独立 lane/评审候选出现在项目拓扑里。
+      .filter(b => b.status === 'active' && b.bindingType !== 'task_instance')
       .map((b) => {
         const ch = this.manager.getChannelForUser(b.channelId, p.ownerUserId)
         return {
