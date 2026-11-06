@@ -1,23 +1,25 @@
 <script setup lang="ts">
 /**
- * 控制台顶栏:工作区名 + 聚焦 channel 胶囊 + 视图切换条 + 侧栏/A2A/⌘K 图标钮 +
- * WS 连接态与 seq 读数。
+ * 中央列标题条(ChatGPT 会话标题条):频道名为主标题 + 连接态读数 + 右侧图标钮。
+ *
+ * 2026-11-07 控制台 ChatGPT 化:工作区名移入侧栏头部、品牌移入图标轨、
+ * 桌面期视图切换移入图标轨 —— 本条只留「当前频道」的标题语义。
+ * 窄屏(≤1023)例外:图标轨不渲染,视图切换条并入本条(独占一行、可横扫)。
  *
  * 状态全部由页面(编排层)经 props/v-model 注入,本组件只做呈现与事件转发,
  * 不持有第二份状态(切换条的双向绑定直接写回页面持有的 view)。
- * 窄屏形态差异(触摸目标、切换条独占一行)见文末 @media。
  */
 import { useEntitiesStore } from '@/app/stores/workshop/entities'
 import type { WsState } from '@/app/stores/workshop/connection'
 import type { CenterView } from '@/app/pages/workshop/composables/useWorkspaceShell'
 
 const props = defineProps<{
-  /** 工作区名(列表未返回时为 undefined,回落到 i18n 的未知态) */
+  /** 工作区名(窄屏标题副行用;桌面期由侧栏承载) */
   wsName?: string
-  /** 聚焦 channel;undefined = 无频道(胶囊与切换条都不出现) */
+  /** 聚焦 channel;undefined = 无频道(标题与切换条都不出现) */
   channelId?: string
   viewOptions: { value: string, label: string }[]
-  /** 窄屏档(≤1023):左侧栏是覆盖式抽屉,入口钮与桌面版本不同 */
+  /** 窄屏档(≤1023):左侧栏是覆盖式抽屉,视图切换条并入本条 */
   narrow: boolean
   stateColor: string
   connState: WsState
@@ -34,15 +36,12 @@ const emit = defineEmits<{
 }>()
 
 const entities = useEntitiesStore()
-/** channel 胶囊文字:实体基线未到时退化为 id 前 8 位(可读占位,不是第二个名字来源) */
+/** 标题文字:实体基线未到时退化为 id 前 8 位(可读占位,不是第二个名字来源) */
 const channelLabel = computed(() => {
   const id = props.channelId
   if (!id) return ''
   return entities.channels[id]?.name ?? id.slice(0, 8)
 })
-const toggleLeft = (): void => {
-  leftOpen.value = !leftOpen.value
-}
 const toggleRight = (): void => {
   rightOpen.value = !rightOpen.value
 }
@@ -55,44 +54,38 @@ const toggleRight = (): void => {
       tabindex="-1"
       @keydown="emit('viewKey', $event)"
     >
-      <span class="topbar-mark i-tabler-box" />
-      <span class="ws-name">{{ wsName ?? $t('wsView.unknownWs') }}</span>
       <span
         v-if="channelId"
-        class="chan-chip"
+        class="chan-title"
         :title="channelId"
       >
         <span class="chan-hash">#</span>{{ channelLabel }}
       </span>
-      <a-segmented
-        v-if="channelId"
-        v-model:value="view"
-        size="small"
-        :options="viewOptions"
-        class="view-switch"
-        :title="$t('wsView.kqwckjr001')"
-        @keydown="emit('viewKey', $event)"
-      />
+      <span
+        v-else
+        class="chan-title placeholder"
+      >{{ wsName ?? $t('wsView.unknownWs') }}</span>
     </div>
     <div class="right">
       <!-- 窄屏:频道会话列表入口(覆盖式抽屉;该页一次只看一区) -->
       <button
-        v-if="narrow"
         class="pane-toggle im toggle-left-narrow"
         :class="{ off: !leftOpen }"
         :title="$t('wsView.channelListTitle')"
-        @click="toggleLeft"
+        @click="leftOpen = !leftOpen"
       >
         <span class="i-tabler-list-details im-pop" />
       </button>
-      <button
-        class="pane-toggle im toggle-left-desk"
-        :class="{ off: !leftOpen }"
-        :title="$t('wsView.k1tsy2e4002')"
-        @click="toggleLeft"
-      >
-        <span class="i-tabler-layout-sidebar-left-collapse im-pop" />
-      </button>
+      <span
+        class="dot"
+        :style="{ background: stateColor }"
+      />
+      <span
+        class="ws-state"
+        :data-state="connState"
+      >{{ connState }}</span>
+      <span class="seq">seq {{ lastSeq }}</span>
+      <span class="right-rule" />
       <button
         class="pane-toggle im toggle-right-desk"
         :class="{ off: !rightOpen }"
@@ -109,33 +102,37 @@ const toggleRight = (): void => {
         <span class="i-tabler-terminal-2 im-pop" />
       </button>
       <button
-        class="pane-toggle im"
+        class="pane-toggle im toggle-palette-narrow"
         :title="$t('wsView.k1cvg8sb004')"
         @click="emit('openPalette')"
       >
         <span class="i-tabler-command im-pop" />
       </button>
-      <span
-        class="dot"
-        :style="{ background: stateColor }"
-      />
-      <span
-        class="ws-state"
-        :data-state="connState"
-      >{{ connState }}</span>
-      <span class="seq">seq {{ lastSeq }}</span>
     </div>
+
+    <!-- 窄屏:视图切换条独占一行(桌面期在图标轨,此处不渲染) -->
+    <a-segmented
+      v-if="narrow && channelId"
+      v-model:value="view"
+      size="small"
+      :options="viewOptions"
+      class="view-switch"
+      :title="$t('wsView.kqwckjr001')"
+      @keydown="emit('viewKey', $event)"
+    />
   </div>
 </template>
 
 <style scoped>
 .topbar {
   display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 6px 8px;
   align-items: center;
   justify-content: space-between;
-  padding: 9px 18px;
-  font-size: 13px;
-  background: var(--chat-surface-raised);
+  padding: 10px 20px;
+  background: var(--chat-canvas);
   border-bottom: 1px solid var(--chat-line);
 }
 .left,
@@ -145,178 +142,121 @@ const toggleRight = (): void => {
   align-items: center;
   min-width: 0;
 }
-.topbar-mark {
-  font-size: 15px;
-  color: var(--chat-ink-faint);
-}
-.ws-name {
-  max-width: 260px;
+/* 频道名 = 会话标题(ChatGPT 顶栏语义):15px/600 油墨,mono # 前缀弱化为记号 */
+.chan-title {
   overflow: hidden;
-  font-family: var(--font-body);
-  font-weight: 650;
   font-size: 15px;
-  letter-spacing: -0.02em;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   color: var(--chat-ink);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* channel 胶囊:hairline chip + serif # */
-.chan-chip {
-  display: inline-flex;
-  gap: 4px;
-  align-items: center;
-  max-width: 220px;
-  padding: 3px 10px;
-  overflow: hidden;
-  font-size: 12px;
+.chan-title.placeholder {
+  font-weight: 500;
   color: var(--chat-ink-soft);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  background: var(--chat-surface);
-  border: 1px solid var(--chat-line);
-  border-radius: var(--radius-pill);
 }
 .chan-hash {
+  margin-right: 5px;
   font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--chat-accent);
-}
-.view-switch { margin-left: 8px; }
-.view-switch :deep(.ant-segmented) {
-  padding: 2px;
-  background: var(--chat-surface);
-  border: 1px solid var(--chat-line);
-  border-radius: var(--radius-pill);
-}
-.view-switch :deep(.ant-segmented-item) {
-  border-radius: var(--radius-pill);
+  font-size: 13px;
   color: var(--chat-ink-faint);
 }
-.view-switch :deep(.ant-segmented-item-selected) {
-  color: var(--chat-accent);
-  background: var(--chat-accent-soft);
-  box-shadow: none;
-}
+
 .dot { width: 8px; height: 8px; border-radius: 50%; }
 .ws-state {
   font-family: var(--font-mono);
   font-size: var(--fs-micro);
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  padding: 1px 6px;
-  border: 1px solid var(--line);
-  border-radius: var(--radius-chip);
+  color: var(--chat-ink-faint);
 }
-.ws-state[data-state='open'] { color: var(--tone-success-dot); border-color: color-mix(in srgb, var(--tone-success-dot) 45%, transparent); }
-.ws-state[data-state='connecting'] { color: var(--tone-warning-dot); border-color: color-mix(in srgb, var(--tone-warning-dot) 45%, transparent); }
-.ws-state[data-state='closed'] { color: var(--tone-danger-dot); border-color: color-mix(in srgb, var(--tone-danger-dot) 45%, transparent); }
+.ws-state[data-state='open'] { color: var(--tone-success-dot); }
+.ws-state[data-state='connecting'] { color: var(--tone-warning-dot); }
+.ws-state[data-state='closed'] { color: var(--tone-danger-dot); }
 .seq {
   font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
   font-size: var(--fs-micro);
-  color: var(--ink-faint);
+  color: var(--chat-ink-faint);
+  opacity: 0.8;
+}
+.right-rule {
+  width: 1px;
+  height: 16px;
+  margin: 0 2px;
+  background: var(--chat-line);
 }
 
-/* 侧栏折叠开关:幽灵图标钮 */
+/* 幽灵图标钮(ChatGPT 标题条右侧语义) */
 .pane-toggle {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
-  font-size: 14px;
-  color: var(--ink-soft);
+  width: 30px;
+  height: 30px;
+  font-size: 15px;
+  color: var(--chat-ink-faint);
   cursor: pointer;
   background: transparent;
   border: 0;
-  border-radius: var(--radius-panel-sm);
+  border-radius: 8px;
   transition: color var(--transition-fast), background var(--transition-fast), opacity var(--transition-fast);
 }
 .pane-toggle:hover {
-  color: var(--ink);
-  background: var(--paper-deep);
+  color: var(--chat-ink);
+  background: color-mix(in srgb, var(--chat-ink) 6%, transparent);
 }
-.pane-toggle.off {
-  opacity: 0.4;
+.pane-toggle.off { opacity: 0.4; }
+.pane-toggle.off:hover { opacity: 1; }
+.pane-toggle:focus-visible {
+  outline: 2px solid var(--chat-accent);
+  outline-offset: 1px;
 }
-.pane-toggle.off:hover {
-  opacity: 1;
+
+/* 窄屏专属入口在桌面不出现(响应式形态差异不用 JS 表达,避免水合抖动) */
+.toggle-palette-narrow,
+.toggle-left-narrow { display: none; }
+.view-switch {
+  flex: 1 1 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
+.view-switch::-webkit-scrollbar { display: none; }
 
 /* ══════════════════════════════════════════════════════════════════════════
    窄屏形态 · 顶栏部分(≤1023px) —— 完整设计说明见页面
    app/pages/workshop/w/[wsId].vue 的「窄屏形态 · 单通道示波器」样式块:
    切换条独占一行承载全部区、触摸目标 ≥40px。断点数值与 main.css v5 /
-   useResponsive.ts 一致(1024 = 三栏仪表台下限),此处不引入新魔数。
+   useResponsive.ts 一致(1024 = 三区应用框下限),此处不引入新魔数。
    ══════════════════════════════════════════════════════════════════════════ */
 @media (max-width: 1023.98px) {
   .topbar {
-    flex-wrap: wrap;
-    gap: 6px 8px;
     padding: 8px 10px;
   }
 
-  .topbar .left {
-    flex-wrap: wrap;
-    row-gap: 8px;
-  }
-
-  .ws-name {
-    max-width: 40vw;
-    font-size: 15px;
-  }
-
-  .chan-chip {
-    max-width: 34vw;
-    font-size: 12px;
-  }
-
-  /* 切换条独占一行:五个视图名不再挤掉工作区名(channel 名仍可见) */
-  .view-switch {
-    flex: 1 1 100%;
-    margin-left: 0;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-  .view-switch::-webkit-scrollbar { display: none; }
+  .chan-title { max-width: 52vw; }
 
   .ws-state,
-  .seq {
-    font-size: 11.5px;
-  }
+  .seq { font-size: 11.5px; }
 
-  /* 触摸目标:26px 的幽灵图标钮在手持设备上点不中 */
+  /* 触摸目标:30px 的幽灵图标钮在手持设备上点不中 */
   .pane-toggle {
     width: 40px;
     height: 40px;
     font-size: 18px;
   }
 
-  .toggle-left-desk,
-  .toggle-right-desk {
-    display: none;
-  }
+  .toggle-right-desk { display: none; }
+
+  .toggle-palette-narrow,
+  .toggle-left-narrow { display: inline-flex; }
 }
 
-/* 窄屏专属入口在桌面不出现(响应式形态差异不用 JS 表达,避免水合抖动) */
-.toggle-left-narrow {
-  display: none;
-}
-
-@media (max-width: 1023.98px) {
-  .toggle-left-narrow {
-    display: inline-flex;
-  }
-}
-
-/* 手机(≤640):频道胶囊让位给工作区名。频道仍可从左上抽屉切换,
-   不隐藏时 390px 下工作区名被压成「注塑…」而频道名反而完整。 */
+/* 手机(≤640):seq 让位(标题优先)。连接态仍可见。 */
 @media (max-width: 640px) {
-  .chan-chip {
-    display: none;
-  }
+  .seq { display: none; }
 
-  /* 视图切换条可横扫;右缘渐隐提示"还有更多视图"(不隐藏也点得到) */
   .view-switch {
     -webkit-mask-image: linear-gradient(90deg, #000 0 90%, transparent 100%);
     mask-image: linear-gradient(90deg, #000 0 90%, transparent 100%);

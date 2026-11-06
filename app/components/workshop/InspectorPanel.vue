@@ -192,11 +192,15 @@ const stateDot: Record<string, string> = {
   display: flex;
   gap: 9px;
   align-items: center;
-  padding: 8px 10px;
+  padding: 9px 10px;
   margin: 3px 0;
   cursor: pointer;
+  background: var(--chat-surface);
+  border: 1px solid var(--chat-line);
+  border-radius: 12px;
+  transition: border-color var(--transition-fast);
 }
-.member:hover { border-color: var(--line-strong); }
+.member:hover { border-color: var(--chat-line-strong); }
 .dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; }
 .member-info { flex: 1 1 auto; min-width: 0; }
 .member-name {
@@ -204,6 +208,7 @@ const stateDot: Record<string, string> = {
   gap: 7px;
   align-items: center;
   font-size: 13px;
+  color: var(--chat-ink);
 }
 .name-text {
   min-width: 0;
@@ -211,7 +216,7 @@ const stateDot: Record<string, string> = {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* 角色 chip:lead 墨色填充 / worker 发丝线(去 antd 彩色 tag,色锁) */
+/* 角色 chip:lead 油墨填充 / worker 发丝线(ChatGPT 声部:强调只留给信号色) */
 .role-chip {
   flex: 0 0 auto;
   padding: 0 7px;
@@ -221,9 +226,9 @@ const stateDot: Record<string, string> = {
   text-transform: uppercase;
   border-radius: var(--radius-pill);
 }
-.role-chip.lead { color: var(--on-accent); background: var(--accent); }
-.role-chip.worker { color: var(--ink-soft); border: 1px solid var(--line-strong); }
-.member-meta { font-size: 11px; font-family: var(--font-mono); color: var(--ink-faint); }
+.role-chip.lead { color: var(--on-av, #fff); background: var(--chat-ink); }
+.role-chip.worker { color: var(--chat-ink-soft); border: 1px solid var(--chat-line-strong); }
+.member-meta { font-size: 11px; font-family: var(--font-mono); color: var(--chat-ink-faint); }
 .prog { padding: 0 5px; color: var(--tone-info-dot); background: color-mix(in srgb, var(--tone-info-dot) 10%, transparent); border-radius: var(--radius-pill); }
 
 .member-cap {
@@ -231,15 +236,19 @@ const stateDot: Record<string, string> = {
   font-family: var(--font-mono);
   font-size: var(--fs-micro);
   letter-spacing: 0.02em;
-  color: var(--ink-faint);
+  color: var(--chat-ink-faint);
 }
 .ct { opacity: 0.8; }
 .task {
-  padding: 8px 10px;
+  padding: 9px 10px;
   margin: 3px 0;
   cursor: pointer;
+  background: var(--chat-surface);
+  border: 1px solid var(--chat-line);
+  border-radius: 12px;
+  transition: border-color var(--transition-fast);
 }
-.task:hover { border-color: var(--line-strong); }
+.task:hover { border-color: var(--chat-line-strong); }
 .task-head { display: flex; gap: 6px; align-items: center; }
 /* 状态 chip:等宽枚举 + 细边(不靠彩色 tag 堆叠,色锁;语义仍由文字传达) */
 .state-chip {
@@ -248,20 +257,21 @@ const stateDot: Record<string, string> = {
   font-size: var(--fs-micro);
   line-height: 15px;
   letter-spacing: 0.04em;
-  color: var(--ink-soft);
+  color: var(--chat-ink-soft);
   background: transparent;
-  border: 1px solid var(--line-strong);
+  border: 1px solid var(--chat-line-strong);
   border-radius: var(--radius-pill);
 }
 .task-title {
   flex: 1 1 auto;
   overflow: hidden;
   font-size: 13px;
+  color: var(--chat-ink);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.task-meta { font-size: 11px; font-family: var(--font-mono); color: var(--ink-faint); }
-.empty { padding: 16px 8px; font-size: 12px; color: var(--ink-faint); }
+.task-meta { font-size: 11px; font-family: var(--font-mono); color: var(--chat-ink-faint); }
+.empty { padding: 16px 8px; font-size: 12px; color: var(--chat-ink-faint); }
 
 /* ── 窄屏(≤1023):本面板在窄屏不再是右侧常驻栏,而是切换条上的第 4 区 ──
    因此要能占满整宽、行高够手指点、铭牌字号抬到可读。 */

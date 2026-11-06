@@ -491,22 +491,21 @@ const placeholder = computed(() => {
 .composer-box {
   position: relative;
   z-index: 1;
-  max-width: 860px;
+  max-width: 820px;
   padding: 12px 14px 8px;
   margin: 0 auto;
   background: var(--chat-surface);
   border: 1px solid var(--chat-line);
   border-radius: 24px;
   box-shadow:
-    0 1px 2px rgb(41 37 36 / 4%),
-    0 16px 44px rgb(41 37 36 / 7%);
+    0 1px 2px rgb(12 10 9 / 4%),
+    0 16px 44px rgb(12 10 9 / 7%);
   transition: border-color var(--transition-slow), box-shadow var(--transition-slow);
 }
 .composer-box:focus-within {
-  border-color: color-mix(in srgb, var(--chat-accent) 45%, var(--chat-line));
+  border-color: var(--chat-line-strong);
   box-shadow:
-    0 0 0 4px var(--chat-accent-soft),
-    0 18px 50px rgb(41 37 36 / 10%);
+    0 18px 50px rgb(12 10 9 / 10%);
 }
 
 /* 群聊不可发言时的诚实提示(不渲染必然失败的发送) */
@@ -542,7 +541,7 @@ const placeholder = computed(() => {
   flex-wrap: wrap;
   gap: 12px;
   align-items: center;
-  max-width: 860px;
+  max-width: 820px;
   padding: 0 10px;
   margin: 8px auto 0;
   font-size: 10px;

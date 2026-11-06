@@ -34,9 +34,6 @@ const { draft } = useComposerBus()
 
 /** SSR/首帧不读 WS 实体:实体由客户端建连后到达,直接渲染会造成 hydration mismatch */
 const hydrated = ref(false)
-const channelName = computed(() =>
-  hydrated.value ? (entities.channels?.[props.channelId]?.name ?? t('chat.title')) : t('chat.title'))
-const agentCount = computed(() => hydrated.value ? (entities.agents?.[props.channelId] ?? []).length : 0)
 const busyAgents = computed(() =>
   hydrated.value ? (entities.agents?.[props.channelId] ?? []).filter(a => a.state === 'busy').length : 0)
 const pendingDeliveries = computed(() =>
@@ -82,7 +79,6 @@ const openAgent = inject<(target: { channelId: string, agentId: string }) => voi
 
 const messages = computed<AepChatMessage[]>(() => chat.messages[props.channelId] ?? [])
 const visibleMessages = computed(() => hydrated.value ? messages.value : [])
-const displayMessageCount = computed(() => visibleMessages.value.length)
 /** 已加载过更早历史且上一页拉满 → 可能还有(按钮据此显示) */
 const hasMore = computed(() => chat.hasMoreHistory[props.channelId] !== false)
 const loading = computed(() => chat.loadingHistory[props.channelId] === true)
@@ -239,30 +235,8 @@ watch(() => props.channelId, async () => {
 
 <template>
   <div class="chat-timeline">
-    <header class="ct-head">
-      <div class="ct-head-main">
-        <div class="ct-orb">
-          <span class="i-tabler-sparkles" />
-          <span class="ct-orb-pulse" />
-        </div>
-        <div class="ct-head-copy">
-          <div class="ct-title-row">
-            <h1 class="ct-title">
-              {{ channelName }}
-            </h1>
-            <span class="ct-live"><span class="ct-live-dot" />{{ $t('chat.liveNow') }}</span>
-          </div>
-          <p class="ct-subtitle">
-            {{ $t('chat.subtitle', { p0: displayMessageCount, p1: agentCount }) }}
-          </p>
-        </div>
-      </div>
-      <div class="ct-head-actions">
-        <span class="ct-model-chip"><span class="i-tabler-cpu" />{{ $t('chat.aiTeam') }}</span>
-        <span class="ct-count">{{ $t('chat.messageCount', { p0: displayMessageCount }) }}</span>
-      </div>
-    </header>
-
+    <!-- 2026-11-07 ChatGPT 化:内嵌大头部(orb+标题)撤除 —— 频道名上移中央列
+         标题条(console/Topbar),对话流像 ChatGPT 一样从内容直接开始。 -->
     <div
       ref="scroller"
       class="ct-scroll"
@@ -546,113 +520,7 @@ watch(() => props.channelId, async () => {
   background: var(--chat-canvas);
 }
 
-/* ── 对话头部:AI 身份 + 实时状态,替代旧的"群聊计数条" ─────────────── */
-.ct-head {
-  display: flex;
-  flex: none;
-  gap: 20px;
-  align-items: center;
-  justify-content: space-between;
-  padding: 18px 28px 14px;
-  background: linear-gradient(180deg, var(--chat-surface-raised), transparent);
-  border-bottom: 1px solid var(--chat-line);
-}
-.ct-head-main {
-  display: flex;
-  gap: 14px;
-  align-items: center;
-  min-width: 0;
-}
-.ct-orb {
-  position: relative;
-  display: grid;
-  flex: 0 0 auto;
-  place-items: center;
-  width: 42px;
-  height: 42px;
-  font-size: 20px;
-  color: var(--chat-accent);
-  background: var(--chat-accent-soft);
-  border: 1px solid color-mix(in srgb, var(--chat-accent) 24%, transparent);
-  border-radius: 14px;
-  box-shadow: 0 8px 24px rgb(15 118 110 / 10%);
-}
-.ct-orb-pulse {
-  position: absolute;
-  inset: -1px;
-  pointer-events: none;
-  border: 1px solid var(--chat-accent);
-  border-radius: inherit;
-  opacity: 0.28;
-  animation: ct-pulse 3.2s ease-out infinite;
-}
-.ct-head-copy { min-width: 0; }
-.ct-title-row {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  min-width: 0;
-}
-.ct-title {
-  padding: 0;
-  margin: 0;
-  overflow: hidden;
-  font-family: var(--font-body);
-  font-size: 18px;
-  font-weight: 650;
-  letter-spacing: -0.02em;
-  color: var(--chat-ink);
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.ct-live {
-  display: inline-flex;
-  flex: 0 0 auto;
-  gap: 5px;
-  align-items: center;
-  font-family: var(--font-mono);
-  font-size: var(--fs-micro);
-  letter-spacing: 0.08em;
-  color: var(--chat-accent);
-  text-transform: uppercase;
-}
-.ct-live-dot {
-  width: 6px;
-  height: 6px;
-  background: var(--chat-accent);
-  border-radius: 50%;
-  box-shadow: 0 0 0 3px var(--chat-accent-soft);
-}
-.ct-subtitle {
-  margin: 4px 0 0;
-  font-size: 12px;
-  color: var(--chat-ink-faint);
-}
-.ct-head-actions {
-  display: flex;
-  flex: none;
-  gap: 10px;
-  align-items: center;
-}
-.ct-model-chip {
-  display: inline-flex;
-  gap: 6px;
-  align-items: center;
-  padding: 5px 10px;
-  font-family: var(--font-mono);
-  font-size: var(--fs-micro);
-  color: var(--chat-ink-soft);
-  background: var(--chat-surface);
-  border: 1px solid var(--chat-line);
-  border-radius: var(--radius-pill);
-}
-.ct-count {
-  font-family: var(--font-mono);
-  font-size: var(--fs-micro);
-  color: var(--chat-ink-faint);
-}
-
-/* ── 阅读列:暖纸画布 + 顶部微光;内容居中,行宽克制 ─────────────── */
+/* ── 阅读列:白画布;内容居中,行宽克制(ChatGPT 阅读列同宽) ─────────────── */
 .ct-scroll {
   position: relative;
   flex: 1 1 auto;
@@ -662,7 +530,7 @@ watch(() => props.channelId, async () => {
   scroll-behavior: smooth;
 }
 .ct-thread {
-  width: min(860px, calc(100% - 48px));
+  width: min(820px, calc(100% - 48px));
   padding: 24px 0 120px;
   margin: 0 auto;
 }
@@ -1120,31 +988,12 @@ watch(() => props.channelId, async () => {
   from { opacity: 0; transform: translateY(6px); }
   to { opacity: 1; transform: none; }
 }
-@keyframes ct-pulse {
-  0% { opacity: 0.3; transform: scale(0.96); }
-  70% { opacity: 0; transform: scale(1.12); }
-  100% { opacity: 0; transform: scale(1.12); }
-}
 @keyframes ct-blink {
   0%, 80%, 100% { opacity: 0.25; transform: translateY(0); }
   40% { opacity: 1; transform: translateY(-2px); }
 }
 
 @media (max-width: 1023.98px) {
-  .ct-head {
-    gap: 12px;
-    padding: 12px 14px 10px;
-  }
-  .ct-orb {
-    width: 36px;
-    height: 36px;
-    font-size: 17px;
-    border-radius: 12px;
-  }
-  .ct-title { font-size: 16px; }
-  .ct-subtitle { font-size: 11px; }
-  .ct-model-chip,
-  .ct-count { display: none; }
   .ct-thread {
     width: calc(100% - 24px);
     padding: 16px 0 100px;
@@ -1164,7 +1013,6 @@ watch(() => props.channelId, async () => {
 
 @media (prefers-reduced-motion: reduce) {
   .ct-row,
-  .ct-orb-pulse,
   .ct-thinking-dots i {
     animation: none;
   }

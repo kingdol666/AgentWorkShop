@@ -1,11 +1,21 @@
 <script setup lang="ts">
 /**
- * /projects —— Project 列表 + 创建入口。
+ * /projects —— Project 列表 + 创建入口(2026-11-07 控制台 ChatGPT 化换皮)。
  * 复用 $http（Bearer cookie + envelope 解包）；未登录时提示回 /workshop。
+ *
+ * 布局:裸 console 布局下的白色居中列(与其他控制台页同一令牌族 --chat-*)。
+ * 数据逻辑零改动,本轮只动模板外壳与样式声部。
  */
 import { onMounted, reactive, ref } from 'vue'
+import { useUserStore } from '~/stores/workshop/user'
 
-definePageMeta({ layout: 'default' })
+definePageMeta({ layout: 'console' })
+
+// 认证守卫(与项目详情页同语义:未登录回总览)
+const userStore = useUserStore()
+onMounted(() => {
+  if (!userStore.isLoggedIn) navigateTo('/workshop')
+})
 
 interface ProjectDto {
   id: string
@@ -174,32 +184,106 @@ onMounted(load)
 </template>
 
 <style scoped>
-.projects-page { max-width: 1080px; margin: 0 auto; padding: 24px; color: #e6e8ee; }
-.head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 20px; }
-h1 { margin: 0 0 6px; font-size: 24px; }
-.sub { margin: 0; color: #9aa4b2; font-size: 13px; }
-.card { background: #161a22; border: 1px solid #2a3140; border-radius: 10px; padding: 16px; }
+/* ChatGPT 声部(2026-11-07):白画布居中列 + 发丝线卡片 + 黑主钮;令牌 = --chat-* */
+.projects-page {
+  flex: 1 1 auto;
+  width: 100%;
+  max-width: 920px;
+  padding: 28px 24px 48px;
+  margin: 0 auto;
+  overflow-y: auto;
+  color: var(--chat-ink);
+  background: var(--chat-canvas);
+}
+.head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  padding-bottom: 16px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid var(--chat-line);
+}
+h1 { margin: 0 0 6px; font-size: 22px; font-weight: 650; letter-spacing: -0.015em; }
+.sub { margin: 0; color: var(--chat-ink-faint); font-size: 13px; }
+.card {
+  padding: 18px 20px;
+  background: var(--chat-surface);
+  border: 1px solid var(--chat-line);
+  border-radius: 16px;
+}
 .create { margin-bottom: 18px; }
-.create h2 { margin: 0 0 12px; font-size: 16px; }
+.create h2 { margin: 0 0 12px; font-size: 15px; font-weight: 650; }
 .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
-.grid label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #9aa4b2; }
+.grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--chat-ink-faint);
+}
 .grid .wide { grid-column: 1 / -1; }
-input { background: #0f131a; border: 1px solid #2a3140; border-radius: 6px; color: #e6e8ee; padding: 8px 10px; }
-.btn { background: #3b82f6; color: white; border: 0; border-radius: 6px; padding: 8px 14px; cursor: pointer; }
+input, select {
+  padding: 9px 11px;
+  font-size: 13px;
+  color: var(--chat-ink);
+  background: var(--chat-canvas);
+  border: 1px solid var(--chat-line);
+  border-radius: 10px;
+  transition: border-color var(--transition-fast);
+}
+input:focus, select:focus { border-color: var(--chat-line-strong); outline: none; }
+input::placeholder { color: var(--chat-ink-faint); }
+.btn {
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  /* 反色主钮:前景取画布色(暗色自动翻为黑字白底) */
+  color: var(--chat-canvas);
+  cursor: pointer;
+  background: var(--chat-ink);
+  border: 0;
+  border-radius: 10px;
+  transition: opacity var(--transition-fast);
+}
+.btn:hover { opacity: 0.88; }
 .btn:disabled { opacity: .5; cursor: not-allowed; }
-.btn.ghost { background: transparent; border: 1px solid #2a3140; color: #cbd5e1; }
+.btn.ghost {
+  color: var(--chat-ink);
+  background: transparent;
+  border: 1px solid var(--chat-line);
+}
+.btn.ghost:hover { opacity: 1; border-color: var(--chat-line-strong); }
 .list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
-.project { cursor: pointer; }
-.project:hover { border-color: #3b82f6; }
+.project { cursor: pointer; transition: border-color var(--transition-fast), box-shadow var(--transition-fast); }
+.project:hover {
+  border-color: var(--chat-line-strong);
+  box-shadow: 0 10px 28px rgb(12 10 9 / 6%);
+}
 .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: #263042; color: #cbd5e1; }
-.badge.active { background: #14351f; color: #86efac; }
-.badge.paused { background: #3a2c12; color: #fcd34d; }
-.badge.completed { background: #1e2a4a; color: #93c5fd; }
-.badge.archived { background: #2a2f3a; color: #9aa4b2; }
-.objective { color: #cbd5e1; font-size: 13px; margin: 10px 0; }
-.meta { display: flex; gap: 12px; color: #7c8798; font-size: 11px; }
-.empty { color: #9aa4b2; }
-.error { color: #fca5a5; }
+.row strong { font-size: 14px; }
+.badge {
+  padding: 2px 9px;
+  font-size: 11px;
+  line-height: 16px;
+  color: var(--chat-ink-soft);
+  background: color-mix(in srgb, var(--chat-ink) 6%, transparent);
+  border-radius: 999px;
+}
+.badge.active { color: var(--tone-success-dot); background: var(--tone-success-bg); }
+.badge.paused { color: var(--tone-warning-dot); background: var(--tone-warning-bg); }
+.badge.draft { color: var(--tone-warning-dot); background: var(--tone-warning-bg); }
+.badge.completed { color: var(--tone-info-dot); background: var(--tone-info-bg); }
+.badge.archived { color: var(--chat-ink-faint); background: color-mix(in srgb, var(--chat-ink) 6%, transparent); }
+.objective { margin: 10px 0; font-size: 13px; color: var(--chat-ink-soft); }
+.meta {
+  display: flex;
+  gap: 12px;
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 11px;
+  color: var(--chat-ink-faint);
+}
+.empty { color: var(--chat-ink-faint); }
+.error { color: var(--tone-danger-dot); }
 @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
 </style>

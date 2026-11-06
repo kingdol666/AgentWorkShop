@@ -94,12 +94,11 @@ const emit = defineEmits<{
   min-height: 0;
   max-width: 100%;
   overflow: hidden;
-  background: var(--paper); /* 灰画布:消息气泡/白色面板在此浮出(Slack 式分层) */
+  /* ChatGPT 化:全部视图共用白色画布(--chat-canvas),分层靠发丝线与卡片投影 */
+  background: var(--chat-canvas);
 }
 .center-pane > * {
   min-width: 0;
   max-width: 100%;
 }
-/* 对话视图:暖纸画布(与 ChatTimeline/Composer 同一套 --chat-* 令牌) */
-.center-pane.is-chat { background: var(--chat-canvas); }
 </style>
