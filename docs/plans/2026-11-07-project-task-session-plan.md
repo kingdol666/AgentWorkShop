@@ -88,26 +88,56 @@ root 任务（attempt 载体）需要 assignee。当前 clone 统一 worker 定�
 
 ### P2 可观测与前端
 
-| # | 放大 | 文件 | DoD |
-|able|------|------|-----|
+| # | 改动 | 文件 | DoD |
+|---|------|------|-----|
 | P2-1 | ChannelObs 增 session 分区（sessions:[{sessionId,title,workItemId,inFlight}]）| service.ts | observability 透出任务级视角 |
-| P2-2 | project 页 lane 内 session 分组渲染 + 任务卡跳转会话视图（?view=sessions&session=xx）| projects/[id].vue | 任务→会话可视可达 |
+| P2-2 | project 页 lane 内 session 分组渲染 + 任务卡跳转会话视图（?view=sessions&channel=xx）| projects/[id].vue | 任务→会话可视可达 |
 | P2-3 | SessionManageView 会话卡显示溯源徽标（project/workItem 关联）| SessionManageView.vue | 会话与任务互相可见 |
 
 ### P3 验收链适配
 
-| # | 改动 | 文件 | session |
-|---|------|------|---------|
-| P3-1 | ensureDraftFromTask / agentSubmitResult 的频道校验放宽为「本 channel 且属本 workItem 的 session 成员」| service.ts | clone 提交成果合法 |
- clones-|- P3-2 | L1 评审频道读授权对 session clone 消息的可见性 | tool-surface/评审 channel | L1 评审可读 session 内产出 |
-| P3-2 | L1  |  |  |
+| # | 改动 | 文件 | DoD |
+|---|------|------|-----|
+| P3-1 | agentSubmitResult 的频道校验放宽为「模板 Channel 或本工作项实例 Channel」| service.ts | 实例成员提交成果合法 |
+| P3-2 | 评审频道/lane 候选过滤 task_instance 绑定 | service.ts | 任务实例不污染项目拓扑 |
 
 ---
 
 ## 5. DoD（整体）
 
-1. Project 内新建任务 → 派发时自动创建专属 session（克隆实例组=任务专属 runtime 对象）→ root 任务在 session 内闭环执行 → 任务终态 session 自动关闭（audit 留档）
-2. 同 Channel 多任务 session 并行（容量闸按 session 计数）
-3. observability/前端可按 session 维度观测与跳转
-4. 验收链（成果→L1→L2）对 session 执行不受影响
-5. 全量回归 0 fail + 实机 project-session-live 全 PASS
+1. Project 内新建任务 → 派发时自动创建专属执行实例（任务专属 Channel + 会话行）→ root 任务在实例内闭环执行 → 任务终态会话 close + 实例停用（audit 留档）
+2. 同模板 Channel 多任务并行（容量闸按实例 Channel 计数）
+3. observability/前端可按会话维度观测与跳转
+4. 验收链（成果→L1→L2）对实例执行不受影响
+5. 全量回归 0 fail + 实机 project-task-instance-live 全 PASS
+
+---
+
+## 6. 实施结论（2026-11-07，已落地 PR #69）
+
+**决策变更：D1 由 B 案（共享 Channel + 每任务一 session）改为 C 案（每任务一专属 Channel + 会话行）。**
+
+原因（实施期发现的硬约束）：
+- 根任务 FIFO 是**按 Channel** 的：`TaskEngine.activeRootOf(channelId)` 只认最老的非终态根，
+  且 `create.dispatch` 对非 active root 直接抛 `ROOT_QUEUED`。共享 Channel 上第二个任务
+  在任何时刻都排不进执行位——会话克隆无法绕过这一层（clone 只是成员，root assignee 的
+  runtime 也要经同一套 scheduler/root 队列）。
+- 任务专属 Channel 天然拥有独立 SchedulerLoop / 根队列 / 成员 runtime / workspace
+  （=「任务特有的实例 runtime 对象」，与需求原文一致），两任务物理并行。
+- `agentProjectContext` 依赖 channel 的项目绑定 → 实例 Channel 以 `binding_type='task_instance'`
+  绑定项目，实例 lead 才有 `channel_lead` 工具面（`project_submit_result`）。
+
+对应实现映射：
+| 计划项 | 实际落地 |
+|---|---|
+| P1-1 | `channel_sessions` +project_id/+project_work_item_id/+created_by_kind/+instance_kind；`project_work_items` +instance_channel_id（幂等 ALTER 迁移） |
+| P1-2 | `agents/task-channel.ts::createTaskInstanceChannel`（模板派生命名、lead 保 lead 身份、worker 克隆、节点绑定复制、真实 memberMap） |
+| P1-3 | `submitProjectRoot` +assigneeId（实例 lead） |
+| P1-4 | `dispatchWorkItemAs` 派发前 ensure 实例 + attempt 落实例 Channel + precheck 失败回收；容量闸按实例计数；`runRouteLoop` 终态回收（会话 close + Channel 停用） |
+| P2-1..3 | observability `lanes[].sessions[]` 与 `workItems.instanceChannelId/sessionId`；项目页任务卡会话徽标 + 「打开会话」直达控制台（`?view=sessions&channel=`）；会话卡「任务会话」徽标 |
+| P3-1..2 | 成果校验接受实例 Channel；评审/lane 过滤 task_instance 绑定 |
+
+验收：`project-task-instance-live.mjs` P1–P12 全 PASS（20261106172526）；
+全量 1164 pass/0 fail；并行演示 A 全 PASS（20261106175020）与项目演示验收全 PASS
+（20261106175337：index.html / pricing.html 双页产物 + 双任务 COMPLETED + 会话 closed + 实例停用）。
+
