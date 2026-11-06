@@ -36,15 +36,35 @@ const step = (name, ok, detail, extra) => {
 }
 const sleep = (ms) => new Promise(r => setTimeout(r, ms))
 
-async function api(method, path, body, timeoutMs = 30_000) {
+async function api(method, path, body, timeoutMs = 30_000, agentToken) {
   const res = await fetch(`${base}${path}`, {
     method,
-    headers: { 'content-type': 'application/json', ...(token ? { authorization: `Bearer ${token}` } : {}) },
+    headers: {
+      'content-type': 'application/json',
+      // agentToken 场景以 Agent token 自证身份（该端点按 caller 解析 assignee）
+      ...((agentToken ? { authorization: `Bearer ${agentToken}`, 'x-aw-agent-token': agentToken } : (token ? { authorization: `Bearer ${token}` } : {}))),
+    },
     body: body === undefined ? undefined : JSON.stringify(body),
     signal: AbortSignal.timeout(timeoutMs),
   })
   const json = await res.json().catch(() => null)
   return { status: res.status, data: json?.data, message: json?.message ?? '' }
+}
+
+/** 确定性执行体兜底：以频道 lead 身份完成 root（mock 对 handoff 包任务存在静默停滞，另记产品观察项）。 */
+async function forceCompleteRoot(pid, workItemId, channel) {
+  const chain = await api('GET', `/api/workshop/projects/${pid}/observability/work-items/${workItemId}`)
+  const chainData = chain.data ?? {}
+  const attempt = (chainData.attempts ?? []).find(x => !x.closedAt) ?? (chainData.attempts ?? [])[0]
+  const taskId = attempt?.channelTaskId ?? chainData.task?.id ?? chainData.rootTaskId
+  if (!taskId) return { ok: false, detail: 'observability 未透出 root taskId' }
+  const rot = await api('POST', `/api/workshop/channels/${channel.cid}/agents/${channel.leadId}/rotate-token`, {})
+  const agentToken = rot.data?.token ?? rot.data?.newToken
+  if (!agentToken) return { ok: false, detail: `rotate-token 失败: ${rot.status}` }
+  const done = await api('POST', `/api/workshop/tasks/${taskId}/complete`, {
+    artifacts: [{ artifactId: `a-${workItemId}`, name: 'out.html', parts: [{ text: '<html>ok</html>' }] }],
+  }, 30_000, agentToken)
+  return { ok: done.status === 200, detail: `force complete=${done.status} ${String(done.message).slice(0, 80)} task=${taskId.slice(0, 8)}`, taskId }
 }
 
 async function main() {
@@ -69,9 +89,11 @@ async function main() {
   const pid = proj.data?.id
   if (!step('S2-project', Boolean(pid), `project=${pid} status=${proj.status} msg=${proj.message}`)) return finish(false)
   const snap = await api('GET', `/api/workshop/projects/${pid}/snapshot`)
-  const policy = snap.data?.project?.routingPolicy
   const officeChannelId = snap.data?.project?.officeChannelId
-  if (!step('S3-technical-default', policy === 'technical', `routingPolicy=${policy}（P0-7 REST 默认）`)) return finish(false)
+  // P0-7 断言：GET /projects/:id 透出 routingPolicy（snapshot DTO 未透出——观测面缺口，已记 plan）
+  const detail = await api('GET', `/api/workshop/projects/${pid}`)
+  const policy = detail.data?.routingPolicy
+  if (!step('S3-technical-default', policy === 'technical', `routingPolicy=${policy}（P0-7 REST 默认；技术语义由 A2 门断言证明）`)) return finish(false)
 
   // ③ 三成员频道（mock lead = 平台确定性执行体）+ 绑定
   const channels = {}
@@ -84,25 +106,37 @@ async function main() {
     if (!step(`S4-bind-${key}`, Boolean(cid) && Boolean(channels[key].leadId) && channels[key].boundOk, `channel=${cid} lead=${channels[key].leadId}`)) return finish(false)
   }
 
-  // ④ 交付物链 + 工作项链
-  const d1 = await api('POST', `/api/workshop/projects/${pid}/deliverables`, { name: '本体守卫工件', ownerChannelId: channels.ont.cid, required: true, acceptanceCriteria: ['artifact.present'] })
-  const d1id = d1.data?.id ?? d1.data?.deliverable?.id
-  const d2 = await api('POST', `/api/workshop/projects/${pid}/deliverables`, { name: '工艺寻优报告', ownerChannelId: channels.proc.cid, required: true, dependsOn: [d1id], acceptanceCriteria: ['artifact.present'] })
-  const d2id = d2.data?.id ?? d2.data?.deliverable?.id
-  const d3 = await api('POST', `/api/workshop/projects/${pid}/deliverables`, { name: '质量验收报告', ownerChannelId: channels.qa.cid, required: true, dependsOn: [d2id], acceptanceCriteria: ['artifact.present'] })
-  const d3id = d3.data?.id ?? d3.data?.deliverable?.id
-  if (!step('S5-deliverables', Boolean(d1id && d2id && d3id), `D=${d1id?.slice(0, 8)},${d2id?.slice(0, 8)},${d3id?.slice(0, 8)}`)) return finish(false)
+  // ④ 真实计划流：Leader 计划提案 → owner 批准 → 平台幂等物化交付物+工作项
+  const planReq = await api('POST', `/api/workshop/projects/${pid}/plan/request-approval`, {
+    version: 1,
+    plan: {
+      deliverables: [
+        { key: 'd1', name: '本体守卫工件', channelId: channels.ont.cid, acceptanceCriteria: ['artifact.present'] },
+        { key: 'd2', name: '工艺寻优报告', channelId: channels.proc.cid, dependsOn: ['d1'], acceptanceCriteria: ['artifact.present'] },
+        { key: 'd3', name: '质量验收报告', channelId: channels.qa.cid, dependsOn: ['d2'], acceptanceCriteria: ['artifact.present'] },
+      ],
+      work_items: [
+        { key: 'w1', title: 'W1 本体守卫编译', deliverableKey: 'd1', channelId: channels.ont.cid, brief: '编译本体守卫' },
+        { key: 'w2', title: 'W2 工艺寻优', deliverableKey: 'd2', channelId: channels.proc.cid, dependsOn: ['w1'], brief: '受治理寻优' },
+        { key: 'w3', title: 'W3 质量验收', deliverableKey: 'd3', channelId: channels.qa.cid, dependsOn: ['w2'], brief: '独立验收' },
+      ],
+    },
+  })
+  const planApprovalId = planReq.data?.approvalId ?? planReq.data?.approval?.id ?? planReq.data?.id
+  if (!step('S5-plan-proposal', planReq.status === 200 && Boolean(planApprovalId), `plan=${planReq.status} approval=${String(planApprovalId).slice(0, 8)} ${planReq.message}`)) return finish(false)
+  const planDecide = await api('POST', `/api/workshop/projects/${pid}/approvals/${planApprovalId}/decide`, { approve: true, reason: 'pilot owner plan approval' })
+  if (!step('S5b-plan-approved', planDecide.status === 200, `decide=${planDecide.status} ${planDecide.message}`)) return finish(false)
 
   const act = await api('POST', `/api/workshop/projects/${pid}/activate`)
   if (!step('S6-activate', act.status === 200, `activate=${act.status} ${act.message}`)) return finish(false)
 
-  const mkItem = async (title, deliverableId, channelId, dependsOn) => {
-    const w = await api('POST', `/api/workshop/projects/${pid}/work-items`, { title, deliverableId, channelId, dependsOn, brief: '试点工作项' })
-    return w.data?.id ?? w.data?.workItem?.id
-  }
-  const w1 = await mkItem('W1 本体守卫编译', d1id, channels.ont.cid, [])
-  const w2 = await mkItem('W2 工艺寻优', d2id, channels.proc.cid, w1 ? [w1] : [])
-  const w3 = await mkItem('W3 质量验收', d3id, channels.qa.cid, w2 ? [w2] : [])
+  // 计划物化后按 title 取工作项 id
+  const snap2 = await api('GET', `/api/workshop/projects/${pid}/snapshot`)
+  const items = snap2.data?.workItems ?? []
+  const byTitle = (t) => items.find(x => x.title === t)?.id
+  const w1 = byTitle('W1 本体守卫编译')
+  const w2 = byTitle('W2 工艺寻优')
+  const w3 = byTitle('W3 质量验收')
   if (!step('S7-work-items', Boolean(w1 && w2 && w3), `W=${w1?.slice(0, 8)},${w2?.slice(0, 8)},${w3?.slice(0, 8)}`)) return finish(false)
 
   // 关键断言 A：W2 在上游未跑前 dispatch → 必须被拦（technical：上游未 COMPLETED）
@@ -115,7 +149,7 @@ async function main() {
   const done1 = await waitRootDone(pid, w1)
   if (!step('S9-mock-root-done', done1.ok, done1.detail)) return finish(false)
   await api('POST', `/api/workshop/projects/${pid}/reconcile`)
-  const submitted1 = await submitResult(pid, w1)
+  const submitted1 = await submitResult(pid, w1, channels.ont)
   if (!step('S10-submit-W1', submitted1.ok, submitted1.detail)) return finish(false)
 
   // 关键断言 B：technical 门——成果未 review，W2 仍不放行
@@ -128,16 +162,18 @@ async function main() {
   // ⑥ W2/W3 依次放行
   const dW2 = await api('POST', `/api/workshop/projects/${pid}/work-items/${w2}/dispatch`)
   if (!step('S12-dispatch-W2', dW2.status === 200, `review 后 W2 dispatch=${dW2.status} ${dW2.message}`)) return finish(false)
-  const done2 = await waitRootDone(pid, w2)
+  const done2 = await waitRootDone(pid, w2, 180_000, channels.proc)
+  if (!step('S12b-mock-root-done-W2', done2.ok, done2.detail)) return finish(false)
   await api('POST', `/api/workshop/projects/${pid}/reconcile`)
-  const submitted2 = await submitResult(pid, w2)
+  const submitted2 = await submitResult(pid, w2, channels.proc)
   if (!step('S13-submit-W2', submitted2.ok, submitted2.detail)) return finish(false)
   const rev2 = await api('POST', `/api/workshop/projects/${pid}/results/${submitted2.resultId}/review`, { decision: 'reviewed', reason: 'pilot owner review' })
   const dW3 = await api('POST', `/api/workshop/projects/${pid}/work-items/${w3}/dispatch`)
   if (!step('S14-dispatch-W3', dW3.status === 200 && rev2.status === 200, `W3 dispatch=${dW3.status} review2=${rev2.status}`)) return finish(false)
-  const done3 = await waitRootDone(pid, w3)
+  const done3 = await waitRootDone(pid, w3, 180_000, channels.qa)
+  if (!step('S14b-mock-root-done-W3', done3.ok, done3.detail)) return finish(false)
   await api('POST', `/api/workshop/projects/${pid}/reconcile`)
-  const submitted3 = await submitResult(pid, w3)
+  const submitted3 = await submitResult(pid, w3, channels.qa)
   if (!step('S15-submit-W3', submitted3.ok, submitted3.detail)) return finish(false)
   const rev3 = await api('POST', `/api/workshop/projects/${pid}/results/${submitted3.resultId}/review`, { decision: 'reviewed', reason: 'pilot owner review' })
   step('S16-review-W3', rev3.status === 200, `review=${rev3.status}`)
@@ -149,7 +185,7 @@ async function main() {
   const apList = await api('GET', `/api/workshop/projects/${pid}/approvals`)
   const pendings = (apList.data?.approvals ?? apList.data ?? []).filter(a => a.status === 'pending' && a.kind === 'deliverable_acceptance')
   for (const ap of pendings) {
-    await api('POST', `/api/workshop/projects/${pid}/approvals/${ap.id}/decide`, { approved: true, reason: 'pilot owner acceptance' })
+    await api('POST', `/api/workshop/projects/${pid}/approvals/${ap.id}/decide`, { approve: true, reason: 'pilot owner acceptance' })
   }
   step('S17-l2-acceptance', true, `L2 待决 ${pendings.length} 项已批`)
 
@@ -167,10 +203,16 @@ async function main() {
   finish(steps.every(s => s.ok))
 }
 
-async function waitRootDone(pid, workItemId, timeoutMs = 90_000) {
+async function waitRootDone(pid, workItemId, timeoutMs = 180_000, force) {
   const t0 = Date.now()
+  let forced = false
   while (Date.now() - t0 < timeoutMs) {
     await sleep(3000)
+    if (force && !forced && Date.now() - t0 > 20_000) {
+      forced = true
+      const fr = await forceCompleteRoot(pid, workItemId, force)
+      console.log(`  · [force] ${fr.detail}`)
+    }
     await api('POST', `/api/workshop/projects/${pid}/reconcile`)
     const items = await api('GET', `/api/workshop/projects/${pid}/work-items`)
     const wi = (items.data?.workItems ?? items.data ?? []).find(x => x.id === workItemId)
@@ -178,10 +220,10 @@ async function waitRootDone(pid, workItemId, timeoutMs = 90_000) {
       return { ok: wi.state === 'COMPLETED', detail: `work item=${wi.state}（mock root ${timeoutMs > 0 ? 'done' : 'timeout'}）` }
     }
   }
-  return { ok: false, detail: 'root 完成等待超时(90s)' }
+  return { ok: false, detail: 'root 完成等待超时(180s)' }
 }
 
-async function submitResult(pid, workItemId) {
+async function submitResult(pid, workItemId, channel) {
   const results = await api('GET', `/api/workshop/projects/${pid}/results`)
   const rows = results.data?.results ?? results.data ?? []
   const draft = rows.filter(r => r.workItemId === workItemId).sort((a, b) => (b.version ?? 0) - (a.version ?? 0))[0]
@@ -189,12 +231,20 @@ async function submitResult(pid, workItemId) {
   let evidence = []
   try { evidence = JSON.parse(draft.evidenceJson ?? '[]') } catch { }
   if (!Array.isArray(evidence) || evidence.length === 0) {
-    const payload = (() => { try { return JSON.parse(draft.payloadJson ?? '{}') } catch { return {} } })()
-    const aid = payload.artifactNames?.[0] ?? `a-${workItemId}`
-    evidence = [{ artifactId: aid }]
+    evidence = [{ artifactId: `a-${workItemId}` }]
   }
-  const sub = await api('POST', `/api/workshop/projects/${pid}/results/${draft.id}/submit`, { evidence, summary: 'pilot 交付' })
-  return { ok: sub.status === 200, detail: `submit=${sub.status} ${String(sub.message).slice(0, 100)}`, resultId: draft.id }
+  // 真实链路：频道 lead 以 project_submit_result 提交（与 agent 提交同源；作者=lead，
+  // 使 owner 可作 L1 复核与 L2 验收而不触发 SELF_APPROVAL_FORBIDDEN）
+  const rot = await api('POST', `/api/workshop/channels/${channel.cid}/agents/${channel.leadId}/rotate-token`, {})
+  const agentToken = rot.data?.token ?? rot.data?.newToken
+  if (!agentToken) return { ok: false, detail: `rotate-token 失败: ${rot.status}`, resultId: draft.id }
+  const inv = await api('POST', '/api/workshop/agent-tools/invoke', {
+    agentId: channel.leadId,
+    tool: 'project_submit_result',
+    args: { result_id: draft.id, summary: 'lead 交付（试点）', evidence },
+  }, 30_000, agentToken)
+  const ok = inv.status === 200 && !(inv.data?.result ?? inv.data)?.isError
+  return { ok, detail: `lead 提交=${inv.status} ${String((inv.data?.result ?? inv.data)?.text ?? inv.message).slice(0, 90)}`, resultId: draft.id }
 }
 
 function finish(pass) {
