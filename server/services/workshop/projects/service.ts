@@ -2234,6 +2234,9 @@ export class ProjectService {
         ownerUserId: p.ownerUserId, officeChannelId: p.officeChannelId, leadAgentId: p.leadAgentId,
         planVersion: p.planVersion, plan: parseJson(p.planJson, {}), createdAt: p.createdAt,
         autoDispatch: p.autoDispatch === 1,
+        // P2 可见性补齐：routingPolicy 是 leader 判上游"完成"语义与 owner 审计路由口径的关键字段
+        // （此前仅 observability 透出，主视图缺失——实机试点 S3 断言被迫绕行）
+        routingPolicy: p.routingPolicy,
       },
       channels,
       members: this.members.listByProject(id),
