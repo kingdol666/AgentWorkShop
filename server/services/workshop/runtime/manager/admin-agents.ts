@@ -12,6 +12,10 @@ import { TEAM_AGENT_ID } from '../../db/memory.repo'
 import { assertHarnessUsable } from '../../agents/harness-availability'
 import { assertSpawnConfigAllowed, assertSpawnConfigPatchAllowed, type SpawnActor } from '../../agents/harness-spawn-policy'
 import { instanceToAgentInfo } from './helpers'
+import { createChannelSession, closeChannelSession } from '../../agents/session-clone'
+import { getAgentNodeBindingRepo } from '../../agents/node-bindings.repo'
+import { createChannelSessionRepo, type ChannelSessionRow } from '../../db/channel-session.repo'
+import type { SessionCloneDeps } from '../../agents/session-clone'
 import { parseJson } from '../../db/database'
 import { randomUUID } from 'node:crypto'
 
@@ -272,4 +276,100 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
   }
 
   // ===== Lead 自主团队管理面(执行中扩容/调参/裁撤;工具桥 + 调度决策共用) =====
+
+  // ===== P2 多会话（plan 2026-11-06-channel-multi-session-runtime-plan.md S1）=====
+
+  /**
+   * 创建会话：从频道基础成员克隆独立 agent 实例组（每 clone 一个独立 runtime/
+   * mailbox/omp 进程），注册 channel_sessions 行。同 member 的会话间并行、
+   * 会话内串行（execLock 按 runtime 成立）。
+   */
+  async createChannelSession(input: {
+    channelId: string
+    actor: { id: string, role: string }
+    title?: string
+  }): Promise<{ sessionId: string, title: string, members: Array<{ baseAgentId: string, cloneId: string, name: string, role: string }> }> {
+    const channel = this.deps.repos.channels.findById(input.channelId)
+    if (!channel) throw new AppError(404, 'NOT_FOUND', `Channel 不存在: ${input.channelId}`)
+    this.requireWritable(channel.ownerUserId, input.actor, 'channel')
+    const result = await createChannelSession(
+      {
+        channelAgents: this.deps.repos.channelAgents as unknown as SessionCloneDeps['channelAgents'],
+        tasks: this.getTaskEngine(),
+        bindings: getAgentNodeBindingRepo(),
+        unloadAgent: (cid, iid) => this.unloadAgent(cid, iid),
+        notify: (cid, payload) => this.notifyMember(cid, { ...payload, enabled: 1, by: 'session', reason: 'session create' }),
+      },
+      {
+        channelId: input.channelId,
+        actorId: input.actor.id,
+        title: input.title,
+        sessionRepo: createChannelSessionRepo(this.deps.db),
+      },
+    )
+    const { recordOps } = await import('../../ops/ops')
+    recordOps({
+      actor: input.actor.id,
+      actorName: 'owner',
+      actorKind: 'user',
+      action: 'channel.session.create',
+      kind: 'system',
+      targetKind: 'channel',
+      targetId: input.channelId,
+      summary: `创建会话 ${result.sessionId.slice(0, 8)}（克隆 ${result.members.length} 个成员实例）`,
+      detail: { sessionId: result.sessionId, members: result.members },
+    })
+    return result
+  }
+
+  /** 关闭会话：在飞任务按树取消 + clone 实例停用（runtime 卸载）+ 会话 closed（终态）。 */
+  async closeChannelSession(input: {
+    channelId: string
+    sessionId: string
+    actor: { id: string, role: string }
+    reason?: string
+  }): Promise<{ canceledTasks: number, clones: string[] }> {
+    const channel = this.deps.repos.channels.findById(input.channelId)
+    if (!channel) throw new AppError(404, 'NOT_FOUND', `Channel 不存在: ${input.channelId}`)
+    this.requireWritable(channel.ownerUserId, input.actor, 'channel')
+    const result = await closeChannelSession(
+      {
+        channelAgents: this.deps.repos.channelAgents as unknown as SessionCloneDeps['channelAgents'],
+        tasks: this.getTaskEngine(),
+        bindings: getAgentNodeBindingRepo(),
+        unloadAgent: (cid, iid) => this.unloadAgent(cid, iid),
+        notify: (cid, payload) => this.notifyMember(cid, { ...payload, by: 'session' }),
+      },
+      {
+        channelId: input.channelId,
+        sessionId: input.sessionId,
+        actorId: input.actor.id,
+        reason: input.reason ?? 'owner closed session',
+        sessionRepo: createChannelSessionRepo(this.deps.db),
+      },
+    )
+    const { recordOps } = await import('../../ops/ops')
+    recordOps({
+      actor: input.actor.id,
+      actorName: 'owner',
+      actorKind: 'user',
+      action: 'channel.session.close',
+      kind: 'system',
+      targetKind: 'channel',
+      targetId: input.channelId,
+      summary: `关闭会话 ${input.sessionId.slice(0, 8)}（取消在飞任务 ${result.canceledTasks} 个）`,
+      detail: { sessionId: input.sessionId, canceledTasks: result.canceledTasks },
+    })
+    return result
+  }
+
+  /** 会话清单（含每会话成员映射）。 */
+  listChannelSessions(channelId: string): ChannelSessionRow[] {
+    return createChannelSessionRepo(this.deps.db).listByChannel(channelId)
+  }
+
+  /** 会话详情（不存在 → undefined）。 */
+  getChannelSession(sessionId: string): ChannelSessionRow | undefined {
+    return createChannelSessionRepo(this.deps.db).findById(sessionId)
+  }
 }
