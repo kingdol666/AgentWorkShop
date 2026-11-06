@@ -42,9 +42,10 @@ function cloneInfo(cloneId: string) {
 function cloneState(cloneId: string) {
   return queueByAgent.value[cloneId] ?? null
 }
-/** /queue 行 → agentId 索引的运行态面（loadAll 与轮询共用同一映射） */
+/** /queue 行 → agentId 索引的运行态面（loadAll 与轮询共用同一映射;幂等:无差异不重写） */
 function applyQueue(rows: Array<{ agentId: string, state: string, queuedCount: number, completedCount: number }>): void {
-  queueByAgent.value = Object.fromEntries(rows.map(x => [x.agentId, { state: x.state, queuedCount: x.queuedCount, completedCount: x.completedCount }]))
+  const next = Object.fromEntries(rows.map(x => [x.agentId, { state: x.state, queuedCount: x.queuedCount, completedCount: x.completedCount }]))
+  if (JSON.stringify(next) !== JSON.stringify(queueByAgent.value)) queueByAgent.value = next
 }
 function sessionClones(s: ChannelSessionDto): string[] {
   return Object.values(s.memberMap ?? {})
@@ -107,7 +108,10 @@ async function loadMessages(s: ChannelSessionDto): Promise<void> {
       (m.fromAgentId != null && cloneIds.has(m.fromAgentId)) || (m.toAgentId != null && cloneIds.has(m.toAgentId)),
     )
     rows.sort((a, b) => String(a.createdAt).localeCompare(String(b.createdAt)))
-    messages.value = rows.slice(-300)
+    const next = rows.slice(-300)
+    // 幂等更新:数据没变不重写 ref(轮询每 10s 一次,无差异重渲染会造成整列表 DOM 补丁风暴)
+    const sig = (list: ChannelMessageDto[]) => list.map(m => `${m.id}:${m.state}`).join('|')
+    if (sig(next) !== sig(messages.value)) messages.value = next
   }
   catch (err) {
     messages.value = []

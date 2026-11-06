@@ -24,12 +24,40 @@ export default defineNuxtPlugin((nuxtApp) => {
     timeout: config.apiTimeout as number,
   })
 
+  // token 多通道读取:useCookie → document.cookie → localStorage。
+  // 背景:cookie 罐在部分环境(嵌入式浏览器/宿主隔离策略)会被异步驱逐,而 Nuxt 上下文
+  // 未就绪时 useCookie 也拿不到值——单通道会导致首批请求或运行中请求裸奔 → 401 级联。
+  const readToken = (): string | null => {
+    try {
+      const v = useCookie<string | null>('token').value
+      if (v) return v
+    }
+    catch { /* Nuxt 上下文未就绪 */ }
+    if (typeof document !== 'undefined') {
+      const m = document.cookie.match(/(?:^|;\s*)token=([^;]*)/)
+      if (m?.[1]) {
+        try {
+          return decodeURIComponent(m[1])
+        }
+        catch {
+          return m[1]
+        }
+      }
+    }
+    try {
+      const ls = typeof localStorage !== 'undefined' ? localStorage.getItem('aw.token') : null
+      if (ls) return ls
+    }
+    catch { /* 隐私模式等 localStorage 不可用 */ }
+    return null
+  }
+
   // 请求拦截：注入鉴权头
   instance.interceptors.request.use(
     (req: InternalAxiosRequestConfig) => {
-      const token = useCookie<string | null>('token')
-      if (token.value) {
-        req.headers.Authorization = `Bearer ${token.value}`
+      const token = readToken()
+      if (token) {
+        req.headers.Authorization = `Bearer ${token}`
       }
       return req
     },
@@ -44,10 +72,23 @@ export default defineNuxtPlugin((nuxtApp) => {
       const msg = error?.response?.data?.message || error.message || '请求失败'
 
       if (status === 401) {
+        // 单次自愈重试:cookie 罐驱逐/上下文时序导致的瞬时 401,重读 token 重放一次;
+        // 仍 401 才认定凭据真的失效,进入收尾。__awRetry 挂在原 config 上防重试循环。
+        const cfg = error?.config as (InternalAxiosRequestConfig & { __awRetry?: boolean }) | undefined
+        const retryToken = readToken()
+        const sentToken = cfg?.headers?.Authorization?.toString().replace(/^Bearer\s+/i, '')
+        if (cfg && !cfg.__awRetry && retryToken && retryToken !== sentToken) {
+          cfg.__awRetry = true
+          cfg.headers = { ...(cfg.headers ?? {}), Authorization: `Bearer ${retryToken}` } as InternalAxiosRequestConfig['headers']
+          return instance.request(cfg)
+        }
         // 死 token 收尾:清登录态(cookie+pinia)防 401 toast 风暴;toast 3s 去重
         try {
-          const cookie = useCookie<string | null>('token')
-          cookie.value = null
+          useCookie<string | null>('token').value = null
+          try {
+            localStorage.removeItem('aw.token')
+          }
+          catch { /* localStorage 不可用 */ }
           useUserStore(nuxtApp.$pinia).$reset()
         }
         catch { /* 无 pinia 上下文(极端时序) */ }
