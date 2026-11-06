@@ -220,16 +220,27 @@ export default function workshopPlugin(nitroApp: {
       db,
       service: projectService,
       kernelRepo: createProjectKernelRepo(db),
-      sendMailbox: (projectId, text) => {
+      sendMailbox: async (projectId, text) => {
         const p = db.prepare('SELECT owner_user_id AS ownerUserId, office_channel_id AS officeChannelId, lead_agent_id AS leadAgentId FROM projects WHERE id = ?').get(projectId) as { ownerUserId: string, officeChannelId: string | null, leadAgentId: string | null } | undefined
         if (!p?.officeChannelId || !p.leadAgentId) return
-        void manager.sendImmediateMessage({
-          channelId: p.officeChannelId,
-          toAgentId: p.leadAgentId,
-          parts: [{ text }],
-          requireReply: true,
-          fromLabel: '项目内核',
-        })
+        // P1-7：投递失败不再静默——await + HealthBoard 心跳降级（/projects/:id/health 可观测）
+        try {
+          await manager.sendImmediateMessage({
+            channelId: p.officeChannelId,
+            toAgentId: p.leadAgentId,
+            parts: [{ text }],
+            requireReply: true,
+            fromLabel: '项目内核',
+          })
+        }
+        catch (err) {
+          const message = err instanceof Error ? err.message : String(err)
+          try {
+            createProjectKernelRepo(db).health.heartbeat(projectId, 'mailbox', false, message)
+          }
+          catch { /* 心跳失败不掩盖投递失败 */ }
+          console.error(`[project-kernel] mailbox 投递失败(${projectId.slice(0, 8)}): ${message}`)
+        }
       },
       notifyOwner: (projectId, title, body, eventId) => {
         const p = db.prepare('SELECT owner_user_id AS ownerUserId, office_channel_id AS officeChannelId FROM projects WHERE id = ?').get(projectId) as { ownerUserId: string, officeChannelId: string | null } | undefined

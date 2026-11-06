@@ -8,7 +8,7 @@
  *  - V1 不做 leader 自建 Channel、不做自主 replan。
  */
 import type { DatabaseSync } from 'node:sqlite'
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import type { AgentChannelManager } from '../runtime/manager'
 import type { ProjectApprovalRow, ProjectChannelRow, ProjectDeliverableRow, ProjectDecisionRow, ProjectEventRow, ProjectMemberRow, ProjectMessageRow, ProjectResultRow, ProjectRow, ProjectTechnicalReviewRow, ProjectWorkItemRow } from '../db/project.repo'
 import {
@@ -36,6 +36,7 @@ import { argsDigest } from './digest'
 import { PROJECT_GATED_WRITE_TOOL_NAMES } from './tool-surface'
 import { evaluateWorkItemReadiness } from './readiness'
 import { selectReadyWithContext } from './route-dispatcher'
+import { validateBlueprint, type ProjectBlueprint } from './blueprints.repo'
 
 export interface ProjectActor {
   id: string
@@ -1036,7 +1037,10 @@ export class ProjectService {
           stateReason: message,
           currentAttemptId: null,
         })
-        this.record(id, 'work.blocked', actor, { workItemId: wi.id, reason: message }, wi.traceId || `trace:${wi.id}`, 'work.blocked', `work:${wi.id}:blocked:${Date.now()}`, { workItemId: wi.id, reason: message, stage, errno })
+        // P1-5：事件键含 Date.now() 使 blocked 重复不可去重 → leader 每轮刷屏。
+        // 改为按 attempt 分幕：同 attempt 内重复 blocked 收敛为一键，新 attempt 是新信号。
+        const attemptNo = wi.currentAttemptId ? (this.attempts.findById(wi.currentAttemptId)?.attemptNo ?? 0) : 0
+        this.record(id, 'work.blocked', actor, { workItemId: wi.id, reason: message }, wi.traceId || `trace:${wi.id}`, 'work.blocked', `work:${wi.id}:blocked:a${attemptNo}`, { workItemId: wi.id, reason: message, stage, errno })
       }
       throw err
     }
@@ -2008,6 +2012,73 @@ export class ProjectService {
     if (!next) throw new AppError(404, 'NOT_FOUND', `Project 不存在: ${id}`)
     this.record(id, 'project.updated', actor, { patch }, '', 'project.updated', `project:${id}:updated:${Date.now()}`, { fields: Object.keys(patch) })
     return next
+  }
+
+  /**
+   * P1-1 项目蓝图一键实例化：「构建好模板 → 新开会话直接用」。
+   * 流程（全部确定性，无 LLM）：validate → createProject(routingPolicy 等) → 逐频道
+   * createChannel+bind（channelKey→id 解析）→ 计划提案（resolve 后的 channelIds）→
+   * 蓝图声明 planApprovalRequired=false 时 owner 同步批准并物化（计划自批在项目层
+   * 允许：提交者与批准者同为 owner，实机试点 S5b 已验证该路径）→ 激活。
+   * 幂等边界：每次实例化 = 全新 project（"新开会话"语义），名称带随机后缀防撞。
+   */
+  async instantiateBlueprint(actor: ProjectActor, input: {
+    blueprint: ProjectBlueprint
+    nameOverride?: string
+  }): Promise<{ projectId: string, channelIdByKey: Record<string, string>, workItemIds: string[], planApprovalId?: string, status: 'active' | 'pending_plan_approval' }> {
+    const bp = input.blueprint
+    validateBlueprint(bp)
+    const suffix = randomUUID().slice(0, 6)
+    const planApprovalRequired = bp.planApprovalRequired !== false
+    const project = await this.create({
+      name: `${(input.nameOverride ?? bp.name).trim()}-${suffix}`,
+      objective: bp.objective,
+      description: bp.description,
+      routingPolicy: bp.routingPolicy ?? 'technical',
+      planApprovalRequired: planApprovalRequired ? 1 : 0,
+      autoDispatch: bp.autoDispatch ?? false,
+      mode: bp.mode,
+    }, actor)
+    const pid = project.id
+    // 频道：逐个创建 + 绑定（key → id 解析表）
+    const channelIdByKey: Record<string, string> = {}
+    for (const def of bp.channels) {
+      const ch = await this.manager.createChannel({
+        name: `${def.name ?? def.key}-${suffix}`,
+        description: def.charter,
+        scenarioPrompt: def.charter,
+        ownerUserId: actor.id,
+        actor,
+        leadAgent: { name: `${def.name ?? def.key}·Lead`, harness: def.leadHarness ?? 'mock', config: def.leadConfig },
+      })
+      this.bindChannel(pid, ch.channelId, actor, def.charter ?? '')
+      channelIdByKey[def.key] = ch.channelId
+    }
+    // 计划：channelKey → 解析后的 channelId（normalizeProjectPlan 校验 DAG/依赖/契约）
+    const plan = {
+      deliverables: bp.plan.deliverables.map(d => ({
+        ...d,
+        channelId: channelIdByKey[String(d.channelKey ?? d.channelId ?? '')] ?? d.channelId,
+      })),
+      work_items: bp.plan.work_items.map(w => ({
+        ...w,
+        channelId: channelIdByKey[String(w.channelKey ?? w.channelId ?? '')] ?? w.channelId,
+      })),
+    }
+    const approval = this.requestPlanApproval(pid, actor, { version: 1, plan })
+    if (!planApprovalRequired) {
+      this.decideApproval(pid, approval.id, actor, true)
+    }
+    const status: 'active' | 'pending_plan_approval' = planApprovalRequired ? 'pending_plan_approval' : 'active'
+    if (status === 'active') this.activate(pid, actor)
+    const workItems = this.listWorkItems(pid, actor)
+    return {
+      projectId: pid,
+      channelIdByKey,
+      workItemIds: workItems.map(w => w.id),
+      planApprovalId: planApprovalRequired ? approval.id : undefined,
+      status,
+    }
   }
 
   /** PATCH 交付物（owner-only；planned/rejected 态可编辑）。 */
