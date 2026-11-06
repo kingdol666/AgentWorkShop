@@ -40,6 +40,11 @@ export interface ProjectBlueprint {
   planApprovalRequired?: boolean
   autoDispatch?: boolean
   mode?: 'observe' | 'supervised' | 'auto'
+  /** 项目总工 harness（默认 mock；'omp'=真实 LLM leader，可对话/消费队列） */
+  leaderHarness?: string
+  /** leaderHarness='omp' 时的模型直选 */
+  leaderProvider?: string
+  leaderModel?: string
   channels: ProjectBlueprintChannelDef[]
   plan: {
     deliverables: Array<Record<string, unknown>>

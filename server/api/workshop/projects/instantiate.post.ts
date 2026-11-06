@@ -20,6 +20,9 @@ const blueprintSchema = z.object({
   planApprovalRequired: z.boolean().optional(),
   autoDispatch: z.boolean().optional(),
   mode: z.enum(['observe', 'supervised', 'auto']).optional(),
+  leaderHarness: z.string().optional(),
+  leaderProvider: z.string().optional(),
+  leaderModel: z.string().optional(),
   channels: z.array(z.object({
     key: z.string().min(1),
     name: z.string().optional(),
