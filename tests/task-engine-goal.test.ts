@@ -57,6 +57,27 @@ const childDone = (engine: InstanceType<typeof TaskEngine>, parent: { id: string
   return c
 }
 
+test('T-1 重复派发/重复汇总：WORKING→WORKING 幂等 no-op，不抛 INVALID_TRANSITION', () => {
+  const { engine } = harness()
+  const task = engine.create({
+    channelId: 'ch-1',
+    creatorId: 'user-1',
+    assigneeId: 'lead-1',
+    title: '幂等迁移目标',
+  })
+  const first = engine.transition(task.id, 'WORKING', 'lead-1')
+  assert.equal(first.state, 'WORKING')
+  const second = engine.transition(task.id, 'WORKING', 'lead-1')
+  assert.equal(second.state, 'WORKING', '重复 WORKING 请求是 no-op，不是非法迁移')
+  // 收口不可重入：终态自迁移仍必须显式失败
+  engine.complete(task.id, evidence('done'))
+  assert.throws(
+    () => engine.transition(task.id, 'COMPLETED', 'lead-1'),
+    (err: unknown) => (err as { code?: string }).code === 'INVALID_TRANSITION',
+    'COMPLETED→COMPLETED 仍拒绝',
+  )
+})
+
 const childFailed = (engine: InstanceType<typeof TaskEngine>, parent: { id: string }, title: string) => {
   const c = makeChild(engine, parent, title)
   engine.transition(c.id, 'WORKING', 'system')
