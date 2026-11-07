@@ -2,7 +2,7 @@
  * POST /api/workshop/channels/:id/agents/:agentId/memories/search —— 记忆混合检索(客户端观察面)。
  * - 与 agent 运行时 search_memory 工具同源算法(FTS+向量融合,0.5×相关性+0.3×时近性+0.2×重要性排序)
  * - 需要 Bearer token;caller 须为本 channel 成员(跨 channel → 403 SCOPE_VIOLATION)
- * - scope: auto=目标 agent 私有域+Channel 公共域(默认) / private / shared
+ * - scope: auto=目标 agent 私有域+Channel 公共域(默认,sessionId 命中加分) / private / shared / session=仅当前会话作用域行
  * - 返回结构化片段(content 未切分原文;source 标注 private/shared)
  */
 import { z } from 'zod'
@@ -15,7 +15,9 @@ import { resolveAgentOrUser } from '../../../../../caller'
 
 const searchSchema = z.object({
   query: z.string().min(1, 'query 必填'),
-  scope: z.enum(['auto', 'private', 'shared']).optional(),
+  scope: z.enum(['auto', 'private', 'shared', 'session']).optional(),
+  /** session/session 档过滤:目标 agent 记忆中的会话作用域 */
+  sessionId: z.string().min(1).max(64).optional(),
   limit: z.number().int().min(1).max(20).optional(),
 })
 
@@ -38,6 +40,7 @@ export default defineApiHandler(async (event) => {
   return manager.searchAgentMemories(channelId, who.kind === 'agent' && !byOwner ? who.caller.id : agentId, agentId, {
     query: body.query,
     scope: body.scope,
+    sessionId: body.sessionId ?? null,
     limit: body.limit,
   }, { byOwner })
 })

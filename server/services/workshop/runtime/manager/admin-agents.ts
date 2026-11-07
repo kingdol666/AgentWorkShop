@@ -94,7 +94,7 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
     channelId: string,
     callerAgentId: string,
     targetAgentId: string,
-    input: { query: string, scope?: 'auto' | 'private' | 'shared', limit?: number },
+    input: { query: string, scope?: 'auto' | 'private' | 'shared' | 'session', limit?: number, sessionId?: string | null },
     opts: { byOwner?: boolean } = {},
   ): Promise<MemorySnippet[]> {
     // byOwner:人类 owner(channel 属主)经控制台检索,跳过 agent 成员校验
@@ -103,7 +103,7 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
       throw new AppError(404, 'NOT_FOUND', `Agent 实例不存在: ${targetAgentId}`)
     }
     const mem = new AgentMemory(this.deps.repos.memories, { channelId, agentId: targetAgentId, embedder: this.memoryEmbedder ?? undefined })
-    return mem.recallRows(input.query, { scope: input.scope, limit: input.limit })
+    return mem.recallRows(input.query, { scope: input.scope, limit: input.limit, sessionId: input.sessionId })
   }
 
   // ===== 团队共享记忆域(agent_id='__team__' 哨兵;lead 策展,channel 内全员 recall 可见)=====

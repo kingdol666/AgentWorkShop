@@ -148,6 +148,8 @@ export abstract class BaseAgentImpl implements AgentInterface {
       : null
     this.toolState.sourceChatMessageId = sourceChatMessageId
     this.toolState.sourceChatDeliveryId = sourceChatDeliveryId
+    // session 作用域贯通:memory 工具(save/search)在回合内使用当前 session id
+    this.toolState.sessionId = request.session?.id ?? null
     try {
       if (kind === 'assign' && ctx.role === 'worker') {
         yield* this.workerTurn(request, ctx)
@@ -161,6 +163,7 @@ export abstract class BaseAgentImpl implements AgentInterface {
     finally {
       this.toolState.sourceChatMessageId = null
       this.toolState.sourceChatDeliveryId = null
+      this.toolState.sessionId = null
       this.currentSessionBlock = null
     }
   }
@@ -187,6 +190,7 @@ export abstract class BaseAgentImpl implements AgentInterface {
     // SUBMITTED 直到超时(实测 codex lead 复现)。能力探测:无 ensureClient 的实现跳过。
     await (this as { ensureClient?: (c: AgentRunContext) => Promise<void> }).ensureClient?.(ctx)
     this.currentSessionBlock = ctx.session?.block ?? null
+    this.toolState.sessionId = ctx.session?.id ?? null
     const prompt = supervisePrompt({
       snapshot,
       agentName: this.agentName,
@@ -215,6 +219,7 @@ export abstract class BaseAgentImpl implements AgentInterface {
     finally {
       this.supervising = false
       this.currentSessionBlock = null
+      this.toolState.sessionId = null
     }
   }
 

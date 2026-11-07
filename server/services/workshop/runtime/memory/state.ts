@@ -27,10 +27,14 @@ export abstract class AgentMemoryState extends AgentMemoryContracts {
     if (dims && !this.repo.vecInit(dims)) this.embedder = null
   }
 
-  /** scope 过滤:private 仅本人行;shared 仅本 channel 的 team 行;auto 双域 */
-  protected inScope(row: MemoryRow, scope: MemoryScope): boolean {
+  /** scope 过滤:private 仅本人行;shared 仅本 channel 的 team 行;session 仅本人/本 channel 的当前会话行;auto 双域 */
+  protected inScope(row: MemoryRow, scope: MemoryScope, sessionId?: string | null): boolean {
     const isTeam = row.agentId === TEAM_AGENT_ID
     if (isTeam && row.channelId !== this.opts.channelId) return false
+    if (scope === 'session') {
+      if (sessionId && row.sessionId !== sessionId) return false
+      return isTeam || row.agentId === this.opts.agentId
+    }
     return scope === 'auto'
       ? (isTeam || row.agentId === this.opts.agentId)
       : scope === 'shared'

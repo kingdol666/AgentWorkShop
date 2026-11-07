@@ -80,20 +80,22 @@ export abstract class AgentRuntimeMessage extends AgentRuntimeSupervise {
       // §2.4/§6.2:worker 回合与 Lead supervise 共用同一 harness 进程/会话 ——
       // 回合起点观测租约(复用计数 / 重建归因)。
       this.noteHarnessUse()
+      // Session Context：metadata 优先，其次 task.sessionId；非 session 消息保持 legacy。
+      const sessionId = typeof msg.metadata?.['x-aw-session-id'] === 'string'
+        ? String(msg.metadata['x-aw-session-id'])
+        : (taskId ? this.deps.taskEngine.get(taskId)?.sessionId : undefined)
       // 记忆召回(异常不阻塞):查询=消息原文(title 首词天然显著)+ 任务关联加权
+      // sessionId 透传:当前会话作用域记忆在 auto 档获得排序加分(session 行更相关)
       let memoryBlock: string | undefined
       try {
         memoryBlock = (await this.deps.memory?.recall(partsToText(msg.parts), {
           relatedTaskIds: this.relatedTaskIdsOf(taskId),
+          sessionId,
         })) ?? undefined
       }
       catch (err) {
         log.error(`[AgentRuntime:${this.agentId}] 记忆召回失败:`, err)
       }
-      // Session Context：metadata 优先，其次 task.sessionId；非 session 消息保持 legacy。
-      const sessionId = typeof msg.metadata?.['x-aw-session-id'] === 'string'
-        ? String(msg.metadata['x-aw-session-id'])
-        : (taskId ? this.deps.taskEngine.get(taskId)?.sessionId : undefined)
       const runtimeSession = sessionId ? this.getSessionContext(sessionId) : null
       const request: AgentRunRequest = this.toRequest(
         msg,

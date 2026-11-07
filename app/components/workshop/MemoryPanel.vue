@@ -73,6 +73,7 @@ const rows = ref<Array<{
   taskId?: string | null
   rootId?: string | null
   visibility?: string
+  sessionId?: string | null
 }>>([])
 const loading = ref(false)
 
@@ -270,6 +271,11 @@ const doWrite = async (): Promise<void> => {
             v-if="r.taskId"
             class="row-task"
           >task {{ r.taskId.slice(0, 8) }}</span>
+          <!-- Session 作用域徽标:该记忆诞生于某个会话(session 档检索可命中) -->
+          <span
+            v-if="r.sessionId"
+            class="row-session"
+          >session {{ r.sessionId.slice(0, 8) }}</span>
         </div>
         <div class="row-content">
           {{ r.content.slice(0, 140) }}{{ r.content.length > 140 ? '…' : '' }}
@@ -396,6 +402,7 @@ const doWrite = async (): Promise<void> => {
   color: var(--ink-faint);
 }
 .row-vis { text-transform: uppercase; letter-spacing: 0.03em; }
+.row-session { font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace); font-size: 10px; color: var(--tone-info-dot, #2563eb); }
 .row-content {
   font-size: 11px;
   opacity: 0.65;

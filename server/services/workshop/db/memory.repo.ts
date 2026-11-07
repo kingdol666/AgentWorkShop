@@ -29,20 +29,22 @@ export interface MemoryUpsertInput {
   content: string
   importance: number
   taskId?: string | null
+  /** 诞生时的 session 作用域(''=channel 级;recall 的 session 档按此过滤) */
+  sessionId?: string | null
   dedupKey: string
 }
 
 export type MemoryRepo = ReturnType<typeof createMemoryRepo>
 
 const COLS = `m.id, m.channel_id AS channelId, m.agent_id AS agentId, m.kind, m.title, m.content, m.dedup_key AS dedupKey, m.title_fts AS titleFts,
-  m.importance, m.task_id AS taskId, m.access_count AS accessCount,
+  m.importance, m.task_id AS taskId, m.session_id AS sessionId, m.access_count AS accessCount,
   m.last_accessed_at AS lastAccessedAt, m.created_at AS createdAt`
 
 export function createMemoryRepo(db: DatabaseSync) {
   const upsertStmt = db.prepare(
     `INSERT INTO agent_memories
-       (id, channel_id, agent_id, kind, title, title_fts, content, importance, task_id, dedup_key, access_count, last_accessed_at, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?)
+       (id, channel_id, agent_id, kind, title, title_fts, content, importance, task_id, session_id, dedup_key, access_count, last_accessed_at, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?)
     ON CONFLICT(agent_id, dedup_key, channel_id) DO UPDATE SET
       channel_id = excluded.channel_id, kind = excluded.kind, title = excluded.title, title_fts = excluded.title_fts,
       content = excluded.content, importance = excluded.importance, created_at = excluded.created_at`,
@@ -54,9 +56,16 @@ export function createMemoryRepo(db: DatabaseSync) {
      WHERE agent_memories_fts MATCH ? AND m.agent_id IN (?, ?)
      ORDER BY f.rank LIMIT ?`,
   )
+  const searchInSessionStmt = db.prepare(
+    `SELECT ${COLS}, f.rank AS bm25
+     FROM agent_memories_fts f
+     JOIN agent_memories m ON m.rowid = f.memory_rowid
+     WHERE agent_memories_fts MATCH ? AND m.agent_id IN (?, ?) AND m.session_id = ?
+     ORDER BY f.rank LIMIT ?`,
+  )
   const listRecentStmt = db.prepare(
     `SELECT id, channel_id AS channelId, agent_id AS agentId, kind, title, content,
-            importance, task_id AS taskId, access_count AS accessCount,
+            importance, task_id AS taskId, session_id AS sessionId, access_count AS accessCount,
             last_accessed_at AS lastAccessedAt, created_at AS createdAt
      FROM agent_memories WHERE agent_id = ? ORDER BY created_at DESC LIMIT ?`,
   )
@@ -65,13 +74,13 @@ export function createMemoryRepo(db: DatabaseSync) {
   )
   const listByAgentChannelStmt = db.prepare(
     `SELECT id, channel_id AS channelId, agent_id AS agentId, kind, title, content,
-       importance, task_id AS taskId, access_count AS accessCount,
+       importance, task_id AS taskId, session_id AS sessionId, access_count AS accessCount,
        last_accessed_at AS lastAccessedAt, created_at AS createdAt
      FROM agent_memories WHERE channel_id = ? AND agent_id = ? ORDER BY created_at DESC LIMIT ?`,
   )
   const listByAgentRowidStmt = db.prepare(
     `SELECT rowid, id, channel_id AS channelId, agent_id AS agentId, kind, title, content,
-       importance, task_id AS taskId, access_count AS accessCount,
+       importance, task_id AS taskId, session_id AS sessionId, access_count AS accessCount,
        last_accessed_at AS lastAccessedAt, created_at AS createdAt
      FROM agent_memories WHERE agent_id = ? ORDER BY created_at DESC LIMIT ?`,
   )
@@ -87,7 +96,7 @@ export function createMemoryRepo(db: DatabaseSync) {
   )
   const getByIdStmt = db.prepare(
     `SELECT id, channel_id AS channelId, agent_id AS agentId, kind, title, content,
-       importance, task_id AS taskId, access_count AS accessCount,
+       importance, task_id AS taskId, session_id AS sessionId, access_count AS accessCount,
        last_accessed_at AS lastAccessedAt, created_at AS createdAt
      FROM agent_memories WHERE id = ?`,
   )
@@ -130,12 +139,15 @@ export function createMemoryRepo(db: DatabaseSync) {
       upsertStmt.run(
         randomUUID(), input.channelId, input.agentId, input.kind,
         input.title, input.titleFts, input.content, input.importance,
-        input.taskId ?? null, input.dedupKey, new Date().toISOString(),
+        input.taskId ?? null, input.sessionId ?? '', input.dedupKey, new Date().toISOString(),
       )
     },
 
-    /** bm25 检索(恒含 team 共享行;matchQuery 为 OR 连接切分词) */
-    search(agentId: string, matchQuery: string, limit: number): Array<MemoryRow & { bm25: number }> {
+    /** bm25 检索(恒含 team 共享行;matchQuery 为 OR 连接切分词;sessionId 给定→仅该 session 作用域行) */
+    search(agentId: string, matchQuery: string, limit: number, opts: { sessionId?: string } = {}): Array<MemoryRow & { bm25: number }> {
+      if (opts.sessionId) {
+        return searchInSessionStmt.all(matchQuery, agentId, TEAM_AGENT_ID, opts.sessionId, limit) as unknown as Array<MemoryRow & { bm25: number }>
+      }
       return searchStmt.all(matchQuery, agentId, TEAM_AGENT_ID, limit) as unknown as Array<MemoryRow & { bm25: number }>
     },
 
@@ -179,7 +191,7 @@ export function createMemoryRepo(db: DatabaseSync) {
       const placeholders = rowids.map(() => '?').join(', ')
       return db.prepare(
         `SELECT rowid, id, channel_id AS channelId, agent_id AS agentId, kind, title, content,
-           importance, task_id AS taskId, access_count AS accessCount,
+           importance, task_id AS taskId, session_id AS sessionId, access_count AS accessCount,
            last_accessed_at AS lastAccessedAt, created_at AS createdAt
          FROM agent_memories WHERE rowid IN (${placeholders})`,
       ).all(...rowids.map(BigInt)) as unknown as Array<MemoryRow & { rowid: number }>
