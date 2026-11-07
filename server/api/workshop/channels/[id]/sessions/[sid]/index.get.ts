@@ -33,7 +33,6 @@ export default defineApiHandler(async (event) => {
     channelId: s.channelId,
     title: s.title,
     status: s.status,
-    memoryPolicy: s.memoryPolicy,
     memberMap: parseMemberMap(s.memberMapJson),
     createdBy: s.createdBy,
     createdAt: s.createdAt,

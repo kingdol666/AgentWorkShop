@@ -32,6 +32,8 @@ import { createProjectKernelRepo } from '../db/project-kernel.repo'
 import type { TaskRow } from '../db/database'
 import { withTransaction } from '../db/transaction'
 import { parseJson } from '../db/database'
+import { workshopSettings } from '../settings'
+import { resolveDispatchLimits } from './dispatch-limits'
 import { AppError } from '../../../utils/errors'
 import { argsDigest } from './digest'
 import { PROJECT_GATED_WRITE_TOOL_NAMES } from './tool-surface'
@@ -1633,7 +1635,8 @@ export class ProjectService {
     // Router v3 P0 容量：Channel root FIFO 决定每 Channel 并发 1；项目 4；每 tick 2。
     // 2026-11-07 任务实例：每个工作项有自己的实例 Channel（根 FIFO 彼此独立），
     // 因此按「实例 Channel」计数 —— 同模板 Channel 上多个任务可真正并行。
-    const limits = { perChannel: 1, perProject: 4, perTick: 2 }
+    // WP4：容量从运行语义设置解析（缺省 4/2；perChannel 恒 1——每实例 Channel 单根硬约束）
+    const limits = resolveDispatchLimits(workshopSettings())
     const inFlight = items.filter(w => ['DISPATCHING', 'DISPATCHED', 'RUNNING'].includes(w.state))
     let projectSlots = Math.max(0, limits.perProject - inFlight.length)
     let tickSlots = limits.perTick
@@ -2792,6 +2795,7 @@ export class ProjectService {
         createdAt: p.createdAt, updatedAt: p.updatedAt,
       },
       access,
+      dispatchLimits: resolveDispatchLimits(workshopSettings()),
       summary: {
         deliverables: deliverables.length,
         requiredDeliverables: deliverables.filter(d => d.required === 1).length,

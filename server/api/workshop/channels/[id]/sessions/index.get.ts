@@ -29,7 +29,6 @@ export default defineApiHandler(async (event) => {
       id: s.id,
       title: s.title,
       status: s.status,
-      memoryPolicy: s.memoryPolicy,
       memberMap: parseMemberMap(s.memberMapJson),
       createdAt: s.createdAt,
       closedAt: s.closedAt,

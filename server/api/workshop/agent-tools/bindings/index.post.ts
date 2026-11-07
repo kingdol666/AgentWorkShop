@@ -61,9 +61,11 @@ export default defineApiHandler(async (event) => {
   }
   const targetLine = nodeLineOf(nodeId, kind)
   const channelRow = manager.deps.repos.channels.findById(memberRow.channelId)
-  if (channelRow?.lineId && targetLine && channelRow.lineId !== targetLine) {
+  // P2 加固：targetLine 为空（未挂线节点/配方）同样拒绝——绑线频道只接受本线对象，
+  // 未挂线对象曾是绕过产线隔离的口子。
+  if (channelRow?.lineId && targetLine !== channelRow.lineId) {
     throw new AppError(403, 'LINE_SCOPE_MISMATCH',
-      `该频道已绑定产线「${channelRow.lineId}」,成员 agent 只能绑定同产线的节点/配方(目标 ${nodeId} 属于产线「${targetLine}」)。请改绑同产线对象,或将频道解绑/换绑。`)
+      `该频道已绑定产线「${channelRow.lineId}」,成员 agent 只能绑定同产线的节点/配方(目标 ${nodeId} ${targetLine ? `属于产线「${targetLine}」` : '未挂产线'})。请改绑同产线对象,或将频道解绑/换绑。`)
   }
 
   if (kind === 'line-recipe') {

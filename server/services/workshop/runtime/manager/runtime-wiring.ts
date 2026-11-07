@@ -428,7 +428,17 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
    */
   protected rescueSeen = new Map<string, number>()
 
-  protected async rescueStaleRoots(): Promise<void> {
+  /**
+   * WP11：受权运维入口——对单个 Channel 立即跑一次 D1 救援扫（与周期扫同一路径，幂等）。
+   * 供 REST 触发（无需等 5min 周期）；actor 非空时校验频道可写。
+   */
+  async rescueChannelNow(channelId: string): Promise<void> {
+    const ch = this.deps.repos.channels.findById(channelId)
+    if (!ch) throw new Error(`Channel 不存在: ${channelId}`)
+    await this.rescueStaleRoots(channelId)
+  }
+
+  protected async rescueStaleRoots(onlyChannelId?: string): Promise<void> {
     if (!rootQueueEnabled()) return
     const now = Date.now()
     // 2026-11-05：90s 固定阈值会在真实 LLM 长回合里误杀忙碌 lead（上一轮产品落地页
@@ -439,6 +449,7 @@ export abstract class ManagerRuntimeWiring extends ManagerBus {
     const RESCUE_COOLDOWN_MS = 10 * 60_000
     if (this.rescueSeen.size > 500) this.rescueSeen.clear()
     for (const channel of this.deps.repos.channels.list()) {
+      if (onlyChannelId && channel.id !== onlyChannelId) continue
       if (channel.enabled !== 1 || !channel.leadAgentId) continue
       let roots
       try {
