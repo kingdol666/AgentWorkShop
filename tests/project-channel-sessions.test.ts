@@ -24,7 +24,7 @@ const { createChannelRepo } = await import('../server/services/workshop/db/chann
 const { createChannelAgentRepo } = await import('../server/services/workshop/db/channel-agent.repo')
 const { createTaskRepo } = await import('../server/services/workshop/db/task.repo')
 const { createChannelSessionRepo } = await import('../server/services/workshop/db/channel-session.repo')
-const { createChannelSession, closeChannelSession } = await import('../server/services/workshop/agents/session-clone')
+const { createChannelSession, closeChannelSession, activeSessionIdOfMember } = await import('../server/services/workshop/agents/session-clone')
 type SessionCloneDeps = import('../server/services/workshop/agents/session-clone').SessionCloneDeps
 type AgentChannelManager = import('../server/services/workshop/runtime/manager').AgentChannelManager
 
@@ -36,6 +36,9 @@ function fixture() {
   const sessionRepo = createChannelSessionRepo(db)
   const canceledTrees: string[] = []
   const unloaded: string[] = []
+  const stopped: string[] = []
+  const disabled: string[] = []
+  const aborted: Array<{ channelId: string, agentId: string, taskId: string }> = []
   const bindingsByAgent: Record<string, Array<{ nodeId: string, kind: string, mode?: string }>> = {}
   const bindings = {
     byAgent: (agentId: string) => bindingsByAgent[agentId] ?? [],
@@ -47,7 +50,11 @@ function fixture() {
     list: (channelId: string) => tasks.listByChannel
       ? tasks.listByChannel(channelId).map(t => ({ id: t.id, state: t.state, assigneeId: t.assigneeId }))
       : [],
-    cancelTree: (taskId: string, _by: string, _reason: string) => { canceledTrees.push(taskId) },
+    cancelTree: (taskId: string, _by: string, _reason: string) => {
+      canceledTrees.push(taskId)
+      // 真实 TaskEngine 返回「根 + 全部后代」；返回子任务用于验证按 assignee 逐个 abort。
+      return [{ id: taskId, assigneeId: null }, { id: `${taskId}-child`, assigneeId: null }]
+    },
   }
   const manager = {
     async createChannel(input: { name: string, ownerUserId?: string | null, leadAgent?: { name: string, harness: string } }) {
@@ -85,8 +92,14 @@ function fixture() {
     tasks: tasksDep,
     bindings,
     unloadAgent: async (_channelId: string, instanceId: string, _reason: string) => { unloaded.push(instanceId) },
+    stopAgentRuntime: async (_channelId: string, instanceId: string, _reason: string) => { stopped.push(instanceId) },
+    abortTask: (channelId: string, agentId: string, taskId: string) => { aborted.push({ channelId, agentId, taskId }) },
+    disableAgent: (_channelId: string, instanceId: string) => {
+      disabled.push(instanceId)
+      agents.update(instanceId, { enabled: 0 })
+    },
   } as unknown as SessionCloneDeps
-  return { db, channels, agents, tasks, sessionRepo, deps, manager, canceledTrees, unloaded, bindingsByAgent, bindings }
+  return { db, channels, agents, tasks, sessionRepo, deps, manager, canceledTrees, unloaded, stopped, disabled, aborted, bindingsByAgent, bindings }
 }
 
 test('S-A 会话克隆：独立 worker 实例 + 绑定复制 + 会话注册', async () => {
@@ -147,7 +160,7 @@ test('S-C 关闭级联：clone 在飞任务 cancelTree + 实例停用 + 会话 c
     const r = await createChannelSession(f.deps, { channelId: ch.channelId, actorId: owner.id, sessionRepo: f.sessionRepo })
     const cloneId = r.members[0]!.cloneId
     // clone 名下一在飞任务（SUBMITTED 未被领取 → 可被 cancelTree 终止）
-    f.tasks.create({
+    const inflight = f.tasks.create({
       channelId: ch.channelId, creatorId: 'tester', assigneeId: cloneId,
       title: '在飞任务', sourceChatMessageId: 'src',
       deadlineAt: new Date(Date.now() + 3_600_000).toISOString(), source: 'project', projectId: 'p-x',
@@ -157,7 +170,13 @@ test('S-C 关闭级联：clone 在飞任务 cancelTree + 实例停用 + 会话 c
       sessionRepo: f.sessionRepo,
     })
     assert.ok(f.canceledTrees.length >= 1, `cancelTree 被调用：${JSON.stringify(f.canceledTrees)}`)
-    assert.ok(f.unloaded.includes(cloneId), 'clone 实例已停用（runtime 卸载）')
+    const abortedIds = f.aborted.map(a => a.taskId)
+    assert.ok(abortedIds.includes(inflight.id), `在飞根任务被 abort：${JSON.stringify(abortedIds)}`)
+    assert.ok(abortedIds.includes(`${inflight.id}-child`), 'cancelTree 返回的子任务也被 abort（同频道其他 clone 的回合）')
+    assert.ok(f.disabled.includes(cloneId), 'clone 成员行停用（enabled=0，关闭会话不可再寻址）')
+    assert.ok(f.stopped.includes(cloneId), 'clone 运行时被强制摘除（不走 idle/pending 闸门）')
+    assert.equal(f.unloaded.includes(cloneId), false, '有 stopAgentRuntime 时不再回退带闸门的 unloadAgent')
+    assert.equal(f.agents.findById(cloneId)?.enabled, 0, '持久化 enabled=0')
     assert.equal(f.sessionRepo.findById(r.sessionId)!.status, 'closed')
     assert.equal(res.canceledTasks >= 1, true)
     // 幂等：再关一次
@@ -168,6 +187,20 @@ test('S-C 关闭级联：clone 在飞任务 cancelTree + 实例停用 + 会话 c
     assert.equal(again.canceledTasks, 0, '已关闭会话重复 close 不重复取消')
   }
   finally { f.db.close() }
+})
+
+test('S-E 成员→active 会话反查：manual/task 命中，project 恒等映射与 closed 排除', () => {
+  const sessions = [
+    { id: 'cs-project', status: 'active', instanceKind: 'project', memberMapJson: JSON.stringify({ 'lead-1': 'lead-1' }) },
+    { id: 'cs-closed', status: 'closed', instanceKind: 'manual', memberMapJson: JSON.stringify({ base: 'clone-old' }) },
+    { id: 'cs-task', status: 'active', instanceKind: 'task', memberMapJson: JSON.stringify({ 'tpl-lead': 'inst-lead' }) },
+    { id: 'cs-manual', status: 'active', instanceKind: 'manual', memberMapJson: JSON.stringify({ base: 'clone-new' }) },
+  ]
+  assert.equal(activeSessionIdOfMember(sessions, 'inst-lead'), 'cs-task', '任务实例会话命中')
+  assert.equal(activeSessionIdOfMember(sessions, 'clone-new'), 'cs-manual', '手工会话克隆命中')
+  assert.equal(activeSessionIdOfMember(sessions, 'lead-1'), null, 'project 会话是恒等映射，不算会话维度')
+  assert.equal(activeSessionIdOfMember(sessions, 'clone-old'), null, 'closed 会话不命中')
+  assert.equal(activeSessionIdOfMember(sessions, 'ghost'), null, '未归属成员返回 null')
 })
 
 test('S-D 无基础成员 → 400 NO_BASE_MEMBERS', async () => {

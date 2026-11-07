@@ -1362,7 +1362,11 @@ export class ProjectService {
     const instanceChannel = instanceChannelId ? await this.manager.getChannel(instanceChannelId) : null
     const channelEnabled = instanceChannel ? instanceChannel.enabled === 1 : false
     if (activeSessions.length === 0 && !channelEnabled) return
-    const ownerActor = { id: instanceChannel?.ownerUserId ?? ownerUserId, role: 'user' }
+    // WP2 收敛：实例 Channel 行缺失/owner=null 时 manager 的 requireWritable 会 403
+    // （null 属主先于 role 判定）——会话行直关兜底，保证状态不永久 active。
+    const ownerActor = instanceChannel?.ownerUserId
+      ? { id: instanceChannel.ownerUserId, role: 'user' as const }
+      : { id: ownerUserId, role: 'admin' as const }
     for (const s of activeSessions) {
       try {
         await this.manager.closeChannelSession({
@@ -1372,7 +1376,13 @@ export class ProjectService {
           reason: `TASK_TERMINAL:${reason}`,
         })
       }
-      catch { /* 会话已关闭/成员已卸载：释放语义幂等 */ }
+      catch {
+        // manager 路径失败（Channel 行已删/属主缺失/成员已卸载）→ 直接收敛会话行，防空转。
+        try {
+          this.sessions.close(s.id)
+        }
+        catch { /* 已关闭 */ }
+      }
     }
     if (instanceChannelId && channelEnabled) {
       const stillActive = this.sessions.listByWorkItem(workItem.id).some(s => s.status === 'active')
@@ -1380,7 +1390,13 @@ export class ProjectService {
       try {
         await this.manager.updateChannel(instanceChannelId, { enabled: 0 }, ownerActor)
       }
-      catch { /* Channel 已删除：无需停用 */ }
+      catch {
+        // 属主缺失/只读路径失败 → 直写停用（仅任务实例回收场景；行已删则无需处理）。
+        try {
+          this.db.prepare('UPDATE channels SET enabled = 0 WHERE id = ?').run(instanceChannelId)
+        }
+        catch { /* 行已删 */ }
+      }
     }
   }
 
@@ -3086,8 +3102,10 @@ export class ProjectService {
   } {
     const ctx = this.requireAgentContext(agentId, 'any')
     const deliverables = this.deliverables.listByProject(ctx.project.id)
+    // 读面对称：任务实例频道的成员用 instanceChannelId 认领工作项（提交侧已双通道，
+    // 读面此前只比模板 channelId → 实例 lead 的 brief/工作项读面恒空集）。
     const items = this.workItems.listByProject(ctx.project.id)
-      .filter(w => ctx.isLeader || w.channelId === ctx.channelId)
+      .filter(w => ctx.isLeader || w.channelId === ctx.channelId || w.instanceChannelId === ctx.channelId)
     return {
       project: ctx.project,
       isLeader: ctx.isLeader,
@@ -3160,7 +3178,8 @@ export class ProjectService {
   agentReadWorkItems(agentId: string): Array<Record<string, unknown>> {
     const ctx = this.requireAgentContext(agentId, 'any')
     return this.workItems.listByProject(ctx.project.id)
-      .filter(w => ctx.isLeader || w.channelId === ctx.channelId)
+      // 与提交侧同口径：模板频道或任务实例频道都能认领本工作项。
+      .filter(w => ctx.isLeader || w.channelId === ctx.channelId || w.instanceChannelId === ctx.channelId)
       .map(w => ({
         id: w.id, title: w.title, state: w.state, channelId: w.channelId,
         deliverableId: w.deliverableId, brief: w.brief, planVersion: w.planVersion,
@@ -3176,13 +3195,20 @@ export class ProjectService {
     const reviewGrants = new Set(this.messages.listByProject(ctx.project.id)
       .filter(m => m.kind === 'request_review' && m.fromAgentId === 'system:review' && m.toAgentId === agentId && m.resultId)
       .map(m => m.resultId!))
+    // 成果行的 channelId 恒为模板频道；任务实例成员要用工作项的 instanceChannelId 认领。
+    // 只放行本实例名下的工作项，不同任务实例之间仍互相不可见（与提交侧同口径）。
+    const ownWorkItemIds = new Set(this.workItems.listByProject(ctx.project.id)
+      .filter(w => w.channelId === ctx.channelId || w.instanceChannelId === ctx.channelId)
+      .map(w => w.id))
+    const isOwnResult = (r: { channelId: string, workItemId: string | null }) =>
+      r.channelId === ctx.channelId || (r.workItemId != null && ownWorkItemIds.has(r.workItemId))
     const visible = this.results.listByProject(ctx.project.id).filter((r) => {
       if (ctx.isLeader) return true
       if (ctx.role === 'lead') {
-        if (r.channelId === ctx.channelId) return r.status !== 'superseded'
+        if (isOwnResult(r)) return r.status !== 'superseded'
         return r.status === 'approved' || reviewGrants.has(r.id)
       }
-      return r.channelId === ctx.channelId && r.status === 'approved'
+      return isOwnResult(r) && r.status === 'approved'
     })
     return visible.map(r => ({
       id: r.id, title: r.title, status: r.status, channelId: r.channelId,

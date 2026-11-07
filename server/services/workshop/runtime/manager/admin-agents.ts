@@ -341,6 +341,16 @@ export abstract class ManagerAdminAgents extends ManagerAdminChannel {
         tasks: this.getTaskEngine(),
         bindings: getAgentNodeBindingRepo(),
         unloadAgent: (cid, iid) => this.unloadAgent(cid, iid),
+        // WP2：会话关闭走强制摘除（先摘索引再停机），绕过 idle/pending 闸门防僵尸克隆。
+        stopAgentRuntime: (cid, iid) => this.stopAndDetach(cid, iid),
+        // 取消任务只改状态；正在跑的 LLM 回合要显式打断，否则 clone 会继续烧预算。
+        abortTask: (cid, iid, tid) => {
+          this.runtimeOf(cid, iid)?.abortTask?.(tid)
+        },
+        // 已关闭会话的 clone 行停用（ensureAgentRuntime 另有会话 active 守卫兜底）。
+        disableAgent: (_cid, iid) => {
+          this.deps.repos.channelAgents.update(iid, { enabled: 0 })
+        },
         notify: (cid, payload) => this.notifyMember(cid, { ...payload, by: 'session' }),
       },
       {
