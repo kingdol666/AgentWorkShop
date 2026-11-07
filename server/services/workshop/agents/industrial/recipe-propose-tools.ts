@@ -14,6 +14,8 @@
  *  - 多方案批准未携带有效 choice 一律按拒绝收敛(fail-closed,见 tool-approvals.normalizeRecipeProposeDecision)。
  */
 import { agentBadgeLabel } from '../agent-badge'
+import { currentToolInvocation } from '../governance-harness-audit'
+import { executionModeOfAgent } from '../execution-mode'
 import { getToolApprovals } from '../tool-approvals'
 import { getAgentNodeBindingRepo } from '../node-bindings.repo'
 import { securityRecipeDispatchTimeoutMs } from '../../settings'
@@ -291,13 +293,22 @@ export async function toolRecipePropose(agentId: string, args: {
   let run
   try {
     // mirror toolRecipeApply 实际下发路径:trial 语义(整批候选、不写配方版本),overrides 限配方内节点;
-    // Agent 下发族标记 + 审批单 id 透传(recipe 级下发间隔执行兜底与成功计锚)
+    // Agent 下发族标记 + 审批单 id 透传(recipe 级下发间隔执行兜底与成功计锚);
+    // 身份元数据与 recipe_trial 对齐(写账归因 + Agent 互斥/回退冷却方向性)。
+    const invocation = currentToolInvocation()
     run = await getDcwController().applyRecipe(recipeId, {
       overrides,
       trial: true,
       agentDispatch: true,
       agentApprovalId: decision.id,
       emergency: args.emergency === true || args.emergency === 'true',
+      agentTrialMeta: {
+        actor: agentId,
+        actorName: agentBadgeLabel(agentId),
+        hypothesis: chosen.name,
+        ...(invocation?.agentId === agentId && invocation.taskId ? { taskId: invocation.taskId } : {}),
+        executionMode: executionModeOfAgent(agentId),
+      },
     })
   }
   catch (err) {

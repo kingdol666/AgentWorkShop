@@ -214,6 +214,25 @@ test('B-P1-2:并发两次 trial 只放行一次(节拍原子占位)', async (t) 
   assert.match(String((rejected[0]!.reason as Error).message), /试验节拍|试验距今/)
 })
 
+test('B-P1-5:非 trial Agent 下发携带身份元数据 → 写账 source=agent（审计/互斥不再旁路）', async (t) => {
+  const f = fixture('apply-meta')
+  t.after(f.cleanup)
+  const ctrl = getDcwController()
+  const overrides = f.nodes.map(({ node, value }) => ({ nodeId: node.id, value: value + 1 }))
+  await ctrl.applyRecipe(f.recipe.id, {
+    agentDispatch: true,
+    agentApprovalId: 'ap-meta',
+    overrides,
+    agentTrialMeta: { actor: f.agentId, actorName: 'Agent X', executionMode: 'manual' },
+  })
+  const mgr = getRecipeRollBackManager() as unknown as {
+    repo: { lastAnchorOf(id: string): { source?: string, actor?: string } | undefined }
+  }
+  const anchor = mgr.repo.lastAnchorOf(f.nodes[0]!.node.id)
+  assert.equal(anchor?.source, 'agent', '正式下发写账必须按 Agent 归因（此前记成 recipe）')
+  assert.equal(anchor?.actor, f.agentId)
+})
+
 test('B-P1-3:委派 auto 无 confirm → 拒绝且零变更;confirm 后落库并留痕;缺省 manual', () => {
   const repo = getAgentNodeBindingRepo()
   const leader = 'ag-lead-x'

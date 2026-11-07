@@ -1379,7 +1379,21 @@ export async function toolRecipeApply(agentId: string, args: {
     const execGate = assertRecipeOperation(agentId, recipe, 'dispatch')
     if (!execGate.ok) return { text: `下发前授权复核未通过,本次未执行:${execGate.text}`, isError: true }
     // 完整覆盖集让控制器复制每个已批准值,逐参数异步写期间也不再共享可变配方参数。
-    const run = await getDcwController().applyRecipe(recipeId, { overrides: dispatch.params, agentDispatch: true, agentApprovalId: gateApprovalId, emergency })
+    // 身份元数据与 recipe_trial 对齐:非 trial 的 Agent 正式下发同样需要写账归因 +
+    // Agent 互斥/回退冷却方向性(此前只传 agentDispatch → write() 记成 recipe)。
+    const invocation = currentToolInvocation()
+    const run = await getDcwController().applyRecipe(recipeId, {
+      overrides: dispatch.params,
+      agentDispatch: true,
+      agentApprovalId: gateApprovalId,
+      emergency,
+      agentTrialMeta: {
+        actor: agentId,
+        actorName: agentBadgeLabel(agentId),
+        ...(invocation?.agentId === agentId && invocation.taskId ? { taskId: invocation.taskId } : {}),
+        executionMode: executionModeOfAgent(agentId),
+      },
+    })
     // ACK 鉴定三段口径(2026-10-08):ok 只是命令受理,未证实/失败必须如实回给 Agent
     const acks = run.ackSummary ?? { verified: run.results.filter(r => r.ok).length, unverified: 0, failed: run.results.filter(r => !r.ok).length, total: run.results.length }
     // 逐参数标注:被跳过/失败的参数(节点停用/已删除/限界拒绝)必须透出给 Agent,
