@@ -1,0 +1,260 @@
+{
+  "generatedAt": "2026-11-07T15:05:38.669Z",
+  "base": "http://127.0.0.1:3995",
+  "pass": 42,
+  "fail": 0,
+  "results": [
+    {
+      "id": "L1-1",
+      "name": "实例健康",
+      "pass": true,
+      "detail": "{\"status\":\"ok\",\"app\":\"AgentWorkShop\",\"version\":\"0.9.5\",\"mode\":\"dev\",\"uptimeMs\":345368,\"timestamp\":\"2026-11-07T23:05:36.6"
+    },
+    {
+      "id": "L1-2",
+      "name": "身份可读(登录态)",
+      "pass": true,
+      "detail": "{\"id\":\"0e1228d2-03f3-489e-b868-2f1ea51652cf\",\"name\":\"E2E Owner\",\"email\":\"e2e-landing@aw.local\",\"role\":\"admin\",\"createdAt"
+    },
+    {
+      "id": "L1-3",
+      "name": "工作区可用",
+      "pass": true,
+      "detail": "ws=3e6569a5"
+    },
+    {
+      "id": "L2-1",
+      "name": "创建 Channel(lead 内建)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "L2-2",
+      "name": "添加 worker",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "L2-3",
+      "name": "群聊默认关闭(409 CHAT_DISABLED,结构化)",
+      "pass": true,
+      "detail": "{\"status\":409,\"code\":\"CHAT_DISABLED\",\"message\":\"该 Channel 未开启群聊(需 owner 显式开启)\",\"data\":null}"
+    },
+    {
+      "id": "L2-4",
+      "name": "owner 开启群聊后可用",
+      "pass": true,
+      "detail": "{\"message\":{\"id\":\"31626f52-f4db-4a87-9f75-eaec7534d19b\",\"channelId\":\"84d094de-39df-4a7c-8b6b-7baa19feea49\",\"senderType\":\"user\",\"senderId\":\"0e1228d2-03f3-489e-b8"
+    },
+    {
+      "id": "L2-5",
+      "name": "频道详情可读",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "L3-1",
+      "name": "创建 manual session(克隆成员)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "L3-2",
+      "name": "会话注入:分层+压缩+pinned 保留(稳定终态)",
+      "pass": true,
+      "detail": "thoritative context.\n- Do not reuse facts, task ids, artifact paths, or decisions from other sessions unless they appear above.\n- If you need another session, use the session catalog/API; never guess."
+    },
+    {
+      "id": "L3-3",
+      "name": "注入到达 harness(ctx 标签 earlier=1)",
+      "pass": true,
+      "detail": "{\"id\":\"7809f320-4eb0-4187-a807-9892746eb1d7\",\"channelId\":\"84d094de-39df-4a7c-8b6b-7baa19feea49\",\"taskId\":null,\"fromAgentId\":\"3c5692e9-f5b2-41a5-85c9-7c54f49e390d\",\"toAgentId\":null,\"role\":\"ROLE_AGENT\","
+    },
+    {
+      "id": "L3-4",
+      "name": "关闭 session",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "L3-5",
+      "name": "目录标记 closed 且 brief 可读",
+      "pass": true,
+      "detail": "{\"id\":\"cs-fe4ec662\",\"title\":\"生命周期会话\",\"status\":\"closed\",\"memoryPolicy\":\"session\",\"memberMap\":{\"8bcef4e9-70f1-4414-8e3e-17e61b72ef84\":\"3c5692e9-f5b2-41a5-85c9-7c5"
+    },
+    {
+      "id": "L4-1",
+      "name": "创建项目",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "L4-2",
+      "name": "绑定双频道",
+      "pass": true,
+      "detail": "ok/ok"
+    },
+    {
+      "id": "L4-3",
+      "name": "必选交付物",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "L4-4",
+      "name": "工作项×2(跨频道)",
+      "pass": true,
+      "detail": "ok/ok"
+    },
+    {
+      "id": "L4-5",
+      "name": "激活",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "L4-6",
+      "name": "plan v1 提交",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "L4-7",
+      "name": "plan 批准",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "L5-1",
+      "name": "派发 W1(实例频道+task session)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "L5-2",
+      "name": "派发 W2(第二实例频道真并行)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "L5-3",
+      "name": "双工作项 COMPLETED(真并行执行)",
+      "pass": true,
+      "detail": "{\"w1\":{\"id\":\"e48fe20a-12d2-43d2-9812-7c9a90dc6826\",\"title\":\"内容产出\",\"brief\":\"产出演示内容(纯文本)\",\"channelId\":\"d80f043f-9763-417d-8322-1e3969545246\",\"deliverableId\":\"08f408b9-70a6-45d0-ab6c-a75351cff4c1\",\"state"
+    },
+    {
+      "id": "L5-4",
+      "name": "task session 目录(≥2)",
+      "pass": true,
+      "detail": "count=2"
+    },
+    {
+      "id": "L5-5",
+      "name": "执行记忆带 session 戳(全实例频道扫描)",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "L6-1",
+      "name": "跨频道 A2A 发送",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "L6-2",
+      "name": "跨频道回执回源",
+      "pass": true,
+      "detail": "{\"id\":\"ed0e17bf-d474-4c2a-8d03-23addb0e305b\",\"channelId\":\"d80f043f-9763-417d-8322-1e3969545246\",\"taskId\":null,\"fromAgentId\":\"635c83f9-c772-4e31-8d86-e91ce71f7c3e\",\"toAgentId\":\"267e4fa2-1696-493e-8fd8-"
+    },
+    {
+      "id": "L7-1",
+      "name": "reconcile 物化 draft 结果(≥2)",
+      "pass": true,
+      "detail": "count=2"
+    },
+    {
+      "id": "L7-2",
+      "name": "全部 draft 走 agent 提交链并通过 L2(每工作项一个 approved 槽)",
+      "pass": true,
+      "detail": "accepted=2"
+    },
+    {
+      "id": "L7-3",
+      "name": "交付物级验收翻转 approved(全部工作项各持 approved 结果)",
+      "pass": true,
+      "detail": "status=approved"
+    },
+    {
+      "id": "L8-1",
+      "name": "项目完成审批创建(门禁通过)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "L8-2",
+      "name": "完成审批通过 → 项目 completed",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "L8-3",
+      "name": "归档(completed → archived)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "L8-4",
+      "name": "归档项目 continue 被正确拒绝(409 终态治理)",
+      "pass": true,
+      "detail": "{\"status\":409,\"code\":\"PROJECT_STATE_INVALID\",\"message\":\"已归档项目不能继续开发\",\"data\":null}"
+    },
+    {
+      "id": "L8-5",
+      "name": "运行中项目终止(级联终结)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "L8-6",
+      "name": "终止后状态 canceled(终态)",
+      "pass": true,
+      "detail": "status=canceled"
+    },
+    {
+      "id": "L9-1",
+      "name": "归档终态:重复 continue 仍 409(幂等治理)",
+      "pass": true,
+      "detail": "{\"status\":409,\"code\":\"PROJECT_STATE_INVALID\",\"message\":\"已归档项目不能继续开发\",\"data\":null}"
+    },
+    {
+      "id": "L10-1",
+      "name": "非法角色 400",
+      "pass": true,
+      "detail": "{\"status\":400,\"code\":\"VALIDATION_ERROR\",\"message\":\"role: Invalid enum value. Expected 'lead' | 'worker', received 'owner'\",\"data\":null}"
+    },
+    {
+      "id": "L10-2",
+      "name": "匿名写 401",
+      "pass": true,
+      "detail": "status=401"
+    },
+    {
+      "id": "L10-3",
+      "name": "未批 plan 派发 409",
+      "pass": true,
+      "detail": "{\"status\":409,\"code\":\"PLAN_NOT_APPROVED\",\"message\":\"项目要求先批准计划（plan_approval）才能派发工作项\",\"data\":null}"
+    },
+    {
+      "id": "L10-3b",
+      "name": "审计事件覆盖演示项目全生命周期(派发/完成/提交/评审/批准)",
+      "pass": true,
+      "detail": "missing="
+    },
+    {
+      "id": "L10-4",
+      "name": "终止项目审计含 project.terminated(级联可审计)",
+      "pass": true,
+      "detail": "events=8"
+    }
+  ]
+}

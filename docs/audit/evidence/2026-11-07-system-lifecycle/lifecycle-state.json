@@ -1,0 +1,34 @@
+{
+  "L1": {
+    "wsId": "3e6569a5-ea46-4e3a-b192-fff4405d0206"
+  },
+  "L2": {
+    "channelId": "84d094de-39df-4a7c-8b6b-7baa19feea49",
+    "workerId": "9299be99-4c10-430b-9094-663c2434f711"
+  },
+  "L3": {
+    "sessionId": "cs-fe4ec662"
+  },
+  "L4": {
+    "projectId": "8efac75e-a170-4624-bacb-12a09839d580",
+    "A": {
+      "channelId": "d80f043f-9763-417d-8322-1e3969545246",
+      "workerId": "531771da-7490-42ce-8fc5-9a988daa2bb5",
+      "leadId": "267e4fa2-1696-493e-8fd8-0a9d5db5792b"
+    },
+    "B": {
+      "channelId": "7b6f0687-a5ff-48a4-91f3-e290cf91cc97",
+      "workerId": "aa51bdf2-3eb2-49d2-b91d-c05f5b5871e4",
+      "leadId": "635c83f9-c772-4e31-8d86-e91ce71f7c3e"
+    },
+    "deliverableId": "08f408b9-70a6-45d0-ab6c-a75351cff4c1",
+    "w1": "e48fe20a-12d2-43d2-9812-7c9a90dc6826",
+    "w2": "b71c1e66-fffb-4e67-a02b-80516f867617"
+  },
+  "L5": {
+    "taskSessionCount": 2
+  },
+  "L8": {
+    "terminatedProjectId": "ca3da8dd-9b11-4e86-b888-6da4e6f91900"
+  }
+}

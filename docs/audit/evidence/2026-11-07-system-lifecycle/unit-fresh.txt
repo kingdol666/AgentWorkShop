@@ -1,0 +1,5 @@
+ℹ tests 1189
+ℹ suites 40
+ℹ pass 1187
+ℹ fail 0
+ℹ skipped 2

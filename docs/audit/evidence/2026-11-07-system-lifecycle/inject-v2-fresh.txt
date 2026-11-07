@@ -1,0 +1,3 @@
+✔ [V4c] task session 块 profile=full
+
+=== SESSION INJECT V2 ACCEPTANCE pass=23 fail=1 ===
