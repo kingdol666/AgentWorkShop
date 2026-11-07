@@ -263,12 +263,19 @@ export function evaluateCriteriaChecks(input: {
 export function verifyEvidenceAgainstTask(
   taskArtifactsJson: string,
   evidence: Array<Record<string, unknown>>,
-  opts: { requireArtifact: boolean, payloadJson?: string, summary?: string },
+  opts: { requireArtifact: boolean, payloadJson?: string, summary?: string, treeArtifactsJson?: string[] },
 ): EvidenceVerification {
   if (!Array.isArray(evidence) || evidence.length === 0) {
     throw new AppError(400, 'EVIDENCE_REQUIRED', '成果没有证据，不能提交/验收')
   }
+  // 证据回溯域 = root 任务 + 任务树内后代任务(P2 聚合证据引用 child artifact,
+  // 必须能在同一棵任务树内回溯;树外 artifact 依然拒绝 —— 不放宽 provenance 边界)。
   const artifacts = artifactDigests(taskArtifactsJson)
+  for (const extra of opts.treeArtifactsJson ?? []) {
+    for (const [id, digest] of artifactDigests(extra)) {
+      if (!artifacts.has(id)) artifacts.set(id, digest)
+    }
+  }
   let artifactBacked = 0
   let manual = 0
   const problems: string[] = []
@@ -1779,6 +1786,22 @@ export class ProjectService {
     return { workItems: this.workItems.listByProject(id), expiredApprovals }
   }
 
+  /**
+   * 证据回溯域:root + 全部后代任务的 artifacts_json(递归 CTE,深度不限)。
+   * P2 聚合证据会引用 child artifact;submit/验收核验必须在同一棵任务树内可回溯。
+   */
+  private evidenceTreeArtifactsJson(rootTaskId: string): string[] {
+    const rows = this.db.prepare(
+      `WITH RECURSIVE tree(id) AS (
+         SELECT id FROM tasks WHERE id = ?
+         UNION ALL
+         SELECT t.id FROM tasks t JOIN tree ON t.parent_id = tree.id
+       )
+       SELECT artifacts_json AS artifactsJson FROM tasks WHERE id IN (SELECT id FROM tree)`,
+    ).all(rootTaskId) as Array<{ artifactsJson: string }>
+    return rows.map(r => r.artifactsJson ?? '[]')
+  }
+
   /** root COMPLETED 时自动生成 draft；同 work item/attempt/key 幂等。 */
   ensureDraftFromTask(taskId: string): ProjectResultRow | undefined {
     const task = this.tasks.findById(taskId)
@@ -1875,6 +1898,7 @@ export class ProjectService {
     const sourceTask = this.tasks.findById(result.sourceTaskId)
     const verification = verifyEvidenceAgainstTask(sourceTask?.artifactsJson ?? '[]', evidence, {
       requireArtifact: false, payloadJson, summary,
+      treeArtifactsJson: sourceTask ? this.evidenceTreeArtifactsJson(sourceTask.id) : [],
     })
     // B8：状态迁移 + 审计同事务，审计失败整体回滚。
     let updated!: ProjectResultRow
@@ -3131,6 +3155,7 @@ export class ProjectService {
     if (payloadJson.length > 65_536) throw new AppError(400, 'RESULT_TOO_LARGE', 'payload 超过 64KB 上限')
     const verification = verifyEvidenceAgainstTask(task.artifactsJson, evidence, {
       requireArtifact: true, payloadJson, summary,
+      treeArtifactsJson: this.evidenceTreeArtifactsJson(task.id),
     })
     this.results.submit(result.id, {
       title: input.title ?? result.title,
@@ -4030,6 +4055,7 @@ export class ProjectService {
       requireArtifact: Boolean(result.authorAgentId),
       payloadJson: result.payloadJson,
       summary: result.summary,
+      treeArtifactsJson: task ? this.evidenceTreeArtifactsJson(task.id) : [],
     })
     const deliverable = this.deliverables.findById(result.deliverableId)
     const wi = this.workItems.findById(result.workItemId)
