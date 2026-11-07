@@ -1104,6 +1104,18 @@ export class ProjectService {
     p: ProjectRow,
     opts: { auto: boolean },
   ): Promise<ProjectWorkItemRow> {
+    // WP1：同工作项并发派发串行化（手动 vs 自动/重试），后到者重读状态后走既有校验。
+    return this.withWorkItemDispatchLock(workItemId, () => this.dispatchWorkItemAsLocked(id, workItemId, actor, p, opts))
+  }
+
+  /** 派发主体（由 dispatchWorkItemAs 持工作项串行链调用）。 */
+  private async dispatchWorkItemAsLocked(
+    id: string,
+    workItemId: string,
+    actor: ProjectActor,
+    p: ProjectRow,
+    opts: { auto: boolean },
+  ): Promise<ProjectWorkItemRow> {
     if (p.status !== 'active') throw new AppError(409, 'PROJECT_NOT_ACTIVE', `Project 状态 ${p.status} 不能派发`)
     // 审查修复（计划门）：要求批准计划的项目，plan 未批前不得派发任何工作项。
     if (p.planApprovalRequired === 1 && p.planVersion === 0) {
@@ -1149,6 +1161,8 @@ export class ProjectService {
     // BLOCKED + work.blocked（SLOW 邮箱评估，plan v3.0 §5.1 DISPATCHING→BLOCKED 行）。
     let attempt: ReturnType<ProjectService['attempts']['create']> | undefined
     let stage: 'precheck' | 'submit' = 'precheck'
+    /** 本次调用是否新建了任务实例（claim 未赢时用于回收自建实例，防孤儿 Channel）。 */
+    let createdInstanceId: string | null = null
     try {
       const d = this.deliverables.listByProject(id).find(x => x.id === wi.deliverableId)
       if (!d) throw new AppError(404, 'NOT_FOUND', '工作项交付物不存在')
@@ -1164,9 +1178,11 @@ export class ProjectService {
       // ===== 任务实例（2026-11-07）：确保本任务有专属执行 Channel =====
       // 根任务 FIFO 按 Channel 生效 —— 独立 Channel 才能让多个任务真正并行；
       // 每个实例 Channel 自带 SchedulerLoop/根队列/成员 runtime/workspace（任务特有的实例对象）。
-      const instanceChannelId = await this.ensureTaskInstanceChannel({
+      const instance = await this.ensureTaskInstanceChannel({
         project: p, workItem: wi, actor,
       })
+      const instanceChannelId = instance.channelId
+      if (instance.created) createdInstanceId = instanceChannelId
       const instanceChannel = this.manager.getChannelForUser(instanceChannelId, p.ownerUserId)
       if (!instanceChannel || instanceChannel.enabled !== 1 || !instanceChannel.leadAgentId) {
         throw new AppError(409, 'TASK_INSTANCE_UNAVAILABLE', `任务实例 Channel 不可用: ${instanceChannelId}`)
@@ -1218,8 +1234,25 @@ export class ProjectService {
       const message = err instanceof Error ? err.message : String(err)
       const code = (err as { code?: string }).code ?? ''
       const errno = (err as { errno?: number }).errno
-      // claim 未赢（并发/已派发）：不算失败，不动工作项状态，直接向上抛。
-      if (code === 'WORK_ITEM_IN_FLIGHT') throw err
+      // WP1：并发派发冲突（claim 未赢 / attempt 序号唯一索引撞车）→ 可重试语义，绝不下 BLOCKED。
+      const attemptConflict = code === 'WORK_ITEM_IN_FLIGHT'
+        || (/UNIQUE constraint failed/i.test(message) && /attempt|project_work_item/i.test(message))
+      if (attemptConflict) {
+        if (createdInstanceId) {
+          // 本次新建了实例但没赢下 claim：指针交还给在飞 attempt 的实例，并回收自建实例（防孤儿）。
+          const live = this.attempts.findLiveByWorkItem(wi.id)
+          const winnerChannelId = live?.channelId ?? null
+          if (winnerChannelId !== createdInstanceId) {
+            try {
+              this.workItems.update(wi.id, { instanceChannelId: winnerChannelId })
+            }
+            catch { /* 指针交还失败不改变冲突语义 */ }
+            void this.releaseCreatedInstance(wi, createdInstanceId).catch(() => {})
+          }
+        }
+        if (code === 'WORK_ITEM_IN_FLIGHT') throw err
+        throw new AppError(409, 'WORK_ITEM_IN_FLIGHT', '工作项并发派发冲突（attempt 序号），请稍后重试')
+      }
       const transient = stage === 'submit'
       const current = this.workItems.findById(wi.id)
       const ownsClaim = !attempt || current?.currentAttemptId === attempt.id
@@ -1280,15 +1313,15 @@ export class ProjectService {
     project: ProjectRow
     workItem: ProjectWorkItemRow
     actor: ProjectActor
-  }): Promise<string> {
+  }): Promise<{ channelId: string, created: boolean }> {
     const { project: p, workItem: wi, actor } = input
     // 兼容降级：测试替身/旧 manager 无任务实例能力时，退回共享 Channel 派发（既有语义）。
     const mgr = this.manager as unknown as { createTaskInstance?: AgentChannelManager['createTaskInstance'] }
-    if (typeof mgr.createTaskInstance !== 'function') return wi.channelId
+    if (typeof mgr.createTaskInstance !== 'function') return { channelId: wi.channelId, created: false }
     const activeSession = this.sessions.listByWorkItem(wi.id).find(s => s.status === 'active')
     if (wi.instanceChannelId && activeSession && activeSession.channelId === wi.instanceChannelId) {
       const ch = this.manager.getChannelForUser(wi.instanceChannelId, p.ownerUserId)
-      if (ch && ch.enabled === 1 && ch.leadAgentId) return wi.instanceChannelId
+      if (ch && ch.enabled === 1 && ch.leadAgentId) return { channelId: wi.instanceChannelId, created: false }
     }
     // actor 取项目 owner（系统派发无 Channel 所有权，不能传 system）；admin 保留管理员能力
     const ownerActor = { id: p.ownerUserId, role: actor.role === 'admin' ? 'admin' : 'user' }
@@ -1315,7 +1348,7 @@ export class ProjectService {
     }, wi.traceId || `trace:${wi.id}`, 'work.instance_created', `work:${wi.id}:instance:${created.channelId}`, {
       workItemId: wi.id, instanceChannelId: created.channelId, sessionId: created.sessionId, templateChannelId: wi.channelId,
     })
-    return created.channelId
+    return { channelId: created.channelId, created: true }
   }
 
   /**
@@ -1346,6 +1379,31 @@ export class ProjectService {
       if (stillActive) return
       try {
         await this.manager.updateChannel(instanceChannelId, { enabled: 0 }, ownerActor)
+      }
+      catch { /* Channel 已删除：无需停用 */ }
+    }
+  }
+
+  /**
+   * WP1：释放「本次调用自建但未赢得 claim」的实例（跨进程竞态的防御分支）。
+   * 只关该 Channel 的会话并停用该 Channel，不触碰同工作项其他实例（与 releaseTaskInstance 的
+   * 「释放所有 active 会话」语义区分，避免误伤赢家的在飞任务）。
+   */
+  private async releaseCreatedInstance(workItem: ProjectWorkItemRow, channelId: string): Promise<void> {
+    const active = this.sessions.listByWorkItem(workItem.id)
+      .filter(s => s.status === 'active' && s.channelId === channelId)
+    const getCh = (this.manager as unknown as { getChannel?: (id: string) => Promise<{ ownerUserId?: string | null, enabled?: number } | null> }).getChannel
+    const ch = getCh ? await getCh.call(this.manager, channelId).catch(() => null) : null
+    const ownerActor = { id: ch?.ownerUserId ?? 'system', role: 'user' as const }
+    for (const s of active) {
+      try {
+        await this.manager.closeChannelSession({ channelId: s.channelId, sessionId: s.id, actor: ownerActor, reason: 'DISPATCH_CLAIM_LOST' })
+      }
+      catch { /* 幂等：会话已关闭/成员已卸载 */ }
+    }
+    if (ch?.enabled === 1 && typeof (this.manager as unknown as { updateChannel?: unknown }).updateChannel === 'function') {
+      try {
+        await this.manager.updateChannel(channelId, { enabled: 0 }, ownerActor)
       }
       catch { /* Channel 已删除：无需停用 */ }
     }
@@ -1495,6 +1553,24 @@ export class ProjectService {
 
   /** PR20：按项目串行化的自动派发链（submitProjectRoot 非事务窗口的防双派闸；后到调用排队等前序完成）。 */
   private readonly autoDispatchChains = new Map<string, Promise<AutoDispatchResult>>()
+  /**
+   * WP1 派发原子化：单工作项派发串行链。手动派发 / 自动 tick / 重试并发进入同一工作项时，
+   * 先来先派、后到者在前序完成后重读状态（走既有 liveAttempt/claim 校验），
+   * 不再各自先建实例 Channel 再抢 claim —— 消除双建实例与 attemptNo 竞态。
+   */
+  private readonly dispatchChains = new Map<string, Promise<unknown>>()
+
+  /** 同工作项派发串行链（与 autoDispatchChains 同构；前序失败不阻断后续）。 */
+  private async withWorkItemDispatchLock<T>(workItemId: string, fn: () => Promise<T>): Promise<T> {
+    const prev = this.dispatchChains.get(workItemId) ?? Promise.resolve()
+    const next = prev.then(() => fn(), () => fn())
+    const tail = next.then(() => undefined, () => undefined)
+    this.dispatchChains.set(workItemId, tail)
+    void tail.finally(() => {
+      if (this.dispatchChains.get(workItemId) === tail) this.dispatchChains.delete(workItemId)
+    })
+    return next
+  }
 
   /**
    * PR20 Route 自动派发入口（幂等可并发调用）：同项目调用经 promise 链串行，
