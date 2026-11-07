@@ -138,6 +138,7 @@ export abstract class BaseAgentImpl implements AgentInterface {
 
   async* run(request: AgentRunRequest, ctx: AgentRunContext): AsyncIterable<AgentEvent> {
     if (!this.workspace) this.workspace = ctx.workspace
+    this.currentSessionBlock = request.session?.block ?? null
     const kind = request.message.metadata?.['x-aw-task-kind']
     const sourceChatMessageId = typeof request.message.metadata?.['x-aw-source-chat-message-id'] === 'string'
       ? String(request.message.metadata['x-aw-source-chat-message-id'])
@@ -160,6 +161,7 @@ export abstract class BaseAgentImpl implements AgentInterface {
     finally {
       this.toolState.sourceChatMessageId = null
       this.toolState.sourceChatDeliveryId = null
+      this.currentSessionBlock = null
     }
   }
 
@@ -173,6 +175,8 @@ export abstract class BaseAgentImpl implements AgentInterface {
 
   /** supervise 互斥位(子类 supervise 实现与本字段共享同一实例字段,故为 protected;纯可见性修饰,无运行时差异) */
   protected supervising = false
+  /** Session Context：当前回合的会话上下文块（contextPrefix 统一注入；回合结束清空） */
+  protected currentSessionBlock: string | null = null
 
   async supervise(snapshot: SupervisionSnapshot, ctx: AgentRunContext, opts?: SupervisionOptions): Promise<SupervisionDecision[]> {
     if (this.supervising) return []
@@ -182,6 +186,7 @@ export abstract class BaseAgentImpl implements AgentInterface {
     // streamTurn 处以"会话未就绪"瞬间失败,而异常被下方 catch 吞掉 → 根任务永远
     // SUBMITTED 直到超时(实测 codex lead 复现)。能力探测:无 ensureClient 的实现跳过。
     await (this as { ensureClient?: (c: AgentRunContext) => Promise<void> }).ensureClient?.(ctx)
+    this.currentSessionBlock = ctx.session?.block ?? null
     const prompt = supervisePrompt({
       snapshot,
       agentName: this.agentName,
@@ -209,6 +214,7 @@ export abstract class BaseAgentImpl implements AgentInterface {
     }
     finally {
       this.supervising = false
+      this.currentSessionBlock = null
     }
   }
 
@@ -235,12 +241,13 @@ export abstract class BaseAgentImpl implements AgentInterface {
 
   protected async contextPrefix(): Promise<string> {
     const cfg = this.configRecord()
-    return buildContextPrefix({
+    const base = buildContextPrefix({
       scenarioPrompt: typeof cfg.scenarioPrompt === 'string' ? cfg.scenarioPrompt : undefined,
       systemPromptPrefix: typeof cfg.systemPromptPrefix === 'string' ? cfg.systemPromptPrefix : undefined,
       agentId: this.selfAgentId,
       roster: await this.roster.roster(),
     })
+    return this.currentSessionBlock ? `${base}\n\n${this.currentSessionBlock}` : base
   }
 
   /** 消息/任务 parts 拼文本(worker/peer 共用) */

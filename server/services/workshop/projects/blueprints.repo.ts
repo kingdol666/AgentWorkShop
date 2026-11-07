@@ -18,7 +18,7 @@
 import { randomUUID } from 'node:crypto'
 import { join } from 'node:path'
 import { ensureDataDir } from '@/shared/config/home.mjs'
-import { AppError, ErrorCodes } from '../../../utils/errors'
+import { AppError } from '../../../utils/errors'
 import { loadJsonFile, saveJsonFileAtomic } from '../json-store.mjs'
 import { createLogger } from '../logger'
 

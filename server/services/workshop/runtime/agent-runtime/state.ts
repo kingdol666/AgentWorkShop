@@ -69,6 +69,9 @@ export abstract class AgentRuntimeState extends AgentRuntimeContracts {
   /** 上一次回合结束时留下的失败原因(用于给 Harness 重建归因) */
   protected pendingHarnessFailure: string | null = null
 
+  /** Session Context：每个 session 一个 runtime 侧上下文对象（clone agent 1 个；共享 agent 可多个） */
+  protected readonly sessionContexts = new Map<string, import('./types').RuntimeSessionContext>()
+
   constructor(
     agent: AgentInfo,
     protected impl: AgentInterface,
@@ -97,6 +100,8 @@ export abstract class AgentRuntimeState extends AgentRuntimeContracts {
         replyToId?: string
         /** 投递台账 id(闭环留痕) */
         deliveryId?: string
+        /** Session Context：回执归属会话 */
+        sessionId?: string
       }) => void
       /**
        * C-P1-2(2026-10-28 审查):回合落定回调 —— **无论是否产生回执**都触发。
@@ -118,6 +123,8 @@ export abstract class AgentRuntimeState extends AgentRuntimeContracts {
         watchdogCount: number
         at: string
       }) => void
+      /** Session Context：按 sessionId 取平台装配的上下文块（null = 非 session 消息） */
+      sessionContext?: (sessionId: string) => { block: string, summary: string } | null
       /** Harness 重建回调(§7.1 harness.restarted):记录 lastRestartReason 后同步落共享记忆 */
       onHarnessRestart?: (e: {
         agentId: string
@@ -193,6 +200,32 @@ export abstract class AgentRuntimeState extends AgentRuntimeContracts {
   getContinuity(): HarnessContinuityView {
     const { everUsed: _everUsed, ...view } = this.continuity
     return { ...view, activeTaskIds: this.nonTerminalTaskIds() }
+  }
+
+  /**
+   * 取/刷新某 session 的 runtime 上下文对象。
+   *
+   * 为什么按需而非常驻全量：共享 agent 可能服务多个 session，但一次只跑一个回合；
+   * 上下文块由平台 SessionContextService 确定性装配，runtime 只做缓存与 turn 计数。
+   */
+  getSessionContext(sessionId: string): import('./types').RuntimeSessionContext | null {
+    const fresh = this.deps.sessionContext?.(sessionId)
+    if (!fresh) return null
+    const prev = this.sessionContexts.get(sessionId)
+    const entry: import('./types').RuntimeSessionContext = {
+      id: sessionId,
+      block: fresh.block,
+      summary: fresh.summary,
+      updatedAt: new Date().toISOString(),
+      turnCount: (prev?.turnCount ?? 0) + 1,
+    }
+    this.sessionContexts.set(sessionId, entry)
+    return entry
+  }
+
+  /** 当前/最近 session 的只读观测（状态面板用）。 */
+  getRuntimeSessions(): Array<import('./types').RuntimeSessionContext> {
+    return [...this.sessionContexts.values()]
   }
 
   /**

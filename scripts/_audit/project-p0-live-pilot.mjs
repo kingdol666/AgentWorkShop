@@ -34,7 +34,7 @@ const step = (name, ok, detail, extra) => {
   console.log(`${ok ? '✔' : '✘'} [${name}] ${String(detail ?? '').slice(0, 160)}`)
   return ok
 }
-const sleep = (ms) => new Promise(r => setTimeout(r, ms))
+const sleep = ms => new Promise(r => setTimeout(r, ms))
 
 async function api(method, path, body, timeoutMs = 30_000, agentToken) {
   const res = await fetch(`${base}${path}`, {
@@ -42,7 +42,7 @@ async function api(method, path, body, timeoutMs = 30_000, agentToken) {
     headers: {
       'content-type': 'application/json',
       // agentToken 场景以 Agent token 自证身份（该端点按 caller 解析 assignee）
-      ...((agentToken ? { authorization: `Bearer ${agentToken}`, 'x-aw-agent-token': agentToken } : (token ? { authorization: `Bearer ${token}` } : {}))),
+      ...((agentToken ? { 'authorization': `Bearer ${agentToken}`, 'x-aw-agent-token': agentToken } : (token ? { authorization: `Bearer ${token}` } : {}))),
     },
     body: body === undefined ? undefined : JSON.stringify(body),
     signal: AbortSignal.timeout(timeoutMs),
@@ -88,9 +88,7 @@ async function main() {
   })
   const pid = proj.data?.id
   if (!step('S2-project', Boolean(pid), `project=${pid} status=${proj.status} msg=${proj.message}`)) return finish(false)
-  const snap = await api('GET', `/api/workshop/projects/${pid}/snapshot`)
-  const officeChannelId = snap.data?.project?.officeChannelId
-  // P0-7 断言：GET /projects/:id 透出 routingPolicy（snapshot DTO 未透出——观测面缺口，已记 plan）
+  const snap = await api('GET', `/api/workshop/projects/${pid}/snapshot`)  // P0-7 断言：GET /projects/:id 透出 routingPolicy（snapshot DTO 未透出——观测面缺口，已记 plan）
   const detail = await api('GET', `/api/workshop/projects/${pid}`)
   const policy = detail.data?.routingPolicy
   if (!step('S3-technical-default', policy === 'technical', `routingPolicy=${policy}（P0-7 REST 默认；技术语义由 A2 门断言证明）`)) return finish(false)
@@ -133,7 +131,7 @@ async function main() {
   // 计划物化后按 title 取工作项 id
   const snap2 = await api('GET', `/api/workshop/projects/${pid}/snapshot`)
   const items = snap2.data?.workItems ?? []
-  const byTitle = (t) => items.find(x => x.title === t)?.id
+  const byTitle = t => items.find(x => x.title === t)?.id
   const w1 = byTitle('W1 本体守卫编译')
   const w2 = byTitle('W2 工艺寻优')
   const w3 = byTitle('W3 质量验收')

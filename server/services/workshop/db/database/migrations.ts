@@ -194,6 +194,7 @@ export function migrateMissingForeignKeys(db: DatabaseSync): void {
         project_id     TEXT,
         project_work_item_id TEXT,
         project_attempt_no   INTEGER,
+        session_id      TEXT,
         trace_id       TEXT NOT NULL DEFAULT '',
         assignment_generation      INTEGER NOT NULL DEFAULT 0,
         execution_lease_id         TEXT,
@@ -203,7 +204,7 @@ export function migrateMissingForeignKeys(db: DatabaseSync): void {
         created_at     TEXT NOT NULL,
         updated_at     TEXT NOT NULL
       );
-      INSERT INTO tasks_new SELECT id, channel_id, parent_id, root_queue_seq, assignee_id, creator_id, title, description, state, progress, retry_count, artifacts_json, history_json, route_reason, source_chat_message_id, source_chat_delivery_id, close_reason, deadline_at, superseded_by_task_id, source, project_id, project_work_item_id, project_attempt_no, trace_id, assignment_generation, execution_lease_id, execution_lease_agent_id, execution_lease_started_at, execution_lease_revoked_at, created_at, updated_at FROM tasks;
+      INSERT INTO tasks_new SELECT id, channel_id, parent_id, root_queue_seq, assignee_id, creator_id, title, description, state, progress, retry_count, artifacts_json, history_json, route_reason, source_chat_message_id, source_chat_delivery_id, close_reason, deadline_at, superseded_by_task_id, source, project_id, project_work_item_id, project_attempt_no, session_id, trace_id, assignment_generation, execution_lease_id, execution_lease_agent_id, execution_lease_started_at, execution_lease_revoked_at, created_at, updated_at FROM tasks;
       DROP TABLE tasks;
       ALTER TABLE tasks_new RENAME TO tasks;
       -- 重建后索引必须与 SCHEMA_SQL 对齐:漏建则热查询退化为全表扫描(route_reason 列
@@ -413,6 +414,7 @@ export function migrateLegacySchema(db: DatabaseSync): void {
       project_id     TEXT,
       project_work_item_id TEXT,
       project_attempt_no   INTEGER,
+      session_id      TEXT,
       trace_id       TEXT NOT NULL DEFAULT '',
       assignment_generation      INTEGER NOT NULL DEFAULT 0,
       execution_lease_id         TEXT,
@@ -422,7 +424,7 @@ export function migrateLegacySchema(db: DatabaseSync): void {
       created_at     TEXT NOT NULL,
       updated_at     TEXT NOT NULL
     );
-    INSERT INTO tasks_new SELECT id, channel_id, parent_id, root_queue_seq, assignee_id, creator_id, title, description, state, progress, retry_count, artifacts_json, history_json, source_chat_message_id, source_chat_delivery_id, close_reason, deadline_at, source, project_id, project_work_item_id, project_attempt_no, trace_id, assignment_generation, execution_lease_id, execution_lease_agent_id, execution_lease_started_at, execution_lease_revoked_at, created_at, updated_at FROM tasks;
+    INSERT INTO tasks_new SELECT id, channel_id, parent_id, root_queue_seq, assignee_id, creator_id, title, description, state, progress, retry_count, artifacts_json, history_json, source_chat_message_id, source_chat_delivery_id, close_reason, deadline_at, source, project_id, project_work_item_id, project_attempt_no, session_id, trace_id, assignment_generation, execution_lease_id, execution_lease_agent_id, execution_lease_started_at, execution_lease_revoked_at, created_at, updated_at FROM tasks;
     DROP TABLE tasks;
     ALTER TABLE tasks_new RENAME TO tasks;
     CREATE INDEX IF NOT EXISTS idx_tasks_channel ON tasks(channel_id, state);

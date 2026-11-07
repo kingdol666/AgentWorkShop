@@ -47,6 +47,13 @@
 
 {{workItems}}
 
+## 项目会话（Session Context 目录）
+
+{{sessions}}
+
+会话是上下文单元：project session 承载你的规划/复核上下文，task session 承载单个工作项的执行上下文。
+你只读取目录/摘要；需要成员 Channel 的细节时用 `project_send_message` 向 Channel lead 请求，不要假设其他 session 的原文。
+
 ## 决策原则
 
 先读后写；计划变更走新版本提案；失败/阻塞要升级给 owner；默认给摘要 + ID，不复述全量历史。

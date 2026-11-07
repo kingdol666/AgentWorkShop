@@ -108,9 +108,11 @@ export abstract class TaskEngineUpdate extends TaskEngineViews {
     // 重新分配之后到达的旧 worker 事件( fencing)。
     const task = this.repos.tasks.findById(input.taskId)
     if (task) Object.assign(metadata, fenceToMetadata(rowToTask(task)))
+    if (task?.sessionId) metadata['x-aw-session-id'] = task.sessionId
     this.repos.messages.create({
       channelId: input.channelId,
       taskId: input.taskId,
+      sessionId: task?.sessionId ?? null,
       fromAgentId: input.fromAgentId,
       toAgentId: input.toAgentId,
       role: 'ROLE_USER',

@@ -103,6 +103,7 @@ async function load(): Promise<void> {
     if (!workForm.channelId && channels.value[0]) workForm.channelId = channels.value[0].channelId
     if (!deliverableForm.ownerChannelId && channels.value[0]) deliverableForm.ownerChannelId = channels.value[0].channelId
   })
+  void loadProjectSessions()
 }
 
 async function lifecycle(action: 'activate' | 'pause' | 'resume' | 'archive' | 'reconcile'): Promise<void> {
@@ -169,12 +170,10 @@ async function dispatch(workItemId: string): Promise<void> {
 }
 
 /**
- * 打开任务会话（2026-11-07 任务实例）：把任务专属 Channel 挂到 workspace 后
- * 直达控制台的会话视图（?view=sessions&channel=<instanceChannelId>）。
- * 已挂载的频道直接跳；未挂载时自动挂载（幂等）——这是「任务 → 会话」的可视入口。
+ * 打开会话（2026-11-07）：把 session 所属 Channel 挂到 workspace 后直达控制台会话视图。
+ * 已挂载的频道直接跳；未挂载时自动挂载（幂等）——这是「project/task session → 控制台」的可视入口。
  */
-async function openTaskSession(wi: WorkItemObs): Promise<void> {
-  const channelId = wi.instanceChannelId
+async function openSessionConsole(channelId: string): Promise<void> {
   if (!channelId) return
   await run(async () => {
     const res = await http.get<{ data: Array<{ id: string, channelIds: string[] }> }>('/workshop/workspaces')
@@ -191,6 +190,10 @@ async function openTaskSession(wi: WorkItemObs): Promise<void> {
     }
     await navigateTo(`/workshop/w/${target.id}?view=sessions&channel=${channelId}`)
   })
+}
+
+async function openTaskSession(wi: WorkItemObs): Promise<void> {
+  if (wi.instanceChannelId) await openSessionConsole(wi.instanceChannelId)
 }
 
 async function submitResult(result: ResultDto): Promise<void> {
@@ -265,6 +268,19 @@ function exportReport(): void {
   URL.revokeObjectURL(url)
 }
 onMounted(loadReport)
+
+/** Session Context：project/task session 目录（brief 预览；不拉原始 transcript） */
+const projectSessions = ref<ProjectSessionObs[]>([])
+async function loadProjectSessions(): Promise<void> {
+  try {
+    const r = await http.get<{ data: ProjectSessionObs[] }>(`/workshop/projects/${id}/sessions`)
+    projectSessions.value = r.data ?? []
+  }
+  catch {
+    projectSessions.value = []
+  }
+}
+onMounted(loadProjectSessions)
 
 /** PR15 五 tab（plan §7.2）：概览/计划与工作/交付物/审批/决策与事件。 */
 type TabKey = 'overview' | 'plan' | 'deliverables' | 'approvals' | 'events'
@@ -382,6 +398,20 @@ interface TaskSessionObs {
   sessionKind: string | null
   instanceChannelId: string | null
   instanceEnabled: boolean
+}
+
+/** Session Context：Project project/task session 目录（只返回 brief 预览） */
+interface ProjectSessionObs {
+  id: string
+  kind: 'manual' | 'task' | 'project'
+  title: string
+  status: string
+  channelId: string
+  projectId: string | null
+  workItemId: string | null
+  summary: string
+  currentTask: string | null
+  lastActiveAt: string | null
 }
 interface ChannelObs { channelId: string, name: string, enabled: number, leadAgentId: string | null, status: string, workItems: number, inFlight: number, ready: number, blocked: number, sessions?: TaskSessionObs[] }
 interface DeliverableObs { id: string, name: string, status: string, required: boolean, dependsOn: string[], acceptanceCriteria: string[], contentReady: boolean, technicalAccepted: boolean, businessApproved: boolean, resultCount: number, currentResultId: string | null }
@@ -1263,6 +1293,58 @@ onUnmounted(() => {
             导出周报
           </button>
         </div>
+      </section>
+
+      <section
+        v-show="activeTab === 'overview'"
+        class="card"
+        data-testid="project-sessions"
+      >
+        <div class="row actions">
+          <h2 style="margin:0">
+            项目会话
+          </h2>
+          <span class="muted">{{ projectSessions.length }} 个 session</span>
+          <span style="flex:1" />
+          <button
+            class="btn small ghost"
+            :disabled="loading"
+            @click="loadProjectSessions"
+          >
+            刷新会话
+          </button>
+        </div>
+        <p
+          v-if="!projectSessions.length"
+          class="muted"
+        >
+          暂无会话。项目创建会生成 project session；工作项派发会生成 task session。
+        </p>
+        <ul
+          v-else
+          class="list"
+        >
+          <li
+            v-for="s in projectSessions"
+            :key="s.id"
+          >
+            <span class="badge blue">{{ s.kind }}</span>
+            <strong>{{ s.title }}</strong>
+            <span
+              class="badge"
+              :class="s.status === 'active' ? 'active' : 'archived'"
+            >{{ s.status }}</span>
+            <span class="muted">{{ s.currentTask || s.summary || '—' }}</span>
+            <a-button
+              size="small"
+              type="link"
+              :data-testid="`open-project-session-${s.id}`"
+              @click="openSessionConsole(s.channelId)"
+            >
+              打开会话
+            </a-button>
+          </li>
+        </ul>
       </section>
 
       <section

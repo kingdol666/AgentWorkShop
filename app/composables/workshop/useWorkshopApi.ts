@@ -104,7 +104,43 @@ export interface ChannelSessionDto {
   projectId?: string | null
   projectWorkItemId?: string | null
   createdByKind?: 'user' | 'project'
-  instanceKind?: 'manual' | 'task'
+  instanceKind?: 'manual' | 'task' | 'project'
+  summary?: string
+  lastActiveAt?: string | null
+  kind?: 'manual' | 'task' | 'project'
+  brief?: SessionBriefDto | null
+}
+
+/** Session Context：平台确定性 brief（有界；不含原始 transcript） */
+export interface SessionBriefDto {
+  sessionId: string
+  kind: 'manual' | 'task' | 'project'
+  title: string
+  status: string
+  channelId: string
+  channelName: string
+  projectId: string | null
+  projectName: string | null
+  workItemId: string | null
+  workItemTitle: string | null
+  objective: string
+  currentTask: { id: string, title: string, state: string, progress: number } | null
+  tasks: Array<{ id: string, title: string, state: string, progress: number }>
+  deliverables: Array<{ name: string, status: string, artifactId: string | null, bytes: number }>
+  openQuestions: string[]
+  nextStep: string
+  lastActiveAt: string | null
+}
+
+export interface SessionHistoryDto {
+  type: 'message' | 'task'
+  id: string
+  at: string
+  role?: string
+  name?: string
+  text?: string
+  state?: string
+  progress?: number
 }
 
 /** 会话创建返回的克隆成员明细(clone 名含 ·session· 标记) */
@@ -195,6 +231,13 @@ export function useWorkshopApi() {
     /** 关闭会话(级联:在飞任务按树取消 + clone 实例停用;幂等) */
     closeChannelSession: (id: string, sid: string, body?: { reason?: string }) =>
       http.post<{ data: { canceledTasks: number, clones: string[] } }>(`/workshop/channels/${id}/sessions/${sid}/close`, body ?? {}),
+    /** Session Context brief（确定性装配） */
+    getSessionBrief: (id: string, sid: string) => http.get<{ data: SessionBriefDto | null }>(`/workshop/channels/${id}/sessions/${sid}/brief`),
+    /** Session Context 有界历史 */
+    getSessionHistory: (id: string, sid: string, limit = 80) => http.get<{ data: SessionHistoryDto[] }>(`/workshop/channels/${id}/sessions/${sid}/history`, { limit }),
+    /** 手工会话发送消息（投给 session clone，requireReply） */
+    sendSessionMessage: (id: string, sid: string, body: { text: string }) =>
+      http.post<{ data: { messageId: string, toAgentId: string } }>(`/workshop/channels/${id}/sessions/${sid}/messages`, body),
     /** runtime mailbox 消息清单(limit≤500;parts 已解析) */
     listChannelMessages: (id: string, limit = 200) => http.get<{ data: ChannelMessageDto[] }>(`/workshop/channels/${id}/messages`, { limit }),
     // channel agents

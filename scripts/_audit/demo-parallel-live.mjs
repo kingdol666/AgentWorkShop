@@ -41,7 +41,7 @@ const step = (name, ok, detail) => {
   console.log(`${ok ? '✔' : '✘'} [${name}] ${String(detail ?? '').slice(0, 260)}`)
   return ok
 }
-const sleep = (ms) => new Promise(r => setTimeout(r, ms))
+const sleep = ms => new Promise(r => setTimeout(r, ms))
 const now = () => new Date().toISOString().slice(11, 19)
 
 async function api(method, path, body, timeoutMs = 30_000) {
@@ -85,7 +85,7 @@ async function demoChannelSessions() {
 
   // 消息状态：consumed/failed 才是终态；pending/consuming/... 均算在飞
   const TERMINAL_MSG = new Set(['consumed', 'failed', 'FAILED', 'canceled', 'CANCELED'])
-  const inFlight = (st) => !TERMINAL_MSG.has(String(st))
+  const inFlight = st => !TERMINAL_MSG.has(String(st))
   const seen = { bothPending: false, bothConsumed: false }
   let sample = ''
   const deadline = Date.now() + waitSec * 1000

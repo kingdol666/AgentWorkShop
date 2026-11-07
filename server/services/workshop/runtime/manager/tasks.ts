@@ -149,6 +149,8 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
     channelId: string
     /** 任务实例 Channel 的 lead（缺省 = Channel lead；项目任务实例路径显式传入） */
     assigneeId?: string
+    /** Session Context：任务归属会话（任务实例 Channel 的 active session） */
+    sessionId?: string
     title: string
     description?: string
     parts?: Part[]
@@ -181,6 +183,7 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
       projectId: input.projectId,
       projectWorkItemId: input.workItemId,
       projectAttemptNo: input.attemptNo,
+      sessionId: input.sessionId ?? null,
       traceId: input.traceId ?? '',
     })
     // 幂等命中时不能把别的项目/工作项 root 当成自己的。
@@ -203,6 +206,7 @@ export abstract class ManagerTasks extends ManagerChannelTemplates {
           'x-aw-task-kind': 'assign',
           'x-aw-task-id': task.id,
           'x-aw-from-label': '项目派发',
+          ...(input.sessionId ? { 'x-aw-session-id': input.sessionId } : {}),
         },
       )
       assign.taskId = task.id

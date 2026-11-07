@@ -104,6 +104,7 @@ export interface ProjectAttemptRow {
   workItemId: string
   attemptNo: number
   channelId: string
+  sessionId: string | null
   channelTaskId: string | null
   sourceKey: string
   state: string
@@ -221,7 +222,7 @@ const PROJECT_COLS = 'id, name, description, objective, success_criteria_json AS
 const PROJECT_CHANNEL_COLS = 'project_id AS projectId, channel_id AS channelId, binding_type AS bindingType, charter, status, added_by AS addedBy, added_at AS addedAt, detached_at AS detachedAt'
 const DELIVERABLE_COLS = 'id, project_id AS projectId, name, description, owner_channel_id AS ownerChannelId, required, acceptance_criteria_json AS acceptanceCriteriaJson, due_at AS dueAt, depends_on_json AS dependsOnJson, status, waiver_reason AS waiverReason, created_by AS createdBy, created_at AS createdAt, updated_at AS updatedAt'
 const WORK_ITEM_COLS = 'id, project_id AS projectId, deliverable_id AS deliverableId, channel_id AS channelId, title, brief, state, state_reason AS stateReason, priority, weight, depends_on_json AS dependsOnJson, acceptance_json AS acceptanceJson, result_key AS resultKey, current_attempt_id AS currentAttemptId, plan_version AS planVersion, contract_json AS contractJson, exec_budget_minutes AS execBudgetMinutes, trace_id AS traceId, dedupe_key AS dedupeKey, deadline_at AS deadlineAt, rework_count AS reworkCount, accepted_result_id AS acceptedResultId, last_result_status AS lastResultStatus, attempt_count AS attemptCount, max_attempts AS maxAttempts, deferred_until AS deferredUntil, created_by AS createdBy, instance_channel_id AS instanceChannelId, created_at AS createdAt, updated_at AS updatedAt, closed_at AS closedAt, close_reason AS closeReason'
-const ATTEMPT_COLS = 'id, project_id AS projectId, work_item_id AS workItemId, attempt_no AS attemptNo, channel_id AS channelId, channel_task_id AS channelTaskId, source_key AS sourceKey, state, blocked_reason AS blockedReason, approval_id AS approvalId, args_digest AS argsDigest, failure_class AS failureClass, retryable, next_retry_at AS nextRetryAt, trace_id AS traceId, created_at AS createdAt, closed_at AS closedAt'
+const ATTEMPT_COLS = 'id, project_id AS projectId, work_item_id AS workItemId, attempt_no AS attemptNo, channel_id AS channelId, session_id AS sessionId, channel_task_id AS channelTaskId, source_key AS sourceKey, state, blocked_reason AS blockedReason, approval_id AS approvalId, args_digest AS argsDigest, failure_class AS failureClass, retryable, next_retry_at AS nextRetryAt, trace_id AS traceId, created_at AS createdAt, closed_at AS closedAt'
 const RESULT_COLS = 'id, project_id AS projectId, deliverable_id AS deliverableId, channel_id AS channelId, line_id AS lineId, work_item_id AS workItemId, attempt_no AS attemptNo, result_key AS resultKey, version, title, summary, method, data_window_json AS dataWindowJson, sample_count AS sampleCount, confidence, validity_scope AS validityScope, payload_json AS payloadJson, evidence_json AS evidenceJson, change_summary AS changeSummary, open_questions AS openQuestions, status, submitted_at AS submittedAt, source_task_id AS sourceTaskId, supersedes_id AS supersedesId, author_agent_id AS authorAgentId, author_user_id AS authorUserId, reviewed_by AS reviewedBy, reviewed_at AS reviewedAt, approved_by AS approvedBy, approved_at AS approvedAt, reject_reason AS rejectReason, content_sha256 AS contentSha256, evidence_verified_at AS evidenceVerifiedAt, criteria_check_json AS criteriaCheckJson, technical_verdict_json AS technicalVerdictJson, rework_required AS reworkRequired, trace_id AS traceId, created_at AS createdAt'
 const DECISION_COLS = 'id, project_id AS projectId, seq, source, decision_type AS decisionType, actor_agent_id AS actorAgentId, actor_user_id AS actorUserId, actor_kind AS actorKind, args_json AS argsJson, args_sha256 AS argsSha256, snapshot_sha256 AS snapshotSha256, state, outcome, reason, approval_id AS approvalId, trace_id AS traceId, created_at AS createdAt'
 const EVENT_COLS = 'id, project_id AS projectId, seq, type, event_key AS eventKey, channel_id AS channelId, work_item_id AS workItemId, deliverable_id AS deliverableId, agent_id AS agentId, payload_json AS payloadJson, trace_id AS traceId, consumed_at AS consumedAt, created_at AS createdAt'
@@ -533,8 +534,8 @@ export function createProjectWorkItemRepo(db: DatabaseSync) {
 export type ProjectAttemptRepo = ReturnType<typeof createProjectAttemptRepo>
 export function createProjectAttemptRepo(db: DatabaseSync) {
   const insert = db.prepare(
-    `INSERT INTO project_work_item_attempts (id, project_id, work_item_id, attempt_no, channel_id, channel_task_id, source_key, state, blocked_reason, approval_id, args_digest, failure_class, retryable, next_retry_at, trace_id, created_at, closed_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO project_work_item_attempts (id, project_id, work_item_id, attempt_no, channel_id, session_id, channel_task_id, source_key, state, blocked_reason, approval_id, args_digest, failure_class, retryable, next_retry_at, trace_id, created_at, closed_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   const closeWithFailureStmt = db.prepare(
     `UPDATE project_work_item_attempts SET state = ?, blocked_reason = ?, failure_class = ?, retryable = ?, next_retry_at = ?, closed_at = ?
@@ -552,6 +553,7 @@ export function createProjectAttemptRepo(db: DatabaseSync) {
       workItemId: string
       attemptNo: number
       channelId: string
+      sessionId?: string | null
       sourceKey: string
       traceId?: string
       approvalId?: string | null
@@ -563,6 +565,7 @@ export function createProjectAttemptRepo(db: DatabaseSync) {
         workItemId: input.workItemId,
         attemptNo: input.attemptNo,
         channelId: input.channelId,
+        sessionId: input.sessionId ?? null,
         channelTaskId: null,
         sourceKey: input.sourceKey,
         state: 'DISPATCHING',
@@ -576,7 +579,7 @@ export function createProjectAttemptRepo(db: DatabaseSync) {
         createdAt: now(),
         closedAt: null,
       }
-      insert.run(row.id, row.projectId, row.workItemId, row.attemptNo, row.channelId, row.channelTaskId,
+      insert.run(row.id, row.projectId, row.workItemId, row.attemptNo, row.channelId, row.sessionId, row.channelTaskId,
         row.sourceKey, row.state, row.blockedReason, row.approvalId, row.argsDigest, row.failureClass,
         row.retryable, row.nextRetryAt, row.traceId, row.createdAt, row.closedAt)
       return row

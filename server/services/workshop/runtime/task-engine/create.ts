@@ -30,6 +30,8 @@ export abstract class TaskEngineCreate extends TaskEngineUpdate {
     projectId?: string | null
     projectWorkItemId?: string | null
     projectAttemptNo?: number | null
+    /** Session Context：任务归属会话（root/子任务继承） */
+    sessionId?: string | null
     traceId?: string
   }): WorkspaceTask {
     const row = this.repos.tasks.create({
@@ -51,6 +53,7 @@ export abstract class TaskEngineCreate extends TaskEngineUpdate {
       projectId: input.projectId ?? null,
       projectWorkItemId: input.projectWorkItemId ?? null,
       projectAttemptNo: input.projectAttemptNo ?? null,
+      sessionId: input.sessionId ?? null,
       traceId: input.traceId ?? '',
       // §5.1 每次新分配产生新代次 + 新租约(创建即首个 assignment)
       ...issueLeaseFields(0, input.assigneeId),
@@ -81,6 +84,8 @@ export abstract class TaskEngineCreate extends TaskEngineUpdate {
     projectId?: string | null
     projectWorkItemId?: string | null
     projectAttemptNo?: number | null
+    /** Session Context：任务归属会话 */
+    sessionId?: string | null
     traceId?: string
   }): { task: WorkspaceTask, created: boolean } {
     const result = this.repos.tasks.createOrGetRoot({
@@ -97,6 +102,7 @@ export abstract class TaskEngineCreate extends TaskEngineUpdate {
       projectId: input.projectId ?? null,
       projectWorkItemId: input.projectWorkItemId ?? null,
       projectAttemptNo: input.projectAttemptNo ?? null,
+      sessionId: input.sessionId ?? null,
       traceId: input.traceId ?? '',
       ...issueLeaseFields(0, input.assigneeId),
     })
@@ -161,6 +167,7 @@ export abstract class TaskEngineCreate extends TaskEngineUpdate {
       projectId: parent.projectId ?? null,
       projectWorkItemId: parent.projectWorkItemId ?? null,
       projectAttemptNo: parent.projectAttemptNo ?? null,
+      sessionId: parent.sessionId ?? null,
       traceId: parent.traceId ?? '',
       ...issueLeaseFields(0, input.assigneeId),
     })

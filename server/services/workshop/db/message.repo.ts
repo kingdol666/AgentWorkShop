@@ -7,13 +7,14 @@ import type { DatabaseSync } from 'node:sqlite'
 import type { MessageRow } from './database'
 
 const COLS
-  = 'id, channel_id AS channelId, task_id AS taskId, from_agent_id AS fromAgentId, to_agent_id AS toAgentId, role, parts_json AS partsJson, metadata_json AS metadataJson, state, attempts, created_at AS createdAt, consumed_at AS consumedAt'
+  = 'id, channel_id AS channelId, task_id AS taskId, session_id AS sessionId, from_agent_id AS fromAgentId, to_agent_id AS toAgentId, role, parts_json AS partsJson, metadata_json AS metadataJson, state, attempts, created_at AS createdAt, consumed_at AS consumedAt'
 
 export interface MessageCreateInput {
   /** 落库 id;缺省生成。A2A 入队时传发送方 messageId,保证 API 返回 id 与历史 id 一致 */
   id?: string
   channelId: string
   taskId?: string | null
+  sessionId?: string | null
   fromAgentId?: string | null
   toAgentId?: string | null
   role: string
@@ -25,8 +26,8 @@ export type MessageRepo = ReturnType<typeof createMessageRepo>
 
 export function createMessageRepo(db: DatabaseSync) {
   const insert = db.prepare(
-    `INSERT INTO messages (id, channel_id, task_id, from_agent_id, to_agent_id, role, parts_json, metadata_json, state, created_at, consumed_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO messages (id, channel_id, task_id, session_id, from_agent_id, to_agent_id, role, parts_json, metadata_json, state, created_at, consumed_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   const selectPending = db.prepare(
     // rowid 决胜:同一毫秒内批量入队(连发任务/调度批量派发)也保持严格入队顺序(FIFO)
@@ -78,6 +79,7 @@ export function createMessageRepo(db: DatabaseSync) {
         id: input.id ?? randomUUID(),
         channelId: input.channelId,
         taskId: input.taskId ?? null,
+        sessionId: input.sessionId ?? null,
         fromAgentId: input.fromAgentId ?? null,
         toAgentId: input.toAgentId ?? null,
         role: input.role,
@@ -89,7 +91,7 @@ export function createMessageRepo(db: DatabaseSync) {
         consumedAt: null,
       }
       insert.run(
-        row.id, row.channelId, row.taskId, row.fromAgentId, row.toAgentId, row.role, row.partsJson, row.metadataJson, row.state, row.createdAt, row.consumedAt,
+        row.id, row.channelId, row.taskId, row.sessionId, row.fromAgentId, row.toAgentId, row.role, row.partsJson, row.metadataJson, row.state, row.createdAt, row.consumedAt,
       )
       return row
     },

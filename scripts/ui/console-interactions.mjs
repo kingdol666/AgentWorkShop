@@ -10,7 +10,8 @@ const BASE = process.env.AW_BASE ?? 'http://127.0.0.1:3021'
 let passed = 0, failed = 0
 const check = (name, ok, detail = '') => {
   console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${name}${ok ? '' : ` — ${detail}`}`)
-  if (ok) passed++; else failed++
+  if (ok) passed += 1
+  else failed += 1
 }
 const sleep = ms => new Promise(r => setTimeout(r, ms))
 

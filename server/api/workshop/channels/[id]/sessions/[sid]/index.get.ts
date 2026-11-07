@@ -42,5 +42,9 @@ export default defineApiHandler(async (event) => {
     projectWorkItemId: s.projectWorkItemId,
     createdByKind: s.createdByKind,
     instanceKind: s.instanceKind,
+    summary: s.summary,
+    lastActiveAt: s.lastActiveAt,
+    generation: s.generation,
+    brief: manager.getSessionBrief(sessionId),
   }
 })
