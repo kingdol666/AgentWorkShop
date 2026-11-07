@@ -1,0 +1,140 @@
+{
+  "generatedAt": "2026-11-07T06:16:17.114Z",
+  "base": "http://127.0.0.1:3994",
+  "pass": 22,
+  "fail": 0,
+  "results": [
+    {
+      "id": "R1",
+      "name": "注册 owner",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "C1",
+      "name": "创建 Channel + mock lead",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "C2",
+      "name": "添加 mock worker",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "C3",
+      "name": "创建 manual session(克隆成员)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "C4",
+      "name": "session clone 成员存在",
+      "pass": true,
+      "detail": "[{\"baseAgentId\":\"926dcff7-c4db-41f3-abdc-098f18e33f31\",\"cloneId\":\"7ef8e26f-809a-4a69-9a7b-cb78698d1f44\",\"name\":\"Lead·session·1\",\"role\":\"worker\"},{\"baseAgentId\":\"7007ce72-d190-4185-a3c7-d37c8b1b039a\",\""
+    },
+    {
+      "id": "P1",
+      "name": "创建 Project",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "P2",
+      "name": "绑定执行 Channel",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "P3",
+      "name": "创建必选交付物",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "P4",
+      "name": "创建工作项",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "P5",
+      "name": "激活项目",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "P6",
+      "name": "提交 plan 审批",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "P7",
+      "name": "批准 plan",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "P8",
+      "name": "派发工作项(任务实例 Channel + task session)",
+      "pass": true,
+      "detail": "ok"
+    },
+    {
+      "id": "P9",
+      "name": "task session 生成",
+      "pass": true,
+      "detail": "[{\"id\":\"cs-c9842757\",\"kind\":\"task\",\"title\":\"任务：记忆验收工作项\",\"status\":\"closed\",\"channelId\":\"32fb9010-eefc-4e4e-b4d7-9efff8e556dc\",\"projectId\":\"dd1d13b7-0f05-4c62-9e84-d2be142c13a7\",\"workItemId\":\"80d84e02-8"
+    },
+    {
+      "id": "M1",
+      "name": "运行时任务终态记忆带 task session 戳",
+      "pass": true,
+      "detail": "{\"stamped\":{\"agentId\":\"f60e789e-cfdb-4c0d-b3db-17f4df939b24\",\"id\":\"eeacfbe9-830f-4f2c-ad6e-ee2f610e2419\",\"channelId\":\"32fb9010-eefc-4e4e-b4d7-9efff8e556dc\",\"kind\":\"episodic-task\",\"title\":\"记忆验收工作项\",\"content\":\"[ 项目任务 ]\\n 项目：记忆作用域验收项目 1794032176835 项目目标：验证 task session 记忆作用域交付物：记忆验收交付物交付物验收标准：artifact_present 工作项：记忆验收工作项执行要求：产出一个可验收结果成果槽：resultKey=main；attempt=1 本工作项没有上游交付数据，请直接按执行要求产出。 Lead 直接处理简单任务：「 记忆验收工作项 」。产出一个可验收结果\",\"importance\":0.8,\"taskId\":\"673c5fa4-81d3-4202-849f-70732ebfb7d0\",\"sessionId\""
+    },
+    {
+      "id": "M2a",
+      "name": "scope=session + sessionId 命中本会话行",
+      "pass": true,
+      "detail": "[{\"id\":\"eeacfbe9-830f-4f2c-ad6e-ee2f610e2419\",\"kind\":\"episodic-task\",\"title\":\"记忆验收工作项\",\"content\":\"[ 项目任务 ]\\n 项目：记忆作用域验收项目 1794032176835 项目目标：验证 task session 记忆作用域交付物：记忆验收交付物交付物验收标准：artifact_present 工作项：记忆验收工作项执行要求：产出一个可验收结果成果槽：resultKey=main；attempt=1 本工作项没有上游交付数据，请直接按执行要求产出。 Lead 直接处理简单任务：「 记忆验收工作项"
+    },
+    {
+      "id": "M2b",
+      "name": "其他 session → 空(作用域隔离)",
+      "pass": true,
+      "detail": "[]"
+    },
+    {
+      "id": "M2c",
+      "name": "auto 档 + sessionId 也可命中",
+      "pass": true,
+      "detail": "[{\"id\":\"eeacfbe9-830f-4f2c-ad6e-ee2f610e2419\",\"kind\":\"episodic-task\",\"title\":\"记忆验收工作项\",\"content\":\"[ 项目任务 ]\\n 项目：记忆作用域验收项目 1794032176835 项目目标：验证 task session 记忆作用域交付物：记忆验收交付物交付物验收标准：artifact_present 工作"
+    },
+    {
+      "id": "M3a",
+      "name": "save_memory(REST,无会话态)→ 频道级",
+      "pass": true,
+      "detail": "{\"status\":200,\"code\":0,\"message\":\"ok\",\"data\":{\"result\":{\"text\":\"已沉淀到本人私有记忆: \\\"频道级记忆\\\"(dedupKey=agent-save:53487d61);频道级(跨会话可见)\"}}}"
+    },
+    {
+      "id": "M3b",
+      "name": "REST 落库行为频道级(sessionId 空)",
+      "pass": true,
+      "detail": "{\"id\":\"89fec2b9-4a35-453d-9360-385ed9f5341e\",\"channelId\":\"c75e13a9-d1fa-4b04-84f5-0d8971e7360c\",\"agentId\":\"7ef8e26f-809a-4a69-9a7b-cb78698d1f44\",\"kind\":\"semantic\",\"title\":\"频道级记忆\",\"content\":\"跨会话有效\",\"importance\":0.7,\"taskId\":null,\"sessionId\":\"\",\"accessCount\":0,\"lastAccessedAt\":null,\"createdAt\":\"2026-11-07T14:16:17.076+08:00\"}"
+    },
+    {
+      "id": "M3c",
+      "name": "scope=session 无会话态 → 明确拒绝",
+      "pass": true,
+      "detail": "{\"status\":200,\"code\":0,\"message\":\"ok\",\"data\":{\"result\":{\"text\":\"当前回合没有 session 上下文,scope=session 不可用;请改用 auto/private/shared。\"}}}"
+    },
+    {
+      "id": "M4",
+      "name": "memories 列表含 sessionId 字段(UI 徽标)",
+      "pass": true,
+      "detail": "rows=1"
+    }
+  ]
+}
