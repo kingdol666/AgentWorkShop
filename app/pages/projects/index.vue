@@ -28,6 +28,33 @@ const loading = ref(false)
 const error = ref('')
 const form = reactive({ name: '', objective: '', description: '', leaderHarness: 'mock' })
 
+const harnessOptions = [
+  { value: 'mock', label: 'mock · 验证用' },
+  { value: 'omp', label: 'omp · 真实 LLM' },
+  { value: 'opencode', label: 'opencode · 真实 LLM' },
+  { value: 'claude', label: 'claude · 真实 LLM' },
+]
+
+const STATUS_LABEL: Record<string, string> = {
+  draft: '草稿',
+  active: '进行中',
+  paused: '已暂停',
+  completed: '已完成',
+  archived: '已归档',
+}
+
+function statusText(status: string): string {
+  return STATUS_LABEL[status] ?? status
+}
+
+function statusTone(status: string): string {
+  if (status === 'active') return 'green'
+  if (status === 'completed') return 'blue'
+  if (status === 'paused') return 'amber'
+  if (status === 'archived') return 'gray'
+  return 'neutral'
+}
+
 async function load(): Promise<void> {
   loading.value = true
   error.value = ''
@@ -73,11 +100,14 @@ onMounted(load)
 
 <template>
   <div class="projects-page">
-    <header class="head">
+    <header class="aw-page-head">
       <div>
+        <p class="aw-kicker">
+          Project Router v3 / portfolio
+        </p>
         <h1>项目</h1>
         <p class="sub">
-          项目总工 + 交付物 + 成果验收；V1 先覆盖项目办公室/派发/成果闭环。
+          项目总工 + 交付物 + 成果验收；项目办公室由同一个 Project Leader 持续接收补充需求。
         </p>
       </div>
       <button
@@ -85,121 +115,544 @@ onMounted(load)
         :disabled="loading"
         @click="load"
       >
+        <span
+          class="i-tabler-refresh"
+          :class="{ spin: loading }"
+          aria-hidden="true"
+        />
         刷新
       </button>
     </header>
 
     <p
       v-if="error"
-      class="error"
+      class="notice danger"
     >
       {{ error }}
     </p>
 
-    <section class="create card">
-      <h2>新建项目</h2>
-      <div class="grid">
-        <label>名称<input
-          v-model="form.name"
-          placeholder="例如：A 线良率提升"
-        ></label>
-        <label>目标<input
-          v-model="form.objective"
-          placeholder="例如：良率提升到 98%"
-        ></label>
-        <label class="wide">描述<input
-          v-model="form.description"
-          placeholder="可选"
-        ></label>
-        <label>Leader 引擎<select
-          v-model="form.leaderHarness"
-        >
-          <option value="mock">
-            mock（验证用）
-          </option>
-          <option value="omp">
-            omp（真实 LLM）
-          </option>
-          <option value="opencode">
-            opencode（真实 LLM）
-          </option>
-          <option value="claude">
-            claude（真实 LLM）
-          </option>
-        </select></label>
+    <section class="card create">
+      <div class="card-head">
+        <div>
+          <h2>新建项目</h2>
+          <p class="card-sub">
+            创建后自动生成项目办公室与 Project Leader；先绑定 Channel、建交付物，再激活。
+          </p>
+        </div>
       </div>
-      <button
-        class="btn"
-        :disabled="loading || !form.name.trim() || !form.objective.trim()"
-        @click="create"
-      >
-        创建项目
-      </button>
+      <div class="form-grid">
+        <label class="field">
+          <span>项目名称</span>
+          <input
+            v-model="form.name"
+            placeholder="例如：A 线良率提升"
+          >
+        </label>
+        <label class="field">
+          <span>项目目标</span>
+          <input
+            v-model="form.objective"
+            placeholder="例如：良率提升到 98%"
+          >
+        </label>
+        <label class="field wide">
+          <span>描述（可选）</span>
+          <input
+            v-model="form.description"
+            placeholder="补充背景、边界或交付偏好"
+          >
+        </label>
+        <label class="field">
+          <span>Leader 引擎</span>
+          <a-select
+            v-model:value="form.leaderHarness"
+            class="field-select"
+            :options="harnessOptions"
+          />
+        </label>
+      </div>
+      <div class="create-actions">
+        <span class="muted">创建后进入项目页继续配置；不会立刻派发任务。</span>
+        <button
+          class="btn primary"
+          :disabled="loading || !form.name.trim() || !form.objective.trim()"
+          @click="create"
+        >
+          <span
+            class="i-tabler-plus"
+            aria-hidden="true"
+          />
+          创建项目
+        </button>
+      </div>
     </section>
 
     <section
       v-if="projects.length"
-      class="list"
+      class="project-grid"
     >
       <article
         v-for="p in projects"
         :key="p.id"
         class="card project"
+        role="link"
+        tabindex="0"
         @click="navigateTo(`/projects/${p.id}`)"
+        @keydown.enter="navigateTo(`/projects/${p.id}`)"
       >
-        <div class="row">
-          <strong>{{ p.name }}</strong>
+        <div class="project-top">
+          <h2>{{ p.name }}</h2>
           <span
-            class="badge"
-            :class="p.status"
-          >{{ p.status }}</span>
+            class="status-pill"
+            :class="statusTone(p.status)"
+          >{{ statusText(p.status) }}</span>
         </div>
         <p class="objective">
           {{ p.objective }}
         </p>
         <div class="meta">
-          <span>mode {{ p.mode }}</span>
-          <span>plan v{{ p.planVersion }}</span>
-          <span>{{ p.officeChannelId ? '办公室已建' : '缺办公室' }}</span>
+          <span class="meta-chip mono">mode {{ p.mode }}</span>
+          <span class="meta-chip mono">plan v{{ p.planVersion }}</span>
+          <span class="meta-chip">
+            <span
+              class="i-tabler-building-community"
+              aria-hidden="true"
+            />
+            {{ p.officeChannelId ? '办公室已建' : '缺办公室' }}
+          </span>
         </div>
+        <span class="project-open">
+          打开项目
+          <span
+            class="i-tabler-arrow-right"
+            aria-hidden="true"
+          />
+        </span>
       </article>
     </section>
-    <p
+    <div
       v-else-if="!loading"
-      class="empty"
+      class="empty card"
     >
-      还没有项目。上方创建一个，或在 /workshop 先确认已登录。
-    </p>
+      <span
+        class="i-tabler-folders"
+        aria-hidden="true"
+      />
+      <strong>还没有项目</strong>
+      <p>在上方创建一个，或先在 /workshop 确认已登录。</p>
+    </div>
   </div>
 </template>
 
 <style scoped>
-.projects-page { max-width: 1080px; margin: 0 auto; padding: 24px; color: #e6e8ee; }
-.head { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 20px; }
-h1 { margin: 0 0 6px; font-size: 24px; }
-.sub { margin: 0; color: #9aa4b2; font-size: 13px; }
-.card { background: #161a22; border: 1px solid #2a3140; border-radius: 10px; padding: 16px; }
-.create { margin-bottom: 18px; }
-.create h2 { margin: 0 0 12px; font-size: 16px; }
-.grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
-.grid label { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #9aa4b2; }
-.grid .wide { grid-column: 1 / -1; }
-input { background: #0f131a; border: 1px solid #2a3140; border-radius: 6px; color: #e6e8ee; padding: 8px 10px; }
-.btn { background: #3b82f6; color: white; border: 0; border-radius: 6px; padding: 8px 14px; cursor: pointer; }
-.btn:disabled { opacity: .5; cursor: not-allowed; }
-.btn.ghost { background: transparent; border: 1px solid #2a3140; color: #cbd5e1; }
-.list { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
-.project { cursor: pointer; }
-.project:hover { border-color: #3b82f6; }
-.row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.badge { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: #263042; color: #cbd5e1; }
-.badge.active { background: #14351f; color: #86efac; }
-.badge.paused { background: #3a2c12; color: #fcd34d; }
-.badge.completed { background: #1e2a4a; color: #93c5fd; }
-.badge.archived { background: #2a2f3a; color: #9aa4b2; }
-.objective { color: #cbd5e1; font-size: 13px; margin: 10px 0; }
-.meta { display: flex; gap: 12px; color: #7c8798; font-size: 11px; }
-.empty { color: #9aa4b2; }
-.error { color: #fca5a5; }
-@media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+.projects-page {
+  width: 100%;
+  max-width: 1160px;
+  margin: 0 auto;
+  padding: 4px 8px 48px;
+  color: var(--ink);
+}
+
+.sub {
+  max-width: 76ch;
+  margin: 6px 0 0;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+}
+
+.card {
+  padding: 18px;
+  background: var(--paper-raised);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  box-shadow: var(--shadow-lift-1);
+}
+
+.create {
+  margin-bottom: 18px;
+}
+
+.card-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.card-head h2 {
+  margin: 0;
+  font-size: 15.5px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+}
+
+.card-sub {
+  max-width: 70ch;
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--ink-faint);
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+  font-size: 11.5px;
+  color: var(--ink-faint);
+}
+
+.field.wide {
+  grid-column: 1 / -1;
+}
+
+input {
+  min-height: 36px;
+  padding: 8px 10px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--ink);
+  background: var(--paper-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-control);
+  transition:
+    border-color var(--transition-fast),
+    box-shadow var(--transition-fast);
+}
+
+input::placeholder {
+  color: var(--ink-fainter);
+}
+
+input:hover {
+  border-color: var(--line-strong);
+}
+
+input:focus {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.field-select {
+  width: 100%;
+}
+
+.form-grid :deep(.ant-select-selector) {
+  min-height: 36px;
+  background: var(--paper-deep) !important;
+  border-color: var(--line) !important;
+}
+
+.create-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 14px;
+}
+
+.muted {
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.btn {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 14px;
+  font-family: var(--font-body);
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: var(--ink);
+  white-space: nowrap;
+  cursor: pointer;
+  background: var(--paper-raised);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+  transition:
+    background-color var(--transition-fast),
+    border-color var(--transition-fast),
+    color var(--transition-fast),
+    transform 160ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--hover-tint);
+  border-color: var(--ink-fainter);
+}
+
+.btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.btn.primary {
+  font-weight: 600;
+  color: var(--on-accent);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.btn.primary:hover:not(:disabled) {
+  background: var(--accent-strong);
+  border-color: var(--accent-strong);
+}
+
+.btn.ghost {
+  color: var(--ink-soft);
+  background: transparent;
+}
+
+.spin {
+  animation: spin 900ms linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.notice {
+  display: flex;
+  gap: 7px;
+  align-items: flex-start;
+  padding: 9px 12px;
+  margin: 0 0 14px;
+  font-size: 12.5px;
+  line-height: 1.55;
+  border: 1px solid transparent;
+  border-radius: var(--radius-control);
+}
+
+.notice.danger {
+  color: var(--tone-danger-dot);
+  background: var(--tone-danger-bg);
+  border-color: color-mix(in srgb, var(--tone-danger-dot) 20%, transparent);
+}
+
+.project-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
+}
+
+.project {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  cursor: pointer;
+  transition:
+    border-color var(--transition-fast),
+    transform 160ms cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow var(--transition-fast);
+}
+
+.project:hover {
+  border-color: var(--line-strong);
+  box-shadow: var(--shadow-lift-2);
+  transform: translateY(-2px);
+}
+
+.project:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
+.project-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.project h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--ink);
+}
+
+.status-pill {
+  --pill-bg: var(--tone-neutral-bg);
+  --pill-fg: var(--tone-neutral-dot);
+
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  padding: 3px 9px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--pill-fg);
+  white-space: nowrap;
+  background: var(--pill-bg);
+  border: 1px solid color-mix(in srgb, var(--pill-fg) 22%, transparent);
+  border-radius: var(--radius-pill);
+}
+
+.status-pill::before {
+  width: 6px;
+  height: 6px;
+  content: '';
+  background: currentcolor;
+  border-radius: 50%;
+}
+
+.status-pill.green {
+  --pill-bg: var(--tone-success-bg);
+  --pill-fg: var(--tone-success-dot);
+}
+
+.status-pill.blue {
+  --pill-bg: var(--tone-info-bg);
+  --pill-fg: var(--tone-info-dot);
+}
+
+.status-pill.amber {
+  --pill-bg: var(--tone-warning-bg);
+  --pill-fg: var(--tone-warning-dot);
+}
+
+.status-pill.gray {
+  --pill-bg: var(--tone-neutral-bg);
+  --pill-fg: var(--tone-neutral-dot);
+}
+
+.objective {
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--ink-soft);
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: auto;
+}
+
+.meta-chip {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  padding: 3px 7px;
+  font-size: 10.5px;
+  color: var(--ink-faint);
+  background: var(--paper-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-chip);
+}
+
+.project-open {
+  display: inline-flex;
+  gap: 5px;
+  align-items: center;
+  font-size: 11.5px;
+  color: var(--accent);
+}
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 18px;
+  text-align: center;
+}
+
+.empty .i-tabler-folders {
+  margin-bottom: 4px;
+  font-size: 26px;
+  color: var(--ink-fainter);
+}
+
+.empty strong {
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+.empty p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+@media (max-width: 900px) {
+  .projects-page {
+    padding: 0 2px 40px;
+  }
+
+  .aw-page-head > .btn {
+    align-self: flex-start;
+  }
+
+  .form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .field.wide {
+    grid-column: auto;
+  }
+
+  .create-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .create-actions .btn {
+    width: 100%;
+    min-height: 40px;
+  }
+
+  .project-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (pointer: coarse) {
+  .btn {
+    min-height: 40px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .project {
+    transition: none;
+  }
+
+  .spin {
+    animation: none;
+  }
+}
 </style>

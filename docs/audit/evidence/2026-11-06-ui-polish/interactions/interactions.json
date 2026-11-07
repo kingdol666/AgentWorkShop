@@ -1,0 +1,175 @@
+{
+  "generatedAt": "2026-11-06T14:20:16.600Z",
+  "pass": 28,
+  "fail": 0,
+  "results": [
+    {
+      "id": "I0",
+      "name": "构建产物服务启动",
+      "pass": true,
+      "detail": "port=3981"
+    },
+    {
+      "id": "I0b",
+      "name": "admin 注册",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "I0c",
+      "name": "seed 频道（供 UI 绑定）",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "I1",
+      "name": "列表页渲染（含新建项目表单）",
+      "pass": true,
+      "detail": "AGENTWORKSHOP\nDIGITAL TWIN\n控制台\n仪表盘\nAgent 工作台\n数字孪生\n数采中心\n产线运营\n数据管理\nEDA 工坊\n建模\n优化器\n本体模型\n运维\n产线操作\n数据分析\n运行时监控\n产线日志\n系统\nAPI Token\n用户管理\n权限管理\n插件管理\n工具管理\n系统设置\nv0.9"
+    },
+    {
+      "id": "I2",
+      "name": "UI 建项目 → 列表出现",
+      "pass": true,
+      "detail": "交互项目-9ojl"
+    },
+    {
+      "id": "I3",
+      "name": "打开详情页",
+      "pass": true,
+      "detail": "http://127.0.0.1:3981/projects/75708bdb-e11a-47e0-be55-56d8473e152e"
+    },
+    {
+      "id": "I4",
+      "name": "UI 绑定频道 → 列表出现",
+      "pass": true,
+      "detail": "27462715-e71e-4614-8830-c4fe04be28f9"
+    },
+    {
+      "id": "I5",
+      "name": "UI 建交付物",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "I6",
+      "name": "UI 建工作项 → 行出现",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "I7",
+      "name": "UI 激活 → 进行中徽标",
+      "pass": true,
+      "detail": "badge active"
+    },
+    {
+      "id": "I7b-req",
+      "name": "plan approval pending 已创建",
+      "pass": true,
+      "detail": "status=200"
+    },
+    {
+      "id": "I7b",
+      "name": "UI 批准计划 → planVersion=1",
+      "pass": true,
+      "detail": "btn=true version=1"
+    },
+    {
+      "id": "I8",
+      "name": "UI 派发 → DISPATCHED（API 确认）",
+      "pass": true,
+      "detail": "state=RUNNING "
+    },
+    {
+      "id": "I9a",
+      "name": "完成后对账 → 工作项 COMPLETED（计划与工作 tab）",
+      "pass": true,
+      "detail": "work item state"
+    },
+    {
+      "id": "I9b",
+      "name": "对账 → 成果 draft（交付物 tab）",
+      "pass": true,
+      "detail": "result draft"
+    },
+    {
+      "id": "I10a",
+      "name": "成果提交（channel lead 工具）→ submitted",
+      "pass": true,
+      "detail": "{\n  \"ok\": true,\n  \"result\": {\n    \"id\": \"fea414d5-6704-41a5-b25f-04d9aebcd0ac\",\n    \"status\": \"submitted\",\n    \"title\": \"交互工作项 成果\",\n    \"workItemId\": \"7dc5a543-9247-4c93-9402-6b204e468d03\",\n    \"attem"
+    },
+    {
+      "id": "I10a-ui",
+      "name": "提交态在交付物 tab 可见",
+      "pass": true,
+      "detail": "submitted badge"
+    },
+    {
+      "id": "I10b",
+      "name": "复核 → reviewed",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "I10c",
+      "name": "申请验收 → 待审批出现（审批 tab）",
+      "pass": true,
+      "detail": ""
+    },
+    {
+      "id": "I11",
+      "name": "批准 → 成果 approved / 交付物 approved（UI 点击 + API 兜底确认）",
+      "pass": true,
+      "detail": "approval=approved result=approved"
+    },
+    {
+      "id": "I12a",
+      "name": "leader 派发提案（API）",
+      "pass": true,
+      "detail": "{\n  \"ok\": true,\n  \"proposalId\": \"569e8794-ecd8-451a-95f9-619227251b99\",\n  \"status\": \"proposed\",\n  \"next\": \"owner 在项目页应用提案后生成工作项（dispatch=true 时一并派发）\"\n}"
+    },
+    {
+      "id": "I12",
+      "name": "页面点击应用提案 → 工作项出现",
+      "pass": true,
+      "detail": "dispatch.proposed applied"
+    },
+    {
+      "id": "I13",
+      "name": "周报卡片渲染（进度/交付物/成果数字）",
+      "pass": true,
+      "detail": "AGENTWORKSHOP\nDIGITAL TWIN\n控制台\n仪表盘\nAgent 工作台\n数字孪生\n数采中心\n产线运营\n数据管理\nEDA 工坊\n建模\n优化器\n本体模型\n运维\n产线操作\n数据分析\n运行时监控\n产线日志\n系统\nAPI Token\n用户管理\n权限管理\n插件管理\n工具管理\n系统设置\nv0.9.5\n/\ndev\nProjects\n75708bdb-e11a-47e0-be55-56d8473e"
+    },
+    {
+      "id": "I14a",
+      "name": "计划与工作 tab：计划快照 + retry/cancel 按钮",
+      "pass": true,
+      "detail": "plan tab"
+    },
+    {
+      "id": "I14b",
+      "name": "交付物 tab：成果按交付物分组展示",
+      "pass": true,
+      "detail": "deliverables tab"
+    },
+    {
+      "id": "I14c",
+      "name": "审批 tab：待审批 + 审批历史",
+      "pass": true,
+      "detail": "approvals tab"
+    },
+    {
+      "id": "I14d",
+      "name": "概览 tab：受保护徽标 + 打开办公室入口",
+      "pass": true,
+      "detail": "overview tab"
+    },
+    {
+      "id": "I15",
+      "name": "页面无未捕获异常",
+      "pass": true,
+      "detail": ""
+    }
+  ]
+}

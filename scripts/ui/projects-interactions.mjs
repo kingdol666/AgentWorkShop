@@ -8,7 +8,7 @@
  * 前置：npm run build 已产出 .output（与 projects-smoke 相同入口）。
  */
 import { spawn } from 'node:child_process'
-import { mkdirSync, rmSync } from 'node:fs'
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { tmpdir } from 'node:os'
@@ -17,7 +17,9 @@ const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const ROOT = join(tmpdir(), 'aw-projects-ui-interactions')
 rmSync(ROOT, { recursive: true, force: true })
 mkdirSync(join(ROOT, 'home'), { recursive: true })
-const EVID = join(REPO, 'docs/audit/evidence/2026-11-03-project-layer')
+const EVID = process.env.AW_EVID
+  ? resolve(REPO, process.env.AW_EVID)
+  : join(REPO, 'docs/audit/evidence/2026-11-03-project-layer')
 mkdirSync(EVID, { recursive: true })
 
 let port = 0
@@ -100,6 +102,32 @@ async function waitText(page, text, timeoutMs = 8000) {
   return false
 }
 
+/** 等待某个 DOM 选择器出现（状态徽标用，避免正文中文撞词）。 */
+async function waitSelector(page, selector, timeoutMs = 8000) {
+  try {
+    await page.waitForSelector(selector, { timeout: timeoutMs })
+    return true
+  }
+  catch {
+    return false
+  }
+}
+
+/** AntD Select：点开浮层后按序号选真实 option（0 = 第一条）。 */
+async function pickAntSelect(page, testid, index = 0) {
+  await page.click(`[data-testid="${testid}"] .ant-select-selector`)
+  await page.waitForSelector('.ant-select-dropdown:not(.ant-select-dropdown-hidden)', { timeout: 5000 })
+  const picked = await page.evaluate((i) => {
+    const dd = [...document.querySelectorAll('.ant-select-dropdown')]
+      .find(d => !d.className.includes('hidden'))
+    const opt = dd?.querySelectorAll('.ant-select-item-option')?.[i]
+    opt?.click()
+    return opt?.getAttribute('title') ?? opt?.textContent?.trim() ?? null
+  }, index)
+  await sleep(300)
+  return picked
+}
+
 /** PR15 五 tab：切换 tab（v-show 区块需先切再断言）。 */
 async function gotoTab(page, key) {
   await page.click(`[data-testid="tab-${key}"]`)
@@ -164,7 +192,7 @@ try {
 
   // I4 绑定频道
   await page.type('[data-testid="bind-channel-id"]', seedChannel.channelId)
-  await clickButton(page, '绑定')
+  await clickButton(page, '绑定频道')
   ok('I4', 'UI 绑定频道 → 列表出现', await waitText(page, seedChannel.channelId), seedChannel.channelId)
 
   // I5 新增交付物（交付物 tab）
@@ -173,37 +201,24 @@ try {
   await clickButton(page, '新增交付物')
   ok('I5', 'UI 建交付物', await waitText(page, '交互交付物'))
 
-  // I6 新增工作项（计划与工作 tab）
+  // I6 新增工作项（计划与工作 tab）—— AntD Select 需通过浮层选项选择
   await gotoTab(page, 'plan')
+  await pickAntSelect(page, 'select-work-deliverable', 0)
+  await pickAntSelect(page, 'select-work-channel', 0)
   await page.evaluate(() => {
-    const setSel = (testid, value) => {
-      const el = document.querySelector(`[data-testid="${testid}"]`)
-      if (!el) return false
-      el.value = value
-      el.dispatchEvent(new Event('change'))
-      return true
-    }
-    setSel('select-work-deliverable', '')
-    const deliverableSel = document.querySelector('[data-testid="select-work-deliverable"]')
-    const deliverableId = deliverableSel?.querySelector('option:nth-child(2)')?.value
-    const channelSel = document.querySelector('[data-testid="select-work-channel"]')
-    const channelId = channelSel?.querySelector('option:nth-child(2)')?.value
-    setSel('select-work-deliverable', deliverableId)
-    setSel('select-work-channel', channelId)
     const title = document.querySelector('[data-testid="input-work-title"]')
     title.value = '交互工作项'
     title.dispatchEvent(new Event('input'))
     const brief = document.querySelector('[data-testid="input-work-brief"]')
     brief.value = '端到端交互验证'
     brief.dispatchEvent(new Event('input'))
-    return Boolean(deliverableId && channelId)
   })
-  await clickButton(page, '新增')
+  await clickButton(page, '新增工作项')
   ok('I6', 'UI 建工作项 → 行出现', await waitText(page, '交互工作项'))
 
   // I7 激活
   await clickButton(page, '激活')
-  ok('I7', 'UI 激活 → active 徽标', await waitText(page, 'active'), 'badge active')
+  ok('I7', 'UI 激活 → 进行中徽标', await waitText(page, '进行中'), 'badge active')
 
   // I7b PR13 计划门：API 创建 plan approval pending → 重载页面 → UI 点击批准 → planVersion=1
   const planReq = await api('POST', `/api/workshop/projects/${projectId}/plan/request-approval`, {
@@ -254,9 +269,9 @@ try {
   }, agentToken)
   await clickButton(page, '对账')
   await gotoTab(page, 'plan')
-  ok('I9a', '完成后对账 → 工作项 COMPLETED（计划与工作 tab）', await waitText(page, 'COMPLETED', 8000), 'work item state')
+  ok('I9a', '完成后对账 → 工作项 COMPLETED（计划与工作 tab）', await waitSelector(page, '[data-state="COMPLETED"]', 8000), 'work item state')
   await gotoTab(page, 'deliverables')
-  ok('I9b', '对账 → 成果 draft（交付物 tab）', await waitText(page, 'draft', 8000), 'result draft')
+  ok('I9b', '对账 → 成果 draft（交付物 tab）', await waitSelector(page, '[data-state="draft"]', 8000), 'result draft')
 
   // I10 成果提交（channel lead 工具路径：owner 不得自提自批，PR13 自批规则）→ 复核 → 申请验收
   const resultsForSubmit = await api('GET', `/api/workshop/projects/${projectId}/results`, undefined, token)
@@ -271,12 +286,12 @@ try {
   ok('I10a', '成果提交（channel lead 工具）→ submitted', submitOk, String(submitTool.data?.result?.text ?? '').slice(0, 200))
   await gotoReady(page, `/projects/${projectId}`, { wait: 3000 })
   await gotoTab(page, 'deliverables')
-  ok('I10a-ui', '提交态在交付物 tab 可见', await waitText(page, 'submitted', 8000), 'submitted badge')
+  ok('I10a-ui', '提交态在交付物 tab 可见', await waitSelector(page, '[data-state="submitted"]', 8000), 'submitted badge')
   await clickButton(page, '复核通过')
-  ok('I10b', '复核 → reviewed', await waitText(page, 'reviewed'))
+  ok('I10b', '复核 → reviewed', await waitSelector(page, '[data-state="reviewed"]'))
   await clickButton(page, '申请验收')
   await gotoTab(page, 'approvals')
-  ok('I10c', '申请验收 → 待审批出现（审批 tab）', await waitText(page, 'deliverable_acceptance'))
+  ok('I10c', '申请验收 → 待审批出现（审批 tab）', await waitText(page, '交付物验收'))
 
   // I11 审批批准（审批 tab）
   await gotoTab(page, 'approvals')
@@ -339,7 +354,7 @@ try {
   ok('I14a', '计划与工作 tab：计划快照 + retry/cancel 按钮', planTabText.includes('计划快照') && planTabText.includes('重试') && planTabText.includes('取消'), 'plan tab')
   await gotoTab(page, 'deliverables')
   const delTabText = await page.evaluate(() => document.body.innerText)
-  ok('I14b', '交付物 tab：成果按交付物分组展示', delTabText.includes('成果（按交付物分组）') && delTabText.includes('交互交付物'), 'deliverables tab')
+  ok('I14b', '交付物 tab：成果按交付物分组展示', delTabText.includes('成果与验收') && delTabText.includes('交互交付物'), 'deliverables tab')
   await gotoTab(page, 'approvals')
   const apTabText = await page.evaluate(() => document.body.innerText)
   ok('I14c', '审批 tab：待审批 + 审批历史', apTabText.includes('待审批') && apTabText.includes('审批历史'), 'approvals tab')
@@ -352,8 +367,10 @@ try {
   await page.screenshot({ path: join(EVID, 'project-interactions.png'), fullPage: true })
 
   const fail = results.filter(r => !r.pass).length
+  const summary = { generatedAt: new Date().toISOString(), pass: results.length - fail, fail, results }
+  writeFileSync(join(EVID, 'interactions.json'), JSON.stringify(summary, null, 2))
   console.log(`\n=== UI INTERACTIONS pass=${results.length - fail} fail=${fail} ===`)
-  console.log(JSON.stringify({ pass: results.length - fail, fail, results }, null, 2))
+  console.log(JSON.stringify(summary, null, 2))
   process.exitCode = fail > 0 ? 1 : 0
 }
 catch (err) {
@@ -362,7 +379,7 @@ catch (err) {
 }
 finally {
   try {
-    await browser?.close()
+    await Promise.race([browser?.close(), sleep(3000)])
   }
   catch { /* ignore */ }
   try {
@@ -370,6 +387,8 @@ finally {
   }
   catch { /* ignore */ }
   await sleep(300)
+  // browser.close() 在部分 Windows/Chrome 组合上会挂住；结果已落盘，强制收尾。
+  process.exit(process.exitCode ?? 0)
 }
 
 function toolShort(resp) {

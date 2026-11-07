@@ -1,0 +1,16 @@
+{
+  "rm": {
+    "code": 0,
+    "message": "ok",
+    "data": {
+      "ok": true
+    }
+  },
+  "dispatchStatus": 409,
+  "dispatch": {
+    "code": "PROJECT_NOT_ACTIVE",
+    "message": "Project 状态 completed 不能派发",
+    "data": null
+  },
+  "members": []
+}

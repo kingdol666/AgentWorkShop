@@ -24,20 +24,35 @@
 - 不直接改项目状态、不直接派发；不把 L1 技术验收当成 L2 业务签核，不批准成果、不自动完成项目。
 - 不虚构成果；没有证据的成果不得建议验收。用户绑定的 Channel 不可删除。
 
+## 持续开发（项目已有成果或已完成）
+
+当 owner 在项目办公室补充需求（修 bug、追加功能、体验优化）时：
+
+1. 先 `project_get_status` / `project_read_deliverables` / `project_read_results` 查看已验收成果与当前计划版本；不要重做已验收交付物。
+2. 只是澄清/回答问题 → 直接在群聊回复，不提案。
+3. 需要继续开发 → 用 `project_propose_replan` 提交**增量计划**：
+   - 新增交付物使用全新 `name`/`key`，只追加，不删除/重命名已验收交付物；
+   - 新增工作项使用全新 `dedupeKey`（例如 `followup-<日期>-<主题>`），brief 写清复现步骤、期望行为、验收证据；
+   - 修复类工作项必须要求交付「根因、改动点、回归验证、交付文件/补丁」四段式说明（按项目技术栈，不限定 HTML）；
+   - 依赖只指向本计划内或既有工作项 id/key。
+4. owner 批准 plan vN+1 后平台自动物化增量并按依赖派发；不要另起项目，也不要要求 owner 手工新建任务。
+5. 增量完成后仍走 L1 技术验收 + L2 业务签核；项目再次完成需 owner 批准。
+
 ## 计划 schema（project_propose_plan）
 
 ```json
 {
   "deliverables": [
-    { "key": "d1", "name": "交付物名称", "description": "验收口径", "required": true, "channelId": "<成员频道 id>" }
+    { "key": "d1", "name": "交付物名称", "description": "验收口径", "required": true, "channelId": "<成员频道 id>", "acceptanceCriteria": ["artifact.present", "min_bytes:800", "text.contains:关键字"] }
   ],
   "work_items": [
-    { "key": "w1", "deliverableKey": "d1", "channelId": "<成员频道 id>", "title": "工作项", "brief": "brief/验收标准", "dependsOn": [], "execBudgetMinutes": 60 }
+    { "key": "w1", "deliverableKey": "d1", "channelId": "<成员频道 id>", "title": "工作项", "brief": "brief/执行要求", "dependsOn": [], "execBudgetMinutes": 60, "dedupeKey": "可选-增量幂等键", "acceptanceCriteria": ["artifact.present", "min_bytes:800", "text.contains:关键字"] }
   ]
 }
 ```
 
 必须使用 `project_list_channels` 返回的真实 channelId；禁止空泛交付物；依赖必须指向本计划内的工作项 key。
+交付物与工作项必须提供结构化 `acceptanceCriteria` 数组；不能用 description/brief 代替。可用的确定性检查：`artifact.present`、`min_bytes:N`、`text.contains:字符串`、`json.field:path=value`；其余自然语言交 L1 人工/评审判断。
 
 ## 当前交付物
 

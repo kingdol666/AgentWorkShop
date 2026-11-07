@@ -1,0 +1,103 @@
+{
+  "stamp": "kp12h",
+  "project": {
+    "id": "a1955fd9-e3ff-45fa-919d-a4fa1b61a576",
+    "name": "值班手册 · 连续验收 kp12h",
+    "description": "Ralph 新项目验收：小型 Markdown 交付 + 同一项目连续对话",
+    "objective": "为 AgentWorkShop 值班团队交付一份可执行值班手册（Markdown），覆盖日常巡检、故障升级、交接清单；随后在同一项目内通过 owner 对话补充 FAQ 增量。",
+    "successCriteriaJson": "[\"单文件 Markdown 值班手册\",\"覆盖巡检/升级/交接\",\"可通过同一项目继续补充 FAQ\"]",
+    "status": "draft",
+    "mode": "supervised",
+    "ownerUserId": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+    "officeChannelId": "2ba25c71-c4b3-42c2-a48b-df0d3c151cf1",
+    "leadAgentId": "5259f4ce-3418-4f2b-8007-8c68e52e693b",
+    "planVersion": 0,
+    "planJson": "{}",
+    "planApprovalRequired": 1,
+    "autoDispatch": 1,
+    "routingPolicy": "technical",
+    "configJson": "{\"leaderHarness\":\"omp\",\"routeGate\":\"none\"}",
+    "deadlineAt": null,
+    "createdAt": "2026-11-06T14:07:49.709+08:00",
+    "updatedAt": "2026-11-06T14:07:49.712+08:00"
+  },
+  "production": {
+    "channelId": "2a12401e-7738-4e08-bcc1-0410e8ad0189",
+    "leadAgentId": "252f95f6-3953-40f8-b40b-07164d7d3747",
+    "workspace": "D:\\codes\\ABO\\aw-router-v3\\data\\workspaces\\2a12401e-7738-4e08-bcc1-0410e8ad0189"
+  },
+  "review": {
+    "channelId": "7cf7c595-f191-461c-8985-f7cca205a653",
+    "leadAgentId": "4bc1f9c3-9008-4cfa-89c7-01277e687028",
+    "workspace": "D:\\codes\\ABO\\aw-router-v3\\data\\workspaces\\7cf7c595-f191-461c-8985-f7cca205a653"
+  },
+  "chat": {
+    "message": {
+      "id": "38074574-b1fd-46d5-a647-a0229bc4deec",
+      "channelId": "2ba25c71-c4b3-42c2-a48b-df0d3c151cf1",
+      "senderType": "user",
+      "senderId": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "senderName": "Router Owner",
+      "text": "请为项目「值班手册 · 连续验收 kp12h」制定 plan v1，只做 1 个交付物「值班手册」和 1 个工作项，交给生产 Channel 2a12401e-7738-4e08-bcc1-0410e8ad0189。交付必须是单文件 Markdown（800-1500 字），覆盖：日常巡检清单、故障升级路径、交接清单。验收标准：artifact.present、min_bytes:800、text.contains:值班。禁止写 HTML、禁止调研、禁止建多个交付物。请只调用 project_propose_plan 提交计划，等待 owner 批准。",
+      "mentions": [
+        {
+          "type": "agent",
+          "id": "5259f4ce-3418-4f2b-8007-8c68e52e693b",
+          "label": "Project Leader"
+        }
+      ],
+      "replyToId": null,
+      "requesterUserId": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "sourceChatMessageId": null,
+      "clientMessageId": "runbook-plan-kp12h",
+      "createdAt": "2026-11-06T14:07:49.794+08:00"
+    },
+    "deliveries": [
+      {
+        "deliveryId": "09971af8-51ae-441f-a8cc-14fbe7aef240",
+        "agentId": "5259f4ce-3418-4f2b-8007-8c68e52e693b",
+        "status": "delivered"
+      }
+    ],
+    "duplicates": false,
+    "unresolvedMentions": [],
+    "mentions": [
+      {
+        "type": "agent",
+        "id": "5259f4ce-3418-4f2b-8007-8c68e52e693b",
+        "label": "Project Leader"
+      }
+    ]
+  },
+  "binding": [
+    {
+      "projectId": "a1955fd9-e3ff-45fa-919d-a4fa1b61a576",
+      "channelId": "2a12401e-7738-4e08-bcc1-0410e8ad0189",
+      "bindingType": "user_bound",
+      "charter": "负责值班手册 Markdown 生产",
+      "status": "active",
+      "addedBy": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "addedAt": "2026-11-06T14:07:49.749+08:00",
+      "detachedAt": null
+    },
+    {
+      "projectId": "a1955fd9-e3ff-45fa-919d-a4fa1b61a576",
+      "channelId": "7cf7c595-f191-461c-8985-f7cca205a653",
+      "bindingType": "user_bound",
+      "charter": "独立 L1 技术评审",
+      "status": "active",
+      "addedBy": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "addedAt": "2026-11-06T14:07:49.755+08:00",
+      "detachedAt": null
+    }
+  ],
+  "createdVia": "POST /api/workshop/projects",
+  "creationRequest": {
+    "name": "值班手册 · 连续验收 kp12h",
+    "objective": "为 AgentWorkShop 值班团队交付一份可执行值班手册（Markdown），覆盖日常巡检、故障升级、交接清单；随后在同一项目内通过 owner 对话补充 FAQ 增量。",
+    "mode": "supervised",
+    "leaderHarness": "omp",
+    "autoDispatch": true,
+    "routingPolicy": "technical"
+  }
+}

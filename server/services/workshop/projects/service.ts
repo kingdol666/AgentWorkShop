@@ -72,6 +72,16 @@ export interface ProjectWriteVerdict {
   approvalId?: string
 }
 
+/** 项目持续开发：owner 在项目页把补充需求发给同一个 Project Leader。 */
+export interface ProjectContinuationResult {
+  project: ProjectRow
+  /** completed/paused → active 时为 true */
+  reopened: boolean
+  chatMessageId: string
+  deliveries: Array<{ deliveryId: string, agentId: string, status: string }>
+  duplicates: boolean
+}
+
 export interface NormalizedPlanDeliverable {
   key: string
   name: string
@@ -541,13 +551,18 @@ export class ProjectService {
     this.requireOwner(p, actor)
     const userId = input.userId?.trim()
     if (!userId) throw new AppError(400, 'BAD_REQUEST', 'userId 不能为空')
+    const requestedRole = input.role?.trim()
+    if (requestedRole !== undefined && requestedRole !== 'viewer' && requestedRole !== 'approver') {
+      throw new AppError(400, 'BAD_REQUEST', '项目成员 role 只能是 viewer 或 approver')
+    }
     if (userId === p.ownerUserId) throw new AppError(409, 'MEMBER_CONFLICT', 'owner 已隐式具有全部权限，不能重复添加')
     const existing = this.members.findOne(id, userId)
     if (existing) {
-      if (input.role && existing.role !== input.role) this.members.setRole(id, userId, input.role)
+      // 未传 role 的重复添加是幂等读，不得把现有 approver 静默降级为 viewer。
+      if (requestedRole && existing.role !== requestedRole) this.members.setRole(id, userId, requestedRole)
       return this.members.findOne(id, userId)!
     }
-    return this.members.add({ projectId: id, userId, role: input.role ?? 'viewer', addedBy: actor.id })
+    return this.members.add({ projectId: id, userId, role: requestedRole ?? 'viewer', addedBy: actor.id })
   }
 
   removeMember(id: string, userId: string, actor: ProjectActor): void {
@@ -651,6 +666,91 @@ export class ProjectService {
     this.requireOwner(p, actor)
     if (p.status !== 'paused') throw new AppError(409, 'PROJECT_STATE_INVALID', `Project 状态 ${p.status} 不能恢复`)
     return this.projects.update(id, { status: 'active' })!
+  }
+
+  /**
+   * 项目持续开发（owner-only）：把补充需求发给同一个 Project Leader，并允许
+   * completed/paused 项目回到 active。Leader 收到群聊消息后可调用
+   * project_propose_replan 追加增量交付物/工作项；owner 批准计划后走既有
+   * 物化 → 路由派发 → L1/L2 闭环，不另开新项目。
+   *
+   * 边界：
+   *  - 只新增“增量”，不删除/改写既有已验收交付物；
+   *  - archived 不可继续；draft 需先激活；
+   *  - 重新打开后仍受 plan 审批、验收门与审计约束。
+   */
+  async continueProject(id: string, actor: ProjectActor, input: {
+    message: string
+    clientMessageId?: string
+  }): Promise<ProjectContinuationResult> {
+    const p = this.get(id, actor)
+    this.requireOwner(p, actor)
+    if (p.status === 'archived') throw new AppError(409, 'PROJECT_STATE_INVALID', '已归档项目不能继续开发')
+    if (p.status === 'draft') throw new AppError(409, 'PROJECT_STATE_INVALID', '项目尚未激活；请先激活再继续开发')
+    if (!p.officeChannelId || !p.leadAgentId) {
+      throw new AppError(409, 'PROJECT_OFFICE_MISSING', '项目缺少办公室频道/Leader，不能继续开发')
+    }
+    const message = input.message?.trim()
+    if (!message) throw new AppError(400, 'BAD_REQUEST', '补充需求不能为空')
+    if (message.length > 8_000) throw new AppError(400, 'MESSAGE_TOO_LARGE', '补充需求超过 8000 字符上限')
+
+    const previousStatus = p.status
+    const reopened = p.status === 'completed' || p.status === 'paused'
+    if (reopened) this.projects.update(id, { status: 'active' })
+
+    try {
+      const chat = this.manager.sendChatMessage(p.officeChannelId, actor, {
+        text: message,
+        mentions: [{ type: 'agent', id: p.leadAgentId, label: 'Project Leader' }],
+        clientMessageId: input.clientMessageId?.trim() || undefined,
+      })
+      // sendChatMessage 对 mailbox 投递失败返回 status='failed' 而不是抛错；
+      // 这里必须把“消息落库但 Leader 收不到”视为失败：回滚项目状态并明确报错，
+      // 否则 owner 会看到“已重开”但 Leader 没有收到任何指令。
+      const leadDelivery = chat.deliveries.find(d => d.agentId === p.leadAgentId)
+      if (!leadDelivery || !['delivered', 'consumed'].includes(leadDelivery.status)) {
+        throw new AppError(502, 'MESSAGE_DELIVERY_FAILED', '补充需求已落库但未投递到 Project Leader；项目状态未改变，请稍后重试')
+      }
+      const args = {
+        messageId: chat.message.id,
+        reopened,
+        preview: message.slice(0, 200),
+      }
+      this.record(
+        id,
+        'project.followup_requested',
+        actor,
+        args,
+        `followup:${chat.message.id}`,
+        'project.followup_requested',
+        `project:${id}:followup:${chat.message.id}`,
+        { messageId: chat.message.id, channelId: p.officeChannelId, reopened, preview: args.preview },
+      )
+      if (reopened) {
+        this.record(
+          id,
+          'project.reopened',
+          actor,
+          { from: previousStatus, messageId: chat.message.id },
+          `followup:${chat.message.id}`,
+          'project.reopened',
+          `project:${id}:reopened:${chat.message.id}`,
+          { from: previousStatus, to: 'active', messageId: chat.message.id },
+        )
+      }
+      return {
+        project: this.projects.findById(id)!,
+        reopened,
+        chatMessageId: chat.message.id,
+        deliveries: chat.deliveries,
+        duplicates: chat.duplicates,
+      }
+    }
+    catch (err) {
+      // 群聊发送在落库前失败时，不留下“已重开但没有指令”的半状态。
+      if (reopened) this.projects.update(id, { status: previousStatus })
+      throw err
+    }
   }
 
   archive(id: string, actor: ProjectActor): ProjectRow {
@@ -1814,6 +1914,8 @@ export class ProjectService {
         }
       }
       else if (approval.kind === 'project_complete' && approve) {
+        // 审批可能在提交后被 supersede/reject/新增交付物推翻；决策时必须重跑完成门。
+        this.assertCompletionGates(id)
         this.projects.update(id, { status: 'completed' })
       }
       else if (approval.kind === 'plan_approval' && approve) {
@@ -1976,6 +2078,14 @@ export class ProjectService {
     const objective = patch.objective?.trim()
     if (objective !== undefined && !objective) throw new AppError(400, 'BAD_REQUEST', '目标不能为空')
     const config = parseJson<Record<string, unknown>>(p.configJson, {})
+    const nextConfig = { ...config }
+    if (patch.routeGate !== undefined) nextConfig.routeGate = patch.routeGate
+    if (patch.reviewerChannelId !== undefined) {
+      const reviewerChannelId = patch.reviewerChannelId.trim()
+      // JSON.stringify 会丢掉 undefined：清除必须 delete，不能写 undefined。
+      if (reviewerChannelId) nextConfig.reviewerChannelId = reviewerChannelId
+      else delete nextConfig.reviewerChannelId
+    }
     const next = this.projects.update(id, {
       ...(name !== undefined ? { name } : {}),
       ...(patch.description !== undefined ? { description: patch.description } : {}),
@@ -1983,17 +2093,7 @@ export class ProjectService {
       ...(patch.mode !== undefined ? { mode: patch.mode } : {}),
       ...(patch.autoDispatch !== undefined ? { autoDispatch: patch.autoDispatch ? 1 : 0 } : {}),
       ...(patch.routeGate !== undefined || patch.reviewerChannelId !== undefined
-        ? {
-            configJson: JSON.stringify({
-              ...config,
-              ...(patch.routeGate !== undefined ? { routeGate: patch.routeGate } : {}),
-              ...(patch.reviewerChannelId !== undefined
-                ? (patch.reviewerChannelId.trim()
-                    ? { reviewerChannelId: patch.reviewerChannelId.trim() }
-                    : { reviewerChannelId: undefined })
-                : {}),
-            }),
-          }
+        ? { configJson: JSON.stringify(nextConfig) }
         : {}),
     })
     if (!next) throw new AppError(404, 'NOT_FOUND', `Project 不存在: ${id}`)
@@ -2011,6 +2111,9 @@ export class ProjectService {
   }): ProjectDeliverableRow {
     const p = this.get(id, actor)
     this.requireOwner(p, actor)
+    if (p.status === 'completed' || p.status === 'archived') {
+      throw new AppError(409, 'PROJECT_STATE_INVALID', `Project 状态 ${p.status} 不能编辑交付物`)
+    }
     const d = this.deliverables.findById(deliverableId)
     if (!d || d.projectId !== id) throw new AppError(404, 'NOT_FOUND', '交付物不存在或不属于该项目')
     if (!['planned', 'rejected'].includes(d.status)) {
@@ -3763,7 +3866,14 @@ export class ProjectService {
     if (p.officeChannelId === channelId) throw new AppError(400, 'PROJECT_OFFICE_NOT_MEMBER', '不能解绑项目办公室')
     const b = this.bindings.findOne(id, channelId)
     if (!b || b.status !== 'active') throw new AppError(404, 'NOT_FOUND', 'Channel 未绑定到该项目')
+    // 项目组修改不能把正在执行的工作项悬空：先取消/完成或改派，再解绑。
+    const open = this.workItems.listByProject(id)
+      .filter(w => w.channelId === channelId && !['COMPLETED', 'CANCELED', 'SUPERSEDED'].includes(w.state))
+    if (open.length > 0) {
+      throw new AppError(409, 'CHANNEL_HAS_ACTIVE_WORK', `该 Channel 仍有 ${open.length} 个未终态工作项，不能解绑`)
+    }
     this.bindings.setStatus(id, channelId, 'detached')
+    this.record(id, 'channel.detached', actor, { channelId }, '', 'channel.detached', `project:${id}:channel:${channelId}:detached`, { channelId })
   }
 
   /** REST 删除/禁用/替换 lead 前调用：active 项目的办公室频道不可变。 */

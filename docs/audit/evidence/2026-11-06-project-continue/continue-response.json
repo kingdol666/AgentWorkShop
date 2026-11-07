@@ -1,0 +1,37 @@
+{
+  "code": 0,
+  "message": "ok",
+  "data": {
+    "project": {
+      "id": "58576fb2-4642-4b65-b636-54c9eb8fa41a",
+      "name": "星际撤离 · HTML 游戏",
+      "description": "",
+      "objective": "由 Project Leader 分发、策划/美术/开发三个 Channel 协同，交付一个单文件可玩 HTML 游戏（独立图形、3 关卡、计分与重开），验收由独立评审 Channel 执行。",
+      "successCriteriaJson": "[\"单文件离线可玩\",\"独立 SVG/Canvas 图形\",\"3 关卡与计分\",\"策划/美术/开发协作留痕\",\"评审 Channel 技术验收\"]",
+      "status": "active",
+      "mode": "supervised",
+      "ownerUserId": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "officeChannelId": "bc4f1332-c06a-4647-ad18-39ed5a51fc6f",
+      "leadAgentId": "24b2bc33-957e-4eeb-a841-2645e1bffff0",
+      "planVersion": 1,
+      "planJson": "{\"deliverables\":[{\"key\":\"design\",\"name\":\"游戏策划案\",\"description\":\"精简可落地策划案：玩法循环/3关卡/键位/计分胜负/美术方向/数值表\",\"required\":true,\"channelId\":\"9ac1919f-c8d3-405f-89bc-c524d309de94\",\"acceptanceCriteria\":[\"artifact.present\",\"text.contains:玩法\"]},{\"key\":\"art\",\"name\":\"美术资源包\",\"description\":\"单文件内联 SVG/CSS 资源包（≤10KB），覆盖玩家/敌机/Boss/子弹粒子等 ≥4 个 SVG 与配色\",\"required\":true,\"channelId\":\"bbfb670a-fc6f-4c4c-bbfc-256a0505074c\",\"dependsOn\":[\"design\"],\"acceptanceCriteria\":[\"artifact.present\",\"text.contains:<svg\"]},{\"key\":\"game\",\"name\":\"可玩 HTML 游戏\",\"description\":\"单文件离线可玩 HTML 游戏（8-14KB）：内联 SVG/canvas、3关卡、敌机生成、碰撞、计分、生命、暂停/重开、game over\",\"required\":true,\"channelId\":\"89d72e64-3782-43c9-b207-545bdcaa6b55\",\"dependsOn\":[\"design\",\"art\"],\"acceptanceCriteria\":[\"text.contains:<!DOCTYPE\",\"text.contains:<canvas\",\"min_bytes:8000\",\"text.contains:score\"]}],\"work_items\":[{\"key\":\"w1\",\"deliverableKey\":\"design\",\"channelId\":\"9ac1919f-c8d3-405f-89bc-c524d309de94\",\"title\":\"游戏策划案\",\"resultKey\":\"main\",\"execBudgetMinutes\":20,\"dependsOn\":[],\"brief\":\"产出精简可落地策划案（1000-1500字）：玩法循环/3关卡/键位/计分胜负/美术方向/数值表；不要调研，完成时 complete_task 全文放 deliverable。\"},{\"key\":\"w2\",\"deliverableKey\":\"art\",\"channelId\":\"bbfb670a-fc6f-4c4c-bbfc-256a0505074c\",\"title\":\"美术资源包（内联 SVG/CSS）\",\"dependsOn\":[\"w1\"],\"resultKey\":\"main\",\"execBudgetMinutes\":25,\"contract\":{\"inputs\":[{\"workItemKey\":\"w1\"}]},\"brief\":\"按策划案美术方向产出单文件资源包（≤10KB）：玩家/敌机/Boss/子弹粒子 ≥4 个内联 SVG + CSS 配色；不要调研，完成时 complete_task 全文放 deliverable。\"},{\"key\":\"w3\",\"deliverableKey\":\"game\",\"channelId\":\"89d72e64-3782-43c9-b207-545bdcaa6b55\",\"title\":\"游戏 HTML 实现\",\"dependsOn\":[\"w1\",\"w2\"],\"resultKey\":\"main\",\"execBudgetMinutes\":45,\"contract\":{\"inputs\":[{\"workItemKey\":\"w1\"},{\"workItemKey\":\"w2\"}]},\"brief\":\"按策划案+美术包实现单文件可玩 HTML 游戏（8-14KB）：内联 SVG/canvas，3关卡、键鼠操作、敌机生成、碰撞、计分、生命、暂停/重开、game over、粒子/屏幕震动；不要调研，完整源码全文放 complete_task 的 deliverable。\"}]}",
+      "planApprovalRequired": 1,
+      "autoDispatch": 1,
+      "routingPolicy": "technical",
+      "configJson": "{\"leaderHarness\":\"omp\"}",
+      "deadlineAt": null,
+      "createdAt": "2026-11-05T22:03:37.124+08:00",
+      "updatedAt": "2026-11-06T10:25:01.368+08:00"
+    },
+    "reopened": true,
+    "chatMessageId": "9552661f-28df-48e7-97be-b4519b60b635",
+    "deliveries": [
+      {
+        "deliveryId": "d36fde2f-a0ae-4b26-8e92-9f18fd39f18a",
+        "agentId": "24b2bc33-957e-4eeb-a841-2645e1bffff0",
+        "status": "delivered"
+      }
+    ],
+    "duplicates": false
+  }
+}

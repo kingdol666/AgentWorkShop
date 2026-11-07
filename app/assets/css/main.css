@@ -19,6 +19,15 @@
  *   图标微交互走 --im-spring(charter 例外);prefers-reduced-motion 全局收敛。
  * ============================================================ */
 
+/* 原生控件配色跟随主题：暗色下 select 弹层 / 滚动条 / 日期控件不再闪白。 */
+html {
+  color-scheme: light;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
 :root {
   /* 唯一主动作:墨色药丸(ink pill) */
   --accent: #292524;
@@ -1414,6 +1423,117 @@ ul.task-list {
 
 .ant-radio-button-wrapper {
   border-radius: var(--radius-chip) !important;
+}
+
+/* ── 原生 select 基线（全站）────────────────────────────────────────────
+ * 为什么必须 appearance:none：Windows Chromium 对 appearance:auto 的 select
+ * 会绘制 OS 的浅色按钮面，即使作者写了 background:transparent/深色令牌 ——
+ * 暗色主题下就出现“白底黑字下拉框”，且各页各写一遍也修不齐（实测 /studio、
+ * /analysis、/logs、/daq 都有）。这里撤掉原生外观，统一用令牌表面 + CSS 雪佛龙；
+ * 组件内更高特异度的 .input/.inp-sel 仍可覆盖尺寸与圆角。 */
+select:not(.ant-select) {
+  padding-right: 28px !important;
+  color: var(--ink);
+  appearance: none;
+  background-color: var(--paper-raised);
+  /* 组件内 `background: transparent` 简写会重置 image；雪佛龙必须用 !important，
+   * 否则 appearance:none 后下拉框连箭头都没有。 */
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--ink-faint) 50%),
+    linear-gradient(135deg, var(--ink-faint) 50%, transparent 50%) !important;
+  background-repeat: no-repeat !important;
+  background-position:
+    calc(100% - 13px) center,
+    calc(100% - 9px) center !important;
+  background-size: 4px 4px, 4px 4px !important;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-control);
+}
+
+select:not(.ant-select):hover {
+  border-color: var(--ink-fainter);
+}
+
+select:not(.ant-select):focus {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+/* 弹层选项在 Windows Chromium 上仍由原生 popup 绘制，但会读取 option 的
+ * 背景/前景；不写这两行，暗色下展开列表依旧是白底黑字。 */
+select:not(.ant-select) option {
+  color: var(--ink);
+  background-color: var(--paper-raised);
+}
+
+select:not(.ant-select):disabled {
+  color: var(--ink-faint);
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+/* Windows Chromium 的 select 弹层由 OS 原生菜单绘制，option 背景/color-scheme
+ * 都改不了它 —— 暗色下展开仍是白底。Chrome 135+ 的 customizable select
+ * （appearance: base-select）把弹层交回 HTML，才能用令牌完整接管；
+ * 不支持的浏览器自动落回上面的原生基线 + color-scheme。 */
+@supports (appearance: base-select) {
+  select:not(.ant-select),
+  select:not(.ant-select)::picker(select) {
+    appearance: base-select;
+  }
+
+  select:not(.ant-select) {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    justify-content: space-between;
+    padding-right: 8px !important;
+    background-image: none !important;
+  }
+
+  select:not(.ant-select)::picker-icon {
+    flex: 0 0 auto;
+    margin-left: 6px;
+    font-size: 10px;
+    color: var(--ink-faint);
+    transition: transform var(--transition-fast);
+  }
+
+  select:not(.ant-select):open::picker-icon {
+    transform: rotate(180deg);
+  }
+
+  select:not(.ant-select)::picker(select) {
+    padding: 4px;
+    margin-top: 4px;
+    color: var(--ink);
+    background: var(--paper-raised);
+    border: 1px solid var(--line-strong);
+    border-radius: var(--radius-control);
+    box-shadow: var(--shadow-lift-2);
+  }
+
+  select:not(.ant-select) option {
+    padding: 6px 10px;
+    color: var(--ink);
+    background: transparent;
+    border-radius: var(--radius-chip);
+  }
+
+  select:not(.ant-select) option:hover,
+  select:not(.ant-select) option:focus-visible {
+    background: var(--hover-tint);
+  }
+
+  select:not(.ant-select) option:checked {
+    color: var(--accent);
+    background: var(--accent-soft);
+  }
+
+  select:not(.ant-select) option::checkmark {
+    color: var(--accent);
+  }
 }
 
 /* 表单控件:8px 圆角 + 主色聚焦环 */

@@ -1,0 +1,19 @@
+{
+  "code": 0,
+  "message": "ok",
+  "data": {
+    "messageId": "7b2da4e0-32da-4482-b374-491f1e57cdda",
+    "contextId": "89d72e64-3782-43c9-b207-545bdcaa6b55",
+    "role": "ROLE_AGENT",
+    "parts": [
+      {
+        "text": "【owner steer】停止“一次性重写整个 HTML”。请改用增量 edit：基于现有 game.html 做最小改动，先完成触屏控制+失焦清键并立即 edit 落盘，再补 DPR 与 debug 门控。不要输出完整文件；每改一处就 edit 写盘。完成后 complete_task 引用 game.html 并附四段式说明。"
+      }
+    ],
+    "metadata": {
+      "x-aw-target-agent": "a993b4b5-a297-4a36-90c5-2425944ed6e4",
+      "x-aw-msg-priority": "immediate",
+      "x-aw-from-label": "Router Owner"
+    }
+  }
+}

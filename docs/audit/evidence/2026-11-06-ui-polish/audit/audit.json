@@ -1,0 +1,210 @@
+[
+  {
+    "vw": 390,
+    "vh": 844,
+    "scrollW": 390,
+    "scrollH": 885,
+    "counts": {},
+    "total": 0,
+    "contrastChecked": 15,
+    "contrastWorst": {
+      "ratio": 7.62,
+      "el": "p.aw-kicker",
+      "text": "workshop / overview",
+      "px": 11.5
+    },
+    "issues": [],
+    "bom": {
+      "sidebarW": 264,
+      "headerH": 56,
+      "contentLeft": 20
+    },
+    "route": "workshop",
+    "path": "/workshop",
+    "vp": "sm-390",
+    "theme": "dark",
+    "pageErrors": []
+  },
+  {
+    "vw": 390,
+    "vh": 844,
+    "scrollW": 390,
+    "scrollH": 844,
+    "counts": {},
+    "total": 0,
+    "contrastChecked": 15,
+    "contrastWorst": {
+      "ratio": 7.13,
+      "el": "td.empty",
+      "text": "暂无分析报告 —— Agent 在频道内调用 analysis_save 留痕后",
+      "px": 12.5
+    },
+    "issues": [],
+    "bom": {
+      "sidebarW": 264,
+      "headerH": 56,
+      "contentLeft": 20
+    },
+    "route": "analysis",
+    "path": "/analysis",
+    "vp": "sm-390",
+    "theme": "dark",
+    "pageErrors": []
+  },
+  {
+    "vw": 390,
+    "vh": 844,
+    "scrollW": 390,
+    "scrollH": 1374,
+    "counts": {},
+    "total": 0,
+    "contrastChecked": 44,
+    "contrastWorst": {
+      "ratio": 7.13,
+      "el": "p.pe-sub",
+      "text": "暂无数采节点 —— 在数字孪生空间从左轨「数采节点 · DAQ」拖入即可(ser",
+      "px": 13.5
+    },
+    "issues": [],
+    "bom": {
+      "sidebarW": 264,
+      "headerH": 56,
+      "contentLeft": 20
+    },
+    "route": "daq",
+    "path": "/daq",
+    "vp": "sm-390",
+    "theme": "dark",
+    "pageErrors": []
+  },
+  {
+    "vw": 390,
+    "vh": 844,
+    "scrollW": 390,
+    "scrollH": 863,
+    "counts": {},
+    "total": 0,
+    "contrastChecked": 18,
+    "contrastWorst": {
+      "ratio": 7.62,
+      "el": "p.aw-kicker",
+      "text": "agentworkshop / audit log",
+      "px": 11.5
+    },
+    "issues": [],
+    "bom": {
+      "sidebarW": 264,
+      "headerH": 56,
+      "contentLeft": 20
+    },
+    "route": "logs",
+    "path": "/logs",
+    "vp": "sm-390",
+    "theme": "dark",
+    "pageErrors": []
+  },
+  {
+    "vw": 1440,
+    "vh": 900,
+    "scrollW": 1440,
+    "scrollH": 900,
+    "counts": {},
+    "total": 0,
+    "contrastChecked": 51,
+    "contrastWorst": {
+      "ratio": 5.71,
+      "el": "span.logo-sub",
+      "text": "digital twin",
+      "px": 11
+    },
+    "issues": [],
+    "bom": {
+      "sidebarW": 228,
+      "headerH": 56,
+      "contentLeft": 248
+    },
+    "route": "workshop",
+    "path": "/workshop",
+    "vp": "desktop-1440",
+    "theme": "dark",
+    "pageErrors": []
+  },
+  {
+    "vw": 1440,
+    "vh": 900,
+    "scrollW": 1440,
+    "scrollH": 900,
+    "counts": {},
+    "total": 0,
+    "contrastChecked": 58,
+    "contrastWorst": {
+      "ratio": 5.71,
+      "el": "span.logo-sub",
+      "text": "digital twin",
+      "px": 11
+    },
+    "issues": [],
+    "bom": {
+      "sidebarW": 228,
+      "headerH": 56,
+      "contentLeft": 248
+    },
+    "route": "analysis",
+    "path": "/analysis",
+    "vp": "desktop-1440",
+    "theme": "dark",
+    "pageErrors": []
+  },
+  {
+    "vw": 1440,
+    "vh": 900,
+    "scrollW": 1440,
+    "scrollH": 951,
+    "counts": {},
+    "total": 0,
+    "contrastChecked": 80,
+    "contrastWorst": {
+      "ratio": 5.71,
+      "el": "span.logo-sub",
+      "text": "digital twin",
+      "px": 11
+    },
+    "issues": [],
+    "bom": {
+      "sidebarW": 228,
+      "headerH": 56,
+      "contentLeft": 248
+    },
+    "route": "daq",
+    "path": "/daq",
+    "vp": "desktop-1440",
+    "theme": "dark",
+    "pageErrors": []
+  },
+  {
+    "vw": 1440,
+    "vh": 900,
+    "scrollW": 1440,
+    "scrollH": 900,
+    "counts": {},
+    "total": 0,
+    "contrastChecked": 61,
+    "contrastWorst": {
+      "ratio": 5.71,
+      "el": "span.logo-sub",
+      "text": "digital twin",
+      "px": 11
+    },
+    "issues": [],
+    "bom": {
+      "sidebarW": 228,
+      "headerH": 56,
+      "contentLeft": 248
+    },
+    "route": "logs",
+    "path": "/logs",
+    "vp": "desktop-1440",
+    "theme": "dark",
+    "pageErrors": []
+  }
+]

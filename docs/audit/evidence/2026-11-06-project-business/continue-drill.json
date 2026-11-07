@@ -1,0 +1,37 @@
+{
+  "code": 0,
+  "message": "ok",
+  "data": {
+    "project": {
+      "id": "a1955fd9-e3ff-45fa-919d-a4fa1b61a576",
+      "name": "值班手册 · 连续验收 kp12h+业务复核",
+      "description": "Project 业务逻辑验收：项目组修改/派发/继续对话",
+      "objective": "为 AgentWorkShop 值班团队交付一份可执行值班手册（Markdown），覆盖日常巡检、故障升级、交接清单；随后在同一项目内通过 owner 对话补充 FAQ 增量。",
+      "successCriteriaJson": "[\"单文件 Markdown 值班手册\",\"覆盖巡检/升级/交接\",\"可通过同一项目继续补充 FAQ\"]",
+      "status": "active",
+      "mode": "supervised",
+      "ownerUserId": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "officeChannelId": "2ba25c71-c4b3-42c2-a48b-df0d3c151cf1",
+      "leadAgentId": "5259f4ce-3418-4f2b-8007-8c68e52e693b",
+      "planVersion": 2,
+      "planJson": "{\"deliverables\":[{\"key\":\"d-handbook\",\"name\":\"值班手册\",\"description\":\"单文件 Markdown 值班手册（800-1500 字），必须覆盖三部分：日常巡检清单、故障升级路径、交接清单。验收口径：artifact.present；min_bytes:800；text.contains:值班。禁止 HTML、禁止外部调研、禁止拆分多交付物。\",\"required\":true,\"channelId\":\"2a12401e-7738-4e08-bcc1-0410e8ad0189\",\"acceptanceCriteria\":[\"artifact.present\",\"min_bytes:800\",\"text.contains:值班\"]},{\"key\":\"d-faq\",\"name\":\"值班手册 FAQ 增量\",\"description\":\"在已验收 v1 值班手册基础上追加 FAQ 增量：问答 5 条，覆盖常见故障、升级、回滚、审批、交接；单文件 Markdown，正文 ≥1000 字。必须出现关键字 FAQ、升级、回滚。不重做 v1、不写 HTML、不做外部调研。验收口径：artifact.present；min_bytes:1000；text.contains:FAQ；text.contains:升级；text.contains:回滚；text.contains:交接。\",\"required\":true,\"channelId\":\"2a12401e-7738-4e08-bcc1-0410e8ad0189\",\"acceptanceCriteria\":[\"artifact.present\",\"min_bytes:1000\",\"text.contains:FAQ\",\"text.contains:升级\",\"text.contains:回滚\",\"text.contains:交接\"]}],\"work_items\":[{\"key\":\"w-handbook\",\"deliverableKey\":\"d-handbook\",\"channelId\":\"2a12401e-7738-4e08-bcc1-0410e8ad0189\",\"title\":\"编写值班手册单文件 Markdown（800-1500 字，覆盖巡检/升级/交接）\",\"brief\":\"【目标】产出一份可直接执行的值班手册，单文件 Markdown，正文 800-1500 字（中文字符计数）。\\n【必含结构】1) 日常巡检清单：按班次列出检查项、判断阈值、异常时第一动作；2) 故障升级路径：分级（P1/P2/P3）→ 触发条件 → 通知对象 → 升级时限 → 止损手段；3) 交接清单：交接前须确认的状态、遗留问题、待跟踪事项与责任人。\\n【验收标准】artifact.present；min_bytes:800；text.contains:值班。字数超上限 1500 字按不通过处理。\\n【禁止】输出 HTML；不做外部调研/联网检索；不拆成多个交付物或多文件。\\n【交付】单个 .md 文件，并在结果中说明文件路径与字数统计。\",\"dependsOn\":[],\"execBudgetMinutes\":60,\"dedupeKey\":\"kp12h-handbook-v1\",\"acceptanceCriteria\":[\"artifact.present\",\"min_bytes:800\",\"text.contains:值班\"]},{\"key\":\"w-faq\",\"deliverableKey\":\"d-faq\",\"channelId\":\"2a12401e-7738-4e08-bcc1-0410e8ad0189\",\"title\":\"编写值班手册 FAQ 增量（5 条问答，≥1000 字）\",\"brief\":\"【基线】v1 已验收：artifact oncall-runbook.md，3,651B，CJK 969 字（成果结果 id d2f2c580-93ba-409e-8880-cae28ee4660b）。本工作项只做增量，不重写、不复制、不重登 v1 交付物。\\n【目标】同目录产出新的单文件 Markdown（如 oncall-runbook-faq.md），正文 ≥1000 个中文字符，且必须包含以下关键字：FAQ、升级、回滚、交接。\\n【必含结构】FAQ 问答 5 条，一一对应五个主题：1) 常见故障（现象→判定→处置）；2) 升级（何时升级、通知谁、时限）；3) 回滚（触发条件、回滚步骤、回滚后确认）；4) 审批（哪些写操作必须人工审批、驳回后怎么办）；5) 交接（交接时 FAQ 相关要点与遗留项）。每条问答须给出可直接照做的步骤或判定标准，避免泛泛而谈。\\n【验收标准】artifact.present；min_bytes:1000；text.contains:FAQ；text.contains:升级；text.contains:回滚；text.contains:交接。正文不足 1000 字按不通过处理。\\n【禁止】输出 HTML；不联网/不做外部调研；不修改已验收 v1 文件内容；不拆多个交付物或多文件。\\n【交付】单个 .md 文件；结果中说明文件路径、CJK 字数、FAQ 条数与五个主题的覆盖位置。\",\"dependsOn\":[],\"execBudgetMinutes\":60,\"dedupeKey\":\"followup-runbook-faq-kp12h\",\"acceptanceCriteria\":[\"artifact.present\",\"min_bytes:1000\",\"text.contains:FAQ\",\"text.contains:升级\",\"text.contains:回滚\",\"text.contains:交接\"]}]}",
+      "planApprovalRequired": 1,
+      "autoDispatch": 1,
+      "routingPolicy": "technical",
+      "configJson": "{\"leaderHarness\":\"omp\",\"routeGate\":\"none\"}",
+      "deadlineAt": null,
+      "createdAt": "2026-11-06T14:07:49.709+08:00",
+      "updatedAt": "2026-11-06T16:44:14.937+08:00"
+    },
+    "reopened": true,
+    "chatMessageId": "d832e95f-b1e9-49e4-b059-d4fce3018386",
+    "deliveries": [
+      {
+        "deliveryId": "9c241fbb-58e1-44d6-b313-40aac7939826",
+        "agentId": "5259f4ce-3418-4f2b-8007-8c68e52e693b",
+        "status": "delivered"
+      }
+    ],
+    "duplicates": false
+  }
+}

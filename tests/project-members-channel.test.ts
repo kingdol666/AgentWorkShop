@@ -86,11 +86,18 @@ test('成员 CRUD：owner 可加/改/删/列；非 owner 不可写；成员可�
     // 重复添加 → 幂等返回；role 变更走 setRole
     const again = s.svc.addMember(s.p.id, s.owner, { userId: s.viewer.id, role: 'approver' })
     assert.equal(again.role, 'approver')
+    // 未带 role 的重复添加不得把 approver 静默降级
+    assert.equal(s.svc.addMember(s.p.id, s.owner, { userId: s.viewer.id }).role, 'approver')
     assert.equal(s.svc.listMembers(s.p.id, s.owner).length, 1)
     // owner 不能把自己加为成员
     assert.throws(
       () => s.svc.addMember(s.p.id, s.owner, { userId: 'u-owner' }),
       (e: unknown) => (e as { code?: string }).code === 'MEMBER_CONFLICT',
+    )
+    // 角色白名单：任意字符串不得落库
+    assert.throws(
+      () => s.svc.addMember(s.p.id, s.owner, { userId: 'u-bad-role', role: 'owner' }),
+      (e: unknown) => (e as { code?: string }).code === 'BAD_REQUEST',
     )
     // viewer 可读项目（此前会 403）
     assert.equal(s.svc.get(s.p.id, s.viewer).id, s.p.id)
@@ -198,6 +205,29 @@ test('M5：leader 建频道提案 → owner 应用 → 频道创建并绑定；�
       () => s.svc.applyProposal(s.p.id, proposed.proposalId, s.owner),
       (e: unknown) => (e as { code?: string }).code === 'PROPOSAL_STATE_INVALID',
     )
+  }
+  finally {
+    s.db.close()
+  }
+})
+
+test('项目组修改：Channel 有未终态工作项时禁止解绑；取消后可解绑', async () => {
+  const s = await setup()
+  try {
+    const wi = s.svc.createWorkItem(s.p.id, s.owner, {
+      deliverableId: s.d.id,
+      channelId: s.member.channelId,
+      title: '进行中的工作项',
+    })
+    assert.throws(
+      () => s.svc.unbindChannel(s.p.id, s.member.channelId, s.owner),
+      (e: unknown) => (e as { code?: string }).code === 'CHANNEL_HAS_ACTIVE_WORK',
+    )
+    s.svc.cancelWorkItem(s.p.id, wi.id, s.owner, '测试收口')
+    s.svc.unbindChannel(s.p.id, s.member.channelId, s.owner)
+    const binding = s.svc.listChannels(s.p.id, s.owner).find(b => b.channelId === s.member.channelId)
+    assert.equal(binding?.status, 'detached')
+    assert.ok(s.svc.listEvents(s.p.id, s.owner).some(e => e.type === 'channel.detached'))
   }
   finally {
     s.db.close()

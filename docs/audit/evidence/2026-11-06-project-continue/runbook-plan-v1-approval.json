@@ -1,0 +1,52 @@
+{
+  "approve": {
+    "code": 0,
+    "message": "ok",
+    "data": {
+      "id": "5c2baf16-57f1-4d90-b0f2-d1f801162d29",
+      "projectId": "a1955fd9-e3ff-45fa-919d-a4fa1b61a576",
+      "kind": "plan_approval",
+      "subjectType": "plan",
+      "subjectId": "plan:a1955fd9-e3ff-45fa-919d-a4fa1b61a576:1",
+      "subjectVersion": 1,
+      "status": "approved",
+      "requestedByAgentId": "5259f4ce-3418-4f2b-8007-8c68e52e693b",
+      "requestedByUserId": null,
+      "payloadJson": "{\"deliverables\":[{\"key\":\"d-handbook\",\"name\":\"值班手册\",\"description\":\"单文件 Markdown 值班手册（800-1500 字），必须覆盖三部分：日常巡检清单、故障升级路径、交接清单。验收口径：artifact.present；min_bytes:800；text.contains:值班。禁止 HTML、禁止外部调研、禁止拆分多交付物。\",\"required\":true,\"channelId\":\"2a12401e-7738-4e08-bcc1-0410e8ad0189\"}],\"work_items\":[{\"key\":\"w-handbook\",\"deliverableKey\":\"d-handbook\",\"channelId\":\"2a12401e-7738-4e08-bcc1-0410e8ad0189\",\"title\":\"编写值班手册单文件 Markdown（800-1500 字，覆盖巡检/升级/交接）\",\"brief\":\"【目标】产出一份可直接执行的值班手册，单文件 Markdown，正文 800-1500 字（中文字符计数）。\\n【必含结构】1) 日常巡检清单：按班次列出检查项、判断阈值、异常时第一动作；2) 故障升级路径：分级（P1/P2/P3）→ 触发条件 → 通知对象 → 升级时限 → 止损手段；3) 交接清单：交接前须确认的状态、遗留问题、待跟踪事项与责任人。\\n【验收标准】artifact.present；min_bytes:800；text.contains:值班。字数超上限 1500 字按不通过处理。\\n【禁止】输出 HTML；不做外部调研/联网检索；不拆成多个交付物或多文件。\\n【交付】单个 .md 文件，并在结果中说明文件路径与字数统计。\",\"dependsOn\":[],\"execBudgetMinutes\":60,\"dedupeKey\":\"kp12h-handbook-v1\"}]}",
+      "argsDigest": "",
+      "reason": "project plan proposal",
+      "decisionReason": "Ralph 验收：批准 plan v1",
+      "decidedByUserId": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "consumedAt": null,
+      "traceId": "plan:a1955fd9-e3ff-45fa-919d-a4fa1b61a576:1",
+      "expiresAt": "2026-11-07T14:10:25.908+08:00",
+      "createdAt": "2026-11-06T14:10:25.908+08:00",
+      "decidedAt": "2026-11-06T14:10:40.984+08:00"
+    }
+  },
+  "activate": {
+    "code": 0,
+    "message": "ok",
+    "data": {
+      "id": "a1955fd9-e3ff-45fa-919d-a4fa1b61a576",
+      "name": "值班手册 · 连续验收 kp12h",
+      "description": "Ralph 新项目验收：小型 Markdown 交付 + 同一项目连续对话",
+      "objective": "为 AgentWorkShop 值班团队交付一份可执行值班手册（Markdown），覆盖日常巡检、故障升级、交接清单；随后在同一项目内通过 owner 对话补充 FAQ 增量。",
+      "successCriteriaJson": "[\"单文件 Markdown 值班手册\",\"覆盖巡检/升级/交接\",\"可通过同一项目继续补充 FAQ\"]",
+      "status": "active",
+      "mode": "supervised",
+      "ownerUserId": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "officeChannelId": "2ba25c71-c4b3-42c2-a48b-df0d3c151cf1",
+      "leadAgentId": "5259f4ce-3418-4f2b-8007-8c68e52e693b",
+      "planVersion": 1,
+      "planJson": "{\"deliverables\":[{\"key\":\"d-handbook\",\"name\":\"值班手册\",\"description\":\"单文件 Markdown 值班手册（800-1500 字），必须覆盖三部分：日常巡检清单、故障升级路径、交接清单。验收口径：artifact.present；min_bytes:800；text.contains:值班。禁止 HTML、禁止外部调研、禁止拆分多交付物。\",\"required\":true,\"channelId\":\"2a12401e-7738-4e08-bcc1-0410e8ad0189\"}],\"work_items\":[{\"key\":\"w-handbook\",\"deliverableKey\":\"d-handbook\",\"channelId\":\"2a12401e-7738-4e08-bcc1-0410e8ad0189\",\"title\":\"编写值班手册单文件 Markdown（800-1500 字，覆盖巡检/升级/交接）\",\"brief\":\"【目标】产出一份可直接执行的值班手册，单文件 Markdown，正文 800-1500 字（中文字符计数）。\\n【必含结构】1) 日常巡检清单：按班次列出检查项、判断阈值、异常时第一动作；2) 故障升级路径：分级（P1/P2/P3）→ 触发条件 → 通知对象 → 升级时限 → 止损手段；3) 交接清单：交接前须确认的状态、遗留问题、待跟踪事项与责任人。\\n【验收标准】artifact.present；min_bytes:800；text.contains:值班。字数超上限 1500 字按不通过处理。\\n【禁止】输出 HTML；不做外部调研/联网检索；不拆成多个交付物或多文件。\\n【交付】单个 .md 文件，并在结果中说明文件路径与字数统计。\",\"dependsOn\":[],\"execBudgetMinutes\":60,\"dedupeKey\":\"kp12h-handbook-v1\"}]}",
+      "planApprovalRequired": 1,
+      "autoDispatch": 1,
+      "routingPolicy": "technical",
+      "configJson": "{\"leaderHarness\":\"omp\",\"routeGate\":\"none\"}",
+      "deadlineAt": null,
+      "createdAt": "2026-11-06T14:07:49.709+08:00",
+      "updatedAt": "2026-11-06T14:10:41.018+08:00"
+    }
+  }
+}

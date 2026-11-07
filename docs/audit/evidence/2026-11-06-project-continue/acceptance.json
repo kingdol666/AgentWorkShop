@@ -1,0 +1,365 @@
+{
+  "generatedAt": "2026-11-06T06:04:02.985Z",
+  "project": {
+    "id": "58576fb2-4642-4b65-b636-54c9eb8fa41a",
+    "name": "星际撤离 · HTML 游戏",
+    "status": "completed",
+    "plan_version": 2,
+    "auto_dispatch": 1,
+    "routing_policy": "technical"
+  },
+  "deliverables": [
+    {
+      "id": "cd49ccd8-e1b0-4b6e-a86d-9a4e4b4824df",
+      "name": "游戏策划案",
+      "status": "approved",
+      "required": 1
+    },
+    {
+      "id": "36435b9e-9635-4af0-b9fd-eadc9834e952",
+      "name": "美术资源包",
+      "status": "approved",
+      "required": 1
+    },
+    {
+      "id": "5a82a929-ec2c-402f-8adc-170f69828dfe",
+      "name": "可玩 HTML 游戏",
+      "status": "approved",
+      "required": 1
+    },
+    {
+      "id": "4f439147-3e41-4231-b87f-c369fb0da77a",
+      "name": "ARK-7 可用性修复版",
+      "status": "approved",
+      "required": 1
+    }
+  ],
+  "workItems": [
+    {
+      "id": "c2b96967-354e-4188-bc58-d888776e47d7",
+      "title": "美术资源包（内联 SVG/CSS）",
+      "state": "COMPLETED",
+      "result_key": "main",
+      "dedupe_key": "art:bbfb670a-fc6f-4c4c-bbfc-256a0505074c:美术资源包（内联 SVG/CSS）"
+    },
+    {
+      "id": "546d4705-0e7c-48a5-85b6-b6ccf27b3688",
+      "title": "游戏策划案",
+      "state": "COMPLETED",
+      "result_key": "main",
+      "dedupe_key": "design:9ac1919f-c8d3-405f-89bc-c524d309de94:游戏策划案"
+    },
+    {
+      "id": "10ae13b8-461d-4fdb-9ab8-e0688ffec198",
+      "title": "游戏 HTML 实现",
+      "state": "COMPLETED",
+      "result_key": "main",
+      "dedupe_key": "game:89d72e64-3782-43c9-b207-545bdcaa6b55:游戏 HTML 实现"
+    },
+    {
+      "id": "1fe611d7-4a13-4fd0-a325-ce5cb70475fa",
+      "title": "ARK-7 可用性修复版（触屏/失焦/DPR/调试门控）",
+      "state": "COMPLETED",
+      "result_key": "main",
+      "dedupe_key": "followup-ark7-usability-20261106"
+    }
+  ],
+  "results": [
+    {
+      "id": "778ca00f-eebc-4b99-a2ec-39f403227308",
+      "title": "游戏策划案 成果",
+      "status": "approved",
+      "version": 1,
+      "deliverable_id": "cd49ccd8-e1b0-4b6e-a86d-9a4e4b4824df",
+      "work_item_id": "546d4705-0e7c-48a5-85b6-b6ccf27b3688",
+      "submitted_at": null
+    },
+    {
+      "id": "3c3beb4f-9a62-453d-9480-18d742b62700",
+      "title": "美术资源包（内联 SVG/CSS） 成果",
+      "status": "approved",
+      "version": 1,
+      "deliverable_id": "36435b9e-9635-4af0-b9fd-eadc9834e952",
+      "work_item_id": "c2b96967-354e-4188-bc58-d888776e47d7",
+      "submitted_at": null
+    },
+    {
+      "id": "546e5e1f-cb0d-4996-bc5b-9c96cbbbd33f",
+      "title": "可玩 HTML 游戏 · 星际撤离 ARK-7（3 关 / 计分 / 重开）",
+      "status": "approved",
+      "version": 1,
+      "deliverable_id": "5a82a929-ec2c-402f-8adc-170f69828dfe",
+      "work_item_id": "10ae13b8-461d-4fdb-9ab8-e0688ffec198",
+      "submitted_at": null
+    },
+    {
+      "id": "53e54978-4176-40e5-8b96-30ccfbf9c537",
+      "title": "ARK-7 可用性修复版（触屏/失焦/DPR/调试门控） 成果",
+      "status": "approved",
+      "version": 1,
+      "deliverable_id": "4f439147-3e41-4231-b87f-c369fb0da77a",
+      "work_item_id": "1fe611d7-4a13-4fd0-a325-ce5cb70475fa",
+      "submitted_at": "2026-11-06T13:46:12.015+08:00"
+    }
+  ],
+  "technicalReviews": [
+    {
+      "result_id": "53e54978-4176-40e5-8b96-30ccfbf9c537",
+      "result_version": 1,
+      "reviewer_kind": "channel_lead",
+      "verdict": "pass",
+      "note": "L1 技术验收通过。artifact 实体已核对：89d72e64 频道 game.html，26741B，sha256=bede826b6bc8e1939c24ed510634465a24d4006782c674738212e49362d8e0b9，与证据 artifact 998d5842/11c69a75 的 bytes/sha256 完全一致（非空壳）。逐项标准实测：artifact.present 通过；<!DOCTYPE、<canvas、devicePixelRatio、touchstart、visibilitychange、__game、debug 各至少 1 处命中；min_bytes:8000 通过（26741）。关键行为非占位实现，源码核对：setDPR() 将 devicePixelRatio 夹紧 1..3 并重设 canvas backing store 与 CSS 尺寸（fit）；#w 注册 touchstart/touchmove/touchend/touchcancel，拖动量映射为移动、md=true 触发自动开火、按钮事件被排除、passive:false+preventDefault；blur 与 visibilitychange(hidden) 均调用 clearInputs()，清空按键/鼠标/触摸状态且在 play 态自动转 pause；window.__game 仅在 if(DEBUG) 内暴露，DEBUG 由 ?debug=1 正则门控。3 关/计分/暂停/重开/GAME OVER 路径存在（levelClear L3→win、hull=0→over、R→newGame）。边界声明：本评审为 L1 结构+接线核验，未在评审侧重跑 48 项运行时回归，运行结论采信提交证据（Channel 48/48、操作员桌面+390×844 复核、0 pageerror）。",
+      "created_at": "2026-11-06T13:53:35.669+08:00"
+    }
+  ],
+  "approvals": [
+    {
+      "id": "47e588e8-c1b8-4537-b7a6-7f1fd01e86eb",
+      "kind": "plan_approval",
+      "status": "approved",
+      "requested_by_agent_id": "24b2bc33-957e-4eeb-a841-2645e1bffff0",
+      "requested_by_user_id": null,
+      "decided_by_user_id": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "decision_reason": "Router v3 实机计划批准",
+      "created_at": "2026-11-05T22:07:26.624+08:00"
+    },
+    {
+      "id": "a82c7c53-1a26-4f7b-ae46-ba40672480ae",
+      "kind": "deliverable_acceptance",
+      "status": "approved",
+      "requested_by_agent_id": null,
+      "requested_by_user_id": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "decided_by_user_id": "b0c13b67-acc6-4667-9edb-fc63bb7069bb",
+      "decision_reason": "Router v3 独立 approver 业务签核",
+      "created_at": "2026-11-05T22:32:13.198+08:00"
+    },
+    {
+      "id": "b1eca3f7-e6b1-4ed5-b8e5-01cc4981b409",
+      "kind": "deliverable_acceptance",
+      "status": "approved",
+      "requested_by_agent_id": null,
+      "requested_by_user_id": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "decided_by_user_id": "b0c13b67-acc6-4667-9edb-fc63bb7069bb",
+      "decision_reason": "Router v3 独立 approver 业务签核",
+      "created_at": "2026-11-06T00:16:39.696+08:00"
+    },
+    {
+      "id": "b09dd678-2ee7-4192-80f7-ba9936323775",
+      "kind": "deliverable_acceptance",
+      "status": "approved",
+      "requested_by_agent_id": null,
+      "requested_by_user_id": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "decided_by_user_id": "b0c13b67-acc6-4667-9edb-fc63bb7069bb",
+      "decision_reason": "independent approver sign-off",
+      "created_at": "2026-11-06T02:07:35.868+08:00"
+    },
+    {
+      "id": "fb110749-18ce-453d-a47e-df9db51c8213",
+      "kind": "project_complete",
+      "status": "approved",
+      "requested_by_agent_id": null,
+      "requested_by_user_id": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "decided_by_user_id": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "decision_reason": "游戏交付验收通过",
+      "created_at": "2026-11-06T02:07:48.597+08:00"
+    },
+    {
+      "id": "7160caf6-ac69-410b-82fd-f7bfc3afc8fc",
+      "kind": "plan_approval",
+      "status": "approved",
+      "requested_by_agent_id": "24b2bc33-957e-4eeb-a841-2645e1bffff0",
+      "requested_by_user_id": null,
+      "decided_by_user_id": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "decision_reason": "owner 批准 ARK-7 可用性修复增量（plan v2）",
+      "created_at": "2026-11-06T10:57:27.205+08:00"
+    },
+    {
+      "id": "4365d012-3139-484e-ba9f-dfac0b120888",
+      "kind": "deliverable_acceptance",
+      "status": "approved",
+      "requested_by_agent_id": null,
+      "requested_by_user_id": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "decided_by_user_id": "b0c13b67-acc6-4667-9edb-fc63bb7069bb",
+      "decision_reason": "独立 L2 业务签核通过：验收证据与 L1 记录一致",
+      "created_at": "2026-11-06T13:57:14.324+08:00"
+    },
+    {
+      "id": "c382c599-1a28-4f74-ab67-c4bf6aca81df",
+      "kind": "project_complete",
+      "status": "approved",
+      "requested_by_agent_id": null,
+      "requested_by_user_id": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "decided_by_user_id": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "decision_reason": "ARK-7 修复增量 L1/L2 全通过，owner 批准项目再次完成",
+      "created_at": "2026-11-06T13:57:21.495+08:00"
+    }
+  ],
+  "events": [
+    {
+      "type": "plan.proposed",
+      "created_at": "2026-11-05T22:07:26.625+08:00",
+      "payload_json": "{\"proposalId\":\"206821d8-f9ce-4402-89df-967d82db21e9\",\"approvalId\":\"47e588e8-c1b8-4537-b7a6-7f1fd01e86eb\",\"version\":1}"
+    },
+    {
+      "type": "plan.applied",
+      "created_at": "2026-11-05T22:07:27.613+08:00",
+      "payload_json": "{\"version\":1,\"createdDeliverables\":3,\"createdWorkItems\":3,\"warnings\":[]}"
+    },
+    {
+      "type": "approval.approved",
+      "created_at": "2026-11-05T22:07:27.614+08:00",
+      "payload_json": "{\"approvalId\":\"47e588e8-c1b8-4537-b7a6-7f1fd01e86eb\",\"kind\":\"plan_approval\",\"reason\":\"Router v3 实机计划批准\"}"
+    },
+    {
+      "type": "work.dispatch_auto",
+      "created_at": "2026-11-05T22:12:28.093+08:00",
+      "payload_json": "{\"workItemId\":\"546d4705-0e7c-48a5-85b6-b6ccf27b3688\",\"taskId\":\"dc553ac3-cf03-4b56-a4fa-55bcb05f3cae\",\"attemptNo\":1,\"auto\":true,\"inputResultIds\":[],\"planVersion\":1,\"channelId\":\"9ac1919f-c8d3-405f-89bc-c524d309de94\"}"
+    },
+    {
+      "type": "work.completed",
+      "created_at": "2026-11-05T22:29:07.054+08:00",
+      "payload_json": "{\"workItemId\":\"546d4705-0e7c-48a5-85b6-b6ccf27b3688\",\"taskId\":\"dc553ac3-cf03-4b56-a4fa-55bcb05f3cae\"}"
+    },
+    {
+      "type": "result.submitted",
+      "created_at": "2026-11-05T22:29:12.953+08:00",
+      "payload_json": "{\"resultId\":\"778ca00f-eebc-4b99-a2ec-39f403227308\"}"
+    },
+    {
+      "type": "approval.approved",
+      "created_at": "2026-11-05T22:32:13.214+08:00",
+      "payload_json": "{\"approvalId\":\"a82c7c53-1a26-4f7b-ae46-ba40672480ae\",\"kind\":\"deliverable_acceptance\",\"reason\":\"Router v3 独立 approver 业务签核\"}"
+    },
+    {
+      "type": "work.dispatch_auto",
+      "created_at": "2026-11-05T22:32:13.257+08:00",
+      "payload_json": "{\"workItemId\":\"c2b96967-354e-4188-bc58-d888776e47d7\",\"taskId\":\"12c86897-44cb-41ce-9e1f-05e977b5c169\",\"attemptNo\":1,\"auto\":true,\"inputResultIds\":[\"778ca00f-eebc-4b99-a2ec-39f403227308\"],\"planVersion\":1,\"channelId\":\"bbfb670a-fc6f-4c4c-bbfc-256a0505074c\"}"
+    },
+    {
+      "type": "work.completed",
+      "created_at": "2026-11-06T00:07:24.596+08:00",
+      "payload_json": "{\"workItemId\":\"c2b96967-354e-4188-bc58-d888776e47d7\",\"taskId\":\"12c86897-44cb-41ce-9e1f-05e977b5c169\"}"
+    },
+    {
+      "type": "result.submitted",
+      "created_at": "2026-11-06T00:12:29.283+08:00",
+      "payload_json": "{\"resultId\":\"3c3beb4f-9a62-453d-9480-18d742b62700\"}"
+    },
+    {
+      "type": "approval.approved",
+      "created_at": "2026-11-06T00:16:39.711+08:00",
+      "payload_json": "{\"approvalId\":\"b1eca3f7-e6b1-4ed5-b8e5-01cc4981b409\",\"kind\":\"deliverable_acceptance\",\"reason\":\"Router v3 独立 approver 业务签核\"}"
+    },
+    {
+      "type": "work.dispatch_auto",
+      "created_at": "2026-11-06T00:16:39.760+08:00",
+      "payload_json": "{\"workItemId\":\"10ae13b8-461d-4fdb-9ab8-e0688ffec198\",\"taskId\":\"b6468c78-e7ab-4f4f-9cdd-1466bab417a7\",\"attemptNo\":1,\"auto\":true,\"inputResultIds\":[\"778ca00f-eebc-4b99-a2ec-39f403227308\",\"3c3beb4f-9a62-453d-9480-18d742b62700\"],\"planVersion\":1,\"channelId\":\"89d72e64-3782-43c9-b207-545bdcaa6b55\"}"
+    },
+    {
+      "type": "work.completed",
+      "created_at": "2026-11-06T01:54:11.345+08:00",
+      "payload_json": "{\"workItemId\":\"10ae13b8-461d-4fdb-9ab8-e0688ffec198\",\"taskId\":\"36a13730-3472-4c58-9d00-de717f1209ff\"}"
+    },
+    {
+      "type": "result.submitted",
+      "created_at": "2026-11-06T02:01:52.858+08:00",
+      "payload_json": "{\"resultId\":\"546e5e1f-cb0d-4996-bc5b-9c96cbbbd33f\"}"
+    },
+    {
+      "type": "approval.approved",
+      "created_at": "2026-11-06T02:07:35.883+08:00",
+      "payload_json": "{\"approvalId\":\"b09dd678-2ee7-4192-80f7-ba9936323775\",\"kind\":\"deliverable_acceptance\",\"reason\":\"independent approver sign-off\"}"
+    },
+    {
+      "type": "project.complete_requested",
+      "created_at": "2026-11-06T02:07:48.597+08:00",
+      "payload_json": "{\"approvalId\":\"fb110749-18ce-453d-a47e-df9db51c8213\"}"
+    },
+    {
+      "type": "approval.approved",
+      "created_at": "2026-11-06T02:07:48.620+08:00",
+      "payload_json": "{\"approvalId\":\"fb110749-18ce-453d-a47e-df9db51c8213\",\"kind\":\"project_complete\",\"reason\":\"游戏交付验收通过\"}"
+    },
+    {
+      "type": "project.followup_requested",
+      "created_at": "2026-11-06T10:25:01.374+08:00",
+      "payload_json": "{\"messageId\":\"9552661f-28df-48e7-97be-b4519b60b635\",\"channelId\":\"bc4f1332-c06a-4647-ad18-39ed5a51fc6f\",\"reopened\":true,\"preview\":\"继续开发这个项目（不是新建项目）。上一版 21,649B 的 ARK-7 已完成，但实测有 4 个必须修的可用性 bug：\\n1) 移动端/触屏完全不能玩：只有键盘+鼠标，390×844 视口画布仅 219px 高，无摇杆/开火/暂停按钮；\\n2) 窗口失焦后按键卡住：按住 D 切走再回来，飞船继续右移；blur 未清空键盘状态；\\n3) 高 DPI 画面模糊：canvas 固定 1280×720 后直\"}"
+    },
+    {
+      "type": "project.reopened",
+      "created_at": "2026-11-06T10:25:01.374+08:00",
+      "payload_json": "{\"from\":\"completed\",\"to\":\"active\",\"messageId\":\"9552661f-28df-48e7-97be-b4519b60b635\"}"
+    },
+    {
+      "type": "plan.proposed",
+      "created_at": "2026-11-06T10:57:27.206+08:00",
+      "payload_json": "{\"proposalId\":\"f6eab117-3a17-4ce0-96d0-32a8f0553c19\",\"approvalId\":\"7160caf6-ac69-410b-82fd-f7bfc3afc8fc\",\"version\":2}"
+    },
+    {
+      "type": "plan.applied",
+      "created_at": "2026-11-06T10:58:21.667+08:00",
+      "payload_json": "{\"version\":2,\"createdDeliverables\":1,\"createdWorkItems\":1,\"warnings\":[]}"
+    },
+    {
+      "type": "approval.approved",
+      "created_at": "2026-11-06T10:58:21.667+08:00",
+      "payload_json": "{\"approvalId\":\"7160caf6-ac69-410b-82fd-f7bfc3afc8fc\",\"kind\":\"plan_approval\",\"reason\":\"owner 批准 ARK-7 可用性修复增量（plan v2）\"}"
+    },
+    {
+      "type": "work.dispatch_auto",
+      "created_at": "2026-11-06T10:58:22.933+08:00",
+      "payload_json": "{\"workItemId\":\"1fe611d7-4a13-4fd0-a325-ce5cb70475fa\",\"taskId\":\"0b4c57ae-faaf-4656-a445-429f369048f3\",\"attemptNo\":1,\"auto\":true,\"inputResultIds\":[\"546e5e1f-cb0d-4996-bc5b-9c96cbbbd33f\"],\"planVersion\":2,\"channelId\":\"89d72e64-3782-43c9-b207-545bdcaa6b55\"}"
+    },
+    {
+      "type": "work.completed",
+      "created_at": "2026-11-06T13:44:37.379+08:00",
+      "payload_json": "{\"workItemId\":\"1fe611d7-4a13-4fd0-a325-ce5cb70475fa\",\"taskId\":\"0b4c57ae-faaf-4656-a445-429f369048f3\"}"
+    },
+    {
+      "type": "result.submitted",
+      "created_at": "2026-11-06T13:46:12.015+08:00",
+      "payload_json": "{\"resultId\":\"53e54978-4176-40e5-8b96-30ccfbf9c537\"}"
+    },
+    {
+      "type": "result.technical_accepted",
+      "created_at": "2026-11-06T13:53:35.672+08:00",
+      "payload_json": "{\"resultId\":\"53e54978-4176-40e5-8b96-30ccfbf9c537\",\"reviewId\":\"26f905c5-507d-4591-83bb-c838a11cf187\",\"reviewerKind\":\"channel_lead\"}"
+    },
+    {
+      "type": "approval.approved",
+      "created_at": "2026-11-06T13:57:17.851+08:00",
+      "payload_json": "{\"approvalId\":\"4365d012-3139-484e-ba9f-dfac0b120888\",\"kind\":\"deliverable_acceptance\",\"reason\":\"独立 L2 业务签核通过：验收证据与 L1 记录一致\"}"
+    },
+    {
+      "type": "approval.approved",
+      "created_at": "2026-11-06T13:57:24.794+08:00",
+      "payload_json": "{\"approvalId\":\"c382c599-1a28-4f74-ab67-c4bf6aca81df\",\"kind\":\"project_complete\",\"reason\":\"ARK-7 修复增量 L1/L2 全通过，owner 批准项目再次完成\"}"
+    }
+  ],
+  "chat": [
+    {
+      "sender_type": "agent",
+      "sender_name": "Project Leader",
+      "text": "已按要求真实调用 `project_propose_plan`，计划已提交并即时生效。\n\n**提交结果**\n- `proposalId`: `206821d8-f9ce-4402-89df-967d82db21e9`\n- `approvalId`: `47e588e8-c1b8-4537-b7a6-7f1fd01e86eb`\n- 项目状态：`active`，`planVersion: 1`\n- 三项交付物、三项工作项已幂等物化，`pendingApprovals` 为空\n\n**交付物（planned）**\n| key | 名称 | 频道 | 验收标准 |\n|---|---|---|---|\n| design | 游戏策划案 | 9ac1919f…de94 | artifact.present；text.contains:玩法 |\n| art | 美术资源包 | bbfb670a…074c ",
+      "created_at": "2026-11-05T22:10:30.597+08:00"
+    },
+    {
+      "sender_type": "agent",
+      "sender_name": "Project Leader",
+      "text": "无法执行该请求——`project_propose_route` 在本 Runtime **不存在**。\n\n**证据**\n- 读取 `xd://project_propose_route` 返回：`No such tool: xd://project_propose_route`\n- 实际挂载的 109 个 device 中，项目类工具仅有：`project_get_status`、`project_list_channels`、`project_read_deliverables`、`project_read_results`、`project_read_work_items`、`project_propose_plan`、`project_propose_dispatch`、`project_propose_replan`、`project_review_result`、`projec",
+      "created_at": "2026-11-05T22:14:26.983+08:00"
+    },
+    {
+      "sender_type": "user",
+      "sender_name": "Router Owner",
+      "text": "继续开发这个项目（不是新建项目）。上一版 21,649B 的 ARK-7 已完成，但实测有 4 个必须修的可用性 bug：\n1) 移动端/触屏完全不能玩：只有键盘+鼠标，390×844 视口画布仅 219px 高，无摇杆/开火/暂停按钮；\n2) 窗口失焦后按键卡住：按住 D 切走再回来，飞船继续右移；blur 未清空键盘状态；\n3) 高 DPI 画面模糊：canvas 固定 1280×720 后直接 CSS 缩放，未按 devicePixelRatio 处理；\n4) 生产页面暴露 window.__game 调试 API（可改分数/直接 win），应只在 ?debug=1 时暴露。\n请先读 project_get_status / project_read_deliverables / project_read_results，确认已完成成果；然后用 project_propose_rep",
+      "created_at": "2026-11-06T10:25:01.369+08:00"
+    },
+    {
+      "sender_type": "agent",
+      "sender_name": "Project Leader",
+      "text": ".已按「增量、非新建项目」处理，提案已提交，等待你在项目审批页批准。\n\n**现状核对（先读后写）**\n- 策划案、美术资源包、可玩 HTML 游戏 3 项均 `approved`，3 个工作项均 `COMPLETED`；未重做、未删除。\n- 当前计划仍为 v1；新提案已登记为待审批，尚未物化/派发。\n\n**replan v2（planVersion 2，pending）**\n- proposalId: `f6eab117-3a17-4ce0-96d0-32a8f0553c19`\n- approvalId: `7160caf6-ac69-410b-82fd-f7bfc3afc8fc`\n- 新增交付物：`ARK-7 可用性修复版`（key `game-fix`，required，依赖已验收的 `game`）\n- 新增工作项：key `w4`，dedupeKey `followup-ark7-u",
+      "created_at": "2026-11-06T10:58:50.606+08:00"
+    }
+  ]
+}

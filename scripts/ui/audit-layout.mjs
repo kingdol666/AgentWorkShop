@@ -290,7 +290,9 @@ const AUDIT_FN = function () {
 }
 
 fs.mkdirSync(OUT, { recursive: true })
-const token = await ensureVisualUser()
+// AW_TOKEN：在隔离 AW_HOME 的实机实例上复用已有 admin token，
+// 避免 ensureVisualUser 去默认 home 建号（demo 数据与脚本 home 不一致时会 403）。
+const token = process.env.AW_TOKEN || await ensureVisualUser()
 const browser = await launch()
 const rows = []
 for (const vp of vps) {

@@ -1,0 +1,102 @@
+{
+  "l2req": {
+    "code": 0,
+    "message": "ok",
+    "data": {
+      "id": "acb76cd1-5f54-4784-8d71-bc12be93f9de",
+      "projectId": "a1955fd9-e3ff-45fa-919d-a4fa1b61a576",
+      "kind": "deliverable_acceptance",
+      "subjectType": "result",
+      "subjectId": "03c44d96-bafa-44f2-8e89-05697ce0396e",
+      "subjectVersion": 1,
+      "status": "pending",
+      "requestedByAgentId": null,
+      "requestedByUserId": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "payloadJson": "{\"resultId\":\"03c44d96-bafa-44f2-8e89-05697ce0396e\",\"version\":1}",
+      "argsDigest": "",
+      "reason": "deliverable acceptance",
+      "decisionReason": "",
+      "decidedByUserId": null,
+      "consumedAt": null,
+      "traceId": "plan:a1955fd9-e3ff-45fa-919d-a4fa1b61a576:2:w-faq",
+      "expiresAt": "2026-11-07T15:01:34.540+08:00",
+      "createdAt": "2026-11-06T15:01:34.540+08:00",
+      "decidedAt": null
+    }
+  },
+  "l2dec": {
+    "code": 0,
+    "message": "ok",
+    "data": {
+      "id": "acb76cd1-5f54-4784-8d71-bc12be93f9de",
+      "projectId": "a1955fd9-e3ff-45fa-919d-a4fa1b61a576",
+      "kind": "deliverable_acceptance",
+      "subjectType": "result",
+      "subjectId": "03c44d96-bafa-44f2-8e89-05697ce0396e",
+      "subjectVersion": 1,
+      "status": "approved",
+      "requestedByAgentId": null,
+      "requestedByUserId": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "payloadJson": "{\"resultId\":\"03c44d96-bafa-44f2-8e89-05697ce0396e\",\"version\":1}",
+      "argsDigest": "",
+      "reason": "deliverable acceptance",
+      "decisionReason": "独立 L2：FAQ 增量与 L1 证据一致",
+      "decidedByUserId": "b0c13b67-acc6-4667-9edb-fc63bb7069bb",
+      "consumedAt": null,
+      "traceId": "plan:a1955fd9-e3ff-45fa-919d-a4fa1b61a576:2:w-faq",
+      "expiresAt": "2026-11-07T15:01:34.540+08:00",
+      "createdAt": "2026-11-06T15:01:34.540+08:00",
+      "decidedAt": "2026-11-06T15:01:34.550+08:00"
+    }
+  },
+  "creq": {
+    "code": 0,
+    "message": "ok",
+    "data": {
+      "id": "88cc8c26-bbda-4640-a77e-60e47e46aa9e",
+      "projectId": "a1955fd9-e3ff-45fa-919d-a4fa1b61a576",
+      "kind": "project_complete",
+      "subjectType": "project",
+      "subjectId": "a1955fd9-e3ff-45fa-919d-a4fa1b61a576",
+      "subjectVersion": null,
+      "status": "pending",
+      "requestedByAgentId": null,
+      "requestedByUserId": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "payloadJson": "{\"deliverables\":[{\"id\":\"54c6cf0f-566d-44e3-9d5a-a0c3e32c8cc5\",\"status\":\"approved\"},{\"id\":\"32ab0b44-9841-44b8-9fa4-5f47cc80353d\",\"status\":\"approved\"}],\"workItems\":2}",
+      "argsDigest": "",
+      "reason": "project completion acceptance",
+      "decisionReason": "",
+      "decidedByUserId": null,
+      "consumedAt": null,
+      "traceId": "project:a1955fd9-e3ff-45fa-919d-a4fa1b61a576:complete",
+      "expiresAt": "2026-11-07T15:01:34.559+08:00",
+      "createdAt": "2026-11-06T15:01:34.559+08:00",
+      "decidedAt": null
+    }
+  },
+  "cdec": {
+    "code": 0,
+    "message": "ok",
+    "data": {
+      "id": "88cc8c26-bbda-4640-a77e-60e47e46aa9e",
+      "projectId": "a1955fd9-e3ff-45fa-919d-a4fa1b61a576",
+      "kind": "project_complete",
+      "subjectType": "project",
+      "subjectId": "a1955fd9-e3ff-45fa-919d-a4fa1b61a576",
+      "subjectVersion": null,
+      "status": "approved",
+      "requestedByAgentId": null,
+      "requestedByUserId": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "payloadJson": "{\"deliverables\":[{\"id\":\"54c6cf0f-566d-44e3-9d5a-a0c3e32c8cc5\",\"status\":\"approved\"},{\"id\":\"32ab0b44-9841-44b8-9fa4-5f47cc80353d\",\"status\":\"approved\"}],\"workItems\":2}",
+      "argsDigest": "",
+      "reason": "project completion acceptance",
+      "decisionReason": "FAQ 增量 L1/L2 全通过，Ralph 验收再次完成",
+      "decidedByUserId": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "consumedAt": null,
+      "traceId": "project:a1955fd9-e3ff-45fa-919d-a4fa1b61a576:complete",
+      "expiresAt": "2026-11-07T15:01:34.559+08:00",
+      "createdAt": "2026-11-06T15:01:34.559+08:00",
+      "decidedAt": "2026-11-06T15:01:34.575+08:00"
+    }
+  }
+}

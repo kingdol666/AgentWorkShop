@@ -1,0 +1,480 @@
+{
+  "base": "http://127.0.0.1:3982",
+  "projectId": "a1955fd9-e3ff-45fa-919d-a4fa1b61a576",
+  "generatedAt": "2026-11-06T14:02:48.713Z",
+  "runs": [
+    {
+      "theme": "dark",
+      "viewport": "desktop",
+      "overview": {
+        "theme": "dark",
+        "overflowX": false,
+        "scrollWidth": 1440,
+        "innerWidth": 1440,
+        "nativeSelects": 0,
+        "antSelects": 4,
+        "checks": [
+          {
+            "label": "chat body",
+            "text": "请为项目「值班手册 · 连续验收 kp12h」制定 plan v1，只做",
+            "color": "rgb(233, 239, 248)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "ratio": 16.38,
+            "px": "13px"
+          },
+          {
+            "label": "chat hint",
+            "text": "项目已完成。发送补充需求会自动重新打开项目；Leader 会先读现状，再",
+            "color": "rgb(65, 200, 244)",
+            "bg": "rgba(65, 200, 244, 0.12)",
+            "ratio": 7.56,
+            "px": "12px"
+          },
+          {
+            "label": "kpi value",
+            "text": "3 / 3",
+            "color": "rgb(233, 239, 248)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "ratio": 15.85,
+            "px": "21px"
+          },
+          {
+            "label": "active tab",
+            "text": "概览",
+            "color": "rgb(233, 239, 248)",
+            "bg": "rgb(13, 21, 33)",
+            "ratio": 15.85,
+            "px": "13px"
+          },
+          {
+            "label": "card sub",
+            "text": "生产与评审 Channel；项目办公室只承载 Leader 对话。",
+            "color": "rgb(147, 163, 184)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "ratio": 7.13,
+            "px": "12px"
+          }
+        ]
+      },
+      "afterTabs": {
+        "theme": "dark",
+        "overflowX": false,
+        "scrollWidth": 1440,
+        "innerWidth": 1440,
+        "nativeSelects": 0,
+        "antSelects": 4,
+        "checks": [
+          {
+            "label": "chat body",
+            "text": "请为项目「值班手册 · 连续验收 kp12h」制定 plan v1，只做",
+            "color": "rgb(233, 239, 248)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "ratio": 16.38,
+            "px": "13px"
+          },
+          {
+            "label": "chat hint",
+            "text": "项目已完成。发送补充需求会自动重新打开项目；Leader 会先读现状，再",
+            "color": "rgb(65, 200, 244)",
+            "bg": "rgba(65, 200, 244, 0.12)",
+            "ratio": 7.56,
+            "px": "12px"
+          },
+          {
+            "label": "kpi value",
+            "text": "3 / 3",
+            "color": "rgb(233, 239, 248)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "ratio": 15.85,
+            "px": "21px"
+          },
+          {
+            "label": "active tab",
+            "text": "概览",
+            "color": "rgb(233, 239, 248)",
+            "bg": "rgb(13, 21, 33)",
+            "ratio": 15.85,
+            "px": "13px"
+          },
+          {
+            "label": "card sub",
+            "text": "生产与评审 Channel；项目办公室只承载 Leader 对话。",
+            "color": "rgb(147, 163, 184)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "ratio": 7.13,
+            "px": "12px"
+          }
+        ]
+      },
+      "selectProbe": {
+        "bg": "color(srgb 0.0509804 0.0823529 0.129412 / 0.96)",
+        "color": "rgb(232, 238, 248)",
+        "visible": true,
+        "itemBg": "rgb(23, 40, 35)",
+        "itemColor": "rgb(232, 238, 248)",
+        "picked": "2a12401e… · 负责值班手册 Markdown 生产"
+      },
+      "focusOk": {
+        "active": "project-continue-input",
+        "sendVisible": true,
+        "composerEnabled": true
+      },
+      "errors": []
+    },
+    {
+      "theme": "dark",
+      "viewport": "mobile",
+      "overview": {
+        "theme": "dark",
+        "overflowX": false,
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "nativeSelects": 0,
+        "antSelects": 4,
+        "checks": [
+          {
+            "label": "chat body",
+            "text": "请为项目「值班手册 · 连续验收 kp12h」制定 plan v1，只做",
+            "color": "rgb(233, 239, 248)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "ratio": 16.38,
+            "px": "13px"
+          },
+          {
+            "label": "chat hint",
+            "text": "项目已完成。发送补充需求会自动重新打开项目；Leader 会先读现状，再",
+            "color": "rgb(65, 200, 244)",
+            "bg": "rgba(65, 200, 244, 0.12)",
+            "ratio": 7.56,
+            "px": "12px"
+          },
+          {
+            "label": "kpi value",
+            "text": "3 / 3",
+            "color": "rgb(233, 239, 248)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "ratio": 15.85,
+            "px": "19px"
+          },
+          {
+            "label": "active tab",
+            "text": "概览",
+            "color": "rgb(233, 239, 248)",
+            "bg": "rgb(13, 21, 33)",
+            "ratio": 15.85,
+            "px": "12.5px"
+          },
+          {
+            "label": "card sub",
+            "text": "生产与评审 Channel；项目办公室只承载 Leader 对话。",
+            "color": "rgb(147, 163, 184)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "ratio": 7.13,
+            "px": "12px"
+          }
+        ]
+      },
+      "afterTabs": {
+        "theme": "dark",
+        "overflowX": false,
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "nativeSelects": 0,
+        "antSelects": 4,
+        "checks": [
+          {
+            "label": "chat body",
+            "text": "请为项目「值班手册 · 连续验收 kp12h」制定 plan v1，只做",
+            "color": "rgb(233, 239, 248)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "ratio": 16.38,
+            "px": "13px"
+          },
+          {
+            "label": "chat hint",
+            "text": "项目已完成。发送补充需求会自动重新打开项目；Leader 会先读现状，再",
+            "color": "rgb(65, 200, 244)",
+            "bg": "rgba(65, 200, 244, 0.12)",
+            "ratio": 7.56,
+            "px": "12px"
+          },
+          {
+            "label": "kpi value",
+            "text": "3 / 3",
+            "color": "rgb(233, 239, 248)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "ratio": 15.85,
+            "px": "19px"
+          },
+          {
+            "label": "active tab",
+            "text": "概览",
+            "color": "rgb(233, 239, 248)",
+            "bg": "rgb(13, 21, 33)",
+            "ratio": 15.85,
+            "px": "12.5px"
+          },
+          {
+            "label": "card sub",
+            "text": "生产与评审 Channel；项目办公室只承载 Leader 对话。",
+            "color": "rgb(147, 163, 184)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "ratio": 7.13,
+            "px": "12px"
+          }
+        ]
+      },
+      "selectProbe": {
+        "bg": "color(srgb 0.0509804 0.0823529 0.129412 / 0.96)",
+        "color": "rgb(232, 238, 248)",
+        "visible": true,
+        "itemBg": "rgb(23, 40, 35)",
+        "itemColor": "rgb(232, 238, 248)",
+        "picked": "2a12401e… · 负责值班手册 Markdown 生产"
+      },
+      "focusOk": {
+        "active": "project-continue-input",
+        "sendVisible": true,
+        "composerEnabled": true
+      },
+      "errors": []
+    },
+    {
+      "theme": "light",
+      "viewport": "desktop",
+      "overview": {
+        "theme": "",
+        "overflowX": false,
+        "scrollWidth": 1440,
+        "innerWidth": 1440,
+        "nativeSelects": 0,
+        "antSelects": 4,
+        "checks": [
+          {
+            "label": "chat body",
+            "text": "请为项目「值班手册 · 连续验收 kp12h」制定 plan v1，只做",
+            "color": "rgb(14, 21, 32)",
+            "bg": "rgba(41, 37, 36, 0.08)",
+            "ratio": 14.56,
+            "px": "13px"
+          },
+          {
+            "label": "chat hint",
+            "text": "项目已完成。发送补充需求会自动重新打开项目；Leader 会先读现状，再",
+            "color": "rgb(63, 96, 148)",
+            "bg": "rgb(238, 243, 251)",
+            "ratio": 5.69,
+            "px": "12px"
+          },
+          {
+            "label": "kpi value",
+            "text": "3 / 3",
+            "color": "rgb(14, 21, 32)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "ratio": 18.31,
+            "px": "21px"
+          },
+          {
+            "label": "active tab",
+            "text": "概览",
+            "color": "rgb(14, 21, 32)",
+            "bg": "rgb(255, 255, 255)",
+            "ratio": 18.31,
+            "px": "13px"
+          },
+          {
+            "label": "card sub",
+            "text": "生产与评审 Channel；项目办公室只承载 Leader 对话。",
+            "color": "rgb(93, 107, 128)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "ratio": 5.41,
+            "px": "12px"
+          }
+        ]
+      },
+      "afterTabs": {
+        "theme": "",
+        "overflowX": false,
+        "scrollWidth": 1440,
+        "innerWidth": 1440,
+        "nativeSelects": 0,
+        "antSelects": 4,
+        "checks": [
+          {
+            "label": "chat body",
+            "text": "请为项目「值班手册 · 连续验收 kp12h」制定 plan v1，只做",
+            "color": "rgb(14, 21, 32)",
+            "bg": "rgba(41, 37, 36, 0.08)",
+            "ratio": 14.56,
+            "px": "13px"
+          },
+          {
+            "label": "chat hint",
+            "text": "项目已完成。发送补充需求会自动重新打开项目；Leader 会先读现状，再",
+            "color": "rgb(63, 96, 148)",
+            "bg": "rgb(238, 243, 251)",
+            "ratio": 5.69,
+            "px": "12px"
+          },
+          {
+            "label": "kpi value",
+            "text": "3 / 3",
+            "color": "rgb(14, 21, 32)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "ratio": 18.31,
+            "px": "21px"
+          },
+          {
+            "label": "active tab",
+            "text": "概览",
+            "color": "rgb(14, 21, 32)",
+            "bg": "rgb(255, 255, 255)",
+            "ratio": 18.31,
+            "px": "13px"
+          },
+          {
+            "label": "card sub",
+            "text": "生产与评审 Channel；项目办公室只承载 Leader 对话。",
+            "color": "rgb(93, 107, 128)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "ratio": 5.41,
+            "px": "12px"
+          }
+        ]
+      },
+      "selectProbe": {
+        "bg": "color(srgb 1 1 1 / 0.98)",
+        "color": "rgb(12, 10, 9)",
+        "visible": true,
+        "itemBg": "rgb(173, 184, 178)",
+        "itemColor": "rgb(12, 10, 9)",
+        "picked": "2a12401e… · 负责值班手册 Markdown 生产"
+      },
+      "focusOk": {
+        "active": "project-continue-input",
+        "sendVisible": true,
+        "composerEnabled": true
+      },
+      "errors": []
+    },
+    {
+      "theme": "light",
+      "viewport": "mobile",
+      "overview": {
+        "theme": "",
+        "overflowX": false,
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "nativeSelects": 0,
+        "antSelects": 4,
+        "checks": [
+          {
+            "label": "chat body",
+            "text": "请为项目「值班手册 · 连续验收 kp12h」制定 plan v1，只做",
+            "color": "rgb(14, 21, 32)",
+            "bg": "rgba(41, 37, 36, 0.08)",
+            "ratio": 14.56,
+            "px": "13px"
+          },
+          {
+            "label": "chat hint",
+            "text": "项目已完成。发送补充需求会自动重新打开项目；Leader 会先读现状，再",
+            "color": "rgb(63, 96, 148)",
+            "bg": "rgb(238, 243, 251)",
+            "ratio": 5.69,
+            "px": "12px"
+          },
+          {
+            "label": "kpi value",
+            "text": "3 / 3",
+            "color": "rgb(14, 21, 32)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "ratio": 18.31,
+            "px": "19px"
+          },
+          {
+            "label": "active tab",
+            "text": "概览",
+            "color": "rgb(14, 21, 32)",
+            "bg": "rgb(255, 255, 255)",
+            "ratio": 18.31,
+            "px": "12.5px"
+          },
+          {
+            "label": "card sub",
+            "text": "生产与评审 Channel；项目办公室只承载 Leader 对话。",
+            "color": "rgb(93, 107, 128)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "ratio": 5.41,
+            "px": "12px"
+          }
+        ]
+      },
+      "afterTabs": {
+        "theme": "",
+        "overflowX": false,
+        "scrollWidth": 390,
+        "innerWidth": 390,
+        "nativeSelects": 0,
+        "antSelects": 4,
+        "checks": [
+          {
+            "label": "chat body",
+            "text": "请为项目「值班手册 · 连续验收 kp12h」制定 plan v1，只做",
+            "color": "rgb(14, 21, 32)",
+            "bg": "rgba(41, 37, 36, 0.08)",
+            "ratio": 14.56,
+            "px": "13px"
+          },
+          {
+            "label": "chat hint",
+            "text": "项目已完成。发送补充需求会自动重新打开项目；Leader 会先读现状，再",
+            "color": "rgb(63, 96, 148)",
+            "bg": "rgb(238, 243, 251)",
+            "ratio": 5.69,
+            "px": "12px"
+          },
+          {
+            "label": "kpi value",
+            "text": "3 / 3",
+            "color": "rgb(14, 21, 32)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "ratio": 18.31,
+            "px": "19px"
+          },
+          {
+            "label": "active tab",
+            "text": "概览",
+            "color": "rgb(14, 21, 32)",
+            "bg": "rgb(255, 255, 255)",
+            "ratio": 18.31,
+            "px": "12.5px"
+          },
+          {
+            "label": "card sub",
+            "text": "生产与评审 Channel；项目办公室只承载 Leader 对话。",
+            "color": "rgb(93, 107, 128)",
+            "bg": "rgba(0, 0, 0, 0)",
+            "ratio": 5.41,
+            "px": "12px"
+          }
+        ]
+      },
+      "selectProbe": {
+        "bg": "color(srgb 1 1 1 / 0.98)",
+        "color": "rgb(12, 10, 9)",
+        "visible": true,
+        "itemBg": "rgb(173, 184, 178)",
+        "itemColor": "rgb(12, 10, 9)",
+        "picked": "2a12401e… · 负责值班手册 Markdown 生产"
+      },
+      "focusOk": {
+        "active": "project-continue-input",
+        "sendVisible": true,
+        "composerEnabled": true
+      },
+      "errors": []
+    }
+  ],
+  "errors": []
+}

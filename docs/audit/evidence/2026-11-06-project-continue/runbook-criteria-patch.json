@@ -1,0 +1,20 @@
+{
+  "code": 0,
+  "message": "ok",
+  "data": {
+    "id": "54c6cf0f-566d-44e3-9d5a-a0c3e32c8cc5",
+    "projectId": "a1955fd9-e3ff-45fa-919d-a4fa1b61a576",
+    "name": "值班手册",
+    "description": "单文件 Markdown 值班手册（800-1500 字），必须覆盖三部分：日常巡检清单、故障升级路径、交接清单。验收口径：artifact.present；min_bytes:800；text.contains:值班。禁止 HTML、禁止外部调研、禁止拆分多交付物。",
+    "ownerChannelId": "2a12401e-7738-4e08-bcc1-0410e8ad0189",
+    "required": 1,
+    "acceptanceCriteriaJson": "[\"artifact.present\",\"min_bytes:800\",\"text.contains:值班\"]",
+    "dueAt": null,
+    "dependsOnJson": "[]",
+    "status": "planned",
+    "waiverReason": null,
+    "createdBy": "project_leader",
+    "createdAt": "2026-11-06T14:10:40.986+08:00",
+    "updatedAt": "2026-11-06T14:11:02.665+08:00"
+  }
+}

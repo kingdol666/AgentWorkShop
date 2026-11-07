@@ -1,0 +1,19 @@
+{
+  "code": 0,
+  "message": "ok",
+  "data": {
+    "messageId": "b9d15790-0540-4dc6-8d64-db300d0daec9",
+    "contextId": "2a12401e-7738-4e08-bcc1-0410e8ad0189",
+    "role": "ROLE_AGENT",
+    "parts": [
+      {
+        "text": "【owner steer】oncall-runbook.md 已存在（约 4191B，含巡检/升级/交接三节）。不要重写、不要扩写；请读取确认三节与字数后，直接 complete_task 并 project_submit_result（evidence 用该文件）。"
+      }
+    ],
+    "metadata": {
+      "x-aw-target-agent": "252f95f6-3953-40f8-b40b-07164d7d3747",
+      "x-aw-msg-priority": "immediate",
+      "x-aw-from-label": "Router Owner"
+    }
+  }
+}

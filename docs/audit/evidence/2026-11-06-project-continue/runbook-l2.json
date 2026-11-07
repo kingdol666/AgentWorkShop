@@ -1,0 +1,52 @@
+{
+  "request": {
+    "code": 0,
+    "message": "ok",
+    "data": {
+      "id": "ec613768-84ed-4510-8157-f0c6e0b448f5",
+      "projectId": "a1955fd9-e3ff-45fa-919d-a4fa1b61a576",
+      "kind": "deliverable_acceptance",
+      "subjectType": "result",
+      "subjectId": "d2f2c580-93ba-409e-8880-cae28ee4660b",
+      "subjectVersion": 1,
+      "status": "pending",
+      "requestedByAgentId": null,
+      "requestedByUserId": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "payloadJson": "{\"resultId\":\"d2f2c580-93ba-409e-8880-cae28ee4660b\",\"version\":1}",
+      "argsDigest": "",
+      "reason": "deliverable acceptance",
+      "decisionReason": "",
+      "decidedByUserId": null,
+      "consumedAt": null,
+      "traceId": "plan:a1955fd9-e3ff-45fa-919d-a4fa1b61a576:1:w-handbook",
+      "expiresAt": "2026-11-07T14:36:30.252+08:00",
+      "createdAt": "2026-11-06T14:36:30.252+08:00",
+      "decidedAt": null
+    }
+  },
+  "decide": {
+    "code": 0,
+    "message": "ok",
+    "data": {
+      "id": "ec613768-84ed-4510-8157-f0c6e0b448f5",
+      "projectId": "a1955fd9-e3ff-45fa-919d-a4fa1b61a576",
+      "kind": "deliverable_acceptance",
+      "subjectType": "result",
+      "subjectId": "d2f2c580-93ba-409e-8880-cae28ee4660b",
+      "subjectVersion": 1,
+      "status": "approved",
+      "requestedByAgentId": null,
+      "requestedByUserId": "50d0508f-6914-45ab-afb2-5afd2c73177e",
+      "payloadJson": "{\"resultId\":\"d2f2c580-93ba-409e-8880-cae28ee4660b\",\"version\":1}",
+      "argsDigest": "",
+      "reason": "deliverable acceptance",
+      "decisionReason": "独立 L2 签核：值班手册 v1 内容与 L1 记录一致",
+      "decidedByUserId": "b0c13b67-acc6-4667-9edb-fc63bb7069bb",
+      "consumedAt": null,
+      "traceId": "plan:a1955fd9-e3ff-45fa-919d-a4fa1b61a576:1:w-handbook",
+      "expiresAt": "2026-11-07T14:36:30.252+08:00",
+      "createdAt": "2026-11-06T14:36:30.252+08:00",
+      "decidedAt": "2026-11-06T14:36:30.260+08:00"
+    }
+  }
+}

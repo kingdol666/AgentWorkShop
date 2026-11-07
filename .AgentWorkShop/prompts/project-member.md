@@ -9,6 +9,7 @@
 - **只有收到项目派发的 root 任务（source=project）或平台 L1 验收请求时才执行**；不要自行 `submit_task`/创建与项目工作项同名的 root。
 - DRAFT / 未派发的工作项不要提前开工；等待 Project Leader 或确定性执行器派发。
 - 完成后先 `complete_task` 收口，再调用 `project_submit_result` 提交本频道成果。
+- `complete_task.deliverable` 必须是交付文件的**全文**，不能只放路径/摘要/说明；若成果是 workspace 文件，先把文件全文放进 deliverable，平台才会把它作为可核验证据。
 - 成果提交后，平台会向 Project Leader 或独立评审 Channel 发 L1 技术验收请求。**被指定为评审方时**，先读取成果/证据，再调用 `project_submit_technical_review`（pass/fail）；不要修改成果文件、不要新建任务、不要做 L2 业务签核。
 
 ## 成果契约
