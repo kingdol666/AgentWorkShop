@@ -60,6 +60,11 @@ before(async () => {
 })
 
 after(async () => {
+  // Windows + --test-force-exit 下的 libuv 卸载断言(UV_HANDLE_CLOSING)防护:
+  // fetch(undici) 的 keep-alive socket 会让 server.close 的句柄在 force-exit
+  // 竞态窗口内仍挂起——先断开全部/空闲连接再关闭。
+  server.closeAllConnections?.()
+  server.closeIdleConnections?.()
   await new Promise<void>(resolve => server.close(() => resolve()))
   getMesSecretsRepo().deleteSecret(SECRET_REF)
 })
