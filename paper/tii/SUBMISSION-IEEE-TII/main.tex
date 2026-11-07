@@ -31,10 +31,10 @@
 \usepackage{cite}
 \usepackage[colorlinks=true,linkcolor=black,citecolor=black,urlcolor=black]{hyperref}
 \hypersetup{bookmarksnumbered=true,
-  pdftitle={Configuration-Driven Integration of Industrial Agents Across Production Scenes},
+  pdftitle={Governed Setpoint Writing for Industrial Agents: A Configuration-Driven Runtime and Simulated Evaluation},
   pdfauthor={},
   pdfsubject={IEEE Transactions on Industrial Informatics},
-  pdfkeywords={industrial agents, industrial communication, industrial informatics, production systems, semantic data integration}}
+  pdfkeywords={industrial agents, governed setpoint writing, industrial communication, simulation-based evaluation, system integration}}
 
 % Float placement only; IEEEtran margins and body type remain unchanged.
 \setcounter{topnumber}{4}
@@ -56,28 +56,26 @@
 \setlength{\belowcaptionskip}{2pt plus 1pt minus 1pt}
 
 \newcommand{\system}{the platform}
-% This review copy includes the AI-assisted writing disclosure in the
-% acknowledgment; author identities and funding details remain withheld.
-\newif\ifblindreview
-\blindreviewtrue
+% Acknowledgment is omitted from this blinded review copy. See the separate
+% submission-only disclosure draft and confirm its destination with TII.
 
 \begin{document}
 \bstctlcite{IEEEbstctl}
 
-\title{Configuration-Driven Integration of Industrial Agents Across Production Scenes}
+\title{Governed Setpoint Writing for Industrial Agents: A Configuration-Driven Runtime and Simulated Evaluation}
 
 \author{}
-\markboth{IEEE Transactions on Industrial Informatics, Submitted Manuscript}{Industrial Agent Integration}
+\markboth{IEEE Transactions on Industrial Informatics, Submitted Manuscript}{Governed Setpoint Writing}
 
 \maketitle
 
 \begin{abstract}
-Industrial agents can propose setpoint changes, but executing a proposal requires preserving production context, signal meaning, write authority, and process limits. We present a configuration-driven runtime that binds production context and semantic signals to named operations and registered protocol drivers. Registered harness adapters and direct clients submit operations through a shared dispatcher. At execution, write handlers resolve live context and apply authorization and configured value limits. Routes requiring approval hold the request pending and repeat their route-specific checks after approval. The system records command receipts, actuator readbacks, and later process observations separately. Probes across four simulator scenes tested selected node-to-driver mappings: the 220 admissible writes were accepted, the 219 collected structural-range requests were rejected, and all 216 available readbacks matched. In deterministic missions across three scenes, a scripted policy reached the target band in all 15 seed--scene runs, whereas none of the 15 no-write runs did. This contrast is descriptive because exposure time and mission logic differed. With the process-window interlock enabled, none of six targeted violations reached the mock driver; removing it sent all six to the driver while structural checks remained active. These results support the tested integration and interlock paths in simulation, but do not establish live-Agent performance or physical-plant safety.
+Industrial agents can propose process changes, but a device write must be resolved against the active production context, control point, and current limits. This paper presents a configuration-driven runtime that binds line, product, recipe, and run context to direction-specific signal mappings. Task-mediated and direct calls share dispatch; route handlers resolve live state, perform applicable revalidation and approval, and pass writes through common guards. This separation makes a task's initial context descriptive rather than a grant of authority. Command outcomes and optional device readbacks are recorded separately from subsequent process observations. Across four simulated scenes, 220/220 admissible mapping probes were accepted, 219/219 collected structural-range probes were rejected, and 216/216 available simulated readbacks matched. In a mock-driver ablation, all six targeted violations returned HTTP 400 with the process-window guard enabled and HTTP 200 with it removed. In a separate three-scene comparison, 15/15 scripted and 0/15 no-write endpoints were in band, but their different endpoints and horizons preclude an efficacy estimate. The live-Agent pilot issued no governed writes. The evidence supports selected simulator and mock-driver paths, not process-control efficacy or physical-plant safety.
 \end{abstract}
 
 \begin{IEEEkeywords}
-Industrial agents, industrial communication, industrial informatics,
-production systems, system integration.
+Industrial agents, governed setpoint writing, industrial communication,
+simulation-based evaluation, system integration.
 \end{IEEEkeywords}
 
 \IEEEpeerreviewmaketitle
@@ -90,24 +88,16 @@ production systems, system integration.
 \input{sections/evaluation}
 \input{sections/discussion}
 
-\section*{Acknowledgment}
-The authors used artificial-intelligence tools for language editing and take responsibility
-for the manuscript. Funding and author identities are withheld in this review
-copy.
-
-\section*{Author Contributions}
-Individual CRediT contributions are declared in the submission system and
-withheld in this review copy.
-
-\section*{Declaration of Competing Interest}
-The authors declare no known competing financial interests or personal
-relationships that could have appeared to influence this work.
+\section*{Declarations}
+Author contributions are declared in the submission system; no competing
+interests are declared.
 
 \section*{Data Availability}
-Supplementary File~S7 contains the selected current-run manifests and CSVs, the per-seed optimization outcomes, ablation records, and a self-contained visual report. The reported commit and harness hashes are provenance fields rather than runtime signatures; the package contains no physical-plant data.
+Supplementary File~S7 contains run manifests, raw CSVs, per-seed outcomes, guard ablations, and scenario-pilot records. The corrected November 5 follow-up archive contains later simulator probes, a readback-mismatch injection, and Agent outcomes. No physical-plant data were collected.
 
 \bibliographystyle{IEEEtran}
-% Keep IEEEtran's default bibliography size and leading.
+% Balance the reference columns on the final page.
+% Column balancing is deferred to the final production proof.
 \bibliography{resources/refs}
 
 \end{document}

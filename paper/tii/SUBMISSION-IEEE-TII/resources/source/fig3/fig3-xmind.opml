@@ -1,0 +1,37 @@
+<?xml version='1.0' encoding='utf-8'?>
+<opml version="2.0">
+  <head>
+    <title>Fig. 3 governed operation</title>
+  </head>
+  <body>
+    <outline text="Fig. 3 — governed task-to-write operation" _drawio_id="operation-background">
+      <outline text="Task" _drawio_id="task-background">
+        <outline text="Production context: line, product, recipe, run" _drawio_id="task-context" />
+        <outline text="Objective: process target" _drawio_id="task-objective" />
+        <outline text="Optional team: lead and workers" _drawio_id="team" />
+      </outline>
+      <outline text="Governed operation path" _drawio_id="operation-header">
+        <outline text="Propose: node and value" _drawio_id="propose" />
+        <outline text="Shared dispatch: scope and policy" _drawio_id="dispatch" />
+        <outline text="Approval when required" _drawio_id="approval" />
+        <outline text="Approved? Yes or No" _drawio_id="decision" />
+        <outline text="Yes: route-specific revalidation after approval" _drawio_id="revalidation" />
+        <outline text="No: stop or reject before driver call" _drawio_id="rejected" />
+        <outline text="Write guard: configured constraints when applicable" _drawio_id="guard" />
+        <outline text="Driver write" _drawio_id="driver" />
+        <outline text="Process: device or twin" _drawio_id="process" />
+        <outline text="Driver-stage error: device may have changed; reconcile before retry" _drawio_id="driver-error" />
+        <outline text="No approval gate: bypass to write guard" _drawio_id="bypass-label" />
+      </outline>
+      <outline text="Command evidence" _drawio_id="evidence-title">
+        <outline text="Receipt or status, where recorded" _drawio_id="receipt" />
+        <outline text="Status alone does not confirm device change" _drawio_id="status-boundary" />
+        <outline text="Device readback, optional" _drawio_id="readback" />
+      </outline>
+      <outline text="Process observation" _drawio_id="observation-title">
+        <outline text="DAQ observation, when available" _drawio_id="daq" />
+        <outline text="Goal assessment: next turn or stop" _drawio_id="assessment" />
+      </outline>
+    </outline>
+  </body>
+</opml>

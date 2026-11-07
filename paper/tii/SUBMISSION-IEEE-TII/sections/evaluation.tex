@@ -1,44 +1,45 @@
 \section{Experimental Evaluation}
 \label{sec:eval}
-The evaluation comprised three primary blocks and separate route checks. Scene--protocol probes tested whether selected mappings accepted admissible values, rejected structural-range requests, and returned matching readbacks where available. Five-seed simulator missions recorded target-band endpoints under a deterministic scripted policy and a no-write condition. A mock-driver ablation tested whether the process-window check blocked selected excursions before dispatch. Approval and authorization paths were checked separately. Counts remain separate because the blocks use different units and fixtures: pipeline assertions, node requests, seed--scene endpoints, and guard injections are not pooled.
+The frozen core blocks ran against already-running platform and simulator services; most used benchmark mode, which relaxes normal timing and hold-window controls. Separate production-mode guard checks are reported on their own. No cold-start deployment or physical-plant run was performed. Results are presented in the order an operation crosses the runtime: configured mapping, authorization and write admission, process observations, and Agent-level execution. The blocks use different units—mapping requests, fixed stimuli, per-seed endpoints, a single simulated-twin execution, and Agent episodes—so counts are not pooled.
 
-\subsection{Test Conditions and Counting Units}
-\label{sec:eval-protocol}
-Two integrated pipeline executions, documented in Supplementary File~S7, each reported 77 passing assertions, zero warnings, and zero failed assertions. The runner reused a platform and simulator that were already running. The manifests identify commit \texttt{da627d21} and record \texttt{agentHarness=(none)}; these executions therefore exercised configured service paths without an active language model or live harness. The 77 checks are assertions within each execution, not 77 independent trials. Supplementary File~S7 contains the run records and archived source summaries.
-
-The scene--protocol probe records each requested value, expected decision, actual outcome, and available readback; its unit is one configured node request. For the optimization comparison, the unit is a seed--scene pair. C0 held each simulator for 60~s without writes, whereas C1 used a deterministic scripted policy through the governed-write path. Each C1 seed ran for 150.41--172.90~s. Because exposure time and mission logic differed, the comparison describes the tested conditions but does not isolate the effect of the write policy. The process-window ablation used three repetitions per arm. Each repetition included six negative probes, three nominal legal requests, and three boundary requests. Across the three repetitions, each arm therefore included 18 negative probes: six targeted window violations and 12 structural-range probes. The ablation ran in benchmark mode against a mock driver, so its outcomes assess the software interlock in that fixture rather than plant-level protection. Supplementary File~S7 preserves the source CSVs and per-run records.
+Table~\ref{tab:evidence-scope} connects each evaluation block to the question it can answer. A matching readback checks the actuator value returned by the simulator; it does not establish a process response. Conversely, an in-band process observation does not by itself establish which write caused it. The route and guard checks address pre-dispatch behavior, whereas the live-Agent episodes address whether a task reached a governed write. These distinctions determine the scope of the conclusions below.
 
 \begin{table*}[!t]
 \centering
-\caption{Experimental blocks, counting units, and supported claims. Results remain separated by block because their denominators and test fixtures differ.}
-\label{tab:eval-blocks}
+\caption{Evaluation blocks, observational units, and limits of interpretation.}
+\label{tab:evidence-scope}
 \footnotesize
-\setlength{\tabcolsep}{4pt}
-\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{1.55cm} X X >{\raggedright\arraybackslash}p{3.05cm}@{}}
+\setlength{\tabcolsep}{5pt}
+\begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{0.19\textwidth}>{\raggedright\arraybackslash}p{0.18\textwidth}>{\raggedright\arraybackslash}p{0.28\textwidth}X@{}}
 \toprule
-Block & Intervention and unit & Recorded outcome & Evidence boundary \\
+Block & Unit & Observation & Interpretation boundary \\
 \midrule
-Scene--protocol probes & Configured node requests across four scenes; admissible values include three interior points and the tested upper boundary, with structural-range probes in a separate set. & 220/220 admissible requests accepted; 219/219 collected structural probes rejected; 216/216 available readbacks matched. & Selected mappings only; the planned scene--protocol matrix is partial. \\
-Policy comparison & Five matched simulator seeds across three scenes. C0 held for 60~s without writes; C1 ran a deterministic scenario mission through the governed-write service. & The designated process variable ended in band for 0/15 C0 and 15/15 C1 endpoints. & Simulator evidence; no live Agent or competing controller. Runner mission flags are not compared across conditions. \\
-Process-window ablation & Four guard configurations, three repetitions each; per repetition: six negative, three nominal legal, and three boundary requests. & 0/6 targeted window violations reached the mock driver with the interlock; 6/6 reached it without the interlock. Legal false blocks were 0/9 in each arm. & Mock driver and benchmark mode; no readback-mismatch stimulus. \\
-Route checks & Separate approval pilot (four calls), production-mode guards (one example per named guard), and authorization probe (three calls). & Expected approval, rejection, range, and authorization branches were observed for the configured examples. & Path demonstrations only; no human decision study or rate estimate. \\
+Mapping probes & Configured request & Acceptance, rejection, and available simulated readback & Same configured limits supply inputs and checks; no physical actuation \\
+Guard ablation & Fixed stimulus and technical repetition & HTTP response status & One scene; benchmark mode; no readback-mismatch stimulus \\
+Scripted missions & Seed-level endpoint & Process value relative to its target band & Unmatched horizons and endpoint rules; no controller baseline \\
+Injection-twin pilot & One scripted execution & Write receipt, readback, and later process observation & No replication; incomplete raw series and version provenance \\
+Live-Agent pilot & Recorded episode & Governed writes and reported task status & Two episodes; neither issued a governed write \\
 \bottomrule
 \end{tabularx}
 \end{table*}
 
-\subsection{Configured Scene and Protocol Paths}
+\subsection{Configured Mapping and Integration Checks}
 \label{sec:eval-mapping}
-The retained raw probe run covers 55 configured writable nodes across four simulator scenes and five protocol families: Modbus over Transmission Control Protocol (TCP), Modbus remote terminal unit (RTU), OPC UA, MQTT, and Hypertext Transfer Protocol (HTTP). Each scene used four of the five families. Table~\ref{tab:scene-probe-results} reports the node allocation by scene and separates accepted in-range and upper-boundary requests from structural negative probes. These counts describe configured mappings, not throughput or full scene--protocol matrix coverage. Readback consistency is reported only for accepted requests with an available actuator value. One biaxial-line structural case was not collected, and HTTP routes did not expose actuator readback. The evaluated subset therefore covers selected mappings; it does not establish general portability across scenes or protocols.
+Two integrated executions each passed 77 assertions across 17 phases. These repeat checks of the configured service path; the assertions are not independent trials.
+
+The two executions used seed 42, started with the platform and simulator already running, and did not activate an Agent harness. A separate preset check within the integrated film-line path configured five endpoint types and rejected nine selected negative probes. It reused the same runtime, so it is not a cold-start deployment or an independent replication of the mapping matrix.
+
+The scene--protocol probes covered 55 writable nodes across four simulated scenes and five configured protocol variants. Each node received three interior-value requests, one upper-boundary request, and four structural-range requests. All 220 admissible requests were accepted; 219 collected structural-range requests were rejected; and all 216 available readbacks matched. These probes check the consistency of configured mappings: the tested values and guards use the same configured limits. Simulator readback echoes the configured value and does not verify physical actuation. One structural request was not collected, HTTP nodes do not expose readback, and the full scene--protocol matrix remains incomplete. The excluded cast-film run and other deviations are documented in Supplementary File~S7.
 
 \begin{table*}[!t]
 \centering
-\caption{Observed scene--protocol probe outcomes. The table reports the collected subset; readback denominators include only accepted requests with an available actuator value.}
+\caption{Collected scene--protocol mapping results. Readback counts include accepted requests for which the simulator exposes an actuator value.}
 \label{tab:scene-probe-results}
 \footnotesize
 \setlength{\tabcolsep}{4.5pt}
 \begin{tabularx}{\textwidth}{@{}>{\raggedright\arraybackslash}p{1.65cm}r X r r r@{}}
 \toprule
-Scene & Writable nodes & Writable nodes by protocol & Admissible accepted & Structural rejected & Readback matched \\
+Scene & Writable nodes & Protocols represented & Admissible accepted & Structural rejected & Readback matched \\
 \midrule
 Injection & 11 & TCP 5; RTU 2; OPC UA 3; MQTT 1 & 44/44 & 44/44 & 44/44 \\
 Wastewater & 7 & TCP 1; RTU 3; OPC UA 2; MQTT 1 & 28/28 & 28/28 & 28/28 \\
@@ -48,56 +49,39 @@ Biaxial line & 30 & TCP 20; RTU 1; OPC UA 8; HTTP 1 & 120/120 & 119/119 & 116/11
 \end{tabularx}
 \end{table*}
 
-For each configured writable node, the expected-acceptance set comprised three interior values and the tested upper boundary; the structural set comprised four values outside the configured engineering range. Across the collected subset, all 220 admissible requests were accepted, all 219 recorded structural probes were rejected, and all 216 available actuator readbacks matched their requests. These counts characterize the configured examples; they do not estimate false-block rates or establish complete matrix coverage. In a separate configuration check, the integrated pipeline loaded a film-line preset with five endpoint types and rejected nine of nine selected negative probes without code changes. Because the runtime was reused, this was not an independent cold-start deployment.
+\subsection{Write-Guard and Route Checks}
+\label{sec:eval-ablation}
+The ablation used one scene, direct API calls, a mock driver, and three deterministic repetitions per guard setting in benchmark mode. Each repetition submitted four structural-range violations and two process-window violations, as well as three legal and three boundary requests. The timed writes used for latency summaries were excluded from these counts. With all guards enabled, all six targeted process-window violations returned HTTP 400. With the process-window check removed, all six returned HTTP 200; structural violations continued to be rejected. The archived records contain neither response bodies nor independent per-request driver-call logs, so HTTP 200 alone does not establish driver invocation. The four structural violations were rejected in every repetition and setting; the nine legal requests per setting were accepted and the nine boundary expectations were met. These counts describe the tested fixture, not independent trials or a safety rate. No readback-mismatch stimulus was included, so this experiment does not assess that check.
 
-\subsection{Target-Band Comparison}
+Separate scripted probes reached the expected approval and authorization branches. In the manual approval fixture, the approved request changed the simulated value from 202 to 204.8, while the rejected request left it at 216. The corresponding automatic calls did not form clean matched pairs because their labels and values did not align with the manual arms. No operator made the approval decisions. The probes show route handling in the tested fixture, not the effect of human approval or a general safety rate.
+
+In a November 5 follow-up, a separate four-scene probe batch returned \texttt{RECIPE\_LIMIT\_EXCEEDED} for all 110 tested requests outside their configured recipe windows but within structural limits. The deterministic inputs and checks derive from the same configuration, so the count assesses the selected cases rather than a population failure rate. In a separate simulated injection-node fault injection, a 230-unit command produced a 251-unit readback against a 0.7-unit tolerance and was reported as \texttt{unverified}; one baseline and one recovery returned \texttt{readback-verified}. This tests one injected mismatch, not physical-device behavior. The later batch is not pooled with the frozen core results; its records and provenance limits are in Supplementary File~S7.
+
+In a separate production-mode check, one legal baseline was accepted and one case each was rejected for interval, step, node-range, recipe-window, and hold-window constraints. A three-case authorization probe rejected an unbound request and a cross-node request and accepted a bound write. These individual branch checks complement the benchmark-mode ablation but do not measure coverage across configurations. Full call records are listed in S7.
+
+\subsection{Process-Target Outcomes}
 \label{sec:eval-optimization}
-The same five seeds, 42--46, were used in the injection, wastewater, and
-annealing scenes. Both conditions began from their scenario blueprint and
-seeded simulator state. C0 made no writes for 60~s; its endpoint was the mean
-of the final five process samples. C1 ran a deterministic scenario mission
-through the shared governed-write service, queried DAQ after configured
-settling intervals, and applied scenario-specific guard or recovery logic.
-The policy was scripted, not Agent-generated. C1 took 150.41--172.90~s per
-seed, so the conditions differed in exposure time and mission logic.
+In the no-write control, each simulator ran for 60~s and the endpoint was the mean of its final five samples. The scripted setpoint policy recorded a final process value after scenario-specific steps. The recorded 150.41--172.90~s range is the wall time of each three-scene parallel batch, including setup, rather than a per-scene time to target. Because the horizons and endpoint rules were not matched, the comparison describes these tested routines and does not isolate a control-policy effect. There was no PID or model-predictive-control baseline.
 
-We assessed each recorded terminal process-variable statistic against its
-configured target band. For C0, that statistic is
-the mean of the final five samples; for C1, it is the mission-terminal
-reading. The runner's \texttt{attained} field is not comparable across
-conditions because C0 combines the process-variable band with configured
-guards, whereas C1 uses scenario-specific mission criteria. We therefore
-recomputed band membership from the raw \texttt{pv}, \texttt{target}, and
-\texttt{tol} columns.
+Across the injection, wastewater, and annealing scenes, the scripted policy ended in the target band in 15/15 runs; the no-write control ended in the band in 0/15. The no-write seed-42 injection and wastewater runs began from residual states (32.378~g and 2.894~mg/L, respectively), both already within their target bands; the scripted runs began from blueprint states. The 12 blueprint-matched pairs therefore use seeds 43--46 across the three scenes, with 12/12 scripted endpoints and 0/12 no-write endpoints in band. The 15-run totals include the seed-42 records. We report counts rather than a significance test because the runs share three scenes and the routines have different stopping rules. Fig.~\ref{fig:latest-evaluation} shows the seed-level endpoints and the guard-ablation stimuli; neither panel estimates a population-level effect.
 
-For injection mass, the target was $32.5\pm0.35$~g. C0's terminal means were
-31.206--31.272~g and C1's mission-terminal readings were 32.173--32.340~g,
-placing 0/5 and 5/5 recorded statistics, respectively, inside the band. For
-wastewater dissolved oxygen (DO), the target was $3.4\pm0.6$~mg/L; C0
-terminal means were 0.198--0.268~mg/L and C1 readings were 3.576--3.864~mg/L,
-again giving 0/5 versus 5/5 in-band statistics. In annealing, the target was $95\pm6$ on the Vickers hardness scale (HV); C0 terminal means were 134.36--134.90~HV and C1 readings were 97.44--99.90~HV. Across the 15 seed--scene endpoints, all 15 C1 readings and none of the 15 C0 terminal means were within their respective bands. Across the five C1 seeds, the scripted missions
-issued 12 writes in 17 rounds for injection, 56 in 59 for wastewater, and 41
-in 50 for annealing. These counts describe workload, not efficiency. Because
-the endpoint conditions were not time-matched and used different mission
-logic, the contrast is descriptive and does not compare the runtime with an
-established controller. Fig.~\ref{fig:latest-evaluation} shows each endpoint
-and its configured band.
+Band membership was recomputed from each recorded process value, target, and tolerance, rather than from the runner's condition-specific \texttt{attained} field. The policy used the \texttt{recipe\_trial} batch route. Across its five seeds it issued 12 writes in 17 rounds for injection, 56 writes in 59 rounds for wastewater, and 41 writes in 50 rounds for annealing. These counts describe the tested missions; they do not compare efficiency with another controller. Seeds are simulator initializations, not independent production lines.
+
+Exact per-seed endpoints and recomputed band membership are listed in Table~3 of Supplementary File~S7.
 
 \begin{figure*}[!t]
 \centering
-\includegraphics[width=\textwidth]{resources/fig-latest-evaluation-minimal-20261103.pdf}
-\caption{Scripted-policy endpoints and process-window ablation results. Top: terminal process-variable statistics for seeds 42--46 in the injection, wastewater dissolved-oxygen, and annealing scenes. C0 is the 60-s no-write condition; each value is the mean of the final five samples. C1 is the deterministic scripted policy; each value is the mission-terminal reading. Shaded regions and dashed lines mark the target bands and their centers. Bottom: targeted process-window violations reaching the mock driver under each guard configuration (six probes per arm, three repetitions). The process-window check was removed in the second and fourth arms; the readback check was removed in the third and fourth. Structural checks remained active in all arms.}
+\includegraphics[width=\textwidth]{resources/redesigned-fig5-reproducible.pdf}
+\caption{Descriptive simulator endpoints and targeted guard-ablation results. (a) No-write endpoints are final-five-sample means at 60~s; scripted endpoints were recorded after scenario-specific steps. The three-scene scripted batches, including setup, took 150.41--172.90~s; these are not per-scene times to target. The no-write seed-42 injection and wastewater runs began from residual states ($\dagger$); the matched subset uses seeds 43--46. Hatched regions show target bands and dashed lines their centers. The no-write control was in band in 0/15 runs and the scripted policy in 15/15; the comparison is not time-matched. (b) Each marker represents one below- or above-window request in three technical repetitions. Open circles denote rejection, filled squares denote HTTP 200 responses, and the rightmost fractions count HTTP 200 responses. Structural checks remained enabled.}
 \label{fig:latest-evaluation}
 \end{figure*}
 
-\subsection{Process-Window Interlock Ablation}
-\label{sec:eval-ablation}
-The primary contrast was the full guard against the same configuration with only the process-window interlock removed. With the guard enabled, 18/18 negative probes were rejected before the mock driver and 0/6 targeted window violations reached it. Removing that interlock reduced the negative-probe rejections to 12/18: all six targeted window violations reached the driver, while the 12 out-of-range structural probes remained blocked. Each arm also accepted 9/9 nominal legal requests without a false block and met its configured boundary expectations in 9/9 checks.
+\subsection{Follow-Up Injection-Twin Pilot}
+\label{sec:eval-followup-pilot}
+An acceptance script later ran one end-to-end experiment on an isolated platform connected to a PLC-based simulated twin; the manifest records \texttt{realPlant=false}. At 50~bar, the structured record gives a baseline product weight of 31.503~g, below the 32.00--32.30~g band. Its accompanying report instead gives 31.508~g; the discrepancy remains unresolved. A three-level plan tested 50, 55, and 60~bar. The saved ledger labels its contrasts \texttt{no\_resolvable\_effect}, \texttt{underpowered}, and \texttt{identifiable\_effect}; it stores effect, minimum detectable effect (MDE), and verdict fields. The archive lacks the sample series and the rule used to calculate MDE and assign the labels. The final 55-to-60~bar contrast stores an effect of 0.2517~g over a 5-bar step; 0.05035~g/bar is that single-run ratio, not a replicated or independently verified process model.
 
-The no-readback arm retained the process-window interlock and produced the same 18/18 rejection result. The combined no-window/no-readback arm matched the no-interlock arm on these stimuli. No readback-mismatch stimulus was included, so the experiment isolates the observed process-window effect but says nothing about readback-check effectiveness or interaction between the two checks. The implementation has separate production-mode tests for the interval, step, node-range, recipe-window, and hold-window guards; each configured case returned its expected rejection code, while the legal baseline was accepted. Those single-case checks are route demonstrations, not rate estimates.
+The subsequent governed write changed the setpoint from 60 to 63.7~bar, and the device readback matched. After 60~s, the mean of the three latest 15-s process samples was 32.224~g, within the band. The reported 15/15 counts assertions within this one execution, not trials. The record lacks a platform commit, simulator/configuration snapshot, and runner-source hash. This pilot demonstrates one scripted simulator path only; its records and provenance limits are in S7.
 
-\subsection{Approval and Authorization Path Checks}
-\label{sec:eval-approval}
-A separate four-call simulator pilot exercised the approval route. In manual mode, the scripted approval case changed the control value from 202 to 204.8, while the scripted rejection left it at 216. The two auto-mode calls also executed, but they began at values different from those in the manual-mode pairings defined by the runner. The decisions came from a test fixture, no operator made them, and the calls do not form a matched approval-on/off comparison. We therefore treat these records as a path check rather than an estimate of the approval effect. Supplementary File~S7 retains the values and decision trace.
-
-A separate authorization check rejected one unbound write and one cross-node write, while accepting one write to a bound control node. Together, these examples showed that the configured checks returned their expected outcomes in the tested simulator routes. They do not establish a general safety rate, physical-equipment behavior, or live-Agent decision quality.
+\subsection{Live-Agent Pilot}
+\label{sec:eval-agent}
+Four setup attempts produced two recorded live-Agent episodes, and neither issued a governed write. One episode ended with a \texttt{COMPLETED} status while the process value remained outside its target band; the other timed out. The first result shows that orchestration status alone did not verify the process goal. The positive process results above therefore characterize scripted or configured runtime paths, not autonomous-Agent performance. Two additional November 5 episodes were canceled after 371.63 and 372.24~s, respectively; both recorded zero rounds and zero writes. These follow-up episodes do not establish why execution stopped. S7 records the episodes and the earlier setup attempts that produced no result rows.

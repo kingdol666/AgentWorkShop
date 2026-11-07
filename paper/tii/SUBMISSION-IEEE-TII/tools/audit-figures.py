@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Figure-specific audit: final-size type, font family, CJK, media height,
+"""Figure-specific audit: source type, font family, CJK, media height,
 and raster DPI for every figure included by the manuscript.
 
 The general audit (tools/audit.py, gate F8) only checks the vector source
@@ -11,9 +11,8 @@ type floor (5 pt).  This gate applies the manuscript's own targets:
  Fig. 4 governance          >= 8.0 pt (full-width diagram)
  Fig. 5 evaluation results  >= 8.0 pt (full-width data figure)
 
-Rasters, if any, must be >= 300 dpi at their placed width.  The manuscript
-currently includes only PDFs; the raster branch is kept so a future PNG
-swap cannot bypass the check.
+Rasters must be >= 300 dpi at their placed width. Placed vector text size must
+also be checked in the compiled manuscript after scaling.
 """
 from __future__ import annotations
 
@@ -25,14 +24,13 @@ ROOT = Path(__file__).resolve().parent.parent
 SECTIONS = sorted((ROOT / "sections").glob("*.tex")) + [ROOT / "main.tex"]
 
 TARGETS = {
-    "fig1-context-signal-minimal-20261103.pdf": (8.0, 125.0, "Arial"),
-    "fig-system-runtime-minimal-20261103.pdf": (8.0, 205.0, "Arial"),
-    "fig3-agent-optimization-control-20261103.pdf": (8.0, 205.0, "Arial"),
-    "fig4-governance-minimal-20261103.pdf": (8.0, 215.0, "Arial"),
-    "fig-latest-evaluation-minimal-20261103.pdf": (8.0, 270.0, "TimesNewRoman"),
+    "redesigned-fig1_cast_film.pdf": (9.0, 150.0, "TimesNewRoman"),
+    "redesigned-fig2_runtime_architecture.pdf": (9.0, 260.0, "TimesNewRoman"),
+    "redesigned-fig3_task_to_write.pdf": (9.0, 270.0, "TimesNewRoman"),
+    "redesigned-fig4_route_governance.pdf": (9.0, 290.0, "TimesNewRoman"),
+    "redesigned-fig5-reproducible.pdf": (9.0, 320.0, "TimesNewRoman"),
 }
 
-# Placed width for raster DPI accounting (full-width figures use 182 mm).
 RASTER_WIDTH_MM: dict[str, float] = {}
 
 def included_figures() -> set[str]:
@@ -93,7 +91,7 @@ def main() -> int:
         print(f"  {name}: min={min(sizes):.2f} pt, h={page.rect.height:.1f} pt, "
               f"fonts={fonts}")
 
-    # Raster guard: any PNG/JPEG include must be >= 300 dpi at 89 mm.
+    # Raster guard: any PNG/JPEG include must be >= 300 dpi at placed width.
     for name in sorted(included):
         if not name.lower().endswith((".png", ".jpg", ".jpeg")):
             continue
