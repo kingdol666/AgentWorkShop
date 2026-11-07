@@ -969,24 +969,34 @@ export class ProjectService {
     const bound = this.bindings.listByProject(id).find(b => b.channelId === input.channelId && b.status === 'active')
     if (!bound) throw new AppError(409, 'CHANNEL_NOT_IN_PROJECT', '工作项目标 Channel 未绑定到该项目')
     if (!input.title?.trim()) throw new AppError(400, 'BAD_REQUEST', '工作项标题不能为空')
-    return this.workItems.create({
-      projectId: id,
-      deliverableId: d.id,
-      channelId: input.channelId,
-      title: input.title.trim(),
-      brief: input.brief,
-      priority: input.priority,
-      weight: input.weight,
-      dependsOnJson: JSON.stringify(input.dependsOn ?? []),
-      acceptanceJson: JSON.stringify(input.acceptanceCriteria ?? []),
-      resultKey: input.resultKey,
-      contractJson: JSON.stringify(input.contract ?? {}),
-      planVersion: p.planVersion,
-      execBudgetMinutes: input.execBudgetMinutes,
-      traceId: input.dedupeKey ?? `work:${d.id}:${input.title.trim()}`,
-      dedupeKey: input.dedupeKey ?? `${d.id}:${input.title.trim()}`,
-      createdBy: actor.id,
-    })
+    try {
+      return this.workItems.create({
+        projectId: id,
+        deliverableId: d.id,
+        channelId: input.channelId,
+        title: input.title.trim(),
+        brief: input.brief,
+        priority: input.priority,
+        weight: input.weight,
+        dependsOnJson: JSON.stringify(input.dependsOn ?? []),
+        acceptanceJson: JSON.stringify(input.acceptanceCriteria ?? []),
+        resultKey: input.resultKey,
+        contractJson: JSON.stringify(input.contract ?? {}),
+        planVersion: p.planVersion,
+        execBudgetMinutes: input.execBudgetMinutes,
+        traceId: input.dedupeKey ?? `work:${d.id}:${input.title.trim()}`,
+        dedupeKey: input.dedupeKey ?? `${d.id}:${input.title.trim()}`,
+        createdBy: actor.id,
+      })
+    }
+    catch (err) {
+      // 同 (project, dedupe_key) 唯一约束：并发/重复创建落为结构化 409,而非 500
+      const code = (err as { errcode?: number | string, code?: string }).errcode
+      if (String(code) === '2067' || (err as { code?: string }).code === 'SQLITE_CONSTRAINT_UNIQUE') {
+        throw new AppError(409, 'WORK_ITEM_EXISTS', `工作项已存在(同标题/去重键): ${input.title.trim()}`)
+      }
+      throw err
+    }
   }
 
   /**
@@ -2106,7 +2116,7 @@ export class ProjectService {
           this.assertResultLineVisible(result, actor)
           if (approve) {
             // P1 槽位：同一 (deliverable, resultKey) 只保留一个 approved；新版本批准前先收编旧版本。
-            const old = this.results.findApprovedSlot(result.projectId, result.deliverableId, result.resultKey, result.id)
+            const old = this.results.findApprovedSlot(result.projectId, result.deliverableId, result.resultKey, result.id, result.workItemId ?? undefined)
             if (old) {
               this.results.setStatus(old.id, 'superseded', {
                 reviewedBy: old.reviewedBy,

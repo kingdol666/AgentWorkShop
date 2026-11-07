@@ -622,6 +622,7 @@ export function createProjectResultRepo(db: DatabaseSync) {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
   )
   const selectApprovedSlot = db.prepare(`SELECT ${RESULT_COLS} FROM project_results WHERE project_id = ? AND deliverable_id = ? AND result_key = ? AND status = 'approved' AND id <> ? LIMIT 1`)
+  const selectApprovedSlotInWorkItem = db.prepare(`SELECT ${RESULT_COLS} FROM project_results WHERE project_id = ? AND deliverable_id = ? AND result_key = ? AND work_item_id = ? AND status = 'approved' AND id <> ? LIMIT 1`)
   const verifyEvidenceStmt = db.prepare(`UPDATE project_results SET content_sha256 = ?, evidence_verified_at = ?, criteria_check_json = ? WHERE id = ?`)
   const setSupersedesStmt = db.prepare(`UPDATE project_results SET supersedes_id = ? WHERE id = ?`)
   const setReworkStmt = db.prepare(`UPDATE project_results SET rework_required = ? WHERE id = ?`)
@@ -753,8 +754,13 @@ export function createProjectResultRepo(db: DatabaseSync) {
     markEvidenceVerified(id: string, input: { contentSha256: string, checkedAt: string, criteriaCheckJson: string }): void {
       verifyEvidenceStmt.run(input.contentSha256, input.checkedAt, input.criteriaCheckJson, id)
     },
-    /** 同一 (project, deliverable, resultKey) 下已被批准的另一版本（版本替换用）。 */
-    findApprovedSlot(projectId: string, deliverableId: string, resultKey: string, exceptId: string): ProjectResultRow | undefined {
+    /** 同一 (project, deliverable, resultKey, workItem) 下已被批准的另一版本（版本替换用）。
+     * 槽位按工作项隔离：多工作项交付物各得一个 approved 槽，互不 supersede
+     * （deliverableAcceptanceReady 要求每个工作项都有 approved 结果，交付物级共享槽与之矛盾）。 */
+    findApprovedSlot(projectId: string, deliverableId: string, resultKey: string, exceptId: string, workItemId?: string): ProjectResultRow | undefined {
+      if (workItemId) {
+        return selectApprovedSlotInWorkItem.get(projectId, deliverableId, resultKey, workItemId, exceptId) as unknown as ProjectResultRow | undefined
+      }
       return selectApprovedSlot.get(projectId, deliverableId, resultKey, exceptId) as unknown as ProjectResultRow | undefined
     },
     /** 新版本记录替代关系（supersedes_id 正式写入）。 */

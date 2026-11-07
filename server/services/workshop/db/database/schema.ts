@@ -1448,8 +1448,11 @@ CREATE TABLE IF NOT EXISTS project_results (
 );
 CREATE INDEX IF NOT EXISTS idx_project_results_lookup
   ON project_results(project_id, deliverable_id, status, version DESC);
+-- 2026-11-07:approved 槽位按工作项隔离(多工作项交付物各得一个 approved 槽;
+-- 交付物级共享槽与 deliverableAcceptanceReady 的"每工作项一个 approved"矛盾,
+-- 曾导致多工作项项目永远无法 complete)。旧库由 migrateApprovedSlotScope 迁移。
 CREATE UNIQUE INDEX IF NOT EXISTS uq_project_result_approved
-  ON project_results(project_id, deliverable_id, result_key) WHERE status='approved';
+  ON project_results(project_id, deliverable_id, result_key, work_item_id) WHERE status='approved';
 
 -- Router v3 P1：成果血缘（下游成果消费了哪些上游 result/version；supersede 影响分析用）
 CREATE TABLE IF NOT EXISTS project_result_inputs (
