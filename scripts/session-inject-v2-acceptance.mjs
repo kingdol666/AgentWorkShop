@@ -139,10 +139,12 @@ try {
   await send(PINNED)
   await send(FILLER)
   for (let i = 1; i <= 10; i++) await send(`第 ${i} 轮推进：补充 FAQ 条目与巡检要点 ${i}`)
+  // 稳定终态轮询:压缩层出现 且 pinned 原文在块内 且 填充句已离开 recent 窗口(避免压缩刚触发时
+  // filler 仍在 recent 层原文出现导致的竞态;并行套件拖慢节奏时会放大该窗口)
   const folded = await poll(async () => {
     const b = await getBlock()
-    return b && b.includes('### 早期上下文') ? b : null
-  }, 40000)
+    return b && b.includes('### 早期上下文') && b.includes(PINNED) && !b.includes(FILLER) ? b : null
+  }, 60000)
   ok('V2a', '压缩触发：早期上下文层出现', !!folded, (folded ?? (await getBlock()) ?? '').slice(-400))
   ok('V2b', 'pinned 原文保留（关键事实层）', !!folded && folded.includes(PINNED), (folded ?? '').slice(0, 400))
   ok('V2c', '填充长句被压缩（原文不再整体出现）', !!folded && !folded.includes(FILLER), 'filler 全文不应出现在注入块')
